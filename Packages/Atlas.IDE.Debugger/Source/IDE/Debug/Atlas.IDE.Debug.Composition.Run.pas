@@ -4,8 +4,9 @@
 // Programms: das Ereignisprotokoll (#580), die Logpunkte (#583, mit Taste
 // Umschalt+F5 und Schicht in der Rinne), das Fenster „Kein Quelltext“
 // (#869), „Neu starten“ (#872, Strg+Umschalt+F2), „Erneut anhängen“ (#2171,
-// Menü Start, Taste debug.reattach.key) und Leck- und Absturzberichte aus
-// der Zwischenablage (#74). Liefert Teile der
+// Menü Start, Taste debug.reattach.key), Leck- und Absturzberichte aus der
+// Zwischenablage (#74) und die Startverbünde (#867, F9 und Strg+F2 mit
+// aktivem Verbund). Liefert Teile der
 // Feature-Tabelle, Befehle, Menüeinträge, Tasten und das Weiterreichen von
 // Einstellungen und Thema; Atlas.IDE.Debug.Composition stellt sie über den
 // Scope des Moduls bereit, die Schicht der Rinne stellt ProvideRun bereit.
@@ -47,6 +48,7 @@ uses
   Atlas.IDE.Debug.Restart,
   Atlas.IDE.Debug.Reattach,
   Atlas.IDE.Debug.RuntimeReport,
+  Atlas.IDE.Debug.LaunchGroups,
   Atlas.UI.Debug.Strings;
 
 const
@@ -54,6 +56,9 @@ const
   cRestartCommand = 'Atlas.DebugRestart';
   cReattachCommand = 'Atlas.Reattach';
   cRuntimeReportCommand = 'Atlas.RuntimeReportPaste';
+  cLaunchGroupsCommand = 'Atlas.LaunchGroups';
+  cLaunchRunCommand = 'Atlas.LaunchGroupRun';
+  cLaunchStopCommand = 'Atlas.LaunchGroupStop';
 
 { Dienste von Base }
 
@@ -129,6 +134,20 @@ end;
 procedure StartReattach;
 begin
   TAtlasIdeDebugReattach.Start(
+    procedure(AText: string)
+    begin
+      TAtlasIdeHost.Message(AText);
+    end, TAtlasStatusRegistry.Default);
+end;
+
+function LaunchGroupsVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugLaunchGroups;
+end;
+
+procedure StartLaunchGroups;
+begin
+  TAtlasIdeLaunchGroups.Start(
     procedure(AText: string)
     begin
       TAtlasIdeHost.Message(AText);
@@ -211,7 +230,17 @@ begin
       function: Boolean
       begin
         Result := TAtlasIdeDebugReattach.Started;
-      end, StartReattach, TAtlasIdeDebugReattach.Release)];
+      end, StartReattach, TAtlasIdeDebugReattach.Release),
+    // Startverbünde (#867): mehrere Projekte nacheinander starten, Statusfeld und Leiste des Laufs.
+    TAtlasFeaturePart.When('DebugLaunchGroups',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and LaunchGroupsVisible;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeLaunchGroups.Started;
+      end, StartLaunchGroups, TAtlasIdeLaunchGroups.Release)];
 end;
 
 /// <summary>Leck- oder Absturzbericht aus der Zwischenablage (#74).</summary>
@@ -256,7 +285,13 @@ begin
     RunCommand(cRuntimeReportCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.RuntimeReportPasteCommand),
       PasteRuntimeReport(AScope), nil),
     RunCommand('Atlas.RuntimeReportClear', TAtlasDebugStrings.Text(TAtlasDebugTextId.RuntimeReportClearCommand),
-      ClearRuntimeReport(AScope), nil)];
+      ClearRuntimeReport(AScope), nil),
+    RunCommand(cLaunchGroupsCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchCommandWindow),
+      TAtlasIdeLaunchGroups.ShowWindow, LaunchGroupsVisible),
+    RunCommand(cLaunchRunCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchCommandRun),
+      TAtlasIdeLaunchGroups.RunActive, LaunchGroupsVisible),
+    RunCommand(cLaunchStopCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchCommandStop),
+      TAtlasIdeLaunchGroups.StopAll, LaunchGroupsVisible)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -272,7 +307,8 @@ begin
     MenuEntry(cLogpointCommand, TAtlasMenuPlace.AtlasMenu),
     MenuEntry(cLogpointCommand, TAtlasMenuPlace.EditorContext),
     MenuEntry(cRestartCommand, TAtlasMenuPlace.AtlasMenu),
-    MenuEntry(cRuntimeReportCommand, TAtlasMenuPlace.AtlasMenu)];
+    MenuEntry(cRuntimeReportCommand, TAtlasMenuPlace.AtlasMenu),
+    MenuEntry(cLaunchGroupsCommand, TAtlasMenuPlace.AtlasMenu)];
 end;
 
 /// <summary>Umschalt+F5 setzt einen Logpunkt, solange debug.logpoints an ist; sonst geht die Taste an die IDE.
@@ -316,6 +352,28 @@ begin
   end;
 end;
 
+/// <summary>Taste eines Startverbunds (#867); 0, solange debug.launchGroups aus ist.</summary>
+function LaunchKey(AKey: Word; AShift: TShiftState): TShortCut;
+begin
+  Result := 0;
+  if LaunchGroupsVisible then
+  begin
+    Result := ShortCut(AKey, AShift);
+  end;
+end;
+
+/// <summary>F9 startet den aktiven Verbund, solange keine Sitzung läuft; sonst geht die Taste an die IDE.</summary>
+function TryLaunchRun: Boolean;
+begin
+  Result := TAtlasIdeLaunchGroups.TryRun;
+end;
+
+/// <summary>Strg+F2 beendet alle Programme des Verbunds; ohne laufenden Verbund geht die Taste an die IDE.</summary>
+function TryLaunchStop: Boolean;
+begin
+  Result := TAtlasIdeLaunchGroups.TryStop;
+end;
+
 function RunKey(const AId, ACaption: string; AKey: TShortCut; const AAttempt: TFunc<Boolean>): TAtlasModuleKey;
 begin
   Result := Default(TAtlasModuleKey);
@@ -332,7 +390,11 @@ begin
     RunKey(cRestartCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartCommand),
     ShortCut(VK_F2, [ssCtrl, ssShift]), TryRestart),
     RunKey(cReattachCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.ReattachCommandPlain), ReattachKey,
-    TryReattach)];
+    TryReattach),
+    RunKey(cLaunchRunCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchCommandRun), LaunchKey(VK_F9, []),
+    TryLaunchRun),
+    RunKey(cLaunchStopCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchCommandStop),
+    LaunchKey(VK_F2, [ssCtrl]), TryLaunchStop)];
 end;
 
 procedure ProvideRun(const AScope: IAtlasModuleScope);
@@ -351,6 +413,7 @@ begin
   TAtlasIdeDebugEventLog.ThemeChanged;
   TAtlasIdeDebugNoSource.ThemeChanged;
   TAtlasIdeDebugRestart.ThemeChanged;
+  TAtlasIdeLaunchGroups.ThemeChanged;
 end;
 
 end.

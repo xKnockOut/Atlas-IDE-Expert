@@ -1006,6 +1006,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.Reattach` | `IDE/Debug/Atlas.IDE.Debug.Reattach.pas` | Erneut an Prozess anhängen, auf Start warten, #2171 |
 | `Atlas.Core.Debug.RuntimeReport` | `Core/Debug/Atlas.Core.Debug.RuntimeReport.pas` | Argumente und Antwort von atlas.server.runtimeReport ohne IDE, #74 |
 | `Atlas.IDE.Debug.RuntimeReport` | `IDE/Debug/Atlas.IDE.Debug.RuntimeReport.pas` | Leck- oder Absturzbericht einfügen, Stapel in der Meldungsansicht, #74 |
+| `Atlas.Core.Debug.LaunchGroups` | `Core/Debug/Atlas.Core.Debug.LaunchGroups.pas` | Startverbünde lesen und schreiben, Ablauf eines Laufs ohne IDE, #867 |
+| `Atlas.IDE.Debug.LaunchProbe` | `IDE/Debug/Atlas.IDE.Debug.LaunchProbe.pas` | Port und Hauptfenster prüfen, Programme ohne Debugger starten und beenden (Windows), #867 |
+| `Atlas.UI.Debug.LaunchGroupsDialog` | `UI/Debug/Atlas.UI.Debug.LaunchGroupsDialog.pas` | Ordner `UI/Debug` |
+| `Atlas.IDE.Debug.LaunchGroups` | `IDE/Debug/Atlas.IDE.Debug.LaunchGroups.pas` | Mehrere Programme gemeinsam debuggen, #867 |
 
 ## Atlas.IDE.Tracker
 

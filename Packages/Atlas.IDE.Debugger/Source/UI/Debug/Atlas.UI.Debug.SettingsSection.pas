@@ -213,6 +213,8 @@ begin
   Switch('debug.reattach', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugReattach));
   Key('debug.reattach.key', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugReattachKey));
   Number('debug.reattach.waitIntervalMs', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugReattachWait));
+  // Startverbünde (#867).
+  Switch('debug.launchGroups', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLaunchGroups));
 end;
 
 function TAtlasDebugSettingsSection.VisualizerKindCheck(AKind: TAtlasVisualizerKind): TCheckBox;
