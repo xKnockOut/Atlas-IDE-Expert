@@ -86,6 +86,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Debug.Visualizers.Format,
   System.Types,
   System.Math,
   Vcl.Clipbrd,

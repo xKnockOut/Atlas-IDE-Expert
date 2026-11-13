@@ -353,7 +353,7 @@ var
   mItem: TJSONObject;
   mEntry: TCrashSkipEntry;
 begin
-  mRoot := TCrashCases.ParseOrNil(AJson);
+  mRoot := TJsonRead.Parse(AJson);
   try
     System.TMonitor.Enter(FLock);
     try

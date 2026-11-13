@@ -49,6 +49,7 @@ uses
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Lsp.CompletionCollector,
+  Atlas.Common.Lsp.Completion.TypeConversions,
   Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Lines;

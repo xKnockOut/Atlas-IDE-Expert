@@ -1534,6 +1534,18 @@
       "x-captionEn": "Indent JSON and XML",
       "x-issue": "#1779"
     },
+    "TestsApprovalFiles": {
+      "description": "Erkennt im Testergebnis die Meldung der Hilfs-Unit Atlas.Testing.Approval (Setup/Vorlagen): Die Testmarke zeigt „Abweichung · Vergleich“ bzw. „Neu · Vergleich“, der Vergleich zeigt approved- und received-Datei mit „Als neue Erwartung übernehmen“ (received ersetzt approved) und „Zum Test“. Dazu der Befehl „Liegengebliebene .received-Dateien löschen“ im Ordner tests.approvalFolder aus atlas.json; er schlägt vor, *.received.* in die .gitignore einzutragen. Die Hilfs-Unit selbst arbeitet auch ausgeschaltet.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.approvalFiles",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.compare",
+      "x-caption": "Vergleichsdateien erkennen",
+      "x-captionEn": "Recognize approval files",
+      "x-issue": "#1881"
+    },
     "TestsShowDuration": {
       "description": "Nach einem Lauf zeigt jede Marke der Testlinse die Dauer („12 ms“, ab einer Sekunde „1,2 s“), die Klassenmarke die Summe ihrer Tests. Über tests.slowMs färbt sich die Marke gelb mit „langsam“, auch wenn der Test bestanden hat (fehlgeschlagen bleibt rot). Die Karte Testergebnisse der Willkommensseite listet die fünf langsamsten Tests, der Befehl „Langsamste Tests zeigen“ alle mit Dauer.",
       "type": "boolean",
@@ -1972,6 +1984,107 @@
       "x-caption": "Präfix der Logpunkte",
       "x-captionEn": "Logpoint prefix",
       "x-issue": "#583"
+    },
+    "DebugNoSourcePage": {
+      "description": "Fenster „Kein Quelltext“: Hält der Debugger in einer Routine ohne Quelltext, nennt ein kleines Fenster neben dem CPU-Fenster Routine, Modul, Adresse und den Grund (Debug-DCUs aus, ohne Debug-Informationen übersetzt, nur DCU, nicht im Suchpfad, Systemcode) mit Auswegen. Aus = nur das CPU-Fenster der IDE.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.noSourcePage",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Fenster „Kein Quelltext“",
+      "x-captionEn": "“No source” window",
+      "x-issue": "#869"
+    },
+    "DebugNoSourceIgnoredUnits": {
+      "description": "Units, für die das Fenster „Kein Quelltext“ nicht erscheint, durch „;“ getrennt; „Für diese Unit nicht mehr zeigen“ ergänzt die Liste.",
+      "type": "string",
+      "default": "",
+      "x-key": "debug.noSourcePage.ignoredUnits",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.noSourcePage",
+      "x-control": "Textfeld",
+      "x-caption": "Units ohne Fenster „Kein Quelltext“",
+      "x-captionEn": "Units without “No source” window",
+      "x-issue": "#869"
+    },
+    "DebugRestart": {
+      "description": "Befehl „Neu starten“ (Strg+Umschalt+F2, Atlas-Menü, Befehlspalette): beendet das laufende Programm ohne Rückfrage, baut nur nach Änderungen, startet wie F9 und kehrt an die Stelle im Editor zurück; eine kleine Leiste zeigt die Schritte mit Dauer. Läuft kein Programm, startet der Befehl wie F9. Aus = kein Befehl, keine Taste.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.restart",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Neu starten (Strg+Umschalt+F2)",
+      "x-captionEn": "Restart (Ctrl+Shift+F2)",
+      "x-issue": "#872"
+    },
+    "DebugRestartReenableBreakpoints": {
+      "description": "Beim Neustart Haltepunkte wieder einschalten, die beim Start der beendeten Sitzung an waren und in ihr abgeschaltet wurden.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.restart.reenableBreakpoints",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.restart",
+      "x-caption": "Abgeschaltete Haltepunkte wieder einschalten",
+      "x-captionEn": "Turn disabled breakpoints on again",
+      "x-issue": "#872"
+    },
+    "DebugReattach": {
+      "description": "Erneut an einen Prozess anhängen: Atlas merkt Pfad und Name von Prozessen, an die sich die IDE hängt (je Projektgruppe, nur auf diesem Rechner). „Erneut an <Name> anhängen“ (Menü Start, Befehlspalette, Taste) hängt sich bei genau einem laufenden Prozess mit gleichem Pfad ohne Rückfrage an, bei mehreren oder nur gleichem Namen zeigt es eine Auswahl, ohne Treffer bietet es das Warten an. „Anhängen, sobald gestartet …“ wartet auf den Start einer EXE und hängt sich sofort an. Nur lokale Prozesse. Aus = keine Einträge, kein Merken, kein Warten.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.reattach",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Erneut an Prozess anhängen",
+      "x-captionEn": "Reattach to process",
+      "x-issue": "#2171"
+    },
+    "DebugReattachKey": {
+      "description": "Tastenkürzel „Erneut anhängen“ (0 = keins).",
+      "type": "integer",
+      "default": 41040,
+      "x-key": "debug.reattach.key",
+      "x-area": "debug",
+      "x-format": "shortcut",
+      "x-page": "Debuggen",
+      "x-parent": "debug.reattach",
+      "x-issue": "#2171"
+    },
+    "DebugReattachWaitIntervalMs": {
+      "description": "Abstand, in dem Atlas beim Warten auf den Start eines Prozesses die Prozessliste abfragt, in Millisekunden (20 bis 2000). Kürzer verpasst weniger vom Anfang des Programms.",
+      "type": "integer",
+      "minimum": 20,
+      "maximum": 2000,
+      "default": 100,
+      "x-key": "debug.reattach.waitIntervalMs",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.reattach",
+      "x-control": "Zahl",
+      "x-issue": "#2171"
+    },
+    "DebugLaunchGroups": {
+      "description": "Startverbünde: mehrere Programme der Projektgruppe gemeinsam starten und debuggen. Die Verbünde stehen in der Projektdatei .atlas unter launchGroups (für alle im Team): je Projekt Startprofil, mit oder ohne Debugger und eine Wartebedingung vor dem nächsten (feste Sekunden, bis ein TCP-Port offen ist, bis das Hauptfenster da ist). Fenster „Atlas: Startverbünde …“ wählt den aktiven Verbund; F9 baut geänderte Projekte und startet alle in Reihenfolge, Strg+F2 beendet alle. Scheitert ein Start oder läuft eine Wartebedingung ab, hält der Verbund an und fragt „Trotzdem weiter“ oder „Alle beenden“. Das Statusfeld zeigt je Programm den Zustand, ein Klick wechselt den aktiven Prozess. Aus = F9 startet nur das aktive Projekt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.launchGroups",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Startverbünde",
+      "x-captionEn": "Launch groups",
+      "x-issue": "#867"
     },
     "DebugVisualizers": {
       "description": "Visualisierer für häufige Typen beim Debuggen: einzeiliger Ersatztext im Hover, in Überwachten Ausdrücken und Lokalen Variablen sowie ein Ansichtsfenster über die Lupe (Tabelle, Hex, JSON-Baum, Bild, Farbe). Aus = die IDE zeigt ihre eigenen Texte.",
@@ -8553,6 +8666,27 @@
       "x-page": "Issue-Tracker",
       "x-issue": "#1268"
     },
+    "IssuesCreateTemplates": {
+      "type": "boolean",
+      "default": true,
+      "description": "GitHub-Issue-Vorlagen im Dialog „Neues Issue“ (#2137): Klappliste „Vorlage“ mit den Formularen aus .github/ISSUE_TEMPLATE (aus der Arbeitskopie, sonst aus dem Repository), Formularfelder statt Beschreibung, Präfix, Labels, Zuständige, Typ und Projekte der Vorlage; „Leeres Issue“ nur mit blank_issues_enabled in config.yml. Aus = Titel und Beschreibung wie bisher; Meilenstein, Typ und Issue-Felder bleiben.",
+      "x-key": "issues.create.templates",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2137"
+    },
+    "IssuesGitHubTemplateFields": {
+      "type": "string",
+      "default": "version={version}; ide={ide}; log={log}",
+      "description": "Vorbelegung der Felder einer GitHub-Issue-Vorlage (#2137): Feld-ID=Wert, getrennt mit „;“, \\n für einen Zeilenumbruch. Platzhalter {version} (Version des Plugins), {ide} (Delphi-Version und IDE), {code} (Codeausschnitt), {finding} (Fundstelle bzw. Befunde), {log} (Code und Fundstelle). Ohne Eintrag landen Code und Fundstelle im ersten Textfeld mit render. tracker.templateFields der .atlas ergänzt und überschreibt einzelne Felder.",
+      "x-key": "issues.github.templateFields",
+      "x-area": "issues",
+      "x-team": "tracker.templateFields",
+      "x-page": "Issue-Tracker",
+      "x-control": "Textfeld",
+      "x-issue": "#2137"
+    },
     "IssuesPreview": {
       "type": "boolean",
       "default": true,
@@ -9030,6 +9164,90 @@
       "x-page": "Issue-Tracker",
       "x-control": "Textfeld",
       "x-issue": "#2126"
+    },
+    "IssuesGitHubStateTarget": {
+      "type": "string",
+      "enum": [
+        "project",
+        "label"
+      ],
+      "default": "project",
+      "description": "Wo „Beginnen“ und „Beenden“ bei GitHub den Zustand führen: im Projektfeld „Status“ (project), wenn das Issue in einem Projekt (Projects v2) liegt, sonst als Label; oder immer als Label (label, wie bis 2.1). Das Statusfeld ist „Status“, sonst das erste Auswahlfeld außer der Priorität; der Zustand wird der Option gleichen Namens zugeordnet. Das Token braucht dazu die Berechtigung „project“, sonst bleibt es beim Label. Je Verbindung überschreibbar (githubStateTarget).",
+      "x-key": "issues.github.stateTarget",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Auswahl",
+      "x-issue": "#2134"
+    },
+    "IssuesGitHubProject": {
+      "type": "string",
+      "default": "",
+      "description": "GitHub-Projekt für den Zustand als „<owner>/<nummer>“ (z. B. „xKnockOut/4“): gilt, wenn ein Issue in mehreren Projekten liegt, und ist das Projekt für die Aufnahme (issues.github.addToProject). Leer = das erste Projekt des Issues (die Meldung nennt es). Je Verbindung überschreibbar (githubProject).",
+      "x-key": "issues.github.project",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Klappliste mit Werten vom Tracker",
+      "x-issue": "#2134"
+    },
+    "IssuesGitHubAddToProject": {
+      "type": "boolean",
+      "default": false,
+      "description": "Issues, die in keinem Projekt liegen, beim Beginnen in das Projekt aus issues.github.project aufnehmen und dort den Status setzen. Aus (oder ohne eingestelltes Projekt): Zustand als Label.",
+      "x-key": "issues.github.addToProject",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2134"
+    },
+    "IssuesGitHubLinkBranch": {
+      "type": "boolean",
+      "default": false,
+      "description": "„Beginnen“ legt bei GitHub und Git einen neuen Branch auf GitHub an (createLinkedBranch, Name aus issues.branchPattern, vom Kopf von issues.branchBase auf dem Server, sonst vom Standard-Branch) und verknüpft ihn mit dem Issue (Bereich „Development“); danach Abruf und Auschecken mit Upstream. Hat das Issue schon einen verknüpften Branch, wird dieser ausgecheckt. Gibt es den Branch schon, fehlt dem Token das Recht „Contents: write“ oder zeigt origin auf ein anderes Repository, legt Atlas den Branch lokal an wie bisher und nennt den Grund. Je Verbindung überschreibbar (githubLinkBranch).",
+      "x-key": "issues.github.linkBranch",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2138"
+    },
+    "IssuesGitHubCreatePr": {
+      "type": "boolean",
+      "default": true,
+      "description": "Beenden-Dialog bei GitHub: Abschnitt „Pull Request anlegen“ ist vorab angehakt. „Senden“ pusht dann den Branch des Issues (git push --set-upstream origin), legt den Pull Request gegen issues.github.prBase an (Titel = Issue-Titel, Text aus issues.github.prBody, Labels und Meilenstein des Issues, Prüfer, Entwurf) und lässt das Issue offen, damit der Merge es über „Closes #n“ schließt. Gibt es schon einen offenen Pull Request für den Branch, zeigt Atlas ihn statt eines zweiten. Ohne Wirkung bei „Nicht geplant“ und „Duplikat“.",
+      "x-key": "issues.github.createPr",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2136"
+    },
+    "IssuesGitHubPrBase": {
+      "type": "string",
+      "default": "",
+      "description": "Ziel-Branch des Pull Requests beim Beenden (z. B. „main-merging“). Leer = Standard-Branch des Repositorys. Je Verbindung überschreibbar (githubPrBase).",
+      "x-key": "issues.github.prBase",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Textfeld",
+      "x-issue": "#2136"
+    },
+    "IssuesGitHubPrBody": {
+      "type": "string",
+      "default": "{closes}\\n\\n{commits}",
+      "description": "Textvorlage des Pull Requests mit {closes} („Closes #n“), {branch}, {commits}, {time} und {kennung}; \\n = neue Zeile.",
+      "x-key": "issues.github.prBody",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Textfeld",
+      "x-issue": "#2136"
+    },
+    "IssuesGitHubPrDraft": {
+      "type": "boolean",
+      "default": false,
+      "description": "Pull Request beim Beenden als Entwurf vorbelegen.",
+      "x-key": "issues.github.prDraft",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2136"
     },
     "IssuesTimeTracking": {
       "type": "boolean",

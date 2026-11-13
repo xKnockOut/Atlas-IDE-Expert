@@ -37,6 +37,9 @@ type
     AllProjectsPerGroup: TEdit;
     CreateIssue: TCheckBox;
     CreateIncludeCode: TCheckBox;
+    /// <summary>GitHub-Issue-Vorlagen im Dialog (#2137).</summary>
+    CreateTemplates: TCheckBox;
+    TemplateFields: TEdit;
   end;
 
   TAtlasTrackerQueriesPart = class
@@ -192,6 +195,11 @@ begin
     TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesCreate));
   FView.CreateIncludeCode := FRows.AddCheck('issues.create.includeCode',
     TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesCreateIncludeCode));
+  // Issue-Vorlagen von GitHub und ihre Vorbelegung (#2137).
+  FView.CreateTemplates := FRows.AddCheck('issues.create.templates',
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesCreateTemplates));
+  FView.TemplateFields := FRows.AddText('issues.github.templateFields',
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesGitHubTemplateFields));
 end;
 
 function TAtlasTrackerQueriesPart.NoteText(const AQuery: TAtlasTrackerQuery): string;

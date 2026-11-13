@@ -5,7 +5,8 @@
 // mitschreibt; Anhalten beim ersten Fehler und Wiederaufnahme ohne doppelte
 // Zeitbuchung oder zweiten Kommentar; Stand je Schritt; Feldsuche im Text
 // einer Ablehnung; Felder beim Beenden je Verbindung (endFields); Prüfung
-// des Originals eines Duplikats vor dem ersten Schreiben (#2135).
+// des Originals eines Duplikats vor dem ersten Schreiben (#2135); Pull Request
+// nach den Feldern und vor dem Kommentar, ohne zweiten beim Fortsetzen (#2136).
 
 interface
 
@@ -37,6 +38,10 @@ type
     procedure DuplicateCheckedBeforeWriting;
     [Test]
     procedure CloseGoesWithTransitionPart;
+    [Test]
+    procedure PullRunsAfterFieldsAndOnlyOnce;
+    [Test]
+    procedure FailedPullStopsBeforeComment;
   end;
 
 implementation
@@ -201,6 +206,33 @@ begin
   Result.Target := TAtlasTrackerTarget.Create('youtrack', 'https://yt.beispiel.de', 'ATL', '');
   Result.Key := 'ATL-2052';
   Result.TimeoutMs := 5000;
+end;
+
+/// <summary>Pull Request mit festem Ergebnis AAnswer; schreibt „pull &lt;Kopf&gt;“ bei AWriter mit.</summary>
+function PullRunner(const AWriter: TFakeEndWriter; const AAnswer: TAtlasTrackerPullResult): TAtlasTrackerPullRun;
+var
+  mWriter: TFakeEndWriter;
+  mAnswer: TAtlasTrackerPullResult;
+begin
+  mWriter := AWriter;
+  mAnswer := AAnswer;
+  Result :=
+    function(const ASpec: TAtlasTrackerPullSpec): TAtlasTrackerPullResult
+    begin
+      mWriter.Calls := mWriter.Calls + ['pull ' + ASpec.Head];
+      Result := mAnswer;
+    end;
+end;
+
+/// <summary>FullPlan mit Pull Request für Branch 7-statusfeld.</summary>
+function PullPlan: TAtlasTrackerEndPlan;
+begin
+  Result := FullPlan;
+  Result.Fields := Copy(Result.Fields, 0, 1);
+  Result.Pull := TAtlasTrackerPullSpec.None;
+  Result.Pull.Wanted := True;
+  Result.Pull.Head := '7-statusfeld';
+  Result.Pull.Title := 'Statusfeld';
 end;
 
 { TAtlasTrackerEndStepsTests }
@@ -457,6 +489,60 @@ begin
   TAtlasTrackerEndSteps.Run(CallOf(mWriter), TAtlasTrackerEndPlan.Create(mChange), mProgress);
   Assert.IsTrue(mProgress.Finished(TAtlasTrackerEndPlan.Create(mChange)));
   Assert.IsTrue(mProgress.Fallback);
+end;
+
+procedure TAtlasTrackerEndStepsTests.PullRunsAfterFieldsAndOnlyOnce;
+var
+  mWriter: TFakeEndWriter;
+  mKeep: IAtlasTrackerWriter;
+  mProgress: TAtlasTrackerEndProgress;
+  mCall: TAtlasTrackerEndCall;
+  mPlan: TAtlasTrackerEndPlan;
+begin
+  mWriter := TFakeEndWriter.Create;
+  mKeep := mWriter;
+  mWriter.FailOn := 'transition review';
+  mCall := CallOf(mWriter);
+  mCall.Pull := PullRunner(mWriter, TAtlasTrackerPullResult.Make(TAtlasTrackerPullOutcome.Created));
+  mPlan := PullPlan;
+  mProgress := TAtlasTrackerEndProgress.Empty;
+  TAtlasTrackerEndSteps.Run(mCall, mPlan, mProgress);
+  Assert.AreEqual('time 85|field Behoben in Version=2.1.0|pull 7-statusfeld|comment Fertig|transition review',
+    string.Join('|', mWriter.Calls));
+  Assert.IsTrue(mProgress.Wrote);
+  // Fortsetzen nach dem abgelehnten Übergang: kein zweiter Pull Request.
+  mWriter.FailOn := '';
+  mWriter.Calls := nil;
+  TAtlasTrackerEndSteps.Run(mCall, mPlan, mProgress);
+  Assert.AreEqual('transition review', string.Join('|', mWriter.Calls));
+  Assert.IsTrue(mProgress.Finished(mPlan));
+  Assert.IsTrue(mProgress.Pull.Outcome = TAtlasTrackerPullOutcome.Created);
+end;
+
+procedure TAtlasTrackerEndStepsTests.FailedPullStopsBeforeComment;
+var
+  mWriter: TFakeEndWriter;
+  mKeep: IAtlasTrackerWriter;
+  mProgress: TAtlasTrackerEndProgress;
+  mCall: TAtlasTrackerEndCall;
+begin
+  mWriter := TFakeEndWriter.Create;
+  mKeep := mWriter;
+  mCall := CallOf(mWriter);
+  mCall.Pull := PullRunner(mWriter, TAtlasTrackerPullResult.Make(TAtlasTrackerPullOutcome.Dirty));
+  mProgress := TAtlasTrackerEndProgress.Empty;
+  TAtlasTrackerEndSteps.Run(mCall, PullPlan, mProgress);
+  Assert.IsTrue(mProgress.Failed);
+  Assert.IsTrue(mProgress.FailedStep = TAtlasTrackerEndStep.PullRequest);
+  Assert.AreEqual('time 85|field Behoben in Version=2.1.0|pull 7-statusfeld', string.Join('|', mWriter.Calls),
+    'kein Kommentar, kein Übergang');
+  // Ohne Runner scheitert der Schritt, statt still nichts anzulegen.
+  mWriter.Calls := nil;
+  mCall.Pull := nil;
+  mProgress := TAtlasTrackerEndProgress.Empty;
+  TAtlasTrackerEndSteps.Run(mCall, PullPlan, mProgress);
+  Assert.IsTrue(mProgress.FailedStep = TAtlasTrackerEndStep.PullRequest);
+  Assert.IsTrue(mProgress.Pull.Error = TAtlasCiFetchError.UnknownProvider);
 end;
 
 initialization
