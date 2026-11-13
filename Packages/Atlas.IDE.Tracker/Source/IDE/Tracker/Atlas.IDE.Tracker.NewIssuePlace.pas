@@ -37,7 +37,7 @@ uses
   ToolsAPI,
   Atlas.Text.Lines,
   Atlas.Core.Editor.MethodToggle,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.NewIssue.Strings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot;
 
@@ -147,11 +147,12 @@ begin
     mNew := TAtlasNewIssues.WithKey(mLine, AKey);
     if (mNew <> mLine) and WriteLine(mView, Line, mNew) then
     begin
-      ASay(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueTodoChanged, [Trim(mNew)]));
+      ASay(TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueTodoChanged, [Trim(mNew)]));
     end;
     Exit;
   end;
-  if MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NewIssueInsertComment, [TAtlasNewIssues.KeyComment(AKey)]),
+  if MessageDlg(TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueInsertComment,
+    [TAtlasNewIssues.KeyComment(AKey)]),
     mtConfirmation, [mbYes, mbNo], 0) = mrYes then
   begin
     WriteLine(mView, Line, TAtlasNewIssues.WithKeyComment(mLine, AKey));

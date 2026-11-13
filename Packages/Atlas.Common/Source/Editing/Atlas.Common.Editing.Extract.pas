@@ -111,7 +111,7 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Text.Lines,
-  Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Semantics.ControlFlow.Signatures,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineLocals,
   Atlas.Common.Editing.Extract.Method,

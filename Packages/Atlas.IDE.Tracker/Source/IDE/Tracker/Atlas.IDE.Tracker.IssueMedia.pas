@@ -49,7 +49,7 @@ uses
   Atlas.Core.Tracker.IssueCache,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Issue.Strings;
 
 /// <summary>Höchstens MaxImages Adressen vom Server des Tokens, ohne Doppelte.</summary>
 function LoadableUrls(const AUrls: TArray<string>; const AServer: string): TArray<string>;
@@ -191,7 +191,7 @@ begin
   mFrame := AOwner.FContext.Frame;
   if mFrame <> nil then
   begin
-    mFrame.ShowError(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewAttachmentFailed, [AName]),
+    mFrame.ShowError(TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewAttachmentFailed, [AName]),
       TAtlasIssueFix.None);
   end;
 end;

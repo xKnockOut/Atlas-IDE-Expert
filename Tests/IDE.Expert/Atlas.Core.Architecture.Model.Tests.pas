@@ -94,6 +94,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Architecture.Overview,
+  Atlas.Common.Architecture.Grouping,
   Atlas.Common.Architecture.Service,
   Atlas.Common.Architecture.Layout,
   Atlas.Common.Architecture.Report,

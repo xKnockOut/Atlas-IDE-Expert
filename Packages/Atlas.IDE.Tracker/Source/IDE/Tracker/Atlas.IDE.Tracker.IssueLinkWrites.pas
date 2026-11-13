@@ -65,7 +65,7 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.IssueTip,
   Atlas.UI.Tracker.LinkDialogs;
 
@@ -193,7 +193,7 @@ begin
   mFrame := AOwner.FContext.Frame;
   if mFrame <> nil then
   begin
-    mFrame.ShowError(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkWorking), TAtlasIssueFix.None);
+    mFrame.ShowError(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueLinkWorking), TAtlasIssueFix.None);
   end;
   AOwner.FContext.ReleaseThreads(False);
   StartWrite(AOwner, mWriter, mTransport, AWork, ADone);
@@ -205,16 +205,16 @@ procedure SubtaskDone(AOwner: TAtlasIdeIssueLinkWrites; ASucceeded: Boolean; con
 begin
   if ASucceeded then
   begin
-    Written(AOwner, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskCreated, [AKey]));
+    Written(AOwner, TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueSubtaskCreated, [AKey]));
   end
   else if AKey <> '' then
   begin
-    WriteFailed(AOwner, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskNotLinked, [AKey,
+    WriteFailed(AOwner, TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueSubtaskNotLinked, [AKey,
       TAtlasIssueTip.ErrorText(AError, AParent)]), AError);
   end
   else
   begin
-    WriteFailed(AOwner, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskFailed,
+    WriteFailed(AOwner, TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueSubtaskFailed,
       [TAtlasIssueTip.ErrorText(AError, AParent)]), AError);
   end;
 end;
@@ -373,11 +373,11 @@ begin
       end;
       if ASucceeded then
       begin
-        Written(mOwner, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkAdded, [mKey, mOther]));
+        Written(mOwner, TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueLinkAdded, [mKey, mOther]));
       end
       else
       begin
-        WriteFailed(mOwner, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkFailed,
+        WriteFailed(mOwner, TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueLinkFailed,
           [TAtlasIssueTip.ErrorText(AError, mOther)]), AError);
       end;
     end);

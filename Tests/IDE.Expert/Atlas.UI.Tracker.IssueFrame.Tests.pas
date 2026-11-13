@@ -66,7 +66,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Issue.Strings,
   System.SysUtils,
   Vcl.Forms,
   Vcl.ComCtrls,
@@ -169,7 +169,7 @@ begin
     mFrame.ShowEmpty;
     Assert.IsFalse(mFrame.State.HasDetails);
     Assert.IsTrue(mFrame.Parts.Empty.Visible);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewEmpty), mFrame.Parts.Empty.Caption);
+    Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewEmpty), mFrame.Parts.Empty.Caption);
     Assert.IsFalse(mFrame.Parts.Start.Enabled);
     Assert.IsFalse(mFrame.Parts.Browse.Enabled);
     Assert.IsFalse(mFrame.Parts.CopyKey.Enabled);
@@ -213,8 +213,8 @@ begin
     // Zustand, Priorität, Label, erstellt, aktualisiert.
     Assert.AreEqual(5, Integer(Length(mFrame.Content.Badges.Texts)));
     Assert.AreEqual('In Progress', mFrame.Content.Badges.Texts[0]);
-    Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewBadgeUpdated,
-      [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewHours, [3])]), mFrame.Content.Badges.Texts[4]);
+    Assert.AreEqual(TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewBadgeUpdated,
+      [TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewHours, [3])]), mFrame.Content.Badges.Texts[4]);
     // Beschreibung in zwei Doku-Stücken um das Bild, dazu der Kommentar.
     Assert.AreEqual(3, Integer(mFrame.Content.Docs.Count));
     Assert.AreEqual(1, Integer(Length(ImageUrls(mFrame))));
@@ -245,13 +245,13 @@ begin
     mFrame.Parent := mHost;
     mFrame.ShowDetails(Sample(TAtlasIssuePreview.cShownComments + 2), cNow, '', False);
     Assert.IsNotNull(mFrame.Content.Older);
-    Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewOlderComments, [2]),
+    Assert.AreEqual(TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewOlderComments, [2]),
       mFrame.Content.Older.Caption);
     Assert.IsFalse(mFrame.State.CommentsExpanded);
     // Beschreibung (zwei Stücke) und die neuesten Kommentare.
     Assert.AreEqual(2 + TAtlasIssuePreview.cShownComments, Integer(mFrame.Content.Docs.Count));
     mFrame.ShowDetails(Sample(TAtlasIssuePreview.cShownComments + 1), cNow, '', False);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewOlderComment),
+    Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewOlderComment),
       mFrame.Content.Older.Caption);
   finally
     mHost.Free;
@@ -315,14 +315,14 @@ begin
     mFrame.SetFlag(TAtlasIssueFlag.Loading, True);
     Assert.IsTrue((TAtlasIssueFlag.Loading in mFrame.Flags));
     Assert.IsTrue(mFrame.Parts.Progress.Visible);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewLoading), mFrame.StatusText);
+    Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewLoading), mFrame.StatusText);
     Assert.IsTrue(mFrame.Parts.Refresh.Enabled, 'Abbrechen');
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCancel), mFrame.Parts.Refresh.Caption);
+    Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCancel), mFrame.Parts.Refresh.Caption);
     mFrame.SetFlag(TAtlasIssueFlag.Loading, False);
-    mFrame.ShowError(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorToken), TAtlasIssueFix.EnterToken);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorToken), mFrame.StatusText);
+    mFrame.ShowError(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorToken), TAtlasIssueFix.EnterToken);
+    Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorToken), mFrame.StatusText);
     Assert.IsTrue(mFrame.Parts.Fix.Visible);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFixToken), mFrame.Parts.Fix.Caption);
+    Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFixToken), mFrame.Parts.Fix.Caption);
     mFrame.Parts.Fix.Click;
     Assert.IsTrue(mFix = TAtlasIssueFix.EnterToken);
     // Alter Stand mit Hinweis statt Fehler.
@@ -379,12 +379,13 @@ begin
     mFrame.ShowDetails(mDetails, cNow, '', False);
     Assert.AreEqual('2/3', mFrame.Content.ProgressText);
     Assert.AreEqual('ATL-123 · 2/3', mFrame.Content.KeyLabel.Caption);
-    Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueChecklistProgress, [2, 3]), mFrame.Content.KeyLabel.Hint);
+    Assert.AreEqual(TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueChecklistProgress, [2, 3]),
+      mFrame.Content.KeyLabel.Hint);
     Assert.IsNotNull(mFrame.Content.TaskBox);
     Assert.IsTrue(mFrame.Content.TaskBox.HasTasks);
     Assert.IsFalse(mFrame.Content.TaskBox.TasksLocked);
     Assert.IsNotNull(mFrame.Content.AddTask);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistAdd), mFrame.Content.AddTask.Caption);
+    Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueChecklistAdd), mFrame.Content.AddTask.Caption);
     // Geschrieben: neuer Text ohne Neuladen.
     mFrame.ReplaceDescription('- [x] a' + #10 + '- [x] b' + #10 + '1. [x] c');
     Assert.AreEqual('3/3', mFrame.Content.ProgressText);
@@ -392,7 +393,7 @@ begin
     // Während des Schreibens die Meldung „Wird gespeichert …“.
     mFrame.SetFlag(TAtlasIssueFlag.ChecklistBusy, True);
     Assert.IsTrue((TAtlasIssueFlag.ChecklistBusy in mFrame.Flags));
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistSaving), mFrame.StatusText);
+    Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueChecklistSaving), mFrame.StatusText);
     mFrame.SetFlag(TAtlasIssueFlag.ChecklistBusy, False);
     Assert.IsFalse((TAtlasIssueFlag.ChecklistBusy in mFrame.Flags));
   finally
@@ -416,7 +417,7 @@ begin
     mFrame.ShowDetails(mDetails, cNow, '', False);
     Assert.AreEqual('1/2', mFrame.Content.ProgressText, 'Fortschritt auch ohne Schreibrecht');
     Assert.IsTrue(mFrame.Content.TaskBox.TasksLocked);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistReadOnly),
+    Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueChecklistReadOnly),
       mFrame.Content.TaskBox.TaskHint);
     Assert.IsNull(mFrame.Content.AddTask, 'ohne Schreibrecht nichts hinzufügen');
     // issues.preview.checklists aus: Listen wie geschrieben, kein Fortschritt.
@@ -577,9 +578,9 @@ begin
     mFrame.Events := mEvents;
     mFrame.ShowDetails(Sample(1), cNow, '', False);
     Assert.AreEqual(2, mFrame.Parts.Pages.PageCount);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewTabDetails),
+    Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewTabDetails),
       mFrame.Parts.Pages.Pages[0].Caption);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewTabDevelopment),
+    Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewTabDevelopment),
       mFrame.Parts.Pages.Pages[1].Caption);
     Assert.IsTrue((TAtlasIssueFlag.Development in mFrame.Flags), 'Vorgabe an');
     Assert.IsFalse(mFrame.DevelopmentActive, 'Details zuerst');
@@ -633,7 +634,7 @@ begin
     mFrame.ShowDetails(Sample(1), cNow, '', False);
     Assert.IsTrue(mFrame.Parts.Attach.Enabled);
     Assert.IsTrue(mFrame.Parts.AttachItem.Visible);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCommand), mFrame.Parts.AttachItem.Caption);
+    Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewAttachMenu), mFrame.Parts.AttachItem.Caption);
     mFrame.Parts.Attach.Click;
     mFrame.Parts.AttachItem.Click;
     Assert.AreEqual(2, mCalls);
@@ -669,7 +670,7 @@ begin
     Assert.IsFalse(mFrame.Parts.Review.Visible, 'ohne Issue');
     mFrame.ShowDetails(Sample(1), cNow, '', False);
     Assert.IsTrue(mFrame.Parts.Review.Visible);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerReviewCommand), mFrame.Parts.Review.Caption);
+    Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewReview), mFrame.Parts.Review.Caption);
     mFrame.Parts.Review.Click;
     Assert.AreEqual(1, mCalls);
     mFrame.SetFlag(TAtlasIssueFlag.CanReview, False);
