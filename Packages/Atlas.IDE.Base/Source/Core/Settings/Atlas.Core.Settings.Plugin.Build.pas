@@ -17,6 +17,7 @@ const
   /// <summary>Grenzen für tests.affectedDepth (#1353).</summary>
   cMinTestsAffectedDepth = 1;
   cMaxTestsAffectedDepth = 5;
+  cDefaultTestsAffectedDepth = 3;
   /// <summary>Grenzen für tests.coveredBy.depth (#1778).</summary>
   cMinTestsCoveredByDepth = 1;
   cMaxTestsCoveredByDepth = 5;
@@ -220,6 +221,10 @@ type
     procedure Normalize;
     /// <summary>Werte über AIo lesen bzw. schreiben, jeden unter seinem Namen.</summary>
     procedure Exchange(const AIo: TAtlasSettingsExchange);
+    /// <summary>Vorgaben der Tests (tests.*).</summary>
+    procedure DefaultTests;
+    /// <summary>Einstellungen der Tests (tests.*) über AIo lesen bzw. schreiben.</summary>
+    procedure ExchangeTests(const AIo: TAtlasSettingsExchange);
   end;
 
 implementation
@@ -267,29 +272,7 @@ begin
   Result.BuildOnOpenConfig := '';
   Result.BuildOnOpenPlatform := '';
   Result.BuildStopRunningProgram := cStopRunningProgramNames[0];
-  Result.TestRun := True;
-  Result.TestsAfterBuild := False;
-  Result.TestsBuildFirst := True;
-  Result.TestsAffected := True;
-  Result.TestsLeakSetup := True;
-  Result.TestsAffectedDepth := 3;
-  Result.TestsAffectedBeforeCommit := False;
-  Result.TestsStale := True;
-  Result.TestsStaleUnits := False;
-  Result.TestsCoveredByDepth := 1;
-  Result.TestsCoveredByPrivate := False;
-  Result.TestsUntestedWarnPercent := cDefaultTestsUntestedWarnPercent;
-  Result.TestsOnSave := False;
-  Result.TestsOnSaveMax := cDefaultTestsOnSaveMax;
-  Result.TestsFailureAtAssert := True;
-  Result.TestsFailureInline := True;
-  Result.TestsCompare := True;
-  Result.TestsCompareFormat := True;
-  Result.TestsApprovalFiles := True;
-  Result.TestsShowDuration := True;
-  Result.TestsSlowMs := cDefaultTestsSlowMs;
-  Result.TestsCaseTable := True;
-  Result.TestsLeaks := True;
+  Result.DefaultTests;
   Result.BuildZeroHints := False;
   Result.ShowInterfaceCost := True;
   Result.BuildSummary := True;
@@ -361,6 +344,58 @@ begin
   AIo.Text('BuildOnOpenConfig', BuildOnOpenConfig);
   AIo.Text('BuildOnOpenPlatform', BuildOnOpenPlatform);
   AIo.Text('BuildStopRunningProgram', BuildStopRunningProgram);
+  ExchangeTests(AIo);
+  AIo.Flag('BuildZeroHints', BuildZeroHints);
+  AIo.Flag('ShowInterfaceCost', ShowInterfaceCost);
+  AIo.Flag('BuildSummary', BuildSummary);
+  AIo.Text('BuildWarningsAsErrors', BuildWarningsAsErrors);
+  AIo.Flag('BuildCompilerSwitches', BuildCompilerSwitches);
+  AIo.Flag('BuildSwitchesInStatusBar', BuildSwitchesInStatusBar);
+  AIo.Flag('ReleaseGuard', ReleaseGuard);
+  AIo.Text('BuildGate', BuildGate);
+  AIo.Flag('TasksEnabled', TasksEnabled);
+  AIo.Flag('TasksProblemsFromOutput', TasksProblemsFromOutput);
+  AIo.Text('TasksBeforeBuild', TasksBeforeBuild);
+  AIo.Flag('TasksSaveBeforeRun', TasksSaveBeforeRun);
+  AIo.Flag('TasksRunChecksParallel', TasksRunChecksParallel);
+  AIo.Flag('TasksOnlyFindings', TasksOnlyFindings);
+  AIo.Number('BuildGateTimeoutMs', BuildGateTimeoutMs);
+  AIo.Text('ReleaseConfigs', ReleaseConfigs);
+  AIo.Text('ReleaseChecks', ReleaseChecks);
+  AIo.Flag('TestsEnabled', TestsEnabled);
+  AIo.Flag('BuildToolsEnabled', BuildToolsEnabled);
+  AIo.Flag('BuildPipelineEnabled', BuildPipelineEnabled);
+end;
+
+procedure TAtlasPluginBuildSettings.DefaultTests;
+begin
+  TestRun := True;
+  TestsAfterBuild := False;
+  TestsBuildFirst := True;
+  TestsAffected := True;
+  TestsLeakSetup := True;
+  TestsAffectedDepth := cDefaultTestsAffectedDepth;
+  TestsAffectedBeforeCommit := False;
+  TestsStale := True;
+  TestsStaleUnits := False;
+  TestsCoveredByDepth := 1;
+  TestsCoveredByPrivate := False;
+  TestsUntestedWarnPercent := cDefaultTestsUntestedWarnPercent;
+  TestsOnSave := False;
+  TestsOnSaveMax := cDefaultTestsOnSaveMax;
+  TestsFailureAtAssert := True;
+  TestsFailureInline := True;
+  TestsCompare := True;
+  TestsCompareFormat := True;
+  TestsApprovalFiles := True;
+  TestsShowDuration := True;
+  TestsSlowMs := cDefaultTestsSlowMs;
+  TestsCaseTable := True;
+  TestsLeaks := True;
+end;
+
+procedure TAtlasPluginBuildSettings.ExchangeTests(const AIo: TAtlasSettingsExchange);
+begin
   AIo.Flag('TestRun', TestRun);
   AIo.Flag('TestsAfterBuild', TestsAfterBuild);
   AIo.Flag('TestsBuildFirst', TestsBuildFirst);
@@ -384,26 +419,6 @@ begin
   AIo.Number('TestsSlowMs', TestsSlowMs);
   AIo.Flag('TestsCaseTable', TestsCaseTable);
   AIo.Flag('TestsLeaks', TestsLeaks);
-  AIo.Flag('BuildZeroHints', BuildZeroHints);
-  AIo.Flag('ShowInterfaceCost', ShowInterfaceCost);
-  AIo.Flag('BuildSummary', BuildSummary);
-  AIo.Text('BuildWarningsAsErrors', BuildWarningsAsErrors);
-  AIo.Flag('BuildCompilerSwitches', BuildCompilerSwitches);
-  AIo.Flag('BuildSwitchesInStatusBar', BuildSwitchesInStatusBar);
-  AIo.Flag('ReleaseGuard', ReleaseGuard);
-  AIo.Text('BuildGate', BuildGate);
-  AIo.Flag('TasksEnabled', TasksEnabled);
-  AIo.Flag('TasksProblemsFromOutput', TasksProblemsFromOutput);
-  AIo.Text('TasksBeforeBuild', TasksBeforeBuild);
-  AIo.Flag('TasksSaveBeforeRun', TasksSaveBeforeRun);
-  AIo.Flag('TasksRunChecksParallel', TasksRunChecksParallel);
-  AIo.Flag('TasksOnlyFindings', TasksOnlyFindings);
-  AIo.Number('BuildGateTimeoutMs', BuildGateTimeoutMs);
-  AIo.Text('ReleaseConfigs', ReleaseConfigs);
-  AIo.Text('ReleaseChecks', ReleaseChecks);
-  AIo.Flag('TestsEnabled', TestsEnabled);
-  AIo.Flag('BuildToolsEnabled', BuildToolsEnabled);
-  AIo.Flag('BuildPipelineEnabled', BuildPipelineEnabled);
 end;
 
 end.
