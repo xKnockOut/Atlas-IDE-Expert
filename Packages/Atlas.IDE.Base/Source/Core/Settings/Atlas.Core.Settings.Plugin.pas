@@ -379,6 +379,8 @@ type
     property TestsStaleUnits: Boolean read FBuild.TestsStaleUnits write FBuild.TestsStaleUnits;
     property TestsOnSave: Boolean read FBuild.TestsOnSave write FBuild.TestsOnSave;
     property TestsOnSaveMax: Integer read FBuild.TestsOnSaveMax write FBuild.TestsOnSaveMax;
+    property TestsFailureAtAssert: Boolean read FBuild.TestsFailureAtAssert write FBuild.TestsFailureAtAssert;
+    property TestsFailureInline: Boolean read FBuild.TestsFailureInline write FBuild.TestsFailureInline;
     property BuildZeroHints: Boolean read FBuild.BuildZeroHints write FBuild.BuildZeroHints;
     property ShowInterfaceCost: Boolean read FBuild.ShowInterfaceCost write FBuild.ShowInterfaceCost;
     property BuildSummary: Boolean read FBuild.BuildSummary write FBuild.BuildSummary;

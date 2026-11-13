@@ -100,6 +100,7 @@
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Run.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Stale.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.OnSave.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Affected.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.UnitCommands.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Debug.pas"/>

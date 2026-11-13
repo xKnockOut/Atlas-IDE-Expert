@@ -116,7 +116,8 @@ Short overview; each heading links to the full description. Features marked *(ex
 ### [Build, test, debug](docs/features/en/Build-test-debug.md)
 - **Build gate** for hints and warnings, quick fixes for compiler messages, release build guard
 - **Without a command-line compiler** (Starter, Community): Atlas detects it at startup, says so once, and project tasks using dcc or MSBuild give the reason instead of failing (`diagnostics.editionCheck`)
-- **DUnitX tests** from the editor, including **only the tests affected** by a change; changed tests show their old result as **outdated**; optionally the affected tests **run in the background on every save**
+- **DUnitX tests** from the editor, including **only the tests affected** by a change; changed tests show their old result as **outdated**, failures sit at the **failing assert** with “expected 4, got 3”; optionally the affected tests **run in the background on every save**
+- **Create a test case from the unit:** a code action on a method adds a draft with the call and placeholder checks to the test unit and creates the unit if needed
 - **Debugging:** values in the hover and inline, visualizers, evaluate window, smart step into
 - **Exceptions:** history window, exception bar, just my code, access violations explained
 

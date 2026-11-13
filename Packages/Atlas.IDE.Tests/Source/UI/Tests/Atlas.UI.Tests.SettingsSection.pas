@@ -69,6 +69,8 @@ begin
   Switch('tests.affectedBeforeCommit', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsAffectedBeforeCommit));
   Switch('tests.onSave', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsOnSave));
   Number('tests.onSave.max', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsOnSaveMax));
+  Switch('tests.failureAtAssert', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFailureAtAssert));
+  Switch('tests.failureInline', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFailureInline));
 end;
 
 { TAtlasTestsDebugSection }

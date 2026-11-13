@@ -35,7 +35,9 @@ type
     SettingsTestsOnSave, SettingsTestsOnSaveMax, TestsOnSaveFinding, TestsOnSaveRunning, TestsOnSavePassed,
     TestsOnSaveFailed, TestsOnSaveEnded, TestsOnSaveNone, TestsOnSaveTooMany, TestsOnSaveAll, TestsOnSaveDebugging,
     TestsOnSaveBuilding, TestsOnSaveBusy, TestsOnSaveNoProject, TestsOnSaveNotFound, TestsOnSaveNoServer,
-    TestsOnSaveSummaryRunning, TestsOnSaveSummaryFailed, TestsOnSaveSummarySkipped, TestsOnSaveNoResults);
+    TestsOnSaveSummaryRunning, TestsOnSaveSummaryFailed, TestsOnSaveSummarySkipped, TestsOnSaveNoResults,
+    // Fehlschlag an der Assert-Zeile (#1771).
+    TestsInlineValues, SettingsTestsFailureAtAssert, SettingsTestsFailureInline);
 
   TAtlasTestsStrings = class
   public
@@ -149,7 +151,10 @@ const
      'Tests laufen',
      '%d Tests rot',
      'Tests übersprungen',
-     'Tests: Noch kein Lauf im Hintergrund.'),
+     'Tests: Noch kein Lauf im Hintergrund.',
+     'erwartet %s, erhalten %s',
+     'Fehlschlag an der Assert-Zeile zeigen (Stacktrace bzw. eindeutiger Assert), sonst am Methodenkopf',
+     'Dahinter kurz „erwartet …, erhalten …“'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -247,7 +252,10 @@ const
      'Tests running',
      '%d tests red',
      'Tests skipped',
-     'Tests: No background run yet.'));
+     'Tests: No background run yet.',
+     'expected %s, got %s',
+     'Show a failure at the assert line (stack trace or unique assert), otherwise at the method header',
+     'Short “expected …, got …” after it'));
 
 { TAtlasTestsStrings }
 

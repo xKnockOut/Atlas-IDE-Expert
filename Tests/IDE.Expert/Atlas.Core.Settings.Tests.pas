@@ -153,6 +153,8 @@ begin
   Assert.IsFalse(ASettings.TestsStaleUnits, 'veraltet über geänderte Units standardmäßig aus (#1770)');
   Assert.IsFalse(ASettings.TestsOnSave, 'Tests beim Speichern standardmäßig aus (#1775)');
   Assert.AreEqual(50, ASettings.TestsOnSaveMax, 'höchstens 50 Tests im Hintergrund (#1775)');
+  Assert.IsTrue(ASettings.TestsFailureAtAssert, 'Fehlschlag an der Assert-Zeile standardmäßig an (#1771)');
+  Assert.IsTrue(ASettings.TestsFailureInline, 'erwartet/erhalten hinter der Zeile standardmäßig an (#1771)');
   Assert.IsFalse(ASettings.BuildZeroHints, 'build.zeroHints standardmäßig aus (#530)');
   Assert.IsTrue(ASettings.ShowInterfaceCost, 'build.showInterfaceCost standardmäßig an (#554)');
   Assert.IsTrue(ASettings.BuildCompilerSwitches, 'build.compilerSwitches (#558)');
@@ -300,6 +302,8 @@ begin
   ASettings.TestsStaleUnits := True;
   ASettings.TestsOnSave := True;
   ASettings.TestsOnSaveMax := 12;
+  ASettings.TestsFailureAtAssert := False;
+  ASettings.TestsFailureInline := False;
   ASettings.BuildZeroHints := True;
   ASettings.ShowInterfaceCost := False;
   ASettings.BuildCompilerSwitches := False;
@@ -424,6 +428,8 @@ begin
   Assert.IsTrue(ALoaded.TestsStaleUnits, 'tests.stale.units (#1770)');
   Assert.IsTrue(ALoaded.TestsOnSave, 'tests.onSave (#1775)');
   Assert.AreEqual(12, ALoaded.TestsOnSaveMax, 'tests.onSave.max (#1775)');
+  Assert.IsFalse(ALoaded.TestsFailureAtAssert, 'tests.failureAtAssert (#1771)');
+  Assert.IsFalse(ALoaded.TestsFailureInline, 'tests.failureInline (#1771)');
   Assert.IsTrue(ALoaded.BuildZeroHints);
   Assert.IsFalse(ALoaded.ShowInterfaceCost, 'build.showInterfaceCost (#554)');
   Assert.IsFalse(ALoaded.BuildCompilerSwitches);

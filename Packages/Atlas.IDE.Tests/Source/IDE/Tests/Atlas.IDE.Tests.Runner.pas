@@ -16,7 +16,8 @@
 //   der Versionsverwaltung (Zeitlimit, Abbruch beim Entladen) mit
 //   --exitbehavior:Continue --xmlfile:<temp> [--run:…]; das Ergebnis kommt
 //   über TAtlasMainThread zurück.
-// - Ergebnis: fehlgeschlagene Tests als Probleme an der Testmethode (Haken
+// - Ergebnis: fehlgeschlagene Tests als Probleme an der Testmethode bzw.
+//   an der fehlgeschlagenen Anweisung (tests.failureAtAssert, #1771; Haken
 //   OnProblems → Problem-Speicher, Quelle DUnitX), Zusammenfassung und je
 //   Fehlschlag eine anklickbare Zeile in der Meldungsansicht (Gruppe Atlas),
 //   Abschnitt "tests" der Projekt-Zusammenfassung (Haken OnFinished, #592,
@@ -738,7 +739,16 @@ procedure TAtlasIdeTests.Report(const ATarget: TAtlasTestTarget; const ARun: TTe
 var
   mAll: TTestRunResult;
   mFailures: TArray<TAtlasTestFailure>;
+  mAtAssert: Boolean;
+  mInline: string;
 begin
+  // Fehlschlag an der Assert-Zeile, dahinter „erwartet …, erhalten …“ (#1771).
+  mAtAssert := TAtlasIdeSettings.Current.TestsFailureAtAssert;
+  mInline := '';
+  if mAtAssert and TAtlasIdeSettings.Current.TestsFailureInline then
+  begin
+    mInline := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsInlineValues);
+  end;
   FCases := Merged(FCases, ARun.Cases);
   if Assigned(FHooks.OnReported) then
   begin
@@ -747,12 +757,12 @@ begin
   // Probleme aus allen Ergebnissen dieser Sitzung: Ein Lauf einzelner Tests lässt die übrigen Fehlschläge stehen.
   mAll := ARun;
   mAll.Cases := FCases;
-  mFailures := TAtlasTestRun.Failures(ARun, UnitFileFunc(ATarget.Project), ReadLines);
+  mFailures := TAtlasTestRun.Failures(ARun, UnitFileFunc(ATarget.Project), ReadLines, mAtAssert);
   if Assigned(FHooks.OnProblems) then
   begin
-    FHooks.OnProblems(TAtlasTestRun.Problems(TAtlasTestRun.Failures(mAll, UnitFileFunc(ATarget.Project), ReadLines),
-      TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
-      TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues)));
+    FHooks.OnProblems(TAtlasTestRun.Problems(TAtlasTestRun.Failures(mAll, UnitFileFunc(ATarget.Project), ReadLines,
+      mAtAssert), TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
+      TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues), mInline));
   end;
   FLastFailed.AddOrSetValue(AnsiLowerCase(ATarget.Project), TAtlasTestRun.SummaryOf(ATarget, ARun, mFailures,
     0).FailedTests);
