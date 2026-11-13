@@ -5,6 +5,9 @@ on:
     # main-merging: nach jedem Merge den zusammengeführten Stand prüfen (docs/Zusammenfuehren.md).
     branches: [main, main-merging, 'release/**']
   pull_request:
+  # Nach einem Push des automatischen Abgleichs mit GITHUB_TOKEN (pr-abgleich.yml) startet die Prüfung so; der Lauf
+  # prüft den Branch gegen seine Basis mit main-merging wie ein Pull Request.
+  workflow_dispatch:
 
 jobs:
   check:
@@ -14,17 +17,42 @@ jobs:
         with:
           # Release-Tags für Check-ContractVersion.ps1
           fetch-depth: 0
+      - name: Vergleichsstand und geänderte Dateien
+        id: stand
+        run: |
+          # Pull Request: Merge-Commit, erster Elter ist das Ziel. workflow_dispatch: Basis mit main-merging.
+          basis=''
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            basis=$(git rev-parse HEAD^1)
+          elif [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            basis=$(git merge-base HEAD origin/main-merging)
+          fi
+          echo "basis=$basis" >> "$GITHUB_OUTPUT"
+          # Der Selbsttest der Modulgrenzen dauert etwa sechs Minuten. Im Pull Request läuft er nur, wenn sich die
+          # Prüfung selbst, Verträge oder Units, auf die sich seine Fälle stützen, ändern (gelöscht/verschoben);
+          # nach jedem Merge auf main-merging läuft er immer.
+          grenzen=true
+          if [ -n "$basis" ] && ! git diff --name-only "$basis" HEAD | grep -qE \
+              '^(Tools/(Check|Test)-PackageDependencies\.ps1|\.github/workflows/package-dependencies\.yml|Packages/Atlas\.IDE\.Base/Source/Contracts/)' \
+            && [ -z "$(git diff --name-only --diff-filter=DR "$basis" HEAD -- Packages)" ]; then
+            grenzen=false
+          fi
+          echo "grenzen=$grenzen" >> "$GITHUB_OUTPUT"
       - name: Merge-Helfer, Selbsttest
         run: python3 Tools/Merge-Integration.py --selbsttest
       - name: Changelog-Fragmente lesbar, keine neuen Einträge direkt in CHANGELOG.md
         shell: pwsh
+        env:
+          BASIS: ${{ steps.stand.outputs.basis }}
         run: |
-          if ($env:GITHUB_EVENT_NAME -eq 'pull_request') { ./Tools/Update-Changelog.ps1 -Check -Base 'HEAD^1' }
+          if ($env:BASIS) { ./Tools/Update-Changelog.ps1 -Check -Base $env:BASIS }
           else { ./Tools/Update-Changelog.ps1 -Check }
       - name: Vertragsversion von Base höchstens einmal je Release
         shell: pwsh
+        env:
+          BASIS: ${{ steps.stand.outputs.basis }}
         run: |
-          if ($env:GITHUB_EVENT_NAME -eq 'pull_request') { ./Tools/Check-ContractVersion.ps1 -Base 'HEAD^1' }
+          if ($env:BASIS) { ./Tools/Check-ContractVersion.ps1 -Base $env:BASIS }
           else { ./Tools/Check-ContractVersion.ps1 }
       - name: "Rollenmatrix: Selbsttest"
         shell: pwsh
@@ -40,8 +68,11 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
           BEFORE: ${{ github.event.before }}
+          BASIS: ${{ steps.stand.outputs.basis }}
         run: |
-          if ($env:BASE_REF) {
+          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch' -and $env:BASIS) {
+            $ref = $env:BASIS
+          } elseif ($env:BASE_REF) {
             git fetch --no-tags --depth=1 origin "+refs/heads/$($env:BASE_REF):refs/remotes/origin/$($env:BASE_REF)"
             $ref = "origin/$($env:BASE_REF)"
           } elseif ($env:BEFORE -and $env:BEFORE -notmatch '^0+$') {
@@ -53,6 +84,7 @@ jobs:
           }
           ./Tools/Check-Baselines.ps1 -BaseRef $ref
       - name: "Modulgrenzen: Selbsttest mit absichtlichen Verstößen (#1455)"
+        if: steps.stand.outputs.grenzen == 'true'
         shell: pwsh
         run: ./Tools/Test-PackageDependencies.ps1
       - name: Keine Ausgaben auf stdout
@@ -131,3 +163,21 @@ jobs:
       - name: Drittanbieter-Hinweise aktuell (#77)
         shell: pwsh
         run: ./Tools/Update-ThirdPartyNotices.ps1 -Check
+
+  # Rot auf main-merging sofort sichtbar machen: Issue „main-merging rot“ und Kommentar am verursachenden Pull Request.
+  melden:
+    needs: check
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main-merging'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: Tools/CI
+      - name: Stand von main-merging melden
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 Tools/CI/Melde-Integrationsstand.py --workflow "${{ github.workflow }}" --ergebnis "${{ needs.check.result }}"
