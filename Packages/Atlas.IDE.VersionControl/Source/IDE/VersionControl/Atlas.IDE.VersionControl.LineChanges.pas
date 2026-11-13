@@ -117,7 +117,8 @@ uses
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.VersionControl.LineChangesData,
-  Atlas.IDE.VersionControl.LineChangesPaint;
+  Atlas.IDE.VersionControl.LineChangesPaint,
+  Atlas.UI.Foundation.EditorFont;
 
 const
   cTickMs = 150;
@@ -165,8 +166,7 @@ type
     FIndex: Integer;
     FTimer: TTimer;
     FTip: TAtlasTitledTip;
-    FFont: TFont;
-    FFontKey: string;
+    FFont: TAtlasEditorFont;
     FGutterOn: Boolean;
     FBlameOn: Boolean;
     FData: TAtlasIdeLineChangesData;
@@ -188,7 +188,6 @@ type
     procedure HideTip;
     procedure RevertChange(AChange: Integer);
     function CommitOf(AEntry, ALine: Integer): TAtlasBlameCommit;
-    procedure EnsureFont(const AEditorFont: TFont);
     procedure PaintGutter(const Rect: TRect; const Stage: TPaintGutterStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     /// <summary>Balken und Dreieck der Zeile zeichnen und die Marke für den Klick merken.</summary>
@@ -306,7 +305,7 @@ begin
   FBlame.Entry := -1;
   FData := TAtlasIdeLineChangesData.Create(DataHooks());
   FRows := TDictionary<Integer, TMarkRow>.Create;
-  FFont := TFont.Create;
+  FFont := TAtlasEditorFont.Create([fsItalic]);
   FTip := TAtlasTitledTip.Create(nil);
   FTip.GuardFeature := TAtlasFeature.LineChanges;
   FEvents := TEvents.Create;
@@ -404,20 +403,6 @@ begin
   Result.Date := mEntry.Date;
   Result.Message := FData.MessageOf(mEntry);
   Result.Line := ALine;
-end;
-
-procedure TLineChangesState.EnsureFont(const AEditorFont: TFont);
-var
-  mKey: string;
-begin
-  mKey := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
-  if mKey = FFontKey then
-  begin
-    Exit;
-  end;
-  FFont.Assign(AEditorFont);
-  FFont.Style := [fsItalic];
-  FFontKey := mKey;
 end;
 
 procedure TLineChangesState.PaintGutter(const Rect: TRect; const Stage: TPaintGutterStage;
@@ -541,10 +526,10 @@ begin
   // Hintergrund des Editor-Farbschemas am rechten Rand (dort steht nichts).
   mBack := TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Right - 2, ARect.Top + 1);
   mFront := TAtlasColorMath.Mix(TAtlasColors.ForBackground(mBack).Muted, mBack, cBlameStrength);
-  EnsureFont(AContext.Canvas.Font);
+  FFont.Follow(AContext.Canvas.Font);
   mSaved := SaveDC(mDC);
   try
-    SelectObject(mDC, FFont.Handle);
+    SelectObject(mDC, FFont.Font.Handle);
     SetTextColor(mDC, COLORREF(ColorToRGB(TColor(mFront))));
     SetBkMode(mDC, TRANSPARENT);
     GetTextExtentPoint32W(mDC, PChar(ACaption), Length(ACaption), mSize);

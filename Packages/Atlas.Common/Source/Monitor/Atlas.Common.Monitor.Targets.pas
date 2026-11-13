@@ -216,27 +216,6 @@ begin
   end;
 end;
 
-/// <summary>JSON-Objekt aus AText; nil, wenn der Text kein Objekt ist. Gehört dem Aufrufer.</summary>
-function ParseObject(const AText: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if Trim(AText) = '' then
-  begin
-    Exit;
-  end;
-  mValue := TJSONObject.ParseJSONValue(AText);
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end
-  else
-  begin
-    mValue.Free;
-  end;
-end;
-
 function TMonitorTargetList.ToText: string;
 var
   mRoot: TJSONObject;
@@ -254,7 +233,7 @@ class function TMonitorTargetList.FromText(const AText: string): TMonitorTargetL
 var
   mRoot: TJSONObject;
 begin
-  mRoot := ParseObject(AText);
+  mRoot := TJsonRead.ParseObject(AText);
   try
     Result := FromJson(TJsonRead.Items(mRoot, cTargets));
   finally
