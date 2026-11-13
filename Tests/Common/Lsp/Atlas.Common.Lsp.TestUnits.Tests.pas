@@ -36,6 +36,10 @@ type
     [Test]
     procedure CodeActionOnClassCreates;
     [Test]
+    procedure DraftActionCreatesTestUnitWithDraft;
+    [Test]
+    procedure DraftActionAddsToExistingTestUnit;
+    [Test]
     procedure SwitchesBothWays;
     [Test]
     procedure WithoutTestProjectNoCreate;
@@ -249,6 +253,82 @@ begin
   // Außerhalb der Klasse kein Anlegen (Code-Aktion auf einer Klasse, #274).
   Actions := FTestUnits.Actions(TDocumentUris.FromPath(KundenFile), 1);
   Assert.AreEqual(0, Integer(Length(Actions)));
+end;
+
+procedure FreeAll(const AActions: TArray<TJSONObject>);
+var
+  Action: TJSONObject;
+begin
+  for Action in AActions do
+  begin
+    Action.Free;
+  end;
+end;
+
+procedure TLspTestUnitsTests.DraftActionCreatesTestUnitWithDraft;
+var
+  Actions: TArray<TJSONObject>;
+  Changes: TJSONArray;
+  Text: string;
+begin
+  // Zeile 9: Rumpf von TKunde.Speichern. Der Entwurf ersetzt Assert.Fail im neuen Gerüst.
+  Actions := FTestUnits.Actions(TDocumentUris.FromPath(KundenFile), 9);
+  try
+    Assert.AreEqual(2, Integer(Length(Actions)));
+    Assert.AreEqual('Testfall f' + #$FC + 'r TKunde.Speichern anlegen', Actions[0].GetValue<string>('title'));
+    Changes := Actions[0].GetValue<TJSONArray>('edit.documentChanges');
+    Assert.AreEqual(4, Integer(Changes.Count));
+    Text := FirstNewText(Find(Changes, TDocumentUris.FromPath('C:\P\Tests\Kunden.Tests.pas')));
+    Assert.IsTrue(Pos('procedure TKundeTests.TestSpeichern;'#13#10'begin'#13#10, Text) > 0, Text);
+    Assert.IsTrue(Pos('  FSubject.Speichern;', Text) > 0, Text);
+    Assert.IsTrue(Pos('  FSubject := TKunde.Create;', Text) > 0, Text);
+    Assert.AreEqual('DUnitX-Testunit f' + #$FC + 'r TKunde anlegen', Actions[1].GetValue<string>('title'));
+  finally
+    FreeAll(Actions);
+  end;
+end;
+
+procedure TLspTestUnitsTests.DraftActionAddsToExistingTestUnit;
+const
+  TestText =
+    'unit Kunden.Tests;'#13#10 +
+    'interface'#13#10 +
+    'uses'#13#10 +
+    '  DUnitX.TestFramework;'#13#10 +
+    'type'#13#10 +
+    '  [TestFixture]'#13#10 +
+    '  TKundeTests = class'#13#10 +
+    '  public'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.'#13#10;
+var
+  Actions: TArray<TJSONObject>;
+  Changes: TJSONArray;
+  Edits: TJSONArray;
+  Text: string;
+  Item: TJSONValue;
+begin
+  FFiles.Add('C:\P\Tests\Kunden.Tests.pas', TestText);
+  FUnits.Add('kunden.tests', 'C:\P\Tests\Kunden.Tests.pas');
+  Actions := FTestUnits.Actions(TDocumentUris.FromPath(KundenFile), 5);
+  try
+    Assert.AreEqual(2, Integer(Length(Actions)), 'Entwurf und Wechsel');
+    Changes := Actions[0].GetValue<TJSONArray>('edit.documentChanges');
+    Assert.AreEqual(1, Integer(Changes.Count));
+    Edits := TJSONObject(Changes.Items[0]).GetValue<TJSONArray>('edits');
+    Text := '';
+    for Item in Edits do
+    begin
+      Text := Text + TJSONObject(Item).GetValue<string>('newText');
+    end;
+    Assert.IsTrue(Pos('procedure TestSpeichern;', Text) > 0, Text);
+    Assert.IsTrue(Pos('    Subject.Speichern;', Text) > 0, Text);
+    Assert.IsTrue(Pos('Kunden', Text) > 0, 'uses: ' + Text);
+    Assert.AreEqual('Zur Testunit Kunden.Tests wechseln', Actions[1].GetValue<string>('title'));
+  finally
+    FreeAll(Actions);
+  end;
 end;
 
 procedure TLspTestUnitsTests.SwitchesBothWays;

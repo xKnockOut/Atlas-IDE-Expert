@@ -349,6 +349,8 @@ const
   /// <summary>Filter „Quelle“ (#1819): Breite und Abstand zum Textfilter bei 96 dpi.</summary>
   cOriginWidth = 110;
   cOriginGap = 4;
+  /// <summary>Abstand oben der Live-Anzeige in der Leiste bei 96 dpi.</summary>
+  cLiveTop = 6;
   /// <summary>Hervorhebung neuer Einträge.</summary>
   cNewMs = 1500;
   cIconSize = 16;
@@ -480,7 +482,7 @@ begin
   FLive.AlignWithMargins := True;
   // Breite nach dem Text (live, beim Speichern, manuell): AutoSize, in der Leiste vertikal etwas abgesetzt.
   FLive.AutoSize := True;
-  FLive.Margins.Top := MulDiv(6, CurrentPPI, 96);
+  FLive.Margins.Top := MulDiv(cLiveTop, CurrentPPI, 96);
   FLive.ShowAccelChar := False;
   FLive.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsLive);
 end;

@@ -71,6 +71,10 @@ uses
   Atlas.UI.Results.Strings,
   Atlas.UI.Results.Texts;
 
+const
+  /// <summary>Breite der Filter-Häkchen in der Leiste bei 96 dpi.</summary>
+  cFilterCheckWidth = 150;
+
 { TAtlasResultsFlowPart }
 
 constructor TAtlasResultsFlowPart.Create(AView: TAtlasResultsView);
@@ -79,9 +83,9 @@ begin
   // Filter; nur sichtbar, solange ein Datenfluss gezeigt wird.
   // Fließende Leiste: Reihenfolge = Erzeugungsreihenfolge, bei schmalem Fenster Umbruch.
   FParts.Bar := TAtlasResultsControls.Bar(AView.Host, AView);
-  FParts.OnlyProject := TAtlasResultsControls.Check(AView.Host, FParts.Bar, alNone, 150,
+  FParts.OnlyProject := TAtlasResultsControls.Check(AView.Host, FParts.Bar, alNone, cFilterCheckWidth,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowOnlyProject), FilterClick);
-  FParts.ExcludeTests := TAtlasResultsControls.Check(AView.Host, FParts.Bar, alNone, 150,
+  FParts.ExcludeTests := TAtlasResultsControls.Check(AView.Host, FParts.Bar, alNone, cFilterCheckWidth,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.DataFlowExcludeTests), FilterClick);
 end;
 
