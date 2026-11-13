@@ -1534,6 +1534,18 @@
       "x-captionEn": "Indent JSON and XML",
       "x-issue": "#1779"
     },
+    "TestsApprovalFiles": {
+      "description": "Erkennt im Testergebnis die Meldung der Hilfs-Unit Atlas.Testing.Approval (Setup/Vorlagen): Die Testmarke zeigt „Abweichung · Vergleich“ bzw. „Neu · Vergleich“, der Vergleich zeigt approved- und received-Datei mit „Als neue Erwartung übernehmen“ (received ersetzt approved) und „Zum Test“. Dazu der Befehl „Liegengebliebene .received-Dateien löschen“ im Ordner tests.approvalFolder aus atlas.json; er schlägt vor, *.received.* in die .gitignore einzutragen. Die Hilfs-Unit selbst arbeitet auch ausgeschaltet.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.approvalFiles",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.compare",
+      "x-caption": "Vergleichsdateien erkennen",
+      "x-captionEn": "Recognize approval files",
+      "x-issue": "#1881"
+    },
     "TestsShowDuration": {
       "description": "Nach einem Lauf zeigt jede Marke der Testlinse die Dauer („12 ms“, ab einer Sekunde „1,2 s“), die Klassenmarke die Summe ihrer Tests. Über tests.slowMs färbt sich die Marke gelb mit „langsam“, auch wenn der Test bestanden hat (fehlgeschlagen bleibt rot). Die Karte Testergebnisse der Willkommensseite listet die fünf langsamsten Tests, der Befehl „Langsamste Tests zeigen“ alle mit Dauer.",
       "type": "boolean",
@@ -1972,6 +1984,32 @@
       "x-caption": "Präfix der Logpunkte",
       "x-captionEn": "Logpoint prefix",
       "x-issue": "#583"
+    },
+    "DebugNoSourcePage": {
+      "description": "Fenster „Kein Quelltext“: Hält der Debugger in einer Routine ohne Quelltext, nennt ein kleines Fenster neben dem CPU-Fenster Routine, Modul, Adresse und den Grund (Debug-DCUs aus, ohne Debug-Informationen übersetzt, nur DCU, nicht im Suchpfad, Systemcode) mit Auswegen. Aus = nur das CPU-Fenster der IDE.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.noSourcePage",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Fenster „Kein Quelltext“",
+      "x-captionEn": "“No source” window",
+      "x-issue": "#869"
+    },
+    "DebugNoSourceIgnoredUnits": {
+      "description": "Units, für die das Fenster „Kein Quelltext“ nicht erscheint, durch „;“ getrennt; „Für diese Unit nicht mehr zeigen“ ergänzt die Liste.",
+      "type": "string",
+      "default": "",
+      "x-key": "debug.noSourcePage.ignoredUnits",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.noSourcePage",
+      "x-control": "Textfeld",
+      "x-caption": "Units ohne Fenster „Kein Quelltext“",
+      "x-captionEn": "Units without “No source” window",
+      "x-issue": "#869"
     },
     "DebugVisualizers": {
       "description": "Visualisierer für häufige Typen beim Debuggen: einzeiliger Ersatztext im Hover, in Überwachten Ausdrücken und Lokalen Variablen sowie ein Ansichtsfenster über die Lupe (Tabelle, Hex, JSON-Baum, Bild, Farbe). Aus = die IDE zeigt ihre eigenen Texte.",

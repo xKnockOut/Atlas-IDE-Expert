@@ -1,8 +1,9 @@
 ﻿unit Atlas.IDE.Debug.Composition.Run;
 
 // Modul Debugger, Teil der Komposition: Werkzeuge rund um den Lauf des
-// Programms: das Ereignisprotokoll (#580) und die Logpunkte (#583, mit
-// Taste Umschalt+F5 und Schicht in der Rinne). Liefert Teile der
+// Programms: das Ereignisprotokoll (#580), die Logpunkte (#583, mit Taste
+// Umschalt+F5 und Schicht in der Rinne) und das Fenster „Kein Quelltext“
+// (#869). Liefert Teile der
 // Feature-Tabelle, Befehle, Menüeinträge, Tasten und das Weiterreichen von
 // Einstellungen und Thema; Atlas.IDE.Debug.Composition stellt sie über den
 // Scope des Moduls bereit, die Schicht der Rinne stellt ProvideRun bereit.
@@ -39,6 +40,7 @@ uses
   Atlas.IDE.Debug.EventLog,
   Atlas.IDE.Debug.Logpoints,
   Atlas.IDE.Debug.LogpointGutter,
+  Atlas.IDE.Debug.NoSource,
   Atlas.UI.Debug.Strings;
 
 const
@@ -87,6 +89,15 @@ begin
   Result := TAtlasIdeSettings.Current.DebugLogpoints;
 end;
 
+procedure StartNoSource;
+begin
+  TAtlasIdeDebugNoSource.Start(
+    procedure(AText: string)
+    begin
+      TAtlasIdeHost.Message(AText);
+    end);
+end;
+
 procedure StartLogpoints;
 begin
   TAtlasIdeLogpoints.Start(
@@ -133,7 +144,17 @@ begin
       function: Boolean
       begin
         Result := TAtlasIdeLogpoints.Started;
-      end, StartLogpoints, TAtlasIdeLogpoints.Release)];
+      end, StartLogpoints, TAtlasIdeLogpoints.Release),
+    // Fenster „Kein Quelltext“ (#869): Zuhörer der Debug-Sitzung.
+    TAtlasFeaturePart.When('DebugNoSource',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugNoSourcePage;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeDebugNoSource.Started;
+      end, StartNoSource, TAtlasIdeDebugNoSource.Release)];
 end;
 
 function RunCommands: TArray<TAtlasModuleCommand>;
@@ -206,6 +227,7 @@ end;
 procedure RunThemeChanged;
 begin
   TAtlasIdeDebugEventLog.ThemeChanged;
+  TAtlasIdeDebugNoSource.ThemeChanged;
 end;
 
 end.

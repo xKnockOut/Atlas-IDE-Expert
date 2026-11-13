@@ -154,7 +154,14 @@ Für Exporte, Berichte, erzeugten Code oder JSON prüft ein Test das Ergebnis ge
 - Ordner: `tests.approvalFolder` der nächsten `atlas.json` über dem Testprogramm (Vorgabe `Tests\Erwartet`, relativ zu ihrem Ordner); ohne `atlas.json` neben der nächsten `.dproj`. `TApproval.Folder` setzt ihn im Code.
 - Meldungen deutsch, mit `TApproval.English := True` englisch.
 
-Einstellung: `tests.approvalFolder` (atlas.json)
+In der IDE (Modul Tests, `tests.approvalFiles`):
+
+- Schlägt ein Test mit dieser Meldung fehl, zeigt seine Testmarke „Abweichung · Vergleich“, ohne approved-Datei „Neu · Vergleich“. Derselbe Knopf „Vergleichen“ steht im Hover des Fehlschlags und auf der Kachel *Testergebnisse*.
+- Der Vergleich zeigt links die approved-, rechts die received-Datei (Zeilen einander zugeordnet wie bei erwartet und erhalten, #1779). *Als neue Erwartung übernehmen* ersetzt die approved-Datei durch die received-Datei und löscht diese; der nächste Lauf ist grün. *Zum Test* springt zum Methodenkopf.
+- *Liegengebliebene .received-Dateien löschen* (Atlas-Menü, Befehlspalette) sucht im Ordner der Vergleichsdateien des zuletzt gelaufenen Testprojekts (ohne Lauf des aktiven Projekts), löscht nach Rückfrage alle `*.received.*` darin und bietet an, `*.received.*` in die nächste `.gitignore` einzutragen, wenn dort noch keine Zeile dafür steht.
+- `tests.approvalFiles` aus: keine eigene Marke, kein Befehl; die Hilfs-Unit arbeitet weiter, ihre Fehlschläge erscheinen als gewöhnliche Fehlschläge.
+
+Einstellungen: `tests.approvalFolder` (atlas.json), `tests.approvalFiles` (Plugin)
 
 ### Dauer der Tests und langsame Tests (#1772)
 
@@ -396,6 +403,16 @@ Einstellungen: `debug.eventLog`, `debug.eventLogColors`
 - „Alle Logpunkte aus“, „… an“, „… löschen“ betreffen nur die Haltepunktgruppe `Atlas.Logpunkte`
 
 Einstellungen: `debug.logpoints`, `debug.logpointPrefix`
+
+### Kein Quelltext
+
+- Hält der Debugger in einer Routine ohne Quelltext (die IDE zeigt das CPU-Fenster), erscheint oben rechts ein kleines Fenster ohne Fokus: Routine, Modul, Adresse, Unit und Grund
+- Gründe: Debug-DCUs aus (Bibliothek von Delphi), Unit mit `{$D-}` übersetzt, nur DCU/BPL vorhanden, Quelltext nicht im Suchpfad, Systemcode (Windows)
+- Auswege je nach Grund: „Debug-DCUs einschalten und neu bauen“ (nur in der Konfiguration Debug, mit Rückfrage; die Sitzung endet, danach baut und startet Atlas), „Zurück zum eigenen Code“ (bis zur Rückkehr in eigenen Code), „Quelltext suchen …“ (Ordner wird für das Projekt gemerkt, die Unit öffnet sich), „CPU-Fenster behalten“
+- „Für diese Unit nicht mehr zeigen“ ergänzt `debug.noSourcePage.ignoredUnits`
+- Mit „Nur eigener Code“ (`debug.justMyCode`) erscheint das Fenster nur bei Exceptions
+
+Einstellungen: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
 
 ### Exceptions
 

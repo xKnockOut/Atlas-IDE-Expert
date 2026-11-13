@@ -144,6 +144,10 @@ contains
   Atlas.Core.Debug.Logpoint in 'Source\Core\Debug\Atlas.Core.Debug.Logpoint.pas',
   Atlas.UI.Debug.LogpointDialog in 'Source\UI\Debug\Atlas.UI.Debug.LogpointDialog.pas',
   Atlas.IDE.Debug.Logpoints in 'Source\IDE\Debug\Atlas.IDE.Debug.Logpoints.pas',
-  Atlas.IDE.Debug.LogpointGutter in 'Source\IDE\Debug\Atlas.IDE.Debug.LogpointGutter.pas';
+  Atlas.IDE.Debug.LogpointGutter in 'Source\IDE\Debug\Atlas.IDE.Debug.LogpointGutter.pas',
+  Atlas.Core.Debug.NoSource in 'Source\Core\Debug\Atlas.Core.Debug.NoSource.pas',
+  Atlas.UI.Debug.NoSourcePopup in 'Source\UI\Debug\Atlas.UI.Debug.NoSourcePopup.pas',
+  Atlas.IDE.Debug.NoSourceFacts in 'Source\IDE\Debug\Atlas.IDE.Debug.NoSourceFacts.pas',
+  Atlas.IDE.Debug.NoSource in 'Source\IDE\Debug\Atlas.IDE.Debug.NoSource.pas';
 
 end.
