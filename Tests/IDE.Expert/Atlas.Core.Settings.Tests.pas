@@ -144,6 +144,8 @@ begin
   Assert.IsTrue(ASettings.EditorStatusBarTests, 'Teststand in der Statusleiste standardmäßig an (#1777)');
   Assert.AreEqual(500, ASettings.TestsSlowMs, 'langsam ab 500 ms (#1772)');
   Assert.IsTrue(ASettings.TestsLeaks, 'Lecks je Test standardmäßig an (#1774)');
+  Assert.IsTrue(ASettings.TestsFlaky, 'wackelnde Tests standardmäßig an (#1773)');
+  Assert.AreEqual(10, ASettings.TestsFlakyRuns, 'zehn Läufe je Test (#1773)');
 end;
 
 /// <summary>Vorgaben für Editor, Code Lens und Tests.</summary>
@@ -357,6 +359,8 @@ begin
   ASettings.TestsListsRunKey := 0;
   ASettings.TestsSlowMs := 1000;
   ASettings.TestsLeaks := False;
+  ASettings.TestsFlaky := False;
+  ASettings.TestsFlakyRuns := 20;
 end;
 
 /// <summary>Rundreise: Editor, Code Lens, Tests und Build von der Vorgabe abweichend setzen.</summary>
@@ -539,6 +543,8 @@ begin
   Assert.AreEqual(0, ALoaded.TestsListsRunKey, 'tests.lists.runKey (#2167)');
   Assert.AreEqual(1000, ALoaded.TestsSlowMs, 'tests.slowMs (#1772)');
   Assert.IsFalse(ALoaded.TestsLeaks, 'tests.leaks (#1774)');
+  Assert.IsFalse(ALoaded.TestsFlaky, 'tests.flaky (#1773)');
+  Assert.AreEqual(20, ALoaded.TestsFlakyRuns, 'tests.flaky.runs (#1773)');
 end;
 
 /// <summary>Rundreise: Editor, Code Lens, Tests und Build gelesen.</summary>
@@ -1166,6 +1172,13 @@ begin
   Settings.TestsSlowMs := 100000;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsSlowMs, Settings.TestsSlowMs);
+  // tests.flaky.runs (#1773): 3 bis 50.
+  Settings.TestsFlakyRuns := 1;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsFlakyRuns, Settings.TestsFlakyRuns);
+  Settings.TestsFlakyRuns := 500;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsFlakyRuns, Settings.TestsFlakyRuns);
   // tests.boundaryCases.maxCases (#2173): 1 bis 200.
   Settings.TestsBoundaryMax := 0;
   Settings.Normalize;

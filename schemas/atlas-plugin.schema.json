@@ -1661,6 +1661,34 @@
       "x-captionEn": "Slow from (ms)",
       "x-issue": "#1772"
     },
+    "TestsFlaky": {
+      "description": "Wackelnde Tests erkennen: Atlas merkt sich je Test die letzten Läufe mit der Prüfsumme des Methodenrumpfs. Ist ein Test bei unverändertem Rumpf grün, dann rot, dann wieder grün, steht an seiner Marke der Testlinse gelb „wackelt (3 von 10 rot)“, das Fenster „Atlas-Tests“ zeigt ihn unter dem Filter „wackelt“ mit dem Verlauf, und „Fehlgeschlagene erneut ausführen“ meldet „bestanden, wackelt aber“. Der Verlauf liegt je Testprojekt unter %LOCALAPPDATA%\\Atlas\\projects\\tests-history und übersteht einen Neustart. Aus: kein Verlauf wird geschrieben, keine Marke.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.flaky",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Wackelnde Tests erkennen",
+      "x-captionEn": "Detect flaky tests",
+      "x-issue": "#1773"
+    },
+    "TestsFlakyRuns": {
+      "description": "So viele Läufe merkt sich der Verlauf je Test (3 bis 50); ältere fallen weg.",
+      "type": "integer",
+      "default": 10,
+      "minimum": 3,
+      "maximum": 50,
+      "x-key": "tests.flaky.runs",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.flaky",
+      "x-control": "Zahl",
+      "x-caption": "Gemerkte Läufe je Test",
+      "x-captionEn": "Runs kept per test",
+      "x-issue": "#1773"
+    },
     "TestsWindow": {
       "description": "Andockbares Fenster „Atlas-Tests“ (Ansicht › Atlas, Atlas-Menü, Befehlspalette) mit allen Tests des Testprojekts: Baum Testunit › Fixture › Test › Fall mit Stand (grün, rot, gelb, grau für nicht gelaufen bzw. veraltet), Zählern und Dauer, Filtern, Suche und Mehrfachauswahl zum Ausführen oder Debuggen; unten Meldung, erwartet, erhalten und Stacktrace mit anklickbaren Zeilen. Aus: kein Menüeintrag, das Fenster wird nicht wiederhergestellt.",
       "type": "boolean",

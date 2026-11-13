@@ -227,6 +227,21 @@ Aufruf: Reiter oben im Fenster „Atlas-Tests“; „+“ legt eine Liste an.
 
 Einstellungen: `tests.lists`, `tests.lists.runKey`
 
+### Wackelnde Tests (#1773)
+
+Ein Test wackelt, wenn er ohne Änderung an seinem Rumpf mal grün und mal rot ist (Zeit, Threads, Reihenfolge, Dateien).
+
+- Atlas merkt sich nach jedem Lauf aus der IDE je Test die letzten Ergebnisse (`tests.flaky.runs`, Vorgabe 10) mit der Prüfsumme des Methodenrumpfs wie bei „veraltet“ (#1770). Ein Test mit `[TestCase]` gilt in einem Lauf als rot, wenn einer seiner Fälle rot war; nur übersprungen zählt nicht.
+- „Wackelt“: Unter den Ergebnissen mit dem Rumpf von jetzt gibt es grün, danach rot, danach wieder grün. Rot, dann am Rumpf repariert und grün, wackelt nicht.
+- Die Marke der Testlinse wird gelb: „Test ausführen · bestanden · wackelt (3 von 10 rot)“; die Klassenmarke nennt die Zahl ihrer wackelnden Tests („· 2 wackeln“).
+- Im Fenster *Atlas-Tests* steht hinter dem Test „· wackelt“, der Filter *wackelt* zeigt nur diese Tests. Die Einzelheiten zeigen den Verlauf als Reihe (✓ grün, ✗ rot, ältester zuerst) mit „2 von 10 rot“, seit wann der Rumpf unverändert ist und die letzte Fehlermeldung.
+- *Wackelnde Tests zeigen* (Atlas-Menü, Befehlspalette) öffnet das Fenster mit genau diesem Filter.
+- Ist ein Test, der beim Lauf davor rot war, jetzt grün, wackelt aber (etwa nach *Fehlgeschlagene Tests erneut ausführen*), meldet die Meldungsansicht „Test TRechnerTests.Summe bestanden, wackelt aber (3 von 10 Läufen rot).“
+- Der Verlauf liegt je Testprojekt in `%LOCALAPPDATA%\Atlas\projects\tests-history\<Schlüssel>.json` (Schlüssel wie die Projekt-Zusammenfassung) und übersteht einen Neustart der IDE.
+- `tests.flaky` aus: Atlas schreibt keinen Verlauf, keine Marke, kein Befehl.
+
+Einstellungen: `tests.flaky`, `tests.flaky.runs`
+
 ### Teststand in der Statusleiste (#1777)
 - In der Atlas-Statusleiste steht hinter dem Status „Tests 41/42“ (bestanden/gelaufen, übersprungene zählen nicht) mit Ampelpunkt für das Testprojekt der aktuellen Datei: in einer Testunit ihr Testprojekt, sonst das aktive Testprojekt bzw. das erste der Projektgruppe. Während eines Laufs „Tests laufen …“, vor dem ersten Lauf der Sitzung „Tests –“. Ohne Testprojekt kein Feld.
 - Ampel: rot bei Fehlschlägen, gelb während eines Laufs und bei veralteten Ergebnissen (wenn das Fenster „Atlas-Tests“ dieses Testprojekt zeigt), grün, wenn alles bestand.
