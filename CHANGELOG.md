@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Neu
+- Vervollständigung nach Typprüfungen (#2107, `completion.typeGuards`, Vorgabe an): Im then-Zweig von `if X is T then` (auch in `and`-Ketten und nach `while X is T do`) und nach `if not (X is T) then Exit;` (auch `Continue`, `Break`, `raise`) bis zum Ende des Blocks stehen nach `X.` die Mitglieder, die nur `T` hat, oben unter der Überschrift „X ist hier T (is-Prüfung, Zeile n)“ mit der Marke „als T“, darunter wie bisher die Mitglieder des deklarierten Typs. Übernehmen schreibt die Umwandlung nach `completion.senderCast`, also `(X as T).Name` bzw. `T(X).Name`. Keine Einengung nach einer Zuweisung an `X`, nach Übergabe von `X` an einen `var`- oder `out`-Parameter, im else-Zweig, außerhalb des Blocks, in `with`-Blöcken und anonymen Methoden; bei Feldern, Eigenschaften und globalen Variablen nur in der ersten Anweisung nach der Prüfung. Nach `X is ` und `X as ` stehen die Nachfahren des Typs von `X` oben unter „Nachfahren von …“.
+
 ## [2.1.0] - 2026-11-13
 
 ### Neu

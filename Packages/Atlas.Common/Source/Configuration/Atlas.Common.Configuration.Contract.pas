@@ -456,6 +456,9 @@ type
     /// <summary>Varianten aus FireMonkey-Units (FMX.*) zeigen; aus: die Fußzeile nennt sie als ausgeblendet.
     /// </summary>
     ShowFmxUnits: Boolean;
+    /// <summary>Nach "if X is T then" die Mitglieder von T mit Umwandlung oben in der Liste, nach "X is " die
+    /// Nachfahren des Typs von X (#2107). Aus: wie ohne Prüfung.</summary>
+    TypeGuards: Boolean;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -1409,6 +1412,7 @@ begin
   Result.SameNameVariants := True;
   Result.SameNameInsert := TCompletionSameNameInsert.Prefix;
   Result.ShowFmxUnits := False;
+  Result.TypeGuards := True;
 end;
 
 { TServerSettings }
