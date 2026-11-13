@@ -32,7 +32,9 @@
 //   der Größe zur Pixeldichte der Leiste, dann Punkt und Text.
 // - Zusatzfelder (SetExtra, z. B. das Startprofil #575): einfache Textpanels
 //   rechts vom Atlas-Feld mit eigenem Tooltip; ein Linksklick ruft ihr
-//   OnClick mit der linken Oberkante des Panels. Sie erscheinen auch bei
+//   OnClick mit der linken Oberkante des Panels. Zustand (Punkt) und
+//   Rechtsklick (#1777) zeigt nur die Atlas-Statusleiste; in der Statuszeile
+//   stehen sie als Text. Sie erscheinen auch bei
 //   ausgeschaltetem Atlas-Feld (StatusField); das Atlas-Panel ist dann 0 breit.
 // - Plakette der Benachrichtigungszentrale (#601, SetBadge): rechts im
 //   Atlas-Feld die Zahl der ungelesenen Einträge in der Farbe des schwersten;
@@ -91,6 +93,10 @@ type
     Text: string;
     Hint: string;
     Clickable: Boolean;
+    /// <summary>Zustand des Punkts; Neutral = ohne Punkt (#1777).</summary>
+    State: TAtlasStatusState;
+    /// <summary>Rechtsklick tut etwas (ClickExtra mit AContext).</summary>
+    HasContext: Boolean;
   end;
 
   /// <summary>Stand des letzten Refresh: sichtbare Zeilen, Kurztext, Tooltip und Gesamtzustand.</summary>
@@ -121,12 +127,7 @@ type
       destructor Destroy; override;
     end;
 
-    TExtra = record
-      Id: string;
-      Text: string;
-      Hint: string;
-      OnClick: TProc<TPoint>;
-    end;
+    TExtra = TAtlasStatusExtra;
 
     /// <summary>Eine eingehängte Statusleiste: ihre Panels, die verketteten Handler und deren Behandlung.</summary>
     THook = class
@@ -228,9 +229,9 @@ type
     property Tooltip: string read FShown.Tooltip;
     property OnRelocatedAnchor: TAtlasStatusAnchorFunc read FEvents.OnRelocatedAnchor
       write FEvents.OnRelocatedAnchor;
-    /// <summary>Zusatzfeld AId setzen (Text, Tooltip, Linksklick mit der linken Oberkante des Panels); AText ''
-    /// entfernt es. Nur im Hauptthread.</summary>
-    procedure SetExtra(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
+    /// <summary>Zusatzfeld AExtra.Id setzen (Text, Tooltip, Zustand, Links- und Rechtsklick mit der linken
+    /// Oberkante des Panels); Text '' entfernt es. Nur im Hauptthread.</summary>
+    procedure SetExtra(const AExtra: TAtlasStatusExtra);
     /// <summary>Plakette der Benachrichtigungen (#601): Count ungelesene (im Feld 0 = keine Plakette, in der
     /// Atlas-Statusleiste zählt Shown), Farbe nach State, Hint im Tooltip; Linksklick auf die Plakette ruft
     /// OnClick mit der linken Oberkante des Felds. Nur im Hauptthread.</summary>
@@ -243,8 +244,9 @@ type
     /// <summary>Zusatzfelder in ihrer Reihenfolge, für die Atlas-Statusleiste: Bei Relocated stehen sie nicht in
     /// der Statuszeile.</summary>
     function ExtraItems: TArray<TAtlasStatusExtraItem>;
-    /// <summary>Wie ein Klick auf das Zusatzfeld AId mit der linken Oberkante an APoint; ohne Feld nichts.</summary>
-    procedure ClickExtra(const AId: string; const APoint: TPoint);
+    /// <summary>Wie ein Klick (AContext: Rechtsklick) auf das Zusatzfeld AId mit der linken Oberkante an APoint;
+    /// ohne Feld bzw. ohne passenden Klick nichts.</summary>
+    procedure ClickExtra(const AId: string; const APoint: TPoint; AContext: Boolean);
   end;
 
 implementation
@@ -1193,20 +1195,19 @@ begin
   end;
 end;
 
-procedure TAtlasStatusField.SetExtra(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
+procedure TAtlasStatusField.SetExtra(const AExtra: TAtlasStatusExtra);
 var
   mIndex, mFound: Integer;
-  mExtra: TExtra;
 begin
   mFound := -1;
   for mIndex := 0 to High(FExtras) do
   begin
-    if FExtras[mIndex].Id = AId then
+    if FExtras[mIndex].Id = AExtra.Id then
     begin
       mFound := mIndex;
     end;
   end;
-  if AText = '' then
+  if AExtra.Text = '' then
   begin
     if mFound >= 0 then
     begin
@@ -1215,17 +1216,14 @@ begin
   end
   else
   begin
-    mExtra.Id := AId;
-    mExtra.Text := AText;
-    mExtra.Hint := AHint;
-    mExtra.OnClick := AOnClick;
     if mFound >= 0 then
     begin
-      FExtras[mFound] := mExtra;
+      FExtras[mFound] := AExtra;
     end
     else
     begin
-      FExtras := FExtras + [mExtra];
+      SetLength(FExtras, Length(FExtras) + 1);
+      FExtras[High(FExtras)] := AExtra;
     end;
   end;
   RequestRefresh;
@@ -1243,20 +1241,30 @@ begin
     Result[mIndex].Text := FExtras[mIndex].Text;
     Result[mIndex].Hint := FExtras[mIndex].Hint;
     Result[mIndex].Clickable := Assigned(FExtras[mIndex].OnClick);
+    Result[mIndex].State := FExtras[mIndex].State;
+    Result[mIndex].HasContext := Assigned(FExtras[mIndex].OnContext);
   end;
 end;
 
-procedure TAtlasStatusField.ClickExtra(const AId: string; const APoint: TPoint);
+procedure TAtlasStatusField.ClickExtra(const AId: string; const APoint: TPoint; AContext: Boolean);
 var
   mExtra: TExtra;
 begin
   for mExtra in FExtras do
   begin
-    if mExtra.Id = AId then
+    if mExtra.Id <> AId then
+    begin
+      Continue;
+    end;
+    if AContext then
+    begin
+      RunClick(mExtra.OnContext, APoint);
+    end
+    else
     begin
       RunClick(mExtra.OnClick, APoint);
-      Exit;
     end;
+    Exit;
   end;
 end;
 

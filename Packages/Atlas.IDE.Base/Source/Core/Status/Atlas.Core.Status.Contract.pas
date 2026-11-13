@@ -13,7 +13,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.Types;
 
 type
 {$SCOPEDENUMS ON}
@@ -47,6 +48,18 @@ type
     function Brief: string;
     /// <summary>Zusatz rechts, z. B. "seit 19:02"; '' = keiner.</summary>
     function Detail: string;
+  end;
+
+  /// <summary>Zusatzfeld hinter dem Atlas-Feld (TAtlasIdeHost.SetStatusItem): Kennung, Text ('' entfernt es),
+  /// Tooltip, Zustand (Neutral = ohne Punkt; sonst Punkt in der Farbe des Zustands, nur in der Atlas-Statusleiste
+  /// #1155), Linksklick und Rechtsklick (nil = keiner) mit der linken Oberkante des Felds (Bildschirm).</summary>
+  TAtlasStatusExtra = record
+    Id: string;
+    Text: string;
+    Hint: string;
+    State: TAtlasStatusState;
+    OnClick: TProc<TPoint>;
+    OnContext: TProc<TPoint>;
   end;
 
   IAtlasStatusRegistry = interface

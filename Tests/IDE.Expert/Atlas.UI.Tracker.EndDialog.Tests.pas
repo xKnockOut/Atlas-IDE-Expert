@@ -6,7 +6,7 @@
 // des Trackers (400/401/403/404, Zeitlimit) und die Zeile der Meldungsansicht;
 // unter einer Zustandsmaschine (#2122) nur die erlaubten Übergänge; Zeit- und
 // Feldzeilen, Schrittanzeige, Fortsetzen und „Feld hinzufügen“ (#2123); größer
-// ziehen (#2131).
+// ziehen (#2131); Abschnitt „Abschluss“ mit Schließgrund unter GitHub (#2135).
 
 interface
 
@@ -52,6 +52,17 @@ type
     procedure RejectionOffersMissingField;
     [Test]
     procedure GrowsWithWindow;
+    /// <summary>Vier Möglichkeiten, Vorbelegung nach dem Zustand, Beschriftung von „Senden“ (#2135).</summary>
+    [Test]
+    procedure CloseSectionFollowsState;
+    /// <summary>Duplikat ohne gültiges Original sendet nicht; unbekanntes Original meldet der Lauf (#2135).</summary>
+    [Test]
+    procedure DuplicateNeedsOriginal;
+    [Test]
+    procedure SummaryTextWithClose;
+    /// <summary>Status im Projekt (#2134): eigene Zeile statt des Zustands, Grund bei fehlender Option.</summary>
+    [Test]
+    procedure ProjectStatusInOwnLine;
   end;
 
 implementation
@@ -73,6 +84,16 @@ uses
 function Options(const AEndStates: string): TAtlasTrackerSyncOptions;
 begin
   Result := TAtlasTrackerSyncOptions.Create(True, 'Status', '').WithStart('In Arbeit', False, '').WithEnd(AEndStates, '');
+end;
+
+function NewGitHubDialog(const AKey: string; const AOptions: TAtlasTrackerSyncOptions;
+  const AComment: string): TAtlasTrackerEndDialog;
+var
+  mRequest: TAtlasTrackerEndRequest;
+begin
+  mRequest := TAtlasTrackerEndRequest.Create(AKey, AOptions, AComment);
+  mRequest.CloseReasons := True;
+  Result := TAtlasTrackerEndDialog.CreateDialog(nil, mRequest);
 end;
 
 function NewDialog(const AKey: string; const AOptions: TAtlasTrackerSyncOptions;
@@ -510,6 +531,136 @@ begin
   finally
     mDialog.Free;
   end;
+end;
+
+procedure TAtlasTrackerEndDialogTests.CloseSectionFollowsState;
+var
+  mDialog: TAtlasTrackerEndDialog;
+begin
+  mDialog := NewDialog('ATL-1', Options('Erledigt'), '');
+  try
+    Assert.IsTrue(mDialog.Parts.CloseCompleted = nil, 'ohne Schließgründe kein Abschnitt');
+    Assert.IsTrue(mDialog.Change.Close = TAtlasTrackerClose.ByState);
+  finally
+    mDialog.Free;
+  end;
+  mDialog := NewGitHubDialog('#7', Options('Erledigt'), 'Fertig.');
+  try
+    Assert.IsTrue(mDialog.Parts.CloseCompleted.Checked, 'Erledigt-Zustand: erledigt');
+    Assert.IsTrue(mDialog.Change.Close = TAtlasTrackerClose.Completed);
+    Assert.IsFalse(mDialog.Parts.DuplicateOf.Enabled);
+    Assert.AreEqual('Senden', mDialog.Parts.Send.Caption);
+    mDialog.Parts.Close.Choose(TAtlasTrackerClose.NotPlanned);
+    Assert.IsTrue(mDialog.Parts.CloseNotPlanned.Checked);
+    Assert.IsFalse(mDialog.Parts.CloseCompleted.Checked);
+    Assert.AreEqual('Als nicht geplant schließen', mDialog.Parts.Send.Caption);
+    Assert.IsTrue(mDialog.Change.Close = TAtlasTrackerClose.NotPlanned);
+    mDialog.Parts.Close.Choose(TAtlasTrackerClose.Duplicate);
+    Assert.IsTrue(mDialog.Parts.DuplicateOf.Enabled);
+    Assert.AreEqual('Als Duplikat schließen', mDialog.Parts.Send.Caption);
+    mDialog.Parts.DuplicateOf.Text := '418';
+    Assert.IsTrue(mDialog.Change.Close = TAtlasTrackerClose.Duplicate);
+    Assert.AreEqual('#418', mDialog.Change.DuplicateOf);
+    mDialog.Parts.Close.Choose(TAtlasTrackerClose.KeepOpen);
+    Assert.AreEqual('', mDialog.Change.State, 'offen lassen nimmt den Erledigt-Zustand zurück');
+  finally
+    mDialog.Free;
+  end;
+  mDialog := NewGitHubDialog('#7', Options('Zur Prüfung'), '');
+  try
+    Assert.IsTrue(mDialog.Parts.CloseKeepOpen.Checked, 'anderer Zustand: offen lassen');
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasTrackerEndDialogTests.DuplicateNeedsOriginal;
+var
+  mDialog: TAtlasTrackerEndDialog;
+  mCalls: Integer;
+  mPending: TAtlasTrackerEndDone;
+  mPlan: TAtlasTrackerEndPlan;
+  mProgress: TAtlasTrackerEndProgress;
+begin
+  mCalls := 0;
+  mPending := nil;
+  mDialog := NewGitHubDialog('#7', Options('Erledigt'), '');
+  try
+    mDialog.OnSend :=
+      procedure(const APlan: TAtlasTrackerEndPlan; const AProgress: TAtlasTrackerEndProgress;
+        const ADone: TAtlasTrackerEndDone)
+      begin
+        Inc(mCalls);
+        mPlan := APlan;
+        mProgress := AProgress;
+        mPending := ADone;
+      end;
+    mDialog.Parts.Close.Choose(TAtlasTrackerClose.Duplicate);
+    mDialog.Parts.Send.Click;
+    Assert.AreEqual(0, mCalls, 'ohne Original');
+    Assert.AreEqual('Bitte das Original angeben (z. B. #123), nicht das Issue selbst.', mDialog.Parts.Note.Caption);
+    mDialog.Parts.DuplicateOf.Text := '#7';
+    mDialog.Parts.Send.Click;
+    Assert.AreEqual(0, mCalls, 'nicht das Issue selbst');
+    mDialog.Parts.DuplicateOf.Text := '#999';
+    mDialog.Parts.Send.Click;
+    Assert.AreEqual(1, mCalls);
+    Assert.IsTrue(mPlan.Change.Close = TAtlasTrackerClose.Duplicate);
+    mProgress.Fail(mPlan, TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotFound, 404, ''));
+    mProgress.DuplicateMissing := True;
+    mPending(mProgress);
+    Assert.AreEqual('Das Original #999 gibt es im Repository nicht.', mDialog.Parts.Note.Caption);
+    Assert.IsFalse(mDialog.Sent);
+    Assert.IsTrue(mDialog.Parts.CloseDuplicate.Enabled, 'nichts geschrieben: Abschluss bleibt änderbar');
+  finally
+    mDialog.Free;
+  end;
+  mPending := nil;
+end;
+
+procedure TAtlasTrackerEndDialogTests.SummaryTextWithClose;
+var
+  mChange: TAtlasTrackerWrite;
+begin
+  mChange := TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.CommentOnly('x'), TAtlasTrackerClose.Duplicate,
+    '#418', '');
+  Assert.AreEqual('als Duplikat von #418 geschlossen, Kommentar', TAtlasTrackerEndDialog.SummaryText(mChange));
+  mChange := TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.Empty, TAtlasTrackerClose.NotPlanned, '', '');
+  Assert.AreEqual('als nicht geplant geschlossen', TAtlasTrackerEndDialog.SummaryText(mChange));
+  mChange := TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.Empty, TAtlasTrackerClose.Completed, '', '');
+  Assert.AreEqual('geschlossen', TAtlasTrackerEndDialog.SummaryText(mChange));
+end;
+
+procedure TAtlasTrackerEndDialogTests.ProjectStatusInOwnLine;
+var
+  mChange: TAtlasTrackerWrite;
+  mResult: TAtlasTrackerWriteResult;
+  mLines: TArray<string>;
+begin
+  mChange := TAtlasTrackerWrite.Empty;
+  mChange.State := 'In Progress';
+  mChange.Assign := TAtlasTrackerAssign.Me;
+  mResult := TAtlasTrackerWriteResult.Ok;
+  mResult.Project.Project := 'Atlas 2.1';
+  mResult.Project.Before := 'Todo';
+  mResult.Project.After := 'In Progress';
+  mLines := TAtlasTrackerEndTexts.StartLines('#7', mChange, mResult);
+  Assert.AreEqual(2, Integer(Length(mLines)));
+  Assert.IsFalse(mLines[0].Contains('In Progress'), mLines[0]);
+  Assert.AreEqual('#7: Status im Projekt „Atlas 2.1“ Todo → In Progress', mLines[1]);
+  // Nur der Zustand: allein die Zeile zum Projekt.
+  mChange.Assign := TAtlasTrackerAssign.Keep;
+  Assert.AreEqual(1, Integer(Length(TAtlasTrackerEndTexts.StartLines('#7', mChange, mResult))));
+  // Ohne Projekt wie bisher: der Zustand steht in der Zeile.
+  mLines := TAtlasTrackerEndTexts.StartLines('#7', mChange, TAtlasTrackerWriteResult.Ok);
+  Assert.AreEqual(1, Integer(Length(mLines)));
+  Assert.IsTrue(mLines[0].Contains('In Progress'), mLines[0]);
+  mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, '');
+  mResult.Project.Project := 'Atlas 2.1';
+  mResult.Project.MissingOption := 'In Arbeit';
+  Assert.AreEqual('#7: Das Statusfeld im Projekt „Atlas 2.1“ hat keine Option „In Arbeit“; nichts geändert.',
+    TAtlasTrackerEndDialog.ErrorText('#7', mResult));
+  mLines := nil;
 end;
 
 initialization

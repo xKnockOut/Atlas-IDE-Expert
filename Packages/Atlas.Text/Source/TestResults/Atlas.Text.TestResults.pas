@@ -18,7 +18,14 @@
 // „Expected 3 but got 4“ (DUnitX) und „Expected: 3 But was: 4“ (NUnit)
 // werden erwarteter und tatsächlicher Wert gelesen.
 // Zeiten: Sekunden mit Punkt oder Komma (DUnitX schreibt je nach Fassung im
-// Format des Gebietsschemas).
+// Format des Gebietsschemas). Dauer eines Tests als Text („12 ms“, „1,2 s“)
+// und die langsamsten Tests eines Laufs (#1772).
+// Lecks (#1774): Mit Leckmonitor meldet DUnitX einen Test, der Speicher nicht
+// freigibt, als Fehlschlag (NUnit result="Failure", JUnit <error>) mit der
+// Meldung „40 bytes were leaked in the test method“ (bzw. „… in the
+// setup/teardown methods“, „… in the setup/test/teardown methods“), dahinter
+// ggf. der Bericht des Monitors. Die Zahl steht in LeakBytes; das Ergebnis
+// bleibt, wie der Bericht es nennt.
 
 interface
 
@@ -45,8 +52,13 @@ type
     Actual: string;
     HasValues: Boolean;
     StackTrace: string;
+    /// <summary>Nicht freigegebener Speicher in Bytes, wenn der Fehlschlag die Leckmeldung von DUnitX ist (#1774);
+    /// sonst 0.</summary>
+    LeakBytes: Int64;
     /// <summary>Fehlgeschlagen oder mit Ausnahme abgebrochen.</summary>
     function IsFailure: Boolean;
+    /// <summary>Der Test meldet ein Leck (LeakBytes &gt; 0).</summary>
+    function IsLeak: Boolean;
   end;
 
   TTestRunResult = record
@@ -58,6 +70,10 @@ type
     /// <summary>Dauer des Laufs laut Bericht, sonst Summe der Tests.</summary>
     DurationMs: Int64;
     Cases: TArray<TTestCaseResult>;
+    /// <summary>Konsolenausgabe des Laufs und Inhalt der Seitendatei des Atlas-Loggers (Protokoll je Test,
+    /// #2168); '' ohne bzw. wenn der Läufer sie nicht liest. Parse setzt sie nicht.</summary>
+    Output: string;
+    LogFile: string;
     function Count(AOutcome: TTestOutcome): Integer;
     function Total: Integer;
     /// <summary>Fehlgeschlagene und abgebrochene Tests in Berichtsreihenfolge.</summary>
@@ -72,12 +88,21 @@ type
     class function Parse(const AXml: string): TTestRunResult; static;
     /// <summary>Erwarteter und tatsächlicher Wert aus einer Meldung; False, wenn sie keine nennt.</summary>
     class function SplitValues(const AMessage: string; out AExpected, AActual: string): Boolean; static;
+    /// <summary>Bytes aus der Leckmeldung von DUnitX („40 bytes were leaked in the test method“, #1774); 0, wenn
+    /// AMessage keine ist.</summary>
+    class function LeakBytesOf(const AMessage: string): Int64; static;
     /// <summary>Zerlegt AFullName mit der bekannten Fixture AFixture ('' = unbekannt: die letzten beiden Teile
     /// gelten als Fixture und Methode).</summary>
     class procedure SplitName(const AFullName, AFixture: string; out AUnitName, AFixtureName, AMethod,
       ACaseName: string); static;
     /// <summary>Sekunden ("0.012", "0,012") in Millisekunden; 0 bei ungültigem Text.</summary>
     class function SecondsToMs(const AText: string): Int64; static;
+    /// <summary>Dauer als Text (#1772): unter einer Sekunde „12 ms“, sonst Sekunden mit einer Nachkommastelle
+    /// („1,2 s“ mit ADecimalSeparator ',').</summary>
+    class function DurationText(AMs: Int64; ADecimalSeparator: Char): string; static;
+    /// <summary>Höchstens ACount Tests mit Dauer, die langsamsten zuerst, bei gleicher Dauer nach Namen;
+    /// übersprungene zählen nicht (#1772).</summary>
+    class function Slowest(const ACases: TArray<TTestCaseResult>; ACount: Integer): TArray<TTestCaseResult>; static;
   end;
 
 implementation
@@ -85,6 +110,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Math,
   Atlas.Text.Entities;
 
 type
@@ -306,6 +332,11 @@ begin
   Result := Outcome in [TTestOutcome.Failed, TTestOutcome.Error];
 end;
 
+function TTestCaseResult.IsLeak: Boolean;
+begin
+  Result := LeakBytes > 0;
+end;
+
 { TTestRunResult }
 
 function TTestRunResult.Count(AOutcome: TTestOutcome): Integer;
@@ -359,6 +390,78 @@ begin
     Exit(0);
   end;
   Result := Round(mValue * 1000);
+end;
+
+class function TTestResults.DurationText(AMs: Int64; ADecimalSeparator: Char): string;
+const
+  cMsPerSecond = 1000;
+  cMsPerTenth = 100;
+  cTenthsPerSecond = 10;
+var
+  mTenths: Int64;
+begin
+  if AMs < cMsPerSecond then
+  begin
+    Exit(IntToStr(Max(AMs, 0)) + ' ms');
+  end;
+  // Auf Zehntel runden: 1250 ms ergibt „1,3 s“.
+  mTenths := (AMs + cMsPerTenth div 2) div cMsPerTenth;
+  Result := IntToStr(mTenths div cTenthsPerSecond) + ADecimalSeparator + IntToStr(mTenths mod cTenthsPerSecond) +
+    ' s';
+end;
+
+/// <summary>Kommt AA in der Liste der langsamsten vor AB?</summary>
+function SlowerFirst(const AA, AB: TTestCaseResult): Boolean;
+begin
+  Result := (AA.DurationMs > AB.DurationMs) or ((AA.DurationMs = AB.DurationMs) and
+    (CompareText(AA.FullName, AB.FullName) < 0));
+end;
+
+class function TTestResults.Slowest(const ACases: TArray<TTestCaseResult>;
+  ACount: Integer): TArray<TTestCaseResult>;
+var
+  mCase: TTestCaseResult;
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mCase in ACases do
+  begin
+    if (mCase.DurationMs <= 0) or (mCase.Outcome = TTestOutcome.Skipped) then
+    begin
+      Continue;
+    end;
+    // Einfügen an der richtigen Stelle: stabil und ohne Sortierung der ganzen Liste.
+    mIndex := Length(Result);
+    while (mIndex > 0) and SlowerFirst(mCase, Result[mIndex - 1]) do
+    begin
+      Dec(mIndex);
+    end;
+    if mIndex < ACount then
+    begin
+      Insert(mCase, Result, mIndex);
+      if Length(Result) > ACount then
+      begin
+        SetLength(Result, ACount);
+      end;
+    end;
+  end;
+end;
+
+class function TTestResults.LeakBytesOf(const AMessage: string): Int64;
+const
+  cLeaked = ' bytes were leaked in the ';
+var
+  mText: string;
+  mAt: Integer;
+begin
+  Result := 0;
+  mText := TrimLeft(AMessage);
+  mAt := Pos(cLeaked, LowerCase(mText));
+  // Die Zahl steht allein vor dem Text, sonst ist es eine andere Meldung.
+  if (mAt <= 1) or not TryStrToInt64(Copy(mText, 1, mAt - 1), Result) or (Result < 0) then
+  begin
+    Result := 0;
+  end;
 end;
 
 class function TTestResults.SplitValues(const AMessage: string; out AExpected, AActual: string): Boolean;
@@ -692,6 +795,10 @@ begin
     begin
       FCurrent.Message := Trim(Copy(FCurrent.Message, 1, Pos(#10, FCurrent.Message) - 1));
     end;
+  end;
+  if FCurrent.IsFailure then
+  begin
+    FCurrent.LeakBytes := TTestResults.LeakBytesOf(FCurrent.Message);
   end;
   if FCurrent.IsFailure and TTestResults.SplitValues(FCurrent.Message, mExpected, mActual) then
   begin

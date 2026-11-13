@@ -7,11 +7,17 @@
 // - TAtlasTrackerEndPlan: was der Dialog schreiben will: Zeit (Work Item),
 //   Felder (issues.endFields, nur mit Wert), Kommentar samt Zuständigkeit und
 //   zuletzt Zustand bzw. Übergang (#2122).
-// - Run schreibt der Reihe nach Zeit → Felder → Kommentar → Übergang und hält
-//   beim ersten Fehler an. TAtlasTrackerEndProgress merkt sich, was schon
+// - Run schreibt der Reihe nach Zeit → Felder → Pull Request (#2136) →
+//   Kommentar → Übergang und hält beim ersten Fehler an. TAtlasTrackerEndProgress merkt sich, was schon
 //   geschrieben ist; ein zweiter Lauf mit demselben Fortschritt überspringt
 //   es (keine doppelte Zeitbuchung, kein zweiter Kommentar). Ein Feld zählt
 //   mit Namen und Wert: Wer den Wert ändert, schreibt es neu.
+// - Schließgrund „Duplikat“ (#2135): Vor dem ersten Schritt prüft Run, dass
+//   das Original nicht das Issue selbst ist und es gibt (Lookup des
+//   Anbieters); sonst wird nichts geschrieben (DuplicateMissing).
+// - Pull Request (#2136, GitHub): Plan.Pull; den Schritt (Push und Anlegen)
+//   führt TAtlasTrackerEndCall.Pull aus, das Ergebnis steht in Progress.Pull.
+//   Ein angelegter bzw. vorhandener Pull Request gilt als geschrieben.
 // - MentionedField sucht im Text einer Ablehnung den Namen eines Feldes
 //   (ganzes Wort, ohne Groß-/Kleinschreibung; der längste gewinnt), damit der
 //   Dialog die Zeile markieren bzw. „Feld hinzufügen“ anbieten kann. Ob eine
@@ -28,7 +34,7 @@ uses
 type
 {$SCOPEDENUMS ON}
   /// <summary>Schritte beim Beenden in der Reihenfolge, in der sie geschrieben werden.</summary>
-  TAtlasTrackerEndStep = (Time, Fields, Comment, Transition);
+  TAtlasTrackerEndStep = (Time, Fields, PullRequest, Comment, Transition);
   /// <summary>Stand eines Schritts: nicht geplant, offen, geschrieben, gescheitert.</summary>
   TAtlasTrackerStepState = (Skipped, Pending, Done, Failed);
 {$SCOPEDENUMS OFF}
@@ -48,6 +54,8 @@ type
     Fields: TArray<TAtlasTrackerFieldValue>;
     /// <summary>Kommentar, Zuständigkeit und Zustand bzw. Übergang.</summary>
     Change: TAtlasTrackerWrite;
+    /// <summary>Pull Request (#2136); Wanted False = keiner.</summary>
+    Pull: TAtlasTrackerPullSpec;
     /// <summary>Nur AChange, ohne Zeit und Felder.</summary>
     class function Create(const AChange: TAtlasTrackerWrite): TAtlasTrackerEndPlan; static;
     /// <summary>Feld AName mit AValue anhängen; leere Werte entfallen.</summary>
@@ -76,6 +84,15 @@ type
     FailedField: string;
     /// <summary>Ergebnis des letzten Laufs (Ok oder der Fehler mit dem Text des Trackers).</summary>
     Outcome: TAtlasTrackerWriteResult;
+    /// <summary>Der letzte Lauf hielt vor dem Schreiben an: Das Original eines Duplikats ist ungültig, das Issue
+    /// selbst oder unbekannt (#2135).</summary>
+    DuplicateMissing: Boolean;
+    /// <summary>Zustand bzw. Schließen ging über einen Ersatzweg (#2135, „Duplikat“ als „nicht geplant“).</summary>
+    Fallback: Boolean;
+    /// <summary>Zustand im Projekt (#2134, GitHub) aus dem Schreiben des Zustands; Project '' ohne.</summary>
+    Project: TAtlasTrackerProjectStatus;
+    /// <summary>Pull Request (#2136) aus dem letzten Versuch; Outcome None ohne.</summary>
+    Pull: TAtlasTrackerPullResult;
     class function Empty: TAtlasTrackerEndProgress; static;
     function FieldDone(const AField: TAtlasTrackerFieldValue): Boolean;
     /// <summary>Stand von AStep für APlan.</summary>
@@ -89,12 +106,19 @@ type
     procedure Fail(const APlan: TAtlasTrackerEndPlan; const AResult: TAtlasTrackerWriteResult);
   end;
 
+  /// <summary>Pull Request ASpec pushen und anlegen (#2136); im Hintergrund.</summary>
+  TAtlasTrackerPullRun = reference to function(const ASpec: TAtlasTrackerPullSpec): TAtlasTrackerPullResult;
+
   /// <summary>Wohin geschrieben wird: Schreibzugriffe des Anbieters (Zeit und Felder dürfen nil sein, dann
   /// scheitert der Schritt mit UnknownProvider), Ziel, Transport, Kennung, Zeitgrenze je Schritt.</summary>
   TAtlasTrackerEndCall = record
+    /// <summary>Für die Prüfung des Originals eines Duplikats (#2135, Lookup); nil = ohne Prüfung.</summary>
+    Provider: IAtlasTrackerProvider;
     Writer: IAtlasTrackerWriter;
     Time: IAtlasTrackerTimeWriter;
     Fields: IAtlasTrackerFields;
+    /// <summary>Pull Request anlegen (#2136); nil = der Schritt scheitert mit UnknownProvider.</summary>
+    Pull: TAtlasTrackerPullRun;
     Target: TAtlasTrackerTarget;
     Transport: IAtlasCiTransport;
     Key: string;
@@ -135,6 +159,7 @@ begin
   Result.Time := TAtlasTrackerWorkItem.Create(0, 0, '', '');
   Result.Fields := nil;
   Result.Change := AChange;
+  Result.Pull := TAtlasTrackerPullSpec.None;
 end;
 
 procedure TAtlasTrackerEndPlan.AddField(const AName, AValue: string);
@@ -152,6 +177,9 @@ begin
   Result.PreviousState := '';
   Result.Transition := TAtlasTrackerTransition.Create('', '');
   Result.FieldId := '';
+  Result.Close := TAtlasTrackerClose.ByState;
+  Result.DuplicateOf := '';
+  Result.DuplicateNote := '';
 end;
 
 function TAtlasTrackerEndPlan.TransitionPart: TAtlasTrackerWrite;
@@ -163,6 +191,10 @@ begin
   Result.AssigneeField := Change.AssigneeField;
   Result.Transition := Change.Transition;
   Result.FieldId := Change.FieldId;
+  Result.Close := Change.Close;
+  Result.DuplicateOf := Change.DuplicateOf;
+  Result.DuplicateNote := Change.DuplicateNote;
+  Result.GitHub := Change.GitHub;
 end;
 
 function TAtlasTrackerEndPlan.Has(AStep: TAtlasTrackerEndStep): Boolean;
@@ -172,6 +204,8 @@ begin
       Result := Time.Minutes > 0;
     TAtlasTrackerEndStep.Fields:
       Result := Length(Fields) > 0;
+    TAtlasTrackerEndStep.PullRequest:
+      Result := Pull.Wanted;
     TAtlasTrackerEndStep.Comment:
       Result := CommentPart.HasWork;
   else
@@ -200,6 +234,7 @@ begin
   Result := Default(TAtlasTrackerEndProgress);
   Result.FailedStep := TAtlasTrackerEndStep.Time;
   Result.Outcome := TAtlasTrackerWriteResult.Ok;
+  Result.Pull := TAtlasTrackerPullResult.Make(TAtlasTrackerPullOutcome.None);
 end;
 
 function TAtlasTrackerEndProgress.FieldDone(const AField: TAtlasTrackerFieldValue): Boolean;
@@ -238,6 +273,8 @@ begin
           mDone := mDone and FieldDone(mField);
         end;
       end;
+    TAtlasTrackerEndStep.PullRequest:
+      mDone := Pull.Stands;
     TAtlasTrackerEndStep.Comment:
       mDone := CommentDone;
   else
@@ -273,7 +310,7 @@ end;
 
 function TAtlasTrackerEndProgress.Wrote: Boolean;
 begin
-  Result := TimeBooked or (Length(FieldsDone) > 0) or CommentDone or TransitionDone;
+  Result := TimeBooked or (Length(FieldsDone) > 0) or Pull.Stands or CommentDone or TransitionDone;
 end;
 
 procedure TAtlasTrackerEndProgress.Fail(const APlan: TAtlasTrackerEndPlan; const AResult: TAtlasTrackerWriteResult);
@@ -292,6 +329,7 @@ begin
   Failed := True;
   FailedField := '';
   Outcome := AResult;
+  DuplicateMissing := False;
 end;
 
 { TAtlasTrackerEndSteps }
@@ -370,6 +408,51 @@ begin
   Result := mResult.Succeeded;
 end;
 
+/// <summary>Ergebnis eines Pull Requests als Schreibergebnis: Ok, wenn er steht; sonst der Fehler (Dirty, Foreign
+/// und PushFailed als Invalid, Text in AProgress.Pull).</summary>
+function PullResult(const APull: TAtlasTrackerPullResult): TAtlasTrackerWriteResult;
+begin
+  if APull.Stands then
+  begin
+    Result := TAtlasTrackerWriteResult.Ok;
+  end
+  else if APull.Outcome = TAtlasTrackerPullOutcome.Failed then
+  begin
+    Result := TAtlasTrackerWriteResult.Failed(APull.Error, APull.Status, APull.Message);
+  end
+  else
+  begin
+    Result := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, APull.Message);
+  end;
+end;
+
+/// <summary>Pull Request pushen und anlegen, wenn geplant und noch keiner steht; False bei Fehler.</summary>
+function RunPull(const ACall: TAtlasTrackerEndCall; const APlan: TAtlasTrackerEndPlan;
+  var AProgress: TAtlasTrackerEndProgress): Boolean;
+var
+  mResult: TAtlasTrackerWriteResult;
+begin
+  Result := True;
+  if not APlan.Pull.Wanted or AProgress.Pull.Stands then
+  begin
+    Exit;
+  end;
+  if Assigned(ACall.Pull) then
+  begin
+    AProgress.Pull := ACall.Pull(APlan.Pull);
+  end
+  else
+  begin
+    AProgress.Pull := TAtlasTrackerPullResult.Failure(TAtlasCiFetchError.UnknownProvider, 0, '');
+  end;
+  mResult := PullResult(AProgress.Pull);
+  if not mResult.Succeeded then
+  begin
+    Stopped(AProgress, TAtlasTrackerEndStep.PullRequest, mResult);
+  end;
+  Result := mResult.Succeeded;
+end;
+
 /// <summary>AChange schreiben, wenn es etwas gibt und noch nicht geschrieben ist (ADone); False bei Fehler.
 /// </summary>
 function RunChange(const ACall: TAtlasTrackerEndCall; const AChange: TAtlasTrackerWrite; AStep: TAtlasTrackerEndStep;
@@ -388,7 +471,50 @@ begin
   begin
     Stopped(AProgress, AStep, mResult);
   end;
+  AProgress.Fallback := AProgress.Fallback or mResult.Fallback;
+  if (mResult.Project.Project <> '') or mResult.Project.Denied then
+  begin
+    AProgress.Project := mResult.Project;
+  end;
   Result := mResult.Succeeded;
+end;
+
+/// <summary>Original eines Duplikats prüfen, bevor etwas geschrieben wird (#2135): nicht leer, nicht das Issue
+/// selbst und beim Tracker vorhanden. False hält den Lauf an.</summary>
+function CheckDuplicate(const ACall: TAtlasTrackerEndCall; const APlan: TAtlasTrackerEndPlan;
+  var AProgress: TAtlasTrackerEndProgress): Boolean;
+var
+  mOther: string;
+  mIssue: TAtlasTrackerIssue;
+  mError: TAtlasCiFetchError;
+begin
+  Result := True;
+  if (APlan.Change.Close <> TAtlasTrackerClose.Duplicate) or AProgress.TransitionDone then
+  begin
+    Exit;
+  end;
+  mOther := Trim(APlan.Change.DuplicateOf);
+  mError := TAtlasCiFetchError.None;
+  if (mOther = '') or SameText(mOther, Trim(ACall.Key)) then
+  begin
+    mError := TAtlasCiFetchError.Invalid;
+  end
+  else if (ACall.Provider <> nil) and not ACall.Provider.Lookup(ACall.Target, ACall.Transport, mOther,
+    ACall.TimeoutMs, mIssue, mError) then
+  begin
+    // Lookup meldet False immer mit Grund; ohne Grund gilt das Issue als unbekannt.
+    if mError = TAtlasCiFetchError.None then
+    begin
+      mError := TAtlasCiFetchError.NotFound;
+    end;
+  end;
+  if mError = TAtlasCiFetchError.None then
+  begin
+    Exit;
+  end;
+  AProgress.Fail(APlan, TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+  AProgress.DuplicateMissing := mError in [TAtlasCiFetchError.Invalid, TAtlasCiFetchError.NotFound];
+  Result := False;
 end;
 
 class procedure TAtlasTrackerEndSteps.Run(const ACall: TAtlasTrackerEndCall; const APlan: TAtlasTrackerEndPlan;
@@ -399,12 +525,14 @@ begin
   AProgress.Failed := False;
   AProgress.FailedField := '';
   AProgress.Outcome := TAtlasTrackerWriteResult.Ok;
+  AProgress.DuplicateMissing := False;
   if ACall.Writer = nil then
   begin
     AProgress.Fail(APlan, TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.UnknownProvider, 0, ''));
     Exit;
   end;
-  if not RunTime(ACall, APlan, AProgress) or not RunFields(ACall, APlan, AProgress) then
+  if not CheckDuplicate(ACall, APlan, AProgress) or not RunTime(ACall, APlan, AProgress) or
+    not RunFields(ACall, APlan, AProgress) or not RunPull(ACall, APlan, AProgress) then
   begin
     Exit;
   end;

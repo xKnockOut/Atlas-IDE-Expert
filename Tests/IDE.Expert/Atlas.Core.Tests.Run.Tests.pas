@@ -44,6 +44,12 @@ type
     procedure StaleResultsAreNotCountedAsPassed;
     [Test]
     procedure FailureAtAssertWithShortText;
+    [Test]
+    procedure SummaryKeepsSlowestTests;
+    [Test]
+    procedure TallySumsDurations;
+    [Test]
+    procedure TallyAndProblemsOfLeaks;
   end;
 
 implementation
@@ -265,6 +271,36 @@ begin
   Assert.AreEqual(2, Integer(Length(mTests.FailedTests)));
 end;
 
+procedure TAtlasTestRunTests.SummaryKeepsSlowestTests;
+var
+  mRun: TTestRunResult;
+  mSlow: TArray<TAtlasTestFailure>;
+  mTests: TAtlasProjectTests;
+begin
+  mRun := TTestResults.Parse(cReport);
+  mSlow := TAtlasTestRun.Locate(TTestResults.Slowest(mRun.Cases, 10),
+    function(const AUnitName: string): string
+    begin
+      Result := cUnitFile;
+    end,
+    function(const AFileName: string; out ALines: TArray<string>): Boolean
+    begin
+      ALines := Source;
+      Result := True;
+    end);
+  Assert.AreEqual(3, Integer(Length(mSlow)));
+  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', mSlow[0].Test.FullName, 'langsamster zuerst');
+  Assert.AreEqual(cUnitFile, mSlow[0].FileName);
+  Assert.AreEqual(18, mSlow[0].Line, 'Methodenkopf, 0-basiert');
+  mTests := TAtlasTestRun.SummaryOf(Default(TAtlasTestTarget), mRun, nil, mSlow, EncodeDate(2026, 11, 13));
+  Assert.AreEqual(3, Integer(Length(mTests.Slowest)));
+  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', mTests.Slowest[0].Test);
+  Assert.AreEqual(20, mTests.Slowest[0].DurationMs);
+  Assert.AreEqual(19, mTests.Slowest[0].Line, '1-basiert');
+  Assert.AreEqual(0, Integer(Length(TAtlasTestRun.SummaryOf(Default(TAtlasTestTarget), mRun, nil, 0).Slowest)),
+    'ohne Liste keine langsamsten');
+end;
+
 procedure TAtlasTestRunTests.StatusForLens;
 var
   mCases: TArray<TTestCaseResult>;
@@ -409,6 +445,58 @@ begin
   Assert.IsTrue(mTally.Status = TAtlasTestStatus.Partial);
   mTally.Failed := 1;
   Assert.IsTrue(mTally.Status = TAtlasTestStatus.Failed);
+end;
+
+procedure TAtlasTestRunTests.TallySumsDurations;
+var
+  mCases: TArray<TTestCaseResult>;
+  mTally: TAtlasTestTally;
+  mKey, mOther: TAtlasTestKey;
+begin
+  mCases := TTestResults.Parse(cReport).Cases;
+  mKey := Default(TAtlasTestKey);
+  mKey.Method := 'Addiert';
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Rechner.Tests', 'TRechnerTests', [mKey]);
+  Assert.AreEqual(Int64(10), mTally.DurationMs);
+  Assert.AreEqual(Int64(10), mTally.SlowestMs);
+  // Klassenmarke: Summe; der langsamste Test ist die Methode mit Fällen (Summe ihrer Fälle).
+  mOther := mKey;
+  mOther.Method := 'Summe';
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Rechner.Tests', 'TRechnerTests', [mKey, mOther]);
+  Assert.AreEqual(Int64(30), mTally.DurationMs);
+  Assert.AreEqual(Int64(20), mTally.SlowestMs);
+end;
+
+procedure TAtlasTestRunTests.TallyAndProblemsOfLeaks;
+var
+  mCases: TArray<TTestCaseResult>;
+  mTally: TAtlasTestTally;
+  mKey: TAtlasTestKey;
+  mLeak: TAtlasTestFailure;
+  mItems: TArray<TPair<string, TAtlasProblem>>;
+begin
+  // Bestanden mit Leck (#1774): zählt als bestanden, Leaked und LeakBytes tragen das Leck.
+  mCases := TTestResults.Parse(cReport).Cases;
+  mCases[0].LeakBytes := 40;
+  mKey := Default(TAtlasTestKey);
+  mKey.Method := 'Addiert';
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Rechner.Tests', 'TRechnerTests', [mKey]);
+  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Passed);
+  Assert.AreEqual(1, mTally.Leaked);
+  Assert.AreEqual(Int64(40), mTally.LeakBytes);
+  mLeak := Default(TAtlasTestFailure);
+  mLeak.Test := mCases[0];
+  mLeak.FileName := cUnitFile;
+  mLeak.Line := 15;
+  mItems := TAtlasTestRun.LeakProblems([mLeak], 'Leck in %s: %d Bytes');
+  Assert.AreEqual(1, Integer(Length(mItems)));
+  Assert.AreEqual('Leck in TRechnerTests.Addiert: 40 Bytes', mItems[0].Value.Message);
+  Assert.IsTrue(mItems[0].Value.Severity = TAtlasProblemSeverity.Warning);
+  Assert.AreEqual(TAtlasProblemStore.cTestSource, mItems[0].Value.Source);
+  Assert.AreEqual(15, mItems[0].Value.StartLine);
+  // Ohne Fundstelle keine Warnung.
+  mLeak.Line := -1;
+  Assert.AreEqual(0, Integer(Length(TAtlasTestRun.LeakProblems([mLeak], '%s %d'))));
 end;
 
 /// <summary>Veraltet ist das Ergebnis des Tests AMethod.</summary>

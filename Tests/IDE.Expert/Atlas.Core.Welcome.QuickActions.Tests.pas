@@ -63,6 +63,11 @@ type
     procedure ArrowsMoveRowAndButton;
     [Test]
     procedure StateElapsedSeconds;
+    /// <summary>#1967: Phase, Detail und Text der IDE nach einem Pull je Ergebnis.</summary>
+    [Test]
+    procedure AfterPullDecidesPhaseAndNote;
+    [Test]
+    procedure TestEndedWhenStoppedOrGraceOver;
   end;
 
 implementation
@@ -70,6 +75,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.VersionControl.Pull,
   Atlas.Core.Welcome.QuickActions;
 
 type
@@ -524,6 +531,46 @@ begin
   Assert.IsTrue(mState.Action = TAtlasQuickAction.Build);
   Assert.AreEqual(12, mState.ElapsedSeconds(13500), '„baut … 12 s“');
   Assert.AreEqual(0, mState.ElapsedSeconds(500));
+end;
+
+procedure TAtlasWelcomeQuickActionsTests.AfterPullDecidesPhaseAndNote;
+var
+  mStart, mState: TAtlasQuickActionState;
+  mNote: TAtlasPullNote;
+begin
+  mStart := TAtlasQuickActionState.Started(TAtlasQuickAction.Pull, 1000);
+  mStart.Detail := 'alt';
+  mState := mStart.AfterPull(TAtlasPullOutcome.Updated, TAtlasVcsOutcome.Ok, mNote);
+  Assert.IsTrue(mState.Phase = TAtlasQuickActionPhase.Succeeded);
+  Assert.IsTrue(mState.Pull = TAtlasPullOutcome.Updated);
+  Assert.IsTrue(mNote = TAtlasPullNote.None);
+  Assert.AreEqual('', mState.Detail, 'altes Detail weg');
+  Assert.AreEqual(UInt64(1000), mState.StartedMs, 'Beginn bleibt');
+  mState := mStart.AfterPull(TAtlasPullOutcome.UpToDate, TAtlasVcsOutcome.Ok, mNote);
+  Assert.IsTrue(mState.Phase = TAtlasQuickActionPhase.Succeeded);
+  mState := mStart.AfterPull(TAtlasPullOutcome.Blocked, TAtlasVcsOutcome.Ok, mNote);
+  Assert.IsTrue(mState.Phase = TAtlasQuickActionPhase.Failed);
+  Assert.IsTrue(mNote = TAtlasPullNote.LocalChanges);
+  mState := mStart.AfterPull(TAtlasPullOutcome.NoWorkingCopy, TAtlasVcsOutcome.NoWorkingCopy, mNote);
+  Assert.IsTrue(mNote = TAtlasPullNote.NoWorkingCopy);
+  mState := mStart.AfterPull(TAtlasPullOutcome.Failed, TAtlasVcsOutcome.LoginNeeded, mNote);
+  Assert.IsTrue(mNote = TAtlasPullNote.Login);
+  Assert.AreEqual('', mState.Detail, 'Text der Anmeldung setzt die IDE');
+  mState := mStart.AfterPull(TAtlasPullOutcome.Failed, TAtlasVcsOutcome.TimedOut, mNote);
+  Assert.IsTrue(mState.Phase = TAtlasQuickActionPhase.Failed);
+  Assert.IsTrue(mNote = TAtlasPullNote.Failed);
+  Assert.AreEqual(AtlasVcsOutcomeName(TAtlasVcsOutcome.TimedOut), mState.Detail);
+end;
+
+procedure TAtlasWelcomeQuickActionsTests.TestEndedWhenStoppedOrGraceOver;
+var
+  mState: TAtlasQuickActionState;
+begin
+  mState := TAtlasQuickActionState.Started(TAtlasQuickAction.Tests, 1000);
+  Assert.IsFalse(mState.TestEnded(1500, 1000), 'läuft, Schonzeit nicht um');
+  Assert.IsTrue(mState.TestEnded(2000, 1000), 'Schonzeit um');
+  mState.Phase := TAtlasQuickActionPhase.Succeeded;
+  Assert.IsTrue(mState.TestEnded(1500, 1000), 'läuft nicht mehr');
 end;
 
 initialization

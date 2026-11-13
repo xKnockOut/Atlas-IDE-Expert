@@ -278,38 +278,13 @@ begin
   Result := RoutesOf(TJsonRead.Items(AData, 'routes'), AModel);
 end;
 
-function ParsedObject(const AAnswer: string): TJSONObject;
-var
-  mRoot: TJSONValue;
-begin
-  Result := nil;
-  if Trim(AAnswer) = '' then
-  begin
-    Exit;
-  end;
-  try
-    mRoot := TJSONObject.ParseJSONValue(AAnswer);
-  except
-    on EJSONException do
-      mRoot := nil;
-  end;
-  if mRoot is TJSONObject then
-  begin
-    Result := TJSONObject(mRoot);
-  end
-  else
-  begin
-    mRoot.Free;
-  end;
-end;
-
 class function TAtlasSymbolPathAnswer.Parse(const AAnswer: string; out AModel: TAtlasSymbolPathAnswer): Boolean;
 var
   mData: TJSONObject;
 begin
   AModel := Default(TAtlasSymbolPathAnswer);
   Result := False;
-  mData := ParsedObject(AAnswer);
+  mData := TJsonRead.ParseObject(AAnswer);
   if mData = nil then
   begin
     Exit;

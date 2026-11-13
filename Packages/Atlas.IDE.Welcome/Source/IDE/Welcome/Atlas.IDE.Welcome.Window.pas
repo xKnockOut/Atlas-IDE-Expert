@@ -194,7 +194,6 @@ begin
       Host.Form.Width := MulDiv(cDefaultWidth, Screen.PixelsPerInch, 96);
       Host.Form.Height := MulDiv(cDefaultHeight, Screen.PixelsPerInch, 96);
     end;
-    TAtlasIdeDockWindow.UpdateIcon(Host);
   end;
   Result := ExistingBoard;
 end;
@@ -210,16 +209,12 @@ end;
 
 class function TAtlasIdeWelcomeWindow.Visible: Boolean;
 begin
-  // Angedockt in verstecktem Gastgeber zählt nicht als sichtbar.
-  Result := (Host <> nil) and Host.Shown;
+  Result := TAtlasIdeDockWindow.IsShown(Host);
 end;
 
 class procedure TAtlasIdeWelcomeWindow.Hide;
 begin
-  if Host <> nil then
-  begin
-    Host.Hide;
-  end;
+  TAtlasIdeDockWindow.HideIfAny(Host);
 end;
 
 class procedure TAtlasIdeWelcomeWindow.ApplyTheme;

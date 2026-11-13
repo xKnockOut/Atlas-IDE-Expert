@@ -229,14 +229,8 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Tracker.Markdown,
   Atlas.Core.Tracker.PaletteSearch,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.DocBox;
-
-const
-  /// <summary>Breite des Knopfs „Vorschau“ in der Leiste.</summary>
-  cPreviewWidth = 90;
-  /// <summary>Breite des Knopfs „Textbausteine“ in der Leiste.</summary>
-  cSnippetWidth = 120;
 
 type
   /// <summary>Was eine Taste im Feld auslöst.</summary>
@@ -675,15 +669,15 @@ begin
     // Leeres Feld: der Entwurf gleich darin, mit „Verwerfen“.
     SetMemoText(FEditor, MemoText(mText));
     FRestored := True;
-    ShowNote(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.CommentEditorDraftRestored, [mWhen]),
-      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorDraftDiscard));
+    ShowNote(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.CommentEditorDraftRestored, [mWhen]),
+      TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorDraftDiscard));
   end
   else
   begin
     // Vorgefülltes Feld (Vorlage beim Beenden): Entwurf nur anbieten.
     FOffered := mText;
-    ShowNote(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.CommentEditorDraftOffered, [mWhen]),
-      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorDraftApply));
+    ShowNote(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.CommentEditorDraftOffered, [mWhen]),
+      TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorDraftApply));
   end;
 end;
 
@@ -746,7 +740,7 @@ begin
   Keep;
   if not FEditor.FParts.DraftButton.Visible then
   begin
-    ShowNote(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorDraftSaved), '');
+    ShowNote(TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorDraftSaved), '');
   end;
 end;
 
@@ -818,11 +812,11 @@ function ImageCaption(const ASegment: TAtlasMarkdownSegment): string;
 begin
   if ASegment.Image.Text <> '' then
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.CommentEditorImage, [ASegment.Image.Text]);
+    Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.CommentEditorImage, [ASegment.Image.Text]);
   end
   else
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.CommentEditorImage, [ASegment.Image.Url]);
+    Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.CommentEditorImage, [ASegment.Image.Url]);
   end;
 end;
 
@@ -840,7 +834,7 @@ begin
     begin
       mLabel := TLabel.Create(FBox);
       Place(mLabel);
-      mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorPreviewEmpty);
+      mLabel.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorPreviewEmpty);
       mLabel.Font.Color := ToColor(FColors.Muted);
       Exit;
     end;
@@ -878,6 +872,10 @@ end;
 /// <summary>Leiste unten: Vorschau, Textbaustein, Hinweis und Knopf zum Entwurf. Fließend: Reihenfolge =
 /// Erzeugungsreihenfolge, bei schmalem Fenster Umbruch in weitere Zeilen.</summary>
 procedure AddBar(AEditor: TAtlasCommentEditor);
+const
+  // Breiten der Knöpfe Vorschau und Textbaustein.
+  cPreviewWidth = 90;
+  cSnippetWidth = 120;
 begin
   AEditor.FParts.Bar := TFlowPanel.Create(AEditor);
   AEditor.FParts.Bar.Parent := AEditor;
@@ -887,10 +885,10 @@ begin
   AEditor.FParts.Bar.AutoWrap := True;
   AEditor.FParts.Bar.AutoSize := True;
   AEditor.FParts.PreviewButton := AddBarButton(AEditor, cPreviewWidth,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorPreview));
+    TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorPreview));
   AEditor.FParts.PreviewButton.OnClick := AEditor.ButtonClick;
   AEditor.FParts.SnippetButton := AddBarButton(AEditor, cSnippetWidth,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorSnippets));
+    TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorSnippets));
   AEditor.FParts.SnippetButton.OnClick := AEditor.ButtonClick;
   AEditor.FParts.DraftNote := TLabel.Create(AEditor);
   AEditor.FParts.DraftNote.Parent := AEditor.FParts.Bar;
@@ -913,7 +911,7 @@ begin
   AEditor.FParts.Memo.ScrollBars := ssVertical;
   AEditor.FParts.Memo.WantReturns := True;
   AEditor.FParts.Memo.WantTabs := False;
-  AEditor.FParts.Memo.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorHint);
+  AEditor.FParts.Memo.Hint := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorHint);
   AEditor.FParts.Memo.ShowHint := True;
   AEditor.FParts.Memo.OnChange := AEditor.MemoChange;
   AEditor.FParts.Memo.OnKeyDown := AEditor.MemoKeyDown;
@@ -1159,7 +1157,7 @@ begin
   if Length(mSnippets) = 0 then
   begin
     mItem := TMenuItem.Create(mMenu);
-    mItem.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorNoSnippets);
+    mItem.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorNoSnippets);
     mItem.Enabled := False;
     mMenu.Items.Add(mItem);
   end;
@@ -1206,12 +1204,12 @@ begin
   if AValue then
   begin
     FPreview.Build(Text);
-    FParts.PreviewButton.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorEdit);
+    FParts.PreviewButton.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorEdit);
   end
   else
   begin
     FPreview.Clear;
-    FParts.PreviewButton.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CommentEditorPreview);
+    FParts.PreviewButton.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorPreview);
   end;
   FParts.Preview.Visible := AValue;
   FParts.Memo.Visible := not AValue;

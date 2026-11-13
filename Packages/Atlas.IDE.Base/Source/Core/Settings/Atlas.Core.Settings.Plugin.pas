@@ -81,6 +81,18 @@ type
     cMaxImpactDepth = Atlas.Core.Settings.Plugin.Editor.cMaxImpactDepth;
     cMinTestsAffectedDepth = Atlas.Core.Settings.Plugin.Build.cMinTestsAffectedDepth;
     cMaxTestsAffectedDepth = Atlas.Core.Settings.Plugin.Build.cMaxTestsAffectedDepth;
+    cMinTestsCoveredByDepth = Atlas.Core.Settings.Plugin.Build.cMinTestsCoveredByDepth;
+    cMaxTestsCoveredByDepth = Atlas.Core.Settings.Plugin.Build.cMaxTestsCoveredByDepth;
+    cMinTestsFromDebugStopMaxArray = Atlas.Core.Settings.Plugin.Debug.cMinTestsFromDebugStopMaxArray;
+    cMaxTestsFromDebugStopMaxArray = Atlas.Core.Settings.Plugin.Debug.cMaxTestsFromDebugStopMaxArray;
+    cMinTestsUntestedWarnPercent = Atlas.Core.Settings.Plugin.Build.cMinTestsUntestedWarnPercent;
+    cMaxTestsUntestedWarnPercent = Atlas.Core.Settings.Plugin.Build.cMaxTestsUntestedWarnPercent;
+    cMinTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMinTestsOnSaveMax;
+    cMaxTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMaxTestsOnSaveMax;
+    cMinTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMinTestsSlowMs;
+    cMaxTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMaxTestsSlowMs;
+    cMinTestsLogMaxLines = Atlas.Core.Settings.Plugin.Build.cMinTestsLogMaxLines;
+    cMaxTestsLogMaxLines = Atlas.Core.Settings.Plugin.Build.cMaxTestsLogMaxLines;
     cMinDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMinDataFlowDepth;
     cMaxDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMaxDataFlowDepth;
     cMinStickyLines = Atlas.Core.Settings.Plugin.Editor.cMinStickyLines;
@@ -99,6 +111,12 @@ type
     cMinBlockEndLines = Atlas.Core.Settings.Plugin.Editor.cMinBlockEndLines;
     cMaxBlockEndLines = Atlas.Core.Settings.Plugin.Editor.cMaxBlockEndLines;
     cMinInlineValuesPerLine = Atlas.Core.Settings.Plugin.Debug.cMinInlineValuesPerLine;
+    cMinWhyHereDepth = Atlas.Core.Settings.Plugin.Debug.cMinWhyHereDepth;
+    cMaxWhyHereDepth = Atlas.Core.Settings.Plugin.Debug.cMaxWhyHereDepth;
+    cMinPredictLines = Atlas.Core.Settings.Plugin.Debug.cMinPredictLines;
+    cMaxPredictLines = Atlas.Core.Settings.Plugin.Debug.cMaxPredictLines;
+    cMinHoverMaxChildren = Atlas.Core.Settings.Plugin.Debug.cMinHoverMaxChildren;
+    cMaxHoverMaxChildren = Atlas.Core.Settings.Plugin.Debug.cMaxHoverMaxChildren;
     cMaxQuickChordWait = Atlas.Core.Settings.Plugin.Bookmarks.cMaxQuickChordWait;
     cMinRecursionDepth = Atlas.Core.Settings.Plugin.Editor.cMinRecursionDepth;
     cMaxRecursionDepth = Atlas.Core.Settings.Plugin.Editor.cMaxRecursionDepth;
@@ -138,6 +156,8 @@ type
     cIssuesSprintAsk = Atlas.Core.Settings.Plugin.Issues.cIssuesSprintAsk;
     cIssuesSprintAlways = Atlas.Core.Settings.Plugin.Issues.cIssuesSprintAlways;
     cIssuesSprintNever = Atlas.Core.Settings.Plugin.Issues.cIssuesSprintNever;
+    cIssuesGitHubStateProject = Atlas.Core.Settings.Plugin.Issues.cIssuesGitHubStateProject;
+    cIssuesGitHubStateLabel = Atlas.Core.Settings.Plugin.Issues.cIssuesGitHubStateLabel;
     cBeginEndAlways = Atlas.Core.Settings.Plugin.Editor.cBeginEndAlways;
     cBeginEndMultiLine = Atlas.Core.Settings.Plugin.Editor.cBeginEndMultiLine;
     cBeginEndNever = Atlas.Core.Settings.Plugin.Editor.cBeginEndNever;
@@ -347,6 +367,8 @@ type
     property AssistantsEdit: Boolean read FBuild.AssistantsEdit write FBuild.AssistantsEdit;
     property BuildOnOpen: Boolean read FBuild.BuildOnOpen write FBuild.BuildOnOpen;
     property BuildOnOpenKind: string read FBuild.BuildOnOpenKind write FBuild.BuildOnOpenKind;
+    property BuildStopRunningProgram: string read FBuild.BuildStopRunningProgram
+      write FBuild.BuildStopRunningProgram;
     property BuildOnOpenScope: string read FBuild.BuildOnOpenScope write FBuild.BuildOnOpenScope;
     property BuildOnOpenDelayMs: Integer read FBuild.BuildOnOpenDelayMs write FBuild.BuildOnOpenDelayMs;
     property BuildOnOpenExclude: string read FBuild.BuildOnOpenExclude write FBuild.BuildOnOpenExclude;
@@ -366,19 +388,45 @@ type
     property CodeLensMetrics: Boolean read FEditorInsight.CodeLensMetrics write FEditorInsight.CodeLensMetrics;
     property Metrics: Boolean read FEditorInsight.Metrics write FEditorInsight.Metrics;
     property CodeLensTests: Boolean read FEditorInsight.CodeLensTests write FEditorInsight.CodeLensTests;
+    property CodeLensCoveredBy: Boolean read FEditorInsight.CodeLensCoveredBy write FEditorInsight.CodeLensCoveredBy;
+    property CodeLensUntested: Boolean read FEditorInsight.CodeLensUntested write FEditorInsight.CodeLensUntested;
     property TestRun: Boolean read FBuild.TestRun write FBuild.TestRun;
     property TestsAfterBuild: Boolean read FBuild.TestsAfterBuild write FBuild.TestsAfterBuild;
     property TestsBuildFirst: Boolean read FBuild.TestsBuildFirst write FBuild.TestsBuildFirst;
     property TestsAffected: Boolean read FBuild.TestsAffected write FBuild.TestsAffected;
+    property TestsLeakSetup: Boolean read FBuild.TestsLeakSetup write FBuild.TestsLeakSetup;
     property TestsAffectedDepth: Integer read FBuild.TestsAffectedDepth write FBuild.TestsAffectedDepth;
     property TestsAffectedBeforeCommit: Boolean read FBuild.TestsAffectedBeforeCommit
       write FBuild.TestsAffectedBeforeCommit;
     property TestsStale: Boolean read FBuild.TestsStale write FBuild.TestsStale;
     property TestsStaleUnits: Boolean read FBuild.TestsStaleUnits write FBuild.TestsStaleUnits;
+    property TestsCoveredByDepth: Integer read FBuild.TestsCoveredByDepth write FBuild.TestsCoveredByDepth;
+    property TestsCoveredByPrivate: Boolean read FBuild.TestsCoveredByPrivate write FBuild.TestsCoveredByPrivate;
+    property TestsUntestedWarnPercent: Integer read FBuild.TestsUntestedWarnPercent
+      write FBuild.TestsUntestedWarnPercent;
+    property TestsOnSave: Boolean read FBuild.TestsOnSave write FBuild.TestsOnSave;
+    property TestsOnSaveMax: Integer read FBuild.TestsOnSaveMax write FBuild.TestsOnSaveMax;
     property TestsFailureAtAssert: Boolean read FBuild.TestsFailureAtAssert write FBuild.TestsFailureAtAssert;
     property TestsFailureInline: Boolean read FBuild.TestsFailureInline write FBuild.TestsFailureInline;
+    property TestsFromDebugStop: Boolean read FDebug.TestsFromDebugStop write FDebug.TestsFromDebugStop;
+    property TestsFromDebugStopFields: Boolean read FDebug.TestsFromDebugStopFields
+      write FDebug.TestsFromDebugStopFields;
+    property TestsFromDebugStopProperties: Boolean read FDebug.TestsFromDebugStopProperties
+      write FDebug.TestsFromDebugStopProperties;
+    property TestsFromDebugStopMaxArray: Integer read FDebug.TestsFromDebugStopMaxArray
+      write FDebug.TestsFromDebugStopMaxArray;
     property TestsCompare: Boolean read FBuild.TestsCompare write FBuild.TestsCompare;
     property TestsCompareFormat: Boolean read FBuild.TestsCompareFormat write FBuild.TestsCompareFormat;
+    property TestsApprovalFiles: Boolean read FBuild.TestsApprovalFiles write FBuild.TestsApprovalFiles;
+    property TestsShowDuration: Boolean read FBuild.TestsShowDuration write FBuild.TestsShowDuration;
+    property TestsWindow: Boolean read FBuild.TestsWindow write FBuild.TestsWindow;
+    property TestsLists: Boolean read FBuild.TestsLists write FBuild.TestsLists;
+    property TestsListsRunKey: Integer read FBuild.TestsListsRunKey write FBuild.TestsListsRunKey;
+    property TestsLog: Boolean read FBuild.TestsLog write FBuild.TestsLog;
+    property TestsLogMaxLines: Integer read FBuild.TestsLogMaxLines write FBuild.TestsLogMaxLines;
+    property TestsSlowMs: Integer read FBuild.TestsSlowMs write FBuild.TestsSlowMs;
+    property TestsCaseTable: Boolean read FBuild.TestsCaseTable write FBuild.TestsCaseTable;
+    property TestsLeaks: Boolean read FBuild.TestsLeaks write FBuild.TestsLeaks;
     property BuildZeroHints: Boolean read FBuild.BuildZeroHints write FBuild.BuildZeroHints;
     property ShowInterfaceCost: Boolean read FBuild.ShowInterfaceCost write FBuild.ShowInterfaceCost;
     property BuildSummary: Boolean read FBuild.BuildSummary write FBuild.BuildSummary;
@@ -423,6 +471,18 @@ type
     property DebugBreakOnNextEvent: Boolean read FDebug.DebugBreakOnNextEvent write FDebug.DebugBreakOnNextEvent;
     property DebugBreakOnNextEventExcluded: string read FDebug.DebugBreakOnNextEventExcluded
       write FDebug.DebugBreakOnNextEventExcluded;
+    property DebugCheckBreakpoints: Boolean read FDebug.DebugCheckBreakpoints write FDebug.DebugCheckBreakpoints;
+    property DebugMethodBreakpoints: Boolean read FDebug.DebugMethodBreakpoints
+      write FDebug.DebugMethodBreakpoints;
+    property DebugInstanceBreakpoints: Boolean read FDebug.DebugInstanceBreakpoints
+      write FDebug.DebugInstanceBreakpoints;
+    property DebugDataBreakpoints: Boolean read FDebug.DebugDataBreakpoints write FDebug.DebugDataBreakpoints;
+    property DebugBreakpointSetPerBranch: Boolean read FDebug.DebugBreakpointSetPerBranch
+      write FDebug.DebugBreakpointSetPerBranch;
+    property DebugRunToClick: Boolean read FDebug.DebugRunToClick write FDebug.DebugRunToClick;
+    property DebugBreakpointsWindow: Boolean read FDebug.DebugBreakpointsWindow write FDebug.DebugBreakpointsWindow;
+    property DebugBreakpointAnchors: Boolean read FDebug.DebugBreakpointAnchors write FDebug.DebugBreakpointAnchors;
+    property DebugBreakpointRules: Boolean read FDebug.DebugBreakpointRules write FDebug.DebugBreakpointRules;
     property DebugExplainUnavailable: Boolean read FDebug.DebugExplainUnavailable write FDebug.DebugExplainUnavailable;
     property DebugCompletionInDialogs: Boolean read FDebug.DebugCompletionInDialogs
       write FDebug.DebugCompletionInDialogs;
@@ -433,6 +493,25 @@ type
       write FDebug.DebugExplainAccessViolation;
     property DebugExplainAccessViolationAllowCalls: Boolean read FDebug.DebugExplainAccessViolationAllowCalls
       write FDebug.DebugExplainAccessViolationAllowCalls;
+    property DebugModuleOfAddress: Boolean read FDebug.DebugModuleOfAddress write FDebug.DebugModuleOfAddress;
+    property DebugDeadlocks: Boolean read FDebug.DebugDeadlocks write FDebug.DebugDeadlocks;
+    property DebugLeakReport: Boolean read FDebug.DebugLeakReport write FDebug.DebugLeakReport;
+    property DebugLeakReportCompare: Boolean read FDebug.DebugLeakReportCompare write FDebug.DebugLeakReportCompare;
+    property DebugLeakReportWindow: Boolean read FDebug.DebugLeakReportWindow write FDebug.DebugLeakReportWindow;
+    property DebugParallelStacks: Boolean read FDebug.DebugParallelStacks write FDebug.DebugParallelStacks;
+    property DebugCallStackWindow: Boolean read FDebug.DebugCallStackWindow write FDebug.DebugCallStackWindow;
+    property DebugCallStackWindowEvaluateParams: Boolean read FDebug.DebugCallStackWindowEvaluateParams
+      write FDebug.DebugCallStackWindowEvaluateParams;
+    property DebugThreadsInSource: Boolean read FDebug.DebugThreadsInSource write FDebug.DebugThreadsInSource;
+    property DebugThreadFreeze: Boolean read FDebug.DebugThreadFreeze write FDebug.DebugThreadFreeze;
+    property DebugAsyncOrigin: Boolean read FDebug.DebugAsyncOrigin write FDebug.DebugAsyncOrigin;
+    property DebugAsyncOriginMaxPerSite: Integer read FDebug.DebugAsyncOriginMaxPerSite
+      write FDebug.DebugAsyncOriginMaxPerSite;
+    property DebugParallelStacksWaitRoutines: string read FDebug.DebugParallelStacksWaitRoutines
+      write FDebug.DebugParallelStacksWaitRoutines;
+    property DebugParallelStacksMaxThreads: Integer read FDebug.DebugParallelStacksMaxThreads
+      write FDebug.DebugParallelStacksMaxThreads;
+
     property DebugExceptionHistory: Boolean read FDebug.DebugExceptionHistory write FDebug.DebugExceptionHistory;
     property DebugJustMyCode: Boolean read FDebug.DebugJustMyCode write FDebug.DebugJustMyCode;
     property DebugExceptionBanner: Boolean read FDebug.DebugExceptionBanner write FDebug.DebugExceptionBanner;
@@ -442,6 +521,31 @@ type
     property DebugInlineValuesPerLine: Integer read FDebug.DebugInlineValuesPerLine
       write FDebug.DebugInlineValuesPerLine;
     property DebugOwnCodeFolders: string read FDebug.DebugOwnCodeFolders write FDebug.DebugOwnCodeFolders;
+    property DebugWhyHere: Boolean read FDebug.DebugWhyHere write FDebug.DebugWhyHere;
+    property DebugWhyHereDepth: Integer read FDebug.DebugWhyHereDepth write FDebug.DebugWhyHereDepth;
+    property DebugPredictConditions: Boolean read FDebug.DebugPredictConditions write FDebug.DebugPredictConditions;
+    property DebugPredictDimSkipped: Boolean read FDebug.DebugPredictDimSkipped write FDebug.DebugPredictDimSkipped;
+    property DebugPredictLines: Integer read FDebug.DebugPredictLines write FDebug.DebugPredictLines;
+    property DebugEditValues: Boolean read FDebug.DebugEditValues write FDebug.DebugEditValues;
+    property DebugHoverExpand: Boolean read FDebug.DebugHoverExpand write FDebug.DebugHoverExpand;
+    property DebugHoverChanges: Boolean read FDebug.DebugHoverChanges write FDebug.DebugHoverChanges;
+    property DebugHoverMaxChildren: Integer read FDebug.DebugHoverMaxChildren write FDebug.DebugHoverMaxChildren;
+    property DebugEventLog: Boolean read FDebug.DebugEventLog write FDebug.DebugEventLog;
+    property DebugEventLogColors: string read FDebug.DebugEventLogColors write FDebug.DebugEventLogColors;
+    property DebugLogpoints: Boolean read FDebug.DebugLogpoints write FDebug.DebugLogpoints;
+    property DebugLogpointPrefix: string read FDebug.DebugLogpointPrefix write FDebug.DebugLogpointPrefix;
+    property DebugNoSourcePage: Boolean read FDebug.DebugNoSourcePage write FDebug.DebugNoSourcePage;
+    property DebugNoSourceIgnoredUnits: string read FDebug.DebugNoSourceIgnoredUnits
+      write FDebug.DebugNoSourceIgnoredUnits;
+    property DebugRestart: Boolean read FDebug.DebugRestart write FDebug.DebugRestart;
+    property DebugRestartReenableBreakpoints: Boolean read FDebug.DebugRestartReenableBreakpoints
+      write FDebug.DebugRestartReenableBreakpoints;
+    property DebugReattach: Boolean read FDebug.DebugReattach write FDebug.DebugReattach;
+    property DebugReattachKey: Integer read FDebug.DebugReattachKey write FDebug.DebugReattachKey;
+    property DebugReattachWaitIntervalMs: Integer read FDebug.DebugReattachWaitIntervalMs
+      write FDebug.DebugReattachWaitIntervalMs;
+    property DebugLaunchGroups: Boolean read FDebug.DebugLaunchGroups write FDebug.DebugLaunchGroups;
+    property DebugPinnedValues: Boolean read FDebug.DebugPinnedValues write FDebug.DebugPinnedValues;
     property StartProfiles: Boolean read FDebug.StartProfiles write FDebug.StartProfiles;
     property StartProfilesStatusField: Boolean read FDebug.StartProfilesStatusField
       write FDebug.StartProfilesStatusField;
@@ -653,6 +757,7 @@ type
     property EditorToolbarLabels: Boolean read FEditorView.EditorToolbarLabels write FEditorView.EditorToolbarLabels;
     property EditorStatusBar: Boolean read FEditorView.EditorStatusBar write FEditorView.EditorStatusBar;
     property EditorStatusBarItems: string read FEditorView.EditorStatusBarItems write FEditorView.EditorStatusBarItems;
+    property EditorStatusBarTests: Boolean read FEditorView.EditorStatusBarTests write FEditorView.EditorStatusBarTests;
     property EditorDesignerBar: Boolean read FEditorView.EditorDesignerBar write FEditorView.EditorDesignerBar;
     property DesignerSearchKey: Integer read FEditorView.DesignerSearchKey write FEditorView.DesignerSearchKey;
     property DesignerSearchStyle: string read FEditorView.DesignerSearchStyle write FEditorView.DesignerSearchStyle;
@@ -1170,6 +1275,8 @@ type
     property IssuesCreate: Boolean read FIssueWork.IssuesCreate write FIssueWork.IssuesCreate;
     property IssuesCreateIncludeCode: Boolean read FIssueWork.IssuesCreateIncludeCode
       write FIssueWork.IssuesCreateIncludeCode;
+    property IssuesCreateTemplates: Boolean read FIssueWork.IssuesCreateTemplates
+      write FIssueWork.IssuesCreateTemplates;
     property VcsProvider: string read FVcs.VcsProvider write FVcs.VcsProvider;
     property VcsGitPath: string read FVcs.VcsGitPath write FVcs.VcsGitPath;
     property VcsSvnPath: string read FVcs.VcsSvnPath write FVcs.VcsSvnPath;
@@ -1206,6 +1313,19 @@ type
     property IssuesReviewComment: string read FIssues.IssuesReviewComment write FIssues.IssuesReviewComment;
     property IssuesEndFields: string read FIssues.IssuesEndFields write FIssues.IssuesEndFields;
     property IssuesEndTime: Boolean read FIssues.IssuesEndTime write FIssues.IssuesEndTime;
+    property IssuesGitHubStateTarget: string read FIssues.IssuesGitHubStateTarget
+      write FIssues.IssuesGitHubStateTarget;
+    property IssuesGitHubProject: string read FIssues.IssuesGitHubProject write FIssues.IssuesGitHubProject;
+    property IssuesGitHubAddToProject: Boolean read FIssues.IssuesGitHubAddToProject
+      write FIssues.IssuesGitHubAddToProject;
+    property IssuesGitHubLinkBranch: Boolean read FIssues.IssuesGitHubLinkBranch
+      write FIssues.IssuesGitHubLinkBranch;
+    property IssuesGitHubTemplateFields: string read FIssues.IssuesGitHubTemplateFields
+      write FIssues.IssuesGitHubTemplateFields;
+    property IssuesGitHubCreatePr: Boolean read FIssues.IssuesGitHubCreatePr write FIssues.IssuesGitHubCreatePr;
+    property IssuesGitHubPrBase: string read FIssues.IssuesGitHubPrBase write FIssues.IssuesGitHubPrBase;
+    property IssuesGitHubPrBody: string read FIssues.IssuesGitHubPrBody write FIssues.IssuesGitHubPrBody;
+    property IssuesGitHubPrDraft: Boolean read FIssues.IssuesGitHubPrDraft write FIssues.IssuesGitHubPrDraft;
     property IssuesTimeTracking: Boolean read FIssueWork.IssuesTimeTracking write FIssueWork.IssuesTimeTracking;
     property IssuesIdleMinutes: Integer read FIssueWork.IssuesIdleMinutes write FIssueWork.IssuesIdleMinutes;
     property IssuesTimeRounding: Integer read FIssueWork.IssuesTimeRounding write FIssueWork.IssuesTimeRounding;

@@ -62,6 +62,9 @@ type
     /// <summary>„Weiterarbeiten“ an einem wieder geöffneten Issue (#2127): den gespeicherten Arbeitsstand von AKey
     /// ohne Rückfrage wiederherstellen; ohne gespeicherten Stand nichts.</summary>
     procedure Restore(const AProject, AKey: string);
+    /// <summary>Beenden als „nicht geplant“ oder „Duplikat“ (#2135): den gespeicherten Arbeitsstand von AKey
+    /// verwerfen; ohne gespeicherten Stand nichts.</summary>
+    procedure Forget(const AProject, AKey: string);
     /// <summary>Zustände der Issues haben sich geändert (Abfrage im Hintergrund fertig): neu zeichnen.</summary>
     procedure StatusesChanged;
   end;

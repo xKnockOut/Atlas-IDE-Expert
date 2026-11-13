@@ -7,14 +7,17 @@
 // - die Teile der Feature-Tabelle (Visualisierer, eigene Darstellungen,
 //   Exception-Verlauf und -Leiste, nur eigener Code, Werte im Editor,
 //   „kein Zugriff“ erklären, Zugriffsverletzung, Vervollständigung in
-//   Debugger-Dialogen, Fenster „Auswerten“, Schrittfilter; die Teile für Werte
-//   und Ausdrücke stehen in Atlas.IDE.Debug.Composition.Values),
+//   Debugger-Dialogen, Fenster „Auswerten“, Schrittfilter, „Was wartet worauf?“; die Teile
+//   für Werte und Ausdrücke stehen in Atlas.IDE.Debug.Composition.Values, die für
+//   Exceptions und Threads in Atlas.IDE.Debug.Composition.Session),
 // - Befehle (Palette), Einträge im Atlas-Menü und im Kontextmenü des Editors,
 //   die Taste von „Gezielt hineinspringen“,
 // - Hörer für Einstellungen, Thema und Ansichtswechsel sowie die Werte im
 //   Tooltip,
 // - für andere Module den Bericht über die Debug-Sitzung
-//   (IAtlasDebugReportSource, Atlas.IDE.Contracts.DebugReport).
+//   (IAtlasDebugReportSource, Atlas.IDE.Contracts.DebugReport) und den Halt
+//   für „Test daraus anlegen …“ (IAtlasDebugStopSource, #1873); beide stellt
+//   Atlas.IDE.Debug.Composition.Contracts bereit.
 // Das erste Teil („DebugCommands“, ab dem abgesicherten Start) installiert
 // „Gezielt hineinspringen“, „Beim nächsten Ereignis anhalten“ und die Befehle
 // des Schrittfilters; es stoppt als letztes, nimmt sie zurück und hängt F7 ab
@@ -67,7 +70,6 @@ uses
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Providers.Expression,
   Atlas.Core.Completion.Providers.Server,
-  Atlas.Core.Status.Registry,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Exceptions,
@@ -77,12 +79,13 @@ uses
   Atlas.IDE.Debug.Visualizers,
   Atlas.IDE.Debug.DisplayRules,
   Atlas.IDE.Debug.StepInto,
-  Atlas.IDE.Debug.EventBreak,
   Atlas.IDE.Debug.Trace,
   Atlas.IDE.Debug.StepFilter,
-  Atlas.IDE.Debug.Report,
-  Atlas.IDE.Contracts.DebugReport,
+  Atlas.IDE.Debug.Composition.Contracts,
   Atlas.IDE.Debug.Composition.Values,
+  Atlas.IDE.Debug.Composition.Breakpoints,
+  Atlas.IDE.Debug.Composition.Run,
+  Atlas.IDE.Debug.Composition.Session,
   Atlas.UI.Debug.Strings;
 
 var
@@ -128,11 +131,6 @@ begin
   Result := TAtlasIdeStepInto.Enabled;
 end;
 
-function BreakOnNextEventVisible: Boolean;
-begin
-  Result := TAtlasIdeEventBreak.Enabled;
-end;
-
 function StepFilterRunning: Boolean;
 begin
   Result := TAtlasIdeDebugStepFilter.Started;
@@ -175,21 +173,6 @@ begin
     end);
 end;
 
-procedure StartDebugExceptions;
-begin
-  TAtlasIdeDebugExceptions.Start(MessageLine);
-end;
-
-procedure StartDebugOwnCode;
-begin
-  TAtlasIdeDebugOwnCode.Start(MessageLine);
-end;
-
-procedure StartDebugExceptionBar;
-begin
-  TAtlasIdeDebugExceptionBar.Start(MessageLine, TAtlasStatusRegistry.Default);
-end;
-
 function ExpressionProvider(const AHistory: TFunc<TArray<string>>): IAtlasCompletionProvider;
 var
   mProvider: TAtlasExpressionCompletionProvider;
@@ -210,6 +193,12 @@ end;
 procedure ToggleDebugJustMyCode;
 begin
   TAtlasIdeDebugOwnCode.ToggleSetting(MessageLine);
+end;
+
+/// <summary>Scope des Moduls für Befehle mit Antwort des Servers; nil vor dem Anmelden.</summary>
+function CurrentScope: IAtlasModuleScope;
+begin
+  Result := GScope;
 end;
 
 /// <summary>Befehl abgesichert ausführen (#493): eine Ausnahme schaltet nur die Debugger-Funktionen ab.</summary>
@@ -259,11 +248,7 @@ begin
       Result := Session;
     end, MessageLine);
   // Beim nächsten Ereignis anhalten (#856): Eintrag im Menü Start.
-  TAtlasIdeEventBreak.Install(
-    function: TLspSession
-    begin
-      Result := Session;
-    end, MessageLine);
+  InstallBreakCommands;
   // Schrittfilter (#850): Fenster und Befehle; den Ablauf startet das Teil DebugStepFilter.
   TAtlasIdeDebugStepFilter.Install(
     function: TLspSession
@@ -277,7 +262,7 @@ procedure UninstallCommands;
 begin
   GCommandsInstalled := False;
   TAtlasIdeStepInto.Uninstall;
-  TAtlasIdeEventBreak.Uninstall;
+  UninstallBreakCommands;
   TAtlasIdeDebugStepFilter.Uninstall;
   // Nach allen anderen Teilen: Was von F7 übrig ist, hängt der Debugger hier ab (#850).
   TAtlasIdeDebugTrace.Release;
@@ -304,16 +289,14 @@ begin
 end;
 
 function TAtlasDebugModule.Commands: TArray<TAtlasModuleCommand>;
+var
+  mCommand: TAtlasModuleCommand;
 begin
   Result := [
     // Gezielt hineinspringen (#836); nur sichtbar, solange debug.stepIntoTarget an ist.
     CommandWithKey('Atlas.StepIntoTarget', TAtlasDebugStrings.StepIntoTargetCommand,
       TAtlasIdeStepInto.Run,
       StepIntoTargetVisible, StepIntoTargetKey),
-    // Beim nächsten Ereignis anhalten (#856); nur sichtbar, solange debug.breakOnNextEvent an ist.
-    Command('Atlas.BreakOnNextEvent', TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCommand),
-      TAtlasIdeEventBreak.Run,
-      BreakOnNextEventVisible),
     // Schrittfilter (#850): Das Fenster schaltet debug.stepFilters selbst, deshalb immer sichtbar.
     Command('Atlas.StepFilters', TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterWindowCommand),
       TAtlasIdeDebugStepFilter.ShowWindow,
@@ -342,7 +325,30 @@ begin
       ToggleDebugJustMyCode, nil),
     // Exception-Leiste (#783): Dialog der IDE für die laufende Debug-Sitzung.
     Command('Atlas.DebugExceptionIdeDialog', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerIdeDialogCommand),
-      TAtlasIdeDebugExceptionBar.ToggleIdeDialog, DebugExceptionBarVisible)];
+      TAtlasIdeDebugExceptionBar.ToggleIdeDialog, DebugExceptionBarVisible),
+    // Was wartet worauf? (#587); nur sichtbar, solange debug.deadlocks an ist.
+    Command('Atlas.DebugDeadlocks', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsCommand),
+      RunDebugDeadlocks, DebugDeadlocksVisible),
+    // Parallele Aufrufstapel (#837); nur sichtbar, solange debug.parallelStacks an ist.
+    Command('Atlas.DebugParallelStacks', TAtlasDebugStrings.Text(TAtlasDebugTextId.ParallelStacksCommand),
+      ShowDebugParallelStacks, DebugParallelStacksVisible),
+    // Atlas-Lecks (#1875); nur sichtbar, solange debug.leakReport an ist.
+    Command('Atlas.DebugLeaks', TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksCommand), ShowDebugLeaks,
+      DebugLeaksVisible)];
+  // Threads im Quelltext (#852): markieren, einfrieren, auftauen; Atlas-Aufrufstapel (#843).
+  Result := Result + DebugThreadCommands;
+  // Werkzeuge rund um den Lauf: Ereignisprotokoll (#580).
+  Result := Result + RunCommands(CurrentScope);
+  // Anhalten und Haltepunkte (#856, #577) aus Atlas.IDE.Debug.Composition.Breakpoints, unter der Sicherung.
+  for mCommand in BreakpointCommands do
+  begin
+    Result := Result + [Command(mCommand.Id, mCommand.Caption, mCommand.Run, mCommand.Visible)];
+  end;
+  // Werte ändern (#868) aus Atlas.IDE.Debug.Composition.Values, unter der Sicherung.
+  for mCommand in ValueCommands do
+  begin
+    Result := Result + [CommandWithKey(mCommand.Id, mCommand.Caption, mCommand.Run, mCommand.Visible, mCommand.Key)];
+  end;
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -373,10 +379,24 @@ begin
   Result := [
     MenuEntry('Atlas.DebugExceptions', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugEvaluate', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.DebugDeadlocks', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.DebugParallelStacks', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.DebugCallStack', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.DebugLeaks', TAtlasMenuPlace.AtlasMenu),
     // Kontextmenü des Editors: gezielt hineinspringen (#836) und Schrittfilter (#850).
     ContextEntry('Atlas.StepIntoTarget'),
     ContextEntry('Atlas.StepFilterSkip'),
-    ContextEntry('Atlas.StepFilterUnskip')];
+    ContextEntry('Atlas.StepFilterUnskip'),
+    // Threads im Quelltext (#852): für die Threads an der Zeile des Rechtsklicks in die Rinne.
+    ContextEntry('Atlas.DebugThreadFlag'),
+    ContextEntry('Atlas.DebugThreadFreeze'),
+    ContextEntry('Atlas.DebugThreadThaw'),
+    ContextEntry('Atlas.DebugThreadsThawAll')];
+  // Ereignisprotokoll, Logpunkte, Neu starten und Laufzeitberichte (#580, #583, #872, #74).
+  Result := Result + RunMenuEntries;
+  Result := Result + BreakpointMenuEntries;
+  // Werte ändern (#868).
+  Result := Result + ValueMenuEntries;
 end;
 
 function TAtlasDebugModule.Keys: TArray<TAtlasModuleKey>;
@@ -394,6 +414,11 @@ begin
       Result := TryStepInto;
     end;
   Result := [mKey];
+  Result := Result + RunKeys;
+  // Bis hier, Haltepunkte überspringen (#851).
+  Result := Result + BreakpointKeys;
+  // Wert ändern mit F2 (#868).
+  Result := Result + ValueKeys;
 end;
 
 procedure TAtlasDebugModule.EditorViewActivated;
@@ -405,7 +430,7 @@ end;
 procedure TAtlasDebugModule.ApplySettings;
 begin
   // debug.breakOnNextEvent (#856).
-  TAtlasIdeEventBreak.ApplySettings;
+  ApplyBreakSettings;
   // debug.exceptionHistory (#517).
   TAtlasIdeDebugExceptions.ApplySettings;
   // debug.exceptionBanner* (#783).
@@ -418,6 +443,8 @@ begin
   TAtlasIdeVisualizers.ApplySettings;
   // debug.displayRules aus: abmelden; an: Regeln beim nächsten Takt neu lesen (#854).
   TAtlasIdeDisplayRules.ApplySettings;
+  // debug.eventLog* (#580).
+  ApplyRunSettings;
 end;
 
 procedure TAtlasDebugModule.ThemeChanged;
@@ -426,6 +453,9 @@ begin
   TAtlasIdeDebugExceptionBar.ThemeChanged;
   TAtlasIdeDebugEvaluate.ThemeChanged;
   TAtlasIdeDebugStepFilter.ThemeChanged;
+  RunThemeChanged;
+  DebugThreadsThemeChanged;
+  BreakpointsThemeChanged;
 end;
 
 function TAtlasDebugModule.HoverValue(const AExpression: string; const ATypeChain: TArray<string>;
@@ -472,42 +502,6 @@ begin
       end, StartDisplayRules, TAtlasIdeDisplayRules.Stop)]
 end;
 
-/// <summary>Exception-Verlauf, nur eigener Code und Exception-Leiste.</summary>
-function ExceptionParts: TArray<IAtlasFeaturePart>;
-begin
-  Result := [
-    // Exception-Verlauf (#517): Zuhörer der Debug-Sitzung; aus = kein Notifier beim Debugger.
-    TAtlasFeaturePart.When('DebugExceptions',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugExceptionHistory;
-      end,
-      function: Boolean
-      begin
-        Result := TAtlasIdeDebugExceptions.Started;
-      end, StartDebugExceptions, TAtlasIdeDebugExceptions.Release),
-    // Nur eigener Code (#578): Zuhörer der Debug-Sitzung und Haken an „Einzelne Anweisung“ (F7).
-    TAtlasFeaturePart.When('DebugOwnCode',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugJustMyCode;
-      end,
-      function: Boolean
-      begin
-        Result := TAtlasIdeDebugOwnCode.Started;
-      end, StartDebugOwnCode, TAtlasIdeDebugOwnCode.Release),
-    // Exception-Leiste (#783): baut auf dem Exception-Verlauf auf; aus = Dialog der IDE unverändert.
-    TAtlasFeaturePart.When('DebugExceptionBar',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := NotMinimal(ALevel) and DebugExceptionBarVisible;
-      end,
-      function: Boolean
-      begin
-        Result := TAtlasIdeDebugExceptionBar.Started;
-      end, StartDebugExceptionBar, TAtlasIdeDebugExceptionBar.Release)]
-end;
-
 /// <summary>Schrittfilter (#850): Zuhörer der Debug-Sitzung und Empfänger von F7; aus = F7 wie bisher.</summary>
 function StepFilterPart: IAtlasFeaturePart;
 begin
@@ -533,8 +527,9 @@ end;
 /// </summary>
 function Parts: TArray<IAtlasFeaturePart>;
 begin
-  Result := LeadingParts + ExceptionParts + DebugValueParts(ExpressionProvider);
-  Result := Result + [StepFilterPart];
+  Result := LeadingParts + DebugExceptionParts + DebugValueParts(ExpressionProvider, GScope);
+  Result := Result + [StepFilterPart] + DebugThreadParts(GScope) + DebugLeakParts(GScope) +
+    BreakpointParts + RunParts;
 end;
 
 class function TAtlasDebugModule.RegisterModule: Boolean;
@@ -564,8 +559,12 @@ begin
   GScope.Provide(IAtlasFollowsTheme, mRef);
   GScope.Provide(IAtlasFollowsEditorView, mRef);
   GScope.Provide(IAtlasHoverValueSource, mRef);
-  // Vertrag zwischen Modulen: Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (#1276).
-  GScope.Provide(IAtlasDebugReportSource, TAtlasIdeDebugReport.Create as IAtlasDebugReportSource);
+  // Verträge zwischen Modulen: Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (#1276), Halt für
+  // „Test daraus anlegen …“ (#1873).
+  ProvideDebugContracts(GScope);
+  ProvideDebugThreadLayers(GScope);
+  // Logpunkte in der Rinne (#583).
+  ProvideRun(GScope);
   ProvideSettingsSections;
   Result := True;
 end;

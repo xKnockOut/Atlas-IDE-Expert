@@ -17,6 +17,28 @@ const
   /// <summary>Grenzen für tests.affectedDepth (#1353).</summary>
   cMinTestsAffectedDepth = 1;
   cMaxTestsAffectedDepth = 5;
+  cDefaultTestsAffectedDepth = 3;
+  /// <summary>Grenzen für tests.coveredBy.depth (#1778).</summary>
+  cMinTestsCoveredByDepth = 1;
+  cMaxTestsCoveredByDepth = 5;
+  /// <summary>Grenzen für tests.untested.warnPercent (#1783).</summary>
+  cMinTestsUntestedWarnPercent = 0;
+  cMaxTestsUntestedWarnPercent = 100;
+  cDefaultTestsUntestedWarnPercent = 50;
+  /// <summary>Grenzen für tests.onSave.max (#1775).</summary>
+  cMinTestsOnSaveMax = 1;
+  cMaxTestsOnSaveMax = 1000;
+  cDefaultTestsOnSaveMax = 50;
+  /// <summary>Grenzen und Vorgabe für tests.slowMs (#1772).</summary>
+  cMinTestsSlowMs = 50;
+  cMaxTestsSlowMs = 60000;
+  cDefaultTestsSlowMs = 500;
+  /// <summary>Taste „Zuletzt benutzte Testliste ausführen“ (#2167): Strg+Alt+R.</summary>
+  cDefaultTestsListsRunKey = $C052;
+  /// <summary>Grenzen und Vorgabe für tests.log.maxLines (#2168).</summary>
+  cMinTestsLogMaxLines = 100;
+  cMaxTestsLogMaxLines = 100000;
+  cDefaultTestsLogMaxLines = 2000;
 
 type
   /// <summary>Plugin-Einstellungen: Compiler, Build, Tests und Aufgaben.</summary>
@@ -60,6 +82,9 @@ type
     /// <summary>Zielplattform für den Lauf beim Öffnen (build.onOpenPlatform, #1293), z. B. Win64; '' = wie im
     /// Projekt. Ist sie in einem Projekt nicht aktiviert, gilt dort die Einstellung des Projekts.</summary>
     BuildOnOpenPlatform: string;
+    /// <summary>Laufendes Programm vor dem Build beenden (build.stopRunningProgram, #551): ask (Rückfrage), always
+    /// (ohne Rückfrage beenden) oder never (nichts tun). Programme im Debugger der IDE bleiben unberührt.</summary>
+    BuildStopRunningProgram: string;
     /// <summary>Befehle „Tests ausführen“ und „Fehlgeschlagene Tests erneut ausführen“ (#69, Atlas.RunTests,
     /// Atlas.RunFailedTests); aus = Befehle, Code Lens und Lauf nach dem Build verschwinden.</summary>
     TestRun: Boolean;
@@ -71,6 +96,8 @@ type
     /// <summary>Befehl „Betroffene Tests ausführen“ (#1353, Atlas.RunAffectedTests); tests.affected in settings.json,
     /// der Server liest denselben Wert (--affected-tests, get_affected_tests).</summary>
     TestsAffected: Boolean;
+    /// <summary>Befehl „Leckprüfung einrichten …“ (#1880, tests.leakSetup).</summary>
+    TestsLeakSetup: Boolean;
     /// <summary>Ebenen von der Änderung bis zum Test (#1353, tests.affectedDepth), MinTestsAffectedDepth bis
     /// MaxTestsAffectedDepth.</summary>
     TestsAffectedDepth: Integer;
@@ -84,6 +111,21 @@ type
     /// <summary>Auch Änderungen an den Units, die die Testunit verwendet und die im Testprojekt liegen, machen das
     /// Ergebnis veraltet (#1770, tests.stale.units).</summary>
     TestsStaleUnits: Boolean;
+    /// <summary>Ebenen vom Test bis zur Methode für die Marke „getestet von“ (#1778, tests.coveredBy.depth);
+    /// 1 = nur Tests, die die Methode direkt aufrufen.</summary>
+    TestsCoveredByDepth: Integer;
+    /// <summary>Marke „getestet von“ auch an privaten und geschützten Methoden (#1778, tests.coveredBy.private).
+    /// </summary>
+    TestsCoveredByPrivate: Boolean;
+    /// <summary>Unter diesem Anteil getesteter Methoden ist die Marke „n von m Methoden getestet“ gelb (#1783,
+    /// tests.untested.warnPercent).</summary>
+    TestsUntestedWarnPercent: Integer;
+    /// <summary>Betroffene Tests nach dem Speichern im Hintergrund ausführen (#1775, tests.onSave): kein Fenster,
+    /// Fortschritt und Ergebnis im Atlas-Statusfeld.</summary>
+    TestsOnSave: Boolean;
+    /// <summary>Mehr betroffene Tests als diese: kein Lauf im Hintergrund, nur ein Hinweis (#1775, tests.onSave.max),
+    /// cMinTestsOnSaveMax bis cMaxTestsOnSaveMax.</summary>
+    TestsOnSaveMax: Integer;
     /// <summary>Fehlschlag an der Anweisung statt am Methodenkopf (#1771, tests.failureAtAssert): Zeile aus dem
     /// Stacktrace des Berichts, sonst der eine Assert, dessen erwarteter Wert passt.</summary>
     TestsFailureAtAssert: Boolean;
@@ -95,6 +137,33 @@ type
     TestsCompare: Boolean;
     /// <summary>JSON und XML vor dem Vergleich gleich einrücken (#1779, tests.compare.format).</summary>
     TestsCompareFormat: Boolean;
+    /// <summary>Meldungen der Hilfs-Unit Atlas.Testing.Approval erkennen: Abweichung an der Testmarke, übernehmen,
+    /// aufräumen (#1881, tests.approvalFiles).</summary>
+    TestsApprovalFiles: Boolean;
+    /// <summary>Dauer an den Marken der Testlinse, langsame Tests gelb, die langsamsten auf der Willkommensseite
+    /// (#1772, tests.showDuration).</summary>
+    TestsShowDuration: Boolean;
+    /// <summary>Andockbares Fenster „Atlas-Tests“ mit allen Tests des Testprojekts (#1776, tests.window).</summary>
+    TestsWindow: Boolean;
+    /// <summary>Testlisten im Fenster „Atlas-Tests“ (#2167, tests.lists).</summary>
+    TestsLists: Boolean;
+    /// <summary>Taste für die zuletzt benutzte Testliste (#2167, tests.lists.runKey; TShortCut, 0 = keine).</summary>
+    TestsListsRunKey: Integer;
+    /// <summary>Protokoll je Test im Fenster „Atlas-Tests“ (#2168, tests.log): Seitendatei für den Atlas-Logger.
+    /// </summary>
+    TestsLog: Boolean;
+    /// <summary>Höchstens so viele Zeilen je Test im Protokoll (#2168, tests.log.maxLines), cMinTestsLogMaxLines bis
+    /// cMaxTestsLogMaxLines.</summary>
+    TestsLogMaxLines: Integer;
+    /// <summary>Ab dieser Dauer (Millisekunden) gilt ein Test als langsam (#1772, tests.slowMs), cMinTestsSlowMs bis
+    /// cMaxTestsSlowMs.</summary>
+    TestsSlowMs: Integer;
+    /// <summary>[TestCase]-Fälle als Tabelle: Marke an der Testmethode und Befehl (#1879, tests.testCaseTable).
+    /// </summary>
+    TestsCaseTable: Boolean;
+    /// <summary>Lecks je Test (#1774, tests.leaks): Ein Test, den DUnitX nur wegen eines Lecks als fehlgeschlagen
+    /// meldet, gilt als bestanden mit Leck (gelbe Marke, Warnung in Atlas-Probleme). Aus = wie im Bericht.</summary>
+    TestsLeaks: Boolean;
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
     /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
     BuildZeroHints: Boolean;
@@ -170,6 +239,10 @@ type
     procedure Normalize;
     /// <summary>Werte über AIo lesen bzw. schreiben, jeden unter seinem Namen.</summary>
     procedure Exchange(const AIo: TAtlasSettingsExchange);
+    /// <summary>Vorgaben der Tests (tests.*).</summary>
+    procedure DefaultTests;
+    /// <summary>Einstellungen der Tests (tests.*) über AIo lesen bzw. schreiben.</summary>
+    procedure ExchangeTests(const AIo: TAtlasSettingsExchange);
   end;
 
 implementation
@@ -182,19 +255,19 @@ uses
   Atlas.Core.Build.PipelineSettings,
   Atlas.Core.Build.Verdict;
 
-/// <summary>tasks.beforeBuild: bekannter Wert klein, sonst „off“.</summary>
-function NormalizedTasksBeforeBuild(const AText: string): string;
+/// <summary>Bekannter Wert aus ANames klein (tasks.beforeBuild, build.stopRunningProgram), sonst der erste.</summary>
+function NormalizedName(const AText: string; const ANames: array of string): string;
 var
   mName: string;
 begin
-  for mName in cTasksBeforeBuildNames do
+  for mName in ANames do
   begin
     if SameText(Trim(AText), mName) then
     begin
       Exit(mName);
     end;
   end;
-  Result := cTasksBeforeBuildNames[0];
+  Result := ANames[0];
 end;
 
 { TAtlasPluginBuildSettings }
@@ -216,18 +289,8 @@ begin
   Result.BuildOnOpenExclude := '';
   Result.BuildOnOpenConfig := '';
   Result.BuildOnOpenPlatform := '';
-  Result.TestRun := True;
-  Result.TestsAfterBuild := False;
-  Result.TestsBuildFirst := True;
-  Result.TestsAffected := True;
-  Result.TestsAffectedDepth := 3;
-  Result.TestsAffectedBeforeCommit := False;
-  Result.TestsStale := True;
-  Result.TestsStaleUnits := False;
-  Result.TestsFailureAtAssert := True;
-  Result.TestsFailureInline := True;
-  Result.TestsCompare := True;
-  Result.TestsCompareFormat := True;
+  Result.BuildStopRunningProgram := cStopRunningProgramNames[0];
+  Result.DefaultTests;
   Result.BuildZeroHints := False;
   Result.ShowInterfaceCost := True;
   Result.BuildSummary := True;
@@ -261,19 +324,27 @@ begin
   BuildOnOpenExclude := TAtlasOpenBuildSettings.NormalizedExclude(BuildOnOpenExclude);
   BuildOnOpenConfig := Trim(BuildOnOpenConfig);
   BuildOnOpenPlatform := Trim(BuildOnOpenPlatform);
+  BuildStopRunningProgram := NormalizedName(BuildStopRunningProgram, cStopRunningProgramNames);
   // Nach dem Speichern genau eins von beiden: Die Syntaxprüfung der IDE gewinnt.
   if CheckOnSave then
   begin
     CompileOnSave := False;
   end;
   BuildGate := TAtlasBuildPipelineSettings.cGateNames[TAtlasBuildPipelineSettings.GateOf(BuildGate)];
-  TasksBeforeBuild := NormalizedTasksBeforeBuild(TasksBeforeBuild);
+  TasksBeforeBuild := NormalizedName(TasksBeforeBuild, cTasksBeforeBuildNames);
   BuildGateTimeoutMs := EnsureRange(BuildGateTimeoutMs, TAtlasBuildPipelineSettings.cGateMinTimeoutMs,
     TAtlasBuildPipelineSettings.cGateMaxTimeoutMs);
   ReleaseConfigs := TAtlasBuildPipelineSettings.NormalizedConfigurations(ReleaseConfigs);
   BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(BuildWarningsAsErrors);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
   TestsAffectedDepth := EnsureRange(TestsAffectedDepth, cMinTestsAffectedDepth, cMaxTestsAffectedDepth);
+  TestsCoveredByDepth := EnsureRange(TestsCoveredByDepth, cMinTestsCoveredByDepth, cMaxTestsCoveredByDepth);
+  TestsUntestedWarnPercent := EnsureRange(TestsUntestedWarnPercent, cMinTestsUntestedWarnPercent,
+    cMaxTestsUntestedWarnPercent);
+  TestsOnSaveMax := EnsureRange(TestsOnSaveMax, cMinTestsOnSaveMax, cMaxTestsOnSaveMax);
+  TestsSlowMs := EnsureRange(TestsSlowMs, cMinTestsSlowMs, cMaxTestsSlowMs);
+  TestsListsRunKey := EnsureRange(TestsListsRunKey, 0, $FFFF);
+  TestsLogMaxLines := EnsureRange(TestsLogMaxLines, cMinTestsLogMaxLines, cMaxTestsLogMaxLines);
 end;
 
 procedure TAtlasPluginBuildSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -292,18 +363,8 @@ begin
   AIo.Text('BuildOnOpenExclude', BuildOnOpenExclude);
   AIo.Text('BuildOnOpenConfig', BuildOnOpenConfig);
   AIo.Text('BuildOnOpenPlatform', BuildOnOpenPlatform);
-  AIo.Flag('TestRun', TestRun);
-  AIo.Flag('TestsAfterBuild', TestsAfterBuild);
-  AIo.Flag('TestsBuildFirst', TestsBuildFirst);
-  AIo.Flag('TestsAffected', TestsAffected);
-  AIo.Number('TestsAffectedDepth', TestsAffectedDepth);
-  AIo.Flag('TestsAffectedBeforeCommit', TestsAffectedBeforeCommit);
-  AIo.Flag('TestsStale', TestsStale);
-  AIo.Flag('TestsStaleUnits', TestsStaleUnits);
-  AIo.Flag('TestsFailureAtAssert', TestsFailureAtAssert);
-  AIo.Flag('TestsFailureInline', TestsFailureInline);
-  AIo.Flag('TestsCompare', TestsCompare);
-  AIo.Flag('TestsCompareFormat', TestsCompareFormat);
+  AIo.Text('BuildStopRunningProgram', BuildStopRunningProgram);
+  ExchangeTests(AIo);
   AIo.Flag('BuildZeroHints', BuildZeroHints);
   AIo.Flag('ShowInterfaceCost', ShowInterfaceCost);
   AIo.Flag('BuildSummary', BuildSummary);
@@ -324,6 +385,70 @@ begin
   AIo.Flag('TestsEnabled', TestsEnabled);
   AIo.Flag('BuildToolsEnabled', BuildToolsEnabled);
   AIo.Flag('BuildPipelineEnabled', BuildPipelineEnabled);
+end;
+
+procedure TAtlasPluginBuildSettings.DefaultTests;
+begin
+  TestRun := True;
+  TestsAfterBuild := False;
+  TestsBuildFirst := True;
+  TestsAffected := True;
+  TestsLeakSetup := True;
+  TestsAffectedDepth := cDefaultTestsAffectedDepth;
+  TestsAffectedBeforeCommit := False;
+  TestsStale := True;
+  TestsStaleUnits := False;
+  TestsCoveredByDepth := 1;
+  TestsCoveredByPrivate := False;
+  TestsUntestedWarnPercent := cDefaultTestsUntestedWarnPercent;
+  TestsOnSave := False;
+  TestsOnSaveMax := cDefaultTestsOnSaveMax;
+  TestsFailureAtAssert := True;
+  TestsFailureInline := True;
+  TestsCompare := True;
+  TestsCompareFormat := True;
+  TestsApprovalFiles := True;
+  TestsShowDuration := True;
+  TestsWindow := True;
+  TestsLists := True;
+  TestsListsRunKey := cDefaultTestsListsRunKey;
+  TestsLog := True;
+  TestsLogMaxLines := cDefaultTestsLogMaxLines;
+  TestsSlowMs := cDefaultTestsSlowMs;
+  TestsCaseTable := True;
+  TestsLeaks := True;
+end;
+
+procedure TAtlasPluginBuildSettings.ExchangeTests(const AIo: TAtlasSettingsExchange);
+begin
+  AIo.Flag('TestRun', TestRun);
+  AIo.Flag('TestsAfterBuild', TestsAfterBuild);
+  AIo.Flag('TestsBuildFirst', TestsBuildFirst);
+  AIo.Flag('TestsAffected', TestsAffected);
+  AIo.Flag('TestsLeakSetup', TestsLeakSetup);
+  AIo.Number('TestsAffectedDepth', TestsAffectedDepth);
+  AIo.Flag('TestsAffectedBeforeCommit', TestsAffectedBeforeCommit);
+  AIo.Flag('TestsStale', TestsStale);
+  AIo.Flag('TestsStaleUnits', TestsStaleUnits);
+  AIo.Number('TestsCoveredByDepth', TestsCoveredByDepth);
+  AIo.Flag('TestsCoveredByPrivate', TestsCoveredByPrivate);
+  AIo.Number('TestsUntestedWarnPercent', TestsUntestedWarnPercent);
+  AIo.Flag('TestsOnSave', TestsOnSave);
+  AIo.Number('TestsOnSaveMax', TestsOnSaveMax);
+  AIo.Flag('TestsFailureAtAssert', TestsFailureAtAssert);
+  AIo.Flag('TestsFailureInline', TestsFailureInline);
+  AIo.Flag('TestsCompare', TestsCompare);
+  AIo.Flag('TestsCompareFormat', TestsCompareFormat);
+  AIo.Flag('TestsApprovalFiles', TestsApprovalFiles);
+  AIo.Flag('TestsShowDuration', TestsShowDuration);
+  AIo.Flag('TestsWindow', TestsWindow);
+  AIo.Flag('TestsLists', TestsLists);
+  AIo.Number('TestsListsRunKey', TestsListsRunKey);
+  AIo.Flag('TestsLog', TestsLog);
+  AIo.Number('TestsLogMaxLines', TestsLogMaxLines);
+  AIo.Number('TestsSlowMs', TestsSlowMs);
+  AIo.Flag('TestsCaseTable', TestsCaseTable);
+  AIo.Flag('TestsLeaks', TestsLeaks);
 end;
 
 end.

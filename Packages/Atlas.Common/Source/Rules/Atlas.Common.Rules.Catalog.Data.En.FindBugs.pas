@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnFindBugs: array[0..1117] of string = (
+  cCatalogLinesEnFindBugs: array[0..1194] of string = (
     '{',
     '      "id": "result-not-set",',
     '      "name": "Function result possibly not set",',
@@ -953,6 +953,108 @@ const
     'ix: wrap the following statements of the block in try … finally with the matching release.",',
     '      "bad": "GetMem(Puffer, Groesse);\nStrom.ReadBuffer(Puffer^, Groesse);\nErgebnis := Pruefsumme(Puffer, Groesse);",',
     '      "good": "GetMem(Puffer, Groesse);\ntry\n  Strom.ReadBuffer(Puffer^, Groesse);\n  Ergebnis := Pruefsumme(Puffer, Groesse);\nfinally\n  FreeMem(Puffer);\nend;",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "local-object-not-freed",',
+    '      "name": "Local object never released",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "find-bugs",',
+    '      "description": "A local variable (also an inline variable) receives T.Create(…) of a class without an owner, but the routine never releases it, and the object does not leave the routine: not ret' +
+    'urned (Result, Exit), not assigned to anything else (field, other variable, list element), not passed as an argument (except to routines that only read it: Assign, AddStrings, CopyFrom, LoadFromStream' +
+    ', SaveToStream, IndexOf, Contains, Equals), not raised, not converted with as, not used with @, in a set or array constructor or with with, not given a Parent or Owner, not captured by an anonymous me' +
+    'thod and not used in a local routine. Free, Destroy, DisposeOf, Release, FreeAndNil and routines with Free, Release, Destroy, Dispose or Frei in their name count as the release; Show, Close, Start, Re' +
+    'sume, Run and Execute count as handing the object over (a form with caFree, a thread). Silent for interface variables, records and dynamic arrays (TPoint.Create, TArray<string>.Create), threads, compo' +
+    'nents with an owner and unknown classes with arguments (like create-without-assignment); routines with asm or with stay silent. High confidence when the ancestors of the class are known up to TObject,' +
+    ' otherwise medium. Quick fix: wrap the following statements of the block in try … finally with Free.",',
+    '      "bad": "var\n  Lines: TStringList;\nbegin\n  Lines := TStringList.Create;\n  Lines.Add(''a'');\n  Memo.Text := Lines.Text;\nend;",',
+    '      "good": "var\n  Lines: TStringList;\nbegin\n  Lines := TStringList.Create;\n  try\n    Lines.Add(''a'');\n    Memo.Text := Lines.Text;\n  finally\n    Lines.Free;\n  end;\nend;",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "created-result-not-freed",',
+    '      "name": "New object from a function never released",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "find-bugs",',
+    '      "description": "A local variable receives the result of a function that always returns a new object, and the routine neither releases nor passes on that object (same rules as local-object-not-fr' +
+    'eed). A function of the same file counts when every assignment to Result is T.Create(…) without an owner, Result is otherwise only used through its members or released (cleanup in except) and never pa' +
+    'ssed on, and every Exit(…) creates an object as well; overloads of the same name must all qualify. It is matched when called without qualification, through Self or through a type name; methods of othe' +
+    'r objects are only known from the option factories. Medium confidence. Quick fix: wrap the following statements of the block in try … finally with Free.",',
+    '      "bad": "function NewList: TStringList;\nbegin\n  Result := TStringList.Create;\nend;\n…\n  Lines := NewList;\n  Memo.Lines.Assign(Lines);",',
+    '      "good": "  Lines := NewList;\n  try\n    Memo.Lines.Assign(Lines);\n  finally\n    Lines.Free;\n  end;",',
+    '      "options": [',
+    '        {',
+    '          "name": "factories",',
+    '          "type": "string-list",',
+    '          "default": [],',
+    '          "description": "Further functions that always return a new object owned by the caller, as Name, Class.Name, Object.Name or Unit.Name."',
+    '        }',
+    '      ],',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "anonymous-method-self-cycle",',
+    '      "name": "Anonymous method keeps its own frame alive",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "find-bugs",',
+    '      "description": "A local variable (also an inline variable) receives an anonymous method of the routine, and an anonymous method of the same routine captures that variable (also the anonymous met' +
+    'hod itself, for recursion). All anonymous methods of a routine share one frame object that holds the captured variables; through the variable the frame then references itself and is never released, to' +
+    'gether with everything it captured. Silent when the variable is set to nil in the routine. High confidence. No quick fix: build the method reference in a routine of its own (its frame then does not ho' +
+    'ld the variable) or set the variable to nil before the routine ends.",',
+    '      "bad": "var\n  Step: TProc;\nbegin\n  Step := procedure\n    begin\n    end;\n  TThread.Queue(nil,\n    procedure\n    begin\n      Step();\n    end);\nend;",',
+    '      "good": "function MakeStep: TProc;\nbegin\n  Result := procedure\n    begin\n    end;\nend;\n…\n  Step := MakeStep;\n  TThread.Queue(nil, Step);",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "event-handler-not-unhooked",',
+    '      "name": "Event of a foreign object not unhooked",',
+    '      "category": "bug",',
+    '      "severity": "hint",',
+    '      "group": "find-bugs",',
+    '      "description": "A method assigns a method of its own class to an event OnXyz of a foreign object (Foreign.OnChange := Handler or Self.Handler), and neither Destroy, BeforeDestruction nor Notific' +
+    'ation of the class resets that event. Foreign means a parameter of the method or a field that a method of the class takes over from a parameter (FField := ASource), that the class never creates itself' +
+    ' and that is not in the published part (components of the form file belong to the form). If the foreign object lives longer, it calls the method of a released object. Silent for own events (OnChange :' +
+    '= …), handlers that are not methods of the class and statements in with blocks or anonymous methods. Medium confidence. Quick fix for fields: insert if Assigned(FField) then FField.OnXyz := nil; at th' +
+    'e start of the destructor in the file.",',
+    '      "bad": "constructor TObserver.Create(ASource: TStringList);\nbegin\n  FSource := ASource;\n  FSource.OnChange := SourceChanged;\nend;",',
+    '      "good": "destructor TObserver.Destroy;\nbegin\n  if Assigned(FSource) then\n    FSource.OnChange := nil;\n  inherited;\nend;",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "interface-object-mixed",',
+    '      "name": "Reference-counted object used as object and as interface",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "find-bugs",',
+    '      "description": "A local object variable of a class with reference counting (descendant of TInterfacedObject, and no class in the chain declares _AddRef or _Release itself) is passed on as an int' +
+    'erface and also released with Free, FreeAndNil, Destroy or DisposeOf: the last interface reference releases the object a second time. Or it is passed on only temporarily as an interface (X as IFoo or ' +
+    'IFoo(X) as an argument of a routine; a method of another object such as List.Add(X as IFoo) usually keeps the reference and counts like an interface variable) and then used again through the object va' +
+    'riable: when the temporary reference goes away, the counter drops to 0 and the object is already released. Passed on as interface means: assigned to an interface variable of the routine or to Result o' +
+    'f a function with an interface result, or converted with as or a cast to an interface. Silent when an interface variable keeps the object for the routine, and after the variable receives a new object.' +
+    ' Inline variables and implicit conversions to interface parameters are not checked. Medium confidence. No quick fix: keep the object in an interface variable only.",',
+    '      "bad": "Counter := TCounter.Create;\nUse(Counter as ICounter);\nCounter.Increment;",',
+    '      "good": "var Counter: ICounter := TCounter.Create;\nUse(Counter);\nCounter.Increment;",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "interface-cycle-without-weak",',
+    '      "name": "Interfaces reference each other without [weak]",',
+    '      "category": "bug",',
+    '      "severity": "hint",',
+    '      "group": "find-bugs",',
+    '      "description": "Two classes of the file keep each other alive through interface fields: a field of class X points to an interface that class Y implements (directly, as TList<IFoo>, IList<IFoo>, ' +
+    'TArray<IFoo> or array of IFoo), and a field of Y points to an interface of X. Within one class (tree with a back reference) one side must be a list and the other a single field; single fields of the s' +
+    'ame class alone (linked list) stay silent. None of the fields may be [weak] or [unsafe]. Then neither object is released, because each one holds the counter of the other above 0. Reported at both fiel' +
+    'ds. Experimental: only in the profile strict or when switched on in rules. Classes in other units are not considered. Medium confidence. Quick fix: [weak] on the single field when the other side is a ' +
+    'list (the back reference of the child).",',
+    '      "bad": "TNode = class(TInterfacedObject, INode)\nprivate\n  FParent: INode;\n  FChildren: TList<INode>;\nend;",',
+    '      "good": "TNode = class(TInterfacedObject, INode)\nprivate\n  [weak] FParent: INode;\n  FChildren: TList<INode>;\nend;",',
+    '      "profiles": [',
+    '        "strict"',
+    '      ],',
     '      "safeFix": false',
     '    },',
     '{',

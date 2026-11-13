@@ -45,6 +45,13 @@ type
     /// Deklarationsreihenfolge (ohne Typpräfix). False, wenn dort kein Aufzählungswert steht.</summary>
     class function EnumValuesAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
       out AValues: TArray<string>): Boolean; static;
+    /// <summary>Werte ändern (#868): Werte des Aufzählungstyps ATypeName, wie er an AOffset sichtbar ist, in
+    /// Deklarationsreihenfolge; bei einer Menge die Werte des Elementtyps mit AIsSet; APrefix „TModus.“ bei
+    /// {$SCOPEDENUMS ON}. False ohne Aufzählung.</summary>
+    class function EnumOfType(const ALookup: TEnumLookup; AOffset: Integer; const ATypeName: string;
+      out AValues: TArray<string>; out AIsSet: Boolean; out APrefix: string): Boolean; static;
+    /// <summary>Text der Deklaration von ASymbol (höchstens einige Zeilen); '' ohne Quelltext.</summary>
+    class function DeclarationOf(const ALookup: TEnumLookup; const ASymbol: TResolvedSymbol): string; static;
     /// <summary>Unbekannter Name am Cursor im Rumpf einer Routine (#471): lokale Variable (mit AInlineVar auch als
     /// Inline-var), Feld der Klasse (F-Konvention, die Verwendung wird umbenannt) und, wenn der Name als Wert
     /// dient, Konstante in der implementation. Typ aus der rechten Seite einer Zuweisung, sonst aus dem
@@ -1179,6 +1186,41 @@ begin
   if Result then
   begin
     AValues := mEnum.Values;
+  end;
+end;
+
+class function TCompletionValues.EnumOfType(const ALookup: TEnumLookup; AOffset: Integer; const ATypeName: string;
+  out AValues: TArray<string>; out AIsSet: Boolean; out APrefix: string): Boolean;
+var
+  mEnum: TEnumType;
+begin
+  AValues := nil;
+  AIsSet := False;
+  APrefix := '';
+  if (ALookup.Tree = nil) or (ATypeName = '') then
+  begin
+    Exit(False);
+  end;
+  Result := EnumOf(ALookup, TypeAt(ALookup, AOffset, ATypeName), True, mEnum);
+  if Result then
+  begin
+    AValues := mEnum.Values;
+    AIsSet := mEnum.SetName <> '';
+    if mEnum.Scoped then
+    begin
+      APrefix := mEnum.Name + '.';
+    end;
+  end;
+end;
+
+class function TCompletionValues.DeclarationOf(const ALookup: TEnumLookup; const ASymbol: TResolvedSymbol): string;
+var
+  mSource: string;
+begin
+  Result := '';
+  if ASymbol.Found and SourceOf(ALookup, ASymbol, mSource) then
+  begin
+    Result := RangeText(mSource, ASymbol.Range);
   end;
 end;
 

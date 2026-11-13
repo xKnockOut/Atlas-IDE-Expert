@@ -27,6 +27,12 @@
 //   Hook TimeBooked an die Zeiterfassung (auch nach Abbrechen), damit sie
 //   nicht noch einmal angeboten wird. Ohne Zeitbuchung des Anbieters bzw.
 //   ohne Felder (GitHub) bleiben die Abschnitte weg.
+// - Schließgrund (#2135): Unter GitHub zeigt der Dialog den Abschnitt
+//   „Abschluss“ (Request.CloseReasons); das Original eines Duplikats prüft
+//   der Lauf über den Anbieter (TAtlasTrackerEndCall.Provider).
+// - Pull Request (#2136): Unter GitHub zeigt der Dialog den Abschnitt „Pull
+//   Request anlegen“ (Atlas.IDE.Tracker.EndPull); der Lauf pusht und legt
+//   ihn vor dem Kommentar an, die Meldung nennt ihn mit Adresse.
 // - Kommentar aus der Vorschau (SendComment).
 // - Zustände und Übergänge eines Issues für „Prüfen“ (#2126, ReadStates).
 // - Zeit buchen (#1267, BookTime, TimeSettings) für die Zeiterfassung
@@ -78,6 +84,8 @@ type
     Base: string;
     /// <summary>Adresse des Pull Requests für {pr}; '' ohne.</summary>
     PullRequest: string;
+    /// <summary>Titel des Issues für den Pull Request (#2136); '' unbekannt.</summary>
+    Title: string;
     class function Create(const AKey, ABranch, AFolder, ABase, APullRequest: string): TAtlasIdeTrackerEnd; static;
   end;
 
@@ -95,6 +103,15 @@ type
     NewState: string;
     Outcome: TAtlasTrackerWriteResult;
     class function Create(const AChange: TAtlasTrackerWrite): TAtlasIdeTrackerStarted; static;
+  end;
+
+  /// <summary>Wofür „Beenden“ schreibt: Anbieter, Ziel, Issue und Ordner der Arbeitskopie (Pull Request, #2136).
+  /// </summary>
+  TAtlasIdeEndScope = record
+    Provider: IAtlasTrackerProvider;
+    Target: TAtlasTrackerTarget;
+    Key: string;
+    Folder: string;
   end;
 
   TAtlasIdeTrackerSync = class
@@ -116,14 +133,15 @@ type
     procedure ShowEnd(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
       const AInput: TAtlasIdeTrackerEnd; const AOptions: TAtlasTrackerSyncOptions; const ACommits: string;
       const AEnded: TProc<TAtlasTrackerWrite>);
-    function EndRequest(const AProvider: IAtlasTrackerProvider; const AInput: TAtlasIdeTrackerEnd;
-      const AOptions: TAtlasTrackerSyncOptions; const ACommits: string): TAtlasTrackerEndRequest;
+    function EndRequest(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
+      const AInput: TAtlasIdeTrackerEnd; const AOptions: TAtlasTrackerSyncOptions;
+      const ACommits: string): TAtlasTrackerEndRequest;
     procedure Finished(const AKey: string; const AOutcome: TAtlasTrackerEndOutcome;
       const AEnded: TProc<TAtlasTrackerWrite>);
     function SendHandler(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
-      const AKey: string): TAtlasTrackerEndSendEvent;
-    procedure RunEnd(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget; const AKey: string;
-      const APlan: TAtlasTrackerEndPlan; const AProgress: TAtlasTrackerEndProgress; const ADone: TAtlasTrackerEndDone);
+      const AKey, AFolder: string): TAtlasTrackerEndSendEvent;
+    procedure RunEnd(const AScope: TAtlasIdeEndScope; const APlan: TAtlasTrackerEndPlan;
+      const AProgress: TAtlasTrackerEndProgress; const ADone: TAtlasTrackerEndDone);
     function PrepareHandler(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
       const AKey, AStateField: string; const ASession: IInterface): TProc<TAtlasTrackerEndDialog>;
     procedure BindComment(ADialog: TAtlasTrackerEndDialog; const ATarget: TAtlasTrackerTarget; const AKey: string);
@@ -199,7 +217,9 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.VersionControl.Contract,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Workflow.Strings,
+  Atlas.UI.Tracker.GitHubStrings,
+  Atlas.IDE.Tracker.EndPull,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl;
 
@@ -407,6 +427,7 @@ begin
   Result.Folder := AFolder;
   Result.Base := ABase;
   Result.PullRequest := APullRequest;
+  Result.Title := '';
 end;
 
 { TAtlasIdeTrackerSync }
@@ -459,8 +480,12 @@ begin
   Result := TAtlasTrackerSyncOptions.Create(mSettings.IssuesSyncState, mSettings.IssuesStateField,
     mSettings.IssuesAssigneeField).WithStart(mSettings.IssuesStartState, mSettings.IssuesAssignOnStart,
     mSettings.IssuesStartComment).WithEnd(mSettings.IssuesEndStates,
-    TAtlasTrackerWorkflow.EndCommentFor(mSettings.IssuesEndComment, TAtlasTrackerStrings.English)).WithReview(
-    mSettings.IssuesReviewStates).WithEndSteps(mSettings.IssuesEndFields, mSettings.IssuesEndTime);
+    TAtlasTrackerWorkflow.EndCommentFor(mSettings.IssuesEndComment, TAtlasWorkflowStrings.English)).WithReview(
+    mSettings.IssuesReviewStates).WithEndSteps(mSettings.IssuesEndFields, mSettings.IssuesEndTime).WithGitHub(
+    mSettings.IssuesGitHubStateTarget, mSettings.IssuesGitHubProject,
+    mSettings.IssuesGitHubAddToProject).WithLinkBranch(mSettings.IssuesGitHubLinkBranch).WithPullRequest(
+    mSettings.IssuesGitHubCreatePr, mSettings.IssuesGitHubPrBase, mSettings.IssuesGitHubPrBody,
+    mSettings.IssuesGitHubPrDraft);
   Result := TAtlasTrackerWorkflow.ForConnection(Result, TAtlasTrackerConnections.Read(mSettings.IssuesConnections),
     ATarget);
 end;
@@ -616,12 +641,16 @@ begin
   mWritten := AWritten;
   Apply(AProvider, ATarget, AKey, mChange,
     procedure(const AResult: TAtlasTrackerWriteResult)
+    var
+      mLine: string;
     begin
       Logged(mProvider, 'Beginnen', AResult);
       if AResult.Succeeded then
       begin
-        mOwner.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartSynced,
-          [mKey, TAtlasTrackerEndDialog.SummaryText(mChange)]));
+        for mLine in TAtlasTrackerEndTexts.StartLines(mKey, mChange, AResult) do
+        begin
+          mOwner.Report(mLine);
+        end;
         if Assigned(mWritten) then
         begin
           mWritten();
@@ -629,7 +658,7 @@ begin
       end
       else
       begin
-        mOwner.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartFailed,
+        mOwner.Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartFailed,
           [mKey, TAtlasTrackerEndDialog.ErrorText(mKey, AResult)]));
       end;
     end);
@@ -693,13 +722,13 @@ var
 begin
   if not AStarted.Outcome.Succeeded then
   begin
-    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartFailed,
+    Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartFailed,
       [AKey, TAtlasTrackerEndDialog.ErrorText(AKey, AStarted.Outcome)]));
     Exit;
   end;
   if AStarted.Change.HasWork then
   begin
-    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartSynced,
+    Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartSynced,
       [AKey, TAtlasTrackerEndDialog.SummaryText(AStarted.Change, AStarted.NewState)]));
   end;
   if not AStarted.Blocked then
@@ -710,15 +739,15 @@ begin
   mNames := TAtlasTrackerTransitions.Captions(AStarted.Rules);
   if Length(mNames) = 0 then
   begin
-    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartNoTransitionNone, [AKey,
+    Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartNoTransitionNone, [AKey,
       AStarted.Rules.Current]));
     Exit;
   end;
   for mIndex := 0 to High(mNames) do
   begin
-    mNames[mIndex] := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerQuoted, [mNames[mIndex]]);
+    mNames[mIndex] := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerQuoted, [mNames[mIndex]]);
   end;
-  Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartNoTransition,
+  Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartNoTransition,
     [AKey, AStarted.Rules.Current, string.Join(', ', mNames)]));
 end;
 
@@ -775,8 +804,9 @@ end;
 
 /// <summary>Was der Dialog zeigt: ohne Felder des Anbieters keine Feldzeilen, Zeit nur mit issues.endTime,
 /// Zeitbuchung des Anbieters und mindestens einer Minute erfasster Zeit.</summary>
-function TAtlasIdeTrackerSync.EndRequest(const AProvider: IAtlasTrackerProvider; const AInput: TAtlasIdeTrackerEnd;
-  const AOptions: TAtlasTrackerSyncOptions; const ACommits: string): TAtlasTrackerEndRequest;
+function TAtlasIdeTrackerSync.EndRequest(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
+  const AInput: TAtlasIdeTrackerEnd; const AOptions: TAtlasTrackerSyncOptions;
+  const ACommits: string): TAtlasTrackerEndRequest;
 var
   mValues: TAtlasTrackerPlaceholders;
   mOptions: TAtlasTrackerSyncOptions;
@@ -796,6 +826,8 @@ begin
   end;
   Result := TAtlasTrackerEndRequest.Create(AInput.Key, mOptions,
     TAtlasTrackerWorkflow.Fill(AOptions.EndComment, mValues));
+  Result.CloseReasons := (AProvider <> nil) and TAtlasTrackerWorkflow.ClosesWithReason(AProvider.Name);
+  Result.Pull := TAtlasIdeEndPull.Offer(AProvider, ATarget, AOptions, AInput.Title, mValues);
   mSeconds := 0;
   if AOptions.EndTime and (TimeWriterOf(AProvider) <> nil) and Assigned(FTimeSeconds) then
   begin
@@ -817,8 +849,8 @@ var
 begin
   mSession := TAtlasTrackerEndSession.Create;
   try
-    TAtlasTrackerEndDialog.Execute(EndRequest(AProvider, AInput, AOptions, ACommits),
-      SendHandler(AProvider, ATarget, AInput.Key),
+    TAtlasTrackerEndDialog.Execute(EndRequest(AProvider, ATarget, AInput, AOptions, ACommits),
+      SendHandler(AProvider, ATarget, AInput.Key, AInput.Folder),
       PrepareHandler(AProvider, ATarget, AInput.Key, AOptions.StateField, mSession), mOutcome);
   finally
     // Nachgeladene Werte kommen danach nicht mehr an den freigegebenen Dialog.
@@ -835,7 +867,7 @@ end;
 procedure TAtlasIdeTrackerSync.Finished(const AKey: string; const AOutcome: TAtlasTrackerEndOutcome;
   const AEnded: TProc<TAtlasTrackerWrite>);
 var
-  mSummary: string;
+  mSummary, mLine: string;
 begin
   if AOutcome.Progress.TimeBooked and Assigned(FTimeBooked) then
   begin
@@ -847,41 +879,64 @@ begin
     // Abgebrochen nach einem Teilerfolg: sagen, was schon im Tracker steht.
     if AOutcome.Progress.Wrote then
     begin
-      Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndPartial, [AKey, mSummary]));
+      Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerEndPartial, [AKey, mSummary]));
     end;
     Exit;
   end;
   if mSummary <> '' then
   begin
-    Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndSent, [AKey, mSummary]));
+    Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerEndSent, [AKey, mSummary]));
+  end;
+  // Status im Projekt (#2134) in eigenen Zeilen.
+  for mLine in TAtlasGitHubStrings.ProjectLines(AKey, AOutcome.Progress.Project) do
+  begin
+    Report(mLine);
+  end;
+  // Pull Request (#2136) mit Adresse in eigenen Zeilen.
+  for mLine in TAtlasGitHubStrings.PullLines(AKey, AOutcome.Progress.Pull) do
+  begin
+    Report(mLine);
   end;
   AEnded(AOutcome.Plan.Change);
 end;
 
 function TAtlasIdeTrackerSync.SendHandler(const AProvider: IAtlasTrackerProvider;
-  const ATarget: TAtlasTrackerTarget; const AKey: string): TAtlasTrackerEndSendEvent;
+  const ATarget: TAtlasTrackerTarget; const AKey, AFolder: string): TAtlasTrackerEndSendEvent;
 var
   mOwner: TAtlasIdeTrackerSync;
-  mProvider: IAtlasTrackerProvider;
-  mTarget: TAtlasTrackerTarget;
-  mKey: string;
+  mScope: TAtlasIdeEndScope;
 begin
   // Eigene Routine: Die Methodenreferenz hält nur diese Werte, keinen Rahmen von ShowEnd.
   mOwner := Self;
-  mProvider := AProvider;
-  mTarget := ATarget;
-  mKey := AKey;
+  mScope.Provider := AProvider;
+  mScope.Target := ATarget;
+  mScope.Key := AKey;
+  mScope.Folder := AFolder;
   Result :=
     procedure(const APlan: TAtlasTrackerEndPlan; const AProgress: TAtlasTrackerEndProgress;
       const ADone: TAtlasTrackerEndDone)
     begin
-      mOwner.RunEnd(mProvider, mTarget, mKey, APlan, AProgress, ADone);
+      mOwner.RunEnd(mScope, APlan, AProgress, ADone);
     end;
 end;
 
-procedure TAtlasIdeTrackerSync.RunEnd(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
-  const AKey: string; const APlan: TAtlasTrackerEndPlan; const AProgress: TAtlasTrackerEndProgress;
-  const ADone: TAtlasTrackerEndDone);
+/// <summary>Zugänge des Anbieters von AScope für die Schritte des Beendens (ohne Transport und Pull Request).
+/// </summary>
+function EndCallOf(const AScope: TAtlasIdeEndScope): TAtlasTrackerEndCall;
+begin
+  Result := Default(TAtlasTrackerEndCall);
+  Result.Writer := TAtlasIdeTrackerSync.WriterOf(AScope.Provider);
+  Result.Time := TAtlasIdeTrackerSync.TimeWriterOf(AScope.Provider);
+  Result.Fields := TAtlasIdeTrackerSync.FieldsOf(AScope.Provider);
+  // Original eines Duplikats vor dem ersten Schreiben prüfen (#2135).
+  Result.Provider := AScope.Provider;
+  Result.Target := AScope.Target;
+  Result.Key := AScope.Key;
+  Result.TimeoutMs := TAtlasTrackerWorkflow.cWriteTimeoutMs;
+end;
+
+procedure TAtlasIdeTrackerSync.RunEnd(const AScope: TAtlasIdeEndScope; const APlan: TAtlasTrackerEndPlan;
+  const AProgress: TAtlasTrackerEndProgress; const ADone: TAtlasTrackerEndDone);
 var
   mProvider: IAtlasTrackerProvider;
   mTransports: TAtlasIdeTrackerTransport;
@@ -889,16 +944,12 @@ var
   mPlan: TAtlasTrackerEndPlan;
   mProgress: TAtlasTrackerEndProgress;
   mDone: TAtlasTrackerEndDone;
+  mFolder: string;
 begin
-  mProvider := AProvider;
+  mProvider := AScope.Provider;
+  mFolder := AScope.Folder;
   mTransports := FTransport;
-  mCall := Default(TAtlasTrackerEndCall);
-  mCall.Writer := WriterOf(AProvider);
-  mCall.Time := TimeWriterOf(AProvider);
-  mCall.Fields := FieldsOf(AProvider);
-  mCall.Target := ATarget;
-  mCall.Key := AKey;
-  mCall.TimeoutMs := TAtlasTrackerWorkflow.cWriteTimeoutMs;
+  mCall := EndCallOf(AScope);
   mPlan := APlan;
   mProgress := AProgress;
   mDone := ADone;
@@ -919,6 +970,8 @@ begin
           mProgress.Fail(mPlan, TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
           Exit;
         end;
+        // Pull Request (#2136): Push und Anlegen mit demselben Transport.
+        mCall.Pull := TAtlasIdeEndPull.Runner(mProvider, mCall.Target, mCall.Transport, mFolder, mCall.Key);
         TAtlasTrackerEndSteps.Run(mCall, mPlan, mProgress);
       except
         on E: Exception do
@@ -1213,7 +1266,7 @@ begin
       Logged(mProvider, 'Kommentar', AResult);
       if AResult.Succeeded then
       begin
-        mOwner.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerCommentSent, [mKey]));
+        mOwner.Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerCommentSent, [mKey]));
       end;
       mDone(AResult);
     end);

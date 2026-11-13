@@ -209,15 +209,6 @@ begin
   end;
 end;
 
-function PreviousToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(ATokens[Result]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
 function IsSymbolAt(const ATokens: TArray<TPascalToken>; AIndex: Integer; const ASymbol: string): Boolean;
 begin
   Result := (AIndex >= 0) and (AIndex <= High(ATokens)) and ATokens[AIndex].IsSymbol(ASymbol);
@@ -598,7 +589,7 @@ begin
   if Result then
   begin
     AHeader.ResultType := Collapse(SliceText(AText, ATokens, NextToken(ATokens, ACurrent),
-      PreviousToken(ATokens, mNext)));
+      PreviousCode(ATokens, mNext)));
     ACurrent := mNext;
   end;
 end;
@@ -622,7 +613,7 @@ begin
       Break;
     end;
     AHeader.Directives := AHeader.Directives + [LowerCase(Collapse(SliceText(AText, ATokens, mNext,
-      PreviousToken(ATokens, mLast))))];
+      PreviousCode(ATokens, mLast))))];
     AHeader.LastToken := mLast;
     mNext := NextToken(ATokens, mLast);
   end;
@@ -663,7 +654,7 @@ begin
     Result := not ADirectives;
     if Result then
     begin
-      AHeader.EndToken := PreviousToken(ATokens, mCurrent);
+      AHeader.EndToken := PreviousCode(ATokens, mCurrent);
       AHeader.LastToken := AHeader.EndToken;
     end;
   end;
@@ -677,17 +668,17 @@ begin
   begin
     Dec(Result);
   end;
-  Result := PreviousToken(ATokens, Result);
+  Result := PreviousCode(ATokens, Result);
 end;
 
 /// <summary>Rückwärts vom Namen über "TFoo." bzw. "TAussen.TInnen." bis zum Token davor (dem Schlüsselwort);
 /// -1, wenn die Kette kein Bezeichner ist.</summary>
 function BeforeQualifier(const ATokens: TArray<TPascalToken>; ANameToken: Integer): Integer;
 begin
-  Result := PreviousToken(ATokens, ANameToken);
+  Result := PreviousCode(ATokens, ANameToken);
   while IsSymbolAt(ATokens, Result, '.') do
   begin
-    Result := PreviousToken(ATokens, Result);
+    Result := PreviousCode(ATokens, Result);
     if (Result >= 0) and ATokens[Result].IsSymbol('>') then
     begin
       Result := BeforeGenericType(ATokens, Result);
@@ -696,7 +687,7 @@ begin
     begin
       Exit(-1);
     end;
-    Result := PreviousToken(ATokens, Result);
+    Result := PreviousCode(ATokens, Result);
   end;
 end;
 
@@ -709,7 +700,7 @@ begin
   Result := (AIndex >= 0) and ATokens[AIndex].IsKeyword('class');
   if Result then
   begin
-    mBefore := PreviousToken(ATokens, AIndex);
+    mBefore := PreviousCode(ATokens, AIndex);
     Result := not IsSymbolAt(ATokens, mBefore, '=') and
       not ((mBefore >= 0) and SameText(ATokens[mBefore].Text, 'packed'));
   end;
@@ -748,7 +739,7 @@ begin
   AHeader.NameToken := ANameToken;
   AHeader.Keyword := LowerCase(ATokens[mCurrent].Text);
   AHeader.StartToken := mCurrent;
-  mBefore := PreviousToken(ATokens, mCurrent);
+  mBefore := PreviousCode(ATokens, mCurrent);
   if IsClassMethodPrefix(ATokens, mBefore) then
   begin
     AHeader.IsClass := True;
@@ -987,14 +978,14 @@ class function TChangeSignature.UseOf(const ATokens: TArray<TPascalToken>; AName
 var
   mBefore: Integer;
 begin
-  mBefore := PreviousToken(ATokens, ANameToken);
+  mBefore := PreviousCode(ATokens, ANameToken);
   // Über "Self." bzw. "Liste." hinweg nach vorn schauen.
   while IsSymbolAt(ATokens, mBefore, '.') do
   begin
-    mBefore := PreviousToken(ATokens, mBefore);
+    mBefore := PreviousCode(ATokens, mBefore);
     if mBefore >= 0 then
     begin
-      mBefore := PreviousToken(ATokens, mBefore);
+      mBefore := PreviousCode(ATokens, mBefore);
     end;
   end;
   if (mBefore >= 0) and IsWord(ATokens[mBefore], ['read', 'write', 'stored', 'add', 'remove']) then
@@ -1038,7 +1029,7 @@ begin
   AClose := Matching(ATokens, AOpen);
   if AClose > NextToken(ATokens, AOpen) then
   begin
-    for mValue in SplitTopLevel(SliceText(AText, ATokens, NextToken(ATokens, AOpen), PreviousToken(ATokens, AClose)),
+    for mValue in SplitTopLevel(SliceText(AText, ATokens, NextToken(ATokens, AOpen), PreviousCode(ATokens, AClose)),
       ',') do
     begin
       AArguments := AArguments + [Trim(mValue)];
@@ -1165,7 +1156,7 @@ begin
     begin
       Continue;
     end;
-    mBefore := PreviousToken(ATokens, mIndex);
+    mBefore := PreviousCode(ATokens, mIndex);
     if IsSymbolAt(ATokens, mBefore, '.') then
     begin
       Continue;

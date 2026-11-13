@@ -9,8 +9,8 @@
 // Ein Lesezeichen merkt sich Datei, Methode (voller Name wie
 // TKunde.Laden, dazu die Parametertypen für Überladungen), den Abstand der
 // Zeile zum Methodenanfang (Kopfzeile) und den Zeilentext samt je zwei
-// Nachbarzeilen (Atlas.Core.Editor.LineAnchor). Find sucht es im aktuellen
-// Text wieder:
+// Nachbarzeilen; Erfassen und Wiederfinden teilt es mit den Haltepunkten
+// (Atlas.Core.Editor.MethodAnchor). Find sucht es im aktuellen Text wieder:
 //   1. Mit Methode: zuerst die Methode (Rümpfe aus Atlas.Core.Editor.
 //      MethodToggle, gleicher Name; bei Überladungen zuerst gleiche
 //      Parametertypen), dann den Zeilentext in ihrem Rumpf, am nächsten zur
@@ -205,7 +205,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Editor.MethodToggle,
+  Atlas.Core.Editor.MethodAnchor,
   System.Generics.Collections,
   Winapi.Windows,
   System.Classes,
@@ -456,107 +456,32 @@ end;
 
 /// <summary>Zeilen und Methoden eines Textes einmal für alle Lesezeichen einer Datei.</summary>
 type
-  TParsedText = record
-    Lines: TArray<string>;
-    Places: TArray<TAtlasMethodPlace>;
-    class function Create(const AText: string): TParsedText; static;
-  end;
+  TParsedText = TAtlasMethodAnchorText;
 
-class function TParsedText.Create(const AText: string): TParsedText;
+function AnchorOf(const ABookmark: TAtlasBookmark): TAtlasMethodAnchor;
 begin
-  Result.Lines := TAtlasLineAnchors.Lines(AText);
-  Result.Places := TAtlasMethodToggle.Places(AText);
+  Result := Default(TAtlasMethodAnchor);
+  Result.Method := ABookmark.Method;
+  Result.Signature := ABookmark.Signature;
+  Result.Offset := ABookmark.Offset;
+  Result.Anchor := ABookmark.Anchor;
 end;
 
 procedure CaptureIn(const AText: TParsedText; ALine: Integer; var ABookmark: TAtlasBookmark);
 var
-  mPlace: TAtlasMethodPlace;
+  mAnchor: TAtlasMethodAnchor;
 begin
-  ABookmark.Anchor := TAtlasLineAnchors.Capture(AText.Lines, ALine);
-  ABookmark.Method := '';
-  ABookmark.Signature := '';
-  ABookmark.Offset := 0;
-  if TAtlasMethodToggle.BodyAt(AText.Places, ALine, mPlace) then
-  begin
-    ABookmark.Method := mPlace.Name;
-    ABookmark.Signature := mPlace.Signature;
-    ABookmark.Offset := ALine - mPlace.FirstLine;
-  end;
+  mAnchor := TAtlasMethodAnchors.Capture(AText, ALine);
+  ABookmark.Anchor := mAnchor.Anchor;
+  ABookmark.Method := mAnchor.Method;
+  ABookmark.Signature := mAnchor.Signature;
+  ABookmark.Offset := mAnchor.Offset;
 end;
 
-/// <summary>Zeilentext von ABookmark im Rumpf APlace suchen. Rang bei Überladungen: gleiche Parametertypen vor
-/// anderen, unveränderte Zeile vor geänderter. False, wenn der Rumpf nicht passt.</summary>
-function MatchInPlace(const AText: TParsedText; const ABookmark: TAtlasBookmark; const APlace: TAtlasMethodPlace;
-  out AMatch: TAtlasLineMatch; out ALine, ARank: Integer): Boolean;
-var
-  mAnchor: TAtlasLineAnchor;
-begin
-  ALine := -1;
-  ARank := 0;
-  AMatch := TAtlasLineMatch.Orphaned;
-  Result := APlace.IsBody and SameText(APlace.Name, ABookmark.Method);
-  if not Result then
-  begin
-    Exit;
-  end;
-  mAnchor := ABookmark.Anchor;
-  mAnchor.Line := Min(APlace.FirstLine + Max(0, ABookmark.Offset), APlace.LastLine);
-  AMatch := TAtlasLineAnchors.Locate(AText.Lines, mAnchor, APlace.FirstLine, APlace.LastLine, ALine);
-  Result := AMatch <> TAtlasLineMatch.Orphaned;
-  if not SameText(APlace.Signature, ABookmark.Signature) then
-  begin
-    Inc(ARank, 2);
-  end;
-  if AMatch = TAtlasLineMatch.Changed then
-  begin
-    Inc(ARank);
-  end;
-end;
-
+/// <summary>Zuerst die Methode, dann der Zeilentext in ihrem Rumpf (Atlas.Core.Editor.MethodAnchor).</summary>
 function FindIn(const AText: TParsedText; const ABookmark: TAtlasBookmark; out ALine: Integer): TAtlasLineMatch;
-var
-  mPlace: TAtlasMethodPlace;
-  mMatch, mBestMatch: TAtlasLineMatch;
-  mLine, mRank, mBestRank, mBestLine: Integer;
 begin
-  ALine := ABookmark.Anchor.Line;
-  // Außerhalb einer Methode: Zeilentext in der ganzen Datei.
-  if ABookmark.Method = '' then
-  begin
-    Exit(TAtlasLineAnchors.Locate(AText.Lines, ABookmark.Anchor, ALine));
-  end;
-  // Zuerst die Methode, dann der Zeilentext in ihrem Rumpf; bei gleichem Rang die nächste Zeile.
-  Result := TAtlasLineMatch.Orphaned;
-  mBestRank := MaxInt;
-  mBestLine := -1;
-  mBestMatch := TAtlasLineMatch.Orphaned;
-  for mPlace in AText.Places do
-  begin
-    if MatchInPlace(AText, ABookmark, mPlace, mMatch, mLine, mRank) and ((mRank < mBestRank) or
-      ((mRank = mBestRank) and (Abs(mLine - ABookmark.Anchor.Line) < Abs(mBestLine - ABookmark.Anchor.Line)))) then
-    begin
-      mBestRank := mRank;
-      mBestLine := mLine;
-      mBestMatch := mMatch;
-    end;
-  end;
-  if mBestLine < 0 then
-  begin
-    Exit;
-  end;
-  ALine := mBestLine;
-  if mBestMatch = TAtlasLineMatch.Changed then
-  begin
-    Result := TAtlasLineMatch.Changed;
-  end
-  else if mBestLine = ABookmark.Anchor.Line then
-  begin
-    Result := TAtlasLineMatch.Same;
-  end
-  else
-  begin
-    Result := TAtlasLineMatch.Moved;
-  end;
+  Result := TAtlasMethodAnchors.Find(AText, AnchorOf(ABookmark), ALine);
 end;
 
 function SameMark(const A, B: TAtlasBookmark): Boolean;
@@ -757,31 +682,6 @@ begin
   end;
 end;
 
-function ParseObject(const AJson: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AJson = '' then
-  begin
-    Exit;
-  end;
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mValue := nil;
-  end;
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end
-  else
-  begin
-    mValue.Free;
-  end;
-end;
-
 function ReadText(const AFileName: string): string;
 var
   mBytes: TBytes;
@@ -905,7 +805,7 @@ begin
   begin
     Result.AddPair('lost', TJSONBool.Create(True));
   end;
-  mExtra := ParseObject(AMark.Extra);
+  mExtra := TJsonRead.ParseObject(AMark.Extra);
   try
     KeepUnknown(Result, mExtra, cMarkKeys);
   finally
@@ -1000,7 +900,7 @@ class function TAtlasBookmarks.FormatOf(const AJson: string): Integer;
 var
   mRoot: TJSONObject;
 begin
-  mRoot := ParseObject(AJson);
+  mRoot := TJsonRead.ParseObject(AJson);
   try
     Result := TJsonRead.IntOr(mRoot, 'format', 0);
   finally
@@ -1018,7 +918,7 @@ var
 begin
   AList := TAtlasBookmarkList.Create('');
   Result := False;
-  mRoot := ParseObject(AJson);
+  mRoot := TJsonRead.ParseObject(AJson);
   try
     if mRoot = nil then
     begin
@@ -1059,7 +959,7 @@ var
   mList: TJSONArray;
   mMark: TAtlasBookmark;
 begin
-  mOriginal := ParseObject(AList.Raw);
+  mOriginal := TJsonRead.ParseObject(AList.Raw);
   mRoot := TJSONObject.Create;
   try
     mRoot.AddPair('format', TJSONNumber.Create(cFormat));

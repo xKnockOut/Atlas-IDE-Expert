@@ -43,7 +43,6 @@ uses
   System.DateUtils,
   Atlas.Core.Tracker.FlowMap,
   Atlas.UI.Strings,
-  Atlas.UI.Tracker.Strings,
   Atlas.UI.Tracker.FlowFrame;
 
 function NowUtc: TDateTime;

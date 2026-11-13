@@ -36,6 +36,11 @@ type
     class function Current(out AEditor: IOTAFormEditor; out ARoot: TComponent): Boolean; static;
     /// <summary>Ausgewählte Komponenten des Formulars ARoot ohne das Formular selbst.</summary>
     class function Selection(const AEditor: IOTAFormEditor; ARoot: TComponent): TArray<TComponent>; static;
+    /// <summary>Steuerelemente aus ASelected mit demselben Elternelement wie das erste; Komponenten ohne
+    /// Elternelement fallen weg.</summary>
+    class function Siblings(const ASelected: TArray<TComponent>): TArray<TControl>; static;
+    /// <summary>Siblings der Auswahl im Formular ARoot.</summary>
+    class function SelectedSiblings(const AEditor: IOTAFormEditor; ARoot: TComponent): TArray<TControl>; static;
     /// <summary>Setzt die Auswahl im Designer; leer wählt das Formular.</summary>
     class procedure Select(const ADesigner: IDesigner; ARoot: TComponent;
       const AComponents: TArray<TComponent>); static;
@@ -202,6 +207,36 @@ begin
       Result := Result + [TComponent(mItem)];
     end;
   end;
+end;
+
+class function TAtlasDesignerAccess.Siblings(const ASelected: TArray<TComponent>): TArray<TControl>;
+var
+  mComponent: TComponent;
+  mParent: TWinControl;
+begin
+  Result := nil;
+  mParent := nil;
+  for mComponent in ASelected do
+  begin
+    if not (mComponent is TControl) or (TControl(mComponent).Parent = nil) then
+    begin
+      Continue;
+    end;
+    if mParent = nil then
+    begin
+      mParent := TControl(mComponent).Parent;
+    end;
+    if TControl(mComponent).Parent = mParent then
+    begin
+      Result := Result + [TControl(mComponent)];
+    end;
+  end;
+end;
+
+class function TAtlasDesignerAccess.SelectedSiblings(const AEditor: IOTAFormEditor;
+  ARoot: TComponent): TArray<TControl>;
+begin
+  Result := Siblings(Selection(AEditor, ARoot));
 end;
 
 class procedure TAtlasDesignerAccess.Select(const ADesigner: IDesigner; ARoot: TComponent;

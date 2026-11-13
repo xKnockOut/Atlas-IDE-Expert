@@ -107,7 +107,7 @@ uses
   Vcl.Graphics,
   Vcl.Dialogs,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Issue.Strings;
 
 const
   cGap = 8;
@@ -156,42 +156,49 @@ end;
 { TAtlasSubtaskDialog }
 
 constructor TAtlasSubtaskDialog.CreateDialog(AOwner: TComponent; const AParentKey, AProject: string);
+const
+  // Reihenfolge der oben ausgerichteten Steuerelemente über ihr Top beim Anlegen.
+  cSummaryTop = 100;
+  cTitleTop = 200;
+  cDescriptionLabelTop = 300;
+  cDescriptionTop = 400;
 var
   mBottom: TPanel;
 begin
-  inherited CreateDialog(AOwner, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskTitle, [AParentKey]),
+  inherited CreateDialog(AOwner, TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueSubtaskTitle, [AParentKey]),
     cDialogWidth);
   BorderIcons := [biSystemMenu];
-  FProject := AddLabel(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskProject, [AProject]), 0);
-  FTitleLabel := AddLabel(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueSubtaskSummary), 100);
+  FProject := AddLabel(TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueSubtaskProject, [AProject]), 0);
+  FTitleLabel := AddLabel(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSubtaskSummary), cSummaryTop);
 
   FTitle := TEdit.Create(Self);
   FTitle.Parent := Self;
   FTitle.Align := alTop;
   FTitle.AlignWithMargins := True;
   FTitle.Margins.SetBounds(cGap, 0, cGap, 0);
-  FTitle.Top := FTitle.ScaleValue(200);
+  FTitle.Top := FTitle.ScaleValue(cTitleTop);
   FTitle.MaxLength := TAtlasTrackerIssue.cMaxTitle;
   FTitle.OnChange := TitleChange;
   FTitleLabel.FocusControl := FTitle;
 
-  FDescriptionLabel := AddLabel(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueSubtaskDescription), 300);
+  FDescriptionLabel := AddLabel(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSubtaskDescription),
+    cDescriptionLabelTop);
   FDescription := TMemo.Create(Self);
   FDescription.Parent := Self;
   FDescription.Align := alTop;
   FDescription.AlignWithMargins := True;
   FDescription.Margins.SetBounds(cGap, 0, cGap, 0);
-  FDescription.Top := FDescription.ScaleValue(400);
+  FDescription.Top := FDescription.ScaleValue(cDescriptionTop);
   FDescription.Height := ScaleValue(140);
   FDescription.ScrollBars := ssVertical;
   FDescription.WantReturns := True;
   FDescriptionLabel.FocusControl := FDescription;
 
   mBottom := AddBottom(Self);
-  FCancel := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDialogCancel), CancelClick);
+  FCancel := AddButton(mBottom, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueDialogCancel), CancelClick);
   FCancel.Cancel := True;
   FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
-  FOk := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueSubtaskOk), OkClick);
+  FOk := AddButton(mBottom, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSubtaskOk), OkClick);
   FOk.Default := True;
   FOk.Left := FCancel.Left - FOk.Width - ScaleValue(cGap);
   // Knöpfe bleiben rechts, wenn der Dialog breiter wird.
@@ -277,7 +284,7 @@ constructor TAtlasIssueLinkDialog.CreateDialog(AOwner: TComponent; const AKey, A
 var
   mBottom: TPanel;
 begin
-  inherited CreateDialog(AOwner, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkTitle, [AKey]), cDialogWidth);
+  inherited CreateDialog(AOwner, TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueLinkTitle, [AKey]), cDialogWidth);
   BorderIcons := [biSystemMenu];
   FKey := AKey;
   FProvider := AProvider;
@@ -288,7 +295,7 @@ begin
   FDependsOn.AlignWithMargins := True;
   FDependsOn.Margins.SetBounds(cGap, cGap, cGap, 0);
   FDependsOn.Top := 0;
-  FDependsOn.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkDependsOn, [AKey]);
+  FDependsOn.Caption := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueLinkDependsOn, [AKey]);
   FDependsOn.Checked := True;
 
   FBlocks := TRadioButton.Create(Self);
@@ -297,7 +304,7 @@ begin
   FBlocks.AlignWithMargins := True;
   FBlocks.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
   FBlocks.Top := FBlocks.ScaleValue(100);
-  FBlocks.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkBlocks, [AKey]);
+  FBlocks.Caption := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueLinkBlocks, [AKey]);
 
   FOtherLabel := TLabel.Create(Self);
   FOtherLabel.Parent := Self;
@@ -306,7 +313,7 @@ begin
   FOtherLabel.Margins.SetBounds(cGap, cGap, cGap, cGap div 2);
   FOtherLabel.Top := FOtherLabel.ScaleValue(200);
   FOtherLabel.ShowAccelChar := False;
-  FOtherLabel.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkKey,
+  FOtherLabel.Caption := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueLinkKey,
     [TAtlasIssuePreview.KeyExample(AProvider)]);
 
   FOther := TEdit.Create(Self);
@@ -319,10 +326,10 @@ begin
   FOtherLabel.FocusControl := FOther;
 
   mBottom := AddBottom(Self);
-  FCancel := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDialogCancel), CancelClick);
+  FCancel := AddButton(mBottom, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueDialogCancel), CancelClick);
   FCancel.Cancel := True;
   FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
-  FOk := AddButton(mBottom, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkOk), OkClick);
+  FOk := AddButton(mBottom, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueLinkOk), OkClick);
   FOk.Default := True;
   FOk.Left := FCancel.Left - FOk.Width - ScaleValue(cGap);
   // Knöpfe bleiben rechts, wenn der Dialog breiter wird.
@@ -408,11 +415,11 @@ begin
   Result := '';
   if Length(ABlockers) = 1 then
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueBlockedOne, [ABlockers[0].Key]);
+    Result := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueBlockedOne, [ABlockers[0].Key]);
   end
   else if Length(ABlockers) > 1 then
   begin
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueBlockedMore, [ABlockers[0].Key, Length(ABlockers) - 1]);
+    Result := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueBlockedMore, [ABlockers[0].Key, Length(ABlockers) - 1]);
   end;
 end;
 
@@ -432,15 +439,15 @@ begin
   mDialog := TTaskDialog.Create(nil);
   try
     mDialog.Caption := 'Atlas';
-    mDialog.Title := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueBlockedCaption);
+    mDialog.Title := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueBlockedCaption);
     mDialog.Text := Text(ABlockers);
     mDialog.MainIcon := tdiWarning;
     mDialog.CommonButtons := [tcbCancel];
     mButton := mDialog.Buttons.Add;
-    mButton.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueBlockedStart);
+    mButton.Caption := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueBlockedStart);
     mButton.ModalResult := cAnswerStart;
     mButton := mDialog.Buttons.Add;
-    mButton.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueBlockedShow, [ABlockers[0].Key]);
+    mButton.Caption := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueBlockedShow, [ABlockers[0].Key]);
     mButton.ModalResult := cAnswerShow;
     mButton.Default := True;
     if not mDialog.Execute then

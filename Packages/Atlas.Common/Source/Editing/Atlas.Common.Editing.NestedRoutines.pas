@@ -37,7 +37,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Semantics.ControlFlow.Signatures,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.CodeActions;
 
@@ -110,7 +110,8 @@ uses
   Atlas.Common.Editing.RoutineLocals,
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.CreateMethod,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -290,7 +291,7 @@ begin
   end
   else
   begin
-    mClose := TRoutineBody.PreviousToken(ATokens, TRoutineBody.TokenAt(ATokens, ACall.EndOffset));
+    mClose := PreviousCode(ATokens, TRoutineBody.TokenAt(ATokens, ACall.EndOffset));
     Result := (mClose >= 0) and ATokens[mClose].IsSymbol(')');
     if Result then
     begin

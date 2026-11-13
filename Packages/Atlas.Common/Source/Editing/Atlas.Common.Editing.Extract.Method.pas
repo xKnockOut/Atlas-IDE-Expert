@@ -19,7 +19,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Semantics.ControlFlow.Signatures,
   Atlas.Common.Editing.RoutineLocals,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.Extract.Shared;

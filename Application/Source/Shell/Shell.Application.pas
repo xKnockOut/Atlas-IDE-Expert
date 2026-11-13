@@ -76,6 +76,11 @@ begin
   begin
     Result := TLinterShell.Hotspots(AOptions);
   end
+  // Mutanten (#1460): das Ziel aus --check ist hier nur das Projekt der Symbole.
+  else if AOptions.MutateFile <> '' then
+  begin
+    Result := TLinterShell.Mutate(AOptions);
+  end
   else if AOptions.CheckTarget <> '' then
   begin
     Result := TLinterShell.Run(AOptions);

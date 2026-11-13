@@ -119,6 +119,23 @@
       "arguments": {},
       "process": true
     },
+    "get_mutants": {
+      "arguments": { "file": "Source/Ref.Daten.Kunden.pas", "format": "json" },
+      "contains": "\"format\": 1"
+    },
+    "suggest_test_cases": {
+      "arguments": { "file": "Source/Ref.Pruefung.Verstoesse.pas", "routine": "OhneErgebnis" },
+      "contains": "| AWert | `1` |"
+    },
+    "resolve_address": {
+      "arguments": { "addresses": "0045A1B2 RefApp.exe+$5A1B2" },
+      "contains": "map, exe",
+      "expectError": true
+    },
+    "analyze_report": {
+      "arguments": { "text": "exception class    : EAccessViolation\nmain thread ($1a2c):\n0045a1b2 +012 RefApp.exe Ref.Daten.Kunden 42 +3 TRefKunde.Lade" },
+      "contains": "Ref.Daten.Kunden"
+    },
     "get_architecture": {
       "arguments": {},
       "contains": "Teilsysteme:"

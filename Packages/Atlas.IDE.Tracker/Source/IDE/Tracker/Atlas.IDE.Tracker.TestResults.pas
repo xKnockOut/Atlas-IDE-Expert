@@ -25,7 +25,8 @@
 //   Benachrichtigungszentrale (#601, Quelle buildServer) mit „Im Browser“,
 //   abschaltbar mit welcomePage.tests.ci.notify.
 // - Aktionen (Atlas.IDE.Tracker.TestActions): Projekt und Test öffnen,
-//   „Fehlgeschlagene erneut ausführen“, „Im Debugger“ und „Im Browser“.
+//   „Fehlgeschlagene erneut ausführen“, „Im Debugger“, „Vergleichen“ (#1779)
+//   und „Im Browser“.
 // - Geänderte Zusammenfassungen (Testlauf, Branch) meldet Base über
 //   IAtlasProjectSummaryListener; die Kachel liest dann neu.
 // - Protokoll anonym: nur Anbieter, Ergebnis und Fehlerart, nie Adresse, Job,
@@ -167,6 +168,8 @@ type
     procedure OpenTest(const ARow: TAtlasTestRow; const AFailure: TAtlasTestFailureItem);
     procedure RerunFailed(const ARow: TAtlasTestRow; const ATests: TArray<string>);
     procedure Debug(const ARow: TAtlasTestRow; const AFailure: TAtlasTestFailureItem);
+    function CanCompare(const AFailure: TAtlasTestFailureItem): Boolean;
+    procedure Compare(const AFailure: TAtlasTestFailureItem);
     procedure Browse(const ARow: TAtlasTestRow);
     procedure QueryNow(const ARow: TAtlasTestRow);
     procedure Credentials(const ARow: TAtlasTestRow);
@@ -192,7 +195,7 @@ uses
   Atlas.IDE.Contracts.WelcomeTiles,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.TestResults.Strings,
   Atlas.IDE.Foundation.Files;
 
 const
@@ -463,7 +466,7 @@ end;
 
 class function TAtlasIdeTestResults.Title: string;
 begin
-  Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsTitle);
+  Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsTitle);
 end;
 
 procedure TAtlasIdeTestResults.Start;
@@ -546,6 +549,11 @@ begin
   mSettings := TAtlasIdeSettings.Current;
   Result := TAtlasTestResults.View(FData.Projects(mSettings.WelcomePageTestsCi), FData.Selected,
     mSettings.WelcomePageTestsMaxFailures, mSettings.WelcomePageTestsCi);
+  // Langsamste Tests nur mit tests.showDuration (#1772).
+  if not mSettings.TestsShowDuration then
+  begin
+    Result.Slowest := nil;
+  end;
 end;
 
 procedure TAtlasIdeTestResults.Shown;
@@ -709,7 +717,7 @@ begin
   begin
     Exit;
   end;
-  mTitle := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.NotificationsBuildServerRed,
+  mTitle := TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.NotificationsBuildServerRed,
     [TAtlasTestResults.ProviderCaption(AJob.Provider), ABuild.Number, ChangeFileExt(ExtractFileName(AProject), '')]);
   mText := TAtlasTrackerTestResultsText.BuildText(ABuild);
   if AJob.JobBranch <> '' then
@@ -718,7 +726,7 @@ begin
   end;
   mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cBuildServer,
     TAtlasNotificationSeverity.Error, mTitle, mText,
-    [TAtlasNotificationCenter.Action(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsBrowse),
+    [TAtlasNotificationCenter.Action(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsBrowse),
     BrowseAction(Self, FActions, AJob, ABuild.Number))]);
   // „Einblenden“ (oder Zentrale aus): auch eine Zeile in der Meldungsansicht.
   if mMode = TAtlasNotificationMode.Show then
@@ -775,6 +783,23 @@ begin
     end);
 end;
 
+function TAtlasIdeTestResults.CanCompare(const AFailure: TAtlasTestFailureItem): Boolean;
+begin
+  Result := TAtlasTestResultsActions.CanCompare(AFailure);
+end;
+
+procedure TAtlasIdeTestResults.Compare(const AFailure: TAtlasTestFailureItem);
+var
+  mItem: TAtlasTestFailureItem;
+begin
+  mItem := AFailure;
+  Guarded(
+    procedure
+    begin
+      TAtlasTestResultsActions.Compare(mItem);
+    end);
+end;
+
 procedure TAtlasIdeTestResults.Browse(const ARow: TAtlasTestRow);
 var
   mRow: TAtlasTestRow;
@@ -821,7 +846,7 @@ begin
       end;
       if mJob.Server = '' then
       begin
-        Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CiLoginNoServer));
+        Report(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginNoServer));
       end
       else if FAccess.EnterCredentials(mJob) then
       begin
@@ -843,7 +868,7 @@ begin
   mProject := TAtlasIdeFiles.ActiveProjectFile;
   if mProject = '' then
   begin
-    Report(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CiLoginNoServer));
+    Report(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginNoServer));
   end
   else
   begin
