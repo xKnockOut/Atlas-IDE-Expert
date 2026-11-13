@@ -173,6 +173,10 @@ begin
   Switch('debug.moduleOfAddress', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugModuleOfAddress));
   // Was wartet worauf? (#587).
   Switch('debug.deadlocks', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugDeadlocks));
+  // Leckbericht am Programmende (#1875).
+  Switch('debug.leakReport', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLeakReport));
+  Switch('debug.leakReport.compare', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLeakReportCompare));
+  Switch('debug.leakReport.window', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLeakReportWindow));
   // Parallele Aufrufstapel (#837).
   Switch('debug.parallelStacks', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugParallelStacks));
   // Threads im Quelltext (#852).
