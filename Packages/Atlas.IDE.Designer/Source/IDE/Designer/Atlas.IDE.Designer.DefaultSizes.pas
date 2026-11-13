@@ -29,15 +29,15 @@ uses
   Vcl.Controls,
   Vcl.ExtCtrls,
   DesignIntf,
-  Atlas.UI.Designer.Outlines,
-  Atlas.IDE.Designer.Snapshot;
+  Atlas.IDE.Designer.Snapshot,
+  Atlas.IDE.Designer.Tool;
 
 type
 {$SCOPEDENUMS ON}
   TAtlasSizesCommand = (Apply, Learn, Show, Undo);
 {$SCOPEDENUMS OFF}
 
-  TAtlasIdeDefaultSizes = class
+  TAtlasIdeDefaultSizes = class(TAtlasIdeDesignerTool)
   private type
     TNotification = class(TInterfacedObject, IDesignNotification)
     private
@@ -55,15 +55,12 @@ type
   private class var
     FCurrent: TAtlasIdeDefaultSizes;
   private
-    FOnMessage: TProc<string>;
     FSnapshot: TAtlasDesignerSnapshot;
-    FOutlines: TAtlasDesignerOutlines;
     FTimer: TTimer;
     FNotification: TNotification;
     FNotificationRef: IDesignNotification;
     /// <summary>Größe, die eine Klasse im Konstruktor setzt.</summary>
     FClassSizes: TDictionary<TClass, TSize>;
-    procedure Say(const AText: string);
     procedure TimerTick(Sender: TObject);
     procedure HideOutlines;
     procedure Inserted(AItem: TPersistent);
@@ -78,7 +75,6 @@ type
     destructor Destroy; override;
     procedure Execute(ACommand: TAtlasSizesCommand);
     function CanUndo: Boolean;
-    procedure ApplyTheme;
   end;
 
 implementation
@@ -93,8 +89,8 @@ uses
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.FitText,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.UI.Designer.Outlines;
 
 type
   /// <summary>Zugang zu AutoSize (geschützt in TControl).</summary>
@@ -240,8 +236,7 @@ end;
 
 constructor TAtlasIdeDefaultSizes.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
   FSnapshot := TAtlasDesignerSnapshot.Create;
   FClassSizes := TDictionary<TClass, TSize>.Create;
   FTimer := TTimer.Create(nil);
@@ -268,18 +263,9 @@ begin
     FNotificationRef := nil;
   end;
   FTimer.Free;
-  FOutlines.Free;
   FClassSizes.Free;
   FSnapshot.Free;
   inherited Destroy;
-end;
-
-procedure TAtlasIdeDefaultSizes.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
 end;
 
 procedure TAtlasIdeDefaultSizes.TimerTick(Sender: TObject);
@@ -290,17 +276,9 @@ end;
 procedure TAtlasIdeDefaultSizes.HideOutlines;
 begin
   FTimer.Enabled := False;
-  if FOutlines <> nil then
+  if HasOutlines then
   begin
-    FOutlines.HideOutlines;
-  end;
-end;
-
-procedure TAtlasIdeDefaultSizes.ApplyTheme;
-begin
-  if FOutlines <> nil then
-  begin
-    FOutlines.ApplyColors(TAtlasIdeStyle.Colors);
+    Outlines.HideOutlines;
   end;
 end;
 
@@ -578,13 +556,9 @@ begin
     Exit;
   end;
   Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerSizesDeviations, [Length(mOutlines)]));
-  if FOutlines = nil then
-  begin
-    FOutlines := TAtlasDesignerOutlines.CreateOutlines(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
-  end;
   mArea := TWinControl(mRoot).ClientRect;
   mArea.Offset(TWinControl(mRoot).ClientOrigin);
-  FOutlines.ShowOutlines(mArea, mOutlines);
+  Outlines.ShowOutlines(mArea, mOutlines);
   FTimer.Enabled := True;
 end;
 

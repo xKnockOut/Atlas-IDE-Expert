@@ -36,7 +36,10 @@ type
     // Erwartet und erhalten vergleichen (#1779).
     TestsCompareCommand, TestsCompareTitle, TestsCompareExpected, TestsCompareActual, TestsCompareTruncated,
     TestsCompareSummary, TestsCompareJson, TestsCompareXml, TestsCompareCopyActual, TestsCompareClose, TestsCompareNone,
-    SettingsTestsCompare, SettingsTestsCompareFormat);
+    SettingsTestsCompare, SettingsTestsCompareFormat,
+    // Dauer und langsame Tests (#1772).
+    TestsLensDuration, TestsLensSlow, TestsSlowestCommand, TestsSlowestTitle, TestsSlowestTest, TestsSlowestDuration,
+    TestsSlowestNone, TestsSlowestHint, TestsSlowestNotFound, SettingsTestsShowDuration, SettingsTestsSlowMs);
 
   TAtlasTestsStrings = class
   public
@@ -146,7 +149,18 @@ const
      'Schließen',
      'Tests: Kein Fehlschlag mit erwartetem und erhaltenem Wert am Cursor oder aus dem letzten Lauf.',
      'Befehl „Erwartet und erhalten vergleichen“ (zwei Spalten, Unterschiede zeichengenau)',
-     'JSON und XML vor dem Vergleich gleich einrücken'),
+     'JSON und XML vor dem Vergleich gleich einrücken',
+     '%s · %s',
+     '%s · langsam',
+     'Langsamste Tests zeigen',
+     'Langsamste Tests',
+     'Test',
+     'Dauer',
+     'Tests: Noch keine Testdauer bekannt; zuerst die Tests ausführen.',
+     'Doppelklick springt zum Test. Langsam ab %d ms.',
+     'Tests: %s nicht im Testprojekt gefunden.',
+     'Dauer an der Testmarke zeigen, langsame Tests gelb',
+     'Langsam ab (ms)'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -240,7 +254,18 @@ const
      'Close',
      'Tests: No failure with expected and actual value at the cursor or from the last run.',
      'Command “Compare expected and actual” (two columns, differences per character)',
-     'Indent JSON and XML the same way before comparing'));
+     'Indent JSON and XML the same way before comparing',
+     '%s · %s',
+     '%s · slow',
+     'Show slowest tests',
+     'Slowest tests',
+     'Test',
+     'Duration',
+     'Tests: No test durations known yet; run the tests first.',
+     'Double-click jumps to the test. Slow from %d ms.',
+     'Tests: %s not found in the test project.',
+     'Show the duration on the test mark, slow tests in yellow',
+     'Slow from (ms)'));
 
 { TAtlasTestsStrings }
 

@@ -469,6 +469,10 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"completion": {"typeGuards": "aus"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Nicht sichtbare Mitglieder (#2108)
+  Assert.IsTrue(Parse('{}', Issues).Completion.HiddenMembers);
+  Assert.IsFalse(Parse('{"completion": {"hiddenMembers": false}}', Issues).Completion.HiddenMembers);
+  Assert.AreEqual(0, Integer(Length(Issues)));
   // Freigabe absichern (#489)
   Assert.IsTrue(Parse('{}', Issues).Completion.OfferTryFinally);
   Assert.IsTrue(Parse('{}', Issues).Completion.FreeStyle = TCompletionFreeStyle.Free);

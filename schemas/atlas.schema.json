@@ -442,6 +442,15 @@
                 "description": "Nur dunitx-test-without-assert (#945): Aufrufe, die als Prüfung zählen, als Muster mit * und ?; ersetzt die Vorgabe. System.Assert und Klassen mit Assert im Namen zählen immer.",
                 "x-description-en": "Only dunitx-test-without-assert (#945): calls that count as a check, as patterns with * and ?; replaces the default. System.Assert and classes with Assert in the name always count."
               },
+              "registrationCalls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur dunitx-fixture-not-registered (#1882): eigene Registrierfunktionen, die alle Testklassen einer Unit registrieren, wenn initialization sie aufruft, als Name oder Klasse.Name.",
+                "x-description-en": "Only dunitx-fixture-not-registered (#1882): own registration functions that register all test classes of a unit when called in initialization, as Name or Class.Name."
+              },
               "selfRegistering": {
                 "type": "array",
                 "items": {
@@ -1448,6 +1457,13 @@
           "description": "Nach einer Typprüfung die Mitglieder des geprüften Typs anbieten: Im then-Zweig von if X is T then (auch in and-Ketten und nach while X is T do) und nach if not (X is T) then Exit; bis zum Ende des Blocks stehen nach X. die Mitglieder, die nur T hat, oben mit der Überschrift „X ist hier T (is-Prüfung, Zeile n)“. Übernehmen schreibt die Umwandlung nach completion.senderCast (T(X).Name bzw. (X as T).Name). Nach einer Zuweisung an X, nach Übergabe an einen var- oder out-Parameter, im else-Zweig, in with-Blöcken und bei Feldern nach jeder weiteren Anweisung gilt die Prüfung nicht. Nach X is und X as stehen die Nachfahren des Typs von X oben. Aus: wie ohne Prüfung.",
           "x-description-en": "Offer the members of the checked type after a type check: in the then branch of if X is T then (also in and chains and after while X is T do) and after if not (X is T) then Exit; up to the end of the block, X. lists the members only T has at the top under the heading \"X is T here (is check, line n)\". Accepting writes the cast according to completion.senderCast (T(X).Name or (X as T).Name). After an assignment to X, after passing it to a var or out parameter, in the else branch, in with blocks and for fields after any further statement the check no longer applies. After X is and X as the descendants of the type of X come first. Off: as without the check.",
           "x-issue": "#2107"
+        },
+        "hiddenMembers": {
+          "type": "boolean",
+          "default": true,
+          "description": "Mitglieder nennen, die nur wegen ihrer Sichtbarkeit fehlen: Passt das Getippte nach X. auf private, strict private, strict protected oder (außerhalb von Nachfahren) protected Mitglieder, nennt die Fußzeile sie mit Sichtbarkeit und Klasse („1 Treffer nicht sichtbar: FEntries (private in TAtlasUsage) · Strg+Leertaste zeigt ihn“). Ein zweites Strg+Leertaste zeigt sie ausgegraut in der Liste; übernommen werden sie nicht. Ohne getipptes Präfix kein Hinweis. Aus: wie bisher still weggelassen.",
+          "x-description-en": "Name members that are missing only because of their visibility: if the text typed after X. matches private, strict private, strict protected or (outside descendants) protected members, the footer names them with visibility and class (\"1 match not visible: FEntries (private in TAtlasUsage) · Ctrl+Space shows it\"). Pressing Ctrl+Space again shows them greyed out in the list; they are not inserted. No notice without a typed prefix. Off: left out silently as before.",
+          "x-issue": "#2108"
         }
       },
       "x-scope": "global",

@@ -158,6 +158,7 @@
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Navigate.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.SelectionSets.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Select.pas"/>
+        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Tool.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.HandleTool.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.GapHandles.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.MultiResize.pas"/>

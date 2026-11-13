@@ -75,6 +75,8 @@ type
     /// <summary>#1455: Das Modul Tests liest die fehlgeschlagenen Tests ohne die Willkommensseite.</summary>
     [Test]
     procedure FailedTestsOfStoredRun;
+    [Test]
+    procedure SlowestRoundTripAndLimit;
     /// <summary>#533: Release-Wächter, letzte Prüfung und Versionen je Konfiguration und Plattform.</summary>
     [Test]
     procedure ReleaseRoundTripAndRemember;
@@ -566,6 +568,42 @@ begin
   Assert.IsTrue(Read.Tests.Known);
   Assert.AreEqual(3, Read.Tests.Passed);
   Assert.Contains(TAtlasProjectSummaries.ToJson(Read), '"jenkins":{"job":"x"}');
+end;
+
+procedure TAtlasProjectSummaryTests.SlowestRoundTripAndLimit;
+var
+  mSummary, mRead: TAtlasProjectSummary;
+  mSlow: TAtlasProjectSlowTest;
+  mIndex: Integer;
+  mJson: string;
+begin
+  mSummary := TAtlasProjectSummary.Create(Project);
+  mSummary.Tests.Known := True;
+  mSummary.Tests.Project := 'C:\Projekte\Demo.Tests.dproj';
+  mSlow := Default(TAtlasProjectSlowTest);
+  mSlow.Test := 'Demo.Tests.TRechner.Laden';
+  mSlow.FileName := 'C:\Projekte\Demo.Tests.pas';
+  mSlow.Line := 50;
+  mSlow.DurationMs := 820;
+  mSummary.Tests.Slowest := [mSlow];
+  mJson := TAtlasProjectSummaries.ToJson(mSummary);
+  Assert.Contains(mJson, '"slowest":[{"test":"Demo.Tests.TRechner.Laden","file":"C:\\Projekte\\Demo.Tests.pas",' +
+    '"line":50,"durationMs":820}]');
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(mJson, mRead));
+  Assert.AreEqual(1, Integer(Length(mRead.Tests.Slowest)));
+  Assert.AreEqual('Demo.Tests.TRechner.Laden', mRead.Tests.Slowest[0].Test);
+  Assert.AreEqual(50, mRead.Tests.Slowest[0].Line);
+  Assert.AreEqual(820, mRead.Tests.Slowest[0].DurationMs);
+  // Höchstens cMaxSlowest; ohne Liste kein Eintrag "slowest".
+  mSummary.Tests.Slowest := nil;
+  Assert.DoesNotContain(TAtlasProjectSummaries.ToJson(mSummary), '"slowest"');
+  for mIndex := 1 to TAtlasProjectTests.cMaxSlowest + 2 do
+  begin
+    mSlow.Test := 'Demo.Tests.T.M' + IntToStr(mIndex);
+    mSummary.Tests.Slowest := mSummary.Tests.Slowest + [mSlow];
+  end;
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(TAtlasProjectSummaries.ToJson(mSummary), mRead));
+  Assert.AreEqual(TAtlasProjectTests.cMaxSlowest, Integer(Length(mRead.Tests.Slowest)));
 end;
 
 procedure TAtlasProjectSummaryTests.FailedTestsOfStoredRun;

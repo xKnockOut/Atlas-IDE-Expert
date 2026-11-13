@@ -633,7 +633,8 @@ begin
     TFlagOption.Create('syntaxNotice', ACompletion.SyntaxNotice),
     TFlagOption.Create('sameNameVariants', ACompletion.SameNameVariants),
     TFlagOption.Create('showFmxUnits', ACompletion.ShowFmxUnits),
-    TFlagOption.Create('typeGuards', ACompletion.TypeGuards)];
+    TFlagOption.Create('typeGuards', ACompletion.TypeGuards),
+    TFlagOption.Create('hiddenMembers', ACompletion.HiddenMembers)];
 end;
 
 procedure ReadCompletion(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);

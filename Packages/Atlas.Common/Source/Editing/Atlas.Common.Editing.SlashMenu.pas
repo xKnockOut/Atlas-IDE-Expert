@@ -278,7 +278,10 @@ begin
     Entry('sql', cInRoutine, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('params', cInRoutine, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('case', cInRoutine, TSlashGroup.Generate, TSlashArgument.None),
-    Entry('test', cInRoutine, TSlashGroup.Generate, TSlashArgument.None)];
+    Entry('test', cInRoutine, TSlashGroup.Generate, TSlashArgument.None),
+    Entry('dump', cInRoutine, TSlashGroup.Generate, TSlashArgument.None),
+    Entry('assert', cInRoutine, TSlashGroup.Generate, TSlashArgument.None),
+    Entry('testcase', cInClass, TSlashGroup.Generate, TSlashArgument.Required)];
 end;
 
 /// <summary>Erzeugen auf Unit-Ebene und in der Programmdatei.</summary>
@@ -293,6 +296,7 @@ begin
     Entry('thread', cInUnit, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('external', cInUnit, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('exports', [TSlashPlace.ProgramFile], TSlashGroup.Generate, TSlashArgument.None),
+    Entry('mock', cInUnit + cInRoutine, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('todo', cEverywhere, TSlashGroup.Generate, TSlashArgument.Required)];
 end;
 

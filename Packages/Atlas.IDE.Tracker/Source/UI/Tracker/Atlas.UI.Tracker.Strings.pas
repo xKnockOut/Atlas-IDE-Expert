@@ -205,7 +205,7 @@ type
     FlowTruncated, FlowOffline, FlowNoTracker, FlowEmpty, FlowAverage, FlowNoAverage, FlowOpen, FlowMine,
     FlowStuckMark, FlowEnd, FlowStuckTitle, FlowStuckFilter, FlowNoStuck, FlowColumnKey, FlowColumnTitle,
     FlowColumnState, FlowColumnSince, FlowColumnAssignee, FlowDays, FlowDaysBefore, SettingsIssuesFlowMap,
-    SettingsIssuesFlowMapDays, SettingsIssuesFlowMapStuckDays);
+    SettingsIssuesFlowMapDays, SettingsIssuesFlowMapStuckDays, WelcomeTestsSlowest);
 
   TAtlasTrackerStrings = class
   public
@@ -1101,7 +1101,8 @@ const
      'über %d Tagen',
      'Fenster „Atlas-Ablauf“: Ablauf-Karte aus der Historie (nur YouTrack)',
      'Zeitraum der Ablauf-Karte in Tagen',
-     '„Liegt lange“ ab so vielen Tagen'),
+     '„Liegt lange“ ab so vielen Tagen',
+     'Langsamste Tests'),
     ('Show issue…',
      'No issue selected. Click an issue in “My issues” or use “Show issue…”.',
      'Back (Alt+Left)',
@@ -1976,7 +1977,8 @@ const
      'over %d days',
      '“Atlas Flow” window: flow map from the history (YouTrack only)',
      'Flow map period in days',
-     '“Stuck” after this many days'));
+     '“Stuck” after this many days',
+     'Slowest tests'));
 
 { TAtlasTrackerStrings }
 
