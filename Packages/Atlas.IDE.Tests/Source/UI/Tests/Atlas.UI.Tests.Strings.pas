@@ -95,7 +95,11 @@ type
     ExplorerDetailExpected, ExplorerDetailActual, ExplorerDetailStack, ExplorerFooter, SettingsTestsWindow,
     // Protokoll je Test (#2168).
     ExplorerDetailsTab, ExplorerLogTab, ExplorerLogCopy, LogStart, LogFinish, LogWarning, LogError, LogConsole,
-    LogAfterEnd, LogDropped, LogFixture, LogNoLogger, LogOutput, LogEmpty, SettingsTestsLog, SettingsTestsLogMaxLines);
+    LogAfterEnd, LogDropped, LogFixture, LogNoLogger, LogOutput, LogEmpty, SettingsTestsLog, SettingsTestsLogMaxLines,
+    // Teststand in der Statusleiste (#1777).
+    StatusFieldText, StatusFieldRunning, StatusFieldNotRun, StatusFieldProject, StatusFieldLastRun, StatusFieldNoRun,
+    StatusFieldCounts, StatusFieldStale, StatusFieldClickFailed, StatusFieldClickAll, StatusFieldContext,
+    StatusMenuRunAll, StatusMenuRunFailed, StatusMenuAffected, StatusMenuWindow, StatusMenuWelcome);
 
   TAtlasTestsStrings = class
   public
@@ -428,7 +432,23 @@ const
      'Ausgabe des ganzen Laufs:',
      'Keine Zeilen für diesen Test im letzten Lauf.',
      'Protokoll je Test (Log- und Konsolenausgabe)',
-     'Höchstens Zeilen je Test'),
+     'Höchstens Zeilen je Test',
+     'Tests %d/%d',
+     'Tests laufen …',
+     'Tests –',
+     'Testprojekt: %s',
+     'Letzter Lauf: %s, %s',
+     'Noch kein Lauf in dieser Sitzung',
+     '%d bestanden, %d fehlgeschlagen, %d übersprungen',
+     '%d veraltet',
+     'Klick: fehlgeschlagene erneut ausführen',
+     'Klick: alle ausführen',
+     'Rechtsklick: weitere Aktionen',
+     'Alle ausführen',
+     'Fehlgeschlagene erneut ausführen',
+     'Betroffene ausführen',
+     'Fenster „Atlas-Tests“',
+     'Ergebnisse auf der Willkommensseite'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -745,7 +765,23 @@ const
      'Output of the whole run:',
      'No lines for this test in the last run.',
      'Log per test (log and console output)',
-     'At most lines per test'));
+     'At most lines per test',
+     'Tests %d/%d',
+     'Tests running …',
+     'Tests –',
+     'Test project: %s',
+     'Last run: %s, %s',
+     'No run in this session yet',
+     '%d passed, %d failed, %d skipped',
+     '%d outdated',
+     'Click: run failed tests again',
+     'Click: run all tests',
+     'Right-click: more actions',
+     'Run all',
+     'Run failed again',
+     'Run affected',
+     '“Atlas Tests” window',
+     'Results on the welcome page'));
 
 { TAtlasTestsStrings }
 

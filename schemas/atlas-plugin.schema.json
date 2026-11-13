@@ -7467,6 +7467,19 @@
       "x-control": "Textfeld und Menü „Leiste anpassen …“",
       "x-issue": "#1155"
     },
+    "EditorStatusBarTests": {
+      "description": "Feld „Tests 41/42“ mit Ampelpunkt in der Atlas-Statusleiste für das Testprojekt der aktuellen Datei (Testunit: ihr Testprojekt; sonst das zugeordnete wie bei „Tests ausführen“), während eines Laufs „Tests laufen …“. Klick: fehlgeschlagene erneut ausführen (alle grün: alle ausführen); Rechtsklick: Alle ausführen, Betroffene ausführen, Fenster „Atlas-Tests“, Ergebnisse auf der Willkommensseite. Tooltip: letzter Lauf, Dauer, übersprungen und veraltet. Ohne Testprojekt kein Feld. Steht das Element status nicht in der Leiste, steht das Feld als Text in der Statuszeile der IDE.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.statusBar.tests",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.statusBar",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Teststand in der Statusleiste",
+      "x-captionEn": "Test status in the status bar",
+      "x-issue": "#1777"
+    },
     "StickyScroll": {
       "description": "Mitlaufender Kopf: Die Kopfzeilen der umgebenden Klasse bzw. des Records und der Routinen bleiben oben im Editor stehen, bis der Block endet. Verschachtelte Routinen stapeln sich (die äußere oben); im Rumpf der äußeren Routine steht nur ihr Kopf. Bei mehr Ebenen als erlaubt bleibt die innerste sichtbar, die äußeren werden zu einer Zeile „A › B › C“ zusammengefasst. Mehrzeilige Köpfe werden mit „(…)“ auf eine Zeile gekürzt. Klick auf eine Kopfzeile springt dorthin.",
       "type": "boolean",
