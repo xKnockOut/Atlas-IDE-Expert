@@ -76,7 +76,7 @@ begin
   mStack := ClickStack('Meier');
   mRows := mStack.Rows(nil);
   Assert.AreEqual(4, Integer(Length(mRows)));
-  Assert.IsTrue(mRows[2].Kind = TAtlasDebugStackRowKind.LibraryGroup);
+  Assert.AreEqual(Ord(TAtlasDebugStackRowKind.LibraryGroup), Ord(mRows[2].Kind));
   Assert.AreEqual(4, mRows[2].Count);
   Assert.AreEqual('VCL', mStack.Area(mRows[2]));
   Assert.AreEqual('Vcl.Controls.TControl.Click … Vcl.Forms.TApplication.Run', mStack.Hint(mRows[2]));
@@ -88,7 +88,7 @@ var
 begin
   mRows := ClickStack('Meier').Rows([2]);
   Assert.AreEqual(7, Integer(Length(mRows)));
-  Assert.IsTrue(mRows[3].Kind = TAtlasDebugStackRowKind.Frame);
+  Assert.AreEqual(Ord(TAtlasDebugStackRowKind.Frame), Ord(mRows[3].Kind));
   Assert.IsTrue(mRows[3].Faded);
 end;
 
