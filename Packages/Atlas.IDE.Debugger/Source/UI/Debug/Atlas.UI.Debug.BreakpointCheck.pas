@@ -219,8 +219,8 @@ end;
 
 class function TAtlasBreakpointCheckDialog.ProblemText(const AProblem: TAtlasBreakpointProblem): string;
 begin
-  Result := Format('%s:%d  %s', [ExtractFileName(AProblem.FileName.Replace('/', PathDelim)), AProblem.Line + 1,
-    ReasonText(AProblem)]);
+  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckProblemLine,
+    [ExtractFileName(AProblem.FileName.Replace('/', PathDelim)), AProblem.Line + 1, ReasonText(AProblem)]);
 end;
 
 procedure TAtlasBreakpointCheckDialog.JumpTo(AIndex: Integer);

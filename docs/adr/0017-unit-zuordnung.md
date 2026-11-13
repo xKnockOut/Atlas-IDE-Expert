@@ -903,6 +903,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.Breakpoints` | `IDE/Debug/Atlas.IDE.Debug.Breakpoints.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Composition` | `IDE/Debug/Atlas.IDE.Debug.Composition.pas` | Anmeldung des Moduls `atlas.debugger`, #1455 |
 | `Atlas.IDE.Debug.Composition.Values` | `IDE/Debug/Atlas.IDE.Debug.Composition.Values.pas` | Teile für Werte und Ausdrücke des Moduls `atlas.debugger`, #1455 |
+| `Atlas.IDE.Debug.Composition.Breakpoints` | `IDE/Debug/Atlas.IDE.Debug.Composition.Breakpoints.pas` | Anhalten und Haltepunkte des Moduls `atlas.debugger` (Teile, Befehle, Menüeinträge), #577, #856 |
 | `Atlas.IDE.Debug.DialogCompletion` | `IDE/Debug/Atlas.IDE.Debug.DialogCompletion.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.DisplayRules` | `IDE/Debug/Atlas.IDE.Debug.DisplayRules.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Evaluate` | `IDE/Debug/Atlas.IDE.Debug.Evaluate.pas` | Ordner `IDE/Debug` |

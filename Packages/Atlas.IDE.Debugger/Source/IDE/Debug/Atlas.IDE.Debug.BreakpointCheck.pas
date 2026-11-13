@@ -50,7 +50,7 @@ type
     /// <summary>Server fragen und Funde sammeln; False ohne Server oder bei Fehler (AError).</summary>
     class function Check(const AProject: IOTAProject; const ASpots: TAtlasBreakpointSpots;
       out AProblems: TAtlasBreakpointProblems; out AError: string): Boolean; static;
-    class function Move(const AProblems: TAtlasBreakpointProblems): Integer; static;
+    class function MoveProblems(const AProblems: TAtlasBreakpointProblems): Integer; static;
     class function LaunchAllowed(const AProject: IOTAProject): Boolean; static;
   public
     /// <summary>Teil starten: Zuhörer bei der Debug-Sitzung anmelden. ASession liefert die laufende Sitzung (nil
@@ -66,6 +66,7 @@ implementation
 
 uses
   System.JSON,
+  System.Generics.Collections,
   Atlas.Core.Lsp.Client,
   Atlas.UI.Debug.Strings,
   Atlas.UI.Debug.BreakpointCheck,
@@ -148,22 +149,26 @@ class procedure TAtlasIdeBreakpointCheck.SyncOpenFiles(const ASession: TLspSessi
   const ASpots: TAtlasBreakpointSpots);
 var
   mSpot: TAtlasBreakpointSpot;
-  mDone: string;
+  mDone: TDictionary<string, Boolean>;
   mBuffer: IOTAEditBuffer;
 begin
-  mDone := '';
-  for mSpot in ASpots do
-  begin
-    if Pos('|' + LowerCase(mSpot.FileName) + '|', mDone) > 0 then
+  mDone := TDictionary<string, Boolean>.Create;
+  try
+    for mSpot in ASpots do
     begin
-      Continue;
+      if mDone.ContainsKey(LowerCase(mSpot.FileName)) then
+      begin
+        Continue;
+      end;
+      mDone.Add(LowerCase(mSpot.FileName), True);
+      mBuffer := TAtlasIdeFiles.BufferOf(mSpot.FileName);
+      if mBuffer <> nil then
+      begin
+        ASession.Sync(mSpot.FileName, TAtlasEditorBuffer.Text(mBuffer));
+      end;
     end;
-    mDone := mDone + '|' + LowerCase(mSpot.FileName) + '|';
-    mBuffer := TAtlasIdeFiles.BufferOf(mSpot.FileName);
-    if mBuffer <> nil then
-    begin
-      ASession.Sync(mSpot.FileName, TAtlasEditorBuffer.Text(mBuffer));
-    end;
+  finally
+    mDone.Free;
   end;
 end;
 
@@ -259,7 +264,7 @@ begin
   end;
 end;
 
-class function TAtlasIdeBreakpointCheck.Move(const AProblems: TAtlasBreakpointProblems): Integer;
+class function TAtlasIdeBreakpointCheck.MoveProblems(const AProblems: TAtlasBreakpointProblems): Integer;
 var
   mProblem: TAtlasBreakpointProblem;
   mBreakpoint: IOTABreakpoint;
@@ -302,9 +307,9 @@ begin
   begin
     Exit;
   end;
-  case TAtlasBreakpointCheckDialog.Execute(mProblems, TAtlasBreakpointCheckMode.Launch, JumpProc) of
+  case TAtlasBreakpointCheckDialog.Execute(mProblems, TAtlasBreakpointCheckMode.Launch, JumpProc()) of
     TAtlasBreakpointCheckChoice.Move:
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckMoved, [Move(mProblems)]));
+      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckMoved, [MoveProblems(mProblems)]));
     TAtlasBreakpointCheckChoice.Cancel:
       Result := False;
   end;
@@ -339,10 +344,10 @@ begin
     Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckAllOk, [Length(mSpots)]));
     Exit;
   end;
-  if TAtlasBreakpointCheckDialog.Execute(mProblems, TAtlasBreakpointCheckMode.Command, JumpProc) =
+  if TAtlasBreakpointCheckDialog.Execute(mProblems, TAtlasBreakpointCheckMode.Command, JumpProc()) =
     TAtlasBreakpointCheckChoice.Move then
   begin
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckMoved, [Move(mProblems)]));
+    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckMoved, [MoveProblems(mProblems)]));
   end;
 end;
 
