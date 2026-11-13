@@ -59,6 +59,7 @@ Einstellungen: `refactoring.missingUnit`
 - **Beim Öffnen einmal bauen**, sobald die IDE ruhig ist:
   - auf Wunsch immer mit derselben Konfiguration und Zielplattform (etwa Debug/Win64), egal was im Projekt eingestellt ist
   - danach steht das Projekt wieder wie vorher
+- **Laufendes Programm vor dem Build beenden:** Läuft die exe noch außerhalb des Debuggers, fragt Atlas vor dem Compile „AtlasDemo.exe läuft noch. Beenden und bauen?“ (Ja, Nein, Immer), statt den Build erst am Ende mit F2039 scheitern zu lassen. Beendet wird erst freundlich, nach 2 s hart; Programme im Debugger bleiben unberührt. Bei einem Package nennt ein Hinweis die Programme, die die BPL noch geladen haben (`build.stopRunningProgram`: ask, always, never)
 
 <a id="window-atlascompilerswitches"></a>
 ### Compiler-Schalter an der Cursorposition

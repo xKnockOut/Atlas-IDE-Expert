@@ -70,9 +70,12 @@ type
     /// <summary>Inhalt für …/comments: {"body": AText}.</summary>
     class function CommentJson(const AText: string): string; static;
     /// <summary>PATCH-Inhalt für AChange auf dem Stand ALabels/AAssignees; AMe = eigener Anmeldename. '' = nichts
-    /// zu ändern.</summary>
+    /// zu ändern. Schließgrund nach AChange.Close (#2135); ADuplicateId = interne ID des Originals bei Duplicate
+    /// (0 = als „nicht geplant“ ohne Verweis, Ersatzweg).</summary>
     class function PatchJson(const ALabels, AAssignees: TArray<string>; const AChange: TAtlasTrackerWrite;
-      const AMe: string): string; static;
+      const AMe: string; ADuplicateId: Int64): string; static;
+    /// <summary>Wert von state_reason für AChange; '' = nicht schließen (#2135).</summary>
+    class function CloseReason(const AChange: TAtlasTrackerWrite): string; static;
     /// <summary>…/repos/&lt;owner/repo&gt;/assignees (#1266, #1278); '' ohne Server oder Projekt.</summary>
     class function AssigneesUrl(const ATarget: TAtlasTrackerTarget): string; static;
     /// <summary>Fehlertext ("message") einer Antwort; '' ohne.</summary>
@@ -398,13 +401,14 @@ begin
 end;
 
 /// <summary>Labels nach dem neuen Zustand: der Zustand aus „Beginnen“ fällt weg, der neue kommt dazu (nicht
-/// beim Schließen); True, wenn sich etwas ändert.</summary>
+/// beim Schließen); True, wenn sich etwas ändert. Schließen ohne Zustand (#2135) nimmt nur den aus „Beginnen“ ab.
+/// </summary>
 function ChangeStateLabels(var ALabels: TArray<string>; const AState, APrevious: string; AClose: Boolean): Boolean;
 var
   mIndex: Integer;
 begin
   Result := False;
-  if AState = '' then
+  if (AState = '') and not AClose then
   begin
     Exit;
   end;
@@ -414,7 +418,7 @@ begin
     Delete(ALabels, mIndex, 1);
     Result := True;
   end;
-  if not AClose and (IndexOfText(ALabels, AState) < 0) then
+  if not AClose and (AState <> '') and (IndexOfText(ALabels, AState) < 0) then
   begin
     ALabels := ALabels + [AState];
     Result := True;
@@ -446,19 +450,45 @@ begin
   // Keep: Zuständige bleiben.
 end;
 
+class function TAtlasGitHubApi.CloseReason(const AChange: TAtlasTrackerWrite): string;
+begin
+  case AChange.Close of
+    TAtlasTrackerClose.Completed:
+      Result := 'completed';
+    TAtlasTrackerClose.NotPlanned:
+      Result := 'not_planned';
+    TAtlasTrackerClose.Duplicate:
+      Result := 'duplicate';
+    TAtlasTrackerClose.KeepOpen:
+      Result := '';
+  else
+    Result := '';
+    if (Trim(AChange.State) <> '') and ClosesIssue(AChange.State) then
+    begin
+      Result := 'completed';
+    end;
+  end;
+end;
+
 class function TAtlasGitHubApi.PatchJson(const ALabels, AAssignees: TArray<string>;
-  const AChange: TAtlasTrackerWrite; const AMe: string): string;
+  const AChange: TAtlasTrackerWrite; const AMe: string; ADuplicateId: Int64): string;
 var
   mObject: TJSONObject;
   mLabels, mAssignees: TArray<string>;
-  mState: string;
+  mState, mReason: string;
   mClose, mLabelsChanged, mAssigneesChanged: Boolean;
 begin
   Result := '';
   mLabels := Copy(ALabels);
   mAssignees := Copy(AAssignees);
   mState := Trim(AChange.State);
-  mClose := (mState <> '') and ClosesIssue(mState);
+  mReason := CloseReason(AChange);
+  // Duplikat ohne bekanntes Original: Ersatzweg „nicht geplant“.
+  if (mReason = 'duplicate') and (ADuplicateId <= 0) then
+  begin
+    mReason := 'not_planned';
+  end;
+  mClose := mReason <> '';
   mLabelsChanged := ChangeStateLabels(mLabels, mState, Trim(AChange.PreviousState), mClose);
   mAssigneesChanged := ChangeAssignees(mAssignees, AChange, AMe);
   if not (mLabelsChanged or mAssigneesChanged or mClose) then
@@ -478,7 +508,11 @@ begin
     if mClose then
     begin
       mObject.AddPair('state', 'closed');
-      mObject.AddPair('state_reason', 'completed');
+      mObject.AddPair('state_reason', mReason);
+      if mReason = 'duplicate' then
+      begin
+        mObject.AddPair('duplicate_issue_id', TJSONNumber.Create(ADuplicateId));
+      end;
     end;
     Result := mObject.ToJSON;
   finally

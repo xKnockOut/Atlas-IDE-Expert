@@ -4,7 +4,8 @@
 // Vertrag Atlas.IDE.Contracts.IssueWork: „Beginnen“, „Beenden“ und „Prüfen“
 // (#2126) melden das bisherige Issue (Arbeitsstand sichern); nach „Beginnen“
 // bietet sie das Wiederherstellen an, nach „Weiterarbeiten“ (#2127) und dem
-// Rückweg von „Prüfen“ stellt sie ihn ohne Rückfrage her. Ohne
+// Rückweg von „Prüfen“ stellt sie ihn ohne Rückfrage her; nach dem Beenden
+// als „nicht geplant“ oder „Duplikat“ (#2135) verwirft sie ihn. Ohne
 // Willkommensseite wirkungslos. Eigene Unit, damit die Dienste von „Meine
 // Issues“ sie ohne Zyklus nutzen (aus Atlas.IDE.Tracker.IssueWork gelöst).
 // Hauptthread.
@@ -29,6 +30,9 @@ type
     class procedure BeforeStart(AContext: TAtlasIdeIssuesContext; const AProject, ANewKey: string); static;
     /// <summary>Vor „Beenden“: Arbeitsstand von AActive (auf ABranch) sichern.</summary>
     class procedure BeforeEnd(const AProject, ABranch: string; const AActive: TAtlasActiveIssue); static;
+    /// <summary>Nach dem Beenden als „nicht geplant“ oder „Duplikat“ (#2135): Arbeitsstand von AKey verwerfen.
+    /// </summary>
+    class procedure Forget(const AProject, AKey: string); static;
     /// <summary>Nach „Beginnen“: „Arbeitsstand wiederherstellen?“, wenn es einen gibt.</summary>
     class procedure AfterStart(const AProject, AKey: string); static;
     /// <summary>Nach „Weiterarbeiten“ an einem wieder geöffneten Issue (#2127): ohne Rückfrage wiederherstellen.
@@ -117,6 +121,16 @@ begin
   if AActive.Active and Work(mWork) then
   begin
     mWork.SaveIssue(AProject, IssueOf(AActive, ABranch));
+  end;
+end;
+
+class procedure TAtlasTrackerIssueWorkLink.Forget(const AProject, AKey: string);
+var
+  mWork: IAtlasIssueWork;
+begin
+  if Work(mWork) then
+  begin
+    mWork.Forget(AProject, AKey);
   end;
 end;
 
