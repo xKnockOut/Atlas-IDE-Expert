@@ -29,7 +29,6 @@
 interface
 
 uses
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
@@ -98,6 +97,7 @@ implementation
 {$OVERFLOWCHECKS ON}
 
 uses
+  Atlas.Common.Documents.Contract,
   System.SysUtils,
   System.StrUtils,
   Atlas.Text.Lines,

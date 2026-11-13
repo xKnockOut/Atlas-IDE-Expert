@@ -51,7 +51,6 @@ interface
 uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
-  Atlas.Common.Semantics.ExpressionTypes,
   Atlas.Common.Semantics.ExpressionTypes.Contract;
 
 const
@@ -93,6 +92,7 @@ procedure RegisterCallRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Semantics.ExpressionTypes,
   Atlas.Common.Rules.Derived,
   System.SysUtils,
   System.StrUtils,
