@@ -21,7 +21,8 @@
 //   OnProblems → Problem-Speicher, Quelle DUnitX), Zusammenfassung und je
 //   Fehlschlag eine anklickbare Zeile in der Meldungsansicht (Gruppe Atlas),
 //   Abschnitt "tests" der Projekt-Zusammenfassung (Haken OnFinished, #592,
-//   #763) und der Stand je Test für die Code Lens.
+//   #763, mit den langsamsten Tests #1772) und der Stand je Test für die
+//   Code Lens.
 // - Nach einem Build des Benutzers ruft die Composition BuildFinished mit der
 //   Bewertung aus #530 (Atlas.Core.Build.Verdict); mit „Tests nach dem Build“
 //   laufen dann die Tests des gebauten Testprojekts (ohne erneut zu bauen).
@@ -776,8 +777,10 @@ begin
   SayFailures(mFailures);
   if Assigned(FHooks.OnFinished) then
   begin
+    // Die langsamsten Tests des Laufs für die Karte Testergebnisse (#1772).
     FHooks.OnFinished(ATarget.Project, TAtlasTestRun.SummaryOf(ATarget, ARun, mFailures,
-      TTimeZone.Local.ToUniversalTime(Now)));
+      TAtlasTestRun.Locate(TTestResults.Slowest(ARun.Cases, TAtlasProjectTests.cMaxSlowest),
+      UnitFileFunc(ATarget.Project), ReadLines), TTimeZone.Local.ToUniversalTime(Now)));
   end;
 end;
 
