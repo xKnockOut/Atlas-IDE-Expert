@@ -1161,27 +1161,24 @@ end;
 
 function TTeamReader.ReadTrackerKey(const AKey, APath: string; AValue: TJSONValue;
   var ATracker: TAtlasTeamTracker): Boolean;
+const
+  cProvider = 0;
+  cUrl = 1;
+  cProject = 2;
+  cTemplateFields = 3;
 begin
   Result := True;
-  if AKey = 'provider' then
-  begin
-    Result := ReadProvider(AValue, APath, ['github', 'youtrack'], ATracker.Provider);
-  end
-  else if AKey = 'url' then
-  begin
-    ReadUrl(AValue, APath, ATracker.Url);
-  end
-  else if AKey = 'project' then
-  begin
-    ReadString(AValue, APath, ATracker.Project);
-  end
-  // Feld-Id → Text wie Umgebungsvariablen: Objekt aus Texten, ohne Zugangsdaten und Pfade (#2137).
-  else if AKey = 'templateFields' then
-  begin
-    ReadEnvironment(AValue, APath, ATracker.TemplateFields);
-  end
+  case IndexStr(AKey, ['provider', 'url', 'project', 'templateFields']) of
+    cProvider:
+      Result := ReadProvider(AValue, APath, ['github', 'youtrack'], ATracker.Provider);
+    cUrl:
+      ReadUrl(AValue, APath, ATracker.Url);
+    cProject:
+      ReadString(AValue, APath, ATracker.Project);
+    // Feld-Id → Text wie Umgebungsvariablen: Objekt aus Texten, ohne Zugangsdaten und Pfade (#2137).
+    cTemplateFields:
+      ReadEnvironment(AValue, APath, ATracker.TemplateFields);
   else
-  begin
     Report(TAtlasTeamIssueKind.UnknownKey, APath);
     ScanCredentials(AValue, APath);
   end;

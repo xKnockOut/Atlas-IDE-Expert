@@ -260,6 +260,9 @@ uses
   Atlas.Core.Tracker.QueryTest;
 
 const
+  /// <summary>Antworten auf das Anlegen: 200 (YouTrack) bzw. 201 Created (GitHub).</summary>
+  cHttpOk = 200;
+  cHttpCreated = 201;
   // Übliche Namen der Felder in YouTrack, auch auf Deutsch angelegte Projekte.
   cYouTrackTypeNames: array[0..1] of string = ('Type', 'Typ');
   cYouTrackPriorityNames: array[0..1] of string = ('Priority', 'Priorität');
@@ -1554,6 +1557,25 @@ begin
   end;
 end;
 
+/// <summary>Ergebnis zur Antwort auf das Anlegen; bei GitHub danach Meilenstein, Typ und Projekte prüfen.
+/// </summary>
+function Answered(const AProvider: IAtlasTrackerProvider; const ACall: TAtlasTrackerCall; const AWatch: TStopwatch;
+  const ASend: IAtlasCiSend; const ADraft: TAtlasNewIssueDraft; const AResponse: TAtlasCiResponse):
+  TAtlasNewIssueResult;
+begin
+  if (AResponse.Status <> cHttpOk) and (AResponse.Status <> cHttpCreated) then
+  begin
+    Exit(Failure(AResponse.Status, AResponse.Text));
+  end;
+  Result := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.Created);
+  Result.HttpStatus := AResponse.Status;
+  ReadCreated(AProvider, ACall.Target, AResponse.Text, Result);
+  if not IsYouTrack(AProvider) and (Result.Outcome = TAtlasNewIssueOutcome.Created) then
+  begin
+    CheckGitHub(ACall, AWatch, ASend, ADraft.GitHub, AResponse.Text, Result);
+  end;
+end;
+
 class function TAtlasNewIssues.CreateIssue(const AProvider: IAtlasTrackerProvider;
   const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
   const ADraft: TAtlasNewIssueDraft): TAtlasNewIssueResult;
@@ -1591,20 +1613,10 @@ begin
   begin
     Result := TAtlasNewIssueResult.Create(OutcomeOfError(mResponse.Error));
   end
-  else if (mResponse.Status <> 200) and (mResponse.Status <> 201) then
-  begin
-    Result := Failure(mResponse.Status, mResponse.Text);
-  end
   else
   begin
-    Result := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.Created);
-    Result.HttpStatus := mResponse.Status;
-    ReadCreated(AProvider, ATarget, mResponse.Text, Result);
-    if not IsYouTrack(AProvider) and (Result.Outcome = TAtlasNewIssueOutcome.Created) then
-    begin
-      CheckGitHub(TAtlasTrackerCall.Create(ATarget, ATransport, cTimeoutMs), mWatch, mSend, ADraft.GitHub,
-        mResponse.Text, Result);
-    end;
+    Result := Answered(AProvider, TAtlasTrackerCall.Create(ATarget, ATransport, cTimeoutMs), mWatch, mSend,
+      ADraft, mResponse);
   end;
 end;
 

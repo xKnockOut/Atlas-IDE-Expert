@@ -53,6 +53,8 @@ type
     [Test]
     procedure MatchOptionFindsSimilarOption;
     [Test]
+    procedure FactsNameDelphiAndIde;
+    [Test]
     procedure PrefillUsesMappingAndFacts;
     [Test]
     procedure PrefillPutsCodeIntoRenderedTextarea;
@@ -69,7 +71,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Product.Version;
 
 function Lines(const ALines: array of string): string;
 var
@@ -294,6 +297,17 @@ begin
   Assert.AreEqual(2, TAtlasIssueForms.MatchOption(mOptions, 'Delphi 12 64'));
   Assert.AreEqual(1, TAtlasIssueForms.MatchOption(mOptions, 'RAD Studio 13, 64 Bit'));
   Assert.AreEqual(-1, TAtlasIssueForms.MatchOption(mOptions, 'Delphi 11'));
+end;
+
+procedure TAtlasIssueFormsTests.FactsNameDelphiAndIde;
+var
+  mFacts: TAtlasIssueFormFacts;
+begin
+  mFacts := TAtlasIssueFormFacts.Create(37.0, 64);
+  Assert.AreEqual(string(TAtlasPluginVersion.cVersion), mFacts.Version);
+  Assert.AreEqual('Delphi 13 (64-Bit-IDE)', mFacts.Ide);
+  Assert.AreEqual('', mFacts.Code);
+  Assert.AreEqual('Delphi 12 (32-Bit-IDE)', TAtlasIssueFormFacts.Create(36.0, 32).Ide);
 end;
 
 procedure TAtlasIssueFormsTests.PrefillUsesMappingAndFacts;

@@ -104,6 +104,9 @@ type
     Code: string;
     /// <summary>Fundstelle bzw. Befunde als Markdown (Beschreibung von #1268).</summary>
     Finding: string;
+    /// <summary>Version des Plugins und IDE aus ACompilerVersion (37 = Delphi 13) und AIdeBits (32 oder 64);
+    /// Code und Fundstelle leer.</summary>
+    class function Create(ACompilerVersion: Double; AIdeBits: Integer): TAtlasIssueFormFacts; static;
   end;
 
   /// <summary>Feld-Id → Text mit Platzhaltern.</summary>
@@ -208,6 +211,7 @@ uses
   System.Generics.Defaults,
   Atlas.Text.Json,
   Atlas.Text.Uris,
+  Atlas.Core.Product.Version,
   Atlas.Core.Tracker.Internals.FormYaml;
 
 const
@@ -256,6 +260,21 @@ begin
       Exit(True);
     end;
   end;
+end;
+
+{ TAtlasIssueFormFacts }
+
+class function TAtlasIssueFormFacts.Create(ACompilerVersion: Double; AIdeBits: Integer): TAtlasIssueFormFacts;
+const
+  /// <summary>Wie die Auswahl „Delphi-Version und IDE“ der Atlas-Vorlage; andere Schreibweisen findet MatchOption
+  /// über die Zahlen.</summary>
+  cIdeFact = 'Delphi %d (%d-Bit-IDE)';
+  /// <summary>CompilerVersion 37 = Delphi 13.</summary>
+  cCompilerToDelphi = 24;
+begin
+  Result := Default(TAtlasIssueFormFacts);
+  Result.Version := TAtlasPluginVersion.cVersion;
+  Result.Ide := Format(cIdeFact, [Trunc(ACompilerVersion) - cCompilerToDelphi, AIdeBits], TFormatSettings.Invariant);
 end;
 
 { TAtlasIssueFormMapping }
@@ -870,21 +889,25 @@ end;
 /// </summary>
 function Words(const AText: string): TArray<string>;
 var
-  mWord: string;
-  mChar: Char;
+  mText: string;
+  mIndex, mStart: Integer;
 begin
   Result := nil;
-  mWord := '';
-  for mChar in LowerCase(AText) + ' ' do
+  mText := LowerCase(AText) + ' ';
+  mStart := 0;
+  for mIndex := 1 to Length(mText) do
   begin
-    if mChar.IsLetterOrDigit then
+    if mText[mIndex].IsLetterOrDigit then
     begin
-      mWord := mWord + mChar;
+      if mStart = 0 then
+      begin
+        mStart := mIndex;
+      end;
     end
-    else if mWord <> '' then
+    else if mStart > 0 then
     begin
-      Result := Result + [mWord];
-      mWord := '';
+      Result := Result + [Copy(mText, mStart, mIndex - mStart)];
+      mStart := 0;
     end;
   end;
 end;
@@ -1133,7 +1156,7 @@ end;
 
 class function TAtlasIssueForms.BrowserUrl(const ALink: TAtlasIssueFormLink): string;
 var
-  mQuery: string;
+  mQuery: TStringBuilder;
   mField: TAtlasIssueFormMapping;
 begin
   Result := '';
@@ -1141,18 +1164,24 @@ begin
   begin
     Exit;
   end;
-  mQuery := Param('template', ALink.Template) + Param('title', ALink.Title) + Param('body', ALink.Body) +
-    Param('labels', string.Join(',', ALink.Labels)) + Param('assignees', string.Join(',', ALink.Assignees)) +
-    Param('projects', string.Join(',', ALink.Projects)) + Param('milestone', ALink.Milestone) +
-    Param('type', ALink.IssueType);
-  for mField in ALink.Fields do
-  begin
-    mQuery := mQuery + Param(mField.Id, mField.Value);
-  end;
-  Result := ALink.Repository.TrimRight(['/']) + '/issues/new';
-  if mQuery <> '' then
-  begin
-    Result := Result + '?' + Copy(mQuery, 2, MaxInt);
+  mQuery := TStringBuilder.Create;
+  try
+    mQuery.Append(Param('template', ALink.Template) + Param('title', ALink.Title) + Param('body', ALink.Body) +
+      Param('labels', string.Join(',', ALink.Labels)) + Param('assignees', string.Join(',', ALink.Assignees)) +
+      Param('projects', string.Join(',', ALink.Projects)) + Param('milestone', ALink.Milestone) +
+      Param('type', ALink.IssueType));
+    for mField in ALink.Fields do
+    begin
+      mQuery.Append(Param(mField.Id, mField.Value));
+    end;
+    Result := ALink.Repository.TrimRight(['/']) + '/issues/new';
+    if mQuery.Length > 0 then
+    begin
+      // Der erste Parameter beginnt mit "&"; vor ihm steht "?".
+      Result := Result + '?' + mQuery.ToString(1, mQuery.Length - 1);
+    end;
+  finally
+    mQuery.Free;
   end;
 end;
 

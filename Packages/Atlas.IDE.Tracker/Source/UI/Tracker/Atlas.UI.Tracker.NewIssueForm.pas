@@ -53,6 +53,8 @@ type
     function AddText(ARow: TPanel; ATop, AHeight: Integer; AMultiLine: Boolean): TCustomEdit;
     procedure AddChecks(ARow: TPanel; ATop: Integer; const AOptions: TArray<string>;
       var AInput: TAtlasNewIssueFormInput);
+    procedure AddChoice(ARow: TPanel; ATop: Integer; const AField: TAtlasIssueFormField;
+      var AInput: TAtlasNewIssueFormInput);
     function BuildField(const AField: TAtlasIssueFormField): TAtlasNewIssueFormInput;
     procedure SetAnswer(const AInput: TAtlasNewIssueFormInput; const AAnswer: TAtlasIssueFormAnswer);
     function AnswerOf(const AInput: TAtlasNewIssueFormInput): TAtlasIssueFormAnswer;
@@ -249,11 +251,34 @@ begin
   AMemo.ScrollBars := ssNone;
 end;
 
+/// <summary>Klappliste mit einer Auswahl; ohne Pflicht zuerst ein leerer Eintrag (BoxOffset 1).</summary>
+procedure TAtlasNewIssueFormPanel.AddChoice(ARow: TPanel; ATop: Integer; const AField: TAtlasIssueFormField;
+  var AInput: TAtlasNewIssueFormInput);
+var
+  mValues: TArray<string>;
+begin
+  AInput.Box := TAtlasNewIssueBox.Create(FHost);
+  AInput.Box.Style := csDropDownList;
+  AInput.Box.Parent := ARow;
+  AInput.Box.Left := 0;
+  AInput.Box.Top := ATop;
+  AInput.Box.Width := ARow.ClientWidth - Scaled(cGap);
+  AInput.Box.Anchors := [akLeft, akTop, akRight];
+  mValues := AField.Options;
+  // Ohne Pflicht lässt GitHub die Auswahl leer („None“).
+  if not AField.Required then
+  begin
+    mValues := TArray<string>.Create('') + mValues;
+    AInput.BoxOffset := 1;
+  end;
+  AInput.Box.SetValues(mValues);
+  AInput.Focus := AInput.Box;
+end;
+
 function TAtlasNewIssueFormPanel.BuildField(const AField: TAtlasIssueFormField): TAtlasNewIssueFormInput;
 var
   mRow: TPanel;
   mTop: Integer;
-  mValues: TArray<string>;
 begin
   Result := Default(TAtlasNewIssueFormInput);
   Result.Checks := nil;
@@ -297,22 +322,7 @@ begin
         end
         else
         begin
-          Result.Box := TAtlasNewIssueBox.Create(FHost);
-          Result.Box.Style := csDropDownList;
-          Result.Box.Parent := mRow;
-          Result.Box.Left := 0;
-          Result.Box.Top := mTop;
-          Result.Box.Width := mRow.ClientWidth - Scaled(cGap);
-          Result.Box.Anchors := [akLeft, akTop, akRight];
-          mValues := AField.Options;
-          // Ohne Pflicht lässt GitHub die Auswahl leer („None“).
-          if not AField.Required then
-          begin
-            mValues := TArray<string>.Create('') + mValues;
-            Result.BoxOffset := 1;
-          end;
-          Result.Box.SetValues(mValues);
-          Result.Focus := Result.Box;
+          AddChoice(mRow, mTop, AField, Result);
         end;
       end;
     TAtlasIssueFormKind.Checkboxes:

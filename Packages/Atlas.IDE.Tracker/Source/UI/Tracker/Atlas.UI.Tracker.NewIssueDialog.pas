@@ -94,22 +94,73 @@ type
     property Dialog: TAtlasNewIssueDialog read FDialog write FDialog;
   end;
 
-  /// <summary>Steuerelemente des Dialogs und ihr Aufbau (Zeilen mit Beschriftung, Häkchen, Stand, Knöpfe).
-  /// </summary>
-  TAtlasNewIssueParts = class
+  /// <summary>Aufbau der Zeilen im Dialog: Beschriftung links, Steuerelement rechts, Höhen skaliert; Zeilen
+  /// wachsen und schrumpfen mit dem Fenster.</summary>
+  TAtlasNewIssueLayout = class
   private
     FForm: TForm;
-    FTracker: TAtlasNewIssueBox;
-    FProject: TEdit;
-    FTemplateRow: TPanel;
-    FTemplate: TAtlasNewIssueBox;
-    FTitle: TEdit;
-    FContent: TPanel;
+  protected
+    function Scaled(AValue: Integer): Integer;
+    function AddBox(const ACaption: string; AStyle: TComboBoxStyle): TAtlasNewIssueBox;
+  public
+    constructor Create(AForm: TForm);
+    /// <summary>Zeile mit Beschriftung ACaption (leer = ohne) und AControl unter dem bisher untersten Element von
+    /// AParent.</summary>
+    function AddRow(AParent: TWinControl; const ACaption: string; AControl: TWinControl; AHeight: Integer): TPanel;
+    /// <summary>Knopf in AParent, so breit wie seine Beschriftung (mindestens cButtonMinWidth).</summary>
+    function AddButton(AParent: TWinControl; const ACaption: string): TButton;
+    /// <summary>Höhe einer Zeile ändern (0 = ausgeblendet, ihre Steuerelemente unsichtbar); das Fenster wächst bzw.
+    /// schrumpft mit.</summary>
+    procedure Resize(ARow: TWinControl; AHeight: Integer);
+    property Form: TForm read FForm;
+  end;
+
+  /// <summary>Bereich für Beschreibung und Codeausschnitt oder, bei einer Vorlage (#2137), für ihre Felder; je eins
+  /// ist sichtbar.</summary>
+  TAtlasNewIssueContent = class(TPanel)
+  private
+    FLayout: TAtlasNewIssueLayout;
     FFree: TPanel;
     FDescription: TMemo;
     FIncludeCode: TCheckBox;
     FCode: TMemo;
     FFormPanel: TAtlasNewIssueFormPanel;
+  public
+    /// <summary>Baut den Bereich als Zeile im Formular von ALayout.</summary>
+    constructor CreateIn(ALayout: TAtlasNewIssueLayout);
+    /// <summary>Formular statt Beschreibung zeigen (bzw. zurück).</summary>
+    procedure ShowFormPanel(AShow: Boolean);
+    /// <summary>Breite des Inhalts im Formularbereich.</summary>
+    function FormWidth: Integer;
+    property DescriptionMemo: TMemo read FDescription;
+    property IncludeCodeBox: TCheckBox read FIncludeCode;
+    property CodeMemo: TMemo read FCode;
+    property FormPanel: TAtlasNewIssueFormPanel read FFormPanel;
+  end;
+
+  /// <summary>Leiste unten mit „Im Browser fortsetzen“, „Anlegen“ und „Abbrechen“.</summary>
+  TAtlasNewIssueButtons = class(TPanel)
+  private
+    FBrowse: TButton;
+    FCreate: TButton;
+    FCancel: TButton;
+  public
+    /// <summary>Baut die Leiste am unteren Rand des Formulars von ALayout.</summary>
+    constructor CreateIn(ALayout: TAtlasNewIssueLayout);
+    property BrowseButton: TButton read FBrowse;
+    property CreateButton: TButton read FCreate;
+    property CancelButton: TButton read FCancel;
+  end;
+
+  /// <summary>Steuerelemente des Dialogs (Zeilen mit Beschriftung, Häkchen, Stand, Knöpfe).</summary>
+  TAtlasNewIssueParts = class(TAtlasNewIssueLayout)
+  private
+    FTracker: TAtlasNewIssueBox;
+    FProject: TEdit;
+    FTemplateRow: TPanel;
+    FTemplate: TAtlasNewIssueBox;
+    FTitle: TEdit;
+    FContent: TAtlasNewIssueContent;
     FType: TAtlasNewIssueBox;
     FPriority: TAtlasNewIssueBox;
     FAssignee: TAtlasNewIssueBox;
@@ -119,15 +170,8 @@ type
     FAssignToMe: TCheckBox;
     FStartNow: TCheckBox;
     FStatus: TLabel;
-    FBrowse: TButton;
-    FCreate: TButton;
-    FCancel: TButton;
-    function Scaled(AValue: Integer): Integer;
-    function AddRow(AParent: TWinControl; const ACaption: string; AControl: TWinControl; AHeight: Integer): TPanel;
-    function AddBox(const ACaption: string; AStyle: TComboBoxStyle): TAtlasNewIssueBox;
-    function AddButton(AParent: TWinControl; const ACaption: string): TButton;
+    FButtons: TAtlasNewIssueButtons;
     procedure CreateRows;
-    procedure CreateContent;
     procedure CreateLists;
     procedure CreateOptions;
     procedure CreateStatus;
@@ -135,22 +179,12 @@ type
   public
     /// <summary>Baut alle Steuerelemente in AForm (Besitzer und Eltern ist AForm).</summary>
     constructor Create(AForm: TForm);
-    /// <summary>Höhe einer Zeile ändern (0 = ausgeblendet, ihre Steuerelemente unsichtbar); das Fenster wächst bzw.
-    /// schrumpft mit.</summary>
-    procedure Resize(ARow: TWinControl; AHeight: Integer);
-    /// <summary>Formular statt Beschreibung zeigen (bzw. zurück).</summary>
-    procedure ShowFormPanel(AShow: Boolean);
-    /// <summary>Breite des Inhalts im Formularbereich.</summary>
-    function FormWidth: Integer;
     property TrackerBox: TAtlasNewIssueBox read FTracker;
     property ProjectEdit: TEdit read FProject;
     property TemplateRow: TPanel read FTemplateRow;
     property TemplateBox: TAtlasNewIssueBox read FTemplate;
     property TitleEdit: TEdit read FTitle;
-    property DescriptionMemo: TMemo read FDescription;
-    property IncludeCodeBox: TCheckBox read FIncludeCode;
-    property CodeMemo: TMemo read FCode;
-    property FormPanel: TAtlasNewIssueFormPanel read FFormPanel;
+    property Content: TAtlasNewIssueContent read FContent;
     property TypeBox: TAtlasNewIssueBox read FType;
     property PriorityBox: TAtlasNewIssueBox read FPriority;
     property AssigneeBox: TAtlasNewIssueBox read FAssignee;
@@ -160,9 +194,7 @@ type
     property AssignToMeBox: TCheckBox read FAssignToMe;
     property StartNowBox: TCheckBox read FStartNow;
     property StatusLabel: TLabel read FStatus;
-    property BrowseButton: TButton read FBrowse;
-    property CreateButton: TButton read FCreate;
-    property CancelButton: TButton read FCancel;
+    property Buttons: TAtlasNewIssueButtons read FButtons;
   end;
 
   TAtlasNewIssueDialog = class(TAtlasDialog)
@@ -284,21 +316,15 @@ begin
   Result.OnBrowse := nil;
 end;
 
-{ TAtlasNewIssueParts }
+{ TAtlasNewIssueLayout }
 
-constructor TAtlasNewIssueParts.Create(AForm: TForm);
+constructor TAtlasNewIssueLayout.Create(AForm: TForm);
 begin
   inherited Create;
   FForm := AForm;
-  CreateRows;
-  CreateContent;
-  CreateLists;
-  CreateOptions;
-  CreateStatus;
-  CreateButtons;
 end;
 
-function TAtlasNewIssueParts.Scaled(AValue: Integer): Integer;
+function TAtlasNewIssueLayout.Scaled(AValue: Integer): Integer;
 begin
   Result := FForm.ScaleValue(AValue);
 end;
@@ -326,11 +352,176 @@ begin
   Result.BevelOuter := bvNone;
 end;
 
-function TAtlasNewIssueParts.AddBox(const ACaption: string; AStyle: TComboBoxStyle): TAtlasNewIssueBox;
+function TAtlasNewIssueLayout.AddBox(const ACaption: string; AStyle: TComboBoxStyle): TAtlasNewIssueBox;
 begin
   Result := TAtlasNewIssueBox.Create(FForm);
   Result.Style := AStyle;
   AddRow(FForm, ACaption, Result, cRowHeight);
+end;
+
+function TAtlasNewIssueLayout.AddRow(AParent: TWinControl; const ACaption: string; AControl: TWinControl;
+  AHeight: Integer): TPanel;
+var
+  mLabel: TLabel;
+begin
+  Result := NewRow(FForm, AParent, Scaled(AHeight));
+  AControl.Parent := Result;
+  AControl.Left := Scaled(cGap + cLabelWidth);
+  AControl.Top := Scaled(cControlTop);
+  AControl.Width := Result.ClientWidth - AControl.Left - Scaled(cGap);
+  if AHeight > cRowHeight then
+  begin
+    AControl.Height := Result.ClientHeight - Scaled(cGap);
+    AControl.Anchors := [akLeft, akTop, akRight, akBottom];
+  end
+  else
+  begin
+    AControl.Anchors := [akLeft, akTop, akRight];
+  end;
+  if ACaption <> '' then
+  begin
+    mLabel := TLabel.Create(FForm);
+    mLabel.Parent := Result;
+    mLabel.Left := Scaled(cGap);
+    mLabel.Top := Scaled(cGap);
+    mLabel.Caption := ACaption;
+    mLabel.ShowAccelChar := False;
+    mLabel.FocusControl := AControl;
+  end;
+end;
+
+function TAtlasNewIssueLayout.AddButton(AParent: TWinControl; const ACaption: string): TButton;
+begin
+  Result := TButton.Create(FForm);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  FForm.Canvas.Font := FForm.Font;
+  Result.Width := Max(FForm.Canvas.TextWidth(ACaption) + Scaled(cButtonExtra), Scaled(cButtonMinWidth));
+  Result.Top := Scaled(cGap div 2);
+  Result.Height := Scaled(cButtonHeight);
+  Result.Anchors := [akTop, akRight];
+end;
+
+procedure TAtlasNewIssueLayout.Resize(ARow: TWinControl; AHeight: Integer);
+var
+  mDelta, mIndex: Integer;
+begin
+  mDelta := AHeight - ARow.Height;
+  // Die Feldzeilen blenden ihre Steuerelemente selbst ein und aus.
+  if not (ARow is TAtlasNewIssueFieldRows) then
+  begin
+    for mIndex := 0 to ARow.ControlCount - 1 do
+    begin
+      ARow.Controls[mIndex].Visible := AHeight > 0;
+    end;
+  end;
+  if mDelta = 0 then
+  begin
+    Exit;
+  end;
+  // Erst die Mindesthöhe senken bzw. danach heben, damit die Grenze das Fenster nicht festhält.
+  if mDelta < 0 then
+  begin
+    FForm.Constraints.MinHeight := Max(0, FForm.Constraints.MinHeight + mDelta);
+  end;
+  ARow.Height := AHeight;
+  FForm.ClientHeight := FForm.ClientHeight + mDelta;
+  if (mDelta > 0) and (FForm.Constraints.MinHeight > 0) then
+  begin
+    FForm.Constraints.MinHeight := FForm.Constraints.MinHeight + mDelta;
+  end;
+end;
+
+{ TAtlasNewIssueContent }
+
+constructor TAtlasNewIssueContent.CreateIn(ALayout: TAtlasNewIssueLayout);
+var
+  mForm: TForm;
+begin
+  mForm := ALayout.Form;
+  inherited Create(mForm);
+  FLayout := ALayout;
+  // Lage vor Align und Parent (alTop unter dem bisher Untersten).
+  Top := NextTop(mForm);
+  Height := ALayout.Scaled(cContentHeight);
+  Align := alTop;
+  Parent := mForm;
+  BevelOuter := bvNone;
+  FFree := TPanel.Create(mForm);
+  FFree.BevelOuter := bvNone;
+  FFree.Align := alClient;
+  FFree.Parent := Self;
+  FDescription := TMemo.Create(mForm);
+  FDescription.ScrollBars := ssVertical;
+  FDescription.WantReturns := True;
+  ALayout.AddRow(FFree, TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueDescription), FDescription,
+    cMemoHeight);
+  FIncludeCode := TCheckBox.Create(mForm);
+  FIncludeCode.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueIncludeCode);
+  ALayout.AddRow(FFree, '', FIncludeCode, cCheckHeight);
+  FCode := TMemo.Create(mForm);
+  FCode.ScrollBars := ssBoth;
+  FCode.WordWrap := False;
+  FCode.WantReturns := True;
+  FCode.Font.Name := cCodeFontName;
+  ALayout.AddRow(FFree, '', FCode, cMemoHeight);
+  FFormPanel := TAtlasNewIssueFormPanel.Create(mForm);
+  FFormPanel.Visible := False;
+  FFormPanel.AlignWithMargins := True;
+  FFormPanel.Margins.SetBounds(ALayout.Scaled(cGap + cLabelWidth), ALayout.Scaled(cControlTop),
+    ALayout.Scaled(cGap), ALayout.Scaled(cControlTop));
+  FFormPanel.Align := alClient;
+  FFormPanel.Parent := Self;
+end;
+
+procedure TAtlasNewIssueContent.ShowFormPanel(AShow: Boolean);
+begin
+  FFree.Visible := not AShow;
+  FFormPanel.Visible := AShow;
+  if AShow then
+  begin
+    FLayout.Resize(Self, FLayout.Scaled(cFormHeight));
+  end
+  else
+  begin
+    FLayout.Resize(Self, FLayout.Scaled(cContentHeight));
+  end;
+end;
+
+function TAtlasNewIssueContent.FormWidth: Integer;
+begin
+  Result := Max(FLayout.Scaled(cLabelWidth), ClientWidth - FLayout.Scaled(2 * cGap + cLabelWidth + cScrollBarSpace));
+end;
+
+{ TAtlasNewIssueButtons }
+
+constructor TAtlasNewIssueButtons.CreateIn(ALayout: TAtlasNewIssueLayout);
+begin
+  inherited Create(ALayout.Form);
+  Parent := ALayout.Form;
+  Align := alBottom;
+  Height := ALayout.Scaled(cBottomHeight);
+  BevelOuter := bvNone;
+  FCancel := ALayout.AddButton(Self, TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueCancel));
+  FCancel.Cancel := True;
+  FCancel.Left := ClientWidth - FCancel.Width - ALayout.Scaled(cGap);
+  FCreate := ALayout.AddButton(Self, TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueCreate));
+  FCreate.Left := FCancel.Left - FCreate.Width - ALayout.Scaled(cGap);
+  FBrowse := ALayout.AddButton(Self, TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueBrowser));
+  FBrowse.Left := FCreate.Left - FBrowse.Width - ALayout.Scaled(cGap);
+end;
+
+{ TAtlasNewIssueParts }
+
+constructor TAtlasNewIssueParts.Create(AForm: TForm);
+begin
+  inherited Create(AForm);
+  CreateRows;
+  FContent := TAtlasNewIssueContent.CreateIn(Self);
+  CreateLists;
+  CreateOptions;
+  CreateStatus;
+  CreateButtons;
 end;
 
 procedure TAtlasNewIssueParts.CreateRows;
@@ -346,35 +537,6 @@ begin
   Resize(FTemplateRow, 0);
   FTitle := TEdit.Create(FForm);
   AddRow(FForm, TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueSummary), FTitle, cRowHeight);
-end;
-
-procedure TAtlasNewIssueParts.CreateContent;
-begin
-  // Beschreibung mit Code und Formular einer Vorlage teilen sich einen Bereich; je eins ist sichtbar.
-  FContent := NewRow(FForm, FForm, Scaled(cContentHeight));
-  FFree := TPanel.Create(FForm);
-  FFree.BevelOuter := bvNone;
-  FFree.Align := alClient;
-  FFree.Parent := FContent;
-  FDescription := TMemo.Create(FForm);
-  FDescription.ScrollBars := ssVertical;
-  FDescription.WantReturns := True;
-  AddRow(FFree, TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueDescription), FDescription, cMemoHeight);
-  FIncludeCode := TCheckBox.Create(FForm);
-  FIncludeCode.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueIncludeCode);
-  AddRow(FFree, '', FIncludeCode, cCheckHeight);
-  FCode := TMemo.Create(FForm);
-  FCode.ScrollBars := ssBoth;
-  FCode.WordWrap := False;
-  FCode.WantReturns := True;
-  FCode.Font.Name := cCodeFontName;
-  AddRow(FFree, '', FCode, cMemoHeight);
-  FFormPanel := TAtlasNewIssueFormPanel.Create(FForm);
-  FFormPanel.Visible := False;
-  FFormPanel.AlignWithMargins := True;
-  FFormPanel.Margins.SetBounds(Scaled(cGap + cLabelWidth), Scaled(cControlTop), Scaled(cGap), Scaled(cControlTop));
-  FFormPanel.Align := alClient;
-  FFormPanel.Parent := FContent;
 end;
 
 procedure TAtlasNewIssueParts.CreateLists;
@@ -429,116 +591,12 @@ begin
 end;
 
 procedure TAtlasNewIssueParts.CreateButtons;
-var
-  mBottom: TPanel;
 begin
-  mBottom := TPanel.Create(FForm);
-  mBottom.Parent := FForm;
-  mBottom.Align := alBottom;
-  mBottom.Height := Scaled(cBottomHeight);
-  mBottom.BevelOuter := bvNone;
-  FCancel := AddButton(mBottom, TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueCancel));
-  FCancel.Cancel := True;
-  FCancel.Left := mBottom.ClientWidth - FCancel.Width - Scaled(cGap);
-  FCreate := AddButton(mBottom, TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueCreate));
-  FCreate.Left := FCancel.Left - FCreate.Width - Scaled(cGap);
-  FBrowse := AddButton(mBottom, TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueBrowser));
-  FBrowse.Left := FCreate.Left - FBrowse.Width - Scaled(cGap);
+  FButtons := TAtlasNewIssueButtons.CreateIn(Self);
   // Kein Default-Knopf: Enter in der Beschreibung ist ein Zeilenumbruch, nie ein Senden.
-  FForm.ClientHeight := FStatus.Top + Scaled(cStatusSpace) + mBottom.Height;
+  FForm.ClientHeight := FStatus.Top + Scaled(cStatusSpace) + FButtons.Height;
   FForm.Constraints.MinWidth := FForm.Width;
   FForm.Constraints.MinHeight := FForm.Height;
-end;
-
-function TAtlasNewIssueParts.AddRow(AParent: TWinControl; const ACaption: string; AControl: TWinControl;
-  AHeight: Integer): TPanel;
-var
-  mLabel: TLabel;
-begin
-  Result := NewRow(FForm, AParent, Scaled(AHeight));
-  AControl.Parent := Result;
-  AControl.Left := Scaled(cGap + cLabelWidth);
-  AControl.Top := Scaled(cControlTop);
-  AControl.Width := Result.ClientWidth - AControl.Left - Scaled(cGap);
-  if AHeight > cRowHeight then
-  begin
-    AControl.Height := Result.ClientHeight - Scaled(cGap);
-    AControl.Anchors := [akLeft, akTop, akRight, akBottom];
-  end
-  else
-  begin
-    AControl.Anchors := [akLeft, akTop, akRight];
-  end;
-  if ACaption <> '' then
-  begin
-    mLabel := TLabel.Create(FForm);
-    mLabel.Parent := Result;
-    mLabel.Left := Scaled(cGap);
-    mLabel.Top := Scaled(cGap);
-    mLabel.Caption := ACaption;
-    mLabel.ShowAccelChar := False;
-    mLabel.FocusControl := AControl;
-  end;
-end;
-
-function TAtlasNewIssueParts.AddButton(AParent: TWinControl; const ACaption: string): TButton;
-begin
-  Result := TButton.Create(FForm);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  FForm.Canvas.Font := FForm.Font;
-  Result.Width := Max(FForm.Canvas.TextWidth(ACaption) + Scaled(cButtonExtra), Scaled(cButtonMinWidth));
-  Result.Top := Scaled(cGap div 2);
-  Result.Height := Scaled(cButtonHeight);
-  Result.Anchors := [akTop, akRight];
-end;
-
-procedure TAtlasNewIssueParts.Resize(ARow: TWinControl; AHeight: Integer);
-var
-  mDelta, mIndex: Integer;
-begin
-  mDelta := AHeight - ARow.Height;
-  if ARow <> FFieldRows then
-  begin
-    for mIndex := 0 to ARow.ControlCount - 1 do
-    begin
-      ARow.Controls[mIndex].Visible := AHeight > 0;
-    end;
-  end;
-  if mDelta = 0 then
-  begin
-    Exit;
-  end;
-  // Erst die Mindesthöhe senken bzw. danach heben, damit die Grenze das Fenster nicht festhält.
-  if mDelta < 0 then
-  begin
-    FForm.Constraints.MinHeight := Max(0, FForm.Constraints.MinHeight + mDelta);
-  end;
-  ARow.Height := AHeight;
-  FForm.ClientHeight := FForm.ClientHeight + mDelta;
-  if (mDelta > 0) and (FForm.Constraints.MinHeight > 0) then
-  begin
-    FForm.Constraints.MinHeight := FForm.Constraints.MinHeight + mDelta;
-  end;
-end;
-
-procedure TAtlasNewIssueParts.ShowFormPanel(AShow: Boolean);
-begin
-  FFree.Visible := not AShow;
-  FFormPanel.Visible := AShow;
-  if AShow then
-  begin
-    Resize(FContent, Scaled(cFormHeight));
-  end
-  else
-  begin
-    Resize(FContent, Scaled(cContentHeight));
-  end;
-end;
-
-function TAtlasNewIssueParts.FormWidth: Integer;
-begin
-  Result := Max(Scaled(cLabelWidth), FContent.ClientWidth - Scaled(2 * cGap + cLabelWidth + cScrollBarSpace));
 end;
 
 { TAtlasNewIssueDialog }
@@ -561,9 +619,9 @@ begin
   BorderIcons := [biSystemMenu];
   OnCloseQuery := FormCloseQuery;
   FParts := TAtlasNewIssueParts.Create(Self);
-  FParts.CancelButton.OnClick := CancelClick;
-  FParts.CreateButton.OnClick := CreateClick;
-  FParts.BrowseButton.OnClick := BrowseClick;
+  FParts.Buttons.CancelButton.OnClick := CancelClick;
+  FParts.Buttons.CreateButton.OnClick := CreateClick;
+  FParts.Buttons.BrowseButton.OnClick := BrowseClick;
   ApplySetup;
   Changed(nil);
 end;
@@ -592,17 +650,17 @@ begin
     FParts.ProjectEdit.Text := FSetup.Trackers[FParts.TrackerBox.Choice].Target.Project;
   end;
   FParts.TitleEdit.Text := FSetup.Title;
-  FParts.DescriptionMemo.Text := StringReplace(FSetup.Description, #10, sLineBreak, [rfReplaceAll]);
-  FParts.CodeMemo.Text := StringReplace(FSetup.Code, #10, sLineBreak, [rfReplaceAll]);
-  FParts.IncludeCodeBox.Checked := FSetup.IncludeCode and (Trim(FSetup.Code) <> '');
-  FParts.IncludeCodeBox.Enabled := Trim(FSetup.Code) <> '';
+  FParts.Content.DescriptionMemo.Text := StringReplace(FSetup.Description, #10, sLineBreak, [rfReplaceAll]);
+  FParts.Content.CodeMemo.Text := StringReplace(FSetup.Code, #10, sLineBreak, [rfReplaceAll]);
+  FParts.Content.IncludeCodeBox.Checked := FSetup.IncludeCode and (Trim(FSetup.Code) <> '');
+  FParts.Content.IncludeCodeBox.Enabled := Trim(FSetup.Code) <> '';
   FParts.StartNowBox.Enabled := FSetup.CanStart;
-  FParts.BrowseButton.Visible := Assigned(FSetup.OnBrowse);
+  FParts.Buttons.BrowseButton.Visible := Assigned(FSetup.OnBrowse);
   FParts.TrackerBox.OnChange := TrackerChange;
   FParts.TemplateBox.OnChange := TemplateChange;
   FParts.TitleEdit.OnChange := Changed;
   FParts.ProjectEdit.OnChange := Changed;
-  FParts.IncludeCodeBox.OnClick := Changed;
+  FParts.Content.IncludeCodeBox.OnClick := Changed;
   FParts.AssignToMeBox.OnClick := Changed;
   if FSetup.Title = '' then
   begin
@@ -610,7 +668,7 @@ begin
   end
   else
   begin
-    ActiveControl := FParts.DescriptionMemo;
+    ActiveControl := FParts.Content.DescriptionMemo;
   end;
 end;
 
@@ -689,8 +747,8 @@ var
 begin
   Result := TAtlasNewIssueDraft.Empty;
   Result.Title := Trim(FParts.TitleEdit.Text);
-  Result.Description := TAtlasNewIssues.Compose(FParts.DescriptionMemo.Text, FParts.CodeMemo.Text,
-    FParts.IncludeCodeBox.Checked);
+  Result.Description := TAtlasNewIssues.Compose(FParts.Content.DescriptionMemo.Text, FParts.Content.CodeMemo.Text,
+    FParts.Content.IncludeCodeBox.Checked);
   Result.IssueType := Trim(FParts.TypeBox.Text);
   Result.Priority := Trim(FParts.PriorityBox.Text);
   Result.Assignee := Trim(FParts.AssigneeBox.Text);
@@ -719,7 +777,7 @@ begin
   end;
   if not mForm.IsMarkdown then
   begin
-    Result.Description := TAtlasIssueForms.Body(mForm, FParts.FormPanel.Answers);
+    Result.Description := TAtlasIssueForms.Body(mForm, FParts.Content.FormPanel.Answers);
   end;
 end;
 
@@ -758,7 +816,7 @@ begin
     mLink.Labels := nil;
     if not mForm.IsMarkdown then
     begin
-      mLink.Fields := TAtlasIssueForms.LinkFields(mForm, FParts.FormPanel.Answers);
+      mLink.Fields := TAtlasIssueForms.LinkFields(mForm, FParts.Content.FormPanel.Answers);
       Exit(TAtlasIssueForms.BrowserUrl(mLink));
     end;
   end;
@@ -772,12 +830,12 @@ var
   mHasTarget: Boolean;
 begin
   mHasTarget := Target(mTarget) and mTarget.Configured;
-  FParts.CreateButton.Enabled := not FSending and mHasTarget and (Trim(FParts.TitleEdit.Text) <> '') and
+  FParts.Buttons.CreateButton.Enabled := not FSending and mHasTarget and (Trim(FParts.TitleEdit.Text) <> '') and
     Assigned(FOnSend);
-  FParts.CancelButton.Enabled := not FSending;
-  FParts.BrowseButton.Enabled := not FSending and mHasTarget and
+  FParts.Buttons.CancelButton.Enabled := not FSending;
+  FParts.Buttons.BrowseButton.Enabled := not FSending and mHasTarget and
     SameText(mTarget.Provider, TAtlasTrackerTarget.cGitHub) and Assigned(FSetup.OnBrowse);
-  FParts.CodeMemo.Enabled := FParts.IncludeCodeBox.Checked;
+  FParts.Content.CodeMemo.Enabled := FParts.Content.IncludeCodeBox.Checked;
   FParts.AssigneeBox.Enabled := not FParts.AssignToMeBox.Checked;
   if not FSending and (Length(FSetup.Trackers) = 0) then
   begin
@@ -968,10 +1026,10 @@ begin
   // vorher und nachher bleibt die Beschreibung, wie sie ist (auch Eingetipptes, wenn die Listen spät kommen).
   if mOld.IsMarkdown or mForm.IsMarkdown then
   begin
-    FParts.DescriptionMemo.Text := StringReplace(Trim(Trim(mForm.Body + #10#10) + #10#10 + FSetup.Description),
+    FParts.Content.DescriptionMemo.Text := StringReplace(Trim(Trim(mForm.Body + #10#10) + #10#10 + FSetup.Description),
       #10, sLineBreak, [rfReplaceAll]);
   end;
-  FParts.ShowFormPanel((AIndex >= 0) and not mForm.IsMarkdown);
+  FParts.Content.ShowFormPanel((AIndex >= 0) and not mForm.IsMarkdown);
   if (AIndex < 0) or mForm.IsMarkdown then
   begin
     Changed(nil);
@@ -980,12 +1038,12 @@ begin
   mFacts := FSetup.Facts;
   mFacts.Finding := FSetup.Description;
   mFacts.Code := '';
-  if FParts.IncludeCodeBox.Checked then
+  if FParts.Content.IncludeCodeBox.Checked then
   begin
     mFacts.Code := FSetup.Code;
   end;
-  FParts.FormPanel.ShowForm(mForm, TAtlasIssueForms.Prefill(mForm, FSetup.Mappings, mFacts), FParts.FormWidth,
-    TemplateNote(mForm));
+  FParts.Content.FormPanel.ShowForm(mForm, TAtlasIssueForms.Prefill(mForm, FSetup.Mappings, mFacts),
+    FParts.Content.FormWidth, TemplateNote(mForm));
   Changed(nil);
 end;
 
@@ -1002,15 +1060,15 @@ begin
   end;
   if CurrentForm(mForm) then
   begin
-    mMissing := TAtlasIssueForms.Missing(mForm, FParts.FormPanel.Answers);
+    mMissing := TAtlasIssueForms.Missing(mForm, FParts.Content.FormPanel.Answers);
     if Length(mMissing) = 1 then
     begin
-      FParts.FormPanel.FocusCaption(mMissing[0]);
+      FParts.Content.FormPanel.FocusCaption(mMissing[0]);
       Exit(TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueRequired, [mMissing[0]]));
     end;
     if Length(mMissing) > 1 then
     begin
-      FParts.FormPanel.FocusCaption(mMissing[0]);
+      FParts.Content.FormPanel.FocusCaption(mMissing[0]);
       Exit(TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueRequiredMany, [string.Join(', ', mMissing)]));
     end;
   end;

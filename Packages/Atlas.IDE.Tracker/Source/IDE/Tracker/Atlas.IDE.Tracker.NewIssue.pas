@@ -81,7 +81,6 @@ uses
   Atlas.Core.Tracker.Files,
   Atlas.Core.Tracker.IssueForms,
   Atlas.Core.Tracker.NewIssueGitHub,
-  Atlas.Core.Product.Version,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
@@ -108,11 +107,7 @@ const
   cLogAborted = 'Issue anlegen: Anfrage mit %s abgebrochen';
   cLogClipboard = 'Issue anlegen: Zwischenablage belegt';
   cLogOutcome = 'Issue anlegen: %s, %s';
-  /// <summary>Wie die Auswahl „Delphi-Version und IDE“ der Atlas-Vorlage; andere Schreibweisen findet
-  /// TAtlasIssueForms.MatchOption über die Zahlen.</summary>
-  cIdeFact = 'Delphi %d (%d-Bit-IDE)';
-  /// <summary>CompilerVersion 37 = Delphi 13.</summary>
-  cCompilerToDelphi = 24;
+  /// <summary>Bitbreite der IDE für die Vorbelegung „Delphi 13 (64-Bit-IDE)“.</summary>
 {$IFDEF WIN64}
   cIdeBits = 64;
 {$ELSE}
@@ -474,9 +469,7 @@ begin
   Result.Trackers := TrackersOf(AProject, Result.TrackerIndex);
   Result.IncludeCode := TAtlasIdeSettings.Current.IssuesCreateIncludeCode;
   Result.CanStart := (Issues <> nil) and Issues.Context.CanStart;
-  Result.Facts.Version := TAtlasPluginVersion.cVersion;
-  Result.Facts.Ide := Format(cIdeFact, [Trunc(CompilerVersion) - cCompilerToDelphi, cIdeBits],
-    TFormatSettings.Invariant);
+  Result.Facts := TAtlasIssueFormFacts.Create(CompilerVersion, cIdeBits);
   Result.Mappings := MappingsOf(AProject);
   Result.OnBrowse :=
     procedure(AUrl: string)

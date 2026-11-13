@@ -33,10 +33,16 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   System.Generics.Collections;
 
+const
+  /// <summary>Hexziffern nach \x und \u.</summary>
+  cByteDigits = 2;
+  cCharDigits = 4;
+
 type
-  /// <summary>Text, den der Leser nicht versteht; Parse fängt ihn ab und liefert nil.</summary>
+  /// <summary>Text, den der Leser nicht versteht; ToJson fängt ihn ab und liefert nil.</summary>
   EAtlasFormYaml = class(Exception);
 
   TYamlLine = record
@@ -64,6 +70,11 @@ type
     function ParseNested(AOwnerIndent: Integer): TJSONValue;
     function ParseBlockScalar(const AHeader: string; AOwnerIndent: Integer): TJSONValue;
     function ParsePlain(const AText: string; AOwnerIndent: Integer): TJSONValue;
+    /// <summary>Einrückung eines Blockwerts: AOwnerIndent + AExplicit, ohne Angabe die der ersten nicht leeren
+    /// Zeile.</summary>
+    function BlockIndent(AOwnerIndent, AExplicit: Integer): Integer;
+    /// <summary>Folgezeilen ab FIndex mit mindestens AIndent Leerzeichen, ohne diese Einrückung.</summary>
+    function BlockLines(AIndent: Integer): TArray<string>;
     /// <summary>AText und die Folgezeilen, bis Klammern bzw. Anführungszeichen geschlossen sind.</summary>
     function Continued(const AText: string; AOwnerIndent: Integer): string;
   public
@@ -108,21 +119,21 @@ end;
 
 /// <summary>Skalar ohne Anführungszeichen: true/false, null/~, sonst Text.</summary>
 function Scalar(const AText: string): TJSONValue;
+const
+  cTrue = 0;
+  cFalse = 1;
+  cEmpty = 2;
+  cTilde = 3;
+  cNull = 4;
 begin
-  if SameText(AText, 'true') then
-  begin
-    Result := TJSONBool.Create(True);
-  end
-  else if SameText(AText, 'false') then
-  begin
-    Result := TJSONBool.Create(False);
-  end
-  else if (AText = '') or (AText = '~') or SameText(AText, 'null') then
-  begin
-    Result := TJSONNull.Create;
-  end
+  case IndexText(AText, ['true', 'false', '', '~', 'null']) of
+    cTrue:
+      Result := TJSONBool.Create(True);
+    cFalse:
+      Result := TJSONBool.Create(False);
+    cEmpty, cTilde, cNull:
+      Result := TJSONNull.Create;
   else
-  begin
     Result := TJSONString.Create(AText);
   end;
 end;
@@ -182,11 +193,52 @@ begin
   Result := 0;
 end;
 
+/// <summary>Zuordnung mit Schlüssel in Anführungszeichen ("a b": rest).</summary>
+function SplitQuotedKey(const AText: string; out AKey, ARest: string): Boolean;
+var
+  mEnd: Integer;
+  mFlow: TYamlFlow;
+begin
+  mEnd := QuoteEnd(AText, 1);
+  Result := (mEnd > 0) and (mEnd <= Length(AText)) and (AText[mEnd] = ':') and
+    ((mEnd = Length(AText)) or (AText[mEnd + 1] = ' '));
+  if Result then
+  begin
+    mFlow := TYamlFlow.Create(Copy(AText, 1, mEnd - 1));
+    try
+      AKey := mFlow.ReadQuoted;
+    finally
+      mFlow.Free;
+    end;
+    ARest := Copy(AText, mEnd + 1, MaxInt);
+  end;
+end;
+
+/// <summary>Zuordnung mit Schlüssel ohne Anführungszeichen (schlüssel: rest); ein Kommentar davor beendet die
+/// Suche.</summary>
+function SplitPlainKey(const AText: string; out AKey, ARest: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := 1 to Length(AText) do
+  begin
+    if (AText[mIndex] = '#') and (mIndex > 1) and (AText[mIndex - 1] = ' ') then
+    begin
+      Break;
+    end;
+    if (AText[mIndex] = ':') and ((mIndex = Length(AText)) or (AText[mIndex + 1] = ' ')) then
+    begin
+      AKey := TrimRight(Copy(AText, 1, mIndex - 1));
+      ARest := Copy(AText, mIndex + 1, MaxInt);
+      Result := AKey <> '';
+      Break;
+    end;
+  end;
+end;
+
 /// <summary>"schlüssel: rest" in AKey und ARest; False, wenn AText keine Zuordnung ist.</summary>
 function SplitKey(const AText: string; out AKey, ARest: string): Boolean;
-var
-  mIndex, mEnd: Integer;
-  mFlow: TYamlFlow;
 begin
   Result := False;
   AKey := '';
@@ -197,37 +249,11 @@ begin
   end;
   if CharInSet(AText[1], ['"', '''']) then
   begin
-    mEnd := QuoteEnd(AText, 1);
-    if (mEnd = 0) or (mEnd > Length(AText)) or (AText[mEnd] <> ':') or
-      ((mEnd < Length(AText)) and (AText[mEnd + 1] <> ' ')) then
-    begin
-      Exit;
-    end;
-    mFlow := TYamlFlow.Create(Copy(AText, 1, mEnd - 1));
-    try
-      AKey := mFlow.ReadQuoted;
-    finally
-      mFlow.Free;
-    end;
-    ARest := Copy(AText, mEnd + 1, MaxInt);
-    Exit(True);
-  end;
-  if CharInSet(AText[1], ['[', '{', '#']) then
+    Result := SplitQuotedKey(AText, AKey, ARest);
+  end
+  else if not CharInSet(AText[1], ['[', '{', '#']) then
   begin
-    Exit;
-  end;
-  for mIndex := 1 to Length(AText) do
-  begin
-    if (AText[mIndex] = '#') and (mIndex > 1) and (AText[mIndex - 1] = ' ') then
-    begin
-      Exit;
-    end;
-    if (AText[mIndex] = ':') and ((mIndex = Length(AText)) or (AText[mIndex + 1] = ' ')) then
-    begin
-      AKey := TrimRight(Copy(AText, 1, mIndex - 1));
-      ARest := Copy(AText, mIndex + 1, MaxInt);
-      Exit(AKey <> '');
-    end;
+    Result := SplitPlainKey(AText, AKey, ARest);
   end;
 end;
 
@@ -285,9 +311,9 @@ begin
     ' ', '"', '\', '/':
       Result := AText[APos];
     'x':
-      mDigits := 2;
+      mDigits := cByteDigits;
     'u':
-      mDigits := 4;
+      mDigits := cCharDigits;
   else
     Fail;
   end;
@@ -680,48 +706,46 @@ begin
   end;
 end;
 
-function TYamlReader.Continued(const AText: string; AOwnerIndent: Integer): string;
+/// <summary>True, wenn in AText eine Klammer oder ein Anführungszeichen offen bleibt.</summary>
+function FlowOpen(const AText: string): Boolean;
 var
   mDepth, mIndex: Integer;
   mQuote: Char;
 begin
-  Result := AText;
-  while True do
+  mDepth := 0;
+  mQuote := #0;
+  mIndex := 1;
+  while mIndex <= Length(AText) do
   begin
-    mDepth := 0;
-    mQuote := #0;
-    mIndex := 1;
-    while mIndex <= Length(Result) do
+    if mQuote = #0 then
     begin
-      if mQuote <> #0 then
-      begin
-        if (mQuote = '"') and (Result[mIndex] = '\') then
-        begin
-          Inc(mIndex);
-        end
-        else if Result[mIndex] = mQuote then
-        begin
-          mQuote := #0;
-        end;
-      end
-      else if CharInSet(Result[mIndex], ['"', '''']) then
-      begin
-        mQuote := Result[mIndex];
-      end
-      else if CharInSet(Result[mIndex], ['[', '{']) then
-      begin
-        Inc(mDepth);
-      end
-      else if CharInSet(Result[mIndex], [']', '}']) then
-      begin
-        Dec(mDepth);
+      case AText[mIndex] of
+        '"', '''':
+          mQuote := AText[mIndex];
+        '[', '{':
+          Inc(mDepth);
+        ']', '}':
+          Dec(mDepth);
       end;
-      Inc(mIndex);
-    end;
-    if (mDepth <= 0) and (mQuote = #0) then
+    end
+    else if (mQuote = '"') and (AText[mIndex] = '\') then
     begin
-      Exit;
+      Inc(mIndex);
+    end
+    else if AText[mIndex] = mQuote then
+    begin
+      mQuote := #0;
     end;
+    Inc(mIndex);
+  end;
+  Result := (mDepth > 0) or (mQuote <> #0);
+end;
+
+function TYamlReader.Continued(const AText: string; AOwnerIndent: Integer): string;
+begin
+  Result := AText;
+  while FlowOpen(Result) do
+  begin
     // Noch offen: die nächste Zeile gehört dazu (eingerückt hinter dem Schlüssel).
     if AtEnd or ((FLines[FIndex].Text <> '') and (FLines[FIndex].Indent <= AOwnerIndent)) then
     begin
@@ -767,34 +791,64 @@ end;
 
 function TYamlReader.ParsePlain(const AText: string; AOwnerIndent: Integer): TJSONValue;
 var
-  mText: string;
+  mText: TStringBuilder;
   mBreaks: Integer;
 begin
-  mText := StripComment(AText);
-  mBreaks := 0;
-  // Folgezeilen eines Werts ohne Anführungszeichen: weiter eingerückt als der Schlüssel, Leerzeilen = Umbruch.
-  while not AtEnd and ((FLines[FIndex].Text = '') or ((FLines[FIndex].Indent > AOwnerIndent) and
-    (FLines[FIndex].Text[1] <> '#'))) do
-  begin
-    if FLines[FIndex].Text = '' then
+  mText := TStringBuilder.Create(StripComment(AText));
+  try
+    mBreaks := 0;
+    // Folgezeilen eines Werts ohne Anführungszeichen: weiter eingerückt als der Schlüssel, Leerzeilen = Umbruch.
+    while not AtEnd and ((FLines[FIndex].Text = '') or ((FLines[FIndex].Indent > AOwnerIndent) and
+      (FLines[FIndex].Text[1] <> '#'))) do
     begin
-      Inc(mBreaks);
-    end
-    else
-    begin
-      if mBreaks > 0 then
+      if FLines[FIndex].Text = '' then
       begin
-        mText := mText + StringOfChar(#10, mBreaks) + StripComment(FLines[FIndex].Text);
+        Inc(mBreaks);
       end
       else
       begin
-        mText := mText + ' ' + StripComment(FLines[FIndex].Text);
+        if mBreaks > 0 then
+        begin
+          mText.Append(StringOfChar(#10, mBreaks));
+        end
+        else
+        begin
+          mText.Append(' ');
+        end;
+        mText.Append(StripComment(FLines[FIndex].Text));
+        mBreaks := 0;
       end;
-      mBreaks := 0;
+      Inc(FIndex);
     end;
-    Inc(FIndex);
+    Result := Scalar(mText.ToString);
+  finally
+    mText.Free;
   end;
-  Result := Scalar(mText);
+end;
+
+/// <summary>Trenner vor einer Zeile eines Blockwerts nach ABreaks Leerzeilen. Gefaltet (>) wird ein einzelner
+/// Umbruch zwischen zwei normalen Zeilen ein Leerzeichen; weiter eingerückte Zeilen behalten ihre Umbrüche.</summary>
+function BlockSeparator(AStarted, AFolded, APreviousNormal, AMore: Boolean; ABreaks: Integer): string;
+var
+  mJoins: Boolean;
+begin
+  mJoins := AFolded and APreviousNormal and not AMore;
+  if not AStarted then
+  begin
+    Result := StringOfChar(#10, ABreaks);
+  end
+  else if mJoins and (ABreaks = 0) then
+  begin
+    Result := ' ';
+  end
+  else if mJoins then
+  begin
+    Result := StringOfChar(#10, ABreaks);
+  end
+  else
+  begin
+    Result := StringOfChar(#10, ABreaks + 1);
+  end;
 end;
 
 /// <summary>Zeilen eines Blockwerts zusammensetzen: | behält Umbrüche, > faltet; AChomp '-', '+' oder ''.
@@ -819,33 +873,7 @@ begin
         Continue;
       end;
       mMore := CharInSet(mLine[1], [' ', #9]);
-      if not mStarted then
-      begin
-        mBuilder.Append(StringOfChar(#10, mBreaks));
-      end
-      else if not AFolded then
-      begin
-        mBuilder.Append(StringOfChar(#10, mBreaks + 1));
-      end
-      else if mBreaks = 0 then
-      begin
-        if mPreviousNormal and not mMore then
-        begin
-          mBuilder.Append(' ');
-        end
-        else
-        begin
-          mBuilder.Append(#10);
-        end;
-      end
-      else if mPreviousNormal and not mMore then
-      begin
-        mBuilder.Append(StringOfChar(#10, mBreaks));
-      end
-      else
-      begin
-        mBuilder.Append(StringOfChar(#10, mBreaks + 1));
-      end;
+      mBuilder.Append(BlockSeparator(mStarted, AFolded, mPreviousNormal, mMore, mBreaks));
       mBuilder.Append(mLine);
       mStarted := True;
       mPreviousNormal := not mMore;
@@ -865,57 +893,78 @@ begin
   end;
 end;
 
+/// <summary>Kopf eines Blockwerts ("|", ">-", "|2+"): Kürzung am Ende und angegebene Einrückung (0 = ohne).
+/// </summary>
+procedure ReadBlockHeader(const AHeader: string; out AChomp: Char; out AExplicit: Integer);
+var
+  mIndex: Integer;
+begin
+  AChomp := #0;
+  AExplicit := 0;
+  for mIndex := 2 to Length(AHeader) do
+  begin
+    case AHeader[mIndex] of
+      '-', '+':
+        AChomp := AHeader[mIndex];
+      '1'..'9':
+        AExplicit := Ord(AHeader[mIndex]) - Ord('0');
+    else
+      Fail;
+    end;
+  end;
+end;
+
+function TYamlReader.BlockIndent(AOwnerIndent, AExplicit: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  if AExplicit > 0 then
+  begin
+    Exit(AOwnerIndent + AExplicit);
+  end;
+  Result := 0;
+  mIndex := FIndex;
+  while (mIndex <= High(FLines)) and (Trim(FLines[mIndex].Raw) = '') do
+  begin
+    Inc(mIndex);
+  end;
+  if mIndex <= High(FLines) then
+  begin
+    Result := FLines[mIndex].Indent;
+  end;
+end;
+
+function TYamlReader.BlockLines(AIndent: Integer): TArray<string>;
+var
+  mLines: TList<string>;
+begin
+  mLines := TList<string>.Create;
+  try
+    while not AtEnd and ((Trim(FLines[FIndex].Raw) = '') or (FLines[FIndex].Indent >= AIndent)) do
+    begin
+      mLines.Add(TrimRight(Copy(FLines[FIndex].Raw, AIndent + 1, MaxInt)));
+      Inc(FIndex);
+    end;
+    Result := mLines.ToArray;
+  finally
+    mLines.Free;
+  end;
+end;
+
 function TYamlReader.ParseBlockScalar(const AHeader: string; AOwnerIndent: Integer): TJSONValue;
 var
   mHeader: string;
   mChomp: Char;
-  mIndent, mIndex, mExplicit: Integer;
+  mIndent, mExplicit: Integer;
   mLines: TArray<string>;
 begin
   mHeader := StripComment(AHeader);
-  mChomp := #0;
-  mExplicit := 0;
-  for mIndex := 2 to Length(mHeader) do
-  begin
-    if CharInSet(mHeader[mIndex], ['-', '+']) then
-    begin
-      mChomp := mHeader[mIndex];
-    end
-    else if CharInSet(mHeader[mIndex], ['1'..'9']) then
-    begin
-      mExplicit := Ord(mHeader[mIndex]) - Ord('0');
-    end
-    else
-    begin
-      Fail;
-    end;
-  end;
-  // Einrückung: angegeben, sonst die der ersten nicht leeren Zeile.
-  mIndent := 0;
-  if mExplicit > 0 then
-  begin
-    mIndent := AOwnerIndent + mExplicit;
-  end
-  else
-  begin
-    mIndex := FIndex;
-    while (mIndex <= High(FLines)) and (Trim(FLines[mIndex].Raw) = '') do
-    begin
-      Inc(mIndex);
-    end;
-    if mIndex <= High(FLines) then
-    begin
-      mIndent := FLines[mIndex].Indent;
-    end;
-  end;
+  ReadBlockHeader(mHeader, mChomp, mExplicit);
+  mIndent := BlockIndent(AOwnerIndent, mExplicit);
   mLines := nil;
   if mIndent > AOwnerIndent then
   begin
-    while not AtEnd and ((Trim(FLines[FIndex].Raw) = '') or (FLines[FIndex].Indent >= mIndent)) do
-    begin
-      mLines := mLines + [TrimRight(Copy(FLines[FIndex].Raw, mIndent + 1, MaxInt))];
-      Inc(FIndex);
-    end;
+    mLines := BlockLines(mIndent);
   end;
   Result := TJSONString.Create(JoinBlock(mLines, mHeader[1] = '>', mChomp));
 end;

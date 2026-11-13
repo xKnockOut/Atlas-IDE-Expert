@@ -169,6 +169,15 @@ uses
 const
   cKindNames: array[TAtlasIssueFieldKind] of string = ('text', 'number', 'date', 'single_select');
   cBase64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  /// <summary>Vier Base64-Zeichen tragen drei Bytes; jedes Zeichen sechs Bit.</summary>
+  cBase64Chars = 4;
+  cBase64Bytes = 3;
+  cBitsPerChar = 6;
+  cBitsPerByte = 8;
+  /// <summary>Puffer der noch nicht ausgegebenen Bits (drei Bytes).</summary>
+  cBitWindow = $FFFFFF;
+  /// <summary>HTTP-Antwort „OK“.</summary>
+  cHttpOk = 200;
 
 { TAtlasGitHubMilestone }
 
@@ -344,7 +353,7 @@ var
   mChar: Char;
   mValue, mBits, mDigit, mCount: Integer;
 begin
-  SetLength(ABytes, Length(AText) * 3 div 4 + 3);
+  SetLength(ABytes, Length(AText) * cBase64Bytes div cBase64Chars + cBase64Bytes);
   mValue := 0;
   mBits := 0;
   mCount := 0;
@@ -359,11 +368,11 @@ begin
     begin
       Exit(False);
     end;
-    mValue := ((mValue shl 6) or mDigit) and $FFFFFF;
-    Inc(mBits, 6);
-    if mBits >= 8 then
+    mValue := ((mValue shl cBitsPerChar) or mDigit) and cBitWindow;
+    Inc(mBits, cBitsPerChar);
+    if mBits >= cBitsPerByte then
     begin
-      Dec(mBits, 8);
+      Dec(mBits, cBitsPerByte);
       ABytes[mCount] := Byte((mValue shr mBits) and $FF);
       Inc(mCount);
     end;
@@ -699,7 +708,7 @@ var
 begin
   AText := '';
   Result := (AUrl <> '') and (TAtlasGitHubApi.Remaining(AWatch, ATimeoutMs) > 1) and
-    ATransport.Get(AUrl, TAtlasGitHubApi.Remaining(AWatch, ATimeoutMs), mStatus, AText, mError) and (mStatus = 200);
+    ATransport.Get(AUrl, TAtlasGitHubApi.Remaining(AWatch, ATimeoutMs), mStatus, AText, mError) and (mStatus = cHttpOk);
 end;
 
 /// <summary>Vorlagen aus dem Repository: Ordnerliste, dann jede Vorlage und config.yml.</summary>

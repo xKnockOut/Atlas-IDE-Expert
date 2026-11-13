@@ -117,11 +117,11 @@ var
 begin
   mDialog := TAtlasNewIssueDialog.CreateDialog(nil, Setup(False), nil, nil);
   try
-    Assert.IsFalse(mDialog.Parts.IncludeCodeBox.Checked, 'nicht vorausgewählt');
-    Assert.IsFalse(mDialog.Parts.CodeMemo.Enabled);
+    Assert.IsFalse(mDialog.Parts.Content.IncludeCodeBox.Checked, 'nicht vorausgewählt');
+    Assert.IsFalse(mDialog.Parts.Content.CodeMemo.Enabled);
     Assert.AreEqual('Fundstelle: `Main.pas`, Zeile 3', mDialog.Draft.Description, 'ohne Code');
-    mDialog.Parts.IncludeCodeBox.Checked := True;
-    Assert.IsTrue(mDialog.Parts.CodeMemo.Enabled);
+    mDialog.Parts.Content.IncludeCodeBox.Checked := True;
+    Assert.IsTrue(mDialog.Parts.Content.CodeMemo.Enabled);
     Assert.IsTrue(mDialog.Draft.Description.EndsWith('```pascal' + #10 + '// TODO Speicherleck beim Schließen' + #10 +
       '```'), mDialog.Draft.Description);
     Assert.IsFalse(mDialog.Parts.StartNowBox.Enabled, '„gleich beginnen“ nur mit „Meine Issues“');
@@ -130,9 +130,9 @@ begin
   end;
   mDialog := TAtlasNewIssueDialog.CreateDialog(nil, Setup(True), nil, nil);
   try
-    Assert.IsTrue(mDialog.Parts.IncludeCodeBox.Checked, 'Vorgabe an');
+    Assert.IsTrue(mDialog.Parts.Content.IncludeCodeBox.Checked, 'Vorgabe an');
     Assert.IsTrue(mDialog.Draft.Description.Contains('```pascal'));
-    Assert.IsFalse(mDialog.Parts.CreateButton.Enabled, 'ohne Haken OnSend kein Anlegen');
+    Assert.IsFalse(mDialog.Parts.Buttons.CreateButton.Enabled, 'ohne Haken OnSend kein Anlegen');
   finally
     mDialog.Free;
   end;
@@ -163,13 +163,13 @@ begin
     mDialog.Parts.AssignToMeBox.Checked := True;
     Assert.IsFalse(mDialog.Parts.AssigneeBox.Enabled, '„mir zuweisen“ ersetzt Zuständig');
     Assert.AreEqual(0, mSent, 'nichts ohne Klick');
-    Assert.IsTrue(mDialog.Parts.CreateButton.Enabled);
+    Assert.IsTrue(mDialog.Parts.Buttons.CreateButton.Enabled);
     mDialog.Parts.ProjectEdit.Text := 'KASSE';
-    mDialog.Parts.CreateButton.Click;
+    mDialog.Parts.Buttons.CreateButton.Click;
     Assert.AreEqual(1, mSent);
     Assert.IsTrue(mDialog.Sending);
-    Assert.IsFalse(mDialog.Parts.CreateButton.Enabled, 'kein zweites Senden');
-    Assert.IsFalse(mDialog.Parts.CancelButton.Enabled, 'nicht schließen, solange gesendet wird');
+    Assert.IsFalse(mDialog.Parts.Buttons.CreateButton.Enabled, 'kein zweites Senden');
+    Assert.IsFalse(mDialog.Parts.Buttons.CancelButton.Enabled, 'nicht schließen, solange gesendet wird');
     Assert.AreEqual('KASSE', mTarget.Project, 'Projekt aus dem Feld');
     Assert.AreEqual('Speicherleck beim Schließen', mDraft.Title);
     Assert.AreEqual('Bug', mDraft.IssueType);
@@ -182,9 +182,9 @@ begin
     Assert.AreEqual(Integer(mrNone), Integer(mDialog.ModalResult), 'offen');
     Assert.AreEqual(TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueRejected, [403]),
       mDialog.Parts.StatusLabel.Caption);
-    Assert.IsTrue(mDialog.Parts.CreateButton.Enabled, 'erneut versuchen');
+    Assert.IsTrue(mDialog.Parts.Buttons.CreateButton.Enabled, 'erneut versuchen');
     // Erfolg: schließt mit OK und merkt das Ergebnis.
-    mDialog.Parts.CreateButton.Click;
+    mDialog.Parts.Buttons.CreateButton.Click;
     mResult := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.Created);
     mResult.Key := 'ATL-130';
     mDone(mResult);
@@ -250,7 +250,7 @@ begin
     begin
     end);
   try
-    Assert.IsFalse(mDialog.Parts.CreateButton.Enabled);
+    Assert.IsFalse(mDialog.Parts.Buttons.CreateButton.Enabled);
     Assert.AreEqual(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueNoTracker),
       mDialog.Parts.StatusLabel.Caption);
   finally
@@ -290,13 +290,14 @@ begin
     Assert.AreEqual('Fehler,Wunsch', string.Join(',', mDialog.Parts.TemplateBox.Values), 'ohne „Leeres Issue“');
     Assert.AreEqual(0, mDialog.Parts.TemplateBox.Choice);
     Assert.AreEqual('Fehler: Speicherleck beim Schließen', mDialog.Parts.TitleEdit.Text);
-    Assert.IsTrue(mDialog.Parts.FormPanel.Visible);
-    Assert.AreEqual('2.2.0', mDialog.Parts.FormPanel.Inputs[0].Edit.Text, 'version={version}');
-    Assert.AreEqual(1, mDialog.Parts.FormPanel.Inputs[1].Box.Choice - mDialog.Parts.FormPanel.Inputs[1].BoxOffset,
+    Assert.IsTrue(mDialog.Parts.Content.FormPanel.Visible);
+    Assert.AreEqual('2.2.0', mDialog.Parts.Content.FormPanel.Inputs[0].Edit.Text, 'version={version}');
+    Assert.AreEqual(1, mDialog.Parts.Content.FormPanel.Inputs[1].Box.Choice -
+      mDialog.Parts.Content.FormPanel.Inputs[1].BoxOffset,
       'Delphi 13 (64-Bit-IDE)');
-    Assert.IsTrue(mDialog.Parts.FormPanel.Inputs[3].Memo.Text.Contains('// TODO Speicherleck'),
+    Assert.IsTrue(mDialog.Parts.Content.FormPanel.Inputs[3].Memo.Text.Contains('// TODO Speicherleck'),
       'Code ins textarea mit render');
-    mDialog.Parts.FormPanel.Inputs[2].Memo.Text := 'Öffnen und schließen';
+    mDialog.Parts.Content.FormPanel.Inputs[2].Memo.Text := 'Öffnen und schließen';
     mDraft := mDialog.Draft;
     Assert.IsTrue(mDraft.Description.StartsWith('### Atlas-Version' + #10#10 + '2.2.0'), mDraft.Description);
     Assert.IsTrue(mDraft.Description.Contains('### Schritte' + #10#10 + 'Öffnen und schließen'));
@@ -306,8 +307,8 @@ begin
     mDialog.Parts.TemplateBox.Choice := 1;
     mDialog.Parts.TemplateBox.OnChange(mDialog.Parts.TemplateBox);
     Assert.AreEqual('[Wunsch] Speicherleck beim Schließen', mDialog.Parts.TitleEdit.Text);
-    Assert.IsFalse(mDialog.Parts.FormPanel.Visible);
-    Assert.IsTrue(mDialog.Parts.DescriptionMemo.Text.StartsWith('## Was fehlt?'));
+    Assert.IsFalse(mDialog.Parts.Content.FormPanel.Visible);
+    Assert.IsTrue(mDialog.Parts.Content.DescriptionMemo.Text.StartsWith('## Was fehlt?'));
   finally
     mDialog.Free;
   end;
@@ -327,17 +328,17 @@ begin
     end);
   try
     mDialog.ShowFields(GitHubFields, True);
-    mDialog.Parts.FormPanel.Inputs[0].Edit.Text := '';
-    mDialog.Parts.CreateButton.Click;
+    mDialog.Parts.Content.FormPanel.Inputs[0].Edit.Text := '';
+    mDialog.Parts.Buttons.CreateButton.Click;
     Assert.AreEqual(0, mSent, 'Pflichtfelder fehlen');
     Assert.AreEqual(TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueRequiredMany, ['Atlas-Version, Schritte']),
       mDialog.Parts.StatusLabel.Caption);
-    mDialog.Parts.FormPanel.Inputs[0].Edit.Text := '2.2.0';
-    mDialog.Parts.CreateButton.Click;
+    mDialog.Parts.Content.FormPanel.Inputs[0].Edit.Text := '2.2.0';
+    mDialog.Parts.Buttons.CreateButton.Click;
     Assert.AreEqual(TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueRequired, ['Schritte']),
       mDialog.Parts.StatusLabel.Caption);
-    mDialog.Parts.FormPanel.Inputs[2].Memo.Text := 'Öffnen';
-    mDialog.Parts.CreateButton.Click;
+    mDialog.Parts.Content.FormPanel.Inputs[2].Memo.Text := 'Öffnen';
+    mDialog.Parts.Buttons.CreateButton.Click;
     Assert.AreEqual(1, mSent);
   finally
     mDialog.Free;
@@ -401,8 +402,8 @@ begin
   mDialog := TAtlasNewIssueDialog.CreateDialog(nil, mSetup, nil, nil);
   try
     mDialog.ShowFields(GitHubFields, True);
-    Assert.IsTrue(mDialog.Parts.BrowseButton.Enabled);
-    mDialog.Parts.BrowseButton.Click;
+    Assert.IsTrue(mDialog.Parts.Buttons.BrowseButton.Enabled);
+    mDialog.Parts.Buttons.BrowseButton.Click;
     Assert.IsTrue(mOpened.StartsWith('https://github.com/acme/kasse/issues/new?template=1-fehler.yml&title=Fehler'),
       mOpened);
     Assert.IsTrue(mOpened.Contains('&version=2.2.0'), mOpened);
@@ -423,8 +424,8 @@ begin
     Assert.IsFalse(mDialog.Parts.TemplateBox.Visible, 'YouTrack: keine Vorlagen');
     Assert.IsFalse(mDialog.Parts.MilestoneBox.Visible);
     Assert.AreEqual(0, mDialog.Parts.FieldRows.Height);
-    Assert.IsFalse(mDialog.Parts.FormPanel.Visible);
-    Assert.IsFalse(mDialog.Parts.BrowseButton.Visible, 'ohne OnBrowse kein Knopf');
+    Assert.IsFalse(mDialog.Parts.Content.FormPanel.Visible);
+    Assert.IsFalse(mDialog.Parts.Buttons.BrowseButton.Visible, 'ohne OnBrowse kein Knopf');
     Assert.AreEqual('Fundstelle: `Main.pas`, Zeile 3', mDialog.Draft.Description.Split([#10])[0]);
   finally
     mDialog.Free;
