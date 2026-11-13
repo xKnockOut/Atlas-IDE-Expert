@@ -451,6 +451,7 @@ The dockable window “Breakpoints” (Atlas menu, “Breakpoints (Atlas)”) sh
 - tags such as `Import` or `Bug 4711`, several per breakpoint, completed from the ones already used; they are personal and survive a restart
 - grouping by tag, file or group, with collapsible groups
 - enable, disable, tag or delete several breakpoints at once (undo with Ctrl+Z)
+- columns “Set” (breakpoint sets) and “Rules” (hit condition, thread filter, dependent on another breakpoint), such as “from hit 3 · main thread”
 - double-click goes to the location, Enter opens the IDE’s properties
 - show and hide columns from the context menu; the window remembers width and order
 
@@ -468,6 +469,18 @@ Before every debug session starts, Atlas checks all active source breakpoints, o
 If anything is found, the dialog “Breakpoints that will not be hit” lists it before the start; double-click jumps to the spot. “Move to next code line” moves the breakpoints together with condition, pass count and group and starts, “Start anyway” starts unchanged, “Cancel” does not start. The command “Check breakpoints” (Atlas menu, command palette) checks at any time. Without a server, or without an answer within 3 seconds, the IDE starts without a message.
 
 Settings: `debug.checkBreakpoints`
+
+### Breakpoints on methods by pattern
+
+The command “Breakpoint on methods …” (Atlas menu, command palette, editor context menu under “Debug” and the context menu of the breakpoint list) sets breakpoints on all methods that match a name or pattern, without opening each one. The starting pattern comes from the word at the cursor: in a method header `TCustomer.Save`, on a type `TCustomer.*`, on a call `FCustomer.Save` the name `Save`; a single-line selection is taken as is. Without a word, the last pattern is shown.
+
+- `TCustomer.Save`, `TCustomer.*` (all methods of the class), `*.Validate*` (all matching methods and routines), `Customer.Import.*` (whole unit), `IOrder.Check` (all classes implementing the interface member, also through method resolution clauses)
+- with parameter types, only one overload: `TCustomer.Save(Integer)`
+- “Overrides” adds the override methods of descendants, “Overloads” all overloads of a name (both on by default)
+
+The preview lists the matches with file and line to deselect, methods without source greyed out. “Set” places the breakpoints on the first executable statement of each method, in the breakpoint group named after the pattern, optionally with a condition or “Do not break, log only”. With “Grow”, Atlas adds breakpoints for new matching methods at the next debug start and names them in the messages. “Method breakpoint groups …” enables, disables or removes the groups of the project together with their breakpoints. Atlas keeps the groups personally per project.
+
+Settings: `debug.methodBreakpoints`
 
 ### Run to here by clicking
 

@@ -24,7 +24,8 @@ uses
   Vcl.ComCtrls,
   Vcl.Menus,
   Vcl.Forms,
-  Atlas.Core.Debug.BreakpointList;
+  Atlas.Core.Debug.BreakpointList,
+  Atlas.Core.Debug.BreakpointRules;
 
 type
   TAtlasBreakpointRowsEvent = reference to procedure(const ARows: TArray<TAtlasBreakpointRow>);
@@ -38,6 +39,9 @@ type
     class function Cell(const ARow: TAtlasBreakpointRow; AColumn: TAtlasBreakpointColumn; AHasRun: Boolean): string;
       static;
     class function ColumnCaption(AColumn: TAtlasBreakpointColumn): string; static;
+    /// <summary>Regel (#864) als kurzer Text wie „ab 3. Treffer · Hauptthread · nach Kunde.pas:42“;
+    /// ATriggerText ist die Stelle des auslösenden Haltepunkts.</summary>
+    class function RuleText(const ARule: TAtlasBreakpointRule; const ATriggerText: string): string; static;
     /// <summary>Überschrift einer Gruppe; leere Überschrift als „(ohne Etikett)“ bzw. „(ohne Gruppe)“.</summary>
     class function GroupCaption(const ACaption: string; AGrouping: TAtlasBreakpointGrouping; ACount: Integer): string;
       static;
@@ -147,6 +151,7 @@ uses
 
 const
   cEnabledMark = '✓';
+  cPartSeparator = ' · ';
   cDisabledMark = '–';
   cKeySeparator = '|';
   cTagSeparator = ', ';
@@ -161,7 +166,7 @@ const
     TAtlasDebugTextId.BreakpointsColumnLocation, TAtlasDebugTextId.BreakpointsColumnCondition,
     TAtlasDebugTextId.BreakpointsColumnPassCount, TAtlasDebugTextId.BreakpointsColumnHits,
     TAtlasDebugTextId.BreakpointsColumnTags, TAtlasDebugTextId.BreakpointsColumnGroup,
-    TAtlasDebugTextId.BreakpointsColumnSet);
+    TAtlasDebugTextId.BreakpointsColumnSet, TAtlasDebugTextId.BreakpointsColumnRules);
   cChipTexts: array[TAtlasBreakpointFilter] of TAtlasDebugTextId = (TAtlasDebugTextId.BreakpointsChipActive,
     TAtlasDebugTextId.BreakpointsChipCondition, TAtlasDebugTextId.BreakpointsChipNeverHit,
     TAtlasDebugTextId.BreakpointsChipNotEffective);
@@ -212,9 +217,72 @@ begin
       Result := string.Join(cTagSeparator, ARow.Tags);
     TAtlasBreakpointColumn.Group:
       Result := ARow.Group;
+    TAtlasBreakpointColumn.SetName:
+      Result := ARow.SetName;
   else
-    Result := ARow.SetName;
+    Result := ARow.Rules;
   end;
+end;
+
+function HitPart(const ARule: TAtlasBreakpointRule): string;
+begin
+  case ARule.Hit of
+    TAtlasHitMode.Exactly:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointsRuleExactly, [ARule.HitCount]);
+    TAtlasHitMode.AtLeast:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointsRuleAtLeast, [ARule.HitCount]);
+    TAtlasHitMode.EveryNth:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointsRuleEvery, [ARule.HitCount]);
+  else
+    Result := '';
+  end;
+end;
+
+function ThreadPart(const ARule: TAtlasBreakpointRule): string;
+begin
+  case ARule.Thread of
+    TAtlasThreadFilter.NameContains:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointsRuleThreadName, [ARule.ThreadText]);
+    TAtlasThreadFilter.ThreadId:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointsRuleThreadId, [ARule.ThreadId]);
+    TAtlasThreadFilter.MainThread:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsRuleMain);
+  else
+    Result := '';
+  end;
+end;
+
+function DependPart(const ARule: TAtlasBreakpointRule; const ATriggerText: string): string;
+begin
+  Result := '';
+  if not ARule.HasTrigger then
+  begin
+    Exit;
+  end;
+  case ARule.Depend of
+    TAtlasDependMode.UntilEnd:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointsRuleAfter, [ATriggerText]);
+    TAtlasDependMode.Once:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointsRuleAfterOnce, [ATriggerText]);
+  else
+    Result := '';
+  end;
+end;
+
+class function TAtlasBreakpointTexts.RuleText(const ARule: TAtlasBreakpointRule; const ATriggerText: string): string;
+var
+  mParts: TArray<string>;
+  mPart: string;
+begin
+  mParts := nil;
+  for mPart in TArray<string>.Create(HitPart(ARule), ThreadPart(ARule), DependPart(ARule, ATriggerText)) do
+  begin
+    if mPart <> '' then
+    begin
+      mParts := mParts + [mPart];
+    end;
+  end;
+  Result := string.Join(cPartSeparator, mParts);
 end;
 
 class function TAtlasBreakpointTexts.ColumnCaption(AColumn: TAtlasBreakpointColumn): string;

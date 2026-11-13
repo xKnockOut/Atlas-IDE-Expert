@@ -2488,6 +2488,19 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#577"
     },
+    "DebugMethodBreakpoints": {
+      "description": "Haltepunkte auf Methoden nach Name oder Muster: Der Befehl „Haltepunkt auf Methoden …“ sucht über den Symbolindex alle Methoden zu einem Muster (TKunde.Speichere, TKunde.*, *.Validiere*, Unit.*, IAuftrag.Pruefe, auf Wunsch mit Überschreibungen und Überladungen) und setzt nach einer Vorschau Haltepunkte am ersten ausführbaren Befehl, als Gruppe mit dem Muster als Namen, mit Bedingung oder nur protokollierend. Mit „Mitwachsen“ ergänzt Atlas beim Debug-Start Haltepunkte für neue passende Methoden. Der Befehl „Haltepunktgruppen der Methoden …“ schaltet Gruppen ein und aus oder entfernt sie. Aus = keine Befehle, kein Mitwachsen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.methodBreakpoints",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Haltepunkte auf Methoden nach Muster",
+      "x-captionEn": "Breakpoints on methods by pattern",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#855"
+    },
     "DebugInstanceBreakpoints": {
       "description": "Haltepunkt nur für ein Objekt: Im angehaltenen Programm schränkt „Haltepunkt nur für dieses Objekt“ (Kontextmenü des Editors, Schreibmarke auf der Zeile des Haltepunkts) den Haltepunkt mit der Bedingung „Pointer(Self) = Pointer($…)“ auf das aktuelle Self ein; „Haltepunkt nur wenn …“ setzt eine Bedingung aus einem aktuellen Feldwert von Self („Nr = 4711“), die auch in der nächsten Sitzung gilt. Eine vorhandene Bedingung bleibt erhalten und wird mit „and“ verknüpft. Nur in Methoden. Vor dem nächsten Start fragt Atlas, ob Adressbedingungen der letzten Sitzung entfernt oder durch eine Feldbedingung ersetzt werden sollen. Aus = keine Befehle, keine Frage.",
       "type": "boolean",

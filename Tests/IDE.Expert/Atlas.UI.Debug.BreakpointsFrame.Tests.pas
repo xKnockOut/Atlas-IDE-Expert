@@ -30,6 +30,8 @@ type
     [Test]
     procedure GroupCaptionsAndSummary;
     [Test]
+    procedure RuleTexts;
+    [Test]
     procedure ListFollowsSearchChipsAndGrouping;
     [Test]
     procedure SelectionSurvivesSetRows;
@@ -45,6 +47,7 @@ uses
   System.SysUtils,
   Vcl.Forms,
   Atlas.Core.Debug.BreakpointList,
+  Atlas.Core.Debug.BreakpointRules,
   Atlas.UI.Debug.BreakpointsFrame;
 
 type
@@ -143,6 +146,33 @@ begin
   Assert.AreEqual('(ohne Gruppe) (1)', TAtlasBreakpointTexts.GroupCaption('', TAtlasBreakpointGrouping.ByGroup, 1));
   Assert.AreEqual('1 von 2 Haltepunkten', TAtlasBreakpointTexts.Summary(1, 2, True));
   Assert.IsTrue(TAtlasBreakpointTexts.Summary(1, 2, False).Contains('nächsten Debug-Sitzung'));
+end;
+
+procedure TAtlasDebugBreakpointsFrameTests.RuleTexts;
+var
+  mRule: TAtlasBreakpointRule;
+  mRow: TAtlasBreakpointRow;
+begin
+  mRule := Default(TAtlasBreakpointRule);
+  Assert.AreEqual('', TAtlasBreakpointTexts.RuleText(mRule, 'Kunde.pas:42'), 'ohne Regel');
+  mRule.Hit := TAtlasHitMode.AtLeast;
+  mRule.HitCount := 3;
+  mRule.Thread := TAtlasThreadFilter.MainThread;
+  mRule.Depend := TAtlasDependMode.Once;
+  mRule.TriggerFile := 'C:\App\Kunde.pas';
+  mRule.TriggerLine := 41;
+  Assert.AreEqual('ab 3. Treffer · Hauptthread · einmal nach Kunde.pas:42',
+    TAtlasBreakpointTexts.RuleText(mRule, 'Kunde.pas:42'));
+  mRule := Default(TAtlasBreakpointRule);
+  mRule.Thread := TAtlasThreadFilter.NameContains;
+  mRule.ThreadText := 'Import';
+  Assert.AreEqual('Thread „Import“', TAtlasBreakpointTexts.RuleText(mRule, ''));
+  mRow := TAtlasBreakpointRow.Create('C:\App\Kunde.pas', 42);
+  mRow.Rules := 'Hauptthread';
+  Assert.AreEqual('Hauptthread', TAtlasBreakpointTexts.Cell(mRow, TAtlasBreakpointColumn.Rules, True));
+  Assert.AreEqual('Regeln', TAtlasBreakpointTexts.ColumnCaption(TAtlasBreakpointColumn.Rules));
+  mRule := Default(TAtlasBreakpointRule);
+  mRow := Default(TAtlasBreakpointRow);
 end;
 
 procedure TAtlasDebugBreakpointsFrameTests.ListFollowsSearchChipsAndGrouping;
