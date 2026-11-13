@@ -22,14 +22,13 @@ uses
   System.Classes,
   Vcl.Controls,
   Atlas.Core.Designer.FitContainer,
-  Atlas.IDE.Designer.Snapshot;
+  Atlas.IDE.Designer.Snapshot,
+  Atlas.IDE.Designer.Tool;
 
 type
-  TAtlasIdeFitContainer = class
+  TAtlasIdeFitContainer = class(TAtlasIdeDesignerTool)
   private
-    FOnMessage: TProc<string>;
     FSnapshot: TAtlasDesignerSnapshot;
-    procedure Say(const AText: string);
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -206,8 +205,7 @@ end;
 
 constructor TAtlasIdeFitContainer.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
   FSnapshot := TAtlasDesignerSnapshot.Create;
 end;
 
@@ -215,14 +213,6 @@ destructor TAtlasIdeFitContainer.Destroy;
 begin
   FSnapshot.Free;
   inherited Destroy;
-end;
-
-procedure TAtlasIdeFitContainer.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
 end;
 
 class function TAtlasIdeFitContainer.Candidates(const ASelected: TArray<TComponent>;
