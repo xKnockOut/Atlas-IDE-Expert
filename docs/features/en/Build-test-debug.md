@@ -314,6 +314,14 @@ Settings: `debug.whyHere`, `debug.whyHere.depth`
 - A click on a hint opens the menu “Turn off the forecast for this session”. Hints and dimming disappear with the next step
 
 Settings: `debug.predictConditions`, `debug.predictConditions.dimSkipped`, `debug.predictConditions.lines`
+### Pinned values
+
+- The debug hover shows “Pin” below the value. From then on the expression appears at every stop as a framed field `Summe = 125 ✕` at the end of its line, after the inline values
+- Values changed since the previous stop are shown in the warning colour
+- Pinned expressions belong to the project and survive debug sessions; a click on ✕ unpins them for good
+- Evaluation has no side effects: expressions with calls stay `?`. At most 100 per project
+
+Setting: `debug.pinnedValues`
 
 ### "No access to value" explained
 
@@ -440,6 +448,28 @@ If anything is found, the dialog “Breakpoints that will not be hit” lists it
 
 Settings: `debug.checkBreakpoints`
 
+### Run to here by clicking
+
+Editor margin while paused, context menu Atlas › Debug, command palette. Instead of placing the cursor and pressing F4, click next to the line.
+
+- When the program is paused, a narrow column appears to the right of the line numbers; on executable lines it shows ▶ under the mouse pointer, with a tooltip.
+- Clicking ▶ runs to that line (like F4); Ctrl+click does so without stopping at other breakpoints.
+- Skipped breakpoints are back in their old state after the next stop, even if the program ends first. If the IDE crashes in between, Atlas restores them when the next debug session starts.
+- Right-click in the margin: “Run to here”, “Run to here, skip breakpoints” (also Ctrl+F4, only while paused) and “One-time breakpoint”. The one-time breakpoint is in the group `Atlas.Einmalig` and disappears after its first stop; it can also be set while no program is running.
+- Executable lines are those between `begin` and `end` of a body, without blank and comment lines and without lines that only contain `begin`, `end`, `try`, `finally`, `except` or `else`.
+
+Settings: `debug.runToClick`
+
+### Breakpoint only for one object
+
+A breakpoint in `TKunde.Speichere` stops 500 times for 500 customers. While the program is paused, with the caret on the breakpoint line, the editor context menu offers under Debug:
+
+- “Breakpoint only for this object”: Atlas evaluates `Pointer(Self)` and writes `Pointer(Self) = Pointer($0A3F1C20)` into the condition. The address is only valid in this session.
+- “Breakpoint only if …”: choose one of the fields of `Self` with a simple value, such as `FNr = 4711`; the condition also holds in later sessions.
+
+An existing condition is kept and combined with `and`. Both are available only in methods, not in plain routines or class methods. Before the next start, Atlas asks about address conditions from the last session: remove them, replace them with a field condition, or keep them.
+
+Settings: `debug.instanceBreakpoints`
 ### Breakpoint sets
 
 Atlas menu and command palette. When you work on several bugs, switch between named sets of breakpoints instead of deleting and setting them again.

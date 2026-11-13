@@ -163,6 +163,7 @@ Atlas.Common.Lsp.ApplyEdit.Tests
 Atlas.Common.Lsp.Baseline.Tests
 Atlas.Common.Lsp.BreakpointCheck.Tests
 Atlas.Core.Debug.BreakpointCheck.Tests
+Atlas.Core.Debug.RunTo.Tests
 Atlas.Common.Lsp.CompactJson.Tests
 Atlas.Common.Lsp.CompilerBaseline.Tests
 Atlas.Common.Lsp.CompilerSwitches.Tests
@@ -364,6 +365,7 @@ Atlas.Core.Problems.Explanation.Tests
 Atlas.Core.Hover.View.Tests
 Atlas.Core.Debug.WhyHere.Tests
 Atlas.Core.Debug.Forecast.Tests
+Atlas.Core.Debug.Pins.Tests
 Atlas.Core.Style.Listeners.Tests
 Atlas.Core.Designer.Structure.Tests
 Atlas.Core.Designer.DataBindings.Tests

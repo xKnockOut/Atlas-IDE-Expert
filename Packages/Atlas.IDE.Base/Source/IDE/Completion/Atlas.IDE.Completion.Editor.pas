@@ -49,6 +49,9 @@ type
   /// <summary>Quellen der Vervollständigung aus dem Kern; setzt die Kompositionswurzel ein.</summary>
   TAtlasCompletionSources = Atlas.IDE.Completion.EditorState.TAtlasCompletionSources;
   TAtlasCompletionSourcesFactory = Atlas.IDE.Completion.EditorState.TAtlasCompletionSourcesFactory;
+  /// <summary>Aktionen für ein nicht sichtbares Mitglied anbieten (#2108); setzt die Kompositionswurzel ein.
+  /// </summary>
+  TAtlasOfferActionsProc = Atlas.IDE.Completion.EditorCommit.TAtlasOfferActionsProc;
 
   TAtlasEditorCompletion = class(TAtlasEditorCompletionCommit)
   private
@@ -293,6 +296,19 @@ begin
       begin
         TAtlasIdeHistory.Committed;
       end;
+    end;
+  // Enter auf einem nicht sichtbaren Mitglied (#2108): erst nach dem Schließen der Liste, nicht im Tastenaufruf.
+  FController.OnInaccessible :=
+    procedure(const AItem: TAtlasCompletionItem)
+    var
+      mItem: TAtlasCompletionItem;
+    begin
+      mItem := AItem;
+      TAtlasMainThread.ForceQueue(TAtlasFeature.Completion,
+        procedure
+        begin
+          OfferActions(mItem);
+        end);
     end;
   FPopup.OnOverload :=
     procedure(ADelta: Integer)

@@ -2,7 +2,7 @@
 
 // Modul Debugger (#1455), Teil der Komposition: die Teile der
 // Feature-Tabelle rund um Werte und Ausdrücke, in dieser Reihenfolge Werte im
-// Editor, „kein Zugriff“ erklären, Zugriffsverletzung, Vervollständigung in
+// Editor, angeheftete Werte, „kein Zugriff“ erklären, Zugriffsverletzung, Vervollständigung in
 // Debugger-Dialogen, Fenster „Auswerten“ und „Warum bin ich hier?“. Sie fragen
 // den Server nur, wenn er ohnehin läuft. Atlas.IDE.Debug.Composition stellt sie
 // über den Scope des Moduls bereit.
@@ -36,6 +36,7 @@ uses
   Atlas.IDE.Hover.DebugValue,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Debug.InlineValues,
+  Atlas.IDE.Debug.Pins,
   Atlas.IDE.Debug.Unavailable,
   Atlas.IDE.Debug.Evaluate,
   Atlas.IDE.Debug.AccessViolation,
@@ -168,6 +169,30 @@ begin
     end;
 end;
 
+/// <summary>Angeheftete Werte (#526): „Anheften“ im Debug-Hover; der Tooltip kennt die Debug-Schicht nicht.
+/// </summary>
+procedure StartDebugPins;
+begin
+  TAtlasIdeDebugPins.Start(MessageLine);
+  TAtlasEditorHover.OnDebugActions :=
+    function(const AValue: TAtlasDebugValue): TArray<TAtlasDebugValueFix>
+    begin
+      Result := TAtlasIdeDebugPins.Actions(AValue);
+    end;
+  TAtlasEditorHover.OnDebugAction :=
+    procedure(const AValue: TAtlasDebugValue; const AFileName: string; ALine, AAction: Integer)
+    begin
+      TAtlasIdeDebugPins.Act(AValue, AFileName, ALine, AAction);
+    end;
+end;
+
+procedure ReleaseDebugPins;
+begin
+  TAtlasEditorHover.OnDebugActions := nil;
+  TAtlasEditorHover.OnDebugAction := nil;
+  TAtlasIdeDebugPins.Release;
+end;
+
 { Teile }
 
 /// <summary>Werte im Editor, „kein Zugriff“ und Zugriffsverletzung.</summary>
@@ -184,6 +209,16 @@ begin
       begin
         Result := TAtlasIdeDebugInlineValues.Started;
       end, StartDebugInlineValues, TAtlasIdeDebugInlineValues.Release),
+    // Angeheftete Werte (#526): Aktion im Hover, Zuhörer und Zeichner; aus = nichts angemeldet.
+    TAtlasFeaturePart.When('DebugPinnedValues',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugPinnedValues;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeDebugPins.Started;
+      end, StartDebugPins, ReleaseDebugPins),
     // „kein Zugriff auf Wert“ erklären (#840): Hover und Werte im Editor.
     TAtlasFeaturePart.When('DebugUnavailable',
       function(ALevel: TAtlasSafeLevel): Boolean

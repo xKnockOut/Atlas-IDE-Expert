@@ -2296,6 +2296,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.WhyHere.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Forecast.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Forecast.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Pins.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Pins.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.CompilerSwitches.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompilerSwitches.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\Core\Build\Atlas.Core.Build.CompilerSwitches.pas"/>
@@ -2357,10 +2359,14 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.BreakpointCheck.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.BreakpointCheck.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.BreakpointCheck.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.InstanceBreakpoint.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.InstanceBreakpoint.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.BreakpointSets.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.BreakpointSets.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.BreakpointSets.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.BreakpointSets.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.RunTo.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.RunTo.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.ButtonBar.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.ButtonBar.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.DuplicateRow.pas"/>

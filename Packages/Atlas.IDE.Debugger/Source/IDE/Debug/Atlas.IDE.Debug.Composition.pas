@@ -406,6 +406,8 @@ begin
     end;
   Result := [mKey];
   Result := Result + RunKeys;
+  // Bis hier, Haltepunkte überspringen (#851).
+  Result := Result + BreakpointKeys;
 end;
 
 procedure TAtlasDebugModule.EditorViewActivated;

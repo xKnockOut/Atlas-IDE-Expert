@@ -107,9 +107,18 @@ type
     /// anderer Projekte der Gruppe, mit Verschieben auf die nächste Codezeile; dazu der Befehl „Haltepunkte prüfen“.
     /// Aus = keine Prüfung, kein Befehl.</summary>
     DebugCheckBreakpoints: Boolean;
+    /// <summary>Haltepunkt nur für ein Objekt (#857, debug.instanceBreakpoints): Befehle „Haltepunkt nur für dieses
+    /// Objekt“ (Bedingung auf die Adresse von Self) und „Haltepunkt nur wenn …“ (Feldwert von Self) im Kontextmenü
+    /// des Editors; vor dem nächsten Start die Frage zu Adressbedingungen der letzten Sitzung. Aus = keine Befehle,
+    /// keine Frage.</summary>
+    DebugInstanceBreakpoints: Boolean;
     /// <summary>Haltepunkt-Sätze (#586, debug.breakpointSetPerBranch): Ein Satz mit Branch wird beim Wechsel der
     /// Arbeitskopie auf diesen Branch aktiv. Aus = Sätze nur über die Befehle.</summary>
     DebugBreakpointSetPerBranch: Boolean;
+    /// <summary>Bis hier ausführen per Klick (#851, debug.runToClick): Im angehaltenen Zustand zeigt eine schmale
+    /// Spalte im Rand an ausführbaren Zeilen unter der Maus ▶; Klick führt bis dorthin aus, Strg+Klick ohne Halt an
+    /// anderen Haltepunkten; dazu die Befehle „Bis hier“ und „Einmaliger Haltepunkt“. Aus = nichts davon.</summary>
+    DebugRunToClick: Boolean;
     /// <summary>Haltepunktfenster (#863, debug.breakpointsWindow): eigenes andockbares Fenster mit Suche,
     /// Filterchips, Etiketten, Trefferzahlen dieser Sitzung und Gruppen. Aus = kein Fenster, kein Befehl.</summary>
     DebugBreakpointsWindow: Boolean;
@@ -214,6 +223,9 @@ type
     DebugPredictDimSkipped: Boolean;
     /// <summary>So viele Zeilen voraus (#2169, debug.predictConditions.lines, 1 bis 200).</summary>
     DebugPredictLines: Integer;
+    /// <summary>Angeheftete Werte (#526, debug.pinnedValues): „Anheften“ im Debug-Hover; angeheftete Ausdrücke
+    /// stehen beim Halt am Ende ihrer Zeile. Aus = keine Aktion im Hover, keine Felder im Editor.</summary>
+    DebugPinnedValues: Boolean;
     /// <summary>Weitere Ordner mit eigenem Code (#578, debug.ownCodeFolders), durch „;“ getrennt; die Projektordner
     /// der Gruppe gelten immer.</summary>
     DebugOwnCodeFolders: string;
@@ -311,7 +323,9 @@ begin
   Result.DebugBreakOnNextEvent := True;
   Result.DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.cDefaultExcluded;
   Result.DebugCheckBreakpoints := True;
+  Result.DebugInstanceBreakpoints := True;
   Result.DebugBreakpointSetPerBranch := True;
+  Result.DebugRunToClick := True;
   Result.DebugBreakpointsWindow := True;
   Result.DebugExplainUnavailable := True;
   Result.DebugCompletionInDialogs := True;
@@ -394,7 +408,9 @@ begin
   AIo.Flag('DebugBreakOnNextEvent', DebugBreakOnNextEvent);
   AIo.Text('DebugBreakOnNextEventExcluded', DebugBreakOnNextEventExcluded);
   AIo.Flag('DebugCheckBreakpoints', DebugCheckBreakpoints);
+  AIo.Flag('DebugInstanceBreakpoints', DebugInstanceBreakpoints);
   AIo.Flag('DebugBreakpointSetPerBranch', DebugBreakpointSetPerBranch);
+  AIo.Flag('DebugRunToClick', DebugRunToClick);
   AIo.Flag('DebugBreakpointsWindow', DebugBreakpointsWindow);
   AIo.Flag('DebugExplainUnavailable', DebugExplainUnavailable);
   AIo.Flag('DebugCompletionInDialogs', DebugCompletionInDialogs);
@@ -430,6 +446,7 @@ begin
   DebugPredictConditions := True;
   DebugPredictDimSkipped := True;
   DebugPredictLines := cDefaultPredictLines;
+  DebugPinnedValues := True;
   DebugOwnCodeFolders := '';
   DebugEventLog := True;
   DebugEventLogColors := cDefaultEventLogColors;
@@ -455,6 +472,7 @@ begin
   AIo.Flag('DebugPredictConditions', DebugPredictConditions);
   AIo.Flag('DebugPredictDimSkipped', DebugPredictDimSkipped);
   AIo.Number('DebugPredictLines', DebugPredictLines);
+  AIo.Flag('DebugPinnedValues', DebugPinnedValues);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AIo.Flag('DebugEventLog', DebugEventLog);
   AIo.Text('DebugEventLogColors', DebugEventLogColors);

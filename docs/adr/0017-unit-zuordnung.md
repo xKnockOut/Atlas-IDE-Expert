@@ -898,6 +898,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.Evaluate` | `Core/Debug/Atlas.Core.Debug.Evaluate.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.BreakpointCheck` | `Core/Debug/Atlas.Core.Debug.BreakpointCheck.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.BreakpointSets` | `Core/Debug/Atlas.Core.Debug.BreakpointSets.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.RunTo` | `Core/Debug/Atlas.Core.Debug.RunTo.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.EventBreak` | `Core/Debug/Atlas.Core.Debug.EventBreak.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.InstanceBreakpoint` | `Core/Debug/Atlas.Core.Debug.InstanceBreakpoint.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ExceptionBanner` | `Core/Debug/Atlas.Core.Debug.ExceptionBanner.pas` | Ordner `Core/Debug` |
@@ -913,6 +914,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.InlineValues` | `Core/Debug/Atlas.Core.Debug.InlineValues.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.WhyHere` | `Core/Debug/Atlas.Core.Debug.WhyHere.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Forecast` | `Core/Debug/Atlas.Core.Debug.Forecast.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.Pins` | `Core/Debug/Atlas.Core.Debug.Pins.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Note` | `Core/Debug/Atlas.Core.Debug.Note.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.OwnCode` | `Core/Debug/Atlas.Core.Debug.OwnCode.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.StepFilter` | `Core/Debug/Atlas.Core.Debug.StepFilter.pas` | Ordner `Core/Debug` |
@@ -925,11 +927,14 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.BreakpointList` | `IDE/Debug/Atlas.IDE.Debug.BreakpointList.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.BreakpointsWindow` | `IDE/Debug/Atlas.IDE.Debug.BreakpointsWindow.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.BreakpointCheck` | `IDE/Debug/Atlas.IDE.Debug.BreakpointCheck.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.InstanceBreakpoint` | `IDE/Debug/Atlas.IDE.Debug.InstanceBreakpoint.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.BreakpointSets` | `IDE/Debug/Atlas.IDE.Debug.BreakpointSets.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.RunTo` | `IDE/Debug/Atlas.IDE.Debug.RunTo.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.RunToColumn` | `IDE/Debug/Atlas.IDE.Debug.RunToColumn.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Breakpoints` | `IDE/Debug/Atlas.IDE.Debug.Breakpoints.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Composition` | `IDE/Debug/Atlas.IDE.Debug.Composition.pas` | Anmeldung des Moduls `atlas.debugger`, #1455 |
 | `Atlas.IDE.Debug.Composition.Values` | `IDE/Debug/Atlas.IDE.Debug.Composition.Values.pas` | Teile für Werte und Ausdrücke des Moduls `atlas.debugger`, #1455 |
-| `Atlas.IDE.Debug.Composition.Breakpoints` | `IDE/Debug/Atlas.IDE.Debug.Composition.Breakpoints.pas` | Anhalten und Haltepunkte des Moduls `atlas.debugger` (Teile, Befehle, Menüeinträge), #577, #586, #856 |
+| `Atlas.IDE.Debug.Composition.Breakpoints` | `IDE/Debug/Atlas.IDE.Debug.Composition.Breakpoints.pas` | Anhalten und Haltepunkte des Moduls `atlas.debugger` (Teile, Befehle, Menüeinträge, Tasten), #577, #586, #851, #856 |
 | `Atlas.IDE.Debug.Composition.Session` | `IDE/Debug/Atlas.IDE.Debug.Composition.Session.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.DialogCompletion` | `IDE/Debug/Atlas.IDE.Debug.DialogCompletion.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.DisplayRules` | `IDE/Debug/Atlas.IDE.Debug.DisplayRules.pas` | Ordner `IDE/Debug` |
@@ -959,6 +964,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.Forecast` | `IDE/Debug/Atlas.IDE.Debug.Forecast.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.ValueRequest` | `IDE/Debug/Atlas.IDE.Debug.ValueRequest.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.LineEnd` | `IDE/Debug/Atlas.IDE.Debug.LineEnd.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.Pins` | `IDE/Debug/Atlas.IDE.Debug.Pins.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.OwnCode` | `IDE/Debug/Atlas.IDE.Debug.OwnCode.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Report` | `IDE/Debug/Atlas.IDE.Debug.Report.pas` | Bericht über die Debug-Sitzung (IAtlasDebugReportSource), #1455 |
 | `Atlas.IDE.Debug.Session` | `IDE/Debug/Atlas.IDE.Debug.Session.pas` | Ordner `IDE/Debug` |
@@ -973,6 +979,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.AccessViolation` | `UI/Debug/Atlas.UI.Debug.AccessViolation.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.BreakpointsFrame` | `UI/Debug/Atlas.UI.Debug.BreakpointsFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.BreakpointCheck` | `UI/Debug/Atlas.UI.Debug.BreakpointCheck.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.InstanceBreakpoint` | `UI/Debug/Atlas.UI.Debug.InstanceBreakpoint.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.Deadlocks` | `UI/Debug/Atlas.UI.Debug.Deadlocks.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ParallelStacks` | `UI/Debug/Atlas.UI.Debug.ParallelStacks.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.Leaks` | `UI/Debug/Atlas.UI.Debug.Leaks.pas` | Texte des Fensters „Atlas-Lecks“, #1875 |

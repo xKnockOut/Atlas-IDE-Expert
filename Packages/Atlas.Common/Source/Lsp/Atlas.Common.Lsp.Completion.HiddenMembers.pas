@@ -3,7 +3,8 @@
 // Mitglieder, die nach "X.Pr" nur wegen ihrer Sichtbarkeit fehlen (#2108): Die Namensauflösung merkt sie beim
 // Sammeln der Mitglieder (TResolverCandidates.KeepHidden), diese Unit macht daraus den Zusatz "hiddenMembers"
 // der CompletionList. Er steht neben den Einträgen, nicht in ihnen: Andere Editoren zeigen ihn nicht, Atlas nennt
-// ihn in der Fußzeile und zeigt ihn erst auf Wunsch ausgegraut.
+// ihn in der Fußzeile und zeigt ihn erst auf Wunsch ausgegraut. Mit "uri", "line" und "character" der
+// Deklaration holt das Plugin über atlas.server.memberActions die Aktionen für einen gewählten Eintrag.
 
 interface
 
@@ -35,6 +36,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.CompletionCollector;
 
 const
@@ -120,6 +122,12 @@ begin
       mItem.AddPair('detail', AMembers[mIndex].Detail);
     end;
     mItem.AddPair('unit', AMembers[mIndex].UnitName);
+    // Datei der Deklaration für die Aktionen „Sichtbarkeit anheben“ und „Eigenschaft anlegen“
+    // (atlas.server.memberActions); fehlt ohne bekannte Datei.
+    if AMembers[mIndex].FileName <> '' then
+    begin
+      mItem.AddPair('uri', TDocumentUris.FromPath(AMembers[mIndex].FileName));
+    end;
     mItem.AddPair('line', TJSONNumber.Create(AMembers[mIndex].Line));
     mItem.AddPair('character', TJSONNumber.Create(AMembers[mIndex].Character));
     mItem.AddPair('external', TJSONBool.Create(AMembers[mIndex].External));
