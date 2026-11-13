@@ -616,6 +616,18 @@ Settings: `debug.deadlocks`
 
 Settings: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`
 
+<a id="window-atlasdebugleaks"></a>
+### Atlas leaks
+
+- When a program started in the debugger ends with memory leaks, Atlas reads the report: the message box of `ReportMemoryLeaksOnShutdown` (window text, no click) or the FastMM4/FastMM5 log file next to the EXE if it was written after the start. A log file with call stacks (FullDebugMode) wins.
+- The dockable window "Atlas Leaks" (Atlas > "Atlas Leaks") shows the number of leaks per class. Classes that are new or grew since the last run of the same configuration are bold ("new", "+2 since the last run"); the state lives in `.atlas-local` next to the .dproj.
+- Without call stacks, each class lists the places in the project that create it (`TClass.Create…`) with a rating: never freed, returned to the caller, passed as argument, field freed in the destructor, owner, freed locally, not in the program (test units). The most urgent come first.
+- With call stacks, the creation sites from the report appear there, equal stacks grouped.
+- String and unknown leaks usually follow from leaked objects with such fields; the window says so.
+- "Mark as known" remembers a class, "Hide known" hides it. Enter or a double click jumps to the place.
+
+Settings: `debug.leakReport`, `debug.leakReport.compare`, `debug.leakReport.window`
+
 ### Threads in source
 
 - At a stop the gutter shows a mark with the count at every line where another thread stands with its topmost own frame; with eight waiting workers at the same line that is “8”. The IDE shows the current thread as before.

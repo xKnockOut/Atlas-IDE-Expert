@@ -218,6 +218,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration.Declarations.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration.Statements.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration.Frameworks.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration.Ownership.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unicode.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DocumentLinks.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Colors.pas"/>
@@ -443,6 +444,8 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MoveMember.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MoveMember.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.InlineAccessor.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.RaiseVisibility.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.RaiseVisibility.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlineAccessor.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SafeDelete.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SafeDelete.pas"/>
@@ -804,6 +807,8 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.RawMemory.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.LocalObjects.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.MethodReferences.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.Interfaces.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.StringListObjects.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.ComponentInterface.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TryFinally.pas"/>

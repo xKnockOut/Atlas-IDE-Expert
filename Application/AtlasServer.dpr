@@ -17,6 +17,7 @@ uses
   Shell.Composition.Compile in 'Source\Shell\Shell.Composition.Compile.pas',
   Shell.Composition.Refactorings.Services in 'Source\Shell\Shell.Composition.Refactorings.Services.pas',
   Shell.Composition.Refactorings.Structure in 'Source\Shell\Shell.Composition.Refactorings.Structure.pas',
+  Shell.Composition.Refactorings.Visibility in 'Source\Shell\Shell.Composition.Refactorings.Visibility.pas',
   Shell.Composition.Refactorings.Conversions in 'Source\Shell\Shell.Composition.Refactorings.Conversions.pas',
   Shell.Composition.Refactorings.Types in 'Source\Shell\Shell.Composition.Refactorings.Types.pas',
   Shell.Composition.Refactorings.Fixes in 'Source\Shell\Shell.Composition.Refactorings.Fixes.pas',
