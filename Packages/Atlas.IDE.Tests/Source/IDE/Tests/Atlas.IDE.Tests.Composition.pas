@@ -15,7 +15,10 @@
 //   mit Fixtures; ohne eine meldet das Modul es in der Meldungsansicht) und
 //   den Assistenten „DUnitX-Testunit zu Unit …“ in Datei › Neu › Weitere
 //   (#1821: Unit der Projektgruppe wählen, die Unit im Editor vorgewählt;
-//   angelegt wie „Zur Testunit wechseln“ von Base),
+//   angelegt wie „Zur Testunit wechseln“ von Base) und „Leckprüfung
+//   einrichten …“ im Kontextmenü der Projektverwaltung und in der Palette
+//   (#1880, Atlas.IDE.Tests.LeakSetup),
+// - die Marke „getestet von“ an Methoden normaler Units (#1778),
 // - Hörer für Einstellungen und bewertete Builds (Tests nach dem Build) und für
 //   gespeicherte Dateien (betroffene Tests im Hintergrund, #1775),
 // - IAtlasTestRunner (Base: Auswirkungsanalyse #1120, Willkommensseite) und
@@ -101,11 +104,13 @@ uses
   Atlas.IDE.Tests.Composition.Hooks,
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens,
+  Atlas.IDE.Tests.CoveredBy,
   Atlas.IDE.Tests.Stale,
   Atlas.IDE.Tests.Compare,
   Atlas.IDE.Tests.Slowest,
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Tests.UnitCommands,
+  Atlas.IDE.Tests.LeakSetup,
   Atlas.UI.Strings,
   Atlas.UI.Tests.Strings;
 
@@ -116,6 +121,7 @@ var
   GOnSave: TAtlasIdeTestsOnSave;
   GDebugger: TAtlasIdeTestDebugger;
   GLens: TAtlasIdeTestsLens;
+  GCoveredBy: TAtlasIdeCoveredByLens;
   GStale: TAtlasIdeStaleTests;
   GCompare: TAtlasIdeTestCompare;
   GSlowest: TAtlasIdeTestSlowest;
@@ -218,6 +224,12 @@ end;
 
 { Teil Tests }
 
+/// <summary>Scope des Moduls für die Anfragen der Marke „getestet von“ (#1778).</summary>
+function ModuleScope: IAtlasModuleScope;
+begin
+  Result := GScope;
+end;
+
 /// <summary>Knopf „Vergleichen“ der Testmarke (#1779); die Lens lebt kürzer als der Vergleich.</summary>
 function CompareHooks: TAtlasTestCompareHooks;
 begin
@@ -244,6 +256,8 @@ begin
   // Einzelner Test ausführen bzw. debuggen (#585), auch aus dem Kontextmenü und der Lens.
   GDebugger := TAtlasIdeTestDebugger.Create(GTests);
   GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GStale.StaleIn, CompareHooks);
+  // Marke „getestet von“ an Methoden normaler Units (#1778).
+  GCoveredBy := TAtlasIdeCoveredByLens.Create(GTests, ModuleScope, GStale.StaleIn);
   TAtlasIdeAffectedTests.Install(AffectedHooks);
   // Betroffene Tests beim Speichern (#1775): im Hintergrund über den Läufer.
   GOnSave := TAtlasIdeTestsOnSave.Create(GTests, GOutput);
@@ -263,6 +277,7 @@ begin
   // Erst die Lens (sie zeigt auf Läufer und Debugger-Teil), dann der Debugger-Teil (stellt eine laufende Sitzung
   // zurück), dann langsamste Tests (#1772), Vergleich (#1779) und Stände der veralteten Ergebnisse (#1770), dann
   // der Läufer; seine Probleme verschwinden mit ihm.
+  FreeAndNil(GCoveredBy);
   FreeAndNil(GLens);
   FreeAndNil(GDebugger);
   if GTests <> nil then
@@ -382,6 +397,18 @@ begin
   TAtlasIdeTestUnitCommands.RunProjectUnits(GTests);
 end;
 
+{ Leckprüfung einrichten (#1880) }
+
+function LeakSetupVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.TestsLeakSetup;
+end;
+
+procedure RunLeakSetup;
+begin
+  TAtlasIdeLeakSetup.Run(GScope);
+end;
+
 function Described(const ACommand: TAtlasModuleCommand; ADescription: TAtlasTestsTextId): TAtlasModuleCommand;
 begin
   Result := ACommand;
@@ -436,7 +463,10 @@ begin
     // Assistent in Datei › Neu › Weitere (#1821); auch in der Palette.
     Described(Command('Atlas.NewTestUnitFor', TAtlasTestsTextId.TestsGalleryTestUnit,
       Guarded(TAtlasFeature.Generate, TAtlasIdeTestUnitCommands.NewTestUnitFor), nil),
-      TAtlasTestsTextId.TestsGalleryTestUnitHint)];
+      TAtlasTestsTextId.TestsGalleryTestUnitHint),
+    // Leckprüfung einrichten (#1880): Projektverwaltung und Palette, mit tests.leakSetup.
+    Described(Command('Atlas.LeakSetup', TAtlasTestsTextId.LeakSetupCommand,
+      Guarded(TAtlasFeature.Build, RunLeakSetup), LeakSetupVisible), TAtlasTestsTextId.LeakSetupHint)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -474,6 +504,7 @@ begin
     ContextEntry('Atlas.CompareTestValues'),
     MenuEntry('-', TAtlasMenuPlace.ProjectContext),
     MenuEntry('Atlas.ProjectRunUnitTests', TAtlasMenuPlace.ProjectContext),
+    MenuEntry('Atlas.LeakSetup', TAtlasMenuPlace.ProjectContext),
     MenuEntry('Atlas.NewTestUnitFor', TAtlasMenuPlace.Gallery)];
 end;
 

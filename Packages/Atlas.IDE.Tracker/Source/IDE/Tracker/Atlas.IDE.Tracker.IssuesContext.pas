@@ -249,7 +249,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Tracker.Connections,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.MyIssues.Strings,
   Atlas.IDE.Contracts.WelcomeTiles,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
@@ -338,7 +338,7 @@ begin
     end;
     Result.Queries := TAtlasTrackerQueries.Available(TAtlasTrackerQueries.Read(mSettings.IssuesQueries),
       Result.Target, Result.Connection, mConnections,
-      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeIssuesQueryDefault));
+      TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQueryDefault));
   except
     // .atlas nicht lesbar: ohne Tracker.
     on E: Exception do
@@ -648,7 +648,7 @@ begin
   end
   else if AView.ProjectKey = TAtlasTrackerProjects.cAllKey then
   begin
-    AView.ProjectName := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuesProjectAll);
+    AView.ProjectName := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssuesProjectAll);
   end;
 end;
 

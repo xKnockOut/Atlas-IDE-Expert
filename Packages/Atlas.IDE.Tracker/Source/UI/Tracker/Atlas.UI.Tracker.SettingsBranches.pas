@@ -49,7 +49,7 @@ implementation
 uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Tracker.SettingsSection,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Settings.Strings;
 
 { TAtlasTrackerBranchSection }
 
@@ -75,13 +75,13 @@ end;
 
 procedure TAtlasTrackerBranchSection.BuildRows;
 begin
-  Choice('issues.start', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesStart),
-    TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesStartBranch),
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesStartRemember)),
+  Choice('issues.start', TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesStart),
+    TArray<string>.Create(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesStartBranch),
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesStartRemember)),
     TArray<string>.Create(TAtlasPluginSettings.cIssuesStartBranch, TAtlasPluginSettings.cIssuesStartRemember));
-  Line('issues.branchPattern', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesBranchPattern));
-  Line('issues.branchBase', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesBranchBase));
-  FCommitPattern := Line(cCommitPatternKey, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesCommitPattern));
+  Line('issues.branchPattern', TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesBranchPattern));
+  Line('issues.branchBase', TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesBranchBase));
+  FCommitPattern := Line(cCommitPatternKey, TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesCommitPattern));
 end;
 
 procedure TAtlasTrackerBranchSection.Save(const AValues: IAtlasSettingsValues);

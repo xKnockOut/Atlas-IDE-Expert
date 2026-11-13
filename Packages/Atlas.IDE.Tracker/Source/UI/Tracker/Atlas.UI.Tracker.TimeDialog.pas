@@ -126,7 +126,7 @@ uses
   Vcl.Graphics,
   Atlas.Core.Tracker.TimeLog,
   Atlas.Core.Tracker.Workflow,
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Time.Strings,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme;
 
@@ -158,7 +158,7 @@ begin
   FRequest := ARequest;
   FDecision := TAtlasTimeDecision.Later;
   FItem := TAtlasTrackerWorkItem.Create(0, ARequest.Date, '', '');
-  Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookCaption);
+  Caption := TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookCaption);
   OnCloseQuery := DialogCloseQuery;
   mMinutes := TAtlasTimeRounding.Minutes(ARequest.Seconds, ARequest.Rounding);
 
@@ -180,7 +180,7 @@ var
   mRow: TPanel;
 begin
   mRow := AddRow(26);
-  AddLabel(mRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookDuration));
+  AddLabel(mRow, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookDuration));
   FParts.Duration := TEdit.Create(Self);
   FParts.Duration.Parent := mRow;
   FParts.Duration.Left := ScaleValue(cFieldLeft);
@@ -200,7 +200,7 @@ begin
   mRow := AddRow(26);
   if FRequest.Mode = TAtlasTimeBookMode.WorkItem then
   begin
-    AddLabel(mRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookWorkType));
+    AddLabel(mRow, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookWorkType));
     FParts.WorkType.Parent := mRow;
     FParts.WorkType.Left := ScaleValue(cFieldLeft);
     FParts.WorkType.Top := 0;
@@ -209,7 +209,7 @@ begin
   else
   begin
     FParts.AsComment.Parent := mRow;
-    FParts.AsComment.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookAsComment);
+    FParts.AsComment.Caption := TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookAsComment);
     FParts.AsComment.Left := 0;
     FParts.AsComment.Top := ScaleValue(3);
     FParts.AsComment.Width := ScaleValue(cDialogWidth - 2 * cGap);
@@ -223,7 +223,7 @@ var
   mRow: TPanel;
 begin
   mRow := AddRow(20);
-  AddLabel(mRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookText));
+  AddLabel(mRow, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookText));
   FParts.Text := TMemo.Create(Self);
   FParts.Text.Parent := Self;
   FParts.Text.Align := alTop;
@@ -244,7 +244,7 @@ begin
   FParts.Note.Caption := '';
   if FRequest.Mode = TAtlasTimeBookMode.Comment then
   begin
-    ShowNote(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookLocalOnly), False);
+    ShowNote(TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookLocalOnly), False);
   end;
 end;
 
@@ -260,13 +260,13 @@ begin
   mButtons.AlignWithMargins := True;
   mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
   mButtons.Top := ATop;
-  FParts.Book := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookBook));
+  FParts.Book := AddButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookBook));
   FParts.Book.OnClick := BookClick;
   FParts.Book.Default := True;
-  FParts.Later := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookLater));
+  FParts.Later := AddButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookLater));
   FParts.Later.ModalResult := mrCancel;
   FParts.Later.Cancel := True;
-  FParts.Discard := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookDiscard));
+  FParts.Discard := AddButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookDiscard));
   FParts.Discard.OnClick := DiscardClick;
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
 end;
@@ -284,7 +284,7 @@ end;
 
 class function TAtlasTrackerTimeDialog.QuestionText(const AKey: string; AMinutes: Integer): string;
 begin
-  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeBookQuestion,
+  Result := TAtlasTimeStrings.Fmt(TAtlasTimeTextId.TimeBookQuestion,
     [TAtlasTrackerWorkflow.DurationText(AMinutes), AKey]);
 end;
 
@@ -315,7 +315,7 @@ begin
   FParts.Book.Enabled := False;
   FParts.Book.Default := False;
   FParts.Later.Default := True;
-  ShowNote(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookOff), False);
+  ShowNote(TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookOff), False);
 end;
 
 procedure TAtlasTrackerTimeDialog.DurationChange(Sender: TObject);
@@ -366,7 +366,7 @@ begin
   end;
   if not Item(FItem) then
   begin
-    ShowNote(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookInvalid), True);
+    ShowNote(TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookInvalid), True);
     Exit;
   end;
   // GitHub ohne Häkchen bzw. ohne Buchungsweg: nur lokal als gebucht vermerken.
@@ -376,7 +376,7 @@ begin
     ModalResult := mrOk;
     Exit;
   end;
-  ShowNote(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookSending), False);
+  ShowNote(TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookSending), False);
   SetBusy(True);
   mDialog := Self;
   FOnBook(FItem,

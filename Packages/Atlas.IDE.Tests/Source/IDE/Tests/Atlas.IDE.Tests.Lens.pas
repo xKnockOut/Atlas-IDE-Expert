@@ -19,6 +19,8 @@
 //   an der Klassenmarke die Summe); liegt der langsamste Test der Marke über
 //   tests.slowMs, steht „· langsam“ dahinter und die Marke ist gelb, auch wenn
 //   er bestand (fehlgeschlagen bleibt rot, veraltet grau).
+//   Bestanden mit Leck (tests.leaks, #1774): „· Leck: 40 Bytes“ und gelb wie
+//   langsam (Atlas.Core.Tests.Leaks).
 //   Hat eine [TestCase]-Methode je Fall eine
 //   eigene Zeile, steht an jedem [TestCase] „Fall ausführen“ und die Marke
 //   der Methode (alle Fälle) an der Deklaration. Mit „Test debuggen“
@@ -46,6 +48,7 @@ uses
   System.Classes,
   Vcl.Controls,
   Vcl.ExtCtrls,
+  Vcl.Graphics,
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Settings.Plugin,
@@ -57,6 +60,27 @@ uses
   Atlas.IDE.Tests.Debug;
 
 type
+  /// <summary>Zeichnen der Marken hinter dem Zeilenende (Test-Lens und „getestet von“, #1778).</summary>
+  TAtlasIdeLensPill = class
+  private const
+    /// <summary>Abstand der Marke vom Zeilenende in Zeichen.</summary>
+    cGapColumns = 3;
+    cMinFontSize = 6;
+  public
+    /// <summary>Schrift der Marke: einen Punkt kleiner, unterstrichen; AItalic für einen veralteten Stand.</summary>
+    class procedure Prepare(ACanvas: TCanvas; AItalic: Boolean); static;
+    /// <summary>Eine Marke ab ALeft in der Farbe ATone auf dem Hintergrund ABack; liefert ihr Rechteck.</summary>
+    class function Draw(ACanvas: TCanvas; const ARow: TRect; const ACaption: string; ATone, ABack: TAtlasColor;
+      ALeft: Integer): TRect; static;
+    /// <summary>Hintergrundfarbe des Editors an (AX, AY).</summary>
+    class function BackgroundAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor; static;
+    /// <summary>Linker Rand der Marke hinter dem Text der Zeile ALine (Pixel des Editors).</summary>
+    class function LeftOf(const AContext: INTACodeEditorPaintContext; const ALine: string): Integer; static;
+    /// <summary>APaint mit gesichertem Stift, Pinsel und Schrift der Leinwand; Ausnahmen meldet die Sicherung
+    /// (Zeichnen darf die IDE nie stören).</summary>
+    class procedure Guarded(ACanvas: TCanvas; const APaint: TProc); static;
+  end;
+
   TAtlasIdeTestsLens = class
   private type
     TEvents = class(TNTACodeEditorNotifier)
@@ -124,8 +148,8 @@ type
     procedure UpdateStale;
     procedure Clear;
     function ItemAt(ALine: Integer): Integer;
-    /// <summary>Beschriftung der Marke und Stand ihrer Tests (Farbe).</summary>
-    function Caption(const AItem: TItem; out AStatus: TAtlasTestStatus; out AStale, ASlow: Boolean): string;
+    /// <summary>Beschriftung der Marke und Stand ihrer Tests (Farbe); AWarn: gelb (langsam oder Leck).</summary>
+    function Caption(const AItem: TItem; out AStatus: TAtlasTestStatus; out AStale, AWarn: Boolean): string;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     /// <summary>Marke der Zeile von AContext, -1 ohne (Lens aus, andere Datei, Leerzeile, ausgeblendet).</summary>
@@ -162,7 +186,6 @@ implementation
 uses
   Winapi.Windows,
   System.Math,
-  Vcl.Graphics,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Style.Palette,
@@ -442,13 +465,13 @@ begin
 end;
 
 function TAtlasIdeTestsLens.Caption(const AItem: TItem; out AStatus: TAtlasTestStatus;
-  out AStale, ASlow: Boolean): string;
+  out AStale, AWarn: Boolean): string;
 var
   mTally: TAtlasTestTally;
 begin
   AStatus := TAtlasTestStatus.Unknown;
   AStale := False;
-  ASlow := False;
+  AWarn := False;
   if FTests.Busy then
   begin
     Exit(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunning));
@@ -483,16 +506,23 @@ begin
   begin
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensPartial, [Result, mTally.FreshPassed, mTally.Total]);
   end;
-  Result := DurationCaption(Result, mTally, AStatus, ASlow);
+  Result := DurationCaption(Result, mTally, AStatus, AWarn);
+  if (mTally.Leaked > 0) and (AStatus <> TAtlasTestStatus.Failed) then
+  begin
+    // Bestanden mit Leck (#1774): gelb wie langsam.
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensLeak, [Result, mTally.LeakBytes]);
+    AWarn := True;
+  end;
   if AStale then
   begin
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensStale, [Result]);
   end;
 end;
 
-/// <summary>Eine Marke ab ALeft in der Farbe ATone auf dem Hintergrund ABack; liefert ihr Rechteck.</summary>
-function DrawPill(ACanvas: TCanvas; const ARow: TRect; const ACaption: string; ATone, ABack: TAtlasColor;
-  ALeft: Integer): TRect;
+{ TAtlasIdeLensPill }
+
+class function TAtlasIdeLensPill.Draw(ACanvas: TCanvas; const ARow: TRect; const ACaption: string; ATone,
+  ABack: TAtlasColor; ALeft: Integer): TRect;
 var
   mWidth, mHeight, mTop: Integer;
 begin
@@ -509,8 +539,7 @@ begin
   ACanvas.TextOut(Result.Left + 5, Result.Top + 1, ACaption);
 end;
 
-/// <summary>Hintergrundfarbe des Editors an (AX, AY).</summary>
-function BackgroundAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor;
+class function TAtlasIdeLensPill.BackgroundAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor;
 var
   mSample: COLORREF;
 begin
@@ -522,6 +551,55 @@ begin
   else
   begin
     Result := TAtlasColor(mSample);
+  end;
+end;
+
+class function TAtlasIdeLensPill.LeftOf(const AContext: INTACodeEditorPaintContext; const ALine: string): Integer;
+var
+  mColumn: Integer;
+begin
+  mColumn := Length(TrimRight(TAtlasPairs.DisplayLine(ALine, TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)))) +
+    1;
+  Result := AContext.EditorState.GetCharacterPosPx(mColumn + cGapColumns, AContext.EditorLineNum).Left;
+end;
+
+class procedure TAtlasIdeLensPill.Prepare(ACanvas: TCanvas; AItalic: Boolean);
+begin
+  ACanvas.Font.Size := Max(cMinFontSize, ACanvas.Font.Size - 1);
+  ACanvas.Font.Style := [fsUnderline];
+  if AItalic then
+  begin
+    ACanvas.Font.Style := [fsUnderline, fsItalic];
+  end;
+end;
+
+class procedure TAtlasIdeLensPill.Guarded(ACanvas: TCanvas; const APaint: TProc);
+var
+  mOldFont: TFont;
+  mOldBrush: TBrush;
+  mOldPen: TPen;
+begin
+  try
+    mOldFont := TFont.Create;
+    mOldBrush := TBrush.Create;
+    mOldPen := TPen.Create;
+    try
+      mOldFont.Assign(ACanvas.Font);
+      mOldBrush.Assign(ACanvas.Brush);
+      mOldPen.Assign(ACanvas.Pen);
+      APaint();
+    finally
+      ACanvas.Font.Assign(mOldFont);
+      ACanvas.Brush.Assign(mOldBrush);
+      ACanvas.Pen.Assign(mOldPen);
+      mOldPen.Free;
+      mOldBrush.Free;
+      mOldFont.Free;
+    end;
+  except
+    // Zeichnen darf die IDE nie stören.
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.CodeLens, E);
   end;
 end;
 
@@ -572,14 +650,14 @@ begin
   mLeft := ALeft;
   if TAtlasTestDebug.LensDebugWanted(TAtlasIdeSettings.Current) then
   begin
-    FItems[AIndex].DebugRect := DrawPill(AContext.Canvas, ARow,
+    FItems[AIndex].DebugRect := TAtlasIdeLensPill.Draw(AContext.Canvas, ARow,
       TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensDebug), mAccent, ABack, mLeft);
     mLeft := FItems[AIndex].DebugRect.Right + cPillGap;
   end;
   // „Vergleichen“ nur, wenn der Test der Marke erwartet und erhalten hat.
   if AFailed and Assigned(FCompare.CanCompare) and FCompare.CanCompare(FItems[AIndex].Selection) then
   begin
-    FItems[AIndex].CompareRect := DrawPill(AContext.Canvas, ARow,
+    FItems[AIndex].CompareRect := TAtlasIdeLensPill.Draw(AContext.Canvas, ARow,
       TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensCompare), mAccent, ABack, mLeft);
   end;
 end;
@@ -602,11 +680,11 @@ var
   mTone: TAtlasColor;
   mText: string;
   mStatus: TAtlasTestStatus;
-  mStale, mSlow: Boolean;
+  mStale, mWarn: Boolean;
   mPill: TRect;
 begin
   mCanvas := AContext.Canvas;
-  mText := Caption(FItems[AIndex], mStatus, mStale, mSlow);
+  mText := Caption(FItems[AIndex], mStatus, mStale, mWarn);
   mColors := TAtlasColors.ForBackground(ABack);
   mTone := mColors.Accent;
   if mStatus = TAtlasTestStatus.Failed then
@@ -622,20 +700,18 @@ begin
     // Erst ein Teil der Tests lief (#1762): gelb, nicht grün.
     mTone := mColors.Warn;
   end;
-  if mSlow then
+  if mWarn then
   begin
-    // Langsam (#1772): gelb, auch wenn bestanden; Caption meldet es nie für Fehlschläge.
+    // Langsam (#1772) oder Leck (#1774): gelb, auch wenn bestanden; Caption meldet es nie für Fehlschläge.
     mTone := mColors.Warn;
   end;
-  mCanvas.Font.Size := Max(6, mCanvas.Font.Size - 1);
-  mCanvas.Font.Style := [fsUnderline];
+  // Veraltet (#1770): alter Stand grau und kursiv.
+  TAtlasIdeLensPill.Prepare(mCanvas, mStale);
   if mStale then
   begin
-    // Veraltet (#1770): alter Stand grau und kursiv.
     mTone := mColors.Muted;
-    mCanvas.Font.Style := [fsUnderline, fsItalic];
   end;
-  mPill := DrawPill(mCanvas, ARow, mText, mTone, ABack, ALeft);
+  mPill := TAtlasIdeLensPill.Draw(mCanvas, ARow, mText, mTone, ABack, ALeft);
   FItems[AIndex].RunRect := mPill;
   // „Debuggen“ (#585) und „Vergleichen“ (#1779, nur fehlgeschlagen und nicht veraltet) rechts daneben.
   PaintButtons(AIndex, ARow, AContext, mPill.Right + cPillGap, ABack, (mStatus = TAtlasTestStatus.Failed) and
@@ -650,48 +726,30 @@ procedure TAtlasIdeTestsLens.PaintLine(const Rect: TRect; const Stage: TPaintLin
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
   mLine: string;
-  mIndex, mColumn: Integer;
-  mCanvas: TCanvas;
-  mCell: TRect;
-  mOldFont: TFont;
-  mOldBrush: TBrush;
-  mOldPen: TPen;
+  mIndex: Integer;
+  mRow: TRect;
+  mContext: INTACodeEditorPaintContext;
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FShowing then
   begin
     Exit;
   end;
-  try
-    mIndex := LineItem(Context, mLine);
-    if mIndex < 0 then
-    begin
-      Exit;
-    end;
-    mColumn := Length(TrimRight(TAtlasPairs.DisplayLine(mLine, TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer)))) +
-      1;
-    mCell := Context.EditorState.GetCharacterPosPx(mColumn + 3, Context.EditorLineNum);
-    mCanvas := Context.Canvas;
-    mOldFont := TFont.Create;
-    mOldBrush := TBrush.Create;
-    mOldPen := TPen.Create;
-    try
-      mOldFont.Assign(mCanvas.Font);
-      mOldBrush.Assign(mCanvas.Brush);
-      mOldPen.Assign(mCanvas.Pen);
-      PaintMarks(mIndex, Rect, Context, mCell.Left, BackgroundAt(mCanvas, mCell.Left, Rect.Top + 1));
-    finally
-      mCanvas.Font.Assign(mOldFont);
-      mCanvas.Brush.Assign(mOldBrush);
-      mCanvas.Pen.Assign(mOldPen);
-      mOldPen.Free;
-      mOldBrush.Free;
-      mOldFont.Free;
-    end;
-  except
-    // Zeichnen darf die IDE nie stören.
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.CodeLens, E);
+  mIndex := LineItem(Context, mLine);
+  if mIndex < 0 then
+  begin
+    Exit;
   end;
+  mRow := Rect;
+  mContext := Context;
+  // Auch die Lage der Marke unter der Sicherung: Zeichnen darf die IDE nie stören.
+  TAtlasIdeLensPill.Guarded(Context.Canvas,
+    procedure
+    var
+      mLeft: Integer;
+    begin
+      mLeft := TAtlasIdeLensPill.LeftOf(mContext, mLine);
+      PaintMarks(mIndex, mRow, mContext, mLeft, TAtlasIdeLensPill.BackgroundAt(mContext.Canvas, mLeft, mRow.Top + 1));
+    end);
 end;
 
 function TAtlasIdeTestsLens.HitAt(AX, AY: Integer; out AMark: TMark): Integer;
