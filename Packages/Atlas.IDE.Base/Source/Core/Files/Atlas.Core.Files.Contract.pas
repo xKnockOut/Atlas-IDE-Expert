@@ -7,7 +7,9 @@
 // sind (Puffer lesen, Modul speichern). Entscheidungen, die den Pufferzustand
 // brauchen, hängen nur daran und lassen sich mit einer Fälschung ohne IDE
 // testen (#1967); die Umsetzung über die Open Tools API ist
-// Atlas.IDE.Foundation.EditorFiles.
+// Atlas.IDE.Foundation.EditorFiles. IAtlasActiveEditor ist ebenso die schmale
+// Sicht auf den oberen Editor (Datei und Schreibmarke), umgesetzt in
+// Atlas.IDE.Foundation.ActiveEditor.
 
 interface
 
@@ -51,6 +53,29 @@ type
     function Save(const AFileName: string): Boolean;
   end;
 
+  /// <summary>Schreibmarke des oberen Editors, wie sie die IDE meldet.</summary>
+  TAtlasActiveEditorPos = record
+    /// <summary>Datei des oberen Editors; '' ohne Editor.</summary>
+    FileName: string;
+    /// <summary>Zeile der Schreibmarke, 0-basiert.</summary>
+    Line: Integer;
+    /// <summary>Zeichenindex der Schreibmarke in ihrer Zeile (ein Tabulator ist ein Zeichen).</summary>
+    Character: Integer;
+    /// <summary>Kein Editor offen.</summary>
+    class function None: TAtlasActiveEditorPos; static;
+    /// <summary>Schreibmarke in AFileName an Zeile ALine und Zeichen ACharacter (beide 0-basiert).</summary>
+    class function At(const AFileName: string; ALine, ACharacter: Integer): TAtlasActiveEditorPos; static;
+    /// <summary>Ein Editor ist offen.</summary>
+    function Present: Boolean;
+  end;
+
+  /// <summary>Der obere Editor der IDE; alle Aufrufe im Hauptthread.</summary>
+  IAtlasActiveEditor = interface
+    ['{183B49F3-5255-4FB5-8D41-BBDAB16C0EA7}']
+    /// <summary>Datei und Schreibmarke des oberen Editors; None ohne Editor.</summary>
+    function Caret: TAtlasActiveEditorPos;
+  end;
+
 implementation
 
 class function TAtlasEditorFile.Closed: TAtlasEditorFile;
@@ -63,6 +88,23 @@ begin
   Result.Open := True;
   Result.Text := AText;
   Result.Modified := AModified;
+end;
+
+class function TAtlasActiveEditorPos.None: TAtlasActiveEditorPos;
+begin
+  Result := Default(TAtlasActiveEditorPos);
+end;
+
+class function TAtlasActiveEditorPos.At(const AFileName: string; ALine, ACharacter: Integer): TAtlasActiveEditorPos;
+begin
+  Result.FileName := AFileName;
+  Result.Line := ALine;
+  Result.Character := ACharacter;
+end;
+
+function TAtlasActiveEditorPos.Present: Boolean;
+begin
+  Result := FileName <> '';
 end;
 
 end.

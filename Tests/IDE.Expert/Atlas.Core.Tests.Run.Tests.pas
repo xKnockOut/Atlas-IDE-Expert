@@ -3,7 +3,8 @@
 // Tests des Testlaufs aus der IDE (#69) ohne IDE: Testprogramm und Plattform,
 // Lauf nach dem Build (mit build.zeroHints #530), Zuordnung fehlgeschlagener
 // Tests zur Testmethode, Probleme mit erwartetem und tatsächlichem Wert,
-// Abschnitt "tests" der Projekt-Zusammenfassung und Stand für die Code Lens.
+// Abschnitt "tests" der Projekt-Zusammenfassung und Stand für die Code Lens
+// (veraltete Ergebnisse #1770).
 
 interface
 
@@ -39,6 +40,8 @@ type
     procedure CasesOfMethodCountSeparately;
     [Test]
     procedure TallyStatus;
+    [Test]
+    procedure StaleResultsAreNotCountedAsPassed;
   end;
 
 implementation
@@ -404,6 +407,62 @@ begin
   Assert.IsTrue(mTally.Status = TAtlasTestStatus.Partial);
   mTally.Failed := 1;
   Assert.IsTrue(mTally.Status = TAtlasTestStatus.Failed);
+end;
+
+/// <summary>Veraltet ist das Ergebnis des Tests AMethod.</summary>
+function StaleOnly(const AMethod: string): TAtlasTestStaleFunc;
+var
+  mMethod: string;
+begin
+  mMethod := AMethod;
+  Result :=
+    function(const AName: string): Boolean
+    begin
+      Result := SameText(AName, mMethod);
+    end;
+end;
+
+procedure TAtlasTestRunTests.StaleResultsAreNotCountedAsPassed;
+var
+  mCases: TArray<TTestCaseResult>;
+  mTally: TAtlasTestTally;
+begin
+  mCases := WelcomeCases(['IsReported=Success', 'Lookup.Kurz=Success', 'Lookup.Lang=Success',
+    'NothingAfterFree=Success']);
+  // Fixture: vier bestanden, einer davon seit dem Lauf geändert (#1770).
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, -1, -1), StaleOnly('IsReported'));
+  Assert.IsTrue(mTally.IsStale);
+  Assert.AreEqual(1, mTally.Stale);
+  Assert.AreEqual(4, mTally.Passed, 'Stand des Laufs');
+  Assert.AreEqual(3, mTally.FreshPassed, 'die Zählung nimmt den veralteten nicht als bestanden');
+  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Passed, 'alter Stand');
+  Assert.IsTrue(mTally.Shown = TAtlasTestStatus.Partial, 'die Marke zeigt 3/4');
+  // Der veraltete Test selbst: alter Stand „bestanden“ mit Zusatz.
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), StaleOnly('IsReported'));
+  Assert.IsTrue(mTally.IsStale);
+  Assert.IsTrue(mTally.Shown = TAtlasTestStatus.Passed);
+  // Ein anderer Test ist nicht betroffen.
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, 3, -1), StaleOnly('IsReported'));
+  Assert.IsFalse(mTally.IsStale);
+  // Veralteter Fehlschlag bleibt Fehlschlag (alter Stand), ist aber veraltet.
+  mCases := WelcomeCases(['IsReported=Failure']);
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), StaleOnly('IsReported'));
+  Assert.IsTrue(mTally.Shown = TAtlasTestStatus.Failed);
+  Assert.IsTrue(mTally.IsStale);
+  // Schlüssel aus TAtlasTestStamps.StaleIn als Abfrage für die Marke.
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), TAtlasTestRun.StaleOf(['welcome.tests.tnametests.isreported'],
+    'Welcome.Tests', 'TNameTests'));
+  Assert.IsTrue(mTally.IsStale, 'StaleOf');
+  Assert.IsFalse(Assigned(TAtlasTestRun.StaleOf(nil, 'Welcome.Tests', 'TNameTests')), 'ohne veraltete Tests nil');
+  // Ohne Angabe (tests.stale aus): wie bisher.
+  mTally := TAtlasTestRun.TallyOf(mCases, 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, 0, -1), nil);
+  Assert.IsFalse(mTally.IsStale);
 end;
 
 initialization

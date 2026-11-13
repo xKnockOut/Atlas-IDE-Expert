@@ -106,6 +106,16 @@ Settings: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 - Run from the editor
 - A single test starts in the debugger (code lens on `[Test]` and `[TestFixture]`)
 
+### Outdated test results (#1770)
+
+- If a test was changed since its run, its code lens mark shows the old result grey and italic with “(outdated)”, e.g. “Run test · passed (outdated)”.
+- Only whitespace or comments changed: not outdated. Undoing the change makes the result current again.
+- The class mark is outdated as soon as one of its tests is; the count “3/4 passed” does not count outdated results as passed.
+- Optionally changes in the units the test unit uses (and that belong to the test project) make the result outdated too.
+- “Run outdated tests” (*Atlas* menu, command palette) runs exactly these tests.
+
+Settings: `tests.stale`, `tests.stale.units`
+
 ### Run affected tests (#1353)
 
 Available from the *Atlas* menu and the command palette.

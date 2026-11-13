@@ -891,6 +891,30 @@
       "x-captionEn": "Code lens “Run test”",
       "x-issue": "#69"
     },
+    "TestsStale": {
+      "description": "Testergebnis als veraltet zeigen: Wurde der Rumpf eines Tests seit dem Lauf geändert (ohne Leerraum und Kommentare), zeigt die Code Lens den alten Stand grau und kursiv mit „(veraltet)“, die Zählung einer Klassenmarke nimmt ihn nicht als bestanden; dazu der Befehl „Veraltete Tests ausführen“. Aus = Stand wie nach dem Lauf.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.stale",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "codeLens.tests",
+      "x-caption": "Geänderte Tests als veraltet zeigen",
+      "x-captionEn": "Show changed tests as outdated",
+      "x-issue": "#1770"
+    },
+    "TestsStaleUnits": {
+      "description": "Auch eine Änderung in den Units, die die Testunit verwendet und die im Testprojekt liegen, macht das Ergebnis veraltet (Prüfsumme der Unit beim Lauf).",
+      "type": "boolean",
+      "default": false,
+      "x-key": "tests.stale.units",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "tests.stale",
+      "x-caption": "Auch Änderungen in verwendeten Units zählen",
+      "x-captionEn": "Changes in used units count too",
+      "x-issue": "#1770"
+    },
     "GenerateMenu": {
       "type": "boolean",
       "default": true,
