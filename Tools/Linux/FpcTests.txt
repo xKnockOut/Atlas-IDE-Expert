@@ -18,6 +18,7 @@ Atlas.Text.Json.Tests
 Atlas.Text.Jsonc.Tests
 Atlas.Text.LogMarks.Tests
 Atlas.Text.MapFile.Tests
+Atlas.Text.PeImage.Tests
 Atlas.Text.LeakReport.Tests
 Atlas.Text.CrashReport.Tests
 Atlas.Text.StepFilter.Tests

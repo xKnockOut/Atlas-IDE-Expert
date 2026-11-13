@@ -39,6 +39,7 @@ uses
   Atlas.Text.DUnitX.Tests in 'Text\Atlas.Text.DUnitX.Tests.pas',
   Atlas.Text.TestResults.Tests in 'Text\Atlas.Text.TestResults.Tests.pas',
   Atlas.Text.MapFile.Tests in 'Text\Atlas.Text.MapFile.Tests.pas',
+  Atlas.Text.PeImage.Tests in 'Text\Atlas.Text.PeImage.Tests.pas',
   Atlas.Text.LeakReport.Tests in 'Text\Atlas.Text.LeakReport.Tests.pas',
   Atlas.Text.CrashReport.Tests in 'Text\Atlas.Text.CrashReport.Tests.pas',
   Atlas.Common.Logging.Providers.Logger.Tests in 'Common\Logging\Atlas.Common.Logging.Providers.Logger.Tests.pas',
