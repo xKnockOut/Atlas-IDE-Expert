@@ -210,6 +210,16 @@ Aufruf: Kontextmenü einer Testunit (*Atlas › Tests*), Befehlspalette, im Fens
 
 Einstellung: `tests.repeat.count`
 
+### Protokoll je Test (#2168)
+Was ein Test unterwegs ausgibt (`Log`/`Status` von DUnitX, `WriteLn` in der Testklasse, `WriteLn` der getesteten Klassen), zeigt das Fenster „Atlas-Tests“ im Reiter *Protokoll (n)* neben *Einzelheiten*, genau für den gewählten Test.
+- Der XML-Bericht von DUnitX enthält keine Log-Zeilen. Deshalb gibt es die Hilfs-Unit `Atlas.Testing.Log` unter `Setup\Vorlagen` (MIT-Lizenz, nur RTL und DUnitX): ins Testprojekt aufnehmen und nach `TDUnitX.CreateRunner` die Zeile `runner.AddLogger(TAtlasTestLogger.Create);` einfügen. Der Logger arbeitet nur in Läufen aus Atlas: Atlas legt vor dem Start eine leere Seitendatei neben den Bericht, nur dann schreibt er hinein und setzt Marken um jeden Test in die Konsolenausgabe.
+- Je Zeile die Zeit ab Teststart (`01,190`), dann der Text; Warnungen und Fehler mit „Warnung:“ bzw. „Fehler:“, Konsolenzeilen mit „Konsole:“ (ohne Zeit, an der Stelle zwischen den Log-Meldungen, an der sie kamen). Start und Ende des Tests stehen dabei.
+- Setup und TearDown der Fixture gehören zu keinem Test: Ihre Zeilen stehen an der Fixture. Zeilen zwischen zwei Tests (etwa aus einem Thread, der den Test überdauert) stehen beim vorigen Test mit „(nach Testende)“. Ein Test mit `[TestCase]` zeigt die Zeilen aller Fälle mit dem Namen des Falls davor.
+- Verweise wie `Kunden.pas:42`, `Kunden.pas(42)`, Zeilen eines Stacktraces und `Unit.Klasse.Methode` öffnen per Doppelklick bzw. Enter die Stelle, wenn die Unit zum Testprojekt gehört.
+- Auch bei grünen Tests abrufbar; *Kopieren* bzw. Strg+C legt das ganze Protokoll in die Zwischenablage.
+- Ohne eingetragenen Logger zeigt der Reiter, wie man ihn einschaltet, und darunter die Ausgabe des ganzen Laufs.
+- Je Test höchstens `tests.log.maxLines` Zeilen (Vorgabe 2000), der Rest wird mit Hinweis abgeschnitten. `tests.log` aus: kein Reiter, keine Seitendatei.
+Einstellungen: `tests.log`, `tests.log.maxLines`
 ### Lecks je Test (#1774)
 
 - Mit Leckmonitor im Testprojekt (`DUnitX.MemoryLeakMonitor.FastMM4` bzw. `FastMM5`) meldet DUnitX einen Test, der Speicher nicht freigibt, als Fehlschlag („40 bytes were leaked in the test method“). Atlas zeigt ihn als bestanden mit Leck: Die Marke wird gelb, „Test ausführen · bestanden · Leck: 40 Bytes“.

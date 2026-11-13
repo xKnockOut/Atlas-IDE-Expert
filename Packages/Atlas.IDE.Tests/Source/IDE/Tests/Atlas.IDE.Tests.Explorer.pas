@@ -19,6 +19,9 @@
 //   (#585; Haltepunkt am Anfang nur bei einem einzelnen Test). Das
 //   Kontextmenü des Baums führt die Auswahl N-mal bzw. einzeln in zufälliger
 //   Reihenfolge aus (#1782, Atlas.IDE.Tests.Series, Atlas.UI.Tests.SeriesMenu).
+// - Protokoll je Test (#2168, tests.log): Atlas.IDE.Tests.ExplorerLog merkt
+//   sich das Protokoll der Läufe; der Reiter „Protokoll (n)“ zeigt es zum
+//   gewählten Test, Fall bzw. zur Fixture.
 // - Ein Zeitgeber folgt dem Läufer (Lauf beginnt bzw. endet), solange das
 //   Fenster zu sehen ist; er lebt nur so lange wie dieses Objekt.
 // Nur im Hauptthread.
@@ -36,6 +39,7 @@ uses
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Series,
+  Atlas.IDE.Tests.ExplorerLog,
   Atlas.UI.Tests.ExplorerFrame;
 
 type
@@ -59,6 +63,8 @@ type
     FTimer: TTimer;
     /// <summary>Ergebnisse je Testprojekt (Schlüssel klein) dieser Sitzung.</summary>
     FResults: TDictionary<string, TArray<TTestCaseResult>>;
+    /// <summary>Protokoll je Test (#2168) je Testprojekt dieser Sitzung.</summary>
+    FLogs: TAtlasIdeTestLogs;
     /// <summary>Gelesene Units je Datei (Schlüssel klein).</summary>
     FScanned: TDictionary<string, TScanned>;
     /// <summary>Gewähltes Testprojekt (.dproj); '' = noch keins.</summary>
@@ -281,6 +287,7 @@ begin
   FNext := ANext;
   FResults := TDictionary<string, TArray<TTestCaseResult>>.Create;
   FScanned := TDictionary<string, TScanned>.Create;
+  FLogs := TAtlasIdeTestLogs.Create;
   FDirty := True;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
@@ -311,6 +318,7 @@ begin
   TAtlasIdeTestsExplorerWindow.Release;
   FResults.Free;
   FScanned.Free;
+  FLogs.Free;
   FStaleKeys := nil;
   FNext := nil;
   inherited;
@@ -395,6 +403,7 @@ begin
     mCases := nil;
   end;
   FResults.AddOrSetValue(mKey, TAtlasTestRun.Merged(mCases, ARun.Cases));
+  FLogs.Remember(ATarget.Project, ARun);
   // Der Lauf kann Testunits geändert haben (Vergleichsdateien, Fälle aus der Tabelle): beim nächsten Takt neu.
   FDirty := True;
   if Assigned(FNext) then
@@ -610,13 +619,21 @@ procedure TAtlasIdeTestExplorer.Selected(ANode: Integer);
 var
   mFrame: TAtlasTestsExplorerFrame;
   mTexts: TAtlasTestDetailTexts;
+  mName: string;
+  mCount: Integer;
 begin
   mFrame := TAtlasIdeTestsExplorerWindow.ExistingFrame;
   if mFrame = nil then
   begin
     Exit;
   end;
-  if (ANode < 0) or (ANode > High(FNodes)) or (FNodes[ANode].Kind = TAtlasTestNodeKind.TestUnit) then
+  mName := '';
+  if (ANode >= 0) and (ANode <= High(FNodes)) and (FNodes[ANode].Kind <> TAtlasTestNodeKind.TestUnit) then
+  begin
+    mName := FNodes[ANode].FullName;
+  end;
+  mFrame.SetLog(FLogs.Lines(FProject, mName, FRefs, mCount), mCount, TAtlasIdeSettings.Current.TestsLog);
+  if mName = '' then
   begin
     mFrame.SetDetails(nil);
     Exit;

@@ -1617,6 +1617,34 @@
       "x-captionEn": "“Atlas Tests” window",
       "x-issue": "#1776"
     },
+    "TestsLog": {
+      "description": "Protokoll je Test: Atlas legt vor jedem Testlauf eine Seitendatei neben den XML-Bericht; der Atlas-Logger im Testprojekt (Setup/Vorlagen/Atlas.Testing.Log.pas, runner.AddLogger(TAtlasTestLogger.Create)) schreibt Log und Status von DUnitX sowie Beginn und Ende jedes Tests hinein und setzt Marken in die Konsolenausgabe. Das Fenster „Atlas-Tests“ zeigt im Reiter „Protokoll (n)“ genau die Zeilen des gewählten Tests mit Zeit ab Teststart, Stufe und Herkunft (Log, Konsole); Verweise wie Datei.pas:42 öffnen die Stelle, „Kopieren“ legt das Protokoll in die Zwischenablage. Ohne Logger zeigt der Reiter einen Hinweis und die Ausgabe des ganzen Laufs. Aus: kein Reiter, keine Seitendatei.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.log",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Protokoll je Test",
+      "x-captionEn": "Log per test",
+      "x-issue": "#2168"
+    },
+    "TestsLogMaxLines": {
+      "description": "Höchstens so viele Zeilen merkt sich Atlas je Test im Protokoll (100 bis 100000); der Rest wird abgeschnitten, mit Hinweis auf die Zahl der weggelassenen Zeilen.",
+      "type": "integer",
+      "default": 2000,
+      "minimum": 100,
+      "maximum": 100000,
+      "x-key": "tests.log.maxLines",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.log",
+      "x-control": "Zahl",
+      "x-caption": "Höchstens Zeilen je Test",
+      "x-captionEn": "At most lines per test",
+      "x-issue": "#2168"
+    },
     "TestsCaseTable": {
       "description": "An einer Testmethode mit [TestCase] zeigt die Testlinse „4 Fälle · 1 rot · Tabelle“; der Klick und der Befehl „TestCase-Tabelle bearbeiten …“ (Kontextmenü einer Testunit, Befehlspalette) öffnen die Fälle als Tabelle: Spalte je Parameter mit Typ, letzter Lauf je Fall, Werte prüfen wie dunitx-testcase-mismatch, Zeilen anfügen, löschen und verschieben, einzelnen Fall ausführen oder debuggen. Atlas schreibt die Attribute in einem Rückgängig-Schritt zurück.",
       "type": "boolean",
