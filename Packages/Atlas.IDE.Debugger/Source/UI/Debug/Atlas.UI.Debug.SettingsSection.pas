@@ -153,6 +153,8 @@ begin
   Switch('debug.checkBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugCheckBreakpoints));
   // Haltepunkt nur für ein Objekt (#857).
   Switch('debug.instanceBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugInstanceBreakpoints));
+  // Anhalten, wenn sich ein Feld ändert (#584).
+  Switch('debug.dataBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugDataBreakpoints));
   // Haltepunkt-Sätze (#586).
   Switch('debug.breakpointSetPerBranch',
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointSetPerBranch));

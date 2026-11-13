@@ -481,6 +481,13 @@ begin
   Loaded := TAtlasPluginSettings.Defaults;
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.DebugInstanceBreakpoints);
+  // #584: Anhalten, wenn sich ein Feld ändert, ist an; der Wert überlebt Speichern und Laden.
+  Assert.IsTrue(Settings.DebugDataBreakpoints);
+  Settings.DebugDataBreakpoints := False;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugDataBreakpoints);
   Assert.IsFalse(Loaded.DebugBreakpointSetPerBranch);
   Assert.IsFalse(Loaded.DebugRunToClick);
   Assert.IsFalse(Loaded.DebugBreakpointsWindow);

@@ -102,6 +102,7 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Evaluate.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.EventBreak.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.InstanceBreakpoint.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.DataBreakpoint.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ExceptionBanner.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ExceptionDialog.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Modules.pas"/>
@@ -169,6 +170,7 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StepFilterWindow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.BreakpointCheck.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.InstanceBreakpoint.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.DataBreakpoint.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.BreakpointSets.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.RunTo.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.RunTo.pas"/>
