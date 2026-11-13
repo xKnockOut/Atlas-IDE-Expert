@@ -7,8 +7,9 @@
 // der Registry von Base an und stellt über dessen Scope bereit:
 // - den Teil Tests der Feature-Tabelle,
 // - Befehle (Palette), die Einträge „Betroffene Tests ausführen“,
-//   „Veraltete Tests ausführen“ (#1770) und „Erwartet und erhalten
-//   vergleichen“ (#1779) im Atlas-Menü, „Test ausführen“/„Test debuggen“ im Kontextmenü und „Tests
+//   „Veraltete Tests ausführen“ (#1770), „Erwartet und erhalten
+//   vergleichen“ (#1779) und „Langsamste Tests zeigen“ (#1772) im
+//   Atlas-Menü, „Test ausführen“/„Test debuggen“ im Kontextmenü und „Tests
 //   dieser Unit ausführen“ im Kontextmenü der Projektverwaltung (#1817:
 //   Testunits der gewählten Units nach Namen in der Projektgruppe, nur solche
 //   mit Fixtures; ohne eine meldet das Modul es in der Meldungsansicht) und
@@ -95,6 +96,7 @@ uses
   Atlas.IDE.Tests.Lens,
   Atlas.IDE.Tests.Stale,
   Atlas.IDE.Tests.Compare,
+  Atlas.IDE.Tests.Slowest,
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Tests.UnitCommands,
   Atlas.UI.Strings,
@@ -109,6 +111,7 @@ var
   GLens: TAtlasIdeTestsLens;
   GStale: TAtlasIdeStaleTests;
   GCompare: TAtlasIdeTestCompare;
+  GSlowest: TAtlasIdeTestSlowest;
 
 { Sichtbarkeit }
 
@@ -220,7 +223,9 @@ begin
   GStale := TAtlasIdeStaleTests.Create(GTests);
   // Erwartet und erhalten vergleichen (#1779): Fehlschläge mit Werten; reicht den Lauf an die Stände weiter.
   GCompare := TAtlasIdeTestCompare.Create(GTests, GStale.Remember);
-  GTests.OnReported := GCompare.Remember;
+  // Langsamste Tests (#1772): Ergebnisse des Testprojekts; reicht den Lauf an den Vergleich weiter.
+  GSlowest := TAtlasIdeTestSlowest.Create(GTests, GCompare.Remember);
+  GTests.OnReported := GSlowest.Remember;
   // Einzelner Test ausführen bzw. debuggen (#585), auch aus dem Kontextmenü und der Lens.
   GDebugger := TAtlasIdeTestDebugger.Create(GTests);
   GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GStale.StaleIn);
@@ -241,14 +246,15 @@ begin
   // Tests beim Speichern (#1775) vor dem Läufer: Uninstall hat ihre offenen Anfragen schon verworfen.
   FreeAndNil(GOnSave);
   // Erst die Lens (sie zeigt auf Läufer und Debugger-Teil), dann der Debugger-Teil (stellt eine laufende Sitzung
-  // zurück), dann Vergleich (#1779) und Stände der veralteten Ergebnisse (#1770), dann der Läufer; seine Probleme
-  // verschwinden mit ihm.
+  // zurück), dann langsamste Tests (#1772), Vergleich (#1779) und Stände der veralteten Ergebnisse (#1770), dann
+  // der Läufer; seine Probleme verschwinden mit ihm.
   FreeAndNil(GLens);
   FreeAndNil(GDebugger);
   if GTests <> nil then
   begin
     GTests.OnReported := nil;
   end;
+  FreeAndNil(GSlowest);
   FreeAndNil(GCompare);
   FreeAndNil(GStale);
   try
@@ -334,6 +340,21 @@ begin
   end;
 end;
 
+{ Langsamste Tests (#1772) }
+
+function SlowestVisible: Boolean;
+begin
+  Result := TestsVisible and TAtlasIdeSettings.Current.TestsShowDuration;
+end;
+
+procedure ShowSlowest;
+begin
+  if GSlowest <> nil then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Build, GSlowest.Run);
+  end;
+end;
+
 { Projektverwaltung (#1817) }
 
 function ProjectUnitTestsVisible: Boolean;
@@ -389,6 +410,8 @@ begin
     Command('Atlas.RunStaleTests', TAtlasTestsTextId.TestsRunStaleCommand, RunStale, StaleTestsVisible),
     // Erwartet und erhalten eines Fehlschlags (#1779): sichtbar mit tests.compare.
     Command('Atlas.CompareTestValues', TAtlasTestsTextId.TestsCompareCommand, CompareValues, CompareVisible),
+    // Langsamste Tests (#1772): sichtbar mit tests.showDuration.
+    Command('Atlas.ShowSlowestTests', TAtlasTestsTextId.TestsSlowestCommand, ShowSlowest, SlowestVisible),
     // Einzelner Test am Cursor (#585): ausführen (mit TestRun) und im Debugger (mit TestDebug).
     Command('Atlas.RunTest', TAtlasTestsTextId.TestsRunHereCommand, RunAtCursor, TestsVisible),
     Command('Atlas.DebugTest', TAtlasTestsTextId.TestsDebugCommand, DebugAtCursor, TestDebugVisible),
@@ -429,6 +452,7 @@ begin
     MenuEntry('Atlas.RunAffectedTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.RunStaleTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.CompareTestValues', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.ShowSlowestTests', TAtlasMenuPlace.AtlasMenu),
     // Test am Cursor (#585) im Untermenü „Atlas“ des Editors.
     ContextEntry('Atlas.RunTest'),
     ContextEntry('Atlas.DebugTest'),

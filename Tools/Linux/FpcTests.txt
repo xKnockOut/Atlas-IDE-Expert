@@ -192,6 +192,8 @@ Atlas.Common.Monitor.Commands.Tests
 Atlas.Common.Monitor.Results.Tests
 Atlas.Common.Monitor.Runs.Tests
 Atlas.Common.Monitor.Targets.Tests
+Atlas.Common.Mutation.Generator.Tests
+Atlas.Common.Mutation.Report.Tests
 Atlas.Common.Pascal.AsmStatements.Tests
 Atlas.Common.Pascal.CompilerSwitches.Tests
 Atlas.Common.Pascal.ConditionalBranches.Tests
@@ -274,6 +276,10 @@ Atlas.Common.Rules.Builtin.Statements.Tokens.Tests
 Atlas.Common.Rules.Builtin.Style.Tests
 Atlas.Common.Rules.Builtin.Style.MethodOrder.Tests
 Atlas.Common.Rules.Builtin.Style.Tokens.Tests
+Atlas.Common.Rules.Builtin.Testing.AreEqual.Tests
+Atlas.Common.Rules.Builtin.Testing.Registration.Tests
+Atlas.Common.Rules.Builtin.Testing.TestCases.Tests
+Atlas.Common.Rules.Builtin.Testing.Tests
 Atlas.Common.Rules.Builtin.TrivialAccessor.Tests
 Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols.Tests
 Atlas.Common.Rules.Builtin.Unicode.Tests
@@ -326,6 +332,10 @@ Atlas.Core.Designer.Undo.Tests
 Atlas.Core.Tracker.IssueWork.Tests
 Atlas.Core.Commands.MenuContext.Tests
 Atlas.Core.Settings.ContextMenuGroups.Tests
+Atlas.Core.Debug.Modules.Tests
+Atlas.UI.Debug.AccessViolation.Tests
+Atlas.Core.Build.RunningProgram.Tests
+Atlas.Core.Settings.BuildDebug.Tests
 Atlas.UI.Analysis.Strings.Tests
 Atlas.UI.Assistants.Strings.Tests
 Atlas.UI.Bookmarks.Strings.Tests
@@ -371,3 +381,4 @@ Atlas.Core.Tests.Stale.Tests
 Atlas.Core.Tests.OnSave.Tests
 Atlas.Core.Tests.AssertLine.Tests
 Atlas.Core.Tests.Compare.Tests
+Atlas.Core.Tests.Durations.Tests

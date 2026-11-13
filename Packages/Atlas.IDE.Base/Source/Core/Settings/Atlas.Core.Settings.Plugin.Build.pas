@@ -21,6 +21,10 @@ const
   cMinTestsOnSaveMax = 1;
   cMaxTestsOnSaveMax = 1000;
   cDefaultTestsOnSaveMax = 50;
+  /// <summary>Grenzen und Vorgabe für tests.slowMs (#1772).</summary>
+  cMinTestsSlowMs = 50;
+  cMaxTestsSlowMs = 60000;
+  cDefaultTestsSlowMs = 500;
 
 type
   /// <summary>Plugin-Einstellungen: Compiler, Build, Tests und Aufgaben.</summary>
@@ -64,6 +68,9 @@ type
     /// <summary>Zielplattform für den Lauf beim Öffnen (build.onOpenPlatform, #1293), z. B. Win64; '' = wie im
     /// Projekt. Ist sie in einem Projekt nicht aktiviert, gilt dort die Einstellung des Projekts.</summary>
     BuildOnOpenPlatform: string;
+    /// <summary>Laufendes Programm vor dem Build beenden (build.stopRunningProgram, #551): ask (Rückfrage), always
+    /// (ohne Rückfrage beenden) oder never (nichts tun). Programme im Debugger der IDE bleiben unberührt.</summary>
+    BuildStopRunningProgram: string;
     /// <summary>Befehle „Tests ausführen“ und „Fehlgeschlagene Tests erneut ausführen“ (#69, Atlas.RunTests,
     /// Atlas.RunFailedTests); aus = Befehle, Code Lens und Lauf nach dem Build verschwinden.</summary>
     TestRun: Boolean;
@@ -105,6 +112,12 @@ type
     TestsCompare: Boolean;
     /// <summary>JSON und XML vor dem Vergleich gleich einrücken (#1779, tests.compare.format).</summary>
     TestsCompareFormat: Boolean;
+    /// <summary>Dauer an den Marken der Testlinse, langsame Tests gelb, die langsamsten auf der Willkommensseite
+    /// (#1772, tests.showDuration).</summary>
+    TestsShowDuration: Boolean;
+    /// <summary>Ab dieser Dauer (Millisekunden) gilt ein Test als langsam (#1772, tests.slowMs), cMinTestsSlowMs bis
+    /// cMaxTestsSlowMs.</summary>
+    TestsSlowMs: Integer;
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
     /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
     BuildZeroHints: Boolean;
@@ -192,19 +205,19 @@ uses
   Atlas.Core.Build.PipelineSettings,
   Atlas.Core.Build.Verdict;
 
-/// <summary>tasks.beforeBuild: bekannter Wert klein, sonst „off“.</summary>
-function NormalizedTasksBeforeBuild(const AText: string): string;
+/// <summary>Bekannter Wert aus ANames klein (tasks.beforeBuild, build.stopRunningProgram), sonst der erste.</summary>
+function NormalizedName(const AText: string; const ANames: array of string): string;
 var
   mName: string;
 begin
-  for mName in cTasksBeforeBuildNames do
+  for mName in ANames do
   begin
     if SameText(Trim(AText), mName) then
     begin
       Exit(mName);
     end;
   end;
-  Result := cTasksBeforeBuildNames[0];
+  Result := ANames[0];
 end;
 
 { TAtlasPluginBuildSettings }
@@ -226,6 +239,7 @@ begin
   Result.BuildOnOpenExclude := '';
   Result.BuildOnOpenConfig := '';
   Result.BuildOnOpenPlatform := '';
+  Result.BuildStopRunningProgram := cStopRunningProgramNames[0];
   Result.TestRun := True;
   Result.TestsAfterBuild := False;
   Result.TestsBuildFirst := True;
@@ -240,6 +254,8 @@ begin
   Result.TestsFailureInline := True;
   Result.TestsCompare := True;
   Result.TestsCompareFormat := True;
+  Result.TestsShowDuration := True;
+  Result.TestsSlowMs := cDefaultTestsSlowMs;
   Result.BuildZeroHints := False;
   Result.ShowInterfaceCost := True;
   Result.BuildSummary := True;
@@ -273,13 +289,14 @@ begin
   BuildOnOpenExclude := TAtlasOpenBuildSettings.NormalizedExclude(BuildOnOpenExclude);
   BuildOnOpenConfig := Trim(BuildOnOpenConfig);
   BuildOnOpenPlatform := Trim(BuildOnOpenPlatform);
+  BuildStopRunningProgram := NormalizedName(BuildStopRunningProgram, cStopRunningProgramNames);
   // Nach dem Speichern genau eins von beiden: Die Syntaxprüfung der IDE gewinnt.
   if CheckOnSave then
   begin
     CompileOnSave := False;
   end;
   BuildGate := TAtlasBuildPipelineSettings.cGateNames[TAtlasBuildPipelineSettings.GateOf(BuildGate)];
-  TasksBeforeBuild := NormalizedTasksBeforeBuild(TasksBeforeBuild);
+  TasksBeforeBuild := NormalizedName(TasksBeforeBuild, cTasksBeforeBuildNames);
   BuildGateTimeoutMs := EnsureRange(BuildGateTimeoutMs, TAtlasBuildPipelineSettings.cGateMinTimeoutMs,
     TAtlasBuildPipelineSettings.cGateMaxTimeoutMs);
   ReleaseConfigs := TAtlasBuildPipelineSettings.NormalizedConfigurations(ReleaseConfigs);
@@ -287,6 +304,7 @@ begin
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
   TestsAffectedDepth := EnsureRange(TestsAffectedDepth, cMinTestsAffectedDepth, cMaxTestsAffectedDepth);
   TestsOnSaveMax := EnsureRange(TestsOnSaveMax, cMinTestsOnSaveMax, cMaxTestsOnSaveMax);
+  TestsSlowMs := EnsureRange(TestsSlowMs, cMinTestsSlowMs, cMaxTestsSlowMs);
 end;
 
 procedure TAtlasPluginBuildSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -305,6 +323,7 @@ begin
   AIo.Text('BuildOnOpenExclude', BuildOnOpenExclude);
   AIo.Text('BuildOnOpenConfig', BuildOnOpenConfig);
   AIo.Text('BuildOnOpenPlatform', BuildOnOpenPlatform);
+  AIo.Text('BuildStopRunningProgram', BuildStopRunningProgram);
   AIo.Flag('TestRun', TestRun);
   AIo.Flag('TestsAfterBuild', TestsAfterBuild);
   AIo.Flag('TestsBuildFirst', TestsBuildFirst);
@@ -319,6 +338,8 @@ begin
   AIo.Flag('TestsFailureInline', TestsFailureInline);
   AIo.Flag('TestsCompare', TestsCompare);
   AIo.Flag('TestsCompareFormat', TestsCompareFormat);
+  AIo.Flag('TestsShowDuration', TestsShowDuration);
+  AIo.Number('TestsSlowMs', TestsSlowMs);
   AIo.Flag('BuildZeroHints', BuildZeroHints);
   AIo.Flag('ShowInterfaceCost', ShowInterfaceCost);
   AIo.Flag('BuildSummary', BuildSummary);

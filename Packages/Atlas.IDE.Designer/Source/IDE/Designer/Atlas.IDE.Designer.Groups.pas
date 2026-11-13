@@ -30,7 +30,8 @@ uses
   Atlas.Core.Designer.SelectionSets,
   Atlas.Core.Designer.Groups,
   Atlas.UI.Designer.Outlines,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.IDE.Foundation.KeyHook,
+  Atlas.IDE.Designer.Tool;
 
 type
   TAtlasIdeDesignerGroups = class;
@@ -58,7 +59,7 @@ type
     Tick: UInt64;
   end;
 
-  TAtlasIdeDesignerGroups = class
+  TAtlasIdeDesignerGroups = class(TAtlasIdeDesignerTool)
   private type
     TNotification = class(TInterfacedObject, IDesignNotification)
     private
@@ -74,7 +75,6 @@ type
   private class var
     FCurrent: TAtlasIdeDesignerGroups;
   private
-    FOnMessage: TProc<string>;
     FStores: TObjectDictionary<string, TAtlasDesignerGroups>;
     FKept: TDictionary<string, Boolean>;
     /// <summary>Gesehene Komponenten mit ihrem letzten Namen (Umbenennen erkennen).</summary>
@@ -83,12 +83,10 @@ type
     FNotification: TNotification;
     FNotificationRef: IDesignNotification;
     FKeys: TAtlasGroupKeys;
-    FOutlines: TAtlasDesignerOutlines;
     FBusy: Boolean;
     FQueued: Boolean;
     FClick: TAtlasGroupClick;
     FUndo: TAtlasGroupUndo;
-    procedure Say(const AText: string);
     function Store(const AFormFile: string): TAtlasDesignerGroups;
     procedure Save(const AFormFile: string);
     procedure KeepUndo(const AFormFile: string);
@@ -114,7 +112,6 @@ type
     procedure Ungroup;
     function CanUndo: Boolean;
     procedure Undo;
-    procedure ApplyTheme;
     /// <summary>Tasten an- oder abmelden (Einstellungen, Designer gezeigt).</summary>
     procedure UpdateKeys(AWanted: Boolean);
     /// <summary>Gehört ein markiertes Steuerelement zu einer Gruppe?</summary>
@@ -128,7 +125,6 @@ uses
   System.IOUtils,
   System.Types,
   Vcl.StdCtrls,
-  Vcl.Forms,
   Vcl.Dialogs,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
@@ -136,7 +132,6 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
-  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Diagnostics.Deadline;
 
@@ -328,9 +323,9 @@ end;
 
 procedure TAtlasIdeDesignerGroups.TNotification.DesignerClosed(const ADesigner: IDesigner; AGoingDormant: Boolean);
 begin
-  if (FOwner <> nil) and (FOwner.FOutlines <> nil) then
+  if (FOwner <> nil) and (FOwner.HasOutlines) then
   begin
-    FOwner.FOutlines.HideOutlines;
+    FOwner.Outlines.HideOutlines;
   end;
 end;
 
@@ -338,8 +333,7 @@ end;
 
 constructor TAtlasIdeDesignerGroups.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
   FStores := TObjectDictionary<string, TAtlasDesignerGroups>.Create([doOwnsValues]);
   FKept := TDictionary<string, Boolean>.Create;
   FSeen := TDictionary<TComponent, string>.Create;
@@ -367,20 +361,11 @@ begin
   end;
   TAtlasKeyHook.Remove(FKeys);
   FKeys.Free;
-  FOutlines.Free;
   FInserted.Free;
   FSeen.Free;
   FKept.Free;
   FStores.Free;
   inherited Destroy;
-end;
-
-procedure TAtlasIdeDesignerGroups.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
 end;
 
 function TAtlasIdeDesignerGroups.Store(const AFormFile: string): TAtlasDesignerGroups;
@@ -666,19 +651,15 @@ begin
       mOutline.Bounds.Top - mArea.Top, mOutline.Bounds.Right - mArea.Left, mOutline.Bounds.Bottom - mArea.Top),
       mOutline.Name, False)];
   end;
-  if FOutlines = nil then
-  begin
-    FOutlines := TAtlasDesignerOutlines.CreateOutlines(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
-  end;
   mArea.Offset(TWinControl(ARoot).ClientOrigin);
-  FOutlines.ShowOutlines(mArea, mShifted);
+  Outlines.ShowOutlines(mArea, mShifted);
 end;
 
 procedure TAtlasIdeDesignerGroups.HideFrames;
 begin
-  if FOutlines <> nil then
+  if HasOutlines then
   begin
-    FOutlines.HideOutlines;
+    Outlines.HideOutlines;
   end;
 end;
 
@@ -770,14 +751,6 @@ begin
   if TAtlasDesignerAccess.Current(mEditor, mRoot) then
   begin
     Refresh(mRoot, mEditor);
-  end;
-end;
-
-procedure TAtlasIdeDesignerGroups.ApplyTheme;
-begin
-  if FOutlines <> nil then
-  begin
-    FOutlines.ApplyColors(TAtlasIdeStyle.Colors);
   end;
 end;
 

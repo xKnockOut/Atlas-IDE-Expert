@@ -23,34 +23,28 @@ uses
   System.Classes,
   System.Types,
   Vcl.Controls,
-  Atlas.UI.Designer.Outlines;
+  Atlas.UI.Designer.Outlines,
+  Atlas.IDE.Designer.Tool;
 
 type
-  TAtlasIdeDuplicateRow = class
+  TAtlasIdeDuplicateRow = class(TAtlasIdeDesignerTool)
   private
-    FOnMessage: TProc<string>;
-    FOutlines: TAtlasDesignerOutlines;
     /// <summary>Letzter Lauf: Datei, angelegte Kopien und verschobene Steuerelemente mit alter Lage.</summary>
     FLastFile: string;
     FCreated: TArray<string>;
     FMoved: TArray<string>;
     FMovedFrom: TArray<TRect>;
-    procedure Say(const AText: string);
     procedure ShowOutlines(AParent: TWinControl; const AOutlines: TArray<TAtlasOutline>);
     procedure HideOutlines;
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
-    destructor Destroy; override;
-    /// <summary>Steuerelemente unter ASelected (Geschwister des ersten).</summary>
-    class function Candidates(const ASelected: TArray<TComponent>): TArray<TControl>; static;
     /// <summary>Gibt es einen Lauf im aktiven Designer, der sich zurücknehmen lässt?</summary>
     function CanUndo: Boolean;
     /// <summary>Dialog zeigen und die Kopien anlegen.</summary>
     procedure Execute;
     /// <summary>Kopien des letzten Laufs entfernen.</summary>
     procedure Undo;
-    procedure ApplyTheme;
     /// <summary>Gespeicherte Eigenschaften außer Name, Lage und TabOrder kopieren; Ereignisse nur mit AShare.</summary>
     class procedure CopyProperties(ASource, ATarget: TComponent; AShare: Boolean); static;
   end;
@@ -68,7 +62,6 @@ uses
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.DuplicateDialog,
   Atlas.IDE.Designer.Access,
-  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings;
 
 const
@@ -336,7 +329,6 @@ begin
   end;
 end;
 
-
 /// <summary>Fokussierbare Originale nach TabOrder.</summary>
 function TabControls(const AControls: TArray<TControl>): TArray<TWinControl>;
 var
@@ -504,59 +496,12 @@ end;
 
 constructor TAtlasIdeDuplicateRow.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
-end;
-
-destructor TAtlasIdeDuplicateRow.Destroy;
-begin
-  FOutlines.Free;
-  inherited Destroy;
-end;
-
-procedure TAtlasIdeDuplicateRow.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
-end;
-
-procedure TAtlasIdeDuplicateRow.ApplyTheme;
-begin
-  if FOutlines <> nil then
-  begin
-    FOutlines.ApplyColors(TAtlasIdeStyle.Colors);
-  end;
+  inherited Create(AOnMessage);
 end;
 
 class procedure TAtlasIdeDuplicateRow.CopyProperties(ASource, ATarget: TComponent; AShare: Boolean);
 begin
   CopyProps(ASource, ATarget, AShare);
-end;
-
-class function TAtlasIdeDuplicateRow.Candidates(const ASelected: TArray<TComponent>): TArray<TControl>;
-var
-  mComponent: TComponent;
-  mParent: TWinControl;
-begin
-  Result := nil;
-  mParent := nil;
-  for mComponent in ASelected do
-  begin
-    if not (mComponent is TControl) or (TControl(mComponent).Parent = nil) then
-    begin
-      Continue;
-    end;
-    if mParent = nil then
-    begin
-      mParent := TControl(mComponent).Parent;
-    end;
-    if TControl(mComponent).Parent = mParent then
-    begin
-      Result := Result + [TControl(mComponent)];
-    end;
-  end;
 end;
 
 procedure TAtlasIdeDuplicateRow.ShowOutlines(AParent: TWinControl; const AOutlines: TArray<TAtlasOutline>);
@@ -578,19 +523,15 @@ begin
       mOutline.Bounds.Top - mArea.Top, mOutline.Bounds.Right - mArea.Left, mOutline.Bounds.Bottom - mArea.Top),
       mOutline.Name, mOutline.Bad)];
   end;
-  if FOutlines = nil then
-  begin
-    FOutlines := TAtlasDesignerOutlines.CreateOutlines(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
-  end;
   mArea.Offset(AParent.ClientOrigin);
-  FOutlines.ShowOutlines(mArea, mShifted);
+  Outlines.ShowOutlines(mArea, mShifted);
 end;
 
 procedure TAtlasIdeDuplicateRow.HideOutlines;
 begin
-  if FOutlines <> nil then
+  if HasOutlines then
   begin
-    FOutlines.HideOutlines;
+    Outlines.HideOutlines;
   end;
 end;
 
@@ -694,7 +635,7 @@ begin
     Exit;
   end;
   mRun.Designer := TAtlasDesignerAccess.DesignerOf(mEditor);
-  mRun.Controls := Candidates(TAtlasDesignerAccess.Selection(mEditor, mRun.Root));
+  mRun.Controls := TAtlasDesignerAccess.SelectedSiblings(mEditor, mRun.Root);
   if (mRun.Designer = nil) or (Length(mRun.Controls) = 0) then
   begin
     Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateNoSelection));

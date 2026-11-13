@@ -3,7 +3,7 @@
 // Tests des Lesens von DUnitX-Berichten (#69): NUnit 2 (Logger der Vorlage
 // von RAD Studio) mit Namensräumen, Fixtures, Testfällen, Fehlschlag, Fehler
 // und Ignoriert; NUnit 3; JUnit; erwarteter und tatsächlicher Wert; Zeiten mit
-// Komma; kein Bericht.
+// Komma; kein Bericht; Dauer als Text und die langsamsten Tests (#1772).
 
 interface
 
@@ -28,6 +28,10 @@ type
     procedure CommaSecondsAndInvalid;
     [Test]
     procedure NotAReport;
+    [Test]
+    procedure DurationTextInMsAndSeconds;
+    [Test]
+    procedure SlowestSortedAndLimited;
   end;
 
 implementation
@@ -206,6 +210,42 @@ begin
   Assert.AreEqual(Int64(1500), TTestResults.SecondsToMs(' 1.5 '));
   Assert.AreEqual(Int64(0), TTestResults.SecondsToMs('x'));
   Assert.AreEqual(Int64(0), TTestResults.SecondsToMs('-1'));
+end;
+
+procedure TTestResultsTests.DurationTextInMsAndSeconds;
+begin
+  Assert.AreEqual('0 ms', TTestResults.DurationText(0, ','));
+  Assert.AreEqual('12 ms', TTestResults.DurationText(12, ','));
+  Assert.AreEqual('999 ms', TTestResults.DurationText(999, ','));
+  Assert.AreEqual('1,0 s', TTestResults.DurationText(1000, ','));
+  Assert.AreEqual('1.3 s', TTestResults.DurationText(1250, '.'), 'auf Zehntel gerundet');
+  Assert.AreEqual('61,5 s', TTestResults.DurationText(61500, ','));
+  Assert.AreEqual('0 ms', TTestResults.DurationText(-5, ','), 'negative Dauer gilt als 0');
+end;
+
+function CaseOf(const AName: string; ADurationMs: Int64; AOutcome: TTestOutcome): TTestCaseResult;
+begin
+  Result := Default(TTestCaseResult);
+  Result.FullName := AName;
+  Result.DurationMs := ADurationMs;
+  Result.Outcome := AOutcome;
+end;
+
+procedure TTestResultsTests.SlowestSortedAndLimited;
+var
+  mCases, mSlowest: TArray<TTestCaseResult>;
+begin
+  mCases := [CaseOf('U.T.Schnell', 5, TTestOutcome.Passed), CaseOf('U.T.Lahm', 900, TTestOutcome.Passed),
+    CaseOf('U.T.Kaputt', 300, TTestOutcome.Failed), CaseOf('U.T.Ohne', 0, TTestOutcome.Passed),
+    CaseOf('U.T.Weg', 5000, TTestOutcome.Skipped), CaseOf('U.T.Bgleich', 300, TTestOutcome.Passed)];
+  mSlowest := TTestResults.Slowest(mCases, 3);
+  Assert.AreEqual(3, Integer(Length(mSlowest)));
+  Assert.AreEqual('U.T.Lahm', mSlowest[0].FullName);
+  Assert.AreEqual('U.T.Bgleich', mSlowest[1].FullName, 'gleiche Dauer: nach Namen');
+  Assert.AreEqual('U.T.Kaputt', mSlowest[2].FullName, 'Fehlschläge zählen mit');
+  mSlowest := TTestResults.Slowest(mCases, 10);
+  Assert.AreEqual(4, Integer(Length(mSlowest)), 'ohne Dauer und übersprungene nicht');
+  Assert.AreEqual(0, Integer(Length(TTestResults.Slowest(mCases, 0))));
 end;
 
 procedure TTestResultsTests.NotAReport;
