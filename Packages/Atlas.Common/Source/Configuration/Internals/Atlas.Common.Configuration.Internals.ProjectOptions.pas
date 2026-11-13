@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Configuration.Internals.ProjectOptions;
 
 // Abschnitte von atlas.json zum Projekt: format (Formatierung), compiler
-// (Übersetzen beim Speichern), tests (betroffene Tests), testUnits (Lage der
+// (Übersetzen beim Speichern), tests (betroffene Tests, Ordner der Vergleichsdateien), testUnits (Lage der
 // Testunits) und dfmPropertyRules (Regeln für Eigenschaften in Formularen).
 
 interface
@@ -30,7 +30,7 @@ type
     AllowedAreLfAndCrlf, AllowedArePreserveNewLineAnd, AllowedAreAutoDccOff, AffectedDepthMustBeAWhole,
     TestUnitsProjectMustBeA, AllowedAreContainsNotContainsEmpty, AllowedAreAutoPromptAnd, ExcludeMustBeAList,
     UnknownEntryInAProperty, APropertyRuleNeedsClass, ThisConditionNeedsAValue, APropertyRuleMustBe,
-    DfmPropertyRulesMustBeAList, UnknownSeverityAllowedOffHint);
+    DfmPropertyRulesMustBeAList, UnknownSeverityAllowedOffHint, ApprovalFolderMustNotBeEmpty);
 
 const
   cTexts: array[TProjectOptionsText] of TAtlasText = (
@@ -56,7 +56,8 @@ const
      En: 'A property rule must be an object: { "class": …, "property": …, "condition": … }'),
     (De: '"dfmPropertyRules" muss eine Liste von Regeln sein'; En: '"dfmPropertyRules" must be a list of rules'),
     (De: 'Unbekannter Schweregrad "%s"; erlaubt: off, hint, info, warning, error';
-     En: 'Unknown severity "%s"; allowed: off, hint, info, warning, error'));
+     En: 'Unknown severity "%s"; allowed: off, hint, info, warning, error'),
+    (De: '"approvalFolder" darf nicht leer sein'; En: '"approvalFolder" must not be empty'));
 
 {$SCOPEDENUMS OFF}
 
@@ -258,8 +259,29 @@ begin
     cTexts[TProjectOptionsText.AffectedDepthMustBeAWhole].Text, ASettings.Tests.AffectedDepth);
 end;
 
+/// <summary>tests.approvalFolder (#1881): Ordner der Vergleichsdateien; leer bleibt die Vorgabe.</summary>
+procedure ReadApprovalFolder(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
+  var ASettings: TServerSettings);
+var
+  mText: string;
+begin
+  if not AReader.ExpectString(AValue, AKey, mText) then
+  begin
+    Exit;
+  end;
+  if Trim(mText) = '' then
+  begin
+    AReader.ReportNode(AValue, cTexts[TProjectOptionsText.ApprovalFolderMustNotBeEmpty].Text);
+  end
+  else
+  begin
+    ASettings.Tests.ApprovalFolder := mText;
+  end;
+end;
+
 const
-  cTestsMembers: array[0..0] of TMemberOption = ((Key: 'affectedDepth'; Read: ReadAffectedDepth));
+  cTestsMembers: array[0..1] of TMemberOption = ((Key: 'affectedDepth'; Read: ReadAffectedDepth),
+    (Key: 'approvalFolder'; Read: ReadApprovalFolder));
 
 procedure ReadTests(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);
 begin

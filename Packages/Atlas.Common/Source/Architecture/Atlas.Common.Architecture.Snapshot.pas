@@ -44,7 +44,8 @@
 interface
 
 uses
-  Atlas.Common.Architecture.Overview;
+  Atlas.Common.Architecture.Overview,
+  Atlas.Common.Architecture.Grouping;
 
 type
   TSnapshotUnit = record

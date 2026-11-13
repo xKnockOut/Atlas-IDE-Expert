@@ -124,7 +124,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssueWorkLink,
   Atlas.IDE.Tracker.WorkingCopies,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Workflow.Strings;
 
 const
   /// <summary>Zeitlimit je Aufruf der Versionsverwaltung.</summary>
@@ -253,7 +253,7 @@ begin
     FDialog.Show;
     if not SameText(FState.Key, AIssue.Key) then
     begin
-      FDialog.ShowNote(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerReviewBusy, [FState.Key]));
+      FDialog.ShowNote(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewBusy, [FState.Key]));
     end;
     Exit;
   end;
@@ -284,7 +284,7 @@ var
   mAssist: IAtlasCommentAssist;
 begin
   FDialog := TAtlasTrackerReviewDialog.CreateDialog(nil, FState, TAtlasIdeTrackerSync.Options(FTarget),
-    TAtlasTrackerReview.CommentFor(TAtlasIdeSettings.Current.IssuesReviewComment, TAtlasTrackerStrings.English));
+    TAtlasTrackerReview.CommentFor(TAtlasIdeSettings.Current.IssuesReviewComment, TAtlasWorkflowStrings.English));
   FDialog.Events := DialogEvents;
   // Kommentar-Editor (#1278) mit eigenem Entwurfsfeld; die Vorlage ist kein Entwurf.
   mAssist := nil;
@@ -402,7 +402,7 @@ begin
     FState.Marks[TAtlasReviewStep.Build] := TAtlasReviewMark.Skipped;
     FState.Marks[TAtlasReviewStep.Tests] := TAtlasReviewMark.Skipped;
     ShowState;
-    FDialog.ShowNote(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerReviewNoVcs));
+    FDialog.ShowNote(TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewNoVcs));
     Exit;
   end;
   FState.OwnBranch := TAtlasTrackerReview.ReturnName(AInspection.Kind, AInspection.Head);
@@ -440,7 +440,7 @@ var
   mOutcome: TAtlasVcsOutcome;
 begin
   // Lokale Änderungen: vorher fragen (Git nimmt sie mit, wenn sie nicht kollidieren).
-  if (FInspection.Changes > 0) and (MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.WelcomeIssuesLocalChanges,
+  if (FInspection.Changes > 0) and (MessageDlg(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.WelcomeIssuesLocalChanges,
     [FInspection.Changes, ABranch, sLineBreak + sLineBreak]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
   begin
     AskBranch;
@@ -638,7 +638,7 @@ begin
   // Der Dialog gibt sich selbst frei (caFree).
   FDialog := nil;
   Inc(FRun);
-  FContext.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerReviewDone, [mState.Key,
+  FContext.Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewDone, [mState.Key,
     TAtlasTrackerReviewDialog.BuildText(mState) + ', ' + TAtlasTrackerReviewDialog.TestsText(mState)]));
   if AReturn and mState.CanReturn then
   begin
@@ -683,12 +683,12 @@ begin
   TAtlasGuard.Log(Format(cLogBack, [AtlasVcsOutcomeName(AOutcome)], TFormatSettings.Invariant));
   if AOutcome <> TAtlasVcsOutcome.Ok then
   begin
-    FContext.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerReviewBackFailed, [AState.OwnBranch,
+    FContext.Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewBackFailed, [AState.OwnBranch,
       AtlasVcsOutcomeName(AOutcome)]));
     Exit;
   end;
   Moved;
-  FContext.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerReviewBackDone, [AState.OwnBranch]));
+  FContext.Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewBackDone, [AState.OwnBranch]));
   // Arbeitsstand des eigenen Issues ohne Rückfrage zurück (#2052).
   if AState.OwnKey <> '' then
   begin

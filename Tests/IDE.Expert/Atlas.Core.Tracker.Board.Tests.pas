@@ -152,6 +152,7 @@ uses
   Atlas.Core.Tracker.Files,
   Atlas.Core.Tracker.Adapters.LocalFiles,
   Atlas.Core.Tracker.GitHubBoards,
+  Atlas.Core.Tracker.Internals.GitHubGraphQl,
   Atlas.Core.Tracker.YouTrackBoards;
 
 type
@@ -928,10 +929,10 @@ end;
 
 procedure TAtlasGitHubBoardTests.GraphQlUrlForGitHubAndEnterprise;
 begin
-  Assert.AreEqual('https://api.github.com/graphql', TAtlasGitHubBoards.GraphQlUrl(GitHubTarget));
-  Assert.AreEqual('https://git.firma.de/api/graphql', TAtlasGitHubBoards.GraphQlUrl(
+  Assert.AreEqual('https://api.github.com/graphql', TAtlasGitHubGraphQl.Url(GitHubTarget));
+  Assert.AreEqual('https://git.firma.de/api/graphql', TAtlasGitHubGraphQl.Url(
     TAtlasTrackerTarget.Create('github', 'https://git.firma.de', 'team/kasse', '')));
-  Assert.IsTrue(Pos('"owner":"beispiel"', TAtlasGitHubBoards.GraphQlBody('q', ['owner', 'beispiel'])) > 0);
+  Assert.IsTrue(Pos('"owner":"beispiel"', TAtlasGitHubGraphQl.Body('q', ['owner', 'beispiel'])) > 0);
 end;
 
 procedure TAtlasGitHubBoardTests.ProjectsOpenFirstWithViewer;
@@ -983,12 +984,12 @@ procedure TAtlasGitHubBoardTests.MissingScopesAreUnauthorized;
 var
   mMessage: string;
 begin
-  Assert.IsTrue(TAtlasGitHubBoards.GraphQlError(Fixture('GitHub', 'graphql-scopes.json'), mMessage) =
+  Assert.IsTrue(TAtlasGitHubGraphQl.Error(Fixture('GitHub', 'graphql-scopes.json'), mMessage) =
     TAtlasCiFetchError.Unauthorized);
   Assert.IsTrue(Pos('read:project', mMessage) > 0);
-  Assert.IsTrue(TAtlasGitHubBoards.GraphQlError(Fixture('GitHub', 'projects-v2.json'), mMessage) =
+  Assert.IsTrue(TAtlasGitHubGraphQl.Error(Fixture('GitHub', 'projects-v2.json'), mMessage) =
     TAtlasCiFetchError.None);
-  Assert.IsTrue(TAtlasGitHubBoards.GraphQlError('{"errors":[{"message":"x"}]}', mMessage) =
+  Assert.IsTrue(TAtlasGitHubGraphQl.Error('{"errors":[{"message":"x"}]}', mMessage) =
     TAtlasCiFetchError.Invalid);
 end;
 

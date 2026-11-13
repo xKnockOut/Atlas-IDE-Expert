@@ -51,7 +51,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Tracker.Issue.Strings,
   System.SysUtils,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
@@ -108,7 +108,7 @@ var
 begin
   mText := TAtlasIssueTip.Compose('ATL-1', TAtlasIssueTipState.Loading, TAtlasTrackerDetails.Empty,
     TAtlasCiFetchError.None, cNow, True);
-  Assert.IsTrue(mText.StartsWith(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewLoading) + #10#10));
+  Assert.IsTrue(mText.StartsWith(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewLoading) + #10#10));
 end;
 
 procedure TAtlasIssueTipTests.NotFoundNamesKey;
@@ -126,10 +126,10 @@ var
 begin
   mText := TAtlasIssueTip.Compose('ATL-9', TAtlasIssueTipState.Failed, TAtlasTrackerDetails.Empty,
     TAtlasCiFetchError.Unauthorized, cNow, True);
-  Assert.IsTrue(mText.StartsWith(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorToken)), mText);
-  Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorNetwork),
+  Assert.IsTrue(mText.StartsWith(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorToken)), mText);
+  Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorNetwork),
     TAtlasIssueTip.ErrorText(TAtlasCiFetchError.Network, 'ATL-9'));
-  Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorConfig),
+  Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorConfig),
     TAtlasIssueTip.ErrorText(TAtlasCiFetchError.UnknownProvider, 'ATL-9'));
 end;
 
@@ -159,7 +159,7 @@ begin
     TAtlasTrackerDetails.Empty, TAtlasCiFetchError.None));
   Assert.AreEqual('ATL-9 · Issue ATL-9 nicht gefunden.', TAtlasIssueTip.KeyLine('ATL-9',
     TAtlasIssueTipState.NotFound, TAtlasTrackerDetails.Empty, TAtlasCiFetchError.NotFound));
-  Assert.AreEqual('ATL-9 · ' + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorNetwork),
+  Assert.AreEqual('ATL-9 · ' + TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorNetwork),
     TAtlasIssueTip.KeyLine('ATL-9', TAtlasIssueTipState.Failed, TAtlasTrackerDetails.Empty,
     TAtlasCiFetchError.Network));
 end;

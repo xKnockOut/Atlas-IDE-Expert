@@ -13,8 +13,10 @@ uses
   System.Types,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
+  Atlas.Core.Hover.Layout.Contract,
   Atlas.Core.Hover.View,
-  Atlas.Core.Hover.Texts;
+  Atlas.Core.Hover.Texts,
+  Atlas.Core.Hover.Layout.TestSupport;
 
 type
   [TestFixture]
@@ -80,6 +82,9 @@ type
     /// <summary>#54: Compilermeldung mit Katalogeintrag zeigt die Ursache und „Erklären“/„DocWiki“.</summary>
     [Test]
     procedure ExplainedMessagesShowCauseAndLinks;
+    /// <summary>#1779: Fehlgeschlagener Test mit Werten bekommt „Vergleichen“ vor „Erklären“.</summary>
+    [Test]
+    procedure FailedTestOffersCompare;
     /// <summary>#909: Tab wandert reihum über die Aktionen unter den Befunden.</summary>
     [Test]
     procedure NextProblemHitCycles;
@@ -89,16 +94,6 @@ type
     /// <summary>#896: Unit-Zyklus mit anklickbaren Units und „Graph zeigen“.</summary>
     [Test]
     procedure CycleUnitsAreLinks;
-    /// <summary>#110: published-Mitglieder als Tabellen mit Schaltern.</summary>
-    [Test]
-    procedure PublishedMembersAsTables;
-    /// <summary>#1841: Tabellen der published-Mitglieder scrollen ab hover.membersMaxLines bzw. Bildschirmhöhe.
-    /// </summary>
-    [Test]
-    procedure PublishedMembersScroll;
-    /// <summary>#1841: Klickflächen außerhalb des sichtbaren Rollbereichs entfallen.</summary>
-    [Test]
-    procedure ScrolledMembersDropHiddenHits;
   end;
 
 implementation
@@ -113,86 +108,6 @@ uses
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Hover.DebugValue;
 
-type
-  TFakeMeasure = class(TInterfacedObject, IAtlasHoverMeasure)
-  private
-    FDeclaration: string;
-    function Cum: TArray<Integer>;
-  public
-    constructor Create(const ADeclaration: string);
-    function TextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
-    function TextHeight(const AFace: TAtlasHoverFace): Integer;
-    function BlockHeight(const AText: string; AWidth: Integer): Integer;
-    function DeclarationWidth(AFrom, ATill: Integer): Integer;
-    function DeclarationLines(AWidth, AIndent: Integer): TArray<TPoint>;
-  end;
-
-constructor TFakeMeasure.Create(const ADeclaration: string);
-begin
-  inherited Create;
-  FDeclaration := ADeclaration;
-end;
-
-function TFakeMeasure.Cum: TArray<Integer>;
-var
-  Index: Integer;
-begin
-  Result := nil;
-  SetLength(Result, Length(FDeclaration) + 1);
-  for Index := 0 to Length(FDeclaration) do
-  begin
-    Result[Index] := 8 * Index;
-  end;
-end;
-
-function TFakeMeasure.TextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
-begin
-  case AFace.Font of
-    TAtlasHoverFont.Ui:
-      Result := 7 * Length(AText);
-    TAtlasHoverFont.Mono:
-      if AFace.Bold then
-      begin
-        Result := 9 * Length(AText);
-      end
-      else
-      begin
-        Result := 8 * Length(AText);
-      end;
-  else
-    Result := 6 * Length(AText);
-  end;
-end;
-
-function TFakeMeasure.TextHeight(const AFace: TAtlasHoverFace): Integer;
-begin
-  case AFace.Font of
-    TAtlasHoverFont.Ui:
-      Result := 15;
-    TAtlasHoverFont.Mono:
-      Result := 16;
-    TAtlasHoverFont.SmallUi:
-      Result := 13;
-  else
-    Result := 12;
-  end;
-end;
-
-function TFakeMeasure.BlockHeight(const AText: string; AWidth: Integer): Integer;
-begin
-  Result := 15 * ((7 * Length(AText) + AWidth - 1) div AWidth);
-end;
-
-function TFakeMeasure.DeclarationWidth(AFrom, ATill: Integer): Integer;
-begin
-  Result := 8 * (ATill - AFrom);
-end;
-
-function TFakeMeasure.DeclarationLines(AWidth, AIndent: Integer): TArray<TPoint>;
-begin
-  Result := TAtlasWrap.AtSpaces(FDeclaration, Cum, AWidth, AIndent);
-end;
-
 { THoverLayoutTests }
 
 function THoverLayoutTests.View(const ADeclaration: string): TAtlasHoverView;
@@ -206,43 +121,12 @@ end;
 
 function THoverLayoutTests.Texts: TAtlasHoverTexts;
 begin
-  Result := Default(TAtlasHoverTexts);
-  Result.Pinned := 'pinned';
-  Result.Inheritance := 'Vererbung';
-  Result.TargetType := 'Ziel %s';
-  Result.Navigate := 'Go';
-  Result.Usages := 'Us';
-  Result.UsagesCount := '%d Us';
-  Result.Copy := 'Cp';
-  Result.CopySelection := 'Sel';
-  Result.Help := 'H';
-  Result.KeyUsages := 'U';
-  Result.KeyCopy := 'C';
-  Result.SourceAtlas := 'Atlas';
-  Result.SourceCompiler := 'dcc';
-  Result.SourceInactive := 'inaktiv';
-  Result.Stale := 'alt';
-  Result.DebugPending := 'eval';
-  Result.DebugExplaining := 'sucht';
-  Result.DebugChecked := 'geprüft';
-  Result.ReassignedOne := 'einmal %s';
-  Result.ReassignedCount := '%d mal %s';
+  Result := HoverTestTexts;
 end;
 
 function THoverLayoutTests.Input(const AView: TAtlasHoverView; AWidth: Integer): TAtlasHoverInput;
 begin
-  Result := Default(TAtlasHoverInput);
-  Result.View := AView;
-  Result.Width := AWidth;
-  Result.PPI := 96;
-  Result.Colors := TAtlasColors.Light;
-  Result.Texts := Texts;
-end;
-
-/// <summary>Layout mit der Messung der Tests.</summary>
-function BuildLayout(const AInput: TAtlasHoverInput): TAtlasHoverLayout;
-begin
-  Result := TAtlasHoverLayout.Build(AInput, TFakeMeasure.Create(AInput.View.Data.Declaration));
+  Result := HoverTestInput(AView, AWidth);
 end;
 
 function THoverLayoutTests.Build(const AInput: TAtlasHoverInput): TAtlasHoverLayout;
@@ -554,18 +438,6 @@ begin
   Assert.IsTrue(Found);
   Assert.AreEqual(38, Layout.Items[FirstKind(Layout, TAtlasHoverItemKind.Styled)].Rect.Top);
   Assert.AreEqual(62, Layout.Height);
-end;
-
-function ActionsView: TAtlasHoverView;
-var
-  Data: TAtlasHoverData;
-begin
-  Data := Default(TAtlasHoverData);
-  Data.Declaration := 'x';
-  Data.Location.Name := 'x';
-  Data.Location.FileName := 'C:\a\U.pas';
-  Data.Location.Line := 4;
-  Result := TAtlasHoverView.Create(Data);
 end;
 
 procedure THoverLayoutTests.PinnedShowsActions;
@@ -1000,6 +872,41 @@ begin
     TextsOf(Layout, TAtlasHoverItemKind.Block));
 end;
 
+procedure THoverLayoutTests.FailedTestOffersCompare;
+var
+  HoverView: TAtlasHoverView;
+  HoverInput: TAtlasHoverInput;
+  Layout: TAtlasHoverLayout;
+  Explanations: TArray<TAtlasHoverExplanation>;
+begin
+  HoverView := View('');
+  HoverView.Problems := [Finding(TAtlasProblemSeverity.Error, 'DUnitX', '', 'Expected 3 but got 0', '')];
+  HoverInput := Input(HoverView, 460);
+  HoverInput.Texts.Explain := 'Erklären';
+  HoverInput.Texts.Compare := 'Vergleichen';
+  HoverInput.ProblemActions := True;
+  // Ohne Werte (kein Modul Tests, tests.compare aus): keine Links.
+  Layout := Build(HoverInput);
+  Assert.AreEqual('', ActionCodes(Layout));
+  HoverView.Comparisons := [True];
+  HoverInput.View := HoverView;
+  Layout := Build(HoverInput);
+  // Compare ist die Aktion 11.
+  Assert.AreEqual('0:11|', ActionCodes(Layout));
+  Assert.IsTrue(Pos('Vergleichen', TextsOf(Layout, TAtlasHoverItemKind.Text)) > 0,
+    TextsOf(Layout, TAtlasHoverItemKind.Text));
+  SetLength(Explanations, 1);
+  Explanations[0] := Default(TAtlasHoverExplanation);
+  Explanations[0].Known := True;
+  HoverView.Explanations := Explanations;
+  HoverInput.View := HoverView;
+  Layout := Build(HoverInput);
+  Assert.AreEqual('0:11|0:8|', ActionCodes(Layout));
+  // Mehr Werte als Probleme oder ein negativer Index zählen nicht.
+  Assert.IsFalse(HoverView.CanCompare(1));
+  Assert.IsFalse(HoverView.CanCompare(-1));
+end;
+
 procedure THoverLayoutTests.NextProblemHitCycles;
 var
   HoverView: TAtlasHoverView;
@@ -1092,247 +999,6 @@ begin
   // Ohne Aktionszeile kein Beispiel.
   HoverInput.ProblemActions := False;
   Assert.AreEqual(0, Pos('Verschluckt', TextsOf(Build(HoverInput), TAtlasHoverItemKind.Block)));
-end;
-
-function Member(const AName, AType, ADeclaring: string; AKind: TAtlasHoverDefaultKind;
-  const AValue: string): TAtlasHoverMember;
-begin
-  Result := Default(TAtlasHoverMember);
-  Result.Name := AName;
-  Result.TypeName := AType;
-  Result.DeclaringClass := ADeclaring;
-  Result.DefaultKind := AKind;
-  Result.DefaultValue := AValue;
-end;
-
-function EventMember(const AName, AType, ADeclaring: string): TAtlasHoverMember;
-begin
-  Result := Member(AName, AType, ADeclaring, hdNone, '');
-  Result.IsEvent := True;
-end;
-
-/// <summary>Kennungen der published-Treffer in ihrer Reihenfolge.</summary>
-function PublishedCodes(const ALayout: TAtlasHoverLayout): string;
-var
-  mHit: TAtlasHoverHit;
-begin
-  Result := '';
-  for mHit in ALayout.Hits do
-  begin
-    if mHit.Kind = TAtlasHoverHitKind.Published then
-    begin
-      Result := Result + IntToStr(mHit.Index);
-    end;
-  end;
-end;
-
-/// <summary>Ob ein Element des Layouts genau diesen Text zeigt.</summary>
-function HasItemText(const ALayout: TAtlasHoverLayout; const AText: string): Boolean;
-var
-  mItem: TAtlasHoverItem;
-begin
-  for mItem in ALayout.Items do
-  begin
-    if mItem.Text = AText then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-/// <summary>Schalter, Abschnitte, weitere Zeilen, geerbte und nur mit default.</summary>
-procedure AssertPublishedToggles(const AHoverView: TAtlasHoverView; const AHoverInput: TAtlasHoverInput;
-  const ALayout: TAtlasHoverLayout);
-var
-  mHoverView: TAtlasHoverView;
-  mHoverInput: TAtlasHoverInput;
-  mLayout: TAtlasHoverLayout;
-begin
-  mHoverView := AHoverView;
-  mHoverInput := AHoverInput;
-  mLayout := ALayout;
-  // Schalter, Abschnitte, „+ 1 weitere Properties“ (8 > 7), „+ 1 weitere Ereignisse“ (5 > 4).
-  Assert.AreEqual('012435', PublishedCodes(mLayout));
-  Assert.IsTrue(HasItemText(mLayout, 'published: 8 Properties · 5 Ereignisse'));
-  Assert.IsTrue(HasItemText(mLayout, 'PROPERTIES ▾'));
-  Assert.IsTrue(HasItemText(mLayout, 'implizit'));
-  Assert.IsTrue(HasItemText(mLayout, 'crDefault'));
-  Assert.IsTrue(HasItemText(mLayout, 'nodefault'));
-  Assert.IsTrue(HasItemText(mLayout, 'stored False'));
-  Assert.IsTrue(HasItemText(mLayout, '+ 1 weitere Properties'));
-  Assert.IsFalse(HasItemText(mLayout, 'Width'), 'achte Zeile erst nach dem Klick');
-  Assert.IsTrue(HasItemText(mLayout, 'Controls[Index: Integer]'));
-  Assert.IsTrue(HasItemText(mLayout, 'Standard-Property'));
-  Assert.IsTrue(HasItemText(mLayout, 'Liste'), 'Strg+C kopiert die Liste');
-  // Ereignis am Methodenzeiger-Typ erkannt: kenntlich, wenn der Typname es nicht verrät.
-  Assert.IsFalse(HasItemText(mLayout, '(of object)'), 'OnRueckmeldung steht erst hinter „+ 1 weitere“');
-  mHoverView.Toggle(TAtlasHoverPublishedToggle.MoreProperties);
-  mHoverView.Toggle(TAtlasHoverPublishedToggle.MoreEvents);
-  mHoverInput.View := mHoverView;
-  mLayout := BuildLayout(mHoverInput);
-  Assert.IsTrue(HasItemText(mLayout, 'Width'));
-  Assert.IsTrue(HasItemText(mLayout, '(of object)'));
-  Assert.AreEqual('0123', PublishedCodes(mLayout));
-  // Ohne geerbte: nur die zwei eigenen Properties und das eigene Ereignis.
-  mHoverView.Toggle(TAtlasHoverPublishedToggle.ShowInherited);
-  mHoverInput.View := mHoverView;
-  mLayout := BuildLayout(mHoverInput);
-  Assert.IsTrue(HasItemText(mLayout, 'Cancel'));
-  Assert.IsFalse(HasItemText(mLayout, 'Cursor'));
-  Assert.IsFalse(HasItemText(mLayout, 'OnClick'));
-  Assert.IsTrue(HasItemText(mLayout, 'OnRueckmeldung'));
-  // Zugeklappt: nur der Titel.
-  mHoverView.Toggle(TAtlasHoverPublishedToggle.ShowInherited);
-  mHoverView.Toggle(TAtlasHoverPublishedToggle.Properties);
-  mHoverInput.View := mHoverView;
-  mLayout := BuildLayout(mHoverInput);
-  Assert.IsTrue(HasItemText(mLayout, 'PROPERTIES ▸'));
-  Assert.IsFalse(HasItemText(mLayout, 'Cancel'));
-  Assert.IsTrue(HasItemText(mLayout, 'OnClick'));
-  // Nur mit default: Cancel, Default, Cursor.
-  mHoverView.Toggle(TAtlasHoverPublishedToggle.Properties);
-  mHoverView.Toggle(TAtlasHoverPublishedToggle.OnlyDefaults);
-  mHoverInput.View := mHoverView;
-  mLayout := BuildLayout(mHoverInput);
-  Assert.IsTrue(HasItemText(mLayout, 'Cursor'));
-  Assert.IsFalse(HasItemText(mLayout, 'Height'));
-  Assert.IsFalse(HasItemText(mLayout, 'Hint'));
-end;
-
-procedure THoverLayoutTests.PublishedMembersAsTables;
-var
-  HoverView: TAtlasHoverView;
-  HoverInput: TAtlasHoverInput;
-  Layout: TAtlasHoverLayout;
-  Hint: TAtlasHoverMember;
-begin
-  HoverView := ActionsView;
-  HoverView.Data.Location.Name := 'TKnopf';
-  Hint := Member('Hint', 'string', 'TControl', hdNone, '');
-  Hint.Stored := 'False';
-  HoverView.Data.Members := [Member('Cancel', 'Boolean', 'TKnopf', hdImplicit, 'False'),
-    Member('Default', 'Boolean', 'TKnopf', hdImplicit, 'False'),
-    Member('Cursor', 'TCursor', 'TControl', hdExplicit, 'crDefault'),
-    Member('Height', 'Integer', 'TControl', hdNoDefault, ''), Hint,
-    Member('Left', 'Integer', 'TControl', hdNone, ''), Member('Top', 'Integer', 'TControl', hdNone, ''),
-    Member('Width', 'Integer', 'TControl', hdNone, ''),
-    EventMember('OnClick', 'TNotifyEvent', 'TControl'), EventMember('OnEnter', 'TNotifyEvent', 'TWinControl'),
-    EventMember('OnKeyDown', 'TKeyEvent', 'TWinControl'), EventMember('OnExit', 'TNotifyEvent', 'TWinControl'),
-    EventMember('OnRueckmeldung', 'TMeinRueckruf', 'TKnopf')];
-  HoverView.Data.DefaultProperty := 'Controls[Index: Integer]: TControl';
-  HoverInput := Input(HoverView, 460);
-  HoverInput.Texts.PublishedSummary := 'published: %d Properties · %d Ereignisse';
-  HoverInput.Texts.PublishedInherited := 'geerbte';
-  HoverInput.Texts.PublishedOnlyDefaults := 'nur mit default';
-  HoverInput.Texts.PublishedProperties := 'Properties';
-  HoverInput.Texts.PublishedEvents := 'Ereignisse';
-  HoverInput.Texts.PublishedName := 'Name';
-  HoverInput.Texts.PublishedImplicit := 'implizit';
-  HoverInput.Texts.PublishedMoreProperties := '+ %d weitere Properties';
-  HoverInput.Texts.PublishedMoreEvents := '+ %d weitere Ereignisse';
-  HoverInput.Texts.PublishedArrayProperty := 'Array-Property';
-  HoverInput.Texts.PublishedDefaultProperty := 'Standard-Property';
-  HoverInput.Texts.PublishedCopyList := 'Liste';
-  Layout := Build(HoverInput);
-  AssertPublishedToggles(HoverView, HoverInput, Layout);
-  // Ohne Mitglieder kein Abschnitt.
-  Layout := Build(ActionsView, 460);
-  Assert.AreEqual('', PublishedCodes(Layout));
-end;
-
-/// <summary>Komponente mit 40 Properties, alle gezeigt.</summary>
-function ManyMembersInput(AMaxLines, ALimit, AScroll: Integer): TAtlasHoverInput;
-var
-  mView: TAtlasHoverView;
-  mIndex: Integer;
-begin
-  mView := ActionsView;
-  mView.Data.Members := nil;
-  SetLength(mView.Data.Members, 40);
-  for mIndex := 0 to 39 do
-  begin
-    mView.Data.Members[mIndex] := Member('P' + IntToStr(mIndex), 'Integer', 'TControl', hdNone, '');
-  end;
-  mView.AllProperties := True;
-  Result := Default(TAtlasHoverInput);
-  Result.View := mView;
-  Result.Width := 460;
-  Result.PPI := 96;
-  Result.Colors := TAtlasColors.Light;
-  Result.Texts.PublishedSummary := 'published: %d Properties · %d Ereignisse';
-  Result.Texts.PublishedProperties := 'Properties';
-  Result.Members.MaxLines := AMaxLines;
-  Result.Members.Limit := ALimit;
-  Result.Members.Scroll := AScroll;
-end;
-
-/// <summary>Obere Kante des Bausteins mit Text AText; -1 ohne.</summary>
-function ItemTop(const ALayout: TAtlasHoverLayout; const AText: string): Integer;
-var
-  mItem: TAtlasHoverItem;
-begin
-  for mItem in ALayout.Items do
-  begin
-    if mItem.Text = AText then
-    begin
-      Exit(mItem.Rect.Top);
-    end;
-  end;
-  Result := -1;
-end;
-
-procedure THoverLayoutTests.PublishedMembersScroll;
-var
-  mFull, mLayout: TAtlasHoverLayout;
-begin
-  // Ohne Grenze: kein Rollbereich, alles sichtbar.
-  mFull := BuildLayout(ManyMembersInput(0, 0, 0));
-  Assert.IsFalse(mFull.Members.Scrollable);
-  Assert.AreEqual(-1, mFull.Members.ClipFrom);
-  Assert.AreEqual(mFull.Members.Content, mFull.Members.View.Height);
-  // Fünf Zeilen zu je 16 + 3 Pixeln.
-  mLayout := BuildLayout(ManyMembersInput(5, 0, 0));
-  Assert.IsTrue(mLayout.Members.Scrollable);
-  Assert.AreEqual(95, mLayout.Members.View.Height);
-  Assert.AreEqual(19, mLayout.Members.Row);
-  Assert.AreEqual(mFull.Members.Content, mLayout.Members.Content);
-  Assert.AreEqual(mFull.Height - mFull.Members.Content + 95, mLayout.Height);
-  Assert.IsTrue((mLayout.Members.ClipFrom >= 0) and (mLayout.Members.ClipTill > mLayout.Members.ClipFrom));
-  // Daumen nach dem beschnittenen Bereich am rechten Rand.
-  Assert.AreEqual(Ord(TAtlasHoverItemKind.RoundFill), Ord(mLayout.Items[mLayout.Members.ClipTill].Kind));
-  Assert.AreEqual(453, mLayout.Items[mLayout.Members.ClipTill].Rect.Left);
-  Assert.AreEqual(mLayout.Members.View.Top, mLayout.Items[mLayout.Members.ClipTill].Rect.Top);
-  // Bildschirm enger als die Zeilen: die kleinere Grenze, mindestens drei Zeilen.
-  Assert.AreEqual(60, BuildLayout(ManyMembersInput(5, 60, 0)).Members.View.Height);
-  Assert.AreEqual(57, BuildLayout(ManyMembersInput(5, 20, 0)).Members.View.Height);
-  Assert.AreEqual(57, BuildLayout(ManyMembersInput(0, 20, 0)).Members.View.Height);
-  // Versatz verschiebt die Zeilen, zu großer Versatz wird begrenzt.
-  mLayout := BuildLayout(ManyMembersInput(5, 0, 38));
-  Assert.AreEqual(38, mLayout.Members.Scroll);
-  Assert.AreEqual(ItemTop(mFull, 'P5') - 38, ItemTop(mLayout, 'P5'));
-  mLayout := BuildLayout(ManyMembersInput(5, 0, 100000));
-  Assert.AreEqual(mLayout.Members.MaxScroll, mLayout.Members.Scroll);
-  Assert.AreEqual(mLayout.Members.View.Bottom, mLayout.Items[mLayout.Members.ClipTill].Rect.Bottom);
-end;
-
-procedure THoverLayoutTests.ScrolledMembersDropHiddenHits;
-var
-  mLayout: TAtlasHoverLayout;
-  mHit: TAtlasHoverHit;
-begin
-  // Oben: Schalter (0, 1) und Abschnittstitel (2); ganz unten gescrollt ist der Titel verschwunden.
-  mLayout := BuildLayout(ManyMembersInput(5, 0, 0));
-  Assert.AreEqual('012', PublishedCodes(mLayout));
-  mLayout := BuildLayout(ManyMembersInput(5, 0, 100000));
-  Assert.AreEqual('01', PublishedCodes(mLayout));
-  for mHit in mLayout.Hits do
-  begin
-    if (mHit.Kind = TAtlasHoverHitKind.Published) and (mHit.Rect.Top >= mLayout.Members.View.Top) then
-    begin
-      Assert.IsTrue(mHit.Rect.Bottom <= mLayout.Members.View.Bottom);
-    end;
-  end;
 end;
 
 initialization

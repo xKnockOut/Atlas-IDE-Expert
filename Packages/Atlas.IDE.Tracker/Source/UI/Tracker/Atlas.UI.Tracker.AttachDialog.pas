@@ -179,7 +179,9 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   Atlas.Core.Tracker.Files,
-  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings,
+  Atlas.UI.Strings,
+  Atlas.UI.Tracker.Issue.Strings,
+  Atlas.UI.Tracker.Attach.Strings,
   Atlas.UI.Tracker.ImageMarkup;
 
 { TAtlasAttachDialogInput }
@@ -206,7 +208,7 @@ begin
   AFile := TAtlasAttachFile.CreateText(TAtlasAttachKind.LogFile, ExtractFileName(ALog), mText);
   if ALines > 0 then
   begin
-    AFile.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachLogCaption, [ExtractFileName(ALog), ALines]);
+    AFile.Caption := TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachLogCaption, [ExtractFileName(ALog), ALines]);
   end;
 end;
 
@@ -226,7 +228,7 @@ begin
   end;
   // Nicht festhalten: Der Aufrufer gibt das Bild frei.
   FInput.FormImage := nil;
-  Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCaption);
+  Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachCaption);
   BorderStyle := bsDialog;
   Position := poMainFormCenter;
   ClientWidth := ScaleValue(cDialogWidth);
@@ -291,7 +293,7 @@ begin
   mLabel := TLabel.Create(ADialog);
   mLabel.Parent := ADialog;
   mLabel.SetBounds(TAtlasAttachDialog.cGap, ATop + 4, 60, 15);
-  mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachIssue);
+  mLabel.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachIssue);
   ADialog.FParts.Issue := TComboBox.Create(ADialog);
   ADialog.FParts.Issue.Parent := ADialog;
   ADialog.FParts.Issue.SetBounds(TAtlasAttachDialog.cGap + 70, ATop,
@@ -310,12 +312,12 @@ begin
   ADialog.FParts.Hint.Anchors := [akLeft, akTop, akRight];
   if ADialog.FInput.CanUpload then
   begin
-    ADialog.FParts.Hint.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachUploadHint,
+    ADialog.FParts.Hint.Caption := TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachUploadHint,
       [ADialog.FInput.Tracker]);
   end
   else
   begin
-    ADialog.FParts.Hint.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachFallbackHint,
+    ADialog.FParts.Hint.Caption := TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachFallbackHint,
       [ADialog.FInput.Tracker]);
   end;
   Inc(ATop, 38);
@@ -325,7 +327,7 @@ end;
 procedure AddScreenshotRows(ADialog: TAtlasAttachDialog; AGroup: TWinControl; var ARow: Integer);
 begin
   ADialog.FParts.Screenshot := AddCheck(ADialog, AGroup, ARow,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachScreenshot));
+    TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachScreenshot));
   ADialog.FParts.Screenshot.Width := ADialog.FParts.Screenshot.ScaleValue(250);
   ADialog.FParts.WindowBox := TComboBox.Create(ADialog);
   ADialog.FParts.WindowBox.Parent := AGroup;
@@ -333,13 +335,13 @@ begin
   ADialog.FParts.WindowBox.SetBounds(262, ARow - 2, 150, 23);
   ADialog.FParts.WindowBox.OnChange := ADialog.WindowChanged;
   ADialog.FParts.Pick := AddButton(ADialog, AGroup, Bounds(418, ARow - 3, 120, 25),
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachWindowPick), ADialog.PickClick);
-  ADialog.FParts.Pick.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachWindowPickHint);
+    TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachWindowPick), ADialog.PickClick);
+  ADialog.FParts.Pick.Hint := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachWindowPickHint);
   ADialog.FParts.Pick.ShowHint := True;
   // Die VCL zeigt Hinweise auch über gesperrten Steuerelementen (TApplication.DoMouseIdle).
   ADialog.FParts.WindowBox.ShowHint := True;
   ADialog.FParts.ShotMarkup := AddButton(ADialog, AGroup, Bounds(544, ARow - 3, 110, 25),
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachMarkup), ADialog.MarkupClick);
+    TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachMarkup), ADialog.MarkupClick);
   Inc(ARow, 24);
   ADialog.FParts.ShotInfo := AddInfo(ADialog, AGroup, ARow);
   Inc(ARow, 22);
@@ -352,24 +354,24 @@ var
 begin
   if ADialog.FImages.Form <> nil then
   begin
-    mCaption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachForm, [ADialog.FInput.FormName]);
+    mCaption := TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachForm, [ADialog.FInput.FormName]);
   end
   else
   begin
-    mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachNoForm);
+    mCaption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachNoForm);
   end;
   ADialog.FParts.FormCheck := AddCheck(ADialog, AGroup, ARow, mCaption);
   ADialog.FParts.FormCheck.Width := ADialog.FParts.FormCheck.ScaleValue(520);
   ADialog.FParts.FormCheck.Enabled := ADialog.FImages.Form <> nil;
   ADialog.FParts.FormMarkup := AddButton(ADialog, AGroup, Bounds(544, ARow - 3, 110, 25),
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachMarkup), ADialog.MarkupClick);
+    TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachMarkup), ADialog.MarkupClick);
   Inc(ARow, 28);
 end;
 
 /// <summary>Logdatei mit Vorschlägen; nur die letzten N Zeilen.</summary>
 procedure AddLogRows(ADialog: TAtlasAttachDialog; AGroup: TWinControl; var ARow: Integer);
 begin
-  ADialog.FParts.Log := AddCheck(ADialog, AGroup, ARow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachLog));
+  ADialog.FParts.Log := AddCheck(ADialog, AGroup, ARow, TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachLog));
   ADialog.FParts.Log.Width := ADialog.FParts.Log.ScaleValue(90);
   ADialog.FParts.LogBox := TComboBox.Create(ADialog);
   ADialog.FParts.LogBox.Parent := AGroup;
@@ -381,9 +383,9 @@ begin
   end;
   ADialog.FParts.LogBox.OnChange := ADialog.LogChanged;
   ADialog.FParts.LogBrowse := AddButton(ADialog, AGroup, Bounds(356, ARow - 3, 28, 25),
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachLogBrowse), ADialog.LogBrowseClick);
+    TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachLogBrowse), ADialog.LogBrowseClick);
   ADialog.FParts.LogLines := AddCheck(ADialog, AGroup, ARow,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachLogLines));
+    TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachLogLines));
   ADialog.FParts.LogLines.SetBounds(394, ARow, 180, 21);
   ADialog.FParts.LogLines.Checked := True;
   ADialog.FParts.LogCount := TEdit.Create(ADialog);
@@ -403,26 +405,26 @@ procedure AddNoteRows(ADialog: TAtlasAttachDialog; AGroup: TWinControl; var ARow
 var
   mCaption: string;
 begin
-  mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachDebugNoteOff);
+  mCaption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachDebugNoteOff);
   if ADialog.FInput.DebugNote <> '' then
   begin
-    mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachDebugNote);
+    mCaption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachDebugNote);
   end;
   ADialog.FParts.DebugNote := AddCheck(ADialog, AGroup, ARow, mCaption);
   ADialog.FParts.DebugNote.Width := ADialog.FParts.DebugNote.ScaleValue(600);
   ADialog.FParts.DebugNote.Enabled := ADialog.FInput.DebugNote <> '';
   Inc(ARow, 26);
-  mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachExceptionsNone);
+  mCaption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachExceptionsNone);
   if ADialog.FInput.ExceptionCount > 0 then
   begin
-    mCaption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachExceptions, [ADialog.FInput.ExceptionCount]);
+    mCaption := TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachExceptions, [ADialog.FInput.ExceptionCount]);
   end;
   ADialog.FParts.Exceptions := AddCheck(ADialog, AGroup, ARow, mCaption);
   ADialog.FParts.Exceptions.Width := ADialog.FParts.Exceptions.ScaleValue(600);
   ADialog.FParts.Exceptions.Enabled := (ADialog.FInput.ExceptionCount > 0) and (ADialog.FInput.ExceptionsText <> '');
   Inc(ARow, 26);
   ADialog.FParts.Extra := AddCheck(ADialog, AGroup, ARow,
-    TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachCrashCase, [Length(ADialog.FInput.Extra)]));
+    TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachCrashCase, [Length(ADialog.FInput.Extra)]));
   ADialog.FParts.Extra.Width := ADialog.FParts.Extra.ScaleValue(600);
   ADialog.FParts.Extra.Enabled := Length(ADialog.FInput.Extra) > 0;
   ADialog.FParts.Extra.Checked := ADialog.FParts.Extra.Enabled;
@@ -436,7 +438,7 @@ var
 begin
   mGroup := TGroupBox.Create(ADialog);
   mGroup.Parent := ADialog;
-  mGroup.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachSources);
+  mGroup.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachSources);
   mGroup.SetBounds(TAtlasAttachDialog.cGap, ATop, TAtlasAttachDialog.cDialogWidth - 2 * TAtlasAttachDialog.cGap, 248);
   mGroup.Anchors := [akLeft, akTop, akRight];
   mRow := 22;
@@ -451,7 +453,7 @@ end;
 procedure AddCommentRows(ADialog: TAtlasAttachDialog; var ATop: Integer);
 begin
   ADialog.FParts.Comment := AddCheck(ADialog, ADialog, ATop,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachComment));
+    TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachComment));
   ADialog.FParts.Comment.Width := TAtlasAttachDialog.cDialogWidth - 2 * TAtlasAttachDialog.cGap;
   Inc(ATop, 24);
   ADialog.FParts.CommentMemo := TMemo.Create(ADialog);
@@ -474,7 +476,7 @@ begin
   mLabel := TLabel.Create(ADialog);
   mLabel.Parent := ADialog;
   mLabel.SetBounds(TAtlasAttachDialog.cGap, ATop, TAtlasAttachDialog.cDialogWidth - 2 * TAtlasAttachDialog.cGap, 15);
-  mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachFiles);
+  mLabel.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachFiles);
   Inc(ATop, 20);
   ADialog.FParts.List := TListView.Create(ADialog);
   ADialog.FParts.List.Parent := ADialog;
@@ -486,10 +488,10 @@ begin
   ADialog.FParts.List.RowSelect := True;
   ADialog.FParts.List.ShowColumnHeaders := True;
   mColumn := ADialog.FParts.List.Columns.Add;
-  mColumn.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnName);
+  mColumn.Caption := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewColumnName);
   mColumn.Width := ADialog.FParts.List.ScaleValue(480);
   mColumn := ADialog.FParts.List.Columns.Add;
-  mColumn.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnSize);
+  mColumn.Caption := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewColumnSize);
   mColumn.Width := ADialog.FParts.List.ScaleValue(120);
   mColumn.Alignment := taRightJustify;
   ADialog.FParts.List.OnDblClick := ADialog.ListDblClick;
@@ -511,7 +513,7 @@ begin
   ADialog.FParts.Send.Parent := mBottom;
   ADialog.FParts.Send.SetBounds(TAtlasAttachDialog.cDialogWidth - 2 * (110 + TAtlasAttachDialog.cGap), 8, 110, 28);
   ADialog.FParts.Send.Anchors := [akTop, akRight];
-  ADialog.FParts.Send.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachSend);
+  ADialog.FParts.Send.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachSend);
   ADialog.FParts.Send.Default := True;
   ADialog.FParts.Send.ModalResult := mrOk;
   mButton := TButton.Create(ADialog);
@@ -577,13 +579,13 @@ begin
     // Kurz in der Liste, die Erklärung als Hinweis: Die Liste ist schmal.
     if FInput.ProcessId = 0 then
     begin
-      FParts.WindowBox.Items.Add(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachNoProgram));
-      FParts.WindowBox.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachNoProgramHint);
+      FParts.WindowBox.Items.Add(TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachNoProgram));
+      FParts.WindowBox.Hint := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachNoProgramHint);
     end
     else if Length(FWindows) = 0 then
     begin
-      FParts.WindowBox.Items.Add(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachNoWindows));
-      FParts.WindowBox.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachNoWindowsHint);
+      FParts.WindowBox.Items.Add(TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachNoWindows));
+      FParts.WindowBox.Hint := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachNoWindowsHint);
     end;
   finally
     FParts.WindowBox.Items.EndUpdate;
@@ -630,7 +632,7 @@ begin
   end
   else
   begin
-    FParts.ShotInfo.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCaptureFailed);
+    FParts.ShotInfo.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachCaptureFailed);
   end;
   FUpdating := True;
   try
@@ -678,7 +680,7 @@ end;
 
 procedure TAtlasAttachDialog.PickClick(Sender: TObject);
 begin
-  FParts.ShotInfo.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachWindowPicking);
+  FParts.ShotInfo.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachWindowPicking);
   FParts.Pick.Enabled := False;
   FRaised := RaiseProgram(FInput);
   FPicker.Start(Picked);
@@ -741,7 +743,7 @@ var
 begin
   mDialog := TOpenDialog.Create(Self);
   try
-    mDialog.Filter := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachLogFilter);
+    mDialog.Filter := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachLogFilter);
     mDialog.Options := [ofFileMustExist, ofEnableSizing];
     if FParts.LogBox.Text <> '' then
     begin
@@ -844,13 +846,13 @@ begin
   if ADialog.FParts.Screenshot.Checked and (ADialog.FImages.Shot <> nil) then
   begin
     AFiles := AFiles + [TAtlasAttachFile.CreateImage(TAtlasAttachKind.Screenshot,
-      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachScreenshotName) + '.png',
+      TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachScreenshotName) + '.png',
       ImagePng(ADialog.FImages.Shot, ADialog.FInput.MaxImageWidth, ADialog.FImages.ShotPng))];
   end;
   if ADialog.FParts.FormCheck.Checked and (ADialog.FImages.Form <> nil) then
   begin
     AFiles := AFiles + [TAtlasAttachFile.CreateImage(TAtlasAttachKind.Form,
-      TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachFormName, [ADialog.FInput.FormName]) + '.png',
+      TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachFormName, [ADialog.FInput.FormName]) + '.png',
       ImagePng(ADialog.FImages.Form, ADialog.FInput.MaxImageWidth, ADialog.FImages.FormPng))];
   end;
 end;
@@ -873,7 +875,7 @@ begin
   end
   else
   begin
-    AParts.LogInfo.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachLogMissing, [ExtractFileName(mLog)]);
+    AParts.LogInfo.Caption := TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachLogMissing, [ExtractFileName(mLog)]);
   end;
 end;
 
@@ -886,14 +888,14 @@ begin
   begin
     mFile := TAtlasAttachFile.CreateText(TAtlasAttachKind.DebugNote, ADialog.FInput.DebugNoteName,
       ADialog.FInput.DebugNote);
-    mFile.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachDebugNoteCaption);
+    mFile.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachDebugNoteCaption);
     AFiles := AFiles + [mFile];
   end;
   if ADialog.FParts.Exceptions.Checked and (ADialog.FInput.ExceptionsText <> '') then
   begin
     mFile := TAtlasAttachFile.CreateText(TAtlasAttachKind.Exceptions,
-      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachExceptionsName), ADialog.FInput.ExceptionsText);
-    mFile.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachExceptionsCaption);
+      TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachExceptionsName), ADialog.FInput.ExceptionsText);
+    mFile.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachExceptionsCaption);
     AFiles := AFiles + [mFile];
   end;
   if ADialog.FParts.Extra.Checked then
@@ -936,7 +938,7 @@ begin
     end;
     if (Length(AFiles) = 0) and AWithComment then
     begin
-      AList.Items.Add.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCommentOnly);
+      AList.Items.Add.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachCommentOnly);
     end;
   finally
     AList.Items.EndUpdate;

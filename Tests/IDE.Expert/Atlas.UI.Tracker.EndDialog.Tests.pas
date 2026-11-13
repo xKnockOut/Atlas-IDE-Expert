@@ -60,6 +60,9 @@ type
     procedure DuplicateNeedsOriginal;
     [Test]
     procedure SummaryTextWithClose;
+    /// <summary>Status im Projekt (#2134): eigene Zeile statt des Zustands, Grund bei fehlender Option.</summary>
+    [Test]
+    procedure ProjectStatusInOwnLine;
   end;
 
 implementation
@@ -626,6 +629,38 @@ begin
   Assert.AreEqual('als nicht geplant geschlossen', TAtlasTrackerEndDialog.SummaryText(mChange));
   mChange := TAtlasTrackerWorkflow.WithClose(TAtlasTrackerWrite.Empty, TAtlasTrackerClose.Completed, '', '');
   Assert.AreEqual('geschlossen', TAtlasTrackerEndDialog.SummaryText(mChange));
+end;
+
+procedure TAtlasTrackerEndDialogTests.ProjectStatusInOwnLine;
+var
+  mChange: TAtlasTrackerWrite;
+  mResult: TAtlasTrackerWriteResult;
+  mLines: TArray<string>;
+begin
+  mChange := TAtlasTrackerWrite.Empty;
+  mChange.State := 'In Progress';
+  mChange.Assign := TAtlasTrackerAssign.Me;
+  mResult := TAtlasTrackerWriteResult.Ok;
+  mResult.Project.Project := 'Atlas 2.1';
+  mResult.Project.Before := 'Todo';
+  mResult.Project.After := 'In Progress';
+  mLines := TAtlasTrackerEndTexts.StartLines('#7', mChange, mResult);
+  Assert.AreEqual(2, Integer(Length(mLines)));
+  Assert.IsFalse(mLines[0].Contains('In Progress'), mLines[0]);
+  Assert.AreEqual('#7: Status im Projekt „Atlas 2.1“ Todo → In Progress', mLines[1]);
+  // Nur der Zustand: allein die Zeile zum Projekt.
+  mChange.Assign := TAtlasTrackerAssign.Keep;
+  Assert.AreEqual(1, Integer(Length(TAtlasTrackerEndTexts.StartLines('#7', mChange, mResult))));
+  // Ohne Projekt wie bisher: der Zustand steht in der Zeile.
+  mLines := TAtlasTrackerEndTexts.StartLines('#7', mChange, TAtlasTrackerWriteResult.Ok);
+  Assert.AreEqual(1, Integer(Length(mLines)));
+  Assert.IsTrue(mLines[0].Contains('In Progress'), mLines[0]);
+  mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, '');
+  mResult.Project.Project := 'Atlas 2.1';
+  mResult.Project.MissingOption := 'In Arbeit';
+  Assert.AreEqual('#7: Das Statusfeld im Projekt „Atlas 2.1“ hat keine Option „In Arbeit“; nichts geändert.',
+    TAtlasTrackerEndDialog.ErrorText('#7', mResult));
+  mLines := nil;
 end;
 
 initialization

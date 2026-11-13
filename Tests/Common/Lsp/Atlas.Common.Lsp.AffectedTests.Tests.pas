@@ -10,7 +10,9 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.AffectedTests;
+  Atlas.Common.Lsp.AffectedTests,
+  Atlas.Common.Lsp.AffectedTests.Report,
+  Atlas.Common.Lsp.AffectedTests.Contract;
 
 type
   [TestFixture]
@@ -714,13 +716,13 @@ procedure TAffectedTestsTests.FormatsParse;
 var
   mFormat: TAffectedFormat;
 begin
-  Assert.IsTrue(TAffectedTests.TryParseFormat('', mFormat));
+  Assert.IsTrue(TAffectedReport.TryParseFormat('', mFormat));
   Assert.IsTrue(mFormat = TAffectedFormat.Text);
-  Assert.IsTrue(TAffectedTests.TryParseFormat('JSON', mFormat));
+  Assert.IsTrue(TAffectedReport.TryParseFormat('JSON', mFormat));
   Assert.IsTrue(mFormat = TAffectedFormat.Json);
-  Assert.IsTrue(TAffectedTests.TryParseFormat('dunitx', mFormat));
+  Assert.IsTrue(TAffectedReport.TryParseFormat('dunitx', mFormat));
   Assert.IsTrue(mFormat = TAffectedFormat.DUnitX);
-  Assert.IsFalse(TAffectedTests.TryParseFormat('xml', mFormat));
+  Assert.IsFalse(TAffectedReport.TryParseFormat('xml', mFormat));
 end;
 
 procedure TAffectedTestsTests.DUnitXArgumentJoinsRunNames;
@@ -730,15 +732,15 @@ var
 begin
   mFound := Default(TAffectedResult);
   mFound.Tests := TArray<TAffectedTest>.Create(Fake('U.TFix.A', 'TFix', 'A'), Fake('U.TFix.B', 'TFix', 'B'));
-  Assert.IsTrue(TAffectedTests.DUnitXArgument(mFound, mArgument));
+  Assert.IsTrue(TAffectedReport.DUnitXArgument(mFound, mArgument));
   Assert.AreEqual('--run:U.TFix.A,U.TFix.B', mArgument);
-  Assert.AreEqual(mArgument, TAffectedTests.Render(mFound, TAffectedFormat.DUnitX));
+  Assert.AreEqual(mArgument, TAffectedReport.Render(mFound, TAffectedFormat.DUnitX));
   mFound.All := True;
-  Assert.IsTrue(TAffectedTests.DUnitXArgument(mFound, mArgument));
+  Assert.IsTrue(TAffectedReport.DUnitXArgument(mFound, mArgument));
   Assert.AreEqual('', mArgument);
   mFound.All := False;
   mFound.Tests[0].RunNames := TArray<string>.Create(StringOfChar('x', 30000));
-  Assert.IsFalse(TAffectedTests.DUnitXArgument(mFound, mArgument));
+  Assert.IsFalse(TAffectedReport.DUnitXArgument(mFound, mArgument));
 end;
 
 procedure TAffectedTestsTests.JsonRoundTrip;
@@ -751,7 +753,7 @@ var
   mAll: Boolean;
 begin
   mFound := Determine([Input(BasisFile, LinesAt(UnitBasis, 'Result := AText'))]);
-  mJson := TAffectedTests.ToJson(mFound);
+  mJson := TAffectedReport.ToJson(mFound);
   try
     // GetValue<T> erst in Variablen, nicht direkt als Argument von Assert.
     mBase := mJson.GetValue<string>('base');
@@ -762,7 +764,7 @@ begin
     Assert.AreEqual(3, mDepth);
     Assert.IsFalse(mAll);
     Assert.AreEqual(Integer(Length(mFound.RunNames)), mRunCount);
-    mBack := TAffectedTests.FromJson(mJson);
+    mBack := TAffectedReport.FromJson(mJson);
   finally
     mJson.Free;
   end;
@@ -775,7 +777,7 @@ procedure TAffectedTestsTests.TextNamesTestsAndReasons;
 var
   mText: string;
 begin
-  mText := TAffectedTests.Render(Determine([Input(BasisFile, LinesAt(UnitBasis, 'Result := Normalize'))]),
+  mText := TAffectedReport.Render(Determine([Input(BasisFile, LinesAt(UnitBasis, 'Result := Normalize'))]),
     TAffectedFormat.Text);
   Assert.IsTrue(Pos('Basis.Tests.TBaselineTests.MatchFindet', mText) > 0, mText);
   Assert.IsTrue(Pos('← TBaseline.Match → TBaselineTests.MatchFindet', mText) > 0, mText);

@@ -8,6 +8,7 @@ Zurück zum [README](../../../README_DE.md)
 
 - Detailpanel mit eingefärbter Deklaration und Doku
 - Filter-Chips, unscharfe Suche, lernende Reihenfolge
+- Rangfolge aus der Verwendung im Projekt (#2109, `completion.projectFrequency`): Solange die eigene Gewichtung leer ist, stehen nach `X.` die Mitglieder oben, deren Name in den Units des Projekts am häufigsten vorkommt, mit der Marke „im Projekt 214×“. Eigene Übernahmen („zuletzt“, „häufig“) und bessere Treffer gehen vor. Gezählt wird aus den Verwendungen des Index nach Namen; Bibliotheken zählen nicht, nach einer Änderung stimmt die Zahl ohne Neuaufbau.
 - Favoriten (Strg+D)
 - Tippfehler-Vorschläge („Meintest du“)
 - Vorschau im Editor
@@ -38,6 +39,11 @@ Zurück zum [README](../../../README_DE.md)
   - Übernehmen schreibt `T(X).Name` bzw. `(X as T).Name` nach `completion.senderCast`
   - nicht nach einer Zuweisung an `X`, nach Übergabe an einen `var`- oder `out`-Parameter, im else-Zweig und bei Feldern nach jeder weiteren Anweisung
   - nach `X is ` und `X as ` stehen die Nachfahren des Typs von `X` oben
+- Treffer, die nur wegen ihrer Sichtbarkeit fehlen (#2108, `completion.hiddenMembers`):
+  - nach `X.Pr` nennt die Fußzeile private, protected und strict protected Mitglieder, die zum Getippten passen, etwa „1 Treffer nicht sichtbar: FPrivat (private in TZaehler) · Strg+Leertaste zeigt ihn“
+  - ein zweites Strg+Leertaste zeigt sie ausgegraut am Ende der Liste unter „Nicht sichtbar · lässt sich hier nicht einsetzen“ mit der Marke „private · TZaehler“; Enter setzt sie nicht ein
+  - ohne sichtbare Treffer nennt der leere Zustand sie
+  - nur mit getipptem Präfix; ein gleichnamiges sichtbares Mitglied (Überladung) unterdrückt den Hinweis
 - gleichnamige Symbole aus verschiedenen Units
 - Helper-Methoden
 - uses-Liste mit Gruppen

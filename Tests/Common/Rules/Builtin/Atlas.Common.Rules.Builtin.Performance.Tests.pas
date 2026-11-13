@@ -99,6 +99,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Rules.Builtin.Performance,
+  Atlas.Common.Rules.Builtin.Performance.SetLengthInLoop,
   Atlas.Common.Rules.Builtin.Performance.ManagedParams,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
