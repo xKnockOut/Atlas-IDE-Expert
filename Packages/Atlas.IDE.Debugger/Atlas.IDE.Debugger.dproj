@@ -107,6 +107,7 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Deadlocks.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ParallelStacks.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ThreadMarks.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.AsyncOrigin.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Exceptions.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.IgnoreList.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.InlineValues.pas"/>
@@ -140,6 +141,7 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ParallelStacks.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ThreadFreeze.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ThreadsInSource.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.AsyncOrigin.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ThreadsGutter.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ParallelStacksWindow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ExceptionBar.pas"/>
@@ -165,6 +167,7 @@
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Deadlocks.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.ParallelStacks.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.ThreadMarks.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.AsyncOrigin.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.EvaluateFrame.pas">
             <Form>AtlasDebugEvaluateFrame</Form>
             <FormType>dfm</FormType>
@@ -197,6 +200,16 @@
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Strings.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Viewer.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.SettingsSection.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.EventLog.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.EventLogFrame.pas">
+            <Form>AtlasDebugEventLogFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.EventLogMirror.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.EventLogWindow.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.EventLog.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.Run.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

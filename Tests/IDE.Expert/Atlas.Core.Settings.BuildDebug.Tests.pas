@@ -46,6 +46,10 @@ type
     /// Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure StopRunningProgramOption;
+    /// <summary>Ereignisprotokoll (#580): debug.eventLog an, debug.eventLogColors mit Vorgabe, Speichern und Laden.
+    /// </summary>
+    [Test]
+    procedure EventLogOptions;
   end;
 
 implementation
@@ -54,6 +58,7 @@ uses
   System.SysUtils,
   Atlas.Core.Tasks.Definitions,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.Plugin.Debug,
   Atlas.Core.Settings.TestSupport;
 
 procedure TAtlasBuildDebugSettingsTests.ReleaseGuardOptions;
@@ -115,6 +120,26 @@ begin
   Loaded := TAtlasPluginSettings.Defaults;
   Loaded.Load(Store);
   Assert.AreEqual('never', Loaded.BuildStopRunningProgram);
+end;
+
+procedure TAtlasBuildDebugSettingsTests.EventLogOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugEventLog, 'standardmäßig an');
+  Assert.AreEqual(cDefaultEventLogColors, Settings.DebugEventLogColors);
+  Settings.DebugEventLog := False;
+  Settings.DebugEventLogColors := ' [X]=#00FF00 ';
+  Settings.Normalize;
+  Assert.AreEqual('[X]=#00FF00', Settings.DebugEventLogColors);
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DebugEventLog);
+  Assert.AreEqual('[X]=#00FF00', Loaded.DebugEventLogColors);
 end;
 
 procedure TAtlasBuildDebugSettingsTests.TasksOptions;

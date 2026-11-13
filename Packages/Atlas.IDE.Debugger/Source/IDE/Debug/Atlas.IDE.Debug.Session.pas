@@ -24,6 +24,8 @@
 // schon vorbei ist, wird nicht mehr gemeldet. Auswertungen von Atlas
 // (BeginInternal/EndInternal) ändern den Zustand kurz; diese Wechsel zählen
 // nicht. Jeder Zuhörer läuft unter der Sicherung (Feature Debugger, #493).
+// Ein Halt, den der Filter (SetStopFilter) erledigt, etwa ein Haltepunkt der Herkunft eingereihter Methoden (#859),
+// der den Stapel merkt und gleich fortsetzt, erreicht die Zuhörer nicht, auch nicht das Weiterlaufen danach.
 // Nur im Hauptthread verwenden.
 
 interface
@@ -62,6 +64,10 @@ type
     /// <summary>False verhindert den Start von AProject.</summary>
     function AllowLaunch(const AProject: IOTAProject): Boolean;
   end;
+
+  /// <summary>Prüft einen Halt vor den Zuhörern; True = erledigt (etwa fortgesetzt), die Zuhörer erfahren nichts.
+  /// </summary>
+  TAtlasIdeDebugStopFilter = reference to function(AStop: TAtlasDebugStop): Boolean;
 
   /// <summary>Zuhörer mit leeren Methoden zum Überschreiben.</summary>
   TAtlasIdeDebugListener = class(TInterfacedObject, IAtlasIdeDebugListener)
@@ -124,6 +130,8 @@ type
     class function Started: Boolean; static;
     class procedure AddListener(const AListener: IAtlasIdeDebugListener); static;
     class procedure RemoveListener(const AListener: IAtlasIdeDebugListener); static;
+    /// <summary>Filter für Halte setzen (nil = keiner); es gibt nur einen.</summary>
+    class procedure SetStopFilter(const AFilter: TAtlasIdeDebugStopFilter); static;
     /// <summary>Läuft eine Debug-Sitzung (mindestens ein Prozess)?</summary>
     class function Active: Boolean; static;
     /// <summary>Aktueller Prozess der IDE oder nil.</summary>
@@ -165,6 +173,10 @@ uses
   System.Math,
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Projects.Context;
+
+var
+  /// <summary>Filter für Halte (SetStopFilter); nil = keiner.</summary>
+  GStopFilter: TAtlasIdeDebugStopFilter;
 
 function Debugger: IOTADebuggerServices;
 begin
@@ -483,6 +495,37 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeDebugSession.SetStopFilter(const AFilter: TAtlasIdeDebugStopFilter);
+begin
+  GStopFilter := AFilter;
+end;
+
+/// <summary>Halt über den Filter der Sitzung erledigt?</summary>
+function Filtered(AStop: TAtlasDebugStop): Boolean;
+var
+  mFilter: TAtlasIdeDebugStopFilter;
+  mHandled: Boolean;
+begin
+  mFilter := GStopFilter;
+  if not Assigned(mFilter) then
+  begin
+    Exit(False);
+  end;
+  // Vorher als weitergelaufen markieren: Setzt der Filter fort, meldet StateChanged kein DebugResumed.
+  TAtlasIdeDebugSession.FStopped := False;
+  mHandled := False;
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      mHandled := mFilter(AStop);
+    end);
+  if not mHandled then
+  begin
+    TAtlasIdeDebugSession.FStopped := True;
+  end;
+  Result := mHandled;
+end;
+
 class procedure TAtlasIdeDebugSession.StopTick;
 var
   mStop: TAtlasDebugStop;
@@ -494,6 +537,10 @@ begin
     Exit;
   end;
   mStop := FPendingStop;
+  if Filtered(mStop) then
+  begin
+    Exit;
+  end;
   NotifyListeners(
     procedure(AListener: IAtlasIdeDebugListener)
     begin
