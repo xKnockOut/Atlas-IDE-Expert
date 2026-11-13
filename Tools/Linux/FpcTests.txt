@@ -277,6 +277,10 @@ Atlas.Common.Rules.Builtin.Statements.Tokens.Tests
 Atlas.Common.Rules.Builtin.Style.Tests
 Atlas.Common.Rules.Builtin.Style.MethodOrder.Tests
 Atlas.Common.Rules.Builtin.Style.Tokens.Tests
+Atlas.Common.Rules.Builtin.Testing.AreEqual.Tests
+Atlas.Common.Rules.Builtin.Testing.Registration.Tests
+Atlas.Common.Rules.Builtin.Testing.TestCases.Tests
+Atlas.Common.Rules.Builtin.Testing.Tests
 Atlas.Common.Rules.Builtin.TrivialAccessor.Tests
 Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols.Tests
 Atlas.Common.Rules.Builtin.Unicode.Tests
@@ -377,3 +381,4 @@ Atlas.Core.Tracker.SprintStart.Tests
 Atlas.Core.Tests.Stale.Tests
 Atlas.Core.Tests.AssertLine.Tests
 Atlas.Core.Tests.Compare.Tests
+Atlas.Core.Tests.Durations.Tests

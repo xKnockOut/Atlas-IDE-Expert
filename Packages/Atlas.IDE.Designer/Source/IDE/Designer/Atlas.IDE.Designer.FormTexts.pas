@@ -11,10 +11,11 @@ interface
 
 uses
   System.SysUtils,
-  System.Classes;
+  System.Classes,
+  Atlas.IDE.Designer.Tool;
 
 type
-  TAtlasIdeFormTexts = class
+  TAtlasIdeFormTexts = class(TAtlasIdeDesignerTool)
   private type
     TChange = record
       Component: string;
@@ -22,10 +23,8 @@ type
       OldText: string;
     end;
   private
-    FOnMessage: TProc<string>;
     FUndoFile: string;
     FUndo: TArray<TChange>;
-    procedure Say(const AText: string);
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -89,16 +88,7 @@ end;
 
 constructor TAtlasIdeFormTexts.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
-end;
-
-procedure TAtlasIdeFormTexts.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
+  inherited Create(AOnMessage);
 end;
 
 procedure TAtlasIdeFormTexts.Execute;
