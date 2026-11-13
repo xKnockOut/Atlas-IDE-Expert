@@ -91,6 +91,17 @@ Einstellungen: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 
 Einstellungen: `tests.stale`, `tests.stale.units`
 
+### Betroffene Tests beim Speichern (#1775)
+
+- Nach dem Speichern einer Unit (auch Formular oder Include-Datei) ermittelt Atlas die Tests, die die Änderungen dieser Datei seit dem letzten Commit erreichen, und führt nur sie im Hintergrund aus. Gebaut wird wie mit „Vor den Tests bauen“.
+- Kein Fenster springt auf: Das Atlas-Statusfeld zeigt „Tests: 3 betroffen · laufen …“, danach „Tests: 3/3 bestanden“ oder rot „Tests: 1 von 3 fehlgeschlagen“. Ein Klick auf die Zeile im Statusfenster zeigt die Ausgabe des Laufs in der Meldungsansicht.
+- Code Lens und Atlas-Probleme folgen dem Lauf wie nach „Tests ausführen“.
+- Speichern während eines Laufs bricht ihn nicht ab; danach folgt höchstens ein weiterer Lauf mit allen bis dahin gespeicherten Dateien.
+- Kein Lauf während einer Debug-Sitzung, eines Builds oder eines anderen Testlaufs. Mehr betroffene Tests als `tests.onSave.max` oder alle Tests nötig: kein Lauf, nur ein Hinweis im Statusfeld.
+- Gehört eine Testunit zu mehreren Testprojekten, nimmt der Lauf im Hintergrund die einmal bei „Tests ausführen“ getroffene Wahl.
+
+Einstellungen: `tests.onSave` (Vorgabe aus, Schnellschalter), `tests.onSave.max`
+
 ### Betroffene Tests ausführen (#1353)
 
 Aufruf: *Atlas*-Menü, Befehlspalette.

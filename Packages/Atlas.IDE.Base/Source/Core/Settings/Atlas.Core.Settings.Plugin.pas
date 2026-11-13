@@ -81,6 +81,8 @@ type
     cMaxImpactDepth = Atlas.Core.Settings.Plugin.Editor.cMaxImpactDepth;
     cMinTestsAffectedDepth = Atlas.Core.Settings.Plugin.Build.cMinTestsAffectedDepth;
     cMaxTestsAffectedDepth = Atlas.Core.Settings.Plugin.Build.cMaxTestsAffectedDepth;
+    cMinTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMinTestsOnSaveMax;
+    cMaxTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMaxTestsOnSaveMax;
     cMinDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMinDataFlowDepth;
     cMaxDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMaxDataFlowDepth;
     cMinStickyLines = Atlas.Core.Settings.Plugin.Editor.cMinStickyLines;
@@ -375,6 +377,8 @@ type
       write FBuild.TestsAffectedBeforeCommit;
     property TestsStale: Boolean read FBuild.TestsStale write FBuild.TestsStale;
     property TestsStaleUnits: Boolean read FBuild.TestsStaleUnits write FBuild.TestsStaleUnits;
+    property TestsOnSave: Boolean read FBuild.TestsOnSave write FBuild.TestsOnSave;
+    property TestsOnSaveMax: Integer read FBuild.TestsOnSaveMax write FBuild.TestsOnSaveMax;
     property BuildZeroHints: Boolean read FBuild.BuildZeroHints write FBuild.BuildZeroHints;
     property ShowInterfaceCost: Boolean read FBuild.ShowInterfaceCost write FBuild.ShowInterfaceCost;
     property BuildSummary: Boolean read FBuild.BuildSummary write FBuild.BuildSummary;

@@ -30,7 +30,12 @@ type
     // Assistent der Objektgalerie (#1821).
     TestsGalleryTestUnit, TestsGalleryTestUnitHint, TestsGalleryChooseUnit, TestsGalleryNoUnits,
     // Veraltete Ergebnisse (#1770).
-    TestsLensStale, TestsRunStaleCommand, TestsNoStale, SettingsTestsStale, SettingsTestsStaleUnits);
+    TestsLensStale, TestsRunStaleCommand, TestsNoStale, SettingsTestsStale, SettingsTestsStaleUnits,
+    // Betroffene Tests beim Speichern (#1775).
+    SettingsTestsOnSave, SettingsTestsOnSaveMax, TestsOnSaveFinding, TestsOnSaveRunning, TestsOnSavePassed,
+    TestsOnSaveFailed, TestsOnSaveEnded, TestsOnSaveNone, TestsOnSaveTooMany, TestsOnSaveAll, TestsOnSaveDebugging,
+    TestsOnSaveBuilding, TestsOnSaveBusy, TestsOnSaveNoProject, TestsOnSaveNotFound, TestsOnSaveNoServer,
+    TestsOnSaveSummaryRunning, TestsOnSaveSummaryFailed, TestsOnSaveSummarySkipped, TestsOnSaveNoResults);
 
   TAtlasTestsStrings = class
   public
@@ -124,7 +129,27 @@ const
      'Veraltete Tests ausführen',
      'Tests: Keine veralteten Tests (seit dem Lauf nichts geändert).',
      'Geänderte Tests als veraltet zeigen (grau „(veraltet)“, Befehl „Veraltete Tests ausführen“)',
-     'Auch Änderungen in verwendeten Units des Testprojekts zählen'),
+     'Auch Änderungen in verwendeten Units des Testprojekts zählen',
+     'Betroffene Tests nach dem Speichern im Hintergrund ausführen (Ergebnis im Statusfeld)',
+     'Höchstens so viele betroffene Tests im Hintergrund',
+     'Tests: Betroffene Tests von %s ermitteln …',
+     'Tests: %d betroffen · laufen …',
+     'Tests: %d/%d bestanden',
+     'Tests: %d von %d fehlgeschlagen',
+     'Tests: Lauf im Hintergrund ohne Ergebnis: %s',
+     'Tests: Keine betroffenen Tests (%s)',
+     'Tests: %d betroffen, mehr als %d: kein Lauf im Hintergrund',
+     'Tests: Alle Tests nötig (%s): kein Lauf im Hintergrund',
+     'Tests: Kein Lauf im Hintergrund während einer Debug-Sitzung',
+     'Tests: Kein Lauf im Hintergrund während eines Builds',
+     'Tests: Kein Lauf im Hintergrund, ein anderer Testlauf läuft',
+     'Tests: Kein eindeutiges Testprojekt zu %s (einmal „Tests ausführen“ wählen lassen)',
+     'Tests: Betroffene Tests nicht ermittelt: %s',
+     'Tests: Kein Atlas-Server für betroffene Tests',
+     'Tests laufen',
+     '%d Tests rot',
+     'Tests übersprungen',
+     'Tests: Noch kein Lauf im Hintergrund.'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -202,7 +227,27 @@ const
      'Run outdated tests',
      'Tests: No outdated tests (nothing changed since the run).',
      'Show changed tests as outdated (grey “(outdated)”, command “Run outdated tests”)',
-     'Changes in used units of the test project count too'));
+     'Changes in used units of the test project count too',
+     'Run affected tests in the background after saving (result in the status field)',
+     'At most this many affected tests in the background',
+     'Tests: Finding affected tests of %s …',
+     'Tests: %d affected · running …',
+     'Tests: %d/%d passed',
+     'Tests: %d of %d failed',
+     'Tests: Background run without result: %s',
+     'Tests: No affected tests (%s)',
+     'Tests: %d affected, more than %d: no background run',
+     'Tests: All tests needed (%s): no background run',
+     'Tests: No background run during a debug session',
+     'Tests: No background run during a build',
+     'Tests: No background run, another test run is in progress',
+     'Tests: No unique test project for %s (choose one once with “Run tests”)',
+     'Tests: Affected tests not determined: %s',
+     'Tests: No Atlas server for affected tests',
+     'Tests running',
+     '%d tests red',
+     'Tests skipped',
+     'Tests: No background run yet.'));
 
 { TAtlasTestsStrings }
 

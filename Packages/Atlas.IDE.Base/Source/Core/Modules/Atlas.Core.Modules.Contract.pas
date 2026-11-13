@@ -33,7 +33,8 @@ const
   /// 9: TAtlasMenuEntry.Group und When, TAtlasMenuContext, TAtlasMenuWhen (Kontextmenü des Editors).
   /// 10 (#2127): IAtlasIssueWork.Restore, issues.reopened, issues.reviewStates.
   /// 11 (#2126): issues.reviewBuild, issues.reviewComment.
-  cAtlasCoreContractVersion = 11;
+  /// 12 (#1775): IAtlasFollowsSaves, tests.onSave und tests.onSave.max.
+  cAtlasCoreContractVersion = 12;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';
@@ -218,6 +219,14 @@ type
   IAtlasFollowsTheme = interface
     ['{E6B8302D-4F17-49A5-B3C1-82D0A7F5E946}']
     procedure ThemeChanged;
+  end;
+
+  /// <summary>Wird nach dem Speichern einer Datei in der IDE gerufen (Hauptthread), z. B. für Tests im Hintergrund
+  /// (#1775).</summary>
+  IAtlasFollowsSaves = interface
+    ['{F0748BBB-E71A-40E5-B507-196F749659F7}']
+    /// <summary>AFileName: voller Pfad der gespeicherten Datei.</summary>
+    procedure FileSaved(const AFileName: string);
   end;
 
   /// <summary>Führt DUnitX-Tests aus (Modul Tests, #69). Base fragt ihn für „Betroffene Tests ausführen“ der
