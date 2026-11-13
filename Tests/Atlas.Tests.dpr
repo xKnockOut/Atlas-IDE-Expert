@@ -295,6 +295,7 @@ uses
   Atlas.Common.Rules.Builtin.IgnoredResult.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.IgnoredResult.Tests.pas',
   Atlas.Common.Rules.Builtin.Events.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.Tests.pas',
   Atlas.Common.Rules.Builtin.Ownership.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.Tests.pas',
+  Atlas.Common.Rules.Builtin.Ownership.LocalObjects.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.LocalObjects.Tests.pas',
   Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests.pas',
   Atlas.Common.Lsp.Baseline.Tests in 'Common\Lsp\Atlas.Common.Lsp.Baseline.Tests.pas',
   Atlas.Common.Lsp.BulkFix.Tests in 'Common\Lsp\Atlas.Common.Lsp.BulkFix.Tests.pas',
