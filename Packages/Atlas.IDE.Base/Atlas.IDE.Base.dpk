@@ -488,6 +488,7 @@ contains
   Atlas.Core.Problems.Store in 'Source\Core\Problems\Atlas.Core.Problems.Store.pas',
   Atlas.Core.Problems.AtCaret in 'Source\Core\Problems\Atlas.Core.Problems.AtCaret.pas',
   Atlas.Core.Problems.Findings in 'Source\Core\Problems\Atlas.Core.Problems.Findings.pas',
+  Atlas.Core.Problems.FindingsView in 'Source\Core\Problems\Atlas.Core.Problems.FindingsView.pas',
   Atlas.Core.Problems.ScopeProjects in 'Source\Core\Problems\Atlas.Core.Problems.ScopeProjects.pas',
   Atlas.Core.Problems.FindingsCache in 'Source\Core\Problems\Atlas.Core.Problems.FindingsCache.pas',
   Atlas.Core.Problems.IdeErrors in 'Source\Core\Problems\Atlas.Core.Problems.IdeErrors.pas',

@@ -54,6 +54,7 @@ uses
   Vcl.ImgList,
   Vcl.Forms,
   Atlas.Core.Problems.Findings,
+  Atlas.Core.Problems.FindingsView,
   Atlas.Core.Problems.ScopeProjects,
   Atlas.Core.Settings.ProblemsUpdate,
   Atlas.UI.Problems.ScopeBox;
