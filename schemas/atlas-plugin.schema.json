@@ -1772,6 +1772,41 @@
       "x-captionEn": "Command “What is waiting for what?”",
       "x-issue": "#587"
     },
+    "DebugLeakReport": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.leakReport",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Leckbericht am Programmende auswerten (Fenster „Atlas-Lecks“)",
+      "x-captionEn": "Evaluate the leak report at program end (window “Atlas Leaks”)",
+      "x-issue": "#1875"
+    },
+    "DebugLeakReportCompare": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.leakReport.compare",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-parent": "debug.leakReport",
+      "x-caption": "Mit dem letzten Lauf vergleichen",
+      "x-captionEn": "Compare with the last run",
+      "x-issue": "#1875"
+    },
+    "DebugLeakReportWindow": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.leakReport.window",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-parent": "debug.leakReport",
+      "x-caption": "Fenster bei Lecks öffnen",
+      "x-captionEn": "Open the window when there are leaks",
+      "x-issue": "#1875"
+    },
     "DebugParallelStacks": {
       "type": "boolean",
       "default": true,

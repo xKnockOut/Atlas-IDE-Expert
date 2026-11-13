@@ -197,6 +197,9 @@ begin
   Assert.IsTrue(ASettings.DebugThreadsInSource, 'debug.threadsInSource (#852)');
   Assert.IsTrue(ASettings.DebugParallelStacks, 'debug.parallelStacks (#837)');
   Assert.IsTrue(ASettings.DebugDeadlocks, 'debug.deadlocks (#587)');
+  Assert.IsTrue(ASettings.DebugLeakReport, 'debug.leakReport (#1875)');
+  Assert.IsTrue(ASettings.DebugLeakReportCompare, 'debug.leakReport.compare (#1875)');
+  Assert.IsTrue(ASettings.DebugLeakReportWindow, 'debug.leakReport.window (#1875)');
   Assert.IsTrue(ASettings.DebugModuleOfAddress, 'debug.moduleOfAddress (#1820)');
   Assert.IsTrue(ASettings.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
   Assert.IsTrue(ASettings.DebugJustMyCode, 'debug.justMyCode (#578)');
@@ -363,6 +366,9 @@ begin
   ASettings.DebugExplainAccessViolationAllowCalls := True;
   ASettings.DebugModuleOfAddress := False;
   ASettings.DebugDeadlocks := False;
+  ASettings.DebugLeakReport := False;
+  ASettings.DebugLeakReportCompare := False;
+  ASettings.DebugLeakReportWindow := False;
   ASettings.DebugParallelStacks := False;
   ASettings.DebugThreadsInSource := False;
   ASettings.DebugThreadFreeze := True;
@@ -518,6 +524,9 @@ begin
   Assert.IsFalse(ALoaded.DebugThreadsInSource, 'debug.threadsInSource (#852)');
   Assert.IsFalse(ALoaded.DebugParallelStacks, 'debug.parallelStacks (#837)');
   Assert.IsFalse(ALoaded.DebugDeadlocks, 'debug.deadlocks (#587)');
+  Assert.IsFalse(ALoaded.DebugLeakReport, 'debug.leakReport (#1875)');
+  Assert.IsFalse(ALoaded.DebugLeakReportCompare, 'debug.leakReport.compare (#1875)');
+  Assert.IsFalse(ALoaded.DebugLeakReportWindow, 'debug.leakReport.window (#1875)');
   Assert.IsFalse(ALoaded.DebugModuleOfAddress, 'debug.moduleOfAddress (#1820)');
 
   Assert.IsFalse(ALoaded.DebugExceptionHistory, 'debug.exceptionHistory (#517)');

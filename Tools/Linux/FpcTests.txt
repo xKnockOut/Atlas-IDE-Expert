@@ -110,6 +110,7 @@ Atlas.Common.Editing.Overloads.Tests
 Atlas.Common.Editing.PostfixTemplates.Tests
 Atlas.Common.Editing.PromoteVariable.Tests
 Atlas.Common.Editing.PropertyFromAccessors.Tests
+Atlas.Common.Editing.RaiseVisibility.Tests
 Atlas.Common.Editing.ResourceStrings.Tests
 Atlas.Common.Editing.RoutineLocals.Tests
 Atlas.Common.Editing.RoutineParts.Tests
@@ -183,6 +184,7 @@ Atlas.Common.Lsp.KeywordHighlights.Tests
 Atlas.Common.Lsp.KeywordReference.Tests
 Atlas.Common.Lsp.MissingUnit.Tests
 Atlas.Common.Lsp.Processes.Tests
+Atlas.Common.Lsp.RaiseVisibility.Tests
 Atlas.Common.Lsp.Rationale.Tests
 Atlas.Common.Lsp.ResourceStringCommands.Tests
 Atlas.Common.Lsp.SettingsCommands.Tests
@@ -292,6 +294,8 @@ Atlas.Common.Rules.Builtin.Naming.Tests
 Atlas.Common.Rules.Builtin.OpenTools.Tests
 Atlas.Common.Rules.Builtin.OverrideCase.Tests
 Atlas.Common.Rules.Builtin.Ownership.LocalObjects.Tests
+Atlas.Common.Rules.Builtin.Ownership.MethodReferences.Tests
+Atlas.Common.Rules.Builtin.Ownership.Interfaces.Tests
 Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests
 Atlas.Common.Rules.Builtin.Ownership.TokenScan.Tests
 Atlas.Common.Rules.Builtin.PaletteIcons.Tests
@@ -382,6 +386,8 @@ Atlas.UI.Debug.AsyncOrigin.Tests
 Atlas.UI.Debug.AccessViolation.Tests
 Atlas.Core.Build.RunningProgram.Tests
 Atlas.Core.Debug.EventLog.Tests
+Atlas.Core.Debug.LeakCapture.Tests
+Atlas.Core.Debug.LeakView.Tests
 Atlas.Core.Debug.Logpoint.Tests
 Atlas.Core.Debug.NoSource.Tests
 Atlas.Core.Debug.Restart.Tests

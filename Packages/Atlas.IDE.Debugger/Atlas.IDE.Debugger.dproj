@@ -144,6 +144,8 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.AsyncOrigin.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ThreadsGutter.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ParallelStacksWindow.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.LeaksWindow.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Leaks.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ExceptionBar.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ExceptionDialog.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Exceptions.pas"/>
@@ -169,6 +171,12 @@
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.AccessViolation.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Deadlocks.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.ParallelStacks.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Leaks.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.LeaksFrame.pas">
+            <Form>AtlasDebugLeaksFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.ThreadMarks.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.AsyncOrigin.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.EvaluateFrame.pas">
@@ -203,6 +211,8 @@
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.Viewer.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.SettingsSection.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.EventLog.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.LeakCapture.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.LeakView.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.EventLogFrame.pas">
             <Form>AtlasDebugEventLogFrame</Form>
             <FormType>dfm</FormType>
