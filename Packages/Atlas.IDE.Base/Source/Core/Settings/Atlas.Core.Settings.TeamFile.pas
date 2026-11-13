@@ -25,7 +25,8 @@
 //      "ci": {"provider": "jenkins", "url": "https://ci.firma.de",      #763
 //             "job": "kasse", "multibranch": true},
 //      "tracker": {"provider": "youtrack",                              #765
-//                  "url": "https://firma.youtrack.cloud", "project": "ATL"},
+//                  "url": "https://firma.youtrack.cloud", "project": "ATL",
+//                  "templateFields": {"version": "{version}"}},           #2137
 //      "vcs": {"provider": "svn", "mainBranch": "trunk"},              #1286
 //      "hidden": [{"setting": "BlockEndLabels", "file": "Source/Kunde.pas", #628
 //                  "anchor": "TKunde.Speichern"}],
@@ -125,6 +126,9 @@ type
     Url: string;
     /// <summary>Projektkürzel (YouTrack "ATL") bzw. "owner/repo" (GitHub).</summary>
     Project: string;
+    /// <summary>Vorbelegung der Felder von GitHub-Issue-Vorlagen (#2137): Feld-Id → Text mit Platzhaltern; geht
+    /// vor issues.github.templateFields.</summary>
+    TemplateFields: TArray<TAtlasTeamVariable>;
     function Configured: Boolean;
   end;
 
@@ -1164,22 +1168,24 @@ end;
 
 function TTeamReader.ReadTrackerKey(const AKey, APath: string; AValue: TJSONValue;
   var ATracker: TAtlasTeamTracker): Boolean;
+const
+  cProvider = 0;
+  cUrl = 1;
+  cProject = 2;
+  cTemplateFields = 3;
 begin
   Result := True;
-  if AKey = 'provider' then
-  begin
-    Result := ReadProvider(AValue, APath, ['github', 'youtrack'], ATracker.Provider);
-  end
-  else if AKey = 'url' then
-  begin
-    ReadUrl(AValue, APath, ATracker.Url);
-  end
-  else if AKey = 'project' then
-  begin
-    ReadString(AValue, APath, ATracker.Project);
-  end
+  case IndexStr(AKey, ['provider', 'url', 'project', 'templateFields']) of
+    cProvider:
+      Result := ReadProvider(AValue, APath, ['github', 'youtrack'], ATracker.Provider);
+    cUrl:
+      ReadUrl(AValue, APath, ATracker.Url);
+    cProject:
+      ReadString(AValue, APath, ATracker.Project);
+    // Feld-Id → Text wie Umgebungsvariablen: Objekt aus Texten, ohne Zugangsdaten und Pfade (#2137).
+    cTemplateFields:
+      ReadEnvironment(AValue, APath, ATracker.TemplateFields);
   else
-  begin
     Report(TAtlasTeamIssueKind.UnknownKey, APath);
     ScanCredentials(AValue, APath);
   end;
@@ -1753,6 +1759,18 @@ begin
   end;
 end;
 
+/// <summary>"id=Text" je Eintrag.</summary>
+function VariableItems(const AVariables: TArray<TAtlasTeamVariable>): TArray<string>;
+var
+  mVariable: TAtlasTeamVariable;
+begin
+  Result := nil;
+  for mVariable in AVariables do
+  begin
+    Result := Result + [mVariable.Name + '=' + mVariable.Value];
+  end;
+end;
+
 function TrackerText(const ATracker: TAtlasTeamTracker): string;
 begin
   Result := ATracker.Provider + ', ' + ATracker.Url;
@@ -1805,6 +1823,7 @@ begin
   begin
     AddValue(Result, 'tracker', TrackerText(ATeam.Tracker));
   end;
+  AddList(Result, 'tracker.templateFields', VariableItems(ATeam.Tracker.TemplateFields));
   if ATeam.Vcs.Configured then
   begin
     AddValue(Result, 'vcs', VcsText(ATeam.Vcs));

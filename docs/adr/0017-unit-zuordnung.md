@@ -1046,6 +1046,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.MyIssues` | `Core/Tracker/Atlas.Core.Tracker.MyIssues.pas` | Ordner `Core/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.Core.Tracker.Naming` | `Core/Tracker/Atlas.Core.Tracker.Naming.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.NewIssue` | `Core/Tracker/Atlas.Core.Tracker.NewIssue.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.NewIssueGitHub` | `Core/Tracker/Atlas.Core.Tracker.NewIssueGitHub.pas` | Ordner `Core/Tracker`, GitHub-Teil von „Issue anlegen“, #2137 |
+| `Atlas.Core.Tracker.IssueForms` | `Core/Tracker/Atlas.Core.Tracker.IssueForms.pas` | Ordner `Core/Tracker`, Issue-Formulare von GitHub, #2137 |
 | `Atlas.Core.Tracker.Notify` | `Core/Tracker/Atlas.Core.Tracker.Notify.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Reopened` | `Core/Tracker/Atlas.Core.Tracker.Reopened.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Review` | `Core/Tracker/Atlas.Core.Tracker.Review.pas` | Ordner `Core/Tracker`, „Prüfen“, #2126 |
@@ -1059,6 +1061,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Internals.GitHubProjects` | `Core/Tracker/Atlas.Core.Tracker.Internals.GitHubProjects.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Internals.GitHubLinkedBranches` | `Core/Tracker/Atlas.Core.Tracker.Internals.GitHubLinkedBranches.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.LinkedStart` | `Core/Tracker/Atlas.Core.Tracker.LinkedStart.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.Internals.FormYaml` | `Core/Tracker/Atlas.Core.Tracker.Internals.FormYaml.pas` | Ordner `Core/Tracker`, YAML-Teilmenge der Issue-Formulare, #2137 |
 | `Atlas.Core.Tracker.Internals.GitHubPulls` | `Core/Tracker/Atlas.Core.Tracker.Internals.GitHubPulls.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.EndPull` | `Core/Tracker/Atlas.Core.Tracker.EndPull.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Providers.YouTrack` | `Core/Tracker/Atlas.Core.Tracker.Providers.YouTrack.pas` | Ordner `Core/Tracker` |
@@ -1158,6 +1161,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.MyIssues` | `UI/Tracker/Atlas.UI.Tracker.MyIssues.pas` | Ordner `UI/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.UI.Tracker.MyIssues.Text` | `UI/Tracker/Atlas.UI.Tracker.MyIssues.Text.pas` | Texte und Farben von „Meine Issues“ ohne Steuerelement (Kachel, Zustandskachel), #1455 |
 | `Atlas.UI.Tracker.NewIssueDialog` | `UI/Tracker/Atlas.UI.Tracker.NewIssueDialog.pas` | Ordner `UI/Tracker`, Kachel aus der Willkommensseite, #1455 |
+| `Atlas.UI.Tracker.NewIssueBox` | `UI/Tracker/Atlas.UI.Tracker.NewIssueBox.pas` | Ordner `UI/Tracker`, Klappliste des Dialogs „Neues Issue“ ohne Fenster füllbar, #2137 |
+| `Atlas.UI.Tracker.NewIssueForm` | `UI/Tracker/Atlas.UI.Tracker.NewIssueForm.pas` | Ordner `UI/Tracker`, Formularfelder des Dialogs „Neues Issue“, #2137 |
 | `Atlas.UI.Tracker.Notify` | `UI/Tracker/Atlas.UI.Tracker.Notify.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.QueryDialog` | `UI/Tracker/Atlas.UI.Tracker.QueryDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.SettingsConnections` | `UI/Tracker/Atlas.UI.Tracker.SettingsConnections.pas` | Ordner `UI/Tracker` |

@@ -433,6 +433,9 @@ Atlas.Core.Tracker.EndSteps.Tests
 Atlas.Core.Tracker.Internals.GitHubProjects.Tests
 Atlas.Core.Tracker.Internals.GitHubLinkedBranches.Tests
 Atlas.Core.Tracker.LinkedStart.Tests
+Atlas.Core.Tracker.Internals.FormYaml.Tests
+Atlas.Core.Tracker.IssueForms.Tests
+Atlas.Core.Tracker.NewIssueGitHub.Tests
 Atlas.Core.Tracker.Internals.GitHubPulls.Tests
 Atlas.Core.Tracker.EndPull.Tests
 Atlas.Core.Tracker.StatusState.Tests

@@ -46,7 +46,8 @@ const
   /// 21 (#2134): issues.github.stateTarget, issues.github.project, issues.github.addToProject.
   /// 22 (#2138): issues.github.linkBranch.
   /// 23 (#2136): issues.github.createPr, issues.github.prBase, issues.github.prBody, issues.github.prDraft.
-  cAtlasCoreContractVersion = 23;
+  /// 24 (#2137): issues.create.templates, issues.github.templateFields, .atlas tracker.templateFields.
+  cAtlasCoreContractVersion = 24;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';

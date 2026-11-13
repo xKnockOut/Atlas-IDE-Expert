@@ -124,6 +124,9 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.MyIssues.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Naming.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.NewIssue.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Internals.FormYaml.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.IssueForms.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.NewIssueGitHub.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Notify.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Reopened.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Review.pas"/>
@@ -248,6 +251,8 @@
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.MyIssues.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.MyIssues.Text.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.NewIssueDialog.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.NewIssueBox.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.NewIssueForm.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Notify.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.QueryDialog.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SettingsConnections.pas"/>
