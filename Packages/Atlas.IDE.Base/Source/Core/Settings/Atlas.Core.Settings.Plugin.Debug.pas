@@ -24,6 +24,8 @@ const
   cMaxParallelStacksThreads = 1024;
   /// <summary>Vorgabe von debug.parallelStacks.maxThreads.</summary>
   cDefaultParallelStacksThreads = 64;
+  /// <summary>Vorgabe von debug.logpointPrefix (#583).</summary>
+  cDefaultLogpointPrefix = '[LOG]';
   /// <summary>Grenzen und Vorgabe für debug.asyncOrigin.maxPerSite (#859).</summary>
   cMinAsyncOriginPerSite = 1;
   cMaxAsyncOriginPerSite = 1000;
@@ -196,6 +198,12 @@ type
     /// <summary>Farben im Ereignisprotokoll (#580, debug.eventLogColors): „Muster=Farbe“, durch „;“ getrennt; Farbe
     /// als #RRGGBB oder Name (rot, gelb, grün, blau, orange, grau). Erstes passendes Muster gewinnt.</summary>
     DebugEventLogColors: string;
+    /// <summary>Logpunkte (#583, debug.logpoints): Befehl „Logpunkt setzen“ (Umschalt+F5, Kontextmenü am Rand) legt
+    /// einen Haltepunkt ohne Anhalten an, der einen Text mit Werten ins Ereignisprotokoll schreibt; Raute in der
+    /// Rinne; Befehle für alle Logpunkte. Aus = keine Befehle, keine Raute.</summary>
+    DebugLogpoints: Boolean;
+    /// <summary>Präfix vor jeder Logpunkt-Ausgabe (#583, debug.logpointPrefix).</summary>
+    DebugLogpointPrefix: string;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -276,6 +284,8 @@ begin
   Result.DebugOwnCodeFolders := '';
   Result.DebugEventLog := True;
   Result.DebugEventLogColors := cDefaultEventLogColors;
+  Result.DebugLogpoints := True;
+  Result.DebugLogpointPrefix := cDefaultLogpointPrefix;
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
   Result.DebugEnabled := True;
@@ -289,6 +299,7 @@ begin
   DebugParallelStacksWaitRoutines := Trim(DebugParallelStacksWaitRoutines);
   DebugParallelStacksMaxThreads := EnsureRange(DebugParallelStacksMaxThreads, cMinParallelStacksThreads,
     cMaxParallelStacksThreads);
+  DebugLogpointPrefix := Trim(DebugLogpointPrefix);
   DebugAsyncOriginMaxPerSite := EnsureRange(DebugAsyncOriginMaxPerSite, cMinAsyncOriginPerSite,
     cMaxAsyncOriginPerSite);
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
@@ -359,6 +370,8 @@ begin
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AIo.Flag('DebugEventLog', DebugEventLog);
   AIo.Text('DebugEventLogColors', DebugEventLogColors);
+  AIo.Flag('DebugLogpoints', DebugLogpoints);
+  AIo.Text('DebugLogpointPrefix', DebugLogpointPrefix);
   AIo.Flag('StartProfiles', StartProfiles);
   AIo.Flag('StartProfilesStatusField', StartProfilesStatusField);
   AIo.Flag('DebugEnabled', DebugEnabled);

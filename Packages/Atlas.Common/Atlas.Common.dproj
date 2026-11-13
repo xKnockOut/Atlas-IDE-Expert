@@ -384,6 +384,8 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AnonymousMethods.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Lookup.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Contract.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Analysis.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Texts.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MethodWithoutSelf.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeAlias.pas"/>
@@ -591,7 +593,10 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TestUnits.pas"/>
         <DCCReference Include="Source\Leaks\Internals\Atlas.Common.Leaks.Internals.MainScan.pas"/>
         <DCCReference Include="Source\Leaks\Atlas.Common.Leaks.Setup.pas"/>
+        <DCCReference Include="Source\Leaks\Internals\Atlas.Common.Leaks.Internals.CreateScan.pas"/>
+        <DCCReference Include="Source\Leaks\Atlas.Common.Leaks.Candidates.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LeakSetup.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LeakCandidates.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TestCases.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UnitSearch.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ControlFlow.pas"/>

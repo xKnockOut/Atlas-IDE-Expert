@@ -213,6 +213,10 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.EventLogWindow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.EventLog.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.Run.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Logpoint.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.LogpointDialog.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Logpoints.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.LogpointGutter.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

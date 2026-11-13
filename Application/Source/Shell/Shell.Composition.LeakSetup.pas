@@ -37,6 +37,10 @@ type
       out AInput: TLeakSetupInput; out AReason: string): Boolean; static;
     /// <summary>Ausgabeordner aus DCC_ExeOutput (relativ zur .dproj); '' = Projektordner.</summary>
     class function OutputFolderOf(const AProjectFile, AExeOutput: string): string; static;
+    /// <summary>Hauptquelltext und Quelldateien des Projekts zu AFileName (Projekt-, Hauptdatei oder Datei des
+    /// Projekts); False ohne geladenes Projekt.</summary>
+    class function ProjectFilesOf(const AServices: TShellLeakSetupServices; const AFileName: string;
+      out AMainSource: string; out AFiles: TArray<string>): Boolean; static;
     /// <summary>Ordner aus dem Text der Umgebungsvariablen PATH.</summary>
     class function PathFolders(const APath: string): TArray<string>; static;
   end;
@@ -134,14 +138,15 @@ begin
   Result := AWorkspaces.Pick(AFileName);
 end;
 
-/// <summary>Projekt und Suchordner unter der Sperre der Arbeitsbereiche.</summary>
+/// <summary>Projekt, Suchordner und Quelldateien unter der Sperre der Arbeitsbereiche.</summary>
 function LoadedProject(const AServices: TShellLeakSetupServices; const AFileName: string;
-  out AProject: TProjectInfo; out AFolders: TArray<string>): Boolean;
+  out AProject: TProjectInfo; out AFolders, AFiles: TArray<string>): Boolean;
 var
   mWorkspace: TShellWorkspace;
 begin
   AProject := Default(TProjectInfo);
   AFolders := nil;
+  AFiles := nil;
   System.TMonitor.Enter(AServices.Workspaces.Lock);
   try
     mWorkspace := WorkspaceFor(AServices.Workspaces, AFileName);
@@ -149,10 +154,21 @@ begin
     if Result then
     begin
       AFolders := mWorkspace.State.IncludePaths;
+      AFiles := mWorkspace.State.ProjectFiles;
     end;
   finally
     System.TMonitor.Exit(AServices.Workspaces.Lock);
   end;
+end;
+
+class function TShellLeakSetup.ProjectFilesOf(const AServices: TShellLeakSetupServices; const AFileName: string;
+  out AMainSource: string; out AFiles: TArray<string>): Boolean;
+var
+  mProject: TProjectInfo;
+  mFolders: TArray<string>;
+begin
+  Result := LoadedProject(AServices, AFileName, mProject, mFolders, AFiles);
+  AMainSource := mProject.MainSource;
 end;
 
 function PropertyOf(const AProject: TProjectInfo; const AName: string): string;
@@ -195,11 +211,11 @@ class function TShellLeakSetup.InputFor(const AServices: TShellLeakSetupServices
   out AInput: TLeakSetupInput; out AReason: string): Boolean;
 var
   mProject: TProjectInfo;
-  mFolders: TArray<string>;
+  mFolders, mFiles: TArray<string>;
 begin
   AInput := Default(TLeakSetupInput);
   AReason := '';
-  Result := LoadedProject(AServices, TDocumentUris.ToPath(AUri), mProject, mFolders);
+  Result := LoadedProject(AServices, TDocumentUris.ToPath(AUri), mProject, mFolders, mFiles);
   if not Result then
   begin
     AReason := cTexts[TShellLeakSetupText.NoProject].Fmt([ExtractFileName(TDocumentUris.ToPath(AUri))]);
