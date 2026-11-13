@@ -121,6 +121,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Schnellbefehle für Tests:** `/mock`, `/testcase`, `/dump` und `/assert` legen Mock-Klassen, Testfälle, Variablenausgaben und Asserts passend zum Typ an
 - **Testfall aus der Unit anlegen:** Code-Aktion an einer Methode trägt einen Entwurf mit Aufruf und Platzhalter-Prüfungen in die Testunit ein und legt sie bei Bedarf an
 - **Leckprüfung einrichten …** im Kontextmenü eines Projekts: zeigt, was für die Lecksuche fehlt (FastMM4/FastMM5 gefunden, erste Unit im uses, Meldung beim Beenden, Symbole und DLL der Konfiguration Debug), und richtet die gewählte Variante mit Vorschau ein, nur im Debug-Build (`tests.leakSetup`)
+- **Test aus dem Debug-Halt:** „Test daraus anlegen …“ in der Exception-Leiste macht aus den Werten des Halts einen DUnitX-Test, der funktionieren oder die Exception werfen soll
 - **Debuggen:** Werte im Hover und im Editor, Visualisierer, Auswertungsfenster, gezieltes Hineinspringen
 - **Exceptions:** Verlauf, Exception-Leiste, „nur mein Code“, Zugriffsverletzungen erklärt, Modul der Fehleradresse (Programm, RTL/VCL, Windows, Fremd-DLL)
 - **Threads:** Was wartet worauf? (Wartepunkt jedes Threads, Muster von Verklemmungen wie `WaitFor` gegen `Synchronize`), parallele Aufrufstapel aller Threads als Baum, andere Threads im Rand (markieren, experimentell: einfrieren), experimentell: woher eine mit `TThread.Queue`, `Synchronize` oder `TTask.Run` eingereihte Methode kam

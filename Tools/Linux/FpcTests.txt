@@ -123,6 +123,8 @@ Atlas.Common.Editing.StringLiterals.Tests
 Atlas.Common.Editing.SuggestConst.Tests
 Atlas.Common.Editing.TestCommands.Tests
 Atlas.Common.Editing.TestDrafts.Tests
+Atlas.Common.Lsp.TestFromDebug.Tests
+Atlas.Common.Editing.TestFromDebug.Tests
 Atlas.Common.Editing.TestUnits.Tests
 Atlas.Common.Editing.TypeAlias.Tests
 Atlas.Common.Editing.TypeAlias.Names.Tests
@@ -452,6 +454,7 @@ Atlas.Core.Tests.Stale.Tests
 Atlas.Core.Tests.OnSave.Tests
 Atlas.Core.Tests.Leaks.Tests
 Atlas.Core.Tests.AssertLine.Tests
+Atlas.Core.Tests.FromDebugStop.Tests
 Atlas.Core.Tests.Compare.Tests
 Atlas.Core.Tests.Approval.Tests
 Atlas.Core.Tests.Durations.Tests
