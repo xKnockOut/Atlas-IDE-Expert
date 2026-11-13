@@ -56,9 +56,8 @@ implementation
 
 uses
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Handshake,
+  Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Ci.Adapters.Credentials,
   Atlas.Core.Ci.Adapters.Http,
@@ -77,11 +76,6 @@ uses
   Atlas.UI.Tracker.SettingsBranches,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.UI.Settings.Contract;
-
-const
-  // Protokoll beim An- und Abmelden.
-  cLogContractMismatch = 'Modul %s: Vertragsversion von Base passt nicht, nicht angemeldet';
-  cLogUnregisterFailed = 'Modul %s nicht sauber abgemeldet: %s';
 
 var
   GScope: IAtlasModuleScope;
@@ -137,14 +131,9 @@ end;
 
 function TAtlasTrackerModule.Info: TAtlasModuleInfo;
 begin
-  Result := Default(TAtlasModuleInfo);
-  Result.Id := cModuleId;
-  Result.Name := 'Issue-Tracker';
-  Result.Version := TAtlasVersion.cVersion;
-  Result.Handle := HInstance;
   // Lief mit der Willkommensseite schon im abgesicherten Start.
-  Result.MinLevel := TAtlasSafeLevel.Safe;
-  Result.Switch := cSwitch;
+  Result := TAtlasModuleHost.Info(cModuleId, 'Issue-Tracker', TAtlasVersion.cVersion, HInstance,
+    TAtlasSafeLevel.Safe, cSwitch);
 end;
 
 procedure TAtlasTrackerModule.Start;
@@ -196,16 +185,9 @@ var
   mAccess: IAtlasTrackerAccess;
 begin
   Result := False;
-  mRegistry := AtlasModuleRegistry;
-  if (mRegistry = nil) or (GScope <> nil) then
+  // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
+  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, GScope, mRegistry) then
   begin
-    Exit;
-  end;
-  // Regel 7: zuerst die Vertragsversion von Base (FindClassHInstance einer Base-Klasse, Regel 8).
-  if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
-    ccMatch then
-  begin
-    TAtlasGuard.Log(Format(cLogContractMismatch, [cModuleId], TFormatSettings.Invariant));
     Exit;
   end;
   mModule := TAtlasTrackerModule.Create;
@@ -233,25 +215,9 @@ begin
   Result := True;
 end;
 
-class procedure TAtlasTrackerModule.UnregisterModule;
-var
-  mRegistry: IAtlasModuleRegistry;
-  mFailure: string;
+/// <summary>Modulspezifische Schritte nach dem Abmelden aus der Registry.</summary>
+procedure ReleaseModule;
 begin
-  if GScope = nil then
-  begin
-    Exit;
-  end;
-  GScope := nil;
-  // Regel 5: nur, solange Base noch läuft; sonst hat Base das Modul schon gestoppt und abgemeldet.
-  mRegistry := AtlasModuleRegistry;
-  if mRegistry <> nil then
-  begin
-    for mFailure in mRegistry.UnregisterModule(cModuleId) do
-    begin
-      TAtlasGuard.Log(Format(cLogUnregisterFailed, [cModuleId, mFailure], TFormatSettings.Invariant));
-    end;
-  end;
   // Laufende Prüfungen der Optionsseite: Ihre Antwort erreicht das Modul danach nicht mehr (Regel 3).
   TAtlasIdeTrackerSettings.Release;
   TAtlasTrackerBranchSection.Available := nil;
@@ -259,6 +225,11 @@ begin
   TAtlasTrackerParts.Uninstall;
   // Zuletzt: Danach erreicht nichts mehr Platte oder Shell im Namen des Moduls (Regel 3).
   TAtlasTrackerFiles.Uninstall;
+end;
+
+class procedure TAtlasTrackerModule.UnregisterModule;
+begin
+  TAtlasModuleHost.Unregister(GScope, cModuleId, ReleaseModule);
 end;
 
 initialization

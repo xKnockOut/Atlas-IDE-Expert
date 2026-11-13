@@ -101,6 +101,7 @@
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Stale.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.CoveredBy.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Compare.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Affected.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.UnitCommands.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Debug.pas"/>
@@ -108,9 +109,11 @@
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.CoveredBy.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.CoveredByList.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Stale.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Compare.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Projects.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Runner.pas"/>
         <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.Strings.pas"/>
+        <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.Compare.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Composition.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Composition.Hooks.pas"/>
         <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas"/>

@@ -44,10 +44,12 @@ requires
 
 contains
   Atlas.UI.Tests.Strings in 'Source\UI\Tests\Atlas.UI.Tests.Strings.pas',
+  Atlas.UI.Tests.Compare in 'Source\UI\Tests\Atlas.UI.Tests.Compare.pas',
   Atlas.Core.Tests.Run in 'Source\Core\Tests\Atlas.Core.Tests.Run.pas',
   Atlas.Core.Tests.Stale in 'Source\Core\Tests\Atlas.Core.Tests.Stale.pas',
   Atlas.Core.Tests.CoveredBy in 'Source\Core\Tests\Atlas.Core.Tests.CoveredBy.pas',
   Atlas.Core.Tests.AssertLine in 'Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas',
+  Atlas.Core.Tests.Compare in 'Source\Core\Tests\Atlas.Core.Tests.Compare.pas',
   Atlas.Core.Tests.AffectedHook in 'Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas',
   Atlas.Core.Tests.Debug in 'Source\Core\Tests\Atlas.Core.Tests.Debug.pas',
   Atlas.Core.Tests.ProjectChoice in 'Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas',
@@ -63,6 +65,7 @@ contains
   Atlas.IDE.Tests.CoveredBy in 'Source\IDE\Tests\Atlas.IDE.Tests.CoveredBy.pas',
   Atlas.IDE.Tests.CoveredByList in 'Source\IDE\Tests\Atlas.IDE.Tests.CoveredByList.pas',
   Atlas.IDE.Tests.Stale in 'Source\IDE\Tests\Atlas.IDE.Tests.Stale.pas',
+  Atlas.IDE.Tests.Compare in 'Source\IDE\Tests\Atlas.IDE.Tests.Compare.pas',
   Atlas.UI.Tests.SettingsSection in 'Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas';
 
 end.

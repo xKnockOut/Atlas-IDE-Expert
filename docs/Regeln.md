@@ -8,7 +8,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 76 |
+| [Fehler finden](#gruppe-find-bugs) | 78 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
@@ -86,6 +86,8 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`owned-item-freed`](#owned-item-freed) | Element einer besitzenden Liste zusätzlich freigegeben | Bug | Fehler |
 | [`create-without-assignment`](#create-without-assignment) | Objekt erzeugt und sofort verloren | Bug | Warnung |
 | [`raw-memory-leak`](#raw-memory-leak) | GetMem oder New ohne Freigabe | Bug | Warnung |
+| [`local-object-not-freed`](#local-object-not-freed) | Lokales Objekt nie freigegeben | Bug | Warnung |
+| [`created-result-not-freed`](#created-result-not-freed) | Neues Objekt aus einer Funktion nie freigegeben | Bug | Warnung |
 | [`stringlist-objects-leak`](#stringlist-objects-leak) | Objekte in einer TStringList ohne Besitz | Bug | Warnung |
 | [`message-handler-without-inherited`](#message-handler-without-inherited) | Message-Handler ohne inherited | Bug | Warnung |
 | [`string-index-base`](#string-index-base) | String-Index ab 0 oder Pos-Ergebnis mit -1 verglichen | Bug | Warnung |
@@ -4790,6 +4792,75 @@ try
 finally
   FreeMem(Puffer);
 end;
+```
+
+<a id="local-object-not-freed"></a>
+### local-object-not-freed
+
+**Lokales Objekt nie freigegeben** · Bug · Warnung · Gruppe Fehler finden
+
+Eine lokale Variable (auch Inline-Variable) erhält T.Create(…) einer Klasse ohne Owner, die Routine gibt das Objekt aber nie frei, und es verlässt die Routine nicht: weder zurückgegeben (Result, Exit) noch etwas anderem zugewiesen (Feld, andere Variable, Listenelement), nicht als Argument weitergegeben (außer an Routinen, die nur lesen: Assign, AddStrings, CopyFrom, LoadFromStream, SaveToStream, IndexOf, Contains, Equals), nicht mit raise ausgelöst, nicht mit as umgewandelt, nicht mit @, in einem Mengen- oder Array-Konstruktor oder mit with benutzt, kein Parent oder Owner gesetzt, nicht von einer anonymen Methode eingefangen und nicht in einer lokalen Routine benutzt. Free, Destroy, DisposeOf, Release, FreeAndNil und Routinen mit Free, Release, Destroy, Dispose oder Frei im Namen gelten als Freigabe; Show, Close, Start, Resume, Run und Execute als Übergabe (Formular mit caFree, Thread). Still bleiben Interface-Variablen, Records und dynamische Arrays (TPoint.Create, TArray<string>.Create), Threads, Komponenten mit Owner und unbekannte Klassen mit Argumenten (wie create-without-assignment); Routinen mit asm oder with bleiben still. Konfidenz hoch, wenn die Vorfahren der Klasse bis TObject bekannt sind, sonst mittel. Schnellkorrektur: die folgenden Anweisungen des Blocks in try … finally mit Free einschließen.
+
+Mit Treffer:
+
+```pascal
+var
+  Lines: TStringList;
+begin
+  Lines := TStringList.Create;
+  Lines.Add('a');
+  Memo.Text := Lines.Text;
+end;
+```
+
+Richtig:
+
+```pascal
+var
+  Lines: TStringList;
+begin
+  Lines := TStringList.Create;
+  try
+    Lines.Add('a');
+    Memo.Text := Lines.Text;
+  finally
+    Lines.Free;
+  end;
+end;
+```
+
+<a id="created-result-not-freed"></a>
+### created-result-not-freed
+
+**Neues Objekt aus einer Funktion nie freigegeben** · Bug · Warnung · Gruppe Fehler finden
+
+Eine lokale Variable erhält das Ergebnis einer Funktion, die immer ein neues Objekt liefert, und die Routine gibt es weder frei noch weiter (gleiche Regeln wie local-object-not-freed). Eine Funktion derselben Datei zählt, wenn jede Zuweisung an Result T.Create(…) ohne Owner ist, Result sonst nur über seine Mitglieder benutzt oder freigegeben wird (Aufräumen im except) und nie weitergeht, und jedes Exit(…) ebenfalls ein Objekt erzeugt; gleichnamige Überladungen müssen das alle erfüllen. Erkannt wird sie unqualifiziert, über Self oder über einen Typnamen aufgerufen; Methoden anderer Objekte kennt die Regel nur aus der Option factories. Konfidenz mittel. Schnellkorrektur: die folgenden Anweisungen des Blocks in try … finally mit Free einschließen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `factories` | string-list | `[]` | Weitere Funktionen, die immer ein neues Objekt liefern, das dem Aufrufer gehört, als Name, Klasse.Name, Objekt.Name oder Unit.Name. |
+
+Mit Treffer:
+
+```pascal
+function NewList: TStringList;
+begin
+  Result := TStringList.Create;
+end;
+…
+  Lines := NewList;
+  Memo.Lines.Assign(Lines);
+```
+
+Richtig:
+
+```pascal
+  Lines := NewList;
+  try
+    Memo.Lines.Assign(Lines);
+  finally
+    Lines.Free;
+  end;
 ```
 
 <a id="stringlist-objects-leak"></a>
