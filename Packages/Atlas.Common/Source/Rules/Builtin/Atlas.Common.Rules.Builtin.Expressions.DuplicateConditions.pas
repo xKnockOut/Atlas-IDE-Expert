@@ -31,15 +31,11 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Rules.Options,
   Atlas.Common.Pascal.PureRoutines,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.LanguageFeatures,
-  Atlas.Common.Editing.StatementText,
-  Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.ConditionalExpression,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Builtin.Expressions.Tokens,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

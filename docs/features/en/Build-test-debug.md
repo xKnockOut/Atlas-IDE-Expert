@@ -294,6 +294,15 @@ Settings: `debug.displayRules`
 
 Settings: `debug.inlineValues`, `debug.inlineValuesPerLine`
 
+### Why am I here?
+
+- When stopped, the end of the header lines of the enclosing `if`, `while`, `repeat … until`, `for` and `case` shows the values of their conditions, dimmed like the inline values: `(1200 > 1000) and True → True`, `I = 3 of 7`, `Art = paRabatt → paRabatt`, in an `else` branch `(4 = 0) → False, else branch`
+- Short-circuit as in the program: if `A = False` already decides `A and B`, B shows “not needed”
+- Calls and getters are not evaluated on their own (`‹call›`); a click on the text of the line asks and then runs them
+- Only in files with source, up to the routine, at most `debug.whyHere.depth` blocks (default 3); the values disappear with the next step
+
+Settings: `debug.whyHere`, `debug.whyHere.depth`
+
 ### "No access to value" explained
 
 - When the debugger only says "Inaccessible value" or "... inaccessible here due to optimization" for a variable, the hover and the inline values show `‹no access›`.
