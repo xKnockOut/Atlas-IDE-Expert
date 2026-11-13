@@ -38,7 +38,7 @@ type
     end;
   private
     FComboFills: TArray<TComboFill>;
-    FTop: TPanel;
+    FTop: TFlowPanel;
     FFilter: TEdit;
     FEvent: TComboBox;
     FOnlyFindings: TCheckBox;
@@ -101,6 +101,19 @@ uses
 
 {$R *.dfm}
 
+/// <summary>ABase mit AAmount/255 von AMix gemischt (beide über ColorToRGB aufgelöst).</summary>
+function Shade(ABase, AMix: TColor; AAmount: Integer): TColor;
+var
+  mBase, mMix: Integer;
+begin
+  mBase := ColorToRGB(ABase);
+  mMix := ColorToRGB(AMix);
+  Result := RGB(
+    (GetRValue(mBase) * (255 - AAmount) + GetRValue(mMix) * AAmount) div 255,
+    (GetGValue(mBase) * (255 - AAmount) + GetGValue(mMix) * AAmount) div 255,
+    (GetBValue(mBase) * (255 - AAmount) + GetBValue(mMix) * AAmount) div 255);
+end;
+
 /// <summary>Breite von AText in AFont (ein TFrame hat kein eigenes Canvas).</summary>
 function TextWidthIn(AFont: TFont; const AText: string): Integer;
 var
@@ -123,6 +136,10 @@ const
     TAtlasDesignerViewTextId.EmColLines, TAtlasDesignerViewTextId.EmColFinding);
   cComboWidth = 140;
   cCheckBoxBox = 24;
+  /// <summary>Breite des Filterfelds, logische Pixel.</summary>
+  cFilterWidth = 240;
+  /// <summary>Anteil der Schriftfarbe in der Fläche der Überschriften (von 255).</summary>
+  cHeaderShade = 24;
   cNoGroup = '–';
   cLinesColumn = 4;
 
@@ -138,28 +155,32 @@ begin
   Name := '';
   FErrorColor := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
   FLastJump := -1;
-  FTop := TPanel.Create(Self);
+  // Fließende Leiste: Ist das Fenster schmal, brechen Häkchen und Auswahllisten in weitere Zeilen um, statt
+  // den Filter auf null zu schrumpfen.
+  FTop := TFlowPanel.Create(Self);
   FTop.Parent := Self;
   FTop.Align := alTop;
   FTop.BevelOuter := bvNone;
+  FTop.ShowCaption := False;
+  FTop.AutoWrap := True;
   FTop.AutoSize := True;
-  FGroup := AddCombo([TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmGroupComponent),
-    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmGroupEvent),
-    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmGroupHandler)]);
+  FFilter := TEdit.Create(Self);
+  FFilter.Parent := FTop;
+  FFilter.AlignWithMargins := True;
+  FFilter.Width := MulDiv(cFilterWidth, CurrentPPI, cBasePpi);
+  FFilter.TextHint := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.StFilter);
+  FFilter.OnChange := OptionsChanged;
   FOnlyFindings := TCheckBox.Create(Self);
   FOnlyFindings.Parent := FTop;
-  FOnlyFindings.Align := alRight;
   FOnlyFindings.AlignWithMargins := True;
   FOnlyFindings.Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmOnlyFindings);
   FOnlyFindings.Width := TextWidthIn(Font, FOnlyFindings.Caption) + MulDiv(cCheckBoxBox, CurrentPPI, cBasePpi);
+  FOnlyFindings.Height := FFilter.Height;
   FOnlyFindings.OnClick := OptionsChanged;
+  FGroup := AddCombo([TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmGroupComponent),
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmGroupEvent),
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmGroupHandler)]);
   FEvent := AddCombo([TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmAllEvents)]);
-  FFilter := TEdit.Create(Self);
-  FFilter.Parent := FTop;
-  FFilter.Align := alClient;
-  FFilter.AlignWithMargins := True;
-  FFilter.TextHint := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.StFilter);
-  FFilter.OnChange := OptionsChanged;
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
   AddMenuItem(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmShow), ShowClick);
@@ -203,7 +224,6 @@ var
 begin
   Result := TComboBox.Create(Self);
   Result.Parent := FTop;
-  Result.Align := alRight;
   Result.AlignWithMargins := True;
   Result.Style := csDropDownList;
   Result.Width := MulDiv(cComboWidth, CurrentPPI, cBasePpi);
@@ -488,13 +508,13 @@ begin
   end;
   if mRow < 0 then
   begin
-    // Überschrift: fett auf der abgesetzten Fläche der Atlas-Palette (Gutter, folgt dem IDE-Thema).
-    // StyleServices liefert für clBtnFace im IDE-Thema Weiß, nur clWindow stimmt.
+    // Überschrift: fett auf leicht abgesetzter Fläche, gemischt aus Grund und Schrift des Themas. StyleServices
+    // liefert für clBtnFace im IDE-Thema Weiß, die Gutter-Farbe der Palette ebenso; nur clWindow stimmt.
     Sender.Canvas.Font.Style := [fsBold];
     if not (cdsSelected in State) then
     begin
-      Sender.Canvas.Brush.Color := TColor(TAtlasUiTheme.Colors.Gutter);
-      Sender.Canvas.Font.Color := TColor(TAtlasUiTheme.Colors.Text);
+      Sender.Canvas.Brush.Color := Shade(StyleServices(FList).GetSystemColor(clWindow),
+        StyleServices(FList).GetSystemColor(clWindowText), cHeaderShade);
     end;
   end
   else if (FRows[mRow].Finding <> TAtlasEventFinding.None) and not (cdsSelected in State) then
