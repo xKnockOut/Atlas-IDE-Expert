@@ -110,6 +110,16 @@ Settings: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 
 Settings: `tests.stale`, `tests.stale.units`
 
+### Failure at the assert line (#1771)
+
+- A failed test no longer sits at the method header but at the statement that failed: wavy line under the statement, followed by a grey “expected 4, got 3”.
+- The line comes from the stack trace in the report (DUnitX with JclDebug or madExcept). If the test stops with an exception, it is the statement that raised it.
+- Without lines in the stack trace Atlas looks for the one assert in the body whose expected value matches the report (`Assert.AreEqual(4, …)` for “Expected 4 but got 3”); if the body has only one assert, that one counts. If several match, the method header stays.
+- The entry moves with inserted lines like any finding; the line in the messages view jumps to the statement.
+- The short text appears like the error text at the end of the line (`editor.inlineDiagnostics`).
+
+Settings: `tests.failureAtAssert`, `tests.failureInline`
+
 ### Create a test case from the unit (#1226)
 
 Available as a code action (Alt+Enter) on a method or routine, in its body or at its declaration; in the body also as `/test`.
