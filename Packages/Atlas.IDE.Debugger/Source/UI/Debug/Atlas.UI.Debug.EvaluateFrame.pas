@@ -155,6 +155,8 @@ uses
 {$R *.dfm}
 
 const
+  /// <summary>Höhe der Knöpfe der Leisten bei 96 dpi.</summary>
+  cButtonHeight = 24;
   cViewTexts: array[TAtlasEvalView] of TAtlasDebugTextId = (TAtlasDebugTextId.DebugEvaluateViewText,
     TAtlasDebugTextId.DebugEvaluateViewLines, TAtlasDebugTextId.DebugEvaluateViewJson,
       TAtlasDebugTextId.DebugEvaluateViewHex);
@@ -190,7 +192,7 @@ begin
   Result.Parent := AParent;
   Result.AlignWithMargins := True;
   Result.Width := Scaled(ASelf, 86);
-  Result.Height := Scaled(ASelf, 24);
+  Result.Height := Scaled(ASelf, cButtonHeight);
   Result.Caption := TAtlasDebugStrings.Text(AText);
   Result.OnClick := AClick;
 end;
@@ -267,7 +269,7 @@ begin
   Result.Parent := ASelf.FParts.Bar;
   Result.AlignWithMargins := True;
   Result.Width := Scaled(ASelf, 54);
-  Result.Height := Scaled(ASelf, 24);
+  Result.Height := Scaled(ASelf, cButtonHeight);
   Result.GroupIndex := 1;
   Result.AllowAllUp := False;
   Result.Caption := TAtlasDebugStrings.Text(cViewTexts[AKind]);

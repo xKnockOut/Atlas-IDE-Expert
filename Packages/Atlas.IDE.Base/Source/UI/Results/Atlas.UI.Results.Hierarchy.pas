@@ -99,6 +99,14 @@ uses
   Atlas.UI.Results.Strings,
   Atlas.UI.Results.Texts;
 
+const
+  /// <summary>Breite des Häkchens „nur Projekt“ bei 96 dpi.</summary>
+  cProjectOnlyWidth = 140;
+  /// <summary>Breite des Knopfs „Einpassen“ bei 96 dpi.</summary>
+  cFitWidth = 90;
+  /// <summary>Breite des Knopfs „Speichern“ bei 96 dpi.</summary>
+  cSaveWidth = 150;
+
 { TAtlasResultsHierarchyPart }
 
 constructor TAtlasResultsHierarchyPart.Create(AView: TAtlasResultsView);
@@ -124,13 +132,13 @@ begin
     TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramOutgoing), DirectionClick);
   FControls.Incoming := TAtlasResultsControls.Radio(mOwner, FControls.Bar, 150,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramIncoming), DirectionClick);
-  FControls.ProjectOnly := TAtlasResultsControls.Check(mOwner, FControls.Bar, alNone, 140,
+  FControls.ProjectOnly := TAtlasResultsControls.Check(mOwner, FControls.Bar, alNone, cProjectOnlyWidth,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramProjectOnly), nil);
   FControls.ProjectOnly.Checked := True;
   FControls.ProjectOnly.OnClick := ProjectOnlyClick;
-  FControls.Fit := TAtlasResultsControls.Button(mOwner, FControls.Bar, alNone, 90,
+  FControls.Fit := TAtlasResultsControls.Button(mOwner, FControls.Bar, alNone, cFitWidth,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramFit), FitClick);
-  FControls.Save := TAtlasResultsControls.Button(mOwner, FControls.Bar, alNone, 150,
+  FControls.Save := TAtlasResultsControls.Button(mOwner, FControls.Bar, alNone, cSaveWidth,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramSaveHtml), SaveClick);
 end;
 
