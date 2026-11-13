@@ -79,7 +79,6 @@ type
     function ScanFile(const AFileName: string): TScanned;
     /// <summary>Baum mit den aktuellen Filtern zeigen.</summary>
     procedure ShowRows;
-    function StatusText: string;
     function ResultsOfProject: TArray<TTestCaseResult>;
     procedure ChooseProject(AIndex: Integer);
     procedure Selected(ANode: Integer);
@@ -144,6 +143,27 @@ begin
     begin
       TAtlasIdeResults.Open(AFileName, ALine, 0);
     end);
+end;
+
+/// <summary>Statuszeile des Fensters; freie Routine, weil TAtlasIdeTestExplorer am Mitgliederlimit ist.</summary>
+function StatusOf(AExplorer: TAtlasIdeTestExplorer): string;
+var
+  mTotal, mPassed, mFailed, mNotRun: Integer;
+begin
+  if AExplorer.FTests.Busy then
+  begin
+    Exit(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunning));
+  end;
+  if AExplorer.FProject = '' then
+  begin
+    Exit(TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerNoProject));
+  end;
+  if Length(AExplorer.FNodes) = 0 then
+  begin
+    Exit(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.ExplorerNoTests, [ProjectName(AExplorer.FProject)]));
+  end;
+  TAtlasTestExplorer.Totals(AExplorer.FNodes, mTotal, mPassed, mFailed, mNotRun);
+  Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.ExplorerSummary, [mTotal, mPassed, mFailed, mNotRun]);
 end;
 
 { Serien (#1782): freie Routinen, weil TAtlasIdeTestExplorer keine weiteren Mitglieder aufnimmt. }
@@ -359,7 +379,7 @@ begin
         FBusy := FTests.Busy;
         FVersion := FTests.Version;
         mFrame.SetBusy(FBusy);
-        mFrame.SetStatus(StatusText);
+        mFrame.SetStatus(StatusOf(Self));
       end;
     end);
 end;
@@ -557,26 +577,6 @@ begin
   ShowRows;
 end;
 
-function TAtlasIdeTestExplorer.StatusText: string;
-var
-  mTotal, mPassed, mFailed, mNotRun: Integer;
-begin
-  if FTests.Busy then
-  begin
-    Exit(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunning));
-  end;
-  if FProject = '' then
-  begin
-    Exit(TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerNoProject));
-  end;
-  if Length(FNodes) = 0 then
-  begin
-    Exit(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.ExplorerNoTests, [ProjectName(FProject)]));
-  end;
-  TAtlasTestExplorer.Totals(FNodes, mTotal, mPassed, mFailed, mNotRun);
-  Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.ExplorerSummary, [mTotal, mPassed, mFailed, mNotRun]);
-end;
-
 procedure TAtlasIdeTestExplorer.ShowRows;
 var
   mFrame: TAtlasTestsExplorerFrame;
@@ -592,7 +592,7 @@ begin
   mTexts.DecimalSeparator := FormatSettings.DecimalSeparator;
   mVisible := TAtlasTestExplorer.Visible(FNodes, mFrame.Filters, mFrame.SearchText,
     TAtlasIdeSettings.Current.TestsSlowMs);
-  mFrame.SetRows(TAtlasTestExplorer.Rows(FNodes, mVisible, mTexts), StatusText);
+  mFrame.SetRows(TAtlasTestExplorer.Rows(FNodes, mVisible, mTexts), StatusOf(Self));
   Selected(mFrame.FocusedNode);
 end;
 
