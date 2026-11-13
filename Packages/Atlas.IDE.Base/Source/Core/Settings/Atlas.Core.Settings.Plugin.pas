@@ -83,6 +83,8 @@ type
     cMaxTestsAffectedDepth = Atlas.Core.Settings.Plugin.Build.cMaxTestsAffectedDepth;
     cMinTestsCoveredByDepth = Atlas.Core.Settings.Plugin.Build.cMinTestsCoveredByDepth;
     cMaxTestsCoveredByDepth = Atlas.Core.Settings.Plugin.Build.cMaxTestsCoveredByDepth;
+    cMinTestsFromDebugStopMaxArray = Atlas.Core.Settings.Plugin.Debug.cMinTestsFromDebugStopMaxArray;
+    cMaxTestsFromDebugStopMaxArray = Atlas.Core.Settings.Plugin.Debug.cMaxTestsFromDebugStopMaxArray;
     cMinTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMinTestsOnSaveMax;
     cMaxTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMaxTestsOnSaveMax;
     cMinTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMinTestsSlowMs;
@@ -395,6 +397,13 @@ type
     property TestsOnSaveMax: Integer read FBuild.TestsOnSaveMax write FBuild.TestsOnSaveMax;
     property TestsFailureAtAssert: Boolean read FBuild.TestsFailureAtAssert write FBuild.TestsFailureAtAssert;
     property TestsFailureInline: Boolean read FBuild.TestsFailureInline write FBuild.TestsFailureInline;
+    property TestsFromDebugStop: Boolean read FDebug.TestsFromDebugStop write FDebug.TestsFromDebugStop;
+    property TestsFromDebugStopFields: Boolean read FDebug.TestsFromDebugStopFields
+      write FDebug.TestsFromDebugStopFields;
+    property TestsFromDebugStopProperties: Boolean read FDebug.TestsFromDebugStopProperties
+      write FDebug.TestsFromDebugStopProperties;
+    property TestsFromDebugStopMaxArray: Integer read FDebug.TestsFromDebugStopMaxArray
+      write FDebug.TestsFromDebugStopMaxArray;
     property TestsCompare: Boolean read FBuild.TestsCompare write FBuild.TestsCompare;
     property TestsCompareFormat: Boolean read FBuild.TestsCompareFormat write FBuild.TestsCompareFormat;
     property TestsApprovalFiles: Boolean read FBuild.TestsApprovalFiles write FBuild.TestsApprovalFiles;
@@ -454,6 +463,8 @@ type
       write FDebug.DebugBreakpointSetPerBranch;
     property DebugRunToClick: Boolean read FDebug.DebugRunToClick write FDebug.DebugRunToClick;
     property DebugBreakpointsWindow: Boolean read FDebug.DebugBreakpointsWindow write FDebug.DebugBreakpointsWindow;
+    property DebugBreakpointAnchors: Boolean read FDebug.DebugBreakpointAnchors write FDebug.DebugBreakpointAnchors;
+    property DebugBreakpointRules: Boolean read FDebug.DebugBreakpointRules write FDebug.DebugBreakpointRules;
     property DebugExplainUnavailable: Boolean read FDebug.DebugExplainUnavailable write FDebug.DebugExplainUnavailable;
     property DebugCompletionInDialogs: Boolean read FDebug.DebugCompletionInDialogs
       write FDebug.DebugCompletionInDialogs;

@@ -35,6 +35,8 @@ type
     [Test]
     procedure IgnoreLocationOnlyWithLocation;
     [Test]
+    procedure CreateTestOnlyWhenOffered;
+    [Test]
     procedure ClickReportsActionOnRelease;
     [Test]
     procedure ExplanationGrowsAndAddsButtons;
@@ -148,6 +150,32 @@ begin
   Assert.IsTrue(FBar.ActionRect(TAtlasDebugBarAction.Open).IsEmpty, 'ohne Datei kein Sprung');
   FBar.Trigger(TAtlasDebugBarAction.Open);
   Assert.AreEqual(Ord(TAtlasDebugBarAction.None), Ord(mReported));
+  FBar.OnAction := nil;
+end;
+
+procedure TAtlasDebugExceptionBarTests.CreateTestOnlyWhenOffered;
+var
+  mInfo: TAtlasDebugBannerInfo;
+  mReported: TAtlasDebugBarAction;
+begin
+  mReported := TAtlasDebugBarAction.None;
+  FBar.OnAction :=
+    procedure(AAction: TAtlasDebugBarAction)
+    begin
+      mReported := AAction;
+    end;
+  FBar.SetInfo(SampleInfo(True));
+  Assert.IsTrue(FBar.ActionRect(TAtlasDebugBarAction.CreateTest).IsEmpty, 'ohne Modul Tests kein Knopf');
+  FBar.Trigger(TAtlasDebugBarAction.CreateTest);
+  Assert.AreEqual(Ord(TAtlasDebugBarAction.None), Ord(mReported), 'ohne Knopf keine Aktion');
+  mInfo := SampleInfo(True);
+  mInfo.CanCreateTest := True;
+  FBar.SetInfo(mInfo);
+  Assert.IsFalse(FBar.ActionRect(TAtlasDebugBarAction.CreateTest).IsEmpty);
+  Assert.IsTrue(FBar.ActionRect(TAtlasDebugBarAction.CreateTest).Left >
+    FBar.ActionRect(TAtlasDebugBarAction.Copy).Right, 'nach „Meldung kopieren“');
+  FBar.Trigger(TAtlasDebugBarAction.CreateTest);
+  Assert.AreEqual(Ord(TAtlasDebugBarAction.CreateTest), Ord(mReported));
   FBar.OnAction := nil;
 end;
 

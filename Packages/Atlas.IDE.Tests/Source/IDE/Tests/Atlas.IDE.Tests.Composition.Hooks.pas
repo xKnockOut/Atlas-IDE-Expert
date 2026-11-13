@@ -8,7 +8,7 @@
 // - OnFinished: Projekt-Zusammenfassung (TAtlasIdeProjectSummaries, #69) und
 //   jeder IAtlasTestsListener (Schnellaktionen der Willkommensseite),
 // - Ziel und Pfad des Servers der betroffenen Tests, Probleme leeren, Meldung ohne Läufer,
-//   Leckprüfung einrichten;
+//   Leckprüfung einrichten, Sichtbarkeit von „Test debuggen“;
 // - OnLastFailed: fehlgeschlagene Tests des letzten Laufs aus den
 //   Projektdateien (TAtlasProjectSummaries), auch ohne Willkommensseite.
 
@@ -31,12 +31,14 @@ procedure ShowProblems(const AProblems: TArray<TPair<string, TAtlasProblem>>);
 procedure ClearProblems;
 /// <summary>Ziel der betroffenen Tests (#1353): Testprojekt, das ATests für die aktive Unit wählen, an AThen.</summary>
 procedure ResolveTestTarget(ATests: TAtlasIdeTests; const AThen: TAtlasAffectedTargetProc);
-/// <summary>Meldung „Tests ausführen ist aus“.</summary>
-function TestsOffText: string;
+/// <summary>Meldung „Tests ausführen ist aus“ in der Meldungsansicht.</summary>
+procedure WarnTestsOff;
 /// <summary>Leckprüfung des aktiven Projekts einrichten (#1880, Atlas.IDE.Tests.LeakSetup).</summary>
 procedure SetUpLeakCheck(const AScope: IAtlasModuleScope);
 /// <summary>Pfad des Atlas-Servers (Betroffene Tests, #1353).</summary>
 function ServerPath: string;
+/// <summary>„Test debuggen“ nach den Einstellungen gewünscht.</summary>
+function DebugWanted: Boolean;
 /// <summary>Ende eines Laufs in die Projekt-Zusammenfassung und an jeden IAtlasTestsListener.</summary>
 procedure AnnounceTests(const AProject: string; const ATests: TAtlasProjectTests);
 function LastFailed(AProject: string): TArray<string>;
@@ -49,6 +51,9 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Tests.Run,
+  Atlas.Core.Tests.Debug,
+  Atlas.IDE.Foundation.Host,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.CodeInsight.Manager.Paths,
   Atlas.IDE.Contracts.Tests,
   Atlas.IDE.Contracts.BuildPipeline,
@@ -126,9 +131,9 @@ begin
     end);
 end;
 
-function TestsOffText: string;
+procedure WarnTestsOff;
 begin
-  Result := TAtlasStrings.Text(TAtlasTextId.TestsRunOff);
+  TAtlasIdeHost.Warning(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
 end;
 
 procedure SetUpLeakCheck(const AScope: IAtlasModuleScope);
@@ -141,6 +146,11 @@ var
   mArguments: string;
 begin
   Result := TAtlasCodeInsightPaths.ServerPath(mArguments);
+end;
+
+function DebugWanted: Boolean;
+begin
+  Result := TAtlasTestDebug.DebugWanted(TAtlasIdeSettings.Current);
 end;
 
 /// <summary>Ende eines Laufs in die Projekt-Zusammenfassung (#69, Karte Tests) und an jeden IAtlasTestsListener
