@@ -221,7 +221,8 @@ def main():
         print(f'{args.ziel} ist schon enthalten.')
         return 0
 
-    merge = git('-c', 'merge.conflictStyle=diff3', 'merge', '--no-ff', '--no-commit', ref, check=False)
+    merge = git('-c', 'merge.conflictStyle=diff3', 'merge', '--no-ff', '--no-commit', '-m',
+                f'{args.ziel} eingemergt', ref, check=False)
     print(merge.stdout.strip())
 
     konflikte = [p for p in git('diff', '--name-only', '--diff-filter=U').stdout.splitlines() if p]
@@ -286,7 +287,8 @@ def main():
     if neu_erzeugen and pwsh:
         git('add', '-u')
 
-    if 'CHANGELOG.md' in eigene:
+    eigener_changelog = git('diff', '-U0', basis, 'HEAD', '--', 'CHANGELOG.md').stdout.splitlines()
+    if sum(z.startswith('+- ') for z in eigener_changelog) > sum(z.startswith('-- ') for z in eigener_changelog):
         print('Hinweis: Dieser Branch ändert CHANGELOG.md; Einträge gehören nach changelog.d/ (siehe dortige README.md).')
 
     if offen:
