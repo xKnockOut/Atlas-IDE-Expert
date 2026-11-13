@@ -761,6 +761,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.DebugValue.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Visualizers.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Visualizers.Format.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Visualizers.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.DisplayRules.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.DisplayRules.Tests.pas"/>

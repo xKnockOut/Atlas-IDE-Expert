@@ -44,6 +44,7 @@ requires
 
 contains
   Atlas.Core.Debug.Visualizers in 'Source\Core\Debug\Atlas.Core.Debug.Visualizers.pas',
+  Atlas.Core.Debug.Visualizers.Format in 'Source\Core\Debug\Atlas.Core.Debug.Visualizers.Format.pas',
   Atlas.Core.Debug.DisplayRules in 'Source\Core\Debug\Atlas.Core.Debug.DisplayRules.pas',
   Atlas.Core.Debug.StepInto in 'Source\Core\Debug\Atlas.Core.Debug.StepInto.pas',
   Atlas.Core.Debug.EventBreak in 'Source\Core\Debug\Atlas.Core.Debug.EventBreak.pas',

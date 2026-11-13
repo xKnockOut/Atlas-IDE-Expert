@@ -26,7 +26,8 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Text.DebugDisplay,
-  Atlas.Core.Debug.Visualizers;
+  Atlas.Core.Debug.Visualizers,
+  Atlas.Core.Debug.Visualizers.Format;
 
 type
   TAtlasDisplayRule = record

@@ -571,6 +571,7 @@ uses
   Atlas.Core.Hover.DebugValue in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas',
   Atlas.Core.Hover.DebugValue.Tests in 'IDE.Expert\Atlas.Core.Hover.DebugValue.Tests.pas',
   Atlas.Core.Debug.Visualizers in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Visualizers.pas',
+  Atlas.Core.Debug.Visualizers.Format in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Visualizers.Format.pas',
   Atlas.Core.Debug.Visualizers.Tests in 'IDE.Expert\Atlas.Core.Debug.Visualizers.Tests.pas',
   Atlas.Core.Debug.DisplayRules in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.DisplayRules.pas',
   Atlas.Core.Debug.DisplayRules.Tests in 'IDE.Expert\Atlas.Core.Debug.DisplayRules.Tests.pas',

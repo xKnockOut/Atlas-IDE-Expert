@@ -31,7 +31,8 @@ uses
   Vcl.ExtCtrls,
   Vcl.Graphics,
   Vcl.Menus,
-  Atlas.Core.Debug.Visualizers;
+  Atlas.Core.Debug.Visualizers,
+  Atlas.Core.Debug.Visualizers.Format;
 
 type
   TAtlasDebugViewer = class(TForm)
