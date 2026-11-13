@@ -99,6 +99,8 @@ contains
   Atlas.Core.Hover.History in 'Source\Core\Hover\Atlas.Core.Hover.History.pas',
   Atlas.Core.Hover.Items in 'Source\Core\Hover\Atlas.Core.Hover.Items.pas',
   Atlas.Core.Hover.Layout in 'Source\Core\Hover\Atlas.Core.Hover.Layout.pas',
+  Atlas.Core.Hover.Painter in 'Source\Core\Hover\Atlas.Core.Hover.Painter.pas',
+  Atlas.Core.Hover.PublishedPainter in 'Source\Core\Hover\Atlas.Core.Hover.PublishedPainter.pas',
   Atlas.Core.Hover.Texts in 'Source\Core\Hover\Atlas.Core.Hover.Texts.pas',
   Atlas.Core.Hover.View in 'Source\Core\Hover\Atlas.Core.Hover.View.pas',
   Atlas.Core.Hover.DebugValue in 'Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas',

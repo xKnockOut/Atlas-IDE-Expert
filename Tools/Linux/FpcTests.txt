@@ -397,6 +397,7 @@ Atlas.UI.Undo.Strings.Tests
 Atlas.UI.VersionControl.Strings.Tests
 Atlas.UI.Welcome.Strings.Tests
 Atlas.Core.Hover.Layout.Tests
+Atlas.Core.Hover.Painter.Tests
 Atlas.Core.Settings.Tests
 Atlas.Core.Tracker.Transitions.Tests
 Atlas.Core.Tracker.EndSteps.Tests
