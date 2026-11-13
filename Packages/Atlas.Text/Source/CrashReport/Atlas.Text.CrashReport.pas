@@ -97,6 +97,13 @@ const
   cBitsPerHexDigit = 4;
   cMaxHexDigits = 16;
   cMinAddressDigits = 6;
+  // Stapelzeile von madExcept: Adresse, +Versatz, Modul, [Unit] [Zeile] [+Versatz], Routine.
+  cMadModuleWord = 2;
+  cMadMinWords = cMadModuleWord + 1;
+  cMadMinWordsWithRoutine = cMadMinWords + 1;
+  // „"Datei"“ in JclDebug zerfällt an den Anführungszeichen in mindestens drei Teile.
+  cQuotedParts = 3;
+  cHexPrefix = '0x';
   cEurekaMark = 'eurekalog';
   cMadExceptMark = 'madexcept';
   cCrashedThreadMark = 'exception thread';
@@ -349,6 +356,48 @@ begin
   end;
 end;
 
+{ Kopf mit „Schlüssel : Wert“ }
+
+type
+{$SCOPEDENUMS ON}
+  THeadField = (ExceptionClass, ExceptionMessage, Address);
+{$SCOPEDENUMS OFF}
+
+const
+  // madExcept: „exception class“ usw., EurekaLog: „2.5 Type“ usw. (Nummer fällt in TryKeyValue weg).
+  cHeadKeys: array[0..5] of string = ('exception class', 'type', 'exception message', 'message',
+    'exception address', 'address');
+  cHeadFields: array[0..5] of THeadField = (THeadField.ExceptionClass, THeadField.ExceptionClass,
+    THeadField.ExceptionMessage, THeadField.ExceptionMessage, THeadField.Address, THeadField.Address);
+
+/// <summary>Zeile des Kopfs übernehmen: Exception-Klasse, -Text oder Adresse.</summary>
+procedure TakeHead(var AReport: TCrashReport; const ALine: string);
+var
+  mKey, mValue: string;
+  mIndex: Integer;
+begin
+  if not TryKeyValue(ALine, mKey, mValue) then
+  begin
+    Exit;
+  end;
+  mIndex := IndexStr(mKey, cHeadKeys);
+  if mIndex < 0 then
+  begin
+    Exit;
+  end;
+  case cHeadFields[mIndex] of
+    THeadField.ExceptionClass:
+      AReport.ExceptionClass := mValue;
+    THeadField.ExceptionMessage:
+      AReport.ExceptionMessage := mValue;
+    THeadField.Address:
+      if TryAddress(mValue, AReport.Address) then
+      begin
+        AReport.Module := '';
+      end;
+  end;
+end;
+
 { madExcept }
 
 /// <summary>Kopfzeile eines Threads: „main thread ($1a2c):“, „thread $2b3c (TWorker):“.</summary>
@@ -380,7 +429,7 @@ var
   mIndex: Integer;
 begin
   // Wörter 3 .. High-1: [Unit] [Zeile] [+Versatz]
-  for mIndex := 3 to High(AWords) - 1 do
+  for mIndex := cMadMinWords to High(AWords) - 1 do
   begin
     if IsDigits(AWords[mIndex]) then
     begin
@@ -400,14 +449,14 @@ begin
   AFrame := Default(TCrashFrame);
   // 0045a1b2 +012 Project1.exe Unit1  42  +3 TForm1.Button1Click
   mWords := WordsOf(ALine);
-  Result := (Length(mWords) >= 3) and TryAddress(mWords[0], AFrame.Address) and mWords[1].StartsWith('+') and
-    (Pos('.', mWords[2]) > 1);
+  Result := (Length(mWords) >= cMadMinWords) and TryAddress(mWords[0], AFrame.Address) and
+    mWords[1].StartsWith('+') and (Pos('.', mWords[cMadModuleWord]) > 1);
   if not Result then
   begin
     Exit;
   end;
-  AFrame.Module := mWords[2];
-  if Length(mWords) >= 4 then
+  AFrame.Module := mWords[cMadModuleWord];
+  if Length(mWords) >= cMadMinWordsWithRoutine then
   begin
     AFrame.Routine := mWords[High(mWords)];
     TakeMadMiddle(mWords, AFrame);
@@ -418,28 +467,6 @@ type
 {$SCOPEDENUMS ON}
   TMadSection = (Head, Thread, Modules);
 {$SCOPEDENUMS OFF}
-
-procedure TakeMadHead(var AReport: TCrashReport; const ALine: string);
-var
-  mKey, mValue: string;
-begin
-  if not TryKeyValue(ALine, mKey, mValue) then
-  begin
-    Exit;
-  end;
-  if mKey = 'exception class' then
-  begin
-    AReport.ExceptionClass := mValue;
-  end
-  else if mKey = 'exception message' then
-  begin
-    AReport.ExceptionMessage := mValue;
-  end
-  else if (mKey = 'exception address') and TryAddress(mValue, AReport.Address) then
-  begin
-    AReport.Module := '';
-  end;
-end;
 
 procedure TakeMadLine(var AReport: TCrashReport; const ALine: string; var ASection: TMadSection);
 var
@@ -467,7 +494,7 @@ begin
   end
   else if ASection = TMadSection.Head then
   begin
-    TakeMadHead(AReport, ALine);
+    TakeHead(AReport, ALine);
   end;
 end;
 
@@ -493,22 +520,27 @@ end;
 { EurekaLog }
 
 type
+{$SCOPEDENUMS ON}
+  TEurekaColumn = (Address, Module, UnitName, ClassName, Routine, Line, Handle, Name);
+{$SCOPEDENUMS OFF}
+
   /// <summary>Spalten der zuletzt gelesenen Kopfzeile einer Tabelle; -1 = fehlt.</summary>
   TEurekaColumns = record
     Count: Integer;
-    Address, Module, UnitName, ClassName, Routine, Line, Handle, Name: Integer;
+    Slots: array[TEurekaColumn] of Integer;
     function IsStack: Boolean;
     function IsModules: Boolean;
   end;
 
 function TEurekaColumns.IsStack: Boolean;
 begin
-  Result := (Address >= 0) and (Module >= 0) and (Routine >= 0);
+  Result := (Slots[TEurekaColumn.Address] >= 0) and (Slots[TEurekaColumn.Module] >= 0) and
+    (Slots[TEurekaColumn.Routine] >= 0);
 end;
 
 function TEurekaColumns.IsModules: Boolean;
 begin
-  Result := (Handle >= 0) and (Name >= 0);
+  Result := (Slots[TEurekaColumn.Handle] >= 0) and (Slots[TEurekaColumn.Name] >= 0);
 end;
 
 /// <summary>Zellen einer Tabellenzeile „|a |b |“; nil, wenn die Zeile keine Tabellenzeile ist.</summary>
@@ -531,42 +563,20 @@ begin
 end;
 
 const
-  // Spaltennamen der Kopfzeile in der Reihenfolge von TEurekaColumn; „Procedure“ als Anfang („Procedure/Method“).
-  cEurekaColumnNames: array[0..7] of string = ('address', 'module', 'unit', 'class', 'procedure', 'line', 'handle',
-    'name');
-
-function ColumnSlot(var AColumns: TEurekaColumns; ASlot: Integer): PInteger;
-begin
-  case ASlot of
-    0:
-      Result := @AColumns.Address;
-    1:
-      Result := @AColumns.Module;
-    2:
-      Result := @AColumns.UnitName;
-    3:
-      Result := @AColumns.ClassName;
-    4:
-      Result := @AColumns.Routine;
-    5:
-      Result := @AColumns.Line;
-    6:
-      Result := @AColumns.Handle;
-  else
-    Result := @AColumns.Name;
-  end;
-end;
+  // Spaltennamen der Kopfzeile; „Procedure“ als Anfang („Procedure/Method“).
+  cEurekaColumnNames: array[TEurekaColumn] of string = ('address', 'module', 'unit', 'class', 'procedure', 'line',
+    'handle', 'name');
 
 procedure SetColumn(var AColumns: TEurekaColumns; const ACell: string; AIndex: Integer);
 var
-  mSlot: Integer;
+  mColumn: TEurekaColumn;
 begin
-  for mSlot := 0 to High(cEurekaColumnNames) do
+  for mColumn := Low(TEurekaColumn) to High(TEurekaColumn) do
   begin
-    if SameText(ACell, cEurekaColumnNames[mSlot]) or
-      ((cEurekaColumnNames[mSlot] = 'procedure') and StartsText('procedure', ACell)) then
+    if SameText(ACell, cEurekaColumnNames[mColumn]) or
+      ((mColumn = TEurekaColumn.Routine) and StartsText(cEurekaColumnNames[mColumn], ACell)) then
     begin
-      ColumnSlot(AColumns, mSlot)^ := AIndex;
+      AColumns.Slots[mColumn] := AIndex;
       Exit;
     end;
   end;
@@ -576,11 +586,12 @@ end;
 function TryEurekaHeader(const ACells: TArray<string>; out AColumns: TEurekaColumns): Boolean;
 var
   mIndex: Integer;
+  mColumn: TEurekaColumn;
 begin
   AColumns := Default(TEurekaColumns);
-  for mIndex := 0 to High(cEurekaColumnNames) do
+  for mColumn := Low(TEurekaColumn) to High(TEurekaColumn) do
   begin
-    ColumnSlot(AColumns, mIndex)^ := -1;
+    AColumns.Slots[mColumn] := -1;
   end;
   AColumns.Count := Length(ACells);
   for mIndex := 0 to High(ACells) do
@@ -619,20 +630,21 @@ var
   mClass: string;
 begin
   AFrame := Default(TCrashFrame);
-  Result := (Length(ACells) = AColumns.Count) and TryAddress(CellAt(ACells, AColumns.Address), AFrame.Address);
+  Result := (Length(ACells) = AColumns.Count) and
+    TryAddress(CellAt(ACells, AColumns.Slots[TEurekaColumn.Address]), AFrame.Address);
   if not Result then
   begin
     Exit;
   end;
-  AFrame.Module := CellAt(ACells, AColumns.Module);
-  TakeEurekaUnit(CellAt(ACells, AColumns.UnitName), AFrame);
-  AFrame.Routine := CellAt(ACells, AColumns.Routine);
-  mClass := CellAt(ACells, AColumns.ClassName);
+  AFrame.Module := CellAt(ACells, AColumns.Slots[TEurekaColumn.Module]);
+  TakeEurekaUnit(CellAt(ACells, AColumns.Slots[TEurekaColumn.UnitName]), AFrame);
+  AFrame.Routine := CellAt(ACells, AColumns.Slots[TEurekaColumn.Routine]);
+  mClass := CellAt(ACells, AColumns.Slots[TEurekaColumn.ClassName]);
   if (mClass <> '') and (AFrame.Routine <> '') then
   begin
     AFrame.Routine := mClass + '.' + AFrame.Routine;
   end;
-  AFrame.Line := LineNumberOf(CellAt(ACells, AColumns.Line));
+  AFrame.Line := LineNumberOf(CellAt(ACells, AColumns.Slots[TEurekaColumn.Line]));
 end;
 
 /// <summary>Zeile „|*Exception Thread: ID=6708; …“ oder „|Running Thread: ID=…“.</summary>
@@ -651,28 +663,6 @@ begin
   ACrashed := ContainsText(mCell, cCrashedThreadMark);
 end;
 
-procedure TakeEurekaHead(var AReport: TCrashReport; const ALine: string);
-var
-  mKey, mValue: string;
-begin
-  if not TryKeyValue(ALine, mKey, mValue) then
-  begin
-    Exit;
-  end;
-  if (mKey = 'type') or (mKey = 'exception class') then
-  begin
-    AReport.ExceptionClass := mValue;
-  end
-  else if (mKey = 'message') or (mKey = 'exception message') then
-  begin
-    AReport.ExceptionMessage := mValue;
-  end
-  else if (mKey = 'address') and TryAddress(mValue, AReport.Address) then
-  begin
-    AReport.Module := '';
-  end;
-end;
-
 procedure TakeEurekaRow(var AReport: TCrashReport; const ACells: TArray<string>; const AColumns: TEurekaColumns);
 var
   mFrame: TCrashFrame;
@@ -689,9 +679,9 @@ begin
     AddFrame(AReport, mFrame);
   end
   else if AColumns.IsModules and (Length(ACells) = AColumns.Count) and
-    TryAddress(CellAt(ACells, AColumns.Handle), mBase) then
+    TryAddress(CellAt(ACells, AColumns.Slots[TEurekaColumn.Handle]), mBase) then
   begin
-    AddModule(AReport, CellAt(ACells, AColumns.Name), mBase);
+    AddModule(AReport, CellAt(ACells, AColumns.Slots[TEurekaColumn.Name]), mBase);
   end;
 end;
 
@@ -703,7 +693,7 @@ begin
   mCells := CellsOf(ALine);
   if mCells = nil then
   begin
-    TakeEurekaHead(AReport, ALine);
+    TakeHead(AReport, ALine);
   end
   else if TryEurekaHeader(mCells, mHeader) then
   begin
@@ -754,7 +744,7 @@ begin
       AFrame.Line := LineNumberOf(Copy(mInside, Length('line ') + 1, Pos(',', mInside + ',') - Length('line ') - 1));
     end;
     mQuoted := mInside.Split(['"']);
-    if Length(mQuoted) >= 3 then
+    if Length(mQuoted) >= cQuotedParts then
     begin
       AFrame.FileName := mQuoted[1];
     end;
@@ -849,9 +839,9 @@ var
 begin
   AValue := 0;
   mText := AText;
-  if StartsText('0x', mText) then
+  if StartsText(cHexPrefix, mText) then
   begin
-    mText := Copy(mText, 3, MaxInt);
+    mText := Copy(mText, Length(cHexPrefix) + 1, MaxInt);
   end
   else if mText.StartsWith('$') then
   begin
