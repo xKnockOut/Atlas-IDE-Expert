@@ -696,6 +696,9 @@ type
 
 implementation
 
+uses
+  System.StrUtils;
+
 class function TAtlasTrackerCall.Create(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
   ATimeoutMs: Integer): TAtlasTrackerCall;
 begin
@@ -705,6 +708,8 @@ begin
 end;
 
 const
+  /// <summary>Endung einer Klon-Adresse.</summary>
+  cGitSuffix = '.git';
   cChecksKeys: array[TAtlasTrackerChecks] of string = ('unknown', 'pending', 'success', 'failure');
   cLinkKindKeys: array[TAtlasTrackerLinkKind] of string = ('', 'dependsOn', 'blocks', 'subtask', 'parent',
     'duplicates', 'duplicatedBy', 'relates', 'mentioned', 'pullRequest');
@@ -1083,6 +1088,12 @@ begin
     Exit;
   end;
   mPath := TrimSlashes(Copy(Result.Url, Length(mOrigin) + 1, MaxInt));
+  // Klon-Adresse „…/owner/repo.git“ (aus git remote kopiert): ohne „.git“, sonst sucht GitHub ein Repo
+  // „repo.git“ (Suche 422, Sprint 404).
+  if EndsText(cGitSuffix, mPath) then
+  begin
+    mPath := TrimSlashes(Copy(mPath, 1, Length(mPath) - Length(cGitSuffix)));
+  end;
   if mPath = '' then
   begin
     Exit;

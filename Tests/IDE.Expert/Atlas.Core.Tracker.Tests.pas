@@ -414,6 +414,10 @@ begin
   mTarget := TAtlasTrackerTarget.Create('github', 'https://github.com/beispiel/atlas/', '', '');
   Assert.AreEqual('https://github.com', mTarget.Url);
   Assert.AreEqual('beispiel/atlas', mTarget.Project);
+  // Klon-Adresse mit „.git“: Repo ohne Endung.
+  mTarget := TAtlasTrackerTarget.Create('github', 'https://github.com/beispiel/atlas.git', '', '');
+  Assert.AreEqual('https://github.com', mTarget.Url);
+  Assert.AreEqual('beispiel/atlas', mTarget.Project);
   // Eingetragenes Projekt geht vor.
   mTarget := TAtlasTrackerTarget.Create('github', 'https://git.firma.de/team/kasse', 'team/andere', '');
   Assert.AreEqual('https://git.firma.de', mTarget.Url);
