@@ -45,6 +45,7 @@ type
     // Dauer und langsame Tests (#1772).
     TestsLensDuration, TestsLensSlow, TestsSlowestCommand, TestsSlowestTitle, TestsSlowestTest, TestsSlowestDuration,
     TestsSlowestNone, TestsSlowestHint, TestsSlowestNotFound, SettingsTestsShowDuration, SettingsTestsSlowMs,
+    TestsLensCompare,
     // Lecks je Test (#1774).
     TestsLensLeak, TestsLeakProblem, TestsLeaksFinished, SettingsTestsLeaks);
 
@@ -188,6 +189,7 @@ const
      'Tests: %s nicht im Testprojekt gefunden.',
      'Dauer an der Testmarke zeigen, langsame Tests gelb',
      'Langsam ab (ms)',
+     'Vergleichen',
      '%s · Leck: %d Bytes',
      'Test %s gibt Speicher nicht frei: %d Bytes (Leck)',
      'Tests: %d bestanden mit Leck, zusammen %d Bytes nicht freigegeben (Warnungen in Atlas-Probleme).',
@@ -317,6 +319,7 @@ const
      'Tests: %s not found in the test project.',
      'Show the duration on the test mark, slow tests in yellow',
      'Slow from (ms)',
+     'Compare',
      '%s · leak: %d bytes',
      'Test %s does not free memory: %d bytes (leak)',
      'Tests: %d passed with a leak, %d bytes not freed in total (warnings in Atlas problems).',
