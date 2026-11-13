@@ -58,6 +58,7 @@
         <DCCReference Include="Source\Shell\Shell.Composition.Compile.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.Services.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.Structure.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.Visibility.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.Conversions.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.Types.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.Fixes.pas"/>

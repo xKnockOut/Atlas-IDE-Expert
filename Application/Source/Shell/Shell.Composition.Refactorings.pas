@@ -27,6 +27,7 @@ implementation
 
 uses
   Shell.Composition.Refactorings.Structure,
+  Shell.Composition.Refactorings.Visibility,
   Shell.Composition.Refactorings.Conversions,
   Shell.Composition.Refactorings.Types,
   Shell.Composition.Refactorings.Fixes,
@@ -37,6 +38,7 @@ constructor TShellRefactorings.Create(const AServices: TShellRefactoringServices
 begin
   inherited Create(AServices);
   FParts := TArray<TShellRefactoringPart>.Create(TShellStructureRefactorings.Create(AServices),
+    TShellVisibilityRefactorings.Create(AServices),
     TShellConversionRefactorings.Create(AServices), TShellTypeRefactorings.Create(AServices),
     TShellFixRefactorings.Create(AServices), TShellEditingRefactorings.Create(AServices),
     TShellStepping.Create(AServices));

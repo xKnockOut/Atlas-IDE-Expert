@@ -55,6 +55,13 @@ type
     procedure UnitRenameFollowUpOff;
     [Test]
     procedure StepFilterFindsRoutineOfOpenDocument;
+    /// <summary>refactoring.raiseVisibility schaltet die Code-Aktion auf der Deklaration (#2108).</summary>
+    [Test]
+    procedure RaiseVisibilityOnDeclaration;
+    /// <summary>Der Befehl für die Vervollständigung braucht eine lesbare Datei, nicht ein offenes Dokument.
+    /// </summary>
+    [Test]
+    procedure MemberActionsNeedReadableFile;
   end;
 
 implementation
@@ -76,7 +83,9 @@ uses
   Atlas.Common.Lsp.DisableWarning,
   Atlas.Common.Lsp.StepFilter,
   Atlas.Common.Lsp.UnitRename,
+  Atlas.Common.Lsp.RaiseVisibility,
   Shell.Composition.Refactorings.Structure,
+  Shell.Composition.Refactorings.Visibility,
   Shell.Composition.Refactorings.Conversions,
   Shell.Composition.Refactorings.Types,
   Shell.Composition.Refactorings.Fixes,
@@ -251,6 +260,8 @@ begin
   Assert.IsTrue(Pos(TLspUnitRename.cCommand, CommandsOf(TShellEditingRefactorings.Create(FServices))) > 0,
     'Bearbeiten');
   Assert.IsTrue(Pos(TLspStepFilter.cCountsCommand, CommandsOf(TShellStepping.Create(FServices))) > 0, 'Debugger');
+  Assert.IsTrue(Pos(TLspRaiseVisibility.cCommand, CommandsOf(TShellVisibilityRefactorings.Create(FServices))) > 0,
+    'Sichtbarkeit');
 end;
 
 procedure TShellRefactoringsTests.RegistersCommandsOfAllParts;
@@ -270,6 +281,7 @@ begin
   Assert.IsTrue(Pos(TLspDisableWarning.cApplyCommand, mText) > 0, 'Korrekturen');
   Assert.IsTrue(Pos(TLspUnitRename.cCommand, mText) > 0, 'Bearbeiten');
   Assert.IsTrue(Pos(TLspStepFilter.cCountsCommand, mText) > 0, 'Debugger');
+  Assert.IsTrue(Pos(TLspRaiseVisibility.cCommand, mText) > 0, 'Sichtbarkeit');
 end;
 
 procedure TShellRefactoringsTests.DisabledRefactoringsOfferNoActions;
@@ -329,6 +341,41 @@ begin
   finally
     mAnswer.Free;
   end;
+end;
+
+procedure TShellRefactoringsTests.RaiseVisibilityOnDeclaration;
+const
+  cClass = 'unit Kunden;'#10'interface'#10'type'#10'  TKunde = class'#10'  private'#10'    FName: string;'#10 +
+    '  end;'#10'implementation'#10'end.'#10;
+var
+  mRange: TTextRange;
+  mActions: TArray<TJSONObject>;
+  mItem: TJSONObject;
+begin
+  FDocuments.Open(cUri, 'pascal', 1, cClass);
+  mRange := TTextRange.Create(TTextPosition.Create(5, 6), TTextPosition.Create(5, 6));
+  Assert.AreEqual(0, Integer(Length(FRefactorings.Actions(cUri, mRange))), 'abgeschaltet');
+  FSettings.RaiseVisibility := True;
+  mActions := FRefactorings.Actions(cUri, mRange);
+  try
+    Assert.AreEqual(2, Integer(Length(mActions)));
+    Assert.AreEqual('Sichtbarkeit von FName auf protected anheben', mActions[0].GetValue<string>('title'));
+  finally
+    for mItem in mActions do
+    begin
+      mItem.Free;
+    end;
+  end;
+end;
+
+procedure TShellRefactoringsTests.MemberActionsNeedReadableFile;
+var
+  mCode: Integer;
+begin
+  ErrorOf(TLspRaiseVisibility.cCommand, '["' + cUri + '", {"line": 5, "character": 4}]', mCode);
+  Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode, 'Name fehlt');
+  ErrorOf(TLspRaiseVisibility.cCommand, '["' + cUri + '", {"line": 5, "character": 4}, "FName"]', mCode);
+  Assert.AreEqual(TLspErrorCode.cRequestFailed, mCode, 'nicht lesbar');
 end;
 
 initialization
