@@ -90,6 +90,7 @@
         <DCCReference Include="Source\TestResults\Atlas.Text.TestResults.pas"/>
         <DCCReference Include="Source\MapFile\Atlas.Text.MapFile.pas"/>
         <DCCReference Include="Source\LeakReport\Atlas.Text.LeakReport.pas"/>
+        <DCCReference Include="Source\CrashReport\Atlas.Text.CrashReport.pas"/>
         <DCCReference Include="Source\StepFilter\Atlas.Text.StepFilter.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Text.Updates.pas"/>
         <DCCReference Include="Source\UpdateRun\Atlas.Text.UpdateRun.pas"/>
