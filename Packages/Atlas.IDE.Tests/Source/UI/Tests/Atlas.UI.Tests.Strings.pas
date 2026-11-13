@@ -30,7 +30,9 @@ type
     // Assistent der Objektgalerie (#1821).
     TestsGalleryTestUnit, TestsGalleryTestUnitHint, TestsGalleryChooseUnit, TestsGalleryNoUnits,
     // Veraltete Ergebnisse (#1770).
-    TestsLensStale, TestsRunStaleCommand, TestsNoStale, SettingsTestsStale, SettingsTestsStaleUnits);
+    TestsLensStale, TestsRunStaleCommand, TestsNoStale, SettingsTestsStale, SettingsTestsStaleUnits,
+    // Fehlschlag an der Assert-Zeile (#1771).
+    TestsInlineValues, SettingsTestsFailureAtAssert, SettingsTestsFailureInline);
 
   TAtlasTestsStrings = class
   public
@@ -124,7 +126,10 @@ const
      'Veraltete Tests ausführen',
      'Tests: Keine veralteten Tests (seit dem Lauf nichts geändert).',
      'Geänderte Tests als veraltet zeigen (grau „(veraltet)“, Befehl „Veraltete Tests ausführen“)',
-     'Auch Änderungen in verwendeten Units des Testprojekts zählen'),
+     'Auch Änderungen in verwendeten Units des Testprojekts zählen',
+     'erwartet %s, erhalten %s',
+     'Fehlschlag an der Assert-Zeile zeigen (Stacktrace bzw. eindeutiger Assert), sonst am Methodenkopf',
+     'Dahinter kurz „erwartet …, erhalten …“'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -202,7 +207,10 @@ const
      'Run outdated tests',
      'Tests: No outdated tests (nothing changed since the run).',
      'Show changed tests as outdated (grey “(outdated)”, command “Run outdated tests”)',
-     'Changes in used units of the test project count too'));
+     'Changes in used units of the test project count too',
+     'expected %s, got %s',
+     'Show a failure at the assert line (stack trace or unique assert), otherwise at the method header',
+     'Short “expected …, got …” after it'));
 
 { TAtlasTestsStrings }
 
