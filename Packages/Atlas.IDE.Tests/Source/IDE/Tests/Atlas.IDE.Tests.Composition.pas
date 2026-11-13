@@ -45,11 +45,8 @@ uses
 
 type
   TAtlasTestsModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
-<<<<<<< HEAD
-    IAtlasAppliesSettings, IAtlasBuildVerdictListener, IAtlasTestRunner, IAtlasTestsSource, IAtlasTestValues)
-=======
-    IAtlasAppliesSettings, IAtlasBuildVerdictListener, IAtlasTestRunner, IAtlasTestsSource, IAtlasFollowsSaves)
->>>>>>> origin/main-merging
+    IAtlasAppliesSettings, IAtlasBuildVerdictListener, IAtlasTestRunner, IAtlasTestsSource, IAtlasFollowsSaves,
+    IAtlasTestValues)
   public const
     cModuleId = 'atlas.tests';
     cSwitch = 'tests';
@@ -71,14 +68,11 @@ type
     function DebugByName(const AProject, AFullName: string; out AReason: string): Boolean;
     function LocateByName(const AProject, AFullName: string; out AFileName: string; out ALine: Integer): Boolean;
     function Busy: Boolean;
-<<<<<<< HEAD
+    procedure FileSaved(const AFileName: string);
     function HasValuesAt(ALine: Integer): Boolean;
     procedure CompareAt(ALine: Integer);
     function HasValues(const AFullName: string): Boolean;
     procedure Compare(const AFullName: string);
-=======
-    procedure FileSaved(const AFileName: string);
->>>>>>> origin/main-merging
     /// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
     /// nicht passt.</summary>
     class function RegisterModule: Boolean; static;
