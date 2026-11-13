@@ -164,26 +164,6 @@ begin
     ((mNode.Kind = TSyntaxKind.SetConstructor) and (mNode.ChildCount = 0));
 end;
 
-/// <summary>Leerraum am Anfang der Zeile ALine von AText.</summary>
-function IndentOf(const ALines: TArray<string>; ALine: Integer): string;
-var
-  mText: string;
-  mIndex: Integer;
-begin
-  Result := '';
-  if (ALine < 0) or (ALine > High(ALines)) then
-  begin
-    Exit;
-  end;
-  mText := ALines[ALine];
-  mIndex := 1;
-  while (mIndex <= Length(mText)) and CharInSet(mText[mIndex], [' ', #9]) do
-  begin
-    Inc(mIndex);
-  end;
-  Result := Copy(mText, 1, mIndex - 1);
-end;
-
 { TTearDownCheck }
 
 constructor TTearDownCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -604,16 +584,14 @@ end;
 function TTearDownCheck.InsertBeforeEnd(ARoutine: TSyntaxNode; const AFields: TArray<TFilledField>): TTextEdit;
 var
   mBlock: TSyntaxNode;
-  mLines: TArray<string>;
   mEnd: TTextPosition;
-  mLineBreak, mIndent, mText: string;
+  mIndent, mText: string;
   mFilled: TFilledField;
 begin
   // Vor dem end des Rumpfs; steht es allein auf seiner Zeile, als eigene Zeile davor.
   mBlock := ARoutine.FindChild(TSyntaxKind.Block);
-  mLines := TTextLines.SplitLines(FContext.Text, mLineBreak);
   mEnd := TTextPosition.Create(mBlock.EndPos.Line, mBlock.EndPos.Character - 3);
-  mIndent := IndentOf(mLines, mEnd.Line);
+  mIndent := TTextLines.IndentOf(FContext.Text, mEnd.Line);
   mText := '';
   if Length(mIndent) = mEnd.Character then
   begin
@@ -636,13 +614,11 @@ end;
 function TTearDownCheck.NewTearDownFix(const ASetup: TDUnitXMember; ASetupBody: TSyntaxNode;
   const ATearDown: string; const AFields: TArray<TFilledField>): TRuleFix;
 var
-  mLines: TArray<string>;
-  mLineBreak, mIndent, mBody: string;
+  mIndent, mBody: string;
   mFilled: TFilledField;
   mDecl, mImpl: TTextPosition;
 begin
-  mLines := TTextLines.SplitLines(FContext.Text, mLineBreak);
-  mIndent := IndentOf(mLines, ASetup.Node.StartPos.Line);
+  mIndent := TTextLines.IndentOf(FContext.Text, ASetup.Node.StartPos.Line);
   mBody := '';
   for mFilled in AFields do
   begin
