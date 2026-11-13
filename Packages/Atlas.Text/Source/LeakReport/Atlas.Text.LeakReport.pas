@@ -100,6 +100,11 @@ const
   cSeparatorStart = '-----';
   cMinAddressDigits = 6;
   cMaxAddressDigits = 16;
+  cBitsPerHexDigit = 4;
+  // „Name x Anzahl“ in der Zusammenfassung.
+  cCountMark = ' x ';
+  cSystemPrefix = 'system.';
+  cFastMMPrefix = 'fastmm';
   cTextNames: array[0..4] of string = ('UnicodeString', 'AnsiString', 'WideString', 'RawByteString', 'String');
   cUnknownNames: array[0..1] of string = ('Unknown', 'Unbekannt');
 
@@ -134,7 +139,7 @@ begin
   for mIndex := 1 to Length(AText) do
   begin
     mDigit := Pos(UpCase(AText[mIndex]), '0123456789ABCDEF') - 1;
-    Result := (Result shl 4) or UInt64(mDigit);
+    Result := (Result shl cBitsPerHexDigit) or UInt64(mDigit);
   end;
 end;
 
@@ -157,13 +162,18 @@ end;
 function ReadSizes(const AText: string; out ASizes: TArray<Int64>): Boolean;
 var
   mRest, mPart: string;
-  mComma: Integer;
-  mValue: Int64;
+  mComma, mIndex: Integer;
 begin
   ASizes := nil;
+  Result := AText <> '';
+  if not Result then
+  begin
+    Exit;
+  end;
+  // Länge vorab: ein Teil mehr als Kommas.
+  SetLength(ASizes, Length(AText) - Length(StringReplace(AText, ',', '', [rfReplaceAll])) + 1);
   mRest := AText;
-  Result := mRest <> '';
-  while Result and (mRest <> '') do
+  for mIndex := 0 to High(ASizes) do
   begin
     mComma := Pos(',', mRest);
     if mComma = 0 then
@@ -172,11 +182,10 @@ begin
     end;
     mPart := Trim(Copy(mRest, 1, mComma - 1));
     mRest := Copy(mRest, mComma + 1, MaxInt);
-    Result := IsDigits(mPart) and TryStrToInt64(mPart, mValue);
-    if Result then
+    if not (IsDigits(mPart) and TryStrToInt64(mPart, ASizes[mIndex])) then
     begin
-      SetLength(ASizes, Length(ASizes) + 1);
-      ASizes[High(ASizes)] := mValue;
+      ASizes := nil;
+      Exit(False);
     end;
   end;
 end;
@@ -237,11 +246,13 @@ begin
   end;
   AName := '';
   ACount := 0;
-  // „Name x Anzahl“: vor der Zahl steht „ x “.
-  Result := (mAt > 2) and (Copy(mText, mAt - 2, 3) = ' x ') and TryStrToInt(Copy(mText, mAt + 1, MaxInt), ACount);
+  // Vor der Zahl steht cCountMark; mAt zeigt auf dessen letztes Zeichen.
+  mAt := mAt - Length(cCountMark) + 1;
+  Result := (mAt > 1) and (Copy(mText, mAt, Length(cCountMark)) = cCountMark) and
+    TryStrToInt(Copy(mText, mAt + Length(cCountMark), MaxInt), ACount);
   if Result then
   begin
-    AName := Trim(Copy(mText, 1, mAt - 3));
+    AName := Trim(Copy(mText, 1, mAt - 1));
     Result := AName <> '';
   end;
 end;
@@ -313,53 +324,75 @@ end;
 
 { Einträge }
 
+/// <summary>Größe aus der ersten nicht leeren Zeile („A memory block has been leaked. The size is: 20“);
+/// AStart ist ihr Index. Fehlermeldungen von FastMM („… detected an error during a FreeMem operation …“) haben
+/// dort keine Größe.</summary>
+function ReadBlockSize(const ALines: TLeakLines; out AStart, ASize: Integer): Boolean;
+var
+  mSizes: TArray<Int64>;
+begin
+  AStart := 0;
+  ASize := 0;
+  while (AStart < Length(ALines)) and (Trim(ALines[AStart]) = '') do
+  begin
+    Inc(AStart);
+  end;
+  Result := (AStart < Length(ALines)) and ReadSizes(AfterLastColon(ALines[AStart]), mSizes) and
+    (Length(mSizes) = 1);
+  if Result then
+  begin
+    ASize := mSizes[0];
+  end;
+end;
+
+function IsClassLine(const ALine: string): Boolean;
+var
+  mLower: string;
+begin
+  mLower := LowerCase(ALine);
+  Result := (Pos('class', mLower) > 0) or (Pos('klasse', mLower) > 0);
+end;
+
+/// <summary>Eine Zeile nach der Größe: Stapelzeile oder Klasse. Nur der erste Stapel gehört zur Erzeugung.</summary>
+procedure TakeBlockLine(const ALine: string; var ABlock: TLeakBlock; var AFramesDone: Boolean);
+var
+  mFrame: TLeakFrame;
+begin
+  if TLeakReports.ParseFrame(ALine, mFrame) then
+  begin
+    if not AFramesDone then
+    begin
+      ABlock.Frames := ABlock.Frames + [mFrame];
+    end;
+    Exit;
+  end;
+  AFramesDone := AFramesDone or (ABlock.Frames <> nil);
+  if (ABlock.Name = '') and IsClassLine(ALine) then
+  begin
+    ABlock.Name := AfterLastColon(ALine);
+  end;
+end;
+
 /// <summary>Block aus einem Eintrag der Logdatei; False, wenn der Eintrag keinen Block beschreibt.</summary>
 function ReadBlock(const ALines: TLeakLines; out ABlock: TLeakBlock): Boolean;
 var
-  mLine, mLower: string;
-  mFrame: TLeakFrame;
-  mSizes: TArray<Int64>;
-  mFramesDone, mHasSize, mFirst: Boolean;
+  mStart, mIndex: Integer;
+  mFramesDone: Boolean;
 begin
   ABlock := Default(TLeakBlock);
-  mFramesDone := False;
-  mHasSize := False;
-  mFirst := True;
-  for mLine in ALines do
+  if not ReadBlockSize(ALines, mStart, ABlock.Size) then
   begin
-    if Trim(mLine) = '' then
+    Exit(False);
+  end;
+  mFramesDone := False;
+  for mIndex := mStart + 1 to High(ALines) do
+  begin
+    if Trim(ALines[mIndex]) <> '' then
     begin
-      Continue;
-    end;
-    if TLeakReports.ParseFrame(mLine, mFrame) then
-    begin
-      if not mFramesDone then
-      begin
-        ABlock.Frames := ABlock.Frames + [mFrame];
-      end;
-      Continue;
-    end;
-    // Nur der erste Stapel gehört zur Erzeugung.
-    mFramesDone := mFramesDone or (ABlock.Frames <> nil);
-    mLower := LowerCase(mLine);
-    if mFirst then
-    begin
-      // Erste Zeile: „A memory block has been leaked. The size is: 20“. Fehlermeldungen von FastMM
-      // („… detected an error during a FreeMem operation …“) haben dort keine Größe.
-      mFirst := False;
-      mHasSize := ReadSizes(AfterLastColon(mLine), mSizes) and (Length(mSizes) = 1);
-      if not mHasSize then
-      begin
-        Exit(False);
-      end;
-      ABlock.Size := mSizes[0];
-    end
-    else if ((Pos('class', mLower) > 0) or (Pos('klasse', mLower) > 0)) and (ABlock.Name = '') then
-    begin
-      ABlock.Name := AfterLastColon(mLine);
+      TakeBlockLine(ALines[mIndex], ABlock, mFramesDone);
     end;
   end;
-  Result := mHasSize and ((ABlock.Name <> '') or (ABlock.Frames <> nil));
+  Result := (ABlock.Name <> '') or (ABlock.Frames <> nil);
   if Result then
   begin
     if ABlock.Name = '' then
@@ -472,50 +505,71 @@ begin
   Result := (AGroup.Frames <> nil) and ((AOther.Frames = nil) or (AGroup.Frames[0].Address < AOther.Frames[0].Address));
 end;
 
+/// <summary>Index der Gruppe mit Name und Stapel von ABlock unter den ersten ACount; -1 ohne.</summary>
+function IndexOfGroup(const AGroups: TArray<TLeakGroup>; ACount: Integer; const ABlock: TLeakBlock): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to ACount - 1 do
+  begin
+    if SameText(AGroups[mIndex].Name, ABlock.Name) and SameFrames(AGroups[mIndex].Frames, ABlock.Frames) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+function NewGroup(const ABlock: TLeakBlock): TLeakGroup;
+begin
+  Result := Default(TLeakGroup);
+  Result.Name := ABlock.Name;
+  Result.Kind := ABlock.Kind;
+  Result.Frames := ABlock.Frames;
+  Result.Site := TLeakReports.SiteOf(ABlock.Frames);
+end;
+
+/// <summary>Einfügen sortiert stabil und braucht keinen Vergleicher.</summary>
+procedure SortGroups(var AGroups: TArray<TLeakGroup>);
+var
+  mIndex, mAt: Integer;
+  mGroup: TLeakGroup;
+begin
+  for mIndex := 1 to High(AGroups) do
+  begin
+    mGroup := AGroups[mIndex];
+    mAt := mIndex - 1;
+    while (mAt >= 0) and GroupBefore(mGroup, AGroups[mAt]) do
+    begin
+      AGroups[mAt + 1] := AGroups[mAt];
+      Dec(mAt);
+    end;
+    AGroups[mAt + 1] := mGroup;
+  end;
+end;
+
 function TLeakReport.Groups: TArray<TLeakGroup>;
 var
   mBlock: TLeakBlock;
-  mIndex, mFound: Integer;
-  mGroup: TLeakGroup;
+  mCount, mFound: Integer;
 begin
-  Result := nil;
+  // Höchstens eine Gruppe je Block; am Ende auf die Zahl der Gruppen kürzen.
+  SetLength(Result, Length(Blocks));
+  mCount := 0;
   for mBlock in Blocks do
   begin
-    mFound := -1;
-    for mIndex := 0 to High(Result) do
-    begin
-      if SameText(Result[mIndex].Name, mBlock.Name) and SameFrames(Result[mIndex].Frames, mBlock.Frames) then
-      begin
-        mFound := mIndex;
-        Break;
-      end;
-    end;
+    mFound := IndexOfGroup(Result, mCount, mBlock);
     if mFound < 0 then
     begin
-      mGroup := Default(TLeakGroup);
-      mGroup.Name := mBlock.Name;
-      mGroup.Kind := mBlock.Kind;
-      mGroup.Frames := mBlock.Frames;
-      mGroup.Site := TLeakReports.SiteOf(mBlock.Frames);
-      SetLength(Result, Length(Result) + 1);
-      mFound := High(Result);
-      Result[mFound] := mGroup;
+      mFound := mCount;
+      Result[mFound] := NewGroup(mBlock);
+      Inc(mCount);
     end;
     Inc(Result[mFound].Count);
     Inc(Result[mFound].TotalSize, mBlock.Size);
   end;
-  // Einfügen sortiert stabil und braucht keinen Vergleicher.
-  for mIndex := 1 to High(Result) do
-  begin
-    mGroup := Result[mIndex];
-    mFound := mIndex - 1;
-    while (mFound >= 0) and GroupBefore(mGroup, Result[mFound]) do
-    begin
-      Result[mFound + 1] := Result[mFound];
-      Dec(mFound);
-    end;
-    Result[mFound + 1] := mGroup;
-  end;
+  SetLength(Result, mCount);
+  SortGroups(Result);
 end;
 
 { TLeakReports }
@@ -596,8 +650,8 @@ var
   mLower: string;
 begin
   mLower := LowerCase(AUnitName);
-  Result := (mLower = 'system') or (mLower = 'sysinit') or (Copy(mLower, 1, 7) = 'system.') or
-    (Copy(mLower, 1, 6) = 'fastmm');
+  Result := (mLower = 'system') or (mLower = 'sysinit') or
+    (Copy(mLower, 1, Length(cSystemPrefix)) = cSystemPrefix) or (Copy(mLower, 1, Length(cFastMMPrefix)) = cFastMMPrefix);
 end;
 
 class function TLeakReports.SiteOf(const AFrames: TArray<TLeakFrame>): Integer;
