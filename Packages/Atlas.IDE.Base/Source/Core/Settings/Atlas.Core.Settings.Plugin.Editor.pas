@@ -257,6 +257,9 @@ type
     /// <summary>Code Lens „Test ausführen“ an Fixtures und Tests von DUnitX (#69, codeLens.tests; gemeinsamer
     /// Schlüssel mit „Test debuggen“ #585).</summary>
     CodeLensTests: Boolean;
+    /// <summary>Marke „getestet von“ an den Methoden normaler Units (#1778, codeLens.coveredBy): Zahl und Stand der
+    /// Tests, die die Methode aufrufen; Klick führt genau diese aus.</summary>
+    CodeLensCoveredBy: Boolean;
     /// <summary>Befehl „TODOs des Projekts“ (#68, Atlas.TodoList); aus = der Befehl verschwindet.</summary>
     TodoList: Boolean;
     /// <summary>Befehl „Baseline des Projekts aktualisieren“ (#97, Atlas.UpdateBaseline) in der Befehlspalette;
@@ -1051,6 +1054,7 @@ begin
   Result.CodeLensMetrics := True;
   Result.Metrics := True;
   Result.CodeLensTests := True;
+  Result.CodeLensCoveredBy := True;
   Result.TodoList := True;
   Result.BaselineUpdate := True;
   Result.MetricsReport := True;
@@ -1117,6 +1121,7 @@ begin
   AIo.Flag('CodeLensMetrics', CodeLensMetrics);
   AIo.Flag('Metrics', Metrics);
   AIo.Flag('CodeLensTests', CodeLensTests);
+  AIo.Flag('CodeLensCoveredBy', CodeLensCoveredBy);
   AIo.Flag('TodoList', TodoList);
   AIo.Flag('BaselineUpdate', BaselineUpdate);
   AIo.Flag('MetricsReport', MetricsReport);

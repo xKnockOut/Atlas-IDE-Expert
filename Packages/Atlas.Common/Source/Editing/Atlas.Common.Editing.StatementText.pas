@@ -178,7 +178,7 @@ begin
   // Semikolons, gehört er zur vorigen Anweisung; hinter then, else, begin, do oder einer Marke zum Zweig.
   AStart := AStatement.StartOffset;
   mIndex := TRoutineBody.TokenAt(mTokens, AStatement.StartOffset) - 1;
-  mPrevious := TRoutineBody.PreviousToken(mTokens, mIndex + 1);
+  mPrevious := PreviousCode(mTokens, mIndex + 1);
   while (mIndex >= 0) and IsTrivia(mTokens[mIndex]) do
   begin
     if (mPrevious >= 0) and mTokens[mPrevious].IsSymbol(';') and

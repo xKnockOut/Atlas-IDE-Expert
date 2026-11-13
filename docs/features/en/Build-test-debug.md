@@ -116,6 +116,16 @@ Settings: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 
 Settings: `tests.stale`, `tests.stale.units`
 
+### Tested by (#1778)
+
+- Behind the header of every public method of a normal unit Atlas shows which DUnitX tests cover it, e.g. “3 tests · passed”.
+- Colours as in the test code lens: green only once every one of these tests passed, yellow for a partial result (“3 tests · 1/3 passed”), red on a failure. If a test was changed since its run, the old result shows grey and italic with “(outdated)”. Without a test it shows a grey “no test · create test”.
+- Atlas looks for the tests in the background, backwards like “Run affected tests”: depth 1 finds only tests that call the method directly, a larger depth also goes through intermediate callers. If the search hits a limit, “(incomplete)” is added.
+- A click runs exactly these tests; Ctrl+click lists them and an entry jumps to the test. Without a test the click opens or creates the test unit.
+- Test units themselves get no marks; private and protected methods only on request. Hide per method or file via the “Hide” menu.
+
+Settings: `codeLens.coveredBy`, `tests.coveredBy.depth`, `tests.coveredBy.private`
+
 ### Affected tests on save (#1775)
 
 - After a unit is saved (also a form or include file) Atlas finds the tests that the changes of this file since the last commit reach and runs only those in the background. It builds as with “Build before the tests”.
@@ -349,6 +359,19 @@ Settings: `debug.breakOnNextEvent`
 - The dockable window “Step filters” shows how many routines of the project each kind and pattern matches.
 
 Settings: `debug.stepFilters`
+
+### Breakpoints that will not be hit
+
+Before every debug session starts, Atlas checks all active source breakpoints, open files as they are in the editor:
+
+- line without code (comment, blank line, declaration), with the next code line of the same routine
+- inactive branch of conditional compilation, with its condition (`{$IFDEF RELEASE}`)
+- code without debug information (`{$D-}` in the unit or in the project options)
+- unit of another project in the group, not of the one being started
+
+If anything is found, the dialog “Breakpoints that will not be hit” lists it before the start; double-click jumps to the spot. “Move to next code line” moves the breakpoints together with condition, pass count and group and starts, “Start anyway” starts unchanged, “Cancel” does not start. The command “Check breakpoints” (Atlas menu, command palette) checks at any time. Without a server, or without an answer within 3 seconds, the IDE starts without a message.
+
+Settings: `debug.checkBreakpoints`
 
 ## Debug: event log
 
