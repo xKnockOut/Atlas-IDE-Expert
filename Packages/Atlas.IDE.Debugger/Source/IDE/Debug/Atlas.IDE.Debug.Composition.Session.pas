@@ -5,7 +5,8 @@
 //   - DebugExceptionParts: Exception-Verlauf (#517), nur eigener Code (#578) und Exception-Leiste (#783).
 //   - DebugThreadParts: Threads beim Halt: „Was wartet worauf?“ (#587), „Parallele Aufrufstapel“ (#837) und
 //     „Threads im Quelltext“ (#852) samt Schicht der Rinne (ProvideDebugThreadLayers) und die Herkunft eingereihter
-//     Methoden (#859, experimentell).
+//     Methoden (#859, experimentell), dazu das Fenster „Atlas-Aufrufstapel“ (#843) aus
+//     Atlas.IDE.Debug.Composition.CallStack.
 //   - DebugLeakParts: Leckbericht am Ende der Debug-Sitzung und Fenster „Atlas-Lecks“ (#1875); Serverantworten
 //     über den Scope des Moduls.
 // Dazu die Befehle beider, die Atlas.IDE.Debug.Composition in seine Befehle aufnimmt, und das Thema des Fensters.
@@ -18,8 +19,9 @@ uses
 
 /// <summary>Exception-Verlauf, nur eigener Code und Exception-Leiste.</summary>
 function DebugExceptionParts: TArray<IAtlasFeaturePart>;
-/// <summary>Teile für die Threads eines angehaltenen Programms.</summary>
-function DebugThreadParts: TArray<IAtlasFeaturePart>;
+/// <summary>Teile für die Threads eines angehaltenen Programms; Serverantworten des Aufrufstapels über
+/// AScope.</summary>
+function DebugThreadParts(const AScope: IAtlasModuleScope): TArray<IAtlasFeaturePart>;
 /// <summary>Befehl Atlas.DebugDeadlocks: Was wartet worauf? (#587).</summary>
 procedure RunDebugDeadlocks;
 /// <summary>Befehl „Was wartet worauf?“ zeigen? (debug.deadlocks)</summary>
@@ -34,9 +36,10 @@ function DebugLeakParts(const AScope: IAtlasModuleScope): TArray<IAtlasFeaturePa
 procedure ShowDebugLeaks;
 /// <summary>Befehl „Atlas-Lecks“ zeigen? (debug.leakReport)</summary>
 function DebugLeaksVisible: Boolean;
-/// <summary>Nach einem Wechsel des IDE-Themas (Parallele Aufrufstapel, Atlas-Lecks).</summary>
+/// <summary>Nach einem Wechsel des IDE-Themas (Parallele Aufrufstapel, Atlas-Aufrufstapel, Atlas-Lecks).</summary>
 procedure DebugThreadsThemeChanged;
-/// <summary>Befehle „Thread markieren“, „einfrieren“, „auftauen“, „Alle auftauen“ (#852).</summary>
+/// <summary>Befehle „Thread markieren“, „einfrieren“, „auftauen“, „Alle auftauen“ (#852) und
+/// „Atlas-Aufrufstapel“ (#843).</summary>
 function DebugThreadCommands: TArray<TAtlasModuleCommand>;
 /// <summary>Schicht der Rinne für die Threads im Quelltext (#852) über den Scope des Moduls.</summary>
 procedure ProvideDebugThreadLayers(const AScope: IAtlasModuleScope);
@@ -60,6 +63,7 @@ uses
   Atlas.IDE.Debug.ThreadsGutter,
   Atlas.IDE.Debug.AsyncOrigin,
   Atlas.IDE.Debug.Leaks,
+  Atlas.IDE.Debug.Composition.CallStack,
   Atlas.UI.Debug.Strings;
 
 { Dienste von Base }
@@ -103,6 +107,7 @@ procedure DebugThreadsThemeChanged;
 begin
   TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugParallelStacks.ThemeChanged);
   TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugLeaks.ThemeChanged);
+  CallStackThemeChanged;
 end;
 
 procedure ShowDebugLeaks;
@@ -191,6 +196,7 @@ begin
       TAtlasIdeDebugThreadsInSource.ThawAtLine, DebugThreadsFrozenVisible),
     ThreadCommand('Atlas.DebugThreadsThawAll', TAtlasDebugTextId.ThreadMarksThawAllCommand,
       TAtlasIdeDebugThreadsInSource.ThawAll, DebugThreadsFrozenVisible)];
+  Result := Result + CallStackCommands;
 end;
 
 procedure ProvideDebugThreadLayers(const AScope: IAtlasModuleScope);
@@ -236,7 +242,7 @@ begin
       end, StartDebugExceptionBar, TAtlasIdeDebugExceptionBar.Release)]
 end;
 
-function DebugThreadParts: TArray<IAtlasFeaturePart>;
+function DebugThreadParts(const AScope: IAtlasModuleScope): TArray<IAtlasFeaturePart>;
 begin
   Result := [
     // Was wartet worauf? (#587): Zeitgeber für nachgelieferte Stapel (LLDB) und die Liste im Ergebnisfenster.
@@ -279,6 +285,7 @@ begin
       begin
         Result := TAtlasIdeDebugAsyncOrigin.Started;
       end, StartDebugAsyncOrigin, TAtlasIdeDebugAsyncOrigin.Release)];
+  Result := Result + CallStackParts(AScope);
 end;
 
 { Leckbericht (#1875) }

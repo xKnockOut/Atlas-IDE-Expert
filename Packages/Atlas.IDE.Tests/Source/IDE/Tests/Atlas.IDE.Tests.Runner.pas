@@ -37,6 +37,10 @@
 //   Anzahl und Bytes in der Meldungsansicht. Lecks am Programmende aus dem
 //   Bericht von FastMM (Datei neben der EXE, wenn der Lauf sie schrieb) bzw.
 //   der Ausgabe des Programms: eine Zeile mit Namen und Anzahl.
+// - Protokoll je Test (tests.log, #2168): Vor dem Lauf legt der Läufer die
+//   leere Seitendatei neben dem Bericht an (Atlas.Core.Tests.Log); ist der
+//   Atlas-Logger im Testprojekt eingetragen, schreibt er hinein. Seitendatei
+//   und Konsolenausgabe stehen im gemeldeten Lauf (Output, LogFile).
 // - RunQuiet (#1775, Tests beim Speichern): Lauf im Hintergrund ohne Frage
 //   nach dem Testprojekt und ohne Zeilen in der Meldungsansicht; die Ausgabe
 //   (Atlas.IDE.Tests.Output) merkt sie und meldet das Ende.
@@ -71,6 +75,15 @@ type
   TAtlasTestsReportedProc = reference to procedure(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
   /// <summary>Neuer Prozessläufer; ACancelled bricht ab.</summary>
   TAtlasTestsRunnerFactory = reference to function(ACancelled: TFunc<Boolean>): IAtlasVcsRunner;
+  /// <summary>Was die Test-EXE hinterlässt: Bericht, letzte Zeilen der Ausgabe, Leckbericht am Programmende ('' ohne)
+  /// und für das Protokoll je Test (#2168) die ganze Ausgabe und die Seitendatei des Atlas-Loggers.</summary>
+  TAtlasTestsExeOutput = record
+    Xml: string;
+    Lines: TArray<string>;
+    LeakText: string;
+    Output: string;
+    LogFile: string;
+  end;
 
   TAtlasIdeTests = class
   private type
@@ -104,9 +117,8 @@ type
     procedure SetDebugging(AValue: Boolean);
     procedure Start(const AProject: IOTAProject; const ATests: TArray<string>; ABuildFirst: Boolean);
     procedure Execute(const ATarget: TAtlasTestTarget);
-    /// <summary>ALeakText: Leckbericht am Programmende (FastMM-Datei oder Ausgabe); '' ohne.</summary>
     procedure Finish(const ATarget: TAtlasTestTarget; AOutcome: TAtlasVcsOutcome; AExitCode: Integer;
-      const AXml: string; const AOutput: TArray<string>; const ALeakText: string);
+      const AExe: TAtlasTestsExeOutput);
     /// <summary>Meldet ATarget (gültiger Bericht ARun): Probleme, Meldungsansicht, Zusammenfassung; ALeakText wie
     /// bei Finish.</summary>
     procedure Report(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult; const ALeakText: string);
@@ -182,6 +194,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
   Atlas.Core.Tests.Leaks,
+  Atlas.Core.Tests.Log,
   Atlas.IDE.Foundation.Files;
 
 const
@@ -500,12 +513,16 @@ begin
 end;
 
 procedure TAtlasIdeTests.ReportRun(const ATarget: TAtlasTestTarget; const AXml: string);
+var
+  mExe: TAtlasTestsExeOutput;
 begin
   if Trim(AXml) = '' then
   begin
     Exit;
   end;
-  Finish(ATarget, TAtlasVcsOutcome.Ok, 0, AXml, nil, '');
+  mExe := Default(TAtlasTestsExeOutput);
+  mExe.Xml := AXml;
+  Finish(ATarget, TAtlasVcsOutcome.Ok, 0, mExe);
 end;
 
 function TAtlasIdeTests.Busy: Boolean;
@@ -600,24 +617,82 @@ begin
   end;
 end;
 
-/// <summary>Test-EXE von ATarget mit Bericht in einer Temp-Datei ausführen (im Thread des Laufs); AXml ist der
-/// Bericht, AOutput die letzten Zeilen der Ausgabe, ALeakText der Leckbericht am Programmende.</summary>
-function RunTestExe(const AFactory: TAtlasTestsRunnerFactory; const ATarget: TAtlasTestTarget; out AXml: string;
-  out AOutput: TArray<string>; out ALeakText: string): TAtlasVcsRunResult;
+/// <summary>Datei AFileName löschen, Fehler übergehen (Temp-Dateien des Laufs).</summary>
+procedure DeleteQuietly(const AFileName: string);
+begin
+  try
+    if FileExists(AFileName) then
+    begin
+      TFile.Delete(AFileName);
+    end;
+  except
+    on Exception do
+      ;
+  end;
+end;
+
+/// <summary>Leere Seitendatei des Protokolls je Test anlegen (#2168); '' wenn das nicht geht.</summary>
+function PrepareSideFile(const AResultFile: string): string;
+begin
+  Result := TAtlasTestLog.SideFileOf(AResultFile);
+  try
+    TFile.WriteAllText(Result, '');
+  except
+    on Exception do
+      Result := '';
+  end;
+end;
+
+/// <summary>Bericht AResultFile, Seitendatei ASideFile ('' = ohne Protokoll je Test) und Ausgabe des Laufs ARun
+/// lesen; ALeakFile und ALeakBefore für den Leckbericht am Programmende.</summary>
+function ReadExeOutput(const ARun: TAtlasVcsRunResult; const AResultFile, ASideFile, ALeakFile: string;
+  ALeakBefore: TDateTime): TAtlasTestsExeOutput;
 var
-  mRunner: IAtlasVcsRunner;
-  mResultFile, mLogFile, mText: string;
-  mLogBefore: TDateTime;
+  mText: string;
   mLines: TArray<string>;
   mIndex: Integer;
 begin
-  AXml := '';
-  AOutput := nil;
-  ALeakText := '';
-  mLogFile := TAtlasTestLeaks.LogFileOf(ATarget.Executable);
-  mLogBefore := WrittenAt(mLogFile);
+  Result := Default(TAtlasTestsExeOutput);
+  if FileExists(AResultFile) then
+  begin
+    Result.Xml := TFile.ReadAllText(AResultFile, TEncoding.UTF8);
+  end;
+  mText := TrimRight(TEncoding.ANSI.GetString(ARun.Output));
+  if ASideFile <> '' then
+  begin
+    Result.Output := mText;
+    if FileExists(ASideFile) then
+    begin
+      Result.LogFile := TFile.ReadAllText(ASideFile, TEncoding.UTF8);
+    end;
+  end;
+  mLines := TTextLines.SplitLines(mText);
+  Result.LeakText := ShutdownLeakText(ALeakFile, ALeakBefore, mText);
+  for mIndex := Max(0, Length(mLines) - cOutputLines) to High(mLines) do
+  begin
+    Result.Lines := Result.Lines + [mLines[mIndex]];
+  end;
+end;
+
+/// <summary>Test-EXE von ATarget mit Bericht in einer Temp-Datei ausführen (im Thread des Laufs). Mit ALog (#2168)
+/// liegt die Seitendatei des Atlas-Loggers bereit.</summary>
+function RunTestExe(const AFactory: TAtlasTestsRunnerFactory; const ATarget: TAtlasTestTarget; ALog: Boolean;
+  out AExe: TAtlasTestsExeOutput): TAtlasVcsRunResult;
+var
+  mRunner: IAtlasVcsRunner;
+  mResultFile, mLeakFile, mSideFile: string;
+  mLeakBefore: TDateTime;
+begin
+  AExe := Default(TAtlasTestsExeOutput);
+  mSideFile := '';
+  mLeakFile := TAtlasTestLeaks.LogFileOf(ATarget.Executable);
+  mLeakBefore := WrittenAt(mLeakFile);
   mResultFile := TPath.Combine(TPath.GetTempPath, 'atlas-tests-' +
     TGUID.NewGuid.ToString.Replace('{', '').Replace('}', '') + '.xml');
+  if ALog then
+  begin
+    mSideFile := PrepareSideFile(mResultFile);
+  end;
   try
     mRunner := AFactory(
       function: Boolean
@@ -626,32 +701,18 @@ begin
       end);
     Result := mRunner.Run(ATarget.Executable, TDUnitXCommandLine.Arguments(mResultFile, ATarget.Tests),
       ExtractFileDir(ATarget.Executable), TAtlasTestRun.cTimeoutMs);
-    if FileExists(mResultFile) then
-    begin
-      AXml := TFile.ReadAllText(mResultFile, TEncoding.UTF8);
-    end;
-    mText := TrimRight(TEncoding.ANSI.GetString(Result.Output));
-    mLines := TTextLines.SplitLines(mText);
-    ALeakText := ShutdownLeakText(mLogFile, mLogBefore, mText);
-    for mIndex := Max(0, Length(mLines) - cOutputLines) to High(mLines) do
-    begin
-      AOutput := AOutput + [mLines[mIndex]];
-    end;
+    AExe := ReadExeOutput(Result, mResultFile, mSideFile, mLeakFile, mLeakBefore);
   except
     on E: Exception do
     begin
       Result := TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Failed, -1, nil);
-      AOutput := [E.Message];
+      AExe.Lines := [E.Message];
     end;
   end;
-  try
-    if FileExists(mResultFile) then
-    begin
-      TFile.Delete(mResultFile);
-    end;
-  except
-    on Exception do
-      ;
+  DeleteQuietly(mResultFile);
+  if mSideFile <> '' then
+  begin
+    DeleteQuietly(mSideFile);
   end;
 end;
 
@@ -661,6 +722,7 @@ var
   mFactory: TAtlasTestsRunnerFactory;
   mAlive: TAlive;
   mKeep: IInterface;
+  mLog: Boolean;
 begin
   if (ATarget.Executable = '') or not FileExists(ATarget.Executable) then
   begin
@@ -672,6 +734,7 @@ begin
   mFactory := FNewRunner;
   mAlive := FAlive;
   mKeep := FAliveRef;
+  mLog := TAtlasIdeSettings.Current.TestsLog;
   FBusy := True;
   Inc(FVersion);
   FOutput.Tell(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsStarted, [ProjectName(mTarget.Project),
@@ -682,10 +745,9 @@ begin
     procedure
     var
       mRun: TAtlasVcsRunResult;
-      mXml, mLeakText: string;
-      mOutput: TArray<string>;
+      mExe: TAtlasTestsExeOutput;
     begin
-      mRun := RunTestExe(mFactory, mTarget, mXml, mOutput, mLeakText);
+      mRun := RunTestExe(mFactory, mTarget, mLog, mExe);
       TAtlasMainThread.Queue(TAtlasFeature.Build,
         procedure
         begin
@@ -696,7 +758,7 @@ begin
           TAtlasGuard.Run(TAtlasFeature.Build,
             procedure
             begin
-              Finish(mTarget, mRun.Outcome, mRun.ExitCode, mXml, mOutput, mLeakText);
+              Finish(mTarget, mRun.Outcome, mRun.ExitCode, mExe);
             end);
         end);
     end);
@@ -718,7 +780,7 @@ begin
 end;
 
 procedure TAtlasIdeTests.Finish(const ATarget: TAtlasTestTarget; AOutcome: TAtlasVcsOutcome; AExitCode: Integer;
-  const AXml: string; const AOutput: TArray<string>; const ALeakText: string);
+  const AExe: TAtlasTestsExeOutput);
 var
   mRun: TTestRunResult;
   mLine: string;
@@ -735,18 +797,20 @@ begin
       TAtlasTestRun.cTimeoutMs div 1000]));
     Exit;
   end;
-  mRun := TAtlasTestLeaks.Shown(TTestResults.Parse(AXml), TAtlasIdeSettings.Current.TestsLeaks);
+  mRun := TAtlasTestLeaks.Shown(TTestResults.Parse(AExe.Xml), TAtlasIdeSettings.Current.TestsLeaks);
   if (AOutcome <> TAtlasVcsOutcome.Ok) or not mRun.Valid then
   begin
     FOutput.Tell(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoReport, [ProjectName(ATarget.Project), AExitCode]));
-    for mLine in AOutput do
+    for mLine in AExe.Lines do
     begin
       FOutput.Tell('  ' + mLine);
     end;
     FOutput.EndQuiet(False, mRun);
     Exit;
   end;
-  Report(ATarget, mRun, ALeakText);
+  mRun.Output := AExe.Output;
+  mRun.LogFile := AExe.LogFile;
+  Report(ATarget, mRun, AExe.LeakText);
 end;
 
 /// <summary>Warnungen am Methodenkopf für die bestandenen Tests mit Leck in ACases (#1774).</summary>
