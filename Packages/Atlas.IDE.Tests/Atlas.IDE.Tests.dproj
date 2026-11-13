@@ -99,6 +99,7 @@
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.UnitMatch.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Run.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Stale.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.OnSave.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.FromDebugStop.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Compare.pas"/>
@@ -110,6 +111,8 @@
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Debug.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Lens.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Stale.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Output.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.OnSave.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Compare.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Slowest.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Projects.pas"/>

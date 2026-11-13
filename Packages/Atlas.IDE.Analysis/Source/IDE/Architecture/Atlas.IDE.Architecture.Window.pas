@@ -223,7 +223,6 @@ begin
   Host.Show(mCreated);
   if mCreated then
   begin
-    TAtlasIdeDockWindow.UpdateIcon(Host);
     DockToDefault;
     // Nach dem Andocken die Reiterseite wählen und Gastgeber zeigen.
     Host.Show(mCreated);
@@ -242,16 +241,12 @@ end;
 
 class function TAtlasIdeArchitectureWindow.Visible: Boolean;
 begin
-  // Angedockt in verstecktem Gastgeber zählt nicht als sichtbar.
-  Result := (Host <> nil) and Host.Shown;
+  Result := TAtlasIdeDockWindow.IsShown(Host);
 end;
 
 class procedure TAtlasIdeArchitectureWindow.Hide;
 begin
-  if Host <> nil then
-  begin
-    Host.Hide;
-  end;
+  TAtlasIdeDockWindow.HideIfAny(Host);
 end;
 
 class procedure TAtlasIdeArchitectureWindow.ApplyTheme;

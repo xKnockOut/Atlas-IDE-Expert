@@ -79,11 +79,11 @@ uses
   Atlas.IDE.Debug.Visualizers,
   Atlas.IDE.Debug.DisplayRules,
   Atlas.IDE.Debug.StepInto,
-  Atlas.IDE.Debug.EventBreak,
   Atlas.IDE.Debug.Trace,
   Atlas.IDE.Debug.StepFilter,
   Atlas.IDE.Debug.Composition.Contracts,
   Atlas.IDE.Debug.Composition.Values,
+  Atlas.IDE.Debug.Composition.Breakpoints,
   Atlas.IDE.Debug.Composition.Session,
   Atlas.UI.Debug.Strings;
 
@@ -128,11 +128,6 @@ end;
 function StepIntoTargetVisible: Boolean;
 begin
   Result := TAtlasIdeStepInto.Enabled;
-end;
-
-function BreakOnNextEventVisible: Boolean;
-begin
-  Result := TAtlasIdeEventBreak.Enabled;
 end;
 
 function StepFilterRunning: Boolean;
@@ -246,11 +241,7 @@ begin
       Result := Session;
     end, MessageLine);
   // Beim nächsten Ereignis anhalten (#856): Eintrag im Menü Start.
-  TAtlasIdeEventBreak.Install(
-    function: TLspSession
-    begin
-      Result := Session;
-    end, MessageLine);
+  InstallBreakCommands;
   // Schrittfilter (#850): Fenster und Befehle; den Ablauf startet das Teil DebugStepFilter.
   TAtlasIdeDebugStepFilter.Install(
     function: TLspSession
@@ -264,7 +255,7 @@ procedure UninstallCommands;
 begin
   GCommandsInstalled := False;
   TAtlasIdeStepInto.Uninstall;
-  TAtlasIdeEventBreak.Uninstall;
+  UninstallBreakCommands;
   TAtlasIdeDebugStepFilter.Uninstall;
   // Nach allen anderen Teilen: Was von F7 übrig ist, hängt der Debugger hier ab (#850).
   TAtlasIdeDebugTrace.Release;
@@ -291,16 +282,14 @@ begin
 end;
 
 function TAtlasDebugModule.Commands: TArray<TAtlasModuleCommand>;
+var
+  mCommand: TAtlasModuleCommand;
 begin
   Result := [
     // Gezielt hineinspringen (#836); nur sichtbar, solange debug.stepIntoTarget an ist.
     CommandWithKey('Atlas.StepIntoTarget', TAtlasDebugStrings.StepIntoTargetCommand,
       TAtlasIdeStepInto.Run,
       StepIntoTargetVisible, StepIntoTargetKey),
-    // Beim nächsten Ereignis anhalten (#856); nur sichtbar, solange debug.breakOnNextEvent an ist.
-    Command('Atlas.BreakOnNextEvent', TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCommand),
-      TAtlasIdeEventBreak.Run,
-      BreakOnNextEventVisible),
     // Schrittfilter (#850): Das Fenster schaltet debug.stepFilters selbst, deshalb immer sichtbar.
     Command('Atlas.StepFilters', TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterWindowCommand),
       TAtlasIdeDebugStepFilter.ShowWindow,
@@ -332,7 +321,15 @@ begin
       TAtlasIdeDebugExceptionBar.ToggleIdeDialog, DebugExceptionBarVisible),
     // Was wartet worauf? (#587); nur sichtbar, solange debug.deadlocks an ist.
     Command('Atlas.DebugDeadlocks', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsCommand),
-      RunDebugDeadlocks, DebugDeadlocksVisible)];
+      RunDebugDeadlocks, DebugDeadlocksVisible),
+    // Parallele Aufrufstapel (#837); nur sichtbar, solange debug.parallelStacks an ist.
+    Command('Atlas.DebugParallelStacks', TAtlasDebugStrings.Text(TAtlasDebugTextId.ParallelStacksCommand),
+      ShowDebugParallelStacks, DebugParallelStacksVisible)];
+  // Anhalten und Haltepunkte (#856, #577) aus Atlas.IDE.Debug.Composition.Breakpoints, unter der Sicherung.
+  for mCommand in BreakpointCommands do
+  begin
+    Result := Result + [Command(mCommand.Id, mCommand.Caption, mCommand.Run, mCommand.Visible)];
+  end;
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -364,10 +361,12 @@ begin
     MenuEntry('Atlas.DebugExceptions', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugEvaluate', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugDeadlocks', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.DebugParallelStacks', TAtlasMenuPlace.AtlasMenu),
     // Kontextmenü des Editors: gezielt hineinspringen (#836) und Schrittfilter (#850).
     ContextEntry('Atlas.StepIntoTarget'),
     ContextEntry('Atlas.StepFilterSkip'),
     ContextEntry('Atlas.StepFilterUnskip')];
+  Result := Result + BreakpointMenuEntries;
 end;
 
 function TAtlasDebugModule.Keys: TArray<TAtlasModuleKey>;
@@ -396,7 +395,7 @@ end;
 procedure TAtlasDebugModule.ApplySettings;
 begin
   // debug.breakOnNextEvent (#856).
-  TAtlasIdeEventBreak.ApplySettings;
+  ApplyBreakSettings;
   // debug.exceptionHistory (#517).
   TAtlasIdeDebugExceptions.ApplySettings;
   // debug.exceptionBanner* (#783).
@@ -417,6 +416,7 @@ begin
   TAtlasIdeDebugExceptionBar.ThemeChanged;
   TAtlasIdeDebugEvaluate.ThemeChanged;
   TAtlasIdeDebugStepFilter.ThemeChanged;
+  DebugThreadsThemeChanged;
 end;
 
 function TAtlasDebugModule.HoverValue(const AExpression: string; const ATypeChain: TArray<string>;
@@ -489,7 +489,7 @@ end;
 function Parts: TArray<IAtlasFeaturePart>;
 begin
   Result := LeadingParts + DebugExceptionParts + DebugValueParts(ExpressionProvider);
-  Result := Result + [StepFilterPart] + DebugThreadParts;
+  Result := Result + [StepFilterPart] + DebugThreadParts + BreakpointParts;
 end;
 
 class function TAtlasDebugModule.RegisterModule: Boolean;

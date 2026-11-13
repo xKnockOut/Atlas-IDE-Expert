@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{6E1B3C52-7F0A-4C1D-9B8E-2A5D4F7C9E31}</ProjectGuid>
         <MainSource>Atlas.IDE.Base.dpk</MainSource>
@@ -172,6 +172,7 @@
         <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.Dialog.pas"/>
         <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.ListView.pas"/>
         <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.WrapLabel.pas"/>
+        <DCCReference Include="Source\UI\Foundation\Atlas.UI.Foundation.EditorFont.pas"/>
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Symbol.pas"/>
         <DCCReference Include="Source\UI\Style\Atlas.UI.Style.Symbol.pas"/>
         <DCCReference Include="Source\UI\Style\Atlas.UI.Style.Canvas.pas"/>

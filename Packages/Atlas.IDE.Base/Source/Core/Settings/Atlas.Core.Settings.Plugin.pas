@@ -83,6 +83,8 @@ type
     cMaxTestsAffectedDepth = Atlas.Core.Settings.Plugin.Build.cMaxTestsAffectedDepth;
     cMinTestsFromDebugStopMaxArray = Atlas.Core.Settings.Plugin.Debug.cMinTestsFromDebugStopMaxArray;
     cMaxTestsFromDebugStopMaxArray = Atlas.Core.Settings.Plugin.Debug.cMaxTestsFromDebugStopMaxArray;
+    cMinTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMinTestsOnSaveMax;
+    cMaxTestsOnSaveMax = Atlas.Core.Settings.Plugin.Build.cMaxTestsOnSaveMax;
     cMinTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMinTestsSlowMs;
     cMaxTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMaxTestsSlowMs;
     cMinDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMinDataFlowDepth;
@@ -381,6 +383,8 @@ type
       write FBuild.TestsAffectedBeforeCommit;
     property TestsStale: Boolean read FBuild.TestsStale write FBuild.TestsStale;
     property TestsStaleUnits: Boolean read FBuild.TestsStaleUnits write FBuild.TestsStaleUnits;
+    property TestsOnSave: Boolean read FBuild.TestsOnSave write FBuild.TestsOnSave;
+    property TestsOnSaveMax: Integer read FBuild.TestsOnSaveMax write FBuild.TestsOnSaveMax;
     property TestsFailureAtAssert: Boolean read FBuild.TestsFailureAtAssert write FBuild.TestsFailureAtAssert;
     property TestsFailureInline: Boolean read FBuild.TestsFailureInline write FBuild.TestsFailureInline;
     property TestsFromDebugStop: Boolean read FDebug.TestsFromDebugStop write FDebug.TestsFromDebugStop;
@@ -438,6 +442,7 @@ type
     property DebugBreakOnNextEvent: Boolean read FDebug.DebugBreakOnNextEvent write FDebug.DebugBreakOnNextEvent;
     property DebugBreakOnNextEventExcluded: string read FDebug.DebugBreakOnNextEventExcluded
       write FDebug.DebugBreakOnNextEventExcluded;
+    property DebugCheckBreakpoints: Boolean read FDebug.DebugCheckBreakpoints write FDebug.DebugCheckBreakpoints;
     property DebugExplainUnavailable: Boolean read FDebug.DebugExplainUnavailable write FDebug.DebugExplainUnavailable;
     property DebugCompletionInDialogs: Boolean read FDebug.DebugCompletionInDialogs
       write FDebug.DebugCompletionInDialogs;
@@ -450,6 +455,11 @@ type
       write FDebug.DebugExplainAccessViolationAllowCalls;
     property DebugModuleOfAddress: Boolean read FDebug.DebugModuleOfAddress write FDebug.DebugModuleOfAddress;
     property DebugDeadlocks: Boolean read FDebug.DebugDeadlocks write FDebug.DebugDeadlocks;
+    property DebugParallelStacks: Boolean read FDebug.DebugParallelStacks write FDebug.DebugParallelStacks;
+    property DebugParallelStacksWaitRoutines: string read FDebug.DebugParallelStacksWaitRoutines
+      write FDebug.DebugParallelStacksWaitRoutines;
+    property DebugParallelStacksMaxThreads: Integer read FDebug.DebugParallelStacksMaxThreads
+      write FDebug.DebugParallelStacksMaxThreads;
 
     property DebugExceptionHistory: Boolean read FDebug.DebugExceptionHistory write FDebug.DebugExceptionHistory;
     property DebugJustMyCode: Boolean read FDebug.DebugJustMyCode write FDebug.DebugJustMyCode;

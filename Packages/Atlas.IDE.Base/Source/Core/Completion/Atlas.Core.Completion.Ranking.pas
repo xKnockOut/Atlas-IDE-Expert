@@ -27,6 +27,8 @@
 //   - Sender mit Typumwandlung (#480): eine Überschrift „Sender ist TButton · btnSave, btnLoad“ über der Liste.
 //   - Typprüfungen (#2107): Mitglieder des geprüften Typs bzw. Nachfahren des Typs vor is stehen wie die
 //     Formularkomponenten als eigene Gruppe mit Überschrift oben, die übrigen darunter unter „Weitere“.
+//   - Nicht sichtbare Mitglieder (#2108, Item.Inaccessible) fehlen, bis ShowInaccessible sie zeigt; dann stehen sie
+//     ganz am Ende mit einer Überschrift. Inaccessible nennt die passenden für die Fußzeile.
 //   - uses-Abschnitt (#469, Item.UsesGroup): Projekt-Units vor RTL/VCL vor Drittanbietern, je Gruppe eine
 //     Überschrift.
 //   - Favoriten (#458, Item.Favorite): vor allen anderen Gruppen, auch vor Hinweisen und Formularkomponenten,
@@ -79,6 +81,8 @@ type
     Boost: TAtlasBoostFunc;
     /// <summary>Übrige Einträge mit Präfix (#497); Filter = nur Treffer.</summary>
     ListMode: TAtlasListMode;
+    /// <summary>Nur wegen der Sichtbarkeit fehlende Mitglieder zeigen (#2108, zweites Strg+Leertaste).</summary>
+    ShowInaccessible: Boolean;
     class function Defaults: TAtlasRankOptions; static;
   end;
 
@@ -117,6 +121,10 @@ type
     /// <summary>Nur „Meintest du“-Einträge, kein regulärer Treffer (#485): Die Fußzeile nennt dann
     /// „Keine Treffer für ‚…‘“.</summary>
     class function OnlyTypos(const AOrder: TArray<Integer>): Boolean; static;
+    /// <summary>Indizes der Einträge mit Inaccessible (#2108), deren Name auf APattern passt, nach Namen; leer
+    /// ohne Präfix.</summary>
+    class function Inaccessible(const AItems: TAtlasCompletionItems; const APattern: string): TArray<Integer>;
+      static;
   end;
 
 implementation
@@ -135,6 +143,7 @@ begin
   Result.Chip := TAtlasChip.All;
   Result.Boost := nil;
   Result.ListMode := TAtlasListMode.Filter;
+  Result.ShowInaccessible := False;
 end;
 
 { TAtlasListModes }
@@ -366,7 +375,7 @@ end;
 /// <summary>Weder Hinweis noch angeheftet noch Deklaration eines unbekannten Namens.</summary>
 function IsPlainItem(const AItem: TAtlasCompletionItem): Boolean;
 begin
-  Result := not AItem.Hint and not AItem.Pinned and (AItem.Unknown = '');
+  Result := not AItem.Hint and not AItem.Pinned and (AItem.Unknown = '') and (AItem.Inaccessible = '');
 end;
 
 /// <summary>Gehört AItem ohne Treffer (AScore) in den Rest der Liste (#497)?</summary>
@@ -566,8 +575,10 @@ begin
   for mIndex := 0 to High(FItems) do
   begin
     FScores[mIndex] := TAtlasCompletionMatcher.cNoMatch;
-    // Umwandlungen (#490) setzt WithConversions vor ihr Original.
-    if not TAtlasRanking.Matches(FItems[mIndex], FOptions.Chip) or (FItems[mIndex].Conversion <> '') then
+    // Umwandlungen (#490) setzt WithConversions vor ihr Original; nicht sichtbare Mitglieder (#2108) erst auf
+    // Wunsch.
+    if not TAtlasRanking.Matches(FItems[mIndex], FOptions.Chip) or (FItems[mIndex].Conversion <> '') or
+      ((FItems[mIndex].Inaccessible <> '') and not FOptions.ShowInaccessible) then
     begin
       Continue;
     end;
@@ -587,8 +598,12 @@ end;
 /// <summary>Art des Eintrags: Favoriten, Hinweise, Formular, Angeheftetes, Aktionen, Postfix, Verfügbarkeit.</summary>
 function TRanker.CompareKind(A, B: Integer): Integer;
 begin
-  // Angeheftete Favoriten (#458) vor allem anderen.
-  Result := Ord(FItems[B].Favorite) - Ord(FItems[A].Favorite);
+  // Nicht sichtbare Mitglieder (#2108) ganz ans Ende, angeheftete Favoriten (#458) vor allem anderen.
+  Result := Ord(FItems[A].Inaccessible <> '') - Ord(FItems[B].Inaccessible <> '');
+  if Result = 0 then
+  begin
+    Result := Ord(FItems[B].Favorite) - Ord(FItems[A].Favorite);
+  end;
   if Result = 0 then
   begin
     Result := Ord(FItems[B].Hint) - Ord(FItems[A].Hint);
@@ -725,7 +740,11 @@ end;
 function TRanker.NeedsHeader(const AItem, APrevious: TAtlasCompletionItem; AIsFirst: Boolean;
   const AState: TArrangeState): Boolean;
 begin
-  if AItem.Unknown <> '' then
+  if AItem.Inaccessible <> '' then
+  begin
+    Result := AIsFirst or (APrevious.Inaccessible = '');
+  end
+  else if AItem.Unknown <> '' then
   begin
     Result := AIsFirst or (APrevious.Unknown = '');
   end
@@ -926,7 +945,7 @@ begin
     begin
       // Nur, was nicht schon regulär passt; keine Aktionen.
       if mItems[mIndex].IsAction or not Matches(mItems[mIndex], AOptions.Chip) or (mItems[mIndex].Conversion <> '') or
-        (AScores[mIndex] <> TAtlasCompletionMatcher.cNoMatch) then
+        (AScores[mIndex] <> TAtlasCompletionMatcher.cNoMatch) or (mItems[mIndex].Inaccessible <> '') then
       begin
         Continue;
       end;
@@ -976,8 +995,8 @@ begin
   // Umwandlungen (#490) zählen nicht doppelt.
   for mItem in AItems do
   begin
-    if (mItem.Conversion = '') and (TAtlasCompletionMatcher.Score(APattern, NameOf(mItem)) <>
-      TAtlasCompletionMatcher.cNoMatch) then
+    if (mItem.Conversion = '') and (mItem.Inaccessible = '') and (TAtlasCompletionMatcher.Score(APattern,
+      NameOf(mItem)) <> TAtlasCompletionMatcher.cNoMatch) then
     begin
       Inc(Result[TAtlasChip.All]);
       if ChipOf(mItem) <> TAtlasChip.All then
@@ -985,6 +1004,45 @@ begin
         Inc(Result[ChipOf(mItem)]);
       end;
     end;
+  end;
+end;
+
+class function TAtlasRanking.Inaccessible(const AItems: TAtlasCompletionItems;
+  const APattern: string): TArray<Integer>;
+var
+  mItems: TAtlasCompletionItems;
+  mFound: TList<Integer>;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if APattern = '' then
+  begin
+    Exit;
+  end;
+  mItems := AItems;
+  mFound := TList<Integer>.Create;
+  try
+    for mIndex := 0 to High(mItems) do
+    begin
+      if (mItems[mIndex].Inaccessible <> '') and (TAtlasCompletionMatcher.Score(APattern, mItems[mIndex].Name) <>
+        TAtlasCompletionMatcher.cNoMatch) then
+      begin
+        mFound.Add(mIndex);
+      end;
+    end;
+    // Eindeutig: bei gleichem Namen nach Index.
+    mFound.Sort(TComparer<Integer>.Construct(
+      function(const A, B: Integer): Integer
+      begin
+        Result := CompareText(mItems[A].Name, mItems[B].Name);
+        if Result = 0 then
+        begin
+          Result := A - B;
+        end;
+      end));
+    Result := mFound.ToArray;
+  finally
+    mFound.Free;
   end;
 end;
 

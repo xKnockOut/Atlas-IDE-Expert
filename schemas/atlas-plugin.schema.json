@@ -1402,6 +1402,32 @@
       "x-parent": "tests.affected",
       "x-issue": "#1353"
     },
+    "TestsOnSave": {
+      "description": "Nach dem Speichern einer Unit die betroffenen Tests der gespeicherten Datei (seit dem letzten Commit, Tiefe tests.affectedDepth) im Hintergrund ausführen, gebaut wie mit „Vor den Tests bauen“. Kein Fenster springt auf: Fortschritt und Ergebnis im Atlas-Statusfeld, Klick zeigt die Ergebnisse. Speichern während eines Laufs ergibt höchstens einen Folgelauf mit allen bis dahin gespeicherten Dateien. Nicht während einer Debug-Sitzung oder eines Builds.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "tests.onSave",
+      "x-area": "build",
+      "x-feature": "Build",
+      "x-page": "Compiler",
+      "x-parent": "tests.affected",
+      "x-quickToggle": true,
+      "x-caption": "Betroffene Tests beim Speichern",
+      "x-captionEn": "Affected tests on save",
+      "x-issue": "#1775"
+    },
+    "TestsOnSaveMax": {
+      "description": "Mehr betroffene Tests als diese (oder alle Tests nötig): kein Lauf im Hintergrund, nur ein Hinweis im Statusfeld.",
+      "type": "integer",
+      "default": 50,
+      "minimum": 1,
+      "maximum": 1000,
+      "x-key": "tests.onSave.max",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.onSave",
+      "x-issue": "#1775"
+    },
     "TestsFailureAtAssert": {
       "description": "Fehlgeschlagenen Test an der Anweisung melden, die fehlschlug, statt am Methodenkopf: Zeile aus dem Stacktrace des Berichts (JclDebug, madExcept); ohne Zeilen der eine Assert im Rumpf, dessen erwarteter Wert zum Bericht passt. Wellenlinie über der Anweisung; ist die Zeile nicht eindeutig, bleibt es beim Methodenkopf.",
       "type": "boolean",
@@ -1674,6 +1700,38 @@
       "x-caption": "Befehl „Was wartet worauf?“",
       "x-captionEn": "Command “What is waiting for what?”",
       "x-issue": "#587"
+    },
+    "DebugParallelStacks": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.parallelStacks",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Fenster „Parallele Aufrufstapel“",
+      "x-captionEn": "Window “Parallel Stacks”",
+      "x-issue": "#837"
+    },
+    "DebugParallelStacksWaitRoutines": {
+      "description": "Routinen, die einen Thread im Fenster „Parallele Aufrufstapel“ als wartend kennzeichnen: Ende des Namens (TMonitor.Enter, WaitForSingleObject), durch ; getrennt; leer = Vorgabe (TThread.WaitFor, Synchronize, TMonitor, Critical Section, Ereignisse, Sleep, Handles).",
+      "type": "string",
+      "default": "",
+      "x-key": "debug.parallelStacks.waitRoutines",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.parallelStacks",
+      "x-control": "Textfeld",
+      "x-issue": "#837"
+    },
+    "DebugParallelStacksMaxThreads": {
+      "type": "integer",
+      "default": 64,
+      "description": "Ab so vielen Threads liest Atlas die Aufrufstapel abschnittsweise und zeigt den Baum dazwischen (1 bis 1024).",
+      "x-key": "debug.parallelStacks.maxThreads",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.parallelStacks",
+      "x-issue": "#837"
     },
 
     "DebugExceptionHistory": {
@@ -1955,6 +2013,19 @@
       "x-parent": "debug.breakOnNextEvent",
       "x-control": "Textfeld",
       "x-issue": "#856"
+    },
+    "DebugCheckBreakpoints": {
+      "description": "Haltepunkte, die nicht greifen werden: Vor dem Start einer Debug-Sitzung prüft Atlas alle aktiven Quelltext-Haltepunkte und meldet Haltepunkte auf Zeilen ohne Code (Kommentar, Leerzeile, Deklaration), in inaktiven Zweigen der bedingten Kompilierung, in Units mit {$D-} bzw. ohne Debug-Informationen im Projekt und in Units, die zu einem anderen Projekt der Gruppe gehören. Der Dialog bietet „Trotzdem starten“, „Auf nächste Codezeile verschieben“ und „Abbrechen“; dazu der Befehl „Haltepunkte prüfen“. Aus = keine Prüfung, der Start bleibt, wie er ist.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.checkBreakpoints",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Haltepunkte vor dem Start prüfen",
+      "x-captionEn": "Check breakpoints before starting",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#577"
     },
     "TestsBuildFirst": {
       "type": "boolean",

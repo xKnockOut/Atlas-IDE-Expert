@@ -10,7 +10,9 @@
 // - OnLastFailed: fehlgeschlagene Tests des letzten Laufs aus den
 //   Projektdateien (TAtlasProjectSummaries), auch ohne Willkommensseite,
 // - ServerPath: Pfad des AtlasServer für den pre-commit-Hook der
-//   betroffenen Tests (#1353).
+//   betroffenen Tests (#1353),
+// - DebugWanted und WarnRunOff: Sichtbarkeit von „Test debuggen“ und die
+//   Meldung, wenn der Testläufer nicht läuft.
 
 interface
 
@@ -30,6 +32,10 @@ procedure AnnounceTests(const AProject: string; const ATests: TAtlasProjectTests
 function LastFailed(AProject: string): TArray<string>;
 /// <summary>Pfad des AtlasServer (für den pre-commit-Hook der betroffenen Tests).</summary>
 function ServerPath: string;
+/// <summary>„Test debuggen“ nach den Einstellungen gewünscht.</summary>
+function DebugWanted: Boolean;
+/// <summary>Meldung: Der Testläufer ist aus.</summary>
+procedure WarnRunOff;
 
 implementation
 
@@ -38,6 +44,9 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Tests.Run,
+  Atlas.Core.Tests.Debug,
+  Atlas.IDE.Foundation.Host,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.Tests,
   Atlas.IDE.Contracts.BuildPipeline,
   Atlas.IDE.Problems.Controller,
@@ -135,6 +144,16 @@ var
   mArguments: string;
 begin
   Result := TAtlasCodeInsightPaths.ServerPath(mArguments);
+end;
+
+function DebugWanted: Boolean;
+begin
+  Result := TAtlasTestDebug.DebugWanted(TAtlasIdeSettings.Current);
+end;
+
+procedure WarnRunOff;
+begin
+  TAtlasIdeHost.Warning(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
 end;
 
 end.
