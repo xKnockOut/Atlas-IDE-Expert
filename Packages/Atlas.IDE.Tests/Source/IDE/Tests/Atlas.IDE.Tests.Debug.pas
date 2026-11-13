@@ -102,8 +102,6 @@ type
       out ALine: Integer): Boolean; static;
     /// <summary>Eine Sitzung (Build, Start oder Lauf) ist im Gange.</summary>
     function Busy: Boolean;
-    /// <summary>„Test debuggen“ verfügbar (TAtlasTestDebug.DebugWanted mit den aktuellen Einstellungen).</summary>
-    class function Wanted: Boolean; static;
   end;
 
 implementation
@@ -171,11 +169,6 @@ function TAtlasIdeTestDebugger.Say(const AText: string): Boolean;
 begin
   FTests.Say(AText);
   Result := False;
-end;
-
-class function TAtlasIdeTestDebugger.Wanted: Boolean;
-begin
-  Result := TAtlasTestDebug.DebugWanted(TAtlasIdeSettings.Current);
 end;
 
 class function TAtlasIdeTestDebugger.Debugger: IOTADebuggerServices;

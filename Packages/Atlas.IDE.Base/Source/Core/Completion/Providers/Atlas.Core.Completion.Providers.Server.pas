@@ -33,6 +33,9 @@ type
   TAtlasServerCompletionProvider = class(TAtlasAsyncCompletionProvider, IAtlasCompletionResolver)
   public const
     cDefaultTimeoutMs = 2000;
+    /// <summary>Serverbefehl mit den Aktionen für ein nicht sichtbares Mitglied (#2108): Sichtbarkeit
+    /// anheben, Eigenschaft anlegen. Steht in Command der Einträge aus HiddenMembersOf.</summary>
+    cMemberActionsCommand = 'atlas.server.memberActions';
   public
     /// <summary>Name der Quelle für die Sicherung (#493) und ihre Meldungen, in der Sprache der Oberfläche.
     /// </summary>
@@ -558,6 +561,33 @@ begin
   Result.LinkedEdits := False;
 end;
 
+/// <summary>Befehl für die Aktionen eines nicht sichtbaren Mitglieds (#2108), nur mit Datei der Deklaration
+/// und nicht aus fremdem Code (external): Argumente [uri, position, name] für atlas.server.memberActions.
+/// </summary>
+procedure ReadMemberActions(AMember: TJSONObject; var AItem: TAtlasCompletionItem);
+var
+  mArguments: TJSONArray;
+  mPosition: TJSONObject;
+begin
+  if (TJsonRead.Text(AMember, 'uri') = '') or AMember.GetValue<Boolean>('external', False) then
+  begin
+    Exit;
+  end;
+  mArguments := TJSONArray.Create;
+  try
+    mArguments.Add(TJsonRead.Text(AMember, 'uri'));
+    mPosition := TJSONObject.Create;
+    mPosition.AddPair('line', TJSONNumber.Create(AMember.GetValue<Integer>('line', 0)));
+    mPosition.AddPair('character', TJSONNumber.Create(AMember.GetValue<Integer>('character', 0)));
+    mArguments.AddElement(mPosition);
+    mArguments.Add(AItem.Name);
+    AItem.Command := TAtlasServerCompletionProvider.cMemberActionsCommand;
+    AItem.CommandArguments := mArguments.ToJSON;
+  finally
+    mArguments.Free;
+  end;
+end;
+
 class function TAtlasServerCompletionProvider.HiddenMembersOf(AResponse: TJSONValue;
   AFirstRank: Integer): TAtlasCompletionItems;
 var
@@ -596,6 +626,7 @@ begin
     mItem.DeclaringUnit := TJsonRead.Text(mMember, 'unit');
     mItem.Signature := TJsonRead.Text(mMember, 'detail');
     mItem.Rank := AFirstRank + mIndex;
+    ReadMemberActions(mMember, mItem);
     if (mItem.Name <> '') and (mItem.Inaccessible <> '') then
     begin
       Result := Result + [mItem];

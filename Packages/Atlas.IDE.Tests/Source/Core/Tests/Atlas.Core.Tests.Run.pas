@@ -203,6 +203,13 @@ type
     /// sind die Schlüssel der veralteten Tests (TAtlasTestStamps.StaleIn, #1770); nil ohne.</summary>
     class function StaleOf(const AKeys: TArray<string>; const AUnitName, AFixture: string): TAtlasTestStaleFunc;
       static;
+    /// <summary>Ergebnisse ACases, ersetzt bzw. ergänzt um AFresh (voller Name, ohne Groß-/Kleinschreibung): der
+    /// Stand nach einem weiteren Lauf.</summary>
+    class function Merged(const ACases, AFresh: TArray<TTestCaseResult>): TArray<TTestCaseResult>; static;
+    /// <summary>Ergebnisse zu Unit AUnitName, Fixture AFixture, Methode AMethod ('' = alle) und Fall ACaseName
+    /// ('' = alle) in Berichtsreihenfolge (Fenster „Atlas-Tests“, #1776).</summary>
+    class function ResultsOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture, AMethod,
+      ACaseName: string): TArray<TTestCaseResult>; static;
   end;
 
 implementation
@@ -560,6 +567,21 @@ begin
     ((ACaseName = '') or SameText(AItem.CaseName, ACaseName));
 end;
 
+class function TAtlasTestRun.ResultsOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture, AMethod,
+  ACaseName: string): TArray<TTestCaseResult>;
+var
+  mItem: TTestCaseResult;
+begin
+  Result := nil;
+  for mItem in ACases do
+  begin
+    if Matches(mItem, AUnitName, AFixture, AMethod, ACaseName) then
+    begin
+      Result := Result + [mItem];
+    end;
+  end;
+end;
+
 class function TAtlasTestRun.StatusOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture,
   AMethod: string): TAtlasTestStatus;
 begin
@@ -770,6 +792,27 @@ begin
     begin
       Result := TAtlasTestStamps.Listed(mKeys, TAtlasTestStamps.KeyOf(mUnitName, mFixture, AMethod));
     end;
+end;
+
+class function TAtlasTestRun.Merged(const ACases, AFresh: TArray<TTestCaseResult>): TArray<TTestCaseResult>;
+var
+  mItem, mNew: TTestCaseResult;
+  mReplaced: Boolean;
+begin
+  Result := nil;
+  for mItem in ACases do
+  begin
+    mReplaced := False;
+    for mNew in AFresh do
+    begin
+      mReplaced := mReplaced or SameText(mNew.FullName, mItem.FullName);
+    end;
+    if not mReplaced then
+    begin
+      Result := Result + [mItem];
+    end;
+  end;
+  Result := Result + AFresh;
 end;
 
 end.

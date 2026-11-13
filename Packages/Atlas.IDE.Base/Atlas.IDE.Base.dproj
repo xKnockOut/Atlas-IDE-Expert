@@ -146,6 +146,7 @@
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Layout.Contract.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Layout.Painter.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Layout.Members.pas"/>
+        <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Layout.DebugTree.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Texts.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.View.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas"/>
@@ -589,6 +590,7 @@
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.Watch.pas"/>
         <DCCReference Include="Source\Core\Modules\Atlas.Core.Modules.Answer.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.DebugReport.pas"/>
+        <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.DebugStop.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.BuildTools.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.BuildPipeline.pas"/>
         <DCCReference Include="Source\Contracts\Atlas.IDE.Contracts.WelcomeTiles.pas"/>

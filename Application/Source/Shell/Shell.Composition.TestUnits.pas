@@ -15,6 +15,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.TestUnits,
+  Atlas.Common.Lsp.TestFromDebug,
   Shell.Workspace,
   Shell.Composition.Contract;
 
@@ -39,6 +40,8 @@ type
   private
     FServices: TShellTestUnitServices;
     FTestUnits: TLspTestUnits;
+    /// <summary>Test aus dem Debug-Halt (#1873) über FTestUnits.</summary>
+    FFromDebug: TLspTestFromDebug;
     /// <summary>Gefundenes Testprogramm je Wurzel mit Zeitpunkt (#274); Sperre ist das Objekt selbst.</summary>
     FTestPrograms: TDictionary<string, TPair<string, UInt64>>;
     function Workspace(const AFileName: string; var AContext: TTestUnitContext;
@@ -56,7 +59,8 @@ type
     function ContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
     /// <summary>Code-Aktionen der Testunits in Zeile ALine.</summary>
     function Actions(const AUri: string; ALine: Integer): TArray<TJSONObject>;
-    /// <summary>Befehle atlas.server.testUnit und atlas.server.boundaryTests (#2173).</summary>
+    /// <summary>Befehle atlas.server.testUnit, atlas.server.testFromDebugStop und atlas.server.boundaryTests
+    /// (#2173).</summary>
     procedure RegisterCommand(ACommands: TLspCommands);
   end;
 
@@ -82,10 +86,12 @@ begin
   FServices := AServices;
   FTestPrograms := TDictionary<string, TPair<string, UInt64>>.Create;
   FTestUnits := TLspTestUnits.Create(FServices.Documents, ContextFor);
+  FFromDebug := TLspTestFromDebug.Create(FTestUnits);
 end;
 
 destructor TShellTestUnits.Destroy;
 begin
+  FreeAndNil(FFromDebug);
   FreeAndNil(FTestUnits);
   FreeAndNil(FTestPrograms);
   inherited Destroy;
@@ -104,6 +110,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FTestUnits.Execute(AArguments);
+    end);
+  ACommands.RegisterConcurrent(TLspTestFromDebug.cCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FFromDebug.Execute(AArguments);
     end);
   TLspBoundaryTests.Attach(ACommands, FTestUnits);
 end;

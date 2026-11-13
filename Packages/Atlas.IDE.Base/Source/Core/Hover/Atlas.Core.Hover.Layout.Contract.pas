@@ -46,6 +46,10 @@ type
     RuleExamples: Boolean;
     /// <summary>Rollbereich der published-Mitglieder: Zeilen, Grenze und gewünschter Versatz (#1841).</summary>
     Members: TAtlasHoverScrollRequest;
+    /// <summary>Rollbereich der Zeilen des aufgeklappten Debug-Werts (#895).</summary>
+    DebugRows: TAtlasHoverScrollRequest;
+    /// <summary>Gewählte Zeile des aufgeklappten Debug-Werts, 1-basiert; 0 ohne (#895).</summary>
+    DebugSelectedRow: Integer;
   end;
 
 implementation

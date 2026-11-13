@@ -73,6 +73,13 @@ type
     Source: TUnitIndex;
   end;
 
+  /// <summary>Ort eines Testfall-Entwurfs (#1226, #1873): Umfeld, Gegenstück der Unit und Entwurf.</summary>
+  TTestDraftPlace = record
+    Context: TTestUnitContext;
+    Target: TTestUnitTarget;
+    Draft: TTestDraft;
+  end;
+
   TLspTestUnits = class
   public const
     cCommand = 'atlas.server.testUnit';
@@ -85,10 +92,10 @@ type
     function SourceOf(const AUri: string; const AContext: TTestUnitContext; out AText: string;
       out ATokens: TArray<TPascalToken>): Boolean;
     function TextOf(const AFileName: string; const AContext: TTestUnitContext): string;
+    function PlaceFor(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
+      const ATarget: TTestUnitTarget; out APlace: TTestDraftPlace): Boolean;
     function DraftAction(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
       const ATarget: TTestUnitTarget): TJSONObject;
-    function PreparedDraft(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
-      const ATarget: TTestUnitTarget; out ADraft: TTestDraft): Boolean;
   public
     constructor Create(const AStore: IDocumentStore; const AContextFor: TTestUnitContextProvider);
     /// <summary>Gegenstück der Unit AFileName mit Text AText; ALine 0-basiert, -1 = ohne Zeile.</summary>
@@ -108,6 +115,14 @@ type
     /// <summary>Wie oben; ADrafts ersetzen gleichnamige Tests des Gerüsts bzw. kommen dazu (#1226).</summary>
     class function CreateEdit(const ATarget: TTestUnitTarget; const AContext: TTestUnitContext;
       const ADrafts: TArray<TTestUnitMethod>): TJSONObject; overload; static;
+    /// <summary>Entwurf für die Methode oder Routine an ALine (0-basiert) von AUri samt Umfeld und Testunit;
+    /// False ohne testbare Methode, in einer Testunit oder ohne Testunit, die es gibt oder die sich anlegen lässt.
+    /// </summary>
+    function DraftPlace(const AUri: string; ALine: Integer; out APlace: TTestDraftPlace): Boolean;
+    /// <summary>WorkspaceEdit, das APlace.Draft in die Testunit einträgt bzw. sie damit anlegt; nil, wenn das
+    /// nicht geht. AFile: die Testunit; AName: der eingetragene Testname. Der Aufrufer übernimmt das Objekt.
+    /// </summary>
+    function DraftEdit(const APlace: TTestDraftPlace; out AFile, AName: string): TJSONObject;
     /// <summary>Code-Aktionen zu AUri an ALine. Der Aufrufer übernimmt die Objekte.</summary>
     function Actions(const AUri: string; ALine: Integer): TArray<TJSONObject>;
     /// <summary>Entwurf zur Methode bzw. Routine an ALine (0-basiert) samt Datei und Text der vorhandenen
@@ -501,52 +516,84 @@ begin
   Result := TLspTestUnits.CreateEdit(ATarget, AContext, [mMethod]);
 end;
 
-function TLspTestUnits.PreparedDraft(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
-  const ATarget: TTestUnitTarget; out ADraft: TTestDraft): Boolean;
+function TLspTestUnits.PlaceFor(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
+  const ATarget: TTestUnitTarget; out APlace: TTestDraftPlace): Boolean;
 var
   mText: string;
   mTokens: TArray<TPascalToken>;
 begin
+  APlace := Default(TTestDraftPlace);
+  APlace.Context := AContext;
+  APlace.Target := ATarget;
   Result := CanDraft(ATarget, ALine) and SourceOf(AUri, AContext, mText, mTokens) and
-    TTestDrafts.DraftAt(mText, mTokens, ATarget.Source, ALine, ADraft);
+    TTestDrafts.DraftAt(mText, mTokens, ATarget.Source, ALine, APlace.Draft);
   if not Result then
   begin
     Exit;
   end;
-  ADraft.Fixture := TTestUnits.FixtureName(ADraft.ClassName, ATarget.UnitName);
-  ADraft.UnitName := ATarget.UnitName;
-  if not ADraft.ClassMethod and (ADraft.ClassName <> '') then
+  APlace.Draft.Fixture := TTestUnits.FixtureName(APlace.Draft.ClassName, ATarget.UnitName);
+  APlace.Draft.UnitName := ATarget.UnitName;
+  if not APlace.Draft.ClassMethod and (APlace.Draft.ClassName <> '') then
   begin
-    ADraft.CreateText := TTestUnits.CreateExpression(ATarget.Source, ADraft.ClassName);
+    APlace.Draft.CreateText := TTestUnits.CreateExpression(ATarget.Source, APlace.Draft.ClassName);
+  end;
+end;
+
+function TLspTestUnits.DraftPlace(const AUri: string; ALine: Integer; out APlace: TTestDraftPlace): Boolean;
+var
+  mContext: TTestUnitContext;
+begin
+  APlace := Default(TTestDraftPlace);
+  Result := Assigned(FContextFor) and FContextFor(AUri, mContext);
+  if Result then
+  begin
+    Result := PlaceFor(AUri, ALine, mContext, ResolveUri(AUri, ALine, mContext), APlace);
+  end;
+end;
+
+function TLspTestUnits.DraftEdit(const APlace: TTestDraftPlace; out AFile, AName: string): TJSONObject;
+var
+  mOld, mNew, mReason: string;
+begin
+  Result := nil;
+  AName := APlace.Draft.TestName;
+  if APlace.Target.CounterpartFile <> '' then
+  begin
+    AFile := APlace.Target.CounterpartFile;
+    mOld := TextOf(AFile, APlace.Context);
+    if TTestDrafts.AddToTestUnit(mOld, APlace.Draft, False, mNew, AName, mReason) then
+    begin
+      Result := ChangeEdit(AFile, mOld, mNew);
+    end;
+  end
+  else
+  begin
+    AFile := APlace.Target.NewFile;
+    Result := NewUnitDraftEdit(APlace.Target, APlace.Context, APlace.Draft);
   end;
 end;
 
 function TLspTestUnits.DraftWithTestUnit(const AUri: string; ALine: Integer; out ADraft: TTestDraft;
   out ATestFile, ATestText, AReason: string): Boolean;
 var
-  mContext: TTestUnitContext;
-  mTarget: TTestUnitTarget;
+  mPlace: TTestDraftPlace;
 begin
   ADraft := Default(TTestDraft);
   ATestFile := '';
   ATestText := '';
   AReason := cTexts[TLspTestUnitsText.NoTestableRoutine].Text;
-  if not Assigned(FContextFor) or not FContextFor(AUri, mContext) then
+  if not DraftPlace(AUri, ALine, mPlace) or mPlace.Draft.Bare then
   begin
     Exit(False);
   end;
-  mTarget := ResolveUri(AUri, ALine, mContext);
-  if (mTarget.UnitName = '') or not PreparedDraft(AUri, ALine, mContext, mTarget, ADraft) or ADraft.Bare then
+  ADraft := mPlace.Draft;
+  if mPlace.Target.CounterpartFile = '' then
   begin
+    AReason := cTexts[TLspTestUnitsText.NoTestUnitYet].Fmt([mPlace.Target.Counterpart]);
     Exit(False);
   end;
-  if mTarget.CounterpartFile = '' then
-  begin
-    AReason := cTexts[TLspTestUnitsText.NoTestUnitYet].Fmt([mTarget.Counterpart]);
-    Exit(False);
-  end;
-  ATestFile := mTarget.CounterpartFile;
-  ATestText := TextOf(ATestFile, mContext);
+  ATestFile := mPlace.Target.CounterpartFile;
+  ATestText := TextOf(ATestFile, mPlace.Context);
   AReason := '';
   Result := True;
 end;
@@ -559,35 +606,21 @@ end;
 function TLspTestUnits.DraftAction(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
   const ATarget: TTestUnitTarget): TJSONObject;
 var
-  mOld, mNew, mName, mReason, mFile, mTitle: string;
-  mDraft: TTestDraft;
+  mPlace: TTestDraftPlace;
   mEdit: TJSONObject;
+  mFile, mName, mTitle: string;
 begin
   Result := nil;
-  if not PreparedDraft(AUri, ALine, AContext, ATarget, mDraft) then
+  if not PlaceFor(AUri, ALine, AContext, ATarget, mPlace) then
   begin
     Exit;
   end;
-  if ATarget.CounterpartFile <> '' then
-  begin
-    mFile := ATarget.CounterpartFile;
-    mOld := TextOf(mFile, AContext);
-    mEdit := nil;
-    if TTestDrafts.AddToTestUnit(mOld, mDraft, False, mNew, mName, mReason) then
-    begin
-      mEdit := ChangeEdit(mFile, mOld, mNew);
-    end;
-  end
-  else
-  begin
-    mFile := ATarget.NewFile;
-    mEdit := NewUnitDraftEdit(ATarget, AContext, mDraft);
-  end;
+  mEdit := DraftEdit(mPlace, mFile, mName);
   if mEdit = nil then
   begin
     Exit;
   end;
-  mTitle := cTexts[TLspTestUnitsText.CreateTestCase].Fmt([mDraft.Target]);
+  mTitle := cTexts[TLspTestUnitsText.CreateTestCase].Fmt([mPlace.Draft.Target]);
   Result := TJSONObject.Create;
   Result.AddPair('title', mTitle);
   Result.AddPair('kind', cRewriteKind);

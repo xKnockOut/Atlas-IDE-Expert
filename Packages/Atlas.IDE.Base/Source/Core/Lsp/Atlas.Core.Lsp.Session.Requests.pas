@@ -62,6 +62,9 @@ type
     /// <summary>workspace/executeCommand mit Argumenten (JSON-Array, '' = keine, #399); ELspClientError bei
     /// Fehler oder Zeitlimit. Ergebnis gehört dem Aufrufer.</summary>
     function RunCommand(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>Wie RunCommand für einen Befehl, der Code-Aktionen liefert, etwa atlas.server.memberActions
+    /// (#2108); leer bei anderer Antwort.</summary>
+    function CommandActions(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal): TArray<TLspCodeAction>;
     /// <summary>Anfrage AMethod mit Parametern (JSON-Objekt, '' = keine), abbrechbar über ACancelled (#1351:
     /// atlas/query); ELspClientError bei Fehler, Abbruch oder Zeitlimit. Ergebnis gehört dem Aufrufer.</summary>
     function RunRequest(const AMethod, AParamsJson: string; ATimeoutMs: Cardinal;
@@ -311,10 +314,8 @@ function TLspSessionRequests.CodeActions(const AFileName: string; const ARange: 
   ATimeoutMs: Cardinal): TArray<TLspCodeAction>;
 var
   mParams, mContext: TJSONObject;
-  mResponse, mItem: TJSONValue;
-  mAction: TLspCodeAction;
+  mResponse: TJSONValue;
 begin
-  Result := nil;
   mContext := TJSONObject.Create;
   // Die Befunde der Regeln ermittelt der Server selbst; 1 = ausdrücklich aufgerufen.
   mContext.AddPair('diagnostics', TJSONArray.Create);
@@ -325,16 +326,20 @@ begin
   mParams.AddPair('context', mContext);
   mResponse := FClient.Request('textDocument/codeAction', mParams, ATimeoutMs);
   try
-    if mResponse is TJSONArray then
-    begin
-      for mItem in TJSONArray(mResponse) do
-      begin
-        if TLspCodeAction.FromJson(mItem, mAction) then
-        begin
-          Result := Result + [mAction];
-        end;
-      end;
-    end;
+    Result := TLspCodeAction.ListFromJson(mResponse);
+  finally
+    mResponse.Free;
+  end;
+end;
+
+function TLspSessionRequests.CommandActions(const ACommand, AArgumentsJson: string;
+  ATimeoutMs: Cardinal): TArray<TLspCodeAction>;
+var
+  mResponse: TJSONValue;
+begin
+  mResponse := RunCommand(ACommand, AArgumentsJson, ATimeoutMs);
+  try
+    Result := TLspCodeAction.ListFromJson(mResponse);
   finally
     mResponse.Free;
   end;

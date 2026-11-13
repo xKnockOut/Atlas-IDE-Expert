@@ -126,6 +126,16 @@ Settings: `tests.stale`, `tests.stale.units`
 
 Settings: `codeLens.coveredBy`, `tests.coveredBy.depth`, `tests.coveredBy.private`
 
+### Untested methods (#1783)
+
+- On the unit line of a normal unit with a test unit Atlas shows “7 of 12 methods tested”: how many of its methods at least one test calls (depth and private methods as for “tested by”). Below `tests.untested.warnPercent` percent (default 50) the mark is yellow, otherwise grey. Units without a test unit get no mark.
+- A click shows a menu with the untested methods; an entry jumps to the method header, “Create test” opens or creates the test unit.
+- It counts calls from tests and does not replace a coverage measurement; the menu says so.
+- Command “Untested methods of the project” (Atlas menu and command palette, `Atlas.ListUntestedMethods`): for the project of the unit in the editor one line per unit in the message view, the unit with the most untested methods first, below one line per method that jumps there on double-click. Units without a test unit are listed with all their methods. The server limits itself to 60 s; a last line names what it did not reach.
+- Hide per file via the “Hide” menu.
+
+Settings: `codeLens.untested`, `tests.untested.warnPercent`
+
 ### Affected tests on save (#1775)
 
 - After a unit is saved (also a form or include file) Atlas finds the tests that the changes of this file since the last commit reach and runs only those in the background. It builds as with “Build before the tests”.
@@ -197,6 +207,21 @@ Settings: `tests.approvalFolder` (atlas.json), `tests.approvalFiles` (plugin)
 
 Settings: `tests.showDuration`, `tests.slowMs`
 
+<a id="window-atlastestsexplorer"></a>
+### “Atlas Tests” window (#1776)
+
+Open it with *View › Atlas › Atlas Tests*, the Atlas menu or the command palette. The window can be docked and comes back with the desktop.
+
+- At the top the test project (a choice when the project group has several, the active one preselected), below it the tree of all tests: test unit › fixture › test › case. Atlas reads the test units of the test project like the test lens does, without the server; again after every run, after saving a test unit and with *Reload*.
+- Every row has a dot with its state: green passed, red failed, yellow only partly run, grey not run, grey ring passed but outdated (#1770). After it the counter “passed/all” (outdated results do not count as passed) and the duration. Tests with `[Ignore]` are listed with “(ignored)” and do not count.
+- *Run all* builds the test project and runs all tests. *Run selected* (Ctrl+R) runs exactly the selected rows (multiple selection with Ctrl and Shift, also whole fixtures or test units) with `--run` and their names. *Debug selected* (Ctrl+D) starts them in the debugger like “Debug test”; the one-time breakpoint at the start applies only to a single test.
+- The filters *Failed*, *Not run*, *Outdated* and *Slow* (above `tests.slowMs`) apply at once, several together with “or”; the search box searches the full name (Unit.Fixture.Method.Case). The path to every match stays visible.
+- Double-click or Enter goes to the test, for a case to its `[TestCase]`. Below, the selected test shows message, expected and actual value and the stack trace; lines naming a unit of the test project open on double-click.
+- Results are kept for this session, per test project; changes to a test unit show up after saving.
+- `tests.window` off: no menu entry, the window is not restored.
+
+Setting: `tests.window`
+
 ### Leaks per test (#1774)
 
 - With a leak monitor in the test project (`DUnitX.MemoryLeakMonitor.FastMM4` or `FastMM5`), DUnitX reports a test that does not free memory as a failure (“40 bytes were leaked in the test method”). Atlas shows it as passed with a leak: the mark turns yellow, “Run test · passed · leak: 40 bytes”.
@@ -218,6 +243,17 @@ Available as a code action (Alt+Enter) on a method or routine, in its body or at
 - An `Assert.Fail` at the end keeps the draft red until the expected values are right.
 - Without a test unit, Atlas creates one like *Create DUnitX test unit* (fixture, setup/teardown, entries in `.dpr` and `.dproj`) and puts the draft in place of the empty test.
 - Private, protected and implementation-only routines cannot be called from the test unit; for them you only get the test with `Assert.Fail`.
+
+### Create a test from a debug stop (#1873)
+
+Use: button *Create test …* in the exception bar, editor context menu › Atlas › Tests while debugging, or the command palette (*Create test from debug stop …*). Settings on the Debugging page: `tests.fromDebugStop` (default on), `tests.fromDebugStop.fields` (on), `tests.fromDebugStop.properties` (off), `tests.fromDebugStop.maxArray` (20).
+
+- Atlas takes the frame of the stop: for an exception in the RTL or VCL the first frame in your own code, otherwise the topmost frame with source.
+- If that frame is the current one, the debugger evaluates the parameters and the fields of the class (`Self.FUnit`) without side effects; getters only with `tests.fromDebugStop.properties`. In a deeper frame the parameters come from the call stack line.
+- The debugger texts become Delphi literals: numbers (decimal comma becomes a point), strings with `''` and `#nn`, Boolean, enumeration values, sets and dynamic arrays up to `tests.fromDebugStop.maxArray` elements. Atlas does not guess objects, pointers, interfaces, records or anything unclear: the test gets a TODO there.
+- The dialog lists the values to uncheck (unchecked ones stay placeholders; private fields and objects start unchecked), the kind (*Should work* or *Should raise EConvertError* when the program stopped at an exception), the expected result for functions and the name (`ParseWith12_5Kg`, `ParseWith12_5KgRaisesConvertError`).
+- *Create test* adds the test to the test unit like *Create a test case from the unit* (creating the unit with its `.dpr`/`.dproj` entries if needed), with a comment line "From debug stop 2026-11-13 10:42, EConvertError"; an exception is checked with `Assert.WillRaise`. Without an expected result the test stays red with `Assert.Fail`. Everything is one undo step, then Atlas jumps to the test.
+- Without the Debugger module the button and the command are missing.
 
 ### Slash commands for tests and debugging (#305)
 
@@ -304,6 +340,45 @@ Settings: `debug.inlineValues`, `debug.inlineValuesPerLine`
 - Only in files with source, up to the routine, at most `debug.whyHere.depth` blocks (default 3); the values disappear with the next step
 
 Settings: `debug.whyHere`, `debug.whyHere.depth`
+
+### Predict upcoming conditions
+
+- When stopped, the next `if`, `while` and `case` of the same routine (up to `debug.predictConditions.lines` lines ahead, default 20) show their predicted result, marked as a forecast: `⟨= False · FOnline⟩` (the deciding part), for `case` `⟨→ smManual⟩`
+- The branch that will be skipped is drawn pale, for `case` all other branches; the text stays readable (`debug.predictConditions.dimSkipped`)
+- Only what follows from the current state is predicted: no assignment to a variable involved in between (also `var`/`out` arguments, `Inc`/`Dec`), no call in between for fields and global variables, no `Exit`, `raise`, `goto`, `Break` or `Continue`
+- The forecast never evaluates calls and getters in the condition; it only counts when the short-circuit decides without the call
+- A click on a hint opens the menu “Turn off the forecast for this session”. Hints and dimming disappear with the next step
+
+Settings: `debug.predictConditions`, `debug.predictConditions.dimSkipped`, `debug.predictConditions.lines`
+
+### Change values
+
+- The debug hover shows “Change …” below the value, for `True`/`False` also “Set to False” or “Set to True”. In the editor F2 (or “Atlas: Change value” in the context menu under Debugging) changes the identifier at the cursor; without a stopped program F2 goes to the IDE
+- The input fits the type: numbers with range check (`Byte` 0..255, also `$FF`), floating point with comma or dot, characters and strings without quotes, enumerations as a list (with type prefix under `{$SCOPEDENUMS ON}`), sets with one check box per value, `TColor` with “Choose colour …” (also `#RRGGBB`). Invalid input appears in red below the field and “Change” is disabled; Enter applies, Esc cancels
+- A property with a setter is changed only after confirmation (“Setter SetBetrag will be called”), by calling the setter. The dialog rejects read-only properties
+- Changed values stay at the end of the line in the warning colour with the old value until the next step: `Betrag = 150 (was 125)`. “Undo (was 125)” in the hover or “Atlas: Reset changed value” sets the old value as long as the program has not continued
+
+Settings: `debug.editValues`
+
+### Expandable debug hover
+
+- Objects, records and arrays show ▸ before the expression in the debug hover; a click expands them. The rows are indented as `Name = value` (fields, elements with index `[0]`); structured children and objects expand further. Each level is evaluated only when expanded; if the debugger answers late (Win64), the row says “evaluating …” until the value arrives and the IDE stays responsive
+- Properties from the Atlas index show “evaluate”: getters may have side effects and run only after the click
+- At most 100 children per level (`debug.hoverMaxChildren`), then “100 more …”. If an array is too long for one debugger answer, Atlas evaluates the visible elements one by one
+- Values changed since the previous stop (same thread, same method) are highlighted with the old value dimmed behind: `Umsatz = 1250,00 ← 980,00`. This applies to expanded children too; the end of the debug session clears the memory
+- With the mouse over the tooltip, ↑ and ↓ select a row, → expands, ← collapses. The actions below the value (Copy, with Shift `expression = value`; Pin; Change …; Watch opens “Evaluate” with the expression) apply to the selected row; a right click on a row offers them as a menu
+- More than 12 rows scroll inside the tooltip
+
+Settings: `debug.hoverExpand`, `debug.hoverMaxChildren`, `debug.hoverChanges`
+
+### Pinned values
+
+- The debug hover shows “Pin” below the value. From then on the expression appears at every stop as a framed field `Summe = 125 ✕` at the end of its line, after the inline values
+- Values changed since the previous stop are shown in the warning colour
+- Pinned expressions belong to the project and survive debug sessions; a click on ✕ unpins them for good
+- Evaluation has no side effects: expressions with calls stay `?`. At most 100 per project
+
+Setting: `debug.pinnedValues`
 
 ### "No access to value" explained
 
@@ -401,6 +476,23 @@ Settings: `debug.breakOnNextEvent`
 
 Settings: `debug.stepFilters`
 
+<a id="window-atlasbreakpoints"></a>
+### Breakpoints window
+
+The dockable window “Breakpoints” (Atlas menu, “Breakpoints (Atlas)”) shows the same breakpoints as the IDE’s list, plus:
+
+- search across file name, method, condition and tag; several words must all match
+- filter chips “active”, “with condition”, “never hit” (in this session) and “not effective”
+- hit count of this debug session; “Reset hit counts” sets it to 0
+- tags such as `Import` or `Bug 4711`, several per breakpoint, completed from the ones already used; they are personal and survive a restart
+- grouping by tag, file or group, with collapsible groups
+- enable, disable, tag or delete several breakpoints at once (undo with Ctrl+Z)
+- columns “Set” (breakpoint sets) and “Rules” (hit condition, thread filter, dependent on another breakpoint), such as “from hit 3 · main thread”
+- double-click goes to the location, Enter opens the IDE’s properties
+- show and hide columns from the context menu; the window remembers width and order
+
+Settings: `debug.breakpointsWindow`
+
 ### Breakpoints that will not be hit
 
 Before every debug session starts, Atlas checks all active source breakpoints, open files as they are in the editor:
@@ -414,6 +506,40 @@ If anything is found, the dialog “Breakpoints that will not be hit” lists it
 
 Settings: `debug.checkBreakpoints`
 
+### Breakpoints on methods by pattern
+
+The command “Breakpoint on methods …” (Atlas menu, command palette, editor context menu under “Debug” and the context menu of the breakpoint list) sets breakpoints on all methods that match a name or pattern, without opening each one. The starting pattern comes from the word at the cursor: in a method header `TCustomer.Save`, on a type `TCustomer.*`, on a call `FCustomer.Save` the name `Save`; a single-line selection is taken as is. Without a word, the last pattern is shown.
+
+- `TCustomer.Save`, `TCustomer.*` (all methods of the class), `*.Validate*` (all matching methods and routines), `Customer.Import.*` (whole unit), `IOrder.Check` (all classes implementing the interface member, also through method resolution clauses)
+- with parameter types, only one overload: `TCustomer.Save(Integer)`
+- “Overrides” adds the override methods of descendants, “Overloads” all overloads of a name (both on by default)
+
+The preview lists the matches with file and line to deselect, methods without source greyed out. “Set” places the breakpoints on the first executable statement of each method, in the breakpoint group named after the pattern, optionally with a condition or “Do not break, log only”. With “Grow”, Atlas adds breakpoints for new matching methods at the next debug start and names them in the messages. “Method breakpoint groups …” enables, disables or removes the groups of the project together with their breakpoints. Atlas keeps the groups personally per project.
+
+Settings: `debug.methodBreakpoints`
+
+### Run to here by clicking
+
+Editor margin while paused, context menu Atlas › Debug, command palette. Instead of placing the cursor and pressing F4, click next to the line.
+
+- When the program is paused, a narrow column appears to the right of the line numbers; on executable lines it shows ▶ under the mouse pointer, with a tooltip.
+- Clicking ▶ runs to that line (like F4); Ctrl+click does so without stopping at other breakpoints.
+- Skipped breakpoints are back in their old state after the next stop, even if the program ends first. If the IDE crashes in between, Atlas restores them when the next debug session starts.
+- Right-click in the margin: “Run to here”, “Run to here, skip breakpoints” (also Ctrl+F4, only while paused) and “One-time breakpoint”. The one-time breakpoint is in the group `Atlas.Einmalig` and disappears after its first stop; it can also be set while no program is running.
+- Executable lines are those between `begin` and `end` of a body, without blank and comment lines and without lines that only contain `begin`, `end`, `try`, `finally`, `except` or `else`.
+
+Settings: `debug.runToClick`
+
+### Breakpoint only for one object
+
+A breakpoint in `TKunde.Speichere` stops 500 times for 500 customers. While the program is paused, with the caret on the breakpoint line, the editor context menu offers under Debug:
+
+- “Breakpoint only for this object”: Atlas evaluates `Pointer(Self)` and writes `Pointer(Self) = Pointer($0A3F1C20)` into the condition. The address is only valid in this session.
+- “Breakpoint only if …”: choose one of the fields of `Self` with a simple value, such as `FNr = 4711`; the condition also holds in later sessions.
+
+An existing condition is kept and combined with `and`. Both are available only in methods, not in plain routines or class methods. Before the next start, Atlas asks about address conditions from the last session: remove them, replace them with a field condition, or keep them.
+
+Settings: `debug.instanceBreakpoints`
 ### Breakpoint sets
 
 Atlas menu and command palette. When you work on several bugs, switch between named sets of breakpoints instead of deleting and setting them again.
@@ -516,6 +642,31 @@ Settings: `debug.reattach`, `debug.reattach.key`, `debug.reattach.waitIntervalMs
 - Limits: programs started with the debugger use the parameters of the launch profile, but working folder and environment from the IDE's run options; only projects of the open project group
 
 Settings: `debug.launchGroups`
+### Breakpoints move with the code
+
+Runs on its own; commands in the Atlas menu and the command palette. After `git pull`, a branch switch or a formatter, the IDE's breakpoints otherwise sit on wrong lines because they are tied to line numbers.
+
+- Atlas remembers an anchor for each source breakpoint: routine, distance from the start of the routine, line text and neighbouring lines (the same search as for breakpoint sets).
+- When a file changes from outside (reloaded, branch switch, different from when the IDE was last closed, or five or more lines at once as with a formatter or code action), Atlas moves each breakpoint to the matching line, with condition, pass count, group, actions and on/off. While you type, the IDE moves its breakpoints itself; Atlas only remembers the new anchor.
+- A line in the messages names each move and “3 moved, 1 orphaned”.
+- Breakpoints that cannot be matched stay where they are and go to the list “Orphaned breakpoints …” with a suggestion (same distance within the routine) and the buttons “Apply suggestion” and “Delete”. Nothing is deleted on its own.
+- “Move breakpoints back to their old lines” undoes the last move.
+- Anchors are stored in `%LOCALAPPDATA%\Atlas\breakpoint-anchors.json`.
+
+Settings: `debug.breakpointAnchors`
+
+### Breakpoint rules: dependent, hits, thread
+
+Editor context menu (Atlas › Debug › “Breakpoint rules …”, also in the margin), Atlas menu, command palette; on the line of a breakpoint. A breakpoint in a busy routine otherwise stops a hundred times before you get to the place that matters.
+
+- “Active only after”: the breakpoint is off at the start of every debug session and is switched on as soon as the chosen other breakpoint has stopped. “until the session ends” keeps it on, “only once” switches it off again after its stop until the triggering one stops again. After the session it is on again.
+- “Stop”: on every hit, exactly on hit n, from hit n on or on every n-th hit; counted per session.
+- “Thread”: all, name contains (from `TThread.NameThreadForDebugging`), one thread ID or the main thread only. A stop in another thread does not count as a hit.
+- The IDE condition, hit condition and thread filter apply together. For hits and threads the debugger stops briefly, Atlas counts and continues right away; in hot loops this costs time.
+- If the triggering breakpoint is missing at start, the dependent one stays on as usual and a line in the messages says so.
+- Rules are stored in `%LOCALAPPDATA%\Atlas\breakpoint-rules.json` and move along when “Breakpoints move with the code” moves a breakpoint.
+
+Settings: `debug.breakpointRules`
 
 ## Debug: exceptions
 
