@@ -67,6 +67,8 @@ contains
   Atlas.Text.DebugDisplay in '..\Atlas.Text\Source\DebugDisplay\Atlas.Text.DebugDisplay.pas',
   Atlas.Text.DUnitX in '..\Atlas.Text\Source\DUnitX\Atlas.Text.DUnitX.pas',
   Atlas.Text.TestResults in '..\Atlas.Text\Source\TestResults\Atlas.Text.TestResults.pas',
+  Atlas.Text.Xml in '..\Atlas.Text\Source\Xml\Atlas.Text.Xml.pas',
+  Atlas.Text.Coverage in '..\Atlas.Text\Source\Coverage\Atlas.Text.Coverage.pas',
   Atlas.Text.MapFile in '..\Atlas.Text\Source\MapFile\Atlas.Text.MapFile.pas',
   Atlas.Core.Localization.Language in 'Source\Core\Localization\Atlas.Core.Localization.Language.pas',
   Atlas.Core.Lsp.Progress in 'Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas',

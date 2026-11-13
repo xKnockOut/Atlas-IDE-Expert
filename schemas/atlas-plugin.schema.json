@@ -915,6 +915,28 @@
       "x-captionEn": "Changes in used units count too",
       "x-issue": "#1770"
     },
+    "TestCoverage": {
+      "description": "Testabdeckung in der Rinne: Nach „Testabdeckung laden …“ (Bericht von DelphiCodeCoverage, CodeCoverage_Summary.xml mit -xml -xmllines, oder jacoco.xml neuerer Fassungen) zeigt jede Zeile mit Code einen schmalen Balken, grün durchlaufen, rot nicht durchlaufen; der Tooltip nennt Treffer und Abdeckung der Datei. Ändert sich der Bericht auf der Platte, liest Atlas ihn neu. Aus = keine Balken, keine Befehle.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.coverage",
+      "x-area": "editor",
+      "x-feature": "Build",
+      "x-page": "Editor",
+      "x-parent": "tests.enabled",
+      "x-node": "",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Testabdeckung",
+      "x-captionEn": "Test coverage",
+      "x-keywords": [
+        "Coverage",
+        "DelphiCodeCoverage",
+        "Abdeckung",
+        "JaCoCo"
+      ],
+      "x-issue": "#275"
+    },
     "GenerateMenu": {
       "type": "boolean",
       "default": true,

@@ -20,6 +20,8 @@ Atlas.Text.LogMarks.Tests
 Atlas.Text.MapFile.Tests
 Atlas.Text.StepFilter.Tests
 Atlas.Text.TestResults.Tests
+Atlas.Text.Xml.Tests
+Atlas.Text.Coverage.Tests
 Atlas.Text.UpdateRun.Tests
 Atlas.Text.Updates.Tests
 Atlas.Text.Uris.Tests
@@ -374,3 +376,4 @@ Atlas.Core.Tracker.SprintStart.Tests
 Atlas.Core.Tests.Stale.Tests
 Atlas.Core.Tests.AssertLine.Tests
 Atlas.Core.Tests.Compare.Tests
+Atlas.Core.Tests.Coverage.Tests

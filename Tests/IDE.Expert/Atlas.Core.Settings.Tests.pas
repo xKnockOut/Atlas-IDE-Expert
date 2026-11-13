@@ -143,6 +143,7 @@ begin
   Assert.IsTrue(ASettings.Impact, 'Auswirkungen anzeigen standardmäßig an (#1120)');
   Assert.AreEqual(2, ASettings.ImpactDepth, 'Tiefe der Auswirkungsanalyse standardmäßig 2 (#1120)');
   Assert.IsTrue(ASettings.CodeLensTests, 'Code Lens „Test ausführen“ standardmäßig an (#69)');
+  Assert.IsTrue(ASettings.TestCoverage, 'Testabdeckung in der Rinne standardmäßig an (#275)');
   Assert.IsTrue(ASettings.TestRun, 'Tests ausführen standardmäßig da (#69)');
   Assert.IsFalse(ASettings.TestsAfterBuild, 'Tests nach dem Build standardmäßig aus (#69)');
   Assert.IsTrue(ASettings.TestsAffected, 'Betroffene Tests standardmäßig an (#1353)');
@@ -295,6 +296,7 @@ begin
   ASettings.CodeLensTestUnit := False;
   ASettings.CodeLensMetrics := False;
   ASettings.CodeLensTests := False;
+  ASettings.TestCoverage := False;
   ASettings.TestRun := False;
   ASettings.TestsAfterBuild := True;
   ASettings.TestsBuildFirst := False;
@@ -421,6 +423,7 @@ begin
   Assert.IsFalse(ALoaded.CodeLensTestUnit);
   Assert.IsFalse(ALoaded.CodeLensMetrics);
   Assert.IsFalse(ALoaded.CodeLensTests);
+  Assert.IsFalse(ALoaded.TestCoverage, 'tests.coverage (#275)');
   Assert.IsFalse(ALoaded.TestRun);
   Assert.IsTrue(ALoaded.TestsAfterBuild);
   Assert.IsFalse(ALoaded.TestsBuildFirst);

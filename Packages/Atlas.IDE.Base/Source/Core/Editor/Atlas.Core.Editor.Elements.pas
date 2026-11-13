@@ -83,7 +83,9 @@ type
     /// <summary>Unterstreichung neu zugewiesener Variablen (#712).</summary>
     Reassigned,
     /// <summary>Gelernter Vorschlag als Schattentext (#1890).</summary>
-    LearnedSuggestions);
+    LearnedSuggestions,
+    /// <summary>Balken der Testabdeckung in der Rinne (#275).</summary>
+    TestCoverage);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -187,7 +189,9 @@ const
     // Je Datei oder überall an einer Unterstreichung.
     (Key: 'Reassigned'; Scopes: cFileScopes; Overlay: True; Gutter: False),
     // Wie die Musterfortsetzung nur bis zum nächsten Tastendruck sichtbar.
-    (Key: 'SuggestionsLearned'; Scopes: [TAtlasHideScope.Everywhere]; Overlay: False; Gutter: False)
+    (Key: 'SuggestionsLearned'; Scopes: [TAtlasHideScope.Everywhere]; Overlay: False; Gutter: False),
+    // Der Bericht gilt für die ganze Datei: Ausblenden je Datei oder überall.
+    (Key: 'TestCoverage'; Scopes: cFileScopes; Overlay: False; Gutter: True)
   );
 
 function Make(AElement: TAtlasDrawnElement; const AKey: string; AScopes: TAtlasHideScopes;

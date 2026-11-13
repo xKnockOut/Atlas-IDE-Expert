@@ -16,6 +16,9 @@
 //   (#1821: Unit der Projektgruppe wählen, die Unit im Editor vorgewählt;
 //   angelegt wie „Zur Testunit wechseln“ von Base),
 // - Hörer für Einstellungen und bewertete Builds (Tests nach dem Build),
+// - die Schicht der Testabdeckung in der Rinne (#275, IAtlasGutterLayer) mit den Befehlen „Testabdeckung laden …“
+//   und „Testabdeckung ausblenden“; ihr Zustand ist ein eigener Teil der Feature-Tabelle (läuft auch ohne
+//   tests.run, solange tests.coverage an ist),
 // - IAtlasTestRunner (Base: Auswirkungsanalyse #1120, Willkommensseite) und
 //   IAtlasTestsSource (Atlas.IDE.Contracts.Tests, Willkommensseite); das Ende eines
 //   Laufs schreibt das Modul in die Projekt-Zusammenfassung von Base
@@ -93,6 +96,7 @@ uses
   Atlas.IDE.Tests.Compare,
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Tests.UnitCommands,
+  Atlas.IDE.Tests.Coverage,
   Atlas.UI.Strings,
   Atlas.UI.Tests.Strings;
 
@@ -322,6 +326,18 @@ begin
   end;
 end;
 
+{ Testabdeckung (#275) }
+
+function CoverageVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.TestCoverage and TAtlasIdeTestCoverage.Started;
+end;
+
+function CoverageClearVisible: Boolean;
+begin
+  Result := CoverageVisible and TAtlasIdeTestCoverage.Loaded;
+end;
+
 { Projektverwaltung (#1817) }
 
 function ProjectUnitTestsVisible: Boolean;
@@ -386,7 +402,12 @@ begin
     // Assistent in Datei › Neu › Weitere (#1821); auch in der Palette.
     Described(Command('Atlas.NewTestUnitFor', TAtlasTestsTextId.TestsGalleryTestUnit,
       Guarded(TAtlasFeature.Generate, TAtlasIdeTestUnitCommands.NewTestUnitFor), nil),
-      TAtlasTestsTextId.TestsGalleryTestUnitHint)];
+      TAtlasTestsTextId.TestsGalleryTestUnitHint),
+    // Testabdeckung (#275): sichtbar mit tests.coverage; ausblenden nur mit geladenem Bericht.
+    Command('Atlas.LoadTestCoverage', TAtlasTestsTextId.CoverageLoadCommand,
+      Guarded(TAtlasFeature.Build, TAtlasIdeTestCoverage.Choose), CoverageVisible),
+    Command('Atlas.ClearTestCoverage', TAtlasTestsTextId.CoverageClearCommand,
+      Guarded(TAtlasFeature.Build, TAtlasIdeTestCoverage.Clear), CoverageClearVisible)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -417,6 +438,8 @@ begin
     MenuEntry('Atlas.RunAffectedTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.RunStaleTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.CompareTestValues', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.LoadTestCoverage', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.ClearTestCoverage', TAtlasMenuPlace.AtlasMenu),
     // Test am Cursor (#585) im Untermenü „Atlas“ des Editors.
     ContextEntry('Atlas.RunTest'),
     ContextEntry('Atlas.DebugTest'),
@@ -505,7 +528,13 @@ begin
       function(ALevel: TAtlasSafeLevel): Boolean
       begin
         Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TestRun;
-      end, TestsStarted, StartTests, StopTests)];
+      end, TestsStarted, StartTests, StopTests),
+    // Testabdeckung (#275): liest nur einen Bericht, baut und startet nichts; unabhängig von tests.run.
+    TAtlasFeaturePart.When('TestCoverage',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TestCoverage;
+      end, TAtlasIdeTestCoverage.Started, TAtlasIdeTestCoverage.Start, TAtlasIdeTestCoverage.Stop)];
 end;
 
 class function TAtlasTestsModule.RegisterModule: Boolean;
@@ -535,6 +564,8 @@ begin
   GScope.Provide(IAtlasTestRunner, mRef);
   // Vertrag zwischen Modulen: Karte Tests (#763) und Schnellaktionen (#764) der Willkommensseite.
   GScope.Provide(IAtlasTestsSource, mRef);
+  // Balken der Testabdeckung in der Rinne (#275).
+  TAtlasIdeTestCoverage.ProvideIn(GScope);
   ProvideSettingsSections;
   Result := True;
 end;

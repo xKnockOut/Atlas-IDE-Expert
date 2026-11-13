@@ -1417,6 +1417,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | Unit | Datei | Begründung |
 |---|---|---|
 | `Atlas.Core.Tests.AffectedHook` | `Core/Tests/Atlas.Core.Tests.AffectedHook.pas` | Ordner `Core/Tests` |
+| `Atlas.Core.Tests.Coverage` | `Core/Tests/Atlas.Core.Tests.Coverage.pas` | Ordner `Core/Tests`; Testabdeckung (#275) |
 | `Atlas.Core.Tests.Debug` | `Core/Tests/Atlas.Core.Tests.Debug.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.ProjectChoice` | `Core/Tests/Atlas.Core.Tests.ProjectChoice.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.UnitMatch` | `Core/Tests/Atlas.Core.Tests.UnitMatch.pas` | Ordner `Core/Tests` |
@@ -1425,6 +1426,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.AssertLine` | `Core/Tests/Atlas.Core.Tests.AssertLine.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Compare` | `Core/Tests/Atlas.Core.Tests.Compare.pas` | Ordner `Core/Tests` |
 | `Atlas.IDE.Tests.Affected` | `IDE/Tests/Atlas.IDE.Tests.Affected.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.Coverage` | `IDE/Tests/Atlas.IDE.Tests.Coverage.pas` | Ordner `IDE/Tests`; Testabdeckung in der Rinne (#275) |
 | `Atlas.IDE.Tests.Debug` | `IDE/Tests/Atlas.IDE.Tests.Debug.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Lens` | `IDE/Tests/Atlas.IDE.Tests.Lens.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Stale` | `IDE/Tests/Atlas.IDE.Tests.Stale.pas` | Ordner `IDE/Tests` |

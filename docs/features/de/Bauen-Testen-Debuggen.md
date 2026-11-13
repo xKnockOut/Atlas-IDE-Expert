@@ -116,6 +116,20 @@ Aufruf: *Atlas*-Menü, Befehlspalette, Kontextmenü einer Testunit (*Atlas › T
 
 Einstellungen: `tests.compare`, `tests.compare.format`
 
+### Testabdeckung im Editor (#275)
+
+- „Testabdeckung laden …“ (*Atlas*-Menü, Befehlspalette) liest einen Bericht von [DelphiCodeCoverage](https://github.com/DelphiCodeCoverage/DelphiCodeCoverage) ein, ohne neu zu bauen: `CodeCoverage_Summary.xml` (mit `-xml -xmllines`) oder `jacoco.xml` neuerer Fassungen.
+- In der Rinne steht dann an jeder Zeile mit Code ein schmaler Balken: grün durchlaufen, rot nicht durchlaufen. Der Tooltip nennt die Treffer, die Abdeckung der Datei und den Bericht.
+- Wurde die Datei nach dem Bericht gespeichert, sagt der Tooltip, dass die Zeilen verschoben sein können.
+- Ein neuer Lauf überschreibt den Bericht: Atlas liest ihn beim nächsten Wechsel bzw. nach einer Tipp-Pause neu. „Testabdeckung ausblenden“ vergisst ihn.
+- Beispiel (Testprogramm mit Map-Datei, „Detailliert“; volle Pfade bei `-e` und `-m`, `-ife` vor `-u` bei Unitnamen mit Punkten):
+
+  ```
+  CodeCoverage.exe -ife -e C:\Projekt\Bin\Tests.exe -m C:\Projekt\Bin\Tests.map -u Rechner.Kern Rechner.Hilfen -sp C:\Projekt\Source -od C:\Projekt\Coverage -xml -xmllines -a ^-^-exit:Continue
+  ```
+
+Einstellung: `tests.coverage`
+
 ### Testfall aus der Unit anlegen (#1226)
 
 Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an der Deklaration; im Rumpf auch `/test`.

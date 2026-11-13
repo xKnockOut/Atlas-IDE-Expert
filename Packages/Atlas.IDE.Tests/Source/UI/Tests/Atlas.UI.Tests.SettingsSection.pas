@@ -5,7 +5,7 @@
 // Seiten stehen.
 // - „Compiler“: Modulschalter, DUnitX-Tests ausführen (#69) und betroffene Tests (#1353).
 // - „Debuggen“: einzelnen Test im Debugger starten (#585).
-// - „Editor“: Code Lens an Testmethoden und veraltete Ergebnisse (#1770).
+// - „Editor“: Code Lens an Testmethoden, veraltete Ergebnisse (#1770) und Testabdeckung in der Rinne (#275).
 
 interface
 
@@ -107,6 +107,7 @@ begin
   Switch('codeLens.tests', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsCodeLensTests));
   Switch('tests.stale', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsStale));
   Switch('tests.stale.units', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsStaleUnits));
+  Switch('tests.coverage', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestCoverage));
 end;
 
 end.

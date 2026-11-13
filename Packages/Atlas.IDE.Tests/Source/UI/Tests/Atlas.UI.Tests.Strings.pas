@@ -36,7 +36,11 @@ type
     // Erwartet und erhalten vergleichen (#1779).
     TestsCompareCommand, TestsCompareTitle, TestsCompareExpected, TestsCompareActual, TestsCompareTruncated,
     TestsCompareSummary, TestsCompareJson, TestsCompareXml, TestsCompareCopyActual, TestsCompareClose, TestsCompareNone,
-    SettingsTestsCompare, SettingsTestsCompareFormat);
+    SettingsTestsCompare, SettingsTestsCompareFormat,
+    // Testabdeckung (#275).
+    CoverageLoadCommand, CoverageClearCommand, CoverageFilter, CoverageLoaded, CoverageNotAReport, CoverageNoLines,
+    CoverageTipMissed, CoverageTipHit, CoverageTipHits, CoverageTipFile, CoverageTipOutdated,
+    CoverageTipReport, SettingsTestCoverage);
 
   TAtlasTestsStrings = class
   public
@@ -146,7 +150,21 @@ const
      'Schließen',
      'Tests: Kein Fehlschlag mit erwartetem und erhaltenem Wert am Cursor oder aus dem letzten Lauf.',
      'Befehl „Erwartet und erhalten vergleichen“ (zwei Spalten, Unterschiede zeichengenau)',
-     'JSON und XML vor dem Vergleich gleich einrücken'),
+     'JSON und XML vor dem Vergleich gleich einrücken',
+     'Testabdeckung laden …',
+     'Testabdeckung ausblenden',
+     'Bericht von DelphiCodeCoverage (*.xml)|*.xml|Alle Dateien (*.*)|*.*',
+     'Testabdeckung: %d Dateien, %d von %d Zeilen durchlaufen (%d %%) aus %s',
+     'Testabdeckung: %s ist kein Bericht von DelphiCodeCoverage (CodeCoverage_Summary.xml mit -xml -xmllines ' +
+     'oder jacoco.xml).',
+     'Testabdeckung: %s enthält keine Zeilen; DelphiCodeCoverage mit -xmllines aufrufen.',
+     'Nicht durchlaufen',
+     'Durchlaufen',
+     'Durchlaufen (%d Treffer)',
+     'Datei: %d von %d Zeilen durchlaufen (%d %%)',
+     'Die Datei ist neuer als der Bericht; Zeilen können verschoben sein.',
+     'Bericht: %s',
+     'Testabdeckung aus DelphiCodeCoverage in der Rinne (Befehl „Testabdeckung laden …“)'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -240,7 +258,21 @@ const
      'Close',
      'Tests: No failure with expected and actual value at the cursor or from the last run.',
      'Command “Compare expected and actual” (two columns, differences per character)',
-     'Indent JSON and XML the same way before comparing'));
+     'Indent JSON and XML the same way before comparing',
+     'Load test coverage…',
+     'Hide test coverage',
+     'DelphiCodeCoverage report (*.xml)|*.xml|All files (*.*)|*.*',
+     'Test coverage: %d files, %d of %d lines run (%d %%) from %s',
+     'Test coverage: %s is not a DelphiCodeCoverage report (CodeCoverage_Summary.xml with -xml -xmllines ' +
+     'or jacoco.xml).',
+     'Test coverage: %s has no lines; run DelphiCodeCoverage with -xmllines.',
+     'Not run',
+     'Run',
+     'Run (%d hits)',
+     'File: %d of %d lines run (%d %%)',
+     'The file is newer than the report; lines may have moved.',
+     'Report: %s',
+     'Test coverage from DelphiCodeCoverage in the gutter (command “Load test coverage…”)'));
 
 { TAtlasTestsStrings }
 

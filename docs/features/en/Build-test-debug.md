@@ -140,6 +140,20 @@ Available from the *Atlas* menu, the command palette and the context menu of a t
 
 Settings: `tests.compare`, `tests.compare.format`
 
+### Test coverage in the editor (#275)
+
+- “Load test coverage…” (*Atlas* menu, command palette) reads a report of [DelphiCodeCoverage](https://github.com/DelphiCodeCoverage/DelphiCodeCoverage) without a new build: `CodeCoverage_Summary.xml` (with `-xml -xmllines`) or `jacoco.xml` of newer versions.
+- The gutter then shows a narrow bar at every line with code: green run, red not run. The tooltip names the hits, the coverage of the file and the report.
+- If the file was saved after the report, the tooltip says that lines may have moved.
+- A new run overwrites the report: Atlas reads it again on the next switch or after a typing pause. “Hide test coverage” forgets it.
+- Example (test program with a detailed map file; full paths for `-e` and `-m`, `-ife` before `-u` for unit names with dots):
+
+  ```
+  CodeCoverage.exe -ife -e C:\Project\Bin\Tests.exe -m C:\Project\Bin\Tests.map -u Calc.Core Calc.Helpers -sp C:\Project\Source -od C:\Project\Coverage -xml -xmllines -a ^-^-exit:Continue
+  ```
+
+Setting: `tests.coverage`
+
 ### Create a test case from the unit (#1226)
 
 Available as a code action (Alt+Enter) on a method or routine, in its body or at its declaration; in the body also as `/test`.

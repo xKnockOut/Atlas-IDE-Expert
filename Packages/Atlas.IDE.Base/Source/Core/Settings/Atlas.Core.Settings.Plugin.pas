@@ -368,6 +368,7 @@ type
     property CodeLensMetrics: Boolean read FEditorInsight.CodeLensMetrics write FEditorInsight.CodeLensMetrics;
     property Metrics: Boolean read FEditorInsight.Metrics write FEditorInsight.Metrics;
     property CodeLensTests: Boolean read FEditorInsight.CodeLensTests write FEditorInsight.CodeLensTests;
+    property TestCoverage: Boolean read FEditorInsight.TestCoverage write FEditorInsight.TestCoverage;
     property TestRun: Boolean read FBuild.TestRun write FBuild.TestRun;
     property TestsAfterBuild: Boolean read FBuild.TestsAfterBuild write FBuild.TestsAfterBuild;
     property TestsBuildFirst: Boolean read FBuild.TestsBuildFirst write FBuild.TestsBuildFirst;
