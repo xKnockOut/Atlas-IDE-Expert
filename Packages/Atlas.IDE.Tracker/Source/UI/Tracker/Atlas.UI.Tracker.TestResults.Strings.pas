@@ -19,7 +19,7 @@ type
     WelcomeTestsHintAttempt, WelcomeTestsHintClick, WelcomeTestsHintFailure, WelcomeTestsMore, WelcomeTestsNotFound,
     CiLoginTitle, CiLoginUser, CiLoginToken, CiLoginNoServer, NotificationsBuildServerRed, WelcomeTestsCiTimeout,
     WelcomeTestsCiServerError, WelcomeTestsCiUnknownProvider, WelcomeTestsCiNotQueried, WelcomeTestsCiUnreachable,
-    WelcomeTestsStale, CiLoginSaved, CiLoginRemoved, CiLoginFailed, CiLoginIncomplete);
+    WelcomeTestsStale, CiLoginSaved, CiLoginRemoved, CiLoginFailed, CiLoginIncomplete, WelcomeTestsSlowest);
 
   TAtlasTestResultsStrings = class
   public
@@ -88,7 +88,8 @@ const
      'Build-Server: Zugang im Anmeldespeicher von Windows gespeichert.',
      'Build-Server: Zugang aus dem Anmeldespeicher von Windows entfernt.',
      'Build-Server: Der Anmeldespeicher von Windows hat den Zugang nicht übernommen.',
-     'Build-Server: Benutzer und API-Token angeben (beide leer entfernt den Zugang).'),
+     'Build-Server: Benutzer und API-Token angeben (beide leer entfernt den Zugang).',
+     'Langsamste Tests'),
     ('Project not found: %s',
      'Test results',
      'Query build server now',
@@ -141,7 +142,8 @@ const
      'Build server: access stored in the Windows Credential Manager.',
      'Build server: access removed from the Windows Credential Manager.',
      'Build server: the Windows Credential Manager did not accept the access.',
-     'Build server: enter user and API token (both empty removes the access).'));
+     'Build server: enter user and API token (both empty removes the access).',
+     'Slowest tests'));
 
 { TAtlasTestResultsStrings }
 
