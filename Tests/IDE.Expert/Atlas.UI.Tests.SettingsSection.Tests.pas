@@ -72,6 +72,8 @@ begin
     Assert.IsTrue(CheckOf(mPage, 'CodeLensCoveredBy').Checked, '„getestet von“ standardmäßig an (#1778)');
     Assert.IsFalse(CheckOf(mPage, 'TestsCoveredByPrivate').Checked, 'private Methoden standardmäßig aus (#1778)');
     Assert.IsTrue(CheckOf(mPage, 'CodeLensUntested').Checked, '„Methoden getestet“ standardmäßig an (#1783)');
+    Assert.IsTrue(CheckOf(mPage, 'TestsFlaky').Checked, 'wackelnde Tests standardmäßig an (#1773)');
+    Assert.AreEqual('10', EditOf(mPage, 'TestsFlakyRuns').Text, 'zehn Läufe je Test (#1773)');
     CheckOf(mPage, 'CodeLensTests').Checked := False;
     CheckOf(mPage, 'TestRun').Checked := False;
     CheckOf(mPage, 'TestsBuildFirst').Checked := False;
@@ -84,6 +86,8 @@ begin
     EditOf(mPage, 'TestsCoveredByDepth').Text := '2';
     CheckOf(mPage, 'CodeLensUntested').Checked := False;
     EditOf(mPage, 'TestsUntestedWarnPercent').Text := '80';
+    CheckOf(mPage, 'TestsFlaky').Checked := False;
+    EditOf(mPage, 'TestsFlakyRuns').Text := '20';
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);
     Assert.IsFalse(mSaved.CodeLensTests);
@@ -98,6 +102,8 @@ begin
     Assert.AreEqual(2, mSaved.TestsCoveredByDepth);
     Assert.IsFalse(mSaved.CodeLensUntested);
     Assert.AreEqual(80, mSaved.TestsUntestedWarnPercent);
+    Assert.IsFalse(mSaved.TestsFlaky, 'tests.flaky (#1773)');
+    Assert.AreEqual(20, mSaved.TestsFlakyRuns, 'tests.flaky.runs (#1773)');
     mSaved.TestBreakAtStart := True;
     mPage.LoadFrom(mSaved);
     Assert.IsFalse(CheckOf(mPage, 'CodeLensTests').Checked);
