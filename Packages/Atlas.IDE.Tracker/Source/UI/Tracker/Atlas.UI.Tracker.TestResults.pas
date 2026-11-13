@@ -11,12 +11,13 @@
 //   ┃ Atlas.Server.Tests.TServerTests.Startet                       [Server]
 //   Langsamste Tests
 //     2,4 s  Atlas.Core.Index.Tests.TIndexTests.Builds
-//   [Fehlgeschlagene erneut ausführen] [Im Debugger] [Im Browser]
+//   [Fehlgeschlagene erneut ausführen] [Im Debugger] [Vergleichen] [Im Browser]
 // Je Projekt eine Zeile mit Ampel und Marke (lokaler Lauf), darunter bei
 // eingetragenem Build-Server die Zeile des letzten Builds; „Stand vom …“, wenn
 // der letzte Abruf fehlschlug. Unter den Zeilen die Fehlschläge des gewählten
 // Projekts (Klick auf eine Zeile wählt), Server-Fehlschläge mit Marke
-// „Server“. Klick wählt einen Fehlschlag (für „Im Debugger“), Doppelklick
+// „Server“. Klick wählt einen Fehlschlag (für „Im Debugger“ und „Vergleichen“; diesen Knopf gibt es nur,
+// wenn der Fehlschlag erwarteten und erhaltenen Wert hat, #1779), Doppelklick
 // öffnet den Test. Darunter die langsamsten Tests des lokalen Laufs (#1772,
 // mit tests.showDuration); Doppelklick öffnet den Test. Kontextmenü: Build-Server jetzt abfragen, Zugang zum
 // Build-Server hinterlegen, Projekt öffnen.
@@ -53,6 +54,10 @@ type
     procedure RerunFailed(const ARow: TAtlasTestRow; const ATests: TArray<string>);
     /// <summary>„Im Debugger“ (#585): den Test unter dem Debugger starten.</summary>
     procedure Debug(const ARow: TAtlasTestRow; const AFailure: TAtlasTestFailureItem);
+    /// <summary>„Vergleichen“ (#1779): Hat der Fehlschlag erwarteten und erhaltenen Wert?</summary>
+    function CanCompare(const AFailure: TAtlasTestFailureItem): Boolean;
+    /// <summary>„Vergleichen“: Fenster „Erwartet und erhalten“ des Fehlschlags.</summary>
+    procedure Compare(const AFailure: TAtlasTestFailureItem);
     /// <summary>„Im Browser“: Seite des Builds auf dem Server.</summary>
     procedure Browse(const ARow: TAtlasTestRow);
     /// <summary>Build-Server jetzt abfragen (ohne auf den Abstand zu warten).</summary>
@@ -67,8 +72,8 @@ type
   end;
 
 {$SCOPEDENUMS ON}
-  TAtlasTestResultsHitKind = (None, Row, Failure, Rerun, Debug, Browse, More, Slow);
-  TAtlasTestResultsButton = (Rerun, Debug, Browse);
+  TAtlasTestResultsHitKind = (None, Row, Failure, Rerun, Debug, Browse, More, Slow, Compare);
+  TAtlasTestResultsButton = (Rerun, Debug, Compare, Browse);
 {$SCOPEDENUMS OFF}
 
   TAtlasTestResultsHit = record
@@ -292,6 +297,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Text.TestResults,
+  Atlas.UI.Strings,
   Atlas.UI.Tracker.Strings;
 
 const
@@ -700,6 +706,10 @@ begin
     TAtlasTestResultsButton.Debug:
       begin
         Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsDebug);
+      end;
+    TAtlasTestResultsButton.Compare:
+      begin
+        Result := TAtlasStrings.Text(TAtlasTextId.TestsCompareValues);
       end;
   else
     Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.WelcomeTestsBrowse);
@@ -1161,7 +1171,7 @@ end;
 function TAtlasTrackerTestResultsPainter.ButtonHit(const APoint: TPoint): TAtlasTestResultsHit;
 const
   cKinds: array[TAtlasTestResultsButton] of TAtlasTestResultsHitKind = (TAtlasTestResultsHitKind.Rerun,
-    TAtlasTestResultsHitKind.Debug, TAtlasTestResultsHitKind.Browse);
+    TAtlasTestResultsHitKind.Debug, TAtlasTestResultsHitKind.Compare, TAtlasTestResultsHitKind.Browse);
 var
   mButton: TAtlasTestResultsButton;
 begin
@@ -1415,11 +1425,17 @@ end;
 function TAtlasTrackerTestResultsView.ButtonVisible(AButton: TAtlasTestResultsButton): Boolean;
 var
   mRow: TAtlasTestRow;
+  mItem: TAtlasTestFailureItem;
 begin
   Result := FView.SelectedRow(mRow);
   if Result and (AButton = TAtlasTestResultsButton.Browse) then
   begin
     Result := mRow.HasCi;
+  end
+  else if Result and (AButton = TAtlasTestResultsButton.Compare) then
+  begin
+    // Nur, wenn das Modul Tests erwartet und erhalten des gewählten Fehlschlags kennt (#1779).
+    Result := (FSource <> nil) and SelectedFailure(mItem) and FSource.CanCompare(mItem);
   end;
 end;
 
@@ -1436,7 +1452,7 @@ begin
         begin
           Result := Length(FView.Rerun) > 0;
         end;
-      TAtlasTestResultsButton.Debug:
+      TAtlasTestResultsButton.Debug, TAtlasTestResultsButton.Compare:
         begin
           Result := SelectedFailure(mItem);
         end;
@@ -1492,6 +1508,7 @@ end;
 
 procedure TAtlasTrackerTestResultsView.ClickButton(AKind: TAtlasTestResultsHitKind; const ARow: TAtlasTestRow);
 var
+  mSource: IAtlasTestResultsSource;
   mItem: TAtlasTestFailureItem;
   mTests: TArray<string>;
 begin
@@ -1511,6 +1528,16 @@ begin
       procedure(const ASource: IAtlasTestResultsSource; const ARow: TAtlasTestRow)
       begin
         ASource.Debug(ARow, mItem);
+      end);
+  end
+  else if (AKind = TAtlasTestResultsHitKind.Compare) and ButtonEnabled(TAtlasTestResultsButton.Compare) and
+    SelectedFailure(mItem) then
+  begin
+    mSource := FSource;
+    Post(
+      procedure
+      begin
+        mSource.Compare(mItem);
       end);
   end
   else if (AKind = TAtlasTestResultsHitKind.Browse) and ButtonEnabled(TAtlasTestResultsButton.Browse) then
@@ -1544,7 +1571,8 @@ begin
           FBox.Invalidate;
         end;
       end;
-    TAtlasTestResultsHitKind.Rerun, TAtlasTestResultsHitKind.Debug, TAtlasTestResultsHitKind.Browse:
+    TAtlasTestResultsHitKind.Rerun, TAtlasTestResultsHitKind.Debug, TAtlasTestResultsHitKind.Browse,
+    TAtlasTestResultsHitKind.Compare:
       begin
         ClickButton(AHit.Kind, mRow);
       end;
@@ -1622,7 +1650,7 @@ begin
   mHit := HitTest(AX, AY);
   FBox.Cursor := crDefault;
   if mHit.Kind in [TAtlasTestResultsHitKind.Rerun, TAtlasTestResultsHitKind.Debug, TAtlasTestResultsHitKind.Browse,
-    TAtlasTestResultsHitKind.Row, TAtlasTestResultsHitKind.Failure] then
+    TAtlasTestResultsHitKind.Compare, TAtlasTestResultsHitKind.Row, TAtlasTestResultsHitKind.Failure] then
   begin
     FBox.Cursor := crHandPoint;
   end;

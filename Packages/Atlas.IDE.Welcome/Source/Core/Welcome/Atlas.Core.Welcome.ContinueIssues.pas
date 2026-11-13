@@ -156,21 +156,6 @@ end;
 
 { JSON }
 
-function ParseValue(const AJson: string): TJSONValue;
-begin
-  Result := nil;
-  if Trim(AJson) = '' then
-  begin
-    Exit;
-  end;
-  try
-    Result := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      Result := nil;
-  end;
-end;
-
 /// <summary>Ein Eintrag als Objekt: Titel und Branch, dann die Felder des Arbeitsstands wie "continue".</summary>
 function EntryJson(const AEntry: TAtlasIssueWorkEntry): TJSONObject;
 var
@@ -187,7 +172,7 @@ begin
   begin
     Result.AddPair(cBranch, AEntry.Branch);
   end;
-  mState := ParseValue(TAtlasWelcomeContinue.ToJson(AEntry.State));
+  mState := TJsonRead.Parse(TAtlasWelcomeContinue.ToJson(AEntry.State));
   try
     if mState is TJSONObject then
     begin
@@ -307,7 +292,7 @@ var
   mValue: TJSONValue;
 begin
   AEntries := nil;
-  mValue := ParseValue(AJson);
+  mValue := TJsonRead.Parse(AJson);
   try
     Result := mValue is TJSONObject;
     if Result then
@@ -326,7 +311,7 @@ var
   mSection: TJSONObject;
 begin
   AEntries := nil;
-  mValue := ParseValue(ASummary.Raw);
+  mValue := TJsonRead.Parse(ASummary.Raw);
   try
     mSection := nil;
     if mValue is TJSONObject then
@@ -348,7 +333,7 @@ var
   mIndex: Integer;
   mPair: TJSONPair;
 begin
-  mValue := ParseValue(ASummary.Raw);
+  mValue := TJsonRead.Parse(ASummary.Raw);
   mRoot := TJSONObject.Create;
   try
     // Alles außer dem Abschnitt übernehmen (auch "continue" und unbekannte Felder).

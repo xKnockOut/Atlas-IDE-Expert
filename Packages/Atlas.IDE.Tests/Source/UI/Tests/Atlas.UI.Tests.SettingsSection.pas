@@ -6,7 +6,7 @@
 // - „Compiler“: Modulschalter, DUnitX-Tests ausführen (#69), betroffene Tests (#1353) und betroffene Tests beim
 //   Speichern (#1775).
 // - „Debuggen“: einzelnen Test im Debugger starten (#585).
-// - „Editor“: Code Lens an Testmethoden und veraltete Ergebnisse (#1770).
+// - „Editor“: Code Lens an Testmethoden, veraltete Ergebnisse (#1770) und Marke „getestet von“ (#1778).
 
 interface
 
@@ -75,6 +75,7 @@ begin
   Switch('tests.compare.format', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCompareFormat));
   Switch('tests.showDuration', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsShowDuration));
   Number('tests.slowMs', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsSlowMs));
+  Switch('tests.leakSetup', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsLeakSetup));
 end;
 
 { TAtlasTestsDebugSection }
@@ -112,6 +113,9 @@ begin
   Switch('codeLens.tests', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsCodeLensTests));
   Switch('tests.stale', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsStale));
   Switch('tests.stale.units', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsStaleUnits));
+  Switch('codeLens.coveredBy', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsCodeLensCoveredBy));
+  Number('tests.coveredBy.depth', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCoveredByDepth));
+  Switch('tests.coveredBy.private', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCoveredByPrivate));
 end;
 
 end.

@@ -21,7 +21,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
 | [Stil und Metriken](#gruppe-style) | 56 |
-| [Packages und Tests](#gruppe-packages) | 5 |
+| [Packages und Tests](#gruppe-packages) | 7 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
 <a id="gruppe-find-bugs"></a>
@@ -436,6 +436,8 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`dunitx-test-without-assert`](#dunitx-test-without-assert) | DUnitX-Test ohne Assert | Code Smell | Hinweis |
 | [`dunitx-testcase-mismatch`](#dunitx-testcase-mismatch) | TestCase passt nicht zur Methode | Bug | Warnung |
 | [`dunitx-fixture-not-registered`](#dunitx-fixture-not-registered) | DUnitX-Testklasse nie registriert | Bug | Warnung |
+| [`dunitx-istrue-equality`](#dunitx-istrue-equality) | Assert.IsTrue mit Vergleich statt AreEqual | Code Smell | Hinweis |
+| [`dunitx-swapped-expected`](#dunitx-swapped-expected) | Erwarteter und erhaltener Wert vertauscht | Code Smell | Hinweis |
 
 <a id="gruppe-internal"></a>
 ### Atlas intern
@@ -4736,6 +4738,48 @@ end;
 initialization
   TDUnitX.RegisterTestFixture(TImportTests);
 end.
+```
+
+<a id="dunitx-istrue-equality"></a>
+### dunitx-istrue-equality
+
+**Assert.IsTrue mit Vergleich statt AreEqual** · Code Smell · Hinweis · Gruppe Packages und Tests
+
+Assert.IsTrue(A = B), Assert.IsFalse(A <> B), Assert.IsTrue(X = nil), Assert.IsTrue(Assigned(X)) und dasselbe mit not: Schlägt der Test fehl, meldet DUnitX nur, dass die Bedingung nicht gilt, ohne die verglichenen Werte. Assert.AreEqual bzw. AreNotEqual zeigt erwartet und erhalten, IsNull und IsNotNull sagen, was vorlag. Korrektur (sicher): AreEqual bzw. AreNotEqual mit der Konstante oder dem Literal vorn als erwartetem Wert, IsNull bzw. IsNotNull bei nil und Assigned; ein Meldungsargument bleibt erhalten. Angeboten nur, wenn eine Überladung sicher passt: beide Seiten string, Boolean oder eine Ganzzahl bis Integer, bei nil und Assigned eine Klasse, ein Interface oder ein Zeiger. Gleitkomma (AreEqual braucht eine Toleranz), Cardinal, Int64, NativeInt (Length eines dynamischen Arrays), Aufzählungen, Mengen, Records, Methodenzeiger und unbekannte Typen bekommen den Hinweis ohne Korrektur. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch.
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix dunitx-istrue-equality`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
+Mit Treffer:
+
+```pascal
+Assert.IsTrue(FFake.Calls = 1, 'Aufrufe');
+```
+
+Richtig:
+
+```pascal
+Assert.AreEqual(1, FFake.Calls, 'Aufrufe');
+```
+
+<a id="dunitx-swapped-expected"></a>
+### dunitx-swapped-expected
+
+**Erwarteter und erhaltener Wert vertauscht** · Code Smell · Hinweis · Gruppe Packages und Tests
+
+Assert.AreEqual, AreNotEqual, AreSame oder AreNotSame, deren erstes Argument weder Literal noch Konstante ist, das zweite aber schon: DUnitX erwartet den erwarteten Wert zuerst, die Meldung beim Fehlschlag nennt deshalb die Konstante als erhaltenen und den berechneten Wert als erwarteten Wert und führt in die Irre. Als Konstante zählen Literale, True, False, nil, deklarierte Konstanten und Aufzählungswerte, auch mit Vorzeichen oder über Operatoren verknüpft. Korrektur (sicher): die beiden Argumente tauschen; weitere Argumente (Meldung, Toleranz) bleiben. Aufrufe mit zwei Konstanten oder zwei berechneten Werten bleiben still. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch.
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix dunitx-swapped-expected`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
+Mit Treffer:
+
+```pascal
+Assert.AreEqual(FList.Count, 4);
+```
+
+Richtig:
+
+```pascal
+Assert.AreEqual(4, FList.Count);
 ```
 
 <a id="event-call-without-assigned"></a>
