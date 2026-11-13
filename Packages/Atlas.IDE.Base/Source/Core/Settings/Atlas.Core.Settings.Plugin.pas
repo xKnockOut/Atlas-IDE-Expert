@@ -506,6 +506,7 @@ type
     property DebugPredictConditions: Boolean read FDebug.DebugPredictConditions write FDebug.DebugPredictConditions;
     property DebugPredictDimSkipped: Boolean read FDebug.DebugPredictDimSkipped write FDebug.DebugPredictDimSkipped;
     property DebugPredictLines: Integer read FDebug.DebugPredictLines write FDebug.DebugPredictLines;
+    property DebugEditValues: Boolean read FDebug.DebugEditValues write FDebug.DebugEditValues;
     property DebugEventLog: Boolean read FDebug.DebugEventLog write FDebug.DebugEventLog;
     property DebugEventLogColors: string read FDebug.DebugEventLogColors write FDebug.DebugEventLogColors;
     property DebugLogpoints: Boolean read FDebug.DebugLogpoints write FDebug.DebugLogpoints;

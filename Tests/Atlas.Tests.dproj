@@ -2301,6 +2301,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.WhyHere.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Forecast.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Forecast.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EditValue.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EditValue.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Pins.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Pins.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.CompilerSwitches.Tests.pas"/>

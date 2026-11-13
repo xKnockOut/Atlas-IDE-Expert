@@ -214,6 +214,7 @@ begin
   Assert.IsTrue(ASettings.DebugPredictConditions, 'debug.predictConditions (#2169)');
   Assert.IsTrue(ASettings.DebugPredictDimSkipped, 'debug.predictConditions.dimSkipped (#2169)');
   Assert.AreEqual(20, ASettings.DebugPredictLines, 'debug.predictConditions.lines (#2169)');
+  Assert.IsTrue(ASettings.DebugEditValues, 'debug.editValues (#868)');
   Assert.IsTrue(ASettings.DebugPinnedValues, 'debug.pinnedValues (#526)');
   Assert.AreEqual('', ASettings.DebugOwnCodeFolders, 'debug.ownCodeFolders leer (#578)');
   Assert.IsTrue(ASettings.TodoList, 'Befehl standardmäßig da (#68)');
@@ -395,6 +396,7 @@ begin
   ASettings.DebugPredictConditions := False;
   ASettings.DebugPredictDimSkipped := False;
   ASettings.DebugPredictLines := 40;
+  ASettings.DebugEditValues := False;
   ASettings.DebugPinnedValues := False;
   ASettings.DebugOwnCodeFolders := '  C:\Komponenten;D:\Lib ';
   ASettings.TodoList := False;
@@ -554,6 +556,7 @@ begin
   Assert.IsFalse(ALoaded.DebugPredictConditions, 'debug.predictConditions (#2169)');
   Assert.IsFalse(ALoaded.DebugPredictDimSkipped, 'debug.predictConditions.dimSkipped (#2169)');
   Assert.AreEqual(40, ALoaded.DebugPredictLines, 'debug.predictConditions.lines (#2169)');
+  Assert.IsFalse(ALoaded.DebugEditValues, 'debug.editValues (#868)');
   Assert.IsFalse(ALoaded.DebugPinnedValues, 'debug.pinnedValues (#526)');
   Assert.AreEqual('C:\Komponenten;D:\Lib', ALoaded.DebugOwnCodeFolders, 'debug.ownCodeFolders ohne Leerraum (#578)');
   Assert.IsFalse(ALoaded.TodoList);

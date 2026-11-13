@@ -2337,6 +2337,8 @@ uses
   Atlas.Core.Debug.WhyHere.Tests in 'IDE.Expert\Atlas.Core.Debug.WhyHere.Tests.pas',
   Atlas.Core.Debug.Forecast in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Forecast.pas',
   Atlas.Core.Debug.Forecast.Tests in 'IDE.Expert\Atlas.Core.Debug.Forecast.Tests.pas',
+  Atlas.Core.Debug.EditValue in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EditValue.pas',
+  Atlas.Core.Debug.EditValue.Tests in 'IDE.Expert\Atlas.Core.Debug.EditValue.Tests.pas',
   Atlas.Core.Debug.Pins in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Pins.pas',
   Atlas.Core.Debug.Pins.Tests in 'IDE.Expert\Atlas.Core.Debug.Pins.Tests.pas',
   Atlas.Common.Pascal.CompilerSwitches.Tests in 'Common\Pascal\Atlas.Common.Pascal.CompilerSwitches.Tests.pas',
