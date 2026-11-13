@@ -116,6 +116,16 @@ Settings: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 
 Settings: `tests.stale`, `tests.stale.units`
 
+### Tested by (#1778)
+
+- Behind the header of every public method of a normal unit Atlas shows which DUnitX tests cover it, e.g. “3 tests · passed”.
+- Colours as in the test code lens: green only once every one of these tests passed, yellow for a partial result (“3 tests · 1/3 passed”), red on a failure. If a test was changed since its run, the old result shows grey and italic with “(outdated)”. Without a test it shows a grey “no test · create test”.
+- Atlas looks for the tests in the background, backwards like “Run affected tests”: depth 1 finds only tests that call the method directly, a larger depth also goes through intermediate callers. If the search hits a limit, “(incomplete)” is added.
+- A click runs exactly these tests; Ctrl+click lists them and an entry jumps to the test. Without a test the click opens or creates the test unit.
+- Test units themselves get no marks; private and protected methods only on request. Hide per method or file via the “Hide” menu.
+
+Settings: `codeLens.coveredBy`, `tests.coveredBy.depth`, `tests.coveredBy.private`
+
 ### Affected tests on save (#1775)
 
 - After a unit is saved (also a form or include file) Atlas finds the tests that the changes of this file since the last commit reach and runs only those in the background. It builds as with “Build before the tests”.
@@ -156,6 +166,19 @@ The button only appears when the failure has an expected and an actual value.
 - Only for failures whose report names an expected and an actual value.
 
 Settings: `tests.compare`, `tests.compare.format`
+
+### Approval files for tests (#1881)
+
+For exports, reports, generated code or JSON a test checks the result against a stored file instead of one assert per line (“approval”). The helper unit `Atlas.Testing.Approval` ships in `Setup\Vorlagen` (MIT licence, RTL and DUnitX only); copy it into the test project or add its folder to the search path. Example: [approval-tests.pas](../../Beispiele/approval-tests.pas).
+
+- `TApproval.Verify(Result, 'TFixture.Method')` compares with `TFixture.Method.approved.txt`; a custom extension (`'.json'`) and a normalizer for dates or GUIDs are possible.
+- Line ends (CRLF, LF, CR) are no difference; files are UTF-8.
+- If the result differs, `….received.txt` is written next to it and the test fails with “Approval: difference from line 3, see …” (German by default); without an approved file with “new, please review”.
+- Approving means renaming received to approved and committing the approved file; `.received.*` belongs in the ignore list.
+- Folder: `tests.approvalFolder` of the nearest `atlas.json` above the test program (default `Tests\Erwartet`, relative to its folder); without `atlas.json` next to the nearest `.dproj`. `TApproval.Folder` sets it in code.
+- Messages are German, English with `TApproval.English := True`.
+
+Setting: `tests.approvalFolder` (atlas.json)
 
 ### Test duration and slow tests (#1772)
 
@@ -360,6 +383,33 @@ Settings: `debug.breakOnNextEvent`
 
 Settings: `debug.stepFilters`
 
+### Breakpoints that will not be hit
+
+Before every debug session starts, Atlas checks all active source breakpoints, open files as they are in the editor:
+
+- line without code (comment, blank line, declaration), with the next code line of the same routine
+- inactive branch of conditional compilation, with its condition (`{$IFDEF RELEASE}`)
+- code without debug information (`{$D-}` in the unit or in the project options)
+- unit of another project in the group, not of the one being started
+
+If anything is found, the dialog “Breakpoints that will not be hit” lists it before the start; double-click jumps to the spot. “Move to next code line” moves the breakpoints together with condition, pass count and group and starts, “Start anyway” starts unchanged, “Cancel” does not start. The command “Check breakpoints” (Atlas menu, command palette) checks at any time. Without a server, or without an answer within 3 seconds, the IDE starts without a message.
+
+Settings: `debug.checkBreakpoints`
+
+### Breakpoint sets
+
+Atlas menu and command palette. When you work on several bugs, switch between named sets of breakpoints instead of deleting and setting them again.
+
+- “Save breakpoints as set …” takes all source breakpoints with condition, pass count, group, actions and on/off; optionally coupled to the current branch.
+- “Switch breakpoint set …” creates missing breakpoints of the set and disables the breakpoints of other sets (nothing is deleted). Breakpoints that belong to no set stay as they are.
+- “Add breakpoint set …” adds the breakpoints of a set without disabling others; “Delete breakpoint set …” removes only the set.
+- When loading, Atlas finds the line again by method and line text, even after lines were inserted above; breakpoints that can no longer be found are listed in the messages.
+- Sets are stored per project in `.atlas/breakpoints/<Name>.json` and can be shared in the repository.
+- With `debug.breakpointSetPerBranch`, a coupled set becomes active as soon as the working copy switches to its branch (Git and SVN).
+- The IDE's breakpoint groups stay untouched: they switch breakpoints through actions but are tied to line numbers in the `.dsk`; a set remembers each breakpoint's group.
+
+Settings: `debug.breakpointSetPerBranch`
+
 ## Debug: exceptions
 
 <a id="window-atlasdebugexceptions"></a>
@@ -447,3 +497,12 @@ Settings: `debug.deadlocks`
 - From `debug.parallelStacks.maxThreads` threads (default 64) Atlas reads the stacks in portions and shows the tree in between so the IDE stays responsive.
 
 Settings: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`
+
+### Threads in source
+
+- At a stop the gutter shows a mark with the count at every line where another thread stands with its topmost own frame; with eight waiting workers at the same line that is “8”. The IDE shows the current thread as before.
+- The tooltip lists id, name and wait point per thread (“⚑ 4120 “Worker” · waiting in TEvent.WaitFor”); the links below switch to the thread and jump to its line.
+- Right-click the gutter, then Atlas > Debugging > “Flag thread”: flagged threads carry ⚑ and come first in tooltips, pick lists and the parallel stacks (context menu “Flag thread”). The flag lasts for the session and follows the thread id. With several threads at the line you pick from a list; with none the current thread counts.
+- Experimental (`debug.threadFreeze`, default off): “Freeze thread”, “Thaw thread” and “Thaw all threads”. A frozen thread does not run when you continue; its mark is gray and the Atlas status bar shows “2 threads frozen” (click thaws all). Atlas holds the thread with `SuspendThread`, which only works for programs on this computer. At the end of the session and when switched off Atlas thaws all threads.
+
+Settings: `debug.threadsInSource`, `debug.threadFreeze`

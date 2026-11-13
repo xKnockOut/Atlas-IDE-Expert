@@ -31,7 +31,17 @@
     Ebenso für die Token-Helfer (#1979): Innerhalb von Packages/Atlas.Common
     definiert nur Atlas.Common.Pascal.TokenCursor Routinen wie TokenFrom,
     NextCode, PreviousCode, IsTrivia, MatchingParen, IsKeywordIn; abweichende
-    Fassungen stehen mit Grund in $TokenAllowedLocal.
+    Fassungen stehen mit Grund in $TokenAllowedLocal. Dazu gehören auch die
+    alten Namen für PreviousCode (Prev, PreviousToken, PreviousIndex …).
+    JSON aus Text lesen (ParseObject, ParseValue, ParseJson mit einem string als
+    Parameter und TJSONObject/TJSONValue als Ergebnis) gibt es nur als
+    TJsonRead.Parse/ParseObject in Atlas.Text.Json.
+    Im Plugin gibt es manche Helfer nur an einer Stelle ($PluginLock): die
+    Editorschrift (TAtlasEditorFont), die Auswahl im Designer
+    (TAtlasDesignerAccess) und Meldungen der Designer-Werkzeuge
+    (TAtlasIdeDesignerTool.Say). Module melden sich nur über TAtlasModuleHost
+    an und ab: UnregisterModule und TAtlasContractHandshake.Check ruft nur
+    Atlas.Core.Diagnostics.ModuleHost.
     Dasselbe gilt für JSON-Lesehelfer (#1969): Eine Routine TextOf, StringOf,
     NumberOf, IntOf, FlagOf, ObjectOf, ArrayOf usw. mit einem TJSONObject und
     einem Namen als Parametern gibt es nur als TJsonRead in Atlas.Text.Json;
@@ -291,12 +301,23 @@ function Remove-PascalCommentsOnly([string] $Text) {
 # Atlas.Common.Pascal.TokenCursor (Token zu einem Offset, Code-Token, Klammern, Schlüsselwörter) und
 # TRoutineSignatures.WithoutTypeParams diese Namen; ContainsText_ ersetzt System.StrUtils.MatchText.
 $TokenLockNames = @('TokenAt', 'TokenFrom', 'TokenAtOffset', 'TokenExactly', 'MatchingParen', 'NextCode', 'PreviousCode',
-    'IsTrivia', 'IsKeywordIn', 'WithoutTypeParams', 'ContainsText_')
+    'IsTrivia', 'IsKeywordIn', 'WithoutTypeParams', 'ContainsText_',
+    # Alte Namen für PreviousCode.
+    'PreviousToken', 'PreviousIndex', 'PreviousSignificant', 'PreviousSolid', 'PreviousCodeToken', 'PrevCode', 'Prev')
 $TokenLockHomes = @('Atlas.Common.Pascal.TokenCursor', 'Atlas.Common.Pascal.RoutineSignatures:TRoutineSignatures.WithoutTypeParams')
 
 # Erlaubte abweichende Fassungen ("Unit:Routine") mit Grund. Die Liste soll nur schrumpfen.
 $TokenAllowedLocal = @{
     'Atlas.Common.Editing.DocumentationCommands:NextCode'                 = 'beginnt hinter AIndex und zählt nach IsCode der Unit'
+    'Atlas.Common.Editing.DocumentationCommands:PrevCode'                 = 'zählt nach IsCode der Unit'
+    'Atlas.Common.Editing.Formatter.Indent:PreviousSignificant'           = 'Methodendeklaration von TIndentTokens'
+    'Atlas.Common.Editing.Formatter.Indent:TIndentTokens.PreviousSignificant' = 'Methode über die eigenen Token des Formatierers'
+    'Atlas.Common.Editing.SafeDelete:PreviousSolid'                       = 'schließt AIndex ein'
+    'Atlas.Common.Editing.Unwrap:PrevCode'                                = 'Offset im Text statt Token-Index'
+    'Atlas.Common.Editing.Unwrap:TBuilder.PrevCode'                       = 'Offset im Text statt Token-Index'
+    'Atlas.Common.Lsp.Completion.TypeGuards:Prev'                         = 'Methodendeklaration von TGuardScan'
+    'Atlas.Common.Lsp.Completion.TypeGuards:TGuardScan.Prev'              = 'Methode über die eigenen Token, leitet an PreviousCode weiter'
+    'Atlas.Common.Lsp.SignatureHelp:PreviousCodeToken'                    = 'überspringt nach IsSkipped der Unit'
     'Atlas.Common.Editing.RoutineBody:TRoutineBody.TokenAt'               = 'öffentliche Weiterleitung an TSyntaxTree.FirstTokenOf'
     'Atlas.Common.Editing.Unwrap:NextCode'                                = 'Offset im Text statt Token-Index'
     'Atlas.Common.Editing.Unwrap:TBuilder.NextCode'                       = 'Offset im Text statt Token-Index'
@@ -331,6 +352,53 @@ $TokenAllowedLocal = @{
     'Atlas.Common.Rules.Builtin.Visibility:TInaccessibleMemberCheck.TokenAt' = 'liefert High statt Length ohne Treffer'
     'Atlas.Common.Semantics.ConstantValues:TConstantValues.TokenAt'       = 'sucht nach Zeile und Spalte (TTextPosition), nicht nach Offset'
 }
+
+# Kopien-Sperre für JSON aus Text: nur TJsonRead.Parse/ParseObject in Atlas.Text.Json.
+$JsonParseLockNames = @('ParseObject', 'ParseValue', 'ParseJson')
+
+# Kopien-Sperre im Plugin: Name, Ordner, wo es ihn gibt, und erlaubte Fassungen ("Unit:Routine") mit Grund.
+# Die Listen sollen nur schrumpfen.
+$PluginLock = @(
+    [pscustomobject]@{
+        Name    = 'EnsureFont'
+        Folder  = 'Packages'
+        Home    = 'TAtlasEditorFont in Atlas.UI.Foundation.EditorFont'
+        Allowed = @{}
+    }
+    [pscustomobject]@{
+        Name    = 'SelectedControls'
+        Folder  = 'Packages/Atlas.IDE.Designer'
+        Home    = 'TAtlasDesignerAccess.Siblings/SelectedSiblings in Atlas.IDE.Designer.Access'
+        Allowed = @{}
+    }
+    [pscustomobject]@{
+        Name    = 'Candidates'
+        Folder  = 'Packages/Atlas.IDE.Designer'
+        Home    = 'TAtlasDesignerAccess.Siblings/SelectedSiblings in Atlas.IDE.Designer.Access'
+        Allowed = @{
+            'Atlas.IDE.Designer.FitContainer:TAtlasIdeFitContainer.Candidates' = 'nur Container; ohne Auswahl das Formular'
+            'Atlas.IDE.Designer.ButtonBar:TAtlasIdeButtonBar.Candidates'       = 'nur Knöpfe mit gemeinsamem Elternteil'
+            'Atlas.IDE.Designer.FitText:TAtlasIdeFitText.Candidates'           = 'nur Steuerelemente mit messbarem Text'
+        }
+    }
+    [pscustomobject]@{
+        Name    = 'Say'
+        Folder  = 'Packages/Atlas.IDE.Designer'
+        Home    = 'TAtlasIdeDesignerTool.Say in Atlas.IDE.Designer.Tool'
+        Allowed = @{
+            'Atlas.IDE.Designer.Tool:TAtlasIdeDesignerTool.Say'                = 'die eine Fassung'
+            'Atlas.IDE.Designer.Undo:TAtlasIdeDesignerUndo.Say'                = 'override: schreibt zusätzlich ins Protokoll'
+            'Atlas.IDE.Designer.Bar:Say'                                       = 'Leiste ist kein Werkzeug; Meldung über ihre Hooks'
+            'Atlas.IDE.Designer.PropertySearch:TAtlasIdePropertySearch.Say'    = 'Klassendienst ohne Werkzeug-Instanz, mit Protokoll'
+            'Atlas.IDE.Designer.ShowComponent:TAtlasIdeShowComponent.Say'      = 'Klassendienst ohne Werkzeug-Instanz, mit Protokoll'
+            'Atlas.IDE.Designer.Usages:TAtlasIdeDesignerUsages.Say'            = 'Klassendienst ohne Werkzeug-Instanz, mit Protokoll'
+        }
+    }
+)
+
+# An- und Abmelden der Module nur über TAtlasModuleHost: Aufrufe, die nur diese Units enthalten dürfen.
+$ModuleHostCalls = @('\.UnregisterModule\s*\(', '\bTAtlasContractHandshake\.Check\s*\(')
+$ModuleHostHomes = @('Atlas.Core.Diagnostics.ModuleHost', 'Atlas.Core.Modules.Registry', 'Atlas.Core.Modules.Handshake')
 
 # Rollenmatrix. Muss TArchitectureMatrix in Atlas.Common.Rules.Builtin.Architecture
 # entsprechen; beide prüfen Tests/Data/Architecture/role-imports.json.
@@ -923,6 +991,63 @@ foreach ($key in $TokenAllowedLocal.Keys) {
     $routine = [regex]::Escape($key.Substring($unitName.Length + 1))
     if (-not $implementation.Success -or -not [regex]::IsMatch($text.Substring($implementation.Index), '(?im)^\s*(?:class\s+)?function\s+' + $routine + '\b')) {
         $violations += "Tools/Check-PackageDependencies.ps1: `$TokenAllowedLocal nennt $key, die Routine gibt es nicht mehr; Zeile streichen"
+    }
+}
+
+# Kopien-Sperre für JSON aus Text
+$jsonParsePattern = '(?im)^\s*(?:class\s+)?function\s+((?:\w+\.)?(?:' + ($JsonParseLockNames -join '|') +
+    '))\s*\(\s*const\s+\w+\s*:\s*string\s*\)\s*:\s*TJSON(?:Object|Value)\b'
+foreach ($folder in @('Packages', 'Application')) {
+    $folderPath = Join-Path $Root $folder
+    if (-not (Test-Path $folderPath)) { continue }
+    foreach ($file in Get-ChildItem -Path $folderPath -Recurse -File -Include '*.pas') {
+        $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+        if ($relative.StartsWith('Packages/Atlas.Text/Source/Json/')) { continue }
+        $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+        foreach ($match in [regex]::Matches($text, $jsonParsePattern)) {
+            $line = ($text.Substring(0, $match.Index) -split "`n").Count
+            $violations += "${relative}:${line}: $($match.Groups[1].Value) – JSON aus Text gibt es als TJsonRead.Parse/ParseObject in Atlas.Text.Json (Kopien-Sperre); dort verwenden"
+        }
+    }
+}
+
+# Kopien-Sperre im Plugin
+foreach ($lock in $PluginLock) {
+    $pattern = '(?im)^\s*(?:class\s+)?(?:procedure|function)\s+((?:\w+\.)?' + $lock.Name + ')\s*[(;:]'
+    $found = @{}
+    foreach ($file in Get-ChildItem -Path (Join-Path $Root $lock.Folder) -Recurse -File -Include '*.pas') {
+        $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+        $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+        $implementation = [regex]::Match($text, '(?im)^\s*implementation\b')
+        if (-not $implementation.Success) { continue }
+        $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+        foreach ($match in [regex]::Matches($text.Substring($implementation.Index), $pattern)) {
+            $key = "${ownUnit}:$($match.Groups[1].Value)"
+            $found[$key] = $true
+            if (-not $lock.Allowed.ContainsKey($key)) {
+                $line = ($text.Substring(0, $implementation.Index + $match.Index) -split "`n").Count
+                $violations += "${relative}:${line}: $($match.Groups[1].Value) – gibt es als $($lock.Home) (Kopien-Sperre); dort verwenden oder in `$PluginLock begründen"
+            }
+        }
+    }
+    foreach ($key in $lock.Allowed.Keys) {
+        if (-not $found.ContainsKey($key)) {
+            $violations += "Tools/Check-PackageDependencies.ps1: `$PluginLock ($($lock.Name)) nennt $key, die Routine gibt es nicht mehr; Zeile streichen"
+        }
+    }
+}
+
+# Module nur über TAtlasModuleHost an- und abmelden
+foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages') -Recurse -File -Include '*.pas') {
+    $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+    if ($ModuleHostHomes -contains $ownUnit) { continue }
+    $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+    $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+    foreach ($call in $ModuleHostCalls) {
+        foreach ($match in [regex]::Matches($text, '(?i)' + $call)) {
+            $line = ($text.Substring(0, $match.Index) -split "`n").Count
+            $violations += "${relative}:${line}: Module melden sich nur über TAtlasModuleHost (Atlas.Core.Diagnostics.ModuleHost) an und ab"
+        }
     }
 }
 

@@ -17,6 +17,9 @@ const
   /// <summary>Grenzen für tests.affectedDepth (#1353).</summary>
   cMinTestsAffectedDepth = 1;
   cMaxTestsAffectedDepth = 5;
+  /// <summary>Grenzen für tests.coveredBy.depth (#1778).</summary>
+  cMinTestsCoveredByDepth = 1;
+  cMaxTestsCoveredByDepth = 5;
   /// <summary>Grenzen für tests.onSave.max (#1775).</summary>
   cMinTestsOnSaveMax = 1;
   cMaxTestsOnSaveMax = 1000;
@@ -82,6 +85,8 @@ type
     /// <summary>Befehl „Betroffene Tests ausführen“ (#1353, Atlas.RunAffectedTests); tests.affected in settings.json,
     /// der Server liest denselben Wert (--affected-tests, get_affected_tests).</summary>
     TestsAffected: Boolean;
+    /// <summary>Befehl „Leckprüfung einrichten …“ (#1880, tests.leakSetup).</summary>
+    TestsLeakSetup: Boolean;
     /// <summary>Ebenen von der Änderung bis zum Test (#1353, tests.affectedDepth), MinTestsAffectedDepth bis
     /// MaxTestsAffectedDepth.</summary>
     TestsAffectedDepth: Integer;
@@ -95,6 +100,12 @@ type
     /// <summary>Auch Änderungen an den Units, die die Testunit verwendet und die im Testprojekt liegen, machen das
     /// Ergebnis veraltet (#1770, tests.stale.units).</summary>
     TestsStaleUnits: Boolean;
+    /// <summary>Ebenen vom Test bis zur Methode für die Marke „getestet von“ (#1778, tests.coveredBy.depth);
+    /// 1 = nur Tests, die die Methode direkt aufrufen.</summary>
+    TestsCoveredByDepth: Integer;
+    /// <summary>Marke „getestet von“ auch an privaten und geschützten Methoden (#1778, tests.coveredBy.private).
+    /// </summary>
+    TestsCoveredByPrivate: Boolean;
     /// <summary>Betroffene Tests nach dem Speichern im Hintergrund ausführen (#1775, tests.onSave): kein Fenster,
     /// Fortschritt und Ergebnis im Atlas-Statusfeld.</summary>
     TestsOnSave: Boolean;
@@ -247,10 +258,13 @@ begin
   Result.TestsAfterBuild := False;
   Result.TestsBuildFirst := True;
   Result.TestsAffected := True;
+  Result.TestsLeakSetup := True;
   Result.TestsAffectedDepth := 3;
   Result.TestsAffectedBeforeCommit := False;
   Result.TestsStale := True;
   Result.TestsStaleUnits := False;
+  Result.TestsCoveredByDepth := 1;
+  Result.TestsCoveredByPrivate := False;
   Result.TestsOnSave := False;
   Result.TestsOnSaveMax := cDefaultTestsOnSaveMax;
   Result.TestsFailureAtAssert := True;
@@ -307,6 +321,7 @@ begin
   BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(BuildWarningsAsErrors);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
   TestsAffectedDepth := EnsureRange(TestsAffectedDepth, cMinTestsAffectedDepth, cMaxTestsAffectedDepth);
+  TestsCoveredByDepth := EnsureRange(TestsCoveredByDepth, cMinTestsCoveredByDepth, cMaxTestsCoveredByDepth);
   TestsOnSaveMax := EnsureRange(TestsOnSaveMax, cMinTestsOnSaveMax, cMaxTestsOnSaveMax);
   TestsSlowMs := EnsureRange(TestsSlowMs, cMinTestsSlowMs, cMaxTestsSlowMs);
 end;
@@ -332,10 +347,13 @@ begin
   AIo.Flag('TestsAfterBuild', TestsAfterBuild);
   AIo.Flag('TestsBuildFirst', TestsBuildFirst);
   AIo.Flag('TestsAffected', TestsAffected);
+  AIo.Flag('TestsLeakSetup', TestsLeakSetup);
   AIo.Number('TestsAffectedDepth', TestsAffectedDepth);
   AIo.Flag('TestsAffectedBeforeCommit', TestsAffectedBeforeCommit);
   AIo.Flag('TestsStale', TestsStale);
   AIo.Flag('TestsStaleUnits', TestsStaleUnits);
+  AIo.Number('TestsCoveredByDepth', TestsCoveredByDepth);
+  AIo.Flag('TestsCoveredByPrivate', TestsCoveredByPrivate);
   AIo.Flag('TestsOnSave', TestsOnSave);
   AIo.Number('TestsOnSaveMax', TestsOnSaveMax);
   AIo.Flag('TestsFailureAtAssert', TestsFailureAtAssert);

@@ -109,7 +109,8 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.TypeComments,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -673,7 +674,7 @@ var
 begin
   Result := False;
   mParts := AOrigin.Split(['.']);
-  mDot := TRoutineBody.PreviousToken(ATokens, AIndex);
+  mDot := PreviousCode(ATokens, AIndex);
   if (mDot < 0) or not ATokens[mDot].IsSymbol('.') then
   begin
     Exit;
@@ -683,13 +684,13 @@ begin
   begin
     if mPart < High(mParts) then
     begin
-      mName := TRoutineBody.PreviousToken(ATokens, mName);
+      mName := PreviousCode(ATokens, mName);
       if (mName < 0) or not ATokens[mName].IsSymbol('.') then
       begin
         Exit;
       end;
     end;
-    mName := TRoutineBody.PreviousToken(ATokens, mName);
+    mName := PreviousCode(ATokens, mName);
     if (mName < 0) or (ATokens[mName].Kind <> TPascalTokenKind.Identifier) or
       not SameText(CleanName(ATokens[mName].Text), mParts[mPart]) then
     begin
@@ -697,7 +698,7 @@ begin
     end;
   end;
   // Steht davor ein weiterer Punkt, ist es ein Mitglied eines anderen Namens.
-  mBefore := TRoutineBody.PreviousToken(ATokens, mName);
+  mBefore := PreviousCode(ATokens, mName);
   if (mBefore >= 0) and ATokens[mBefore].IsSymbol('.') then
   begin
     Exit;

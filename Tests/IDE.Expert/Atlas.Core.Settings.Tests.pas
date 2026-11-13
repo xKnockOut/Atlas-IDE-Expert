@@ -146,11 +146,15 @@ begin
   Assert.IsTrue(ASettings.TestRun, 'Tests ausführen standardmäßig da (#69)');
   Assert.IsFalse(ASettings.TestsAfterBuild, 'Tests nach dem Build standardmäßig aus (#69)');
   Assert.IsTrue(ASettings.TestsAffected, 'Betroffene Tests standardmäßig an (#1353)');
+  Assert.IsTrue(ASettings.TestsLeakSetup, 'Leckprüfung einrichten standardmäßig an (#1880)');
   Assert.AreEqual(3, ASettings.TestsAffectedDepth, 'Tiefe der betroffenen Tests standardmäßig 3 (#1353)');
   Assert.IsFalse(ASettings.TestsAffectedBeforeCommit, 'Angebot vor dem Commit standardmäßig aus (#1353)');
   Assert.IsTrue(ASettings.TestsBuildFirst, 'vor den Tests bauen standardmäßig an (#69)');
   Assert.IsTrue(ASettings.TestsStale, 'veraltete Testergebnisse standardmäßig an (#1770)');
   Assert.IsFalse(ASettings.TestsStaleUnits, 'veraltet über geänderte Units standardmäßig aus (#1770)');
+  Assert.IsTrue(ASettings.CodeLensCoveredBy, 'Marke „getestet von“ standardmäßig an (#1778)');
+  Assert.AreEqual(1, ASettings.TestsCoveredByDepth, 'Tiefe „getestet von“ standardmäßig 1 (#1778)');
+  Assert.IsFalse(ASettings.TestsCoveredByPrivate, '„getestet von“ an privaten Methoden standardmäßig aus (#1778)');
   Assert.IsFalse(ASettings.TestsOnSave, 'Tests beim Speichern standardmäßig aus (#1775)');
   Assert.AreEqual(50, ASettings.TestsOnSaveMax, 'höchstens 50 Tests im Hintergrund (#1775)');
   Assert.IsTrue(ASettings.TestsFailureAtAssert, 'Fehlschlag an der Assert-Zeile standardmäßig an (#1771)');
@@ -181,6 +185,8 @@ begin
   Assert.IsFalse(ASettings.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
   Assert.AreEqual('', ASettings.DebugParallelStacksWaitRoutines, 'debug.parallelStacks.waitRoutines (#837)');
   Assert.AreEqual(64, ASettings.DebugParallelStacksMaxThreads, 'debug.parallelStacks.maxThreads (#837)');
+  Assert.IsFalse(ASettings.DebugThreadFreeze, 'debug.threadFreeze (#852)');
+  Assert.IsTrue(ASettings.DebugThreadsInSource, 'debug.threadsInSource (#852)');
   Assert.IsTrue(ASettings.DebugParallelStacks, 'debug.parallelStacks (#837)');
   Assert.IsTrue(ASettings.DebugDeadlocks, 'debug.deadlocks (#587)');
   Assert.IsTrue(ASettings.DebugModuleOfAddress, 'debug.moduleOfAddress (#1820)');
@@ -310,6 +316,9 @@ begin
   ASettings.TestsBuildFirst := False;
   ASettings.TestsStale := False;
   ASettings.TestsStaleUnits := True;
+  ASettings.CodeLensCoveredBy := False;
+  ASettings.TestsCoveredByDepth := 3;
+  ASettings.TestsCoveredByPrivate := True;
   ASettings.TestsOnSave := True;
   ASettings.TestsOnSaveMax := 12;
   ASettings.TestsFailureAtAssert := False;
@@ -341,6 +350,8 @@ begin
   ASettings.DebugModuleOfAddress := False;
   ASettings.DebugDeadlocks := False;
   ASettings.DebugParallelStacks := False;
+  ASettings.DebugThreadsInSource := False;
+  ASettings.DebugThreadFreeze := True;
   ASettings.DebugParallelStacksWaitRoutines := 'TMonitor.Enter;MyLock.Acquire';
   ASettings.DebugParallelStacksMaxThreads := 16;
   ASettings.DebugExceptionHistory := False;
@@ -446,6 +457,9 @@ begin
   Assert.IsFalse(ALoaded.TestsBuildFirst);
   Assert.IsFalse(ALoaded.TestsStale, 'tests.stale (#1770)');
   Assert.IsTrue(ALoaded.TestsStaleUnits, 'tests.stale.units (#1770)');
+  Assert.IsFalse(ALoaded.CodeLensCoveredBy, 'codeLens.coveredBy (#1778)');
+  Assert.AreEqual(3, ALoaded.TestsCoveredByDepth, 'tests.coveredBy.depth (#1778)');
+  Assert.IsTrue(ALoaded.TestsCoveredByPrivate, 'tests.coveredBy.private (#1778)');
   Assert.IsTrue(ALoaded.TestsOnSave, 'tests.onSave (#1775)');
   Assert.AreEqual(12, ALoaded.TestsOnSaveMax, 'tests.onSave.max (#1775)');
   Assert.IsFalse(ALoaded.TestsFailureAtAssert, 'tests.failureAtAssert (#1771)');
@@ -476,6 +490,8 @@ begin
   Assert.IsTrue(ALoaded.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
   Assert.AreEqual('TMonitor.Enter;MyLock.Acquire', ALoaded.DebugParallelStacksWaitRoutines);
   Assert.AreEqual(16, ALoaded.DebugParallelStacksMaxThreads);
+  Assert.IsTrue(ALoaded.DebugThreadFreeze, 'debug.threadFreeze (#852)');
+  Assert.IsFalse(ALoaded.DebugThreadsInSource, 'debug.threadsInSource (#852)');
   Assert.IsFalse(ALoaded.DebugParallelStacks, 'debug.parallelStacks (#837)');
   Assert.IsFalse(ALoaded.DebugDeadlocks, 'debug.deadlocks (#587)');
   Assert.IsFalse(ALoaded.DebugModuleOfAddress, 'debug.moduleOfAddress (#1820)');
@@ -946,6 +962,13 @@ begin
   Settings.TestsAffectedDepth := 7;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsAffectedDepth, Settings.TestsAffectedDepth);
+  // tests.coveredBy.depth (#1778): 1 bis 5.
+  Settings.TestsCoveredByDepth := 0;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsCoveredByDepth, Settings.TestsCoveredByDepth);
+  Settings.TestsCoveredByDepth := 7;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsCoveredByDepth, Settings.TestsCoveredByDepth);
   // tests.onSave.max (#1775): 1 bis 1000.
   Settings.TestsOnSaveMax := 0;
   Settings.Normalize;

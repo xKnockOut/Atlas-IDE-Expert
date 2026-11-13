@@ -139,7 +139,8 @@ uses
   Atlas.Common.Index.Files,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Lsp.Implementations,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -192,26 +193,16 @@ begin
   Result := SameText(A.FileName, B.FileName) and (A.SelectionRange.StartPos = B.SelectionRange.StartPos);
 end;
 
-/// <summary>Bedeutsamer Token vor AIndex (ohne Kommentare und Direktiven); -1 am Anfang.</summary>
-function PreviousToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
 /// <summary>Name im Kopf einer Routine: procedure Name, procedure TTyp.Name, constructor TA.TB.Create.</summary>
 function InRoutineHeader(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 var
   mIndex: Integer;
 begin
-  mIndex := PreviousToken(ATokens, AIndex);
+  mIndex := PreviousCode(ATokens, AIndex);
   while (mIndex > 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Symbol) and (ATokens[mIndex].Text = '.') and
-    (ATokens[PreviousToken(ATokens, mIndex)].Kind = TPascalTokenKind.Identifier) do
+    (ATokens[PreviousCode(ATokens, mIndex)].Kind = TPascalTokenKind.Identifier) do
   begin
-    mIndex := PreviousToken(ATokens, PreviousToken(ATokens, mIndex));
+    mIndex := PreviousCode(ATokens, PreviousCode(ATokens, mIndex));
   end;
   Result := (mIndex >= 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Keyword) and
     (SameText(ATokens[mIndex].Text, 'procedure') or SameText(ATokens[mIndex].Text, 'function') or

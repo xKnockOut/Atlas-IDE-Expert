@@ -915,6 +915,51 @@
       "x-captionEn": "Changes in used units count too",
       "x-issue": "#1770"
     },
+    "CodeLensCoveredBy": {
+      "description": "Marke „getestet von“ an den Methoden normaler Units: „3 Tests · bestanden“ mit dem Stand der Tests, die die Methode aufrufen (grün, rot, gelb bei Teilstand, grau veraltet); „kein Test“ ohne. Klick führt genau diese Tests aus, Strg+Klick listet sie zum Springen; „kein Test“ öffnet bzw. legt die Testunit an. Die Zuordnung fragt Atlas im Hintergrund beim Server ab (Auswirkungsanalyse rückwärts wie bei den betroffenen Tests).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "codeLens.coveredBy",
+      "x-area": "editor",
+      "x-feature": "Build",
+      "x-page": "Editor",
+      "x-parent": "tests.run",
+      "x-node": "editor.codeLens",
+      "x-control": "Kontrollkästchen",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Marke „getestet von“ an Methoden",
+      "x-captionEn": "“Tested by” mark on methods",
+      "x-issue": "#1778"
+    },
+    "TestsCoveredByDepth": {
+      "description": "Ebenen vom Test bis zur Methode für die Marke „getestet von“ (1 bis 5); 1 = nur Tests, die die Methode direkt aufrufen.",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 5,
+      "x-key": "tests.coveredBy.depth",
+      "x-area": "build",
+      "x-page": "Editor",
+      "x-parent": "codeLens.coveredBy",
+      "x-control": "Zahl",
+      "x-caption": "Tiefe der Zuordnung",
+      "x-captionEn": "Depth of the mapping",
+      "x-issue": "#1778"
+    },
+    "TestsCoveredByPrivate": {
+      "description": "Marke „getestet von“ auch an privaten und geschützten Methoden und an Routinen, die nur im implementation-Teil stehen. Aus = nur öffentliche und published Methoden und Routinen aus dem interface-Teil.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "tests.coveredBy.private",
+      "x-area": "build",
+      "x-page": "Editor",
+      "x-parent": "codeLens.coveredBy",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Auch private Methoden",
+      "x-captionEn": "Private methods too",
+      "x-issue": "#1778"
+    },
     "GenerateMenu": {
       "type": "boolean",
       "default": true,
@@ -1380,6 +1425,19 @@
       "x-captionEn": "Run affected tests",
       "x-issue": "#1353"
     },
+    "TestsLeakSetup": {
+      "description": "Befehl „Leckprüfung einrichten …“ im Kontextmenü der Projektverwaltung und in der Befehlspalette: erkennt FastMM4/FastMM5 und die DLL für FullDebugMode und richtet ReportMemoryLeaksOnShutdown bzw. FastMM nur für Debug ein. Aus = Befehl fehlt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.leakSetup",
+      "x-area": "build",
+      "x-feature": "Build",
+      "x-page": "Compiler",
+      "x-parent": "tests.enabled",
+      "x-caption": "Leckprüfung einrichten",
+      "x-captionEn": "Set up leak check",
+      "x-issue": "#1880"
+    },
     "TestsAffectedDepth": {
       "description": "Ebenen der Auswirkungsanalyse von der Änderung bis zum Test (1 bis 5); 1 = nur Tests, die das geänderte Symbol direkt verwenden.",
       "type": "integer",
@@ -1674,6 +1732,32 @@
       "x-caption": "Fenster „Parallele Aufrufstapel“",
       "x-captionEn": "Window “Parallel Stacks”",
       "x-issue": "#837"
+    },
+    "DebugThreadsInSource": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.threadsInSource",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Threads im Quelltext",
+      "x-captionEn": "Threads in source",
+      "x-issue": "#852"
+    },
+    "DebugThreadFreeze": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.threadFreeze",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-parent": "debug.threadsInSource",
+      "x-caption": "Threads einfrieren und auftauen",
+      "x-captionEn": "Freeze and thaw threads",
+      "x-issue": "#852"
     },
     "DebugParallelStacksWaitRoutines": {
       "description": "Routinen, die einen Thread im Fenster „Parallele Aufrufstapel“ als wartend kennzeichnen: Ende des Namens (TMonitor.Enter, WaitForSingleObject), durch ; getrennt; leer = Vorgabe (TThread.WaitFor, Synchronize, TMonitor, Critical Section, Ereignisse, Sleep, Handles).",
@@ -1976,6 +2060,31 @@
       "x-parent": "debug.breakOnNextEvent",
       "x-control": "Textfeld",
       "x-issue": "#856"
+    },
+    "DebugCheckBreakpoints": {
+      "description": "Haltepunkte, die nicht greifen werden: Vor dem Start einer Debug-Sitzung prüft Atlas alle aktiven Quelltext-Haltepunkte und meldet Haltepunkte auf Zeilen ohne Code (Kommentar, Leerzeile, Deklaration), in inaktiven Zweigen der bedingten Kompilierung, in Units mit {$D-} bzw. ohne Debug-Informationen im Projekt und in Units, die zu einem anderen Projekt der Gruppe gehören. Der Dialog bietet „Trotzdem starten“, „Auf nächste Codezeile verschieben“ und „Abbrechen“; dazu der Befehl „Haltepunkte prüfen“. Aus = keine Prüfung, der Start bleibt, wie er ist.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.checkBreakpoints",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Haltepunkte vor dem Start prüfen",
+      "x-captionEn": "Check breakpoints before starting",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#577"
+    },
+    "DebugBreakpointSetPerBranch": {
+      "description": "Haltepunkt-Sätze (#586) beim Branch-Wechsel mitwechseln: Ist einem Satz beim Speichern ein Branch (Git) bzw. SVN-Pfad zugeordnet worden, wird er aktiv, sobald die Arbeitskopie des aktiven Projekts auf diesen Branch wechselt; die Haltepunkte anderer Sätze werden ausgeschaltet, nicht gelöscht. Aus = Sätze nur über die Befehle wechseln.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.breakpointSetPerBranch",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-caption": "Haltepunkt-Satz beim Branch-Wechsel mitwechseln",
+      "x-captionEn": "Switch the breakpoint set together with the branch",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#586"
     },
     "TestsBuildFirst": {
       "type": "boolean",

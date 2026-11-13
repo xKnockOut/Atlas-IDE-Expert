@@ -59,6 +59,10 @@ type
     procedure ReadsObjectAndArray;
     [Test]
     procedure AsObjectOnlyForObjects;
+    [Test]
+    procedure ParseGivesValueOrNil;
+    [Test]
+    procedure ParseObjectOnlyForObjects;
   end;
 
 implementation
@@ -221,6 +225,38 @@ begin
   Assert.IsNull(TJsonRead.AsObject(nil));
   Assert.IsNull(TJsonRead.AsObject(FObject.GetValue('array')));
   Assert.AreSame(FObject, TJsonRead.AsObject(FObject));
+end;
+
+procedure TJsonReadTests.ParseGivesValueOrNil;
+var
+  mValue: TJSONValue;
+begin
+  Assert.IsNull(TJsonRead.Parse(''));
+  Assert.IsNull(TJsonRead.Parse('  '));
+  Assert.IsNull(TJsonRead.Parse('{"offen": '));
+  mValue := TJsonRead.Parse('{"a": 1}');
+  try
+    Assert.IsNotNull(TJsonRead.AsObject(mValue));
+    Assert.AreEqual(1, TJsonRead.Int(TJsonRead.AsObject(mValue), 'a'));
+  finally
+    mValue.Free;
+  end;
+end;
+
+procedure TJsonReadTests.ParseObjectOnlyForObjects;
+var
+  mObject: TJSONObject;
+begin
+  Assert.IsNull(TJsonRead.ParseObject(''));
+  Assert.IsNull(TJsonRead.ParseObject('[1, 2]'));
+  Assert.IsNull(TJsonRead.ParseObject('"text"'));
+  Assert.IsNull(TJsonRead.ParseObject('{"offen": '));
+  mObject := TJsonRead.ParseObject('  {"a": "b"}');
+  try
+    Assert.AreEqual('b', TJsonRead.Text(mObject, 'a'));
+  finally
+    mObject.Free;
+  end;
 end;
 
 initialization
