@@ -42,14 +42,11 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.UnitTemplates,
   Atlas.Common.Editing.TestUnits,
+  Atlas.Common.Editing.TestDrafts,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.Formatter,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Index.Extractor,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
@@ -61,8 +58,7 @@ type
     ExpectedIsAFolderRelative, TheFolderDoesNotExist, ExpectedAreConfigurationAndOr, IsNeitherAConfigurationNor,
     DfmNeedsTheEditor, DfmOnlyAppliesInA, ThereIsNoDfmOr, IsNotATextDFM, NeedsTheEditor, NeedsASavedFile,
     HasNoUsesOrContains, HasNoRoomForDCCReference, ExpectedIsAUnitName, TheIndexDoesNotKnow, ExpectedIsAUnitName2,
-    OpenNeedsTheEditor, TheUnitIsNeitherIn, TestForStillMissing, TheTestUnitHasNo, TestClassOrEndOf,
-    TestOnlyAppliesInThe, TestNeedsTheEditor, TestOnlyAppliesInA, AddASymbolToDCC, AddAFolderToThe,
+    OpenNeedsTheEditor, TheUnitIsNeitherIn, TestOnlyAppliesInThe, TestNeedsTheEditor, TestOnlyAppliesInA, AddASymbolToDCC, AddAFolderToThe,
     SwitchConfigurationAndPlatform, JumpToThePositionIn, CreateANewUnitAdd, OpenAUnitFromThe, CreateANewComponentUnit,
     CreateADUnitXTestFor, NeedsALoadedProject, IsAlreadyIn, ConfigNeedsALoadedProject, IsAlreadyInTheProject,
     AlreadyExists, AddASymbolToDCC2, UnitCustomersData, ExpectedIsComponentTMyButtonTButton);
@@ -97,9 +93,6 @@ const
     (De: '/open braucht den Editor'; En: '/open needs the editor'),
     (De: 'Die Unit %s steht weder im Index noch im Suchpfad';
      En: 'The unit %s is neither in the index nor in the search path'),
-    (De: 'Test für %s fehlt noch'; En: 'Test for %s still missing'),
-    (De: 'Die Testunit hat keine Testklasse'; En: 'The test unit has no test class'),
-    (De: 'Testklasse oder Ende der Testunit nicht gefunden'; En: 'Test class or end of the test unit not found'),
     (De: '/test gilt nur im Rumpf einer Methode oder Routine';
      En: '/test only applies in the body of a method or routine'),
     (De: '/test braucht den Editor'; En: '/test needs the editor'),
@@ -930,217 +923,11 @@ end;
 
 { /test }
 
-/// <summary>Zeile von "end" der Klassendeklaration ASymbol; -1 ohne.</summary>
-function ClassEndLine(const ALines: TArray<string>; const ASymbol: TIndexSymbol): Integer;
-begin
-  Result := ASymbol.Range.EndPos.Line;
-  if Result > High(ALines) then
-  begin
-    Result := High(ALines);
-  end;
-  while (Result > ASymbol.Range.StartPos.Line) and not StartsText('end', TrimLeft(ALines[Result])) do
-  begin
-    Dec(Result);
-  end;
-  if Result <= ASymbol.Range.StartPos.Line then
-  begin
-    Result := -1;
-  end;
-end;
-
-/// <summary>Zeile, vor der neue Rümpfe stehen: initialization, finalization bzw. "end."; -1 ohne.</summary>
-function BodyLine(const ALines: TArray<string>): Integer;
-var
-  mIndex: Integer;
-  mLine: string;
-begin
-  Result := -1;
-  for mIndex := High(ALines) downto 0 do
-  begin
-    mLine := LowerCase(Trim(ALines[mIndex]));
-    if (Result < 0) and mLine.StartsWith('end.') then
-    begin
-      Result := mIndex;
-    end
-    else if (Result >= 0) and ((mLine = 'initialization') or (mLine = 'finalization')) then
-    begin
-      Result := mIndex;
-    end;
-  end;
-end;
-
 type
-  /// <summary>Test, den /test einträgt: Name ATestName in der Testklasse Fixture für die Routine Target; UnitName
-  /// kommt ins uses. OnlyIfMissing: einen vorhandenen Test gleichen Namens nicht noch einmal anlegen.</summary>
-  TTestRequest = record
-    Fixture: string;
-    TestName: string;
-    Target: string;
-    UnitName: string;
-    OnlyIfMissing: Boolean;
-    class function Create(const AFixture, ATestName, ATarget, AUnitName: string;
-      AOnlyIfMissing: Boolean): TTestRequest; static;
-  end;
-
-class function TTestRequest.Create(const AFixture, ATestName, ATarget, AUnitName: string;
-  AOnlyIfMissing: Boolean): TTestRequest;
-begin
-  Result.Fixture := AFixture;
-  Result.TestName := ATestName;
-  Result.Target := ATarget;
-  Result.UnitName := AUnitName;
-  Result.OnlyIfMissing := AOnlyIfMissing;
-end;
-
-/// <summary>Index der Unit AText.</summary>
-function UnitIndexOf(const AText: string): TUnitIndex;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TSyntaxTreeCache.Parse(AText);
-  try
-    Result := TIndexExtractor.Extract(mTree, '');
-  finally
-    mTree.Free;
-  end;
-end;
-
-/// <summary>Testklasse: die Klasse AFixture, sonst die erste Klasse der Unit; False ohne Klasse.</summary>
-function FixtureSymbol(const AIndex: TUnitIndex; const AFixture: string; out ASymbol: TIndexSymbol): Boolean;
-var
-  mSymbol: TIndexSymbol;
-begin
-  ASymbol := Default(TIndexSymbol);
-  Result := False;
-  for mSymbol in AIndex.Symbols do
-  begin
-    if (mSymbol.Kind <> TIndexSymbolKind.ClassType) or (mSymbol.Container <> '') then
-    begin
-      Continue;
-    end;
-    if SameText(mSymbol.Name, AFixture) then
-    begin
-      ASymbol := mSymbol;
-      Exit(True);
-    end;
-    if not Result then
-    begin
-      ASymbol := mSymbol;
-      Result := True;
-    end;
-  end;
-end;
-
-/// <summary>Namen der Methoden der Klasse AFixture.</summary>
-function FixtureMethods(const AIndex: TUnitIndex; const AFixture: string): TArray<string>;
-var
-  mSymbol: TIndexSymbol;
-begin
-  Result := nil;
-  for mSymbol in AIndex.Symbols do
-  begin
-    if (mSymbol.Kind = TIndexSymbolKind.Method) and SameText(mSymbol.Container, AFixture) then
-    begin
-      Result := Result + [mSymbol.Name];
-    end;
-  end;
-end;
-
-/// <summary>ATestName, bei Gleichnamigen in ANames nummeriert (ATestName2, ATestName3 …).</summary>
-function FreeTestName(const ATestName: string; const ANames: TArray<string>): string;
-var
-  mNumber: Integer;
-begin
-  Result := ATestName;
-  mNumber := 1;
-  while MatchText(Result, ANames) do
-  begin
-    Inc(mNumber);
-    Result := ATestName + IntToStr(mNumber);
-  end;
-end;
-
-/// <summary>Edit, der AUnitName ins uses von AText einträgt; False, wenn sie dort schon steht oder kein Platz ist.
-/// Vor dem Einfügen bestimmt; der Edit liegt vor allen anderen Stellen.</summary>
-function UsesEditFor(const AText: string; const AFixture: TIndexSymbol; const AUnitName, ALineBreak: string;
-  out AEdit: TTextEdit): Boolean;
-var
-  mTokens: TArray<TPascalToken>;
-begin
-  mTokens := TPascalLexer.Tokenize(AText);
-  Result := not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(mTokens), AUnitName, nil) and
-    TUsesClauses.AddUnit(mTokens, TLineTable.Build(AText).OffsetAt(AFixture.Range.StartPos), AUnitName, ALineBreak,
-    AEdit);
-end;
-
-/// <summary>Rumpf des Tests AName der Klasse AFixture für ATarget vor der Zeile ALine.</summary>
-function TestBodyText(const AFixture, AName, ATarget, ALineBreak, ALine: string): string;
-begin
-  Result := 'procedure ' + AFixture + '.' + AName + ';' + ALineBreak + 'begin' + ALineBreak + '  Assert.Fail(' +
-    QuotedStr(cTexts[TProjectCommandsText.TestForStillMissing].Fmt([ATarget])) + ');' + ALineBreak + 'end;' +
-      ALineBreak + ALineBreak + ALine;
-end;
-
-/// <summary>Deklaration des Tests AName vor der Zeile AEndLine ("end" der Klasse), eine Ebene tiefer.</summary>
-function TestDeclarationText(const AName, ALineBreak, AEndLine: string): string;
-var
-  mIndent: string;
-begin
-  mIndent := Copy(AEndLine, 1, Length(AEndLine) - Length(TrimLeft(AEndLine))) + '  ';
-  Result := mIndent + '[Test]' + ALineBreak + mIndent + 'procedure ' + AName + ';' + ALineBreak + AEndLine;
-end;
-
-/// <summary>Trägt in die Testunit AText den Test aus ARequest (nummeriert, wenn es ihn gibt) in die Testklasse
-/// ein, samt Rumpf und Unit im uses.</summary>
-function AddTestMethod(const AText: string; const ARequest: TTestRequest; out ANewText, AReason: string): Boolean;
-var
-  mIndex: TUnitIndex;
-  mFixture: TIndexSymbol;
-  mNames, mLines: TArray<string>;
-  mLineBreak, mName: string;
-  mEndLine, mBody: Integer;
-  mUsesEdit: TTextEdit;
-  mNeedsUses: Boolean;
-begin
-  ANewText := '';
-  mIndex := UnitIndexOf(AText);
-  if not FixtureSymbol(mIndex, ARequest.Fixture, mFixture) then
-  begin
-    Exit(Fail(cTexts[TProjectCommandsText.TheTestUnitHasNo].Text, AReason));
-  end;
-  mNames := FixtureMethods(mIndex, mFixture.Name);
-  if MatchText(ARequest.TestName, mNames) and ARequest.OnlyIfMissing then
-  begin
-    ANewText := AText;
-    Exit(True);
-  end;
-  mName := FreeTestName(ARequest.TestName, mNames);
-  mLineBreak := TTextLines.LineBreakOf(AText);
-  mLines := AText.Split([mLineBreak]);
-  mEndLine := ClassEndLine(mLines, mFixture);
-  mBody := BodyLine(mLines);
-  if (mEndLine < 0) or (mBody < 0) then
-  begin
-    Exit(Fail(cTexts[TProjectCommandsText.TestClassOrEndOf].Text, AReason));
-  end;
-  mNeedsUses := UsesEditFor(AText, mFixture, ARequest.UnitName, mLineBreak, mUsesEdit);
-  mLines[mBody] := TestBodyText(mFixture.Name, mName, ARequest.Target, mLineBreak, mLines[mBody]);
-  mLines[mEndLine] := TestDeclarationText(mName, mLineBreak, mLines[mEndLine]);
-  ANewText := string.Join(mLineBreak, mLines);
-  if mNeedsUses then
-  begin
-    ANewText := Applied(ANewText, mUsesEdit);
-  end;
-  Result := True;
-end;
-
-type
-  /// <summary>Ziel von /test: Testunit, Klasse und Methode der Routine (RoutineName wie deklariert) und Unit.</summary>
+  /// <summary>Ziel von /test: Testunit und Entwurf des Tests (#1226) samt getesteter Unit.</summary>
   TTestPlan = record
     Target: TSlashTestUnit;
-    RoutineName: string;
-    ClassName: string;
-    MethodName: string;
+    Draft: TTestDraft;
     UnitName: string;
   end;
 
@@ -1159,6 +946,25 @@ begin
   end;
 end;
 
+/// <summary>Entwurf zur Routine um den Cursor: mit Aufruf und Platzhaltern, wenn ihr Kopf lesbar ist, sonst nur
+/// Assert.Fail (Bare).</summary>
+function DraftFor(ASource: TCommandSource; const AContext: TSlashContext; ARoutine: TSyntaxNode): TTestDraft;
+var
+  mClassName, mMethodName: string;
+begin
+  if TTestDrafts.DraftAt(ASource.Text, ASource.Tree.Tokens, ASource.UnitIndex, AContext.Line, Result) then
+  begin
+    Exit;
+  end;
+  SplitRoutineName(ARoutine.Name, mClassName, mMethodName);
+  Result := Default(TTestDraft);
+  Result.ClassName := mClassName;
+  Result.MethodName := mMethodName;
+  Result.TestName := 'Test' + mMethodName;
+  Result.Draft := True;
+  Result.Bare := True;
+end;
+
 /// <summary>Füllt APlan für die Routine um den Cursor; Grund, wenn /test dort nicht gilt, sonst ''.</summary>
 function TestPlanIssue(ASource: TCommandSource; const AContext: TSlashContext; out APlan: TTestPlan): string;
 var
@@ -1174,12 +980,17 @@ begin
   begin
     Exit(cTexts[TProjectCommandsText.TestNeedsTheEditor].Text);
   end;
-  APlan.RoutineName := mRoutine.Name;
-  SplitRoutineName(mRoutine.Name, APlan.ClassName, APlan.MethodName);
+  APlan.Draft := DraftFor(ASource, AContext, mRoutine);
   APlan.UnitName := ASource.UnitIndex.UnitName;
-  if (APlan.UnitName = '') or (APlan.MethodName = '') then
+  if (APlan.UnitName = '') or (APlan.Draft.MethodName = '') then
   begin
     Exit(cTexts[TProjectCommandsText.TestOnlyAppliesInA].Text);
+  end;
+  APlan.Draft.Fixture := TTestUnits.FixtureName(APlan.Draft.ClassName, APlan.UnitName);
+  APlan.Draft.UnitName := APlan.UnitName;
+  if not APlan.Draft.ClassMethod and (APlan.Draft.ClassName <> '') then
+  begin
+    APlan.Draft.CreateText := TTestUnits.CreateExpression(ASource.UnitIndex, APlan.Draft.ClassName);
   end;
   Result := '';
   if not AContext.Host.TestUnit(AContext.Uri, ASource.Text, APlan.Target) then
@@ -1188,31 +999,22 @@ begin
   end;
 end;
 
-/// <summary>Text der Testunit: gelesen, wenn es sie gibt, sonst ein frisches Gerüst. Grund, wenn sie sich nicht
-/// lesen lässt, sonst ''.</summary>
-function TestUnitText(const AContext: TSlashContext; ASource: TCommandSource; const APlan: TTestPlan;
-  out AText: string): string;
+/// <summary>Text der neuen Testunit: Gerüst wie die Code-Aktion aus #274, der Test zur Routine als Entwurf.
+/// </summary>
+function NewTestUnitText(ASource: TCommandSource; const APlan: TTestPlan): string;
+var
+  mDraft: TTestDraft;
+  mMethod: TTestUnitMethod;
 begin
-  Result := '';
-  AText := '';
-  if not APlan.Target.Exists then
+  mDraft := APlan.Draft;
+  if not mDraft.ClassMethod and TTestUnits.HasSubject(ASource.UnitIndex, mDraft.ClassName) then
   begin
-    AText := TTestUnits.UnitText(APlan.Target.UnitName, ASource.UnitIndex, APlan.ClassName, #13#10);
-  end
-  else if not AContext.Host.ReadFile(APlan.Target.FileName, AText) then
-  begin
-    Result := cTexts[TProjectCommandsText.CannotBeRead].Fmt([ExtractFileName(APlan.Target.FileName)]);
+    mDraft.Subject := 'FSubject';
   end;
-end;
-
-/// <summary>Name der getesteten Routine: Klasse.Methode ohne generische Parameter, sonst wie deklariert.</summary>
-function TestedName(const APlan: TTestPlan): string;
-begin
-  Result := APlan.RoutineName;
-  if APlan.ClassName <> '' then
-  begin
-    Result := APlan.ClassName + '.' + APlan.MethodName;
-  end;
+  mMethod.Name := mDraft.TestName;
+  mMethod.Target := mDraft.Target;
+  mMethod.Draft := TTestDrafts.MethodText(mDraft, #13#10);
+  Result := TTestUnits.UnitText(APlan.Target.UnitName, ASource.UnitIndex, mDraft.ClassName, #13#10, [mMethod]);
 end;
 
 /// <summary>Neue Testunit ins Testprojekt wie die Code-Aktion aus #274: uses der .dpr und DCCReference der
@@ -1241,27 +1043,39 @@ begin
   end;
 end;
 
+/// <summary>Neuer Text der Testunit: frisches Gerüst oder der vorhandene Text mit dem Test; Grund sonst.</summary>
+function TestUnitNewText(const AContext: TSlashContext; ASource: TCommandSource; const APlan: TTestPlan;
+  out ANewText, AReason: string): Boolean;
+var
+  mText, mName: string;
+begin
+  ANewText := '';
+  AReason := '';
+  if not APlan.Target.Exists then
+  begin
+    ANewText := NewTestUnitText(ASource, APlan);
+    Exit(True);
+  end;
+  if not AContext.Host.ReadFile(APlan.Target.FileName, mText) then
+  begin
+    AReason := cTexts[TProjectCommandsText.CannotBeRead].Fmt([ExtractFileName(APlan.Target.FileName)]);
+    Exit(False);
+  end;
+  Result := TTestDrafts.AddToTestUnit(mText, APlan.Draft, False, ANewText, mName, AReason);
+end;
+
 function ExecuteTest(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   mSource: TCommandSource;
   mPlan: TTestPlan;
-  mTestText, mNewText: string;
+  mNewText: string;
   mFiles: TArray<TSlashFile>;
 begin
   AEdits := nil;
   mSource := TCommandSource.Create(AContext);
   try
     AReason := TestPlanIssue(mSource, AContext, mPlan);
-    if AReason = '' then
-    begin
-      AReason := TestUnitText(AContext, mSource, mPlan, mTestText);
-    end;
-    Result := AReason = '';
-    if Result then
-    begin
-      Result := AddTestMethod(mTestText, TTestRequest.Create(TTestUnits.FixtureName(mPlan.ClassName, mPlan.UnitName),
-        'Test' + mPlan.MethodName, TestedName(mPlan), mPlan.UnitName, not mPlan.Target.Exists), mNewText, AReason);
-    end;
+    Result := (AReason = '') and TestUnitNewText(AContext, mSource, mPlan, mNewText, AReason);
     if Result then
     begin
       mFiles := [TSlashFile.Create(mPlan.Target.FileName, mNewText, not mPlan.Target.Exists)];

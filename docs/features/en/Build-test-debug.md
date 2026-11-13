@@ -110,6 +110,16 @@ Settings: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 
 Settings: `tests.stale`, `tests.stale.units`
 
+### Create a test case from the unit (#1226)
+
+Available as a code action (Alt+Enter) on a method or routine, in its body or at its declaration; in the body also as `/test`.
+
+- Atlas finds the test unit (pattern `testUnits.pattern`) and adds a draft test method to the test class; the tested unit goes into the uses clause.
+- The draft prepares a variable with a placeholder per parameter (`0`, `''`, `False`, `nil`, `Default(T)`), calls the method on the test class's object (a field of the class type), on the class (class methods) or on a local object with `try … finally`, and checks the result and `var`/`out` parameters with placeholders that fit the type (`Assert.AreEqual`, with a tolerance for floating point, `Assert.IsTrue`, `Assert.IsNotNull`).
+- An `Assert.Fail` at the end keeps the draft red until the expected values are right.
+- Without a test unit, Atlas creates one like *Create DUnitX test unit* (fixture, setup/teardown, entries in `.dpr` and `.dproj`) and puts the draft in place of the empty test.
+- Private, protected and implementation-only routines cannot be called from the test unit; for them you only get the test with `Assert.Fail`.
+
 ### Run affected tests (#1353)
 
 Available from the *Atlas* menu and the command palette.
