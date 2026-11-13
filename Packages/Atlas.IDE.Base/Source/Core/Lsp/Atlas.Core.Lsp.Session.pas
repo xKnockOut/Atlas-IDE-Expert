@@ -115,6 +115,9 @@ type
     /// AFileName, mit nicht eingecheckten Änderungen (atlas/affectedTests, #1353). Ein Fehler des Servers
     /// (tests.affected aus, keine Arbeitskopie) kommt als Exception.</summary>
     function AffectedTests(const AFileName, ABase: string): TAtlasAffectedTests;
+    /// <summary>Betroffene Tests nur der Dateien AFiles (nicht leer), verglichen mit dem letzten Commit (Git: HEAD,
+    /// SVN: BASE); für Tests beim Speichern (#1775). Fehler wie AffectedTests.</summary>
+    function AffectedTestsOf(const AFiles: TArray<string>): TAtlasAffectedTests;
     /// <summary>Woher kommt bzw. wohin geht der Wert des Symbols an der Stelle (atlas/dataFlow, #690).</summary>
     function DataFlow(const ARequest: TAtlasDataFlowRequest): TAtlasDataFlowResult;
     /// <summary>Diagnosen einer Datei (textDocument/diagnostic) ohne Abgleich; threadsicher wie Completion.</summary>
@@ -152,6 +155,11 @@ type
   TAtlasSessionFunc = reference to function: TLspSession;
 
 implementation
+
+const
+  /// <summary>Betroffene Tests (#1353, #1775): git bzw. svn und eine Auswirkungsanalyse je geänderter Routine
+  /// brauchen ein Vielfaches des Zeitlimits einer Anfrage.</summary>
+  cAffectedTestsTimeoutFactor = 30;
 
 /// <summary>Die Werte von AValues mit Komma verbunden.</summary>
 function JoinedValues(AValues: TJSONArray): string;
@@ -563,7 +571,32 @@ begin
   mParams.AddPair('base', ABase);
   mParams.AddPair('includeUncommitted', TJSONBool.Create(True));
   // git bzw. svn und eine Auswirkungsanalyse je geänderter Routine; der Server begrenzt die Zeit selbst.
-  mResponse := FClient.Request('atlas/affectedTests', mParams, FTimeoutMs * 30);
+  mResponse := FClient.Request('atlas/affectedTests', mParams, FTimeoutMs * cAffectedTestsTimeoutFactor);
+  try
+    Result := AffectedTestsFromJson(mResponse);
+  finally
+    mResponse.Free;
+  end;
+end;
+
+function TLspSession.AffectedTestsOf(const AFiles: TArray<string>): TAtlasAffectedTests;
+var
+  mParams: TJSONObject;
+  mFiles: TJSONArray;
+  mFile: string;
+  mResponse: TJSONValue;
+begin
+  mParams := TJSONObject.Create;
+  mParams.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFiles[0]))));
+  mParams.AddPair('includeUncommitted', TJSONBool.Create(True));
+  mParams.AddPair('sinceCommit', TJSONBool.Create(True));
+  mFiles := TJSONArray.Create;
+  mParams.AddPair('files', mFiles);
+  for mFile in AFiles do
+  begin
+    mFiles.Add(PathToUri(mFile));
+  end;
+  mResponse := FClient.Request('atlas/affectedTests', mParams, FTimeoutMs * cAffectedTestsTimeoutFactor);
   try
     Result := AffectedTestsFromJson(mResponse);
   finally
