@@ -8,7 +8,8 @@
 // - den Teil Tests der Feature-Tabelle,
 // - Befehle (Palette), die Einträge „Betroffene Tests ausführen“,
 //   „Veraltete Tests ausführen“ (#1770), „Erwartet und erhalten
-//   vergleichen“ (#1779), „Langsamste Tests zeigen“ (#1772) und
+//   vergleichen“ (#1779), „Langsamste Tests zeigen“ (#1772), „Wackelnde
+//   Tests zeigen“ (#1773, Atlas.IDE.Tests.Flaky) und
 //   „Liegengebliebene .received-Dateien löschen“ (#1881) im Atlas-Menü,
 //   „TestCase-Tabelle bearbeiten …“ (#1879) in der Palette und im
 //   Kontextmenü einer Testunit, das Fenster „Atlas-Tests“ (#1776, Ansicht,
@@ -122,6 +123,7 @@ uses
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Tests.UnitCommands,
   Atlas.IDE.Tests.Explorer,
+  Atlas.IDE.Tests.Flaky,
   Atlas.IDE.Tests.StatusField,
   Atlas.IDE.Tests.Coverage,
   Atlas.UI.Tests.Strings;
@@ -138,6 +140,7 @@ var
   GCompare: TAtlasIdeTestCompare;
   GSlowest: TAtlasIdeTestSlowest;
   GExplorer: TAtlasIdeTestExplorer;
+  GFlaky: TAtlasIdeFlakyTests;
   GLists: TAtlasIdeTestLists;
   GStatusField: TAtlasIdeTestStatusField;
 
@@ -256,13 +259,15 @@ begin
   GSlowest := TAtlasIdeTestSlowest.Create(GTests, GCompare.Remember);
   // Einzelner Test ausführen bzw. debuggen (#585), auch aus dem Kontextmenü und der Lens.
   GDebugger := TAtlasIdeTestDebugger.Create(GTests);
-  // Fenster „Atlas-Tests“ (#1776): Ergebnisse je Testprojekt; reicht den Lauf an die langsamsten Tests weiter.
+  // Wackelnde Tests (#1773): Verlauf je Test; reicht den Lauf an die langsamsten Tests weiter.
+  GFlaky := TAtlasIdeFlakyTests.Create(GTests, GSlowest.Remember);
+  // Fenster „Atlas-Tests“ (#1776): Ergebnisse je Testprojekt; reicht den Lauf an die wackelnden Tests weiter.
   // Testlisten (#2167): vor dem Fenster, das sie über TAtlasIdeTestLists.Instance findet, und nach ihm frei.
   GLists := TAtlasIdeTestLists.Create(GTests);
-  GExplorer := TAtlasIdeTestExplorer.Create(GTests, GDebugger, GStale.StaleIn, GSlowest.Remember);
+  GExplorer := TAtlasIdeTestExplorer.Create(GTests, GDebugger, GFlaky.QueriesWith(GStale.StaleIn), GFlaky.Remember);
   GTests.OnReported := GExplorer.Remember;
   GStatusField := TAtlasIdeTestStatusField.Create(GTests, GExplorer);
-  GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GStale.StaleIn, CompareHooks);
+  GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GFlaky.QueriesWith(GStale.StaleIn), CompareHooks);
   // Marke „getestet von“ an Methoden normaler Units (#1778).
   GCoveredBy := TAtlasIdeCoveredByLens.Create(GTests, ModuleScope, GStale.StaleIn);
   // TestCase-Tabelle (#1879): Befehl und Marke „Tabelle“ der Lens; Grenzfälle (#2173) vorn in OnReported.
@@ -301,6 +306,8 @@ begin
   FreeAndNil(GLens);
   StopCases(GTests);
   FreeAndNil(GDebugger);
+  // Wackelnde Tests (#1773) nach Fenster und Lens, die sie abfragen.
+  FreeAndNil(GFlaky);
   FreeAndNil(GSlowest);
   FreeAndNil(GCompare);
   FreeAndNil(GStale);
@@ -448,6 +455,18 @@ end;
 
 { Fenster „Atlas-Tests“ (#1776) }
 
+/// <summary>Fenster „Atlas-Tests“ mit allen Tests.</summary>
+procedure ShowAll;
+begin
+  GExplorer.Show(False);
+end;
+
+/// <summary>Fenster „Atlas-Tests“ nur mit wackelnden Tests (#1773).</summary>
+procedure ShowFlakyOnly;
+begin
+  GExplorer.Show(True);
+end;
+
 function ExplorerVisible: Boolean;
 begin
   Result := TestsVisible and TAtlasIdeTestExplorer.Wanted and (GExplorer <> nil);
@@ -457,7 +476,22 @@ procedure ShowExplorer;
 begin
   if GExplorer <> nil then
   begin
-    TAtlasGuard.Run(TAtlasFeature.Build, GExplorer.Show);
+    TAtlasGuard.Run(TAtlasFeature.Build, ShowAll);
+  end;
+end;
+
+{ Wackelnde Tests (#1773) }
+
+function FlakyVisible: Boolean;
+begin
+  Result := ExplorerVisible and TAtlasIdeSettings.Current.TestsFlaky;
+end;
+
+procedure ShowFlaky;
+begin
+  if GExplorer <> nil then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Build, ShowFlakyOnly);
   end;
 end;
 
@@ -583,6 +617,9 @@ begin
     Command('Atlas.RunStaleTests', TAtlasTestsTextId.TestsRunStaleCommand, RunStale, StaleTestsVisible),
     // Erwartet und erhalten eines Fehlschlags (#1779): sichtbar mit tests.compare.
     Command('Atlas.CompareTestValues', TAtlasTestsTextId.TestsCompareCommand, CompareValues, CompareVisible),
+    // Wackelnde Tests (#1773): Fenster „Atlas-Tests“ mit dem Filter „wackelt“; sichtbar mit tests.flaky.
+    Described(Command('Atlas.ShowFlakyTests', TAtlasTestsTextId.TestsFlakyCommand, ShowFlaky, FlakyVisible),
+      TAtlasTestsTextId.TestsFlakyHint),
     // Langsamste Tests (#1772): sichtbar mit tests.showDuration.
     Command('Atlas.ShowSlowestTests', TAtlasTestsTextId.TestsSlowestCommand, ShowSlowest, SlowestVisible),
     // [TestCase]-Fälle als Tabelle (#1879): sichtbar mit tests.testCaseTable.
@@ -699,6 +736,7 @@ begin
     MenuEntry('Atlas.LoadTestCoverage', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.ClearTestCoverage', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.ShowSlowestTests', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.ShowFlakyTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.CleanApprovalFiles', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.ListUntestedMethods', TAtlasMenuPlace.AtlasMenu),
     // Test am Cursor (#585) im Untermenü „Atlas“ des Editors.
