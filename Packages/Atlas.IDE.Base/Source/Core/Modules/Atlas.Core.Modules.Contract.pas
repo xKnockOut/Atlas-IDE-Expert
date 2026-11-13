@@ -11,8 +11,8 @@
 //   (Regel 3).
 // - IAtlasModuleRegistry: Modulliste aus Anmeldungen, Objekte nach
 //   Interface-GUID (Provide/FindAll) und Änderungsmeldung (Regel 2).
-// - cAtlasCoreContractVersion: Versions-Handschlag (Regel 7); jede Änderung an
-//   einem Vertrag im interface-Teil von Base erhöht sie.
+// - cAtlasCoreContractVersion: Versions-Handschlag (Regel 7); steigt höchstens
+//   einmal je Release (Tools/Check-ContractVersion.ps1).
 
 interface
 
@@ -20,8 +20,11 @@ uses
   System.SysUtils;
 
 const
-  /// <summary>Vertragsversion von Base (Regel 7). Erhöhen, sobald sich ein Vertrag von Base ändert, den Module
-  /// übersetzen (Interface, Record, Konstante): Delphi prüft die Binärschnittstelle zwischen Packages nicht.</summary>
+  /// <summary>Vertragsversion von Base (Regel 7). Delphi prüft die Binärschnittstelle zwischen Packages nicht.
+  /// Base und Module kommen immer aus demselben Bau; die Nummer steigt deshalb höchstens einmal je Release:
+  /// Ändert sich ein Vertrag (Interface, Record, Konstante) und steht sie noch auf dem Wert des letzten
+  /// Release-Tags, auf diesen Wert + 1 setzen, sonst nicht anfassen (Tools/Check-ContractVersion.ps1). Was sich
+  /// geändert hat, steht im Changelog; die Liste unten wird nicht weitergeführt.</summary>
   /// 2 (#1903): IAtlasSettingsContribution, TAtlasWelcomeTileInfo.SwitchKey/SettingsKey, neue Texte.
   /// 3 (#1905): IAtlasLineChanges und TAtlasLineChangeMarks (Atlas.IDE.Contracts.LineChanges).
   /// 4 (#1906): IAtlasBuildRequests.Forget.
