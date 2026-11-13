@@ -47,6 +47,7 @@ uses
   Atlas.Core.Assistants.BuildInbox,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Handshake,
   Atlas.Core.Modules.FeatureParts,
@@ -228,5 +229,7 @@ initialization
 
 finalization
   TAtlasAssistantsModule.UnregisterModule;
+  // Vor FreeLibrary: Laufen noch überfällige Threads des Packages, bleibt es im Speicher (Code-Review T-103).
+  TAtlasOverdueThreads.SettleBeforeUnload(HInstance);
 
 end.

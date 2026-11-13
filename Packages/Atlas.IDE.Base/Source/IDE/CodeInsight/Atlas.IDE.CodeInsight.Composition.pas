@@ -21,6 +21,7 @@ uses
   Atlas.Core.Diagnostics.TimeLimit,
   Atlas.Core.Diagnostics.ExitWatch,
   Atlas.Core.Diagnostics.Teardown,
+  Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Modules.Registry,
   Atlas.IDE.Diagnostics.Watchdog,
@@ -200,6 +201,13 @@ begin
     procedure
     begin
       mStopped := TAtlasTimeLimit.StopAll(TAtlasShutdown.cStopMs);
+    end);
+  // Überfällige Threads mit dem Code von Base (Update-Prüfung, Thread-Listen): Festhalten wirkt nur hier, vor
+  // FreeLibrary (Code-Review T-103), und vor dem Abbau von TAtlasOverdueThreads in der Finalisierung.
+  ATeardown.Step('OverdueThreads',
+    procedure
+    begin
+      TAtlasOverdueThreads.SettleBeforeUnload(HInstance);
     end);
   ATeardown.Step('Features', FreeFeatures);
   ATeardown.Step('StackCapture', TAtlasIdeStackCapture.Uninstall);

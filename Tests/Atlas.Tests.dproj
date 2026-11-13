@@ -812,6 +812,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.TimeLimit.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Deadline.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.AsyncWait.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.BoundedStream.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.UserIdle.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.UnloadSafety.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.WorkerSlot.pas"/>
@@ -862,6 +863,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.TimeLimit.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.Deadline.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.AsyncWait.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.BoundedStream.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.UserIdle.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.UnloadSafety.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.WorkerSlot.Tests.pas"/>
