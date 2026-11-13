@@ -6,6 +6,8 @@
 //   - DebugThreadParts: Threads beim Halt: „Was wartet worauf?“ (#587), „Parallele Aufrufstapel“ (#837) und
 //     „Threads im Quelltext“ (#852) samt Schicht der Rinne (ProvideDebugThreadLayers) und die Herkunft eingereihter
 //     Methoden (#859, experimentell).
+//   - DebugLeakParts: Leckbericht am Ende der Debug-Sitzung und Fenster „Atlas-Lecks“ (#1875); Serverantworten
+//     über den Scope des Moduls.
 // Dazu die Befehle beider, die Atlas.IDE.Debug.Composition in seine Befehle aufnimmt, und das Thema des Fensters.
 // Atlas.IDE.Debug.Composition stellt die Teile über den Scope des Moduls bereit.
 
@@ -26,7 +28,13 @@ function DebugDeadlocksVisible: Boolean;
 procedure ShowDebugParallelStacks;
 /// <summary>Befehl „Parallele Aufrufstapel“ zeigen? (debug.parallelStacks)</summary>
 function DebugParallelStacksVisible: Boolean;
-/// <summary>Nach einem Wechsel des IDE-Themas.</summary>
+/// <summary>Teil „DebugLeakReport“ (#1875); Serverantworten über AScope.</summary>
+function DebugLeakParts(const AScope: IAtlasModuleScope): TArray<IAtlasFeaturePart>;
+/// <summary>Befehl Atlas.DebugLeaks: Fenster „Atlas-Lecks“ mit dem letzten Bericht.</summary>
+procedure ShowDebugLeaks;
+/// <summary>Befehl „Atlas-Lecks“ zeigen? (debug.leakReport)</summary>
+function DebugLeaksVisible: Boolean;
+/// <summary>Nach einem Wechsel des IDE-Themas (Parallele Aufrufstapel, Atlas-Lecks).</summary>
 procedure DebugThreadsThemeChanged;
 /// <summary>Befehle „Thread markieren“, „einfrieren“, „auftauen“, „Alle auftauen“ (#852).</summary>
 function DebugThreadCommands: TArray<TAtlasModuleCommand>;
@@ -51,6 +59,7 @@ uses
   Atlas.IDE.Debug.ThreadsInSource,
   Atlas.IDE.Debug.ThreadsGutter,
   Atlas.IDE.Debug.AsyncOrigin,
+  Atlas.IDE.Debug.Leaks,
   Atlas.UI.Debug.Strings;
 
 { Dienste von Base }
@@ -93,6 +102,17 @@ end;
 procedure DebugThreadsThemeChanged;
 begin
   TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugParallelStacks.ThemeChanged);
+  TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugLeaks.ThemeChanged);
+end;
+
+procedure ShowDebugLeaks;
+begin
+  TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugLeaks.ShowWindow);
+end;
+
+function DebugLeaksVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugLeakReport;
 end;
 
 { Start der Teile }
@@ -259,6 +279,33 @@ begin
       begin
         Result := TAtlasIdeDebugAsyncOrigin.Started;
       end, StartDebugAsyncOrigin, TAtlasIdeDebugAsyncOrigin.Release)];
+end;
+
+{ Leckbericht (#1875) }
+
+/// <summary>Start mit dem Scope; eigene Routine, damit die Methodenreferenz nur AScope festhält.</summary>
+function LeakStarter(const AScope: IAtlasModuleScope): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      TAtlasIdeDebugLeaks.Start(AScope, MessageLine);
+    end;
+end;
+
+function DebugLeakParts(const AScope: IAtlasModuleScope): TArray<IAtlasFeaturePart>;
+begin
+  Result := [
+    // Leckbericht am Programmende: Zuhörer der Debug-Sitzung, Zeitgeber und Fenster; aus = nichts.
+    TAtlasFeaturePart.When('DebugLeakReport',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugLeakReport;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeDebugLeaks.Started;
+      end, LeakStarter(AScope), TAtlasIdeDebugLeaks.Release)];
 end;
 
 end.

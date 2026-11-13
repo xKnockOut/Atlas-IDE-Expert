@@ -114,6 +114,8 @@ begin
   Assert.IsTrue(CheckOf(APage, 'DebugThreadsInSource').Checked, 'debug.threadsInSource (#852)');
   Assert.IsTrue(CheckOf(APage, 'DebugParallelStacks').Checked, 'debug.parallelStacks (#837)');
   Assert.IsTrue(CheckOf(APage, 'DebugDeadlocks').Checked, 'debug.deadlocks (#587)');
+  Assert.IsTrue(CheckOf(APage, 'DebugLeakReport').Checked, 'debug.leakReport (#1875)');
+  Assert.IsTrue(CheckOf(APage, 'DebugLeakReportWindow').Checked, 'debug.leakReport.window (#1875)');
   Assert.IsTrue(CheckOf(APage, 'DebugModuleOfAddress').Checked, 'debug.moduleOfAddress (#1820)');
   Assert.IsTrue(CheckOf(APage, 'DebugExceptionHistory').Checked, 'debug.exceptionHistory (#517)');
   Assert.IsTrue(CheckOf(APage, 'DebugJustMyCode').Checked, 'debug.justMyCode (#578)');
@@ -135,6 +137,7 @@ begin
   CheckOf(APage, 'DebugExplainAccessViolationAllowCalls').Checked := True;
   CheckOf(APage, 'DebugModuleOfAddress').Checked := False;
   CheckOf(APage, 'DebugDeadlocks').Checked := False;
+  CheckOf(APage, 'DebugLeakReportCompare').Checked := False;
   CheckOf(APage, 'DebugParallelStacks').Checked := False;
   CheckOf(APage, 'DebugThreadsInSource').Checked := False;
   CheckOf(APage, 'DebugThreadFreeze').Checked := True;
@@ -162,6 +165,7 @@ begin
   Assert.IsTrue(ASaved.DebugExplainAccessViolationAllowCalls);
   Assert.IsFalse(ASaved.DebugModuleOfAddress);
   Assert.IsFalse(ASaved.DebugDeadlocks);
+  Assert.IsFalse(ASaved.DebugLeakReportCompare);
   Assert.IsFalse(ASaved.DebugParallelStacks);
   Assert.IsFalse(ASaved.DebugThreadsInSource);
   Assert.IsTrue(ASaved.DebugThreadFreeze);

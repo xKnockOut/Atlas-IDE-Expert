@@ -141,6 +141,14 @@ type
     /// <summary>debug.deadlocks (#587): Befehl „Was wartet worauf?“: Wartepunkte aller Threads eines
     /// angehaltenen Programms und bekannte Muster von Verklemmungen im Ergebnisfenster.</summary>
     DebugDeadlocks: Boolean;
+    /// <summary>debug.leakReport (#1875): Leckbericht am Ende einer Debug-Sitzung einsammeln (Meldungsfenster von
+    /// ReportMemoryLeaksOnShutdown, FastMM-Logdatei) und im Fenster „Atlas-Lecks“ zeigen.</summary>
+    DebugLeakReport: Boolean;
+    /// <summary>debug.leakReport.compare (#1875): mit dem letzten Lauf je Projekt und Konfiguration vergleichen.
+    /// </summary>
+    DebugLeakReportCompare: Boolean;
+    /// <summary>debug.leakReport.window (#1875): Fenster „Atlas-Lecks“ bei Lecks öffnen.</summary>
+    DebugLeakReportWindow: Boolean;
     /// <summary>debug.parallelStacks (#837): Fenster „Parallele Aufrufstapel“: die Stapel aller Threads beim Halt als
     /// Baum, gemeinsame Rahmen einmal mit der Zahl der Threads, wartende hervorgehoben.</summary>
     DebugParallelStacks: Boolean;
@@ -307,6 +315,9 @@ begin
   Result.DebugParallelStacksWaitRoutines := '';
   Result.DebugParallelStacksMaxThreads := cDefaultParallelStacksThreads;
   Result.DebugDeadlocks := True;
+  Result.DebugLeakReport := True;
+  Result.DebugLeakReportCompare := True;
+  Result.DebugLeakReportWindow := True;
   Result.DebugModuleOfAddress := True;
   Result.DebugExceptionHistory := True;
   Result.DebugJustMyCode := True;
@@ -380,6 +391,9 @@ begin
   AIo.Flag('DebugExplainAccessViolationAllowCalls', DebugExplainAccessViolationAllowCalls);
   AIo.Flag('DebugModuleOfAddress', DebugModuleOfAddress);
   AIo.Flag('DebugDeadlocks', DebugDeadlocks);
+  AIo.Flag('DebugLeakReport', DebugLeakReport);
+  AIo.Flag('DebugLeakReportCompare', DebugLeakReportCompare);
+  AIo.Flag('DebugLeakReportWindow', DebugLeakReportWindow);
   AIo.Flag('DebugParallelStacks', DebugParallelStacks);
   AIo.Flag('DebugThreadsInSource', DebugThreadsInSource);
   AIo.Flag('DebugThreadFreeze', DebugThreadFreeze);
@@ -387,7 +401,6 @@ begin
   AIo.Text('DebugParallelStacksWaitRoutines', DebugParallelStacksWaitRoutines);
   AIo.Number('DebugParallelStacksMaxThreads', DebugParallelStacksMaxThreads);
   AIo.Number('DebugAsyncOriginMaxPerSite', DebugAsyncOriginMaxPerSite);
-
   AIo.Flag('DebugExceptionHistory', DebugExceptionHistory);
   AIo.Flag('DebugJustMyCode', DebugJustMyCode);
   AIo.Flag('DebugExceptionBanner', DebugExceptionBanner);
