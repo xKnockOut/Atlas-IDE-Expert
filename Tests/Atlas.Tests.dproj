@@ -112,6 +112,7 @@
         <DCCReference Include="Common\Index\Atlas.Common.Index.NameIndex.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.NameFacts.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Usages.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.UsageCounts.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.Conditions.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.InlineRefs.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.Patterns.Tests.pas"/>
@@ -635,6 +636,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Hooks.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Slash.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.HiddenMembers.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.ProjectFrequency.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.TypeGuards.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.InheritedCalls.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ContextSnippets.Tests.pas"/>

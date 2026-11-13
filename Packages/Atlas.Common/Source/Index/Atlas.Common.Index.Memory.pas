@@ -14,14 +14,18 @@ interface
 
 uses
   System.SysUtils,
+  System.SyncObjs,
   System.Generics.Collections,
   Atlas.Common.Index.Contract;
 
 type
-  /// <summary>Nicht threadsicher; der Index ruft ihn unter seiner Sperre.</summary>
+  /// <summary>InternUnit und Count sind threadsicher (eigene Sperre, damit der Index große Units außerhalb seiner
+  /// Sperre einordnen kann); Intern allein nicht.</summary>
   TStringPool = class
   private
     FStrings: TDictionary<string, string>;
+    FLock: TCriticalSection;
+    procedure InternUnitNow(var AUnit: TUnitIndex);
   public
     constructor Create;
     destructor Destroy; override;
@@ -80,10 +84,12 @@ constructor TStringPool.Create;
 begin
   inherited Create;
   FStrings := TDictionary<string, string>.Create;
+  FLock := TCriticalSection.Create;
 end;
 
 destructor TStringPool.Destroy;
 begin
+  FLock.Free;
   FStrings.Free;
   inherited;
 end;
@@ -102,6 +108,16 @@ begin
 end;
 
 procedure TStringPool.InternUnit(var AUnit: TUnitIndex);
+begin
+  FLock.Enter;
+  try
+    InternUnitNow(AUnit);
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TStringPool.InternUnitNow(var AUnit: TUnitIndex);
 var
   mIndex, mInner: Integer;
 begin
@@ -148,7 +164,12 @@ end;
 
 function TStringPool.Count: Integer;
 begin
-  Result := FStrings.Count;
+  FLock.Enter;
+  try
+    Result := FStrings.Count;
+  finally
+    FLock.Leave;
+  end;
 end;
 
 { TIndexMemory }

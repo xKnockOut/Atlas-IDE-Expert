@@ -473,6 +473,10 @@ begin
   Assert.IsTrue(Parse('{}', Issues).Completion.HiddenMembers);
   Assert.IsFalse(Parse('{"completion": {"hiddenMembers": false}}', Issues).Completion.HiddenMembers);
   Assert.AreEqual(0, Integer(Length(Issues)));
+  // Rangfolge aus der Verwendung im Projekt (#2109)
+  Assert.IsTrue(Parse('{}', Issues).Completion.ProjectFrequency);
+  Assert.IsFalse(Parse('{"completion": {"projectFrequency": false}}', Issues).Completion.ProjectFrequency);
+  Assert.AreEqual(0, Integer(Length(Issues)));
   // Freigabe absichern (#489)
   Assert.IsTrue(Parse('{}', Issues).Completion.OfferTryFinally);
   Assert.IsTrue(Parse('{}', Issues).Completion.FreeStyle = TCompletionFreeStyle.Free);
