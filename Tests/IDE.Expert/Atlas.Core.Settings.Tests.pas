@@ -457,11 +457,11 @@ begin
   ASettings.QuickToggleKey := $6051;
   ASettings.QuickToggleKeyPriority := True;
   ASettings.DiagnosticMode := True;
-  ASettings.DiagnosticModeKey := $6044;
 end;
 /// <summary>Rundreise: Diagnose, Start, Zurücknehmen und Blocklinien von der Vorgabe abweichend setzen.</summary>
 procedure SetRoundTripTools(var ASettings: TAtlasPluginSettings);
 begin
+  ASettings.DiagnosticModeKey := $6044;
   ASettings.DiagnosticModeKeyPriority := True;
   ASettings.DiagnosticsProcesses := False;
   ASettings.ServerStatusWindow := False;
