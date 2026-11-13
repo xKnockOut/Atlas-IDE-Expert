@@ -351,6 +351,9 @@ begin
       CheckCategory(AItems, AElement);
     TAttributeRule.Duplicate:
       CheckDuplicates(AItems, AElement);
+    TAttributeRule.FixtureTest:
+      // Klassenweit in CheckFixture, nicht je Element.
+      ;
   end;
 end;
 
