@@ -95,7 +95,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.MemoryWindow,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Memory.Strings;
 
 { TAtlasIdeDebugMemoryTimeline.TListener }
 
@@ -212,7 +212,7 @@ begin
   begin
     if Assigned(FMessage) then
     begin
-      FMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.MemoryOff));
+      FMessage(TAtlasMemoryStrings.Text(TAtlasMemoryTextId.MemoryOff));
     end;
     Exit;
   end;
@@ -266,7 +266,7 @@ begin
   if (not Result) and (not FSession.Reported) and Assigned(FMessage) then
   begin
     FSession.Reported := True;
-    FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MemoryNoAccess,
+    FMessage(TAtlasMemoryStrings.Fmt(TAtlasMemoryTextId.MemoryNoAccess,
       [mProcess.ProcessId, SysErrorMessage(FCounters.LastError)]));
   end;
 end;
@@ -307,7 +307,7 @@ begin
     Exit;
   end;
   Inc(FSession.NextMark);
-  AddMark(TAtlasMemoryMarkKind.Custom, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MemoryMarkName,
+  AddMark(TAtlasMemoryMarkKind.Custom, TAtlasMemoryStrings.Fmt(TAtlasMemoryTextId.MemoryMarkName,
     [FSession.NextMark]));
 end;
 
@@ -320,7 +320,7 @@ begin
   Clipboard.AsText := FTimeline.ToCsv;
   if Assigned(FMessage) then
   begin
-    FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MemoryCopied, [FTimeline.Count]));
+    FMessage(TAtlasMemoryStrings.Fmt(TAtlasMemoryTextId.MemoryCopied, [FTimeline.Count]));
   end;
 end;
 
@@ -351,11 +351,11 @@ class procedure TAtlasIdeDebugMemoryTimeline.SessionStopped(AStop: TAtlasDebugSt
 begin
   if AStop = TAtlasDebugStop.Paused then
   begin
-    AddMark(TAtlasMemoryMarkKind.Stop, TAtlasDebugStrings.Text(TAtlasDebugTextId.MemoryMarkStop));
+    AddMark(TAtlasMemoryMarkKind.Stop, TAtlasMemoryStrings.Text(TAtlasMemoryTextId.MemoryMarkStop));
   end
   else
   begin
-    AddMark(TAtlasMemoryMarkKind.Exception, TAtlasDebugStrings.Text(TAtlasDebugTextId.MemoryMarkException));
+    AddMark(TAtlasMemoryMarkKind.Exception, TAtlasMemoryStrings.Text(TAtlasMemoryTextId.MemoryMarkException));
   end;
 end;
 

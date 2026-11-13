@@ -83,14 +83,14 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Memory.Strings;
 
 {$R *.dfm}
 
 const
-  cSeriesTexts: array[TAtlasMemorySeries] of TAtlasDebugTextId = (TAtlasDebugTextId.MemorySeriesPrivateBytes,
-    TAtlasDebugTextId.MemorySeriesWorkingSet, TAtlasDebugTextId.MemorySeriesHandles,
-    TAtlasDebugTextId.MemorySeriesGdiObjects, TAtlasDebugTextId.MemorySeriesUserObjects);
+  cSeriesTexts: array[TAtlasMemorySeries] of TAtlasMemoryTextId = (TAtlasMemoryTextId.MemorySeriesPrivateBytes,
+    TAtlasMemoryTextId.MemorySeriesWorkingSet, TAtlasMemoryTextId.MemorySeriesHandles,
+    TAtlasMemoryTextId.MemorySeriesGdiObjects, TAtlasMemoryTextId.MemorySeriesUserObjects);
   cSeparator = ' · ';
   /// <summary>Höhe der Leiste oben und Breite der Wahl der Reihe, logische Pixel.</summary>
   cBarHeight = 32;
@@ -110,7 +110,7 @@ end;
 
 class function TAtlasMemoryTexts.SeriesName(ASeries: TAtlasMemorySeries): string;
 begin
-  Result := TAtlasDebugStrings.Text(cSeriesTexts[ASeries]);
+  Result := TAtlasMemoryStrings.Text(cSeriesTexts[ASeries]);
 end;
 
 class function TAtlasMemoryTexts.NowText(const AValues: TAtlasMemoryValues): string;
@@ -124,7 +124,7 @@ begin
     mParts[Ord(mSeries)] := SeriesName(mSeries) + ' ' + TAtlasMemoryFormat.Value(mSeries, AValues[mSeries],
       FormatSettings);
   end;
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MemoryNow, [string.Join(cSeparator, mParts)]);
+  Result := TAtlasMemoryStrings.Fmt(TAtlasMemoryTextId.MemoryNow, [string.Join(cSeparator, mParts)]);
 end;
 
 class function TAtlasMemoryTexts.RangeText(const AGrowth: TAtlasMemoryGrowth): string;
@@ -143,7 +143,7 @@ begin
     mParts[Ord(mSeries)] := SeriesName(mSeries) + ' ' + TAtlasMemoryFormat.Signed(mSeries,
       AGrowth.Deltas[mSeries], FormatSettings);
   end;
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MemoryRange, [Seconds(AGrowth.FromMs), Seconds(AGrowth.ToMs),
+  Result := TAtlasMemoryStrings.Fmt(TAtlasMemoryTextId.MemoryRange, [Seconds(AGrowth.FromMs), Seconds(AGrowth.ToMs),
     Seconds(AGrowth.DurationMs), string.Join(cSeparator, mParts)]);
 end;
 
@@ -187,11 +187,11 @@ begin
   mBar.BevelOuter := bvNone;
   mBar.ShowCaption := False;
   mBar.ParentBackground := True;
-  AFrame.FControls.Clear := AddButton(AFrame, mBar, TAtlasDebugStrings.Text(TAtlasDebugTextId.MemoryClear),
+  AFrame.FControls.Clear := AddButton(AFrame, mBar, TAtlasMemoryStrings.Text(TAtlasMemoryTextId.MemoryClear),
     AFrame.ClearClick);
-  AFrame.FControls.CopyCsv := AddButton(AFrame, mBar, TAtlasDebugStrings.Text(TAtlasDebugTextId.MemoryCopyCsv),
+  AFrame.FControls.CopyCsv := AddButton(AFrame, mBar, TAtlasMemoryStrings.Text(TAtlasMemoryTextId.MemoryCopyCsv),
     AFrame.CopyCsvClick);
-  AFrame.FControls.Mark := AddButton(AFrame, mBar, TAtlasDebugStrings.Text(TAtlasDebugTextId.MemoryMark),
+  AFrame.FControls.Mark := AddButton(AFrame, mBar, TAtlasMemoryStrings.Text(TAtlasMemoryTextId.MemoryMark),
     AFrame.MarkClick);
   AFrame.FControls.SeriesBox := TComboBox.Create(AFrame);
   AFrame.FControls.SeriesBox.Parent := mBar;
@@ -212,7 +212,7 @@ begin
   // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
   Name := '';
   CreateTopBar(Self);
-  mHint := AddBottomLabel(Self, cOrderHint, TAtlasDebugStrings.Text(TAtlasDebugTextId.MemoryRangeHint));
+  mHint := AddBottomLabel(Self, cOrderHint, TAtlasMemoryStrings.Text(TAtlasMemoryTextId.MemoryRangeHint));
   mHint.Font.Color := clGrayText;
   FControls.RangeLabel := AddBottomLabel(Self, cOrderRange, '');
   FControls.NowLabel := AddBottomLabel(Self, cOrderNow, '');
@@ -220,7 +220,7 @@ begin
   FControls.Chart.Parent := Self;
   FControls.Chart.Align := alClient;
   FControls.Chart.AlignWithMargins := True;
-  FControls.Chart.EmptyText := TAtlasDebugStrings.Text(TAtlasDebugTextId.MemoryEmpty);
+  FControls.Chart.EmptyText := TAtlasMemoryStrings.Text(TAtlasMemoryTextId.MemoryEmpty);
   FControls.Chart.OnSelection := ChartSelection;
   UpdateLabels;
 end;

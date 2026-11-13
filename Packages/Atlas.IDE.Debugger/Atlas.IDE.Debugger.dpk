@@ -51,6 +51,7 @@ contains
   Atlas.Core.Debug.InstanceBreakpoint in 'Source\Core\Debug\Atlas.Core.Debug.InstanceBreakpoint.pas',
   Atlas.Core.Debug.DataBreakpoint in 'Source\Core\Debug\Atlas.Core.Debug.DataBreakpoint.pas',
   Atlas.UI.Debug.Strings in 'Source\UI\Debug\Atlas.UI.Debug.Strings.pas',
+  Atlas.UI.Debug.Memory.Strings in 'Source\UI\Debug\Atlas.UI.Debug.Memory.Strings.pas',
   Atlas.IDE.Debug.Evaluator in 'Source\IDE\Debug\Atlas.IDE.Debug.Evaluator.pas',
   Atlas.IDE.Debug.Visualizers in 'Source\IDE\Debug\Atlas.IDE.Debug.Visualizers.pas',
   Atlas.IDE.Debug.DisplayRules in 'Source\IDE\Debug\Atlas.IDE.Debug.DisplayRules.pas',

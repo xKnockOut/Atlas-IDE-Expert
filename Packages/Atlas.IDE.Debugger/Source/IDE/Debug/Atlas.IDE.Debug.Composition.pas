@@ -321,7 +321,7 @@ begin
     Command('Atlas.DebugEvaluateIdeDialog', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateIdeDialogCommand),
       TAtlasIdeDebugEvaluate.OpenIdeDialog, DebugEvaluateVisible),
     // Speicherverlauf (#858); nur sichtbar, solange debug.memoryTimeline an ist.
-    Command('Atlas.DebugMemory', TAtlasDebugStrings.Text(TAtlasDebugTextId.MemoryCommand),
+    Command('Atlas.DebugMemory', DebugMemoryCommandText,
       ShowDebugMemory, DebugMemoryVisible),
     // Nur eigener Code (#578): schaltet debug.justMyCode um, deshalb immer sichtbar.
     Command('Atlas.DebugJustMyCode', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugJustMyCodeCommand),

@@ -30,6 +30,8 @@ procedure ValueThemeChanged;
 /// <summary>Befehl Atlas.DebugMemory: Fenster „Atlas: Speicher“.</summary>
 procedure ShowDebugMemory;
 function DebugMemoryVisible: Boolean;
+/// <summary>Menütext des Befehls Atlas.DebugMemory.</summary>
+function DebugMemoryCommandText: string;
 /// <summary>Befehle „Wert ändern“ und „Geänderten Wert zurücksetzen“ (#868), noch ohne Sicherung.</summary>
 function ValueCommands: TArray<TAtlasModuleCommand>;
 /// <summary>Einträge im Kontextmenü des Editors für Werte ändern (#868).</summary>
@@ -60,7 +62,8 @@ uses
   Atlas.IDE.Debug.AccessViolation,
   Atlas.IDE.Debug.WhyHere,
   Atlas.IDE.Debug.MemoryTimeline,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Memory.Strings;
 
 const
   /// <summary>F2 (VK_F2): nur im angehaltenen Zustand mit Bezeichner an der Schreibmarke, sonst geht sie an die IDE.
@@ -551,6 +554,11 @@ end;
 procedure ShowDebugMemory;
 begin
   TAtlasIdeDebugMemoryTimeline.ShowWindow;
+end;
+
+function DebugMemoryCommandText: string;
+begin
+  Result := TAtlasMemoryStrings.Text(TAtlasMemoryTextId.MemoryCommand);
 end;
 
 function DebugMemoryVisible: Boolean;

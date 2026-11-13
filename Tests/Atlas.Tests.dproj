@@ -966,6 +966,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\UI\Bookmarks\Atlas.UI.Bookmarks.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\UI\Analysis\Atlas.UI.Analysis.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.Strings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.Memory.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Rules\Source\UI\Rules\Atlas.UI.Rules.Strings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Strings.Tests.pas"/>
@@ -1015,6 +1016,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Bookmarks.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Analysis.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.Strings.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.Memory.Strings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.Strings.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.ToolStrings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.ToolStrings.Tests.pas"/>

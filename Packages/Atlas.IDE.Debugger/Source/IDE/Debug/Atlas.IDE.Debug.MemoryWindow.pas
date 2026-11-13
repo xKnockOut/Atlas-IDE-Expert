@@ -44,7 +44,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Memory.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.DockWindow;
 
@@ -80,7 +80,7 @@ end;
 
 function TMemoryDock.GetCaption: string;
 begin
-  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.MemoryCaption);
+  Result := TAtlasMemoryStrings.Text(TAtlasMemoryTextId.MemoryCaption);
 end;
 
 function TMemoryDock.GetIdentifier: string;

@@ -85,7 +85,7 @@ uses
   Vcl.Forms,
   Vcl.Themes,
   Atlas.Core.Style.Color,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Memory.Strings;
 
 const
   /// <summary>Teilstriche der Wertachse.</summary>
@@ -214,7 +214,7 @@ begin
     end;
     mFound := mIndex;
   end;
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MemoryHover, [Seconds(FTimeline[mFound].AtMs),
+  Result := TAtlasMemoryStrings.Fmt(TAtlasMemoryTextId.MemoryHover, [Seconds(FTimeline[mFound].AtMs),
     TAtlasMemoryFormat.Value(FSeries, FTimeline[mFound].Values[FSeries], FormatSettings)]);
 end;
 

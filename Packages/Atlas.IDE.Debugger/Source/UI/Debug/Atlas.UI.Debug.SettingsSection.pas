@@ -32,6 +32,7 @@ type
     procedure BuildVisualizers;
     procedure BuildStepping;
     procedure BuildMore;
+    procedure BuildRestartRows;
   protected
     procedure BuildRows; override;
   public
@@ -56,7 +57,8 @@ uses
   Atlas.Core.Settings.FolderList,
   Atlas.Core.Debug.EventLog,
   Atlas.UI.Strings,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Memory.Strings;
 
 const
   cVisualizerTypesKey = 'debug.visualizers.types';
@@ -87,6 +89,7 @@ begin
   BuildVisualizers;
   BuildStepping;
   BuildMore;
+  BuildRestartRows;
 end;
 
 procedure TAtlasDebugSettingsSection.BuildVisualizers;
@@ -239,6 +242,11 @@ begin
   Line('debug.logpointPrefix', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLogpointPrefix));
   Switch('debug.noSourcePage', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugNoSourcePage));
   Line('debug.noSourcePage.ignoredUnits', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugNoSourceIgnored));
+end;
+
+procedure TAtlasDebugSettingsSection.BuildRestartRows;
+begin
+  // Neu starten, erneut anhängen (#2171), Startverbünde (#867), Speicherverlauf (#858).
   Switch('debug.restart', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugRestart));
   Switch('debug.restart.reenableBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugRestartReenable));
   // Erneut anhängen (#2171).
@@ -249,9 +257,9 @@ begin
   Switch('debug.launchGroups', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLaunchGroups));
   Switch('debug.pinnedValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPinnedValues));
   // Speicherverlauf (#858).
-  Switch('debug.memoryTimeline', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugMemoryTimeline));
+  Switch('debug.memoryTimeline', TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimeline));
   Number('debug.memoryTimeline.intervalMs',
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugMemoryTimelineInterval));
+    TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimelineInterval));
 end;
 
 function TAtlasDebugSettingsSection.VisualizerKindCheck(AKind: TAtlasVisualizerKind): TCheckBox;

@@ -422,6 +422,7 @@ Atlas.UI.CodeInsight.Strings.Tests
 Atlas.UI.Commands.Strings.Tests
 Atlas.UI.Completion.Strings.Tests
 Atlas.UI.Debug.Strings.Tests
+Atlas.UI.Debug.Memory.Strings.Tests
 Atlas.UI.Designer.Strings.Tests
 Atlas.UI.Diagnostics.Strings.Tests
 Atlas.UI.Editor.Strings.Tests
