@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnPackages: array[0..113] of string = (
+  cCatalogLinesEnPackages: array[0..124] of string = (
     '{',
     '      "id": "implicit-package-import",',
     '      "name": "Implicit package import",',
@@ -146,6 +146,20 @@ const
     'y in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence.",',
     '      "bad": "Assert.AreEqual(FList.Count, 4);",',
     '      "good": "Assert.AreEqual(4, FList.Count);",',
+    '      "safeFix": true',
+    '    },',
+    '{',
+    '      "id": "dunitx-leak-monitor",',
+    '      "name": "DUnitX test program without leak monitor",',
+    '      "category": "code-smell",',
+    '      "severity": "hint",',
+    '      "group": "packages",',
+    '      "description": "A program (.dpr) that uses DUnitX.TestFramework but no leak monitor of DUnitX (DUnitX.MemoryLeakMonitor.FastMM4 or .FastMM5): without one DUnitX measures no leaks per test, so th' +
+    'e test marks in the editor never show them. DUnitX.MemoryLeakMonitor.Default does not count, it measures nothing. Reported at the DUnitX.TestFramework entry. Quick fix (safe): add the monitor to uses,' +
+    ' DUnitX.MemoryLeakMonitor.FastMM5 when the program uses FastMM5, otherwise DUnitX.MemoryLeakMonitor.FastMM4, which also works with the memory manager of the RTL without FastMM4.pas. Units stay silent.' +
+    ' High confidence.",',
+    '      "bad": "uses DUnitX.TestFramework, Fall.Tests;",',
+    '      "good": "uses DUnitX.TestFramework, DUnitX.MemoryLeakMonitor.FastMM4, Fall.Tests;",',
     '      "safeFix": true',
     '    }');
 

@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDePackages: array[0..52] of string = (
+  cCatalogLinesDePackages: array[0..57] of string = (
     '{',
     '      "id": "implicit-package-import",',
     '      "name": "Implizit eingebundene Unit",',
@@ -87,6 +87,14 @@ const
     'die Meldung beim Fehlschlag nennt deshalb die Konstante als erhaltenen und den berechneten Wert als erwarteten Wert und führt in die Irre. Als Konstante zählen Literale, True, False, nil, deklarierte ' +
     'Konstanten und Aufzählungswerte, auch mit Vorzeichen oder über Operatoren verknüpft. Korrektur (sicher): die beiden Argumente tauschen; weitere Argumente (Meldung, Toleranz) bleiben. Aufrufe mit zwei ' +
     'Konstanten oder zwei berechneten Werten bleiben still. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch."',
+    '    },',
+    '{',
+    '      "id": "dunitx-leak-monitor",',
+    '      "name": "DUnitX-Testprogramm ohne Leckmonitor",',
+    '      "description": "Ein Programm (.dpr), das DUnitX.TestFramework, aber keinen Leckmonitor von DUnitX (DUnitX.MemoryLeakMonitor.FastMM4 oder .FastMM5) verwendet: Ohne ihn misst DUnitX keine Lecks je' +
+    ' Test, die Testmarken im Editor zeigen sie nie. DUnitX.MemoryLeakMonitor.Default zählt nicht, er misst nichts. Gemeldet am Eintrag DUnitX.TestFramework. Korrektur (sicher): den Monitor ins uses eintra' +
+    'gen, DUnitX.MemoryLeakMonitor.FastMM5, wenn das Programm FastMM5 verwendet, sonst DUnitX.MemoryLeakMonitor.FastMM4, der auch mit dem Speichermanager der RTL ohne FastMM4.pas arbeitet. Units bleiben st' +
+    'ill. Sicherheit hoch."',
     '    }');
 
 implementation

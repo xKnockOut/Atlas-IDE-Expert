@@ -21,7 +21,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
 | [Stil und Metriken](#gruppe-style) | 56 |
-| [Packages und Tests](#gruppe-packages) | 7 |
+| [Packages und Tests](#gruppe-packages) | 8 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
 <a id="gruppe-find-bugs"></a>
@@ -438,6 +438,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`dunitx-fixture-not-registered`](#dunitx-fixture-not-registered) | DUnitX-Testklasse nie registriert | Bug | Warnung |
 | [`dunitx-istrue-equality`](#dunitx-istrue-equality) | Assert.IsTrue mit Vergleich statt AreEqual | Code Smell | Hinweis |
 | [`dunitx-swapped-expected`](#dunitx-swapped-expected) | Erwarteter und erhaltener Wert vertauscht | Code Smell | Hinweis |
+| [`dunitx-leak-monitor`](#dunitx-leak-monitor) | DUnitX-Testprogramm ohne Leckmonitor | Code Smell | Hinweis |
 
 <a id="gruppe-internal"></a>
 ### Atlas intern
@@ -4780,6 +4781,27 @@ Richtig:
 
 ```pascal
 Assert.AreEqual(4, FList.Count);
+```
+
+<a id="dunitx-leak-monitor"></a>
+### dunitx-leak-monitor
+
+**DUnitX-Testprogramm ohne Leckmonitor** · Code Smell · Hinweis · Gruppe Packages und Tests
+
+Ein Programm (.dpr), das DUnitX.TestFramework, aber keinen Leckmonitor von DUnitX (DUnitX.MemoryLeakMonitor.FastMM4 oder .FastMM5) verwendet: Ohne ihn misst DUnitX keine Lecks je Test, die Testmarken im Editor zeigen sie nie. DUnitX.MemoryLeakMonitor.Default zählt nicht, er misst nichts. Gemeldet am Eintrag DUnitX.TestFramework. Korrektur (sicher): den Monitor ins uses eintragen, DUnitX.MemoryLeakMonitor.FastMM5, wenn das Programm FastMM5 verwendet, sonst DUnitX.MemoryLeakMonitor.FastMM4, der auch mit dem Speichermanager der RTL ohne FastMM4.pas arbeitet. Units bleiben still. Sicherheit hoch.
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix dunitx-leak-monitor`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
+Mit Treffer:
+
+```pascal
+uses DUnitX.TestFramework, Fall.Tests;
+```
+
+Richtig:
+
+```pascal
+uses DUnitX.TestFramework, DUnitX.MemoryLeakMonitor.FastMM4, Fall.Tests;
 ```
 
 <a id="event-call-without-assigned"></a>
