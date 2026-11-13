@@ -713,6 +713,7 @@ contains
   Atlas.IDE.Editor.LearnedSuggestions in 'Source\IDE\Editor\Atlas.IDE.Editor.LearnedSuggestions.pas',
   Atlas.IDE.Editor.StatementCompletion in 'Source\IDE\Editor\Atlas.IDE.Editor.StatementCompletion.pas',
   Atlas.Core.Editor.LineAnchor in 'Source\Core\Editor\Atlas.Core.Editor.LineAnchor.pas',
+  Atlas.Core.Editor.MethodAnchor in 'Source\Core\Editor\Atlas.Core.Editor.MethodAnchor.pas',
   Atlas.Core.Editor.LineTracking in 'Source\Core\Editor\Atlas.Core.Editor.LineTracking.pas',
   Atlas.UI.Popup.TitledTip in 'Source\UI\Popup\Atlas.UI.Popup.TitledTip.pas',
   Atlas.UI.Popup.CrumbCard in 'Source\UI\Popup\Atlas.UI.Popup.CrumbCard.pas',
