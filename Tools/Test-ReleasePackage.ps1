@@ -128,7 +128,7 @@ try {
 $Last = $Packages[-1]
 Expect-Failure 'Updater fehlt' 'AtlasUpdate\.exe' { param($O) Remove-Item (Join-Path $O 'Win64/Release/Bin/AtlasUpdate.exe') }
 Expect-Failure 'Monitor fehlt' 'AtlasMonitor\.exe' { param($O) Remove-Item (Join-Path $O 'Win64/Release/Bin/AtlasMonitor.exe') }
-Expect-Failure 'WebView2-Lader fehlt' 'WebView2Loader\.dll' { param($O) Remove-Item (Join-Path $O 'Win64/Release/Bin/WebView2Loader.dll') }
+# WebView2Loader.dll ist optional (ohne sie öffnet AtlasMonitor den Bericht im Standardbrowser): kein Abbruch.
 Expect-Failure 'Win64-BPL fehlt' "Win64-BPL von $([regex]::Escape($Last))" {
     param($O) Remove-Item (Join-Path $O "Win64/Release/Bpl/${Last}370.bpl")
 }

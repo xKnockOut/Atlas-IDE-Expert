@@ -6,7 +6,7 @@
 .DESCRIPTION
     Erwartet die Release-Builds wie im Release-Workflow:
     - Output\Win64\Release\Bin: AtlasServer.exe, AtlasServer.map, AtlasUpdate.exe,
-      AtlasMonitor.exe und WebView2Loader.dll (Nachbau-Schritt von AtlasMonitor)
+      AtlasMonitor.exe und, falls vorhanden, WebView2Loader.dll (Nachbau-Schritt von AtlasMonitor)
     - Output\Win32\Release\Bpl und Output\Win64\Release\Bpl: Kern und jedes
       Modul-Package (Packages\Atlas.IDE.*), je mit Map-Datei.
 
@@ -73,7 +73,15 @@ if ($Packages.Count -eq 0) {
 }
 
 $Built = [System.Collections.Generic.List[IO.FileInfo]]::new()
-$BinFiles = @('AtlasServer.exe', 'AtlasServer.map', 'AtlasUpdate.exe', 'AtlasMonitor.exe', 'WebView2Loader.dll')
+$BinFiles = @('AtlasServer.exe', 'AtlasServer.map', 'AtlasUpdate.exe', 'AtlasMonitor.exe')
+# WebView2Loader.dll nur, wenn vorhanden (Delphi legt sie erst mit dem GetIt-Paket „EdgeView2 SDK“ unter Redist ab):
+# Ohne sie öffnet AtlasMonitor den Bericht im Standardbrowser (Shell.Monitor.ReportPage).
+if (Test-Path -LiteralPath (Join-Path $Bin 'WebView2Loader.dll') -PathType Leaf) {
+    $BinFiles += 'WebView2Loader.dll'
+}
+else {
+    Write-Warning 'WebView2Loader.dll fehlt: Der Bericht in AtlasMonitor öffnet sich im Standardbrowser.'
+}
 foreach ($Name in $BinFiles) {
     Assert-File (Join-Path $Bin $Name)
 }
