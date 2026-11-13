@@ -147,6 +147,8 @@ begin
   Switch('debug.breakOnNextEvent', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakOnNextEvent));
   FBreakOnNextEventExcluded := Line(cBreakExcludedKey,
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakOnNextEventExcluded));
+  // Haltepunkte, die nicht greifen werden (#577).
+  Switch('debug.checkBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugCheckBreakpoints));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildMore;
@@ -166,6 +168,12 @@ begin
   Switch('debug.moduleOfAddress', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugModuleOfAddress));
   // Was wartet worauf? (#587).
   Switch('debug.deadlocks', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugDeadlocks));
+  // Parallele Aufrufstapel (#837).
+  Switch('debug.parallelStacks', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugParallelStacks));
+  Line('debug.parallelStacks.waitRoutines',
+    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugParallelStacksWaitRoutines));
+  Number('debug.parallelStacks.maxThreads',
+    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugParallelStacksMaxThreads));
 
   // Exception-Verlauf (#517), nur eigener Code (#578), Exception-Leiste (#783), Werte im Editor (#508).
   Switch('debug.exceptionHistory', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugExceptionHistory));

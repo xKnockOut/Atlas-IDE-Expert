@@ -744,6 +744,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Foundation.Dialog` | `UI/Foundation/Atlas.UI.Foundation.Dialog.pas` | Basis der im Code gebauten Dialoge, Knopfleiste, Hinweiszeile (#2062) |
 | `Atlas.UI.Foundation.ListView` | `UI/Foundation/Atlas.UI.Foundation.ListView.pas` | Liste mit Spaltenbreiten in logischen Pixeln (#2063) |
 | `Atlas.UI.Foundation.WrapLabel` | `UI/Foundation/Atlas.UI.Foundation.WrapLabel.pas` | Umbrechende Beschriftung, Höhe folgt der Breite |
+| `Atlas.UI.Foundation.EditorFont` | `UI/Foundation/Atlas.UI.Foundation.EditorFont.pas` | Fassung der Editorschrift mit fester Auszeichnung für Texte im Editor (Befunde, Werte, Änderungsmarken) |
 | `Atlas.UI.Generate.Strings` | `UI/Generate/Atlas.UI.Generate.Strings.pas` | Ordner `UI/Generate` |
 | `Atlas.UI.Hover.Strings` | `UI/Hover/Atlas.UI.Hover.Strings.pas` | Ordner `UI/Hover` |
 | `Atlas.UI.Notifications.Strings` | `UI/Notifications/Atlas.UI.Notifications.Strings.pas` | Ordner `UI/Notifications` |
@@ -886,12 +887,14 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.DialogCompletion` | `Core/Debug/Atlas.Core.Debug.DialogCompletion.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.DisplayRules` | `Core/Debug/Atlas.Core.Debug.DisplayRules.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Evaluate` | `Core/Debug/Atlas.Core.Debug.Evaluate.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.BreakpointCheck` | `Core/Debug/Atlas.Core.Debug.BreakpointCheck.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.EventBreak` | `Core/Debug/Atlas.Core.Debug.EventBreak.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ExceptionBanner` | `Core/Debug/Atlas.Core.Debug.ExceptionBanner.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ExceptionDialog` | `Core/Debug/Atlas.Core.Debug.ExceptionDialog.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Modules` | `Core/Debug/Atlas.Core.Debug.Modules.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Threads` | `Core/Debug/Atlas.Core.Debug.Threads.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Deadlocks` | `Core/Debug/Atlas.Core.Debug.Deadlocks.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.ParallelStacks` | `Core/Debug/Atlas.Core.Debug.ParallelStacks.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Exceptions` | `Core/Debug/Atlas.Core.Debug.Exceptions.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.IgnoreList` | `Core/Debug/Atlas.Core.Debug.IgnoreList.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.InlineValues` | `Core/Debug/Atlas.Core.Debug.InlineValues.pas` | Ordner `Core/Debug` |
@@ -904,9 +907,11 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.Visualizers` | `Core/Debug/Atlas.Core.Debug.Visualizers.pas` | Ordner `Core/Debug` |
 | `Atlas.IDE.Debug.AccessViolation` | `IDE/Debug/Atlas.IDE.Debug.AccessViolation.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.AccessViolationUnderline` | `IDE/Debug/Atlas.IDE.Debug.AccessViolationUnderline.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.BreakpointCheck` | `IDE/Debug/Atlas.IDE.Debug.BreakpointCheck.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Breakpoints` | `IDE/Debug/Atlas.IDE.Debug.Breakpoints.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Composition` | `IDE/Debug/Atlas.IDE.Debug.Composition.pas` | Anmeldung des Moduls `atlas.debugger`, #1455 |
 | `Atlas.IDE.Debug.Composition.Values` | `IDE/Debug/Atlas.IDE.Debug.Composition.Values.pas` | Teile für Werte und Ausdrücke des Moduls `atlas.debugger`, #1455 |
+| `Atlas.IDE.Debug.Composition.Breakpoints` | `IDE/Debug/Atlas.IDE.Debug.Composition.Breakpoints.pas` | Anhalten und Haltepunkte des Moduls `atlas.debugger` (Teile, Befehle, Menüeinträge), #577, #856 |
 | `Atlas.IDE.Debug.Composition.Session` | `IDE/Debug/Atlas.IDE.Debug.Composition.Session.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.DialogCompletion` | `IDE/Debug/Atlas.IDE.Debug.DialogCompletion.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.DisplayRules` | `IDE/Debug/Atlas.IDE.Debug.DisplayRules.pas` | Ordner `IDE/Debug` |
@@ -918,6 +923,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.EventBreak` | `IDE/Debug/Atlas.IDE.Debug.EventBreak.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Modules` | `IDE/Debug/Atlas.IDE.Debug.Modules.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Deadlocks` | `IDE/Debug/Atlas.IDE.Debug.Deadlocks.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.Threads` | `IDE/Debug/Atlas.IDE.Debug.Threads.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.ParallelStacks` | `IDE/Debug/Atlas.IDE.Debug.ParallelStacks.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.ParallelStacksWindow` | `IDE/Debug/Atlas.IDE.Debug.ParallelStacksWindow.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.ExceptionBar` | `IDE/Debug/Atlas.IDE.Debug.ExceptionBar.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.ExceptionDialog` | `IDE/Debug/Atlas.IDE.Debug.ExceptionDialog.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Exceptions` | `IDE/Debug/Atlas.IDE.Debug.Exceptions.pas` | Ordner `IDE/Debug` |
@@ -938,13 +946,16 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.UnavailableFixes` | `IDE/Debug/Atlas.IDE.Debug.UnavailableFixes.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Visualizers` | `IDE/Debug/Atlas.IDE.Debug.Visualizers.pas` | Ordner `IDE/Debug` |
 | `Atlas.UI.Debug.AccessViolation` | `UI/Debug/Atlas.UI.Debug.AccessViolation.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.BreakpointCheck` | `UI/Debug/Atlas.UI.Debug.BreakpointCheck.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.Deadlocks` | `UI/Debug/Atlas.UI.Debug.Deadlocks.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.ParallelStacks` | `UI/Debug/Atlas.UI.Debug.ParallelStacks.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EvaluateFrame` | `UI/Debug/Atlas.UI.Debug.EvaluateFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EvaluateTree` | `UI/Debug/Atlas.UI.Debug.EvaluateTree.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EventBreak` | `UI/Debug/Atlas.UI.Debug.EventBreak.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionBar` | `UI/Debug/Atlas.UI.Debug.ExceptionBar.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionStack` | `UI/Debug/Atlas.UI.Debug.ExceptionStack.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionsFrame` | `UI/Debug/Atlas.UI.Debug.ExceptionsFrame.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.ParallelStacksFrame` | `UI/Debug/Atlas.UI.Debug.ParallelStacksFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.InlineValuePainter` | `UI/Debug/Atlas.UI.Debug.InlineValuePainter.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.SettingsSection` | `UI/Debug/Atlas.UI.Debug.SettingsSection.pas` | Ordner `UI/Debug`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Debug.StepFilterFrame` | `UI/Debug/Atlas.UI.Debug.StepFilterFrame.pas` | Ordner `UI/Debug` |

@@ -13,20 +13,19 @@ uses
   Winapi.Windows,
   System.Types,
   Vcl.Graphics,
-  Atlas.Core.Debug.InlineValues;
+  Atlas.Core.Debug.InlineValues,
+  Atlas.UI.Foundation.EditorFont;
 
 type
   /// <summary>Schrift und Farben der Werte; je Hintergrund bzw. Editorschrift einmal bestimmt.</summary>
   TAtlasInlineValuePainter = class
   private
-    FFont: TFont;
-    FFontKey: string;
+    FFont: TAtlasEditorFont;
     FBack: COLORREF;
     FBackKnown: Boolean;
     FTextColor: COLORREF;
     FChangedColor: COLORREF;
     procedure EnsureColors(ABack: COLORREF);
-    procedure EnsureFont(const AEditorFont: TFont);
   public
     constructor Create;
     destructor Destroy; override;
@@ -51,7 +50,7 @@ uses
 constructor TAtlasInlineValuePainter.Create;
 begin
   inherited Create;
-  FFont := TFont.Create;
+  FFont := TAtlasEditorFont.Create([fsItalic]);
 end;
 
 destructor TAtlasInlineValuePainter.Destroy;
@@ -75,24 +74,10 @@ begin
   FBackKnown := True;
 end;
 
-procedure TAtlasInlineValuePainter.EnsureFont(const AEditorFont: TFont);
-var
-  mKey: string;
-begin
-  mKey := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
-  if mKey = FFontKey then
-  begin
-    Exit;
-  end;
-  FFont.Assign(AEditorFont);
-  FFont.Style := [fsItalic];
-  FFontKey := mKey;
-end;
-
 procedure TAtlasInlineValuePainter.Ensure(ABack: COLORREF; const AEditorFont: TFont);
 begin
   EnsureColors(ABack);
-  EnsureFont(AEditorFont);
+  FFont.Follow(AEditorFont);
 end;
 
 function TAtlasInlineValuePainter.Draw(ADC: HDC; const ARect: TRect; AX: Integer;
@@ -105,7 +90,7 @@ begin
   Result := AX;
   mSaved := SaveDC(ADC);
   try
-    SelectObject(ADC, FFont.Handle);
+    SelectObject(ADC, FFont.Font.Handle);
     SetBkMode(ADC, TRANSPARENT);
     GetTextExtentPoint32W(ADC, 'Xg', 2, mSize);
     mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mSize.cy) div 2);

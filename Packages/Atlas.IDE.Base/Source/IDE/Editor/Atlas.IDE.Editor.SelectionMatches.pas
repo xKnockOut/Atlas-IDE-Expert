@@ -33,7 +33,8 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Style.Color,
-  Atlas.Core.Editor.SelectionMatches;
+  Atlas.Core.Editor.SelectionMatches,
+  Atlas.UI.Foundation.EditorFont;
 
 type
   TAtlasIdeSelectionMatches = class
@@ -70,8 +71,7 @@ type
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
     FTimer: TTimer;
-    FFont: TFont;
-    FFontKey: string;
+    FFont: TAtlasEditorFont;
     FState: TState;
     FVisibleOnly: Boolean;
     FLines: TArray<string>;
@@ -83,7 +83,6 @@ type
     procedure Locate(const AView: IOTAEditView; var AState: TState);
     procedure Clear;
     procedure BuildIndex;
-    procedure EnsureFont(const AEditorFont: TFont);
     function CountText: string;
     procedure PaintMatches(const ARect: TRect; const AContext: INTACodeEditorPaintContext; const AText: string;
       const AMatches: TArray<TAtlasSelectionMatch>; ABack: TAtlasColor);
@@ -144,7 +143,7 @@ begin
   FIndex := -1;
   FState.SelectionLine := -1;
   FByLine := TDictionary<Integer, TArray<TAtlasSelectionMatch>>.Create;
-  FFont := TFont.Create;
+  FFont := TAtlasEditorFont.Create([]);
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
@@ -169,7 +168,10 @@ begin
   begin
     mServices.RemoveEditorEventsNotifier(FIndex);
   end;
-  FEvents.OnEditorPaintLine := nil;
+  if FEvents <> nil then
+  begin
+    FEvents.OnEditorPaintLine := nil;
+  end;
   FEventsRef := nil;
   mPainted := FState.Term <> '';
   Clear;
@@ -328,20 +330,6 @@ begin
   Invalidate;
 end;
 
-procedure TAtlasIdeSelectionMatches.EnsureFont(const AEditorFont: TFont);
-var
-  mKey: string;
-begin
-  mKey := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
-  if mKey = FFontKey then
-  begin
-    Exit;
-  end;
-  FFont.Assign(AEditorFont);
-  FFont.Style := [];
-  FFontKey := mKey;
-end;
-
 function TAtlasIdeSelectionMatches.CountText: string;
 begin
   if FVisibleOnly then
@@ -418,12 +406,12 @@ begin
   mKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
   X := TAtlasLineTail.Start(Self, mKey, mCell.Left);
   mColors := TAtlasColors.ForBackground(ABack);
-  EnsureFont(AContext.Canvas.Font);
+  FFont.Follow(AContext.Canvas.Font);
   mDC := AContext.Canvas.Handle;
   mSaved := SaveDC(mDC);
   mBrush := CreateSolidBrush(COLORREF(ColorToRGB(TColor(TAtlasColorMath.Mix(mColors.Accent, ABack, cMarkStrength)))));
   try
-    SelectObject(mDC, FFont.Handle);
+    SelectObject(mDC, FFont.Font.Handle);
     GetTextExtentPoint32W(mDC, PChar(mCaption), Length(mCaption), mSize);
     mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mSize.cy) div 2);
     mMark := TRect.Create(X, ARect.Top + 1, X + mSize.cx + 2 * cMarkPadding, ARect.Bottom - 1);

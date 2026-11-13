@@ -66,6 +66,8 @@ type
     procedure RegisterDfmPropertyRules;
     /// <summary>Leckprüfung einrichten (#1880).</summary>
     procedure RegisterLeakSetup;
+    /// <summary>Befehl atlas.server.testCases (#1879).</summary>
+    procedure RegisterTestCases;
     /// <summary>Befehle der Schnellbefehle: Einordnen, Erzeugen-Menü, Testunit, Unit-Suche.</summary>
     procedure RegisterSlashCommands;
   public
@@ -94,6 +96,7 @@ uses
   Atlas.Common.Editing.MethodOrder,
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Lsp.ServerActivity,
+  Atlas.Common.Lsp.TestCases,
   Shell.Composition.DfmPropertyRules,
   Shell.Composition.LeakSetup;
 
@@ -124,6 +127,7 @@ begin
   FServerCommands.RegisterConvertCommand(FCommands);
   RegisterDfmPropertyRules;
   RegisterLeakSetup;
+  RegisterTestCases;
   FCode.Refactorings.Register(FCommands);
   FAnalysis.Analysis.RegisterReportCommands(FCommands);
   FAnalysis.Overviews.RegisterReportCommands(FCommands);
@@ -313,6 +317,16 @@ begin
   mServices.Workspaces := FCore.Workspaces;
   mServices.ReadText := ReadText;
   TShellLeakSetup.Attach(FCommands, mServices);
+end;
+
+procedure TShellCommandArea.RegisterTestCases;
+begin
+  // Closure: Free Pascal bricht ab, wenn eine Methode einer Klasse aus einer anderen Unit als Referenz geht.
+  TLspTestCases.Attach(FCommands,
+    function(const AUri: string; out AText: string): Boolean
+    begin
+      Result := ReadText(TDocumentUris.ToPath(AUri), AText);
+    end);
 end;
 
 procedure TShellCommandArea.RegisterSlashCommands;

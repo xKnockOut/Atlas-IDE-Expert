@@ -39,7 +39,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.ExitPoints,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.UI.Foundation.EditorFont;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -74,8 +75,7 @@ type
     FIndex: Integer;
     FTimer: TTimer;
     FWorkers: TAtlasWorkerSlot;
-    FFont: TFont;
-    FFontKey: string;
+    FFont: TAtlasEditorFont;
     FRequest: Integer;
     FIdleKey: string;
     FIdleCount: Integer;
@@ -95,7 +95,6 @@ type
     procedure Clear;
     procedure Ask(const AText: string; ALine, ACharacter: Integer; AExceptions, ALoops: Boolean);
     procedure Accept(ARequest: Integer; const AFileName: string; AVersion: Cardinal; const ASet: TAtlasExitPointSet);
-    procedure EnsureFont(const AEditorFont: TFont);
     function Jump(ABackward: Boolean): Boolean;
     procedure PaintPoints(const ARect: TRect; const AContext: INTACodeEditorPaintContext; const AText: string;
       const APoints: TArray<TAtlasExitPoint>; ABack: TAtlasColor);
@@ -170,7 +169,7 @@ begin
   FSession := ASession;
   FIndex := -1;
   FWorkers := TAtlasWorkerSlot.Create(HInstance);
-  FFont := TFont.Create;
+  FFont := TAtlasEditorFont.Create([]);
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
@@ -550,20 +549,6 @@ begin
   Result := True;
 end;
 
-procedure TAtlasIdeExitPoints.EnsureFont(const AEditorFont: TFont);
-var
-  mKey: string;
-begin
-  mKey := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
-  if mKey = FFontKey then
-  begin
-    Exit;
-  end;
-  FFont.Assign(AEditorFont);
-  FFont.Style := [];
-  FFontKey := mKey;
-end;
-
 procedure TAtlasIdeExitPoints.PaintPoints(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const AText: string; const APoints: TArray<TAtlasExitPoint>; ABack: TAtlasColor);
 var
@@ -621,12 +606,12 @@ begin
   begin
     mTone := mColors.Error;
   end;
-  EnsureFont(AContext.Canvas.Font);
+  FFont.Follow(AContext.Canvas.Font);
   mDC := AContext.Canvas.Handle;
   mSaved := SaveDC(mDC);
   mBrush := CreateSolidBrush(COLORREF(ColorToRGB(TColor(TAtlasColorMath.Mix(mTone, ABack, cMarkStrength)))));
   try
-    SelectObject(mDC, FFont.Handle);
+    SelectObject(mDC, FFont.Font.Handle);
     GetTextExtentPoint32W(mDC, PChar(mCaption), Length(mCaption), mSize);
     mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mSize.cy) div 2);
     mMark := TRect.Create(X, ARect.Top + 1, X + mSize.cx + 2 * cMarkPadding, ARect.Bottom - 1);

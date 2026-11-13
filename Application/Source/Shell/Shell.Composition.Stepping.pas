@@ -1,7 +1,8 @@
 ﻿unit Shell.Composition.Stepping;
 
 // Internals-Rolle Shell: Befehle für den Debugger des Plugins: gezielt hineinspringen (#836), Schrittfilter
-// (#850) und „Warum bin ich hier?“ (#1878). Sie lesen nur; Code-Aktionen gibt es hier keine.
+// (#850), „Warum bin ich hier?“ (#1878) und Haltepunkte, die nicht greifen werden (#577). Sie lesen nur;
+// Code-Aktionen gibt es hier keine.
 
 interface
 
@@ -21,6 +22,8 @@ type
     function StepFilterOfFile(const AUri: string; ALine: Integer): TJSONObject;
     function StepFilterCounts(const AArguments: TJSONArray): TJSONValue;
     function EnclosingConditions(const AArguments: TJSONArray): TJSONValue;
+    function BreakpointCheck(const AArguments: TJSONArray): TJSONValue;
+    function BreakpointCheckFile(const AUri: string; const ALines: TArray<Integer>): TJSONObject;
   public
     procedure Register(ACommands: TLspCommands); override;
     function Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>; override;
@@ -40,6 +43,10 @@ uses
   Atlas.Common.Lsp.StepTargets,
   Atlas.Common.Lsp.StepFilter,
   Atlas.Common.Lsp.EnclosingConditions,
+  Atlas.Common.Lsp.BreakpointCheck,
+  Atlas.Common.Pascal.Preprocessor,
+  Atlas.Common.Pascal.CompilerSwitches,
+  Atlas.Common.Projects.Contract,
   Atlas.Common.Localization.Texts,
   Shell.Texts;
 
@@ -68,6 +75,7 @@ begin
   ACommands.Register(TLspStepFilter.cCommand, StepFilter);
   ACommands.Register(TLspStepFilter.cCountsCommand, StepFilterCounts);
   ACommands.Register(TLspEnclosingConditions.cCommand, EnclosingConditions);
+  ACommands.Register(TLspBreakpointCheck.cCommand, BreakpointCheck);
 end;
 
 function TShellStepping.Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
@@ -230,6 +238,71 @@ begin
   end;
   Log(Format(TLspEnclosingConditions.cCommand + ': %d', [Count(mAnswer, 'blocks')]));
   Result := mAnswer;
+end;
+
+function TShellStepping.BreakpointCheck(const AArguments: TJSONArray): TJSONValue;
+var
+  mFiles: TArray<TLspBreakpointFile>;
+  mFile: TLspBreakpointFile;
+  mEntries: TArray<TJSONObject>;
+  mEntry: TJSONObject;
+begin
+  // Argument: Dateien mit den Zeilen ihrer aktiven Haltepunkte (#577), vor dem Start einer Debug-Sitzung.
+  mFiles := TLspBreakpointCheck.ReadFiles(AArguments);
+  mEntries := nil;
+  try
+    for mFile in mFiles do
+    begin
+      mEntries := mEntries + [BreakpointCheckFile(mFile.Uri, mFile.Lines)];
+    end;
+  except
+    // Schon gebaute Einträge gehören noch niemandem.
+    for mEntry in mEntries do
+    begin
+      mEntry.Free;
+    end;
+    raise;
+  end;
+  Log(Format('Breakpoint check: %d files', [Length(mFiles)]));
+  Result := TLspBreakpointCheck.AnswerToJson(mEntries);
+end;
+
+function TShellStepping.BreakpointCheckFile(const AUri: string; const ALines: TArray<Integer>): TJSONObject;
+var
+  mPath, mText: string;
+  mDocument: ITextDocument;
+  mProject: TProjectInfo;
+  mInput: TCompilerSwitchInput;
+  mOptions: TPreprocessorOptions;
+  mTreeRun, mProcessed: TPreprocessorResult;
+  mTree: TSyntaxTree;
+begin
+  mPath := TDocumentUris.ToPath(AUri);
+  if Documents.TryGet(AUri, mDocument) then
+  begin
+    mText := mDocument.Text;
+  end
+  else if not ReadText(mPath, mText) then
+  begin
+    Exit(TLspBreakpointCheck.UnreadableToJson(AUri));
+  end;
+  // Symbole und Schalter des Projekts der Datei; ohne Projekt die Vorgaben des Compilers.
+  mInput := Default(TCompilerSwitchInput);
+  if Project(mPath, mProject) then
+  begin
+    mInput.Defines := mProject.Defines;
+    mInput.Properties := mProject.Properties;
+  end;
+  mOptions := TPascalPreprocessor.EditorOptions(mInput.Defines);
+  mOptions.FileName := mPath;
+  mTree := TSyntaxTreeCache.ParseActive(mText, mOptions, nil, mTreeRun);
+  try
+    // Voller Lauf auch ohne Bedingungen: daraus kommen die lokalen Schalter ($D-).
+    mProcessed := TPascalPreprocessor.Process(mText, mOptions);
+    Result := TLspBreakpointCheck.FileToJson(AUri, TLspBreakpointCheck.Check(mTree, mProcessed, mInput, ALines));
+  finally
+    mTree.Free;
+  end;
 end;
 
 initialization

@@ -148,6 +148,8 @@ Atlas.Common.Logging.Providers.StreamSink.Tests
 Atlas.Common.Lsp.Adapters.LogMessageSink.Tests
 Atlas.Common.Lsp.ApplyEdit.Tests
 Atlas.Common.Lsp.Baseline.Tests
+Atlas.Common.Lsp.BreakpointCheck.Tests
+Atlas.Core.Debug.BreakpointCheck.Tests
 Atlas.Common.Lsp.CompactJson.Tests
 Atlas.Common.Lsp.CompilerBaseline.Tests
 Atlas.Common.Lsp.CompilerSwitches.Tests
@@ -174,6 +176,7 @@ Atlas.Common.Lsp.ServerActivity.Tests
 Atlas.Common.Lsp.StatusFile.Tests
 Atlas.Common.Lsp.StatusHeartbeat.Tests
 Atlas.Common.Lsp.StringLiteralCommands.Tests
+Atlas.Common.Lsp.TestCases.Tests
 Atlas.Common.Lsp.TextDocumentSync.Tests
 Atlas.Common.Lsp.Todos.Tests
 Atlas.Common.Lsp.WinApiDocs.Tests
@@ -282,6 +285,7 @@ Atlas.Common.Rules.Builtin.Style.Tokens.Tests
 Atlas.Common.Rules.Builtin.Testing.AreEqual.Tests
 Atlas.Common.Rules.Builtin.Testing.Registration.Tests
 Atlas.Common.Rules.Builtin.Testing.TestCases.Tests
+Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests
 Atlas.Common.Rules.Builtin.Testing.Tests
 Atlas.Common.Rules.Builtin.TrivialAccessor.Tests
 Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols.Tests
@@ -339,10 +343,12 @@ Atlas.Core.Settings.ContextMenuGroups.Tests
 Atlas.Core.Debug.Modules.Tests
 Atlas.Core.Debug.Threads.Tests
 Atlas.Core.Debug.Deadlocks.Tests
+Atlas.Core.Debug.ParallelStacks.Tests
 Atlas.UI.Debug.AccessViolation.Tests
 Atlas.Core.Build.RunningProgram.Tests
 Atlas.Core.Settings.BuildDebug.Tests
 Atlas.UI.Debug.Deadlocks.Tests
+Atlas.UI.Debug.ParallelStacks.Tests
 Atlas.UI.Analysis.Strings.Tests
 Atlas.UI.Assistants.Strings.Tests
 Atlas.UI.Bookmarks.Strings.Tests

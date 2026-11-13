@@ -78,15 +78,6 @@ begin
   end;
 end;
 
-function Prev(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(ATokens[Result]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
 function Next(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex + 1;
@@ -132,7 +123,7 @@ begin
     (Compare(APosition, ATokens[Result].EndPos) <= 0) then
   begin
     APrefix := Result;
-    Result := Prev(ATokens, Result);
+    Result := PreviousCode(ATokens, Result);
   end;
 end;
 
@@ -145,10 +136,10 @@ begin
   begin
     Result := [CleanName(ATokens[AIndex].Text)] + Result;
     AStart := AIndex;
-    AIndex := Prev(ATokens, AIndex);
+    AIndex := PreviousCode(ATokens, AIndex);
     if (AIndex >= 0) and ATokens[AIndex].IsSymbol('.') then
     begin
-      AIndex := Prev(ATokens, AIndex);
+      AIndex := PreviousCode(ATokens, AIndex);
     end
     else
     begin
@@ -191,7 +182,7 @@ begin
   Result := -1;
   mDepth := 0;
   mParens := 0;
-  AIndex := Prev(ATokens, AIndex);
+  AIndex := PreviousCode(ATokens, AIndex);
   while AIndex >= 0 do
   begin
     if not StepParens(ATokens[AIndex], mParens) then
@@ -218,7 +209,7 @@ begin
     begin
       Exit;
     end;
-    AIndex := Prev(ATokens, AIndex);
+    AIndex := PreviousCode(ATokens, AIndex);
   end;
 end;
 
@@ -268,7 +259,7 @@ begin
   // Vergleich: "Kette = |", "Kette <> |".
   if ATokens[mIndex].IsSymbol('=') or ATokens[mIndex].IsSymbol('<>') then
   begin
-    ASlot.Names := ChainBefore(ATokens, Prev(ATokens, mIndex), mStart);
+    ASlot.Names := ChainBefore(ATokens, PreviousCode(ATokens, mIndex), mStart);
     ASlot.Offset := ATokens[mIndex].Offset;
     Exit(ASlot.Names <> nil);
   end;
@@ -277,10 +268,10 @@ begin
   begin
     Exit;
   end;
-  ASlot.Names := ChainBefore(ATokens, Prev(ATokens, mOf), mStart);
+  ASlot.Names := ChainBefore(ATokens, PreviousCode(ATokens, mOf), mStart);
   // Nur "case Kette of": ein anderer Ausdruck (Funktionsaufruf, Rechnung) bleibt außen vor.
-  Result := (ASlot.Names <> nil) and (Prev(ATokens, mStart) >= 0) and
-    ATokens[Prev(ATokens, mStart)].IsKeyword('case');
+  Result := (ASlot.Names <> nil) and (PreviousCode(ATokens, mStart) >= 0) and
+    ATokens[PreviousCode(ATokens, mStart)].IsKeyword('case');
   if Result then
   begin
     ASlot.Offset := ATokens[mOf].Offset;
@@ -318,7 +309,7 @@ begin
     begin
       Exit(-1);
     end;
-    Result := Prev(ATokens, Result);
+    Result := PreviousCode(ATokens, Result);
   end;
 end;
 
@@ -425,14 +416,14 @@ begin
   begin
     Exit;
   end;
-  mBefore := Prev(ATokens, mBracket);
+  mBefore := PreviousCode(ATokens, mBracket);
   if (mBefore < 0) or IsIndexBase(ATokens[mBefore]) then
   begin
     Exit;
   end;
   if ATokens[mBefore].IsKeyword('in') then
   begin
-    ASlot.ElementOf := ChainBefore(ATokens, Prev(ATokens, mBefore), mStart);
+    ASlot.ElementOf := ChainBefore(ATokens, PreviousCode(ATokens, mBefore), mStart);
     if ASlot.ElementOf = nil then
     begin
       Exit;
