@@ -40,7 +40,7 @@ The plugin consists of the core `Atlas.IDE.Base` and 14 modules. Install Base pl
 | `Atlas.IDE.Designer` | Designer bar: “Arrange” (width to text, button bar, form grid, duplicate in a row, insert space, fit to content, layers, wrap in container, fonts and colors, suggest anchors, format painter, groups), measure spacing and set it by handle, shared size handles, quick bar, magnifier, tab order, try sizes and scaling, meaningful names, “Atlas Structure” and “Event map” windows, data binding, extract to frame, usages in code, find components and properties, undo (experimental) | 121 | `designer.enabled` |
 | `Atlas.IDE.Tracker` | Issue tracker (YouTrack, GitHub and others): “My issues” with project choice, start, finish and review along the workflow transitions, time tracking, state in the status bar, board with swimlanes, sprint tile, flow map, “Attach to issue”, issue ids in code | 143 | `issues.enabled` |
 | `Atlas.IDE.Welcome` | Welcome page with projects, “Continue” with the work state per issue, “What's new in Atlas”, “Discover Atlas” and “Atlas setup” with index progress per project; “Atlas Start” | 75 | `welcomePage.enabled` |
-| `Atlas.IDE.Debugger` | Debugging: values in hover and editor, evaluate window, exceptions, step filters, step into a chosen call, custom value display per type, explain access violations | 59 | `debug.enabled` |
+| `Atlas.IDE.Debugger` | Debugging: values in hover and editor, evaluate window, exceptions, step filters, step into a chosen call, custom value display per type, explain access violations including the module of the fault address | 61 | `debug.enabled` |
 | `Atlas.IDE.Search` | Atlas search with replace, regex and project scope, unit search, code queries | 38 | `search.enabled` |
 | `Atlas.IDE.Analysis` | Architecture, hotspots, unit relations, path between symbols, code lens with code metrics, “Unit relations” and “Dependent units” also from the project manager | 30 | `analysis.enabled` |
 | `Atlas.IDE.VersionControl` | Version control: Git and SVN, change marks with inline diff, line history, branch when starting an issue, working copies, project state | 26 | `vcs.enabled` |
@@ -120,7 +120,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **DUnitX tests** from the editor, including **only the tests affected** by a change; changed tests show their old result as **outdated**, failures sit at the **failing assert** with “expected 4, got 3” and can be **compared side by side** (JSON/XML indented); every test mark shows its **duration**, **slow tests** turn yellow
 - **Create a test case from the unit:** a code action on a method adds a draft with the call and placeholder checks to the test unit and creates the unit if needed
 - **Debugging:** values in the hover and inline, visualizers, evaluate window, smart step into
-- **Exceptions:** history window, exception bar, just my code, access violations explained
+- **Exceptions:** history window, exception bar, just my code, access violations explained, module of the fault address (program, RTL/VCL, Windows, third-party DLL)
 
 ### [IDE comfort](docs/features/en/IDE-comfort.md)
 - **Atlas welcome page** with projects, history, issues and news; "Continue" remembers the work state per issue ("Issues" tab) and resumes it with "Resume" on the branch of the issue

@@ -323,6 +323,7 @@ Einstellungen: `debug.exceptionBanner`, aus, bis die Studie zu #783 positiv ist
 - Ohne eindeutige Ursache steht „Ursache nicht eindeutig“.
 - Das schuldige Glied ist im Editor unterstrichen, bis weitergelaufen wird.
 - Getter und Funktionsaufrufe wertet Atlas nur mit `debug.explainAccessViolation.allowCalls` aus.
+- Dahinter steht, in welchem Modul die Fehleradresse liegt: „in deinem Programm“, „in vcl290.bpl (RTL/VCL)“, „in ntdll.dll (Windows)“ oder „in Fremd.dll (keine Debug-Infos)“. Hält der Debugger nicht in eigenem Code, nennt Atlas nur das Modul und die letzte eigene Stelle aus dem Aufrufstapel (`debug.moduleOfAddress`).
 - Ohne Exception-Leiste steht das Ergebnis in den Meldungen.
 
-Schalter: `debug.explainAccessViolation`.
+Schalter: `debug.explainAccessViolation`, `debug.moduleOfAddress`.

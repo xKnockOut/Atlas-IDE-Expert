@@ -378,6 +378,7 @@ Settings: `debug.exceptionBanner` (off until the study for #783 is positive)
 - Without a clear cause it says "Cause not clear".
 - The culprit is underlined in the editor until you continue.
 - Getters and function calls are not evaluated unless `debug.explainAccessViolation.allowCalls` is on.
+- After it the bar names the module of the fault address: "your program", "vcl290.bpl (RTL/VCL)", "ntdll.dll (Windows)" or "Foreign.dll (no debug information)". If the debugger did not stop in your own code, Atlas names only the module and the last place in your code from the call stack (`debug.moduleOfAddress`).
 - Without the exception bar the result goes to the messages.
 
-Settings: `debug.explainAccessViolation`
+Settings: `debug.explainAccessViolation`, `debug.moduleOfAddress`
