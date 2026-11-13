@@ -78,6 +78,8 @@ begin
   Switch('tests.showDuration', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsShowDuration));
   Number('tests.slowMs', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsSlowMs));
   Switch('tests.testCaseTable', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCaseTable));
+  Switch('tests.boundaryCases', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsBoundaryCases));
+  Number('tests.boundaryCases.maxCases', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsBoundaryMax));
   Switch('tests.leakSetup', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsLeakSetup));
 end;
 

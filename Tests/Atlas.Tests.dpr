@@ -1159,6 +1159,8 @@ uses
   Atlas.Core.Tests.Durations.Tests in 'IDE.Expert\Atlas.Core.Tests.Durations.Tests.pas',
   Atlas.Core.Tests.CaseTable in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.CaseTable.pas',
   Atlas.Core.Tests.CaseTable.Tests in 'IDE.Expert\Atlas.Core.Tests.CaseTable.Tests.pas',
+  Atlas.Core.Tests.BoundaryCases in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.BoundaryCases.pas',
+  Atlas.Core.Tests.BoundaryCases.Tests in 'IDE.Expert\Atlas.Core.Tests.BoundaryCases.Tests.pas',
   Atlas.Core.Tests.AffectedHook in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas',
   Atlas.Core.Tests.AffectedHook.Tests in 'IDE.Expert\Atlas.Core.Tests.AffectedHook.Tests.pas',
   Atlas.Core.Tests.Debug in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Debug.pas',

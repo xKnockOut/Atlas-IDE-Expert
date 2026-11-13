@@ -164,6 +164,8 @@ begin
   Assert.IsTrue(ASettings.TestsCompare, 'Vergleich erwartet/erhalten standardmäßig an (#1779)');
   Assert.IsTrue(ASettings.TestsCompareFormat, 'JSON/XML einrücken standardmäßig an (#1779)');
   Assert.IsTrue(ASettings.TestsCaseTable, 'TestCase-Tabelle standardmäßig an (#1879)');
+  Assert.IsTrue(ASettings.TestsBoundaryCases, 'Grenzfälle standardmäßig an (#2173)');
+  Assert.AreEqual(20, ASettings.TestsBoundaryMax, 'höchstens 20 Grenzfälle (#2173)');
   Assert.IsTrue(ASettings.TestsApprovalFiles, 'Vergleichsdateien standardmäßig an (#1881)');
   Assert.IsTrue(ASettings.TestsShowDuration, 'Dauer an der Testmarke standardmäßig an (#1772)');
   Assert.AreEqual(500, ASettings.TestsSlowMs, 'langsam ab 500 ms (#1772)');
@@ -334,6 +336,8 @@ begin
   ASettings.TestsCompare := False;
   ASettings.TestsCompareFormat := False;
   ASettings.TestsCaseTable := False;
+  ASettings.TestsBoundaryCases := False;
+  ASettings.TestsBoundaryMax := 7;
   ASettings.TestsApprovalFiles := False;
   ASettings.TestsShowDuration := False;
   ASettings.TestsSlowMs := 1000;
@@ -481,6 +485,8 @@ begin
   Assert.IsFalse(ALoaded.TestsCompare, 'tests.compare (#1779)');
   Assert.IsFalse(ALoaded.TestsCompareFormat, 'tests.compare.format (#1779)');
   Assert.IsFalse(ALoaded.TestsCaseTable, 'tests.testCaseTable (#1879)');
+  Assert.IsFalse(ALoaded.TestsBoundaryCases, 'tests.boundaryCases (#2173)');
+  Assert.AreEqual(7, ALoaded.TestsBoundaryMax, 'tests.boundaryCases.maxCases (#2173)');
   Assert.IsFalse(ALoaded.TestsApprovalFiles, 'tests.approvalFiles (#1881)');
   Assert.IsFalse(ALoaded.TestsShowDuration, 'tests.showDuration (#1772)');
   Assert.AreEqual(1000, ALoaded.TestsSlowMs, 'tests.slowMs (#1772)');
@@ -1011,6 +1017,13 @@ begin
   Settings.TestsSlowMs := 100000;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsSlowMs, Settings.TestsSlowMs);
+  // tests.boundaryCases.maxCases (#2173): 1 bis 200.
+  Settings.TestsBoundaryMax := 0;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsBoundaryMax, Settings.TestsBoundaryMax);
+  Settings.TestsBoundaryMax := 500;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsBoundaryMax, Settings.TestsBoundaryMax);
 end;
 
 procedure TAtlasPluginSettingsTests.NormalizesUpdateChoices;

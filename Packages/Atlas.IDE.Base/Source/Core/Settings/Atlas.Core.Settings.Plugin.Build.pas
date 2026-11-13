@@ -28,6 +28,10 @@ const
   cMinTestsSlowMs = 50;
   cMaxTestsSlowMs = 60000;
   cDefaultTestsSlowMs = 500;
+  /// <summary>Grenzen und Vorgabe für tests.boundaryCases.maxCases (#2173).</summary>
+  cMinTestsBoundaryMax = 1;
+  cMaxTestsBoundaryMax = 200;
+  cDefaultTestsBoundaryMax = 20;
 
 type
   /// <summary>Plugin-Einstellungen: Compiler, Build, Tests und Aufgaben.</summary>
@@ -135,6 +139,12 @@ type
     /// <summary>[TestCase]-Fälle als Tabelle: Marke an der Testmethode und Befehl (#1879, tests.testCaseTable).
     /// </summary>
     TestsCaseTable: Boolean;
+    /// <summary>Grenzfälle als Testfälle vorschlagen: Befehl im Kontextmenü und in der Palette (#2173,
+    /// tests.boundaryCases).</summary>
+    TestsBoundaryCases: Boolean;
+    /// <summary>Höchstens so viele Grenzfälle je Routine (#2173, tests.boundaryCases.maxCases),
+    /// cMinTestsBoundaryMax bis cMaxTestsBoundaryMax.</summary>
+    TestsBoundaryMax: Integer;
     /// <summary>Lecks je Test (#1774, tests.leaks): Ein Test, den DUnitX nur wegen eines Lecks als fehlgeschlagen
     /// meldet, gilt als bestanden mit Leck (gelbe Marke, Warnung in Atlas-Probleme). Aus = wie im Bericht.</summary>
     TestsLeaks: Boolean;
@@ -207,6 +217,10 @@ type
     /// <summary>Modul-Schalter buildPipeline.enabled (#1455): Build-Pipeline; aus = die wirksamen Werte aller
     /// Einstellungen des Moduls sind „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     BuildPipelineEnabled: Boolean;
+    /// <summary>Vorgaben der Tests (Tests ausführen und alles darunter).</summary>
+    procedure DefaultTests;
+    /// <summary>Werte der Tests über AIo, wie Exchange.</summary>
+    procedure ExchangeTests(const AIo: TAtlasSettingsExchange);
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginBuildSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
@@ -260,28 +274,7 @@ begin
   Result.BuildOnOpenConfig := '';
   Result.BuildOnOpenPlatform := '';
   Result.BuildStopRunningProgram := cStopRunningProgramNames[0];
-  Result.TestRun := True;
-  Result.TestsAfterBuild := False;
-  Result.TestsBuildFirst := True;
-  Result.TestsAffected := True;
-  Result.TestsLeakSetup := True;
-  Result.TestsAffectedDepth := 3;
-  Result.TestsAffectedBeforeCommit := False;
-  Result.TestsStale := True;
-  Result.TestsStaleUnits := False;
-  Result.TestsCoveredByDepth := 1;
-  Result.TestsCoveredByPrivate := False;
-  Result.TestsOnSave := False;
-  Result.TestsOnSaveMax := cDefaultTestsOnSaveMax;
-  Result.TestsFailureAtAssert := True;
-  Result.TestsFailureInline := True;
-  Result.TestsCompare := True;
-  Result.TestsCompareFormat := True;
-  Result.TestsApprovalFiles := True;
-  Result.TestsShowDuration := True;
-  Result.TestsSlowMs := cDefaultTestsSlowMs;
-  Result.TestsCaseTable := True;
-  Result.TestsLeaks := True;
+  Result.DefaultTests;
   Result.BuildZeroHints := False;
   Result.ShowInterfaceCost := True;
   Result.BuildSummary := True;
@@ -302,6 +295,34 @@ begin
   Result.TestsEnabled := True;
   Result.BuildToolsEnabled := True;
   Result.BuildPipelineEnabled := True;
+end;
+
+procedure TAtlasPluginBuildSettings.DefaultTests;
+begin
+  TestRun := True;
+  TestsAfterBuild := False;
+  TestsBuildFirst := True;
+  TestsAffected := True;
+  TestsLeakSetup := True;
+  TestsAffectedDepth := 3;
+  TestsAffectedBeforeCommit := False;
+  TestsStale := True;
+  TestsStaleUnits := False;
+  TestsCoveredByDepth := 1;
+  TestsCoveredByPrivate := False;
+  TestsOnSave := False;
+  TestsOnSaveMax := cDefaultTestsOnSaveMax;
+  TestsFailureAtAssert := True;
+  TestsFailureInline := True;
+  TestsCompare := True;
+  TestsCompareFormat := True;
+  TestsApprovalFiles := True;
+  TestsShowDuration := True;
+  TestsSlowMs := cDefaultTestsSlowMs;
+  TestsCaseTable := True;
+  TestsBoundaryCases := True;
+  TestsBoundaryMax := cDefaultTestsBoundaryMax;
+  TestsLeaks := True;
 end;
 
 procedure TAtlasPluginBuildSettings.Normalize;
@@ -332,25 +353,11 @@ begin
   TestsCoveredByDepth := EnsureRange(TestsCoveredByDepth, cMinTestsCoveredByDepth, cMaxTestsCoveredByDepth);
   TestsOnSaveMax := EnsureRange(TestsOnSaveMax, cMinTestsOnSaveMax, cMaxTestsOnSaveMax);
   TestsSlowMs := EnsureRange(TestsSlowMs, cMinTestsSlowMs, cMaxTestsSlowMs);
+  TestsBoundaryMax := EnsureRange(TestsBoundaryMax, cMinTestsBoundaryMax, cMaxTestsBoundaryMax);
 end;
 
-procedure TAtlasPluginBuildSettings.Exchange(const AIo: TAtlasSettingsExchange);
+procedure TAtlasPluginBuildSettings.ExchangeTests(const AIo: TAtlasSettingsExchange);
 begin
-  AIo.Flag('CheckOnSave', CheckOnSave);
-  AIo.Flag('CompileOnSave', CompileOnSave);
-  AIo.Number('CheckOnSaveDelayMs', CheckOnSaveDelayMs);
-  AIo.Number('CheckOnSaveMaxMs', CheckOnSaveMaxMs);
-  AIo.Flag('McpBuild', McpBuild);
-  AIo.Flag('AssistantsEnabled', AssistantsEnabled);
-  AIo.Flag('AssistantsEdit', AssistantsEdit);
-  AIo.Flag('BuildOnOpen', BuildOnOpen);
-  AIo.Text('BuildOnOpenKind', BuildOnOpenKind);
-  AIo.Text('BuildOnOpenScope', BuildOnOpenScope);
-  AIo.Number('BuildOnOpenDelayMs', BuildOnOpenDelayMs);
-  AIo.Text('BuildOnOpenExclude', BuildOnOpenExclude);
-  AIo.Text('BuildOnOpenConfig', BuildOnOpenConfig);
-  AIo.Text('BuildOnOpenPlatform', BuildOnOpenPlatform);
-  AIo.Text('BuildStopRunningProgram', BuildStopRunningProgram);
   AIo.Flag('TestRun', TestRun);
   AIo.Flag('TestsAfterBuild', TestsAfterBuild);
   AIo.Flag('TestsBuildFirst', TestsBuildFirst);
@@ -372,7 +379,29 @@ begin
   AIo.Flag('TestsShowDuration', TestsShowDuration);
   AIo.Number('TestsSlowMs', TestsSlowMs);
   AIo.Flag('TestsCaseTable', TestsCaseTable);
+  AIo.Flag('TestsBoundaryCases', TestsBoundaryCases);
+  AIo.Number('TestsBoundaryMax', TestsBoundaryMax);
   AIo.Flag('TestsLeaks', TestsLeaks);
+end;
+
+procedure TAtlasPluginBuildSettings.Exchange(const AIo: TAtlasSettingsExchange);
+begin
+  AIo.Flag('CheckOnSave', CheckOnSave);
+  AIo.Flag('CompileOnSave', CompileOnSave);
+  AIo.Number('CheckOnSaveDelayMs', CheckOnSaveDelayMs);
+  AIo.Number('CheckOnSaveMaxMs', CheckOnSaveMaxMs);
+  AIo.Flag('McpBuild', McpBuild);
+  AIo.Flag('AssistantsEnabled', AssistantsEnabled);
+  AIo.Flag('AssistantsEdit', AssistantsEdit);
+  AIo.Flag('BuildOnOpen', BuildOnOpen);
+  AIo.Text('BuildOnOpenKind', BuildOnOpenKind);
+  AIo.Text('BuildOnOpenScope', BuildOnOpenScope);
+  AIo.Number('BuildOnOpenDelayMs', BuildOnOpenDelayMs);
+  AIo.Text('BuildOnOpenExclude', BuildOnOpenExclude);
+  AIo.Text('BuildOnOpenConfig', BuildOnOpenConfig);
+  AIo.Text('BuildOnOpenPlatform', BuildOnOpenPlatform);
+  AIo.Text('BuildStopRunningProgram', BuildStopRunningProgram);
+  ExchangeTests(AIo);
   AIo.Flag('BuildZeroHints', BuildZeroHints);
   AIo.Flag('ShowInterfaceCost', ShowInterfaceCost);
   AIo.Flag('BuildSummary', BuildSummary);
