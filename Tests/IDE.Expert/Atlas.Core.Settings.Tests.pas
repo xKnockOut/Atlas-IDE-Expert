@@ -172,6 +172,7 @@ begin
   Assert.IsTrue(ASettings.TestsCaseTable, 'TestCase-Tabelle standardmäßig an (#1879)');
   Assert.IsTrue(ASettings.TestsApprovalFiles, 'Vergleichsdateien standardmäßig an (#1881)');
   Assert.IsTrue(ASettings.TestsShowDuration, 'Dauer an der Testmarke standardmäßig an (#1772)');
+  Assert.IsTrue(ASettings.TestsWindow, 'Fenster „Atlas-Tests“ standardmäßig an (#1776)');
   Assert.AreEqual(500, ASettings.TestsSlowMs, 'langsam ab 500 ms (#1772)');
   Assert.IsTrue(ASettings.TestsLeaks, 'Lecks je Test standardmäßig an (#1774)');
   Assert.IsFalse(ASettings.BuildZeroHints, 'build.zeroHints standardmäßig aus (#530)');
@@ -355,6 +356,7 @@ begin
   ASettings.TestsCaseTable := False;
   ASettings.TestsApprovalFiles := False;
   ASettings.TestsShowDuration := False;
+  ASettings.TestsWindow := False;
   ASettings.TestsSlowMs := 1000;
   ASettings.TestsLeaks := False;
   ASettings.BuildZeroHints := True;
@@ -515,6 +517,7 @@ begin
   Assert.IsFalse(ALoaded.TestsCaseTable, 'tests.testCaseTable (#1879)');
   Assert.IsFalse(ALoaded.TestsApprovalFiles, 'tests.approvalFiles (#1881)');
   Assert.IsFalse(ALoaded.TestsShowDuration, 'tests.showDuration (#1772)');
+  Assert.IsFalse(ALoaded.TestsWindow, 'tests.window (#1776)');
   Assert.AreEqual(1000, ALoaded.TestsSlowMs, 'tests.slowMs (#1772)');
   Assert.IsFalse(ALoaded.TestsLeaks, 'tests.leaks (#1774)');
   Assert.IsTrue(ALoaded.BuildZeroHints);

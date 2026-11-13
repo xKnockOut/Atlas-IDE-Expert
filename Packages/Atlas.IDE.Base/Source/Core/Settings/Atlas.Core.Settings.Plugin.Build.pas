@@ -137,6 +137,8 @@ type
     /// <summary>Dauer an den Marken der Testlinse, langsame Tests gelb, die langsamsten auf der Willkommensseite
     /// (#1772, tests.showDuration).</summary>
     TestsShowDuration: Boolean;
+    /// <summary>Andockbares Fenster „Atlas-Tests“ mit allen Tests des Testprojekts (#1776, tests.window).</summary>
+    TestsWindow: Boolean;
     /// <summary>Ab dieser Dauer (Millisekunden) gilt ein Test als langsam (#1772, tests.slowMs), cMinTestsSlowMs bis
     /// cMaxTestsSlowMs.</summary>
     TestsSlowMs: Integer;
@@ -389,6 +391,7 @@ begin
   TestsCompareFormat := True;
   TestsApprovalFiles := True;
   TestsShowDuration := True;
+  TestsWindow := True;
   TestsSlowMs := cDefaultTestsSlowMs;
   TestsCaseTable := True;
   TestsLeaks := True;
@@ -416,6 +419,7 @@ begin
   AIo.Flag('TestsCompareFormat', TestsCompareFormat);
   AIo.Flag('TestsApprovalFiles', TestsApprovalFiles);
   AIo.Flag('TestsShowDuration', TestsShowDuration);
+  AIo.Flag('TestsWindow', TestsWindow);
   AIo.Number('TestsSlowMs', TestsSlowMs);
   AIo.Flag('TestsCaseTable', TestsCaseTable);
   AIo.Flag('TestsLeaks', TestsLeaks);
