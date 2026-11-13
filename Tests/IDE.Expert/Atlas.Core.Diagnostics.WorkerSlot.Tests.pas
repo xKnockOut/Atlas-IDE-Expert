@@ -2,8 +2,9 @@
 
 // Arbeiter-Threads über ihrer Zeitgrenze: Der Slot gibt
 // beendete frei, übergibt überfällige an TAtlasOverdueThreads, und diese
-// kennzeichnen ihr Package als unsicher, wenn es beim Entladen noch Code von
-// ihnen ausführt.
+// kennzeichnen ihr Package als unsicher, wenn es beim Abmelden seines Moduls
+// noch Code von ihnen ausführt. Festgehalten wird vor FreeLibrary
+// (SettleBeforeUnload), nie im Rückruf beim Entladen (Code-Review T-103).
 
 interface
 
@@ -39,12 +40,21 @@ type
     procedure SettleMarksModuleUnsafeWhileWorkerRuns;
     [Test]
     procedure SettleKeepsModuleSafeWhenWorkerEnds;
+    /// <summary>Abmelden mit laufendem überfälligem Thread: festhalten, bevor das Package entladen wird.</summary>
+    [Test]
+    procedure SettleBeforeUnloadPinsWhileWorkerRuns;
+    [Test]
+    procedure SettleBeforeUnloadWithoutOverdueWorkersPinsNothing;
+    /// <summary>Der Rückruf beim Entladen läuft aus DLL_PROCESS_DETACH: Er darf weder warten noch festhalten.</summary>
+    [Test]
+    procedure UnloadNoticeNeitherWaitsNorPins;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Diagnostics,
   Atlas.Core.Diagnostics.UnloadSafety,
   Atlas.Core.Diagnostics.WorkerSlot;
 
@@ -161,6 +171,60 @@ begin
     Assert.IsTrue(TAtlasOverdueThreads.Settle(cModule, 2000));
     Assert.IsTrue(TAtlasUnloadSafety.IsSafe(cModule));
     Assert.AreEqual(0, Integer(Length(FPinned)));
+  finally
+    mSlot.Free;
+  end;
+end;
+
+procedure TAtlasWorkerSlotTests.SettleBeforeUnloadPinsWhileWorkerRuns;
+var
+  mSlot: TAtlasWorkerSlot;
+begin
+  mSlot := TAtlasWorkerSlot.Create(cModule);
+  try
+    mSlot.Start(NewWorker);
+    mSlot.Stop(20);
+    Assert.IsFalse(TAtlasOverdueThreads.SettleBeforeUnload(cModule, 20));
+    Assert.IsFalse(TAtlasUnloadSafety.IsSafe(cModule));
+    Assert.AreEqual(1, Integer(Length(FPinned)));
+    Assert.AreEqual(HMODULE(cModule), FPinned[0]);
+  finally
+    mSlot.Free;
+  end;
+end;
+
+procedure TAtlasWorkerSlotTests.SettleBeforeUnloadWithoutOverdueWorkersPinsNothing;
+var
+  mSlot: TAtlasWorkerSlot;
+begin
+  mSlot := TAtlasWorkerSlot.Create(cModule);
+  try
+    FRelease.SetEvent;
+    mSlot.Start(NewWorker);
+    Assert.IsTrue(mSlot.Stop(2000));
+    Assert.IsTrue(TAtlasOverdueThreads.SettleBeforeUnload(cModule, 20));
+    Assert.IsTrue(TAtlasUnloadSafety.IsSafe(cModule));
+    Assert.AreEqual(0, Integer(Length(FPinned)));
+  finally
+    mSlot.Free;
+  end;
+end;
+
+procedure TAtlasWorkerSlotTests.UnloadNoticeNeitherWaitsNorPins;
+var
+  mSlot: TAtlasWorkerSlot;
+  mWatch: TStopwatch;
+begin
+  mSlot := TAtlasWorkerSlot.Create(cModule);
+  try
+    mSlot.Start(NewWorker);
+    mSlot.Stop(20);
+    mWatch := TStopwatch.StartNew;
+    TAtlasOverdueThreads.NoteModuleUnload(cModule);
+    Assert.IsTrue(mWatch.ElapsedMilliseconds < 1000, 'Der Rückruf wartet');
+    Assert.IsTrue(TAtlasUnloadSafety.IsSafe(cModule));
+    Assert.AreEqual(0, Integer(Length(FPinned)));
+    Assert.AreEqual(1, TAtlasOverdueThreads.Pending(cModule));
   finally
     mSlot.Free;
   end;
