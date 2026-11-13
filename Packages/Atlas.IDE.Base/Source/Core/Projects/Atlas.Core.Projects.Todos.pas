@@ -123,17 +123,6 @@ begin
     end));
 end;
 
-/// <summary>AJson als JSON-Wert; nil bei ungültigem Text.</summary>
-function ParseJson(const AJson: string): TJSONValue;
-begin
-  try
-    Result := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      Result := nil;
-  end;
-end;
-
 /// <summary>Objekte von AArray in Reihenfolge; andere Werte fallen weg; leer ohne Array.</summary>
 function ObjectsOf(AArray: TJSONArray): TArray<TJSONObject>;
 var
@@ -312,7 +301,7 @@ var
   mFileName, mRootPath: string;
 begin
   AEntries := nil;
-  mValue := ParseJson(AJson);
+  mValue := TJsonRead.Parse(AJson);
   try
     mFiles := TJsonRead.Items(TJsonRead.AsObject(mValue), 'files');
     Result := mFiles <> nil;
@@ -341,7 +330,7 @@ var
   mFileItem, mTodo: TJSONObject;
 begin
   AChoices := Default(TAtlasTodoChoices);
-  mValue := ParseJson(AJson);
+  mValue := TJsonRead.Parse(AJson);
   try
     mFiles := TJsonRead.Items(TJsonRead.AsObject(mValue), 'files');
     Result := mFiles <> nil;

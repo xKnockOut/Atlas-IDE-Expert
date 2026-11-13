@@ -23,6 +23,7 @@
     "security-insecure-http": {"exclude": ["Tests/**"]},
     "security-hardcoded-credential": {"exclude": ["Tests/**", "**/Atlas.Common.Rules.Catalog.Data.*"]},
     "control-fixed-bounds": {"exclude": ["Tests/**"]},
+    "dunitx-istrue-equality": {"exclude": ["Tests/**"]},
     "unused-unit": {"exclude": ["Tests/**/*Golden.pas"]},
     "loop-runs-at-most-once": {
       "allowFirstElement": true

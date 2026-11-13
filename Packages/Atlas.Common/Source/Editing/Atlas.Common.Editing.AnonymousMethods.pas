@@ -112,7 +112,8 @@ uses
   Atlas.Common.Editing.CreateMethod,
   Atlas.Common.Editing.PromoteVariable,
   Atlas.Common.Editing.AnonymousMethods.Embed,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -1298,7 +1299,7 @@ begin
   mText := FSite.Input.Text;
   mBlock := TRoutineBody.BodyOf(FSite.Anonymous);
   mBeginToken := TRoutineBody.TokenAt(FSite.Tokens, mBlock.StartOffset);
-  mEndToken := TRoutineBody.PreviousToken(FSite.Tokens, TRoutineBody.TokenAt(FSite.Tokens, mBlock.EndOffset));
+  mEndToken := PreviousCode(FSite.Tokens, TRoutineBody.TokenAt(FSite.Tokens, mBlock.EndOffset));
   Result := (mBeginToken <= High(FSite.Tokens)) and FSite.Tokens[mBeginToken].IsKeyword('begin') and
     (mEndToken >= 0) and FSite.Tokens[mEndToken].IsKeyword('end');
   if not Result then

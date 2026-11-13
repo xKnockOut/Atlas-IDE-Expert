@@ -13,6 +13,11 @@
 //     (Exception des Betriebssystems, etwa Zugriffsverletzung).
 //   - Fortgesetzt: psRunning nach einem Halt.
 //   - Beendet: letzter Prozess abgebaut (ProcessDestroyed).
+//   - Vor dem Start: Zuhörer, die IAtlasIdeDebugLaunchCheck können, fragt
+//     BeforeProgramLaunch der Reihe nach (#577: Haltepunkte prüfen); lehnt
+//     einer ab, startet die IDE nicht. Nur hier läuft ein Zuhörer im Notifier
+//     selbst: Es gibt noch keinen Prozess, und nur hier lässt sich der Start
+//     anhalten. Fehler darin lassen den Start zu.
 // Die Zuhörer laufen nie im Notifier selbst: Der Debugger ruft aus seiner
 // Benachrichtigung, dort darf weder ausgewertet noch fortgesetzt werden.
 // Gemeldet wird über TAtlasMainThread.ForceQueue; ein Halt, der beim Ausführen
@@ -48,6 +53,14 @@ type
     procedure DebugResumed;
     /// <summary>Letzter Prozess abgebaut.</summary>
     procedure DebugEnded;
+  end;
+
+  /// <summary>Zusatz eines Zuhörers: Vor dem Start einer Debug-Sitzung gefragt (im Notifier, kein Prozess).
+  /// </summary>
+  IAtlasIdeDebugLaunchCheck = interface
+    ['{3B7E91D2-5C4A-4F08-A6E3-8D2F1B07C95E}']
+    /// <summary>False verhindert den Start von AProject.</summary>
+    function AllowLaunch(const AProject: IOTAProject): Boolean;
   end;
 
   /// <summary>Zuhörer mit leeren Methoden zum Überschreiben.</summary>
@@ -101,6 +114,8 @@ type
     class procedure NotifyListeners(const AEvent: TProc<IAtlasIdeDebugListener>); static;
     class procedure StateChanged(const AProcess: IOTAProcess); static;
     class procedure Ended; static;
+    /// <summary>Zuhörer mit IAtlasIdeDebugLaunchCheck fragen; False, wenn einer ablehnt.</summary>
+    class function AllowLaunch(const AProject: IOTAProject): Boolean; static;
   public
     /// <summary>Notifier anmelden; mehrfacher Aufruf schadet nicht.</summary>
     class procedure Start; static;
@@ -248,7 +263,7 @@ var
   mOptions: IOTAProjectOptionsConfigurations;
   mIndex: Integer;
 begin
-  // Nie den Start verhindern.
+  // Merkwerte verhindern den Start nie; ablehnen kann nur eine Prüfung (AllowLaunch).
   Result := True;
   try
     TAtlasIdeDebugSession.FProject := '';
@@ -277,6 +292,10 @@ begin
     end;
   except
     // Nur Merkwerte; der Start geht in jedem Fall weiter.
+  end;
+  if Project <> nil then
+  begin
+    Result := TAtlasIdeDebugSession.AllowLaunch(Project);
   end;
 end;
 
@@ -360,6 +379,37 @@ begin
   if FListeners.Count = 0 then
   begin
     Stop;
+  end;
+end;
+
+class function TAtlasIdeDebugSession.AllowLaunch(const AProject: IOTAProject): Boolean;
+var
+  mListeners: TArray<IAtlasIdeDebugListener>;
+  mListener: IAtlasIdeDebugListener;
+  mCheck: IAtlasIdeDebugLaunchCheck;
+begin
+  Result := True;
+  if FListeners = nil then
+  begin
+    Exit;
+  end;
+  mListeners := FListeners.ToArray;
+  for mListener in mListeners do
+  begin
+    if not Supports(mListener, IAtlasIdeDebugLaunchCheck, mCheck) then
+    begin
+      Continue;
+    end;
+    try
+      if not mCheck.AllowLaunch(AProject) then
+      begin
+        Exit(False);
+      end;
+    except
+      // Ein Fehler in der Prüfung darf den Start nicht verhindern.
+      on E: Exception do
+        TAtlasGuard.Log(Format('Launch check failed: %s: %s', [E.ClassName, TAtlasGuard.MessageText(E.Message)]));
+    end;
   end;
 end;
 

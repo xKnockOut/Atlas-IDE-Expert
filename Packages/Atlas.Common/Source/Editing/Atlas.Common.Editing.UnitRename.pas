@@ -34,7 +34,8 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.UsesClause;
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.TokenCursor;
 
 function CleanName(const AName: string): string;
 begin
@@ -211,7 +212,7 @@ begin
   begin
     Exit;
   end;
-  mPrevious := TRoutineBody.PreviousToken(ATokens, AIndex);
+  mPrevious := PreviousCode(ATokens, AIndex);
   if ((mPrevious >= 0) and ATokens[mPrevious].IsSymbol('.')) or not Matches(ATokens, AIndex, AParts, ALast) then
   begin
     Exit;

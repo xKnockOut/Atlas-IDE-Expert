@@ -1251,27 +1251,17 @@ begin
   Result := -1;
 end;
 
-/// <summary>Index des letzten Tokens vor AIndex, das kein Kommentar und keine Direktive ist; -1 ohne.</summary>
-function PreviousSolid(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(ATokens[Result]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
 /// <summary>Der Bezeichner AIndex kann ein Mitglied der eigenen Klasse meinen: ohne Punkt davor oder hinter
 /// Self.</summary>
 function IsOwnMemberRef(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 var
   mPrevious, mBefore: Integer;
 begin
-  mPrevious := PreviousSolid(ATokens, AIndex);
+  mPrevious := PreviousCode(ATokens, AIndex);
   Result := (mPrevious < 0) or not ATokens[mPrevious].IsSymbol('.');
   if not Result then
   begin
-    mBefore := PreviousSolid(ATokens, mPrevious);
+    mBefore := PreviousCode(ATokens, mPrevious);
     Result := (mBefore >= 0) and SameText(ATokens[mBefore].Text, 'Self');
   end;
 end;

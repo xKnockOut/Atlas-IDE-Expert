@@ -31,6 +31,9 @@ type
     TestsGalleryTestUnit, TestsGalleryTestUnitHint, TestsGalleryChooseUnit, TestsGalleryNoUnits,
     // Veraltete Ergebnisse (#1770).
     TestsLensStale, TestsRunStaleCommand, TestsNoStale, SettingsTestsStale, SettingsTestsStaleUnits,
+    // Marke „getestet von“ (#1778).
+    CoveredByOne, CoveredByMany, CoveredByNone, CoveredByPassed, CoveredByFailed, CoveredByPartial, CoveredByListTitle,
+    CoveredByIncomplete, SettingsCodeLensCoveredBy, SettingsTestsCoveredByDepth, SettingsTestsCoveredByPrivate,
     // Betroffene Tests beim Speichern (#1775).
     SettingsTestsOnSave, SettingsTestsOnSaveMax, TestsOnSaveFinding, TestsOnSaveRunning, TestsOnSavePassed,
     TestsOnSaveFailed, TestsOnSaveEnded, TestsOnSaveNone, TestsOnSaveTooMany, TestsOnSaveAll, TestsOnSaveDebugging,
@@ -44,7 +47,8 @@ type
     SettingsTestsCompare, SettingsTestsCompareFormat,
     // Dauer und langsame Tests (#1772).
     TestsLensDuration, TestsLensSlow, TestsSlowestCommand, TestsSlowestTitle, TestsSlowestTest, TestsSlowestDuration,
-    TestsSlowestNone, TestsSlowestHint, TestsSlowestNotFound, SettingsTestsShowDuration, SettingsTestsSlowMs);
+    TestsSlowestNone, TestsSlowestHint, TestsSlowestNotFound, SettingsTestsShowDuration, SettingsTestsSlowMs,
+    TestsLensCompare);
 
   TAtlasTestsStrings = class
   public
@@ -139,6 +143,17 @@ const
      'Tests: Keine veralteten Tests (seit dem Lauf nichts geändert).',
      'Geänderte Tests als veraltet zeigen (grau „(veraltet)“, Befehl „Veraltete Tests ausführen“)',
      'Auch Änderungen in verwendeten Units des Testprojekts zählen',
+     '1 Test',
+     '%d Tests',
+     'kein Test · Test anlegen',
+     '%s · bestanden',
+     '%s · fehlgeschlagen',
+     '%s · %d/%d bestanden',
+     'Getestet von (Klick: zum Test springen)',
+     '%s (unvollständig)',
+     'Marke „getestet von“ an Methoden normaler Units (Klick führt genau diese Tests aus)',
+     'Ebenen vom Test bis zur Methode (1 bis 5):',
+     'Auch private und geschützte Methoden',
      'Betroffene Tests nach dem Speichern im Hintergrund ausführen (Ergebnis im Statusfeld)',
      'Höchstens so viele betroffene Tests im Hintergrund',
      'Tests: Betroffene Tests von %s ermitteln …',
@@ -185,7 +200,8 @@ const
      'Doppelklick springt zum Test. Langsam ab %d ms.',
      'Tests: %s nicht im Testprojekt gefunden.',
      'Dauer an der Testmarke zeigen, langsame Tests gelb',
-     'Langsam ab (ms)'),
+     'Langsam ab (ms)',
+     'Vergleichen'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -264,6 +280,17 @@ const
      'Tests: No outdated tests (nothing changed since the run).',
      'Show changed tests as outdated (grey “(outdated)”, command “Run outdated tests”)',
      'Changes in used units of the test project count too',
+     '1 test',
+     '%d tests',
+     'no test · create test',
+     '%s · passed',
+     '%s · failed',
+     '%s · %d/%d passed',
+     'Tested by (click: go to the test)',
+     '%s (incomplete)',
+     '“Tested by” mark on methods of normal units (a click runs exactly these tests)',
+     'Levels from the test to the method (1 to 5):',
+     'Private and protected methods too',
      'Run affected tests in the background after saving (result in the status field)',
      'At most this many affected tests in the background',
      'Tests: Finding affected tests of %s …',
@@ -310,7 +337,8 @@ const
      'Double-click jumps to the test. Slow from %d ms.',
      'Tests: %s not found in the test project.',
      'Show the duration on the test mark, slow tests in yellow',
-     'Slow from (ms)'));
+     'Slow from (ms)',
+     'Compare'));
 
 { TAtlasTestsStrings }
 

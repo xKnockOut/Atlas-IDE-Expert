@@ -82,7 +82,8 @@ uses
   Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineParts,
-  Atlas.Common.Editing.NestedRoutines;
+  Atlas.Common.Editing.NestedRoutines,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -152,7 +153,7 @@ begin
     Exit(True);
   end;
   // class var: Der Abschnitt beginnt erst bei var.
-  mIndex := TRoutineBody.PreviousToken(ATokens, mIndex);
+  mIndex := PreviousCode(ATokens, mIndex);
   Result := (mIndex >= 0) and ATokens[mIndex].IsKeyword('class');
 end;
 

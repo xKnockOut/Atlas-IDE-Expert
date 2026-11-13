@@ -757,31 +757,6 @@ begin
   end;
 end;
 
-function ParseObject(const AJson: string): TJSONObject;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AJson = '' then
-  begin
-    Exit;
-  end;
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mValue := nil;
-  end;
-  if mValue is TJSONObject then
-  begin
-    Result := TJSONObject(mValue);
-  end
-  else
-  begin
-    mValue.Free;
-  end;
-end;
-
 function ReadText(const AFileName: string): string;
 var
   mBytes: TBytes;
@@ -905,7 +880,7 @@ begin
   begin
     Result.AddPair('lost', TJSONBool.Create(True));
   end;
-  mExtra := ParseObject(AMark.Extra);
+  mExtra := TJsonRead.ParseObject(AMark.Extra);
   try
     KeepUnknown(Result, mExtra, cMarkKeys);
   finally
@@ -1000,7 +975,7 @@ class function TAtlasBookmarks.FormatOf(const AJson: string): Integer;
 var
   mRoot: TJSONObject;
 begin
-  mRoot := ParseObject(AJson);
+  mRoot := TJsonRead.ParseObject(AJson);
   try
     Result := TJsonRead.IntOr(mRoot, 'format', 0);
   finally
@@ -1018,7 +993,7 @@ var
 begin
   AList := TAtlasBookmarkList.Create('');
   Result := False;
-  mRoot := ParseObject(AJson);
+  mRoot := TJsonRead.ParseObject(AJson);
   try
     if mRoot = nil then
     begin
@@ -1059,7 +1034,7 @@ var
   mList: TJSONArray;
   mMark: TAtlasBookmark;
 begin
-  mOriginal := ParseObject(AList.Raw);
+  mOriginal := TJsonRead.ParseObject(AList.Raw);
   mRoot := TJSONObject.Create;
   try
     mRoot.AddPair('format', TJSONNumber.Create(cFormat));
