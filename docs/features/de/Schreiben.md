@@ -38,6 +38,11 @@ Zurück zum [README](../../../README_DE.md)
   - Übernehmen schreibt `T(X).Name` bzw. `(X as T).Name` nach `completion.senderCast`
   - nicht nach einer Zuweisung an `X`, nach Übergabe an einen `var`- oder `out`-Parameter, im else-Zweig und bei Feldern nach jeder weiteren Anweisung
   - nach `X is ` und `X as ` stehen die Nachfahren des Typs von `X` oben
+- Treffer, die nur wegen ihrer Sichtbarkeit fehlen (#2108, `completion.hiddenMembers`):
+  - nach `X.Pr` nennt die Fußzeile private, protected und strict protected Mitglieder, die zum Getippten passen, etwa „1 Treffer nicht sichtbar: FPrivat (private in TZaehler) · Strg+Leertaste zeigt ihn“
+  - ein zweites Strg+Leertaste zeigt sie ausgegraut am Ende der Liste unter „Nicht sichtbar · lässt sich hier nicht einsetzen“ mit der Marke „private · TZaehler“; Enter setzt sie nicht ein
+  - ohne sichtbare Treffer nennt der leere Zustand sie
+  - nur mit getipptem Präfix; ein gleichnamiges sichtbares Mitglied (Überladung) unterdrückt den Hinweis
 - gleichnamige Symbole aus verschiedenen Units
 - Helper-Methoden
 - uses-Liste mit Gruppen
@@ -75,7 +80,7 @@ Einstellungen: `completion.formatPlaceholders`
   - die Live Templates der IDE
   - klassenbewusste Vorlagen (`prop`, `create`, `free`)
   - Postfix-Vorlagen (`Liste.forin`, `Obj.notnil`, `Obj.free`)
-- **Schnellbefehle** nach Enter, etwa `/uses Unit`, `/extract`, `/inline`, `/fix`, `/explain`, `/case`, `/helper`, `/test`, `/component`, `/unit`, `/sortuses`, `/cleanuses`
+- **Schnellbefehle** nach Enter, etwa `/uses Unit`, `/extract`, `/inline`, `/fix`, `/explain`, `/case`, `/helper`, `/test`, `/mock`, `/testcase`, `/dump`, `/assert`, `/component`, `/unit`, `/sortuses`, `/cleanuses`
 - **Erzeugen-Menü** (Alt+Einfg): Konstruktor, Properties, überschriebene Methoden, Interface-Methoden, Umschließen, Vorlagen
 - **Freigabe absichern:** nach `X := TFoo.Create;` ein Angebot für `try … finally X.Free; end;`
 

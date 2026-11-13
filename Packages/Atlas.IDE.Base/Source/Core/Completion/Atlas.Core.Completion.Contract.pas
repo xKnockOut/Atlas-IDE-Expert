@@ -213,6 +213,11 @@ type
     /// <summary>Nach "X is " (#2107): Typ von X, wenn dieser Typ von ihm abstammt; die Gruppe „Nachfahren von …“
     /// steht oben. '' sonst.</summary>
     DescendantOf: string;
+    /// <summary>Mitglied, das an der Stelle nur wegen seiner Sichtbarkeit fehlt (#2108): die Sichtbarkeit
+    /// ("private", "strict protected" …); '' bei allen übrigen. Klasse und Unit stehen in DeclaringClass und
+    /// DeclaringUnit. Die Liste zeigt solche Einträge erst nach einem zweiten Strg+Leertaste, ausgegraut; sie
+    /// werden nicht eingesetzt.</summary>
+    Inaccessible: string;
     /// <summary>Typkonvertierung (#490): Umwandlung in diesen Typ („→ string“), Name ist der Ausdruck
     /// (Count.ToString); ConvertFrom ist der Name des Originals, vor dem der Eintrag steht und nach dem er
     /// filtert. '' bei anderen Einträgen.</summary>

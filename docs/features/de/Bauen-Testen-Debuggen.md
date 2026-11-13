@@ -92,6 +92,17 @@ Einstellungen: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 
 Einstellungen: `tests.stale`, `tests.stale.units`
 
+### Betroffene Tests beim Speichern (#1775)
+
+- Nach dem Speichern einer Unit (auch Formular oder Include-Datei) ermittelt Atlas die Tests, die die Änderungen dieser Datei seit dem letzten Commit erreichen, und führt nur sie im Hintergrund aus. Gebaut wird wie mit „Vor den Tests bauen“.
+- Kein Fenster springt auf: Das Atlas-Statusfeld zeigt „Tests: 3 betroffen · laufen …“, danach „Tests: 3/3 bestanden“ oder rot „Tests: 1 von 3 fehlgeschlagen“. Ein Klick auf die Zeile im Statusfenster zeigt die Ausgabe des Laufs in der Meldungsansicht.
+- Code Lens und Atlas-Probleme folgen dem Lauf wie nach „Tests ausführen“.
+- Speichern während eines Laufs bricht ihn nicht ab; danach folgt höchstens ein weiterer Lauf mit allen bis dahin gespeicherten Dateien.
+- Kein Lauf während einer Debug-Sitzung, eines Builds oder eines anderen Testlaufs. Mehr betroffene Tests als `tests.onSave.max` oder alle Tests nötig: kein Lauf, nur ein Hinweis im Statusfeld.
+- Gehört eine Testunit zu mehreren Testprojekten, nimmt der Lauf im Hintergrund die einmal bei „Tests ausführen“ getroffene Wahl.
+
+Einstellungen: `tests.onSave` (Vorgabe aus, Schnellschalter), `tests.onSave.max`
+
 ### Fehlschlag an der Assert-Zeile (#1771)
 
 - Ein fehlgeschlagener Test steht nicht mehr am Methodenkopf, sondern an der Anweisung, die fehlschlug: Wellenlinie über der Anweisung, dahinter grau „erwartet 4, erhalten 3“.
@@ -135,6 +146,15 @@ Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an 
 - Ein `Assert.Fail` am Ende hält den Entwurf rot, bis die erwarteten Werte stimmen.
 - Fehlt die Testunit, legt Atlas sie wie *DUnitX-Testunit anlegen* an (Fixture, Setup/TearDown, Eintrag in `.dpr` und `.dproj`) und setzt den Entwurf an die Stelle des leeren Tests.
 - Private, geschützte und nur im implementation-Teil deklarierte Routinen sind von der Testunit aus nicht aufrufbar; für sie entsteht nur der Test mit `Assert.Fail`.
+
+### Schnellbefehle für Tests und Fehlersuche (#305)
+
+Aufruf: Befehl in eine leere Zeile schreiben und Enter drücken.
+
+- `/mock IKundenRepo` auf Unit-Ebene legt `TKundenRepoMock = class(TInterfacedObject, IKundenRepo)` mit allen Methoden des Interfaces an (auch geerbten): Jede Methode zählt ihre Aufrufe (`LadenCalls`), Funktionen liefern ein einstellbares Feld (`LadenResult`). In einer Routine einer Unit, die `Delphi.Mocks` verwendet, entsteht stattdessen eine lokale Variable `TMock<IKundenRepo>` samt `Create`.
+- `/testcase 'a', 2, True` über einer Testmethode schreibt `[TestCase('Fall1', 'a,2,True')]`, fortlaufend nummeriert; enthält ein Wert ein Komma, trennt `;`. Die Zahl der Werte muss zu den Parametern der Methode darunter passen.
+- `/dump` in einer Routine gibt alle Parameter und lokalen Variablen einfacher Typen in einer Zeile aus (`OutputDebugString` bzw. die Routine aus `slashCommands.logCall`).
+- `/assert` unter einer Zuweisung prüft die zugewiesene Variable passend zum Typ (`Assigned`, nicht leer, nicht negativ, `True`); in Testunits mit `Assert.IsNotNull`, `Assert.AreNotEqual` und `Assert.IsTrue` aus DUnitX.
 
 ### Betroffene Tests ausführen (#1353)
 

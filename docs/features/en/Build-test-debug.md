@@ -116,6 +116,17 @@ Settings: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 
 Settings: `tests.stale`, `tests.stale.units`
 
+### Affected tests on save (#1775)
+
+- After a unit is saved (also a form or include file) Atlas finds the tests that the changes of this file since the last commit reach and runs only those in the background. It builds as with “Build before the tests”.
+- No window pops up: the Atlas status field shows “Tests: 3 affected · running …”, then “Tests: 3/3 passed” or red “Tests: 1 of 3 failed”. Clicking the line in the status window shows the output of the run in the message view.
+- Code lens and Atlas problems follow the run as after “Run tests”.
+- Saving during a run does not cancel it; afterwards at most one more run follows with all files saved until then.
+- No run during a debug session, a build or another test run. More affected tests than `tests.onSave.max` or all tests needed: no run, only a hint in the status field.
+- If a test unit belongs to several test projects, the background run takes the choice made once with “Run tests”.
+
+Settings: `tests.onSave` (default off, quick toggle), `tests.onSave.max`
+
 ### Failure at the assert line (#1771)
 
 - A failed test no longer sits at the method header but at the statement that failed: wavy line under the statement, followed by a grey “expected 4, got 3”.
@@ -159,6 +170,15 @@ Available as a code action (Alt+Enter) on a method or routine, in its body or at
 - An `Assert.Fail` at the end keeps the draft red until the expected values are right.
 - Without a test unit, Atlas creates one like *Create DUnitX test unit* (fixture, setup/teardown, entries in `.dpr` and `.dproj`) and puts the draft in place of the empty test.
 - Private, protected and implementation-only routines cannot be called from the test unit; for them you only get the test with `Assert.Fail`.
+
+### Slash commands for tests and debugging (#305)
+
+Type the command on an empty line and press Enter.
+
+- `/mock IKundenRepo` at unit level creates `TKundenRepoMock = class(TInterfacedObject, IKundenRepo)` with every method of the interface (inherited ones too): each method counts its calls (`LadenCalls`), functions return a settable field (`LadenResult`). Inside a routine of a unit that uses `Delphi.Mocks` you get a local `TMock<IKundenRepo>` variable with its `Create` instead.
+- `/testcase 'a', 2, True` above a test method writes `[TestCase('Case1', 'a,2,True')]`, numbered consecutively; if a value contains a comma, `;` separates. The number of values must match the parameters of the method below.
+- `/dump` inside a routine prints all parameters and local variables of simple types on one line (`OutputDebugString` or the routine from `slashCommands.logCall`).
+- `/assert` below an assignment checks the assigned variable to fit its type (`Assigned`, not empty, not negative, `True`); in test units with `Assert.IsNotNull`, `Assert.AreNotEqual` and `Assert.IsTrue` from DUnitX.
 
 ### Run affected tests (#1353)
 

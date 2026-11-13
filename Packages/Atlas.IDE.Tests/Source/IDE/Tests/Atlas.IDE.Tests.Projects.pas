@@ -36,6 +36,9 @@ type
     /// solange AAlive True liefert.</summary>
     class procedure Choose(const ACandidates: TArray<IOTAProject>; const AAlive: TFunc<Boolean>;
       const ASay: TAtlasTestsSayProc; const AThen: TAtlasTestsProjectProc); static;
+    /// <summary>Testprojekt zu AFileName ohne Frage (Lauf im Hintergrund, #1775): das einzige bzw. die gemerkte
+    /// Wahl; nil ohne oder wenn noch nie gewählt wurde.</summary>
+    class function Known(const AFileName: string): IOTAProject; static;
   end;
 
 implementation
@@ -175,6 +178,26 @@ begin
     ASay(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsChoiceSaveFailed));
   end;
   AThen(mProject);
+end;
+
+class function TAtlasIdeTestProjects.Known(const AFileName: string): IOTAProject;
+var
+  mFound: TArray<IOTAProject>;
+  mFiles: TArray<string>;
+  mIndex: Integer;
+begin
+  Result := nil;
+  mFound := TestProjects(AFileName);
+  mFiles := nil;
+  for mIndex := 0 to High(mFound) do
+  begin
+    mFiles := mFiles + [mFound[mIndex].FileName];
+  end;
+  mIndex := TAtlasTestProjectChoices.Pick(TAtlasTestProjectChoices.Load(ChoiceFile), mFiles);
+  if mIndex >= 0 then
+  begin
+    Result := mFound[mIndex];
+  end;
 end;
 
 class procedure TAtlasIdeTestProjects.Choose(const ACandidates: TArray<IOTAProject>; const AAlive: TFunc<Boolean>;
