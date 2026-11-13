@@ -82,6 +82,7 @@ type
     Hotspots,
     UnitRelations,
     Evaluate,
+    Variables,
     DebugExceptions,
     DebugEventLog,
     DebugParallelStacks,
