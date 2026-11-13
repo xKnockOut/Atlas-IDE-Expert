@@ -68,29 +68,13 @@ begin
 end;
 
 procedure TAtlasIdeTestSlowest.Remember(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
-var
-  mKept: TArray<TTestCaseResult>;
-  mOld, mNew: TTestCaseResult;
-  mReplaced: Boolean;
 begin
-  mKept := nil;
-  if SameText(ATarget.Project, FProject) then
+  if not SameText(ATarget.Project, FProject) then
   begin
-    for mOld in FCases do
-    begin
-      mReplaced := False;
-      for mNew in ARun.Cases do
-      begin
-        mReplaced := mReplaced or SameText(mNew.FullName, mOld.FullName);
-      end;
-      if not mReplaced then
-      begin
-        mKept := mKept + [mOld];
-      end;
-    end;
+    FCases := nil;
   end;
   FProject := ATarget.Project;
-  FCases := mKept + ARun.Cases;
+  FCases := TAtlasTestRun.Merged(FCases, ARun.Cases);
   if Assigned(FNext) then
   begin
     FNext(ATarget, ARun);

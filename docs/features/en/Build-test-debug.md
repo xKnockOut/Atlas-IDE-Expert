@@ -207,6 +207,21 @@ Settings: `tests.approvalFolder` (atlas.json), `tests.approvalFiles` (plugin)
 
 Settings: `tests.showDuration`, `tests.slowMs`
 
+<a id="window-atlastestsexplorer"></a>
+### “Atlas Tests” window (#1776)
+
+Open it with *View › Atlas › Atlas Tests*, the Atlas menu or the command palette. The window can be docked and comes back with the desktop.
+
+- At the top the test project (a choice when the project group has several, the active one preselected), below it the tree of all tests: test unit › fixture › test › case. Atlas reads the test units of the test project like the test lens does, without the server; again after every run, after saving a test unit and with *Reload*.
+- Every row has a dot with its state: green passed, red failed, yellow only partly run, grey not run, grey ring passed but outdated (#1770). After it the counter “passed/all” (outdated results do not count as passed) and the duration. Tests with `[Ignore]` are listed with “(ignored)” and do not count.
+- *Run all* builds the test project and runs all tests. *Run selected* (Ctrl+R) runs exactly the selected rows (multiple selection with Ctrl and Shift, also whole fixtures or test units) with `--run` and their names. *Debug selected* (Ctrl+D) starts them in the debugger like “Debug test”; the one-time breakpoint at the start applies only to a single test.
+- The filters *Failed*, *Not run*, *Outdated* and *Slow* (above `tests.slowMs`) apply at once, several together with “or”; the search box searches the full name (Unit.Fixture.Method.Case). The path to every match stays visible.
+- Double-click or Enter goes to the test, for a case to its `[TestCase]`. Below, the selected test shows message, expected and actual value and the stack trace; lines naming a unit of the test project open on double-click.
+- Results are kept for this session, per test project; changes to a test unit show up after saving.
+- `tests.window` off: no menu entry, the window is not restored.
+
+Setting: `tests.window`
+
 ### Leaks per test (#1774)
 
 - With a leak monitor in the test project (`DUnitX.MemoryLeakMonitor.FastMM4` or `FastMM5`), DUnitX reports a test that does not free memory as a failure (“40 bytes were leaked in the test method”). Atlas shows it as passed with a leak: the mark turns yellow, “Run test · passed · leak: 40 bytes”.

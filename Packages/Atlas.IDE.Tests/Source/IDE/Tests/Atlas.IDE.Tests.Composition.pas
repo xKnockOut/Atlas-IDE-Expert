@@ -11,7 +11,8 @@
 //   vergleichen“ (#1779), „Langsamste Tests zeigen“ (#1772) und
 //   „Liegengebliebene .received-Dateien löschen“ (#1881) im Atlas-Menü,
 //   „TestCase-Tabelle bearbeiten …“ (#1879) in der Palette und im
-//   Kontextmenü einer Testunit, „Test ausführen“/„Test debuggen“ im
+//   Kontextmenü einer Testunit, das Fenster „Atlas-Tests“ (#1776, Ansicht,
+//   Atlas-Menü, Palette; Atlas.IDE.Tests.Explorer), „Test ausführen“/„Test debuggen“ im
 //   Kontextmenü und „Tests dieser Unit ausführen“ im Kontextmenü der
 //   Projektverwaltung (#1817: Testunits der gewählten Units nach Namen in der
 //   Projektgruppe, nur solche
@@ -54,7 +55,7 @@ uses
 type
   TAtlasTestsModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
     IAtlasAppliesSettings, IAtlasBuildVerdictListener, IAtlasTestRunner, IAtlasTestsSource, IAtlasFollowsSaves,
-    IAtlasTestValues)
+    IAtlasTestValues, IAtlasFollowsTheme)
   public const
     cModuleId = 'atlas.tests';
     cSwitch = 'tests';
@@ -81,6 +82,7 @@ type
     procedure CompareAt(ALine: Integer);
     function HasValues(const AFullName: string): Boolean;
     procedure Compare(const AFullName: string);
+    procedure ThemeChanged;
     /// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
     /// nicht passt.</summary>
     class function RegisterModule: Boolean; static;
@@ -114,6 +116,7 @@ uses
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Tests.UnitCommands,
   Atlas.IDE.Tests.FromDebugStop,
+  Atlas.IDE.Tests.Explorer,
   Atlas.UI.Tests.Strings;
 
 var
@@ -129,6 +132,7 @@ var
   GCompare: TAtlasIdeTestCompare;
   GSlowest: TAtlasIdeTestSlowest;
   GCaseTable: TAtlasIdeTestCaseTable;
+  GExplorer: TAtlasIdeTestExplorer;
 
 { Sichtbarkeit }
 
@@ -253,9 +257,11 @@ begin
   GCompare := TAtlasIdeTestCompare.Create(GTests, GStale.Remember);
   // Langsamste Tests (#1772): Ergebnisse des Testprojekts; reicht den Lauf an den Vergleich weiter.
   GSlowest := TAtlasIdeTestSlowest.Create(GTests, GCompare.Remember);
-  GTests.OnReported := GSlowest.Remember;
   // Einzelner Test ausführen bzw. debuggen (#585), auch aus dem Kontextmenü und der Lens.
   GDebugger := TAtlasIdeTestDebugger.Create(GTests);
+  // Fenster „Atlas-Tests“ (#1776): Ergebnisse je Testprojekt; reicht den Lauf an die langsamsten Tests weiter.
+  GExplorer := TAtlasIdeTestExplorer.Create(GTests, GDebugger, GStale.StaleIn, GSlowest.Remember);
+  GTests.OnReported := GExplorer.Remember;
   GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GStale.StaleIn, CompareHooks);
   // Marke „getestet von“ an Methoden normaler Units (#1778).
   GCoveredBy := TAtlasIdeCoveredByLens.Create(GTests, ModuleScope, GStale.StaleIn);
@@ -283,15 +289,17 @@ begin
   // Erst die Lens (sie zeigt auf Läufer und Debugger-Teil), dann der Debugger-Teil (stellt eine laufende Sitzung
   // zurück), dann langsamste Tests (#1772), Vergleich (#1779) und Stände der veralteten Ergebnisse (#1770), dann
   // der Läufer; seine Probleme verschwinden mit ihm.
+  if GTests <> nil then
+  begin
+    GTests.OnReported := nil;
+  end;
+  // Das Fenster „Atlas-Tests“ (#1776) zeigt auf Läufer und Debugger-Teil: vor beiden.
+  FreeAndNil(GExplorer);
   FreeAndNil(GUntested);
   FreeAndNil(GCoveredBy);
   FreeAndNil(GLens);
   FreeAndNil(GCaseTable);
   FreeAndNil(GDebugger);
-  if GTests <> nil then
-  begin
-    GTests.OnReported := nil;
-  end;
   FreeAndNil(GSlowest);
   FreeAndNil(GCompare);
   FreeAndNil(GStale);
@@ -428,6 +436,21 @@ begin
   end;
 end;
 
+{ Fenster „Atlas-Tests“ (#1776) }
+
+function ExplorerVisible: Boolean;
+begin
+  Result := TestsVisible and TAtlasIdeTestExplorer.Wanted and (GExplorer <> nil);
+end;
+
+procedure ShowExplorer;
+begin
+  if GExplorer <> nil then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Build, GExplorer.Show);
+  end;
+end;
+
 { Ungetestete Methoden des Projekts (#1783) }
 
 procedure ListUntested;
@@ -505,6 +528,9 @@ begin
     // Betroffene Tests (#1353): sichtbar mit tests.affected und tests.run.
     Command('Atlas.RunAffectedTests', TAtlasTestsTextId.TestsAffectedCommand,
       Guarded(TAtlasFeature.Build, TAtlasIdeAffectedTests.Run), AffectedTestsVisible),
+    // Fenster „Atlas-Tests“ (#1776): sichtbar mit tests.window.
+    Described(Command('Atlas.TestExplorer', TAtlasTestsTextId.ExplorerCommand, ShowExplorer, ExplorerVisible),
+      TAtlasTestsTextId.ExplorerHint),
     // DUnitX-Tests (#69): sichtbar, solange TestRun an ist und der Läufer läuft.
     Command('Atlas.RunTests', TAtlasTestsTextId.TestsRunCommand, RunAll, TestsVisible),
     Command('Atlas.RunFailedTests', TAtlasTestsTextId.TestsRunFailedCommand, RunFailed, TestsVisible),
@@ -578,6 +604,9 @@ end;
 function TAtlasTestsModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := [
+    // Fenster „Atlas-Tests“ (#1776) unter Ansicht › Atlas und im Atlas-Menü.
+    MenuEntry('Atlas.TestExplorer', TAtlasMenuPlace.ViewMenu),
+    MenuEntry('Atlas.TestExplorer', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.RunAffectedTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.RunStaleTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.CompareTestValues', TAtlasMenuPlace.AtlasMenu),
@@ -607,6 +636,19 @@ begin
   if GOnSave <> nil then
   begin
     GOnSave.ApplySettings;
+  end;
+  // tests.window aus (#1776): Fenster weg.
+  if GExplorer <> nil then
+  begin
+    GExplorer.ApplySettings;
+  end;
+end;
+
+procedure TAtlasTestsModule.ThemeChanged;
+begin
+  if GExplorer <> nil then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Build, TAtlasIdeTestExplorer.ThemeChanged);
   end;
 end;
 
@@ -669,6 +711,11 @@ end;
 
 procedure TAtlasTestsModule.FileSaved(const AFileName: string);
 begin
+  // Fenster „Atlas-Tests“ (#1776): gespeicherte Testunit neu lesen.
+  if GExplorer <> nil then
+  begin
+    GExplorer.FileSaved(AFileName);
+  end;
   // Betroffene Tests beim Speichern (#1775).
   if GOnSave <> nil then
   begin
@@ -747,6 +794,7 @@ begin
   GScope.Provide(IAtlasAppliesSettings, mRef);
   GScope.Provide(IAtlasBuildVerdictListener, mRef);
   GScope.Provide(IAtlasFollowsSaves, mRef);
+  GScope.Provide(IAtlasFollowsTheme, mRef);
   GScope.Provide(IAtlasTestRunner, mRef);
   // Vertrag zwischen Modulen: Karte Tests (#763) und Schnellaktionen (#764) der Willkommensseite.
   GScope.Provide(IAtlasTestsSource, mRef);

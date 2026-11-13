@@ -183,6 +183,21 @@ Einstellungen: `tests.approvalFolder` (atlas.json), `tests.approvalFiles` (Plugi
 
 Einstellungen: `tests.showDuration`, `tests.slowMs`
 
+<a id="window-atlastestsexplorer"></a>
+### Fenster „Atlas-Tests“ (#1776)
+
+Aufruf: *Ansicht › Atlas › Atlas-Tests*, Atlas-Menü oder Befehlspalette. Das Fenster lässt sich andocken und kommt mit dem Desktop wieder.
+
+- Oben das Testprojekt (bei mehreren in der Projektgruppe zur Wahl, vorgewählt das aktive), darunter der Baum aller Tests: Testunit › Fixture › Test › Fall. Gelesen werden die Testunits des Testprojekts wie von der Testlinse, ohne Server; neu nach jedem Lauf, nach dem Speichern einer Testunit und mit *Neu einlesen*.
+- Je Zeile ein Punkt mit dem Stand: grün bestanden, rot fehlgeschlagen, gelb nur zum Teil gelaufen, grau nicht gelaufen, grauer Ring bestanden, aber veraltet (#1770). Dahinter der Zähler „bestanden/alle“ (veraltete zählen nicht als bestanden) und die Dauer. Tests mit `[Ignore]` stehen mit „(ignoriert)“ da und zählen nicht.
+- *Alle ausführen* baut das Testprojekt und startet alle Tests. *Ausgewählte ausführen* (Strg+R) startet genau die gewählten Zeilen (Mehrfachauswahl mit Strg und Umschalt, auch ganze Fixtures oder Testunits) mit `--run` und ihren Namen. *Ausgewählte debuggen* (Strg+D) startet sie im Debugger wie „Test debuggen“; der einmalige Haltepunkt am Anfang gilt nur bei einem einzelnen Test.
+- Filter *Fehlgeschlagen*, *Nicht gelaufen*, *Veraltet* und *Langsam* (über `tests.slowMs`) wirken sofort, mehrere zusammen mit „oder“; das Suchfeld sucht im vollen Namen (Unit.Fixture.Methode.Fall). Der Weg zu jedem Treffer bleibt sichtbar.
+- Doppelklick oder Enter springt zum Test, bei einem Fall zu seinem `[TestCase]`. Unten stehen zum gewählten Test Meldung, erwarteter und erhaltener Wert und der Stacktrace; Zeilen, die eine Unit des Testprojekts nennen, öffnen sich per Doppelklick.
+- Die Ergebnisse gelten für diese Sitzung, je Testprojekt; Änderungen an einer Testunit zeigt das Fenster nach dem Speichern.
+- `tests.window` aus: kein Menüeintrag, das Fenster wird nicht wiederhergestellt.
+
+Einstellung: `tests.window`
+
 ### Lecks je Test (#1774)
 
 - Mit Leckmonitor im Testprojekt (`DUnitX.MemoryLeakMonitor.FastMM4` bzw. `FastMM5`) meldet DUnitX einen Test, der Speicher nicht freigibt, als Fehlschlag („40 bytes were leaked in the test method“). Atlas zeigt ihn als bestanden mit Leck: Die Marke wird gelb, „Test ausführen · bestanden · Leck: 40 Bytes“.
