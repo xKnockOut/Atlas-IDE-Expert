@@ -2258,6 +2258,7 @@ uses
   Atlas.Common.Monitor.Targets.Tests in 'Common\Monitor\Atlas.Common.Monitor.Targets.Tests.pas',
   Atlas.UI.Settings.Section in '..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Section.pas',
   Atlas.UI.Debug.SettingsSection in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.SettingsSection.pas',
+  Atlas.Core.Debug.EventLog in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EventLog.pas',
   Atlas.UI.Tests.SettingsSection in '..\Packages\Atlas.IDE.Tests\Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas',
   Atlas.UI.Build.SettingsSection in '..\Packages\Atlas.IDE.Build\Source\UI\Build\Atlas.UI.Build.SettingsSection.pas',
   Atlas.UI.BuildPipeline.SettingsSection in '..\Packages\Atlas.IDE.BuildPipeline\Source\UI\BuildPipeline\Atlas.UI.BuildPipeline.SettingsSection.pas',
