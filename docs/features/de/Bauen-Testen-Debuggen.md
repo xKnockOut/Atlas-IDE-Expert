@@ -584,6 +584,29 @@ Einstellungen: `debug.completionInDialogs`
 
 Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 
+<a id="window-atlasvariables"></a>
+#### Fenster „Variablen“
+
+- Andockbares Fenster „Atlas: Variablen“ (Atlas-Menü) mit drei Reitern, bei jedem Halt neu ausgewertet:
+  - **Autos:** Variablen, Felder und einfache Ausdrücke der aktuellen Anweisung und nach einem Schritt auch der vorigen, aus dem Syntaxbaum. Aufrufe (auch Funktionen und Getter ohne Klammern) stehen nicht darin, nur ihre Argumente und das Objekt davor: Bei `Betrag := LeseBetrag(S);` sind es `Betrag` und `S`.
+  - **Lokal:** `Self`, Parameter, `Result`, lokale Variablen und Inline-Variablen, die an der Zeile schon gelten.
+  - **Überwachung:** eigene Ausdrücke, je Projekt gespeichert; sie kommen mit dem Projekt wieder.
+- Ausgewertet wird ohne Nebenwirkungen; Werte klappen zu ihren Feldern auf wie im Fenster „Auswerten“, seit dem letzten Schritt geänderte Werte sind hervorgehoben.
+- Suche im gezeigten Reiter nach Name oder (mit „In Werten“) nach Wert. Mit „Unterelemente“ klappt Atlas Knoten bis `debug.variablesWindow.searchDepth` Ebenen selbst auf und hört nach `debug.variablesWindow.searchLimit` Auswertungen auf. Gezeigt werden Treffer (fett), ihr Pfad und ihre Unterelemente; unten steht die Zahl der Treffer. Ein Wert zählt nur bei einfachen Werten: Bei einer Suche nach „Berlin“ ist `Kunde.Adressen[1].Ort` der Treffer, nicht `Kunde`.
+- Autos und Lokal brauchen den Atlas-Server; die Überwachung geht ohne.
+
+| Bedienung | Wirkung |
+|---|---|
+| Strg+F | ins Suchfeld |
+| Strg+W | Ausdruck der Zeile als Überwachung hinzufügen |
+| Strg+C | Wert kopieren |
+| Strg+Umschalt+C | Ausdruck kopieren |
+| F2 | Wert ändern (mit `debug.editValues`, wie „Ändern …“ im Debug-Hover) |
+| Entf (Reiter Überwachung) | Überwachung entfernen |
+| Enter im Eingabefeld des Reiters Überwachung | Ausdruck überwachen |
+
+Einstellungen: `debug.variablesWindow`, `debug.variablesWindow.searchDepth`, `debug.variablesWindow.searchLimit`
+
 ### Ereignisprotokoll
 
 <a id="window-atlasdebugeventlog"></a>

@@ -116,6 +116,7 @@ const
     (Id: 'AtlasHotspots'; German: 'Verstehen'; English: 'Understanding'), // german-ok Dateiname
     (Id: 'AtlasUnitRelations'; German: 'Verstehen'; English: 'Understanding'), // german-ok Dateiname
     (Id: 'AtlasEvaluate'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
+    (Id: 'AtlasVariables'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasDebugExceptions'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasDebugEventLog'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasDebugParallelStacks'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
