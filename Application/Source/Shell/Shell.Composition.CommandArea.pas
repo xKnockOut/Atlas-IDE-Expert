@@ -64,6 +64,8 @@ type
     function UnitSearchServices: TShellUnitSearchServices;
     /// <summary>Eigenschaftsregeln anwenden in Formularen.</summary>
     procedure RegisterDfmPropertyRules;
+    /// <summary>Leckprüfung einrichten (#1880).</summary>
+    procedure RegisterLeakSetup;
     /// <summary>Befehle der Schnellbefehle: Einordnen, Erzeugen-Menü, Testunit, Unit-Suche.</summary>
     procedure RegisterSlashCommands;
   public
@@ -92,7 +94,8 @@ uses
   Atlas.Common.Editing.MethodOrder,
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Lsp.ServerActivity,
-  Shell.Composition.DfmPropertyRules;
+  Shell.Composition.DfmPropertyRules,
+  Shell.Composition.LeakSetup;
 
 /// <summary>Ausführlicher Status von AReports als Funktion für die Aktivität des Servers.</summary>
 function DetailsOf(AReports: TShellStatusReports): TServerDetailsFunc;
@@ -120,6 +123,7 @@ begin
   FServerCommands := TShellServerCommands.Create(ServerServices);
   FServerCommands.RegisterConvertCommand(FCommands);
   RegisterDfmPropertyRules;
+  RegisterLeakSetup;
   FCode.Refactorings.Register(FCommands);
   FAnalysis.Analysis.RegisterReportCommands(FCommands);
   FAnalysis.Overviews.RegisterReportCommands(FCommands);
@@ -298,6 +302,17 @@ begin
   mServices.RuleContext := FCore.RuleContext;
   mServices.ReadText := ReadText;
   TShellDfmPropertyRules.Attach(FCommands, mServices);
+end;
+
+procedure TShellCommandArea.RegisterLeakSetup;
+var
+  mServices: TShellLeakSetupServices;
+begin
+  mServices := Default(TShellLeakSetupServices);
+  mServices.Logger := FServices.Logger;
+  mServices.Workspaces := FCore.Workspaces;
+  mServices.ReadText := ReadText;
+  TShellLeakSetup.Attach(FCommands, mServices);
 end;
 
 procedure TShellCommandArea.RegisterSlashCommands;

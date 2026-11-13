@@ -579,6 +579,9 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.FormatCheck.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CodeActions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TestUnits.pas"/>
+        <DCCReference Include="Source\Leaks\Internals\Atlas.Common.Leaks.Internals.MainScan.pas"/>
+        <DCCReference Include="Source\Leaks\Atlas.Common.Leaks.Setup.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LeakSetup.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UnitSearch.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ControlFlow.Statements.pas"/>
@@ -660,6 +663,9 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeEdits.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IdeBuilds.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.TestTools.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.ProfileTools.pas"/>
+        <DCCReference Include="Source\Profiling\Atlas.Common.Profiling.Profile.pas"/>
+        <DCCReference Include="Source\Profiling\Atlas.Common.Profiling.Report.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.DeadCodeTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.StatusTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Prompts.pas"/>

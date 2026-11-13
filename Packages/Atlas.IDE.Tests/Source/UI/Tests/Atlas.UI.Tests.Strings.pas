@@ -28,7 +28,9 @@ type
     // Kontextmenü der Projektverwaltung (#1817).
     TestsProjectRunUnit, TestsProjectNoTestUnit,
     // Assistent der Objektgalerie (#1821).
-    TestsGalleryTestUnit, TestsGalleryTestUnitHint, TestsGalleryChooseUnit, TestsGalleryNoUnits);
+    TestsGalleryTestUnit, TestsGalleryTestUnitHint, TestsGalleryChooseUnit, TestsGalleryNoUnits,
+    // Veraltete Ergebnisse (#1770).
+    TestsLensStale, TestsRunStaleCommand, TestsNoStale, SettingsTestsStale, SettingsTestsStaleUnits);
 
   TAtlasTestsStrings = class
   public
@@ -117,7 +119,12 @@ const
      'Legt zu einer Unit der Projektgruppe eine Testunit mit Fixture und je öffentlicher Methode einem Test an ' +
      'und trägt sie ins Testprojekt ein; gibt es sie schon, öffnet Atlas sie.',
      'Unit, zu der die Testunit entsteht:',
-     'Tests: Keine Unit in der Projektgruppe.'),
+     'Tests: Keine Unit in der Projektgruppe.',
+     '%s (veraltet)',
+     'Veraltete Tests ausführen',
+     'Tests: Keine veralteten Tests (seit dem Lauf nichts geändert).',
+     'Geänderte Tests als veraltet zeigen (grau „(veraltet)“, Befehl „Veraltete Tests ausführen“)',
+     'Auch Änderungen in verwendeten Units des Testprojekts zählen'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -190,7 +197,12 @@ const
      'Creates a test unit with a fixture and one test per public method for a unit of the project group and ' +
      'adds it to the test project; if it already exists, Atlas opens it.',
      'Unit to create the test unit for:',
-     'Tests: No unit in the project group.'));
+     'Tests: No unit in the project group.',
+     '%s (outdated)',
+     'Run outdated tests',
+     'Tests: No outdated tests (nothing changed since the run).',
+     'Show changed tests as outdated (grey “(outdated)”, command “Run outdated tests”)',
+     'Changes in used units of the test project count too'));
 
 { TAtlasTestsStrings }
 

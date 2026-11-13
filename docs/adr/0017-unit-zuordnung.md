@@ -329,6 +329,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Problems.InlineHints` | `Core/Problems/Atlas.Core.Problems.InlineHints.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Refresh` | `Core/Problems/Atlas.Core.Problems.Refresh.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Store` | `Core/Problems/Atlas.Core.Problems.Store.pas` | Ordner `Core/Problems` |
+| `Atlas.Core.Problems.AtCaret` | `Core/Problems/Atlas.Core.Problems.AtCaret.pas` | Ordner `Core/Problems`: Befund unter der Schreibmarke, ohne IDE testbar (#1967) |
 | `Atlas.Core.Product.Version` | `Core/Product/Atlas.Core.Product.Version.pas` | Ordner `Core/Product` |
 | `Atlas.Core.Projects.Baseline` | `Core/Projects/Atlas.Core.Projects.Baseline.pas` | Stand der Baseline-Datei; Build-Zusammenfassung, Projektverlauf und Modul Prüfregeln lesen ihn, #1455 |
 | `Atlas.Core.Projects.Contract` | `Core/Projects/Atlas.Core.Projects.Contract.pas` | Ordner `Core/Projects` |
@@ -609,6 +610,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Foundation.EditorBarHost` | `IDE/Foundation/Atlas.IDE.Foundation.EditorBarHost.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorBuffer` | `IDE/Foundation/Atlas.IDE.Foundation.EditorBuffer.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorFiles` | `IDE/Foundation/Atlas.IDE.Foundation.EditorFiles.pas` | Ordner `IDE/Foundation` |
+| `Atlas.IDE.Foundation.ActiveEditor` | `IDE/Foundation/Atlas.IDE.Foundation.ActiveEditor.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorRefresh` | `IDE/Foundation/Atlas.IDE.Foundation.EditorRefresh.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorSnapshot` | `IDE/Foundation/Atlas.IDE.Foundation.EditorSnapshot.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.EditorStyle` | `IDE/Foundation/Atlas.IDE.Foundation.EditorStyle.pas` | Ordner `IDE/Foundation` |
@@ -1417,9 +1419,11 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.ProjectChoice` | `Core/Tests/Atlas.Core.Tests.ProjectChoice.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.UnitMatch` | `Core/Tests/Atlas.Core.Tests.UnitMatch.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Run` | `Core/Tests/Atlas.Core.Tests.Run.pas` | Ordner `Core/Tests` |
+| `Atlas.Core.Tests.Stale` | `Core/Tests/Atlas.Core.Tests.Stale.pas` | Ordner `Core/Tests` |
 | `Atlas.IDE.Tests.Affected` | `IDE/Tests/Atlas.IDE.Tests.Affected.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Debug` | `IDE/Tests/Atlas.IDE.Tests.Debug.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Lens` | `IDE/Tests/Atlas.IDE.Tests.Lens.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.Stale` | `IDE/Tests/Atlas.IDE.Tests.Stale.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Projects` | `IDE/Tests/Atlas.IDE.Tests.Projects.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Runner` | `IDE/Tests/Atlas.IDE.Tests.Runner.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.UnitCommands` | `IDE/Tests/Atlas.IDE.Tests.UnitCommands.pas` | Ordner `IDE/Tests` |

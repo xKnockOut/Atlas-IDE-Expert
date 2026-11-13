@@ -81,6 +81,16 @@ Einstellungen: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 
 - **DUnitX-Tests** aus dem Editor ausführen und einen einzelnen Test im Debugger starten (Code Lens an `[Test]` und `[TestFixture]`)
 
+### Veraltete Testergebnisse (#1770)
+
+- Wurde ein Test seit seinem Lauf geändert, zeigt seine Marke der Code Lens den alten Stand grau und kursiv mit „(veraltet)“, z. B. „Test ausführen · bestanden (veraltet)“.
+- Nur Leerraum oder Kommentare geändert: nicht veraltet. Wird die Änderung zurückgenommen, gilt das Ergebnis wieder.
+- Die Klassenmarke ist veraltet, sobald einer ihrer Tests es ist; die Zählung „3/4 bestanden“ nimmt veraltete Ergebnisse nicht als bestanden.
+- Auf Wunsch machen auch Änderungen in den Units, die die Testunit verwendet (und die zum Testprojekt gehören), das Ergebnis veraltet.
+- „Veraltete Tests ausführen“ (*Atlas*-Menü, Befehlspalette) führt genau diese Tests aus.
+
+Einstellungen: `tests.stale`, `tests.stale.units`
+
 ### Betroffene Tests ausführen (#1353)
 
 Aufruf: *Atlas*-Menü, Befehlspalette.
