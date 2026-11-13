@@ -136,6 +136,7 @@ contains
   Atlas.IDE.Debug.Composition in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.pas',
   Atlas.UI.Debug.SettingsSection in 'Source\UI\Debug\Atlas.UI.Debug.SettingsSection.pas',
   Atlas.Core.Debug.EventLog in 'Source\Core\Debug\Atlas.Core.Debug.EventLog.pas',
+  Atlas.Core.Debug.LeakCapture in 'Source\Core\Debug\Atlas.Core.Debug.LeakCapture.pas',
   Atlas.UI.Debug.EventLogFrame in 'Source\UI\Debug\Atlas.UI.Debug.EventLogFrame.pas' {AtlasDebugEventLogFrame: TFrame},
   Atlas.IDE.Debug.EventLogMirror in 'Source\IDE\Debug\Atlas.IDE.Debug.EventLogMirror.pas',
   Atlas.IDE.Debug.EventLogWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.EventLogWindow.pas',

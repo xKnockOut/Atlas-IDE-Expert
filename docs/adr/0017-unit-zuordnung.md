@@ -976,6 +976,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.Strings` | `UI/Debug/Atlas.UI.Debug.Strings.pas` | Texte des Moduls (Debugger), Sprache von Base, #1455 |
 | `Atlas.UI.Debug.Viewer` | `UI/Debug/Atlas.UI.Debug.Viewer.pas` | Ordner `UI/Debug` |
 | `Atlas.Core.Debug.EventLog` | `Core/Debug/Atlas.Core.Debug.EventLog.pas` | Ereignisprotokoll ohne IDE: Arten, Filter, Farben, Sprungziele, #580 |
+| `Atlas.Core.Debug.LeakCapture` | `Core/Debug/Atlas.Core.Debug.LeakCapture.pas` | Leckbericht am Ende einer Debug-Sitzung ohne IDE: Meldungsfenster, FastMM-Logdatei, Wahl, Vergleich mit dem letzten Lauf, #1875 |
 | `Atlas.UI.Debug.EventLogFrame` | `UI/Debug/Atlas.UI.Debug.EventLogFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.IDE.Debug.EventLogMirror` | `IDE/Debug/Atlas.IDE.Debug.EventLogMirror.pas` | Mitlesen aus dem Ereignisprotokoll der IDE, #580 |
 | `Atlas.IDE.Debug.EventLogWindow` | `IDE/Debug/Atlas.IDE.Debug.EventLogWindow.pas` | Andockbares Fenster Ereignisprotokoll, #580 |
