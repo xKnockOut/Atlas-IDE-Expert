@@ -173,6 +173,16 @@ Einstellungen: `tests.approvalFolder` (atlas.json), `tests.approvalFiles` (Plugi
 
 Einstellungen: `tests.showDuration`, `tests.slowMs`
 
+### Lecks je Test (#1774)
+
+- Mit Leckmonitor im Testprojekt (`DUnitX.MemoryLeakMonitor.FastMM4` bzw. `FastMM5`) meldet DUnitX einen Test, der Speicher nicht freigibt, als Fehlschlag („40 bytes were leaked in the test method“). Atlas zeigt ihn als bestanden mit Leck: Die Marke wird gelb, „Test ausführen · bestanden · Leck: 40 Bytes“.
+- In *Atlas-Probleme* steht am Methodenkopf eine Warnung „Test TKontoTests.Bucht gibt Speicher nicht frei: 40 Bytes (Leck)“, Quelle DUnitX.
+- Die Meldungsansicht nennt nach dem Lauf, wie viele Tests mit Leck bestanden und wie viele Bytes zusammen nicht freigegeben wurden.
+- Ein Leck in Setup oder TearDown zählt beim Test, in dem es auftrat.
+- `tests.leaks` aus: Das Ergebnis bleibt, wie DUnitX es meldet (Fehlschlag, rot).
+
+Einstellung: `tests.leaks`
+
 ### Testfall aus der Unit anlegen (#1226)
 
 Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an der Deklaration; im Rumpf auch `/test`.
@@ -265,6 +275,20 @@ Vor jedem Start einer Debug-Sitzung prüft Atlas alle aktiven Quelltext-Haltepun
 Gibt es Funde, zeigt der Dialog „Haltepunkte, die nicht greifen werden“ sie vor dem Start; Doppelklick springt zur Stelle. „Auf nächste Codezeile verschieben“ verschiebt die Haltepunkte samt Bedingung, Durchlaufzahl und Gruppe und startet, „Trotzdem starten“ startet unverändert, „Abbrechen“ startet nicht. Der Befehl „Haltepunkte prüfen“ (Menü Atlas, Befehlspalette) prüft jederzeit. Ohne Server oder ohne Antwort in 3 Sekunden startet die IDE ohne Meldung.
 
 Einstellungen: `debug.checkBreakpoints`
+
+#### Haltepunkt-Sätze
+
+Aufruf: Menü Atlas und Befehlspalette. Wer an mehreren Fehlern arbeitet, wechselt zwischen benannten Sätzen von Haltepunkten, statt sie zu löschen und neu zu setzen.
+
+- „Haltepunkte als Satz speichern …“ nimmt alle Quelltext-Haltepunkte mit Bedingung, Durchlaufzahl, Gruppe, Aktionen und an/aus auf; auf Wunsch an den aktuellen Branch gekoppelt.
+- „Haltepunkt-Satz wechseln …“ legt fehlende Haltepunkte des Satzes an und schaltet die Haltepunkte anderer Sätze aus (gelöscht wird nichts). Haltepunkte, die zu keinem Satz gehören, bleiben, wie sie sind.
+- „Haltepunkt-Satz hinzufügen …“ ergänzt die Haltepunkte eines Satzes, ohne andere auszuschalten; „Haltepunkt-Satz löschen …“ entfernt nur den Satz.
+- Atlas findet die Zeile beim Laden über Methode und Zeilentext wieder, auch wenn darüber Zeilen eingefügt wurden; nicht mehr auffindbare Haltepunkte nennt eine Zeile in den Meldungen.
+- Sätze liegen je Projekt in `.atlas/breakpoints/<Name>.json` und lassen sich im Repository teilen.
+- Mit `debug.breakpointSetPerBranch` wird ein gekoppelter Satz aktiv, sobald die Arbeitskopie auf seinen Branch wechselt (Git und SVN).
+- Die Haltepunktgruppen der IDE bleiben unberührt: Sie schalten Haltepunkte über Aktionen, hängen aber an Zeilennummern in der `.dsk`; ein Satz merkt sich die Gruppe jedes Haltepunkts mit.
+
+Einstellungen: `debug.breakpointSetPerBranch`
 
 ### Werte ansehen
 

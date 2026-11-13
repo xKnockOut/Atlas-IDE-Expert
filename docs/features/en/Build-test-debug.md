@@ -197,6 +197,16 @@ Settings: `tests.approvalFolder` (atlas.json), `tests.approvalFiles` (plugin)
 
 Settings: `tests.showDuration`, `tests.slowMs`
 
+### Leaks per test (#1774)
+
+- With a leak monitor in the test project (`DUnitX.MemoryLeakMonitor.FastMM4` or `FastMM5`), DUnitX reports a test that does not free memory as a failure (“40 bytes were leaked in the test method”). Atlas shows it as passed with a leak: the mark turns yellow, “Run test · passed · leak: 40 bytes”.
+- *Atlas problems* gets a warning at the method header, “Test TKontoTests.Bucht does not free memory: 40 bytes (leak)”, source DUnitX.
+- After the run the messages view says how many tests passed with a leak and how many bytes were not freed in total.
+- A leak in setup or teardown counts for the test in which it happened.
+- `tests.leaks` off: the result stays as DUnitX reports it (failure, red).
+
+Setting: `tests.leaks`
+
 ### Create a test case from the unit (#1226)
 
 Available as a code action (Alt+Enter) on a method or routine, in its body or at its declaration; in the body also as `/test`.
@@ -392,6 +402,20 @@ Before every debug session starts, Atlas checks all active source breakpoints, o
 If anything is found, the dialog “Breakpoints that will not be hit” lists it before the start; double-click jumps to the spot. “Move to next code line” moves the breakpoints together with condition, pass count and group and starts, “Start anyway” starts unchanged, “Cancel” does not start. The command “Check breakpoints” (Atlas menu, command palette) checks at any time. Without a server, or without an answer within 3 seconds, the IDE starts without a message.
 
 Settings: `debug.checkBreakpoints`
+
+### Breakpoint sets
+
+Atlas menu and command palette. When you work on several bugs, switch between named sets of breakpoints instead of deleting and setting them again.
+
+- “Save breakpoints as set …” takes all source breakpoints with condition, pass count, group, actions and on/off; optionally coupled to the current branch.
+- “Switch breakpoint set …” creates missing breakpoints of the set and disables the breakpoints of other sets (nothing is deleted). Breakpoints that belong to no set stay as they are.
+- “Add breakpoint set …” adds the breakpoints of a set without disabling others; “Delete breakpoint set …” removes only the set.
+- When loading, Atlas finds the line again by method and line text, even after lines were inserted above; breakpoints that can no longer be found are listed in the messages.
+- Sets are stored per project in `.atlas/breakpoints/<Name>.json` and can be shared in the repository.
+- With `debug.breakpointSetPerBranch`, a coupled set becomes active as soon as the working copy switches to its branch (Git and SVN).
+- The IDE's breakpoint groups stay untouched: they switch breakpoints through actions but are tied to line numbers in the `.dsk`; a set remembers each breakpoint's group.
+
+Settings: `debug.breakpointSetPerBranch`
 
 ## Debug: exceptions
 

@@ -73,7 +73,7 @@ uses
   Atlas.IDE.Tracker.Tiles,
   Atlas.IDE.Tracker.WelcomeLink,
   Atlas.UI.Strings,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Commands.Strings;
 
 const
   // Zusatzfeld der Zeiterfassung im Statusfeld (#1267).
@@ -617,28 +617,29 @@ begin
   mCreate.Key := CreateIssueKey;
   Result := [
     // Zugang zum Issue-Tracker (#765): für die .atlas des aktiven Projekts; sichtbar mit TrackerLogin.
-    Command('Atlas.TrackerLogin', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerLoginCommand),
+    Command('Atlas.TrackerLogin', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.TrackerLoginCommand),
       EnterCredentials, TrackerLoginVisible),
     mCreate,
     // Issue-Vorschau (#1264): Kennung abfragen und das Issue in „Atlas-Issue“ zeigen; sichtbar mit issues.preview.
-    Command('Atlas.IssueShow', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCommand), ShowPreviewPrompt,
+    Command('Atlas.IssueShow', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.IssuePreviewCommand), ShowPreviewPrompt,
       PreviewVisible),
     // Issues zu dieser Methode (#1275); sichtbar mit issues.blameLinks.
-    Command('Atlas.BlameIssues', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssuesCommand), ShowBlameScope,
+    Command('Atlas.BlameIssues', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.BlameIssuesCommand), ShowBlameScope,
       BlameVisible),
     // Offene Zeitbuchungen (#1267): sichtbar mit issues.timeTracking.
-    Command('Atlas.IssueTimeOpen', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeMenuOpen), ShowTimeOpen,
+    Command('Atlas.IssueTimeOpen', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.TimeOpenCommand), ShowTimeOpen,
       TimeVisible),
     // Atlas-Board (#1272): Sprint als Spalten nach Zustand; sichtbar mit issues.board.
-    Command('Atlas.Board', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardCommand), ShowBoard, BoardVisible),
+    Command('Atlas.Board', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.BoardCommand), ShowBoard, BoardVisible),
     // Atlas-Ablauf (#2125): genutzte Übergänge, Verweildauer, liegen gebliebene Issues; sichtbar mit issues.flowMap.
-    Command('Atlas.FlowMap', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.FlowCommand), ShowFlowMap,
+    Command('Atlas.FlowMap', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.FlowCommand), ShowFlowMap,
       FlowMapVisible),
     // An Issue anhängen (#1276): Bildschirmfoto, Formular, Log, Debug-Notiz; sichtbar mit issues.attach.
-    Command('Atlas.IssueAttach', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCommand), AttachPrompt,
+    Command('Atlas.IssueAttach', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.AttachCommand), AttachPrompt,
       AttachVisible),
     // Zugang zum Build-Server (#763): für die .atlas des aktiven Projekts; sichtbar mit ci.login und der Kachel.
-    Command('Atlas.CiLogin', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.CiLoginCommand), EnterCiCredentials, CiLoginVisible)];
+    Command('Atlas.CiLogin', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.CiLoginCommand), EnterCiCredentials,
+      CiLoginVisible)];
 end;
 
 class procedure TAtlasTrackerParts.ApplySettings;
@@ -677,10 +678,10 @@ var
 begin
   // Ansicht › Atlas › Board (#1272) mit dem bisherigen Text.
   mBoard := MenuEntry('Atlas.Board', TAtlasMenuPlace.ViewMenu);
-  mBoard.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardViewMenu);
+  mBoard.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.BoardViewMenu);
   // Ansicht › Atlas › Ablauf (#2125).
   mFlow := MenuEntry('Atlas.FlowMap', TAtlasMenuPlace.ViewMenu);
-  mFlow.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.FlowViewMenu);
+  mFlow.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.FlowViewMenu);
   Result := [
     MenuEntry('Atlas.IssueAttach', TAtlasMenuPlace.AtlasMenu),
     mBoard,

@@ -59,7 +59,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Tracker.CommentEditor,
-  Atlas.UI.Tracker.Strings;
+  Atlas.UI.Tracker.Settings.Strings;
 
 const
   cSnippetsRow = 100;
@@ -94,26 +94,26 @@ end;
 
 procedure TAtlasTrackerSnippetsPart.BuildList;
 begin
-  FRows.AddTitle(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesSnippetsTitle));
+  FRows.AddTitle(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSnippetsTitle));
   FAnchor := FRows.AddKeyedPanel(cSnippetsRow, TAtlasTrackerSettingsTables.cSnippetsKey);
   // Die Zeilen brauchen ein Fenster: Refresh füllt sie (auch aus WindowReady).
   FView.List := FRows.AddList(FAnchor, SelectItem);
-  FRows.AddColumn(FView.List, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesSnippetName), cNameColumn);
-  FRows.AddColumn(FView.List, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesSnippetText), cTextColumn);
+  FRows.AddColumn(FView.List, TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSnippetName), cNameColumn);
+  FRows.AddColumn(FView.List, TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSnippetText), cTextColumn);
 end;
 
 procedure TAtlasTrackerSnippetsPart.BuildFields;
 begin
   FView.Name := FRows.NewEdit(NameChange);
   FView.Name.MaxLength := TAtlasCommentSnippets.cMaxName;
-  FRows.Attach(FRows.AddTallLabelled(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesSnippetName),
+  FRows.Attach(FRows.AddTallLabelled(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSnippetName),
     FView.Name, TRows.cRowHeight), FAnchor);
   FView.Text := TMemo.Create(FRows.Owner);
   FView.Text.MaxLength := TAtlasCommentSnippets.cMaxText;
   FView.Text.ScrollBars := ssVertical;
   FView.Text.WantReturns := True;
   FView.Text.OnChange := TextChange;
-  FRows.Attach(FRows.AddTallLabelled(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesSnippetText),
+  FRows.Attach(FRows.AddTallLabelled(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSnippetText),
     FView.Text, cTextRow), FAnchor);
 end;
 
@@ -125,15 +125,15 @@ begin
   mPanel := FRows.AddPanel(TRows.cButtonRow);
   mLeft := 0;
   FView.Add := FRows.AddButton(mPanel, mLeft, TRows.cButtonWidth,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesSnippetAdd), AddClick);
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSnippetAdd), AddClick);
   Inc(mLeft, TRows.cButtonWidth + TRows.cButtonGap);
   FView.Remove := FRows.AddButton(mPanel, mLeft, TRows.cButtonWidth,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesSnippetRemove), RemoveClick);
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSnippetRemove), RemoveClick);
   Inc(mLeft, TRows.cButtonWidth + TRows.cButtonGap);
   FView.Defaults := FRows.AddButton(mPanel, mLeft, TRows.cButtonWidth,
-    TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesSnippetDefaults), DefaultsClick);
+    TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSnippetDefaults), DefaultsClick);
   FRows.Attach(mPanel, FAnchor);
-  FRows.AddHint(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesSnippetsHint), FAnchor);
+  FRows.AddHint(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSnippetsHint), FAnchor);
 end;
 
 procedure TAtlasTrackerSnippetsPart.Refresh;
@@ -252,7 +252,7 @@ begin
     Exit;
   end;
   // Ohne Text wird der Baustein nicht gespeichert (TAtlasCommentSnippets.Parse lässt ihn fallen).
-  Table.Add(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesSnippetNew));
+  Table.Add(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSnippetNew));
   Refresh;
   TRows.Focus(FView.Name);
 end;
