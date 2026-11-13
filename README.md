@@ -122,7 +122,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Create a test case from the unit:** a code action on a method adds a draft with the call and placeholder checks to the test unit and creates the unit if needed
 - **Set up leak check …** in the project context menu: shows what leak hunting still needs (FastMM4/FastMM5 found, first unit in uses, report on shutdown, defines and DLL of the Debug configuration) and sets up the chosen variant with a preview, for the Debug build only (`tests.leakSetup`)
 - **Test from a debug stop:** "Create test …" in the exception bar turns the values of the stop into a DUnitX test that works or expects the exception
-- **Debugging:** values in the hover and inline, visualizers, evaluate window, smart step into, call stack window with named parameter values, search and comparison with the last stop
+- **Debugging:** values in the hover and inline, visualizers, evaluate window, variables window (autos, locals, watch, search also in children), smart step into, call stack window with named parameter values, search and comparison with the last stop
 - **Exceptions:** history window, exception bar, just my code, access violations explained, module of the fault address (program, RTL/VCL, Windows, third-party DLL)
 - **Threads:** what is waiting for what (wait point of every thread, deadlock patterns such as `WaitFor` against `Synchronize`), parallel stacks of all threads as a tree, other threads in the gutter (flag, experimental: freeze), experimental: where a method queued with `TThread.Queue`, `Synchronize` or `TTask.Run` came from
 - **Event log while debugging:** debug output, modules and threads with filter (also regex), colors by pattern and jump to `File.pas(123)`

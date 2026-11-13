@@ -24,6 +24,10 @@ Aufruf aus dem Wurzelordner des Repositorys:
     python3 Tools/Merge-Integration.py --kein-commit
     python3 Tools/Merge-Integration.py --selbsttest
 
+Hat der automatische Abgleich (Tools/CI/Abgleich-PRs.py) den eigenen Branch auf origin schon
+weitergeschoben, mergt das Skript zuerst origin/<eigener Branch> ein; der nächste Push geht dann
+ohne „non-fast-forward“ durch.
+
 Exit-Code 0: gemergt (oder nichts zu tun), 1: Konflikte bleiben, 2: Dateien müssen noch
 neu erzeugt werden (pwsh fehlt), 3: Vorbedingung verletzt.
 """
@@ -216,13 +220,36 @@ def main():
         print('Arbeitskopie hat ungesicherte Änderungen; erst committen.')
         return 3
 
+    if not args.ohne_fetch:
+        code = eigenen_stand_einholen()
+        if code:
+            return code
+
     ref = f'refs/remotes/origin/{args.ziel}' if args.ohne_fetch else hole(args.ziel)
     if git('merge-base', '--is-ancestor', ref, 'HEAD', check=False).returncode == 0:
         print(f'{args.ziel} ist schon enthalten.')
         return 0
+    return einmergen(ref, args.ziel, args.kein_commit)
 
+
+def eigenen_stand_einholen():
+    """Holt Commits, die der automatische Abgleich (Tools/CI/Abgleich-PRs.py) auf den eigenen Branch
+    gepusht hat. Ohne das scheiterte der nächste Push als „non-fast-forward“."""
+    branch = git('rev-parse', '--abbrev-ref', 'HEAD').stdout.strip()
+    if branch == 'HEAD':
+        return 0
+    if git('fetch', 'origin', f'+refs/heads/{branch}:refs/remotes/origin/{branch}', check=False).returncode != 0:
+        return 0  # Branch noch nicht auf origin
+    ref = f'refs/remotes/origin/{branch}'
+    if git('merge-base', '--is-ancestor', ref, 'HEAD', check=False).returncode == 0:
+        return 0
+    print(f'origin/{branch} hat neue Commits (automatischer Abgleich), werden zuerst eingemergt.')
+    return einmergen(ref, f'origin/{branch}', False)
+
+
+def einmergen(ref, name, kein_commit):
     merge = git('-c', 'merge.conflictStyle=diff3', 'merge', '--no-ff', '--no-commit', '-m',
-                f'{args.ziel} eingemergt', ref, check=False)
+                f'{name} eingemergt', ref, check=False)
     print(merge.stdout.strip())
 
     konflikte = [p for p in git('diff', '--name-only', '--diff-filter=U').stdout.splitlines() if p]
@@ -235,7 +262,7 @@ def main():
             git('checkout', '--theirs', '--', pfad)
             git('add', '--', pfad)
             neu_erzeugen.add(werkzeug)
-            geloest.append(f'{pfad} (erzeugt, Stand {args.ziel})')
+            geloest.append(f'{pfad} (erzeugt, Stand {name})')
             continue
         erg = passt(pfad, ERGAENZBAR)
         zahlen = passt(pfad, NUR_ZAHLEN)
@@ -302,11 +329,11 @@ def main():
         for befehl in fehlt:
             print(f'  {befehl}')
         return 2
-    if args.kein_commit:
+    if kein_commit:
         print('Merge vorbereitet, nicht committet.')
         return 0
     git('commit', '--no-edit')
-    print(f'{args.ziel} eingemergt.')
+    print(f'{name} eingemergt.')
     return 0
 
 
