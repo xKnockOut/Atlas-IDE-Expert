@@ -435,6 +435,8 @@ type
       write FDebug.DebugExplainAccessViolation;
     property DebugExplainAccessViolationAllowCalls: Boolean read FDebug.DebugExplainAccessViolationAllowCalls
       write FDebug.DebugExplainAccessViolationAllowCalls;
+    property DebugModuleOfAddress: Boolean read FDebug.DebugModuleOfAddress write FDebug.DebugModuleOfAddress;
+
     property DebugExceptionHistory: Boolean read FDebug.DebugExceptionHistory write FDebug.DebugExceptionHistory;
     property DebugJustMyCode: Boolean read FDebug.DebugJustMyCode write FDebug.DebugJustMyCode;
     property DebugExceptionBanner: Boolean read FDebug.DebugExceptionBanner write FDebug.DebugExceptionBanner;
