@@ -344,6 +344,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Projects.Trends` | `Core/Projects/Atlas.Core.Projects.Trends.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.UnitRename` | `Core/Projects/Atlas.Core.Projects.UnitRename.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.VersionControl` | `Core/Projects/Atlas.Core.Projects.VersionControl.pas` | Ordner `Core/Projects` |
+| `Atlas.Core.Projects.VcsSettings` | `Core/Projects/Atlas.Core.Projects.VcsSettings.pas` | Ordner `Core/Projects`: vcs.* aus den Einstellungen für das Plugin, ohne IDE testbar (#1967) |
 | `Atlas.Core.Results.CallDiagram` | `Core/Results/Atlas.Core.Results.CallDiagram.pas` | Ordner `Core/Results` |
 | `Atlas.Core.Results.CallDiagramTemplate` | `Core/Results/Atlas.Core.Results.CallDiagramTemplate.pas` | Ordner `Core/Results` |
 | `Atlas.Core.Results.DataFlow` | `Core/Results/Atlas.Core.Results.DataFlow.pas` | Ordner `Core/Results` |
@@ -850,7 +851,6 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 |---|---|---|
 | `Atlas.Core.VersionControl.Composition` | `Core/VersionControl/Atlas.Core.VersionControl.Composition.pas` | Ordner `Core/VersionControl` |
 | `Atlas.Core.VersionControl.Detection` | `Core/VersionControl/Atlas.Core.VersionControl.Detection.pas` | Ordner `Core/VersionControl` |
-| `Atlas.Core.VersionControl.Settings` | `Core/VersionControl/Atlas.Core.VersionControl.Settings.pas` | Ordner `Core/VersionControl`: vcs.* aus den Einstellungen, ohne IDE testbar (#1967) |
 | `Atlas.Core.VersionControl.Internals.GitParser` | `Core/VersionControl/Atlas.Core.VersionControl.Internals.GitParser.pas` | Ordner `Core/VersionControl` |
 | `Atlas.Core.VersionControl.Internals.LineTrace` | `Core/VersionControl/Atlas.Core.VersionControl.Internals.LineTrace.pas` | Ordner `Core/VersionControl` |
 | `Atlas.Core.VersionControl.Internals.SvnParser` | `Core/VersionControl/Atlas.Core.VersionControl.Internals.SvnParser.pas` | Ordner `Core/VersionControl` |

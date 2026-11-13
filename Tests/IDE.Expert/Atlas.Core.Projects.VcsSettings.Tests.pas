@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.VersionControl.Settings.Tests;
+﻿unit Atlas.Core.Projects.VcsSettings.Tests;
 
 // Tests für vcs.* der globalen Einstellungen im Plugin (#571, #1285, #1967): Werte, Vorgaben und Grenzen des
 // Zeitlimits, ohne Datei und IDE.
@@ -10,7 +10,6 @@ uses
 
 type
   [TestFixture]
-  [Category('Atlas.IDE.VersionControl')]
   TAtlasVcsPluginSettingsTests = class
   public
     [Test]
@@ -28,7 +27,7 @@ implementation
 
 uses
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Settings;
+  Atlas.Core.Projects.VcsSettings;
 
 const
   cDefaultMs = TAtlasVcsPluginSettings.cDefaultTimeoutSeconds * TAtlasVcsPluginSettings.cMsPerSecond;

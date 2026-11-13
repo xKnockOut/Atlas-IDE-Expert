@@ -1,8 +1,9 @@
-﻿unit Atlas.Core.VersionControl.Settings;
+﻿unit Atlas.Core.Projects.VcsSettings;
 
 // Einstellungen vcs.* der globalen Atlas-Einstellungen, wie sie das Plugin braucht: Anbieter, Pfade zu git und
 // svn, Zeitlimit und Zuordnung Projekt → Arbeitskopie. Aus dem Text der Datei gelesen, ohne IDE testbar (#1967);
-// Atlas.IDE.VersionControl.Service lädt die Datei und merkt sich das Ergebnis.
+// Atlas.IDE.VersionControl.Service lädt die Datei und merkt sich das Ergebnis. Liegt in Base unter Projects, weil
+// Atlas.Core.VersionControl.* auch der Server übersetzt und dort keine Einstellungsunits verwenden darf.
 
 interface
 

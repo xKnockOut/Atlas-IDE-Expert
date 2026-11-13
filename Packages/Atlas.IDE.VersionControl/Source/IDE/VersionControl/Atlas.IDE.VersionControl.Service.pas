@@ -143,7 +143,7 @@ uses
   Atlas.WinBase.Process,
   Atlas.Core.Projects.Matching,
   Atlas.Core.Settings.TeamFile,
-  Atlas.Core.VersionControl.Settings,
+  Atlas.Core.Projects.VcsSettings,
   Atlas.IDE.Foundation.TeamFile;
 
 type

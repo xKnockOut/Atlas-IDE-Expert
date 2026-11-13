@@ -309,7 +309,7 @@ Atlas.Common.Updates.Tests
 Atlas.Core.Assistants.EditPlan.Tests
 Atlas.Core.Problems.IdeErrors.Tests
 Atlas.Core.Problems.AtCaret.Tests
-Atlas.Core.VersionControl.Settings.Tests
+Atlas.Core.Projects.VcsSettings.Tests
 Atlas.Core.Problems.Explanation.Tests
 Atlas.Core.Hover.View.Tests
 Atlas.Core.Style.Listeners.Tests
