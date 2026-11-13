@@ -259,6 +259,18 @@ Gibt es Funde, zeigt der Dialog „Haltepunkte, die nicht greifen werden“ sie 
 
 Einstellungen: `debug.checkBreakpoints`
 
+#### Bis hier ausführen per Klick
+
+Aufruf: Rand des Editors im angehaltenen Zustand, Kontextmenü Atlas › Debuggen, Befehlspalette. Statt den Cursor zu setzen und F4 zu drücken, genügt ein Klick neben die Zeile.
+
+- Hält das Programm an, erscheint rechts der Zeilennummern eine schmale Spalte; an ausführbaren Zeilen zeigt sie unter dem Mauszeiger ▶ mit einem Tooltip.
+- Klick auf ▶ führt bis zu dieser Zeile aus (wie F4); Strg+Klick dabei ohne Halt an anderen Haltepunkten.
+- Übersprungene Haltepunkte sind nach dem nächsten Halt wieder im alten Zustand, auch wenn das Programm vorher endet. Stürzt die IDE dazwischen ab, setzt Atlas sie beim nächsten Start einer Debug-Sitzung zurück.
+- Rechtsklick in den Rand: „Bis hier ausführen“, „Bis hier, Haltepunkte überspringen“ (auch Strg+F4, nur im angehaltenen Zustand) und „Einmaliger Haltepunkt“. Der einmalige Haltepunkt steht in der Gruppe `Atlas.Einmalig` und verschwindet nach dem ersten Halt; setzen lässt er sich auch ohne laufendes Programm.
+- Ausführbar sind Zeilen zwischen `begin` und `end` eines Rumpfs, ohne Leer- und Kommentarzeilen und ohne Zeilen, die nur `begin`, `end`, `try`, `finally`, `except` oder `else` enthalten.
+
+Einstellungen: `debug.runToClick`
+
 #### Haltepunkt-Sätze
 
 Aufruf: Menü Atlas und Befehlspalette. Wer an mehreren Fehlern arbeitet, wechselt zwischen benannten Sätzen von Haltepunkten, statt sie zu löschen und neu zu setzen.

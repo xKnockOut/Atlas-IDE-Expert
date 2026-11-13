@@ -152,6 +152,8 @@ begin
   // Haltepunkt-Sätze (#586).
   Switch('debug.breakpointSetPerBranch',
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointSetPerBranch));
+  // Bis hier ausführen per Klick (#851).
+  Switch('debug.runToClick', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugRunToClick));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildMore;

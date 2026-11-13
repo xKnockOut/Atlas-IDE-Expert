@@ -2061,6 +2061,18 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#586"
     },
+    "DebugRunToClick": {
+      "description": "Bis hier ausführen per Klick (#851): Hält das Programm im Debugger an, zeigt eine schmale Spalte im Rand an ausführbaren Zeilen unter dem Mauszeiger ein ▶. Klick führt bis zu dieser Zeile aus (wie F4), Strg+Klick ohne Halt an anderen Haltepunkten; diese werden danach wieder eingeschaltet, auch nach einem Absturz der IDE. Im Kontextmenü des Editors stehen „Bis hier ausführen“, „Bis hier, Haltepunkte überspringen“ (Strg+F4 im angehaltenen Zustand) und „Einmaliger Haltepunkt“ (verschwindet nach dem ersten Halt). Aus = keine Spalte, keine Befehle.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.runToClick",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-caption": "Bis hier ausführen per Klick im Rand",
+      "x-captionEn": "Run to here by clicking the margin",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#851"
+    },
     "TestsBuildFirst": {
       "type": "boolean",
       "default": true,
