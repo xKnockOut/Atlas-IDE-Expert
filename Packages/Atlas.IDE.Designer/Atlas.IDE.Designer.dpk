@@ -78,6 +78,7 @@ contains
   Atlas.Core.Designer.Layout in 'Source\Core\Designer\Atlas.Core.Designer.Layout.pas',
   Atlas.Core.Designer.Scale in 'Source\Core\Designer\Atlas.Core.Designer.Scale.pas',
   Atlas.Core.Designer.TabOrder in 'Source\Core\Designer\Atlas.Core.Designer.TabOrder.pas',
+  Atlas.Core.Designer.DesktopSwitch in 'Source\Core\Designer\Atlas.Core.Designer.DesktopSwitch.pas',
   Atlas.Core.Designer.NameSuggest in 'Source\Core\Designer\Atlas.Core.Designer.NameSuggest.pas',
   Atlas.Core.Designer.CodeLink in 'Source\Core\Designer\Atlas.Core.Designer.CodeLink.pas',
   Atlas.Core.Designer.PropertySearch in 'Source\Core\Designer\Atlas.Core.Designer.PropertySearch.pas',
