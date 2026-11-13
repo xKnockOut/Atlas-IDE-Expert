@@ -2,8 +2,9 @@
 
 // Abschnitt „Compiler“ des Moduls Build-Werkzeuge im Optionsdialog (#1456; vorher
 // Atlas.UI.Settings.Page.Tasks in Base): Modulschalter, wirksame Compiler-Schalter (#558), Startprofile (#575),
-// Bauen beim Öffnen (build.onOpen, #1293) und Projektaufgaben aus atlas.json (#900). „Bauen beim Öffnen“ fasst
-// build.onOpen und build.onOpenKind in einer Auswahl zusammen; der Abschnitt liest und schreibt sie selbst.
+// laufendes Programm vor dem Build beenden (#551), Bauen beim Öffnen (build.onOpen, #1293) und Projektaufgaben aus
+// atlas.json (#900). „Bauen beim Öffnen“ fasst build.onOpen und build.onOpenKind in einer Auswahl zusammen; der
+// Abschnitt liest und schreibt sie selbst.
 
 interface
 
@@ -74,6 +75,12 @@ begin
   // Startprofile (#575).
   Switch('startProfiles.enabled', TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsStartProfiles));
   Switch('startProfiles.statusField', TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsStartProfilesStatusField));
+  // Laufendes Programm vor dem Build beenden (#551); Reihenfolge wie cStopRunningProgramNames.
+  Choice('build.stopRunningProgram', TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsStopRunningProgram),
+    [TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsStopRunningProgramAsk),
+    TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsStopRunningProgramAlways),
+    TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsStopRunningProgramNever)],
+    [cStopRunningProgramNames[0], cStopRunningProgramNames[1], cStopRunningProgramNames[2]]);
   BuildOpenBuild;
   BuildTasks;
 end;

@@ -59,6 +59,7 @@ Einstellungen: `refactoring.missingUnit`
 - **Beim Öffnen einmal bauen**, sobald die IDE ruhig ist:
   - auf Wunsch immer mit derselben Konfiguration und Zielplattform (etwa Debug/Win64), egal was im Projekt eingestellt ist
   - danach steht das Projekt wieder wie vorher
+- **Laufendes Programm vor dem Build beenden:** Läuft die exe noch außerhalb des Debuggers, fragt Atlas vor dem Compile „AtlasDemo.exe läuft noch. Beenden und bauen?“ (Ja, Nein, Immer), statt den Build erst am Ende mit F2039 scheitern zu lassen. Beendet wird erst freundlich, nach 2 s hart; Programme im Debugger bleiben unberührt. Bei einem Package nennt ein Hinweis die Programme, die die BPL noch geladen haben (`build.stopRunningProgram`: ask, always, never)
 
 <a id="window-atlascompilerswitches"></a>
 ### Compiler-Schalter an der Cursorposition
@@ -325,6 +326,7 @@ Einstellungen: `debug.exceptionBanner`, aus, bis die Studie zu #783 positiv ist
 - Ohne eindeutige Ursache steht „Ursache nicht eindeutig“.
 - Das schuldige Glied ist im Editor unterstrichen, bis weitergelaufen wird.
 - Getter und Funktionsaufrufe wertet Atlas nur mit `debug.explainAccessViolation.allowCalls` aus.
+- Dahinter steht, in welchem Modul die Fehleradresse liegt: „in deinem Programm“, „in vcl290.bpl (RTL/VCL)“, „in ntdll.dll (Windows)“ oder „in Fremd.dll (keine Debug-Infos)“. Hält der Debugger nicht in eigenem Code, nennt Atlas nur das Modul und die letzte eigene Stelle aus dem Aufrufstapel (`debug.moduleOfAddress`).
 - Ohne Exception-Leiste steht das Ergebnis in den Meldungen.
 
-Schalter: `debug.explainAccessViolation`.
+Schalter: `debug.explainAccessViolation`, `debug.moduleOfAddress`.

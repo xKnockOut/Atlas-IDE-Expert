@@ -16,7 +16,9 @@
 //   fehlt der Branch, nur die Reiter mit Hinweis. Dann Projekt öffnen, Reiter
 //   in ihrer Reihenfolge, Cursor an die letzte Änderung.
 // - Nach „Beginnen“ bietet OfferRestore „Arbeitsstand wiederherstellen“ an;
-//   Restore stellt ohne Rückfrage wieder her (#2127, „Weiterarbeiten“).
+//   Restore stellt ohne Rückfrage wieder her (#2127, „Weiterarbeiten“);
+//   Forget verwirft den Stand eines als „nicht geplant“ oder „Duplikat“
+//   beendeten Issues (#2135).
 
 interface
 
@@ -68,6 +70,9 @@ type
     procedure OfferRestore(const AProject, AKey: string);
     /// <summary>Ohne Rückfrage wiederherstellen (#2127, „Weiterarbeiten“ an einem wieder geöffneten Issue).</summary>
     procedure Restore(const AProject, AKey: string);
+    /// <summary>Gespeicherten Arbeitsstand von AKey verwerfen (#2135, Beenden als „nicht geplant“ oder
+    /// „Duplikat“).</summary>
+    procedure Forget(const AProject, AKey: string);
     procedure StatusesChanged;
     { IAtlasContinueIssuesSource }
     function IssuesEnabled: Boolean;
@@ -351,6 +356,30 @@ begin
     Exit;
   end;
   Store(ATarget, mIssue, ASnapshot);
+end;
+
+procedure TAtlasIdeContinueIssues.Forget(const AProject, AKey: string);
+var
+  mTarget, mKey: string;
+  mEntry: TAtlasIssueWorkEntry;
+begin
+  if FStopped or not FindEntry(AProject, AKey, mTarget, mEntry) then
+  begin
+    Exit;
+  end;
+  mKey := mEntry.Key;
+  TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, mTarget,
+    procedure(var ASummary: TAtlasProjectSummary)
+    var
+      mEntries: TAtlasIssueWorkEntries;
+    begin
+      if TAtlasWelcomeContinueIssues.Read(ASummary, mEntries) then
+      begin
+        TAtlasWelcomeContinueIssues.Write(ASummary,
+          TAtlasWelcomeContinueIssues.Without(mEntries, TArray<string>.Create(mKey)));
+      end;
+    end);
+  Changed;
 end;
 
 procedure TAtlasIdeContinueIssues.SaveIssue(const AProject: string; const AIssue: TAtlasIssueWorkIssue);

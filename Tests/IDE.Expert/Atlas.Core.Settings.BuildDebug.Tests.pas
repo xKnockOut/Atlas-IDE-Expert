@@ -42,6 +42,10 @@ type
     /// build.onOpenExclude mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure BuildOnOpenOptions;
+    /// <summary>Laufendes Programm vor dem Build beenden (#551): build.stopRunningProgram mit Vorgabe ask,
+    /// Normalisieren, Speichern und Laden.</summary>
+    [Test]
+    procedure StopRunningProgramOption;
   end;
 
 implementation
@@ -92,6 +96,27 @@ begin
   Assert.AreEqual('Release, Ship', Loaded.ReleaseConfigs);
   Assert.AreEqual(Settings.ReleaseChecks, Loaded.ReleaseChecks);
 end;
+procedure TAtlasBuildDebugSettingsTests.StopRunningProgramOption;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('ask', Settings.BuildStopRunningProgram, 'standardmäßig Rückfrage');
+  Settings.BuildStopRunningProgram := ' Always ';
+  Settings.Normalize;
+  Assert.AreEqual('always', Settings.BuildStopRunningProgram);
+  Settings.BuildStopRunningProgram := 'immer';
+  Settings.Normalize;
+  Assert.AreEqual('ask', Settings.BuildStopRunningProgram, 'Unbekanntes = ask');
+  Settings.BuildStopRunningProgram := 'never';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.AreEqual('never', Loaded.BuildStopRunningProgram);
+end;
+
 procedure TAtlasBuildDebugSettingsTests.TasksOptions;
 var
   Settings, Loaded: TAtlasPluginSettings;

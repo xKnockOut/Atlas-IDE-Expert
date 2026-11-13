@@ -164,6 +164,9 @@ begin
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugExplainAccessViolation));
   Switch('debug.explainAccessViolation.allowCalls',
     TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugExplainAccessViolationAllowCalls));
+  // Modul der Fehleradresse (#1820).
+  Switch('debug.moduleOfAddress', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugModuleOfAddress));
+
   // Exception-Verlauf (#517), nur eigener Code (#578), Exception-Leiste (#783), Werte im Editor (#508).
   Switch('debug.exceptionHistory', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugExceptionHistory));
   Switch('debug.justMyCode', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugJustMyCode));

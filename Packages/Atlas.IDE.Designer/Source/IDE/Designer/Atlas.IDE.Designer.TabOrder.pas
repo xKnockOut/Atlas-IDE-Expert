@@ -35,7 +35,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.TabOverlay,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.IDE.Foundation.KeyHook,
+  Atlas.IDE.Designer.Tool;
 
 type
   TAtlasIdeDesignerTabOrder = class;
@@ -49,11 +50,10 @@ type
     procedure HandleKey(AKey: Word; AShift: TShiftState); override;
   end;
 
-  TAtlasIdeDesignerTabOrder = class
+  TAtlasIdeDesignerTabOrder = class(TAtlasIdeDesignerTool)
   public const
     cId = 'tabOrder';
   private
-    FOnMessage: TProc<string>;
     FOverlay: TAtlasTabOrderOverlay;
     FMenu: TPopupMenu;
     FKeys: TAtlasDesignerTabKeys;
@@ -71,7 +71,6 @@ type
     FColorsToggled: Boolean;
     function PathsWanted: Boolean;
     function ColorsWanted: Boolean;
-    procedure Say(const AText: string);
     procedure EnsureOverlay;
     procedure ItemClick(Sender: TObject);
     function AddItem(const ACaption: string; ATag: Integer; AEnabled, AChecked: Boolean): TMenuItem;
@@ -102,7 +101,7 @@ type
     procedure Undo;
     /// <summary>Tasten an- oder abmelden (Designer gezeigt).</summary>
     procedure UpdateKeys(AWanted: Boolean);
-    procedure ApplyTheme;
+    procedure ApplyTheme; override;
     property Shown: Boolean read FShown;
   end;
 
@@ -400,8 +399,7 @@ end;
 
 constructor TAtlasIdeDesignerTabOrder.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
   FMenu := TPopupMenu.Create(nil);
   FClicks := TAtlasTabClicks.Create;
   FAutoShown := TStringList.Create;
@@ -429,14 +427,6 @@ end;
 function TAtlasIdeDesignerTabOrder.ColorsWanted: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DesignerTabOrderColors <> FColorsToggled;
-end;
-
-procedure TAtlasIdeDesignerTabOrder.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
 end;
 
 function TAtlasIdeDesignerTabOrder.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
@@ -848,6 +838,7 @@ end;
 
 procedure TAtlasIdeDesignerTabOrder.ApplyTheme;
 begin
+  inherited ApplyTheme;
   if FOverlay <> nil then
   begin
     FOverlay.ApplyColors(TAtlasIdeStyle.Colors);

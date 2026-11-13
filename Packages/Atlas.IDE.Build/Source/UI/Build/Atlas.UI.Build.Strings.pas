@@ -49,7 +49,10 @@ type
     TasksIssueUnknownMatcher, TasksIssueSeverityMapValue, TasksIssueMatcherWithoutRegex, TasksIssueMatcherType,
     TasksIssueArgsValue, TasksIssueArgsType, TasksIssueKeyUnreadable, TasksIssueTimeoutValue,
     TasksIssueUnknownGroup, TasksIssueBeforeBuildValue, TasksIssueMissingName, TasksIssueMissingCommand,
-    TasksIssueTasksType, TasksIssueTaskType, TasksIssueDuplicateName);
+    TasksIssueTasksType, TasksIssueTaskType, TasksIssueDuplicateName,
+    RunningProgramTitle, RunningProgramText, RunningProgramStop, RunningProgramKeep, RunningProgramAlways,
+    RunningProgramNotStopped, RunningProgramPackageLoaded, SettingsStopRunningProgram,
+    SettingsStopRunningProgramAsk, SettingsStopRunningProgramAlways, SettingsStopRunningProgramNever);
 
   TAtlasBuildStrings = class
   public
@@ -228,7 +231,18 @@ const
      '%s: ohne command',
      'tasks muss eine Liste sein',
      '%s: kein Objekt',
-     '%s: Name doppelt, die erste Aufgabe gilt'),
+     '%s: Name doppelt, die erste Aufgabe gilt',
+     '%s läuft noch',
+     'Solange das Programm läuft (Prozess %s), kann der Build die Datei nicht schreiben. Beenden und bauen?',
+     'Beenden und bauen',
+     'Nicht beenden',
+     'Immer beenden, ohne zu fragen',
+     '%s (Prozess %d) ließ sich nicht beenden',
+     '%s ist noch in anderen Programmen geladen: %s. Der Build scheitert, bis sie die BPL freigeben.',
+     'Läuft das Programm noch, vor dem Build:',
+     'fragen',
+     'beenden',
+     'nichts tun'),
     ('Start profile: …',
      'Start profile: %s',
      'Start profile: –',
@@ -390,7 +404,18 @@ const
      '%s: without command',
      'tasks must be a list',
      '%s: not an object',
-     '%s: duplicate name, the first task applies'));
+     '%s: duplicate name, the first task applies',
+     '%s is still running',
+     'While the program is running (process %s), the build cannot write the file. Stop it and build?',
+     'Stop and build',
+     'Do not stop',
+     'Always stop without asking',
+     '%s (process %d) could not be stopped',
+     '%s is still loaded in other programs: %s. The build fails until they release the BPL.',
+     'If the program is still running, before the build:',
+     'ask',
+     'stop it',
+     'do nothing'));
 
 { TAtlasBuildStrings }
 

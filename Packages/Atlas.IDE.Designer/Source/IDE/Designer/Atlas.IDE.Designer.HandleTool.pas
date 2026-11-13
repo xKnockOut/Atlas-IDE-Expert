@@ -20,12 +20,12 @@ uses
   System.Types,
   Vcl.Menus,
   Atlas.UI.Designer.Handles,
-  Atlas.IDE.Designer.Snapshot;
+  Atlas.IDE.Designer.Snapshot,
+  Atlas.IDE.Designer.Tool;
 
 type
-  TAtlasIdeHandleTool = class
+  TAtlasIdeHandleTool = class(TAtlasIdeDesignerTool)
   private
-    FOnMessage: TProc<string>;
     FActive: Boolean;
     FMenu: TPopupMenu;
     FOverlay: TAtlasDesignerHandles;
@@ -35,7 +35,6 @@ type
     procedure MenuClick(Sender: TObject);
     procedure RunGuarded(const AAction: TProc);
   protected
-    procedure Say(const AText: string);
     /// <summary>Griff-Fenster anlegen und verdrahten.</summary>
     procedure EnsureOverlay;
     procedure Down(AIndex: Integer; AShift: TShiftState); virtual; abstract;
@@ -68,7 +67,7 @@ type
     /// <summary>Takt der Leiste: Griffe der Auswahl folgen.</summary>
     procedure Tick; virtual; abstract;
     procedure Hide; virtual;
-    procedure ApplyTheme;
+    procedure ApplyTheme; override;
     function Dragging: Boolean;
     property Active: Boolean read FActive;
   end;
@@ -86,8 +85,7 @@ uses
 
 constructor TAtlasIdeHandleTool.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
   FActive := True;
   FMenu := TPopupMenu.Create(nil);
   FUndo := TAtlasDesignerSnapshot.Create;
@@ -100,14 +98,6 @@ begin
   FUndo.Free;
   FMenu.Free;
   inherited Destroy;
-end;
-
-procedure TAtlasIdeHandleTool.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
 end;
 
 procedure TAtlasIdeHandleTool.RunGuarded(const AAction: TProc);
@@ -258,6 +248,7 @@ end;
 
 procedure TAtlasIdeHandleTool.ApplyTheme;
 begin
+  inherited ApplyTheme;
   if FOverlay <> nil then
   begin
     FOverlay.ApplyColors(TAtlasIdeStyle.Colors);
