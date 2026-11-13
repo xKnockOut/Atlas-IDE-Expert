@@ -152,6 +152,8 @@ uses
 
 const
   cFieldSeparator = #9;
+  /// <summary>Felder je Zeile der Seitendatei: Millisekunden, Art, Text (mit Tabulatoren).</summary>
+  cFieldCount = 3;
   cKindHead = 'A';
   cKindFixtureBegin = 'F+';
   cKindFixtureEnd = 'F-';
@@ -280,7 +282,7 @@ var
   mMs: Int64;
   mKind, mText: string;
 begin
-  mParts := ALine.Split([cFieldSeparator], 3);
+  mParts := ALine.Split([cFieldSeparator], cFieldCount);
   if Length(mParts) < 2 then
   begin
     Exit;
