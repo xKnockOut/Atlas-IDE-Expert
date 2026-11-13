@@ -101,6 +101,11 @@ const
   cMinAddressDigits = 6;
   cMaxAddressDigits = 16;
   cBitsPerHexDigit = 4;
+  // Felder einer Stapelzeile „[Datei][Unit][Routine][Zeile]“.
+  cFieldFile = 0;
+  cFieldUnit = 1;
+  cFieldRoutine = 2;
+  cFieldLine = 3;
   // „Name x Anzahl“ in der Zusammenfassung.
   cCountMark = ' x ';
   cSystemPrefix = 'system.';
@@ -628,13 +633,13 @@ begin
     mPart := Trim(Copy(mRest, 2, mClose - 2));
     mRest := Trim(Copy(mRest, mClose + 1, MaxInt));
     case mField of
-      0:
+      cFieldFile:
         AFrame.FileName := mPart;
-      1:
+      cFieldUnit:
         AFrame.UnitName := mPart;
-      2:
+      cFieldRoutine:
         AFrame.Routine := mPart;
-      3:
+      cFieldLine:
         if TryStrToInt(mPart, mLine) then
         begin
           AFrame.Line := mLine;
@@ -651,7 +656,8 @@ var
 begin
   mLower := LowerCase(AUnitName);
   Result := (mLower = 'system') or (mLower = 'sysinit') or
-    (Copy(mLower, 1, Length(cSystemPrefix)) = cSystemPrefix) or (Copy(mLower, 1, Length(cFastMMPrefix)) = cFastMMPrefix);
+    (Copy(mLower, 1, Length(cSystemPrefix)) = cSystemPrefix) or
+    (Copy(mLower, 1, Length(cFastMMPrefix)) = cFastMMPrefix);
 end;
 
 class function TLeakReports.SiteOf(const AFrames: TArray<TLeakFrame>): Integer;
