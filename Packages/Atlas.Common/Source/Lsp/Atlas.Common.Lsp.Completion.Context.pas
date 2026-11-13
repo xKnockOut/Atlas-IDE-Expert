@@ -37,8 +37,6 @@ type
 function ComparePositions(const A, B: TTextPosition): Integer;
 /// <summary>Name ohne führendes &amp;.</summary>
 function CleanName(const AText: string): string;
-/// <summary>Index des Tokens vor AIndex ohne Kommentare und Direktiven; -1 am Anfang.</summary>
-function PreviousIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 /// <summary>Index der öffnenden Klammer zu ")" an AIndex; -1, wenn sie fehlt.</summary>
 function OpeningParen(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 /// <summary>Steht das Token AIndex in einer uses-, contains- oder requires-Klausel?</summary>
@@ -92,15 +90,6 @@ begin
   else
   begin
     Result := AText;
-  end;
-end;
-
-function PreviousIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(ATokens[Result]) do
-  begin
-    Dec(Result);
   end;
 end;
 
@@ -222,7 +211,7 @@ begin
   Result := ATokens[ALast].IsKeyword('is') or ATokens[ALast].IsKeyword('as');
   if not Result and ATokens[ALast].IsKeyword('not') then
   begin
-    mBefore := PreviousIndex(ATokens, ALast);
+    mBefore := PreviousCode(ATokens, ALast);
     Result := (mBefore >= 0) and ATokens[mBefore].IsKeyword('is');
   end;
 end;
@@ -239,11 +228,11 @@ begin
   end;
   // var A, B: | bzw. on E: |
   Result := False;
-  mIndex := PreviousIndex(ATokens, ALast);
+  mIndex := PreviousCode(ATokens, ALast);
   while (mIndex >= 0) and not Result and ((ATokens[mIndex].Kind = TPascalTokenKind.Identifier) or
     ATokens[mIndex].IsSymbol(',')) do
   begin
-    mBefore := PreviousIndex(ATokens, mIndex);
+    mBefore := PreviousCode(ATokens, mIndex);
     Result := SameText(ATokens[mIndex].Text, 'on') and (mBefore >= 0) and not ATokens[mBefore].IsSymbol('.');
     mIndex := mBefore;
   end;
@@ -259,13 +248,13 @@ begin
   while (mIndex >= 0) and ((ATokens[mIndex].Kind = TPascalTokenKind.Identifier) or ATokens[mIndex].IsSymbol(',') or
     ATokens[mIndex].IsSymbol('.')) do
   begin
-    mIndex := PreviousIndex(ATokens, mIndex);
+    mIndex := PreviousCode(ATokens, mIndex);
   end;
   if (mIndex < 0) or not ATokens[mIndex].IsSymbol('(') then
   begin
     Exit(False);
   end;
-  mBefore := PreviousIndex(ATokens, mIndex);
+  mBefore := PreviousCode(ATokens, mIndex);
   Result := (mBefore >= 0) and (ATokens[mBefore].IsKeyword('class') or ATokens[mBefore].IsKeyword('interface') or
     ATokens[mBefore].IsKeyword('object') or ATokens[mBefore].IsKeyword('dispinterface'));
 end;
@@ -301,7 +290,7 @@ var
   mBefore: Integer;
 begin
   mTokens := ATree.Tokens;
-  mBefore := PreviousIndex(mTokens, ALast);
+  mBefore := PreviousCode(mTokens, ALast);
   Result := mTokens[ALast].IsSymbol('<>') and (APosition.Character = mTokens[ALast].StartPos.Character + 1) and
     (mBefore >= 0) and (mTokens[mBefore].Kind = TPascalTokenKind.Identifier);
   if Result then
@@ -348,13 +337,13 @@ begin
   begin
     AContext.Prefix := PrefixOf(mToken, APosition);
     AContext.Offset := mToken.Offset;
-    ALast := PreviousIndex(ATree.Tokens, ALast);
+    ALast := PreviousCode(ATree.Tokens, ALast);
   end
   else if IsTrivia(mToken) then
   begin
     // Zeilenkommentar reicht bis zum Zeilenende.
     Result := not ((ComparePositions(APosition, mToken.EndPos) <= 0) and mToken.Text.StartsWith('//'));
-    ALast := PreviousIndex(ATree.Tokens, ALast + 1);
+    ALast := PreviousCode(ATree.Tokens, ALast + 1);
   end;
 end;
 
@@ -364,7 +353,7 @@ begin
   Result := OpeningParen(ATokens, AIndex);
   if Result >= 0 then
   begin
-    Result := PreviousIndex(ATokens, Result);
+    Result := PreviousCode(ATokens, Result);
   end;
   if (Result >= 0) and (ATokens[Result].Kind <> TPascalTokenKind.Identifier) then
   begin
@@ -380,7 +369,7 @@ var
   mIndex: Integer;
 begin
   ANames := nil;
-  mIndex := PreviousIndex(ATokens, ALast);
+  mIndex := PreviousCode(ATokens, ALast);
   while mIndex >= 0 do
   begin
     // Foo(1). oder TFoo(X).: Klammern überspringen, das Glied davor ist ein Aufruf bzw. eine Typumwandlung (#188).
@@ -399,12 +388,12 @@ begin
     end;
     ANames := [CleanName(ATokens[mIndex].Text)] + ANames;
     AContext.ChainStart := ATokens[mIndex].StartPos;
-    mIndex := PreviousIndex(ATokens, mIndex);
+    mIndex := PreviousCode(ATokens, mIndex);
     if (mIndex < 0) or not ATokens[mIndex].IsSymbol('.') then
     begin
       Break;
     end;
-    mIndex := PreviousIndex(ATokens, mIndex);
+    mIndex := PreviousCode(ATokens, mIndex);
   end;
   Result := (ANames <> nil) and not ((mIndex >= 0) and ATokens[mIndex].IsSymbol('.'));
 end;
@@ -499,20 +488,20 @@ end;
 /// cBrokenChain, wenn vor einem Punkt kein Bezeichner steht.</summary>
 function AssignmentBefore(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 begin
-  Result := PreviousIndex(ATokens, LastTokenBefore(ATokens, APosition) + 1);
+  Result := PreviousCode(ATokens, LastTokenBefore(ATokens, APosition) + 1);
   if (Result >= 0) and (ATokens[Result].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
     (ComparePositions(APosition, ATokens[Result].EndPos) <= 0) then
   begin
-    Result := PreviousIndex(ATokens, Result);
+    Result := PreviousCode(ATokens, Result);
   end;
   while (Result >= 0) and ATokens[Result].IsSymbol('.') do
   begin
-    Result := PreviousIndex(ATokens, Result);
+    Result := PreviousCode(ATokens, Result);
     if (Result < 0) or (ATokens[Result].Kind <> TPascalTokenKind.Identifier) then
     begin
       Exit(cBrokenChain);
     end;
-    Result := PreviousIndex(ATokens, Result);
+    Result := PreviousCode(ATokens, Result);
   end;
   if (Result >= 0) and not ATokens[Result].IsSymbol(':=') then
   begin
@@ -550,16 +539,16 @@ var
   mIndex: Integer;
 begin
   Result := nil;
-  mIndex := PreviousIndex(ATokens, AIndex);
+  mIndex := PreviousCode(ATokens, AIndex);
   while (mIndex >= 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) do
   begin
     Result := [CleanName(ATokens[mIndex].Text)] + Result;
-    mIndex := PreviousIndex(ATokens, mIndex);
+    mIndex := PreviousCode(ATokens, mIndex);
     if (mIndex < 0) or not ATokens[mIndex].IsSymbol('.') then
     begin
       Break;
     end;
-    mIndex := PreviousIndex(ATokens, mIndex);
+    mIndex := PreviousCode(ATokens, mIndex);
   end;
 end;
 

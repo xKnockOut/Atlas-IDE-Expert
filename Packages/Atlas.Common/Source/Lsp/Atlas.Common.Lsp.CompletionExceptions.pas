@@ -109,15 +109,6 @@ const
     (Routine: 'LoadFromFile'; ClassName: 'EFOpenError'; UnitName: 'System.Classes'),
     (Routine: 'SaveToFile'; ClassName: 'EFCreateError'; UnitName: 'System.Classes'));
 
-function PreviousSignificant(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex - 1;
-  while (Result >= 0) and IsTrivia(ATokens[Result]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
 function NextSignificant(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex + 1;
@@ -146,7 +137,7 @@ var
   mDepth: Integer;
 begin
   mDepth := 0;
-  Result := PreviousSignificant(ATokens, AFrom);
+  Result := PreviousCode(ATokens, AFrom);
   while Result >= 0 do
   begin
     if ATokens[Result].IsKeyword('end') then
@@ -165,7 +156,7 @@ begin
       end;
       Dec(mDepth);
     end;
-    Result := PreviousSignificant(ATokens, Result);
+    Result := PreviousCode(ATokens, Result);
   end;
 end;
 
@@ -202,8 +193,8 @@ function IsHandlerColon(const ATokens: TArray<TPascalToken>; ALast: Integer; out
 var
   mName: Integer;
 begin
-  mName := PreviousSignificant(ATokens, ALast);
-  AOn := PreviousSignificant(ATokens, mName);
+  mName := PreviousCode(ATokens, ALast);
+  AOn := PreviousCode(ATokens, mName);
   Result := ATokens[ALast].IsSymbol(':') and (mName >= 0) and (ATokens[mName].Kind = TPascalTokenKind.Identifier) and
     (AOn >= 0) and IsWord(ATokens[AOn], 'on');
 end;

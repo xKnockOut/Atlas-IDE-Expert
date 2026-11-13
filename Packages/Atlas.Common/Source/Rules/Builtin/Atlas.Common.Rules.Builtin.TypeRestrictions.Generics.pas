@@ -66,7 +66,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -860,7 +861,7 @@ var
       Exit;
     end;
     mAt := TRoutineBody.TokenAt(mTokens, ATypeNode.StartOffset);
-    mBefore := TRoutineBody.PreviousToken(mTokens, mAt);
+    mBefore := PreviousCode(mTokens, mAt);
     if (mBefore < 0) or (mBefore >= Length(mTokens)) or (mTokens[mBefore].Kind <> TPascalTokenKind.Keyword) or
       not SameText(mTokens[mBefore].Text, 'type') then
     begin
