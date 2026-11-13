@@ -35,7 +35,8 @@
     alten Namen für PreviousCode (Prev, PreviousToken, PreviousIndex …).
     JSON aus Text lesen (ParseObject, ParseValue, ParseJson mit einem string als
     Parameter und TJSONObject/TJSONValue als Ergebnis) gibt es nur als
-    TJsonRead.Parse/ParseObject in Atlas.Text.Json.
+    TJsonRead.Parse/ParseObject/ParseObjectOrEmpty in Atlas.Text.Json; eigene
+    Fassungen mit Grund in $AllowedJsonParseLocal.
     Im Plugin gibt es manche Helfer nur an einer Stelle ($PluginLock): die
     Editorschrift (TAtlasEditorFont), die Auswahl im Designer
     (TAtlasDesignerAccess) und Meldungen der Designer-Werkzeuge
@@ -353,8 +354,17 @@ $TokenAllowedLocal = @{
     'Atlas.Common.Semantics.ConstantValues:TConstantValues.TokenAt'       = 'sucht nach Zeile und Spalte (TTextPosition), nicht nach Offset'
 }
 
-# Kopien-Sperre für JSON aus Text: nur TJsonRead.Parse/ParseObject in Atlas.Text.Json.
-$JsonParseLockNames = @('ParseObject', 'ParseValue', 'ParseJson')
+# Kopien-Sperre für JSON aus Text: nur TJsonRead.Parse/ParseObject/ParseObjectOrEmpty in Atlas.Text.Json.
+$JsonParseLockNames = @('ParseObject', 'ParseValue', 'ParseJson', 'Parse', 'ParseOrNil', 'ParseOrNilText', 'Parsed',
+    'ParsedObject', 'ParsedRoot', 'ParsedSchema', 'ParseRules', 'ObjectOf')
+
+# Erlaubte eigene Fassungen ("Unit:Routine") mit Grund. Die Liste soll nur schrumpfen.
+$AllowedJsonParseLocal = @{
+    'Atlas.Core.Settings.JsonText:Parse'                   = 'Deklaration von TAtlasJsonText.Parse'
+    'Atlas.Core.Settings.JsonText:TAtlasJsonText.Parse'    = 'entfernt Kommentare (JSONC), leitet an TJsonRead.ParseObject weiter'
+    'Atlas.Core.Settings.Catalog:Parse'                    = 'Deklaration von TAtlasJsonValues.Parse'
+    'Atlas.Core.Settings.Catalog:TAtlasJsonValues.Parse'   = 'liest auch einzelne Zahlen, Strings und Wahrheitswerte (über ein Hüllobjekt)'
+}
 
 # Kopien-Sperre im Plugin: Name, Ordner, wo es ihn gibt, und erlaubte Fassungen ("Unit:Routine") mit Grund.
 # Die Listen sollen nur schrumpfen.
@@ -995,6 +1005,7 @@ foreach ($key in $TokenAllowedLocal.Keys) {
 }
 
 # Kopien-Sperre für JSON aus Text
+$jsonParseFound = @{}
 $jsonParsePattern = '(?im)^\s*(?:class\s+)?function\s+((?:\w+\.)?(?:' + ($JsonParseLockNames -join '|') +
     '))\s*\(\s*const\s+\w+\s*:\s*string\s*\)\s*:\s*TJSON(?:Object|Value)\b'
 foreach ($folder in @('Packages', 'Application')) {
@@ -1004,10 +1015,20 @@ foreach ($folder in @('Packages', 'Application')) {
         $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
         if ($relative.StartsWith('Packages/Atlas.Text/Source/Json/')) { continue }
         $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+        $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
         foreach ($match in [regex]::Matches($text, $jsonParsePattern)) {
+            $key = "${ownUnit}:$($match.Groups[1].Value)"
+            $jsonParseFound[$key] = $true
+            if ($AllowedJsonParseLocal.ContainsKey($key)) { continue }
             $line = ($text.Substring(0, $match.Index) -split "`n").Count
-            $violations += "${relative}:${line}: $($match.Groups[1].Value) – JSON aus Text gibt es als TJsonRead.Parse/ParseObject in Atlas.Text.Json (Kopien-Sperre); dort verwenden"
+            $violations += "${relative}:${line}: $($match.Groups[1].Value) – JSON aus Text gibt es als TJsonRead.Parse/ParseObject/ParseObjectOrEmpty in Atlas.Text.Json (Kopien-Sperre); dort verwenden oder in `$AllowedJsonParseLocal begründen"
         }
+    }
+}
+
+foreach ($key in $AllowedJsonParseLocal.Keys) {
+    if (-not $jsonParseFound.ContainsKey($key)) {
+        $violations += "Tools/Check-PackageDependencies.ps1: `$AllowedJsonParseLocal nennt $key, die Routine gibt es nicht mehr; Zeile streichen"
     }
 }
 

@@ -63,6 +63,8 @@ type
     procedure ParseGivesValueOrNil;
     [Test]
     procedure ParseObjectOnlyForObjects;
+    [Test]
+    procedure ParseObjectOrEmptyNeverNil;
   end;
 
 implementation
@@ -254,6 +256,24 @@ begin
   mObject := TJsonRead.ParseObject('  {"a": "b"}');
   try
     Assert.AreEqual('b', TJsonRead.Text(mObject, 'a'));
+  finally
+    mObject.Free;
+  end;
+end;
+
+procedure TJsonReadTests.ParseObjectOrEmptyNeverNil;
+var
+  mObject: TJSONObject;
+begin
+  mObject := TJsonRead.ParseObjectOrEmpty('[1]');
+  try
+    Assert.AreEqual(0, mObject.Count);
+  finally
+    mObject.Free;
+  end;
+  mObject := TJsonRead.ParseObjectOrEmpty('{"a": 2}');
+  try
+    Assert.AreEqual(2, TJsonRead.Int(mObject, 'a'));
   finally
     mObject.Free;
   end;
