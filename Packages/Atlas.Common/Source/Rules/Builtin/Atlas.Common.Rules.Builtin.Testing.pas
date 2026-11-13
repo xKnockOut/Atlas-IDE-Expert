@@ -11,6 +11,10 @@
 //                               Korrekturen: Assert.Pass als Platzhalter oder Sprung zur Methode.
 //   dunitx-areequal-length      Assert.AreEqual mit Ganzzahl und Length eines dynamischen Arrays bzw. NativeInt
 //                               (#1937, wie E2532), in Atlas.Common.Rules.Builtin.Testing.AreEqual.
+//   dunitx-testcase-mismatch    [TestCase] passt nicht zu den Parametern der Methode (#1882), in
+//                               Atlas.Common.Rules.Builtin.Testing.TestCases.
+//   dunitx-fixture-not-registered  Testklasse nie registriert bzw. Unit in keinem Testprojekt (#1882), in
+//                               Atlas.Common.Rules.Builtin.Testing.Registration.
 
 interface
 
@@ -48,6 +52,8 @@ uses
   Atlas.Common.Semantics.Attributes,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Testing.AreEqual,
+  Atlas.Common.Rules.Builtin.Testing.TestCases,
+  Atlas.Common.Rules.Builtin.Testing.Registration,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -604,6 +610,8 @@ procedure RegisterTestingRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDUnitXTestWithoutAssertRule.Create);
   ARegistry.Register(TDUnitXAreEqualLengthRule.Create);
+  ARegistry.Register(TDUnitXTestCaseMismatchRule.Create);
+  ARegistry.Register(TDUnitXFixtureNotRegisteredRule.Create);
 end;
 
 initialization
