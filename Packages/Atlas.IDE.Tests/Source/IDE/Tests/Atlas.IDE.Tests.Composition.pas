@@ -20,7 +20,9 @@
 // - IAtlasTestRunner (Base: Auswirkungsanalyse #1120, Willkommensseite) und
 //   IAtlasTestsSource (Atlas.IDE.Contracts.Tests, Willkommensseite); das Ende eines
 //   Laufs schreibt das Modul in die Projekt-Zusammenfassung von Base
-//   (TAtlasIdeProjectSummaries, #69) und meldet es jedem IAtlasTestsListener.
+//   (TAtlasIdeProjectSummaries, #69) und meldet es jedem IAtlasTestsListener,
+// - IAtlasTestValues (#1779): „Vergleichen“ im Befund-Hover von Base und auf
+//   der Kachel „Testergebnisse“ der Willkommensseite.
 // Gebaut wird über den Läufer der Builds auf Auftrag der Build-Pipeline
 // (IAtlasBuildJobs aus Atlas.IDE.Contracts.BuildPipeline, ohne Modul nicht), die
 // Probleme gehen an das Problemfenster von Base; die fehlgeschlagenen Tests des
@@ -42,7 +44,7 @@ uses
 
 type
   TAtlasTestsModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
-    IAtlasAppliesSettings, IAtlasBuildVerdictListener, IAtlasTestRunner, IAtlasTestsSource)
+    IAtlasAppliesSettings, IAtlasBuildVerdictListener, IAtlasTestRunner, IAtlasTestsSource, IAtlasTestValues)
   public const
     cModuleId = 'atlas.tests';
     cSwitch = 'tests';
@@ -64,6 +66,10 @@ type
     function DebugByName(const AProject, AFullName: string; out AReason: string): Boolean;
     function LocateByName(const AProject, AFullName: string; out AFileName: string; out ALine: Integer): Boolean;
     function Busy: Boolean;
+    function HasValuesAt(ALine: Integer): Boolean;
+    procedure CompareAt(ALine: Integer);
+    function HasValues(const AFullName: string): Boolean;
+    procedure Compare(const AFullName: string);
     /// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
     /// nicht passt.</summary>
     class function RegisterModule: Boolean; static;
@@ -205,6 +211,14 @@ end;
 
 { Teil Tests }
 
+/// <summary>Knopf „Vergleichen“ der Testmarke (#1779); die Lens lebt kürzer als der Vergleich.</summary>
+function CompareHooks: TAtlasTestCompareHooks;
+begin
+  Result := Default(TAtlasTestCompareHooks);
+  Result.CanCompare := GCompare.CanCompare;
+  Result.Show := GCompare.Show;
+end;
+
 procedure StartTests;
 begin
   GTests := TAtlasIdeTests.Create(TestsProcess());
@@ -221,7 +235,7 @@ begin
   GTests.OnReported := GSlowest.Remember;
   // Einzelner Test ausführen bzw. debuggen (#585), auch aus dem Kontextmenü und der Lens.
   GDebugger := TAtlasIdeTestDebugger.Create(GTests);
-  GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GStale.StaleIn);
+  GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GStale.StaleIn, CompareHooks);
   TAtlasIdeAffectedTests.Install(AffectedHooks);
 end;
 
@@ -521,6 +535,32 @@ begin
   Result := (GTests <> nil) and GTests.Busy;
 end;
 
+function TAtlasTestsModule.HasValuesAt(ALine: Integer): Boolean;
+begin
+  Result := (GCompare <> nil) and GCompare.HasValuesAt(ALine);
+end;
+
+procedure TAtlasTestsModule.CompareAt(ALine: Integer);
+begin
+  if GCompare <> nil then
+  begin
+    GCompare.CompareAt(ALine);
+  end;
+end;
+
+function TAtlasTestsModule.HasValues(const AFullName: string): Boolean;
+begin
+  Result := (GCompare <> nil) and GCompare.HasValues(AFullName);
+end;
+
+procedure TAtlasTestsModule.Compare(const AFullName: string);
+begin
+  if GCompare <> nil then
+  begin
+    GCompare.CompareTest(AFullName);
+  end;
+end;
+
 class function TAtlasTestsModule.Parts: TArray<IAtlasFeaturePart>;
 begin
   // DUnitX-Tests (#69): nur im normalen Start und solange TestRun an ist; baut über den Läufer von Base.
@@ -559,6 +599,8 @@ begin
   GScope.Provide(IAtlasTestRunner, mRef);
   // Vertrag zwischen Modulen: Karte Tests (#763) und Schnellaktionen (#764) der Willkommensseite.
   GScope.Provide(IAtlasTestsSource, mRef);
+  // „Vergleichen“ (#1779) im Befund-Hover und auf der Kachel „Testergebnisse“.
+  GScope.Provide(IAtlasTestValues, mRef);
   ProvideSettingsSections;
   Result := True;
 end;

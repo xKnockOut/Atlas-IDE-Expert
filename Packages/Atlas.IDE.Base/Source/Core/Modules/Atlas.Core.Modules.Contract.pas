@@ -36,7 +36,8 @@ const
   /// 12 (#2135): IAtlasIssueWork.Forget.
   /// 13 (#1772): TAtlasProjectTests.Slowest, tests.showDuration, tests.slowMs; dazu die Einstellungen tests.stale
   /// (#1770), tests.failureAtAssert, tests.failureInline (#1771), tests.compare (#1779).
-  cAtlasCoreContractVersion = 13;
+  /// 14 (#1779): IAtlasTestValues (Atlas.IDE.Contracts.Tests), „Vergleichen“ im Hover und auf der Willkommensseite.
+  cAtlasCoreContractVersion = 14;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';

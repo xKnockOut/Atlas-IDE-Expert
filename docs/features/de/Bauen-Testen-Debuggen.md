@@ -104,7 +104,13 @@ Einstellungen: `tests.failureAtAssert`, `tests.failureInline`
 
 ### Erwartet und erhalten vergleichen (#1779)
 
-Aufruf: *Atlas*-Menü, Befehlspalette, Kontextmenü einer Testunit (*Atlas › Tests*).
+Aufruf: *Atlas*-Menü, Befehlspalette, Kontextmenü einer Testunit (*Atlas › Tests*), außerdem der Knopf „Vergleichen“:
+
+- im Hover über dem Fehlschlag (vor „Erklären“),
+- an der Testmarke eines fehlgeschlagenen Tests (hinter „Debuggen“),
+- auf der Kachel „Testergebnisse“ der Willkommensseite für den gewählten Fehlschlag des lokalen Laufs.
+
+Den Knopf gibt es nur, wenn der Fehlschlag erwarteten und erhaltenen Wert hat.
 
 - Zeigt den Fehlschlag des Tests am Cursor (bei einem `[TestCase]` den ersten fehlgeschlagenen Fall), sonst den zuletzt gemeldeten, in zwei Spalten: links erwartet, rechts erhalten.
 - Abweichende Zeichen sind rot bzw. grün hinterlegt; Zeilen, die es nur auf einer Seite gibt, ganz, gegenüber eine graue Lücke.

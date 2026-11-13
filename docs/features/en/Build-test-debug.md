@@ -128,7 +128,13 @@ Settings: `tests.failureAtAssert`, `tests.failureInline`
 
 ### Compare expected and actual (#1779)
 
-Available from the *Atlas* menu, the command palette and the context menu of a test unit (*Atlas › Tests*).
+Available from the *Atlas* menu, the command palette and the context menu of a test unit (*Atlas › Tests*), and with the “Compare” button:
+
+- in the hover over the failure (before “Explain”),
+- on the test mark of a failed test (after “Debug”),
+- on the “Test results” tile of the welcome page for the selected failure of the local run.
+
+The button only appears when the failure has an expected and an actual value.
 
 - Shows the failure of the test at the cursor (for a `[TestCase]` the first failed case), otherwise the last one reported, in two columns: expected on the left, actual on the right.
 - Differing characters have a red or green background; lines that exist on one side only are marked as a whole, with a grey gap opposite.
