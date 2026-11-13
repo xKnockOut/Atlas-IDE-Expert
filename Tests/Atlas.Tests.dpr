@@ -2141,6 +2141,7 @@ uses
   Atlas.Common.Lsp.Completion.Names.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Names.Tests.pas',
   Atlas.Common.Lsp.Completion.Hooks.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Hooks.Tests.pas',
   Atlas.Common.Lsp.Completion.Slash.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Slash.Tests.pas',
+  Atlas.Common.Lsp.Completion.TypeGuards.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.TypeGuards.Tests.pas',
   Atlas.Common.Lsp.Completion.InheritedCalls.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.InheritedCalls.Tests.pas',
   Atlas.Common.Editing.ContextSnippets.Tests in 'Common\Editing\Atlas.Common.Editing.ContextSnippets.Tests.pas',
   Atlas.Core.Debug.Exceptions in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Exceptions.pas',
