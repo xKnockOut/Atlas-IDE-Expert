@@ -116,6 +116,17 @@ Settings: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
 
 Settings: `tests.stale`, `tests.stale.units`
 
+### Affected tests on save (#1775)
+
+- After a unit is saved (also a form or include file) Atlas finds the tests that the changes of this file since the last commit reach and runs only those in the background. It builds as with “Build before the tests”.
+- No window pops up: the Atlas status field shows “Tests: 3 affected · running …”, then “Tests: 3/3 passed” or red “Tests: 1 of 3 failed”. Clicking the line in the status window shows the output of the run in the message view.
+- Code lens and Atlas problems follow the run as after “Run tests”.
+- Saving during a run does not cancel it; afterwards at most one more run follows with all files saved until then.
+- No run during a debug session, a build or another test run. More affected tests than `tests.onSave.max` or all tests needed: no run, only a hint in the status field.
+- If a test unit belongs to several test projects, the background run takes the choice made once with “Run tests”.
+
+Settings: `tests.onSave` (default off, quick toggle), `tests.onSave.max`
+
 ### Failure at the assert line (#1771)
 
 - A failed test no longer sits at the method header but at the statement that failed: wavy line under the statement, followed by a grey “expected 4, got 3”.

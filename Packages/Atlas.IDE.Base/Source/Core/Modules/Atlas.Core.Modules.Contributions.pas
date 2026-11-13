@@ -4,7 +4,7 @@
 // Registry bei Bedarf nach allen bereitgestellten Quellen, statt sie einmal
 // beim Start zu lesen. So erscheinen und verschwinden Befehle, Menüeinträge
 // und Hörer mit ihrem Modul. Ein Fehler in einem Beitrag hält die übrigen nicht
-// an; ApplySettings und ThemeChanged liefern die Fehler als
+// an; ApplySettings, ThemeChanged und FileSaved liefern die Fehler als
 // „Interface: Klasse: Meldung“.
 // Es zählen nur Beiträge laufender Module (IsActive): Ein über seinen
 // Schalter gestopptes Modul (#1454) bleibt angemeldet, zeigt aber keine
@@ -41,6 +41,8 @@ type
     class function EditorViewActivated(const ARegistry: IAtlasModuleRegistry): TArray<string>; static;
     class function ApplySettings(const ARegistry: IAtlasModuleRegistry): TArray<string>; static;
     class function ThemeChanged(const ARegistry: IAtlasModuleRegistry): TArray<string>; static;
+    /// <summary>Jedem IAtlasFollowsSaves die gespeicherte Datei melden (#1775); Fehler wie ApplySettings.</summary>
+    class function FileSaved(const ARegistry: IAtlasModuleRegistry; const AFileName: string): TArray<string>; static;
     /// <summary>Erster nicht leerer Beitrag; '' ohne.</summary>
     class function HoverValue(const ARegistry: IAtlasModuleRegistry; const AExpression: string;
       const ATypeChain: TArray<string>; const AText: string): string; static;
@@ -222,6 +224,29 @@ begin
       except
         on mError: Exception do
           Result := Result + ['IAtlasAppliesSettings: ' + mError.ClassName + ': ' + TLogMarks.Text(mError.Message)];
+      end;
+  end;
+end;
+
+class function TAtlasModuleContributions.FileSaved(const ARegistry: IAtlasModuleRegistry;
+  const AFileName: string): TArray<string>;
+var
+  mItem: IInterface;
+  mListener: IAtlasFollowsSaves;
+begin
+  Result := nil;
+  if ARegistry = nil then
+  begin
+    Exit;
+  end;
+  for mItem in Active(ARegistry, IAtlasFollowsSaves) do
+  begin
+    if Supports(mItem, IAtlasFollowsSaves, mListener) then
+      try
+        mListener.FileSaved(AFileName);
+      except
+        on mError: Exception do
+          Result := Result + ['IAtlasFollowsSaves: ' + mError.ClassName + ': ' + TLogMarks.Text(mError.Message)];
       end;
   end;
 end;

@@ -560,7 +560,6 @@
     {"path": "Source/Core/Lsp/Atlas.Core.Lsp.Session.Json.pas", "rule": "magic-number", "fingerprint": "73b6540e", "count": 1, "routine": "TLspSessionJson.ShowMessageParams", "context": "59c58b7e"},
     {"path": "Source/Core/Lsp/Atlas.Core.Lsp.Session.Json.pas", "rule": "magic-number", "fingerprint": "a4e14355", "count": 1, "routine": "TLspSessionJson.ShowMessageParams", "context": "92e9dc23"},
     {"path": "Source/Core/Lsp/Atlas.Core.Lsp.Session.pas", "rule": "magic-number", "fingerprint": "63dc5698", "count": 1, "routine": "ReadPlainInlayHint", "context": "4477d1a5"},
-    {"path": "Source/Core/Lsp/Atlas.Core.Lsp.Session.pas", "rule": "magic-number", "fingerprint": "4bd9ed90", "count": 1, "routine": "TLspSession.AffectedTests", "context": "e6936864"},
     {"path": "Source/Core/Lsp/Atlas.Core.Lsp.Session.pas", "rule": "magic-number", "fingerprint": "c1d6b597", "count": 1, "routine": "TLspSession.Impact", "context": "1fd969fe"},
     {"path": "Source/Core/Lsp/Atlas.Core.Lsp.Session.Requests.pas", "rule": "default-parameter", "fingerprint": "52447642", "count": 1, "routine": "interface", "context": "aed30574"},
     {"path": "Source/Core/Lsp/Atlas.Core.Lsp.Session.Requests.pas", "rule": "default-parameter", "fingerprint": "7e33a78f", "count": 1, "routine": "interface", "context": "cab59062"},
