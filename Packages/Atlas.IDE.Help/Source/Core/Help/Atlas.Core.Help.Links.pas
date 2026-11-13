@@ -63,7 +63,7 @@ implementation
 const
   cFeaturesGerman = 'docs/features/de/';
   cFeaturesEnglish = 'docs/features/en/';
-  cWindows: array[0..26] of TAtlasHelpWindow = (
+  cWindows: array[0..27] of TAtlasHelpWindow = (
     (Id: 'AtlasProblems'; German: 'Code-Analyse'; English: 'Code-analysis'), // german-ok Dateiname
     (Id: 'AtlasResults'; German: 'Navigieren'; English: 'Navigating'), // german-ok Dateiname
     (Id: 'AtlasOutline'; German: 'Navigieren'; English: 'Navigating'), // german-ok Dateiname
