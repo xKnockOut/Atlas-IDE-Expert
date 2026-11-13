@@ -207,6 +207,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.LeakCandidates.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.RuntimeReport.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.TestCases.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.BoundaryCases.Tests.pas"/>
         <DCCReference Include="Common\Leaks\Atlas.Common.Leaks.Setup.Tests.pas"/>
         <DCCReference Include="Common\Leaks\Atlas.Common.Leaks.Candidates.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SlashMenu.Tests.pas"/>
@@ -222,6 +223,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.StatementText.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.IfCase.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Conditions.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.BoundaryCases.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ConditionalExpression.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.NestedRoutines.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.RoutineParts.Tests.pas"/>
