@@ -293,6 +293,8 @@ Atlas.Common.Rules.Builtin.Naming.Tests
 Atlas.Common.Rules.Builtin.OpenTools.Tests
 Atlas.Common.Rules.Builtin.OverrideCase.Tests
 Atlas.Common.Rules.Builtin.Ownership.LocalObjects.Tests
+Atlas.Common.Rules.Builtin.Ownership.MethodReferences.Tests
+Atlas.Common.Rules.Builtin.Ownership.Interfaces.Tests
 Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests
 Atlas.Common.Rules.Builtin.Ownership.TokenScan.Tests
 Atlas.Common.Rules.Builtin.PaletteIcons.Tests
