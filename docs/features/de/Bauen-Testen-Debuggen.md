@@ -205,6 +205,17 @@ Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an 
 - Fehlt die Testunit, legt Atlas sie wie *DUnitX-Testunit anlegen* an (Fixture, Setup/TearDown, Eintrag in `.dpr` und `.dproj`) und setzt den Entwurf an die Stelle des leeren Tests.
 - Private, geschützte und nur im implementation-Teil deklarierte Routinen sind von der Testunit aus nicht aufrufbar; für sie entsteht nur der Test mit `Assert.Fail`.
 
+### Test aus dem Debug-Halt anlegen (#1873)
+
+Aufruf: Knopf *Test daraus anlegen …* in der Exception-Leiste, Kontextmenü des Editors › Atlas › Tests beim Debuggen oder Befehlspalette (*Test aus dem Debug-Halt anlegen …*). Einstellungen unter Debuggen: `tests.fromDebugStop` (Vorgabe an), `tests.fromDebugStop.fields` (an), `tests.fromDebugStop.properties` (aus), `tests.fromDebugStop.maxArray` (20).
+
+- Atlas nimmt den Rahmen des Halts: bei einer Exception in RTL oder VCL den ersten Rahmen in eigenem Code, sonst den obersten mit Quelltext.
+- Steht der Rahmen oben, wertet der Debugger die Parameter und die Felder der Klasse aus (`Self.FEinheit`), ohne Nebenwirkungen; Getter nur mit `tests.fromDebugStop.properties`. In einem tieferen Rahmen kommen die Parameter aus der Kopfzeile des Aufrufstacks.
+- Aus den Texten des Debuggers werden Delphi-Literale: Zahlen (Dezimalkomma wird Punkt), Strings mit `''` und `#nn`, Boolean, Aufzählungswerte, Mengen und dynamische Arrays bis `tests.fromDebugStop.maxArray` Elemente. Objekte, Zeiger, Interfaces, Records und alles Unklare rät Atlas nicht: Der Test bekommt dort ein TODO.
+- Der Dialog zeigt die Werte zum Abwählen (abgewählte bleiben Platzhalter; private Felder und Objekte sind abgewählt), die Art (*Soll funktionieren* bzw. *Soll EConvertError werfen*, wenn das Programm an einer Exception steht), bei Funktionen das erwartete Ergebnis und den Namen (`ParseMit12_5Kg`, `ParseMit12_5KgWirftConvertError`).
+- *Test anlegen* trägt den Test wie *Testfall aus der Unit anlegen* in die Testunit ein (legt sie bei Bedarf samt `.dpr`/`.dproj` an), mit einer Kommentarzeile „Aus Debug-Halt 2026-11-13 10:42, EConvertError“; eine Exception prüft `Assert.WillRaise`. Ohne erwartetes Ergebnis bleibt der Test mit `Assert.Fail` rot. Alles ist ein Rückgängig-Schritt, danach springt Atlas zum Test.
+- Ohne das Modul Debugger fehlen Knopf und Befehl.
+
 ### Schnellbefehle für Tests und Fehlersuche (#305)
 
 Aufruf: Befehl in eine leere Zeile schreiben und Enter drücken.
@@ -303,6 +314,18 @@ Vor jedem Start einer Debug-Sitzung prüft Atlas alle aktiven Quelltext-Haltepun
 Gibt es Funde, zeigt der Dialog „Haltepunkte, die nicht greifen werden“ sie vor dem Start; Doppelklick springt zur Stelle. „Auf nächste Codezeile verschieben“ verschiebt die Haltepunkte samt Bedingung, Durchlaufzahl und Gruppe und startet, „Trotzdem starten“ startet unverändert, „Abbrechen“ startet nicht. Der Befehl „Haltepunkte prüfen“ (Menü Atlas, Befehlspalette) prüft jederzeit. Ohne Server oder ohne Antwort in 3 Sekunden startet die IDE ohne Meldung.
 
 Einstellungen: `debug.checkBreakpoints`
+
+#### Bis hier ausführen per Klick
+
+Aufruf: Rand des Editors im angehaltenen Zustand, Kontextmenü Atlas › Debuggen, Befehlspalette. Statt den Cursor zu setzen und F4 zu drücken, genügt ein Klick neben die Zeile.
+
+- Hält das Programm an, erscheint rechts der Zeilennummern eine schmale Spalte; an ausführbaren Zeilen zeigt sie unter dem Mauszeiger ▶ mit einem Tooltip.
+- Klick auf ▶ führt bis zu dieser Zeile aus (wie F4); Strg+Klick dabei ohne Halt an anderen Haltepunkten.
+- Übersprungene Haltepunkte sind nach dem nächsten Halt wieder im alten Zustand, auch wenn das Programm vorher endet. Stürzt die IDE dazwischen ab, setzt Atlas sie beim nächsten Start einer Debug-Sitzung zurück.
+- Rechtsklick in den Rand: „Bis hier ausführen“, „Bis hier, Haltepunkte überspringen“ (auch Strg+F4, nur im angehaltenen Zustand) und „Einmaliger Haltepunkt“. Der einmalige Haltepunkt steht in der Gruppe `Atlas.Einmalig` und verschwindet nach dem ersten Halt; setzen lässt er sich auch ohne laufendes Programm.
+- Ausführbar sind Zeilen zwischen `begin` und `end` eines Rumpfs, ohne Leer- und Kommentarzeilen und ohne Zeilen, die nur `begin`, `end`, `try`, `finally`, `except` oder `else` enthalten.
+
+Einstellungen: `debug.runToClick`
 
 #### Haltepunkt nur für ein Objekt
 

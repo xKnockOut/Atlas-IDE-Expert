@@ -42,6 +42,9 @@ type
     BreakpointSetNone, BreakpointSetNoBreakpoints, BreakpointSetInvalidName, BreakpointSetSaved,
     BreakpointSetNotSaved, BreakpointSetUnreadable, BreakpointSetSwitched, BreakpointSetAdded, BreakpointSetMissing,
     BreakpointSetDeleted, BreakpointSetBranchSwitched, SettingsDebugBreakpointSetPerBranch,
+    RunToHereCommand, RunToSkipCommand, RunToOnceCommand, RunToTipTitle, RunToTipText, RunToNotStopped,
+    RunToNoEditor, RunToNoCode, RunToNoBreakpoint, RunToRestored, RunToOnceSet, RunToOnceExists, RunToOnceRemoved,
+    SettingsDebugRunToClick,
     BreakpointsWindowCommand, BreakpointsCaption, BreakpointsSearchHint, BreakpointsChipActive,
     BreakpointsChipCondition, BreakpointsChipNeverHit, BreakpointsChipNotEffective, BreakpointsGroupNone,
     BreakpointsGroupByTag, BreakpointsGroupByFile, BreakpointsGroupByGroup, BreakpointsResetHits,
@@ -165,7 +168,8 @@ type
     LeaksFromLogFile, LeaksSearching, LeaksNoServer, LeaksNameLine, LeaksNew, LeaksMore, LeaksKnownMark,
     LeaksNoPlaces, LeaksFollowsFromObjects, LeaksPlaceLine, LeaksGroupLine, LeaksGroupNoSite, LeaksRatingNeverFreed,
     LeaksRatingReturned, LeaksRatingPassed, LeaksRatingFieldFreed, LeaksRatingOwned, LeaksRatingLocalFreed,
-    LeaksRatingNotInProgram, LeaksFooter, LeaksFound);
+    LeaksRatingNotInProgram, LeaksFooter, LeaksFound,
+    DebugBannerCreateTest);
 
   TAtlasDebugStrings = class
   public
@@ -322,6 +326,22 @@ const
      'Haltepunkt-Satz „%s“ gelöscht; die Haltepunkte der IDE bleiben.',
      'Branch %s: ',
      'Haltepunkt-Satz beim Branch-Wechsel mitwechseln',
+     'Bis hier ausführen',
+     'Bis hier, Haltepunkte überspringen',
+     'Einmaliger Haltepunkt',
+     'Bis hier ausführen',
+     'Klick: bis Zeile %d ausführen.'#13#10 +
+     'Strg+Klick: ohne Halt an anderen Haltepunkten.'#13#10 +
+     'Rechtsklick: weitere Befehle.',
+     'Bis hier: Das Programm ist nicht angehalten.',
+     'Bis hier: Kein Quelltext im Editor.',
+     'Bis hier: Zeile %d hat keinen ausführbaren Code.',
+     'Bis hier: In Zeile %d lässt sich kein Haltepunkt setzen.',
+     'Bis hier: %d Haltepunkte wieder im alten Zustand.',
+     'Einmaliger Haltepunkt in Zeile %d gesetzt.',
+     'In Zeile %d steht schon ein Haltepunkt.',
+     'Einmaliger Haltepunkt %s:%d nach dem Halt entfernt.',
+     'Bis hier ausführen per Klick im Rand (▶) und Befehle „Bis hier“',
      'Haltepunkte (Atlas) …',
      'Haltepunkte',
      'Suchen: Datei, Methode, Bedingung, Etikett',
@@ -872,7 +892,8 @@ const
      'lokal freigegeben',
      'nicht im Programm',
      'Enter oder Doppelklick springt zur Stelle',
-     'Atlas: Leckbericht mit %d Lecks (Fenster „Atlas-Lecks“).'),
+     'Atlas: Leckbericht mit %d Lecks (Fenster „Atlas-Lecks“).',
+     'Test daraus anlegen …'),
     ('Atlas: %s',
      'Shows %s on one line and in the Atlas viewer (#835).',
      'Show with Atlas …',
@@ -1010,6 +1031,22 @@ const
      'Breakpoint set "%s" deleted; the IDE breakpoints stay.',
      'Branch %s: ',
      'Switch the breakpoint set together with the branch',
+     'Run to here',
+     'Run to here, skip breakpoints',
+     'One-time breakpoint',
+     'Run to here',
+     'Click: run to line %d.'#13#10 +
+     'Ctrl+click: do not stop at other breakpoints.'#13#10 +
+     'Right-click: more commands.',
+     'Run to here: the program is not paused.',
+     'Run to here: no source file in the editor.',
+     'Run to here: line %d has no executable code.',
+     'Run to here: a breakpoint cannot be set at line %d.',
+     'Run to here: %d breakpoints restored.',
+     'One-time breakpoint set at line %d.',
+     'Line %d already has a breakpoint.',
+     'One-time breakpoint %s:%d removed after the stop.',
+     'Run to here by clicking the margin (▶) and "Run to here" commands',
      'Breakpoints (Atlas) …',
      'Breakpoints',
      'Search: file, method, condition, tag',
@@ -1559,7 +1596,8 @@ const
      'freed locally',
      'not in the program',
      'Enter or double-click jumps to the site',
-     'Atlas: Leak report with %d leaks (window “Atlas Leaks”).'));
+     'Atlas: Leak report with %d leaks (window “Atlas Leaks”).',
+     'Create test …'));
 
 { TAtlasDebugStrings }
 

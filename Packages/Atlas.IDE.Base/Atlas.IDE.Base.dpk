@@ -528,6 +528,7 @@ contains
   Atlas.Core.Modules.Watch in 'Source\Core\Modules\Atlas.Core.Modules.Watch.pas',
   Atlas.Core.Modules.Answer in 'Source\Core\Modules\Atlas.Core.Modules.Answer.pas',
   Atlas.IDE.Contracts.DebugReport in 'Source\Contracts\Atlas.IDE.Contracts.DebugReport.pas',
+  Atlas.IDE.Contracts.DebugStop in 'Source\Contracts\Atlas.IDE.Contracts.DebugStop.pas',
   Atlas.IDE.Contracts.Help in 'Source\Contracts\Atlas.IDE.Contracts.Help.pas',
   Atlas.IDE.Contracts.BuildTools in 'Source\Contracts\Atlas.IDE.Contracts.BuildTools.pas',
   Atlas.IDE.Contracts.BuildPipeline in 'Source\Contracts\Atlas.IDE.Contracts.BuildPipeline.pas',

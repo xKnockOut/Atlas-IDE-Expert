@@ -1640,6 +1640,55 @@
       "x-captionEn": "Debug test",
       "x-issue": "#585"
     },
+    "TestsFromDebugStop": {
+      "description": "„Test daraus anlegen …“ beim Debug-Halt (Haltepunkt oder Exception): Exception-Leiste, Kontextmenü des Editors und Befehlspalette. Der Dialog zeigt die Methode des Halts in eigenem Code mit Argumenten und einfachen Feldern; daraus entsteht ein DUnitX-Test, der den Fall nachstellt (soll funktionieren mit erwartetem Ergebnis oder soll die Exception werfen). Aus = Eintrag und Knopf fehlen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.fromDebugStop",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-caption": "Test aus dem Debug-Halt anlegen",
+      "x-captionEn": "Create a test from the debug stop",
+      "x-issue": "#1873"
+    },
+    "TestsFromDebugStopFields": {
+      "description": "Einfache Felder des Objekts (Zahlen, Strings, Boolean, Aufzählungen, Mengen) im Dialog anbieten; öffentliche werden im Test gesetzt, andere als Kommentar notiert.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.fromDebugStop.fields",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "tests.fromDebugStop",
+      "x-caption": "Felder des Objekts anbieten",
+      "x-captionEn": "Offer the object's fields",
+      "x-issue": "#1873"
+    },
+    "TestsFromDebugStopProperties": {
+      "description": "Eigenschaften mit Getter auswerten. Getter können Nebenwirkungen haben; aus = nur Felder und Argumente, ausgewertet ohne Nebenwirkungen.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "tests.fromDebugStop.properties",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "tests.fromDebugStop",
+      "x-caption": "Eigenschaften mit Getter auswerten",
+      "x-captionEn": "Evaluate properties with getters",
+      "x-issue": "#1873"
+    },
+    "TestsFromDebugStopMaxArray": {
+      "description": "Höchstens so viele Elemente je Array werden als Literal übernommen; längere Arrays bekommen im Test ein TODO. 0 = keine Arrays.",
+      "type": "integer",
+      "default": 20,
+      "minimum": 0,
+      "maximum": 1000,
+      "x-key": "tests.fromDebugStop.maxArray",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "tests.fromDebugStop",
+      "x-caption": "Elemente je Array höchstens",
+      "x-captionEn": "Elements per array at most",
+      "x-issue": "#1873"
+    },
     "TestBreakAtStart": {
       "type": "boolean",
       "default": true,
@@ -2400,6 +2449,19 @@
       "x-captionEn": "Switch the breakpoint set together with the branch",
       "x-control": "Kontrollkästchen",
       "x-issue": "#586"
+    },
+    "DebugRunToClick": {
+      "description": "Bis hier ausführen per Klick (#851): Hält das Programm im Debugger an, zeigt eine schmale Spalte im Rand an ausführbaren Zeilen unter dem Mauszeiger ein ▶. Klick führt bis zu dieser Zeile aus (wie F4), Strg+Klick ohne Halt an anderen Haltepunkten; diese werden danach wieder eingeschaltet, auch nach einem Absturz der IDE. Im Kontextmenü des Editors stehen „Bis hier ausführen“, „Bis hier, Haltepunkte überspringen“ (Strg+F4 im angehaltenen Zustand) und „Einmaliger Haltepunkt“ (verschwindet nach dem ersten Halt). Aus = keine Spalte, keine Befehle.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.runToClick",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Bis hier ausführen per Klick im Rand",
+      "x-captionEn": "Run to here by clicking the margin",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#851"
     },
     "DebugBreakpointsWindow": {
       "description": "Haltepunktfenster: eigenes andockbares Fenster „Haltepunkte“ neben der Liste der IDE, mit Suche über Datei, Methode, Bedingung und Etikett, Filterchips (aktiv, mit Bedingung, nie getroffen, greift nicht), Trefferzahl dieser Sitzung, persönlichen Etiketten, Gruppieren nach Etikett, Datei oder Gruppe und Befehlen für mehrere Haltepunkte (ein, aus, Etikett, löschen mit Rückgängig). Aus = kein Fenster, kein Befehl.",
