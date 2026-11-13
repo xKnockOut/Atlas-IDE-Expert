@@ -326,6 +326,15 @@ Settings: `debug.inlineValues`, `debug.inlineValuesPerLine`
 
 Settings: `debug.whyHere`, `debug.whyHere.depth`
 
+### Predict upcoming conditions
+
+- When stopped, the next `if`, `while` and `case` of the same routine (up to `debug.predictConditions.lines` lines ahead, default 20) show their predicted result, marked as a forecast: `⟨= False · FOnline⟩` (the deciding part), for `case` `⟨→ smManual⟩`
+- The branch that will be skipped is drawn pale, for `case` all other branches; the text stays readable (`debug.predictConditions.dimSkipped`)
+- Only what follows from the current state is predicted: no assignment to a variable involved in between (also `var`/`out` arguments, `Inc`/`Dec`), no call in between for fields and global variables, no `Exit`, `raise`, `goto`, `Break` or `Continue`
+- The forecast never evaluates calls and getters in the condition; it only counts when the short-circuit decides without the call
+- A click on a hint opens the menu “Turn off the forecast for this session”. Hints and dimming disappear with the next step
+
+Settings: `debug.predictConditions`, `debug.predictConditions.dimSkipped`, `debug.predictConditions.lines`
 ### Pinned values
 
 - The debug hover shows “Pin” below the value. From then on the expression appears at every stop as a framed field `Summe = 125 ✕` at the end of its line, after the inline values

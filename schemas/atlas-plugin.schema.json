@@ -2037,6 +2037,44 @@
       "x-parent": "debug.whyHere",
       "x-issue": "#1878"
     },
+    "DebugPredictConditions": {
+      "description": "Bedingungen vorausschauen: Beim Halt stehen an den kommenden if, while und case derselben Routine die vorhergesagten Ergebnisse, wenn dazwischen nichts die Bedingung ändern kann; Aufrufe werden nie ausgewertet.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.predictConditions",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Bedingungen vorausschauen (Vorhersage am Halt)",
+      "x-captionEn": "Predict upcoming conditions (forecast at the stop)",
+      "x-issue": "#2169"
+    },
+    "DebugPredictDimSkipped": {
+      "description": "Zweige, die nach der Vorhersage übersprungen werden, blass zeichnen; aus = nur die Hinweise.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.predictConditions.dimSkipped",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.predictConditions",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Übersprungene Zweige blass zeichnen",
+      "x-captionEn": "Dim skipped branches",
+      "x-issue": "#2169"
+    },
+    "DebugPredictLines": {
+      "type": "integer",
+      "default": 20,
+      "minimum": 1,
+      "maximum": 200,
+      "description": "So viele Zeilen (1 bis 200) ab dem Halt schaut die Vorhersage voraus.",
+      "x-key": "debug.predictConditions.lines",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.predictConditions",
+      "x-issue": "#2169"
+    },
     "DebugPinnedValues": {
       "description": "Angeheftete Werte: Im Debug-Hover steht „Anheften“; angeheftete Ausdrücke stehen beim Halt als Feld am Ende ihrer Zeile und bleiben über Debug-Sitzungen erhalten.",
       "type": "boolean",
