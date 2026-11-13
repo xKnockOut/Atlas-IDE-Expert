@@ -7,6 +7,8 @@
 //   - Liefert der Win64-Debugger (LLDB) Stapel erst später, fragt Atlas bis zu cRetries mal nach.
 //   - Enter bzw. Doppelklick auf einen Knoten wechselt zum Thread (bei mehreren über eine Auswahlliste) und springt
 //     auf die Zeile des Rahmens. Den Rahmen im Fenster Aufrufstack der IDE wählt die ToolsAPI nicht.
+//   - Kontextmenü „Thread markieren“ (#852, mit debug.threadsInSource): markierte Threads stehen in der
+//     Auswahlliste oben und tragen ⚑.
 // Teil „DebugParallelStacks“ (debug.parallelStacks); Release meldet den Zuhörer ab und gibt Zeitgeber und Fenster
 // frei (Regel 3). Nur im Hauptthread verwenden.
 
@@ -19,7 +21,8 @@ uses
   Vcl.Menus,
   Atlas.Core.Debug.Threads,
   Atlas.Core.Debug.ParallelStacks,
-  Atlas.IDE.Debug.Session;
+  Atlas.IDE.Debug.Session,
+  Atlas.UI.Debug.ParallelStacksFrame;
 
 type
   TAtlasIdeDebugParallelStacks = class
@@ -37,6 +40,8 @@ type
     public
       procedure Tick(Sender: TObject);
       procedure PickThread(Sender: TObject);
+      procedure FlagSelected(Sender: TObject);
+      procedure TreePopup(Sender: TObject);
     end;
   private class var
     FListener: IAtlasIdeDebugListener;
@@ -48,11 +53,15 @@ type
     FNext: Integer;
     FRetries: Integer;
     FPickNode: Integer;
+    /// <summary>Die Auswahlliste markiert statt zu springen.</summary>
+    FPickFlag: Boolean;
     class procedure Refresh; static;
     class procedure ReadStep; static;
     class procedure Rebuild(const AStatus: string); static;
     class procedure ShowRunning; static;
     class procedure Open(ANode: Integer); static;
+    class procedure Pick(ANode: Integer; AFlag: Boolean); static;
+    class procedure AddFlagMenu(AFrame: TAtlasDebugParallelStacksFrame); static;
     class procedure Jump(AThread, ANode: Integer); static;
   public
     class procedure Start; static;
@@ -73,8 +82,9 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Threads,
   Atlas.IDE.Debug.ParallelStacksWindow,
-  Atlas.UI.Debug.ParallelStacks,
-  Atlas.UI.Debug.ParallelStacksFrame,
+  Atlas.Core.Debug.ThreadMarks,
+  Atlas.IDE.Debug.ThreadsInSource,
+  Atlas.UI.Debug.ThreadMarks,
   Atlas.UI.Debug.Strings;
 
 /// <summary>Fenster, falls es sichtbar ist; sonst nil.</summary>
@@ -119,8 +129,42 @@ begin
   TAtlasGuard.Run(TAtlasFeature.Debugger,
     procedure
     begin
-      TAtlasIdeDebugParallelStacks.Jump(mThread, TAtlasIdeDebugParallelStacks.FPickNode);
+      if TAtlasIdeDebugParallelStacks.FPickFlag then
+      begin
+        TAtlasIdeDebugThreadsInSource.ToggleFlag(TAtlasIdeDebugParallelStacks.FStacks[mThread]);
+      end
+      else
+      begin
+        TAtlasIdeDebugParallelStacks.Jump(mThread, TAtlasIdeDebugParallelStacks.FPickNode);
+      end;
     end);
+end;
+
+procedure TAtlasIdeDebugParallelStacks.TTicker.FlagSelected(Sender: TObject);
+begin
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    var
+      mFrame: TAtlasDebugParallelStacksFrame;
+    begin
+      mFrame := ShownFrame;
+      if mFrame <> nil then
+      begin
+        TAtlasIdeDebugParallelStacks.Pick(mFrame.SelectedNode, True);
+      end;
+    end);
+end;
+
+procedure TAtlasIdeDebugParallelStacks.TTicker.TreePopup(Sender: TObject);
+var
+  mMenu: TPopupMenu;
+begin
+  // Nur mit „Threads im Quelltext“ (#852): sonst gibt es keine Markierung.
+  mMenu := Sender as TPopupMenu;
+  if mMenu.Items.Count > 0 then
+  begin
+    mMenu.Items[0].Visible := TAtlasIdeDebugThreadsInSource.Started;
+  end;
 end;
 
 { TAtlasIdeDebugParallelStacks }
@@ -156,6 +200,7 @@ begin
         begin
           Rebuild('');
         end;
+      AddFlagMenu(AFrame);
     end;
   if FListener = nil then
   begin
@@ -295,28 +340,63 @@ begin
   mFrame.SetTree(FStacks, FTree, AStatus);
 end;
 
+class procedure TAtlasIdeDebugParallelStacks.AddFlagMenu(AFrame: TAtlasDebugParallelStacksFrame);
+var
+  mMenu: TPopupMenu;
+  mItem: TMenuItem;
+begin
+  // Gehört dem Frame und geht mit ihm.
+  mMenu := TPopupMenu.Create(AFrame);
+  mItem := TMenuItem.Create(mMenu);
+  mItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.ThreadMarksFlagCommand);
+  mItem.OnClick := FTicker.FlagSelected;
+  mMenu.Items.Add(mItem);
+  mMenu.OnPopup := FTicker.TreePopup;
+  AFrame.Tree.RightClickSelect := True;
+  AFrame.Tree.PopupMenu := mMenu;
+end;
+
 class procedure TAtlasIdeDebugParallelStacks.Open(ANode: Integer);
+begin
+  Pick(ANode, False);
+end;
+
+class procedure TAtlasIdeDebugParallelStacks.Pick(ANode: Integer; AFlag: Boolean);
 var
   mThread: Integer;
+  mThreads: TArray<Integer>;
+  mFlagged: TAtlasDebugThreadSet;
   mItem: TMenuItem;
 begin
   if (ANode < 0) or (ANode > High(FTree.Nodes)) then
   begin
     Exit;
   end;
-  if Length(FTree.Nodes[ANode].Threads) = 1 then
+  // Markierte Threads (#852) oben und mit ⚑.
+  mFlagged := TAtlasIdeDebugThreadsInSource.Flagged;
+  mThreads := TAtlasDebugThreadMarks.Ordered(FStacks, FTree.Nodes[ANode].Threads, mFlagged);
+  if Length(mThreads) = 1 then
   begin
-    Jump(FTree.Nodes[ANode].Threads[0], ANode);
+    if AFlag then
+    begin
+      TAtlasIdeDebugThreadsInSource.ToggleFlag(FStacks[mThreads[0]]);
+    end
+    else
+    begin
+      Jump(mThreads[0], ANode);
+    end;
     Exit;
   end;
   // Mehrere Threads: Auswahlliste an der Maus.
   FreeAndNil(FMenu);
   FMenu := TPopupMenu.Create(nil);
   FPickNode := ANode;
-  for mThread in FTree.Nodes[ANode].Threads do
+  FPickFlag := AFlag;
+  for mThread in mThreads do
   begin
     mItem := TMenuItem.Create(FMenu);
-    mItem.Caption := TAtlasParallelStacksTexts.ThreadText(FStacks[mThread]);
+    mItem.Caption := TAtlasThreadMarkTexts.ThreadLabel(FStacks[mThread],
+      mFlagged.Contains(FStacks[mThread].ThreadId));
     mItem.Tag := mThread;
     mItem.OnClick := FTicker.PickThread;
     FMenu.Items.Add(mItem);

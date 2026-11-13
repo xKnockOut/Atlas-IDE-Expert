@@ -7,12 +7,10 @@
 // - OnProblems: Fehlschläge ins Problemfenster von Base,
 // - OnFinished: Projekt-Zusammenfassung (TAtlasIdeProjectSummaries, #69) und
 //   jeder IAtlasTestsListener (Schnellaktionen der Willkommensseite),
+// - Ziel und Pfad des Servers der betroffenen Tests, Probleme leeren, Meldung ohne Läufer,
+//   Leckprüfung einrichten, Sichtbarkeit von „Test debuggen“;
 // - OnLastFailed: fehlgeschlagene Tests des letzten Laufs aus den
-//   Projektdateien (TAtlasProjectSummaries), auch ohne Willkommensseite,
-// - ServerPath: Pfad des AtlasServer für den pre-commit-Hook der
-//   betroffenen Tests (#1353),
-// - DebugWanted und WarnRunOff: Sichtbarkeit von „Test debuggen“ und die
-//   Meldung, wenn der Testläufer nicht läuft.
+//   Projektdateien (TAtlasProjectSummaries), auch ohne Willkommensseite.
 
 interface
 
@@ -20,26 +18,35 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Core.Problems.Contract,
+  Atlas.Core.Modules.Contract,
   Atlas.Core.Projects.Summary,
-  Atlas.IDE.Tests.Runner;
+  Atlas.IDE.Tests.Runner,
+  Atlas.IDE.Tests.Affected;
 
 /// <summary>Vor den Tests bauen: über die Builds auf Auftrag (#261) der Build-Pipeline, Auftraggeber "tests".
 /// </summary>
 function BuildForTests(const AProject: string; const ADone: TAtlasTestsBuildDone; out AReason: string): Boolean;
 procedure ShowProblems(const AProblems: TArray<TPair<string, TAtlasProblem>>);
-/// <summary>Ende eines Laufs in die Projekt-Zusammenfassung und an jeden IAtlasTestsListener.</summary>
-procedure AnnounceTests(const AProject: string; const ATests: TAtlasProjectTests);
-function LastFailed(AProject: string): TArray<string>;
-/// <summary>Pfad des AtlasServer (für den pre-commit-Hook der betroffenen Tests).</summary>
+/// <summary>Fehlschläge der Tests aus dem Problemfenster nehmen.</summary>
+procedure ClearProblems;
+/// <summary>Ziel der betroffenen Tests (#1353): Testprojekt, das ATests für die aktive Unit wählen, an AThen.</summary>
+procedure ResolveTestTarget(ATests: TAtlasIdeTests; const AThen: TAtlasAffectedTargetProc);
+/// <summary>Meldung „Tests ausführen ist aus“ in der Meldungsansicht.</summary>
+procedure WarnTestsOff;
+/// <summary>Leckprüfung des aktiven Projekts einrichten (#1880, Atlas.IDE.Tests.LeakSetup).</summary>
+procedure SetUpLeakCheck(const AScope: IAtlasModuleScope);
+/// <summary>Pfad des Atlas-Servers (Betroffene Tests, #1353).</summary>
 function ServerPath: string;
 /// <summary>„Test debuggen“ nach den Einstellungen gewünscht.</summary>
 function DebugWanted: Boolean;
-/// <summary>Meldung: Der Testläufer ist aus.</summary>
-procedure WarnRunOff;
+/// <summary>Ende eines Laufs in die Projekt-Zusammenfassung und an jeden IAtlasTestsListener.</summary>
+procedure AnnounceTests(const AProject: string; const ATests: TAtlasProjectTests);
+function LastFailed(AProject: string): TArray<string>;
 
 implementation
 
 uses
+  ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
@@ -47,11 +54,12 @@ uses
   Atlas.Core.Tests.Debug,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.CodeInsight.Manager.Paths,
   Atlas.IDE.Contracts.Tests,
   Atlas.IDE.Contracts.BuildPipeline,
   Atlas.IDE.Problems.Controller,
+  Atlas.IDE.Tests.LeakSetup,
   Atlas.IDE.Projects.Summaries,
-  Atlas.IDE.CodeInsight.Manager.Paths,
   Atlas.UI.Strings;
 
 /// <summary>Builds auf Auftrag des Moduls Build-Pipeline (Vertrag); False ohne laufendes Modul.</summary>
@@ -103,6 +111,48 @@ begin
   end;
 end;
 
+procedure ClearProblems;
+begin
+  if TAtlasProblemsController.Current <> nil then
+  begin
+    TAtlasProblemsController.Current.ClearTests;
+  end;
+end;
+
+procedure ResolveTestTarget(ATests: TAtlasIdeTests; const AThen: TAtlasAffectedTargetProc);
+var
+  mThen: TAtlasAffectedTargetProc;
+begin
+  mThen := AThen;
+  ATests.ResolveProject('',
+    procedure(const AProject: IOTAProject)
+    begin
+      mThen(TAtlasIdeTests.TargetOf(AProject, nil));
+    end);
+end;
+
+procedure WarnTestsOff;
+begin
+  TAtlasIdeHost.Warning(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
+end;
+
+procedure SetUpLeakCheck(const AScope: IAtlasModuleScope);
+begin
+  TAtlasIdeLeakSetup.Run(AScope);
+end;
+
+function ServerPath: string;
+var
+  mArguments: string;
+begin
+  Result := TAtlasCodeInsightPaths.ServerPath(mArguments);
+end;
+
+function DebugWanted: Boolean;
+begin
+  Result := TAtlasTestDebug.DebugWanted(TAtlasIdeSettings.Current);
+end;
+
 /// <summary>Ende eines Laufs in die Projekt-Zusammenfassung (#69, Karte Tests) und an jeden IAtlasTestsListener
 /// (Schnellaktionen der Willkommensseite).</summary>
 procedure AnnounceTests(const AProject: string; const ATests: TAtlasProjectTests);
@@ -137,23 +187,6 @@ end;
 function LastFailed(AProject: string): TArray<string>;
 begin
   Result := TAtlasProjectSummaries.FailedTestsOf(TAtlasProjectSummaries.DefaultFolder, AProject);
-end;
-
-function ServerPath: string;
-var
-  mArguments: string;
-begin
-  Result := TAtlasCodeInsightPaths.ServerPath(mArguments);
-end;
-
-function DebugWanted: Boolean;
-begin
-  Result := TAtlasTestDebug.DebugWanted(TAtlasIdeSettings.Current);
-end;
-
-procedure WarnRunOff;
-begin
-  TAtlasIdeHost.Warning(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
 end;
 
 end.

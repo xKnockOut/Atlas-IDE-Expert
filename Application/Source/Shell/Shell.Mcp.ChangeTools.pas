@@ -25,7 +25,8 @@ uses
   System.JSON,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.References,
-  Atlas.Common.Lsp.AffectedTests,
+  Atlas.Common.Lsp.AffectedTests.Report,
+  Atlas.Common.Lsp.AffectedTests.Contract,
   Atlas.Common.Semantics.NameResolver,
   Shell.VersionControlChanges,
   Atlas.Common.Compiler.Contract,
@@ -170,7 +171,7 @@ begin
   begin
     Result := cTexts[TMcpChangeText.NoneAffected].Fmt([AFound.Base]);
   end
-  else if not TAffectedTests.DUnitXArgument(AFound, Result) then
+  else if not TAffectedReport.DUnitXArgument(AFound, Result) then
   begin
     Result := cTexts[TMcpChangeText.AllNeeded].Fmt([TShellAffectedTests.TooManyForRun]);
   end;
@@ -188,7 +189,7 @@ begin
   begin
     raise EMcpToolError.Create(TShellAffectedTests.OffMessage);
   end;
-  if not TAffectedTests.TryParseFormat(TMcpArgs.OptionalString(AArguments, 'format'), mFormat) then
+  if not TAffectedReport.TryParseFormat(TMcpArgs.OptionalString(AArguments, 'format'), mFormat) then
   begin
     raise EMcpToolError.Create(TShellTexts.Choice('format', ['text', 'json', 'dunitx']));
   end;
@@ -201,7 +202,7 @@ begin
   end
   else
   begin
-    Result := TAffectedTests.Render(mFound, mFormat);
+    Result := TAffectedReport.Render(mFound, mFormat);
   end;
 end;
 

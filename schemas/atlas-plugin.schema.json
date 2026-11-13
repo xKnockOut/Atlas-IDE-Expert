@@ -915,6 +915,51 @@
       "x-captionEn": "Changes in used units count too",
       "x-issue": "#1770"
     },
+    "CodeLensCoveredBy": {
+      "description": "Marke „getestet von“ an den Methoden normaler Units: „3 Tests · bestanden“ mit dem Stand der Tests, die die Methode aufrufen (grün, rot, gelb bei Teilstand, grau veraltet); „kein Test“ ohne. Klick führt genau diese Tests aus, Strg+Klick listet sie zum Springen; „kein Test“ öffnet bzw. legt die Testunit an. Die Zuordnung fragt Atlas im Hintergrund beim Server ab (Auswirkungsanalyse rückwärts wie bei den betroffenen Tests).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "codeLens.coveredBy",
+      "x-area": "editor",
+      "x-feature": "Build",
+      "x-page": "Editor",
+      "x-parent": "tests.run",
+      "x-node": "editor.codeLens",
+      "x-control": "Kontrollkästchen",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Marke „getestet von“ an Methoden",
+      "x-captionEn": "“Tested by” mark on methods",
+      "x-issue": "#1778"
+    },
+    "TestsCoveredByDepth": {
+      "description": "Ebenen vom Test bis zur Methode für die Marke „getestet von“ (1 bis 5); 1 = nur Tests, die die Methode direkt aufrufen.",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 5,
+      "x-key": "tests.coveredBy.depth",
+      "x-area": "build",
+      "x-page": "Editor",
+      "x-parent": "codeLens.coveredBy",
+      "x-control": "Zahl",
+      "x-caption": "Tiefe der Zuordnung",
+      "x-captionEn": "Depth of the mapping",
+      "x-issue": "#1778"
+    },
+    "TestsCoveredByPrivate": {
+      "description": "Marke „getestet von“ auch an privaten und geschützten Methoden und an Routinen, die nur im implementation-Teil stehen. Aus = nur öffentliche und published Methoden und Routinen aus dem interface-Teil.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "tests.coveredBy.private",
+      "x-area": "build",
+      "x-page": "Editor",
+      "x-parent": "codeLens.coveredBy",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Auch private Methoden",
+      "x-captionEn": "Private methods too",
+      "x-issue": "#1778"
+    },
     "GenerateMenu": {
       "type": "boolean",
       "default": true,
@@ -1380,6 +1425,19 @@
       "x-captionEn": "Run affected tests",
       "x-issue": "#1353"
     },
+    "TestsLeakSetup": {
+      "description": "Befehl „Leckprüfung einrichten …“ im Kontextmenü der Projektverwaltung und in der Befehlspalette: erkennt FastMM4/FastMM5 und die DLL für FullDebugMode und richtet ReportMemoryLeaksOnShutdown bzw. FastMM nur für Debug ein. Aus = Befehl fehlt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.leakSetup",
+      "x-area": "build",
+      "x-feature": "Build",
+      "x-page": "Compiler",
+      "x-parent": "tests.enabled",
+      "x-caption": "Leckprüfung einrichten",
+      "x-captionEn": "Set up leak check",
+      "x-issue": "#1880"
+    },
     "TestsAffectedDepth": {
       "description": "Ebenen der Auswirkungsanalyse von der Änderung bis zum Test (1 bis 5); 1 = nur Tests, die das geänderte Symbol direkt verwenden.",
       "type": "integer",
@@ -1476,6 +1534,18 @@
       "x-captionEn": "Indent JSON and XML",
       "x-issue": "#1779"
     },
+    "TestsApprovalFiles": {
+      "description": "Erkennt im Testergebnis die Meldung der Hilfs-Unit Atlas.Testing.Approval (Setup/Vorlagen): Die Testmarke zeigt „Abweichung · Vergleich“ bzw. „Neu · Vergleich“, der Vergleich zeigt approved- und received-Datei mit „Als neue Erwartung übernehmen“ (received ersetzt approved) und „Zum Test“. Dazu der Befehl „Liegengebliebene .received-Dateien löschen“ im Ordner tests.approvalFolder aus atlas.json; er schlägt vor, *.received.* in die .gitignore einzutragen. Die Hilfs-Unit selbst arbeitet auch ausgeschaltet.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.approvalFiles",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.compare",
+      "x-caption": "Vergleichsdateien erkennen",
+      "x-captionEn": "Recognize approval files",
+      "x-issue": "#1881"
+    },
     "TestsShowDuration": {
       "description": "Nach einem Lauf zeigt jede Marke der Testlinse die Dauer („12 ms“, ab einer Sekunde „1,2 s“), die Klassenmarke die Summe ihrer Tests. Über tests.slowMs färbt sich die Marke gelb mit „langsam“, auch wenn der Test bestanden hat (fehlgeschlagen bleibt rot). Die Karte Testergebnisse der Willkommensseite listet die fünf langsamsten Tests, der Befehl „Langsamste Tests zeigen“ alle mit Dauer.",
       "type": "boolean",
@@ -1501,6 +1571,30 @@
       "x-caption": "Langsam ab (ms)",
       "x-captionEn": "Slow from (ms)",
       "x-issue": "#1772"
+    },
+    "TestsCaseTable": {
+      "description": "An einer Testmethode mit [TestCase] zeigt die Testlinse „4 Fälle · 1 rot · Tabelle“; der Klick und der Befehl „TestCase-Tabelle bearbeiten …“ (Kontextmenü einer Testunit, Befehlspalette) öffnen die Fälle als Tabelle: Spalte je Parameter mit Typ, letzter Lauf je Fall, Werte prüfen wie dunitx-testcase-mismatch, Zeilen anfügen, löschen und verschieben, einzelnen Fall ausführen oder debuggen. Atlas schreibt die Attribute in einem Rückgängig-Schritt zurück.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.testCaseTable",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-caption": "[TestCase]-Fälle als Tabelle",
+      "x-captionEn": "[TestCase] cases as a table",
+      "x-issue": "#1879"
+    },
+    "TestsLeaks": {
+      "description": "Lecks je Test zeigen: Mit Leckmonitor (DUnitX.MemoryLeakMonitor.FastMM4/FastMM5) meldet DUnitX einen Test, der Speicher nicht freigibt, als Fehlschlag. Atlas zeigt ihn dann als bestanden mit Leck: Marke gelb „bestanden · Leck: 40 Bytes“, Warnung in Atlas-Probleme am Methodenkopf (Quelle DUnitX), eine Zeile in der Meldungsansicht. Aus = wie im Bericht (Fehlschlag).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.leaks",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-caption": "Lecks je Test als Warnung zeigen",
+      "x-captionEn": "Show leaks per test as warnings",
+      "x-issue": "#1774"
     },
     "TestDebug": {
       "type": "boolean",
@@ -1712,6 +1806,54 @@
       "x-captionEn": "Window “Parallel Stacks”",
       "x-issue": "#837"
     },
+    "DebugThreadsInSource": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.threadsInSource",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Threads im Quelltext",
+      "x-captionEn": "Threads in source",
+      "x-issue": "#852"
+    },
+    "DebugThreadFreeze": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.threadFreeze",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-parent": "debug.threadsInSource",
+      "x-caption": "Threads einfrieren und auftauen",
+      "x-captionEn": "Freeze and thaw threads",
+      "x-issue": "#852"
+    },
+    "DebugAsyncOrigin": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.asyncOrigin",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-caption": "Herkunft eingereihter Methoden merken",
+      "x-captionEn": "Remember the origin of queued methods",
+      "x-issue": "#859"
+    },
+    "DebugAsyncOriginMaxPerSite": {
+      "type": "integer",
+      "default": 20,
+      "description": "So viele Einreihungen merkt Atlas je Aufrufstelle; ältere fallen heraus (1 bis 1000).",
+      "x-key": "debug.asyncOrigin.maxPerSite",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.asyncOrigin",
+      "x-issue": "#859"
+    },
     "DebugParallelStacksWaitRoutines": {
       "description": "Routinen, die einen Thread im Fenster „Parallele Aufrufstapel“ als wartend kennzeichnen: Ende des Namens (TMonitor.Enter, WaitForSingleObject), durch ; getrennt; leer = Vorgabe (TThread.WaitFor, Synchronize, TMonitor, Critical Section, Ereignisse, Sleep, Handles).",
       "type": "string",
@@ -1805,6 +1947,29 @@
       "x-parent": "debug.inlineValues",
       "x-issue": "#508"
     },
+    "DebugWhyHere": {
+      "description": "Warum bin ich hier? Beim Halt stehen am Ende der Kopfzeilen der umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen; Aufrufe und Getter erst auf Klick.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.whyHere",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Warum bin ich hier? Werte der umgebenden Bedingungen",
+      "x-captionEn": "Why am I here? Values of the enclosing conditions",
+      "x-issue": "#1878"
+    },
+    "DebugWhyHereDepth": {
+      "type": "integer",
+      "default": 3,
+      "description": "So viele umgebende Blöcke (1 bis 10) zeigt „Warum bin ich hier?“.",
+      "x-key": "debug.whyHere.depth",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.whyHere",
+      "x-issue": "#1878"
+    },
     "DebugOwnCodeFolders": {
       "type": "string",
       "default": "",
@@ -1816,6 +1981,159 @@
       "x-caption": "Weitere Ordner mit eigenem Code",
       "x-captionEn": "More folders with own code",
       "x-issue": "#578"
+    },
+    "DebugEventLog": {
+      "description": "Ereignisprotokoll beim Debuggen: Fenster „Atlas: Ereignisprotokoll“ mit Ausgaben (OutputDebugString), Modulen, Threads und Logpunkten der Sitzung, Filter nach Text, regulärem Ausdruck und Art, Farben nach Muster und Sprung zum Quelltext. Aus = kein Fenster, kein Mitlesen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.eventLog",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Ereignisprotokoll beim Debuggen",
+      "x-captionEn": "Event log while debugging",
+      "x-issue": "#580"
+    },
+    "DebugEventLogColors": {
+      "description": "Farben im Ereignisprotokoll: „Muster=Farbe“, durch „;“ getrennt; Farbe als #RRGGBB oder Name (rot, gelb, grün, blau, orange, grau). Das erste passende Muster gewinnt.",
+      "type": "string",
+      "default": "[FEHLER]=#D13438; [ERROR]=#D13438; [WARN]=#C19C00",
+      "x-key": "debug.eventLogColors",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.eventLog",
+      "x-control": "Textfeld",
+      "x-caption": "Farben im Ereignisprotokoll",
+      "x-captionEn": "Event log colors",
+      "x-issue": "#580"
+    },
+    "DebugLogpoints": {
+      "description": "Logpunkte: „Logpunkt setzen“ (Umschalt+F5, Kontextmenü am Rand) nimmt einen Text mit Platzhaltern wie „x={x}“ an und legt einen Haltepunkt der IDE ohne Anhalten an, der den Text mit den Werten ins Ereignisprotokoll schreibt; Raute in der Rinne; Befehle „Alle Logpunkte aus/an/löschen“. Aus = keine Befehle, keine Raute.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.logpoints",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Logpunkte",
+      "x-captionEn": "Logpoints",
+      "x-issue": "#583"
+    },
+    "DebugLogpointPrefix": {
+      "description": "Präfix vor jeder Logpunkt-Ausgabe im Ereignisprotokoll.",
+      "type": "string",
+      "default": "[LOG]",
+      "x-key": "debug.logpointPrefix",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.logpoints",
+      "x-control": "Textfeld",
+      "x-caption": "Präfix der Logpunkte",
+      "x-captionEn": "Logpoint prefix",
+      "x-issue": "#583"
+    },
+    "DebugNoSourcePage": {
+      "description": "Fenster „Kein Quelltext“: Hält der Debugger in einer Routine ohne Quelltext, nennt ein kleines Fenster neben dem CPU-Fenster Routine, Modul, Adresse und den Grund (Debug-DCUs aus, ohne Debug-Informationen übersetzt, nur DCU, nicht im Suchpfad, Systemcode) mit Auswegen. Aus = nur das CPU-Fenster der IDE.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.noSourcePage",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Fenster „Kein Quelltext“",
+      "x-captionEn": "“No source” window",
+      "x-issue": "#869"
+    },
+    "DebugNoSourceIgnoredUnits": {
+      "description": "Units, für die das Fenster „Kein Quelltext“ nicht erscheint, durch „;“ getrennt; „Für diese Unit nicht mehr zeigen“ ergänzt die Liste.",
+      "type": "string",
+      "default": "",
+      "x-key": "debug.noSourcePage.ignoredUnits",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.noSourcePage",
+      "x-control": "Textfeld",
+      "x-caption": "Units ohne Fenster „Kein Quelltext“",
+      "x-captionEn": "Units without “No source” window",
+      "x-issue": "#869"
+    },
+    "DebugRestart": {
+      "description": "Befehl „Neu starten“ (Strg+Umschalt+F2, Atlas-Menü, Befehlspalette): beendet das laufende Programm ohne Rückfrage, baut nur nach Änderungen, startet wie F9 und kehrt an die Stelle im Editor zurück; eine kleine Leiste zeigt die Schritte mit Dauer. Läuft kein Programm, startet der Befehl wie F9. Aus = kein Befehl, keine Taste.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.restart",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Neu starten (Strg+Umschalt+F2)",
+      "x-captionEn": "Restart (Ctrl+Shift+F2)",
+      "x-issue": "#872"
+    },
+    "DebugRestartReenableBreakpoints": {
+      "description": "Beim Neustart Haltepunkte wieder einschalten, die beim Start der beendeten Sitzung an waren und in ihr abgeschaltet wurden.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.restart.reenableBreakpoints",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.restart",
+      "x-caption": "Abgeschaltete Haltepunkte wieder einschalten",
+      "x-captionEn": "Turn disabled breakpoints on again",
+      "x-issue": "#872"
+    },
+    "DebugReattach": {
+      "description": "Erneut an einen Prozess anhängen: Atlas merkt Pfad und Name von Prozessen, an die sich die IDE hängt (je Projektgruppe, nur auf diesem Rechner). „Erneut an <Name> anhängen“ (Menü Start, Befehlspalette, Taste) hängt sich bei genau einem laufenden Prozess mit gleichem Pfad ohne Rückfrage an, bei mehreren oder nur gleichem Namen zeigt es eine Auswahl, ohne Treffer bietet es das Warten an. „Anhängen, sobald gestartet …“ wartet auf den Start einer EXE und hängt sich sofort an. Nur lokale Prozesse. Aus = keine Einträge, kein Merken, kein Warten.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.reattach",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Erneut an Prozess anhängen",
+      "x-captionEn": "Reattach to process",
+      "x-issue": "#2171"
+    },
+    "DebugReattachKey": {
+      "description": "Tastenkürzel „Erneut anhängen“ (0 = keins).",
+      "type": "integer",
+      "default": 41040,
+      "x-key": "debug.reattach.key",
+      "x-area": "debug",
+      "x-format": "shortcut",
+      "x-page": "Debuggen",
+      "x-parent": "debug.reattach",
+      "x-issue": "#2171"
+    },
+    "DebugReattachWaitIntervalMs": {
+      "description": "Abstand, in dem Atlas beim Warten auf den Start eines Prozesses die Prozessliste abfragt, in Millisekunden (20 bis 2000). Kürzer verpasst weniger vom Anfang des Programms.",
+      "type": "integer",
+      "minimum": 20,
+      "maximum": 2000,
+      "default": 100,
+      "x-key": "debug.reattach.waitIntervalMs",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.reattach",
+      "x-control": "Zahl",
+      "x-issue": "#2171"
+    },
+    "DebugLaunchGroups": {
+      "description": "Startverbünde: mehrere Programme der Projektgruppe gemeinsam starten und debuggen. Die Verbünde stehen in der Projektdatei .atlas unter launchGroups (für alle im Team): je Projekt Startprofil, mit oder ohne Debugger und eine Wartebedingung vor dem nächsten (feste Sekunden, bis ein TCP-Port offen ist, bis das Hauptfenster da ist). Fenster „Atlas: Startverbünde …“ wählt den aktiven Verbund; F9 baut geänderte Projekte und startet alle in Reihenfolge, Strg+F2 beendet alle. Scheitert ein Start oder läuft eine Wartebedingung ab, hält der Verbund an und fragt „Trotzdem weiter“ oder „Alle beenden“. Das Statusfeld zeigt je Programm den Zustand, ein Klick wechselt den aktiven Prozess. Aus = F9 startet nur das aktive Projekt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.launchGroups",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Startverbünde",
+      "x-captionEn": "Launch groups",
+      "x-issue": "#867"
     },
     "DebugVisualizers": {
       "description": "Visualisierer für häufige Typen beim Debuggen: einzeiliger Ersatztext im Hover, in Überwachten Ausdrücken und Lokalen Variablen sowie ein Ansichtsfenster über die Lupe (Tabelle, Hex, JSON-Baum, Bild, Farbe). Aus = die IDE zeigt ihre eigenen Texte.",
@@ -2026,6 +2344,18 @@
       "x-captionEn": "Check breakpoints before starting",
       "x-control": "Kontrollkästchen",
       "x-issue": "#577"
+    },
+    "DebugBreakpointSetPerBranch": {
+      "description": "Haltepunkt-Sätze (#586) beim Branch-Wechsel mitwechseln: Ist einem Satz beim Speichern ein Branch (Git) bzw. SVN-Pfad zugeordnet worden, wird er aktiv, sobald die Arbeitskopie des aktiven Projekts auf diesen Branch wechselt; die Haltepunkte anderer Sätze werden ausgeschaltet, nicht gelöscht. Aus = Sätze nur über die Befehle wechseln.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.breakpointSetPerBranch",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-caption": "Haltepunkt-Satz beim Branch-Wechsel mitwechseln",
+      "x-captionEn": "Switch the breakpoint set together with the branch",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#586"
     },
     "TestsBuildFirst": {
       "type": "boolean",
@@ -8372,6 +8702,27 @@
       "x-page": "Issue-Tracker",
       "x-issue": "#1268"
     },
+    "IssuesCreateTemplates": {
+      "type": "boolean",
+      "default": true,
+      "description": "GitHub-Issue-Vorlagen im Dialog „Neues Issue“ (#2137): Klappliste „Vorlage“ mit den Formularen aus .github/ISSUE_TEMPLATE (aus der Arbeitskopie, sonst aus dem Repository), Formularfelder statt Beschreibung, Präfix, Labels, Zuständige, Typ und Projekte der Vorlage; „Leeres Issue“ nur mit blank_issues_enabled in config.yml. Aus = Titel und Beschreibung wie bisher; Meilenstein, Typ und Issue-Felder bleiben.",
+      "x-key": "issues.create.templates",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2137"
+    },
+    "IssuesGitHubTemplateFields": {
+      "type": "string",
+      "default": "version={version}; ide={ide}; log={log}",
+      "description": "Vorbelegung der Felder einer GitHub-Issue-Vorlage (#2137): Feld-ID=Wert, getrennt mit „;“, \\n für einen Zeilenumbruch. Platzhalter {version} (Version des Plugins), {ide} (Delphi-Version und IDE), {code} (Codeausschnitt), {finding} (Fundstelle bzw. Befunde), {log} (Code und Fundstelle). Ohne Eintrag landen Code und Fundstelle im ersten Textfeld mit render. tracker.templateFields der .atlas ergänzt und überschreibt einzelne Felder.",
+      "x-key": "issues.github.templateFields",
+      "x-area": "issues",
+      "x-team": "tracker.templateFields",
+      "x-page": "Issue-Tracker",
+      "x-control": "Textfeld",
+      "x-issue": "#2137"
+    },
     "IssuesPreview": {
       "type": "boolean",
       "default": true,
@@ -8849,6 +9200,90 @@
       "x-page": "Issue-Tracker",
       "x-control": "Textfeld",
       "x-issue": "#2126"
+    },
+    "IssuesGitHubStateTarget": {
+      "type": "string",
+      "enum": [
+        "project",
+        "label"
+      ],
+      "default": "project",
+      "description": "Wo „Beginnen“ und „Beenden“ bei GitHub den Zustand führen: im Projektfeld „Status“ (project), wenn das Issue in einem Projekt (Projects v2) liegt, sonst als Label; oder immer als Label (label, wie bis 2.1). Das Statusfeld ist „Status“, sonst das erste Auswahlfeld außer der Priorität; der Zustand wird der Option gleichen Namens zugeordnet. Das Token braucht dazu die Berechtigung „project“, sonst bleibt es beim Label. Je Verbindung überschreibbar (githubStateTarget).",
+      "x-key": "issues.github.stateTarget",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Auswahl",
+      "x-issue": "#2134"
+    },
+    "IssuesGitHubProject": {
+      "type": "string",
+      "default": "",
+      "description": "GitHub-Projekt für den Zustand als „<owner>/<nummer>“ (z. B. „xKnockOut/4“): gilt, wenn ein Issue in mehreren Projekten liegt, und ist das Projekt für die Aufnahme (issues.github.addToProject). Leer = das erste Projekt des Issues (die Meldung nennt es). Je Verbindung überschreibbar (githubProject).",
+      "x-key": "issues.github.project",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Klappliste mit Werten vom Tracker",
+      "x-issue": "#2134"
+    },
+    "IssuesGitHubAddToProject": {
+      "type": "boolean",
+      "default": false,
+      "description": "Issues, die in keinem Projekt liegen, beim Beginnen in das Projekt aus issues.github.project aufnehmen und dort den Status setzen. Aus (oder ohne eingestelltes Projekt): Zustand als Label.",
+      "x-key": "issues.github.addToProject",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2134"
+    },
+    "IssuesGitHubLinkBranch": {
+      "type": "boolean",
+      "default": false,
+      "description": "„Beginnen“ legt bei GitHub und Git einen neuen Branch auf GitHub an (createLinkedBranch, Name aus issues.branchPattern, vom Kopf von issues.branchBase auf dem Server, sonst vom Standard-Branch) und verknüpft ihn mit dem Issue (Bereich „Development“); danach Abruf und Auschecken mit Upstream. Hat das Issue schon einen verknüpften Branch, wird dieser ausgecheckt. Gibt es den Branch schon, fehlt dem Token das Recht „Contents: write“ oder zeigt origin auf ein anderes Repository, legt Atlas den Branch lokal an wie bisher und nennt den Grund. Je Verbindung überschreibbar (githubLinkBranch).",
+      "x-key": "issues.github.linkBranch",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2138"
+    },
+    "IssuesGitHubCreatePr": {
+      "type": "boolean",
+      "default": true,
+      "description": "Beenden-Dialog bei GitHub: Abschnitt „Pull Request anlegen“ ist vorab angehakt. „Senden“ pusht dann den Branch des Issues (git push --set-upstream origin), legt den Pull Request gegen issues.github.prBase an (Titel = Issue-Titel, Text aus issues.github.prBody, Labels und Meilenstein des Issues, Prüfer, Entwurf) und lässt das Issue offen, damit der Merge es über „Closes #n“ schließt. Gibt es schon einen offenen Pull Request für den Branch, zeigt Atlas ihn statt eines zweiten. Ohne Wirkung bei „Nicht geplant“ und „Duplikat“.",
+      "x-key": "issues.github.createPr",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2136"
+    },
+    "IssuesGitHubPrBase": {
+      "type": "string",
+      "default": "",
+      "description": "Ziel-Branch des Pull Requests beim Beenden (z. B. „main-merging“). Leer = Standard-Branch des Repositorys. Je Verbindung überschreibbar (githubPrBase).",
+      "x-key": "issues.github.prBase",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Textfeld",
+      "x-issue": "#2136"
+    },
+    "IssuesGitHubPrBody": {
+      "type": "string",
+      "default": "{closes}\\n\\n{commits}",
+      "description": "Textvorlage des Pull Requests mit {closes} („Closes #n“), {branch}, {commits}, {time} und {kennung}; \\n = neue Zeile.",
+      "x-key": "issues.github.prBody",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Textfeld",
+      "x-issue": "#2136"
+    },
+    "IssuesGitHubPrDraft": {
+      "type": "boolean",
+      "default": false,
+      "description": "Pull Request beim Beenden als Entwurf vorbelegen.",
+      "x-key": "issues.github.prDraft",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2136"
     },
     "IssuesTimeTracking": {
       "type": "boolean",

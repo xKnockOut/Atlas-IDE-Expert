@@ -199,7 +199,7 @@ uses
   Vcl.Dialogs,
   Atlas.Core.Welcome.Trends,
   Atlas.UI.Strings,
-  Atlas.UI.Welcome.QuickActions,
+  Atlas.UI.Welcome.QuickActions.Texts,
   Atlas.UI.Welcome.Trends;
 
 const

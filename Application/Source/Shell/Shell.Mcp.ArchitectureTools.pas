@@ -34,6 +34,7 @@ uses
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Architecture.Overview,
+  Atlas.Common.Architecture.Grouping,
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.Comparison,
   Atlas.Common.Architecture.SymbolPath,

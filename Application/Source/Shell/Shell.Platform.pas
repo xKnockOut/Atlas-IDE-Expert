@@ -81,6 +81,10 @@ type
     /// <summary>Prozessläufer für git und svn.</summary>
     class function CreateVcsRunner(AAllowMainThread: Boolean; const ACancelled: TFunc<Boolean>): IAtlasVcsRunner;
       static;
+    /// <summary>Warteschritt für das Warten auf eine Datei in AFolder (Antwort des Plugins, P-101): Unter Windows
+    /// kehrt er zurück, sobald sich dort Dateinamen ändern, spätestens nach ASafetyMs; lässt sich der Ordner nicht
+    /// beobachten, und unter Linux, schläft er APollMs.</summary>
+    class function FolderWait(const AFolder: string; APollMs, ASafetyMs: Cardinal): TProc; static;
   end;
 
 /// <summary>Systemfarbe AIndex (GetSysColor) für Farbangaben im Quelltext; unter Linux keine.</summary>
@@ -112,6 +116,72 @@ begin
   Result := False;
 {$ENDIF}
 end;
+
+{$IFDEF MSWINDOWS}
+type
+  /// <summary>Änderungssignal eines Ordners (FindFirstChangeNotification) für FolderWait.</summary>
+  TFolderChangeWait = class(TInterfacedObject)
+  private
+    FHandle: THandle;
+  public
+    constructor Create(const AFolder: string);
+    destructor Destroy; override;
+    /// <summary>Wartet auf eine Änderung, höchstens AMs; False, wenn der Ordner nicht beobachtet wird.</summary>
+    function Wait(AMs: Cardinal): Boolean;
+  end;
+
+constructor TFolderChangeWait.Create(const AFolder: string);
+begin
+  inherited Create;
+  FHandle := INVALID_HANDLE_VALUE;
+  if ForceDirectories(AFolder) then
+  begin
+    FHandle := FindFirstChangeNotification(PChar(AFolder), False, FILE_NOTIFY_CHANGE_FILE_NAME);
+  end;
+end;
+
+destructor TFolderChangeWait.Destroy;
+begin
+  if FHandle <> INVALID_HANDLE_VALUE then
+  begin
+    FindCloseChangeNotification(FHandle);
+  end;
+  inherited Destroy;
+end;
+
+function TFolderChangeWait.Wait(AMs: Cardinal): Boolean;
+begin
+  if FHandle = INVALID_HANDLE_VALUE then
+  begin
+    Exit(False);
+  end;
+  if (WaitForSingleObject(FHandle, AMs) = WAIT_OBJECT_0) and not FindNextChangeNotification(FHandle) then
+  begin
+    // Nicht wieder scharf zu machen (Ordner gelöscht): ab jetzt im Takt.
+    FindCloseChangeNotification(FHandle);
+    FHandle := INVALID_HANDLE_VALUE;
+  end;
+  Result := True;
+end;
+
+function FolderChangeWait(const AFolder: string; APollMs, ASafetyMs: Cardinal): TProc;
+var
+  mWait: TFolderChangeWait;
+  mKeep: IInterface;
+begin
+  mWait := TFolderChangeWait.Create(AFolder);
+  mKeep := mWait;
+  Result :=
+    procedure
+    begin
+      // mKeep hält das Signal, solange der Warteschritt lebt.
+      if (mKeep = nil) or not mWait.Wait(ASafetyMs) then
+      begin
+        Sleep(APollMs);
+      end;
+    end;
+end;
+{$ENDIF}
 
 { TShellPlatform }
 
@@ -174,6 +244,20 @@ begin
   Result := TAtlasVcsProcessRunner.Create(AAllowMainThread, ACancelled);
 {$ELSE}
   Result := TLinuxVcsRunner.Create(AAllowMainThread, ACancelled);
+{$ENDIF}
+end;
+
+class function TShellPlatform.FolderWait(const AFolder: string; APollMs, ASafetyMs: Cardinal): TProc;
+begin
+{$IFDEF MSWINDOWS}
+  Result := FolderChangeWait(AFolder, APollMs, ASafetyMs);
+{$ELSE}
+  // Unter Linux läuft keine IDE mit Plugin; das Warten endet dort ohnehin nach der ersten Frist.
+  Result :=
+    procedure
+    begin
+      Sleep(APollMs);
+    end;
 {$ENDIF}
 end;
 

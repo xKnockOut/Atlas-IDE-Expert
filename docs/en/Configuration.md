@@ -63,7 +63,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | `stringLiteral` | project (atlas.json) | object | – |  | Code actions "As string literal" and "Copy as plain text". |
 | `memberOrder` | project (atlas.json) | object | – |  | Code action "Order class members": order of the visibility sections and of the members in them. |
 | `testUnits` | project (atlas.json) | object | – |  | Create test units and switch between unit and test unit: name pattern, folder of new test units and test project. |
-| `tests` | global (settings.json) | object | – |  | Affected tests of a change: determine the changed routines, types and constants from the difference to the base (Git or SVN), follow their impact and only name the DUnitX tests that reach them (command line --affected-tests, MCP tool get_affected_tests, plugin command "Run affected tests"). |
+| `tests` | mixed, see below | object | – |  | Affected tests of a change: determine the changed routines, types and constants from the difference to the base (Git or SVN), follow their impact and only name the DUnitX tests that reach them (command line --affected-tests, MCP tool get_affected_tests, plugin command "Run affected tests"). |
 | `minConfidence` | project (atlas.json) | string | `"medium"` | `"low"`, `"medium"`, `"high"` | Hide rule hits below this confidence. |
 | `fix` | project (atlas.json) | object | – |  | Bulk fix (--fix, MCP fix_findings, "Fix all safe hits …" in the window "Atlas Check"): only applies safe fixes of rules with safeFix in the catalog. |
 | `exclude` | project (atlas.json) | array<string> | – | e.g. `["ThirdParty/**","Generated/*.pas"]` | Folders and files that are not checked (glob patterns relative to this folder: *, **, ?). |
@@ -129,6 +129,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | `completion.nameSuggestions` | global (settings.json) | boolean | `true` |  | At the name position of a declaration with known type (var section, inline var, field, parameter) suggest names from the type: TCustomerList gives Customers, CustomerList and List, with F, A or L if at least 60 % of the declarations of that kind in the project carry the prefix or the project file .atlas sets it under naming. |
 | `completion.typeGuards` | global (settings.json) | boolean | `true` |  | Offer the members of the checked type after a type check: in the then branch of if X is T then (also in and chains and after while X is T do) and after if not (X is T) then Exit; up to the end of the block, X. lists the members only T has at the top under the heading "X is T here (is check, line n)". Accepting writes the cast according to completion.senderCast (T(X).Name or (X as T).Name). After an assignment to X, after passing it to a var or out parameter, in the else branch, in with blocks and for fields after any further statement the check no longer applies. After X is and X as the descendants of the type of X come first. Off: as without the check. |
 | `completion.hiddenMembers` | global (settings.json) | boolean | `true` |  | Name members that are missing only because of their visibility: if the text typed after X. matches private, strict private, strict protected or (outside descendants) protected members, the footer names them with visibility and class ("1 match not visible: FEntries (private in TAtlasUsage) · Ctrl+Space shows it"). Pressing Ctrl+Space again shows them greyed out in the list; they are not inserted. No notice without a typed prefix. Off: left out silently as before. |
+| `completion.projectFrequency` | global (settings.json) | boolean | `true` |  | Ranking from usage in the project: after X. members whose name occurs often in the project's units move up and carry the tag "in project 214×". The count comes from the index usages (index.usages); libraries do not count. Your own weighting (recent, frequent) and a better match always come first. Off: only by match and your own weighting as before. |
 
 ## refactoring
 
@@ -414,6 +415,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 |---|---|---|---|---|---|
 | `tests.affected` | global (settings.json) | boolean | `true` |  | Determine affected tests; off: plugin command and MCP tool are missing, --affected-tests ends with exit code 3. |
 | `tests.affectedDepth` | global (settings.json) | integer | `3` | 1…5 | Levels of the impact analysis from the change to the test: 1 = only tests that use the changed symbol directly. |
+| `tests.approvalFolder` | project (atlas.json) | string | `"Tests\Erwartet"` |  | Folder of the approval files (*.approved.*, *.received.*) of the helper unit Atlas.Testing.Approval (#1881), relative to the folder of atlas.json or absolute. The helper unit looks for the nearest atlas.json above the test program; the plugin cleans up leftover .received files here. |
 
 ## fix
 
