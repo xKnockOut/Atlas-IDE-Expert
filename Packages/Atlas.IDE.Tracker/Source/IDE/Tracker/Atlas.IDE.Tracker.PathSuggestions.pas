@@ -30,6 +30,9 @@ type
     /// <summary>„Vorschlagen …“ für AMapping; Ergebnis wie TAtlasTrackerPathsSuggestEvent.</summary>
     class function Suggest(const AMapping: TAtlasTrackerProjectMapping; out APaths: TArray<string>): Boolean;
       static;
+    /// <summary>URL von origin der Git-Arbeitskopie, in der AFolder liegt (#2138); '' ohne. Liest nur .git/config.
+    /// </summary>
+    class function OriginOfFolder(const AFolder: string): string; static;
   end;
 
 implementation
@@ -357,6 +360,19 @@ begin
         AFill(nil);
       end;
     end, APaths) <> TAtlasTrackerSuggestAnswer.Cancel;
+end;
+
+class function TAtlasIdeTrackerPathSuggestions.OriginOfFolder(const AFolder: string): string;
+var
+  mRoot: string;
+  mWorktree: Boolean;
+begin
+  Result := '';
+  mRoot := GitRootOf(AFolder);
+  if mRoot <> '' then
+  begin
+    Result := OriginOf(mRoot, mWorktree);
+  end;
 end;
 
 end.

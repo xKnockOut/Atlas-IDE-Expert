@@ -40,6 +40,10 @@ type
     procedure IssuesSyncOptions;
     /// <summary>Zeiterfassung (#1267): ab Werk aus, Leerlauf 10, Rundung 5, Grenzen, Speichern und Laden.</summary>
     [Test]
+    procedure IssuesGitHubStateOptions;
+    [Test]
+    procedure IssuesGitHubPullRequestOptions;
+    [Test]
     procedure IssuesTimeOptions;
     /// <summary>Kommentar-Editor (#1278): Schalter und Textbausteine mit Vorgaben, Normalisieren und Speichern.</summary>
     [Test]
@@ -333,6 +337,9 @@ begin
   Assert.IsTrue(ASettings.IssuesSuggestPaths, '„Vorschlagen …“ (#1929) an');
   Assert.IsTrue(ASettings.IssuesCreate, '„Issue anlegen …“ an (#1268)');
   Assert.IsTrue(ASettings.IssuesCreateIncludeCode, 'Codeausschnitt vorgeschlagen (#1268)');
+  Assert.IsTrue(ASettings.IssuesCreateTemplates, 'GitHub-Issue-Vorlagen an (#2137)');
+  Assert.AreEqual('version={version}; ide={ide}; log={log}', ASettings.IssuesGitHubTemplateFields,
+    'passt zu den Vorlagen von Atlas (#2137)');
   Assert.AreEqual(0, ASettings.CreateIssueKey, 'frei belegbar, ohne Vorgabe');
   Assert.AreEqual('branch', ASettings.IssuesStart);
   Assert.AreEqual('', ASettings.IssuesBranchPattern, 'je Versionsverwaltung');
@@ -371,9 +378,9 @@ begin
   Assert.IsTrue(ASettings.IssuesAttachRaiseProgram, 'Programm nach vorn holen an');
   // Die Einstellungen kennen den Bereich nicht: dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.cCommitPattern, ASettings.IssuesCommitPattern);
-  Assert.AreEqual(TAtlasMyIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.cIssuesStartBranch);
-  Assert.AreEqual(TAtlasMyIssues.StartName(TAtlasIssueStart.Remember),
-    TAtlasPluginSettings.cIssuesStartRemember);
+  Assert.AreEqual(TAtlasPluginSettings.cIssuesStartBranch, TAtlasMyIssues.StartName(TAtlasIssueStart.Branch));
+  Assert.AreEqual(TAtlasPluginSettings.cIssuesStartRemember,
+    TAtlasMyIssues.StartName(TAtlasIssueStart.Remember));
 end;
 /// <summary>Meine Issues (#765, #1271): Normalisieren.</summary>
 procedure NormalizeIssuesOptions(var ASettings: TAtlasPluginSettings);
@@ -451,6 +458,8 @@ begin
   ASettings.IssuesSuggestPaths := False;
   ASettings.IssuesCreate := False;
   ASettings.IssuesCreateIncludeCode := False;
+  ASettings.IssuesCreateTemplates := False;
+  ASettings.IssuesGitHubTemplateFields := 'steps={code}';
   ASettings.CreateIssueKey := $4049;
   ASettings.IssuesStart := 'remember';
   ASettings.IssuesBranchPattern := 'issue/{nummer}';
@@ -502,6 +511,8 @@ begin
   Assert.IsFalse(ALoaded.IssuesSuggestPaths);
   Assert.IsFalse(ALoaded.IssuesCreate);
   Assert.IsFalse(ALoaded.IssuesCreateIncludeCode);
+  Assert.IsFalse(ALoaded.IssuesCreateTemplates);
+  Assert.AreEqual('steps={code}', ALoaded.IssuesGitHubTemplateFields);
   Assert.AreEqual($4049, ALoaded.CreateIssueKey, 'Strg+I');
   Assert.AreEqual('remember', ALoaded.IssuesStart);
   Assert.AreEqual('issue/{nummer}', ALoaded.IssuesBranchPattern);
@@ -628,6 +639,61 @@ begin
   Assert.AreEqual('Behoben in Version, Ursache', mLoaded.IssuesEndFields);
   Assert.IsFalse(mLoaded.IssuesEndTime);
 end;
+procedure TAtlasIssueSettingsTests.IssuesGitHubStateOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  // #2134: Zustand bei GitHub im Projektfeld, ohne Projekt und ohne Aufnahme.
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual(TAtlasPluginSettings.cIssuesGitHubStateProject, mSettings.IssuesGitHubStateTarget);
+  Assert.AreEqual('', mSettings.IssuesGitHubProject);
+  Assert.IsFalse(mSettings.IssuesGitHubAddToProject);
+  mSettings.IssuesGitHubStateTarget := ' LABEL ';
+  mSettings.IssuesGitHubProject := ' beispiel/4 ';
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cIssuesGitHubStateLabel, mSettings.IssuesGitHubStateTarget);
+  Assert.AreEqual('beispiel/4', mSettings.IssuesGitHubProject);
+  mSettings.IssuesGitHubStateTarget := 'beides';
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cIssuesGitHubStateProject, mSettings.IssuesGitHubStateTarget,
+    'unbekannt = Vorgabe');
+  mSettings.IssuesGitHubStateTarget := TAtlasPluginSettings.cIssuesGitHubStateLabel;
+  mSettings.IssuesGitHubAddToProject := True;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.AreEqual(TAtlasPluginSettings.cIssuesGitHubStateLabel, mLoaded.IssuesGitHubStateTarget);
+  Assert.AreEqual('beispiel/4', mLoaded.IssuesGitHubProject);
+  Assert.IsTrue(mLoaded.IssuesGitHubAddToProject);
+end;
+
+procedure TAtlasIssueSettingsTests.IssuesGitHubPullRequestOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  // #2136: Pull Request beim Beenden vorab angehakt, Ziel = Standard-Branch, kein Entwurf.
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.IssuesGitHubCreatePr);
+  Assert.AreEqual('', mSettings.IssuesGitHubPrBase);
+  Assert.AreEqual('{closes}\n\n{commits}', mSettings.IssuesGitHubPrBody);
+  Assert.IsFalse(mSettings.IssuesGitHubPrDraft);
+  mSettings.IssuesGitHubCreatePr := False;
+  mSettings.IssuesGitHubPrBase := 'develop';
+  mSettings.IssuesGitHubPrBody := '{closes}';
+  mSettings.IssuesGitHubPrDraft := True;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.IssuesGitHubCreatePr);
+  Assert.AreEqual('develop', mLoaded.IssuesGitHubPrBase);
+  Assert.AreEqual('{closes}', mLoaded.IssuesGitHubPrBody);
+  Assert.IsTrue(mLoaded.IssuesGitHubPrDraft);
+end;
+
 procedure TAtlasIssueSettingsTests.IssuesTimeOptions;
 var
   mSettings, mLoaded: TAtlasPluginSettings;

@@ -10,7 +10,8 @@ interface
 uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Semantics.ExpressionTypes;
+  Atlas.Common.Semantics.ExpressionTypes,
+  Atlas.Common.Semantics.ExpressionTypes.Contract;
 
 type
   [TestFixture]

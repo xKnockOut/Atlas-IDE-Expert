@@ -36,7 +36,7 @@ type
     InThePatternAllowedRegex, EnvMustBeAnObject, TaskWithoutName, OnlyHttpsAddressesWithoutUser,
     ConnectionWithoutName, QueryWithoutName, UnknownEntry, CustomPatternWithoutRegex, TaskWithoutCommand,
     ConnectionWithoutProvider, ConnectionWithoutUrl, MappingWithoutConnection, QueryWithoutQuery,
-    PathsMustBeAList);
+    PathsMustBeAList, GitHubStateTargetIs);
 
 const
   cTexts: array[TWorkflowOptionsText] of TAtlasText = (
@@ -99,7 +99,8 @@ const
     (De: 'Verbindung ohne "url"'; En: 'Connection without "url"'),
     (De: 'Zuordnung ohne "connection"'; En: 'Mapping without "connection"'),
     (De: 'Abfrage ohne "query"'; En: 'Query without "query"'),
-    (De: '"paths" muss eine Liste von Ordnern sein'; En: '"paths" must be a list of folders'));
+    (De: '"paths" muss eine Liste von Ordnern sein'; En: '"paths" must be a list of folders'),
+    (De: '"githubStateTarget" ist "project" oder "label"'; En: '"githubStateTarget" is "project" or "label"'));
 
 {$SCOPEDENUMS OFF}
 
@@ -479,6 +480,7 @@ end;
 function CheckConnectionOption(AReader: TConfigurationReader; const AKey: string; AValue: TJsonNode): Boolean;
 var
   mText: string;
+  mFlag: Boolean;
 begin
   Result := True;
   if AKey = 'language' then
@@ -487,9 +489,20 @@ begin
     CheckAllowed(AReader, AValue, 'language', ['de', 'en'], cTexts[TWorkflowOptionsText.LanguageIsDeOrEn].Text);
   end
   // Zustand beim Beginnen und Beenden je Verbindung (#1266).
-  else if MatchStr(AKey, ['stateField', 'assigneeField', 'startState']) then
+  else if MatchStr(AKey, ['stateField', 'assigneeField', 'startState', 'githubProject', 'githubPrBase']) then
   begin
     AReader.ExpectString(AValue, AKey, mText);
+  end
+  // Zustand bei GitHub im Projektfeld oder als Label (#2134).
+  else if AKey = 'githubStateTarget' then
+  begin
+    CheckAllowed(AReader, AValue, AKey, ['project', 'label'], cTexts[TWorkflowOptionsText.GitHubStateTargetIs].Text);
+  end
+  // Branch beim Beginnen auf GitHub anlegen und verknüpfen (#2138).
+  else if AKey = 'githubLinkBranch' then
+  begin
+    mFlag := False;
+    AReader.ExpectBoolean(AValue, AKey, mFlag);
   end
   // Zielzustände beim Beenden (#1266) und Prüfzustände (#2126, #2127).
   else if MatchStr(AKey, ['endStates', 'reviewStates']) then

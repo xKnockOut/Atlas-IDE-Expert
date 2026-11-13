@@ -35,6 +35,8 @@ type
     procedure YouTrackCreateFromTodo;
     [Test]
     procedure GitHubCreateWithLabelsAndAssignee;
+    [Test]
+    procedure GitHubCreateWithTemplateValues;
     /// <summary>Abnahme: 403 und andere Fehler liefern keine Kennung; ohne Token kein Netz.</summary>
     [Test]
     procedure FailuresGiveNoKey;
@@ -54,6 +56,7 @@ uses
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
+  Atlas.Core.Tracker.NewIssueGitHub,
   Atlas.Core.Tracker.NewIssue;
 
 type
@@ -142,6 +145,12 @@ begin
 end;
 
 /// <summary>Wert APath (durch "." getrennt, Zahlen = Index) aus dem JSON AText als Text; '' ohne.</summary>
+/// <summary>Laden mit Vorlagen, aber ohne Dateien der Arbeitskopie (#2137).</summary>
+function Request: TAtlasGitHubMetaRequest;
+begin
+  Result := TAtlasGitHubMetaRequest.Create(True, nil);
+end;
+
 function JsonAt(const AText, APath: string): string;
 var
   mRoot, mValue: TJSONValue;
@@ -405,6 +414,42 @@ begin
     'nur http(s)');
 end;
 
+procedure TAtlasNewIssueTests.GitHubCreateWithTemplateValues;
+var
+  mTransport: TFakeTransport;
+  mRef: IAtlasCiTransport;
+  mDraft: TAtlasNewIssueDraft;
+  mResult: TAtlasNewIssueResult;
+  mBody: string;
+  mGitHub: IAtlasTrackerProvider;
+begin
+  // #2137: Labels und Zuständige der Vorlage, Meilenstein und Typ im selben POST; GitHub übernimmt den Typ ohne
+  // Push-Rechte nicht und schweigt, das Ergebnis nennt es.
+  mGitHub := TAtlasGitHubTracker.Create;
+  mDraft := TAtlasNewIssueDraft.Empty;
+  mDraft.Title := 'Fehler: Absturz';
+  mDraft.Description := '### Atlas-Version' + #10#10 + '2.2.0';
+  mDraft.Assignee := 'octocat';
+  mDraft.GitHub.Labels := TArray<string>.Create('bug');
+  mDraft.GitHub.Assignees := TArray<string>.Create('octocat', 'anna');
+  mDraft.GitHub.Milestone := 3;
+  mDraft.GitHub.IssueType := 'Bug';
+  mTransport := TFakeTransport.Create;
+  mRef := mTransport;
+  mTransport.Reply('POST', 'https://api.github.com/repos/acme/kasse/issues', 201,
+    '{"number":42,"node_id":"I_42","html_url":"https://github.com/acme/kasse/issues/42",' +
+    '"milestone":{"number":3},"type":null}');
+  mResult := TAtlasNewIssues.CreateIssue(mGitHub, GitHubTarget, mRef, mDraft);
+  Assert.IsTrue(mResult.Outcome = TAtlasNewIssueOutcome.Created);
+  mBody := mTransport.Bodies[0];
+  Assert.AreEqual('["bug"]', JsonAt(mBody, 'labels'));
+  Assert.AreEqual('["octocat","anna"]', JsonAt(mBody, 'assignees'), 'ohne Dubletten');
+  Assert.AreEqual('3', JsonAt(mBody, 'milestone'));
+  Assert.AreEqual('Bug', JsonAt(mBody, 'type'));
+  Assert.IsFalse(mResult.Dropped.Milestone);
+  Assert.IsTrue(mResult.Dropped.IssueType);
+end;
+
 procedure TAtlasNewIssueTests.FailuresGiveNoKey;
 var
   mTransport: TFakeTransport;
@@ -476,7 +521,7 @@ begin
     '{"field":{"name":"Zuständig"},"bundle":{"values":[{"login":"marco","name":"Marco"}],' +
     '"aggregatedUsers":[{"login":"anna"},{"login":"marco"}]}},' +
     '{"field":{"name":"State"},"bundle":{"values":[{"name":"Offen"}]}}]');
-  Assert.IsTrue(TAtlasNewIssues.LoadFields(mYouTrack, YouTrackTarget, mRef, mFields));
+  Assert.IsTrue(TAtlasNewIssues.LoadFields(mYouTrack, YouTrackTarget, mRef, Request, mFields));
   Assert.AreEqual('marco', mFields.Me);
   Assert.AreEqual('Typ', mFields.TypeField);
   Assert.AreEqual('Fehler,Aufgabe', string.Join(',', mFields.Types));
@@ -490,15 +535,23 @@ begin
   mTransport.Reply('GET', 'https://api.github.com/user', 200, '{"login":"octocat"}');
   mTransport.Reply('GET', 'https://api.github.com/repos/acme/kasse/labels', 200, '[{"name":"bug"},{"name":"docs"}]');
   mTransport.Reply('GET', 'https://api.github.com/repos/acme/kasse/assignees', 200, '[{"login":"octocat"}]');
-  Assert.IsTrue(TAtlasNewIssues.LoadFields(mGitHub, GitHubTarget, mRef, mFields));
+  Assert.IsTrue(TAtlasNewIssues.LoadFields(mGitHub, GitHubTarget, mRef, Request, mFields));
   Assert.AreEqual('octocat', mFields.Me);
   Assert.AreEqual('bug,docs', string.Join(',', mFields.Types));
   Assert.AreEqual('octocat', string.Join(',', mFields.Assignees));
   Assert.AreEqual('', mFields.TypeField, 'GitHub ohne Feldnamen');
+  Assert.AreEqual(0, Integer(Length(mFields.GitHub.Milestones)), 'ohne Meilensteine keine Zeile (#2137)');
+  // Meilensteine und Issue-Typen des Repositorys (#2137).
+  mTransport.Reply('GET', 'https://api.github.com/repos/acme/kasse/milestones', 200,
+    '[{"number":3,"title":"v2.2.0"}]');
+  mTransport.Reply('GET', 'https://api.github.com/repos/acme/kasse/issue-types', 200, '[{"name":"Bug"}]');
+  Assert.IsTrue(TAtlasNewIssues.LoadFields(mGitHub, GitHubTarget, mRef, Request, mFields));
+  Assert.AreEqual('v2.2.0', mFields.GitHub.Milestones[0].Title);
+  Assert.AreEqual('Bug', string.Join(',', mFields.GitHub.IssueTypes));
   // Ohne Antwort: False, Felder leer (frei eintippbar).
   mTransport := TFakeTransport.Create;
   mRef := mTransport;
-  Assert.IsFalse(TAtlasNewIssues.LoadFields(mGitHub, GitHubTarget, mRef, mFields));
+  Assert.IsFalse(TAtlasNewIssues.LoadFields(mGitHub, GitHubTarget, mRef, Request, mFields));
   Assert.AreEqual(0, Integer(Length(mFields.Types)));
 end;
 

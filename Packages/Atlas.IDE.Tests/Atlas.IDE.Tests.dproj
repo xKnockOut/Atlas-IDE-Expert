@@ -106,7 +106,9 @@
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Leaks.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Compare.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Approval.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Durations.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.CaseTable.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Affected.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.UnitCommands.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Debug.pas"/>
@@ -119,12 +121,15 @@
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Output.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.OnSave.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Compare.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.ApprovalFiles.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Slowest.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.CaseTable.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Projects.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Runner.pas"/>
         <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.Strings.pas"/>
         <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.Compare.pas"/>
         <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.Slowest.pas"/>
+        <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.CaseTable.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.LeakSetup.pas"/>
         <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.LeakSetup.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Composition.pas"/>

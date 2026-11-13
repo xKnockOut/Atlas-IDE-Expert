@@ -25,7 +25,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Semantics.ControlFlow.Signatures,
   Atlas.Common.Editing.RoutineLocals;
 
@@ -96,6 +95,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Pascal.TreeCache,
   System.SysUtils,
   System.StrUtils,
