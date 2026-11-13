@@ -40,7 +40,10 @@ type
     // Testabdeckung (#275).
     CoverageLoadCommand, CoverageClearCommand, CoverageFilter, CoverageLoaded, CoverageNotAReport, CoverageNoLines,
     CoverageTipMissed, CoverageTipHit, CoverageTipHits, CoverageTipFile, CoverageTipOutdated,
-    CoverageTipReport, SettingsTestCoverage);
+    CoverageTipReport, SettingsTestCoverage,
+    // Dauer und langsame Tests (#1772).
+    TestsLensDuration, TestsLensSlow, TestsSlowestCommand, TestsSlowestTitle, TestsSlowestTest, TestsSlowestDuration,
+    TestsSlowestNone, TestsSlowestHint, TestsSlowestNotFound, SettingsTestsShowDuration, SettingsTestsSlowMs);
 
   TAtlasTestsStrings = class
   public
@@ -164,7 +167,18 @@ const
      'Datei: %d von %d Zeilen durchlaufen (%d %%)',
      'Die Datei ist neuer als der Bericht; Zeilen können verschoben sein.',
      'Bericht: %s',
-     'Testabdeckung aus DelphiCodeCoverage in der Rinne (Befehl „Testabdeckung laden …“)'),
+     'Testabdeckung aus DelphiCodeCoverage in der Rinne (Befehl „Testabdeckung laden …“)',
+     '%s · %s',
+     '%s · langsam',
+     'Langsamste Tests zeigen',
+     'Langsamste Tests',
+     'Test',
+     'Dauer',
+     'Tests: Noch keine Testdauer bekannt; zuerst die Tests ausführen.',
+     'Doppelklick springt zum Test. Langsam ab %d ms.',
+     'Tests: %s nicht im Testprojekt gefunden.',
+     'Dauer an der Testmarke zeigen, langsame Tests gelb',
+     'Langsam ab (ms)'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -272,7 +286,18 @@ const
      'File: %d of %d lines run (%d %%)',
      'The file is newer than the report; lines may have moved.',
      'Report: %s',
-     'Test coverage from DelphiCodeCoverage in the gutter (command “Load test coverage…”)'));
+     'Test coverage from DelphiCodeCoverage in the gutter (command “Load test coverage…”)',
+     '%s · %s',
+     '%s · slow',
+     'Show slowest tests',
+     'Slowest tests',
+     'Test',
+     'Duration',
+     'Tests: No test durations known yet; run the tests first.',
+     'Double-click jumps to the test. Slow from %d ms.',
+     'Tests: %s not found in the test project.',
+     'Show the duration on the test mark, slow tests in yellow',
+     'Slow from (ms)'));
 
 { TAtlasTestsStrings }
 

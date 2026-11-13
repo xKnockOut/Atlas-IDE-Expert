@@ -17,6 +17,10 @@ const
   /// <summary>Grenzen für tests.affectedDepth (#1353).</summary>
   cMinTestsAffectedDepth = 1;
   cMaxTestsAffectedDepth = 5;
+  /// <summary>Grenzen und Vorgabe für tests.slowMs (#1772).</summary>
+  cMinTestsSlowMs = 50;
+  cMaxTestsSlowMs = 60000;
+  cDefaultTestsSlowMs = 500;
 
 type
   /// <summary>Plugin-Einstellungen: Compiler, Build, Tests und Aufgaben.</summary>
@@ -98,6 +102,12 @@ type
     TestsCompare: Boolean;
     /// <summary>JSON und XML vor dem Vergleich gleich einrücken (#1779, tests.compare.format).</summary>
     TestsCompareFormat: Boolean;
+    /// <summary>Dauer an den Marken der Testlinse, langsame Tests gelb, die langsamsten auf der Willkommensseite
+    /// (#1772, tests.showDuration).</summary>
+    TestsShowDuration: Boolean;
+    /// <summary>Ab dieser Dauer (Millisekunden) gilt ein Test als langsam (#1772, tests.slowMs), cMinTestsSlowMs bis
+    /// cMaxTestsSlowMs.</summary>
+    TestsSlowMs: Integer;
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
     /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
     BuildZeroHints: Boolean;
@@ -232,6 +242,8 @@ begin
   Result.TestsFailureInline := True;
   Result.TestsCompare := True;
   Result.TestsCompareFormat := True;
+  Result.TestsShowDuration := True;
+  Result.TestsSlowMs := cDefaultTestsSlowMs;
   Result.BuildZeroHints := False;
   Result.ShowInterfaceCost := True;
   Result.BuildSummary := True;
@@ -279,6 +291,7 @@ begin
   BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(BuildWarningsAsErrors);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
   TestsAffectedDepth := EnsureRange(TestsAffectedDepth, cMinTestsAffectedDepth, cMaxTestsAffectedDepth);
+  TestsSlowMs := EnsureRange(TestsSlowMs, cMinTestsSlowMs, cMaxTestsSlowMs);
 end;
 
 procedure TAtlasPluginBuildSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -310,6 +323,8 @@ begin
   AIo.Flag('TestsFailureInline', TestsFailureInline);
   AIo.Flag('TestsCompare', TestsCompare);
   AIo.Flag('TestsCompareFormat', TestsCompareFormat);
+  AIo.Flag('TestsShowDuration', TestsShowDuration);
+  AIo.Number('TestsSlowMs', TestsSlowMs);
   AIo.Flag('BuildZeroHints', BuildZeroHints);
   AIo.Flag('ShowInterfaceCost', ShowInterfaceCost);
   AIo.Flag('BuildSummary', BuildSummary);

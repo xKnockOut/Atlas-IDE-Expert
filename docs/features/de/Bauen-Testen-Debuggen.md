@@ -130,6 +130,16 @@ Einstellungen: `tests.compare`, `tests.compare.format`
 
 Einstellung: `tests.coverage`
 
+### Dauer der Tests und langsame Tests (#1772)
+
+- Nach einem Lauf zeigt jede Marke der Testlinse die Dauer: „Test ausführen · bestanden · 12 ms“, ab einer Sekunde in Sekunden mit einer Nachkommastelle („1,2 s“). Die Klassenmarke zeigt die Summe ihrer Tests, eine `[TestCase]`-Methode die Summe ihrer Fälle.
+- Liegt der langsamste Test einer Marke über `tests.slowMs` (Vorgabe 500 ms), folgt „· langsam“ und die Marke wird gelb, auch wenn er bestanden hat. Fehlgeschlagen bleibt rot, veraltet grau.
+- Die Karte *Testergebnisse* der Willkommensseite listet unter den Fehlschlägen die fünf langsamsten Tests des letzten Laufs; Doppelklick öffnet den Test.
+- *Langsamste Tests zeigen* (Atlas-Menü, Befehlspalette): alle Tests dieser Sitzung mit Dauer, der langsamste zuerst (höchstens 50); Doppelklick oder Eingabetaste springt zum Test.
+- `tests.showDuration` aus: keine Dauer, keine Färbung, keine Liste auf der Willkommensseite, kein Befehl.
+
+Einstellungen: `tests.showDuration`, `tests.slowMs`
+
 ### Testfall aus der Unit anlegen (#1226)
 
 Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an der Deklaration; im Rumpf auch `/test`.
@@ -327,6 +337,7 @@ Einstellungen: `debug.exceptionBanner`, aus, bis die Studie zu #783 positiv ist
 - Ohne eindeutige Ursache steht „Ursache nicht eindeutig“.
 - Das schuldige Glied ist im Editor unterstrichen, bis weitergelaufen wird.
 - Getter und Funktionsaufrufe wertet Atlas nur mit `debug.explainAccessViolation.allowCalls` aus.
+- Dahinter steht, in welchem Modul die Fehleradresse liegt: „in deinem Programm“, „in vcl290.bpl (RTL/VCL)“, „in ntdll.dll (Windows)“ oder „in Fremd.dll (keine Debug-Infos)“. Hält der Debugger nicht in eigenem Code, nennt Atlas nur das Modul und die letzte eigene Stelle aus dem Aufrufstapel (`debug.moduleOfAddress`).
 - Ohne Exception-Leiste steht das Ergebnis in den Meldungen.
 
-Schalter: `debug.explainAccessViolation`.
+Schalter: `debug.explainAccessViolation`, `debug.moduleOfAddress`.
