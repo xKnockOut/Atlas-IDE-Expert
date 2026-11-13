@@ -761,6 +761,9 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.AreEqual.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Classes.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Registration.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCases.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.IgnoredResult.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.pas"/>

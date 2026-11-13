@@ -1450,6 +1450,32 @@
       "x-captionEn": "Indent JSON and XML",
       "x-issue": "#1779"
     },
+    "TestsShowDuration": {
+      "description": "Nach einem Lauf zeigt jede Marke der Testlinse die Dauer („12 ms“, ab einer Sekunde „1,2 s“), die Klassenmarke die Summe ihrer Tests. Über tests.slowMs färbt sich die Marke gelb mit „langsam“, auch wenn der Test bestanden hat (fehlgeschlagen bleibt rot). Die Karte Testergebnisse der Willkommensseite listet die fünf langsamsten Tests, der Befehl „Langsamste Tests zeigen“ alle mit Dauer.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.showDuration",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-caption": "Dauer an der Testmarke zeigen",
+      "x-captionEn": "Show duration on the test mark",
+      "x-issue": "#1772"
+    },
+    "TestsSlowMs": {
+      "description": "Ab dieser Dauer in Millisekunden gilt ein Test als langsam (50 bis 60000). Bei einer Klassenmarke zählt der langsamste ihrer Tests, nicht die Summe.",
+      "type": "integer",
+      "default": 500,
+      "minimum": 50,
+      "maximum": 60000,
+      "x-key": "tests.slowMs",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.showDuration",
+      "x-caption": "Langsam ab (ms)",
+      "x-captionEn": "Slow from (ms)",
+      "x-issue": "#1772"
+    },
     "TestDebug": {
       "type": "boolean",
       "default": true,

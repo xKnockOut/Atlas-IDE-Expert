@@ -76,31 +76,6 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings;
 
-/// <summary>Steuerelemente der Auswahl mit demselben Parent wie das erste.</summary>
-function SelectedControls(const AEditor: IOTAFormEditor; ARoot: TComponent): TArray<TControl>;
-var
-  mComponent: TComponent;
-  mParent: TWinControl;
-begin
-  Result := nil;
-  mParent := nil;
-  for mComponent in TAtlasDesignerAccess.Selection(AEditor, ARoot) do
-  begin
-    if not (mComponent is TControl) or (TControl(mComponent).Parent = nil) then
-    begin
-      Continue;
-    end;
-    if mParent = nil then
-    begin
-      mParent := TControl(mComponent).Parent;
-    end;
-    if TControl(mComponent).Parent = mParent then
-    begin
-      Result := Result + [TControl(mComponent)];
-    end;
-  end;
-end;
-
 function NamesOf(const AControls: TArray<TControl>): string;
 var
   mControl: TControl;
@@ -477,7 +452,7 @@ begin
     Hide;
     Exit;
   end;
-  mControls := SelectedControls(mEditor, mRoot);
+  mControls := TAtlasDesignerAccess.SelectedSiblings(mEditor, mRoot);
   if (Length(mControls) > 0) and mSettings.DesignerMeasureDistances and
     UpdateDrag(TWinControl(mRoot), mControls) then
   begin
