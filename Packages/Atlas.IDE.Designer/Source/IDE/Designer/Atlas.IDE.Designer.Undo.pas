@@ -31,10 +31,11 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Designer.Undo,
   Atlas.UI.Designer.Bar,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.IDE.Foundation.KeyHook,
+  Atlas.IDE.Designer.Tool;
 
 type
-  TAtlasIdeDesignerUndo = class
+  TAtlasIdeDesignerUndo = class(TAtlasIdeDesignerTool)
   public const
     cId = 'designerUndo';
   private type
@@ -60,7 +61,6 @@ type
   private class var
     FCurrent: TAtlasIdeDesignerUndo;
   private
-    FOnMessage: TProc<string>;
     FNotification: TNotification;
     FNotificationRef: IDesignNotification;
     FKeys: TKeys;
@@ -72,7 +72,6 @@ type
     FQueued: Boolean;
     /// <summary>Atlas lädt gerade zurück: eigene Änderungen nicht erfassen.</summary>
     FBusy: Boolean;
-    procedure Say(const AText: string);
     procedure Queue(const ADesigner: IDesigner);
     procedure Capture;
     procedure Closed(const ADesigner: IDesigner);
@@ -84,6 +83,9 @@ type
     procedure BuildMenu;
     procedure MenuPopup(Sender: TObject);
     procedure MenuClick(Sender: TObject);
+  protected
+    /// <summary>Zeile in der Meldungsansicht, zusätzlich im Protokoll.</summary>
+    procedure Say(const AText: string); override;
   public const
     /// <summary>Kennung im Menü: Liste leeren (Schritte haben ihren Index als Tag).</summary>
     cMenuClear = -1;
@@ -219,8 +221,7 @@ end;
 
 constructor TAtlasIdeDesignerUndo.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
   FHistories := TObjectDictionary<TComponent, TAtlasFormUndoHistory>.Create([doOwnsValues]);
   FKeys := TKeys.Create(cKeyPriority);
   FKeys.FOwner := Self;
@@ -275,10 +276,7 @@ end;
 procedure TAtlasIdeDesignerUndo.Say(const AText: string);
 begin
   TAtlasGuard.Log('Designer undo: ' + AText);
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
+  inherited Say(AText);
 end;
 
 procedure TAtlasIdeDesignerUndo.Queue(const ADesigner: IDesigner);
