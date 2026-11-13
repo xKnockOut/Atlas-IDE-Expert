@@ -9,7 +9,8 @@
 // - Befehle (Palette), die Einträge „Betroffene Tests ausführen“,
 //   „Veraltete Tests ausführen“ (#1770), „Erwartet und erhalten
 //   vergleichen“ (#1779) und „Langsamste Tests zeigen“ (#1772) im
-//   Atlas-Menü, „Test ausführen“/„Test debuggen“ im Kontextmenü und „Tests
+//   Atlas-Menü, „TestCase-Tabelle bearbeiten …“ (#1879) in der Palette und im
+//   Kontextmenü einer Testunit, „Test ausführen“/„Test debuggen“ im Kontextmenü und „Tests
 //   dieser Unit ausführen“ im Kontextmenü der Projektverwaltung (#1817:
 //   Testunits der gewählten Units nach Namen in der Projektgruppe, nur solche
 //   mit Fixtures; ohne eine meldet das Modul es in der Meldungsansicht) und
@@ -86,8 +87,6 @@ uses
   Atlas.Core.Tests.Debug,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.CodeInsight.Manager.Paths,
-  Atlas.IDE.Problems.Controller,
   Atlas.IDE.Tests.Output,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.OnSave,
@@ -97,9 +96,9 @@ uses
   Atlas.IDE.Tests.Stale,
   Atlas.IDE.Tests.Compare,
   Atlas.IDE.Tests.Slowest,
+  Atlas.IDE.Tests.CaseTable,
   Atlas.IDE.Tests.Affected,
   Atlas.IDE.Tests.UnitCommands,
-  Atlas.UI.Strings,
   Atlas.UI.Tests.Strings;
 
 var
@@ -112,6 +111,7 @@ var
   GStale: TAtlasIdeStaleTests;
   GCompare: TAtlasIdeTestCompare;
   GSlowest: TAtlasIdeTestSlowest;
+  GCaseTable: TAtlasIdeTestCaseTable;
 
 { Sichtbarkeit }
 
@@ -193,13 +193,6 @@ begin
     end);
 end;
 
-function ServerPath: string;
-var
-  mArguments: string;
-begin
-  Result := TAtlasCodeInsightPaths.ServerPath(mArguments);
-end;
-
 function AffectedHooks: TAtlasAffectedTestsHooks;
 begin
   Result := Default(TAtlasAffectedTestsHooks);
@@ -207,6 +200,16 @@ begin
   Result.RunAll := AffectedRunAll;
   Result.ResolveTarget := AffectedResolveTarget;
   Result.ServerPath := ServerPath;
+end;
+
+{ TestCase-Tabelle (#1879) }
+
+procedure OpenCaseTable(const AFileName: string; ALine: Integer);
+begin
+  if GCaseTable <> nil then
+  begin
+    GCaseTable.OpenAt(AFileName, ALine);
+  end;
 end;
 
 { Teil Tests }
@@ -229,6 +232,9 @@ begin
   // Einzelner Test ausführen bzw. debuggen (#585), auch aus dem Kontextmenü und der Lens.
   GDebugger := TAtlasIdeTestDebugger.Create(GTests);
   GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, GStale.StaleIn);
+  // TestCase-Tabelle (#1879): Befehl und Marke „Tabelle“ der Lens.
+  GCaseTable := TAtlasIdeTestCaseTable.Create(GScope, GTests, GDebugger);
+  GLens.OnTable := OpenCaseTable;
   TAtlasIdeAffectedTests.Install(AffectedHooks);
   // Betroffene Tests beim Speichern (#1775): im Hintergrund über den Läufer.
   GOnSave := TAtlasIdeTestsOnSave.Create(GTests, GOutput);
@@ -249,6 +255,7 @@ begin
   // zurück), dann langsamste Tests (#1772), Vergleich (#1779) und Stände der veralteten Ergebnisse (#1770), dann
   // der Läufer; seine Probleme verschwinden mit ihm.
   FreeAndNil(GLens);
+  FreeAndNil(GCaseTable);
   FreeAndNil(GDebugger);
   if GTests <> nil then
   begin
@@ -261,10 +268,7 @@ begin
     FreeAndNil(GTests);
     FreeAndNil(GOutput);
   finally
-    if TAtlasProblemsController.Current <> nil then
-    begin
-      TAtlasProblemsController.Current.ClearTests;
-    end;
+    ClearProblems;
   end;
 end;
 
@@ -355,6 +359,21 @@ begin
   end;
 end;
 
+{ TestCase-Tabelle (#1879) }
+
+function CaseTableVisible: Boolean;
+begin
+  Result := TestsVisible and TAtlasIdeTestCaseTable.Wanted and (GCaseTable <> nil);
+end;
+
+procedure EditCaseTable;
+begin
+  if GCaseTable <> nil then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Build, GCaseTable.OpenAtCursor);
+  end;
+end;
+
 { Projektverwaltung (#1817) }
 
 function ProjectUnitTestsVisible: Boolean;
@@ -412,6 +431,8 @@ begin
     Command('Atlas.CompareTestValues', TAtlasTestsTextId.TestsCompareCommand, CompareValues, CompareVisible),
     // Langsamste Tests (#1772): sichtbar mit tests.showDuration.
     Command('Atlas.ShowSlowestTests', TAtlasTestsTextId.TestsSlowestCommand, ShowSlowest, SlowestVisible),
+    // [TestCase]-Fälle als Tabelle (#1879): sichtbar mit tests.testCaseTable.
+    Command('Atlas.EditTestCases', TAtlasTestsTextId.TestsCaseTableCommand, EditCaseTable, CaseTableVisible),
     // Einzelner Test am Cursor (#585): ausführen (mit TestRun) und im Debugger (mit TestDebug).
     Command('Atlas.RunTest', TAtlasTestsTextId.TestsRunHereCommand, RunAtCursor, TestsVisible),
     Command('Atlas.DebugTest', TAtlasTestsTextId.TestsDebugCommand, DebugAtCursor, TestDebugVisible),
@@ -457,6 +478,7 @@ begin
     ContextEntry('Atlas.RunTest'),
     ContextEntry('Atlas.DebugTest'),
     ContextEntry('Atlas.CompareTestValues'),
+    ContextEntry('Atlas.EditTestCases'),
     MenuEntry('-', TAtlasMenuPlace.ProjectContext),
     MenuEntry('Atlas.ProjectRunUnitTests', TAtlasMenuPlace.ProjectContext),
     MenuEntry('Atlas.NewTestUnitFor', TAtlasMenuPlace.Gallery)];
@@ -494,7 +516,7 @@ begin
   end
   else
   begin
-    TAtlasIdeHost.Warning(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
+    TAtlasIdeHost.Warning(TestsOffText);
   end;
 end;
 

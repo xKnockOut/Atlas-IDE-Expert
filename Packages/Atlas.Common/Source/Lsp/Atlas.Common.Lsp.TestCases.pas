@@ -11,7 +11,8 @@
 //   { uri, fixture, method, methodLine, firstLine, editable, reason,
 //     columns: [{name, type, kind, enumNames}],      kind: integer, float, boolean, text, enum, unknown
 //     rows: [{name, values, separator, form, line, problem, cells: [..]}],   form: classic, valuesOnly, named
-//     mit zeilen zusätzlich: proposed: [{problem, cells}], edit: {range, newText} | null, editReason }
+//     mit zeilen zusätzlich: proposed: [{problem, cells}], edit: WorkspaceEdit {changes: {uri: [TextEdit]}} | null,
+//     editReason }
 // problem und cells: Fehlertext der Zeile bzw. je Wert, '' passt.
 
 interface
@@ -215,11 +216,11 @@ begin
 end;
 
 /// <summary>Vorschlag der Anfrage: Fehler je Zeile und das Edit bzw. warum es keins gibt.</summary>
-procedure AddProposal(AResult: TJSONObject; const ATable: TTestCaseTable; const ARows: TArray<TTestCaseRow>;
-  const AText: string);
+procedure AddProposal(AResult: TJSONObject; const AUri: string; const ATable: TTestCaseTable;
+  const ARows: TArray<TTestCaseRow>; const AText: string);
 var
-  mProposed: TJSONArray;
-  mEntry, mEdit: TJSONObject;
+  mProposed, mEdits: TJSONArray;
+  mEntry, mEdit, mChanges, mWorkspaceEdit: TJSONObject;
   mRow: TTestCaseRow;
   mTextEdit: TTextEdit;
   mReason: string;
@@ -235,9 +236,15 @@ begin
   if TTestCaseTables.Write(ATable, ARows, LineEndOf(AText), mTextEdit, mReason) then
   begin
     mEdit := TJSONObject.Create;
-    AResult.AddPair('edit', mEdit);
     mEdit.AddPair('range', TLspPositions.RangeToJson(mTextEdit.Range));
     mEdit.AddPair('newText', mTextEdit.NewText);
+    mEdits := TJSONArray.Create;
+    mEdits.AddElement(mEdit);
+    mChanges := TJSONObject.Create;
+    mChanges.AddPair(AUri, mEdits);
+    mWorkspaceEdit := TJSONObject.Create;
+    mWorkspaceEdit.AddPair('changes', mChanges);
+    AResult.AddPair('edit', mWorkspaceEdit);
   end
   else
   begin
@@ -276,7 +283,7 @@ begin
     try
       if (AArguments.Count > 2) and (AArguments.Items[2] is TJSONArray) then
       begin
-        AddProposal(mResult, mTable, RowsFromJson(mTable, TJSONArray(AArguments.Items[2])), mText);
+        AddProposal(mResult, mUri, mTable, RowsFromJson(mTable, TJSONArray(AArguments.Items[2])), mText);
       end;
     except
       mResult.Free;

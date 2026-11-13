@@ -7,6 +7,7 @@
 // - OnProblems: Fehlschläge ins Problemfenster von Base,
 // - OnFinished: Projekt-Zusammenfassung (TAtlasIdeProjectSummaries, #69) und
 //   jeder IAtlasTestsListener (Schnellaktionen der Willkommensseite),
+// - Pfad des Servers, Probleme leeren, Meldung ohne Läufer;
 // - OnLastFailed: fehlgeschlagene Tests des letzten Laufs aus den
 //   Projektdateien (TAtlasProjectSummaries), auch ohne Willkommensseite.
 
@@ -23,6 +24,12 @@ uses
 /// </summary>
 function BuildForTests(const AProject: string; const ADone: TAtlasTestsBuildDone; out AReason: string): Boolean;
 procedure ShowProblems(const AProblems: TArray<TPair<string, TAtlasProblem>>);
+/// <summary>Fehlschläge der Tests aus dem Problemfenster nehmen.</summary>
+procedure ClearProblems;
+/// <summary>Meldung „Tests ausführen ist aus“.</summary>
+function TestsOffText: string;
+/// <summary>Pfad des Atlas-Servers (Betroffene Tests, #1353).</summary>
+function ServerPath: string;
 /// <summary>Ende eines Laufs in die Projekt-Zusammenfassung und an jeden IAtlasTestsListener.</summary>
 procedure AnnounceTests(const AProject: string; const ATests: TAtlasProjectTests);
 function LastFailed(AProject: string): TArray<string>;
@@ -34,6 +41,7 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Tests.Run,
+  Atlas.IDE.CodeInsight.Manager.Paths,
   Atlas.IDE.Contracts.Tests,
   Atlas.IDE.Contracts.BuildPipeline,
   Atlas.IDE.Problems.Controller,
@@ -87,6 +95,26 @@ begin
   begin
     TAtlasProblemsController.Current.SetTests(AProblems);
   end;
+end;
+
+procedure ClearProblems;
+begin
+  if TAtlasProblemsController.Current <> nil then
+  begin
+    TAtlasProblemsController.Current.ClearTests;
+  end;
+end;
+
+function TestsOffText: string;
+begin
+  Result := TAtlasStrings.Text(TAtlasTextId.TestsRunOff);
+end;
+
+function ServerPath: string;
+var
+  mArguments: string;
+begin
+  Result := TAtlasCodeInsightPaths.ServerPath(mArguments);
 end;
 
 /// <summary>Ende eines Laufs in die Projekt-Zusammenfassung (#69, Karte Tests) und an jeden IAtlasTestsListener

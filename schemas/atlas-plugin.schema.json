@@ -1502,6 +1502,18 @@
       "x-captionEn": "Slow from (ms)",
       "x-issue": "#1772"
     },
+    "TestsCaseTable": {
+      "description": "An einer Testmethode mit [TestCase] zeigt die Testlinse „4 Fälle · 1 rot · Tabelle“; der Klick und der Befehl „TestCase-Tabelle bearbeiten …“ (Kontextmenü einer Testunit, Befehlspalette) öffnen die Fälle als Tabelle: Spalte je Parameter mit Typ, letzter Lauf je Fall, Werte prüfen wie dunitx-testcase-mismatch, Zeilen anfügen, löschen und verschieben, einzelnen Fall ausführen oder debuggen. Atlas schreibt die Attribute in einem Rückgängig-Schritt zurück.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.testCaseTable",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-caption": "[TestCase]-Fälle als Tabelle",
+      "x-captionEn": "[TestCase] cases as a table",
+      "x-issue": "#1879"
+    },
     "TestDebug": {
       "type": "boolean",
       "default": true,
