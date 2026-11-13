@@ -62,6 +62,7 @@ uses
   Shell.Mcp.Tools,
   Shell.Mcp.NavigationTools,
   Shell.Mcp.BuildTestTools,
+  Shell.Mcp.ReportTools,
   Shell.Mcp.CheckTools,
   Shell.Mcp.ArchitectureTools,
   Shell.Mcp.EditingTools,
@@ -126,7 +127,7 @@ var
 begin
   mName := ATool.GetValue<string>('name');
   Result := ATool.GetValue<string>('description');
-  Assert.IsTrue(Result <> '', mName);
+  Assert.AreNotEqual('', Result, mName);
   mProperties := ATool.GetValue<TJSONObject>('inputSchema').GetValue('properties') as TJSONObject;
   Assert.IsNotNull(mProperties, mName + ': Schema ungültig');
   for mPair in mProperties do
@@ -191,6 +192,7 @@ begin
   Assert.AreEqual(' get_server_status ', Joined(NamesOf(RegisterStatusTools)));
   Assert.AreEqual(' get_affected_tests ', Joined(NamesOf(RegisterAffectedTestsTool)));
   Assert.AreEqual(' get_hotspots ', Joined(NamesOf(RegisterHotspotTools)));
+  Assert.AreEqual(' resolve_address analyze_report ', Joined(NamesOf(RegisterReportTools)));
 end;
 
 procedure TMcpToolsTests.AllToolsHaveDistinctNames;
@@ -199,7 +201,7 @@ var
   mIndex, mOther: Integer;
 begin
   mNames := NamesOf(RegisterContextTools);
-  Assert.AreEqual(36, Integer(Length(mNames)));
+  Assert.AreEqual(38, Integer(Length(mNames)));
   for mIndex := 0 to High(mNames) do
   begin
     for mOther := mIndex + 1 to High(mNames) do
@@ -291,8 +293,8 @@ begin
       Assert.AreEqual(mFolder, mServices.Root);
       Assert.IsNotNull(mServices.Workspace);
       mContext := mServices.ToolContext(mServer);
-      Assert.IsTrue(mContext.Server = mServer);
-      Assert.IsTrue(mContext.Index = mServices.Index);
+      Assert.AreSame(mServer, mContext.Server);
+      Assert.AreSame(IInterface(mServices.Index), IInterface(mContext.Index));
       Assert.IsTrue(Assigned(mContext.Architecture) and Assigned(mContext.FindPath));
       Assert.AreEqual(0, Integer(Length(mServices.AllFiles()())));
     finally
@@ -318,7 +320,7 @@ begin
     try
       mChanges := ChangesOf(mServices.Group, mFolder)('');
       Assert.AreEqual('HEAD', mChanges.Base);
-      Assert.IsTrue(mChanges.Error <> '', 'ohne Git oder SVN ein Grund');
+      Assert.AreNotEqual('', mChanges.Error, 'ohne Git oder SVN ein Grund');
       Assert.AreEqual(0, Integer(Length(mChanges.Files)));
     finally
       mServices.Free;

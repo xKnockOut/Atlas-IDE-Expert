@@ -33,7 +33,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Semantics.ExpressionTypes,
+  Atlas.Common.Semantics.ExpressionTypes.Contract,
   Atlas.Common.Semantics.TypeCompatibility;
 
 function B(const AName: string): TValueType;
