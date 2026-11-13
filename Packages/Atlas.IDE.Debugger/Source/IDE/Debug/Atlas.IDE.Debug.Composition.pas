@@ -84,7 +84,6 @@ uses
   Atlas.IDE.Debug.Report,
   Atlas.IDE.Contracts.DebugReport,
   Atlas.IDE.Debug.Composition.Values,
-  Atlas.IDE.Debug.WhyHere,
   Atlas.UI.Debug.Strings;
 
 var
@@ -529,39 +528,6 @@ begin
     end, TAtlasIdeDebugStepFilter.Start, TAtlasIdeDebugStepFilter.Release);
 end;
 
-/// <summary>Serverbefehl im Hintergrund über Base; die Antwort kommt nur, solange das Modul angemeldet ist.
-/// </summary>
-function RunInBackground(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal;
-  const ADone: TProc<string>): Boolean;
-begin
-  Result := TAtlasIdeHost.RunServerCommandAsync(GScope, TAtlasFeature.Debugger, ACommand, AArgumentsJson, ATimeoutMs,
-    ADone);
-end;
-
-procedure StartDebugWhyHere;
-begin
-  TAtlasIdeDebugWhyHere.Start(
-    function: TLspSession
-    begin
-      Result := Session;
-    end, RunInBackground);
-end;
-
-/// <summary>„Warum bin ich hier?“ (#1878): Zuhörer der Debug-Sitzung, Zeichner und Mausklick; aus = nichts
-/// angemeldet.</summary>
-function WhyHerePart: IAtlasFeaturePart;
-begin
-  Result := TAtlasFeaturePart.When('DebugWhyHere',
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugWhyHere;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeDebugWhyHere.Started;
-    end, StartDebugWhyHere, TAtlasIdeDebugWhyHere.Release);
-end;
-
 /// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
 /// ausgeschaltet einstellen lässt.</summary>
 procedure ProvideSettingsSections;
@@ -573,8 +539,8 @@ end;
 /// </summary>
 function Parts: TArray<IAtlasFeaturePart>;
 begin
-  Result := LeadingParts + ExceptionParts + DebugValueParts(ExpressionProvider);
-  Result := Result + [StepFilterPart, WhyHerePart];
+  Result := LeadingParts + ExceptionParts + DebugValueParts(ExpressionProvider, GScope);
+  Result := Result + [StepFilterPart];
 end;
 
 class function TAtlasDebugModule.RegisterModule: Boolean;

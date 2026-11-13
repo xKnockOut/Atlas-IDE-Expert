@@ -155,6 +155,10 @@ begin
     Json.Free;
   end;
   Assert.IsFalse(TAtlasWhyHere.ReadAnswer(nil, Blocks));
+  Assert.IsFalse(TAtlasWhyHere.ReadAnswerText('', Blocks), 'leere Antwort');
+  Assert.IsFalse(TAtlasWhyHere.ReadAnswerText('{kaputt', Blocks), 'kaputtes JSON');
+  Assert.IsTrue(TAtlasWhyHere.ReadAnswerText('{"format":1,"blocks":[]}', Blocks));
+  Assert.AreEqual(0, Integer(Length(Blocks)));
   Assert.AreEqual('["file:///c:/a.pas",12,3]', TAtlasWhyHere.Arguments('file:///c:/a.pas', 12, 3));
 end;
 

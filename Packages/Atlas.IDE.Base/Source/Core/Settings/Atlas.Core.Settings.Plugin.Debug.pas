@@ -16,6 +16,7 @@ const
   /// <summary>Grenzen für debug.whyHere.depth (#1878).</summary>
   cMinWhyHereDepth = 1;
   cMaxWhyHereDepth = 10;
+  cDefaultWhyHereDepth = 3;
 
 type
   /// <summary>Plugin-Einstellungen: Debuggen.</summary>
@@ -206,7 +207,7 @@ begin
   Result.DebugInlineValues := True;
   Result.DebugInlineValuesPerLine := 5;
   Result.DebugWhyHere := True;
-  Result.DebugWhyHereDepth := 3;
+  Result.DebugWhyHereDepth := cDefaultWhyHereDepth;
   Result.DebugOwnCodeFolders := '';
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;

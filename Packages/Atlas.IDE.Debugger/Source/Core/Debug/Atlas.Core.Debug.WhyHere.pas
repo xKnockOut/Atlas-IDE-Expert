@@ -89,8 +89,14 @@ type
     function Evaluable(ABlock, APart: Integer): Boolean;
     function Render(ABlock, APart: Integer; const ATexts: TAtlasWhyHereTexts): string;
     function RenderValue(ABlock, APart: Integer; const ATexts: TAtlasWhyHereTexts): string;
-    function TruthText(ATruth: TAtlasWhyHereTruth; const ATexts: TAtlasWhyHereTexts): string;
+    class function TruthText(ATruth: TAtlasWhyHereTruth; const ATexts: TAtlasWhyHereTexts): string; static;
     function LogicalTruth(ABlock, APart: Integer): TAtlasWhyHereTruth;
+    /// <summary>Hat in der and/or-Verknüpfung AParent ein Geschwister vor AChild das Ergebnis schon entschieden?
+    /// </summary>
+    function ShortCircuited(ABlock, AParent, AChild: Integer): Boolean;
+    class function WithText(const ABlock: TAtlasWhyHereBlock): string; static;
+    function CaseText(ABlock: Integer; const ATexts: TAtlasWhyHereTexts): string;
+    function ConditionText(ABlock: Integer; const ATexts: TAtlasWhyHereTexts): string;
     function BlockText(ABlock: Integer; const ATexts: TAtlasWhyHereTexts): string;
     class function ReadBlock(AItem: TJSONObject): TAtlasWhyHereBlock; static;
     class function ReadPart(AItem: TJSONObject): TAtlasWhyHerePart; static;
@@ -99,6 +105,8 @@ type
     class function Arguments(const AUri: string; ALine, ADepth: Integer): string; static;
     /// <summary>Antwort des Servers lesen; False ohne format 1.</summary>
     class function ReadAnswer(AJson: TJSONValue; out ABlocks: TAtlasWhyHereBlocks): Boolean; static;
+    /// <summary>Wie ReadAnswer, aus dem JSON-Text der Antwort; False bei leerem oder kaputtem Text.</summary>
+    class function ReadAnswerText(const AText: string; out ABlocks: TAtlasWhyHereBlocks): Boolean; static;
     /// <summary>Neuer Halt in AFileName mit ABlocks; Teile, die nichts auswerten, sind sofort fertig.</summary>
     procedure Start(const AFileName: string; const ABlocks: TAtlasWhyHereBlocks);
     procedure Clear;
@@ -211,6 +219,24 @@ begin
   end;
 end;
 
+class function TAtlasWhyHere.ReadAnswerText(const AText: string; out ABlocks: TAtlasWhyHereBlocks): Boolean;
+var
+  mJson: TJSONValue;
+begin
+  ABlocks := nil;
+  Result := False;
+  if AText = '' then
+  begin
+    Exit;
+  end;
+  mJson := TJSONObject.ParseJSONValue(AText);
+  try
+    Result := ReadAnswer(mJson, ABlocks);
+  finally
+    mJson.Free;
+  end;
+end;
+
 procedure TAtlasWhyHere.Start(const AFileName: string; const ABlocks: TAtlasWhyHereBlocks);
 var
   mBlock, mPart: Integer;
@@ -268,34 +294,47 @@ begin
   Result := (mKind = 'value') or (mKind = 'compare');
 end;
 
+function TAtlasWhyHere.ShortCircuited(ABlock, AParent, AChild: Integer): Boolean;
+var
+  mSibling: Integer;
+  mDecides: TAtlasWhyHereTruth;
+  mKind: string;
+begin
+  Result := False;
+  mKind := FBlocks[ABlock].Parts[AParent].Kind;
+  // and entscheidet ein False, or ein True; andere Verknüpfungen werten alles aus.
+  if mKind = 'and' then
+  begin
+    mDecides := TAtlasWhyHereTruth.IsFalse;
+  end
+  else if mKind = 'or' then
+  begin
+    mDecides := TAtlasWhyHereTruth.IsTrue;
+  end
+  else
+  begin
+    Exit;
+  end;
+  for mSibling in ChildrenOf(ABlock, AParent) do
+  begin
+    if (mSibling >= AChild) or Result then
+    begin
+      Break;
+    end;
+    Result := Truth(ABlock, mSibling) = mDecides;
+  end;
+end;
+
 function TAtlasWhyHere.Needed(ABlock, APart: Integer): Boolean;
 var
-  mChild, mParent, mSibling: Integer;
-  mTruth: TAtlasWhyHereTruth;
-  mKind: string;
+  mChild, mParent: Integer;
 begin
   Result := True;
   mChild := APart;
   mParent := FBlocks[ABlock].Parts[APart].Parent;
   while Result and (mParent >= 0) do
   begin
-    mKind := FBlocks[ABlock].Parts[mParent].Kind;
-    if (mKind = 'and') or (mKind = 'or') then
-    begin
-      for mSibling in ChildrenOf(ABlock, mParent) do
-      begin
-        if mSibling >= mChild then
-        begin
-          Break;
-        end;
-        mTruth := Truth(ABlock, mSibling);
-        if ((mKind = 'and') and (mTruth = TAtlasWhyHereTruth.IsFalse)) or
-          ((mKind = 'or') and (mTruth = TAtlasWhyHereTruth.IsTrue)) then
-        begin
-          Exit(False);
-        end;
-      end;
-    end;
+    Result := not ShortCircuited(ABlock, mParent, mChild);
     mChild := mParent;
     mParent := FBlocks[ABlock].Parts[mParent].Parent;
   end;
@@ -486,7 +525,7 @@ begin
   end;
 end;
 
-function TAtlasWhyHere.TruthText(ATruth: TAtlasWhyHereTruth; const ATexts: TAtlasWhyHereTexts): string;
+class function TAtlasWhyHere.TruthText(ATruth: TAtlasWhyHereTruth; const ATexts: TAtlasWhyHereTexts): string;
 begin
   case ATruth of
     TAtlasWhyHereTruth.IsTrue:
@@ -566,49 +605,71 @@ begin
   end;
 end;
 
-function TAtlasWhyHere.BlockText(ABlock: Integer; const ATexts: TAtlasWhyHereTexts): string;
+class function TAtlasWhyHere.WithText(const ABlock: TAtlasWhyHereBlock): string;
 var
-  mBlock: TAtlasWhyHereBlock;
   mParts: TArray<string>;
   mIndex: Integer;
 begin
-  mBlock := FBlocks[ABlock];
-  Result := '';
-  if Length(mBlock.Parts) = 0 then
+  mParts := nil;
+  for mIndex := 0 to High(ABlock.Parts) do
   begin
-    Exit;
+    mParts := mParts + [ABlock.Parts[mIndex].Text];
   end;
-  if mBlock.Kind = 'with' then
+  Result := 'with ' + string.Join(', ', mParts);
+end;
+
+function TAtlasWhyHere.CaseText(ABlock: Integer; const ATexts: TAtlasWhyHereTexts): string;
+begin
+  Result := FBlocks[ABlock].Parts[0].Text + ' = ' + Render(ABlock, 0, ATexts) + cArrow;
+  if FBlocks[ABlock].Branch = 'else' then
   begin
-    mParts := nil;
-    for mIndex := 0 to High(mBlock.Parts) do
-    begin
-      mParts := mParts + [mBlock.Parts[mIndex].Text];
-    end;
-    Exit('with ' + string.Join(', ', mParts));
-  end;
-  if (mBlock.Kind = 'for') and (Length(mBlock.Parts) = 2) then
+    Result := Result + ATexts.ElseBranch;
+  end
+  else
   begin
-    Exit(mBlock.Parts[0].Text + ' = ' + Render(ABlock, 0, ATexts) + ' ' + ATexts.Of_ + ' ' + Render(ABlock, 1, ATexts));
+    Result := Result + FBlocks[ABlock].Branch;
   end;
-  if mBlock.Kind = 'forIn' then
-  begin
-    Exit(mBlock.Parts[0].Text + ' = ' + Render(ABlock, 0, ATexts));
-  end;
-  if mBlock.Kind = 'case' then
-  begin
-    Result := mBlock.Parts[0].Text + ' = ' + Render(ABlock, 0, ATexts) + cArrow;
-    if mBlock.Branch = 'else' then
-    begin
-      Exit(Result + ATexts.ElseBranch);
-    end;
-    Exit(Result + mBlock.Branch);
-  end;
+end;
+
+function TAtlasWhyHere.ConditionText(ABlock: Integer; const ATexts: TAtlasWhyHereTexts): string;
+begin
   // if, while, repeat: Bedingung mit Werten und Ergebnis.
   Result := Render(ABlock, 0, ATexts) + cArrow + TruthText(Truth(ABlock, 0), ATexts);
-  if (mBlock.Kind = 'if') and (mBlock.Branch = 'else') then
+  if (FBlocks[ABlock].Kind = 'if') and (FBlocks[ABlock].Branch = 'else') then
   begin
     Result := Result + ', ' + ATexts.ElseBranch;
+  end;
+end;
+
+function TAtlasWhyHere.BlockText(ABlock: Integer; const ATexts: TAtlasWhyHereTexts): string;
+var
+  mBlock: TAtlasWhyHereBlock;
+begin
+  mBlock := FBlocks[ABlock];
+  if Length(mBlock.Parts) = 0 then
+  begin
+    Result := '';
+  end
+  else if mBlock.Kind = 'with' then
+  begin
+    Result := WithText(mBlock);
+  end
+  else if (mBlock.Kind = 'for') and (Length(mBlock.Parts) = 2) then
+  begin
+    Result := mBlock.Parts[0].Text + ' = ' + Render(ABlock, 0, ATexts) + ' ' + ATexts.Of_ + ' ' +
+      Render(ABlock, 1, ATexts);
+  end
+  else if mBlock.Kind = 'forIn' then
+  begin
+    Result := mBlock.Parts[0].Text + ' = ' + Render(ABlock, 0, ATexts);
+  end
+  else if mBlock.Kind = 'case' then
+  begin
+    Result := CaseText(ABlock, ATexts);
+  end
+  else
+  begin
+    Result := ConditionText(ABlock, ATexts);
   end;
 end;
 
