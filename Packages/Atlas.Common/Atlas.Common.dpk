@@ -200,6 +200,7 @@ contains
   Atlas.Common.Lsp.Completion.Postfix in 'Source\Lsp\Atlas.Common.Lsp.Completion.Postfix.pas',
   Atlas.Common.Lsp.Completion.InheritedCalls in 'Source\Lsp\Atlas.Common.Lsp.Completion.InheritedCalls.pas',
   Atlas.Common.Lsp.Completion.Slash in 'Source\Lsp\Atlas.Common.Lsp.Completion.Slash.pas',
+  Atlas.Common.Lsp.Completion.HiddenMembers in 'Source\Lsp\Atlas.Common.Lsp.Completion.HiddenMembers.pas',
   Atlas.Common.Lsp.Completion.TypeGuards in 'Source\Lsp\Atlas.Common.Lsp.Completion.TypeGuards.pas',
   Atlas.Common.Lsp.Completion.Lists in 'Source\Lsp\Atlas.Common.Lsp.Completion.Lists.pas',
   Atlas.Common.Lsp.Completion.Hooks in 'Source\Lsp\Atlas.Common.Lsp.Completion.Hooks.pas',
