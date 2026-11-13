@@ -605,6 +605,7 @@ uses
   Atlas.Common.Editing.UnitTemplates.Tests in 'Common\Editing\Atlas.Common.Editing.UnitTemplates.Tests.pas',
   Atlas.Common.Editing.TestUnits.Tests in 'Common\Editing\Atlas.Common.Editing.TestUnits.Tests.pas',
   Atlas.Common.Editing.TestDrafts.Tests in 'Common\Editing\Atlas.Common.Editing.TestDrafts.Tests.pas',
+  Atlas.Common.Editing.TestCommands.Tests in 'Common\Editing\Atlas.Common.Editing.TestCommands.Tests.pas',
   Atlas.Common.Editing.ErrorCommands.Tests in 'Common\Editing\Atlas.Common.Editing.ErrorCommands.Tests.pas',
   Atlas.Common.Semantics.UnresolvedNames.Tests in 'Common\Semantics\Atlas.Common.Semantics.UnresolvedNames.Tests.pas',
   Atlas.Common.Semantics.UsesUsage.Tests in 'Common\Semantics\Atlas.Common.Semantics.UsesUsage.Tests.pas',

@@ -74,7 +74,7 @@ Code completion in its own popup:
   - the IDE's Live Templates
   - class-aware templates (`prop`, `create`, `free`)
   - postfix templates (`List.forin`, `Obj.notnil`, `Obj.free`)
-- **Slash commands** run after Enter, such as `/uses Unit`, `/extract`, `/inline`, `/fix`, `/explain`, `/case`, `/helper`, `/test`, `/component`, `/unit`, `/sortuses`, `/cleanuses`
+- **Slash commands** run after Enter, such as `/uses Unit`, `/extract`, `/inline`, `/fix`, `/explain`, `/case`, `/helper`, `/test`, `/mock`, `/testcase`, `/dump`, `/assert`, `/component`, `/unit`, `/sortuses`, `/cleanuses`
 - **Generate menu** (Alt+Ins): constructor, properties, overridden methods, interface methods, surround, templates
 - **Guard the free:** after `X := TFoo.Create;` an offer for `try … finally X.Free; end;`
 - **Documentation comments:** `///` creates the XMLDoc skeleton with placeholders

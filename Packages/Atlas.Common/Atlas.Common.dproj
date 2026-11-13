@@ -482,6 +482,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitTemplates.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TestUnits.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TestDrafts.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.TestCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ErrorCommands.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.UnresolvedNames.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.InlineCallees.pas"/>

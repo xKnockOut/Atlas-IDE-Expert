@@ -101,6 +101,15 @@ Aufruf: Code-Aktion (Alt+Enter) an einer Methode oder Routine, im Rumpf oder an 
 - Fehlt die Testunit, legt Atlas sie wie *DUnitX-Testunit anlegen* an (Fixture, Setup/TearDown, Eintrag in `.dpr` und `.dproj`) und setzt den Entwurf an die Stelle des leeren Tests.
 - Private, geschützte und nur im implementation-Teil deklarierte Routinen sind von der Testunit aus nicht aufrufbar; für sie entsteht nur der Test mit `Assert.Fail`.
 
+### Schnellbefehle für Tests und Fehlersuche (#305)
+
+Aufruf: Befehl in eine leere Zeile schreiben und Enter drücken.
+
+- `/mock IKundenRepo` auf Unit-Ebene legt `TKundenRepoMock = class(TInterfacedObject, IKundenRepo)` mit allen Methoden des Interfaces an (auch geerbten): Jede Methode zählt ihre Aufrufe (`LadenCalls`), Funktionen liefern ein einstellbares Feld (`LadenResult`). In einer Routine einer Unit, die `Delphi.Mocks` verwendet, entsteht stattdessen eine lokale Variable `TMock<IKundenRepo>` samt `Create`.
+- `/testcase 'a', 2, True` über einer Testmethode schreibt `[TestCase('Fall1', 'a,2,True')]`, fortlaufend nummeriert; enthält ein Wert ein Komma, trennt `;`. Die Zahl der Werte muss zu den Parametern der Methode darunter passen.
+- `/dump` in einer Routine gibt alle Parameter und lokalen Variablen einfacher Typen in einer Zeile aus (`OutputDebugString` bzw. die Routine aus `slashCommands.logCall`).
+- `/assert` unter einer Zuweisung prüft die zugewiesene Variable passend zum Typ (`Assigned`, nicht leer, nicht negativ, `True`); in Testunits mit `Assert.IsNotNull`, `Assert.AreNotEqual` und `Assert.IsTrue` aus DUnitX.
+
 ### Betroffene Tests ausführen (#1353)
 
 Aufruf: *Atlas*-Menü, Befehlspalette.

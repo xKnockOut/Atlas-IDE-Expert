@@ -499,6 +499,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UnitTemplates.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TestUnits.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TestDrafts.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.TestCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ErrorCommands.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.UnresolvedNames.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.UsesUsage.Tests.pas"/>
