@@ -30,6 +30,8 @@ type
     [Test]
     procedure ClampsOutOfRangeValues;
     [Test]
+    procedure ClampsNormalizedRanges;
+    [Test]
     procedure NormalizesUpdateChoices;
     [Test]
     procedure IndexOptionsGoToGlobalFile;
@@ -161,6 +163,8 @@ begin
   Assert.IsTrue(ASettings.TestsFailureInline, 'erwartet/erhalten hinter der Zeile standardmäßig an (#1771)');
   Assert.IsTrue(ASettings.TestsCompare, 'Vergleich erwartet/erhalten standardmäßig an (#1779)');
   Assert.IsTrue(ASettings.TestsCompareFormat, 'JSON/XML einrücken standardmäßig an (#1779)');
+  Assert.IsTrue(ASettings.TestsCaseTable, 'TestCase-Tabelle standardmäßig an (#1879)');
+  Assert.IsTrue(ASettings.TestsApprovalFiles, 'Vergleichsdateien standardmäßig an (#1881)');
   Assert.IsTrue(ASettings.TestsShowDuration, 'Dauer an der Testmarke standardmäßig an (#1772)');
   Assert.AreEqual(500, ASettings.TestsSlowMs, 'langsam ab 500 ms (#1772)');
   Assert.IsTrue(ASettings.TestsLeaks, 'Lecks je Test standardmäßig an (#1774)');
@@ -198,6 +202,8 @@ begin
   Assert.IsTrue(ASettings.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
   Assert.IsTrue(ASettings.DebugInlineValues, 'debug.inlineValues (#508)');
   Assert.AreEqual(5, ASettings.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
+  Assert.IsTrue(ASettings.DebugWhyHere, 'debug.whyHere (#1878)');
+  Assert.AreEqual(3, ASettings.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
   Assert.AreEqual('', ASettings.DebugOwnCodeFolders, 'debug.ownCodeFolders leer (#578)');
   Assert.IsTrue(ASettings.TodoList, 'Befehl standardmäßig da (#68)');
   Assert.IsTrue(ASettings.MetricsReport, 'Befehl standardmäßig da (#66)');
@@ -327,6 +333,8 @@ begin
   ASettings.TestsFailureInline := False;
   ASettings.TestsCompare := False;
   ASettings.TestsCompareFormat := False;
+  ASettings.TestsCaseTable := False;
+  ASettings.TestsApprovalFiles := False;
   ASettings.TestsShowDuration := False;
   ASettings.TestsSlowMs := 1000;
   ASettings.TestsLeaks := False;
@@ -364,6 +372,8 @@ begin
   ASettings.DebugExceptionBannerIgnoreAtLocation := False;
   ASettings.DebugInlineValues := False;
   ASettings.DebugInlineValuesPerLine := 7;
+  ASettings.DebugWhyHere := False;
+  ASettings.DebugWhyHereDepth := 6;
   ASettings.DebugOwnCodeFolders := '  C:\Komponenten;D:\Lib ';
   ASettings.TodoList := False;
   ASettings.MetricsReport := False;
@@ -470,6 +480,8 @@ begin
   Assert.IsFalse(ALoaded.TestsFailureInline, 'tests.failureInline (#1771)');
   Assert.IsFalse(ALoaded.TestsCompare, 'tests.compare (#1779)');
   Assert.IsFalse(ALoaded.TestsCompareFormat, 'tests.compare.format (#1779)');
+  Assert.IsFalse(ALoaded.TestsCaseTable, 'tests.testCaseTable (#1879)');
+  Assert.IsFalse(ALoaded.TestsApprovalFiles, 'tests.approvalFiles (#1881)');
   Assert.IsFalse(ALoaded.TestsShowDuration, 'tests.showDuration (#1772)');
   Assert.AreEqual(1000, ALoaded.TestsSlowMs, 'tests.slowMs (#1772)');
   Assert.IsFalse(ALoaded.TestsLeaks, 'tests.leaks (#1774)');
@@ -508,6 +520,8 @@ begin
   Assert.IsFalse(ALoaded.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
   Assert.IsFalse(ALoaded.DebugInlineValues, 'debug.inlineValues (#508)');
   Assert.AreEqual(7, ALoaded.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
+  Assert.IsFalse(ALoaded.DebugWhyHere, 'debug.whyHere (#1878)');
+  Assert.AreEqual(6, ALoaded.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
   Assert.AreEqual('C:\Komponenten;D:\Lib', ALoaded.DebugOwnCodeFolders, 'debug.ownCodeFolders ohne Leerraum (#578)');
   Assert.IsFalse(ALoaded.TodoList);
   Assert.IsFalse(ALoaded.MetricsReport);
@@ -954,6 +968,14 @@ begin
   Settings.ShortcutTipsScope := 'ide';
   Settings.Normalize;
   Assert.AreEqual('all', Settings.ShortcutTipsScope, 'unbekannt: all');
+end;
+
+procedure TAtlasPluginSettingsTests.ClampsNormalizedRanges;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  Settings := Default(TAtlasPluginSettings);
+  Settings.Normalize;
   // navigation.impactDepth (#1120): 1 bis 5.
   Settings.ImpactDepth := 0;
   Settings.Normalize;

@@ -8,7 +8,8 @@
 //   demselben Server darüber (Liste issues.connections, #1260).
 // - Platzhalter der Kommentarvorlagen: {branch}, {commits} (Kurz-Hash und
 //   Betreff der Commits mit der Kennung, älteste zuerst), {pr} (Adresse des
-//   Pull Requests), {time} (erfasste Zeit, #1267) und {kennung}; "\n" in
+//   Pull Requests), {time} (erfasste Zeit, #1267), {closes} („Closes #n“,
+//   #2136) und {kennung}; "\n" in
 //   der Vorlage wird ein Zeilenumbruch (die Einstellung ist einzeilig).
 // - StartChange bzw. EndChange bauen die Änderung (TAtlasTrackerWrite), die
 //   der Anbieter (IAtlasTrackerWriter) schreibt. Geschrieben wird nur nach
@@ -57,6 +58,8 @@ type
     EndTime: Boolean;
     /// <summary>Prüfzustände (#2126, #2127, issues.reviewStates).</summary>
     ReviewStates: TArray<string>;
+    /// <summary>Wo GitHub den Zustand führt (#2134, issues.github.*).</summary>
+    GitHub: TAtlasTrackerGitHubState;
     /// <summary>Aus den Einstellungen; leere Feldnamen werden zu den Vorgaben. Beginnen und Beenden setzen
     /// WithStart und WithEnd.</summary>
     class function Create(ASyncState: Boolean; const AStateField, AAssigneeField: string): TAtlasTrackerSyncOptions;
@@ -71,6 +74,14 @@ type
     function WithEndSteps(const AEndFields: string; AEndTime: Boolean): TAtlasTrackerSyncOptions;
     /// <summary>Kopie mit den Prüfzuständen; AReviewStates wie bei WithEnd.</summary>
     function WithReview(const AReviewStates: string): TAtlasTrackerSyncOptions;
+    /// <summary>Kopie mit dem Ziel des Zustands bei GitHub (#2134): AStateTarget "label" = Label, sonst Projektfeld.
+    /// </summary>
+    function WithGitHub(const AStateTarget, AProject: string; AAddToProject: Boolean): TAtlasTrackerSyncOptions;
+    /// <summary>Mit issues.github.linkBranch (#2138).</summary>
+    function WithLinkBranch(ALinkBranch: Boolean): TAtlasTrackerSyncOptions;
+    /// <summary>Mit issues.github.createPr, prBase, prBody und prDraft (#2136).</summary>
+    function WithPullRequest(ACreatePr: Boolean; const APrBase, APrBody: string;
+      APrDraft: Boolean): TAtlasTrackerSyncOptions;
     /// <summary>Beim Beginnen gibt es etwas zu schreiben.</summary>
     function HasStartWork: Boolean;
   end;
@@ -96,6 +107,10 @@ type
     UserFields: TArray<string>;
     /// <summary>Werte des Zustandsfeldes (GitHub: Labels).</summary>
     States: TArray<string>;
+    /// <summary>GitHub (#2134): Projekte des Repositorys („owner/nummer“) und Optionen des Statusfeldes.
+    /// </summary>
+    Projects: TArray<string>;
+    ProjectStates: TArray<string>;
     /// <summary>Ergebnis der ersten fehlgeschlagenen Abfrage, sonst Ok.</summary>
     Outcome: TAtlasTrackerWriteResult;
   end;
@@ -107,6 +122,12 @@ type
     /// <summary>Vorgabe von issues.endComment (wie im Schema) und ihre englische Fassung (#1458).</summary>
     cDefaultEndComment = 'Erledigt in {branch}.\n{commits}';
     cDefaultEndCommentEn = 'Done in {branch}.\n{commits}';
+    /// <summary>Vorgabe von issues.github.prBody (#2136) und das Schlüsselwort von {closes}.</summary>
+    cDefaultPrBody = '{closes}\n\n{commits}';
+    cClosesWord = 'Closes';
+    /// <summary>Werte von issues.github.stateTarget (#2134), wie im Schema.</summary>
+    cStateTargetProject = 'project';
+    cStateTargetLabel = 'label';
     /// <summary>Zeitgrenze eines Schreibzugriffs und der Klapplisten.</summary>
     cWriteTimeoutMs = 10000;
     /// <summary>Höchstens so viele Commits in {commits}.</summary>
@@ -162,6 +183,8 @@ type
     class function EndTransition(const AOptions: TAtlasTrackerSyncOptions; const ARules: TAtlasTrackerStateRules;
       AIndex: Integer; const AComment: string; AHandOver: Boolean; const AAssignee: string): TAtlasTrackerWrite;
       static;
+    /// <summary>issues.github.stateTarget (#2134): alles außer "label" führt den Zustand im Projektfeld.</summary>
+    class function StateInProject(const AStateTarget: string): Boolean; static;
     /// <summary>Der Anbieter kennt Schließgründe (#2135): GitHub.</summary>
     class function ClosesWithReason(const AProvider: string): Boolean; static;
     /// <summary>Vorbelegung des Abschlusses (#2135): ein Erledigt-Zustand schließt als erledigt, sonst offen lassen.
@@ -181,10 +204,11 @@ type
     class function CommitSubjects(const ACommits: string): string; static;
     /// <summary>Dauer für {time}: „1 h 25 min“, „25 min“; '' für 0.</summary>
     class function DurationText(AMinutes: Integer): string; static;
-    /// <summary>Zustände von AStateField, Zustands- und Benutzerfelder; bricht beim ersten Fehler ab. Im
-    /// Hintergrund (Netz).</summary>
+    /// <summary>Zustände von AStateField, Zustands- und Benutzerfelder; bricht beim ersten Fehler ab. Dazu bei GitHub
+    /// (#2134) die Projekte und die Optionen des Statusfeldes von AProject ('' = erstes); deren Fehler (z. B. Token
+    /// ohne Berechtigung „project“) lassen sie nur leer. Im Hintergrund (Netz).</summary>
     class function LoadValues(const AWriter: IAtlasTrackerWriter; const ATarget: TAtlasTrackerTarget;
-      const ATransport: IAtlasCiTransport; const AStateField: string): TAtlasTrackerValueSet; static;
+      const ATransport: IAtlasCiTransport; const AStateField, AProject: string): TAtlasTrackerValueSet; static;
   end;
 
 implementation
@@ -242,6 +266,31 @@ function TAtlasTrackerSyncOptions.WithReview(const AReviewStates: string): TAtla
 begin
   Result := Self;
   Result.ReviewStates := TAtlasTrackerWorkflow.ParseList(AReviewStates);
+end;
+
+function TAtlasTrackerSyncOptions.WithGitHub(const AStateTarget, AProject: string;
+  AAddToProject: Boolean): TAtlasTrackerSyncOptions;
+begin
+  Result := Self;
+  Result.GitHub.ToProject := TAtlasTrackerWorkflow.StateInProject(AStateTarget);
+  Result.GitHub.Project := Trim(AProject);
+  Result.GitHub.AddToProject := AAddToProject;
+end;
+
+function TAtlasTrackerSyncOptions.WithLinkBranch(ALinkBranch: Boolean): TAtlasTrackerSyncOptions;
+begin
+  Result := Self;
+  Result.GitHub.LinkBranch := ALinkBranch;
+end;
+
+function TAtlasTrackerSyncOptions.WithPullRequest(ACreatePr: Boolean; const APrBase, APrBody: string;
+  APrDraft: Boolean): TAtlasTrackerSyncOptions;
+begin
+  Result := Self;
+  Result.GitHub.CreatePr := ACreatePr;
+  Result.GitHub.PrBase := Trim(APrBase);
+  Result.GitHub.PrBody := APrBody;
+  Result.GitHub.PrDraft := APrDraft;
 end;
 
 function TAtlasTrackerSyncOptions.HasStartWork: Boolean;
@@ -355,6 +404,16 @@ begin
       Result.EndStates := ListOr(mConnection.EndStates, Result.EndStates);
       Result.EndFields := ListOr(mConnection.EndFields, Result.EndFields);
       Result.ReviewStates := ListOr(mConnection.ReviewStates, Result.ReviewStates);
+      if mConnection.GitHubStateTarget <> '' then
+      begin
+        Result.GitHub.ToProject := StateInProject(mConnection.GitHubStateTarget);
+      end;
+      Result.GitHub.Project := TextOr(mConnection.GitHubProject, Result.GitHub.Project);
+      if mConnection.GitHubLinkBranch <> '' then
+      begin
+        Result.GitHub.LinkBranch := mConnection.GitHubLinkBranch = TAtlasTrackerConnection.cOn;
+      end;
+      Result.GitHub.PrBase := TextOr(mConnection.GitHubPrBase, Result.GitHub.PrBase);
       Exit;
     end;
   end;
@@ -373,6 +432,8 @@ begin
   Result := StringReplace(Result, '{time}', AValues.Time, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '{kennung}', AValues.Key, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '{key}', AValues.Key, [rfReplaceAll, rfIgnoreCase]);
+  // „Closes #n“ schließt das Issue beim Merge des Pull Requests (#2136).
+  Result := StringReplace(Result, '{closes}', cClosesWord + ' ' + AValues.Key, [rfReplaceAll, rfIgnoreCase]);
   // Leere Platzhalter am Ende lassen keine Leerzeilen zurück.
   while (Result <> '') and CharInSet(Result[Length(Result)], [#10, ' ', #9]) do
   begin
@@ -503,6 +564,7 @@ begin
   Result.StateField := AOptions.StateField;
   Result.AssigneeField := AOptions.AssigneeField;
   Result.State := AOptions.StartState;
+  Result.GitHub := AOptions.GitHub;
   if AOptions.AssignOnStart then
   begin
     Result.Assign := TAtlasTrackerAssign.Me;
@@ -521,6 +583,9 @@ begin
   Result.AssigneeField := AOptions.AssigneeField;
   Result.State := Trim(AState);
   Result.PreviousState := AOptions.StartState;
+  Result.GitHub := AOptions.GitHub;
+  // Aufnehmen ins Projekt nur beim Beginnen (#2134).
+  Result.GitHub.AddToProject := False;
   Result.Comment := Trim(AComment);
   if AHandOver and (Trim(AAssignee) <> '') then
   begin
@@ -565,6 +630,11 @@ begin
     Result.Transition := ARules.Transitions[AIndex];
     Result.FieldId := ARules.FieldId;
   end;
+end;
+
+class function TAtlasTrackerWorkflow.StateInProject(const AStateTarget: string): Boolean;
+begin
+  Result := not SameText(Trim(AStateTarget), cStateTargetLabel);
 end;
 
 class function TAtlasTrackerWorkflow.ClosesWithReason(const AProvider: string): Boolean;
@@ -643,13 +713,11 @@ end;
 
 class function TAtlasTrackerWorkflow.LoadValues(const AWriter: IAtlasTrackerWriter;
   const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  const AStateField: string): TAtlasTrackerValueSet;
+  const AStateField, AProject: string): TAtlasTrackerValueSet;
 var
   mField: string;
 begin
-  Result.StateFields := nil;
-  Result.UserFields := nil;
-  Result.States := nil;
+  Result := Default(TAtlasTrackerValueSet);
   Result.Outcome := TAtlasTrackerWriteResult.Ok;
   if AWriter = nil then
   begin
@@ -672,6 +740,12 @@ begin
   begin
     Result.Outcome := AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.UserFields, '', cWriteTimeoutMs,
       Result.UserFields);
+  end;
+  if Result.Outcome.Succeeded then
+  begin
+    AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.Projects, '', cWriteTimeoutMs, Result.Projects);
+    AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.ProjectStates, Trim(AProject), cWriteTimeoutMs,
+      Result.ProjectStates);
   end;
 end;
 

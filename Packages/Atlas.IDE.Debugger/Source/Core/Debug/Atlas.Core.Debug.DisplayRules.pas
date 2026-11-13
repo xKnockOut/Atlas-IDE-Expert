@@ -109,6 +109,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Debug.Visualizers.Format,
   Atlas.Core.Settings.VisualizerKinds;
 
 { TAtlasDisplayRule }

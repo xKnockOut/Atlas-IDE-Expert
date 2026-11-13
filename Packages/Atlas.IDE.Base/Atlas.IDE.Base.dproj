@@ -1,4 +1,4 @@
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{6E1B3C52-7F0A-4C1D-9B8E-2A5D4F7C9E31}</ProjectGuid>
         <MainSource>Atlas.IDE.Base.dpk</MainSource>
@@ -110,7 +110,9 @@
         <DCCReference Include="..\Atlas.Text\Source\DUnitX\Atlas.Text.DUnitX.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\TestResults\Atlas.Text.TestResults.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\MapFile\Atlas.Text.MapFile.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\MapFile\Atlas.Text.PeImage.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\LeakReport\Atlas.Text.LeakReport.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\CrashReport\Atlas.Text.CrashReport.pas"/>
         <DCCReference Include="Source\Core\Localization\Atlas.Core.Localization.Language.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Crashes.pas"/>
@@ -141,6 +143,9 @@
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.History.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Items.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Layout.pas"/>
+        <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Layout.Contract.pas"/>
+        <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Layout.Painter.pas"/>
+        <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Layout.Members.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Texts.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.View.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas"/>
@@ -546,6 +551,7 @@
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Store.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.AtCaret.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Findings.pas"/>
+        <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.FindingsView.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.ScopeProjects.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.FindingsCache.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.IdeErrors.pas"/>
@@ -729,6 +735,7 @@
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Painter.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.MessageList.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Controller.pas"/>
+        <DCCReference Include="Source\UI\Problems\Atlas.UI.Problems.Frame.List.pas"/>
         <DCCReference Include="Source\UI\Problems\Atlas.UI.Problems.Frame.pas">
             <Form>AtlasProblemsFrame</Form>
             <FormType>dfm</FormType>
@@ -775,6 +782,7 @@
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.ToolCheck.pas"/>
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.ServerCheck.pas"/>
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.BranchPlan.pas"/>
+        <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.ExternalRules.pas"/>
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.BranchNames.pas"/>
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.Pull.pas"/>
         <DCCReference Include="Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Null.pas"/>

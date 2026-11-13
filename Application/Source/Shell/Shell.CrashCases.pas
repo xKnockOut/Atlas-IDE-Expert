@@ -149,7 +149,8 @@ uses
   Shell.Bootstrap,
   Shell.Platform,
   Atlas.Text.LogMarks,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 type
 {$SCOPEDENUMS ON}
@@ -202,7 +203,7 @@ begin
   mParams := nil;
   if AParams <> '' then
   begin
-    mParams := TCrashCases.ParseOrNil(AParams);
+    mParams := TJsonRead.Parse(AParams);
   end;
   try
     if not TCrashCases.DocumentOf(mParams, ACase.Uri, ACase.Line) then

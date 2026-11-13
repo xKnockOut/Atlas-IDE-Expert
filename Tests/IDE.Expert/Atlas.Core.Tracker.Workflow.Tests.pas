@@ -864,11 +864,11 @@ begin
   mTransport := TFakeSendTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('GET', 'https://yt.beispiel.de/api/admin/projects', 403, '{"error":"Forbidden"}');
-  mValues := TAtlasTrackerWorkflow.LoadValues(mWriter, YouTrackTarget, mKeep, '');
+  mValues := TAtlasTrackerWorkflow.LoadValues(mWriter, YouTrackTarget, mKeep, '', '');
   Assert.IsFalse(mValues.Outcome.Succeeded);
   Assert.AreEqual(403, mValues.Outcome.Status);
   Assert.AreEqual(1, Integer(Length(mTransport.Calls)), 'nach dem ersten Fehler keine weitere Abfrage');
-  mValues := TAtlasTrackerWorkflow.LoadValues(nil, YouTrackTarget, mKeep, '');
+  mValues := TAtlasTrackerWorkflow.LoadValues(nil, YouTrackTarget, mKeep, '', '');
   Assert.AreEqual(Ord(TAtlasCiFetchError.UnknownProvider), Ord(mValues.Outcome.Error), 'Anbieter ohne Schreiben');
 end;
 

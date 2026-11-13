@@ -194,6 +194,12 @@ begin
   TAtlasIdeDebugOwnCode.ToggleSetting(MessageLine);
 end;
 
+/// <summary>Scope des Moduls für Befehle mit Antwort des Servers; nil vor dem Anmelden.</summary>
+function CurrentScope: IAtlasModuleScope;
+begin
+  Result := GScope;
+end;
+
 /// <summary>Befehl abgesichert ausführen (#493): eine Ausnahme schaltet nur die Debugger-Funktionen ab.</summary>
 function Guarded(const AProc: TProc): TProc;
 begin
@@ -328,7 +334,7 @@ begin
   // Threads im Quelltext (#852): markieren, einfrieren, auftauen.
   Result := Result + DebugThreadCommands;
   // Werkzeuge rund um den Lauf: Ereignisprotokoll (#580).
-  Result := Result + RunCommands;
+  Result := Result + RunCommands(CurrentScope);
   // Anhalten und Haltepunkte (#856, #577) aus Atlas.IDE.Debug.Composition.Breakpoints, unter der Sicherung.
   for mCommand in BreakpointCommands do
   begin
@@ -375,6 +381,8 @@ begin
     ContextEntry('Atlas.DebugThreadFreeze'),
     ContextEntry('Atlas.DebugThreadThaw'),
     ContextEntry('Atlas.DebugThreadsThawAll')];
+  // Ereignisprotokoll, Logpunkte, Neu starten und Laufzeitberichte (#580, #583, #872, #74).
+  Result := Result + RunMenuEntries;
   Result := Result + BreakpointMenuEntries;
 end;
 
@@ -393,6 +401,7 @@ begin
       Result := TryStepInto;
     end;
   Result := [mKey];
+  Result := Result + RunKeys;
 end;
 
 procedure TAtlasDebugModule.EditorViewActivated;
@@ -501,7 +510,7 @@ end;
 /// </summary>
 function Parts: TArray<IAtlasFeaturePart>;
 begin
-  Result := LeadingParts + DebugExceptionParts + DebugValueParts(ExpressionProvider);
+  Result := LeadingParts + DebugExceptionParts + DebugValueParts(ExpressionProvider, GScope);
   Result := Result + [StepFilterPart] + DebugThreadParts + BreakpointParts + RunParts;
 end;
 
@@ -535,6 +544,8 @@ begin
   // Vertrag zwischen Modulen: Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (#1276).
   GScope.Provide(IAtlasDebugReportSource, TAtlasIdeDebugReport.Create as IAtlasDebugReportSource);
   ProvideDebugThreadLayers(GScope);
+  // Logpunkte in der Rinne (#583).
+  ProvideRun(GScope);
   ProvideSettingsSections;
   Result := True;
 end;

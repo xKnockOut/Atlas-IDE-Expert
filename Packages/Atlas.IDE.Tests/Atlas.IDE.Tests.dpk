@@ -46,6 +46,7 @@ contains
   Atlas.UI.Tests.Strings in 'Source\UI\Tests\Atlas.UI.Tests.Strings.pas',
   Atlas.UI.Tests.Compare in 'Source\UI\Tests\Atlas.UI.Tests.Compare.pas',
   Atlas.UI.Tests.Slowest in 'Source\UI\Tests\Atlas.UI.Tests.Slowest.pas',
+  Atlas.UI.Tests.CaseTable in 'Source\UI\Tests\Atlas.UI.Tests.CaseTable.pas',
   Atlas.UI.Tests.LeakSetup in 'Source\UI\Tests\Atlas.UI.Tests.LeakSetup.pas',
   Atlas.Core.Tests.Run in 'Source\Core\Tests\Atlas.Core.Tests.Run.pas',
   Atlas.Core.Tests.Stale in 'Source\Core\Tests\Atlas.Core.Tests.Stale.pas',
@@ -54,7 +55,9 @@ contains
   Atlas.Core.Tests.Leaks in 'Source\Core\Tests\Atlas.Core.Tests.Leaks.pas',
   Atlas.Core.Tests.AssertLine in 'Source\Core\Tests\Atlas.Core.Tests.AssertLine.pas',
   Atlas.Core.Tests.Compare in 'Source\Core\Tests\Atlas.Core.Tests.Compare.pas',
+  Atlas.Core.Tests.Approval in 'Source\Core\Tests\Atlas.Core.Tests.Approval.pas',
   Atlas.Core.Tests.Durations in 'Source\Core\Tests\Atlas.Core.Tests.Durations.pas',
+  Atlas.Core.Tests.CaseTable in 'Source\Core\Tests\Atlas.Core.Tests.CaseTable.pas',
   Atlas.Core.Tests.AffectedHook in 'Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas',
   Atlas.Core.Tests.Debug in 'Source\Core\Tests\Atlas.Core.Tests.Debug.pas',
   Atlas.Core.Tests.ProjectChoice in 'Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas',
@@ -74,7 +77,9 @@ contains
   Atlas.IDE.Tests.Output in 'Source\IDE\Tests\Atlas.IDE.Tests.Output.pas',
   Atlas.IDE.Tests.OnSave in 'Source\IDE\Tests\Atlas.IDE.Tests.OnSave.pas',
   Atlas.IDE.Tests.Compare in 'Source\IDE\Tests\Atlas.IDE.Tests.Compare.pas',
+  Atlas.IDE.Tests.ApprovalFiles in 'Source\IDE\Tests\Atlas.IDE.Tests.ApprovalFiles.pas',
   Atlas.IDE.Tests.Slowest in 'Source\IDE\Tests\Atlas.IDE.Tests.Slowest.pas',
+  Atlas.IDE.Tests.CaseTable in 'Source\IDE\Tests\Atlas.IDE.Tests.CaseTable.pas',
   Atlas.IDE.Tests.LeakSetup in 'Source\IDE\Tests\Atlas.IDE.Tests.LeakSetup.pas',
   Atlas.UI.Tests.SettingsSection in 'Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas';
 

@@ -88,6 +88,11 @@ type
 
   TAtlasRanking = class
   public const
+    /// <summary>Höchster Zuschlag aus der Verwendung im Projekt (#2109): unter dem kleinsten Lernzuschlag (15 für
+    /// eine Übernahme, TAtlasUsage.Boost), damit die eigene Gewichtung immer vorgeht.</summary>
+    cMaxProjectBoost = 14;
+    /// <summary>Steigung des Zuschlags je Verdopplung der Stellen im Projekt (#2109).</summary>
+    cProjectBoostPerDoubling = 1.5;
     /// <summary>Markiert in der Reihenfolge eine Gruppenüberschrift vor dem nächsten Eintrag.</summary>
     cHeader = -1;
     /// <summary>Überschrift „Meintest du“ vor den Tippfehler-Treffern (#485).</summary>
@@ -125,6 +130,9 @@ type
     /// ohne Präfix.</summary>
     class function Inaccessible(const AItems: TAtlasCompletionItems; const APattern: string): TArray<Integer>;
       static;
+    /// <summary>Zuschlag für ACount Stellen im Projekt (#2109): 0 ohne, sonst 1 bis cMaxProjectBoost, logarithmisch
+    /// (1 → 1, 8 → 5, 200 → 12).</summary>
+    class function ProjectBoost(ACount: Integer): Integer; static;
   end;
 
 implementation
@@ -591,6 +599,11 @@ begin
     begin
       FBoosts[mIndex] := EnsureRange(FOptions.Boost(mIndex), 0, 99);
     end;
+    // Ohne eigene Gewichtung ordnet die Verwendung im Projekt (#2109).
+    if FBoosts[mIndex] = 0 then
+    begin
+      FBoosts[mIndex] := TAtlasRanking.ProjectBoost(FItems[mIndex].ProjectUses);
+    end;
     AFound.Add(mIndex);
   end;
 end;
@@ -1004,6 +1017,15 @@ begin
         Inc(Result[ChipOf(mItem)]);
       end;
     end;
+  end;
+end;
+
+class function TAtlasRanking.ProjectBoost(ACount: Integer): Integer;
+begin
+  Result := 0;
+  if ACount > 0 then
+  begin
+    Result := Min(cMaxProjectBoost, 1 + Trunc(cProjectBoostPerDoubling * Log2(ACount)));
   end;
 end;
 

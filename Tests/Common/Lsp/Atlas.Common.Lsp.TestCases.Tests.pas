@@ -104,17 +104,18 @@ end;
 procedure TLspTestCasesTests.ProposalWithEdit;
 var
   mResult: TJSONValue;
-  mObject: TJSONObject;
+  mObject, mEdit: TJSONObject;
 begin
   mResult := Run('["' + cUri + '", 8, [{"from": 1, "name": "Zwei", "values": ["2", "4"]}, ' +
     '{"from": -1, "name": "Neu", "values": ["5", "y"]}]]');
   try
     mObject := mResult as TJSONObject;
-    Assert.AreEqual(8, mObject.GetValue<Integer>('edit.range.start.line'));
-    Assert.AreEqual(4, mObject.GetValue<Integer>('edit.range.start.character'));
-    Assert.AreEqual(9, mObject.GetValue<Integer>('edit.range.end.line'));
+    mEdit := Entry(mObject.GetValue<TJSONObject>('edit.changes'), cUri, 0);
+    Assert.AreEqual(8, mEdit.GetValue<Integer>('range.start.line'));
+    Assert.AreEqual(4, mEdit.GetValue<Integer>('range.start.character'));
+    Assert.AreEqual(9, mEdit.GetValue<Integer>('range.end.line'));
     Assert.AreEqual('[TestCase(''Zwei'', ''2,4'')]' + cBreak + '    [TestCase(''Neu'', ''5,y'')]',
-      mObject.GetValue<string>('edit.newText'));
+      mEdit.GetValue<string>('newText'));
     Assert.AreEqual('', Item(Entry(mObject, 'proposed', 0), 'cells', 1).Value);
     Assert.AreNotEqual('', Item(Entry(mObject, 'proposed', 1), 'cells', 1).Value);
     Assert.AreEqual('', mObject.GetValue<string>('editReason'));
