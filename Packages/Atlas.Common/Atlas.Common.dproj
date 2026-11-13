@@ -893,6 +893,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AccessChains.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StepFilter.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.BreakpointCheck.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MethodBreakpoints.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.Contract.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.Ides.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Common.Updates.KnownPackages.pas"/>
