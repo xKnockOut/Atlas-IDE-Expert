@@ -377,8 +377,6 @@ begin
   Result.DebugThreadFreeze := False;
   Result.DebugThreadsInSource := True;
   Result.DebugParallelStacks := True;
-  Result.DebugCallStackWindow := True;
-  Result.DebugCallStackWindowEvaluateParams := True;
   Result.DebugParallelStacksWaitRoutines := '';
   Result.DebugParallelStacksMaxThreads := cDefaultParallelStacksThreads;
   Result.DebugDeadlocks := True;
@@ -474,8 +472,6 @@ begin
   AIo.Flag('DebugLeakReportCompare', DebugLeakReportCompare);
   AIo.Flag('DebugLeakReportWindow', DebugLeakReportWindow);
   AIo.Flag('DebugParallelStacks', DebugParallelStacks);
-  AIo.Flag('DebugCallStackWindow', DebugCallStackWindow);
-  AIo.Flag('DebugCallStackWindowEvaluateParams', DebugCallStackWindowEvaluateParams);
   AIo.Flag('DebugThreadsInSource', DebugThreadsInSource);
   AIo.Flag('DebugThreadFreeze', DebugThreadFreeze);
   AIo.Flag('DebugAsyncOrigin', DebugAsyncOrigin);
@@ -499,6 +495,8 @@ begin
   DebugPredictDimSkipped := True;
   DebugPredictLines := cDefaultPredictLines;
   DebugPinnedValues := True;
+  DebugCallStackWindow := True;
+  DebugCallStackWindowEvaluateParams := True;
   DebugOwnCodeFolders := '';
   DebugEventLog := True;
   DebugEventLogColors := cDefaultEventLogColors;
@@ -525,6 +523,8 @@ begin
   AIo.Flag('DebugPredictDimSkipped', DebugPredictDimSkipped);
   AIo.Number('DebugPredictLines', DebugPredictLines);
   AIo.Flag('DebugPinnedValues', DebugPinnedValues);
+  AIo.Flag('DebugCallStackWindow', DebugCallStackWindow);
+  AIo.Flag('DebugCallStackWindowEvaluateParams', DebugCallStackWindowEvaluateParams);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AIo.Flag('DebugEventLog', DebugEventLog);
   AIo.Text('DebugEventLogColors', DebugEventLogColors);
