@@ -18,6 +18,9 @@
 //   Strg+Klick zeigt die Tests als Liste; ein Eintrag springt zum Test.
 // Abschaltbar über codeLens.coveredBy und „Tests ausführen“ (TestRun);
 // ausblenden am Element (#628) je Methode (Anker ist ihr Name) oder je Datei.
+// Dieselbe Antwort trägt die Marke „n von m Methoden getestet“ an der
+// unit-Zeile (#1783, Atlas.IDE.Tests.UntestedMark, codeLens.untested); die
+// Anfrage läuft, solange eine der beiden Marken an ist.
 
 interface
 
@@ -36,7 +39,8 @@ uses
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.CoveredBy,
   Atlas.IDE.Tests.Runner,
-  Atlas.IDE.Tests.CoveredByList;
+  Atlas.IDE.Tests.CoveredByList,
+  Atlas.IDE.Tests.UntestedMark;
 
 type
   /// <summary>Scope des Moduls für Serveranfragen; nil, solange es nicht angemeldet ist.</summary>
@@ -66,6 +70,12 @@ type
       Key: string;
       At: UInt64;
     end;
+
+    /// <summary>Gezeichnete Marke einer Methode (Koordinaten des Editors) und oberste Zeile dabei.</summary>
+    TPainted = record
+      Rect: TRect;
+      TopRow: Integer;
+    end;
   private
     FTests: TAtlasIdeTests;
     FScopeOf: TAtlasCoveredByScopeFunc;
@@ -79,6 +89,8 @@ type
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
     FList: TAtlasIdeCoveredByList;
+    /// <summary>Marke „n von m Methoden getestet“ an der unit-Zeile (#1783).</summary>
+    FMark: TAtlasIdeUntestedMark;
     FFileName: string;
     FText: string;
     FChangedAt: UInt64;
@@ -86,9 +98,7 @@ type
     /// <summary>Stand, zu dem FUnit gehört.</summary>
     FShownFile: string;
     FUnit: TAtlasCoveredUnit;
-    /// <summary>Gezeichnete Rechtecke je Methode (Koordinaten des Editors) und oberste Zeile dabei.</summary>
-    FRects: TArray<TRect>;
-    FTopRows: TArray<Integer>;
+    FPainted: TArray<TPainted>;
     FVersion: Integer;
     FShowing: Boolean;
     procedure Tick(Sender: TObject);
@@ -123,7 +133,8 @@ type
     constructor Create(ATests: TAtlasIdeTests; const AScopeOf: TAtlasCoveredByScopeFunc;
       const AStaleKeys: TAtlasTestStaleKeys);
     destructor Destroy; override;
-    /// <summary>Marken zeichnen? codeLens.coveredBy, TestRun und Code Lens nicht gesperrt.</summary>
+    /// <summary>Server fragen? codeLens.coveredBy oder codeLens.untested, TestRun und Code Lens nicht gesperrt.
+    /// </summary>
     class function Wanted(const ASettings: TAtlasPluginSettings): Boolean; static;
   end;
 
@@ -224,6 +235,7 @@ begin
   FIndex := -1;
   FVersion := -1;
   FList := TAtlasIdeCoveredByList.Create;
+  FMark := TAtlasIdeUntestedMark.Create;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
@@ -257,6 +269,7 @@ begin
   end;
   FEventsRef := nil;
   FList.Free;
+  FMark.Free;
   if FShowing then
   begin
     InvalidateEditor;
@@ -266,16 +279,20 @@ end;
 
 class function TAtlasIdeCoveredByLens.Wanted(const ASettings: TAtlasPluginSettings): Boolean;
 begin
-  Result := TAtlasCoveredBy.Wanted(ASettings) and not TAtlasGuard.Disabled(TAtlasFeature.CodeLens);
+  Result := (TAtlasCoveredBy.Wanted(ASettings) or TAtlasIdeUntestedMark.Wanted(ASettings)) and
+    not TAtlasGuard.Disabled(TAtlasFeature.CodeLens);
 end;
 
 procedure TAtlasIdeCoveredByLens.Clear;
 begin
   FUnit := Default(TAtlasCoveredUnit);
   FStale := nil;
-  FRects := nil;
-  FTopRows := nil;
+  FPainted := nil;
   FShownFile := '';
+  if FMark <> nil then
+  begin
+    FMark.Clear;
+  end;
   if FShowing then
   begin
     FShowing := False;
@@ -421,8 +438,8 @@ begin
   end;
   FShownFile := AFileName;
   FUnit := mUnit;
-  SetLength(FRects, Length(mUnit.Methods));
-  SetLength(FTopRows, Length(mUnit.Methods));
+  SetLength(FPainted, Length(mUnit.Methods));
+  FMark.Update(AFileName, FText, mUnit);
   FShowing := Length(mUnit.Methods) > 0;
   FVersion := FTests.Version;
   UpdateStale;
@@ -545,7 +562,7 @@ begin
   ALine := '';
   Result := -1;
   mLineState := AContext.LineState;
-  if not Wanted(TAtlasIdeSettings.Current) or not SameText(AContext.FileName, FShownFile) or
+  if not TAtlasCoveredBy.Wanted(TAtlasIdeSettings.Current) or not SameText(AContext.FileName, FShownFile) or
     (mLineState = nil) or (AContext.EditView = nil) or (AContext.EditView.Buffer = nil) then
   begin
     Exit;
@@ -561,7 +578,7 @@ begin
   if (Result >= 0) and TAtlasIdeElements.Hidden(TAtlasDrawnElement.CodeLensCoveredBy, AContext.FileName,
     FUnit.Methods[Result].Name) then
   begin
-    FRects[Result] := TRect.Empty;
+    FPainted[Result].Rect := TRect.Empty;
     Result := -1;
   end;
 end;
@@ -582,6 +599,7 @@ begin
     begin
       PaintAt(mIndex, Rect, Context, mLine);
     end;
+    FMark.PaintLine(Rect, Context);
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do
@@ -621,20 +639,21 @@ begin
   mText := Caption(FUnit.Methods[AIndex], TAtlasColors.ForBackground(mBack), mTone, mStale);
   // Veraltet (#1770): kursiv wie die Test-Lens.
   TAtlasIdeLensPill.Prepare(mCanvas, mStale);
-  FRects[AIndex] := TAtlasIdeLensPill.Draw(mCanvas, ARow, mText, mTone, mBack, ALeft);
-  FTopRows[AIndex] := AContext.EditView.TopRow;
+  FPainted[AIndex].Rect := TAtlasIdeLensPill.Draw(mCanvas, ARow, mText, mTone, mBack, ALeft);
+  FPainted[AIndex].TopRow := AContext.EditView.TopRow;
   TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensCoveredBy, AContext.FileName,
-    FUnit.Methods[AIndex].Line, FUnit.Methods[AIndex].Name), FRects[AIndex], FTopRows[AIndex], ARow.Height);
+    FUnit.Methods[AIndex].Line, FUnit.Methods[AIndex].Name), FPainted[AIndex].Rect, FPainted[AIndex].TopRow,
+    ARow.Height);
 end;
 
-/// <summary>Index des Rechtecks unter (AX, AY); -1 ohne.</summary>
-function HitIn(const ARects: TArray<TRect>; AX, AY: Integer): Integer;
+/// <summary>Index der Marke unter (AX, AY); -1 ohne.</summary>
+function HitIn(const APainted: TArray<TAtlasIdeCoveredByLens.TPainted>; AX, AY: Integer): Integer;
 var
   mIndex: Integer;
 begin
-  for mIndex := 0 to High(ARects) do
+  for mIndex := 0 to High(APainted) do
   begin
-    if not ARects[mIndex].IsEmpty and PtInRect(ARects[mIndex], Point(AX, AY)) then
+    if not APainted[mIndex].Rect.IsEmpty and PtInRect(APainted[mIndex].Rect, Point(AX, AY)) then
     begin
       Exit(mIndex);
     end;
@@ -653,7 +672,7 @@ begin
     mView := mEditors.TopView;
   end;
   Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, FShownFile) and
-    (mView.TopRow = FTopRows[AIndex]);
+    (mView.TopRow = FPainted[AIndex].TopRow);
 end;
 
 procedure TAtlasIdeCoveredByLens.QueueClick(AIndex: Integer; AList: Boolean; const AAt: TPoint);
@@ -718,7 +737,16 @@ begin
   begin
     Exit;
   end;
-  mHit := HitIn(FRects, X, Y);
+  // Marke an der unit-Zeile (#1783): Menü der ungetesteten Methoden.
+  if FMark.MouseDown(X, Y, Editor.ClientToScreen(Point(X, Y))) then
+  begin
+    Exit;
+  end;
+  mHit := -1;
+  if TAtlasCoveredBy.Wanted(TAtlasIdeSettings.Current) then
+  begin
+    mHit := HitIn(FPainted, X, Y);
+  end;
   // Nur, wenn die Marke noch dort steht: gleiche Datei, nicht gescrollt.
   if (mHit >= 0) and StillShown(mHit) then
   begin

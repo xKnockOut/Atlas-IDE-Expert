@@ -115,6 +115,8 @@ begin
   Switch('codeLens.coveredBy', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsCodeLensCoveredBy));
   Number('tests.coveredBy.depth', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCoveredByDepth));
   Switch('tests.coveredBy.private', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCoveredByPrivate));
+  Switch('codeLens.untested', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsCodeLensUntested));
+  Number('tests.untested.warnPercent', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsUntestedWarnPercent));
 end;
 
 end.

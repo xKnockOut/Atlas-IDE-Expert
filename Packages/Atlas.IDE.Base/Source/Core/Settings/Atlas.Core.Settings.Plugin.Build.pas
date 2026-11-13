@@ -20,6 +20,10 @@ const
   /// <summary>Grenzen für tests.coveredBy.depth (#1778).</summary>
   cMinTestsCoveredByDepth = 1;
   cMaxTestsCoveredByDepth = 5;
+  /// <summary>Grenzen für tests.untested.warnPercent (#1783).</summary>
+  cMinTestsUntestedWarnPercent = 0;
+  cMaxTestsUntestedWarnPercent = 100;
+  cDefaultTestsUntestedWarnPercent = 50;
   /// <summary>Grenzen für tests.onSave.max (#1775).</summary>
   cMinTestsOnSaveMax = 1;
   cMaxTestsOnSaveMax = 1000;
@@ -104,6 +108,9 @@ type
     /// <summary>Marke „getestet von“ auch an privaten und geschützten Methoden (#1778, tests.coveredBy.private).
     /// </summary>
     TestsCoveredByPrivate: Boolean;
+    /// <summary>Unter diesem Anteil getesteter Methoden ist die Marke „n von m Methoden getestet“ gelb (#1783,
+    /// tests.untested.warnPercent).</summary>
+    TestsUntestedWarnPercent: Integer;
     /// <summary>Betroffene Tests nach dem Speichern im Hintergrund ausführen (#1775, tests.onSave): kein Fenster,
     /// Fortschritt und Ergebnis im Atlas-Statusfeld.</summary>
     TestsOnSave: Boolean;
@@ -259,6 +266,7 @@ begin
   Result.TestsStaleUnits := False;
   Result.TestsCoveredByDepth := 1;
   Result.TestsCoveredByPrivate := False;
+  Result.TestsUntestedWarnPercent := cDefaultTestsUntestedWarnPercent;
   Result.TestsOnSave := False;
   Result.TestsOnSaveMax := cDefaultTestsOnSaveMax;
   Result.TestsFailureAtAssert := True;
@@ -315,6 +323,8 @@ begin
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
   TestsAffectedDepth := EnsureRange(TestsAffectedDepth, cMinTestsAffectedDepth, cMaxTestsAffectedDepth);
   TestsCoveredByDepth := EnsureRange(TestsCoveredByDepth, cMinTestsCoveredByDepth, cMaxTestsCoveredByDepth);
+  TestsUntestedWarnPercent := EnsureRange(TestsUntestedWarnPercent, cMinTestsUntestedWarnPercent,
+    cMaxTestsUntestedWarnPercent);
   TestsOnSaveMax := EnsureRange(TestsOnSaveMax, cMinTestsOnSaveMax, cMaxTestsOnSaveMax);
   TestsSlowMs := EnsureRange(TestsSlowMs, cMinTestsSlowMs, cMaxTestsSlowMs);
 end;
@@ -346,6 +356,7 @@ begin
   AIo.Flag('TestsStaleUnits', TestsStaleUnits);
   AIo.Number('TestsCoveredByDepth', TestsCoveredByDepth);
   AIo.Flag('TestsCoveredByPrivate', TestsCoveredByPrivate);
+  AIo.Number('TestsUntestedWarnPercent', TestsUntestedWarnPercent);
   AIo.Flag('TestsOnSave', TestsOnSave);
   AIo.Number('TestsOnSaveMax', TestsOnSaveMax);
   AIo.Flag('TestsFailureAtAssert', TestsFailureAtAssert);

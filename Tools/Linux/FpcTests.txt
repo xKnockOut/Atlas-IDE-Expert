@@ -395,3 +395,4 @@ Atlas.Core.Tests.OnSave.Tests
 Atlas.Core.Tests.AssertLine.Tests
 Atlas.Core.Tests.Compare.Tests
 Atlas.Core.Tests.Durations.Tests
+Atlas.Core.Tests.Untested.Tests

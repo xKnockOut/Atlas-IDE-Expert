@@ -154,6 +154,8 @@ begin
   Assert.IsTrue(ASettings.CodeLensCoveredBy, 'Marke „getestet von“ standardmäßig an (#1778)');
   Assert.AreEqual(1, ASettings.TestsCoveredByDepth, 'Tiefe „getestet von“ standardmäßig 1 (#1778)');
   Assert.IsFalse(ASettings.TestsCoveredByPrivate, '„getestet von“ an privaten Methoden standardmäßig aus (#1778)');
+  Assert.IsTrue(ASettings.CodeLensUntested, 'Marke „n von m Methoden getestet“ standardmäßig an (#1783)');
+  Assert.AreEqual(50, ASettings.TestsUntestedWarnPercent, 'gelb unter 50 % standardmäßig (#1783)');
   Assert.IsFalse(ASettings.TestsOnSave, 'Tests beim Speichern standardmäßig aus (#1775)');
   Assert.AreEqual(50, ASettings.TestsOnSaveMax, 'höchstens 50 Tests im Hintergrund (#1775)');
   Assert.IsTrue(ASettings.TestsFailureAtAssert, 'Fehlschlag an der Assert-Zeile standardmäßig an (#1771)');
@@ -315,6 +317,8 @@ begin
   ASettings.CodeLensCoveredBy := False;
   ASettings.TestsCoveredByDepth := 3;
   ASettings.TestsCoveredByPrivate := True;
+  ASettings.CodeLensUntested := False;
+  ASettings.TestsUntestedWarnPercent := 75;
   ASettings.TestsOnSave := True;
   ASettings.TestsOnSaveMax := 12;
   ASettings.TestsFailureAtAssert := False;
@@ -453,6 +457,8 @@ begin
   Assert.IsFalse(ALoaded.CodeLensCoveredBy, 'codeLens.coveredBy (#1778)');
   Assert.AreEqual(3, ALoaded.TestsCoveredByDepth, 'tests.coveredBy.depth (#1778)');
   Assert.IsTrue(ALoaded.TestsCoveredByPrivate, 'tests.coveredBy.private (#1778)');
+  Assert.IsFalse(ALoaded.CodeLensUntested, 'codeLens.untested (#1783)');
+  Assert.AreEqual(75, ALoaded.TestsUntestedWarnPercent, 'tests.untested.warnPercent (#1783)');
   Assert.IsTrue(ALoaded.TestsOnSave, 'tests.onSave (#1775)');
   Assert.AreEqual(12, ALoaded.TestsOnSaveMax, 'tests.onSave.max (#1775)');
   Assert.IsFalse(ALoaded.TestsFailureAtAssert, 'tests.failureAtAssert (#1771)');
@@ -959,6 +965,13 @@ begin
   Settings.TestsCoveredByDepth := 7;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsCoveredByDepth, Settings.TestsCoveredByDepth);
+  // tests.untested.warnPercent (#1783): 0 bis 100.
+  Settings.TestsUntestedWarnPercent := -5;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsUntestedWarnPercent, Settings.TestsUntestedWarnPercent);
+  Settings.TestsUntestedWarnPercent := 150;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsUntestedWarnPercent, Settings.TestsUntestedWarnPercent);
   // tests.onSave.max (#1775): 1 bis 1000.
   Settings.TestsOnSaveMax := 0;
   Settings.Normalize;

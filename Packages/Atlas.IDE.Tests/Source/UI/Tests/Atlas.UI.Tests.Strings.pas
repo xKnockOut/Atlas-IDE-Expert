@@ -48,7 +48,13 @@ type
     // Dauer und langsame Tests (#1772).
     TestsLensDuration, TestsLensSlow, TestsSlowestCommand, TestsSlowestTitle, TestsSlowestTest, TestsSlowestDuration,
     TestsSlowestNone, TestsSlowestHint, TestsSlowestNotFound, SettingsTestsShowDuration, SettingsTestsSlowMs,
-    TestsLensCompare);
+    TestsLensCompare,
+    // Ungetestete Methoden (#1783).
+    UntestedMark, UntestedListTitle, UntestedListNote, UntestedCreateTest, UntestedProjectCommand,
+    UntestedProjectHint, UntestedProjectRunning, UntestedProjectUnit, UntestedProjectNoTestUnit,
+    UntestedProjectNone, UntestedProjectSummary, UntestedProjectSkipped, UntestedProjectIncomplete,
+    UntestedProjectNoFile, UntestedProjectNoServer, UntestedProjectFailed, SettingsCodeLensUntested,
+    SettingsTestsUntestedWarnPercent);
 
   TAtlasTestsStrings = class
   public
@@ -201,7 +207,25 @@ const
      'Tests: %s nicht im Testprojekt gefunden.',
      'Dauer an der Testmarke zeigen, langsame Tests gelb',
      'Langsam ab (ms)',
-     'Vergleichen'),
+     'Vergleichen',
+     '%d von %d Methoden getestet',
+     'Ungetestete Methoden',
+     'Zählt Methoden, die ein Test aufruft; keine Abdeckungsmessung',
+     'Test anlegen',
+     'Ungetestete Methoden des Projekts',
+     'Listet je Unit die Methoden, die kein Test aufruft, die meisten zuerst.',
+     'Tests: Suche ungetestete Methoden des Projekts …',
+     '%s: %d von %d Methoden getestet, %d ungetestet',
+     '%s: keine Testunit, %d Methoden ungetestet',
+     'Tests: Keine ungetesteten Methoden gefunden.',
+     'Tests: %d ungetestete Methoden in %d Units (zählt Aufrufe aus Tests, keine Abdeckungsmessung).',
+     'Tests: Zeitgrenze erreicht, %d Units nicht geprüft.',
+     'Tests: Der Server stieß an eine Grenze; es können Tests fehlen.',
+     'Tests: Erst eine Unit des Projekts im Editor öffnen.',
+     'Tests: Der Atlas-Server läuft nicht; ungetestete Methoden nicht ermittelt.',
+     'Tests: Ungetestete Methoden nicht ermittelt (keine Antwort des Servers).',
+     'Marke „n von m Methoden getestet“ an der Unit',
+     'Gelb unter Prozent getestet'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -338,7 +362,25 @@ const
      'Tests: %s not found in the test project.',
      'Show the duration on the test mark, slow tests in yellow',
      'Slow from (ms)',
-     'Compare'));
+     'Compare',
+     '%d of %d methods tested',
+     'Untested methods',
+     'Counts methods a test calls; not a coverage measurement',
+     'Create test',
+     'Untested methods of the project',
+     'Lists the methods no test calls per unit, most first.',
+     'Tests: Looking for untested methods of the project …',
+     '%s: %d of %d methods tested, %d untested',
+     '%s: no test unit, %d methods untested',
+     'Tests: No untested methods found.',
+     'Tests: %d untested methods in %d units (counts calls from tests, not a coverage measurement).',
+     'Tests: Time limit reached, %d units not checked.',
+     'Tests: The server hit a limit; tests may be missing.',
+     'Tests: Open a unit of the project in the editor first.',
+     'Tests: The Atlas server is not running; untested methods not determined.',
+     'Tests: Untested methods not determined (no answer from the server).',
+     '“n of m methods tested” mark on the unit',
+     'Yellow below percent tested'));
 
 { TAtlasTestsStrings }
 

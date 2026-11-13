@@ -143,7 +143,7 @@ const
     TAtlasTextId.ElementInlayDefineHints, TAtlasTextId.ElementInlayCharHints, TAtlasTextId.ElementQuickBookmarks,
     TAtlasTextId.ElementInlayMethodHints,
     TAtlasTextId.ElementExitPoints, TAtlasTextId.ElementReassigned, TAtlasTextId.ElementLearnedSuggestions,
-    TAtlasTextId.ElementCodeLensCoveredBy);
+    TAtlasTextId.ElementCodeLensCoveredBy, TAtlasTextId.ElementCodeLensUntested);
   cPlural: array[TAtlasDrawnElement] of TAtlasTextId = (TAtlasTextId.ElementCodeLensMetricsPlural,
     TAtlasTextId.ElementCodeLensTestsPlural, TAtlasTextId.ElementCodeLensTestUnitPlural,
     TAtlasTextId.ElementBlockEndLabelsPlural, TAtlasTextId.ElementInlayHintsPlural,
@@ -158,7 +158,8 @@ const
     TAtlasTextId.ElementInlayCharHintsPlural, TAtlasTextId.ElementQuickBookmarksPlural,
     TAtlasTextId.ElementInlayMethodHintsPlural,
     TAtlasTextId.ElementExitPointsPlural, TAtlasTextId.ElementReassignedPlural,
-    TAtlasTextId.ElementLearnedSuggestionsPlural, TAtlasTextId.ElementCodeLensCoveredByPlural);
+    TAtlasTextId.ElementLearnedSuggestionsPlural, TAtlasTextId.ElementCodeLensCoveredByPlural,
+    TAtlasTextId.ElementCodeLensUntestedPlural);
 begin
   if APlural then
   begin

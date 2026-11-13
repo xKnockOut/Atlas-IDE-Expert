@@ -1446,6 +1446,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.AssertLine` | `Core/Tests/Atlas.Core.Tests.AssertLine.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Compare` | `Core/Tests/Atlas.Core.Tests.Compare.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Durations` | `Core/Tests/Atlas.Core.Tests.Durations.pas` | Ordner `Core/Tests` |
+| `Atlas.Core.Tests.Untested` | `Core/Tests/Atlas.Core.Tests.Untested.pas` | Ordner `Core/Tests` |
 | `Atlas.IDE.Tests.Affected` | `IDE/Tests/Atlas.IDE.Tests.Affected.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.CoveredBy` | `IDE/Tests/Atlas.IDE.Tests.CoveredBy.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.CoveredByList` | `IDE/Tests/Atlas.IDE.Tests.CoveredByList.pas` | Ordner `IDE/Tests` |
@@ -1458,6 +1459,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tests.Slowest` | `IDE/Tests/Atlas.IDE.Tests.Slowest.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Projects` | `IDE/Tests/Atlas.IDE.Tests.Projects.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Runner` | `IDE/Tests/Atlas.IDE.Tests.Runner.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.UntestedMark` | `IDE/Tests/Atlas.IDE.Tests.UntestedMark.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.UntestedProject` | `IDE/Tests/Atlas.IDE.Tests.UntestedProject.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.UnitCommands` | `IDE/Tests/Atlas.IDE.Tests.UnitCommands.pas` | Ordner `IDE/Tests` |
 | `Atlas.UI.Tests.SettingsSection` | `UI/Tests/Atlas.UI.Tests.SettingsSection.pas` | Ordner `UI/Tests`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Tests.Strings` | `UI/Tests/Atlas.UI.Tests.Strings.pas` | Texte des Moduls (Tests), Sprache von Base, #1455 |

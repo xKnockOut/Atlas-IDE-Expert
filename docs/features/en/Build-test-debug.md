@@ -126,6 +126,16 @@ Settings: `tests.stale`, `tests.stale.units`
 
 Settings: `codeLens.coveredBy`, `tests.coveredBy.depth`, `tests.coveredBy.private`
 
+### Untested methods (#1783)
+
+- On the unit line of a normal unit with a test unit Atlas shows “7 of 12 methods tested”: how many of its methods at least one test calls (depth and private methods as for “tested by”). Below `tests.untested.warnPercent` percent (default 50) the mark is yellow, otherwise grey. Units without a test unit get no mark.
+- A click shows a menu with the untested methods; an entry jumps to the method header, “Create test” opens or creates the test unit.
+- It counts calls from tests and does not replace a coverage measurement; the menu says so.
+- Command “Untested methods of the project” (Atlas menu and command palette, `Atlas.ListUntestedMethods`): for the project of the unit in the editor one line per unit in the message view, the unit with the most untested methods first, below one line per method that jumps there on double-click. Units without a test unit are listed with all their methods. The server limits itself to 60 s; a last line names what it did not reach.
+- Hide per file via the “Hide” menu.
+
+Settings: `codeLens.untested`, `tests.untested.warnPercent`
+
 ### Affected tests on save (#1775)
 
 - After a unit is saved (also a form or include file) Atlas finds the tests that the changes of this file since the last commit reach and runs only those in the background. It builds as with “Build before the tests”.
