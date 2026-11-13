@@ -601,7 +601,7 @@ end;
 
 class procedure TAtlasBookmarksModule.UnregisterModule;
 begin
-  TAtlasModuleHost.Unregister(GScope, cModuleId, nil);
+  TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance, nil);
 end;
 
 initialization

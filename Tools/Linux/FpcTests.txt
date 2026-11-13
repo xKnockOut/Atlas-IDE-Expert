@@ -478,6 +478,8 @@ Atlas.Core.Tests.Leaks.Tests
 Atlas.Core.Tests.AssertLine.Tests
 Atlas.Core.Tests.FromDebugStop.Tests
 Atlas.Core.Tests.Compare.Tests
+Atlas.Core.Diagnostics.AsyncWait.Tests
+Atlas.Core.Diagnostics.BoundedStream.Tests
 Atlas.Core.Tests.Coverage.Tests
 Atlas.Core.Tests.Approval.Tests
 Atlas.Core.Tests.Durations.Tests

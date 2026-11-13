@@ -3,7 +3,9 @@
 // GET beim Build-Server (#763), aus einem Hintergrund-Thread. Wie die
 // Versionsabfrage (#495): asynchron, abgebrochen beim Entladen des Plugins
 // (TAtlasShutdown) oder nach der Zeitgrenze, keine Cookies, Weiterleitungen
-// folgt Atlas selbst.
+// folgt Atlas selbst. Client und Streams werden erst nach dem Ende einer
+// abgebrochenen Anfrage freigegeben (TAtlasAsyncWait.AwaitSettled); die
+// Antwort liest ein Stream, der an der Größengrenze der Anfrage abbricht.
 // Anmeldung: Benutzer und API-Token aus dem Anmeldespeicher von Windows
 // (Atlas.Core.Ci.Adapters.Credentials) gehen als „Authorization: Basic“ nur
 // über https und nur an den eingetragenen Server; über http fragt Atlas ohne
@@ -115,10 +117,11 @@ uses
   System.NetConsts,
   System.Math,
   Atlas.Core.Diagnostics.AsyncWait,
+  Atlas.Core.Diagnostics.BoundedStream,
   Atlas.Core.Ci.Internals.Addresses;
 
 const
-  // Testberichte mit tree=… bleiben klein; mehr wird nicht gelesen.
+  // Testberichte mit tree=… bleiben klein; mehr nimmt der Antwort-Stream nicht an.
   cMaxBytes = 8 * 1024 * 1024;
   cMaxRedirects = 3;
 
@@ -309,7 +312,8 @@ end;
 function ClientFor(const ARequest: TAtlasCiHttpTransport.TRequest): THTTPClient;
 begin
   Result := THTTPClient.Create;
-  Result.ConnectionTimeout := ARequest.TimeoutMs;
+  // Kurz: Ein Abbruch während des Verbindungsaufbaus wirkt erst, wenn dieser endet.
+  Result.ConnectionTimeout := TAtlasAsyncWait.ConnectTimeout(ARequest.TimeoutMs);
   Result.ResponseTimeout := ARequest.TimeoutMs;
   Result.HandleRedirects := False;
   Result.AllowCookies := False;
@@ -350,7 +354,8 @@ function TAtlasCiHttpTransport.AwaitResponse(const AAsync: IAsyncResult; const A
 var
   mEnd: TAtlasAsyncEnd;
 begin
-  mEnd := TAtlasAsyncWait.Await(
+  // Bei einem Abbruch erst nach dem Ende der Anfrage zurück: Bis dahin benutzt der Task der RTL Client und Streams.
+  mEnd := TAtlasAsyncWait.AwaitSettled(
     function: Boolean
     begin
       Result := AAsync.IsCompleted;
@@ -403,31 +408,28 @@ begin
   Result := True;
 end;
 
-/// <summary>Status, Köpfe und Inhalt (höchstens AMaxBytes) der letzten Antwort in AReply.</summary>
-function ReadReply(const AResponse: IHTTPResponse; AContent: TBytesStream; AMaxBytes: Integer;
-  var AReply: TAtlasCiHttpTransport.TReply): Boolean;
+/// <summary>Status, Köpfe und Inhalt der letzten Antwort in AReply; die Größengrenze hat AContent schon beim Lesen
+/// geprüft.</summary>
+procedure ReadReply(const AResponse: IHTTPResponse; AContent: TBytesStream;
+  var AReply: TAtlasCiHttpTransport.TReply);
 begin
   AReply.Status := AResponse.StatusCode;
   AReply.LastModified := AResponse.HeaderValue['Last-Modified'];
   AReply.PollInterval := AResponse.HeaderValue['X-Poll-Interval'];
-  Result := AContent.Size <= AMaxBytes;
-  if Result then
-  begin
-    AReply.Bytes := Copy(AContent.Bytes, 0, AContent.Size);
-    AReply.Error := TAtlasCiFetchError.None;
-  end
-  else
-  begin
-    AReply.Error := TAtlasCiFetchError.Invalid;
-  end;
+  AReply.Bytes := Copy(AContent.Bytes, 0, AContent.Size);
+  AReply.Error := TAtlasCiFetchError.None;
 end;
 
-/// <summary>Fehler einer Anfrage, die mit einer Ausnahme endete: Timeout nach der Zeitgrenze, sonst Network.
-/// </summary>
-function FailureAfter(const ADeadline: TAtlasDeadline): TAtlasCiFetchError;
+/// <summary>Fehler einer Anfrage, die mit einer Ausnahme endete: Invalid, wenn die Antwort über der Größengrenze
+/// lag, Timeout nach der Zeitgrenze, sonst Network.</summary>
+function FailureAfter(const ADeadline: TAtlasDeadline; AContent: TAtlasBoundedStream): TAtlasCiFetchError;
 begin
   Result := TAtlasCiFetchError.Network;
-  if ADeadline.Reached then
+  if AContent.Exceeded then
+  begin
+    Result := TAtlasCiFetchError.Invalid;
+  end
+  else if ADeadline.Reached then
   begin
     Result := TAtlasCiFetchError.Timeout;
   end;
@@ -436,7 +438,8 @@ end;
 function TAtlasCiHttpTransport.Request(const ARequest: TRequest; out AReply: TReply): Boolean;
 var
   mClient: THTTPClient;
-  mContent, mSource: TBytesStream;
+  mContent: TAtlasBoundedStream;
+  mSource: TBytesStream;
   mAsync: IAsyncResult;
   mResponse: IHTTPResponse;
   mDeadline: TAtlasDeadline;
@@ -452,7 +455,7 @@ begin
     Exit;
   end;
   mClient := ClientFor(ARequest);
-  mContent := TBytesStream.Create;
+  mContent := TAtlasBoundedStream.Create(ARequest.MaxBytes);
   mSource := nil;
   if ARequest.Method <> 'GET' then
   begin
@@ -476,10 +479,11 @@ begin
           Exit;
         end;
       until not IsRedirect(mResponse.StatusCode);
-      Result := ReadReply(mResponse, mContent, ARequest.MaxBytes, AReply);
+      ReadReply(mResponse, mContent, AReply);
+      Result := True;
     except
-      // Kein Netz, Name unbekannt, Zertifikat abgelehnt …: still als Fehler der Abfrage.
-      AReply.Error := FailureAfter(mDeadline);
+      // Kein Netz, Name unbekannt, Zertifikat abgelehnt, Antwort zu groß …: still als Fehler der Abfrage.
+      AReply.Error := FailureAfter(mDeadline, mContent);
     end;
   finally
     // Erst die Schnittstellen lösen, sie verweisen auf den Client.

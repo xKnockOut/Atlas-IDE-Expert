@@ -14,7 +14,11 @@
 //    stoppen und seine Anmeldungen rückwärts lösen (Regel 4); Fehler
 //    protokollieren, nicht abbrechen,
 // 3. die modulspezifischen Schritte (ARelease), auch wenn Base schon abgebaut
-//    ist: Danach erreicht nichts mehr das Modul (Regel 3).
+//    ist: Danach erreicht nichts mehr das Modul (Regel 3),
+// 4. zuletzt, auch ohne Scope: Laufen noch überfällige Threads aus dem Package
+//    des Moduls, wartet TAtlasOverdueThreads.SettleBeforeUnload kurz und hält
+//    das Package sonst im Speicher. Das wirkt nur hier, vor FreeLibrary; der
+//    Rückruf beim Entladen käme zu spät (Code-Review T-103).
 // Base kennt dabei keine Modulnamen (Regel 9): Kennung, Name und Handle gibt
 // das Modul. Das Handle ist das HInstance des Moduls, nie das von Base
 // (Regel 8); deshalb übergibt das Modul es.
@@ -43,17 +47,20 @@ type
       const AScope: IAtlasModuleScope; const ALog: TProc<string>): Boolean; static;
     /// <summary>Modul AId abmelden (Finalisierung seiner Kompositions-Unit): AScope vergessen, bei der Registry
     /// abmelden, solange Base läuft, dann ARelease (darf nil sein). Ohne AScope (nie angemeldet oder schon
-    /// abgemeldet) geschieht nichts.</summary>
-    class procedure Unregister(var AScope: IAtlasModuleScope; const AId: string; const ARelease: TProc); static;
+    /// abgemeldet) entfallen diese Schritte. Zuletzt immer die überfälligen Threads des Packages AInstance (das
+    /// HInstance des Moduls; 0 = keins) abwarten bzw. das Package festhalten.</summary>
+    class procedure Unregister(var AScope: IAtlasModuleScope; const AId: string; AInstance: HMODULE;
+      const ARelease: TProc); static;
     /// <summary>Wie Unregister mit ARegistry (nil: Base ist abgebaut) und ALog für die Fehler des Abbaus.</summary>
     class procedure UnregisterFrom(const ARegistry: IAtlasModuleRegistry; var AScope: IAtlasModuleScope;
-      const AId: string; const ARelease: TProc; const ALog: TProc<string>); static;
+      const AId: string; AInstance: HMODULE; const ARelease: TProc; const ALog: TProc<string>); static;
   end;
 
 implementation
 
 uses
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Modules.Registry;
 
 const
@@ -109,29 +116,22 @@ begin
   end;
 end;
 
-class procedure TAtlasModuleHost.Unregister(var AScope: IAtlasModuleScope; const AId: string;
+class procedure TAtlasModuleHost.Unregister(var AScope: IAtlasModuleScope; const AId: string; AInstance: HMODULE;
   const ARelease: TProc);
 var
   mLog: TProc<string>;
 begin
-  if AScope = nil then
-  begin
-    Exit;
-  end;
   mLog := LogToGuard;
   // Regel 5: AtlasModuleRegistry ist nil, wenn Base das Modul in seiner Finalisierung schon abgemeldet hat.
-  UnregisterFrom(AtlasModuleRegistry, AScope, AId, ARelease, mLog);
+  UnregisterFrom(AtlasModuleRegistry, AScope, AId, AInstance, ARelease, mLog);
 end;
 
-class procedure TAtlasModuleHost.UnregisterFrom(const ARegistry: IAtlasModuleRegistry;
-  var AScope: IAtlasModuleScope; const AId: string; const ARelease: TProc; const ALog: TProc<string>);
+/// <summary>Schritte 1 bis 3 der Abmeldung (siehe Unit-Kopf); AScope ist zugewiesen.</summary>
+procedure ReleaseScope(const ARegistry: IAtlasModuleRegistry; var AScope: IAtlasModuleScope; const AId: string;
+  const ARelease: TProc; const ALog: TProc<string>);
 var
   mFailure: string;
 begin
-  if AScope = nil then
-  begin
-    Exit;
-  end;
   AScope := nil;
   if ARegistry <> nil then
   begin
@@ -143,6 +143,21 @@ begin
   if Assigned(ARelease) then
   begin
     ARelease;
+  end;
+end;
+
+class procedure TAtlasModuleHost.UnregisterFrom(const ARegistry: IAtlasModuleRegistry;
+  var AScope: IAtlasModuleScope; const AId: string; AInstance: HMODULE; const ARelease: TProc;
+  const ALog: TProc<string>);
+begin
+  if AScope <> nil then
+  begin
+    ReleaseScope(ARegistry, AScope, AId, ARelease, ALog);
+  end;
+  // Schritt 4, auch ohne Scope: ARelease kann eben noch Threads an TAtlasOverdueThreads übergeben haben.
+  if AInstance <> 0 then
+  begin
+    TAtlasOverdueThreads.SettleBeforeUnload(AInstance);
   end;
 end;
 
