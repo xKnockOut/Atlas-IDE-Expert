@@ -57,7 +57,7 @@ All settings with page and control in the settings plugin (#227). Details on val
 | Editor | `stringLiteral`: `style`, `lineBreak`, `maxLineLength` | – | atlas.json (Atlas › Project settings) | no | Choice, number field | #312 |
 | Editor | `memberOrder`: `sections`, `members`, `sortFields`, `sortPublished` | – | atlas.json (Atlas › Project settings) | no | List, checkbox | #89 |
 | Project | `testUnits`: `pattern`, `folder`, `project` | – | atlas.json (Atlas › Project settings) | no | Text field, file selection | #274 |
-| Compiler | `tests`: `affected`, `affectedDepth` | – | settings.json (Tools › Options › Atlas) | no | Checkbox, number field | #1353 |
+| Compiler | `tests`: `affected`, `affectedDepth`, `approvalFolder` | – | settings.json (Tools › Options › Atlas); `approvalFolder` in atlas.json | no | Kontrollkästchen, Zahlenfeld, Textfeld | #1353, #1881 |
 | Check rules | `minConfidence` | `"medium"` | atlas.json (Atlas › Project settings) | no | Choice | #144 |
 | Check rules | `fix`: `minConfidence` | – | atlas.json (Atlas › Project settings) | no | Choice | #1352 |
 | Project | `exclude` | – | atlas.json (Atlas › Project settings) | no | List with Add/Remove | #24 |

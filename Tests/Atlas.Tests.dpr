@@ -34,6 +34,8 @@ uses
   Atlas.Text.DebugDisplay.Tests in 'Text\Atlas.Text.DebugDisplay.Tests.pas',
   Atlas.Debug.Attributes in '..\Setup\Vorlagen\Atlas.Debug.Attributes.pas',
   Atlas.Debug.Attributes.Tests in 'Text\Atlas.Debug.Attributes.Tests.pas',
+  Atlas.Testing.Approval in '..\Setup\Vorlagen\Atlas.Testing.Approval.pas',
+  Atlas.Testing.Approval.Tests in 'Text\Atlas.Testing.Approval.Tests.pas',
   Atlas.Text.DUnitX.Tests in 'Text\Atlas.Text.DUnitX.Tests.pas',
   Atlas.Text.TestResults.Tests in 'Text\Atlas.Text.TestResults.Tests.pas',
   Atlas.Text.MapFile.Tests in 'Text\Atlas.Text.MapFile.Tests.pas',

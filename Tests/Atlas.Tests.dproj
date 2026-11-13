@@ -70,6 +70,8 @@
         <DCCReference Include="Text\Atlas.Text.DebugDisplay.Tests.pas"/>
         <DCCReference Include="..\Setup\Vorlagen\Atlas.Debug.Attributes.pas"/>
         <DCCReference Include="Text\Atlas.Debug.Attributes.Tests.pas"/>
+        <DCCReference Include="..\Setup\Vorlagen\Atlas.Testing.Approval.pas"/>
+        <DCCReference Include="Text\Atlas.Testing.Approval.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.DUnitX.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.TestResults.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.MapFile.Tests.pas"/>

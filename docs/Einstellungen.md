@@ -57,7 +57,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Editor | `stringLiteral`: `style`, `lineBreak`, `maxLineLength` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl, Zahlenfeld | #312 |
 | Editor | `memberOrder`: `sections`, `members`, `sortFields`, `sortPublished` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Liste, Kontrollkästchen | #89 |
 | Projekt | `testUnits`: `pattern`, `folder`, `project` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Textfeld, Dateiauswahl | #274 |
-| Compiler | `tests`: `affected`, `affectedDepth` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Zahlenfeld | #1353 |
+| Compiler | `tests`: `affected`, `affectedDepth`, `approvalFolder` | – | settings.json (Tools › Optionen › Atlas); `approvalFolder` in atlas.json | nein | Kontrollkästchen, Zahlenfeld, Textfeld | #1353, #1881 |
 | Prüfregeln | `minConfidence` | `"medium"` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl | #144 |
 | Prüfregeln | `fix`: `minConfidence` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl | #1352 |
 | Projekt | `exclude` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Liste mit Hinzufügen/Entfernen | #24 |

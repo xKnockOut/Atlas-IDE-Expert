@@ -157,6 +157,19 @@ The button only appears when the failure has an expected and an actual value.
 
 Settings: `tests.compare`, `tests.compare.format`
 
+### Approval files for tests (#1881)
+
+For exports, reports, generated code or JSON a test checks the result against a stored file instead of one assert per line (“approval”). The helper unit `Atlas.Testing.Approval` ships in `Setup\Vorlagen` (MIT licence, RTL and DUnitX only); copy it into the test project or add its folder to the search path. Example: [approval-tests.pas](../../Beispiele/approval-tests.pas).
+
+- `TApproval.Verify(Result, 'TFixture.Method')` compares with `TFixture.Method.approved.txt`; a custom extension (`'.json'`) and a normalizer for dates or GUIDs are possible.
+- Line ends (CRLF, LF, CR) are no difference; files are UTF-8.
+- If the result differs, `….received.txt` is written next to it and the test fails with “Approval: difference from line 3, see …” (German by default); without an approved file with “new, please review”.
+- Approving means renaming received to approved and committing the approved file; `.received.*` belongs in the ignore list.
+- Folder: `tests.approvalFolder` of the nearest `atlas.json` above the test program (default `Tests\Erwartet`, relative to its folder); without `atlas.json` next to the nearest `.dproj`. `TApproval.Folder` sets it in code.
+- Messages are German, English with `TApproval.English := True`.
+
+Setting: `tests.approvalFolder` (atlas.json)
+
 ### Test duration and slow tests (#1772)
 
 - After a run every mark of the test lens shows the duration: “Run test · passed · 12 ms”, from one second on in seconds with one decimal (“1.2 s”). The class mark shows the sum of its tests, a `[TestCase]` method the sum of its cases.
