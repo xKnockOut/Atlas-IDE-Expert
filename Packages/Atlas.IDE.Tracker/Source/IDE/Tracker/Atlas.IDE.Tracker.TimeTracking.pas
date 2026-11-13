@@ -115,9 +115,10 @@ type
     /// <summary>Das aktuelle Issue (TAtlasTimeIssue.None = keins). Ein Wechsel auf ein anderes Issue bietet das
     /// Buchen des bisherigen an.</summary>
     procedure SetIssue(const AIssue: TAtlasTimeIssue);
-    /// <summary>AIssue wurde beendet: Zeit schreiben und das Buchen anbieten (Beschreibung aus den Commits von
-    /// ABranch gegen ABase im Ordner AFolder).</summary>
-    procedure Ended(const AIssue: TAtlasTimeIssue; const AFolder, ABranch, ABase: string);
+    /// <summary>AIssue wurde beendet: Zeit schreiben und mit AOffer das Buchen anbieten (Beschreibung aus den
+    /// Commits von ABranch gegen ABase im Ordner AFolder); ohne AOffer (#2135, „nicht geplant“, „Duplikat“) nur die
+    /// Uhr anhalten.</summary>
+    procedure Ended(const AIssue: TAtlasTimeIssue; const AFolder, ABranch, ABase: string; AOffer: Boolean);
     /// <summary>Befehl „Offene Zeitbuchungen …“.</summary>
     procedure ShowOpen;
     property OnStatus: TAtlasIdeTimeChanged read FStatus write FStatus;
@@ -582,7 +583,8 @@ begin
   UpdateStatus;
 end;
 
-procedure TAtlasIdeTrackerTime.Ended(const AIssue: TAtlasTimeIssue; const AFolder, ABranch, ABase: string);
+procedure TAtlasIdeTrackerTime.Ended(const AIssue: TAtlasTimeIssue; const AFolder, ABranch, ABase: string;
+  AOffer: Boolean);
 begin
   if FStopped or not Active or AIssue.IsEmpty then
   begin
@@ -598,6 +600,10 @@ begin
   if SameText(FBookedOnEnd, AIssue.Key) then
   begin
     FBookedOnEnd := '';
+    Exit;
+  end;
+  if not AOffer then
+  begin
     Exit;
   end;
   Offer(AIssue, AFolder, ABranch, ABase);

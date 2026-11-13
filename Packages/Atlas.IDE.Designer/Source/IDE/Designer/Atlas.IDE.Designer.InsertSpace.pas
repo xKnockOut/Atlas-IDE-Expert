@@ -23,21 +23,18 @@ uses
   System.Classes,
   System.Types,
   Vcl.Controls,
-  Atlas.IDE.Designer.Snapshot;
+  Atlas.IDE.Designer.Snapshot,
+  Atlas.IDE.Designer.Tool;
 
 type
-  TAtlasIdeInsertSpace = class
+  TAtlasIdeInsertSpace = class(TAtlasIdeDesignerTool)
   private
-    FOnMessage: TProc<string>;
     /// <summary>Stand vor dem letzten Befehl.</summary>
     FSnapshot: TAtlasDesignerSnapshot;
-    procedure Say(const AText: string);
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
     destructor Destroy; override;
-    /// <summary>Steuerelemente unter ASelected (Geschwister des ersten).</summary>
-    class function Candidates(const ASelected: TArray<TComponent>): TArray<TControl>; static;
     /// <summary>Dialog zeigen und Platz einfügen bzw. (ARemove) entfernen.</summary>
     procedure Execute(ARemove: Boolean);
     function CanUndo: Boolean;
@@ -245,8 +242,7 @@ end;
 
 constructor TAtlasIdeInsertSpace.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
   FSnapshot := TAtlasDesignerSnapshot.Create;
 end;
 
@@ -254,38 +250,6 @@ destructor TAtlasIdeInsertSpace.Destroy;
 begin
   FSnapshot.Free;
   inherited Destroy;
-end;
-
-procedure TAtlasIdeInsertSpace.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
-end;
-
-class function TAtlasIdeInsertSpace.Candidates(const ASelected: TArray<TComponent>): TArray<TControl>;
-var
-  mComponent: TComponent;
-  mParent: TWinControl;
-begin
-  Result := nil;
-  mParent := nil;
-  for mComponent in ASelected do
-  begin
-    if not (mComponent is TControl) or (TControl(mComponent).Parent = nil) then
-    begin
-      Continue;
-    end;
-    if mParent = nil then
-    begin
-      mParent := TControl(mComponent).Parent;
-    end;
-    if TControl(mComponent).Parent = mParent then
-    begin
-      Result := Result + [TControl(mComponent)];
-    end;
-  end;
 end;
 
 procedure TAtlasIdeInsertSpace.Execute(ARemove: Boolean);
@@ -300,7 +264,7 @@ begin
   begin
     Exit;
   end;
-  mControls := Candidates(TAtlasDesignerAccess.Selection(mEditor, mRun.Root));
+  mControls := TAtlasDesignerAccess.SelectedSiblings(mEditor, mRun.Root);
   if (TAtlasDesignerAccess.DesignerOf(mEditor) = nil) or (Length(mControls) = 0) then
   begin
     Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceNoSelection));

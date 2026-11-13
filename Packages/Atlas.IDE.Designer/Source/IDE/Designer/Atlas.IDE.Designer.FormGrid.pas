@@ -15,19 +15,15 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Controls,
-  Atlas.UI.Designer.Outlines,
-  Atlas.IDE.Designer.Snapshot;
+  Atlas.IDE.Designer.Snapshot,
+  Atlas.IDE.Designer.Tool;
 
 type
-  TAtlasIdeFormGrid = class
+  TAtlasIdeFormGrid = class(TAtlasIdeDesignerTool)
   private
-    FOnMessage: TProc<string>;
     FSnapshot: TAtlasDesignerSnapshot;
-    FOutlines: TAtlasDesignerOutlines;
     FTabNames: TArray<string>;
     FTabOrders: TArray<Integer>;
-    procedure Say(const AText: string);
-    procedure ShowOutlines(ARoot: TWinControl; const AOutlines: TArray<TAtlasOutline>);
     procedure HideOutlines;
     procedure SetTabOrders(ARoot: TComponent; const AControls: TArray<TControl>; const AOrder: TArray<Integer>);
   public
@@ -37,7 +33,6 @@ type
     procedure Execute;
     function CanUndo: Boolean;
     procedure Undo;
-    procedure ApplyTheme;
     /// <summary>Mindestens zwei markierte Steuerelemente?</summary>
     class function CanArrange: Boolean; static;
   end;
@@ -50,7 +45,6 @@ uses
   System.UITypes,
   Vcl.Graphics,
   Vcl.StdCtrls,
-  Vcl.Forms,
   Vcl.Dialogs,
   ToolsAPI,
   Atlas.Core.Designer.FormGrid,
@@ -58,8 +52,8 @@ uses
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.NearAlign,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.UI.Designer.Outlines;
 
 function IsLabel(AControl: TControl): Boolean;
 begin
@@ -77,31 +71,6 @@ begin
     if mField is TComponent then
     begin
       Result := TComponent(mField).Name;
-    end;
-  end;
-end;
-
-/// <summary>Markierte Steuerelemente im Parent des ersten.</summary>
-function Targets(const AEditor: IOTAFormEditor; ARoot: TComponent): TArray<TControl>;
-var
-  mComponent: TComponent;
-  mParent: TWinControl;
-begin
-  Result := nil;
-  mParent := nil;
-  for mComponent in TAtlasDesignerAccess.Selection(AEditor, ARoot) do
-  begin
-    if not (mComponent is TControl) or (TControl(mComponent).Parent = nil) then
-    begin
-      Continue;
-    end;
-    if mParent = nil then
-    begin
-      mParent := TControl(mComponent).Parent;
-    end;
-    if TControl(mComponent).Parent = mParent then
-    begin
-      Result := Result + [TControl(mComponent)];
     end;
   end;
 end;
@@ -162,52 +131,21 @@ end;
 
 constructor TAtlasIdeFormGrid.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create;
-  FOnMessage := AOnMessage;
+  inherited Create(AOnMessage);
   FSnapshot := TAtlasDesignerSnapshot.Create;
 end;
 
 destructor TAtlasIdeFormGrid.Destroy;
 begin
-  FOutlines.Free;
   FSnapshot.Free;
   inherited Destroy;
 end;
 
-procedure TAtlasIdeFormGrid.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
-end;
-
-procedure TAtlasIdeFormGrid.ShowOutlines(ARoot: TWinControl; const AOutlines: TArray<TAtlasOutline>);
-var
-  mArea: TRect;
-begin
-  if FOutlines = nil then
-  begin
-    FOutlines := TAtlasDesignerOutlines.CreateOutlines(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
-  end;
-  mArea := ARoot.ClientRect;
-  mArea.Offset(ARoot.ClientOrigin);
-  FOutlines.ShowOutlines(mArea, AOutlines);
-end;
-
 procedure TAtlasIdeFormGrid.HideOutlines;
 begin
-  if FOutlines <> nil then
+  if HasOutlines then
   begin
-    FOutlines.HideOutlines;
-  end;
-end;
-
-procedure TAtlasIdeFormGrid.ApplyTheme;
-begin
-  if FOutlines <> nil then
-  begin
-    FOutlines.ApplyColors(TAtlasIdeStyle.Colors);
+    Outlines.HideOutlines;
   end;
 end;
 
@@ -216,7 +154,8 @@ var
   mEditor: IOTAFormEditor;
   mRoot: TComponent;
 begin
-  Result := TAtlasDesignerAccess.Current(mEditor, mRoot) and (Length(Targets(mEditor, mRoot)) >= 2);
+  Result := TAtlasDesignerAccess.Current(mEditor, mRoot) and
+    (Length(TAtlasDesignerAccess.SelectedSiblings(mEditor, mRoot)) >= 2);
 end;
 
 procedure TAtlasIdeFormGrid.SetTabOrders(ARoot: TComponent; const AControls: TArray<TControl>;
@@ -272,7 +211,7 @@ begin
   begin
     Exit;
   end;
-  mControls := Targets(mEditor, mRoot);
+  mControls := TAtlasDesignerAccess.SelectedSiblings(mEditor, mRoot);
   if Length(mControls) < 2 then
   begin
     Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerGridNeedTwo));
@@ -284,7 +223,7 @@ begin
   finally
     mBitmap.Free;
   end;
-  ShowOutlines(TWinControl(mRoot), OutlinesOf(mControls, mResult, TWinControl(mRoot)));
+  ShowOutlinesIn(TWinControl(mRoot), OutlinesOf(mControls, mResult, TWinControl(mRoot)));
   try
     mAccepted := MessageDlg(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerGridConfirm, [Length(mControls)]),
       mtConfirmation, [mbOK, mbCancel], 0) = mrOk;

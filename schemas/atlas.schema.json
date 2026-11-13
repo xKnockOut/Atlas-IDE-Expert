@@ -366,6 +366,15 @@
                 "description": "Nur ignored-result: weitere Funktionen ohne Seiteneffekte, deren verworfenes Ergebnis gemeldet wird, als Name, Klasse.Name oder Unit.Name (#624).",
                 "x-description-en": "Only ignored-result: further functions without side effects whose discarded result is reported, as Name, Class.Name or Unit.Name (#624)."
               },
+              "factories": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur created-result-not-freed: weitere Funktionen, die immer ein neues Objekt liefern, das dem Aufrufer gehört, als Name, Klasse.Name, Objekt.Name oder Unit.Name (#1876).",
+                "x-description-en": "Only created-result-not-freed: further functions that always return a new object owned by the caller, as Name, Class.Name, Object.Name or Unit.Name (#1876)."
+              },
               "allowCommented": {
                 "type": "boolean",
                 "default": true,
@@ -432,6 +441,15 @@
                 "default": ["Assert.*", "WillRaise*", "Check*"],
                 "description": "Nur dunitx-test-without-assert (#945): Aufrufe, die als Prüfung zählen, als Muster mit * und ?; ersetzt die Vorgabe. System.Assert und Klassen mit Assert im Namen zählen immer.",
                 "x-description-en": "Only dunitx-test-without-assert (#945): calls that count as a check, as patterns with * and ?; replaces the default. System.Assert and classes with Assert in the name always count."
+              },
+              "registrationCalls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur dunitx-fixture-not-registered (#1882): eigene Registrierfunktionen, die alle Testklassen einer Unit registrieren, wenn initialization sie aufruft, als Name oder Klasse.Name.",
+                "x-description-en": "Only dunitx-fixture-not-registered (#1882): own registration functions that register all test classes of a unit when called in initialization, as Name or Class.Name."
               },
               "selfRegistering": {
                 "type": "array",
@@ -1432,6 +1450,13 @@
           "default": true,
           "description": "An der Namensposition einer Deklaration mit bekanntem Typ (var-Abschnitt, Inline-var, Feld, Parameter) Namen aus dem Typ vorschlagen: TCustomerList ergibt Customers, CustomerList und List, mit F, A bzw. L, wenn mindestens 60 % der Deklarationen dieser Art im Projekt das Präfix tragen oder die Projektdatei .atlas es unter naming vorgibt.",
           "x-description-en": "At the name position of a declaration with known type (var section, inline var, field, parameter) suggest names from the type: TCustomerList gives Customers, CustomerList and List, with F, A or L if at least 60 % of the declarations of that kind in the project carry the prefix or the project file .atlas sets it under naming."
+        },
+        "typeGuards": {
+          "type": "boolean",
+          "default": true,
+          "description": "Nach einer Typprüfung die Mitglieder des geprüften Typs anbieten: Im then-Zweig von if X is T then (auch in and-Ketten und nach while X is T do) und nach if not (X is T) then Exit; bis zum Ende des Blocks stehen nach X. die Mitglieder, die nur T hat, oben mit der Überschrift „X ist hier T (is-Prüfung, Zeile n)“. Übernehmen schreibt die Umwandlung nach completion.senderCast (T(X).Name bzw. (X as T).Name). Nach einer Zuweisung an X, nach Übergabe an einen var- oder out-Parameter, im else-Zweig, in with-Blöcken und bei Feldern nach jeder weiteren Anweisung gilt die Prüfung nicht. Nach X is und X as stehen die Nachfahren des Typs von X oben. Aus: wie ohne Prüfung.",
+          "x-description-en": "Offer the members of the checked type after a type check: in the then branch of if X is T then (also in and chains and after while X is T do) and after if not (X is T) then Exit; up to the end of the block, X. lists the members only T has at the top under the heading \"X is T here (is check, line n)\". Accepting writes the cast according to completion.senderCast (T(X).Name or (X as T).Name). After an assignment to X, after passing it to a var or out parameter, in the else branch, in with blocks and for fields after any further statement the check no longer applies. After X is and X as the descendants of the type of X come first. Off: as without the check.",
+          "x-issue": "#2107"
         }
       },
       "x-scope": "global",

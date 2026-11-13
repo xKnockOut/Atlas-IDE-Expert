@@ -8,7 +8,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 76 |
+| [Fehler finden](#gruppe-find-bugs) | 78 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
@@ -21,7 +21,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
 | [Stil und Metriken](#gruppe-style) | 56 |
-| [Packages und Tests](#gruppe-packages) | 3 |
+| [Packages und Tests](#gruppe-packages) | 5 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
 <a id="gruppe-find-bugs"></a>
@@ -86,6 +86,8 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`owned-item-freed`](#owned-item-freed) | Element einer besitzenden Liste zusätzlich freigegeben | Bug | Fehler |
 | [`create-without-assignment`](#create-without-assignment) | Objekt erzeugt und sofort verloren | Bug | Warnung |
 | [`raw-memory-leak`](#raw-memory-leak) | GetMem oder New ohne Freigabe | Bug | Warnung |
+| [`local-object-not-freed`](#local-object-not-freed) | Lokales Objekt nie freigegeben | Bug | Warnung |
+| [`created-result-not-freed`](#created-result-not-freed) | Neues Objekt aus einer Funktion nie freigegeben | Bug | Warnung |
 | [`stringlist-objects-leak`](#stringlist-objects-leak) | Objekte in einer TStringList ohne Besitz | Bug | Warnung |
 | [`message-handler-without-inherited`](#message-handler-without-inherited) | Message-Handler ohne inherited | Bug | Warnung |
 | [`string-index-base`](#string-index-base) | String-Index ab 0 oder Pos-Ergebnis mit -1 verglichen | Bug | Warnung |
@@ -432,6 +434,8 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`implicit-package-import`](#implicit-package-import) | Implizit eingebundene Unit | Code Smell | Warnung |
 | [`ota-notifier-not-removed`](#ota-notifier-not-removed) | IDE-Notifier ohne RemoveNotifier | Bug | Warnung |
 | [`dunitx-test-without-assert`](#dunitx-test-without-assert) | DUnitX-Test ohne Assert | Code Smell | Hinweis |
+| [`dunitx-testcase-mismatch`](#dunitx-testcase-mismatch) | TestCase passt nicht zur Methode | Bug | Warnung |
+| [`dunitx-fixture-not-registered`](#dunitx-fixture-not-registered) | DUnitX-Testklasse nie registriert | Bug | Warnung |
 
 <a id="gruppe-internal"></a>
 ### Atlas intern
@@ -4676,6 +4680,64 @@ begin
 end;
 ```
 
+<a id="dunitx-testcase-mismatch"></a>
+### dunitx-testcase-mismatch
+
+**TestCase passt nicht zur Methode** · Bug · Warnung · Gruppe Packages und Tests
+
+Ein [TestCase], dessen Werte DUnitX der Methode nicht übergeben kann, was erst beim Testlauf auffällt: Die Zahl der Werte weicht von der Zahl der Parameter ab (DUnitX ruft über RTTI auf, Vorgabewerte zählen nicht), ein Wert passt nicht zum Typ seines Parameters, oder die Methode hat gar keine Parameter. Geteilt wird wie bei DUnitX: an jedem Zeichen des Trennzeichens (drittes Argument, Vorgabe Komma; keine Anführungszeichen), ein leerer Text ergibt keinen Wert. Geprüfte Typen: Ganzzahlen (dezimal oder hex, $FF, 0xFF), Gleitkomma (Punkt oder Komma als Dezimaltrenner, DUnitX macht aus dem Komma einen Punkt), Boolean (True oder False) und Aufzählungen derselben Datei (über ihre Namen); andere Typen prüft die Regel nicht, ebenso Werte, die kein String-Literal sind (eine Konstante, 'a' + 'b'). Neben TestCase('Name', 'Werte'[, 'Trenner']) kennt sie die neueren Formen TestCase('Werte'[, 'Trenner'[, Trim]]) und NamedTestCase('Name', 'Werte'). Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch. Keine Schnellkorrektur: Was gemeint war, ist offen.
+
+Mit Treffer:
+
+```pascal
+[Test]
+[TestCase('Rest', '7,2')]
+procedure Teile(A, B, Rest: Integer);
+```
+
+Richtig:
+
+```pascal
+[Test]
+[TestCase('Rest', '7,2,1')]
+procedure Teile(A, B, Rest: Integer);
+```
+
+<a id="dunitx-fixture-not-registered"></a>
+### dunitx-fixture-not-registered
+
+**DUnitX-Testklasse nie registriert** · Bug · Warnung · Gruppe Packages und Tests
+
+Eine Testklasse, die DUnitX nie zu sehen bekommt: Ihre Tests fehlen still. DUnitX findet Testklassen über RegisterTestFixture oder, wenn der Runner der .dpr UseRTTI := True setzt (Projektvorlage von DUnitX), über das Attribut [TestFixture]. 1. Nicht registriert: eine Klasse mit [Test]- bzw. [TestCase]-Methoden, die weder der initialization-Abschnitt der Unit noch eine Routine der Unit, die von dort aufgerufen wird, nennt (TDUnitX.RegisterTestFixture(TKlasse), eigene Helfer wie Registriere([TA, TB])) und keine andere Unit ihrer Projekte nennt, und die außerdem kein [TestFixture] hat oder zu einem Projekt gehört, dessen .dpr einen Runner (TDUnitX.CreateRunner) ohne UseRTTI := True anlegt. Ein Aufruf aus der Option registrationCalls in initialization (eigene Registrierfunktion, die alle Klassen findet) zählt für alle Klassen der Unit. Generische und abstrakte Klassen sowie Vorfahren anderer Klassen der Datei bleiben still. Schnellkorrekturen: TDUnitX.RegisterTestFixture(TKlasse); in initialization ergänzen, den Abschnitt bei Bedarf anlegen; bei einem Runner mit RTTI auch [TestFixture] vor die Klasse setzen. 2. Unit in keinem Testprojekt: Die Gruppe hat Testprojekte, aber keines enthält die Unit. Schnellkorrektur bei genau einem Testprojekt: Unit in uses der .dpr und als DCCReference in die .dproj eintragen. Nur in Testunits und nur mit bekannten Projekten der Gruppe; ohne sie schweigt die Regel. Sicherheit mittel.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `registrationCalls` | string-list | `[]` | Eigene Registrierfunktionen, die alle Testklassen einer Unit registrieren, wenn initialization sie aufruft, als Name oder Klasse.Name. |
+
+Mit Treffer:
+
+```pascal
+[TestFixture]
+TImportTests = class
+  …
+end;
+…
+end.
+```
+
+Richtig:
+
+```pascal
+[TestFixture]
+TImportTests = class
+  …
+end;
+…
+initialization
+  TDUnitX.RegisterTestFixture(TImportTests);
+end.
+```
+
 <a id="event-call-without-assigned"></a>
 ### event-call-without-assigned
 
@@ -4790,6 +4852,75 @@ try
 finally
   FreeMem(Puffer);
 end;
+```
+
+<a id="local-object-not-freed"></a>
+### local-object-not-freed
+
+**Lokales Objekt nie freigegeben** · Bug · Warnung · Gruppe Fehler finden
+
+Eine lokale Variable (auch Inline-Variable) erhält T.Create(…) einer Klasse ohne Owner, die Routine gibt das Objekt aber nie frei, und es verlässt die Routine nicht: weder zurückgegeben (Result, Exit) noch etwas anderem zugewiesen (Feld, andere Variable, Listenelement), nicht als Argument weitergegeben (außer an Routinen, die nur lesen: Assign, AddStrings, CopyFrom, LoadFromStream, SaveToStream, IndexOf, Contains, Equals), nicht mit raise ausgelöst, nicht mit as umgewandelt, nicht mit @, in einem Mengen- oder Array-Konstruktor oder mit with benutzt, kein Parent oder Owner gesetzt, nicht von einer anonymen Methode eingefangen und nicht in einer lokalen Routine benutzt. Free, Destroy, DisposeOf, Release, FreeAndNil und Routinen mit Free, Release, Destroy, Dispose oder Frei im Namen gelten als Freigabe; Show, Close, Start, Resume, Run und Execute als Übergabe (Formular mit caFree, Thread). Still bleiben Interface-Variablen, Records und dynamische Arrays (TPoint.Create, TArray<string>.Create), Threads, Komponenten mit Owner und unbekannte Klassen mit Argumenten (wie create-without-assignment); Routinen mit asm oder with bleiben still. Konfidenz hoch, wenn die Vorfahren der Klasse bis TObject bekannt sind, sonst mittel. Schnellkorrektur: die folgenden Anweisungen des Blocks in try … finally mit Free einschließen.
+
+Mit Treffer:
+
+```pascal
+var
+  Lines: TStringList;
+begin
+  Lines := TStringList.Create;
+  Lines.Add('a');
+  Memo.Text := Lines.Text;
+end;
+```
+
+Richtig:
+
+```pascal
+var
+  Lines: TStringList;
+begin
+  Lines := TStringList.Create;
+  try
+    Lines.Add('a');
+    Memo.Text := Lines.Text;
+  finally
+    Lines.Free;
+  end;
+end;
+```
+
+<a id="created-result-not-freed"></a>
+### created-result-not-freed
+
+**Neues Objekt aus einer Funktion nie freigegeben** · Bug · Warnung · Gruppe Fehler finden
+
+Eine lokale Variable erhält das Ergebnis einer Funktion, die immer ein neues Objekt liefert, und die Routine gibt es weder frei noch weiter (gleiche Regeln wie local-object-not-freed). Eine Funktion derselben Datei zählt, wenn jede Zuweisung an Result T.Create(…) ohne Owner ist, Result sonst nur über seine Mitglieder benutzt oder freigegeben wird (Aufräumen im except) und nie weitergeht, und jedes Exit(…) ebenfalls ein Objekt erzeugt; gleichnamige Überladungen müssen das alle erfüllen. Erkannt wird sie unqualifiziert, über Self oder über einen Typnamen aufgerufen; Methoden anderer Objekte kennt die Regel nur aus der Option factories. Konfidenz mittel. Schnellkorrektur: die folgenden Anweisungen des Blocks in try … finally mit Free einschließen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `factories` | string-list | `[]` | Weitere Funktionen, die immer ein neues Objekt liefern, das dem Aufrufer gehört, als Name, Klasse.Name, Objekt.Name oder Unit.Name. |
+
+Mit Treffer:
+
+```pascal
+function NewList: TStringList;
+begin
+  Result := TStringList.Create;
+end;
+…
+  Lines := NewList;
+  Memo.Lines.Assign(Lines);
+```
+
+Richtig:
+
+```pascal
+  Lines := NewList;
+  try
+    Memo.Lines.Assign(Lines);
+  finally
+    Lines.Free;
+  end;
 ```
 
 <a id="stringlist-objects-leak"></a>

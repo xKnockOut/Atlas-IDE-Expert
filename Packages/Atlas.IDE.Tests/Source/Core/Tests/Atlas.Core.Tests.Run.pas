@@ -16,8 +16,9 @@
 //   Atlas.Core.Tests.AssertLine, und mit tests.failureInline dahinter kurz
 //   „erwartet 4, erhalten 3“ in Details), den Abschnitt "tests" der
 //   Projekt-Zusammenfassung (#592, Karte
-//   Tests #763) und den Stand je Test für die Code Lens; veraltete Ergebnisse
-//   (#1770, Atlas.Core.Tests.Stale) zählt die Marke nicht als bestanden.
+//   Tests #763, mit den langsamsten Tests #1772) und den Stand je Test für die
+//   Code Lens samt Dauer (#1772); veraltete Ergebnisse (#1770,
+//   Atlas.Core.Tests.Stale) zählt die Marke nicht als bestanden.
 // Dateien liest der Aufrufer (Puffer der IDE oder Platte); Zeilen sind hier
 // 0-basiert, in der Zusammenfassung 1-basiert.
 
@@ -31,7 +32,8 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Text.DUnitX,
   Atlas.Text.TestResults,
-  Atlas.Core.Tests.Stale;
+  Atlas.Core.Tests.Stale,
+  Atlas.Core.Tests.Durations;
 
 type
 {$SCOPEDENUMS ON}
@@ -39,6 +41,9 @@ type
   /// [TestCase]-Methode) lief erst ein Teil, keiner schlug fehl.</summary>
   TAtlasTestStatus = (Unknown, Passed, Failed, Partial);
 {$SCOPEDENUMS OFF}
+
+  /// <summary>Texte der Dauer an der Marke (#1772); deklariert in Atlas.Core.Tests.Durations.</summary>
+  TAtlasTestDurationTexts = Atlas.Core.Tests.Durations.TAtlasTestDurationTexts;
 
   /// <summary>Ein Test, den der Lauf einer Marke ergibt: Methode und Fall ('' ohne [TestCase]).</summary>
   TAtlasTestKey = record
@@ -58,6 +63,11 @@ type
     Stale: Integer;
     /// <summary>Davon bestanden, aber veraltet.</summary>
     StalePassed: Integer;
+    /// <summary>Summe der Dauer aller Tests mit Ergebnis (#1772).</summary>
+    DurationMs: Int64;
+    /// <summary>Dauer des langsamsten Tests der Marke; ein Test mit Fällen zählt als Summe seiner Fälle (#1772).
+    /// </summary>
+    SlowestMs: Int64;
     /// <summary>Failed bei einem Fehlschlag; Passed erst, wenn jeder Test ein Ergebnis hat und mindestens einer
     /// bestand; Partial, wenn erst ein Teil lief; sonst Unknown. Stand des letzten Laufs, auch wenn er veraltet
     /// ist.</summary>
@@ -69,6 +79,10 @@ type
     /// <summary>Stand für die Marke: wie Status, nur gilt eine Marke über mehrere Tests mit veraltetem bestandenem
     /// Ergebnis als Partial (die Zählung nimmt es nicht als bestanden).</summary>
     function Shown: TAtlasTestStatus;
+    /// <summary>ACaption mit der Dauer der Marke (Summe) und „langsam“, wenn ihr langsamster Test über ASlowMs liegt
+    /// (ASlow); ohne Dauer ACaption (#1772, TAtlasTestDurations.Caption).</summary>
+    function WithDuration(const ACaption: string; ASlowMs: Integer; const ATexts: TAtlasTestDurationTexts;
+      out ASlow: Boolean): string;
   end;
 
   /// <summary>Ist das Ergebnis des Tests AMethod (der Fixture der Marke) veraltet (#1770)?</summary>
@@ -116,6 +130,10 @@ type
     /// <summary>Auftraggeber eines Builds vor den Tests (Compile-Ereignisse #527): löst keinen Lauf nach dem
     /// Build aus.</summary>
     cRequestedBy = 'tests';
+  private
+    /// <summary>ACases mit Fundstelle; liest jede Testunit höchstens einmal; AAtAssert wie bei Failures.</summary>
+    class function Placed(const ACases: TArray<TTestCaseResult>; const AUnitFile: TAtlasTestUnitFile;
+      const AReadLines: TAtlasTestReadLines; AAtAssert: Boolean): TArray<TAtlasTestFailure>; static;
   public
     /// <summary>Hauptdatei eines DUnitX-Testprogramms?</summary>
     class function IsTestProgram(const ALines: TArray<string>): Boolean; static;
@@ -133,6 +151,9 @@ type
     /// (Stacktrace, eindeutiger Assert; #1771, tests.failureAtAssert).</summary>
     class function Failures(const ARun: TTestRunResult; const AUnitFile: TAtlasTestUnitFile;
       const AReadLines: TAtlasTestReadLines; AAtAssert: Boolean): TArray<TAtlasTestFailure>; overload; static;
+    /// <summary>Beliebige Tests ACases mit Fundstelle am Methodenkopf (langsamste Tests, #1772).</summary>
+    class function Locate(const ACases: TArray<TTestCaseResult>; const AUnitFile: TAtlasTestUnitFile;
+      const AReadLines: TAtlasTestReadLines): TArray<TAtlasTestFailure>; static;
     /// <summary>Kurzer Name eines Tests für Meldungen: Fixture.Methode[.Fall].</summary>
     class function ShortName(const ACase: TTestCaseResult): string; static;
     /// <summary>Text des Problems: AValuesFormat (%s Name, %s erwartet, %s erhalten) mit erwartetem und
@@ -148,7 +169,12 @@ type
     /// <summary>Abschnitt "tests" der Projekt-Zusammenfassung; höchstens TAtlasProjectTests.cMaxFailures Tests.
     /// </summary>
     class function SummaryOf(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult;
-      const AFailures: TArray<TAtlasTestFailure>; AAtUtc: TDateTime): TAtlasProjectTests; static;
+      const AFailures: TArray<TAtlasTestFailure>; AAtUtc: TDateTime): TAtlasProjectTests; overload; static;
+    /// <summary>Wie oben, dazu die langsamsten Tests ASlowest (Locate, langsamster zuerst; höchstens
+    /// TAtlasProjectTests.cMaxSlowest, #1772).</summary>
+    class function SummaryOf(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult;
+      const AFailures, ASlowest: TArray<TAtlasTestFailure>; AAtUtc: TDateTime): TAtlasProjectTests; overload;
+      static;
     /// <summary>Stand eines Tests (AMethod) bzw. einer Fixture (AMethod = '') in den Ergebnissen: Failed, wenn
     /// ein Fall fehlschlug, Passed, wenn mindestens einer bestand und keiner fehlschlug, sonst Unknown.</summary>
     class function StatusOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture,
@@ -175,6 +201,7 @@ type
 implementation
 
 uses
+  System.Math,
   Atlas.Core.Problems.Store,
   Atlas.Core.Tests.AssertLine;
 
@@ -214,6 +241,12 @@ begin
   begin
     Result := TAtlasTestStatus.Partial;
   end;
+end;
+
+function TAtlasTestTally.WithDuration(const ACaption: string; ASlowMs: Integer;
+  const ATexts: TAtlasTestDurationTexts; out ASlow: Boolean): string;
+begin
+  Result := TAtlasTestDurations.Caption(ACaption, DurationMs, SlowestMs, ASlowMs, ATexts, ASlow);
 end;
 
 { TAtlasTestRun }
@@ -300,6 +333,18 @@ end;
 
 class function TAtlasTestRun.Failures(const ARun: TTestRunResult; const AUnitFile: TAtlasTestUnitFile;
   const AReadLines: TAtlasTestReadLines; AAtAssert: Boolean): TArray<TAtlasTestFailure>;
+begin
+  Result := Placed(ARun.Failures, AUnitFile, AReadLines, AAtAssert);
+end;
+
+class function TAtlasTestRun.Locate(const ACases: TArray<TTestCaseResult>; const AUnitFile: TAtlasTestUnitFile;
+  const AReadLines: TAtlasTestReadLines): TArray<TAtlasTestFailure>;
+begin
+  Result := Placed(ACases, AUnitFile, AReadLines, False);
+end;
+
+class function TAtlasTestRun.Placed(const ACases: TArray<TTestCaseResult>; const AUnitFile: TAtlasTestUnitFile;
+  const AReadLines: TAtlasTestReadLines; AAtAssert: Boolean): TArray<TAtlasTestFailure>;
 var
   mUnits: TDictionary<string, TDUnitXUnit>;
   mTexts: TDictionary<string, TArray<string>>;
@@ -312,7 +357,7 @@ begin
   mUnits := TDictionary<string, TDUnitXUnit>.Create;
   mTexts := TDictionary<string, TArray<string>>.Create;
   try
-    for mItem in ARun.Failures do
+    for mItem in ACases do
     begin
       mFailure := Default(TAtlasTestFailure);
       mFailure.Test := mItem;
@@ -418,9 +463,29 @@ end;
 
 class function TAtlasTestRun.SummaryOf(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult;
   const AFailures: TArray<TAtlasTestFailure>; AAtUtc: TDateTime): TAtlasProjectTests;
+begin
+  Result := SummaryOf(ATarget, ARun, AFailures, nil, AAtUtc);
+end;
+
+/// <summary>Eintrag der langsamsten Tests aus einem Test mit Fundstelle (Zeile ab 1).</summary>
+function SlowTestOf(const ATest: TAtlasTestFailure): TAtlasProjectSlowTest;
+begin
+  Result := Default(TAtlasProjectSlowTest);
+  Result.Test := ATest.Test.FullName;
+  Result.FileName := ATest.FileName;
+  if ATest.Line >= 0 then
+  begin
+    Result.Line := ATest.Line + 1;
+  end;
+  Result.DurationMs := Integer(Min(ATest.Test.DurationMs, Int64(MaxInt)));
+end;
+
+class function TAtlasTestRun.SummaryOf(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult;
+  const AFailures, ASlowest: TArray<TAtlasTestFailure>; AAtUtc: TDateTime): TAtlasProjectTests;
 var
   mFailure: TAtlasTestFailure;
   mItem: TAtlasProjectTestFailure;
+  mIndex: Integer;
 begin
   Result := TAtlasProjectTests.Empty;
   Result.Known := True;
@@ -448,6 +513,10 @@ begin
       mItem.Line := mFailure.Line + 1;
     end;
     Result.Failures := Result.Failures + [mItem];
+  end;
+  for mIndex := 0 to Min(High(ASlowest), TAtlasProjectTests.cMaxSlowest - 1) do
+  begin
+    Result.Slowest := Result.Slowest + [SlowTestOf(ASlowest[mIndex])];
   end;
 end;
 
@@ -563,6 +632,22 @@ begin
   end;
 end;
 
+/// <summary>Dauer des Tests AKey: Summe aller passenden Ergebnisse (alle Fälle ohne CaseName, #1772).</summary>
+function DurationOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
+  const AKey: TAtlasTestKey): Int64;
+var
+  mItem: TTestCaseResult;
+begin
+  Result := 0;
+  for mItem in ACases do
+  begin
+    if Matches(mItem, AUnitName, AFixture, AKey.Method, AKey.CaseName) then
+    begin
+      Inc(Result, mItem.DurationMs);
+    end;
+  end;
+end;
+
 class function TAtlasTestRun.TallyOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
   const AKeys: TArray<TAtlasTestKey>): TAtlasTestTally;
 begin
@@ -575,6 +660,7 @@ var
   mKey: TAtlasTestKey;
   mStatus: TAtlasTestStatus;
   mStale: Boolean;
+  mDuration: Int64;
 begin
   Result := Default(TAtlasTestTally);
   Result.Total := Length(AKeys);
@@ -585,6 +671,9 @@ begin
       Continue;
     end;
     Inc(Result.Ran);
+    mDuration := DurationOf(ACases, AUnitName, AFixture, mKey);
+    Inc(Result.DurationMs, mDuration);
+    Result.SlowestMs := Max(Result.SlowestMs, mDuration);
     mStatus := StatusOf(ACases, AUnitName, AFixture, mKey.Method, mKey.CaseName);
     mStale := Assigned(AStale) and AStale(mKey.Method);
     if mStale then

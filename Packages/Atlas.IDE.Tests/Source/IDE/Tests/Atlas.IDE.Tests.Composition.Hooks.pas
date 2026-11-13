@@ -8,7 +8,9 @@
 // - OnFinished: Projekt-Zusammenfassung (TAtlasIdeProjectSummaries, #69) und
 //   jeder IAtlasTestsListener (Schnellaktionen der Willkommensseite),
 // - OnLastFailed: fehlgeschlagene Tests des letzten Laufs aus den
-//   Projektdateien (TAtlasProjectSummaries), auch ohne Willkommensseite.
+//   Projektdateien (TAtlasProjectSummaries), auch ohne Willkommensseite,
+// - ServerPath: Pfad des AtlasServer für den pre-commit-Hook der
+//   betroffenen Tests (#1353).
 
 interface
 
@@ -26,6 +28,8 @@ procedure ShowProblems(const AProblems: TArray<TPair<string, TAtlasProblem>>);
 /// <summary>Ende eines Laufs in die Projekt-Zusammenfassung und an jeden IAtlasTestsListener.</summary>
 procedure AnnounceTests(const AProject: string; const ATests: TAtlasProjectTests);
 function LastFailed(AProject: string): TArray<string>;
+/// <summary>Pfad des AtlasServer (für den pre-commit-Hook der betroffenen Tests).</summary>
+function ServerPath: string;
 
 implementation
 
@@ -38,6 +42,7 @@ uses
   Atlas.IDE.Contracts.BuildPipeline,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Projects.Summaries,
+  Atlas.IDE.CodeInsight.Manager.Paths,
   Atlas.UI.Strings;
 
 /// <summary>Builds auf Auftrag des Moduls Build-Pipeline (Vertrag); False ohne laufendes Modul.</summary>
@@ -123,6 +128,13 @@ end;
 function LastFailed(AProject: string): TArray<string>;
 begin
   Result := TAtlasProjectSummaries.FailedTestsOf(TAtlasProjectSummaries.DefaultFolder, AProject);
+end;
+
+function ServerPath: string;
+var
+  mArguments: string;
+begin
+  Result := TAtlasCodeInsightPaths.ServerPath(mArguments);
 end;
 
 end.

@@ -68,6 +68,10 @@ begin
   Switch('tests.affectedBeforeCommit', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsAffectedBeforeCommit));
   Switch('tests.failureAtAssert', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFailureAtAssert));
   Switch('tests.failureInline', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFailureInline));
+  Switch('tests.compare', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCompare));
+  Switch('tests.compare.format', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsCompareFormat));
+  Switch('tests.showDuration', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsShowDuration));
+  Number('tests.slowMs', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsSlowMs));
 end;
 
 { TAtlasTestsDebugSection }

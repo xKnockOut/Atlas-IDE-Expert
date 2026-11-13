@@ -74,6 +74,10 @@ type
     /// <summary>--hotspots (#1354): ohne Versionsverwaltung Exit-Code 3, mit Git-Repository der Bericht.</summary>
     [Test]
     procedure HotspotsNeedVersionControl;
+    /// <summary>--mutate (#1460): Markdown, JSON und Patch, Auswahl nach Routine und Operator, Exit-Code 3 bei
+    /// fehlender Datei, Ordner, unbekanntem Format oder Operator.</summary>
+    [Test]
+    procedure MutateFormatsAndExitCodes;
     [Test]
     procedure SuppressionStatsGiveZero;
     [Test]
@@ -119,6 +123,7 @@ uses
   Atlas.Common.Editing.FormatCheck,
   Shell.CommandLine,
   Shell.Linter,
+  Shell.Linter.Mutation,
   Shell.Workspace.Listings;
 
 const
@@ -421,6 +426,37 @@ begin
   Assert.AreEqual(1, Query(['--query', '@erben']));
   Assert.Contains(OutputText, 'TKind');
   Assert.AreEqual(3, Query(['--query', '@fehlt']));
+end;
+
+procedure TShellLinterTests.MutateFormatsAndExitCodes;
+
+  function Mutate(const AArgs: TArray<string>): Integer;
+  begin
+    if TFile.Exists(FOutput) then
+    begin
+      TFile.Delete(FOutput);
+    end;
+    Result := TLinterMutation.Run(TCommandLineOptions.Parse(AArgs + ['--output', FOutput]));
+  end;
+
+begin
+  TFile.WriteAllText(Path('Src/Preise.pas'), 'unit Preise;'#13#10'interface'#13#10'implementation'#13#10 +
+    'function Satz(AMenge: Integer): Integer;'#13#10'begin'#13#10'  if AMenge >= 100 then'#13#10 +
+    '    Result := 5'#13#10'  else'#13#10'    Result := 0;'#13#10'end;'#13#10'procedure Leer;'#13#10'begin'#13#10 +
+    '  Leer;'#13#10'end;'#13#10'end.'#13#10);
+  Assert.AreEqual(0, Mutate(['--mutate', Path('Src/Preise.pas')]));
+  Assert.Contains(OutputText, '# Mutanten in Preise.pas');
+  Assert.Contains(OutputText, '| Leer | statement |');
+  Assert.AreEqual(0, Mutate(['--mutate', Path('Src/Preise.pas'), '--routine', 'Satz', '--operators', 'boundary',
+    '--format', 'json']));
+  Assert.Contains(OutputText, '"count": 1, "operators": {"boundary": 1}');
+  Assert.AreEqual(0, Mutate(['--mutate', Path('Src/Preise.pas'), '--operators', 'boundary', '--format', 'diff']));
+  Assert.Contains(OutputText, '+  if AMenge > 100 then');
+  Assert.AreEqual(3, Mutate(['--mutate', Path('Src/Fehlt.pas')]));
+  Assert.AreEqual(3, Mutate(['--mutate', Path('Src')]));
+  Assert.AreEqual(3, Mutate(['--mutate', Path('Src/Preise.pas'), '--format', 'sarif']));
+  Assert.AreEqual(3, Mutate(['--mutate', Path('Src/Preise.pas'), '--operators', 'boundary,gibtsnicht']));
+  Assert.IsFalse(TFile.Exists(FOutput));
 end;
 
 procedure TShellLinterTests.SuppressionStatsGiveZero;

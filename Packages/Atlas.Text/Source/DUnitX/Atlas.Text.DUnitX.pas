@@ -144,12 +144,6 @@ uses
   System.SysUtils,
   Atlas.Text.Chars;
 
-const
-  /// <summary>FNV-1a mit 64 Bit: Startwert, Faktor und Stellen des Fingerabdrucks in Hex.</summary>
-  cFnvOffset = UInt64($CBF29CE484222325);
-  cFnvPrime = UInt64($00000100000001B3);
-  cFingerprintDigits = 16;
-
 type
   TTokenKind = (Ident, Str, Sym, Num);
 
@@ -1418,6 +1412,13 @@ type
     procedure Feed(const ALine: string);
   end;
 
+const
+  /// <summary>FNV-1a 64 Bit: Startwert und Primzahl.</summary>
+  cFnvOffsetBasis = UInt64($CBF29CE484222325);
+  cFnvPrime = UInt64($00000100000001B3);
+  /// <summary>Stellen des Fingerabdrucks als Hex (64 Bit).</summary>
+  cFingerprintDigits = 16;
+
 // FNV-1a rechnet modulo 2^64: die Überlaufprüfung ist nur hier aus, danach wie vorher.
 {$IFOPT Q+}{$DEFINE ATLAS_HASH_UEBERLAUF}{$Q-}{$ENDIF}
 procedure TFingerprinter.Mix(AChar: Char);
@@ -1560,7 +1561,7 @@ begin
     mLast := High(ALines);
   end;
   mPrinter := Default(TFingerprinter);
-  mPrinter.Hash := cFnvOffset;
+  mPrinter.Hash := cFnvOffsetBasis;
   for mLine := AFirstLine to mLast do
   begin
     mPrinter.Feed(ALines[mLine]);
@@ -1572,34 +1573,38 @@ end;
 /// dem „;“.</summary>
 procedure ReadUsesList(const ATokens: TArray<TToken>; var AIndex: Integer; var AUnits: TArray<string>);
 var
-  mParts: TArray<string>;
+  mName: TStringBuilder;
 begin
-  mParts := nil;
-  Inc(AIndex);
-  while AIndex <= High(ATokens) do
-  begin
-    if IsSym(ATokens[AIndex], ';') or IsSym(ATokens[AIndex], ',') then
-    begin
-      if mParts <> nil then
-      begin
-        AUnits := AUnits + [string.Join('', mParts)];
-      end;
-      mParts := nil;
-      if IsSym(ATokens[AIndex], ';') then
-      begin
-        Exit;
-      end;
-    end
-    else if IsWord(ATokens[AIndex], 'in') then
-    begin
-      // „in 'Pfad'“: der Pfad gehört nicht zum Namen.
-      Inc(AIndex);
-    end
-    else if (ATokens[AIndex].Kind = TTokenKind.Ident) or IsSym(ATokens[AIndex], '.') then
-    begin
-      mParts := mParts + [ATokens[AIndex].Text];
-    end;
+  mName := TStringBuilder.Create;
+  try
     Inc(AIndex);
+    while AIndex <= High(ATokens) do
+    begin
+      if IsSym(ATokens[AIndex], ';') or IsSym(ATokens[AIndex], ',') then
+      begin
+        if mName.Length > 0 then
+        begin
+          AUnits := AUnits + [mName.ToString];
+        end;
+        mName.Clear;
+        if IsSym(ATokens[AIndex], ';') then
+        begin
+          Exit;
+        end;
+      end
+      else if IsWord(ATokens[AIndex], 'in') then
+      begin
+        // „in 'Pfad'“: der Pfad gehört nicht zum Namen.
+        Inc(AIndex);
+      end
+      else if (ATokens[AIndex].Kind = TTokenKind.Ident) or IsSym(ATokens[AIndex], '.') then
+      begin
+        mName.Append(ATokens[AIndex].Text);
+      end;
+      Inc(AIndex);
+    end;
+  finally
+    mName.Free;
   end;
 end;
 

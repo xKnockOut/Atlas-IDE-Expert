@@ -129,11 +129,9 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   System.Classes,
   System.SyncObjs,
-  System.JSON,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.Core.Settings.Layers,
-  Atlas.Core.Settings.JsonText,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
@@ -145,18 +143,12 @@ uses
   Atlas.WinBase.Process,
   Atlas.Core.Projects.Matching,
   Atlas.Core.Settings.TeamFile,
+  Atlas.Core.Projects.VcsSettings,
   Atlas.IDE.Foundation.TeamFile;
 
 type
-  /// <summary>Werte aus settings.json (#571, #1285).</summary>
-  TVcsSettings = record
-    Provider: TAtlasVcsProvider;
-    GitPath: string;
-    SvnPath: string;
-    TimeoutMs: Cardinal;
-    Projects: TArray<TAtlasVcsProjectMapping>;
-    class function Default: TVcsSettings; static;
-  end;
+  /// <summary>Werte aus settings.json (#571, #1285); Lesen und Vorgaben in Core (#1967).</summary>
+  TVcsSettings = TAtlasVcsPluginSettings;
 
   /// <summary>Abschnitt vcs einer .atlas mit Zeitstempel der Datei.</summary>
   TTeamEntry = record
@@ -178,11 +170,6 @@ var
   TeamFileOn: Boolean;
   // Serverzugang je Ordner (klein geschrieben), nur in dieser Sitzung (#1287); nur im Hauptthread.
   ServerStates: TDictionary<string, TAtlasVcsServerCheck>;
-
-const
-  cDefaultTimeoutSeconds = 15;
-  cMinTimeoutSeconds = 1;
-  cMaxTimeoutSeconds = 300;
 
 type
   /// <summary>Offene Konsolen von „Anmelden …“ (#1287): ein Zeitgeber im Hauptthread fragt, ob der Prozess endete.
@@ -259,66 +246,10 @@ begin
   FTimer.Enabled := FProcesses.Count > 0;
 end;
 
-class function TVcsSettings.Default: TVcsSettings;
-begin
-  Result.Provider := TAtlasVcsProvider.Auto;
-  Result.GitPath := '';
-  Result.SvnPath := '';
-  Result.TimeoutMs := cDefaultTimeoutSeconds * 1000;
-  Result.Projects := nil;
-end;
-
-function SettingsFile: string;
-begin
-  Result := TAtlasSettingsFiles.GlobalFile(GetEnvironmentVariable('APPDATA'));
-end;
-
-function JsonString(const AJson: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if AJson = '' then
-  begin
-    Exit;
-  end;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if mValue is TJSONString then
-    begin
-      Result := Trim(TJSONString(mValue).Value);
-    end;
-  finally
-    mValue.Free;
-  end;
-end;
-
 function ReadSettings(const AFileName: string): TVcsSettings;
-var
-  mRoot: TJSONObject;
-  mSeconds: Integer;
 begin
-  Result := TVcsSettings.Default;
   try
-    mRoot := TAtlasJsonText.Parse(TAtlasTextFile.Load(AFileName).Text);
-    try
-      if mRoot <> nil then
-      begin
-        Result.Provider := AtlasVcsProviderOf(TAtlasJsonText.ValueAt(mRoot, 'vcs.provider'));
-        Result.GitPath := JsonString(TAtlasJsonText.ValueAt(mRoot, 'vcs.git.path'));
-        Result.SvnPath := JsonString(TAtlasJsonText.ValueAt(mRoot, 'vcs.svn.path'));
-        // Außerhalb 1–300 gilt die Vorgabe, wie im Parser des Servers.
-        mSeconds := StrToIntDef(TAtlasJsonText.ValueAt(mRoot, 'vcs.timeoutSeconds'), cDefaultTimeoutSeconds);
-        if (mSeconds < cMinTimeoutSeconds) or (mSeconds > cMaxTimeoutSeconds) then
-        begin
-          mSeconds := cDefaultTimeoutSeconds;
-        end;
-        Result.TimeoutMs := Cardinal(mSeconds) * 1000;
-        Result.Projects := TAtlasVcsProjects.Read(TAtlasJsonText.ValueAt(mRoot, TAtlasVcsProjects.cPath));
-      end;
-    finally
-      mRoot.Free;
-    end;
+    Result := TVcsSettings.Parse(TAtlasTextFile.Load(AFileName).Text);
   except
     // Gesperrt oder unlesbar: Vorgaben.
     on Exception do

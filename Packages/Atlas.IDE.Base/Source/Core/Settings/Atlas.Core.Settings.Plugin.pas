@@ -83,6 +83,8 @@ type
     cMaxTestsAffectedDepth = Atlas.Core.Settings.Plugin.Build.cMaxTestsAffectedDepth;
     cMinTestsFromDebugStopMaxArray = Atlas.Core.Settings.Plugin.Debug.cMinTestsFromDebugStopMaxArray;
     cMaxTestsFromDebugStopMaxArray = Atlas.Core.Settings.Plugin.Debug.cMaxTestsFromDebugStopMaxArray;
+    cMinTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMinTestsSlowMs;
+    cMaxTestsSlowMs = Atlas.Core.Settings.Plugin.Build.cMaxTestsSlowMs;
     cMinDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMinDataFlowDepth;
     cMaxDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMaxDataFlowDepth;
     cMinStickyLines = Atlas.Core.Settings.Plugin.Editor.cMinStickyLines;
@@ -349,6 +351,8 @@ type
     property AssistantsEdit: Boolean read FBuild.AssistantsEdit write FBuild.AssistantsEdit;
     property BuildOnOpen: Boolean read FBuild.BuildOnOpen write FBuild.BuildOnOpen;
     property BuildOnOpenKind: string read FBuild.BuildOnOpenKind write FBuild.BuildOnOpenKind;
+    property BuildStopRunningProgram: string read FBuild.BuildStopRunningProgram
+      write FBuild.BuildStopRunningProgram;
     property BuildOnOpenScope: string read FBuild.BuildOnOpenScope write FBuild.BuildOnOpenScope;
     property BuildOnOpenDelayMs: Integer read FBuild.BuildOnOpenDelayMs write FBuild.BuildOnOpenDelayMs;
     property BuildOnOpenExclude: string read FBuild.BuildOnOpenExclude write FBuild.BuildOnOpenExclude;
@@ -386,6 +390,10 @@ type
       write FDebug.TestsFromDebugStopProperties;
     property TestsFromDebugStopMaxArray: Integer read FDebug.TestsFromDebugStopMaxArray
       write FDebug.TestsFromDebugStopMaxArray;
+    property TestsCompare: Boolean read FBuild.TestsCompare write FBuild.TestsCompare;
+    property TestsCompareFormat: Boolean read FBuild.TestsCompareFormat write FBuild.TestsCompareFormat;
+    property TestsShowDuration: Boolean read FBuild.TestsShowDuration write FBuild.TestsShowDuration;
+    property TestsSlowMs: Integer read FBuild.TestsSlowMs write FBuild.TestsSlowMs;
     property BuildZeroHints: Boolean read FBuild.BuildZeroHints write FBuild.BuildZeroHints;
     property ShowInterfaceCost: Boolean read FBuild.ShowInterfaceCost write FBuild.ShowInterfaceCost;
     property BuildSummary: Boolean read FBuild.BuildSummary write FBuild.BuildSummary;
@@ -440,6 +448,9 @@ type
       write FDebug.DebugExplainAccessViolation;
     property DebugExplainAccessViolationAllowCalls: Boolean read FDebug.DebugExplainAccessViolationAllowCalls
       write FDebug.DebugExplainAccessViolationAllowCalls;
+    property DebugModuleOfAddress: Boolean read FDebug.DebugModuleOfAddress write FDebug.DebugModuleOfAddress;
+    property DebugDeadlocks: Boolean read FDebug.DebugDeadlocks write FDebug.DebugDeadlocks;
+
     property DebugExceptionHistory: Boolean read FDebug.DebugExceptionHistory write FDebug.DebugExceptionHistory;
     property DebugJustMyCode: Boolean read FDebug.DebugJustMyCode write FDebug.DebugJustMyCode;
     property DebugExceptionBanner: Boolean read FDebug.DebugExceptionBanner write FDebug.DebugExceptionBanner;

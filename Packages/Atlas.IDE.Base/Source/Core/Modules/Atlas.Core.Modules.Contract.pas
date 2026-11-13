@@ -33,9 +33,13 @@ const
   /// 9: TAtlasMenuEntry.Group und When, TAtlasMenuContext, TAtlasMenuWhen (Kontextmenü des Editors).
   /// 10 (#2127): IAtlasIssueWork.Restore, issues.reopened, issues.reviewStates.
   /// 11 (#2126): issues.reviewBuild, issues.reviewComment.
-  /// 12 (#1873): IAtlasDebugStopSource (Atlas.IDE.Contracts.DebugStop), tests.fromDebugStop(.fields, .properties,
+  /// 12 (#2135): IAtlasIssueWork.Forget.
+  /// 13 (#1772): TAtlasProjectTests.Slowest, tests.showDuration, tests.slowMs; dazu die Einstellungen tests.stale
+  /// (#1770), tests.failureAtAssert, tests.failureInline (#1771), tests.compare (#1779).
+  /// 14 (#1820, #587): debug.moduleOfAddress, debug.deadlocks.
+  /// 15 (#1873): IAtlasDebugStopSource (Atlas.IDE.Contracts.DebugStop), tests.fromDebugStop(.fields, .properties,
   /// .maxArray).
-  cAtlasCoreContractVersion = 12;
+  cAtlasCoreContractVersion = 15;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
   /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';
