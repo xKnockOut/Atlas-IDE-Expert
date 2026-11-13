@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Neu
+- Zwei Prüfregeln für DUnitX-Tests (#1882, Gruppe Packages und Tests, Warnung): `dunitx-testcase-mismatch` meldet ein `[TestCase]`, dessen Werte nicht zur Methode passen (Zahl der Werte und Parameter, Wert passt nicht zum Typ: Ganzzahl, Gleitkomma, Boolean, Aufzählung der Datei; Methode ohne Parameter), mit beiden Zahlen bzw. dem Parameter in der Meldung; geteilt wird wie bei DUnitX am Trennzeichen aus dem dritten Argument, auch die neueren Formen `TestCase('Werte')` und `NamedTestCase` werden erkannt. `dunitx-fixture-not-registered` meldet Testklassen, die DUnitX nie findet: weder `initialization` (auch über Hilfsroutinen der Unit) noch eine andere Unit des Projekts registriert sie, und sie haben kein `[TestFixture]` oder der Runner der `.dpr` sucht nicht über RTTI (`UseRTTI := True` fehlt); Korrekturen `TDUnitX.RegisterTestFixture(…)` in `initialization` bzw. `[TestFixture]` vor der Klasse. Außerdem meldet sie Testunits, die in keinem Testprojekt der Gruppe stehen, mit Korrektur in `.dpr` und `.dproj` bei genau einem Testprojekt; eigene Registrierfunktionen über die Option `registrationCalls`.
+
 ## [2.1.0] - 2026-11-13
 
 ### Neu

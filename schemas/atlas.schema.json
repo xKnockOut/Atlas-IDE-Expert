@@ -433,6 +433,15 @@
                 "description": "Nur dunitx-test-without-assert (#945): Aufrufe, die als Prüfung zählen, als Muster mit * und ?; ersetzt die Vorgabe. System.Assert und Klassen mit Assert im Namen zählen immer.",
                 "x-description-en": "Only dunitx-test-without-assert (#945): calls that count as a check, as patterns with * and ?; replaces the default. System.Assert and classes with Assert in the name always count."
               },
+              "registrationCalls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur dunitx-fixture-not-registered (#1882): eigene Registrierfunktionen, die alle Testklassen einer Unit registrieren, wenn initialization sie aufruft, als Name oder Klasse.Name.",
+                "x-description-en": "Only dunitx-fixture-not-registered (#1882): own registration functions that register all test classes of a unit when called in initialization, as Name or Class.Name."
+              },
               "selfRegistering": {
                 "type": "array",
                 "items": {

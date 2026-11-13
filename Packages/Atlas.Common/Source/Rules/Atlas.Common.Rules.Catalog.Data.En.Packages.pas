@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnPackages: array[0..61] of string = (
+  cCatalogLinesEnPackages: array[0..91] of string = (
     '{',
     '      "id": "implicit-package-import",',
     '      "name": "Implicit package import",',
@@ -73,6 +73,48 @@ const
     '            "Check*"',
     '          ],',
     '          "description": "Calls that count as a check, as patterns with * and ?; replaces the default."',
+    '        }',
+    '      ],',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "dunitx-testcase-mismatch",',
+    '      "name": "TestCase does not match the method",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "packages",',
+    '      "description": "A [TestCase] whose values DUnitX cannot pass to the method, which only shows when the tests run: the number of values differs from the number of parameters (DUnitX calls through ' +
+    'RTTI, default values do not count), a value does not fit the type of its parameter, or the method has no parameters at all. Values are split like DUnitX does: at every character of the separator (thir' +
+    'd argument, default comma; no quotes), an empty text gives no value. Checked types: integers (decimal or hex, $FF, 0xFF), floating point (point or comma as decimal separator, DUnitX turns a comma into' +
+    ' a point), Boolean (True or False) and enumerations declared in the same file (by name); other types are not checked, nor are values that are not a string literal (a constant, ''a'' + ''b''). Besides Test' +
+    'Case(''Name'', ''Values''[, ''Separator'']) the newer forms TestCase(''Values''[, ''Separator''[, Trim]]) and NamedTestCase(''Name'', ''Values'') are recognized. Only in test units (uses DUnitX.TestFramework, TestF' +
+    'ramework or TestInsight.*). High confidence. No quick fix: what was meant is unclear.",',
+    '      "bad": "[Test]\n[TestCase(''Rest'', ''7,2'')]\nprocedure Teile(A, B, Rest: Integer);",',
+    '      "good": "[Test]\n[TestCase(''Rest'', ''7,2,1'')]\nprocedure Teile(A, B, Rest: Integer);",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "dunitx-fixture-not-registered",',
+    '      "name": "DUnitX fixture never registered",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "packages",',
+    '      "description": "A test class DUnitX never sees, so its tests are silently missing. DUnitX finds test classes through RegisterTestFixture or, when the runner in the .dpr sets UseRTTI := True (DUn' +
+    'itX project template), through the [TestFixture] attribute. 1. Not registered: a class with [Test] or [TestCase] methods that neither the initialization section of the unit nor a routine of the unit c' +
+    'alled from there names (TDUnitX.RegisterTestFixture(TClass), own helpers such as Register([TA, TB])) and no other unit of its projects names, and that either has no [TestFixture] or belongs to a proje' +
+    'ct whose .dpr creates a runner (TDUnitX.CreateRunner) without UseRTTI := True. A call from the option registrationCalls in initialization (an own registration function that finds all classes) counts f' +
+    'or all classes of the unit. Generic and abstract classes and ancestors of other classes in the file stay silent. Quick fixes: add TDUnitX.RegisterTestFixture(TClass); to initialization, creating the s' +
+    'ection if needed; with an RTTI runner also add [TestFixture] in front of the class. 2. Unit in no test project: the group has test projects, but none contains the unit. Quick fix with exactly one test' +
+    ' project: add the unit to the uses of the .dpr and as DCCReference to the .dproj. Only in test units and only with the projects of the group known; without them the rule stays silent. Medium confidenc' +
+    'e.",',
+    '      "bad": "[TestFixture]\nTImportTests = class\n  …\nend;\n…\nend.",',
+    '      "good": "[TestFixture]\nTImportTests = class\n  …\nend;\n…\ninitialization\n  TDUnitX.RegisterTestFixture(TImportTests);\nend.",',
+    '      "options": [',
+    '        {',
+    '          "name": "registrationCalls",',
+    '          "type": "string-list",',
+    '          "default": [],',
+    '          "description": "Own registration functions that register all test classes of a unit when called in initialization, as Name or Class.Name."',
     '        }',
     '      ],',
     '      "safeFix": false',

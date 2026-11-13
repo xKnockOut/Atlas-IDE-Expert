@@ -753,6 +753,12 @@ begin
   Parse('{"rules": {"unrelated-class-cast": {"allowTypes": "TEdit"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.Contains(Issues[0].Message, '"allowTypes"');
+  // registrationCalls von dunitx-fixture-not-registered (#1882).
+  Parse('{"rules": {"dunitx-fixture-not-registered": {"registrationCalls": ["RegistriereAlle"]}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"dunitx-fixture-not-registered": {"registrationCalls": "RegistriereAlle"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"registrationCalls"');
   // pureFunctions von ignored-result (#624).
   Parse('{"rules": {"ignored-result": {"pureFunctions": ["Bereinigt", "TText.Clean"]}}}', Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));

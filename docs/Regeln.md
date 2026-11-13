@@ -21,7 +21,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
 | [Stil und Metriken](#gruppe-style) | 56 |
-| [Packages und Tests](#gruppe-packages) | 3 |
+| [Packages und Tests](#gruppe-packages) | 5 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
 <a id="gruppe-find-bugs"></a>
@@ -432,6 +432,8 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`implicit-package-import`](#implicit-package-import) | Implizit eingebundene Unit | Code Smell | Warnung |
 | [`ota-notifier-not-removed`](#ota-notifier-not-removed) | IDE-Notifier ohne RemoveNotifier | Bug | Warnung |
 | [`dunitx-test-without-assert`](#dunitx-test-without-assert) | DUnitX-Test ohne Assert | Code Smell | Hinweis |
+| [`dunitx-testcase-mismatch`](#dunitx-testcase-mismatch) | TestCase passt nicht zur Methode | Bug | Warnung |
+| [`dunitx-fixture-not-registered`](#dunitx-fixture-not-registered) | DUnitX-Testklasse nie registriert | Bug | Warnung |
 
 <a id="gruppe-internal"></a>
 ### Atlas intern
@@ -4674,6 +4676,64 @@ begin
   FImport.Laden('leer.csv');
   Assert.AreEqual(0, FImport.Anzahl);
 end;
+```
+
+<a id="dunitx-testcase-mismatch"></a>
+### dunitx-testcase-mismatch
+
+**TestCase passt nicht zur Methode** · Bug · Warnung · Gruppe Packages und Tests
+
+Ein [TestCase], dessen Werte DUnitX der Methode nicht übergeben kann, was erst beim Testlauf auffällt: Die Zahl der Werte weicht von der Zahl der Parameter ab (DUnitX ruft über RTTI auf, Vorgabewerte zählen nicht), ein Wert passt nicht zum Typ seines Parameters, oder die Methode hat gar keine Parameter. Geteilt wird wie bei DUnitX: an jedem Zeichen des Trennzeichens (drittes Argument, Vorgabe Komma; keine Anführungszeichen), ein leerer Text ergibt keinen Wert. Geprüfte Typen: Ganzzahlen (dezimal oder hex, $FF, 0xFF), Gleitkomma (Punkt oder Komma als Dezimaltrenner, DUnitX macht aus dem Komma einen Punkt), Boolean (True oder False) und Aufzählungen derselben Datei (über ihre Namen); andere Typen prüft die Regel nicht, ebenso Werte, die kein String-Literal sind (eine Konstante, 'a' + 'b'). Neben TestCase('Name', 'Werte'[, 'Trenner']) kennt sie die neueren Formen TestCase('Werte'[, 'Trenner'[, Trim]]) und NamedTestCase('Name', 'Werte'). Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch. Keine Schnellkorrektur: Was gemeint war, ist offen.
+
+Mit Treffer:
+
+```pascal
+[Test]
+[TestCase('Rest', '7,2')]
+procedure Teile(A, B, Rest: Integer);
+```
+
+Richtig:
+
+```pascal
+[Test]
+[TestCase('Rest', '7,2,1')]
+procedure Teile(A, B, Rest: Integer);
+```
+
+<a id="dunitx-fixture-not-registered"></a>
+### dunitx-fixture-not-registered
+
+**DUnitX-Testklasse nie registriert** · Bug · Warnung · Gruppe Packages und Tests
+
+Eine Testklasse, die DUnitX nie zu sehen bekommt: Ihre Tests fehlen still. DUnitX findet Testklassen über RegisterTestFixture oder, wenn der Runner der .dpr UseRTTI := True setzt (Projektvorlage von DUnitX), über das Attribut [TestFixture]. 1. Nicht registriert: eine Klasse mit [Test]- bzw. [TestCase]-Methoden, die weder der initialization-Abschnitt der Unit noch eine Routine der Unit, die von dort aufgerufen wird, nennt (TDUnitX.RegisterTestFixture(TKlasse), eigene Helfer wie Registriere([TA, TB])) und keine andere Unit ihrer Projekte nennt, und die außerdem kein [TestFixture] hat oder zu einem Projekt gehört, dessen .dpr einen Runner (TDUnitX.CreateRunner) ohne UseRTTI := True anlegt. Ein Aufruf aus der Option registrationCalls in initialization (eigene Registrierfunktion, die alle Klassen findet) zählt für alle Klassen der Unit. Generische und abstrakte Klassen sowie Vorfahren anderer Klassen der Datei bleiben still. Schnellkorrekturen: TDUnitX.RegisterTestFixture(TKlasse); in initialization ergänzen, den Abschnitt bei Bedarf anlegen; bei einem Runner mit RTTI auch [TestFixture] vor die Klasse setzen. 2. Unit in keinem Testprojekt: Die Gruppe hat Testprojekte, aber keines enthält die Unit. Schnellkorrektur bei genau einem Testprojekt: Unit in uses der .dpr und als DCCReference in die .dproj eintragen. Nur in Testunits und nur mit bekannten Projekten der Gruppe; ohne sie schweigt die Regel. Sicherheit mittel.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `registrationCalls` | string-list | `[]` | Eigene Registrierfunktionen, die alle Testklassen einer Unit registrieren, wenn initialization sie aufruft, als Name oder Klasse.Name. |
+
+Mit Treffer:
+
+```pascal
+[TestFixture]
+TImportTests = class
+  …
+end;
+…
+end.
+```
+
+Richtig:
+
+```pascal
+[TestFixture]
+TImportTests = class
+  …
+end;
+…
+initialization
+  TDUnitX.RegisterTestFixture(TImportTests);
+end.
 ```
 
 <a id="event-call-without-assigned"></a>
