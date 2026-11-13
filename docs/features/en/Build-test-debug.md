@@ -758,6 +758,20 @@ Settings: `debug.explainAccessViolation`, `debug.moduleOfAddress`
 
 Settings: `debug.deadlocks`
 
+<a id="window-atlasdebugcallstack"></a>
+### Atlas call stack
+
+- Atlas > "Atlas call stack" opens a dockable window that shows the call stack of the current thread at every stop: for each frame the routine with its parameters and `Unit.pas:line`.
+- Consecutive frames from the RTL, VCL and libraries are collapsed as "▸ 7 calls in VCL", with the first and last routine as a hint; a click, Enter or double click expands them.
+- Parameters carry the names from the declaration (the server reads the routine at the frame's line). Atlas evaluates them and shows visualizer texts, strings in quotes and objects with class and `Name` field, for example `ACustomer = TCustomer 'Miller'`.
+- The search (Ctrl+F) finds routine, unit or value, also inside collapsed groups ("▸ 7 calls in VCL · 1 matches"); matches are bold.
+- A click or Enter on a frame jumps to the line.
+- "Copy" (Ctrl+C) puts the stack on the clipboard as text or as a Markdown list (`` `Unit.pas:line` ``), optionally only your own code.
+- "Compare with last stop" shows the stack of the last stop at the same place next to it and marks changed frames and values with "≠". Atlas remembers at most 20 places per debug session while the window is open.
+- Limits: values of deeper frames are evaluated by address (objects and pointers); simple values are already in the IDE's frame text. Frames of anonymous methods and routines without a parameter list in the implementation section get no names.
+
+Settings: `debug.callStackWindow` (off: the IDE call stack stays as it is), `debug.callStackWindow.evaluateParams`
+
 <a id="window-atlasdebugparallelstacks"></a>
 ### Parallel stacks
 
