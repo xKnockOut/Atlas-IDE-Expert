@@ -1257,6 +1257,12 @@ begin
     ' "reviewStates": "QA"}]}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.IsTrue(mIssues[0].Message.Contains('reviewStates'), mIssues[0].Message);
+  // #2134: githubStateTarget nur project oder label, githubProject ein Text.
+  Parse('{"issues": {"connections": [{"name": "A", "provider": "github", "url": "https://github.com",' +
+    ' "githubStateTarget": "label", "githubProject": "beispiel/4"}, {"name": "B", "provider": "github",' +
+    ' "url": "https://github.example.com", "githubStateTarget": "beides", "githubProject": 4}]}}', mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)));
+  Assert.IsTrue(mIssues[0].Message.Contains('githubStateTarget'), mIssues[0].Message);
 end;
 procedure TConfigurationFeatureTests.ReadsMcpDisabledTools;
 var

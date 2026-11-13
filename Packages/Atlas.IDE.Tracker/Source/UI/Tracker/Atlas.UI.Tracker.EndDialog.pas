@@ -295,6 +295,14 @@ type
     /// „Zur Prüfung geben“, Kommentar“).</summary>
     class function EndSummary(const APlan: TAtlasTrackerEndPlan; const AProgress: TAtlasTrackerEndProgress): string;
       static;
+    /// <summary>AChange ohne Zustand, wenn ihn das Projekt führte (#2134, AStatus.After): Den nennt die eigene Zeile
+    /// zum Status im Projekt.</summary>
+    class function WithoutProjectState(const AChange: TAtlasTrackerWrite;
+      const AStatus: TAtlasTrackerProjectStatus): TAtlasTrackerWrite; static;
+    /// <summary>Zeilen nach „Beginnen“ ohne Zustandsmaschine: was geschrieben wurde, dann der Status im Projekt
+    /// (#2134) in eigenen Zeilen.</summary>
+    class function StartLines(const AKey: string; const AChange: TAtlasTrackerWrite;
+      const AResult: TAtlasTrackerWriteResult): TArray<string>; static;
   end;
 
 implementation
@@ -1342,7 +1350,8 @@ begin
   end;
   if AProgress.TransitionDone and APlan.TransitionPart.HasWork then
   begin
-    mParts := mParts + [TAtlasTrackerEndDialog.SummaryText(APlan.TransitionPart)];
+    mParts := mParts + [TAtlasTrackerEndDialog.SummaryText(TAtlasTrackerEndTexts.WithoutProjectState(
+      APlan.TransitionPart, AProgress.Project))];
   end;
   if AProgress.CommentDone and APlan.CommentPart.HasWork then
   begin
@@ -1353,6 +1362,31 @@ begin
     mParts := mParts + [TAtlasGitHubStrings.Text(TAtlasGitHubTextId.PartDuplicateFallback)];
   end;
   Result := string.Join(', ', mParts);
+end;
+
+class function TAtlasTrackerEndTexts.WithoutProjectState(const AChange: TAtlasTrackerWrite;
+  const AStatus: TAtlasTrackerProjectStatus): TAtlasTrackerWrite;
+begin
+  Result := AChange;
+  if AStatus.After <> '' then
+  begin
+    Result.State := '';
+  end;
+end;
+
+class function TAtlasTrackerEndTexts.StartLines(const AKey: string; const AChange: TAtlasTrackerWrite;
+  const AResult: TAtlasTrackerWriteResult): TArray<string>;
+var
+  mShown: TAtlasTrackerWrite;
+begin
+  Result := nil;
+  mShown := WithoutProjectState(AChange, AResult.Project);
+  if mShown.HasWork then
+  begin
+    Result := Result + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartSynced,
+      [AKey, TAtlasTrackerEndDialog.SummaryText(mShown)])];
+  end;
+  Result := Result + TAtlasGitHubStrings.ProjectLines(AKey, AResult.Project);
 end;
 
 procedure TAtlasTrackerEndDialog.DialogCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -1386,6 +1420,12 @@ end;
 
 class function TAtlasTrackerEndDialog.ErrorText(const AKey: string; const AResult: TAtlasTrackerWriteResult): string;
 begin
+  // Zustand ohne Option im Statusfeld des Projekts (#2134): der Grund statt „ungültige Antwort“.
+  if AResult.Project.MissingOption <> '' then
+  begin
+    Exit(TAtlasGitHubStrings.Fmt(TAtlasGitHubTextId.ProjectMissingOption, [AKey, AResult.Project.Project,
+      AResult.Project.MissingOption]));
+  end;
   case AResult.Error of
     TAtlasCiFetchError.None:
       Exit('');

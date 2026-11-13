@@ -1095,6 +1095,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.GitHubParse.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHub.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.GitHubBoards.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Internals.GitHubGraphQl.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Internals.GitHubProjects.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.YouTrackWorkflow.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Transitions.pas"/>
@@ -1165,6 +1167,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Board.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Sprint.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Board.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Internals.GitHubProjects.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Transitions.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.EndSteps.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.StatusState.Tests.pas"/>

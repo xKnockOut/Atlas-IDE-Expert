@@ -3850,6 +3850,23 @@
                 },
                 "description": "Prüfzustände dieses Trackers (#2126, #2127); fehlen sie, gilt issues.reviewStates.",
                 "x-description-en": "Review states of this tracker (#2126, #2127); if missing, issues.reviewStates applies."
+              },
+              "githubStateTarget": {
+                "type": "string",
+                "enum": [
+                  "project",
+                  "label"
+                ],
+                "description": "GitHub: Zustand im Projektfeld „Status“ (project) oder als Label (label) für diesen Tracker (#2134); fehlt er, gilt issues.github.stateTarget.",
+                "x-description-en": "GitHub: state in the project field \"Status\" (project) or as a label (label) for this tracker (#2134); if missing, issues.github.stateTarget applies."
+              },
+              "githubProject": {
+                "type": "string",
+                "examples": [
+                  "xKnockOut/4"
+                ],
+                "description": "GitHub: Projekt \"<owner>/<nummer>\" für Zustand und Aufnahme bei diesem Tracker (#2134); fehlt es, gilt issues.github.project.",
+                "x-description-en": "GitHub: project \"<owner>/<number>\" for state and adding at this tracker (#2134); if missing, issues.github.project applies."
               }
             }
           }

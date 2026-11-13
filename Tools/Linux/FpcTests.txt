@@ -371,6 +371,7 @@ Atlas.Core.Hover.Layout.Tests
 Atlas.Core.Settings.Tests
 Atlas.Core.Tracker.Transitions.Tests
 Atlas.Core.Tracker.EndSteps.Tests
+Atlas.Core.Tracker.Internals.GitHubProjects.Tests
 Atlas.Core.Tracker.StatusState.Tests
 Atlas.Core.Tracker.SprintStart.Tests
 Atlas.Core.Tests.Stale.Tests

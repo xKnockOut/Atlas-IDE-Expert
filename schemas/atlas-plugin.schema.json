@@ -8693,6 +8693,40 @@
       "x-control": "Textfeld",
       "x-issue": "#2126"
     },
+    "IssuesGitHubStateTarget": {
+      "type": "string",
+      "enum": [
+        "project",
+        "label"
+      ],
+      "default": "project",
+      "description": "Wo „Beginnen“ und „Beenden“ bei GitHub den Zustand führen: im Projektfeld „Status“ (project), wenn das Issue in einem Projekt (Projects v2) liegt, sonst als Label; oder immer als Label (label, wie bis 2.1). Das Statusfeld ist „Status“, sonst das erste Auswahlfeld außer der Priorität; der Zustand wird der Option gleichen Namens zugeordnet. Das Token braucht dazu die Berechtigung „project“, sonst bleibt es beim Label. Je Verbindung überschreibbar (githubStateTarget).",
+      "x-key": "issues.github.stateTarget",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Auswahl",
+      "x-issue": "#2134"
+    },
+    "IssuesGitHubProject": {
+      "type": "string",
+      "default": "",
+      "description": "GitHub-Projekt für den Zustand als „<owner>/<nummer>“ (z. B. „xKnockOut/4“): gilt, wenn ein Issue in mehreren Projekten liegt, und ist das Projekt für die Aufnahme (issues.github.addToProject). Leer = das erste Projekt des Issues (die Meldung nennt es). Je Verbindung überschreibbar (githubProject).",
+      "x-key": "issues.github.project",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Klappliste mit Werten vom Tracker",
+      "x-issue": "#2134"
+    },
+    "IssuesGitHubAddToProject": {
+      "type": "boolean",
+      "default": false,
+      "description": "Issues, die in keinem Projekt liegen, beim Beginnen in das Projekt aus issues.github.project aufnehmen und dort den Status setzen. Aus (oder ohne eingestelltes Projekt): Zustand als Label.",
+      "x-key": "issues.github.addToProject",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2134"
+    },
     "IssuesTimeTracking": {
       "type": "boolean",
       "default": false,
