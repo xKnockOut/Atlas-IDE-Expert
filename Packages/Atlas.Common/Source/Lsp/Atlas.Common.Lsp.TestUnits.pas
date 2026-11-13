@@ -8,6 +8,9 @@
 //     Client sie (Befehl atlas.openFile).
 //   - Code-Aktion „Zur Testunit wechseln“ bzw. „Zur Unit wechseln“, wenn das
 //     Gegenstück existiert.
+//   - Code-Aktion „Testfall für TFoo.Bar anlegen“ an einer Methode oder Routine
+//     (#1226): Entwurf mit Aufruf und Platzhalter-Prüfungen in der Testunit;
+//     fehlt sie, entsteht sie wie oben mit dem Entwurf statt Assert.Fail.
 //   - Befehl atlas.server.testUnit [uri, zeile?]: Gegenstück der Unit für den
 //     Befehl „Zwischen Unit und Testunit wechseln“ und die Code Lens des
 //     Plugins, samt Edit zum Anlegen, wenn es fehlt.
@@ -78,6 +81,11 @@ type
     FStore: IDocumentStore;
     FContextFor: TTestUnitContextProvider;
     function ResolveUri(const AUri: string; ALine: Integer; const AContext: TTestUnitContext): TTestUnitTarget;
+    function SourceOf(const AUri: string; const AContext: TTestUnitContext; out AText: string;
+      out ATokens: TArray<TPascalToken>): Boolean;
+    function TextOf(const AFileName: string; const AContext: TTestUnitContext): string;
+    function DraftAction(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
+      const ATarget: TTestUnitTarget): TJSONObject;
   public
     constructor Create(const AStore: IDocumentStore; const AContextFor: TTestUnitContextProvider);
     /// <summary>Gegenstück der Unit AFileName mit Text AText; ALine 0-basiert, -1 = ohne Zeile.</summary>
@@ -92,7 +100,11 @@ type
     class function TestFolder(const AContext: TTestUnitContext): string; static;
     /// <summary>WorkspaceEdit, das die Testunit anlegt und ins Testprojekt einträgt. Der Aufrufer
     /// übernimmt das Objekt; nil, wenn ATarget nichts anzulegen hat.</summary>
-    class function CreateEdit(const ATarget: TTestUnitTarget; const AContext: TTestUnitContext): TJSONObject; static;
+    class function CreateEdit(const ATarget: TTestUnitTarget; const AContext: TTestUnitContext): TJSONObject;
+      overload; static;
+    /// <summary>Wie oben; ADrafts ersetzen gleichnamige Tests des Gerüsts bzw. kommen dazu (#1226).</summary>
+    class function CreateEdit(const ATarget: TTestUnitTarget; const AContext: TTestUnitContext;
+      const ADrafts: TArray<TTestUnitMethod>): TJSONObject; overload; static;
     /// <summary>Code-Aktionen zu AUri an ALine. Der Aufrufer übernimmt die Objekte.</summary>
     function Actions(const AUri: string; ALine: Integer): TArray<TJSONObject>;
     /// <summary>atlas.server.testUnit [uri, zeile?]: Gegenstück als Objekt (unit, isTest,
@@ -113,6 +125,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.UnitTemplates,
+  Atlas.Common.Editing.TestDrafts,
+  Atlas.Common.Editing.TextChanges,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Localization.Texts;
 
@@ -121,7 +135,7 @@ uses
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
   TLspTestUnitsText = (UnitNotFound, NoTestProjectFoundDUnitX, SwitchToUnit, SwitchToTestUnit, CreateADUnitXTestUnit,
-    NeedsTheURIOfThe, FileBelongsToNoWorkspace, HasNeitherClassesNorRoutines);
+    NeedsTheURIOfThe, FileBelongsToNoWorkspace, HasNeitherClassesNorRoutines, CreateTestCase);
 
 const
   cTexts: array[TLspTestUnitsText] of TAtlasText = (
@@ -135,7 +149,8 @@ const
     (De: ' braucht die URI der Unit'; En: ' needs the URI of the unit'),
     (De: 'Datei gehört zu keinem Arbeitsbereich'; En: 'File belongs to no workspace'),
     (De: '%s hat weder Klassen noch Routinen im interface';
-     En: '%s has neither classes nor routines in the interface'));
+     En: '%s has neither classes nor routines in the interface'),
+    (De: 'Testfall für %s anlegen'; En: 'Create a test case for %s'));
 
 {$SCOPEDENUMS OFF}
 
@@ -312,6 +327,12 @@ end;
 
 class function TLspTestUnits.CreateEdit(const ATarget: TTestUnitTarget;
   const AContext: TTestUnitContext): TJSONObject;
+begin
+  Result := CreateEdit(ATarget, AContext, nil);
+end;
+
+class function TLspTestUnits.CreateEdit(const ATarget: TTestUnitTarget; const AContext: TTestUnitContext;
+  const ADrafts: TArray<TTestUnitMethod>): TJSONObject;
 var
   mChanges: TJSONArray;
   mCreation, mOptions: TJSONObject;
@@ -332,7 +353,7 @@ begin
   mCreation.AddPair('options', mOptions);
   mChanges.AddElement(mCreation);
   mChanges.AddElement(DocumentEdit(mNewUri, [TRuleEdit.Create(TTextRange.Create(0, 0, 0, 0),
-    TTestUnits.UnitText(ATarget.Counterpart, ATarget.Source, ATarget.ClassName, cLineBreak))]));
+    TTestUnits.UnitText(ATarget.Counterpart, ATarget.Source, ATarget.ClassName, cLineBreak, ADrafts))]));
   // Ins Testprojekt: uses der .dpr und DCCReference der .dproj, jeweils mit relativem Pfad.
   mRelative := TTestUnits.RelativePath(ExtractFilePath(AContext.TestProgram), ATarget.NewFile);
   mText := AContext.ReadText(AContext.TestProgram);
@@ -375,6 +396,50 @@ begin
   end;
 end;
 
+function TLspTestUnits.SourceOf(const AUri: string; const AContext: TTestUnitContext; out AText: string;
+  out ATokens: TArray<TPascalToken>): Boolean;
+var
+  mDocument: ITextDocument;
+begin
+  if FStore.TryGet(AUri, mDocument) then
+  begin
+    AText := mDocument.Text;
+    ATokens := TSyntaxTreeCache.Get(mDocument).Tree.Tokens;
+  end
+  else
+  begin
+    AText := AContext.ReadText(TDocumentUris.ToPath(AUri));
+    ATokens := TPascalLexer.Tokenize(AText);
+  end;
+  Result := AText <> '';
+end;
+
+function TLspTestUnits.TextOf(const AFileName: string; const AContext: TTestUnitContext): string;
+var
+  mDocument: ITextDocument;
+begin
+  // Offene Testunit: ungespeicherte Änderungen zählen.
+  if FStore.TryGet(TDocumentUris.FromPath(AFileName), mDocument) then
+  begin
+    Result := mDocument.Text;
+  end
+  else
+  begin
+    Result := AContext.ReadText(AFileName);
+  end;
+end;
+
+/// <summary>WorkspaceEdit mit zeilenweisen Änderungen von AOld nach ANew in AFileName.</summary>
+function ChangeEdit(const AFileName, AOld, ANew: string): TJSONObject;
+var
+  mChanges: TJSONArray;
+begin
+  mChanges := TJSONArray.Create;
+  mChanges.AddElement(DocumentEdit(TDocumentUris.FromPath(AFileName), TTextChanges.Diff(AOld, ANew)));
+  Result := TJSONObject.Create;
+  Result.AddPair('documentChanges', mChanges);
+end;
+
 function CommandJson(const ATitle, ACommand, AArgument: string): TJSONObject;
 var
   mArguments: TJSONArray;
@@ -385,6 +450,88 @@ begin
   Result.AddPair('title', ATitle);
   Result.AddPair('command', ACommand);
   Result.AddPair('arguments', mArguments);
+end;
+
+/// <summary>Kann zur Unit ATarget ein Testfall entstehen: keine Testunit, Zeile gegeben, Testunit da oder
+/// anlegbar?</summary>
+function CanDraft(const ATarget: TTestUnitTarget; ALine: Integer): Boolean;
+begin
+  Result := not ATarget.IsTest and (ALine >= 0);
+  if Result then
+  begin
+    Result := (ATarget.CounterpartFile <> '') or ATarget.CanCreate;
+  end;
+end;
+
+/// <summary>Edit, das die fehlende Testunit mit dem Entwurf anlegt; nil, wenn die Methode nicht zur Klasse des
+/// Gerüsts gehört.</summary>
+function NewUnitDraftEdit(const ATarget: TTestUnitTarget; const AContext: TTestUnitContext;
+  const ADraft: TTestDraft): TJSONObject;
+var
+  mDraft: TTestDraft;
+  mMethod: TTestUnitMethod;
+begin
+  // Gerüst wie #274 mit der Klasse der Methode; der Entwurf steht statt Assert.Fail.
+  if (ADraft.ClassName <> '') and not SameText(ADraft.ClassName, ATarget.ClassName) then
+  begin
+    Exit(nil);
+  end;
+  mDraft := ADraft;
+  if not mDraft.ClassMethod and TTestUnits.HasSubject(ATarget.Source, mDraft.ClassName) then
+  begin
+    mDraft.Subject := 'FSubject';
+  end;
+  mMethod.Name := mDraft.TestName;
+  mMethod.Target := mDraft.Target;
+  mMethod.Draft := TTestDrafts.MethodText(mDraft, cLineBreak);
+  Result := TLspTestUnits.CreateEdit(ATarget, AContext, [mMethod]);
+end;
+
+function TLspTestUnits.DraftAction(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
+  const ATarget: TTestUnitTarget): TJSONObject;
+var
+  mText, mOld, mNew, mName, mReason, mFile, mTitle: string;
+  mTokens: TArray<TPascalToken>;
+  mDraft: TTestDraft;
+  mEdit: TJSONObject;
+begin
+  Result := nil;
+  if not CanDraft(ATarget, ALine) or not SourceOf(AUri, AContext, mText, mTokens) or
+    not TTestDrafts.DraftAt(mText, mTokens, ATarget.Source, ALine, mDraft) then
+  begin
+    Exit;
+  end;
+  mDraft.Fixture := TTestUnits.FixtureName(mDraft.ClassName, ATarget.UnitName);
+  mDraft.UnitName := ATarget.UnitName;
+  if not mDraft.ClassMethod and (mDraft.ClassName <> '') then
+  begin
+    mDraft.CreateText := TTestUnits.CreateExpression(ATarget.Source, mDraft.ClassName);
+  end;
+  if ATarget.CounterpartFile <> '' then
+  begin
+    mFile := ATarget.CounterpartFile;
+    mOld := TextOf(mFile, AContext);
+    mEdit := nil;
+    if TTestDrafts.AddToTestUnit(mOld, mDraft, False, mNew, mName, mReason) then
+    begin
+      mEdit := ChangeEdit(mFile, mOld, mNew);
+    end;
+  end
+  else
+  begin
+    mFile := ATarget.NewFile;
+    mEdit := NewUnitDraftEdit(ATarget, AContext, mDraft);
+  end;
+  if mEdit = nil then
+  begin
+    Exit;
+  end;
+  mTitle := cTexts[TLspTestUnitsText.CreateTestCase].Fmt([mDraft.Target]);
+  Result := TJSONObject.Create;
+  Result.AddPair('title', mTitle);
+  Result.AddPair('kind', cRewriteKind);
+  Result.AddPair('edit', mEdit);
+  Result.AddPair('command', CommandJson(mTitle, cOpenFileCommand, TDocumentUris.FromPath(mFile)));
 end;
 
 function TLspTestUnits.Actions(const AUri: string; ALine: Integer): TArray<TJSONObject>;
@@ -404,6 +551,11 @@ begin
   begin
     Exit;
   end;
+  mAction := DraftAction(AUri, ALine, mContext, mTarget);
+  if mAction <> nil then
+  begin
+    Result := [mAction];
+  end;
   if mTarget.CounterpartFile <> '' then
   begin
     if mTarget.IsTest then
@@ -418,7 +570,7 @@ begin
     mAction.AddPair('title', mTitle);
     mAction.AddPair('kind', cRewriteKind);
     mAction.AddPair('command', CommandJson(mTitle, cOpenFileCommand, TDocumentUris.FromPath(mTarget.CounterpartFile)));
-    Result := [mAction];
+    Result := Result + [mAction];
     Exit;
   end;
   // Anlegen nur auf einer Klasse (#274) oder in einer Unit ohne Klassen.
@@ -438,7 +590,7 @@ begin
   mAction.AddPair('kind', cRewriteKind);
   mAction.AddPair('edit', mEdit);
   mAction.AddPair('command', CommandJson(mTitle, cOpenFileCommand, TDocumentUris.FromPath(mTarget.NewFile)));
-  Result := [mAction];
+  Result := Result + [mAction];
 end;
 
 function TLspTestUnits.Execute(const AArguments: TJSONArray): TJSONValue;

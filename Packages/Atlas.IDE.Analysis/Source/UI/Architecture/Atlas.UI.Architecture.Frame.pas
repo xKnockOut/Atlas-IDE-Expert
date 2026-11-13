@@ -266,6 +266,10 @@ uses
 
 const
   cScopeValues: array[0..1] of string = ('projectGroup', 'project');
+  /// <summary>Abstand oben der Beschriftungen in der Leiste bei 96 dpi, mittig zu den Feldern.</summary>
+  cBarLabelTop = 7;
+  /// <summary>Feste Breite des Filterfelds bei 96 dpi; in der fließenden Leiste bricht es um.</summary>
+  cFilterWidth = 200;
   /// <summary>Spalten der Tabelle „Zentrale Units“ in Reihenfolge der Anzeige.</summary>
   cCentralColumns: array[0..5] of TAtlasArchColumn = (TAtlasArchColumn.Name, TAtlasArchColumn.Subsystem,
     TAtlasArchColumn.Direct, TAtlasArchColumn.Total, TAtlasArchColumn.Uses_, TAtlasArchColumn.Role);
@@ -395,7 +399,7 @@ function NewFlowLabel(AFrame: TArchFrame; AParent: TFlowPanel): TLabel;
 begin
   Result := NewLabel(AFrame, AParent, alNone);
   Result.AutoSize := True;
-  Result.Margins.Top := AFrame.ScaleValue(7);
+  Result.Margins.Top := AFrame.ScaleValue(cBarLabelTop);
 end;
 
 procedure UpdateResolutionInfo(AFrame: TArchFrame; AValue: Double);
@@ -491,7 +495,7 @@ begin
   AFrame.FParts.Filter.Parent := AFrame.FParts.Top;
   AFrame.FParts.Filter.AlignWithMargins := True;
   // Feste Breite statt alClient: in der fließenden Leiste bricht das Feld bei Bedarf um.
-  AFrame.FParts.Filter.Width := AFrame.ScaleValue(200);
+  AFrame.FParts.Filter.Width := AFrame.ScaleValue(cFilterWidth);
   AFrame.FParts.Filter.TextHint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFilterHint);
   AFrame.FParts.Filter.OnChange := AFrame.FState.Events.FilterChange;
   AFrame.FParts.Status := NewLabel(AFrame, AFrame, alBottom);

@@ -114,6 +114,7 @@ Atlas.Common.Editing.SqlText.Tests
 Atlas.Common.Editing.StatementText.Tests
 Atlas.Common.Editing.StringLiterals.Tests
 Atlas.Common.Editing.SuggestConst.Tests
+Atlas.Common.Editing.TestDrafts.Tests
 Atlas.Common.Editing.TestUnits.Tests
 Atlas.Common.Editing.TypeAlias.Tests
 Atlas.Common.Editing.TypeComments.Tests
@@ -138,6 +139,7 @@ Atlas.Common.JsonRpc.PendingRequests.Tests
 Atlas.Common.JsonRpc.StreamTransport.Tests
 Atlas.Common.JsonRpc.TracingTransport.Tests
 Atlas.Common.JsonRpc.WorkerPool.Tests
+Atlas.Common.Leaks.Setup.Tests
 Atlas.Common.Localization.Texts.Tests
 Atlas.Common.Logging.EntryText.Tests
 Atlas.Common.Logging.Providers.Logger.Tests
@@ -177,9 +179,12 @@ Atlas.Common.Mcp.ExtractTools.Tests
 Atlas.Common.Mcp.Prompts.Tests
 Atlas.Common.Mcp.Server.Tests
 Atlas.Common.Mcp.TestTools.Tests
+Atlas.Common.Mcp.ProfileTools.Tests
 Atlas.Common.Metrics.Calculator.Tests
 Atlas.Common.Metrics.Report.Tests
 Atlas.Common.Monitor.Servers.Tests
+Atlas.Common.Profiling.Profile.Tests
+Atlas.Common.Profiling.Report.Tests
 Atlas.Common.Monitor.Settings.Tests
 Atlas.Common.Monitor.Texts.Tests
 Atlas.Common.Monitor.Commands.Tests
@@ -308,6 +313,7 @@ Atlas.Common.Updates.Tests
 # Plugin-Kern
 Atlas.Core.Assistants.EditPlan.Tests
 Atlas.Core.Problems.IdeErrors.Tests
+Atlas.Core.Problems.AtCaret.Tests
 Atlas.Core.Problems.Explanation.Tests
 Atlas.Core.Hover.View.Tests
 Atlas.Core.Style.Listeners.Tests
@@ -361,3 +367,4 @@ Atlas.Core.Tracker.Transitions.Tests
 Atlas.Core.Tracker.EndSteps.Tests
 Atlas.Core.Tracker.StatusState.Tests
 Atlas.Core.Tracker.SprintStart.Tests
+Atlas.Core.Tests.Stale.Tests
