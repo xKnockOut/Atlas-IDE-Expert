@@ -9,7 +9,7 @@ interface
 
 const
   /// <summary>Schlüssel für alle Projekte (settings.json).</summary>
-  cGlobalSettingPaths: array[0..73] of string = (
+  cGlobalSettingPaths: array[0..74] of string = (
     'delphiVersion',
     'language',
     'rules',
