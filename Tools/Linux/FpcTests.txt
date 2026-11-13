@@ -178,6 +178,7 @@ Atlas.Common.Lsp.DisableWarning.Tests
 Atlas.Common.Lsp.DocWiki.Tests
 Atlas.Common.Lsp.EnclosingConditions.Tests
 Atlas.Common.Lsp.UpcomingConditions.Tests
+Atlas.Common.Lsp.ValueEdit.Tests
 Atlas.Common.Lsp.FoldingRanges.Tests
 Atlas.Common.Lsp.FuzzyMatch.Tests
 Atlas.Common.Lsp.HoverValues.Tests

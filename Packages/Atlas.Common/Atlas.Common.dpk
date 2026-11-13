@@ -391,6 +391,7 @@ contains
   Atlas.Common.Editing.ResourceStrings in 'Source\Editing\Atlas.Common.Editing.ResourceStrings.pas',
   Atlas.Common.Lsp.ResourceStringCommands in 'Source\Lsp\Atlas.Common.Lsp.ResourceStringCommands.pas',
   Atlas.Common.Lsp.EnumValueCommands in 'Source\Lsp\Atlas.Common.Lsp.EnumValueCommands.pas',
+  Atlas.Common.Lsp.ValueEdit in 'Source\Lsp\Atlas.Common.Lsp.ValueEdit.pas',
   Atlas.Common.Lsp.Refactorings in 'Source\Lsp\Atlas.Common.Lsp.Refactorings.pas',
   Atlas.Common.Editing.DeclareUnknown in 'Source\Editing\Atlas.Common.Editing.DeclareUnknown.pas',
   Atlas.Common.Editing.ForwardDeclarations in 'Source\Editing\Atlas.Common.Editing.ForwardDeclarations.pas',

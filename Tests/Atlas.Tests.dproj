@@ -630,6 +630,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ResourceStrings.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ResourceStringCommands.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.EnumValueCommands.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ValueEdit.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Refactorings.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.MoveClass.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.UnitRename.Tests.pas"/>

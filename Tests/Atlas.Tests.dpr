@@ -2232,6 +2232,7 @@ uses
   Atlas.Common.Editing.ResourceStrings.Tests in 'Common\Editing\Atlas.Common.Editing.ResourceStrings.Tests.pas',
   Atlas.Common.Lsp.ResourceStringCommands.Tests in 'Common\Lsp\Atlas.Common.Lsp.ResourceStringCommands.Tests.pas',
   Atlas.Common.Lsp.EnumValueCommands.Tests in 'Common\Lsp\Atlas.Common.Lsp.EnumValueCommands.Tests.pas',
+  Atlas.Common.Lsp.ValueEdit.Tests in 'Common\Lsp\Atlas.Common.Lsp.ValueEdit.Tests.pas',
   Atlas.Common.Lsp.Refactorings.Tests in 'Common\Lsp\Atlas.Common.Lsp.Refactorings.Tests.pas',
   Atlas.Common.Lsp.MoveClass.Tests in 'Common\Lsp\Atlas.Common.Lsp.MoveClass.Tests.pas',
   Atlas.Common.Lsp.UnitRename.Tests in 'Common\Lsp\Atlas.Common.Lsp.UnitRename.Tests.pas',
