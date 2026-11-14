@@ -33,7 +33,7 @@ Nach jedem Merge laufen die Prüfungen und der FPC-Bau auch auf `main-merging`. 
 Der Workflow „PRs abgleichen“ (`.github/workflows/pr-abgleich.yml`, Skript `Tools/CI/Abgleich-PRs.py`) läuft nach jedem Push auf `main-merging` und alle 30 Minuten. Er sieht sich jeden offenen Pull Request nach `main-merging` von einem Branch `claude/…` an (keine Entwürfe):
 
 - Ohne Konflikt bleibt der Pull Request unangetastet. Auto-Merge braucht keinen aktuellen Stand, und ein Push würde nur die CI neu starten.
-- Hat er einen Konflikt mit `main-merging`, oder ändern beide Seiten Quellen erzeugter Dateien (`schemas/`, `Setup/Profile/`, `Packages/Atlas.Common/Katalog/`), mergt der Workflow `main-merging` mit `Tools/Merge-Integration.py` ein und pusht das Ergebnis auf den Branch. Danach laufen die Prüfungen des Pull Requests neu.
+- Hat er einen Konflikt mit `main-merging`, oder ändern beide Seiten Quellen erzeugter Dateien (`schemas/`, `Setup/Profile/`, `Packages/Atlas.Common/Katalog/`), mergt der Workflow `main-merging` mit `Tools/Merge-Integration.py` ein und pusht das Ergebnis auf den Branch (nur mit dem Secret `ABGLEICH_TOKEN`, siehe unten). Danach laufen die Prüfungen des Pull Requests neu. Ohne das Secret bekommt der Pull Request stattdessen Label und Kommentar, und der Thread gleicht selbst ab.
 - Bleibt ein echter Konflikt, bekommt der Pull Request das Label „Konflikt mit main-merging“ und einen Kommentar mit den offenen Dateien. Den Konflikt löst der Thread wie in Schritt 2 oben. Das Label verschwindet beim nächsten Lauf ohne Konflikt.
 
 Der Workflow pusht nie mit `--force`. Hat der Thread inzwischen selbst gepusht, versucht es der nächste Lauf erneut. Umgekehrt holt `Tools/Merge-Integration.py` vom Abgleich gepushte Commits (`origin/<eigener Branch>`) vor dem Merge von `main-merging` selbst ein, damit der nächste Push des Threads nicht als „non-fast-forward“ scheitert. Wer ohne das Skript pusht, holt den Branch vorher mit `git pull --no-rebase` ein.
@@ -41,6 +41,10 @@ Der Workflow pusht nie mit `--force`. Hat der Thread inzwischen selbst gepusht, 
 ## Rotes main-merging
 
 Scheitert „Package-Abhängigkeiten“ oder „AtlasServer für Linux“ nach einem Push auf `main-merging`, legt der Job `melden` (`Tools/CI/Melde-Integrationsstand.py`) ein Issue mit Label „main-merging rot“ an und kommentiert den Pull Request, dessen Merge den Stand erzeugt hat. Weitere rote Läufe kommentieren das Issue; der erste grüne Lauf danach schließt es.
+
+## Konstante Arrays
+
+`Tools/Check-ConstArrays.py` (in `check`) vergleicht die Elemente jeder Konstante `array[<Aufzählung oder Bereich>] of …` mit der Aufzählung. Delphi bricht bei einer Abweichung ab (E2072); FPC übersetzt Plugin-Units mit VCL nicht und merkt es dort nicht. Wer einer Aufzählung einen Wert hinzufügt, ergänzt alle Namenslisten dazu.
 
 ## Prüfzeit
 
@@ -53,4 +57,4 @@ Der Selbsttest der Modulgrenzen (`Tools/Test-PackageDependencies.ps1`, etwa sech
 - Branch-Schutz für `main-merging`: Pflichtprüfungen `check` (Workflow „Package-Abhängigkeiten“) sowie `bauen` und `fpc-tests` (Workflow „AtlasServer für Linux“), „Require branches to be up to date before merging“ aus. Nur `bauen` und `fpc-tests` übersetzen den Quelltext; ohne sie als Pflicht führt Auto-Merge auch Pull Requests zusammen, die unter FPC nicht übersetzen, und `main-merging` wird rot. Mit dieser Einstellung an verlangte GitHub nach jedem Merge von allen anderen Pull Requests einen neuen Merge und einen neuen CI-Lauf.
 - „Allow auto-merge“ an (Settings › General › Pull Requests), damit Schritt 4 möglich ist.
 - Eine Merge Queue gibt es auf GitHub nur für Repositorys von Organisationen; für dieses Repository übernimmt das automatische Zusammenführen ihre Rolle.
-- Secret `ABGLEICH_TOKEN` (empfohlen): fein granuliertes Personal Access Token nur für dieses Repository mit den Rechten Contents, Pull requests und Workflows, jeweils „Read and write“. Damit startet der Push des Abgleichs die CI wie ein normaler Push und darf auch Änderungen an `.github/workflows` mitnehmen. Ohne das Secret pusht der Workflow mit `GITHUB_TOKEN`; GitHub startet danach keine Workflows, deshalb startet der Abgleich die Prüfungen per `workflow_dispatch`, und Abgleiche, die Workflow-Dateien ändern, meldet er nur am Pull Request.
+- Secret `ABGLEICH_TOKEN` (Settings › Secrets and variables › Actions): fein granuliertes Personal Access Token nur für dieses Repository mit den Rechten Contents, Pull requests und Workflows, jeweils „Read and write“. Nur damit pusht der Abgleich. Pushes mit `GITHUB_TOKEN` taugen nicht: Die Pull-Request-Läufe danach warten auf Freigabe, per `workflow_dispatch` nachgestartete Prüfungen zählen für Auto-Merge nicht (der Pull Request bleibt „blocked“, obwohl alle Pflichtprüfungen grün sind), und Änderungen an `.github/workflows` darf `GITHUB_TOKEN` nicht pushen.

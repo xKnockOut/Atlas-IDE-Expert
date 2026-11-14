@@ -227,10 +227,20 @@ Aufruf: Reiter oben im Fenster „Atlas-Tests“; „+“ legt eine Liste an.
 
 Einstellungen: `tests.lists`, `tests.lists.runKey`
 
+### Tests mehrfach oder in zufälliger Reihenfolge ausführen (#1782)
+
+Aufruf: Kontextmenü einer Testunit (*Atlas › Tests*), Befehlspalette, im Fenster „Atlas-Tests“ Rechtsklick auf die Auswahl.
+
+- *Test am Cursor N-mal ausführen …* fragt nach der Anzahl (vorbelegt mit `tests.repeat.count`, 2 bis 1000) und startet das Testprogramm so oft nacheinander mit denselben Tests. Der erste Start baut wie „Vor den Tests bauen“, die übrigen nehmen dieselbe EXE. An der Marke steht danach „20× ausgeführt · 18 bestanden, 2 rot“, gelb bei gemischtem Ergebnis; während der Serie „Tests laufen … 7/20“.
+- *Tests der Klasse in zufälliger Reihenfolge ausführen* mischt die Tests der Fixture am Cursor mit einem Startwert und startet je Test bzw. Fall das Programm einmal in dieser Reihenfolge. So fällt ein Test auf, der nur nach einem anderen besteht oder an Dateien, Datenbank oder Registry hängt, die ein anderer hinterlässt. Die Meldungsansicht nennt Startwert und Reihenfolge („Reihenfolge 48213“); *Mit dieser Reihenfolge erneut ausführen* wiederholt genau diese Reihenfolge.
+- Warum mehrere Starts: DUnitX führt bei `--run` einen wiederholten Namen nur einmal aus und hält sich nicht an die Reihenfolge der Namen (Fixtures sortiert, Tests in der Reihenfolge der Deklaration).
+- *Testserie abbrechen* beendet den laufenden Prozess sofort; die Meldungsansicht nennt, wie viele Starts gelaufen sind.
+- Am Ende: eine Zeile mit den Zahlen, je Test mit Fehlschlag „2 von 20 rot“ und die letzte Meldung. Jeder Start meldet sich wie ein normaler Lauf (Probleme, Testlinse, Fenster). Das Ergebnis der Serie steht an der Marke bis zum nächsten Lauf.
+
+Einstellung: `tests.repeat.count`
+
 ### Wackelnde Tests (#1773)
-
 Ein Test wackelt, wenn er ohne Änderung an seinem Rumpf mal grün und mal rot ist (Zeit, Threads, Reihenfolge, Dateien).
-
 - Atlas merkt sich nach jedem Lauf aus der IDE je Test die letzten Ergebnisse (`tests.flaky.runs`, Vorgabe 10) mit der Prüfsumme des Methodenrumpfs wie bei „veraltet“ (#1770). Ein Test mit `[TestCase]` gilt in einem Lauf als rot, wenn einer seiner Fälle rot war; nur übersprungen zählt nicht.
 - „Wackelt“: Unter den Ergebnissen mit dem Rumpf von jetzt gibt es grün, danach rot, danach wieder grün. Rot, dann am Rumpf repariert und grün, wackelt nicht.
 - Die Marke der Testlinse wird gelb: „Test ausführen · bestanden · wackelt (3 von 10 rot)“; die Klassenmarke nennt die Zahl ihrer wackelnden Tests („· 2 wackeln“).
@@ -239,9 +249,7 @@ Ein Test wackelt, wenn er ohne Änderung an seinem Rumpf mal grün und mal rot i
 - Ist ein Test, der beim Lauf davor rot war, jetzt grün, wackelt aber (etwa nach *Fehlgeschlagene Tests erneut ausführen*), meldet die Meldungsansicht „Test TRechnerTests.Summe bestanden, wackelt aber (3 von 10 Läufen rot).“
 - Der Verlauf liegt je Testprojekt in `%LOCALAPPDATA%\Atlas\projects\tests-history\<Schlüssel>.json` (Schlüssel wie die Projekt-Zusammenfassung) und übersteht einen Neustart der IDE.
 - `tests.flaky` aus: Atlas schreibt keinen Verlauf, keine Marke, kein Befehl.
-
 Einstellungen: `tests.flaky`, `tests.flaky.runs`
-
 ### Teststand in der Statusleiste (#1777)
 - In der Atlas-Statusleiste steht hinter dem Status „Tests 41/42“ (bestanden/gelaufen, übersprungene zählen nicht) mit Ampelpunkt für das Testprojekt der aktuellen Datei: in einer Testunit ihr Testprojekt, sonst das aktive Testprojekt bzw. das erste der Projektgruppe. Während eines Laufs „Tests laufen …“, vor dem ersten Lauf der Sitzung „Tests –“. Ohne Testprojekt kein Feld.
 - Ampel: rot bei Fehlschlägen, gelb während eines Laufs und bei veralteten Ergebnissen (wenn das Fenster „Atlas-Tests“ dieses Testprojekt zeigt), grün, wenn alles bestand.
@@ -373,8 +381,10 @@ Aufruf: Atlas-Menü › Speicherverlauf bzw. Befehl `Atlas.DebugMemory`.
 - Mit der Maus einen Bereich ziehen: Darunter steht der Zuwachs aller Werte, etwa `Privater Speicher +38,0 MB · Handles +12`. Doppelklick hebt die Wahl auf.
 - „CSV kopieren“ legt den Verlauf samt Marken in die Zwischenablage, „Leeren“ beginnt neu.
 - Grenze: In der 32-Bit-IDE kappt Windows Speicherwerte eines 64-Bit-Programms über 4 GB.
+- Experimentell (`debug.memoryTimeline.objectCount`, Vorgabe aus): Unter der Linie steht der Bereich „Objekte zählen“. Im angehaltenen Programm durchsucht Atlas dessen Speicher nach Verweisen auf Klassen und zeigt Anzahl und Größe lebender Objekte je Klasse. Jede weitere Zählung wird mit der vorigen verglichen; Zuwächse stehen oben (`+10` bei einer Klasse, die zehnmal angelegt und nicht freigegeben wurde). Das Feld „Klasse filtern“ schränkt die Tabelle ein.
+- Die Zählung hängt nicht vom Speichermanager ab und ist eine Näherung: Klassenverweise in Feldern (`TClass`) zählen mit, freigegebene Objekte fallen weg, sobald der Speichermanager ihren Anfang überschreibt (FastMM tut das).
 
-Einstellungen: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`
+Einstellungen: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`, `debug.memoryTimeline.objectCount`
 
 <a id="window-atlasprofiler"></a>
 #### Profiler

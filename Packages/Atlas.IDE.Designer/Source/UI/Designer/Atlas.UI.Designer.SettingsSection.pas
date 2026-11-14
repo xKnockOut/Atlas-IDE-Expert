@@ -5,7 +5,8 @@
 // Gleiche auswählen (#738), Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen
 // (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728), Label und
 // Feld (#729), Formularraster (#731), Einpacken in Container (#733), Schriften und Farben (#741), Gruppen (#744),
-// Beschriftung (#748), Werkzeuge mit eigenem Knopf (#734 ff.), Designer-Ansichten mit eigenem Knopf (#605 ff.).
+// Beschriftung (#748), Werkzeuge mit eigenem Knopf (#734 ff.), Designer-Ansichten mit eigenem Knopf (#605 ff.),
+// eigenes Desktop-Layout (#2079).
 
 interface
 
@@ -141,6 +142,15 @@ begin
   Switch('designer.dataBindings', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDataBindings));
   Switch('designer.extractFrame', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsExtractFrame));
   Switch('designer.eventMap', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsEventMap));
+  // Eigenes Desktop-Layout im Designer (#2079).
+  Switch('designer.layout', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopLayout));
+  Line('designer.layout.name', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopName));
+  Choice('designer.layout.returnTo', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopReturn),
+    [TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopPrevious),
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopDefault)],
+    [TAtlasPluginSettings.cDesignerLayoutPrevious, TAtlasPluginSettings.cDesignerLayoutDefault]);
+  Switch('designer.layout.skipWhileDebugging',
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopSkipDebug));
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildArrangeRows;

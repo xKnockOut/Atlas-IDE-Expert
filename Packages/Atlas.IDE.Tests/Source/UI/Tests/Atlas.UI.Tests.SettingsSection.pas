@@ -5,7 +5,7 @@
 // Seiten stehen.
 // - „Compiler“: Modulschalter, DUnitX-Tests ausführen (#69), betroffene Tests (#1353) und betroffene Tests beim
 //   Speichern (#1775),
-//   Fenster „Atlas-Tests“ (#1776) mit Testlisten (#2167).
+//   Fenster „Atlas-Tests“ (#1776) mit Testlisten (#2167), Vorgabe für „N-mal ausführen“ (#1782).
 // - „Debuggen“: einzelnen Test im Debugger starten (#585).
 // - „Editor“: Code Lens an Testmethoden, veraltete Ergebnisse (#1770), Marke „getestet von“ (#1778) und
 //   Testabdeckung in der Rinne (#275).
@@ -91,6 +91,7 @@ begin
   Switch('tests.boundaryCases', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsBoundaryCases));
   Number('tests.boundaryCases.maxCases', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsBoundaryMax));
   Switch('tests.leakSetup', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsLeakSetup));
+  Number('tests.repeat.count', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsRepeatCount));
 end;
 
 { TAtlasTestsDebugSection }

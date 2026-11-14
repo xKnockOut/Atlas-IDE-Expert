@@ -251,10 +251,20 @@ Open them with the tabs at the top of the “Atlas Tests” window; “+” crea
 
 Settings: `tests.lists`, `tests.lists.runKey`
 
+### Run tests repeatedly or in random order (#1782)
+
+Open it from the context menu of a test unit (*Atlas › Tests*), the command palette, or in the “Atlas Tests” window by right-clicking the selection.
+
+- *Run test at cursor N times …* asks for the count (preset from `tests.repeat.count`, 2 to 1000) and starts the test program that many times in a row with the same tests. The first start builds like “Build before tests”, the others reuse the same EXE. The mark then reads “run 20× · 18 passed, 2 failed”, yellow for a mixed result; during the series “Tests running … 7/20”.
+- *Run class tests in random order* shuffles the tests of the fixture at the cursor with a seed and starts the program once per test or case in that order. This reveals a test that only passes after another one, or that depends on files, a database or the registry left behind by another. The message view names seed and order (“order 48213”); *Run again in the same order* repeats exactly that order.
+- Why several starts: with `--run`, DUnitX runs a repeated name only once and ignores the order of the names (fixtures sorted, tests in declaration order).
+- *Cancel test series* stops the running process at once; the message view says how many starts ran.
+- At the end: one line with the counts, for each failing test “2 of 20 failed” and the last message. Every start reports like a normal run (problems, test lens, window). The mark shows the series result until the next run.
+
+Setting: `tests.repeat.count`
+
 ### Flaky tests (#1773)
-
 A test is flaky when it is sometimes green and sometimes red without a change to its body (time, threads, order, files).
-
 - After every run from the IDE, Atlas keeps the last results of each test (`tests.flaky.runs`, default 10) with the checksum of the method body, as for “outdated” (#1770). A test with `[TestCase]` counts as red in a run if one of its cases was red; skipped only does not count.
 - “Flaky”: among the results with the current body there is green, then red, then green again. Red, then fixed in the body and green, is not flaky.
 - The mark of the test lens turns yellow: “Run test · passed · flaky (3 of 10 red)”; the class mark gives the number of its flaky tests (“· 2 flaky”).
@@ -263,9 +273,7 @@ A test is flaky when it is sometimes green and sometimes red without a change to
 - If a test that was red in the run before is green now but flaky (for example after *Run failed tests again*), the messages view says “Test TRechnerTests.Summe passed, but it is flaky (3 of 10 runs red).”
 - The history is kept per test project in `%LOCALAPPDATA%\Atlas\projects\tests-history\<key>.json` (same key as the project summary) and survives a restart of the IDE.
 - `tests.flaky` off: Atlas writes no history, no mark, no command.
-
 Settings: `tests.flaky`, `tests.flaky.runs`
-
 ### Test status in the status bar (#1777)
 - The Atlas status bar shows “Tests 41/42” (passed/run, skipped tests do not count) with a traffic-light dot after the status, for the test project of the current file: in a test unit its test project, otherwise the active test project or the first one in the project group. During a run “Tests running …”, before the first run of the session “Tests –”. Without a test project there is no field.
 - Traffic light: red with failures, yellow during a run and with outdated results (when the “Atlas Tests” window shows this test project), green when everything passed.
@@ -571,8 +579,10 @@ Open it from the Atlas menu › Memory timeline or with the command `Atlas.Debug
 - Drag a range with the mouse to see the growth of every value below, e.g. `Private bytes +38.0 MB · Handles +12`. Double-click clears the range.
 - “Copy CSV” puts the timeline with its marks on the clipboard, “Clear” starts over.
 - Limit: in the 32-bit IDE, Windows caps memory values of a 64-bit program above 4 GB.
+- Experimental (`debug.memoryTimeline.objectCount`, default off): below the line is the section “Count objects”. In the paused program Atlas searches its memory for references to classes and shows count and size of live objects per class. Every further count is compared with the previous one; growth is on top (`+10` for a class created ten times and never freed). The field “Filter classes” narrows the table.
+- The count does not depend on the memory manager and is an approximation: class references in fields (`TClass`) count too, freed objects drop out once the memory manager overwrites their start (FastMM does).
 
-Settings: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`
+Settings: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`, `debug.memoryTimeline.objectCount`
 
 <a id="window-atlasprofiler"></a>
 ### Profiler

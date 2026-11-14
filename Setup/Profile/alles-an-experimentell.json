@@ -59,6 +59,7 @@
     "debug.threadFreeze": true,
     "debug.asyncOrigin": true,
     "debug.profiler": true,
+    "debug.memoryTimeline.objectCount": true,
     "debug.enabled": true,
     "issues.enabled": true,
     "analysis.enabled": true,

@@ -8,7 +8,9 @@
 // bereit, dazu Befehl, Menüeinträge und Taste „Im Designer zeigen“ (#511,
 // designer.showInDesigner) und „Eigenschaften suchen …“ im Atlas-Menü (#524,
 // designer.propertySearch) sowie „Verwendungen im Code“ im Atlas-Menü (#750,
-// designer.usages). Die Benachrichtigungen des Designers (#722, Teil Forms) bleiben in
+// designer.usages) und das eigene Desktop-Layout im Designer mit dem Befehl
+// „Aktuelles Layout als Designer-Layout speichern …“ (#2079, designer.layout).
+// Die Benachrichtigungen des Designers (#722, Teil Forms) bleiben in
 // Base. Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt die
 // Vertragsversion von Base nicht, meldet sich das Modul nicht an (Regel 7).
 
@@ -27,6 +29,7 @@ type
     cShowCommandId = 'Atlas.ShowInDesigner';
     cPropertySearchCommandId = 'Atlas.PropertySearch';
     cUsagesCommandId = 'Atlas.DesignerUsages';
+    cSaveLayoutCommandId = 'Atlas.SaveDesignerLayout';
   private
     FActive: Boolean;
     class function Parts: TArray<IAtlasFeaturePart>; static;
@@ -57,9 +60,11 @@ uses
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Designer.Strings,
+  Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Designer.ShowComponent,
   Atlas.IDE.Designer.PropertySearch,
   Atlas.IDE.Designer.Usages,
+  Atlas.IDE.Designer.DesktopLayout,
   Atlas.IDE.Designer.Bar;
 
 var
@@ -129,6 +134,17 @@ begin
   Result := TAtlasIdeDesignerUsages.Available(TAtlasIdeSettings.Current);
 end;
 
+/// <summary>„Aktuelles Layout als Designer-Layout speichern …“ (#2079), abgesichert.</summary>
+procedure SaveDesignerLayout;
+begin
+  TAtlasGuard.Run(TAtlasFeature.DesignerBar, TAtlasIdeDesktopLayout.SaveCurrent);
+end;
+
+function SaveDesignerLayoutVisible: Boolean;
+begin
+  Result := TAtlasIdeDesktopLayout.Enabled;
+end;
+
 function ModuleScope: IAtlasModuleScope;
 begin
   Result := GScope;
@@ -154,6 +170,7 @@ begin
   TAtlasIdeShowComponent.Install(ShowMessage);
   TAtlasIdePropertySearch.Install(ShowMessage);
   TAtlasIdeDesignerUsages.Install(ModuleScope, ShowMessage);
+  TAtlasIdeDesktopLayout.Install(ShowMessage);
 end;
 
 procedure TAtlasDesignerModule.Stop;
@@ -162,6 +179,7 @@ begin
   TAtlasIdeShowComponent.Uninstall;
   TAtlasIdePropertySearch.Uninstall;
   TAtlasIdeDesignerUsages.Uninstall;
+  TAtlasIdeDesktopLayout.Uninstall;
 end;
 
 function TAtlasDesignerModule.IsActive: Boolean;
@@ -190,7 +208,10 @@ begin
     SearchProperties, SearchPropertiesVisible, nil),
     // Verwendungen im Code (#750): die Taste gilt nur im Designer (designer.usages.key), nicht im Code-Editor.
     Command(cUsagesCommandId, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesCommand), ShowUsages,
-    UsagesVisible, nil)];
+    UsagesVisible, nil),
+    // Eigenes Desktop-Layout (#2079): öffnet den Dialog „Desktop speichern“ der IDE.
+    Command(cSaveLayoutCommandId, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.DesktopSaveCommand),
+    SaveDesignerLayout, SaveDesignerLayoutVisible, nil)];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -218,7 +239,8 @@ begin
   Result := [ShowInDesignerContextEntry,
     MenuEntry(cShowCommandId, TAtlasMenuPlace.AtlasMenu),
     MenuEntry(cPropertySearchCommandId, TAtlasMenuPlace.AtlasMenu),
-    MenuEntry(cUsagesCommandId, TAtlasMenuPlace.AtlasMenu)];
+    MenuEntry(cUsagesCommandId, TAtlasMenuPlace.AtlasMenu),
+    MenuEntry(cSaveLayoutCommandId, TAtlasMenuPlace.AtlasMenu)];
 end;
 
 function TAtlasDesignerModule.Keys: TArray<TAtlasModuleKey>;

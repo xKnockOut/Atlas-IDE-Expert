@@ -13,6 +13,7 @@ uses
   Atlas.Common.Editing.Colors,
   Atlas.Common.Logging.Contract,
   Atlas.Core.VersionControl.Contract,
+  Atlas.Common.Profiling.Contract,
 {$IFDEF MSWINDOWS}
   Atlas.Windows.Console.StdStreams,
   Atlas.Windows.Process.ParentWatcher,
@@ -85,6 +86,8 @@ type
     /// kehrt er zurück, sobald sich dort Dateinamen ändern, spätestens nach ASafetyMs; lässt sich der Ordner nicht
     /// beobachten, und unter Linux, schläft er APollMs.</summary>
     class function FolderWait(const AFolder: string; APollMs, ASafetyMs: Cardinal): TProc; static;
+    /// <summary>Prober des Stichproben-Profilers (#2057); nil unter Linux, wo es keinen gibt.</summary>
+    class function ProfileSampler: IAtlasProfileSampler; static;
   end;
 
 /// <summary>Systemfarbe AIndex (GetSysColor) für Farbangaben im Quelltext; unter Linux keine.</summary>
@@ -100,6 +103,7 @@ uses
   Atlas.Windows.Diagnostics.StackGuard,
   Atlas.Windows.Diagnostics.Adapters.DebugOutputSink,
   Atlas.Windows.Editing.SystemColors,
+  Atlas.Windows.Profiling.Adapters.Sampler,
   Atlas.Core.VersionControl.Adapters.ProcessRunner;
 {$ELSE}
   BaseUnix,
@@ -258,6 +262,15 @@ begin
     begin
       Sleep(APollMs);
     end;
+{$ENDIF}
+end;
+
+class function TShellPlatform.ProfileSampler: IAtlasProfileSampler;
+begin
+{$IFDEF MSWINDOWS}
+  Result := TAtlasWindowsProfileSampler.Create;
+{$ELSE}
+  Result := nil;
 {$ENDIF}
 end;
 

@@ -116,6 +116,7 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Exceptions.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.MemoryTimeline.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Profiler.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ObjectCount.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.IgnoreList.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.InlineValues.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Note.pas"/>
@@ -189,6 +190,8 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ProfileWindow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Profiler.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.Profiler.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ObjectCount.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ObjectCountReader.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StepFilter.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StepFilterWindow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.BreakpointCheck.pas"/>
@@ -252,6 +255,7 @@
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.MemoryChart.pas"/>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.ObjectCountPanel.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.MemoryFrame.pas">
             <Form>AtlasDebugMemoryFrame</Form>
             <FormType>dfm</FormType>

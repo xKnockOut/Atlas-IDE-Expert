@@ -258,6 +258,8 @@ begin
   // Profiler (#2057, experimentell).
   Switch('debug.profiler', TAtlasProfileStrings.Text(TAtlasProfileTextId.SettingsDebugProfiler));
   Number('debug.profiler.intervalMs', TAtlasProfileStrings.Text(TAtlasProfileTextId.SettingsDebugProfilerInterval));
+  Switch('debug.memoryTimeline.objectCount',
+    TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimelineObjectCount));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildStopValues;
