@@ -12,6 +12,9 @@ type
   [Category('Atlas.IDE.Debugger')]
   TAtlasEventLogTests = class
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung (erste Ausnahme aus TRegEx bei ungültigem Ausdruck).</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     /// <summary>Präfixe der IDE auf Deutsch und Englisch; angehängter Prozess fällt weg.</summary>
     [Test]
     procedure ClassifiesIdeLines;
@@ -58,6 +61,11 @@ begin
 end;
 
 { TAtlasEventLogTests }
+
+procedure TAtlasEventLogTests.WarmUpFirstUse;
+begin
+  FiltersByRegex;
+end;
 
 procedure TAtlasEventLogTests.ClassifiesIdeLines;
 var

@@ -61,7 +61,7 @@ type
     SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
     PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType, SafeDelete, CreateIssue,
     DesignerSearch, CheckFile, SectionAppend, DesignerSelectionSetsSave, DesignerShowComponent,
-    DesignerInlineCaption, DesignerSelectionBar, DesignerMagnifier, DesignerUsages);
+    DesignerInlineCaption, DesignerSelectionBar, DesignerMagnifier, DesignerUsages, TestsListRun, DebugReattach);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -292,7 +292,13 @@ begin
       ASettings.EditorDesignerBar and ASettings.DesignerMagnifier),
     // Verwendungen im Code (#750): nur solange der Formular-Designer den Fokus hat, dort mit Vorrang.
     TAtlasKeyEntry.Create(TAtlasKeyFunction.DesignerUsages, Word(ASettings.DesignerUsagesKey), True,
-      ASettings.EditorDesignerBar and ASettings.DesignerUsages)];
+      ASettings.EditorDesignerBar and ASettings.DesignerUsages),
+    // Zuletzt benutzte Testliste ausführen (#2167): ohne Liste geht die Taste an die IDE weiter.
+    TAtlasKeyEntry.Create(TAtlasKeyFunction.TestsListRun, Word(ASettings.TestsListsRunKey), AShared,
+      ASettings.TestsLists),
+    // Erneut anhängen (Debugger): ohne Funktion geht die Taste an die IDE weiter.
+    TAtlasKeyEntry.Create(TAtlasKeyFunction.DebugReattach, Word(ASettings.DebugReattachKey), AShared,
+      ASettings.DebugReattach)];
 end;
 
 class function TAtlasKeyEntry.MoreFromSettings(const ASettings: TAtlasPluginSettings;
@@ -617,6 +623,10 @@ begin
       ASettings.DesignerMagnifierKey := AEntry.Key;
     TAtlasKeyFunction.DesignerUsages:
       ASettings.DesignerUsagesKey := AEntry.Key;
+    TAtlasKeyFunction.TestsListRun:
+      ASettings.TestsListsRunKey := AEntry.Key;
+    TAtlasKeyFunction.DebugReattach:
+      ASettings.DebugReattachKey := AEntry.Key;
   else
     // Gehört zu einem anderen Teil.
   end;

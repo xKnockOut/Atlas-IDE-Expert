@@ -980,9 +980,12 @@ begin
   try
     Result := WithConversions(AItems, mRanker.Order(APattern), AOptions);
     // Tippfehler (#485): wenig reguläre Treffer, dann bis zu MaxTypos ähnliche Namen unter „Meintest du“, vor
-    // der Gruppe des unbekannten Namens (#471), die nicht als Treffer zählt.
+    // der Gruppe des unbekannten Namens (#471), die nicht als Treffer zählt. Passt der Name auf ein nicht sichtbares
+    // Mitglied (#2108), ist er kein Tippfehler: dann keine „Meintest du“-Gruppe, sondern der leere Zustand mit
+    // Hinweis bzw. nach dem Aufdecken nur die nicht sichtbaren Treffer.
     mUnknown := UnknownStart(Result);
-    if (ItemCount(Copy(Result, 0, mUnknown)) < cMinRegular) and (TAtlasCompletionMatcher.TypoLimit(APattern) > 0) then
+    if (ItemCount(Copy(Result, 0, mUnknown)) < cMinRegular) and (TAtlasCompletionMatcher.TypoLimit(APattern) > 0) and
+      (Length(Inaccessible(AItems, APattern)) = 0) then
     begin
       Result := Copy(Result, 0, mUnknown) + Typos(AItems, APattern, AOptions, mRanker.Scores, mRanker.Boosts) +
         Copy(Result, mUnknown, MaxInt);

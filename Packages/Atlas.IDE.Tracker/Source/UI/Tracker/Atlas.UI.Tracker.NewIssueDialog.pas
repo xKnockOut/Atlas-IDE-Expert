@@ -476,8 +476,6 @@ end;
 
 procedure TAtlasNewIssueContent.ShowFormPanel(AShow: Boolean);
 begin
-  FFree.Visible := not AShow;
-  FFormPanel.Visible := AShow;
   if AShow then
   begin
     FLayout.Resize(Self, FLayout.Scaled(cFormHeight));
@@ -486,6 +484,9 @@ begin
   begin
     FLayout.Resize(Self, FLayout.Scaled(cContentHeight));
   end;
+  // Erst nach Resize: Resize blendet alle Kinder der Zeile ein (Höhe > 0), also auch die gerade verborgene Seite.
+  FFree.Visible := not AShow;
+  FFormPanel.Visible := AShow;
 end;
 
 function TAtlasNewIssueContent.FormWidth: Integer;

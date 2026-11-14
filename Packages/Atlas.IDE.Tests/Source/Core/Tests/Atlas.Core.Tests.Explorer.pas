@@ -544,6 +544,9 @@ class function TAtlasTestExplorer.Visible(const ANodes: TArray<TAtlasTestNode>; 
 var
   mIndex, mParent: Integer;
 begin
+  // Erst leeren: Delphi übergibt Result als Variable des Aufrufers; SetLength auf gleiche Länge behielte die
+  // Werte eines früheren Aufrufs (mVisible := Visible(…) zweimal hintereinander).
+  Result := nil;
   SetLength(Result, Length(ANodes));
   // Kinder stehen hinter ihrem Elternknoten: rückwärts trägt jeder sichtbare Knoten die Sichtbarkeit nach oben.
   for mIndex := High(ANodes) downto 0 do

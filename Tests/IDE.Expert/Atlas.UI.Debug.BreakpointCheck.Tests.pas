@@ -17,6 +17,9 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung (erstes VCL-Formular).</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -59,6 +62,16 @@ begin
 end;
 
 { TAtlasBreakpointCheckDialogTests }
+
+procedure TAtlasBreakpointCheckDialogTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    LaunchHasStartAndCancel;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasBreakpointCheckDialogTests.Setup;
 begin

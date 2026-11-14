@@ -236,7 +236,11 @@ type
     // Marke „Wer gibt das frei?“ (#1877) im Menü „Ausblenden“.
     ElementOwnershipHints, ElementOwnershipHintsPlural,
     // Symbole des Mutationslaufs (#1460) im Menü „Ausblenden“.
-    ElementMutationResults, ElementMutationResultsPlural);
+    ElementMutationResults, ElementMutationResultsPlural,
+    // Zuletzt benutzte Testliste ausführen (#2167): Taste in der Übersicht.
+    TestsListsRunCommand,
+    // Erneut anhängen (Debugger): Taste in der Übersicht.
+    DebugReattachCommand);
 
   TAtlasStrings = class
   private
@@ -777,7 +781,9 @@ const
      'Marke „Methoden getestet“', 'Marken „Methoden getestet“',
      'Thread-Zeichen in der Rinne', 'Thread-Zeichen in der Rinne',
      'Marke „Wer gibt das frei?“', 'Marken „Wer gibt das frei?“',
-     'Symbol des Mutationslaufs', 'Symbole des Mutationslaufs'),
+     'Symbol des Mutationslaufs', 'Symbole des Mutationslaufs',
+     'Tests: zuletzt benutzte Testliste ausführen',
+     'Debugger: erneut an Prozess anhängen'),
     ( 'optional, default %s', 'No overload with %d parameters.', '… %d more',
      'All', 'Methods', 'Properties', 'Events', 'Types', 'Snippets', 'Atlas: compile cancelled – %s', 'Test watchdog (1 s)',
      'Atlas: %d files reloaded', 'Atlas: %s was changed outside and has unsaved changes; the IDE will ask.',
@@ -1257,7 +1263,9 @@ const
      '“methods tested” mark', '“methods tested” marks',
      'thread sign in the gutter', 'thread signs in the gutter',
      '“who frees this?” mark', '“who frees this?” marks',
-     'mutation result mark', 'mutation result marks'));
+     'mutation result mark', 'mutation result marks',
+     'Tests: run last used test list',
+     'Debugger: reattach to process'));
 
 { TAtlasStrings }
 

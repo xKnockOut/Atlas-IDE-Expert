@@ -231,7 +231,10 @@ begin
   if AInfo.UsesManager <> TAtlasLeakChoice.Simple then
   begin
     mName := AInfo.Sources[AInfo.UsesManager].FileName;
-    mName := ChangeFileExt(ExtractFileName(StringReplace(mName, '\', '/', [rfReplaceAll])), '');
+    // Der Server liefert Windows-Pfade; ExtractFileName trennt nur an PathDelim (unter Windows '\', unter Linux
+    // '/'), darum beide Trenner auf PathDelim angleichen.
+    mName := StringReplace(StringReplace(mName, '\', PathDelim, [rfReplaceAll]), '/', PathDelim, [rfReplaceAll]);
+    mName := ChangeFileExt(ExtractFileName(mName), '');
     if mName = '' then
     begin
       mName := IfThen(AInfo.UsesManager = TAtlasLeakChoice.FastMM4, 'FastMM4', 'FastMM5');

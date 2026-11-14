@@ -65,7 +65,9 @@ uses
   Atlas.UI.Settings.Page.TestSupport,
   Atlas.UI.Analysis.SettingsSection,
   Atlas.UI.Tests.SettingsSection,
-  Atlas.UI.Bookmarks.SettingsSection;
+  Atlas.UI.Bookmarks.SettingsSection,
+  Atlas.UI.Debug.SettingsSection,
+  Atlas.UI.Rules.SettingsSection;
 
 type
   /// <summary>Zählt „Rückgängig“ (TNotifyEvent braucht eine Methode).</summary>
@@ -297,8 +299,10 @@ var
   mParent: TWinControl;
 begin
   mWelcome := ProvideWelcomeSettings;
-  // Zeilen der Module (#1456): Code Lens an Testmethoden, Notizen und Lesezeichen.
-  mModules := ProvideSections([TAtlasTestsEditorSection, TAtlasBookmarksEditorSection, TAtlasAnalysisEditorSection]);
+  // Zeilen der Module (#1456): Code Lens an Testmethoden, Notizen und Lesezeichen; dazu Threads im Quelltext
+  // (Debugger, #852), „Wer gibt das frei?“ (Prüfregeln, #1877) und Mutationslauf (Tests, #1460).
+  mModules := ProvideSections([TAtlasTestsEditorSection, TAtlasBookmarksEditorSection, TAtlasAnalysisEditorSection,
+    TAtlasDebugSettingsSection, TAtlasRulesEditorSection, TAtlasTestsCompilerSection]);
   mHost := TForm.CreateNew(nil);
   try
     mPage := TAtlasSettingsPage.Create(mHost);

@@ -170,7 +170,11 @@ const
     // Auswahlleiste und Lupe im Designer: keine Bindung, wirken nur im Designer (Modul Designer).
     0, 0,
     // Verwendungen im Code (#750): keine Bindung, wirkt nur im Designer (Modul Designer).
-    0);
+    0,
+    // Zuletzt benutzte Testliste (#2167): Editorbefehl (Modul Tests).
+    3,
+    // Erneut anhängen: Befehl des Moduls Debugger.
+    3);
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>

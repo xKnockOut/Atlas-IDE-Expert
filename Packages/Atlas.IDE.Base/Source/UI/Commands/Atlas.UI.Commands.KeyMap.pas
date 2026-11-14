@@ -256,7 +256,9 @@ const
     TAtlasTextId.DesignerInlineCaptionCommand, // DesignerInlineCaption
     TAtlasTextId.DesignerSelectionBarCommand, // DesignerSelectionBar
     TAtlasTextId.DesignerMagnifierCommand, // DesignerMagnifier
-    TAtlasTextId.DesignerUsagesCommand); // DesignerUsages
+    TAtlasTextId.DesignerUsagesCommand, // DesignerUsages
+    TAtlasTextId.TestsListsRunCommand, // TestsListRun
+    TAtlasTextId.DebugReattachCommand); // DebugReattach
 
 { TAtlasKeyMapForm, TAtlasKeyMapWindow }
 

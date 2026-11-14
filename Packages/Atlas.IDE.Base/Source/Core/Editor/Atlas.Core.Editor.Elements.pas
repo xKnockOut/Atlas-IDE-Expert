@@ -208,8 +208,9 @@ const
     // Der Bericht gilt für die ganze Datei: Ausblenden je Datei oder überall.
     (Key: 'TestCoverage'; Scopes: cFileScopes; Overlay: False; Gutter: True),
     (Key: 'OwnershipHints'; Scopes: cAllScopes; Overlay: True; Gutter: False),
-    // Ergebnisse gelten je Routine der Datei: Ausblenden je Datei oder überall.
-    (Key: 'MutationResults'; Scopes: cFileScopes; Overlay: False; Gutter: True)
+    // Ergebnisse gelten je Routine der Datei: Ausblenden je Datei oder überall. Schlüssel ist die Einstellung
+    // tests.mutation (TestsMutation); eine eigene Einstellung „MutationResults“ gibt es nicht.
+    (Key: 'TestsMutation'; Scopes: cFileScopes; Overlay: False; Gutter: True)
   );
 
 function Make(AElement: TAtlasDrawnElement; const AKey: string; AScopes: TAtlasHideScopes;

@@ -299,15 +299,17 @@ begin
   mMarker.AddFailure('Problems');
   mKeys := TAtlasSafeMode.Suggest(mToggles, ['VisibleRows', 'PairGuides'], mMarker);
   // Zuerst zuletzt geändert (nur Schnellschalter), dann Fehler: Probleme (2) vor Hover (1).
-  // Zum Feature Hover gehören zwei Schalter (DebugHoverValues seit #891), zu Problems drei
-  // (Fenster „Atlas-Prüfung“ seit #909, offene Units zuerst seit #1108); bei Gleichstand in Katalogfolge.
-  Assert.AreEqual(6, Integer(Length(mKeys)));
+  // Zum Feature Hover gehören zwei Schalter (DebugHoverValues seit #891), zu Problems vier
+  // (Marke „Wer gibt das frei?“ seit #1877, Fenster „Atlas-Prüfung“ seit #909, offene Units zuerst seit #1108);
+  // bei Gleichstand in Katalogfolge.
+  Assert.AreEqual(7, Integer(Length(mKeys)));
   Assert.AreEqual('PairGuides', mKeys[0]);
-  Assert.AreEqual('Problems', mKeys[1]);
-  Assert.AreEqual('ProblemsWindow', mKeys[2]);
-  Assert.AreEqual('ProblemsWindowOpenFirst', mKeys[3]);
-  Assert.AreEqual('HoverTooltip', mKeys[4]);
-  Assert.AreEqual('DebugHoverValues', mKeys[5]);
+  Assert.AreEqual('OwnershipHints', mKeys[1]);
+  Assert.AreEqual('Problems', mKeys[2]);
+  Assert.AreEqual('ProblemsWindow', mKeys[3]);
+  Assert.AreEqual('ProblemsWindowOpenFirst', mKeys[4]);
+  Assert.AreEqual('HoverTooltip', mKeys[5]);
+  Assert.AreEqual('DebugHoverValues', mKeys[6]);
   Assert.AreEqual(0, Integer(Length(TAtlasSafeMode.Suggest(mToggles, nil, TAtlasSessionMarker.Create(1, '', 0)))));
   Assert.IsTrue(Length(TAtlasSafeMode.Details(mMarker)) >= 5);
 end;

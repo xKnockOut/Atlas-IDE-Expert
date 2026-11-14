@@ -370,8 +370,9 @@ begin
   begin
     Exit;
   end;
-  // Ganz nach unten (unter die Beschriftungen), die Trennleiste direkt darüber.
-  FControls.ObjectCount.Top := ClientHeight + cOrderObjectCount;
+  // Ganz nach unten (unter die Beschriftungen), die Trennleiste direkt darüber. Height statt
+  // ClientHeight: Das holt das Fenster und scheitert, solange der Frame noch keinen Parent hat.
+  FControls.ObjectCount.Top := Height + cOrderObjectCount;
   FControls.ObjectCount.Visible := AVisible;
   FControls.ObjectCountSplitter.Top := FControls.ObjectCount.Top - 1;
   FControls.ObjectCountSplitter.Visible := AVisible;

@@ -17,6 +17,9 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung (erstes Formular mit Frame und Liste).</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -68,6 +71,16 @@ begin
 end;
 
 { TAtlasDebugCallStackFrameTests }
+
+procedure TAtlasDebugCallStackFrameTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    FillsRowsWithFoldedGroup;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasDebugCallStackFrameTests.Setup;
 begin

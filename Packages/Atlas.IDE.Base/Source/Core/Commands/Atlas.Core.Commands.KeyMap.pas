@@ -396,7 +396,9 @@ const
     '', // DesignerInlineCaption
     '', // DesignerSelectionBar
     '', // DesignerMagnifier
-    '' // DesignerUsages
+    '', // DesignerUsages
+    'Atlas.RunLastTestList', // TestsListRun
+    'Atlas.Reattach' // DebugReattach
   );
 
 class function TAtlasKeyMap.CommandIdOf(AFunc: TAtlasKeyFunction): string;

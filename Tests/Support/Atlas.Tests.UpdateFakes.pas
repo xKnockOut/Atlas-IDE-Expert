@@ -597,13 +597,10 @@ begin
   inherited Destroy;
 end;
 
-// FNV-1a läuft gewollt über (#1980: Tests prüfen Überläufe).
-{$IFOPT Q+}{$DEFINE ATLAS_HASH_UEBERLAUF}{$Q-}{$ENDIF}
 function TFakeTrust.Sha256(const AFileName: string): string;
 begin
   Result := HashOf(FFiles.ReadText(AFileName));
 end;
-{$IFDEF ATLAS_HASH_UEBERLAUF}{$Q+}{$UNDEF ATLAS_HASH_UEBERLAUF}{$ENDIF}
 
 function TFakeTrust.Signature(const AFileName: string): TUpdateSignature;
 begin
@@ -626,6 +623,9 @@ begin
   end;
 end;
 
+// FNV-1a läuft gewollt über (#1980: Debug-Build prüft Überläufe). Die Klammer stand versehentlich um
+// Sha256 statt um die Rechnung; Delphi multipliziert Cardinal 32-bittig, das Produkt lief über.
+{$IFOPT Q+}{$DEFINE ATLAS_HASH_UEBERLAUF}{$Q-}{$ENDIF}
 class function TFakeTrust.HashOf(const AText: string): string;
 var
   mHash: Cardinal;
@@ -644,6 +644,7 @@ begin
     Result := Result + LowerCase(IntToHex(mHash xor Cardinal(mIndex), 8));
   end;
 end;
+{$IFDEF ATLAS_HASH_UEBERLAUF}{$Q+}{$UNDEF ATLAS_HASH_UEBERLAUF}{$ENDIF}
 
 { TFakeNetwork }
 

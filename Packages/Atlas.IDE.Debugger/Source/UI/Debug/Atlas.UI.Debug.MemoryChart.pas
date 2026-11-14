@@ -232,8 +232,20 @@ begin
 end;
 
 function TAtlasDebugMemoryChart.PlotRect: TRect;
+var
+  mClient: TRect;
 begin
-  Result := TRect.Create(Px(cPlotLeft), Px(cPlotTop), ClientWidth - Px(cPlotRight), ClientHeight - Px(cPlotBottom));
+  // ClientRect holt das Fenster (GetClientRect(Handle)); ohne Fenster, etwa bevor der Frame
+  // gezeigt wird, entspricht die Fläche den Abmessungen (kein Rand).
+  if HandleAllocated then
+  begin
+    mClient := ClientRect;
+  end
+  else
+  begin
+    mClient := TRect.Create(0, 0, Width, Height);
+  end;
+  Result := TRect.Create(Px(cPlotLeft), Px(cPlotTop), mClient.Right - Px(cPlotRight), mClient.Bottom - Px(cPlotBottom));
   if Result.Right <= Result.Left then
   begin
     Result.Right := Result.Left + 1;

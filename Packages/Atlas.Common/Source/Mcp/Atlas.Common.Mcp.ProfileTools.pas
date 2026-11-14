@@ -99,14 +99,24 @@ end;
 class function TMcpProfileRequest.FromArguments(const AArguments: TJSONObject): TMcpProfileRequest;
 var
   mFormat: string;
+  mTop: Integer;
+  mOwnCode: Boolean;
 begin
   Result := Default(TMcpProfileRequest);
   Result.Top := cDefaultTop;
   Result.OwnCodeOnly := True;
   if AArguments <> nil then
   begin
-    AArguments.TryGetValue<Integer>('top', Result.Top);
-    AArguments.TryGetValue<Boolean>('ownCode', Result.OwnCodeOnly);
+    // Über eigene Variablen: Delphis TryGetValue setzt den out-Wert auch ohne Schlüssel (auf 0 bzw. False), FPC
+    // lässt ihn stehen. Die Vorgabe gilt nur, wenn der Schlüssel fehlt.
+    if AArguments.TryGetValue<Integer>('top', mTop) then
+    begin
+      Result.Top := mTop;
+    end;
+    if AArguments.TryGetValue<Boolean>('ownCode', mOwnCode) then
+    begin
+      Result.OwnCodeOnly := mOwnCode;
+    end;
   end;
   if (Result.Top < 1) or (Result.Top > cMaxTop) then
   begin

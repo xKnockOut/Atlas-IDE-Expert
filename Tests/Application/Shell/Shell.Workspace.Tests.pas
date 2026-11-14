@@ -41,6 +41,7 @@ uses
   Atlas.Common.Rules.Checker,
   Shell.Workspace.Setup,
   Shell.Workspace.RuleProjects,
+  Atlas.Common.Localization.Texts,
   Shell.Workspace;
 
 function NewWorkspace(const AName: string): TShellWorkspace;
@@ -142,7 +143,12 @@ procedure TShellWorkspaceTests.WorkspaceWithoutProjectIsRuleReady;
 var
   mWorkspace: TShellWorkspace;
   mReason: string;
+  mSaved: TTextLanguage;
 begin
+  // Der Grund ist ein Text in der aktuellen Sprache: deutsch festlegen, statt sich auf die Testreihenfolge zu
+  // verlassen (andere Tests stellen TAtlasLocale um).
+  mSaved := TAtlasLocale.Language;
+  TAtlasLocale.Use(TTextLanguage.German);
   mWorkspace := NewWorkspace('Ohne');
   try
     mWorkspace.Setup.LoopThreadId := TThread.Current.ThreadID;
@@ -153,6 +159,7 @@ begin
     Assert.AreEqual('', mReason);
   finally
     mWorkspace.Free;
+    TAtlasLocale.Use(mSaved);
   end;
 end;
 

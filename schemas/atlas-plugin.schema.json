@@ -1802,6 +1802,7 @@
       "x-page": "Compiler",
       "x-experimental": true,
       "x-parent": "tests.run",
+      "x-drawing": true,
       "x-caption": "Mutationslauf: prüfen, ob die Tests Fehler im Code bemerken",
       "x-captionEn": "Mutation testing: check whether tests notice faults in the code",
       "x-issue": "#1460"

@@ -482,6 +482,8 @@ begin
     mFrame := TAtlasTrackerTestResultsView.Create(mHost);
     mFrame.Parent := mHost;
     mFrame.Source := mSource;
+    // Das Setzen der Quelle meldet gewollt „shown“ (siehe ClicksReachSource); hier zählen nur die Klicks.
+    mFake.Calls := nil;
     Assert.IsFalse(mFrame.ButtonVisible(TAtlasTestResultsButton.Compare), 'ohne Werte kein „Vergleichen“');
     mFrame.ClickAt(TAtlasTestResultsHit.Create(TAtlasTestResultsHitKind.Compare, -1));
     CheckSynchronize;
