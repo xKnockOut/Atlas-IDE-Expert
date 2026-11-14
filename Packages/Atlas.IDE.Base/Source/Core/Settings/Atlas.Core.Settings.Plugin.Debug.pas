@@ -17,6 +17,10 @@ const
   cMinMemoryTimelineIntervalMs = 250;
   cMaxMemoryTimelineIntervalMs = 10000;
   cDefaultMemoryTimelineIntervalMs = 1000;
+  /// <summary>Abstand der Proben des Profilers (#2057) in Millisekunden.</summary>
+  cMinProfilerIntervalMs = 1;
+  cMaxProfilerIntervalMs = 100;
+  cDefaultProfilerIntervalMs = 10;
   /// <summary>Grenzen für debug.whyHere.depth (#1878).</summary>
   cMinWhyHereDepth = 1;
   cMaxWhyHereDepth = 10;
@@ -267,6 +271,12 @@ type
     DebugMemoryTimeline: Boolean;
     /// <summary>Abstand der Messungen in Millisekunden (#858, debug.memoryTimeline.intervalMs).</summary>
     DebugMemoryTimelineIntervalMs: Integer;
+    /// <summary>Stichproben-Profiler (#2057, debug.profiler, experimentell): Befehle „Mit Profil ausführen“ und
+    /// „Profil starten/beenden“, Fenster „Atlas: Profil“. Gemessen wird im Server. Aus = keine Befehle, kein
+    /// Fenster.</summary>
+    DebugProfiler: Boolean;
+    /// <summary>Abstand der Proben in Millisekunden (#2057, debug.profiler.intervalMs).</summary>
+    DebugProfilerIntervalMs: Integer;
     /// <summary>„Warum bin ich hier?“ (#1878, debug.whyHere): Beim Halt zeigt Atlas am Ende der Kopfzeilen der
     /// umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen („True and (1200 > 1000) → True“,
     /// „I = 3 von 7“); Aufrufe nur auf Klick. Aus = keine Anfrage, keine Werte.</summary>
@@ -455,6 +465,7 @@ begin
   DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, cMinInlineValuesPerLine, cMaxInlineValuesPerLine);
   DebugMemoryTimelineIntervalMs := EnsureRange(DebugMemoryTimelineIntervalMs, cMinMemoryTimelineIntervalMs,
     cMaxMemoryTimelineIntervalMs);
+  DebugProfilerIntervalMs := EnsureRange(DebugProfilerIntervalMs, cMinProfilerIntervalMs, cMaxProfilerIntervalMs);
   DebugWhyHereDepth := EnsureRange(DebugWhyHereDepth, cMinWhyHereDepth, cMaxWhyHereDepth);
   DebugVariablesSearchDepth := EnsureRange(DebugVariablesSearchDepth, cMinVariablesSearchDepth,
     cMaxVariablesSearchDepth);
@@ -559,6 +570,8 @@ begin
   DebugPinnedValues := True;
   DebugMemoryTimeline := True;
   DebugMemoryTimelineIntervalMs := cDefaultMemoryTimelineIntervalMs;
+  DebugProfiler := False;
+  DebugProfilerIntervalMs := cDefaultProfilerIntervalMs;
   DebugCallStackWindow := True;
   DebugCallStackWindowEvaluateParams := True;
   DebugOwnCodeFolders := '';
@@ -596,6 +609,8 @@ begin
   AIo.Flag('DebugPinnedValues', DebugPinnedValues);
   AIo.Flag('DebugMemoryTimeline', DebugMemoryTimeline);
   AIo.Number('DebugMemoryTimelineIntervalMs', DebugMemoryTimelineIntervalMs);
+  AIo.Flag('DebugProfiler', DebugProfiler);
+  AIo.Number('DebugProfilerIntervalMs', DebugProfilerIntervalMs);
   AIo.Flag('DebugCallStackWindow', DebugCallStackWindow);
   AIo.Flag('DebugCallStackWindowEvaluateParams', DebugCallStackWindowEvaluateParams);
   AIo.Text('DebugOwnCodeFolders', DebugOwnCodeFolders);

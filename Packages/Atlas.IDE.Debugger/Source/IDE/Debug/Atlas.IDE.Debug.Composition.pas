@@ -7,8 +7,8 @@
 // - die Teile der Feature-Tabelle (Visualisierer, eigene Darstellungen,
 //   Exception-Verlauf und -Leiste, nur eigener Code, Werte im Editor,
 //   „kein Zugriff“ erklären, Zugriffsverletzung, Vervollständigung in
-//   Debugger-Dialogen, Fenster „Auswerten“, Schrittfilter, „Was wartet worauf?“, Speicherverlauf; die Teile
-//   für Werte und Ausdrücke stehen in Atlas.IDE.Debug.Composition.Values, die für
+//   Debugger-Dialogen, Fenster „Auswerten“, Schrittfilter, „Was wartet worauf?“, Speicherverlauf, Profiler;
+//   die Teile für Werte und Ausdrücke stehen in Atlas.IDE.Debug.Composition.Values, die für
 //   Exceptions und Threads in Atlas.IDE.Debug.Composition.Session),
 // - Befehle (Palette), Einträge im Atlas-Menü und im Kontextmenü des Editors,
 //   die Taste von „Gezielt hineinspringen“,
@@ -86,6 +86,7 @@ uses
   Atlas.IDE.Debug.Composition.Breakpoints,
   Atlas.IDE.Debug.Composition.Run,
   Atlas.IDE.Debug.Composition.Session,
+  Atlas.IDE.Debug.Composition.Profiler,
   Atlas.UI.Debug.Strings,
   Atlas.UI.Debug.VariablesStrings;
 
@@ -352,6 +353,8 @@ begin
   Result := Result + DebugThreadCommands;
   // Werkzeuge rund um den Lauf: Ereignisprotokoll (#580).
   Result := Result + RunCommands(CurrentScope);
+  // Profiler (#2057); nur sichtbar, solange debug.profiler an ist.
+  Result := Result + ProfilerCommands;
   // Anhalten und Haltepunkte (#856, #577) aus Atlas.IDE.Debug.Composition.Breakpoints, unter der Sicherung.
   for mCommand in BreakpointCommands do
   begin
@@ -409,6 +412,8 @@ begin
     ContextEntry('Atlas.DebugThreadsThawAll')];
   // Ereignisprotokoll, Logpunkte, Neu starten und Laufzeitberichte (#580, #583, #872, #74).
   Result := Result + RunMenuEntries;
+  // Profiler (#2057).
+  Result := Result + ProfilerMenuEntries;
   Result := Result + BreakpointMenuEntries;
   // Werte ändern (#868).
   Result := Result + ValueMenuEntries;
@@ -461,6 +466,8 @@ begin
   TAtlasIdeDisplayRules.ApplySettings;
   // debug.eventLog* (#580).
   ApplyRunSettings;
+  // debug.profiler (#2057): ausgeschaltet verschwindet das Fenster.
+  ApplyProfilerSettings;
 end;
 
 procedure TAtlasDebugModule.ThemeChanged;
@@ -471,6 +478,8 @@ begin
   ValueThemeChanged;
   TAtlasIdeDebugStepFilter.ThemeChanged;
   RunThemeChanged;
+  // Fenster „Atlas: Profil“ (#2057).
+  ProfilerThemeChanged;
   DebugThreadsThemeChanged;
   BreakpointsThemeChanged;
 end;
@@ -546,7 +555,7 @@ function Parts: TArray<IAtlasFeaturePart>;
 begin
   Result := LeadingParts + DebugExceptionParts + DebugValueParts(ExpressionProvider, GScope);
   Result := Result + [StepFilterPart] + DebugThreadParts(GScope) + DebugLeakParts(GScope) +
-    BreakpointParts + RunParts + DebugMemoryParts;
+    BreakpointParts + RunParts + DebugMemoryParts + ProfilerParts(CurrentScope);
 end;
 
 class function TAtlasDebugModule.RegisterModule: Boolean;

@@ -2249,6 +2249,40 @@
       "x-parent": "debug.memoryTimeline",
       "x-issue": "#858"
     },
+    "DebugProfiler": {
+      "description": "Stichproben-Profiler (experimentell): Befehle „Mit Profil ausführen“ (Programm ohne Debugger starten und messen) und „Profil starten/beenden“ (für das gerade debuggte Programm). Der Server nimmt in festem Abstand die Aufrufstapel aller Threads, ohne das Programm anzuhalten, und löst sie über die Map-Datei auf (Linker-Option „Map-Datei = Detailliert“). Das Fenster „Atlas: Profil“ zeigt die Methoden mit Eigen- und Gesamtanteil und heißester Zeile, auf Wunsch nur eigenen Code und den Vergleich mit dem vorigen Lauf; Doppelklick öffnet die Zeile. Aus = keine Befehle, kein Fenster.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.profiler",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Profiler",
+      "x-captionEn": "Profiler",
+      "x-keywords": [
+        "Profil",
+        "Laufzeit",
+        "langsam",
+        "Leistung",
+        "profiler",
+        "performance",
+        "slow"
+      ],
+      "x-issue": "#2057"
+    },
+    "DebugProfilerIntervalMs": {
+      "type": "integer",
+      "default": 10,
+      "description": "Abstand der Proben in Millisekunden (1 bis 100). Kleiner misst genauer und bremst das Programm stärker (10 ms: etwa 2 bis 3 %).",
+      "x-key": "debug.profiler.intervalMs",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-control": "Zahl",
+      "x-parent": "debug.profiler",
+      "x-issue": "#2057"
+    },
     "DebugWhyHere": {
       "description": "Warum bin ich hier? Beim Halt stehen am Ende der Kopfzeilen der umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen; Aufrufe und Getter erst auf Klick.",
       "type": "boolean",

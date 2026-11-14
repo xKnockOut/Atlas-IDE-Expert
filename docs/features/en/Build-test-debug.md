@@ -574,6 +574,19 @@ Open it from the Atlas menu › Memory timeline or with the command `Atlas.Debug
 
 Settings: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`
 
+<a id="window-atlasprofiler"></a>
+### Profiler
+
+Experimental. Open it from the Atlas menu › Run with profile, Start/stop profile or Profile (commands `Atlas.DebugProfileRun`, `Atlas.DebugProfileToggle`, `Atlas.DebugProfile`).
+
+- “Run with profile” builds the active project if needed, starts it without the debugger with its run parameters and samples it.
+- “Start/stop profile” samples the program being debugged or stops a running profile.
+- The Atlas server samples: at a fixed interval (default 10 ms) it takes the call stacks of all threads without stopping the program and resolves them through the map file. Set Project options › Linker “Map file = Detailed”, otherwise the profile shows modules only.
+- When the program ends, sampling ends too. Atlas keeps the last five runs.
+- The window “Atlas: Profile” lists the methods by self share (the program was exactly there) with total share (anywhere in the call stack) and the hottest line. “Own code only” folds library frames into the RTL or VCL routine your code called, “Compare with previous run” shows the change per method. Double-click or Enter opens the line.
+
+Settings: `debug.profiler`, `debug.profiler.intervalMs`
+
 <a id="window-atlasbreakpoints"></a>
 ### Breakpoints window
 
