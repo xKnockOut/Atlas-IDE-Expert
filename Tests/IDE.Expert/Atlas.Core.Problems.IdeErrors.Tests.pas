@@ -125,12 +125,13 @@ end;
 
 procedure TAtlasIdeErrorsTests.SeverityFollowsLspAndUnknownIsError;
 begin
-  Assert.IsTrue(TAtlasIdeErrors.SeverityOf(1) = TAtlasProblemSeverity.Error);
-  Assert.IsTrue(TAtlasIdeErrors.SeverityOf(2) = TAtlasProblemSeverity.Warning);
-  Assert.IsTrue(TAtlasIdeErrors.SeverityOf(3) = TAtlasProblemSeverity.Information);
-  Assert.IsTrue(TAtlasIdeErrors.SeverityOf(4) = TAtlasProblemSeverity.Hint);
-  Assert.IsTrue(TAtlasIdeErrors.SeverityOf(0) = TAtlasProblemSeverity.Error, 'unbekannt = Fehler');
-  Assert.IsTrue(TAtlasIdeErrors.SeverityOf(99) = TAtlasProblemSeverity.Error);
+  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Error, TAtlasIdeErrors.SeverityOf(1));
+  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Warning, TAtlasIdeErrors.SeverityOf(2));
+  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Information, TAtlasIdeErrors.SeverityOf(3));
+  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Hint, TAtlasIdeErrors.SeverityOf(4));
+  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Error,
+    TAtlasIdeErrors.SeverityOf(0), 'unbekannt = Fehler');
+  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Error, TAtlasIdeErrors.SeverityOf(99));
 end;
 
 procedure TAtlasIdeErrorsTests.MatchesNeedSameLineOverlapAndKind;
@@ -198,16 +199,16 @@ var
   mProblem: TAtlasProblem;
 begin
   mProblem := Finding(1, 0, 1, 'a');
-  Assert.IsTrue(TAtlasIdeErrors.OriginOf(mProblem) = TAtlasProblemOrigin.Atlas);
+  Assert.AreEqual<TAtlasProblemOrigin>(TAtlasProblemOrigin.Atlas, TAtlasIdeErrors.OriginOf(mProblem));
   Assert.AreEqual('Atlas', TAtlasIdeErrors.OriginText(mProblem));
   mProblem.IdeConfirmed := True;
-  Assert.IsTrue(TAtlasIdeErrors.OriginOf(mProblem) = TAtlasProblemOrigin.Both);
+  Assert.AreEqual<TAtlasProblemOrigin>(TAtlasProblemOrigin.Both, TAtlasIdeErrors.OriginOf(mProblem));
   Assert.AreEqual('Atlas + IDE', TAtlasIdeErrors.OriginText(mProblem));
   mProblem := IdeError(1, 0, 1);
-  Assert.IsTrue(TAtlasIdeErrors.OriginOf(mProblem) = TAtlasProblemOrigin.Ide);
+  Assert.AreEqual<TAtlasProblemOrigin>(TAtlasProblemOrigin.Ide, TAtlasIdeErrors.OriginOf(mProblem));
   Assert.AreEqual('IDE', TAtlasIdeErrors.OriginText(mProblem));
   mProblem.Source := 'DUnitX';
-  Assert.IsTrue(TAtlasIdeErrors.OriginOf(mProblem) = TAtlasProblemOrigin.Other);
+  Assert.AreEqual<TAtlasProblemOrigin>(TAtlasProblemOrigin.Other, TAtlasIdeErrors.OriginOf(mProblem));
   Assert.AreEqual('DUnitX', TAtlasIdeErrors.OriginText(mProblem));
 end;
 
@@ -342,7 +343,7 @@ begin
     Assert.AreEqual(1, mCounts[TAtlasProblemOrigin.Other]);
     mFilter := TAtlasFindingFilter.Create;
     mFilter.Compiler := True;
-    Assert.IsTrue(mFilter.Origin = TAtlasFindingOrigin.All, 'Vorgabe: Atlas und IDE');
+    Assert.AreEqual<TAtlasFindingOrigin>(TAtlasFindingOrigin.All, mFilter.Origin, 'Vorgabe: Atlas und IDE');
     for mFinding in mFindings do
     begin
       Assert.IsTrue(mFilter.Matches(mFinding));

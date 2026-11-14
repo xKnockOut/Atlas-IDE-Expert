@@ -231,7 +231,7 @@ begin
     mHistory.SetHidden('C:\P\App.dproj', 'Lint', True);
     Assert.IsTrue(mLoaded.FromJson(mHistory.ToJson));
     Assert.IsTrue(mLoaded.LastRun('C:\P\App.dproj', 'Delphi-12-Prüfung', mLast));
-    Assert.IsTrue(mLast.Outcome = TAtlasTaskOutcome.TimedOut);
+    Assert.AreEqual<TAtlasTaskOutcome>(TAtlasTaskOutcome.TimedOut, mLast.Outcome);
     Assert.AreEqual(1, mLast.ExitCode);
     Assert.AreEqual(2, mLast.Counts.Errors);
     Assert.AreEqual(1, mLast.Counts.Warnings);

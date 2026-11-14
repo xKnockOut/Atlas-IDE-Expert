@@ -171,10 +171,10 @@ end;
 
 procedure TAtlasFindingsTests.SeverityMapsToKind;
 begin
-  Assert.IsTrue(TAtlasFindings.KindOf(TAtlasProblemSeverity.Error) = TAtlasFindingKind.Error);
-  Assert.IsTrue(TAtlasFindings.KindOf(TAtlasProblemSeverity.Warning) = TAtlasFindingKind.Warning);
-  Assert.IsTrue(TAtlasFindings.KindOf(TAtlasProblemSeverity.Information) = TAtlasFindingKind.Info);
-  Assert.IsTrue(TAtlasFindings.KindOf(TAtlasProblemSeverity.Hint) = TAtlasFindingKind.Info);
+  Assert.AreEqual<TAtlasFindingKind>(TAtlasFindingKind.Error, TAtlasFindings.KindOf(TAtlasProblemSeverity.Error));
+  Assert.AreEqual<TAtlasFindingKind>(TAtlasFindingKind.Warning, TAtlasFindings.KindOf(TAtlasProblemSeverity.Warning));
+  Assert.AreEqual<TAtlasFindingKind>(TAtlasFindingKind.Info, TAtlasFindings.KindOf(TAtlasProblemSeverity.Information));
+  Assert.AreEqual<TAtlasFindingKind>(TAtlasFindingKind.Info, TAtlasFindings.KindOf(TAtlasProblemSeverity.Hint));
 end;
 
 procedure TAtlasFindingsTests.CategoryFromCatalogAndCompiler;
@@ -183,14 +183,14 @@ var
 begin
   Item := Problem(0, 'x', 'm', TAtlasProblemSeverity.Error);
   Item.Category := 'bug';
-  Assert.IsTrue(TAtlasFindings.CategoryOf(Item) = TAtlasFindingCategory.Bug);
+  Assert.AreEqual<TAtlasFindingCategory>(TAtlasFindingCategory.Bug, TAtlasFindings.CategoryOf(Item));
   Item.Category := 'security-hotspot';
-  Assert.IsTrue(TAtlasFindings.CategoryOf(Item) = TAtlasFindingCategory.SecurityHotspot);
+  Assert.AreEqual<TAtlasFindingCategory>(TAtlasFindingCategory.SecurityHotspot, TAtlasFindings.CategoryOf(Item));
   Item.Category := '';
-  Assert.IsTrue(TAtlasFindings.CategoryOf(Item) = TAtlasFindingCategory.Other);
+  Assert.AreEqual<TAtlasFindingCategory>(TAtlasFindingCategory.Other, TAtlasFindings.CategoryOf(Item));
   Item.Source := TAtlasProblem.cCompilerSource;
   Item.Category := 'bug';
-  Assert.IsTrue(TAtlasFindings.CategoryOf(Item) = TAtlasFindingCategory.Compiler);
+  Assert.AreEqual<TAtlasFindingCategory>(TAtlasFindingCategory.Compiler, TAtlasFindings.CategoryOf(Item));
 end;
 
 procedure TAtlasFindingsTests.StoreGivesFindingsWithLineTextWithoutInactiveUsesAndTests;
@@ -212,7 +212,7 @@ begin
     Assert.AreEqual(1, Integer(Length(Items)));
     Assert.AreEqual('x := 1;', Items[0].LineText);
     Assert.AreEqual('C:\P\A.pas', Items[0].FileName);
-    Assert.IsTrue(Items[0].Kind = TAtlasFindingKind.Warning);
+    Assert.AreEqual<TAtlasFindingKind>(TAtlasFindingKind.Warning, Items[0].Kind);
     Assert.IsFalse(TAtlasFindings.IsFinding(Inactive));
     Assert.IsFalse(TAtlasFindings.IsFinding(UsesHint));
     Inactive := Problem(0, '', 'Test', TAtlasProblemSeverity.Error);
@@ -457,7 +457,7 @@ begin
     Rows := View.Rows;
     Assert.AreEqual(5, Integer(Length(Rows)));
     Assert.AreEqual('code-smell', Rows[0].Caption);
-    Assert.IsTrue(Rows[0].Category = TAtlasFindingCategory.CodeSmell);
+    Assert.AreEqual<TAtlasFindingCategory>(TAtlasFindingCategory.CodeSmell, Rows[0].Category);
   finally
     View.Free;
   end;
@@ -631,7 +631,7 @@ begin
   Assert.AreEqual('icon,kind,category,message,line,location,rule,compiler,source',
     TAtlasFindings.FormatColumns(Columns));
   Columns := TAtlasFindings.ParseColumns('rule:120, -message, -kind, unbekannt, location:80, rule');
-  Assert.IsTrue(Columns[0].Column = TAtlasFindingColumn.Rule);
+  Assert.AreEqual<TAtlasFindingColumn>(TAtlasFindingColumn.Rule, Columns[0].Column);
   Assert.AreEqual(120, Columns[0].Width);
   Assert.IsFalse(Columns[1].Visible);
   // Art ist Pflicht: bleibt sichtbar.
@@ -652,13 +652,13 @@ var
   Grouping: TAtlasFindingGrouping;
 begin
   Assert.IsTrue(TAtlasFindings.TryParseScope('project', Scope));
-  Assert.IsTrue(Scope = TAtlasFindingScope.Project);
+  Assert.AreEqual<TAtlasFindingScope>(TAtlasFindingScope.Project, Scope);
   Assert.IsFalse(TAtlasFindings.TryParseScope('x', Scope));
-  Assert.IsTrue(Scope = TAtlasFindingScope.Group);
+  Assert.AreEqual<TAtlasFindingScope>(TAtlasFindingScope.Group, Scope);
   Assert.IsTrue(TAtlasFindings.TryParseGrouping('Rule', Grouping));
-  Assert.IsTrue(Grouping = TAtlasFindingGrouping.ByRule);
+  Assert.AreEqual<TAtlasFindingGrouping>(TAtlasFindingGrouping.ByRule, Grouping);
   Assert.IsFalse(TAtlasFindings.TryParseGrouping('', Grouping));
-  Assert.IsTrue(Grouping = TAtlasFindingGrouping.ByFile);
+  Assert.AreEqual<TAtlasFindingGrouping>(TAtlasFindingGrouping.ByFile, Grouping);
 end;
 
 procedure TAtlasFindingsTests.CheckedCountCountsDeliveredFiles;
@@ -757,11 +757,11 @@ begin
     Assert.AreEqual('G:Z.pas* F:Z.pas:3:3* F:Z.pas:6:3* ' +
       'S1::2/4 G:A.pas F:A.pas:3:3 F:A.pas:6:3 G:B.pas F:B.pas:3:3 F:B.pas:6:3 ' +
       'S2::2/4~ G:C.pas~ F:C.pas:3:3~ F:C.pas:6:3~ G:D.pas~ F:D.pas:3:3~ F:D.pas:6:3~', RowsText(View));
-    Assert.IsTrue(View.Rows[0].Tier = TAtlasFindingTier.Active);
-    Assert.IsTrue(View.Finding(View.Rows[1].Finding).Tier = TAtlasFindingTier.Active);
-    Assert.IsTrue(View.Finding(View.Rows[5].Finding).Tier = TAtlasFindingTier.Open);
-    Assert.IsTrue(View.Rows[11].Tier = TAtlasFindingTier.Closed);
-    Assert.IsTrue(View.Finding(View.Rows[12].Finding).Tier = TAtlasFindingTier.Closed);
+    Assert.AreEqual<TAtlasFindingTier>(TAtlasFindingTier.Active, View.Rows[0].Tier);
+    Assert.AreEqual<TAtlasFindingTier>(TAtlasFindingTier.Active, View.Finding(View.Rows[1].Finding).Tier);
+    Assert.AreEqual<TAtlasFindingTier>(TAtlasFindingTier.Open, View.Finding(View.Rows[5].Finding).Tier);
+    Assert.AreEqual<TAtlasFindingTier>(TAtlasFindingTier.Closed, View.Rows[11].Tier);
+    Assert.AreEqual<TAtlasFindingTier>(TAtlasFindingTier.Closed, View.Finding(View.Rows[12].Finding).Tier);
   finally
     View.Free;
   end;
@@ -1049,11 +1049,11 @@ var
   Value: TAtlasClosedUnits;
 begin
   Assert.IsTrue(TAtlasFindings.TryParseClosedUnits('hidden', Value));
-  Assert.IsTrue(Value = TAtlasClosedUnits.Hidden);
+  Assert.AreEqual<TAtlasClosedUnits>(TAtlasClosedUnits.Hidden, Value);
   Assert.IsTrue(TAtlasFindings.TryParseClosedUnits('Normal', Value));
-  Assert.IsTrue(Value = TAtlasClosedUnits.Normal);
+  Assert.AreEqual<TAtlasClosedUnits>(TAtlasClosedUnits.Normal, Value);
   Assert.IsFalse(TAtlasFindings.TryParseClosedUnits('grau', Value));
-  Assert.IsTrue(Value = TAtlasClosedUnits.Dimmed);
+  Assert.AreEqual<TAtlasClosedUnits>(TAtlasClosedUnits.Dimmed, Value);
   Assert.AreEqual('dimmed', TAtlasFindings.cClosedUnitsNames[TAtlasClosedUnits.Dimmed]);
 end;
 

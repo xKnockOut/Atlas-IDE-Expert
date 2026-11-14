@@ -185,7 +185,7 @@ begin
   Layout := Build(View('x: Integer'), 300);
   Assert.AreEqual(1, Integer(Length(Layout.Items)));
   Assert.AreEqual(0, Integer(Length(Layout.Hits)));
-  Assert.IsTrue(Layout.Items[0].Kind = TAtlasHoverItemKind.Styled);
+  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Styled, Layout.Items[0].Kind);
   CheckRect(Rect(11, 8, 289, 26), Layout.Items[0].Rect, 'Deklaration');
   Assert.AreEqual(0, Layout.Items[0].From);
   Assert.AreEqual(10, Layout.Items[0].Till);
@@ -220,9 +220,9 @@ begin
   Problem.Severity := TAtlasProblemSeverity.Error;
   HoverView.Problems := [Problem];
   Layout := Build(HoverView, 300);
-  Assert.IsTrue(Layout.Items[0].Kind = TAtlasHoverItemKind.Block);
+  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Block, Layout.Items[0].Kind);
   CheckRect(Rect(20, 8, 289, 23), Layout.Items[0].Rect, 'Meldung');
-  Assert.IsTrue(Layout.Items[1].Kind = TAtlasHoverItemKind.Text);
+  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Text, Layout.Items[1].Kind);
   Assert.AreEqual('Atlas', Layout.Items[1].Text);
   Assert.AreEqual(20, Layout.Items[1].Rect.Left);
   Assert.AreEqual(25, Layout.Items[1].Rect.Top);
@@ -247,14 +247,14 @@ begin
   HoverView.DebugValue := TAtlasDebugValue.Evaluated('Count', '3');
   Layout := Build(HoverView, 300);
   Colors := TAtlasColors.Light;
-  Assert.IsTrue(Layout.Items[0].Kind = TAtlasHoverItemKind.Text);
+  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Text, Layout.Items[0].Kind);
   Assert.AreEqual('Count', Layout.Items[0].Text);
-  Assert.IsTrue(Layout.Items[0].Face.Font = TAtlasHoverFont.Mono);
+  Assert.AreEqual<TAtlasHoverFont>(TAtlasHoverFont.Mono, Layout.Items[0].Face.Font);
   Assert.IsTrue(Layout.Items[0].Face.Bold);
   Assert.AreEqual(Colors.Accent, Layout.Items[0].Color);
   Assert.AreEqual(20, Layout.Items[0].Rect.Left);
   Assert.AreEqual(8, Layout.Items[0].Rect.Top);
-  Assert.IsTrue(Layout.Items[1].Kind = TAtlasHoverItemKind.Block);
+  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Block, Layout.Items[1].Kind);
   Assert.AreEqual('3', Layout.Items[1].Text);
   Assert.AreEqual(Colors.Text, Layout.Items[1].Color);
   CheckRect(Rect(20, 27, 289, 42), Layout.Items[1].Rect, 'Wert');
@@ -298,7 +298,7 @@ begin
   Layout := Build(HoverView, 300);
   Colors := TAtlasColors.Light;
   Assert.AreEqual('FList.Count', Layout.Items[0].Text);
-  Assert.IsTrue(Layout.Items[1].Kind = TAtlasHoverItemKind.Block);
+  Assert.AreEqual<TAtlasHoverItemKind>(TAtlasHoverItemKind.Block, Layout.Items[1].Kind);
   Assert.AreEqual('eval', Layout.Items[1].Text);
   Assert.AreEqual(Colors.Muted, Layout.Items[1].Color);
 end;
@@ -333,7 +333,7 @@ begin
   Layout := Build(HoverView, 300);
   for Item in Layout.Items do
   begin
-    Assert.IsFalse(Item.Text = 'Count', 'kein Abschnitt für den Wert');
+    Assert.AreNotEqual('Count', Item.Text, 'kein Abschnitt für den Wert');
   end;
   Assert.AreEqual(Integer(0), CountKind(Layout, TAtlasHoverItemKind.RoundFill));
 end;
@@ -413,7 +413,7 @@ begin
   Layout := Build(HoverView, 300);
   for Hit in Layout.Hits do
   begin
-    Assert.IsFalse(Hit.Kind = TAtlasHoverHitKind.DebugAction);
+    Assert.AreNotEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.DebugAction, Hit.Kind);
   end;
 end;
 
@@ -438,7 +438,7 @@ begin
   Assert.AreEqual('• Schalter', Layout.Items[5].Text);
   for Hit in Layout.Hits do
   begin
-    Assert.IsFalse(Hit.Kind = TAtlasHoverHitKind.DebugFix, 'ohne Korrekturen keine Klickfläche');
+    Assert.AreNotEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.DebugFix, Hit.Kind, 'ohne Korrekturen keine Klickfläche');
   end;
 end;
 
@@ -460,9 +460,9 @@ begin
   HoverView.Path := [First, Second];
   Layout := Build(HoverView, 300);
   Assert.AreEqual(2, Integer(Length(Layout.Hits)));
-  Assert.IsTrue(Layout.Hits[0].Kind = TAtlasHoverHitKind.Back);
+  Assert.AreEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.Back, Layout.Hits[0].Kind);
   CheckRect(Rect(8, 5, 30, 25), Layout.Hits[0].Rect, 'Zurück');
-  Assert.IsTrue(Layout.Hits[1].Kind = TAtlasHoverHitKind.Path);
+  Assert.AreEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.Path, Layout.Hits[1].Kind);
   Assert.AreEqual(0, Layout.Hits[1].Index);
   CheckRect(Rect(36, 7, 52, 23), Layout.Hits[1].Rect, 'Pfad TA');
   // „angeheftet“ rechtsbündig, weil Platz ist.
@@ -492,7 +492,7 @@ begin
   Assert.AreEqual(3, Integer(Length(Layout.Hits)));
   for Index := 0 to 2 do
   begin
-    Assert.IsTrue(Layout.Hits[Index].Kind = TAtlasHoverHitKind.Action);
+    Assert.AreEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.Action, Layout.Hits[Index].Kind);
     Assert.AreEqual(Index, Layout.Hits[Index].Index);
   end;
   CheckRect(Rect(11, 60, 47, 73), Layout.Hits[0].Rect, 'Gehe zu');
@@ -545,7 +545,7 @@ begin
   HoverView.Data.Ancestors := [First, Second];
   Layout := Build(HoverView, 300);
   Assert.AreEqual(2, Integer(Length(Layout.Hits)));
-  Assert.IsTrue(Layout.Hits[0].Kind = TAtlasHoverHitKind.Ancestor);
+  Assert.AreEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.Ancestor, Layout.Hits[0].Kind);
   CheckRect(Rect(11, 58, 39, 76), Layout.Hits[0].Rect, 'TA');
   Assert.AreEqual(1, Layout.Hits[1].Index);
   CheckRect(Rect(63, 58, 131, 76), Layout.Hits[1].Rect, 'TObject');
@@ -629,7 +629,7 @@ begin
   TAtlasHoverProblemActionCode.Decode(TAtlasHoverProblemActionCode.Encode(3,
     TAtlasHoverProblemAction.MoveUses), Problem, Action);
   Assert.AreEqual(3, Problem);
-  Assert.IsTrue(Action = TAtlasHoverProblemAction.MoveUses);
+  Assert.AreEqual<TAtlasHoverProblemAction>(TAtlasHoverProblemAction.MoveUses, Action);
   Plain := Default(TAtlasProblem);
   Plain.Message := 'x';
   Unused := Plain;
@@ -696,7 +696,7 @@ begin
     Problem, Action, Index);
   Assert.AreEqual(2, Problem);
   Assert.AreEqual(3, Index);
-  Assert.IsTrue(Action = TAtlasHoverProblemAction.Related);
+  Assert.AreEqual<TAtlasHoverProblemAction>(TAtlasHoverProblemAction.Related, Action);
   Plain := Default(TAtlasProblem);
   Plain.Message := 'x';
   Cycle := Default(TAtlasProblem);
@@ -806,7 +806,7 @@ begin
   Assert.AreEqual(Colors.Error, Layout.Items[Pill].Color);
   Assert.AreEqual(20, Layout.Items[Pill].Rect.Left);
   // Gemessen und gezeichnet mit derselben Schrift fester Größe; die Badge-Schrift hängt an der Kästchenhöhe.
-  Assert.IsTrue(Layout.Items[Pill].Face.Font = TAtlasHoverFont.SmallUi, 'Schrift der Pille');
+  Assert.AreEqual<TAtlasHoverFont>(TAtlasHoverFont.SmallUi, Layout.Items[Pill].Face.Font, 'Schrift der Pille');
   Assert.AreEqual(15, Layout.Items[Pill].Rect.Height, 'eine Zeile kleine Schrift plus Rand');
   Assert.IsTrue(Layout.Items[FirstKind(Layout, TAtlasHoverItemKind.Block)].Rect.Left >=
     Layout.Items[Pill].Rect.Right + 6);
@@ -968,7 +968,7 @@ begin
   Assert.IsTrue(First >= 0);
   Second := Layout.NextProblemHit(First, True);
   Assert.IsTrue(Second > First);
-  Assert.IsTrue(Layout.Hits[Second].Kind = TAtlasHoverHitKind.ProblemAction);
+  Assert.AreEqual<TAtlasHoverHitKind>(TAtlasHoverHitKind.ProblemAction, Layout.Hits[Second].Kind);
   // Reihum: nach der letzten wieder die erste, rückwärts von vorn die letzte.
   Assert.AreEqual(First, Layout.NextProblemHit(Second, True));
   Last := Layout.NextProblemHit(-1, False);

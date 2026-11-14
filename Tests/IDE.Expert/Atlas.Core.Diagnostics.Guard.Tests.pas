@@ -355,7 +355,7 @@ begin
     Log.Add('drei');
     Assert.AreEqual(3, Log.Lost);
     Assert.AreEqual(1, Integer(Length(Reports)), 'nur der erste Fehler wird gemeldet');
-    Assert.IsTrue(Reports[0] <> '', 'mit Grund');
+    Assert.AreNotEqual('', Reports[0], 'mit Grund');
     Assert.AreEqual(Reports[0], Log.LastError);
     TDirectory.Delete(Blocker);
     Log.Add('vier');
@@ -409,7 +409,7 @@ begin
   Assert.AreEqual(1, Integer(Length(TAtlasGuard.DisabledProviders)));
   Assert.AreEqual('SQL', TAtlasGuard.DisabledProviders[0]);
   Assert.IsFalse(TAtlasGuard.ProviderDisabled('Server'));
-  Assert.IsTrue(TAtlasGuard.DisabledSet = [], 'Features bleiben an');
+  Assert.AreEqual<TAtlasFeatures>([], TAtlasGuard.DisabledSet, 'Features bleiben an');
   Calls := 0;
   Assert.IsFalse(TAtlasGuard.RunProvider('SQL',
     procedure
@@ -463,7 +463,7 @@ begin
     begin
       raise EInvalidOpException.Create('kaputt');
     end);
-  Assert.IsTrue(Seen <> nil, 'Haken aufgerufen');
+  Assert.IsNotNull(Seen, 'Haken aufgerufen');
   Text := TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8);
   Assert.Contains(Text, '  Stack: Atlas.IDE.Expert370.bpl+$10 Atlas.IDE.Editor.Minimap.Paint (Minimap.pas:12)');
   Assert.Contains(Text, sLineBreak + '  rtl370.bpl+$20');
@@ -573,7 +573,7 @@ begin
       TAtlasGuard.Run(TAtlasFeature.Outline, RaiserAt(Index));
     end;
     Assert.AreEqual(1, Calls, 'einmal beim Auslösen');
-    Assert.IsTrue(Tripped = TAtlasFeature.Outline);
+    Assert.AreEqual<TAtlasFeature>(TAtlasFeature.Outline, Tripped);
     Assert.AreEqual('Fehler 3', Message);
     TAtlasGuard.Run(TAtlasFeature.Outline,
       procedure
@@ -598,7 +598,7 @@ begin
   try
     for Feature := Low(TAtlasFeature) to High(TAtlasFeature) do
     begin
-      Assert.IsTrue(TAtlasGuard.FeatureName(Feature) <> '', 'Name fehlt');
+      Assert.AreNotEqual('', TAtlasGuard.FeatureName(Feature), 'Name fehlt');
       Assert.IsFalse(Seen.ContainsKey(TAtlasGuard.FeatureName(Feature)), TAtlasGuard.FeatureName(Feature));
       Seen.Add(TAtlasGuard.FeatureName(Feature), Feature);
     end;

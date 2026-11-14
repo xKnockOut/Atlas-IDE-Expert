@@ -68,9 +68,9 @@ begin
   Assert.AreEqual(3, mList.Count);
   Assert.AreEqual(-1, mList.SeparatorIndex);
   Assert.IsFalse(mList.IsSeparator(-1));
-  Assert.IsTrue(mList.ChoiceAt(0).Scope = TAtlasFindingScope.CurrentFile);
-  Assert.IsTrue(mList.ChoiceAt(1).Scope = TAtlasFindingScope.Project);
-  Assert.IsTrue(mList.ChoiceAt(2).Scope = TAtlasFindingScope.Group);
+  Assert.AreEqual<TAtlasFindingScope>(TAtlasFindingScope.CurrentFile, mList.ChoiceAt(0).Scope);
+  Assert.AreEqual<TAtlasFindingScope>(TAtlasFindingScope.Project, mList.ChoiceAt(1).Scope);
+  Assert.AreEqual<TAtlasFindingScope>(TAtlasFindingScope.Group, mList.ChoiceAt(2).Scope);
   Assert.AreEqual('', mList.ActiveName);
 end;
 
@@ -123,14 +123,14 @@ begin
     end;
   end;
   mChoice := mList.ChoiceAt(6);
-  Assert.IsTrue(mChoice.Scope = TAtlasFindingScope.Project);
+  Assert.AreEqual<TAtlasFindingScope>(TAtlasFindingScope.Project, mChoice.Scope);
   Assert.AreEqual('Atlas.Tests', mChoice.Project);
   Assert.AreEqual(6, mList.IndexOf(TAtlasScopeChoice.Create(TAtlasFindingScope.Project, 'atlas.tests')),
     'Name ohne Groß-/Kleinschreibung');
   Assert.AreEqual('', TAtlasScopeChoice.Create(TAtlasFindingScope.Group, 'Atlas.Tests').Project,
     'Projekt nur beim Bereich Projekt');
   Assert.AreEqual('', mList.ChoiceAt(3).Project, 'Trennstrich ergibt das aktive Projekt');
-  Assert.IsTrue(mList.ChoiceAt(3).Scope = TAtlasFindingScope.Project);
+  Assert.AreEqual<TAtlasFindingScope>(TAtlasFindingScope.Project, mList.ChoiceAt(3).Scope);
 end;
 
 procedure TAtlasScopeProjectsTests.MissingProjectFallsBackToActive;
@@ -140,7 +140,7 @@ var
 begin
   mList := TAtlasScopeList.Create(Group(1), True);
   mChoice := mList.Resolve(TAtlasScopeChoice.Create(TAtlasFindingScope.Project, 'Atlas.Server'));
-  Assert.IsTrue(mChoice.Scope = TAtlasFindingScope.Project);
+  Assert.AreEqual<TAtlasFindingScope>(TAtlasFindingScope.Project, mChoice.Scope);
   Assert.AreEqual('', mChoice.Project);
   Assert.AreEqual(1, mList.IndexOf(mChoice));
   mChoice := mList.Resolve(TAtlasScopeChoice.Create(TAtlasFindingScope.Project, 'Atlas.Common'));

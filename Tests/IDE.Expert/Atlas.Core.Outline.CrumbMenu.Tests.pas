@@ -120,13 +120,15 @@ begin
   // Kunden › TKunde › private › Laden
   mCrumbs := CrumbsAt(6, 16);
   Assert.AreEqual(4, Integer(Length(mCrumbs)));
-  Assert.IsTrue(TAtlasCrumbMenu.ActionsOf(Nodes, mCrumbs[0], False) = [TAtlasCrumbAction.CopyPath,
-    TAtlasCrumbAction.CopyUnitName, TAtlasCrumbAction.CopyFilePath], 'Unit-Glied');
-  Assert.IsTrue(TAtlasCrumbMenu.ActionsOf(Nodes, mCrumbs[2], True) = [TAtlasCrumbAction.CopyPath],
+  Assert.AreEqual<TAtlasCrumbActions>([TAtlasCrumbAction.CopyPath, TAtlasCrumbAction.CopyUnitName,
+    TAtlasCrumbAction.CopyFilePath], TAtlasCrumbMenu.ActionsOf(Nodes, mCrumbs[0], False), 'Unit-Glied');
+  Assert.AreEqual<TAtlasCrumbActions>([TAtlasCrumbAction.CopyPath], TAtlasCrumbMenu.ActionsOf(Nodes, mCrumbs[2], True),
     'Schlüsselwort-Glied');
   mActions := TAtlasCrumbMenu.ActionsOf(Nodes, mCrumbs[3], False);
-  Assert.IsTrue(mActions = [TAtlasCrumbAction.CopyPath, TAtlasCrumbAction.CopyName, TAtlasCrumbAction.CopyWithUnit,
-    TAtlasCrumbAction.CopySignature, TAtlasCrumbAction.FindReferences, TAtlasCrumbAction.Rename], 'Methode');
+  Assert.AreEqual<TAtlasCrumbActions>([TAtlasCrumbAction.CopyPath, TAtlasCrumbAction.CopyName,
+    TAtlasCrumbAction.CopyWithUnit, TAtlasCrumbAction.CopySignature, TAtlasCrumbAction.FindReferences,
+    TAtlasCrumbAction.Rename],
+    mActions, 'Methode');
   mActions := TAtlasCrumbMenu.ActionsOf(Nodes, mCrumbs[1], True);
   Assert.IsFalse(TAtlasCrumbAction.CopySignature in mActions, 'Typ ohne Signatur');
   Assert.IsTrue(TAtlasCrumbAction.ShowComponent in mActions);

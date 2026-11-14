@@ -213,7 +213,7 @@ begin
   List := Nodes;
   Crumbs := TAtlasBreadcrumbs.Path(List, Lines, TAtlasCrumbRequest.Create(24, 4, 'uKundeForm', True, []));
   Assert.AreEqual('uKundeForm › TfrmKunde › btnSpeichernClick › Pruefe', Joined(Crumbs));
-  Assert.IsTrue(Crumbs[0].Badge.Kind = TAtlasBadgeKind.Unit_);
+  Assert.AreEqual<TAtlasBadgeKind>(TAtlasBadgeKind.Unit_, Crumbs[0].Badge.Kind);
   // Unit-Glied: alle Elemente der Unit-Ebene als Menü und als Kinder.
   Assert.AreEqual('TfrmKunde,TAndere,Limit,Hilfe', NamesOf(List, Crumbs[0].Siblings));
   Assert.AreEqual('TfrmKunde,TAndere,Limit,Hilfe', NamesOf(List, Crumbs[0].Children));
@@ -248,12 +248,14 @@ var
   Text: TArray<string>;
 begin
   Text := Lines;
-  Assert.IsTrue(TAtlasBreadcrumbs.SectionAt(Text, 1) = TAtlasCodeSection.InterfacePart);
-  Assert.IsTrue(TAtlasBreadcrumbs.SectionAt(Text, 3) = TAtlasCodeSection.UsesClause, 'Semikolon im Kommentar');
-  Assert.IsTrue(TAtlasBreadcrumbs.SectionAt(Text, 4) = TAtlasCodeSection.UsesClause, 'Zeile mit dem Semikolon');
-  Assert.IsTrue(TAtlasBreadcrumbs.SectionAt(Text, 5) = TAtlasCodeSection.InterfacePart);
-  Assert.IsTrue(TAtlasBreadcrumbs.SectionAt(Text, 30) = TAtlasCodeSection.ImplementationPart);
-  Assert.IsTrue(TAtlasBreadcrumbs.SectionAt(Text, 36) = TAtlasCodeSection.Initialization_);
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.InterfacePart, TAtlasBreadcrumbs.SectionAt(Text, 1));
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.UsesClause,
+    TAtlasBreadcrumbs.SectionAt(Text, 3), 'Semikolon im Kommentar');
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.UsesClause,
+    TAtlasBreadcrumbs.SectionAt(Text, 4), 'Zeile mit dem Semikolon');
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.InterfacePart, TAtlasBreadcrumbs.SectionAt(Text, 5));
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.ImplementationPart, TAtlasBreadcrumbs.SectionAt(Text, 30));
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.Initialization_, TAtlasBreadcrumbs.SectionAt(Text, 36));
   Assert.AreEqual('U › uses', Joined(TAtlasBreadcrumbs.Path(Nodes, Text,
     TAtlasCrumbRequest.Create(3, 4, 'U', True, []))));
   Assert.AreEqual('initialization', Joined(TAtlasBreadcrumbs.Path(Nodes, Text,
@@ -271,13 +273,13 @@ begin
   Assert.AreEqual(Length(Text), Length(Table));
   for Line := 0 to High(Text) do
   begin
-    Assert.IsTrue(Table[Line] = TAtlasBreadcrumbs.SectionAt(Text, Line), 'Zeile ' + IntToStr(Line));
+    Assert.AreEqual<TAtlasCodeSection>(TAtlasBreadcrumbs.SectionAt(Text, Line), Table[Line], 'Zeile ' + IntToStr(Line));
   end;
   Text := Lines;
   Table := TAtlasBreadcrumbs.SectionTable(Text);
   for Line := 0 to High(Text) do
   begin
-    Assert.IsTrue(Table[Line] = TAtlasBreadcrumbs.SectionAt(Text, Line), 'Zeile ' + IntToStr(Line));
+    Assert.AreEqual<TAtlasCodeSection>(TAtlasBreadcrumbs.SectionAt(Text, Line), Table[Line], 'Zeile ' + IntToStr(Line));
   end;
   Assert.AreEqual(0, Integer(Length(TAtlasBreadcrumbs.SectionTable(nil))));
 end;

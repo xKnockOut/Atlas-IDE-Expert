@@ -60,10 +60,13 @@ var
 begin
   for Mode := Low(TAtlasInlineDiagnosticsMode) to High(TAtlasInlineDiagnosticsMode) do
   begin
-    Assert.IsTrue(TAtlasInlineDiagnostics.ModeOf(TAtlasInlineDiagnostics.ModeName(Mode)) = Mode);
+    Assert.AreEqual<TAtlasInlineDiagnosticsMode>(Mode,
+      TAtlasInlineDiagnostics.ModeOf(TAtlasInlineDiagnostics.ModeName(Mode)));
   end;
-  Assert.IsTrue(TAtlasInlineDiagnostics.ModeOf('ERRORSANDWARNINGS') = TAtlasInlineDiagnosticsMode.ErrorsAndWarnings);
-  Assert.IsTrue(TAtlasInlineDiagnostics.ModeOf('unsinn') = TAtlasInlineDiagnosticsMode.Errors, 'Vorgabe');
+  Assert.AreEqual<TAtlasInlineDiagnosticsMode>(TAtlasInlineDiagnosticsMode.ErrorsAndWarnings,
+    TAtlasInlineDiagnostics.ModeOf('ERRORSANDWARNINGS'));
+  Assert.AreEqual<TAtlasInlineDiagnosticsMode>(TAtlasInlineDiagnosticsMode.Errors,
+    TAtlasInlineDiagnostics.ModeOf('unsinn'), 'Vorgabe');
   Assert.IsFalse(TAtlasInlineDiagnostics.Shows(TAtlasInlineDiagnosticsMode.Off, TAtlasProblemSeverity.Error));
 end;
 

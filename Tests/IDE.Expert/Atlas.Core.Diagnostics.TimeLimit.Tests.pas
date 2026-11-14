@@ -306,18 +306,18 @@ var
   Ran: Boolean;
 begin
   Ran := False;
-  Assert.IsTrue(TAtlasTimeLimit.Run(
+  Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.Done, TAtlasTimeLimit.Run(
     procedure
     begin
       Ran := True;
-    end, Error) = TAtlasTimedOutcome.Done);
+    end, Error));
   Assert.IsTrue(Ran);
   Assert.AreEqual('', Error);
-  Assert.IsTrue(TAtlasTimeLimit.Run(
+  Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.Failed, TAtlasTimeLimit.Run(
     procedure
     begin
       raise EInvalidOpException.Create('kaputt');
-    end, Error) = TAtlasTimedOutcome.Failed);
+    end, Error));
   Assert.AreEqual('EInvalidOpException: kaputt', Error);
 end;
 
@@ -330,17 +330,17 @@ begin
   Release := TEvent.Create(nil, True, False, '');
   try
     Watch := TStopwatch.StartNew;
-    Assert.IsTrue(TAtlasTimeLimit.Run(
+    Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.TimedOut, TAtlasTimeLimit.Run(
       procedure
       begin
         Release.WaitFor(5000);
-      end, Error, 200) = TAtlasTimedOutcome.TimedOut);
+      end, Error, 200));
     Assert.IsTrue(Watch.ElapsedMilliseconds < 450, Format('blockiert %d ms', [Watch.ElapsedMilliseconds]));
     // Der nächste Aufruf bekommt einen anderen Arbeiter und läuft sofort.
-    Assert.IsTrue(TAtlasTimeLimit.Run(
+    Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.Done, TAtlasTimeLimit.Run(
       procedure
       begin
-      end, Error) = TAtlasTimedOutcome.Done);
+      end, Error));
     Release.SetEvent;
   finally
     // Erst freigeben, wenn der hängende Arbeiter zurück ist.
@@ -383,37 +383,37 @@ begin
   Signaller := nil;
   Event := TEvent.Create(nil, True, False, '');
   try
-    Assert.IsTrue(TAtlasShutdown.WaitFor(Event, 30) = wrTimeout);
+    Assert.AreEqual<TWaitResult>(wrTimeout, TAtlasShutdown.WaitFor(Event, 30));
     Event.SetEvent;
-    Assert.IsTrue(TAtlasShutdown.WaitFor(Event, 30) = wrSignaled);
+    Assert.AreEqual<TWaitResult>(wrSignaled, TAtlasShutdown.WaitFor(Event, 30));
     Event.ResetEvent;
     // Ein Arbeiter hängt in einer Quelle, die auf das Signal hört.
-    Assert.IsTrue(TAtlasTimeLimit.Run(
+    Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.TimedOut, TAtlasTimeLimit.Run(
       procedure
       begin
         TAtlasShutdown.Wait(10000);
-      end, Error, 50) = TAtlasTimedOutcome.TimedOut);
+      end, Error, 50));
     Signaller := SignalShutdownSoon;
     Watch := TStopwatch.StartNew;
-    Assert.IsTrue(TAtlasShutdown.WaitFor(Event, 10000) = wrAbandoned);
+    Assert.AreEqual<TWaitResult>(wrAbandoned, TAtlasShutdown.WaitFor(Event, 10000));
     Assert.IsTrue(Watch.ElapsedMilliseconds < 500);
     Watch := TStopwatch.StartNew;
     Assert.IsTrue(TAtlasTimeLimit.StopAll(TAtlasShutdown.cStopMs), 'alle Arbeiter beendet');
     Assert.IsTrue(Watch.ElapsedMilliseconds < TAtlasShutdown.cStopMs);
     Assert.AreEqual(0, TAtlasTimeLimit.BusyCount);
-    Assert.IsTrue(TAtlasTimeLimit.Run(
+    Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.Failed, TAtlasTimeLimit.Run(
       procedure
       begin
-      end, Error) = TAtlasTimedOutcome.Failed, 'nach dem Signal startet nichts mehr');
+      end, Error), 'nach dem Signal startet nichts mehr');
   finally
     JoinThread(Signaller);
     Event.Free;
   end;
   TAtlasShutdown.Reset;
-  Assert.IsTrue(TAtlasTimeLimit.Run(
+  Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.Done, TAtlasTimeLimit.Run(
     procedure
     begin
-    end, Error) = TAtlasTimedOutcome.Done, 'nach Reset wieder bereit');
+    end, Error), 'nach Reset wieder bereit');
 end;
 
 procedure TAtlasTimeLimitTests.ClientRequestEndsOnShutdown;
@@ -589,11 +589,11 @@ var
 begin
   Release := TEvent.Create(nil, True, False, '');
   try
-    Assert.IsTrue(TAtlasTimeLimit.Run(
+    Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.TimedOut, TAtlasTimeLimit.Run(
       procedure
       begin
         Release.WaitFor(5000);
-      end, Error, 50) = TAtlasTimedOutcome.TimedOut);
+      end, Error, 50));
     Assert.IsFalse(TAtlasTimeLimit.WaitIdle(30), 'der aufgegebene Arbeiter läuft noch');
     Release.SetEvent;
     Assert.IsTrue(TAtlasTimeLimit.WaitIdle(2000), 'nach seiner Rückkehr frei');
@@ -638,8 +638,8 @@ begin
   SinkRef := Sink;
   Provider.Query(Context, SinkRef);
   Assert.IsTrue(Sink.WaitDone(3000));
-  Assert.IsTrue(Recording.PrepareThread <> 0, 'Prepare lief');
-  Assert.IsTrue(Recording.PrepareThread <> MainThreadID,
+  Assert.AreNotEqual<TThreadID>(0, Recording.PrepareThread, 'Prepare lief');
+  Assert.AreNotEqual<TThreadID>(MainThreadID, Recording.PrepareThread,
     'Prepare läuft im Zeitlimit-Arbeiter: weder VCL noch Open Tools API, kein Serverstart');
 end;
 
@@ -664,8 +664,8 @@ begin
   SinkRef := Sink;
   Provider.Query(Context, SinkRef);
   Assert.IsTrue(Sink.WaitDone(3000));
-  Assert.IsTrue(SessionThread <> 0, 'Sitzungsfunktion gerufen');
-  Assert.IsTrue(SessionThread <> MainThreadID,
+  Assert.AreNotEqual<TThreadID>(0, SessionThread, 'Sitzungsfunktion gerufen');
+  Assert.AreNotEqual<TThreadID>(MainThreadID, SessionThread,
     'Die Sitzungsfunktion läuft im Zeitlimit-Arbeiter und darf keinen Server starten');
 end;
 
@@ -686,7 +686,7 @@ begin
       procedure(const AHelp: TAtlasSignatureHelp)
       begin
       end), 'ohne Sitzung keine Anfrage');
-    Assert.IsTrue(SessionThread = TThread.CurrentThread.ThreadID,
+    Assert.AreEqual<TThreadID>(TThread.CurrentThread.ThreadID, SessionThread,
       'Sitzung und Abgleich im aufrufenden Thread: Sync wartet nicht auf den Server, kein Zeitlimit-Arbeiter');
     Assert.AreEqual(0, TAtlasTimeLimit.BusyCount);
     Signatures.Shutdown;

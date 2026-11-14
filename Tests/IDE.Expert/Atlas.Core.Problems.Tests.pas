@@ -121,7 +121,7 @@ begin
   Assert.AreEqual(4, Integer(Length(Problems)));
   Assert.AreEqual(3, Problems[0].StartLine);
   Assert.AreEqual(9, Problems[0].EndCharacter);
-  Assert.IsTrue(Problems[0].Severity = TAtlasProblemSeverity.Warning);
+  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Warning, Problems[0].Severity);
   Assert.AreEqual('Variable X wird nicht verwendet (unused-variable)', Problems[0].Caption);
   Assert.IsFalse(Problems[0].IsCompiler);
   Assert.AreEqual('medium', Problems[0].Confidence);
@@ -130,15 +130,15 @@ begin
   Assert.AreEqual('Durchsucht: 3 Dateien der Projektgruppe', Problems[0].Details);
   Assert.AreEqual('', Problems[1].Details);
   Assert.IsTrue(Problems[1].IsCompiler);
-  Assert.IsTrue(Problems[1].Severity = TAtlasProblemSeverity.Error);
+  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Error, Problems[1].Severity);
   Assert.IsTrue(Problems[2].Unnecessary);
   Assert.IsFalse(Problems[2].Deprecated);
   // Veraltetes Symbol (#38).
   Assert.IsTrue(Problems[3].Deprecated);
   Assert.IsFalse(Problems[3].Unnecessary);
-  Assert.IsTrue(Problems[2].Severity = TAtlasProblemSeverity.Hint);
+  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Hint, Problems[2].Severity);
   Assert.AreEqual('42', Problems[3].Code);
-  Assert.IsTrue(Problems[3].Severity = TAtlasProblemSeverity.Error, 'ohne severity: Fehler');
+  Assert.AreEqual<TAtlasProblemSeverity>(TAtlasProblemSeverity.Error, Problems[3].Severity, 'ohne severity: Fehler');
 end;
 
 procedure TAtlasProblemsTests.ContainsTreatsEmptyRangeAsOneCharacter;

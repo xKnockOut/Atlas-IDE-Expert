@@ -208,7 +208,7 @@ begin
       CheckSynchronize;
     end);
   Assert.AreEqual(1, Failures);
-  Assert.IsTrue(Feature = TAtlasFeature.Hover, 'zählt für das angegebene Feature');
+  Assert.AreEqual<TAtlasFeature>(TAtlasFeature.Hover, Feature, 'zählt für das angegebene Feature');
 end;
 
 procedure TAtlasMainThreadTests.QueueFromWorkerRunsInMainThread;
@@ -231,7 +231,7 @@ begin
   WaitFinished(Worker);
   Worker.Free;
   CheckSynchronize;
-  Assert.IsTrue(RanIn = MainThreadID, 'Eintrag läuft im Hauptthread');
+  Assert.AreEqual<TThreadID>(MainThreadID, RanIn, 'Eintrag läuft im Hauptthread');
 end;
 
 /// <summary>Zählt jeden Aufruf in ACount; eigene Routine, damit keine andere anonyme Methode den Rahmen teilt.
@@ -267,10 +267,10 @@ var
   mCount: Integer;
 begin
   mCount := 0;
-  Assert.IsTrue(TAtlasMainThread.ModuleOf(Counter(mCount)) = NativeUInt(FindHInstance(@Counter)),
+  Assert.AreEqual<NativeUInt>(NativeUInt(FindHInstance(@Counter)), TAtlasMainThread.ModuleOf(Counter(mCount)),
     'Modul der Routine, die die anonyme Methode übersetzt hat');
-  Assert.IsTrue(TAtlasMainThread.ModuleOf(Counter(mCount)) <> 0);
-  Assert.IsTrue(TAtlasMainThread.ModuleOf(nil) = 0, 'ohne Methode');
+  Assert.AreNotEqual<NativeUInt>(0, TAtlasMainThread.ModuleOf(Counter(mCount)));
+  Assert.AreEqual<NativeUInt>(0, TAtlasMainThread.ModuleOf(nil), 'ohne Methode');
 end;
 
 procedure TAtlasMainThreadTests.CloseModuleDropsWaitingAndLaterEntries;

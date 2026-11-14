@@ -594,8 +594,8 @@ begin
   Assert.AreEqual('sn', TAtlasItemPresentation.Badge(Item('tryf', TAtlasItemKind.Snippet)).Code);
   Assert.AreEqual('fn', TAtlasItemPresentation.Badge(Item('Create', TAtlasItemKind.Constructor_)).Code);
   Assert.AreEqual('pr', TAtlasItemPresentation.Badge(Item('Destroy', TAtlasItemKind.Destructor_)).Code);
-  Assert.IsTrue(TAtlasItemPresentation.Badge(Item('TStringList', TAtlasItemKind.Class_)).Kind =
-    TAtlasBadgeKind.Type_);
+  Assert.AreEqual<TAtlasBadgeKind>(TAtlasBadgeKind.Type_,
+    TAtlasItemPresentation.Badge(Item('TStringList', TAtlasItemKind.Class_)).Kind);
 end;
 
 procedure TAtlasPresentationTests.MethodBadgeFollowsSignature;
@@ -685,7 +685,7 @@ begin
   Tags := TAtlasItemPresentation.Tags(Entry);
   Assert.AreEqual(1, Integer(Length(Tags)));
   Assert.AreEqual('+ System.Classes', Tags[0].Text);
-  Assert.IsTrue(Tags[0].Kind = TAtlasTagKind.Add);
+  Assert.AreEqual<TAtlasTagKind>(TAtlasTagKind.Add, Tags[0].Kind);
   // Englische Servertexte (#1458).
   Entry := Item('TStringList', TAtlasItemKind.Class_, 'System.Classes (add to uses)');
   Entry.UnitUsed := False;
@@ -724,7 +724,7 @@ begin
   Assert.AreEqual(2, Integer(Length(Tags)));
   Assert.AreEqual('constructor', Tags[0].Text);
   Assert.AreEqual('deprecated', Tags[1].Text);
-  Assert.IsTrue(Tags[1].Kind = TAtlasTagKind.Warn);
+  Assert.AreEqual<TAtlasTagKind>(TAtlasTagKind.Warn, Tags[1].Kind);
 end;
 
 procedure TAtlasPresentationTests.ScopeTagsNameOrigin;
@@ -881,9 +881,12 @@ begin
   // Erste Zeile 8 Zeichen, Folgezeilen um 3 Zeichen schmaler (5).
   Lines := TAtlasWrap.AtSpaces('aa bb cc dd ee', Cum('aa bb cc dd ee'), 80, 30);
   Assert.AreEqual(3, Integer(Length(Lines)));
-  Assert.IsTrue(Lines[0] = Point(0, 6));
-  Assert.IsTrue(Lines[1] = Point(6, 9));
-  Assert.IsTrue(Lines[2] = Point(9, 14));
+  Assert.AreEqual(0, Lines[0].X);
+  Assert.AreEqual(6, Lines[0].Y);
+  Assert.AreEqual(6, Lines[1].X);
+  Assert.AreEqual(9, Lines[1].Y);
+  Assert.AreEqual(9, Lines[2].X);
+  Assert.AreEqual(14, Lines[2].Y);
 end;
 
 procedure TAtlasWrapTests.WrapLongWordStandsAlone;
@@ -892,9 +895,12 @@ var
 begin
   Lines := TAtlasWrap.AtSpaces('a Sehrlangeswort b', Cum('a Sehrlangeswort b'), 50, 0);
   Assert.AreEqual(3, Integer(Length(Lines)));
-  Assert.IsTrue(Lines[0] = Point(0, 2));
-  Assert.IsTrue(Lines[1] = Point(2, 17));
-  Assert.IsTrue(Lines[2] = Point(17, 18));
+  Assert.AreEqual(0, Lines[0].X);
+  Assert.AreEqual(2, Lines[0].Y);
+  Assert.AreEqual(2, Lines[1].X);
+  Assert.AreEqual(17, Lines[1].Y);
+  Assert.AreEqual(17, Lines[2].X);
+  Assert.AreEqual(18, Lines[2].Y);
 end;
 
 procedure TAtlasWrapTests.WrapEmptyText;

@@ -94,7 +94,7 @@ begin
   Assert.IsTrue(SameDateTime(Marker.StartedAt, Loaded.StartedAt));
   Assert.IsTrue(Loaded.Loaded);
   Assert.AreEqual(Int64(812), Loaded.LoadMs);
-  Assert.IsTrue(Loaded.Level = TAtlasSafeLevel.Safe);
+  Assert.AreEqual<TAtlasSafeLevel>(TAtlasSafeLevel.Safe, Loaded.Level);
   Assert.AreEqual(2, Integer(Length(Loaded.Features)));
   Assert.AreEqual(2, Loaded.FailureCount('Pairs'));
   Assert.AreEqual(1, Loaded.FailureCount('Hover'));
@@ -110,7 +110,7 @@ var
 begin
   State := Default(TAtlasSafeState);
   Decision := TAtlasSafeMode.Decide(State, nil, Now, Options, TAtlasStartupKey.None, False);
-  Assert.IsTrue(Decision.Level = TAtlasSafeLevel.Normal);
+  Assert.AreEqual<TAtlasSafeLevel>(TAtlasSafeLevel.Normal, Decision.Level);
   Assert.IsFalse(Decision.Crashed);
   Assert.IsFalse(Decision.Ask);
   Assert.AreEqual(0, State.CrashCount);
@@ -129,8 +129,8 @@ begin
     Options, TAtlasStartupKey.None, False);
   Assert.IsTrue(Decision.Crashed);
   Assert.IsTrue(Decision.Ask, 'Rückfrage');
-  Assert.IsTrue(Decision.Level = TAtlasSafeLevel.Safe, 'bis zur Antwort abgesichert');
-  Assert.IsTrue(Decision.Reason = TAtlasSafeReason.Crash);
+  Assert.AreEqual<TAtlasSafeLevel>(TAtlasSafeLevel.Safe, Decision.Level, 'bis zur Antwort abgesichert');
+  Assert.AreEqual<TAtlasSafeReason>(TAtlasSafeReason.Crash, Decision.Reason);
   Assert.AreEqual(1, State.CrashCount);
   // Details zeigen die zuletzt gestartete Sitzung.
   Assert.IsTrue(TAtlasSessionMarker.FromJson(State.CrashedMarker, Marker));
@@ -150,14 +150,14 @@ begin
   Decision := TAtlasSafeMode.Decide(State, [Crashed(2, Start)], IncMinute(Start, 5), Options,
     TAtlasStartupKey.None, False);
   Assert.AreEqual(2, State.CrashCount);
-  Assert.IsTrue(Decision.Level = TAtlasSafeLevel.Safe);
-  Assert.IsTrue(Decision.Reason = TAtlasSafeReason.RepeatedCrash);
+  Assert.AreEqual<TAtlasSafeLevel>(TAtlasSafeLevel.Safe, Decision.Level);
+  Assert.AreEqual<TAtlasSafeReason>(TAtlasSafeReason.RepeatedCrash, Decision.Reason);
   Assert.IsFalse(Decision.Ask, 'ohne Rückfrage, nur Meldung');
   // Nach langer Pause gilt der nächste Absturz wieder als erster.
   Decision := TAtlasSafeMode.Decide(State, [Crashed(3, Start)], IncHour(Start, 3), Options,
     TAtlasStartupKey.None, False);
   Assert.AreEqual(1, State.CrashCount);
-  Assert.IsTrue(Decision.Reason = TAtlasSafeReason.Crash);
+  Assert.AreEqual<TAtlasSafeReason>(TAtlasSafeReason.Crash, Decision.Reason);
 end;
 
 procedure TAtlasSafeModeTests.CleanExitResetsCount;
@@ -173,7 +173,7 @@ begin
   Assert.AreEqual(0, State.CrashCount);
   Decision := TAtlasSafeMode.Decide(State, [Crashed(2, Start)], IncMinute(Start, 2), Options,
     TAtlasStartupKey.None, False);
-  Assert.IsTrue(Decision.Reason = TAtlasSafeReason.Crash, 'nach sauberem Ende nicht „wiederholt“');
+  Assert.AreEqual<TAtlasSafeReason>(TAtlasSafeReason.Crash, Decision.Reason, 'nach sauberem Ende nicht „wiederholt“');
 end;
 
 procedure TAtlasSafeModeTests.SlowStartIsNoCrash;
@@ -187,7 +187,7 @@ begin
   Decision := TAtlasSafeMode.Decide(State, nil, Now, Options, TAtlasStartupKey.None, False);
   Assert.IsFalse(Decision.Crashed, 'langsamer Start ist kein Absturz');
   Assert.IsFalse(Decision.Ask);
-  Assert.IsTrue(Decision.Level = TAtlasSafeLevel.Normal);
+  Assert.AreEqual<TAtlasSafeLevel>(TAtlasSafeLevel.Normal, Decision.Level);
   Assert.AreEqual(0, State.CrashCount);
   Assert.IsFalse(State.ToJson.Contains('slowStart'), 'wird nicht mehr geschrieben');
 end;
@@ -199,20 +199,20 @@ var
 begin
   State := Default(TAtlasSafeState);
   Decision := TAtlasSafeMode.Decide(State, nil, Now, Options, TAtlasStartupKey.Shift, False);
-  Assert.IsTrue(Decision.Level = TAtlasSafeLevel.Minimal);
-  Assert.IsTrue(Decision.Reason = TAtlasSafeReason.StartupKey);
+  Assert.AreEqual<TAtlasSafeLevel>(TAtlasSafeLevel.Minimal, Decision.Level);
+  Assert.AreEqual<TAtlasSafeReason>(TAtlasSafeReason.StartupKey, Decision.Reason);
   Decision := TAtlasSafeMode.Decide(State, nil, Now, Options, TAtlasStartupKey.Ctrl, False);
-  Assert.IsTrue(Decision.Level = TAtlasSafeLevel.Normal, 'andere Taste als eingestellt');
+  Assert.AreEqual<TAtlasSafeLevel>(TAtlasSafeLevel.Normal, Decision.Level, 'andere Taste als eingestellt');
   Decision := TAtlasSafeMode.Decide(State, nil, Now, Options, TAtlasStartupKey.None, True);
-  Assert.IsTrue(Decision.Level = TAtlasSafeLevel.Minimal);
-  Assert.IsTrue(Decision.Reason = TAtlasSafeReason.Forced);
+  Assert.AreEqual<TAtlasSafeLevel>(TAtlasSafeLevel.Minimal, Decision.Level);
+  Assert.AreEqual<TAtlasSafeReason>(TAtlasSafeReason.Forced, Decision.Reason);
   Assert.IsTrue(TAtlasSafeMode.IsForced('1', nil));
   Assert.IsTrue(TAtlasSafeMode.IsForced('', ['bds.exe', '-pDelphi', '-AtlasSafeMode']));
   Assert.IsTrue(TAtlasSafeMode.IsForced('', ['/atlassafemode']));
   Assert.IsFalse(TAtlasSafeMode.IsForced('0', ['-np']));
-  Assert.IsTrue(TAtlasSafeMode.KeyOf('ctrl') = TAtlasStartupKey.Ctrl);
-  Assert.IsTrue(TAtlasSafeMode.KeyOf('none') = TAtlasStartupKey.None);
-  Assert.IsTrue(TAtlasSafeMode.KeyOf('quatsch') = TAtlasStartupKey.Shift);
+  Assert.AreEqual<TAtlasStartupKey>(TAtlasStartupKey.Ctrl, TAtlasSafeMode.KeyOf('ctrl'));
+  Assert.AreEqual<TAtlasStartupKey>(TAtlasStartupKey.None, TAtlasSafeMode.KeyOf('none'));
+  Assert.AreEqual<TAtlasStartupKey>(TAtlasStartupKey.Shift, TAtlasSafeMode.KeyOf('quatsch'));
   Assert.AreEqual('ctrl', TAtlasSafeMode.KeyText(TAtlasStartupKey.Ctrl));
 end;
 
@@ -228,11 +228,11 @@ begin
   State := Default(TAtlasSafeState);
   Start := EncodeDateTime(2026, 10, 14, 9, 0, 0, 0);
   Decision := TAtlasSafeMode.Decide(State, [Crashed(1, Start)], Start, Off, TAtlasStartupKey.Shift, False);
-  Assert.IsTrue(Decision.Level = TAtlasSafeLevel.Normal);
+  Assert.AreEqual<TAtlasSafeLevel>(TAtlasSafeLevel.Normal, Decision.Level);
   Assert.IsFalse(Decision.Ask);
   Decision := TAtlasSafeMode.Decide(State, [Crashed(2, Start)], IncMinute(Start, 1), Off,
     TAtlasStartupKey.Shift, False);
-  Assert.IsTrue(Decision.Level = TAtlasSafeLevel.Normal, 'auch nach wiederholtem Absturz');
+  Assert.AreEqual<TAtlasSafeLevel>(TAtlasSafeLevel.Normal, Decision.Level, 'auch nach wiederholtem Absturz');
 end;
 
 procedure TAtlasSafeModeTests.StateRoundTrips;
@@ -483,7 +483,7 @@ begin
     mBook.Open(NoneAlive, mState, mFound);
     Assert.AreEqual(0, Integer(Length(mFound)), 'keine fremden Marken ausgewertet');
     mDecision := TAtlasSafeMode.Decide(mState, mFound, mNow, Options, TAtlasStartupKey.None, False);
-    Assert.IsTrue(mDecision.Level = TAtlasSafeLevel.Normal, 'normal gestartet');
+    Assert.AreEqual<TAtlasSafeLevel>(TAtlasSafeLevel.Normal, mDecision.Level, 'normal gestartet');
     Assert.IsFalse(mDecision.Crashed, 'kein Absturz');
     mBook.SaveState(mState);
     mBook.SaveMarker(TAtlasSessionMarker.Create(10, '1.0.0', mNow));

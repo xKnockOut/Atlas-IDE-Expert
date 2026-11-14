@@ -217,7 +217,7 @@ begin
         Result := False;
       end);
     Table.StartWanted(TAtlasSafeLevel.Minimal);
-    Assert.IsTrue(Seen = TAtlasSafeLevel.Minimal);
+    Assert.AreEqual<TAtlasSafeLevel>(TAtlasSafeLevel.Minimal, Seen);
     Assert.AreEqual('', Probe.Log);
   finally
     Probe.Free;
