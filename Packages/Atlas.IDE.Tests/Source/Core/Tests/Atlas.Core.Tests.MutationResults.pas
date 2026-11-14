@@ -6,6 +6,8 @@
 //   bestimmt durch Routine, Nummer in der Routine, Operator und Ersatz; die
 //   Zeile steht relativ zum Kopf der Routine, damit Symbole in der Rinne
 //   mitwandern, wenn darüber Code dazukommt.
+// - Marken für die Rinne (MarksOf): je Zeile die Ausgänge der Mutanten, nur
+//   für Routinen, deren Prüfsumme an den gemerkten Zeilen noch stimmt.
 // - Ändert sich die Prüfsumme, ist das Ergebnis der Routine veraltet: Die
 //   Rinne zeigt es nicht mehr, der Befehl „geänderte Routinen“ nimmt sie neu.
 // - Ausgang: erkannt (ein Test schlug fehl), überlebt (alle grün), Zeit
@@ -15,14 +17,15 @@
 //   UTF-8 ohne BOM, Zeiten in UTC):
 //     {"format": 1, "project": "C:\\P\\Demo.Tests.dproj",
 //      "files": [{"file": "C:\\P\\Preise.pas", "routines": [{"routine": "Satz",
-//        "body": "…", "at": "…", "mutants": [{"index": 0, "operator": "boundary",
-//        "original": ">=", "replacement": ">", "line": 2, "status": "survived",
-//        "by": "", "ms": 120}]}]}]}
+//        "body": "…", "line": 3, "endLine": 9, "at": "…", "mutants": [{"index": 0,
+//        "operator": "boundary", "original": ">=", "replacement": ">", "line": 2,
+//        "description": "…", "status": "survived", "by": "", "ms": 120}]}]}]}
 
 interface
 
 uses
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Tests.Mutants;
 
 type
 {$SCOPEDENUMS ON}
@@ -36,6 +39,8 @@ type
     OperatorId: string;
     Original: string;
     Replacement: string;
+    /// <summary>Beschreibung wie vom Server ("&gt;= durch &gt;").</summary>
+    Description: string;
     /// <summary>Zeile relativ zum Kopf der Routine (ab 0).</summary>
     Line: Integer;
     Status: TAtlasMutationStatus;
@@ -49,8 +54,21 @@ type
     FileName: string;
     Routine: string;
     Body: string;
+    /// <summary>Zeilen der Routine beim Lauf (ab 0, Kopf bis end).</summary>
+    Line: Integer;
+    EndLine: Integer;
     AtUtc: TDateTime;
     Outcomes: TArray<TAtlasMutationOutcome>;
+  end;
+
+  /// <summary>Ausgänge der Mutanten einer Zeile (ab 0) für die Rinne.</summary>
+  TAtlasMutationLineMark = record
+    Line: Integer;
+    Outcomes: TArray<TAtlasMutationOutcome>;
+    /// <summary>Überlebt mindestens einer?</summary>
+    function AnySurvived: Boolean;
+    /// <summary>Erkannt mindestens einer (auch Zeitüberschreitung)?</summary>
+    function AnyKilled: Boolean;
   end;
 
   /// <summary>Zahlen über Ergebnisse.</summary>
@@ -88,6 +106,9 @@ type
     function IsStale(const AFileName, ARoutine, ABody: string): Boolean;
     /// <summary>Alle Routinen von AFileName mit Ergebnissen (auch veraltete), nach Routine sortiert.</summary>
     function RoutinesOf(const AFileName: string): TArray<TAtlasMutationRoutineResult>;
+    /// <summary>Marken je Zeile für AFileName mit dem Text ALines, nach Zeile sortiert; nur Routinen, deren
+    /// Prüfsumme an den gemerkten Zeilen stimmt.</summary>
+    function MarksOf(const AFileName: string; const ALines: TArray<string>): TArray<TAtlasMutationLineMark>;
     /// <summary>Zahlen über die Ergebnisse von AFileName ('' = alle Dateien).</summary>
     function Totals(const AFileName: string): TAtlasMutationTotals;
     /// <summary>Ergebnisse von AFileName vergessen ('' = alle).</summary>
@@ -111,6 +132,36 @@ uses
 const
   cStatusIds: array[TAtlasMutationStatus] of string = ('killed', 'survived', 'timeout', 'buildFailed', 'invalid');
   cPercent = 100;
+
+{ TAtlasMutationLineMark }
+
+function TAtlasMutationLineMark.AnySurvived: Boolean;
+var
+  mOutcome: TAtlasMutationOutcome;
+begin
+  for mOutcome in Outcomes do
+  begin
+    if mOutcome.Status = TAtlasMutationStatus.Survived then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TAtlasMutationLineMark.AnyKilled: Boolean;
+var
+  mOutcome: TAtlasMutationOutcome;
+begin
+  for mOutcome in Outcomes do
+  begin
+    if mOutcome.Status in [TAtlasMutationStatus.Killed, TAtlasMutationStatus.TimedOut] then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
 
 { TAtlasMutationTotals }
 
@@ -240,6 +291,72 @@ begin
   SortRoutines(Result);
 end;
 
+/// <summary>Index der Marke für ALine in AMarks; neu angehängt, wenn es keine gibt.</summary>
+function MarkIndex(var AMarks: TArray<TAtlasMutationLineMark>; ALine: Integer): Integer;
+var
+  mMark: TAtlasMutationLineMark;
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AMarks) do
+  begin
+    if AMarks[mIndex].Line = ALine then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  mMark := Default(TAtlasMutationLineMark);
+  mMark.Line := ALine;
+  AMarks := AMarks + [mMark];
+  Result := High(AMarks);
+end;
+
+/// <summary>Sortiert AMarks nach Zeile (Zeilen sind eindeutig).</summary>
+procedure SortMarks(var AMarks: TArray<TAtlasMutationLineMark>);
+var
+  mIndex, mOther: Integer;
+  mSwap: TAtlasMutationLineMark;
+begin
+  for mIndex := 1 to High(AMarks) do
+  begin
+    mSwap := AMarks[mIndex];
+    mOther := mIndex - 1;
+    while (mOther >= 0) and (AMarks[mOther].Line > mSwap.Line) do
+    begin
+      AMarks[mOther + 1] := AMarks[mOther];
+      Dec(mOther);
+    end;
+    AMarks[mOther + 1] := mSwap;
+  end;
+end;
+
+function TAtlasMutationResults.MarksOf(const AFileName: string;
+  const ALines: TArray<string>): TArray<TAtlasMutationLineMark>;
+var
+  mResult: TAtlasMutationRoutineResult;
+  mRoutine: TAtlasMutantRoutine;
+  mOutcome: TAtlasMutationOutcome;
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mResult in RoutinesOf(AFileName) do
+  begin
+    mRoutine := Default(TAtlasMutantRoutine);
+    mRoutine.Name := mResult.Routine;
+    mRoutine.Line := mResult.Line;
+    mRoutine.EndLine := mResult.EndLine;
+    if (mResult.Body = '') or (TAtlasMutants.RoutineBody(ALines, mRoutine) <> mResult.Body) then
+    begin
+      Continue;
+    end;
+    for mOutcome in mResult.Outcomes do
+    begin
+      mIndex := MarkIndex(Result, mResult.Line + mOutcome.Line);
+      Result[mIndex].Outcomes := Result[mIndex].Outcomes + [mOutcome];
+    end;
+  end;
+  SortMarks(Result);
+end;
+
 function TAtlasMutationResults.Totals(const AFileName: string): TAtlasMutationTotals;
 var
   mResult: TAtlasMutationRoutineResult;
@@ -284,6 +401,7 @@ begin
   Result.AddPair('original', AOutcome.Original);
   Result.AddPair('replacement', AOutcome.Replacement);
   Result.AddPair('line', TJSONNumber.Create(AOutcome.Line));
+  Result.AddPair('description', AOutcome.Description);
   Result.AddPair('status', TAtlasMutationResults.StatusId(AOutcome.Status));
   Result.AddPair('by', AOutcome.By);
   Result.AddPair('ms', TJSONNumber.Create(AOutcome.Milliseconds));
@@ -298,6 +416,8 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('routine', AResult.Routine);
   Result.AddPair('body', AResult.Body);
+  Result.AddPair('line', TJSONNumber.Create(AResult.Line));
+  Result.AddPair('endLine', TJSONNumber.Create(AResult.EndLine));
   AddTime(Result, 'at', AResult.AtUtc);
   mOutcomes := TJSONArray.Create;
   Result.AddPair('mutants', mOutcomes);
@@ -351,6 +471,7 @@ begin
   AOutcome.Original := TJsonRead.Text(AObject, 'original');
   AOutcome.Replacement := TJsonRead.Text(AObject, 'replacement');
   AOutcome.Line := TJsonRead.IntOr(AObject, 'line', -1);
+  AOutcome.Description := TJsonRead.Text(AObject, 'description');
   AOutcome.By := TJsonRead.Text(AObject, 'by');
   AOutcome.Milliseconds := TJsonRead.IntOr(AObject, 'ms', 0);
   Result := TAtlasMutationResults.TryParseStatus(TJsonRead.Text(AObject, 'status'), AOutcome.Status) and
@@ -369,6 +490,8 @@ begin
   AResult.FileName := AFileName;
   AResult.Routine := TJsonRead.Text(AObject, 'routine');
   AResult.Body := TJsonRead.Text(AObject, 'body');
+  AResult.Line := TJsonRead.IntOr(AObject, 'line', -1);
+  AResult.EndLine := TJsonRead.IntOr(AObject, 'endLine', -1);
   AResult.AtUtc := SummaryTimeOf(TJsonRead.Text(AObject, 'at'));
   mItems := TJsonRead.Items(AObject, 'mutants');
   if mItems <> nil then

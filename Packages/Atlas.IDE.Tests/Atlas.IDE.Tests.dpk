@@ -66,6 +66,7 @@ contains
   Atlas.Core.Tests.Mutants in 'Source\Core\Tests\Atlas.Core.Tests.Mutants.pas',
   Atlas.Core.Tests.MutationShadow in 'Source\Core\Tests\Atlas.Core.Tests.MutationShadow.pas',
   Atlas.Core.Tests.MutationResults in 'Source\Core\Tests\Atlas.Core.Tests.MutationResults.pas',
+  Atlas.Core.Tests.MutationPlan in 'Source\Core\Tests\Atlas.Core.Tests.MutationPlan.pas',
   Atlas.Core.Tests.Approval in 'Source\Core\Tests\Atlas.Core.Tests.Approval.pas',
   Atlas.Core.Tests.Durations in 'Source\Core\Tests\Atlas.Core.Tests.Durations.pas',
   Atlas.Core.Tests.Flaky in 'Source\Core\Tests\Atlas.Core.Tests.Flaky.pas',

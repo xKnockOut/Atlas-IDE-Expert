@@ -1212,6 +1212,8 @@ uses
   Atlas.Core.Tests.MutationShadow.Tests in 'IDE.Expert\Atlas.Core.Tests.MutationShadow.Tests.pas',
   Atlas.Core.Tests.MutationResults in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.MutationResults.pas',
   Atlas.Core.Tests.MutationResults.Tests in 'IDE.Expert\Atlas.Core.Tests.MutationResults.Tests.pas',
+  Atlas.Core.Tests.MutationPlan in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.MutationPlan.pas',
+  Atlas.Core.Tests.MutationPlan.Tests in 'IDE.Expert\Atlas.Core.Tests.MutationPlan.Tests.pas',
   Atlas.Core.Tests.Approval in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Approval.pas',
   Atlas.Core.Tests.Approval.Tests in 'IDE.Expert\Atlas.Core.Tests.Approval.Tests.pas',
   Atlas.Core.Tests.Durations in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Durations.pas',

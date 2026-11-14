@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Tests.MutationResults.Tests;
 
 // Tests der Ergebnisse des Mutationslaufs (#1460): merken und nachschlagen
-// mit Prüfsumme, veraltet, Zahlen und Anteil, vergessen, JSON hin und zurück.
+// mit Prüfsumme, veraltet, Zahlen und Anteil, vergessen, JSON hin und zurück,
+// Marken je Zeile nur bei unveränderter Routine.
 
 interface
 
@@ -25,6 +26,8 @@ type
     procedure RejectsInvalidJson;
     [Test]
     procedure StatusIds;
+    [Test]
+    procedure MarksFollowBody;
   end;
 
 implementation
@@ -32,6 +35,7 @@ implementation
 uses
   System.SysUtils,
   System.DateUtils,
+  Atlas.Core.Tests.Mutants,
   Atlas.Core.Tests.MutationResults;
 
 const
@@ -56,6 +60,8 @@ begin
   Result.FileName := AFileName;
   Result.Routine := AName;
   Result.Body := ABody;
+  Result.Line := 3;
+  Result.EndLine := 9;
   Result.AtUtc := EncodeDateTime(2026, 11, 14, 8, 30, 0, 0);
   Result.Outcomes := AOutcomes;
 end;
@@ -147,6 +153,7 @@ begin
   try
     mOutcome := Outcome(1, TAtlasMutationStatus.Killed);
     mOutcome.By := 'PreiseTests.TPreiseTests.Grenze';
+    mOutcome.Description := '>= durch >';
     mResults.Put(Routine(cFile, 'Satz', 'abc', [Outcome(0, TAtlasMutationStatus.Survived), mOutcome]));
     mResults.Put(Routine(cFile, 'Doppelt', 'def', [Outcome(0, TAtlasMutationStatus.TimedOut)]));
     mResults.Put(Routine('C:\P\Ä.pas', 'X', 'ghi', nil));
@@ -162,6 +169,9 @@ begin
     Assert.AreEqual(2, mResult.Outcomes[1].Line);
     Assert.AreEqual('>', mResult.Outcomes[1].Replacement);
     Assert.AreEqual(120, mResult.Outcomes[1].Milliseconds);
+    Assert.AreEqual('>= durch >', mResult.Outcomes[1].Description);
+    Assert.AreEqual(3, mResult.Line);
+    Assert.AreEqual(9, mResult.EndLine);
     Assert.AreEqual(EncodeDateTime(2026, 11, 14, 8, 30, 0, 0), mResult.AtUtc, 1 / SecsPerDay);
     Assert.AreEqual(mJson, mLoaded.ToJson('C:\P\Demo.Tests.dproj'));
   finally
@@ -201,6 +211,46 @@ begin
     Assert.AreEqual(Ord(mStatus), Ord(mParsed));
   end;
   Assert.IsFalse(TAtlasMutationResults.TryParseStatus('gibtsnicht', mParsed));
+end;
+
+procedure TAtlasMutationResultsTests.MarksFollowBody;
+var
+  mResults: TAtlasMutationResults;
+  mLines: TArray<string>;
+  mRoutine: TAtlasMutantRoutine;
+  mResult: TAtlasMutationRoutineResult;
+  mSecond: TAtlasMutationOutcome;
+  mMarks: TArray<TAtlasMutationLineMark>;
+begin
+  mLines := TArray<string>.Create('unit Preise;', 'interface', 'implementation',
+    'function Satz(AMenge: Integer): Integer;', 'begin', '  if AMenge >= 100 then', '    Result := 10',
+    '  else', '    Result := 0;', 'end;', 'end.');
+  mRoutine := Default(TAtlasMutantRoutine);
+  mRoutine.Line := 3;
+  mRoutine.EndLine := 9;
+  mSecond := Outcome(1, TAtlasMutationStatus.Killed);
+  mSecond.Line := 3;
+  mResult := Routine(cFile, 'Satz', TAtlasMutants.RoutineBody(mLines, mRoutine),
+    [Outcome(0, TAtlasMutationStatus.Survived), mSecond, Outcome(2, TAtlasMutationStatus.Killed)]);
+  mResults := TAtlasMutationResults.Create;
+  try
+    mResults.Put(mResult);
+    mMarks := mResults.MarksOf(cFile, mLines);
+    // Zeile 2 und 3 relativ zum Kopf in Zeile 3: absolut 5 und 6.
+    Assert.AreEqual(2, Integer(Length(mMarks)));
+    Assert.AreEqual(5, mMarks[0].Line);
+    Assert.AreEqual(2, Integer(Length(mMarks[0].Outcomes)));
+    Assert.IsTrue(mMarks[0].AnySurvived);
+    Assert.IsTrue(mMarks[0].AnyKilled);
+    Assert.AreEqual(6, mMarks[1].Line);
+    Assert.IsFalse(mMarks[1].AnySurvived);
+    // Routine geändert: keine Marken mehr.
+    mLines[6] := '    Result := 11';
+    Assert.AreEqual(0, Integer(Length(mResults.MarksOf(cFile, mLines))));
+    Assert.AreEqual(0, Integer(Length(mResults.MarksOf('C:\P\Andere.pas', mLines))));
+  finally
+    mResults.Free;
+  end;
 end;
 
 initialization

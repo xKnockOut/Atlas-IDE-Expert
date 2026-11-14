@@ -41,6 +41,10 @@ const
   cMinTestsFlakyRuns = 3;
   cMaxTestsFlakyRuns = 50;
   cDefaultTestsFlakyRuns = 10;
+  /// <summary>Grenzen und Vorgabe für tests.mutation.timeoutSec (#1460).</summary>
+  cMinTestsMutationTimeoutSec = 5;
+  cMaxTestsMutationTimeoutSec = 3600;
+  cDefaultTestsMutationTimeoutSec = 60;
   /// <summary>Grenzen und Vorgabe für tests.boundaryCases.maxCases (#2173).</summary>
   cMinTestsBoundaryMax = 1;
   cMaxTestsBoundaryMax = 200;
@@ -191,6 +195,16 @@ type
     /// <summary>So viele Läufe merkt sich der Verlauf je Test (#1773, tests.flaky.runs), cMinTestsFlakyRuns bis
     /// cMaxTestsFlakyRuns.</summary>
     TestsFlakyRuns: Integer;
+    /// <summary>Mutationslauf (#1460, tests.mutation, experimentell): Befehle „Mutationen der Methode/Unit/geänderter
+    /// Methoden prüfen“ bauen je Mutant ein Schattenprojekt und führen die Tests aus; Ergebnis als Symbole in der
+    /// Rinne.</summary>
+    TestsMutation: Boolean;
+    /// <summary>Zeitlimit je Mutant für die Tests in Sekunden (#1460, tests.mutation.timeoutSec),
+    /// cMinTestsMutationTimeoutSec bis cMaxTestsMutationTimeoutSec; überschritten zählt als erkannt.</summary>
+    TestsMutationTimeoutSec: Integer;
+    /// <summary>Operatoren des Mutationslaufs (#1460, tests.mutation.operators), Kennungen wie "boundary,
+    /// equality"; leer = alle.</summary>
+    TestsMutationOperators: string;
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
     /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
     BuildZeroHints: Boolean;
@@ -372,6 +386,9 @@ begin
   TestsSlowMs := EnsureRange(TestsSlowMs, cMinTestsSlowMs, cMaxTestsSlowMs);
   TestsRepeatCount := EnsureRange(TestsRepeatCount, cMinTestsRepeatCount, cMaxTestsRepeatCount);
   TestsFlakyRuns := EnsureRange(TestsFlakyRuns, cMinTestsFlakyRuns, cMaxTestsFlakyRuns);
+  TestsMutationTimeoutSec := EnsureRange(TestsMutationTimeoutSec, cMinTestsMutationTimeoutSec,
+    cMaxTestsMutationTimeoutSec);
+  TestsMutationOperators := Trim(TestsMutationOperators);
   TestsBoundaryMax := EnsureRange(TestsBoundaryMax, cMinTestsBoundaryMax, cMaxTestsBoundaryMax);
   TestsListsRunKey := EnsureRange(TestsListsRunKey, 0, $FFFF);
   TestsLogMaxLines := EnsureRange(TestsLogMaxLines, cMinTestsLogMaxLines, cMaxTestsLogMaxLines);
@@ -452,6 +469,9 @@ begin
   TestsRepeatCount := cDefaultTestsRepeatCount;
   TestsFlaky := True;
   TestsFlakyRuns := cDefaultTestsFlakyRuns;
+  TestsMutation := False;
+  TestsMutationTimeoutSec := cDefaultTestsMutationTimeoutSec;
+  TestsMutationOperators := '';
 end;
 
 procedure TAtlasPluginBuildSettings.ExchangeTests(const AIo: TAtlasSettingsExchange);
@@ -489,6 +509,9 @@ begin
   AIo.Number('TestsRepeatCount', TestsRepeatCount);
   AIo.Flag('TestsFlaky', TestsFlaky);
   AIo.Number('TestsFlakyRuns', TestsFlakyRuns);
+  AIo.Flag('TestsMutation', TestsMutation);
+  AIo.Number('TestsMutationTimeoutSec', TestsMutationTimeoutSec);
+  AIo.Text('TestsMutationOperators', TestsMutationOperators);
 end;
 
 end.

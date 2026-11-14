@@ -1793,6 +1793,45 @@
       "x-captionEn": "Maximum boundary cases",
       "x-issue": "#2173"
     },
+    "TestsMutation": {
+      "description": "Mutationslauf (experimentell): Die Befehle „Mutationen der Methode prüfen“, „… der Unit prüfen“ und „… geänderter Methoden prüfen“ verändern den Code an kleinen Stellen (Vergleiche, Rechenzeichen, Konstanten, Anweisungen) und führen je Veränderung die Tests aus. Dafür baut Atlas ein Schattenprojekt unter .atlas-local\\mutation des Testprojekts, das es kurz in die Projektgruppe holt; Original und seine DCUs bleiben unberührt. Die Rinne zeigt je Zeile, ob die Tests jede Veränderung bemerkt haben (grün) oder eine überlebt hat (rot); der Tooltip nennt die Mutanten. Ergebnisse gelten, solange die Methode unverändert ist.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "tests.mutation",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-experimental": true,
+      "x-parent": "tests.run",
+      "x-caption": "Mutationslauf: prüfen, ob die Tests Fehler im Code bemerken",
+      "x-captionEn": "Mutation testing: check whether tests notice faults in the code",
+      "x-issue": "#1460"
+    },
+    "TestsMutationTimeoutSec": {
+      "description": "Zeitlimit je Mutant für den Lauf der Tests in Sekunden (5 bis 3600). Laufen die Tests länger (etwa eine Endlosschleife durch den Mutanten), gilt der Mutant als erkannt.",
+      "type": "integer",
+      "default": 60,
+      "minimum": 5,
+      "maximum": 3600,
+      "x-key": "tests.mutation.timeoutSec",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.mutation",
+      "x-caption": "Zeitlimit je Mutant (Sekunden)",
+      "x-captionEn": "Time limit per mutant (seconds)",
+      "x-issue": "#1460"
+    },
+    "TestsMutationOperators": {
+      "description": "Operatoren des Mutationslaufs, getrennt durch Komma: boundary, equality, logical, not, arithmetic, increment, boolean, number, statement, exit. Leer = alle.",
+      "type": "string",
+      "default": "",
+      "x-key": "tests.mutation.operators",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.mutation",
+      "x-caption": "Operatoren (leer = alle)",
+      "x-captionEn": "Operators (empty = all)",
+      "x-issue": "#1460"
+    },
     "TestsLeaks": {
       "description": "Lecks je Test zeigen: Mit Leckmonitor (DUnitX.MemoryLeakMonitor.FastMM4/FastMM5) meldet DUnitX einen Test, der Speicher nicht freigibt, als Fehlschlag. Atlas zeigt ihn dann als bestanden mit Leck: Marke gelb „bestanden · Leck: 40 Bytes“, Warnung in Atlas-Probleme am Methodenkopf (Quelle DUnitX), eine Zeile in der Meldungsansicht. Aus = wie im Bericht (Fehlschlag).",
       "type": "boolean",
