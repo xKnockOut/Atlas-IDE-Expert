@@ -62,6 +62,110 @@ uses
   Atlas.UI.Diagnostics.Strings,
   Atlas.IDE.Foundation.Settings;
 
+{ TAtlasIdeBugReport }
+
+class procedure TAtlasIdeBugReport.Finish(const AInput: TAtlasBugReportInput; const AAnswer: TJSONValue;
+  const AMessage: TProc<string>);
+var
+  mReport, mTarget, mNote: string;
+begin
+  mReport := ReportText(AInput, AAnswer);
+  if AInput.Anonymize then
+  begin
+    mNote := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportAnonymized);
+  end
+  else
+  begin
+    mNote := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportPlain);
+  end;
+  if not TAtlasDiagnosticExportDialog.Execute(TAtlasExportDialogTexts.Create(
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportTitle),
+    TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.BugReportHint, [mNote, TAtlasBugReport.cIssuesUrl]), mReport,
+    TAtlasBugReport.DefaultFileName(Now), TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportFilter), 'md'),
+    mTarget,
+    TAtlasIdeDockWindow.ApplyIdeTheme) then
+  begin
+    Exit;
+  end;
+  TFile.WriteAllText(mTarget, mReport, TEncoding.UTF8);
+  AMessage(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.BugReportDone, [mTarget, TAtlasBugReport.cIssuesUrl]));
+end;
+
+class procedure TAtlasIdeBugReport.Execute(const AServer: TAtlasServerCommandWithArguments;
+  const AMessage: TProc<string>);
+var
+  mInput: TAtlasBugReportInput;
+  mMessage: TProc<string>;
+begin
+  if FBusy then
+  begin
+    Exit;
+  end;
+  mMessage := AMessage;
+  mInput := Collect;
+  if not Assigned(AServer) then
+  begin
+    Finish(mInput, nil, mMessage);
+    Exit;
+  end;
+  FBusy := True;
+  mMessage(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportCollecting));
+  try
+    AServer(TAtlasBugReport.cServerCommand, TAtlasBugReport.ServerArguments(mInput),
+      procedure(AAnswer: TJSONValue)
+      begin
+        FBusy := False;
+        TAtlasGuard.Run(TAtlasFeature.Menu,
+          procedure
+          begin
+            Finish(mInput, AAnswer, mMessage);
+          end);
+      end);
+  except
+    FBusy := False;
+    raise;
+  end;
+end;
+
+class function TAtlasIdeBugReport.Collect: TAtlasBugReportInput;
+begin
+  Result := Default(TAtlasBugReportInput);
+  Result.PluginVersion := TAtlasPluginVersion.cVersion;
+  Result.IdeVersion := TAtlasUpdates.IdeVersion;
+  {$IFDEF WIN64}
+  Result.Platform := 'Win64';
+  {$ELSE}
+  Result.Platform := 'Win32';
+  {$ENDIF}
+  Result.Anonymize := TAtlasIdeSettings.Current.BugReportAnonymize;
+  Result.PluginLogNames := TAtlasIdeSettings.Current.LogNames;
+  Result.Created := Now;
+  Result.Roots := ProjectRoots;
+  Result.Identity := Identity;
+  Result.Settings := SettingsJson;
+  Result.Experimental := TAtlasIdeSettings.ActiveExperimental;
+  Result.PluginLog := TAtlasBugReport.Tail(TPath.Combine(TAtlasRotatingLog.DefaultFolder, 'atlas.log'),
+    TAtlasBugReport.cLogLines);
+  Result.ServerErrorOutput := TAtlasBugReport.Tail(TAtlasServerExits.StderrFileName(TAtlasRotatingLog.DefaultFolder),
+    TAtlasBugReport.cErrorOutputLines);
+end;
+
+class function TAtlasIdeBugReport.ReportText(const AInput: TAtlasBugReportInput; const AAnswer: TJSONValue): string;
+var
+  mInput: TAtlasBugReportInput;
+begin
+  mInput := AInput;
+  if (AAnswer is TJSONObject) and (TJSONObject(AAnswer).GetValue('text') is TJSONString) then
+  begin
+    mInput.ServerReport := TJSONObject(AAnswer).GetValue('text').Value;
+  end
+  else
+  begin
+    mInput.ServerMissing := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportNoServer);
+  end;
+  Result := TAtlasBugReport.Build(mInput);
+end;
+
 class function TAtlasIdeBugReport.ProjectRoots: TArray<string>;
 var
   mModules: IOTAModuleServices;
@@ -110,108 +214,6 @@ class function TAtlasIdeBugReport.Identity: TArray<string>;
 begin
   Result := [GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
     GetEnvironmentVariable('USERDOMAIN')];
-end;
-
-class function TAtlasIdeBugReport.Collect: TAtlasBugReportInput;
-begin
-  Result := Default(TAtlasBugReportInput);
-  Result.PluginVersion := TAtlasPluginVersion.cVersion;
-  Result.IdeVersion := TAtlasUpdates.IdeVersion;
-  {$IFDEF WIN64}
-  Result.Platform := 'Win64';
-  {$ELSE}
-  Result.Platform := 'Win32';
-  {$ENDIF}
-  Result.Anonymize := TAtlasIdeSettings.Current.BugReportAnonymize;
-  Result.PluginLogNames := TAtlasIdeSettings.Current.LogNames;
-  Result.Created := Now;
-  Result.Roots := ProjectRoots;
-  Result.Identity := Identity;
-  Result.Settings := SettingsJson;
-  Result.Experimental := TAtlasIdeSettings.ActiveExperimental;
-  Result.PluginLog := TAtlasBugReport.Tail(TPath.Combine(TAtlasRotatingLog.DefaultFolder, 'atlas.log'),
-    TAtlasBugReport.cLogLines);
-  Result.ServerErrorOutput := TAtlasBugReport.Tail(TAtlasServerExits.StderrFileName(TAtlasRotatingLog.DefaultFolder),
-    TAtlasBugReport.cErrorOutputLines);
-end;
-
-class function TAtlasIdeBugReport.ReportText(const AInput: TAtlasBugReportInput; const AAnswer: TJSONValue): string;
-var
-  mInput: TAtlasBugReportInput;
-begin
-  mInput := AInput;
-  if (AAnswer is TJSONObject) and (TJSONObject(AAnswer).GetValue('text') is TJSONString) then
-  begin
-    mInput.ServerReport := TJSONObject(AAnswer).GetValue('text').Value;
-  end
-  else
-  begin
-    mInput.ServerMissing := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportNoServer);
-  end;
-  Result := TAtlasBugReport.Build(mInput);
-end;
-
-class procedure TAtlasIdeBugReport.Execute(const AServer: TAtlasServerCommandWithArguments;
-  const AMessage: TProc<string>);
-var
-  mInput: TAtlasBugReportInput;
-  mMessage: TProc<string>;
-begin
-  if FBusy then
-  begin
-    Exit;
-  end;
-  mMessage := AMessage;
-  mInput := Collect;
-  if not Assigned(AServer) then
-  begin
-    Finish(mInput, nil, mMessage);
-    Exit;
-  end;
-  FBusy := True;
-  mMessage(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportCollecting));
-  try
-    AServer(TAtlasBugReport.cServerCommand, TAtlasBugReport.ServerArguments(mInput),
-      procedure(AAnswer: TJSONValue)
-      begin
-        FBusy := False;
-        TAtlasGuard.Run(TAtlasFeature.Menu,
-          procedure
-          begin
-            Finish(mInput, AAnswer, mMessage);
-          end);
-      end);
-  except
-    FBusy := False;
-    raise;
-  end;
-end;
-
-class procedure TAtlasIdeBugReport.Finish(const AInput: TAtlasBugReportInput; const AAnswer: TJSONValue;
-  const AMessage: TProc<string>);
-var
-  mReport, mTarget, mNote: string;
-begin
-  mReport := ReportText(AInput, AAnswer);
-  if AInput.Anonymize then
-  begin
-    mNote := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportAnonymized);
-  end
-  else
-  begin
-    mNote := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportPlain);
-  end;
-  if not TAtlasDiagnosticExportDialog.Execute(TAtlasExportDialogTexts.Create(
-    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportTitle),
-    TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.BugReportHint, [mNote, TAtlasBugReport.cIssuesUrl]), mReport,
-    TAtlasBugReport.DefaultFileName(Now), TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportFilter), 'md'),
-    mTarget,
-    TAtlasIdeDockWindow.ApplyIdeTheme) then
-  begin
-    Exit;
-  end;
-  TFile.WriteAllText(mTarget, mReport, TEncoding.UTF8);
-  AMessage(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.BugReportDone, [mTarget, TAtlasBugReport.cIssuesUrl]));
 end;
 
 end.

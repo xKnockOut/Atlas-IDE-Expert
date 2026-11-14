@@ -71,6 +71,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeOverloads }
+
 class procedure TAtlasIdeOverloads.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>; const APlaceholders: TAtlasOverloadPlaceholdersProc);
 var

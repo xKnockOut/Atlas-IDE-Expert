@@ -388,96 +388,6 @@ begin
   FBox.OnDblClick := BoxDblClick;
 end;
 
-procedure TAtlasContinueIssuesView.Fill;
-begin
-  FRows := nil;
-  FNotice := '';
-  if FSource <> nil then
-  begin
-    FRows := FSource.IssueRows;
-    FNotice := FSource.IssuesNotice;
-  end;
-  // Die Rechtecke der Schaltflächen entstehen beim Zeichnen (LayoutButtons).
-  FButtonRects := nil;
-  FHintRow := -1;
-  FBox.Invalidate;
-end;
-
-function TAtlasContinueIssuesView.ContentHeight: Integer;
-var
-  mRows: Integer;
-begin
-  mRows := Length(FRows);
-  if mRows < 1 then
-  begin
-    mRows := 1;
-  end;
-  Result := RowTop(mRows) + FFrame.ScaleValue(cIndent);
-  if FNotice <> '' then
-  begin
-    Inc(Result, FFrame.ScaleValue(cLineHeight) + FFrame.ScaleValue(cIndent));
-  end;
-end;
-
-function TAtlasContinueIssuesView.RowTop(ARow: Integer): Integer;
-begin
-  Result := FFrame.ScaleValue(cIndent) div 2 + ARow * FFrame.ScaleValue(cRowHeight);
-end;
-
-procedure TAtlasContinueIssuesView.LayoutButtons;
-var
-  mRow, mWidth, mTop, mRight: Integer;
-  mCanvas: TCanvas;
-begin
-  // „Fortsetzen“ rechts in der ersten Zeile; die Rechtecke dienen auch dem Treffertest.
-  SetLength(FButtonRects, Length(FRows));
-  mCanvas := FBox.Canvas;
-  mCanvas.Font.Assign(FFrame.Font);
-  mWidth := mCanvas.TextWidth(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueResume)) +
-    2 * FFrame.ScaleValue(cButtonPadding);
-  mRight := FBox.Width - FFrame.ScaleValue(cIndent);
-  for mRow := 0 to High(FRows) do
-  begin
-    mTop := RowTop(mRow) + FFrame.ScaleValue(2);
-    FButtonRects[mRow] := Rect(mRight - mWidth, mTop, mRight, mTop + FFrame.ScaleValue(cButtonHeight));
-  end;
-end;
-
-function TAtlasContinueIssuesView.HitTest(AX, AY: Integer; out AButton: Boolean): Integer;
-begin
-  Result := -1;
-  AButton := False;
-  if (Length(FRows) = 0) or (AY < RowTop(0)) or (AY >= RowTop(Length(FRows))) then
-  begin
-    Exit;
-  end;
-  Result := (AY - RowTop(0)) div FFrame.ScaleValue(cRowHeight);
-  if (Result >= 0) and (Result <= High(FButtonRects)) then
-  begin
-    AButton := FButtonRects[Result].Contains(Point(AX, AY));
-  end;
-end;
-
-procedure TAtlasContinueIssuesView.ResumeRow(ARow: Integer);
-var
-  mSource: IAtlasContinueIssuesSource;
-  mProject, mKey: string;
-begin
-  if (FSource = nil) or (ARow < 0) or (ARow > High(FRows)) then
-  begin
-    Exit;
-  end;
-  mSource := FSource;
-  mProject := FRows[ARow].Project;
-  mKey := FRows[ARow].Entry.Key;
-  // Die Quelle füllt den Bereich danach neu: nicht im eigenen Mausereignis.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
-    procedure
-    begin
-      mSource.ResumeIssue(mProject, mKey);
-    end);
-end;
-
 procedure TAtlasContinueIssuesView.BoxPaint(Sender: TObject);
 var
   mPainter: TIssuesPainter;
@@ -546,6 +456,96 @@ begin
   begin
     ResumeRow(mRow);
   end;
+end;
+
+procedure TAtlasContinueIssuesView.Fill;
+begin
+  FRows := nil;
+  FNotice := '';
+  if FSource <> nil then
+  begin
+    FRows := FSource.IssueRows;
+    FNotice := FSource.IssuesNotice;
+  end;
+  // Die Rechtecke der Schaltflächen entstehen beim Zeichnen (LayoutButtons).
+  FButtonRects := nil;
+  FHintRow := -1;
+  FBox.Invalidate;
+end;
+
+function TAtlasContinueIssuesView.ContentHeight: Integer;
+var
+  mRows: Integer;
+begin
+  mRows := Length(FRows);
+  if mRows < 1 then
+  begin
+    mRows := 1;
+  end;
+  Result := RowTop(mRows) + FFrame.ScaleValue(cIndent);
+  if FNotice <> '' then
+  begin
+    Inc(Result, FFrame.ScaleValue(cLineHeight) + FFrame.ScaleValue(cIndent));
+  end;
+end;
+
+procedure TAtlasContinueIssuesView.LayoutButtons;
+var
+  mRow, mWidth, mTop, mRight: Integer;
+  mCanvas: TCanvas;
+begin
+  // „Fortsetzen“ rechts in der ersten Zeile; die Rechtecke dienen auch dem Treffertest.
+  SetLength(FButtonRects, Length(FRows));
+  mCanvas := FBox.Canvas;
+  mCanvas.Font.Assign(FFrame.Font);
+  mWidth := mCanvas.TextWidth(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueResume)) +
+    2 * FFrame.ScaleValue(cButtonPadding);
+  mRight := FBox.Width - FFrame.ScaleValue(cIndent);
+  for mRow := 0 to High(FRows) do
+  begin
+    mTop := RowTop(mRow) + FFrame.ScaleValue(2);
+    FButtonRects[mRow] := Rect(mRight - mWidth, mTop, mRight, mTop + FFrame.ScaleValue(cButtonHeight));
+  end;
+end;
+
+function TAtlasContinueIssuesView.HitTest(AX, AY: Integer; out AButton: Boolean): Integer;
+begin
+  Result := -1;
+  AButton := False;
+  if (Length(FRows) = 0) or (AY < RowTop(0)) or (AY >= RowTop(Length(FRows))) then
+  begin
+    Exit;
+  end;
+  Result := (AY - RowTop(0)) div FFrame.ScaleValue(cRowHeight);
+  if (Result >= 0) and (Result <= High(FButtonRects)) then
+  begin
+    AButton := FButtonRects[Result].Contains(Point(AX, AY));
+  end;
+end;
+
+procedure TAtlasContinueIssuesView.ResumeRow(ARow: Integer);
+var
+  mSource: IAtlasContinueIssuesSource;
+  mProject, mKey: string;
+begin
+  if (FSource = nil) or (ARow < 0) or (ARow > High(FRows)) then
+  begin
+    Exit;
+  end;
+  mSource := FSource;
+  mProject := FRows[ARow].Project;
+  mKey := FRows[ARow].Entry.Key;
+  // Die Quelle füllt den Bereich danach neu: nicht im eigenen Mausereignis.
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      mSource.ResumeIssue(mProject, mKey);
+    end);
+end;
+
+function TAtlasContinueIssuesView.RowTop(ARow: Integer): Integer;
+begin
+  Result := FFrame.ScaleValue(cIndent) div 2 + ARow * FFrame.ScaleValue(cRowHeight);
 end;
 
 end.

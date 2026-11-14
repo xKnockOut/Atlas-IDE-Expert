@@ -178,9 +178,61 @@ begin
   Result := mFound;
 end;
 
+class function TRoutineParts.TopRoutineAt(ATree: TSyntaxTree; AOffset: Integer;
+  out ADeclaration: TSyntaxNode): TSyntaxNode;
+var
+  mFound, mImplementation_: TSyntaxNode;
+  mOffset, mIndex: Integer;
+  mName: string;
+begin
+  ADeclaration := nil;
+  Result := RoutineWithHeaderAt(ATree, AOffset);
+  if Result <> nil then
+  begin
+    Exit;
+  end;
+  mFound := nil;
+  mOffset := AOffset;
+  ATree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      Result := Encloses(ANode, mOffset);
+      if Result and (ANode.Kind = TSyntaxKind.RoutineHeader) and (ANode.Parent <> nil) and
+        (ANode.Parent.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]) then
+      begin
+        mFound := ANode;
+      end;
+    end);
+  if (mFound = nil) or (mFound.Parent.Parent = nil) then
+  begin
+    Exit;
+  end;
+  ADeclaration := mFound;
+  mName := mFound.Parent.Parent.Name + '.' + mFound.Name;
+  mImplementation_ := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  if mImplementation_ = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mImplementation_.ChildCount - 1 do
+  begin
+    if (mImplementation_[mIndex].Kind = TSyntaxKind.RoutineDecl) and SameText(mImplementation_[mIndex].Name, mName) then
+    begin
+      Exit(mImplementation_[mIndex]);
+    end;
+  end;
+end;
+
 class function TRoutineParts.LineIsBlank(const ALines: TArray<string>; ALine: Integer): Boolean;
 begin
   Result := (ALine >= 0) and (ALine <= High(ALines)) and (Trim(ALines[ALine]) = '');
+end;
+
+/// <summary>Wort vor dem Routinennamen im Kopf: class, procedure, function, Kommentar oder Direktive.</summary>
+function IsHeadPrefix(const AToken: TPascalToken): Boolean;
+begin
+  Result := AToken.IsKeyword('class') or AToken.IsKeyword('procedure') or AToken.IsKeyword('function') or
+    (AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]);
 end;
 
 class function TRoutineParts.ApplyEdits(const ASource: string; ABase: Integer;
@@ -207,13 +259,6 @@ begin
     Result := Copy(Result, 1, AEdits[mIndex].Start - ABase) + AEdits[mIndex].Text +
       Copy(Result, AEdits[mIndex].Stop - ABase + 1, MaxInt);
   end;
-end;
-
-/// <summary>Wort vor dem Routinennamen im Kopf: class, procedure, function, Kommentar oder Direktive.</summary>
-function IsHeadPrefix(const AToken: TPascalToken): Boolean;
-begin
-  Result := AToken.IsKeyword('class') or AToken.IsKeyword('procedure') or AToken.IsKeyword('function') or
-    (AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]);
 end;
 
 class function TRoutineParts.NameTokens(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode;
@@ -388,24 +433,6 @@ begin
   end;
 end;
 
-class function TRoutineParts.ChildNames(ANode: TSyntaxNode): TArray<string>;
-var
-  mIndex: Integer;
-  mName: string;
-begin
-  Result := nil;
-  for mIndex := 0 to ANode.ChildCount - 1 do
-  begin
-    for mName in ANode[mIndex].Name.Split([',']) do
-    begin
-      if Trim(mName) <> '' then
-      begin
-        Result := Result + [Trim(mName)];
-      end;
-    end;
-  end;
-end;
-
 /// <summary>Namen, die der Abschnitt ASection (interface oder implementation) auf Unit-Ebene vergibt.</summary>
 function SectionNames(ASection: TSyntaxNode): TArray<string>;
 var
@@ -426,6 +453,24 @@ begin
         Result := Result + TRoutineParts.ChildNames(mChild);
     else
       // Übrige Arten: nichts zu tun.
+    end;
+  end;
+end;
+
+class function TRoutineParts.ChildNames(ANode: TSyntaxNode): TArray<string>;
+var
+  mIndex: Integer;
+  mName: string;
+begin
+  Result := nil;
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    for mName in ANode[mIndex].Name.Split([',']) do
+    begin
+      if Trim(mName) <> '' then
+      begin
+        Result := Result + [Trim(mName)];
+      end;
     end;
   end;
 end;
@@ -491,51 +536,6 @@ begin
     mNode := mNode.Parent;
   end;
   Result := AWithStop and (mNode = AStop) and ACache.Declares(AStop, AName, ANode.StartOffset);
-end;
-
-class function TRoutineParts.TopRoutineAt(ATree: TSyntaxTree; AOffset: Integer;
-  out ADeclaration: TSyntaxNode): TSyntaxNode;
-var
-  mFound, mImplementation_: TSyntaxNode;
-  mOffset, mIndex: Integer;
-  mName: string;
-begin
-  ADeclaration := nil;
-  Result := RoutineWithHeaderAt(ATree, AOffset);
-  if Result <> nil then
-  begin
-    Exit;
-  end;
-  mFound := nil;
-  mOffset := AOffset;
-  ATree.Root.Walk(
-    function(ANode: TSyntaxNode): Boolean
-    begin
-      Result := Encloses(ANode, mOffset);
-      if Result and (ANode.Kind = TSyntaxKind.RoutineHeader) and (ANode.Parent <> nil) and
-        (ANode.Parent.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]) then
-      begin
-        mFound := ANode;
-      end;
-    end);
-  if (mFound = nil) or (mFound.Parent.Parent = nil) then
-  begin
-    Exit;
-  end;
-  ADeclaration := mFound;
-  mName := mFound.Parent.Parent.Name + '.' + mFound.Name;
-  mImplementation_ := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
-  if mImplementation_ = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mImplementation_.ChildCount - 1 do
-  begin
-    if (mImplementation_[mIndex].Kind = TSyntaxKind.RoutineDecl) and SameText(mImplementation_[mIndex].Name, mName) then
-    begin
-      Exit(mImplementation_[mIndex]);
-    end;
-  end;
 end;
 
 { TLocalsCache }

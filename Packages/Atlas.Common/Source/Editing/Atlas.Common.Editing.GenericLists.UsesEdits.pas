@@ -143,27 +143,6 @@ begin
   Result := (AIndex = FTarget) or (FNeeds.MoveGeneric and FClauses[AIndex].InInterface);
 end;
 
-procedure TUsesEditor.NoteGenericUses(const AClause: TUsesClauseInfo);
-var
-  mName: string;
-begin
-  for mName in AClause.Names do
-  begin
-    if not IsGenericUnit(mName) then
-    begin
-      Continue;
-    end;
-    if AClause.InInterface or not FIsUnit then
-    begin
-      FNeeds.UsedInInterface := True;
-    end
-    else
-    begin
-      FNeeds.UsedInImplementation := True;
-    end;
-  end;
-end;
-
 procedure TUsesEditor.FindNeeds;
 var
   mOffset: Integer;
@@ -184,6 +163,27 @@ begin
   FNeeds.MoveGeneric := FNeeds.InterfacePart and FNeeds.UsedInImplementation and not FNeeds.UsedInInterface;
   FNeeds.AddHere := FNeeds.Generic and not FNeeds.UsedInInterface and
     not (FNeeds.UsedInImplementation and not FNeeds.InterfacePart);
+end;
+
+procedure TUsesEditor.NoteGenericUses(const AClause: TUsesClauseInfo);
+var
+  mName: string;
+begin
+  for mName in AClause.Names do
+  begin
+    if not IsGenericUnit(mName) then
+    begin
+      Continue;
+    end;
+    if AClause.InInterface or not FIsUnit then
+    begin
+      FNeeds.UsedInInterface := True;
+    end
+    else
+    begin
+      FNeeds.UsedInImplementation := True;
+    end;
+  end;
 end;
 
 function TUsesEditor.TargetClause: Integer;

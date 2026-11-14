@@ -495,6 +495,8 @@ type
     function PlanType(ASource: TCommandSource): Boolean;
   end;
 
+{ TDeprecationPlan }
+
 function TDeprecationPlan.Plan(ASource: TCommandSource): Boolean;
 begin
   Error := cTexts[TDocumentationCommandsText.DeprecatedBelongsAboveARoutine].Text;

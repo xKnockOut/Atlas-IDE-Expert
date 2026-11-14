@@ -169,15 +169,6 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeGutterColumnState.IsSource(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  mExtension := ExtractFileExt(AFileName);
-  Result := SameText(mExtension, '.pas') or SameText(mExtension, '.dpr') or SameText(mExtension, '.dpk') or
-    SameText(mExtension, '.inc');
-end;
-
 function TAtlasIdeGutterColumnState.Session: TLspSession;
 begin
   Result := nil;
@@ -185,29 +176,6 @@ begin
   begin
     Result := FSession();
   end;
-end;
-
-procedure TAtlasIdeGutterColumnState.ReadOptions;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  FOptions.Problems := mSettings.GutterColumnProblems;
-  FOptions.CodeActions := mSettings.GutterColumnCodeActions;
-  FOptions.Overrides := mSettings.GutterColumnOverrides;
-end;
-
-procedure TAtlasIdeGutterColumnState.Clear;
-begin
-  FFetchedFile := '';
-  FFetchedText := '';
-  FOverrides := Default(TAtlasFileOverrides);
-  FAction.FileName := '';
-  FAction.Found := False;
-  FAction.Asked := False;
-  FProblemsFile := '';
-  FProblems := nil;
-  FFileName := '';
 end;
 
 function TAtlasIdeGutterColumnState.Changed(const AView: IOTAEditView): Boolean;
@@ -238,33 +206,6 @@ function TAtlasIdeGutterColumnState.ActionDue: Boolean;
 begin
   Result := not FAction.Asked or not SameText(FAction.FileName, FFileName) or (FAction.Line <> FCaretLine) or
     (FAction.Text <> TAtlasRecursionMarks.LineOf(FText, FCaretLine));
-end;
-
-procedure TAtlasIdeGutterColumnState.Track(const AView: IOTAEditView);
-var
-  mSession: TLspSession;
-  mStore: TAtlasProblemStore;
-begin
-  if (AView = nil) or (AView.Buffer = nil) or not IsSource(AView.Buffer.FileName) then
-  begin
-    Exit;
-  end;
-  // Neue Diagnosen: neu zeichnen, damit die Symbole folgen.
-  mStore := TAtlasProblemsController.Current;
-  if (mStore <> nil) and SameText(FProblemsFile, AView.Buffer.FileName) and (mStore.Version <> FProblemsVersion) then
-  begin
-    InvalidateTop;
-  end;
-  if Changed(AView) or not Settled or FRequest.Busy then
-  begin
-    Exit;
-  end;
-  mSession := Session;
-  if mSession = nil then
-  begin
-    Exit;
-  end;
-  FetchDue(mSession);
 end;
 
 procedure TAtlasIdeGutterColumnState.FetchDue(ASession: TLspSession);
@@ -412,6 +353,65 @@ begin
   begin
     InvalidateTop;
   end;
+end;
+
+class function TAtlasIdeGutterColumnState.IsSource(const AFileName: string): Boolean;
+var
+  mExtension: string;
+begin
+  mExtension := ExtractFileExt(AFileName);
+  Result := SameText(mExtension, '.pas') or SameText(mExtension, '.dpr') or SameText(mExtension, '.dpk') or
+    SameText(mExtension, '.inc');
+end;
+
+procedure TAtlasIdeGutterColumnState.ReadOptions;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  FOptions.Problems := mSettings.GutterColumnProblems;
+  FOptions.CodeActions := mSettings.GutterColumnCodeActions;
+  FOptions.Overrides := mSettings.GutterColumnOverrides;
+end;
+
+procedure TAtlasIdeGutterColumnState.Clear;
+begin
+  FFetchedFile := '';
+  FFetchedText := '';
+  FOverrides := Default(TAtlasFileOverrides);
+  FAction.FileName := '';
+  FAction.Found := False;
+  FAction.Asked := False;
+  FProblemsFile := '';
+  FProblems := nil;
+  FFileName := '';
+end;
+
+procedure TAtlasIdeGutterColumnState.Track(const AView: IOTAEditView);
+var
+  mSession: TLspSession;
+  mStore: TAtlasProblemStore;
+begin
+  if (AView = nil) or (AView.Buffer = nil) or not IsSource(AView.Buffer.FileName) then
+  begin
+    Exit;
+  end;
+  // Neue Diagnosen: neu zeichnen, damit die Symbole folgen.
+  mStore := TAtlasProblemsController.Current;
+  if (mStore <> nil) and SameText(FProblemsFile, AView.Buffer.FileName) and (mStore.Version <> FProblemsVersion) then
+  begin
+    InvalidateTop;
+  end;
+  if Changed(AView) or not Settled or FRequest.Busy then
+  begin
+    Exit;
+  end;
+  mSession := Session;
+  if mSession = nil then
+  begin
+    Exit;
+  end;
+  FetchDue(mSession);
 end;
 
 function TAtlasIdeGutterColumnState.ProblemsOf(const AFileName: string): TArray<TAtlasProblem>;

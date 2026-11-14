@@ -62,6 +62,8 @@ begin
   end;
 end;
 
+{ TAtlasVcsPluginSettings }
+
 class function TAtlasVcsPluginSettings.Default: TAtlasVcsPluginSettings;
 begin
   Result.Provider := TAtlasVcsProvider.Auto;

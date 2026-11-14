@@ -104,6 +104,22 @@ begin
   inherited;
 end;
 
+procedure TAtlasProvidedWatch.Refresh;
+var
+  mItems: TArray<IInterface>;
+begin
+  mItems := FRegistry.FindAll(FIID);
+  if SameItems(mItems, FItems) then
+  begin
+    Exit;
+  end;
+  FItems := mItems;
+  if Assigned(FOnChanged) then
+  begin
+    FOnChanged();
+  end;
+end;
+
 class function TAtlasProvidedWatch.SameItems(const A, B: TArray<IInterface>): Boolean;
 var
   mIndex: Integer;
@@ -119,22 +135,6 @@ begin
     begin
       Exit(False);
     end;
-  end;
-end;
-
-procedure TAtlasProvidedWatch.Refresh;
-var
-  mItems: TArray<IInterface>;
-begin
-  mItems := FRegistry.FindAll(FIID);
-  if SameItems(mItems, FItems) then
-  begin
-    Exit;
-  end;
-  FItems := mItems;
-  if Assigned(FOnChanged) then
-  begin
-    FOnChanged();
   end;
 end;
 

@@ -53,6 +53,14 @@ implementation
 
 { TAtlasCheckOnSave }
 
+constructor TAtlasCheckOnSave.Create(ADelayMs, AMaxMs: Integer);
+begin
+  inherited Create;
+  FDelayMs := ADelayMs;
+  FMaxMs := AMaxMs;
+  FDisabled := TDictionary<string, Boolean>.Create;
+end;
+
 constructor TAtlasCheckOnSave.Create(ADelayMs: Integer);
 begin
   Create(ADelayMs, 1500);
@@ -61,14 +69,6 @@ end;
 constructor TAtlasCheckOnSave.Create;
 begin
   Create(2000, 1500);
-end;
-
-constructor TAtlasCheckOnSave.Create(ADelayMs, AMaxMs: Integer);
-begin
-  inherited Create;
-  FDelayMs := ADelayMs;
-  FMaxMs := AMaxMs;
-  FDisabled := TDictionary<string, Boolean>.Create;
 end;
 
 destructor TAtlasCheckOnSave.Destroy;

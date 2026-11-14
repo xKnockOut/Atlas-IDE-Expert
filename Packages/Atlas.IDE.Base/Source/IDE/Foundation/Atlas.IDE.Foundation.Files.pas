@@ -55,6 +55,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.Text.Lines;
 
+{ TAtlasIdeFiles }
+
 class function TAtlasIdeFiles.ProjectModule(const AFileName: string): IOTAModule;
 var
   mServices: IOTAModuleServices;

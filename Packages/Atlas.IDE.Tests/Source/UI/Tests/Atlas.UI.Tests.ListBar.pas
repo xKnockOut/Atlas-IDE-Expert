@@ -160,6 +160,17 @@ begin
   Result := MulDiv(AValue, FFrame.CurrentPPI, cBasePpi);
 end;
 
+function TAtlasTestsListBar.NewItem(AMenu: TComponent; const ACaption: string; ATag: Integer): TMenuItem;
+begin
+  Result := TMenuItem.Create(AMenu);
+  Result.Caption := ACaption;
+  Result.Tag := ATag;
+  if AMenu is TPopupMenu then
+  begin
+    TPopupMenu(AMenu).Items.Add(Result);
+  end;
+end;
+
 procedure TAtlasTestsListBar.BuildTabs(ATop: Integer);
 begin
   // alTop: Top und Height vor Align und Parent.
@@ -195,17 +206,6 @@ begin
   FHeaderText.Parent := FHeader;
 end;
 
-function TAtlasTestsListBar.NewItem(AMenu: TComponent; const ACaption: string; ATag: Integer): TMenuItem;
-begin
-  Result := TMenuItem.Create(AMenu);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  if AMenu is TPopupMenu then
-  begin
-    TPopupMenu(AMenu).Items.Add(Result);
-  end;
-end;
-
 procedure TAtlasTestsListBar.BuildMenus;
 begin
   FTabMenu := TPopupMenu.Create(FFrame);
@@ -231,90 +231,9 @@ begin
   end;
 end;
 
-procedure TAtlasTestsListBar.SetLists(const ALists: TArray<TAtlasTestsListTab>; ACurrent: Integer);
-begin
-  FLists := ALists;
-  FCurrent := ACurrent;
-  if (FCurrent < -1) or (FCurrent > High(FLists)) then
-  begin
-    FCurrent := -1;
-  end;
-  if FFrame.HandleAllocated then
-  begin
-    FillTabs;
-  end;
-end;
-
-procedure TAtlasTestsListBar.FillTabs;
-var
-  mCaptions: TArray<string>;
-  mIndex: Integer;
-  mSame: Boolean;
-begin
-  if not FActive then
-  begin
-    Exit;
-  end;
-  mCaptions := TArray<string>.Create(TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsAll));
-  for mIndex := 0 to High(FLists) do
-  begin
-    mCaptions := mCaptions + [TabCaption(mIndex)];
-  end;
-  mCaptions := mCaptions + [cNewTab];
-  FTabs.HandleNeeded;
-  // Der Baum wird bei jeder Filteränderung neu gefüllt; die Reiter nur, wenn sich die Listen ändern.
-  mSame := FTabs.Tabs.Count = Length(mCaptions);
-  for mIndex := 0 to FTabs.Tabs.Count - 1 do
-  begin
-    mSame := mSame and (FTabs.Tabs[mIndex] = mCaptions[mIndex]);
-  end;
-  if not mSame then
-  begin
-    FTabs.Tabs.BeginUpdate;
-    try
-      FTabs.Tabs.Clear;
-      for mIndex := 0 to High(mCaptions) do
-      begin
-        FTabs.Tabs.Add(mCaptions[mIndex]);
-      end;
-    finally
-      FTabs.Tabs.EndUpdate;
-    end;
-  end;
-  FTabs.TabIndex := FCurrent + 1;
-  ShowHeader;
-end;
-
 procedure TAtlasTestsListBar.ShowHeader;
 begin
   FHeader.Visible := FActive and (FCurrent >= 0);
-end;
-
-procedure TAtlasTestsListBar.SetHeader(const AText: string);
-begin
-  FHeaderText.Caption := AText;
-  FHeaderText.Hint := AText;
-end;
-
-procedure TAtlasTestsListBar.SetActive(AActive: Boolean);
-begin
-  FActive := AActive;
-  FTabs.Visible := AActive;
-  if AActive then
-  begin
-    FTree.PopupMenu := FTreeMenu;
-  end
-  else
-  begin
-    FTree.PopupMenu := nil;
-    FCurrent := -1;
-  end;
-  ShowHeader;
-end;
-
-procedure TAtlasTestsListBar.SetBusy(ABusy: Boolean);
-begin
-  FRun.Enabled := not ABusy;
 end;
 
 procedure TAtlasTestsListBar.TabChange(Sender: TObject);
@@ -412,6 +331,87 @@ end;
 procedure TAtlasTestsListBar.RunClick(Sender: TObject);
 begin
   FireIndex(FHandlers.OnRun, FCurrent);
+end;
+
+procedure TAtlasTestsListBar.SetLists(const ALists: TArray<TAtlasTestsListTab>; ACurrent: Integer);
+begin
+  FLists := ALists;
+  FCurrent := ACurrent;
+  if (FCurrent < -1) or (FCurrent > High(FLists)) then
+  begin
+    FCurrent := -1;
+  end;
+  if FFrame.HandleAllocated then
+  begin
+    FillTabs;
+  end;
+end;
+
+procedure TAtlasTestsListBar.FillTabs;
+var
+  mCaptions: TArray<string>;
+  mIndex: Integer;
+  mSame: Boolean;
+begin
+  if not FActive then
+  begin
+    Exit;
+  end;
+  mCaptions := TArray<string>.Create(TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsAll));
+  for mIndex := 0 to High(FLists) do
+  begin
+    mCaptions := mCaptions + [TabCaption(mIndex)];
+  end;
+  mCaptions := mCaptions + [cNewTab];
+  FTabs.HandleNeeded;
+  // Der Baum wird bei jeder Filteränderung neu gefüllt; die Reiter nur, wenn sich die Listen ändern.
+  mSame := FTabs.Tabs.Count = Length(mCaptions);
+  for mIndex := 0 to FTabs.Tabs.Count - 1 do
+  begin
+    mSame := mSame and (FTabs.Tabs[mIndex] = mCaptions[mIndex]);
+  end;
+  if not mSame then
+  begin
+    FTabs.Tabs.BeginUpdate;
+    try
+      FTabs.Tabs.Clear;
+      for mIndex := 0 to High(mCaptions) do
+      begin
+        FTabs.Tabs.Add(mCaptions[mIndex]);
+      end;
+    finally
+      FTabs.Tabs.EndUpdate;
+    end;
+  end;
+  FTabs.TabIndex := FCurrent + 1;
+  ShowHeader;
+end;
+
+procedure TAtlasTestsListBar.SetHeader(const AText: string);
+begin
+  FHeaderText.Caption := AText;
+  FHeaderText.Hint := AText;
+end;
+
+procedure TAtlasTestsListBar.SetActive(AActive: Boolean);
+begin
+  FActive := AActive;
+  FTabs.Visible := AActive;
+  if AActive then
+  begin
+    FTree.PopupMenu := FTreeMenu;
+  end
+  else
+  begin
+    FTree.PopupMenu := nil;
+    FCurrent := -1;
+  end;
+  ShowHeader;
+end;
+
+procedure TAtlasTestsListBar.SetBusy(ABusy: Boolean);
+begin
+  FRun.Enabled := not ABusy;
 end;
 
 end.

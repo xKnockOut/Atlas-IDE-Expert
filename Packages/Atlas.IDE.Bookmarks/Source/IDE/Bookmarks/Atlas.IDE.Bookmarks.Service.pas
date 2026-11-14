@@ -320,28 +320,6 @@ end;
 
 { TAtlasIdeBookmarks }
 
-class function TAtlasIdeBookmarks.Running: Boolean;
-begin
-  Result := FState.Lists <> nil;
-end;
-
-class function TAtlasIdeBookmarks.LoadedList(const AFileName: string; out AList: TAtlasBookmarkList): Boolean;
-var
-  mProject: string;
-begin
-  Result := (FState.ProjectOf <> nil) and FState.ProjectOf.TryGetValue(Key(AFileName), mProject) and
-    FState.Lists.TryGetValue(Key(mProject), AList);
-end;
-
-class function TAtlasIdeBookmarks.TakeImport(const AFileName: string): Boolean;
-begin
-  Result := (FState.Imported <> nil) and not FState.Imported.ContainsKey(Key(AFileName));
-  if Result then
-  begin
-    FState.Imported.Add(Key(AFileName), True);
-  end;
-end;
-
 class procedure TAtlasIdeBookmarks.Start(const AMessage, AStatus: TProc<string>);
 begin
   // Mehrfach aufgerufen (nach jeder Einstellungsänderung): vorhandene Listen bleiben, ApplySettings wechselt
@@ -388,152 +366,46 @@ begin
   FState.ColumnPainted := False;
 end;
 
-class procedure TAtlasIdeBookmarks.Say(const AText: string);
+class function TAtlasIdeBookmarks.Running: Boolean;
 begin
-  if Assigned(FState.Message) then
-  begin
-    FState.Message(AText);
-  end;
+  Result := FState.Lists <> nil;
 end;
 
-class procedure TAtlasIdeBookmarks.Status(const AText: string);
+class procedure TAtlasIdeBookmarks.ApplySettings;
 begin
-  // Ohne Statusfeld (Statusleiste aus) in die Meldungsansicht.
-  if not Assigned(FState.Status) then
-  begin
-    Say(AText);
-    Exit;
-  end;
-  FState.Status(AText);
-  FState.StatusAt := TThread.GetTickCount64;
-end;
-
-class procedure TAtlasIdeBookmarks.ExpireStatus;
-begin
-  if (FState.StatusAt = 0) or (TThread.GetTickCount64 - FState.StatusAt < cStatusMs) then
+  if FState.Lists = nil then
   begin
     Exit;
   end;
-  FState.StatusAt := 0;
-  if Assigned(FState.Status) then
+  if not Available(False) then
   begin
-    FState.Status('');
-  end;
-end;
-
-class function TAtlasIdeBookmarks.QuickOn(AReport: Boolean): Boolean;
-begin
-  Result := (FState.Lists <> nil) and TAtlasIdeSettings.Current.QuickBookmarks;
-  if not Result and AReport and (FState.Lists <> nil) then
-  begin
-    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkDisabled));
-  end;
-end;
-
-class function TAtlasIdeBookmarks.ColumnShown: Boolean;
-begin
-  // Nicht allein die Einstellung: Fehlt die Spalte, blieben Marker sonst ganz unsichtbar (#1281).
-  Result := FState.ColumnPainted and TAtlasIdeSettings.Current.QuickBookmarks and
-    TAtlasIdeSettings.Current.QuickBookmarksGutter;
-end;
-
-class procedure TAtlasIdeBookmarks.ColumnPainted(APainted: Boolean);
-begin
-  if FState.ColumnPainted = APainted then
-  begin
+    // Beide Arten aus: Fenster zu, die Rinne zeichnet nichts mehr (Wanted der Schicht).
+    TAtlasIdeBookmarksWindow.Hide;
+    Invalidate;
     Exit;
   end;
-  FState.ColumnPainted := APainted;
-  // Die Schicht der benannten Lesezeichen zeigt nummerierte nun selbst bzw. überlässt sie der Spalte.
+  // Spalte ein- oder ausgeschaltet: Die Schicht der benannten Lesezeichen zeigt nummerierte wieder bzw. nicht.
   Invalidate;
-end;
-
-class function TAtlasIdeBookmarks.ResolveProject(const AFileName: string): string;
-begin
-  Result := TAtlasIdeFiles.ProjectOfFile(AFileName);
-  if Result = '' then
+  if not QuickOn(False) and (FState.StatusAt <> 0) then
   begin
-    Result := TAtlasIdeFiles.ActiveProjectFile;
+    FState.StatusAt := 0;
+    if Assigned(FState.Status) then
+    begin
+      FState.Status('');
+    end;
   end;
-  if (Result <> '') and (FState.ProjectOf <> nil) then
+  if FState.Shared <> TAtlasIdeSettings.Current.BookmarksShared then
   begin
-    FState.ProjectOf.AddOrSetValue(Key(AFileName), Result);
-  end;
-end;
-
-class function TAtlasIdeBookmarks.CurrentProject: string;
-var
-  mView: IOTAEditView;
-begin
-  Result := '';
-  // Auch aus Palette und Menü, wenn der Fokus nicht im Editor liegt.
-  mView := TAtlasEditorBuffer.ActiveView;
-  if (mView <> nil) and (mView.Buffer <> nil) and (mView.Buffer.FileName <> '') then
-  begin
-    Result := ResolveProject(mView.Buffer.FileName);
-  end;
-  if Result = '' then
-  begin
-    Result := TAtlasIdeFiles.ActiveProjectFile;
+    CheckStorage;
+    FState.ProjectOf.Clear;
+    Invalidate;
+    RefreshWindow('');
   end;
 end;
 
-class function TAtlasIdeBookmarks.List(const AProject: string): TAtlasBookmarkList;
+class procedure TAtlasIdeBookmarks.ThemeChanged;
 begin
-  CheckStorage;
-  if (FState.Lists <> nil) and FState.Lists.TryGetValue(Key(AProject), Result) then
-  begin
-    Exit;
-  end;
-  // Ohne Datei oder bei ungültigem Inhalt: leere Liste zu diesem Projekt.
-  TAtlasBookmarks.Load(AProject, FState.Shared, Result);
-  if FState.Lists <> nil then
-  begin
-    FState.Lists.AddOrSetValue(Key(AProject), Result);
-  end;
-end;
-
-class procedure TAtlasIdeBookmarks.Put(const AList: TAtlasBookmarkList);
-begin
-  if FState.Lists <> nil then
-  begin
-    FState.Lists.AddOrSetValue(Key(AList.Project), AList);
-  end;
-end;
-
-class function TAtlasIdeBookmarks.Store(const AList: TAtlasBookmarkList): Boolean;
-begin
-  Put(AList);
-  Result := TAtlasBookmarks.Save(AList, FState.Shared);
-  if not Result then
-  begin
-    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksSaveFailed));
-  end;
-end;
-
-class function TAtlasIdeBookmarks.RelocateFile(var AList: TAtlasBookmarkList; const AFileName: string): Boolean;
-var
-  mText: string;
-begin
-  mText := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
-  // Leer heißt: Datei fehlt (oder ist leer); ihre Lesezeichen sind dann nicht zu finden.
-  if mText = '' then
-  begin
-    Result := AList.LoseFile(AFileName);
-  end
-  else
-  begin
-    Result := AList.Relocate(AFileName, mText);
-  end;
-  if FState.ProjectOf <> nil then
-  begin
-    FState.ProjectOf.AddOrSetValue(Key(AFileName), AList.Project);
-  end;
-end;
-
-class procedure TAtlasIdeBookmarks.Invalidate;
-begin
-  TAtlasIdeGutterMarks.Invalidate;
+  TAtlasIdeBookmarksWindow.ApplyTheme;
 end;
 
 class function TAtlasIdeBookmarks.Track(const AFileName, AText: string): Boolean;
@@ -634,117 +506,6 @@ begin
     FState.WindowProject := mProject;
   end;
   RefreshWindow(mId);
-end;
-
-/// <summary>Je Lesezeichen ein Eintrag der Palette: Name als Beschriftung, Ort (Datei, Zeile, Methode) als Pfad;
-/// die Suche findet beides.</summary>
-function BookmarkCommands(const AList: TAtlasBookmarkList): TArray<TAtlasCommand>;
-var
-  mCommand: TAtlasCommand;
-  mMark: TAtlasBookmark;
-begin
-  Result := nil;
-  for mMark in AList.Bookmarks do
-  begin
-    mCommand := Default(TAtlasCommand);
-    mCommand.Id := mMark.Id;
-    mCommand.Caption := mMark.DisplayName;
-    if mMark.Number > 0 then
-    begin
-      mCommand.Caption := IntToStr(mMark.Number) + ' · ' + mCommand.Caption;
-    end;
-    mCommand.Path := TAtlasBookmarks.Location(mMark);
-    if mMark.Lost then
-    begin
-      mCommand.ShortCut := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksLost);
-    end;
-    mCommand.Description := mMark.Preview;
-    Result := Result + [mCommand];
-  end;
-end;
-
-/// <summary>Palette über die Lesezeichen von AProject; Auswahl springt hin.</summary>
-procedure ShowPalette(const AProject: string; const AList: TAtlasBookmarkList);
-var
-  mProject: string;
-  mWindow: TAtlasPaletteWindow;
-begin
-  mProject := AProject;
-  mWindow := TAtlasPaletteWindow.CreatePalette(Application, BookmarkCommands(AList), nil, TAtlasIdeStyle.Colors);
-  mWindow.KeepOrder := True;
-  mWindow.OnExecute :=
-    procedure(ACommand: TAtlasCommand)
-    var
-      mId: string;
-    begin
-      mId := ACommand.Id;
-      TAtlasGuard.Run(TAtlasFeature.Bookmarks,
-        procedure
-        begin
-          TAtlasIdeBookmarks.OpenBookmark(mProject, mId);
-        end);
-    end;
-  mWindow.ShowOver(TAtlasIdeHost.PopupArea);
-end;
-
-class procedure TAtlasIdeBookmarks.GoToBookmark;
-var
-  mProject: string;
-  mCurrent: TAtlasBookmarkList;
-begin
-  if not Available(True) then
-  begin
-    Exit;
-  end;
-  mProject := CurrentProject;
-  if mProject = '' then
-  begin
-    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksNoProject));
-    Exit;
-  end;
-  mCurrent := List(mProject);
-  if RelocateAll(mCurrent) then
-  begin
-    Store(mCurrent);
-  end
-  else
-  begin
-    Put(mCurrent);
-  end;
-  if mCurrent.Count = 0 then
-  begin
-    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksNone));
-    Exit;
-  end;
-  ShowPalette(mProject, mCurrent);
-end;
-
-class procedure TAtlasIdeBookmarks.RefreshWindow(const ASelectId: string);
-var
-  mFrame: TAtlasBookmarksFrame;
-  mCurrent: TAtlasBookmarkList;
-  mView: IOTAEditView;
-begin
-  mFrame := TAtlasIdeBookmarksWindow.ExistingFrame;
-  if (mFrame = nil) or (FState.Lists = nil) then
-  begin
-    Exit;
-  end;
-  // „nur diese Datei“ bezieht sich auf die Datei im oberen Editor.
-  mView := TAtlasEditorBuffer.ActiveView;
-  if (mView <> nil) and (mView.Buffer <> nil) then
-  begin
-    mFrame.SetCurrentFile(mView.Buffer.FileName);
-  end;
-  if FState.WindowProject = '' then
-  begin
-    mCurrent := TAtlasBookmarkList.Create('');
-  end
-  else
-  begin
-    mCurrent := List(FState.WindowProject);
-  end;
-  mFrame.SetBookmarks(mCurrent, PlaceText(FState.WindowProject), ASelectId);
 end;
 
 class procedure TAtlasIdeBookmarks.ShowWindow;
@@ -877,36 +638,76 @@ begin
   RefreshWindow(AId);
 end;
 
-class procedure TAtlasIdeBookmarks.ApplySettings;
+class procedure TAtlasIdeBookmarks.AssignNumber(const AProject, AId: string; ANumber: Integer);
+var
+  mCurrent: TAtlasBookmarkList;
 begin
-  if FState.Lists = nil then
+  if not QuickOn(True) or (AProject = '') then
   begin
     Exit;
   end;
-  if not Available(False) then
+  mCurrent := List(AProject);
+  Commit(mCurrent, TAtlasQuickBookmarks.AssignNumber(mCurrent, AId, ANumber) <> TAtlasQuickChange.None, AId);
+end;
+
+class procedure TAtlasIdeBookmarks.ExpireStatus;
+begin
+  if (FState.StatusAt = 0) or (TThread.GetTickCount64 - FState.StatusAt < cStatusMs) then
   begin
-    // Beide Arten aus: Fenster zu, die Rinne zeichnet nichts mehr (Wanted der Schicht).
-    TAtlasIdeBookmarksWindow.Hide;
-    Invalidate;
     Exit;
   end;
-  // Spalte ein- oder ausgeschaltet: Die Schicht der benannten Lesezeichen zeigt nummerierte wieder bzw. nicht.
+  FState.StatusAt := 0;
+  if Assigned(FState.Status) then
+  begin
+    FState.Status('');
+  end;
+end;
+
+class procedure TAtlasIdeBookmarks.ColumnPainted(APainted: Boolean);
+begin
+  if FState.ColumnPainted = APainted then
+  begin
+    Exit;
+  end;
+  FState.ColumnPainted := APainted;
+  // Die Schicht der benannten Lesezeichen zeigt nummerierte nun selbst bzw. überlässt sie der Spalte.
   Invalidate;
-  if not QuickOn(False) and (FState.StatusAt <> 0) then
+end;
+
+class procedure TAtlasIdeBookmarks.Say(const AText: string);
+begin
+  if Assigned(FState.Message) then
   begin
-    FState.StatusAt := 0;
-    if Assigned(FState.Status) then
-    begin
-      FState.Status('');
-    end;
+    FState.Message(AText);
   end;
-  if FState.Shared <> TAtlasIdeSettings.Current.BookmarksShared then
+end;
+
+class procedure TAtlasIdeBookmarks.Status(const AText: string);
+begin
+  // Ohne Statusfeld (Statusleiste aus) in die Meldungsansicht.
+  if not Assigned(FState.Status) then
   begin
-    CheckStorage;
-    FState.ProjectOf.Clear;
-    Invalidate;
-    RefreshWindow('');
+    Say(AText);
+    Exit;
   end;
+  FState.Status(AText);
+  FState.StatusAt := TThread.GetTickCount64;
+end;
+
+class function TAtlasIdeBookmarks.QuickOn(AReport: Boolean): Boolean;
+begin
+  Result := (FState.Lists <> nil) and TAtlasIdeSettings.Current.QuickBookmarks;
+  if not Result and AReport and (FState.Lists <> nil) then
+  begin
+    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkDisabled));
+  end;
+end;
+
+class function TAtlasIdeBookmarks.ColumnShown: Boolean;
+begin
+  // Nicht allein die Einstellung: Fehlt die Spalte, blieben Marker sonst ganz unsichtbar (#1281).
+  Result := FState.ColumnPainted and TAtlasIdeSettings.Current.QuickBookmarks and
+    TAtlasIdeSettings.Current.QuickBookmarksGutter;
 end;
 
 class function TAtlasIdeBookmarks.PrepareFile(const AFileName: string; out AProject, AText: string;
@@ -927,6 +728,89 @@ begin
   Result := True;
 end;
 
+/// <summary>Je Lesezeichen ein Eintrag der Palette: Name als Beschriftung, Ort (Datei, Zeile, Methode) als Pfad;
+/// die Suche findet beides.</summary>
+function BookmarkCommands(const AList: TAtlasBookmarkList): TArray<TAtlasCommand>;
+var
+  mCommand: TAtlasCommand;
+  mMark: TAtlasBookmark;
+begin
+  Result := nil;
+  for mMark in AList.Bookmarks do
+  begin
+    mCommand := Default(TAtlasCommand);
+    mCommand.Id := mMark.Id;
+    mCommand.Caption := mMark.DisplayName;
+    if mMark.Number > 0 then
+    begin
+      mCommand.Caption := IntToStr(mMark.Number) + ' · ' + mCommand.Caption;
+    end;
+    mCommand.Path := TAtlasBookmarks.Location(mMark);
+    if mMark.Lost then
+    begin
+      mCommand.ShortCut := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksLost);
+    end;
+    mCommand.Description := mMark.Preview;
+    Result := Result + [mCommand];
+  end;
+end;
+
+/// <summary>Palette über die Lesezeichen von AProject; Auswahl springt hin.</summary>
+procedure ShowPalette(const AProject: string; const AList: TAtlasBookmarkList);
+var
+  mProject: string;
+  mWindow: TAtlasPaletteWindow;
+begin
+  mProject := AProject;
+  mWindow := TAtlasPaletteWindow.CreatePalette(Application, BookmarkCommands(AList), nil, TAtlasIdeStyle.Colors);
+  mWindow.KeepOrder := True;
+  mWindow.OnExecute :=
+    procedure(ACommand: TAtlasCommand)
+    var
+      mId: string;
+    begin
+      mId := ACommand.Id;
+      TAtlasGuard.Run(TAtlasFeature.Bookmarks,
+        procedure
+        begin
+          TAtlasIdeBookmarks.OpenBookmark(mProject, mId);
+        end);
+    end;
+  mWindow.ShowOver(TAtlasIdeHost.PopupArea);
+end;
+
+class procedure TAtlasIdeBookmarks.GoToBookmark;
+var
+  mProject: string;
+  mCurrent: TAtlasBookmarkList;
+begin
+  if not Available(True) then
+  begin
+    Exit;
+  end;
+  mProject := CurrentProject;
+  if mProject = '' then
+  begin
+    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksNoProject));
+    Exit;
+  end;
+  mCurrent := List(mProject);
+  if RelocateAll(mCurrent) then
+  begin
+    Store(mCurrent);
+  end
+  else
+  begin
+    Put(mCurrent);
+  end;
+  if mCurrent.Count = 0 then
+  begin
+    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksNone));
+    Exit;
+  end;
+  ShowPalette(mProject, mCurrent);
+end;
+
 class procedure TAtlasIdeBookmarks.Commit(const AList: TAtlasBookmarkList; AChanged: Boolean;
   const ASelectId: string);
 begin
@@ -940,21 +824,137 @@ begin
   RefreshWindow(ASelectId);
 end;
 
-class procedure TAtlasIdeBookmarks.AssignNumber(const AProject, AId: string; ANumber: Integer);
-var
-  mCurrent: TAtlasBookmarkList;
+class function TAtlasIdeBookmarks.List(const AProject: string): TAtlasBookmarkList;
 begin
-  if not QuickOn(True) or (AProject = '') then
+  CheckStorage;
+  if (FState.Lists <> nil) and FState.Lists.TryGetValue(Key(AProject), Result) then
   begin
     Exit;
   end;
-  mCurrent := List(AProject);
-  Commit(mCurrent, TAtlasQuickBookmarks.AssignNumber(mCurrent, AId, ANumber) <> TAtlasQuickChange.None, AId);
+  // Ohne Datei oder bei ungültigem Inhalt: leere Liste zu diesem Projekt.
+  TAtlasBookmarks.Load(AProject, FState.Shared, Result);
+  if FState.Lists <> nil then
+  begin
+    FState.Lists.AddOrSetValue(Key(AProject), Result);
+  end;
 end;
 
-class procedure TAtlasIdeBookmarks.ThemeChanged;
+class procedure TAtlasIdeBookmarks.Put(const AList: TAtlasBookmarkList);
 begin
-  TAtlasIdeBookmarksWindow.ApplyTheme;
+  if FState.Lists <> nil then
+  begin
+    FState.Lists.AddOrSetValue(Key(AList.Project), AList);
+  end;
+end;
+
+class function TAtlasIdeBookmarks.Store(const AList: TAtlasBookmarkList): Boolean;
+begin
+  Put(AList);
+  Result := TAtlasBookmarks.Save(AList, FState.Shared);
+  if not Result then
+  begin
+    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksSaveFailed));
+  end;
+end;
+
+class function TAtlasIdeBookmarks.RelocateFile(var AList: TAtlasBookmarkList; const AFileName: string): Boolean;
+var
+  mText: string;
+begin
+  mText := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
+  // Leer heißt: Datei fehlt (oder ist leer); ihre Lesezeichen sind dann nicht zu finden.
+  if mText = '' then
+  begin
+    Result := AList.LoseFile(AFileName);
+  end
+  else
+  begin
+    Result := AList.Relocate(AFileName, mText);
+  end;
+  if FState.ProjectOf <> nil then
+  begin
+    FState.ProjectOf.AddOrSetValue(Key(AFileName), AList.Project);
+  end;
+end;
+
+class procedure TAtlasIdeBookmarks.RefreshWindow(const ASelectId: string);
+var
+  mFrame: TAtlasBookmarksFrame;
+  mCurrent: TAtlasBookmarkList;
+  mView: IOTAEditView;
+begin
+  mFrame := TAtlasIdeBookmarksWindow.ExistingFrame;
+  if (mFrame = nil) or (FState.Lists = nil) then
+  begin
+    Exit;
+  end;
+  // „nur diese Datei“ bezieht sich auf die Datei im oberen Editor.
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView <> nil) and (mView.Buffer <> nil) then
+  begin
+    mFrame.SetCurrentFile(mView.Buffer.FileName);
+  end;
+  if FState.WindowProject = '' then
+  begin
+    mCurrent := TAtlasBookmarkList.Create('');
+  end
+  else
+  begin
+    mCurrent := List(FState.WindowProject);
+  end;
+  mFrame.SetBookmarks(mCurrent, PlaceText(FState.WindowProject), ASelectId);
+end;
+
+class procedure TAtlasIdeBookmarks.Invalidate;
+begin
+  TAtlasIdeGutterMarks.Invalidate;
+end;
+
+class function TAtlasIdeBookmarks.ResolveProject(const AFileName: string): string;
+begin
+  Result := TAtlasIdeFiles.ProjectOfFile(AFileName);
+  if Result = '' then
+  begin
+    Result := TAtlasIdeFiles.ActiveProjectFile;
+  end;
+  if (Result <> '') and (FState.ProjectOf <> nil) then
+  begin
+    FState.ProjectOf.AddOrSetValue(Key(AFileName), Result);
+  end;
+end;
+
+class function TAtlasIdeBookmarks.CurrentProject: string;
+var
+  mView: IOTAEditView;
+begin
+  Result := '';
+  // Auch aus Palette und Menü, wenn der Fokus nicht im Editor liegt.
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView <> nil) and (mView.Buffer <> nil) and (mView.Buffer.FileName <> '') then
+  begin
+    Result := ResolveProject(mView.Buffer.FileName);
+  end;
+  if Result = '' then
+  begin
+    Result := TAtlasIdeFiles.ActiveProjectFile;
+  end;
+end;
+
+class function TAtlasIdeBookmarks.LoadedList(const AFileName: string; out AList: TAtlasBookmarkList): Boolean;
+var
+  mProject: string;
+begin
+  Result := (FState.ProjectOf <> nil) and FState.ProjectOf.TryGetValue(Key(AFileName), mProject) and
+    FState.Lists.TryGetValue(Key(mProject), AList);
+end;
+
+class function TAtlasIdeBookmarks.TakeImport(const AFileName: string): Boolean;
+begin
+  Result := (FState.Imported <> nil) and not FState.Imported.ContainsKey(Key(AFileName));
+  if Result then
+  begin
+    FState.Imported.Add(Key(AFileName), True);
+  end;
 end;
 
 end.

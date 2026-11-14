@@ -66,6 +66,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.IdeUnits.Source;
 
+{ TIdeUnits }
+
 constructor TIdeUnits.Create;
 begin
   inherited Create;
@@ -84,11 +86,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TIdeUnits.Attach(ADispatcher: TJsonRpcDispatcher);
-begin
-  ADispatcher.RegisterNotification(cMethod, HandleNotification);
-end;
-
 procedure TIdeUnits.HandleNotification(const AParams: TJSONValue);
 var
   mCount: Integer;
@@ -98,6 +95,11 @@ begin
   begin
     FOnChanged(mCount);
   end;
+end;
+
+procedure TIdeUnits.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  ADispatcher.RegisterNotification(cMethod, HandleNotification);
 end;
 
 class function TIdeUnits.PathOf(const AUnit: string): string;

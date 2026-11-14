@@ -245,6 +245,108 @@ begin
   inherited;
 end;
 
+procedure TAtlasDebugViewer.ListData(Sender: TObject; AItem: TListItem);
+var
+  mRows: TArray<TArray<string>>;
+  mCells: TArray<string>;
+  mIndex: Integer;
+begin
+  if FView.Mode = TAtlasVisualizerViewMode.Hex then
+  begin
+    AItem.Caption := TAtlasVisualizerFormat.HexLine(FView.Bytes, AItem.Index * 16);
+    Exit;
+  end;
+  mRows := CurrentRows;
+  if (AItem.Index < 0) or (AItem.Index >= Length(mRows)) then
+  begin
+    Exit;
+  end;
+  mCells := mRows[AItem.Index];
+  if Length(mCells) = 0 then
+  begin
+    Exit;
+  end;
+  AItem.Caption := mCells[0];
+  for mIndex := 1 to High(mCells) do
+  begin
+    AItem.SubItems.Add(mCells[mIndex]);
+  end;
+end;
+
+procedure TAtlasDebugViewer.ImagePaint(Sender: TObject);
+const
+  cCell = 8;
+var
+  X, Y: Integer;
+begin
+  if FBitmap = nil then
+  begin
+    Exit;
+  end;
+  // Schachbrett hinter dem Bild, damit Transparenz und Weiß erkennbar sind.
+  for Y := 0 to (FImage.Height - 1) div cCell do
+  begin
+    for X := 0 to (FImage.Width - 1) div cCell do
+    begin
+      if Odd(X + Y) then
+      begin
+        FImage.Canvas.Brush.Color := $00E0E0E0;
+      end
+      else
+      begin
+        FImage.Canvas.Brush.Color := clWhite;
+      end;
+      FImage.Canvas.FillRect(Rect(X * cCell, Y * cCell, (X + 1) * cCell, (Y + 1) * cCell));
+    end;
+  end;
+  FImage.Canvas.Draw(0, 0, FBitmap);
+end;
+
+procedure TAtlasDebugViewer.AllFieldsClick(Sender: TObject);
+begin
+  if FView.Mode = TAtlasVisualizerViewMode.Table then
+  begin
+    ShowTable;
+  end;
+end;
+
+function TAtlasDebugViewer.CurrentRows: TArray<TArray<string>>;
+begin
+  if FAllFields.Visible and FAllFields.Checked then
+  begin
+    Result := FView.AllRows;
+  end
+  else
+  begin
+    Result := FView.Rows;
+  end;
+end;
+
+procedure TAtlasDebugViewer.ContentKeyDown(Sender: TObject; var AKey: Word; AShift: TShiftState);
+begin
+  if (AKey = Ord('C')) and (AShift = [ssCtrl]) then
+  begin
+    CopyClick(Sender);
+    AKey := 0;
+  end
+  else if (AKey = VK_ESCAPE) and (AShift = []) then
+  begin
+    AKey := 0;
+    Close;
+  end;
+end;
+
+procedure TAtlasDebugViewer.CopyClick(Sender: TObject);
+var
+  mText: string;
+begin
+  mText := SelectedText;
+  if mText <> '' then
+  begin
+    Clipboard.AsText := mText;
+  end;
+end;
+
 procedure TAtlasDebugViewer.ViewerClose(Sender: TObject; var AAction: TCloseAction);
 begin
   AAction := caFree;
@@ -261,54 +363,6 @@ begin
   FImageBox.Visible := False;
   FColor.Visible := False;
   FText.Visible := False;
-end;
-
-procedure TAtlasDebugViewer.ShowView(const AExpression: string; const AView: TAtlasVisualizerView);
-begin
-  FView := AView;
-  Caption := Format(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerTitle), [AExpression]);
-  FHeader.Caption := AView.Summary;
-  FHeader.Enabled := True;
-  FNote.Visible := AView.NeedsMore;
-  FNote.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerNeedsMore);
-  FAllFields.Visible := (AView.Mode = TAtlasVisualizerViewMode.Table) and (AView.AllRows <> nil);
-  FAllFields.Enabled := True;
-  HideContent;
-  FList.Enabled := True;
-  FTree.Enabled := True;
-  FImageBox.Enabled := True;
-  FText.Enabled := True;
-  case AView.Mode of
-    TAtlasVisualizerViewMode.Table:
-      ShowTable;
-    TAtlasVisualizerViewMode.Hex:
-      ShowHex;
-    TAtlasVisualizerViewMode.Tree:
-      ShowTree;
-    TAtlasVisualizerViewMode.Image:
-      ShowImage;
-    TAtlasVisualizerViewMode.Color:
-      ShowColor;
-    TAtlasVisualizerViewMode.Text:
-      ShowText;
-  else
-    begin
-      FText.Text := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerEmpty);
-      FText.Visible := True;
-    end;
-  end;
-end;
-
-procedure TAtlasDebugViewer.MarkUnavailable(const AReason: string);
-begin
-  FNote.Caption := AReason;
-  FNote.Visible := True;
-  FHeader.Enabled := False;
-  FAllFields.Enabled := False;
-  FList.Enabled := False;
-  FTree.Enabled := False;
-  FImageBox.Enabled := False;
-  FText.Enabled := False;
 end;
 
 procedure TAtlasDebugViewer.ShowTable;
@@ -422,35 +476,6 @@ begin
   FImage.Invalidate;
 end;
 
-procedure TAtlasDebugViewer.ImagePaint(Sender: TObject);
-const
-  cCell = 8;
-var
-  X, Y: Integer;
-begin
-  if FBitmap = nil then
-  begin
-    Exit;
-  end;
-  // Schachbrett hinter dem Bild, damit Transparenz und Weiß erkennbar sind.
-  for Y := 0 to (FImage.Height - 1) div cCell do
-  begin
-    for X := 0 to (FImage.Width - 1) div cCell do
-    begin
-      if Odd(X + Y) then
-      begin
-        FImage.Canvas.Brush.Color := $00E0E0E0;
-      end
-      else
-      begin
-        FImage.Canvas.Brush.Color := clWhite;
-      end;
-      FImage.Canvas.FillRect(Rect(X * cCell, Y * cCell, (X + 1) * cCell, (Y + 1) * cCell));
-    end;
-  end;
-  FImage.Canvas.Draw(0, 0, FBitmap);
-end;
-
 procedure TAtlasDebugViewer.ShowColor;
 begin
   // $RRGGBB → TColor ($00BBGGRR).
@@ -484,52 +509,52 @@ begin
   end;
 end;
 
-function TAtlasDebugViewer.CurrentRows: TArray<TArray<string>>;
+procedure TAtlasDebugViewer.ShowView(const AExpression: string; const AView: TAtlasVisualizerView);
 begin
-  if FAllFields.Visible and FAllFields.Checked then
-  begin
-    Result := FView.AllRows;
-  end
+  FView := AView;
+  Caption := Format(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerTitle), [AExpression]);
+  FHeader.Caption := AView.Summary;
+  FHeader.Enabled := True;
+  FNote.Visible := AView.NeedsMore;
+  FNote.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerNeedsMore);
+  FAllFields.Visible := (AView.Mode = TAtlasVisualizerViewMode.Table) and (AView.AllRows <> nil);
+  FAllFields.Enabled := True;
+  HideContent;
+  FList.Enabled := True;
+  FTree.Enabled := True;
+  FImageBox.Enabled := True;
+  FText.Enabled := True;
+  case AView.Mode of
+    TAtlasVisualizerViewMode.Table:
+      ShowTable;
+    TAtlasVisualizerViewMode.Hex:
+      ShowHex;
+    TAtlasVisualizerViewMode.Tree:
+      ShowTree;
+    TAtlasVisualizerViewMode.Image:
+      ShowImage;
+    TAtlasVisualizerViewMode.Color:
+      ShowColor;
+    TAtlasVisualizerViewMode.Text:
+      ShowText;
   else
-  begin
-    Result := FView.Rows;
+    begin
+      FText.Text := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerEmpty);
+      FText.Visible := True;
+    end;
   end;
 end;
 
-procedure TAtlasDebugViewer.AllFieldsClick(Sender: TObject);
+procedure TAtlasDebugViewer.MarkUnavailable(const AReason: string);
 begin
-  if FView.Mode = TAtlasVisualizerViewMode.Table then
-  begin
-    ShowTable;
-  end;
-end;
-
-procedure TAtlasDebugViewer.ListData(Sender: TObject; AItem: TListItem);
-var
-  mRows: TArray<TArray<string>>;
-  mCells: TArray<string>;
-  mIndex: Integer;
-begin
-  if FView.Mode = TAtlasVisualizerViewMode.Hex then
-  begin
-    AItem.Caption := TAtlasVisualizerFormat.HexLine(FView.Bytes, AItem.Index * 16);
-    Exit;
-  end;
-  mRows := CurrentRows;
-  if (AItem.Index < 0) or (AItem.Index >= Length(mRows)) then
-  begin
-    Exit;
-  end;
-  mCells := mRows[AItem.Index];
-  if Length(mCells) = 0 then
-  begin
-    Exit;
-  end;
-  AItem.Caption := mCells[0];
-  for mIndex := 1 to High(mCells) do
-  begin
-    AItem.SubItems.Add(mCells[mIndex]);
-  end;
+  FNote.Caption := AReason;
+  FNote.Visible := True;
+  FHeader.Enabled := False;
+  FAllFields.Enabled := False;
+  FList.Enabled := False;
+  FTree.Enabled := False;
+  FImageBox.Enabled := False;
+  FText.Enabled := False;
 end;
 
 function TAtlasDebugViewer.SelectedText: string;
@@ -570,31 +595,6 @@ begin
     Result := TrimRight(mLines.Text);
   finally
     mLines.Free;
-  end;
-end;
-
-procedure TAtlasDebugViewer.CopyClick(Sender: TObject);
-var
-  mText: string;
-begin
-  mText := SelectedText;
-  if mText <> '' then
-  begin
-    Clipboard.AsText := mText;
-  end;
-end;
-
-procedure TAtlasDebugViewer.ContentKeyDown(Sender: TObject; var AKey: Word; AShift: TShiftState);
-begin
-  if (AKey = Ord('C')) and (AShift = [ssCtrl]) then
-  begin
-    CopyClick(Sender);
-    AKey := 0;
-  end
-  else if (AKey = VK_ESCAPE) and (AShift = []) then
-  begin
-    AKey := 0;
-    Close;
   end;
 end;
 

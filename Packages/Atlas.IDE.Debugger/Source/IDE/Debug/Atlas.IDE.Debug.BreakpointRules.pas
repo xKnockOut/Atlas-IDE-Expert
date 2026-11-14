@@ -109,43 +109,6 @@ end;
 
 { TAtlasIdeBreakpointRules }
 
-class procedure TAtlasIdeBreakpointRules.Start(const AMessage: TProc<string>);
-begin
-  FMessage := AMessage;
-  if FListener = nil then
-  begin
-    FStates := TDictionary<string, TAtlasRuleState>.Create;
-    Load;
-    FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FListener);
-    TAtlasIdeDebugSession.Start;
-  end;
-end;
-
-class procedure TAtlasIdeBreakpointRules.Release;
-begin
-  if FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(FListener);
-    // Abhängige Haltepunkte nicht ausgeschaltet zurücklassen.
-    SessionEnded;
-  end;
-  FListener := nil;
-  FMessage := nil;
-  FRules := nil;
-  FreeAndNil(FStates);
-end;
-
-class function TAtlasIdeBreakpointRules.Started: Boolean;
-begin
-  Result := FListener <> nil;
-end;
-
-class function TAtlasIdeBreakpointRules.Enabled: Boolean;
-begin
-  Result := Started and TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.DebugBreakpointRules;
-end;
-
 class procedure TAtlasIdeBreakpointRules.Report(const AText: string);
 begin
   if Assigned(FMessage) then
@@ -210,6 +173,20 @@ begin
   Result := TAtlasBreakpointRuleDialog.TriggerText(TAtlasRuleTrigger.Create(AFileName, ALine));
 end;
 
+class function TAtlasIdeBreakpointRules.StopThread(const AProcess: IOTAProcess;
+  const AThread: IOTAThread): TAtlasStopThread;
+var
+  mMainId: Cardinal;
+begin
+  mMainId := 0;
+  // Der erste Thread des Prozesses ist der Hauptthread.
+  if AProcess.ThreadCount > 0 then
+  begin
+    mMainId := AProcess.Threads[0].GetOSThreadID;
+  end;
+  Result := TAtlasStopThread.Create(TAtlasIdeDebugSession.ThreadName(AThread), AThread.GetOSThreadID, mMainId);
+end;
+
 class procedure TAtlasIdeBreakpointRules.SessionStarted;
 var
   mRule: TAtlasBreakpointRule;
@@ -234,36 +211,28 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeBreakpointRules.SessionEnded;
+class procedure TAtlasIdeBreakpointRules.Stopped;
 var
-  mRule: TAtlasBreakpointRule;
+  mProcess: IOTAProcess;
+  mThread: IOTAThread;
+  mFileName: string;
+  mLine: Integer;
 begin
-  // Abhängige wieder an, wie gesetzt; die Zählung gilt nur je Sitzung.
-  for mRule in FRules do
+  mProcess := TAtlasIdeDebugSession.Process;
+  mThread := TAtlasIdeDebugSession.StoppedThread;
+  if not Enabled or (FRules = nil) or (mProcess = nil) or
+    not TAtlasIdeBreakpoints.Position(mThread, mFileName, mLine) then
   begin
-    if mRule.HasTrigger then
-    begin
-      SetEnabled(mRule, True);
-    end;
+    Exit;
   end;
-  if FStates <> nil then
+  // Erst die eigene Regel (ein Auslöser kann selbst Regeln haben), dann die abhängigen scharf schalten.
+  if DecideHere(mFileName, mLine, StopThread(mProcess, mThread)) = TAtlasRuleDecision.Continue then
   begin
-    FStates.Clear;
+    ArmTriggered(mFileName, mLine);
+    mProcess.Run(ormRun);
+    Exit;
   end;
-end;
-
-class function TAtlasIdeBreakpointRules.StopThread(const AProcess: IOTAProcess;
-  const AThread: IOTAThread): TAtlasStopThread;
-var
-  mMainId: Cardinal;
-begin
-  mMainId := 0;
-  // Der erste Thread des Prozesses ist der Hauptthread.
-  if AProcess.ThreadCount > 0 then
-  begin
-    mMainId := AProcess.Threads[0].GetOSThreadID;
-  end;
-  Result := TAtlasStopThread.Create(TAtlasIdeDebugSession.ThreadName(AThread), AThread.GetOSThreadID, mMainId);
+  ArmTriggered(mFileName, mLine);
 end;
 
 class procedure TAtlasIdeBreakpointRules.ArmTriggered(const AFileName: string; ALine: Integer);
@@ -306,28 +275,59 @@ begin
   SetEnabled(FRules[mIndex], TAtlasBreakpointRules.ShouldBeEnabled(FRules[mIndex], mState));
 end;
 
-class procedure TAtlasIdeBreakpointRules.Stopped;
+class procedure TAtlasIdeBreakpointRules.SessionEnded;
 var
-  mProcess: IOTAProcess;
-  mThread: IOTAThread;
-  mFileName: string;
-  mLine: Integer;
+  mRule: TAtlasBreakpointRule;
 begin
-  mProcess := TAtlasIdeDebugSession.Process;
-  mThread := TAtlasIdeDebugSession.StoppedThread;
-  if not Enabled or (FRules = nil) or (mProcess = nil) or
-    not TAtlasIdeBreakpoints.Position(mThread, mFileName, mLine) then
+  // Abhängige wieder an, wie gesetzt; die Zählung gilt nur je Sitzung.
+  for mRule in FRules do
   begin
-    Exit;
+    if mRule.HasTrigger then
+    begin
+      SetEnabled(mRule, True);
+    end;
   end;
-  // Erst die eigene Regel (ein Auslöser kann selbst Regeln haben), dann die abhängigen scharf schalten.
-  if DecideHere(mFileName, mLine, StopThread(mProcess, mThread)) = TAtlasRuleDecision.Continue then
+  if FStates <> nil then
   begin
-    ArmTriggered(mFileName, mLine);
-    mProcess.Run(ormRun);
-    Exit;
+    FStates.Clear;
   end;
-  ArmTriggered(mFileName, mLine);
+end;
+
+class procedure TAtlasIdeBreakpointRules.Start(const AMessage: TProc<string>);
+begin
+  FMessage := AMessage;
+  if FListener = nil then
+  begin
+    FStates := TDictionary<string, TAtlasRuleState>.Create;
+    Load;
+    FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FListener);
+    TAtlasIdeDebugSession.Start;
+  end;
+end;
+
+class procedure TAtlasIdeBreakpointRules.Release;
+begin
+  if FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(FListener);
+    // Abhängige Haltepunkte nicht ausgeschaltet zurücklassen.
+    SessionEnded;
+  end;
+  FListener := nil;
+  FMessage := nil;
+  FRules := nil;
+  FreeAndNil(FStates);
+end;
+
+class function TAtlasIdeBreakpointRules.Started: Boolean;
+begin
+  Result := FListener <> nil;
+end;
+
+class function TAtlasIdeBreakpointRules.Enabled: Boolean;
+begin
+  Result := Started and TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.DebugBreakpointRules;
 end;
 
 /// <summary>Andere Quelltext-Haltepunkte als mögliche Auslöser.</summary>

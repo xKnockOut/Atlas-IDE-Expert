@@ -94,6 +94,8 @@ uses
   Atlas.Common.Mcp.BuildTools,
   Atlas.Text.LogMarks;
 
+{ TShellIde }
+
 constructor TShellIde.Create(const AServices: TShellIdeServices);
 begin
   inherited Create;
@@ -127,17 +129,6 @@ begin
   FreeAndNil(FProject);
   FreeAndNil(FTypes);
   inherited Destroy;
-end;
-
-procedure TShellIde.Attach(ADispatcher: TJsonRpcDispatcher);
-begin
-  FBuild.Attach(ADispatcher);
-  FProject.Attach(ADispatcher);
-  FTypes.Attach(ADispatcher);
-  if FServices.IdeUnits <> nil then
-  begin
-    FServices.IdeUnits.Attach(ADispatcher);
-  end;
 end;
 
 procedure TShellIde.MessagesReceived(const AMessages: TArray<TCompilerMessage>);
@@ -239,10 +230,20 @@ begin
   end;
 end;
 
-procedure TShellIde.IndexFinished;
+procedure TShellIde.MembersChanged(ACount: Integer);
 begin
-  FIndexFinished := True;
-  RequestMembers;
+  FServices.Logger.Info(Format('IDE-Ersatz-Units: %d', [ACount]));
+end;
+
+procedure TShellIde.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  FBuild.Attach(ADispatcher);
+  FProject.Attach(ADispatcher);
+  FTypes.Attach(ADispatcher);
+  if FServices.IdeUnits <> nil then
+  begin
+    FServices.IdeUnits.Attach(ADispatcher);
+  end;
 end;
 
 /// <summary>Units der Einträge ohne Doppelte, in der Reihenfolge des Katalogs.</summary>
@@ -294,9 +295,10 @@ begin
   FServices.Notify(TIdeUnits.cWantedMethod, mParams);
 end;
 
-procedure TShellIde.MembersChanged(ACount: Integer);
+procedure TShellIde.IndexFinished;
 begin
-  FServices.Logger.Info(Format('IDE-Ersatz-Units: %d', [ACount]));
+  FIndexFinished := True;
+  RequestMembers;
 end;
 
 end.

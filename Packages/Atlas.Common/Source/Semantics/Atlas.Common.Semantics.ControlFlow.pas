@@ -505,64 +505,6 @@ begin
   end;
 end;
 
-function TFlowBuilder.BuildPrefixed(AStatement: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
-var
-  mNode: TFlowNode;
-begin
-  if AStatement.Kind = TSyntaxKind.LabeledStatement then
-  begin
-    mNode := LabelNode(AStatement.Name);
-    LinkAll(APreds, mNode);
-  end
-  else
-  begin
-    mNode := Simple(AStatement, APreds);
-  end;
-  Result := Sequence(AStatement, 0, [mNode]);
-end;
-
-function TFlowBuilder.BuildJump(AStatement: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
-var
-  mNode: TFlowNode;
-begin
-  mNode := Simple(AStatement, APreds);
-  if AStatement.Kind = TSyntaxKind.RaiseStatement then
-  begin
-    Jump(mNode, FRaiseTargets.Last);
-  end
-  else
-  begin
-    Link(mNode, LabelNode(AStatement.Name));
-  end;
-  Result := nil;
-end;
-
-function TFlowBuilder.BuildDefinition(AStatement: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
-var
-  mNode: TFlowNode;
-  mIndex: Integer;
-begin
-  mNode := Simple(AStatement, APreds);
-  if AStatement.Kind = TSyntaxKind.AssignStatement then
-  begin
-    if (AStatement.ChildCount > 0) and (AStatement.Children[0].Kind = TSyntaxKind.Identifier) then
-    begin
-      mNode.FDefines := AStatement.Children[0].Name;
-    end;
-  end
-  else
-  begin
-    for mIndex := 0 to AStatement.ChildCount - 1 do
-    begin
-      if AStatement.Children[mIndex].Kind <> TSyntaxKind.TypeReference then
-      begin
-        mNode.FDefines := AStatement.Name;
-      end;
-    end;
-  end;
-  Result := [mNode];
-end;
-
 function TFlowBuilder.Statement(AStatement: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
 begin
   case AStatement.Kind of
@@ -710,33 +652,82 @@ begin
   end;
 end;
 
-procedure TFlowBuilder.FinallyCopies(AContext: TFinallyContext; AFinallyPart: TSyntaxNode);
+function TFlowBuilder.BuildTry(AStatement: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
 var
-  mEntry, mNode: TFlowNode;
-  mIndex: Integer;
-  mPass: Boolean;
-  mOnward: TJumpTarget;
+  mExceptPart, mFinallyPart: TSyntaxNode;
 begin
-  // Die Wege für Ausnahmen kommen zuletzt, damit NodeOf eine Anweisung im finally zuerst auf dem normalen Weg
-  // findet.
-  for mPass := False to True do
+  mExceptPart := AStatement.FindChild(TSyntaxKind.ExceptBlock);
+  mFinallyPart := AStatement.FindChild(TSyntaxKind.FinallyBlock);
+  if mFinallyPart <> nil then
   begin
-    for mIndex := 0 to AContext.Onward.Count - 1 do
+    Result := BuildTryFinally(AStatement, mFinallyPart, APreds);
+  end
+  else if mExceptPart <> nil then
+  begin
+    Result := BuildTryExcept(AStatement, mExceptPart, APreds);
+  end
+  else
+  begin
+    Result := Sequence(AStatement, 0, APreds);
+  end;
+end;
+
+function TFlowBuilder.BuildPrefixed(AStatement: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
+var
+  mNode: TFlowNode;
+begin
+  if AStatement.Kind = TSyntaxKind.LabeledStatement then
+  begin
+    mNode := LabelNode(AStatement.Name);
+    LinkAll(APreds, mNode);
+  end
+  else
+  begin
+    mNode := Simple(AStatement, APreds);
+  end;
+  Result := Sequence(AStatement, 0, [mNode]);
+end;
+
+function TFlowBuilder.BuildJump(AStatement: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
+var
+  mNode: TFlowNode;
+begin
+  mNode := Simple(AStatement, APreds);
+  if AStatement.Kind = TSyntaxKind.RaiseStatement then
+  begin
+    Jump(mNode, FRaiseTargets.Last);
+  end
+  else
+  begin
+    Link(mNode, LabelNode(AStatement.Name));
+  end;
+  Result := nil;
+end;
+
+function TFlowBuilder.BuildDefinition(AStatement: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
+var
+  mNode: TFlowNode;
+  mIndex: Integer;
+begin
+  mNode := Simple(AStatement, APreds);
+  if AStatement.Kind = TSyntaxKind.AssignStatement then
+  begin
+    if (AStatement.ChildCount > 0) and (AStatement.Children[0].Kind = TSyntaxKind.Identifier) then
     begin
-      mOnward := AContext.Onward[mIndex];
-      if FRaiseTargets.Contains(mOnward) <> mPass then
+      mNode.FDefines := AStatement.Children[0].Name;
+    end;
+  end
+  else
+  begin
+    for mIndex := 0 to AStatement.ChildCount - 1 do
+    begin
+      if AStatement.Children[mIndex].Kind <> TSyntaxKind.TypeReference then
       begin
-        Continue;
-      end;
-      mEntry := NewNode(TFlowNodeKind.Join, nil);
-      mEntry.FRaiseEntry := mPass;
-      Resolve(AContext.Routes[mIndex], mEntry);
-      for mNode in Sequence(AFinallyPart, 0, [mEntry]) do
-      begin
-        Jump(mNode, mOnward);
+        mNode.FDefines := AStatement.Name;
       end;
     end;
   end;
+  Result := [mNode];
 end;
 
 function TFlowBuilder.BuildTryFinally(AStatement, AFinallyPart: TSyntaxNode;
@@ -765,6 +756,35 @@ begin
     FinallyCopies(mContext, AFinallyPart);
   finally
     mContext.Free;
+  end;
+end;
+
+procedure TFlowBuilder.FinallyCopies(AContext: TFinallyContext; AFinallyPart: TSyntaxNode);
+var
+  mEntry, mNode: TFlowNode;
+  mIndex: Integer;
+  mPass: Boolean;
+  mOnward: TJumpTarget;
+begin
+  // Die Wege für Ausnahmen kommen zuletzt, damit NodeOf eine Anweisung im finally zuerst auf dem normalen Weg
+  // findet.
+  for mPass := False to True do
+  begin
+    for mIndex := 0 to AContext.Onward.Count - 1 do
+    begin
+      mOnward := AContext.Onward[mIndex];
+      if FRaiseTargets.Contains(mOnward) <> mPass then
+      begin
+        Continue;
+      end;
+      mEntry := NewNode(TFlowNodeKind.Join, nil);
+      mEntry.FRaiseEntry := mPass;
+      Resolve(AContext.Routes[mIndex], mEntry);
+      for mNode in Sequence(AFinallyPart, 0, [mEntry]) do
+      begin
+        Jump(mNode, mOnward);
+      end;
+    end;
   end;
 end;
 
@@ -809,26 +829,6 @@ begin
   begin
     // Nicht behandelte Ausnahmen laufen weiter nach außen.
     Jump(mHandler, FRaiseTargets.Last);
-  end;
-end;
-
-function TFlowBuilder.BuildTry(AStatement: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
-var
-  mExceptPart, mFinallyPart: TSyntaxNode;
-begin
-  mExceptPart := AStatement.FindChild(TSyntaxKind.ExceptBlock);
-  mFinallyPart := AStatement.FindChild(TSyntaxKind.FinallyBlock);
-  if mFinallyPart <> nil then
-  begin
-    Result := BuildTryFinally(AStatement, mFinallyPart, APreds);
-  end
-  else if mExceptPart <> nil then
-  begin
-    Result := BuildTryExcept(AStatement, mExceptPart, APreds);
-  end
-  else
-  begin
-    Result := Sequence(AStatement, 0, APreds);
   end;
 end;
 
@@ -951,6 +951,8 @@ type
     destructor Destroy; override;
     procedure Run;
   end;
+
+{ TFlowAnalyzer }
 
 constructor TFlowAnalyzer.Create(ANode: TFlowNode; const ALookup: TFlowSignatureLookup);
 begin
@@ -1299,9 +1301,54 @@ begin
   inherited;
 end;
 
-class function TControlFlowGraph.Build(ARoutine: TSyntaxNode): TControlFlowGraph;
+procedure TControlFlowGraph.ComputeDominators;
+var
+  mCount, mRow, mColumn: Integer;
+  mNode: TFlowNode;
+  mReachable: TArray<Boolean>;
+  mChanged: Boolean;
 begin
-  Result := Build(ARoutine, nil);
+  if FDominators <> nil then
+  begin
+    Exit;
+  end;
+  mCount := FNodes.Count;
+  // Unerreichbare Vorgänger (Code nach Exit) zählen nicht; sonst dominierte
+  // nichts mehr den gemeinsamen Nachfolger.
+  SetLength(mReachable, mCount);
+  for mNode in FNodes do
+  begin
+    mReachable[mNode.Index] := IsReachable(mNode) = TFlowAnswer.Yes;
+  end;
+  SetLength(FDominators, mCount);
+  for mRow := 0 to mCount - 1 do
+  begin
+    SetLength(FDominators[mRow], mCount);
+    for mColumn := 0 to mCount - 1 do
+    begin
+      FDominators[mRow][mColumn] := mRow <> FEntry.Index;
+    end;
+  end;
+  FDominators[FEntry.Index][FEntry.Index] := True;
+  mChanged := True;
+  while mChanged do
+  begin
+    mChanged := UpdateDominators(mReachable);
+  end;
+end;
+
+function TControlFlowGraph.HasReachableCopy(ANode: TFlowNode): Boolean;
+var
+  mOther: TFlowNode;
+begin
+  for mOther in FNodes do
+  begin
+    if (mOther <> ANode) and (mOther.Syntax = ANode.Syntax) and (IsReachable(mOther) = TFlowAnswer.Yes) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 class function TControlFlowGraph.Build(ARoutine: TSyntaxNode; const ALookup: TFlowSignatureLookup):
@@ -1333,6 +1380,64 @@ begin
     mBuilder.Run(ARoutine);
   finally
     mBuilder.Free;
+  end;
+end;
+
+class function TControlFlowGraph.Build(ARoutine: TSyntaxNode): TControlFlowGraph;
+begin
+  Result := Build(ARoutine, nil);
+end;
+
+/// <summary>Schnitt der Spalte AColumn über alle erreichbaren Vorgänger von ANode; False ohne.</summary>
+function IntersectPredecessors(ANode: TFlowNode; AColumn: Integer; const AReachable: TArray<Boolean>;
+  const ADominators: TArray<TArray<Boolean>>): Boolean;
+var
+  mPred: TFlowNode;
+  mFirst: Boolean;
+begin
+  Result := False;
+  mFirst := True;
+  for mPred in ANode.Predecessors do
+  begin
+    if not AReachable[mPred.Index] then
+    begin
+      Continue;
+    end;
+    if mFirst then
+    begin
+      Result := ADominators[mPred.Index][AColumn];
+    end
+    else
+    begin
+      Result := Result and ADominators[mPred.Index][AColumn];
+    end;
+    mFirst := False;
+  end;
+end;
+
+function TControlFlowGraph.UpdateDominators(const AReachable: TArray<Boolean>): Boolean;
+var
+  mNode: TFlowNode;
+  mColumn: Integer;
+  mValue: Boolean;
+begin
+  Result := False;
+  for mNode in FNodes do
+  begin
+    if mNode = FEntry then
+    begin
+      Continue;
+    end;
+    for mColumn := 0 to FNodes.Count - 1 do
+    begin
+      // Schnitt über alle Vorgänger, dazu der Knoten selbst.
+      mValue := (mColumn = mNode.Index) or IntersectPredecessors(mNode, mColumn, AReachable, FDominators);
+      if mValue <> FDominators[mNode.Index][mColumn] then
+      begin
+        FDominators[mNode.Index][mColumn] := mValue;
+        Result := True;
+      end;
+    end;
   end;
 end;
 
@@ -1391,95 +1496,6 @@ begin
   end;
 end;
 
-/// <summary>Schnitt der Spalte AColumn über alle erreichbaren Vorgänger von ANode; False ohne.</summary>
-function IntersectPredecessors(ANode: TFlowNode; AColumn: Integer; const AReachable: TArray<Boolean>;
-  const ADominators: TArray<TArray<Boolean>>): Boolean;
-var
-  mPred: TFlowNode;
-  mFirst: Boolean;
-begin
-  Result := False;
-  mFirst := True;
-  for mPred in ANode.Predecessors do
-  begin
-    if not AReachable[mPred.Index] then
-    begin
-      Continue;
-    end;
-    if mFirst then
-    begin
-      Result := ADominators[mPred.Index][AColumn];
-    end
-    else
-    begin
-      Result := Result and ADominators[mPred.Index][AColumn];
-    end;
-    mFirst := False;
-  end;
-end;
-
-function TControlFlowGraph.UpdateDominators(const AReachable: TArray<Boolean>): Boolean;
-var
-  mNode: TFlowNode;
-  mColumn: Integer;
-  mValue: Boolean;
-begin
-  Result := False;
-  for mNode in FNodes do
-  begin
-    if mNode = FEntry then
-    begin
-      Continue;
-    end;
-    for mColumn := 0 to FNodes.Count - 1 do
-    begin
-      // Schnitt über alle Vorgänger, dazu der Knoten selbst.
-      mValue := (mColumn = mNode.Index) or IntersectPredecessors(mNode, mColumn, AReachable, FDominators);
-      if mValue <> FDominators[mNode.Index][mColumn] then
-      begin
-        FDominators[mNode.Index][mColumn] := mValue;
-        Result := True;
-      end;
-    end;
-  end;
-end;
-
-procedure TControlFlowGraph.ComputeDominators;
-var
-  mCount, mRow, mColumn: Integer;
-  mNode: TFlowNode;
-  mReachable: TArray<Boolean>;
-  mChanged: Boolean;
-begin
-  if FDominators <> nil then
-  begin
-    Exit;
-  end;
-  mCount := FNodes.Count;
-  // Unerreichbare Vorgänger (Code nach Exit) zählen nicht; sonst dominierte
-  // nichts mehr den gemeinsamen Nachfolger.
-  SetLength(mReachable, mCount);
-  for mNode in FNodes do
-  begin
-    mReachable[mNode.Index] := IsReachable(mNode) = TFlowAnswer.Yes;
-  end;
-  SetLength(FDominators, mCount);
-  for mRow := 0 to mCount - 1 do
-  begin
-    SetLength(FDominators[mRow], mCount);
-    for mColumn := 0 to mCount - 1 do
-    begin
-      FDominators[mRow][mColumn] := mRow <> FEntry.Index;
-    end;
-  end;
-  FDominators[FEntry.Index][FEntry.Index] := True;
-  mChanged := True;
-  while mChanged do
-  begin
-    mChanged := UpdateDominators(mReachable);
-  end;
-end;
-
 function TControlFlowGraph.Dominates(A, B: TFlowNode): TFlowAnswer;
 begin
   if not FComplete then
@@ -1499,20 +1515,6 @@ begin
   begin
     Result := TFlowAnswer.No;
   end;
-end;
-
-function TControlFlowGraph.HasReachableCopy(ANode: TFlowNode): Boolean;
-var
-  mOther: TFlowNode;
-begin
-  for mOther in FNodes do
-  begin
-    if (mOther <> ANode) and (mOther.Syntax = ANode.Syntax) and (IsReachable(mOther) = TFlowAnswer.Yes) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 /// <summary>Steht die Anweisung von ANode schon in ANodes?</summary>
@@ -1674,15 +1676,6 @@ begin
   Result := AnswerOf(ReachingDefinitions(FExit, AName));
 end;
 
-function TControlFlowGraph.MayReadBeforeWrite(ANode: TFlowNode; const AName: string): TFlowAnswer;
-begin
-  if not FComplete then
-  begin
-    Exit(TFlowAnswer.Unknown);
-  end;
-  Result := AnswerOf(ReachingDefinitions(ANode, AName));
-end;
-
 function TControlFlowGraph.MayReadBeforeWrite(const AName: string): TFlowAnswer;
 var
   mNode: TFlowNode;
@@ -1709,6 +1702,15 @@ begin
       end;
     end;
   end;
+end;
+
+function TControlFlowGraph.MayReadBeforeWrite(ANode: TFlowNode; const AName: string): TFlowAnswer;
+begin
+  if not FComplete then
+  begin
+    Exit(TFlowAnswer.Unknown);
+  end;
+  Result := AnswerOf(ReachingDefinitions(ANode, AName));
 end;
 
 end.

@@ -301,14 +301,19 @@ begin
   inherited Destroy;
 end;
 
-class procedure TAtlasEditorInlayHints.Invalidate;
+procedure TAtlasEditorInlayHints.EnsureHintFont(const AEditorFont: TFont);
 var
-  mServices: INTACodeEditorServices;
+  mKey: string;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  mKey := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
+  if mKey = FFontKey then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+    Exit;
   end;
+  FHintFont.Assign(AEditorFont);
+  FHintFont.Size := Max(6, AEditorFont.Size - 1);
+  FHintFont.Style := [];
+  FFontKey := mKey;
 end;
 
 function IsSource(const AFileName: string): Boolean;
@@ -342,6 +347,73 @@ begin
   if (Result <> nil) and ((Result.Buffer = nil) or not IsSource(Result.Buffer.FileName)) then
   begin
     Result := nil;
+  end;
+end;
+
+procedure TAtlasEditorInlayHints.EnsureColors(ABack: COLORREF);
+var
+  mColors: TAtlasHintColors;
+begin
+  if FBackKnown and (FBack = ABack) then
+  begin
+    Exit;
+  end;
+  FreeColors;
+  mColors := TAtlasColors.InlayHint(TAtlasColor(ABack));
+  FTextColor := COLORREF(ColorToRGB(TColor(mColors.Text)));
+  FPen := CreatePen(PS_SOLID, 1, ColorToRGB(TColor(mColors.Pen)));
+  FBrush := CreateSolidBrush(ColorToRGB(TColor(mColors.Fill)));
+  FBack := ABack;
+  FBackKnown := True;
+end;
+
+procedure TAtlasEditorInlayHints.FreeColors;
+begin
+  if FPen <> 0 then
+  begin
+    DeleteObject(FPen);
+  end;
+  if FBrush <> 0 then
+  begin
+    DeleteObject(FBrush);
+  end;
+  FPen := 0;
+  FBrush := 0;
+  FBackKnown := False;
+end;
+
+procedure TAtlasEditorInlayHints.Tick(Sender: TObject);
+var
+  mView: IOTAEditView;
+begin
+  // Durch die Sicherung abgeschaltet (#493).
+  if TAtlasGuard.Disabled(TAtlasFeature.InlayHints) then
+  begin
+    Exit;
+  end;
+  try
+    if not AnyInlayOn then
+    begin
+      ClearShown;
+      Exit;
+    end;
+    SyncMinLines;
+    // Ohne Fokus ändert sich der Puffer nur über Neuladen; das markiert den Stand ohnehin als veraltet.
+    mView := nil;
+    if Application.Active then
+    begin
+      mView := TopSourceView;
+    end;
+    // Erst nach der Tipp-Pause; bis dahin bleiben die Marken unveränderter Zeilen stehen.
+    // Im Designer und auf der Willkommensseite ist der Code nicht zu sehen: keine Anfragen an den Server.
+    if (mView <> nil) and not SnapshotChanged(mView) and (TAtlasTicks.Since(FChangedAt) >= cQuietMs) and
+      FRetryAt.Reached and TAtlasIdeCodeView.InFront then
+    begin
+      Fetch(mView);
+    end;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.InlayHints, E);
   end;
 end;
 
@@ -384,39 +456,10 @@ begin
   end;
 end;
 
-procedure TAtlasEditorInlayHints.Tick(Sender: TObject);
-var
-  mView: IOTAEditView;
+/// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine; Tabs aufgelöst.</summary>
+function ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
 begin
-  // Durch die Sicherung abgeschaltet (#493).
-  if TAtlasGuard.Disabled(TAtlasFeature.InlayHints) then
-  begin
-    Exit;
-  end;
-  try
-    if not AnyInlayOn then
-    begin
-      ClearShown;
-      Exit;
-    end;
-    SyncMinLines;
-    // Ohne Fokus ändert sich der Puffer nur über Neuladen; das markiert den Stand ohnehin als veraltet.
-    mView := nil;
-    if Application.Active then
-    begin
-      mView := TopSourceView;
-    end;
-    // Erst nach der Tipp-Pause; bis dahin bleiben die Marken unveränderter Zeilen stehen.
-    // Im Designer und auf der Willkommensseite ist der Code nicht zu sehen: keine Anfragen an den Server.
-    if (mView <> nil) and not SnapshotChanged(mView) and (TAtlasTicks.Since(FChangedAt) >= cQuietMs) and
-      FRetryAt.Reached and TAtlasIdeCodeView.InFront then
-    begin
-      Fetch(mView);
-    end;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.InlayHints, E);
-  end;
+  Result := Length(TAtlasPairs.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
 end;
 
 procedure TAtlasEditorInlayHints.Fetch(const AView: IOTAEditView);
@@ -476,57 +519,13 @@ begin
   Invalidate;
 end;
 
-/// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine; Tabs aufgelöst.</summary>
-function ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
+procedure TAtlasEditorInlayHints.SelectHintStyle(ADC: HDC);
 begin
-  Result := Length(TAtlasPairs.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
-end;
-
-procedure TAtlasEditorInlayHints.FreeColors;
-begin
-  if FPen <> 0 then
-  begin
-    DeleteObject(FPen);
-  end;
-  if FBrush <> 0 then
-  begin
-    DeleteObject(FBrush);
-  end;
-  FPen := 0;
-  FBrush := 0;
-  FBackKnown := False;
-end;
-
-procedure TAtlasEditorInlayHints.EnsureColors(ABack: COLORREF);
-var
-  mColors: TAtlasHintColors;
-begin
-  if FBackKnown and (FBack = ABack) then
-  begin
-    Exit;
-  end;
-  FreeColors;
-  mColors := TAtlasColors.InlayHint(TAtlasColor(ABack));
-  FTextColor := COLORREF(ColorToRGB(TColor(mColors.Text)));
-  FPen := CreatePen(PS_SOLID, 1, ColorToRGB(TColor(mColors.Pen)));
-  FBrush := CreateSolidBrush(ColorToRGB(TColor(mColors.Fill)));
-  FBack := ABack;
-  FBackKnown := True;
-end;
-
-procedure TAtlasEditorInlayHints.EnsureHintFont(const AEditorFont: TFont);
-var
-  mKey: string;
-begin
-  mKey := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
-  if mKey = FFontKey then
-  begin
-    Exit;
-  end;
-  FHintFont.Assign(AEditorFont);
-  FHintFont.Size := Max(6, AEditorFont.Size - 1);
-  FHintFont.Style := [];
-  FFontKey := mKey;
+  SelectObject(ADC, FHintFont.Handle);
+  SelectObject(ADC, FPen);
+  SelectObject(ADC, FBrush);
+  SetTextColor(ADC, FTextColor);
+  SetBkMode(ADC, TRANSPARENT);
 end;
 
 type
@@ -647,13 +646,29 @@ begin
   TextOutW(ADC, Result.Left + 2, Result.Top + 1, PChar(ALabel), Length(ALabel));
 end;
 
-procedure TAtlasEditorInlayHints.SelectHintStyle(ADC: HDC);
+procedure TAtlasEditorInlayHints.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
+  var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+var
+  mHints: TLineHints;
 begin
-  SelectObject(ADC, FHintFont.Handle);
-  SelectObject(ADC, FPen);
-  SelectObject(ADC, FBrush);
-  SetTextColor(ADC, FTextColor);
-  SetBkMode(ADC, TRANSPARENT);
+  // Durch die Sicherung abgeschaltet (#493).
+  if TAtlasGuard.Disabled(TAtlasFeature.InlayHints) or BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
+  begin
+    Exit;
+  end;
+  try
+    // Einstellungen erst, wenn die Zeile Marken hat: die meisten Zeilen haben keine.
+    if StoredHints(FStore, Context.FileName, Context.LogicalLineNum - 1, mHints) and
+      KeepShown(mHints, Context.FileName, False) and LineMatches(FStore, Context, mHints) and
+      KeepShown(mHints, Context.FileName, True) then
+    begin
+      DrawHints(Rect, Context, mHints);
+    end;
+  except
+    // Zeichnen darf die IDE nie stören.
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.InlayHints, E);
+  end;
 end;
 
 /// <summary>Klickfläche ARect in Zeile ALine mit Ziel ATargetLine/ATargetCharacter (0-basiert).</summary>
@@ -731,31 +746,6 @@ begin
   end;
 end;
 
-procedure TAtlasEditorInlayHints.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
-  var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
-var
-  mHints: TLineHints;
-begin
-  // Durch die Sicherung abgeschaltet (#493).
-  if TAtlasGuard.Disabled(TAtlasFeature.InlayHints) or BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
-  begin
-    Exit;
-  end;
-  try
-    // Einstellungen erst, wenn die Zeile Marken hat: die meisten Zeilen haben keine.
-    if StoredHints(FStore, Context.FileName, Context.LogicalLineNum - 1, mHints) and
-      KeepShown(mHints, Context.FileName, False) and LineMatches(FStore, Context, mHints) and
-      KeepShown(mHints, Context.FileName, True) then
-    begin
-      DrawHints(Rect, Context, mHints);
-    end;
-  except
-    // Zeichnen darf die IDE nie stören.
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.InlayHints, E);
-  end;
-end;
-
 procedure TAtlasEditorInlayHints.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
   X, Y: Integer);
 begin
@@ -767,6 +757,16 @@ begin
   end;
 end;
 
+class procedure TAtlasEditorInlayHints.Invalidate;
+var
+  mServices: INTACodeEditorServices;
+begin
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+  end;
+end;
+
 { TAtlasInlayHintClicks }
 
 constructor TAtlasInlayHintClicks.Create(AStore: TAtlasInlayHintStore; const AMethodActions: TProc);
@@ -774,31 +774,6 @@ begin
   inherited Create;
   FStore := AStore;
   FMethodActions := AMethodActions;
-end;
-
-procedure TAtlasInlayHintClicks.Clear;
-begin
-  FHits := nil;
-end;
-
-procedure TAtlasInlayHintClicks.Remember(const AHit: TAtlasInlayPillHit);
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(FHits) do
-  begin
-    if (FHits[mIndex].Line = AHit.Line) and (FHits[mIndex].Actions = AHit.Actions) and
-      SameText(FHits[mIndex].FileName, AHit.FileName) then
-    begin
-      FHits[mIndex] := AHit;
-      Exit;
-    end;
-  end;
-  if Length(FHits) >= cMaxHits then
-  begin
-    FHits := nil;
-  end;
-  FHits := FHits + [AHit];
 end;
 
 function TAtlasInlayHintClicks.StillShown(const AHit: TAtlasInlayPillHit): Boolean;
@@ -853,6 +828,31 @@ begin
         mActions();
       end;
     end);
+end;
+
+procedure TAtlasInlayHintClicks.Remember(const AHit: TAtlasInlayPillHit);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FHits) do
+  begin
+    if (FHits[mIndex].Line = AHit.Line) and (FHits[mIndex].Actions = AHit.Actions) and
+      SameText(FHits[mIndex].FileName, AHit.FileName) then
+    begin
+      FHits[mIndex] := AHit;
+      Exit;
+    end;
+  end;
+  if Length(FHits) >= cMaxHits then
+  begin
+    FHits := nil;
+  end;
+  FHits := FHits + [AHit];
+end;
+
+procedure TAtlasInlayHintClicks.Clear;
+begin
+  FHits := nil;
 end;
 
 procedure TAtlasInlayHintClicks.Click(AButton: TMouseButton; AShift: TShiftState; AX, AY: Integer);

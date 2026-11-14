@@ -118,6 +118,15 @@ end;
 
 { TAtlasScopeList }
 
+function TAtlasScopeList.FirstProject: Integer;
+begin
+  Result := -1;
+  if Length(FProjects) > 0 then
+  begin
+    Result := cFixedCount + 1;
+  end;
+end;
+
 class function TAtlasScopeList.Create(const AProjects: TArray<TAtlasScopeProject>;
   AShowProjects: Boolean): TAtlasScopeList;
 begin
@@ -126,15 +135,6 @@ begin
   if AShowProjects and (Length(AProjects) > 1) then
   begin
     Result.FProjects := Copy(AProjects);
-  end;
-end;
-
-function TAtlasScopeList.FirstProject: Integer;
-begin
-  Result := -1;
-  if Length(FProjects) > 0 then
-  begin
-    Result := cFixedCount + 1;
   end;
 end;
 

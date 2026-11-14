@@ -41,6 +41,8 @@ uses
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Lsp.StatusFile;
 
+{ TServerStatusHeartbeat }
+
 constructor TServerStatusHeartbeat.Create(const ARoot: string; APid: Cardinal; AActivity: TServerActivity;
   AIntervalMs: Cardinal);
 begin

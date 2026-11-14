@@ -320,6 +320,103 @@ begin
   end;
 end;
 
+{ TAtlasSummarySections }
+
+class function TAtlasSummarySections.SlowestOf(ASection: TJSONObject): TArray<TAtlasProjectSlowTest>;
+var
+  mItems: TJSONValue;
+  mItem: TJSONValue;
+  mSlow: TAtlasProjectSlowTest;
+begin
+  Result := nil;
+  mItems := ASection.GetValue('slowest');
+  if not (mItems is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(mItems) do
+  begin
+    if not (mItem is TJSONObject) or (Length(Result) >= TAtlasProjectTests.cMaxSlowest) then
+    begin
+      Continue;
+    end;
+    mSlow := Default(TAtlasProjectSlowTest);
+    mSlow.Test := TJsonRead.Text(TJSONObject(mItem), 'test');
+    mSlow.FileName := TJsonRead.Text(TJSONObject(mItem), 'file');
+    mSlow.Line := TJsonRead.IntOr(TJSONObject(mItem), 'line', 0);
+    mSlow.DurationMs := TJsonRead.IntOr(TJSONObject(mItem), 'durationMs', 0);
+    if mSlow.Test <> '' then
+    begin
+      Result := Result + [mSlow];
+    end;
+  end;
+end;
+
+class function TAtlasSummarySections.SlowestJson(const ASlowest: TArray<TAtlasProjectSlowTest>): TJSONArray;
+var
+  mItem: TJSONObject;
+  mIndex: Integer;
+begin
+  Result := TJSONArray.Create;
+  for mIndex := 0 to Min(High(ASlowest), TAtlasProjectTests.cMaxSlowest - 1) do
+  begin
+    mItem := TJSONObject.Create;
+    Result.AddElement(mItem);
+    mItem.AddPair('test', ASlowest[mIndex].Test);
+    if ASlowest[mIndex].FileName <> '' then
+    begin
+      mItem.AddPair('file', ASlowest[mIndex].FileName);
+    end;
+    if ASlowest[mIndex].Line > 0 then
+    begin
+      mItem.AddPair('line', TJSONNumber.Create(ASlowest[mIndex].Line));
+    end;
+    mItem.AddPair('durationMs', TJSONNumber.Create(ASlowest[mIndex].DurationMs));
+  end;
+end;
+
+{ TAtlasProjectTests }
+
+class function TAtlasProjectTests.Empty: TAtlasProjectTests;
+begin
+  Result := Default(TAtlasProjectTests);
+  Result.Failures := nil;
+  Result.Slowest := nil;
+end;
+
+function TAtlasProjectTests.FailedTests: TArray<string>;
+var
+  mFailure: TAtlasProjectTestFailure;
+  mName: string;
+  mSeen: Boolean;
+begin
+  Result := nil;
+  for mFailure in Failures do
+  begin
+    if mFailure.Test = '' then
+    begin
+      Continue;
+    end;
+    mSeen := False;
+    for mName in Result do
+    begin
+      if SameText(mName, mFailure.Test) then
+      begin
+        mSeen := True;
+      end;
+    end;
+    if not mSeen then
+    begin
+      Result := Result + [mFailure.Test];
+    end;
+  end;
+end;
+
+function TAtlasProjectTests.Total: Integer;
+begin
+  Result := Passed + Failed + Errors + Skipped;
+end;
+
 /// <summary>Abschnitt "setup"; leer ohne Abschnitt.</summary>
 class function TAtlasSummarySections.SetupOf(ASection: TJSONObject): TAtlasProjectSetup;
 var
@@ -419,48 +516,6 @@ begin
   KeepUnknown(Result, AOriginal, cSetupKeys);
 end;
 
-{ TAtlasProjectTests }
-
-class function TAtlasProjectTests.Empty: TAtlasProjectTests;
-begin
-  Result := Default(TAtlasProjectTests);
-  Result.Failures := nil;
-  Result.Slowest := nil;
-end;
-
-function TAtlasProjectTests.FailedTests: TArray<string>;
-var
-  mFailure: TAtlasProjectTestFailure;
-  mName: string;
-  mSeen: Boolean;
-begin
-  Result := nil;
-  for mFailure in Failures do
-  begin
-    if mFailure.Test = '' then
-    begin
-      Continue;
-    end;
-    mSeen := False;
-    for mName in Result do
-    begin
-      if SameText(mName, mFailure.Test) then
-      begin
-        mSeen := True;
-      end;
-    end;
-    if not mSeen then
-    begin
-      Result := Result + [mFailure.Test];
-    end;
-  end;
-end;
-
-function TAtlasProjectTests.Total: Integer;
-begin
-  Result := Passed + Failed + Errors + Skipped;
-end;
-
 class function TAtlasSummarySections.TestsOf(ASection: TJSONObject): TAtlasProjectTests;
 var
   mItems: TJSONValue;
@@ -557,59 +612,6 @@ begin
     Result.AddPair('slowest', SlowestJson(ATests.Slowest));
   end;
   KeepUnknown(Result, AOriginal, cTestsKeys);
-end;
-
-class function TAtlasSummarySections.SlowestOf(ASection: TJSONObject): TArray<TAtlasProjectSlowTest>;
-var
-  mItems: TJSONValue;
-  mItem: TJSONValue;
-  mSlow: TAtlasProjectSlowTest;
-begin
-  Result := nil;
-  mItems := ASection.GetValue('slowest');
-  if not (mItems is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mItem in TJSONArray(mItems) do
-  begin
-    if not (mItem is TJSONObject) or (Length(Result) >= TAtlasProjectTests.cMaxSlowest) then
-    begin
-      Continue;
-    end;
-    mSlow := Default(TAtlasProjectSlowTest);
-    mSlow.Test := TJsonRead.Text(TJSONObject(mItem), 'test');
-    mSlow.FileName := TJsonRead.Text(TJSONObject(mItem), 'file');
-    mSlow.Line := TJsonRead.IntOr(TJSONObject(mItem), 'line', 0);
-    mSlow.DurationMs := TJsonRead.IntOr(TJSONObject(mItem), 'durationMs', 0);
-    if mSlow.Test <> '' then
-    begin
-      Result := Result + [mSlow];
-    end;
-  end;
-end;
-
-class function TAtlasSummarySections.SlowestJson(const ASlowest: TArray<TAtlasProjectSlowTest>): TJSONArray;
-var
-  mItem: TJSONObject;
-  mIndex: Integer;
-begin
-  Result := TJSONArray.Create;
-  for mIndex := 0 to Min(High(ASlowest), TAtlasProjectTests.cMaxSlowest - 1) do
-  begin
-    mItem := TJSONObject.Create;
-    Result.AddElement(mItem);
-    mItem.AddPair('test', ASlowest[mIndex].Test);
-    if ASlowest[mIndex].FileName <> '' then
-    begin
-      mItem.AddPair('file', ASlowest[mIndex].FileName);
-    end;
-    if ASlowest[mIndex].Line > 0 then
-    begin
-      mItem.AddPair('line', TJSONNumber.Create(ASlowest[mIndex].Line));
-    end;
-    mItem.AddPair('durationMs', TJSONNumber.Create(ASlowest[mIndex].DurationMs));
-  end;
 end;
 
 { TAtlasProjectRelease }

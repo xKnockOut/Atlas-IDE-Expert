@@ -57,6 +57,11 @@ end;
 
 { TAtlasDebugWaitTexts }
 
+class function TAtlasDebugWaitTexts.Title(const AReport: TAtlasDebugWaitReport): string;
+begin
+  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsTitle, [Length(AReport.Stacks)]);
+end;
+
 class function TAtlasDebugWaitTexts.ShortRoutine(const ARoutine: string): string;
 var
   mParts: TArray<string>;
@@ -76,11 +81,6 @@ begin
   begin
     Result := ARoutine;
   end;
-end;
-
-class function TAtlasDebugWaitTexts.Title(const AReport: TAtlasDebugWaitReport): string;
-begin
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsTitle, [Length(AReport.Stacks)]);
 end;
 
 class function TAtlasDebugWaitTexts.ThreadLabel(const AReport: TAtlasDebugWaitReport; AIndex: Integer): string;

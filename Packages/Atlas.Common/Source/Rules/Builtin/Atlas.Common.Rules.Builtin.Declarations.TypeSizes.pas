@@ -145,6 +145,8 @@ type
     function GenericDecl(const AName: string; out AParams: TArray<string>): TSyntaxNode;
   end;
 
+{ TTypeSizes }
+
 constructor TTypeSizes.Create(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex);
 begin
   inherited Create;
@@ -163,44 +165,6 @@ begin
   FConstants.Free;
   FTypes.Free;
   inherited;
-end;
-
-procedure TTypeSizes.AddEnumValues(AEnum: TSyntaxNode);
-var
-  mIndex, mValue: Integer;
-begin
-  // Werte nur ohne explizite Zuweisung (a = 5) sicher.
-  for mIndex := 0 to AEnum.ChildCount - 1 do
-  begin
-    if AEnum[mIndex].Kind <> TSyntaxKind.Identifier then
-    begin
-      Exit;
-    end;
-  end;
-  for mValue := 0 to AEnum.ChildCount - 1 do
-  begin
-    if not FEnumValues.ContainsKey(LowerCase(AEnum[mValue].Name)) then
-    begin
-      FEnumValues.Add(LowerCase(AEnum[mValue].Name), mValue);
-    end;
-  end;
-end;
-
-procedure TTypeSizes.AddDeclaration(ANode: TSyntaxNode);
-begin
-  // Bei gleichen Namen gilt die erste Deklaration.
-  if (ANode.Kind = TSyntaxKind.TypeDecl) and not FTypes.ContainsKey(LowerCase(ANode.Name)) then
-  begin
-    FTypes.Add(LowerCase(ANode.Name), ANode);
-  end
-  else if (ANode.Kind = TSyntaxKind.ConstDecl) and not FConstants.ContainsKey(LowerCase(ANode.Name)) then
-  begin
-    FConstants.Add(LowerCase(ANode.Name), ANode);
-  end
-  else if ANode.Kind = TSyntaxKind.EnumType then
-  begin
-    AddEnumValues(ANode);
-  end;
 end;
 
 procedure TTypeSizes.Collect(ARoot: TSyntaxNode);
@@ -230,31 +194,42 @@ begin
   end;
 end;
 
-class function TTypeSizes.TypeNodeOf(ANode: TSyntaxNode): TSyntaxNode;
-var
-  mIndex: Integer;
+procedure TTypeSizes.AddDeclaration(ANode: TSyntaxNode);
 begin
-  for mIndex := 0 to ANode.ChildCount - 1 do
+  // Bei gleichen Namen gilt die erste Deklaration.
+  if (ANode.Kind = TSyntaxKind.TypeDecl) and not FTypes.ContainsKey(LowerCase(ANode.Name)) then
   begin
-    if ANode[mIndex].Kind in cTypeKindsForSize then
-    begin
-      Exit(ANode[mIndex]);
-    end;
+    FTypes.Add(LowerCase(ANode.Name), ANode);
+  end
+  else if (ANode.Kind = TSyntaxKind.ConstDecl) and not FConstants.ContainsKey(LowerCase(ANode.Name)) then
+  begin
+    FConstants.Add(LowerCase(ANode.Name), ANode);
+  end
+  else if ANode.Kind = TSyntaxKind.EnumType then
+  begin
+    AddEnumValues(ANode);
   end;
-  Result := nil;
 end;
 
-function TTypeSizes.Multiply(A, B: Int64): Int64;
+procedure TTypeSizes.AddEnumValues(AEnum: TSyntaxNode);
+var
+  mIndex, mValue: Integer;
 begin
-  if (A <= 0) or (B <= 0) then
+  // Werte nur ohne explizite Zuweisung (a = 5) sicher.
+  for mIndex := 0 to AEnum.ChildCount - 1 do
   begin
-    Exit(0);
+    if AEnum[mIndex].Kind <> TSyntaxKind.Identifier then
+    begin
+      Exit;
+    end;
   end;
-  if A > cTypeSizeCap div B then
+  for mValue := 0 to AEnum.ChildCount - 1 do
   begin
-    Exit(cTypeSizeCap);
+    if not FEnumValues.ContainsKey(LowerCase(AEnum[mValue].Name)) then
+    begin
+      FEnumValues.Add(LowerCase(AEnum[mValue].Name), mValue);
+    end;
   end;
-  Result := A * B;
 end;
 
 function TTypeSizes.Evaluate(ANode: TSyntaxNode; out AValue: Int64): Boolean;
@@ -305,36 +280,6 @@ begin
   Result := TOrdinalConstants.Evaluate(FTokens, mFirst, mLast, mLookup, AValue);
 end;
 
-function TTypeSizes.CountOfName(const AName: string; out AExact: Boolean): Int64;
-var
-  mIndex: Integer;
-  mDecl, mBody: TSyntaxNode;
-begin
-  AExact := True;
-  mIndex := IndexText(AName, cCountNames);
-  if mIndex >= 0 then
-  begin
-    Exit(cCountValues[mIndex]);
-  end;
-  AExact := False;
-  Result := 0;
-  if (FDepth > 32) or not FTypes.TryGetValue(LowerCase(AName), mDecl) then
-  begin
-    Exit;
-  end;
-  mBody := TypeNodeOf(mDecl);
-  if mBody = nil then
-  begin
-    Exit;
-  end;
-  Inc(FDepth);
-  try
-    Result := Count(mBody, AExact);
-  finally
-    Dec(FDepth);
-  end;
-end;
-
 function TTypeSizes.Count(AIndexType: TSyntaxNode; out AExact: Boolean): Int64;
 var
   mLow, mHigh: Int64;
@@ -373,6 +318,49 @@ begin
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
+end;
+
+function TTypeSizes.CountOfName(const AName: string; out AExact: Boolean): Int64;
+var
+  mIndex: Integer;
+  mDecl, mBody: TSyntaxNode;
+begin
+  AExact := True;
+  mIndex := IndexText(AName, cCountNames);
+  if mIndex >= 0 then
+  begin
+    Exit(cCountValues[mIndex]);
+  end;
+  AExact := False;
+  Result := 0;
+  if (FDepth > 32) or not FTypes.TryGetValue(LowerCase(AName), mDecl) then
+  begin
+    Exit;
+  end;
+  mBody := TypeNodeOf(mDecl);
+  if mBody = nil then
+  begin
+    Exit;
+  end;
+  Inc(FDepth);
+  try
+    Result := Count(mBody, AExact);
+  finally
+    Dec(FDepth);
+  end;
+end;
+
+function TTypeSizes.Multiply(A, B: Int64): Int64;
+begin
+  if (A <= 0) or (B <= 0) then
+  begin
+    Exit(0);
+  end;
+  if A > cTypeSizeCap div B then
+  begin
+    Exit(cTypeSizeCap);
+  end;
+  Result := A * B;
 end;
 
 procedure TTypeSizes.AddField(var ASum: TFieldSum; AField: TSyntaxNode; const AParams, AArgs: TArray<string>;
@@ -426,6 +414,29 @@ begin
   end;
   ASum.Bytes := ASum.Bytes + mLargest;
   ASize.Exact := False;
+end;
+
+function TTypeSizes.IndexSize(const AName: string): TTypeSize;
+var
+  mLocation: TSymbolLocation;
+begin
+  Result := Default(TTypeSize);
+  if (FIndex = nil) or (FDepth > 32) then
+  begin
+    Exit;
+  end;
+  Inc(FDepth);
+  try
+    for mLocation in FIndex.FindSymbols(AName) do
+    begin
+      if mLocation.Symbol.Container = '' then
+      begin
+        Exit(SymbolSize(mLocation, AName));
+      end;
+    end;
+  finally
+    Dec(FDepth);
+  end;
 end;
 
 /// <summary>Alle Felder gleich groß mit 1, 2, 4 oder 8 Byte: Die Ausrichtung fügt keine Lücken ein.</summary>
@@ -519,91 +530,6 @@ begin
   Result.Exact := False;
 end;
 
-function TTypeSizes.IndexSize(const AName: string): TTypeSize;
-var
-  mLocation: TSymbolLocation;
-begin
-  Result := Default(TTypeSize);
-  if (FIndex = nil) or (FDepth > 32) then
-  begin
-    Exit;
-  end;
-  Inc(FDepth);
-  try
-    for mLocation in FIndex.FindSymbols(AName) do
-    begin
-      if mLocation.Symbol.Container = '' then
-      begin
-        Exit(SymbolSize(mLocation, AName));
-      end;
-    end;
-  finally
-    Dec(FDepth);
-  end;
-end;
-
-function TTypeSizes.GenericDecl(const AName: string; out AParams: TArray<string>): TSyntaxNode;
-var
-  mParams: TSyntaxNode;
-  mIndex: Integer;
-begin
-  AParams := nil;
-  if not FTypes.TryGetValue(LowerCase(AName), Result) then
-  begin
-    Exit(nil);
-  end;
-  mParams := Result.FindChild(TSyntaxKind.GenericParams);
-  if mParams = nil then
-  begin
-    Exit(nil);
-  end;
-  for mIndex := 0 to mParams.ChildCount - 1 do
-  begin
-    AParams := AParams + [mParams[mIndex].Name];
-  end;
-end;
-
-function TTypeSizes.OfName(const AName: string; const AParams, AArgs: TArray<string>): TTypeSize;
-var
-  mIndex: Integer;
-  mDecl: TSyntaxNode;
-begin
-  Result := Default(TTypeSize);
-  mIndex := IndexText(AName, AParams);
-  if (mIndex >= 0) and (mIndex < Length(AArgs)) then
-  begin
-    Exit(OfName(AArgs[mIndex], nil, nil));
-  end;
-  mIndex := IndexText(AName, cSizeNames);
-  if mIndex >= 0 then
-  begin
-    Result.Bytes := cSizeBytes[mIndex];
-    Result.Exact := mIndex < cFirstInexactSize;
-    Exit;
-  end;
-  if FDepth > 32 then
-  begin
-    Exit;
-  end;
-  if FTypes.TryGetValue(LowerCase(AName), mDecl) and (mDecl.FindChild(TSyntaxKind.GenericParams) = nil) and
-    (TypeNodeOf(mDecl) <> nil) then
-  begin
-    Inc(FDepth);
-    try
-      Result := OfNode(TypeNodeOf(mDecl), nil, nil);
-    finally
-      Dec(FDepth);
-    end;
-    // Ein benannter Typ über der Grenze wird an seiner Deklaration gemeldet.
-    if Result.Bytes >= cTypeSizeLimit then
-    begin
-      Result.Nested := True;
-    end;
-    Exit;
-  end;
-  Result := IndexSize(AName);
-end;
-
 function TTypeSizes.GenericSize(ANode, AArgs: TSyntaxNode): TTypeSize;
 var
   mIndex: Integer;
@@ -625,6 +551,77 @@ begin
       AArgs[mIndex].EndOffset - AArgs[mIndex].StartOffset))];
   end;
   Result := OfNode(TypeNodeOf(mDecl), mParams, mValues);
+end;
+
+function TTypeSizes.ArraySize(ANode: TSyntaxNode; const AParams, AArgs: TArray<string>): TTypeSize;
+var
+  mIndex, mLast: Integer;
+  mElement: TTypeSize;
+  mCountExact: Boolean;
+begin
+  Result := Default(TTypeSize);
+  if ANode.ChildCount < 2 then
+  begin
+    // Dynamisches Array: ein Zeiger.
+    Result.Bytes := 4;
+    Exit;
+  end;
+  mLast := ANode.ChildCount - 1;
+  mElement := OfNode(ANode[mLast], AParams, AArgs);
+  Result.Bytes := mElement.Bytes;
+  Result.Exact := mElement.Exact;
+  Result.Nested := mElement.Nested or (mElement.Bytes >= cTypeSizeLimit);
+  for mIndex := 0 to mLast - 1 do
+  begin
+    Result.Bytes := Multiply(Result.Bytes, Count(ANode[mIndex], mCountExact));
+    Result.Exact := Result.Exact and mCountExact;
+  end;
+end;
+
+class function TTypeSizes.TypeNodeOf(ANode: TSyntaxNode): TSyntaxNode;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    if ANode[mIndex].Kind in cTypeKindsForSize then
+    begin
+      Exit(ANode[mIndex]);
+    end;
+  end;
+  Result := nil;
+end;
+
+function TTypeSizes.OfNode(ANode: TSyntaxNode; const AParams, AArgs: TArray<string>): TTypeSize;
+begin
+  Result := Default(TTypeSize);
+  if (ANode = nil) or (FDepth > 32) then
+  begin
+    Exit;
+  end;
+  Inc(FDepth);
+  try
+    case ANode.Kind of
+      TSyntaxKind.TypeReference:
+        Result := ReferenceSize(ANode, AParams, AArgs);
+      TSyntaxKind.ArrayType:
+        Result := ArraySize(ANode, AParams, AArgs);
+      TSyntaxKind.RecordType, TSyntaxKind.ObjectType:
+        begin
+          Result.Exact := ANode.Kind = TSyntaxKind.RecordType;
+          Result.Bytes := FieldsOf(ANode, AParams, AArgs, Result);
+        end;
+      TSyntaxKind.ClassType, TSyntaxKind.InterfaceType, TSyntaxKind.ClassOfType, TSyntaxKind.PointerType,
+      TSyntaxKind.ProcedureType:
+        Result.Bytes := 4;
+      TSyntaxKind.EnumType, TSyntaxKind.SetType, TSyntaxKind.SubrangeType:
+        Result.Bytes := 1;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
+    end;
+  finally
+    Dec(FDepth);
+  end;
 end;
 
 /// <summary>Längenangabe N von string[N]: letztes Kind von ANode, das keine Typargumente sind; nil ohne.</summary>
@@ -669,60 +666,65 @@ begin
   end;
 end;
 
-function TTypeSizes.ArraySize(ANode: TSyntaxNode; const AParams, AArgs: TArray<string>): TTypeSize;
+function TTypeSizes.OfName(const AName: string; const AParams, AArgs: TArray<string>): TTypeSize;
 var
-  mIndex, mLast: Integer;
-  mElement: TTypeSize;
-  mCountExact: Boolean;
+  mIndex: Integer;
+  mDecl: TSyntaxNode;
 begin
   Result := Default(TTypeSize);
-  if ANode.ChildCount < 2 then
+  mIndex := IndexText(AName, AParams);
+  if (mIndex >= 0) and (mIndex < Length(AArgs)) then
   begin
-    // Dynamisches Array: ein Zeiger.
-    Result.Bytes := 4;
+    Exit(OfName(AArgs[mIndex], nil, nil));
+  end;
+  mIndex := IndexText(AName, cSizeNames);
+  if mIndex >= 0 then
+  begin
+    Result.Bytes := cSizeBytes[mIndex];
+    Result.Exact := mIndex < cFirstInexactSize;
     Exit;
   end;
-  mLast := ANode.ChildCount - 1;
-  mElement := OfNode(ANode[mLast], AParams, AArgs);
-  Result.Bytes := mElement.Bytes;
-  Result.Exact := mElement.Exact;
-  Result.Nested := mElement.Nested or (mElement.Bytes >= cTypeSizeLimit);
-  for mIndex := 0 to mLast - 1 do
+  if FDepth > 32 then
   begin
-    Result.Bytes := Multiply(Result.Bytes, Count(ANode[mIndex], mCountExact));
-    Result.Exact := Result.Exact and mCountExact;
+    Exit;
   end;
+  if FTypes.TryGetValue(LowerCase(AName), mDecl) and (mDecl.FindChild(TSyntaxKind.GenericParams) = nil) and
+    (TypeNodeOf(mDecl) <> nil) then
+  begin
+    Inc(FDepth);
+    try
+      Result := OfNode(TypeNodeOf(mDecl), nil, nil);
+    finally
+      Dec(FDepth);
+    end;
+    // Ein benannter Typ über der Grenze wird an seiner Deklaration gemeldet.
+    if Result.Bytes >= cTypeSizeLimit then
+    begin
+      Result.Nested := True;
+    end;
+    Exit;
+  end;
+  Result := IndexSize(AName);
 end;
 
-function TTypeSizes.OfNode(ANode: TSyntaxNode; const AParams, AArgs: TArray<string>): TTypeSize;
+function TTypeSizes.GenericDecl(const AName: string; out AParams: TArray<string>): TSyntaxNode;
+var
+  mParams: TSyntaxNode;
+  mIndex: Integer;
 begin
-  Result := Default(TTypeSize);
-  if (ANode = nil) or (FDepth > 32) then
+  AParams := nil;
+  if not FTypes.TryGetValue(LowerCase(AName), Result) then
   begin
-    Exit;
+    Exit(nil);
   end;
-  Inc(FDepth);
-  try
-    case ANode.Kind of
-      TSyntaxKind.TypeReference:
-        Result := ReferenceSize(ANode, AParams, AArgs);
-      TSyntaxKind.ArrayType:
-        Result := ArraySize(ANode, AParams, AArgs);
-      TSyntaxKind.RecordType, TSyntaxKind.ObjectType:
-        begin
-          Result.Exact := ANode.Kind = TSyntaxKind.RecordType;
-          Result.Bytes := FieldsOf(ANode, AParams, AArgs, Result);
-        end;
-      TSyntaxKind.ClassType, TSyntaxKind.InterfaceType, TSyntaxKind.ClassOfType, TSyntaxKind.PointerType,
-      TSyntaxKind.ProcedureType:
-        Result.Bytes := 4;
-      TSyntaxKind.EnumType, TSyntaxKind.SetType, TSyntaxKind.SubrangeType:
-        Result.Bytes := 1;
-    else
-      // Übrige Werte bewusst ohne Wirkung.
-    end;
-  finally
-    Dec(FDepth);
+  mParams := Result.FindChild(TSyntaxKind.GenericParams);
+  if mParams = nil then
+  begin
+    Exit(nil);
+  end;
+  for mIndex := 0 to mParams.ChildCount - 1 do
+  begin
+    AParams := AParams + [mParams[mIndex].Name];
   end;
 end;
 

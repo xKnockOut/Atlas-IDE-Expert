@@ -109,23 +109,9 @@ begin
      FindFile(mName + '.pas', mBaseDir, ASearchPaths, AFileExists, AFileName));
 end;
 
-class function TIncludeFiles.ReadFile(const AFileName: string; out AText: string): Boolean;
-var
-  mFileFormat: TFileFormat;
+class function TIncludeFiles.Resolver(const ASearchPaths: TArray<string>): TIncludeResolver;
 begin
-  AText := '';
-  try
-    AText := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
-    Result := True;
-  except
-    // Gesperrt, gelöscht oder nicht lesbar: wie eine fehlende Datei behandeln.
-    on EFOpenError do
-      Result := False;
-    on EReadError do
-      Result := False;
-    on EInOutError do
-      Result := False;
-  end;
+  Result := Resolver(ASearchPaths, nil, nil);
 end;
 
 // Die Vorgaben stehen in eigenen Routinen: Im selben Rahmen wie der Resolver hielte
@@ -146,11 +132,6 @@ begin
     begin
       Result := TIncludeFiles.ReadFile(AFileName, AText);
     end;
-end;
-
-class function TIncludeFiles.Resolver(const ASearchPaths: TArray<string>): TIncludeResolver;
-begin
-  Result := Resolver(ASearchPaths, nil, nil);
 end;
 
 class function TIncludeFiles.Resolver(const ASearchPaths: TArray<string>; const AFileExists: TIncludeFileExists;
@@ -177,6 +158,25 @@ begin
       AText := '';
       Result := TIncludeFiles.FindInclude(AName, AFromFile, mPaths, mExists, AFileName) and mRead(AFileName, AText);
     end;
+end;
+
+class function TIncludeFiles.ReadFile(const AFileName: string; out AText: string): Boolean;
+var
+  mFileFormat: TFileFormat;
+begin
+  AText := '';
+  try
+    AText := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
+    Result := True;
+  except
+    // Gesperrt, gelöscht oder nicht lesbar: wie eine fehlende Datei behandeln.
+    on EFOpenError do
+      Result := False;
+    on EReadError do
+      Result := False;
+    on EInOutError do
+      Result := False;
+  end;
 end;
 
 end.

@@ -132,17 +132,6 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeBuildIdleGate.Now: UInt64;
-begin
-  Result := TThread.GetTickCount64;
-end;
-
-procedure TAtlasIdeBuildIdleGate.Run(const AProc: TProc);
-begin
-  FPending.Add(AProc);
-  FTimer.Enabled := True;
-end;
-
 procedure TAtlasIdeBuildIdleGate.TimerTick(Sender: TObject);
 var
   mProcs: TArray<TProc>;
@@ -159,6 +148,17 @@ begin
   begin
     TAtlasGuard.Run(FFeature, mProc);
   end;
+end;
+
+class function TAtlasIdeBuildIdleGate.Now: UInt64;
+begin
+  Result := TThread.GetTickCount64;
+end;
+
+procedure TAtlasIdeBuildIdleGate.Run(const AProc: TProc);
+begin
+  FPending.Add(AProc);
+  FTimer.Enabled := True;
 end;
 
 end.

@@ -170,6 +170,8 @@ begin
   end;
 end;
 
+{ TCompletionInheritedCalls }
+
 class procedure TCompletionInheritedCalls.Add(ARequest: TCompletionRequest; const AContext: TCompletionContext;
   ACollector: TCompletionCollector; var ACandidates: TArray<TResolvedSymbol>);
 var

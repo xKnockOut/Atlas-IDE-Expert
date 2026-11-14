@@ -56,26 +56,6 @@ implementation
 
 { TAtlasPreviewSections }
 
-class function TAtlasPreviewSections.IsOpen(AState: TAtlasSectionState): Boolean;
-begin
-  Result := AState = TAtlasSectionState.Open;
-end;
-
-class function TAtlasPreviewSections.Height(const AInputs: TAtlasSectionInputs;
-  const AStates: TAtlasSectionStates): Integer;
-var
-  mSection: TAtlasPreviewSection;
-begin
-  Result := 0;
-  for mSection := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
-    case AStates[mSection] of
-      TAtlasSectionState.Open:
-        Inc(Result, AInputs[mSection].OpenHeight);
-      TAtlasSectionState.Collapsed, TAtlasSectionState.AutoCollapsed:
-        Inc(Result, AInputs[mSection].ClosedHeight);
-    end;
-end;
-
 class function TAtlasPreviewSections.Arrange(const AInputs: TAtlasSectionInputs;
   const AChoices: TAtlasSectionChoices; AAvailable: Integer; AAutoCollapse: Boolean): TAtlasSectionStates;
 var
@@ -122,6 +102,21 @@ begin
   end;
 end;
 
+class function TAtlasPreviewSections.Height(const AInputs: TAtlasSectionInputs;
+  const AStates: TAtlasSectionStates): Integer;
+var
+  mSection: TAtlasPreviewSection;
+begin
+  Result := 0;
+  for mSection := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
+    case AStates[mSection] of
+      TAtlasSectionState.Open:
+        Inc(Result, AInputs[mSection].OpenHeight);
+      TAtlasSectionState.Collapsed, TAtlasSectionState.AutoCollapsed:
+        Inc(Result, AInputs[mSection].ClosedHeight);
+    end;
+end;
+
 class function TAtlasPreviewSections.Toggled(AState: TAtlasSectionState): TAtlasSectionChoice;
 begin
   if AState = TAtlasSectionState.Open then
@@ -132,6 +127,11 @@ begin
   begin
     Result := TAtlasSectionChoice.HandOpen;
   end;
+end;
+
+class function TAtlasPreviewSections.IsOpen(AState: TAtlasSectionState): Boolean;
+begin
+  Result := AState = TAtlasSectionState.Open;
 end;
 
 end.

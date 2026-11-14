@@ -289,17 +289,6 @@ end;
 
 { TReferenceClassifier }
 
-procedure TReferenceClassifier.Init(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  const AWanted: TDefinitionTarget; const AName: string; const ASettings: TReferenceSettings);
-begin
-  FResolver := AResolver;
-  FIndex := AIndex;
-  FWanted := AWanted;
-  FName := AName;
-  FSettings := ASettings;
-  FDescendants := TDictionary<string, TArray<TSymbolLocation>>.Create;
-end;
-
 constructor TReferenceClassifier.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex;
   const AWanted: TDefinitionTarget; const ASymbol: TIndexSymbol; const AName: string;
   const ASettings: TReferenceSettings);
@@ -331,76 +320,6 @@ destructor TReferenceClassifier.Destroy;
 begin
   FDescendants.Free;
   inherited Destroy;
-end;
-
-class function TReferenceClassifier.SymbolOf(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  ATree: TSyntaxTree; const AFileName: string; const AWanted: TDefinitionTarget; out ASymbol: TIndexSymbol): Boolean;
-var
-  mOwnerUnit: TUnitIndex;
-  mSymbol: TIndexSymbol;
-begin
-  ASymbol := Default(TIndexSymbol);
-  if SameText(AWanted.FileName, AFileName) then
-  begin
-    mOwnerUnit := AResolver.ExtractedUnit(ATree, AFileName);
-  end
-  else if not TIndexFiles.UnitOf(AIndex, AWanted.FileName, mOwnerUnit) then
-  begin
-    Exit(False);
-  end;
-  for mSymbol in mOwnerUnit.Symbols do
-  begin
-    if mSymbol.SelectionRange.StartPos = AWanted.SelectionRange.StartPos then
-    begin
-      ASymbol := mSymbol;
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-class function TReferenceClassifier.InactiveOf(const AText: string;
-  const ADefines: TArray<string>): TArray<TLspInactiveRegion>;
-var
-  mIssues: TArray<TPreprocessorIssue>;
-begin
-  Result := nil;
-  if not TPascalPreprocessor.HasConditionals(AText) then
-  begin
-    Exit;
-  end;
-  // Dieselben Optionen wie der Baum des Editors, damit „inaktiv“ hier dasselbe heißt wie beim Abblenden.
-  Result := TLspInactiveRegions.Regions(TPascalPreprocessor.Process(AText,
-    TPascalPreprocessor.EditorOptions(ADefines)), False, mIssues);
-end;
-
-class function TReferenceClassifier.RegionAt(const AInactive: TArray<TLspInactiveRegion>;
-  const APosition: TTextPosition; out ACondition: string): Boolean;
-var
-  mRegion: TLspInactiveRegion;
-begin
-  ACondition := '';
-  for mRegion in AInactive do
-  begin
-    if not Before(APosition, mRegion.Range.StartPos) and Before(APosition, mRegion.Range.EndPos) then
-    begin
-      ACondition := mRegion.Condition;
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function InactiveDetail(const ACondition: string): string;
-begin
-  if ACondition = '' then
-  begin
-    Result := cTexts[TReferenceConfidenceText.InAnInactiveBranchOf].Text;
-  end
-  else
-  begin
-    Result := cTexts[TReferenceConfidenceText.InAnInactiveBranchCondition].Fmt([ACondition]);
-  end;
 end;
 
 function TReferenceClassifier.Descendants(const ATypeName: string): TArray<TSymbolLocation>;
@@ -446,6 +365,18 @@ begin
     begin
       Result := True;
     end;
+  end;
+end;
+
+function InactiveDetail(const ACondition: string): string;
+begin
+  if ACondition = '' then
+  begin
+    Result := cTexts[TReferenceConfidenceText.InAnInactiveBranchOf].Text;
+  end
+  else
+  begin
+    Result := cTexts[TReferenceConfidenceText.InAnInactiveBranchCondition].Fmt([ACondition]);
   end;
 end;
 
@@ -500,6 +431,17 @@ begin
     // Statische Methoden gleichen Namens verdecken nur; erreicht wird das Symbol nur über virtual.
     Result := False;
   end;
+end;
+
+procedure TReferenceClassifier.Init(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const AWanted: TDefinitionTarget; const AName: string; const ASettings: TReferenceSettings);
+begin
+  FResolver := AResolver;
+  FIndex := AIndex;
+  FWanted := AWanted;
+  FName := AName;
+  FSettings := ASettings;
+  FDescendants := TDictionary<string, TArray<TSymbolLocation>>.Create;
 end;
 
 function TReferenceClassifier.Ambiguous(ATree: TSyntaxTree; const AFileName: string;
@@ -592,6 +534,64 @@ begin
     AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Text,
       cTexts[TReferenceConfidenceText.NameInTheStringLiteral].Fmt([AToken.Text]), False);
   end;
+end;
+
+class function TReferenceClassifier.SymbolOf(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  ATree: TSyntaxTree; const AFileName: string; const AWanted: TDefinitionTarget; out ASymbol: TIndexSymbol): Boolean;
+var
+  mOwnerUnit: TUnitIndex;
+  mSymbol: TIndexSymbol;
+begin
+  ASymbol := Default(TIndexSymbol);
+  if SameText(AWanted.FileName, AFileName) then
+  begin
+    mOwnerUnit := AResolver.ExtractedUnit(ATree, AFileName);
+  end
+  else if not TIndexFiles.UnitOf(AIndex, AWanted.FileName, mOwnerUnit) then
+  begin
+    Exit(False);
+  end;
+  for mSymbol in mOwnerUnit.Symbols do
+  begin
+    if mSymbol.SelectionRange.StartPos = AWanted.SelectionRange.StartPos then
+    begin
+      ASymbol := mSymbol;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+class function TReferenceClassifier.InactiveOf(const AText: string;
+  const ADefines: TArray<string>): TArray<TLspInactiveRegion>;
+var
+  mIssues: TArray<TPreprocessorIssue>;
+begin
+  Result := nil;
+  if not TPascalPreprocessor.HasConditionals(AText) then
+  begin
+    Exit;
+  end;
+  // Dieselben Optionen wie der Baum des Editors, damit „inaktiv“ hier dasselbe heißt wie beim Abblenden.
+  Result := TLspInactiveRegions.Regions(TPascalPreprocessor.Process(AText,
+    TPascalPreprocessor.EditorOptions(ADefines)), False, mIssues);
+end;
+
+class function TReferenceClassifier.RegionAt(const AInactive: TArray<TLspInactiveRegion>;
+  const APosition: TTextPosition; out ACondition: string): Boolean;
+var
+  mRegion: TLspInactiveRegion;
+begin
+  ACondition := '';
+  for mRegion in AInactive do
+  begin
+    if not Before(APosition, mRegion.Range.StartPos) and Before(APosition, mRegion.Range.EndPos) then
+    begin
+      ACondition := mRegion.Condition;
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 initialization

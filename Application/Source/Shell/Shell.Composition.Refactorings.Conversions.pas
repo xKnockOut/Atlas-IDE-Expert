@@ -64,6 +64,8 @@ begin
   Result.IncludeDfm := ASettings.InvertBooleanIncludeDfm;
 end;
 
+{ TShellConversionRefactorings }
+
 procedure TShellConversionRefactorings.Register(ACommands: TLspCommands);
 begin
   ACommands.Register(TLspInvertBoolean.cApplyCommand, InvertBoolean);

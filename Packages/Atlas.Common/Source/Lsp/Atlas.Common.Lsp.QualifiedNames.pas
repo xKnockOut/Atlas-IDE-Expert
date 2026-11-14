@@ -266,6 +266,8 @@ begin
   end;
 end;
 
+{ TQualifiedNames }
+
 class function TQualifiedNames.Compose(const ASymbol: TResolvedSymbol; const AIndex: ISymbolIndex;
   ATree: TSyntaxTree; const AFileName: string; AWithParameters: Boolean): string;
 var

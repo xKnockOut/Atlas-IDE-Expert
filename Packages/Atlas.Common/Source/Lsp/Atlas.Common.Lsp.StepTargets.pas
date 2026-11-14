@@ -199,37 +199,6 @@ begin
   inherited;
 end;
 
-class function TLspStepTargets.Accessor(const ASignature: string; AWrite: Boolean): string;
-var
-  mWords: TArray<string>;
-  mIndex: Integer;
-  mKey: string;
-begin
-  Result := '';
-  if AWrite then
-  begin
-    mKey := 'write';
-  end
-  else
-  begin
-    mKey := 'read';
-  end;
-  mWords := ASignature.Replace(';', ' ').Replace(#9, ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
-  for mIndex := 0 to High(mWords) - 1 do
-  begin
-    if SameText(mWords[mIndex], mKey) then
-    begin
-      Exit(mWords[mIndex + 1]);
-    end;
-  end;
-end;
-
-class function TLspStepTargets.LooksLikeCast(const AName: string): Boolean;
-begin
-  Result := (Length(AName) >= 2) and CharInSet(AName[1], ['T', 'I', 'P', 'E']) and
-    CharInSet(AName[2], ['A'..'Z']);
-end;
-
 function TLspStepTargets.TextOf(ANode: TSyntaxNode): string;
 begin
   Result := '';
@@ -440,70 +409,6 @@ begin
       ACall.Targets := ACall.Targets + [mTarget];
     end;
   end;
-end;
-
-function TLspStepTargets.ResolveInherited(const APosition: TTextPosition;
-  out ACall: TLspStepCall): Boolean;
-var
-  mFound: TArray<TDefinitionTarget>;
-  mItem: TDefinitionTarget;
-  mOwner: TUnitIndex;
-  mSymbol: TIndexSymbol;
-  mTarget: TLspStepTarget;
-begin
-  Result := False;
-  mFound := TLspImplementations.Targets(FResolver, FIndex, FTree, FFileName, APosition);
-  for mItem in mFound do
-  begin
-    if not UnitOf(mItem.FileName, mOwner) then
-    begin
-      Continue;
-    end;
-    for mSymbol in mOwner.Symbols do
-    begin
-      if (mSymbol.Kind in cRoutineKinds) and (mSymbol.Range.StartPos.Line = mItem.Range.StartPos.Line) and
-        (mSymbol.SelectionRange.StartPos.Line = mItem.SelectionRange.StartPos.Line) and
-        (mSymbol.SelectionRange.StartPos.Character = mItem.SelectionRange.StartPos.Character) then
-      begin
-        ACall.Name := mSymbol.Name;
-        ACall.Container := mSymbol.Container;
-        ACall.Kind := 'inherited';
-        ACall.DeclFile := mItem.FileName;
-        ACall.DeclLine := mItem.SelectionRange.StartPos.Line;
-        if TargetOf(mOwner, mSymbol, mTarget) then
-        begin
-          ACall.Targets := [mTarget];
-        end;
-        Exit(True);
-      end;
-    end;
-  end;
-end;
-
-function TLspStepTargets.ResolveUnknown(const ASite: TStepCallSite; out ACall: TLspStepCall): Boolean;
-var
-  mName: string;
-begin
-  // Aufruf mit Klammern, den die Namensauflösung nicht kennt (RTL nicht indexiert, Zeiger auf Routinen):
-  // ausgegraut anbieten, außer Compiler-Intrinsics und Typumwandlungen.
-  Result := False;
-  if not ASite.Explicit or (ASite.Callee = nil) or
-    not (ASite.Callee.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
-  begin
-    Exit;
-  end;
-  mName := LastPart(ASite.Callee.Name);
-  if (mName = '') or TSystemIntrinsics.IsKnown(mName) then
-  begin
-    Exit;
-  end;
-  if (ASite.Node.ChildCount = 2) and LooksLikeCast(mName) then
-  begin
-    Exit;
-  end;
-  ACall.Name := mName;
-  ACall.Kind := 'call';
-  Result := True;
 end;
 
 function TLspStepTargets.ResolveTarget(const ASite: TStepCallSite; const APosition: TTextPosition;
@@ -719,6 +624,107 @@ begin
   end;
 end;
 
+function TLspStepTargets.ResolveInherited(const APosition: TTextPosition;
+  out ACall: TLspStepCall): Boolean;
+var
+  mFound: TArray<TDefinitionTarget>;
+  mItem: TDefinitionTarget;
+  mOwner: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mTarget: TLspStepTarget;
+begin
+  Result := False;
+  mFound := TLspImplementations.Targets(FResolver, FIndex, FTree, FFileName, APosition);
+  for mItem in mFound do
+  begin
+    if not UnitOf(mItem.FileName, mOwner) then
+    begin
+      Continue;
+    end;
+    for mSymbol in mOwner.Symbols do
+    begin
+      if (mSymbol.Kind in cRoutineKinds) and (mSymbol.Range.StartPos.Line = mItem.Range.StartPos.Line) and
+        (mSymbol.SelectionRange.StartPos.Line = mItem.SelectionRange.StartPos.Line) and
+        (mSymbol.SelectionRange.StartPos.Character = mItem.SelectionRange.StartPos.Character) then
+      begin
+        ACall.Name := mSymbol.Name;
+        ACall.Container := mSymbol.Container;
+        ACall.Kind := 'inherited';
+        ACall.DeclFile := mItem.FileName;
+        ACall.DeclLine := mItem.SelectionRange.StartPos.Line;
+        if TargetOf(mOwner, mSymbol, mTarget) then
+        begin
+          ACall.Targets := [mTarget];
+        end;
+        Exit(True);
+      end;
+    end;
+  end;
+end;
+
+function TLspStepTargets.ResolveUnknown(const ASite: TStepCallSite; out ACall: TLspStepCall): Boolean;
+var
+  mName: string;
+begin
+  // Aufruf mit Klammern, den die Namensauflösung nicht kennt (RTL nicht indexiert, Zeiger auf Routinen):
+  // ausgegraut anbieten, außer Compiler-Intrinsics und Typumwandlungen.
+  Result := False;
+  if not ASite.Explicit or (ASite.Callee = nil) or
+    not (ASite.Callee.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+  begin
+    Exit;
+  end;
+  mName := LastPart(ASite.Callee.Name);
+  if (mName = '') or TSystemIntrinsics.IsKnown(mName) then
+  begin
+    Exit;
+  end;
+  if (ASite.Node.ChildCount = 2) and LooksLikeCast(mName) then
+  begin
+    Exit;
+  end;
+  ACall.Name := mName;
+  ACall.Kind := 'call';
+  Result := True;
+end;
+
+function TLspStepTargets.Answer(ALine: Integer; out AAnswer: TLspStepAnswer): Boolean;
+var
+  mStatement: TStepStatement;
+  mIndex: Integer;
+  mCall: TLspStepCall;
+  mCallSites: TArray<Integer>;
+begin
+  AAnswer := Default(TLspStepAnswer);
+  AAnswer.Line := ALine;
+  AAnswer.FollowLine := -1;
+  Result := TStepCalls.Find(FTree, ALine, mStatement);
+  if not Result then
+  begin
+    Exit;
+  end;
+  AAnswer.Line := mStatement.Node.StartPos.Line;
+  AAnswer.FollowLine := mStatement.FollowLine;
+  mCallSites := nil;
+  for mIndex := 0 to High(mStatement.Sites) do
+  begin
+    if ResolveSite(mStatement.Sites[mIndex], mCall) then
+    begin
+      AAnswer.Calls := AAnswer.Calls + [mCall];
+      mCallSites := mCallSites + [mIndex];
+    end;
+  end;
+  MarkReceivers(AAnswer, mStatement.Sites, mCallSites);
+end;
+
+function TLspStepTargets.Execute(ALine: Integer): TJSONObject;
+var
+  mAnswer: TLspStepAnswer;
+begin
+  Answer(ALine, mAnswer);
+  Result := ToJson(mAnswer);
+end;
+
 /// <summary>Nur Namen und Punkte, und kein Aufruf darin: Das Auswerten von AReceiver ruft nichts auf.</summary>
 function IsPlainReceiver(AReceiver: TSyntaxNode): Boolean;
 begin
@@ -776,43 +782,6 @@ begin
   end;
 end;
 
-function TLspStepTargets.Answer(ALine: Integer; out AAnswer: TLspStepAnswer): Boolean;
-var
-  mStatement: TStepStatement;
-  mIndex: Integer;
-  mCall: TLspStepCall;
-  mCallSites: TArray<Integer>;
-begin
-  AAnswer := Default(TLspStepAnswer);
-  AAnswer.Line := ALine;
-  AAnswer.FollowLine := -1;
-  Result := TStepCalls.Find(FTree, ALine, mStatement);
-  if not Result then
-  begin
-    Exit;
-  end;
-  AAnswer.Line := mStatement.Node.StartPos.Line;
-  AAnswer.FollowLine := mStatement.FollowLine;
-  mCallSites := nil;
-  for mIndex := 0 to High(mStatement.Sites) do
-  begin
-    if ResolveSite(mStatement.Sites[mIndex], mCall) then
-    begin
-      AAnswer.Calls := AAnswer.Calls + [mCall];
-      mCallSites := mCallSites + [mIndex];
-    end;
-  end;
-  MarkReceivers(AAnswer, mStatement.Sites, mCallSites);
-end;
-
-function TLspStepTargets.Execute(ALine: Integer): TJSONObject;
-var
-  mAnswer: TLspStepAnswer;
-begin
-  Answer(ALine, mAnswer);
-  Result := ToJson(mAnswer);
-end;
-
 function TLspStepTargets.CallPositions(ALine: Integer): TArray<TTextPosition>;
 var
   mAnswer: TLspStepAnswer;
@@ -867,6 +836,37 @@ begin
       mTargetItem.AddPair('line', TJSONNumber.Create(mTarget.Line));
     end;
   end;
+end;
+
+class function TLspStepTargets.Accessor(const ASignature: string; AWrite: Boolean): string;
+var
+  mWords: TArray<string>;
+  mIndex: Integer;
+  mKey: string;
+begin
+  Result := '';
+  if AWrite then
+  begin
+    mKey := 'write';
+  end
+  else
+  begin
+    mKey := 'read';
+  end;
+  mWords := ASignature.Replace(';', ' ').Replace(#9, ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
+  for mIndex := 0 to High(mWords) - 1 do
+  begin
+    if SameText(mWords[mIndex], mKey) then
+    begin
+      Exit(mWords[mIndex + 1]);
+    end;
+  end;
+end;
+
+class function TLspStepTargets.LooksLikeCast(const AName: string): Boolean;
+begin
+  Result := (Length(AName) >= 2) and CharInSet(AName[1], ['T', 'I', 'P', 'E']) and
+    CharInSet(AName[2], ['A'..'Z']);
 end;
 
 end.

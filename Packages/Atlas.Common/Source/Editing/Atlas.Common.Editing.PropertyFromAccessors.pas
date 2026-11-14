@@ -610,6 +610,8 @@ begin
   end;
 end;
 
+{ TClassReader }
+
 constructor TClassReader.Create(ATree: TSyntaxTree; const AText: string; const ALines: TArray<string>;
   ADecl: TSyntaxNode; const AOptions: TPropertyFromAccessorsOptions);
 var
@@ -645,91 +647,11 @@ begin
   Sections := Sections + [mCurrent];
 end;
 
-procedure TClassReader.ReadMember(AChild: TSyntaxNode; var ASection: TClassSection);
-var
-  mTypeRef: TSyntaxNode;
-begin
-  if AChild.Kind <> TSyntaxKind.TypeReference then
-  begin
-    ASection.MemberLines := ASection.MemberLines + [AChild.EndPos.Line];
-  end;
-  if AChild.Kind in [TSyntaxKind.Field, TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl] then
-  begin
-    FMembers := FMembers + [AChild.Name];
-  end;
-  if AChild.Kind = TSyntaxKind.Field then
-  begin
-    mTypeRef := AChild.FindChild(TSyntaxKind.TypeReference);
-    if mTypeRef <> nil then
-    begin
-      FFields.AddOrSetValue(UpperCase(AChild.Name), Collapse(NodeText(FText, mTypeRef)));
-    end;
-  end
-  else if AChild.Kind = TSyntaxKind.RoutineHeader then
-  begin
-    ReadRoutine(AChild, ASection.Section);
-  end
-  else if AChild.Kind = TSyntaxKind.PropertyDecl then
-  begin
-    ReadUsedAccessors(AChild);
-  end;
-end;
-
-procedure TClassReader.ReadUsedAccessors(AProperty: TSyntaxNode);
-var
-  mMatch: TMatch;
-begin
-  mMatch := TRegEx.Match(NodeText(FText, AProperty), '\b(?:read|write)\s+(\w+)', [roIgnoreCase]);
-  while mMatch.Success do
-  begin
-    FUsedAccessors := FUsedAccessors + [mMatch.Groups[1].Value];
-    mMatch := mMatch.NextMatch;
-  end;
-end;
-
 destructor TClassReader.Destroy;
 begin
   FNameCounts.Free;
   FFields.Free;
   inherited;
-end;
-
-function TClassReader.ClassNode: TSyntaxNode;
-begin
-  Result := FClassNode;
-end;
-
-procedure TClassReader.ReadRoutine(ANode: TSyntaxNode; ASection: TMemberSection);
-var
-  mInfo: TRoutineInfo;
-  mIndex: Integer;
-  mParameters: TSyntaxNode;
-  mHead: string;
-begin
-  mInfo := Default(TRoutineInfo);
-  mInfo.Node := ANode;
-  mInfo.Name := ANode.Name;
-  mInfo.Section := ASection;
-  mHead := Copy(FText, ANode.StartOffset + 1, 20);
-  mInfo.IsClassMethod := TRegEx.IsMatch(mHead, '^class\s', [roIgnoreCase]);
-  if mInfo.IsClassMethod then
-  begin
-    mHead := TrimLeft(Copy(mHead, 6, MaxInt));
-  end;
-  mInfo.IsFunction := StartsText('function', mHead);
-  // Generische Methoden kann eine Property nicht benutzen.
-  mInfo.PlainParameters := ANode.FindChild(TSyntaxKind.GenericParams) = nil;
-  ReadHeadChildren(FText, ANode, mInfo);
-  mParameters := ANode.FindChild(TSyntaxKind.Parameters);
-  if mParameters <> nil then
-  begin
-    for mIndex := 0 to mParameters.ChildCount - 1 do
-    begin
-      ReadParameter(FText, mParameters[mIndex], mInfo);
-    end;
-  end;
-  FRoutines := FRoutines + [mInfo];
-  FNameCounts.AddOrSetValue(UpperCase(mInfo.Name), Count(mInfo.Name) + 1);
 end;
 
 function TClassReader.Count(const AName: string): Integer;
@@ -818,6 +740,87 @@ begin
     (mFound.ChildCount = 2) and (mFound[1].Kind = TSyntaxKind.Identifier) and SameText(mFound[1].Name, AField);
 end;
 
+procedure TClassReader.ReadMember(AChild: TSyntaxNode; var ASection: TClassSection);
+var
+  mTypeRef: TSyntaxNode;
+begin
+  if AChild.Kind <> TSyntaxKind.TypeReference then
+  begin
+    ASection.MemberLines := ASection.MemberLines + [AChild.EndPos.Line];
+  end;
+  if AChild.Kind in [TSyntaxKind.Field, TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl] then
+  begin
+    FMembers := FMembers + [AChild.Name];
+  end;
+  if AChild.Kind = TSyntaxKind.Field then
+  begin
+    mTypeRef := AChild.FindChild(TSyntaxKind.TypeReference);
+    if mTypeRef <> nil then
+    begin
+      FFields.AddOrSetValue(UpperCase(AChild.Name), Collapse(NodeText(FText, mTypeRef)));
+    end;
+  end
+  else if AChild.Kind = TSyntaxKind.RoutineHeader then
+  begin
+    ReadRoutine(AChild, ASection.Section);
+  end
+  else if AChild.Kind = TSyntaxKind.PropertyDecl then
+  begin
+    ReadUsedAccessors(AChild);
+  end;
+end;
+
+procedure TClassReader.ReadUsedAccessors(AProperty: TSyntaxNode);
+var
+  mMatch: TMatch;
+begin
+  mMatch := TRegEx.Match(NodeText(FText, AProperty), '\b(?:read|write)\s+(\w+)', [roIgnoreCase]);
+  while mMatch.Success do
+  begin
+    FUsedAccessors := FUsedAccessors + [mMatch.Groups[1].Value];
+    mMatch := mMatch.NextMatch;
+  end;
+end;
+
+procedure TClassReader.ReadRoutine(ANode: TSyntaxNode; ASection: TMemberSection);
+var
+  mInfo: TRoutineInfo;
+  mIndex: Integer;
+  mParameters: TSyntaxNode;
+  mHead: string;
+begin
+  mInfo := Default(TRoutineInfo);
+  mInfo.Node := ANode;
+  mInfo.Name := ANode.Name;
+  mInfo.Section := ASection;
+  mHead := Copy(FText, ANode.StartOffset + 1, 20);
+  mInfo.IsClassMethod := TRegEx.IsMatch(mHead, '^class\s', [roIgnoreCase]);
+  if mInfo.IsClassMethod then
+  begin
+    mHead := TrimLeft(Copy(mHead, 6, MaxInt));
+  end;
+  mInfo.IsFunction := StartsText('function', mHead);
+  // Generische Methoden kann eine Property nicht benutzen.
+  mInfo.PlainParameters := ANode.FindChild(TSyntaxKind.GenericParams) = nil;
+  ReadHeadChildren(FText, ANode, mInfo);
+  mParameters := ANode.FindChild(TSyntaxKind.Parameters);
+  if mParameters <> nil then
+  begin
+    for mIndex := 0 to mParameters.ChildCount - 1 do
+    begin
+      ReadParameter(FText, mParameters[mIndex], mInfo);
+    end;
+  end;
+  FRoutines := FRoutines + [mInfo];
+  FNameCounts.AddOrSetValue(UpperCase(mInfo.Name), Count(mInfo.Name) + 1);
+end;
+
+function TClassReader.IsCandidate(const ARoutine: TRoutineInfo): Boolean;
+begin
+  Result := not ARoutine.IsClassMethod and ARoutine.PlainParameters and (Count(ARoutine.Name) = 1) and
+    (IndexText(ARoutine.Name, FUsedAccessors) < 0);
+end;
+
 function SameTypes(const A, B: TArray<string>): Boolean;
 var
   mIndex: Integer;
@@ -843,12 +846,6 @@ begin
   mIndexTypes := Copy(ASetter.ParameterTypes, 0, Length(ASetter.ParameterTypes) - 1);
   Result := SameText(AGetter.ResultType, ASetter.ParameterTypes[High(ASetter.ParameterTypes)]) and
     SameTypes(AGetter.ParameterTypes, mIndexTypes);
-end;
-
-function TClassReader.IsCandidate(const ARoutine: TRoutineInfo): Boolean;
-begin
-  Result := not ARoutine.IsClassMethod and ARoutine.PlainParameters and (Count(ARoutine.Name) = 1) and
-    (IndexText(ARoutine.Name, FUsedAccessors) < 0);
 end;
 
 function TClassReader.AddAccessor(AMap: TDictionary<string, TRoutineInfo>; const ARoutine: TRoutineInfo;
@@ -1009,6 +1006,11 @@ begin
   end;
 end;
 
+function TClassReader.ClassNode: TSyntaxNode;
+begin
+  Result := FClassNode;
+end;
+
 /// <summary>Mehrzeilige Klassendeklaration?</summary>
 function IsClassDecl(ANode: TSyntaxNode): Boolean;
 begin
@@ -1086,49 +1088,36 @@ end;
 
 { TPropertyFromAccessors }
 
-class function TPropertyFromAccessors.SectionName(ASection: TMemberSection): string;
-begin
-  case ASection of
-    TMemberSection.Private_:
-      Result := 'private';
-    TMemberSection.Protected_:
-      Result := 'protected';
-    TMemberSection.Published_:
-      Result := 'published';
-  else
-    Result := 'public';
-  end;
-end;
-
-class function TPropertyFromAccessors.Plural(const AName: string): string;
-var
-  mLast: Char;
-begin
-  Result := AName;
-  if AName = '' then
-  begin
-    Exit;
-  end;
-  mLast := AName[Length(AName)];
-  if CharInSet(mLast, ['y', 'Y']) and (Length(AName) > 1) and not CharInSet(AName[Length(AName) - 1],
-    ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']) then
-  begin
-    Result := Copy(AName, 1, Length(AName) - 1) + 'ies';
-  end
-  else if CharInSet(mLast, ['s', 'x', 'z', 'S', 'X', 'Z']) or EndsText('ch', AName) or EndsText('sh', AName) then
-  begin
-    Result := AName + 'es';
-  end
-  else
-  begin
-    Result := AName + 's';
-  end;
-end;
-
 class function TPropertyFromAccessors.Find(ATree: TSyntaxTree; const AText: string;
   const AOptions: TPropertyFromAccessorsOptions): TArray<TAccessorProperty>;
 begin
   Result := PropertiesOf(ATree, AText, ClassDecls(ATree), AOptions);
+end;
+
+class function TPropertyFromAccessors.CanHide(const AMethod: TAccessorMethod;
+  const AOptions: TPropertyFromAccessorsOptions): Boolean;
+var
+  mTarget: TMemberSection;
+begin
+  Result := False;
+  if not AMethod.Exists or AMethod.Virtual_ or (AOptions.Hiding = TAccessorHiding.Off) then
+  begin
+    Exit;
+  end;
+  mTarget := TMemberSection.Private_;
+  if AOptions.Hiding = TAccessorHiding.Protected_ then
+  begin
+    mTarget := TMemberSection.Protected_;
+  end;
+  Result := AMethod.Section > mTarget;
+end;
+
+class function TPropertyFromAccessors.IsHeaderName(const ATokens: TArray<TPascalToken>; ANameToken: Integer): Boolean;
+var
+  mBefore: Integer;
+begin
+  mBefore := PreviousCode(ATokens, ChainStart(ATokens, ANameToken));
+  Result := IsWordAt(ATokens, mBefore, ['function', 'procedure', 'constructor', 'destructor']);
 end;
 
 /// <summary>Steht ALine in der Deklaration von AMethod (ab dem Namen)?</summary>
@@ -1160,22 +1149,18 @@ begin
   end;
 end;
 
-class function TPropertyFromAccessors.CanHide(const AMethod: TAccessorMethod;
-  const AOptions: TPropertyFromAccessorsOptions): Boolean;
-var
-  mTarget: TMemberSection;
+class function TPropertyFromAccessors.SectionName(ASection: TMemberSection): string;
 begin
-  Result := False;
-  if not AMethod.Exists or AMethod.Virtual_ or (AOptions.Hiding = TAccessorHiding.Off) then
-  begin
-    Exit;
+  case ASection of
+    TMemberSection.Private_:
+      Result := 'private';
+    TMemberSection.Protected_:
+      Result := 'protected';
+    TMemberSection.Published_:
+      Result := 'published';
+  else
+    Result := 'public';
   end;
-  mTarget := TMemberSection.Private_;
-  if AOptions.Hiding = TAccessorHiding.Protected_ then
-  begin
-    mTarget := TMemberSection.Protected_;
-  end;
-  Result := AMethod.Section > mTarget;
 end;
 
 function Accessors(const AProperty: TAccessorProperty): TArray<TAccessorMethod>;
@@ -1288,6 +1273,8 @@ type
     function DeletionEdits: TArray<TTextEdit>;
     function InsertionEdits: TArray<TTextEdit>;
   end;
+
+{ TPropertyWriter }
 
 function TPropertyWriter.IsHidden(const AMethod: TAccessorMethod): Boolean;
 begin
@@ -1553,12 +1540,29 @@ begin
   end;
 end;
 
-class function TPropertyFromAccessors.IsHeaderName(const ATokens: TArray<TPascalToken>; ANameToken: Integer): Boolean;
+class function TPropertyFromAccessors.Plural(const AName: string): string;
 var
-  mBefore: Integer;
+  mLast: Char;
 begin
-  mBefore := PreviousCode(ATokens, ChainStart(ATokens, ANameToken));
-  Result := IsWordAt(ATokens, mBefore, ['function', 'procedure', 'constructor', 'destructor']);
+  Result := AName;
+  if AName = '' then
+  begin
+    Exit;
+  end;
+  mLast := AName[Length(AName)];
+  if CharInSet(mLast, ['y', 'Y']) and (Length(AName) > 1) and not CharInSet(AName[Length(AName) - 1],
+    ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']) then
+  begin
+    Result := Copy(AName, 1, Length(AName) - 1) + 'ies';
+  end
+  else if CharInSet(mLast, ['s', 'x', 'z', 'S', 'X', 'Z']) or EndsText('ch', AName) or EndsText('sh', AName) then
+  begin
+    Result := AName + 'es';
+  end
+  else
+  begin
+    Result := AName + 's';
+  end;
 end;
 
 /// <summary>Beginnt hinter ABefore eine Anweisung (bzw. steht dort ":" eines case-Zweigs)?</summary>

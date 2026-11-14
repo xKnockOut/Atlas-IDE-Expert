@@ -90,6 +90,8 @@ uses
   System.Math,
   System.DateUtils;
 
+{ TAtlasLineChanges }
+
 class function TAtlasLineChanges.Compute(const AOld, ANew: TArray<string>): TAtlasLineChangeList;
 var
   mHunk: TTextLineHunk;
@@ -290,6 +292,11 @@ begin
   end;
 end;
 
+class function TAtlasLineChanges.BlameLine(const ADisk, ABuffer: TArray<string>; ABufferLine: Integer): Integer;
+begin
+  Result := BlameLine(TTextDiff.Hunks(ADisk, ABuffer), ABufferLine);
+end;
+
 class function TAtlasLineChanges.BlameLine(const AHunks: TArray<TTextLineHunk>; ABufferLine: Integer): Integer;
 var
   mHunk: TTextLineHunk;
@@ -309,11 +316,6 @@ begin
     mShift := mHunk.OldCount - mHunk.NewCount + mShift;
   end;
   Result := ABufferLine + mShift;
-end;
-
-class function TAtlasLineChanges.BlameLine(const ADisk, ABuffer: TArray<string>; ABufferLine: Integer): Integer;
-begin
-  Result := BlameLine(TTextDiff.Hunks(ADisk, ABuffer), ABufferLine);
 end;
 
 class function TAtlasLineChanges.Age(ANow, ADate: TDateTime): TAtlasAge;

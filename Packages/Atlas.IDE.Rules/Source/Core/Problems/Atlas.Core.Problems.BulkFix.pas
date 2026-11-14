@@ -64,6 +64,8 @@ type
 
 implementation
 
+{ TAtlasBulkFixPreview }
+
 constructor TAtlasBulkFixPreview.Create(const ARule: string; const AAnswer: TJSONValue);
 var
   mItems: TJSONArray;
@@ -104,6 +106,11 @@ begin
       FFiles := FFiles + [mFile];
     end;
   end;
+end;
+
+function TAtlasBulkFixPreview.GetFile(AIndex: Integer): TAtlasBulkFixFile;
+begin
+  Result := FFiles[AIndex];
 end;
 
 class function TAtlasBulkFixPreview.FilesOf(const AFindings: TArray<TAtlasFinding>;
@@ -165,11 +172,6 @@ end;
 function TAtlasBulkFixPreview.Count: Integer;
 begin
   Result := Length(FFiles);
-end;
-
-function TAtlasBulkFixPreview.GetFile(AIndex: Integer): TAtlasBulkFixFile;
-begin
-  Result := FFiles[AIndex];
 end;
 
 procedure TAtlasBulkFixPreview.SetChecked(AIndex: Integer; AChecked: Boolean);

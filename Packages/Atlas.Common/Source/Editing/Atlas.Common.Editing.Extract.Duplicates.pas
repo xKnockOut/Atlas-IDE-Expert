@@ -147,26 +147,6 @@ begin
   FOptions := AOptions;
 end;
 
-function TExtractDuplicates.PlanFor(const ARange: TTextRange; const AContext: TExtractContext;
-  out AAction: TCodeAction; out APlan: TMethodPlan): Boolean;
-var
-  mExtraction: TMethodExtraction;
-  mReason: string;
-begin
-  mExtraction := TMethodExtraction.Create(FText, FTree, FOptions);
-  try
-    mExtraction.Context := AContext;
-    Result := mExtraction.Run(ARange, AAction, mReason);
-    APlan := mExtraction.Plan;
-    if not Result then
-    begin
-      FReason := mReason;
-    end;
-  finally
-    mExtraction.Free;
-  end;
-end;
-
 function TExtractDuplicates.PrepareMain: Boolean;
 var
   mExtraction: TMethodExtraction;
@@ -292,9 +272,24 @@ begin
   end;
 end;
 
-procedure TExtractDuplicates.Remove(AIndex: Integer);
+function TExtractDuplicates.PlanFor(const ARange: TTextRange; const AContext: TExtractContext;
+  out AAction: TCodeAction; out APlan: TMethodPlan): Boolean;
+var
+  mExtraction: TMethodExtraction;
+  mReason: string;
 begin
-  Delete(FFound, AIndex, 1);
+  mExtraction := TMethodExtraction.Create(FText, FTree, FOptions);
+  try
+    mExtraction.Context := AContext;
+    Result := mExtraction.Run(ARange, AAction, mReason);
+    APlan := mExtraction.Plan;
+    if not Result then
+    begin
+      FReason := mReason;
+    end;
+  finally
+    mExtraction.Free;
+  end;
 end;
 
 function TExtractDuplicates.Round(var AAssumed: TArray<TExtractParameter>): Boolean;
@@ -356,6 +351,11 @@ begin
     Inc(mRound);
   end;
   Result := Result and (FFound <> nil);
+end;
+
+procedure TExtractDuplicates.Remove(AIndex: Integer);
+begin
+  Delete(FFound, AIndex, 1);
 end;
 
 function TExtractDuplicates.ChoicesIn(ARoutine: TSyntaxNode): TArray<Integer>;

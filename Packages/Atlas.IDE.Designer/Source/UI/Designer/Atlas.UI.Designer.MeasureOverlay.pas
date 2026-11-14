@@ -125,32 +125,25 @@ begin
   end;
 end;
 
-procedure TAtlasMeasureOverlay.WMMouseActivate(var Message: TWMMouseActivate);
+procedure TAtlasMeasureOverlay.Paint;
+var
+  mMark: TAtlasMeasureMark;
 begin
-  Message.Result := MA_NOACTIVATE;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := cKeyColor;
+  Canvas.FillRect(ClientRect);
+  Canvas.Font := Font;
+  for mMark in FMarks do
+  begin
+    DrawLine(mMark);
+  end;
+  Canvas.Pen.Style := psSolid;
+  Canvas.Brush.Style := bsSolid;
 end;
 
 function TAtlasMeasureOverlay.S(AValue: Integer): Integer;
 begin
   Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
-end;
-
-/// <summary>Marke mit dem Text auf einer Fläche in AColor, mittig an AAt.</summary>
-procedure TAtlasMeasureOverlay.DrawBadge(const AAt: TPoint; const ACaption: string; AColor: TColor);
-var
-  mSize: TSize;
-  mBox: TRect;
-begin
-  mSize := Canvas.TextExtent(ACaption);
-  mBox := Rect(AAt.X - mSize.cx div 2 - S(3), AAt.Y - mSize.cy div 2 - S(1), AAt.X + (mSize.cx + 1) div 2 + S(3),
-    AAt.Y + (mSize.cy + 1) div 2 + S(1));
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := AColor;
-  Canvas.Pen.Color := AColor;
-  Canvas.RoundRect(mBox.Left, mBox.Top, mBox.Right, mBox.Bottom, S(4), S(4));
-  Canvas.Font.Color := clWhite;
-  Canvas.Brush.Style := bsClear;
-  Canvas.TextOut(mBox.Left + S(3), mBox.Top + S(1), ACaption);
 end;
 
 procedure TAtlasMeasureOverlay.DrawLine(const AMark: TAtlasMeasureMark);
@@ -193,20 +186,27 @@ begin
   end;
 end;
 
-procedure TAtlasMeasureOverlay.Paint;
+/// <summary>Marke mit dem Text auf einer Fläche in AColor, mittig an AAt.</summary>
+procedure TAtlasMeasureOverlay.DrawBadge(const AAt: TPoint; const ACaption: string; AColor: TColor);
 var
-  mMark: TAtlasMeasureMark;
+  mSize: TSize;
+  mBox: TRect;
 begin
+  mSize := Canvas.TextExtent(ACaption);
+  mBox := Rect(AAt.X - mSize.cx div 2 - S(3), AAt.Y - mSize.cy div 2 - S(1), AAt.X + (mSize.cx + 1) div 2 + S(3),
+    AAt.Y + (mSize.cy + 1) div 2 + S(1));
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := cKeyColor;
-  Canvas.FillRect(ClientRect);
-  Canvas.Font := Font;
-  for mMark in FMarks do
-  begin
-    DrawLine(mMark);
-  end;
-  Canvas.Pen.Style := psSolid;
-  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := AColor;
+  Canvas.Pen.Color := AColor;
+  Canvas.RoundRect(mBox.Left, mBox.Top, mBox.Right, mBox.Bottom, S(4), S(4));
+  Canvas.Font.Color := clWhite;
+  Canvas.Brush.Style := bsClear;
+  Canvas.TextOut(mBox.Left + S(3), mBox.Top + S(1), ACaption);
+end;
+
+procedure TAtlasMeasureOverlay.WMMouseActivate(var Message: TWMMouseActivate);
+begin
+  Message.Result := MA_NOACTIVATE;
 end;
 
 procedure TAtlasMeasureOverlay.ShowMarks(const AScreen: TRect; const AMarks: TArray<TAtlasMeasureMark>);
@@ -227,6 +227,15 @@ begin
   Invalidate;
 end;
 
+procedure TAtlasMeasureOverlay.HideMarks;
+begin
+  FMarks := nil;
+  if HandleAllocated then
+  begin
+    ShowWindow(Handle, SW_HIDE);
+  end;
+end;
+
 procedure TAtlasMeasureOverlay.ApplyColors(const AColors: TAtlasColors);
 begin
   FColors := AColors;
@@ -236,15 +245,6 @@ end;
 function TAtlasMeasureOverlay.Shown: Boolean;
 begin
   Result := HandleAllocated and IsWindowVisible(Handle);
-end;
-
-procedure TAtlasMeasureOverlay.HideMarks;
-begin
-  FMarks := nil;
-  if HandleAllocated then
-  begin
-    ShowWindow(Handle, SW_HIDE);
-  end;
 end;
 
 end.

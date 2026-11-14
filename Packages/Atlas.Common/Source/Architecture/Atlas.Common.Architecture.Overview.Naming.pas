@@ -42,6 +42,8 @@ uses
   System.SysUtils,
   System.StrUtils;
 
+{ TSubsystemNaming }
+
 class function TSubsystemNaming.PartCounts(const AParts: TArray<TArray<string>>; const AMembers: TArray<Integer>)
   : TDictionary<string, Integer>;
 var

@@ -234,6 +234,35 @@ begin
   Height := (Ord(High(TAtlasServerMemoryPart)) + 2) * RowHeight;
 end;
 
+procedure TAtlasServerMemoryChart.Paint;
+var
+  mPart: TAtlasServerMemoryPart;
+  mIndex: Integer;
+begin
+  Canvas.Font := Font;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(FColors.Surface);
+  Canvas.FillRect(ClientRect);
+  if not FRunning or not FSnapshot.Valid then
+  begin
+    Exit;
+  end;
+  FLabelWidth := Px(130);
+  FValueWidth := Px(150);
+  mIndex := 0;
+  for mPart := Low(TAtlasServerMemoryPart) to High(TAtlasServerMemoryPart) do
+  begin
+    // Über dem Budget fallen die Verwendungen auf: Sie werden ausgelagert.
+    DrawRow(mIndex, PartCaption(mPart), TAtlasServerTexts.Megabytes(FSnapshot.Memory[mPart], FormatSettings),
+      FSnapshot.Fraction(mPart), FSnapshot.OverBudget and (mPart = TAtlasServerMemoryPart.Usages));
+    Inc(mIndex);
+  end;
+  Canvas.Font.Style := [fsBold];
+  DrawRow(mIndex, TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerMemoryTotal), TotalText, FSnapshot.TotalFraction,
+    FSnapshot.OverBudget);
+  Canvas.Font.Style := [];
+end;
+
 function TAtlasServerMemoryChart.Px(AValue: Integer): Integer;
 begin
   Result := MulDiv(AValue, CurrentPPI, 96);
@@ -242,19 +271,6 @@ end;
 function TAtlasServerMemoryChart.RowHeight: Integer;
 begin
   Result := Px(18);
-end;
-
-procedure TAtlasServerMemoryChart.Display(const ASnapshot: TAtlasServerSnapshot; ARunning: Boolean);
-begin
-  FSnapshot := ASnapshot;
-  FRunning := ARunning;
-  Invalidate;
-end;
-
-procedure TAtlasServerMemoryChart.SetColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
 end;
 
 function TAtlasServerMemoryChart.TotalText: string;
@@ -321,33 +337,17 @@ begin
   end;
 end;
 
-procedure TAtlasServerMemoryChart.Paint;
-var
-  mPart: TAtlasServerMemoryPart;
-  mIndex: Integer;
+procedure TAtlasServerMemoryChart.Display(const ASnapshot: TAtlasServerSnapshot; ARunning: Boolean);
 begin
-  Canvas.Font := Font;
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(FColors.Surface);
-  Canvas.FillRect(ClientRect);
-  if not FRunning or not FSnapshot.Valid then
-  begin
-    Exit;
-  end;
-  FLabelWidth := Px(130);
-  FValueWidth := Px(150);
-  mIndex := 0;
-  for mPart := Low(TAtlasServerMemoryPart) to High(TAtlasServerMemoryPart) do
-  begin
-    // Über dem Budget fallen die Verwendungen auf: Sie werden ausgelagert.
-    DrawRow(mIndex, PartCaption(mPart), TAtlasServerTexts.Megabytes(FSnapshot.Memory[mPart], FormatSettings),
-      FSnapshot.Fraction(mPart), FSnapshot.OverBudget and (mPart = TAtlasServerMemoryPart.Usages));
-    Inc(mIndex);
-  end;
-  Canvas.Font.Style := [fsBold];
-  DrawRow(mIndex, TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerMemoryTotal), TotalText, FSnapshot.TotalFraction,
-    FSnapshot.OverBudget);
-  Canvas.Font.Style := [];
+  FSnapshot := ASnapshot;
+  FRunning := ARunning;
+  Invalidate;
+end;
+
+procedure TAtlasServerMemoryChart.SetColors(const AColors: TAtlasColors);
+begin
+  FColors := AColors;
+  Invalidate;
 end;
 
 { TAtlasServerTables }
@@ -382,6 +382,14 @@ begin
   FUnits.OnDblClick := UnitsDblClick;
 end;
 
+procedure TAtlasServerTables.Resize;
+begin
+  inherited;
+  // Drei gleich hohe Tabellen untereinander; die Anfragen nehmen den Rest.
+  FUnits.Height := Max(Px(60), ClientHeight div 3 - Px(6));
+  FRules.Height := FUnits.Height;
+end;
+
 function TAtlasServerTables.Px(AValue: Integer): Integer;
 begin
   Result := MulDiv(AValue, CurrentPPI, 96);
@@ -410,28 +418,6 @@ begin
       mColumn.Alignment := taRightJustify;
     end;
   end;
-end;
-
-procedure TAtlasServerTables.Display(const ASnapshot: TAtlasServerSnapshot; AWithWindow: Boolean);
-begin
-  FSnapshot := ASnapshot;
-  if AWithWindow then
-  begin
-    FUnits.Items.Count := Length(FSnapshot.SlowUnits);
-    FRules.Items.Count := Length(FSnapshot.SlowRules);
-    FRequests.Items.Count := Length(FSnapshot.Requests);
-  end;
-  FUnits.Invalidate;
-  FRules.Invalidate;
-  FRequests.Invalidate;
-end;
-
-procedure TAtlasServerTables.Resize;
-begin
-  inherited;
-  // Drei gleich hohe Tabellen untereinander; die Anfragen nehmen den Rest.
-  FUnits.Height := Max(Px(60), ClientHeight div 3 - Px(6));
-  FRules.Height := FUnits.Height;
 end;
 
 procedure TAtlasServerTables.UnitsData(Sender: TObject; Item: TListItem);
@@ -477,6 +463,36 @@ begin
   Item.SubItems.Add(IntToStr(mRequest.Failed));
 end;
 
+procedure TAtlasServerTables.UnitsDblClick(Sender: TObject);
+begin
+  if FUnits.Selected <> nil then
+  begin
+    OpenUnit(FUnits.Selected.Index);
+  end;
+end;
+
+procedure TAtlasServerTables.RulesDblClick(Sender: TObject);
+begin
+  if FRules.Selected <> nil then
+  begin
+    OpenRule(FRules.Selected.Index);
+  end;
+end;
+
+procedure TAtlasServerTables.Display(const ASnapshot: TAtlasServerSnapshot; AWithWindow: Boolean);
+begin
+  FSnapshot := ASnapshot;
+  if AWithWindow then
+  begin
+    FUnits.Items.Count := Length(FSnapshot.SlowUnits);
+    FRules.Items.Count := Length(FSnapshot.SlowRules);
+    FRequests.Items.Count := Length(FSnapshot.Requests);
+  end;
+  FUnits.Invalidate;
+  FRules.Invalidate;
+  FRequests.Invalidate;
+end;
+
 procedure TAtlasServerTables.OpenUnit(AIndex: Integer);
 begin
   if (AIndex < 0) or (AIndex > High(FSnapshot.SlowUnits)) or not Assigned(FOnOpenUnit) then
@@ -493,22 +509,6 @@ begin
     Exit;
   end;
   FOnOpenRule(FSnapshot.SlowRules[AIndex].Id);
-end;
-
-procedure TAtlasServerTables.UnitsDblClick(Sender: TObject);
-begin
-  if FUnits.Selected <> nil then
-  begin
-    OpenUnit(FUnits.Selected.Index);
-  end;
-end;
-
-procedure TAtlasServerTables.RulesDblClick(Sender: TObject);
-begin
-  if FRules.Selected <> nil then
-  begin
-    OpenRule(FRules.Selected.Index);
-  end;
 end;
 
 { TAtlasServerButtons }
@@ -602,6 +602,12 @@ begin
   UpdateTexts;
 end;
 
+procedure TAtlasServerFrame.CreateWnd;
+begin
+  inherited;
+  UpdateTexts;
+end;
+
 function TAtlasServerFrame.NewLine(APrevious: TControl): TLabel;
 begin
   Result := TLabel.Create(Self);
@@ -613,38 +619,6 @@ begin
   if APrevious <> nil then
   begin
     Result.Top := APrevious.Top + APrevious.Height + 1;
-  end;
-end;
-
-procedure TAtlasServerFrame.CreateWnd;
-begin
-  inherited;
-  UpdateTexts;
-end;
-
-procedure TAtlasServerFrame.UpdateServerTexts;
-begin
-  FHeader.Caption := TAtlasStatusStrings.Fmt(TAtlasStatusTextId.ServerWindowHeader, [FSnapshot.ProcessId,
-    FSnapshot.Version,
-    TAtlasServerTexts.Duration(FSnapshot.UptimeMs), StateCaption(FSnapshot.State), FRestarts]);
-  FQueue.Caption := TAtlasStatusStrings.Fmt(TAtlasStatusTextId.ServerWindowQueue, [FSnapshot.IndexWaiting,
-    FSnapshot.IndexRunning, FSnapshot.CheckWaiting, FSnapshot.CheckRunning,
-    TAtlasServerTexts.Duration(FSnapshot.OldestWaitMs)]) + sLineBreak +
-    TAtlasStatusStrings.Fmt(TAtlasStatusTextId.ServerWindowCacheHits, [PercentText(FSnapshot.IndexHitPercent),
-    PercentText(FSnapshot.TreeHitPercent), Max(FSnapshot.Units, 0)]);
-  if FSnapshot.CheckActive then
-  begin
-    FCheckRun.Caption := TAtlasStatusStrings.Fmt(TAtlasStatusTextId.ServerWindowCheckRunning, [FSnapshot.CheckUnits]);
-  end
-  else if FSnapshot.CheckSerial = 0 then
-  begin
-    FCheckRun.Caption := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowNoCheckRun);
-  end
-  else
-  begin
-    FCheckRun.Caption := TAtlasStatusStrings.Fmt(TAtlasStatusTextId.ServerWindowCheckRun,
-      [FormatDateTime('hh":"nn', FSnapshot.CheckStarted), FSnapshot.CheckUnits,
-      TAtlasServerTexts.Duration(FSnapshot.CheckDurationMs)]);
   end;
 end;
 
@@ -673,6 +647,32 @@ begin
   // Die Anzahl der virtuellen Listen braucht ein Fenster; ohne Eltern setzt CreateWnd sie nach.
   FTables.Display(FSnapshot, HandleAllocated or (Parent <> nil));
   FMemory.Display(FSnapshot, FRunning);
+end;
+
+procedure TAtlasServerFrame.UpdateServerTexts;
+begin
+  FHeader.Caption := TAtlasStatusStrings.Fmt(TAtlasStatusTextId.ServerWindowHeader, [FSnapshot.ProcessId,
+    FSnapshot.Version,
+    TAtlasServerTexts.Duration(FSnapshot.UptimeMs), StateCaption(FSnapshot.State), FRestarts]);
+  FQueue.Caption := TAtlasStatusStrings.Fmt(TAtlasStatusTextId.ServerWindowQueue, [FSnapshot.IndexWaiting,
+    FSnapshot.IndexRunning, FSnapshot.CheckWaiting, FSnapshot.CheckRunning,
+    TAtlasServerTexts.Duration(FSnapshot.OldestWaitMs)]) + sLineBreak +
+    TAtlasStatusStrings.Fmt(TAtlasStatusTextId.ServerWindowCacheHits, [PercentText(FSnapshot.IndexHitPercent),
+    PercentText(FSnapshot.TreeHitPercent), Max(FSnapshot.Units, 0)]);
+  if FSnapshot.CheckActive then
+  begin
+    FCheckRun.Caption := TAtlasStatusStrings.Fmt(TAtlasStatusTextId.ServerWindowCheckRunning, [FSnapshot.CheckUnits]);
+  end
+  else if FSnapshot.CheckSerial = 0 then
+  begin
+    FCheckRun.Caption := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowNoCheckRun);
+  end
+  else
+  begin
+    FCheckRun.Caption := TAtlasStatusStrings.Fmt(TAtlasStatusTextId.ServerWindowCheckRun,
+      [FormatDateTime('hh":"nn', FSnapshot.CheckStarted), FSnapshot.CheckUnits,
+      TAtlasServerTexts.Duration(FSnapshot.CheckDurationMs)]);
+  end;
 end;
 
 procedure TAtlasServerFrame.SetSnapshot(const ASnapshot: TAtlasServerSnapshot; ARunning: Boolean; ARestarts: Integer);

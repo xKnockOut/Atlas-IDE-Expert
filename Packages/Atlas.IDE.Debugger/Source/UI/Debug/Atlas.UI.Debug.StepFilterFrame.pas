@@ -311,33 +311,6 @@ begin
   FillPatterns;
 end;
 
-procedure TAtlasDebugStepFilterFrame.SetOptions(AEnabled: Boolean; AKinds: TStepFilterKinds;
-  const APatterns: TArray<string>);
-var
-  mKind: TStepFilterKind;
-  mRebuild: Boolean;
-begin
-  mRebuild := TStepFilterNames.PatternsText(APatterns) <> TStepFilterNames.PatternsText(FValue.Patterns);
-  FValue.Enabled := AEnabled;
-  FValue.Kinds := AKinds;
-  FValue.Patterns := Copy(APatterns);
-  FFilling := True;
-  try
-    FControls.EnabledCheck.Checked := AEnabled;
-    for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
-    begin
-      FControls.Kinds[mKind].Checked := mKind in AKinds;
-    end;
-  finally
-    FFilling := False;
-  end;
-  if mRebuild then
-  begin
-    FillPatterns;
-  end;
-  UpdateButtons;
-end;
-
 procedure TAtlasDebugStepFilterFrame.FillPatterns;
 var
   mIndex: Integer;
@@ -367,27 +340,6 @@ begin
   UpdateButtons;
 end;
 
-procedure TAtlasDebugStepFilterFrame.SetCounting;
-begin
-  FCount.State := TAtlasStepCountsState.Counting;
-  UpdateCounts;
-end;
-
-procedure TAtlasDebugStepFilterFrame.SetCounts(const ACounts: TAtlasStepCounts);
-begin
-  FCount.Counts := ACounts;
-  FCount.Counts.Patterns := Copy(ACounts.Patterns);
-  FCount.State := TAtlasStepCountsState.Ready;
-  UpdateCounts;
-end;
-
-procedure TAtlasDebugStepFilterFrame.SetNoCounts;
-begin
-  FCount.Counts := Default(TAtlasStepCounts);
-  FCount.State := TAtlasStepCountsState.Unavailable;
-  UpdateCounts;
-end;
-
 procedure TAtlasDebugStepFilterFrame.UpdateCounts;
 var
   mKind: TStepFilterKind;
@@ -410,12 +362,6 @@ begin
         FCount.Counts);
     end;
   end;
-end;
-
-procedure TAtlasDebugStepFilterFrame.SetSession(AStarted: Boolean; ASkipped: Integer;
-  const ALastName, ALastReason: string);
-begin
-  FControls.Session.Caption := TAtlasStepFilterTexts.SessionText(AStarted, ASkipped, ALastName, ALastReason);
 end;
 
 procedure TAtlasDebugStepFilterFrame.UpdateButtons;
@@ -474,6 +420,120 @@ begin
   begin
     FEvents.Refresh();
   end;
+end;
+
+procedure TAtlasDebugStepFilterFrame.AddClick(Sender: TObject);
+begin
+  AddPattern;
+end;
+
+procedure TAtlasDebugStepFilterFrame.RemoveClick(Sender: TObject);
+begin
+  RemoveSelected;
+end;
+
+procedure TAtlasDebugStepFilterFrame.PatternEditChange(Sender: TObject);
+begin
+  UpdateButtons;
+end;
+
+procedure TAtlasDebugStepFilterFrame.PatternEditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if (Key = VK_RETURN) and (Shift = []) then
+  begin
+    AddPattern;
+    Key := 0;
+  end;
+end;
+
+procedure TAtlasDebugStepFilterFrame.PatternsSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+begin
+  UpdateButtons;
+end;
+
+procedure TAtlasDebugStepFilterFrame.PatternsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if FControls.Patterns.IsEditing then
+  begin
+    Exit;
+  end;
+  if (Key = VK_DELETE) and (Shift = []) then
+  begin
+    RemoveSelected;
+    Key := 0;
+  end
+  else if (Key = VK_F2) and (Shift = []) and (FControls.Patterns.Selected <> nil) then
+  begin
+    FControls.Patterns.Selected.EditCaption;
+    Key := 0;
+  end;
+end;
+
+procedure TAtlasDebugStepFilterFrame.PatternsEdited(Sender: TObject; Item: TListItem; var S: string);
+begin
+  // Ungültig oder doppelt: Das alte Muster bleibt stehen.
+  if ReplacePattern(Item.Index, S) then
+  begin
+    S := Trim(S);
+  end
+  else
+  begin
+    S := Item.Caption;
+  end;
+end;
+
+procedure TAtlasDebugStepFilterFrame.SetOptions(AEnabled: Boolean; AKinds: TStepFilterKinds;
+  const APatterns: TArray<string>);
+var
+  mKind: TStepFilterKind;
+  mRebuild: Boolean;
+begin
+  mRebuild := TStepFilterNames.PatternsText(APatterns) <> TStepFilterNames.PatternsText(FValue.Patterns);
+  FValue.Enabled := AEnabled;
+  FValue.Kinds := AKinds;
+  FValue.Patterns := Copy(APatterns);
+  FFilling := True;
+  try
+    FControls.EnabledCheck.Checked := AEnabled;
+    for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+    begin
+      FControls.Kinds[mKind].Checked := mKind in AKinds;
+    end;
+  finally
+    FFilling := False;
+  end;
+  if mRebuild then
+  begin
+    FillPatterns;
+  end;
+  UpdateButtons;
+end;
+
+procedure TAtlasDebugStepFilterFrame.SetCounting;
+begin
+  FCount.State := TAtlasStepCountsState.Counting;
+  UpdateCounts;
+end;
+
+procedure TAtlasDebugStepFilterFrame.SetCounts(const ACounts: TAtlasStepCounts);
+begin
+  FCount.Counts := ACounts;
+  FCount.Counts.Patterns := Copy(ACounts.Patterns);
+  FCount.State := TAtlasStepCountsState.Ready;
+  UpdateCounts;
+end;
+
+procedure TAtlasDebugStepFilterFrame.SetNoCounts;
+begin
+  FCount.Counts := Default(TAtlasStepCounts);
+  FCount.State := TAtlasStepCountsState.Unavailable;
+  UpdateCounts;
+end;
+
+procedure TAtlasDebugStepFilterFrame.SetSession(AStarted: Boolean; ASkipped: Integer;
+  const ALastName, ALastReason: string);
+begin
+  FControls.Session.Caption := TAtlasStepFilterTexts.SessionText(AStarted, ASkipped, ALastName, ALastReason);
 end;
 
 function TAtlasDebugStepFilterFrame.AddPattern: Boolean;
@@ -555,66 +615,6 @@ begin
     FControls.Patterns.Items[AIndex].SubItems[0] := '';
   end;
   NotifyChange;
-end;
-
-procedure TAtlasDebugStepFilterFrame.AddClick(Sender: TObject);
-begin
-  AddPattern;
-end;
-
-procedure TAtlasDebugStepFilterFrame.RemoveClick(Sender: TObject);
-begin
-  RemoveSelected;
-end;
-
-procedure TAtlasDebugStepFilterFrame.PatternEditChange(Sender: TObject);
-begin
-  UpdateButtons;
-end;
-
-procedure TAtlasDebugStepFilterFrame.PatternEditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  if (Key = VK_RETURN) and (Shift = []) then
-  begin
-    AddPattern;
-    Key := 0;
-  end;
-end;
-
-procedure TAtlasDebugStepFilterFrame.PatternsSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
-begin
-  UpdateButtons;
-end;
-
-procedure TAtlasDebugStepFilterFrame.PatternsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  if FControls.Patterns.IsEditing then
-  begin
-    Exit;
-  end;
-  if (Key = VK_DELETE) and (Shift = []) then
-  begin
-    RemoveSelected;
-    Key := 0;
-  end
-  else if (Key = VK_F2) and (Shift = []) and (FControls.Patterns.Selected <> nil) then
-  begin
-    FControls.Patterns.Selected.EditCaption;
-    Key := 0;
-  end;
-end;
-
-procedure TAtlasDebugStepFilterFrame.PatternsEdited(Sender: TObject; Item: TListItem; var S: string);
-begin
-  // Ungültig oder doppelt: Das alte Muster bleibt stehen.
-  if ReplacePattern(Item.Index, S) then
-  begin
-    S := Trim(S);
-  end
-  else
-  begin
-    S := Item.Caption;
-  end;
 end;
 
 { TAtlasStepFilterTexts }

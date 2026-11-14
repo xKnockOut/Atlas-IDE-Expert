@@ -207,11 +207,6 @@ begin
   inherited;
 end;
 
-function TCompilerEditionCache.Count: Integer;
-begin
-  Result := FEntries.Count;
-end;
-
 function TCompilerEditionCache.IndexOf(const ARoot, AVersion: string): Integer;
 var
   mRoot: string;
@@ -225,33 +220,6 @@ begin
     end;
   end;
   Result := -1;
-end;
-
-function TCompilerEditionCache.Find(const ARoot, AVersion, AStamp: string): TCompilerEdition;
-var
-  mIndex: Integer;
-begin
-  mIndex := IndexOf(ARoot, AVersion);
-  if (mIndex < 0) or (FEntries[mIndex].Stamp <> AStamp) then
-  begin
-    Exit(TCompilerEdition.Unknown);
-  end;
-  Result := FEntries[mIndex].Edition;
-end;
-
-procedure TCompilerEditionCache.Store(const AEntry: TCompilerEditionEntry);
-var
-  mIndex: Integer;
-begin
-  mIndex := IndexOf(AEntry.Root, AEntry.Version);
-  if mIndex >= 0 then
-  begin
-    FEntries[mIndex] := AEntry;
-  end
-  else
-  begin
-    FEntries.Add(AEntry);
-  end;
 end;
 
 procedure TCompilerEditionCache.Load(const AText: string);
@@ -313,6 +281,38 @@ begin
   finally
     mRoot.Free;
   end;
+end;
+
+function TCompilerEditionCache.Find(const ARoot, AVersion, AStamp: string): TCompilerEdition;
+var
+  mIndex: Integer;
+begin
+  mIndex := IndexOf(ARoot, AVersion);
+  if (mIndex < 0) or (FEntries[mIndex].Stamp <> AStamp) then
+  begin
+    Exit(TCompilerEdition.Unknown);
+  end;
+  Result := FEntries[mIndex].Edition;
+end;
+
+procedure TCompilerEditionCache.Store(const AEntry: TCompilerEditionEntry);
+var
+  mIndex: Integer;
+begin
+  mIndex := IndexOf(AEntry.Root, AEntry.Version);
+  if mIndex >= 0 then
+  begin
+    FEntries[mIndex] := AEntry;
+  end
+  else
+  begin
+    FEntries.Add(AEntry);
+  end;
+end;
+
+function TCompilerEditionCache.Count: Integer;
+begin
+  Result := FEntries.Count;
 end;
 
 initialization

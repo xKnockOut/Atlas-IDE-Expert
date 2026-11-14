@@ -252,54 +252,6 @@ begin
   Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
 end;
 
-procedure TAtlasSafeModeNotice.FitNoticeHeight;
-var
-  mIndex, mBottom, mExtra: Integer;
-  mControl: TControl;
-begin
-  HandleNeeded;
-  // Umbrechende Beschriftungen messen erst mit Fenster richtig.
-  FParts.Text.AutoSize := False;
-  FParts.Text.AutoSize := True;
-  FParts.Suggestion.AutoSize := False;
-  FParts.Suggestion.AutoSize := True;
-  // Knopfreihe: AutoSize des TFlowPanel rechnet umgebrochene Reihen nicht zuverlässig mit;
-  // die Höhe ergibt sich aus dem untersten sichtbaren Knopf.
-  FParts.Buttons.AutoSize := False;
-  FParts.Buttons.Height := ScaleValue(200);
-  FParts.Buttons.Realign;
-  mBottom := 0;
-  for mIndex := 0 to FParts.Buttons.ControlCount - 1 do
-  begin
-    mControl := FParts.Buttons.Controls[mIndex];
-    if mControl.Visible then
-    begin
-      mBottom := Max(mBottom, mControl.Top + mControl.Height + mControl.Margins.Bottom);
-    end;
-  end;
-  FParts.Buttons.Height := mBottom;
-  Realign;
-  mExtra := 0;
-  if FParts.DetailsPanel.Visible then
-  begin
-    mExtra := ScaleValue(cDetailsHeight);
-  end;
-  ClientHeight := FParts.Buttons.Top + FParts.Buttons.Height + ScaleValue(cGap) + mExtra;
-end;
-
-procedure TAtlasSafeModeNotice.ShowIn(const AArea: TRect);
-begin
-  FitNoticeHeight;
-  Left := AArea.Right - Width - ScaleValue(cGap);
-  Top := AArea.Bottom - Height - ScaleValue(cGap);
-  // Nicht modal: Die IDE startet weiter, während der Hinweis offen ist.
-  Show;
-  // Beim Zeigen kann das Fenster auf die Skalierung des Bildschirms umgerechnet werden: neu messen,
-  // unten bleibt unten.
-  FitNoticeHeight;
-  Top := AArea.Bottom - Height - ScaleValue(cGap);
-end;
-
 procedure TAtlasSafeModeNotice.Run(const AProc: TProc);
 begin
   // Nur die erste Aktion zählt; ausgeführt wird nach dem Schließen.
@@ -369,9 +321,57 @@ begin
   end;
 end;
 
-function TAtlasSafeModeNotice.DetailsVisible: Boolean;
+procedure TAtlasSafeModeNotice.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
-  Result := FParts.DetailsPanel.Visible;
+  Action := caFree;
+end;
+
+procedure TAtlasSafeModeNotice.FitNoticeHeight;
+var
+  mIndex, mBottom, mExtra: Integer;
+  mControl: TControl;
+begin
+  HandleNeeded;
+  // Umbrechende Beschriftungen messen erst mit Fenster richtig.
+  FParts.Text.AutoSize := False;
+  FParts.Text.AutoSize := True;
+  FParts.Suggestion.AutoSize := False;
+  FParts.Suggestion.AutoSize := True;
+  // Knopfreihe: AutoSize des TFlowPanel rechnet umgebrochene Reihen nicht zuverlässig mit;
+  // die Höhe ergibt sich aus dem untersten sichtbaren Knopf.
+  FParts.Buttons.AutoSize := False;
+  FParts.Buttons.Height := ScaleValue(200);
+  FParts.Buttons.Realign;
+  mBottom := 0;
+  for mIndex := 0 to FParts.Buttons.ControlCount - 1 do
+  begin
+    mControl := FParts.Buttons.Controls[mIndex];
+    if mControl.Visible then
+    begin
+      mBottom := Max(mBottom, mControl.Top + mControl.Height + mControl.Margins.Bottom);
+    end;
+  end;
+  FParts.Buttons.Height := mBottom;
+  Realign;
+  mExtra := 0;
+  if FParts.DetailsPanel.Visible then
+  begin
+    mExtra := ScaleValue(cDetailsHeight);
+  end;
+  ClientHeight := FParts.Buttons.Top + FParts.Buttons.Height + ScaleValue(cGap) + mExtra;
+end;
+
+procedure TAtlasSafeModeNotice.ShowIn(const AArea: TRect);
+begin
+  FitNoticeHeight;
+  Left := AArea.Right - Width - ScaleValue(cGap);
+  Top := AArea.Bottom - Height - ScaleValue(cGap);
+  // Nicht modal: Die IDE startet weiter, während der Hinweis offen ist.
+  Show;
+  // Beim Zeigen kann das Fenster auf die Skalierung des Bildschirms umgerechnet werden: neu messen,
+  // unten bleibt unten.
+  FitNoticeHeight;
+  Top := AArea.Bottom - Height - ScaleValue(cGap);
 end;
 
 procedure TAtlasSafeModeNotice.ToggleDetails;
@@ -390,9 +390,9 @@ begin
   end;
 end;
 
-procedure TAtlasSafeModeNotice.FormClose(Sender: TObject; var Action: TCloseAction);
+function TAtlasSafeModeNotice.DetailsVisible: Boolean;
 begin
-  Action := caFree;
+  Result := FParts.DetailsPanel.Visible;
 end;
 
 end.

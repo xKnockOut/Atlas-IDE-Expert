@@ -114,9 +114,30 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasProblemsScopeBox.Text(AId: TAtlasScopeBoxText): string;
+procedure TAtlasProblemsScopeBox.DrawItem(AControl: TWinControl; AIndex: Integer; ARect: TRect;
+  AState: TOwnerDrawState);
+var
+  mCanvas: TCanvas;
+  mMiddle: Integer;
 begin
-  Result := cTexts[TAtlasTextLanguage.Current, AId];
+  mCanvas := FCombo.Canvas;
+  if FList.IsSeparator(AIndex) then
+  begin
+    // Trennstrich nie hervorgehoben: Fläche der Liste, Linie in Grau.
+    mCanvas.Brush.Color := StyleServices(FCombo).GetSystemColor(clWindow);
+    mCanvas.FillRect(ARect);
+    mMiddle := (ARect.Top + ARect.Bottom) div 2;
+    mCanvas.Pen.Color := StyleServices(FCombo).GetSystemColor(clGrayText);
+    mCanvas.MoveTo(ARect.Left + MulDiv(cTextIndent, FCombo.CurrentPPI, cDesignPpi), mMiddle);
+    mCanvas.LineTo(ARect.Right - MulDiv(cTextIndent, FCombo.CurrentPPI, cDesignPpi), mMiddle);
+    Exit;
+  end;
+  mCanvas.FillRect(ARect);
+  if (AIndex >= 0) and (AIndex < FCombo.Items.Count) then
+  begin
+    mCanvas.TextRect(ARect, ARect.Left + MulDiv(cTextIndent, FCombo.CurrentPPI, cDesignPpi),
+      ARect.Top + (ARect.Height - mCanvas.TextHeight('Ag')) div 2, FCombo.Items[AIndex]);
+  end;
 end;
 
 function TAtlasProblemsScopeBox.ItemText(AIndex: Integer): string;
@@ -136,6 +157,26 @@ begin
       Result := Format(Text(TAtlasScopeBoxText.ActiveMark), [mProject.Name]);
     end;
   end;
+end;
+
+procedure TAtlasProblemsScopeBox.FitSizes;
+var
+  mIndex, mWidth: Integer;
+begin
+  FCombo.Canvas.Font := FCombo.Font;
+  FCombo.ItemHeight := FCombo.Canvas.TextHeight('Ag') + MulDiv(cTextIndent, FCombo.CurrentPPI, cDesignPpi);
+  mWidth := FCombo.Width;
+  for mIndex := 0 to FCombo.Items.Count - 1 do
+  begin
+    mWidth := Max(mWidth, FCombo.Canvas.TextWidth(FCombo.Items[mIndex]) +
+      MulDiv(cDropExtra, FCombo.CurrentPPI, cDesignPpi));
+  end;
+  SendMessage(FCombo.Handle, CB_SETDROPPEDWIDTH, mWidth, 0);
+end;
+
+class function TAtlasProblemsScopeBox.Text(AId: TAtlasScopeBoxText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
 end;
 
 function TAtlasProblemsScopeBox.Fill: Boolean;
@@ -170,21 +211,6 @@ begin
   FCombo.ItemIndex := FList.IndexOf(FChoice);
 end;
 
-procedure TAtlasProblemsScopeBox.FitSizes;
-var
-  mIndex, mWidth: Integer;
-begin
-  FCombo.Canvas.Font := FCombo.Font;
-  FCombo.ItemHeight := FCombo.Canvas.TextHeight('Ag') + MulDiv(cTextIndent, FCombo.CurrentPPI, cDesignPpi);
-  mWidth := FCombo.Width;
-  for mIndex := 0 to FCombo.Items.Count - 1 do
-  begin
-    mWidth := Max(mWidth, FCombo.Canvas.TextWidth(FCombo.Items[mIndex]) +
-      MulDiv(cDropExtra, FCombo.CurrentPPI, cDesignPpi));
-  end;
-  SendMessage(FCombo.Handle, CB_SETDROPPEDWIDTH, mWidth, 0);
-end;
-
 function TAtlasProblemsScopeBox.SetProjects(const AProjects: TArray<TAtlasScopeProject>): Boolean;
 begin
   FProjects := Copy(AProjects);
@@ -215,32 +241,6 @@ begin
   mNext := FList.ChoiceAt(FCombo.ItemIndex);
   Result := not mNext.Same(FChoice);
   FChoice := mNext;
-end;
-
-procedure TAtlasProblemsScopeBox.DrawItem(AControl: TWinControl; AIndex: Integer; ARect: TRect;
-  AState: TOwnerDrawState);
-var
-  mCanvas: TCanvas;
-  mMiddle: Integer;
-begin
-  mCanvas := FCombo.Canvas;
-  if FList.IsSeparator(AIndex) then
-  begin
-    // Trennstrich nie hervorgehoben: Fläche der Liste, Linie in Grau.
-    mCanvas.Brush.Color := StyleServices(FCombo).GetSystemColor(clWindow);
-    mCanvas.FillRect(ARect);
-    mMiddle := (ARect.Top + ARect.Bottom) div 2;
-    mCanvas.Pen.Color := StyleServices(FCombo).GetSystemColor(clGrayText);
-    mCanvas.MoveTo(ARect.Left + MulDiv(cTextIndent, FCombo.CurrentPPI, cDesignPpi), mMiddle);
-    mCanvas.LineTo(ARect.Right - MulDiv(cTextIndent, FCombo.CurrentPPI, cDesignPpi), mMiddle);
-    Exit;
-  end;
-  mCanvas.FillRect(ARect);
-  if (AIndex >= 0) and (AIndex < FCombo.Items.Count) then
-  begin
-    mCanvas.TextRect(ARect, ARect.Left + MulDiv(cTextIndent, FCombo.CurrentPPI, cDesignPpi),
-      ARect.Top + (ARect.Height - mCanvas.TextHeight('Ag')) div 2, FCombo.Items[AIndex]);
-  end;
 end;
 
 initialization

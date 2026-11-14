@@ -278,6 +278,20 @@ end;
 
 { TLspImplementations }
 
+constructor TLspImplementations.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AEnsureUnit: TEnsureUnitFunc);
+begin
+  inherited Create;
+  FStore := AStore;
+  FIndex := AIndex;
+  FEnsureUnit := AEnsureUnit;
+end;
+
+constructor TLspImplementations.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);
+begin
+  Create(AStore, AIndex, nil);
+end;
+
 function TLspImplementations.GetNamespaces: TArray<string>;
 begin
   Result := TLspNamespaces.Read(FNamespaces);
@@ -288,18 +302,44 @@ begin
   TLspNamespaces.Write(FNamespaces, AValue);
 end;
 
-constructor TLspImplementations.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);
+function TLspImplementations.Handle(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mPositionValue: TJSONValue;
+  mDocument: ITextDocument;
+  mTree: TSyntaxTree;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
 begin
-  Create(AStore, AIndex, nil);
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TImplementationsText.FieldsTextDocumentUriAndPosition].Text);
+  end;
+  if not FStore.TryGet(mUri, mDocument) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  mTree := mShared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  try
+    mResolver.Namespaces := Namespaces;
+    Result := TLspDefinition.ToJson(Targets(mResolver, FIndex, mTree, TDocumentUris.ToPath(mUri),
+      TLspPositions.ReadPosition(mPositionValue)));
+  finally
+    mResolver.Free;
+  end;
 end;
 
-constructor TLspImplementations.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-  const AEnsureUnit: TEnsureUnitFunc);
+procedure TLspImplementations.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FEnsureUnit := AEnsureUnit;
+  ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
 end;
 
 class function TLspImplementations.AllDescendantsOf(const AIndex: ISymbolIndex;
@@ -331,55 +371,6 @@ begin
       Exit(True);
     end;
   end;
-end;
-
-class function TLspImplementations.ImplementationCount(const AIndex: ISymbolIndex; const AContainer, AName: string;
-  AInterface: Boolean): Integer;
-var
-  mLocation: TSymbolLocation;
-  mOwner: TUnitIndex;
-  mSymbol: TIndexSymbol;
-begin
-  Result := 0;
-  if AIndex = nil then
-  begin
-    Exit;
-  end;
-  // Eine virtuelle Methode ist selbst ein mögliches Ziel; ein Interface hat keinen Rumpf.
-  if not AInterface then
-  begin
-    Result := 1;
-  end;
-  for mLocation in AllDescendants(AIndex, AContainer) do
-  begin
-    if not (mLocation.Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType]) then
-    begin
-      Continue;
-    end;
-    if AInterface then
-    begin
-      Inc(Result);
-      Continue;
-    end;
-    if not AIndex.FindFile(mLocation.FileName, mOwner) then
-    begin
-      Continue;
-    end;
-    for mSymbol in mOwner.Symbols do
-    begin
-      if (mSymbol.Kind in cRoutineKinds) and SameText(mSymbol.Container, mLocation.Symbol.QualifiedName) and
-        SameText(mSymbol.Name, AName) then
-      begin
-        Inc(Result);
-        Break;
-      end;
-    end;
-  end;
-end;
-
-procedure TLspImplementations.Attach(ADispatcher: TJsonRpcDispatcher);
-begin
-  ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
 end;
 
 /// <summary>Ist AResolved nicht aufgelöst und steht APosition auf dem Namen einer Deklaration (Methode in der
@@ -521,38 +512,47 @@ begin
   end;
 end;
 
-function TLspImplementations.Handle(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+class function TLspImplementations.ImplementationCount(const AIndex: ISymbolIndex; const AContainer, AName: string;
+  AInterface: Boolean): Integer;
 var
-  mCancellation: IPascalCancellation;
-  mUri: string;
-  mPositionValue: TJSONValue;
-  mDocument: ITextDocument;
-  mTree: TSyntaxTree;
-  mShared: ISharedSyntaxTree;
-  mResolver: TNameResolver;
+  mLocation: TSymbolLocation;
+  mOwner: TUnitIndex;
+  mSymbol: TIndexSymbol;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
+  Result := 0;
+  if AIndex = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TImplementationsText.FieldsTextDocumentUriAndPosition].Text);
+    Exit;
   end;
-  if not FStore.TryGet(mUri, mDocument) then
+  // Eine virtuelle Methode ist selbst ein mögliches Ziel; ein Interface hat keinen Rumpf.
+  if not AInterface then
   begin
-    Exit(TJSONNull.Create);
+    Result := 1;
   end;
-  mCancellation := TRequestCancellation.Create(ACancellation);
-  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
-  mTree := mShared.Tree;
-  ACancellation.ThrowIfCancellationRequested;
-  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
-  try
-    mResolver.Namespaces := Namespaces;
-    Result := TLspDefinition.ToJson(Targets(mResolver, FIndex, mTree, TDocumentUris.ToPath(mUri),
-      TLspPositions.ReadPosition(mPositionValue)));
-  finally
-    mResolver.Free;
+  for mLocation in AllDescendants(AIndex, AContainer) do
+  begin
+    if not (mLocation.Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType]) then
+    begin
+      Continue;
+    end;
+    if AInterface then
+    begin
+      Inc(Result);
+      Continue;
+    end;
+    if not AIndex.FindFile(mLocation.FileName, mOwner) then
+    begin
+      Continue;
+    end;
+    for mSymbol in mOwner.Symbols do
+    begin
+      if (mSymbol.Kind in cRoutineKinds) and SameText(mSymbol.Container, mLocation.Symbol.QualifiedName) and
+        SameText(mSymbol.Name, AName) then
+      begin
+        Inc(Result);
+        Break;
+      end;
+    end;
   end;
 end;
 

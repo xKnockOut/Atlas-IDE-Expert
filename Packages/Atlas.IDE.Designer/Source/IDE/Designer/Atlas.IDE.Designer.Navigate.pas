@@ -140,6 +140,52 @@ begin
   inherited Destroy;
 end;
 
+function TAtlasIdeDesignerNavigate.Target(const AItems: TArray<TAtlasNeighbourItem>; AFrom: Integer;
+  AKey: Word): Integer;
+begin
+  case AKey of
+    VK_HOME:
+      Result := TAtlasNeighbours.ParentOf(AItems, AFrom);
+    VK_END:
+      Result := TAtlasNeighbours.FirstChild(AItems, AFrom);
+    VK_PRIOR, VK_NEXT:
+      Result := TAtlasNeighbours.NextContainer(AItems, AFrom, AKey = VK_NEXT);
+  else
+    Result := TAtlasNeighbours.Find(AItems, AFrom, DirectionOf(AKey),
+      TAtlasIdeSettings.Current.DesignerSpatialCrossContainers);
+  end;
+end;
+
+/// <summary>Ziel in den sichtbaren Bereich rollen und kurz umrahmen.</summary>
+procedure TAtlasIdeDesignerNavigate.Show(AComponent: TComponent; ARoot: TComponent);
+var
+  mControl: TControl;
+  mScroller: TWinControl;
+begin
+  if not (AComponent is TControl) or not (ARoot is TWinControl) then
+  begin
+    Exit;
+  end;
+  mControl := TControl(AComponent);
+  // Rollen übernimmt die Fläche des Designers um das Formular, nie das Formular selbst (das änderte die .dfm).
+  mScroller := TWinControl(ARoot).Parent;
+  while (mScroller <> nil) and not (mScroller is TScrollingWinControl) do
+  begin
+    mScroller := mScroller.Parent;
+  end;
+  if mScroller <> nil then
+  begin
+    TScrollingWinControl(mScroller).ScrollInView(mControl);
+  end;
+  if FFlash = nil then
+  begin
+    FFlash := TAtlasDesignerFlash.CreateFlash(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
+  end;
+  // TRect.Create statt Rect(P1, P2): Je nach uses-Reihenfolge gilt nur Rect(L, T, R, B) (E2010).
+  FFlash.FlashAt(TRect.Create(mControl.ClientToScreen(Point(0, 0)),
+    mControl.ClientToScreen(Point(mControl.Width, mControl.Height))));
+end;
+
 procedure TAtlasIdeDesignerNavigate.UpdateKeys(AWanted: Boolean);
 begin
   if AWanted and TAtlasIdeSettings.Current.DesignerSpatialNavigation then
@@ -157,59 +203,6 @@ begin
   if FFlash <> nil then
   begin
     FFlash.ApplyColors(TAtlasIdeStyle.Colors);
-  end;
-end;
-
-class function TAtlasIdeDesignerNavigate.ItemsOf(ARoot: TComponent): TArray<TAtlasNeighbourItem>;
-var
-  mIndex: Integer;
-  mComponent: TComponent;
-  mControl: TControl;
-  mBounds: TRect;
-  mInfo: LongRec;
-begin
-  Result := nil;
-  for mIndex := 0 to ARoot.ComponentCount - 1 do
-  begin
-    mComponent := ARoot.Components[mIndex];
-    if mComponent.Name = '' then
-    begin
-      Continue;
-    end;
-    if not (mComponent is TControl) then
-    begin
-      mInfo := LongRec(mComponent.DesignInfo);
-      Result := Result + [TAtlasNeighbourItem.Create(mComponent.Name, '', Rect(SmallInt(mInfo.Lo),
-        SmallInt(mInfo.Hi), SmallInt(mInfo.Lo) + cIconSize, SmallInt(mInfo.Hi) + cIconSize), False, False)];
-      Continue;
-    end;
-    mControl := TControl(mComponent);
-    if not (ARoot is TWinControl) then
-    begin
-      Continue;
-    end;
-    mBounds := TAtlasDesignerAccess.BoundsInRoot(mControl, TWinControl(ARoot));
-    if not mBounds.IsEmpty then
-    begin
-      Result := Result + [TAtlasNeighbourItem.Create(mControl.Name, TAtlasDesignerAccess.ParentNameOf(mControl, ARoot),
-        mBounds, True, (mControl is TWinControl) and (csAcceptsControls in mControl.ControlStyle))];
-    end;
-  end;
-end;
-
-function TAtlasIdeDesignerNavigate.Target(const AItems: TArray<TAtlasNeighbourItem>; AFrom: Integer;
-  AKey: Word): Integer;
-begin
-  case AKey of
-    VK_HOME:
-      Result := TAtlasNeighbours.ParentOf(AItems, AFrom);
-    VK_END:
-      Result := TAtlasNeighbours.FirstChild(AItems, AFrom);
-    VK_PRIOR, VK_NEXT:
-      Result := TAtlasNeighbours.NextContainer(AItems, AFrom, AKey = VK_NEXT);
-  else
-    Result := TAtlasNeighbours.Find(AItems, AFrom, DirectionOf(AKey),
-      TAtlasIdeSettings.Current.DesignerSpatialCrossContainers);
   end;
 end;
 
@@ -297,34 +290,41 @@ begin
   Show(mTarget, mRoot);
 end;
 
-/// <summary>Ziel in den sichtbaren Bereich rollen und kurz umrahmen.</summary>
-procedure TAtlasIdeDesignerNavigate.Show(AComponent: TComponent; ARoot: TComponent);
+class function TAtlasIdeDesignerNavigate.ItemsOf(ARoot: TComponent): TArray<TAtlasNeighbourItem>;
 var
+  mIndex: Integer;
+  mComponent: TComponent;
   mControl: TControl;
-  mScroller: TWinControl;
+  mBounds: TRect;
+  mInfo: LongRec;
 begin
-  if not (AComponent is TControl) or not (ARoot is TWinControl) then
+  Result := nil;
+  for mIndex := 0 to ARoot.ComponentCount - 1 do
   begin
-    Exit;
+    mComponent := ARoot.Components[mIndex];
+    if mComponent.Name = '' then
+    begin
+      Continue;
+    end;
+    if not (mComponent is TControl) then
+    begin
+      mInfo := LongRec(mComponent.DesignInfo);
+      Result := Result + [TAtlasNeighbourItem.Create(mComponent.Name, '', Rect(SmallInt(mInfo.Lo),
+        SmallInt(mInfo.Hi), SmallInt(mInfo.Lo) + cIconSize, SmallInt(mInfo.Hi) + cIconSize), False, False)];
+      Continue;
+    end;
+    mControl := TControl(mComponent);
+    if not (ARoot is TWinControl) then
+    begin
+      Continue;
+    end;
+    mBounds := TAtlasDesignerAccess.BoundsInRoot(mControl, TWinControl(ARoot));
+    if not mBounds.IsEmpty then
+    begin
+      Result := Result + [TAtlasNeighbourItem.Create(mControl.Name, TAtlasDesignerAccess.ParentNameOf(mControl, ARoot),
+        mBounds, True, (mControl is TWinControl) and (csAcceptsControls in mControl.ControlStyle))];
+    end;
   end;
-  mControl := TControl(AComponent);
-  // Rollen übernimmt die Fläche des Designers um das Formular, nie das Formular selbst (das änderte die .dfm).
-  mScroller := TWinControl(ARoot).Parent;
-  while (mScroller <> nil) and not (mScroller is TScrollingWinControl) do
-  begin
-    mScroller := mScroller.Parent;
-  end;
-  if mScroller <> nil then
-  begin
-    TScrollingWinControl(mScroller).ScrollInView(mControl);
-  end;
-  if FFlash = nil then
-  begin
-    FFlash := TAtlasDesignerFlash.CreateFlash(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
-  end;
-  // TRect.Create statt Rect(P1, P2): Je nach uses-Reihenfolge gilt nur Rect(L, T, R, B) (E2010).
-  FFlash.FlashAt(TRect.Create(mControl.ClientToScreen(Point(0, 0)),
-    mControl.ClientToScreen(Point(mControl.Width, mControl.Height))));
 end;
 
 end.

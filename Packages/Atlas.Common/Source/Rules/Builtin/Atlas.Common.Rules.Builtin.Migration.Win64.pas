@@ -312,19 +312,6 @@ begin
     cTexts[TMigrationWin64Text.HandleTitle].Text);
 end;
 
-class function THandleAsIntegerRule.MessageParamType(const AName: string): string;
-begin
-  Result := '';
-  if MatchText(AName, ['wParam', 'AWParam']) then
-  begin
-    Result := 'WPARAM';
-  end
-  else if MatchText(AName, ['lParam', 'ALParam']) then
-  begin
-    Result := 'LPARAM';
-  end;
-end;
-
 procedure THandleAsIntegerRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mScope: TTypedScope;
@@ -506,6 +493,19 @@ begin
   end;
 end;
 
+class function THandleAsIntegerRule.MessageParamType(const AName: string): string;
+begin
+  Result := '';
+  if MatchText(AName, ['wParam', 'AWParam']) then
+  begin
+    Result := 'WPARAM';
+  end
+  else if MatchText(AName, ['lParam', 'ALParam']) then
+  begin
+    Result := 'LPARAM';
+  end;
+end;
+
 { TWindowLongPtrRule }
 
 function TWindowLongPtrRule.Descriptor: TRuleDescriptor;
@@ -615,25 +615,6 @@ begin
     cTexts[TMigrationWin64Text.AsmTitle].Text);
 end;
 
-class function TAsmWithoutWin64Rule.Is64BitRegister(const AName: string): Boolean;
-var
-  mName: string;
-  mNumber: Integer;
-begin
-  mName := LowerCase(AName);
-  Result := MatchStr(mName, ['rax', 'rbx', 'rcx', 'rdx', 'rsi', 'rdi', 'rbp', 'rsp', 'rip']);
-  if not Result and (Length(mName) >= 2) and (mName[1] = 'r') then
-  begin
-    // r8 … r15, auch r8d, r8w, r8b
-    mName := Copy(mName, 2, MaxInt);
-    if (mName <> '') and CharInSet(mName[Length(mName)], ['d', 'w', 'b']) then
-    begin
-      mName := Copy(mName, 1, Length(mName) - 1);
-    end;
-    Result := TryStrToInt(mName, mNumber) and (mNumber >= 8) and (mNumber <= 15);
-  end;
-end;
-
 procedure TAsmWithoutWin64Rule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mMigration: TMigrationScope;
@@ -709,6 +690,25 @@ begin
     end;
   finally
     mMigration.Free;
+  end;
+end;
+
+class function TAsmWithoutWin64Rule.Is64BitRegister(const AName: string): Boolean;
+var
+  mName: string;
+  mNumber: Integer;
+begin
+  mName := LowerCase(AName);
+  Result := MatchStr(mName, ['rax', 'rbx', 'rcx', 'rdx', 'rsi', 'rdi', 'rbp', 'rsp', 'rip']);
+  if not Result and (Length(mName) >= 2) and (mName[1] = 'r') then
+  begin
+    // r8 … r15, auch r8d, r8w, r8b
+    mName := Copy(mName, 2, MaxInt);
+    if (mName <> '') and CharInSet(mName[Length(mName)], ['d', 'w', 'b']) then
+    begin
+      mName := Copy(mName, 1, Length(mName) - 1);
+    end;
+    Result := TryStrToInt(mName, mNumber) and (mNumber >= 8) and (mNumber <= 15);
   end;
 end;
 

@@ -25,6 +25,8 @@ uses
   Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.DesignerView;
 
+{ TAtlasIdeCodeView }
+
 class function TAtlasIdeCodeView.InFront: Boolean;
 begin
   Result := TAtlasIdeDesignerView.CodeInFront(TAtlasEditorBarHost.TopEditor);

@@ -34,6 +34,8 @@ type
 
 implementation
 
+{ TAtlasMouseButtons }
+
 class function TAtlasMouseButtons.DirectionOf(AMessage: Cardinal; AWParam, ALParam: NativeInt): TAtlasNavDirection;
 var
   mCode: Integer;

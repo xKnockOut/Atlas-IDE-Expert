@@ -106,6 +106,8 @@ type
     property Folder: string read FFolder;
   end;
 
+{ TWatchHolder }
+
 constructor TWatchHolder.Create(const AFolder: string);
 begin
   inherited Create;
@@ -197,34 +199,43 @@ end;
 
 { TAtlasIdeBreakpointSets }
 
-class procedure TAtlasIdeBreakpointSets.Start(const AMessage: TProc<string>);
+class procedure TAtlasIdeBreakpointSets.ReadPlaces;
 var
-  mTimer: TTimer;
+  mFolder, mKey: string;
+  mSet: TAtlasBreakpointSet;
+  mItem: TAtlasResolvedBreakpoint;
+  mIndex: Integer;
 begin
-  FMessage := AMessage;
-  FStarted := True;
-  mTimer := TTimer.Create(nil);
-  mTimer.Interval := cTickMs;
-  mTimer.OnTimer := Tick;
-  FTimer := mTimer;
-end;
-
-class procedure TAtlasIdeBreakpointSets.Release;
-begin
-  FStarted := False;
-  FreeAndNil(FTimer);
-  // Ein laufender Auftrag hält die Beobachtung selbst; sie endet mit ihm.
-  FWatch := nil;
-  FWatchHolder := nil;
-  FWatchFolder := '';
-  FBusy := False;
-  FMessage := nil;
-  FreeAndNil(FPlaces);
-end;
-
-class function TAtlasIdeBreakpointSets.Started: Boolean;
-begin
-  Result := FStarted;
+  if FPlaces = nil then
+  begin
+    FPlaces := TStringList.Create;
+  end;
+  FPlaces.Clear;
+  FPlacesAt := TThread.GetTickCount64;
+  if not ProjectFolder(mFolder) then
+  begin
+    Exit;
+  end;
+  for mSet in LoadSets(mFolder) do
+  begin
+    for mItem in TAtlasBreakpointSets.Resolve(mSet.Entries, SourceTextFunc()) do
+    begin
+      if not mItem.Found then
+      begin
+        Continue;
+      end;
+      mKey := LowerCase(mItem.Entry.FileName) + '|' + IntToStr(mItem.Line);
+      mIndex := FPlaces.IndexOfName(mKey);
+      if mIndex < 0 then
+      begin
+        FPlaces.Add(mKey + '=' + mSet.Name);
+      end
+      else
+      begin
+        FPlaces.ValueFromIndex[mIndex] := FPlaces.ValueFromIndex[mIndex] + #9 + mSet.Name;
+      end;
+    end;
+  end;
 end;
 
 class procedure TAtlasIdeBreakpointSets.Report(const AText: string);
@@ -294,6 +305,55 @@ begin
       PropsOf(mBreakpoints[mIndex]))];
   end;
   Result := AEntries <> nil;
+end;
+
+class function TAtlasIdeBreakpointSets.AskSet(const AFolder: string; var ASet: TAtlasBreakpointSet): Boolean;
+var
+  mName, mBranch: string;
+  mSets: TAtlasBreakpointSetList;
+  mIndex: Integer;
+begin
+  mSets := LoadSets(AFolder);
+  Result := TAtlasBreakpointSetDialog.Execute(TAtlasBreakpointSetMode.Save, mSets, FBranch, FActiveName, mName,
+    mBranch);
+  if not Result then
+  begin
+    Exit;
+  end;
+  Result := TAtlasBreakpointSets.ValidName(mName);
+  if not Result then
+  begin
+    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetInvalidName, [mName]));
+    Exit;
+  end;
+  ASet.Name := Trim(mName);
+  ASet.Branch := mBranch;
+  // Ohne neue Kopplung bleibt der Branch eines vorhandenen Satzes gleichen Namens.
+  for mIndex := 0 to High(mSets) do
+  begin
+    if SameText(mSets[mIndex].Name, ASet.Name) and (ASet.Branch = '') and (FBranch = '') then
+    begin
+      ASet.Branch := mSets[mIndex].Branch;
+    end;
+  end;
+end;
+
+class function TAtlasIdeBreakpointSets.WriteSet(const AFolder: string; const ASet: TAtlasBreakpointSet): Boolean;
+var
+  mFile: string;
+begin
+  mFile := TAtlasBreakpointSets.FileFor(AFolder, ASet.Name);
+  try
+    ForceDirectories(ExtractFileDir(mFile));
+    TAtlasDataFile.Write(mFile, TAtlasBreakpointSets.ToJson(ASet, AFolder));
+    Result := True;
+  except
+    on E: Exception do
+    begin
+      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetNotSaved, [ASet.Name, E.Message]));
+      Result := False;
+    end;
+  end;
 end;
 
 /// <summary>Einträge aller Sätze außer ASets[AIndex]; nil ohne AExclusive.</summary>
@@ -428,53 +488,101 @@ begin
   end;
 end;
 
-class function TAtlasIdeBreakpointSets.AskSet(const AFolder: string; var ASet: TAtlasBreakpointSet): Boolean;
+class procedure TAtlasIdeBreakpointSets.Tick(Sender: TObject);
 var
-  mName, mBranch: string;
-  mSets: TAtlasBreakpointSetList;
-  mIndex: Integer;
+  mFolder: string;
+  mHolder: TWatchHolder;
+  mKeep: IInterface;
+  mResult: TArray<TAtlasVcsSwitch>;
 begin
-  mSets := LoadSets(AFolder);
-  Result := TAtlasBreakpointSetDialog.Execute(TAtlasBreakpointSetMode.Save, mSets, FBranch, FActiveName, mName,
-    mBranch);
-  if not Result then
+  if FBusy or not FStarted or not TAtlasIdeSettings.Current.DebugBreakpointSetPerBranch or
+    not ProjectFolder(mFolder) then
   begin
     Exit;
   end;
-  Result := TAtlasBreakpointSets.ValidName(mName);
-  if not Result then
+  if (FWatch = nil) or not SameText(FWatchFolder, mFolder) then
   begin
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetInvalidName, [mName]));
-    Exit;
+    mHolder := TWatchHolder.Create(mFolder);
+    FWatch := mHolder;
+    FWatchHolder := mHolder;
+    FWatchFolder := mFolder;
   end;
-  ASet.Name := Trim(mName);
-  ASet.Branch := mBranch;
-  // Ohne neue Kopplung bleibt der Branch eines vorhandenen Satzes gleichen Namens.
-  for mIndex := 0 to High(mSets) do
-  begin
-    if SameText(mSets[mIndex].Name, ASet.Name) and (ASet.Branch = '') and (FBranch = '') then
+  mKeep := FWatch;
+  mHolder := TWatchHolder(FWatchHolder);
+  // Ergebnis in einem Array: Hintergrund und Hauptthread teilen es über die gefangene Variable.
+  SetLength(mResult, 1);
+  mResult[0] := TAtlasVcsSwitch.None;
+  FBusy := True;
+  if not TAtlasIdeVcs.Run(
+    procedure
     begin
-      ASet.Branch := mSets[mIndex].Branch;
-    end;
+      mResult[0] := mHolder.Watch.Check;
+    end,
+    procedure
+    begin
+      if not FStarted or (FWatch <> mKeep) then
+      begin
+        Exit;
+      end;
+      FBusy := False;
+      if mHolder.Watch.Known then
+      begin
+        BranchArrived(mHolder.Watch.Head.Branch, mResult[0] = TAtlasVcsSwitch.Branch);
+      end;
+    end) then
+  begin
+    FBusy := False;
   end;
 end;
 
-class function TAtlasIdeBreakpointSets.WriteSet(const AFolder: string; const ASet: TAtlasBreakpointSet): Boolean;
+class procedure TAtlasIdeBreakpointSets.BranchArrived(const ABranch: string; ASwitched: Boolean);
 var
-  mFile: string;
+  mFolder: string;
+  mSets: TAtlasBreakpointSetList;
+  mIndex: Integer;
 begin
-  mFile := TAtlasBreakpointSets.FileFor(AFolder, ASet.Name);
-  try
-    ForceDirectories(ExtractFileDir(mFile));
-    TAtlasDataFile.Write(mFile, TAtlasBreakpointSets.ToJson(ASet, AFolder));
-    Result := True;
-  except
-    on E: Exception do
-    begin
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetNotSaved, [ASet.Name, E.Message]));
-      Result := False;
-    end;
+  FBranch := ABranch;
+  if not ASwitched or not TAtlasIdeSettings.Current.DebugBreakpointSetPerBranch or not ProjectFolder(mFolder) then
+  begin
+    Exit;
   end;
+  mSets := LoadSets(mFolder);
+  mIndex := TAtlasBreakpointSets.ForBranch(mSets, ABranch);
+  if mIndex >= 0 then
+  begin
+    Apply(mSets, mIndex, True, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetBranchSwitched,
+      [ABranch]));
+  end;
+end;
+
+class procedure TAtlasIdeBreakpointSets.Start(const AMessage: TProc<string>);
+var
+  mTimer: TTimer;
+begin
+  FMessage := AMessage;
+  FStarted := True;
+  mTimer := TTimer.Create(nil);
+  mTimer.Interval := cTickMs;
+  mTimer.OnTimer := Tick;
+  FTimer := mTimer;
+end;
+
+class procedure TAtlasIdeBreakpointSets.Release;
+begin
+  FStarted := False;
+  FreeAndNil(FTimer);
+  // Ein laufender Auftrag hält die Beobachtung selbst; sie endet mit ihm.
+  FWatch := nil;
+  FWatchHolder := nil;
+  FWatchFolder := '';
+  FBusy := False;
+  FMessage := nil;
+  FreeAndNil(FPlaces);
+end;
+
+class function TAtlasIdeBreakpointSets.Started: Boolean;
+begin
+  Result := FStarted;
 end;
 
 class procedure TAtlasIdeBreakpointSets.SaveSet;
@@ -497,6 +605,8 @@ begin
     Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetSaved, [mSet.Name, Length(mSet.Entries)]));
   end;
 end;
+
+{ Branch-Wechsel }
 
 class procedure TAtlasIdeBreakpointSets.SwitchSet;
 var
@@ -548,114 +658,6 @@ begin
     FActiveName := '';
   end;
   Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetDeleted, [mSets[mIndex].Name]));
-end;
-
-{ Branch-Wechsel }
-
-class procedure TAtlasIdeBreakpointSets.BranchArrived(const ABranch: string; ASwitched: Boolean);
-var
-  mFolder: string;
-  mSets: TAtlasBreakpointSetList;
-  mIndex: Integer;
-begin
-  FBranch := ABranch;
-  if not ASwitched or not TAtlasIdeSettings.Current.DebugBreakpointSetPerBranch or not ProjectFolder(mFolder) then
-  begin
-    Exit;
-  end;
-  mSets := LoadSets(mFolder);
-  mIndex := TAtlasBreakpointSets.ForBranch(mSets, ABranch);
-  if mIndex >= 0 then
-  begin
-    Apply(mSets, mIndex, True, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetBranchSwitched,
-      [ABranch]));
-  end;
-end;
-
-class procedure TAtlasIdeBreakpointSets.Tick(Sender: TObject);
-var
-  mFolder: string;
-  mHolder: TWatchHolder;
-  mKeep: IInterface;
-  mResult: TArray<TAtlasVcsSwitch>;
-begin
-  if FBusy or not FStarted or not TAtlasIdeSettings.Current.DebugBreakpointSetPerBranch or
-    not ProjectFolder(mFolder) then
-  begin
-    Exit;
-  end;
-  if (FWatch = nil) or not SameText(FWatchFolder, mFolder) then
-  begin
-    mHolder := TWatchHolder.Create(mFolder);
-    FWatch := mHolder;
-    FWatchHolder := mHolder;
-    FWatchFolder := mFolder;
-  end;
-  mKeep := FWatch;
-  mHolder := TWatchHolder(FWatchHolder);
-  // Ergebnis in einem Array: Hintergrund und Hauptthread teilen es über die gefangene Variable.
-  SetLength(mResult, 1);
-  mResult[0] := TAtlasVcsSwitch.None;
-  FBusy := True;
-  if not TAtlasIdeVcs.Run(
-    procedure
-    begin
-      mResult[0] := mHolder.Watch.Check;
-    end,
-    procedure
-    begin
-      if not FStarted or (FWatch <> mKeep) then
-      begin
-        Exit;
-      end;
-      FBusy := False;
-      if mHolder.Watch.Known then
-      begin
-        BranchArrived(mHolder.Watch.Head.Branch, mResult[0] = TAtlasVcsSwitch.Branch);
-      end;
-    end) then
-  begin
-    FBusy := False;
-  end;
-end;
-
-class procedure TAtlasIdeBreakpointSets.ReadPlaces;
-var
-  mFolder, mKey: string;
-  mSet: TAtlasBreakpointSet;
-  mItem: TAtlasResolvedBreakpoint;
-  mIndex: Integer;
-begin
-  if FPlaces = nil then
-  begin
-    FPlaces := TStringList.Create;
-  end;
-  FPlaces.Clear;
-  FPlacesAt := TThread.GetTickCount64;
-  if not ProjectFolder(mFolder) then
-  begin
-    Exit;
-  end;
-  for mSet in LoadSets(mFolder) do
-  begin
-    for mItem in TAtlasBreakpointSets.Resolve(mSet.Entries, SourceTextFunc()) do
-    begin
-      if not mItem.Found then
-      begin
-        Continue;
-      end;
-      mKey := LowerCase(mItem.Entry.FileName) + '|' + IntToStr(mItem.Line);
-      mIndex := FPlaces.IndexOfName(mKey);
-      if mIndex < 0 then
-      begin
-        FPlaces.Add(mKey + '=' + mSet.Name);
-      end
-      else
-      begin
-        FPlaces.ValueFromIndex[mIndex] := FPlaces.ValueFromIndex[mIndex] + #9 + mSet.Name;
-      end;
-    end;
-  end;
 end;
 
 class function TAtlasIdeBreakpointSets.SetNamesAt(const AFileName: string; ALine: Integer): TArray<string>;

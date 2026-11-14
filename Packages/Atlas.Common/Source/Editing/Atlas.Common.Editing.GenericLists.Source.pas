@@ -123,6 +123,78 @@ begin
   inherited;
 end;
 
+function TGenericListSource.IsRewritten(AOffset: Integer): Boolean;
+var
+  mRange: TGenericListRange;
+begin
+  for mRange in FRewritten do
+  begin
+    if mRange.Contains(AOffset) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TGenericListSource.ContnrsTypeKept(AIndex: Integer): Boolean;
+var
+  mTokens: TArray<TPascalToken>;
+  mNext: Integer;
+begin
+  mTokens := FTree.Tokens;
+  if (mTokens[AIndex].Kind <> TPascalTokenKind.Identifier) or
+    not TGenericListNames.IsContnrsType(mTokens[AIndex].Text) or IsRewritten(mTokens[AIndex].Offset) then
+  begin
+    Exit(False);
+  end;
+  // TStack<T> und TObjectList<T> stammen aus System.Generics.Collections.
+  mNext := AIndex + 1;
+  while (mNext <= High(mTokens)) and IsTrivia(mTokens[mNext]) do
+  begin
+    Inc(mNext);
+  end;
+  Result := (mNext > High(mTokens)) or not mTokens[mNext].IsSymbol('<');
+end;
+
+function TGenericListSource.SortedEdits(const AGenericText, AItemType: string): TArray<TTextEdit>;
+var
+  mIndex, mInner: Integer;
+  mEdit: TTextEdit;
+begin
+  Result := nil;
+  for mEdit in FEdits do
+  begin
+    Result := Result + [TTextEdit.Create(mEdit.Range, StringReplace(StringReplace(mEdit.NewText,
+      cGenericPlaceholder, AGenericText, [rfReplaceAll]), cItemPlaceholder, AItemType, [rfReplaceAll]))];
+  end;
+  // Einfügen statt TArray.Sort: stabil, Edits an derselben Stelle behalten ihre Reihenfolge.
+  for mIndex := 1 to High(Result) do
+  begin
+    mEdit := Result[mIndex];
+    mInner := mIndex - 1;
+    while (mInner >= 0) and EditBefore(mEdit, Result[mInner]) do
+    begin
+      Result[mInner + 1] := Result[mInner];
+      Dec(mInner);
+    end;
+    Result[mInner + 1] := mEdit;
+  end;
+end;
+
+class function TGenericListSource.EditBefore(const AFirst, ASecond: TTextEdit): Boolean;
+begin
+  Result := (AFirst.Range.StartPos.Line < ASecond.Range.StartPos.Line) or
+    ((AFirst.Range.StartPos.Line = ASecond.Range.StartPos.Line) and
+    (AFirst.Range.StartPos.Character < ASecond.Range.StartPos.Character));
+end;
+
+class function TGenericListSource.SameEdit(const AFirst, ASecond: TTextEdit): Boolean;
+begin
+  Result := (AFirst.Range.StartPos = ASecond.Range.StartPos) and (AFirst.Range.EndPos = ASecond.Range.EndPos) and
+    (AFirst.NewText = ASecond.NewText);
+end;
+
 function TGenericListSource.NodeText(ANode: TSyntaxNode): string;
 begin
   Result := Copy(FText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
@@ -165,40 +237,6 @@ begin
   end;
 end;
 
-function TGenericListSource.IsRewritten(AOffset: Integer): Boolean;
-var
-  mRange: TGenericListRange;
-begin
-  for mRange in FRewritten do
-  begin
-    if mRange.Contains(AOffset) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function TGenericListSource.ContnrsTypeKept(AIndex: Integer): Boolean;
-var
-  mTokens: TArray<TPascalToken>;
-  mNext: Integer;
-begin
-  mTokens := FTree.Tokens;
-  if (mTokens[AIndex].Kind <> TPascalTokenKind.Identifier) or
-    not TGenericListNames.IsContnrsType(mTokens[AIndex].Text) or IsRewritten(mTokens[AIndex].Offset) then
-  begin
-    Exit(False);
-  end;
-  // TStack<T> und TObjectList<T> stammen aus System.Generics.Collections.
-  mNext := AIndex + 1;
-  while (mNext <= High(mTokens)) and IsTrivia(mTokens[mNext]) do
-  begin
-    Inc(mNext);
-  end;
-  Result := (mNext > High(mTokens)) or not mTokens[mNext].IsSymbol('<');
-end;
-
 function TGenericListSource.LegacyUnitStillUsed: Boolean;
 var
   mIndex: Integer;
@@ -225,44 +263,6 @@ begin
     end;
   end;
   Result := False;
-end;
-
-class function TGenericListSource.EditBefore(const AFirst, ASecond: TTextEdit): Boolean;
-begin
-  Result := (AFirst.Range.StartPos.Line < ASecond.Range.StartPos.Line) or
-    ((AFirst.Range.StartPos.Line = ASecond.Range.StartPos.Line) and
-    (AFirst.Range.StartPos.Character < ASecond.Range.StartPos.Character));
-end;
-
-class function TGenericListSource.SameEdit(const AFirst, ASecond: TTextEdit): Boolean;
-begin
-  Result := (AFirst.Range.StartPos = ASecond.Range.StartPos) and (AFirst.Range.EndPos = ASecond.Range.EndPos) and
-    (AFirst.NewText = ASecond.NewText);
-end;
-
-function TGenericListSource.SortedEdits(const AGenericText, AItemType: string): TArray<TTextEdit>;
-var
-  mIndex, mInner: Integer;
-  mEdit: TTextEdit;
-begin
-  Result := nil;
-  for mEdit in FEdits do
-  begin
-    Result := Result + [TTextEdit.Create(mEdit.Range, StringReplace(StringReplace(mEdit.NewText,
-      cGenericPlaceholder, AGenericText, [rfReplaceAll]), cItemPlaceholder, AItemType, [rfReplaceAll]))];
-  end;
-  // Einfügen statt TArray.Sort: stabil, Edits an derselben Stelle behalten ihre Reihenfolge.
-  for mIndex := 1 to High(Result) do
-  begin
-    mEdit := Result[mIndex];
-    mInner := mIndex - 1;
-    while (mInner >= 0) and EditBefore(mEdit, Result[mInner]) do
-    begin
-      Result[mInner + 1] := Result[mInner];
-      Dec(mInner);
-    end;
-    Result[mInner + 1] := mEdit;
-  end;
 end;
 
 function TGenericListSource.Finalize(const AGenericText, AItemType: string; out AReason: string): Boolean;

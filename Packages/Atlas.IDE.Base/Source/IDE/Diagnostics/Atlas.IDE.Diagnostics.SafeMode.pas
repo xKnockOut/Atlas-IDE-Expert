@@ -140,9 +140,19 @@ begin
   end;
 end;
 
-class function TAtlasIdeSafeMode.DefaultFolder: string;
+procedure TAtlasIdeSafeMode.WriteMarker;
 begin
-  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'Session');
+  if not FStarted then
+  begin
+    Exit;
+  end;
+  try
+    FBook.SaveMarker(FMarker);
+  except
+    // Ohne Marke erkennt der nächste Start den Absturz nicht; die IDE stört das nicht.
+    on Exception do
+      ;
+  end;
 end;
 
 function Options: TAtlasSafeOptions;
@@ -246,19 +256,24 @@ begin
   end;
 end;
 
-procedure TAtlasIdeSafeMode.WriteMarker;
+procedure TAtlasIdeSafeMode.ShowLine;
+var
+  mAction: TProc;
 begin
-  if not FStarted then
+  if (FRegistry = nil) or (FLineRef <> nil) then
   begin
     Exit;
   end;
-  try
-    FBook.SaveMarker(FMarker);
-  except
-    // Ohne Marke erkennt der nächste Start den Absturz nicht; die IDE stört das nicht.
-    on Exception do
-      ;
-  end;
+  mAction :=
+    procedure
+    begin
+      ShowNotice;
+    end;
+  FLine := TAtlasStatusLine.Create(FRegistry, cStatusId, cStatusOrder, mAction);
+  FLineRef := FLine;
+  FLine.Update(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeStatusLine), TAtlasStatusState.Yellow,
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeStatusSummary));
+  FRegistry.Add(FLineRef);
 end;
 
 /// <summary>Zustand und Marken abgestürzter Sitzungen aus ABook; leer ohne Buch oder wenn das Lesen
@@ -300,6 +315,40 @@ begin
   begin
     Result := ', ohne Sitzungsmarke (' + TAtlasSafeMode.cNoMarkerEnvironmentName + ')';
   end;
+end;
+
+procedure TAtlasIdeSafeMode.HideLine;
+begin
+  if FLineRef = nil then
+  begin
+    Exit;
+  end;
+  FLine.Detach;
+  if FRegistry <> nil then
+  begin
+    FRegistry.Remove(cStatusId);
+  end;
+  FLine := nil;
+  FLineRef := nil;
+end;
+
+procedure TAtlasIdeSafeMode.Restore;
+var
+  mAt: string;
+begin
+  if TAtlasIdeSettings.History.Count = 0 then
+  begin
+    Exit;
+  end;
+  mAt := DateTimeToStr(TTimeZone.Local.ToLocalTime(TAtlasIdeSettings.History[0].ChangedAt), FormatSettings);
+  TAtlasIdeSettings.Restore(0);
+  UpdateFeatures;
+  Warn(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.SafeRestored, [mAt]));
+end;
+
+class function TAtlasIdeSafeMode.DefaultFolder: string;
+begin
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'Session');
 end;
 
 procedure TAtlasIdeSafeMode.Start(const AFolder: string; const ARegistry: IAtlasStatusRegistry);
@@ -426,60 +475,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeSafeMode.ShowLine;
-var
-  mAction: TProc;
-begin
-  if (FRegistry = nil) or (FLineRef <> nil) then
-  begin
-    Exit;
-  end;
-  mAction :=
-    procedure
-    begin
-      ShowNotice;
-    end;
-  FLine := TAtlasStatusLine.Create(FRegistry, cStatusId, cStatusOrder, mAction);
-  FLineRef := FLine;
-  FLine.Update(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeStatusLine), TAtlasStatusState.Yellow,
-    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeStatusSummary));
-  FRegistry.Add(FLineRef);
-end;
-
-procedure TAtlasIdeSafeMode.HideLine;
-begin
-  if FLineRef = nil then
-  begin
-    Exit;
-  end;
-  FLine.Detach;
-  if FRegistry <> nil then
-  begin
-    FRegistry.Remove(cStatusId);
-  end;
-  FLine := nil;
-  FLineRef := nil;
-end;
-
-procedure TAtlasIdeSafeMode.Leave;
-begin
-  if FLevel = TAtlasSafeLevel.Normal then
-  begin
-    Exit;
-  end;
-  FLevel := TAtlasSafeLevel.Normal;
-  FAnswered := True;
-  if FNotice <> nil then
-  begin
-    FNotice.Close;
-  end;
-  HideLine;
-  // Die Composition meldet über OnChanged der Einstellungen alles Weitere an.
-  TAtlasIdeSettings.SetSession(Default(TAtlasToggleSession));
-  UpdateFeatures;
-  Warn(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeLeft));
-end;
-
 function NoticeText(AKind: TAtlasSafeNoticeKind; AReason: TAtlasSafeReason): string;
 begin
   if AKind = TAtlasSafeNoticeKind.Ask then
@@ -544,18 +539,23 @@ begin
   end;
 end;
 
-procedure TAtlasIdeSafeMode.Restore;
-var
-  mAt: string;
+procedure TAtlasIdeSafeMode.Leave;
 begin
-  if TAtlasIdeSettings.History.Count = 0 then
+  if FLevel = TAtlasSafeLevel.Normal then
   begin
     Exit;
   end;
-  mAt := DateTimeToStr(TTimeZone.Local.ToLocalTime(TAtlasIdeSettings.History[0].ChangedAt), FormatSettings);
-  TAtlasIdeSettings.Restore(0);
+  FLevel := TAtlasSafeLevel.Normal;
+  FAnswered := True;
+  if FNotice <> nil then
+  begin
+    FNotice.Close;
+  end;
+  HideLine;
+  // Die Composition meldet über OnChanged der Einstellungen alles Weitere an.
+  TAtlasIdeSettings.SetSession(Default(TAtlasToggleSession));
   UpdateFeatures;
-  Warn(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.SafeRestored, [mAt]));
+  Warn(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeLeft));
 end;
 
 function ReadLog(const AFileName: string): TArray<string>;

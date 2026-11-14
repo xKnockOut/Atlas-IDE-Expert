@@ -112,55 +112,12 @@ uses
   Atlas.Common.Rules.Builtin.Metrics,
   Shell.Hotspots;
 
+{ TShellSources }
+
 constructor TShellSources.Create(const AServices: TShellSourcesServices);
 begin
   inherited Create;
   FServices := AServices;
-end;
-
-function TShellSources.MetricsSource: TLspMetricsSourceFunc;
-begin
-  Result := MetricsSourceFor;
-end;
-
-function TShellSources.ArchitectureSource: TLspArchitectureSourceFunc;
-begin
-  Result := ArchitectureSourceFor;
-end;
-
-function TShellSources.QuerySource: TQuerySourceFunc;
-begin
-  Result := QuerySourceOf;
-end;
-
-function TShellSources.QuerySettings: TLspQuerySettingsFunc;
-begin
-  Result := QuerySettingsFor;
-end;
-
-function TShellSources.HotspotSource: TLspHotspotSourceFunc;
-begin
-  Result := HotspotSourceFor;
-end;
-
-function TShellSources.UnitRelationsOptions: TLspUnitRelationsOptionsFunc;
-begin
-  Result := UnitRelationsOptionsFor;
-end;
-
-function TShellSources.SymbolPathSource: TLspSymbolPathSourceFunc;
-begin
-  Result := SymbolPathSourceFor;
-end;
-
-function TShellSources.RationaleOptions: THoverRationaleProvider;
-begin
-  Result := RationaleOptionsFor;
-end;
-
-function TShellSources.CodeLensMetrics: TCodeLensMetricsFunc;
-begin
-  Result := CodeLensMetricsFor;
 end;
 
 function TShellSources.MetricsSourceFor(const AFileName: string; AProject: Boolean;
@@ -240,32 +197,6 @@ begin
   Result := TShellWorkspaces.Choose(Result, FServices.Workspaces.Items);
 end;
 
-function TShellSources.SymbolPathSourceFor(const AFileName: string; out ASettings: TServerSettings;
-  out ANamespaces: TArray<string>): Boolean;
-var
-  mSource: TLspMetricsSource;
-  mWorkspace: TShellWorkspace;
-begin
-  ASettings := TServerSettings.Default;
-  ANamespaces := nil;
-  Result := MetricsSourceFor(AFileName, True, mSource);
-  if not Result then
-  begin
-    Exit;
-  end;
-  ASettings := mSource.Settings;
-  System.TMonitor.Enter(FServices.Workspaces.Lock);
-  try
-    mWorkspace := WorkspaceNear(AFileName);
-    if mWorkspace <> nil then
-    begin
-      ANamespaces := mWorkspace.State.Namespaces;
-    end;
-  finally
-    System.TMonitor.Exit(FServices.Workspaces.Lock);
-  end;
-end;
-
 function TShellSources.ArchitectureSourceFor(const AFileName, AScope: string;
   out ARequest: TArchitectureRequest; out ASettings: TServerSettings): Boolean;
 var
@@ -324,6 +255,50 @@ begin
   end;
 end;
 
+function TShellSources.QueryWorkspace: TShellWorkspace;
+var
+  mCandidate: TShellWorkspace;
+  mActive: string;
+begin
+  // Projektgruppe: Choose liefert nur bei genau einem Arbeitsbereich etwas; sonst hieß es "Kein Projekt
+  // geladen". Wurzel, Namensräume und Einstellungen vom in der IDE aktiven Projekt, sonst vom ausgewählten,
+  // sonst vom ersten.
+  Result := nil;
+  mActive := FServices.ActiveProject();
+  for mCandidate in FServices.Workspaces.Items do
+  begin
+    if (mCandidate.State.ProjectFileName <> '') and SameText(mCandidate.State.ProjectFileName, mActive) then
+    begin
+      Result := mCandidate;
+    end;
+  end;
+  if Result <> nil then
+  begin
+    Exit;
+  end;
+  for mCandidate in FServices.Workspaces.Items do
+  begin
+    if FServices.Workspaces.IsSelected(mCandidate) then
+    begin
+      Exit(mCandidate);
+    end;
+  end;
+  if FServices.Workspaces.Items.Count > 0 then
+  begin
+    Result := FServices.Workspaces.Items[0];
+  end;
+end;
+
+function TShellSources.QuerySettingsFor(const AFileName: string; out ASettings: TServerSettings;
+  out ARoot: string): Boolean;
+var
+  mSource: TLspMetricsSource;
+begin
+  Result := MetricsSourceFor(AFileName, False, mSource);
+  ASettings := mSource.Settings;
+  ARoot := mSource.Root;
+end;
+
 function TShellSources.HotspotSourceFor(const AFileName: string; out ARequest: THotspotRequest;
   out ASettings: TServerSettings; out AVcs: IHotspotVcs; out AError: string): Boolean;
 var
@@ -347,6 +322,104 @@ begin
   begin
     TShellHotspotVcs.Detect(mArchitecture.Root, ASettings, AVcs, AError);
   end;
+end;
+
+function TShellSources.UnitRelationsOptionsFor(const AFileName: string): TUsesGraphOptions;
+var
+  mWorkspace: TShellWorkspace;
+begin
+  Result := TUsesGraphOptions.Default;
+  Result.IncludeLibrary := True;
+  System.TMonitor.Enter(FServices.Workspaces.Lock);
+  try
+    mWorkspace := WorkspaceNear(AFileName);
+    if mWorkspace <> nil then
+    begin
+      Result.Root := mWorkspace.Root;
+      Result.Namespaces := mWorkspace.State.Namespaces;
+    end;
+  finally
+    System.TMonitor.Exit(FServices.Workspaces.Lock);
+  end;
+end;
+
+function TShellSources.SymbolPathSourceFor(const AFileName: string; out ASettings: TServerSettings;
+  out ANamespaces: TArray<string>): Boolean;
+var
+  mSource: TLspMetricsSource;
+  mWorkspace: TShellWorkspace;
+begin
+  ASettings := TServerSettings.Default;
+  ANamespaces := nil;
+  Result := MetricsSourceFor(AFileName, True, mSource);
+  if not Result then
+  begin
+    Exit;
+  end;
+  ASettings := mSource.Settings;
+  System.TMonitor.Enter(FServices.Workspaces.Lock);
+  try
+    mWorkspace := WorkspaceNear(AFileName);
+    if mWorkspace <> nil then
+    begin
+      ANamespaces := mWorkspace.State.Namespaces;
+    end;
+  finally
+    System.TMonitor.Exit(FServices.Workspaces.Lock);
+  end;
+end;
+
+function TShellSources.RationaleOptionsFor(const AUri: string): TRationaleOptions;
+var
+  mWorkspace: TShellWorkspace;
+begin
+  System.TMonitor.Enter(FServices.Workspaces.Lock);
+  try
+    mWorkspace := FServices.Workspaces.Pick(TDocumentUris.ToPath(AUri));
+    // ADR-Ordner relativ zum Arbeitsbereich; ohne Arbeitsbereich nur ein absoluter.
+    if mWorkspace = nil then
+    begin
+      Result := TRationaleOptions.FromSettings(FServices.Settings.Loose, '');
+    end
+    else
+    begin
+      Result := TRationaleOptions.FromSettings(mWorkspace.Configuration.Settings, mWorkspace.Root);
+    end;
+  finally
+    System.TMonitor.Exit(FServices.Workspaces.Lock);
+  end;
+end;
+
+function TShellSources.CodeLensMetricsFor(const AUri: string; out ALimits: TMetricLimits): Boolean;
+var
+  mSource: TLspMetricsSource;
+begin
+  if not MetricsSourceFor(TDocumentUris.ToPath(AUri), False, mSource) then
+  begin
+    mSource.Settings := TServerSettings.Default;
+  end;
+  ALimits := TMetricRules.Limits(mSource.Settings);
+  Result := mSource.Settings.Metrics and mSource.Settings.CodeLens.Metrics;
+end;
+
+function TShellSources.MetricsSource: TLspMetricsSourceFunc;
+begin
+  Result := MetricsSourceFor;
+end;
+
+function TShellSources.ArchitectureSource: TLspArchitectureSourceFunc;
+begin
+  Result := ArchitectureSourceFor;
+end;
+
+function TShellSources.QuerySource: TQuerySourceFunc;
+begin
+  Result := QuerySourceOf;
+end;
+
+function TShellSources.QuerySettings: TLspQuerySettingsFunc;
+begin
+  Result := QuerySettingsFor;
 end;
 
 /// <summary>Eingaben der Abfrage-Datenquelle aus den einzelnen Teilen.</summary>
@@ -395,100 +468,29 @@ begin
   Result := True;
 end;
 
-function TShellSources.QueryWorkspace: TShellWorkspace;
-var
-  mCandidate: TShellWorkspace;
-  mActive: string;
+function TShellSources.HotspotSource: TLspHotspotSourceFunc;
 begin
-  // Projektgruppe: Choose liefert nur bei genau einem Arbeitsbereich etwas; sonst hieß es "Kein Projekt
-  // geladen". Wurzel, Namensräume und Einstellungen vom in der IDE aktiven Projekt, sonst vom ausgewählten,
-  // sonst vom ersten.
-  Result := nil;
-  mActive := FServices.ActiveProject();
-  for mCandidate in FServices.Workspaces.Items do
-  begin
-    if (mCandidate.State.ProjectFileName <> '') and SameText(mCandidate.State.ProjectFileName, mActive) then
-    begin
-      Result := mCandidate;
-    end;
-  end;
-  if Result <> nil then
-  begin
-    Exit;
-  end;
-  for mCandidate in FServices.Workspaces.Items do
-  begin
-    if FServices.Workspaces.IsSelected(mCandidate) then
-    begin
-      Exit(mCandidate);
-    end;
-  end;
-  if FServices.Workspaces.Items.Count > 0 then
-  begin
-    Result := FServices.Workspaces.Items[0];
-  end;
+  Result := HotspotSourceFor;
 end;
 
-function TShellSources.QuerySettingsFor(const AFileName: string; out ASettings: TServerSettings;
-  out ARoot: string): Boolean;
-var
-  mSource: TLspMetricsSource;
+function TShellSources.UnitRelationsOptions: TLspUnitRelationsOptionsFunc;
 begin
-  Result := MetricsSourceFor(AFileName, False, mSource);
-  ASettings := mSource.Settings;
-  ARoot := mSource.Root;
+  Result := UnitRelationsOptionsFor;
 end;
 
-function TShellSources.UnitRelationsOptionsFor(const AFileName: string): TUsesGraphOptions;
-var
-  mWorkspace: TShellWorkspace;
+function TShellSources.SymbolPathSource: TLspSymbolPathSourceFunc;
 begin
-  Result := TUsesGraphOptions.Default;
-  Result.IncludeLibrary := True;
-  System.TMonitor.Enter(FServices.Workspaces.Lock);
-  try
-    mWorkspace := WorkspaceNear(AFileName);
-    if mWorkspace <> nil then
-    begin
-      Result.Root := mWorkspace.Root;
-      Result.Namespaces := mWorkspace.State.Namespaces;
-    end;
-  finally
-    System.TMonitor.Exit(FServices.Workspaces.Lock);
-  end;
+  Result := SymbolPathSourceFor;
 end;
 
-function TShellSources.RationaleOptionsFor(const AUri: string): TRationaleOptions;
-var
-  mWorkspace: TShellWorkspace;
+function TShellSources.RationaleOptions: THoverRationaleProvider;
 begin
-  System.TMonitor.Enter(FServices.Workspaces.Lock);
-  try
-    mWorkspace := FServices.Workspaces.Pick(TDocumentUris.ToPath(AUri));
-    // ADR-Ordner relativ zum Arbeitsbereich; ohne Arbeitsbereich nur ein absoluter.
-    if mWorkspace = nil then
-    begin
-      Result := TRationaleOptions.FromSettings(FServices.Settings.Loose, '');
-    end
-    else
-    begin
-      Result := TRationaleOptions.FromSettings(mWorkspace.Configuration.Settings, mWorkspace.Root);
-    end;
-  finally
-    System.TMonitor.Exit(FServices.Workspaces.Lock);
-  end;
+  Result := RationaleOptionsFor;
 end;
 
-function TShellSources.CodeLensMetricsFor(const AUri: string; out ALimits: TMetricLimits): Boolean;
-var
-  mSource: TLspMetricsSource;
+function TShellSources.CodeLensMetrics: TCodeLensMetricsFunc;
 begin
-  if not MetricsSourceFor(TDocumentUris.ToPath(AUri), False, mSource) then
-  begin
-    mSource.Settings := TServerSettings.Default;
-  end;
-  ALimits := TMetricRules.Limits(mSource.Settings);
-  Result := mSource.Settings.Metrics and mSource.Settings.CodeLens.Metrics;
+  Result := CodeLensMetricsFor;
 end;
 
 end.

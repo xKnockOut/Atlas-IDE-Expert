@@ -72,6 +72,8 @@ uses
   Shell.Platform,
   Atlas.Text.LogMarks;
 
+{ TShellProtocol }
+
 constructor TShellProtocol.Create(const AServices: TShellProtocolServices);
 var
   mWatchdog: TJsonRpcWatchdog;
@@ -103,26 +105,6 @@ begin
   FreeAndNil(FLifecycle);
   FreeAndNil(FDispatcher);
   inherited;
-end;
-
-procedure TShellProtocol.CreateCrashCases(const ADocuments: IDocumentStore;
-  const ASettingsFiles: TShellCrashSettingsFunc; const ANotify: TShellCrashNotify);
-begin
-  FCrashCases := TShellCrashCases.Create('', FServices.Logger, ADocuments, FRecent);
-  FCrashCases.AtlasVersion := TProductVersion.cVersion;
-  FCrashCases.ServerPath := ParamStr(0);
-  FCrashCases.Initialize := InitializeText;
-  FCrashCases.SettingsFiles := ASettingsFiles;
-  FCrashCases.Notify := ANotify;
-end;
-
-function TShellProtocol.InitializeText: string;
-begin
-  Result := '';
-  if (FLifecycle <> nil) and (FLifecycle.InitializeParams <> nil) then
-  begin
-    Result := FLifecycle.InitializeParams.ToJSON;
-  end;
 end;
 
 procedure TShellProtocol.RequestTimedOut(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean);
@@ -178,6 +160,26 @@ begin
   begin
     FCrashCases.RequestFailed(AMethod, AParams, AError, TShellPlatform.StackTraceOf(AError));
   end;
+end;
+
+function TShellProtocol.InitializeText: string;
+begin
+  Result := '';
+  if (FLifecycle <> nil) and (FLifecycle.InitializeParams <> nil) then
+  begin
+    Result := FLifecycle.InitializeParams.ToJSON;
+  end;
+end;
+
+procedure TShellProtocol.CreateCrashCases(const ADocuments: IDocumentStore;
+  const ASettingsFiles: TShellCrashSettingsFunc; const ANotify: TShellCrashNotify);
+begin
+  FCrashCases := TShellCrashCases.Create('', FServices.Logger, ADocuments, FRecent);
+  FCrashCases.AtlasVersion := TProductVersion.cVersion;
+  FCrashCases.ServerPath := ParamStr(0);
+  FCrashCases.Initialize := InitializeText;
+  FCrashCases.SettingsFiles := ASettingsFiles;
+  FCrashCases.Notify := ANotify;
 end;
 
 end.

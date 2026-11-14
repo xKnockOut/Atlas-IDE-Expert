@@ -231,6 +231,8 @@ type
     function ToArray: TArray<TLearnedPattern>;
   end;
 
+{ TPatternSum }
+
 constructor TPatternSum.Create;
 begin
   inherited Create;

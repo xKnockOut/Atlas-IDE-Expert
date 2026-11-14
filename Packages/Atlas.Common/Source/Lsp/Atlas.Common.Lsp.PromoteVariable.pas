@@ -76,6 +76,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TLspPromoteVariable }
+
 class function TLspPromoteVariable.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const AReadText: TReferenceReadText): TPromoteLookup;
 var

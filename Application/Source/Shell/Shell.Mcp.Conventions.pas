@@ -59,6 +59,8 @@ begin
     end;
 end;
 
+{ TMcpConventions }
+
 class procedure TMcpConventions.Register(AServer: TMcpServer; AWorkspace: TShellWorkspace);
 begin
   AServer.AddResource(cUri, cTexts[TMcpConventionsText.Name].Text, cTexts[TMcpConventionsText.Description].Text,

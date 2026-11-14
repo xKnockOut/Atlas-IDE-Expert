@@ -111,57 +111,76 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeFlowMap.Active: Boolean;
+function TAtlasIdeFlowMap.Frame: TAtlasFlowFrame;
 begin
-  Result := TAtlasIdeSettings.Current.IssuesFlowMap;
+  Result := TAtlasIdeFlowWindow.ExistingFrame;
+end;
+
+procedure TAtlasIdeFlowMap.Loaded(AGeneration: Integer; ASucceeded: Boolean; const AData: TAtlasFlowData;
+  AError: TAtlasCiFetchError; ASince: TDateTime);
+var
+  mFrame: TAtlasFlowFrame;
+  mData, mCached: TAtlasFlowData;
+  mHasCache: Boolean;
+  mNow: TDateTime;
+  mWhen: string;
+begin
+  if AGeneration <> FGeneration then
+  begin
+    Exit;
+  end;
+  FCancel := nil;
+  mFrame := Frame;
+  if not FStarted or (mFrame = nil) then
+  begin
+    Exit;
+  end;
+  mFrame.SetLoading(False);
+  TAtlasGuard.Log('Atlas flow map: ' + FTarget.Provider + ', ' + TAtlasCiBuild.ErrorKey(AError));
+  mHasCache := TAtlasTrackerFlow.Load(FCacheFolder, FTarget, mCached);
+  if ASucceeded then
+  begin
+    mNow := NowUtc;
+    mData := AData;
+    mData.Fetched := mNow;
+    mData.Days := TAtlasIdeSettings.Current.IssuesFlowMapDays;
+    // Nachgeladen ab dem letzten Stand: mit ihm zusammenführen; sonst ersetzt der neue Stand ihn.
+    mData := TAtlasTrackerFlow.Merge(mCached, mData, mHasCache and (ASince > TAtlasTrackerFlow.WindowStart(mNow,
+      mData.Days)), mNow);
+    TAtlasTrackerFlow.Save(FCacheFolder, FTarget, mData);
+    Present(mFrame, mData, '');
+    Exit;
+  end;
+  // Ohne Antwort: der letzte Stand mit Grund.
+  if mHasCache then
+  begin
+    mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(mCached.Fetched), FormatSettings);
+    Present(mFrame, mCached, TAtlasFlowStrings.Fmt(TAtlasFlowTextId.FlowOffline, [mWhen, ErrorText(AError)]));
+  end
+  else if AError <> TAtlasCiFetchError.Cancelled then
+  begin
+    mFrame.ShowNotice(ErrorText(AError));
+    mFrame.SetStatus('');
+  end;
+end;
+
+procedure TAtlasIdeFlowMap.Present(AFrame: TAtlasFlowFrame; const AData: TAtlasFlowData; const AStatus: string);
+begin
+  AFrame.SetMap(TAtlasFlowMap.Build(AData, NowUtc, TAtlasIdeSettings.Current.IssuesFlowMapStuckDays), FTarget.Project,
+    TAtlasIdeSettings.Current.IssuesFlowMapStuckDays, AStatus);
+end;
+
+procedure TAtlasIdeFlowMap.CancelLoad;
+begin
+  if FCancel <> nil then
+  begin
+    FCancel.Cancel;
+  end;
 end;
 
 class function TAtlasIdeFlowMap.NowUtc: TDateTime;
 begin
   Result := TTimeZone.Local.ToUniversalTime(Now);
-end;
-
-procedure TAtlasIdeFlowMap.Start;
-var
-  mKeep: IInterface;
-  mOwner: TAtlasIdeFlowMap;
-begin
-  if FStarted then
-  begin
-    Exit;
-  end;
-  FStarted := True;
-  mKeep := Self;
-  mOwner := Self;
-  TAtlasIdeFlowWindow.OnFrame :=
-    procedure(AFrame: TAtlasFlowFrame)
-    begin
-      if (mKeep <> nil) and mOwner.FStarted then
-      begin
-        mOwner.Wire(AFrame);
-      end;
-    end;
-  // Früh anmelden: Die IDE speichert das Fenster im Desktop und legt es beim Laden selbst an (#879).
-  TAtlasIdeFlowWindow.Prepare;
-end;
-
-procedure TAtlasIdeFlowMap.Stop;
-begin
-  if not FStarted then
-  begin
-    Exit;
-  end;
-  FStarted := False;
-  Inc(FGeneration);
-  CancelLoad;
-  FWorker.Stop(cStopMs);
-  TAtlasIdeFlowWindow.Release;
-  FHooks := Default(TAtlasFlowMapHooks);
-end;
-
-function TAtlasIdeFlowMap.Frame: TAtlasFlowFrame;
-begin
-  Result := TAtlasIdeFlowWindow.ExistingFrame;
 end;
 
 /// <summary>Ereignisse des Frames an AOwner; AKeep hält AOwner, solange der Frame lebt.</summary>
@@ -206,6 +225,44 @@ begin
   AFrame.Events := FlowEvents(Self, Self);
 end;
 
+procedure TAtlasIdeFlowMap.Start;
+var
+  mKeep: IInterface;
+  mOwner: TAtlasIdeFlowMap;
+begin
+  if FStarted then
+  begin
+    Exit;
+  end;
+  FStarted := True;
+  mKeep := Self;
+  mOwner := Self;
+  TAtlasIdeFlowWindow.OnFrame :=
+    procedure(AFrame: TAtlasFlowFrame)
+    begin
+      if (mKeep <> nil) and mOwner.FStarted then
+      begin
+        mOwner.Wire(AFrame);
+      end;
+    end;
+  // Früh anmelden: Die IDE speichert das Fenster im Desktop und legt es beim Laden selbst an (#879).
+  TAtlasIdeFlowWindow.Prepare;
+end;
+
+procedure TAtlasIdeFlowMap.Stop;
+begin
+  if not FStarted then
+  begin
+    Exit;
+  end;
+  FStarted := False;
+  Inc(FGeneration);
+  CancelLoad;
+  FWorker.Stop(cStopMs);
+  TAtlasIdeFlowWindow.Release;
+  FHooks := Default(TAtlasFlowMapHooks);
+end;
+
 procedure TAtlasIdeFlowMap.Show;
 begin
   if not FStarted or not Active then
@@ -232,30 +289,6 @@ begin
   begin
     CancelLoad;
     TAtlasIdeFlowWindow.Hide;
-  end;
-end;
-
-procedure TAtlasIdeFlowMap.CancelLoad;
-begin
-  if FCancel <> nil then
-  begin
-    FCancel.Cancel;
-  end;
-end;
-
-class function TAtlasIdeFlowMap.ErrorText(AError: TAtlasCiFetchError): string;
-begin
-  case AError of
-    TAtlasCiFetchError.Unauthorized:
-      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorToken);
-    TAtlasCiFetchError.Timeout:
-      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorTimeout);
-    TAtlasCiFetchError.NotConfigured, TAtlasCiFetchError.UnknownProvider, TAtlasCiFetchError.NotFound:
-      Result := TAtlasFlowStrings.Text(TAtlasFlowTextId.FlowNoTracker);
-    TAtlasCiFetchError.Invalid, TAtlasCiFetchError.Server:
-      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorInvalid);
-  else
-    Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorNetwork);
   end;
 end;
 
@@ -397,57 +430,24 @@ begin
   end;
 end;
 
-procedure TAtlasIdeFlowMap.Present(AFrame: TAtlasFlowFrame; const AData: TAtlasFlowData; const AStatus: string);
+class function TAtlasIdeFlowMap.Active: Boolean;
 begin
-  AFrame.SetMap(TAtlasFlowMap.Build(AData, NowUtc, TAtlasIdeSettings.Current.IssuesFlowMapStuckDays), FTarget.Project,
-    TAtlasIdeSettings.Current.IssuesFlowMapStuckDays, AStatus);
+  Result := TAtlasIdeSettings.Current.IssuesFlowMap;
 end;
 
-procedure TAtlasIdeFlowMap.Loaded(AGeneration: Integer; ASucceeded: Boolean; const AData: TAtlasFlowData;
-  AError: TAtlasCiFetchError; ASince: TDateTime);
-var
-  mFrame: TAtlasFlowFrame;
-  mData, mCached: TAtlasFlowData;
-  mHasCache: Boolean;
-  mNow: TDateTime;
-  mWhen: string;
+class function TAtlasIdeFlowMap.ErrorText(AError: TAtlasCiFetchError): string;
 begin
-  if AGeneration <> FGeneration then
-  begin
-    Exit;
-  end;
-  FCancel := nil;
-  mFrame := Frame;
-  if not FStarted or (mFrame = nil) then
-  begin
-    Exit;
-  end;
-  mFrame.SetLoading(False);
-  TAtlasGuard.Log('Atlas flow map: ' + FTarget.Provider + ', ' + TAtlasCiBuild.ErrorKey(AError));
-  mHasCache := TAtlasTrackerFlow.Load(FCacheFolder, FTarget, mCached);
-  if ASucceeded then
-  begin
-    mNow := NowUtc;
-    mData := AData;
-    mData.Fetched := mNow;
-    mData.Days := TAtlasIdeSettings.Current.IssuesFlowMapDays;
-    // Nachgeladen ab dem letzten Stand: mit ihm zusammenführen; sonst ersetzt der neue Stand ihn.
-    mData := TAtlasTrackerFlow.Merge(mCached, mData, mHasCache and (ASince > TAtlasTrackerFlow.WindowStart(mNow,
-      mData.Days)), mNow);
-    TAtlasTrackerFlow.Save(FCacheFolder, FTarget, mData);
-    Present(mFrame, mData, '');
-    Exit;
-  end;
-  // Ohne Antwort: der letzte Stand mit Grund.
-  if mHasCache then
-  begin
-    mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(mCached.Fetched), FormatSettings);
-    Present(mFrame, mCached, TAtlasFlowStrings.Fmt(TAtlasFlowTextId.FlowOffline, [mWhen, ErrorText(AError)]));
-  end
-  else if AError <> TAtlasCiFetchError.Cancelled then
-  begin
-    mFrame.ShowNotice(ErrorText(AError));
-    mFrame.SetStatus('');
+  case AError of
+    TAtlasCiFetchError.Unauthorized:
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorToken);
+    TAtlasCiFetchError.Timeout:
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorTimeout);
+    TAtlasCiFetchError.NotConfigured, TAtlasCiFetchError.UnknownProvider, TAtlasCiFetchError.NotFound:
+      Result := TAtlasFlowStrings.Text(TAtlasFlowTextId.FlowNoTracker);
+    TAtlasCiFetchError.Invalid, TAtlasCiFetchError.Server:
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorInvalid);
+  else
+    Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorNetwork);
   end;
 end;
 

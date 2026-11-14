@@ -195,22 +195,6 @@ end;
 
 { TLspReferences }
 
-function TLspReferences.GetNamespaces: TArray<string>;
-begin
-  Result := TLspNamespaces.Read(FNamespaces);
-end;
-
-procedure TLspReferences.SetNamespaces(const AValue: TArray<string>);
-begin
-  TLspNamespaces.Write(FNamespaces, AValue);
-end;
-
-constructor TLspReferences.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-  const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider);
-begin
-  Create(AStore, AIndex, AReadText, AFiles, nil);
-end;
-
 constructor TLspReferences.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
@@ -220,6 +204,22 @@ begin
   FReadText := AReadText;
   FFiles := AFiles;
   FEnsureUnit := AEnsureUnit;
+end;
+
+constructor TLspReferences.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider);
+begin
+  Create(AStore, AIndex, AReadText, AFiles, nil);
+end;
+
+function TLspReferences.GetNamespaces: TArray<string>;
+begin
+  Result := TLspNamespaces.Read(FNamespaces);
+end;
+
+procedure TLspReferences.SetNamespaces(const AValue: TArray<string>);
+begin
+  TLspNamespaces.Write(FNamespaces, AValue);
 end;
 
 procedure TLspReferences.Attach(ADispatcher: TJsonRpcDispatcher);
@@ -284,17 +284,10 @@ begin
   end;
 end;
 
-class function TLspReferences.InactiveFor(const AFileName, AText: string;
-  const ASettings: TReferenceSettings): TArray<TLspInactiveRegion>;
+class function TLspReferences.Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const ASearch: TReferenceSearch; const ACancellation: IJsonRpcCancellationToken): TArray<TReferenceLocation>;
 begin
-  if ASettings.Inferred then
-  begin
-    Result := TReferenceClassifier.InactiveOf(AText, TSyntaxTreeCache.DefinesOf(TDocumentUris.FromPath(AFileName)));
-  end
-  else
-  begin
-    Result := nil;
-  end;
+  Result := Find(AResolver, AIndex, ATree, ASearch, TReferenceSettings.SureOnly, ACancellation);
 end;
 
 
@@ -328,6 +321,8 @@ type
     /// <summary>Die Fundstellen; ohne FSearch.Declaration ohne die Deklaration AWanted.</summary>
     function Locations(const AWanted: TDefinitionTarget): TArray<TReferenceLocation>;
   end;
+
+{ TReferenceRun }
 
 constructor TReferenceRun.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; const ASearch: TReferenceSearch;
   const ASettings: TReferenceSettings; const ACancellation: IJsonRpcCancellationToken);
@@ -378,6 +373,32 @@ begin
   end;
 end;
 
+procedure TReferenceRun.SearchFile(const AFileName: string);
+var
+  mText: string;
+  mTree: TSyntaxTree;
+begin
+  if FSearched.ContainsKey(AnsiUpperCase(AFileName)) then
+  begin
+    Exit;
+  end;
+  FSearched.Add(AnsiUpperCase(AFileName), True);
+  // Die kürzere Schreibweise ist in der längeren enthalten.
+  if not (Assigned(FSearch.ReadText) and FSearch.ReadText(AFileName, mText)) or not (ContainsText(mText, FName) or
+    ContainsText(mText, AlternativeName(FName))) then
+  begin
+    Exit;
+  end;
+  // Parse liest alle Zweige; die inaktiven erkennt Classify an den Bereichen.
+  mTree := TSyntaxTreeCache.Parse(mText);
+  try
+    AddHits(AFileName, HitsInTree(FClassifier, mTree, AFileName, FName,
+      TLspReferences.InactiveFor(AFileName, mText, FSettings), FCancellation));
+  finally
+    mTree.Free;
+  end;
+end;
+
 procedure TReferenceRun.Prepare(ATree: TSyntaxTree; const AWanted: TDefinitionTarget; const AName: string);
 var
   mSymbol: TIndexSymbol;
@@ -408,32 +429,6 @@ begin
   end;
   AddHits(FSearch.FileName, HitsInTree(FClassifier, ATree, FSearch.FileName, FName, mInactive, FCancellation));
   FSearched.AddOrSetValue(AnsiUpperCase(FSearch.FileName), True);
-end;
-
-procedure TReferenceRun.SearchFile(const AFileName: string);
-var
-  mText: string;
-  mTree: TSyntaxTree;
-begin
-  if FSearched.ContainsKey(AnsiUpperCase(AFileName)) then
-  begin
-    Exit;
-  end;
-  FSearched.Add(AnsiUpperCase(AFileName), True);
-  // Die kürzere Schreibweise ist in der längeren enthalten.
-  if not (Assigned(FSearch.ReadText) and FSearch.ReadText(AFileName, mText)) or not (ContainsText(mText, FName) or
-    ContainsText(mText, AlternativeName(FName))) then
-  begin
-    Exit;
-  end;
-  // Parse liest alle Zweige; die inaktiven erkennt Classify an den Bereichen.
-  mTree := TSyntaxTreeCache.Parse(mText);
-  try
-    AddHits(AFileName, HitsInTree(FClassifier, mTree, AFileName, FName,
-      TLspReferences.InactiveFor(AFileName, mText, FSettings), FCancellation));
-  finally
-    mTree.Free;
-  end;
 end;
 
 procedure TReferenceRun.SearchFiles;
@@ -506,12 +501,6 @@ begin
 end;
 
 class function TLspReferences.Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const ASearch: TReferenceSearch; const ACancellation: IJsonRpcCancellationToken): TArray<TReferenceLocation>;
-begin
-  Result := Find(AResolver, AIndex, ATree, ASearch, TReferenceSettings.SureOnly, ACancellation);
-end;
-
-class function TLspReferences.Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const ASearch: TReferenceSearch; const ASettings: TReferenceSettings;
   const ACancellation: IJsonRpcCancellationToken): TArray<TReferenceLocation>;
 var
@@ -543,6 +532,19 @@ begin
   finally
     AResolver.UnpinTree;
     mRun.Free;
+  end;
+end;
+
+class function TLspReferences.InactiveFor(const AFileName, AText: string;
+  const ASettings: TReferenceSettings): TArray<TLspInactiveRegion>;
+begin
+  if ASettings.Inferred then
+  begin
+    Result := TReferenceClassifier.InactiveOf(AText, TSyntaxTreeCache.DefinesOf(TDocumentUris.FromPath(AFileName)));
+  end
+  else
+  begin
+    Result := nil;
   end;
 end;
 

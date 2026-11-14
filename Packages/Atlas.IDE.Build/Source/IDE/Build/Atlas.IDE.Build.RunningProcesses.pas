@@ -70,6 +70,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeRunningProcesses }
+
 class function TAtlasIdeRunningProcesses.Programs: TArray<TAtlasRunningProcess>;
 var
   mSnapshot: THandle;

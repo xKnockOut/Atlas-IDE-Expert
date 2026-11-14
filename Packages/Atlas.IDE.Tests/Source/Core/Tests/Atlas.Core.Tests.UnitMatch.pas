@@ -68,6 +68,8 @@ begin
   Result := False;
 end;
 
+{ TAtlasTestUnitMatch }
+
 class function TAtlasTestUnitMatch.Candidates(const AUnitFile: string; const AFiles: TArray<string>):
   TArray<string>;
 var
@@ -81,6 +83,17 @@ begin
     begin
       Result := Result + [mFile];
     end;
+  end;
+end;
+
+class function TAtlasTestUnitMatch.Names(const AUnit: TDUnitXUnit): TArray<string>;
+var
+  mFixture: TDUnitXFixture;
+begin
+  Result := nil;
+  for mFixture in AUnit.Fixtures do
+  begin
+    Result := Result + [TDUnitXCommandLine.TestName(AUnit.UnitName, mFixture.Name, '')];
   end;
 end;
 
@@ -124,17 +137,6 @@ end;
 class function TAtlasTestUnitMatch.UnitNameOf(const AFileName: string): string;
 begin
   Result := BaseName(AFileName);
-end;
-
-class function TAtlasTestUnitMatch.Names(const AUnit: TDUnitXUnit): TArray<string>;
-var
-  mFixture: TDUnitXFixture;
-begin
-  Result := nil;
-  for mFixture in AUnit.Fixtures do
-  begin
-    Result := Result + [TDUnitXCommandLine.TestName(AUnit.UnitName, mFixture.Name, '')];
-  end;
 end;
 
 end.

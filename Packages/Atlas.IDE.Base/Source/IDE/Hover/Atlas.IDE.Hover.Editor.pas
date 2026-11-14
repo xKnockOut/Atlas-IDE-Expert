@@ -250,17 +250,6 @@ end;
 { TAtlasEditorHover }
 
 constructor TAtlasEditorHover.Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
-  const AProblemsAt: TAtlasHoverProblemsFunc);
-begin
-  Create(ASession, ALog, AProblemsAt, nil);
-end;
-
-constructor TAtlasEditorHover.Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc);
-begin
-  Create(ASession, ALog, nil, nil);
-end;
-
-constructor TAtlasEditorHover.Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
   const AProblemsAt: TAtlasHoverProblemsFunc; const AHandles: TAtlasHoverHandlesFunc);
 var
   mServices: INTACodeEditorServices;
@@ -294,6 +283,17 @@ begin
   begin
     FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
+end;
+
+constructor TAtlasEditorHover.Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
+  const AProblemsAt: TAtlasHoverProblemsFunc);
+begin
+  Create(ASession, ALog, AProblemsAt, nil);
+end;
+
+constructor TAtlasEditorHover.Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc);
+begin
+  Create(ASession, ALog, nil, nil);
 end;
 
 destructor TAtlasEditorHover.Destroy;
@@ -340,12 +340,24 @@ begin
   inherited Hide;
 end;
 
-procedure TAtlasEditorHover.Shutdown;
+function TAtlasEditorHover.WindowState: TAtlasEditorWindowState;
+var
+  mView: IOTAEditView;
 begin
-  // Eingereihte Ergebnisse veralten (Show vergleicht FRequest); die Arbeiter halten die Sitzung als rohen Zeiger.
-  // Ohne Hide: Der Tooltip zeigt kopierte Daten, ein Neustart soll ihn nicht schließen.
-  Inc(FRequest);
-  ReapWorkers(True);
+  Result := Default(TAtlasEditorWindowState);
+  Result.AppActive := Application.Active;
+  Result.Focus := GetFocus;
+  mView := CurrentEditView;
+  if mView = nil then
+  begin
+    Exit;
+  end;
+  Result.TopRow := mView.TopRow;
+  Result.Rows := mView.ViewSize.cy;
+  if mView.Buffer <> nil then
+  begin
+    Result.FileName := mView.Buffer.FileName;
+  end;
 end;
 
 procedure TAtlasEditorHover.EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
@@ -523,6 +535,63 @@ begin
   end;
 end;
 
+procedure TAtlasEditorHover.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
+  X, Y: Integer);
+begin
+  try
+    Hide;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
+  end;
+end;
+
+procedure TAtlasEditorHover.EditorScrolled(const Editor: TWinControl; const Direction: TCodeEditorScrollDirection);
+begin
+  try
+    Hide;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
+  end;
+end;
+
+procedure TAtlasEditorHover.EditorResized(const Editor: TWinControl);
+begin
+  try
+    Hide;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
+  end;
+end;
+
+procedure TAtlasEditorHover.ShowData(const AData: TAtlasHoverData);
+begin
+  if (FView = nil) or not Application.Active or not MouseOverEditor then
+  begin
+    Exit;
+  end;
+  if not AData.Found and (Length(FProblems) = 0) and not FDebugValue.Visible then
+  begin
+    Hide;
+    Exit;
+  end;
+  FHistory.Start(AData);
+  FUsagesCount := -1;
+  TAtlasIdeStyle.Apply(FTip, FWordRect);
+  FTip.ProblemActions := TAtlasIdeSettings.Current.HoverProblemActions;
+  FTip.HideCompilerCode := not TAtlasIdeSettings.Current.ProblemsShowCompilerCode;
+  FTip.MembersMaxLines := TAtlasIdeSettings.Current.HoverMembersMaxLines;
+  FTip.SignatureParams := TAtlasIdeSettings.Current.HoverSignatureParams;
+  FTip.ShowContent(CurrentView, FWordRect);
+  TAtlasKeyHook.Add(FKeys);
+  FShownKey := FKey;
+  FShown := WindowState;
+  FHideTimer.Enabled := False;
+  FWatchTimer.Enabled := True;
+end;
+
 procedure TAtlasEditorHover.ReapWorkers(AWait: Boolean);
 var
   mIndex: Integer;
@@ -639,49 +708,24 @@ begin
   mWorker.Start;
 end;
 
-procedure TAtlasEditorHover.ShowData(const AData: TAtlasHoverData);
-begin
-  if (FView = nil) or not Application.Active or not MouseOverEditor then
-  begin
-    Exit;
-  end;
-  if not AData.Found and (Length(FProblems) = 0) and not FDebugValue.Visible then
-  begin
-    Hide;
-    Exit;
-  end;
-  FHistory.Start(AData);
-  FUsagesCount := -1;
-  TAtlasIdeStyle.Apply(FTip, FWordRect);
-  FTip.ProblemActions := TAtlasIdeSettings.Current.HoverProblemActions;
-  FTip.HideCompilerCode := not TAtlasIdeSettings.Current.ProblemsShowCompilerCode;
-  FTip.MembersMaxLines := TAtlasIdeSettings.Current.HoverMembersMaxLines;
-  FTip.SignatureParams := TAtlasIdeSettings.Current.HoverSignatureParams;
-  FTip.ShowContent(CurrentView, FWordRect);
-  TAtlasKeyHook.Add(FKeys);
-  FShownKey := FKey;
-  FShown := WindowState;
-  FHideTimer.Enabled := False;
-  FWatchTimer.Enabled := True;
-end;
 
-function TAtlasEditorHover.WindowState: TAtlasEditorWindowState;
-var
-  mView: IOTAEditView;
+procedure TAtlasEditorHover.HideTimerTick(Sender: TObject);
 begin
-  Result := Default(TAtlasEditorWindowState);
-  Result.AppActive := Application.Active;
-  Result.Focus := GetFocus;
-  mView := CurrentEditView;
-  if mView = nil then
-  begin
-    Exit;
-  end;
-  Result.TopRow := mView.TopRow;
-  Result.Rows := mView.ViewSize.cy;
-  if mView.Buffer <> nil then
-  begin
-    Result.FileName := mView.Buffer.FileName;
+  try
+    FHideTimer.Enabled := False;
+    // Angeheftet bleibt der Tooltip; sonst darf die Maus in den Tooltip wandern (#442).
+    if FTip.IsShown and (FHistory.Pinned or MouseOverTip) and Application.Active then
+    begin
+      if not FHistory.Pinned then
+      begin
+        FHideTimer.Enabled := True;
+      end;
+      Exit;
+    end;
+    Hide;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
   end;
 end;
 
@@ -704,27 +748,6 @@ begin
       TAtlasGuard.Report(TAtlasFeature.Hover, E);
   end;
 end;
-
-procedure TAtlasEditorHover.HideTimerTick(Sender: TObject);
-begin
-  try
-    FHideTimer.Enabled := False;
-    // Angeheftet bleibt der Tooltip; sonst darf die Maus in den Tooltip wandern (#442).
-    if FTip.IsShown and (FHistory.Pinned or MouseOverTip) and Application.Active then
-    begin
-      if not FHistory.Pinned then
-      begin
-        FHideTimer.Enabled := True;
-      end;
-      Exit;
-    end;
-    Hide;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Hover, E);
-  end;
-end;
-
 
 function TAtlasEditorHover.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 begin
@@ -778,6 +801,24 @@ begin
   Refresh;
 end;
 
+{$IF CompilerVersion >= 37.0}
+procedure TAtlasEditorHover.EditorKeyDown(const Editor: TWinControl; Key: Word; Shift: TShiftState;
+  var Handled: Boolean);
+begin
+  try
+    // Umschalt, Strg und Alt allein schließen nicht: Strg+Klick und die Kürzel brauchen sie.
+    if (Key = VK_SHIFT) or (Key = VK_CONTROL) or (Key = VK_MENU) then
+    begin
+      Exit;
+    end;
+    Hide;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
+  end;
+end;
+{$ENDIF}
+
 procedure TAtlasEditorHover.HandleKey(AKey: Word; AShift: TShiftState);
 begin
   if DebugTreeKey(AKey, AShift) then
@@ -819,53 +860,12 @@ begin
   end;
 end;
 
-procedure TAtlasEditorHover.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
-  X, Y: Integer);
+procedure TAtlasEditorHover.Shutdown;
 begin
-  try
-    Hide;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Hover, E);
-  end;
-end;
-
-{$IF CompilerVersion >= 37.0}
-procedure TAtlasEditorHover.EditorKeyDown(const Editor: TWinControl; Key: Word; Shift: TShiftState;
-  var Handled: Boolean);
-begin
-  try
-    // Umschalt, Strg und Alt allein schließen nicht: Strg+Klick und die Kürzel brauchen sie.
-    if (Key = VK_SHIFT) or (Key = VK_CONTROL) or (Key = VK_MENU) then
-    begin
-      Exit;
-    end;
-    Hide;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Hover, E);
-  end;
-end;
-{$ENDIF}
-
-procedure TAtlasEditorHover.EditorScrolled(const Editor: TWinControl; const Direction: TCodeEditorScrollDirection);
-begin
-  try
-    Hide;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Hover, E);
-  end;
-end;
-
-procedure TAtlasEditorHover.EditorResized(const Editor: TWinControl);
-begin
-  try
-    Hide;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Hover, E);
-  end;
+  // Eingereihte Ergebnisse veralten (Show vergleicht FRequest); die Arbeiter halten die Sitzung als rohen Zeiger.
+  // Ohne Hide: Der Tooltip zeigt kopierte Daten, ein Neustart soll ihn nicht schließen.
+  Inc(FRequest);
+  ReapWorkers(True);
 end;
 
 end.

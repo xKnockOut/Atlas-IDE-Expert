@@ -80,56 +80,37 @@ begin
   SetAccessible(cUiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.ExpressionTypeCommand));
 end;
 
-class function TAtlasExpressionTypeTip.Texts(const AKey: string): TAtlasExpressionTypeTexts;
+procedure TAtlasExpressionTypeTip.Paint;
 begin
-  Result := Default(TAtlasExpressionTypeTexts);
-  Result.Value := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeValue);
-  Result.Widen := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeWiden);
-  Result.Convert := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeConvert);
-  Result.Overload := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeOverload);
-  Result.NoExpression := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeNoExpression);
-  Result.UnknownName := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeUnknownName);
-  Result.OperatorMismatch := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeOperator);
-  Result.OperatorUnary := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeOperatorUnary);
-  Result.NoResult := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeNoResult);
-  Result.Unknown := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeUnknown);
-  Result.Expand := '';
-  if AKey <> '' then
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Surface);
+  Canvas.FillRect(ClientRect);
+  Layout(True);
+  PaintBorder;
+end;
+
+procedure TAtlasExpressionTypeTip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  if (Button = mbLeft) and PtInRect(LinkRect, TPoint.Create(X, Y)) then
   begin
-    Result.Expand := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.ExpressionTypeExpand, [AKey]);
+    Navigate;
   end;
 end;
 
-procedure TAtlasExpressionTypeTip.ApplyFont(AKind: TAtlasExpressionTypeRowKind);
+procedure TAtlasExpressionTypeTip.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  mHot: Boolean;
 begin
-  case AKind of
-    TAtlasExpressionTypeRowKind.Expression, TAtlasExpressionTypeRowKind.TypeName,
-    TAtlasExpressionTypeRowKind.Value:
-      Canvas.Font := Font;
-  else
-    Canvas.Font := UIFont;
-  end;
-  if AKind = TAtlasExpressionTypeRowKind.TypeName then
+  inherited;
+  mHot := PtInRect(LinkRect, TPoint.Create(X, Y));
+  if mHot then
   begin
-    Canvas.Font.Style := [fsBold];
+    Cursor := crHandPoint;
   end
   else
   begin
-    Canvas.Font.Style := [];
-  end;
-end;
-
-function TAtlasExpressionTypeTip.LinkIndex: Integer;
-var
-  mIndex: Integer;
-begin
-  Result := -1;
-  for mIndex := 0 to High(FRows) do
-  begin
-    if FRows[mIndex].Link then
-    begin
-      Exit(mIndex);
-    end;
+    Cursor := crDefault;
   end;
 end;
 
@@ -183,6 +164,59 @@ begin
   end;
   Result.cx := mWidth + Scale(cPad);
   Result.cy := Y - Scale(cRowGap) + Scale(cPad);
+end;
+
+function TAtlasExpressionTypeTip.LinkIndex: Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(FRows) do
+  begin
+    if FRows[mIndex].Link then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+end;
+
+procedure TAtlasExpressionTypeTip.ApplyFont(AKind: TAtlasExpressionTypeRowKind);
+begin
+  case AKind of
+    TAtlasExpressionTypeRowKind.Expression, TAtlasExpressionTypeRowKind.TypeName,
+    TAtlasExpressionTypeRowKind.Value:
+      Canvas.Font := Font;
+  else
+    Canvas.Font := UIFont;
+  end;
+  if AKind = TAtlasExpressionTypeRowKind.TypeName then
+  begin
+    Canvas.Font.Style := [fsBold];
+  end
+  else
+  begin
+    Canvas.Font.Style := [];
+  end;
+end;
+
+class function TAtlasExpressionTypeTip.Texts(const AKey: string): TAtlasExpressionTypeTexts;
+begin
+  Result := Default(TAtlasExpressionTypeTexts);
+  Result.Value := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeValue);
+  Result.Widen := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeWiden);
+  Result.Convert := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeConvert);
+  Result.Overload := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeOverload);
+  Result.NoExpression := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeNoExpression);
+  Result.UnknownName := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeUnknownName);
+  Result.OperatorMismatch := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeOperator);
+  Result.OperatorUnary := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeOperatorUnary);
+  Result.NoResult := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeNoResult);
+  Result.Unknown := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExpressionTypeUnknown);
+  Result.Expand := '';
+  if AKey <> '' then
+  begin
+    Result.Expand := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.ExpressionTypeExpand, [AKey]);
+  end;
 end;
 
 procedure TAtlasExpressionTypeTip.ShowFor(const ARows: TArray<TAtlasExpressionTypeRow>; const APoint: TPoint);
@@ -245,40 +279,6 @@ begin
   if Assigned(FOnNavigate) then
   begin
     FOnNavigate();
-  end;
-end;
-
-procedure TAtlasExpressionTypeTip.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
-end;
-
-procedure TAtlasExpressionTypeTip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  inherited;
-  if (Button = mbLeft) and PtInRect(LinkRect, TPoint.Create(X, Y)) then
-  begin
-    Navigate;
-  end;
-end;
-
-procedure TAtlasExpressionTypeTip.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  mHot: Boolean;
-begin
-  inherited;
-  mHot := PtInRect(LinkRect, TPoint.Create(X, Y));
-  if mHot then
-  begin
-    Cursor := crHandPoint;
-  end
-  else
-  begin
-    Cursor := crDefault;
   end;
 end;
 

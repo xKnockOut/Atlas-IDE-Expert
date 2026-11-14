@@ -90,6 +90,8 @@ begin
   Result := cTexts[TAtlasTextLanguage.Current, AId];
 end;
 
+{ TAtlasServerHandlers }
+
 class function TAtlasServerHandlers.ApplyEdit(const AEdit: TLspWorkspaceEdit; const ADiagnose: TProc<string>;
   out AReason: string): Boolean;
 var

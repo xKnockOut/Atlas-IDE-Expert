@@ -346,15 +346,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TLineChangesState.Reset;
-begin
-  FData.Reset;
-  HideTip;
-  FHovering := False;
-  FBlame.Entry := -1;
-  FRows.Clear;
-end;
-
 procedure TLineChangesState.Tick(Sender: TObject);
 var
   mSettings: TAtlasPluginSettings;
@@ -387,274 +378,13 @@ begin
   end;
 end;
 
-function TLineChangesState.CommitOf(AEntry, ALine: Integer): TAtlasBlameCommit;
-var
-  mEntry: TAtlasVcsBlameLine;
+procedure TLineChangesState.Reset;
 begin
-  mEntry := FData.Entry(AEntry);
-  Result := Default(TAtlasBlameCommit);
-  Result.FileName := FData.FileName;
-  Result.Kind := FData.VcsKind;
-  Result.Revision := mEntry.Revision;
-  Result.Author := mEntry.Author;
-  Result.Date := mEntry.Date;
-  Result.Message := FData.MessageOf(mEntry);
-  Result.Line := ALine;
-end;
-
-procedure TLineChangesState.PaintGutter(const Rect: TRect; const Stage: TPaintGutterStage;
-  const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
-var
-  mLine, mIndex, mDeleted: Integer;
-  mMark: TAtlasLineMark;
-begin
-  if BeforeEvent or (Stage <> High(TPaintGutterStage)) or (Context = nil) or (Context.EditView = nil) then
-  begin
-    Exit;
-  end;
-  if not FGutterOn or (FData.Changes = nil) or TAtlasGuard.Disabled(TAtlasFeature.LineChanges) or
-    not SameText(Context.FileName, FData.FileName) then
-  begin
-    Exit;
-  end;
-  try
-    mLine := Context.LogicalLineNum - 1;
-    mMark := TAtlasLineChanges.MarkAt(FData.Changes, mLine, mIndex);
-    mDeleted := TAtlasLineChanges.DeletedAt(FData.Changes, mLine, FData.LineCount);
-    if (mMark = TAtlasLineMark.None) and (mDeleted < 0) then
-    begin
-      FRows.Remove(Context.EditorLineNum);
-    end
-    // In .atlas für diese Datei ausgeblendet (#628).
-    else if not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.GitGutter, Context.FileName) then
-    begin
-      PaintMarks(Rect, Context, mMark, mIndex, mDeleted);
-    end;
-  except
-    // Zeichnen darf die IDE nie stören.
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.LineChanges, E);
-  end;
-end;
-
-procedure TLineChangesState.PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
-  AMark: TAtlasLineMark; AChange, ADeleted: Integer);
-var
-  mColors: TAtlasColors;
-  mWidth, mLeft, mSize, mSaved: Integer;
-  mBar: TRect;
-  mDC: HDC;
-  mRow: TMarkRow;
-  mLineText: string;
-begin
-  mColors := TAtlasColors.ForBackground(TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Left + 1, ARect.Top + 1));
-  mWidth := Max(3, MulDiv(3, ARect.Height, 16));
-  // Rechts in der Rinne, mit einem Pixel Abstand zum Code.
-  mLeft := ARect.Right - mWidth - 2;
-  mBar := TRect.Create(mLeft, ARect.Top, mLeft + mWidth, ARect.Bottom);
-  mRow.Change := AChange;
-  mDC := AContext.Canvas.Handle;
-  mSaved := SaveDC(mDC);
-  try
-    if AMark = TAtlasLineMark.Added then
-    begin
-      TAtlasLineChangesPaint.FillBar(mDC, mBar, mColors.Add);
-    end
-    else if AMark <> TAtlasLineMark.None then
-    begin
-      TAtlasLineChangesPaint.FillBar(mDC, mBar, mColors.Accent);
-    end;
-    if ADeleted >= 0 then
-    begin
-      // Über der Zeile, am Dateiende unter der letzten Zeile.
-      mSize := Max(4, ARect.Height div 3);
-      TAtlasLineChangesPaint.PaintDeleted(mDC, mLeft, mSize, ARect,
-        FData.Changes[ADeleted].Line >= FData.LineCount, mColors.Error);
-      mBar.Right := Max(mBar.Right, mLeft + mSize);
-      if AMark = TAtlasLineMark.None then
-      begin
-        mRow.Change := ADeleted;
-      end;
-    end;
-  finally
-    RestoreDC(mDC, mSaved);
-  end;
-  mRow.FileName := AContext.FileName;
-  mRow.Line := AContext.LogicalLineNum - 1;
-  // Etwas breiter als gezeichnet, damit der Klick leicht trifft.
-  mRow.Rect := TRect.Create(mBar.Left - 2, ARect.Top, mBar.Right + 2, ARect.Bottom);
-  mRow.TopRow := AContext.EditView.TopRow;
-  FRows.AddOrSetValue(AContext.EditorLineNum, mRow);
-  mLineText := '';
-  if AContext.LineState <> nil then
-  begin
-    mLineText := AContext.LineState.Text;
-  end;
-  TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.GitGutter, AContext.FileName,
-    mRow.Line, mLineText), mRow.Rect, mRow.TopRow, ARect.Height);
-end;
-
-function TLineChangesState.BlameWanted(AStage: TPaintLineStage; ABeforeEvent: Boolean;
-  const AContext: INTACodeEditorPaintContext): Boolean;
-begin
-  // Nur die Cursorzeile, nur zum aktuellen Vergleich.
-  Result := not ABeforeEvent and (AStage = plsEndPaint) and (AContext <> nil) and (AContext.EditView <> nil) and
-    FBlameOn and FData.BlameOk and (AContext.EditView.CursorPos.Line = AContext.LogicalLineNum) and
-    not TAtlasGuard.Disabled(TAtlasFeature.LineChanges) and SameText(AContext.FileName, FData.FileName) and
-    FData.Fresh;
-end;
-
-function TLineChangesState.PaintBlame(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
-  const ACaption, ALineText: string): TRect;
-var
-  mCell: TRect;
-  mKey: string;
-  mX: Integer;
-begin
-  mCell := AContext.EditorState.GetCharacterPosPx(
-    TAtlasLineChangesPaint.EndColumn(ALineText, TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)) + cTipColumnGap,
-    AContext.EditorLineNum);
-  mKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
-  mX := TAtlasLineTail.Start(Self, mKey, mCell.Left);
-  FFont.Follow(AContext.Canvas.Font);
-  // Hintergrund des Editor-Farbschemas am rechten Rand (dort steht nichts).
-  Result := TAtlasLineChangesPaint.PaintCaption(AContext.Canvas.Handle, ARect, mX, ACaption, FFont.Font.Handle,
-    TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Right - 2, ARect.Top + 1));
-  TAtlasLineTail.Finish(Self, mKey, Result.Right);
-end;
-
-procedure TLineChangesState.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
-  var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
-var
-  mLineText, mCaption: string;
-  mEntry: Integer;
-  mUnsaved: Boolean;
-begin
-  try
-    if not BlameWanted(Stage, BeforeEvent, Context) or (Context.LineState = nil) or
-      TAtlasIdeElements.FileHidden(TAtlasDrawnElement.GitBlame, Context.FileName) then
-    begin
-      Exit;
-    end;
-    mLineText := Context.LineState.Text;
-    mCaption := FData.BlameCaption(Context.LogicalLineNum - 1, mEntry, mUnsaved);
-    if mCaption = '' then
-    begin
-      Exit;
-    end;
-    FBlame.Rect := PaintBlame(Rect, Context, mCaption, mLineText);
-    FBlame.TopRow := Context.EditView.TopRow;
-    FBlame.Entry := mEntry;
-    FBlame.Unsaved := mUnsaved;
-    FBlame.Line := Context.LogicalLineNum - 1;
-    FBlame.Wnd := 0;
-    if Context.EditControl <> nil then
-    begin
-      FBlame.Wnd := Context.EditControl.Handle;
-    end;
-    TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.GitBlame, Context.FileName,
-      FBlame.Line, mLineText), FBlame.Rect, FBlame.TopRow, Rect.Height);
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.LineChanges, E);
-  end;
-end;
-
-procedure TLineChangesState.EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
-var
-  mView: IOTAEditView;
-  mInside: Boolean;
-begin
-  try
-    mView := TopView;
-    mInside := FBlameOn and (FBlame.Entry >= 0) and not FBlame.Rect.IsEmpty and PtInRect(FBlame.Rect, Point(X, Y)) and
-      (mView <> nil) and (mView.TopRow = FBlame.TopRow);
-    if not mInside then
-    begin
-      if FHovering then
-      begin
-        FHovering := False;
-        if FTipChange < 0 then
-        begin
-          HideTip;
-        end;
-      end;
-      Exit;
-    end;
-    if FHovering then
-    begin
-      Exit;
-    end;
-    FHovering := True;
-    FHoverSince := TThread.GetTickCount64;
-    FHoverScreen := TRect.Create(Editor.ClientToScreen(FBlame.Rect.TopLeft),
-      Editor.ClientToScreen(FBlame.Rect.BottomRight));
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.LineChanges, E);
-  end;
-end;
-
-function TLineChangesState.MarkAt(AX, AY: Integer; out ARow: TMarkRow): Boolean;
-var
-  mRow: TMarkRow;
-  mView: IOTAEditView;
-begin
-  ARow := Default(TMarkRow);
-  Result := False;
-  mView := TopView;
-  if (mView = nil) or (mView.Buffer = nil) then
-  begin
-    Exit;
-  end;
-  for mRow in FRows.Values do
-  begin
-    if not Result and PtInRect(mRow.Rect, Point(AX, AY)) then
-    begin
-      ARow := mRow;
-      Result := True;
-    end;
-  end;
-  // Nur, wenn die Marke noch dort steht: gleiche Datei, nicht gescrollt.
-  Result := Result and SameText(ARow.FileName, mView.Buffer.FileName) and (ARow.TopRow = mView.TopRow) and
-    (ARow.Change >= 0) and (ARow.Change <= High(FData.Changes));
-end;
-
-procedure TLineChangesState.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
-  X, Y: Integer);
-var
-  mRow: TMarkRow;
-  mScreen: TRect;
-  mGen, mChange: Integer;
-begin
-  try
-    HideTip;
-    FHovering := False;
-    if (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or not FGutterOn or not FData.Fresh or
-      not MarkAt(X, Y, mRow) then
-    begin
-      Exit;
-    end;
-    mScreen := TRect.Create(Editor.ClientToScreen(mRow.Rect.TopLeft), Editor.ClientToScreen(mRow.Rect.BottomRight));
-    mGen := TAtlasIdeLineChangesData.Generation;
-    mChange := mRow.Change;
-    // Erst nach dem Mausereignis: Der Editor setzt sonst danach den Cursor und schließt das Fenster.
-    TAtlasMainThread.ForceQueue(TAtlasFeature.LineChanges,
-      procedure
-      var
-        mState: TLineChangesState;
-      begin
-        mState := Current;
-        if (mState <> nil) and (mGen = TAtlasIdeLineChangesData.Generation) and mState.FData.Fresh and
-          (mChange <= High(mState.FData.Changes)) then
-        begin
-          mState.ShowChange(mChange, mScreen);
-        end;
-      end);
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.LineChanges, E);
-  end;
+  FData.Reset;
+  HideTip;
+  FHovering := False;
+  FBlame.Entry := -1;
+  FRows.Clear;
 end;
 
 procedure TLineChangesState.CheckHover;
@@ -786,6 +516,276 @@ begin
   end;
 end;
 
+function TLineChangesState.CommitOf(AEntry, ALine: Integer): TAtlasBlameCommit;
+var
+  mEntry: TAtlasVcsBlameLine;
+begin
+  mEntry := FData.Entry(AEntry);
+  Result := Default(TAtlasBlameCommit);
+  Result.FileName := FData.FileName;
+  Result.Kind := FData.VcsKind;
+  Result.Revision := mEntry.Revision;
+  Result.Author := mEntry.Author;
+  Result.Date := mEntry.Date;
+  Result.Message := FData.MessageOf(mEntry);
+  Result.Line := ALine;
+end;
+
+procedure TLineChangesState.PaintGutter(const Rect: TRect; const Stage: TPaintGutterStage;
+  const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+var
+  mLine, mIndex, mDeleted: Integer;
+  mMark: TAtlasLineMark;
+begin
+  if BeforeEvent or (Stage <> High(TPaintGutterStage)) or (Context = nil) or (Context.EditView = nil) then
+  begin
+    Exit;
+  end;
+  if not FGutterOn or (FData.Changes = nil) or TAtlasGuard.Disabled(TAtlasFeature.LineChanges) or
+    not SameText(Context.FileName, FData.FileName) then
+  begin
+    Exit;
+  end;
+  try
+    mLine := Context.LogicalLineNum - 1;
+    mMark := TAtlasLineChanges.MarkAt(FData.Changes, mLine, mIndex);
+    mDeleted := TAtlasLineChanges.DeletedAt(FData.Changes, mLine, FData.LineCount);
+    if (mMark = TAtlasLineMark.None) and (mDeleted < 0) then
+    begin
+      FRows.Remove(Context.EditorLineNum);
+    end
+    // In .atlas für diese Datei ausgeblendet (#628).
+    else if not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.GitGutter, Context.FileName) then
+    begin
+      PaintMarks(Rect, Context, mMark, mIndex, mDeleted);
+    end;
+  except
+    // Zeichnen darf die IDE nie stören.
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.LineChanges, E);
+  end;
+end;
+
+procedure TLineChangesState.PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
+  AMark: TAtlasLineMark; AChange, ADeleted: Integer);
+var
+  mColors: TAtlasColors;
+  mWidth, mLeft, mSize, mSaved: Integer;
+  mBar: TRect;
+  mDC: HDC;
+  mRow: TMarkRow;
+  mLineText: string;
+begin
+  mColors := TAtlasColors.ForBackground(TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Left + 1, ARect.Top + 1));
+  mWidth := Max(3, MulDiv(3, ARect.Height, 16));
+  // Rechts in der Rinne, mit einem Pixel Abstand zum Code.
+  mLeft := ARect.Right - mWidth - 2;
+  mBar := TRect.Create(mLeft, ARect.Top, mLeft + mWidth, ARect.Bottom);
+  mRow.Change := AChange;
+  mDC := AContext.Canvas.Handle;
+  mSaved := SaveDC(mDC);
+  try
+    if AMark = TAtlasLineMark.Added then
+    begin
+      TAtlasLineChangesPaint.FillBar(mDC, mBar, mColors.Add);
+    end
+    else if AMark <> TAtlasLineMark.None then
+    begin
+      TAtlasLineChangesPaint.FillBar(mDC, mBar, mColors.Accent);
+    end;
+    if ADeleted >= 0 then
+    begin
+      // Über der Zeile, am Dateiende unter der letzten Zeile.
+      mSize := Max(4, ARect.Height div 3);
+      TAtlasLineChangesPaint.PaintDeleted(mDC, mLeft, mSize, ARect,
+        FData.Changes[ADeleted].Line >= FData.LineCount, mColors.Error);
+      mBar.Right := Max(mBar.Right, mLeft + mSize);
+      if AMark = TAtlasLineMark.None then
+      begin
+        mRow.Change := ADeleted;
+      end;
+    end;
+  finally
+    RestoreDC(mDC, mSaved);
+  end;
+  mRow.FileName := AContext.FileName;
+  mRow.Line := AContext.LogicalLineNum - 1;
+  // Etwas breiter als gezeichnet, damit der Klick leicht trifft.
+  mRow.Rect := TRect.Create(mBar.Left - 2, ARect.Top, mBar.Right + 2, ARect.Bottom);
+  mRow.TopRow := AContext.EditView.TopRow;
+  FRows.AddOrSetValue(AContext.EditorLineNum, mRow);
+  mLineText := '';
+  if AContext.LineState <> nil then
+  begin
+    mLineText := AContext.LineState.Text;
+  end;
+  TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.GitGutter, AContext.FileName,
+    mRow.Line, mLineText), mRow.Rect, mRow.TopRow, ARect.Height);
+end;
+
+procedure TLineChangesState.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
+  var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+var
+  mLineText, mCaption: string;
+  mEntry: Integer;
+  mUnsaved: Boolean;
+begin
+  try
+    if not BlameWanted(Stage, BeforeEvent, Context) or (Context.LineState = nil) or
+      TAtlasIdeElements.FileHidden(TAtlasDrawnElement.GitBlame, Context.FileName) then
+    begin
+      Exit;
+    end;
+    mLineText := Context.LineState.Text;
+    mCaption := FData.BlameCaption(Context.LogicalLineNum - 1, mEntry, mUnsaved);
+    if mCaption = '' then
+    begin
+      Exit;
+    end;
+    FBlame.Rect := PaintBlame(Rect, Context, mCaption, mLineText);
+    FBlame.TopRow := Context.EditView.TopRow;
+    FBlame.Entry := mEntry;
+    FBlame.Unsaved := mUnsaved;
+    FBlame.Line := Context.LogicalLineNum - 1;
+    FBlame.Wnd := 0;
+    if Context.EditControl <> nil then
+    begin
+      FBlame.Wnd := Context.EditControl.Handle;
+    end;
+    TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.GitBlame, Context.FileName,
+      FBlame.Line, mLineText), FBlame.Rect, FBlame.TopRow, Rect.Height);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.LineChanges, E);
+  end;
+end;
+
+function TLineChangesState.BlameWanted(AStage: TPaintLineStage; ABeforeEvent: Boolean;
+  const AContext: INTACodeEditorPaintContext): Boolean;
+begin
+  // Nur die Cursorzeile, nur zum aktuellen Vergleich.
+  Result := not ABeforeEvent and (AStage = plsEndPaint) and (AContext <> nil) and (AContext.EditView <> nil) and
+    FBlameOn and FData.BlameOk and (AContext.EditView.CursorPos.Line = AContext.LogicalLineNum) and
+    not TAtlasGuard.Disabled(TAtlasFeature.LineChanges) and SameText(AContext.FileName, FData.FileName) and
+    FData.Fresh;
+end;
+
+function TLineChangesState.PaintBlame(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
+  const ACaption, ALineText: string): TRect;
+var
+  mCell: TRect;
+  mKey: string;
+  mX: Integer;
+begin
+  mCell := AContext.EditorState.GetCharacterPosPx(
+    TAtlasLineChangesPaint.EndColumn(ALineText, TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)) + cTipColumnGap,
+    AContext.EditorLineNum);
+  mKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
+  mX := TAtlasLineTail.Start(Self, mKey, mCell.Left);
+  FFont.Follow(AContext.Canvas.Font);
+  // Hintergrund des Editor-Farbschemas am rechten Rand (dort steht nichts).
+  Result := TAtlasLineChangesPaint.PaintCaption(AContext.Canvas.Handle, ARect, mX, ACaption, FFont.Font.Handle,
+    TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Right - 2, ARect.Top + 1));
+  TAtlasLineTail.Finish(Self, mKey, Result.Right);
+end;
+
+function TLineChangesState.MarkAt(AX, AY: Integer; out ARow: TMarkRow): Boolean;
+var
+  mRow: TMarkRow;
+  mView: IOTAEditView;
+begin
+  ARow := Default(TMarkRow);
+  Result := False;
+  mView := TopView;
+  if (mView = nil) or (mView.Buffer = nil) then
+  begin
+    Exit;
+  end;
+  for mRow in FRows.Values do
+  begin
+    if not Result and PtInRect(mRow.Rect, Point(AX, AY)) then
+    begin
+      ARow := mRow;
+      Result := True;
+    end;
+  end;
+  // Nur, wenn die Marke noch dort steht: gleiche Datei, nicht gescrollt.
+  Result := Result and SameText(ARow.FileName, mView.Buffer.FileName) and (ARow.TopRow = mView.TopRow) and
+    (ARow.Change >= 0) and (ARow.Change <= High(FData.Changes));
+end;
+
+procedure TLineChangesState.EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
+var
+  mView: IOTAEditView;
+  mInside: Boolean;
+begin
+  try
+    mView := TopView;
+    mInside := FBlameOn and (FBlame.Entry >= 0) and not FBlame.Rect.IsEmpty and PtInRect(FBlame.Rect, Point(X, Y)) and
+      (mView <> nil) and (mView.TopRow = FBlame.TopRow);
+    if not mInside then
+    begin
+      if FHovering then
+      begin
+        FHovering := False;
+        if FTipChange < 0 then
+        begin
+          HideTip;
+        end;
+      end;
+      Exit;
+    end;
+    if FHovering then
+    begin
+      Exit;
+    end;
+    FHovering := True;
+    FHoverSince := TThread.GetTickCount64;
+    FHoverScreen := TRect.Create(Editor.ClientToScreen(FBlame.Rect.TopLeft),
+      Editor.ClientToScreen(FBlame.Rect.BottomRight));
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.LineChanges, E);
+  end;
+end;
+
+procedure TLineChangesState.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
+  X, Y: Integer);
+var
+  mRow: TMarkRow;
+  mScreen: TRect;
+  mGen, mChange: Integer;
+begin
+  try
+    HideTip;
+    FHovering := False;
+    if (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or not FGutterOn or not FData.Fresh or
+      not MarkAt(X, Y, mRow) then
+    begin
+      Exit;
+    end;
+    mScreen := TRect.Create(Editor.ClientToScreen(mRow.Rect.TopLeft), Editor.ClientToScreen(mRow.Rect.BottomRight));
+    mGen := TAtlasIdeLineChangesData.Generation;
+    mChange := mRow.Change;
+    // Erst nach dem Mausereignis: Der Editor setzt sonst danach den Cursor und schließt das Fenster.
+    TAtlasMainThread.ForceQueue(TAtlasFeature.LineChanges,
+      procedure
+      var
+        mState: TLineChangesState;
+      begin
+        mState := Current;
+        if (mState <> nil) and (mGen = TAtlasIdeLineChangesData.Generation) and mState.FData.Fresh and
+          (mChange <= High(mState.FData.Changes)) then
+        begin
+          mState.ShowChange(mChange, mScreen);
+        end;
+      end);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.LineChanges, E);
+  end;
+end;
+
 procedure TLineChangesState.GoToChange(AForward: Boolean);
 var
   mView: IOTAEditView;
@@ -804,11 +804,6 @@ begin
 end;
 
 { TAtlasIdeLineChanges }
-
-class function TAtlasIdeLineChanges.Enabled: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.GitGutter;
-end;
 
 class procedure TAtlasIdeLineChanges.Install(const AMessage: TProc<string>);
 begin
@@ -854,6 +849,19 @@ begin
   begin
     TAtlasLineChangesPaint.Invalidate;
   end;
+end;
+
+class procedure TAtlasIdeLineChanges.GoToChange(AForward: Boolean);
+begin
+  if FState <> nil then
+  begin
+    TLineChangesState(FState).GoToChange(AForward);
+  end;
+end;
+
+class function TAtlasIdeLineChanges.Enabled: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.GitGutter;
 end;
 
 class function TAtlasIdeLineChanges.Snapshot(const AFileName: string; out AChanges: TAtlasLineChangeList;
@@ -928,14 +936,6 @@ begin
   begin
     mState.FHovering := False;
     mState.HideTip;
-  end;
-end;
-
-class procedure TAtlasIdeLineChanges.GoToChange(AForward: Boolean);
-begin
-  if FState <> nil then
-  begin
-    TLineChangesState(FState).GoToChange(AForward);
   end;
 end;
 

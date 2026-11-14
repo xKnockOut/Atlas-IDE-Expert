@@ -143,6 +143,8 @@ type
     procedure Add(const AName: string);
   end;
 
+{ TAtlasColorCollector }
+
 procedure TAtlasColorCollector.Add(const AName: string);
 var
   mColor: Integer;
@@ -244,22 +246,13 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasIdeMagnifier.Available(const ASettings: TAtlasPluginSettings): Boolean;
+procedure TAtlasIdeMagnifier.ApplyTheme;
 begin
-  Result := ASettings.DesignerMagnifier;
-end;
-
-function TAtlasIdeMagnifier.Button: TAtlasDesignerButton;
-begin
-  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.Magnifier,
-    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagHint));
-  Result.Pressed := Shown;
-  Result.Menu := True;
-end;
-
-function TAtlasIdeMagnifier.Shown: Boolean;
-begin
-  Result := (FWindow <> nil) and FWindow.Shown;
+  inherited ApplyTheme;
+  if FWindow <> nil then
+  begin
+    FWindow.ApplyColors(TAtlasIdeStyle.Colors);
+  end;
 end;
 
 procedure TAtlasIdeMagnifier.EnsureWindow;
@@ -318,85 +311,6 @@ begin
   UpdateView(True);
 end;
 
-procedure TAtlasIdeMagnifier.Toggle;
-begin
-  if Shown then
-  begin
-    Hide;
-  end
-  else
-  begin
-    Open;
-  end;
-end;
-
-procedure TAtlasIdeMagnifier.KeyPressed;
-begin
-  if not Shown then
-  begin
-    Open;
-    Exit;
-  end;
-  FState.Frozen := not FState.Frozen;
-  UpdateView(True);
-end;
-
-procedure TAtlasIdeMagnifier.Nudge(ADX, ADY: Integer);
-begin
-  if Shown and FState.Frozen then
-  begin
-    FState.Center := Point(FState.Center.X + ADX, FState.Center.Y + ADY);
-    UpdateView(True);
-  end;
-end;
-
-procedure TAtlasIdeMagnifier.SetZoom(AZoom: Integer);
-begin
-  FState.Zoom := TAtlasMagnifier.NormalizeZoom(AZoom);
-  UpdateView(True);
-end;
-
-procedure TAtlasIdeMagnifier.Tick;
-begin
-  if TAtlasIdeSettings.Current.DesignerMagnifier and TAtlasDesignerAccess.Shown then
-  begin
-    TAtlasKeyHook.Add(FKeys);
-  end
-  else
-  begin
-    TAtlasKeyHook.Remove(FKeys);
-    Hide;
-  end;
-end;
-
-procedure TAtlasIdeMagnifier.Hide;
-begin
-  FTimer.Enabled := False;
-  FState.Frozen := False;
-  if FWindow <> nil then
-  begin
-    FWindow.HideWindow;
-  end;
-end;
-
-procedure TAtlasIdeMagnifier.ApplyTheme;
-begin
-  inherited ApplyTheme;
-  if FWindow <> nil then
-  begin
-    FWindow.ApplyColors(TAtlasIdeStyle.Colors);
-  end;
-end;
-
-procedure TAtlasIdeMagnifier.TimerTick(Sender: TObject);
-begin
-  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-    procedure
-    begin
-      UpdateView(False);
-    end);
-end;
-
 procedure TAtlasIdeMagnifier.UpdateView(AForce: Boolean);
 var
   mCursor: TPoint;
@@ -428,6 +342,15 @@ begin
     FWindow.SetLines(nil);
   end;
   Describe;
+end;
+
+procedure TAtlasIdeMagnifier.TimerTick(Sender: TObject);
+begin
+  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
+    procedure
+    begin
+      UpdateView(False);
+    end);
 end;
 
 procedure TAtlasIdeMagnifier.Describe;
@@ -515,33 +438,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeMagnifier.AddEdges(var ALines: TArray<TAtlasMagnifierLine>; AControl: TControl;
-  ASelected: Boolean);
-var
-  mSource: TRect;
-  mTopLeft: TPoint;
-  mRect: TRect;
-begin
-  if AControl.Parent = nil then
-  begin
-    Exit;
-  end;
-  mSource := FWindow.Source;
-  mTopLeft := AControl.Parent.ClientToScreen(AControl.BoundsRect.TopLeft);
-  mRect := Rect(mTopLeft.X, mTopLeft.Y, mTopLeft.X + AControl.Width, mTopLeft.Y + AControl.Height);
-  // Nur Kanten, die den Ausschnitt schneiden; rechte und untere Kante liegen hinter dem letzten Pixel.
-  if (mRect.Bottom < mSource.Top) or (mRect.Top > mSource.Bottom) or (mRect.Right < mSource.Left) or
-    (mRect.Left > mSource.Right) then
-  begin
-    Exit;
-  end;
-  ALines := ALines + [TAtlasMagnifierLine.Create(True, TAtlasMagnifier.ToView(mRect.Left, mSource.Left, FState.Zoom),
-    ASelected),
-    TAtlasMagnifierLine.Create(True, TAtlasMagnifier.ToView(mRect.Right, mSource.Left, FState.Zoom), ASelected),
-    TAtlasMagnifierLine.Create(False, TAtlasMagnifier.ToView(mRect.Top, mSource.Top, FState.Zoom), ASelected),
-    TAtlasMagnifierLine.Create(False, TAtlasMagnifier.ToView(mRect.Bottom, mSource.Top, FState.Zoom), ASelected)];
-end;
-
 function TAtlasIdeMagnifier.EdgeLines: TArray<TAtlasMagnifierLine>;
 var
   mEditor: IOTAFormEditor;
@@ -589,31 +485,31 @@ begin
   end;
 end;
 
-procedure TAtlasIdeMagnifier.CopyText(const AText: string);
+procedure TAtlasIdeMagnifier.AddEdges(var ALines: TArray<TAtlasMagnifierLine>; AControl: TControl;
+  ASelected: Boolean);
+var
+  mSource: TRect;
+  mTopLeft: TPoint;
+  mRect: TRect;
 begin
-  if AText = '' then
+  if AControl.Parent = nil then
   begin
     Exit;
   end;
-  Clipboard.AsText := AText;
-  Say(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.MagCopied, [AText]));
-end;
-
-procedure TAtlasIdeMagnifier.AddMenuItem(const ACaption: string; ATag: Integer; AChecked: Boolean);
-var
-  mItem: TMenuItem;
-begin
-  mItem := TMenuItem.Create(FMenu);
-  mItem.Caption := ACaption;
-  mItem.Tag := ATag;
-  mItem.Checked := AChecked;
-  mItem.OnClick := MenuClick;
-  FMenu.Items.Add(mItem);
-end;
-
-procedure TAtlasIdeMagnifier.MenuPopup(Sender: TObject);
-begin
-  BuildMenu;
+  mSource := FWindow.Source;
+  mTopLeft := AControl.Parent.ClientToScreen(AControl.BoundsRect.TopLeft);
+  mRect := Rect(mTopLeft.X, mTopLeft.Y, mTopLeft.X + AControl.Width, mTopLeft.Y + AControl.Height);
+  // Nur Kanten, die den Ausschnitt schneiden; rechte und untere Kante liegen hinter dem letzten Pixel.
+  if (mRect.Bottom < mSource.Top) or (mRect.Top > mSource.Bottom) or (mRect.Right < mSource.Left) or
+    (mRect.Left > mSource.Right) then
+  begin
+    Exit;
+  end;
+  ALines := ALines + [TAtlasMagnifierLine.Create(True, TAtlasMagnifier.ToView(mRect.Left, mSource.Left, FState.Zoom),
+    ASelected),
+    TAtlasMagnifierLine.Create(True, TAtlasMagnifier.ToView(mRect.Right, mSource.Left, FState.Zoom), ASelected),
+    TAtlasMagnifierLine.Create(False, TAtlasMagnifier.ToView(mRect.Top, mSource.Top, FState.Zoom), ASelected),
+    TAtlasMagnifierLine.Create(False, TAtlasMagnifier.ToView(mRect.Bottom, mSource.Top, FState.Zoom), ASelected)];
 end;
 
 procedure TAtlasIdeMagnifier.BuildMenu;
@@ -638,10 +534,21 @@ begin
   AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagCopyPos), cMenuCopyPos, False);
 end;
 
-procedure TAtlasIdeMagnifier.Popup(const APoint: TPoint);
+procedure TAtlasIdeMagnifier.AddMenuItem(const ACaption: string; ATag: Integer; AChecked: Boolean);
+var
+  mItem: TMenuItem;
 begin
-  // OnPopup baut das Menü.
-  FMenu.Popup(APoint.X, APoint.Y);
+  mItem := TMenuItem.Create(FMenu);
+  mItem.Caption := ACaption;
+  mItem.Tag := ATag;
+  mItem.Checked := AChecked;
+  mItem.OnClick := MenuClick;
+  FMenu.Items.Add(mItem);
+end;
+
+procedure TAtlasIdeMagnifier.MenuPopup(Sender: TObject);
+begin
+  BuildMenu;
 end;
 
 procedure TAtlasIdeMagnifier.MenuClick(Sender: TObject);
@@ -677,6 +584,101 @@ begin
         mOwner.SetZoom(Integer(mTag) - cMenuZoom);
       end;
     end);
+end;
+
+procedure TAtlasIdeMagnifier.CopyText(const AText: string);
+begin
+  if AText = '' then
+  begin
+    Exit;
+  end;
+  Clipboard.AsText := AText;
+  Say(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.MagCopied, [AText]));
+end;
+
+procedure TAtlasIdeMagnifier.SetZoom(AZoom: Integer);
+begin
+  FState.Zoom := TAtlasMagnifier.NormalizeZoom(AZoom);
+  UpdateView(True);
+end;
+
+class function TAtlasIdeMagnifier.Available(const ASettings: TAtlasPluginSettings): Boolean;
+begin
+  Result := ASettings.DesignerMagnifier;
+end;
+
+function TAtlasIdeMagnifier.Button: TAtlasDesignerButton;
+begin
+  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.Magnifier,
+    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagHint));
+  Result.Pressed := Shown;
+  Result.Menu := True;
+end;
+
+procedure TAtlasIdeMagnifier.Toggle;
+begin
+  if Shown then
+  begin
+    Hide;
+  end
+  else
+  begin
+    Open;
+  end;
+end;
+
+procedure TAtlasIdeMagnifier.KeyPressed;
+begin
+  if not Shown then
+  begin
+    Open;
+    Exit;
+  end;
+  FState.Frozen := not FState.Frozen;
+  UpdateView(True);
+end;
+
+procedure TAtlasIdeMagnifier.Nudge(ADX, ADY: Integer);
+begin
+  if Shown and FState.Frozen then
+  begin
+    FState.Center := Point(FState.Center.X + ADX, FState.Center.Y + ADY);
+    UpdateView(True);
+  end;
+end;
+
+procedure TAtlasIdeMagnifier.Popup(const APoint: TPoint);
+begin
+  // OnPopup baut das Menü.
+  FMenu.Popup(APoint.X, APoint.Y);
+end;
+
+procedure TAtlasIdeMagnifier.Tick;
+begin
+  if TAtlasIdeSettings.Current.DesignerMagnifier and TAtlasDesignerAccess.Shown then
+  begin
+    TAtlasKeyHook.Add(FKeys);
+  end
+  else
+  begin
+    TAtlasKeyHook.Remove(FKeys);
+    Hide;
+  end;
+end;
+
+procedure TAtlasIdeMagnifier.Hide;
+begin
+  FTimer.Enabled := False;
+  FState.Frozen := False;
+  if FWindow <> nil then
+  begin
+    FWindow.HideWindow;
+  end;
+end;
+
+function TAtlasIdeMagnifier.Shown: Boolean;
+begin
+  Result := (FWindow <> nil) and FWindow.Shown;
 end;
 
 end.

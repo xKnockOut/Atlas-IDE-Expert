@@ -162,6 +162,8 @@ begin
   end;
 end;
 
+{ TFrameCollector }
+
 constructor TFrameCollector.Create(const ALines: TArray<string>; const ATokens: TAtlasTypeTokens);
 begin
   inherited Create;
@@ -462,6 +464,8 @@ begin
     Result := Result + [mItem];
   end;
 end;
+
+{ TAtlasStatementFinder }
 
 class function TAtlasStatementFinder.At(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
   ACharacter: Integer): TAtlasStatementFrames;

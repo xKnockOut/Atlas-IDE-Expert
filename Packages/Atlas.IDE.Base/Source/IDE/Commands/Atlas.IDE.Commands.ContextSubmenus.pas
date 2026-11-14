@@ -34,6 +34,8 @@ uses
   System.Types,
   Vcl.Controls;
 
+{ TAtlasIdeContextSubmenus }
+
 class procedure TAtlasIdeContextSubmenus.Fill(AParent: TMenuItem; const AActions: TArray<TBasicAction>);
 var
   mAction: TBasicAction;

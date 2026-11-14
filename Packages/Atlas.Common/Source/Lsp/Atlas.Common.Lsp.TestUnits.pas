@@ -195,30 +195,24 @@ begin
   FContextFor := AContextFor;
 end;
 
-class function TLspTestUnits.TestFolder(const AContext: TTestUnitContext): string;
+function TLspTestUnits.ResolveUri(const AUri: string; ALine: Integer;
+  const AContext: TTestUnitContext): TTestUnitTarget;
 var
-  mFolder: string;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mFileName: string;
 begin
-  if AContext.Settings.Folder <> '' then
+  mFileName := TDocumentUris.ToPath(AUri);
+  // Offenes Dokument: Index aus dem geteilten Syntaxbaum, ohne erneut zu parsen.
+  if FStore.TryGet(AUri, mDocument) then
   begin
-    mFolder := StringReplace(StringReplace(AContext.Settings.Folder, '/', PathDelim, [rfReplaceAll]), '\', PathDelim,
-      [rfReplaceAll]);
-    if (Pos(':', mFolder) > 0) or mFolder.StartsWith(PathDelim) then
-    begin
-      Result := IncludeTrailingPathDelimiter(mFolder);
-    end
-    else
-    begin
-      Result := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(AContext.Root) + mFolder);
-    end;
-  end
-  else if AContext.TestProgram <> '' then
-  begin
-    Result := ExtractFilePath(AContext.TestProgram);
+    mShared := TSyntaxTreeCache.Get(mDocument);
+    Result := Resolve(mFileName, mShared.Tree.Tokens, TTreeExtracts.ForTree(mShared.Tree).Extracted(mFileName), ALine,
+      AContext);
   end
   else
   begin
-    Result := '';
+    Result := Resolve(mFileName, AContext.ReadText(mFileName), ALine, AContext);
   end;
 end;
 
@@ -236,11 +230,22 @@ begin
   end;
 end;
 
-class function TLspTestUnits.Resolve(const AFileName, AText: string; ALine: Integer;
-  const AContext: TTestUnitContext): TTestUnitTarget;
+function TLspTestUnits.SourceOf(const AUri: string; const AContext: TTestUnitContext; out AText: string;
+  out ATokens: TArray<TPascalToken>): Boolean;
+var
+  mDocument: ITextDocument;
 begin
-  Result := Resolve(AFileName, TPascalLexer.Tokenize(AText), TIndexExtractor.ExtractText(AText, AFileName, nil), ALine,
-    AContext);
+  if FStore.TryGet(AUri, mDocument) then
+  begin
+    AText := mDocument.Text;
+    ATokens := TSyntaxTreeCache.Get(mDocument).Tree.Tokens;
+  end
+  else
+  begin
+    AText := AContext.ReadText(TDocumentUris.ToPath(AUri));
+    ATokens := TPascalLexer.Tokenize(AText);
+  end;
+  Result := AText <> '';
 end;
 
 /// <summary>Zu prüfende Unit ATested einer Testunit eintragen.</summary>
@@ -300,6 +305,50 @@ begin
   end;
 end;
 
+function TLspTestUnits.TextOf(const AFileName: string; const AContext: TTestUnitContext): string;
+var
+  mDocument: ITextDocument;
+begin
+  // Offene Testunit: ungespeicherte Änderungen zählen.
+  if FStore.TryGet(TDocumentUris.FromPath(AFileName), mDocument) then
+  begin
+    Result := mDocument.Text;
+  end
+  else
+  begin
+    Result := AContext.ReadText(AFileName);
+  end;
+end;
+
+function DocumentEdit(const AUri: string; const AEdits: TArray<TRuleEdit>): TJSONObject;
+var
+  mDocument, mItem: TJSONObject;
+  mEdits: TJSONArray;
+  mEdit: TRuleEdit;
+begin
+  mDocument := TJSONObject.Create;
+  mDocument.AddPair('uri', AUri);
+  mDocument.AddPair('version', TJSONNull.Create);
+  mEdits := TJSONArray.Create;
+  for mEdit in AEdits do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mItem.AddPair('newText', mEdit.NewText);
+    mEdits.AddElement(mItem);
+  end;
+  Result := TJSONObject.Create;
+  Result.AddPair('textDocument', mDocument);
+  Result.AddPair('edits', mEdits);
+end;
+
+class function TLspTestUnits.Resolve(const AFileName, AText: string; ALine: Integer;
+  const AContext: TTestUnitContext): TTestUnitTarget;
+begin
+  Result := Resolve(AFileName, TPascalLexer.Tokenize(AText), TIndexExtractor.ExtractText(AText, AFileName, nil), ALine,
+    AContext);
+end;
+
 class function TLspTestUnits.Resolve(const AFileName: string; const ATokens: TArray<TPascalToken>;
   const ASource: TUnitIndex; ALine: Integer; const AContext: TTestUnitContext): TTestUnitTarget;
 var
@@ -332,26 +381,31 @@ begin
   end;
 end;
 
-function DocumentEdit(const AUri: string; const AEdits: TArray<TRuleEdit>): TJSONObject;
+class function TLspTestUnits.TestFolder(const AContext: TTestUnitContext): string;
 var
-  mDocument, mItem: TJSONObject;
-  mEdits: TJSONArray;
-  mEdit: TRuleEdit;
+  mFolder: string;
 begin
-  mDocument := TJSONObject.Create;
-  mDocument.AddPair('uri', AUri);
-  mDocument.AddPair('version', TJSONNull.Create);
-  mEdits := TJSONArray.Create;
-  for mEdit in AEdits do
+  if AContext.Settings.Folder <> '' then
   begin
-    mItem := TJSONObject.Create;
-    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
-    mItem.AddPair('newText', mEdit.NewText);
-    mEdits.AddElement(mItem);
+    mFolder := StringReplace(StringReplace(AContext.Settings.Folder, '/', PathDelim, [rfReplaceAll]), '\', PathDelim,
+      [rfReplaceAll]);
+    if (Pos(':', mFolder) > 0) or mFolder.StartsWith(PathDelim) then
+    begin
+      Result := IncludeTrailingPathDelimiter(mFolder);
+    end
+    else
+    begin
+      Result := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(AContext.Root) + mFolder);
+    end;
+  end
+  else if AContext.TestProgram <> '' then
+  begin
+    Result := ExtractFilePath(AContext.TestProgram);
+  end
+  else
+  begin
+    Result := '';
   end;
-  Result := TJSONObject.Create;
-  Result.AddPair('textDocument', mDocument);
-  Result.AddPair('edits', mEdits);
 end;
 
 class function TLspTestUnits.CreateEdit(const ATarget: TTestUnitTarget;
@@ -402,60 +456,6 @@ begin
   end;
   Result := TJSONObject.Create;
   Result.AddPair('documentChanges', mChanges);
-end;
-
-function TLspTestUnits.ResolveUri(const AUri: string; ALine: Integer;
-  const AContext: TTestUnitContext): TTestUnitTarget;
-var
-  mDocument: ITextDocument;
-  mShared: ISharedSyntaxTree;
-  mFileName: string;
-begin
-  mFileName := TDocumentUris.ToPath(AUri);
-  // Offenes Dokument: Index aus dem geteilten Syntaxbaum, ohne erneut zu parsen.
-  if FStore.TryGet(AUri, mDocument) then
-  begin
-    mShared := TSyntaxTreeCache.Get(mDocument);
-    Result := Resolve(mFileName, mShared.Tree.Tokens, TTreeExtracts.ForTree(mShared.Tree).Extracted(mFileName), ALine,
-      AContext);
-  end
-  else
-  begin
-    Result := Resolve(mFileName, AContext.ReadText(mFileName), ALine, AContext);
-  end;
-end;
-
-function TLspTestUnits.SourceOf(const AUri: string; const AContext: TTestUnitContext; out AText: string;
-  out ATokens: TArray<TPascalToken>): Boolean;
-var
-  mDocument: ITextDocument;
-begin
-  if FStore.TryGet(AUri, mDocument) then
-  begin
-    AText := mDocument.Text;
-    ATokens := TSyntaxTreeCache.Get(mDocument).Tree.Tokens;
-  end
-  else
-  begin
-    AText := AContext.ReadText(TDocumentUris.ToPath(AUri));
-    ATokens := TPascalLexer.Tokenize(AText);
-  end;
-  Result := AText <> '';
-end;
-
-function TLspTestUnits.TextOf(const AFileName: string; const AContext: TTestUnitContext): string;
-var
-  mDocument: ITextDocument;
-begin
-  // Offene Testunit: ungespeicherte Änderungen zählen.
-  if FStore.TryGet(TDocumentUris.FromPath(AFileName), mDocument) then
-  begin
-    Result := mDocument.Text;
-  end
-  else
-  begin
-    Result := AContext.ReadText(AFileName);
-  end;
 end;
 
 /// <summary>WorkspaceEdit mit zeilenweisen Änderungen von AOld nach ANew in AFileName.</summary>
@@ -539,6 +539,31 @@ begin
   end;
 end;
 
+function TLspTestUnits.DraftAction(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
+  const ATarget: TTestUnitTarget): TJSONObject;
+var
+  mPlace: TTestDraftPlace;
+  mEdit: TJSONObject;
+  mFile, mName, mTitle: string;
+begin
+  Result := nil;
+  if not PlaceFor(AUri, ALine, AContext, ATarget, mPlace) then
+  begin
+    Exit;
+  end;
+  mEdit := DraftEdit(mPlace, mFile, mName);
+  if mEdit = nil then
+  begin
+    Exit;
+  end;
+  mTitle := cTexts[TLspTestUnitsText.CreateTestCase].Fmt([mPlace.Draft.Target]);
+  Result := TJSONObject.Create;
+  Result.AddPair('title', mTitle);
+  Result.AddPair('kind', cRewriteKind);
+  Result.AddPair('edit', mEdit);
+  Result.AddPair('command', CommandJson(mTitle, cOpenFileCommand, TDocumentUris.FromPath(mFile)));
+end;
+
 function TLspTestUnits.DraftPlace(const AUri: string; ALine: Integer; out APlace: TTestDraftPlace): Boolean;
 var
   mContext: TTestUnitContext;
@@ -571,61 +596,6 @@ begin
     AFile := APlace.Target.NewFile;
     Result := NewUnitDraftEdit(APlace.Target, APlace.Context, APlace.Draft);
   end;
-end;
-
-function TLspTestUnits.DraftWithTestUnit(const AUri: string; ALine: Integer; out ADraft: TTestDraft;
-  out ATestFile, ATestText, AReason: string): Boolean;
-var
-  mPlace: TTestDraftPlace;
-begin
-  ADraft := Default(TTestDraft);
-  ATestFile := '';
-  ATestText := '';
-  AReason := cTexts[TLspTestUnitsText.NoTestableRoutine].Text;
-  if not DraftPlace(AUri, ALine, mPlace) or mPlace.Draft.Bare then
-  begin
-    Exit(False);
-  end;
-  ADraft := mPlace.Draft;
-  if mPlace.Target.CounterpartFile = '' then
-  begin
-    AReason := cTexts[TLspTestUnitsText.NoTestUnitYet].Fmt([mPlace.Target.Counterpart]);
-    Exit(False);
-  end;
-  ATestFile := mPlace.Target.CounterpartFile;
-  ATestText := TextOf(ATestFile, mPlace.Context);
-  AReason := '';
-  Result := True;
-end;
-
-class function TLspTestUnits.ChangeEditOf(const AFileName, AOld, ANew: string): TJSONObject;
-begin
-  Result := ChangeEdit(AFileName, AOld, ANew);
-end;
-
-function TLspTestUnits.DraftAction(const AUri: string; ALine: Integer; const AContext: TTestUnitContext;
-  const ATarget: TTestUnitTarget): TJSONObject;
-var
-  mPlace: TTestDraftPlace;
-  mEdit: TJSONObject;
-  mFile, mName, mTitle: string;
-begin
-  Result := nil;
-  if not PlaceFor(AUri, ALine, AContext, ATarget, mPlace) then
-  begin
-    Exit;
-  end;
-  mEdit := DraftEdit(mPlace, mFile, mName);
-  if mEdit = nil then
-  begin
-    Exit;
-  end;
-  mTitle := cTexts[TLspTestUnitsText.CreateTestCase].Fmt([mPlace.Draft.Target]);
-  Result := TJSONObject.Create;
-  Result.AddPair('title', mTitle);
-  Result.AddPair('kind', cRewriteKind);
-  Result.AddPair('edit', mEdit);
-  Result.AddPair('command', CommandJson(mTitle, cOpenFileCommand, TDocumentUris.FromPath(mFile)));
 end;
 
 function TLspTestUnits.Actions(const AUri: string; ALine: Integer): TArray<TJSONObject>;
@@ -685,6 +655,36 @@ begin
   mAction.AddPair('edit', mEdit);
   mAction.AddPair('command', CommandJson(mTitle, cOpenFileCommand, TDocumentUris.FromPath(mTarget.NewFile)));
   Result := Result + [mAction];
+end;
+
+function TLspTestUnits.DraftWithTestUnit(const AUri: string; ALine: Integer; out ADraft: TTestDraft;
+  out ATestFile, ATestText, AReason: string): Boolean;
+var
+  mPlace: TTestDraftPlace;
+begin
+  ADraft := Default(TTestDraft);
+  ATestFile := '';
+  ATestText := '';
+  AReason := cTexts[TLspTestUnitsText.NoTestableRoutine].Text;
+  if not DraftPlace(AUri, ALine, mPlace) or mPlace.Draft.Bare then
+  begin
+    Exit(False);
+  end;
+  ADraft := mPlace.Draft;
+  if mPlace.Target.CounterpartFile = '' then
+  begin
+    AReason := cTexts[TLspTestUnitsText.NoTestUnitYet].Fmt([mPlace.Target.Counterpart]);
+    Exit(False);
+  end;
+  ATestFile := mPlace.Target.CounterpartFile;
+  ATestText := TextOf(ATestFile, mPlace.Context);
+  AReason := '';
+  Result := True;
+end;
+
+class function TLspTestUnits.ChangeEditOf(const AFileName, AOld, ANew: string): TJSONObject;
+begin
+  Result := ChangeEdit(AFileName, AOld, ANew);
 end;
 
 function TLspTestUnits.Execute(const AArguments: TJSONArray): TJSONValue;

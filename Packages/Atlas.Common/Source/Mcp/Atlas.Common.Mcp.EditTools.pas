@@ -219,50 +219,39 @@ begin
   FEnsureUnit := AEnsureUnit;
 end;
 
-class function TMcpEditTools.ApplyToText(const AText: string; const AEdits: TArray<TMcpFileEdit>): string;
+procedure TMcpEditTools.ReadAll(const ANames: TArray<string>; const AGroups: TArray<TArray<TMcpFileEdit>>;
+  out AOldTexts, ANewTexts: TArray<string>);
 var
-  mSorted: TArray<TMcpFileEdit>;
-  mEdit: TMcpFileEdit;
-  mStartOffset, mEndOffset: Integer;
-  mLines: TLineTable;
+  mIndex: Integer;
 begin
-  mSorted := Copy(AEdits);
-  TArray.Sort<TMcpFileEdit>(mSorted, TComparer<TMcpFileEdit>.Construct(
-    function(const A, B: TMcpFileEdit): Integer
-    begin
-      Result := B.Range.StartPos.Line - A.Range.StartPos.Line;
-      if Result = 0 then
-      begin
-        Result := B.Range.StartPos.Character - A.Range.StartPos.Character;
-      end;
-    end));
-  Result := AText;
-  for mEdit in mSorted do
+  SetLength(AOldTexts, Length(ANames));
+  SetLength(ANewTexts, Length(ANames));
+  for mIndex := 0 to High(ANames) do
   begin
-    // Zeilen wie LSP (CRLF, LF, CR); Zeichen hinter dem Zeilenende zählen als Zeilenende.
-    mLines := TLineTable.Build(Result);
-    mStartOffset := mLines.OffsetAt(mEdit.Range.StartPos);
-    mEndOffset := mLines.OffsetAt(mEdit.Range.EndPos);
-    Result := Copy(Result, 1, mStartOffset) + mEdit.NewText + Copy(Result, mEndOffset + 1, MaxInt);
+    if not FReadText(ANames[mIndex], AOldTexts[mIndex]) then
+    begin
+      raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadableNothingChanged].Text, [ANames[mIndex]]);
+    end;
+    ANewTexts[mIndex] := ApplyToText(AOldTexts[mIndex], AGroups[mIndex]);
   end;
 end;
 
-class function TMcpEditTools.Diff(const AFileName, AOld, ANew: string): string;
-var
-  mLine: string;
-  mBuilder: TStringBuilder;
+procedure TMcpEditTools.WriteAll(const ATool: string; const ANames, AOldTexts, ANewTexts: TArray<string>);
 begin
-  mBuilder := TStringBuilder.Create;
+  // Alles oder nichts: Scheitert eine Datei, setzt TBulkFix die schon geschriebenen zurück.
   try
-    mBuilder.AppendFormat('--- %s', [AFileName]).AppendLine;
-    // Gleiche Zeilenzahl (z. B. Umbenennen): nur die geänderten Zeilen, sonst der geänderte Block.
-    for mLine in TTextDiff.ChangedLines(TTextLines.SplitLines(AOld), TTextLines.SplitLines(ANew)) do
-    begin
-      mBuilder.AppendLine(mLine);
-    end;
-    Result := TrimRight(mBuilder.ToString);
-  finally
-    mBuilder.Free;
+    TBulkFix.WriteAll(ANames, AOldTexts, ANewTexts,
+      procedure(const AFileName, AText: string)
+      begin
+        FWriteText(AFileName, AText);
+      end);
+  except
+    on E: EBulkFixWrite do
+      raise EMcpToolError.Create(E.Message);
+  end;
+  if Assigned(FAudit) then
+  begin
+    FAudit(Format('MCP %s hat geschrieben: %s', [ATool, TLogMarks.Path(string.Join(', ', ANames))]));
   end;
 end;
 
@@ -318,23 +307,6 @@ begin
   end;
 end;
 
-procedure TMcpEditTools.ReadAll(const ANames: TArray<string>; const AGroups: TArray<TArray<TMcpFileEdit>>;
-  out AOldTexts, ANewTexts: TArray<string>);
-var
-  mIndex: Integer;
-begin
-  SetLength(AOldTexts, Length(ANames));
-  SetLength(ANewTexts, Length(ANames));
-  for mIndex := 0 to High(ANames) do
-  begin
-    if not FReadText(ANames[mIndex], AOldTexts[mIndex]) then
-    begin
-      raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadableNothingChanged].Text, [ANames[mIndex]]);
-    end;
-    ANewTexts[mIndex] := ApplyToText(AOldTexts[mIndex], AGroups[mIndex]);
-  end;
-end;
-
 procedure TMcpEditTools.EnsureWritable(const ANames, AOldTexts: TArray<string>);
 var
   mDirty, mCurrent: string;
@@ -358,63 +330,6 @@ begin
     begin
       raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.HasBeenChangedInThe].Text, [ANames[mIndex]]);
     end;
-  end;
-end;
-
-procedure TMcpEditTools.WriteAll(const ATool: string; const ANames, AOldTexts, ANewTexts: TArray<string>);
-begin
-  // Alles oder nichts: Scheitert eine Datei, setzt TBulkFix die schon geschriebenen zurück.
-  try
-    TBulkFix.WriteAll(ANames, AOldTexts, ANewTexts,
-      procedure(const AFileName, AText: string)
-      begin
-        FWriteText(AFileName, AText);
-      end);
-  except
-    on E: EBulkFixWrite do
-      raise EMcpToolError.Create(E.Message);
-  end;
-  if Assigned(FAudit) then
-  begin
-    FAudit(Format('MCP %s hat geschrieben: %s', [ATool, TLogMarks.Path(string.Join(', ', ANames))]));
-  end;
-end;
-
-function TMcpEditTools.Apply(const ATool: string; const AEdits: TArray<TMcpFileEdit>; ADryRun: Boolean): string;
-var
-  mNames, mOldTexts, mNewTexts: TArray<string>;
-  mGroups: TArray<TArray<TMcpFileEdit>>;
-  mIndex: Integer;
-  mReport: TStringBuilder;
-begin
-  if Length(AEdits) = 0 then
-  begin
-    raise EMcpToolError.Create(cTexts[TEditToolsText.NoChanges].Text);
-  end;
-  mGroups := GroupByFile(AEdits, mNames);
-  ReadAll(mNames, mGroups, mOldTexts, mNewTexts);
-  mReport := TStringBuilder.Create;
-  try
-    if ADryRun then
-    begin
-      mReport.AppendFormat(cTexts[TEditToolsText.PreviewDryRunChangesInFiles].Text, [Length(AEdits),
-        Length(mNames)]).AppendLine;
-    end
-    else
-    begin
-      EnsureWritable(mNames, mOldTexts);
-      WriteAll(ATool, mNames, mOldTexts, mNewTexts);
-      mReport.AppendFormat(cTexts[TEditToolsText.ChangesWrittenInFiles].Text, [Length(AEdits),
-        Length(mNames)]).AppendLine;
-    end;
-    for mIndex := 0 to High(mNames) do
-    begin
-      mReport.AppendLine;
-      mReport.AppendLine(Diff(mNames[mIndex], mOldTexts[mIndex], mNewTexts[mIndex]));
-    end;
-    Result := TrimRight(mReport.ToString);
-  finally
-    mReport.Free;
   end;
 end;
 
@@ -463,39 +378,6 @@ begin
   end;
 end;
 
-/// <summary>Erschlossene Stellen, die rename_symbol nicht geändert hat; '' ohne.</summary>
-function UnchangedReport(const AUnchanged: TArray<TReferenceLocation>): string;
-var
-  mLocation: TReferenceLocation;
-begin
-  Result := '';
-  if Length(AUnchanged) = 0 then
-  begin
-    Exit;
-  end;
-  Result := sLineBreak + sLineBreak + cTexts[TEditToolsText.NotChangedPleaseCheckInferred].Fmt([Length(AUnchanged)]);
-  for mLocation in AUnchanged do
-  begin
-    Result := Result + sLineBreak + Format('%s:%d:%d – %s: %s', [mLocation.FileName,
-      mLocation.Range.StartPos.Line + 1, mLocation.Range.StartPos.Character + 1, mLocation.Confidence.ReasonName,
-      mLocation.Confidence.Detail]);
-  end;
-end;
-
-function TMcpEditTools.RenameSymbol(const AFileName: string; ALine, AColumn: Integer; const ANewName: string;
-  ADryRun: Boolean): string;
-var
-  mEdits: TArray<TMcpFileEdit>;
-  mUnchanged: TArray<TReferenceLocation>;
-begin
-  mEdits := RenameEdits(AFileName, ALine, AColumn, ANewName, mUnchanged);
-  if Length(mEdits) = 0 then
-  begin
-    raise EMcpToolError.Create(cTexts[TEditToolsText.ThereIsNoSymbolThat].Text);
-  end;
-  Result := Apply('rename_symbol', mEdits, ADryRun) + UnchangedReport(mUnchanged);
-end;
-
 function TMcpEditTools.ActionsAt(const AScope: TMcpRuleScope; const AFileName: string;
   ALine: Integer): TArray<TCodeAction>;
 var
@@ -518,77 +400,6 @@ begin
       Result := Result + [mAction];
     end;
   end;
-end;
-
-/// <summary>Korrektur mit Titel oder Regelkennung ATitle; -1 ohne.</summary>
-function ChosenAction(const AActions: TArray<TCodeAction>; const ATitle: string): Integer;
-var
-  mIndex: Integer;
-begin
-  // Über die Regelkennung nur echte Korrekturen: Unterdrücken behebt nichts und braucht seinen Titel (#1109).
-  for mIndex := 0 to High(AActions) do
-  begin
-    if SameText(AActions[mIndex].Title, ATitle) or (SameText(AActions[mIndex].RuleId, ATitle) and
-      not MatchStr(AActions[mIndex].Tag, [cRuleSuppressLineTag, cRuleSuppressFileTag])) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
-/// <summary>Liste der Korrekturen der Zeile; mit ATitle als Hinweis, dass es diese nicht gibt.</summary>
-function ActionList(const AActions: TArray<TCodeAction>; const ATitle: string; ALine: Integer): string;
-var
-  mAction: TCodeAction;
-begin
-  if ATitle <> '' then
-  begin
-    Result := cTexts[TEditToolsText.NoFixInLineAvailable].Fmt([ATitle, ALine]);
-  end
-  else
-  begin
-    Result := cTexts[TEditToolsText.FixesInLineApplyWith].Fmt([ALine]);
-  end;
-  for mAction in AActions do
-  begin
-    Result := Result + sLineBreak + Format('- %s [%s]', [mAction.Title, mAction.RuleId]);
-  end;
-end;
-
-function TMcpEditTools.ApplyCodeAction(const AScope: TMcpRuleScope; const AFileName: string; ALine: Integer;
-  const ATitle: string; ADryRun: Boolean): string;
-var
-  mActions: TArray<TCodeAction>;
-  mChosen: Integer;
-  mEdit: TRuleEdit;
-  mEdits: TArray<TMcpFileEdit>;
-begin
-  mActions := ActionsAt(AScope, AFileName, ALine);
-  if Length(mActions) = 0 then
-  begin
-    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.NoFixInLine].Text, [ALine]);
-  end;
-  mChosen := -1;
-  if ATitle <> '' then
-  begin
-    mChosen := ChosenAction(mActions, ATitle);
-    if mChosen < 0 then
-    begin
-      raise EMcpToolError.Create(ActionList(mActions, ATitle, ALine));
-    end;
-  end;
-  if mChosen < 0 then
-  begin
-    Exit(ActionList(mActions, '', ALine));
-  end;
-  mEdits := nil;
-  for mEdit in mActions[mChosen].Edits do
-  begin
-    mEdits := mEdits + [TMcpFileEdit.Create(AFileName, mEdit.Range, mEdit.NewText)];
-  end;
-  Result := Format('Korrektur: %s', [mActions[mChosen].Title]) + sLineBreak +
-    Apply('apply_code_action', mEdits, ADryRun);
 end;
 
 function TMcpEditTools.RunFixes(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
@@ -657,6 +468,195 @@ begin
     FAudit(Format('MCP fix_findings (%s) hat geschrieben: %s', [string.Join(', ', AFixRules),
       TLogMarks.Path(string.Join(', ', mNames))]));
   end;
+end;
+
+/// <summary>Erschlossene Stellen, die rename_symbol nicht geändert hat; '' ohne.</summary>
+function UnchangedReport(const AUnchanged: TArray<TReferenceLocation>): string;
+var
+  mLocation: TReferenceLocation;
+begin
+  Result := '';
+  if Length(AUnchanged) = 0 then
+  begin
+    Exit;
+  end;
+  Result := sLineBreak + sLineBreak + cTexts[TEditToolsText.NotChangedPleaseCheckInferred].Fmt([Length(AUnchanged)]);
+  for mLocation in AUnchanged do
+  begin
+    Result := Result + sLineBreak + Format('%s:%d:%d – %s: %s', [mLocation.FileName,
+      mLocation.Range.StartPos.Line + 1, mLocation.Range.StartPos.Character + 1, mLocation.Confidence.ReasonName,
+      mLocation.Confidence.Detail]);
+  end;
+end;
+
+class function TMcpEditTools.ApplyToText(const AText: string; const AEdits: TArray<TMcpFileEdit>): string;
+var
+  mSorted: TArray<TMcpFileEdit>;
+  mEdit: TMcpFileEdit;
+  mStartOffset, mEndOffset: Integer;
+  mLines: TLineTable;
+begin
+  mSorted := Copy(AEdits);
+  TArray.Sort<TMcpFileEdit>(mSorted, TComparer<TMcpFileEdit>.Construct(
+    function(const A, B: TMcpFileEdit): Integer
+    begin
+      Result := B.Range.StartPos.Line - A.Range.StartPos.Line;
+      if Result = 0 then
+      begin
+        Result := B.Range.StartPos.Character - A.Range.StartPos.Character;
+      end;
+    end));
+  Result := AText;
+  for mEdit in mSorted do
+  begin
+    // Zeilen wie LSP (CRLF, LF, CR); Zeichen hinter dem Zeilenende zählen als Zeilenende.
+    mLines := TLineTable.Build(Result);
+    mStartOffset := mLines.OffsetAt(mEdit.Range.StartPos);
+    mEndOffset := mLines.OffsetAt(mEdit.Range.EndPos);
+    Result := Copy(Result, 1, mStartOffset) + mEdit.NewText + Copy(Result, mEndOffset + 1, MaxInt);
+  end;
+end;
+
+class function TMcpEditTools.Diff(const AFileName, AOld, ANew: string): string;
+var
+  mLine: string;
+  mBuilder: TStringBuilder;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    mBuilder.AppendFormat('--- %s', [AFileName]).AppendLine;
+    // Gleiche Zeilenzahl (z. B. Umbenennen): nur die geänderten Zeilen, sonst der geänderte Block.
+    for mLine in TTextDiff.ChangedLines(TTextLines.SplitLines(AOld), TTextLines.SplitLines(ANew)) do
+    begin
+      mBuilder.AppendLine(mLine);
+    end;
+    Result := TrimRight(mBuilder.ToString);
+  finally
+    mBuilder.Free;
+  end;
+end;
+
+/// <summary>Korrektur mit Titel oder Regelkennung ATitle; -1 ohne.</summary>
+function ChosenAction(const AActions: TArray<TCodeAction>; const ATitle: string): Integer;
+var
+  mIndex: Integer;
+begin
+  // Über die Regelkennung nur echte Korrekturen: Unterdrücken behebt nichts und braucht seinen Titel (#1109).
+  for mIndex := 0 to High(AActions) do
+  begin
+    if SameText(AActions[mIndex].Title, ATitle) or (SameText(AActions[mIndex].RuleId, ATitle) and
+      not MatchStr(AActions[mIndex].Tag, [cRuleSuppressLineTag, cRuleSuppressFileTag])) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Liste der Korrekturen der Zeile; mit ATitle als Hinweis, dass es diese nicht gibt.</summary>
+function ActionList(const AActions: TArray<TCodeAction>; const ATitle: string; ALine: Integer): string;
+var
+  mAction: TCodeAction;
+begin
+  if ATitle <> '' then
+  begin
+    Result := cTexts[TEditToolsText.NoFixInLineAvailable].Fmt([ATitle, ALine]);
+  end
+  else
+  begin
+    Result := cTexts[TEditToolsText.FixesInLineApplyWith].Fmt([ALine]);
+  end;
+  for mAction in AActions do
+  begin
+    Result := Result + sLineBreak + Format('- %s [%s]', [mAction.Title, mAction.RuleId]);
+  end;
+end;
+
+function TMcpEditTools.Apply(const ATool: string; const AEdits: TArray<TMcpFileEdit>; ADryRun: Boolean): string;
+var
+  mNames, mOldTexts, mNewTexts: TArray<string>;
+  mGroups: TArray<TArray<TMcpFileEdit>>;
+  mIndex: Integer;
+  mReport: TStringBuilder;
+begin
+  if Length(AEdits) = 0 then
+  begin
+    raise EMcpToolError.Create(cTexts[TEditToolsText.NoChanges].Text);
+  end;
+  mGroups := GroupByFile(AEdits, mNames);
+  ReadAll(mNames, mGroups, mOldTexts, mNewTexts);
+  mReport := TStringBuilder.Create;
+  try
+    if ADryRun then
+    begin
+      mReport.AppendFormat(cTexts[TEditToolsText.PreviewDryRunChangesInFiles].Text, [Length(AEdits),
+        Length(mNames)]).AppendLine;
+    end
+    else
+    begin
+      EnsureWritable(mNames, mOldTexts);
+      WriteAll(ATool, mNames, mOldTexts, mNewTexts);
+      mReport.AppendFormat(cTexts[TEditToolsText.ChangesWrittenInFiles].Text, [Length(AEdits),
+        Length(mNames)]).AppendLine;
+    end;
+    for mIndex := 0 to High(mNames) do
+    begin
+      mReport.AppendLine;
+      mReport.AppendLine(Diff(mNames[mIndex], mOldTexts[mIndex], mNewTexts[mIndex]));
+    end;
+    Result := TrimRight(mReport.ToString);
+  finally
+    mReport.Free;
+  end;
+end;
+
+function TMcpEditTools.RenameSymbol(const AFileName: string; ALine, AColumn: Integer; const ANewName: string;
+  ADryRun: Boolean): string;
+var
+  mEdits: TArray<TMcpFileEdit>;
+  mUnchanged: TArray<TReferenceLocation>;
+begin
+  mEdits := RenameEdits(AFileName, ALine, AColumn, ANewName, mUnchanged);
+  if Length(mEdits) = 0 then
+  begin
+    raise EMcpToolError.Create(cTexts[TEditToolsText.ThereIsNoSymbolThat].Text);
+  end;
+  Result := Apply('rename_symbol', mEdits, ADryRun) + UnchangedReport(mUnchanged);
+end;
+
+function TMcpEditTools.ApplyCodeAction(const AScope: TMcpRuleScope; const AFileName: string; ALine: Integer;
+  const ATitle: string; ADryRun: Boolean): string;
+var
+  mActions: TArray<TCodeAction>;
+  mChosen: Integer;
+  mEdit: TRuleEdit;
+  mEdits: TArray<TMcpFileEdit>;
+begin
+  mActions := ActionsAt(AScope, AFileName, ALine);
+  if Length(mActions) = 0 then
+  begin
+    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.NoFixInLine].Text, [ALine]);
+  end;
+  mChosen := -1;
+  if ATitle <> '' then
+  begin
+    mChosen := ChosenAction(mActions, ATitle);
+    if mChosen < 0 then
+    begin
+      raise EMcpToolError.Create(ActionList(mActions, ATitle, ALine));
+    end;
+  end;
+  if mChosen < 0 then
+  begin
+    Exit(ActionList(mActions, '', ALine));
+  end;
+  mEdits := nil;
+  for mEdit in mActions[mChosen].Edits do
+  begin
+    mEdits := mEdits + [TMcpFileEdit.Create(AFileName, mEdit.Range, mEdit.NewText)];
+  end;
+  Result := Format('Korrektur: %s', [mActions[mChosen].Title]) + sLineBreak +
+    Apply('apply_code_action', mEdits, ADryRun);
 end;
 
 /// <summary>Bericht von fix_findings: Zusammenfassung, nicht angefasste Dateien und Diff je geänderter Datei.

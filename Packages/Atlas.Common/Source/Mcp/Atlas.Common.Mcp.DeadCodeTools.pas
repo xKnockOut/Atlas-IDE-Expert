@@ -175,6 +175,8 @@ type
     function Report(AJson: Boolean): string;
   end;
 
+{ TUnusedCollector }
+
 constructor TUnusedCollector.Create(const AScope: TMcpRuleScope; const AIndex: ISymbolIndex;
   const AProjectFiles: IRuleProjectFiles; const ANamespaces: TArray<string>);
 begin
@@ -242,6 +244,24 @@ begin
   mItem.AddPair('confidence', ConfidenceName(AFinding.Confidence));
 end;
 
+procedure TUnusedCollector.AddHeader;
+begin
+  if FCount > TMcpDeadCodeTools.cMaxFindings then
+  begin
+    FLines.Add(cTexts[TDeadCodeToolsText.MoreFindings].Fmt([FCount - TMcpDeadCodeTools.cMaxFindings]));
+  end;
+  if not FComplete then
+  begin
+    FLines.Insert(0, cTexts[TDeadCodeToolsText.NoteUnusedPublicMemberAnd].Fmt([FReason]));
+  end;
+  if FRules = nil then
+  begin
+    FLines.Insert(0, cTexts[TDeadCodeToolsText.TheRulesForUnusedCode].Text);
+  end;
+  FLines.Insert(0, cTexts[TDeadCodeToolsText.FindingsInFiles].Fmt([FCount, FChecked, string.Join(', ', cDeadCodeIds)]));
+  FLines.Insert(0, cTexts[TDeadCodeToolsText.UnusedCode].Text);
+end;
+
 procedure TUnusedCollector.CheckFile(const AFileName: string);
 var
   mText, mCurrent: string;
@@ -264,24 +284,6 @@ begin
   finally
     mTree.Free;
   end;
-end;
-
-procedure TUnusedCollector.AddHeader;
-begin
-  if FCount > TMcpDeadCodeTools.cMaxFindings then
-  begin
-    FLines.Add(cTexts[TDeadCodeToolsText.MoreFindings].Fmt([FCount - TMcpDeadCodeTools.cMaxFindings]));
-  end;
-  if not FComplete then
-  begin
-    FLines.Insert(0, cTexts[TDeadCodeToolsText.NoteUnusedPublicMemberAnd].Fmt([FReason]));
-  end;
-  if FRules = nil then
-  begin
-    FLines.Insert(0, cTexts[TDeadCodeToolsText.TheRulesForUnusedCode].Text);
-  end;
-  FLines.Insert(0, cTexts[TDeadCodeToolsText.FindingsInFiles].Fmt([FCount, FChecked, string.Join(', ', cDeadCodeIds)]));
-  FLines.Insert(0, cTexts[TDeadCodeToolsText.UnusedCode].Text);
 end;
 
 function TUnusedCollector.Report(AJson: Boolean): string;
@@ -367,6 +369,8 @@ type
     function Text(AJson: Boolean): string;
   end;
 
+{ TDependencyReport }
+
 constructor TDependencyReport.Create(AGraph: TUsesGraph; ANode: Integer; const ARoot: string);
 begin
   inherited Create;
@@ -432,6 +436,51 @@ begin
   mItem.AddPair('section', ASection);
 end;
 
+function TDependencyReport.CyclePath(const AEdge: TUsesEdge; out AInterfaceOnly: Boolean): TUsesEdges;
+begin
+  Result := nil;
+  AInterfaceOnly := False;
+  if AEdge.Section = TUsesSection.Interface_ then
+  begin
+    Result := FGraph.Path(AEdge.Target, FNode, cInterfaceUsesOnly);
+    AInterfaceOnly := Result <> nil;
+  end;
+  if Result = nil then
+  begin
+    Result := FGraph.Path(AEdge.Target, FNode, cAllUsesSections);
+  end;
+  if Result <> nil then
+  begin
+    Result := TArray<TUsesEdge>.Create(AEdge) + Result;
+  end;
+end;
+
+procedure TDependencyReport.AddCycle(AList: TJSONArray; const APath: TUsesEdges; AInterfaceOnly: Boolean);
+var
+  mItem: TJSONObject;
+  mSteps: TJSONArray;
+  mBack: TUsesEdge;
+begin
+  if AInterfaceOnly then
+  begin
+    Add(cTexts[TDeadCodeToolsText.InterfaceUsesOnlyCompilerError].Fmt([FGraph.Describe(APath)]));
+  end
+  else
+  begin
+    Add(cTexts[TDeadCodeToolsText.ViaImplementationUses].Fmt([FGraph.Describe(APath)]));
+  end;
+  mItem := TJSONObject.Create;
+  AList.AddElement(mItem);
+  mSteps := TJSONArray.Create;
+  mItem.AddPair('path', mSteps);
+  mSteps.Add(FCurrent.UnitName);
+  for mBack in APath do
+  begin
+    mSteps.Add(FGraph.Node(mBack.Target).UnitName);
+  end;
+  mItem.AddPair('interfaceOnly', TJSONBool.Create(AInterfaceOnly));
+end;
+
 procedure TDependencyReport.AddUses(ATransitive: Boolean);
 var
   mList: TJSONArray;
@@ -486,51 +535,6 @@ begin
     AddNames(cTexts[TDeadCodeToolsText.AllUsersTransitive].Text, 'transitiveUsedBy', FGraph.Dependents(FNode,
       cAllUsesSections));
   end;
-end;
-
-function TDependencyReport.CyclePath(const AEdge: TUsesEdge; out AInterfaceOnly: Boolean): TUsesEdges;
-begin
-  Result := nil;
-  AInterfaceOnly := False;
-  if AEdge.Section = TUsesSection.Interface_ then
-  begin
-    Result := FGraph.Path(AEdge.Target, FNode, cInterfaceUsesOnly);
-    AInterfaceOnly := Result <> nil;
-  end;
-  if Result = nil then
-  begin
-    Result := FGraph.Path(AEdge.Target, FNode, cAllUsesSections);
-  end;
-  if Result <> nil then
-  begin
-    Result := TArray<TUsesEdge>.Create(AEdge) + Result;
-  end;
-end;
-
-procedure TDependencyReport.AddCycle(AList: TJSONArray; const APath: TUsesEdges; AInterfaceOnly: Boolean);
-var
-  mItem: TJSONObject;
-  mSteps: TJSONArray;
-  mBack: TUsesEdge;
-begin
-  if AInterfaceOnly then
-  begin
-    Add(cTexts[TDeadCodeToolsText.InterfaceUsesOnlyCompilerError].Fmt([FGraph.Describe(APath)]));
-  end
-  else
-  begin
-    Add(cTexts[TDeadCodeToolsText.ViaImplementationUses].Fmt([FGraph.Describe(APath)]));
-  end;
-  mItem := TJSONObject.Create;
-  AList.AddElement(mItem);
-  mSteps := TJSONArray.Create;
-  mItem.AddPair('path', mSteps);
-  mSteps.Add(FCurrent.UnitName);
-  for mBack in APath do
-  begin
-    mSteps.Add(FGraph.Node(mBack.Target).UnitName);
-  end;
-  mItem.AddPair('interfaceOnly', TJSONBool.Create(AInterfaceOnly));
 end;
 
 procedure TDependencyReport.AddCycles;

@@ -377,6 +377,30 @@ end;
 
 { TAtlasCommentContinuation }
 
+class function TAtlasCommentContinuation.OnEnter(const AText: string; ALine, ACharacter: Integer;
+  const AOptions: TAtlasCommentOptions; out AEdit: TAtlasCommentEdit): Boolean;
+var
+  mLines: TArray<string>;
+  mRest: string;
+begin
+  AEdit := Default(TAtlasCommentEdit);
+  Result := False;
+  mLines := LinesOf(AText);
+  if (ALine >= 1) and (ALine <= High(mLines)) and (Trim(Copy(mLines[ALine], 1, ACharacter)) = '') then
+  begin
+    mRest := TrimLeft(mLines[ALine]);
+    // Zustand am Anfang der Zeile darüber: Nur dann ist ein "//" am Zeilenanfang ein Zeilenkommentar.
+    if (StateAfter(mLines, ALine - 2).State = TLexState.Code) and TrimLeft(mLines[ALine - 1]).StartsWith('//') then
+    begin
+      Result := ContinueLineComment(mLines[ALine - 1], ALine, mRest, AOptions, AEdit);
+    end
+    else
+    begin
+      Result := ContinueBlock(mLines, ALine, mRest, AOptions, AEdit);
+    end;
+  end;
+end;
+
 class function TAtlasCommentContinuation.ListItem(const AContent: string; out AMarker, ANext: string): Boolean;
 var
   mIndex, mNumber: Integer;
@@ -412,30 +436,6 @@ begin
     ANext := ANext + ' ';
   end;
   Result := True;
-end;
-
-class function TAtlasCommentContinuation.OnEnter(const AText: string; ALine, ACharacter: Integer;
-  const AOptions: TAtlasCommentOptions; out AEdit: TAtlasCommentEdit): Boolean;
-var
-  mLines: TArray<string>;
-  mRest: string;
-begin
-  AEdit := Default(TAtlasCommentEdit);
-  Result := False;
-  mLines := LinesOf(AText);
-  if (ALine >= 1) and (ALine <= High(mLines)) and (Trim(Copy(mLines[ALine], 1, ACharacter)) = '') then
-  begin
-    mRest := TrimLeft(mLines[ALine]);
-    // Zustand am Anfang der Zeile darüber: Nur dann ist ein "//" am Zeilenanfang ein Zeilenkommentar.
-    if (StateAfter(mLines, ALine - 2).State = TLexState.Code) and TrimLeft(mLines[ALine - 1]).StartsWith('//') then
-    begin
-      Result := ContinueLineComment(mLines[ALine - 1], ALine, mRest, AOptions, AEdit);
-    end
-    else
-    begin
-      Result := ContinueBlock(mLines, ALine, mRest, AOptions, AEdit);
-    end;
-  end;
 end;
 
 end.

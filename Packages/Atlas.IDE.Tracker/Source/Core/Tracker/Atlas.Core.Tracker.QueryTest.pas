@@ -120,6 +120,8 @@ begin
   Result := Trim(AText).StartsWith('<');
 end;
 
+{ TAtlasTrackerQueryTest }
+
 class function TAtlasTrackerQueryTest.TrackerMessage(const AText: string): string;
 var
   mRoot, mErrors, mItem: TJSONValue;

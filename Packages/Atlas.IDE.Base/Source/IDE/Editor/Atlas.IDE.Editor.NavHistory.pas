@@ -211,42 +211,6 @@ begin
   inherited;
 end;
 
-procedure TNavState.TrackLines(const AView: IOTAEditView; ACursorLine: Integer);
-var
-  mKey: string;
-  mCount, mKnown, mAnchor: Integer;
-begin
-  mKey := AnsiUpperCase(AView.Buffer.FileName);
-  mCount := AView.Buffer.GetLinesInBuffer;
-  if LineCounts.TryGetValue(mKey, mKnown) and (mKnown <> mCount) then
-  begin
-    // Eingefügt bzw. gelöscht wurde an der Cursorstelle vor oder nach der Änderung.
-    mAnchor := ACursorLine;
-    if SameText(Last.FileName, AView.Buffer.FileName) and (Last.Line > 0) then
-    begin
-      mAnchor := Min(mAnchor, Last.Line);
-    end;
-    History.LinesChanged(AView.Buffer.FileName, mAnchor, mCount - mKnown);
-  end;
-  LineCounts.AddOrSetValue(mKey, mCount);
-end;
-
-procedure TNavState.Edited(const AView: IOTAEditView);
-var
-  mPlace: TAtlasNavPlace;
-begin
-  mPlace := PlaceOf(AView);
-  if mPlace.FileName = '' then
-  begin
-    Exit;
-  end;
-  TrackLines(AView, mPlace.Line);
-  mPlace := WithExcerpt(AView, mPlace);
-  History.Edited(mPlace);
-  Modified := True;
-  Last := mPlace;
-end;
-
 procedure TNavState.Tick(Sender: TObject);
 var
   mView: IOTAEditView;
@@ -289,6 +253,42 @@ begin
   end;
 end;
 
+procedure TNavState.Edited(const AView: IOTAEditView);
+var
+  mPlace: TAtlasNavPlace;
+begin
+  mPlace := PlaceOf(AView);
+  if mPlace.FileName = '' then
+  begin
+    Exit;
+  end;
+  TrackLines(AView, mPlace.Line);
+  mPlace := WithExcerpt(AView, mPlace);
+  History.Edited(mPlace);
+  Modified := True;
+  Last := mPlace;
+end;
+
+procedure TNavState.TrackLines(const AView: IOTAEditView; ACursorLine: Integer);
+var
+  mKey: string;
+  mCount, mKnown, mAnchor: Integer;
+begin
+  mKey := AnsiUpperCase(AView.Buffer.FileName);
+  mCount := AView.Buffer.GetLinesInBuffer;
+  if LineCounts.TryGetValue(mKey, mKnown) and (mKnown <> mCount) then
+  begin
+    // Eingefügt bzw. gelöscht wurde an der Cursorstelle vor oder nach der Änderung.
+    mAnchor := ACursorLine;
+    if SameText(Last.FileName, AView.Buffer.FileName) and (Last.Line > 0) then
+    begin
+      mAnchor := Min(mAnchor, Last.Line);
+    end;
+    History.LinesChanged(AView.Buffer.FileName, mAnchor, mCount - mKnown);
+  end;
+  LineCounts.AddOrSetValue(mKey, mCount);
+end;
+
 { Befehle }
 
 function Current(out APlace: TAtlasNavPlace): Boolean;
@@ -315,15 +315,6 @@ begin
 end;
 
 { TAtlasIdeNavHistory }
-
-class function TAtlasIdeNavHistory.History: TAtlasNavHistory;
-begin
-  Result := nil;
-  if State <> nil then
-  begin
-    Result := State.History;
-  end;
-end;
 
 class procedure TAtlasIdeNavHistory.Install;
 var
@@ -411,6 +402,15 @@ begin
     // Wie ein Sprung: die Ausgangsstelle kommt auf den Zurück-Stapel.
     State.History.Jumped(mHere, mTarget);
     GoTo_(mTarget);
+  end;
+end;
+
+class function TAtlasIdeNavHistory.History: TAtlasNavHistory;
+begin
+  Result := nil;
+  if State <> nil then
+  begin
+    Result := State.History;
   end;
 end;
 

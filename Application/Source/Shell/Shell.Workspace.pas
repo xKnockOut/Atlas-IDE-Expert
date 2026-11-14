@@ -259,6 +259,26 @@ begin
   end;
 end;
 
+procedure TShellWorkspace.AddIndexing(var AStatus: TWorkspaceStatus);
+var
+  mStage: TIndexStageState;
+begin
+  // Fortschritt je Projekt für „Atlas-Einrichtung“ (#2142).
+  AStatus.ProgressToken := FIndexing.ProgressToken;
+  AStatus.IndexPercent := FIndexing.Loading;
+  AStatus.Indexing := AStatus.IndexPercent >= 0;
+  if not AStatus.Indexing then
+  begin
+    Exit;
+  end;
+  mStage := FIndexing.Stage;
+  if mStage.Running then
+  begin
+    AStatus.IndexStage := mStage.StageName;
+    AStatus.IndexWaiting := mStage.Waiting;
+  end;
+end;
+
 procedure TShellWorkspace.Load;
 begin
   FConfiguration.LoadWorkspace(FRoot);
@@ -303,20 +323,21 @@ begin
   Result := FIndexing.EnsureUnit(AUnitName);
 end;
 
-function TShellWorkspace.ApplyText(const AFileName, AText: string): Boolean;
-begin
-  Result := FIndexing.ApplyText(AFileName, AText);
-end;
-
 function TShellWorkspace.ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
 begin
   Result := FIndexing.ApplyChanges(AChanges);
+end;
+
+function TShellWorkspace.ApplyText(const AFileName, AText: string): Boolean;
+begin
+  Result := FIndexing.ApplyText(AFileName, AText);
 end;
 
 function TShellWorkspace.Baseline: IRuleBaseline;
 begin
   Result := FBaseline.Current;
 end;
+
 
 function TShellWorkspace.CompileJob(out AJob: TShellCompileJob; out AError: string): Boolean;
 var
@@ -333,7 +354,6 @@ begin
   Result := TShellWorkspaceJobs.CompileJobOf(mProject, FState.Install, FConfiguration.Settings.Compiler, AJob,
     AError);
 end;
-
 
 function TShellWorkspace.SelectBuild(const AConfig, APlatform: string; const ADefines: TArray<string>;
   AHasDefines: Boolean; out AError: string): Boolean;
@@ -395,26 +415,6 @@ begin
   Result.CacheBytes := TIndexCacheDirectory.SizeOf([Result.CacheFile]);
   Result.LibraryCacheBytes := TIndexCacheDirectory.SizeOf([Result.LibraryCacheFile]);
   AddIndexing(Result);
-end;
-
-procedure TShellWorkspace.AddIndexing(var AStatus: TWorkspaceStatus);
-var
-  mStage: TIndexStageState;
-begin
-  // Fortschritt je Projekt für „Atlas-Einrichtung“ (#2142).
-  AStatus.ProgressToken := FIndexing.ProgressToken;
-  AStatus.IndexPercent := FIndexing.Loading;
-  AStatus.Indexing := AStatus.IndexPercent >= 0;
-  if not AStatus.Indexing then
-  begin
-    Exit;
-  end;
-  mStage := FIndexing.Stage;
-  if mStage.Running then
-  begin
-    AStatus.IndexStage := mStage.StageName;
-    AStatus.IndexWaiting := mStage.Waiting;
-  end;
 end;
 
 procedure TShellWorkspace.Activate;

@@ -155,56 +155,63 @@ begin
   end;
 end;
 
-procedure TAtlasIdeUpdates.Log(const AText: string);
+procedure TAtlasIdeUpdates.PrepareUpdate(const ARelease: TAtlasRelease);
 begin
-  if Assigned(FOnLog) then
-  begin
-    FOnLog(AText);
-  end;
+  FInstaller.Prepare(ARelease.Version, TAtlasUpdateInstall.ChannelUrl(TAtlasIdeSettings.Current.UpdatesChannel,
+    TAtlasPluginVersion.cVersion), TAtlasIdeSettings.Current.UpdatesNewModules);
+  UpdateLine;
 end;
 
-procedure TAtlasIdeUpdates.LoadState;
+procedure TAtlasIdeUpdates.AutoPrepare;
 var
-  mText: string;
+  mRelease: TAtlasRelease;
+  mStage: TUpdateStage;
 begin
-  // Fehlt, gesperrt oder unbrauchbar: wie beim ersten Start. Kein .defekt: Die Datei hält nur
-  // Zeitpunkt und Ergebnis der letzten Abfrage und ob schon gefragt wurde.
-  FState := Default(TAtlasUpdateState);
-  if TAtlasDataFile.TryRead(FStateFile, mText) then
-    try
-      FState := TAtlasUpdateState.FromJson(mText);
-    except
-      // Unerwarteter Inhalt, den FromJson nicht abfängt: wie beim ersten Start.
-      on E: Exception do
-      begin
-        FState := Default(TAtlasUpdateState);
-        Log('Update-Zustand nicht gelesen: ' + E.ClassName);
-      end;
-    end;
-end;
-
-procedure TAtlasIdeUpdates.SaveState;
-begin
-  try
-    // Atomar: Ein Abbruch hinterlässt keine halbe Datei.
-    TAtlasDataFile.Write(FStateFile, FState.ToJson);
-  except
-    on E: Exception do
-      Log('Update-Zustand nicht geschrieben: ' + E.ClassName);
+  // updates.install = auto (#1519): ohne Frage vorbereiten, eine neue Hauptversion nur nach Frage. Ein schon
+  // vorbereitetes oder gescheitertes Update bleibt, wie es ist.
+  if UpdateReady(mRelease) and not FInstaller.Preparing and not FInstaller.TryStage(mRelease.Version, mStage) and
+    TAtlasUpdateInstall.PrepareWithoutAsking(InstallMode, TAtlasPluginVersion.cVersion, mRelease.Version) then
+  begin
+    PrepareUpdate(mRelease);
   end;
 end;
 
-procedure TAtlasIdeUpdates.Start(const AStateFile: string; const ASource: IAtlasVersionSource; const AMessage,
-  ALog: TProc<string>);
+procedure TAtlasIdeUpdates.OfferUpdate(const ARelease: TAtlasRelease);
+var
+  mStage: TUpdateStage;
+  mChosen: TArray<string>;
 begin
-  FStateFile := AStateFile;
-  FSource := ASource;
-  FOnMessage := AMessage;
-  FOnLog := ALog;
-  LoadState;
-  StartInstaller;
-  // Erst nach dem Laden der IDE fragen bzw. prüfen.
-  FTimer.Enabled := True;
+  // Vorbereitet: Module wählen oder verwerfen (Mockup 6); sonst anbieten (Mockup 2).
+  if FInstaller.TryStage(ARelease.Version, mStage) and (mStage.Phase = TUpdatePhase.Ready) then
+  begin
+    case TAtlasUpdateOffer.Ready(ARelease.Version, Length(mStage.Candidates) > 0) of
+      TAtlasUpdateReadyAnswer.Modules:
+        if TAtlasUpdateSelectionDialog.Choose(ARelease.Version, mStage.Candidates, mChosen) then
+        begin
+          FInstaller.Choose(ARelease.Version, mChosen);
+        end;
+      TAtlasUpdateReadyAnswer.Discard:
+        FInstaller.Discard(ARelease.Version);
+      TAtlasUpdateReadyAnswer.Close: ;
+    end;
+    UpdateLine;
+    Exit;
+  end;
+  case TAtlasUpdateOffer.Offer(ARelease.Version, TAtlasPluginVersion.cVersion,
+    TAtlasUpdateInstall.IsMajorJump(TAtlasPluginVersion.cVersion, ARelease.Version)) of
+    TAtlasUpdateOfferAnswer.Install:
+      PrepareUpdate(ARelease);
+    TAtlasUpdateOfferAnswer.Changes:
+      OpenChanges(ARelease);
+    TAtlasUpdateOfferAnswer.Later: ;
+  end;
+end;
+
+procedure TAtlasIdeUpdates.OpenChanges(const ARelease: TAtlasRelease);
+begin
+  Log('Update ' + ARelease.Version + ': Änderungen im Browser geöffnet');
+  // Nur https-Adressen (TAtlasUpdates.TryParse bzw. Pending); heruntergeladen wird im Browser.
+  ShellExecute(0, 'open', PChar(ARelease.ChangesUrl), nil, nil, SW_SHOWNORMAL);
 end;
 
 function RegistryKey: string;
@@ -249,6 +256,91 @@ begin
   if FInstaller.Blocked <> TAtlasUpdateBlock.None then
   begin
     Result := TAtlasUpdateInstallMode.Off;
+  end;
+end;
+
+procedure TAtlasIdeUpdates.UpdateLine;
+var
+  mInfo: TAtlasVersionInfo;
+  mRelease: TAtlasRelease;
+  mReady: Boolean;
+  mStage: TUpdateStage;
+begin
+  if FRegistry = nil then
+  begin
+    Exit;
+  end;
+  mReady := UpdateReady(mRelease);
+  mInfo := Default(TAtlasVersionInfo);
+  mInfo.Installed := TAtlasPluginVersion.cVersion;
+  mInfo.Available := mRelease.Version;
+  mInfo.CheckEnabled := TAtlasIdeSettings.Current.UpdatesCheck;
+  mInfo.Checked := FState.LastCheck > 0;
+  mInfo.Failure := FState.LastError;
+  if mReady and FInstaller.TryStage(mRelease.Version, mStage) then
+  begin
+    mInfo.Install := TAtlasUpdateTexts.StageText(mStage);
+  end;
+  // Anklickbar nur mit Update: Die Zeile wird dafür ersetzt (die Aktion gehört zur Zeile).
+  if (FLine = nil) or (FLineAction <> mReady) then
+  begin
+    if FLine <> nil then
+    begin
+      FLine.Detach;
+    end;
+    if mReady then
+    begin
+      FLine := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.cVersionId, TAtlasStatusLines.cVersionOrder,
+        procedure
+        begin
+          OpenUpdate;
+        end);
+    end
+    else
+    begin
+      FLine := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.cVersionId, TAtlasStatusLines.cVersionOrder);
+    end;
+    FLineRef := FLine;
+    FLineAction := mReady;
+    FLine.Update(TAtlasStatusLines.VersionText(mInfo), TAtlasStatusLines.VersionState(mInfo),
+      TAtlasStatusLines.VersionSummary(mInfo), TAtlasStatusLines.VersionBrief(mInfo),
+      TAtlasStatusLines.VersionDetail(mInfo));
+    FRegistry.Add(FLineRef);
+    Exit;
+  end;
+  FLine.Update(TAtlasStatusLines.VersionText(mInfo), TAtlasStatusLines.VersionState(mInfo),
+    TAtlasStatusLines.VersionSummary(mInfo), TAtlasStatusLines.VersionBrief(mInfo),
+    TAtlasStatusLines.VersionDetail(mInfo));
+end;
+
+procedure TAtlasIdeUpdates.LoadState;
+var
+  mText: string;
+begin
+  // Fehlt, gesperrt oder unbrauchbar: wie beim ersten Start. Kein .defekt: Die Datei hält nur
+  // Zeitpunkt und Ergebnis der letzten Abfrage und ob schon gefragt wurde.
+  FState := Default(TAtlasUpdateState);
+  if TAtlasDataFile.TryRead(FStateFile, mText) then
+    try
+      FState := TAtlasUpdateState.FromJson(mText);
+    except
+      // Unerwarteter Inhalt, den FromJson nicht abfängt: wie beim ersten Start.
+      on E: Exception do
+      begin
+        FState := Default(TAtlasUpdateState);
+        Log('Update-Zustand nicht gelesen: ' + E.ClassName);
+      end;
+    end;
+end;
+
+procedure TAtlasIdeUpdates.SaveState;
+begin
+  try
+    // Atomar: Ein Abbruch hinterlässt keine halbe Datei.
+    TAtlasDataFile.Write(FStateFile, FState.ToJson);
+  except
+    on E: Exception do
+      Log('Update-Zustand nicht geschrieben: ' + E.ClassName);
   end;
 end;
 
@@ -297,6 +389,94 @@ begin
     mArea := Screen.WorkAreaRect;
   end;
   FConsent.ShowIn(mArea);
+end;
+
+procedure TAtlasIdeUpdates.Answer(AYes: Boolean);
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  FState.Asked := True;
+  SaveState;
+  if AYes then
+  begin
+    Log('Update-Prüfung beim ersten Start: ja');
+  end
+  else
+  begin
+    Log('Update-Prüfung beim ersten Start: nein');
+  end;
+  if not AYes then
+  begin
+    Exit;
+  end;
+  // Über die Einstellungen: Optionsseite und Schnellzugriff zeigen den neuen Wert, ApplySettings prüft.
+  mSettings := TAtlasIdeSettings.Stored;
+  mSettings.UpdatesCheck := True;
+  TAtlasIdeSettings.Update(mSettings);
+end;
+
+procedure TAtlasIdeUpdates.Finished(const AResult: TAtlasUpdateResult; const AState: TAtlasUpdateState);
+var
+  mPreviousError: string;
+begin
+  if FThread <> nil then
+  begin
+    FThread.WaitFor;
+    FreeAndNil(FThread);
+  end;
+  FState.LastCheck := AState.LastCheck;
+  mPreviousError := FState.LastError;
+  // Gefundene Version merken bzw. nach „aktuell“ vergessen (#754), Fehlerart merken bzw. vergessen.
+  TAtlasUpdates.Remember(FState, AResult);
+  SaveState;
+  UpdateLine;
+  case AResult.Outcome of
+    TAtlasUpdateOutcome.NewVersion:
+      begin
+        Log('Update-Prüfung: neue Version ' + AResult.Release.Version);
+        if Assigned(FOnMessage) then
+        begin
+          FOnMessage(TAtlasStrings.Fmt(TAtlasTextId.UpdatesAvailable, [AResult.Release.Version,
+            TAtlasPluginVersion.cVersion, AResult.Release.ChangesUrl]));
+        end;
+        AutoPrepare;
+      end;
+    TAtlasUpdateOutcome.Current:
+      Log('Update-Prüfung: aktuell');
+    TAtlasUpdateOutcome.Failed:
+      begin
+        Log('Update-Prüfung fehlgeschlagen: ' + AResult.Error);
+        // Einmal je Fehlerart, nicht jeden Tag dieselbe Zeile (z. B. hinter einem Proxy, der GitHub sperrt).
+        if (FState.LastError <> mPreviousError) and Assigned(FOnMessage) then
+        begin
+          FOnMessage(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesCheckFailedMessage, [FState.LastError,
+            TAtlasUpdates.cReleasesUrl]));
+        end;
+      end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+procedure TAtlasIdeUpdates.Log(const AText: string);
+begin
+  if Assigned(FOnLog) then
+  begin
+    FOnLog(AText);
+  end;
+end;
+
+procedure TAtlasIdeUpdates.Start(const AStateFile: string; const ASource: IAtlasVersionSource; const AMessage,
+  ALog: TProc<string>);
+begin
+  FStateFile := AStateFile;
+  FSource := ASource;
+  FOnMessage := AMessage;
+  FOnLog := ALog;
+  LoadState;
+  StartInstaller;
+  // Erst nach dem Laden der IDE fragen bzw. prüfen.
+  FTimer.Enabled := True;
 end;
 
 procedure TAtlasIdeUpdates.ApplySettings;
@@ -373,73 +553,6 @@ begin
   FThread.Start;
 end;
 
-procedure TAtlasIdeUpdates.Answer(AYes: Boolean);
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  FState.Asked := True;
-  SaveState;
-  if AYes then
-  begin
-    Log('Update-Prüfung beim ersten Start: ja');
-  end
-  else
-  begin
-    Log('Update-Prüfung beim ersten Start: nein');
-  end;
-  if not AYes then
-  begin
-    Exit;
-  end;
-  // Über die Einstellungen: Optionsseite und Schnellzugriff zeigen den neuen Wert, ApplySettings prüft.
-  mSettings := TAtlasIdeSettings.Stored;
-  mSettings.UpdatesCheck := True;
-  TAtlasIdeSettings.Update(mSettings);
-end;
-
-procedure TAtlasIdeUpdates.Finished(const AResult: TAtlasUpdateResult; const AState: TAtlasUpdateState);
-var
-  mPreviousError: string;
-begin
-  if FThread <> nil then
-  begin
-    FThread.WaitFor;
-    FreeAndNil(FThread);
-  end;
-  FState.LastCheck := AState.LastCheck;
-  mPreviousError := FState.LastError;
-  // Gefundene Version merken bzw. nach „aktuell“ vergessen (#754), Fehlerart merken bzw. vergessen.
-  TAtlasUpdates.Remember(FState, AResult);
-  SaveState;
-  UpdateLine;
-  case AResult.Outcome of
-    TAtlasUpdateOutcome.NewVersion:
-      begin
-        Log('Update-Prüfung: neue Version ' + AResult.Release.Version);
-        if Assigned(FOnMessage) then
-        begin
-          FOnMessage(TAtlasStrings.Fmt(TAtlasTextId.UpdatesAvailable, [AResult.Release.Version,
-            TAtlasPluginVersion.cVersion, AResult.Release.ChangesUrl]));
-        end;
-        AutoPrepare;
-      end;
-    TAtlasUpdateOutcome.Current:
-      Log('Update-Prüfung: aktuell');
-    TAtlasUpdateOutcome.Failed:
-      begin
-        Log('Update-Prüfung fehlgeschlagen: ' + AResult.Error);
-        // Einmal je Fehlerart, nicht jeden Tag dieselbe Zeile (z. B. hinter einem Proxy, der GitHub sperrt).
-        if (FState.LastError <> mPreviousError) and Assigned(FOnMessage) then
-        begin
-          FOnMessage(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesCheckFailedMessage, [FState.LastError,
-            TAtlasUpdates.cReleasesUrl]));
-        end;
-      end;
-  else
-    // Übrige Werte bewusst ohne Wirkung.
-  end;
-end;
-
 procedure TAtlasIdeUpdates.Stop;
 begin
   // IDE wird geschlossen (#1519): vorbereitetes Update nach dem Ende der IDE einspielen. Beim bloßen Entladen
@@ -494,119 +607,6 @@ end;
 function TAtlasIdeUpdates.UpdateReady(out ARelease: TAtlasRelease): Boolean;
 begin
   Result := TAtlasUpdates.Pending(FState, TAtlasPluginVersion.cVersion, ARelease);
-end;
-
-procedure TAtlasIdeUpdates.UpdateLine;
-var
-  mInfo: TAtlasVersionInfo;
-  mRelease: TAtlasRelease;
-  mReady: Boolean;
-  mStage: TUpdateStage;
-begin
-  if FRegistry = nil then
-  begin
-    Exit;
-  end;
-  mReady := UpdateReady(mRelease);
-  mInfo := Default(TAtlasVersionInfo);
-  mInfo.Installed := TAtlasPluginVersion.cVersion;
-  mInfo.Available := mRelease.Version;
-  mInfo.CheckEnabled := TAtlasIdeSettings.Current.UpdatesCheck;
-  mInfo.Checked := FState.LastCheck > 0;
-  mInfo.Failure := FState.LastError;
-  if mReady and FInstaller.TryStage(mRelease.Version, mStage) then
-  begin
-    mInfo.Install := TAtlasUpdateTexts.StageText(mStage);
-  end;
-  // Anklickbar nur mit Update: Die Zeile wird dafür ersetzt (die Aktion gehört zur Zeile).
-  if (FLine = nil) or (FLineAction <> mReady) then
-  begin
-    if FLine <> nil then
-    begin
-      FLine.Detach;
-    end;
-    if mReady then
-    begin
-      FLine := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.cVersionId, TAtlasStatusLines.cVersionOrder,
-        procedure
-        begin
-          OpenUpdate;
-        end);
-    end
-    else
-    begin
-      FLine := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.cVersionId, TAtlasStatusLines.cVersionOrder);
-    end;
-    FLineRef := FLine;
-    FLineAction := mReady;
-    FLine.Update(TAtlasStatusLines.VersionText(mInfo), TAtlasStatusLines.VersionState(mInfo),
-      TAtlasStatusLines.VersionSummary(mInfo), TAtlasStatusLines.VersionBrief(mInfo),
-      TAtlasStatusLines.VersionDetail(mInfo));
-    FRegistry.Add(FLineRef);
-    Exit;
-  end;
-  FLine.Update(TAtlasStatusLines.VersionText(mInfo), TAtlasStatusLines.VersionState(mInfo),
-    TAtlasStatusLines.VersionSummary(mInfo), TAtlasStatusLines.VersionBrief(mInfo),
-    TAtlasStatusLines.VersionDetail(mInfo));
-end;
-
-procedure TAtlasIdeUpdates.OpenChanges(const ARelease: TAtlasRelease);
-begin
-  Log('Update ' + ARelease.Version + ': Änderungen im Browser geöffnet');
-  // Nur https-Adressen (TAtlasUpdates.TryParse bzw. Pending); heruntergeladen wird im Browser.
-  ShellExecute(0, 'open', PChar(ARelease.ChangesUrl), nil, nil, SW_SHOWNORMAL);
-end;
-
-procedure TAtlasIdeUpdates.PrepareUpdate(const ARelease: TAtlasRelease);
-begin
-  FInstaller.Prepare(ARelease.Version, TAtlasUpdateInstall.ChannelUrl(TAtlasIdeSettings.Current.UpdatesChannel,
-    TAtlasPluginVersion.cVersion), TAtlasIdeSettings.Current.UpdatesNewModules);
-  UpdateLine;
-end;
-
-procedure TAtlasIdeUpdates.AutoPrepare;
-var
-  mRelease: TAtlasRelease;
-  mStage: TUpdateStage;
-begin
-  // updates.install = auto (#1519): ohne Frage vorbereiten, eine neue Hauptversion nur nach Frage. Ein schon
-  // vorbereitetes oder gescheitertes Update bleibt, wie es ist.
-  if UpdateReady(mRelease) and not FInstaller.Preparing and not FInstaller.TryStage(mRelease.Version, mStage) and
-    TAtlasUpdateInstall.PrepareWithoutAsking(InstallMode, TAtlasPluginVersion.cVersion, mRelease.Version) then
-  begin
-    PrepareUpdate(mRelease);
-  end;
-end;
-
-procedure TAtlasIdeUpdates.OfferUpdate(const ARelease: TAtlasRelease);
-var
-  mStage: TUpdateStage;
-  mChosen: TArray<string>;
-begin
-  // Vorbereitet: Module wählen oder verwerfen (Mockup 6); sonst anbieten (Mockup 2).
-  if FInstaller.TryStage(ARelease.Version, mStage) and (mStage.Phase = TUpdatePhase.Ready) then
-  begin
-    case TAtlasUpdateOffer.Ready(ARelease.Version, Length(mStage.Candidates) > 0) of
-      TAtlasUpdateReadyAnswer.Modules:
-        if TAtlasUpdateSelectionDialog.Choose(ARelease.Version, mStage.Candidates, mChosen) then
-        begin
-          FInstaller.Choose(ARelease.Version, mChosen);
-        end;
-      TAtlasUpdateReadyAnswer.Discard:
-        FInstaller.Discard(ARelease.Version);
-      TAtlasUpdateReadyAnswer.Close: ;
-    end;
-    UpdateLine;
-    Exit;
-  end;
-  case TAtlasUpdateOffer.Offer(ARelease.Version, TAtlasPluginVersion.cVersion,
-    TAtlasUpdateInstall.IsMajorJump(TAtlasPluginVersion.cVersion, ARelease.Version)) of
-    TAtlasUpdateOfferAnswer.Install:
-      PrepareUpdate(ARelease);
-    TAtlasUpdateOfferAnswer.Changes:
-      OpenChanges(ARelease);
-    TAtlasUpdateOfferAnswer.Later: ;
-  end;
 end;
 
 procedure TAtlasIdeUpdates.OpenUpdate;

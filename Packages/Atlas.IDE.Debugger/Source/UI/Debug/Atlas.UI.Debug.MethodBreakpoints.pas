@@ -177,6 +177,16 @@ begin
   UpdateFooter;
 end;
 
+procedure TAtlasMethodBreakpointsDialog.DoShow;
+begin
+  inherited;
+  // Die Liste braucht ein Fenster: erst hier suchen und füllen.
+  if (Trim(FPattern.Text) <> '') and not FSearched then
+  begin
+    RunSearch;
+  end;
+end;
+
 function TAtlasMethodBreakpointsDialog.AddCheck(AParent: TWinControl; const ACaption: string; ALeft: Integer;
   AChecked: Boolean): TCheckBox;
 begin
@@ -277,15 +287,7 @@ begin
     TAtlasButtonKind.Cancel);
 end;
 
-procedure TAtlasMethodBreakpointsDialog.DoShow;
-begin
-  inherited;
-  // Die Liste braucht ein Fenster: erst hier suchen und füllen.
-  if (Trim(FPattern.Text) <> '') and not FSearched then
-  begin
-    RunSearch;
-  end;
-end;
+{ TAtlasMethodBreakpointTexts }
 
 class function TAtlasMethodBreakpointTexts.HitText(const AHit: TAtlasMethodHit): string;
 var
@@ -338,6 +340,54 @@ begin
   end;
 end;
 
+procedure TAtlasMethodBreakpointsDialog.UpdateFooter;
+var
+  mCount: Integer;
+begin
+  mCount := Length(Selected);
+  FSet.Caption := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodBreakpointsSet, [mCount]);
+  FSet.Enabled := mCount > 0;
+  if not FSearched then
+  begin
+    FNote.ShowNote('', TAtlasSignalKind.Info);
+  end
+  else if FAnswer.Hits = nil then
+  begin
+    FNote.ShowNote(TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsNone), TAtlasSignalKind.Warn);
+  end
+  else
+  begin
+    FNote.ShowNote(TAtlasMethodBreakpointTexts.FooterText(FAnswer, mCount), TAtlasSignalKind.Info);
+  end;
+end;
+
+procedure TAtlasMethodBreakpointsDialog.FindClick(Sender: TObject);
+begin
+  RunSearch;
+end;
+
+procedure TAtlasMethodBreakpointsDialog.SwitchClick(Sender: TObject);
+begin
+  if FSearched and (Trim(FPattern.Text) <> '') then
+  begin
+    RunSearch;
+  end;
+end;
+
+procedure TAtlasMethodBreakpointsDialog.ListClickCheck(Sender: TObject);
+begin
+  UpdateFooter;
+end;
+
+procedure TAtlasMethodBreakpointsDialog.SetClick(Sender: TObject);
+begin
+  FChosen := Selected <> nil;
+  if FChosen then
+  begin
+    ModalResult := mrOk;
+  end;
+end;
+
 procedure TAtlasMethodBreakpointsDialog.RunSearch;
 var
   mAnswer: TAtlasMethodAnswer;
@@ -376,41 +426,6 @@ begin
   UpdateFooter;
 end;
 
-function TAtlasMethodBreakpointsDialog.Selected: TAtlasMethodHits;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  for mIndex := 0 to High(FAnswer.Hits) do
-  begin
-    if FAnswer.Hits[mIndex].HasSource and (mIndex < FList.Items.Count) and FList.Checked[mIndex] then
-    begin
-      Result := Result + [FAnswer.Hits[mIndex]];
-    end;
-  end;
-end;
-
-procedure TAtlasMethodBreakpointsDialog.UpdateFooter;
-var
-  mCount: Integer;
-begin
-  mCount := Length(Selected);
-  FSet.Caption := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodBreakpointsSet, [mCount]);
-  FSet.Enabled := mCount > 0;
-  if not FSearched then
-  begin
-    FNote.ShowNote('', TAtlasSignalKind.Info);
-  end
-  else if FAnswer.Hits = nil then
-  begin
-    FNote.ShowNote(TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsNone), TAtlasSignalKind.Warn);
-  end
-  else
-  begin
-    FNote.ShowNote(TAtlasMethodBreakpointTexts.FooterText(FAnswer, mCount), TAtlasSignalKind.Info);
-  end;
-end;
-
 function TAtlasMethodBreakpointsDialog.Group: TAtlasMethodGroup;
 begin
   Result := FInitial;
@@ -424,30 +439,17 @@ begin
   Result.Learn(FAnswer.Hits);
 end;
 
-procedure TAtlasMethodBreakpointsDialog.FindClick(Sender: TObject);
+function TAtlasMethodBreakpointsDialog.Selected: TAtlasMethodHits;
+var
+  mIndex: Integer;
 begin
-  RunSearch;
-end;
-
-procedure TAtlasMethodBreakpointsDialog.SwitchClick(Sender: TObject);
-begin
-  if FSearched and (Trim(FPattern.Text) <> '') then
+  Result := nil;
+  for mIndex := 0 to High(FAnswer.Hits) do
   begin
-    RunSearch;
-  end;
-end;
-
-procedure TAtlasMethodBreakpointsDialog.ListClickCheck(Sender: TObject);
-begin
-  UpdateFooter;
-end;
-
-procedure TAtlasMethodBreakpointsDialog.SetClick(Sender: TObject);
-begin
-  FChosen := Selected <> nil;
-  if FChosen then
-  begin
-    ModalResult := mrOk;
+    if FAnswer.Hits[mIndex].HasSource and (mIndex < FList.Items.Count) and FList.Checked[mIndex] then
+    begin
+      Result := Result + [FAnswer.Hits[mIndex]];
+    end;
   end;
 end;
 
@@ -486,6 +488,12 @@ begin
   ActiveControl := FList;
 end;
 
+procedure TAtlasMethodGroupsDialog.DoShow;
+begin
+  inherited;
+  Refill;
+end;
+
 procedure TAtlasMethodGroupsDialog.CreateList;
 begin
   FList := TListBox.Create(Self);
@@ -509,20 +517,27 @@ begin
   mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodGroupsClose), TAtlasButtonKind.Cancel);
 end;
 
-procedure TAtlasMethodGroupsDialog.DoShow;
+procedure TAtlasMethodGroupsDialog.Act(const AAction: TAtlasMethodGroupAction);
+var
+  mIndex: Integer;
 begin
-  inherited;
+  mIndex := FList.ItemIndex;
+  if not Assigned(AAction) or (mIndex < 0) or (mIndex > High(FItems)) then
+  begin
+    Exit;
+  end;
+  AAction(FItems[mIndex].Group);
   Refill;
 end;
 
-class function TAtlasMethodGroupsDialog.StateText(const AState: TAtlasMethodGroupState): string;
+procedure TAtlasMethodGroupsDialog.ToggleClick(Sender: TObject);
 begin
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodGroupsItem, [AState.Group.Pattern, AState.Breakpoints,
-    AState.Enabled]);
-  if AState.Group.Grow then
-  begin
-    Result := Result + TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodGroupsGrowing);
-  end;
+  Act(FToggle);
+end;
+
+procedure TAtlasMethodGroupsDialog.RemoveClick(Sender: TObject);
+begin
+  Act(FRemove);
 end;
 
 procedure TAtlasMethodGroupsDialog.Refill;
@@ -558,27 +573,14 @@ begin
   end;
 end;
 
-procedure TAtlasMethodGroupsDialog.Act(const AAction: TAtlasMethodGroupAction);
-var
-  mIndex: Integer;
+class function TAtlasMethodGroupsDialog.StateText(const AState: TAtlasMethodGroupState): string;
 begin
-  mIndex := FList.ItemIndex;
-  if not Assigned(AAction) or (mIndex < 0) or (mIndex > High(FItems)) then
+  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodGroupsItem, [AState.Group.Pattern, AState.Breakpoints,
+    AState.Enabled]);
+  if AState.Group.Grow then
   begin
-    Exit;
+    Result := Result + TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodGroupsGrowing);
   end;
-  AAction(FItems[mIndex].Group);
-  Refill;
-end;
-
-procedure TAtlasMethodGroupsDialog.ToggleClick(Sender: TObject);
-begin
-  Act(FToggle);
-end;
-
-procedure TAtlasMethodGroupsDialog.RemoveClick(Sender: TObject);
-begin
-  Act(FRemove);
 end;
 
 class procedure TAtlasMethodGroupsDialog.Execute(const AStates: TAtlasMethodGroupStatesFunc;

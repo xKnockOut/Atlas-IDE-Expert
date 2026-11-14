@@ -202,6 +202,41 @@ begin
   Result.OfferActions := FAdapters.OfferActions;
 end;
 
+class function TAtlasCodeInsightManager.OwnTooltip: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.HoverTooltip;
+end;
+
+procedure TAtlasCodeInsightManager.JumpToDefinition(const AFileName: string; ALine, ACharacter: Integer);
+var
+  mView: IOTAEditView;
+  mLocation: TLspLocation;
+begin
+  if FShutDown or TAtlasGuard.Disabled(TAtlasFeature.GoToDefinition) then
+  begin
+    Exit;
+  end;
+  try
+    // Nur in der Ansicht, deren Kopf geklickt wurde, und nur, wo Atlas die Code Insight übernimmt.
+    mView := TAtlasCodeInsightQueries.CurrentEditView;
+    if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, AFileName) or
+      not Handles(AFileName) or not EnsureSession then
+    begin
+      Exit;
+    end;
+    if TAtlasCodeInsightQueries.DefinitionOf(FSession, mView, ALine, ACharacter, mLocation) then
+    begin
+      TAtlasIdeNavigation.GoToLocation(mLocation.FileName, mLocation.Line, mLocation.Character);
+    end;
+  except
+    on E: Exception do
+    begin
+      ReportError(E.Message);
+      ReportFailure(TAtlasFeature.GoToDefinition, E);
+    end;
+  end;
+end;
+
 procedure TAtlasCodeInsightManager.Shutdown;
 begin
   if FShutDown then
@@ -254,161 +289,44 @@ begin
   Result := FEditors.PlaceholdersActive;
 end;
 
-function TAtlasCodeInsightManager.GetHintText(HintLine, HintCol: Integer): string;
-var
-  mView: IOTAEditView;
-  mActivity: IInterface;
-  mLine, mIndex: Integer;
+procedure TAtlasCodeInsightManager.OpenCompletion;
 begin
-  mActivity := TAtlasActivity.Scope('Symbolhinweis');
-  Result := '';
-  // Durch die Sicherung abgeschaltet (#493); eigener Tooltip (#442): die IDE zeigt keinen
-  // zweiten.
-  if TAtlasGuard.Disabled(TAtlasFeature.Hover) then
+  if not FEnabled or TAtlasGuard.Disabled(TAtlasFeature.Completion) or not ServerAvailable then
   begin
     Exit;
   end;
-  Diagnose(Format('GetHintText(%d, %d) aufgerufen', [HintLine, HintCol]));
-  if TAtlasIdeSettings.Current.HoverTooltip then
-  begin
-    Exit;
-  end;
+  Diagnose('Vervollständigung über eigene Taste');
   try
-    mView := TAtlasCodeInsightQueries.CurrentEditView;
-    // Mitlaufender Kopf unter der Maus: Der Hinweis gilt dem Bezeichner im Kopf (gleiche Spalte), nie der verdeckten
-    // Zeile; wo der Kopf keinen Quelltext zeigt, gibt es keinen.
-    case TAtlasIdeStickyScroll.MouseSourceAt(mView, HintCol, mLine, mIndex) of
-      TAtlasStickyHit.Source:
-        HintLine := mLine;
-      TAtlasStickyHit.Covered:
-        Exit;
-    end;
-    if (mView <> nil) and (mView.Buffer <> nil) and EnsureSession then
-    begin
-      Result := TAtlasCodeInsightQueries.HintAt(FSession, mView, HintLine, HintCol,
-        procedure(AMessage: string)
-        begin
-          Diagnose(AMessage);
-        end);
-    end;
+    // Start nur hier im Hauptthread.
+    EnsureSession;
+    Completion.Invoke(TAtlasCodeInsightQueries.CurrentEditView);
   except
     on E: Exception do
     begin
-      ReportError('Hover: ' + E.Message);
-      ReportFailure(TAtlasFeature.Hover, E);
-      Result := '';
+      ReportError(UiText(TManagerText.Completion) + E.Message);
+      ReportFailure(TAtlasFeature.Completion, E);
     end;
   end;
 end;
 
-function TAtlasCodeInsightManager.GotoDefinition(out AFileName: string; out ALineNum: Integer): Boolean;
+procedure TAtlasCodeInsightManager.OpenSignature;
 begin
-  Result := GotoDefinition(AFileName, ALineNum, -1);
-end;
-
-function TAtlasCodeInsightManager.GotoDefinition(out AFileName: string; out ALineNum: Integer;
-  Index: Integer): Boolean;
-var
-  mView: IOTAEditView;
-  mActivity: IInterface;
-begin
-  mActivity := TAtlasActivity.Scope('Gehe zu Definition');
-  // Laut ToolsAPI: AFileName = '' und ALineNum = 0 bricht ohne Meldung ab. Mit False meldet die IDE „Datei ""
-  // nicht gefunden“; deshalb True.
-  AFileName := '';
-  ALineNum := 0;
-  Result := True;
-  // Durch die Sicherung abgeschaltet (#493); AFileName = '' bricht still ab.
-  if TAtlasGuard.Disabled(TAtlasFeature.GoToDefinition) then
+  if not FEnabled or TAtlasGuard.Disabled(TAtlasFeature.Signature) or not ServerAvailable then
   begin
     Exit;
   end;
-  Diagnose(Format('GotoDefinition(Index %d) aufgerufen', [Index]));
+  Diagnose('Parameterhilfe über eigene Taste');
   try
-    mView := TAtlasCodeInsightQueries.CurrentEditView;
-    if (mView = nil) or (mView.Buffer = nil) then
-    begin
-      Diagnose('Gehe zu Definition: keine Editoransicht');
-    end
-    else if TAtlasIdeStickyScroll.TakeCtrlClick(mView.Buffer.FileName) then
-    begin
-      // Strg+Klick auf den mitlaufenden Kopf: Der Cursor steht in der verdeckten Zeile, den Sprung macht der Kopf;
-      // AFileName = '' bricht still ab.
-      Exit;
-    end
-    else if EnsureSession then
-    begin
-      TAtlasCodeInsightQueries.DefinitionAt(FSession, mView, Index,
-        procedure(AMessage: string)
-        begin
-          Diagnose(AMessage);
-        end, AFileName, ALineNum);
-    end;
+    // Start nur hier im Hauptthread.
+    EnsureSession;
+    FEditors.Signature.Invoke(TAtlasCodeInsightQueries.CurrentEditView);
   except
     on E: Exception do
     begin
-      ReportError('Gehe zu Definition: ' + E.Message);
-      ReportFailure(TAtlasFeature.GoToDefinition, E);
-      AFileName := '';
-      ALineNum := 0;
+      ReportError('Parameterhilfe: ' + E.Message);
+      ReportFailure(TAtlasFeature.Signature, E);
     end;
   end;
-end;
-
-procedure TAtlasCodeInsightManager.JumpToDefinition(const AFileName: string; ALine, ACharacter: Integer);
-var
-  mView: IOTAEditView;
-  mLocation: TLspLocation;
-begin
-  if FShutDown or TAtlasGuard.Disabled(TAtlasFeature.GoToDefinition) then
-  begin
-    Exit;
-  end;
-  try
-    // Nur in der Ansicht, deren Kopf geklickt wurde, und nur, wo Atlas die Code Insight übernimmt.
-    mView := TAtlasCodeInsightQueries.CurrentEditView;
-    if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, AFileName) or
-      not Handles(AFileName) or not EnsureSession then
-    begin
-      Exit;
-    end;
-    if TAtlasCodeInsightQueries.DefinitionOf(FSession, mView, ALine, ACharacter, mLocation) then
-    begin
-      TAtlasIdeNavigation.GoToLocation(mLocation.FileName, mLocation.Line, mLocation.Character);
-    end;
-  except
-    on E: Exception do
-    begin
-      ReportError(E.Message);
-      ReportFailure(TAtlasFeature.GoToDefinition, E);
-    end;
-  end;
-end;
-
-function TAtlasCodeInsightManager.GetName: string;
-begin
-  Result := cManagerName;
-end;
-
-function TAtlasCodeInsightManager.GetIDString: string;
-begin
-  Result := cManagerId;
-end;
-
-function TAtlasCodeInsightManager.GetDisplayName: string;
-begin
-  Result := cManagerName;
-end;
-
-function TAtlasCodeInsightManager.GetOptionSetName: string;
-begin
-  // Dieselben Editoreinstellungen wie der eingebaute Delphi-Manager.
-  Result := 'Borland.EditOptions.Pascal';
-end;
-
-class function TAtlasCodeInsightManager.OwnTooltip: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.HoverTooltip;
 end;
 
 function TAtlasCodeInsightManager.QueryInterface(const IID: TGUID; out Obj): HResult;
@@ -423,11 +341,14 @@ begin
   Result := inherited QueryInterface(IID, Obj);
 end;
 
-function TAtlasCodeInsightManager.GetHelpInsightHtml: WideString;
+function TAtlasCodeInsightManager.GetName: string;
 begin
-  // Der Atlas-Tooltip zeigt alles; die IDE soll keinen zweiten Tooltip öffnen.
-  Result := '';
-  Diagnose('GetHelpInsightHtml aufgerufen');
+  Result := cManagerName;
+end;
+
+function TAtlasCodeInsightManager.GetIDString: string;
+begin
+  Result := cManagerId;
 end;
 
 function TAtlasCodeInsightManager.GetEnabled: Boolean;
@@ -599,46 +520,6 @@ begin
   end;
 end;
 
-procedure TAtlasCodeInsightManager.OpenCompletion;
-begin
-  if not FEnabled or TAtlasGuard.Disabled(TAtlasFeature.Completion) or not ServerAvailable then
-  begin
-    Exit;
-  end;
-  Diagnose('Vervollständigung über eigene Taste');
-  try
-    // Start nur hier im Hauptthread.
-    EnsureSession;
-    Completion.Invoke(TAtlasCodeInsightQueries.CurrentEditView);
-  except
-    on E: Exception do
-    begin
-      ReportError(UiText(TManagerText.Completion) + E.Message);
-      ReportFailure(TAtlasFeature.Completion, E);
-    end;
-  end;
-end;
-
-procedure TAtlasCodeInsightManager.OpenSignature;
-begin
-  if not FEnabled or TAtlasGuard.Disabled(TAtlasFeature.Signature) or not ServerAvailable then
-  begin
-    Exit;
-  end;
-  Diagnose('Parameterhilfe über eigene Taste');
-  try
-    // Start nur hier im Hauptthread.
-    EnsureSession;
-    FEditors.Signature.Invoke(TAtlasCodeInsightQueries.CurrentEditView);
-  except
-    on E: Exception do
-    begin
-      ReportError('Parameterhilfe: ' + E.Message);
-      ReportFailure(TAtlasFeature.Signature, E);
-    end;
-  end;
-end;
-
 procedure TAtlasCodeInsightManager.ParameterCodeInsightAnchorPos(var EdPos: TOTAEditPos);
 begin
 end;
@@ -646,6 +527,107 @@ end;
 function TAtlasCodeInsightManager.ParameterCodeInsightParamIndex(EdPos: TOTAEditPos): Integer;
 begin
   Result := -1;
+end;
+
+function TAtlasCodeInsightManager.GetHintText(HintLine, HintCol: Integer): string;
+var
+  mView: IOTAEditView;
+  mActivity: IInterface;
+  mLine, mIndex: Integer;
+begin
+  mActivity := TAtlasActivity.Scope('Symbolhinweis');
+  Result := '';
+  // Durch die Sicherung abgeschaltet (#493); eigener Tooltip (#442): die IDE zeigt keinen
+  // zweiten.
+  if TAtlasGuard.Disabled(TAtlasFeature.Hover) then
+  begin
+    Exit;
+  end;
+  Diagnose(Format('GetHintText(%d, %d) aufgerufen', [HintLine, HintCol]));
+  if TAtlasIdeSettings.Current.HoverTooltip then
+  begin
+    Exit;
+  end;
+  try
+    mView := TAtlasCodeInsightQueries.CurrentEditView;
+    // Mitlaufender Kopf unter der Maus: Der Hinweis gilt dem Bezeichner im Kopf (gleiche Spalte), nie der verdeckten
+    // Zeile; wo der Kopf keinen Quelltext zeigt, gibt es keinen.
+    case TAtlasIdeStickyScroll.MouseSourceAt(mView, HintCol, mLine, mIndex) of
+      TAtlasStickyHit.Source:
+        HintLine := mLine;
+      TAtlasStickyHit.Covered:
+        Exit;
+    end;
+    if (mView <> nil) and (mView.Buffer <> nil) and EnsureSession then
+    begin
+      Result := TAtlasCodeInsightQueries.HintAt(FSession, mView, HintLine, HintCol,
+        procedure(AMessage: string)
+        begin
+          Diagnose(AMessage);
+        end);
+    end;
+  except
+    on E: Exception do
+    begin
+      ReportError('Hover: ' + E.Message);
+      ReportFailure(TAtlasFeature.Hover, E);
+      Result := '';
+    end;
+  end;
+end;
+
+function TAtlasCodeInsightManager.GotoDefinition(out AFileName: string; out ALineNum: Integer;
+  Index: Integer): Boolean;
+var
+  mView: IOTAEditView;
+  mActivity: IInterface;
+begin
+  mActivity := TAtlasActivity.Scope('Gehe zu Definition');
+  // Laut ToolsAPI: AFileName = '' und ALineNum = 0 bricht ohne Meldung ab. Mit False meldet die IDE „Datei ""
+  // nicht gefunden“; deshalb True.
+  AFileName := '';
+  ALineNum := 0;
+  Result := True;
+  // Durch die Sicherung abgeschaltet (#493); AFileName = '' bricht still ab.
+  if TAtlasGuard.Disabled(TAtlasFeature.GoToDefinition) then
+  begin
+    Exit;
+  end;
+  Diagnose(Format('GotoDefinition(Index %d) aufgerufen', [Index]));
+  try
+    mView := TAtlasCodeInsightQueries.CurrentEditView;
+    if (mView = nil) or (mView.Buffer = nil) then
+    begin
+      Diagnose('Gehe zu Definition: keine Editoransicht');
+    end
+    else if TAtlasIdeStickyScroll.TakeCtrlClick(mView.Buffer.FileName) then
+    begin
+      // Strg+Klick auf den mitlaufenden Kopf: Der Cursor steht in der verdeckten Zeile, den Sprung macht der Kopf;
+      // AFileName = '' bricht still ab.
+      Exit;
+    end
+    else if EnsureSession then
+    begin
+      TAtlasCodeInsightQueries.DefinitionAt(FSession, mView, Index,
+        procedure(AMessage: string)
+        begin
+          Diagnose(AMessage);
+        end, AFileName, ALineNum);
+    end;
+  except
+    on E: Exception do
+    begin
+      ReportError('Gehe zu Definition: ' + E.Message);
+      ReportFailure(TAtlasFeature.GoToDefinition, E);
+      AFileName := '';
+      ALineNum := 0;
+    end;
+  end;
+end;
+
+function TAtlasCodeInsightManager.GotoDefinition(out AFileName: string; out ALineNum: Integer): Boolean;
+begin
+  Result := GotoDefinition(AFileName, ALineNum, -1);
 end;
 
 procedure TAtlasCodeInsightManager.Done(Accepted: Boolean; out DisplayParams: Boolean);
@@ -659,6 +641,24 @@ begin
       TAtlasGuard.Report(TAtlasFeature.Completion, E);
     end;
   end;
+end;
+
+function TAtlasCodeInsightManager.GetOptionSetName: string;
+begin
+  // Dieselben Editoreinstellungen wie der eingebaute Delphi-Manager.
+  Result := 'Borland.EditOptions.Pascal';
+end;
+
+function TAtlasCodeInsightManager.GetHelpInsightHtml: WideString;
+begin
+  // Der Atlas-Tooltip zeigt alles; die IDE soll keinen zweiten Tooltip öffnen.
+  Result := '';
+  Diagnose('GetHelpInsightHtml aufgerufen');
+end;
+
+function TAtlasCodeInsightManager.GetDisplayName: string;
+begin
+  Result := cManagerName;
 end;
 
 initialization

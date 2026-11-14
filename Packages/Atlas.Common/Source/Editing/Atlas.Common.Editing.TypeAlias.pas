@@ -158,6 +158,8 @@ uses
   Atlas.Common.Editing.TypeAlias.Texts,
   Atlas.Common.Editing.TypeAlias.Names;
 
+{ TTypeAlias }
+
 class function TTypeAlias.IntroduceTitle: string;
 begin
   Result := cTexts[TEditingTypeAliasText.IntroduceTypeAlias].Text;
@@ -947,6 +949,8 @@ type
     function PreviewText(const AResult: TTypeAliasResult): string;
   end;
 
+{ TIntroduction }
+
 class function TIntroduction.Create(const ADeclaring: TTypeAliasSource; const AOthers: TArray<TTypeAliasSource>;
   const ARequest: TTypeAliasRequest): TIntroduction;
 begin
@@ -1488,6 +1492,8 @@ type
     function ChangesIssue(const AOthers: TArray<TTypeAliasSource>): string;
     function PreviewText(const AResult: TTypeAliasResult): string;
   end;
+
+{ TInlining }
 
 class function TInlining.Create(const ADeclaring: TTypeAliasSource; const ALookup: TTypeAliasLookup;
   const ATarget: TInlineAliasTarget): TInlining;

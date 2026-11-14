@@ -131,6 +131,101 @@ begin
   Height := ScaleValue(cDefaultHeight);
 end;
 
+procedure TAtlasDebugMemoryChart.SetSeries(AValue: TAtlasMemorySeries);
+begin
+  if AValue = FSeries then
+  begin
+    Exit;
+  end;
+  FSeries := AValue;
+  Invalidate;
+end;
+
+procedure TAtlasDebugMemoryChart.Paint;
+var
+  mColors: TAtlasColors;
+  mScale: TAtlasMemoryChartScale;
+  mPlot: TRect;
+  mSize: TSize;
+begin
+  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(mColors.Surface);
+  Canvas.FillRect(ClientRect);
+  Canvas.Font.Assign(Font);
+  Canvas.Font.Color := ToColor(mColors.Muted);
+  if (FTimeline = nil) or (FTimeline.Count = 0) then
+  begin
+    Canvas.Brush.Style := bsClear;
+    mSize := Canvas.TextExtent(FEmptyText);
+    Canvas.TextOut((ClientWidth - mSize.cx) div 2, (ClientHeight - mSize.cy) div 2, FEmptyText);
+    Exit;
+  end;
+  mPlot := PlotRect;
+  mScale := ChartScale;
+  PaintSelection(mColors, mScale, mPlot);
+  PaintAxes(mColors, mScale, mPlot);
+  PaintMarks(mColors, mScale, mPlot);
+  PaintLine(mColors, mScale, mPlot);
+end;
+
+procedure TAtlasDebugMemoryChart.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited MouseDown(Button, Shift, X, Y);
+  if (Button <> mbLeft) or (ssDouble in Shift) or (FTimeline = nil) or (FTimeline.Count = 0) then
+  begin
+    Exit;
+  end;
+  FDrag.Active := True;
+  FDrag.StartX := X;
+  FDrag.FromMs := TimeAt(X);
+  FDrag.ToMs := FDrag.FromMs;
+  MouseCapture := True;
+end;
+
+procedure TAtlasDebugMemoryChart.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  mHint: string;
+begin
+  inherited MouseMove(Shift, X, Y);
+  if FDrag.Active then
+  begin
+    FDrag.ToMs := TimeAt(X);
+    Invalidate;
+  end;
+  mHint := HoverText(X);
+  if mHint <> Hint then
+  begin
+    Hint := mHint;
+    Application.CancelHint;
+  end;
+end;
+
+procedure TAtlasDebugMemoryChart.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited MouseUp(Button, Shift, X, Y);
+  if not FDrag.Active then
+  begin
+    Exit;
+  end;
+  FDrag.Active := False;
+  MouseCapture := False;
+  // Ein Klick ohne Zug wählt nichts und lässt eine bestehende Wahl stehen.
+  if Abs(X - FDrag.StartX) < Px(cMinDrag) then
+  begin
+    Invalidate;
+    Exit;
+  end;
+  SelectRange(FDrag.FromMs, TimeAt(X));
+end;
+
+procedure TAtlasDebugMemoryChart.DblClick;
+begin
+  inherited DblClick;
+  FDrag.Active := False;
+  ClearSelection;
+end;
+
 function TAtlasDebugMemoryChart.Px(AValue: Integer): Integer;
 begin
   Result := MulDiv(AValue, CurrentPPI, 96);
@@ -167,73 +262,6 @@ begin
     mMax := TAtlasMemoryChartScale.NiceMax(Max(FTimeline.MaxOf(FSeries), 1));
   end;
   Result := TAtlasMemoryChartScale.Make(mFrom, mTo, mMax, mPlot.Width, mPlot.Height);
-end;
-
-procedure TAtlasDebugMemoryChart.SetSeries(AValue: TAtlasMemorySeries);
-begin
-  if AValue = FSeries then
-  begin
-    Exit;
-  end;
-  FSeries := AValue;
-  Invalidate;
-end;
-
-procedure TAtlasDebugMemoryChart.Changed;
-begin
-  Invalidate;
-  if Assigned(FOnSelection) then
-  begin
-    FOnSelection(Self);
-  end;
-end;
-
-function TAtlasDebugMemoryChart.TimeAt(AX: Integer): Int64;
-begin
-  Result := ChartScale.AtOf(AX - PlotRect.Left);
-end;
-
-function TAtlasDebugMemoryChart.HoverText(AX: Integer): string;
-var
-  mAt: Int64;
-  mIndex: Integer;
-  mFound: Integer;
-begin
-  Result := '';
-  if (FTimeline = nil) or (FTimeline.Count = 0) then
-  begin
-    Exit;
-  end;
-  mAt := TimeAt(AX);
-  mFound := 0;
-  for mIndex := 0 to FTimeline.Count - 1 do
-  begin
-    if FTimeline[mIndex].AtMs > mAt then
-    begin
-      Break;
-    end;
-    mFound := mIndex;
-  end;
-  Result := TAtlasMemoryStrings.Fmt(TAtlasMemoryTextId.MemoryHover, [Seconds(FTimeline[mFound].AtMs),
-    TAtlasMemoryFormat.Value(FSeries, FTimeline[mFound].Values[FSeries], FormatSettings)]);
-end;
-
-procedure TAtlasDebugMemoryChart.SelectRange(AFromMs, AToMs: Int64);
-begin
-  FSelection.Has := True;
-  FSelection.FromMs := Min(AFromMs, AToMs);
-  FSelection.ToMs := Max(AFromMs, AToMs);
-  Changed;
-end;
-
-procedure TAtlasDebugMemoryChart.ClearSelection;
-begin
-  if not FSelection.Has then
-  begin
-    Exit;
-  end;
-  FSelection := Default(TSelection);
-  Changed;
 end;
 
 procedure TAtlasDebugMemoryChart.PaintAxes(const AColors: TAtlasColors; const AScale: TAtlasMemoryChartScale;
@@ -383,89 +411,61 @@ begin
   Canvas.Pen.Width := 1;
 end;
 
-procedure TAtlasDebugMemoryChart.Paint;
-var
-  mColors: TAtlasColors;
-  mScale: TAtlasMemoryChartScale;
-  mPlot: TRect;
-  mSize: TSize;
+procedure TAtlasDebugMemoryChart.Changed;
 begin
-  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(mColors.Surface);
-  Canvas.FillRect(ClientRect);
-  Canvas.Font.Assign(Font);
-  Canvas.Font.Color := ToColor(mColors.Muted);
+  Invalidate;
+  if Assigned(FOnSelection) then
+  begin
+    FOnSelection(Self);
+  end;
+end;
+
+function TAtlasDebugMemoryChart.TimeAt(AX: Integer): Int64;
+begin
+  Result := ChartScale.AtOf(AX - PlotRect.Left);
+end;
+
+function TAtlasDebugMemoryChart.HoverText(AX: Integer): string;
+var
+  mAt: Int64;
+  mIndex: Integer;
+  mFound: Integer;
+begin
+  Result := '';
   if (FTimeline = nil) or (FTimeline.Count = 0) then
   begin
-    Canvas.Brush.Style := bsClear;
-    mSize := Canvas.TextExtent(FEmptyText);
-    Canvas.TextOut((ClientWidth - mSize.cx) div 2, (ClientHeight - mSize.cy) div 2, FEmptyText);
     Exit;
   end;
-  mPlot := PlotRect;
-  mScale := ChartScale;
-  PaintSelection(mColors, mScale, mPlot);
-  PaintAxes(mColors, mScale, mPlot);
-  PaintMarks(mColors, mScale, mPlot);
-  PaintLine(mColors, mScale, mPlot);
+  mAt := TimeAt(AX);
+  mFound := 0;
+  for mIndex := 0 to FTimeline.Count - 1 do
+  begin
+    if FTimeline[mIndex].AtMs > mAt then
+    begin
+      Break;
+    end;
+    mFound := mIndex;
+  end;
+  Result := TAtlasMemoryStrings.Fmt(TAtlasMemoryTextId.MemoryHover, [Seconds(FTimeline[mFound].AtMs),
+    TAtlasMemoryFormat.Value(FSeries, FTimeline[mFound].Values[FSeries], FormatSettings)]);
 end;
 
-procedure TAtlasDebugMemoryChart.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TAtlasDebugMemoryChart.SelectRange(AFromMs, AToMs: Int64);
 begin
-  inherited MouseDown(Button, Shift, X, Y);
-  if (Button <> mbLeft) or (ssDouble in Shift) or (FTimeline = nil) or (FTimeline.Count = 0) then
-  begin
-    Exit;
-  end;
-  FDrag.Active := True;
-  FDrag.StartX := X;
-  FDrag.FromMs := TimeAt(X);
-  FDrag.ToMs := FDrag.FromMs;
-  MouseCapture := True;
+  FSelection.Has := True;
+  FSelection.FromMs := Min(AFromMs, AToMs);
+  FSelection.ToMs := Max(AFromMs, AToMs);
+  Changed;
 end;
 
-procedure TAtlasDebugMemoryChart.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  mHint: string;
+procedure TAtlasDebugMemoryChart.ClearSelection;
 begin
-  inherited MouseMove(Shift, X, Y);
-  if FDrag.Active then
-  begin
-    FDrag.ToMs := TimeAt(X);
-    Invalidate;
-  end;
-  mHint := HoverText(X);
-  if mHint <> Hint then
-  begin
-    Hint := mHint;
-    Application.CancelHint;
-  end;
-end;
-
-procedure TAtlasDebugMemoryChart.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  inherited MouseUp(Button, Shift, X, Y);
-  if not FDrag.Active then
+  if not FSelection.Has then
   begin
     Exit;
   end;
-  FDrag.Active := False;
-  MouseCapture := False;
-  // Ein Klick ohne Zug wählt nichts und lässt eine bestehende Wahl stehen.
-  if Abs(X - FDrag.StartX) < Px(cMinDrag) then
-  begin
-    Invalidate;
-    Exit;
-  end;
-  SelectRange(FDrag.FromMs, TimeAt(X));
-end;
-
-procedure TAtlasDebugMemoryChart.DblClick;
-begin
-  inherited DblClick;
-  FDrag.Active := False;
-  ClearSelection;
+  FSelection := Default(TSelection);
+  Changed;
 end;
 
 end.

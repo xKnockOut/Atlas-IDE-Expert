@@ -78,6 +78,8 @@ type
 
   EXmlError = class(Exception);
 
+{ TXmlNode }
+
 constructor TXmlNode.Create(const AName: string);
 begin
   inherited Create;
@@ -220,6 +222,8 @@ type
     procedure Run;
   end;
 
+{ TXmlParser }
+
 constructor TXmlParser.Create(const AXml: string; ARoot: TXmlNode);
 begin
   inherited Create;
@@ -245,19 +249,6 @@ begin
   if Result = 0 then
   begin
     raise EXmlError.Create(AError);
-  end;
-end;
-
-procedure TXmlParser.Run;
-begin
-  FIndex := 1;
-  while FIndex <= Length(FXml) do
-  begin
-    ReadNext;
-  end;
-  if FStack.Count <> 1 then
-  begin
-    raise EXmlError.Create('Element ohne Ende');
   end;
 end;
 
@@ -364,6 +355,19 @@ begin
   if not mSelfClosing then
   begin
     FStack.Add(mNode);
+  end;
+end;
+
+procedure TXmlParser.Run;
+begin
+  FIndex := 1;
+  while FIndex <= Length(FXml) do
+  begin
+    ReadNext;
+  end;
+  if FStack.Count <> 1 then
+  begin
+    raise EXmlError.Create('Element ohne Ende');
   end;
 end;
 

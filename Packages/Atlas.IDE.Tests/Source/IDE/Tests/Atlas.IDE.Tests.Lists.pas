@@ -213,51 +213,6 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeTestLists.Wanted: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.TestRun and TAtlasIdeSettings.Current.TestsLists;
-end;
-
-class function TAtlasIdeTestLists.Texts: TAtlasTestListTexts;
-begin
-  Result := Default(TAtlasTestListTexts);
-  Result.Rules[TAtlasTestListRuleKind.Category, False] := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsCategoryIs);
-  Result.Rules[TAtlasTestListRuleKind.Category, True] :=
-    TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsCategoryIsNot);
-  Result.Rules[TAtlasTestListRuleKind.Pattern, False] := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsUnitMatches);
-  Result.Rules[TAtlasTestListRuleKind.Pattern, True] :=
-    TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsUnitMatchesNot);
-  Result.Rules[TAtlasTestListRuleKind.State, False] := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsStateIs);
-  Result.Rules[TAtlasTestListRuleKind.State, True] := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsStateIsNot);
-  Result.States[TAtlasTestListState.Failed] := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsStateFailed);
-  Result.States[TAtlasTestListState.NotRun] := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsStateNotRun);
-  Result.States[TAtlasTestListState.Stale] := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsStateStale);
-  Result.AndText := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsAnd);
-  Result.Fixed := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsFixed);
-end;
-
-procedure TAtlasIdeTestLists.Connect(const ASource: TAtlasTestListSourceFunc; const AOnChanged: TProc);
-begin
-  FSource := ASource;
-  FOnChanged := AOnChanged;
-end;
-
-procedure TAtlasIdeTestLists.LoadPersonal(out ALists: TAtlasTestLists; out ALastRun: string);
-var
-  mProjects: TAtlasTestListProjects;
-  mIndex: Integer;
-begin
-  ALists := nil;
-  ALastRun := '';
-  ReadPersonal(mProjects);
-  mIndex := TAtlasTestListFile.IndexOf(mProjects, FProject);
-  if mIndex >= 0 then
-  begin
-    ALists := mProjects[mIndex].Lists;
-    ALastRun := mProjects[mIndex].LastRun;
-  end;
-end;
-
 procedure TAtlasIdeTestLists.Load(const AProject: string);
 var
   mCurrent: string;
@@ -290,6 +245,22 @@ begin
     end;
   end;
   FCurrent := TAtlasTestListModel.IndexOf(FLists, mCurrent);
+end;
+
+procedure TAtlasIdeTestLists.LoadPersonal(out ALists: TAtlasTestLists; out ALastRun: string);
+var
+  mProjects: TAtlasTestListProjects;
+  mIndex: Integer;
+begin
+  ALists := nil;
+  ALastRun := '';
+  ReadPersonal(mProjects);
+  mIndex := TAtlasTestListFile.IndexOf(mProjects, FProject);
+  if mIndex >= 0 then
+  begin
+    ALists := mProjects[mIndex].Lists;
+    ALastRun := mProjects[mIndex].LastRun;
+  end;
 end;
 
 function TAtlasIdeTestLists.SaveProject: Boolean;
@@ -402,93 +373,6 @@ begin
   mFrame.ListBar.SetLists(mTabs, FCurrent);
 end;
 
-procedure TAtlasIdeTestLists.Refresh(const AProject: string);
-begin
-  Load(AProject);
-  ShowLists;
-end;
-
-procedure TAtlasIdeTestLists.Wire(AFrame: TAtlasTestsExplorerFrame);
-var
-  mHandlers: TAtlasTestsListHandlers;
-begin
-  mHandlers := Default(TAtlasTestsListHandlers);
-  mHandlers.OnTab := TabChosen;
-  mHandlers.OnNew := NewList;
-  mHandlers.OnEdit := EditList;
-  mHandlers.OnDuplicate := Duplicate;
-  mHandlers.OnDelete := DeleteList;
-  mHandlers.OnRun := Run;
-  mHandlers.OnAddTo := AddTo;
-  mHandlers.OnRemove := RemoveSelected;
-  AFrame.ListBar.Handlers := mHandlers;
-  AFrame.ListBar.SetActive(Wanted);
-end;
-
-procedure TAtlasIdeTestLists.ApplySettings;
-begin
-  if not Wanted then
-  begin
-    FCurrent := -1;
-  end;
-  Load(FProject);
-  Changed;
-end;
-
-function TAtlasIdeTestLists.Filter(AFrame: TAtlasTestsExplorerFrame; const AUnits: TArray<TAtlasTestUnitInput>;
-  const ANodes: TArray<TAtlasTestNode>; const AVisible: TArray<Boolean>): TArray<Boolean>;
-const
-  cStores: array[TAtlasTestListStore] of TAtlasTestsTextId = (TAtlasTestsTextId.ListsStoreProject,
-    TAtlasTestsTextId.ListsStorePersonal);
-var
-  mItems: TAtlasTestListItems;
-  mMembers: TArray<Boolean>;
-  mInList, mTotal: Integer;
-  mList: TAtlasTestList;
-begin
-  Result := AVisible;
-  if not Wanted or (FCurrent < 0) or (FCurrent > High(FLists)) then
-  begin
-    Exit;
-  end;
-  mList := FLists[FCurrent];
-  mItems := TAtlasTestListView.Items(AUnits, ANodes);
-  mMembers := TAtlasTestListModel.Members(mList, mItems);
-  TAtlasTestListModel.Count(mItems, mMembers, mInList, mTotal);
-  AFrame.ListBar.SetHeader(TAtlasTestListText.Describe(mList, Texts) + ' · ' +
-    TAtlasTestsStrings.Fmt(TAtlasTestsTextId.ListsCount, [mInList, mTotal]) + ' · ' +
-    TAtlasTestsStrings.Text(cStores[mList.Store]));
-  Result := TAtlasTestListView.Visible(ANodes, AVisible, mItems, mMembers);
-end;
-
-function TAtlasIdeTestLists.Names: TArray<string>;
-var
-  mList: TAtlasTestList;
-begin
-  Result := nil;
-  if not Wanted or not Assigned(FSource) then
-  begin
-    Exit;
-  end;
-  if GetTickCount64 - FLoadedAt > cRefreshMs then
-  begin
-    Load(FSource(False).Project);
-  end;
-  for mList in FLists do
-  begin
-    Result := Result + [mList.Name];
-  end;
-end;
-
-procedure TAtlasIdeTestLists.TabChosen(AIndex: Integer);
-begin
-  FCurrent := AIndex;
-  if Assigned(FOnChanged) then
-  begin
-    FOnChanged();
-  end;
-end;
-
 function TAtlasIdeTestLists.Taken(AExcept: Integer): TArray<string>;
 var
   mIndex: Integer;
@@ -513,6 +397,34 @@ begin
     mCategories := TAtlasTestListView.Categories(FSource(True).Units);
   end;
   Result := TAtlasTestsListDialog.Execute(AList, ANew, Taken(AExcept), mCategories, Texts);
+end;
+
+function TAtlasIdeTestLists.SelectedNames(out ASource: TAtlasTestListSource): TArray<string>;
+var
+  mFrame: TAtlasTestsExplorerFrame;
+begin
+  Result := nil;
+  ASource := Default(TAtlasTestListSource);
+  mFrame := TAtlasIdeTestsExplorerWindow.ExistingFrame;
+  if (mFrame = nil) or not Assigned(FSource) then
+  begin
+    Exit;
+  end;
+  ASource := FSource(True);
+  Result := TAtlasTestListView.Names(ASource.Nodes, mFrame.SelectedNodes);
+  if Length(Result) = 0 then
+  begin
+    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerNothingSelected));
+  end;
+end;
+
+procedure TAtlasIdeTestLists.TabChosen(AIndex: Integer);
+begin
+  FCurrent := AIndex;
+  if Assigned(FOnChanged) then
+  begin
+    FOnChanged();
+  end;
 end;
 
 procedure TAtlasIdeTestLists.NewList;
@@ -589,25 +501,6 @@ begin
   FCurrent := -1;
   Save(mStore);
   Changed;
-end;
-
-function TAtlasIdeTestLists.SelectedNames(out ASource: TAtlasTestListSource): TArray<string>;
-var
-  mFrame: TAtlasTestsExplorerFrame;
-begin
-  Result := nil;
-  ASource := Default(TAtlasTestListSource);
-  mFrame := TAtlasIdeTestsExplorerWindow.ExistingFrame;
-  if (mFrame = nil) or not Assigned(FSource) then
-  begin
-    Exit;
-  end;
-  ASource := FSource(True);
-  Result := TAtlasTestListView.Names(ASource.Nodes, mFrame.SelectedNodes);
-  if Length(Result) = 0 then
-  begin
-    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerNothingSelected));
-  end;
 end;
 
 procedure TAtlasIdeTestLists.AddTo(AIndex: Integer);
@@ -693,6 +586,85 @@ begin
   end;
 end;
 
+class function TAtlasIdeTestLists.Wanted: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.TestRun and TAtlasIdeSettings.Current.TestsLists;
+end;
+
+procedure TAtlasIdeTestLists.Connect(const ASource: TAtlasTestListSourceFunc; const AOnChanged: TProc);
+begin
+  FSource := ASource;
+  FOnChanged := AOnChanged;
+end;
+
+procedure TAtlasIdeTestLists.Refresh(const AProject: string);
+begin
+  Load(AProject);
+  ShowLists;
+end;
+
+procedure TAtlasIdeTestLists.Wire(AFrame: TAtlasTestsExplorerFrame);
+var
+  mHandlers: TAtlasTestsListHandlers;
+begin
+  mHandlers := Default(TAtlasTestsListHandlers);
+  mHandlers.OnTab := TabChosen;
+  mHandlers.OnNew := NewList;
+  mHandlers.OnEdit := EditList;
+  mHandlers.OnDuplicate := Duplicate;
+  mHandlers.OnDelete := DeleteList;
+  mHandlers.OnRun := Run;
+  mHandlers.OnAddTo := AddTo;
+  mHandlers.OnRemove := RemoveSelected;
+  AFrame.ListBar.Handlers := mHandlers;
+  AFrame.ListBar.SetActive(Wanted);
+end;
+
+function TAtlasIdeTestLists.Filter(AFrame: TAtlasTestsExplorerFrame; const AUnits: TArray<TAtlasTestUnitInput>;
+  const ANodes: TArray<TAtlasTestNode>; const AVisible: TArray<Boolean>): TArray<Boolean>;
+const
+  cStores: array[TAtlasTestListStore] of TAtlasTestsTextId = (TAtlasTestsTextId.ListsStoreProject,
+    TAtlasTestsTextId.ListsStorePersonal);
+var
+  mItems: TAtlasTestListItems;
+  mMembers: TArray<Boolean>;
+  mInList, mTotal: Integer;
+  mList: TAtlasTestList;
+begin
+  Result := AVisible;
+  if not Wanted or (FCurrent < 0) or (FCurrent > High(FLists)) then
+  begin
+    Exit;
+  end;
+  mList := FLists[FCurrent];
+  mItems := TAtlasTestListView.Items(AUnits, ANodes);
+  mMembers := TAtlasTestListModel.Members(mList, mItems);
+  TAtlasTestListModel.Count(mItems, mMembers, mInList, mTotal);
+  AFrame.ListBar.SetHeader(TAtlasTestListText.Describe(mList, Texts) + ' · ' +
+    TAtlasTestsStrings.Fmt(TAtlasTestsTextId.ListsCount, [mInList, mTotal]) + ' · ' +
+    TAtlasTestsStrings.Text(cStores[mList.Store]));
+  Result := TAtlasTestListView.Visible(ANodes, AVisible, mItems, mMembers);
+end;
+
+function TAtlasIdeTestLists.Names: TArray<string>;
+var
+  mList: TAtlasTestList;
+begin
+  Result := nil;
+  if not Wanted or not Assigned(FSource) then
+  begin
+    Exit;
+  end;
+  if GetTickCount64 - FLoadedAt > cRefreshMs then
+  begin
+    Load(FSource(False).Project);
+  end;
+  for mList in FLists do
+  begin
+    Result := Result + [mList.Name];
+  end;
+end;
+
 procedure TAtlasIdeTestLists.RunByName(const AName: string);
 begin
   if Assigned(FSource) then
@@ -722,6 +694,34 @@ begin
       end);
     Result := True;
   end;
+end;
+
+procedure TAtlasIdeTestLists.ApplySettings;
+begin
+  if not Wanted then
+  begin
+    FCurrent := -1;
+  end;
+  Load(FProject);
+  Changed;
+end;
+
+class function TAtlasIdeTestLists.Texts: TAtlasTestListTexts;
+begin
+  Result := Default(TAtlasTestListTexts);
+  Result.Rules[TAtlasTestListRuleKind.Category, False] := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsCategoryIs);
+  Result.Rules[TAtlasTestListRuleKind.Category, True] :=
+    TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsCategoryIsNot);
+  Result.Rules[TAtlasTestListRuleKind.Pattern, False] := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsUnitMatches);
+  Result.Rules[TAtlasTestListRuleKind.Pattern, True] :=
+    TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsUnitMatchesNot);
+  Result.Rules[TAtlasTestListRuleKind.State, False] := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsStateIs);
+  Result.Rules[TAtlasTestListRuleKind.State, True] := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsStateIsNot);
+  Result.States[TAtlasTestListState.Failed] := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsStateFailed);
+  Result.States[TAtlasTestListState.NotRun] := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsStateNotRun);
+  Result.States[TAtlasTestListState.Stale] := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsStateStale);
+  Result.AndText := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsAnd);
+  Result.Fixed := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsFixed);
 end;
 
 end.

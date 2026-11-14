@@ -323,66 +323,6 @@ begin
   inherited;
 end;
 
-function TAtlasCommentSuggest.Shown: Boolean;
-begin
-  Result := Length(FRows) > 0;
-end;
-
-/// <summary>Auslöser an der Schreibmarke; None, wenn das Feld gerade nichts vorschlägt.</summary>
-function TriggerAt(AEditor: TAtlasCommentEditor): TAtlasCommentTrigger;
-var
-  mMemo: TMemo;
-begin
-  mMemo := AEditor.FParts.Memo;
-  if not AEditor.FEnhanced or (AEditor.FAssist = nil) or mMemo.ReadOnly or AEditor.FPreviewing or
-    (mMemo.SelLength > 0) then
-  begin
-    Result := TAtlasCommentTrigger.None;
-  end
-  else
-  begin
-    Result := TAtlasCommentEditing.Trigger(mMemo.Text, mMemo.SelStart, AEditor.FAssist.Target);
-  end;
-end;
-
-procedure TAtlasCommentSuggest.Check;
-var
-  mTrigger: TAtlasCommentTrigger;
-begin
-  mTrigger := TriggerAt(FEditor);
-  if mTrigger.Kind = TAtlasCommentTriggerKind.None then
-  begin
-    Hide;
-    Exit;
-  end;
-  if mTrigger.SameAs(FTrigger) then
-  begin
-    // Dasselbe Wort an neuer Stelle (Text davor geändert): nur die Lage merken.
-    FTrigger := mTrigger;
-    Exit;
-  end;
-  FTrigger := mTrigger;
-  Inc(FGeneration);
-  FTimer.Enabled := False;
-  // Zuletzt geöffnete Issues ("ATL-") brauchen kein Netz: sofort.
-  if (FRequestDelay <= 0) or ((mTrigger.Kind = TAtlasCommentTriggerKind.Issue) and
-    (mTrigger.Query.Kind = TAtlasIssueSearchKind.Recent)) then
-  begin
-    Request;
-  end
-  else
-  begin
-    FTimer.Interval := Cardinal(FRequestDelay);
-    FTimer.Enabled := True;
-  end;
-end;
-
-procedure TAtlasCommentSuggest.TimerTick(Sender: TObject);
-begin
-  FTimer.Enabled := False;
-  Request;
-end;
-
 procedure TAtlasCommentSuggest.Request;
 var
   mSelf: TAtlasCommentSuggest;
@@ -410,6 +350,23 @@ begin
       begin
         mSelf.IssuesAnswered(mGeneration, AIssues);
       end);
+  end;
+end;
+
+/// <summary>Auslöser an der Schreibmarke; None, wenn das Feld gerade nichts vorschlägt.</summary>
+function TriggerAt(AEditor: TAtlasCommentEditor): TAtlasCommentTrigger;
+var
+  mMemo: TMemo;
+begin
+  mMemo := AEditor.FParts.Memo;
+  if not AEditor.FEnhanced or (AEditor.FAssist = nil) or mMemo.ReadOnly or AEditor.FPreviewing or
+    (mMemo.SelLength > 0) then
+  begin
+    Result := TAtlasCommentTrigger.None;
+  end
+  else
+  begin
+    Result := TAtlasCommentEditing.Trigger(mMemo.Text, mMemo.SelStart, AEditor.FAssist.Target);
   end;
 end;
 
@@ -467,6 +424,54 @@ begin
   end;
   FSelected := 0;
   PlaceList;
+end;
+
+procedure TAtlasCommentSuggest.ListClick(Sender: TObject);
+begin
+  if FList = nil then
+  begin
+    Exit;
+  end;
+  Accept(FList.ItemIndex);
+  FocusMemo(FEditor);
+end;
+
+procedure TAtlasCommentSuggest.TimerTick(Sender: TObject);
+begin
+  FTimer.Enabled := False;
+  Request;
+end;
+
+procedure TAtlasCommentSuggest.Check;
+var
+  mTrigger: TAtlasCommentTrigger;
+begin
+  mTrigger := TriggerAt(FEditor);
+  if mTrigger.Kind = TAtlasCommentTriggerKind.None then
+  begin
+    Hide;
+    Exit;
+  end;
+  if mTrigger.SameAs(FTrigger) then
+  begin
+    // Dasselbe Wort an neuer Stelle (Text davor geändert): nur die Lage merken.
+    FTrigger := mTrigger;
+    Exit;
+  end;
+  FTrigger := mTrigger;
+  Inc(FGeneration);
+  FTimer.Enabled := False;
+  // Zuletzt geöffnete Issues ("ATL-") brauchen kein Netz: sofort.
+  if (FRequestDelay <= 0) or ((mTrigger.Kind = TAtlasCommentTriggerKind.Issue) and
+    (mTrigger.Query.Kind = TAtlasIssueSearchKind.Recent)) then
+  begin
+    Request;
+  end
+  else
+  begin
+    FTimer.Interval := Cardinal(FRequestDelay);
+    FTimer.Enabled := True;
+  end;
 end;
 
 /// <summary>Lage des getippten Worts im Memo (Client-Koordinaten); (0, 0), wenn unbekannt.</summary>
@@ -556,29 +561,6 @@ begin
   end;
 end;
 
-procedure TAtlasCommentSuggest.Move(ADelta: Integer);
-begin
-  if not Shown then
-  begin
-    Exit;
-  end;
-  FSelected := EnsureRange(FSelected + ADelta, 0, High(FRows));
-  if (FList <> nil) and FList.Visible then
-  begin
-    FList.ItemIndex := FSelected;
-  end;
-end;
-
-procedure TAtlasCommentSuggest.ListClick(Sender: TObject);
-begin
-  if FList = nil then
-  begin
-    Exit;
-  end;
-  Accept(FList.ItemIndex);
-  FocusMemo(FEditor);
-end;
-
 procedure TAtlasCommentSuggest.Accept(AIndex: Integer);
 var
   mValue, mText: string;
@@ -601,6 +583,24 @@ begin
   Hide;
   mText := TAtlasCommentEditing.Replace(FEditor.FParts.Memo.Text, mTrigger, mValue, mCaret);
   ApplyEdit(FEditor, mText, mCaret, 0);
+end;
+
+procedure TAtlasCommentSuggest.Move(ADelta: Integer);
+begin
+  if not Shown then
+  begin
+    Exit;
+  end;
+  FSelected := EnsureRange(FSelected + ADelta, 0, High(FRows));
+  if (FList <> nil) and FList.Visible then
+  begin
+    FList.ItemIndex := FSelected;
+  end;
+end;
+
+function TAtlasCommentSuggest.Shown: Boolean;
+begin
+  Result := Length(FRows) > 0;
 end;
 
 { TAtlasCommentDraft }
@@ -627,9 +627,18 @@ begin
   inherited;
 end;
 
-function TAtlasCommentDraft.Changed: Boolean;
+procedure TAtlasCommentDraft.TimerTick(Sender: TObject);
 begin
-  Result := FEditor.FParts.Memo.Text <> FInitialText;
+  FTimer.Enabled := False;
+  if (FEditor.FAssist = nil) or not Changed then
+  begin
+    Exit;
+  end;
+  Keep;
+  if not FEditor.FParts.DraftButton.Visible then
+  begin
+    ShowNote(TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorDraftSaved), '');
+  end;
 end;
 
 procedure TAtlasCommentDraft.ShowNote(const AText, AButton: string);
@@ -639,12 +648,23 @@ begin
   FEditor.FParts.DraftButton.Visible := AButton <> '';
 end;
 
-procedure TAtlasCommentDraft.Reset(const AInitial: string);
+procedure TAtlasCommentDraft.ButtonClick(Sender: TObject);
 begin
-  FInitialText := AInitial;
-  FOffered := '';
-  FRestored := False;
-  ShowNote('', '');
+  if FOffered <> '' then
+  begin
+    SetMemoText(FEditor, MemoText(FOffered));
+    FOffered := '';
+    ShowNote('', '');
+    Restart;
+  end
+  else if FRestored then
+  begin
+    Discard;
+    SetMemoText(FEditor, FInitialText);
+    FRestored := False;
+    ShowNote('', '');
+  end;
+  FocusMemo(FEditor);
 end;
 
 procedure TAtlasCommentDraft.Offer;
@@ -692,34 +712,6 @@ begin
   FEditor.FAssist.SaveDraft(FEditor.Text);
 end;
 
-procedure TAtlasCommentDraft.Discard;
-begin
-  FTimer.Enabled := False;
-  if FEditor.FAssist <> nil then
-  begin
-    FEditor.FAssist.DeleteDraft;
-  end;
-end;
-
-procedure TAtlasCommentDraft.ButtonClick(Sender: TObject);
-begin
-  if FOffered <> '' then
-  begin
-    SetMemoText(FEditor, MemoText(FOffered));
-    FOffered := '';
-    ShowNote('', '');
-    Restart;
-  end
-  else if FRestored then
-  begin
-    Discard;
-    SetMemoText(FEditor, FInitialText);
-    FRestored := False;
-    ShowNote('', '');
-  end;
-  FocusMemo(FEditor);
-end;
-
 procedure TAtlasCommentDraft.Restart;
 begin
   if not FEditor.FEnhanced or (FEditor.FAssist = nil) then
@@ -730,18 +722,26 @@ begin
   FTimer.Enabled := True;
 end;
 
-procedure TAtlasCommentDraft.TimerTick(Sender: TObject);
+procedure TAtlasCommentDraft.Discard;
 begin
   FTimer.Enabled := False;
-  if (FEditor.FAssist = nil) or not Changed then
+  if FEditor.FAssist <> nil then
   begin
-    Exit;
+    FEditor.FAssist.DeleteDraft;
   end;
-  Keep;
-  if not FEditor.FParts.DraftButton.Visible then
-  begin
-    ShowNote(TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorDraftSaved), '');
-  end;
+end;
+
+procedure TAtlasCommentDraft.Reset(const AInitial: string);
+begin
+  FInitialText := AInitial;
+  FOffered := '';
+  FRestored := False;
+  ShowNote('', '');
+end;
+
+function TAtlasCommentDraft.Changed: Boolean;
+begin
+  Result := FEditor.FParts.Memo.Text <> FInitialText;
 end;
 
 { TAtlasCommentPreview }
@@ -775,15 +775,14 @@ begin
   end;
 end;
 
-procedure TAtlasCommentPreview.ApplyColors(const AColors: TAtlasColors);
+procedure TAtlasCommentPreview.Place(AControl: TControl);
 begin
-  FColors := AColors;
-  FBox.Color := ToColor(AColors.Surface);
-  FBox.ParentBackground := False;
-  if FBox.Visible then
-  begin
-    Build(FText);
-  end;
+  // Untereinander in der Reihenfolge des Anlegens: alTop ordnet nach Top.
+  AControl.Parent := FBox;
+  AControl.Align := alTop;
+  AControl.AlignWithMargins := True;
+  AControl.Top := 1000 * (FParts.Count + 1);
+  FParts.Add(AControl);
 end;
 
 procedure TAtlasCommentPreview.Clear;
@@ -797,14 +796,15 @@ begin
   FParts.Clear;
 end;
 
-procedure TAtlasCommentPreview.Place(AControl: TControl);
+procedure TAtlasCommentPreview.ApplyColors(const AColors: TAtlasColors);
 begin
-  // Untereinander in der Reihenfolge des Anlegens: alTop ordnet nach Top.
-  AControl.Parent := FBox;
-  AControl.Align := alTop;
-  AControl.AlignWithMargins := True;
-  AControl.Top := 1000 * (FParts.Count + 1);
-  FParts.Add(AControl);
+  FColors := AColors;
+  FBox.Color := ToColor(AColors.Surface);
+  FBox.ParentBackground := False;
+  if FBox.Visible then
+  begin
+    Build(FText);
+  end;
 end;
 
 /// <summary>Bild in der Vorschau: nur als Name.</summary>
@@ -926,6 +926,8 @@ begin
   AEditor.FParts.SnippetMenu := TPopupMenu.Create(AEditor);
 end;
 
+{ TAtlasCommentEditor }
+
 constructor TAtlasCommentEditor.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
@@ -967,6 +969,47 @@ begin
   inherited;
 end;
 
+procedure TAtlasCommentEditor.SetEnhanced(AValue: Boolean);
+begin
+  FEnhanced := AValue;
+  FParts.Bar.Visible := AValue;
+  FParts.Memo.ShowHint := AValue;
+  if AValue then
+  begin
+    Exit;
+  end;
+  FSuggest.Hide;
+  Previewing := False;
+  FDraft.ShowNote('', '');
+end;
+
+procedure TAtlasCommentEditor.SetPreviewing(AValue: Boolean);
+begin
+  if AValue = FPreviewing then
+  begin
+    Exit;
+  end;
+  FPreviewing := AValue;
+  FSuggest.Hide;
+  if AValue then
+  begin
+    FPreview.Build(Text);
+    FParts.PreviewButton.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorEdit);
+  end
+  else
+  begin
+    FPreview.Clear;
+    FParts.PreviewButton.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorPreview);
+  end;
+  FParts.Preview.Visible := AValue;
+  FParts.Memo.Visible := not AValue;
+  FParts.SnippetButton.Enabled := not AValue;
+  if not AValue then
+  begin
+    FocusMemo(Self);
+  end;
+end;
+
 procedure TAtlasCommentEditor.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   inherited;
@@ -977,16 +1020,45 @@ begin
   end;
 end;
 
-function TAtlasCommentEditor.Text: string;
+procedure TAtlasCommentEditor.MemoChange(Sender: TObject);
 begin
-  Result := StringReplace(FParts.Memo.Text, #13#10, #10, [rfReplaceAll]);
+  if FChanging then
+  begin
+    Exit;
+  end;
+  FDraft.Restart;
+  FSuggest.Check;
 end;
 
-procedure TAtlasCommentEditor.SetText(const AText: string);
+procedure TAtlasCommentEditor.MemoKeyPress(Sender: TObject; var Key: Char);
 begin
+  if FSwallowChar then
+  begin
+    Key := #0;
+    FSwallowChar := False;
+  end;
+end;
+
+procedure TAtlasCommentEditor.MemoClick(Sender: TObject);
+begin
+  // Die Schreibmarke kann in ein anderes Wort gesprungen sein.
+  if FSuggest.Shown or (FSuggest.Trigger.Kind <> TAtlasCommentTriggerKind.None) then
+  begin
+    FSuggest.Check;
+  end;
+end;
+
+procedure TAtlasCommentEditor.MemoExit(Sender: TObject);
+var
+  mForm: TCustomForm;
+begin
+  // Ein Klick in die Liste nimmt dem Memo den Fokus: dann bleibt sie offen.
+  mForm := GetParentForm(Self);
+  if (FSuggest.FList <> nil) and (mForm <> nil) and (mForm.ActiveControl = FSuggest.FList) then
+  begin
+    Exit;
+  end;
   FSuggest.Hide;
-  SetMemoText(Self, MemoText(AText));
-  FDraft.FInitialText := FParts.Memo.Text;
 end;
 
 procedure TAtlasCommentEditor.Bind(const AAssist: IAtlasCommentAssist);
@@ -1021,70 +1093,11 @@ begin
   FDraft.Reset('');
 end;
 
-procedure TAtlasCommentEditor.SetEnhanced(AValue: Boolean);
+procedure TAtlasCommentEditor.SetText(const AText: string);
 begin
-  FEnhanced := AValue;
-  FParts.Bar.Visible := AValue;
-  FParts.Memo.ShowHint := AValue;
-  if AValue then
-  begin
-    Exit;
-  end;
   FSuggest.Hide;
-  Previewing := False;
-  FDraft.ShowNote('', '');
-end;
-
-procedure TAtlasCommentEditor.MemoChange(Sender: TObject);
-begin
-  if FChanging then
-  begin
-    Exit;
-  end;
-  FDraft.Restart;
-  FSuggest.Check;
-end;
-
-procedure TAtlasCommentEditor.MemoClick(Sender: TObject);
-begin
-  // Die Schreibmarke kann in ein anderes Wort gesprungen sein.
-  if FSuggest.Shown or (FSuggest.Trigger.Kind <> TAtlasCommentTriggerKind.None) then
-  begin
-    FSuggest.Check;
-  end;
-end;
-
-procedure TAtlasCommentEditor.MemoExit(Sender: TObject);
-var
-  mForm: TCustomForm;
-begin
-  // Ein Klick in die Liste nimmt dem Memo den Fokus: dann bleibt sie offen.
-  mForm := GetParentForm(Self);
-  if (FSuggest.FList <> nil) and (mForm <> nil) and (mForm.ActiveControl = FSuggest.FList) then
-  begin
-    Exit;
-  end;
-  FSuggest.Hide;
-end;
-
-procedure TAtlasCommentEditor.ApplyStyle(AStyle: TAtlasCommentStyle);
-var
-  mStart, mLength: Integer;
-  mText: string;
-  mMemo: TMemo;
-begin
-  mMemo := FParts.Memo;
-  case AStyle of
-    TAtlasCommentStyle.Bold:
-      mText := TAtlasCommentEditing.ToggleInline(mMemo.Text, mMemo.SelStart, mMemo.SelLength,
-        TAtlasCommentEditing.cBoldMarker, mStart, mLength);
-    TAtlasCommentStyle.Italic:
-      mText := TAtlasCommentEditing.ToggleInline(mMemo.Text, mMemo.SelStart, mMemo.SelLength,
-        TAtlasCommentEditing.cItalicMarker, mStart, mLength);
-  else
-    mText := TAtlasCommentEditing.CodeBlock(mMemo.Text, mMemo.SelStart, mMemo.SelLength, mStart, mLength);
-  end;
-  ApplyEdit(Self, mText, mStart, mLength);
+  SetMemoText(Self, MemoText(AText));
+  FDraft.FInitialText := FParts.Memo.Text;
 end;
 
 /// <summary>Textbaustein mit den Werten der Platzhalter an der Schreibmarke einsetzen.</summary>
@@ -1106,29 +1119,24 @@ begin
   FocusMemo(AEditor);
 end;
 
-procedure TAtlasCommentEditor.InsertSnippet(AIndex: Integer);
+procedure TAtlasCommentEditor.ApplyStyle(AStyle: TAtlasCommentStyle);
 var
-  mSnippets: TArray<TAtlasCommentSnippet>;
+  mStart, mLength: Integer;
   mText: string;
-  mSelf: TAtlasCommentEditor;
+  mMemo: TMemo;
 begin
-  if (FAssist = nil) or FParts.Memo.ReadOnly then
-  begin
-    Exit;
+  mMemo := FParts.Memo;
+  case AStyle of
+    TAtlasCommentStyle.Bold:
+      mText := TAtlasCommentEditing.ToggleInline(mMemo.Text, mMemo.SelStart, mMemo.SelLength,
+        TAtlasCommentEditing.cBoldMarker, mStart, mLength);
+    TAtlasCommentStyle.Italic:
+      mText := TAtlasCommentEditing.ToggleInline(mMemo.Text, mMemo.SelStart, mMemo.SelLength,
+        TAtlasCommentEditing.cItalicMarker, mStart, mLength);
+  else
+    mText := TAtlasCommentEditing.CodeBlock(mMemo.Text, mMemo.SelStart, mMemo.SelLength, mStart, mLength);
   end;
-  mSnippets := FAssist.Snippets;
-  if (AIndex < 0) or (AIndex > High(mSnippets)) then
-  begin
-    Exit;
-  end;
-  mText := mSnippets[AIndex].Text;
-  mSelf := Self;
-  // Werte der Platzhalter kommen aus der IDE (Versionsverwaltung im Hintergrund).
-  FAssist.Values(
-    procedure(const AValues: TAtlasCommentValues)
-    begin
-      SnippetReady(mSelf, mText, AValues);
-    end);
+  ApplyEdit(Self, mText, mStart, mLength);
 end;
 
 /// <summary>Menü der Textbausteine an AScreen zeigen.</summary>
@@ -1193,31 +1201,29 @@ begin
   end;
 end;
 
-procedure TAtlasCommentEditor.SetPreviewing(AValue: Boolean);
+procedure TAtlasCommentEditor.InsertSnippet(AIndex: Integer);
+var
+  mSnippets: TArray<TAtlasCommentSnippet>;
+  mText: string;
+  mSelf: TAtlasCommentEditor;
 begin
-  if AValue = FPreviewing then
+  if (FAssist = nil) or FParts.Memo.ReadOnly then
   begin
     Exit;
   end;
-  FPreviewing := AValue;
-  FSuggest.Hide;
-  if AValue then
+  mSnippets := FAssist.Snippets;
+  if (AIndex < 0) or (AIndex > High(mSnippets)) then
   begin
-    FPreview.Build(Text);
-    FParts.PreviewButton.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorEdit);
-  end
-  else
-  begin
-    FPreview.Clear;
-    FParts.PreviewButton.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.CommentEditorPreview);
+    Exit;
   end;
-  FParts.Preview.Visible := AValue;
-  FParts.Memo.Visible := not AValue;
-  FParts.SnippetButton.Enabled := not AValue;
-  if not AValue then
-  begin
-    FocusMemo(Self);
-  end;
+  mText := mSnippets[AIndex].Text;
+  mSelf := Self;
+  // Werte der Platzhalter kommen aus der IDE (Versionsverwaltung im Hintergrund).
+  FAssist.Values(
+    procedure(const AValues: TAtlasCommentValues)
+    begin
+      SnippetReady(mSelf, mText, AValues);
+    end);
 end;
 
 /// <summary>Tasten, solange die Vorschlagsliste offen ist.</summary>
@@ -1358,13 +1364,9 @@ begin
   RunKey(Self, mAction);
 end;
 
-procedure TAtlasCommentEditor.MemoKeyPress(Sender: TObject; var Key: Char);
+function TAtlasCommentEditor.Text: string;
 begin
-  if FSwallowChar then
-  begin
-    Key := #0;
-    FSwallowChar := False;
-  end;
+  Result := StringReplace(FParts.Memo.Text, #13#10, #10, [rfReplaceAll]);
 end;
 
 end.

@@ -216,63 +216,40 @@ end;
 
 { TAtlasIdeStatementCompletion }
 
-class procedure TAtlasIdeStatementCompletion.Install(const ASessionOf: TFunc<TLspSession>;
-  const AMessage: TProc<string>);
-begin
-  FSessionOf := ASessionOf;
-  FMessage := AMessage;
-end;
-
-class procedure TAtlasIdeStatementCompletion.Uninstall;
-begin
-  FSessionOf := nil;
-  FMessage := nil;
-end;
-
-class function TAtlasIdeStatementCompletion.Enabled: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.CompleteStatement;
-end;
-
-class function TAtlasIdeStatementCompletion.Options(AIndentWidth: Integer;
-  ATryKind: TAtlasTryKind): TAtlasStatementOptions;
-begin
-  Result := TAtlasStatementOptions.Defaults;
-  if TAtlasIdeSettings.Current.CompleteStatementBeginEnd = TAtlasPluginSettings.cBeginEndAlways then
-  begin
-    Result.BeginEnd := TAtlasBeginEndMode.Always;
-  end
-  else if TAtlasIdeSettings.Current.CompleteStatementBeginEnd = TAtlasPluginSettings.cBeginEndNever then
-  begin
-    Result.BeginEnd := TAtlasBeginEndMode.Never;
-  end;
-  Result.TryKind := ATryKind;
-  Result.IndentWidth := AIndentWidth;
-  Result.MethodBody := TAtlasIdeSettings.Current.CompleteStatementMethodBody;
-end;
-
-class procedure TAtlasIdeStatementCompletion.Run;
+class procedure TAtlasIdeStatementCompletion.RunWith(ATryKind: TAtlasTryKind);
 var
   mView: IOTAEditView;
+  mText, mLineBreak, mFinal, mInsert: string;
+  mEdit: TAtlasStatementEdit;
+  mCursorLine, mCursorCharacter, mStart, mOldLength: Integer;
 begin
   mView := TAtlasEditorBuffer.ActiveView;
   if not Enabled or (mView = nil) or (mView.Buffer = nil) or mView.Buffer.IsReadOnly then
   begin
     Exit;
   end;
-  if TAtlasIdeSettings.Current.CompleteStatementTryKind = TAtlasPluginSettings.cTryKindExcept then
+  mText := TAtlasEditorBuffer.Text(mView.Buffer);
+  mLineBreak := #10;
+  if Pos(#13#10, mText) > 0 then
   begin
-    RunWith(TAtlasTryKind.TryExcept);
-  end
-  else if (TAtlasIdeSettings.Current.CompleteStatementTryKind <> TAtlasPluginSettings.cTryKindAsk) or
-    not TAtlasStatementCompleter.NeedsTryKind(TAtlasEditorBuffer.Text(mView.Buffer), mView.CursorPos.Line - 1) then
-  begin
-    RunWith(TAtlasTryKind.TryFinally);
-  end
-  else
-  begin
-    ChooseTryKind;
+    mLineBreak := #13#10;
   end;
+  if not TAtlasStatementCompleter.Complete(mText, mView.CursorPos.Line - 1,
+    Options(TAtlasEditorBuffer.BlockIndent(mView.Buffer), ATryKind), mEdit) then
+  begin
+    Exit;
+  end;
+  mCursorLine := mEdit.CursorLine;
+  mCursorCharacter := mEdit.CursorCharacter;
+  mFinal := Followed(mView.Buffer.FileName, string.Join(mLineBreak,
+    TAtlasStatementCompleter.Apply(mText.Split([#13#10, #10]), mEdit)), mLineBreak, mEdit, mCursorLine,
+    mCursorCharacter);
+  if TAtlasLineMover.Difference(mText, mFinal, mStart, mOldLength, mInsert) then
+  begin
+    TAtlasEditorSnapshots.ReplaceText(mView.Buffer, mText, mStart, mOldLength, mInsert);
+  end;
+  PlaceCursor(mView, mFinal.Split([#13#10, #10]), mCursorLine, mCursorCharacter,
+    TAtlasEditorBuffer.TabWidth(mView.Buffer));
 end;
 
 /// <summary>Rumpf bzw. Zweige vom Server, auf den ergänzten Text ANewText; ohne Server oder Antwort bleibt es beim
@@ -323,40 +300,63 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeStatementCompletion.RunWith(ATryKind: TAtlasTryKind);
+class procedure TAtlasIdeStatementCompletion.Install(const ASessionOf: TFunc<TLspSession>;
+  const AMessage: TProc<string>);
+begin
+  FSessionOf := ASessionOf;
+  FMessage := AMessage;
+end;
+
+class procedure TAtlasIdeStatementCompletion.Uninstall;
+begin
+  FSessionOf := nil;
+  FMessage := nil;
+end;
+
+class function TAtlasIdeStatementCompletion.Enabled: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.CompleteStatement;
+end;
+
+class procedure TAtlasIdeStatementCompletion.Run;
 var
   mView: IOTAEditView;
-  mText, mLineBreak, mFinal, mInsert: string;
-  mEdit: TAtlasStatementEdit;
-  mCursorLine, mCursorCharacter, mStart, mOldLength: Integer;
 begin
   mView := TAtlasEditorBuffer.ActiveView;
   if not Enabled or (mView = nil) or (mView.Buffer = nil) or mView.Buffer.IsReadOnly then
   begin
     Exit;
   end;
-  mText := TAtlasEditorBuffer.Text(mView.Buffer);
-  mLineBreak := #10;
-  if Pos(#13#10, mText) > 0 then
+  if TAtlasIdeSettings.Current.CompleteStatementTryKind = TAtlasPluginSettings.cTryKindExcept then
   begin
-    mLineBreak := #13#10;
-  end;
-  if not TAtlasStatementCompleter.Complete(mText, mView.CursorPos.Line - 1,
-    Options(TAtlasEditorBuffer.BlockIndent(mView.Buffer), ATryKind), mEdit) then
+    RunWith(TAtlasTryKind.TryExcept);
+  end
+  else if (TAtlasIdeSettings.Current.CompleteStatementTryKind <> TAtlasPluginSettings.cTryKindAsk) or
+    not TAtlasStatementCompleter.NeedsTryKind(TAtlasEditorBuffer.Text(mView.Buffer), mView.CursorPos.Line - 1) then
   begin
-    Exit;
-  end;
-  mCursorLine := mEdit.CursorLine;
-  mCursorCharacter := mEdit.CursorCharacter;
-  mFinal := Followed(mView.Buffer.FileName, string.Join(mLineBreak,
-    TAtlasStatementCompleter.Apply(mText.Split([#13#10, #10]), mEdit)), mLineBreak, mEdit, mCursorLine,
-    mCursorCharacter);
-  if TAtlasLineMover.Difference(mText, mFinal, mStart, mOldLength, mInsert) then
+    RunWith(TAtlasTryKind.TryFinally);
+  end
+  else
   begin
-    TAtlasEditorSnapshots.ReplaceText(mView.Buffer, mText, mStart, mOldLength, mInsert);
+    ChooseTryKind;
   end;
-  PlaceCursor(mView, mFinal.Split([#13#10, #10]), mCursorLine, mCursorCharacter,
-    TAtlasEditorBuffer.TabWidth(mView.Buffer));
+end;
+
+class function TAtlasIdeStatementCompletion.Options(AIndentWidth: Integer;
+  ATryKind: TAtlasTryKind): TAtlasStatementOptions;
+begin
+  Result := TAtlasStatementOptions.Defaults;
+  if TAtlasIdeSettings.Current.CompleteStatementBeginEnd = TAtlasPluginSettings.cBeginEndAlways then
+  begin
+    Result.BeginEnd := TAtlasBeginEndMode.Always;
+  end
+  else if TAtlasIdeSettings.Current.CompleteStatementBeginEnd = TAtlasPluginSettings.cBeginEndNever then
+  begin
+    Result.BeginEnd := TAtlasBeginEndMode.Never;
+  end;
+  Result.TryKind := ATryKind;
+  Result.IndentWidth := AIndentWidth;
+  Result.MethodBody := TAtlasIdeSettings.Current.CompleteStatementMethodBody;
 end;
 
 end.

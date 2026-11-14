@@ -125,6 +125,26 @@ begin
   FStart.Free;
 end;
 
+procedure TAtlasTimeLimit.TWorker.Execute;
+var
+  mError: string;
+begin
+  while WaitForStart do
+  begin
+    mError := RunCurrent;
+    // StopAll hat aufgegeben (Entladen): nichts mehr anfassen, was dem Vorrat gehört.
+    if Terminated then
+    begin
+      Exit;
+    end;
+    // Der Aufrufer hat aufgegeben: Erst jetzt ist der Arbeiter wieder frei.
+    if Finish(mError) then
+    begin
+      TAtlasTimeLimit.Release(Self);
+    end;
+  end;
+end;
+
 function TAtlasTimeLimit.TWorker.WaitForStart: Boolean;
 begin
   Result := False;
@@ -172,26 +192,6 @@ begin
     FDone.SetEvent;
   finally
     TAtlasTimeLimit.FLock.Leave;
-  end;
-end;
-
-procedure TAtlasTimeLimit.TWorker.Execute;
-var
-  mError: string;
-begin
-  while WaitForStart do
-  begin
-    mError := RunCurrent;
-    // StopAll hat aufgegeben (Entladen): nichts mehr anfassen, was dem Vorrat gehört.
-    if Terminated then
-    begin
-      Exit;
-    end;
-    // Der Aufrufer hat aufgegeben: Erst jetzt ist der Arbeiter wieder frei.
-    if Finish(mError) then
-    begin
-      TAtlasTimeLimit.Release(Self);
-    end;
   end;
 end;
 
@@ -273,11 +273,6 @@ begin
   end;
 end;
 
-class function TAtlasTimeLimit.Run(const AProc: TProc; out AError: string): TAtlasTimedOutcome;
-begin
-  Result := Run(AProc, AError, -1);
-end;
-
 class function TAtlasTimeLimit.Run(const AProc: TProc; out AError: string; ALimitMs: Integer): TAtlasTimedOutcome;
 var
   mWorker: TWorker;
@@ -331,43 +326,9 @@ begin
   end;
 end;
 
-class function TAtlasTimeLimit.BusyCount: Integer;
+class function TAtlasTimeLimit.Run(const AProc: TProc; out AError: string): TAtlasTimedOutcome;
 begin
-  FLock.Enter;
-  try
-    Result := FAll.Count - FIdle.Count;
-  finally
-    FLock.Leave;
-  end;
-end;
-
-class function TAtlasTimeLimit.WaitIdle(AMs: Cardinal): Boolean;
-var
-  mWatch: TStopwatch;
-  mLeft: Int64;
-begin
-  if (FLock = nil) or (FReleased = nil) then
-  begin
-    Exit(True);
-  end;
-  mWatch := TStopwatch.StartNew;
-  Result := BusyCount = 0;
-  while not Result do
-  begin
-    mLeft := Int64(AMs) - mWatch.ElapsedMilliseconds;
-    if mLeft <= 0 then
-    begin
-      Exit;
-    end;
-    // Auto-Reset: Ein Release zwischen Prüfung und Warten bleibt gesetzt und weckt sofort.
-    FReleased.WaitFor(Cardinal(mLeft));
-    Result := BusyCount = 0;
-  end;
-end;
-
-class function TAtlasTimeLimit.StopAll: Boolean;
-begin
-  Result := StopAll(1000);
+  Result := Run(AProc, AError, -1);
 end;
 
 class function TAtlasTimeLimit.StopAll(AMs: Cardinal): Boolean;
@@ -432,6 +393,45 @@ begin
   if FReleased <> nil then
   begin
     FReleased.SetEvent;
+  end;
+end;
+
+class function TAtlasTimeLimit.StopAll: Boolean;
+begin
+  Result := StopAll(1000);
+end;
+
+class function TAtlasTimeLimit.BusyCount: Integer;
+begin
+  FLock.Enter;
+  try
+    Result := FAll.Count - FIdle.Count;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+class function TAtlasTimeLimit.WaitIdle(AMs: Cardinal): Boolean;
+var
+  mWatch: TStopwatch;
+  mLeft: Int64;
+begin
+  if (FLock = nil) or (FReleased = nil) then
+  begin
+    Exit(True);
+  end;
+  mWatch := TStopwatch.StartNew;
+  Result := BusyCount = 0;
+  while not Result do
+  begin
+    mLeft := Int64(AMs) - mWatch.ElapsedMilliseconds;
+    if mLeft <= 0 then
+    begin
+      Exit;
+    end;
+    // Auto-Reset: Ein Release zwischen Prüfung und Warten bleibt gesetzt und weckt sofort.
+    FReleased.WaitFor(Cardinal(mLeft));
+    Result := BusyCount = 0;
   end;
 end;
 

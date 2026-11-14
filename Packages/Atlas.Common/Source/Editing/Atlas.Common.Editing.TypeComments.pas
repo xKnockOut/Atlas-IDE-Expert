@@ -521,6 +521,20 @@ begin
   end;
 end;
 
+class function TTypeComments.Renamed(const ALine, AOld, ANew: string; out ANewLine: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  ANewLine := ALine;
+  Result := IsHeaderLine(ALine, AOld);
+  if Result then
+  begin
+    // Nur das erste Vorkommen als ganzes Wort: der Name steht vorn im Kommentar.
+    mIndex := Pos(LowerCase(AOld), LowerCase(ALine));
+    ANewLine := Copy(ALine, 1, mIndex - 1) + ANew + Copy(ALine, mIndex + Length(AOld), MaxInt);
+  end;
+end;
+
 class function TTypeComments.NameSpots(const ALines: TArray<string>; const ATypeName: string): TArray<TTypeNameSpot>;
 var
   mLine: Integer;
@@ -533,20 +547,6 @@ begin
     begin
       Result := Result + [mSpot];
     end;
-  end;
-end;
-
-class function TTypeComments.Renamed(const ALine, AOld, ANew: string; out ANewLine: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  ANewLine := ALine;
-  Result := IsHeaderLine(ALine, AOld);
-  if Result then
-  begin
-    // Nur das erste Vorkommen als ganzes Wort: der Name steht vorn im Kommentar.
-    mIndex := Pos(LowerCase(AOld), LowerCase(ALine));
-    ANewLine := Copy(ALine, 1, mIndex - 1) + ANew + Copy(ALine, mIndex + Length(AOld), MaxInt);
   end;
 end;
 

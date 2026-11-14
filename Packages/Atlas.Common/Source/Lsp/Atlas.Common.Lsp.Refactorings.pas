@@ -176,9 +176,41 @@ begin
   Result.Namespaces := AContext.Namespaces;
 end;
 
-class function TLspRefactorings.ExtractOptions(const AContext: TRefactoringContext): TExtractOptions;
+{ TLspRefactorings }
+
+class function TLspRefactorings.WithLookup(AResolver: TNameResolver; ATree: TSyntaxTree;
+  const AFileName: string): TWithOwnerLookup;
+var
+  mFileName: string;
 begin
-  Result := OptionsOf(AContext);
+  mFileName := AFileName;
+  Result :=
+    function(AWith, AIdentifier: TSyntaxNode; out AElement: Integer): TWithOwner
+    var
+      mWith: TResolvedWithMember;
+    begin
+      AElement := -1;
+      if AResolver.Queries.WithMember(ATree, mFileName, AIdentifier.Name, AIdentifier.StartOffset, mWith) then
+      begin
+        AElement := mWith.Element;
+        if mWith.Statement = AWith then
+        begin
+          Result := TWithOwner.Element;
+        end
+        else
+        begin
+          Result := TWithOwner.Other;
+        end;
+      end
+      else if mWith.Unknown then
+      begin
+        Result := TWithOwner.Unknown;
+      end
+      else
+      begin
+        Result := TWithOwner.Other;
+      end;
+    end;
 end;
 
 /// <summary>Trägt die Art des Typs AResolved (Wert, Referenz, Interface, Record) in AProbed ein.</summary>
@@ -288,39 +320,9 @@ begin
     end;
 end;
 
-class function TLspRefactorings.WithLookup(AResolver: TNameResolver; ATree: TSyntaxTree;
-  const AFileName: string): TWithOwnerLookup;
-var
-  mFileName: string;
+class function TLspRefactorings.ExtractOptions(const AContext: TRefactoringContext): TExtractOptions;
 begin
-  mFileName := AFileName;
-  Result :=
-    function(AWith, AIdentifier: TSyntaxNode; out AElement: Integer): TWithOwner
-    var
-      mWith: TResolvedWithMember;
-    begin
-      AElement := -1;
-      if AResolver.Queries.WithMember(ATree, mFileName, AIdentifier.Name, AIdentifier.StartOffset, mWith) then
-      begin
-        AElement := mWith.Element;
-        if mWith.Statement = AWith then
-        begin
-          Result := TWithOwner.Element;
-        end
-        else
-        begin
-          Result := TWithOwner.Other;
-        end;
-      end
-      else if mWith.Unknown then
-      begin
-        Result := TWithOwner.Unknown;
-      end
-      else
-      begin
-        Result := TWithOwner.Other;
-      end;
-    end;
+  Result := OptionsOf(AContext);
 end;
 
 /// <summary>Was TCompletionValues.CaseValues zum Auflösen der Aufzählung braucht.</summary>

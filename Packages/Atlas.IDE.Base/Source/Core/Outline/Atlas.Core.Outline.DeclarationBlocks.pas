@@ -177,6 +177,8 @@ begin
   ShortenAtRoutines(ANodes, Result);
 end;
 
+{ TAtlasDeclarationBlockFinder }
+
 class function TAtlasDeclarationBlockFinder.BlocksOf(const ANodes: TAtlasOutlineNodes;
   const ALines: TArray<string>): TAtlasDeclarationBlocks;
 var

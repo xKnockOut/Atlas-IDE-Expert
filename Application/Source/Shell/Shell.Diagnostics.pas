@@ -149,147 +149,17 @@ begin
   inherited;
 end;
 
-class function TShellDiagnostics.DefaultFolder: string;
-begin
-  Result := TPath.Combine(TPath.Combine(TPath.Combine(TPath.GetCachePath, 'Atlas'), 'Logs'), 'Diagnose');
-end;
-
-class function TShellDiagnostics.AddLogFile(ALogger: TLogger; const AFileName, AFallbackTag: string;
-  ANames: Boolean; ALevel: TLogLevel; out AAnonymizer: ILogAnonymizer): Boolean;
-begin
-  AAnonymizer := nil;
-  Result := True;
-  if AFileName = '' then
-  begin
-    Exit;
-  end;
-  try
-    ALogger.AddSink(LogFileSink(AFileName, AFallbackTag, ANames, AAnonymizer), ALevel);
-  except
-    on E: Exception do
-    begin
-      ALogger.Error(Format('Logdatei "%s" kann nicht geöffnet werden: %s', [TLogMarks.Path(AFileName),
-        TLogMarks.Text(E.Message)]));
-      Result := False;
-    end;
-  end;
-end;
-
-class function TShellDiagnostics.LogFileSink(const AFileName, AFallbackTag: string; ANames: Boolean;
-  out AAnonymizer: ILogAnonymizer): ILogSink;
+class function TShellDiagnostics.ShortMethod(const AMethod: string): string;
 var
-  mAnonymizer: ILogAnonymizer;
-  mInner: ILogSink;
+  mSlash: Integer;
 begin
-  mInner := TStreamLogSink.CreateForFile(AFileName, AFallbackTag);
-  AAnonymizer := nil;
-  Result := mInner;
-  if ANames then
+  // Ohne "/": Der Filter des Diagnoselogs verwirft Zeilen mit Schrägstrich.
+  mSlash := LastDelimiter('/', AMethod);
+  Result := Copy(AMethod, mSlash + 1, MaxInt);
+  if StartsText('workspace/', AMethod) and (Result <> '') then
   begin
-    Exit;
+    Result := 'ws' + UpperCase(Result[1]) + Copy(Result, 2, MaxInt);
   end;
-  // Eigene Variable: out-Parameter lassen sich nicht einfangen.
-  mAnonymizer := TLogAnonymizer.Create(TProcessInfo.IdentityNames);
-  AAnonymizer := mAnonymizer;
-  Result := TTransformLogSink.Create(mInner,
-    function(const AText: string): string
-    begin
-      Result := mAnonymizer.Anonymize(AText);
-    end);
-end;
-
-procedure TShellDiagnostics.AllowMethods(const AMethods: TArray<string>);
-begin
-  // Nur beim Start gesetzt, bevor Anfragen laufen.
-  FLogImpl.Filter.Allowed := AMethods;
-end;
-
-procedure TShellDiagnostics.SetLibraryRoots(const ARoots: TArray<string>);
-begin
-  FIds.SetLibraryRoots(ARoots);
-end;
-
-procedure TShellDiagnostics.ApplySettings(const ASettings: TServerSettings);
-begin
-  FMapFile := ASettings.DiagnosticsLogMapFile;
-  FFolder.RetentionDays := ASettings.DiagnosticsLogDays;
-  FLog.Configure(ASettings.DiagnosticsLog);
-  if ASettings.DiagnosticsLog then
-  begin
-    FFolder.Cleanup(ASettings.DiagnosticsLogDays);
-  end;
-end;
-
-function TShellDiagnostics.BeginRun(const AVersion: string; AMemoryBytes: Int64): Integer;
-var
-  mProcess: TDiagnosticProcess;
-  mPrevious, mIndex: Integer;
-begin
-  mPrevious := FFolder.BeginRun;
-  Result := mPrevious;
-  mProcess.MemoryBytes := AMemoryBytes;
-  mProcess.Threads := TProcessInfo.ThreadCount;
-  FLog.LogStart(AVersion, mProcess);
-  for mIndex := 1 to mPrevious do
-  begin
-    FLog.LogEvent('previous run ended without end line (process terminated or crashed)');
-  end;
-end;
-
-class function TShellDiagnostics.EndReasonText(AReason: TDiagnosticEndReason): string;
-begin
-  case AReason of
-    TDiagnosticEndReason.Clean:
-      Result := 'shutdown und exit vom Client';
-    TDiagnosticEndReason.InputClosed:
-      Result := 'Eingabe geschlossen ohne exit (IDE hat die Verbindung getrennt)';
-    TDiagnosticEndReason.ParentExited:
-      Result := 'Editor-Prozess beendet';
-  else
-    Result := 'unbehandelte Exception';
-  end;
-end;
-
-procedure TShellDiagnostics.EndRun(AReason: TDiagnosticEndReason; AExitCode: Integer; AMemoryBytes: Int64);
-begin
-  EndRun(AReason, AExitCode, AMemoryBytes, nil);
-end;
-
-procedure TShellDiagnostics.EndRun(AReason: TDiagnosticEndReason; AExitCode: Integer; AMemoryBytes: Int64;
-  const AError: Exception);
-var
-  mProcess: TDiagnosticProcess;
-  mErrorClass, mStack: string;
-begin
-  // Die Endzeile kommt schon, wenn die Eingabe endet (#647): Das Plugin wartet danach nur kurz und
-  // beendet den Prozess, solange noch Anfragen laufen. Der spätere Aufruf aus Run zählt dann nicht.
-  if FEnded then
-  begin
-    Exit;
-  end;
-  FEnded := True;
-  mProcess.MemoryBytes := AMemoryBytes;
-  mProcess.Threads := TProcessInfo.ThreadCount;
-  mErrorClass := '';
-  mStack := '';
-  if AError <> nil then
-  begin
-    // Nur Klasse und Aufrufstapel: Die Meldung kann Pfade oder Namen aus dem Projekt enthalten.
-    mErrorClass := AError.ClassName;
-    mStack := TShellPlatform.StackTraceOf(AError);
-  end;
-  FLog.LogEnd(AReason, AExitCode, mProcess, mErrorClass, mStack);
-  FLogImpl.Flush;
-  if FMapFile and FLog.Enabled then
-  begin
-    FFolder.WriteMap(FIds.MapLines);
-  end;
-  FFolder.EndRun;
-end;
-
-function TShellDiagnostics.FileLabel(const AFileName: string): string;
-begin
-  Result := FIds.UnitLabel(ChangeFileExt(ExtractFileName(AFileName), ''), AFileName);
 end;
 
 function TShellDiagnostics.LibraryCount: Integer;
@@ -382,16 +252,66 @@ begin
   Result := 1;
 end;
 
-class function TShellDiagnostics.ShortMethod(const AMethod: string): string;
-var
-  mSlash: Integer;
+procedure TShellDiagnostics.AddIndexState(var ARequest: TDiagnosticRequest);
 begin
-  // Ohne "/": Der Filter des Diagnoselogs verwirft Zeilen mit Schrägstrich.
-  mSlash := LastDelimiter('/', AMethod);
-  Result := Copy(AMethod, mSlash + 1, MaxInt);
-  if StartsText('workspace/', AMethod) and (Result <> '') then
+  if FIndex <> nil then
   begin
-    Result := 'ws' + UpperCase(Result[1]) + Copy(Result, 2, MaxInt);
+    ARequest.IndexUnits := FIndex.UnitCount;
+    ARequest.IndexLibrary := LibraryCount;
+  end;
+  ARequest.IndexLoading := -1;
+  if Assigned(FIndexLoading) then
+  begin
+    ARequest.IndexLoading := FIndexLoading();
+  end;
+end;
+
+class function TShellDiagnostics.DefaultFolder: string;
+begin
+  Result := TPath.Combine(TPath.Combine(TPath.Combine(TPath.GetCachePath, 'Atlas'), 'Logs'), 'Diagnose');
+end;
+
+class function TShellDiagnostics.LogFileSink(const AFileName, AFallbackTag: string; ANames: Boolean;
+  out AAnonymizer: ILogAnonymizer): ILogSink;
+var
+  mAnonymizer: ILogAnonymizer;
+  mInner: ILogSink;
+begin
+  mInner := TStreamLogSink.CreateForFile(AFileName, AFallbackTag);
+  AAnonymizer := nil;
+  Result := mInner;
+  if ANames then
+  begin
+    Exit;
+  end;
+  // Eigene Variable: out-Parameter lassen sich nicht einfangen.
+  mAnonymizer := TLogAnonymizer.Create(TProcessInfo.IdentityNames);
+  AAnonymizer := mAnonymizer;
+  Result := TTransformLogSink.Create(mInner,
+    function(const AText: string): string
+    begin
+      Result := mAnonymizer.Anonymize(AText);
+    end);
+end;
+
+class function TShellDiagnostics.AddLogFile(ALogger: TLogger; const AFileName, AFallbackTag: string;
+  ANames: Boolean; ALevel: TLogLevel; out AAnonymizer: ILogAnonymizer): Boolean;
+begin
+  AAnonymizer := nil;
+  Result := True;
+  if AFileName = '' then
+  begin
+    Exit;
+  end;
+  try
+    ALogger.AddSink(LogFileSink(AFileName, AFallbackTag, ANames, AAnonymizer), ALevel);
+  except
+    on E: Exception do
+    begin
+      ALogger.Error(Format('Logdatei "%s" kann nicht geöffnet werden: %s', [TLogMarks.Path(AFileName),
+        TLogMarks.Text(E.Message)]));
+      Result := False;
+    end;
   end;
 end;
 
@@ -416,6 +336,95 @@ begin
   finally
     TMonitor.Exit(FLock);
   end;
+end;
+
+function TShellDiagnostics.BeginRun(const AVersion: string; AMemoryBytes: Int64): Integer;
+var
+  mProcess: TDiagnosticProcess;
+  mPrevious, mIndex: Integer;
+begin
+  mPrevious := FFolder.BeginRun;
+  Result := mPrevious;
+  mProcess.MemoryBytes := AMemoryBytes;
+  mProcess.Threads := TProcessInfo.ThreadCount;
+  FLog.LogStart(AVersion, mProcess);
+  for mIndex := 1 to mPrevious do
+  begin
+    FLog.LogEvent('previous run ended without end line (process terminated or crashed)');
+  end;
+end;
+
+class function TShellDiagnostics.EndReasonText(AReason: TDiagnosticEndReason): string;
+begin
+  case AReason of
+    TDiagnosticEndReason.Clean:
+      Result := 'shutdown und exit vom Client';
+    TDiagnosticEndReason.InputClosed:
+      Result := 'Eingabe geschlossen ohne exit (IDE hat die Verbindung getrennt)';
+    TDiagnosticEndReason.ParentExited:
+      Result := 'Editor-Prozess beendet';
+  else
+    Result := 'unbehandelte Exception';
+  end;
+end;
+
+procedure TShellDiagnostics.EndRun(AReason: TDiagnosticEndReason; AExitCode: Integer; AMemoryBytes: Int64;
+  const AError: Exception);
+var
+  mProcess: TDiagnosticProcess;
+  mErrorClass, mStack: string;
+begin
+  // Die Endzeile kommt schon, wenn die Eingabe endet (#647): Das Plugin wartet danach nur kurz und
+  // beendet den Prozess, solange noch Anfragen laufen. Der spätere Aufruf aus Run zählt dann nicht.
+  if FEnded then
+  begin
+    Exit;
+  end;
+  FEnded := True;
+  mProcess.MemoryBytes := AMemoryBytes;
+  mProcess.Threads := TProcessInfo.ThreadCount;
+  mErrorClass := '';
+  mStack := '';
+  if AError <> nil then
+  begin
+    // Nur Klasse und Aufrufstapel: Die Meldung kann Pfade oder Namen aus dem Projekt enthalten.
+    mErrorClass := AError.ClassName;
+    mStack := TShellPlatform.StackTraceOf(AError);
+  end;
+  FLog.LogEnd(AReason, AExitCode, mProcess, mErrorClass, mStack);
+  FLogImpl.Flush;
+  if FMapFile and FLog.Enabled then
+  begin
+    FFolder.WriteMap(FIds.MapLines);
+  end;
+  FFolder.EndRun;
+end;
+
+procedure TShellDiagnostics.EndRun(AReason: TDiagnosticEndReason; AExitCode: Integer; AMemoryBytes: Int64);
+begin
+  EndRun(AReason, AExitCode, AMemoryBytes, nil);
+end;
+
+procedure TShellDiagnostics.ApplySettings(const ASettings: TServerSettings);
+begin
+  FMapFile := ASettings.DiagnosticsLogMapFile;
+  FFolder.RetentionDays := ASettings.DiagnosticsLogDays;
+  FLog.Configure(ASettings.DiagnosticsLog);
+  if ASettings.DiagnosticsLog then
+  begin
+    FFolder.Cleanup(ASettings.DiagnosticsLogDays);
+  end;
+end;
+
+procedure TShellDiagnostics.AllowMethods(const AMethods: TArray<string>);
+begin
+  // Nur beim Start gesetzt, bevor Anfragen laufen.
+  FLogImpl.Filter.Allowed := AMethods;
+end;
+
+procedure TShellDiagnostics.SetLibraryRoots(const ARoots: TArray<string>);
+begin
+  FIds.SetLibraryRoots(ARoots);
 end;
 
 // Was beim Ende einer Anfrage noch läuft, etwa „hover1,completion2“.
@@ -528,20 +537,6 @@ begin
   end;
 end;
 
-procedure TShellDiagnostics.AddIndexState(var ARequest: TDiagnosticRequest);
-begin
-  if FIndex <> nil then
-  begin
-    ARequest.IndexUnits := FIndex.UnitCount;
-    ARequest.IndexLibrary := LibraryCount;
-  end;
-  ARequest.IndexLoading := -1;
-  if Assigned(FIndexLoading) then
-  begin
-    ARequest.IndexLoading := FIndexLoading();
-  end;
-end;
-
 procedure TShellDiagnostics.Finished(const AMethod: string; const AParams, AResult: TJSONValue;
   const AError: Exception; AQueueMs, AElapsedMs: Int64);
 var
@@ -567,6 +562,11 @@ begin
   DescribeDocument(AParams, mRequest);
   AddIndexState(mRequest);
   FLog.LogRequest(mRequest);
+end;
+
+function TShellDiagnostics.FileLabel(const AFileName: string): string;
+begin
+  Result := FIds.UnitLabel(ChangeFileExt(ExtractFileName(AFileName), ''), AFileName);
 end;
 
 end.

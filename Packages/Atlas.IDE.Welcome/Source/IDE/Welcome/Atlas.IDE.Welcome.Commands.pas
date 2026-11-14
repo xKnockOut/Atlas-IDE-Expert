@@ -588,6 +588,34 @@ begin
   inherited;
 end;
 
+procedure TAtlasIdeWelcome.Announce(const AIds: TArray<string>);
+var
+  mItems: TArray<TAtlasWhatsNewItem>;
+  mItem: TAtlasWhatsNewItem;
+  mSection: TAtlasWelcomeSection;
+  mId: string;
+begin
+  if FAreas.WhatsNew = nil then
+  begin
+    Exit;
+  end;
+  mItems := nil;
+  for mId in AIds do
+  begin
+    if not TAtlasWelcomeSections.Default.Find(mId, mSection) then
+    begin
+      Continue;
+    end;
+    mItem := Default(TAtlasWhatsNewItem);
+    mItem.Title := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeNewSection, [mSection.Title]);
+    mItem.Text := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeNewSectionText);
+    mItem.Setting := TAtlasWelcomeCustomizing.SettingOf(mId);
+    mItem.Command := TAtlasIdeWelcomeLayouts.cCommandId;
+    mItems := mItems + [mItem];
+  end;
+  FAreas.WhatsNew.Announce(mItems);
+end;
+
 /// <summary>Kontextmenü „Neu in Atlas“ an Frame „Atlas“ bzw. Kopf hängen oder (off) entfernen.</summary>
 procedure TAtlasIdeWelcome.AttachMenu(AFrame: TAtlasWelcomeFrame);
 var
@@ -617,229 +645,6 @@ begin
     AFrame.PopupMenu := mMenu;
   end;
   mMenu.Source := FAreas.WhatsNew;
-end;
-
-function TAtlasIdeWelcome.HeaderInfo: TAtlasWelcomeHeaderInfo;
-var
-  mServer: TAtlasServerInfo;
-  mPercent, mUnits: Integer;
-  mIndexing: Boolean;
-  mHour, mMinute, mSecond, mMSec: Word;
-begin
-  mServer := Default(TAtlasServerInfo);
-  if Assigned(FHooks.ServerInfo) then
-  begin
-    mServer := FHooks.ServerInfo();
-  end;
-  mPercent := -1;
-  mIndexing := False;
-  if Assigned(FHooks.Indexing) then
-  begin
-    mIndexing := FHooks.Indexing(mPercent);
-  end;
-  mUnits := -1;
-  if Assigned(FHooks.Units) then
-  begin
-    mUnits := FHooks.Units();
-  end;
-  DecodeTime(Now, mHour, mMinute, mSecond, mMSec);
-  Result := StatusInfo(mServer, mIndexing, mPercent, mUnits);
-  Result.Greeting := Settings.WelcomePageGreeting;
-  Result.Hour := mHour;
-  // Ohne Grußzeile kein Nachschlagen des Namens (bei Domänenkonten eine Anfrage an den Domänencontroller).
-  if Result.Greeting then
-  begin
-    Result.FirstName := TAtlasWelcomeGreeting.FirstName(FHooks.Account.Name, GetEnvironmentVariable('USERNAME'));
-  end;
-end;
-
-procedure TAtlasIdeWelcome.FillHeader(AHeader: TAtlasWelcomeHeaderFrame);
-begin
-  if AHeader = nil then
-  begin
-    Exit;
-  end;
-  // Thema, Sprache oder Einstellungen können sich geändert haben: alles neu setzen.
-  AHeader.Renew;
-  AHeader.ShowInfo(HeaderInfo);
-  AHeader.ShowSearch(Settings.WelcomePageSearch and (FSearch <> nil));
-  if (FSearch <> nil) and (AHeader.Search <> nil) then
-  begin
-    FSearch.Attach(AHeader.Search);
-  end;
-  AttachMenu(AHeader);
-end;
-
-procedure TAtlasIdeWelcome.FillBoard(ABoard: TAtlasWelcomeBoardFrame; AFold: Boolean);
-var
-  mLayout: TAtlasWelcomeLayout;
-  mBoard: TAtlasWelcomeBoardFrame;
-begin
-  if ABoard = nil then
-  begin
-    Exit;
-  end;
-  mBoard := ABoard;
-  // Eigenes Layout (#767) bzw. das feste Atlas-Layout (#753); neue Bereiche nach Höhe in die Spalte mit dem
-  // meisten Platz.
-  mLayout := FLayouts.BoardLayout(
-    function(const AId: string): Integer
-    begin
-      Result := ViewHeight(mBoard, AId);
-    end);
-  // Nach einem Update steht „Neu in Atlas“ oben in der ersten Spalte (#756); beim Anpassen der echte Platz.
-  if (FAreas.WhatsNew <> nil) and FAreas.WhatsNew.OnTop and not FLayouts.Editing then
-  begin
-    mLayout := mLayout.MovedToTop(TAtlasWelcomeIds.cNews);
-  end;
-  ABoard.Header.Visible := Settings.WelcomePageHeader;
-  FillHeader(ABoard.Header);
-  AttachMenu(ABoard);
-  ABoard.AutoFold := AFold;
-  ABoard.Source := FLayouts;
-  ABoard.Rebuild(TAtlasWelcomeSections.Default.Visible, mLayout, mLayout.Columns);
-end;
-
-procedure TAtlasIdeWelcome.Announce(const AIds: TArray<string>);
-var
-  mItems: TArray<TAtlasWhatsNewItem>;
-  mItem: TAtlasWhatsNewItem;
-  mSection: TAtlasWelcomeSection;
-  mId: string;
-begin
-  if FAreas.WhatsNew = nil then
-  begin
-    Exit;
-  end;
-  mItems := nil;
-  for mId in AIds do
-  begin
-    if not TAtlasWelcomeSections.Default.Find(mId, mSection) then
-    begin
-      Continue;
-    end;
-    mItem := Default(TAtlasWhatsNewItem);
-    mItem.Title := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeNewSection, [mSection.Title]);
-    mItem.Text := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeNewSectionText);
-    mItem.Setting := TAtlasWelcomeCustomizing.SettingOf(mId);
-    mItem.Command := TAtlasIdeWelcomeLayouts.cCommandId;
-    mItems := mItems + [mItem];
-  end;
-  FAreas.WhatsNew.Announce(mItems);
-end;
-
-procedure TAtlasIdeWelcome.Customize;
-begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-    procedure
-    var
-      Client: TAtlasWelcomeFrame;
-    begin
-      if not FLayouts.CanCustomize then
-      begin
-        Exit;
-      end;
-      // Ohne Tafel auf der Willkommensseite der IDE (welcomePage.layout = off oder dort aus) im Fenster.
-      Client := TAtlasIdeWelcomePage.Client(BoardId);
-      if not FLayouts.Editing and not (Client is TAtlasWelcomeBoardFrame) then
-      begin
-        ShowStart;
-      end;
-      FLayouts.SetEditing(not FLayouts.Editing);
-    end);
-end;
-
-/// <summary>Millisekunden seit AStart (Now); genau genug für die Startzeiten in atlas.log.</summary>
-function ElapsedMs(AStart: TDateTime): Int64;
-begin
-  Result := Round((Now - AStart) * MSecsPerDay);
-end;
-
-procedure TAtlasIdeWelcome.Sync;
-const
-  // Langsamer Abgleich (Startzeit 06.11.2026) mit Dauer je Schritt nach atlas.log.
-  cSlowSyncMs = 200;
-begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-    procedure
-    var
-      mCurrent: TAtlasPluginSettings;
-      mIdePage: Boolean;
-      mStart: TDateTime;
-      mLaps: array[0..4] of Int64;
-    begin
-      mStart := Now;
-      mCurrent := Settings;
-      FAreas.Refresh;
-      mLaps[0] := ElapsedMs(mStart);
-      mIdePage := TAtlasIdeWelcomeIdeLayout.Wanted(mCurrent) and TAtlasIdeWelcomePage.Available;
-      SyncPlugins(Self, WantedPlugins(mCurrent, mIdePage));
-      mLaps[1] := ElapsedMs(mStart);
-      SyncWindow(Self, mCurrent);
-      mLaps[2] := ElapsedMs(mStart);
-      SyncIdeLayout(Self, mCurrent, mIdePage);
-      mLaps[3] := ElapsedMs(mStart);
-      FSync.ShownIde := mIdePage;
-      FSync.LastLayout := mCurrent.WelcomePageLayout;
-      FSync.Started := True;
-      UpdateHeaders;
-      mLaps[4] := ElapsedMs(mStart);
-      if mLaps[4] >= cSlowSyncMs then
-      begin
-        TAtlasGuard.Log(Format('Welcome sync %d ms: areas %d, plugins %d, window %d, ide layout %d, headers %d ms',
-          [mLaps[4], mLaps[0], mLaps[1] - mLaps[0], mLaps[2] - mLaps[1], mLaps[3] - mLaps[2], mLaps[4] - mLaps[3]]));
-      end;
-    end);
-end;
-
-function TAtlasIdeWelcome.CreateClient(const APluginId: string; AOwner: TComponent): TAtlasWelcomeFrame;
-var
-  mId: string;
-  mHeader: TAtlasWelcomeHeaderFrame;
-  mBoard: TAtlasWelcomeBoardFrame;
-  mView: TAtlasWelcomeSectionFrame;
-begin
-  mId := TAtlasWelcomeIds.SectionOf(APluginId);
-  if SameText(mId, TAtlasWelcomeIds.cHeader) then
-  begin
-    mHeader := TAtlasWelcomeHeaderFrame.Create(AOwner);
-    FillHeader(mHeader);
-    Result := mHeader;
-  end
-  else if SameText(mId, TAtlasWelcomeIds.cBoard) then
-  begin
-    mBoard := TAtlasWelcomeBoardFrame.Create(AOwner);
-    FillBoard(mBoard, False);
-    Result := mBoard;
-  end
-  else
-  begin
-    // Die IDE zeigt den Titel im Rahmen; der Bereich selbst ohne Titelzeile.
-    mView := TAtlasWelcomeViews.CreateView(mId, AOwner);
-    if mView <> nil then
-    begin
-      mView.ShowTitle := False;
-    end;
-    Result := mView;
-  end;
-end;
-
-function TAtlasIdeWelcome.FactoryOf(const APluginId: string): TAtlasWelcomeClientFactory;
-begin
-  Result :=
-    function(AOwner: TComponent): TAtlasWelcomeFrame
-    begin
-      Result := nil;
-      if Instance <> nil then
-      begin
-        Result := Instance.CreateClient(APluginId, AOwner);
-      end;
-    end;
-end;
-
-procedure TAtlasIdeWelcome.BeginStop;
-begin
-  FStopping := True;
 end;
 
 procedure TAtlasIdeWelcome.SectionChanged(const AId: string);
@@ -894,6 +699,57 @@ begin
     end);
 end;
 
+function TAtlasIdeWelcome.CreateClient(const APluginId: string; AOwner: TComponent): TAtlasWelcomeFrame;
+var
+  mId: string;
+  mHeader: TAtlasWelcomeHeaderFrame;
+  mBoard: TAtlasWelcomeBoardFrame;
+  mView: TAtlasWelcomeSectionFrame;
+begin
+  mId := TAtlasWelcomeIds.SectionOf(APluginId);
+  if SameText(mId, TAtlasWelcomeIds.cHeader) then
+  begin
+    mHeader := TAtlasWelcomeHeaderFrame.Create(AOwner);
+    FillHeader(mHeader);
+    Result := mHeader;
+  end
+  else if SameText(mId, TAtlasWelcomeIds.cBoard) then
+  begin
+    mBoard := TAtlasWelcomeBoardFrame.Create(AOwner);
+    FillBoard(mBoard, False);
+    Result := mBoard;
+  end
+  else
+  begin
+    // Die IDE zeigt den Titel im Rahmen; der Bereich selbst ohne Titelzeile.
+    mView := TAtlasWelcomeViews.CreateView(mId, AOwner);
+    if mView <> nil then
+    begin
+      mView.ShowTitle := False;
+    end;
+    Result := mView;
+  end;
+end;
+
+function TAtlasIdeWelcome.FactoryOf(const APluginId: string): TAtlasWelcomeClientFactory;
+begin
+  Result :=
+    function(AOwner: TComponent): TAtlasWelcomeFrame
+    begin
+      Result := nil;
+      if Instance <> nil then
+      begin
+        Result := Instance.CreateClient(APluginId, AOwner);
+      end;
+    end;
+end;
+
+/// <summary>Millisekunden seit AStart (Now); genau genug für die Startzeiten in atlas.log.</summary>
+function ElapsedMs(AStart: TDateTime): Int64;
+begin
+  Result := Round((Now - AStart) * MSecsPerDay);
+end;
+
 /// <summary>Gezeigten Inhalt nach Einstellungen und Bereichen neu füllen.</summary>
 procedure TAtlasIdeWelcome.RefreshClient(AClient: TAtlasWelcomeFrame);
 begin
@@ -909,6 +765,87 @@ begin
   begin
     AClient.UpdateContent;
   end;
+end;
+
+procedure TAtlasIdeWelcome.FillBoard(ABoard: TAtlasWelcomeBoardFrame; AFold: Boolean);
+var
+  mLayout: TAtlasWelcomeLayout;
+  mBoard: TAtlasWelcomeBoardFrame;
+begin
+  if ABoard = nil then
+  begin
+    Exit;
+  end;
+  mBoard := ABoard;
+  // Eigenes Layout (#767) bzw. das feste Atlas-Layout (#753); neue Bereiche nach Höhe in die Spalte mit dem
+  // meisten Platz.
+  mLayout := FLayouts.BoardLayout(
+    function(const AId: string): Integer
+    begin
+      Result := ViewHeight(mBoard, AId);
+    end);
+  // Nach einem Update steht „Neu in Atlas“ oben in der ersten Spalte (#756); beim Anpassen der echte Platz.
+  if (FAreas.WhatsNew <> nil) and FAreas.WhatsNew.OnTop and not FLayouts.Editing then
+  begin
+    mLayout := mLayout.MovedToTop(TAtlasWelcomeIds.cNews);
+  end;
+  ABoard.Header.Visible := Settings.WelcomePageHeader;
+  FillHeader(ABoard.Header);
+  AttachMenu(ABoard);
+  ABoard.AutoFold := AFold;
+  ABoard.Source := FLayouts;
+  ABoard.Rebuild(TAtlasWelcomeSections.Default.Visible, mLayout, mLayout.Columns);
+end;
+
+function TAtlasIdeWelcome.HeaderInfo: TAtlasWelcomeHeaderInfo;
+var
+  mServer: TAtlasServerInfo;
+  mPercent, mUnits: Integer;
+  mIndexing: Boolean;
+  mHour, mMinute, mSecond, mMSec: Word;
+begin
+  mServer := Default(TAtlasServerInfo);
+  if Assigned(FHooks.ServerInfo) then
+  begin
+    mServer := FHooks.ServerInfo();
+  end;
+  mPercent := -1;
+  mIndexing := False;
+  if Assigned(FHooks.Indexing) then
+  begin
+    mIndexing := FHooks.Indexing(mPercent);
+  end;
+  mUnits := -1;
+  if Assigned(FHooks.Units) then
+  begin
+    mUnits := FHooks.Units();
+  end;
+  DecodeTime(Now, mHour, mMinute, mSecond, mMSec);
+  Result := StatusInfo(mServer, mIndexing, mPercent, mUnits);
+  Result.Greeting := Settings.WelcomePageGreeting;
+  Result.Hour := mHour;
+  // Ohne Grußzeile kein Nachschlagen des Namens (bei Domänenkonten eine Anfrage an den Domänencontroller).
+  if Result.Greeting then
+  begin
+    Result.FirstName := TAtlasWelcomeGreeting.FirstName(FHooks.Account.Name, GetEnvironmentVariable('USERNAME'));
+  end;
+end;
+
+procedure TAtlasIdeWelcome.FillHeader(AHeader: TAtlasWelcomeHeaderFrame);
+begin
+  if AHeader = nil then
+  begin
+    Exit;
+  end;
+  // Thema, Sprache oder Einstellungen können sich geändert haben: alles neu setzen.
+  AHeader.Renew;
+  AHeader.ShowInfo(HeaderInfo);
+  AHeader.ShowSearch(Settings.WelcomePageSearch and (FSearch <> nil));
+  if (FSearch <> nil) and (AHeader.Search <> nil) then
+  begin
+    FSearch.Attach(AHeader.Search);
+  end;
+  AttachMenu(AHeader);
 end;
 
 procedure TAtlasIdeWelcome.UpdateHeaders;
@@ -968,6 +905,75 @@ begin
   TAtlasIdeSettings.Update(mNext);
 end;
 
+procedure TAtlasIdeWelcome.BeginStop;
+begin
+  FStopping := True;
+end;
+
+procedure TAtlasIdeWelcome.Sync;
+const
+  // Langsamer Abgleich (Startzeit 06.11.2026) mit Dauer je Schritt nach atlas.log.
+  cSlowSyncMs = 200;
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    var
+      mCurrent: TAtlasPluginSettings;
+      mIdePage: Boolean;
+      mStart: TDateTime;
+      mLaps: array[0..4] of Int64;
+    begin
+      mStart := Now;
+      mCurrent := Settings;
+      FAreas.Refresh;
+      mLaps[0] := ElapsedMs(mStart);
+      mIdePage := TAtlasIdeWelcomeIdeLayout.Wanted(mCurrent) and TAtlasIdeWelcomePage.Available;
+      SyncPlugins(Self, WantedPlugins(mCurrent, mIdePage));
+      mLaps[1] := ElapsedMs(mStart);
+      SyncWindow(Self, mCurrent);
+      mLaps[2] := ElapsedMs(mStart);
+      SyncIdeLayout(Self, mCurrent, mIdePage);
+      mLaps[3] := ElapsedMs(mStart);
+      FSync.ShownIde := mIdePage;
+      FSync.LastLayout := mCurrent.WelcomePageLayout;
+      FSync.Started := True;
+      UpdateHeaders;
+      mLaps[4] := ElapsedMs(mStart);
+      if mLaps[4] >= cSlowSyncMs then
+      begin
+        TAtlasGuard.Log(Format('Welcome sync %d ms: areas %d, plugins %d, window %d, ide layout %d, headers %d ms',
+          [mLaps[4], mLaps[0], mLaps[1] - mLaps[0], mLaps[2] - mLaps[1], mLaps[3] - mLaps[2], mLaps[4] - mLaps[3]]));
+      end;
+    end);
+end;
+
+procedure TAtlasIdeWelcome.ShowStart;
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      FillBoard(TAtlasIdeWelcomeWindow.Show, True);
+    end);
+end;
+
+procedure TAtlasIdeWelcome.ShowWhatsNew(AView: TAtlasWhatsNewView);
+begin
+  if FAreas.WhatsNew = nil then
+  begin
+    Exit;
+  end;
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      FAreas.WhatsNew.Show(AView);
+      // Auf der Willkommensseite der IDE zeigt die Karte sich dort; sonst im Fenster.
+      if not FSync.ShownIde then
+      begin
+        ShowStart;
+      end;
+    end);
+end;
+
 procedure TAtlasIdeWelcome.ApplyLayout;
 begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
@@ -998,30 +1004,24 @@ begin
     end);
 end;
 
-procedure TAtlasIdeWelcome.ShowStart;
+procedure TAtlasIdeWelcome.Customize;
 begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
+    var
+      Client: TAtlasWelcomeFrame;
     begin
-      FillBoard(TAtlasIdeWelcomeWindow.Show, True);
-    end);
-end;
-
-procedure TAtlasIdeWelcome.ShowWhatsNew(AView: TAtlasWhatsNewView);
-begin
-  if FAreas.WhatsNew = nil then
-  begin
-    Exit;
-  end;
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-    procedure
-    begin
-      FAreas.WhatsNew.Show(AView);
-      // Auf der Willkommensseite der IDE zeigt die Karte sich dort; sonst im Fenster.
-      if not FSync.ShownIde then
+      if not FLayouts.CanCustomize then
+      begin
+        Exit;
+      end;
+      // Ohne Tafel auf der Willkommensseite der IDE (welcomePage.layout = off oder dort aus) im Fenster.
+      Client := TAtlasIdeWelcomePage.Client(BoardId);
+      if not FLayouts.Editing and not (Client is TAtlasWelcomeBoardFrame) then
       begin
         ShowStart;
       end;
+      FLayouts.SetEditing(not FLayouts.Editing);
     end);
 end;
 

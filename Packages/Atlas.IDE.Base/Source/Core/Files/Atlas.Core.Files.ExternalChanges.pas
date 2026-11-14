@@ -80,15 +80,6 @@ end;
 
 { TAtlasExternalChanges }
 
-class function TAtlasExternalChanges.ActionText(AAction: TAtlasReloadAction): string;
-const
-  cTexts: array[TAtlasLanguage, TAtlasReloadAction] of string = (
-    ('neu laden', 'ungespeicherte Änderungen, behalten', 'gelöscht'),
-    ('reload', 'unsaved changes, kept', 'deleted'));
-begin
-  Result := cTexts[TAtlasTextLanguage.Current, AAction];
-end;
-
 constructor TAtlasExternalChanges.Create;
 begin
   inherited Create;
@@ -202,6 +193,15 @@ begin
   finally
     mList.Free;
   end;
+end;
+
+class function TAtlasExternalChanges.ActionText(AAction: TAtlasReloadAction): string;
+const
+  cTexts: array[TAtlasLanguage, TAtlasReloadAction] of string = (
+    ('neu laden', 'ungespeicherte Änderungen, behalten', 'gelöscht'),
+    ('reload', 'unsaved changes, kept', 'deleted'));
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AAction];
 end;
 
 end.

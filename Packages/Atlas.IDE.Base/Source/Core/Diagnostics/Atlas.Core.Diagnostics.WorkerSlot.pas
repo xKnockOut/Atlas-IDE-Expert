@@ -160,33 +160,6 @@ begin
   FreeAndNil(FLock);
 end;
 
-class procedure TAtlasOverdueThreads.Adopt(AThread: TThread; AModule: HMODULE);
-var
-  mEntry: TEntry;
-begin
-  if AThread = nil then
-  begin
-    Exit;
-  end;
-  if FLock = nil then
-  begin
-    // Nach dem Abbau: letzter Ausweg wie früher.
-    AThread.FreeOnTerminate := True;
-    Exit;
-  end;
-  mEntry.Thread := AThread;
-  mEntry.Module := AModule;
-  FLock.Enter;
-  try
-    FEntries.Add(mEntry);
-  finally
-    FLock.Leave;
-  end;
-  TAtlasGuard.Log(Format('Atlas: worker thread %d exceeded its time limit, freed once it ends',
-    [AThread.ThreadID]));
-  Prune(0);
-end;
-
 class procedure TAtlasOverdueThreads.Prune(AModule: HMODULE);
 var
   mDone: TArray<TThread>;
@@ -252,6 +225,33 @@ begin
       Inc(Result);
     end;
   end;
+end;
+
+class procedure TAtlasOverdueThreads.Adopt(AThread: TThread; AModule: HMODULE);
+var
+  mEntry: TEntry;
+begin
+  if AThread = nil then
+  begin
+    Exit;
+  end;
+  if FLock = nil then
+  begin
+    // Nach dem Abbau: letzter Ausweg wie früher.
+    AThread.FreeOnTerminate := True;
+    Exit;
+  end;
+  mEntry.Thread := AThread;
+  mEntry.Module := AModule;
+  FLock.Enter;
+  try
+    FEntries.Add(mEntry);
+  finally
+    FLock.Leave;
+  end;
+  TAtlasGuard.Log(Format('Atlas: worker thread %d exceeded its time limit, freed once it ends',
+    [AThread.ThreadID]));
+  Prune(0);
 end;
 
 class function TAtlasOverdueThreads.Pending(AModule: HMODULE): Integer;

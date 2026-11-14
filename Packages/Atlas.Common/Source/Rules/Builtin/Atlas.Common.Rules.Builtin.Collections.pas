@@ -227,11 +227,7 @@ begin
   end;
 end;
 
-class function TLegacyCollections.DeclaredIn(const ASymbol: TResolvedSymbol; const AFileName: string): Boolean;
-begin
-  Result := (ASymbol.Kind = TResolvedKind.Local) or
-    ((ASymbol.Kind = TResolvedKind.Symbol) and SameText(ASymbol.FileName, AFileName));
-end;
+{ TLegacyCollections }
 
 class function TLegacyCollections.Reads(ATree: TSyntaxTree; const AFileName: string; AResolver: TNameResolver;
   const ATypes: TArray<TLegacyCollectionType>; const AMembers: TArray<string>;
@@ -409,6 +405,12 @@ begin
   finally
     mFound.Free;
   end;
+end;
+
+class function TLegacyCollections.DeclaredIn(const ASymbol: TResolvedSymbol; const AFileName: string): Boolean;
+begin
+  Result := (ASymbol.Kind = TResolvedKind.Local) or
+    ((ASymbol.Kind = TResolvedKind.Symbol) and SameText(ASymbol.FileName, AFileName));
 end;
 
 /// <summary>Kommt einer der Namen in AFileName vor? Unknown, sobald eine Datei nicht lesbar ist.</summary>
@@ -746,32 +748,7 @@ begin
   end;
 end;
 
-procedure TLegacyCollectionRule.ReportCollection(const AContext: TRuleContext; const AReport: IRuleReport;
-  const AFileName: string; const AFirst: TLegacyCollectionRead; const ACastTypes: TArray<string>;
-  AResolver: TNameResolver);
-var
-  mRange: TTextRange;
-  mFix: TRuleFix;
-  mReason: string;
-begin
-  if TLegacyCollections.DeclaredIn(AFirst.Symbol, AFileName) then
-  begin
-    mRange := AFirst.Symbol.SelectionRange;
-  end
-  else
-  begin
-    mRange := TTextRange.Create(AFirst.Cast.StartPos, AFirst.Cast.EndPos);
-  end;
-  if TLegacyCollections.ConversionFix(AContext, AFileName, AFirst, AResolver, mFix, mReason) then
-  begin
-    AReport.Add(mRange, FindingMessage(AFirst.CollectionType.Name, ACastTypes), TRuleConfidence.High, [mFix]);
-  end
-  else
-  begin
-    AReport.AddWithDetails(mRange, FindingMessage(AFirst.CollectionType.Name, ACastTypes),
-      cTexts[TCollectionsText.NoQuickFix].Text + mReason + '.', TRuleConfidence.High, nil);
-  end;
-end;
+{ TLegacyCollectionRule }
 
 procedure TLegacyCollectionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
@@ -814,13 +791,34 @@ begin
   end;
 end;
 
-{ TLegacyTListRule }
-
-function TLegacyTListRule.Descriptor: TRuleDescriptor;
+procedure TLegacyCollectionRule.ReportCollection(const AContext: TRuleContext; const AReport: IRuleReport;
+  const AFileName: string; const AFirst: TLegacyCollectionRead; const ACastTypes: TArray<string>;
+  AResolver: TNameResolver);
+var
+  mRange: TTextRange;
+  mFix: TRuleFix;
+  mReason: string;
 begin
-  Result := TRuleDescriptor.Create(cLegacyTListRuleId, TRuleSeverity.Information,
-    cTexts[TCollectionsText.ListTitle].Text);
+  if TLegacyCollections.DeclaredIn(AFirst.Symbol, AFileName) then
+  begin
+    mRange := AFirst.Symbol.SelectionRange;
+  end
+  else
+  begin
+    mRange := TTextRange.Create(AFirst.Cast.StartPos, AFirst.Cast.EndPos);
+  end;
+  if TLegacyCollections.ConversionFix(AContext, AFileName, AFirst, AResolver, mFix, mReason) then
+  begin
+    AReport.Add(mRange, FindingMessage(AFirst.CollectionType.Name, ACastTypes), TRuleConfidence.High, [mFix]);
+  end
+  else
+  begin
+    AReport.AddWithDetails(mRange, FindingMessage(AFirst.CollectionType.Name, ACastTypes),
+      cTexts[TCollectionsText.NoQuickFix].Text + mReason + '.', TRuleConfidence.High, nil);
+  end;
 end;
+
+{ TLegacyTListRule }
 
 function TLegacyTListRule.CollectionTypes: TArray<TLegacyCollectionType>;
 begin
@@ -850,13 +848,13 @@ begin
   end;
 end;
 
-{ TLegacyStackQueueRule }
-
-function TLegacyStackQueueRule.Descriptor: TRuleDescriptor;
+function TLegacyTListRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(cLegacyStackQueueRuleId, TRuleSeverity.Information,
-    cTexts[TCollectionsText.StackTitle].Text);
+  Result := TRuleDescriptor.Create(cLegacyTListRuleId, TRuleSeverity.Information,
+    cTexts[TCollectionsText.ListTitle].Text);
 end;
+
+{ TLegacyStackQueueRule }
 
 function TLegacyStackQueueRule.CollectionTypes: TArray<TLegacyCollectionType>;
 begin
@@ -904,6 +902,12 @@ begin
     Result := cTexts[TCollectionsText.StackCasts].Fmt(
       [mAdjective, ACollectionType, string.Join(', ', ACastTypes), mGeneric]);
   end;
+end;
+
+function TLegacyStackQueueRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(cLegacyStackQueueRuleId, TRuleSeverity.Information,
+    cTexts[TCollectionsText.StackTitle].Text);
 end;
 
 procedure RegisterCollectionRules(const ARegistry: TRuleRegistry);

@@ -104,20 +104,40 @@ const
 
 { TMcpCheckTools }
 
-class function TMcpCheckTools.RelativeTo(const ARoot, AFileName: string): string;
+class function TMcpCheckTools.Diagnostics(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
+  const AReadText: TReferenceReadText): string;
 begin
-  Result := AFileName;
-  if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), AFileName) then
-  begin
-    Result := Copy(AFileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
-  end;
+  Result := Diagnostics(AScope, AFiles, AReadText, nil);
 end;
 
-class function TMcpCheckTools.FindingLine(const AFinding: TRuleFinding): string;
+class function TMcpCheckTools.Diagnostics(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
+  const AReadText: TReferenceReadText; const ASource: TCheckSourceFunc): string;
 begin
-  Result := cTexts[TCheckToolsText.Confidence].Fmt([AFinding.Range.StartPos.Line + 1,
-    AFinding.Range.StartPos.Character + 1, TFindingsOutput.SeverityName(AFinding.Severity), AFinding.RuleId,
-    ConfidenceText(AFinding.Confidence), AFinding.Message]);
+  Result := Diagnostics(AScope, AFiles, AReadText, ASource, nil);
+end;
+
+class function TMcpCheckTools.ParseHookSeverity(const AText: string): TRuleSeverity;
+begin
+  if (AText = '') or SameText(AText, 'warning') then
+  begin
+    Result := TRuleSeverity.Warning;
+  end
+  else if SameText(AText, 'error') then
+  begin
+    Result := TRuleSeverity.Error;
+  end
+  else if SameText(AText, 'information') then
+  begin
+    Result := TRuleSeverity.Information;
+  end
+  else if SameText(AText, 'hint') then
+  begin
+    Result := TRuleSeverity.Hint;
+  end
+  else
+  begin
+    raise EMcpToolError.Create(cTexts[TCheckToolsText.SeverityIsErrorWarningInformation].Text);
+  end;
 end;
 
 class function TMcpCheckTools.Metrics(const ASettings: TServerSettings; const ARoot: string;
@@ -169,16 +189,13 @@ begin
   end;
 end;
 
-class function TMcpCheckTools.Diagnostics(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
-  const AReadText: TReferenceReadText): string;
+class function TMcpCheckTools.RelativeTo(const ARoot, AFileName: string): string;
 begin
-  Result := Diagnostics(AScope, AFiles, AReadText, nil);
-end;
-
-class function TMcpCheckTools.Diagnostics(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
-  const AReadText: TReferenceReadText; const ASource: TCheckSourceFunc): string;
-begin
-  Result := Diagnostics(AScope, AFiles, AReadText, ASource, nil);
+  Result := AFileName;
+  if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), AFileName) then
+  begin
+    Result := Copy(AFileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
+  end;
 end;
 
 /// <summary>Befunde der Regeln aus AScope in AText (Inhalt von AFileName).</summary>
@@ -288,28 +305,11 @@ begin
     TFindingsOutput.JsonString(mContext) + '}}';
 end;
 
-class function TMcpCheckTools.ParseHookSeverity(const AText: string): TRuleSeverity;
+class function TMcpCheckTools.FindingLine(const AFinding: TRuleFinding): string;
 begin
-  if (AText = '') or SameText(AText, 'warning') then
-  begin
-    Result := TRuleSeverity.Warning;
-  end
-  else if SameText(AText, 'error') then
-  begin
-    Result := TRuleSeverity.Error;
-  end
-  else if SameText(AText, 'information') then
-  begin
-    Result := TRuleSeverity.Information;
-  end
-  else if SameText(AText, 'hint') then
-  begin
-    Result := TRuleSeverity.Hint;
-  end
-  else
-  begin
-    raise EMcpToolError.Create(cTexts[TCheckToolsText.SeverityIsErrorWarningInformation].Text);
-  end;
+  Result := cTexts[TCheckToolsText.Confidence].Fmt([AFinding.Range.StartPos.Line + 1,
+    AFinding.Range.StartPos.Character + 1, TFindingsOutput.SeverityName(AFinding.Severity), AFinding.RuleId,
+    ConfidenceText(AFinding.Confidence), AFinding.Message]);
 end;
 
 initialization

@@ -115,39 +115,6 @@ end;
 
 { TAtlasIdeSmartIndent }
 
-class procedure TAtlasIdeSmartIndent.Install(const ASessionOf: TFunc<TLspSession>; const ABusy: TFunc<Boolean>);
-begin
-  FSessionOf := ASessionOf;
-  FBusy := ABusy;
-  if FRequest = nil then
-  begin
-    FRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.SmartIndent);
-  end;
-  TAtlasEnterWatch.Add(cHandlerName,
-    function: Boolean
-    begin
-      Result := Enabled;
-    end,
-    function(const AView: IOTAEditView): Boolean
-    begin
-      Result := Run(AView);
-    end);
-end;
-
-class procedure TAtlasIdeSmartIndent.Uninstall;
-begin
-  TAtlasEnterWatch.Remove(cHandlerName);
-  // Wartet die laufende Anfrage ab und verwirft ihre Antwort.
-  FreeAndNil(FRequest);
-  FSessionOf := nil;
-  FBusy := nil;
-end;
-
-class function TAtlasIdeSmartIndent.Enabled: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.Enabled;
-end;
-
 class function TAtlasIdeSmartIndent.Session: TLspSession;
 begin
   Result := nil;
@@ -245,6 +212,39 @@ begin
   AView.CursorPos := mCursor;
   AView.MoveViewToCursor;
   AView.Paint;
+end;
+
+class procedure TAtlasIdeSmartIndent.Install(const ASessionOf: TFunc<TLspSession>; const ABusy: TFunc<Boolean>);
+begin
+  FSessionOf := ASessionOf;
+  FBusy := ABusy;
+  if FRequest = nil then
+  begin
+    FRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.SmartIndent);
+  end;
+  TAtlasEnterWatch.Add(cHandlerName,
+    function: Boolean
+    begin
+      Result := Enabled;
+    end,
+    function(const AView: IOTAEditView): Boolean
+    begin
+      Result := Run(AView);
+    end);
+end;
+
+class procedure TAtlasIdeSmartIndent.Uninstall;
+begin
+  TAtlasEnterWatch.Remove(cHandlerName);
+  // Wartet die laufende Anfrage ab und verwirft ihre Antwort.
+  FreeAndNil(FRequest);
+  FSessionOf := nil;
+  FBusy := nil;
+end;
+
+class function TAtlasIdeSmartIndent.Enabled: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.Enabled;
 end;
 
 class function TAtlasIdeSmartIndent.ColumnAt(const ABuffer: IOTAEditBuffer; const AText: string; ALine: Integer;

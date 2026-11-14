@@ -27,6 +27,8 @@ type
 
 implementation
 
+{ TFindingFilter }
+
 function TFindingFilter.AcceptsFile(const APath: string): Boolean;
 var
   mPattern: string;

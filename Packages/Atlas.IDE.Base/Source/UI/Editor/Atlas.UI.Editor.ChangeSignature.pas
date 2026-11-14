@@ -217,6 +217,21 @@ begin
   ActiveControl := FList;
 end;
 
+procedure TAtlasChangeSignatureDialog.DoShow;
+begin
+  inherited;
+  // Liste und Auswahlfeld brauchen ein Fenster: erst hier füllen.
+  if FModifier.Items.Count = 0 then
+  begin
+    FModifier.Items.Add('');
+    FModifier.Items.Add('const');
+    FModifier.Items.Add('var');
+    FModifier.Items.Add('out');
+    FModifier.Items.Add('constref');
+  end;
+  FillList(0);
+end;
+
 procedure TAtlasChangeSignatureDialog.CreateBottom;
 var
   mBottom: TPanel;
@@ -311,21 +326,6 @@ begin
     mRight.Controls[mIndex].Width := mRight.Width - ScaleValue(2 * cGap);
     mRight.Controls[mIndex].Anchors := [akLeft, akTop];
   end;
-end;
-
-procedure TAtlasChangeSignatureDialog.DoShow;
-begin
-  inherited;
-  // Liste und Auswahlfeld brauchen ein Fenster: erst hier füllen.
-  if FModifier.Items.Count = 0 then
-  begin
-    FModifier.Items.Add('');
-    FModifier.Items.Add('const');
-    FModifier.Items.Add('var');
-    FModifier.Items.Add('out');
-    FModifier.Items.Add('constref');
-  end;
-  FillList(0);
 end;
 
 function TAtlasChangeSignatureDialog.Selected: Integer;

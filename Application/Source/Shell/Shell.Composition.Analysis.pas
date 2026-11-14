@@ -91,12 +91,40 @@ uses
   System.SysUtils,
   System.JSON;
 
+{ TShellAnalysis }
+
 constructor TShellAnalysis.Create(const AServices: TShellAnalysisServices);
 begin
   inherited Create;
   FServices := AServices;
   CreateReferenceViews;
   CreateEditorViews;
+end;
+
+destructor TShellAnalysis.Destroy;
+begin
+  FreeAndNil(FSemanticTokens);
+  FreeAndNil(FCodeLens);
+  FreeAndNil(FMetrics);
+  FreeAndNil(FTodos);
+  FreeAndNil(FInlayHints);
+  FreeAndNil(FImplementations);
+  FreeAndNil(FImpact);
+  FreeAndNil(FAccessChains);
+  FreeAndNil(FDataFlow);
+  FreeAndNil(FHierarchies);
+  FreeAndNil(FSignatureHelp);
+  inherited Destroy;
+end;
+
+function TShellAnalysis.GetNamespaces: TArray<string>;
+begin
+  Result := FImpact.Namespaces;
+end;
+
+function TShellAnalysis.ReadText(const AFileName: string; out AText: string): Boolean;
+begin
+  Result := FServices.ReadText(AFileName, AText);
 end;
 
 procedure TShellAnalysis.CreateReferenceViews;
@@ -128,32 +156,6 @@ begin
   FMetrics.Index := FServices.Index;
   FTodos := TLspTodos.Create(FServices.MetricsSourceFor, ReadText);
   FSemanticTokens := TLspSemanticTokens.Create(FServices.Documents, FServices.Index, FServices.EnsureUnit);
-end;
-
-destructor TShellAnalysis.Destroy;
-begin
-  FreeAndNil(FSemanticTokens);
-  FreeAndNil(FCodeLens);
-  FreeAndNil(FMetrics);
-  FreeAndNil(FTodos);
-  FreeAndNil(FInlayHints);
-  FreeAndNil(FImplementations);
-  FreeAndNil(FImpact);
-  FreeAndNil(FAccessChains);
-  FreeAndNil(FDataFlow);
-  FreeAndNil(FHierarchies);
-  FreeAndNil(FSignatureHelp);
-  inherited Destroy;
-end;
-
-function TShellAnalysis.ReadText(const AFileName: string; out AText: string): Boolean;
-begin
-  Result := FServices.ReadText(AFileName, AText);
-end;
-
-function TShellAnalysis.GetNamespaces: TArray<string>;
-begin
-  Result := FImpact.Namespaces;
 end;
 
 procedure TShellAnalysis.Attach(ADispatcher: TJsonRpcDispatcher);

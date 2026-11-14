@@ -119,26 +119,6 @@ begin
   FStore := AStore;
 end;
 
-procedure TLspTextDocumentSync.Attach(ADispatcher: TJsonRpcDispatcher);
-begin
-  ADispatcher.RegisterNotification(TLspTextDocumentMethod.cDidOpen, HandleDidOpen);
-  ADispatcher.RegisterNotification(TLspTextDocumentMethod.cDidChange, HandleDidChange);
-  ADispatcher.RegisterNotification(TLspTextDocumentMethod.cDidSave, HandleDidSave);
-  ADispatcher.RegisterNotification(TLspTextDocumentMethod.cDidClose, HandleDidClose);
-end;
-
-class function TLspTextDocumentSync.Capability: TJSONObject;
-var
-  mSave: TJSONObject;
-begin
-  mSave := TJSONObject.Create;
-  mSave.AddPair('includeText', TJSONBool.Create(False));
-  Result := TJSONObject.Create;
-  Result.AddPair('openClose', TJSONBool.Create(True));
-  Result.AddPair('change', TJSONNumber.Create(TLspTextDocumentSyncKind.cIncremental));
-  Result.AddPair('save', mSave);
-end;
-
 procedure TLspTextDocumentSync.HandleDidOpen(const AParams: TJSONValue);
 var
   mParams: TJSONObject;
@@ -176,6 +156,26 @@ var
 begin
   mParams := RequireObject(AParams, TLspTextDocumentMethod.cDidClose);
   FStore.Close(RequireString(mParams, 'textDocument.uri', TLspTextDocumentMethod.cDidClose));
+end;
+
+procedure TLspTextDocumentSync.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  ADispatcher.RegisterNotification(TLspTextDocumentMethod.cDidOpen, HandleDidOpen);
+  ADispatcher.RegisterNotification(TLspTextDocumentMethod.cDidChange, HandleDidChange);
+  ADispatcher.RegisterNotification(TLspTextDocumentMethod.cDidSave, HandleDidSave);
+  ADispatcher.RegisterNotification(TLspTextDocumentMethod.cDidClose, HandleDidClose);
+end;
+
+class function TLspTextDocumentSync.Capability: TJSONObject;
+var
+  mSave: TJSONObject;
+begin
+  mSave := TJSONObject.Create;
+  mSave.AddPair('includeText', TJSONBool.Create(False));
+  Result := TJSONObject.Create;
+  Result.AddPair('openClose', TJSONBool.Create(True));
+  Result.AddPair('change', TJSONNumber.Create(TLspTextDocumentSyncKind.cIncremental));
+  Result.AddPair('save', mSave);
 end;
 
 initialization

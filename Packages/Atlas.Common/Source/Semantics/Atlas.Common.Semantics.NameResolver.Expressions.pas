@@ -151,6 +151,8 @@ begin
   end;
 end;
 
+{ TResolverExpressions }
+
 constructor TResolverExpressions.Create(const AParts: TResolverParts);
 begin
   inherited Create;
@@ -221,14 +223,6 @@ begin
   end;
 end;
 
-function TResolverExpressions.ResolveFirst(const ANames: TArray<string>; out AConsumed: Integer;
-  out AResult: TResolvedSymbol): Boolean;
-begin
-  AConsumed := 1;
-  Result := FLocals.LookupLocal(ANames[0], AResult) or ClassMember(ANames[0], AResult) or
-    UnitPrefix(ANames, AConsumed, AResult) or GlobalName(ANames[0], AResult);
-end;
-
 function TResolverExpressions.Overloads(const AName: string; AConsumed: Integer;
   const AFirst: TResolvedSymbol): TArray<TResolvedSymbol>;
 var
@@ -258,26 +252,6 @@ begin
   end;
 end;
 
-function TResolverExpressions.ResolveFirstAll(const ANames: TArray<string>; out AConsumed: Integer;
-  out AResults: TArray<TResolvedSymbol>): Boolean;
-var
-  mFirst: TResolvedSymbol;
-  mStop: Boolean;
-begin
-  AConsumed := 1;
-  AResults := nil;
-  if LookupWith(ANames[0], AResults, mStop) then
-  begin
-    Exit(True);
-  end;
-  if mStop or not ResolveFirst(ANames, AConsumed, mFirst) then
-  begin
-    Exit(False);
-  end;
-  AResults := Overloads(ANames[0], AConsumed, mFirst);
-  Result := True;
-end;
-
 function TResolverExpressions.IdentifierCandidates(ANode: TSyntaxNode): TArray<TResolvedSymbol>;
 var
   mConsumed, mSavedOffset: Integer;
@@ -291,6 +265,25 @@ begin
     end;
   finally
     FPlace.Offset := mSavedOffset;
+  end;
+end;
+
+function TResolverExpressions.AccessCandidates(ANode: TSyntaxNode): TArray<TResolvedSymbol>;
+var
+  mOwner, mType: TResolvedSymbol;
+begin
+  Result := nil;
+  if not ExprSymbol(ANode[0], mOwner) then
+  begin
+    Exit;
+  end;
+  if mOwner.Kind = TResolvedKind.UnitName then
+  begin
+    Result := UnitMemberCandidates(mOwner, ANode.Name);
+  end
+  else if FTyping.TypeOf(mOwner, mType) then
+  begin
+    Result := TypeMemberCandidates(mOwner, mType, ANode.Name);
   end;
 end;
 
@@ -330,42 +323,30 @@ begin
   end;
 end;
 
-function TResolverExpressions.AccessCandidates(ANode: TSyntaxNode): TArray<TResolvedSymbol>;
-var
-  mOwner, mType: TResolvedSymbol;
+function TResolverExpressions.NodeSymbol(ANode: TSyntaxNode; out AResult: TResolvedSymbol): Boolean;
 begin
-  Result := nil;
-  if not ExprSymbol(ANode[0], mOwner) then
-  begin
-    Exit;
-  end;
-  if mOwner.Kind = TResolvedKind.UnitName then
-  begin
-    Result := UnitMemberCandidates(mOwner, ANode.Name);
-  end
-  else if FTyping.TypeOf(mOwner, mType) then
-  begin
-    Result := TypeMemberCandidates(mOwner, mType, ANode.Name);
-  end;
-end;
-
-function TResolverExpressions.ExprCandidates(ANode: TSyntaxNode): TArray<TResolvedSymbol>;
-var
-  mSingle: TResolvedSymbol;
-begin
-  Result := nil;
-  if ANode.Kind = TSyntaxKind.Identifier then
-  begin
-    Result := IdentifierCandidates(ANode);
-  end
-  else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.FindChild(TSyntaxKind.GenericArgs) = nil) and
-    (ANode.ChildCount > 0) then
-  begin
-    Result := AccessCandidates(ANode);
-  end
-  else if ExprSymbol(ANode, mSingle) then
-  begin
-    Result := [mSingle];
+  Result := False;
+  case ANode.Kind of
+    TSyntaxKind.Identifier:
+      Result := FirstCandidate(ANode, AResult);
+    TSyntaxKind.MemberAccess:
+      Result := MemberSymbol(ANode, AResult);
+    TSyntaxKind.Call:
+      Result := CallSymbol(ANode, AResult);
+    TSyntaxKind.IndexAccess:
+      Result := IndexSymbol(ANode, AResult);
+    TSyntaxKind.ParenExpr:
+      Result := (ANode.ChildCount > 0) and ExprSymbol(ANode[0], AResult);
+    TSyntaxKind.BinaryExpr:
+      // (X as TBar): der Zieltyp.
+      Result := SameText(ANode.Name, 'as') and (ANode.ChildCount = 2) and ExprSymbol(ANode[1], AResult) and
+        AResult.IsType;
+    TSyntaxKind.IfExpr:
+      Result := (ANode.ChildCount >= 2) and ExprSymbol(ANode[1], AResult);
+    TSyntaxKind.Literal:
+      Result := LiteralSymbol(ANode, AResult);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 
@@ -378,6 +359,21 @@ begin
   if Result then
   begin
     AResult := mCandidates[0];
+  end;
+end;
+
+function TResolverExpressions.MemberSymbol(ANode: TSyntaxNode; out AResult: TResolvedSymbol): Boolean;
+var
+  mArgs: TSyntaxNode;
+begin
+  mArgs := ANode.FindChild(TSyntaxKind.GenericArgs);
+  if (mArgs <> nil) and (ANode.ChildCount > 0) and (ANode[0] <> mArgs) then
+  begin
+    Result := GenericMemberSymbol(ANode, mArgs, AResult);
+  end
+  else
+  begin
+    Result := FirstCandidate(ANode, AResult);
   end;
 end;
 
@@ -411,21 +407,6 @@ begin
   Result := True;
 end;
 
-function TResolverExpressions.MemberSymbol(ANode: TSyntaxNode; out AResult: TResolvedSymbol): Boolean;
-var
-  mArgs: TSyntaxNode;
-begin
-  mArgs := ANode.FindChild(TSyntaxKind.GenericArgs);
-  if (mArgs <> nil) and (ANode.ChildCount > 0) and (ANode[0] <> mArgs) then
-  begin
-    Result := GenericMemberSymbol(ANode, mArgs, AResult);
-  end
-  else
-  begin
-    Result := FirstCandidate(ANode, AResult);
-  end;
-end;
-
 function TResolverExpressions.CallSymbol(ANode: TSyntaxNode; out AResult: TResolvedSymbol): Boolean;
 var
   mCandidates: TArray<TResolvedSymbol>;
@@ -447,21 +428,6 @@ begin
   end;
   AResult := mCandidates[0];
   Result := True;
-end;
-
-function TResolverExpressions.ElementSymbol(const AType: TResolvedSymbol; out AResult: TResolvedSymbol): Boolean;
-var
-  mText: string;
-  mFromUnit: TUnitIndex;
-begin
-  // TArray<T>[i]: das Element.
-  Result := False;
-  if SameText(AType.Name, 'TArray') and (Length(AType.Bindings) > 0) then
-  begin
-    mText := AType.Bindings[0];
-    mText := Copy(mText, Pos('=', mText) + 1, MaxInt);
-    Result := FUnits.UnitOf(AType, mFromUnit) and FLookup.ResolveTypeText(mText, mFromUnit, True, AResult);
-  end;
 end;
 
 function TResolverExpressions.IndexSymbol(ANode: TSyntaxNode; out AResult: TResolvedSymbol): Boolean;
@@ -493,73 +459,18 @@ begin
   Result := Result or ElementSymbol(mType, AResult);
 end;
 
-function TResolverExpressions.NodeSymbol(ANode: TSyntaxNode; out AResult: TResolvedSymbol): Boolean;
-begin
-  Result := False;
-  case ANode.Kind of
-    TSyntaxKind.Identifier:
-      Result := FirstCandidate(ANode, AResult);
-    TSyntaxKind.MemberAccess:
-      Result := MemberSymbol(ANode, AResult);
-    TSyntaxKind.Call:
-      Result := CallSymbol(ANode, AResult);
-    TSyntaxKind.IndexAccess:
-      Result := IndexSymbol(ANode, AResult);
-    TSyntaxKind.ParenExpr:
-      Result := (ANode.ChildCount > 0) and ExprSymbol(ANode[0], AResult);
-    TSyntaxKind.BinaryExpr:
-      // (X as TBar): der Zieltyp.
-      Result := SameText(ANode.Name, 'as') and (ANode.ChildCount = 2) and ExprSymbol(ANode[1], AResult) and
-        AResult.IsType;
-    TSyntaxKind.IfExpr:
-      Result := (ANode.ChildCount >= 2) and ExprSymbol(ANode[1], AResult);
-    TSyntaxKind.Literal:
-      Result := LiteralSymbol(ANode, AResult);
-  else
-    // Übrige Werte bewusst ohne Wirkung.
-  end;
-end;
-
-function TResolverExpressions.ExprSymbol(ANode: TSyntaxNode; out AResult: TResolvedSymbol): Boolean;
-begin
-  Result := False;
-  if (ANode = nil) or (FPlace.InferDepth > cMaxInferDepth * 4) then
-  begin
-    Exit;
-  end;
-  FPlace.InferDepth := FPlace.InferDepth + 1;
-  try
-    Result := NodeSymbol(ANode, AResult);
-  finally
-    FPlace.InferDepth := FPlace.InferDepth - 1;
-  end;
-end;
-
-function TResolverExpressions.ArgTypes(ANode: TSyntaxNode; AFirst: Integer): TArray<string>;
+function TResolverExpressions.ElementSymbol(const AType: TResolvedSymbol; out AResult: TResolvedSymbol): Boolean;
 var
-  mIndex: Integer;
-  mArg: TSyntaxNode;
-  mValue, mType: TResolvedSymbol;
   mText: string;
+  mFromUnit: TUnitIndex;
 begin
-  Result := nil;
-  for mIndex := AFirst to ANode.ChildCount - 1 do
+  // TArray<T>[i]: das Element.
+  Result := False;
+  if SameText(AType.Name, 'TArray') and (Length(AType.Bindings) > 0) then
   begin
-    mArg := ANode[mIndex];
-    if mArg.Kind = TSyntaxKind.GenericArgs then
-    begin
-      Continue;
-    end;
-    mText := '';
-    if mArg.Kind = TSyntaxKind.SetConstructor then
-    begin
-      mText := '[]';
-    end
-    else if ExprSymbol(mArg, mValue) and FTyping.TypeOf(mValue, mType) then
-    begin
-      mText := mType.Name;
-    end;
-    Result := Result + [mText];
+    mText := AType.Bindings[0];
+    mText := Copy(mText, Pos('=', mText) + 1, MaxInt);
+    Result := FUnits.UnitOf(AType, mFromUnit) and FLookup.ResolveTypeText(mText, mFromUnit, True, AResult);
   end;
 end;
 
@@ -612,6 +523,97 @@ begin
     begin
       Inc(Result);
     end;
+  end;
+end;
+
+function TResolverExpressions.ResolveFirst(const ANames: TArray<string>; out AConsumed: Integer;
+  out AResult: TResolvedSymbol): Boolean;
+begin
+  AConsumed := 1;
+  Result := FLocals.LookupLocal(ANames[0], AResult) or ClassMember(ANames[0], AResult) or
+    UnitPrefix(ANames, AConsumed, AResult) or GlobalName(ANames[0], AResult);
+end;
+
+function TResolverExpressions.ResolveFirstAll(const ANames: TArray<string>; out AConsumed: Integer;
+  out AResults: TArray<TResolvedSymbol>): Boolean;
+var
+  mFirst: TResolvedSymbol;
+  mStop: Boolean;
+begin
+  AConsumed := 1;
+  AResults := nil;
+  if LookupWith(ANames[0], AResults, mStop) then
+  begin
+    Exit(True);
+  end;
+  if mStop or not ResolveFirst(ANames, AConsumed, mFirst) then
+  begin
+    Exit(False);
+  end;
+  AResults := Overloads(ANames[0], AConsumed, mFirst);
+  Result := True;
+end;
+
+function TResolverExpressions.ExprCandidates(ANode: TSyntaxNode): TArray<TResolvedSymbol>;
+var
+  mSingle: TResolvedSymbol;
+begin
+  Result := nil;
+  if ANode.Kind = TSyntaxKind.Identifier then
+  begin
+    Result := IdentifierCandidates(ANode);
+  end
+  else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.FindChild(TSyntaxKind.GenericArgs) = nil) and
+    (ANode.ChildCount > 0) then
+  begin
+    Result := AccessCandidates(ANode);
+  end
+  else if ExprSymbol(ANode, mSingle) then
+  begin
+    Result := [mSingle];
+  end;
+end;
+
+function TResolverExpressions.ExprSymbol(ANode: TSyntaxNode; out AResult: TResolvedSymbol): Boolean;
+begin
+  Result := False;
+  if (ANode = nil) or (FPlace.InferDepth > cMaxInferDepth * 4) then
+  begin
+    Exit;
+  end;
+  FPlace.InferDepth := FPlace.InferDepth + 1;
+  try
+    Result := NodeSymbol(ANode, AResult);
+  finally
+    FPlace.InferDepth := FPlace.InferDepth - 1;
+  end;
+end;
+
+function TResolverExpressions.ArgTypes(ANode: TSyntaxNode; AFirst: Integer): TArray<string>;
+var
+  mIndex: Integer;
+  mArg: TSyntaxNode;
+  mValue, mType: TResolvedSymbol;
+  mText: string;
+begin
+  Result := nil;
+  for mIndex := AFirst to ANode.ChildCount - 1 do
+  begin
+    mArg := ANode[mIndex];
+    if mArg.Kind = TSyntaxKind.GenericArgs then
+    begin
+      Continue;
+    end;
+    mText := '';
+    if mArg.Kind = TSyntaxKind.SetConstructor then
+    begin
+      mText := '[]';
+    end
+    else if ExprSymbol(mArg, mValue) and FTyping.TypeOf(mValue, mType) then
+    begin
+      mText := mType.Name;
+    end;
+    Result := Result + [mText];
   end;
 end;
 

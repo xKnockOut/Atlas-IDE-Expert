@@ -198,6 +198,8 @@ type
     procedure ScanLine(ALineIndex: Integer; const ALine: string);
   end;
 
+{ TTokenizer }
+
 procedure TTokenizer.Add(AKind: TTokenKind; const AText: string);
 begin
   if Count = Length(Tokens) then
@@ -497,33 +499,6 @@ begin
   end;
 end;
 
-function TDUnitXUnit.CaseHasOwnLine(AFixtureIndex, ATestIndex, ACaseIndex: Integer): Boolean;
-var
-  mIndex: Integer;
-  mLines: TArray<Integer>;
-begin
-  Result := False;
-  if (AFixtureIndex < 0) or (AFixtureIndex > High(Fixtures)) or (ATestIndex < 0) or
-    (ATestIndex > High(Fixtures[AFixtureIndex].Tests)) then
-  begin
-    Exit;
-  end;
-  mLines := Fixtures[AFixtureIndex].Tests[ATestIndex].CaseLines;
-  if (ACaseIndex < 0) or (ACaseIndex > High(mLines)) or
-    (mLines[ACaseIndex] = Fixtures[AFixtureIndex].Tests[ATestIndex].Line) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to High(mLines) do
-  begin
-    if (mIndex <> ACaseIndex) and (mLines[mIndex] = mLines[ACaseIndex]) then
-    begin
-      Exit;
-    end;
-  end;
-  Result := True;
-end;
-
 function TDUnitXUnit.MarkLine(AFixtureIndex, ATestIndex: Integer): Integer;
 var
   mTest: TDUnitXTest;
@@ -552,6 +527,33 @@ begin
       Exit(mTest.Line);
     end;
   end;
+end;
+
+function TDUnitXUnit.CaseHasOwnLine(AFixtureIndex, ATestIndex, ACaseIndex: Integer): Boolean;
+var
+  mIndex: Integer;
+  mLines: TArray<Integer>;
+begin
+  Result := False;
+  if (AFixtureIndex < 0) or (AFixtureIndex > High(Fixtures)) or (ATestIndex < 0) or
+    (ATestIndex > High(Fixtures[AFixtureIndex].Tests)) then
+  begin
+    Exit;
+  end;
+  mLines := Fixtures[AFixtureIndex].Tests[ATestIndex].CaseLines;
+  if (ACaseIndex < 0) or (ACaseIndex > High(mLines)) or
+    (mLines[ACaseIndex] = Fixtures[AFixtureIndex].Tests[ATestIndex].Line) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(mLines) do
+  begin
+    if (mIndex <> ACaseIndex) and (mLines[mIndex] = mLines[ACaseIndex]) then
+    begin
+      Exit;
+    end;
+  end;
+  Result := True;
 end;
 
 // Index des [TestCase] von ATest in Zeile ALine; -1 ohne.
@@ -845,6 +847,8 @@ type
   public
     function Run(const ALines: TArray<string>): TDUnitXUnit;
   end;
+
+{ TDUnitXScanner }
 
 function TDUnitXScanner.Peek(AOffset: Integer): TToken;
 begin
@@ -1467,6 +1471,8 @@ const
 
 // FNV-1a rechnet modulo 2^64: die Überlaufprüfung ist nur hier aus, danach wie vorher.
 {$IFOPT Q+}{$DEFINE ATLAS_HASH_UEBERLAUF}{$Q-}{$ENDIF}
+{ TFingerprinter }
+
 procedure TFingerprinter.Mix(AChar: Char);
 begin
   Hash := Hash xor UInt64(Ord(AChar));

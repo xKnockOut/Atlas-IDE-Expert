@@ -56,31 +56,7 @@ begin
   Result := TShellPlatform.CanonicalizePath(APath);
 end;
 
-class procedure TShellProtocolWiring.Protocol(AParts: TShellParts);
-var
-  mServices: TShellProtocolServices;
-begin
-  mServices.Logger := AParts.Channel.Logger;
-  mServices.TimeoutMs := TShellParts.cRequestTimeoutMs;
-  mServices.Capabilities :=
-    function: TJSONObject
-    begin
-      Result := TShellCapabilities.Build;
-      // Pull-Diagnosen nur für Clients, die sie können; sonst bleibt es bei publishDiagnostics (#82).
-      AParts.DiagnosticsArea.ApplyClientCapabilities(AParts.Protocol.Lifecycle.InitializeParams, Result);
-    end;
-  AParts.Protocol := TShellProtocol.Create(mServices);
-end;
-
-class procedure TShellProtocolWiring.Documents(AParts: TShellParts);
-begin
-  AParts.Documents := TDocumentStore.Create(CanonicalPath);
-  AParts.TextDocumentSync := TLspTextDocumentSync.Create(AParts.Documents);
-  AParts.TextDocumentSync.Attach(AParts.Protocol.Dispatcher);
-  CrashCases(AParts);
-  Compile(AParts);
-  Diagnostics(AParts);
-end;
+{ TShellProtocolWiring }
 
 class procedure TShellProtocolWiring.CrashCases(AParts: TShellParts);
 begin
@@ -187,6 +163,32 @@ begin
       Result := AParts.CurrentRequestTimeout;
     end;
   AParts.DiagnosticsArea := TShellDiagnosticsArea.Create(mServices);
+end;
+
+class procedure TShellProtocolWiring.Protocol(AParts: TShellParts);
+var
+  mServices: TShellProtocolServices;
+begin
+  mServices.Logger := AParts.Channel.Logger;
+  mServices.TimeoutMs := TShellParts.cRequestTimeoutMs;
+  mServices.Capabilities :=
+    function: TJSONObject
+    begin
+      Result := TShellCapabilities.Build;
+      // Pull-Diagnosen nur für Clients, die sie können; sonst bleibt es bei publishDiagnostics (#82).
+      AParts.DiagnosticsArea.ApplyClientCapabilities(AParts.Protocol.Lifecycle.InitializeParams, Result);
+    end;
+  AParts.Protocol := TShellProtocol.Create(mServices);
+end;
+
+class procedure TShellProtocolWiring.Documents(AParts: TShellParts);
+begin
+  AParts.Documents := TDocumentStore.Create(CanonicalPath);
+  AParts.TextDocumentSync := TLspTextDocumentSync.Create(AParts.Documents);
+  AParts.TextDocumentSync.Attach(AParts.Protocol.Dispatcher);
+  CrashCases(AParts);
+  Compile(AParts);
+  Diagnostics(AParts);
 end;
 
 end.

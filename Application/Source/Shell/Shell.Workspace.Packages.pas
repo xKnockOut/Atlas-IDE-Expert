@@ -139,6 +139,8 @@ type
     function Cache: TGroupOutputCache;
   end;
 
+{ TGroupOutputCache }
+
 constructor TGroupOutputCache.Create(const AFiles: TFunc<TArray<string>>; const AOwnFile: string;
   const AOptions: TDprojOptions; const ALogger: ILogger);
 begin
@@ -194,6 +196,8 @@ begin
     System.TMonitor.Exit(FLock);
   end;
 end;
+
+{ TGroupOutputCacheHold }
 
 constructor TGroupOutputCacheHold.Create(ACache: TGroupOutputCache);
 begin
@@ -351,6 +355,15 @@ begin
     end;
 end;
 
+class function TShellPackageLookups.GroupOutputsOf(const AFiles: TFunc<TArray<string>>; const AOwnFile: string;
+  const AOptions: TDprojOptions; const ALogger: ILogger): TFunc<TArray<TUnitLookupGroupOutput>>;
+var
+  mHold: IGroupOutputCacheHold;
+begin
+  mHold := TGroupOutputCacheHold.Create(TGroupOutputCache.Create(AFiles, AOwnFile, AOptions, ALogger));
+  Result := GroupOutputsOfHold(mHold);
+end;
+
 class function TShellPackageLookups.GroupOutputsFor(const AOwnFile: string; const AFiles: TArray<string>;
   const AOptions: TDprojOptions; const ALogger: ILogger): TArray<TUnitLookupGroupOutput>;
 var
@@ -372,15 +385,6 @@ begin
       Result := Result + [mOutput];
     end;
   end;
-end;
-
-class function TShellPackageLookups.GroupOutputsOf(const AFiles: TFunc<TArray<string>>; const AOwnFile: string;
-  const AOptions: TDprojOptions; const ALogger: ILogger): TFunc<TArray<TUnitLookupGroupOutput>>;
-var
-  mHold: IGroupOutputCacheHold;
-begin
-  mHold := TGroupOutputCacheHold.Create(TGroupOutputCache.Create(AFiles, AOwnFile, AOptions, ALogger));
-  Result := GroupOutputsOfHold(mHold);
 end;
 
 class function TShellPackageLookups.UnitLookupFor(const ASource: TShellUnitLookupSource): IRuleUnitLookup;

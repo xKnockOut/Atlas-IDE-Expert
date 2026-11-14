@@ -286,6 +286,8 @@ type
     function Read(const AResponse: TJSONValue): TAtlasOutlineNodes;
   end;
 
+{ TOutlineReader }
+
 constructor TOutlineReader.Create;
 begin
   inherited Create;

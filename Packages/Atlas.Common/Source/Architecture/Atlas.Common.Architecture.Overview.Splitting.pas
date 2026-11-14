@@ -68,6 +68,8 @@ implementation
 uses
   System.Generics.Collections;
 
+{ TSubsystemSplitter }
+
 constructor TSubsystemSplitter.Create(AUnitCount: Integer; const AEdges: TArray<TLouvainEdge>;
   const AInFoundation: TArray<Boolean>; const ASettings: TSplitSettings);
 var
@@ -202,13 +204,6 @@ begin
   Result := FSettings.Decision(Length(AMembers), mCohesion);
 end;
 
-function TSubsystemSplitter.SplitGroup(const AMembers: TArray<Integer>; out AParts: TArray<TArray<Integer>>): Boolean;
-begin
-  AParts := nil;
-  Result := (Length(AMembers) > 0) and not InFoundation(AMembers[0]) and NeedsSplit(AMembers) and
-    SplitMembers(AMembers, AParts);
-end;
-
 function TSubsystemSplitter.InnerEdges(const AMembers: TArray<Integer>; out ADegree: TArray<Integer>)
   : TArray<TLouvainEdge>;
 var
@@ -258,6 +253,13 @@ begin
   begin
     AParts := PartsOf(AMembers, mLocal, mCount);
   end;
+end;
+
+function TSubsystemSplitter.SplitGroup(const AMembers: TArray<Integer>; out AParts: TArray<TArray<Integer>>): Boolean;
+begin
+  AParts := nil;
+  Result := (Length(AMembers) > 0) and not InFoundation(AMembers[0]) and NeedsSplit(AMembers) and
+    SplitMembers(AMembers, AParts);
 end;
 
 class function TSubsystemSplitter.Renumber(var ALocal: TArray<Integer>; const ADegree: TArray<Integer>): Integer;

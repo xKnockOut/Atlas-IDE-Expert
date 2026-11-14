@@ -220,13 +220,6 @@ begin
   FRequest := ARequest;
 end;
 
-class function TJsonRpcPastTimeout.OnlyExpired(const ARequest: IJsonRpcCancellationToken): Boolean;
-var
-  mSource: IJsonRpcCancellationSource;
-begin
-  Result := Supports(ARequest, IJsonRpcCancellationSource, mSource) and mSource.OnlyExpired;
-end;
-
 function TJsonRpcPastTimeout.IsCancellationRequested: Boolean;
 begin
   Result := (FRequest <> nil) and FRequest.IsCancellationRequested and not OnlyExpired(FRequest);
@@ -238,6 +231,13 @@ begin
   begin
     FRequest.ThrowIfCancellationRequested;
   end;
+end;
+
+class function TJsonRpcPastTimeout.OnlyExpired(const ARequest: IJsonRpcCancellationToken): Boolean;
+var
+  mSource: IJsonRpcCancellationSource;
+begin
+  Result := Supports(ARequest, IJsonRpcCancellationSource, mSource) and mSource.OnlyExpired;
 end;
 
 { TJsonRpcPendingRequests }

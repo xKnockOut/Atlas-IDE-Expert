@@ -81,6 +81,23 @@ begin
   end;
 end;
 
+{ TAtlasIdeEventLogMirror }
+
+destructor TAtlasIdeEventLogMirror.Destroy;
+begin
+  Follow(nil);
+  inherited Destroy;
+end;
+
+procedure TAtlasIdeEventLogMirror.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (AComponent = FList) then
+  begin
+    FList := nil;
+  end;
+end;
+
 function TAtlasIdeEventLogMirror.Find(out ADetails: string): TWinControl;
 var
   mIndex: Integer;
@@ -143,12 +160,6 @@ begin
   end;
 end;
 
-destructor TAtlasIdeEventLogMirror.Destroy;
-begin
-  Follow(nil);
-  inherited Destroy;
-end;
-
 procedure TAtlasIdeEventLogMirror.Follow(AList: TWinControl);
 begin
   if FList <> nil then
@@ -159,15 +170,6 @@ begin
   if FList <> nil then
   begin
     FList.FreeNotification(Self);
-  end;
-end;
-
-procedure TAtlasIdeEventLogMirror.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited Notification(AComponent, Operation);
-  if (Operation = opRemove) and (AComponent = FList) then
-  begin
-    FList := nil;
   end;
 end;
 

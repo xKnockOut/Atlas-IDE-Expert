@@ -261,6 +261,8 @@ begin
   end;
 end;
 
+{ TAtlasIssuePaletteSearch }
+
 class function TAtlasIssuePaletteSearch.Parse(const ATarget: TAtlasTrackerTarget;
   const APattern: string): TAtlasIssueSearchQuery;
 var
@@ -328,9 +330,18 @@ begin
   FText := '';
 end;
 
-function TAtlasIssueSearchDebounce.Pending: Boolean;
+function TAtlasIssueSearchDebounce.Take(ANowMs: UInt64; out AText: string): Boolean;
 begin
-  Result := FPending;
+  AText := '';
+  Result := WaitMs(ANowMs) = 0;
+  if not Result then
+  begin
+    Exit;
+  end;
+  AText := FText;
+  FPending := False;
+  FSentAt := ANowMs;
+  Inc(FSent);
 end;
 
 function TAtlasIssueSearchDebounce.WaitMs(ANowMs: UInt64): Integer;
@@ -358,18 +369,9 @@ begin
   end;
 end;
 
-function TAtlasIssueSearchDebounce.Take(ANowMs: UInt64; out AText: string): Boolean;
+function TAtlasIssueSearchDebounce.Pending: Boolean;
 begin
-  AText := '';
-  Result := WaitMs(ANowMs) = 0;
-  if not Result then
-  begin
-    Exit;
-  end;
-  AText := FText;
-  FPending := False;
-  FSentAt := ANowMs;
-  Inc(FSent);
+  Result := FPending;
 end;
 
 { TAtlasRecentIssues }
@@ -385,11 +387,6 @@ destructor TAtlasRecentIssues.Destroy;
 begin
   FEntries.Free;
   inherited;
-end;
-
-class function TAtlasRecentIssues.TrackerKey(const ATarget: TAtlasTrackerTarget): string;
-begin
-  Result := LowerCase(ATarget.Server + '|' + ATarget.Project);
 end;
 
 procedure TAtlasRecentIssues.Add(const ATarget: TAtlasTrackerTarget; const AIssue: TAtlasTrackerIssue);
@@ -560,6 +557,11 @@ begin
   begin
     TAtlasDataFile.Write(AFileName, ToJson);
   end;
+end;
+
+class function TAtlasRecentIssues.TrackerKey(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := LowerCase(ATarget.Server + '|' + ATarget.Project);
 end;
 
 end.

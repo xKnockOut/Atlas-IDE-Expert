@@ -40,16 +40,6 @@ uses
 
 { TAtlasBookmarksEditorSection }
 
-function TAtlasBookmarksEditorSection.OwnerId: string;
-begin
-  Result := cBookmarksSettingsOwner;
-end;
-
-function TAtlasBookmarksEditorSection.AreaId: string;
-begin
-  Result := 'Editor';
-end;
-
 procedure TAtlasBookmarksEditorSection.BuildRows;
 var
   mScopes: TArray<string>;
@@ -81,7 +71,25 @@ begin
   Switch('bookmarks.quick.importIde', TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.SettingsQuickBookmarksImportIde));
 end;
 
+function TAtlasBookmarksEditorSection.OwnerId: string;
+begin
+  Result := cBookmarksSettingsOwner;
+end;
+
+function TAtlasBookmarksEditorSection.AreaId: string;
+begin
+  Result := 'Editor';
+end;
+
 { TAtlasBookmarksKeysSection }
+
+procedure TAtlasBookmarksKeysSection.BuildRows;
+begin
+  Key('bookmarks.key', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd));
+  // Nächstes/voriges Lesezeichen, ohne Vorgabe.
+  Key('keys.nextBookmark', TAtlasStrings.Text(TAtlasTextId.NextBookmarkCommand));
+  Key('keys.previousBookmark', TAtlasStrings.Text(TAtlasTextId.PreviousBookmarkCommand));
+end;
 
 function TAtlasBookmarksKeysSection.OwnerId: string;
 begin
@@ -91,14 +99,6 @@ end;
 function TAtlasBookmarksKeysSection.AreaId: string;
 begin
   Result := 'Befehle';
-end;
-
-procedure TAtlasBookmarksKeysSection.BuildRows;
-begin
-  Key('bookmarks.key', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd));
-  // Nächstes/voriges Lesezeichen, ohne Vorgabe.
-  Key('keys.nextBookmark', TAtlasStrings.Text(TAtlasTextId.NextBookmarkCommand));
-  Key('keys.previousBookmark', TAtlasStrings.Text(TAtlasTextId.PreviousBookmarkCommand));
 end;
 
 end.

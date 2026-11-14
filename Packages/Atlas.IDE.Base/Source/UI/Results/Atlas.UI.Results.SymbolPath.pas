@@ -84,6 +84,11 @@ begin
   CreateChain;
 end;
 
+procedure TAtlasResultsPathPart.Reset;
+begin
+  ShowPanel(False);
+end;
+
 procedure TAtlasResultsPathPart.CreateChain;
 begin
   FParts.Box := TScrollBox.Create(View.Host);
@@ -105,21 +110,11 @@ begin
     end;
 end;
 
-procedure TAtlasResultsPathPart.Reset;
-begin
-  ShowPanel(False);
-end;
-
 procedure TAtlasResultsPathPart.ShowPanel(AVisible: Boolean);
 begin
   FShows := AVisible;
   FParts.Panel.Visible := AVisible;
   View.Tree.Visible := not AVisible;
-end;
-
-procedure TAtlasResultsPathPart.BoxResize(Sender: TObject);
-begin
-  FParts.Chain.Width := FParts.Box.ClientWidth;
 end;
 
 procedure TAtlasResultsPathPart.MapClick(Sender: TObject);
@@ -128,6 +123,11 @@ begin
   begin
     FOnShowRoute(FParts.Chain.Answer.Routes[0].UnitNames);
   end;
+end;
+
+procedure TAtlasResultsPathPart.BoxResize(Sender: TObject);
+begin
+  FParts.Chain.Width := FParts.Box.ClientWidth;
 end;
 
 procedure TAtlasResultsPathPart.Show(const ATitle: string; const AAnswer: TAtlasSymbolPathAnswer;

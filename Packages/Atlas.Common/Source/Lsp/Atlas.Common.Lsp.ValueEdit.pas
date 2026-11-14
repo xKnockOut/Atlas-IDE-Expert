@@ -95,6 +95,8 @@ const
   /// <summary>Breite von Int64 und UInt64 in Bytes.</summary>
   cWidth64 = 8;
 
+{ TLspValueEdit }
+
 class function TLspValueEdit.FindExpression(const ALine, AExpression: string): Integer;
 var
   mFrom, mAt, mAfter: Integer;

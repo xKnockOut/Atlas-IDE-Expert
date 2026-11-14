@@ -633,6 +633,8 @@ const
     TConcurrencyText.MemoryAllocated, TConcurrencyText.CursorStuck);
   cAssignSuffix = ':=';
 
+{ TPairWithoutFinallyRule }
+
 function TPairWithoutFinallyRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('pair-without-finally', TRuleSeverity.Warning,

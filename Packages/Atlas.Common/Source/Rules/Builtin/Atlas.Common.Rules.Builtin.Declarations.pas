@@ -557,6 +557,8 @@ type
     procedure Run;
   end;
 
+{ TInterfaceCheck }
+
 constructor TInterfaceCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport;
   AResolver: TNameResolver; const AIndex: ISymbolIndex);
 begin
@@ -881,126 +883,6 @@ begin
     cTexts[TDeclarationsText.MismatchTitle].Text);
 end;
 
-class function TSignatureMismatchRule.Differences(const ADeclaration, ABody: TSignatureShape): TArray<string>;
-var
-  mMatch: TSignatureTypeMatch;
-begin
-  // Typisierte Variable: Delphi wählt die Überladung sonst nicht sicher.
-  mMatch := TextTypeMatch;
-  Result := Differences(ADeclaration, ABody, mMatch);
-end;
-
-/// <summary>Abweichung der Modifizierer (const, var …) eines Parameters, z. B. "Betrag ohne const".</summary>
-function ModifierDifference(const ADecl, ABody: TShapeParameter): string;
-begin
-  if ABody.Modifier = '' then
-  begin
-    Result := cTexts[TDeclarationsText.WithoutModifier].Fmt([ABody.Name, ADecl.Modifier]);
-  end
-  else if ADecl.Modifier = '' then
-  begin
-    Result := cTexts[TDeclarationsText.WithModifier].Fmt([ABody.Name, ABody.Modifier]);
-  end
-  else
-  begin
-    Result := cTexts[TDeclarationsText.InsteadOf].Fmt([ABody.Name, ABody.Modifier, ADecl.Modifier]);
-  end;
-end;
-
-/// <summary>Abweichung des Typs eines Parameters, z. B. "Datum TDateTime statt TDate".</summary>
-function TypeDifference(const ADecl, ABody: TShapeParameter): string;
-begin
-  if ABody.TypeName = '' then
-  begin
-    Result := cTexts[TDeclarationsText.NoTypeInstead].Fmt([ABody.Name, ADecl.TypeName]);
-  end
-  else if ADecl.TypeName = '' then
-  begin
-    Result := cTexts[TDeclarationsText.InsteadOfNoType].Fmt([ABody.Name, ABody.TypeName]);
-  end
-  else
-  begin
-    Result := cTexts[TDeclarationsText.InsteadOf].Fmt([ABody.Name, ABody.TypeName, ADecl.TypeName]);
-  end;
-end;
-
-/// <summary>Aufrufkonvention von AShape, register ohne Angabe.</summary>
-function ConventionOf(const AShape: TSignatureShape): string;
-begin
-  Result := AShape.Convention;
-  if Result = '' then
-  begin
-    Result := 'register';
-  end;
-end;
-
-class function TSignatureMismatchRule.Differences(const ADeclaration, ABody: TSignatureShape;
-  const AMatch: TSignatureTypeMatch): TArray<string>;
-
-  function Differs(const ADeclType, ABodyType: string): Boolean;
-  begin
-    if (ADeclType = '') or (ABodyType = '') then
-    begin
-      Result := (ADeclType <> '') or (ABodyType <> '');
-    end
-    else
-    begin
-      Result := AMatch(ADeclType, ABodyType) = TTypeMatch.Different;
-    end;
-  end;
-
-  // Abweichungen gleich vieler Parameter: Name, Modifizierer, Typ.
-  function ParameterDifferences: TArray<string>;
-  var
-    mIndex: Integer;
-    mDecl, mBody: TShapeParameter;
-  begin
-    Result := nil;
-    for mIndex := 0 to High(ABody.Parameters) do
-    begin
-      mDecl := ADeclaration.Parameters[mIndex];
-      mBody := ABody.Parameters[mIndex];
-      if not SameText(mDecl.Name, mBody.Name) then
-      begin
-        Result := Result + [cTexts[TDeclarationsText.Instead].Fmt([mBody.Name, mDecl.Name])];
-      end;
-      if mDecl.Modifier <> mBody.Modifier then
-      begin
-        Result := Result + [ModifierDifference(mDecl, mBody)];
-      end;
-      if Differs(mDecl.TypeName, mBody.TypeName) then
-      begin
-        Result := Result + [TypeDifference(mDecl, mBody)];
-      end;
-    end;
-  end;
-
-begin
-  Result := nil;
-  if (ADeclaration.Kind <> '') and (ABody.Kind <> '') and (ADeclaration.Kind <> ABody.Kind) then
-  begin
-    Result := Result + [cTexts[TDeclarationsText.Instead].Fmt([ABody.Kind, ADeclaration.Kind])];
-  end;
-  if Length(ADeclaration.Parameters) <> Length(ABody.Parameters) then
-  begin
-    Result := Result + [cTexts[TDeclarationsText.ParamCount].Fmt([Length(ABody.Parameters),
-      Length(ADeclaration.Parameters)])];
-  end
-  else
-  begin
-    Result := Result + ParameterDifferences;
-  end;
-  if (ADeclaration.Kind = ABody.Kind) and Differs(ADeclaration.ResultType, ABody.ResultType) then
-  begin
-    Result := Result + [cTexts[TDeclarationsText.ResultInstead].Fmt([ABody.ResultType, ADeclaration.ResultType])];
-  end;
-  // Der Rumpf darf die Konvention weglassen; nur eine abweichende Angabe ist ein Fehler.
-  if (ABody.Convention <> '') and (ConventionOf(ABody) <> ConventionOf(ADeclaration)) then
-  begin
-    Result := Result + [cTexts[TDeclarationsText.Instead].Fmt([ABody.Convention, ConventionOf(ADeclaration)])];
-  end;
-end;
-
 procedure TSignatureMismatchRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mLines: TArray<Boolean>;
@@ -1167,6 +1049,126 @@ begin
     end;
   finally
     mTypes.Free;
+  end;
+end;
+
+/// <summary>Abweichung der Modifizierer (const, var …) eines Parameters, z. B. "Betrag ohne const".</summary>
+function ModifierDifference(const ADecl, ABody: TShapeParameter): string;
+begin
+  if ABody.Modifier = '' then
+  begin
+    Result := cTexts[TDeclarationsText.WithoutModifier].Fmt([ABody.Name, ADecl.Modifier]);
+  end
+  else if ADecl.Modifier = '' then
+  begin
+    Result := cTexts[TDeclarationsText.WithModifier].Fmt([ABody.Name, ABody.Modifier]);
+  end
+  else
+  begin
+    Result := cTexts[TDeclarationsText.InsteadOf].Fmt([ABody.Name, ABody.Modifier, ADecl.Modifier]);
+  end;
+end;
+
+/// <summary>Abweichung des Typs eines Parameters, z. B. "Datum TDateTime statt TDate".</summary>
+function TypeDifference(const ADecl, ABody: TShapeParameter): string;
+begin
+  if ABody.TypeName = '' then
+  begin
+    Result := cTexts[TDeclarationsText.NoTypeInstead].Fmt([ABody.Name, ADecl.TypeName]);
+  end
+  else if ADecl.TypeName = '' then
+  begin
+    Result := cTexts[TDeclarationsText.InsteadOfNoType].Fmt([ABody.Name, ABody.TypeName]);
+  end
+  else
+  begin
+    Result := cTexts[TDeclarationsText.InsteadOf].Fmt([ABody.Name, ABody.TypeName, ADecl.TypeName]);
+  end;
+end;
+
+/// <summary>Aufrufkonvention von AShape, register ohne Angabe.</summary>
+function ConventionOf(const AShape: TSignatureShape): string;
+begin
+  Result := AShape.Convention;
+  if Result = '' then
+  begin
+    Result := 'register';
+  end;
+end;
+
+class function TSignatureMismatchRule.Differences(const ADeclaration, ABody: TSignatureShape): TArray<string>;
+var
+  mMatch: TSignatureTypeMatch;
+begin
+  // Typisierte Variable: Delphi wählt die Überladung sonst nicht sicher.
+  mMatch := TextTypeMatch;
+  Result := Differences(ADeclaration, ABody, mMatch);
+end;
+
+class function TSignatureMismatchRule.Differences(const ADeclaration, ABody: TSignatureShape;
+  const AMatch: TSignatureTypeMatch): TArray<string>;
+
+  function Differs(const ADeclType, ABodyType: string): Boolean;
+  begin
+    if (ADeclType = '') or (ABodyType = '') then
+    begin
+      Result := (ADeclType <> '') or (ABodyType <> '');
+    end
+    else
+    begin
+      Result := AMatch(ADeclType, ABodyType) = TTypeMatch.Different;
+    end;
+  end;
+
+  // Abweichungen gleich vieler Parameter: Name, Modifizierer, Typ.
+  function ParameterDifferences: TArray<string>;
+  var
+    mIndex: Integer;
+    mDecl, mBody: TShapeParameter;
+  begin
+    Result := nil;
+    for mIndex := 0 to High(ABody.Parameters) do
+    begin
+      mDecl := ADeclaration.Parameters[mIndex];
+      mBody := ABody.Parameters[mIndex];
+      if not SameText(mDecl.Name, mBody.Name) then
+      begin
+        Result := Result + [cTexts[TDeclarationsText.Instead].Fmt([mBody.Name, mDecl.Name])];
+      end;
+      if mDecl.Modifier <> mBody.Modifier then
+      begin
+        Result := Result + [ModifierDifference(mDecl, mBody)];
+      end;
+      if Differs(mDecl.TypeName, mBody.TypeName) then
+      begin
+        Result := Result + [TypeDifference(mDecl, mBody)];
+      end;
+    end;
+  end;
+
+begin
+  Result := nil;
+  if (ADeclaration.Kind <> '') and (ABody.Kind <> '') and (ADeclaration.Kind <> ABody.Kind) then
+  begin
+    Result := Result + [cTexts[TDeclarationsText.Instead].Fmt([ABody.Kind, ADeclaration.Kind])];
+  end;
+  if Length(ADeclaration.Parameters) <> Length(ABody.Parameters) then
+  begin
+    Result := Result + [cTexts[TDeclarationsText.ParamCount].Fmt([Length(ABody.Parameters),
+      Length(ADeclaration.Parameters)])];
+  end
+  else
+  begin
+    Result := Result + ParameterDifferences;
+  end;
+  if (ADeclaration.Kind = ABody.Kind) and Differs(ADeclaration.ResultType, ABody.ResultType) then
+  begin
+    Result := Result + [cTexts[TDeclarationsText.ResultInstead].Fmt([ABody.ResultType, ADeclaration.ResultType])];
+  end;
+  // Der Rumpf darf die Konvention weglassen; nur eine abweichende Angabe ist ein Fehler.
+  if (ABody.Convention <> '') and (ConventionOf(ABody) <> ConventionOf(ADeclaration)) then
+  begin
+    Result := Result + [cTexts[TDeclarationsText.Instead].Fmt([ABody.Convention, ConventionOf(ADeclaration)])];
   end;
 end;
 

@@ -230,6 +230,12 @@ begin
   UpdateMessage;
 end;
 
+procedure TAtlasOutlineFrame.SetFollowCursor(AValue: Boolean);
+begin
+  FFollowCursor := AValue;
+  FFollowItem.Checked := AValue;
+end;
+
 /// <summary>Obere Leiste: Suchfeld und die Knöpfe Sichtbarkeit, Art, Sortierung (fließend).</summary>
 procedure TAtlasOutlineFrame.BuildBar;
 begin
@@ -299,45 +305,7 @@ begin
   FFollowItem.Checked := FFollowCursor;
 end;
 
-/// <summary>Liste der Gliederung und der Hinweis an ihrer Stelle.</summary>
-procedure TAtlasOutlineFrame.BuildList;
-begin
-  FList := TListBox.Create(Self);
-  FList.Parent := Self;
-  FList.Align := alClient;
-  FList.AlignWithMargins := True;
-  // Style := lbVirtualOwnerDraw erst in CreateWnd: SetStyle leert die Einträge per
-  // LB_RESETCONTENT und braucht dafür das Fenster, das ohne Parent fehlt.
-  FList.ItemHeight := Scale(cRowPx);
-  FList.PopupMenu := FListMenu;
-  FList.OnDrawItem := ListDrawItem;
-  FList.OnMouseDown := ListMouseDown;
-  FList.OnClick := ListClick;
-  FList.OnDblClick := ListDblClick;
-  FList.OnKeyDown := ListKeyDown;
-
-  // Ohne Gliederung oder ohne Treffer: Hinweis statt leerer Liste.
-  FMessage := TLabel.Create(Self);
-  FMessage.Parent := Self;
-  FMessage.Align := alClient;
-  FMessage.AlignWithMargins := True;
-  FMessage.WordWrap := True;
-  FMessage.ShowAccelChar := False;
-  FMessage.Font.Color := clGrayText;
-  FMessage.Visible := False;
-end;
-
-procedure TAtlasOutlineFrameRows.CreateWnd;
-begin
-  inherited CreateWnd;
-  FList.Style := lbVirtualOwnerDraw;
-  FList.Count := Length(FRows);
-end;
-
-function TAtlasOutlineFrameParts.ListCanHaveHandle: Boolean;
-begin
-  Result := FList.HandleAllocated or (GetParentForm(FList) <> nil);
-end;
+{ TAtlasOutlineFrameRows }
 
 destructor TAtlasOutlineFrameRows.Destroy;
 begin
@@ -345,10 +313,7 @@ begin
   inherited Destroy;
 end;
 
-function TAtlasOutlineFrameParts.Scale(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, CurrentPPI, 96);
-end;
+{ TAtlasOutlineFrameParts }
 
 function TAtlasOutlineFrameParts.NewButton: TButton;
 begin
@@ -359,6 +324,19 @@ begin
   Result.Height := Scale(cButtonHeight);
 end;
 
+procedure TAtlasOutlineFrameRows.SetShowConditions(AValue: Boolean);
+begin
+  if FShowConditions = AValue then
+  begin
+    Exit;
+  end;
+  FShowConditions := AValue;
+  if FList.HandleAllocated then
+  begin
+    FList.Invalidate;
+  end;
+end;
+
 function TAtlasOutlineFrameParts.AddMenuItem(AMenu: TPopupMenu; const ACaption: string; ATag: Integer;
   AClick: TNotifyEvent): TMenuItem;
 begin
@@ -367,6 +345,34 @@ begin
   Result.Tag := ATag;
   Result.OnClick := AClick;
   AMenu.Items.Add(Result);
+end;
+
+function TAtlasOutlineFrameParts.Scale(AValue: Integer): Integer;
+begin
+  Result := MulDiv(AValue, CurrentPPI, 96);
+end;
+
+function TAtlasOutlineFrameParts.ListCanHaveHandle: Boolean;
+begin
+  Result := FList.HandleAllocated or (GetParentForm(FList) <> nil);
+end;
+
+procedure TAtlasOutlineFrameRows.SetAlphabetical(AValue: Boolean);
+begin
+  if FAlphabetical = AValue then
+  begin
+    Exit;
+  end;
+  FAlphabetical := AValue;
+  UpdateButtons;
+  Refill;
+end;
+
+procedure TAtlasOutlineFrameRows.CreateWnd;
+begin
+  inherited CreateWnd;
+  FList.Style := lbVirtualOwnerDraw;
+  FList.Count := Length(FRows);
 end;
 
 function TAtlasOutlineFrameRows.PathOf(ANode: Integer): string;
@@ -388,24 +394,30 @@ begin
   end;
 end;
 
-procedure TAtlasOutlineFrameRows.SetNodes(const ANodes: TAtlasOutlineNodes);
+function TAtlasOutlineFrameRows.RowHasChildren(AIndex: Integer): Boolean;
 var
-  mSelected: string;
+  mIndex: Integer;
 begin
-  // Pfad vor dem Wechsel: Die Indizes der alten Zeilen gelten für die neuen Knoten nicht.
-  mSelected := SelectedPath;
-  FRows := nil;
-  FNodes := ANodes;
-  FMessageText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineNoMatch);
-  Refill(mSelected);
+  Result := False;
+  for mIndex := 0 to High(FAllRows) do
+  begin
+    if FAllRows[mIndex].Node = FRows[AIndex].Node then
+    begin
+      Exit((mIndex < High(FAllRows)) and (FAllRows[mIndex + 1].Depth > FAllRows[mIndex].Depth));
+    end;
+  end;
 end;
 
-procedure TAtlasOutlineFrameRows.SetMessage(const AText: string);
+function TAtlasOutlineFrameRows.IsCollapsed(AIndex: Integer): Boolean;
 begin
-  FRows := nil;
-  FNodes := nil;
-  FMessageText := AText;
-  Refill('');
+  Result := FCollapsed.IndexOf(PathOf(FRows[AIndex].Node)) >= 0;
+end;
+
+function TAtlasOutlineFrameRows.ExpanderRect(AIndex: Integer; const ARect: TRect): TRect;
+begin
+  Result := ARect;
+  Result.Left := ARect.Left + Scale(4) + FRows[AIndex].Depth * Scale(cIndentPx);
+  Result.Right := Result.Left + Scale(cExpanderPx);
 end;
 
 procedure TAtlasOutlineFrameRows.Refill;
@@ -463,13 +475,6 @@ begin
   UpdateMessage;
 end;
 
-procedure TAtlasOutlineFrameRows.UpdateMessage;
-begin
-  FMessage.Caption := FMessageText;
-  FMessage.Visible := Length(FRows) = 0;
-  FList.Visible := not FMessage.Visible;
-end;
-
 procedure TAtlasOutlineFrameRows.UpdateButtons;
 var
   mItem: TMenuItem;
@@ -509,131 +514,59 @@ begin
   end;
 end;
 
-procedure TAtlasOutlineFrameRows.SetVisibilities(const AVisibilities: TAtlasOutlineVisibilities);
+procedure TAtlasOutlineFrameRows.UpdateMessage;
 begin
-  // strict private zählt zu private, strict protected zu protected (TAtlasOutline.Rows).
-  if AVisibilities = [] then
-  begin
-    FFilter.Visibilities := TAtlasOutlineFilter.All.Visibilities;
-  end
-  else
-  begin
-    FFilter.Visibilities := AVisibilities;
-  end;
-  UpdateButtons;
-  Refill;
+  FMessage.Caption := FMessageText;
+  FMessage.Visible := Length(FRows) = 0;
+  FList.Visible := not FMessage.Visible;
 end;
 
-procedure TAtlasOutlineFrameRows.SetCategories(const ACategories: TAtlasOutlineCategories);
-begin
-  if ACategories = [] then
-  begin
-    FFilter.Categories := TAtlasOutlineFilter.All.Categories;
-  end
-  else
-  begin
-    FFilter.Categories := ACategories + [TAtlasOutlineCategory.Section];
-  end;
-  UpdateButtons;
-  Refill;
-end;
-
-procedure TAtlasOutlineFrameRows.SetAlphabetical(AValue: Boolean);
-begin
-  if FAlphabetical = AValue then
-  begin
-    Exit;
-  end;
-  FAlphabetical := AValue;
-  UpdateButtons;
-  Refill;
-end;
-
-procedure TAtlasOutlineFrameRows.SetShowConditions(AValue: Boolean);
-begin
-  if FShowConditions = AValue then
-  begin
-    Exit;
-  end;
-  FShowConditions := AValue;
-  if FList.HandleAllocated then
-  begin
-    FList.Invalidate;
-  end;
-end;
-
-procedure TAtlasOutlineFrame.SetFollowCursor(AValue: Boolean);
-begin
-  FFollowCursor := AValue;
-  FFollowItem.Checked := AValue;
-end;
-
-function TAtlasOutlineFrameRows.SelectedNode: Integer;
-begin
-  Result := -1;
-  // ItemIndex fragt das Fenster ab; ohne Fenster gibt es keine Auswahl.
-  if not FList.HandleAllocated then
-  begin
-    Exit;
-  end;
-  if (FList.ItemIndex >= 0) and (FList.ItemIndex <= High(FRows)) then
-  begin
-    Result := FRows[FList.ItemIndex].Node;
-  end;
-end;
-
-procedure TAtlasOutlineFrameRows.SelectRow(AIndex: Integer);
-begin
-  if (AIndex < 0) or (AIndex > High(FRows)) then
-  begin
-    Exit;
-  end;
-  // ItemIndex braucht das Fenster der Liste und damit ein Formular darüber.
-  if not ListCanHaveHandle then
-  begin
-    Exit;
-  end;
-  FList.ItemIndex := AIndex;
-  if (AIndex < FList.TopIndex) or (AIndex >= FList.TopIndex + Max(1, FList.ClientHeight div FList.ItemHeight)) then
-  begin
-    FList.TopIndex := Max(0, AIndex - 2);
-  end;
-end;
-
-function TAtlasOutlineFrameRows.RowHasChildren(AIndex: Integer): Boolean;
+procedure TAtlasOutlineFrameRows.SetNodes(const ANodes: TAtlasOutlineNodes);
 var
-  mIndex: Integer;
+  mSelected: string;
 begin
-  Result := False;
-  for mIndex := 0 to High(FAllRows) do
-  begin
-    if FAllRows[mIndex].Node = FRows[AIndex].Node then
-    begin
-      Exit((mIndex < High(FAllRows)) and (FAllRows[mIndex + 1].Depth > FAllRows[mIndex].Depth));
-    end;
-  end;
+  // Pfad vor dem Wechsel: Die Indizes der alten Zeilen gelten für die neuen Knoten nicht.
+  mSelected := SelectedPath;
+  FRows := nil;
+  FNodes := ANodes;
+  FMessageText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineNoMatch);
+  Refill(mSelected);
 end;
 
-procedure TAtlasOutlineFrameRows.ToggleRow(AIndex: Integer);
-var
-  mPath: string;
-  mPosition: Integer;
+/// <summary>Liste der Gliederung und der Hinweis an ihrer Stelle.</summary>
+procedure TAtlasOutlineFrame.BuildList;
 begin
-  if (AIndex < 0) or (AIndex > High(FRows)) or not RowHasChildren(AIndex) then
-  begin
-    Exit;
-  end;
-  mPath := PathOf(FRows[AIndex].Node);
-  mPosition := FCollapsed.IndexOf(mPath);
-  if mPosition >= 0 then
-  begin
-    FCollapsed.Delete(mPosition);
-  end
-  else
-  begin
-    FCollapsed.Add(mPath);
-  end;
-  Refill;
+  FList := TListBox.Create(Self);
+  FList.Parent := Self;
+  FList.Align := alClient;
+  FList.AlignWithMargins := True;
+  // Style := lbVirtualOwnerDraw erst in CreateWnd: SetStyle leert die Einträge per
+  // LB_RESETCONTENT und braucht dafür das Fenster, das ohne Parent fehlt.
+  FList.ItemHeight := Scale(cRowPx);
+  FList.PopupMenu := FListMenu;
+  FList.OnDrawItem := ListDrawItem;
+  FList.OnMouseDown := ListMouseDown;
+  FList.OnClick := ListClick;
+  FList.OnDblClick := ListDblClick;
+  FList.OnKeyDown := ListKeyDown;
+
+  // Ohne Gliederung oder ohne Treffer: Hinweis statt leerer Liste.
+  FMessage := TLabel.Create(Self);
+  FMessage.Parent := Self;
+  FMessage.Align := alClient;
+  FMessage.AlignWithMargins := True;
+  FMessage.WordWrap := True;
+  FMessage.ShowAccelChar := False;
+  FMessage.Font.Color := clGrayText;
+  FMessage.Visible := False;
+end;
+
+procedure TAtlasOutlineFrameRows.SetMessage(const AText: string);
+begin
+  FRows := nil;
+  FNodes := nil;
+  FMessageText := AText;
+  Refill('');
 end;
 
 function TAtlasOutlineFrameRows.HighlightAt(ALine, ACharacter: Integer): Boolean;
@@ -682,63 +615,93 @@ begin
   end;
 end;
 
-procedure TAtlasOutlineFrame.OpenSelected(AImplementation: Boolean);
-var
-  mNode: Integer;
+function TAtlasOutlineFrameRows.SelectedNode: Integer;
 begin
-  mNode := SelectedNode;
-  if (mNode >= 0) and Assigned(FOnOpen) then
+  Result := -1;
+  // ItemIndex fragt das Fenster ab; ohne Fenster gibt es keine Auswahl.
+  if not FList.HandleAllocated then
   begin
-    FOnOpen(mNode, AImplementation);
+    Exit;
+  end;
+  if (FList.ItemIndex >= 0) and (FList.ItemIndex <= High(FRows)) then
+  begin
+    Result := FRows[FList.ItemIndex].Node;
   end;
 end;
 
-function TAtlasOutlineFrameRows.RowText(AIndex: Integer): string;
-var
-  mNode: TAtlasOutlineNode;
+procedure TAtlasOutlineFrameRows.SelectRow(AIndex: Integer);
 begin
-  mNode := FNodes[FRows[AIndex].Node];
-  Result := TAtlasOutline.VisibilityMark(mNode.Visibility);
-  if Result <> '' then
+  if (AIndex < 0) or (AIndex > High(FRows)) then
   begin
-    Result := Result + ' ';
+    Exit;
   end;
-  Result := Result + mNode.Name;
-  if (mNode.Category = TAtlasOutlineCategory.TypeDecl) and (mNode.Detail <> '') then
+  // ItemIndex braucht das Fenster der Liste und damit ein Formular darüber.
+  if not ListCanHaveHandle then
   begin
-    Result := Result + ' · ' + mNode.Detail;
+    Exit;
   end;
-  if mNode.ClassMember then
+  FList.ItemIndex := AIndex;
+  if (AIndex < FList.TopIndex) or (AIndex >= FList.TopIndex + Max(1, FList.ClientHeight div FList.ItemHeight)) then
   begin
-    Result := Result + ' · class';
-  end;
-  if mNode.IsOverride then
-  begin
-    Result := Result + ' · override';
-  end;
-  if mNode.IsVirtual and not mNode.IsOverride then
-  begin
-    Result := Result + ' · virtual';
-  end;
-  if mNode.IsAbstract then
-  begin
-    Result := Result + ' · abstract';
-  end;
-  if mNode.Unimplemented then
-  begin
-    Result := Result + ' · ' + TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineUnimplemented);
-  end;
-  if FShowConditions and (mNode.Condition <> '') then
-  begin
-    Result := Result + ' · ' + mNode.Condition;
+    FList.TopIndex := Max(0, AIndex - 2);
   end;
 end;
 
-function TAtlasOutlineFrameRows.ExpanderRect(AIndex: Integer; const ARect: TRect): TRect;
+procedure TAtlasOutlineFrameRows.ToggleRow(AIndex: Integer);
+var
+  mPath: string;
+  mPosition: Integer;
 begin
-  Result := ARect;
-  Result.Left := ARect.Left + Scale(4) + FRows[AIndex].Depth * Scale(cIndentPx);
-  Result.Right := Result.Left + Scale(cExpanderPx);
+  if (AIndex < 0) or (AIndex > High(FRows)) or not RowHasChildren(AIndex) then
+  begin
+    Exit;
+  end;
+  mPath := PathOf(FRows[AIndex].Node);
+  mPosition := FCollapsed.IndexOf(mPath);
+  if mPosition >= 0 then
+  begin
+    FCollapsed.Delete(mPosition);
+  end
+  else
+  begin
+    FCollapsed.Add(mPath);
+  end;
+  Refill;
+end;
+
+procedure TAtlasOutlineFrame.SearchChange(Sender: TObject);
+begin
+  FFilter.Text := Trim(FSearch.Text);
+  Refill;
+end;
+
+procedure TAtlasOutlineFrameRows.SetVisibilities(const AVisibilities: TAtlasOutlineVisibilities);
+begin
+  // strict private zählt zu private, strict protected zu protected (TAtlasOutline.Rows).
+  if AVisibilities = [] then
+  begin
+    FFilter.Visibilities := TAtlasOutlineFilter.All.Visibilities;
+  end
+  else
+  begin
+    FFilter.Visibilities := AVisibilities;
+  end;
+  UpdateButtons;
+  Refill;
+end;
+
+procedure TAtlasOutlineFrameRows.SetCategories(const ACategories: TAtlasOutlineCategories);
+begin
+  if ACategories = [] then
+  begin
+    FFilter.Categories := TAtlasOutlineFilter.All.Categories;
+  end
+  else
+  begin
+    FFilter.Categories := ACategories + [TAtlasOutlineCategory.Section];
+  end;
+  UpdateButtons;
+  Refill;
 end;
 
 /// <summary>AText ab AX in der Zeile ARect, AX danach hinter dem Text; leer zeichnet nichts.</summary>
@@ -797,11 +760,6 @@ begin
   begin
     PutText(ACanvas, AX, ARect, ANode.Name, AColors.Muted, []);
   end;
-end;
-
-function TAtlasOutlineFrameRows.IsCollapsed(AIndex: Integer): Boolean;
-begin
-  Result := FCollapsed.IndexOf(PathOf(FRows[AIndex].Node)) >= 0;
 end;
 
 procedure TAtlasOutlineFrameRows.ListDrawItem(Control: TWinControl; Index: Integer; Rect: TRect;
@@ -864,105 +822,45 @@ begin
   end;
 end;
 
-procedure TAtlasOutlineFrame.ListMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
-  Y: Integer);
+function TAtlasOutlineFrameRows.RowText(AIndex: Integer): string;
 var
-  mIndex: Integer;
+  mNode: TAtlasOutlineNode;
 begin
-  FExpanderClick := False;
-  FMouseOpen := False;
-  mIndex := FList.ItemAtPos(Point(X, Y), True);
-  if (mIndex < 0) or (Button <> mbLeft) then
+  mNode := FNodes[FRows[AIndex].Node];
+  Result := TAtlasOutline.VisibilityMark(mNode.Visibility);
+  if Result <> '' then
   begin
-    Exit;
+    Result := Result + ' ';
   end;
-  if RowHasChildren(mIndex) and (X < ExpanderRect(mIndex, FList.ItemRect(mIndex)).Right) then
+  Result := Result + mNode.Name;
+  if (mNode.Category = TAtlasOutlineCategory.TypeDecl) and (mNode.Detail <> '') then
   begin
-    FExpanderClick := True;
-    ToggleRow(mIndex);
-    Exit;
+    Result := Result + ' · ' + mNode.Detail;
   end;
-  FMouseOpen := True;
-end;
-
-procedure TAtlasOutlineFrame.ListClick(Sender: TObject);
-begin
-  // Auch Pfeiltasten melden OnClick; springen nur nach einem Mausklick auf einen Namen.
-  if not FMouseOpen then
+  if mNode.ClassMember then
   begin
-    Exit;
+    Result := Result + ' · class';
   end;
-  FMouseOpen := False;
-  OpenSelected(False);
-end;
-
-procedure TAtlasOutlineFrame.ListDblClick(Sender: TObject);
-begin
-  if FExpanderClick then
+  if mNode.IsOverride then
   begin
-    Exit;
+    Result := Result + ' · override';
   end;
-  OpenSelected(True);
-end;
-
-procedure TAtlasOutlineFrame.KeyLeft(AIndex: Integer);
-var
-  mIndex: Integer;
-begin
-  if AIndex < 0 then
+  if mNode.IsVirtual and not mNode.IsOverride then
   begin
-    Exit;
+    Result := Result + ' · virtual';
   end;
-  if RowHasChildren(AIndex) and not IsCollapsed(AIndex) then
+  if mNode.IsAbstract then
   begin
-    ToggleRow(AIndex);
-    Exit;
+    Result := Result + ' · abstract';
   end;
-  if FNodes[FRows[AIndex].Node].Parent < 0 then
+  if mNode.Unimplemented then
   begin
-    Exit;
+    Result := Result + ' · ' + TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineUnimplemented);
   end;
-  for mIndex := AIndex - 1 downto 0 do
+  if FShowConditions and (mNode.Condition <> '') then
   begin
-    if FRows[mIndex].Depth < FRows[AIndex].Depth then
-    begin
-      SelectRow(mIndex);
-      Exit;
-    end;
+    Result := Result + ' · ' + mNode.Condition;
   end;
-end;
-
-procedure TAtlasOutlineFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-var
-  mIndex: Integer;
-begin
-  mIndex := FList.ItemIndex;
-  case Key of
-    VK_RETURN:
-      begin
-        OpenSelected(ssCtrl in Shift);
-        Key := 0;
-      end;
-    VK_LEFT:
-      begin
-        KeyLeft(mIndex);
-        Key := 0;
-      end;
-    VK_RIGHT:
-      begin
-        if (mIndex >= 0) and IsCollapsed(mIndex) then
-        begin
-          ToggleRow(mIndex);
-        end;
-        Key := 0;
-      end;
-  end;
-end;
-
-procedure TAtlasOutlineFrame.SearchChange(Sender: TObject);
-begin
-  FFilter.Text := Trim(FSearch.Text);
-  Refill;
 end;
 
 procedure TAtlasOutlineFrame.SearchKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -1102,6 +1000,101 @@ begin
   SetCategories(mNext);
 end;
 
+procedure TAtlasOutlineFrame.ListMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
+  Y: Integer);
+var
+  mIndex: Integer;
+begin
+  FExpanderClick := False;
+  FMouseOpen := False;
+  mIndex := FList.ItemAtPos(Point(X, Y), True);
+  if (mIndex < 0) or (Button <> mbLeft) then
+  begin
+    Exit;
+  end;
+  if RowHasChildren(mIndex) and (X < ExpanderRect(mIndex, FList.ItemRect(mIndex)).Right) then
+  begin
+    FExpanderClick := True;
+    ToggleRow(mIndex);
+    Exit;
+  end;
+  FMouseOpen := True;
+end;
+
+procedure TAtlasOutlineFrame.ListClick(Sender: TObject);
+begin
+  // Auch Pfeiltasten melden OnClick; springen nur nach einem Mausklick auf einen Namen.
+  if not FMouseOpen then
+  begin
+    Exit;
+  end;
+  FMouseOpen := False;
+  OpenSelected(False);
+end;
+
+procedure TAtlasOutlineFrame.ListDblClick(Sender: TObject);
+begin
+  if FExpanderClick then
+  begin
+    Exit;
+  end;
+  OpenSelected(True);
+end;
+
+procedure TAtlasOutlineFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+var
+  mIndex: Integer;
+begin
+  mIndex := FList.ItemIndex;
+  case Key of
+    VK_RETURN:
+      begin
+        OpenSelected(ssCtrl in Shift);
+        Key := 0;
+      end;
+    VK_LEFT:
+      begin
+        KeyLeft(mIndex);
+        Key := 0;
+      end;
+    VK_RIGHT:
+      begin
+        if (mIndex >= 0) and IsCollapsed(mIndex) then
+        begin
+          ToggleRow(mIndex);
+        end;
+        Key := 0;
+      end;
+  end;
+end;
+
+procedure TAtlasOutlineFrame.KeyLeft(AIndex: Integer);
+var
+  mIndex: Integer;
+begin
+  if AIndex < 0 then
+  begin
+    Exit;
+  end;
+  if RowHasChildren(AIndex) and not IsCollapsed(AIndex) then
+  begin
+    ToggleRow(AIndex);
+    Exit;
+  end;
+  if FNodes[FRows[AIndex].Node].Parent < 0 then
+  begin
+    Exit;
+  end;
+  for mIndex := AIndex - 1 downto 0 do
+  begin
+    if FRows[mIndex].Depth < FRows[AIndex].Depth then
+    begin
+      SelectRow(mIndex);
+      Exit;
+    end;
+  end;
+end;
+
 procedure TAtlasOutlineFrame.ListMenuPopup(Sender: TObject);
 var
   mNode: Integer;
@@ -1128,6 +1121,17 @@ begin
   if Assigned(FOnFollowChanged) then
   begin
     FOnFollowChanged(FFollowCursor);
+  end;
+end;
+
+procedure TAtlasOutlineFrame.OpenSelected(AImplementation: Boolean);
+var
+  mNode: Integer;
+begin
+  mNode := SelectedNode;
+  if (mNode >= 0) and Assigned(FOnOpen) then
+  begin
+    FOnOpen(mNode, AImplementation);
   end;
 end;
 

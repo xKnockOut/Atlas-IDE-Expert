@@ -57,6 +57,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TAffectedReport }
+
 class function TAffectedReport.TryParseFormat(const AText: string; out AFormat: TAffectedFormat): Boolean;
 begin
   Result := True;

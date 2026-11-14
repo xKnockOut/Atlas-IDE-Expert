@@ -128,11 +128,6 @@ begin
   inherited;
 end;
 
-class function TServerActivity.Shared: TServerActivity;
-begin
-  Result := GShared;
-end;
-
 function TServerActivity.GetEnabled: Boolean;
 begin
   System.TMonitor.Enter(FLock);
@@ -150,6 +145,29 @@ begin
     FEnabled := AValue;
   finally
     System.TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TServerActivity.AddLongestRun(var AEntry: TServerStatusEntry; ANowTicks: UInt64);
+var
+  mRun: TRun;
+  mElapsed: Int64;
+begin
+  for mRun in FRuns.Values do
+  begin
+    Inc(AEntry.Running);
+    mElapsed := 0;
+    if ANowTicks > mRun.StartTicks then
+    begin
+      mElapsed := Int64(ANowTicks - mRun.StartTicks);
+    end;
+    // Bei gleicher Dauer entscheidet der Name, damit das Ergebnis nicht von der Reihenfolge abhängt.
+    if (AEntry.Running = 1) or (mElapsed > AEntry.RunningMs) or
+      ((mElapsed = AEntry.RunningMs) and (CompareStr(mRun.Method, AEntry.RunningMethod) < 0)) then
+    begin
+      AEntry.RunningMs := mElapsed;
+      AEntry.RunningMethod := mRun.Method;
+    end;
   end;
 end;
 
@@ -267,29 +285,6 @@ begin
   end;
 end;
 
-procedure TServerActivity.AddLongestRun(var AEntry: TServerStatusEntry; ANowTicks: UInt64);
-var
-  mRun: TRun;
-  mElapsed: Int64;
-begin
-  for mRun in FRuns.Values do
-  begin
-    Inc(AEntry.Running);
-    mElapsed := 0;
-    if ANowTicks > mRun.StartTicks then
-    begin
-      mElapsed := Int64(ANowTicks - mRun.StartTicks);
-    end;
-    // Bei gleicher Dauer entscheidet der Name, damit das Ergebnis nicht von der Reihenfolge abhängt.
-    if (AEntry.Running = 1) or (mElapsed > AEntry.RunningMs) or
-      ((mElapsed = AEntry.RunningMs) and (CompareStr(mRun.Method, AEntry.RunningMethod) < 0)) then
-    begin
-      AEntry.RunningMs := mElapsed;
-      AEntry.RunningMethod := mRun.Method;
-    end;
-  end;
-end;
-
 function TServerActivity.Snapshot(ANowTicks: UInt64): TServerStatusEntry;
 begin
   Result := Default(TServerStatusEntry);
@@ -313,6 +308,11 @@ begin
   begin
     Result.State := TServerStatusEntry.cStateWorking;
   end;
+end;
+
+class function TServerActivity.Shared: TServerActivity;
+begin
+  Result := GShared;
 end;
 
 { TServerActivityObserver }

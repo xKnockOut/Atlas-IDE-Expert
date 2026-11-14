@@ -188,134 +188,6 @@ begin
   inherited Destroy;
 end;
 
-function TAtlasIdeTestSeries.Running: Boolean;
-begin
-  Result := FRunning;
-end;
-
-function TAtlasIdeTestSeries.CanShuffleAgain: Boolean;
-begin
-  Result := FHasShuffle;
-end;
-
-function TAtlasIdeTestSeries.AtCursor(out AFileName: string; out ASelection: TAtlasTestSelection;
-  out AUnit: TDUnitXUnit): Boolean;
-var
-  mEditors: IOTAEditorServices;
-  mView: IOTAEditView;
-begin
-  AFileName := '';
-  ASelection := Default(TAtlasTestSelection);
-  AUnit := Default(TDUnitXUnit);
-  mView := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    mView := mEditors.TopView;
-  end;
-  Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(ExtractFileExt(mView.Buffer.FileName), '.pas');
-  if Result then
-  begin
-    AFileName := mView.Buffer.FileName;
-    AUnit := TDUnitXSource.Scan(TTextLines.SplitLines(TAtlasEditorBuffer.Text(mView.Buffer)));
-    Result := TAtlasTestDebug.SelectAt(AUnit, mView.CursorPos.Line - 1, ASelection) and
-      (Length(ASelection.Names) > 0);
-  end;
-  if not Result then
-  begin
-    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoTestAtCursor));
-  end;
-end;
-
-procedure TAtlasIdeTestSeries.RepeatAtCursor;
-var
-  mFileName: string;
-  mSelection: TAtlasTestSelection;
-  mUnit: TDUnitXUnit;
-begin
-  if AtCursor(mFileName, mSelection, mUnit) then
-  begin
-    RepeatNames(mFileName, SubjectOf(mSelection), mSelection.Names);
-  end;
-end;
-
-procedure TAtlasIdeTestSeries.ShuffleAtCursor;
-var
-  mFileName: string;
-  mSelection: TAtlasTestSelection;
-  mUnit: TDUnitXUnit;
-  mFixture, mTest: Integer;
-begin
-  if not AtCursor(mFileName, mSelection, mUnit) then
-  begin
-    Exit;
-  end;
-  // Immer die ganze Fixture am Cursor, auch wenn er in einem ihrer Tests steht.
-  if mUnit.Find(mSelection.Fixture, '', mFixture, mTest) then
-  begin
-    ShuffleNames(mFileName, TAtlasTestSeriesSubject.Make(mSelection.UnitName, mSelection.Fixture, '', ''),
-      TAtlasTestShuffle.SingleNames(mUnit, mFixture, -1, -1));
-  end;
-end;
-
-procedure TAtlasIdeTestSeries.ShuffleAgain;
-begin
-  if not FHasShuffle then
-  begin
-    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.SeriesNoOrder));
-    Exit;
-  end;
-  Launch(FLastShuffle.Project, TAtlasTestSeries.Shuffling(FLastShuffle.Subject, FLastShuffle.Names,
-    FLastShuffle.Seed));
-end;
-
-procedure TAtlasIdeTestSeries.Cancel;
-begin
-  if FRunning then
-  begin
-    FStop.Requested := True;
-  end
-  else
-  begin
-    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.SeriesNotRunning));
-  end;
-end;
-
-procedure TAtlasIdeTestSeries.RepeatNames(const AFileName: string; const ASubject: TAtlasTestSeriesSubject;
-  const ANames: TArray<string>);
-var
-  mText: string;
-  mCount: Integer;
-begin
-  if Length(ANames) = 0 then
-  begin
-    Exit;
-  end;
-  if not TAtlasTestsSeriesMenu.AskCount(TAtlasIdeSettings.Current.TestsRepeatCount,
-    TAtlasPluginSettings.cMinTestsRepeatCount, TAtlasPluginSettings.cMaxTestsRepeatCount, mText) then
-  begin
-    Exit;
-  end;
-  if not TAtlasTestShuffle.CountOf(mText, TAtlasPluginSettings.cMinTestsRepeatCount,
-    TAtlasPluginSettings.cMaxTestsRepeatCount, mCount) then
-  begin
-    FTests.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.SeriesBadCount, [mText,
-      TAtlasPluginSettings.cMinTestsRepeatCount, TAtlasPluginSettings.cMaxTestsRepeatCount]));
-    Exit;
-  end;
-  Launch(AFileName, TAtlasTestSeries.Repeating(ASubject, ANames, mCount));
-end;
-
-procedure TAtlasIdeTestSeries.ShuffleNames(const AFileName: string; const ASubject: TAtlasTestSeriesSubject;
-  const ANames: TArray<string>);
-begin
-  if Length(ANames) = 0 then
-  begin
-    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoTestAtCursor));
-    Exit;
-  end;
-  Launch(AFileName, TAtlasTestSeries.Shuffling(ASubject, ANames, TAtlasTestShuffle.SeedOf(TAtlasTicks.Now)));
-end;
-
 procedure TAtlasIdeTestSeries.Launch(const AFileName: string; const ASeries: TAtlasTestSeries);
 var
   mSeries: TAtlasTestSeries;
@@ -457,6 +329,124 @@ begin
   FOutput.ShowView;
 end;
 
+function TAtlasIdeTestSeries.AtCursor(out AFileName: string; out ASelection: TAtlasTestSelection;
+  out AUnit: TDUnitXUnit): Boolean;
+var
+  mEditors: IOTAEditorServices;
+  mView: IOTAEditView;
+begin
+  AFileName := '';
+  ASelection := Default(TAtlasTestSelection);
+  AUnit := Default(TDUnitXUnit);
+  mView := nil;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  begin
+    mView := mEditors.TopView;
+  end;
+  Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(ExtractFileExt(mView.Buffer.FileName), '.pas');
+  if Result then
+  begin
+    AFileName := mView.Buffer.FileName;
+    AUnit := TDUnitXSource.Scan(TTextLines.SplitLines(TAtlasEditorBuffer.Text(mView.Buffer)));
+    Result := TAtlasTestDebug.SelectAt(AUnit, mView.CursorPos.Line - 1, ASelection) and
+      (Length(ASelection.Names) > 0);
+  end;
+  if not Result then
+  begin
+    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoTestAtCursor));
+  end;
+end;
+
+procedure TAtlasIdeTestSeries.RepeatAtCursor;
+var
+  mFileName: string;
+  mSelection: TAtlasTestSelection;
+  mUnit: TDUnitXUnit;
+begin
+  if AtCursor(mFileName, mSelection, mUnit) then
+  begin
+    RepeatNames(mFileName, SubjectOf(mSelection), mSelection.Names);
+  end;
+end;
+
+procedure TAtlasIdeTestSeries.ShuffleAtCursor;
+var
+  mFileName: string;
+  mSelection: TAtlasTestSelection;
+  mUnit: TDUnitXUnit;
+  mFixture, mTest: Integer;
+begin
+  if not AtCursor(mFileName, mSelection, mUnit) then
+  begin
+    Exit;
+  end;
+  // Immer die ganze Fixture am Cursor, auch wenn er in einem ihrer Tests steht.
+  if mUnit.Find(mSelection.Fixture, '', mFixture, mTest) then
+  begin
+    ShuffleNames(mFileName, TAtlasTestSeriesSubject.Make(mSelection.UnitName, mSelection.Fixture, '', ''),
+      TAtlasTestShuffle.SingleNames(mUnit, mFixture, -1, -1));
+  end;
+end;
+
+procedure TAtlasIdeTestSeries.ShuffleAgain;
+begin
+  if not FHasShuffle then
+  begin
+    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.SeriesNoOrder));
+    Exit;
+  end;
+  Launch(FLastShuffle.Project, TAtlasTestSeries.Shuffling(FLastShuffle.Subject, FLastShuffle.Names,
+    FLastShuffle.Seed));
+end;
+
+procedure TAtlasIdeTestSeries.Cancel;
+begin
+  if FRunning then
+  begin
+    FStop.Requested := True;
+  end
+  else
+  begin
+    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.SeriesNotRunning));
+  end;
+end;
+
+procedure TAtlasIdeTestSeries.RepeatNames(const AFileName: string; const ASubject: TAtlasTestSeriesSubject;
+  const ANames: TArray<string>);
+var
+  mText: string;
+  mCount: Integer;
+begin
+  if Length(ANames) = 0 then
+  begin
+    Exit;
+  end;
+  if not TAtlasTestsSeriesMenu.AskCount(TAtlasIdeSettings.Current.TestsRepeatCount,
+    TAtlasPluginSettings.cMinTestsRepeatCount, TAtlasPluginSettings.cMaxTestsRepeatCount, mText) then
+  begin
+    Exit;
+  end;
+  if not TAtlasTestShuffle.CountOf(mText, TAtlasPluginSettings.cMinTestsRepeatCount,
+    TAtlasPluginSettings.cMaxTestsRepeatCount, mCount) then
+  begin
+    FTests.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.SeriesBadCount, [mText,
+      TAtlasPluginSettings.cMinTestsRepeatCount, TAtlasPluginSettings.cMaxTestsRepeatCount]));
+    Exit;
+  end;
+  Launch(AFileName, TAtlasTestSeries.Repeating(ASubject, ANames, mCount));
+end;
+
+procedure TAtlasIdeTestSeries.ShuffleNames(const AFileName: string; const ASubject: TAtlasTestSeriesSubject;
+  const ANames: TArray<string>);
+begin
+  if Length(ANames) = 0 then
+  begin
+    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoTestAtCursor));
+    Exit;
+  end;
+  Launch(AFileName, TAtlasTestSeries.Shuffling(ASubject, ANames, TAtlasTestShuffle.SeedOf(TAtlasTicks.Now)));
+end;
+
 function TAtlasIdeTestSeries.MarkOf(const ASelection: TAtlasTestSelection; out AMark: TAtlasTestSeriesMark): Boolean;
 begin
   AMark := Default(TAtlasTestSeriesMark);
@@ -470,6 +460,16 @@ begin
     AMark.AnyPassed := FSeries.PassedSteps > 0;
     AMark.AnyFailed := FSeries.FailedSteps > 0;
   end;
+end;
+
+function TAtlasIdeTestSeries.Running: Boolean;
+begin
+  Result := FRunning;
+end;
+
+function TAtlasIdeTestSeries.CanShuffleAgain: Boolean;
+begin
+  Result := FHasShuffle;
 end;
 
 end.

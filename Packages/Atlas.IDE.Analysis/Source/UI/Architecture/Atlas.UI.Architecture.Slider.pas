@@ -107,60 +107,45 @@ begin
   Invalidate;
 end;
 
-function TAtlasResolutionSlider.TrackLeft: Integer;
-begin
-  Result := MulDiv(cThumbRadius + 2, CurrentPPI, 96);
-end;
-
-function TAtlasResolutionSlider.TrackRight: Integer;
-begin
-  Result := Max(TrackLeft + 1, ClientWidth - TrackLeft);
-end;
-
-function TAtlasResolutionSlider.PositionAt(AX: Integer): Integer;
-begin
-  Result := Round((AX - TrackLeft) / (TrackRight - TrackLeft) * TAtlasArchResolution.cSteps);
-  Result := EnsureRange(Result, 0, TAtlasArchResolution.cSteps);
-end;
-
-function TAtlasResolutionSlider.ThumbX: Integer;
-begin
-  Result := TrackLeft + MulDiv(TrackRight - TrackLeft, FPosition, TAtlasArchResolution.cSteps);
-end;
-
-procedure TAtlasResolutionSlider.MoveTo(APosition: Integer; ACommit: Boolean);
+procedure TAtlasResolutionSlider.Paint;
 var
-  mPosition: Integer;
+  mColors: TAtlasColors;
+  mMiddle, mCenter, mRadius, mTick: Integer;
 begin
-  mPosition := EnsureRange(APosition, 0, TAtlasArchResolution.cSteps);
-  if mPosition <> FPosition then
+  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clBtnFace))));
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clBtnFace))));
+  Canvas.FillRect(ClientRect);
+  mMiddle := ClientHeight div 2;
+  // Schiene, links bis zum Griff im Akzent.
+  Canvas.Pen.Style := psSolid;
+  Canvas.Pen.Width := Max(1, MulDiv(cTrackWidth, CurrentPPI, 96));
+  Canvas.Pen.Color := ToColor(mColors.Line);
+  Canvas.MoveTo(TrackLeft, mMiddle);
+  Canvas.LineTo(TrackRight, mMiddle);
+  mCenter := ThumbX;
+  Canvas.Pen.Color := ToColor(mColors.AccentSoft);
+  Canvas.MoveTo(TrackLeft, mMiddle);
+  Canvas.LineTo(mCenter, mMiddle);
+  // Marke bei 1,0 (Verhalten wie ohne Regler).
+  mTick := TrackLeft + MulDiv(TrackRight - TrackLeft, TAtlasArchResolution.PositionOf(1), TAtlasArchResolution.cSteps);
+  Canvas.Pen.Width := 1;
+  Canvas.Pen.Color := ToColor(mColors.Muted);
+  Canvas.MoveTo(mTick, mMiddle - MulDiv(5, CurrentPPI, 96));
+  Canvas.LineTo(mTick, mMiddle + MulDiv(6, CurrentPPI, 96));
+  // Griff; mit Fokus mit Rand in Textfarbe.
+  mRadius := MulDiv(cThumbRadius, CurrentPPI, 96);
+  Canvas.Brush.Color := ToColor(mColors.Accent);
+  if Focused then
   begin
-    FPosition := mPosition;
-    Invalidate;
-    if Assigned(FOnTracking) then
-    begin
-      FOnTracking(GetValue);
-    end;
-  end;
-  if ACommit and (FPosition <> FCommitted) then
+    Canvas.Pen.Width := ScaleValue(2);
+    Canvas.Pen.Color := ToColor(mColors.Text);
+  end
+  else
   begin
-    FCommitted := FPosition;
-    if Assigned(FOnChange) then
-    begin
-      FOnChange(GetValue);
-    end;
+    Canvas.Pen.Color := ToColor(mColors.Accent);
   end;
-end;
-
-procedure TAtlasResolutionSlider.Reset;
-begin
-  MoveTo(TAtlasArchResolution.PositionOf(1), True);
-end;
-
-procedure TAtlasResolutionSlider.WMGetDlgCode(var AMessage: TWMGetDlgCode);
-begin
-  inherited;
-  AMessage.Result := AMessage.Result or DLGC_WANTARROWS;
+  Canvas.Ellipse(mCenter - mRadius, mMiddle - mRadius, mCenter + mRadius + 1, mMiddle + mRadius + 1);
 end;
 
 procedure TAtlasResolutionSlider.MouseDown(AButton: TMouseButton; AShift: TShiftState; AX, AY: Integer);
@@ -242,45 +227,60 @@ begin
   Invalidate;
 end;
 
-procedure TAtlasResolutionSlider.Paint;
-var
-  mColors: TAtlasColors;
-  mMiddle, mCenter, mRadius, mTick: Integer;
+function TAtlasResolutionSlider.TrackLeft: Integer;
 begin
-  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clBtnFace))));
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clBtnFace))));
-  Canvas.FillRect(ClientRect);
-  mMiddle := ClientHeight div 2;
-  // Schiene, links bis zum Griff im Akzent.
-  Canvas.Pen.Style := psSolid;
-  Canvas.Pen.Width := Max(1, MulDiv(cTrackWidth, CurrentPPI, 96));
-  Canvas.Pen.Color := ToColor(mColors.Line);
-  Canvas.MoveTo(TrackLeft, mMiddle);
-  Canvas.LineTo(TrackRight, mMiddle);
-  mCenter := ThumbX;
-  Canvas.Pen.Color := ToColor(mColors.AccentSoft);
-  Canvas.MoveTo(TrackLeft, mMiddle);
-  Canvas.LineTo(mCenter, mMiddle);
-  // Marke bei 1,0 (Verhalten wie ohne Regler).
-  mTick := TrackLeft + MulDiv(TrackRight - TrackLeft, TAtlasArchResolution.PositionOf(1), TAtlasArchResolution.cSteps);
-  Canvas.Pen.Width := 1;
-  Canvas.Pen.Color := ToColor(mColors.Muted);
-  Canvas.MoveTo(mTick, mMiddle - MulDiv(5, CurrentPPI, 96));
-  Canvas.LineTo(mTick, mMiddle + MulDiv(6, CurrentPPI, 96));
-  // Griff; mit Fokus mit Rand in Textfarbe.
-  mRadius := MulDiv(cThumbRadius, CurrentPPI, 96);
-  Canvas.Brush.Color := ToColor(mColors.Accent);
-  if Focused then
+  Result := MulDiv(cThumbRadius + 2, CurrentPPI, 96);
+end;
+
+function TAtlasResolutionSlider.TrackRight: Integer;
+begin
+  Result := Max(TrackLeft + 1, ClientWidth - TrackLeft);
+end;
+
+function TAtlasResolutionSlider.PositionAt(AX: Integer): Integer;
+begin
+  Result := Round((AX - TrackLeft) / (TrackRight - TrackLeft) * TAtlasArchResolution.cSteps);
+  Result := EnsureRange(Result, 0, TAtlasArchResolution.cSteps);
+end;
+
+function TAtlasResolutionSlider.ThumbX: Integer;
+begin
+  Result := TrackLeft + MulDiv(TrackRight - TrackLeft, FPosition, TAtlasArchResolution.cSteps);
+end;
+
+procedure TAtlasResolutionSlider.WMGetDlgCode(var AMessage: TWMGetDlgCode);
+begin
+  inherited;
+  AMessage.Result := AMessage.Result or DLGC_WANTARROWS;
+end;
+
+procedure TAtlasResolutionSlider.MoveTo(APosition: Integer; ACommit: Boolean);
+var
+  mPosition: Integer;
+begin
+  mPosition := EnsureRange(APosition, 0, TAtlasArchResolution.cSteps);
+  if mPosition <> FPosition then
   begin
-    Canvas.Pen.Width := ScaleValue(2);
-    Canvas.Pen.Color := ToColor(mColors.Text);
-  end
-  else
-  begin
-    Canvas.Pen.Color := ToColor(mColors.Accent);
+    FPosition := mPosition;
+    Invalidate;
+    if Assigned(FOnTracking) then
+    begin
+      FOnTracking(GetValue);
+    end;
   end;
-  Canvas.Ellipse(mCenter - mRadius, mMiddle - mRadius, mCenter + mRadius + 1, mMiddle + mRadius + 1);
+  if ACommit and (FPosition <> FCommitted) then
+  begin
+    FCommitted := FPosition;
+    if Assigned(FOnChange) then
+    begin
+      FOnChange(GetValue);
+    end;
+  end;
+end;
+
+procedure TAtlasResolutionSlider.Reset;
+begin
+  MoveTo(TAtlasArchResolution.PositionOf(1), True);
 end;
 
 end.

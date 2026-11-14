@@ -215,17 +215,6 @@ begin
     end);
 end;
 
-procedure THotspotsState.EnsureData;
-var
-  mFrame: TAtlasHotspotsFrame;
-begin
-  mFrame := TAtlasIdeHotspotsWindow.ExistingFrame;
-  if (mFrame <> nil) and not mFrame.HasModel and not FPending and not FPoll.Enabled then
-  begin
-    Request(False);
-  end;
-end;
-
 procedure THotspotsState.PollTimer(Sender: TObject);
 begin
   FPoll.Enabled := False;
@@ -239,58 +228,35 @@ begin
     end);
 end;
 
-procedure THotspotsState.Refresh;
-begin
-  Request(True);
-end;
-
-function THotspotsState.ProjectUri(out AUri: string): Boolean;
+procedure THotspotsState.Request(ARefresh: Boolean);
 var
-  mProject: IOTAProject;
+  mFrame: TAtlasHotspotsFrame;
+  mUri: string;
+  mRequest: Integer;
 begin
-  AUri := '';
-  mProject := GetActiveProject;
-  Result := (mProject <> nil) and (mProject.FileName <> '');
-  if Result then
-  begin
-    AUri := TLspSession.PathToUri(mProject.FileName);
-  end;
-end;
-
-procedure THotspotsState.Impact(const AFileName: string; ALine: Integer; const AMethod: string);
-var
-  mEditors: IOTAEditorServices;
-  mView: IOTAEditView;
-  mLines: TArray<string>;
-  mColumn: Integer;
-begin
-  if not Assigned(TAtlasIdeHotspots.OnImpact) then
+  FPoll.Enabled := False;
+  mFrame := TAtlasIdeHotspotsWindow.ExistingFrame;
+  if mFrame = nil then
   begin
     Exit;
   end;
-  TAtlasIdeNavigation.GoToLocation(AFileName, ALine - 1, 0);
-  // Der Befehl wirkt auf das Symbol am Cursor: auf den Namen der Methode (bzw. der Unit) setzen.
-  mView := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  if not ProjectUri(mUri) then
   begin
-    mView := mEditors.TopView;
-  end;
-  if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, AFileName) then
-  begin
+    mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoProject), False);
     Exit;
   end;
-  mLines := TAtlasEditorBuffer.Text(mView.Buffer).Split([#13#10, #10]);
-  if (ALine < 1) or (ALine > Length(mLines)) then
+  Inc(FRequest);
+  mRequest := FRequest;
+  FPending := True;
+  FMonths := TAtlasIdeSettings.Current.HotspotsMonths;
+  FMinCommits := TAtlasIdeSettings.Current.HotspotsCouplingMinCommits;
+  mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLoading), True);
+  if not FRun(TAtlasHotspotCommands.cCommand, TAtlasHotspotCommands.Arguments(mUri, cRequestLevel, ARefresh),
+    cTimeoutMs, AnswerHandler(mRequest)) then
   begin
-    Exit;
+    FPending := False;
+    mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoServer), True);
   end;
-  mColumn := TAtlasHotspotCommands.NameColumn(mLines[ALine - 1], AMethod);
-  if mColumn < 0 then
-  begin
-    Exit;
-  end;
-  TAtlasIdeNavigation.GoToPosition(ALine - 1, mColumn);
-  TAtlasIdeHotspots.OnImpact();
 end;
 
 function THotspotsState.AnswerHandler(ARequest: Integer): TProc<string>;
@@ -349,34 +315,68 @@ begin
   end;
 end;
 
-procedure THotspotsState.Request(ARefresh: Boolean);
+function THotspotsState.ProjectUri(out AUri: string): Boolean;
+var
+  mProject: IOTAProject;
+begin
+  AUri := '';
+  mProject := GetActiveProject;
+  Result := (mProject <> nil) and (mProject.FileName <> '');
+  if Result then
+  begin
+    AUri := TLspSession.PathToUri(mProject.FileName);
+  end;
+end;
+
+procedure THotspotsState.Impact(const AFileName: string; ALine: Integer; const AMethod: string);
+var
+  mEditors: IOTAEditorServices;
+  mView: IOTAEditView;
+  mLines: TArray<string>;
+  mColumn: Integer;
+begin
+  if not Assigned(TAtlasIdeHotspots.OnImpact) then
+  begin
+    Exit;
+  end;
+  TAtlasIdeNavigation.GoToLocation(AFileName, ALine - 1, 0);
+  // Der Befehl wirkt auf das Symbol am Cursor: auf den Namen der Methode (bzw. der Unit) setzen.
+  mView := nil;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  begin
+    mView := mEditors.TopView;
+  end;
+  if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, AFileName) then
+  begin
+    Exit;
+  end;
+  mLines := TAtlasEditorBuffer.Text(mView.Buffer).Split([#13#10, #10]);
+  if (ALine < 1) or (ALine > Length(mLines)) then
+  begin
+    Exit;
+  end;
+  mColumn := TAtlasHotspotCommands.NameColumn(mLines[ALine - 1], AMethod);
+  if mColumn < 0 then
+  begin
+    Exit;
+  end;
+  TAtlasIdeNavigation.GoToPosition(ALine - 1, mColumn);
+  TAtlasIdeHotspots.OnImpact();
+end;
+
+procedure THotspotsState.Refresh;
+begin
+  Request(True);
+end;
+
+procedure THotspotsState.EnsureData;
 var
   mFrame: TAtlasHotspotsFrame;
-  mUri: string;
-  mRequest: Integer;
 begin
-  FPoll.Enabled := False;
   mFrame := TAtlasIdeHotspotsWindow.ExistingFrame;
-  if mFrame = nil then
+  if (mFrame <> nil) and not mFrame.HasModel and not FPending and not FPoll.Enabled then
   begin
-    Exit;
-  end;
-  if not ProjectUri(mUri) then
-  begin
-    mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoProject), False);
-    Exit;
-  end;
-  Inc(FRequest);
-  mRequest := FRequest;
-  FPending := True;
-  FMonths := TAtlasIdeSettings.Current.HotspotsMonths;
-  FMinCommits := TAtlasIdeSettings.Current.HotspotsCouplingMinCommits;
-  mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLoading), True);
-  if not FRun(TAtlasHotspotCommands.cCommand, TAtlasHotspotCommands.Arguments(mUri, cRequestLevel, ARefresh),
-    cTimeoutMs, AnswerHandler(mRequest)) then
-  begin
-    FPending := False;
-    mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoServer), True);
+    Request(False);
   end;
 end;
 
@@ -465,11 +465,6 @@ begin
   TAtlasIdeHotspotsWindow.Release;
 end;
 
-class function TAtlasIdeHotspots.Enabled: Boolean;
-begin
-  Result := Active;
-end;
-
 class procedure TAtlasIdeHotspots.ShowWindow;
 var
   mFrame: TAtlasHotspotsFrame;
@@ -515,6 +510,11 @@ begin
   begin
     mFrame.Chart.Invalidate;
   end;
+end;
+
+class function TAtlasIdeHotspots.Enabled: Boolean;
+begin
+  Result := Active;
 end;
 
 end.

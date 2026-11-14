@@ -302,16 +302,6 @@ begin
   end;
 end;
 
-function TDataFlowRun.IsReturnAssignment(const AWalk: TDataFlowWalk; out ATarget: TDataFlowSymbol): Boolean;
-var
-  mName: string;
-begin
-  mName := AWalk.Parent[0].Name;
-  Result := (AWalk.Parent[0].Kind = TSyntaxKind.Identifier) and
-    EnclosingFunction(AWalk.Tree, AWalk.FileName, AWalk.Parent, ATarget) and (SameText(mName, 'Result') or
-    SameText(TDataFlowSyntax.CleanName(mName), TDataFlowSyntax.ShortName(ATarget.Name)));
-end;
-
 function TDataFlowRun.AssignStep(var AWalk: TDataFlowWalk): TDataFlowClimb;
 var
   mTarget: TDataFlowSymbol;
@@ -332,6 +322,16 @@ begin
     mEdge := TDataFlowEdge.Create(FFiles.ExprText(AWalk.FileName, AWalk.Parent), AWalk.Via, AWalk.Reason);
     AddTargetNode(AWalk.Spot(TDataFlowKind.Assignment), mTarget, mEdge);
   end;
+end;
+
+function TDataFlowRun.IsReturnAssignment(const AWalk: TDataFlowWalk; out ATarget: TDataFlowSymbol): Boolean;
+var
+  mName: string;
+begin
+  mName := AWalk.Parent[0].Name;
+  Result := (AWalk.Parent[0].Kind = TSyntaxKind.Identifier) and
+    EnclosingFunction(AWalk.Tree, AWalk.FileName, AWalk.Parent, ATarget) and (SameText(mName, 'Result') or
+    SameText(TDataFlowSyntax.CleanName(mName), TDataFlowSyntax.ShortName(ATarget.Name)));
 end;
 
 function TDataFlowRun.DeclarationStep(var AWalk: TDataFlowWalk): TDataFlowClimb;

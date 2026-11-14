@@ -120,29 +120,6 @@ end;
 
 { TLeakMainScan }
 
-class function TLeakMainScan.Run(const AText: string): TLeakMainScan;
-begin
-  Result := Default(TLeakMainScan);
-  Result.FText := AText;
-  Result.FTokens := TPascalLexer.Tokenize(AText);
-  Result.ManagerIndex := -1;
-  Result.MainBegin := -1;
-  Result.FCandidate := -1;
-  while Result.FIndex < Length(Result.FTokens) do
-  begin
-    Result.Step;
-  end;
-  // Nur der Bericht gehört nach außen.
-  Result.FTokens := nil;
-  Result.FText := '';
-  Result.FGuards := nil;
-end;
-
-function TLeakMainScan.Current: TPascalToken;
-begin
-  Result := FTokens[FIndex];
-end;
-
 function TLeakMainScan.Guarded: Boolean;
 var
   mGuard: Integer;
@@ -180,6 +157,11 @@ begin
   end;
 end;
 
+function TLeakMainScan.Current: TPascalToken;
+begin
+  Result := FTokens[FIndex];
+end;
+
 function TLeakMainScan.NextSignificant(AFrom: Integer): Integer;
 begin
   Result := AFrom;
@@ -190,17 +172,28 @@ begin
   end;
 end;
 
-function TLeakMainScan.StartsLine(const AToken: TPascalToken): Boolean;
-var
-  mPos: Integer;
+procedure TLeakMainScan.ReadUses;
 begin
-  // Offset ist 0-basiert, der Text 1-basiert: FText[Offset] ist das Zeichen davor.
-  mPos := AToken.Offset;
-  while (mPos >= 1) and CharInSet(FText[mPos], [' ', #9]) do
+  UsesFound := True;
+  Inc(FIndex);
+  while FIndex < Length(FTokens) do
   begin
-    Dec(mPos);
+    if Current.Kind = TPascalTokenKind.Directive then
+    begin
+      HandleDirective(Current.Text);
+    end
+    else if Current.IsSymbol(';') then
+    begin
+      Inc(FIndex);
+      Exit;
+    end
+    else if (Current.Kind = TPascalTokenKind.Identifier) and not IsWord(Current, 'in') then
+    begin
+      ReadEntry;
+      Continue;
+    end;
+    Inc(FIndex);
   end;
-  Result := (mPos < 1) or CharInSet(FText[mPos], [#10, #13]);
 end;
 
 procedure TLeakMainScan.ReadEntry;
@@ -239,30 +232,6 @@ begin
     LeakMonitor := mName;
   end;
   Inc(EntryCount);
-end;
-
-procedure TLeakMainScan.ReadUses;
-begin
-  UsesFound := True;
-  Inc(FIndex);
-  while FIndex < Length(FTokens) do
-  begin
-    if Current.Kind = TPascalTokenKind.Directive then
-    begin
-      HandleDirective(Current.Text);
-    end
-    else if Current.IsSymbol(';') then
-    begin
-      Inc(FIndex);
-      Exit;
-    end
-    else if (Current.Kind = TPascalTokenKind.Identifier) and not IsWord(Current, 'in') then
-    begin
-      ReadEntry;
-      Continue;
-    end;
-    Inc(FIndex);
-  end;
 end;
 
 /// <summary>Blöcke zählen; das begin auf Tiefe 0, dessen end ein Punkt folgt, ist der Hauptblock.</summary>
@@ -326,6 +295,37 @@ begin
     // Übrige Werte bewusst ohne Wirkung.
   end;
   Inc(FIndex);
+end;
+
+function TLeakMainScan.StartsLine(const AToken: TPascalToken): Boolean;
+var
+  mPos: Integer;
+begin
+  // Offset ist 0-basiert, der Text 1-basiert: FText[Offset] ist das Zeichen davor.
+  mPos := AToken.Offset;
+  while (mPos >= 1) and CharInSet(FText[mPos], [' ', #9]) do
+  begin
+    Dec(mPos);
+  end;
+  Result := (mPos < 1) or CharInSet(FText[mPos], [#10, #13]);
+end;
+
+class function TLeakMainScan.Run(const AText: string): TLeakMainScan;
+begin
+  Result := Default(TLeakMainScan);
+  Result.FText := AText;
+  Result.FTokens := TPascalLexer.Tokenize(AText);
+  Result.ManagerIndex := -1;
+  Result.MainBegin := -1;
+  Result.FCandidate := -1;
+  while Result.FIndex < Length(Result.FTokens) do
+  begin
+    Result.Step;
+  end;
+  // Nur der Bericht gehört nach außen.
+  Result.FTokens := nil;
+  Result.FText := '';
+  Result.FGuards := nil;
 end;
 
 end.

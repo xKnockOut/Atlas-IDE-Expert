@@ -804,123 +804,6 @@ begin
   FOptions := AOptions;
 end;
 
-class function TExpressionTypes.IsExpression(ANode: TSyntaxNode): Boolean;
-var
-  mParent: TSyntaxNode;
-begin
-  Result := (ANode <> nil) and (ANode.Kind in cExpressionKinds);
-  if not Result then
-  begin
-    Exit;
-  end;
-  // Teile einer Kette sind keine eigenen Ausdrücke: das Mitglied hinter dem Punkt ist der MemberAccess selbst;
-  // Typargumente und Bereiche (1..3) nicht.
-  mParent := ANode.Parent;
-  if (mParent <> nil) and (mParent.Kind in [TSyntaxKind.GenericArgs, TSyntaxKind.TypeReference]) then
-  begin
-    Result := False;
-  end;
-end;
-
-class function TExpressionTypes.FindExpression(ATree: TSyntaxTree; AStart, AEnd: Integer;
-  AExpand: Boolean): TSyntaxNode;
-var
-  mBest: TSyntaxNode;
-begin
-  mBest := nil;
-  if (ATree = nil) or (ATree.Root = nil) then
-  begin
-    Exit(nil);
-  end;
-  ATree.Root.Walk(
-    function(ANode: TSyntaxNode): Boolean
-    var
-      Covers: Boolean;
-    begin
-      // Nur in Knoten absteigen, die die Stelle enthalten.
-      Result := (ANode.StartOffset <= AStart) and (ANode.EndOffset >= AEnd);
-      if not Result or not IsExpression(ANode) then
-      begin
-        Exit;
-      end;
-      Covers := True;
-      if AExpand then
-      begin
-        Covers := (ANode.StartOffset < AStart) or (ANode.EndOffset > AEnd);
-      end;
-      if Covers and ((mBest = nil) or (ANode.EndOffset - ANode.StartOffset <= mBest.EndOffset - mBest.StartOffset)) then
-      begin
-        mBest := ANode;
-      end;
-    end);
-  Result := mBest;
-end;
-
-class function TExpressionTypes.CategoryOf(const ATypeName: string; out AWidth: Integer;
-  out ASigned: Boolean): TExpressionCategory;
-begin
-  Result := TExpressionOperators.CategoryOf(ATypeName, AWidth, ASigned);
-end;
-
-function TExpressionTypes.FromText(const ATypeText: string; const AOwner: TResolvedSymbol): TTyped;
-var
-  mFromUnit: TUnitIndex;
-  mResolved: TResolvedSymbol;
-  mText: string;
-begin
-  mText := Trim(ATypeText);
-  Result := TExpressionOperators.Typed(FResolver.Queries.UnqualifyType(mText));
-  if IsDeclaredType(Result, mText) and (AOwner.Name <> '') and FResolver.DeclaringUnit(AOwner, mFromUnit) and
-    FResolver.ResolveTypeTextFrom(mFromUnit, mText, mResolved) then
-  begin
-    Result.Symbol := mResolved;
-    Result.Category := SignatureCategory(mResolved.Signature, Result.Category);
-    AddAliasBase(FResolver, mResolved, Result);
-  end;
-end;
-
-function TExpressionTypes.FromSymbol(const ASymbol, AType: TResolvedSymbol; ATypeFound: Boolean): TTyped;
-begin
-  if ASymbol.IsType then
-  begin
-    // Typumwandlung TFoo(X) bzw. der Typ selbst.
-    Result := SymbolTyped(FResolver, ASymbol);
-  end
-  else if (ASymbol.SymbolKind = TIndexSymbolKind.Constructor_) and ATypeFound then
-  begin
-    Result := SymbolTyped(FResolver, AType);
-  end
-  else if ASymbol.SymbolKind = TIndexSymbolKind.Constructor_ then
-  begin
-    Result := TExpressionOperators.Typed(ASymbol.Container);
-  end
-  else if ASymbol.SymbolKind = TIndexSymbolKind.EnumMember then
-  begin
-    Result := FromText(ASymbol.Container, ASymbol);
-  end
-  else if ASymbol.TypeName <> '' then
-  begin
-    Result := FromText(Substitute(ASymbol.TypeName, Unqualified(FResolver, ASymbol.Bindings)), ASymbol);
-    if (Result.Symbol.Name = '') and ATypeFound and not AType.Builtin then
-    begin
-      Result.Symbol := AType;
-    end;
-  end
-  else if ASymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine] then
-  begin
-    Result := TExpressionOperators.Failed(TExpressionErrorKind.NoResult, ASymbol.Name);
-  end
-  else if ATypeFound then
-  begin
-    // Inline-Variable ohne Typ: der aufgelöste Typ.
-    Result := SymbolTyped(FResolver, AType);
-  end
-  else
-  begin
-    Result := Default(TTyped);
-  end;
-end;
-
 function TExpressionTypes.TypeNode(ANode: TSyntaxNode): TTyped;
 begin
   Result := Default(TTyped);
@@ -1048,6 +931,123 @@ begin
   end;
 end;
 
+function TExpressionTypes.TypeBinary(ANode: TSyntaxNode): TTyped;
+var
+  mOperator: string;
+begin
+  Result := Default(TTyped);
+  if ANode.ChildCount <> 2 then
+  begin
+    Exit;
+  end;
+  mOperator := LowerCase(ANode.Name);
+  if MatchText(mOperator, cComparisonOperators) then
+  begin
+    Result := TypeComparison(ANode, mOperator);
+  end
+  else if mOperator = 'as' then
+  begin
+    Result := TypeNode(ANode[1]);
+  end
+  else
+  begin
+    Result := TypeOperation(ANode, mOperator);
+  end;
+end;
+
+function TExpressionTypes.TypeComparison(ANode: TSyntaxNode; const AOperator: string): TTyped;
+var
+  mLeft, mRight: TTyped;
+begin
+  // Operanden trotzdem prüfen: ein unbekannter Name ist ein Fehler.
+  Result := TExpressionOperators.Typed('Boolean');
+  mLeft := TypeNode(ANode[0]);
+  if mLeft.Error = TExpressionErrorKind.UnknownName then
+  begin
+    Result := mLeft;
+  end
+  else if AOperator <> 'is' then
+  begin
+    mRight := TypeNode(ANode[1]);
+    if mRight.Error = TExpressionErrorKind.UnknownName then
+    begin
+      Result := mRight;
+    end;
+  end;
+end;
+
+function TExpressionTypes.TypeOperation(ANode: TSyntaxNode; const AOperator: string): TTyped;
+var
+  mLeft, mRight: TTyped;
+  mNoted: Boolean;
+begin
+  mLeft := TypeNode(ANode[0]);
+  if not mLeft.Known then
+  begin
+    Exit(mLeft);
+  end;
+  mRight := TypeNode(ANode[1]);
+  if not mRight.Known then
+  begin
+    Exit(mRight);
+  end;
+  Result := TExpressionOperators.OperationResult(AOperator, mLeft, mRight,
+    ANode[1].Kind = TSyntaxKind.SetConstructor, mNoted);
+  if Result.Error = TExpressionErrorKind.Unknown then
+  begin
+    Result.ErrorDetail := ShortText(FText, ANode);
+  end;
+  if mNoted then
+  begin
+    NoteOperand(ANode[0], mLeft, Result, False);
+    NoteOperand(ANode[1], mRight, Result, False);
+  end;
+end;
+
+function TExpressionTypes.TypeUnary(ANode: TSyntaxNode): TTyped;
+var
+  mOperand: TTyped;
+begin
+  Result := Default(TTyped);
+  if ANode.ChildCount = 1 then
+  begin
+    mOperand := TypeNode(ANode[0]);
+    Result := mOperand;
+    if mOperand.Known then
+    begin
+      Result := TExpressionOperators.UnaryResult(ANode.Name, mOperand);
+    end;
+  end;
+end;
+
+function TExpressionTypes.TypeSet(ANode: TSyntaxNode): TTyped;
+var
+  mElement: TTyped;
+  mFirst: TSyntaxNode;
+begin
+  if ANode.ChildCount = 0 then
+  begin
+    Exit(TExpressionOperators.Typed('set of ()'));
+  end;
+  mFirst := ANode[0];
+  if (mFirst.Kind = TSyntaxKind.RangeExpr) and (mFirst.ChildCount > 0) then
+  begin
+    mFirst := mFirst[0];
+  end;
+  mElement := TypeNode(mFirst);
+  if not mElement.Known then
+  begin
+    Exit(mElement);
+  end;
+  // Zahlen in einer Menge sind Byte-Werte.
+  if mElement.Category = TExpressionCategory.Integer_ then
+  begin
+    mElement := TExpressionOperators.Typed('Byte');
+  end;
+  Result := TExpressionOperators.Typed('set of ' + mElement.Name);
+  Result.Category := TExpressionCategory.Set_;
+end;
+
 function TExpressionTypes.TypeIntrinsic(ANode: TSyntaxNode; out ATyped: TTyped): Boolean;
 var
   mCandidates: TArray<TResolvedSymbol>;
@@ -1144,91 +1144,62 @@ begin
   end;
 end;
 
-function TExpressionTypes.TypeBinary(ANode: TSyntaxNode): TTyped;
+function TExpressionTypes.FromText(const ATypeText: string; const AOwner: TResolvedSymbol): TTyped;
 var
-  mOperator: string;
+  mFromUnit: TUnitIndex;
+  mResolved: TResolvedSymbol;
+  mText: string;
 begin
-  Result := Default(TTyped);
-  if ANode.ChildCount <> 2 then
+  mText := Trim(ATypeText);
+  Result := TExpressionOperators.Typed(FResolver.Queries.UnqualifyType(mText));
+  if IsDeclaredType(Result, mText) and (AOwner.Name <> '') and FResolver.DeclaringUnit(AOwner, mFromUnit) and
+    FResolver.ResolveTypeTextFrom(mFromUnit, mText, mResolved) then
   begin
-    Exit;
+    Result.Symbol := mResolved;
+    Result.Category := SignatureCategory(mResolved.Signature, Result.Category);
+    AddAliasBase(FResolver, mResolved, Result);
   end;
-  mOperator := LowerCase(ANode.Name);
-  if MatchText(mOperator, cComparisonOperators) then
+end;
+
+function TExpressionTypes.FromSymbol(const ASymbol, AType: TResolvedSymbol; ATypeFound: Boolean): TTyped;
+begin
+  if ASymbol.IsType then
   begin
-    Result := TypeComparison(ANode, mOperator);
+    // Typumwandlung TFoo(X) bzw. der Typ selbst.
+    Result := SymbolTyped(FResolver, ASymbol);
   end
-  else if mOperator = 'as' then
+  else if (ASymbol.SymbolKind = TIndexSymbolKind.Constructor_) and ATypeFound then
   begin
-    Result := TypeNode(ANode[1]);
+    Result := SymbolTyped(FResolver, AType);
+  end
+  else if ASymbol.SymbolKind = TIndexSymbolKind.Constructor_ then
+  begin
+    Result := TExpressionOperators.Typed(ASymbol.Container);
+  end
+  else if ASymbol.SymbolKind = TIndexSymbolKind.EnumMember then
+  begin
+    Result := FromText(ASymbol.Container, ASymbol);
+  end
+  else if ASymbol.TypeName <> '' then
+  begin
+    Result := FromText(Substitute(ASymbol.TypeName, Unqualified(FResolver, ASymbol.Bindings)), ASymbol);
+    if (Result.Symbol.Name = '') and ATypeFound and not AType.Builtin then
+    begin
+      Result.Symbol := AType;
+    end;
+  end
+  else if ASymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine] then
+  begin
+    Result := TExpressionOperators.Failed(TExpressionErrorKind.NoResult, ASymbol.Name);
+  end
+  else if ATypeFound then
+  begin
+    // Inline-Variable ohne Typ: der aufgelöste Typ.
+    Result := SymbolTyped(FResolver, AType);
   end
   else
   begin
-    Result := TypeOperation(ANode, mOperator);
-  end;
-end;
-
-function TExpressionTypes.TypeComparison(ANode: TSyntaxNode; const AOperator: string): TTyped;
-var
-  mLeft, mRight: TTyped;
-begin
-  // Operanden trotzdem prüfen: ein unbekannter Name ist ein Fehler.
-  Result := TExpressionOperators.Typed('Boolean');
-  mLeft := TypeNode(ANode[0]);
-  if mLeft.Error = TExpressionErrorKind.UnknownName then
-  begin
-    Result := mLeft;
-  end
-  else if AOperator <> 'is' then
-  begin
-    mRight := TypeNode(ANode[1]);
-    if mRight.Error = TExpressionErrorKind.UnknownName then
-    begin
-      Result := mRight;
-    end;
-  end;
-end;
-
-function TExpressionTypes.TypeOperation(ANode: TSyntaxNode; const AOperator: string): TTyped;
-var
-  mLeft, mRight: TTyped;
-  mNoted: Boolean;
-begin
-  mLeft := TypeNode(ANode[0]);
-  if not mLeft.Known then
-  begin
-    Exit(mLeft);
-  end;
-  mRight := TypeNode(ANode[1]);
-  if not mRight.Known then
-  begin
-    Exit(mRight);
-  end;
-  Result := TExpressionOperators.OperationResult(AOperator, mLeft, mRight,
-    ANode[1].Kind = TSyntaxKind.SetConstructor, mNoted);
-  if Result.Error = TExpressionErrorKind.Unknown then
-  begin
-    Result.ErrorDetail := ShortText(FText, ANode);
-  end;
-  if mNoted then
-  begin
-    NoteOperand(ANode[0], mLeft, Result, False);
-    NoteOperand(ANode[1], mRight, Result, False);
-  end;
-end;
-
-procedure TExpressionTypes.NoteOperand(ANode: TSyntaxNode; const AOperand, AResult: TTyped; AWhole: Boolean);
-var
-  mConversion: TExpressionConversion;
-begin
-  mConversion := Default(TExpressionConversion);
-  if FOptions.Conversions and (Length(FConversions) < cMaxConversions) and OperandShown(ANode, AWhole) and
-    not IsAliasOf(AOperand, AResult) and TExpressionOperators.ConversionKind(AOperand, AResult, mConversion.Kind) then
-  begin
-    mConversion.Expression := ShortText(FText, ANode);
-    mConversion.FromType := AOperand.Name;
-    mConversion.ToType := AResult.Name;
-    FConversions := FConversions + [mConversion];
+    Result := Default(TTyped);
   end;
 end;
 
@@ -1271,48 +1242,19 @@ begin
   end;
 end;
 
-function TExpressionTypes.TypeUnary(ANode: TSyntaxNode): TTyped;
+procedure TExpressionTypes.NoteOperand(ANode: TSyntaxNode; const AOperand, AResult: TTyped; AWhole: Boolean);
 var
-  mOperand: TTyped;
+  mConversion: TExpressionConversion;
 begin
-  Result := Default(TTyped);
-  if ANode.ChildCount = 1 then
+  mConversion := Default(TExpressionConversion);
+  if FOptions.Conversions and (Length(FConversions) < cMaxConversions) and OperandShown(ANode, AWhole) and
+    not IsAliasOf(AOperand, AResult) and TExpressionOperators.ConversionKind(AOperand, AResult, mConversion.Kind) then
   begin
-    mOperand := TypeNode(ANode[0]);
-    Result := mOperand;
-    if mOperand.Known then
-    begin
-      Result := TExpressionOperators.UnaryResult(ANode.Name, mOperand);
-    end;
+    mConversion.Expression := ShortText(FText, ANode);
+    mConversion.FromType := AOperand.Name;
+    mConversion.ToType := AResult.Name;
+    FConversions := FConversions + [mConversion];
   end;
-end;
-
-function TExpressionTypes.TypeSet(ANode: TSyntaxNode): TTyped;
-var
-  mElement: TTyped;
-  mFirst: TSyntaxNode;
-begin
-  if ANode.ChildCount = 0 then
-  begin
-    Exit(TExpressionOperators.Typed('set of ()'));
-  end;
-  mFirst := ANode[0];
-  if (mFirst.Kind = TSyntaxKind.RangeExpr) and (mFirst.ChildCount > 0) then
-  begin
-    mFirst := mFirst[0];
-  end;
-  mElement := TypeNode(mFirst);
-  if not mElement.Known then
-  begin
-    Exit(mElement);
-  end;
-  // Zahlen in einer Menge sind Byte-Werte.
-  if mElement.Category = TExpressionCategory.Integer_ then
-  begin
-    mElement := TExpressionOperators.Typed('Byte');
-  end;
-  Result := TExpressionOperators.Typed('set of ' + mElement.Name);
-  Result.Category := TExpressionCategory.Set_;
 end;
 
 function TExpressionTypes.BinaryOperands(ANode: TSyntaxNode; out ALeft, ARight: Int64): Boolean;
@@ -1399,6 +1341,64 @@ begin
       AInfo.Value := mValue;
     end;
   end;
+end;
+
+class function TExpressionTypes.FindExpression(ATree: TSyntaxTree; AStart, AEnd: Integer;
+  AExpand: Boolean): TSyntaxNode;
+var
+  mBest: TSyntaxNode;
+begin
+  mBest := nil;
+  if (ATree = nil) or (ATree.Root = nil) then
+  begin
+    Exit(nil);
+  end;
+  ATree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    var
+      Covers: Boolean;
+    begin
+      // Nur in Knoten absteigen, die die Stelle enthalten.
+      Result := (ANode.StartOffset <= AStart) and (ANode.EndOffset >= AEnd);
+      if not Result or not IsExpression(ANode) then
+      begin
+        Exit;
+      end;
+      Covers := True;
+      if AExpand then
+      begin
+        Covers := (ANode.StartOffset < AStart) or (ANode.EndOffset > AEnd);
+      end;
+      if Covers and ((mBest = nil) or (ANode.EndOffset - ANode.StartOffset <= mBest.EndOffset - mBest.StartOffset)) then
+      begin
+        mBest := ANode;
+      end;
+    end);
+  Result := mBest;
+end;
+
+class function TExpressionTypes.IsExpression(ANode: TSyntaxNode): Boolean;
+var
+  mParent: TSyntaxNode;
+begin
+  Result := (ANode <> nil) and (ANode.Kind in cExpressionKinds);
+  if not Result then
+  begin
+    Exit;
+  end;
+  // Teile einer Kette sind keine eigenen Ausdrücke: das Mitglied hinter dem Punkt ist der MemberAccess selbst;
+  // Typargumente und Bereiche (1..3) nicht.
+  mParent := ANode.Parent;
+  if (mParent <> nil) and (mParent.Kind in [TSyntaxKind.GenericArgs, TSyntaxKind.TypeReference]) then
+  begin
+    Result := False;
+  end;
+end;
+
+class function TExpressionTypes.CategoryOf(const ATypeName: string; out AWidth: Integer;
+  out ASigned: Boolean): TExpressionCategory;
+begin
+  Result := TExpressionOperators.CategoryOf(ATypeName, AWidth, ASigned);
 end;
 
 function TExpressionTypes.Describe(ANode: TSyntaxNode): TExpressionTypeInfo;

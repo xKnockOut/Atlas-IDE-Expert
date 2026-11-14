@@ -125,6 +125,8 @@ begin
     TServerActivity.Shared, TServerStatusHeartbeat.cIntervalMs);
 end;
 
+{ TApplicationShell }
+
 class function TApplicationShell.Run: Integer;
 var
   mOptions: TCommandLineOptions;

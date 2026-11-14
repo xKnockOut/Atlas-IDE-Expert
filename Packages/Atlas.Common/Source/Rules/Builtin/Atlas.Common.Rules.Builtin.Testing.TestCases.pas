@@ -161,6 +161,8 @@ begin
   end;
 end;
 
+{ TDUnitXTestCases }
+
 class function TDUnitXTestCases.Decode(const ALiteral: string; out AValue: string): Boolean;
 var
   mIndex: Integer;
@@ -324,20 +326,6 @@ begin
   Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
 end;
 
-class function TDUnitXTestCases.EnumNames(const ATypeName: string; const AEnums: TArray<string>): string;
-var
-  mEntry: string;
-begin
-  for mEntry in AEnums do
-  begin
-    if SameText(Copy(mEntry, 1, Pos('=', mEntry) - 1), BareName(ATypeName)) then
-    begin
-      Exit(Copy(mEntry, Pos('=', mEntry) + 1, MaxInt));
-    end;
-  end;
-  Result := '';
-end;
-
 class function TDUnitXTestCases.KindOf(const ATypeName: string; const AEnums: TArray<string>): TDUnitXValueKind;
 var
   mName: string;
@@ -370,6 +358,56 @@ begin
   else
   begin
     Result := TDUnitXValueKind.Unknown;
+  end;
+end;
+
+class function TDUnitXTestCases.Enums(ARoot: TSyntaxNode): TArray<string>;
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode, mEnum: TSyntaxNode;
+  mIndex: Integer;
+  mNames: string;
+  mPlain: Boolean;
+begin
+  Result := nil;
+  if ARoot = nil then
+  begin
+    Exit;
+  end;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      mEnum := nil;
+      if mNode.Kind = TSyntaxKind.TypeDecl then
+      begin
+        mEnum := mNode.FindChild(TSyntaxKind.EnumType);
+      end;
+      if mEnum <> nil then
+      begin
+        // Aufzählungen mit festen Werten (A = 1) haben keine RTTI; DUnitX kann sie nicht umwandeln.
+        mNames := '';
+        mPlain := mEnum.ChildCount > 0;
+        for mIndex := 0 to mEnum.ChildCount - 1 do
+        begin
+          mPlain := mPlain and (mEnum[mIndex].Kind = TSyntaxKind.Identifier);
+          mNames := mNames + IfThen(mIndex > 0, ',') + mEnum[mIndex].Name;
+        end;
+        if mPlain then
+        begin
+          Result := Result + [mNode.Name + '=' + mNames];
+        end;
+        Continue;
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
   end;
 end;
 
@@ -467,54 +505,18 @@ begin
   end;
 end;
 
-class function TDUnitXTestCases.Enums(ARoot: TSyntaxNode): TArray<string>;
+class function TDUnitXTestCases.EnumNames(const ATypeName: string; const AEnums: TArray<string>): string;
 var
-  mPending: TStack<TSyntaxNode>;
-  mNode, mEnum: TSyntaxNode;
-  mIndex: Integer;
-  mNames: string;
-  mPlain: Boolean;
+  mEntry: string;
 begin
-  Result := nil;
-  if ARoot = nil then
+  for mEntry in AEnums do
   begin
-    Exit;
-  end;
-  mPending := TStack<TSyntaxNode>.Create;
-  try
-    mPending.Push(ARoot);
-    while mPending.Count > 0 do
+    if SameText(Copy(mEntry, 1, Pos('=', mEntry) - 1), BareName(ATypeName)) then
     begin
-      mNode := mPending.Pop;
-      mEnum := nil;
-      if mNode.Kind = TSyntaxKind.TypeDecl then
-      begin
-        mEnum := mNode.FindChild(TSyntaxKind.EnumType);
-      end;
-      if mEnum <> nil then
-      begin
-        // Aufzählungen mit festen Werten (A = 1) haben keine RTTI; DUnitX kann sie nicht umwandeln.
-        mNames := '';
-        mPlain := mEnum.ChildCount > 0;
-        for mIndex := 0 to mEnum.ChildCount - 1 do
-        begin
-          mPlain := mPlain and (mEnum[mIndex].Kind = TSyntaxKind.Identifier);
-          mNames := mNames + IfThen(mIndex > 0, ',') + mEnum[mIndex].Name;
-        end;
-        if mPlain then
-        begin
-          Result := Result + [mNode.Name + '=' + mNames];
-        end;
-        Continue;
-      end;
-      for mIndex := mNode.ChildCount - 1 downto 0 do
-      begin
-        mPending.Push(mNode[mIndex]);
-      end;
+      Exit(Copy(mEntry, Pos('=', mEntry) + 1, MaxInt));
     end;
-  finally
-    mPending.Free;
   end;
+  Result := '';
 end;
 
 { TDUnitXTestCaseMismatchRule }

@@ -480,6 +480,8 @@ begin
   end;
 end;
 
+{ TFormAutoCreateAndManualRule }
+
 function TFormAutoCreateAndManualRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('form-autocreate-and-manual', TRuleSeverity.Warning,
@@ -749,6 +751,8 @@ begin
     CollectEvents(mChild, False, AOwner, AEvents);
   end;
 end;
+
+{ TInheritedFormHandlerRule }
 
 function TInheritedFormHandlerRule.Descriptor: TRuleDescriptor;
 begin

@@ -415,42 +415,6 @@ begin
   inherited;
 end;
 
-class function TRuleBaseline.PathKey(const APath: string): string;
-begin
-  Result := LowerCase(NormalizePath(APath));
-end;
-
-class function TRuleBaseline.ExactKey(const APath, ARuleId, ARoutine, AFingerprint: string): string;
-begin
-  Result := PathKey(APath) + #0 + LowerCase(ARuleId) + #0 + LowerCase(ARoutine) + #0 + AFingerprint;
-end;
-
-class function TRuleBaseline.LegacyKey(const APath, ARuleId, AFingerprint: string): string;
-begin
-  Result := PathKey(APath) + #0 + LowerCase(ARuleId) + #0 + AFingerprint;
-end;
-
-class function TRuleBaseline.NormalizePath(const APath: string): string;
-begin
-  Result := StringReplace(APath, '\', '/', [rfReplaceAll]);
-end;
-
-class function TRuleBaseline.Fingerprint(const AText: string; const AFinding: TRuleFinding): string;
-begin
-  Result := Fnv1a(CollapseWhitespace(LineOf(AText, AFinding.Range.StartPos.Line)));
-end;
-
-class function TRuleBaseline.ContextFingerprint(const AText: string; const AScopes: TFindingScopes;
-  ALine: Integer): string;
-begin
-  Result := ContextOf(TTextLines.SplitLines(AText), ALine, AScopes.HeaderLine(ALine));
-end;
-
-class function TRuleBaseline.SarifFingerprint(const AMark: TBaselineMark): string;
-begin
-  Result := Fnv1a(LowerCase(AMark.Finding.RuleId) + #0 + LowerCase(AMark.Routine) + #0 + AMark.Fingerprint);
-end;
-
 procedure TRuleBaseline.AddEntry(const AEntry: TEntry);
 var
   mIndex, mExisting: Integer;
@@ -510,14 +474,82 @@ begin
   FByPath.AddOrSetValue(mKey, mIndices + [mIndex]);
 end;
 
+class function TRuleBaseline.PathKey(const APath: string): string;
+begin
+  Result := LowerCase(NormalizePath(APath));
+end;
+
+class function TRuleBaseline.ExactKey(const APath, ARuleId, ARoutine, AFingerprint: string): string;
+begin
+  Result := PathKey(APath) + #0 + LowerCase(ARuleId) + #0 + LowerCase(ARoutine) + #0 + AFingerprint;
+end;
+
+class function TRuleBaseline.LegacyKey(const APath, ARuleId, AFingerprint: string): string;
+begin
+  Result := PathKey(APath) + #0 + LowerCase(ARuleId) + #0 + AFingerprint;
+end;
+
+class function TRuleBaseline.MarksOf(const ALines: TArray<string>; const AScopes: TFindingScopes;
+  const AFindings: TArray<TRuleFinding>): TArray<TBaselineMark>;
+var
+  mIndex, mLine: Integer;
+begin
+  SetLength(Result, Length(AFindings));
+  for mIndex := 0 to High(AFindings) do
+  begin
+    mLine := AFindings[mIndex].Range.StartPos.Line;
+    Result[mIndex].Finding := AFindings[mIndex];
+    Result[mIndex].Routine := AScopes.At(mLine);
+    Result[mIndex].Fingerprint := LineFingerprint(ALines, mLine);
+    Result[mIndex].Context := ContextOf(ALines, mLine, AScopes.HeaderLine(mLine));
+    Result[mIndex].State := TBaselineState.None;
+    Result[mIndex].Match := TBaselineMatch.Unmatched;
+  end;
+end;
+
+function TRuleBaseline.Filter(const ARelativePath, AText: string;
+  const AFindings: TArray<TRuleFinding>): TArray<TRuleFinding>;
+var
+  mScopes: TFindingScopes;
+begin
+  if (FTotal = 0) or (Length(AFindings) = 0) or not FByPath.ContainsKey(PathKey(ARelativePath)) then
+  begin
+    Exit(AFindings);
+  end;
+  // Routinen braucht nur eine Baseline mit Routinen; ältere Dateien kommen ohne Parsen aus.
+  if FHasRoutines then
+  begin
+    mScopes := TFindingScopes.FromText(AText);
+  end
+  else
+  begin
+    mScopes := TFindingScopes.FromTree(nil);
+  end;
+  Result := Filter(ARelativePath, AText, mScopes, AFindings);
+end;
+
+function TRuleBaseline.Filter(const ARelativePath, AText: string; const AScopes: TFindingScopes;
+  const AFindings: TArray<TRuleFinding>): TArray<TRuleFinding>;
+var
+  mMark: TBaselineMark;
+begin
+  if (FTotal = 0) or (Length(AFindings) = 0) or not FByPath.ContainsKey(PathKey(ARelativePath)) then
+  begin
+    Exit(AFindings);
+  end;
+  Result := nil;
+  for mMark in Classify(ARelativePath, AText, AScopes, AFindings) do
+  begin
+    if mMark.State = TBaselineState.New then
+    begin
+      Result := Result + [mMark.Finding];
+    end;
+  end;
+end;
+
 function TRuleBaseline.Count: Integer;
 begin
   Result := FTotal;
-end;
-
-function TRuleBaseline.LegacyCount: Integer;
-begin
-  Result := FLegacyTotal;
 end;
 
 function TRuleBaseline.CountOf(const ARelativePath: string): Integer;
@@ -533,6 +565,11 @@ begin
       Inc(Result, FEntries[mIndex].Count);
     end;
   end;
+end;
+
+function TRuleBaseline.LegacyCount: Integer;
+begin
+  Result := FLegacyTotal;
 end;
 
 function TRuleBaseline.Paths: TArray<string>;
@@ -579,28 +616,21 @@ begin
   end;
 end;
 
-class function TRuleBaseline.MarksOf(const ALines: TArray<string>; const AScopes: TFindingScopes;
-  const AFindings: TArray<TRuleFinding>): TArray<TBaselineMark>;
-var
-  mIndex, mLine: Integer;
-begin
-  SetLength(Result, Length(AFindings));
-  for mIndex := 0 to High(AFindings) do
-  begin
-    mLine := AFindings[mIndex].Range.StartPos.Line;
-    Result[mIndex].Finding := AFindings[mIndex];
-    Result[mIndex].Routine := AScopes.At(mLine);
-    Result[mIndex].Fingerprint := LineFingerprint(ALines, mLine);
-    Result[mIndex].Context := ContextOf(ALines, mLine, AScopes.HeaderLine(mLine));
-    Result[mIndex].State := TBaselineState.None;
-    Result[mIndex].Match := TBaselineMatch.Unmatched;
-  end;
-end;
-
 class function TRuleBaseline.Mark(const AText: string; const AScopes: TFindingScopes;
   const AFindings: TArray<TRuleFinding>): TArray<TBaselineMark>;
 begin
   Result := MarksOf(TTextLines.SplitLines(AText), AScopes, AFindings);
+end;
+
+class function TRuleBaseline.Fingerprint(const AText: string; const AFinding: TRuleFinding): string;
+begin
+  Result := Fnv1a(CollapseWhitespace(LineOf(AText, AFinding.Range.StartPos.Line)));
+end;
+
+class function TRuleBaseline.ContextFingerprint(const AText: string; const AScopes: TFindingScopes;
+  ALine: Integer): string;
+begin
+  Result := ContextOf(TTextLines.SplitLines(AText), ALine, AScopes.HeaderLine(ALine));
 end;
 
 function AbsentMark(const AEntryRule, ARoutine, AFingerprint, AContext: string): TBaselineMark;
@@ -661,6 +691,8 @@ type
     /// <summary>Die nicht mehr gefundenen Treffer der Datei.</summary>
     function Absent: TArray<TBaselineMark>;
   end;
+
+{ TBaselineClassifier }
 
 constructor TBaselineClassifier.Create(AEntries: TList<TBaselineEntry>; const APathEntries: TArray<Integer>);
 var
@@ -825,44 +857,14 @@ begin
   end;
 end;
 
-function TRuleBaseline.Filter(const ARelativePath, AText: string;
-  const AFindings: TArray<TRuleFinding>): TArray<TRuleFinding>;
-var
-  mScopes: TFindingScopes;
+class function TRuleBaseline.SarifFingerprint(const AMark: TBaselineMark): string;
 begin
-  if (FTotal = 0) or (Length(AFindings) = 0) or not FByPath.ContainsKey(PathKey(ARelativePath)) then
-  begin
-    Exit(AFindings);
-  end;
-  // Routinen braucht nur eine Baseline mit Routinen; ältere Dateien kommen ohne Parsen aus.
-  if FHasRoutines then
-  begin
-    mScopes := TFindingScopes.FromText(AText);
-  end
-  else
-  begin
-    mScopes := TFindingScopes.FromTree(nil);
-  end;
-  Result := Filter(ARelativePath, AText, mScopes, AFindings);
+  Result := Fnv1a(LowerCase(AMark.Finding.RuleId) + #0 + LowerCase(AMark.Routine) + #0 + AMark.Fingerprint);
 end;
 
-function TRuleBaseline.Filter(const ARelativePath, AText: string; const AScopes: TFindingScopes;
-  const AFindings: TArray<TRuleFinding>): TArray<TRuleFinding>;
-var
-  mMark: TBaselineMark;
+class function TRuleBaseline.NormalizePath(const APath: string): string;
 begin
-  if (FTotal = 0) or (Length(AFindings) = 0) or not FByPath.ContainsKey(PathKey(ARelativePath)) then
-  begin
-    Exit(AFindings);
-  end;
-  Result := nil;
-  for mMark in Classify(ARelativePath, AText, AScopes, AFindings) do
-  begin
-    if mMark.State = TBaselineState.New then
-    begin
-      Result := Result + [mMark.Finding];
-    end;
-  end;
+  Result := StringReplace(APath, '\', '/', [rfReplaceAll]);
 end;
 
 /// <summary>Liste "findings" der Datei; löst ERuleBaseline aus, wenn Form oder Formatversion nicht stimmen.

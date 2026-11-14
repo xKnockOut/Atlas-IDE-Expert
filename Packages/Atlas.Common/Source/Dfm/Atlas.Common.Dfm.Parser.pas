@@ -112,11 +112,6 @@ begin
   inherited;
 end;
 
-function TScanner.AtEnd: Boolean;
-begin
-  Result := FIndex > Length(FText);
-end;
-
 function TScanner.Current: Char;
 begin
   if AtEnd then
@@ -127,6 +122,11 @@ begin
   begin
     Result := FText[FIndex];
   end;
+end;
+
+function TScanner.AtEnd: Boolean;
+begin
+  Result := FIndex > Length(FText);
 end;
 
 procedure TScanner.Advance;
@@ -526,14 +526,6 @@ end;
 
 { TDfmParser }
 
-class function TDfmParser.IsFormFile(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExtension = '.dfm') or (mExtension = '.fmx') or (mExtension = '.lfm');
-end;
-
 class function TDfmParser.Parse(const AText: string): TDfmDocument;
 var
   mScanner: TScanner;
@@ -562,6 +554,14 @@ begin
   finally
     mScanner.Free;
   end;
+end;
+
+class function TDfmParser.IsFormFile(const AFileName: string): Boolean;
+var
+  mExtension: string;
+begin
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExtension = '.dfm') or (mExtension = '.fmx') or (mExtension = '.lfm');
 end;
 
 initialization

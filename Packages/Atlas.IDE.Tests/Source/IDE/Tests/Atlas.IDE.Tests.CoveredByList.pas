@@ -31,6 +31,8 @@ uses
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Navigation;
 
+{ TAtlasIdeCoveredByList }
+
 constructor TAtlasIdeCoveredByList.Create;
 begin
   inherited Create;
@@ -42,6 +44,17 @@ begin
   FMenu.Free;
   FListed := nil;
   inherited Destroy;
+end;
+
+procedure TAtlasIdeCoveredByList.ItemClick(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  mIndex := (Sender as TMenuItem).Tag;
+  if (mIndex >= 0) and (mIndex <= High(FListed)) then
+  begin
+    TAtlasIdeNavigation.GoToLocation(FListed[mIndex].FileName, FListed[mIndex].Line, 0);
+  end;
 end;
 
 procedure TAtlasIdeCoveredByList.Show(const ATests: TArray<TAtlasCoveredTest>; const AAt: TPoint);
@@ -64,17 +77,6 @@ begin
     FMenu.Items.Add(mItem);
   end;
   FMenu.Popup(AAt.X, AAt.Y);
-end;
-
-procedure TAtlasIdeCoveredByList.ItemClick(Sender: TObject);
-var
-  mIndex: Integer;
-begin
-  mIndex := (Sender as TMenuItem).Tag;
-  if (mIndex >= 0) and (mIndex <= High(FListed)) then
-  begin
-    TAtlasIdeNavigation.GoToLocation(FListed[mIndex].FileName, FListed[mIndex].Line, 0);
-  end;
 end;
 
 end.

@@ -376,15 +376,6 @@ begin
   end;
 end;
 
-class function TRationaleScanner.ForUnit(ATree: TSyntaxTree): TArray<TRationaleEntry>;
-begin
-  Result := nil;
-  if ATree <> nil then
-  begin
-    Result := ForUnit(ATree.Tokens, ATree.Root);
-  end;
-end;
-
 class function TRationaleScanner.ForUnit(const ATokens: TArray<TPascalToken>;
   ARoot: TSyntaxNode): TArray<TRationaleEntry>;
 var
@@ -459,6 +450,15 @@ begin
     begin
       Result := Result + [mEntry];
     end;
+  end;
+end;
+
+class function TRationaleScanner.ForUnit(ATree: TSyntaxTree): TArray<TRationaleEntry>;
+begin
+  Result := nil;
+  if ATree <> nil then
+  begin
+    Result := ForUnit(ATree.Tokens, ATree.Root);
   end;
 end;
 

@@ -214,13 +214,70 @@ begin
   end;
 end;
 
-procedure TLspProgress.SetOnChanged(const AProc: TProc);
+function TLspProgress.Text: string;
+var
+  mEntry: TEntry;
+  mKey, mCandidate: string;
 begin
   FLock.Enter;
   try
-    FOnChanged := AProc;
+    Result := '';
+    mKey := FLast;
+    if (mKey = '') or not FRunning.ContainsKey(mKey) then
+    begin
+      mKey := '';
+      for mCandidate in FRunning.Keys do
+      begin
+        mKey := mCandidate;
+        Break;
+      end;
+    end;
+    if (mKey = '') or not FRunning.TryGetValue(mKey, mEntry) then
+    begin
+      Exit;
+    end;
+    Result := mEntry.Title;
+    if Result = '' then
+    begin
+      Result := '…';
+    end;
+    if mEntry.Percent >= 0 then
+    begin
+      Result := Format('%s %d %%', [Result, mEntry.Percent]);
+    end;
   finally
     FLock.Leave;
+  end;
+end;
+
+function TLspProgress.IndexingText: string;
+var
+  mEntry: TEntry;
+  mKey: string;
+  mActive: Boolean;
+begin
+  FLock.Enter;
+  try
+    mKey := FLast;
+    mActive := (mKey <> '') and FRunning.TryGetValue(mKey, mEntry);
+    if not mActive then
+    begin
+      for mKey in FRunning.Keys do
+      begin
+        mActive := FRunning.TryGetValue(mKey, mEntry);
+        Break;
+      end;
+    end;
+  finally
+    FLock.Leave;
+  end;
+  if mActive then
+  begin
+    Result := IndexingTextOf(True, mEntry.Percent);
+  end
+  else
+  begin
+    Result := '';
   end;
 end;
 
@@ -268,37 +325,11 @@ begin
   end;
 end;
 
-function TLspProgress.Text: string;
-var
-  mEntry: TEntry;
-  mKey, mCandidate: string;
+procedure TLspProgress.SetOnChanged(const AProc: TProc);
 begin
   FLock.Enter;
   try
-    Result := '';
-    mKey := FLast;
-    if (mKey = '') or not FRunning.ContainsKey(mKey) then
-    begin
-      mKey := '';
-      for mCandidate in FRunning.Keys do
-      begin
-        mKey := mCandidate;
-        Break;
-      end;
-    end;
-    if (mKey = '') or not FRunning.TryGetValue(mKey, mEntry) then
-    begin
-      Exit;
-    end;
-    Result := mEntry.Title;
-    if Result = '' then
-    begin
-      Result := '…';
-    end;
-    if mEntry.Percent >= 0 then
-    begin
-      Result := Format('%s %d %%', [Result, mEntry.Percent]);
-    end;
+    FOnChanged := AProc;
   finally
     FLock.Leave;
   end;
@@ -317,37 +348,6 @@ begin
   else
   begin
     Result := UiText(TProgressText.AtlasIsIndexing2);
-  end;
-end;
-
-function TLspProgress.IndexingText: string;
-var
-  mEntry: TEntry;
-  mKey: string;
-  mActive: Boolean;
-begin
-  FLock.Enter;
-  try
-    mKey := FLast;
-    mActive := (mKey <> '') and FRunning.TryGetValue(mKey, mEntry);
-    if not mActive then
-    begin
-      for mKey in FRunning.Keys do
-      begin
-        mActive := FRunning.TryGetValue(mKey, mEntry);
-        Break;
-      end;
-    end;
-  finally
-    FLock.Leave;
-  end;
-  if mActive then
-  begin
-    Result := IndexingTextOf(True, mEntry.Percent);
-  end
-  else
-  begin
-    Result := '';
   end;
 end;
 
@@ -383,19 +383,39 @@ end;
 
 { TLspIndexStatus }
 
-class function TLspIndexStatus.SizeText(ABytes: Int64): string;
+class function TLspIndexStatus.Lines(const AStatus: TJSONValue): TArray<string>;
 var
-  mSettings: TFormatSettings;
+  mStatus: TJSONObject;
+  mWorkspaces: TJSONValue;
+  mItem: TJSONValue;
+  mBytes: Int64;
 begin
-  mSettings := TFormatSettings.Invariant;
-  mSettings.DecimalSeparator := ',';
-  if ABytes < 1024 * 1024 then
+  Result := nil;
+  if not (AStatus is TJSONObject) then
   begin
-    Result := FormatFloat('0.0', ABytes / 1024, mSettings) + ' KB';
-  end
-  else
+    Exit;
+  end;
+  mStatus := TJSONObject(AStatus);
+  mBytes := mStatus.GetValue<Int64>('indexBytes', 0);
+  // Beide Größen wie SizeText mit Dezimalkomma, unabhängig vom Gebietsschema.
+  Result := Result + [Format(UiText(TProgressText.AtlasIndexUnitsSymbolsIn),
+    [mStatus.GetValue<Integer>('units', 0), mStatus.GetValue<Integer>('symbols', 0), SizeText(mBytes),
+     SizeText(mStatus.GetValue<Int64>('diskBytes', 0))])];
+  mWorkspaces := mStatus.GetValue('workspaces');
+  if mWorkspaces is TJSONArray then
   begin
-    Result := FormatFloat('0.0', ABytes / (1024 * 1024), mSettings) + ' MB';
+    for mItem in TJSONArray(mWorkspaces) do
+    begin
+      if mItem is TJSONObject then
+      begin
+        Result := Result + [Format(UiText(TProgressText.LastRunMsReadFrom),
+          [TJSONObject(mItem).GetValue<string>('name', ''), TJSONObject(mItem).GetValue<Integer>('lastIndexMs', 0),
+          TJSONObject(mItem).GetValue<Integer>('parsed', 0), TJSONObject(mItem).GetValue<Integer>('fromCache', 0),
+          TJSONObject(mItem).GetValue<Integer>('missing', 0),
+          SizeText(TJSONObject(mItem).GetValue<Int64>('cacheBytes', 0) +
+            TJSONObject(mItem).GetValue<Int64>('libraryCacheBytes', 0))])];
+      end;
+    end;
   end;
 end;
 
@@ -465,39 +485,19 @@ begin
      SizeText(TJSONObject(AAnswer).GetValue<Int64>('freedBytes', 0))]);
 end;
 
-class function TLspIndexStatus.Lines(const AStatus: TJSONValue): TArray<string>;
+class function TLspIndexStatus.SizeText(ABytes: Int64): string;
 var
-  mStatus: TJSONObject;
-  mWorkspaces: TJSONValue;
-  mItem: TJSONValue;
-  mBytes: Int64;
+  mSettings: TFormatSettings;
 begin
-  Result := nil;
-  if not (AStatus is TJSONObject) then
+  mSettings := TFormatSettings.Invariant;
+  mSettings.DecimalSeparator := ',';
+  if ABytes < 1024 * 1024 then
   begin
-    Exit;
-  end;
-  mStatus := TJSONObject(AStatus);
-  mBytes := mStatus.GetValue<Int64>('indexBytes', 0);
-  // Beide Größen wie SizeText mit Dezimalkomma, unabhängig vom Gebietsschema.
-  Result := Result + [Format(UiText(TProgressText.AtlasIndexUnitsSymbolsIn),
-    [mStatus.GetValue<Integer>('units', 0), mStatus.GetValue<Integer>('symbols', 0), SizeText(mBytes),
-     SizeText(mStatus.GetValue<Int64>('diskBytes', 0))])];
-  mWorkspaces := mStatus.GetValue('workspaces');
-  if mWorkspaces is TJSONArray then
+    Result := FormatFloat('0.0', ABytes / 1024, mSettings) + ' KB';
+  end
+  else
   begin
-    for mItem in TJSONArray(mWorkspaces) do
-    begin
-      if mItem is TJSONObject then
-      begin
-        Result := Result + [Format(UiText(TProgressText.LastRunMsReadFrom),
-          [TJSONObject(mItem).GetValue<string>('name', ''), TJSONObject(mItem).GetValue<Integer>('lastIndexMs', 0),
-          TJSONObject(mItem).GetValue<Integer>('parsed', 0), TJSONObject(mItem).GetValue<Integer>('fromCache', 0),
-          TJSONObject(mItem).GetValue<Integer>('missing', 0),
-          SizeText(TJSONObject(mItem).GetValue<Int64>('cacheBytes', 0) +
-            TJSONObject(mItem).GetValue<Int64>('libraryCacheBytes', 0))])];
-      end;
-    end;
+    Result := FormatFloat('0.0', ABytes / (1024 * 1024), mSettings) + ' MB';
   end;
 end;
 

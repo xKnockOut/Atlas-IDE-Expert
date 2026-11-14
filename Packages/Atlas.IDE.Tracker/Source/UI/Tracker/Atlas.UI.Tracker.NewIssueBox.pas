@@ -49,33 +49,24 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasNewIssueBox.SetValues(const AValues: TArray<string>);
-var
-  mText, mValue: string;
+function TAtlasNewIssueBox.GetChoice: Integer;
 begin
-  FValues := AValues;
-  if not HandleAllocated then
+  if HandleAllocated then
   begin
-    Exit;
-  end;
-  mText := Text;
-  Items.BeginUpdate;
-  try
-    Items.Clear;
-    for mValue in FValues do
-    begin
-      Items.Add(mValue);
-    end;
-  finally
-    Items.EndUpdate;
-  end;
-  if Style = csDropDownList then
-  begin
-    ItemIndex := FChoice;
+    Result := ItemIndex;
   end
   else
   begin
-    Text := mText;
+    Result := FChoice;
+  end;
+end;
+
+procedure TAtlasNewIssueBox.SetChoice(AValue: Integer);
+begin
+  FChoice := AValue;
+  if HandleAllocated then
+  begin
+    ItemIndex := AValue;
   end;
 end;
 
@@ -111,24 +102,33 @@ begin
   inherited DestroyWnd;
 end;
 
-function TAtlasNewIssueBox.GetChoice: Integer;
+procedure TAtlasNewIssueBox.SetValues(const AValues: TArray<string>);
+var
+  mText, mValue: string;
 begin
-  if HandleAllocated then
+  FValues := AValues;
+  if not HandleAllocated then
   begin
-    Result := ItemIndex;
+    Exit;
+  end;
+  mText := Text;
+  Items.BeginUpdate;
+  try
+    Items.Clear;
+    for mValue in FValues do
+    begin
+      Items.Add(mValue);
+    end;
+  finally
+    Items.EndUpdate;
+  end;
+  if Style = csDropDownList then
+  begin
+    ItemIndex := FChoice;
   end
   else
   begin
-    Result := FChoice;
-  end;
-end;
-
-procedure TAtlasNewIssueBox.SetChoice(AValue: Integer);
-begin
-  FChoice := AValue;
-  if HandleAllocated then
-  begin
-    ItemIndex := AValue;
+    Text := mText;
   end;
 end;
 

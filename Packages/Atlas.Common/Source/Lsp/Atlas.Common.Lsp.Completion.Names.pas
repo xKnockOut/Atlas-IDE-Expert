@@ -192,6 +192,8 @@ begin
   Result := WithoutName(Result, OwnNameAt(ARequest, ASite));
 end;
 
+{ TCompletionNames }
+
 class function TCompletionNames.NamingPrefix(const AIndex: ISymbolIndex; AKind: TNamingKind): string;
 var
   mUnits: TArray<TUnitIndex>;

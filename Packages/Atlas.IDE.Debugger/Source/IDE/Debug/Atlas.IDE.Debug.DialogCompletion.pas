@@ -605,165 +605,6 @@ begin
   inherited;
 end;
 
-class procedure TAtlasIdeDebugDialogCompletion.Start(const ASession: TAtlasDialogSessionFunc;
-  const ALog: TProc<string>; const AProvider: TAtlasDialogProviderFactory);
-begin
-  if FInstance = nil then
-  begin
-    FInstance := TAtlasIdeDebugDialogCompletion.Create(ASession, ALog, AProvider);
-  end;
-end;
-
-class procedure TAtlasIdeDebugDialogCompletion.Release;
-var
-  mInstance: TAtlasIdeDebugDialogCompletion;
-begin
-  mInstance := FInstance;
-  FInstance := nil;
-  mInstance.Free;
-end;
-
-class function TAtlasIdeDebugDialogCompletion.Started: Boolean;
-begin
-  Result := FInstance <> nil;
-end;
-
-class function TAtlasIdeDebugDialogCompletion.Enabled: Boolean;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and mSettings.DebugCompletionInDialogs;
-end;
-
-class procedure TAtlasIdeDebugDialogCompletion.ApplySettings;
-begin
-  if FInstance = nil then
-  begin
-    Exit;
-  end;
-  FInstance.FPopup.ManualListWidth := TAtlasIdeSettings.Current.ListWidth;
-  FInstance.FPopup.PanelWidthSetting := TAtlasIdeSettings.Current.PanelWidth;
-  FInstance.FPopup.PanelCollapsed := TAtlasIdeSettings.Current.PanelCollapsed;
-  if not Enabled then
-  begin
-    FInstance.Untrack;
-  end;
-end;
-
-procedure TAtlasIdeDebugDialogCompletion.Say(const AText: string);
-begin
-  if Assigned(FLog) then
-  begin
-    FLog(AText);
-  end;
-end;
-
-procedure TAtlasIdeDebugDialogCompletion.Remember(const AExpression: string);
-begin
-  // Das Fenster „Auswerten“ führt seinen Verlauf selbst.
-  if not FOwnField then
-  begin
-    FHistory.Add(AExpression);
-  end;
-end;
-
-procedure TAtlasIdeDebugDialogCompletion.LogDialog(AForm: TCustomForm);
-var
-  mKey, mLabels: string;
-  mIndex: Integer;
-begin
-  // Ohne Ausdrücke und Pfade: Klasse, Titel und Beschriftungen des Dialogs.
-  mKey := AForm.ClassName + '|' + AForm.Caption;
-  if FLogged.IndexOf(mKey) >= 0 then
-  begin
-    Exit;
-  end;
-  FLogged.Add(mKey);
-  mLabels := '';
-  for mIndex := 0 to AForm.ComponentCount - 1 do
-  begin
-    if AForm.Components[mIndex] is TCustomLabel then
-    begin
-      mLabels := mLabels + ' [' + TLabelAccess(AForm.Components[mIndex]).Caption + ']';
-    end;
-  end;
-  Say(Format('Debug-Dialog erkannt: %s „%s“, Beschriftungen:%s', [AForm.ClassName, AForm.Caption, mLabels]));
-end;
-
-procedure TAtlasIdeDebugDialogCompletion.Track(AFocus: HWND);
-var
-  mControl: TWinControl;
-  mForm: TCustomForm;
-  mDialog: TAtlasDebugDialog;
-  mField: TAtlasDebugField;
-  mStart, mStop: Integer;
-begin
-  mControl := EditControl(AFocus);
-  if mControl = nil then
-  begin
-    Exit;
-  end;
-  mForm := GetParentForm(mControl);
-  if mForm = nil then
-  begin
-    Exit;
-  end;
-  FOwnField := Assigned(OwnField) and OwnField(mControl);
-  if FOwnField then
-  begin
-    // Angedockt ist Form das Hauptfenster der IDE: an Titel und Klasse nicht zu erkennen.
-    mDialog := TAtlasDebugDialog.Evaluate;
-    mField := TAtlasDebugField.Expression;
-  end
-  else
-  begin
-    mDialog := TAtlasDebugDialogs.DialogOf(mForm.ClassName, mForm.Caption);
-    if mDialog = TAtlasDebugDialog.None then
-    begin
-      Exit;
-    end;
-    LogDialog(mForm);
-    mField := TAtlasDebugDialogs.FieldOf(mDialog, LabelOf(mForm, mControl));
-  end;
-  if not TAtlasDebugDialogs.Completes(mField) then
-  begin
-    Exit;
-  end;
-  FEdit := AFocus;
-  FForm := mForm;
-  FDialog := mDialog;
-  FText := WindowText(FEdit);
-  Selection(FEdit, mStart, mStop);
-  FAllSelected := (FText <> '') and (mStart = 0) and (mStop = Length(FText));
-  FCaret := Max(mStop, 0);
-  FWordStart := -1;
-  FHistoryMode := False;
-end;
-
-procedure TAtlasIdeDebugDialogCompletion.Untrack;
-begin
-  if FEdit = 0 then
-  begin
-    Exit;
-  end;
-  FController.Close;
-  // Mit einem Ausdruck verlassen: in den Verlauf.
-  if IsWindow(FEdit) then
-  begin
-    Remember(WindowText(FEdit));
-  end
-  else
-  begin
-    Remember(FText);
-  end;
-  FEdit := 0;
-  FForm := nil;
-  FDialog := TAtlasDebugDialog.None;
-  FOwnField := False;
-  FText := '';
-end;
-
 procedure TAtlasIdeDebugDialogCompletion.Tick(Sender: TObject);
 begin
   TAtlasGuard.Run(TAtlasFeature.Debugger,
@@ -840,6 +681,88 @@ begin
   if not FController.Active and mOpens then
   begin
     Query(False, True);
+  end;
+end;
+
+procedure TAtlasIdeDebugDialogCompletion.Track(AFocus: HWND);
+var
+  mControl: TWinControl;
+  mForm: TCustomForm;
+  mDialog: TAtlasDebugDialog;
+  mField: TAtlasDebugField;
+  mStart, mStop: Integer;
+begin
+  mControl := EditControl(AFocus);
+  if mControl = nil then
+  begin
+    Exit;
+  end;
+  mForm := GetParentForm(mControl);
+  if mForm = nil then
+  begin
+    Exit;
+  end;
+  FOwnField := Assigned(OwnField) and OwnField(mControl);
+  if FOwnField then
+  begin
+    // Angedockt ist Form das Hauptfenster der IDE: an Titel und Klasse nicht zu erkennen.
+    mDialog := TAtlasDebugDialog.Evaluate;
+    mField := TAtlasDebugField.Expression;
+  end
+  else
+  begin
+    mDialog := TAtlasDebugDialogs.DialogOf(mForm.ClassName, mForm.Caption);
+    if mDialog = TAtlasDebugDialog.None then
+    begin
+      Exit;
+    end;
+    LogDialog(mForm);
+    mField := TAtlasDebugDialogs.FieldOf(mDialog, LabelOf(mForm, mControl));
+  end;
+  if not TAtlasDebugDialogs.Completes(mField) then
+  begin
+    Exit;
+  end;
+  FEdit := AFocus;
+  FForm := mForm;
+  FDialog := mDialog;
+  FText := WindowText(FEdit);
+  Selection(FEdit, mStart, mStop);
+  FAllSelected := (FText <> '') and (mStart = 0) and (mStop = Length(FText));
+  FCaret := Max(mStop, 0);
+  FWordStart := -1;
+  FHistoryMode := False;
+end;
+
+procedure TAtlasIdeDebugDialogCompletion.Untrack;
+begin
+  if FEdit = 0 then
+  begin
+    Exit;
+  end;
+  FController.Close;
+  // Mit einem Ausdruck verlassen: in den Verlauf.
+  if IsWindow(FEdit) then
+  begin
+    Remember(WindowText(FEdit));
+  end
+  else
+  begin
+    Remember(FText);
+  end;
+  FEdit := 0;
+  FForm := nil;
+  FDialog := TAtlasDebugDialog.None;
+  FOwnField := False;
+  FText := '';
+end;
+
+procedure TAtlasIdeDebugDialogCompletion.Remember(const AExpression: string);
+begin
+  // Das Fenster „Auswerten“ führt seinen Verlauf selbst.
+  if not FOwnField then
+  begin
+    FHistory.Add(AExpression);
   end;
 end;
 
@@ -970,6 +893,83 @@ begin
     FText := '';
     FCaret := 0;
     Query(True, False);
+  end;
+end;
+
+procedure TAtlasIdeDebugDialogCompletion.Say(const AText: string);
+begin
+  if Assigned(FLog) then
+  begin
+    FLog(AText);
+  end;
+end;
+
+procedure TAtlasIdeDebugDialogCompletion.LogDialog(AForm: TCustomForm);
+var
+  mKey, mLabels: string;
+  mIndex: Integer;
+begin
+  // Ohne Ausdrücke und Pfade: Klasse, Titel und Beschriftungen des Dialogs.
+  mKey := AForm.ClassName + '|' + AForm.Caption;
+  if FLogged.IndexOf(mKey) >= 0 then
+  begin
+    Exit;
+  end;
+  FLogged.Add(mKey);
+  mLabels := '';
+  for mIndex := 0 to AForm.ComponentCount - 1 do
+  begin
+    if AForm.Components[mIndex] is TCustomLabel then
+    begin
+      mLabels := mLabels + ' [' + TLabelAccess(AForm.Components[mIndex]).Caption + ']';
+    end;
+  end;
+  Say(Format('Debug-Dialog erkannt: %s „%s“, Beschriftungen:%s', [AForm.ClassName, AForm.Caption, mLabels]));
+end;
+
+class procedure TAtlasIdeDebugDialogCompletion.Start(const ASession: TAtlasDialogSessionFunc;
+  const ALog: TProc<string>; const AProvider: TAtlasDialogProviderFactory);
+begin
+  if FInstance = nil then
+  begin
+    FInstance := TAtlasIdeDebugDialogCompletion.Create(ASession, ALog, AProvider);
+  end;
+end;
+
+class procedure TAtlasIdeDebugDialogCompletion.Release;
+var
+  mInstance: TAtlasIdeDebugDialogCompletion;
+begin
+  mInstance := FInstance;
+  FInstance := nil;
+  mInstance.Free;
+end;
+
+class function TAtlasIdeDebugDialogCompletion.Started: Boolean;
+begin
+  Result := FInstance <> nil;
+end;
+
+class function TAtlasIdeDebugDialogCompletion.Enabled: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.DebugCompletionInDialogs;
+end;
+
+class procedure TAtlasIdeDebugDialogCompletion.ApplySettings;
+begin
+  if FInstance = nil then
+  begin
+    Exit;
+  end;
+  FInstance.FPopup.ManualListWidth := TAtlasIdeSettings.Current.ListWidth;
+  FInstance.FPopup.PanelWidthSetting := TAtlasIdeSettings.Current.PanelWidth;
+  FInstance.FPopup.PanelCollapsed := TAtlasIdeSettings.Current.PanelCollapsed;
+  if not Enabled then
+  begin
+    FInstance.Untrack;
   end;
 end;
 

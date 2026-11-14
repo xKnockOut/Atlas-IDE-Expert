@@ -61,6 +61,8 @@ uses
   Vcl.Menus,
   Atlas.UI.Settings.ChoiceBox;
 
+{ TAtlasSettingsBindings }
+
 constructor TAtlasSettingsBindings.Create;
 begin
   inherited Create;
@@ -71,54 +73,6 @@ destructor TAtlasSettingsBindings.Destroy;
 begin
   FItems.Free;
   inherited Destroy;
-end;
-
-procedure TAtlasSettingsBindings.Add(const AName: string; AControl: TControl; AKind: TAtlasSettingsBindingKind;
-  const AValues: TArray<string>);
-var
-  mBinding: TAtlasSettingsValueBinding;
-begin
-  mBinding := Default(TAtlasSettingsValueBinding);
-  mBinding.Name := AName;
-  mBinding.Control := AControl;
-  mBinding.Kind := AKind;
-  mBinding.Values := AValues;
-  FItems.Add(mBinding);
-end;
-
-procedure TAtlasSettingsBindings.Clear;
-begin
-  FItems.Clear;
-end;
-
-function TAtlasSettingsBindings.Count: Integer;
-begin
-  Result := FItems.Count;
-end;
-
-function TAtlasSettingsBindings.Item(AIndex: Integer): TAtlasSettingsValueBinding;
-begin
-  Result := FItems[AIndex];
-end;
-
-procedure TAtlasSettingsBindings.Load(const AStore: IAtlasMemorySettingsStore);
-var
-  mBinding: TAtlasSettingsValueBinding;
-begin
-  for mBinding in FItems do
-  begin
-    LoadOne(AStore, mBinding);
-  end;
-end;
-
-procedure TAtlasSettingsBindings.Save(const AStore: IAtlasMemorySettingsStore);
-var
-  mBinding: TAtlasSettingsValueBinding;
-begin
-  for mBinding in FItems do
-  begin
-    SaveOne(AStore, mBinding);
-  end;
 end;
 
 class procedure TAtlasSettingsBindings.LoadOne(const AStore: IAtlasMemorySettingsStore;
@@ -157,6 +111,54 @@ begin
         end;
       end;
   end;
+end;
+
+procedure TAtlasSettingsBindings.Add(const AName: string; AControl: TControl; AKind: TAtlasSettingsBindingKind;
+  const AValues: TArray<string>);
+var
+  mBinding: TAtlasSettingsValueBinding;
+begin
+  mBinding := Default(TAtlasSettingsValueBinding);
+  mBinding.Name := AName;
+  mBinding.Control := AControl;
+  mBinding.Kind := AKind;
+  mBinding.Values := AValues;
+  FItems.Add(mBinding);
+end;
+
+procedure TAtlasSettingsBindings.Load(const AStore: IAtlasMemorySettingsStore);
+var
+  mBinding: TAtlasSettingsValueBinding;
+begin
+  for mBinding in FItems do
+  begin
+    LoadOne(AStore, mBinding);
+  end;
+end;
+
+procedure TAtlasSettingsBindings.Save(const AStore: IAtlasMemorySettingsStore);
+var
+  mBinding: TAtlasSettingsValueBinding;
+begin
+  for mBinding in FItems do
+  begin
+    SaveOne(AStore, mBinding);
+  end;
+end;
+
+procedure TAtlasSettingsBindings.Clear;
+begin
+  FItems.Clear;
+end;
+
+function TAtlasSettingsBindings.Count: Integer;
+begin
+  Result := FItems.Count;
+end;
+
+function TAtlasSettingsBindings.Item(AIndex: Integer): TAtlasSettingsValueBinding;
+begin
+  Result := FItems[AIndex];
 end;
 
 class function TAtlasSettingsBindings.ChoiceOf(const AValue: string; const AValues: array of string): Integer;

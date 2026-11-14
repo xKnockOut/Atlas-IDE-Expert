@@ -126,37 +126,25 @@ begin
   FOrderShown := -1;
 end;
 
-class function TAtlasIdeWhatsNew.FindFolder(const APluginDir: string): string;
-var
-  mCandidate: string;
+procedure TAtlasIdeWhatsNew.Report(const AText: string);
 begin
-  Result := '';
-  if APluginDir = '' then
+  if Assigned(FMessage) then
   begin
-    Exit;
-  end;
-  mCandidate := IncludeTrailingPathDelimiter(APluginDir);
-  if FileExists(mCandidate + TAtlasWhatsNew.cFileName) then
-  begin
-    Exit(mCandidate);
-  end;
-  mCandidate := IncludeTrailingPathDelimiter(ExpandFileName(mCandidate + '..'));
-  if FileExists(mCandidate + TAtlasWhatsNew.cFileName) then
-  begin
-    Result := mCandidate;
+    FMessage(AText);
   end;
 end;
 
-class function TAtlasIdeWhatsNew.SamplePath(const AFolder, ASample: string): string;
+procedure TAtlasIdeWhatsNew.Changed;
 begin
-  Result := '';
-  // Nur Dateien im Installationsordner: whatsnew.json ist Teil der Installation, aber kein Ort für fremde Pfade.
-  if (AFolder = '') or (ASample = '') or (Pos('..', ASample) > 0) or (Pos(':', ASample) > 0) or
-    CharInSet(ASample[1], ['\', '/']) then
-  begin
-    Exit;
-  end;
-  Result := IncludeTrailingPathDelimiter(AFolder) + StringReplace(ASample, '/', PathDelim, [rfReplaceAll]);
+  Refresh;
+  // Auswahl (sichtbar, oben) und Inhalt der Karte.
+  TAtlasWelcomeSections.Default.Changed;
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cNews);
+end;
+
+function TAtlasIdeWhatsNew.Mode: TAtlasWhatsNewMode;
+begin
+  Result := TAtlasWhatsNew.ModeOf(TAtlasIdeSettings.Current.WelcomePageWhatsNew);
 end;
 
 procedure TAtlasIdeWhatsNew.Start;
@@ -209,56 +197,6 @@ begin
   TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.cNews);
 end;
 
-function TAtlasIdeWhatsNew.Mode: TAtlasWhatsNewMode;
-begin
-  Result := TAtlasWhatsNew.ModeOf(TAtlasIdeSettings.Current.WelcomePageWhatsNew);
-end;
-
-function TAtlasIdeWhatsNew.Active: Boolean;
-begin
-  Result := Mode <> TAtlasWhatsNewMode.Off;
-end;
-
-function TAtlasIdeWhatsNew.View: TAtlasWhatsNewView;
-begin
-  if not Active then
-  begin
-    Exit(TAtlasWhatsNewView.Hidden);
-  end;
-  if FManual then
-  begin
-    Exit(FManualView);
-  end;
-  Result := TAtlasWhatsNew.ViewFor(Mode, FVersions, FSeen, FCurrent);
-end;
-
-function TAtlasIdeWhatsNew.Versions: TAtlasWhatsNewVersions;
-begin
-  Result := TAtlasWhatsNew.VersionsFor(View, FVersions, FSeen, FCurrent);
-end;
-
-function TAtlasIdeWhatsNew.OnTop: Boolean;
-begin
-  Result := View = TAtlasWhatsNewView.Unread;
-end;
-
-function TAtlasIdeWhatsNew.Section: TAtlasWelcomeSection;
-var
-  mPosition: Integer;
-begin
-  mPosition := cOrder;
-  if OnTop then
-  begin
-    mPosition := 0;
-  end;
-  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.cNews,
-    TAtlasWelcomeWhatsNewFrame.TitleFor(View, Versions), mPosition, TAtlasWelcomeColumn.Right,
-    function: Boolean
-    begin
-      Result := View <> TAtlasWhatsNewView.Hidden;
-    end);
-end;
-
 procedure TAtlasIdeWhatsNew.Refresh;
 var
   mNext: TAtlasWelcomeSection;
@@ -284,20 +222,49 @@ begin
   Changed;
 end;
 
-procedure TAtlasIdeWhatsNew.Changed;
+function TAtlasIdeWhatsNew.OnTop: Boolean;
 begin
-  Refresh;
-  // Auswahl (sichtbar, oben) und Inhalt der Karte.
-  TAtlasWelcomeSections.Default.Changed;
-  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cNews);
+  Result := View = TAtlasWhatsNewView.Unread;
 end;
 
-procedure TAtlasIdeWhatsNew.Report(const AText: string);
+function TAtlasIdeWhatsNew.Active: Boolean;
 begin
-  if Assigned(FMessage) then
+  Result := Mode <> TAtlasWhatsNewMode.Off;
+end;
+
+function TAtlasIdeWhatsNew.Section: TAtlasWelcomeSection;
+var
+  mPosition: Integer;
+begin
+  mPosition := cOrder;
+  if OnTop then
   begin
-    FMessage(AText);
+    mPosition := 0;
   end;
+  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.cNews,
+    TAtlasWelcomeWhatsNewFrame.TitleFor(View, Versions), mPosition, TAtlasWelcomeColumn.Right,
+    function: Boolean
+    begin
+      Result := View <> TAtlasWhatsNewView.Hidden;
+    end);
+end;
+
+function TAtlasIdeWhatsNew.View: TAtlasWhatsNewView;
+begin
+  if not Active then
+  begin
+    Exit(TAtlasWhatsNewView.Hidden);
+  end;
+  if FManual then
+  begin
+    Exit(FManualView);
+  end;
+  Result := TAtlasWhatsNew.ViewFor(Mode, FVersions, FSeen, FCurrent);
+end;
+
+function TAtlasIdeWhatsNew.Versions: TAtlasWhatsNewVersions;
+begin
+  Result := TAtlasWhatsNew.VersionsFor(View, FVersions, FSeen, FCurrent);
 end;
 
 function TAtlasIdeWhatsNew.SwitchOf(const ASetting: string): TAtlasWhatsNewSwitch;
@@ -439,6 +406,39 @@ begin
       FManualView := AView;
       Changed;
     end);
+end;
+
+class function TAtlasIdeWhatsNew.FindFolder(const APluginDir: string): string;
+var
+  mCandidate: string;
+begin
+  Result := '';
+  if APluginDir = '' then
+  begin
+    Exit;
+  end;
+  mCandidate := IncludeTrailingPathDelimiter(APluginDir);
+  if FileExists(mCandidate + TAtlasWhatsNew.cFileName) then
+  begin
+    Exit(mCandidate);
+  end;
+  mCandidate := IncludeTrailingPathDelimiter(ExpandFileName(mCandidate + '..'));
+  if FileExists(mCandidate + TAtlasWhatsNew.cFileName) then
+  begin
+    Result := mCandidate;
+  end;
+end;
+
+class function TAtlasIdeWhatsNew.SamplePath(const AFolder, ASample: string): string;
+begin
+  Result := '';
+  // Nur Dateien im Installationsordner: whatsnew.json ist Teil der Installation, aber kein Ort für fremde Pfade.
+  if (AFolder = '') or (ASample = '') or (Pos('..', ASample) > 0) or (Pos(':', ASample) > 0) or
+    CharInSet(ASample[1], ['\', '/']) then
+  begin
+    Exit;
+  end;
+  Result := IncludeTrailingPathDelimiter(AFolder) + StringReplace(ASample, '/', PathDelim, [rfReplaceAll]);
 end;
 
 end.

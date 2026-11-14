@@ -52,31 +52,7 @@ implementation
 uses
   System.Math;
 
-class function TAtlasDataFlowTree.ClampDepth(AValue: Integer): Integer;
-begin
-  Result := EnsureRange(AValue, cMinMaxDepth, cMaxMaxDepth);
-end;
-
-class function TAtlasDataFlowTree.ChildPath(const APath: TArray<string>; const AKey: string): TArray<string>;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, Length(APath) + 1);
-  for mIndex := 0 to High(APath) do
-  begin
-    Result[mIndex] := APath[mIndex];
-  end;
-  Result[High(Result)] := AKey;
-end;
-
-class function TAtlasDataFlowTree.FirstPlace(const ANode: TAtlasDataFlowNode): TAtlasDataFlowPlace;
-begin
-  Result := Default(TAtlasDataFlowPlace);
-  if Length(ANode.Places) > 0 then
-  begin
-    Result := ANode.Places[0];
-  end;
-end;
+{ TAtlasDataFlowTree }
 
 class function TAtlasDataFlowTree.Children(const ANode: TAtlasDataFlowNode; ALevel,
   AMaxDepth: Integer): TArray<TAtlasDataFlowChild>;
@@ -144,6 +120,32 @@ begin
     begin
       Result := TAtlasDataFlowOrigin.Open;
     end;
+  end;
+end;
+
+class function TAtlasDataFlowTree.ChildPath(const APath: TArray<string>; const AKey: string): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(APath) + 1);
+  for mIndex := 0 to High(APath) do
+  begin
+    Result[mIndex] := APath[mIndex];
+  end;
+  Result[High(Result)] := AKey;
+end;
+
+class function TAtlasDataFlowTree.ClampDepth(AValue: Integer): Integer;
+begin
+  Result := EnsureRange(AValue, cMinMaxDepth, cMaxMaxDepth);
+end;
+
+class function TAtlasDataFlowTree.FirstPlace(const ANode: TAtlasDataFlowNode): TAtlasDataFlowPlace;
+begin
+  Result := Default(TAtlasDataFlowPlace);
+  if Length(ANode.Places) > 0 then
+  begin
+    Result := ANode.Places[0];
   end;
 end;
 

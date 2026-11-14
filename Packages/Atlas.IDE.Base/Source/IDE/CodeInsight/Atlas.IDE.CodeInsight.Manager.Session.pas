@@ -148,6 +148,8 @@ begin
   Result := cTexts[TAtlasTextLanguage.Current, AId];
 end;
 
+{ TAtlasCodeInsightSession }
+
 constructor TAtlasCodeInsightSession.Create(const AAdapters: TAtlasCodeInsightAdapters);
 begin
   inherited Create(AAdapters);
@@ -170,84 +172,6 @@ begin
   FreeAndNil(FCommandIdle);
   FreeAndNil(FServerCommandsIdle);
   inherited;
-end;
-
-procedure TAtlasCodeInsightSession.StopSession;
-begin
-  // Nur im Hauptthread; verschachtelt (CheckSynchronize beim Warten) nichts tun.
-  if not TAtlasMainThread.IsMain or FStopping then
-  begin
-    Exit;
-  end;
-  FStopping := True;
-  try
-    StopSessionNow;
-  finally
-    FStopping := False;
-  end;
-end;
-
-procedure TAtlasCodeInsightSession.StopSessionNow;
-begin
-  Assert(TAtlasMainThread.IsMain, 'StopSessionNow außerhalb des Hauptthreads');
-  if FEditors <> nil then
-  begin
-    FEditors.BeginStop;
-  end;
-  if FSession <> nil then
-  begin
-    FSession.SetOnProgress(nil);
-  end;
-  if FServer <> nil then
-  begin
-    FServer.Client.Close;
-  end;
-  if FEditors <> nil then
-  begin
-    FEditors.EndStop;
-  end;
-  // Eine Statusabfrage im Hintergrund kehrt nach Close sofort zurück (#591), ebenso ein Befehl (#66).
-  FQueryIdle.WaitFor(5000);
-  // Aufgegebene Zeitlimit-Arbeiter können noch in Prepare bzw. Sync der Sitzung stecken.
-  if not TAtlasTimeLimit.WaitIdle(TAtlasShutdown.cStopMs) then
-  begin
-    Diagnose('Sitzung beendet, während ein Zeitlimit-Arbeiter noch lief');
-  end;
-  FCommandIdle.WaitFor(5000);
-  FServerCommandsIdle.WaitFor(5000);
-  FreeAndNil(FSession);
-  FServer := nil;
-end;
-
-function TAtlasCodeInsightSession.ServerRestarts: Integer;
-begin
-  Result := AtomicCmpExchange(FStarts, 0, 0) - 1;
-  if Result < 0 then
-  begin
-    Result := 0;
-  end;
-end;
-
-function TAtlasCodeInsightSession.RestartServer: Boolean;
-begin
-  Report('Server wird neu gestartet');
-  AllowStart;
-  StopSession;
-  SetPhase(TAtlasServerPhase.Stopped, '', True);
-  Result := EnsureSession;
-end;
-
-procedure TAtlasCodeInsightSession.AllowStart;
-begin
-  if FCrashes.Held then
-  begin
-    TAtlasGuard.Log('Server: Start von Hand nach wiederholtem Absturz');
-  end;
-  FCrashes.Reset;
-end;
-
-procedure TAtlasCodeInsightSession.ServerEnded(const AInfo: TLspCloseInfo);
-begin
 end;
 
 function TAtlasCodeInsightSession.EnsureSession: Boolean;
@@ -408,113 +332,6 @@ begin
   TAtlasServerHandlers.NotifyRestarted(mRestart);
 end;
 
-/// <summary>Ist AFileName ein gespeichertes Delphi-Projekt? Neue, noch namenlose Projekte haben keinen Ordner.
-/// </summary>
-function SavedProject(const AFileName: string): Boolean;
-begin
-  Result := SameText(ExtractFileExt(AFileName), '.dproj') and FileExists(AFileName);
-end;
-
-class function TAtlasCodeInsightSession.GroupProjects: TArray<string>;
-var
-  mModules: IOTAModuleServices;
-  mGroup: IOTAProjectGroup;
-  mActive: string;
-  mIndex: Integer;
-  mFileName: string;
-begin
-  Result := nil;
-  mGroup := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
-  begin
-    mGroup := mModules.MainProjectGroup;
-  end;
-  if mGroup = nil then
-  begin
-    Exit;
-  end;
-  mActive := '';
-  if mGroup.ActiveProject <> nil then
-  begin
-    mActive := mGroup.ActiveProject.FileName;
-  end;
-  if (mActive <> '') and SavedProject(mActive) then
-  begin
-    Result := [mActive];
-  end;
-  for mIndex := 0 to mGroup.ProjectCount - 1 do
-  begin
-    mFileName := mGroup.Projects[mIndex].FileName;
-    if SavedProject(mFileName) and not SameText(mFileName, mActive) then
-    begin
-      Result := Result + [mFileName];
-    end;
-  end;
-end;
-
-procedure TAtlasCodeInsightSession.AcceptNotifications(ASession: TLspSession);
-begin
-  AcceptApplyEdit(ASession);
-  AcceptShowMessage(ASession);
-end;
-
-procedure TAtlasCodeInsightSession.AcceptApplyEdit(ASession: TLspSession);
-var
-  mManager: TAtlasCodeInsightSession;
-begin
-  mManager := Self;
-  ASession.OnApplyEdit :=
-    procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply)
-    begin
-      // Lese-Thread: Open Tools API nur im Hauptthread. Atlas gehört der Eintrag: beim Entladen verworfen
-      //; ohne Antwort gibt die Sitzung die Id frei.
-      TAtlasMainThread.Queue(TAtlasFeature.EditorCommands,
-        procedure
-        var
-          mApplied: Boolean;
-          mReason: string;
-        begin
-          // Manager weg oder neue Sitzung: Die alte Verbindung gibt es nicht mehr, nicht antworten.
-          if not ManagerLive(mManager) or (mManager.FSession <> ASession) then
-          begin
-            Exit;
-          end;
-          mApplied := TAtlasServerHandlers.ApplyEdit(AEdit,
-            procedure(AMessage: string)
-            begin
-              mManager.Diagnose(AMessage);
-            end, mReason);
-          // Genau eine Antwort, auch nach einer Ausnahme.
-          AReply(mApplied, mReason);
-        end);
-    end;
-end;
-
-procedure TAtlasCodeInsightSession.AcceptShowMessage(ASession: TLspSession);
-var
-  mManager: TAtlasCodeInsightSession;
-begin
-  mManager := Self;
-  ASession.OnShowMessage :=
-    procedure(AType: Integer; const AMessage: string)
-    begin
-      // Information und Protokoll gehören ins Diagnoseprotokoll, nicht ins Meldungsfenster.
-      if AType > 2 then
-      begin
-        Exit;
-      end;
-      TAtlasMainThread.Queue(TAtlasFeature.Server,
-        procedure
-        begin
-          if ManagerLive(mManager) and (mManager.FSession = ASession) then
-          begin
-            mManager.Diagnose('window/showMessage: ' + AMessage);
-            TAtlasServerHandlers.ServerMessage(AType, AMessage, mManager.LogActions);
-          end;
-        end);
-    end;
-end;
-
 procedure TAtlasCodeInsightSession.RefreshProjects;
 var
   mProjects: TArray<string>;
@@ -649,6 +466,50 @@ begin
   end;
 end;
 
+/// <summary>Ist AFileName ein gespeichertes Delphi-Projekt? Neue, noch namenlose Projekte haben keinen Ordner.
+/// </summary>
+function SavedProject(const AFileName: string): Boolean;
+begin
+  Result := SameText(ExtractFileExt(AFileName), '.dproj') and FileExists(AFileName);
+end;
+
+class function TAtlasCodeInsightSession.GroupProjects: TArray<string>;
+var
+  mModules: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+  mActive: string;
+  mIndex: Integer;
+  mFileName: string;
+begin
+  Result := nil;
+  mGroup := nil;
+  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
+    mGroup := mModules.MainProjectGroup;
+  end;
+  if mGroup = nil then
+  begin
+    Exit;
+  end;
+  mActive := '';
+  if mGroup.ActiveProject <> nil then
+  begin
+    mActive := mGroup.ActiveProject.FileName;
+  end;
+  if (mActive <> '') and SavedProject(mActive) then
+  begin
+    Result := [mActive];
+  end;
+  for mIndex := 0 to mGroup.ProjectCount - 1 do
+  begin
+    mFileName := mGroup.Projects[mIndex].FileName;
+    if SavedProject(mFileName) and not SameText(mFileName, mActive) then
+    begin
+      Result := Result + [mFileName];
+    end;
+  end;
+end;
+
 procedure TAtlasCodeInsightSession.FlushFileChanges;
 var
   mChanges: TArray<TAtlasFileChange>;
@@ -673,6 +534,120 @@ begin
   end;
 end;
 
+procedure TAtlasCodeInsightSession.StopSession;
+begin
+  // Nur im Hauptthread; verschachtelt (CheckSynchronize beim Warten) nichts tun.
+  if not TAtlasMainThread.IsMain or FStopping then
+  begin
+    Exit;
+  end;
+  FStopping := True;
+  try
+    StopSessionNow;
+  finally
+    FStopping := False;
+  end;
+end;
+
+procedure TAtlasCodeInsightSession.StopSessionNow;
+begin
+  Assert(TAtlasMainThread.IsMain, 'StopSessionNow außerhalb des Hauptthreads');
+  if FEditors <> nil then
+  begin
+    FEditors.BeginStop;
+  end;
+  if FSession <> nil then
+  begin
+    FSession.SetOnProgress(nil);
+  end;
+  if FServer <> nil then
+  begin
+    FServer.Client.Close;
+  end;
+  if FEditors <> nil then
+  begin
+    FEditors.EndStop;
+  end;
+  // Eine Statusabfrage im Hintergrund kehrt nach Close sofort zurück (#591), ebenso ein Befehl (#66).
+  FQueryIdle.WaitFor(5000);
+  // Aufgegebene Zeitlimit-Arbeiter können noch in Prepare bzw. Sync der Sitzung stecken.
+  if not TAtlasTimeLimit.WaitIdle(TAtlasShutdown.cStopMs) then
+  begin
+    Diagnose('Sitzung beendet, während ein Zeitlimit-Arbeiter noch lief');
+  end;
+  FCommandIdle.WaitFor(5000);
+  FServerCommandsIdle.WaitFor(5000);
+  FreeAndNil(FSession);
+  FServer := nil;
+end;
+
+procedure TAtlasCodeInsightSession.AcceptNotifications(ASession: TLspSession);
+begin
+  AcceptApplyEdit(ASession);
+  AcceptShowMessage(ASession);
+end;
+
+procedure TAtlasCodeInsightSession.AcceptApplyEdit(ASession: TLspSession);
+var
+  mManager: TAtlasCodeInsightSession;
+begin
+  mManager := Self;
+  ASession.OnApplyEdit :=
+    procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply)
+    begin
+      // Lese-Thread: Open Tools API nur im Hauptthread. Atlas gehört der Eintrag: beim Entladen verworfen
+      //; ohne Antwort gibt die Sitzung die Id frei.
+      TAtlasMainThread.Queue(TAtlasFeature.EditorCommands,
+        procedure
+        var
+          mApplied: Boolean;
+          mReason: string;
+        begin
+          // Manager weg oder neue Sitzung: Die alte Verbindung gibt es nicht mehr, nicht antworten.
+          if not ManagerLive(mManager) or (mManager.FSession <> ASession) then
+          begin
+            Exit;
+          end;
+          mApplied := TAtlasServerHandlers.ApplyEdit(AEdit,
+            procedure(AMessage: string)
+            begin
+              mManager.Diagnose(AMessage);
+            end, mReason);
+          // Genau eine Antwort, auch nach einer Ausnahme.
+          AReply(mApplied, mReason);
+        end);
+    end;
+end;
+
+procedure TAtlasCodeInsightSession.AcceptShowMessage(ASession: TLspSession);
+var
+  mManager: TAtlasCodeInsightSession;
+begin
+  mManager := Self;
+  ASession.OnShowMessage :=
+    procedure(AType: Integer; const AMessage: string)
+    begin
+      // Information und Protokoll gehören ins Diagnoseprotokoll, nicht ins Meldungsfenster.
+      if AType > 2 then
+      begin
+        Exit;
+      end;
+      TAtlasMainThread.Queue(TAtlasFeature.Server,
+        procedure
+        begin
+          if ManagerLive(mManager) and (mManager.FSession = ASession) then
+          begin
+            mManager.Diagnose('window/showMessage: ' + AMessage);
+            TAtlasServerHandlers.ServerMessage(AType, AMessage, mManager.LogActions);
+          end;
+        end);
+    end;
+end;
+
+procedure TAtlasCodeInsightSession.ServerEnded(const AInfo: TLspCloseInfo);
+begin
+end;
+
 function TAtlasCodeInsightSession.SessionOrNil: TLspSession;
 begin
   Result := nil;
@@ -680,11 +655,6 @@ begin
   begin
     Result := FSession;
   end;
-end;
-
-function TAtlasCodeInsightSession.ActiveSession: TLspSession;
-begin
-  Result := SessionOrNil;
 end;
 
 function TAtlasCodeInsightSession.ServerAvailable: Boolean;
@@ -719,6 +689,38 @@ begin
   Result := TAtlasIdeSettings.Current.Enabled and not TAtlasGuard.Disabled(TAtlasFeature.Completion) and
     ((mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.inc')) and
     ServerAvailable;
+end;
+
+function TAtlasCodeInsightSession.ActiveSession: TLspSession;
+begin
+  Result := SessionOrNil;
+end;
+
+function TAtlasCodeInsightSession.RestartServer: Boolean;
+begin
+  Report('Server wird neu gestartet');
+  AllowStart;
+  StopSession;
+  SetPhase(TAtlasServerPhase.Stopped, '', True);
+  Result := EnsureSession;
+end;
+
+procedure TAtlasCodeInsightSession.AllowStart;
+begin
+  if FCrashes.Held then
+  begin
+    TAtlasGuard.Log('Server: Start von Hand nach wiederholtem Absturz');
+  end;
+  FCrashes.Reset;
+end;
+
+function TAtlasCodeInsightSession.ServerRestarts: Integer;
+begin
+  Result := AtomicCmpExchange(FStarts, 0, 0) - 1;
+  if Result < 0 then
+  begin
+    Result := 0;
+  end;
 end;
 
 initialization

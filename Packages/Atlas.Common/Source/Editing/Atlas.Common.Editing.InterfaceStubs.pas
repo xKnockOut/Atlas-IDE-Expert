@@ -72,6 +72,8 @@ uses
   System.Math,
   System.RegularExpressions;
 
+{ TInterfaceStubs }
+
 class function TInterfaceStubs.Split(const ADeclaration: string; out AIsClass: Boolean; out AKind, AHead,
   ADirectives: string): Boolean;
 var

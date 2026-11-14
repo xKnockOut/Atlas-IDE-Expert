@@ -54,6 +54,32 @@ const
   cTexts: array[TCompileSetupText] of TAtlasText = (
     (De: 'Kein Ordner mit Projekt geöffnet'; En: 'No folder with a project open'));
 
+{ TShellCompileSetup }
+
+class function TShellCompileSetup.NewHost(const AServices: TShellCompileSetupServices): TShellCompileHost;
+var
+  mServices: TShellCompileServices;
+  mLogger: ILogger;
+  mWorkspaces: TShellCompileWorkspacesFunc;
+begin
+  mLogger := AServices.Logger;
+  mWorkspaces := AServices.Workspaces;
+  mServices := Default(TShellCompileServices);
+  // Starter Edition ohne dcc (#261): Ausgabe je Installation erkennen und merken.
+  mServices.Editions := TShellCompilerEditions.Create(AServices.Process, mLogger, TShellCompilerEditions.DefaultFile);
+  mServices.Logger := mLogger;
+  mServices.Transport := AServices.Transport;
+  mServices.Process := AServices.Process;
+  mServices.Progress := TLspWorkDoneProgress.Create(AServices.Transport, 'atlas-compile');
+  mServices.JobFor :=
+    function(const AFileName: string; out AJob: TShellCompileJob; out AError: string): Boolean
+    begin
+      Result := JobFor(mWorkspaces(), AFileName, AJob, AError);
+    end;
+  mServices.Publish := AServices.Publish;
+  Result := TShellCompileHost.Create(mServices);
+end;
+
 class function TShellCompileSetup.JobFor(AWorkspaces: TShellWorkspaceRegistry; const AFileName: string;
   out AJob: TShellCompileJob; out AError: string): Boolean;
 var
@@ -81,30 +107,6 @@ begin
     System.TMonitor.Exit(AWorkspaces.Lock);
   end;
   Result := AError = '';
-end;
-
-class function TShellCompileSetup.NewHost(const AServices: TShellCompileSetupServices): TShellCompileHost;
-var
-  mServices: TShellCompileServices;
-  mLogger: ILogger;
-  mWorkspaces: TShellCompileWorkspacesFunc;
-begin
-  mLogger := AServices.Logger;
-  mWorkspaces := AServices.Workspaces;
-  mServices := Default(TShellCompileServices);
-  // Starter Edition ohne dcc (#261): Ausgabe je Installation erkennen und merken.
-  mServices.Editions := TShellCompilerEditions.Create(AServices.Process, mLogger, TShellCompilerEditions.DefaultFile);
-  mServices.Logger := mLogger;
-  mServices.Transport := AServices.Transport;
-  mServices.Process := AServices.Process;
-  mServices.Progress := TLspWorkDoneProgress.Create(AServices.Transport, 'atlas-compile');
-  mServices.JobFor :=
-    function(const AFileName: string; out AJob: TShellCompileJob; out AError: string): Boolean
-    begin
-      Result := JobFor(mWorkspaces(), AFileName, AJob, AError);
-    end;
-  mServices.Publish := AServices.Publish;
-  Result := TShellCompileHost.Create(mServices);
 end;
 
 initialization

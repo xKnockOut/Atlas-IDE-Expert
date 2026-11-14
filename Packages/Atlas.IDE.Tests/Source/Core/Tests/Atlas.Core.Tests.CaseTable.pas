@@ -223,6 +223,22 @@ begin
   Result.Cells := StringsOf(AObject, 'cells');
 end;
 
+{ TAtlasTestCaseTables }
+
+class function TAtlasTestCaseTables.RequestJson(const AUri: string; ALine: Integer): string;
+var
+  mArguments: TJSONArray;
+begin
+  mArguments := TJSONArray.Create;
+  try
+    mArguments.Add(AUri);
+    mArguments.Add(ALine);
+    Result := mArguments.ToJSON;
+  finally
+    mArguments.Free;
+  end;
+end;
+
 class function TAtlasTestCaseTables.Parse(const AJson: string; out ATable: TAtlasTestCaseTable): Boolean;
 var
   mValue: TJSONValue;
@@ -256,6 +272,8 @@ begin
   end;
 end;
 
+{ Anfragen }
+
 class function TAtlasTestCaseTables.ParseProposal(const AJson: string; out AProposal: TAtlasTestCaseProposal): Boolean;
 var
   mValue, mEdit: TJSONValue;
@@ -283,22 +301,6 @@ begin
     AProposal.Reason := TJsonRead.Text(mObject, 'editReason');
   finally
     mValue.Free;
-  end;
-end;
-
-{ Anfragen }
-
-class function TAtlasTestCaseTables.RequestJson(const AUri: string; ALine: Integer): string;
-var
-  mArguments: TJSONArray;
-begin
-  mArguments := TJSONArray.Create;
-  try
-    mArguments.Add(AUri);
-    mArguments.Add(ALine);
-    Result := mArguments.ToJSON;
-  finally
-    mArguments.Free;
   end;
 end;
 

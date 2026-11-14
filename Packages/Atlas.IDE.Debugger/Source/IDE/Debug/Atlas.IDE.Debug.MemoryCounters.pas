@@ -105,11 +105,6 @@ begin
   FProcessId := 0;
 end;
 
-function TAtlasIdeMemoryCounters.IsOpen: Boolean;
-begin
-  Result := FProcess <> 0;
-end;
-
 function TAtlasIdeMemoryCounters.Read(out AValues: TAtlasMemoryValues): Boolean;
 var
   mCounters: TProcessMemoryCountersEx;
@@ -143,6 +138,11 @@ begin
   AValues[TAtlasMemorySeries.GdiObjects] := AtlasGetGuiResources(FProcess, cGrGdiObjects);
   AValues[TAtlasMemorySeries.UserObjects] := AtlasGetGuiResources(FProcess, cGrUserObjects);
   Result := True;
+end;
+
+function TAtlasIdeMemoryCounters.IsOpen: Boolean;
+begin
+  Result := FProcess <> 0;
 end;
 
 end.

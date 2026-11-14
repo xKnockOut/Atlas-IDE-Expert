@@ -115,6 +115,8 @@ begin
     end;
 end;
 
+{ TShellCommandArea }
+
 constructor TShellCommandArea.Create(ACore: TShellCore; ACode: TShellCodeArea; AAnalysis: TShellAnalysisArea;
   AEditing: TShellEditing; const AServices: TShellCommandAreaServices);
 begin

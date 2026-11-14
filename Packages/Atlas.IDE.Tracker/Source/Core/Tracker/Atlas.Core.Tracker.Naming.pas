@@ -118,6 +118,8 @@ begin
   Result := Trim(Copy(Result, mColon + 2, MaxInt));
 end;
 
+{ TAtlasTrackerNaming }
+
 class function TAtlasTrackerNaming.ShortTitle(const ATitle: string): string;
 var
   mText, mWord: string;

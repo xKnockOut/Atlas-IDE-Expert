@@ -188,38 +188,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasTrackerWorkingHeads.Stop;
-begin
-  FStopped := True;
-  FChanged := nil;
-end;
-
-procedure TAtlasTrackerWorkingHeads.Forget(const AFolder: string);
-begin
-  FHeads.Remove(TAtlasProjectSummaries.NormalizedPath(AFolder));
-end;
-
-function TAtlasTrackerWorkingHeads.HeadOf(const AFolder: string; out AHead: TAtlasTrackerWorkingHead): Boolean;
-var
-  mKey: string;
-  mKnown: Boolean;
-begin
-  AHead := Default(TAtlasTrackerWorkingHead);
-  mKey := TAtlasProjectSummaries.NormalizedPath(AFolder);
-  if mKey = '' then
-  begin
-    Exit(False);
-  end;
-  mKnown := FHeads.TryGetValue(mKey, AHead);
-  Result := mKnown and (AHead.Tick > 0);
-  if FStopped or (mKnown and (AHead.Querying or
-    (GetTickCount64 - AHead.Tick < TAtlasIdeTrackerWorkingCopies.cHeadCacheMs))) then
-  begin
-    Exit;
-  end;
-  Query(mKey, AFolder);
-end;
-
 procedure TAtlasTrackerWorkingHeads.Query(const AKey, AFolder: string);
 var
   mHead, mOld: TAtlasTrackerWorkingHead;
@@ -285,6 +253,38 @@ begin
   begin
     FChanged();
   end;
+end;
+
+function TAtlasTrackerWorkingHeads.HeadOf(const AFolder: string; out AHead: TAtlasTrackerWorkingHead): Boolean;
+var
+  mKey: string;
+  mKnown: Boolean;
+begin
+  AHead := Default(TAtlasTrackerWorkingHead);
+  mKey := TAtlasProjectSummaries.NormalizedPath(AFolder);
+  if mKey = '' then
+  begin
+    Exit(False);
+  end;
+  mKnown := FHeads.TryGetValue(mKey, AHead);
+  Result := mKnown and (AHead.Tick > 0);
+  if FStopped or (mKnown and (AHead.Querying or
+    (GetTickCount64 - AHead.Tick < TAtlasIdeTrackerWorkingCopies.cHeadCacheMs))) then
+  begin
+    Exit;
+  end;
+  Query(mKey, AFolder);
+end;
+
+procedure TAtlasTrackerWorkingHeads.Forget(const AFolder: string);
+begin
+  FHeads.Remove(TAtlasProjectSummaries.NormalizedPath(AFolder));
+end;
+
+procedure TAtlasTrackerWorkingHeads.Stop;
+begin
+  FStopped := True;
+  FChanged := nil;
 end;
 
 end.

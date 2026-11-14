@@ -14,6 +14,10 @@
 //     eine solche Klammer nur zur Hälfte enthält,
 //   - der eine Zeile mit anderem Code teilt.
 //
+// Ein Rumpf wandert außerdem nie über eine Deklaration des implementation-Teils
+// (Typ, Konstante, Variable, freie Routine), deren Namen er nennt: Die Unit
+// übersetzt sonst nicht mehr. Er rückt dann nur so weit vor, wie es geht.
+//
 // PlaceNew setzt nur neue Rümpfe an ihre Stelle: hinter den Rumpf der
 // zuletzt davor deklarierten Methode desselben Typs, sonst vor den der
 // nächsten, sonst hinter den letzten Rumpf eines früheren bzw. vor den ersten
@@ -152,6 +156,9 @@ type
     Group, Sub: Integer;
     /// <summary>Erste Zeile (mit Kommentaren darüber), Kopfzeile, letzte Zeile.</summary>
     First, Header, Last: Integer;
+    /// <summary>Letzte Zeile über dem Rumpf, in der etwas steht, das er braucht (Typ, Konstante, Variable oder
+    /// freie Routine des implementation-Teils); -1 ohne. Höher als diese Zeile darf er nicht wandern.</summary>
+    Needs: Integer;
     Fixed, New: Boolean;
     Reason: TMethodStayReason;
   end;
@@ -323,22 +330,7 @@ begin
   end;
 end;
 
-procedure TLineMarks.MarkLines(const AToken: TPascalToken);
-var
-  mLine: Integer;
-begin
-  for mLine := AToken.StartPos.Line to AToken.EndPos.Line do
-  begin
-    if AToken.Kind = TPascalTokenKind.Comment then
-    begin
-      Comment[mLine] := True;
-    end
-    else
-    begin
-      Code[mLine] := True;
-    end;
-  end;
-end;
+{ TLineMarks }
 
 procedure TLineMarks.Build(ATree: TSyntaxTree; ALineCount: Integer; const AIgnore: TArray<Boolean>);
 var
@@ -369,6 +361,23 @@ begin
   begin
     CondAt[mLine] := CondAt[mLine - 1] + mCondDelta[mLine - 1];
     RegionAt[mLine] := RegionAt[mLine - 1] + mRegionDelta[mLine - 1];
+  end;
+end;
+
+procedure TLineMarks.MarkLines(const AToken: TPascalToken);
+var
+  mLine: Integer;
+begin
+  for mLine := AToken.StartPos.Line to AToken.EndPos.Line do
+  begin
+    if AToken.Kind = TPascalTokenKind.Comment then
+    begin
+      Comment[mLine] := True;
+    end
+    else
+    begin
+      Code[mLine] := True;
+    end;
   end;
 end;
 
@@ -477,6 +486,108 @@ begin
     AMethod.Declaration.Name);
 end;
 
+/// <summary>Ist ASymbol eine Deklaration des implementation-Teils, die ein Rumpf ohne Qualifizierung nennt
+/// (Typ, Konstante, Variable, freie Routine, Aufzählungswert)?</summary>
+function IsLocalDeclaration(const ASymbol: TIndexSymbol): Boolean;
+begin
+  Result := not ASymbol.InInterface and ((ASymbol.Container = '') or (ASymbol.Kind = TIndexSymbolKind.EnumMember))
+    and not (ASymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Field,
+    TIndexSymbolKind.Property_]);
+end;
+
+/// <summary>Zeilen je Name (klein geschrieben), in denen der implementation-Teil von AUnit ihn deklariert. Alle
+/// zählen: Welche ein Rumpf meint, entscheidet erst der Compiler (gleichnamige Aufzählungswerte, forward).
+/// </summary>
+function LocalDeclarationLines(const AUnit: TUnitIndex): TObjectDictionary<string, TList<Integer>>;
+var
+  mSymbol: TIndexSymbol;
+  mLines: TList<Integer>;
+begin
+  Result := TObjectDictionary<string, TList<Integer>>.Create([doOwnsValues]);
+  for mSymbol in AUnit.Symbols do
+  begin
+    if IsLocalDeclaration(mSymbol) then
+    begin
+      if not Result.TryGetValue(LowerCase(mSymbol.Name), mLines) then
+      begin
+        mLines := TList<Integer>.Create;
+        Result.Add(LowerCase(mSymbol.Name), mLines);
+      end;
+      mLines.Add(mSymbol.SelectionRange.StartPos.Line);
+    end;
+  end;
+end;
+
+/// <summary>Letzte Zeile aus ALines vor ABefore; sonst ACurrent.</summary>
+function LatestBefore(ALines: TList<Integer>; ABefore, ACurrent: Integer): Integer;
+var
+  mLine: Integer;
+begin
+  Result := ACurrent;
+  for mLine in ALines do
+  begin
+    if (mLine < ABefore) and (mLine > Result) then
+    begin
+      Result := mLine;
+    end;
+  end;
+end;
+
+/// <summary>Rumpf je Zeile (Index in ABlocks, -1 außerhalb).</summary>
+function BlockAtLines(const ABlocks: TBlocks; ALineCount: Integer): TArray<Integer>;
+var
+  mIndex, mLine: Integer;
+begin
+  SetLength(Result, ALineCount);
+  for mLine := 0 to ALineCount - 1 do
+  begin
+    Result[mLine] := -1;
+  end;
+  for mIndex := 0 to High(ABlocks) do
+  begin
+    for mLine := Max(ABlocks[mIndex].First, 0) to Min(ABlocks[mIndex].Last, ALineCount - 1) do
+    begin
+      Result[mLine] := mIndex;
+    end;
+  end;
+end;
+
+/// <summary>Setzt Needs der Rümpfe ABlocks: Ein Rumpf, der einen Typ, eine Konstante oder eine freie Routine des
+/// implementation-Teils nennt, darf nicht über deren Deklaration wandern (sonst übersetzt die Unit nicht mehr).
+/// </summary>
+procedure MarkNeeds(ATree: TSyntaxTree; const AUnit: TUnitIndex; var ABlocks: TBlocks; ALineCount: Integer);
+var
+  mDeclared: TObjectDictionary<string, TList<Integer>>;
+  mLines: TList<Integer>;
+  mBlockAt: TArray<Integer>;
+  mToken: TPascalToken;
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(ABlocks) do
+  begin
+    ABlocks[mIndex].Needs := -1;
+  end;
+  mBlockAt := BlockAtLines(ABlocks, ALineCount);
+  mDeclared := LocalDeclarationLines(AUnit);
+  try
+    for mToken in ATree.Tokens do
+    begin
+      if (mToken.Kind <> TPascalTokenKind.Identifier) or (mToken.StartPos.Line < 0) or
+        (mToken.StartPos.Line >= ALineCount) then
+      begin
+        Continue;
+      end;
+      mIndex := mBlockAt[mToken.StartPos.Line];
+      if (mIndex >= 0) and mDeclared.TryGetValue(LowerCase(mToken.Text), mLines) then
+      begin
+        ABlocks[mIndex].Needs := LatestBefore(mLines, ABlocks[mIndex].First, ABlocks[mIndex].Needs);
+      end;
+    end;
+  finally
+    mDeclared.Free;
+  end;
+end;
+
 /// <summary>Die Rümpfe deklarierter Methoden mit ihrem Bereich und Rang; markiert, was stehen bleiben muss.
 /// Direktiven in Zeilen mit AIgnore halten nichts fest.</summary>
 function CollectBlocks(ATree: TSyntaxTree; const AText: string; const ALines: TArray<string>;
@@ -505,6 +616,7 @@ begin
   end;
   Result := ByLine(Result);
   FixSharedLines(Result);
+  MarkNeeds(ATree, mUnit, Result, Length(ALines));
 end;
 
 type
@@ -541,6 +653,8 @@ type
     RegionEnd: Boolean;
     Lines: TArray<string>;
   end;
+
+{ TOrderText }
 
 procedure TOrderText.Add(const ALine: string; AOrigin: Integer);
 begin
@@ -932,6 +1046,18 @@ end;
 
 { TMethodOrder }
 
+class function TMethodOrder.Arrange(ATree: TSyntaxTree; const AText: string;
+  APlacement: TMethodPlacement): TMethodOrderResult;
+begin
+  Result := Arrange(ATree, AText, TMethodOrderOptions.Create(APlacement));
+end;
+
+class function TMethodOrder.PlaceNew(ATree: TSyntaxTree; const AText, ABefore: string;
+  APlacement: TMethodPlacement): TMethodOrderResult;
+begin
+  Result := PlaceNew(ATree, AText, ABefore, TMethodOrderOptions.Create(APlacement));
+end;
+
 class function TMethodOrder.PlacementName(APlacement: TMethodPlacement): string;
 begin
   case APlacement of
@@ -943,40 +1069,6 @@ begin
       Result := 'grouped';
   else
     Result := 'declaration';
-  end;
-end;
-
-class function TMethodOrder.PlacementOf(const AName: string): TMethodPlacement;
-begin
-  if SameText(AName, 'off') then
-  begin
-    Result := TMethodPlacement.Off;
-  end
-  else if SameText(AName, 'alphabetical') then
-  begin
-    Result := TMethodPlacement.Alphabetical;
-  end
-  else if (AName = '') or SameText(AName, 'grouped') then
-  begin
-    Result := TMethodPlacement.Grouped;
-  end
-  else
-  begin
-    Result := TMethodPlacement.Declaration;
-  end;
-end;
-
-class function TMethodOrder.ReasonName(AReason: TMethodStayReason): string;
-begin
-  case AReason of
-    TMethodStayReason.Region:
-      Result := 'region';
-    TMethodStayReason.Conditional:
-      Result := 'ifdef';
-    TMethodStayReason.SharedLine:
-      Result := 'line';
-  else
-    Result := '';
   end;
 end;
 
@@ -1051,7 +1143,30 @@ begin
   end;
 end;
 
-/// <summary>Ordnet die verschiebbaren Rümpfe aus ABlocks nach AOptions; die Kommentare AHeaders gehen mit.</summary>
+/// <summary>Verteilt die geordneten Rümpfe ASorted auf die Plätze ASlots: Jeder Platz bekommt den ersten noch
+/// freien Rumpf, der dort schon alles sieht, was er braucht (Needs). Der Rumpf, der den Platz vorher hatte,
+/// erfüllt das immer; ohne Needs entsteht genau ASorted.</summary>
+function Placeable(const ASlots, ASorted: TBlocks): TBlocks;
+var
+  mTaken: TArray<Boolean>;
+  mSlot, mIndex: Integer;
+begin
+  SetLength(Result, Length(ASlots));
+  SetLength(mTaken, Length(ASorted));
+  for mSlot := 0 to High(ASlots) do
+  begin
+    mIndex := 0;
+    while mTaken[mIndex] or (ASorted[mIndex].Needs >= ASlots[mSlot].First) do
+    begin
+      Inc(mIndex);
+    end;
+    mTaken[mIndex] := True;
+    Result[mSlot] := ASorted[mIndex];
+  end;
+end;
+
+/// <summary>Ordnet die verschiebbaren Rümpfe aus ABlocks nach AOptions; die Kommentare AHeaders gehen mit. Ein
+/// Rumpf wandert nicht über eine Deklaration, die er braucht.</summary>
 function ArrangeBlocks(const ALines: TArray<string>; const ABlocks: TBlocks; const AHeaders: THeaders;
   const AOptions: TMethodOrderOptions; const ALineBreak: string): TMethodOrderResult;
 var
@@ -1061,7 +1176,7 @@ var
 begin
   Result := Default(TMethodOrderResult);
   mSlots := MovableOf(ABlocks);
-  mTarget := Sorted(mSlots, AOptions);
+  mTarget := Placeable(mSlots, Sorted(mSlots, AOptions));
   // Jeder Platz bekommt den Rumpf, der in der Ordnung an seiner Stelle steht.
   mText := Rearranged(ALines, ABlocks, mSlots, mTarget, AHeaders);
   if LinesEdit(ALines, mText.Lines, ALineBreak, mEdit) then
@@ -1069,12 +1184,6 @@ begin
     Result.Edits := [mEdit];
     Result.Moves := ArrangeMoves(ABlocks, mSlots, mTarget, mText);
   end;
-end;
-
-class function TMethodOrder.Arrange(ATree: TSyntaxTree; const AText: string;
-  APlacement: TMethodPlacement): TMethodOrderResult;
-begin
-  Result := Arrange(ATree, AText, TMethodOrderOptions.Create(APlacement));
 end;
 
 class function TMethodOrder.Arrange(ATree: TSyntaxTree; const AText: string;
@@ -1092,6 +1201,26 @@ begin
   mLines := TTextLines.SplitLines(AText);
   mBlocks := PreparedBlocks(ATree, AText, mLines, mHeaders);
   Result := ArrangeBlocks(mLines, mBlocks, mHeaders, AOptions, TTextLines.LineBreakOf(AText));
+end;
+
+class function TMethodOrder.PlacementOf(const AName: string): TMethodPlacement;
+begin
+  if SameText(AName, 'off') then
+  begin
+    Result := TMethodPlacement.Off;
+  end
+  else if SameText(AName, 'alphabetical') then
+  begin
+    Result := TMethodPlacement.Alphabetical;
+  end
+  else if (AName = '') or SameText(AName, 'grouped') then
+  begin
+    Result := TMethodPlacement.Grouped;
+  end
+  else
+  begin
+    Result := TMethodPlacement.Declaration;
+  end;
 end;
 
 type
@@ -1143,19 +1272,7 @@ begin
   Result := (A.Block = B.Block) and (A.After = B.After);
 end;
 
-function TNewPlacement.IsFresh(const ABlock: TBlock; AKnown: TDictionary<string, Boolean>): Boolean;
-var
-  mLine: Integer;
-begin
-  Result := not AKnown.ContainsKey(Trim(Lines[ABlock.Header])) and StartsText('end', Trim(Lines[ABlock.Last]));
-  for mLine := ABlock.Header + 1 to ABlock.Last do
-  begin
-    if Result and IsRoutineHeader(Lines[mLine]) and AKnown.ContainsKey(Trim(Lines[mLine])) then
-    begin
-      Result := False;
-    end;
-  end;
-end;
+{ TNewPlacement }
 
 procedure TNewPlacement.Split(const ABlocks: TBlocks; const ABefore: string);
 var
@@ -1185,6 +1302,20 @@ begin
     end;
   finally
     mKnown.Free;
+  end;
+end;
+
+function TNewPlacement.IsFresh(const ABlock: TBlock; AKnown: TDictionary<string, Boolean>): Boolean;
+var
+  mLine: Integer;
+begin
+  Result := not AKnown.ContainsKey(Trim(Lines[ABlock.Header])) and StartsText('end', Trim(Lines[ABlock.Last]));
+  for mLine := ABlock.Header + 1 to ABlock.Last do
+  begin
+    if Result and IsRoutineHeader(Lines[mLine]) and AKnown.ContainsKey(Trim(Lines[mLine])) then
+    begin
+      Result := False;
+    end;
   end;
 end;
 
@@ -1633,6 +1764,21 @@ type
     procedure AddComment(var AReview: TMethodTypeReview);
   end;
 
+{ TOrderReview }
+
+function TOrderReview.ReviewOf(const ATypeName: string): TMethodTypeReview;
+var
+  mFirst, mLast: Integer;
+begin
+  Result := Default(TMethodTypeReview);
+  Result.TypeName := ATypeName;
+  TypeRange(Blocks, ATypeName, mFirst, mLast);
+  Result.NameRange := NameRangeOf(Lines, Blocks[mFirst], ATypeName);
+  Result.OrderEdits := ArrangeBlocks(Lines, MovableOnly(Blocks, ATypeName, True), HeadersOf(Headers, ATypeName),
+    Options, LineBreak).Edits;
+  AddComment(Result);
+end;
+
 procedure TOrderReview.AddComment(var AReview: TMethodTypeReview);
 var
   mHeader: THeader;
@@ -1648,59 +1794,6 @@ begin
   AReview.CommentText := CommentTextOf(mHeader);
   AReview.CommentEdits := ArrangeBlocks(Lines, MovableOnly(Blocks, AReview.TypeName, False),
     TArray<THeader>.Create(mHeader), Options, LineBreak).Edits;
-end;
-
-function TOrderReview.ReviewOf(const ATypeName: string): TMethodTypeReview;
-var
-  mFirst, mLast: Integer;
-begin
-  Result := Default(TMethodTypeReview);
-  Result.TypeName := ATypeName;
-  TypeRange(Blocks, ATypeName, mFirst, mLast);
-  Result.NameRange := NameRangeOf(Lines, Blocks[mFirst], ATypeName);
-  Result.OrderEdits := ArrangeBlocks(Lines, MovableOnly(Blocks, ATypeName, True), HeadersOf(Headers, ATypeName),
-    Options, LineBreak).Edits;
-  AddComment(Result);
-end;
-
-class function TMethodOrder.Review(ATree: TSyntaxTree; const AText: string;
-  const AOptions: TMethodOrderOptions): TArray<TMethodTypeReview>;
-var
-  mReview: TOrderReview;
-  mDone: TDictionary<string, Boolean>;
-  mBlock: TBlock;
-begin
-  Result := nil;
-  if (ATree = nil) or (AOptions.Placement = TMethodPlacement.Off) then
-  begin
-    Exit;
-  end;
-  mReview := Default(TOrderReview);
-  mReview.Options := AOptions;
-  mReview.Lines := TTextLines.SplitLines(AText);
-  mReview.LineBreak := TTextLines.LineBreakOf(AText);
-  mReview.Blocks := PreparedBlocks(ATree, AText, mReview.Lines, mReview.Headers);
-  mReview.UnitIndex := TIndexExtractor.Extract(ATree, '');
-  mDone := TDictionary<string, Boolean>.Create;
-  try
-    for mBlock in mReview.Blocks do
-    begin
-      if mDone.ContainsKey(LowerCase(mBlock.TypeName)) then
-      begin
-        Continue;
-      end;
-      mDone.Add(LowerCase(mBlock.TypeName), True);
-      Result := Result + [mReview.ReviewOf(mBlock.TypeName)];
-    end;
-  finally
-    mDone.Free;
-  end;
-end;
-
-class function TMethodOrder.PlaceNew(ATree: TSyntaxTree; const AText, ABefore: string;
-  APlacement: TMethodPlacement): TMethodOrderResult;
-begin
-  Result := PlaceNew(ATree, AText, ABefore, TMethodOrderOptions.Create(APlacement));
 end;
 
 class function TMethodOrder.PlaceNew(ATree: TSyntaxTree; const AText, ABefore: string;
@@ -1739,6 +1832,54 @@ begin
   begin
     Result.Edits := [mEdit];
     Result.Moves := mPlacement.Moves(mText.Lines);
+  end;
+end;
+
+class function TMethodOrder.Review(ATree: TSyntaxTree; const AText: string;
+  const AOptions: TMethodOrderOptions): TArray<TMethodTypeReview>;
+var
+  mReview: TOrderReview;
+  mDone: TDictionary<string, Boolean>;
+  mBlock: TBlock;
+begin
+  Result := nil;
+  if (ATree = nil) or (AOptions.Placement = TMethodPlacement.Off) then
+  begin
+    Exit;
+  end;
+  mReview := Default(TOrderReview);
+  mReview.Options := AOptions;
+  mReview.Lines := TTextLines.SplitLines(AText);
+  mReview.LineBreak := TTextLines.LineBreakOf(AText);
+  mReview.Blocks := PreparedBlocks(ATree, AText, mReview.Lines, mReview.Headers);
+  mReview.UnitIndex := TIndexExtractor.Extract(ATree, '');
+  mDone := TDictionary<string, Boolean>.Create;
+  try
+    for mBlock in mReview.Blocks do
+    begin
+      if mDone.ContainsKey(LowerCase(mBlock.TypeName)) then
+      begin
+        Continue;
+      end;
+      mDone.Add(LowerCase(mBlock.TypeName), True);
+      Result := Result + [mReview.ReviewOf(mBlock.TypeName)];
+    end;
+  finally
+    mDone.Free;
+  end;
+end;
+
+class function TMethodOrder.ReasonName(AReason: TMethodStayReason): string;
+begin
+  case AReason of
+    TMethodStayReason.Region:
+      Result := 'region';
+    TMethodStayReason.Conditional:
+      Result := 'ifdef';
+    TMethodStayReason.SharedLine:
+      Result := 'line';
+  else
+    Result := '';
   end;
 end;
 

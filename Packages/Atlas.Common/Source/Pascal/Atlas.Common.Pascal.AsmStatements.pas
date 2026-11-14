@@ -255,12 +255,6 @@ begin
   FUncertain := False;
 end;
 
-function TAsmSplitter.Belongs(AIndex: Integer): Boolean;
-begin
-  Result := (FTokens[AIndex].Kind <> TPascalTokenKind.Directive) and
-    TConditionalBranches.Implies(TConditionalBranches.PathAt(FPaths, AIndex), FAsmPath);
-end;
-
 procedure TAsmSplitter.VisitComment(const AToken: TPascalToken);
 begin
   if (FCode.Count > 0) and (AToken.StartPos.Line <= FLastLine) and not AToken.Text.StartsWith('//') then
@@ -300,6 +294,12 @@ begin
     FUncertain := True;
   end;
   FCode.Add(AIndex);
+end;
+
+function TAsmSplitter.Belongs(AIndex: Integer): Boolean;
+begin
+  Result := (FTokens[AIndex].Kind <> TPascalTokenKind.Directive) and
+    TConditionalBranches.Implies(TConditionalBranches.PathAt(FPaths, AIndex), FAsmPath);
 end;
 
 procedure TAsmSplitter.Visit(AIndex: Integer);

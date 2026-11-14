@@ -632,18 +632,6 @@ begin
   Result := IncludeTrailingPathDelimiter(AFolder) + TAtlasProjectSummaries.KeyOf(AProject) + '.json';
 end;
 
-class function TAtlasNotes.FormatOf(const AJson: string): Integer;
-var
-  mRoot: TJSONObject;
-begin
-  mRoot := TJsonRead.ParseObject(AJson);
-  try
-    Result := TJsonRead.IntOr(mRoot, 'format', 0);
-  finally
-    mRoot.Free;
-  end;
-end;
-
 class function TAtlasNotes.Parse(const AJson: string; out ABook: TAtlasNoteBook): Boolean;
 var
   mRoot: TJSONObject;
@@ -707,6 +695,18 @@ begin
   finally
     mRoot.Free;
     mOriginal.Free;
+  end;
+end;
+
+class function TAtlasNotes.FormatOf(const AJson: string): Integer;
+var
+  mRoot: TJSONObject;
+begin
+  mRoot := TJsonRead.ParseObject(AJson);
+  try
+    Result := TJsonRead.IntOr(mRoot, 'format', 0);
+  finally
+    mRoot.Free;
   end;
 end;
 

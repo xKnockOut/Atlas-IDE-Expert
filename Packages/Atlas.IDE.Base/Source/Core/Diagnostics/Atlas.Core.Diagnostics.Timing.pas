@@ -461,6 +461,8 @@ begin
   Result.MaxWarn := TAtlasTimingBudget.Exceeded(AStep, Result.Maximum);
 end;
 
+{ TAtlasTimingRows }
+
 class function TAtlasTimingRows.Build(const AQueries: TArray<TAtlasQueryTiming>): TArray<TAtlasTimingRow>;
 var
   mStats: TAtlasTimingStats;
@@ -553,6 +555,19 @@ begin
   inherited;
 end;
 
+function TAtlasQueryTimings.IndexOf(AId: Integer): Integer;
+begin
+  // Neueste zuerst: Meldungen betreffen fast immer die laufende Abfrage.
+  for Result := FQueries.Count - 1 downto 0 do
+  begin
+    if FQueries[Result].Id = AId then
+    begin
+      Exit;
+    end;
+  end;
+  Result := -1;
+end;
+
 class function TAtlasQueryTimings.Shared: TAtlasQueryTimings;
 begin
   Result := FShared;
@@ -570,19 +585,6 @@ begin
   begin
     Result := 0;
   end;
-end;
-
-function TAtlasQueryTimings.IndexOf(AId: Integer): Integer;
-begin
-  // Neueste zuerst: Meldungen betreffen fast immer die laufende Abfrage.
-  for Result := FQueries.Count - 1 downto 0 do
-  begin
-    if FQueries[Result].Id = AId then
-    begin
-      Exit;
-    end;
-  end;
-  Result := -1;
 end;
 
 function TAtlasQueryTimings.BeginQuery(AStart: Int64; const AKind, AFileName: string): Integer;
@@ -849,6 +851,8 @@ begin
     ALines.Add(RowLine(mRow));
   end;
 end;
+
+{ TAtlasTimingReport }
 
 class function TAtlasTimingReport.Build(const AQueries: TArray<TAtlasQueryTiming>;
   const AInput: TAtlasTimingReportInput): string;

@@ -180,13 +180,90 @@ type
 
 { TParser }
 
-function TParser.Run: TSyntaxTree;
+procedure TParser.ParseRoutineBody(AParent: TSyntaxNode; AWithBody: Boolean);
 var
-  mRoot: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
+  mHeader: TSyntaxNode;
+  mIndex: Integer;
+  mNoBody: Boolean;
 begin
-  mRoot := ParseFile;
-  CheckTokensAndTree(mRoot);
-  Result := TSyntaxTree.Create(mRoot, FAllTokens, FDiagnostics.ToArray);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.RoutineDecl);
+  AParent.Add(mNode);
+  mHeader := ParseRoutineHeader(mNode, TSyntaxKind.RoutineHeader);
+  mNode.Name := mHeader.Name;
+  mNoBody := False;
+  for mIndex := 0 to mHeader.ChildCount - 1 do
+  begin
+    if (mHeader.Children[mIndex].Kind = TSyntaxKind.Directive) and
+      ((mHeader.Children[mIndex].Name = 'forward') or (mHeader.Children[mIndex].Name = 'external')) then
+    begin
+      mNoBody := True;
+    end;
+  end;
+  if AWithBody and not mNoBody then
+  begin
+    // Lokale Deklarationen, dann der Rumpf. exports ist hier ein Fehler des Compilers (E2191), aber kein
+    // Syntaxfehler: Der Baum behält die Klausel, damit exports-invalid sie melden kann.
+    while not AtEnd and (IsKw(['type', 'const', 'resourcestring', 'var', 'threadvar', 'label', 'exports']) or
+      IsRoutineStart or IsSym('[')) do
+    begin
+      ParseDeclaration(mNode);
+    end;
+    if IsKw('asm') then
+    begin
+      ParseAsm(mNode);
+    end
+    else if IsKw('begin') then
+    begin
+      ParseBlock(mNode);
+    end
+    else
+    begin
+      DiagnoseUnexpected('"begin"');
+    end;
+    ExpectSym(';');
+  end;
+  FinishNode(mNode, mStart);
+end;
+
+function TParser.ParseAnonymousMethod: TSyntaxNode;
+var
+  mStart: Integer;
+begin
+  // procedure(A: Integer) begin ... end; function: Integer begin ... end
+  mStart := NodeStart;
+  Result := StartNode(TSyntaxKind.AnonymousMethod);
+  Result.Name := LowerCase(Current.Text);
+  Advance;
+  if IsSym('(') then
+  begin
+    ParseParameters(Result);
+  end;
+  if AcceptSym(':') then
+  begin
+    ParseTypeReference(Result);
+  end;
+  // Aufrufkonvention: function(const S: string): Boolean register begin … end (#1167).
+  while IsIdent and InWords(Current.Text, cCallingConventions) do
+  begin
+    Advance;
+  end;
+  // Lokale Abschnitte und Routinen vor dem begin (#849).
+  while IsKw(['var', 'const', 'type', 'label']) or IsRoutineStart do
+  begin
+    if IsRoutineStart then
+    begin
+      ParseRoutine(Result, True);
+    end
+    else
+    begin
+      ParseDeclaration(Result);
+    end;
+  end;
+  ParseBlock(Result);
+  FinishNode(Result, mStart);
 end;
 
 function TParser.ParseFile: TSyntaxNode;
@@ -379,54 +456,6 @@ begin
   AParent.Add(mNode);
   Advance; // initialization, finalization oder begin
   ParseStatementList(mNode, ['finalization', 'end']);
-  FinishNode(mNode, mStart);
-end;
-
-procedure TParser.ParseRoutineBody(AParent: TSyntaxNode; AWithBody: Boolean);
-var
-  mStart: Integer;
-  mNode: TSyntaxNode;
-  mHeader: TSyntaxNode;
-  mIndex: Integer;
-  mNoBody: Boolean;
-begin
-  mStart := NodeStart;
-  mNode := StartNode(TSyntaxKind.RoutineDecl);
-  AParent.Add(mNode);
-  mHeader := ParseRoutineHeader(mNode, TSyntaxKind.RoutineHeader);
-  mNode.Name := mHeader.Name;
-  mNoBody := False;
-  for mIndex := 0 to mHeader.ChildCount - 1 do
-  begin
-    if (mHeader.Children[mIndex].Kind = TSyntaxKind.Directive) and
-      ((mHeader.Children[mIndex].Name = 'forward') or (mHeader.Children[mIndex].Name = 'external')) then
-    begin
-      mNoBody := True;
-    end;
-  end;
-  if AWithBody and not mNoBody then
-  begin
-    // Lokale Deklarationen, dann der Rumpf. exports ist hier ein Fehler des Compilers (E2191), aber kein
-    // Syntaxfehler: Der Baum behält die Klausel, damit exports-invalid sie melden kann.
-    while not AtEnd and (IsKw(['type', 'const', 'resourcestring', 'var', 'threadvar', 'label', 'exports']) or
-      IsRoutineStart or IsSym('[')) do
-    begin
-      ParseDeclaration(mNode);
-    end;
-    if IsKw('asm') then
-    begin
-      ParseAsm(mNode);
-    end
-    else if IsKw('begin') then
-    begin
-      ParseBlock(mNode);
-    end
-    else
-    begin
-      DiagnoseUnexpected('"begin"');
-    end;
-    ExpectSym(';');
-  end;
   FinishNode(mNode, mStart);
 end;
 
@@ -1045,56 +1074,16 @@ begin
   FinishNode(mNode, mStart);
 end;
 
-function TParser.ParseAnonymousMethod: TSyntaxNode;
+function TParser.Run: TSyntaxTree;
 var
-  mStart: Integer;
+  mRoot: TSyntaxNode;
 begin
-  // procedure(A: Integer) begin ... end; function: Integer begin ... end
-  mStart := NodeStart;
-  Result := StartNode(TSyntaxKind.AnonymousMethod);
-  Result.Name := LowerCase(Current.Text);
-  Advance;
-  if IsSym('(') then
-  begin
-    ParseParameters(Result);
-  end;
-  if AcceptSym(':') then
-  begin
-    ParseTypeReference(Result);
-  end;
-  // Aufrufkonvention: function(const S: string): Boolean register begin … end (#1167).
-  while IsIdent and InWords(Current.Text, cCallingConventions) do
-  begin
-    Advance;
-  end;
-  // Lokale Abschnitte und Routinen vor dem begin (#849).
-  while IsKw(['var', 'const', 'type', 'label']) or IsRoutineStart do
-  begin
-    if IsRoutineStart then
-    begin
-      ParseRoutine(Result, True);
-    end
-    else
-    begin
-      ParseDeclaration(Result);
-    end;
-  end;
-  ParseBlock(Result);
-  FinishNode(Result, mStart);
+  mRoot := ParseFile;
+  CheckTokensAndTree(mRoot);
+  Result := TSyntaxTree.Create(mRoot, FAllTokens, FDiagnostics.ToArray);
 end;
 
 { TPascalParser }
-
-class function TPascalParser.IncludeAsValue(const APrevious: TPascalToken): Boolean;
-begin
-  Result := Atlas.Common.Pascal.Parser.Cursor.IncludeAsValue(APrevious);
-end;
-
-
-class function TPascalParser.Parse(const AText: string): TSyntaxTree;
-begin
-  Result := Parse(AText, nil);
-end;
 
 class function TPascalParser.Parse(const AText: string; const ACancellation: IPascalCancellation): TSyntaxTree;
 var
@@ -1109,6 +1098,11 @@ begin
 end;
 
 
+class function TPascalParser.Parse(const AText: string): TSyntaxTree;
+begin
+  Result := Parse(AText, nil);
+end;
+
 class function TPascalParser.ParseActive(const AText: string; const ADefines: TArray<string>;
   const ACancellation: IPascalCancellation; out AConditionals: TArray<TConditionalRange>): TSyntaxTree;
 var
@@ -1116,6 +1110,14 @@ var
 begin
   Result := ParseActive(AText, TPascalPreprocessor.EditorOptions(ADefines), ACancellation, mProcessed);
   AConditionals := TPascalPreprocessor.MainConditionals(mProcessed);
+end;
+
+
+class function TPascalParser.ParseActive(const AText: string; const ADefines: TArray<string>): TSyntaxTree;
+var
+  mConditionals: TArray<TConditionalRange>;
+begin
+  Result := ParseActive(AText, ADefines, nil, mConditionals);
 end;
 
 class function TPascalParser.ParseActive(const AText: string; const AOptions: TPreprocessorOptions;
@@ -1141,13 +1143,6 @@ begin
     end;
   end;
   Result.Platform := TPascalPreprocessor.PlatformOf(AOptions.Defines);
-end;
-
-class function TPascalParser.ParseActive(const AText: string; const ADefines: TArray<string>): TSyntaxTree;
-var
-  mConditionals: TArray<TConditionalRange>;
-begin
-  Result := ParseActive(AText, ADefines, nil, mConditionals);
 end;
 
 class function TPascalParser.ActiveDiagnostics(const AText: string; const ADefines: TArray<string>;
@@ -1185,6 +1180,11 @@ begin
     mParser.Free;
   end;
   Result := True;
+end;
+
+class function TPascalParser.IncludeAsValue(const APrevious: TPascalToken): Boolean;
+begin
+  Result := Atlas.Common.Pascal.Parser.Cursor.IncludeAsValue(APrevious);
 end;
 
 initialization

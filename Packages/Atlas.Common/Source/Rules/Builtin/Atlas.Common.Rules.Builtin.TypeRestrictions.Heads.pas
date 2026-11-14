@@ -175,6 +175,11 @@ begin
   end;
 end;
 
+function TRoutineHead.HasDirective(const AName: string): Boolean;
+begin
+  Result := Directive(AName) <> nil;
+end;
+
 function TRoutineHead.Directive(const AName: string): TSyntaxNode;
 var
   mIndex: Integer;
@@ -187,11 +192,6 @@ begin
     end;
   end;
   Result := nil;
-end;
-
-function TRoutineHead.HasDirective(const AName: string): Boolean;
-begin
-  Result := Directive(AName) <> nil;
 end;
 
 { TFileTypes }

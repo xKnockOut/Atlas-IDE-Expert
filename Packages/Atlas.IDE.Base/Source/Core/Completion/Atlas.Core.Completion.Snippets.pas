@@ -779,65 +779,6 @@ begin
       'implementation')];
 end;
 
-class function TAtlasSnippets.ContextWords: TArray<string>;
-begin
-  Result := ['any', 'statement', 'declaration', 'routine', 'class', 'record', 'interfaceType', 'interface',
-    'implementation', 'program'];
-end;
-
-class function TAtlasSnippets.FileKinds: TArray<string>;
-begin
-  Result := ['unit', 'form', 'test'];
-end;
-
-class function TAtlasSnippets.FileTemplates(const AList: TAtlasSnippetList): TAtlasSnippetList;
-var
-  mItem: TAtlasSnippet;
-begin
-  Result := nil;
-  for mItem in AList do
-  begin
-    if mItem.FileKind <> '' then
-    begin
-      Result := Result + [mItem];
-    end;
-  end;
-end;
-
-class function TAtlasSnippets.WithoutFileTemplates(const AList: TAtlasSnippetList): TAtlasSnippetList;
-var
-  mItem: TAtlasSnippet;
-begin
-  Result := nil;
-  for mItem in AList do
-  begin
-    if mItem.FileKind = '' then
-    begin
-      Result := Result + [mItem];
-    end;
-  end;
-end;
-
-class function TAtlasSnippets.FitsContext(const AContext: string; const APlaces: TArray<string>): Boolean;
-var
-  mWord: string;
-  mInRoutine: Boolean;
-begin
-  if Trim(AContext) = '' then
-  begin
-    Exit(True);
-  end;
-  mInRoutine := IndexText('routine', APlaces) >= 0;
-  for mWord in AContext.Split([',']) do
-  begin
-    if WordFits(Trim(mWord), APlaces, mInRoutine) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 class function TAtlasSnippets.Merge(const ABuiltIn, AUser: TAtlasSnippetList): TAtlasSnippetList;
 var
   mItem: TAtlasSnippet;
@@ -857,6 +798,108 @@ begin
     begin
       Result := Result + [mItem];
     end;
+  end;
+end;
+
+class function TAtlasSnippets.Expand(const ABody, AIndent, ALineBreak: string): TAtlasSnippetExpansion;
+var
+  mParts: TArray<TSegment>;
+  mDefaults: TArray<string>;
+  mKnown: TArray<Boolean>;
+  mIndex, mNumber, mHighest: Integer;
+  mText: string;
+  mStop: TAtlasSnippetStop;
+
+  function Indented(const AValue: string): string;
+  begin
+    Result := StringReplace(NormalizeBreaks(AValue), #10, ALineBreak + AIndent, [rfReplaceAll]);
+  end;
+
+begin
+  Result := Default(TAtlasSnippetExpansion);
+  mParts := Segments(NormalizeBreaks(ABody));
+  // Vorgabetext je Nummer: der erste vorhandene.
+  mHighest := 0;
+  for mIndex := 0 to High(mParts) do
+  begin
+    if mParts[mIndex].IsStop and (mParts[mIndex].Number > mHighest) then
+    begin
+      mHighest := mParts[mIndex].Number;
+    end;
+  end;
+  SetLength(mDefaults, mHighest + 1);
+  SetLength(mKnown, mHighest + 1);
+  for mIndex := 0 to High(mParts) do
+  begin
+    if mParts[mIndex].IsStop and mParts[mIndex].HasDefault and not mKnown[mParts[mIndex].Number] then
+    begin
+      mDefaults[mParts[mIndex].Number] := mParts[mIndex].Text;
+      mKnown[mParts[mIndex].Number] := True;
+    end;
+  end;
+  mText := '';
+  for mIndex := 0 to High(mParts) do
+  begin
+    if mParts[mIndex].IsStop then
+    begin
+      mNumber := mParts[mIndex].Number;
+      mStop.Number := mNumber;
+      mStop.Start := Length(mText);
+      mText := mText + Indented(mDefaults[mNumber]);
+      mStop.Length := Length(mText) - mStop.Start;
+      Result.Stops := Result.Stops + [mStop];
+    end
+    else
+    begin
+      mText := mText + Indented(mParts[mIndex].Text);
+    end;
+  end;
+  Result.Text := mText;
+end;
+
+class function TAtlasSnippets.PlainText(const ABody: string): string;
+begin
+  Result := Expand(ABody, '', #10).Text;
+end;
+
+class function TAtlasSnippets.IndentOf(const ALine: string): string;
+begin
+  Result := TTextLines.IndentOf(ALine);
+end;
+
+class function TAtlasSnippets.FolderStamp(const APath: string): string;
+var
+  mSearch: TSearchRec;
+begin
+  Result := '';
+  if (APath = '') or not DirectoryExists(APath) then
+  begin
+    Exit;
+  end;
+  Result := '+';
+  if FindFirst(IncludeTrailingPathDelimiter(APath) + '*' + cFileExtension, faAnyFile, mSearch) = 0 then
+    try
+      repeat
+        Result := Result + mSearch.Name + '|' + IntToStr(mSearch.Size) + '|' + FormatDateTime('yyyymmddhhnnss', mSearch.TimeStamp) + ';';
+      until FindNext(mSearch) <> 0;
+    finally
+      FindClose(mSearch);
+    end;
+end;
+
+class function TAtlasSnippets.LoadFolder(const APath: string; out AErrors: TArray<string>): TAtlasSnippetList;
+var
+  mName: string;
+begin
+  Result := nil;
+  AErrors := nil;
+  if (APath = '') or not DirectoryExists(APath) then
+  begin
+    Exit;
+  end;
+  for mName in SnippetFileNames(APath) do
+  begin
+    LoadSnippetFile(APath, mName, Result, AErrors);
   end;
 end;
 
@@ -917,60 +960,10 @@ begin
   end;
 end;
 
-class function TAtlasSnippets.Expand(const ABody, AIndent, ALineBreak: string): TAtlasSnippetExpansion;
-var
-  mParts: TArray<TSegment>;
-  mDefaults: TArray<string>;
-  mKnown: TArray<Boolean>;
-  mIndex, mNumber, mHighest: Integer;
-  mText: string;
-  mStop: TAtlasSnippetStop;
-
-  function Indented(const AValue: string): string;
-  begin
-    Result := StringReplace(NormalizeBreaks(AValue), #10, ALineBreak + AIndent, [rfReplaceAll]);
-  end;
-
+class function TAtlasSnippets.ContextWords: TArray<string>;
 begin
-  Result := Default(TAtlasSnippetExpansion);
-  mParts := Segments(NormalizeBreaks(ABody));
-  // Vorgabetext je Nummer: der erste vorhandene.
-  mHighest := 0;
-  for mIndex := 0 to High(mParts) do
-  begin
-    if mParts[mIndex].IsStop and (mParts[mIndex].Number > mHighest) then
-    begin
-      mHighest := mParts[mIndex].Number;
-    end;
-  end;
-  SetLength(mDefaults, mHighest + 1);
-  SetLength(mKnown, mHighest + 1);
-  for mIndex := 0 to High(mParts) do
-  begin
-    if mParts[mIndex].IsStop and mParts[mIndex].HasDefault and not mKnown[mParts[mIndex].Number] then
-    begin
-      mDefaults[mParts[mIndex].Number] := mParts[mIndex].Text;
-      mKnown[mParts[mIndex].Number] := True;
-    end;
-  end;
-  mText := '';
-  for mIndex := 0 to High(mParts) do
-  begin
-    if mParts[mIndex].IsStop then
-    begin
-      mNumber := mParts[mIndex].Number;
-      mStop.Number := mNumber;
-      mStop.Start := Length(mText);
-      mText := mText + Indented(mDefaults[mNumber]);
-      mStop.Length := Length(mText) - mStop.Start;
-      Result.Stops := Result.Stops + [mStop];
-    end
-    else
-    begin
-      mText := mText + Indented(mParts[mIndex].Text);
-    end;
-  end;
-  Result.Text := mText;
+  Result := ['any', 'statement', 'declaration', 'routine', 'class', 'record', 'interfaceType', 'interface',
+    'implementation', 'program'];
 end;
 
 function ConvertLsp(const AText: string; var AIndex: Integer; ATop: Boolean): string; forward;
@@ -1134,50 +1127,57 @@ begin
   Result := ConvertLsp(NormalizeBreaks(AText), mIndex, True);
 end;
 
-class function TAtlasSnippets.PlainText(const ABody: string): string;
+class function TAtlasSnippets.FileKinds: TArray<string>;
 begin
-  Result := Expand(ABody, '', #10).Text;
+  Result := ['unit', 'form', 'test'];
 end;
 
-class function TAtlasSnippets.IndentOf(const ALine: string): string;
-begin
-  Result := TTextLines.IndentOf(ALine);
-end;
-
-class function TAtlasSnippets.FolderStamp(const APath: string): string;
+class function TAtlasSnippets.FileTemplates(const AList: TAtlasSnippetList): TAtlasSnippetList;
 var
-  mSearch: TSearchRec;
-begin
-  Result := '';
-  if (APath = '') or not DirectoryExists(APath) then
-  begin
-    Exit;
-  end;
-  Result := '+';
-  if FindFirst(IncludeTrailingPathDelimiter(APath) + '*' + cFileExtension, faAnyFile, mSearch) = 0 then
-    try
-      repeat
-        Result := Result + mSearch.Name + '|' + IntToStr(mSearch.Size) + '|' + FormatDateTime('yyyymmddhhnnss', mSearch.TimeStamp) + ';';
-      until FindNext(mSearch) <> 0;
-    finally
-      FindClose(mSearch);
-    end;
-end;
-
-class function TAtlasSnippets.LoadFolder(const APath: string; out AErrors: TArray<string>): TAtlasSnippetList;
-var
-  mName: string;
+  mItem: TAtlasSnippet;
 begin
   Result := nil;
-  AErrors := nil;
-  if (APath = '') or not DirectoryExists(APath) then
+  for mItem in AList do
   begin
-    Exit;
+    if mItem.FileKind <> '' then
+    begin
+      Result := Result + [mItem];
+    end;
   end;
-  for mName in SnippetFileNames(APath) do
+end;
+
+class function TAtlasSnippets.WithoutFileTemplates(const AList: TAtlasSnippetList): TAtlasSnippetList;
+var
+  mItem: TAtlasSnippet;
+begin
+  Result := nil;
+  for mItem in AList do
   begin
-    LoadSnippetFile(APath, mName, Result, AErrors);
+    if mItem.FileKind = '' then
+    begin
+      Result := Result + [mItem];
+    end;
   end;
+end;
+
+class function TAtlasSnippets.FitsContext(const AContext: string; const APlaces: TArray<string>): Boolean;
+var
+  mWord: string;
+  mInRoutine: Boolean;
+begin
+  if Trim(AContext) = '' then
+  begin
+    Exit(True);
+  end;
+  mInRoutine := IndexText('routine', APlaces) >= 0;
+  for mWord in AContext.Split([',']) do
+  begin
+    if WordFits(Trim(mWord), APlaces, mInRoutine) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 initialization

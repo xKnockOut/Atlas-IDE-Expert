@@ -119,6 +119,8 @@ begin
   end;
 end;
 
+{ TMcpBuildTools }
+
 class function TMcpBuildTools.ToFileText(const ABuild: TIdeBuild): string;
 var
   mRoot: TJSONObject;
@@ -190,11 +192,6 @@ begin
   end;
 end;
 
-class function TMcpBuildTools.NoBuild(const ARoot: string): string;
-begin
-  Result := cTexts[TBuildToolsText.NoBuildFromTheIDE].Fmt([ARoot]);
-end;
-
 class function TMcpBuildTools.Report(const ABuild: TIdeBuild; const ARoot, AProject: string): string;
 var
   mRoot: TJSONObject;
@@ -243,6 +240,11 @@ begin
   finally
     mRoot.Free;
   end;
+end;
+
+class function TMcpBuildTools.NoBuild(const ARoot: string): string;
+begin
+  Result := cTexts[TBuildToolsText.NoBuildFromTheIDE].Fmt([ARoot]);
 end;
 
 initialization

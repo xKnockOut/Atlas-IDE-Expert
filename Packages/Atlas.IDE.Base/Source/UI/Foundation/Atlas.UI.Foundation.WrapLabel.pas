@@ -47,6 +47,16 @@ begin
   FFitWidth := Width;
 end;
 
+procedure TAtlasWrapLabel.Resize;
+begin
+  inherited Resize;
+  if (Width <> FFitWidth) and WordWrap and AutoSize then
+  begin
+    FFitWidth := Width;
+    AdjustBounds;
+  end;
+end;
+
 procedure TAtlasWrapLabel.AdjustBounds;
 var
   mText: string;
@@ -80,16 +90,6 @@ begin
     ReleaseDC(0, mDC);
   end;
   SetBounds(Left, Top, Width, mRect.Bottom);
-end;
-
-procedure TAtlasWrapLabel.Resize;
-begin
-  inherited Resize;
-  if (Width <> FFitWidth) and WordWrap and AutoSize then
-  begin
-    FFitWidth := Width;
-    AdjustBounds;
-  end;
 end;
 
 end.

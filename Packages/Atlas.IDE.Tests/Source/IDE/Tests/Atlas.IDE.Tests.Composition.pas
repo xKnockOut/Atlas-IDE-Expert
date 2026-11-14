@@ -557,6 +557,19 @@ end;
 
 { TAtlasTestsModule }
 
+class function TAtlasTestsModule.Parts: TArray<IAtlasFeaturePart>;
+begin
+  // DUnitX-Tests (#69): nur im normalen Start und solange TestRun an ist; baut über den Läufer von Base.
+  Result := [
+    TAtlasFeaturePart.When('Tests',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TestRun;
+      end, TestsStarted, StartTests, StopTests),
+    // Testabdeckung (#275): liest nur einen Bericht, baut und startet nichts; unabhängig von tests.run.
+    CoveragePart];
+end;
+
 function TAtlasTestsModule.Info: TAtlasModuleInfo;
 begin
   // Der Läufer baut und startet Programme: nur im normalen Start.
@@ -651,12 +664,6 @@ begin
   Result := Result + ListCommands;
 end;
 
-function TAtlasTestsModule.Keys: TArray<TAtlasModuleKey>;
-begin
-  // Zuletzt benutzte Testliste (#2167).
-  Result := ListKeys;
-end;
-
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
 begin
   Result := Default(TAtlasMenuEntry);
@@ -745,6 +752,12 @@ begin
     MenuEntry('Atlas.NewTestUnitFor', TAtlasMenuPlace.Gallery)];
 end;
 
+function TAtlasTestsModule.Keys: TArray<TAtlasModuleKey>;
+begin
+  // Zuletzt benutzte Testliste (#2167).
+  Result := ListKeys;
+end;
+
 procedure TAtlasTestsModule.ApplySettings;
 begin
   // tests.affectedBeforeCommit (#1353): pre-commit-Hook anlegen bzw. entfernen.
@@ -759,11 +772,6 @@ begin
   end;
   // tests.window (#1776), tests.lists (#2167) und editor.statusBar.tests (#1777).
   ApplyExplorerSettings;
-end;
-
-procedure TAtlasTestsModule.ThemeChanged;
-begin
-  ExplorerThemeChanged;
 end;
 
 procedure TAtlasTestsModule.BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>;
@@ -823,6 +831,11 @@ begin
   TAtlasTestsEditorSection.ProvideIn(GScope);
 end;
 
+function TAtlasTestsModule.Busy: Boolean;
+begin
+  Result := ((GTests <> nil) and GTests.Busy) or MutationBusy;
+end;
+
 procedure TAtlasTestsModule.FileSaved(const AFileName: string);
 begin
   // Fenster „Atlas-Tests“ (#1776): gespeicherte Testunit neu lesen.
@@ -836,11 +849,6 @@ begin
         GOnSave.FileSaved(AFileName);
       end);
   end;
-end;
-
-function TAtlasTestsModule.Busy: Boolean;
-begin
-  Result := ((GTests <> nil) and GTests.Busy) or MutationBusy;
 end;
 
 function TAtlasTestsModule.HasValuesAt(ALine: Integer): Boolean;
@@ -869,17 +877,9 @@ begin
   end;
 end;
 
-class function TAtlasTestsModule.Parts: TArray<IAtlasFeaturePart>;
+procedure TAtlasTestsModule.ThemeChanged;
 begin
-  // DUnitX-Tests (#69): nur im normalen Start und solange TestRun an ist; baut über den Läufer von Base.
-  Result := [
-    TAtlasFeaturePart.When('Tests',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TestRun;
-      end, TestsStarted, StartTests, StopTests),
-    // Testabdeckung (#275): liest nur einen Bericht, baut und startet nichts; unabhängig von tests.run.
-    CoveragePart];
+  ExplorerThemeChanged;
 end;
 
 class function TAtlasTestsModule.RegisterModule: Boolean;

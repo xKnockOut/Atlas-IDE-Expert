@@ -135,17 +135,6 @@ begin
   end;
 end;
 
-procedure TAtlasDebugLeaksFrame.SetRows(const ARows: TArray<TAtlasLeakRow>; const AStatus: string);
-begin
-  FRows := ARows;
-  FStatus.Caption := AStatus;
-  FFilled := False;
-  if HandleAllocated then
-  begin
-    Fill;
-  end;
-end;
-
 procedure TAtlasDebugLeaksFrame.Fill;
 var
   mIndex: Integer;
@@ -173,31 +162,6 @@ begin
     FTree.Items.EndUpdate;
   end;
   FMarkKnown.Enabled := False;
-end;
-
-function TAtlasDebugLeaksFrame.SelectedRow: Integer;
-begin
-  Result := -1;
-  if FTree.Selected <> nil then
-  begin
-    Result := Integer(NativeInt(FTree.Selected.Data));
-  end;
-end;
-
-function TAtlasDebugLeaksFrame.HideKnown: Boolean;
-begin
-  Result := FHideKnown.Checked;
-end;
-
-procedure TAtlasDebugLeaksFrame.OpenSelected;
-var
-  mRow: Integer;
-begin
-  mRow := SelectedRow;
-  if (mRow >= 0) and (mRow <= High(FRows)) and TAtlasLeakViews.CanOpen(FRows[mRow]) and Assigned(FOnOpen) then
-  begin
-    FOnOpen(FRows[mRow]);
-  end;
 end;
 
 procedure TAtlasDebugLeaksFrame.FilterClick(Sender: TObject);
@@ -268,6 +232,42 @@ begin
   begin
     Sender.Canvas.Font.Color := clGrayText;
   end;
+end;
+
+procedure TAtlasDebugLeaksFrame.SetRows(const ARows: TArray<TAtlasLeakRow>; const AStatus: string);
+begin
+  FRows := ARows;
+  FStatus.Caption := AStatus;
+  FFilled := False;
+  if HandleAllocated then
+  begin
+    Fill;
+  end;
+end;
+
+function TAtlasDebugLeaksFrame.SelectedRow: Integer;
+begin
+  Result := -1;
+  if FTree.Selected <> nil then
+  begin
+    Result := Integer(NativeInt(FTree.Selected.Data));
+  end;
+end;
+
+procedure TAtlasDebugLeaksFrame.OpenSelected;
+var
+  mRow: Integer;
+begin
+  mRow := SelectedRow;
+  if (mRow >= 0) and (mRow <= High(FRows)) and TAtlasLeakViews.CanOpen(FRows[mRow]) and Assigned(FOnOpen) then
+  begin
+    FOnOpen(FRows[mRow]);
+  end;
+end;
+
+function TAtlasDebugLeaksFrame.HideKnown: Boolean;
+begin
+  Result := FHideKnown.Checked;
 end;
 
 end.

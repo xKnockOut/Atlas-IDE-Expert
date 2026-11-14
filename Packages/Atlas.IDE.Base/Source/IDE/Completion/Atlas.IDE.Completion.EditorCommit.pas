@@ -475,52 +475,39 @@ begin
   ActiveChanged;
 end;
 
-procedure TAtlasEditorCompletionCommit.WatchAutoParen(const AView: IOTAEditView);
+procedure TAtlasEditorCompletionCommit.CommitSnippet(const AView: IOTAEditView; const AItem: TAtlasCompletionItem;
+  const AText, ALineText: string; ALine, AEnd: Integer);
 var
-  mLineText: string;
+  mRun: TSnippetRun;
+  mExpansion: TAtlasSnippetExpansion;
+  mEdits: TList<TPendingEdit>;
+  mWordStart: Integer;
 begin
-  mLineText := TAtlasEditorBuffer.LineText(AView, AView.CursorPos.Line);
-  FAutoParen := TAtlasAutoParen.Start(AView.CursorPos.Line, TLspSession.ColumnToIndex(mLineText,
-    AView.CursorPos.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer)), mLineText);
-  if Assigned(FOnOpenSignature) then
+  mRun := Default(TSnippetRun);
+  mRun.Item := AItem;
+  mRun.Text := AText;
+  // Zeilenumbrüche wie im Puffer, Einrückung wie die aktuelle Zeile.
+  mRun.LineBreak := TTextLines.LineBreakOf(AText);
+  mExpansion := TAtlasSnippets.Expand(AItem.Snippet, TAtlasSnippets.IndentOf(ALineText), mRun.LineBreak);
+  // Vorlage des Servers (#51): ab dem Anfang ihres Bereichs; sonst das getippte Wort.
+  mWordStart := FOpen.WordStart;
+  if AItem.HasTextEdit and (AItem.TextEdit.StartLine = ALine - 1) then
   begin
-    TAtlasMainThread.ForceQueue(TAtlasFeature.Signature,
-      procedure
-      begin
-        if Assigned(FOnOpenSignature) then
-        begin
-          FOnOpenSignature();
-        end;
-      end);
+    mWordStart := AItem.TextEdit.StartCharacter;
   end;
-end;
-
-procedure TAtlasEditorCompletionCommit.WatchGuard(const AView: IOTAEditView; const AItem: TAtlasCompletionItem;
-  const ALineText: string);
-var
-  mView: IOTAEditView;
-begin
-  // Kam das ";" als Commit-Zeichen (#429), steht es schon da; dann gleich fragen.
-  FGuard.Line := 0;
-  if AItem.Kind <> TAtlasItemKind.Constructor_ then
-  begin
-    Exit;
+  mRun.SnippetChar := TAtlasEditorBuffer.CharOffset(AText, ALine - 1, mWordStart);
+  mEdits := TList<TPendingEdit>.Create;
+  try
+    mRun.AddEdits(mEdits, mRun.MainEdit(mExpansion, ALine, mWordStart, AEnd));
+    mRun.Write(AView, mEdits);
+  finally
+    mEdits.Free;
   end;
-  FGuard.Line := AView.CursorPos.Line;
-  FGuard.FileName := AView.Buffer.FileName;
-  if (FCommitChar.WordEnd >= 0) and (FCommitChar.WordEnd < Length(ALineText)) and
-    (ALineText[FCommitChar.WordEnd + 1] = ';') then
-  begin
-    mView := AView;
-    TAtlasMainThread.ForceQueue(TAtlasFeature.Completion,
-      procedure
-      begin
-        if GuardPending(mView) then
-        begin
-          Invoke(mView, True);
-        end;
-      end);
-  end;
+  FPlaceholders.Start(AView, AText, TAtlasEditorBuffer.Text(AView.Buffer), mRun.SnippetChar + mRun.CharShift,
+    mExpansion, mRun.Fields);
+  RunCommand(AItem);
+  Log(Format('Code-Vorlage eingesetzt: %d Platzhalter, %d weitere Änderungen',
+    [Integer(Length(mExpansion.Stops)), Integer(Length(AItem.AdditionalEdits))]));
 end;
 
 procedure TAtlasEditorCompletionCommit.RunCommand(const AItem: TAtlasCompletionItem);
@@ -586,41 +573,6 @@ begin
   FOnOfferActions(mFound);
 end;
 
-procedure TAtlasEditorCompletionCommit.CommitSnippet(const AView: IOTAEditView; const AItem: TAtlasCompletionItem;
-  const AText, ALineText: string; ALine, AEnd: Integer);
-var
-  mRun: TSnippetRun;
-  mExpansion: TAtlasSnippetExpansion;
-  mEdits: TList<TPendingEdit>;
-  mWordStart: Integer;
-begin
-  mRun := Default(TSnippetRun);
-  mRun.Item := AItem;
-  mRun.Text := AText;
-  // Zeilenumbrüche wie im Puffer, Einrückung wie die aktuelle Zeile.
-  mRun.LineBreak := TTextLines.LineBreakOf(AText);
-  mExpansion := TAtlasSnippets.Expand(AItem.Snippet, TAtlasSnippets.IndentOf(ALineText), mRun.LineBreak);
-  // Vorlage des Servers (#51): ab dem Anfang ihres Bereichs; sonst das getippte Wort.
-  mWordStart := FOpen.WordStart;
-  if AItem.HasTextEdit and (AItem.TextEdit.StartLine = ALine - 1) then
-  begin
-    mWordStart := AItem.TextEdit.StartCharacter;
-  end;
-  mRun.SnippetChar := TAtlasEditorBuffer.CharOffset(AText, ALine - 1, mWordStart);
-  mEdits := TList<TPendingEdit>.Create;
-  try
-    mRun.AddEdits(mEdits, mRun.MainEdit(mExpansion, ALine, mWordStart, AEnd));
-    mRun.Write(AView, mEdits);
-  finally
-    mEdits.Free;
-  end;
-  FPlaceholders.Start(AView, AText, TAtlasEditorBuffer.Text(AView.Buffer), mRun.SnippetChar + mRun.CharShift,
-    mExpansion, mRun.Fields);
-  RunCommand(AItem);
-  Log(Format('Code-Vorlage eingesetzt: %d Platzhalter, %d weitere Änderungen',
-    [Integer(Length(mExpansion.Stops)), Integer(Length(AItem.AdditionalEdits))]));
-end;
-
 procedure TAtlasEditorCompletionCommit.SkipAutoParen(const AView: IOTAEditView; ARemoveAt: Integer);
 var
   mView: IOTAEditView;
@@ -651,6 +603,54 @@ begin
       mView.CursorPos := mCursor;
       mView.Paint;
     end);
+end;
+
+procedure TAtlasEditorCompletionCommit.WatchGuard(const AView: IOTAEditView; const AItem: TAtlasCompletionItem;
+  const ALineText: string);
+var
+  mView: IOTAEditView;
+begin
+  // Kam das ";" als Commit-Zeichen (#429), steht es schon da; dann gleich fragen.
+  FGuard.Line := 0;
+  if AItem.Kind <> TAtlasItemKind.Constructor_ then
+  begin
+    Exit;
+  end;
+  FGuard.Line := AView.CursorPos.Line;
+  FGuard.FileName := AView.Buffer.FileName;
+  if (FCommitChar.WordEnd >= 0) and (FCommitChar.WordEnd < Length(ALineText)) and
+    (ALineText[FCommitChar.WordEnd + 1] = ';') then
+  begin
+    mView := AView;
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Completion,
+      procedure
+      begin
+        if GuardPending(mView) then
+        begin
+          Invoke(mView, True);
+        end;
+      end);
+  end;
+end;
+
+procedure TAtlasEditorCompletionCommit.WatchAutoParen(const AView: IOTAEditView);
+var
+  mLineText: string;
+begin
+  mLineText := TAtlasEditorBuffer.LineText(AView, AView.CursorPos.Line);
+  FAutoParen := TAtlasAutoParen.Start(AView.CursorPos.Line, TLspSession.ColumnToIndex(mLineText,
+    AView.CursorPos.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer)), mLineText);
+  if Assigned(FOnOpenSignature) then
+  begin
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Signature,
+      procedure
+      begin
+        if Assigned(FOnOpenSignature) then
+        begin
+          FOnOpenSignature();
+        end;
+      end);
+  end;
 end;
 
 procedure TAtlasEditorCompletionCommit.InsertSnippet(const AView: IOTAEditView; const ASnippet: TAtlasSnippet);

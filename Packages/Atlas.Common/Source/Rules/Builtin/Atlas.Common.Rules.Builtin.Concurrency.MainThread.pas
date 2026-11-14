@@ -128,8 +128,8 @@ begin
   end;
 end;
 
-{ TProcessMessagesInLoopRule }
 
+{ TProcessMessagesInLoopRule }
 
 function TProcessMessagesInLoopRule.Descriptor: TRuleDescriptor;
 begin
@@ -256,29 +256,6 @@ function TQueueNilInPackageRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('queue-nil-in-package', TRuleSeverity.Warning,
     cTexts[TConcurrencyMainThreadText.QueueTitle].Text);
-end;
-
-class function TQueueNilInPackageRule.WrapperCall(const AWrapper, AMethod: string): string;
-var
-  mName, mRest: string;
-  mParen: Integer;
-begin
-  mParen := Pos('(', AWrapper);
-  if mParen > 0 then
-  begin
-    mName := TrimRight(Copy(AWrapper, 1, mParen - 1));
-    mRest := Copy(AWrapper, mParen, MaxInt);
-  end
-  else
-  begin
-    mName := AWrapper;
-    mRest := '(';
-  end;
-  if SameText(AMethod, 'ForceQueue') and EndsText('Queue', mName) and not EndsText('ForceQueue', mName) then
-  begin
-    mName := Copy(mName, 1, Length(mName) - Length('Queue')) + 'ForceQueue';
-  end;
-  Result := mName + mRest;
 end;
 
 procedure TQueueNilInPackageRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -422,37 +399,41 @@ begin
   end;
 end;
 
+class function TQueueNilInPackageRule.WrapperCall(const AWrapper, AMethod: string): string;
+var
+  mName, mRest: string;
+  mParen: Integer;
+begin
+  mParen := Pos('(', AWrapper);
+  if mParen > 0 then
+  begin
+    mName := TrimRight(Copy(AWrapper, 1, mParen - 1));
+    mRest := Copy(AWrapper, mParen, MaxInt);
+  end
+  else
+  begin
+    mName := AWrapper;
+    mRest := '(';
+  end;
+  if SameText(AMethod, 'ForceQueue') and EndsText('Queue', mName) and not EndsText('ForceQueue', mName) then
+  begin
+    mName := Copy(mName, 1, Length(mName) - Length('Queue')) + 'ForceQueue';
+  end;
+  Result := mName + mRest;
+end;
+
 { TBlockingCallInMainThreadRule }
 
 const
   cFormBaseClasses: array[0..3] of string = ('TCustomForm', 'TForm', 'TCustomFrame', 'TFrame');
   cWindowsWaitCalls: array[0..2] of string = ('Sleep', 'WaitForSingleObject', 'WaitForMultipleObjects');
 
+{ TBlockingCallInMainThreadRule }
+
 function TBlockingCallInMainThreadRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('blocking-call-in-main-thread', TRuleSeverity.Warning,
     cTexts[TConcurrencyMainThreadText.BlockingTitle].Text);
-end;
-
-class function TBlockingCallInMainThreadRule.TimeoutArgument(const ACall: string): Integer;
-begin
-  // Position des Timeouts in den Argumenten (ab 0); -1: Aufruf ohne Timeout, blockiert immer.
-  if SameText(ACall, 'Sleep') or SameText(ACall, 'WaitFor') or SameText(ACall, 'Wait') then
-  begin
-    Result := 0;
-  end
-  else if SameText(ACall, 'WaitForSingleObject') then
-  begin
-    Result := 1;
-  end
-  else if SameText(ACall, 'WaitForMultipleObjects') then
-  begin
-    Result := 3;
-  end
-  else
-  begin
-    Result := -1;
-  end;
 end;
 
 procedure TBlockingCallInMainThreadRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -719,6 +700,27 @@ begin
     Visit(AContext.Tree.Root, nil, nil);
   finally
     mAncestry.Free;
+  end;
+end;
+
+class function TBlockingCallInMainThreadRule.TimeoutArgument(const ACall: string): Integer;
+begin
+  // Position des Timeouts in den Argumenten (ab 0); -1: Aufruf ohne Timeout, blockiert immer.
+  if SameText(ACall, 'Sleep') or SameText(ACall, 'WaitFor') or SameText(ACall, 'Wait') then
+  begin
+    Result := 0;
+  end
+  else if SameText(ACall, 'WaitForSingleObject') then
+  begin
+    Result := 1;
+  end
+  else if SameText(ACall, 'WaitForMultipleObjects') then
+  begin
+    Result := 3;
+  end
+  else
+  begin
+    Result := -1;
   end;
 end;
 

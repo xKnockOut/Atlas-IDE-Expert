@@ -250,20 +250,6 @@ begin
   FContext := AContext;
 end;
 
-procedure TAtlasIdeIssueMedia.Cancel;
-begin
-  if FCancel <> nil then
-  begin
-    FCancel.Cancel;
-  end;
-end;
-
-procedure TAtlasIdeIssueMedia.Retire;
-begin
-  FContext.Retire(FThread);
-  FThread := nil;
-end;
-
 procedure TAtlasIdeIssueMedia.LoadImages(const AUrls: TArray<string>);
 var
   mProvider: IAtlasTrackerProvider;
@@ -331,6 +317,20 @@ begin
       TPath.Combine(mFolder, TAtlasIssuePreview.SafeFileName(AAttachment.Name)),
       TAtlasIssuePreview.SafeFileName(AAttachment.Name));
   end;
+end;
+
+procedure TAtlasIdeIssueMedia.Cancel;
+begin
+  if FCancel <> nil then
+  begin
+    FCancel.Cancel;
+  end;
+end;
+
+procedure TAtlasIdeIssueMedia.Retire;
+begin
+  FContext.Retire(FThread);
+  FThread := nil;
 end;
 
 end.

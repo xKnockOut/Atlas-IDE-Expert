@@ -705,6 +705,37 @@ begin
   end;
 end;
 
+procedure TTypeKindChecker.CheckCall(ANode: TSyntaxNode);
+var
+  mCallee: string;
+begin
+  if (ANode.ChildCount = 0) or (ANode[0].Kind <> TSyntaxKind.Identifier) then
+  begin
+    Exit;
+  end;
+  mCallee := ANode[0].Name;
+  if MatchText(mCallee, ['New', 'Dispose']) then
+  begin
+    CheckConstructorForm(ANode);
+  end
+  else if SameText(mCallee, 'TypeOf') then
+  begin
+    CheckTypeOf(ANode);
+  end
+  else if SameText(mCallee, 'Slice') then
+  begin
+    CheckSlice(ANode);
+  end
+  else if MatchText(mCallee, ['Write', 'Writeln']) and IsIntrinsic(ANode, mCallee) then
+  begin
+    CheckTextIo(ANode, True);
+  end
+  else if MatchText(mCallee, ['Read', 'Readln']) and IsIntrinsic(ANode, mCallee) then
+  begin
+    CheckTextIo(ANode, False);
+  end;
+end;
+
 procedure TTypeKindChecker.CheckConstructorForm(ANode: TSyntaxNode);
 var
   mPointee, mRoutine, mCode: string;
@@ -755,22 +786,6 @@ begin
   end;
   FReport.Add(Range(ANode[1]), cTexts[TTypeKindsText.TypeOf].Fmt(
     [NodeText(ANode[1]), TResolvedTypeKinds.Describe(mKind), mType.Name]), TRuleConfidence.High);
-end;
-
-function TTypeKindChecker.AllSimpleParams(ACallee: TSyntaxNode; APosition: Integer): Boolean;
-var
-  mCandidates: TArray<TResolvedSymbol>;
-  mCandidate: TResolvedSymbol;
-begin
-  mCandidates := FResolver.CallCandidates(FContext.Tree, FFileName, ACallee);
-  Result := Length(mCandidates) > 0;
-  for mCandidate in mCandidates do
-  begin
-    if not SimpleParamAt(mCandidate, APosition) then
-    begin
-      Exit(False);
-    end;
-  end;
 end;
 
 procedure TTypeKindChecker.CheckSlice(ANode: TSyntaxNode);
@@ -839,6 +854,36 @@ begin
   end;
 end;
 
+function TTypeKindChecker.AllSimpleParams(ACallee: TSyntaxNode; APosition: Integer): Boolean;
+var
+  mCandidates: TArray<TResolvedSymbol>;
+  mCandidate: TResolvedSymbol;
+begin
+  mCandidates := FResolver.CallCandidates(FContext.Tree, FFileName, ACallee);
+  Result := Length(mCandidates) > 0;
+  for mCandidate in mCandidates do
+  begin
+    if not SimpleParamAt(mCandidate, APosition) then
+    begin
+      Exit(False);
+    end;
+  end;
+end;
+
+procedure TTypeKindChecker.CheckTextIo(ANode: TSyntaxNode; AWrite: Boolean);
+var
+  mFirst, mIndex: Integer;
+begin
+  if (ANode.ChildCount < 2) or not FirstTextArgument(ANode, mFirst) then
+  begin
+    Exit;
+  end;
+  for mIndex := mFirst to ANode.ChildCount - 1 do
+  begin
+    CheckTextArgument(ANode[0].Name, ANode[mIndex], AWrite);
+  end;
+end;
+
 function TTypeKindChecker.FirstTextArgument(ANode: TSyntaxNode; out AFirst: Integer): Boolean;
 var
   mArg: TSyntaxNode;
@@ -892,20 +937,6 @@ begin
     mType.Name, TResolvedTypeKinds.Describe(mKind)]), TRuleConfidence.High, mFixes);
 end;
 
-procedure TTypeKindChecker.CheckTextIo(ANode: TSyntaxNode; AWrite: Boolean);
-var
-  mFirst, mIndex: Integer;
-begin
-  if (ANode.ChildCount < 2) or not FirstTextArgument(ANode, mFirst) then
-  begin
-    Exit;
-  end;
-  for mIndex := mFirst to ANode.ChildCount - 1 do
-  begin
-    CheckTextArgument(ANode[0].Name, ANode[mIndex], AWrite);
-  end;
-end;
-
 function TTypeKindChecker.ClassBase(ANode: TSyntaxNode; out ABaseType: TResolvedSymbol): Boolean;
 var
   mBase: TSyntaxNode;
@@ -942,6 +973,23 @@ begin
   end;
 end;
 
+function TTypeKindChecker.InsideOwnClass(ANode: TSyntaxNode; const ABaseType: TResolvedSymbol): Boolean;
+var
+  mOuter: TSyntaxNode;
+begin
+  mOuter := ANode.Parent;
+  while mOuter <> nil do
+  begin
+    if (mOuter.Kind = TSyntaxKind.RoutineDecl) and (Pos('.', mOuter.Name) > 0) and
+      OwnClassMethod(mOuter, ABaseType) then
+    begin
+      Exit(True);
+    end;
+    mOuter := mOuter.Parent;
+  end;
+  Result := False;
+end;
+
 function TTypeKindChecker.OwnClassMethod(ARoutine: TSyntaxNode; const ABaseType: TResolvedSymbol): Boolean;
 var
   mOwner, mOwnerType: TResolvedSymbol;
@@ -961,23 +1009,6 @@ begin
   Result := not mComplete or MatchText(ABaseType.Name, mAncestors);
 end;
 
-function TTypeKindChecker.InsideOwnClass(ANode: TSyntaxNode; const ABaseType: TResolvedSymbol): Boolean;
-var
-  mOuter: TSyntaxNode;
-begin
-  mOuter := ANode.Parent;
-  while mOuter <> nil do
-  begin
-    if (mOuter.Kind = TSyntaxKind.RoutineDecl) and (Pos('.', mOuter.Name) > 0) and
-      OwnClassMethod(mOuter, ABaseType) then
-    begin
-      Exit(True);
-    end;
-    mOuter := mOuter.Parent;
-  end;
-  Result := False;
-end;
-
 procedure TTypeKindChecker.CheckClassMethodForm(ANode: TSyntaxNode);
 var
   mBaseType, mMember: TResolvedSymbol;
@@ -992,37 +1023,6 @@ begin
   begin
     FReport.Add(Range(ANode), cTexts[TTypeKindsText.NotClassMethod].Fmt([mMember.Name, ANode[0].Name, ANode.Name,
       mBaseType.Name]), TRuleConfidence.High);
-  end;
-end;
-
-procedure TTypeKindChecker.CheckCall(ANode: TSyntaxNode);
-var
-  mCallee: string;
-begin
-  if (ANode.ChildCount = 0) or (ANode[0].Kind <> TSyntaxKind.Identifier) then
-  begin
-    Exit;
-  end;
-  mCallee := ANode[0].Name;
-  if MatchText(mCallee, ['New', 'Dispose']) then
-  begin
-    CheckConstructorForm(ANode);
-  end
-  else if SameText(mCallee, 'TypeOf') then
-  begin
-    CheckTypeOf(ANode);
-  end
-  else if SameText(mCallee, 'Slice') then
-  begin
-    CheckSlice(ANode);
-  end
-  else if MatchText(mCallee, ['Write', 'Writeln']) and IsIntrinsic(ANode, mCallee) then
-  begin
-    CheckTextIo(ANode, True);
-  end
-  else if MatchText(mCallee, ['Read', 'Readln']) and IsIntrinsic(ANode, mCallee) then
-  begin
-    CheckTextIo(ANode, False);
   end;
 end;
 

@@ -154,20 +154,6 @@ begin
   end;
 end;
 
-class function TLspFormFiles.BinaryDiagnostics: TJSONArray;
-var
-  mItem: TJSONObject;
-begin
-  Result := TJSONArray.Create;
-  mItem := TJSONObject.Create;
-  mItem.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(0, 0, 0, 4)));
-  mItem.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.cHint));
-  mItem.AddPair('source', 'Atlas');
-  mItem.AddPair('code', cBinaryCode);
-  mItem.AddPair('message', cTexts[TFormFilesText.FormIsStoredAsBinary].Text);
-  Result.AddElement(mItem);
-end;
-
 class function TLspFormFiles.BuildDiagnostics(ADocument: TDfmDocument): TJSONArray;
 var
   mError: TDfmError;
@@ -183,6 +169,20 @@ begin
     mItem.AddPair('message', mError.Message);
     Result.AddElement(mItem);
   end;
+end;
+
+class function TLspFormFiles.BinaryDiagnostics: TJSONArray;
+var
+  mItem: TJSONObject;
+begin
+  Result := TJSONArray.Create;
+  mItem := TJSONObject.Create;
+  mItem.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(0, 0, 0, 4)));
+  mItem.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.cHint));
+  mItem.AddPair('source', 'Atlas');
+  mItem.AddPair('code', cBinaryCode);
+  mItem.AddPair('message', cTexts[TFormFilesText.FormIsStoredAsBinary].Text);
+  Result.AddElement(mItem);
 end;
 
 initialization

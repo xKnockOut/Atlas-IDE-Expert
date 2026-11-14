@@ -37,6 +37,8 @@ const
   cStampDigits = 12;
   cSerialDigits = 8;
 
+{ TAtlasMarkIds }
+
 class function TAtlasMarkIds.SameFile(const A, B: string): Boolean;
 begin
   Result := TAtlasProjectSummaries.NormalizedPath(A) = TAtlasProjectSummaries.NormalizedPath(B);

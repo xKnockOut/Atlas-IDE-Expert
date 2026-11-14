@@ -96,12 +96,6 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasIdeFlakyTests.FileOf(const AProject: string): string;
-begin
-  Result := TAtlasProjectSummaries.FileFor(TPath.Combine(TAtlasProjectSummaries.DefaultFolder, cFolderName),
-    AProject);
-end;
-
 function TAtlasIdeFlakyTests.HistoryOf(const AProject: string): TAtlasTestHistory;
 var
   mKey: string;
@@ -139,6 +133,12 @@ begin
     on E: Exception do
       TAtlasDataFile.ReportNotWritten(cKind, E);
   end;
+end;
+
+class function TAtlasIdeFlakyTests.FileOf(const AProject: string): string;
+begin
+  Result := TAtlasProjectSummaries.FileFor(TPath.Combine(TAtlasProjectSummaries.DefaultFolder, cFolderName),
+    AProject);
 end;
 
 /// <summary>Kurzer Name eines Tests (Fixture.Methode) aus ACases zum Schlüssel AKey; sonst der Schlüssel.</summary>

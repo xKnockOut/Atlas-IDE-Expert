@@ -142,18 +142,209 @@ const
 
 { TAtlasWhyHere }
 
-class function TAtlasWhyHere.Arguments(const AUri: string; ALine, ADepth: Integer): string;
+function TAtlasWhyHere.Evaluable(ABlock, APart: Integer): Boolean;
 var
-  mItems: TJSONArray;
+  mKind: string;
 begin
-  mItems := TJSONArray.Create;
-  try
-    mItems.Add(AUri);
-    mItems.Add(ALine);
-    mItems.Add(ADepth);
-    Result := mItems.ToJSON;
-  finally
-    mItems.Free;
+  // Nur Werte und Vergleiche; die logischen Verknüpfungen rechnet Atlas selbst.
+  mKind := FBlocks[ABlock].Parts[APart].Kind;
+  Result := (mKind = 'value') or (mKind = 'compare');
+end;
+
+function TAtlasWhyHere.Render(ABlock, APart: Integer; const ATexts: TAtlasWhyHereTexts): string;
+var
+  mItem: TAtlasWhyHerePart;
+  mChildren: TArray<Integer>;
+  mTexts: TArray<string>;
+  mChild: Integer;
+begin
+  mItem := FBlocks[ABlock].Parts[APart];
+  if not Needed(ABlock, APart) then
+  begin
+    Exit(ATexts.NotNeeded);
+  end;
+  mChildren := ChildrenOf(ABlock, APart);
+  if mItem.Kind = 'value' then
+  begin
+    Exit(RenderValue(ABlock, APart, ATexts));
+  end;
+  if (mItem.Kind = 'compare') and (Length(mChildren) = 2) then
+  begin
+    Exit('(' + Render(ABlock, mChildren[0], ATexts) + ' ' + mItem.Operator_ + ' ' +
+      Render(ABlock, mChildren[1], ATexts) + ')');
+  end;
+  if (mItem.Kind = 'not') and (Length(mChildren) = 1) then
+  begin
+    Exit('not ' + Render(ABlock, mChildren[0], ATexts));
+  end;
+  mTexts := nil;
+  for mChild in mChildren do
+  begin
+    mTexts := mTexts + [Render(ABlock, mChild, ATexts)];
+  end;
+  Result := string.Join(' ' + mItem.Operator_ + ' ', mTexts);
+  if Result = '' then
+  begin
+    Result := RenderValue(ABlock, APart, ATexts);
+  end;
+end;
+
+class function TAtlasWhyHere.TruthText(ATruth: TAtlasWhyHereTruth; const ATexts: TAtlasWhyHereTexts): string;
+begin
+  case ATruth of
+    TAtlasWhyHereTruth.IsTrue:
+      Result := 'True';
+    TAtlasWhyHereTruth.IsFalse:
+      Result := 'False';
+  else
+    Result := ATexts.Failed;
+  end;
+end;
+
+function TAtlasWhyHere.LogicalTruth(ABlock, APart: Integer): TAtlasWhyHereTruth;
+var
+  mKind: string;
+  mChild: Integer;
+  mTruth: TAtlasWhyHereTruth;
+  mDecides, mKeeps: TAtlasWhyHereTruth;
+  mAllKnown, mParity: Boolean;
+begin
+  mKind := FBlocks[ABlock].Parts[APart].Kind;
+  // and: ein False entscheidet; or: ein True. xor: alle müssen bekannt sein.
+  mDecides := TAtlasWhyHereTruth.IsTrue;
+  mKeeps := TAtlasWhyHereTruth.IsFalse;
+  if mKind = 'and' then
+  begin
+    mDecides := TAtlasWhyHereTruth.IsFalse;
+    mKeeps := TAtlasWhyHereTruth.IsTrue;
+  end;
+  mAllKnown := True;
+  mParity := False;
+  for mChild in ChildrenOf(ABlock, APart) do
+  begin
+    mTruth := Truth(ABlock, mChild);
+    if (mKind <> 'xor') and (mTruth = mDecides) then
+    begin
+      Exit(mDecides);
+    end;
+    if mTruth = TAtlasWhyHereTruth.Unknown then
+    begin
+      mAllKnown := False;
+    end;
+    mParity := mParity xor (mTruth = TAtlasWhyHereTruth.IsTrue);
+  end;
+  Result := TAtlasWhyHereTruth.Unknown;
+  if not mAllKnown then
+  begin
+    Exit;
+  end;
+  Result := mKeeps;
+  if mKind = 'xor' then
+  begin
+    Result := TAtlasWhyHereTruth.IsFalse;
+    if mParity then
+    begin
+      Result := TAtlasWhyHereTruth.IsTrue;
+    end;
+  end;
+end;
+
+function TAtlasWhyHere.ShortCircuited(ABlock, AParent, AChild: Integer): Boolean;
+var
+  mSibling: Integer;
+  mDecides: TAtlasWhyHereTruth;
+  mKind: string;
+begin
+  Result := False;
+  mKind := FBlocks[ABlock].Parts[AParent].Kind;
+  // and entscheidet ein False, or ein True; andere Verknüpfungen werten alles aus.
+  if mKind = 'and' then
+  begin
+    mDecides := TAtlasWhyHereTruth.IsFalse;
+  end
+  else if mKind = 'or' then
+  begin
+    mDecides := TAtlasWhyHereTruth.IsTrue;
+  end
+  else
+  begin
+    Exit;
+  end;
+  for mSibling in ChildrenOf(ABlock, AParent) do
+  begin
+    if (mSibling >= AChild) or Result then
+    begin
+      Break;
+    end;
+    Result := Truth(ABlock, mSibling) = mDecides;
+  end;
+end;
+
+class function TAtlasWhyHere.WithText(const ABlock: TAtlasWhyHereBlock): string;
+var
+  mParts: TArray<string>;
+  mIndex: Integer;
+begin
+  mParts := nil;
+  for mIndex := 0 to High(ABlock.Parts) do
+  begin
+    mParts := mParts + [ABlock.Parts[mIndex].Text];
+  end;
+  Result := 'with ' + string.Join(', ', mParts);
+end;
+
+function TAtlasWhyHere.CaseText(ABlock: Integer; const ATexts: TAtlasWhyHereTexts): string;
+begin
+  Result := FBlocks[ABlock].Parts[0].Text + ' = ' + Render(ABlock, 0, ATexts) + cArrow;
+  if FBlocks[ABlock].Branch = 'else' then
+  begin
+    Result := Result + ATexts.ElseBranch;
+  end
+  else
+  begin
+    Result := Result + FBlocks[ABlock].Branch;
+  end;
+end;
+
+function TAtlasWhyHere.ConditionText(ABlock: Integer; const ATexts: TAtlasWhyHereTexts): string;
+begin
+  // if, while, repeat: Bedingung mit Werten und Ergebnis.
+  Result := Render(ABlock, 0, ATexts) + cArrow + TruthText(Truth(ABlock, 0), ATexts);
+  if (FBlocks[ABlock].Kind = 'if') and (FBlocks[ABlock].Branch = 'else') then
+  begin
+    Result := Result + ', ' + ATexts.ElseBranch;
+  end;
+end;
+
+function TAtlasWhyHere.BlockText(ABlock: Integer; const ATexts: TAtlasWhyHereTexts): string;
+var
+  mBlock: TAtlasWhyHereBlock;
+begin
+  mBlock := FBlocks[ABlock];
+  if Length(mBlock.Parts) = 0 then
+  begin
+    Result := '';
+  end
+  else if mBlock.Kind = 'with' then
+  begin
+    Result := WithText(mBlock);
+  end
+  else if (mBlock.Kind = 'for') and (Length(mBlock.Parts) = 2) then
+  begin
+    Result := mBlock.Parts[0].Text + ' = ' + Render(ABlock, 0, ATexts) + ' ' + ATexts.Of_ + ' ' +
+      Render(ABlock, 1, ATexts);
+  end
+  else if mBlock.Kind = 'forIn' then
+  begin
+    Result := mBlock.Parts[0].Text + ' = ' + Render(ABlock, 0, ATexts);
+  end
+  else if mBlock.Kind = 'case' then
+  begin
+    Result := CaseText(ABlock, ATexts);
+  end
+  else
+  begin
+    Result := ConditionText(ABlock, ATexts);
   end;
 end;
 
@@ -189,6 +380,35 @@ begin
     begin
       Result.Parts[mIndex] := ReadPart(TJSONObject(TJSONArray(mParts).Items[mIndex]));
     end;
+  end;
+end;
+
+function TAtlasWhyHere.ChildrenOf(ABlock, APart: Integer): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := APart + 1 to High(FBlocks[ABlock].Parts) do
+  begin
+    if FBlocks[ABlock].Parts[mIndex].Parent = APart then
+    begin
+      Result := Result + [mIndex];
+    end;
+  end;
+end;
+
+class function TAtlasWhyHere.Arguments(const AUri: string; ALine, ADepth: Integer): string;
+var
+  mItems: TJSONArray;
+begin
+  mItems := TJSONArray.Create;
+  try
+    mItems.Add(AUri);
+    mItems.Add(ALine);
+    mItems.Add(ADepth);
+    Result := mItems.ToJSON;
+  finally
+    mItems.Free;
   end;
 end;
 
@@ -263,6 +483,19 @@ begin
   end;
 end;
 
+function TruthOfText(const AValue: string): TAtlasWhyHereTruth;
+begin
+  Result := TAtlasWhyHereTruth.Unknown;
+  if SameText(Trim(AValue), 'True') then
+  begin
+    Result := TAtlasWhyHereTruth.IsTrue;
+  end
+  else if SameText(Trim(AValue), 'False') then
+  begin
+    Result := TAtlasWhyHereTruth.IsFalse;
+  end;
+end;
+
 procedure TAtlasWhyHere.Clear;
 begin
   FFileName := '';
@@ -272,75 +505,6 @@ end;
 function TAtlasWhyHere.Active: Boolean;
 begin
   Result := Length(FBlocks) > 0;
-end;
-
-function TAtlasWhyHere.ChildrenOf(ABlock, APart: Integer): TArray<Integer>;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  for mIndex := APart + 1 to High(FBlocks[ABlock].Parts) do
-  begin
-    if FBlocks[ABlock].Parts[mIndex].Parent = APart then
-    begin
-      Result := Result + [mIndex];
-    end;
-  end;
-end;
-
-function TAtlasWhyHere.Evaluable(ABlock, APart: Integer): Boolean;
-var
-  mKind: string;
-begin
-  // Nur Werte und Vergleiche; die logischen Verknüpfungen rechnet Atlas selbst.
-  mKind := FBlocks[ABlock].Parts[APart].Kind;
-  Result := (mKind = 'value') or (mKind = 'compare');
-end;
-
-function TAtlasWhyHere.ShortCircuited(ABlock, AParent, AChild: Integer): Boolean;
-var
-  mSibling: Integer;
-  mDecides: TAtlasWhyHereTruth;
-  mKind: string;
-begin
-  Result := False;
-  mKind := FBlocks[ABlock].Parts[AParent].Kind;
-  // and entscheidet ein False, or ein True; andere Verknüpfungen werten alles aus.
-  if mKind = 'and' then
-  begin
-    mDecides := TAtlasWhyHereTruth.IsFalse;
-  end
-  else if mKind = 'or' then
-  begin
-    mDecides := TAtlasWhyHereTruth.IsTrue;
-  end
-  else
-  begin
-    Exit;
-  end;
-  for mSibling in ChildrenOf(ABlock, AParent) do
-  begin
-    if (mSibling >= AChild) or Result then
-    begin
-      Break;
-    end;
-    Result := Truth(ABlock, mSibling) = mDecides;
-  end;
-end;
-
-function TAtlasWhyHere.Needed(ABlock, APart: Integer): Boolean;
-var
-  mChild, mParent: Integer;
-begin
-  Result := True;
-  mChild := APart;
-  mParent := FBlocks[ABlock].Parts[APart].Parent;
-  while Result and (mParent >= 0) do
-  begin
-    Result := not ShortCircuited(ABlock, mParent, mChild);
-    mChild := mParent;
-    mParent := FBlocks[ABlock].Parts[mParent].Parent;
-  end;
 end;
 
 function TAtlasWhyHere.NextPending(out ARef: TAtlasWhyHereRef): Boolean;
@@ -370,6 +534,36 @@ begin
     end;
   end;
   Result := False;
+end;
+
+function Shorten(const AText: string; AMax: Integer): string;
+begin
+  Result := Trim(AText);
+  if Length(Result) > AMax then
+  begin
+    Result := Copy(Result, 1, AMax - 1) + '…';
+  end;
+end;
+
+function TAtlasWhyHere.RenderValue(ABlock, APart: Integer; const ATexts: TAtlasWhyHereTexts): string;
+var
+  mItem: TAtlasWhyHerePart;
+begin
+  mItem := FBlocks[ABlock].Parts[APart];
+  case mItem.State of
+    TAtlasWhyHereState.Value:
+      Result := Shorten(mItem.Value, cMaxValueLength);
+    TAtlasWhyHereState.Failed:
+      Result := ATexts.Failed;
+    TAtlasWhyHereState.Skipped:
+      Result := mItem.Text;
+  else
+    Result := '…';
+    if mItem.Call and not mItem.Allowed then
+    begin
+      Result := ATexts.NotEvaluated;
+    end;
+  end;
 end;
 
 procedure TAtlasWhyHere.Put(const ARef: TAtlasWhyHereRef; const AValue: string; AOk: Boolean);
@@ -435,64 +629,18 @@ begin
   end;
 end;
 
-function TruthOfText(const AValue: string): TAtlasWhyHereTruth;
-begin
-  Result := TAtlasWhyHereTruth.Unknown;
-  if SameText(Trim(AValue), 'True') then
-  begin
-    Result := TAtlasWhyHereTruth.IsTrue;
-  end
-  else if SameText(Trim(AValue), 'False') then
-  begin
-    Result := TAtlasWhyHereTruth.IsFalse;
-  end;
-end;
-
-function TAtlasWhyHere.LogicalTruth(ABlock, APart: Integer): TAtlasWhyHereTruth;
+function TAtlasWhyHere.Needed(ABlock, APart: Integer): Boolean;
 var
-  mKind: string;
-  mChild: Integer;
-  mTruth: TAtlasWhyHereTruth;
-  mDecides, mKeeps: TAtlasWhyHereTruth;
-  mAllKnown, mParity: Boolean;
+  mChild, mParent: Integer;
 begin
-  mKind := FBlocks[ABlock].Parts[APart].Kind;
-  // and: ein False entscheidet; or: ein True. xor: alle müssen bekannt sein.
-  mDecides := TAtlasWhyHereTruth.IsTrue;
-  mKeeps := TAtlasWhyHereTruth.IsFalse;
-  if mKind = 'and' then
+  Result := True;
+  mChild := APart;
+  mParent := FBlocks[ABlock].Parts[APart].Parent;
+  while Result and (mParent >= 0) do
   begin
-    mDecides := TAtlasWhyHereTruth.IsFalse;
-    mKeeps := TAtlasWhyHereTruth.IsTrue;
-  end;
-  mAllKnown := True;
-  mParity := False;
-  for mChild in ChildrenOf(ABlock, APart) do
-  begin
-    mTruth := Truth(ABlock, mChild);
-    if (mKind <> 'xor') and (mTruth = mDecides) then
-    begin
-      Exit(mDecides);
-    end;
-    if mTruth = TAtlasWhyHereTruth.Unknown then
-    begin
-      mAllKnown := False;
-    end;
-    mParity := mParity xor (mTruth = TAtlasWhyHereTruth.IsTrue);
-  end;
-  Result := TAtlasWhyHereTruth.Unknown;
-  if not mAllKnown then
-  begin
-    Exit;
-  end;
-  Result := mKeeps;
-  if mKind = 'xor' then
-  begin
-    Result := TAtlasWhyHereTruth.IsFalse;
-    if mParity then
-    begin
-      Result := TAtlasWhyHereTruth.IsTrue;
-    end;
+    Result := not ShortCircuited(ABlock, mParent, mChild);
+    mChild := mParent;
+    mParent := FBlocks[ABlock].Parts[mParent].Parent;
   end;
 end;
 
@@ -525,154 +673,6 @@ begin
   if mItem.State = TAtlasWhyHereState.Value then
   begin
     Result := TruthOfText(mItem.Value);
-  end;
-end;
-
-class function TAtlasWhyHere.TruthText(ATruth: TAtlasWhyHereTruth; const ATexts: TAtlasWhyHereTexts): string;
-begin
-  case ATruth of
-    TAtlasWhyHereTruth.IsTrue:
-      Result := 'True';
-    TAtlasWhyHereTruth.IsFalse:
-      Result := 'False';
-  else
-    Result := ATexts.Failed;
-  end;
-end;
-
-function Shorten(const AText: string; AMax: Integer): string;
-begin
-  Result := Trim(AText);
-  if Length(Result) > AMax then
-  begin
-    Result := Copy(Result, 1, AMax - 1) + '…';
-  end;
-end;
-
-function TAtlasWhyHere.RenderValue(ABlock, APart: Integer; const ATexts: TAtlasWhyHereTexts): string;
-var
-  mItem: TAtlasWhyHerePart;
-begin
-  mItem := FBlocks[ABlock].Parts[APart];
-  case mItem.State of
-    TAtlasWhyHereState.Value:
-      Result := Shorten(mItem.Value, cMaxValueLength);
-    TAtlasWhyHereState.Failed:
-      Result := ATexts.Failed;
-    TAtlasWhyHereState.Skipped:
-      Result := mItem.Text;
-  else
-    Result := '…';
-    if mItem.Call and not mItem.Allowed then
-    begin
-      Result := ATexts.NotEvaluated;
-    end;
-  end;
-end;
-
-function TAtlasWhyHere.Render(ABlock, APart: Integer; const ATexts: TAtlasWhyHereTexts): string;
-var
-  mItem: TAtlasWhyHerePart;
-  mChildren: TArray<Integer>;
-  mTexts: TArray<string>;
-  mChild: Integer;
-begin
-  mItem := FBlocks[ABlock].Parts[APart];
-  if not Needed(ABlock, APart) then
-  begin
-    Exit(ATexts.NotNeeded);
-  end;
-  mChildren := ChildrenOf(ABlock, APart);
-  if mItem.Kind = 'value' then
-  begin
-    Exit(RenderValue(ABlock, APart, ATexts));
-  end;
-  if (mItem.Kind = 'compare') and (Length(mChildren) = 2) then
-  begin
-    Exit('(' + Render(ABlock, mChildren[0], ATexts) + ' ' + mItem.Operator_ + ' ' +
-      Render(ABlock, mChildren[1], ATexts) + ')');
-  end;
-  if (mItem.Kind = 'not') and (Length(mChildren) = 1) then
-  begin
-    Exit('not ' + Render(ABlock, mChildren[0], ATexts));
-  end;
-  mTexts := nil;
-  for mChild in mChildren do
-  begin
-    mTexts := mTexts + [Render(ABlock, mChild, ATexts)];
-  end;
-  Result := string.Join(' ' + mItem.Operator_ + ' ', mTexts);
-  if Result = '' then
-  begin
-    Result := RenderValue(ABlock, APart, ATexts);
-  end;
-end;
-
-class function TAtlasWhyHere.WithText(const ABlock: TAtlasWhyHereBlock): string;
-var
-  mParts: TArray<string>;
-  mIndex: Integer;
-begin
-  mParts := nil;
-  for mIndex := 0 to High(ABlock.Parts) do
-  begin
-    mParts := mParts + [ABlock.Parts[mIndex].Text];
-  end;
-  Result := 'with ' + string.Join(', ', mParts);
-end;
-
-function TAtlasWhyHere.CaseText(ABlock: Integer; const ATexts: TAtlasWhyHereTexts): string;
-begin
-  Result := FBlocks[ABlock].Parts[0].Text + ' = ' + Render(ABlock, 0, ATexts) + cArrow;
-  if FBlocks[ABlock].Branch = 'else' then
-  begin
-    Result := Result + ATexts.ElseBranch;
-  end
-  else
-  begin
-    Result := Result + FBlocks[ABlock].Branch;
-  end;
-end;
-
-function TAtlasWhyHere.ConditionText(ABlock: Integer; const ATexts: TAtlasWhyHereTexts): string;
-begin
-  // if, while, repeat: Bedingung mit Werten und Ergebnis.
-  Result := Render(ABlock, 0, ATexts) + cArrow + TruthText(Truth(ABlock, 0), ATexts);
-  if (FBlocks[ABlock].Kind = 'if') and (FBlocks[ABlock].Branch = 'else') then
-  begin
-    Result := Result + ', ' + ATexts.ElseBranch;
-  end;
-end;
-
-function TAtlasWhyHere.BlockText(ABlock: Integer; const ATexts: TAtlasWhyHereTexts): string;
-var
-  mBlock: TAtlasWhyHereBlock;
-begin
-  mBlock := FBlocks[ABlock];
-  if Length(mBlock.Parts) = 0 then
-  begin
-    Result := '';
-  end
-  else if mBlock.Kind = 'with' then
-  begin
-    Result := WithText(mBlock);
-  end
-  else if (mBlock.Kind = 'for') and (Length(mBlock.Parts) = 2) then
-  begin
-    Result := mBlock.Parts[0].Text + ' = ' + Render(ABlock, 0, ATexts) + ' ' + ATexts.Of_ + ' ' +
-      Render(ABlock, 1, ATexts);
-  end
-  else if mBlock.Kind = 'forIn' then
-  begin
-    Result := mBlock.Parts[0].Text + ' = ' + Render(ABlock, 0, ATexts);
-  end
-  else if mBlock.Kind = 'case' then
-  begin
-    Result := CaseText(ABlock, ATexts);
-  end
-  else
-  begin
-    Result := ConditionText(ABlock, ATexts);
   end;
 end;
 

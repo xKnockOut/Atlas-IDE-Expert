@@ -135,6 +135,8 @@ uses
   Atlas.Common.Index.Cache,
   Atlas.Common.Index.CacheHousekeeping;
 
+{ TIndexCacheDirectory }
+
 class function TIndexCacheDirectory.CacheFileName: string;
 begin
   Result := Format('index-%d.atlasidx', [TIndexCache.cFormatVersion]);
@@ -530,6 +532,42 @@ begin
   end;
 end;
 
+class procedure TIndexCacheDirectory.WriteOrigin(const ACacheFile, AOrigin: string);
+begin
+  if (AOrigin = '') or SameText(ReadOrigin(ACacheFile), AOrigin) then
+  begin
+    Exit;
+  end;
+  try
+    ForceDirectories(ExtractFileDir(ACacheFile));
+    TFile.WriteAllText(TPath.Combine(ExtractFileDir(ACacheFile), cOriginFileName), AOrigin, TEncoding.UTF8);
+  except
+    // Ohne Herkunft bleibt der Cache nur beim Aufräumen nach Größe.
+    // lsp-ignore: catch-all-without-raise -- Cache nach Kräften; Fehler heißt kein Eintrag
+    on Exception do
+      ;
+  end;
+end;
+
+class function TIndexCacheDirectory.RemoveUnused(const ARoot: string; AMaxAgeDays: Integer;
+  const AKeep: TArray<string>): Integer;
+var
+  mFileName: string;
+begin
+  Result := 0;
+  if AMaxAgeDays <= 0 then
+  begin
+    Exit;
+  end;
+  for mFileName in TIndexCacheHousekeeping.SelectUnused(ListCaches(ARoot), AKeep, Now, AMaxAgeDays) do
+  begin
+    if RemoveCache(mFileName) then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
 class procedure TIndexCacheDirectory.TouchUse(const ACacheFile: string);
 var
   mMarker: string;
@@ -586,25 +624,6 @@ begin
   end;
 end;
 
-class function TIndexCacheDirectory.RemoveUnused(const ARoot: string; AMaxAgeDays: Integer;
-  const AKeep: TArray<string>): Integer;
-var
-  mFileName: string;
-begin
-  Result := 0;
-  if AMaxAgeDays <= 0 then
-  begin
-    Exit;
-  end;
-  for mFileName in TIndexCacheHousekeeping.SelectUnused(ListCaches(ARoot), AKeep, Now, AMaxAgeDays) do
-  begin
-    if RemoveCache(mFileName) then
-    begin
-      Inc(Result);
-    end;
-  end;
-end;
-
 class function TIndexCacheDirectory.ReadOrigin(const ACacheFile: string): string;
 var
   mFileName: string;
@@ -620,23 +639,6 @@ begin
     // lsp-ignore: catch-all-without-raise -- Cache nach Kräften; Fehler heißt kein Eintrag
     on Exception do
       Result := '';
-  end;
-end;
-
-class procedure TIndexCacheDirectory.WriteOrigin(const ACacheFile, AOrigin: string);
-begin
-  if (AOrigin = '') or SameText(ReadOrigin(ACacheFile), AOrigin) then
-  begin
-    Exit;
-  end;
-  try
-    ForceDirectories(ExtractFileDir(ACacheFile));
-    TFile.WriteAllText(TPath.Combine(ExtractFileDir(ACacheFile), cOriginFileName), AOrigin, TEncoding.UTF8);
-  except
-    // Ohne Herkunft bleibt der Cache nur beim Aufräumen nach Größe.
-    // lsp-ignore: catch-all-without-raise -- Cache nach Kräften; Fehler heißt kein Eintrag
-    on Exception do
-      ;
   end;
 end;
 
@@ -750,11 +752,6 @@ begin
   end;
 end;
 
-class function TIndexCacheDirectory.TotalSize(const ARoot: string): Int64;
-begin
-  Result := SizeOf(CacheFiles(ARoot));
-end;
-
 class function TIndexCacheDirectory.SizeOf(const AFiles: TArray<string>): Int64;
 var
   mFileName: string;
@@ -767,6 +764,11 @@ begin
       Inc(Result, TFile.GetSize(mFileName));
     end;
   end;
+end;
+
+class function TIndexCacheDirectory.TotalSize(const ARoot: string): Int64;
+begin
+  Result := SizeOf(CacheFiles(ARoot));
 end;
 
 end.

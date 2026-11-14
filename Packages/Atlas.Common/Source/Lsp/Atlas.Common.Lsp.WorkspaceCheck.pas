@@ -394,6 +394,8 @@ type
     procedure ThrowIfCancellationRequested;
   end;
 
+{ TCheckToken }
+
 constructor TCheckToken.Create(AOwner: TLspWorkspaceCheck; ALimitMs: Int64; AInterruptible: Boolean);
 begin
   inherited Create;
@@ -499,6 +501,24 @@ begin
   inherited;
 end;
 
+procedure TLspWorkspaceCheck.TSchedule.ForceQueued(const AKey: string);
+var
+  mIndex: Integer;
+  mEntry: TEntry;
+begin
+  FQueued[AKey] := True;
+  for mIndex := 0 to FQueue.Count - 1 do
+  begin
+    if KeyOf(FQueue[mIndex].FileName) = AKey then
+    begin
+      mEntry := FQueue[mIndex];
+      mEntry.Forced := True;
+      FQueue[mIndex] := mEntry;
+      Exit;
+    end;
+  end;
+end;
+
 procedure TLspWorkspaceCheck.TSchedule.Restart;
 begin
   FQueue.Clear;
@@ -534,24 +554,6 @@ end;
 function TLspWorkspaceCheck.TSchedule.InProject(const AFileName: string): Boolean;
 begin
   Result := FProject.ContainsKey(KeyOf(AFileName));
-end;
-
-procedure TLspWorkspaceCheck.TSchedule.ForceQueued(const AKey: string);
-var
-  mIndex: Integer;
-  mEntry: TEntry;
-begin
-  FQueued[AKey] := True;
-  for mIndex := 0 to FQueue.Count - 1 do
-  begin
-    if KeyOf(FQueue[mIndex].FileName) = AKey then
-    begin
-      mEntry := FQueue[mIndex];
-      mEntry.Forced := True;
-      FQueue[mIndex] := mEntry;
-      Exit;
-    end;
-  end;
 end;
 
 function TLspWorkspaceCheck.TSchedule.Add(const AFileName: string; AForced: Boolean; ANow: Int64): Boolean;
@@ -914,23 +916,6 @@ begin
   end;
 end;
 
-procedure TLspWorkspaceCheck.TWorker.Log(const AMessage: string);
-begin
-  if Assigned(FOwner.FHooks.Log) then
-  begin
-    FOwner.FHooks.Log(AMessage);
-  end;
-end;
-
-function TLspWorkspaceCheck.TWorker.LabelOf(const AFileName: string): string;
-begin
-  Result := 'unit';
-  if Assigned(FOwner.FHooks.FileLabel) then
-  begin
-    Result := FOwner.FHooks.FileLabel(AFileName);
-  end;
-end;
-
 function TLspWorkspaceCheck.TWorker.NextEntry(out AEntry: TEntry): Boolean;
 var
   mBusy: Boolean;
@@ -1154,6 +1139,23 @@ begin
   end;
 end;
 
+function TLspWorkspaceCheck.TWorker.LabelOf(const AFileName: string): string;
+begin
+  Result := 'unit';
+  if Assigned(FOwner.FHooks.FileLabel) then
+  begin
+    Result := FOwner.FHooks.FileLabel(AFileName);
+  end;
+end;
+
+procedure TLspWorkspaceCheck.TWorker.Log(const AMessage: string);
+begin
+  if Assigned(FOwner.FHooks.Log) then
+  begin
+    FOwner.FHooks.Log(AMessage);
+  end;
+end;
+
 { TLspWorkspaceCheck }
 
 constructor TLspWorkspaceCheck.Create(const AFiles: TWorkspaceCheckFiles; const AStamp: TWorkspaceCheckStamp;
@@ -1224,23 +1226,6 @@ begin
     Result := FStopping or (AInterruptible and FSchedule.Interrupt);
   finally
     TMonitor.Exit(FLock);
-  end;
-end;
-
-procedure TLspWorkspaceCheck.Want;
-var
-  mFirst: Boolean;
-begin
-  TMonitor.Enter(FLock);
-  try
-    mFirst := not FSchedule.Wanted;
-    FSchedule.Wanted := True;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-  if mFirst then
-  begin
-    Start(False);
   end;
 end;
 
@@ -1324,6 +1309,23 @@ begin
     Changed;
   finally
     TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TLspWorkspaceCheck.Want;
+var
+  mFirst: Boolean;
+begin
+  TMonitor.Enter(FLock);
+  try
+    mFirst := not FSchedule.Wanted;
+    FSchedule.Wanted := True;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  if mFirst then
+  begin
+    Start(False);
   end;
 end;
 
@@ -1417,16 +1419,6 @@ begin
   end;
 end;
 
-function TLspWorkspaceCheck.ChangeCount: Integer;
-begin
-  TMonitor.Enter(FLock);
-  try
-    Result := FChange;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
 function TLspWorkspaceCheck.WaitForChange(AChange: Integer; AWaitMs: Cardinal): Integer;
 begin
   TMonitor.Enter(FLock);
@@ -1436,6 +1428,16 @@ begin
     begin
       TMonitor.Wait(FLock, AWaitMs);
     end;
+    Result := FChange;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TLspWorkspaceCheck.ChangeCount: Integer;
+begin
+  TMonitor.Enter(FLock);
+  try
     Result := FChange;
   finally
     TMonitor.Exit(FLock);

@@ -51,6 +51,8 @@ uses
   Atlas.UI.Debug.MemoryFrame,
   Atlas.UI.Debug.Memory.Strings;
 
+{ TAtlasIdeDebugObjectCount }
+
 class function TAtlasIdeDebugObjectCount.Panel: TAtlasDebugObjectCountPanel;
 var
   mFrame: TAtlasDebugMemoryFrame;
@@ -61,45 +63,6 @@ begin
   begin
     Result := mFrame.ObjectCount;
   end;
-end;
-
-class procedure TAtlasIdeDebugObjectCount.Wire(APanel: TAtlasDebugObjectCountPanel);
-begin
-  if APanel = nil then
-  begin
-    Exit;
-  end;
-  APanel.OnCount := CountNow;
-  if FCounts.HasCurrent then
-  begin
-    APanel.SetCounts(FCounts.Base, FCounts.Current, FCounts.HasBase);
-  end;
-end;
-
-class procedure TAtlasIdeDebugObjectCount.Reset;
-var
-  mPanel: TAtlasDebugObjectCountPanel;
-begin
-  FCounts := Default(TCounts);
-  mPanel := Panel;
-  if mPanel <> nil then
-  begin
-    mPanel.ClearCounts;
-  end;
-end;
-
-class procedure TAtlasIdeDebugObjectCount.Release(APanel: TAtlasDebugObjectCountPanel);
-begin
-  if APanel <> nil then
-  begin
-    APanel.OnCount := nil;
-  end;
-  FCounts := Default(TCounts);
-end;
-
-class procedure TAtlasIdeDebugObjectCount.CountNow;
-begin
-  TAtlasGuard.Run(TAtlasFeature.Debugger, Count);
 end;
 
 class procedure TAtlasIdeDebugObjectCount.Count;
@@ -143,6 +106,45 @@ begin
     Screen.Cursor := mCursor;
   end;
   mPanel.SetCounts(FCounts.Base, FCounts.Current, FCounts.HasBase);
+end;
+
+class procedure TAtlasIdeDebugObjectCount.Wire(APanel: TAtlasDebugObjectCountPanel);
+begin
+  if APanel = nil then
+  begin
+    Exit;
+  end;
+  APanel.OnCount := CountNow;
+  if FCounts.HasCurrent then
+  begin
+    APanel.SetCounts(FCounts.Base, FCounts.Current, FCounts.HasBase);
+  end;
+end;
+
+class procedure TAtlasIdeDebugObjectCount.Reset;
+var
+  mPanel: TAtlasDebugObjectCountPanel;
+begin
+  FCounts := Default(TCounts);
+  mPanel := Panel;
+  if mPanel <> nil then
+  begin
+    mPanel.ClearCounts;
+  end;
+end;
+
+class procedure TAtlasIdeDebugObjectCount.CountNow;
+begin
+  TAtlasGuard.Run(TAtlasFeature.Debugger, Count);
+end;
+
+class procedure TAtlasIdeDebugObjectCount.Release(APanel: TAtlasDebugObjectCountPanel);
+begin
+  if APanel <> nil then
+  begin
+    APanel.OnCount := nil;
+  end;
+  FCounts := Default(TCounts);
 end;
 
 end.

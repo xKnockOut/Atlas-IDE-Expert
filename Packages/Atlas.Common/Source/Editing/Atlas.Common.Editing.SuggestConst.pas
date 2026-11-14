@@ -179,6 +179,8 @@ begin
   Result := True;
 end;
 
+{ TSuggestConst }
+
 class function TSuggestConst.Action(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   const ALookup: TFlowSignatureLookup; out AAction: TCodeAction): Boolean;
 var

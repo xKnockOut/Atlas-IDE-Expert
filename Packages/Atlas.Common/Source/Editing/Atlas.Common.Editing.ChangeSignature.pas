@@ -487,6 +487,8 @@ begin
   end;
 end;
 
+{ TChangeSignature }
+
 class function TChangeSignature.ParseParameters(const AText: string): TArray<TSignatureParameter>;
 var
   mGroup, mRest, mName: string;

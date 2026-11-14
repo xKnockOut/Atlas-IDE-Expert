@@ -64,24 +64,25 @@ begin
   Result := Length(Lines);
 end;
 
-class function TAtlasFormUnit.SpacesOf(const ALine: string): Integer;
-begin
-  Result := 0;
-  while (Result < Length(ALine)) and (ALine[Result + 1] = ' ') do
-  begin
-    Inc(Result);
-  end;
-end;
-
-class function TAtlasFormUnit.IsMethodHeader(const ALine: string): Boolean;
+function TAtlasFormUnit.FindClass(const AFormClass: string; out AFirst, ALast: Integer): Boolean;
 var
-  mText: string;
+  mIndex: Integer;
 begin
-  mText := ALine.TrimLeft;
-  Result := (SpacesOf(ALine) = 0) and (StartsText('procedure ', mText) or StartsText('function ', mText) or
-    StartsText('constructor ', mText) or StartsText('destructor ', mText) or StartsText('class ', mText) or
-    SameText(mText.Trim, 'initialization') or SameText(mText.Trim, 'finalization') or SameText(mText.Trim, 'end.') or
-    StartsText('{ T', mText));
+  AFirst := -1;
+  ALast := -1;
+  for mIndex := 0 to ImplementationLine - 1 do
+  begin
+    if (AFirst < 0) and StartsText(AFormClass + ' = class', Lines[mIndex].Trim) then
+    begin
+      AFirst := mIndex;
+    end
+    else if (AFirst >= 0) and SameText(Lines[mIndex].Trim, 'end;') then
+    begin
+      ALast := mIndex;
+      Break;
+    end;
+  end;
+  Result := (AFirst >= 0) and (ALast > AFirst);
 end;
 
 function TAtlasFormUnit.FindBody(const AFormClass, AName: string; out AFirst, ALast: Integer): Boolean;
@@ -118,27 +119,6 @@ begin
   Result := (AFirst >= 0) and (ALast > AFirst);
 end;
 
-function TAtlasFormUnit.FindClass(const AFormClass: string; out AFirst, ALast: Integer): Boolean;
-var
-  mIndex: Integer;
-begin
-  AFirst := -1;
-  ALast := -1;
-  for mIndex := 0 to ImplementationLine - 1 do
-  begin
-    if (AFirst < 0) and StartsText(AFormClass + ' = class', Lines[mIndex].Trim) then
-    begin
-      AFirst := mIndex;
-    end
-    else if (AFirst >= 0) and SameText(Lines[mIndex].Trim, 'end;') then
-    begin
-      ALast := mIndex;
-      Break;
-    end;
-  end;
-  Result := (AFirst >= 0) and (ALast > AFirst);
-end;
-
 class function TAtlasFormUnit.MemberName(const ALine: string; out AIsMethod: Boolean): string;
 var
   mText: string;
@@ -157,6 +137,26 @@ begin
   else
   begin
     Result := '';
+  end;
+end;
+
+class function TAtlasFormUnit.IsMethodHeader(const ALine: string): Boolean;
+var
+  mText: string;
+begin
+  mText := ALine.TrimLeft;
+  Result := (SpacesOf(ALine) = 0) and (StartsText('procedure ', mText) or StartsText('function ', mText) or
+    StartsText('constructor ', mText) or StartsText('destructor ', mText) or StartsText('class ', mText) or
+    SameText(mText.Trim, 'initialization') or SameText(mText.Trim, 'finalization') or SameText(mText.Trim, 'end.') or
+    StartsText('{ T', mText));
+end;
+
+class function TAtlasFormUnit.SpacesOf(const ALine: string): Integer;
+begin
+  Result := 0;
+  while (Result < Length(ALine)) and (ALine[Result + 1] = ' ') do
+  begin
+    Inc(Result);
   end;
 end;
 

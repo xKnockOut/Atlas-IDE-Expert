@@ -241,18 +241,6 @@ begin
   FNode := -1;
 end;
 
-class function TUnitRelationsBuilder.SectionName(ASection: TUsesSection): string;
-begin
-  if ASection = TUsesSection.Interface_ then
-  begin
-    Result := 'interface';
-  end
-  else
-  begin
-    Result := 'implementation';
-  end;
-end;
-
 function TUnitRelationsBuilder.InComponent(ANode: Integer): Boolean;
 begin
   Result := (ANode >= 0) and (ANode <= High(FComponent)) and FComponent[ANode];
@@ -530,59 +518,6 @@ begin
   Result := Expand(FNode, 0);
 end;
 
-function TUnitRelationsBuilder.TextUses(const AFileName: string): TArray<TUnitRelation>;
-var
-  mText: string;
-  mDefines: TArray<string>;
-  mReference: TUsesReference;
-  mRelation: TUnitRelation;
-  mTarget: Integer;
-  mNode: TUsesNode;
-begin
-  Result := nil;
-  if not (Assigned(FReader) and FReader(AFileName, mText)) then
-  begin
-    Exit;
-  end;
-  mDefines := nil;
-  if Assigned(FDefines) then
-  begin
-    mDefines := FDefines(AFileName);
-  end;
-  for mReference in TUsesLocator.UsesReferences(mText, mDefines) do
-  begin
-    mRelation := Default(TUnitRelation);
-    mRelation.Name := mReference.Name;
-    if mReference.InInterface then
-    begin
-      mRelation.Section := TUsesSection.Interface_;
-    end
-    else
-    begin
-      mRelation.Section := TUsesSection.Implementation_;
-    end;
-    mRelation.LocationFile := AFileName;
-    mRelation.Line := mReference.Range.StartPos.Line;
-    mRelation.Character := mReference.Range.StartPos.Character;
-    mRelation.Library_ := True;
-    mTarget := FGraph.IndexOf(mReference.Name);
-    if mTarget >= 0 then
-    begin
-      mNode := FGraph.Node(mTarget);
-      mRelation.Name := mNode.UnitName;
-      mRelation.FileName := mNode.FileName;
-      mRelation.Library_ := mNode.Library_;
-    end;
-    Result := Result + [mRelation];
-  end;
-end;
-
-function TUnitRelationsBuilder.Build(const AFileName: string; ADepth: Integer;
-  const AUnused: TArray<string>): TUnitRelations;
-begin
-  Result := Build(AFileName, ADepth, AUnused, nil);
-end;
-
 procedure TUnitRelationsBuilder.MarkComponent(var AResult: TUnitRelations);
 var
   mCycle: TUsesCycle;
@@ -693,6 +628,59 @@ begin
   MarkCycles(AResult);
 end;
 
+function TUnitRelationsBuilder.TextUses(const AFileName: string): TArray<TUnitRelation>;
+var
+  mText: string;
+  mDefines: TArray<string>;
+  mReference: TUsesReference;
+  mRelation: TUnitRelation;
+  mTarget: Integer;
+  mNode: TUsesNode;
+begin
+  Result := nil;
+  if not (Assigned(FReader) and FReader(AFileName, mText)) then
+  begin
+    Exit;
+  end;
+  mDefines := nil;
+  if Assigned(FDefines) then
+  begin
+    mDefines := FDefines(AFileName);
+  end;
+  for mReference in TUsesLocator.UsesReferences(mText, mDefines) do
+  begin
+    mRelation := Default(TUnitRelation);
+    mRelation.Name := mReference.Name;
+    if mReference.InInterface then
+    begin
+      mRelation.Section := TUsesSection.Interface_;
+    end
+    else
+    begin
+      mRelation.Section := TUsesSection.Implementation_;
+    end;
+    mRelation.LocationFile := AFileName;
+    mRelation.Line := mReference.Range.StartPos.Line;
+    mRelation.Character := mReference.Range.StartPos.Character;
+    mRelation.Library_ := True;
+    mTarget := FGraph.IndexOf(mReference.Name);
+    if mTarget >= 0 then
+    begin
+      mNode := FGraph.Node(mTarget);
+      mRelation.Name := mNode.UnitName;
+      mRelation.FileName := mNode.FileName;
+      mRelation.Library_ := mNode.Library_;
+    end;
+    Result := Result + [mRelation];
+  end;
+end;
+
+function TUnitRelationsBuilder.Build(const AFileName: string; ADepth: Integer;
+  const AUnused: TArray<string>): TUnitRelations;
+begin
+  Result := Build(AFileName, ADepth, AUnused, nil);
+end;
+
 function TUnitRelationsBuilder.Build(const AFileName: string; ADepth: Integer; const AUnused,
   AOnlyImplementation: TArray<string>): TUnitRelations;
 var
@@ -766,6 +754,35 @@ begin
     mList.Add(mName);
   end;
   Result.AddPair('units', mList);
+end;
+
+class function TUnitRelationsBuilder.UseInfoToJson(const AInfo: TUnitUseInfo): TJSONObject;
+var
+  mList: TJSONArray;
+  mCandidate: TUnitUseCandidate;
+  mItem: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('found', TJSONBool.Create(AInfo.Found));
+  Result.AddPair('unit', AInfo.UnitName);
+  Result.AddPair('file', AInfo.FileName);
+  mList := TJSONArray.Create;
+  for mCandidate in AInfo.Candidates do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('name', mCandidate.Name);
+    if mCandidate.FileName <> '' then
+    begin
+      mItem.AddPair('file', mCandidate.FileName);
+    end;
+    if mCandidate.InterfacePath <> '' then
+    begin
+      mItem.AddPair('interfacePath', mCandidate.InterfacePath);
+    end;
+    mItem.AddPair('path', mCandidate.Path);
+    mList.AddElement(mItem);
+  end;
+  Result.AddPair('cycles', mList);
 end;
 
 /// <summary>Nächster Schritt zur Unit ATarget je Knoten (Rückwärtssuche über die eingehenden Kanten); -1 =
@@ -865,33 +882,16 @@ begin
   end;
 end;
 
-class function TUnitRelationsBuilder.UseInfoToJson(const AInfo: TUnitUseInfo): TJSONObject;
-var
-  mList: TJSONArray;
-  mCandidate: TUnitUseCandidate;
-  mItem: TJSONObject;
+class function TUnitRelationsBuilder.SectionName(ASection: TUsesSection): string;
 begin
-  Result := TJSONObject.Create;
-  Result.AddPair('found', TJSONBool.Create(AInfo.Found));
-  Result.AddPair('unit', AInfo.UnitName);
-  Result.AddPair('file', AInfo.FileName);
-  mList := TJSONArray.Create;
-  for mCandidate in AInfo.Candidates do
+  if ASection = TUsesSection.Interface_ then
   begin
-    mItem := TJSONObject.Create;
-    mItem.AddPair('name', mCandidate.Name);
-    if mCandidate.FileName <> '' then
-    begin
-      mItem.AddPair('file', mCandidate.FileName);
-    end;
-    if mCandidate.InterfacePath <> '' then
-    begin
-      mItem.AddPair('interfacePath', mCandidate.InterfacePath);
-    end;
-    mItem.AddPair('path', mCandidate.Path);
-    mList.AddElement(mItem);
+    Result := 'interface';
+  end
+  else
+  begin
+    Result := 'implementation';
   end;
-  Result.AddPair('cycles', mList);
 end;
 
 function RelationJson(const ARelation: TUnitRelation): TJSONObject;

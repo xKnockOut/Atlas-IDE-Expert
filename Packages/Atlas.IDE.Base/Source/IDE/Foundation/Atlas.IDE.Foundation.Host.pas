@@ -196,6 +196,8 @@ begin
   Result.Cancelled := ACancelled;
 end;
 
+{ TAtlasIdeHost }
+
 class procedure TAtlasIdeHost.Install(const AServices: TAtlasHostServices);
 begin
   FServices := AServices;

@@ -510,36 +510,7 @@ begin
   end;
 end;
 
-class function TLspMethodBreakpoints.FirstLine(ARoutine: TSyntaxNode): Integer;
-var
-  mBlock: TSyntaxNode;
-begin
-  Result := -1;
-  if ARoutine = nil then
-  begin
-    Exit;
-  end;
-  mBlock := ARoutine.FindChild(TSyntaxKind.Block);
-  if mBlock <> nil then
-  begin
-    Result := FirstStatementLine(mBlock);
-    if Result < 0 then
-    begin
-      // Leerer Rumpf: das end trägt den Rücksprung.
-      Result := mBlock.EndPos.Line;
-    end;
-    Exit;
-  end;
-  mBlock := ARoutine.FindChild(TSyntaxKind.AsmBlock);
-  if mBlock <> nil then
-  begin
-    Result := mBlock.StartPos.Line;
-    if mBlock.EndPos.Line > Result + 1 then
-    begin
-      Inc(Result);
-    end;
-  end;
-end;
+{ TLspMethodBreakpoints }
 
 class function TLspMethodBreakpoints.Bodies(ATree: TSyntaxTree): TArray<TMethodBody>;
 var
@@ -587,6 +558,37 @@ begin
   Result := mList;
 end;
 
+class function TLspMethodBreakpoints.FirstLine(ARoutine: TSyntaxNode): Integer;
+var
+  mBlock: TSyntaxNode;
+begin
+  Result := -1;
+  if ARoutine = nil then
+  begin
+    Exit;
+  end;
+  mBlock := ARoutine.FindChild(TSyntaxKind.Block);
+  if mBlock <> nil then
+  begin
+    Result := FirstStatementLine(mBlock);
+    if Result < 0 then
+    begin
+      // Leerer Rumpf: das end trägt den Rücksprung.
+      Result := mBlock.EndPos.Line;
+    end;
+    Exit;
+  end;
+  mBlock := ARoutine.FindChild(TSyntaxKind.AsmBlock);
+  if mBlock <> nil then
+  begin
+    Result := mBlock.StartPos.Line;
+    if mBlock.EndPos.Line > Result + 1 then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
 { Suche }
 
 type
@@ -619,6 +621,8 @@ type
     destructor Destroy; override;
     function Run(out ATruncated: Boolean): TArray<TMethodBreakpointHit>;
   end;
+
+{ TMethodSearch }
 
 constructor TMethodSearch.Create(const AIndex: ISymbolIndex; const APattern: TMethodPattern;
   const AOptions: TMethodBreakpointOptions; const ABodies: TMethodBodySource);
@@ -890,6 +894,41 @@ begin
   FHits.Add(mHit);
 end;
 
+procedure TMethodSearch.AddOverrides(const ACandidate: TCandidate);
+var
+  mLocation: TSymbolLocation;
+begin
+  if not FOptions.Overrides or not ACandidate.Symbol.IsVirtual or (ACandidate.Symbol.Container = '') then
+  begin
+    Exit;
+  end;
+  for mLocation in TLspImplementations.AllDescendantsOf(FIndex, ACandidate.Symbol.Container) do
+  begin
+    if mLocation.Symbol.Kind in cClassKinds then
+    begin
+      AddMethodsOf(mLocation, ACandidate.Symbol.Name, ACandidate, TMethodHitReason.Override_, True);
+    end;
+  end;
+end;
+
+procedure TMethodSearch.AddImplementations(const ACandidate: TCandidate);
+var
+  mLocation: TSymbolLocation;
+  mInterface: string;
+begin
+  mInterface := ACandidate.Symbol.Container;
+  for mLocation in TLspImplementations.AllDescendantsOf(FIndex, mInterface) do
+  begin
+    if not (mLocation.Symbol.Kind in cClassKinds) then
+    begin
+      Continue;
+    end;
+    // Nachfahren einer umsetzenden Klasse überschreiben nur; ohne "Überschreibungen" fallen sie weg (AddHit).
+    AddMethodsOf(mLocation, ResolvedName(mLocation.Symbol, mInterface, ACandidate.Symbol.Name), ACandidate,
+      TMethodHitReason.Implementation_, False);
+  end;
+end;
+
 procedure TMethodSearch.AddMethodsOf(const ALocation: TSymbolLocation; const AName: string;
   const ASource: TCandidate; AReason: TMethodHitReason; AOnlyOverrides: Boolean);
 var
@@ -933,23 +972,6 @@ begin
   end;
 end;
 
-procedure TMethodSearch.AddOverrides(const ACandidate: TCandidate);
-var
-  mLocation: TSymbolLocation;
-begin
-  if not FOptions.Overrides or not ACandidate.Symbol.IsVirtual or (ACandidate.Symbol.Container = '') then
-  begin
-    Exit;
-  end;
-  for mLocation in TLspImplementations.AllDescendantsOf(FIndex, ACandidate.Symbol.Container) do
-  begin
-    if mLocation.Symbol.Kind in cClassKinds then
-    begin
-      AddMethodsOf(mLocation, ACandidate.Symbol.Name, ACandidate, TMethodHitReason.Override_, True);
-    end;
-  end;
-end;
-
 function TMethodSearch.ResolvedName(const AClass: TIndexSymbol; const AInterface, AName: string): string;
 var
   mEntry, mLeft: string;
@@ -969,24 +991,6 @@ begin
     begin
       Exit(Trim(Copy(mEntry, mEquals + 1, MaxInt)));
     end;
-  end;
-end;
-
-procedure TMethodSearch.AddImplementations(const ACandidate: TCandidate);
-var
-  mLocation: TSymbolLocation;
-  mInterface: string;
-begin
-  mInterface := ACandidate.Symbol.Container;
-  for mLocation in TLspImplementations.AllDescendantsOf(FIndex, mInterface) do
-  begin
-    if not (mLocation.Symbol.Kind in cClassKinds) then
-    begin
-      Continue;
-    end;
-    // Nachfahren einer umsetzenden Klasse überschreiben nur; ohne "Überschreibungen" fallen sie weg (AddHit).
-    AddMethodsOf(mLocation, ResolvedName(mLocation.Symbol, mInterface, ACandidate.Symbol.Name), ACandidate,
-      TMethodHitReason.Implementation_, False);
   end;
 end;
 
@@ -1098,11 +1102,6 @@ begin
   end;
 end;
 
-class function TLspMethodBreakpoints.ReasonName(AReason: TMethodHitReason): string;
-begin
-  Result := cReasonNames[AReason];
-end;
-
 class function TLspMethodBreakpoints.ToJson(const APattern: string; const AHits: TArray<TMethodBreakpointHit>;
   ATruncated: Boolean): TJSONObject;
 var
@@ -1149,6 +1148,11 @@ end;
 class function TLspMethodBreakpoints.InvalidPattern(const APattern: string): string;
 begin
   Result := cTexts[TMethodBreakpointsText.InvalidPattern].Text + APattern;
+end;
+
+class function TLspMethodBreakpoints.ReasonName(AReason: TMethodHitReason): string;
+begin
+  Result := cReasonNames[AReason];
 end;
 
 initialization

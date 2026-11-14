@@ -188,6 +188,98 @@ end;
 
 { TAtlasIdeResults }
 
+class function TAtlasIdeResults.Entries(const ALocations: TArray<TLspLocation>): TArray<TAtlasResultEntry>;
+var
+  mLocation: TLspLocation;
+  mEntry: TAtlasResultEntry;
+begin
+  Result := nil;
+  for mLocation in ALocations do
+  begin
+    mEntry := TAtlasResultEntry.Create(mLocation.FileName, mLocation.Line, mLocation.Character);
+    mEntry.Confidence := mLocation.Confidence;
+    Result := Result + [mEntry];
+  end;
+  TAtlasResults.FillText(Result,
+    function(const AFileName: string): string
+    begin
+      Result := ReadText(AFileName);
+    end);
+end;
+
+class procedure TAtlasIdeResults.RunDataFlow(AFromFilter: Boolean);
+const
+  cTitles: array[TAtlasDataFlowDirection] of TAtlasTextId = (TAtlasTextId.ResultsDataFlowSources,
+    TAtlasTextId.ResultsDataFlowTargets);
+var
+  mCurrent: TLspSession;
+  mFound: TAtlasDataFlowResult;
+begin
+  mCurrent := Session;
+  if mCurrent = nil then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+    Exit;
+  end;
+  Screen.Cursor := crHourGlass;
+  try
+    try
+      mFound := mCurrent.DataFlow(FFlowRequest);
+    except
+      on E: ELspClientError do
+      begin
+        Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
+        Exit;
+      end;
+    end;
+  finally
+    Screen.Cursor := crDefault;
+  end;
+  // Nach einem Filterwechsel bleibt der Baum stehen, auch wenn er leer wird: Die Filter lassen sich zurücknehmen.
+  if (not mFound.Found) and (not AFromFilter) then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
+    Exit;
+  end;
+  if not mFound.Found then
+  begin
+    mFound.Symbol.Name := FFlowName;
+  end;
+  TAtlasIdeResultsWindow.ShowDataFlow(TAtlasStrings.Fmt(cTitles[FFlowRequest.Direction],
+    [mFound.Symbol.Name, Length(mFound.Nodes)]), FFlowRequest.Direction, mFound,
+    TAtlasIdeSettings.Current.DataFlowMaxDepth, FFlowRequest.OnlyProject, FFlowRequest.ExcludeTests);
+end;
+
+class function TAtlasIdeResults.ExpandDataFlow(ADirection: TAtlasDataFlowDirection;
+  const ASource: TAtlasDataFlowSymbol; const APath: TArray<string>): TAtlasDataFlowResult;
+var
+  mCurrent: TLspSession;
+  mRequest: TAtlasDataFlowRequest;
+begin
+  Result := Default(TAtlasDataFlowResult);
+  mCurrent := Session;
+  if mCurrent = nil then
+  begin
+    Exit;
+  end;
+  // Gefragt wird an der Deklaration der Quelle; der Pfad lässt den Server Zyklen erkennen.
+  mRequest := TAtlasDataFlowRequest.Create(ADirection, ASource.FileName, ASource.Line, ASource.Character);
+  mRequest.Path := APath;
+  mRequest.OnlyProject := FFlowRequest.OnlyProject;
+  mRequest.ExcludeTests := FFlowRequest.ExcludeTests;
+  Screen.Cursor := crHourGlass;
+  try
+    try
+      Result := mCurrent.DataFlow(mRequest);
+    except
+      on E: ELspClientError do
+        Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
+    end;
+  finally
+    Screen.Cursor := crDefault;
+  end;
+end;
+
 class procedure TAtlasIdeResults.Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>);
 begin
   FSessionOf := ASessionOf;
@@ -266,11 +358,6 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeResults.Open(const AFileName: string; ALine, ACharacter: Integer);
-begin
-  TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
-end;
-
 class function TAtlasIdeResults.AtCursor(out AFileName: string; out ALine, ACharacter: Integer;
   out AName: string): Boolean;
 var
@@ -321,57 +408,6 @@ begin
   mLast := TAtlasWord.EndAfter(mLines[ALine], ACharacter);
   AName := Copy(mLines[ALine], mFirst + 1, mLast - mFirst);
   Result := True;
-end;
-
-class function TAtlasIdeResults.Entries(const ALocations: TArray<TLspLocation>): TArray<TAtlasResultEntry>;
-var
-  mLocation: TLspLocation;
-  mEntry: TAtlasResultEntry;
-begin
-  Result := nil;
-  for mLocation in ALocations do
-  begin
-    mEntry := TAtlasResultEntry.Create(mLocation.FileName, mLocation.Line, mLocation.Character);
-    mEntry.Confidence := mLocation.Confidence;
-    Result := Result + [mEntry];
-  end;
-  TAtlasResults.FillText(Result,
-    function(const AFileName: string): string
-    begin
-      Result := ReadText(AFileName);
-    end);
-end;
-
-class function TAtlasIdeResults.ShowReferences(const AFileName: string; ALine, ACharacter: Integer;
-  const AName: string): Integer;
-var
-  mCurrent: TLspSession;
-  mFound: TArray<TAtlasResultEntry>;
-begin
-  Result := 0;
-  mCurrent := Session;
-  if mCurrent = nil then
-  begin
-    Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
-    Exit;
-  end;
-  Screen.Cursor := crHourGlass;
-  try
-    try
-      mFound := Entries(mCurrent.References(AFileName, ALine, ACharacter));
-    except
-      on E: ELspClientError do
-      begin
-        Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
-        Exit;
-      end;
-    end;
-  finally
-    Screen.Cursor := crDefault;
-  end;
-  Result := Length(mFound);
-  TAtlasIdeResultsWindow.ShowReferences(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsReferences,
-    [AName, Length(mFound), Length(TAtlasResults.Group(mFound))]), mFound);
 end;
 
 class procedure TAtlasIdeResults.FindReferences;
@@ -429,19 +465,6 @@ begin
   ShowHierarchy(ADirection, False);
 end;
 
-class function TAtlasIdeResults.CallDiagramAllowed: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.CallHierarchyDiagram;
-end;
-
-class procedure TAtlasIdeResults.ShowCallDiagram;
-begin
-  if CallDiagramAllowed then
-  begin
-    ShowHierarchy(TAtlasHierarchyDirection.Outgoing, True);
-  end;
-end;
-
 class procedure TAtlasIdeResults.ShowHierarchy(ADirection: TAtlasHierarchyDirection; AAsDiagram: Boolean);
 const
   cTitles: array[TAtlasHierarchyDirection] of TAtlasTextId = (TAtlasTextId.ResultsIncoming,
@@ -476,6 +499,19 @@ begin
   end;
   TAtlasIdeResultsWindow.ShowHierarchy(TAtlasStrings.Fmt(cTitles[ADirection], [mRoots[0].Name]), ADirection, mRoots,
     AAsDiagram);
+end;
+
+class procedure TAtlasIdeResults.ShowCallDiagram;
+begin
+  if CallDiagramAllowed then
+  begin
+    ShowHierarchy(TAtlasHierarchyDirection.Outgoing, True);
+  end;
+end;
+
+class function TAtlasIdeResults.CallDiagramAllowed: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.CallHierarchyDiagram;
 end;
 
 class procedure TAtlasIdeResults.ShowDataFlow(ADirection: TAtlasDataFlowDirection);
@@ -523,79 +559,6 @@ begin
   RunDataFlow(False);
 end;
 
-class procedure TAtlasIdeResults.RunDataFlow(AFromFilter: Boolean);
-const
-  cTitles: array[TAtlasDataFlowDirection] of TAtlasTextId = (TAtlasTextId.ResultsDataFlowSources,
-    TAtlasTextId.ResultsDataFlowTargets);
-var
-  mCurrent: TLspSession;
-  mFound: TAtlasDataFlowResult;
-begin
-  mCurrent := Session;
-  if mCurrent = nil then
-  begin
-    Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
-    Exit;
-  end;
-  Screen.Cursor := crHourGlass;
-  try
-    try
-      mFound := mCurrent.DataFlow(FFlowRequest);
-    except
-      on E: ELspClientError do
-      begin
-        Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
-        Exit;
-      end;
-    end;
-  finally
-    Screen.Cursor := crDefault;
-  end;
-  // Nach einem Filterwechsel bleibt der Baum stehen, auch wenn er leer wird: Die Filter lassen sich zurücknehmen.
-  if (not mFound.Found) and (not AFromFilter) then
-  begin
-    Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
-    Exit;
-  end;
-  if not mFound.Found then
-  begin
-    mFound.Symbol.Name := FFlowName;
-  end;
-  TAtlasIdeResultsWindow.ShowDataFlow(TAtlasStrings.Fmt(cTitles[FFlowRequest.Direction],
-    [mFound.Symbol.Name, Length(mFound.Nodes)]), FFlowRequest.Direction, mFound,
-    TAtlasIdeSettings.Current.DataFlowMaxDepth, FFlowRequest.OnlyProject, FFlowRequest.ExcludeTests);
-end;
-
-class function TAtlasIdeResults.ExpandDataFlow(ADirection: TAtlasDataFlowDirection;
-  const ASource: TAtlasDataFlowSymbol; const APath: TArray<string>): TAtlasDataFlowResult;
-var
-  mCurrent: TLspSession;
-  mRequest: TAtlasDataFlowRequest;
-begin
-  Result := Default(TAtlasDataFlowResult);
-  mCurrent := Session;
-  if mCurrent = nil then
-  begin
-    Exit;
-  end;
-  // Gefragt wird an der Deklaration der Quelle; der Pfad lässt den Server Zyklen erkennen.
-  mRequest := TAtlasDataFlowRequest.Create(ADirection, ASource.FileName, ASource.Line, ASource.Character);
-  mRequest.Path := APath;
-  mRequest.OnlyProject := FFlowRequest.OnlyProject;
-  mRequest.ExcludeTests := FFlowRequest.ExcludeTests;
-  Screen.Cursor := crHourGlass;
-  try
-    try
-      Result := mCurrent.DataFlow(mRequest);
-    except
-      on E: ELspClientError do
-        Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
-    end;
-  finally
-    Screen.Cursor := crDefault;
-  end;
-end;
-
 class procedure TAtlasIdeResults.SearchSymbol;
 var
   mWindow: TAtlasPaletteWindow;
@@ -629,9 +592,46 @@ begin
   mWindow.ShowOver(TAtlasIdeHost.PopupArea);
 end;
 
+class function TAtlasIdeResults.ShowReferences(const AFileName: string; ALine, ACharacter: Integer;
+  const AName: string): Integer;
+var
+  mCurrent: TLspSession;
+  mFound: TArray<TAtlasResultEntry>;
+begin
+  Result := 0;
+  mCurrent := Session;
+  if mCurrent = nil then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+    Exit;
+  end;
+  Screen.Cursor := crHourGlass;
+  try
+    try
+      mFound := Entries(mCurrent.References(AFileName, ALine, ACharacter));
+    except
+      on E: ELspClientError do
+      begin
+        Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
+        Exit;
+      end;
+    end;
+  finally
+    Screen.Cursor := crDefault;
+  end;
+  Result := Length(mFound);
+  TAtlasIdeResultsWindow.ShowReferences(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsReferences,
+    [AName, Length(mFound), Length(TAtlasResults.Group(mFound))]), mFound);
+end;
+
 class procedure TAtlasIdeResults.ShowWindow;
 begin
   TAtlasIdeResultsWindow.Frame;
+end;
+
+class procedure TAtlasIdeResults.Open(const AFileName: string; ALine, ACharacter: Integer);
+begin
+  TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
 end;
 
 end.

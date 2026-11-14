@@ -61,40 +61,7 @@ begin
   end;
 end;
 
-class function TAtlasCodeInsightPaths.DiagnoseEnabled: Boolean;
-var
-  mRegistry: TRegistry;
-begin
-  Result := False;
-  mRegistry := TRegistry.Create(KEY_READ);
-  try
-    if (OpenSettingsKey(mRegistry) <> '') and mRegistry.ValueExists('Diagnose') and
-      (mRegistry.GetDataType('Diagnose') = rdInteger) then
-    begin
-      Result := mRegistry.ReadInteger('Diagnose') <> 0;
-    end;
-  finally
-    mRegistry.Free;
-  end;
-end;
-
-class function TAtlasCodeInsightPaths.DiagnoseLog: string;
-const
-  cBaseName = 'Atlas.IDE.Base';
-  cLogName = 'Atlas.IDE.Expert';
-var
-  mModule, mName: string;
-begin
-  // Neben dem Plugin, nicht im Temp-Ordner: Den hat die IDE nicht in jedem Fall gemeinsam mit uns.
-  mModule := GetModuleName(HInstance);
-  mName := ChangeFileExt(ExtractFileName(mModule), '.log');
-  // Der Name bleibt trotz neuem BPL-Namen (#1456): Atlas.IDE.Base370.bpl schreibt Atlas.IDE.Expert370.log.
-  if SameText(Copy(mName, 1, Length(cBaseName)), cBaseName) then
-  begin
-    mName := cLogName + Copy(mName, Length(cBaseName) + 1, MaxInt);
-  end;
-  Result := ExtractFilePath(mModule) + mName;
-end;
+{ TAtlasCodeInsightPaths }
 
 class function TAtlasCodeInsightPaths.ServerPath(out AArguments: string): string;
 var
@@ -149,6 +116,41 @@ begin
   if not FileExists(Result) and FileExists(ExpandFileName(mPluginDir + '..\..\..\Win32\Debug\Bin\AtlasServer.exe')) then
   begin
     Result := ExpandFileName(mPluginDir + '..\..\..\Win32\Debug\Bin\AtlasServer.exe');
+  end;
+end;
+
+class function TAtlasCodeInsightPaths.DiagnoseLog: string;
+const
+  cBaseName = 'Atlas.IDE.Base';
+  cLogName = 'Atlas.IDE.Expert';
+var
+  mModule, mName: string;
+begin
+  // Neben dem Plugin, nicht im Temp-Ordner: Den hat die IDE nicht in jedem Fall gemeinsam mit uns.
+  mModule := GetModuleName(HInstance);
+  mName := ChangeFileExt(ExtractFileName(mModule), '.log');
+  // Der Name bleibt trotz neuem BPL-Namen (#1456): Atlas.IDE.Base370.bpl schreibt Atlas.IDE.Expert370.log.
+  if SameText(Copy(mName, 1, Length(cBaseName)), cBaseName) then
+  begin
+    mName := cLogName + Copy(mName, Length(cBaseName) + 1, MaxInt);
+  end;
+  Result := ExtractFilePath(mModule) + mName;
+end;
+
+class function TAtlasCodeInsightPaths.DiagnoseEnabled: Boolean;
+var
+  mRegistry: TRegistry;
+begin
+  Result := False;
+  mRegistry := TRegistry.Create(KEY_READ);
+  try
+    if (OpenSettingsKey(mRegistry) <> '') and mRegistry.ValueExists('Diagnose') and
+      (mRegistry.GetDataType('Diagnose') = rdInteger) then
+    begin
+      Result := mRegistry.ReadInteger('Diagnose') <> 0;
+    end;
+  finally
+    mRegistry.Free;
   end;
 end;
 

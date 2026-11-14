@@ -43,6 +43,8 @@ const
   // Aufrufe im Projekt suchen dauert, die Sammelaktion über das Projekt erst recht.
   cTimeoutMs = 120000;
 
+{ TAtlasIdeInlineAccessor }
+
 class procedure TAtlasIdeInlineAccessor.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var

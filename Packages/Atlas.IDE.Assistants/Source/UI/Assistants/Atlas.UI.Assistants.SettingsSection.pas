@@ -28,6 +28,14 @@ uses
 
 { TAtlasAssistantsSettingsSection }
 
+procedure TAtlasAssistantsSettingsSection.BuildRows;
+begin
+  ModuleSwitch('assistants.enabled');
+  // Änderungen an offenen Dateien (#397) und Builds über diese IDE (#261, build_project).
+  Switch('assistants.edit', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsEdit));
+  Switch('compiler.mcpBuild', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsMcpBuild));
+end;
+
 function TAtlasAssistantsSettingsSection.OwnerId: string;
 begin
   Result := cOwnerId;
@@ -36,14 +44,6 @@ end;
 function TAtlasAssistantsSettingsSection.AreaId: string;
 begin
   Result := cAreaId;
-end;
-
-procedure TAtlasAssistantsSettingsSection.BuildRows;
-begin
-  ModuleSwitch('assistants.enabled');
-  // Änderungen an offenen Dateien (#397) und Builds über diese IDE (#261, build_project).
-  Switch('assistants.edit', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsEdit));
-  Switch('compiler.mcpBuild', TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.SettingsMcpBuild));
 end;
 
 end.

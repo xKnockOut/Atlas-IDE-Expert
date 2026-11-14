@@ -49,6 +49,8 @@ begin
   Result := False;
 end;
 
+{ TAtlasRuleActions }
+
 class function TAtlasRuleActions.Available: Boolean;
 var
   mActions: IAtlasRuleActions;

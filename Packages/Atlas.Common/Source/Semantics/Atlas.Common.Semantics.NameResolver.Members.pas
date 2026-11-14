@@ -146,75 +146,14 @@ begin
   Result := (mStart.Line > mEnd.Line) or ((mStart.Line = mEnd.Line) and (mStart.Character >= mEnd.Character));
 end;
 
+{ TResolverMembers }
+
 constructor TResolverMembers.Create(APlace: TResolverPlace; AUnits: TResolverUnits; ATyping: TResolverTyping);
 begin
   inherited Create;
   FPlace := APlace;
   FUnits := AUnits;
   FTyping := ATyping;
-end;
-
-function TResolverMembers.MergedProperty(const AOwner, AOwn: TResolvedSymbol): TResolvedSymbol;
-var
-  mAncestor, mInherited: TResolvedSymbol;
-  mCandidates: TArray<TResolvedSymbol>;
-  mRead, mWrite: string;
-begin
-  Result := AOwn;
-  if (AOwn.SymbolKind <> TIndexSymbolKind.Property_) or (AOwn.TypeName <> '') or
-    not FTyping.AncestorOf(AOwner, mAncestor) then
-  begin
-    Exit;
-  end;
-  // Die Vorfahren können selbst nur neu deklarieren (property Items; im published-Teil): FindMembers führt sie
-  // ebenso zusammen.
-  mCandidates := FindMembers(mAncestor, AOwn.Name);
-  if (Length(mCandidates) = 0) or (mCandidates[0].SymbolKind <> TIndexSymbolKind.Property_) or
-    (mCandidates[0].TypeName = '') then
-  begin
-    Exit;
-  end;
-  mInherited := mCandidates[0];
-  Result.TypeName := mInherited.TypeName;
-  Result.TypeArgs := mInherited.TypeArgs;
-  Result.MinArgs := mInherited.MinArgs;
-  Result.MaxArgs := mInherited.MaxArgs;
-  Result.ParamTypes := mInherited.ParamTypes;
-  Result.IsDefault := AOwn.IsDefault or mInherited.IsDefault;
-  mRead := MergedAccessor(AOwn.Signature, mInherited.Signature, 'read');
-  mWrite := MergedAccessor(AOwn.Signature, mInherited.Signature, 'write');
-  Result.Signature := PropertyHead(mInherited.Signature);
-  if mRead <> '' then
-  begin
-    Result.Signature := Result.Signature + ' read ' + mRead;
-  end;
-  if mWrite <> '' then
-  begin
-    Result.Signature := Result.Signature + ' write ' + mWrite;
-  end;
-end;
-
-procedure TResolverMembers.AddHelperLevel(const AHelper: TResolvedSymbol; const ABindings: TArray<string>;
-  const AName: string; var AResult: TArray<TResolvedSymbol>);
-var
-  mHelperUnit: TUnitIndex;
-  mPosition: Integer;
-  mFound: TResolvedSymbol;
-begin
-  if not FUnits.UnitOf(AHelper, mHelperUnit) then
-  begin
-    Exit;
-  end;
-  for mPosition in mHelperUnit.SymbolsNamed(AName) do
-  begin
-    if SameText(mHelperUnit.Symbols[mPosition].Container, AHelper.QualifiedName) and
-      FTyping.IsVisible(mHelperUnit.Symbols[mPosition], mHelperUnit, AHelper, False) then
-    begin
-      mFound := TResolvedSymbol.FromIndex(mHelperUnit, mHelperUnit.Symbols[mPosition]);
-      mFound.Bindings := ABindings;
-      TResolvedSymbol.AddDistinct(AResult, mFound);
-    end;
-  end;
 end;
 
 function TResolverMembers.HelperMembers(const AType: TResolvedSymbol; const AName: string;
@@ -240,6 +179,29 @@ begin
       Exit;
     end;
     mHelper := mParent;
+  end;
+end;
+
+procedure TResolverMembers.AddHelperLevel(const AHelper: TResolvedSymbol; const ABindings: TArray<string>;
+  const AName: string; var AResult: TArray<TResolvedSymbol>);
+var
+  mHelperUnit: TUnitIndex;
+  mPosition: Integer;
+  mFound: TResolvedSymbol;
+begin
+  if not FUnits.UnitOf(AHelper, mHelperUnit) then
+  begin
+    Exit;
+  end;
+  for mPosition in mHelperUnit.SymbolsNamed(AName) do
+  begin
+    if SameText(mHelperUnit.Symbols[mPosition].Container, AHelper.QualifiedName) and
+      FTyping.IsVisible(mHelperUnit.Symbols[mPosition], mHelperUnit, AHelper, False) then
+    begin
+      mFound := TResolvedSymbol.FromIndex(mHelperUnit, mHelperUnit.Symbols[mPosition]);
+      mFound.Bindings := ABindings;
+      TResolvedSymbol.AddDistinct(AResult, mFound);
+    end;
   end;
 end;
 
@@ -335,6 +297,46 @@ begin
   if Result then
   begin
     AResult := mMembers[0];
+  end;
+end;
+
+function TResolverMembers.MergedProperty(const AOwner, AOwn: TResolvedSymbol): TResolvedSymbol;
+var
+  mAncestor, mInherited: TResolvedSymbol;
+  mCandidates: TArray<TResolvedSymbol>;
+  mRead, mWrite: string;
+begin
+  Result := AOwn;
+  if (AOwn.SymbolKind <> TIndexSymbolKind.Property_) or (AOwn.TypeName <> '') or
+    not FTyping.AncestorOf(AOwner, mAncestor) then
+  begin
+    Exit;
+  end;
+  // Die Vorfahren können selbst nur neu deklarieren (property Items; im published-Teil): FindMembers führt sie
+  // ebenso zusammen.
+  mCandidates := FindMembers(mAncestor, AOwn.Name);
+  if (Length(mCandidates) = 0) or (mCandidates[0].SymbolKind <> TIndexSymbolKind.Property_) or
+    (mCandidates[0].TypeName = '') then
+  begin
+    Exit;
+  end;
+  mInherited := mCandidates[0];
+  Result.TypeName := mInherited.TypeName;
+  Result.TypeArgs := mInherited.TypeArgs;
+  Result.MinArgs := mInherited.MinArgs;
+  Result.MaxArgs := mInherited.MaxArgs;
+  Result.ParamTypes := mInherited.ParamTypes;
+  Result.IsDefault := AOwn.IsDefault or mInherited.IsDefault;
+  mRead := MergedAccessor(AOwn.Signature, mInherited.Signature, 'read');
+  mWrite := MergedAccessor(AOwn.Signature, mInherited.Signature, 'write');
+  Result.Signature := PropertyHead(mInherited.Signature);
+  if mRead <> '' then
+  begin
+    Result.Signature := Result.Signature + ' read ' + mRead;
+  end;
+  if mWrite <> '' then
+  begin
+    Result.Signature := Result.Signature + ' write ' + mWrite;
   end;
 end;
 

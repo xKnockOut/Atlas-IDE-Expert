@@ -441,6 +441,8 @@ const
   // Hüllen, durch die die Eingabe unverändert geprüft wird: StrToInt(Trim(Edit.Text)).
   cTransparentCalls: array[0..3] of string = ('Trim', 'TrimLeft', 'TrimRight', 'Copy');
 
+{ TUncheckedConversionRule }
+
 function TUncheckedConversionRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('unchecked-conversion', TRuleSeverity.Hint,
@@ -642,31 +644,12 @@ const
   // Aufrufe, die den Wert schon begrenzen: TStatus(EnsureRange(…)).
   cEnumGuards: array[0..2] of string = ('EnsureRange', 'Min', 'Max');
 
+{ TUncheckedEnumCastRule }
+
 function TUncheckedEnumCastRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('unchecked-enum-cast', TRuleSeverity.Hint,
     cTexts[TRtlTypePatternsConversionsText.EnumCastTitle].Text);
-end;
-
-class function TUncheckedEnumCastRule.Origin(const ASource: string): string;
-begin
-  if MatchText(ASource, ['ReadInteger', 'ReadInt64', 'ReadBinaryData']) then
-  begin
-    Result := cTexts[TRtlTypePatternsConversionsText.FromRegistry].Text;
-  end
-  else if MatchText(ASource, ['StrToInt', 'StrToInt64', 'StrToIntDef', 'StrToUInt']) then
-  begin
-    Result := cTexts[TRtlTypePatternsConversionsText.FromText].Text;
-  end
-  else if MatchText(ASource, ['FieldByName', 'FindField', 'Fields', 'FieldValues', 'AsInteger', 'AsLargeInt',
-    'AsLongWord', 'AsSmallInt', 'ParamByName']) then
-  begin
-    Result := cTexts[TRtlTypePatternsConversionsText.FromDatabase].Text;
-  end
-  else
-  begin
-    Result := cTexts[TRtlTypePatternsConversionsText.FromOutside].Text;
-  end;
 end;
 
 procedure TUncheckedEnumCastRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1002,6 +985,27 @@ begin
     begin
       CheckCast(mPosition);
     end;
+  end;
+end;
+
+class function TUncheckedEnumCastRule.Origin(const ASource: string): string;
+begin
+  if MatchText(ASource, ['ReadInteger', 'ReadInt64', 'ReadBinaryData']) then
+  begin
+    Result := cTexts[TRtlTypePatternsConversionsText.FromRegistry].Text;
+  end
+  else if MatchText(ASource, ['StrToInt', 'StrToInt64', 'StrToIntDef', 'StrToUInt']) then
+  begin
+    Result := cTexts[TRtlTypePatternsConversionsText.FromText].Text;
+  end
+  else if MatchText(ASource, ['FieldByName', 'FindField', 'Fields', 'FieldValues', 'AsInteger', 'AsLargeInt',
+    'AsLongWord', 'AsSmallInt', 'ParamByName']) then
+  begin
+    Result := cTexts[TRtlTypePatternsConversionsText.FromDatabase].Text;
+  end
+  else
+  begin
+    Result := cTexts[TRtlTypePatternsConversionsText.FromOutside].Text;
   end;
 end;
 

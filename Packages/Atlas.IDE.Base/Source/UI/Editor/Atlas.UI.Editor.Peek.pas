@@ -100,126 +100,21 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasPeekWindow.ShowView(AView: TAtlasPeekView; const ABounds: TRect);
+procedure TAtlasPeekWindow.Paint;
 begin
-  if AView <> FView then
-  begin
-    FView.Free;
-    FView := AView;
-  end;
-  FTokensOf := -1;
-  FTokens := nil;
-  ShowAt(ABounds);
-  UpdatePage;
-  Invalidate;
-  if FView <> nil then
-  begin
-    Announce(FView.Title);
-  end;
-end;
-
-procedure TAtlasPeekWindow.Dismiss;
-begin
-  HidePopup;
-  FreeAndNil(FView);
-  FTokens := nil;
-  FTokensOf := -1;
-end;
-
-function TAtlasPeekWindow.RowHeight: Integer;
-begin
-  Canvas.Font.Assign(Font);
-  Result := Canvas.TextHeight('Wg') + Scale(2);
-end;
-
-function TAtlasPeekWindow.HeaderHeight: Integer;
-begin
-  Canvas.Font.Assign(UIFont);
-  Result := Canvas.TextHeight('Wg') + Scale(2 * 5);
-end;
-
-function TAtlasPeekWindow.EntryHeight: Integer;
-begin
-  Canvas.Font.Assign(UIFont);
-  Result := 2 * Canvas.TextHeight('Wg') + Scale(8);
-end;
-
-function TAtlasPeekWindow.ListWidth: Integer;
-begin
-  Result := 0;
-  if (FView <> nil) and (FView.Count > 1) then
-  begin
-    Result := Min(Scale(cListMax), ClientWidth div 3);
-  end;
-end;
-
-function TAtlasPeekWindow.CodeRect: TRect;
-begin
-  Result := Rect(ListWidth + 1, HeaderHeight + 1, ClientWidth - 1, ClientHeight - 1);
-end;
-
-function TAtlasPeekWindow.HeightForLines(ALines: Integer): Integer;
-begin
-  Result := HeaderHeight + 2 + Max(1, ALines) * RowHeight;
-end;
-
-procedure TAtlasPeekWindow.UpdatePage;
-begin
-  if FView = nil then
-  begin
-    Exit;
-  end;
-  FView.PageRows := Max(1, CodeRect.Height div Max(1, RowHeight));
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Surface);
+  Canvas.FillRect(ClientRect);
+  PaintHeader;
+  PaintList;
+  PaintCode;
+  PaintBorder;
 end;
 
 procedure TAtlasPeekWindow.Resize;
 begin
   inherited;
   UpdatePage;
-end;
-
-procedure TAtlasPeekWindow.ViewChanged;
-begin
-  UpdatePage;
-  Invalidate;
-  if (FView <> nil) and (FView.Count > 0) then
-  begin
-    Announce(ExtractFileName(FView.Current.Target.Place.FileName) + ' ' + FView.Current.Excerpt);
-  end;
-end;
-
-procedure TAtlasPeekWindow.PrepareTokens;
-var
-  mRows: TArray<TAtlasPeekRow>;
-  mLines: TArray<string>;
-  mIndex: Integer;
-begin
-  if (FView = nil) or (FView.Count = 0) or (FTokensOf = FView.Selected) then
-  begin
-    Exit;
-  end;
-  mRows := FView.Current.Rows;
-  SetLength(mLines, Length(mRows));
-  for mIndex := 0 to High(mRows) do
-  begin
-    mLines[mIndex] := mRows[mIndex].Text;
-  end;
-  FTokens := TAtlasSyntax.LineTokens(mLines);
-  FTokensOf := FView.Selected;
-end;
-
-function TAtlasPeekWindow.EntryAt(const APoint: TPoint): Integer;
-begin
-  Result := -1;
-  if (FView = nil) or (ListWidth = 0) or (APoint.X >= ListWidth) or (APoint.Y < HeaderHeight) then
-  begin
-    Exit;
-  end;
-  Result := (APoint.Y - HeaderHeight) div EntryHeight;
-  if Result >= FView.Count then
-  begin
-    Result := -1;
-  end;
 end;
 
 procedure TAtlasPeekWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -246,6 +141,67 @@ begin
   begin
     FOnOpen(Self);
   end;
+end;
+
+function TAtlasPeekWindow.RowHeight: Integer;
+begin
+  Canvas.Font.Assign(Font);
+  Result := Canvas.TextHeight('Wg') + Scale(2);
+end;
+
+function TAtlasPeekWindow.HeaderHeight: Integer;
+begin
+  Canvas.Font.Assign(UIFont);
+  Result := Canvas.TextHeight('Wg') + Scale(2 * 5);
+end;
+
+function TAtlasPeekWindow.ListWidth: Integer;
+begin
+  Result := 0;
+  if (FView <> nil) and (FView.Count > 1) then
+  begin
+    Result := Min(Scale(cListMax), ClientWidth div 3);
+  end;
+end;
+
+function TAtlasPeekWindow.EntryHeight: Integer;
+begin
+  Canvas.Font.Assign(UIFont);
+  Result := 2 * Canvas.TextHeight('Wg') + Scale(8);
+end;
+
+function TAtlasPeekWindow.CodeRect: TRect;
+begin
+  Result := Rect(ListWidth + 1, HeaderHeight + 1, ClientWidth - 1, ClientHeight - 1);
+end;
+
+procedure TAtlasPeekWindow.UpdatePage;
+begin
+  if FView = nil then
+  begin
+    Exit;
+  end;
+  FView.PageRows := Max(1, CodeRect.Height div Max(1, RowHeight));
+end;
+
+procedure TAtlasPeekWindow.PrepareTokens;
+var
+  mRows: TArray<TAtlasPeekRow>;
+  mLines: TArray<string>;
+  mIndex: Integer;
+begin
+  if (FView = nil) or (FView.Count = 0) or (FTokensOf = FView.Selected) then
+  begin
+    Exit;
+  end;
+  mRows := FView.Current.Rows;
+  SetLength(mLines, Length(mRows));
+  for mIndex := 0 to High(mRows) do
+  begin
+    mLines[mIndex] := mRows[mIndex].Text;
+  end;
+  FTokens := TAtlasSyntax.LineTokens(mLines);
+  FTokensOf := FView.Selected;
 end;
 
 procedure TAtlasPeekWindow.PaintHeader;
@@ -451,15 +407,59 @@ begin
   Canvas.FillRect(Rect(AArea.Right - Scale(4), mThumbTop, AArea.Right - Scale(1), mThumbTop + mThumb));
 end;
 
-procedure TAtlasPeekWindow.Paint;
+procedure TAtlasPeekWindow.ShowView(AView: TAtlasPeekView; const ABounds: TRect);
 begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  PaintHeader;
-  PaintList;
-  PaintCode;
-  PaintBorder;
+  if AView <> FView then
+  begin
+    FView.Free;
+    FView := AView;
+  end;
+  FTokensOf := -1;
+  FTokens := nil;
+  ShowAt(ABounds);
+  UpdatePage;
+  Invalidate;
+  if FView <> nil then
+  begin
+    Announce(FView.Title);
+  end;
+end;
+
+procedure TAtlasPeekWindow.Dismiss;
+begin
+  HidePopup;
+  FreeAndNil(FView);
+  FTokens := nil;
+  FTokensOf := -1;
+end;
+
+function TAtlasPeekWindow.HeightForLines(ALines: Integer): Integer;
+begin
+  Result := HeaderHeight + 2 + Max(1, ALines) * RowHeight;
+end;
+
+procedure TAtlasPeekWindow.ViewChanged;
+begin
+  UpdatePage;
+  Invalidate;
+  if (FView <> nil) and (FView.Count > 0) then
+  begin
+    Announce(ExtractFileName(FView.Current.Target.Place.FileName) + ' ' + FView.Current.Excerpt);
+  end;
+end;
+
+function TAtlasPeekWindow.EntryAt(const APoint: TPoint): Integer;
+begin
+  Result := -1;
+  if (FView = nil) or (ListWidth = 0) or (APoint.X >= ListWidth) or (APoint.Y < HeaderHeight) then
+  begin
+    Exit;
+  end;
+  Result := (APoint.Y - HeaderHeight) div EntryHeight;
+  if Result >= FView.Count then
+  begin
+    Result := -1;
+  end;
 end;
 
 end.

@@ -199,6 +199,20 @@ end;
 
 { TLspDocumentHighlights }
 
+constructor TLspDocumentHighlights.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AEnsureUnit: TEnsureUnitFunc);
+begin
+  inherited Create;
+  FStore := AStore;
+  FIndex := AIndex;
+  FEnsureUnit := AEnsureUnit;
+end;
+
+constructor TLspDocumentHighlights.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);
+begin
+  Create(AStore, AIndex, nil);
+end;
+
 function TLspDocumentHighlights.GetNamespaces: TArray<string>;
 begin
   Result := TLspNamespaces.Read(FNamespaces);
@@ -209,29 +223,66 @@ begin
   TLspNamespaces.Write(FNamespaces, AValue);
 end;
 
-constructor TLspDocumentHighlights.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);
+function TLspDocumentHighlights.HandleHighlight(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mPositionValue: TJSONValue;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mFound: TArray<TDocumentHighlight>;
+  mSettings: THighlightSettings;
+  mRanges: TArray<TTextRange>;
 begin
-  Create(AStore, AIndex, nil);
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TDocumentHighlightsText.FieldsTextDocumentUriAndPosition].Text + cMethod);
+  end;
+  if not FStore.TryGet(mUri, mDocument) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  ACancellation.ThrowIfCancellationRequested;
+  // Zuerst zusammengehörige Schlüsselwörter (#307), sonst Bezeichner.
+  mSettings := THighlightSettings.Default;
+  if Assigned(FSettingsFor) then
+  begin
+    mSettings := FSettingsFor(mUri);
+  end;
+  if TKeywordHighlights.Find(mShared.Tree, TLspPositions.ReadPosition(mPositionValue), mSettings, mRanges) then
+  begin
+    mFound := KeywordFound(mRanges);
+  end
+  else
+  begin
+    mFound := IdentifierHighlights(mShared.Tree, mUri, TLspPositions.ReadPosition(mPositionValue), ACancellation);
+  end;
+  Result := HighlightsJson(mFound);
 end;
 
-constructor TLspDocumentHighlights.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-  const AEnsureUnit: TEnsureUnitFunc);
+function TLspDocumentHighlights.IdentifierHighlights(ATree: TSyntaxTree; const AUri: string;
+  const APosition: TTextPosition; const ACancellation: IJsonRpcCancellationToken): TArray<TDocumentHighlight>;
+var
+  mResolver: TNameResolver;
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FEnsureUnit := AEnsureUnit;
+  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  try
+    mResolver.Namespaces := Namespaces;
+    Result := Highlights(mResolver, FIndex, ATree, TDocumentUris.ToPath(AUri), APosition, ACancellation);
+  finally
+    mResolver.Free;
+  end;
 end;
 
 procedure TLspDocumentHighlights.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(cMethod, HandleHighlight);
-end;
-
-class function TLspDocumentHighlights.Highlights(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TArray<TDocumentHighlight>;
-begin
-  Result := Highlights(AResolver, AIndex, ATree, AFileName, APosition, nil);
 end;
 
 class function TLspDocumentHighlights.Highlights(AResolver: TNameResolver; const AIndex: ISymbolIndex;
@@ -290,61 +341,10 @@ begin
   end;
 end;
 
-function TLspDocumentHighlights.IdentifierHighlights(ATree: TSyntaxTree; const AUri: string;
-  const APosition: TTextPosition; const ACancellation: IJsonRpcCancellationToken): TArray<TDocumentHighlight>;
-var
-  mResolver: TNameResolver;
+class function TLspDocumentHighlights.Highlights(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TArray<TDocumentHighlight>;
 begin
-  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
-  try
-    mResolver.Namespaces := Namespaces;
-    Result := Highlights(mResolver, FIndex, ATree, TDocumentUris.ToPath(AUri), APosition, ACancellation);
-  finally
-    mResolver.Free;
-  end;
-end;
-
-function TLspDocumentHighlights.HandleHighlight(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mCancellation: IPascalCancellation;
-  mUri: string;
-  mPositionValue: TJSONValue;
-  mDocument: ITextDocument;
-  mShared: ISharedSyntaxTree;
-  mFound: TArray<TDocumentHighlight>;
-  mSettings: THighlightSettings;
-  mRanges: TArray<TTextRange>;
-begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TDocumentHighlightsText.FieldsTextDocumentUriAndPosition].Text + cMethod);
-  end;
-  if not FStore.TryGet(mUri, mDocument) then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
-  mCancellation := TRequestCancellation.Create(ACancellation);
-  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
-  ACancellation.ThrowIfCancellationRequested;
-  // Zuerst zusammengehörige Schlüsselwörter (#307), sonst Bezeichner.
-  mSettings := THighlightSettings.Default;
-  if Assigned(FSettingsFor) then
-  begin
-    mSettings := FSettingsFor(mUri);
-  end;
-  if TKeywordHighlights.Find(mShared.Tree, TLspPositions.ReadPosition(mPositionValue), mSettings, mRanges) then
-  begin
-    mFound := KeywordFound(mRanges);
-  end
-  else
-  begin
-    mFound := IdentifierHighlights(mShared.Tree, mUri, TLspPositions.ReadPosition(mPositionValue), ACancellation);
-  end;
-  Result := HighlightsJson(mFound);
+  Result := Highlights(AResolver, AIndex, ATree, AFileName, APosition, nil);
 end;
 
 initialization

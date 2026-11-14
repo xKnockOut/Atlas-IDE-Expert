@@ -220,64 +220,21 @@ begin
   FLines.Add(UpperCase(AFileName), Result);
 end;
 
-function TPropertyChecker.FindClass(const AName: string; out ALocation: TSymbolLocation): Boolean;
+function TPropertyChecker.DeclarationText(const ALocation: TSymbolLocation): string;
 var
-  mLocation: TSymbolLocation;
-  mSymbol: TIndexSymbol;
+  mLines: TArray<string>;
+  mLine: Integer;
 begin
-  for mSymbol in FUnit.Symbols do
+  Result := '';
+  mLines := FileLines(ALocation.FileName);
+  for mLine := ALocation.Symbol.Range.StartPos.Line to ALocation.Symbol.Range.EndPos.Line do
   begin
-    if (mSymbol.Kind = TIndexSymbolKind.ClassType) and (mSymbol.Container = '') and SameText(mSymbol.Name, AName) then
+    if (mLine >= 0) and (mLine <= High(mLines)) then
     begin
-      ALocation.UnitName := FUnit.UnitName;
-      ALocation.FileName := '';
-      ALocation.Symbol := mSymbol;
-      Exit(True);
+      Result := Result + ' ' + Trim(mLines[mLine]);
     end;
   end;
-  if FContext.Index = nil then
-  begin
-    Exit(False);
-  end;
-  for mLocation in FContext.Index.FindSymbols(AName) do
-  begin
-    if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and (mLocation.Symbol.Container = '') then
-    begin
-      ALocation := mLocation;
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function TPropertyChecker.IsClassOrDescendant(const AClassName, ABase: string; ADescendants: Boolean): Boolean;
-var
-  mName: string;
-  mLocation: TSymbolLocation;
-  mDepth: Integer;
-begin
-  if SameText(AClassName, ABase) then
-  begin
-    Exit(True);
-  end;
-  Result := False;
-  if not ADescendants then
-  begin
-    Exit;
-  end;
-  mName := AClassName;
-  for mDepth := 1 to cMaxDepth do
-  begin
-    if not FindClass(mName, mLocation) or (Length(mLocation.Symbol.Ancestors) = 0) then
-    begin
-      Exit;
-    end;
-    mName := mLocation.Symbol.Ancestors[0];
-    if SameText(mName, ABase) then
-    begin
-      Exit(True);
-    end;
-  end;
+  Result := Trim(Result);
 end;
 
 function TPropertyChecker.Members(const AName: string): TArray<TSymbolLocation>;
@@ -300,23 +257,6 @@ begin
   begin
     Result := Result + FContext.Index.FindSymbols(AName);
   end;
-end;
-
-function TPropertyChecker.DeclarationText(const ALocation: TSymbolLocation): string;
-var
-  mLines: TArray<string>;
-  mLine: Integer;
-begin
-  Result := '';
-  mLines := FileLines(ALocation.FileName);
-  for mLine := ALocation.Symbol.Range.StartPos.Line to ALocation.Symbol.Range.EndPos.Line do
-  begin
-    if (mLine >= 0) and (mLine <= High(mLines)) then
-    begin
-      Result := Result + ' ' + Trim(mLines[mLine]);
-    end;
-  end;
-  Result := Trim(Result);
 end;
 
 function TPropertyChecker.DeclaredIn(const AClassName, AName: string; out AMember: TSymbolLocation): Boolean;
@@ -418,6 +358,66 @@ begin
   end;
   AInfo := PropertyInfo(mName, AParts[High(AParts)]);
   Result := True;
+end;
+
+function TPropertyChecker.FindClass(const AName: string; out ALocation: TSymbolLocation): Boolean;
+var
+  mLocation: TSymbolLocation;
+  mSymbol: TIndexSymbol;
+begin
+  for mSymbol in FUnit.Symbols do
+  begin
+    if (mSymbol.Kind = TIndexSymbolKind.ClassType) and (mSymbol.Container = '') and SameText(mSymbol.Name, AName) then
+    begin
+      ALocation.UnitName := FUnit.UnitName;
+      ALocation.FileName := '';
+      ALocation.Symbol := mSymbol;
+      Exit(True);
+    end;
+  end;
+  if FContext.Index = nil then
+  begin
+    Exit(False);
+  end;
+  for mLocation in FContext.Index.FindSymbols(AName) do
+  begin
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and (mLocation.Symbol.Container = '') then
+    begin
+      ALocation := mLocation;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TPropertyChecker.IsClassOrDescendant(const AClassName, ABase: string; ADescendants: Boolean): Boolean;
+var
+  mName: string;
+  mLocation: TSymbolLocation;
+  mDepth: Integer;
+begin
+  if SameText(AClassName, ABase) then
+  begin
+    Exit(True);
+  end;
+  Result := False;
+  if not ADescendants then
+  begin
+    Exit;
+  end;
+  mName := AClassName;
+  for mDepth := 1 to cMaxDepth do
+  begin
+    if not FindClass(mName, mLocation) or (Length(mLocation.Symbol.Ancestors) = 0) then
+    begin
+      Exit;
+    end;
+    mName := mLocation.Symbol.Ancestors[0];
+    if SameText(mName, ABase) then
+    begin
+      Exit(True);
+    end;
+  end;
 end;
 
 /// <summary>Ohne default speichert die VCL alles außer dem Nullwert des Typs ATypeName; False, wenn er
@@ -692,25 +692,52 @@ begin
   end;
 end;
 
-class function TDfmPropertyCheckRule.DfmString(const AValue: string): string;
+class function TDfmPropertyCheckRule.ConfigurationIssues(const ARules: TArray<TDfmPropertyRule>;
+  const AIndex: ISymbolIndex; const AReadFile: TRuleFileReader): TArray<TConfigurationIssue>;
 var
-  mCh: Char;
-  mQuoted: Boolean;
+  mContext: TRuleContext;
+  mChecker: TPropertyChecker;
+  mRule: TDfmPropertyRule;
+  mLocation: TSymbolLocation;
+  mMissing: string;
+  mIssue: TConfigurationIssue;
 begin
-  // Wie die IDE: druckbares ASCII in Hochkommas, alles andere als #Code.
-  Result := '';
-  mQuoted := False;
-  for mCh in AValue do
+  Result := nil;
+  if (AIndex = nil) or (Length(ARules) = 0) then
   begin
-    AppendDfmChar(Result, mQuoted, mCh);
+    Exit;
   end;
-  if mQuoted then
-  begin
-    Result := Result + '''';
-  end;
-  if Result = '' then
-  begin
-    Result := '''''';
+  mContext := Default(TRuleContext);
+  mContext.Index := AIndex;
+  mContext.ReadFile := AReadFile;
+  mChecker := TPropertyChecker.Create(mContext, Default(TUnitIndex));
+  try
+    for mRule in ARules do
+    begin
+      if mRule.ClassName = '' then
+      begin
+        Continue;
+      end;
+      mIssue := Default(TConfigurationIssue);
+      if not mChecker.FindClass(mRule.ClassName, mLocation) then
+      begin
+        mIssue.Range := mRule.ClassRange;
+        mIssue.Message := cTexts[TDfmPropertiesText.UnknownClass].Fmt([mRule.ClassName]);
+      end
+      else if (mRule.PropertyPath <> '') and not mChecker.HasProperty(mRule.ClassName, mRule.PropertyPath,
+        mMissing) then
+      begin
+        mIssue.Range := mRule.PropertyRange;
+        mIssue.Message := cTexts[TDfmPropertiesText.NoProperty].Fmt([mRule.ClassName, mMissing]);
+      end
+      else
+      begin
+        Continue;
+      end;
+      Result := Result + [mIssue];
+    end;
+  finally
+    mChecker.Free;
   end;
 end;
 
@@ -1083,52 +1110,25 @@ begin
   end;
 end;
 
-class function TDfmPropertyCheckRule.ConfigurationIssues(const ARules: TArray<TDfmPropertyRule>;
-  const AIndex: ISymbolIndex; const AReadFile: TRuleFileReader): TArray<TConfigurationIssue>;
+class function TDfmPropertyCheckRule.DfmString(const AValue: string): string;
 var
-  mContext: TRuleContext;
-  mChecker: TPropertyChecker;
-  mRule: TDfmPropertyRule;
-  mLocation: TSymbolLocation;
-  mMissing: string;
-  mIssue: TConfigurationIssue;
+  mCh: Char;
+  mQuoted: Boolean;
 begin
-  Result := nil;
-  if (AIndex = nil) or (Length(ARules) = 0) then
+  // Wie die IDE: druckbares ASCII in Hochkommas, alles andere als #Code.
+  Result := '';
+  mQuoted := False;
+  for mCh in AValue do
   begin
-    Exit;
+    AppendDfmChar(Result, mQuoted, mCh);
   end;
-  mContext := Default(TRuleContext);
-  mContext.Index := AIndex;
-  mContext.ReadFile := AReadFile;
-  mChecker := TPropertyChecker.Create(mContext, Default(TUnitIndex));
-  try
-    for mRule in ARules do
-    begin
-      if mRule.ClassName = '' then
-      begin
-        Continue;
-      end;
-      mIssue := Default(TConfigurationIssue);
-      if not mChecker.FindClass(mRule.ClassName, mLocation) then
-      begin
-        mIssue.Range := mRule.ClassRange;
-        mIssue.Message := cTexts[TDfmPropertiesText.UnknownClass].Fmt([mRule.ClassName]);
-      end
-      else if (mRule.PropertyPath <> '') and not mChecker.HasProperty(mRule.ClassName, mRule.PropertyPath,
-        mMissing) then
-      begin
-        mIssue.Range := mRule.PropertyRange;
-        mIssue.Message := cTexts[TDfmPropertiesText.NoProperty].Fmt([mRule.ClassName, mMissing]);
-      end
-      else
-      begin
-        Continue;
-      end;
-      Result := Result + [mIssue];
-    end;
-  finally
-    mChecker.Free;
+  if mQuoted then
+  begin
+    Result := Result + '''';
+  end;
+  if Result = '' then
+  begin
+    Result := '''''';
   end;
 end;
 

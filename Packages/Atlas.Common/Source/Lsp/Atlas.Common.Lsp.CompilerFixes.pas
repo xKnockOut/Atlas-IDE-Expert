@@ -47,6 +47,8 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Lsp.CodeActions;
 
+{ TLspCompilerFixes }
+
 class function TLspCompilerFixes.FixMessages(const AMessages: TArray<TCompilerMessage>): TArray<TFixMessage>;
 var
   mMessage: TCompilerMessage;

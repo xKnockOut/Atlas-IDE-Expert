@@ -158,11 +158,6 @@ type
 
 { TDiffMiddle }
 
-function TDiffMiddle.Cell(ARow, AColumn: Integer): Integer;
-begin
-  Result := Table[ARow * (NewCount + 1) + AColumn];
-end;
-
 procedure TDiffMiddle.Build;
 var
   mRow, mColumn: Integer;
@@ -183,6 +178,11 @@ begin
       end;
     end;
   end;
+end;
+
+function TDiffMiddle.Cell(ARow, AColumn: Integer): Integer;
+begin
+  Result := Table[ARow * (NewCount + 1) + AColumn];
 end;
 
 function TDiffMiddle.Step(ARow, AColumn: Integer): TDiffStep;

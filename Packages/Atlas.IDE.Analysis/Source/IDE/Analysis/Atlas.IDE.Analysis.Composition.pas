@@ -436,6 +436,21 @@ end;
 
 { TAtlasAnalysisModule }
 
+class function TAtlasAnalysisModule.Parts: TArray<IAtlasFeaturePart>;
+begin
+  // Wie bisher mit den Editorbefehlen ab dem abgesicherten Start; ihre Einstellungen prüfen die Teile selbst.
+  Result := [
+    TAtlasFeaturePart.AtLevel('Architecture', TAtlasSafeLevel.Safe, ArchitectureStarted, StartArchitecture,
+      StopArchitecture),
+    TAtlasFeaturePart.AtLevel('UnitRelations', TAtlasSafeLevel.Safe, UnitRelationsStarted, StartUnitRelations,
+      StopUnitRelations),
+    TAtlasFeaturePart.AtLevel('Hotspots', TAtlasSafeLevel.Safe, HotspotsStarted, StartHotspots, StopHotspots),
+    TAtlasFeaturePart.AtLevel('SymbolPath', TAtlasSafeLevel.Safe, SymbolPathStarted, StartSymbolPath,
+      StopSymbolPath),
+    TAtlasFeaturePart.AtLevel('MetricsLens', TAtlasSafeLevel.Safe, MetricsLensStarted, StartMetricsLens,
+      StopMetricsLens)];
+end;
+
 function TAtlasAnalysisModule.Info: TAtlasModuleInfo;
 begin
   // Lief mit den Editorbefehlen schon im abgesicherten Start.
@@ -456,6 +471,20 @@ end;
 function TAtlasAnalysisModule.IsActive: Boolean;
 begin
   Result := FActive;
+end;
+
+function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
+begin
+  Result := Default(TAtlasMenuEntry);
+  Result.CommandId := ACommandId;
+  Result.Place := APlace;
+end;
+
+/// <summary>Eintrag unter Ansicht › Atlas mit eigenem Text.</summary>
+function ViewEntry(const ACommandId: string; ACaption: TAtlasAnalysisTextId): TAtlasMenuEntry;
+begin
+  Result := MenuEntry(ACommandId, TAtlasMenuPlace.ViewMenu);
+  Result.Caption := TAtlasAnalysisStrings.Text(ACaption);
 end;
 
 function TAtlasAnalysisModule.Commands: TArray<TAtlasModuleCommand>;
@@ -494,20 +523,6 @@ begin
   Result[High(Result)].Caption := DependentsCaption;
 end;
 
-function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
-begin
-  Result := Default(TAtlasMenuEntry);
-  Result.CommandId := ACommandId;
-  Result.Place := APlace;
-end;
-
-/// <summary>Eintrag unter Ansicht › Atlas mit eigenem Text.</summary>
-function ViewEntry(const ACommandId: string; ACaption: TAtlasAnalysisTextId): TAtlasMenuEntry;
-begin
-  Result := MenuEntry(ACommandId, TAtlasMenuPlace.ViewMenu);
-  Result.Caption := TAtlasAnalysisStrings.Text(ACaption);
-end;
-
 function TAtlasAnalysisModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := [
@@ -525,6 +540,14 @@ begin
     MenuEntry('Atlas.NewRoleUnit', TAtlasMenuPlace.Gallery)];
 end;
 
+/// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
+/// ausgeschaltet einstellen lässt.</summary>
+procedure ProvideSettingsSections;
+begin
+  TAtlasAnalysisSettingsSection.ProvideIn(GScope);
+  TAtlasAnalysisEditorSection.ProvideIn(GScope);
+end;
+
 procedure TAtlasAnalysisModule.ApplySettings;
 begin
   // architecture.* (#1118), hotspots.* (#1354), codeLens.metrics (#66).
@@ -537,34 +560,11 @@ begin
   end;
 end;
 
-/// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
-/// ausgeschaltet einstellen lässt.</summary>
-procedure ProvideSettingsSections;
-begin
-  TAtlasAnalysisSettingsSection.ProvideIn(GScope);
-  TAtlasAnalysisEditorSection.ProvideIn(GScope);
-end;
-
 procedure TAtlasAnalysisModule.ThemeChanged;
 begin
   TAtlasIdeArchitecture.ThemeChanged;
   TAtlasIdeHotspots.ThemeChanged;
   TAtlasIdeUnitRelations.ThemeChanged;
-end;
-
-class function TAtlasAnalysisModule.Parts: TArray<IAtlasFeaturePart>;
-begin
-  // Wie bisher mit den Editorbefehlen ab dem abgesicherten Start; ihre Einstellungen prüfen die Teile selbst.
-  Result := [
-    TAtlasFeaturePart.AtLevel('Architecture', TAtlasSafeLevel.Safe, ArchitectureStarted, StartArchitecture,
-      StopArchitecture),
-    TAtlasFeaturePart.AtLevel('UnitRelations', TAtlasSafeLevel.Safe, UnitRelationsStarted, StartUnitRelations,
-      StopUnitRelations),
-    TAtlasFeaturePart.AtLevel('Hotspots', TAtlasSafeLevel.Safe, HotspotsStarted, StartHotspots, StopHotspots),
-    TAtlasFeaturePart.AtLevel('SymbolPath', TAtlasSafeLevel.Safe, SymbolPathStarted, StartSymbolPath,
-      StopSymbolPath),
-    TAtlasFeaturePart.AtLevel('MetricsLens', TAtlasSafeLevel.Safe, MetricsLensStarted, StartMetricsLens,
-      StopMetricsLens)];
 end;
 
 class function TAtlasAnalysisModule.RegisterModule: Boolean;

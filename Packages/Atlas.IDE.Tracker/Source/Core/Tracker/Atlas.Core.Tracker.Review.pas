@@ -306,12 +306,6 @@ begin
   Result.Succeeded := AReport.Succeeded and (Result.Errors = 0);
 end;
 
-class function TAtlasTrackerReview.Reviews(const AView: TAtlasIssuesView; const AIssue: TAtlasTrackerIssue): Boolean;
-begin
-  Result := (AView.VcsKind in [TAtlasVcsKind.Git, TAtlasVcsKind.Svn]) and
-    not SameText(AIssue.Key, AView.Active.Key) and Offered(AIssue.State, AView.ReviewStates);
-end;
-
 class function TAtlasTrackerReview.ReturnName(AKind: TAtlasVcsKind; const AHead: TAtlasVcsHead): string;
 const
   cSvnBranches = 'branches/';
@@ -325,6 +319,12 @@ begin
   begin
     Result := Trim(Copy(AHead.Branch, Length(cSvnBranches) + 1, MaxInt));
   end;
+end;
+
+class function TAtlasTrackerReview.Reviews(const AView: TAtlasIssuesView; const AIssue: TAtlasTrackerIssue): Boolean;
+begin
+  Result := (AView.VcsKind in [TAtlasVcsKind.Git, TAtlasVcsKind.Svn]) and
+    not SameText(AIssue.Key, AView.Active.Key) and Offered(AIssue.State, AView.ReviewStates);
 end;
 
 end.

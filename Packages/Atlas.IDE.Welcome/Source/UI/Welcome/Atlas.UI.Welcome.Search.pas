@@ -138,23 +138,17 @@ begin
   Params.WndParent := FOwnerWindow;
 end;
 
-procedure TAtlasWelcomeSearchList.WMMouseActivate(var Message: TWMMouseActivate);
-begin
-  Message.Result := MA_NOACTIVATE;
-end;
-
-function TAtlasWelcomeSearchList.RowHeight: Integer;
+procedure TAtlasWelcomeSearchList.Paint;
+var
+  mRow, mHeight_: Integer;
 begin
   Canvas.Font := Font;
-  Result := Canvas.TextHeight('Wg') + MulDiv(8, Screen.PixelsPerInch, 96);
-end;
-
-function TAtlasWelcomeSearchList.RowAt(AY: Integer): Integer;
-begin
-  Result := AY div RowHeight;
-  if (Result < 0) or (Result > High(FBox.FRows)) then
+  Canvas.Brush.Color := ToColor(FBox.FColors.Surface);
+  Canvas.FillRect(ClientRect);
+  mHeight_ := RowHeight;
+  for mRow := 0 to Min(High(FBox.FRows), cVisibleRows - 1) do
   begin
-    Result := -1;
+    DrawRow(mRow, Rect(0, mRow * mHeight_, ClientWidth, (mRow + 1) * mHeight_));
   end;
 end;
 
@@ -170,6 +164,11 @@ begin
   end;
   FBox.Select(FBox.FRows[mRow].Index);
   FBox.OpenSelected;
+end;
+
+procedure TAtlasWelcomeSearchList.WMMouseActivate(var Message: TWMMouseActivate);
+begin
+  Message.Result := MA_NOACTIVATE;
 end;
 
 procedure TAtlasWelcomeSearchList.DrawRow(ARow: Integer; const ARect: TRect);
@@ -242,17 +241,18 @@ begin
   end;
 end;
 
-procedure TAtlasWelcomeSearchList.Paint;
-var
-  mRow, mHeight_: Integer;
+function TAtlasWelcomeSearchList.RowHeight: Integer;
 begin
   Canvas.Font := Font;
-  Canvas.Brush.Color := ToColor(FBox.FColors.Surface);
-  Canvas.FillRect(ClientRect);
-  mHeight_ := RowHeight;
-  for mRow := 0 to Min(High(FBox.FRows), cVisibleRows - 1) do
+  Result := Canvas.TextHeight('Wg') + MulDiv(8, Screen.PixelsPerInch, 96);
+end;
+
+function TAtlasWelcomeSearchList.RowAt(AY: Integer): Integer;
+begin
+  Result := AY div RowHeight;
+  if (Result < 0) or (Result > High(FBox.FRows)) then
   begin
-    DrawRow(mRow, Rect(0, mRow * mHeight_, ClientWidth, (mRow + 1) * mHeight_));
+    Result := -1;
   end;
 end;
 
@@ -286,20 +286,6 @@ begin
   inherited;
 end;
 
-class function TAtlasWelcomeSearchBox.GroupCaption(AGroup: TAtlasWelcomeSearchGroup): string;
-begin
-  case AGroup of
-    TAtlasWelcomeSearchGroup.Projects:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchProjects);
-    TAtlasWelcomeSearchGroup.Files:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchFiles);
-    TAtlasWelcomeSearchGroup.Symbols:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchSymbols);
-  else
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchCommands);
-  end;
-end;
-
 procedure TAtlasWelcomeSearchBox.SetColors(const AValue: TAtlasColors);
 begin
   FColors := AValue;
@@ -325,10 +311,92 @@ begin
   FTimer.Enabled := True;
 end;
 
+procedure TAtlasWelcomeSearchBox.EditExit(Sender: TObject);
+begin
+  HideList;
+end;
+
+procedure TAtlasWelcomeSearchBox.EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  case Key of
+    VK_DOWN:
+      Select(FSelected + 1);
+    VK_UP:
+      Select(FSelected - 1);
+    VK_RETURN:
+      begin
+        // Noch in der Tipppause: erst die Treffer zum aktuellen Text holen.
+        if FTimer.Enabled then
+        begin
+          Query;
+        end;
+        OpenSelected;
+      end;
+    VK_ESCAPE:
+      Clear;
+  else
+    Exit;
+  end;
+  Key := 0;
+end;
+
+procedure TAtlasWelcomeSearchBox.EditKeyPress(Sender: TObject; var Key: Char);
+begin
+  // Kein Signalton für Enter und Esc.
+  if (Key = #13) or (Key = #27) then
+  begin
+    Key := #0;
+  end;
+end;
+
 procedure TAtlasWelcomeSearchBox.TimerTick(Sender: TObject);
 begin
   FTimer.Enabled := False;
   Query;
+end;
+
+procedure TAtlasWelcomeSearchBox.ShowList;
+var
+  mOrigin: TPoint;
+  mArea: TRect;
+  mWidth_, mHeight_: Integer;
+begin
+  if not FEdit.HandleAllocated then
+  begin
+    Exit;
+  end;
+  if FList = nil then
+  begin
+    FList := TAtlasWelcomeSearchList.Create(nil);
+    FList.FBox := Self;
+    FList.FOwnerWindow := GetAncestor(FEdit.Handle, GA_ROOT);
+    FList.Font.Assign(Font);
+    FList.Font.Name := 'Segoe UI';
+    // Unsichtbar anlegen; gezeigt wird ohne Aktivieren über SetWindowPos.
+    FList.Visible := False;
+    FList.ParentWindow := FList.FOwnerWindow;
+    FList.DoubleBuffered := True;
+  end;
+  mOrigin := FEdit.ClientToScreen(Point(0, FEdit.Height));
+  mWidth_ := Max(FEdit.Width, MulDiv(cListWidth, Screen.PixelsPerInch, 96));
+  mHeight_ := Min(Length(FRows), cVisibleRows) * FList.RowHeight + 2;
+  mArea := Screen.MonitorFromPoint(mOrigin).WorkareaRect;
+  // Rechts bündig unter dem Feld (es steht rechts im Kopf), nie über den Bildschirm hinaus.
+  mOrigin.X := Max(mArea.Left, Min(mOrigin.X + FEdit.Width - mWidth_, mArea.Right - mWidth_));
+  if mOrigin.Y + mHeight_ > mArea.Bottom then
+  begin
+    mOrigin.Y := Max(mArea.Top, mOrigin.Y - FEdit.Height - mHeight_);
+  end;
+  FList.SetBounds(mOrigin.X, mOrigin.Y, mWidth_, mHeight_);
+  // SWP_NOOWNERZORDER: nicht die ganze Owner-Gruppe umsortieren (Hänger wie in TAtlasPopupWindow.ShowAt).
+  SetWindowPos(FList.Handle, HWND_TOP, mOrigin.X, mOrigin.Y, mWidth_, mHeight_,
+    SWP_SHOWWINDOW or SWP_NOACTIVATE or SWP_NOOWNERZORDER);
+  FList.Invalidate;
+end;
+
+procedure TAtlasWelcomeSearchBox.HideList;
+begin
+  FreeAndNil(FList);
 end;
 
 procedure TAtlasWelcomeSearchBox.Query;
@@ -415,86 +483,18 @@ begin
   end;
 end;
 
-procedure TAtlasWelcomeSearchBox.EditExit(Sender: TObject);
+class function TAtlasWelcomeSearchBox.GroupCaption(AGroup: TAtlasWelcomeSearchGroup): string;
 begin
-  HideList;
-end;
-
-procedure TAtlasWelcomeSearchBox.EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  case Key of
-    VK_DOWN:
-      Select(FSelected + 1);
-    VK_UP:
-      Select(FSelected - 1);
-    VK_RETURN:
-      begin
-        // Noch in der Tipppause: erst die Treffer zum aktuellen Text holen.
-        if FTimer.Enabled then
-        begin
-          Query;
-        end;
-        OpenSelected;
-      end;
-    VK_ESCAPE:
-      Clear;
+  case AGroup of
+    TAtlasWelcomeSearchGroup.Projects:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchProjects);
+    TAtlasWelcomeSearchGroup.Files:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchFiles);
+    TAtlasWelcomeSearchGroup.Symbols:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchSymbols);
   else
-    Exit;
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchCommands);
   end;
-  Key := 0;
-end;
-
-procedure TAtlasWelcomeSearchBox.EditKeyPress(Sender: TObject; var Key: Char);
-begin
-  // Kein Signalton für Enter und Esc.
-  if (Key = #13) or (Key = #27) then
-  begin
-    Key := #0;
-  end;
-end;
-
-procedure TAtlasWelcomeSearchBox.ShowList;
-var
-  mOrigin: TPoint;
-  mArea: TRect;
-  mWidth_, mHeight_: Integer;
-begin
-  if not FEdit.HandleAllocated then
-  begin
-    Exit;
-  end;
-  if FList = nil then
-  begin
-    FList := TAtlasWelcomeSearchList.Create(nil);
-    FList.FBox := Self;
-    FList.FOwnerWindow := GetAncestor(FEdit.Handle, GA_ROOT);
-    FList.Font.Assign(Font);
-    FList.Font.Name := 'Segoe UI';
-    // Unsichtbar anlegen; gezeigt wird ohne Aktivieren über SetWindowPos.
-    FList.Visible := False;
-    FList.ParentWindow := FList.FOwnerWindow;
-    FList.DoubleBuffered := True;
-  end;
-  mOrigin := FEdit.ClientToScreen(Point(0, FEdit.Height));
-  mWidth_ := Max(FEdit.Width, MulDiv(cListWidth, Screen.PixelsPerInch, 96));
-  mHeight_ := Min(Length(FRows), cVisibleRows) * FList.RowHeight + 2;
-  mArea := Screen.MonitorFromPoint(mOrigin).WorkareaRect;
-  // Rechts bündig unter dem Feld (es steht rechts im Kopf), nie über den Bildschirm hinaus.
-  mOrigin.X := Max(mArea.Left, Min(mOrigin.X + FEdit.Width - mWidth_, mArea.Right - mWidth_));
-  if mOrigin.Y + mHeight_ > mArea.Bottom then
-  begin
-    mOrigin.Y := Max(mArea.Top, mOrigin.Y - FEdit.Height - mHeight_);
-  end;
-  FList.SetBounds(mOrigin.X, mOrigin.Y, mWidth_, mHeight_);
-  // SWP_NOOWNERZORDER: nicht die ganze Owner-Gruppe umsortieren (Hänger wie in TAtlasPopupWindow.ShowAt).
-  SetWindowPos(FList.Handle, HWND_TOP, mOrigin.X, mOrigin.Y, mWidth_, mHeight_,
-    SWP_SHOWWINDOW or SWP_NOACTIVATE or SWP_NOOWNERZORDER);
-  FList.Invalidate;
-end;
-
-procedure TAtlasWelcomeSearchBox.HideList;
-begin
-  FreeAndNil(FList);
 end;
 
 end.

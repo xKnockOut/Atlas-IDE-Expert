@@ -63,6 +63,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Keys;
 
+{ TAtlasEditorKeyList }
+
 function TAtlasEditorKeyList.Has(AKey: Word): Boolean;
 var
   mExisting: TAtlasEditorKey;
@@ -112,12 +114,6 @@ begin
 end;
 
 procedure TAtlasEditorKeyList.AddAttemptKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string;
-  const AAttempt: TFunc<Boolean>);
-begin
-  AddAttemptKey(AFeature, AKey, AWhat, AAttempt, True);
-end;
-
-procedure TAtlasEditorKeyList.AddAttemptKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string;
   const AAttempt: TFunc<Boolean>; ACheck: Boolean);
 begin
   // 0 = keine Taste; dieselbe Taste zweimal (beide Felder gleich belegt) nur einmal binden.
@@ -130,6 +126,12 @@ begin
     Exit;
   end;
   Append(AFeature, Word(AKey), nil, AAttempt);
+end;
+
+procedure TAtlasEditorKeyList.AddAttemptKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string;
+  const AAttempt: TFunc<Boolean>);
+begin
+  AddAttemptKey(AFeature, AKey, AWhat, AAttempt, True);
 end;
 
 procedure TAtlasEditorKeyList.AddPriorityAttemptKey(AFeature: TAtlasFeature; AKey: Integer; const AWhat: string;

@@ -275,6 +275,8 @@ type
     function Run(ABody: TSyntaxNode): TFlow;
   end;
 
+{ TFlowAnalyzer }
+
 constructor TFlowAnalyzer.Create(ATree: TSyntaxTree; AConditions: TList<TSyntaxNode>);
 begin
   inherited Create;
@@ -848,42 +850,16 @@ end;
 
 { TMetricsCalculator }
 
-class function TMetricsCalculator.ParameterCount(AHeader: TSyntaxNode): Integer;
+class function TMetricsCalculator.ForText(const AText: string): TArray<TRoutineMetrics>;
 var
-  mParameters, mParameter: TSyntaxNode;
-  mIndex, mPosition: Integer;
-  mNames: string;
+  mTree: TSyntaxTree;
 begin
-  Result := 0;
-  if AHeader = nil then
-  begin
-    Exit;
-  end;
-  mParameters := AHeader.FindChild(TSyntaxKind.Parameters);
-  if mParameters = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mParameters.ChildCount - 1 do
-  begin
-    mParameter := mParameters[mIndex];
-    if mParameter.Kind <> TSyntaxKind.Parameter then
-    begin
-      Continue;
-    end;
-    mNames := Trim(mParameter.Name);
-    if mNames = '' then
-    begin
-      Continue;
-    end;
-    Inc(Result);
-    for mPosition := 1 to Length(mNames) do
-    begin
-      if mNames[mPosition] = ',' then
-      begin
-        Inc(Result);
-      end;
-    end;
+  // Über den Cache: TSyntaxTreeCacheTests.NoParserCallsOutsideCache verlangt das für alle Parser-Aufrufe.
+  mTree := TSyntaxTreeCache.Parse(AText);
+  try
+    Result := Routines(mTree);
+  finally
+    mTree.Free;
   end;
 end;
 
@@ -1049,72 +1025,54 @@ begin
   end;
 end;
 
-class function TMetricsCalculator.Operands(AExpression: TSyntaxNode): Integer;
+class function TMetricsCalculator.ParameterCount(AHeader: TSyntaxNode): Integer;
 var
-  mStack: TStack<TSyntaxNode>;
-  mNode: TSyntaxNode;
+  mParameters, mParameter: TSyntaxNode;
+  mIndex, mPosition: Integer;
+  mNames: string;
 begin
-  // Iterativ: lange Ketten ergeben tiefe Bäume.
   Result := 0;
-  mStack := TStack<TSyntaxNode>.Create;
-  try
-    mStack.Push(AExpression);
-    while mStack.Count > 0 do
+  if AHeader = nil then
+  begin
+    Exit;
+  end;
+  mParameters := AHeader.FindChild(TSyntaxKind.Parameters);
+  if mParameters = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mParameters.ChildCount - 1 do
+  begin
+    mParameter := mParameters[mIndex];
+    if mParameter.Kind <> TSyntaxKind.Parameter then
     begin
-      mNode := mStack.Pop;
-      if (mNode.Kind = TSyntaxKind.BinaryExpr) and (mNode.ChildCount = 2) and (SameText(mNode.Name, 'and') or
-        SameText(mNode.Name, 'or') or SameText(mNode.Name, 'xor')) then
-      begin
-        mStack.Push(mNode[1]);
-        mStack.Push(mNode[0]);
-      end
-      else if ((mNode.Kind = TSyntaxKind.ParenExpr) or ((mNode.Kind = TSyntaxKind.UnaryExpr) and
-        SameText(mNode.Name, 'not'))) and (mNode.ChildCount = 1) then
-      begin
-        mStack.Push(mNode[0]);
-      end
-      else
+      Continue;
+    end;
+    mNames := Trim(mParameter.Name);
+    if mNames = '' then
+    begin
+      Continue;
+    end;
+    Inc(Result);
+    for mPosition := 1 to Length(mNames) do
+    begin
+      if mNames[mPosition] = ',' then
       begin
         Inc(Result);
       end;
     end;
-  finally
-    mStack.Free;
   end;
 end;
 
-class function TMetricsCalculator.Conditions(ATree: TSyntaxTree): TArray<TConditionMetrics>;
+class function TMetricsCalculator.StructureForText(const AText: string): TArray<TStructureMetrics>;
 var
-  mRoutine, mNode: TSyntaxNode;
-  mFound: TList<TSyntaxNode>;
-  mItem: TConditionMetrics;
+  mTree: TSyntaxTree;
 begin
-  Result := nil;
-  if (ATree = nil) or (ATree.Root = nil) then
-  begin
-    Exit;
-  end;
-  mFound := TList<TSyntaxNode>.Create;
+  mTree := TSyntaxTreeCache.Parse(AText);
   try
-    for mRoutine in FindRoutines(ATree) do
-    begin
-      AnalyzeWith(ATree, mRoutine, mFound);
-    end;
-    mFound.Sort(TComparer<TSyntaxNode>.Construct(
-      function(const A, B: TSyntaxNode): Integer
-      begin
-        Result := A.StartOffset - B.StartOffset;
-      end));
-    for mNode in mFound do
-    begin
-      mItem.Range := TTextRange.Create(mNode.StartPos, mNode.EndPos);
-      mItem.StartOffset := mNode.StartOffset;
-      mItem.EndOffset := mNode.EndOffset;
-      mItem.Operands := Operands(mNode);
-      Result := Result + [mItem];
-    end;
+    Result := Structure(mTree);
   finally
-    mFound.Free;
+    mTree.Free;
   end;
 end;
 
@@ -1308,28 +1266,72 @@ begin
   Result := Result + mScan.Classes;
 end;
 
-class function TMetricsCalculator.StructureForText(const AText: string): TArray<TStructureMetrics>;
+class function TMetricsCalculator.Conditions(ATree: TSyntaxTree): TArray<TConditionMetrics>;
 var
-  mTree: TSyntaxTree;
+  mRoutine, mNode: TSyntaxNode;
+  mFound: TList<TSyntaxNode>;
+  mItem: TConditionMetrics;
 begin
-  mTree := TSyntaxTreeCache.Parse(AText);
+  Result := nil;
+  if (ATree = nil) or (ATree.Root = nil) then
+  begin
+    Exit;
+  end;
+  mFound := TList<TSyntaxNode>.Create;
   try
-    Result := Structure(mTree);
+    for mRoutine in FindRoutines(ATree) do
+    begin
+      AnalyzeWith(ATree, mRoutine, mFound);
+    end;
+    mFound.Sort(TComparer<TSyntaxNode>.Construct(
+      function(const A, B: TSyntaxNode): Integer
+      begin
+        Result := A.StartOffset - B.StartOffset;
+      end));
+    for mNode in mFound do
+    begin
+      mItem.Range := TTextRange.Create(mNode.StartPos, mNode.EndPos);
+      mItem.StartOffset := mNode.StartOffset;
+      mItem.EndOffset := mNode.EndOffset;
+      mItem.Operands := Operands(mNode);
+      Result := Result + [mItem];
+    end;
   finally
-    mTree.Free;
+    mFound.Free;
   end;
 end;
 
-class function TMetricsCalculator.ForText(const AText: string): TArray<TRoutineMetrics>;
+class function TMetricsCalculator.Operands(AExpression: TSyntaxNode): Integer;
 var
-  mTree: TSyntaxTree;
+  mStack: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
 begin
-  // Über den Cache: TSyntaxTreeCacheTests.NoParserCallsOutsideCache verlangt das für alle Parser-Aufrufe.
-  mTree := TSyntaxTreeCache.Parse(AText);
+  // Iterativ: lange Ketten ergeben tiefe Bäume.
+  Result := 0;
+  mStack := TStack<TSyntaxNode>.Create;
   try
-    Result := Routines(mTree);
+    mStack.Push(AExpression);
+    while mStack.Count > 0 do
+    begin
+      mNode := mStack.Pop;
+      if (mNode.Kind = TSyntaxKind.BinaryExpr) and (mNode.ChildCount = 2) and (SameText(mNode.Name, 'and') or
+        SameText(mNode.Name, 'or') or SameText(mNode.Name, 'xor')) then
+      begin
+        mStack.Push(mNode[1]);
+        mStack.Push(mNode[0]);
+      end
+      else if ((mNode.Kind = TSyntaxKind.ParenExpr) or ((mNode.Kind = TSyntaxKind.UnaryExpr) and
+        SameText(mNode.Name, 'not'))) and (mNode.ChildCount = 1) then
+      begin
+        mStack.Push(mNode[0]);
+      end
+      else
+      begin
+        Inc(Result);
+      end;
+    end;
   finally
-    mTree.Free;
+    mStack.Free;
   end;
 end;
 

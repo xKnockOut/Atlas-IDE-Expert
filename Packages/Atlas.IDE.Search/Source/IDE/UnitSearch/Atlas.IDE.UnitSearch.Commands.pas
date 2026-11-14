@@ -210,31 +210,6 @@ begin
   end;
 end;
 
-procedure TUnitDialogHook.RunOriginal;
-begin
-  if FAction = nil then
-  begin
-    Exit;
-  end;
-  if Assigned(FOriginal) then
-  begin
-    FOriginal(FAction);
-    Exit;
-  end;
-  // Ohne eigenes OnExecute erledigt die IDE die Aktion über ihre Liste: kurz abhängen und ausführen.
-  FBypass := True;
-  FAction.OnExecute := nil;
-  try
-    FAction.Execute;
-  finally
-    if FAction <> nil then
-    begin
-      FAction.OnExecute := Execute;
-    end;
-    FBypass := False;
-  end;
-end;
-
 procedure TUnitDialogHook.Execute(Sender: TObject);
 var
   mPlugin: TAtlasPluginSettings;
@@ -263,6 +238,31 @@ begin
     end) then
   begin
     RunOriginal;
+  end;
+end;
+
+procedure TUnitDialogHook.RunOriginal;
+begin
+  if FAction = nil then
+  begin
+    Exit;
+  end;
+  if Assigned(FOriginal) then
+  begin
+    FOriginal(FAction);
+    Exit;
+  end;
+  // Ohne eigenes OnExecute erledigt die IDE die Aktion über ihre Liste: kurz abhängen und ausführen.
+  FBypass := True;
+  FAction.OnExecute := nil;
+  try
+    FAction.Execute;
+  finally
+    if FAction <> nil then
+    begin
+      FAction.OnExecute := Execute;
+    end;
+    FBypass := False;
   end;
 end;
 
@@ -322,6 +322,16 @@ end;
 
 { TAtlasIdeUnitSearch }
 
+class function TAtlasIdeUnitSearch.Session: TLspSession;
+begin
+  Result := TAtlasIdeUnitSearchActions.Session;
+end;
+
+class procedure TAtlasIdeUnitSearch.Say(const AText: string);
+begin
+  TAtlasIdeUnitSearchActions.Say(AText);
+end;
+
 class procedure TAtlasIdeUnitSearch.Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>;
   const ARunAsync: TAtlasUnitSearchCommandAsync);
 var
@@ -361,28 +371,24 @@ begin
   TAtlasIdeUnitSearchActions.Uninstall;
 end;
 
-class function TAtlasIdeUnitSearch.Session: TLspSession;
+class procedure TAtlasIdeUnitSearch.Show(AFallback: Boolean);
 begin
-  Result := TAtlasIdeUnitSearchActions.Session;
+  Show(TAtlasUnitSearchMode.Search, AFallback);
 end;
 
-class procedure TAtlasIdeUnitSearch.Say(const AText: string);
+class procedure TAtlasIdeUnitSearch.Show;
 begin
-  TAtlasIdeUnitSearchActions.Say(AText);
+  Show(False);
 end;
 
-class function TAtlasIdeUnitSearch.StateFile: string;
+class procedure TAtlasIdeUnitSearch.ShowUseUnit;
 begin
-  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'unitsearch.json');
+  Show(TAtlasUnitSearchMode.UseUnit, False);
 end;
 
-class function TAtlasIdeUnitSearch.HookedAction: TBasicAction;
+class procedure TAtlasIdeUnitSearch.ShowForms;
 begin
-  Result := nil;
-  if FHooks[TAtlasUnitSearchMode.Search] <> nil then
-  begin
-    Result := TUnitDialogHook(FHooks[TAtlasUnitSearchMode.Search]).FAction;
-  end;
+  Show(TAtlasUnitSearchMode.Forms, False);
 end;
 
 class procedure TAtlasIdeUnitSearch.ShowIdeDialog;
@@ -412,24 +418,18 @@ begin
   ShowIdeDialog(TAtlasUnitSearchMode.Forms);
 end;
 
-class procedure TAtlasIdeUnitSearch.Show;
+class function TAtlasIdeUnitSearch.HookedAction: TBasicAction;
 begin
-  Show(False);
+  Result := nil;
+  if FHooks[TAtlasUnitSearchMode.Search] <> nil then
+  begin
+    Result := TUnitDialogHook(FHooks[TAtlasUnitSearchMode.Search]).FAction;
+  end;
 end;
 
-class procedure TAtlasIdeUnitSearch.Show(AFallback: Boolean);
+class function TAtlasIdeUnitSearch.StateFile: string;
 begin
-  Show(TAtlasUnitSearchMode.Search, AFallback);
-end;
-
-class procedure TAtlasIdeUnitSearch.ShowUseUnit;
-begin
-  Show(TAtlasUnitSearchMode.UseUnit, False);
-end;
-
-class procedure TAtlasIdeUnitSearch.ShowForms;
-begin
-  Show(TAtlasUnitSearchMode.Forms, False);
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'unitsearch.json');
 end;
 
 /// <summary>Einstellungen des neuen Fensters im Modus AMode; ATargetFile ist die Unit für „Unit verwenden“.

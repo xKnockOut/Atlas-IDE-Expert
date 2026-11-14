@@ -248,9 +248,27 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeIssues.Active: Boolean;
+procedure TAtlasIdeIssues.FocusIssue(const AIssue: TAtlasTrackerIssue);
+var
+  mView: TAtlasIssuesView;
+  mIndex, mGroup: Integer;
 begin
-  Result := TAtlasIdeIssuesTargets.Active;
+  if not FContext.Selection.AllMode then
+  begin
+    Exit;
+  end;
+  mView := View;
+  for mIndex := 0 to High(mView.Items) do
+  begin
+    mGroup := TAtlasMyIssues.GroupOf(mView, mIndex);
+    // Kennung und Titel: „#12“ kann es in zwei Repositorys geben.
+    if SameText(mView.Items[mIndex].Key, AIssue.Key) and (mView.Items[mIndex].Title = AIssue.Title) and
+      (mGroup >= 0) then
+    begin
+      FContext.Selection.Focus(mView.Groups[mGroup].Project);
+      Exit;
+    end;
+  end;
 end;
 
 procedure TAtlasIdeIssues.Start;
@@ -311,6 +329,11 @@ begin
   Result := FTitle.Text;
 end;
 
+class function TAtlasIdeIssues.Active: Boolean;
+begin
+  Result := TAtlasIdeIssuesTargets.Active;
+end;
+
 procedure TAtlasIdeIssues.UpdateTileInfo;
 begin
   FTitle.Update;
@@ -319,66 +342,6 @@ end;
 procedure TAtlasIdeIssues.SetFilter(const ACaption: string; const AIssues: TArray<TAtlasTrackerIssue>);
 begin
   FCommands.SetFilter(ACaption, AIssues);
-end;
-
-function TAtlasIdeIssues.ViewOf(const AProject: string): TAtlasIssuesView;
-var
-  mCached: TAtlasIssuesCachedTarget;
-  mTarget: TAtlasTrackerTarget;
-  mProvider: IAtlasTrackerProvider;
-begin
-  Result := Default(TAtlasIssuesView);
-  Result.Items := nil;
-  if AProject = '' then
-  begin
-    Result.Status := TAtlasIssuesStatus.NotConfigured;
-    Exit;
-  end;
-  mCached := FContext.CachedTargetOf(AProject);
-  mTarget := mCached.Target;
-  Result := TAtlasMyIssues.View(FContext.StateOf(AProject), mTarget, FContext.BranchOf(AProject));
-  Result.Project := AProject;
-  Result.ProjectName := FContext.ProjectName(AProject);
-  Result.Connection := mCached.Connection;
-  Result.CanAssign := FContext.CanAssign;
-  mProvider := FContext.ProviderOf(mTarget.Provider);
-  if mProvider <> nil then
-  begin
-    Result.Tracker := mProvider.Caption;
-  end;
-  Result.TrackerProject := mTarget.Project;
-  Result.Queries := mCached.Queries;
-  Result.QueryIndex := mCached.QueryIndex;
-  Result.QueryCounts := TAtlasMyIssues.QueryCounts(FContext.StateOf(AProject), mCached.Queries);
-  Result.Picker := TAtlasIdeSettings.Current.IssuesQueryPicker;
-  Result.QueryText := QueryTextOf(mProvider, mTarget);
-  Result.Querying := (FContext.QueryProject <> '') and SameText(FContext.QueryProject, AProject);
-  Result.Starting := FContext.StartProject <> '';
-  if SameText(FContext.Notice.Project, AProject) then
-  begin
-    Result.Notice := FContext.Notice.Text;
-    Result.NoticeFailed := FContext.Notice.Failed;
-  end;
-  Result.Options := FServices.Options;
-  Result.Options.MainBranch := TAtlasIdeVcs.MainBranchOf(AProject, TAtlasIdeFiles.GroupOfProject(AProject));
-  Result.VcsKind := FContext.Selection.VcsKindOf(AProject);
-  // Filter der Sprint-Kachel (#1277): nur für das Projekt, in dem er gesetzt wurde.
-  if (FContext.Filter.Caption <> '') and SameText(FContext.Filter.Project, AProject) then
-  begin
-    Result.Filter := FContext.Filter.Caption;
-    Result.Items := FContext.Filter.Issues;
-  end;
-  Result.Unseen := FServices.UnseenOf(mTarget);
-  // Wieder geöffnete Issues (#2127).
-  if FServices.Reopened <> nil then
-  begin
-    Result.Reopened := FServices.Reopened.Marks(AProject);
-  end;
-  // „Prüfen“ (#2126) an Zeilen im Prüfzustand.
-  if FServices.Review <> nil then
-  begin
-    Result.ReviewStates := TAtlasIdeTrackerSync.Options(mTarget).ReviewStates;
-  end;
 end;
 
 /// <summary>Abfragen aus AQueries, die es (nach Name) auch in AOther gibt.</summary>
@@ -442,43 +405,64 @@ begin
   end;
 end;
 
-procedure TAtlasIdeIssues.FocusIssue(const AIssue: TAtlasTrackerIssue);
+function TAtlasIdeIssues.ViewOf(const AProject: string): TAtlasIssuesView;
 var
-  mView: TAtlasIssuesView;
-  mIndex, mGroup: Integer;
+  mCached: TAtlasIssuesCachedTarget;
+  mTarget: TAtlasTrackerTarget;
+  mProvider: IAtlasTrackerProvider;
 begin
-  if not FContext.Selection.AllMode then
+  Result := Default(TAtlasIssuesView);
+  Result.Items := nil;
+  if AProject = '' then
   begin
+    Result.Status := TAtlasIssuesStatus.NotConfigured;
     Exit;
   end;
-  mView := View;
-  for mIndex := 0 to High(mView.Items) do
+  mCached := FContext.CachedTargetOf(AProject);
+  mTarget := mCached.Target;
+  Result := TAtlasMyIssues.View(FContext.StateOf(AProject), mTarget, FContext.BranchOf(AProject));
+  Result.Project := AProject;
+  Result.ProjectName := FContext.ProjectName(AProject);
+  Result.Connection := mCached.Connection;
+  Result.CanAssign := FContext.CanAssign;
+  mProvider := FContext.ProviderOf(mTarget.Provider);
+  if mProvider <> nil then
   begin
-    mGroup := TAtlasMyIssues.GroupOf(mView, mIndex);
-    // Kennung und Titel: „#12“ kann es in zwei Repositorys geben.
-    if SameText(mView.Items[mIndex].Key, AIssue.Key) and (mView.Items[mIndex].Title = AIssue.Title) and
-      (mGroup >= 0) then
-    begin
-      FContext.Selection.Focus(mView.Groups[mGroup].Project);
-      Exit;
-    end;
+    Result.Tracker := mProvider.Caption;
   end;
-end;
-
-procedure TAtlasIdeIssues.SelectProject(const AKey: string);
-begin
-  TAtlasGuard.Run(TAtlasFeature.Tracker,
-    procedure
-    begin
-      FContext.Selection.Choose(AKey);
-      FQuery.Fetch(False);
-    end);
-end;
-
-procedure TAtlasIdeIssues.EditProjects;
-begin
-  // Dieselbe Seite Issue-Tracker wie „Abfragen bearbeiten …“; danach gelten Zeilen und Wahl neu.
-  FQuery.EditQueries;
+  Result.TrackerProject := mTarget.Project;
+  Result.Queries := mCached.Queries;
+  Result.QueryIndex := mCached.QueryIndex;
+  Result.QueryCounts := TAtlasMyIssues.QueryCounts(FContext.StateOf(AProject), mCached.Queries);
+  Result.Picker := TAtlasIdeSettings.Current.IssuesQueryPicker;
+  Result.QueryText := QueryTextOf(mProvider, mTarget);
+  Result.Querying := (FContext.QueryProject <> '') and SameText(FContext.QueryProject, AProject);
+  Result.Starting := FContext.StartProject <> '';
+  if SameText(FContext.Notice.Project, AProject) then
+  begin
+    Result.Notice := FContext.Notice.Text;
+    Result.NoticeFailed := FContext.Notice.Failed;
+  end;
+  Result.Options := FServices.Options;
+  Result.Options.MainBranch := TAtlasIdeVcs.MainBranchOf(AProject, TAtlasIdeFiles.GroupOfProject(AProject));
+  Result.VcsKind := FContext.Selection.VcsKindOf(AProject);
+  // Filter der Sprint-Kachel (#1277): nur für das Projekt, in dem er gesetzt wurde.
+  if (FContext.Filter.Caption <> '') and SameText(FContext.Filter.Project, AProject) then
+  begin
+    Result.Filter := FContext.Filter.Caption;
+    Result.Items := FContext.Filter.Issues;
+  end;
+  Result.Unseen := FServices.UnseenOf(mTarget);
+  // Wieder geöffnete Issues (#2127).
+  if FServices.Reopened <> nil then
+  begin
+    Result.Reopened := FServices.Reopened.Marks(AProject);
+  end;
+  // „Prüfen“ (#2126) an Zeilen im Prüfzustand.
+  if FServices.Review <> nil then
+  begin
+    Result.ReviewStates := TAtlasIdeTrackerSync.Options(mTarget).ReviewStates;
+  end;
 end;
 
 function TAtlasIdeIssues.View: TAtlasIssuesView;
@@ -517,44 +501,6 @@ begin
   // Bei „Alle“ nimmt „Beginnen“ das Tracker-Projekt der Zeile und dessen Arbeitskopie (#1928).
   FocusIssue(AIssue);
   FStarter.Start(AIssue, AMode);
-end;
-
-procedure TAtlasIdeIssues.IssueAction(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueAction);
-var
-  mReopen: TAtlasTrackerReopen;
-  mProject: string;
-begin
-  FocusIssue(AIssue);
-  mProject := FContext.Selection.CurrentProject;
-  if AAction = TAtlasIssueAction.Review then
-  begin
-    // „Prüfen“ (#2126): Bei „Alle“ gilt das Tracker-Projekt der Zeile (FocusIssue).
-    if FServices.Review <> nil then
-    begin
-      FServices.Review.Review(AIssue, FServices.Options);
-    end;
-  end
-  else if AAction = TAtlasIssueAction.Continue then
-  begin
-    // Ohne Marke (schon ausgeblendet): Weiterarbeiten ohne gemerkten Branch, wie „Beginnen“.
-    if (FServices.Reopened = nil) or not FServices.Reopened.Find(mProject, AIssue.Key, mReopen) then
-    begin
-      mReopen := Default(TAtlasTrackerReopen);
-    end;
-    FStarter.Resume(AIssue, mReopen.Branch);
-  end
-  else if FServices.Reopened = nil then
-  begin
-    Exit;
-  end
-  else if AAction = TAtlasIssueAction.Dismiss then
-  begin
-    FServices.Reopened.Dismiss(mProject, AIssue.Key);
-  end
-  else
-  begin
-    FServices.Reopened.ShowComment(mProject, AIssue.Key);
-  end;
 end;
 
 procedure TAtlasIdeIssues.Browse(const AIssue: TAtlasTrackerIssue);
@@ -618,6 +564,60 @@ end;
 procedure TAtlasIdeIssues.ClearFilter;
 begin
   FCommands.ClearFilter;
+end;
+
+procedure TAtlasIdeIssues.SelectProject(const AKey: string);
+begin
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
+    procedure
+    begin
+      FContext.Selection.Choose(AKey);
+      FQuery.Fetch(False);
+    end);
+end;
+
+procedure TAtlasIdeIssues.EditProjects;
+begin
+  // Dieselbe Seite Issue-Tracker wie „Abfragen bearbeiten …“; danach gelten Zeilen und Wahl neu.
+  FQuery.EditQueries;
+end;
+
+procedure TAtlasIdeIssues.IssueAction(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueAction);
+var
+  mReopen: TAtlasTrackerReopen;
+  mProject: string;
+begin
+  FocusIssue(AIssue);
+  mProject := FContext.Selection.CurrentProject;
+  if AAction = TAtlasIssueAction.Review then
+  begin
+    // „Prüfen“ (#2126): Bei „Alle“ gilt das Tracker-Projekt der Zeile (FocusIssue).
+    if FServices.Review <> nil then
+    begin
+      FServices.Review.Review(AIssue, FServices.Options);
+    end;
+  end
+  else if AAction = TAtlasIssueAction.Continue then
+  begin
+    // Ohne Marke (schon ausgeblendet): Weiterarbeiten ohne gemerkten Branch, wie „Beginnen“.
+    if (FServices.Reopened = nil) or not FServices.Reopened.Find(mProject, AIssue.Key, mReopen) then
+    begin
+      mReopen := Default(TAtlasTrackerReopen);
+    end;
+    FStarter.Resume(AIssue, mReopen.Branch);
+  end
+  else if FServices.Reopened = nil then
+  begin
+    Exit;
+  end
+  else if AAction = TAtlasIssueAction.Dismiss then
+  begin
+    FServices.Reopened.Dismiss(mProject, AIssue.Key);
+  end
+  else
+  begin
+    FServices.Reopened.ShowComment(mProject, AIssue.Key);
+  end;
 end;
 
 end.

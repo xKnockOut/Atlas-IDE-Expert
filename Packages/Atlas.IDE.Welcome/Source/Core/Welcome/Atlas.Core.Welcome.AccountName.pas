@@ -41,6 +41,8 @@ implementation
 uses
   Atlas.Core.Diagnostics.Guard;
 
+{ TAtlasWelcomeAccountName }
+
 constructor TAtlasWelcomeAccountName.Create(const ALookup: TFunc<string>; const AChanged: TProc);
 begin
   inherited Create;

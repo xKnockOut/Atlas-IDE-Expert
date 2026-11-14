@@ -299,6 +299,8 @@ type
     procedure CheckClass(const AInfo: TClassInfo);
   end;
 
+{ TMissingInheritedCheck }
+
 constructor TMissingInheritedCheck.Create(AModel: TComponentModel; const AReport: IRuleReport;
   const AMethods: TArray<string>);
 begin
@@ -516,6 +518,8 @@ type
     constructor Create(const AContext: TRuleContext; AModel: TComponentModel; const AReport: IRuleReport);
     procedure CheckClass(const AInfo: TClassInfo);
   end;
+
+{ TMessageHandlerCheck }
 
 constructor TMessageHandlerCheck.Create(const AContext: TRuleContext; AModel: TComponentModel;
   const AReport: IRuleReport);

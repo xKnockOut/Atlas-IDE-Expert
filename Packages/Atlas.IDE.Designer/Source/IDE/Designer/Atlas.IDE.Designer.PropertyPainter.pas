@@ -357,36 +357,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasIdePropertyPainter.UpdateKeys(AWanted: Boolean);
-begin
-  if AWanted and TAtlasIdeSettings.Current.DesignerPropertyPainter then
-  begin
-    TAtlasKeyHook.Add(FKeys);
-  end
-  else
-  begin
-    TAtlasKeyHook.Remove(FKeys);
-  end;
-end;
-
-function SameForm(const AFile: string): Boolean;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-begin
-  Result := (AFile <> '') and TAtlasDesignerAccess.Current(mEditor, mRoot) and SameText(mEditor.FileName, AFile);
-end;
-
-function TAtlasIdePropertyPainter.CanApply: Boolean;
-begin
-  Result := (Length(FChosen) > 0) and SameForm(FSourceFile);
-end;
-
-function TAtlasIdePropertyPainter.CanUndo: Boolean;
-begin
-  Result := (Length(FUndo) > 0) and SameForm(FUndoFile);
-end;
-
 procedure TAtlasIdePropertyPainter.PickUp;
 var
   mEditor: IOTAFormEditor;
@@ -433,6 +403,71 @@ begin
     mMemory.Free;
   end;
   Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerPaintPicked, [FSourceName, Length(FChosen)]));
+end;
+
+function SameForm(const AFile: string): Boolean;
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+begin
+  Result := (AFile <> '') and TAtlasDesignerAccess.Current(mEditor, mRoot) and SameText(mEditor.FileName, AFile);
+end;
+
+procedure TAtlasIdePropertyPainter.Undo;
+var
+  mEditor: IOTAFormEditor;
+  mRoot, mComponent: TComponent;
+  mIndex: Integer;
+  mObject: TObject;
+  mProp: PPropInfo;
+begin
+  if not CanUndo or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
+  begin
+    Exit;
+  end;
+  // Rückwärts: Bei mehrfach gesetzten Pfaden gilt am Ende der älteste Wert.
+  for mIndex := High(FUndo) downto 0 do
+  begin
+    mComponent := mRoot.FindComponent(FUndo[mIndex].Component);
+    if (mComponent <> nil) and Resolve(mComponent, FUndo[mIndex].Path, mObject, mProp) then
+    begin
+      WriteValue(mObject, mProp, FUndo[mIndex]);
+    end;
+  end;
+  FUndo := nil;
+  if TAtlasDesignerAccess.DesignerOf(mEditor) <> nil then
+  begin
+    TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
+  end;
+  Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerPaintUndone));
+end;
+
+procedure TAtlasIdePropertyPainter.UpdateKeys(AWanted: Boolean);
+begin
+  if AWanted and TAtlasIdeSettings.Current.DesignerPropertyPainter then
+  begin
+    TAtlasKeyHook.Add(FKeys);
+  end
+  else
+  begin
+    TAtlasKeyHook.Remove(FKeys);
+  end;
+end;
+
+procedure TAtlasIdePropertyPainter.Execute(ACommand: TAtlasPaintCommand);
+begin
+  if not TAtlasIdeSettings.Current.DesignerPropertyPainter then
+  begin
+    Exit;
+  end;
+  case ACommand of
+    TAtlasPaintCommand.PickUp:
+      PickUp;
+    TAtlasPaintCommand.Apply:
+      Apply;
+    TAtlasPaintCommand.Undo:
+      Undo;
+  end;
 end;
 
 /// <summary>APaths von ASource auf ATarget übertragen; die alten Werte an AUndo anhängen.</summary>
@@ -498,49 +533,14 @@ begin
   Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerPaintDone, [mCount]));
 end;
 
-procedure TAtlasIdePropertyPainter.Undo;
-var
-  mEditor: IOTAFormEditor;
-  mRoot, mComponent: TComponent;
-  mIndex: Integer;
-  mObject: TObject;
-  mProp: PPropInfo;
+function TAtlasIdePropertyPainter.CanApply: Boolean;
 begin
-  if not CanUndo or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
-  begin
-    Exit;
-  end;
-  // Rückwärts: Bei mehrfach gesetzten Pfaden gilt am Ende der älteste Wert.
-  for mIndex := High(FUndo) downto 0 do
-  begin
-    mComponent := mRoot.FindComponent(FUndo[mIndex].Component);
-    if (mComponent <> nil) and Resolve(mComponent, FUndo[mIndex].Path, mObject, mProp) then
-    begin
-      WriteValue(mObject, mProp, FUndo[mIndex]);
-    end;
-  end;
-  FUndo := nil;
-  if TAtlasDesignerAccess.DesignerOf(mEditor) <> nil then
-  begin
-    TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
-  end;
-  Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerPaintUndone));
+  Result := (Length(FChosen) > 0) and SameForm(FSourceFile);
 end;
 
-procedure TAtlasIdePropertyPainter.Execute(ACommand: TAtlasPaintCommand);
+function TAtlasIdePropertyPainter.CanUndo: Boolean;
 begin
-  if not TAtlasIdeSettings.Current.DesignerPropertyPainter then
-  begin
-    Exit;
-  end;
-  case ACommand of
-    TAtlasPaintCommand.PickUp:
-      PickUp;
-    TAtlasPaintCommand.Apply:
-      Apply;
-    TAtlasPaintCommand.Undo:
-      Undo;
-  end;
+  Result := (Length(FUndo) > 0) and SameForm(FUndoFile);
 end;
 
 end.

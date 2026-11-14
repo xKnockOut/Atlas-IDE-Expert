@@ -44,6 +44,8 @@ begin
   end;
 end;
 
+{ TWindowsPathCanonicalizer }
+
 class function TWindowsPathCanonicalizer.Canonicalize(const APath: string): string;
 var
   mHandle: THandle;

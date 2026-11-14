@@ -1447,6 +1447,33 @@ begin
   Result.OverviewRulerKinds := TAtlasOverviewKindNames.Text(TAtlasOverviewKindNames.cAll);
 end;
 
+procedure TAtlasPluginEditorViewSettings.ExchangeViews(const AIo: TAtlasSettingsExchange);
+begin
+  AIo.Flag('DesignerMeasureDistances', DesignerMeasureDistances);
+  AIo.Flag('DesignerMeasureAltKey', DesignerMeasureAltKey);
+  AIo.Flag('DesignerResizePreview', DesignerResizePreview);
+  AIo.Text('DesignerResizePreviewSizes', DesignerResizePreviewSizes);
+  AIo.Flag('DesignerResizePreviewShowAnchors', DesignerResizePreviewShowAnchors);
+  AIo.Flag('DesignerScalePreview', DesignerScalePreview);
+  AIo.Text('DesignerScalePreviewLevels', DesignerScalePreviewLevels);
+  AIo.Text('DesignerScalePreviewScreens', DesignerScalePreviewScreens);
+  AIo.Number('DesignerLongTextFactor', DesignerLongTextFactor);
+  AIo.Flag('DesignerNameSuggest', DesignerNameSuggest);
+  AIo.Text('DesignerNameSuggestSources', DesignerNameSuggestSources);
+  AIo.Text('DesignerNameSuggestUmlauts', DesignerNameSuggestUmlauts);
+  AIo.Flag('DesignerNameSuggestRenameHandlers', DesignerNameSuggestRenameHandlers);
+  AIo.Text('DesignerNameSuggestPrefixes', DesignerNameSuggestPrefixes);
+  AIo.Flag('DesignerStructure', DesignerStructure);
+  AIo.Flag('DesignerStructureHideOnForm', DesignerStructureHideOnForm);
+  AIo.Flag('DesignerDataBindings', DesignerDataBindings);
+  AIo.Flag('DesignerExtractFrame', DesignerExtractFrame);
+  AIo.Flag('DesignerEventMap', DesignerEventMap);
+  AIo.Flag('DesignerLayout', DesignerLayout);
+  AIo.Text('DesignerLayoutName', DesignerLayoutName);
+  AIo.Text('DesignerLayoutReturnTo', DesignerLayoutReturnTo);
+  AIo.Flag('DesignerLayoutSkipWhileDebugging', DesignerLayoutSkipWhileDebugging);
+end;
+
 procedure TAtlasPluginEditorViewSettings.SetArrangeDefaults;
 begin
   DesignerFitToText := True;
@@ -1723,6 +1750,37 @@ begin
   DesignerMagnifierKey := EnsureRange(DesignerMagnifierKey, 0, $FFFF);
 end;
 
+const
+  /// <summary>Vorgabe für designer.longTextFactor in Prozent.</summary>
+  cLongTextFactor = 30;
+
+procedure TAtlasPluginEditorViewSettings.SetViewDefaults;
+begin
+  DesignerMeasureDistances := True;
+  DesignerMeasureAltKey := True;
+  DesignerResizePreview := True;
+  DesignerResizePreviewSizes := '1366x768, 1920x1080';
+  DesignerResizePreviewShowAnchors := True;
+  DesignerScalePreview := True;
+  DesignerScalePreviewLevels := '100, 125, 150, 175, 200';
+  DesignerScalePreviewScreens := '1366x768, 1920x1080';
+  DesignerLongTextFactor := cLongTextFactor;
+  DesignerNameSuggest := True;
+  DesignerNameSuggestSources := cDefaultNameSources;
+  DesignerNameSuggestUmlauts := 'replace';
+  DesignerNameSuggestRenameHandlers := True;
+  DesignerNameSuggestPrefixes := '';
+  DesignerStructure := False;
+  DesignerStructureHideOnForm := True;
+  DesignerDataBindings := False;
+  DesignerExtractFrame := True;
+  DesignerEventMap := True;
+  DesignerLayout := False;
+  DesignerLayoutName := '';
+  DesignerLayoutReturnTo := cDesignerLayoutPrevious;
+  DesignerLayoutSkipWhileDebugging := True;
+end;
+
 procedure TAtlasPluginEditorViewSettings.Exchange(const AIo: TAtlasSettingsExchange);
 begin
   AIo.Flag('EditorToolbar', EditorToolbar);
@@ -1780,64 +1838,6 @@ begin
   AIo.Flag('GutterColumnOverrides', GutterColumnOverrides);
   AIo.Flag('OverviewRuler', OverviewRuler);
   AIo.Text('OverviewRulerKinds', OverviewRulerKinds);
-end;
-
-const
-  /// <summary>Vorgabe für designer.longTextFactor in Prozent.</summary>
-  cLongTextFactor = 30;
-
-procedure TAtlasPluginEditorViewSettings.SetViewDefaults;
-begin
-  DesignerMeasureDistances := True;
-  DesignerMeasureAltKey := True;
-  DesignerResizePreview := True;
-  DesignerResizePreviewSizes := '1366x768, 1920x1080';
-  DesignerResizePreviewShowAnchors := True;
-  DesignerScalePreview := True;
-  DesignerScalePreviewLevels := '100, 125, 150, 175, 200';
-  DesignerScalePreviewScreens := '1366x768, 1920x1080';
-  DesignerLongTextFactor := cLongTextFactor;
-  DesignerNameSuggest := True;
-  DesignerNameSuggestSources := cDefaultNameSources;
-  DesignerNameSuggestUmlauts := 'replace';
-  DesignerNameSuggestRenameHandlers := True;
-  DesignerNameSuggestPrefixes := '';
-  DesignerStructure := False;
-  DesignerStructureHideOnForm := True;
-  DesignerDataBindings := False;
-  DesignerExtractFrame := True;
-  DesignerEventMap := True;
-  DesignerLayout := False;
-  DesignerLayoutName := '';
-  DesignerLayoutReturnTo := cDesignerLayoutPrevious;
-  DesignerLayoutSkipWhileDebugging := True;
-end;
-
-procedure TAtlasPluginEditorViewSettings.ExchangeViews(const AIo: TAtlasSettingsExchange);
-begin
-  AIo.Flag('DesignerMeasureDistances', DesignerMeasureDistances);
-  AIo.Flag('DesignerMeasureAltKey', DesignerMeasureAltKey);
-  AIo.Flag('DesignerResizePreview', DesignerResizePreview);
-  AIo.Text('DesignerResizePreviewSizes', DesignerResizePreviewSizes);
-  AIo.Flag('DesignerResizePreviewShowAnchors', DesignerResizePreviewShowAnchors);
-  AIo.Flag('DesignerScalePreview', DesignerScalePreview);
-  AIo.Text('DesignerScalePreviewLevels', DesignerScalePreviewLevels);
-  AIo.Text('DesignerScalePreviewScreens', DesignerScalePreviewScreens);
-  AIo.Number('DesignerLongTextFactor', DesignerLongTextFactor);
-  AIo.Flag('DesignerNameSuggest', DesignerNameSuggest);
-  AIo.Text('DesignerNameSuggestSources', DesignerNameSuggestSources);
-  AIo.Text('DesignerNameSuggestUmlauts', DesignerNameSuggestUmlauts);
-  AIo.Flag('DesignerNameSuggestRenameHandlers', DesignerNameSuggestRenameHandlers);
-  AIo.Text('DesignerNameSuggestPrefixes', DesignerNameSuggestPrefixes);
-  AIo.Flag('DesignerStructure', DesignerStructure);
-  AIo.Flag('DesignerStructureHideOnForm', DesignerStructureHideOnForm);
-  AIo.Flag('DesignerDataBindings', DesignerDataBindings);
-  AIo.Flag('DesignerExtractFrame', DesignerExtractFrame);
-  AIo.Flag('DesignerEventMap', DesignerEventMap);
-  AIo.Flag('DesignerLayout', DesignerLayout);
-  AIo.Text('DesignerLayoutName', DesignerLayoutName);
-  AIo.Text('DesignerLayoutReturnTo', DesignerLayoutReturnTo);
-  AIo.Flag('DesignerLayoutSkipWhileDebugging', DesignerLayoutSkipWhileDebugging);
 end;
 
 end.

@@ -188,6 +188,8 @@ begin
   end;
 end;
 
+{ TAtlasConditionalFinder }
+
 class function TAtlasConditionalFinder.At(const ALines: TArray<string>; ALine,
   ACharacter: Integer): TAtlasConditionalBranches;
 begin

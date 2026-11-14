@@ -234,46 +234,6 @@ begin
   inherited;
 end;
 
-function TAtlasGitVersionControl.Kind: TAtlasVcsKind;
-begin
-  Result := TAtlasVcsKind.Git;
-end;
-
-function TAtlasGitVersionControl.WorkingCopy: TAtlasVcsWorkingCopy;
-begin
-  Result.Kind := TAtlasVcsKind.Git;
-  Result.Root := FRoot;
-end;
-
-/// <summary>git ohne Netz mit den festen Optionen (Kopf der Unit).</summary>
-function RunGit(ACommand: TAtlasVcsCommand; const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
-begin
-  Result := ACommand.Run(['--no-optional-locks', '-c', 'core.quotepath=off', '-c', 'color.ui=false'] + AArguments,
-    AOutput);
-end;
-
-function TAtlasGitVersionControl.Git(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
-begin
-  Result := RunGit(FCommand, AArguments, AOutput);
-end;
-
-{ TAtlasGitHistoryPart }
-
-constructor TAtlasGitHistoryPart.Create(const AController: IInterface; const ARoot: string;
-  ACommand: TAtlasVcsCommand);
-begin
-  inherited Create(AController);
-  FRoot := ARoot;
-  FCommand := ACommand;
-end;
-
-function TAtlasGitHistoryPart.Git(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
-begin
-  Result := RunGit(FCommand, AArguments, AOutput);
-end;
-
-{ TAtlasGitVersionControl }
-
 function TAtlasGitVersionControl.GitRemote(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
 begin
   // Mit dem Server (#1287): fehlt die Anmeldung, LoginNeeded statt Failed. Nie nachfragen: kein Fenster des
@@ -315,6 +275,67 @@ begin
   end;
 end;
 
+/// <summary>git ohne Netz mit den festen Optionen (Kopf der Unit).</summary>
+function RunGit(ACommand: TAtlasVcsCommand; const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
+begin
+  Result := ACommand.Run(['--no-optional-locks', '-c', 'core.quotepath=off', '-c', 'color.ui=false'] + AArguments,
+    AOutput);
+end;
+
+function TAtlasGitVersionControl.Git(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
+begin
+  Result := RunGit(FCommand, AArguments, AOutput);
+end;
+
+{ TAtlasGitHistoryPart }
+
+constructor TAtlasGitHistoryPart.Create(const AController: IInterface; const ARoot: string;
+  ACommand: TAtlasVcsCommand);
+begin
+  inherited Create(AController);
+  FRoot := ARoot;
+  FCommand := ACommand;
+end;
+
+function TAtlasGitHistoryPart.Git(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
+begin
+  Result := RunGit(FCommand, AArguments, AOutput);
+end;
+
+{ TAtlasGitVersionControl }
+
+function TAtlasGitVersionControl.RefExists(const ARef: string; out AExists: Boolean): TAtlasVcsOutcome;
+var
+  mOutput: TBytes;
+  mLine: string;
+begin
+  AExists := False;
+  // for-each-ref mit vollem Namen: genau dieser Ref oder nichts; nie ein Fehler, wenn er fehlt.
+  Result := Git(['for-each-ref', '--format=%(refname)', ARef], mOutput);
+  if Result <> TAtlasVcsOutcome.Ok then
+  begin
+    Exit;
+  end;
+  for mLine in TAtlasGitParser.ParseLines(VcsUtf8(mOutput)) do
+  begin
+    if mLine = ARef then
+    begin
+      AExists := True;
+    end;
+  end;
+end;
+
+function TAtlasGitVersionControl.Kind: TAtlasVcsKind;
+begin
+  Result := TAtlasVcsKind.Git;
+end;
+
+function TAtlasGitVersionControl.WorkingCopy: TAtlasVcsWorkingCopy;
+begin
+  Result.Kind := TAtlasVcsKind.Git;
+  Result.Root := FRoot;
+end;
+
 function TAtlasGitVersionControl.Head(out AHead: TAtlasVcsHead): TAtlasVcsOutcome;
 var
   mIgnored: TArray<TAtlasVcsChange>;
@@ -349,33 +370,6 @@ begin
     Exit(TAtlasVcsOutcome.Failed);
   end;
   Result := Git(['show', mRevision + ':' + mRelative], AContent);
-end;
-
-function TAtlasGitVersionControl.Blame(const AFileName: string;
-  out ALines: TArray<TAtlasVcsBlameLine>): TAtlasVcsOutcome;
-var
-  mRelative: string;
-  mOutput: TBytes;
-begin
-  ALines := nil;
-  if not VcsRelativePath(FRoot, AFileName, mRelative) then
-  begin
-    Exit(TAtlasVcsOutcome.Failed);
-  end;
-  Result := Git(['blame', '--porcelain', '--', mRelative], mOutput);
-  if Result <> TAtlasVcsOutcome.Ok then
-  begin
-    Exit;
-  end;
-  try
-    ALines := TAtlasGitParser.ParseBlame(VcsUtf8(mOutput));
-  except
-    on EAtlasVcsParse do
-    begin
-      ALines := nil;
-      Result := TAtlasVcsOutcome.Failed;
-    end;
-  end;
 end;
 
 /// <summary>Hash aus blame: 7 bis 64 Hexziffern.</summary>
@@ -487,6 +481,59 @@ begin
       end;
     end;
   end;
+end;
+
+function TAtlasGitVersionControl.Blame(const AFileName: string;
+  out ALines: TArray<TAtlasVcsBlameLine>): TAtlasVcsOutcome;
+var
+  mRelative: string;
+  mOutput: TBytes;
+begin
+  ALines := nil;
+  if not VcsRelativePath(FRoot, AFileName, mRelative) then
+  begin
+    Exit(TAtlasVcsOutcome.Failed);
+  end;
+  Result := Git(['blame', '--porcelain', '--', mRelative], mOutput);
+  if Result <> TAtlasVcsOutcome.Ok then
+  begin
+    Exit;
+  end;
+  try
+    ALines := TAtlasGitParser.ParseBlame(VcsUtf8(mOutput));
+  except
+    on EAtlasVcsParse do
+    begin
+      ALines := nil;
+      Result := TAtlasVcsOutcome.Failed;
+    end;
+  end;
+end;
+
+function TAtlasGitVersionControl.ChangeMarker: string;
+var
+  mDir, mHeadText, mRef: string;
+begin
+  mDir := GitDir(FRoot);
+  if mDir = '' then
+  begin
+    Exit('');
+  end;
+  mDir := IncludeTrailingPathDelimiter(mDir);
+  mHeadText := ReadSmallFile(mDir + 'HEAD');
+  Result := mHeadText + '|' + Stamp(mDir + 'HEAD');
+  if Copy(mHeadText, 1, 5) = 'ref: ' then
+  begin
+    mRef := Trim(Copy(mHeadText, 6, MaxInt));
+    Result := Result + '|' + ReadSmallFile(mDir + StringReplace(mRef, '/', PathDelim, [rfReplaceAll]));
+    // Worktrees: Branches liegen im gemeinsamen Ordner (commondir).
+    if FileExists(mDir + 'commondir') then
+    begin
+      Result := Result + '|' + ReadSmallFile(VcsFullPath(mDir, ReadSmallFile(mDir + 'commondir')) + PathDelim +
+        StringReplace(mRef, '/', PathDelim, [rfReplaceAll]));
+    end;
+  end;
+  Result := Result + '|' + Stamp(mDir + 'packed-refs');
 end;
 
 function TAtlasGitVersionControl.Branches(out ABranches: TArray<TAtlasVcsBranch>): TAtlasVcsOutcome;
@@ -709,6 +756,8 @@ begin
   end;
 end;
 
+{ IAtlasVcsBranching (#765) }
+
 function TAtlasGitVersionControl.Fetch(const ARemote: string): TAtlasVcsOutcome;
 var
   mArguments: TArray<string>;
@@ -732,29 +781,6 @@ var
 begin
   // Nur vorwärts: kein Merge-Commit, kein Rebase; weicht der Branch ab, endet git mit Fehler.
   Result := GitRemote(['pull', '--ff-only', '--no-rebase', '--quiet'], mOutput);
-end;
-
-{ IAtlasVcsBranching (#765) }
-
-function TAtlasGitVersionControl.RefExists(const ARef: string; out AExists: Boolean): TAtlasVcsOutcome;
-var
-  mOutput: TBytes;
-  mLine: string;
-begin
-  AExists := False;
-  // for-each-ref mit vollem Namen: genau dieser Ref oder nichts; nie ein Fehler, wenn er fehlt.
-  Result := Git(['for-each-ref', '--format=%(refname)', ARef], mOutput);
-  if Result <> TAtlasVcsOutcome.Ok then
-  begin
-    Exit;
-  end;
-  for mLine in TAtlasGitParser.ParseLines(VcsUtf8(mOutput)) do
-  begin
-    if mLine = ARef then
-    begin
-      AExists := True;
-    end;
-  end;
 end;
 
 function TAtlasGitVersionControl.BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
@@ -820,17 +846,6 @@ begin
   end;
 end;
 
-function TAtlasGitVersionControl.SwitchBranch(const AName: string): TAtlasVcsOutcome;
-var
-  mOutput: TBytes;
-begin
-  if not VcsSafeBranchName(AName) then
-  begin
-    Exit(TAtlasVcsOutcome.Failed);
-  end;
-  Result := Git(['checkout', '--quiet', AName, '--'], mOutput);
-end;
-
 /// <summary>APath vollständig: absolut (Laufwerk, "/" oder UNC) unverändert, sonst relativ zu ARoot.</summary>
 function AbsoluteGitPath(const ARoot, APath: string): string;
 begin
@@ -844,22 +859,21 @@ begin
   end;
 end;
 
+function TAtlasGitVersionControl.SwitchBranch(const AName: string): TAtlasVcsOutcome;
+var
+  mOutput: TBytes;
+begin
+  if not VcsSafeBranchName(AName) then
+  begin
+    Exit(TAtlasVcsOutcome.Failed);
+  end;
+  Result := Git(['checkout', '--quiet', AName, '--'], mOutput);
+end;
+
 function TAtlasGitVersionControl.SwitchBranch(const AName: string;
   const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
 begin
   Result := SwitchBranch(AName);
-end;
-
-function TAtlasGitVersionControl.SubmoduleStatus(out AText: string): TAtlasVcsOutcome;
-var
-  mOutput: TBytes;
-begin
-  AText := '';
-  Result := Git(['submodule', 'status', '--recursive'], mOutput);
-  if Result = TAtlasVcsOutcome.Ok then
-  begin
-    AText := VcsUtf8(mOutput);
-  end;
 end;
 
 function TAtlasGitVersionControl.HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
@@ -1003,6 +1017,18 @@ begin
   Result := Git(['show', mRevision + ':' + AFile.RepositoryPath], AContent);
 end;
 
+function TAtlasGitVersionControl.SubmoduleStatus(out AText: string): TAtlasVcsOutcome;
+var
+  mOutput: TBytes;
+begin
+  AText := '';
+  Result := Git(['submodule', 'status', '--recursive'], mOutput);
+  if Result = TAtlasVcsOutcome.Ok then
+  begin
+    AText := VcsUtf8(mOutput);
+  end;
+end;
+
 class function TAtlasGitVersionControl.GitDir(const ARoot: string): string;
 var
   mDotGit, mContent: string;
@@ -1029,32 +1055,6 @@ begin
   end;
   // Relativ zum Ordner der Datei .git, sonst absolut.
   Result := AbsoluteGitPath(ARoot, mContent);
-end;
-
-function TAtlasGitVersionControl.ChangeMarker: string;
-var
-  mDir, mHeadText, mRef: string;
-begin
-  mDir := GitDir(FRoot);
-  if mDir = '' then
-  begin
-    Exit('');
-  end;
-  mDir := IncludeTrailingPathDelimiter(mDir);
-  mHeadText := ReadSmallFile(mDir + 'HEAD');
-  Result := mHeadText + '|' + Stamp(mDir + 'HEAD');
-  if Copy(mHeadText, 1, 5) = 'ref: ' then
-  begin
-    mRef := Trim(Copy(mHeadText, 6, MaxInt));
-    Result := Result + '|' + ReadSmallFile(mDir + StringReplace(mRef, '/', PathDelim, [rfReplaceAll]));
-    // Worktrees: Branches liegen im gemeinsamen Ordner (commondir).
-    if FileExists(mDir + 'commondir') then
-    begin
-      Result := Result + '|' + ReadSmallFile(VcsFullPath(mDir, ReadSmallFile(mDir + 'commondir')) + PathDelim +
-        StringReplace(mRef, '/', PathDelim, [rfReplaceAll]));
-    end;
-  end;
-  Result := Result + '|' + Stamp(mDir + 'packed-refs');
 end;
 
 end.

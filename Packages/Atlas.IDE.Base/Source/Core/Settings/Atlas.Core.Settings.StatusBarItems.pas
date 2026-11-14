@@ -62,6 +62,8 @@ begin
   Result := -1;
 end;
 
+{ TAtlasStatusBarItems }
+
 class function TAtlasStatusBarItems.All: TArray<string>;
 var
   mIndex: Integer;
@@ -90,20 +92,6 @@ begin
   Result := cKnown[mRank];
 end;
 
-class function TAtlasStatusBarItems.Contains(const AItems: TArray<string>; const AId: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AItems do
-  begin
-    if SameText(mItem, AId) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 class function TAtlasStatusBarItems.Parse(const AText: string): TArray<string>;
 var
   mPart, mId: string;
@@ -127,6 +115,20 @@ end;
 class function TAtlasStatusBarItems.Normalize(const AText: string): string;
 begin
   Result := Format(Parse(AText));
+end;
+
+class function TAtlasStatusBarItems.Contains(const AItems: TArray<string>; const AId: string): Boolean;
+var
+  mItem: string;
+begin
+  for mItem in AItems do
+  begin
+    if SameText(mItem, AId) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 class function TAtlasStatusBarItems.Toggle(const AItems: TArray<string>; const AId: string): TArray<string>;

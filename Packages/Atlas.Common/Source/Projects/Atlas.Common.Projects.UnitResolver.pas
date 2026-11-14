@@ -108,32 +108,6 @@ begin
   inherited;
 end;
 
-function TUnitResolver.Candidates(const AUnitName: string): TArray<string>;
-var
-  mNames: TList<string>;
-  mNamespace, mTarget: string;
-begin
-  mNames := TList<string>.Create;
-  try
-    mNames.Add(AUnitName);
-    for mNamespace in FProject.Namespaces do
-    begin
-      mNames.Add(mNamespace + '.' + AUnitName);
-    end;
-    if TUnitAliases.Target(FAliases, AUnitName, mTarget) then
-    begin
-      mNames.Add(mTarget);
-      for mNamespace in FProject.Namespaces do
-      begin
-        mNames.Add(mNamespace + '.' + mTarget);
-      end;
-    end;
-    Result := mNames.ToArray;
-  finally
-    mNames.Free;
-  end;
-end;
-
 function TUnitResolver.FileIn(const ADirectory, AName: string; out APath: string): Boolean;
 var
   mKey, mFileName: string;
@@ -176,6 +150,32 @@ begin
   end;
 end;
 
+function TUnitResolver.Candidates(const AUnitName: string): TArray<string>;
+var
+  mNames: TList<string>;
+  mNamespace, mTarget: string;
+begin
+  mNames := TList<string>.Create;
+  try
+    mNames.Add(AUnitName);
+    for mNamespace in FProject.Namespaces do
+    begin
+      mNames.Add(mNamespace + '.' + AUnitName);
+    end;
+    if TUnitAliases.Target(FAliases, AUnitName, mTarget) then
+    begin
+      mNames.Add(mTarget);
+      for mNamespace in FProject.Namespaces do
+      begin
+        mNames.Add(mNamespace + '.' + mTarget);
+      end;
+    end;
+    Result := mNames.ToArray;
+  finally
+    mNames.Free;
+  end;
+end;
+
 function TUnitResolver.Search(const AUnitName, AFromDirectory: string): string;
 var
   mUnit: TProjectUnit;
@@ -207,11 +207,6 @@ begin
   Result := '';
 end;
 
-function TUnitResolver.Resolve(const AUnitName: string): string;
-begin
-  Result := Resolve(AUnitName, '');
-end;
-
 function TUnitResolver.Resolve(const AUnitName, AFromDirectory: string): string;
 var
   mKey: string;
@@ -237,6 +232,11 @@ begin
   finally
     TMonitor.Exit(FLock);
   end;
+end;
+
+function TUnitResolver.Resolve(const AUnitName: string): string;
+begin
+  Result := Resolve(AUnitName, '');
 end;
 
 procedure TUnitResolver.Invalidate;

@@ -215,6 +215,34 @@ begin
   Result := not (FTokens[AIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]);
 end;
 
+/// <summary>Innerste Klammer, die die Anweisung der Zeile ALine vor deren erstem Token offen hat; -1 ohne.
+/// </summary>
+function TIndentScan.OpenBracket(ALine: Integer): Integer;
+var
+  mStack: TArray<Integer>;
+  mIndex: Integer;
+begin
+  mStack := nil;
+  mIndex := Max(FFirst[FInfo[ALine].StatementLine], 0);
+  while (mIndex <= High(FTokens)) and (FTokens[mIndex].StartPos.Line < ALine) do
+  begin
+    if FTokens[mIndex].IsSymbol('(') or FTokens[mIndex].IsSymbol('[') then
+    begin
+      mStack := mStack + [mIndex];
+    end
+    else if (FTokens[mIndex].IsSymbol(')') or FTokens[mIndex].IsSymbol(']')) and (Length(mStack) > 0) then
+    begin
+      SetLength(mStack, Length(mStack) - 1);
+    end;
+    Inc(mIndex);
+  end;
+  Result := -1;
+  if Length(mStack) > 0 then
+  begin
+    Result := mStack[High(mStack)];
+  end;
+end;
+
 function TIndentScan.InsideToken(ALine: Integer): Boolean;
 var
   mToken: TPascalToken;
@@ -284,34 +312,6 @@ begin
   else
   begin
     AColumn := Max(FInfo[ALine].Column + Shift(ALine - 1), 0);
-  end;
-end;
-
-/// <summary>Innerste Klammer, die die Anweisung der Zeile ALine vor deren erstem Token offen hat; -1 ohne.
-/// </summary>
-function TIndentScan.OpenBracket(ALine: Integer): Integer;
-var
-  mStack: TArray<Integer>;
-  mIndex: Integer;
-begin
-  mStack := nil;
-  mIndex := Max(FFirst[FInfo[ALine].StatementLine], 0);
-  while (mIndex <= High(FTokens)) and (FTokens[mIndex].StartPos.Line < ALine) do
-  begin
-    if FTokens[mIndex].IsSymbol('(') or FTokens[mIndex].IsSymbol('[') then
-    begin
-      mStack := mStack + [mIndex];
-    end
-    else if (FTokens[mIndex].IsSymbol(')') or FTokens[mIndex].IsSymbol(']')) and (Length(mStack) > 0) then
-    begin
-      SetLength(mStack, Length(mStack) - 1);
-    end;
-    Inc(mIndex);
-  end;
-  Result := -1;
-  if Length(mStack) > 0 then
-  begin
-    Result := mStack[High(mStack)];
   end;
 end;
 

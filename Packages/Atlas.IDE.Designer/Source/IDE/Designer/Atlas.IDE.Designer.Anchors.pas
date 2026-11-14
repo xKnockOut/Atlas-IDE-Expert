@@ -56,45 +56,18 @@ type
     Suggestion: TAtlasAnchorSuggestion;
   end;
 
-class function TAtlasIdeAnchors.ToSet(AAnchors: TAnchors): TAtlasAnchorSet;
+{ TAtlasIdeAnchors }
+
+constructor TAtlasIdeAnchors.Create(const AOnMessage: TProc<string>);
 begin
-  Result := [];
-  if akLeft in AAnchors then
-  begin
-    Include(Result, TAtlasAnchorSide.Left);
-  end;
-  if akTop in AAnchors then
-  begin
-    Include(Result, TAtlasAnchorSide.Top);
-  end;
-  if akRight in AAnchors then
-  begin
-    Include(Result, TAtlasAnchorSide.Right);
-  end;
-  if akBottom in AAnchors then
-  begin
-    Include(Result, TAtlasAnchorSide.Bottom);
-  end;
+  inherited Create(AOnMessage);
 end;
 
-class function TAtlasIdeAnchors.ToAnchors(ASet: TAtlasAnchorSet): TAnchors;
+procedure TAtlasIdeAnchors.HideOutlines;
 begin
-  Result := [];
-  if TAtlasAnchorSide.Left in ASet then
+  if HasOutlines then
   begin
-    Include(Result, akLeft);
-  end;
-  if TAtlasAnchorSide.Top in ASet then
-  begin
-    Include(Result, akTop);
-  end;
-  if TAtlasAnchorSide.Right in ASet then
-  begin
-    Include(Result, akRight);
-  end;
-  if TAtlasAnchorSide.Bottom in ASet then
-  begin
-    Include(Result, akBottom);
+    Outlines.HideOutlines;
   end;
 end;
 
@@ -272,19 +245,6 @@ end;
 
 { TAtlasIdeAnchors }
 
-constructor TAtlasIdeAnchors.Create(const AOnMessage: TProc<string>);
-begin
-  inherited Create(AOnMessage);
-end;
-
-procedure TAtlasIdeAnchors.HideOutlines;
-begin
-  if HasOutlines then
-  begin
-    Outlines.HideOutlines;
-  end;
-end;
-
 procedure TAtlasIdeAnchors.Execute;
 var
   mEditor: IOTAFormEditor;
@@ -372,6 +332,48 @@ begin
     TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
   end;
   Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAnchorsUndone));
+end;
+
+class function TAtlasIdeAnchors.ToSet(AAnchors: TAnchors): TAtlasAnchorSet;
+begin
+  Result := [];
+  if akLeft in AAnchors then
+  begin
+    Include(Result, TAtlasAnchorSide.Left);
+  end;
+  if akTop in AAnchors then
+  begin
+    Include(Result, TAtlasAnchorSide.Top);
+  end;
+  if akRight in AAnchors then
+  begin
+    Include(Result, TAtlasAnchorSide.Right);
+  end;
+  if akBottom in AAnchors then
+  begin
+    Include(Result, TAtlasAnchorSide.Bottom);
+  end;
+end;
+
+class function TAtlasIdeAnchors.ToAnchors(ASet: TAtlasAnchorSet): TAnchors;
+begin
+  Result := [];
+  if TAtlasAnchorSide.Left in ASet then
+  begin
+    Include(Result, akLeft);
+  end;
+  if TAtlasAnchorSide.Top in ASet then
+  begin
+    Include(Result, akTop);
+  end;
+  if TAtlasAnchorSide.Right in ASet then
+  begin
+    Include(Result, akRight);
+  end;
+  if TAtlasAnchorSide.Bottom in ASet then
+  begin
+    Include(Result, akBottom);
+  end;
 end;
 
 end.

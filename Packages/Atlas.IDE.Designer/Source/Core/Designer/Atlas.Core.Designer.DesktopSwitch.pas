@@ -236,15 +236,6 @@ end;
 
 { TAtlasDesktopSwitch }
 
-procedure TAtlasDesktopSwitch.Reset;
-begin
-  FView := TAtlasDesktopView.Unknown;
-  FSince := 0;
-  FApplied := TAtlasDesktopView.Unknown;
-  FRemembered := '';
-  FMissing := '';
-end;
-
 function TAtlasDesktopSwitch.ToDesigner(const AOptions: TAtlasDesktopSwitchOptions;
   const AState: TAtlasDesktopState): TAtlasDesktopAction;
 begin
@@ -297,6 +288,15 @@ begin
     Exit;
   end;
   Result := LoadAction(mTarget, False);
+end;
+
+procedure TAtlasDesktopSwitch.Reset;
+begin
+  FView := TAtlasDesktopView.Unknown;
+  FSince := 0;
+  FApplied := TAtlasDesktopView.Unknown;
+  FRemembered := '';
+  FMissing := '';
 end;
 
 function TAtlasDesktopSwitch.Step(const AOptions: TAtlasDesktopSwitchOptions;

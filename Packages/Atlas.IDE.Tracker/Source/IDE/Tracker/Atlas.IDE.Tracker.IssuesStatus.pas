@@ -208,23 +208,6 @@ begin
   inherited;
 end;
 
-procedure TAtlasIdeIssuesStatus.Start;
-begin
-  if FWatch <> nil then
-  begin
-    Exit;
-  end;
-  FWatch := TTimer.Create(nil);
-  FWatch.Interval := cWatchMs;
-  FWatch.OnTimer := WatchTick;
-end;
-
-procedure TAtlasIdeIssuesStatus.Stop;
-begin
-  FreeAndNil(FWatch);
-  Remove;
-end;
-
 procedure TAtlasIdeIssuesStatus.Inactive;
 begin
   Remove;
@@ -260,69 +243,6 @@ begin
       end;
     end;
   FLine := NewLine(TAtlasMyIssues.cStatusId, TAtlasMyIssues.cStatusOrder, mAction, FLineRef);
-end;
-
-/// <summary>Zustand von AKey in der Liste von „Meine Issues“ (#2124); '' wenn es nicht darin steht.</summary>
-function StateOf(const AItems: TArray<TAtlasTrackerIssue>; const AKey: string): string;
-var
-  mIssue: TAtlasTrackerIssue;
-begin
-  Result := '';
-  for mIssue in AItems do
-  begin
-    if SameText(mIssue.Key, AKey) then
-    begin
-      Exit(mIssue.State);
-    end;
-  end;
-end;
-
-procedure TAtlasIdeIssuesStatus.Update;
-var
-  mProject, mText: string;
-  mData: TAtlasIssuesView;
-begin
-  if not FContext.Started or not TAtlasIdeIssuesTargets.Active or (FContext.Actions = nil) then
-  begin
-    Inactive;
-    Exit;
-  end;
-  if FWatch <> nil then
-  begin
-    FWatch.Enabled := True;
-  end;
-  mProject := FContext.Selection.CurrentProject;
-  mData := FContext.Actions.ViewOf(mProject);
-  FPrefix := TAtlasMyIssues.CommitPrefix(mData.Active, FServices.Options.CommitPattern);
-  try
-    SyncPrefix(mProject);
-  except
-    on E: Exception do
-    begin
-      TAtlasGuard.Report(TAtlasFeature.Tracker, E);
-    end;
-  end;
-  if not mData.Active.Active then
-  begin
-    Remove;
-    FServices.SyncTime('', '', '');
-    Exit;
-  end;
-  FServices.SyncTime(mProject, mData.Active.Key, StateOf(mData.Items, mData.Active.Key));
-  EnsureLine;
-  mText := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesStatusLine,
-    [Trim(mData.Active.Key + ' ' + mData.Active.Title)]);
-  FLine.Update(mText, TAtlasStatusState.Neutral, mData.Active.Key, TAtlasTrackerIssuesText.TileText(mData),
-    TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesStatusHint));
-  UpdateChecklist(mProject, mData.Active.Key);
-  UpdateAttach(mData.Active.Key);
-end;
-
-procedure TAtlasIdeIssuesStatus.Remove;
-begin
-  RemoveChecklist;
-  RemoveAttach;
-  DropLine(TAtlasMyIssues.cStatusId, FLine, FLineRef);
 end;
 
 procedure TAtlasIdeIssuesStatus.UpdateChecklist(const AProject, AKey: string);
@@ -363,6 +283,21 @@ end;
 procedure TAtlasIdeIssuesStatus.RemoveChecklist;
 begin
   DropLine(TAtlasMyIssues.cChecklistStatusId, FChecklistLine, FChecklistLineRef);
+end;
+
+/// <summary>Zustand von AKey in der Liste von „Meine Issues“ (#2124); '' wenn es nicht darin steht.</summary>
+function StateOf(const AItems: TArray<TAtlasTrackerIssue>; const AKey: string): string;
+var
+  mIssue: TAtlasTrackerIssue;
+begin
+  Result := '';
+  for mIssue in AItems do
+  begin
+    if SameText(mIssue.Key, AKey) then
+    begin
+      Exit(mIssue.State);
+    end;
+  end;
 end;
 
 procedure TAtlasIdeIssuesStatus.ChecklistClicked;
@@ -516,6 +451,71 @@ begin
     end;
   end;
   FPrefixDirs.Clear;
+end;
+
+procedure TAtlasIdeIssuesStatus.Start;
+begin
+  if FWatch <> nil then
+  begin
+    Exit;
+  end;
+  FWatch := TTimer.Create(nil);
+  FWatch.Interval := cWatchMs;
+  FWatch.OnTimer := WatchTick;
+end;
+
+procedure TAtlasIdeIssuesStatus.Stop;
+begin
+  FreeAndNil(FWatch);
+  Remove;
+end;
+
+procedure TAtlasIdeIssuesStatus.Update;
+var
+  mProject, mText: string;
+  mData: TAtlasIssuesView;
+begin
+  if not FContext.Started or not TAtlasIdeIssuesTargets.Active or (FContext.Actions = nil) then
+  begin
+    Inactive;
+    Exit;
+  end;
+  if FWatch <> nil then
+  begin
+    FWatch.Enabled := True;
+  end;
+  mProject := FContext.Selection.CurrentProject;
+  mData := FContext.Actions.ViewOf(mProject);
+  FPrefix := TAtlasMyIssues.CommitPrefix(mData.Active, FServices.Options.CommitPattern);
+  try
+    SyncPrefix(mProject);
+  except
+    on E: Exception do
+    begin
+      TAtlasGuard.Report(TAtlasFeature.Tracker, E);
+    end;
+  end;
+  if not mData.Active.Active then
+  begin
+    Remove;
+    FServices.SyncTime('', '', '');
+    Exit;
+  end;
+  FServices.SyncTime(mProject, mData.Active.Key, StateOf(mData.Items, mData.Active.Key));
+  EnsureLine;
+  mText := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesStatusLine,
+    [Trim(mData.Active.Key + ' ' + mData.Active.Title)]);
+  FLine.Update(mText, TAtlasStatusState.Neutral, mData.Active.Key, TAtlasTrackerIssuesText.TileText(mData),
+    TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesStatusHint));
+  UpdateChecklist(mProject, mData.Active.Key);
+  UpdateAttach(mData.Active.Key);
+end;
+
+procedure TAtlasIdeIssuesStatus.Remove;
+begin
+  RemoveChecklist;
+  RemoveAttach;
+  DropLine(TAtlasMyIssues.cStatusId, FLine, FLineRef);
 end;
 
 { TAtlasIdeIssuesTitle }

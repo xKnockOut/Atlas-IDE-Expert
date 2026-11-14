@@ -112,6 +112,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeNavigationOption }
+
 class function TAtlasIdeNavigationOption.Apply(AHide: Boolean): Boolean;
 var
   mServices: IOTAServices;

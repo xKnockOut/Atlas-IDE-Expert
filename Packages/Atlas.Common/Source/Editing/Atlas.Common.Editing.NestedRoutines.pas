@@ -179,6 +179,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TNestedRoutines }
+
 class function TNestedRoutines.ToMethodTitle: string;
 begin
   Result := cTexts[TNestedRoutinesText.ConvertToPrivateMethod].Text;
@@ -489,6 +491,8 @@ type
     function EditsIssue(var AAction: TCodeAction): string;
     function Run(var AAction: TCodeAction): string;
   end;
+
+{ TExtraction }
 
 function TExtraction.LocateIssue(const APosition: TTextPosition): string;
 begin
@@ -1113,6 +1117,8 @@ type
     function Run(var AAction: TCodeAction): string;
   end;
 
+{ TEmbedding }
+
 function TEmbedding.LocateIssue(const APosition: TTextPosition): string;
 begin
   if (Request.Tree = nil) or (Request.Tree.Root = nil) then
@@ -1709,17 +1715,17 @@ begin
 end;
 
 class function TNestedRoutines.Embed(const ARequest: TNestedRoutineRequest; ARemovePassThrough: Boolean;
-  out AAction: TCodeAction; out AReason: string): Boolean;
-begin
-  Result := EmbedCore(ARequest, ARemovePassThrough, AAction, AReason);
-end;
-
-class function TNestedRoutines.Embed(const ARequest: TNestedRoutineRequest; ARemovePassThrough: Boolean;
   out AAction: TCodeAction): Boolean;
 var
   mReason: string;
 begin
   Result := EmbedCore(ARequest, ARemovePassThrough, AAction, mReason);
+end;
+
+class function TNestedRoutines.Embed(const ARequest: TNestedRoutineRequest; ARemovePassThrough: Boolean;
+  out AAction: TCodeAction; out AReason: string): Boolean;
+begin
+  Result := EmbedCore(ARequest, ARemovePassThrough, AAction, AReason);
 end;
 
 class function TNestedRoutines.Actions(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;

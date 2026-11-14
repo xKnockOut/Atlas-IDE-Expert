@@ -283,50 +283,6 @@ begin
   end;
 end;
 
-class function TUnitSearch.FormCaption(const AFormText: string): string;
-var
-  mLines: TArray<string>;
-  mIndex, mIndent, mRootIndent: Integer;
-  mTrimmed, mRest: string;
-begin
-  Result := '';
-  if (AFormText = '') or TFormModel.IsBinary(AFormText) then
-  begin
-    Exit;
-  end;
-  mLines := TTextLines.SplitLines(AFormText);
-  mIndex := FirstContentLine(mLines);
-  if (mIndex > High(mLines)) or not IsObjectLine(Trim(mLines[mIndex])) then
-  begin
-    Exit;
-  end;
-  // Eigenschaften des Wurzelobjekts stehen vor seinen Kindobjekten und gleich weit eingerückt; tiefer
-  // eingerückte Zeilen gehören zu Listen oder Collections.
-  mRootIndent := -1;
-  Inc(mIndex);
-  while mIndex <= High(mLines) do
-  begin
-    mTrimmed := SplitIndent(mLines[mIndex], mIndent);
-    Inc(mIndex);
-    if mTrimmed = '' then
-    begin
-      Continue;
-    end;
-    if mRootIndent < 0 then
-    begin
-      mRootIndent := mIndent;
-    end;
-    if RootEnded(mTrimmed, mIndent, mRootIndent) then
-    begin
-      Exit;
-    end;
-    if (mIndent = mRootIndent) and IsCaptionLine(mTrimmed, mRest) then
-    begin
-      Exit(CaptionValue(mLines, mIndex, mRest));
-    end;
-  end;
-end;
-
 function TUnitSearch.CachedCaption(const AContext: TUnitSearchContext; const AFormFile: string): string;
 var
   mKey: string;
@@ -367,6 +323,18 @@ begin
   finally
     System.TMonitor.Exit(FCaptions);
   end;
+end;
+
+function TUnitSearch.CaptionsFor(const AContext: TUnitSearchContext): TFunc<string, string>;
+var
+  mContext: TUnitSearchContext;
+begin
+  mContext := AContext;
+  Result :=
+    function(AFormFile: string): string
+    begin
+      Result := CachedCaption(mContext, AFormFile);
+    end;
 end;
 
 /// <summary>Art zu einem Basistyp: form, frame, dm; '' für andere.</summary>
@@ -855,6 +823,50 @@ begin
   end;
 end;
 
+class function TUnitSearch.FormCaption(const AFormText: string): string;
+var
+  mLines: TArray<string>;
+  mIndex, mIndent, mRootIndent: Integer;
+  mTrimmed, mRest: string;
+begin
+  Result := '';
+  if (AFormText = '') or TFormModel.IsBinary(AFormText) then
+  begin
+    Exit;
+  end;
+  mLines := TTextLines.SplitLines(AFormText);
+  mIndex := FirstContentLine(mLines);
+  if (mIndex > High(mLines)) or not IsObjectLine(Trim(mLines[mIndex])) then
+  begin
+    Exit;
+  end;
+  // Eigenschaften des Wurzelobjekts stehen vor seinen Kindobjekten und gleich weit eingerückt; tiefer
+  // eingerückte Zeilen gehören zu Listen oder Collections.
+  mRootIndent := -1;
+  Inc(mIndex);
+  while mIndex <= High(mLines) do
+  begin
+    mTrimmed := SplitIndent(mLines[mIndex], mIndent);
+    Inc(mIndex);
+    if mTrimmed = '' then
+    begin
+      Continue;
+    end;
+    if mRootIndent < 0 then
+    begin
+      mRootIndent := mIndent;
+    end;
+    if RootEnded(mTrimmed, mIndent, mRootIndent) then
+    begin
+      Exit;
+    end;
+    if (mIndent = mRootIndent) and IsCaptionLine(mTrimmed, mRest) then
+    begin
+      Exit(CaptionValue(mLines, mIndex, mRest));
+    end;
+  end;
+end;
+
 class function TUnitSearch.Sketch(const AFormText: string): TUnitSketch;
 var
   mModel: TFormModel;
@@ -908,18 +920,6 @@ begin
   end;
 end;
 
-function TUnitSearch.CaptionsFor(const AContext: TUnitSearchContext): TFunc<string, string>;
-var
-  mContext: TUnitSearchContext;
-begin
-  mContext := AContext;
-  Result :=
-    function(AFormFile: string): string
-    begin
-      Result := CachedCaption(mContext, AFormFile);
-    end;
-end;
-
 class function TUnitSearch.UnitsJson(const AContext: TUnitSearchContext): TJSONObject;
 begin
   Result := UnitsJson(AContext, nil);
@@ -949,6 +949,8 @@ type
     destructor Destroy; override;
     function Build: TJSONObject;
   end;
+
+{ TUnitsJsonRun }
 
 constructor TUnitsJsonRun.Create(const AContext: TUnitSearchContext; const ACaptionOf: TFunc<string, string>);
 begin
@@ -1362,52 +1364,6 @@ begin
   end;
 end;
 
-function TUnitSearch.ExecuteUnits(const AArguments: TJSONArray): TJSONValue;
-var
-  mContext: TUnitSearchContext;
-  mWithCaptions: Boolean;
-begin
-  mWithCaptions := False;
-  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONObject) then
-  begin
-    TJSONObject(AArguments.Items[0]).TryGetValue<Boolean>('captions', mWithCaptions);
-  end;
-  if not FContextFor(mContext) then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  if not mWithCaptions then
-  begin
-    Exit(UnitsJson(mContext));
-  end;
-  Result := UnitsJson(mContext, CaptionsFor(mContext));
-end;
-
-function TUnitSearch.ExecutePreview(const AArguments: TJSONArray): TJSONValue;
-var
-  mContext: TUnitSearchContext;
-  mWithForm, mWithUsedBy: Boolean;
-  mOptions: TJSONObject;
-begin
-  if (AArguments = nil) or (AArguments.Count = 0) or not (AArguments.Items[0] is TJSONString) then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  mWithForm := True;
-  mWithUsedBy := True;
-  if (AArguments.Count > 1) and (AArguments.Items[1] is TJSONObject) then
-  begin
-    mOptions := TJSONObject(AArguments.Items[1]);
-    mOptions.TryGetValue<Boolean>('form', mWithForm);
-    mOptions.TryGetValue<Boolean>('usedBy', mWithUsedBy);
-  end;
-  if not FContextFor(mContext) then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  Result := PreviewJson(mContext, TDocumentUris.ToPath(AArguments.Items[0].Value), mWithForm, mWithUsedBy);
-end;
-
 class function TUnitSearch.AddUsesJson(const AUri, AText: string; const AUnits: TArray<string>;
   const AUses: TUsesContext): TJSONObject;
 begin
@@ -1454,6 +1410,52 @@ begin
     Result.AddPair('edit', TJSONNull.Create);
   end;
   Result.AddPair('added', mAddedList);
+end;
+
+function TUnitSearch.ExecuteUnits(const AArguments: TJSONArray): TJSONValue;
+var
+  mContext: TUnitSearchContext;
+  mWithCaptions: Boolean;
+begin
+  mWithCaptions := False;
+  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONObject) then
+  begin
+    TJSONObject(AArguments.Items[0]).TryGetValue<Boolean>('captions', mWithCaptions);
+  end;
+  if not FContextFor(mContext) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  if not mWithCaptions then
+  begin
+    Exit(UnitsJson(mContext));
+  end;
+  Result := UnitsJson(mContext, CaptionsFor(mContext));
+end;
+
+function TUnitSearch.ExecutePreview(const AArguments: TJSONArray): TJSONValue;
+var
+  mContext: TUnitSearchContext;
+  mWithForm, mWithUsedBy: Boolean;
+  mOptions: TJSONObject;
+begin
+  if (AArguments = nil) or (AArguments.Count = 0) or not (AArguments.Items[0] is TJSONString) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  mWithForm := True;
+  mWithUsedBy := True;
+  if (AArguments.Count > 1) and (AArguments.Items[1] is TJSONObject) then
+  begin
+    mOptions := TJSONObject(AArguments.Items[1]);
+    mOptions.TryGetValue<Boolean>('form', mWithForm);
+    mOptions.TryGetValue<Boolean>('usedBy', mWithUsedBy);
+  end;
+  if not FContextFor(mContext) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  Result := PreviewJson(mContext, TDocumentUris.ToPath(AArguments.Items[0].Value), mWithForm, mWithUsedBy);
 end;
 
 /// <summary>Namen aus dem Array, nur Zeichenketten.</summary>

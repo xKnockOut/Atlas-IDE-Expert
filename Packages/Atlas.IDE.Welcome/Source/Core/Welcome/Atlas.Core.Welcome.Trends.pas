@@ -231,29 +231,6 @@ begin
   Result := AProjects[0];
 end;
 
-class procedure TAtlasWelcomeTrends.Scale(const AValues: TArray<Integer>; const AHas: TArray<Boolean>; out ALow,
-  AHigh: Integer);
-var
-  mIndex: Integer;
-begin
-  // Die Nulllinie ist immer sichtbar.
-  ALow := 0;
-  AHigh := 0;
-  for mIndex := 0 to Min(System.High(AValues), System.High(AHas)) do
-  begin
-    if AHas[mIndex] then
-    begin
-      ALow := Min(ALow, AValues[mIndex]);
-      AHigh := Max(AHigh, AValues[mIndex]);
-    end;
-  end;
-  // Nur Nullen (oder nichts): eine Einheit Luft nach oben.
-  if AHigh = ALow then
-  begin
-    AHigh := ALow + 10;
-  end;
-end;
-
 class function TAtlasWelcomeTrends.View(const ASummary: TAtlasProjectSummary; const ASeries: TAtlasTrendSeriesList;
   ALimit: Integer): TAtlasTrendView;
 var
@@ -286,6 +263,29 @@ begin
     end;
     Scale(mTile.Values, mTile.Has, mTile.Bottom, mTile.Top);
     Result.Tiles := Result.Tiles + [mTile];
+  end;
+end;
+
+class procedure TAtlasWelcomeTrends.Scale(const AValues: TArray<Integer>; const AHas: TArray<Boolean>; out ALow,
+  AHigh: Integer);
+var
+  mIndex: Integer;
+begin
+  // Die Nulllinie ist immer sichtbar.
+  ALow := 0;
+  AHigh := 0;
+  for mIndex := 0 to Min(System.High(AValues), System.High(AHas)) do
+  begin
+    if AHas[mIndex] then
+    begin
+      ALow := Min(ALow, AValues[mIndex]);
+      AHigh := Max(AHigh, AValues[mIndex]);
+    end;
+  end;
+  // Nur Nullen (oder nichts): eine Einheit Luft nach oben.
+  if AHigh = ALow then
+  begin
+    AHigh := ALow + 10;
   end;
 end;
 

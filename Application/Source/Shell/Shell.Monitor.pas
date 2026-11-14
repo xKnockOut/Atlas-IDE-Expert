@@ -75,6 +75,8 @@ begin
   end;
 end;
 
+{ TMonitorShell }
+
 class function TMonitorShell.Run: Integer;
 var
   mMutex: THandle;

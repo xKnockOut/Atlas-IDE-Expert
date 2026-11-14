@@ -137,20 +137,6 @@ end;
 
 { TBuildCommands }
 
-class function TBuildCommands.FindProject(const AItems: TArray<TProjectChoiceItem>; const ATarget: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(AItems) do
-  begin
-    if SameText(AItems[mIndex].Project, ATarget) or SameText(AItems[mIndex].Name, ATarget) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
 class function TBuildCommands.ProjectChoices(const AItems: TArray<TProjectChoiceItem>): TJSONObject;
 var
   mItem: TProjectChoiceItem;
@@ -182,6 +168,20 @@ begin
   Result.AddPair('selected', mSelected);
   Result.AddPair('active', mActive);
   Result.AddPair('projects', mItems);
+end;
+
+class function TBuildCommands.FindProject(const AItems: TArray<TProjectChoiceItem>; const ATarget: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AItems) do
+  begin
+    if SameText(AItems[mIndex].Project, ATarget) or SameText(AItems[mIndex].Name, ATarget) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
 end;
 
 

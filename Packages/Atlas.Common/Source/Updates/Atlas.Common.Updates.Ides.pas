@@ -123,31 +123,7 @@ begin
   Result.Profile := AProfile;
 end;
 
-class function TUpdateIdes.Choices(const ARegistry: IUpdateRegistry;
-  const AFiles: IUpdateFiles): TArray<TUpdateIdeChoice>;
-var
-  mVersion: TUpdateIdeVersion;
-  mProfile: TUpdateIdeProfile;
-  mRoot: string;
-begin
-  Result := nil;
-  for mVersion in cCatalog do
-  begin
-    mRoot := ARegistry.RootDir(mVersion.BdsVersion);
-    if mRoot = '' then
-    begin
-      Continue;
-    end;
-    for mProfile in Profiles(ARegistry, mVersion.BdsVersion) do
-    begin
-      Result := Result + [Choice(mVersion, mProfile, cWin32)];
-      if AFiles.FileExists(mRoot + '\bin64\bds.exe') then
-      begin
-        Result := Result + [Choice(mVersion, mProfile, cWin64)];
-      end;
-    end;
-  end;
-end;
+{ TUpdateIdes }
 
 class function TUpdateIdes.Catalog: TArray<TUpdateIdeVersion>;
 var
@@ -261,6 +237,37 @@ begin
   end;
 end;
 
+class function TUpdateIdes.IsPlatform(const APlatform: string): Boolean;
+begin
+  Result := SameText(APlatform, cWin32) or SameText(APlatform, cWin64);
+end;
+
+class function TUpdateIdes.Choices(const ARegistry: IUpdateRegistry;
+  const AFiles: IUpdateFiles): TArray<TUpdateIdeChoice>;
+var
+  mVersion: TUpdateIdeVersion;
+  mProfile: TUpdateIdeProfile;
+  mRoot: string;
+begin
+  Result := nil;
+  for mVersion in cCatalog do
+  begin
+    mRoot := ARegistry.RootDir(mVersion.BdsVersion);
+    if mRoot = '' then
+    begin
+      Continue;
+    end;
+    for mProfile in Profiles(ARegistry, mVersion.BdsVersion) do
+    begin
+      Result := Result + [Choice(mVersion, mProfile, cWin32)];
+      if AFiles.FileExists(mRoot + '\bin64\bds.exe') then
+      begin
+        Result := Result + [Choice(mVersion, mProfile, cWin64)];
+      end;
+    end;
+  end;
+end;
+
 class function TUpdateIdes.PackageSuffix(const ACompilerVersion: string): string;
 var
   mVersion: TUpdateIdeVersion;
@@ -273,11 +280,6 @@ begin
   begin
     Result := ACompilerVersion.Replace('.', '');
   end;
-end;
-
-class function TUpdateIdes.IsPlatform(const APlatform: string): Boolean;
-begin
-  Result := SameText(APlatform, cWin32) or SameText(APlatform, cWin64);
 end;
 
 end.

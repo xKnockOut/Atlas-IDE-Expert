@@ -122,17 +122,6 @@ begin
   UpdateButtons;
 end;
 
-function TAtlasTrackerTimeListDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;
-begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Canvas.Font := Font;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
-end;
-
 procedure TAtlasTrackerTimeListDialog.DoShow;
 var
   mItem: TAtlasTimeOpen;
@@ -156,24 +145,15 @@ begin
   inherited;
 end;
 
-function TAtlasTrackerTimeListDialog.Selected: Integer;
+function TAtlasTrackerTimeListDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;
 begin
-  Result := -1;
-  if FList.HandleAllocated and (FList.ItemIndex >= 0) and (FList.ItemIndex <= High(FItems)) then
-  begin
-    Result := FList.ItemIndex;
-  end;
-end;
-
-procedure TAtlasTrackerTimeListDialog.UpdateButtons;
-begin
-  FBook.Enabled := Selected >= 0;
-  FDiscard.Enabled := Selected >= 0;
-end;
-
-procedure TAtlasTrackerTimeListDialog.ListClick(Sender: TObject);
-begin
-  UpdateButtons;
+  Result := TButton.Create(Self);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  Canvas.Font := Font;
+  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
 end;
 
 procedure TAtlasTrackerTimeListDialog.BookClick(Sender: TObject);
@@ -196,6 +176,26 @@ begin
   FAction := TAtlasTimeListAction.Discard;
   FChosen := Selected;
   ModalResult := mrOk;
+end;
+
+procedure TAtlasTrackerTimeListDialog.ListClick(Sender: TObject);
+begin
+  UpdateButtons;
+end;
+
+procedure TAtlasTrackerTimeListDialog.UpdateButtons;
+begin
+  FBook.Enabled := Selected >= 0;
+  FDiscard.Enabled := Selected >= 0;
+end;
+
+function TAtlasTrackerTimeListDialog.Selected: Integer;
+begin
+  Result := -1;
+  if FList.HandleAllocated and (FList.ItemIndex >= 0) and (FList.ItemIndex <= High(FItems)) then
+  begin
+    Result := FList.ItemIndex;
+  end;
 end;
 
 class function TAtlasTrackerTimeListDialog.RowText(const AItem: TAtlasTimeOpen): string;

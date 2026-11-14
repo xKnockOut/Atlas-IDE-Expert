@@ -153,6 +153,8 @@ begin
   end;
 end;
 
+{ TAtlasServerExits }
+
 class function TAtlasServerExits.Describe(ACode: Cardinal): string;
 begin
   case ACode of

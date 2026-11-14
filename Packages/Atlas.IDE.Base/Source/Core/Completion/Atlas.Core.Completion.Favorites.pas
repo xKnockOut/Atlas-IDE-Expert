@@ -222,6 +222,44 @@ begin
   inherited Destroy;
 end;
 
+function TAtlasFavorites.IndexOf(const AKey: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to FItems.Count - 1 do
+  begin
+    if FItems[mIndex].Key = AKey then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+function TAtlasFavorites.TypeCount(const ATypeKey: string): Integer;
+var
+  mFavorite: TAtlasFavorite;
+begin
+  Result := 0;
+  for mFavorite in FItems do
+  begin
+    if LowerCase(mFavorite.TypeName) = ATypeKey then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
+function TAtlasFavorites.TryAdd(const AFavorite: TAtlasFavorite): Boolean;
+begin
+  Result := (Trim(AFavorite.Member) <> '') and (IndexOf(AFavorite.Key) < 0) and
+    (TypeCount(LowerCase(AFavorite.TypeName)) < cMaxPerType);
+  if Result then
+  begin
+    FItems.Add(AFavorite);
+  end;
+end;
+
 class function TAtlasFavorites.TypeNameOf(const AItem: TAtlasCompletionItem): string;
 begin
   Result := AItem.DeclaringClass;
@@ -259,44 +297,6 @@ begin
     end;
   end;
   Result := TAtlasItemKind.Unknown;
-end;
-
-function TAtlasFavorites.IndexOf(const AKey: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to FItems.Count - 1 do
-  begin
-    if FItems[mIndex].Key = AKey then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
-function TAtlasFavorites.TypeCount(const ATypeKey: string): Integer;
-var
-  mFavorite: TAtlasFavorite;
-begin
-  Result := 0;
-  for mFavorite in FItems do
-  begin
-    if LowerCase(mFavorite.TypeName) = ATypeKey then
-    begin
-      Inc(Result);
-    end;
-  end;
-end;
-
-function TAtlasFavorites.TryAdd(const AFavorite: TAtlasFavorite): Boolean;
-begin
-  Result := (Trim(AFavorite.Member) <> '') and (IndexOf(AFavorite.Key) < 0) and
-    (TypeCount(LowerCase(AFavorite.TypeName)) < cMaxPerType);
-  if Result then
-  begin
-    FItems.Add(AFavorite);
-  end;
 end;
 
 function TAtlasFavorites.IsFavorite(const AItem: TAtlasCompletionItem): Boolean;

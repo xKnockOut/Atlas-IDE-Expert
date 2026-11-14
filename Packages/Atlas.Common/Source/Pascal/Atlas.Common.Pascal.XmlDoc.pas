@@ -434,6 +434,16 @@ end;
 { TXmlDocRun }
 
 class function TXmlDocRun.Create(AKind: TXmlDocRunKind; const AText: string; AStyles: TXmlDocStyles;
+  const ATarget: string; ALevel: Integer): TXmlDocRun;
+begin
+  Result.Kind := AKind;
+  Result.Text := AText;
+  Result.Target := ATarget;
+  Result.Styles := AStyles;
+  Result.Level := ALevel;
+end;
+
+class function TXmlDocRun.Create(AKind: TXmlDocRunKind; const AText: string; AStyles: TXmlDocStyles;
   const ATarget: string): TXmlDocRun;
 begin
   Result := Create(AKind, AText, AStyles, ATarget, 0);
@@ -447,16 +457,6 @@ end;
 class function TXmlDocRun.Create(AKind: TXmlDocRunKind; const AText: string): TXmlDocRun;
 begin
   Result := Create(AKind, AText, [], '', 0);
-end;
-
-class function TXmlDocRun.Create(AKind: TXmlDocRunKind; const AText: string; AStyles: TXmlDocStyles;
-  const ATarget: string; ALevel: Integer): TXmlDocRun;
-begin
-  Result.Kind := AKind;
-  Result.Text := AText;
-  Result.Target := ATarget;
-  Result.Styles := AStyles;
-  Result.Level := ALevel;
 end;
 
 { TXmlDocSection }
@@ -544,6 +544,8 @@ type
     constructor Create(AParser: TXmlDocParser; const AXml: string);
     procedure Run;
   end;
+
+{ TXmlTreeBuilder }
 
 constructor TXmlTreeBuilder.Create(AParser: TXmlDocParser; const AXml: string);
 begin
@@ -703,40 +705,6 @@ begin
   FPos := mClose + 3;
 end;
 
-procedure TXmlTreeBuilder.KeepLessThan;
-begin
-  FParser.AddText(Current, '<');
-  Inc(FPos);
-end;
-
-procedure TXmlTreeBuilder.CloseTo(const AName: string);
-var
-  mLevel: Integer;
-begin
-  for mLevel := High(FStack) downto 1 do
-  begin
-    if FParser.FNodes[FStack[mLevel]].Name = AName then
-    begin
-      SetLength(FStack, mLevel);
-      Break;
-    end;
-  end;
-end;
-
-procedure TXmlTreeBuilder.CloseOpenSection;
-var
-  mLevel: Integer;
-begin
-  for mLevel := 1 to High(FStack) do
-  begin
-    if IsBlockSection(FParser.FNodes[FStack[mLevel]].Name) then
-    begin
-      SetLength(FStack, mLevel);
-      Break;
-    end;
-  end;
-end;
-
 procedure TXmlTreeBuilder.ReadEndTag;
 var
   mClose, mStart: Integer;
@@ -786,6 +754,40 @@ begin
     FStack := FStack + [mNode];
   end;
   FPos := mStart;
+end;
+
+procedure TXmlTreeBuilder.KeepLessThan;
+begin
+  FParser.AddText(Current, '<');
+  Inc(FPos);
+end;
+
+procedure TXmlTreeBuilder.CloseTo(const AName: string);
+var
+  mLevel: Integer;
+begin
+  for mLevel := High(FStack) downto 1 do
+  begin
+    if FParser.FNodes[FStack[mLevel]].Name = AName then
+    begin
+      SetLength(FStack, mLevel);
+      Break;
+    end;
+  end;
+end;
+
+procedure TXmlTreeBuilder.CloseOpenSection;
+var
+  mLevel: Integer;
+begin
+  for mLevel := 1 to High(FStack) do
+  begin
+    if IsBlockSection(FParser.FNodes[FStack[mLevel]].Name) then
+    begin
+      SetLength(FStack, mLevel);
+      Break;
+    end;
+  end;
 end;
 
 procedure TXmlTreeBuilder.Run;
@@ -919,37 +921,18 @@ begin
   end;
 end;
 
-procedure TXmlDocParser.AddTargetRun(AKind: TXmlDocRunKind; const AText, ATarget: string; AStyles: TXmlDocStyles);
+procedure TXmlDocParser.WalkNode(ANode: Integer; AStyles: TXmlDocStyles; ALevel: Integer);
 var
-  mText: string;
+  mName: string;
 begin
-  mText := AText;
-  if mText = '' then
+  mName := FNodes[ANode].Name;
+  if mName = '' then
   begin
-    mText := ATarget;
-  end;
-  Add(TXmlDocRun.Create(AKind, mText, AStyles, ATarget));
-end;
-
-procedure TXmlDocParser.WalkSee(ANode: Integer; AStyles: TXmlDocStyles; ALevel: Integer);
-var
-  mText: string;
-begin
-  mText := Trim(CollapseSpaces(InnerText(ANode)));
-  if HasAttribute(ANode, 'cref') then
-  begin
-    AddTargetRun(TXmlDocRunKind.Ref, mText, TXmlDoc.NormalizeCref(Attribute(ANode, 'cref')), AStyles);
+    AddInline(FNodes[ANode].Text, AStyles);
   end
-  else if HasAttribute(ANode, 'href') then
+  else if not WalkCodeTag(ANode, mName, AStyles, ALevel) and not WalkStructureTag(ANode, mName, AStyles, ALevel) then
   begin
-    AddTargetRun(TXmlDocRunKind.Link, mText, Trim(Attribute(ANode, 'href')), AStyles);
-  end
-  else if HasAttribute(ANode, 'langword') then
-  begin
-    Add(TXmlDocRun.Create(TXmlDocRunKind.Keyword, Trim(Attribute(ANode, 'langword')), AStyles));
-  end
-  else
-  begin
+    // Unbekannte Tags (und Abschnitte an falscher Stelle) behalten ihren Text.
     WalkChildren(ANode, AStyles, ALevel);
   end;
 end;
@@ -1036,20 +1019,39 @@ begin
   end;
 end;
 
-procedure TXmlDocParser.WalkNode(ANode: Integer; AStyles: TXmlDocStyles; ALevel: Integer);
+procedure TXmlDocParser.WalkSee(ANode: Integer; AStyles: TXmlDocStyles; ALevel: Integer);
 var
-  mName: string;
+  mText: string;
 begin
-  mName := FNodes[ANode].Name;
-  if mName = '' then
+  mText := Trim(CollapseSpaces(InnerText(ANode)));
+  if HasAttribute(ANode, 'cref') then
   begin
-    AddInline(FNodes[ANode].Text, AStyles);
+    AddTargetRun(TXmlDocRunKind.Ref, mText, TXmlDoc.NormalizeCref(Attribute(ANode, 'cref')), AStyles);
   end
-  else if not WalkCodeTag(ANode, mName, AStyles, ALevel) and not WalkStructureTag(ANode, mName, AStyles, ALevel) then
+  else if HasAttribute(ANode, 'href') then
   begin
-    // Unbekannte Tags (und Abschnitte an falscher Stelle) behalten ihren Text.
+    AddTargetRun(TXmlDocRunKind.Link, mText, Trim(Attribute(ANode, 'href')), AStyles);
+  end
+  else if HasAttribute(ANode, 'langword') then
+  begin
+    Add(TXmlDocRun.Create(TXmlDocRunKind.Keyword, Trim(Attribute(ANode, 'langword')), AStyles));
+  end
+  else
+  begin
     WalkChildren(ANode, AStyles, ALevel);
   end;
+end;
+
+procedure TXmlDocParser.AddTargetRun(AKind: TXmlDocRunKind; const AText, ATarget: string; AStyles: TXmlDocStyles);
+var
+  mText: string;
+begin
+  mText := AText;
+  if mText = '' then
+  begin
+    mText := ATarget;
+  end;
+  Add(TXmlDocRun.Create(AKind, mText, AStyles, ATarget));
 end;
 
 /// <summary>Aufzählungszeichen eines Listenpunkts: '' bei Kopf- und Tabellenzeilen, "1." … bei
@@ -1069,6 +1071,37 @@ begin
   begin
     Result := '•';
   end;
+end;
+
+procedure TXmlDocParser.WalkList(ANode: Integer; AStyles: TXmlDocStyles; ALevel: Integer);
+var
+  mKind, mName: string;
+  mChild, mNumber: Integer;
+  mTable, mHeader: Boolean;
+  mStyles: TXmlDocStyles;
+begin
+  mKind := LowerCase(Trim(Attribute(ANode, 'type')));
+  mTable := mKind = 'table';
+  mNumber := 0;
+  for mChild in FNodes[ANode].Children do
+  begin
+    mName := FNodes[mChild].Name;
+    if (mName <> 'item') and (mName <> 'listheader') then
+    begin
+      WalkNode(mChild, AStyles, ALevel - 1);
+      Continue;
+    end;
+    mHeader := mName = 'listheader';
+    mStyles := AStyles;
+    if mHeader then
+    begin
+      mStyles := mStyles + [TXmlDocStyle.Bold];
+    end;
+    Add(TXmlDocRun.Create(TXmlDocRunKind.Bullet, BulletText(mHeader, mTable, mKind, mNumber), mStyles, '', ALevel));
+    WalkItem(mChild, mStyles, ALevel, mTable);
+  end;
+  // Nach der Liste beginnt der Text in einer neuen Zeile.
+  Add(TXmlDocRun.Create(TXmlDocRunKind.Paragraph, ''));
 end;
 
 procedure TXmlDocParser.WalkItem(AItem: Integer; AStyles: TXmlDocStyles; ALevel: Integer; ATable: Boolean);
@@ -1110,37 +1143,6 @@ begin
       WalkNode(mPart, AStyles, ALevel);
     end;
   end;
-end;
-
-procedure TXmlDocParser.WalkList(ANode: Integer; AStyles: TXmlDocStyles; ALevel: Integer);
-var
-  mKind, mName: string;
-  mChild, mNumber: Integer;
-  mTable, mHeader: Boolean;
-  mStyles: TXmlDocStyles;
-begin
-  mKind := LowerCase(Trim(Attribute(ANode, 'type')));
-  mTable := mKind = 'table';
-  mNumber := 0;
-  for mChild in FNodes[ANode].Children do
-  begin
-    mName := FNodes[mChild].Name;
-    if (mName <> 'item') and (mName <> 'listheader') then
-    begin
-      WalkNode(mChild, AStyles, ALevel - 1);
-      Continue;
-    end;
-    mHeader := mName = 'listheader';
-    mStyles := AStyles;
-    if mHeader then
-    begin
-      mStyles := mStyles + [TXmlDocStyle.Bold];
-    end;
-    Add(TXmlDocRun.Create(TXmlDocRunKind.Bullet, BulletText(mHeader, mTable, mKind, mNumber), mStyles, '', ALevel));
-    WalkItem(mChild, mStyles, ALevel, mTable);
-  end;
-  // Nach der Liste beginnt der Text in einer neuen Zeile.
-  Add(TXmlDocRun.Create(TXmlDocRunKind.Paragraph, ''));
 end;
 
 procedure TXmlDocParser.AddSeeAlso(ANode: Integer);
@@ -1347,14 +1349,11 @@ begin
     end;
 end;
 
+{ TXmlDoc }
+
 function TXmlDoc.IsEmpty: Boolean;
 begin
   Result := Length(Sections) = 0;
-end;
-
-function TXmlDoc.IndexOf(AKind: TXmlDocSectionKind): Integer;
-begin
-  Result := IndexOf(AKind, '');
 end;
 
 function TXmlDoc.IndexOf(AKind: TXmlDocSectionKind; const AName: string): Integer;
@@ -1369,6 +1368,11 @@ begin
     end;
   end;
   Result := -1;
+end;
+
+function TXmlDoc.IndexOf(AKind: TXmlDocSectionKind): Integer;
+begin
+  Result := IndexOf(AKind, '');
 end;
 
 function TXmlDoc.Inherit(const ABase: TXmlDoc): TXmlDoc;
@@ -1406,6 +1410,16 @@ begin
   FillPlainFields(Result);
 end;
 
+function TXmlDoc.ToPlainText: string;
+begin
+  Result := ToPlainText(True);
+end;
+
+function TXmlDoc.ToMarkdown: string;
+begin
+  Result := ToMarkdown(True);
+end;
+
 class function TXmlDoc.Parse(const AXml: string): TXmlDoc;
 var
   mParser: TXmlDocParser;
@@ -1419,9 +1433,189 @@ begin
   FillPlainFields(Result);
 end;
 
+class function TXmlDoc.CommentAbove(const ALines: TArray<string>; ALine: Integer): string;
+var
+  mIndex: Integer;
+  mLine: string;
+begin
+  Result := '';
+  mIndex := ALine - 1;
+  while (mIndex >= 0) and (mIndex <= High(ALines)) do
+  begin
+    mLine := Trim(ALines[mIndex]);
+    if StartsStr('///', mLine) then
+    begin
+      // Nur das Kommentarzeichen weg: Einrückung danach zählt in <code>.
+      mLine := Copy(TrimLeft(ALines[mIndex]), 4, MaxInt);
+      if Result = '' then
+      begin
+        Result := mLine;
+      end
+      else
+      begin
+        Result := mLine + #10 + Result;
+      end;
+    end
+    else if not StartsStr('[', mLine) then
+    begin
+      Break;
+    end;
+    Dec(mIndex);
+  end;
+end;
+
+function Styled(const AText: string; AStyles: TXmlDocStyles): string;
+begin
+  Result := AText;
+  if Trim(AText) = '' then
+  begin
+    Exit;
+  end;
+  if TXmlDocStyle.Italic in AStyles then
+  begin
+    Result := '*' + Result + '*';
+  end;
+  if TXmlDocStyle.Bold in AStyles then
+  begin
+    Result := '**' + Result + '**';
+  end;
+end;
+
+/// <summary>Markdown für einen Listenpunkt; eine Liste beginnt nach einer Leerzeile.</summary>
+function BulletMarkdown(const ARun: TXmlDocRun; AInList: Boolean): string;
+begin
+  Result := #10#10;
+  if AInList then
+  begin
+    Result := #10;
+  end;
+  Result := Result + StringOfChar(' ', 2 * Max(0, ARun.Level - 1));
+  if EndsStr('.', ARun.Text) then
+  begin
+    Result := Result + ARun.Text + ' ';
+  end
+  else
+  begin
+    Result := Result + '- ';
+  end;
+end;
+
 class function TXmlDoc.CleanText(const AText: string): string;
 begin
   Result := Parse(AText).Summary;
+end;
+
+function JoinBlocks(const ABlocks: TArray<string>): string;
+var
+  mBlock: string;
+begin
+  Result := '';
+  for mBlock in ABlocks do
+  begin
+    if mBlock <> '' then
+    begin
+      if Result <> '' then
+      begin
+        Result := Result + #10#10;
+      end;
+      Result := Result + mBlock;
+    end;
+  end;
+end;
+
+function TXmlDoc.ToPlainText(AWithParams: Boolean): string;
+var
+  mSection: TXmlDocSection;
+  mMain, mParamLines, mTypeLines, mFacts, mRemark, mExample, mSeeAlso: string;
+
+  procedure AddLine(var ATarget: string; const ALine: string);
+  begin
+    if ATarget <> '' then
+    begin
+      ATarget := ATarget + #10;
+    end;
+    ATarget := ATarget + ALine;
+  end;
+
+begin
+  mMain := '';
+  mParamLines := '';
+  mTypeLines := '';
+  mFacts := '';
+  mRemark := '';
+  mExample := '';
+  mSeeAlso := '';
+  for mSection in Sections do
+    case mSection.Kind of
+      TXmlDocSectionKind.Summary:
+        mMain := mSection.Text;
+      TXmlDocSectionKind.Param:
+        if AWithParams then
+        begin
+          AddLine(mParamLines, mSection.Name + ': ' + mSection.Text);
+        end;
+      TXmlDocSectionKind.TypeParam:
+        begin
+          if mTypeLines = '' then
+          begin
+            mTypeLines := cTexts[TXmlDocText.TypeParameters].Text;
+          end;
+          AddLine(mTypeLines, mSection.Name + ': ' + mSection.Text);
+        end;
+      TXmlDocSectionKind.Returns:
+        AddLine(mFacts, '→ ' + mSection.Text);
+      TXmlDocSectionKind.Value:
+        AddLine(mFacts, cTexts[TXmlDocText.ValueLabel].Text + mSection.Text);
+      TXmlDocSectionKind.Exception:
+        AddLine(mFacts, '! ' + mSection.Name + ': ' + mSection.Text);
+      TXmlDocSectionKind.Remarks:
+        mRemark := mSection.Text;
+      TXmlDocSectionKind.Example:
+        mExample := cTexts[TXmlDocText.ExampleLabel].Text + #10 + mSection.Text;
+      TXmlDocSectionKind.SeeAlso:
+        mSeeAlso := cTexts[TXmlDocText.SeeAlso].Text + mSection.Text;
+    end;
+  Result := JoinBlocks([mMain, mParamLines, mTypeLines, mFacts, mRemark, mExample, mSeeAlso]);
+end;
+
+function TXmlDoc.ToMarkdown(AWithParams: Boolean): string;
+var
+  mSection: TXmlDocSection;
+  mBlocks: TArray<string>;
+  mTypeHeader: Boolean;
+begin
+  mBlocks := nil;
+  mTypeHeader := False;
+  for mSection in Sections do
+    case mSection.Kind of
+      TXmlDocSectionKind.Summary, TXmlDocSectionKind.Remarks:
+        mBlocks := mBlocks + [RunsMarkdown(mSection.Runs)];
+      TXmlDocSectionKind.Param:
+        if AWithParams then
+        begin
+          mBlocks := mBlocks + ['*' + mSection.Name + '*: ' + RunsMarkdown(mSection.Runs)];
+        end;
+      TXmlDocSectionKind.TypeParam:
+        begin
+          if not mTypeHeader then
+          begin
+            mBlocks := mBlocks + [cTexts[TXmlDocText.TypeParameters2].Text];
+          end;
+          mTypeHeader := True;
+          mBlocks := mBlocks + ['*' + mSection.Name + '*: ' + RunsMarkdown(mSection.Runs)];
+        end;
+      TXmlDocSectionKind.Returns:
+        mBlocks := mBlocks + ['→ ' + RunsMarkdown(mSection.Runs)];
+      TXmlDocSectionKind.Value:
+        mBlocks := mBlocks + [cTexts[TXmlDocText.ValueLabel].Text + RunsMarkdown(mSection.Runs)];
+      TXmlDocSectionKind.Exception:
+        mBlocks := mBlocks + ['! `' + mSection.Name + '`: ' + RunsMarkdown(mSection.Runs)];
+      TXmlDocSectionKind.Example:
+        mBlocks := mBlocks + [cTexts[TXmlDocText.Example].Text, RunsMarkdown(mSection.Runs)];
+      TXmlDocSectionKind.SeeAlso:
+        mBlocks := mBlocks + [cTexts[TXmlDocText.SeeAlso].Text + RunsMarkdown(mSection.Runs)];
+    end;
+  Result := JoinBlocks(mBlocks);
 end;
 
 class function TXmlDoc.NormalizeCref(const ACref: string): string;
@@ -1494,42 +1688,6 @@ begin
   Result := string.Join(#10, mLines);
 end;
 
-function Styled(const AText: string; AStyles: TXmlDocStyles): string;
-begin
-  Result := AText;
-  if Trim(AText) = '' then
-  begin
-    Exit;
-  end;
-  if TXmlDocStyle.Italic in AStyles then
-  begin
-    Result := '*' + Result + '*';
-  end;
-  if TXmlDocStyle.Bold in AStyles then
-  begin
-    Result := '**' + Result + '**';
-  end;
-end;
-
-/// <summary>Markdown für einen Listenpunkt; eine Liste beginnt nach einer Leerzeile.</summary>
-function BulletMarkdown(const ARun: TXmlDocRun; AInList: Boolean): string;
-begin
-  Result := #10#10;
-  if AInList then
-  begin
-    Result := #10;
-  end;
-  Result := Result + StringOfChar(' ', 2 * Max(0, ARun.Level - 1));
-  if EndsStr('.', ARun.Text) then
-  begin
-    Result := Result + ARun.Text + ' ';
-  end
-  else
-  begin
-    Result := Result + '- ';
-  end;
-end;
-
 class function TXmlDoc.RunsMarkdown(const ARuns: TXmlDocRuns): string;
 var
   mRun: TXmlDocRun;
@@ -1573,160 +1731,6 @@ begin
     Result := StringReplace(Result, #10#10#10, #10#10, [rfReplaceAll]);
   end;
   Result := Trim(Result);
-end;
-
-function JoinBlocks(const ABlocks: TArray<string>): string;
-var
-  mBlock: string;
-begin
-  Result := '';
-  for mBlock in ABlocks do
-  begin
-    if mBlock <> '' then
-    begin
-      if Result <> '' then
-      begin
-        Result := Result + #10#10;
-      end;
-      Result := Result + mBlock;
-    end;
-  end;
-end;
-
-function TXmlDoc.ToPlainText: string;
-begin
-  Result := ToPlainText(True);
-end;
-
-function TXmlDoc.ToPlainText(AWithParams: Boolean): string;
-var
-  mSection: TXmlDocSection;
-  mMain, mParamLines, mTypeLines, mFacts, mRemark, mExample, mSeeAlso: string;
-
-  procedure AddLine(var ATarget: string; const ALine: string);
-  begin
-    if ATarget <> '' then
-    begin
-      ATarget := ATarget + #10;
-    end;
-    ATarget := ATarget + ALine;
-  end;
-
-begin
-  mMain := '';
-  mParamLines := '';
-  mTypeLines := '';
-  mFacts := '';
-  mRemark := '';
-  mExample := '';
-  mSeeAlso := '';
-  for mSection in Sections do
-    case mSection.Kind of
-      TXmlDocSectionKind.Summary:
-        mMain := mSection.Text;
-      TXmlDocSectionKind.Param:
-        if AWithParams then
-        begin
-          AddLine(mParamLines, mSection.Name + ': ' + mSection.Text);
-        end;
-      TXmlDocSectionKind.TypeParam:
-        begin
-          if mTypeLines = '' then
-          begin
-            mTypeLines := cTexts[TXmlDocText.TypeParameters].Text;
-          end;
-          AddLine(mTypeLines, mSection.Name + ': ' + mSection.Text);
-        end;
-      TXmlDocSectionKind.Returns:
-        AddLine(mFacts, '→ ' + mSection.Text);
-      TXmlDocSectionKind.Value:
-        AddLine(mFacts, cTexts[TXmlDocText.ValueLabel].Text + mSection.Text);
-      TXmlDocSectionKind.Exception:
-        AddLine(mFacts, '! ' + mSection.Name + ': ' + mSection.Text);
-      TXmlDocSectionKind.Remarks:
-        mRemark := mSection.Text;
-      TXmlDocSectionKind.Example:
-        mExample := cTexts[TXmlDocText.ExampleLabel].Text + #10 + mSection.Text;
-      TXmlDocSectionKind.SeeAlso:
-        mSeeAlso := cTexts[TXmlDocText.SeeAlso].Text + mSection.Text;
-    end;
-  Result := JoinBlocks([mMain, mParamLines, mTypeLines, mFacts, mRemark, mExample, mSeeAlso]);
-end;
-
-function TXmlDoc.ToMarkdown: string;
-begin
-  Result := ToMarkdown(True);
-end;
-
-function TXmlDoc.ToMarkdown(AWithParams: Boolean): string;
-var
-  mSection: TXmlDocSection;
-  mBlocks: TArray<string>;
-  mTypeHeader: Boolean;
-begin
-  mBlocks := nil;
-  mTypeHeader := False;
-  for mSection in Sections do
-    case mSection.Kind of
-      TXmlDocSectionKind.Summary, TXmlDocSectionKind.Remarks:
-        mBlocks := mBlocks + [RunsMarkdown(mSection.Runs)];
-      TXmlDocSectionKind.Param:
-        if AWithParams then
-        begin
-          mBlocks := mBlocks + ['*' + mSection.Name + '*: ' + RunsMarkdown(mSection.Runs)];
-        end;
-      TXmlDocSectionKind.TypeParam:
-        begin
-          if not mTypeHeader then
-          begin
-            mBlocks := mBlocks + [cTexts[TXmlDocText.TypeParameters2].Text];
-          end;
-          mTypeHeader := True;
-          mBlocks := mBlocks + ['*' + mSection.Name + '*: ' + RunsMarkdown(mSection.Runs)];
-        end;
-      TXmlDocSectionKind.Returns:
-        mBlocks := mBlocks + ['→ ' + RunsMarkdown(mSection.Runs)];
-      TXmlDocSectionKind.Value:
-        mBlocks := mBlocks + [cTexts[TXmlDocText.ValueLabel].Text + RunsMarkdown(mSection.Runs)];
-      TXmlDocSectionKind.Exception:
-        mBlocks := mBlocks + ['! `' + mSection.Name + '`: ' + RunsMarkdown(mSection.Runs)];
-      TXmlDocSectionKind.Example:
-        mBlocks := mBlocks + [cTexts[TXmlDocText.Example].Text, RunsMarkdown(mSection.Runs)];
-      TXmlDocSectionKind.SeeAlso:
-        mBlocks := mBlocks + [cTexts[TXmlDocText.SeeAlso].Text + RunsMarkdown(mSection.Runs)];
-    end;
-  Result := JoinBlocks(mBlocks);
-end;
-
-class function TXmlDoc.CommentAbove(const ALines: TArray<string>; ALine: Integer): string;
-var
-  mIndex: Integer;
-  mLine: string;
-begin
-  Result := '';
-  mIndex := ALine - 1;
-  while (mIndex >= 0) and (mIndex <= High(ALines)) do
-  begin
-    mLine := Trim(ALines[mIndex]);
-    if StartsStr('///', mLine) then
-    begin
-      // Nur das Kommentarzeichen weg: Einrückung danach zählt in <code>.
-      mLine := Copy(TrimLeft(ALines[mIndex]), 4, MaxInt);
-      if Result = '' then
-      begin
-        Result := mLine;
-      end
-      else
-      begin
-        Result := mLine + #10 + Result;
-      end;
-    end
-    else if not StartsStr('[', mLine) then
-    begin
-      Break;
-    end;
-    Dec(mIndex);
-  end;
 end;
 
 class function TXmlDoc.SectionName(AKind: TXmlDocSectionKind): string;

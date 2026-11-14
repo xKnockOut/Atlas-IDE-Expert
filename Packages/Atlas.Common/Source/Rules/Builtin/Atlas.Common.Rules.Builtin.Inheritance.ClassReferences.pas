@@ -153,11 +153,6 @@ begin
     cTexts[TInheritanceClassReferencesText.Title].Text);
 end;
 
-class function TClassReferenceNonvirtualConstructorRule.ClassRefTarget(const ASignature: string): string;
-begin
-  Result := TResolverText.ClassRefTarget(ASignature);
-end;
-
 procedure TClassReferenceNonvirtualConstructorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mCheck: TClassRefCheck;
@@ -188,6 +183,11 @@ begin
   finally
     mCheck.Free;
   end;
+end;
+
+class function TClassReferenceNonvirtualConstructorRule.ClassRefTarget(const ASignature: string): string;
+begin
+  Result := TResolverText.ClassRefTarget(ASignature);
 end;
 
 { TClassRefCheck }
@@ -499,6 +499,29 @@ begin
   FResolver := TRuleDerived.Resolver(FCache, FContext);
 end;
 
+procedure TClassRefCheck.Run;
+var
+  mCalls: TArray<TSyntaxNode>;
+  mNode: TSyntaxNode;
+begin
+  mCalls := CollectCalls;
+  if mCalls = nil then
+  begin
+    Exit;
+  end;
+  Prepare;
+  FResolver.PinTree(FContext.Tree, FFileName);
+  try
+    FLocal := FResolver.ExtractedUnit(FContext.Tree, FFileName);
+    for mNode in mCalls do
+    begin
+      CheckCall(mNode);
+    end;
+  finally
+    FResolver.UnpinTree;
+  end;
+end;
+
 function TClassRefCheck.DecidesLine(ALine: Integer): Boolean;
 var
   mNode: TSyntaxNode;
@@ -527,29 +550,6 @@ begin
       begin
         Exit(False);
       end;
-    end;
-  finally
-    FResolver.UnpinTree;
-  end;
-end;
-
-procedure TClassRefCheck.Run;
-var
-  mCalls: TArray<TSyntaxNode>;
-  mNode: TSyntaxNode;
-begin
-  mCalls := CollectCalls;
-  if mCalls = nil then
-  begin
-    Exit;
-  end;
-  Prepare;
-  FResolver.PinTree(FContext.Tree, FFileName);
-  try
-    FLocal := FResolver.ExtractedUnit(FContext.Tree, FFileName);
-    for mNode in mCalls do
-    begin
-      CheckCall(mNode);
     end;
   finally
     FResolver.UnpinTree;

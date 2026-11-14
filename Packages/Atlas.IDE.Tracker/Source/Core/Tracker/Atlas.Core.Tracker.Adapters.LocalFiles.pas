@@ -57,6 +57,8 @@ type
     destructor Destroy; override;
   end;
 
+{ TAtlasTrackerFileLock }
+
 constructor TAtlasTrackerFileLock.Create(AStream: TStream);
 begin
   inherited Create;

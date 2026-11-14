@@ -89,15 +89,6 @@ end;
 
 { TAtlasUnitRename }
 
-class function TAtlasUnitRename.UnitNameOf(const AFileName: string): string;
-begin
-  Result := '';
-  if SameText(ExtractFileExt(AFileName), '.pas') then
-  begin
-    Result := ChangeFileExt(ExtractFileName(AFileName), '');
-  end;
-end;
-
 class function TAtlasUnitRename.IsUnitRename(const AOldFile, ANewFile: string): Boolean;
 var
   mOldName, mNewName: string;
@@ -105,6 +96,15 @@ begin
   mOldName := UnitNameOf(AOldFile);
   mNewName := UnitNameOf(ANewFile);
   Result := (mOldName <> '') and (mNewName <> '') and not SameText(mOldName, mNewName);
+end;
+
+class function TAtlasUnitRename.UnitNameOf(const AFileName: string): string;
+begin
+  Result := '';
+  if SameText(ExtractFileExt(AFileName), '.pas') then
+  begin
+    Result := ChangeFileExt(ExtractFileName(AFileName), '');
+  end;
 end;
 
 class function TAtlasUnitRename.SourceFiles(const AFiles: TArray<string>): TArray<string>;

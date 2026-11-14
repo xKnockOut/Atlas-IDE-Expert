@@ -126,58 +126,14 @@ begin
   end;
 end;
 
+{ TResolverLocals }
+
 constructor TResolverLocals.Create(APlace: TResolverPlace; AUnits: TResolverUnits; ALookup: TResolverLookup);
 begin
   inherited Create;
   FPlace := APlace;
   FUnits := AUnits;
   FLookup := ALookup;
-end;
-
-function TResolverLocals.FromNode(ANode: TSyntaxNode; const AName: string; AKind: TIndexSymbolKind;
-  AIsParameter: Boolean): TResolvedSymbol;
-var
-  mIndex: Integer;
-  mTree: TSyntaxTree;
-begin
-  mTree := FPlace.Tree;
-  Result := TResolvedSymbol.Empty;
-  Result.Kind := TResolvedKind.Local;
-  Result.Name := AName;
-  Result.UnitName := FPlace.Current.UnitName;
-  Result.FileName := FPlace.Current.FileName;
-  Result.Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);
-  Result.SelectionRange := Result.Range;
-  // Auswahl auf den Namen selbst legen; ab dem ersten Token des Knotens, nicht ab Dateianfang: Das
-  // kostete je lokalem Namen einen Lauf über alle Tokens davor (Diagnoselog 15.10.2026, große Units).
-  for mIndex := mTree.FirstTokenFrom(ANode.StartOffset) to High(mTree.Tokens) do
-  begin
-    if mTree.Tokens[mIndex].Offset >= ANode.EndOffset then
-    begin
-      Break;
-    end;
-    if (mTree.Tokens[mIndex].Kind = TPascalTokenKind.Identifier) and
-      (SameText(mTree.Tokens[mIndex].Text, AName) or SameText(mTree.Tokens[mIndex].Text, '&' + AName)) then
-    begin
-      Result.SelectionRange := TTextRange.Create(mTree.Tokens[mIndex].StartPos, mTree.Tokens[mIndex].EndPos);
-      Break;
-    end;
-  end;
-  Result.SymbolKind := AKind;
-  Result.TypeName := TIndexExtractor.DeclaredType(ANode);
-  if Result.TypeName <> '' then
-  begin
-    Result.TypeArgs := TIndexExtractor.GenericArgsText(TIndexExtractor.DeclaredTypeNode(ANode));
-  end
-  else
-  begin
-    Result.Initializer := InitializerOf(ANode);
-  end;
-  Result.IsParameter := AIsParameter;
-  if AKind in cRoutineKinds then
-  begin
-    TIndexExtractor.ParamInfo(ANode, Result.MinArgs, Result.MaxArgs, Result.ParamTypes);
-  end;
 end;
 
 function TResolverLocals.NamedLocal(ANode: TSyntaxNode; const AName: string; AKind: TIndexSymbolKind;
@@ -232,39 +188,6 @@ begin
   end;
 end;
 
-function TResolverLocals.LookupInDeclarations(ANode: TSyntaxNode; const AName: string;
-  out AResult: TResolvedSymbol): Boolean;
-var
-  mIndex: Integer;
-  mFound: TResolvedSymbol;
-  mFinal: Boolean;
-begin
-  // Doppelt deklarierte Variablen und Konstanten (E2004): Wie dcc gilt die letzte Deklaration (#1369, Fall
-  // Cm.E2004: "mZahl: Integer; mZahl: string" macht "mZahl := 1" zu E2010 'string' und 'Integer').
-  Result := False;
-  for mIndex := 0 to ANode.ChildCount - 1 do
-  begin
-    if LookupInChild(ANode[mIndex], AName, Result, mFound, mFinal) then
-    begin
-      AResult := mFound;
-      Result := True;
-      if mFinal then
-      begin
-        Exit;
-      end;
-    end;
-  end;
-end;
-
-function TResolverLocals.IsForVar(ANode: TSyntaxNode): Boolean;
-var
-  mIndex: Integer;
-begin
-  mIndex := FPlace.Tree.FirstTokenFrom(ANode.StartOffset);
-  Result := (mIndex < High(FPlace.Tree.Tokens)) and FPlace.Tree.Tokens[mIndex].IsKeyword('for') and
-    FPlace.Tree.Tokens[mIndex + 1].IsKeyword('var');
-end;
-
 function TResolverLocals.InlineDeclaration(ANode: TSyntaxNode; const AName: string;
   out AResult: TResolvedSymbol): Boolean;
 begin
@@ -281,31 +204,23 @@ begin
   end;
 end;
 
-function TResolverLocals.LookupInlineVars(ANode: TSyntaxNode; const AName: string;
+function TResolverLocals.IsForVar(ANode: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+begin
+  mIndex := FPlace.Tree.FirstTokenFrom(ANode.StartOffset);
+  Result := (mIndex < High(FPlace.Tree.Tokens)) and FPlace.Tree.Tokens[mIndex].IsKeyword('for') and
+    FPlace.Tree.Tokens[mIndex + 1].IsKeyword('var');
+end;
+
+function TResolverLocals.LookupInHeader(ARoutine: TSyntaxNode; const AName: string;
   out AResult: TResolvedSymbol): Boolean;
 var
-  mPending: TStack<TSyntaxNode>;
-  mChild: TSyntaxNode;
+  mHeader: TSyntaxNode;
 begin
-  // Inline-Variablen gelten ab ihrer Deklaration; verschachtelte Routinen nicht durchsuchen. Iterativ mit eigenem
-  // Stapel: Der Weg zum Cursor kann durch lange Ausdrucksketten führen.
-  Result := False;
-  mPending := TStack<TSyntaxNode>.Create;
-  try
-    TResolverNodes.PushChildrenBefore(mPending, ANode, FPlace.Offset);
-    while not Result and (mPending.Count > 0) do
-    begin
-      mChild := mPending.Pop;
-      Result := InlineDeclaration(mChild, AName, AResult);
-      if not Result and not (mChild.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst,
-        TSyntaxKind.RoutineDecl]) and TResolverNodes.Contains(mChild, FPlace.Offset) then
-      begin
-        TResolverNodes.PushChildrenBefore(mPending, mChild, FPlace.Offset);
-      end;
-    end;
-  finally
-    mPending.Free;
-  end;
+  mHeader := TResolverNodes.RoutineHeaderOf(ARoutine);
+  Result := (mHeader <> nil) and (LookupParameter(mHeader, AName, AResult) or
+    LookupTypeParameter(mHeader, AName, AResult) or LookupResult(ARoutine, mHeader, AName, AResult));
 end;
 
 function TResolverLocals.LookupParameter(AHeader: TSyntaxNode; const AName: string;
@@ -356,17 +271,6 @@ begin
   Result := False;
 end;
 
-function TResolverLocals.InterfaceRoutine(ARoutine: TSyntaxNode; out ADeclared: TResolvedSymbol): Boolean;
-begin
-  Result := (ARoutine.Parent <> nil) and (ARoutine.Parent.Kind = TSyntaxKind.ImplementationSection) and
-    (Pos('.', ARoutine.Name) = 0) and FLookup.LookupInUnit(FPlace.Current, ARoutine.Name, True, False, ADeclared);
-  if Result then
-  begin
-    Result := (ADeclared.SymbolKind = TIndexSymbolKind.Routine) and (ADeclared.TypeName <> '') and
-      not ContainsText(ADeclared.Signature, 'overload') and SameParamTypes(ADeclared, ARoutine);
-  end;
-end;
-
 function TResolverLocals.LookupResult(ARoutine, AHeader: TSyntaxNode; const AName: string;
   out AResult: TResolvedSymbol): Boolean;
 var
@@ -388,14 +292,61 @@ begin
   end;
 end;
 
-function TResolverLocals.LookupInHeader(ARoutine: TSyntaxNode; const AName: string;
-  out AResult: TResolvedSymbol): Boolean;
-var
-  mHeader: TSyntaxNode;
+function TResolverLocals.InterfaceRoutine(ARoutine: TSyntaxNode; out ADeclared: TResolvedSymbol): Boolean;
 begin
-  mHeader := TResolverNodes.RoutineHeaderOf(ARoutine);
-  Result := (mHeader <> nil) and (LookupParameter(mHeader, AName, AResult) or
-    LookupTypeParameter(mHeader, AName, AResult) or LookupResult(ARoutine, mHeader, AName, AResult));
+  Result := (ARoutine.Parent <> nil) and (ARoutine.Parent.Kind = TSyntaxKind.ImplementationSection) and
+    (Pos('.', ARoutine.Name) = 0) and FLookup.LookupInUnit(FPlace.Current, ARoutine.Name, True, False, ADeclared);
+  if Result then
+  begin
+    Result := (ADeclared.SymbolKind = TIndexSymbolKind.Routine) and (ADeclared.TypeName <> '') and
+      not ContainsText(ADeclared.Signature, 'overload') and SameParamTypes(ADeclared, ARoutine);
+  end;
+end;
+
+function TResolverLocals.FromNode(ANode: TSyntaxNode; const AName: string; AKind: TIndexSymbolKind;
+  AIsParameter: Boolean): TResolvedSymbol;
+var
+  mIndex: Integer;
+  mTree: TSyntaxTree;
+begin
+  mTree := FPlace.Tree;
+  Result := TResolvedSymbol.Empty;
+  Result.Kind := TResolvedKind.Local;
+  Result.Name := AName;
+  Result.UnitName := FPlace.Current.UnitName;
+  Result.FileName := FPlace.Current.FileName;
+  Result.Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);
+  Result.SelectionRange := Result.Range;
+  // Auswahl auf den Namen selbst legen; ab dem ersten Token des Knotens, nicht ab Dateianfang: Das
+  // kostete je lokalem Namen einen Lauf über alle Tokens davor (Diagnoselog 15.10.2026, große Units).
+  for mIndex := mTree.FirstTokenFrom(ANode.StartOffset) to High(mTree.Tokens) do
+  begin
+    if mTree.Tokens[mIndex].Offset >= ANode.EndOffset then
+    begin
+      Break;
+    end;
+    if (mTree.Tokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+      (SameText(mTree.Tokens[mIndex].Text, AName) or SameText(mTree.Tokens[mIndex].Text, '&' + AName)) then
+    begin
+      Result.SelectionRange := TTextRange.Create(mTree.Tokens[mIndex].StartPos, mTree.Tokens[mIndex].EndPos);
+      Break;
+    end;
+  end;
+  Result.SymbolKind := AKind;
+  Result.TypeName := TIndexExtractor.DeclaredType(ANode);
+  if Result.TypeName <> '' then
+  begin
+    Result.TypeArgs := TIndexExtractor.GenericArgsText(TIndexExtractor.DeclaredTypeNode(ANode));
+  end
+  else
+  begin
+    Result.Initializer := InitializerOf(ANode);
+  end;
+  Result.IsParameter := AIsParameter;
+  if AKind in cRoutineKinds then
+  begin
+    TIndexExtractor.ParamInfo(ANode, Result.MinArgs, Result.MaxArgs, Result.ParamTypes);
+  end;
 end;
 
 function TResolverLocals.LookupLocal(const AName: string; out AResult: TResolvedSymbol): Boolean;
@@ -411,6 +362,57 @@ begin
     end;
   end;
   Result := False;
+end;
+
+function TResolverLocals.LookupInDeclarations(ANode: TSyntaxNode; const AName: string;
+  out AResult: TResolvedSymbol): Boolean;
+var
+  mIndex: Integer;
+  mFound: TResolvedSymbol;
+  mFinal: Boolean;
+begin
+  // Doppelt deklarierte Variablen und Konstanten (E2004): Wie dcc gilt die letzte Deklaration (#1369, Fall
+  // Cm.E2004: "mZahl: Integer; mZahl: string" macht "mZahl := 1" zu E2010 'string' und 'Integer').
+  Result := False;
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    if LookupInChild(ANode[mIndex], AName, Result, mFound, mFinal) then
+    begin
+      AResult := mFound;
+      Result := True;
+      if mFinal then
+      begin
+        Exit;
+      end;
+    end;
+  end;
+end;
+
+function TResolverLocals.LookupInlineVars(ANode: TSyntaxNode; const AName: string;
+  out AResult: TResolvedSymbol): Boolean;
+var
+  mPending: TStack<TSyntaxNode>;
+  mChild: TSyntaxNode;
+begin
+  // Inline-Variablen gelten ab ihrer Deklaration; verschachtelte Routinen nicht durchsuchen. Iterativ mit eigenem
+  // Stapel: Der Weg zum Cursor kann durch lange Ausdrucksketten führen.
+  Result := False;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    TResolverNodes.PushChildrenBefore(mPending, ANode, FPlace.Offset);
+    while not Result and (mPending.Count > 0) do
+    begin
+      mChild := mPending.Pop;
+      Result := InlineDeclaration(mChild, AName, AResult);
+      if not Result and not (mChild.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst,
+        TSyntaxKind.RoutineDecl]) and TResolverNodes.Contains(mChild, FPlace.Offset) then
+      begin
+        TResolverNodes.PushChildrenBefore(mPending, mChild, FPlace.Offset);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
 end;
 
 /// <summary>Kann ANode die Zeile ALine enthalten? Unbekanntes Ende (0:0) zählt als ja.</summary>

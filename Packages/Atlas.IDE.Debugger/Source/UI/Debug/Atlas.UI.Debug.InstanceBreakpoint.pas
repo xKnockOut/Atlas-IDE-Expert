@@ -84,6 +84,13 @@ begin
   ActiveControl := FList;
 end;
 
+procedure TAtlasInstanceBreakpointDialog.DoShow;
+begin
+  inherited;
+  // Die Liste braucht ein Fenster: erst hier füllen.
+  Fill;
+end;
+
 procedure TAtlasInstanceBreakpointDialog.CreateList;
 begin
   FList := TListBox.Create(Self);
@@ -125,6 +132,25 @@ begin
   end;
 end;
 
+procedure TAtlasInstanceBreakpointDialog.ButtonClick(Sender: TObject);
+begin
+  Press((Sender as TButton).Tag);
+end;
+
+procedure TAtlasInstanceBreakpointDialog.ListDblClick(Sender: TObject);
+begin
+  Press(0);
+end;
+
+procedure TAtlasInstanceBreakpointDialog.ListKeyPress(Sender: TObject; var Key: Char);
+begin
+  if Key = #13 then
+  begin
+    Key := #0;
+    Press(0);
+  end;
+end;
+
 procedure TAtlasInstanceBreakpointDialog.Fill;
 var
   mItem: string;
@@ -148,13 +174,6 @@ begin
   end;
 end;
 
-procedure TAtlasInstanceBreakpointDialog.DoShow;
-begin
-  inherited;
-  // Die Liste braucht ein Fenster: erst hier füllen.
-  Fill;
-end;
-
 procedure TAtlasInstanceBreakpointDialog.Press(AIndex: Integer);
 begin
   if (AIndex < 0) or (AIndex > High(FButtons)) then
@@ -163,25 +182,6 @@ begin
   end;
   FPressed := AIndex;
   ModalResult := mrOk;
-end;
-
-procedure TAtlasInstanceBreakpointDialog.ButtonClick(Sender: TObject);
-begin
-  Press((Sender as TButton).Tag);
-end;
-
-procedure TAtlasInstanceBreakpointDialog.ListDblClick(Sender: TObject);
-begin
-  Press(0);
-end;
-
-procedure TAtlasInstanceBreakpointDialog.ListKeyPress(Sender: TObject; var Key: Char);
-begin
-  if Key = #13 then
-  begin
-    Key := #0;
-    Press(0);
-  end;
 end;
 
 class function TAtlasInstanceBreakpointDialog.Ask(const ATitle, ASummary: string; const AItems,

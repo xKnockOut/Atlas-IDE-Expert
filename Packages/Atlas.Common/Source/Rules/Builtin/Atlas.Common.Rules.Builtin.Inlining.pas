@@ -183,6 +183,8 @@ begin
   Result := AQualified.Substring(mDot + 1);
 end;
 
+{ TInlineCheck }
+
 constructor TInlineCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   inherited Create;
@@ -224,11 +226,6 @@ destructor TInlineCycles.Destroy;
 begin
   FCycles.Free;
   inherited;
-end;
-
-function TInlineCycles.IsOwnUnit(const AName: string): Boolean;
-begin
-  Result := TInlineCallees.SameUnit(AName, FOwnName, FNamespaces);
 end;
 
 function TInlineCycles.FindIndexedUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
@@ -309,6 +306,11 @@ begin
     mVias.Free;
     mNames.Free;
   end;
+end;
+
+function TInlineCycles.IsOwnUnit(const AName: string): Boolean;
+begin
+  Result := TInlineCallees.SameUnit(AName, FOwnName, FNamespaces);
 end;
 
 function TInlineCycles.CycleOf(const AUnit: TUnitIndex): string;

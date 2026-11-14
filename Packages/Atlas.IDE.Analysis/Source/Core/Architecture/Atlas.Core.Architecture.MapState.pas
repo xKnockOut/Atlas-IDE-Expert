@@ -337,6 +337,37 @@ begin
   end;
 end;
 
+procedure TAtlasArchitectureMapState.SetFilter(const AValue: string);
+begin
+  if FFilter = AValue then
+  begin
+    Exit;
+  end;
+  FFilter := AValue;
+  Changed(Self);
+end;
+
+function TAtlasArchitectureMapState.GetSubsystemVisible(ASubsystem: Integer): Boolean;
+begin
+  Result := not ((ASubsystem >= 0) and (ASubsystem < Length(FHidden)) and FHidden[ASubsystem]);
+end;
+
+procedure TAtlasArchitectureMapState.SetSubsystemVisible(ASubsystem: Integer; AValue: Boolean);
+begin
+  if (ASubsystem < 0) or (ASubsystem >= Length(FHidden)) or (FHidden[ASubsystem] = not AValue) then
+  begin
+    Exit;
+  end;
+  FHidden[ASubsystem] := not AValue;
+  if FModel.IsHidden(FSelected, FHidden) then
+  begin
+    FSelected := -1;
+  end;
+  // Wie die HTML-Karte: Ein bestehender Weg wird ohne das Teilsystem neu gesucht.
+  RecomputePath(Self);
+  Changed(Self);
+end;
+
 procedure TAtlasArchitectureMapState.SetModel(const AModel: TAtlasArchitectureModel);
 var
   mSelectedName: string;
@@ -416,47 +447,6 @@ begin
   Changed(Self);
 end;
 
-procedure TAtlasArchitectureMapState.SetFilter(const AValue: string);
-begin
-  if FFilter = AValue then
-  begin
-    Exit;
-  end;
-  FFilter := AValue;
-  Changed(Self);
-end;
-
-function TAtlasArchitectureMapState.GetSubsystemVisible(ASubsystem: Integer): Boolean;
-begin
-  Result := not ((ASubsystem >= 0) and (ASubsystem < Length(FHidden)) and FHidden[ASubsystem]);
-end;
-
-procedure TAtlasArchitectureMapState.SetSubsystemVisible(ASubsystem: Integer; AValue: Boolean);
-begin
-  if (ASubsystem < 0) or (ASubsystem >= Length(FHidden)) or (FHidden[ASubsystem] = not AValue) then
-  begin
-    Exit;
-  end;
-  FHidden[ASubsystem] := not AValue;
-  if FModel.IsHidden(FSelected, FHidden) then
-  begin
-    FSelected := -1;
-  end;
-  // Wie die HTML-Karte: Ein bestehender Weg wird ohne das Teilsystem neu gesucht.
-  RecomputePath(Self);
-  Changed(Self);
-end;
-
-procedure TAtlasArchitectureMapState.ShowAllSubsystems;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(FHidden) do
-  begin
-    SetSubsystemVisible(mIndex, True);
-  end;
-end;
-
 function TAtlasArchitectureMapState.ShowPath(AFrom, ATo: Integer): Boolean;
 begin
   if not ValidUnit(FModel, AFrom) or not ValidUnit(FModel, ATo) then
@@ -467,6 +457,17 @@ begin
   FPath.SetEnds(AFrom, ATo);
   FPath.Compute(FModel, Has(TAtlasArchMapFlag.ShowImplementation), FHidden);
   Result := FPath.Found;
+  Changed(Self);
+  PathChanged(Self);
+end;
+
+procedure TAtlasArchitectureMapState.ClearPath;
+begin
+  if FPath.From < 0 then
+  begin
+    Exit;
+  end;
+  FPath.Clear;
   Changed(Self);
   PathChanged(Self);
 end;
@@ -494,15 +495,14 @@ begin
   PathChanged(Self);
 end;
 
-procedure TAtlasArchitectureMapState.ClearPath;
+procedure TAtlasArchitectureMapState.ShowAllSubsystems;
+var
+  mIndex: Integer;
 begin
-  if FPath.From < 0 then
+  for mIndex := 0 to High(FHidden) do
   begin
-    Exit;
+    SetSubsystemVisible(mIndex, True);
   end;
-  FPath.Clear;
-  Changed(Self);
-  PathChanged(Self);
 end;
 
 function TAtlasArchitectureMapState.HasChanges: Boolean;

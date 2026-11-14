@@ -64,11 +64,48 @@ const
   cCDataOpen = '<![CDATA[';
   cCDataClose = ']]>';
 
+{ TXmlCursor }
+
 procedure TXmlCursor.Init(const AText: string);
 begin
   Source := AText;
   Position := 1;
   Kind := TXmlNodeKind.Done;
+end;
+
+function TXmlCursor.Next: Boolean;
+begin
+  Name := '';
+  Value := '';
+  SelfClosing := False;
+  AttributeNames := nil;
+  AttributeValues := nil;
+  Result := True;
+  while Position <= Length(Source) do
+  begin
+    if Source[Position] <> '<' then
+    begin
+      Kind := TXmlNodeKind.Text;
+      Value := TTextEntities.Decode(TakeUntil(['<']));
+      Exit;
+    end;
+    if Copy(Source, Position, Length(cCDataOpen)) = cCDataOpen then
+    begin
+      ReadCData;
+      Exit;
+    end;
+    case SkipDeclaration of
+      TXmlSkip.Skipped:
+        Continue;
+      TXmlSkip.Unclosed:
+        Break;
+      TXmlSkip.None: ;
+    end;
+    ReadTag;
+    Exit;
+  end;
+  Kind := TXmlNodeKind.Done;
+  Result := False;
 end;
 
 function TXmlCursor.Attribute(const AName: string): string;
@@ -204,41 +241,6 @@ begin
       ReadAttribute;
     end;
   end;
-end;
-
-function TXmlCursor.Next: Boolean;
-begin
-  Name := '';
-  Value := '';
-  SelfClosing := False;
-  AttributeNames := nil;
-  AttributeValues := nil;
-  Result := True;
-  while Position <= Length(Source) do
-  begin
-    if Source[Position] <> '<' then
-    begin
-      Kind := TXmlNodeKind.Text;
-      Value := TTextEntities.Decode(TakeUntil(['<']));
-      Exit;
-    end;
-    if Copy(Source, Position, Length(cCDataOpen)) = cCDataOpen then
-    begin
-      ReadCData;
-      Exit;
-    end;
-    case SkipDeclaration of
-      TXmlSkip.Skipped:
-        Continue;
-      TXmlSkip.Unclosed:
-        Break;
-      TXmlSkip.None: ;
-    end;
-    ReadTag;
-    Exit;
-  end;
-  Kind := TXmlNodeKind.Done;
-  Result := False;
 end;
 
 end.

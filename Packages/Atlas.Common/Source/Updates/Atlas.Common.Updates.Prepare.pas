@@ -165,11 +165,6 @@ begin
   FStage := Default(TUpdateStage);
 end;
 
-procedure TUpdatePreparation.WriteStage;
-begin
-  FSystem.Files.WriteText(TUpdateLayout.Join(FArgs.Staging, TUpdateLayout.cStateFile), FStage.ToJson);
-end;
-
 procedure TUpdatePreparation.SetPhase(APhase: TUpdatePhase; AProgress: Integer);
 begin
   if (FStage.Phase = APhase) and (FStage.Progress = AProgress) then
@@ -179,6 +174,11 @@ begin
   FStage.Phase := APhase;
   FStage.Progress := AProgress;
   WriteStage;
+end;
+
+procedure TUpdatePreparation.WriteStage;
+begin
+  FSystem.Files.WriteText(TUpdateLayout.Join(FArgs.Staging, TUpdateLayout.cStateFile), FStage.ToJson);
 end;
 
 function TUpdatePreparation.LoadManifest: TUpdateManifest;

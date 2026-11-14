@@ -67,6 +67,8 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause;
 
+{ TLspIndexRefresh }
+
 constructor TLspIndexRefresh.Create(ADelayMs: Cardinal; const AApply: TIndexTextApply);
 begin
   inherited Create;
@@ -80,12 +82,14 @@ begin
   inherited;
 end;
 
-class function TLspIndexRefresh.Applies(const AFileName: string): Boolean;
-var
-  mExtension: string;
+function TLspIndexRefresh.GetOnError: TProc<Exception>;
 begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExtension = '.pas') or (mExtension = '.dpr');
+  Result := FDebouncer.OnError;
+end;
+
+procedure TLspIndexRefresh.SetOnError(const AValue: TProc<Exception>);
+begin
+  FDebouncer.OnError := AValue;
 end;
 
 procedure TLspIndexRefresh.Changed(const AFileName, AText: string);
@@ -109,14 +113,12 @@ begin
   FDebouncer.Cancel(AnsiUpperCase(AFileName));
 end;
 
-function TLspIndexRefresh.GetOnError: TProc<Exception>;
+class function TLspIndexRefresh.Applies(const AFileName: string): Boolean;
+var
+  mExtension: string;
 begin
-  Result := FDebouncer.OnError;
-end;
-
-procedure TLspIndexRefresh.SetOnError(const AValue: TProc<Exception>);
-begin
-  FDebouncer.OnError := AValue;
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExtension = '.pas') or (mExtension = '.dpr');
 end;
 
 { TLspUsesChanges }
@@ -133,29 +135,6 @@ begin
   FSignatures.Free;
   FLock.Free;
   inherited;
-end;
-
-class function TLspUsesChanges.Signature(const AText: string): string;
-var
-  mReference: TUsesReference;
-begin
-  Result := '';
-  for mReference in TUsesClauses.References(TPascalLexer.Tokenize(AText)) do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + '|';
-    end;
-    if mReference.InInterface then
-    begin
-      Result := Result + 'I:';
-    end
-    else
-    begin
-      Result := Result + 'M:';
-    end;
-    Result := Result + UpperCase(mReference.Name);
-  end;
 end;
 
 function TLspUsesChanges.Changed(const AFileName, AText: string): Boolean;
@@ -179,6 +158,29 @@ begin
     FSignatures.Remove(UpperCase(AFileName));
   finally
     System.TMonitor.Exit(FLock);
+  end;
+end;
+
+class function TLspUsesChanges.Signature(const AText: string): string;
+var
+  mReference: TUsesReference;
+begin
+  Result := '';
+  for mReference in TUsesClauses.References(TPascalLexer.Tokenize(AText)) do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + '|';
+    end;
+    if mReference.InInterface then
+    begin
+      Result := Result + 'I:';
+    end
+    else
+    begin
+      Result := Result + 'M:';
+    end;
+    Result := Result + UpperCase(mReference.Name);
   end;
 end;
 

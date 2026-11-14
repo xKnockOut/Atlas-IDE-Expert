@@ -140,6 +140,8 @@ begin
   end;
 end;
 
+{ TMissingUnitSearch }
+
 class function TMissingUnitSearch.KnownPlatforms: TArray<string>;
 begin
   Result := TArray<string>.Create('Win32', 'Win64', 'Linux64', 'OSX64', 'OSXARM64', 'Android', 'Android64',
@@ -190,6 +192,8 @@ type
     constructor Create(const ASetup: TMissingUnitSetup);
     procedure Run;
   end;
+
+{ TSearch }
 
 constructor TSearch.Create(const ASetup: TMissingUnitSetup);
 begin

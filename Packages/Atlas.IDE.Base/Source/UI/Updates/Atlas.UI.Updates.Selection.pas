@@ -87,6 +87,20 @@ begin
   ClientHeight := FCancel.Top + FCancel.Height + ScaleValue(cGap);
 end;
 
+procedure TAtlasUpdateSelectionDialog.ListClickCheck(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  // Pflicht-Packages bleiben gewählt, auch über die Leertaste.
+  for mIndex := 0 to FList.Items.Count - 1 do
+  begin
+    if FCandidates[mIndex].Required then
+    begin
+      FList.Checked[mIndex] := True;
+    end;
+  end;
+end;
+
 procedure TAtlasUpdateSelectionDialog.Fill;
 var
   mCandidate: TUpdateCandidate;
@@ -115,20 +129,6 @@ begin
     end;
   finally
     FList.Items.EndUpdate;
-  end;
-end;
-
-procedure TAtlasUpdateSelectionDialog.ListClickCheck(Sender: TObject);
-var
-  mIndex: Integer;
-begin
-  // Pflicht-Packages bleiben gewählt, auch über die Leertaste.
-  for mIndex := 0 to FList.Items.Count - 1 do
-  begin
-    if FCandidates[mIndex].Required then
-    begin
-      FList.Checked[mIndex] := True;
-    end;
   end;
 end;
 

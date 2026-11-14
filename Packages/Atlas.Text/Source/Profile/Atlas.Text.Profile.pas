@@ -228,6 +228,8 @@ begin
   ARoot.AddPair('samples', TJSONNumber.Create(AProfile.Samples));
 end;
 
+{ TAtlasProfileJson }
+
 class function TAtlasProfileJson.ToText(const AProfile: TAtlasProfile): string;
 var
   mRoot: TJSONObject;

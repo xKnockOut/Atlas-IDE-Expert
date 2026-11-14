@@ -126,16 +126,16 @@ end;
 
 { TWorkspaceFolder }
 
-constructor TWorkspaceFolder.Create(const APath, AName: string);
-begin
-  Self := TWorkspaceFolder.Create(APath, AName, '');
-end;
-
 constructor TWorkspaceFolder.Create(const APath, AName, AProjectFile: string);
 begin
   Path := APath;
   Name := AName;
   ProjectFile := AProjectFile;
+end;
+
+constructor TWorkspaceFolder.Create(const APath, AName: string);
+begin
+  Self := TWorkspaceFolder.Create(APath, AName, '');
 end;
 
 function TWorkspaceFolder.Key: string;
@@ -151,6 +151,17 @@ begin
 end;
 
 { TLspWorkspaceFolders }
+
+procedure TLspWorkspaceFolders.HandleDidChange(const AParams: TJSONValue);
+var
+  mAdded, mRemoved: TArray<TWorkspaceFolder>;
+begin
+  ParseChange(AParams, mAdded, mRemoved);
+  if ((Length(mAdded) > 0) or (Length(mRemoved) > 0)) and Assigned(FOnChanged) then
+  begin
+    FOnChanged(mAdded, mRemoved);
+  end;
+end;
 
 procedure TLspWorkspaceFolders.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
@@ -282,17 +293,6 @@ begin
   mFolders.AddPair('changeNotifications', TJSONBool.Create(True));
   Result := TJSONObject.Create;
   Result.AddPair('workspaceFolders', mFolders);
-end;
-
-procedure TLspWorkspaceFolders.HandleDidChange(const AParams: TJSONValue);
-var
-  mAdded, mRemoved: TArray<TWorkspaceFolder>;
-begin
-  ParseChange(AParams, mAdded, mRemoved);
-  if ((Length(mAdded) > 0) or (Length(mRemoved) > 0)) and Assigned(FOnChanged) then
-  begin
-    FOnChanged(mAdded, mRemoved);
-  end;
 end;
 
 end.

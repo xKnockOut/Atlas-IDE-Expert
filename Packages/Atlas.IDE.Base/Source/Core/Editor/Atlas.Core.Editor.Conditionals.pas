@@ -242,11 +242,6 @@ begin
   Result := (Peek.Kind = etSymbol) and (Peek.Text = ASymbol);
 end;
 
-function TExprParser.Run: Boolean;
-begin
-  Result := ParseOr <> 0;
-end;
-
 function TExprParser.ParseOr: Double;
 var
   mRight: Double;
@@ -394,6 +389,11 @@ begin
   end;
 end;
 
+function TExprParser.Run: Boolean;
+begin
+  Result := ParseOr <> 0;
+end;
+
 { TAtlasConditionals }
 
 constructor TAtlasConditionals.Create(const ADefines: TArray<string>; ACompilerVersion: Double);
@@ -418,16 +418,6 @@ begin
   FFrames.Free;
   FDefines.Free;
   inherited;
-end;
-
-function TAtlasConditionals.Defined(const ASymbol: string): Boolean;
-begin
-  Result := FDefines.ContainsKey(UpperCase(Trim(ASymbol)));
-end;
-
-function TAtlasConditionals.Active: Boolean;
-begin
-  Result := (FFrames.Count = 0) or FFrames.Last.Active;
 end;
 
 function TAtlasConditionals.Evaluate(const AExpression: string): Boolean;
@@ -547,6 +537,16 @@ begin
   begin
     Result := False;
   end;
+end;
+
+function TAtlasConditionals.Active: Boolean;
+begin
+  Result := (FFrames.Count = 0) or FFrames.Last.Active;
+end;
+
+function TAtlasConditionals.Defined(const ASymbol: string): Boolean;
+begin
+  Result := FDefines.ContainsKey(UpperCase(Trim(ASymbol)));
 end;
 
 end.

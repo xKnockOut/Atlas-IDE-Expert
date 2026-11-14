@@ -38,38 +38,7 @@ uses
   Atlas.Common.Lsp.WorkspaceCheck,
   Shell.Composition.CommandArea;
 
-class procedure TShellCommandWiring.Commands(AParts: TShellParts);
-var
-  mServices: TShellCommandAreaServices;
-begin
-  mServices := Default(TShellCommandAreaServices);
-  mServices.Logger := AParts.Channel.Logger;
-  mServices.Dispatcher := AParts.Protocol.Dispatcher;
-  Status(AParts, mServices.Status);
-  Server(AParts, mServices.Server);
-  mServices.Editor.Documents := AParts.Documents;
-  mServices.Editor.Index := AParts.Index;
-  mServices.Editor.ResourceStringWrite := AParts.EditingArea.Slash.ResourceStringWrite;
-  mServices.UnitSearch.Index := AParts.Index;
-  mServices.UnitSearch.UsesContextFor :=
-    function(const AUri: string; out AContext: TUsesContext): Boolean
-    begin
-      Result := AParts.UsesContextFor(AUri, AContext);
-    end;
-  mServices.UnitSearch.Process :=
-    function: ICompilerProcess
-    begin
-      Result := AParts.CompilerProcess;
-    end;
-  mServices.RuntimeReport.Results := AParts.RuntimeReports;
-  mServices.RuntimeReport.Publish :=
-    procedure(const AFiles: TArray<string>)
-    begin
-      AParts.DiagnosticsArea.Syntax.RefreshFiles(AFiles);
-    end;
-  AParts.CommandArea := TShellCommandArea.Create(AParts.Core, AParts.CodeArea, AParts.AnalysisArea,
-    AParts.EditingArea.Editing, mServices);
-end;
+{ TShellCommandWiring }
 
 class procedure TShellCommandWiring.Status(AParts: TShellParts; var AServices: TShellStatusServices);
 begin
@@ -141,6 +110,39 @@ begin
     begin
       AParts.DiagnosticsArea.Pull.Changed;
     end;
+end;
+
+class procedure TShellCommandWiring.Commands(AParts: TShellParts);
+var
+  mServices: TShellCommandAreaServices;
+begin
+  mServices := Default(TShellCommandAreaServices);
+  mServices.Logger := AParts.Channel.Logger;
+  mServices.Dispatcher := AParts.Protocol.Dispatcher;
+  Status(AParts, mServices.Status);
+  Server(AParts, mServices.Server);
+  mServices.Editor.Documents := AParts.Documents;
+  mServices.Editor.Index := AParts.Index;
+  mServices.Editor.ResourceStringWrite := AParts.EditingArea.Slash.ResourceStringWrite;
+  mServices.UnitSearch.Index := AParts.Index;
+  mServices.UnitSearch.UsesContextFor :=
+    function(const AUri: string; out AContext: TUsesContext): Boolean
+    begin
+      Result := AParts.UsesContextFor(AUri, AContext);
+    end;
+  mServices.UnitSearch.Process :=
+    function: ICompilerProcess
+    begin
+      Result := AParts.CompilerProcess;
+    end;
+  mServices.RuntimeReport.Results := AParts.RuntimeReports;
+  mServices.RuntimeReport.Publish :=
+    procedure(const AFiles: TArray<string>)
+    begin
+      AParts.DiagnosticsArea.Syntax.RefreshFiles(AFiles);
+    end;
+  AParts.CommandArea := TShellCommandArea.Create(AParts.Core, AParts.CodeArea, AParts.AnalysisArea,
+    AParts.EditingArea.Editing, mServices);
 end;
 
 end.

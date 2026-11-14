@@ -461,6 +461,8 @@ begin
     ((AStatement.ChildCount >= 2) and (AStatement[0].Kind = TSyntaxKind.Identifier));
 end;
 
+{ TTryFinallyPlan }
+
 constructor TTryFinallyPlan.Create(const AText: string; ATree: TSyntaxTree);
 begin
   inherited Create;
@@ -478,13 +480,6 @@ begin
     FStatement := CreateStatementAt(FTree, ARange.StartPos.Line);
     Result := (FStatement <> nil) and OwnsLines(FLines, FStatement) and HasSimpleTarget(FStatement);
   end;
-end;
-
-function TTryFinallyPlan.FindDeclaredType: Boolean;
-begin
-  // Feld, globale Variable oder Parameter: Wem das Objekt gehört, sieht man hier nicht.
-  Result := (FStatement.Kind = TSyntaxKind.InlineVar) or FIsResult or
-    TGuardFree.LocalVariableType(FTree, FText, FTarget, FStatement.StartPos.Line, FDeclaredType);
 end;
 
 function TTryFinallyPlan.ReadCreate: Boolean;
@@ -505,6 +500,27 @@ begin
     Result := not SameText(FTarget, 'Self') and FindDeclaredType and
       not TRegEx.IsMatch(FDeclaredType, '^I[A-Z]') and
       not TRegEx.IsMatch(FCreateArguments, '^\( ?(Self|Application|Owner|AOwner) ?[,)]', [roIgnoreCase]);
+  end;
+end;
+
+function TTryFinallyPlan.FindDeclaredType: Boolean;
+begin
+  // Feld, globale Variable oder Parameter: Wem das Objekt gehört, sieht man hier nicht.
+  Result := (FStatement.Kind = TSyntaxKind.InlineVar) or FIsResult or
+    TGuardFree.LocalVariableType(FTree, FText, FTarget, FStatement.StartPos.Line, FDeclaredType);
+end;
+
+function TTryFinallyPlan.FindBlock(const ARange: TTextRange): Boolean;
+begin
+  FParent := FStatement.Parent;
+  FFirst := IndexInParent(FStatement) + 1;
+  // Schon geschützt.
+  Result := (FFirst >= FParent.ChildCount) or (FParent[FFirst].Kind <> TSyntaxKind.TryStatement);
+  if Result then
+  begin
+    FLast := LastEnclosed(SelectionEnd(ARange));
+    Result := (FLast <> nil) and OwnsLines(FLines, FLast) and
+      (FParent[FFirst].StartPos.Line > FStatement.EndPos.Line);
   end;
 end;
 
@@ -538,18 +554,16 @@ begin
   end;
 end;
 
-function TTryFinallyPlan.FindBlock(const ARange: TTextRange): Boolean;
+function TTryFinallyPlan.CheckRelease: Boolean;
 begin
-  FParent := FStatement.Parent;
-  FFirst := IndexInParent(FStatement) + 1;
-  // Schon geschützt.
-  Result := (FFirst >= FParent.ChildCount) or (FParent[FFirst].Kind <> TSyntaxKind.TryStatement);
-  if Result then
+  FReleaseNode := nil;
+  if not FIsResult and IsRelease(SourceOf(FText, FLast), FTarget) then
   begin
-    FLast := LastEnclosed(SelectionEnd(ARange));
-    Result := (FLast <> nil) and OwnsLines(FLines, FLast) and
-      (FParent[FFirst].StartPos.Line > FStatement.EndPos.Line);
+    FReleaseNode := FLast;
   end;
+  Result := FIsResult or not EscapesOrFrees(RestSource, FTarget);
+  // Nur die Freigabe: Der try-Block bliebe leer.
+  Result := Result and (FReleaseNode <> FParent[FFirst]);
 end;
 
 function TTryFinallyPlan.RestSource: string;
@@ -564,23 +578,6 @@ begin
       Result := Result + SourceOf(FText, FParent[mIndex]) + ';' + #10;
     end;
   end;
-end;
-
-function TTryFinallyPlan.CheckRelease: Boolean;
-begin
-  FReleaseNode := nil;
-  if not FIsResult and IsRelease(SourceOf(FText, FLast), FTarget) then
-  begin
-    FReleaseNode := FLast;
-  end;
-  Result := FIsResult or not EscapesOrFrees(RestSource, FTarget);
-  // Nur die Freigabe: Der try-Block bliebe leer.
-  Result := Result and (FReleaseNode <> FParent[FFirst]);
-end;
-
-function TTryFinallyPlan.Applies(const ARange: TTextRange): Boolean;
-begin
-  Result := FindStatement(ARange) and ReadCreate and FindBlock(ARange) and CheckRelease;
 end;
 
 function TTryFinallyPlan.BodyEnd: Integer;
@@ -621,6 +618,11 @@ begin
   begin
     Result := FTarget + '.Free;';
   end;
+end;
+
+function TTryFinallyPlan.Applies(const ARange: TTextRange): Boolean;
+begin
+  Result := FindStatement(ARange) and ReadCreate and FindBlock(ARange) and CheckRelease;
 end;
 
 function TTryFinallyPlan.Action(const AStyle: TFormatStyle): TCodeAction;
@@ -667,11 +669,6 @@ begin
   end;
 end;
 
-class function TCodeActions.OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction): Boolean;
-begin
-  Result := OrganizeImports(AText, ASort, AAction, False);
-end;
-
 class function TCodeActions.OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction;
   AByNamespace: Boolean): Boolean;
 var
@@ -686,6 +683,11 @@ begin
     AAction.Kind := cOrganizeImportsKind;
     AAction.Edits := mEdits;
   end;
+end;
+
+class function TCodeActions.OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction): Boolean;
+begin
+  Result := OrganizeImports(AText, ASort, AAction, False);
 end;
 
 /// <summary>Überschneiden sich die Bereiche? Enden zählen mit, damit ein Cursor am Namen trifft.</summary>
@@ -763,6 +765,8 @@ type
     property Actions: TArray<TCodeAction> read FActions;
   end;
 
+{ TUsesActionList }
+
 constructor TUsesActionList.Create(const AText: string; const ATokens: TArray<TPascalToken>;
   const ARange: TTextRange; const AContext: TUsesContext);
 begin
@@ -777,6 +781,63 @@ end;
 procedure TUsesActionList.Add(const AAction: TCodeAction);
 begin
   FActions := FActions + [AAction];
+end;
+
+function TUsesActionList.Resolution: TUsesResolution;
+begin
+  if not FResolved then
+  begin
+    FResolution := FContext.Resolution(FText, FContext.Inactive);
+    FResolved := True;
+  end;
+  Result := FResolution;
+end;
+
+procedure TUsesActionList.AddRemoveEntry(const AEntry: TUsesEntry; const AUnused: TArray<TTextRange>);
+var
+  mEdit: TTextEdit;
+  mAction: TCodeAction;
+begin
+  if TUsesActions.RemoveEntries(FText, [AEntry.Range], mEdit) then
+  begin
+    mAction := NewAction(cTexts[TEditingCodeActionsText.Remove].Fmt([AEntry.Name]), cQuickFixKind, [mEdit],
+      cUsesRemoveTag);
+    mAction.IsPreferred := True;
+    Add(mAction);
+  end;
+  if (Length(AUnused) > 1) and TUsesActions.RemoveEntries(FText, AUnused, mEdit) then
+  begin
+    Add(NewAction(cTexts[TEditingCodeActionsText.RemoveAllUnusedUses].Fmt([Length(AUnused)]), cQuickFixKind, [mEdit],
+      cUsesRemoveAllTag));
+  end;
+end;
+
+procedure TUsesActionList.AddMoveEntry(const AEntry: TUsesEntry);
+var
+  mEdits: TArray<TTextEdit>;
+begin
+  // Allein verschiebbar: Die Aktion für alle oben hat schon denselben Titel und bekommt die Kennung.
+  if (Length(FMovable) = 1) and SameText(FMovable[0], AEntry.Name) then
+  begin
+    TagMoveAll(AEntry.Name);
+  end
+  else if TUsesActions.MoveUnits(FTokens, FText, [AEntry.Name], FLineBreak, mEdits) then
+  begin
+    Add(NewAction(MoveTitle([AEntry.Name]), cRewriteKind, mEdits, cUsesMoveTag));
+  end;
+end;
+
+procedure TUsesActionList.TagMoveAll(const AUnitName: string);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FActions) do
+  begin
+    if (FActions[mIndex].Kind = cRewriteKind) and SameText(FActions[mIndex].Title, MoveTitle([AUnitName])) then
+    begin
+      FActions[mIndex].Tag := cUsesMoveTag;
+    end;
+  end;
 end;
 
 procedure TUsesActionList.AddMissing(ATree: TSyntaxTree);
@@ -796,16 +857,6 @@ begin
       Add(NewAction(cTexts[TEditingCodeActionsText.AddToUses].Fmt([mUnitName]), cQuickFixKind, [mEdit], ''));
     end;
   end;
-end;
-
-function TUsesActionList.Resolution: TUsesResolution;
-begin
-  if not FResolved then
-  begin
-    FResolution := FContext.Resolution(FText, FContext.Inactive);
-    FResolved := True;
-  end;
-  Result := FResolution;
 end;
 
 procedure TUsesActionList.AddMoveAll;
@@ -829,53 +880,6 @@ begin
   begin
     Add(NewAction(cTexts[TEditingCodeActionsText.RemoveUnusedUses].Fmt([string.Join(', ', mUnits)]), cRemoveUnusedKind,
       mEdits, ''));
-  end;
-end;
-
-procedure TUsesActionList.AddRemoveEntry(const AEntry: TUsesEntry; const AUnused: TArray<TTextRange>);
-var
-  mEdit: TTextEdit;
-  mAction: TCodeAction;
-begin
-  if TUsesActions.RemoveEntries(FText, [AEntry.Range], mEdit) then
-  begin
-    mAction := NewAction(cTexts[TEditingCodeActionsText.Remove].Fmt([AEntry.Name]), cQuickFixKind, [mEdit],
-      cUsesRemoveTag);
-    mAction.IsPreferred := True;
-    Add(mAction);
-  end;
-  if (Length(AUnused) > 1) and TUsesActions.RemoveEntries(FText, AUnused, mEdit) then
-  begin
-    Add(NewAction(cTexts[TEditingCodeActionsText.RemoveAllUnusedUses].Fmt([Length(AUnused)]), cQuickFixKind, [mEdit],
-      cUsesRemoveAllTag));
-  end;
-end;
-
-procedure TUsesActionList.TagMoveAll(const AUnitName: string);
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(FActions) do
-  begin
-    if (FActions[mIndex].Kind = cRewriteKind) and SameText(FActions[mIndex].Title, MoveTitle([AUnitName])) then
-    begin
-      FActions[mIndex].Tag := cUsesMoveTag;
-    end;
-  end;
-end;
-
-procedure TUsesActionList.AddMoveEntry(const AEntry: TUsesEntry);
-var
-  mEdits: TArray<TTextEdit>;
-begin
-  // Allein verschiebbar: Die Aktion für alle oben hat schon denselben Titel und bekommt die Kennung.
-  if (Length(FMovable) = 1) and SameText(FMovable[0], AEntry.Name) then
-  begin
-    TagMoveAll(AEntry.Name);
-  end
-  else if TUsesActions.MoveUnits(FTokens, FText, [AEntry.Name], FLineBreak, mEdits) then
-  begin
-    Add(NewAction(MoveTitle([AEntry.Name]), cRewriteKind, mEdits, cUsesMoveTag));
   end;
 end;
 
@@ -942,6 +946,18 @@ begin
   end;
 end;
 
+class function TCodeActions.SwapAssignments(const AText: string; const ARange: TTextRange;
+  const AReadOnly: TReadOnlyCheck; out AAction: TCodeAction): Boolean;
+begin
+  AAction := Default(TCodeAction);
+  Result := TAssignmentSwap.Swap(AText, ARange, AReadOnly, AAction.Edits);
+  if Result then
+  begin
+    AAction.Title := cTexts[TEditingCodeActionsText.SwapAssignments].Text;
+    AAction.Kind := cRewriteKind;
+  end;
+end;
+
 class function TCodeActions.KindRequested(const AKind: string; const AOnly: TArray<string>): Boolean;
 var
   mOnly: string;
@@ -954,18 +970,6 @@ begin
     begin
       Result := True;
     end;
-  end;
-end;
-
-class function TCodeActions.SwapAssignments(const AText: string; const ARange: TTextRange;
-  const AReadOnly: TReadOnlyCheck; out AAction: TCodeAction): Boolean;
-begin
-  AAction := Default(TCodeAction);
-  Result := TAssignmentSwap.Swap(AText, ARange, AReadOnly, AAction.Edits);
-  if Result then
-  begin
-    AAction.Title := cTexts[TEditingCodeActionsText.SwapAssignments].Text;
-    AAction.Kind := cRewriteKind;
   end;
 end;
 

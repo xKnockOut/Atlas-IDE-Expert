@@ -202,14 +202,14 @@ end;
 
 { TAtlasUpdates }
 
-class function TAtlasUpdates.IsValidVersion(const AVersion: string): Boolean;
-begin
-  Result := TUpdateVersions.IsValidVersion(AVersion);
-end;
-
 class function TAtlasUpdates.Compare(const A, B: string): Integer;
 begin
   Result := TUpdateVersions.Compare(A, B);
+end;
+
+class function TAtlasUpdates.IsValidVersion(const AVersion: string): Boolean;
+begin
+  Result := TUpdateVersions.IsValidVersion(AVersion);
 end;
 
 class function TAtlasUpdates.TryParse(const AJson: string; out ARelease: TAtlasRelease): Boolean;
@@ -267,26 +267,6 @@ begin
     TNetEncoding.URL.Encode(AIdeVersion);
 end;
 
-class function TAtlasUpdates.ErrorText(const AError: string): string;
-var
-  mIndex: Integer;
-begin
-  // Steht in einer Zeile des Statusfelds und in der Zustandsdatei; Adressen enthält AError nicht.
-  Result := Copy(Trim(AError), 1, cMaxErrorLength);
-  for mIndex := 1 to Length(Result) do
-  begin
-    // Steuerzeichen (vor dem Leerzeichen) brächen die Zeile.
-    if Result[mIndex] < ' ' then
-    begin
-      Result[mIndex] := ' ';
-    end;
-  end;
-  if Result = '' then
-  begin
-    Result := '?';
-  end;
-end;
-
 class procedure TAtlasUpdates.Remember(var AState: TAtlasUpdateState; const AResult: TAtlasUpdateResult);
 begin
   case AResult.Outcome of
@@ -324,6 +304,26 @@ begin
   then
   begin
     ARelease.ChangesUrl := cReleasesUrl + '/tag/v' + AState.Available;
+  end;
+end;
+
+class function TAtlasUpdates.ErrorText(const AError: string): string;
+var
+  mIndex: Integer;
+begin
+  // Steht in einer Zeile des Statusfelds und in der Zustandsdatei; Adressen enthält AError nicht.
+  Result := Copy(Trim(AError), 1, cMaxErrorLength);
+  for mIndex := 1 to Length(Result) do
+  begin
+    // Steuerzeichen (vor dem Leerzeichen) brächen die Zeile.
+    if Result[mIndex] < ' ' then
+    begin
+      Result[mIndex] := ' ';
+    end;
+  end;
+  if Result = '' then
+  begin
+    Result := '?';
   end;
 end;
 
@@ -367,14 +367,14 @@ begin
   end;
 end;
 
-class function TAtlasUpdates.IdeVersion: string;
-begin
-  Result := FormatFloat('0.0', CompilerVersion, TFormatSettings.Invariant);
-end;
-
 class function TAtlasUpdates.StateFile: string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'updates.json');
+end;
+
+class function TAtlasUpdates.IdeVersion: string;
+begin
+  Result := FormatFloat('0.0', CompilerVersion, TFormatSettings.Invariant);
 end;
 
 end.

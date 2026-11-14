@@ -120,11 +120,6 @@ end;
 
 { TRoutineBody }
 
-class function TRoutineBody.IsStatement(ANode: TSyntaxNode): Boolean;
-begin
-  Result := (ANode <> nil) and (ANode.Kind in cStatementKinds);
-end;
-
 class function TRoutineBody.BodyOf(ARoutine: TSyntaxNode): TSyntaxNode;
 begin
   Result := nil;
@@ -132,6 +127,29 @@ begin
   begin
     Result := ARoutine.FindChild(TSyntaxKind.Block);
   end;
+end;
+
+class function TRoutineBody.Enclosing(ARoot: TSyntaxNode; AFirst, ALast: Integer): TSyntaxNode;
+var
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+  mDescended: Boolean;
+begin
+  Result := ARoot;
+  mNode := ARoot;
+  repeat
+    mDescended := False;
+    for mIndex := 0 to mNode.ChildCount - 1 do
+    begin
+      if (mNode[mIndex].StartOffset <= AFirst) and (ALast <= mNode[mIndex].EndOffset) then
+      begin
+        mNode := mNode[mIndex];
+        Result := mNode;
+        mDescended := True;
+        Break;
+      end;
+    end;
+  until not mDescended;
 end;
 
 /// <summary>Kind von ANode, das AOffset enthält (Ende eingeschlossen); nil ohne.</summary>
@@ -178,27 +196,9 @@ begin
   end;
 end;
 
-class function TRoutineBody.Enclosing(ARoot: TSyntaxNode; AFirst, ALast: Integer): TSyntaxNode;
-var
-  mNode: TSyntaxNode;
-  mIndex: Integer;
-  mDescended: Boolean;
+class function TRoutineBody.IsStatement(ANode: TSyntaxNode): Boolean;
 begin
-  Result := ARoot;
-  mNode := ARoot;
-  repeat
-    mDescended := False;
-    for mIndex := 0 to mNode.ChildCount - 1 do
-    begin
-      if (mNode[mIndex].StartOffset <= AFirst) and (ALast <= mNode[mIndex].EndOffset) then
-      begin
-        mNode := mNode[mIndex];
-        Result := mNode;
-        mDescended := True;
-        Break;
-      end;
-    end;
-  until not mDescended;
+  Result := (ANode <> nil) and (ANode.Kind in cStatementKinds);
 end;
 
 class function TRoutineBody.InList(AStatement: TSyntaxNode): Boolean;

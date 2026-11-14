@@ -148,6 +148,8 @@ const
     (De: 'Die Datei ist nicht geöffnet.'; En: 'The file is not open.'),
     (De: '"%s" ist abgeschaltet (%s).'; En: '"%s" is turned off (%s).'));
 
+{ TShellRefactoringPart }
+
 constructor TShellRefactoringPart.Create(const AServices: TShellRefactoringServices);
 begin
   inherited Create;

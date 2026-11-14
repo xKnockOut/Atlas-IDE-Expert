@@ -87,27 +87,6 @@ begin
   FWake.Free;
 end;
 
-procedure TAtlasIdeLaunchProbe.TerminatedSet;
-begin
-  inherited;
-  FWake.SetEvent;
-end;
-
-procedure TAtlasIdeLaunchProbe.SetPid(APid: Cardinal);
-begin
-  TInterlocked.Exchange(Integer(FPid), Integer(APid));
-end;
-
-function TAtlasIdeLaunchProbe.PortOpen: Boolean;
-begin
-  Result := TInterlocked.CompareExchange(FPortOpen, 0, 0) <> 0;
-end;
-
-function TAtlasIdeLaunchProbe.WindowFound: Boolean;
-begin
-  Result := TInterlocked.CompareExchange(FWindowFound, 0, 0) <> 0;
-end;
-
 procedure TAtlasIdeLaunchProbe.Execute;
 var
   mPid: Cardinal;
@@ -130,7 +109,66 @@ begin
   end;
 end;
 
+procedure TAtlasIdeLaunchProbe.TerminatedSet;
+begin
+  inherited;
+  FWake.SetEvent;
+end;
+
+function TAtlasIdeLaunchProbe.PortOpen: Boolean;
+begin
+  Result := TInterlocked.CompareExchange(FPortOpen, 0, 0) <> 0;
+end;
+
+function TAtlasIdeLaunchProbe.WindowFound: Boolean;
+begin
+  Result := TInterlocked.CompareExchange(FWindowFound, 0, 0) <> 0;
+end;
+
+procedure TAtlasIdeLaunchProbe.SetPid(APid: Cardinal);
+begin
+  TInterlocked.Exchange(Integer(FPid), Integer(APid));
+end;
+
 { TAtlasIdeLaunchProcesses }
+
+class function TAtlasIdeLaunchProcesses.Start(const AExe, AArgs, AWorkingDir: string;
+  const AVariables: TArray<TAtlasTeamVariable>): Cardinal;
+var
+  mStartup: TStartupInfo;
+  mInfo: TProcessInformation;
+  mCommand, mDir, mEnvironment: string;
+  mBlock: Pointer;
+begin
+  Result := 0;
+  mStartup := Default(TStartupInfo);
+  mStartup.cb := SizeOf(mStartup);
+  mCommand := '"' + AExe + '"';
+  if AArgs <> '' then
+  begin
+    mCommand := mCommand + ' ' + AArgs;
+  end;
+  UniqueString(mCommand);
+  mDir := AWorkingDir;
+  if mDir = '' then
+  begin
+    mDir := ExtractFileDir(AExe);
+  end;
+  mEnvironment := EnvironmentBlock(AVariables);
+  mBlock := nil;
+  if mEnvironment <> '' then
+  begin
+    mBlock := PChar(mEnvironment);
+  end;
+  if not CreateProcess(nil, PChar(mCommand), nil, nil, False, CREATE_UNICODE_ENVIRONMENT, mBlock, PChar(mDir),
+    mStartup, mInfo) then
+  begin
+    Exit;
+  end;
+  CloseHandle(mInfo.hThread);
+  CloseHandle(mInfo.hProcess);
+  Result := mInfo.dwProcessId;
+end;
 
 class function TAtlasIdeLaunchProcesses.EnvironmentBlock(const AVariables: TArray<TAtlasTeamVariable>): string;
 var
@@ -183,44 +221,6 @@ begin
   finally
     mList.Free;
   end;
-end;
-
-class function TAtlasIdeLaunchProcesses.Start(const AExe, AArgs, AWorkingDir: string;
-  const AVariables: TArray<TAtlasTeamVariable>): Cardinal;
-var
-  mStartup: TStartupInfo;
-  mInfo: TProcessInformation;
-  mCommand, mDir, mEnvironment: string;
-  mBlock: Pointer;
-begin
-  Result := 0;
-  mStartup := Default(TStartupInfo);
-  mStartup.cb := SizeOf(mStartup);
-  mCommand := '"' + AExe + '"';
-  if AArgs <> '' then
-  begin
-    mCommand := mCommand + ' ' + AArgs;
-  end;
-  UniqueString(mCommand);
-  mDir := AWorkingDir;
-  if mDir = '' then
-  begin
-    mDir := ExtractFileDir(AExe);
-  end;
-  mEnvironment := EnvironmentBlock(AVariables);
-  mBlock := nil;
-  if mEnvironment <> '' then
-  begin
-    mBlock := PChar(mEnvironment);
-  end;
-  if not CreateProcess(nil, PChar(mCommand), nil, nil, False, CREATE_UNICODE_ENVIRONMENT, mBlock, PChar(mDir),
-    mStartup, mInfo) then
-  begin
-    Exit;
-  end;
-  CloseHandle(mInfo.hThread);
-  CloseHandle(mInfo.hProcess);
-  Result := mInfo.dwProcessId;
 end;
 
 class function TAtlasIdeLaunchProcesses.Kill(APid: Cardinal): Boolean;

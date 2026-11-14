@@ -28,6 +28,8 @@ uses
   BaseUnix,
   Linux;
 
+{ TProcessInfo }
+
 class function TProcessInfo.ThreadCount: Integer;
 var
   mLines: TStringList;
@@ -54,17 +56,6 @@ begin
   end;
 end;
 
-class function TProcessInfo.ThreadCpuMs: Int64;
-var
-  mTime: timespec;
-begin
-  if clock_gettime(CLOCK_THREAD_CPUTIME_ID, @mTime) <> 0 then
-  begin
-    Exit(-1);
-  end;
-  Result := Int64(mTime.tv_sec) * 1000 + Int64(mTime.tv_nsec) div 1000000;
-end;
-
 class function TProcessInfo.IdentityNames: TArray<string>;
 var
   mName: string;
@@ -84,6 +75,17 @@ begin
       Result := Result + [mName];
     end;
   end;
+end;
+
+class function TProcessInfo.ThreadCpuMs: Int64;
+var
+  mTime: timespec;
+begin
+  if clock_gettime(CLOCK_THREAD_CPUTIME_ID, @mTime) <> 0 then
+  begin
+    Exit(-1);
+  end;
+  Result := Int64(mTime.tv_sec) * 1000 + Int64(mTime.tv_nsec) div 1000000;
 end;
 
 end.

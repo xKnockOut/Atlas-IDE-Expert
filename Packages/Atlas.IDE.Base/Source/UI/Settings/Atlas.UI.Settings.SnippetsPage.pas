@@ -91,6 +91,8 @@ begin
   Result.OnClick := AClick;
 end;
 
+{ TAtlasSnippetsPage }
+
 constructor TAtlasSnippetsPage.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
@@ -101,6 +103,27 @@ begin
   CreateList;
   CreateEditor;
   ShowEntry;
+end;
+
+destructor TAtlasSnippetsPage.Destroy;
+begin
+  FCatalog.Free;
+  inherited Destroy;
+end;
+
+function TAtlasSnippetsPage.AddField(AParent: TWinControl; const ACaption: string; ATop: Integer): TEdit;
+var
+  mCaption: TLabel;
+begin
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := AParent;
+  mCaption.SetBounds(4, ATop + 4, 90, 15);
+  mCaption.Caption := ACaption;
+  Result := TEdit.Create(Self);
+  Result.Parent := AParent;
+  Result.SetBounds(100, ATop, AParent.Width - 104, 23);
+  Result.Anchors := [akLeft, akTop, akRight];
+  Result.OnChange := FieldChange;
 end;
 
 procedure TAtlasSnippetsPage.CreateButtons;
@@ -179,32 +202,43 @@ begin
   FReadOnlyHint.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsReadOnly);
 end;
 
-destructor TAtlasSnippetsPage.Destroy;
-begin
-  FCatalog.Free;
-  inherited Destroy;
-end;
-
-function TAtlasSnippetsPage.AddField(AParent: TWinControl; const ACaption: string; ATop: Integer): TEdit;
+procedure TAtlasSnippetsPage.ShowEntry;
 var
-  mCaption: TLabel;
+  mIndex: Integer;
+  mEntry: TAtlasSnippetEntry;
+  mCanEdit: Boolean;
 begin
-  mCaption := TLabel.Create(Self);
-  mCaption.Parent := AParent;
-  mCaption.SetBounds(4, ATop + 4, 90, 15);
-  mCaption.Caption := ACaption;
-  Result := TEdit.Create(Self);
-  Result.Parent := AParent;
-  Result.SetBounds(100, ATop, AParent.Width - 104, 23);
-  Result.Anchors := [akLeft, akTop, akRight];
-  Result.OnChange := FieldChange;
-end;
-
-procedure TAtlasSnippetsPage.Load(ACatalog: TAtlasSnippetCatalog);
-begin
-  FCatalog.Free;
-  FCatalog := ACatalog;
-  FillList(0);
+  mIndex := Selected;
+  FFilling := True;
+  try
+    if mIndex < 0 then
+    begin
+      FPrefix.Text := '';
+      FName.Text := '';
+      FDescription.Text := '';
+      FBody.Text := '';
+      mCanEdit := False;
+    end
+    else
+    begin
+      mEntry := FCatalog.Entry(mIndex);
+      FPrefix.Text := mEntry.Snippet.Prefix;
+      FName.Text := mEntry.Snippet.Name;
+      FDescription.Text := mEntry.Snippet.Description;
+      FBody.Text := StringReplace(mEntry.Snippet.Body, #10, #13#10, [rfReplaceAll]);
+      mCanEdit := FCatalog.Editable(mIndex);
+    end;
+  finally
+    FFilling := False;
+  end;
+  FPrefix.ReadOnly := not mCanEdit;
+  FName.ReadOnly := not mCanEdit;
+  FDescription.ReadOnly := not mCanEdit;
+  FBody.ReadOnly := not mCanEdit;
+  FReadOnlyHint.Visible := (mIndex >= 0) and not mCanEdit;
+  FCopy.Enabled := mIndex >= 0;
+  FDelete.Enabled := mCanEdit;
+  FNew.Enabled := FCatalog <> nil;
 end;
 
 function OriginText(AOrigin: TAtlasSnippetOrigin): string;
@@ -268,45 +302,6 @@ begin
   begin
     Result := FList.Selected.Index;
   end;
-end;
-
-procedure TAtlasSnippetsPage.ShowEntry;
-var
-  mIndex: Integer;
-  mEntry: TAtlasSnippetEntry;
-  mCanEdit: Boolean;
-begin
-  mIndex := Selected;
-  FFilling := True;
-  try
-    if mIndex < 0 then
-    begin
-      FPrefix.Text := '';
-      FName.Text := '';
-      FDescription.Text := '';
-      FBody.Text := '';
-      mCanEdit := False;
-    end
-    else
-    begin
-      mEntry := FCatalog.Entry(mIndex);
-      FPrefix.Text := mEntry.Snippet.Prefix;
-      FName.Text := mEntry.Snippet.Name;
-      FDescription.Text := mEntry.Snippet.Description;
-      FBody.Text := StringReplace(mEntry.Snippet.Body, #10, #13#10, [rfReplaceAll]);
-      mCanEdit := FCatalog.Editable(mIndex);
-    end;
-  finally
-    FFilling := False;
-  end;
-  FPrefix.ReadOnly := not mCanEdit;
-  FName.ReadOnly := not mCanEdit;
-  FDescription.ReadOnly := not mCanEdit;
-  FBody.ReadOnly := not mCanEdit;
-  FReadOnlyHint.Visible := (mIndex >= 0) and not mCanEdit;
-  FCopy.Enabled := mIndex >= 0;
-  FDelete.Enabled := mCanEdit;
-  FNew.Enabled := FCatalog <> nil;
 end;
 
 procedure TAtlasSnippetsPage.ListSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -375,6 +370,13 @@ begin
     mIndex := FCatalog.Count - 1;
   end;
   FillList(mIndex);
+end;
+
+procedure TAtlasSnippetsPage.Load(ACatalog: TAtlasSnippetCatalog);
+begin
+  FCatalog.Free;
+  FCatalog := ACatalog;
+  FillList(0);
 end;
 
 function TAtlasSnippetsPage.Validate: string;

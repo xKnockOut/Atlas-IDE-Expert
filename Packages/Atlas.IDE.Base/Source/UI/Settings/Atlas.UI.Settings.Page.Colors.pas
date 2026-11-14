@@ -53,34 +53,22 @@ uses
 
 { TAtlasSettingsColorsPart }
 
-procedure TAtlasSettingsColorsPart.Build;
-var
-  mPanel: TWinControl;
-  mTitle: TLabel;
-  mButton: TButton;
+procedure TAtlasSettingsColorsPart.Load(const ASettings: TAtlasPluginSettings);
 begin
-  // Eigene Paarfarben und deren Reihenfolge je Thema.
-  AddSheet(TAtlasTextId.SettingsTabColors);
-  AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsLight), FLightSwatches);
-  AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsDark), FDarkSwatches);
-  AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNestedRoutineColorLight), FNestedLight);
-  AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNestedRoutineColorDark), FNestedDark);
-  mPanel := AddPanel(22);
-  mTitle := TLabel.Create(FPage);
-  mTitle.Parent := mPanel;
-  mTitle.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsHint);
-  mTitle.Left := 0;
-  mTitle.Top := mTitle.ScaleValue(3);
-  mTitle.Font.Color := clGrayText;
-  mPanel := AddPanel(32);
-  mButton := TButton.Create(FPage);
-  mButton.Parent := mPanel;
-  mButton.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsReset);
-  mButton.Left := 0;
-  mButton.Top := mButton.ScaleValue(3);
-  mButton.Width := mButton.ScaleValue(150);
-  mButton.OnClick := ResetColorsClick;
-  Attach(mPanel, FLightSwatches[0]);
+  ShowPairs(FLightSwatches, TAtlasColors.Light.WithPairs(ASettings.PairColorsLight).Pairs);
+  ShowPairs(FDarkSwatches, TAtlasColors.Dark.WithPairs(ASettings.PairColorsDark).Pairs);
+  FNestedLight[0].Brush.Color := TColor(TAtlasColors.Light.WithNestedRoutine(ASettings.NestedRoutineColorLight)
+    .NestedRoutine);
+  FNestedDark[0].Brush.Color := TColor(TAtlasColors.Dark.WithNestedRoutine(ASettings.NestedRoutineColorDark)
+    .NestedRoutine);
+end;
+
+procedure TAtlasSettingsColorsPart.Save(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.PairColorsLight := PairsSetting(FLightSwatches, TAtlasColors.Light.Pairs);
+  ASettings.PairColorsDark := PairsSetting(FDarkSwatches, TAtlasColors.Dark.Pairs);
+  ASettings.NestedRoutineColorLight := ColorSetting(FNestedLight[0], TAtlasColors.Light.NestedRoutine);
+  ASettings.NestedRoutineColorDark := ColorSetting(FNestedDark[0], TAtlasColors.Dark.NestedRoutine);
 end;
 
 procedure TAtlasSettingsColorsPart.BindMarks;
@@ -185,22 +173,34 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsColorsPart.Load(const ASettings: TAtlasPluginSettings);
+procedure TAtlasSettingsColorsPart.Build;
+var
+  mPanel: TWinControl;
+  mTitle: TLabel;
+  mButton: TButton;
 begin
-  ShowPairs(FLightSwatches, TAtlasColors.Light.WithPairs(ASettings.PairColorsLight).Pairs);
-  ShowPairs(FDarkSwatches, TAtlasColors.Dark.WithPairs(ASettings.PairColorsDark).Pairs);
-  FNestedLight[0].Brush.Color := TColor(TAtlasColors.Light.WithNestedRoutine(ASettings.NestedRoutineColorLight)
-    .NestedRoutine);
-  FNestedDark[0].Brush.Color := TColor(TAtlasColors.Dark.WithNestedRoutine(ASettings.NestedRoutineColorDark)
-    .NestedRoutine);
-end;
-
-procedure TAtlasSettingsColorsPart.Save(var ASettings: TAtlasPluginSettings);
-begin
-  ASettings.PairColorsLight := PairsSetting(FLightSwatches, TAtlasColors.Light.Pairs);
-  ASettings.PairColorsDark := PairsSetting(FDarkSwatches, TAtlasColors.Dark.Pairs);
-  ASettings.NestedRoutineColorLight := ColorSetting(FNestedLight[0], TAtlasColors.Light.NestedRoutine);
-  ASettings.NestedRoutineColorDark := ColorSetting(FNestedDark[0], TAtlasColors.Dark.NestedRoutine);
+  // Eigene Paarfarben und deren Reihenfolge je Thema.
+  AddSheet(TAtlasTextId.SettingsTabColors);
+  AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsLight), FLightSwatches);
+  AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsDark), FDarkSwatches);
+  AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNestedRoutineColorLight), FNestedLight);
+  AddSwatches(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNestedRoutineColorDark), FNestedDark);
+  mPanel := AddPanel(22);
+  mTitle := TLabel.Create(FPage);
+  mTitle.Parent := mPanel;
+  mTitle.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsHint);
+  mTitle.Left := 0;
+  mTitle.Top := mTitle.ScaleValue(3);
+  mTitle.Font.Color := clGrayText;
+  mPanel := AddPanel(32);
+  mButton := TButton.Create(FPage);
+  mButton.Parent := mPanel;
+  mButton.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsReset);
+  mButton.Left := 0;
+  mButton.Top := mButton.ScaleValue(3);
+  mButton.Width := mButton.ScaleValue(150);
+  mButton.OnClick := ResetColorsClick;
+  Attach(mPanel, FLightSwatches[0]);
 end;
 
 end.

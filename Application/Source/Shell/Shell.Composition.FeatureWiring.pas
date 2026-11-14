@@ -44,6 +44,8 @@ uses
   Shell.Composition.AnalysisArea,
   Shell.Composition.IdeArea;
 
+{ TShellFeatureWiring }
+
 class procedure TShellFeatureWiring.Editing(AParts: TShellParts);
 var
   mServices: TShellEditingAreaServices;

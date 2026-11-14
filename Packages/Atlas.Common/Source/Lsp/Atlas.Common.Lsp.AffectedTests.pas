@@ -155,41 +155,7 @@ type
     property LineCount: Integer read GetLineCount;
   end;
 
-procedure TAffectedSource.MarkCode(const AToken: TPascalToken);
-var
-  mLine: Integer;
-begin
-  // Zeilen, die ein mehrzeiliges Token (String) überspannt, zählen als Code ab Spalte 0.
-  for mLine := Max(AToken.StartPos.Line, 0) to Min(AToken.EndPos.Line, High(FCode)) do
-  begin
-    if FCode[mLine].Character >= 0 then
-    begin
-      Continue;
-    end;
-    if mLine = AToken.StartPos.Line then
-    begin
-      FCode[mLine] := AToken.StartPos;
-    end
-    else
-    begin
-      FCode[mLine] := TTextPosition.Create(mLine, 0);
-    end;
-  end;
-end;
-
-procedure TAffectedSource.NoteSection(const AToken: TPascalToken);
-begin
-  // initialization und finalization sind reservierte Wörter und stehen nur auf Unit-Ebene.
-  if AToken.IsKeyword('implementation') and (FImplementationLine = MaxInt) then
-  begin
-    FImplementationLine := AToken.StartPos.Line;
-  end
-  else if (FInitializationLine = MaxInt) and
-    (AToken.IsKeyword('initialization') or AToken.IsKeyword('finalization')) then
-  begin
-    FInitializationLine := AToken.StartPos.Line;
-  end;
-end;
+{ TAffectedSource }
 
 constructor TAffectedSource.Create(const AFileName, AText: string);
 var
@@ -228,11 +194,6 @@ begin
   Result := Length(FCode);
 end;
 
-function TAffectedSource.HasCode(ALine: Integer): Boolean;
-begin
-  Result := (ALine >= 0) and (ALine < Length(FCode)) and (FCode[ALine].Character >= 0);
-end;
-
 function TAffectedSource.SectionOf(ALine: Integer): string;
 begin
   if ALine >= FInitializationLine then
@@ -262,20 +223,6 @@ begin
   end;
 end;
 
-function SpanSize(const ARange: TTextRange): Int64;
-begin
-  Result := Int64(ARange.EndPos.Line - ARange.StartPos.Line) * 100000 + ARange.EndPos.Character -
-    ARange.StartPos.Character;
-end;
-
-function RangeHas(const ARange: TTextRange; const APosition: TTextPosition): Boolean;
-begin
-  Result := ((ARange.StartPos.Line < APosition.Line) or
-    ((ARange.StartPos.Line = APosition.Line) and (ARange.StartPos.Character <= APosition.Character))) and
-    ((APosition.Line < ARange.EndPos.Line) or
-    ((APosition.Line = ARange.EndPos.Line) and (APosition.Character <= ARange.EndPos.Character)));
-end;
-
 function TAffectedSource.UnitChange(const APlace: string): TAffectedChange;
 begin
   Result := Default(TAffectedChange);
@@ -291,6 +238,56 @@ begin
   Result.Item.UnitName := Result.Item.Name;
   Result.Item.FileName := FFileName;
   Result.Item.SymbolKind := TIndexSymbolKind.Variable;
+end;
+
+procedure TAffectedSource.MarkCode(const AToken: TPascalToken);
+var
+  mLine: Integer;
+begin
+  // Zeilen, die ein mehrzeiliges Token (String) überspannt, zählen als Code ab Spalte 0.
+  for mLine := Max(AToken.StartPos.Line, 0) to Min(AToken.EndPos.Line, High(FCode)) do
+  begin
+    if FCode[mLine].Character >= 0 then
+    begin
+      Continue;
+    end;
+    if mLine = AToken.StartPos.Line then
+    begin
+      FCode[mLine] := AToken.StartPos;
+    end
+    else
+    begin
+      FCode[mLine] := TTextPosition.Create(mLine, 0);
+    end;
+  end;
+end;
+
+procedure TAffectedSource.NoteSection(const AToken: TPascalToken);
+begin
+  // initialization und finalization sind reservierte Wörter und stehen nur auf Unit-Ebene.
+  if AToken.IsKeyword('implementation') and (FImplementationLine = MaxInt) then
+  begin
+    FImplementationLine := AToken.StartPos.Line;
+  end
+  else if (FInitializationLine = MaxInt) and
+    (AToken.IsKeyword('initialization') or AToken.IsKeyword('finalization')) then
+  begin
+    FInitializationLine := AToken.StartPos.Line;
+  end;
+end;
+
+function SpanSize(const ARange: TTextRange): Int64;
+begin
+  Result := Int64(ARange.EndPos.Line - ARange.StartPos.Line) * 100000 + ARange.EndPos.Character -
+    ARange.StartPos.Character;
+end;
+
+function RangeHas(const ARange: TTextRange; const APosition: TTextPosition): Boolean;
+begin
+  Result := ((ARange.StartPos.Line < APosition.Line) or
+    ((ARange.StartPos.Line = APosition.Line) and (ARange.StartPos.Character <= APosition.Character))) and
+    ((APosition.Line < ARange.EndPos.Line) or
+    ((APosition.Line = ARange.EndPos.Line) and (APosition.Character <= ARange.EndPos.Character)));
 end;
 
 function TAffectedSource.ChangeAt(ALine: Integer; const APlace: string): TAffectedChange;
@@ -392,6 +389,11 @@ begin
     end;
   end;
   AChanges := AChanges + [AChange];
+end;
+
+function TAffectedSource.HasCode(ALine: Integer): Boolean;
+begin
+  Result := (ALine >= 0) and (ALine < Length(FCode)) and (FCode[ALine].Character >= 0);
 end;
 
 { TAffectedTests }
@@ -717,6 +719,8 @@ type
       const ACancellation: IJsonRpcCancellationToken): TAffectedResult;
   end;
 
+{ TAffectedRun }
+
 constructor TAffectedRun.Create(const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
   const ARequest: TAffectedRequest);
 begin
@@ -795,16 +799,6 @@ begin
   FTests.AddOrSetValue(mKey, mTest);
 end;
 
-function TAffectedRun.ProjectFile(const AFileName: string; out AUnit: TUnitIndex): Boolean;
-begin
-  Result := FIndex.FindFile(AFileName, AUnit) and not AUnit.Library_;
-  if not Result then
-  begin
-    AUnit := Default(TUnitIndex);
-    Result := ContainsFile(FRequest.Files, AFileName);
-  end;
-end;
-
 procedure TAffectedRun.MapProject(const AInput: TAffectedInput; const AExt: string);
 var
   mProgram: string;
@@ -852,6 +846,30 @@ begin
     begin
       Skip(AInput.FileName, cTexts[TAffectedTestsText.OnlyBlankLinesOrComments].Text);
     end;
+  end;
+end;
+
+procedure TAffectedRun.MapInclude(const AInput: TAffectedInput);
+var
+  mIncluding: TUnitIndex;
+  mFound: Boolean;
+begin
+  mFound := False;
+  for mIncluding in FIndex.Units do
+  begin
+    if mIncluding.Library_ or not ContainsFile(mIncluding.Includes, AInput.FileName) then
+    begin
+      Continue;
+    end;
+    mFound := True;
+    if not MapIncluding(mIncluding, AInput.FileName) then
+    begin
+      Break;
+    end;
+  end;
+  if not mFound then
+  begin
+    Skip(AInput.FileName, cTexts[TAffectedTestsText.NotUsedByAnyUnit].Text);
   end;
 end;
 
@@ -949,30 +967,6 @@ begin
   end;
 end;
 
-procedure TAffectedRun.MapInclude(const AInput: TAffectedInput);
-var
-  mIncluding: TUnitIndex;
-  mFound: Boolean;
-begin
-  mFound := False;
-  for mIncluding in FIndex.Units do
-  begin
-    if mIncluding.Library_ or not ContainsFile(mIncluding.Includes, AInput.FileName) then
-    begin
-      Continue;
-    end;
-    mFound := True;
-    if not MapIncluding(mIncluding, AInput.FileName) then
-    begin
-      Break;
-    end;
-  end;
-  if not mFound then
-  begin
-    Skip(AInput.FileName, cTexts[TAffectedTestsText.NotUsedByAnyUnit].Text);
-  end;
-end;
-
 procedure TAffectedRun.MapInput(const AInput: TAffectedInput);
 var
   mExt: string;
@@ -997,6 +991,16 @@ begin
   else
   begin
     Skip(AInput.FileName, cTexts[TAffectedTestsText.NoDelphiSource].Text);
+  end;
+end;
+
+function TAffectedRun.ProjectFile(const AFileName: string; out AUnit: TUnitIndex): Boolean;
+begin
+  Result := FIndex.FindFile(AFileName, AUnit) and not AUnit.Library_;
+  if not Result then
+  begin
+    AUnit := Default(TUnitIndex);
+    Result := ContainsFile(FRequest.Files, AFileName);
   end;
 end;
 

@@ -145,26 +145,18 @@ begin
   Result := Copy(FText, ANode.Start + 1, ANode.Stop - ANode.Start);
 end;
 
-function TStripper.Forbidden(ANode: TJsonNode; const APath: string): Boolean;
-var
-  mShown: string;
+function TStripper.Rebuild(ANode: TJsonNode; const APath: string; out AChanged: Boolean): string;
 begin
-  Result := False;
-  if ANode.Kind <> TJsonKind.String_ then
+  AChanged := False;
+  if ANode.Kind = TJsonKind.Object_ then
   begin
-    Exit;
+    Exit(RebuildObject(ANode, APath, AChanged));
   end;
-  mShown := StringReplace(APath, '[]', '', [rfReplaceAll]);
-  if TTextCheckin.HasUrlCredentials(ANode.Value) then
+  if ANode.Kind = TJsonKind.Array_ then
   begin
-    Report(ANode.Start, ANode.Stop, cTexts[TForbiddenText.ContainsCredentialsInTheAddress].Fmt([mShown]));
-    Exit(True);
+    Exit(RebuildArray(ANode, APath, AChanged));
   end;
-  if TForbiddenEntries.IsPathSetting(APath) and TTextCheckin.IsMachinePath(ANode.Value) then
-  begin
-    Report(ANode.Start, ANode.Stop, cTexts[TForbiddenText.AbsolutePathsDoNotBelong].Fmt([mShown]));
-    Exit(True);
-  end;
+  Result := NodeText(ANode);
 end;
 
 function TStripper.RebuildItem(ANode: TJsonNode; const APath: string; var AChanged: Boolean;
@@ -238,18 +230,26 @@ begin
   end;
 end;
 
-function TStripper.Rebuild(ANode: TJsonNode; const APath: string; out AChanged: Boolean): string;
+function TStripper.Forbidden(ANode: TJsonNode; const APath: string): Boolean;
+var
+  mShown: string;
 begin
-  AChanged := False;
-  if ANode.Kind = TJsonKind.Object_ then
+  Result := False;
+  if ANode.Kind <> TJsonKind.String_ then
   begin
-    Exit(RebuildObject(ANode, APath, AChanged));
+    Exit;
   end;
-  if ANode.Kind = TJsonKind.Array_ then
+  mShown := StringReplace(APath, '[]', '', [rfReplaceAll]);
+  if TTextCheckin.HasUrlCredentials(ANode.Value) then
   begin
-    Exit(RebuildArray(ANode, APath, AChanged));
+    Report(ANode.Start, ANode.Stop, cTexts[TForbiddenText.ContainsCredentialsInTheAddress].Fmt([mShown]));
+    Exit(True);
   end;
-  Result := NodeText(ANode);
+  if TForbiddenEntries.IsPathSetting(APath) and TTextCheckin.IsMachinePath(ANode.Value) then
+  begin
+    Report(ANode.Start, ANode.Stop, cTexts[TForbiddenText.AbsolutePathsDoNotBelong].Fmt([mShown]));
+    Exit(True);
+  end;
 end;
 
 function TStripper.Run: string;
@@ -286,6 +286,19 @@ end;
 
 { TForbiddenEntries }
 
+class function TForbiddenEntries.Strip(const AText: string; out AIssues: TArray<TConfigurationIssue>): string;
+var
+  mStripper: TStripper;
+begin
+  mStripper := TStripper.Create(AText);
+  try
+    Result := mStripper.Run;
+    AIssues := mStripper.Issues;
+  finally
+    mStripper.Free;
+  end;
+end;
+
 class function TForbiddenEntries.IsPathSetting(const APath: string): Boolean;
 var
   mItem: string;
@@ -298,19 +311,6 @@ begin
     end;
   end;
   Result := False;
-end;
-
-class function TForbiddenEntries.Strip(const AText: string; out AIssues: TArray<TConfigurationIssue>): string;
-var
-  mStripper: TStripper;
-begin
-  mStripper := TStripper.Create(AText);
-  try
-    Result := mStripper.Run;
-    AIssues := mStripper.Issues;
-  finally
-    mStripper.Free;
-  end;
 end;
 
 initialization

@@ -266,10 +266,7 @@ begin
   Result := False;
 end;
 
-class function TSourceColors.Find(const AText: string): TArray<TColorMatch>;
-begin
-  Result := Find(AText, nil);
-end;
+{ TSourceColors }
 
 class function TSourceColors.Find(const AText: string; const ASystemColors: TSystemColorProvider): TArray<TColorMatch>;
 var
@@ -320,23 +317,9 @@ begin
   end;
 end;
 
-class function TSourceColors.HexText(const AColor: TRgbColor): string;
+class function TSourceColors.Find(const AText: string): TArray<TColorMatch>;
 begin
-  Result := '$' + IntToHex(AColor.ToTColor, 8);
-end;
-
-class function TSourceColors.NameOf(const AColor: TRgbColor): string;
-var
-  mNamed: TNamedColor;
-begin
-  for mNamed in cNamedColors do
-  begin
-    if FromRgbValue(mNamed.Value) = AColor then
-    begin
-      Exit(mNamed.Name);
-    end;
-  end;
-  Result := '';
+  Result := Find(AText, nil);
 end;
 
 class function TSourceColors.Presentations(const AColor: TRgbColor; AFormat: TColorFormat): TArray<TColorPresentation>;
@@ -378,6 +361,25 @@ begin
   begin
     Add(mName, TColorFormat.Named);
   end;
+end;
+
+class function TSourceColors.HexText(const AColor: TRgbColor): string;
+begin
+  Result := '$' + IntToHex(AColor.ToTColor, 8);
+end;
+
+class function TSourceColors.NameOf(const AColor: TRgbColor): string;
+var
+  mNamed: TNamedColor;
+begin
+  for mNamed in cNamedColors do
+  begin
+    if FromRgbValue(mNamed.Value) = AColor then
+    begin
+      Exit(mNamed.Name);
+    end;
+  end;
+  Result := '';
 end;
 
 end.

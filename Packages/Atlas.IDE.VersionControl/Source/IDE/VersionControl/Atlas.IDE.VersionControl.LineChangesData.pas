@@ -225,45 +225,6 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasIdeLineChangesData.Generation: Integer;
-begin
-  Result := GGeneration;
-end;
-
-procedure TAtlasIdeLineChangesData.Reset;
-var
-  mShown: Boolean;
-begin
-  Inc(GGeneration);
-  mShown := FDiff.Shown;
-  FFileName := '';
-  FVcs := nil;
-  FText := '';
-  FMarker := '';
-  FDiskAge := 0;
-  FHead := Default(THead);
-  FDiff := Default(TDiff);
-  FBlame := Default(TBlame);
-  FMessages.Clear;
-  if mShown then
-  begin
-    Invalidate;
-  end;
-end;
-
-procedure TAtlasIdeLineChangesData.Start(const AView: IOTAEditView);
-begin
-  FFileName := AView.Buffer.FileName;
-  FText := TAtlasEditorBuffer.Text(AView.Buffer);
-  FChangedAt := 0;
-  FPolledAt := 0;
-end;
-
-function TAtlasIdeLineChangesData.Fresh: Boolean;
-begin
-  Result := FHead.Ok and (FDiff.Text = FText) and (FDiff.Lines <> nil);
-end;
-
 function TAtlasIdeLineChangesData.MessagesWanted: Boolean;
 begin
   Result := Assigned(FHooks.Wanted) and FHooks.Wanted();
@@ -296,50 +257,6 @@ begin
   end;
 end;
 
-function TAtlasIdeLineChangesData.Track(const AView: IOTAEditView; AGutterOn, ABlameOn: Boolean): Boolean;
-var
-  mText: string;
-begin
-  // Ohne Arbeitskopie bleibt FVcs leer und alles still.
-  Result := False;
-  if (FVcs = nil) and not Attach then
-  begin
-    Exit;
-  end;
-  mText := TAtlasEditorBuffer.Text(AView.Buffer);
-  Result := mText <> FText;
-  if Result then
-  begin
-    FText := mText;
-    FChangedAt := TThread.GetTickCount64;
-  end;
-  if TThread.GetTickCount64 - FPolledAt >= cPollMs then
-  begin
-    Poll;
-  end;
-  if AGutterOn or ABlameOn then
-  begin
-    Load(ABlameOn);
-  end;
-end;
-
-procedure TAtlasIdeLineChangesData.Load(ABlameOn: Boolean);
-begin
-  if FHead.Wanted and not FHead.Busy then
-  begin
-    LoadHead;
-  end;
-  if ABlameOn and FBlame.Wanted and not FBlame.Busy then
-  begin
-    LoadBlame;
-  end;
-  if FHead.Ok and not FDiff.Busy and (FText <> FDiff.Text) and
-    (TThread.GetTickCount64 - FChangedAt >= cQuietMs) then
-  begin
-    Compare;
-  end;
-end;
-
 procedure TAtlasIdeLineChangesData.Poll;
 var
   mMarker: string;
@@ -368,6 +285,23 @@ begin
   if FBlame.Ok and not FBlame.MessagesWanted and MessagesWanted then
   begin
     FBlame.Wanted := True;
+  end;
+end;
+
+procedure TAtlasIdeLineChangesData.Load(ABlameOn: Boolean);
+begin
+  if FHead.Wanted and not FHead.Busy then
+  begin
+    LoadHead;
+  end;
+  if ABlameOn and FBlame.Wanted and not FBlame.Busy then
+  begin
+    LoadBlame;
+  end;
+  if FHead.Ok and not FDiff.Busy and (FText <> FDiff.Text) and
+    (TThread.GetTickCount64 - FChangedAt >= cQuietMs) then
+  begin
+    Compare;
   end;
 end;
 
@@ -565,6 +499,72 @@ begin
   end;
 end;
 
+class function TAtlasIdeLineChangesData.Generation: Integer;
+begin
+  Result := GGeneration;
+end;
+
+procedure TAtlasIdeLineChangesData.Reset;
+var
+  mShown: Boolean;
+begin
+  Inc(GGeneration);
+  mShown := FDiff.Shown;
+  FFileName := '';
+  FVcs := nil;
+  FText := '';
+  FMarker := '';
+  FDiskAge := 0;
+  FHead := Default(THead);
+  FDiff := Default(TDiff);
+  FBlame := Default(TBlame);
+  FMessages.Clear;
+  if mShown then
+  begin
+    Invalidate;
+  end;
+end;
+
+procedure TAtlasIdeLineChangesData.Start(const AView: IOTAEditView);
+begin
+  FFileName := AView.Buffer.FileName;
+  FText := TAtlasEditorBuffer.Text(AView.Buffer);
+  FChangedAt := 0;
+  FPolledAt := 0;
+end;
+
+function TAtlasIdeLineChangesData.Track(const AView: IOTAEditView; AGutterOn, ABlameOn: Boolean): Boolean;
+var
+  mText: string;
+begin
+  // Ohne Arbeitskopie bleibt FVcs leer und alles still.
+  Result := False;
+  if (FVcs = nil) and not Attach then
+  begin
+    Exit;
+  end;
+  mText := TAtlasEditorBuffer.Text(AView.Buffer);
+  Result := mText <> FText;
+  if Result then
+  begin
+    FText := mText;
+    FChangedAt := TThread.GetTickCount64;
+  end;
+  if TThread.GetTickCount64 - FPolledAt >= cPollMs then
+  begin
+    Poll;
+  end;
+  if AGutterOn or ABlameOn then
+  begin
+    Load(ABlameOn);
+  end;
+end;
+
+function TAtlasIdeLineChangesData.Fresh: Boolean;
+begin
+  Result := FHead.Ok and (FDiff.Text = FText) and (FDiff.Lines <> nil);
+end;
+
 function TAtlasIdeLineChangesData.BlameCaption(ABufferLine: Integer; out AEntry: Integer;
   out AUnsaved: Boolean): string;
 var
@@ -604,18 +604,18 @@ begin
   Result := EntryCaption(mEntry, mSuffix);
 end;
 
-class function TAtlasIdeLineChangesData.CommitText(const AEntry: TAtlasVcsBlameLine): string;
-begin
-  Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.BlameCommitText,
-    [AEntry.Author, FormatDateTime('dd.mm.yyyy hh":"nn', TTimeZone.Local.ToLocalTime(AEntry.Date)), AEntry.Summary]);
-end;
-
 function TAtlasIdeLineChangesData.MessageOf(const AEntry: TAtlasVcsBlameLine): string;
 begin
   if not FMessages.TryGetValue(AEntry.Revision, Result) then
   begin
     Result := AEntry.Summary;
   end;
+end;
+
+class function TAtlasIdeLineChangesData.CommitText(const AEntry: TAtlasVcsBlameLine): string;
+begin
+  Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.BlameCommitText,
+    [AEntry.Author, FormatDateTime('dd.mm.yyyy hh":"nn', TTimeZone.Local.ToLocalTime(AEntry.Date)), AEntry.Summary]);
 end;
 
 function TAtlasIdeLineChangesData.HasEntry(AIndex: Integer): Boolean;

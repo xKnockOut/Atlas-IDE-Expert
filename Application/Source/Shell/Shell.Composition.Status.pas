@@ -166,18 +166,14 @@ begin
   Result.AddPair('exclude', TJSONNumber.Create(Length(ASettings.Exclude)));
 end;
 
+{ TShellStatusReports }
+
 constructor TShellStatusReports.Create(const AServices: TShellStatusServices);
 begin
   inherited Create;
   FServices := AServices;
   FStartedAt := Now;
   FUptime := TStopwatch.StartNew;
-end;
-
-procedure TShellStatusReports.RegisterCommands(ACommands: TLspCommands);
-begin
-  ACommands.RegisterConcurrent(TServerPackage.cCommand, DiagnosticPackage);
-  ACommands.RegisterConcurrent(TBugReport.cCommand, BugReport);
 end;
 
 function TShellStatusReports.Workspaces: TArray<TShellWorkspace>;
@@ -249,12 +245,6 @@ begin
   end;
 end;
 
-/// <summary>Kennzeichnet AValue nach seiner Art, für die Protokollzeile des Status.</summary>
-function MarkValue(AKind: TLogMarkKind; const AValue: string): string;
-begin
-  Result := TLogMarks.Mark(AKind, AValue);
-end;
-
 function TShellStatusReports.AnonymousMap: TLogMarkMap;
 var
   mAnonymizer: ILogAnonymizer;
@@ -276,72 +266,10 @@ begin
     end;
 end;
 
-function TShellStatusReports.ConfigurationReport: string;
-var
-  mRoot, mItem, mChoice: TJSONObject;
-  mItems: TJSONArray;
-  mWorkspace: TShellWorkspace;
-  mStatus: TWorkspaceStatus;
+/// <summary>Kennzeichnet AValue nach seiner Art, für die Protokollzeile des Status.</summary>
+function MarkValue(AKind: TLogMarkKind; const AValue: string): string;
 begin
-  mRoot := TJSONObject.Create;
-  try
-    // Eingaben der Schichtung (Editor, dann atlas.json mit Vorrang) und die wichtigsten Ergebnisse.
-    mRoot.AddPair('editor', JsonOrText(FServices.EditorSettings()));
-    mItems := TJSONArray.Create;
-    mRoot.AddPair('workspaces', mItems);
-    for mWorkspace in Workspaces do
-    begin
-      mItem := TJSONObject.Create;
-      mItems.AddElement(mItem);
-      mItem.AddPair('root', mWorkspace.Root);
-      mItem.AddPair('file', ExtractFileName(mWorkspace.Configuration.Files.Read));
-      mItem.AddPair('fileContent', JsonOrText(mWorkspace.Configuration.Texts.Workspace));
-      mItem.AddPair('effective', EffectiveSettings(mWorkspace.Configuration.Settings));
-      // Projektwahl (#46): geladen, gewählt, aktiv, ausgewählt; Vorrang atlas.json < selectBuild < IDE.
-      mStatus := mWorkspace.IndexStatus;
-      mChoice := TJSONObject.Create;
-      mItem.AddPair('projectChoice', mChoice);
-      mChoice.AddPair('project', mStatus.Project);
-      mChoice.AddPair('config', mStatus.Config);
-      mChoice.AddPair('platform', mStatus.Platform);
-      mChoice.AddPair('buildChosen', TJSONBool.Create(mStatus.BuildChosen));
-      mChoice.AddPair('active', TJSONBool.Create((mStatus.Project <> '') and
-        SameText(mStatus.Project, FServices.ActiveProject())));
-      mChoice.AddPair('selected', TJSONBool.Create(FServices.IsSelectedProject(mWorkspace)));
-    end;
-    Result := mRoot.Format(2);
-  finally
-    mRoot.Free;
-  end;
-end;
-
-function TShellStatusReports.BugReport(const AArguments: TJSONArray): TJSONValue;
-var
-  mInput: TBugReportInput;
-  mTarget, mText: string;
-  mAnswer: TJSONObject;
-begin
-  mInput := Default(TBugReportInput);
-  mInput.Anonymize := True;
-  ReadBugReportOptions(AArguments, mInput, mTarget);
-  mInput.ServerVersion := TProductVersion.cVersion;
-  mInput.Created := Now;
-  mInput.Configuration := ConfigurationReport;
-  mInput.LogLines := LastLines(SessionLines(mInput.Anonymize), cBugReportLogLines);
-  mInput.Requests := FServices.Statistics.Recent;
-  mInput.Workspaces := WorkspaceRoots;
-  mInput.Identity := TProcessInfo.IdentityNames;
-  mText := TBugReport.Build(mInput);
-  mAnswer := TJSONObject.Create;
-  mAnswer.AddPair('text', mText);
-  if mTarget <> '' then
-  begin
-    ForceDirectories(ExtractFileDir(mTarget));
-    TFile.WriteAllText(mTarget, mText, TEncoding.UTF8);
-    mAnswer.AddPair('file', mTarget);
-  end;
-  FServices.Logger.Info('Fehlerbericht erstellt');
-  Result := mAnswer;
+  Result := TLogMarks.Mark(AKind, AValue);
 end;
 
 function TShellStatusReports.CollectStatus: TServerStatus;
@@ -430,31 +358,72 @@ begin
   end;
 end;
 
-function TShellStatusReports.StatusJson(AAnonymize: Boolean): TJSONObject;
+function TShellStatusReports.ConfigurationReport: string;
 var
-  mStatus: TServerStatus;
+  mRoot, mItem, mChoice: TJSONObject;
+  mItems: TJSONArray;
+  mWorkspace: TShellWorkspace;
+  mStatus: TWorkspaceStatus;
 begin
-  mStatus := CollectStatus;
-  // Namen und Pfade gekennzeichnet: Das Log schreibt sie anonym, das Ausgabefenster im Klartext (#1478).
-  FServices.Logger.Info('Status:' + sLineBreak + mStatus.Mapped(MarkValue).ToMarkdown);
-  if AAnonymize then
-  begin
-    // Ordner, Projekt, Caches, eigene Konfiguration und langsame Units, nicht nur die Units (#1478).
-    mStatus := mStatus.Mapped(AnonymousMap());
+  mRoot := TJSONObject.Create;
+  try
+    // Eingaben der Schichtung (Editor, dann atlas.json mit Vorrang) und die wichtigsten Ergebnisse.
+    mRoot.AddPair('editor', JsonOrText(FServices.EditorSettings()));
+    mItems := TJSONArray.Create;
+    mRoot.AddPair('workspaces', mItems);
+    for mWorkspace in Workspaces do
+    begin
+      mItem := TJSONObject.Create;
+      mItems.AddElement(mItem);
+      mItem.AddPair('root', mWorkspace.Root);
+      mItem.AddPair('file', ExtractFileName(mWorkspace.Configuration.Files.Read));
+      mItem.AddPair('fileContent', JsonOrText(mWorkspace.Configuration.Texts.Workspace));
+      mItem.AddPair('effective', EffectiveSettings(mWorkspace.Configuration.Settings));
+      // Projektwahl (#46): geladen, gewählt, aktiv, ausgewählt; Vorrang atlas.json < selectBuild < IDE.
+      mStatus := mWorkspace.IndexStatus;
+      mChoice := TJSONObject.Create;
+      mItem.AddPair('projectChoice', mChoice);
+      mChoice.AddPair('project', mStatus.Project);
+      mChoice.AddPair('config', mStatus.Config);
+      mChoice.AddPair('platform', mStatus.Platform);
+      mChoice.AddPair('buildChosen', TJSONBool.Create(mStatus.BuildChosen));
+      mChoice.AddPair('active', TJSONBool.Create((mStatus.Project <> '') and
+        SameText(mStatus.Project, FServices.ActiveProject())));
+      mChoice.AddPair('selected', TJSONBool.Create(FServices.IsSelectedProject(mWorkspace)));
+    end;
+    Result := mRoot.Format(2);
+  finally
+    mRoot.Free;
   end;
-  Result := mStatus.ToJson;
 end;
 
-function TShellStatusReports.FileDetails: TServerDetails;
+function TShellStatusReports.BugReport(const AArguments: TJSONArray): TJSONValue;
 var
-  mStatus: TServerStatus;
+  mInput: TBugReportInput;
+  mTarget, mText: string;
+  mAnswer: TJSONObject;
 begin
-  // Für get_server_status und AtlasMonitor: dieselben Zahlen wie das Fenster, nur lokal und nie anonym.
-  mStatus := CollectStatus;
-  Result := Default(TServerDetails);
-  Result.Roots := WorkspaceRoots;
-  Result.State := mStatus.State;
-  Result.Status := mStatus.ToJson;
+  mInput := Default(TBugReportInput);
+  mInput.Anonymize := True;
+  ReadBugReportOptions(AArguments, mInput, mTarget);
+  mInput.ServerVersion := TProductVersion.cVersion;
+  mInput.Created := Now;
+  mInput.Configuration := ConfigurationReport;
+  mInput.LogLines := LastLines(SessionLines(mInput.Anonymize), cBugReportLogLines);
+  mInput.Requests := FServices.Statistics.Recent;
+  mInput.Workspaces := WorkspaceRoots;
+  mInput.Identity := TProcessInfo.IdentityNames;
+  mText := TBugReport.Build(mInput);
+  mAnswer := TJSONObject.Create;
+  mAnswer.AddPair('text', mText);
+  if mTarget <> '' then
+  begin
+    ForceDirectories(ExtractFileDir(mTarget));
+    TFile.WriteAllText(mTarget, mText, TEncoding.UTF8);
+    mAnswer.AddPair('file', mTarget);
+  end;
+  FServices.Logger.Info('Fehlerbericht erstellt');
+  Result := mAnswer;
 end;
 
 function TShellStatusReports.DiagnosticPackage(const AArguments: TJSONArray): TJSONValue;
@@ -484,6 +453,39 @@ begin
   mInput.Identity := TProcessInfo.IdentityNames;
   Result := TServerPackage.ToJson(TServerPackage.Build(mInput));
   FServices.Logger.Info('Diagnosepaket des Servers erstellt');
+end;
+
+procedure TShellStatusReports.RegisterCommands(ACommands: TLspCommands);
+begin
+  ACommands.RegisterConcurrent(TServerPackage.cCommand, DiagnosticPackage);
+  ACommands.RegisterConcurrent(TBugReport.cCommand, BugReport);
+end;
+
+function TShellStatusReports.StatusJson(AAnonymize: Boolean): TJSONObject;
+var
+  mStatus: TServerStatus;
+begin
+  mStatus := CollectStatus;
+  // Namen und Pfade gekennzeichnet: Das Log schreibt sie anonym, das Ausgabefenster im Klartext (#1478).
+  FServices.Logger.Info('Status:' + sLineBreak + mStatus.Mapped(MarkValue).ToMarkdown);
+  if AAnonymize then
+  begin
+    // Ordner, Projekt, Caches, eigene Konfiguration und langsame Units, nicht nur die Units (#1478).
+    mStatus := mStatus.Mapped(AnonymousMap());
+  end;
+  Result := mStatus.ToJson;
+end;
+
+function TShellStatusReports.FileDetails: TServerDetails;
+var
+  mStatus: TServerStatus;
+begin
+  // Für get_server_status und AtlasMonitor: dieselben Zahlen wie das Fenster, nur lokal und nie anonym.
+  mStatus := CollectStatus;
+  Result := Default(TServerDetails);
+  Result.Roots := WorkspaceRoots;
+  Result.State := mStatus.State;
+  Result.Status := mStatus.ToJson;
 end;
 
 end.

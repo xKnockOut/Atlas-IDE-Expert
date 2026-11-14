@@ -407,6 +407,8 @@ type
     function Runs: TArray<TRun>;
   end;
 
+{ TRunBuilder }
+
 procedure TRunBuilder.Flush;
 begin
   if FOpen then
@@ -588,6 +590,8 @@ type
     property Document: TDfmDocument read FDocument;
   end;
 
+{ TFormScan }
+
 constructor TFormScan.Create(const AText: string);
 begin
   inherited Create;
@@ -623,6 +627,8 @@ type
     destructor Destroy; override;
     function Run: TArray<TRun>;
   end;
+
+{ TFormRunScanner }
 
 constructor TFormRunScanner.Create(const AText: string; ARule: TCharRule);
 begin
@@ -896,6 +902,8 @@ type
     /// <summary>ASkipReplacement: Bereiche nur aus U+FFFD übergehen.</summary>
     procedure Run(ASkipReplacement: Boolean);
   end;
+
+{ TFormCharCheck }
 
 constructor TFormCharCheck.Create(ARule: TCharRule; const AContext: TRuleContext; const AReport: IRuleReport;
   const AWhat: string);
@@ -1267,24 +1275,12 @@ type
     Token: Integer;
   end;
 
-class function TFileEncodingUnsupportedRule.IsIllegal(ACode: Integer): Boolean;
+{ TFileEncodingUnsupportedRule }
+
+function TFileEncodingUnsupportedRule.Descriptor: TRuleDescriptor;
 begin
-  case ACode of
-    Ord('!'), Ord('"'), Ord('?'), Ord('\'), Ord('`'), Ord('|'), Ord('~'),
-    $A1..$A9, $AB, $AC, $AE..$B1, $B4, $B6..$B8, $BB, $BF, $D7, $F7,
-    // Allgemeine Interpunktion ohne die Verbinder U+203F, U+2040, U+2054 und ohne Zeilen-/Absatztrenner.
-    $2010..$2027, $2030..$203E, $2041..$2053, $2055..$205E,
-    // Währungen, Pfeile, mathematische und technische Zeichen, Rahmen, Formen, Symbole, Dingbats.
-    $20A0..$20C0, $2190..$23FF, $2500..$27FF, $2900..$2BFF,
-    // CJK-Interpunktion und Vollbreiten-ASCII ohne den Verbinder U+FF3F.
-    $3001..$3003, $3008..$3011, $3014..$301F,
-    $FF01..$FF0F, $FF1A..$FF20, $FF3B..$FF3E, $FF40, $FF5B..$FF65,
-    // Emoji und Symbole jenseits der BMP.
-    $1F000..$1FAFF:
-      Result := True;
-  else
-    Result := False;
-  end;
+  Result := TRuleDescriptor.Create('file-encoding-unsupported', TRuleSeverity.Error,
+    cTexts[TUnicodeText.RejectedTitle].Text);
 end;
 
 /// <summary>Code des Zeichens an AIndex (ab 1), Ersatzpaare zusammengefasst; ASize = 1 oder 2.</summary>
@@ -1496,10 +1492,24 @@ begin
   Result := -1;
 end;
 
-function TFileEncodingUnsupportedRule.Descriptor: TRuleDescriptor;
+class function TFileEncodingUnsupportedRule.IsIllegal(ACode: Integer): Boolean;
 begin
-  Result := TRuleDescriptor.Create('file-encoding-unsupported', TRuleSeverity.Error,
-    cTexts[TUnicodeText.RejectedTitle].Text);
+  case ACode of
+    Ord('!'), Ord('"'), Ord('?'), Ord('\'), Ord('`'), Ord('|'), Ord('~'),
+    $A1..$A9, $AB, $AC, $AE..$B1, $B4, $B6..$B8, $BB, $BF, $D7, $F7,
+    // Allgemeine Interpunktion ohne die Verbinder U+203F, U+2040, U+2054 und ohne Zeilen-/Absatztrenner.
+    $2010..$2027, $2030..$203E, $2041..$2053, $2055..$205E,
+    // Währungen, Pfeile, mathematische und technische Zeichen, Rahmen, Formen, Symbole, Dingbats.
+    $20A0..$20C0, $2190..$23FF, $2500..$27FF, $2900..$2BFF,
+    // CJK-Interpunktion und Vollbreiten-ASCII ohne den Verbinder U+FF3F.
+    $3001..$3003, $3008..$3011, $3014..$301F,
+    $FF01..$FF0F, $FF1A..$FF20, $FF3B..$FF3E, $FF40, $FF5B..$FF65,
+    // Emoji und Symbole jenseits der BMP.
+    $1F000..$1FAFF:
+      Result := True;
+  else
+    Result := False;
+  end;
 end;
 
 /// <summary>Korrektur eines Zitats von AOpen bis AClose zum String; ARange deckt beide Anführungszeichen ab.</summary>
@@ -1620,6 +1630,14 @@ const
     #$03BF#$03BD#$0391#$0392#$0395#$0396#$0397#$0399#$039A#$039C#$039D#$039F#$03A1#$03A4#$03A5#$03A7;
   cConfusableLatin = 'aeopcxyijsdh' + 'ABEKMHOPCTXIJS' + 'ovABEZHIKMNOPTYX';
 
+{ TConfusableIdentifierRule }
+
+function TConfusableIdentifierRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('confusable-identifier', TRuleSeverity.Warning,
+    cTexts[TUnicodeText.ConfusableTitle].Text);
+end;
+
 class function TConfusableIdentifierRule.LatinOf(AChar: Char): Char;
 var
   mIndex: Integer;
@@ -1633,12 +1651,6 @@ begin
   begin
     Result := cConfusableLatin[mIndex];
   end;
-end;
-
-function TConfusableIdentifierRule.Descriptor: TRuleDescriptor;
-begin
-  Result := TRuleDescriptor.Create('confusable-identifier', TRuleSeverity.Warning,
-    cTexts[TUnicodeText.ConfusableTitle].Text);
 end;
 
 type

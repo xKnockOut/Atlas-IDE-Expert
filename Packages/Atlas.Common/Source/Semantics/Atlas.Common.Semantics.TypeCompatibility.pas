@@ -193,6 +193,8 @@ begin
   end;
 end;
 
+{ TTypeCompatibility }
+
 class function TTypeCompatibility.AssignIncompatible(const ATarget, ASource: TValueType): Boolean;
 var
   mSource: TExpressionCategory;

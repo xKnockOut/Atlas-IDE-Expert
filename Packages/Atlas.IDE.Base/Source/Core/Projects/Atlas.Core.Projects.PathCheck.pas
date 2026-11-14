@@ -240,12 +240,6 @@ end;
 
 { TAtlasPathMacros }
 
-class function TAtlasPathMacros.Create(const AEnvironment: TAtlasPathVariable): TAtlasPathMacros;
-begin
-  Result := Default(TAtlasPathMacros);
-  Result.FEnvironment := AEnvironment;
-end;
-
 function TAtlasPathMacros.IndexOf(const AName: string): Integer;
 var
   mIndex: Integer;
@@ -258,6 +252,12 @@ begin
     end;
   end;
   Result := -1;
+end;
+
+class function TAtlasPathMacros.Create(const AEnvironment: TAtlasPathVariable): TAtlasPathMacros;
+begin
+  Result := Default(TAtlasPathMacros);
+  Result.FEnvironment := AEnvironment;
 end;
 
 procedure TAtlasPathMacros.Add(const AName, AValue: string);
@@ -436,35 +436,6 @@ begin
   end;
 end;
 
-class function TAtlasPathCheck.Combine(const AFolder, AName: string): string;
-var
-  mPath, mPrefix: string;
-begin
-  mPath := StringReplace(Trim(AName), '/', '\', [rfReplaceAll]);
-  if not IsAbsolute(mPath) then
-  begin
-    mPrefix := StringReplace(Trim(AFolder), '/', '\', [rfReplaceAll]);
-    if (mPrefix <> '') and not mPrefix.EndsWith('\') then
-    begin
-      mPrefix := mPrefix + '\';
-    end;
-    mPath := mPrefix + mPath;
-  end;
-  // Laufwerk bzw. \\Server bleibt vorn, der Rest wird aufgelöst.
-  mPrefix := '';
-  if (Length(mPath) >= 2) and (mPath[2] = ':') then
-  begin
-    mPrefix := Copy(mPath, 1, 2);
-    Delete(mPath, 1, 2);
-  end
-  else if mPath.StartsWith('\\') then
-  begin
-    mPrefix := '\';
-    Delete(mPath, 1, 1);
-  end;
-  Result := mPrefix + '\' + WithoutDots(mPath);
-end;
-
 class function TAtlasPathCheck.ExpandPath(const APath, ABaseDir: string; const AVariable: TAtlasPathVariable): string;
 var
   mUnknown: string;
@@ -550,6 +521,35 @@ begin
       ASkipped := ASkipped + [mUnknown];
     end;
   end;
+end;
+
+class function TAtlasPathCheck.Combine(const AFolder, AName: string): string;
+var
+  mPath, mPrefix: string;
+begin
+  mPath := StringReplace(Trim(AName), '/', '\', [rfReplaceAll]);
+  if not IsAbsolute(mPath) then
+  begin
+    mPrefix := StringReplace(Trim(AFolder), '/', '\', [rfReplaceAll]);
+    if (mPrefix <> '') and not mPrefix.EndsWith('\') then
+    begin
+      mPrefix := mPrefix + '\';
+    end;
+    mPath := mPrefix + mPath;
+  end;
+  // Laufwerk bzw. \\Server bleibt vorn, der Rest wird aufgelöst.
+  mPrefix := '';
+  if (Length(mPath) >= 2) and (mPath[2] = ':') then
+  begin
+    mPrefix := Copy(mPath, 1, 2);
+    Delete(mPath, 1, 2);
+  end
+  else if mPath.StartsWith('\\') then
+  begin
+    mPrefix := '\';
+    Delete(mPath, 1, 1);
+  end;
+  Result := mPrefix + '\' + WithoutDots(mPath);
 end;
 
 class function TAtlasPathCheck.DprojDefines(const ADprojText: string): TArray<string>;
@@ -767,6 +767,8 @@ type
     function Has(const AFolder, AFileName: string): Boolean;
   end;
 
+{ TFolderCache }
+
 constructor TFolderCache.Create(const AList: TAtlasPathListFolder);
 begin
   inherited Create;
@@ -839,6 +841,8 @@ type
     procedure Add(const AName, AFileName: string; ALine: Integer; AUncertain: Boolean);
     function ToArray: TArray<TAtlasPathFinding>;
   end;
+
+{ TFindingList }
 
 constructor TFindingList.Create;
 begin
@@ -976,6 +980,8 @@ type
     destructor Destroy; override;
     function Execute: TAtlasPathCheckResult;
   end;
+
+{ TPathRun }
 
 constructor TPathRun.Create(const AInput: TAtlasPathCheckInput; const ARead: TAtlasPathReadText;
   const AList: TAtlasPathListFolder);
@@ -1133,6 +1139,27 @@ begin
   FHints.Add(mItem);
 end;
 
+procedure TPathRun.Require(const APackage: TAtlasUsedUnit; const AFrom: string);
+var
+  mOwn: TArray<string>;
+begin
+  if RequireFromGroup(APackage, AFrom) then
+  begin
+    Exit;
+  end;
+  // Nicht in der Gruppe: rtl, vcl … liegen als .dcp in den Bibliothekspfaden, das ist normal. Die .dcp nennt
+  // ihre Units lesbar; sie gelten damit als gefunden (ToolsAPI aus designide).
+  if RequireFromDcp(APackage.Name, FInput.LibraryPaths) then
+  begin
+    Exit;
+  end;
+  mOwn := [FProjectDir] + FInput.SearchPaths;
+  if RequireFromDcp(APackage.Name, mOwn) then
+  begin
+    Hint(APackage.Name, '', AFrom, APackage.Line);
+  end;
+end;
+
 function TPathRun.RequireFromGroup(const APackage: TAtlasUsedUnit; const AFrom: string): Boolean;
 var
   mProject, mDpk, mPackageText: string;
@@ -1177,27 +1204,6 @@ begin
     end;
   end;
   Result := False;
-end;
-
-procedure TPathRun.Require(const APackage: TAtlasUsedUnit; const AFrom: string);
-var
-  mOwn: TArray<string>;
-begin
-  if RequireFromGroup(APackage, AFrom) then
-  begin
-    Exit;
-  end;
-  // Nicht in der Gruppe: rtl, vcl … liegen als .dcp in den Bibliothekspfaden, das ist normal. Die .dcp nennt
-  // ihre Units lesbar; sie gelten damit als gefunden (ToolsAPI aus designide).
-  if RequireFromDcp(APackage.Name, FInput.LibraryPaths) then
-  begin
-    Exit;
-  end;
-  mOwn := [FProjectDir] + FInput.SearchPaths;
-  if RequireFromDcp(APackage.Name, mOwn) then
-  begin
-    Hint(APackage.Name, '', AFrom, APackage.Line);
-  end;
 end;
 
 procedure TPathRun.AddProduced;

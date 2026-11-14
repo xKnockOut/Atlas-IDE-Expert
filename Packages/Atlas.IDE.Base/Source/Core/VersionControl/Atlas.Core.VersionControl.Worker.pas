@@ -60,16 +60,6 @@ begin
   inherited;
 end;
 
-function TAtlasVcsWorker.Pending: Integer;
-begin
-  FLock.Enter;
-  try
-    Result := FThreads.Count;
-  finally
-    FLock.Leave;
-  end;
-end;
-
 procedure TAtlasVcsWorker.Finished(AThread: TThread);
 begin
   // Im Hauptthread, aus dem zugestellten Ergebnis: Der Thread ist am Ende seiner Arbeit.
@@ -190,6 +180,16 @@ begin
       FLock.Leave;
     end;
     mThread.Free;
+  end;
+end;
+
+function TAtlasVcsWorker.Pending: Integer;
+begin
+  FLock.Enter;
+  try
+    Result := FThreads.Count;
+  finally
+    FLock.Leave;
   end;
 end;
 

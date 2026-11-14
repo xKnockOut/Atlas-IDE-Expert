@@ -83,6 +83,8 @@ begin
   Result := False;
 end;
 
+{ TAtlasGallery }
+
 class function TAtlasGallery.Items(const AEntries: TArray<TAtlasMenuEntry>;
   const ACommands: TArray<TAtlasModuleCommand>): TArray<TAtlasGalleryItem>;
 var

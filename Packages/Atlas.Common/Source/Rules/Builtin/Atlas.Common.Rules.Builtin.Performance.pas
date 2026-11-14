@@ -586,6 +586,8 @@ const
     'ExtractFilePath', 'StringReplace', 'Copy', 'ComponentCount');
   cExpensiveProperties: array[0..2] of string = ('Text', 'CommaText', 'DelimitedText');
 
+{ TLoopInvariantCallRule }
+
 function TLoopInvariantCallRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('loop-invariant-call', TRuleSeverity.Hint,
@@ -729,6 +731,8 @@ type
     /// <summary>Alle Bedingungen von while und until.</summary>
     procedure CheckLoops(const AReport: IRuleReport);
   end;
+
+{ TLoopConditionCheck }
 
 constructor TLoopConditionCheck.Create(const AContext: TRuleContext; AResolver: TNameResolver);
 begin
@@ -1179,6 +1183,8 @@ begin
   Result := MatchText(AReceiver, AUpdated) or MatchText(OwnerOf(AReceiver), AUpdated) or
     MatchText(AReceiver, AReported);
 end;
+
+{ TMissingBeginUpdateRule }
 
 function TMissingBeginUpdateRule.Descriptor: TRuleDescriptor;
 begin

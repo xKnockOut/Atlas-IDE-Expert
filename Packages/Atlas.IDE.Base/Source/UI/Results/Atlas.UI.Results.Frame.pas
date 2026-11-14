@@ -122,6 +122,26 @@ begin
   inherited;
 end;
 
+function TAtlasResultsFrame.GetTree: TTreeView;
+begin
+  Result := FView.Tree;
+end;
+
+function TAtlasResultsFrame.GetMenu: TPopupMenu;
+begin
+  Result := FView.Menu;
+end;
+
+function TAtlasResultsFrame.GetOnOpen: TAtlasResultsOpen;
+begin
+  Result := FView.OnOpen;
+end;
+
+procedure TAtlasResultsFrame.SetOnOpen(const AValue: TAtlasResultsOpen);
+begin
+  FView.OnOpen := AValue;
+end;
+
 function TAtlasResultsFrame.CreateHeader: TPanel;
 begin
   // Titelzeile: Symbol (#751) links, Titel in der Mitte, Schalter der Teile rechts.
@@ -177,41 +197,6 @@ begin
   FView.Add(FParts.Issues);
 end;
 
-function TAtlasResultsFrame.GetTree: TTreeView;
-begin
-  Result := FView.Tree;
-end;
-
-function TAtlasResultsFrame.GetMenu: TPopupMenu;
-begin
-  Result := FView.Menu;
-end;
-
-function TAtlasResultsFrame.GetOnOpen: TAtlasResultsOpen;
-begin
-  Result := FView.OnOpen;
-end;
-
-procedure TAtlasResultsFrame.SetOnOpen(const AValue: TAtlasResultsOpen);
-begin
-  FView.OnOpen := AValue;
-end;
-
-procedure TAtlasResultsFrame.MenuPopup(Sender: TObject);
-begin
-  FView.Popup;
-end;
-
-procedure TAtlasResultsFrame.TreeExpanding(Sender: TObject; Node: TTreeNode; var AllowExpansion: Boolean);
-begin
-  FView.Expanding(Node, AllowExpansion);
-end;
-
-procedure TAtlasResultsFrame.TreeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
-begin
-  FView.HintAt(X, Y);
-end;
-
 procedure TAtlasResultsFrame.TreeClick(Sender: TObject);
 var
   mWhere: TPoint;
@@ -255,6 +240,21 @@ begin
   begin
     FView.KeyDown(Key);
   end;
+end;
+
+procedure TAtlasResultsFrame.TreeExpanding(Sender: TObject; Node: TTreeNode; var AllowExpansion: Boolean);
+begin
+  FView.Expanding(Node, AllowExpansion);
+end;
+
+procedure TAtlasResultsFrame.TreeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+begin
+  FView.HintAt(X, Y);
+end;
+
+procedure TAtlasResultsFrame.MenuPopup(Sender: TObject);
+begin
+  FView.Popup;
 end;
 
 end.

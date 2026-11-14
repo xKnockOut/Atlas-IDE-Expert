@@ -147,6 +147,8 @@ begin
     end;
 end;
 
+{ TAssignFields }
+
 class function TAssignFields.Merge(const AMembers: TArray<TAssignMember>): TArray<TAssignMember>;
 var
   mMember: TAssignMember;

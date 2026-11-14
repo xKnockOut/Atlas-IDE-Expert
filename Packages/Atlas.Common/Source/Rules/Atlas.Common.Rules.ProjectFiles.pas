@@ -117,27 +117,6 @@ begin
   inherited;
 end;
 
-class function TRuleFileNames.Identifiers(const AText: string): TDictionary<string, Boolean>;
-var
-  mToken: TPascalToken;
-  mName: string;
-begin
-  Result := TDictionary<string, Boolean>.Create;
-  // Nur Bezeichner zählen, nicht Kommentare und Strings; die Tokens reichen, ein Syntaxbaum ist nicht nötig.
-  for mToken in TPascalLexer.Tokenize(AText) do
-  begin
-    if mToken.Kind = TPascalTokenKind.Identifier then
-    begin
-      mName := mToken.Text;
-      if StartsStr('&', mName) then
-      begin
-        mName := Copy(mName, 2, MaxInt);
-      end;
-      Result.AddOrSetValue(AnsiLowerCase(mName), True);
-    end;
-  end;
-end;
-
 function TRuleFileNames.NamesOf(const AFileName: string;
   const AReadText: TRuleProjectReadText): TDictionary<string, Boolean>;
 var
@@ -159,6 +138,27 @@ begin
     end;
   finally
     System.TMonitor.Exit(FLock);
+  end;
+end;
+
+class function TRuleFileNames.Identifiers(const AText: string): TDictionary<string, Boolean>;
+var
+  mToken: TPascalToken;
+  mName: string;
+begin
+  Result := TDictionary<string, Boolean>.Create;
+  // Nur Bezeichner zählen, nicht Kommentare und Strings; die Tokens reichen, ein Syntaxbaum ist nicht nötig.
+  for mToken in TPascalLexer.Tokenize(AText) do
+  begin
+    if mToken.Kind = TPascalTokenKind.Identifier then
+    begin
+      mName := mToken.Text;
+      if StartsStr('&', mName) then
+      begin
+        mName := Copy(mName, 2, MaxInt);
+      end;
+      Result.AddOrSetValue(AnsiLowerCase(mName), True);
+    end;
   end;
 end;
 
@@ -217,6 +217,101 @@ begin
     FOwnsUsesGraph := True;
   end;
   Result := FUsesGraph;
+end;
+
+function TRuleProjectFiles.NameInIncludes(const AIncludes: TArray<string>; const AName: string): TRuleNameAnswer;
+var
+  mInclude: string;
+begin
+  Result := TRuleNameAnswer.Absent;
+  for mInclude in AIncludes do
+  begin
+    Result := FFileNames.Lookup(mInclude, AName, FReadText);
+    if Result <> TRuleNameAnswer.Absent then
+    begin
+      Exit;
+    end;
+  end;
+end;
+
+function TRuleProjectFiles.Complete(out AReason: string): Boolean;
+begin
+  AReason := '';
+  if Assigned(FComplete) then
+  begin
+    Result := FComplete(AReason);
+  end
+  else
+  begin
+    Result := True;
+  end;
+end;
+
+function TRuleProjectFiles.ProjectsOf(const AFileName: string; AWholeGroup: Boolean): TArray<TRuleProject>;
+var
+  mProject: TRuleProject;
+  mSource: string;
+  mMember: Boolean;
+  mOthers: TArray<TRuleProject>;
+begin
+  // '' liefert alle Projekte der Gruppe, z. B. für eine Unit, die in keinem Projekt steht (#1882).
+  if AFileName = '' then
+  begin
+    Exit(FProjects);
+  end;
+  Result := nil;
+  mOthers := nil;
+  for mProject in FProjects do
+  begin
+    mMember := False;
+    for mSource in mProject.Sources do
+    begin
+      if SameText(mSource, AFileName) then
+      begin
+        mMember := True;
+      end;
+    end;
+    if mMember then
+    begin
+      Result := Result + [mProject];
+    end
+    else
+    begin
+      mOthers := mOthers + [mProject];
+    end;
+  end;
+  if AWholeGroup and (Result <> nil) then
+  begin
+    Result := Result + mOthers;
+  end;
+end;
+
+function TRuleProjectFiles.NameIn(const AFileName, AName: string): TRuleNameAnswer;
+var
+  mIndexed: TUnitIndex;
+  mHasUnit: Boolean;
+begin
+  mHasUnit := (FIndex <> nil) and FIndex.FindFile(AFileName, mIndexed);
+  if mHasUnit then
+    // Deklarationen zählen nicht als Verwendung; der Name kann trotzdem als Deklaration in der Datei stehen.
+    case TIndexUsages.Lookup(mIndexed, AName) of
+      TIndexUsageAnswer.Present:
+        Exit(TRuleNameAnswer.Present);
+      TIndexUsageAnswer.Absent:
+        Exit(TRuleNameAnswer.Absent);
+    end;
+  // Ohne Verwendungen (ausgelagert, aus): Bezeichner der Datei, je Datei einmal gelesen.
+  Result := FFileNames.Lookup(AFileName, AName, FReadText);
+  if mHasUnit and (Result = TRuleNameAnswer.Absent) then
+  begin
+    Result := NameInIncludes(mIndexed.Includes, AName);
+  end;
+end;
+
+function TRuleProjectFiles.ReadText(const AFileName: string; out AText: string): Boolean;
+begin
+  AText := '';
+  Result := Assigned(FReadText) and FReadText(AFileName, AText);
 end;
 
 function TRuleProjectFiles.UsesPath(const AFromUnit, AToFile: string; AInterfaceOnly: Boolean): TArray<TRuleUsesStep>;
@@ -339,101 +434,6 @@ begin
       begin
         Result.Forms := Result.Forms + [ChangeFileExt(mSource, '.fmx')];
       end;
-    end;
-  end;
-end;
-
-function TRuleProjectFiles.Complete(out AReason: string): Boolean;
-begin
-  AReason := '';
-  if Assigned(FComplete) then
-  begin
-    Result := FComplete(AReason);
-  end
-  else
-  begin
-    Result := True;
-  end;
-end;
-
-function TRuleProjectFiles.ProjectsOf(const AFileName: string; AWholeGroup: Boolean): TArray<TRuleProject>;
-var
-  mProject: TRuleProject;
-  mSource: string;
-  mMember: Boolean;
-  mOthers: TArray<TRuleProject>;
-begin
-  // '' liefert alle Projekte der Gruppe, z. B. für eine Unit, die in keinem Projekt steht (#1882).
-  if AFileName = '' then
-  begin
-    Exit(FProjects);
-  end;
-  Result := nil;
-  mOthers := nil;
-  for mProject in FProjects do
-  begin
-    mMember := False;
-    for mSource in mProject.Sources do
-    begin
-      if SameText(mSource, AFileName) then
-      begin
-        mMember := True;
-      end;
-    end;
-    if mMember then
-    begin
-      Result := Result + [mProject];
-    end
-    else
-    begin
-      mOthers := mOthers + [mProject];
-    end;
-  end;
-  if AWholeGroup and (Result <> nil) then
-  begin
-    Result := Result + mOthers;
-  end;
-end;
-
-function TRuleProjectFiles.ReadText(const AFileName: string; out AText: string): Boolean;
-begin
-  AText := '';
-  Result := Assigned(FReadText) and FReadText(AFileName, AText);
-end;
-
-function TRuleProjectFiles.NameIn(const AFileName, AName: string): TRuleNameAnswer;
-var
-  mIndexed: TUnitIndex;
-  mHasUnit: Boolean;
-begin
-  mHasUnit := (FIndex <> nil) and FIndex.FindFile(AFileName, mIndexed);
-  if mHasUnit then
-    // Deklarationen zählen nicht als Verwendung; der Name kann trotzdem als Deklaration in der Datei stehen.
-    case TIndexUsages.Lookup(mIndexed, AName) of
-      TIndexUsageAnswer.Present:
-        Exit(TRuleNameAnswer.Present);
-      TIndexUsageAnswer.Absent:
-        Exit(TRuleNameAnswer.Absent);
-    end;
-  // Ohne Verwendungen (ausgelagert, aus): Bezeichner der Datei, je Datei einmal gelesen.
-  Result := FFileNames.Lookup(AFileName, AName, FReadText);
-  if mHasUnit and (Result = TRuleNameAnswer.Absent) then
-  begin
-    Result := NameInIncludes(mIndexed.Includes, AName);
-  end;
-end;
-
-function TRuleProjectFiles.NameInIncludes(const AIncludes: TArray<string>; const AName: string): TRuleNameAnswer;
-var
-  mInclude: string;
-begin
-  Result := TRuleNameAnswer.Absent;
-  for mInclude in AIncludes do
-  begin
-    Result := FFileNames.Lookup(mInclude, AName, FReadText);
-    if Result <> TRuleNameAnswer.Absent then
-    begin
-      Exit;
     end;
   end;
 end;

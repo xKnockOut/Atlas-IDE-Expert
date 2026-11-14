@@ -237,6 +237,8 @@ begin
   TAtlasIdeGallery.Refresh;
 end;
 
+{ TGalleryWatch }
+
 procedure TGalleryWatch.RegistryChanged(const AChange: TAtlasRegistryChange);
 begin
   if AChange.Kind in [rcModuleAdded, rcModuleRemoved, rcProvided, rcRevoked] then

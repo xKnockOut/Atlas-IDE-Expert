@@ -119,16 +119,16 @@ begin
   Result := (AFilterValue = '') or SameText(AFilterValue, AValue);
 end;
 
-function TTodoFilter.MatchesUnit(const AFile: TFileTodos): Boolean;
-begin
-  Result := (UnitName = '') or SameText(UnitName, AFile.UnitName) or SameText(UnitName, AFile.Path) or
-    SameText(StringReplace(UnitName, '\', '/', [rfReplaceAll]), AFile.Path);
-end;
-
 function TTodoFilter.Matches(const AFile: TFileTodos; const AEntry: TTodoEntry): Boolean;
 begin
   Result := (IncludeDone or not AEntry.Done) and MatchesValue(Category, AEntry.Category) and
     MatchesValue(Owner, AEntry.Owner) and MatchesValue(Keyword, AEntry.Keyword) and MatchesUnit(AFile);
+end;
+
+function TTodoFilter.MatchesUnit(const AFile: TFileTodos): Boolean;
+begin
+  Result := (UnitName = '') or SameText(UnitName, AFile.UnitName) or SameText(UnitName, AFile.Path) or
+    SameText(StringReplace(UnitName, '\', '/', [rfReplaceAll]), AFile.Path);
 end;
 
 { TTodos }

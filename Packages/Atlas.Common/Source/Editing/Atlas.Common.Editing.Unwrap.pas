@@ -389,6 +389,29 @@ begin
   end;
 end;
 
+function TBuilder.BranchSegment(ADelimiterEnd: Integer; ABranch: TSyntaxNode; out ACount: Integer): TSegment;
+var
+  mFirst, mLast: Integer;
+begin
+  ACount := 0;
+  if ABranch = nil then
+  begin
+    Exit(TSegment.Create(ADelimiterEnd, ADelimiterEnd));
+  end;
+  if ABranch.Kind = TSyntaxKind.Block then
+  begin
+    mFirst := NextCode(ABranch.StartOffset);
+    mLast := PrevCode(ABranch.EndOffset);
+    if IsKeyword(mFirst, 'begin') and IsKeyword(mLast, 'end') and (mFirst < mLast) then
+    begin
+      ACount := ABranch.ChildCount;
+      Exit(TSegment.Create(TokenEnd(mFirst), Tokens[mLast].Offset));
+    end;
+  end;
+  ACount := 1;
+  Result := TSegment.Create(ADelimiterEnd, ABranch.EndOffset);
+end;
+
 function TBuilder.ChildFrom(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 var
   mIndex: Integer;
@@ -429,29 +452,6 @@ begin
     end;
     Inc(mIndex);
   end;
-end;
-
-function TBuilder.BranchSegment(ADelimiterEnd: Integer; ABranch: TSyntaxNode; out ACount: Integer): TSegment;
-var
-  mFirst, mLast: Integer;
-begin
-  ACount := 0;
-  if ABranch = nil then
-  begin
-    Exit(TSegment.Create(ADelimiterEnd, ADelimiterEnd));
-  end;
-  if ABranch.Kind = TSyntaxKind.Block then
-  begin
-    mFirst := NextCode(ABranch.StartOffset);
-    mLast := PrevCode(ABranch.EndOffset);
-    if IsKeyword(mFirst, 'begin') and IsKeyword(mLast, 'end') and (mFirst < mLast) then
-    begin
-      ACount := ABranch.ChildCount;
-      Exit(TSegment.Create(TokenEnd(mFirst), Tokens[mLast].Offset));
-    end;
-  end;
-  ACount := 1;
-  Result := TSegment.Create(ADelimiterEnd, ABranch.EndOffset);
 end;
 
 function TBuilder.SegmentText(const ASegment: TSegment; const AEdits: TArray<TOffsetEdit>): string;
@@ -1263,6 +1263,8 @@ begin
     Result := Result + [AAll[mOrder[mIndex]]];
   end;
 end;
+
+{ TUnwrap }
 
 class function TUnwrap.Candidates(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   const AOptions: TUnwrapOptions): TArray<TUnwrapCandidate>;

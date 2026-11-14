@@ -556,23 +556,84 @@ begin
   inherited;
 end;
 
-procedure TJsonRpcDispatcher.ExpectResponse(const AId: string; const AHandler: TJsonRpcResponseHandler);
+function TJsonRpcDispatcher.DispatchRequest(const AId: TJSONValue; const AMethod: string;
+  const AParams: TJSONValue; AQueueMs: Int64): TJSONObject;
+var
+  mRun: TRequestRun;
+  mHandler: TJsonRpcRequestHandler;
+  mConcurrent: TJsonRpcConcurrentRequestHandler;
+  mScheduled: Boolean;
+  mTicket: Int64;
 begin
-  TMonitor.Enter(FExpected);
+  mRun := NewRun(Self, AId, AMethod, AParams, FPending.Acquire(AId), AQueueMs);
+  mScheduled := False;
+  mTicket := 0;
   try
-    FExpected.AddOrSetValue(AId, AHandler);
+    try
+      CheckGuards(Self, AMethod, AParams);
+      if ConcurrentFor(FConcurrentHandlers, FConcurrentWhen, FRequestHandlers, AMethod, AParams, mConcurrent) then
+      begin
+        mScheduled := Assigned(FScheduler) and Assigned(FResponder);
+        if mScheduled then
+        begin
+          ScheduleConcurrent(FScheduler, FResponder, FPending, FWatchdog, mConcurrent, mRun);
+          Exit(nil);
+        end;
+        // Ohne Scheduler läuft die Anfrage hier; auch dann gilt das Zeitlimit.
+        if FWatchdog <> nil then
+        begin
+          mTicket := FWatchdog.Watch(AId, AMethod);
+        end;
+        Exit(RunConcurrent(mRun, mConcurrent));
+      end;
+      if not FRequestHandlers.TryGetValue(AMethod, mHandler) then
+      begin
+        raise EJsonRpcError.Create(TJsonRpcErrorCode.cMethodNotFound, cTexts[TDispatcherText.MethodNotSupported].Text +
+          AMethod);
+      end;
+      // Abgebrochen, während die Anfrage noch in der Warteschlange stand.
+      mRun.Token.ThrowIfCancellationRequested;
+      if FWatchdog <> nil then
+      begin
+        mTicket := FWatchdog.Watch(AId, AMethod);
+      end;
+      Result := RunOrdered(mRun, mHandler);
+    except
+      // lsp-ignore: catch-all-without-raise -- Fehlergrenze der Anfrage; Fehler geht als Antwort zurück
+      on E: Exception do
+      begin
+        Result := FailedResponse(mRun, E, False, 0);
+      end;
+    end;
   finally
-    TMonitor.Exit(FExpected);
+    if FWatchdog <> nil then
+    begin
+      FWatchdog.Unwatch(mTicket);
+    end;
+    if not mScheduled then
+    begin
+      FPending.Release(AId, mRun.Token);
+    end;
   end;
 end;
 
-procedure TJsonRpcDispatcher.ForgetResponse(const AId: string);
+function TJsonRpcDispatcher.DispatchValid(const AMessage: TJSONObject; const AId: TJSONValue;
+  const AMethod: string; AQueueMs: Int64): TJSONObject;
 begin
-  TMonitor.Enter(FExpected);
-  try
-    FExpected.Remove(AId);
-  finally
-    TMonitor.Exit(FExpected);
+  Result := nil;
+  if AId <> nil then
+  begin
+    Result := DispatchRequest(AId, AMethod, AMessage.GetValue('params'), AQueueMs);
+  end
+  // $/cancelRequest ist Teil des Protokolls und gilt in jedem Zustand. Über
+  // die Verbindung erledigt das schon der Lese-Thread (IJsonRpcPendingRequests.Observe).
+  else if (AMethod = cJsonRpcCancelRequestMethod) or (AMethod = cMcpCancelledMethod) then
+  begin
+    FPending.Observe(AMessage);
+  end
+  else
+  begin
+    DispatchNotification(FGuard, FNotificationHandlers, AMethod, AMessage.GetValue('params'));
   end;
 end;
 
@@ -648,89 +709,28 @@ begin
   end;
 end;
 
-function TJsonRpcDispatcher.DispatchValid(const AMessage: TJSONObject; const AId: TJSONValue;
-  const AMethod: string; AQueueMs: Int64): TJSONObject;
-begin
-  Result := nil;
-  if AId <> nil then
-  begin
-    Result := DispatchRequest(AId, AMethod, AMessage.GetValue('params'), AQueueMs);
-  end
-  // $/cancelRequest ist Teil des Protokolls und gilt in jedem Zustand. Über
-  // die Verbindung erledigt das schon der Lese-Thread (IJsonRpcPendingRequests.Observe).
-  else if (AMethod = cJsonRpcCancelRequestMethod) or (AMethod = cMcpCancelledMethod) then
-  begin
-    FPending.Observe(AMessage);
-  end
-  else
-  begin
-    DispatchNotification(FGuard, FNotificationHandlers, AMethod, AMessage.GetValue('params'));
-  end;
-end;
-
 function TJsonRpcDispatcher.Methods: TArray<string>;
 begin
   Result := FRequestHandlers.Keys.ToArray + FConcurrentHandlers.Keys.ToArray;
 end;
 
-function TJsonRpcDispatcher.DispatchRequest(const AId: TJSONValue; const AMethod: string;
-  const AParams: TJSONValue; AQueueMs: Int64): TJSONObject;
-var
-  mRun: TRequestRun;
-  mHandler: TJsonRpcRequestHandler;
-  mConcurrent: TJsonRpcConcurrentRequestHandler;
-  mScheduled: Boolean;
-  mTicket: Int64;
+procedure TJsonRpcDispatcher.ExpectResponse(const AId: string; const AHandler: TJsonRpcResponseHandler);
 begin
-  mRun := NewRun(Self, AId, AMethod, AParams, FPending.Acquire(AId), AQueueMs);
-  mScheduled := False;
-  mTicket := 0;
+  TMonitor.Enter(FExpected);
   try
-    try
-      CheckGuards(Self, AMethod, AParams);
-      if ConcurrentFor(FConcurrentHandlers, FConcurrentWhen, FRequestHandlers, AMethod, AParams, mConcurrent) then
-      begin
-        mScheduled := Assigned(FScheduler) and Assigned(FResponder);
-        if mScheduled then
-        begin
-          ScheduleConcurrent(FScheduler, FResponder, FPending, FWatchdog, mConcurrent, mRun);
-          Exit(nil);
-        end;
-        // Ohne Scheduler läuft die Anfrage hier; auch dann gilt das Zeitlimit.
-        if FWatchdog <> nil then
-        begin
-          mTicket := FWatchdog.Watch(AId, AMethod);
-        end;
-        Exit(RunConcurrent(mRun, mConcurrent));
-      end;
-      if not FRequestHandlers.TryGetValue(AMethod, mHandler) then
-      begin
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.cMethodNotFound, cTexts[TDispatcherText.MethodNotSupported].Text +
-          AMethod);
-      end;
-      // Abgebrochen, während die Anfrage noch in der Warteschlange stand.
-      mRun.Token.ThrowIfCancellationRequested;
-      if FWatchdog <> nil then
-      begin
-        mTicket := FWatchdog.Watch(AId, AMethod);
-      end;
-      Result := RunOrdered(mRun, mHandler);
-    except
-      // lsp-ignore: catch-all-without-raise -- Fehlergrenze der Anfrage; Fehler geht als Antwort zurück
-      on E: Exception do
-      begin
-        Result := FailedResponse(mRun, E, False, 0);
-      end;
-    end;
+    FExpected.AddOrSetValue(AId, AHandler);
   finally
-    if FWatchdog <> nil then
-    begin
-      FWatchdog.Unwatch(mTicket);
-    end;
-    if not mScheduled then
-    begin
-      FPending.Release(AId, mRun.Token);
-    end;
+    TMonitor.Exit(FExpected);
+  end;
+end;
+
+procedure TJsonRpcDispatcher.ForgetResponse(const AId: string);
+begin
+  TMonitor.Enter(FExpected);
+  try
+    FExpected.Remove(AId);
+  finally
+    TMonitor.Exit(FExpected);
   end;
 end;
 

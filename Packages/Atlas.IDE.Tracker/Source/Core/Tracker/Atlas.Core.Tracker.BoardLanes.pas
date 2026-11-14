@@ -188,6 +188,8 @@ begin
   end;
 end;
 
+{ TAtlasBoardLanes }
+
 class function TAtlasBoardLanes.Build(const ASnapshot: TAtlasBoardSnapshot; const AVisible: TArray<Integer>;
   AFiltered: Boolean): TArray<TAtlasBoardLane>;
 var

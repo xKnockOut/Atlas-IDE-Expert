@@ -144,58 +144,6 @@ end;
 
 { TAtlasIdeDebugNoSource }
 
-class procedure TAtlasIdeDebugNoSource.Start(const AMessage: TProc<string>);
-begin
-  FMessage := AMessage;
-  if FTicker = nil then
-  begin
-    FTicker := TTicker.Create;
-  end;
-  if FTimer = nil then
-  begin
-    FTimer := TTimer.Create(nil);
-    FTimer.Enabled := False;
-    FTimer.Interval := cIntervalMs;
-    FTimer.OnTimer := FTicker.Tick;
-  end;
-  if FListener = nil then
-  begin
-    FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FListener);
-  end;
-  TAtlasIdeDebugSession.Start;
-end;
-
-class procedure TAtlasIdeDebugNoSource.Release;
-begin
-  if FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(FListener);
-  end;
-  FListener := nil;
-  FreeAndNil(FTimer);
-  FreeAndNil(FTicker);
-  FreeAndNil(FPopup);
-  TAtlasIdeNoSourceFacts.Release;
-  FMessage := nil;
-  FReturning := False;
-  FRebuild := False;
-end;
-
-class function TAtlasIdeDebugNoSource.Started: Boolean;
-begin
-  Result := FListener <> nil;
-end;
-
-class procedure TAtlasIdeDebugNoSource.ThemeChanged;
-begin
-  if (FPopup <> nil) and FPopup.IsShown then
-  begin
-    FPopup.Colors := TAtlasIdeStyle.Colors;
-    FPopup.Invalidate;
-  end;
-end;
-
 class procedure TAtlasIdeDebugNoSource.Say(const AText: string);
 begin
   if Assigned(FMessage) then
@@ -242,6 +190,54 @@ begin
   else
     FReturning := False;
   end;
+end;
+
+class procedure TAtlasIdeDebugNoSource.Hide;
+begin
+  if FPopup <> nil then
+  begin
+    FPopup.Dismiss;
+  end;
+end;
+
+class procedure TAtlasIdeDebugNoSource.Choose(AWay: TAtlasNoSourceWay);
+begin
+  case AWay of
+    TAtlasNoSourceWay.EnableDebugDcus:
+      EnableDebugDcus;
+    TAtlasNoSourceWay.ReturnToOwnCode:
+      ReturnToOwnCode;
+    TAtlasNoSourceWay.FindSource:
+      FindSource;
+    TAtlasNoSourceWay.KeepCpu:
+      ;
+  end;
+end;
+
+class procedure TAtlasIdeDebugNoSource.ReturnToOwnCode;
+begin
+  FReturning := True;
+  FReturns := 1;
+  Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceReturning));
+  if not TAtlasIdeDebugSession.RunMode(ormRunUntilReturn) then
+  begin
+    FReturning := False;
+  end;
+end;
+
+class procedure TAtlasIdeDebugNoSource.EnableDebugDcus;
+var
+  mProject: IOTAProject;
+begin
+  TAtlasIdeDebugUnavailableFixes.UseDebugDcus(cDebugConfiguration, FMessage);
+  mProject := GetActiveProject;
+  // Abgelehnt oder nicht gesetzt: Sitzung läuft weiter.
+  if (mProject = nil) or not TAtlasDebugUnavailable.OptionOn(TAtlasIdeProjectContext.ConfigurationValue(mProject,
+    cDebugConfiguration, '', TAtlasIdeDebugUnavailableFixes.cDebugDcusOption), False) then
+  begin
+    Exit;
+  end;
+  FRebuild := TAtlasIdeDebugUnavailableFixes.Reset(FMessage);
 end;
 
 /// <summary>Steht weiter unten im Stapel eigener Code?</summary>
@@ -353,69 +349,6 @@ begin
     (AFacts.UnitName <> '') or (AFacts.Place.Module <> ''), mPoint);
 end;
 
-class procedure TAtlasIdeDebugNoSource.Hide;
-begin
-  if FPopup <> nil then
-  begin
-    FPopup.Dismiss;
-  end;
-end;
-
-class procedure TAtlasIdeDebugNoSource.Choose(AWay: TAtlasNoSourceWay);
-begin
-  case AWay of
-    TAtlasNoSourceWay.EnableDebugDcus:
-      EnableDebugDcus;
-    TAtlasNoSourceWay.ReturnToOwnCode:
-      ReturnToOwnCode;
-    TAtlasNoSourceWay.FindSource:
-      FindSource;
-    TAtlasNoSourceWay.KeepCpu:
-      ;
-  end;
-end;
-
-class procedure TAtlasIdeDebugNoSource.ReturnToOwnCode;
-begin
-  FReturning := True;
-  FReturns := 1;
-  Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceReturning));
-  if not TAtlasIdeDebugSession.RunMode(ormRunUntilReturn) then
-  begin
-    FReturning := False;
-  end;
-end;
-
-class procedure TAtlasIdeDebugNoSource.EnableDebugDcus;
-var
-  mProject: IOTAProject;
-begin
-  TAtlasIdeDebugUnavailableFixes.UseDebugDcus(cDebugConfiguration, FMessage);
-  mProject := GetActiveProject;
-  // Abgelehnt oder nicht gesetzt: Sitzung läuft weiter.
-  if (mProject = nil) or not TAtlasDebugUnavailable.OptionOn(TAtlasIdeProjectContext.ConfigurationValue(mProject,
-    cDebugConfiguration, '', TAtlasIdeDebugUnavailableFixes.cDebugDcusOption), False) then
-  begin
-    Exit;
-  end;
-  FRebuild := TAtlasIdeDebugUnavailableFixes.Reset(FMessage);
-end;
-
-class procedure TAtlasIdeDebugNoSource.RebuildAndRun;
-var
-  mProject: IOTAProject;
-begin
-  mProject := GetActiveProject;
-  if (mProject = nil) or (mProject.ProjectBuilder = nil) then
-  begin
-    Exit;
-  end;
-  if mProject.ProjectBuilder.BuildProject(cmOTABuild, True, True) then
-  begin
-    TAtlasIdeDebugUnavailableFixes.Run(FMessage);
-  end;
-end;
-
 class procedure TAtlasIdeDebugNoSource.FindSource;
 var
   mFolder, mName, mFile: string;
@@ -459,6 +392,73 @@ begin
   mNext.DebugNoSourceIgnoredUnits := TAtlasNoSource.AddIgnored(mNext.DebugNoSourceIgnoredUnits, mUnit);
   TAtlasIdeSettings.Update(mNext);
   Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.NoSourceIgnored, [mUnit]));
+end;
+
+class procedure TAtlasIdeDebugNoSource.RebuildAndRun;
+var
+  mProject: IOTAProject;
+begin
+  mProject := GetActiveProject;
+  if (mProject = nil) or (mProject.ProjectBuilder = nil) then
+  begin
+    Exit;
+  end;
+  if mProject.ProjectBuilder.BuildProject(cmOTABuild, True, True) then
+  begin
+    TAtlasIdeDebugUnavailableFixes.Run(FMessage);
+  end;
+end;
+
+class procedure TAtlasIdeDebugNoSource.Start(const AMessage: TProc<string>);
+begin
+  FMessage := AMessage;
+  if FTicker = nil then
+  begin
+    FTicker := TTicker.Create;
+  end;
+  if FTimer = nil then
+  begin
+    FTimer := TTimer.Create(nil);
+    FTimer.Enabled := False;
+    FTimer.Interval := cIntervalMs;
+    FTimer.OnTimer := FTicker.Tick;
+  end;
+  if FListener = nil then
+  begin
+    FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FListener);
+  end;
+  TAtlasIdeDebugSession.Start;
+end;
+
+class procedure TAtlasIdeDebugNoSource.Release;
+begin
+  if FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(FListener);
+  end;
+  FListener := nil;
+  FreeAndNil(FTimer);
+  FreeAndNil(FTicker);
+  FreeAndNil(FPopup);
+  TAtlasIdeNoSourceFacts.Release;
+  FMessage := nil;
+  FReturning := False;
+  FRebuild := False;
+end;
+
+class function TAtlasIdeDebugNoSource.Started: Boolean;
+begin
+  Result := FListener <> nil;
+end;
+
+class procedure TAtlasIdeDebugNoSource.ThemeChanged;
+begin
+  if (FPopup <> nil) and FPopup.IsShown then
+  begin
+    FPopup.Colors := TAtlasIdeStyle.Colors;
+    FPopup.Invalidate;
+  end;
 end;
 
 end.

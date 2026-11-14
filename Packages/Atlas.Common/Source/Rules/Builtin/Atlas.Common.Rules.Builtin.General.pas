@@ -845,22 +845,6 @@ begin
   Result := '';
 end;
 
-class function TGuidSyntaxInvalidRule.Problem(const AGuid: string): string;
-var
-  mBlocks: TArray<string>;
-begin
-  Result := BraceProblem(AGuid);
-  if Result = '' then
-  begin
-    mBlocks := Copy(AGuid, 2, Length(AGuid) - 2).Split(['-']);
-    Result := BlockProblem(mBlocks);
-    if Result = '' then
-    begin
-      Result := HexProblem(mBlocks);
-    end;
-  end;
-end;
-
 procedure TGuidSyntaxInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mTokens: TArray<TPascalToken>;
@@ -938,31 +922,27 @@ begin
   end;
 end;
 
+class function TGuidSyntaxInvalidRule.Problem(const AGuid: string): string;
+var
+  mBlocks: TArray<string>;
+begin
+  Result := BraceProblem(AGuid);
+  if Result = '' then
+  begin
+    mBlocks := Copy(AGuid, 2, Length(AGuid) - 2).Split(['-']);
+    Result := BlockProblem(mBlocks);
+    if Result = '' then
+    begin
+      Result := HexProblem(mBlocks);
+    end;
+  end;
+end;
+
 { TFileHeaderRule }
 
 function TFileHeaderRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('file-header', TRuleSeverity.Hint, cTexts[TGeneralText.FileHeaderTitle].Text);
-end;
-
-class function TFileHeaderRule.Template(const AOptions: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if Trim(AOptions) = '' then
-  begin
-    Exit;
-  end;
-  mValue := TJSONObject.ParseJSONValue(AOptions);
-  try
-    if mValue is TJSONObject then
-    begin
-      TJSONObject(mValue).TryGetValue<string>('template', Result);
-    end;
-  finally
-    mValue.Free;
-  end;
 end;
 
 procedure TFileHeaderRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -988,6 +968,26 @@ begin
   AReport.Add(TTextRange.Create(0, 0, 0, 0), cTexts[TGeneralText.FileHeader].Text, TRuleConfidence.High,
     [TRuleFix.Create(cTexts[TGeneralText.InsertFileHeader].Text, [TRuleEdit.Create(TTextRange.Create(0, 0, 0, 0),
       mHeader + mLineBreak)])]);
+end;
+
+class function TFileHeaderRule.Template(const AOptions: string): string;
+var
+  mValue: TJSONValue;
+begin
+  Result := '';
+  if Trim(AOptions) = '' then
+  begin
+    Exit;
+  end;
+  mValue := TJSONObject.ParseJSONValue(AOptions);
+  try
+    if mValue is TJSONObject then
+    begin
+      TJSONObject(mValue).TryGetValue<string>('template', Result);
+    end;
+  finally
+    mValue.Free;
+  end;
 end;
 
 { THardcodedStringRule }

@@ -65,6 +65,8 @@ begin
   Result := (ANode >= 0) and (ANode <= High(ANodes));
 end;
 
+{ TAtlasCrumbMenu }
+
 class function TAtlasCrumbMenu.ActionsOf(const ANodes: TAtlasOutlineNodes; const ACrumb: TAtlasCrumb;
   AHasComponent: Boolean): TAtlasCrumbActions;
 begin

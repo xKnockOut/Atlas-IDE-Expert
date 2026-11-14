@@ -161,6 +161,8 @@ begin
   Result := IsPlainIdentifier(ATokens, AIndex) or (ATokens[AIndex].Kind = TPascalTokenKind.Number);
 end;
 
+{ TMulAssignment }
+
 function TMulAssignment.Matches(const ATokens: TTokens; AAssign: Integer): Boolean;
 var
   mTimes, mStop: Integer;
@@ -608,6 +610,8 @@ const
     'QuotedStr', 'Copy', 'StringOfChar', 'StringReplace', 'ExtractFileName', 'ExtractFilePath', 'Concat',
     'ParamStr', 'GetCurrentDir');
 
+{ TWritelnInGuiAppRule }
+
 function TWritelnInGuiAppRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('writeln-in-gui-app', TRuleSeverity.Warning,
@@ -629,6 +633,8 @@ type
     /// <summary>Art nach dem ganzen Text: Dienst, Bibliothek mit Formularen …</summary>
     function Final: TRuleApplicationKind;
   end;
+
+{ TMainSourceFacts }
 
 procedure TMainSourceFacts.Add(const AToken: TPascalToken);
 begin

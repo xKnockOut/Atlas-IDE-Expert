@@ -147,6 +147,8 @@ begin
   mColumn.Width := MulDiv(AWidth, AList.CurrentPPI, 96);
 end;
 
+{ TAtlasDebugEventLogFrame }
+
 constructor TAtlasDebugEventLogFrame.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
@@ -171,6 +173,15 @@ begin
   FEmpty.WordWrap := True;
   FEmpty.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogEmpty);
   FEmpty.Visible := False;
+end;
+
+procedure TAtlasDebugEventLogFrame.CreateWnd;
+begin
+  inherited CreateWnd;
+  // Auswahllisten und Items.Count der virtuellen Liste brauchen ein Fenster.
+  FillKinds;
+  FillSavedFilters;
+  Refill;
 end;
 
 procedure TAtlasDebugEventLogFrame.CreateFilterBar;
@@ -209,31 +220,6 @@ begin
   FFilter.Style := csDropDown;
   FFilter.TextHint := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogFilterHint);
   FFilter.OnChange := FilterChange;
-end;
-
-procedure TAtlasDebugEventLogFrame.CreateList;
-begin
-  FList := TListView.Create(Self);
-  FList.Parent := Self;
-  FList.Align := alClient;
-  FList.AlignWithMargins := True;
-  FList.ViewStyle := vsReport;
-  FList.OwnerData := True;
-  FList.RowSelect := True;
-  FList.HideSelection := False;
-  FList.ReadOnly := True;
-  FList.MultiSelect := False;
-  FList.ColumnClick := False;
-  FList.PopupMenu := FMenu;
-  AddColumn(FList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogColumnTime), cTimeWidth);
-  AddColumn(FList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogColumnKind), cKindWidth);
-  AddColumn(FList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogColumnThread), cThreadWidth);
-  AddColumn(FList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogColumnText), cTextWidth);
-  FList.OnData := ListData;
-  FList.OnDblClick := ListDblClick;
-  FList.OnKeyDown := ListKeyDown;
-  FList.OnCustomDrawItem := ListCustomDrawItem;
-  FList.OnCustomDrawSubItem := ListCustomDrawSubItem;
 end;
 
 { TAtlasDebugEventLogFrame.TListMenu }
@@ -309,13 +295,29 @@ end;
 
 { TAtlasDebugEventLogFrame }
 
-procedure TAtlasDebugEventLogFrame.CreateWnd;
+procedure TAtlasDebugEventLogFrame.CreateList;
 begin
-  inherited CreateWnd;
-  // Auswahllisten und Items.Count der virtuellen Liste brauchen ein Fenster.
-  FillKinds;
-  FillSavedFilters;
-  Refill;
+  FList := TListView.Create(Self);
+  FList.Parent := Self;
+  FList.Align := alClient;
+  FList.AlignWithMargins := True;
+  FList.ViewStyle := vsReport;
+  FList.OwnerData := True;
+  FList.RowSelect := True;
+  FList.HideSelection := False;
+  FList.ReadOnly := True;
+  FList.MultiSelect := False;
+  FList.ColumnClick := False;
+  FList.PopupMenu := FMenu;
+  AddColumn(FList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogColumnTime), cTimeWidth);
+  AddColumn(FList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogColumnKind), cKindWidth);
+  AddColumn(FList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogColumnThread), cThreadWidth);
+  AddColumn(FList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogColumnText), cTextWidth);
+  FList.OnData := ListData;
+  FList.OnDblClick := ListDblClick;
+  FList.OnKeyDown := ListKeyDown;
+  FList.OnCustomDrawItem := ListCustomDrawItem;
+  FList.OnCustomDrawSubItem := ListCustomDrawSubItem;
 end;
 
 procedure TAtlasDebugEventLogFrame.FillKinds;
@@ -369,26 +371,6 @@ begin
   FFilter.Text := mText;
 end;
 
-class function TAtlasDebugEventLogFrame.KindCaption(AKind: TAtlasEventKind): string;
-begin
-  Result := TAtlasDebugStrings.Text(cKindTexts[AKind]);
-end;
-
-class function TAtlasDebugEventLogFrame.Cells(const AEntry: TAtlasEventEntry): TArray<string>;
-begin
-  Result := TArray<string>.Create(AEntry.TimeText, KindCaption(AEntry.Kind), AEntry.Thread, AEntry.Text);
-end;
-
-procedure TAtlasDebugEventLogFrame.SetLog(ALog: TAtlasEventLog; const AColors: TAtlasEventColors;
-  const ASavedFilters: TArray<string>);
-begin
-  FLog := ALog;
-  FColors := AColors;
-  FSavedFilters := ASavedFilters;
-  FillSavedFilters;
-  Refill;
-end;
-
 function TAtlasDebugEventLogFrame.CurrentFilter: TAtlasEventFilter;
 var
   mKinds: TAtlasEventKinds;
@@ -399,6 +381,109 @@ begin
     mKinds := [TAtlasEventKind(FKindBox.ItemIndex - 1)];
   end;
   Result := TAtlasEventFilter.Create(FFilter.Text, mKinds);
+end;
+
+procedure TAtlasDebugEventLogFrame.FilterChange(Sender: TObject);
+begin
+  Refill;
+end;
+
+procedure TAtlasDebugEventLogFrame.RememberClick(Sender: TObject);
+begin
+  if (Trim(FFilter.Text) <> '') and Assigned(FEvents.RememberFilter) then
+  begin
+    FEvents.RememberFilter(Trim(FFilter.Text));
+  end;
+end;
+
+function TAtlasDebugEventLogFrame.HasSavedFilter: Boolean;
+var
+  mFilter: string;
+begin
+  Result := False;
+  for mFilter in FSavedFilters do
+  begin
+    Result := Result or SameText(mFilter, Trim(FFilter.Text));
+  end;
+end;
+
+procedure TAtlasDebugEventLogFrame.ListData(Sender: TObject; Item: TListItem);
+var
+  mTexts: TArray<string>;
+  mPart: Integer;
+begin
+  if (FLog = nil) or (Item.Index > High(FShown)) or (FShown[Item.Index] >= FLog.Count) then
+  begin
+    Exit;
+  end;
+  mTexts := Cells(FLog[FShown[Item.Index]]);
+  Item.Caption := mTexts[0];
+  for mPart := 1 to High(mTexts) do
+  begin
+    Item.SubItems.Add(mTexts[mPart]);
+  end;
+end;
+
+procedure TAtlasDebugEventLogFrame.ListDblClick(Sender: TObject);
+begin
+  OpenSelected;
+end;
+
+procedure TAtlasDebugEventLogFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if Key = VK_RETURN then
+  begin
+    OpenSelected;
+    Key := 0;
+  end
+  else if (Key = Ord('C')) and (ssCtrl in Shift) then
+  begin
+    CopySelected;
+    Key := 0;
+  end;
+end;
+
+procedure TAtlasDebugEventLogFrame.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
+  State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  DefaultDraw := True;
+  RowColor(Item, State);
+end;
+
+procedure TAtlasDebugEventLogFrame.ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
+  SubItem: Integer; State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  DefaultDraw := True;
+  RowColor(Item, State);
+end;
+
+procedure TAtlasDebugEventLogFrame.RowColor(AItem: TListItem; AState: TCustomDrawState);
+var
+  mColor: TAtlasColor;
+begin
+  if (cdsSelected in AState) or (FLog = nil) or (AItem = nil) or (AItem.Index > High(FShown)) or
+    (FShown[AItem.Index] >= FLog.Count) then
+  begin
+    Exit;
+  end;
+  if FColors.TryColorOf(FLog[FShown[AItem.Index]].Text, mColor) then
+  begin
+    FList.Canvas.Font.Color := TColor(mColor);
+  end
+  else
+  begin
+    FList.Canvas.Font.Color := StyleServices(FList).GetSystemColor(clWindowText);
+  end;
+end;
+
+procedure TAtlasDebugEventLogFrame.SetLog(ALog: TAtlasEventLog; const AColors: TAtlasEventColors;
+  const ASavedFilters: TArray<string>);
+begin
+  FLog := ALog;
+  FColors := AColors;
+  FSavedFilters := ASavedFilters;
+  FillSavedFilters;
+  Refill;
 end;
 
 procedure TAtlasDebugEventLogFrame.Refill;
@@ -486,97 +571,14 @@ begin
   end;
 end;
 
-procedure TAtlasDebugEventLogFrame.FilterChange(Sender: TObject);
+class function TAtlasDebugEventLogFrame.KindCaption(AKind: TAtlasEventKind): string;
 begin
-  Refill;
+  Result := TAtlasDebugStrings.Text(cKindTexts[AKind]);
 end;
 
-procedure TAtlasDebugEventLogFrame.RememberClick(Sender: TObject);
+class function TAtlasDebugEventLogFrame.Cells(const AEntry: TAtlasEventEntry): TArray<string>;
 begin
-  if (Trim(FFilter.Text) <> '') and Assigned(FEvents.RememberFilter) then
-  begin
-    FEvents.RememberFilter(Trim(FFilter.Text));
-  end;
-end;
-
-function TAtlasDebugEventLogFrame.HasSavedFilter: Boolean;
-var
-  mFilter: string;
-begin
-  Result := False;
-  for mFilter in FSavedFilters do
-  begin
-    Result := Result or SameText(mFilter, Trim(FFilter.Text));
-  end;
-end;
-
-procedure TAtlasDebugEventLogFrame.ListData(Sender: TObject; Item: TListItem);
-var
-  mTexts: TArray<string>;
-  mPart: Integer;
-begin
-  if (FLog = nil) or (Item.Index > High(FShown)) or (FShown[Item.Index] >= FLog.Count) then
-  begin
-    Exit;
-  end;
-  mTexts := Cells(FLog[FShown[Item.Index]]);
-  Item.Caption := mTexts[0];
-  for mPart := 1 to High(mTexts) do
-  begin
-    Item.SubItems.Add(mTexts[mPart]);
-  end;
-end;
-
-procedure TAtlasDebugEventLogFrame.ListDblClick(Sender: TObject);
-begin
-  OpenSelected;
-end;
-
-procedure TAtlasDebugEventLogFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  if Key = VK_RETURN then
-  begin
-    OpenSelected;
-    Key := 0;
-  end
-  else if (Key = Ord('C')) and (ssCtrl in Shift) then
-  begin
-    CopySelected;
-    Key := 0;
-  end;
-end;
-
-procedure TAtlasDebugEventLogFrame.RowColor(AItem: TListItem; AState: TCustomDrawState);
-var
-  mColor: TAtlasColor;
-begin
-  if (cdsSelected in AState) or (FLog = nil) or (AItem = nil) or (AItem.Index > High(FShown)) or
-    (FShown[AItem.Index] >= FLog.Count) then
-  begin
-    Exit;
-  end;
-  if FColors.TryColorOf(FLog[FShown[AItem.Index]].Text, mColor) then
-  begin
-    FList.Canvas.Font.Color := TColor(mColor);
-  end
-  else
-  begin
-    FList.Canvas.Font.Color := StyleServices(FList).GetSystemColor(clWindowText);
-  end;
-end;
-
-procedure TAtlasDebugEventLogFrame.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
-  State: TCustomDrawState; var DefaultDraw: Boolean);
-begin
-  DefaultDraw := True;
-  RowColor(Item, State);
-end;
-
-procedure TAtlasDebugEventLogFrame.ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
-  SubItem: Integer; State: TCustomDrawState; var DefaultDraw: Boolean);
-begin
-  DefaultDraw := True;
-  RowColor(Item, State);
+  Result := TArray<string>.Create(AEntry.TimeText, KindCaption(AEntry.Kind), AEntry.Thread, AEntry.Text);
 end;
 
 end.

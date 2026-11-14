@@ -226,29 +226,19 @@ end;
 
 { TUsesClauses }
 
-class function TUsesClauses.IsTestUnit(const ATokens: TArray<TPascalToken>): Boolean;
-begin
-  Result := UsesTestFramework(UsedUnits(ATokens));
-end;
-
-class function TUsesClauses.UsesTestFramework(const AUsed: TArray<string>): Boolean;
+class function TUsesClauses.InClause(const ATokens: TArray<TPascalToken>;
+  const AClauses: TArray<TUsesClauseInfo>; AOffset: Integer): Boolean;
 var
-  mName: string;
+  mClause: TUsesClauseInfo;
 begin
-  for mName in AUsed do
+  Result := False;
+  for mClause in AClauses do
   begin
-    if SameText(mName, 'DUnitX.TestFramework') or SameText(mName, 'TestFramework') or
-      mName.StartsWith('TestInsight.', True) then
+    if (AOffset > ATokens[mClause.UsesIndex].Offset) and (AOffset < ATokens[mClause.Semicolon].Offset) then
     begin
       Exit(True);
     end;
   end;
-  Result := False;
-end;
-
-class function TUsesClauses.UsedUnitsOf(const AText: string): TArray<string>;
-begin
-  Result := UsedUnits(TPascalLexer.Tokenize(AText));
 end;
 
 class function TUsesClauses.UsedUnits(const ATokens: TArray<TPascalToken>): TArray<string>;
@@ -269,6 +259,16 @@ begin
     end;
     Inc(mIndex);
   end;
+end;
+
+class function TUsesClauses.UsedUnitsOf(const AText: string): TArray<string>;
+begin
+  Result := UsedUnits(TPascalLexer.Tokenize(AText));
+end;
+
+class function TUsesClauses.IsTestUnit(const ATokens: TArray<TPascalToken>): Boolean;
+begin
+  Result := UsesTestFramework(UsedUnits(ATokens));
 end;
 
 /// <summary>True am Anfang einer uses-, contains- oder requires-Liste. contains und
@@ -340,6 +340,8 @@ type
     procedure Take(const ATokens: TArray<TPascalToken>; AIndex: Integer);
   end;
 
+{ TReferenceReader }
+
 procedure TReferenceReader.Flush(const ATokens: TArray<TPascalToken>; var AResult: TArray<TUsesReference>);
 begin
   if Name <> '' then
@@ -402,6 +404,21 @@ begin
   end;
 end;
 
+class function TUsesClauses.UsesTestFramework(const AUsed: TArray<string>): Boolean;
+var
+  mName: string;
+begin
+  for mName in AUsed do
+  begin
+    if SameText(mName, 'DUnitX.TestFramework') or SameText(mName, 'TestFramework') or
+      mName.StartsWith('TestInsight.', True) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 class function TUsesClauses.References(const ATokens: TArray<TPascalToken>): TArray<TUsesReference>;
 var
   mIndex, mFirst, mImplementation: Integer;
@@ -449,28 +466,6 @@ begin
       Break;
     end;
   end;
-end;
-
-class function TUsesClauses.IsUsed(const AUsed: TArray<string>; const AUnitName: string;
-  const ANamespaces: TArray<string>): Boolean;
-var
-  mUsed, mNamespace: string;
-begin
-  for mUsed in AUsed do
-  begin
-    if SameText(mUsed, AUnitName) then
-    begin
-      Exit(True);
-    end;
-    for mNamespace in ANamespaces do
-    begin
-      if SameText(mNamespace + '.' + mUsed, AUnitName) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-  Result := False;
 end;
 
 type
@@ -601,10 +596,75 @@ begin
   end;
 end;
 
-class function TUsesClauses.Organize(const ATokens: TArray<TPascalToken>; const AText: string; ASort: Boolean;
-  const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean;
+class function TUsesClauses.IsUsed(const AUsed: TArray<string>; const AUnitName: string;
+  const ANamespaces: TArray<string>): Boolean;
+var
+  mUsed, mNamespace: string;
 begin
-  Result := Organize(ATokens, AText, ASort, ALineBreak, AEdits, False);
+  for mUsed in AUsed do
+  begin
+    if SameText(mUsed, AUnitName) then
+    begin
+      Exit(True);
+    end;
+    for mNamespace in ANamespaces do
+    begin
+      if SameText(mNamespace + '.' + mUsed, AUnitName) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
+class function TUsesClauses.AddUnit(const ATokens: TArray<TPascalToken>; AOffset: Integer;
+  const AUnitName, ALineBreak: string; out AEdit: TTextEdit): Boolean;
+var
+  mStart, mUsesIndex, mSemicolon, mLastName: Integer;
+  mNames: TArray<string>;
+  mIndent: string;
+begin
+  mStart := SectionStart(ATokens, AOffset);
+  if mStart < 0 then
+  begin
+    Exit(False);
+  end;
+  mUsesIndex := NextIndex(ATokens, mStart);
+  if (mUsesIndex <= High(ATokens)) and (ATokens[mUsesIndex].IsKeyword('uses')) then
+  begin
+    mNames := nil;
+    mSemicolon := ReadNames(ATokens, mUsesIndex, mNames);
+    if mSemicolon < 0 then
+    begin
+      Exit(False);
+    end;
+    mLastName := mSemicolon - 1;
+    while (mLastName > mUsesIndex) and IsTrivia(ATokens[mLastName]) do
+    begin
+      Dec(mLastName);
+    end;
+    if ATokens[mLastName].StartPos.Line > ATokens[mUsesIndex].StartPos.Line then
+    begin
+      // Mehrzeilige Liste: eigene Zeile, eingerückt wie die Zeile des letzten Eintrags.
+      while (mLastName > mUsesIndex) and (ATokens[mLastName - 1].StartPos.Line = ATokens[mLastName].StartPos.Line) do
+      begin
+        Dec(mLastName);
+      end;
+      mIndent := StringOfChar(' ', ATokens[mLastName].StartPos.Character);
+      AEdit := TTextEdit.Create(TTextRange.Create(ATokens[mSemicolon].StartPos, ATokens[mSemicolon].StartPos),
+        ',' + ALineBreak + mIndent + AUnitName);
+    end
+    else
+    begin
+      AEdit := TTextEdit.Create(TTextRange.Create(ATokens[mSemicolon].StartPos, ATokens[mSemicolon].StartPos),
+        ', ' + AUnitName);
+    end;
+    Exit(True);
+  end;
+  AEdit := TTextEdit.Create(TTextRange.Create(ATokens[mStart].EndPos, ATokens[mStart].EndPos),
+    ALineBreak + ALineBreak + 'uses' + ALineBreak + '  ' + AUnitName + ';');
+  Result := True;
 end;
 
 class function TUsesClauses.Organize(const ATokens: TArray<TPascalToken>; const AText: string; ASort: Boolean;
@@ -617,21 +677,6 @@ begin
   mOptions.Sort := ASort;
   mOptions.ByNamespace := AByNamespace;
   Result := Rewrite(ATokens, AText, mOptions, ALineBreak, AEdits);
-end;
-
-class function TUsesClauses.InClause(const ATokens: TArray<TPascalToken>;
-  const AClauses: TArray<TUsesClauseInfo>; AOffset: Integer): Boolean;
-var
-  mClause: TUsesClauseInfo;
-begin
-  Result := False;
-  for mClause in AClauses do
-  begin
-    if (AOffset > ATokens[mClause.UsesIndex].Offset) and (AOffset < ATokens[mClause.Semicolon].Offset) then
-    begin
-      Exit(True);
-    end;
-  end;
 end;
 
 /// <summary>Eintrag ab ACursor bis zum nächsten Komma (bzw. ASemicolon) mit seinem Quelltext; ACursor steht
@@ -733,6 +778,8 @@ type
     procedure RewriteList(AIndex, ASemicolon: Integer);
   end;
 
+{ TUsesRewriter }
+
 function TUsesRewriter.Keep(const AItems: TArray<TUsesItem>): TArray<TUsesItem>;
 var
   mItem: TUsesItem;
@@ -830,53 +877,10 @@ begin
   Result := AEdits <> nil;
 end;
 
-class function TUsesClauses.AddUnit(const ATokens: TArray<TPascalToken>; AOffset: Integer;
-  const AUnitName, ALineBreak: string; out AEdit: TTextEdit): Boolean;
-var
-  mStart, mUsesIndex, mSemicolon, mLastName: Integer;
-  mNames: TArray<string>;
-  mIndent: string;
+class function TUsesClauses.Organize(const ATokens: TArray<TPascalToken>; const AText: string; ASort: Boolean;
+  const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean;
 begin
-  mStart := SectionStart(ATokens, AOffset);
-  if mStart < 0 then
-  begin
-    Exit(False);
-  end;
-  mUsesIndex := NextIndex(ATokens, mStart);
-  if (mUsesIndex <= High(ATokens)) and (ATokens[mUsesIndex].IsKeyword('uses')) then
-  begin
-    mNames := nil;
-    mSemicolon := ReadNames(ATokens, mUsesIndex, mNames);
-    if mSemicolon < 0 then
-    begin
-      Exit(False);
-    end;
-    mLastName := mSemicolon - 1;
-    while (mLastName > mUsesIndex) and IsTrivia(ATokens[mLastName]) do
-    begin
-      Dec(mLastName);
-    end;
-    if ATokens[mLastName].StartPos.Line > ATokens[mUsesIndex].StartPos.Line then
-    begin
-      // Mehrzeilige Liste: eigene Zeile, eingerückt wie die Zeile des letzten Eintrags.
-      while (mLastName > mUsesIndex) and (ATokens[mLastName - 1].StartPos.Line = ATokens[mLastName].StartPos.Line) do
-      begin
-        Dec(mLastName);
-      end;
-      mIndent := StringOfChar(' ', ATokens[mLastName].StartPos.Character);
-      AEdit := TTextEdit.Create(TTextRange.Create(ATokens[mSemicolon].StartPos, ATokens[mSemicolon].StartPos),
-        ',' + ALineBreak + mIndent + AUnitName);
-    end
-    else
-    begin
-      AEdit := TTextEdit.Create(TTextRange.Create(ATokens[mSemicolon].StartPos, ATokens[mSemicolon].StartPos),
-        ', ' + AUnitName);
-    end;
-    Exit(True);
-  end;
-  AEdit := TTextEdit.Create(TTextRange.Create(ATokens[mStart].EndPos, ATokens[mStart].EndPos),
-    ALineBreak + ALineBreak + 'uses' + ALineBreak + '  ' + AUnitName + ';');
-  Result := True;
+  Result := Organize(ATokens, AText, ASort, ALineBreak, AEdits, False);
 end;
 
 end.

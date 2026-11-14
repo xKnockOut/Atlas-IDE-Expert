@@ -408,6 +408,13 @@ begin
   Fill;
 end;
 
+procedure TAtlasWorkingCopiesDialog.CreateWnd;
+begin
+  inherited;
+  // Zeilen einer Liste brauchen ein Fenster: hier (und bei jedem neuen Fenster) füllen.
+  Fill;
+end;
+
 procedure TAtlasWorkingCopiesDialog.AddHint;
 var
   mHint: TLabel;
@@ -449,25 +456,6 @@ begin
     mColumn.Caption := TAtlasVcsStrings.Text(mCaptions[mIndex]);
     mColumn.Width := FView.ScaleValue(mWidths[mIndex]);
   end;
-end;
-
-procedure TAtlasWorkingCopiesDialog.CreateWnd;
-begin
-  inherited;
-  // Zeilen einer Liste brauchen ein Fenster: hier (und bei jedem neuen Fenster) füllen.
-  Fill;
-end;
-
-function TAtlasWorkingCopiesDialog.IsSvn: Boolean;
-begin
-  Result := FList.Kind = TAtlasVcsKind.Svn;
-end;
-
-class function TAtlasWorkingCopiesDialog.Cells(AKind: TAtlasVcsKind; const ARow: TAtlasVcsWorkingCopyRow;
-  const AName: string; AChecking: Boolean): TArray<string>;
-begin
-  Result := TArray<string>.Create(CopyCell(ARow, AName), PathCell(AKind, ARow), RevisionCell(AKind, ARow),
-    ChangedCell(ARow), IncomingCell(AKind, ARow, AChecking));
 end;
 
 procedure TAtlasWorkingCopiesDialog.Fill;
@@ -540,6 +528,33 @@ begin
   end;
 end;
 
+procedure TAtlasWorkingCopiesDialog.UpdateButtons;
+begin
+  FButtons.SetReady(FHasList and not FBusy and (FList.Outcome = TAtlasVcsOutcome.Ok));
+end;
+
+function TAtlasWorkingCopiesDialog.Selected: Integer;
+begin
+  Result := -1;
+  if FHasList and (FView.Selected <> nil) and (FView.Selected.Index <= High(FList.Rows)) then
+  begin
+    Result := FView.Selected.Index;
+  end;
+end;
+
+function TAtlasWorkingCopiesDialog.IsSvn: Boolean;
+begin
+  Result := FList.Kind = TAtlasVcsKind.Svn;
+end;
+
+procedure TAtlasWorkingCopiesDialog.ViewDblClick(Sender: TObject);
+begin
+  if (Selected >= 0) and Assigned(FOnOpenFolder) then
+  begin
+    FOnOpenFolder(Self, Selected);
+  end;
+end;
+
 procedure TAtlasWorkingCopiesDialog.SetList(const AList: TAtlasVcsWorkingCopyList);
 begin
   FList := AList;
@@ -577,26 +592,11 @@ begin
   UpdateButtons;
 end;
 
-procedure TAtlasWorkingCopiesDialog.UpdateButtons;
+class function TAtlasWorkingCopiesDialog.Cells(AKind: TAtlasVcsKind; const ARow: TAtlasVcsWorkingCopyRow;
+  const AName: string; AChecking: Boolean): TArray<string>;
 begin
-  FButtons.SetReady(FHasList and not FBusy and (FList.Outcome = TAtlasVcsOutcome.Ok));
-end;
-
-function TAtlasWorkingCopiesDialog.Selected: Integer;
-begin
-  Result := -1;
-  if FHasList and (FView.Selected <> nil) and (FView.Selected.Index <= High(FList.Rows)) then
-  begin
-    Result := FView.Selected.Index;
-  end;
-end;
-
-procedure TAtlasWorkingCopiesDialog.ViewDblClick(Sender: TObject);
-begin
-  if (Selected >= 0) and Assigned(FOnOpenFolder) then
-  begin
-    FOnOpenFolder(Self, Selected);
-  end;
+  Result := TArray<string>.Create(CopyCell(ARow, AName), PathCell(AKind, ARow), RevisionCell(AKind, ARow),
+    ChangedCell(ARow), IncomingCell(AKind, ARow, AChecking));
 end;
 
 end.

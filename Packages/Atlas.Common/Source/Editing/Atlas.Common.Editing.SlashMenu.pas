@@ -684,16 +684,10 @@ begin
   end;
 end;
 
-class function TSlashMenu.CurrentWord(const AArguments: string): string;
-var
-  mIndex: Integer;
+class function TSlashMenu.ArgumentChoices(const AText: string; ALine: Integer; const AName, AArguments: string;
+  const AIndex: ISymbolIndex): TArray<string>;
 begin
-  mIndex := Length(AArguments);
-  while (mIndex > 0) and not CharInSet(AArguments[mIndex], [' ', ',', ':', #9, '(', ';']) do
-  begin
-    Dec(mIndex);
-  end;
-  Result := Copy(AArguments, mIndex + 1, MaxInt);
+  Result := ArgumentChoices(AText, ALine, AName, AArguments, AIndex, nil);
 end;
 
 class function TSlashMenu.ArgumentKind(const AName, AArguments: string): TSlashArgumentKind;
@@ -862,12 +856,6 @@ begin
 end;
 
 class function TSlashMenu.ArgumentChoices(const AText: string; ALine: Integer; const AName, AArguments: string;
-  const AIndex: ISymbolIndex): TArray<string>;
-begin
-  Result := ArgumentChoices(AText, ALine, AName, AArguments, AIndex, nil);
-end;
-
-class function TSlashMenu.ArgumentChoices(const AText: string; ALine: Integer; const AName, AArguments: string;
   const AIndex: ISymbolIndex; const ARuleIds: TArray<string>): TArray<string>;
 var
   mContext: TSlashContext;
@@ -911,6 +899,18 @@ begin
   else
     Result := IndexChoices(AIndex, mKind, mPrefix);
   end;
+end;
+
+class function TSlashMenu.CurrentWord(const AArguments: string): string;
+var
+  mIndex: Integer;
+begin
+  mIndex := Length(AArguments);
+  while (mIndex > 0) and not CharInSet(AArguments[mIndex], [' ', ',', ':', #9, '(', ';']) do
+  begin
+    Dec(mIndex);
+  end;
+  Result := Copy(AArguments, mIndex + 1, MaxInt);
 end;
 
 class function TSlashMenu.Run(ARegistry: TSlashCommandRegistry; const AText: string; const ASpot: TSlashSpot;
@@ -971,6 +971,8 @@ type
     procedure Consider(const AEdit: TTextEdit; AIndex, ACommandLine: Integer);
     procedure Scan(const AEdits: TArray<TTextEdit>; ACommandLine: Integer);
   end;
+
+{ TCommandLineCover }
 
 procedure TCommandLineCover.Consider(const AEdit: TTextEdit; AIndex, ACommandLine: Integer);
 begin

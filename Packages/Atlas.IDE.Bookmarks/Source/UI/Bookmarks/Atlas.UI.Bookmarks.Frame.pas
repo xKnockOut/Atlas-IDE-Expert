@@ -366,13 +366,6 @@ begin
   end;
 end;
 
-procedure TAtlasBookmarksFrame.TEvents.ListMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
-  X, Y: Integer);
-begin
-  FFrame.FMouse.Dropped := False;
-  FFrame.FMouse.ClickedItem := FFrame.FParts.List.GetItemAt(X, Y) <> nil;
-end;
-
 procedure TAtlasBookmarksFrame.TEvents.ListClick(Sender: TObject);
 begin
   // Nach dem Ziehen und auf der freien Fläche kein Sprung.
@@ -433,6 +426,13 @@ begin
         Key := 0;
       end;
   end;
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.ListMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
+  X, Y: Integer);
+begin
+  FFrame.FMouse.Dropped := False;
+  FFrame.FMouse.ClickedItem := FFrame.FParts.List.GetItemAt(X, Y) <> nil;
 end;
 
 procedure TAtlasBookmarksFrame.TEvents.ListEditing(Sender: TObject; Item: TListItem; var AllowEdit: Boolean);
@@ -569,82 +569,13 @@ begin
   ApplyColumnOrder;
 end;
 
-procedure TAtlasBookmarksFrame.ApplyColumnOrder;
-var
-  mOrder: array[0..cNumberColumn] of Integer;
-  mIndex: Integer;
+function TAtlasBookmarksFrame.IdAt(AIndex: Integer): string;
 begin
-  // Ohne Fenster gibt es keine Reihenfolge; Refill versucht es erneut.
-  if (FParts.List = nil) or not FParts.List.HandleAllocated then
+  Result := '';
+  if (AIndex >= 0) and (AIndex <= High(FShown)) then
   begin
-    Exit;
+    Result := FShown[AIndex].Id;
   end;
-  mOrder[0] := cNumberColumn;
-  for mIndex := 1 to cNumberColumn do
-  begin
-    mOrder[mIndex] := mIndex - 1;
-  end;
-  ListView_SetColumnOrderArray(FParts.List.Handle, Length(mOrder), @mOrder[0]);
-end;
-
-class function TAtlasBookmarksFrame.Cells(const ABookmark: TAtlasBookmark): TArray<string>;
-var
-  mPreview, mNumber: string;
-begin
-  mPreview := ABookmark.Preview;
-  if ABookmark.Lost then
-  begin
-    mPreview := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksLost) + ' · ' + mPreview;
-  end;
-  mNumber := '';
-  if ABookmark.Number > 0 then
-  begin
-    mNumber := IntToStr(ABookmark.Number);
-  end
-  else if ABookmark.Kind = TAtlasBookmarkKind.Quick then
-  begin
-    mNumber := cAtlasQuickBookmarkDot;
-  end;
-  Result := [ABookmark.DisplayName, ExtractFileName(ABookmark.FileName) + ':' + IntToStr(ABookmark.Line + 1),
-    ABookmark.Method, mPreview, mNumber];
-end;
-
-procedure TAtlasBookmarksFrame.SetCurrentFile(const AFileName: string);
-begin
-  if SameText(FCurrentFile, AFileName) then
-  begin
-    Exit;
-  end;
-  FCurrentFile := AFileName;
-  if FParts.OnlyFile.Checked then
-  begin
-    Refill(SelectedId);
-  end;
-end;
-
-procedure TAtlasBookmarksFrame.NumberSelected(ANumber: Integer);
-var
-  mId: string;
-begin
-  mId := SelectedId;
-  if (mId <> '') and (ANumber >= 1) and (ANumber <= 9) and Assigned(FHandlers.OnNumber) then
-  begin
-    FHandlers.OnNumber(mId, ANumber);
-  end;
-end;
-
-procedure TAtlasBookmarksFrame.SetBookmarks(const AList: TAtlasBookmarkList; const APlace, ASelectId: string);
-var
-  mSelect: string;
-begin
-  mSelect := ASelectId;
-  if mSelect = '' then
-  begin
-    mSelect := SelectedId;
-  end;
-  FBookmarks := AList;
-  FParts.Place.Caption := APlace;
-  Refill(mSelect);
 end;
 
 procedure TAtlasBookmarksFrame.Refill(const ASelectId: string);
@@ -702,13 +633,60 @@ begin
   mList.Visible := not FParts.Empty.Visible;
 end;
 
-function TAtlasBookmarksFrame.IdAt(AIndex: Integer): string;
+procedure TAtlasBookmarksFrame.ApplyColumnOrder;
+var
+  mOrder: array[0..cNumberColumn] of Integer;
+  mIndex: Integer;
 begin
-  Result := '';
-  if (AIndex >= 0) and (AIndex <= High(FShown)) then
+  // Ohne Fenster gibt es keine Reihenfolge; Refill versucht es erneut.
+  if (FParts.List = nil) or not FParts.List.HandleAllocated then
   begin
-    Result := FShown[AIndex].Id;
+    Exit;
   end;
+  mOrder[0] := cNumberColumn;
+  for mIndex := 1 to cNumberColumn do
+  begin
+    mOrder[mIndex] := mIndex - 1;
+  end;
+  ListView_SetColumnOrderArray(FParts.List.Handle, Length(mOrder), @mOrder[0]);
+end;
+
+procedure TAtlasBookmarksFrame.SetCurrentFile(const AFileName: string);
+begin
+  if SameText(FCurrentFile, AFileName) then
+  begin
+    Exit;
+  end;
+  FCurrentFile := AFileName;
+  if FParts.OnlyFile.Checked then
+  begin
+    Refill(SelectedId);
+  end;
+end;
+
+procedure TAtlasBookmarksFrame.NumberSelected(ANumber: Integer);
+var
+  mId: string;
+begin
+  mId := SelectedId;
+  if (mId <> '') and (ANumber >= 1) and (ANumber <= 9) and Assigned(FHandlers.OnNumber) then
+  begin
+    FHandlers.OnNumber(mId, ANumber);
+  end;
+end;
+
+procedure TAtlasBookmarksFrame.SetBookmarks(const AList: TAtlasBookmarkList; const APlace, ASelectId: string);
+var
+  mSelect: string;
+begin
+  mSelect := ASelectId;
+  if mSelect = '' then
+  begin
+    mSelect := SelectedId;
+  end;
+  FBookmarks := AList;
+  FParts.Place.Caption := APlace;
+  Refill(mSelect);
 end;
 
 function TAtlasBookmarksFrame.SelectedId: string;
@@ -793,6 +771,28 @@ begin
     Exit;
   end;
   FHandlers.OnMove(AId, ABeforeId);
+end;
+
+class function TAtlasBookmarksFrame.Cells(const ABookmark: TAtlasBookmark): TArray<string>;
+var
+  mPreview, mNumber: string;
+begin
+  mPreview := ABookmark.Preview;
+  if ABookmark.Lost then
+  begin
+    mPreview := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksLost) + ' · ' + mPreview;
+  end;
+  mNumber := '';
+  if ABookmark.Number > 0 then
+  begin
+    mNumber := IntToStr(ABookmark.Number);
+  end
+  else if ABookmark.Kind = TAtlasBookmarkKind.Quick then
+  begin
+    mNumber := cAtlasQuickBookmarkDot;
+  end;
+  Result := [ABookmark.DisplayName, ExtractFileName(ABookmark.FileName) + ':' + IntToStr(ABookmark.Line + 1),
+    ABookmark.Method, mPreview, mNumber];
 end;
 
 end.

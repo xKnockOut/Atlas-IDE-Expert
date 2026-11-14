@@ -342,22 +342,6 @@ begin
   Refill;
 end;
 
-class function TAtlasDebugExceptionsFrame.Cells(const AException: TAtlasDebugException;
-  AIgnoredClass: Boolean): TArray<string>;
-var
-  mCount: string;
-begin
-  mCount := IntToStr(AException.Count);
-  if AIgnoredClass then
-  begin
-    mCount := mCount + ' · ' + TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsIgnored);
-  end;
-  // Uhrzeit für die Anzeige: im Format des Benutzers.
-  Result := TArray<string>.Create(FormatDateTime('hh:nn:ss', AException.LastTime, FormatSettings),
-    AException.ExceptionClass, AException.Message, mCount, AException.LocationText,
-    AException.ThreadText(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsThread)));
-end;
-
 procedure TAtlasDebugExceptionsFrame.FillClasses;
 var
   mKeep, mName: string;
@@ -388,27 +372,6 @@ begin
       FClassBox.ItemIndex := mIndex + 1;
     end;
   end;
-end;
-
-procedure TAtlasDebugExceptionsFrame.SetHistory(const AHistory: TAtlasDebugExceptionHistory;
-  const AIgnore: TAtlasDebugIgnoreList);
-var
-  mIndex: Integer;
-begin
-  FIgnore := AIgnore;
-  FHistory := Default(THistoryData);
-  if AHistory <> nil then
-  begin
-    // Reihenfolge des Verlaufs: zuletzt gesehen zuerst.
-    for mIndex in AHistory.Filter('', '') do
-    begin
-      FHistory.Entries := FHistory.Entries + [AHistory[mIndex]];
-    end;
-    FHistory.Classes := AHistory.Classes;
-    FHistory.Total := AHistory.Total;
-  end;
-  FillClasses;
-  Refill;
 end;
 
 procedure TAtlasDebugExceptionsFrame.Refill;
@@ -484,39 +447,6 @@ begin
   end;
 end;
 
-function TAtlasDebugExceptionsFrame.TrySelected(out AException: TAtlasDebugException): Boolean;
-begin
-  Result := (FList <> nil) and (FList.Selected <> nil) and (FList.Selected.Index <= High(FShown));
-  if Result then
-  begin
-    AException := FShown[FList.Selected.Index];
-  end
-  else
-  begin
-    AException := Default(TAtlasDebugException);
-  end;
-end;
-
-procedure TAtlasDebugExceptionsFrame.OpenSelected;
-var
-  mEntry: TAtlasDebugException;
-begin
-  if TrySelected(mEntry) and mEntry.HasSource and Assigned(FEvents.Open) then
-  begin
-    FEvents.Open(mEntry);
-  end;
-end;
-
-procedure TAtlasDebugExceptionsFrame.CopySelected;
-var
-  mEntry: TAtlasDebugException;
-begin
-  if TrySelected(mEntry) and Assigned(FEvents.Copy) then
-  begin
-    FEvents.Copy(mEntry);
-  end;
-end;
-
 procedure TAtlasDebugExceptionsFrame.FilterChange(Sender: TObject);
 begin
   Refill;
@@ -573,6 +503,76 @@ procedure TAtlasDebugExceptionsFrame.ListCustomDrawSubItem(Sender: TCustomListVi
 begin
   DefaultDraw := True;
   TAtlasDebugExceptionStack.RowColors(Sender.Canvas, FList, State, ShownIgnored(FShown, Item));
+end;
+
+procedure TAtlasDebugExceptionsFrame.SetHistory(const AHistory: TAtlasDebugExceptionHistory;
+  const AIgnore: TAtlasDebugIgnoreList);
+var
+  mIndex: Integer;
+begin
+  FIgnore := AIgnore;
+  FHistory := Default(THistoryData);
+  if AHistory <> nil then
+  begin
+    // Reihenfolge des Verlaufs: zuletzt gesehen zuerst.
+    for mIndex in AHistory.Filter('', '') do
+    begin
+      FHistory.Entries := FHistory.Entries + [AHistory[mIndex]];
+    end;
+    FHistory.Classes := AHistory.Classes;
+    FHistory.Total := AHistory.Total;
+  end;
+  FillClasses;
+  Refill;
+end;
+
+function TAtlasDebugExceptionsFrame.TrySelected(out AException: TAtlasDebugException): Boolean;
+begin
+  Result := (FList <> nil) and (FList.Selected <> nil) and (FList.Selected.Index <= High(FShown));
+  if Result then
+  begin
+    AException := FShown[FList.Selected.Index];
+  end
+  else
+  begin
+    AException := Default(TAtlasDebugException);
+  end;
+end;
+
+procedure TAtlasDebugExceptionsFrame.OpenSelected;
+var
+  mEntry: TAtlasDebugException;
+begin
+  if TrySelected(mEntry) and mEntry.HasSource and Assigned(FEvents.Open) then
+  begin
+    FEvents.Open(mEntry);
+  end;
+end;
+
+procedure TAtlasDebugExceptionsFrame.CopySelected;
+var
+  mEntry: TAtlasDebugException;
+begin
+  if TrySelected(mEntry) and Assigned(FEvents.Copy) then
+  begin
+    FEvents.Copy(mEntry);
+  end;
+end;
+
+class function TAtlasDebugExceptionsFrame.Cells(const AException: TAtlasDebugException;
+  AIgnoredClass: Boolean): TArray<string>;
+var
+  mCount: string;
+begin
+  mCount := IntToStr(AException.Count);
+  if AIgnoredClass then
+  begin
+    mCount := mCount + ' · ' + TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsIgnored);
+  end;
+  // Uhrzeit für die Anzeige: im Format des Benutzers.
+  Result := TArray<string>.Create(FormatDateTime('hh:nn:ss', AException.LastTime, FormatSettings),
+    AException.ExceptionClass, AException.Message, mCount, AException.LocationText,
+    AException.ThreadText(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsThread)));
 end;
 
 end.

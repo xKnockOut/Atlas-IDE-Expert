@@ -211,6 +211,8 @@ begin
   end;
 end;
 
+{ TInvertBoolean }
+
 class function TInvertBoolean.BuiltinAntonyms: TArray<string>;
 var
   mPair: string;
@@ -254,6 +256,8 @@ type
     procedure Consider(const AName, AFrom, ATo: string);
     function Applied(const AName: string): string;
   end;
+
+{ TAntonymMatch }
 
 procedure TAntonymMatch.Consider(const AName, AFrom, ATo: string);
 var
@@ -476,6 +480,8 @@ const
     TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr, TSyntaxKind.InheritedExpr,
     TSyntaxKind.RangeExpr, TSyntaxKind.IfExpr];
 
+{ TRewriter }
+
 constructor TRewriter.Create(ATree: TSyntaxTree; const AText: string; const ATargets: TInvertTargets);
 var
   mItem: TInvertName;
@@ -564,13 +570,29 @@ begin
   Result := Slice(ANode.StartOffset, ANode.EndOffset);
 end;
 
-function TSourceTokens.IdentifierAt(AOffset: Integer): Integer;
+function TSourceTokens.Between(ALeft, ARight: TSyntaxNode; AFlip: Boolean; const ANewOp: string): string;
+var
+  mIndex: Integer;
+  mToken: TPascalToken;
 begin
-  Result := FirstToken(AOffset);
-  if (Result > High(Tokens)) or (Tokens[Result].Offset <> AOffset) or
-    (Tokens[Result].Kind <> TPascalTokenKind.Identifier) then
+  Result := Slice(ALeft.EndOffset, ARight.StartOffset);
+  if not AFlip then
   begin
-    Result := -1;
+    Exit;
+  end;
+  // Den Operator selbst ersetzen, Leerraum und Kommentare bleiben.
+  for mIndex := FirstToken(ALeft.EndOffset) to High(Tokens) do
+  begin
+    mToken := Tokens[mIndex];
+    if mToken.Offset >= ARight.StartOffset then
+    begin
+      Break;
+    end;
+    if not (mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
+      Exit(Slice(ALeft.EndOffset, mToken.Offset) + ANewOp + Slice(mToken.Offset + Length(mToken.Text),
+        ARight.StartOffset));
+    end;
   end;
 end;
 
@@ -600,29 +622,15 @@ begin
   end;
 end;
 
-function TSourceTokens.Between(ALeft, ARight: TSyntaxNode; AFlip: Boolean; const ANewOp: string): string;
-var
-  mIndex: Integer;
-  mToken: TPascalToken;
+function TSourceTokens.Printed(ANode: TSyntaxNode; ANegate, ABare: Boolean): string;
 begin
-  Result := Slice(ALeft.EndOffset, ARight.StartOffset);
-  if not AFlip then
+  if ANegate then
   begin
-    Exit;
-  end;
-  // Den Operator selbst ersetzen, Leerraum und Kommentare bleiben.
-  for mIndex := FirstToken(ALeft.EndOffset) to High(Tokens) do
+    Result := Negation(ANode, ABare);
+  end
+  else
   begin
-    mToken := Tokens[mIndex];
-    if mToken.Offset >= ARight.StartOffset then
-    begin
-      Break;
-    end;
-    if not (mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
-    begin
-      Exit(Slice(ALeft.EndOffset, mToken.Offset) + ANewOp + Slice(mToken.Offset + Length(mToken.Text),
-        ARight.StartOffset));
-    end;
+    Result := NodeText(ANode);
   end;
 end;
 
@@ -779,42 +787,6 @@ begin
   Result := StartsText('not ', AText) and IsAtomic(Copy(AText, 5, MaxInt));
 end;
 
-function TRewriter.LocalRewrite(ANode: TSyntaxNode): string;
-var
-  mSaved: TList<TOffsetEdit>;
-  mEdit: TOffsetEdit;
-  mIndex: Integer;
-begin
-  // Anweisungen in einer anonymen Methode: Änderungen auf ihren Text anwenden.
-  mSaved := FEdits;
-  FEdits := TList<TOffsetEdit>.Create;
-  try
-    Visit(ANode, False);
-    Result := FSource.NodeText(ANode);
-    for mIndex := FEdits.Count - 1 downto 0 do
-    begin
-      mEdit := FEdits[mIndex];
-      Result := Copy(Result, 1, mEdit.StartOffset - ANode.StartOffset) + mEdit.Text +
-        Copy(Result, mEdit.EndOffset - ANode.StartOffset + 1, MaxInt);
-    end;
-  finally
-    FEdits.Free;
-    FEdits := mSaved;
-  end;
-end;
-
-function TRewriter.Rebuild(ANode: TSyntaxNode): string;
-begin
-  if ANode.Kind in [TSyntaxKind.Call, TSyntaxKind.IndexAccess] then
-  begin
-    Result := RebuildCall(ANode);
-  end
-  else
-  begin
-    Result := RebuildGeneric(ANode);
-  end;
-end;
-
 /// <summary>Text zwischen AStart und AStop, nur mit umbenannten Bezeichnern.</summary>
 function TRewriter.Renamed(AStart, AStop: Integer): string;
 var
@@ -840,6 +812,18 @@ begin
     end;
   end;
   Result := Result + FSource.Slice(mOffset, AStop);
+end;
+
+function TRewriter.Rebuild(ANode: TSyntaxNode): string;
+begin
+  if ANode.Kind in [TSyntaxKind.Call, TSyntaxKind.IndexAccess] then
+  begin
+    Result := RebuildCall(ANode);
+  end
+  else
+  begin
+    Result := RebuildGeneric(ANode);
+  end;
 end;
 
 function TRewriter.RebuildGeneric(ANode: TSyntaxNode): string;
@@ -917,6 +901,17 @@ begin
     Result := Result + mPart;
   end;
   Result := Result + FSource.Slice(ANode[ANode.ChildCount - 1].EndOffset, ANode.EndOffset);
+end;
+
+function TRewriter.PrintAddress(ANode: TSyntaxNode; ANegate: Boolean): string;
+begin
+  // @X: Wer die Adresse bekommt, liest und schreibt den Wert selbst.
+  Warn(ANode.StartOffset, cTexts[TEditingInvertBooleanText.AddressPassedOnlyRenamedPlease].Text);
+  Result := Renamed(ANode.StartOffset, ANode.EndOffset);
+  if ANegate then
+  begin
+    Result := 'not ' + Result;
+  end;
 end;
 
 /// <summary>AInner in Klammern, außer ABare oder AInner ist atomar bzw. ein einfaches "not".</summary>
@@ -1009,101 +1004,13 @@ begin
   end;
 end;
 
-function TSourceTokens.Printed(ANode: TSyntaxNode; ANegate, ABare: Boolean): string;
+function TSourceTokens.IdentifierAt(AOffset: Integer): Integer;
 begin
-  if ANegate then
+  Result := FirstToken(AOffset);
+  if (Result > High(Tokens)) or (Tokens[Result].Offset <> AOffset) or
+    (Tokens[Result].Kind <> TPascalTokenKind.Identifier) then
   begin
-    Result := Negation(ANode, ABare);
-  end
-  else
-  begin
-    Result := NodeText(ANode);
-  end;
-end;
-
-function TRewriter.PrintAddress(ANode: TSyntaxNode; ANegate: Boolean): string;
-begin
-  // @X: Wer die Adresse bekommt, liest und schreibt den Wert selbst.
-  Warn(ANode.StartOffset, cTexts[TEditingInvertBooleanText.AddressPassedOnlyRenamedPlease].Text);
-  Result := Renamed(ANode.StartOffset, ANode.EndOffset);
-  if ANegate then
-  begin
-    Result := 'not ' + Result;
-  end;
-end;
-
-function TRewriter.PrintSide(ANode: TSyntaxNode; var AFlips: Integer): string;
-begin
-  if IsValueRef(ANode) then
-  begin
-    Result := Rebuild(ANode);
-    Inc(AFlips);
-  end
-  else
-  begin
-    Result := Print(ANode, False, False);
-  end;
-end;
-
-function TRewriter.PrintEquality(ANode: TSyntaxNode; const AOp: string; ANegate, ABare: Boolean): string;
-var
-  mFlips: Integer;
-  mLeft, mRight, mNewOp: string;
-begin
-  // X = True → Y bzw. not Y.
-  if IsBoolLiteral(ANode[1]) and ContainsDirect(ANode[0]) then
-  begin
-    Exit(Print(ANode[0], ANegate = KeepsValue(AOp, ANode[1]), ABare));
-  end;
-  if IsBoolLiteral(ANode[0]) and ContainsDirect(ANode[1]) then
-  begin
-    Exit(Print(ANode[1], ANegate = KeepsValue(AOp, ANode[0]), ABare));
-  end;
-  // X = Z → Y <> Z: jede umgekehrte Seite und die Verneinung drehen den Vergleich.
-  mFlips := Ord(ANegate);
-  mLeft := PrintSide(ANode[0], mFlips);
-  mRight := PrintSide(ANode[1], mFlips);
-  mNewOp := AOp;
-  if Odd(mFlips) then
-  begin
-    mNewOp := FlippedEquality(AOp);
-  end;
-  Result := mLeft + FSource.Between(ANode[0], ANode[1], mNewOp <> AOp, mNewOp) + mRight;
-end;
-
-function TRewriter.PrintDeMorgan(ANode: TSyntaxNode; const AOp: string; ABare: Boolean): string;
-begin
-  Result := Print(ANode[0], True, False) + FSource.Between(ANode[0], ANode[1], True, DeMorganOp(AOp)) +
-    Print(ANode[1], True, False);
-  if not ABare then
-  begin
-    Result := '(' + Result + ')';
-  end;
-end;
-
-function TRewriter.PrintStructured(ANode: TSyntaxNode; ANegate, ABare: Boolean; out AText: string): Boolean;
-begin
-  Result := True;
-  AText := '';
-  if IsNotExpr(ANode) then
-  begin
-    AText := Print(ANode[0], not ANegate, ABare);
-  end
-  else if (ANode.Kind = TSyntaxKind.ParenExpr) and (ANode.ChildCount = 1) then
-  begin
-    AText := Parenthesized(Print(ANode[0], ANegate, True), ABare);
-  end
-  else if IsBinary(ANode, '=', '<>') then
-  begin
-    AText := PrintEquality(ANode, LowerCase(ANode.Name), ANegate, ABare);
-  end
-  else if ANegate and IsBinary(ANode, 'and', 'or') then
-  begin
-    AText := PrintDeMorgan(ANode, LowerCase(ANode.Name), ABare);
-  end
-  else
-  begin
-    Result := False;
+    Result := -1;
   end;
 end;
 
@@ -1140,14 +1047,103 @@ begin
   end;
 end;
 
-procedure TRewriter.Emit(AStart, AEnd: Integer; const AText: string);
-var
-  mEdit: TOffsetEdit;
+function TRewriter.PrintStructured(ANode: TSyntaxNode; ANegate, ABare: Boolean; out AText: string): Boolean;
 begin
-  mEdit.StartOffset := AStart;
-  mEdit.EndOffset := AEnd;
-  mEdit.Text := AText;
-  FEdits.Add(mEdit);
+  Result := True;
+  AText := '';
+  if IsNotExpr(ANode) then
+  begin
+    AText := Print(ANode[0], not ANegate, ABare);
+  end
+  else if (ANode.Kind = TSyntaxKind.ParenExpr) and (ANode.ChildCount = 1) then
+  begin
+    AText := Parenthesized(Print(ANode[0], ANegate, True), ABare);
+  end
+  else if IsBinary(ANode, '=', '<>') then
+  begin
+    AText := PrintEquality(ANode, LowerCase(ANode.Name), ANegate, ABare);
+  end
+  else if ANegate and IsBinary(ANode, 'and', 'or') then
+  begin
+    AText := PrintDeMorgan(ANode, LowerCase(ANode.Name), ABare);
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+function TRewriter.PrintEquality(ANode: TSyntaxNode; const AOp: string; ANegate, ABare: Boolean): string;
+var
+  mFlips: Integer;
+  mLeft, mRight, mNewOp: string;
+begin
+  // X = True → Y bzw. not Y.
+  if IsBoolLiteral(ANode[1]) and ContainsDirect(ANode[0]) then
+  begin
+    Exit(Print(ANode[0], ANegate = KeepsValue(AOp, ANode[1]), ABare));
+  end;
+  if IsBoolLiteral(ANode[0]) and ContainsDirect(ANode[1]) then
+  begin
+    Exit(Print(ANode[1], ANegate = KeepsValue(AOp, ANode[0]), ABare));
+  end;
+  // X = Z → Y <> Z: jede umgekehrte Seite und die Verneinung drehen den Vergleich.
+  mFlips := Ord(ANegate);
+  mLeft := PrintSide(ANode[0], mFlips);
+  mRight := PrintSide(ANode[1], mFlips);
+  mNewOp := AOp;
+  if Odd(mFlips) then
+  begin
+    mNewOp := FlippedEquality(AOp);
+  end;
+  Result := mLeft + FSource.Between(ANode[0], ANode[1], mNewOp <> AOp, mNewOp) + mRight;
+end;
+
+function TRewriter.PrintSide(ANode: TSyntaxNode; var AFlips: Integer): string;
+begin
+  if IsValueRef(ANode) then
+  begin
+    Result := Rebuild(ANode);
+    Inc(AFlips);
+  end
+  else
+  begin
+    Result := Print(ANode, False, False);
+  end;
+end;
+
+function TRewriter.PrintDeMorgan(ANode: TSyntaxNode; const AOp: string; ABare: Boolean): string;
+begin
+  Result := Print(ANode[0], True, False) + FSource.Between(ANode[0], ANode[1], True, DeMorganOp(AOp)) +
+    Print(ANode[1], True, False);
+  if not ABare then
+  begin
+    Result := '(' + Result + ')';
+  end;
+end;
+
+function TRewriter.LocalRewrite(ANode: TSyntaxNode): string;
+var
+  mSaved: TList<TOffsetEdit>;
+  mEdit: TOffsetEdit;
+  mIndex: Integer;
+begin
+  // Anweisungen in einer anonymen Methode: Änderungen auf ihren Text anwenden.
+  mSaved := FEdits;
+  FEdits := TList<TOffsetEdit>.Create;
+  try
+    Visit(ANode, False);
+    Result := FSource.NodeText(ANode);
+    for mIndex := FEdits.Count - 1 downto 0 do
+    begin
+      mEdit := FEdits[mIndex];
+      Result := Copy(Result, 1, mEdit.StartOffset - ANode.StartOffset) + mEdit.Text +
+        Copy(Result, mEdit.EndOffset - ANode.StartOffset + 1, MaxInt);
+    end;
+  finally
+    FEdits.Free;
+    FEdits := mSaved;
+  end;
 end;
 
 procedure TRewriter.Emit(ANode: TSyntaxNode; const AText: string);
@@ -1156,6 +1152,16 @@ begin
   begin
     Emit(ANode.StartOffset, ANode.EndOffset, AText);
   end;
+end;
+
+procedure TRewriter.Emit(AStart, AEnd: Integer; const AText: string);
+var
+  mEdit: TOffsetEdit;
+begin
+  mEdit.StartOffset := AStart;
+  mEdit.EndOffset := AEnd;
+  mEdit.Text := AText;
+  FEdits.Add(mEdit);
 end;
 
 procedure TRewriter.Warn(AOffset: Integer; const AText: string);
@@ -1172,33 +1178,6 @@ function IsResultCall(ANode: TSyntaxNode): Boolean;
 begin
   Result := (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] = ANode) and
     SameText(ANode.Name, 'Result');
-end;
-
-procedure TRewriter.CollectIdentifiers(ANode: TSyntaxNode; const AName, ANewName: string);
-var
-  mName, mNewName: string;
-begin
-  mName := AName;
-  mNewName := ANewName;
-  // Walk statt Rekursion.
-  ANode.Walk(
-    function(AChild: TSyntaxNode): Boolean
-    var
-      Item: TInvertName;
-    begin
-      if AChild.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
-      begin
-        Exit(False);
-      end;
-      if (AChild.Kind = TSyntaxKind.Identifier) and SameText(AChild.Name, mName) and not IsResultCall(AChild) then
-      begin
-        Item.Offset := AChild.StartOffset;
-        Item.NewName := mNewName;
-        Item.Invert := True;
-        FNames.AddOrSetValue(Item.Offset, Item);
-      end;
-      Result := True;
-    end);
 end;
 
 procedure TRewriter.CollectLocals(ANode: TSyntaxNode);
@@ -1242,6 +1221,77 @@ begin
     end;
   finally
     mRoutines.Free;
+  end;
+end;
+
+procedure TRewriter.CollectIdentifiers(ANode: TSyntaxNode; const AName, ANewName: string);
+var
+  mName, mNewName: string;
+begin
+  mName := AName;
+  mNewName := ANewName;
+  // Walk statt Rekursion.
+  ANode.Walk(
+    function(AChild: TSyntaxNode): Boolean
+    var
+      Item: TInvertName;
+    begin
+      if AChild.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+      begin
+        Exit(False);
+      end;
+      if (AChild.Kind = TSyntaxKind.Identifier) and SameText(AChild.Name, mName) and not IsResultCall(AChild) then
+      begin
+        Item.Offset := AChild.StartOffset;
+        Item.NewName := mNewName;
+        Item.Invert := True;
+        FNames.AddOrSetValue(Item.Offset, Item);
+      end;
+      Result := True;
+    end);
+end;
+
+procedure TRewriter.Visit(ANode: TSyntaxNode; AInBody: Boolean);
+var
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+begin
+  case ANode.Kind of
+    TSyntaxKind.RoutineDecl:
+      AInBody := FBodies.ContainsKey(FSource.HeaderNameOffset(ANode));
+    TSyntaxKind.AnonymousMethod:
+      AInBody := False;
+    TSyntaxKind.AssignStatement:
+      if ANode.ChildCount >= 2 then
+      begin
+        VisitAssign(ANode);
+        Exit;
+      end;
+    TSyntaxKind.CallStatement:
+      if ANode.ChildCount >= 1 then
+      begin
+        VisitCall(ANode, AInBody);
+        Exit;
+      end;
+    TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst:
+      begin
+        VisitDeclaration(ANode);
+        Exit;
+      end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    mChild := ANode[mIndex];
+    if mChild.Kind in cExpressionKinds then
+    begin
+      VisitExpression(mChild);
+    end
+    else
+    begin
+      Visit(mChild, AInBody);
+    end;
   end;
 end;
 
@@ -1352,50 +1402,6 @@ begin
   else
   begin
     VisitExpression(mValue);
-  end;
-end;
-
-procedure TRewriter.Visit(ANode: TSyntaxNode; AInBody: Boolean);
-var
-  mIndex: Integer;
-  mChild: TSyntaxNode;
-begin
-  case ANode.Kind of
-    TSyntaxKind.RoutineDecl:
-      AInBody := FBodies.ContainsKey(FSource.HeaderNameOffset(ANode));
-    TSyntaxKind.AnonymousMethod:
-      AInBody := False;
-    TSyntaxKind.AssignStatement:
-      if ANode.ChildCount >= 2 then
-      begin
-        VisitAssign(ANode);
-        Exit;
-      end;
-    TSyntaxKind.CallStatement:
-      if ANode.ChildCount >= 1 then
-      begin
-        VisitCall(ANode, AInBody);
-        Exit;
-      end;
-    TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst:
-      begin
-        VisitDeclaration(ANode);
-        Exit;
-      end;
-  else
-    // Übrige Werte bewusst ohne Wirkung.
-  end;
-  for mIndex := 0 to ANode.ChildCount - 1 do
-  begin
-    mChild := ANode[mIndex];
-    if mChild.Kind in cExpressionKinds then
-    begin
-      VisitExpression(mChild);
-    end
-    else
-    begin
-      Visit(mChild, AInBody);
-    end;
   end;
 end;
 

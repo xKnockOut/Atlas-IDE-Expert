@@ -65,15 +65,7 @@ const
   cMaxMessage = 300;
   cPullsPart = '/pulls';
 
-class function TAtlasGitHubPulls.RepositoryUrl(const ATarget: TAtlasTrackerTarget): string;
-begin
-  Result := TAtlasGitHubApi.Base(ATarget);
-  if (Result = '') or (ATarget.Project = '') then
-  begin
-    Exit('');
-  end;
-  Result := Result + '/repos/' + TTextUris.PercentEncode(ATarget.Project);
-end;
+{ TAtlasGitHubPulls }
 
 class function TAtlasGitHubPulls.OpenUrl(const ATarget: TAtlasTrackerTarget; const AHead: string): string;
 var
@@ -86,6 +78,16 @@ begin
     Exit('');
   end;
   Result := Result + cPullsPart + '?state=open&head=' + TTextUris.PercentEncode(mOwner + ':' + Trim(AHead));
+end;
+
+class function TAtlasGitHubPulls.RepositoryUrl(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := TAtlasGitHubApi.Base(ATarget);
+  if (Result = '') or (ATarget.Project = '') then
+  begin
+    Exit('');
+  end;
+  Result := Result + '/repos/' + TTextUris.PercentEncode(ATarget.Project);
 end;
 
 class function TAtlasGitHubPulls.CreateJson(const ASpec: TAtlasTrackerPullSpec; const ABase: string): string;

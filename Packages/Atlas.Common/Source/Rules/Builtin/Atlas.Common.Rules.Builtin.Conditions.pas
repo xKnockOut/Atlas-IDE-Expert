@@ -561,6 +561,8 @@ type
     Indexed: Boolean;
   end;
 
+{ TLoopConditionUnchangedRule }
+
 function TLoopConditionUnchangedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cLoopConditionUnchangedRuleId, TRuleSeverity.Warning,
@@ -1508,6 +1510,8 @@ begin
     Result := cTexts[TConditionsText.AtMostOnce].Fmt([AJump]);
   end;
 end;
+
+{ TLoopOnceCheck }
 
 constructor TLoopOnceCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin

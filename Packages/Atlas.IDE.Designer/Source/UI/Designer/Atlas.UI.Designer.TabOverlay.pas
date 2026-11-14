@@ -190,21 +190,52 @@ begin
   end;
 end;
 
-procedure TAtlasTabOrderOverlay.WMMouseActivate(var Message: TWMMouseActivate);
+procedure TAtlasTabOrderOverlay.Paint;
+var
+  mIndex: Integer;
+  mRect: TRect;
+  mText: string;
+  mBack: TColor;
 begin
-  // Klick auf eine Marke: Fokus bleibt im Designer.
-  Message.Result := MA_NOACTIVATE;
+  Canvas.Brush.Color := cKeyColor;
+  Canvas.FillRect(ClientRect);
+  PaintFrames;
+  Canvas.Font.Assign(Font);
+  for mIndex := 0 to High(FBadges) do
+  begin
+    mRect := BadgeRect(mIndex);
+    mBack := BadgeColor(FBadges[mIndex]);
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := mBack;
+    Canvas.Pen.Color := mBack;
+    Canvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, mRect.Height, mRect.Height);
+    Canvas.Brush.Style := bsClear;
+    Canvas.Font.Color := TColor(FColors.Surface);
+    mText := FBadges[mIndex].Text;
+    DrawText(Canvas.Handle, PChar(mText), -1, mRect, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
+  end;
+  Canvas.Brush.Style := bsSolid;
+end;
+
+procedure TAtlasTabOrderOverlay.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mIndex: Integer;
+begin
+  inherited;
+  if not FClickable or (Button <> mbLeft) then
+  begin
+    Exit;
+  end;
+  mIndex := BadgeAt(X, Y);
+  if (mIndex >= 0) and Assigned(FOnBadgeClick) then
+  begin
+    FOnBadgeClick(FBadges[mIndex].Name);
+  end;
 end;
 
 function TAtlasTabOrderOverlay.S(AValue: Integer): Integer;
 begin
   Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
-end;
-
-procedure TAtlasTabOrderOverlay.ApplyColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
 end;
 
 procedure TAtlasTabOrderOverlay.ApplyExStyle;
@@ -225,6 +256,64 @@ begin
     mStyle := mStyle or WS_EX_TRANSPARENT;
   end;
   SetWindowLongPtr(Handle, GWL_EXSTYLE, mStyle);
+end;
+
+procedure TAtlasTabOrderOverlay.PaintFrames;
+var
+  mFrame: TAtlasTabFrame;
+  mRect: TRect;
+begin
+  Canvas.Brush.Style := bsClear;
+  Canvas.Pen.Style := psDash;
+  Canvas.Pen.Width := 1;
+  for mFrame in FFrames do
+  begin
+    // Etwas nach innen, damit verschachtelte Rahmen nicht auf einer Linie liegen.
+    mRect := mFrame.Bounds;
+    mRect.Inflate(-S(2), -S(2));
+    Canvas.Pen.Color := GroupColor(mFrame.Group);
+    Canvas.Rectangle(mRect);
+  end;
+  Canvas.Pen.Style := psSolid;
+  Canvas.Brush.Style := bsSolid;
+end;
+
+procedure TAtlasTabOrderOverlay.WMMouseActivate(var Message: TWMMouseActivate);
+begin
+  // Klick auf eine Marke: Fokus bleibt im Designer.
+  Message.Result := MA_NOACTIVATE;
+end;
+
+function TAtlasTabOrderOverlay.GroupColor(AGroup: Integer): TColor;
+begin
+  Result := TColor(FColors.Placeholders[AGroup mod GroupCount]);
+end;
+
+function TAtlasTabOrderOverlay.BadgeColor(const ABadge: TAtlasTabBadge): TColor;
+begin
+  case ABadge.Style of
+    TAtlasTabBadgeStyle.Warn:
+      Result := TColor(FColors.Error);
+    TAtlasTabBadgeStyle.Muted:
+      Result := TColor(FColors.Muted);
+    TAtlasTabBadgeStyle.Picked:
+      Result := TColor(FColors.Add);
+  else
+    if ABadge.Group >= 0 then
+    begin
+      Result := GroupColor(ABadge.Group);
+    end
+    else
+    begin
+      Result := TColor(FColors.Accent);
+    end;
+  end;
+end;
+
+procedure TAtlasTabOrderOverlay.ApplyColors(const AColors: TAtlasColors);
+begin
+  FColors := AColors;
+  Invalidate;
 end;
 
 procedure TAtlasTabOrderOverlay.SetBadges(const ABadges: TArray<TAtlasTabBadge>);
@@ -278,52 +367,6 @@ begin
   Result := High(TAtlasPlaceholderColors) - Low(TAtlasPlaceholderColors) + 1;
 end;
 
-function TAtlasTabOrderOverlay.GroupColor(AGroup: Integer): TColor;
-begin
-  Result := TColor(FColors.Placeholders[AGroup mod GroupCount]);
-end;
-
-function TAtlasTabOrderOverlay.BadgeColor(const ABadge: TAtlasTabBadge): TColor;
-begin
-  case ABadge.Style of
-    TAtlasTabBadgeStyle.Warn:
-      Result := TColor(FColors.Error);
-    TAtlasTabBadgeStyle.Muted:
-      Result := TColor(FColors.Muted);
-    TAtlasTabBadgeStyle.Picked:
-      Result := TColor(FColors.Add);
-  else
-    if ABadge.Group >= 0 then
-    begin
-      Result := GroupColor(ABadge.Group);
-    end
-    else
-    begin
-      Result := TColor(FColors.Accent);
-    end;
-  end;
-end;
-
-procedure TAtlasTabOrderOverlay.PaintFrames;
-var
-  mFrame: TAtlasTabFrame;
-  mRect: TRect;
-begin
-  Canvas.Brush.Style := bsClear;
-  Canvas.Pen.Style := psDash;
-  Canvas.Pen.Width := 1;
-  for mFrame in FFrames do
-  begin
-    // Etwas nach innen, damit verschachtelte Rahmen nicht auf einer Linie liegen.
-    mRect := mFrame.Bounds;
-    mRect.Inflate(-S(2), -S(2));
-    Canvas.Pen.Color := GroupColor(mFrame.Group);
-    Canvas.Rectangle(mRect);
-  end;
-  Canvas.Pen.Style := psSolid;
-  Canvas.Brush.Style := bsSolid;
-end;
-
 function TAtlasTabOrderOverlay.BadgeRect(AIndex: Integer): TRect;
 var
   mWidth: Integer;
@@ -350,49 +393,6 @@ begin
   Result := -1;
 end;
 
-procedure TAtlasTabOrderOverlay.Paint;
-var
-  mIndex: Integer;
-  mRect: TRect;
-  mText: string;
-  mBack: TColor;
-begin
-  Canvas.Brush.Color := cKeyColor;
-  Canvas.FillRect(ClientRect);
-  PaintFrames;
-  Canvas.Font.Assign(Font);
-  for mIndex := 0 to High(FBadges) do
-  begin
-    mRect := BadgeRect(mIndex);
-    mBack := BadgeColor(FBadges[mIndex]);
-    Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := mBack;
-    Canvas.Pen.Color := mBack;
-    Canvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, mRect.Height, mRect.Height);
-    Canvas.Brush.Style := bsClear;
-    Canvas.Font.Color := TColor(FColors.Surface);
-    mText := FBadges[mIndex].Text;
-    DrawText(Canvas.Handle, PChar(mText), -1, mRect, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
-  end;
-  Canvas.Brush.Style := bsSolid;
-end;
-
-procedure TAtlasTabOrderOverlay.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  mIndex: Integer;
-begin
-  inherited;
-  if not FClickable or (Button <> mbLeft) then
-  begin
-    Exit;
-  end;
-  mIndex := BadgeAt(X, Y);
-  if (mIndex >= 0) and Assigned(FOnBadgeClick) then
-  begin
-    FOnBadgeClick(FBadges[mIndex].Name);
-  end;
-end;
-
 procedure TAtlasTabOrderOverlay.ShowAt(const AScreen: TRect);
 begin
   if AScreen.IsEmpty then
@@ -405,6 +405,16 @@ begin
   SetWindowPos(Handle, HWND_TOP, AScreen.Left, AScreen.Top, AScreen.Width, AScreen.Height,
     SWP_NOACTIVATE or SWP_SHOWWINDOW);
   FShown := True;
+end;
+
+procedure TAtlasTabOrderOverlay.HideOverlay;
+begin
+  UpdateHint(Point(-MaxInt div 2, -MaxInt div 2));
+  if FShown and HandleAllocated then
+  begin
+    ShowWindow(Handle, SW_HIDE);
+  end;
+  FShown := False;
 end;
 
 procedure TAtlasTabOrderOverlay.SetRegion(ARegion: HRGN);
@@ -424,16 +434,6 @@ begin
   // Nach SetWindowRgn gehört ARegion dem System und darf nicht mehr freigegeben werden; FRegion bleibt eigene Kopie.
   mCopy := ARegion;
   SetWindowRgn(Handle, mCopy, True);
-end;
-
-procedure TAtlasTabOrderOverlay.HideOverlay;
-begin
-  UpdateHint(Point(-MaxInt div 2, -MaxInt div 2));
-  if FShown and HandleAllocated then
-  begin
-    ShowWindow(Handle, SW_HIDE);
-  end;
-  FShown := False;
 end;
 
 procedure TAtlasTabOrderOverlay.UpdateHint(const ACursor: TPoint);

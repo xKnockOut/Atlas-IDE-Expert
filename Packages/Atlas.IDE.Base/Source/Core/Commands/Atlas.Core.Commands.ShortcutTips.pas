@@ -260,11 +260,6 @@ begin
   end;
 end;
 
-class function TAtlasShortcutTips.SameDay(A, B: TDateTime): Boolean;
-begin
-  Result := (A > 0) and (B > 0) and (Trunc(A) = Trunc(B));
-end;
-
 class function TAtlasShortcutTips.Decide(const AEntry: TAtlasCommandUsageEntry;
   const ASituation: TAtlasTipSituation): TAtlasTipVerdict;
 begin
@@ -282,6 +277,11 @@ end;
 class procedure TAtlasShortcutTips.MarkShown(var AEntry: TAtlasCommandUsageEntry; ANow: TDateTime);
 begin
   AEntry.LastTip := ANow;
+end;
+
+class function TAtlasShortcutTips.SameDay(A, B: TDateTime): Boolean;
+begin
+  Result := (A > 0) and (B > 0) and (Trunc(A) = Trunc(B));
 end;
 
 /// <summary>Tasten eines Schritts: an „+“ getrennt; ein „+“ am Ende oder doppelt ist die Taste „+“ selbst.

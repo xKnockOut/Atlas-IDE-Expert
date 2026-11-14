@@ -40,6 +40,8 @@ const
   cNames: array[TAtlasContextMenuGroup] of string = ('navigation', 'edit', 'analysis', 'findings', 'debug', 'tests',
     'notes');
 
+{ TAtlasContextMenuGroupNames }
+
 class function TAtlasContextMenuGroupNames.Name(AGroup: TAtlasContextMenuGroup): string;
 begin
   Result := cNames[AGroup];

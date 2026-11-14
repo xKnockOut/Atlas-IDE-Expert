@@ -89,27 +89,6 @@ begin
   inherited;
 end;
 
-class function TShellCompilerEditions.DefaultFile: string;
-begin
-  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
-    TCompilerEditionCache.cFileName);
-end;
-
-class function TShellCompilerEditions.StampOf(const AFileName: string): string;
-begin
-  Result := '';
-  try
-    if TFile.Exists(AFileName) then
-    begin
-      Result := Format('%d-%s', [TFile.GetSize(AFileName),
-        DateToISO8601(TFile.GetLastWriteTimeUtc(AFileName), True)]);
-    end;
-  except
-    on Exception do
-      Result := '';
-  end;
-end;
-
 procedure TShellCompilerEditions.EnsureLoaded;
 begin
   if FLoaded then
@@ -216,6 +195,27 @@ begin
   finally
     TMonitor.Exit(FLock);
   end;
+end;
+
+class function TShellCompilerEditions.StampOf(const AFileName: string): string;
+begin
+  Result := '';
+  try
+    if TFile.Exists(AFileName) then
+    begin
+      Result := Format('%d-%s', [TFile.GetSize(AFileName),
+        DateToISO8601(TFile.GetLastWriteTimeUtc(AFileName), True)]);
+    end;
+  except
+    on Exception do
+      Result := '';
+  end;
+end;
+
+class function TShellCompilerEditions.DefaultFile: string;
+begin
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
+    TCompilerEditionCache.cFileName);
 end;
 
 end.

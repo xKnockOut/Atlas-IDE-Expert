@@ -108,28 +108,6 @@ end;
 
 { TAtlasVersionControl }
 
-class function TAtlasVersionControl.ForWorkingCopy(const AWorkingCopy: TAtlasVcsWorkingCopy;
-  const ARunner: IAtlasVcsRunner; const AExecutable: string; ATimeoutMs: Cardinal): IAtlasVersionControl;
-begin
-  if AWorkingCopy.Kind = TAtlasVcsKind.None then
-  begin
-    Exit(TAtlasNullVersionControl.Create(TAtlasVcsOutcome.NoWorkingCopy));
-  end;
-  if AExecutable = '' then
-  begin
-    TAtlasVcsNotices.ToolMissing(AWorkingCopy.Kind);
-    Exit(TAtlasNullVersionControl.Create(TAtlasVcsOutcome.ToolMissing));
-  end;
-  if AWorkingCopy.Kind = TAtlasVcsKind.Git then
-  begin
-    Result := TAtlasGitVersionControl.Create(AWorkingCopy.Root, ARunner, AExecutable, ATimeoutMs);
-  end
-  else
-  begin
-    Result := TAtlasSvnVersionControl.Create(AWorkingCopy.Root, ARunner, AExecutable, ATimeoutMs);
-  end;
-end;
-
 class function TAtlasVersionControl.Open(const AFolder: string; AProvider: TAtlasVcsProvider;
   const ARunner: IAtlasVcsRunner; const ALocate: TAtlasVcsLocate; ATimeoutMs: Cardinal): IAtlasVersionControl;
 var
@@ -156,6 +134,28 @@ begin
       Result := TAtlasVcsTools.Find(AKind);
     end,
     TAtlasVcsCommand.cDefaultTimeoutMs);
+end;
+
+class function TAtlasVersionControl.ForWorkingCopy(const AWorkingCopy: TAtlasVcsWorkingCopy;
+  const ARunner: IAtlasVcsRunner; const AExecutable: string; ATimeoutMs: Cardinal): IAtlasVersionControl;
+begin
+  if AWorkingCopy.Kind = TAtlasVcsKind.None then
+  begin
+    Exit(TAtlasNullVersionControl.Create(TAtlasVcsOutcome.NoWorkingCopy));
+  end;
+  if AExecutable = '' then
+  begin
+    TAtlasVcsNotices.ToolMissing(AWorkingCopy.Kind);
+    Exit(TAtlasNullVersionControl.Create(TAtlasVcsOutcome.ToolMissing));
+  end;
+  if AWorkingCopy.Kind = TAtlasVcsKind.Git then
+  begin
+    Result := TAtlasGitVersionControl.Create(AWorkingCopy.Root, ARunner, AExecutable, ATimeoutMs);
+  end
+  else
+  begin
+    Result := TAtlasSvnVersionControl.Create(AWorkingCopy.Root, ARunner, AExecutable, ATimeoutMs);
+  end;
 end;
 
 end.

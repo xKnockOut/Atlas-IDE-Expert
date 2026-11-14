@@ -96,6 +96,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TLspMethodWithoutSelf }
+
 class function TLspMethodWithoutSelf.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const AReadText: TReferenceReadText): TMethodLookup;
 begin
@@ -201,6 +203,8 @@ type
     property Target: TMethodTarget read FTarget;
   end;
 
+{ TUseFile }
+
 destructor TUseFile.Destroy;
 begin
   if OwnsTree then
@@ -228,24 +232,6 @@ destructor TMethodKindRun.Destroy;
 begin
   FFiles.Free;
   inherited;
-end;
-
-procedure TMethodKindRun.FindTarget(const APosition: TTextPosition);
-var
-  mReason: string;
-  mFound: Boolean;
-begin
-  FResolver.PinTree(FTree, FFileName);
-  try
-    FLookup := TLspMethodWithoutSelf.Lookup(FResolver, FTree, FFileName, FContext.ReadText);
-    mFound := TMethodWithoutSelf.Target(FText, FTree, APosition, FLookup, FTarget, mReason);
-  finally
-    FResolver.UnpinTree;
-  end;
-  if not mFound then
-  begin
-    raise Fail(cTexts[TLspMethodWithoutSelfText.ConversionNotPossible].Text + mReason);
-  end;
 end;
 
 function TMethodKindRun.UseFileOf(const AFileName: string; out AUseFile: TUseFile): Boolean;
@@ -294,6 +280,24 @@ begin
   begin
     raise Fail(cTexts[TLspMethodWithoutSelfText.ConversionNotPossibleCannotBe].Fmt([
       ExtractFileName(ALocation.FileName)]));
+  end;
+end;
+
+procedure TMethodKindRun.FindTarget(const APosition: TTextPosition);
+var
+  mReason: string;
+  mFound: Boolean;
+begin
+  FResolver.PinTree(FTree, FFileName);
+  try
+    FLookup := TLspMethodWithoutSelf.Lookup(FResolver, FTree, FFileName, FContext.ReadText);
+    mFound := TMethodWithoutSelf.Target(FText, FTree, APosition, FLookup, FTarget, mReason);
+  finally
+    FResolver.UnpinTree;
+  end;
+  if not mFound then
+  begin
+    raise Fail(cTexts[TLspMethodWithoutSelfText.ConversionNotPossible].Text + mReason);
   end;
 end;
 

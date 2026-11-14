@@ -217,20 +217,6 @@ end;
 
 { TAtlasIdeEventMap }
 
-class function TAtlasIdeEventMap.FindingText(const ARow: TAtlasEventRow): string;
-begin
-  case ARow.Finding of
-    TAtlasEventFinding.Empty:
-      Result := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmEmpty);
-    TAtlasEventFinding.Unassigned:
-      Result := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmUnassigned);
-    TAtlasEventFinding.Missing:
-      Result := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmMissing);
-  else
-    Result := '';
-  end;
-end;
-
 constructor TAtlasIdeEventMap.Create(const AOnMessage: TProc<string>);
 begin
   inherited Create;
@@ -250,81 +236,6 @@ begin
   FreeAndNil(Host);
   FTimer.Free;
   inherited Destroy;
-end;
-
-function TAtlasIdeEventMap.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
-begin
-  if not ASettings.DesignerEventMap then
-  begin
-    Exit(Default(TAtlasDesignerButton));
-  end;
-  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.EventMap,
-    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmHint));
-  Result.Pressed := FShown;
-end;
-
-/// <summary>Inhalt des Fensters; nil, solange es nicht angelegt ist.</summary>
-function HostFrame: TAtlasEventFrame;
-begin
-  Result := nil;
-  if (Host <> nil) and (Host.Frame is TAtlasEventFrame) then
-  begin
-    Result := TAtlasEventFrame(Host.Frame);
-  end;
-end;
-
-procedure TAtlasIdeEventMap.Toggle;
-var
-  mCreated: Boolean;
-begin
-  if FShown and (Host <> nil) and Host.Shown then
-  begin
-    Host.Hide;
-    FShown := False;
-    FTimer.Enabled := False;
-    Exit;
-  end;
-  if Host = nil then
-  begin
-    Host := TAtlasIdeDockWindow.Create(TEventDock.Create, False);
-  end;
-  FShown := Host.Show(mCreated) and (HostFrame <> nil);
-  if FShown then
-  begin
-    Wire(HostFrame);
-    ApplyTheme;
-    Reload(True);
-  end;
-  FTimer.Enabled := FShown;
-end;
-
-procedure TAtlasIdeEventMap.Wire(AFrame: TAtlasEventFrame);
-begin
-  AFrame.OnJump :=
-    procedure(ARow: TAtlasEventRow)
-    begin
-      Jump(ARow);
-    end;
-  AFrame.OnShow :=
-    procedure(ARow: TAtlasEventRow)
-    begin
-      ShowComponent(ARow);
-    end;
-  AFrame.OnRename :=
-    procedure(ARow: TAtlasEventRow)
-    begin
-      Rename(ARow);
-    end;
-  AFrame.OnRemove :=
-    procedure(ARow: TAtlasEventRow)
-    begin
-      Remove(ARow);
-    end;
-  AFrame.OnOptions :=
-    procedure
-    begin
-      FillList;
-    end;
 end;
 
 procedure TAtlasIdeEventMap.Tick(Sender: TObject);
@@ -365,6 +276,16 @@ begin
   FillList;
 end;
 
+/// <summary>Inhalt des Fensters; nil, solange es nicht angelegt ist.</summary>
+function HostFrame: TAtlasEventFrame;
+begin
+  Result := nil;
+  if (Host <> nil) and (Host.Frame is TAtlasEventFrame) then
+  begin
+    Result := TAtlasEventFrame(Host.Frame);
+  end;
+end;
+
 procedure TAtlasIdeEventMap.FillList;
 var
   mFrame: TAtlasEventFrame;
@@ -380,6 +301,53 @@ begin
     begin
       Result := FindingText(ARow);
     end);
+end;
+
+/// <summary>Zuweisungen des Handlers AHandler im Formular ARoot leeren; Anzahl.</summary>
+function TAtlasIdeEventMap.ClearAssignments(ARoot: TComponent; const AHandler: string): Integer;
+var
+  mRow: TAtlasEventRow;
+  mComponent: TComponent;
+begin
+  Result := 0;
+  for mRow in FRows do
+  begin
+    mComponent := ComponentOf(ARoot, mRow.Component);
+    if (mComponent <> nil) and SameText(mRow.Handler, AHandler) and (GetPropInfo(mComponent, mRow.Event) <> nil) then
+    begin
+      SetMethodProp(mComponent, mRow.Event, Default(TMethod));
+      Inc(Result);
+    end;
+  end;
+end;
+
+procedure TAtlasIdeEventMap.Wire(AFrame: TAtlasEventFrame);
+begin
+  AFrame.OnJump :=
+    procedure(ARow: TAtlasEventRow)
+    begin
+      Jump(ARow);
+    end;
+  AFrame.OnShow :=
+    procedure(ARow: TAtlasEventRow)
+    begin
+      ShowComponent(ARow);
+    end;
+  AFrame.OnRename :=
+    procedure(ARow: TAtlasEventRow)
+    begin
+      Rename(ARow);
+    end;
+  AFrame.OnRemove :=
+    procedure(ARow: TAtlasEventRow)
+    begin
+      Remove(ARow);
+    end;
+  AFrame.OnOptions :=
+    procedure
+    begin
+      FillList;
+    end;
 end;
 
 procedure TAtlasIdeEventMap.Jump(const ARow: TAtlasEventRow);
@@ -452,24 +420,6 @@ begin
   Reload(True);
 end;
 
-/// <summary>Zuweisungen des Handlers AHandler im Formular ARoot leeren; Anzahl.</summary>
-function TAtlasIdeEventMap.ClearAssignments(ARoot: TComponent; const AHandler: string): Integer;
-var
-  mRow: TAtlasEventRow;
-  mComponent: TComponent;
-begin
-  Result := 0;
-  for mRow in FRows do
-  begin
-    mComponent := ComponentOf(ARoot, mRow.Component);
-    if (mComponent <> nil) and SameText(mRow.Handler, AHandler) and (GetPropInfo(mComponent, mRow.Event) <> nil) then
-    begin
-      SetMethodProp(mComponent, mRow.Event, Default(TMethod));
-      Inc(Result);
-    end;
-  end;
-end;
-
 procedure TAtlasIdeEventMap.Remove(const ARow: TAtlasEventRow);
 var
   mEditor: IOTAFormEditor;
@@ -516,6 +466,42 @@ begin
   Reload(True);
 end;
 
+function TAtlasIdeEventMap.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
+begin
+  if not ASettings.DesignerEventMap then
+  begin
+    Exit(Default(TAtlasDesignerButton));
+  end;
+  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.EventMap,
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmHint));
+  Result.Pressed := FShown;
+end;
+
+procedure TAtlasIdeEventMap.Toggle;
+var
+  mCreated: Boolean;
+begin
+  if FShown and (Host <> nil) and Host.Shown then
+  begin
+    Host.Hide;
+    FShown := False;
+    FTimer.Enabled := False;
+    Exit;
+  end;
+  if Host = nil then
+  begin
+    Host := TAtlasIdeDockWindow.Create(TEventDock.Create, False);
+  end;
+  FShown := Host.Show(mCreated) and (HostFrame <> nil);
+  if FShown then
+  begin
+    Wire(HostFrame);
+    ApplyTheme;
+    Reload(True);
+  end;
+  FTimer.Enabled := FShown;
+end;
+
 procedure TAtlasIdeEventMap.ApplyTheme;
 var
   mFrame: TAtlasEventFrame;
@@ -525,6 +511,20 @@ begin
   begin
     TAtlasIdeDockWindow.ApplyIdeTheme(mFrame);
     mFrame.ErrorColor := TColor(TAtlasIdeStyle.Colors.Error);
+  end;
+end;
+
+class function TAtlasIdeEventMap.FindingText(const ARow: TAtlasEventRow): string;
+begin
+  case ARow.Finding of
+    TAtlasEventFinding.Empty:
+      Result := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmEmpty);
+    TAtlasEventFinding.Unassigned:
+      Result := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmUnassigned);
+    TAtlasEventFinding.Missing:
+      Result := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmMissing);
+  else
+    Result := '';
   end;
 end;
 

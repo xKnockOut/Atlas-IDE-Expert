@@ -82,6 +82,14 @@ begin
   end;
 end;
 
+procedure TAtlasIdeDebugValueRequest.Deferred(const AValue: TAtlasDebugValue);
+begin
+  if FWaiting then
+  begin
+    Finish(AValue.Text, AValue.State = TAtlasDebugValueState.Value);
+  end;
+end;
+
 procedure TAtlasIdeDebugValueRequest.Finish(const AText: string; AOk: Boolean);
 var
   mDone: TAtlasDebugValueResult;
@@ -93,14 +101,6 @@ begin
   if Assigned(mDone) then
   begin
     mDone(AText, AOk);
-  end;
-end;
-
-procedure TAtlasIdeDebugValueRequest.Deferred(const AValue: TAtlasDebugValue);
-begin
-  if FWaiting then
-  begin
-    Finish(AValue.Text, AValue.State = TAtlasDebugValueState.Value);
   end;
 end;
 

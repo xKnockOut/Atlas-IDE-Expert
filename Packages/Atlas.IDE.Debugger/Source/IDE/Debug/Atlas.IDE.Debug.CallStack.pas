@@ -166,165 +166,6 @@ end;
 
 { TAtlasIdeDebugCallStack }
 
-class procedure TAtlasIdeDebugCallStack.Start(const ARun: TAtlasCallStackRunner; const AMessage: TProc<string>);
-begin
-  FRun := ARun;
-  FMessage := AMessage;
-  if FTicker = nil then
-  begin
-    FTicker := TTicker.Create;
-  end;
-  if FTimer = nil then
-  begin
-    FTimer := TTimer.Create(nil);
-    FTimer.Enabled := False;
-    FTimer.Interval := cTickMs;
-    FTimer.OnTimer := FTicker.Tick;
-  end;
-  if FHistory = nil then
-  begin
-    FHistory := TAtlasDebugStackHistory.Create;
-  end;
-  TAtlasIdeDebugCallStackWindow.Prepare;
-  TAtlasIdeDebugCallStackWindow.OnFrame :=
-    procedure(AFrame: TAtlasDebugCallStackFrame)
-    begin
-      WireFrame(AFrame);
-    end;
-  if FListener = nil then
-  begin
-    FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FListener);
-  end;
-  TAtlasIdeDebugSession.Start;
-end;
-
-class procedure TAtlasIdeDebugCallStack.Release;
-begin
-  if FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(FListener);
-  end;
-  FListener := nil;
-  // Späte Serverantworten vergleichen ihre Nummer und verfallen.
-  Inc(FRequest);
-  FreeAndNil(FTimer);
-  FreeAndNil(FTicker);
-  FreeAndNil(FHistory);
-  TAtlasIdeDebugCallStackWindow.Release;
-  FRun := nil;
-  FMessage := nil;
-  FStack := Default(TAtlasDebugStackView);
-  FPrevious := Default(TAtlasDebugStackView);
-  FPhase := TPhase.Idle;
-end;
-
-class function TAtlasIdeDebugCallStack.Started: Boolean;
-begin
-  Result := FListener <> nil;
-end;
-
-class procedure TAtlasIdeDebugCallStack.WireFrame(AFrame: TAtlasDebugCallStackFrame);
-begin
-  AFrame.OnOpenFrame :=
-    procedure(AIndex: Integer)
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Debugger,
-        procedure
-        begin
-          OpenFrame(AIndex);
-        end);
-    end;
-  AFrame.OnExpand :=
-    procedure
-    begin
-      // Aufgeklappte Rahmen bekommen Namen und Werte.
-      if StillStopped then
-      begin
-        Schedule(TPhase.Names);
-      end;
-    end;
-  AFrame.OnCopied :=
-    procedure(ACount: Integer)
-    begin
-      if Assigned(FMessage) then
-      begin
-        FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.CallStackCopied, [ACount]));
-      end;
-    end;
-end;
-
-class procedure TAtlasIdeDebugCallStack.ShowWindow;
-begin
-  if not Started then
-  begin
-    Exit;
-  end;
-  if TAtlasIdeDebugCallStackWindow.Show = nil then
-  begin
-    Exit;
-  end;
-  if TAtlasIdeDebugSession.StoppedThread = nil then
-  begin
-    ShowRunning;
-  end
-  else
-  begin
-    Refresh;
-  end;
-end;
-
-class procedure TAtlasIdeDebugCallStack.ThemeChanged;
-begin
-  TAtlasIdeDebugCallStackWindow.ApplyTheme;
-end;
-
-class procedure TAtlasIdeDebugCallStack.SetOrigin(const AOrigin: TAtlasCallStackOrigin);
-begin
-  FOrigin := AOrigin;
-end;
-
-class procedure TAtlasIdeDebugCallStack.Schedule(APhase: TPhase);
-begin
-  FPhase := APhase;
-  if FTimer <> nil then
-  begin
-    FTimer.Enabled := APhase <> TPhase.Idle;
-  end;
-end;
-
-class function TAtlasIdeDebugCallStack.StillStopped: Boolean;
-begin
-  Result := (FTimer <> nil) and (TAtlasIdeDebugSession.StoppedThread <> nil) and
-    (TAtlasIdeDebugSession.StopCount = FStop) and (ShownFrame <> nil);
-end;
-
-class procedure TAtlasIdeDebugCallStack.Remember;
-begin
-  // Der Stapel des zu Ende gehenden Halts, mit den Werten, die bis dahin da waren.
-  if (FHistory <> nil) and (FStack.Count > 0) then
-  begin
-    FHistory.Remember(FStack);
-  end;
-  FStack := Default(TAtlasDebugStackView);
-  FPrevious := Default(TAtlasDebugStackView);
-  FHasPrevious := False;
-end;
-
-class procedure TAtlasIdeDebugCallStack.ShowRunning;
-var
-  mFrame: TAtlasDebugCallStackFrame;
-begin
-  Remember;
-  Inc(FRequest);
-  Schedule(TPhase.Idle);
-  mFrame := ShownFrame;
-  if mFrame <> nil then
-  begin
-    mFrame.ShowStatus(TAtlasDebugStrings.Text(TAtlasDebugTextId.CallStackRunning));
-  end;
-end;
-
 class procedure TAtlasIdeDebugCallStack.Refresh;
 var
   mFrame: TAtlasDebugCallStackFrame;
@@ -406,23 +247,6 @@ begin
   end;
   mFrame.SetStack(FStack, FPrevious, FHasPrevious);
   Schedule(TPhase.Names);
-end;
-
-class procedure TAtlasIdeDebugCallStack.ShowUpdate;
-var
-  mFrame: TAtlasDebugCallStackFrame;
-begin
-  mFrame := ShownFrame;
-  if mFrame = nil then
-  begin
-    Exit;
-  end;
-  if FHasPrevious then
-  begin
-    FStack.CompareWith(FPrevious);
-    FPrevious.CompareWith(FStack);
-  end;
-  mFrame.UpdateStack(FStack, FPrevious);
 end;
 
 class procedure TAtlasIdeDebugCallStack.AskNext;
@@ -572,6 +396,64 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeDebugCallStack.Remember;
+begin
+  // Der Stapel des zu Ende gehenden Halts, mit den Werten, die bis dahin da waren.
+  if (FHistory <> nil) and (FStack.Count > 0) then
+  begin
+    FHistory.Remember(FStack);
+  end;
+  FStack := Default(TAtlasDebugStackView);
+  FPrevious := Default(TAtlasDebugStackView);
+  FHasPrevious := False;
+end;
+
+class procedure TAtlasIdeDebugCallStack.ShowRunning;
+var
+  mFrame: TAtlasDebugCallStackFrame;
+begin
+  Remember;
+  Inc(FRequest);
+  Schedule(TPhase.Idle);
+  mFrame := ShownFrame;
+  if mFrame <> nil then
+  begin
+    mFrame.ShowStatus(TAtlasDebugStrings.Text(TAtlasDebugTextId.CallStackRunning));
+  end;
+end;
+
+class procedure TAtlasIdeDebugCallStack.ShowUpdate;
+var
+  mFrame: TAtlasDebugCallStackFrame;
+begin
+  mFrame := ShownFrame;
+  if mFrame = nil then
+  begin
+    Exit;
+  end;
+  if FHasPrevious then
+  begin
+    FStack.CompareWith(FPrevious);
+    FPrevious.CompareWith(FStack);
+  end;
+  mFrame.UpdateStack(FStack, FPrevious);
+end;
+
+class procedure TAtlasIdeDebugCallStack.Schedule(APhase: TPhase);
+begin
+  FPhase := APhase;
+  if FTimer <> nil then
+  begin
+    FTimer.Enabled := APhase <> TPhase.Idle;
+  end;
+end;
+
+class function TAtlasIdeDebugCallStack.StillStopped: Boolean;
+begin
+  Result := (FTimer <> nil) and (TAtlasIdeDebugSession.StoppedThread <> nil) and
+    (TAtlasIdeDebugSession.StopCount = FStop) and (ShownFrame <> nil);
+end;
+
 class procedure TAtlasIdeDebugCallStack.OpenFrame(AIndex: Integer);
 begin
   if (AIndex < 0) or (AIndex > High(FStack.Entries)) or not FStack.Entries[AIndex].Frame.HasSource then
@@ -579,6 +461,124 @@ begin
     Exit;
   end;
   TAtlasIdeNavigation.MarkLine(FStack.Entries[AIndex].Frame.FileName, FStack.Entries[AIndex].Frame.Line - 1);
+end;
+
+class procedure TAtlasIdeDebugCallStack.WireFrame(AFrame: TAtlasDebugCallStackFrame);
+begin
+  AFrame.OnOpenFrame :=
+    procedure(AIndex: Integer)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Debugger,
+        procedure
+        begin
+          OpenFrame(AIndex);
+        end);
+    end;
+  AFrame.OnExpand :=
+    procedure
+    begin
+      // Aufgeklappte Rahmen bekommen Namen und Werte.
+      if StillStopped then
+      begin
+        Schedule(TPhase.Names);
+      end;
+    end;
+  AFrame.OnCopied :=
+    procedure(ACount: Integer)
+    begin
+      if Assigned(FMessage) then
+      begin
+        FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.CallStackCopied, [ACount]));
+      end;
+    end;
+end;
+
+class procedure TAtlasIdeDebugCallStack.Start(const ARun: TAtlasCallStackRunner; const AMessage: TProc<string>);
+begin
+  FRun := ARun;
+  FMessage := AMessage;
+  if FTicker = nil then
+  begin
+    FTicker := TTicker.Create;
+  end;
+  if FTimer = nil then
+  begin
+    FTimer := TTimer.Create(nil);
+    FTimer.Enabled := False;
+    FTimer.Interval := cTickMs;
+    FTimer.OnTimer := FTicker.Tick;
+  end;
+  if FHistory = nil then
+  begin
+    FHistory := TAtlasDebugStackHistory.Create;
+  end;
+  TAtlasIdeDebugCallStackWindow.Prepare;
+  TAtlasIdeDebugCallStackWindow.OnFrame :=
+    procedure(AFrame: TAtlasDebugCallStackFrame)
+    begin
+      WireFrame(AFrame);
+    end;
+  if FListener = nil then
+  begin
+    FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FListener);
+  end;
+  TAtlasIdeDebugSession.Start;
+end;
+
+class procedure TAtlasIdeDebugCallStack.Release;
+begin
+  if FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(FListener);
+  end;
+  FListener := nil;
+  // Späte Serverantworten vergleichen ihre Nummer und verfallen.
+  Inc(FRequest);
+  FreeAndNil(FTimer);
+  FreeAndNil(FTicker);
+  FreeAndNil(FHistory);
+  TAtlasIdeDebugCallStackWindow.Release;
+  FRun := nil;
+  FMessage := nil;
+  FStack := Default(TAtlasDebugStackView);
+  FPrevious := Default(TAtlasDebugStackView);
+  FPhase := TPhase.Idle;
+end;
+
+class function TAtlasIdeDebugCallStack.Started: Boolean;
+begin
+  Result := FListener <> nil;
+end;
+
+class procedure TAtlasIdeDebugCallStack.ShowWindow;
+begin
+  if not Started then
+  begin
+    Exit;
+  end;
+  if TAtlasIdeDebugCallStackWindow.Show = nil then
+  begin
+    Exit;
+  end;
+  if TAtlasIdeDebugSession.StoppedThread = nil then
+  begin
+    ShowRunning;
+  end
+  else
+  begin
+    Refresh;
+  end;
+end;
+
+class procedure TAtlasIdeDebugCallStack.ThemeChanged;
+begin
+  TAtlasIdeDebugCallStackWindow.ApplyTheme;
+end;
+
+class procedure TAtlasIdeDebugCallStack.SetOrigin(const AOrigin: TAtlasCallStackOrigin);
+begin
+  FOrigin := AOrigin;
 end;
 
 end.

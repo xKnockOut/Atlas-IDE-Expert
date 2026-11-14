@@ -67,20 +67,6 @@ begin
   inherited;
 end;
 
-procedure TAtlasIdeTestSlowest.Remember(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
-begin
-  if not SameText(ATarget.Project, FProject) then
-  begin
-    FCases := nil;
-  end;
-  FProject := ATarget.Project;
-  FCases := TAtlasTestRun.Merged(FCases, ARun.Cases);
-  if Assigned(FNext) then
-  begin
-    FNext(ATarget, ARun);
-  end;
-end;
-
 procedure TAtlasIdeTestSlowest.Open(const AFullName: string);
 var
   mFileName: string;
@@ -93,6 +79,20 @@ begin
   end;
   // LocateByName zählt ab 1, der Editor ab 0.
   TAtlasIdeResults.Open(mFileName, Max(mLine - 1, 0), 0);
+end;
+
+procedure TAtlasIdeTestSlowest.Remember(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
+begin
+  if not SameText(ATarget.Project, FProject) then
+  begin
+    FCases := nil;
+  end;
+  FProject := ATarget.Project;
+  FCases := TAtlasTestRun.Merged(FCases, ARun.Cases);
+  if Assigned(FNext) then
+  begin
+    FNext(ATarget, ARun);
+  end;
 end;
 
 procedure TAtlasIdeTestSlowest.Run;

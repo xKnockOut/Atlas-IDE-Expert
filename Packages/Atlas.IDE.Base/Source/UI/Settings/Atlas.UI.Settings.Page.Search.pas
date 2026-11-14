@@ -115,6 +115,61 @@ begin
   AddFocusAction(ShortCut(Ord('E'), [ssCtrl]));
 end;
 
+procedure TAtlasSettingsSearchBox.EditChange(Sender: TObject);
+begin
+  SearchFor(FEdit.Text);
+end;
+
+procedure TAtlasSettingsSearchBox.EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  case Key of
+    VK_RETURN:
+      begin
+        OpenHit(0);
+        Key := 0;
+      end;
+    VK_DOWN:
+      if FList.Visible and (Length(FHits) > 0) then
+      begin
+        FList.SetFocus;
+        Key := 0;
+      end;
+    VK_ESCAPE:
+      if FEdit.Text <> '' then
+      begin
+        SearchFor('');
+        Key := 0;
+      end;
+  end;
+end;
+
+procedure TAtlasSettingsSearchBox.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  case Key of
+    VK_RETURN:
+      begin
+        OpenHit(FList.ItemIndex);
+        Key := 0;
+      end;
+    VK_UP:
+      if FList.ItemIndex <= 0 then
+      begin
+        FEdit.SetFocus;
+        Key := 0;
+      end;
+  end;
+end;
+
+procedure TAtlasSettingsSearchBox.ListDblClick(Sender: TObject);
+begin
+  OpenHit(FList.ItemIndex);
+end;
+
+procedure TAtlasSettingsSearchBox.FocusExecute(Sender: TObject);
+begin
+  FocusEdit;
+end;
+
 procedure TAtlasSettingsSearchBox.AddFocusAction(AShortCut: TShortCut);
 var
   mAction: TAction;
@@ -123,51 +178,6 @@ begin
   mAction.ActionList := FActions;
   mAction.ShortCut := AShortCut;
   mAction.OnExecute := FocusExecute;
-end;
-
-procedure TAtlasSettingsSearchBox.FocusExecute(Sender: TObject);
-begin
-  FocusEdit;
-end;
-
-procedure TAtlasSettingsSearchBox.FocusEdit;
-var
-  mForm: TCustomForm;
-begin
-  mForm := GetParentForm(FEdit);
-  if FEdit.Visible and FEdit.CanFocus and (mForm <> nil) and mForm.Visible then
-  begin
-    FEdit.SetFocus;
-    FEdit.SelectAll;
-  end;
-end;
-
-procedure TAtlasSettingsSearchBox.SetAvailable(AValue: Boolean);
-begin
-  FEdit.Visible := AValue;
-  FActions.State := asNormal;
-  if not AValue then
-  begin
-    FActions.State := asSuspended;
-    SearchFor('');
-  end;
-end;
-
-function TAtlasSettingsSearchBox.ModuleName(const ASwitch: string): string;
-begin
-  Result := '';
-  if Assigned(FOnModuleName) then
-  begin
-    Result := FOnModuleName(ASwitch);
-  end;
-  if Result = '' then
-  begin
-    Result := ASwitch;
-  end;
-  if ASwitch = '' then
-  begin
-    Result := 'Base';
-  end;
 end;
 
 function TAtlasSettingsSearchBox.RowText(const AHit: TAtlasSettingHit): string;
@@ -185,6 +195,23 @@ begin
   if mState <> '' then
   begin
     Result := Result + '  ·  ' + mState;
+  end;
+end;
+
+function TAtlasSettingsSearchBox.ModuleName(const ASwitch: string): string;
+begin
+  Result := '';
+  if Assigned(FOnModuleName) then
+  begin
+    Result := FOnModuleName(ASwitch);
+  end;
+  if Result = '' then
+  begin
+    Result := ASwitch;
+  end;
+  if ASwitch = '' then
+  begin
+    Result := 'Base';
   end;
 end;
 
@@ -245,17 +272,6 @@ begin
   end;
 end;
 
-function TAtlasSettingsSearchBox.RowTexts: TArray<string>;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  for mIndex := 0 to FList.Items.Count - 1 do
-  begin
-    Result := Result + [FList.Items[mIndex]];
-  end;
-end;
-
 function TAtlasSettingsSearchBox.OpenHit(AIndex: Integer): Boolean;
 begin
   Result := (AIndex >= 0) and (AIndex <= High(FHits));
@@ -265,54 +281,38 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsSearchBox.EditChange(Sender: TObject);
+procedure TAtlasSettingsSearchBox.SetAvailable(AValue: Boolean);
 begin
-  SearchFor(FEdit.Text);
-end;
-
-procedure TAtlasSettingsSearchBox.EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  case Key of
-    VK_RETURN:
-      begin
-        OpenHit(0);
-        Key := 0;
-      end;
-    VK_DOWN:
-      if FList.Visible and (Length(FHits) > 0) then
-      begin
-        FList.SetFocus;
-        Key := 0;
-      end;
-    VK_ESCAPE:
-      if FEdit.Text <> '' then
-      begin
-        SearchFor('');
-        Key := 0;
-      end;
+  FEdit.Visible := AValue;
+  FActions.State := asNormal;
+  if not AValue then
+  begin
+    FActions.State := asSuspended;
+    SearchFor('');
   end;
 end;
 
-procedure TAtlasSettingsSearchBox.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+procedure TAtlasSettingsSearchBox.FocusEdit;
+var
+  mForm: TCustomForm;
 begin
-  case Key of
-    VK_RETURN:
-      begin
-        OpenHit(FList.ItemIndex);
-        Key := 0;
-      end;
-    VK_UP:
-      if FList.ItemIndex <= 0 then
-      begin
-        FEdit.SetFocus;
-        Key := 0;
-      end;
+  mForm := GetParentForm(FEdit);
+  if FEdit.Visible and FEdit.CanFocus and (mForm <> nil) and mForm.Visible then
+  begin
+    FEdit.SetFocus;
+    FEdit.SelectAll;
   end;
 end;
 
-procedure TAtlasSettingsSearchBox.ListDblClick(Sender: TObject);
+function TAtlasSettingsSearchBox.RowTexts: TArray<string>;
+var
+  mIndex: Integer;
 begin
-  OpenHit(FList.ItemIndex);
+  Result := nil;
+  for mIndex := 0 to FList.Items.Count - 1 do
+  begin
+    Result := Result + [FList.Items[mIndex]];
+  end;
 end;
 
 end.

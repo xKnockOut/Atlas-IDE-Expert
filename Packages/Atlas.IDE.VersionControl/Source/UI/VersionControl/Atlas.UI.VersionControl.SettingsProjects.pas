@@ -267,6 +267,44 @@ begin
   AddVcsProjectsSection;
 end;
 
+procedure TAtlasSettingsVcsProjectsPart.Load(const AValues: IAtlasSettingsValues);
+begin
+  FVcsProjects := TAtlasVcsProjects.Read(AValues.ReadString(cProjectsKey));
+  FVcsProjectSelected := -1;
+  if Length(FVcsProjects) > 0 then
+  begin
+    FVcsProjectSelected := 0;
+  end;
+  RefreshVcsProjects;
+end;
+
+procedure TAtlasSettingsVcsProjectsPart.Save(const AValues: IAtlasSettingsValues);
+begin
+  if FVcsProjectList <> nil then
+  begin
+    AValues.WriteString(cProjectsKey, VcsProjectsJson(FVcsProjects));
+  end;
+end;
+
+procedure TAtlasSettingsVcsProjectsPart.Attached(APage: TAtlasVcsSettingsOwner);
+begin
+  inherited Attached(APage);
+  if APage = nil then
+  begin
+    FVcsProjectList := nil;
+    FVcsProjectMatch := nil;
+    FVcsProjectProvider := nil;
+    FVcsProjectMainBranch := nil;
+    FVcsProjectNote := nil;
+    FVcsProjectRemove := nil;
+  end;
+end;
+
+procedure TAtlasSettingsVcsProjectsPart.WindowReady;
+begin
+  RefreshVcsProjects;
+end;
+
 procedure TAtlasSettingsVcsProjectsPart.AddVcsProjectsSection;
 var
   mPanel: TWinControl;
@@ -325,11 +363,6 @@ begin
   Attach(mHint.Parent, FVcsProjectList);
 end;
 
-function TAtlasSettingsVcsProjectsPart.VcsProjectRows: TArray<TAtlasVcsProjectMapping>;
-begin
-  Result := FVcsProjects + FVcsContext.Team;
-end;
-
 function TAtlasSettingsVcsProjectsPart.VcsProjectEditable: Boolean;
 begin
   Result := (FVcsProjectSelected >= 0) and (FVcsProjectSelected < Length(FVcsProjects));
@@ -358,65 +391,6 @@ begin
   mItem.SubItems.Add(FPage.Part<TAtlasSettingsVcsPart>.VcsProviderCaption(mRows[AIndex].Provider));
   mItem.SubItems.Add(mBranch);
   mItem.SubItems.Add(VcsProjectSourceText(FVcsContext, mRows[AIndex]));
-end;
-
-procedure TAtlasSettingsVcsProjectsPart.RefreshVcsProjects;
-var
-  mRows: TArray<TAtlasVcsProjectMapping>;
-  mIndex: Integer;
-begin
-  if FVcsProjectList = nil then
-  begin
-    Exit;
-  end;
-  FVcsContext := TAtlasVcsProjectContext.Empty;
-  if Assigned(FOnVcsContext) then
-  begin
-    FVcsContext := FOnVcsContext();
-  end;
-  mRows := VcsProjectRows;
-  if FVcsProjectSelected > High(mRows) then
-  begin
-    FVcsProjectSelected := High(mRows);
-  end;
-  if ListReady(FVcsProjectList) then
-  begin
-    FVcsProjectFilling := True;
-    FVcsProjectList.Items.BeginUpdate;
-    try
-      FVcsProjectList.Items.Clear;
-      for mIndex := 0 to High(mRows) do
-      begin
-        FVcsProjectList.Items.Add;
-        VcsProjectShowItem(mIndex);
-      end;
-      if FVcsProjectSelected >= 0 then
-      begin
-        FVcsProjectList.Items[FVcsProjectSelected].Selected := True;
-      end;
-    finally
-      FVcsProjectList.Items.EndUpdate;
-      FVcsProjectFilling := False;
-    end;
-  end;
-  VcsProjectFillFields;
-  FPage.Part<TAtlasSettingsVcsServersPart>.RefreshVcsServers;
-end;
-
-procedure TAtlasSettingsVcsProjectsPart.VcsProjectNoteFor(const AMapping: TAtlasVcsProjectMapping);
-begin
-  if AMapping.ReadOnly then
-  begin
-    FVcsProjectNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectReadOnly);
-  end
-  else if VcsProjectCovered(FVcsContext, AMapping) then
-  begin
-    FVcsProjectNote.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsCoveredHint);
-  end
-  else
-  begin
-    FVcsProjectNote.Caption := '';
-  end;
 end;
 
 procedure TAtlasSettingsVcsProjectsPart.VcsProjectFillFields;
@@ -452,6 +426,22 @@ begin
   Allow(FVcsProjectMainBranch, mEditable);
   Allow(FVcsProjectRemove, mEditable);
   FPage.Part<TAtlasSettingsVcsProjectAddPart>.AllowCurrent(FVcsContext.ProjectFile <> '');
+end;
+
+procedure TAtlasSettingsVcsProjectsPart.VcsProjectNoteFor(const AMapping: TAtlasVcsProjectMapping);
+begin
+  if AMapping.ReadOnly then
+  begin
+    FVcsProjectNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectReadOnly);
+  end
+  else if VcsProjectCovered(FVcsContext, AMapping) then
+  begin
+    FVcsProjectNote.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsCoveredHint);
+  end
+  else
+  begin
+    FVcsProjectNote.Caption := '';
+  end;
 end;
 
 procedure TAtlasSettingsVcsProjectsPart.VcsProjectSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -552,6 +542,20 @@ begin
   VcsProjectShowItem(FVcsProjectSelected);
 end;
 
+procedure TAtlasSettingsVcsProjectsPart.VcsProjectRemoveClick(Sender: TObject);
+begin
+  if not VcsProjectEditable then
+  begin
+    Exit;
+  end;
+  Delete(FVcsProjects, FVcsProjectSelected, 1);
+  if FVcsProjectSelected > High(VcsProjectRows) then
+  begin
+    FVcsProjectSelected := High(VcsProjectRows);
+  end;
+  RefreshVcsProjects;
+end;
+
 procedure TAtlasSettingsVcsProjectsPart.VcsProjectAdd(const AMatch, AProvider: string);
 var
   mIndex: Integer;
@@ -574,74 +578,70 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsVcsProjectsPart.VcsProjectRemoveClick(Sender: TObject);
+function TAtlasSettingsVcsProjectsPart.VcsProjectRows: TArray<TAtlasVcsProjectMapping>;
 begin
-  if not VcsProjectEditable then
+  Result := FVcsProjects + FVcsContext.Team;
+end;
+
+procedure TAtlasSettingsVcsProjectsPart.RefreshVcsProjects;
+var
+  mRows: TArray<TAtlasVcsProjectMapping>;
+  mIndex: Integer;
+begin
+  if FVcsProjectList = nil then
   begin
     Exit;
   end;
-  Delete(FVcsProjects, FVcsProjectSelected, 1);
-  if FVcsProjectSelected > High(VcsProjectRows) then
+  FVcsContext := TAtlasVcsProjectContext.Empty;
+  if Assigned(FOnVcsContext) then
   begin
-    FVcsProjectSelected := High(VcsProjectRows);
+    FVcsContext := FOnVcsContext();
   end;
-  RefreshVcsProjects;
-end;
-
-procedure TAtlasSettingsVcsProjectsPart.WindowReady;
-begin
-  RefreshVcsProjects;
-end;
-
-procedure TAtlasSettingsVcsProjectsPart.Load(const AValues: IAtlasSettingsValues);
-begin
-  FVcsProjects := TAtlasVcsProjects.Read(AValues.ReadString(cProjectsKey));
-  FVcsProjectSelected := -1;
-  if Length(FVcsProjects) > 0 then
+  mRows := VcsProjectRows;
+  if FVcsProjectSelected > High(mRows) then
   begin
-    FVcsProjectSelected := 0;
+    FVcsProjectSelected := High(mRows);
   end;
-  RefreshVcsProjects;
-end;
-
-procedure TAtlasSettingsVcsProjectsPart.Save(const AValues: IAtlasSettingsValues);
-begin
-  if FVcsProjectList <> nil then
+  if ListReady(FVcsProjectList) then
   begin
-    AValues.WriteString(cProjectsKey, VcsProjectsJson(FVcsProjects));
+    FVcsProjectFilling := True;
+    FVcsProjectList.Items.BeginUpdate;
+    try
+      FVcsProjectList.Items.Clear;
+      for mIndex := 0 to High(mRows) do
+      begin
+        FVcsProjectList.Items.Add;
+        VcsProjectShowItem(mIndex);
+      end;
+      if FVcsProjectSelected >= 0 then
+      begin
+        FVcsProjectList.Items[FVcsProjectSelected].Selected := True;
+      end;
+    finally
+      FVcsProjectList.Items.EndUpdate;
+      FVcsProjectFilling := False;
+    end;
   end;
-end;
-
-procedure TAtlasSettingsVcsProjectsPart.Attached(APage: TAtlasVcsSettingsOwner);
-begin
-  inherited Attached(APage);
-  if APage = nil then
-  begin
-    FVcsProjectList := nil;
-    FVcsProjectMatch := nil;
-    FVcsProjectProvider := nil;
-    FVcsProjectMainBranch := nil;
-    FVcsProjectNote := nil;
-    FVcsProjectRemove := nil;
-  end;
+  VcsProjectFillFields;
+  FPage.Part<TAtlasSettingsVcsServersPart>.RefreshVcsServers;
 end;
 
 { TAtlasSettingsVcsProjectAddPart }
 
+procedure TAtlasSettingsVcsProjectAddPart.Attached(APage: TAtlasVcsSettingsOwner);
+begin
+  inherited Attached(APage);
+  if APage = nil then
+  begin
+    FAddCurrent := nil;
+    FAdd := nil;
+    FAddMenu := nil;
+  end;
+end;
+
 function TAtlasSettingsVcsProjectAddPart.Projects: TAtlasSettingsVcsProjectsPart;
 begin
   Result := FPage.Part<TAtlasSettingsVcsProjectsPart>;
-end;
-
-procedure TAtlasSettingsVcsProjectAddPart.AddButtons(APanel: TWinControl);
-begin
-  FAddCurrent := AddRowButton(APanel, 0, cVcsAddCurrentWidth, TAtlasTextId.SettingsIssuesProjectAddCurrent,
-    AddCurrentClick);
-  FAdd := AddRowButton(APanel, cVcsAddCurrentWidth + cVcsButtonGap, cVcsAddWidth, TAtlasTextId.SettingsIssuesProjectAdd,
-    AddClick);
-  FAddMenu := TPopupMenu.Create(FPage);
-  AddMenuItem(TAtlasTextId.SettingsIssuesProjectAddFile, AddFileClick);
-  AddMenuItem(TAtlasTextId.SettingsIssuesProjectAddFolder, AddFolderClick);
 end;
 
 procedure TAtlasSettingsVcsProjectAddPart.AddMenuItem(AId: TAtlasTextId; AClick: TNotifyEvent);
@@ -654,19 +654,42 @@ begin
   FAddMenu.Items.Add(mItem);
 end;
 
-procedure TAtlasSettingsVcsProjectAddPart.AllowCurrent(AValue: Boolean);
+function TAtlasSettingsVcsProjectAddPart.BrowseProject(AFolder: Boolean; out APath: string): Boolean;
+var
+  mFolder: TFileOpenDialog;
+  mFile: TOpenDialog;
 begin
-  Allow(FAddCurrent, AValue);
-end;
-
-procedure TAtlasSettingsVcsProjectAddPart.Attached(APage: TAtlasVcsSettingsOwner);
-begin
-  inherited Attached(APage);
-  if APage = nil then
+  APath := '';
+  if Assigned(FOnBrowseProject) then
   begin
-    FAddCurrent := nil;
-    FAdd := nil;
-    FAddMenu := nil;
+    Exit(FOnBrowseProject(AFolder, APath));
+  end;
+  if AFolder then
+  begin
+    mFolder := TFileOpenDialog.Create(nil);
+    try
+      mFolder.Options := mFolder.Options + [fdoPickFolders, fdoPathMustExist];
+      Result := mFolder.Execute;
+      if Result then
+      begin
+        APath := mFolder.FileName;
+      end;
+    finally
+      mFolder.Free;
+    end;
+    Exit;
+  end;
+  mFile := TOpenDialog.Create(nil);
+  try
+    mFile.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectFileFilter);
+    mFile.Options := mFile.Options + [ofFileMustExist];
+    Result := mFile.Execute;
+    if Result then
+    begin
+      APath := mFile.FileName;
+    end;
+  finally
+    mFile.Free;
   end;
 end;
 
@@ -720,43 +743,20 @@ begin
   end;
 end;
 
-function TAtlasSettingsVcsProjectAddPart.BrowseProject(AFolder: Boolean; out APath: string): Boolean;
-var
-  mFolder: TFileOpenDialog;
-  mFile: TOpenDialog;
+procedure TAtlasSettingsVcsProjectAddPart.AddButtons(APanel: TWinControl);
 begin
-  APath := '';
-  if Assigned(FOnBrowseProject) then
-  begin
-    Exit(FOnBrowseProject(AFolder, APath));
-  end;
-  if AFolder then
-  begin
-    mFolder := TFileOpenDialog.Create(nil);
-    try
-      mFolder.Options := mFolder.Options + [fdoPickFolders, fdoPathMustExist];
-      Result := mFolder.Execute;
-      if Result then
-      begin
-        APath := mFolder.FileName;
-      end;
-    finally
-      mFolder.Free;
-    end;
-    Exit;
-  end;
-  mFile := TOpenDialog.Create(nil);
-  try
-    mFile.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectFileFilter);
-    mFile.Options := mFile.Options + [ofFileMustExist];
-    Result := mFile.Execute;
-    if Result then
-    begin
-      APath := mFile.FileName;
-    end;
-  finally
-    mFile.Free;
-  end;
+  FAddCurrent := AddRowButton(APanel, 0, cVcsAddCurrentWidth, TAtlasTextId.SettingsIssuesProjectAddCurrent,
+    AddCurrentClick);
+  FAdd := AddRowButton(APanel, cVcsAddCurrentWidth + cVcsButtonGap, cVcsAddWidth, TAtlasTextId.SettingsIssuesProjectAdd,
+    AddClick);
+  FAddMenu := TPopupMenu.Create(FPage);
+  AddMenuItem(TAtlasTextId.SettingsIssuesProjectAddFile, AddFileClick);
+  AddMenuItem(TAtlasTextId.SettingsIssuesProjectAddFolder, AddFolderClick);
+end;
+
+procedure TAtlasSettingsVcsProjectAddPart.AllowCurrent(AValue: Boolean);
+begin
+  Allow(FAddCurrent, AValue);
 end;
 
 { TAtlasSettingsVcsServersPart }
@@ -818,50 +818,6 @@ begin
   Attach(mHint.Parent, FVcsServerList);
 end;
 
-class function TAtlasSettingsVcsServersPart.VcsServerStateText(const ACheck: TAtlasVcsServerCheck;
-  AChecking: Boolean): string;
-begin
-  if AChecking then
-  begin
-    Exit(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerChecking));
-  end;
-  case ACheck.State of
-    TAtlasVcsServerState.Reachable:
-      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsServerReachable,
-        [FormatDateTime('hh:nn', ACheck.CheckedAt, FormatSettings)]);
-    TAtlasVcsServerState.LoginNeeded:
-      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerLoginNeeded);
-    TAtlasVcsServerState.Unreachable:
-      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerUnreachable);
-    TAtlasVcsServerState.NoServer:
-      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerNoServer);
-    TAtlasVcsServerState.ToolMissing:
-      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerToolMissing);
-    TAtlasVcsServerState.Failed:
-      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerFailed);
-  else
-    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerUnknown);
-  end;
-end;
-
-/// <summary>Laufende Prüfungen aus AOld bleiben in ARows sichtbar.</summary>
-procedure KeepChecking(var ARows: TArray<TAtlasVcsServerRow>; const AOld: TArray<TAtlasVcsServerRow>);
-var
-  mIndex: Integer;
-  mOldRow: TAtlasVcsServerRow;
-begin
-  for mIndex := 0 to High(ARows) do
-  begin
-    for mOldRow in AOld do
-    begin
-      if mOldRow.Checking and SameText(mOldRow.Folder, ARows[mIndex].Folder) then
-      begin
-        ARows[mIndex].Checking := True;
-      end;
-    end;
-  end;
-end;
-
 procedure TAtlasSettingsVcsServersPart.AddServerRow(const AName, AFolder: string);
 var
   mRow: TAtlasVcsServerRow;
@@ -886,6 +842,24 @@ begin
   end;
   mRow.Checking := False;
   FVcsServerRows := FVcsServerRows + [mRow];
+end;
+
+/// <summary>Laufende Prüfungen aus AOld bleiben in ARows sichtbar.</summary>
+procedure KeepChecking(var ARows: TArray<TAtlasVcsServerRow>; const AOld: TArray<TAtlasVcsServerRow>);
+var
+  mIndex: Integer;
+  mOldRow: TAtlasVcsServerRow;
+begin
+  for mIndex := 0 to High(ARows) do
+  begin
+    for mOldRow in AOld do
+    begin
+      if mOldRow.Checking and SameText(mOldRow.Folder, ARows[mIndex].Folder) then
+      begin
+        ARows[mIndex].Checking := True;
+      end;
+    end;
+  end;
 end;
 
 procedure TAtlasSettingsVcsServersPart.CollectServerRows;
@@ -946,29 +920,6 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsVcsServersPart.RefreshVcsServers;
-var
-  mOld: TArray<TAtlasVcsServerRow>;
-begin
-  if FVcsServerList = nil then
-  begin
-    Exit;
-  end;
-  mOld := FVcsServerRows;
-  CollectServerRows;
-  KeepChecking(FVcsServerRows, mOld);
-  if FVcsServerSelected > High(FVcsServerRows) then
-  begin
-    FVcsServerSelected := High(FVcsServerRows);
-  end;
-  if (FVcsServerSelected < 0) and (Length(FVcsServerRows) > 0) then
-  begin
-    FVcsServerSelected := 0;
-  end;
-  FillServerList;
-  VcsServerFillButtons;
-end;
-
 procedure TAtlasSettingsVcsServersPart.VcsServerShowItem(AIndex: Integer);
 var
   mItem: TListItem;
@@ -1014,52 +965,6 @@ begin
   VcsServerShowItem(AIndex);
   VcsServerFillButtons;
   FOnVcsServerCheck(FVcsServerRows[AIndex].Folder);
-end;
-
-procedure TAtlasSettingsVcsServersPart.RevealVcsServer(const AFolder: string);
-var
-  mIndex: Integer;
-begin
-  if (FVcsServerList = nil) or (Trim(AFolder) = '') then
-  begin
-    Exit;
-  end;
-  FVcsServerExtra := ExcludeTrailingPathDelimiter(Trim(AFolder));
-  RefreshVcsServers;
-  for mIndex := 0 to High(FVcsServerRows) do
-  begin
-    if SameText(FVcsServerRows[mIndex].Folder, FVcsServerExtra) then
-    begin
-      FVcsServerSelected := mIndex;
-      if ListReady(FVcsServerList) and (mIndex < FVcsServerList.Items.Count) then
-      begin
-        FVcsServerList.Items[mIndex].Selected := True;
-      end;
-      Host.Reveal(TAtlasSettingsVcsProjectsPart.cProjectsKey);
-      VcsServerStart(mIndex);
-      Break;
-    end;
-  end;
-end;
-
-procedure TAtlasSettingsVcsServersPart.VcsServerDone(const AFolder: string; const ACheck: TAtlasVcsServerCheck);
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(FVcsServerRows) do
-  begin
-    if SameText(FVcsServerRows[mIndex].Folder, AFolder) then
-    begin
-      FVcsServerRows[mIndex].Check := ACheck;
-      FVcsServerRows[mIndex].Checking := False;
-      VcsServerShowItem(mIndex);
-    end;
-  end;
-  if FVcsServerNote <> nil then
-  begin
-    FVcsServerNote.Caption := '';
-  end;
-  VcsServerFillButtons;
 end;
 
 procedure TAtlasSettingsVcsServersPart.VcsServerSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -1112,6 +1017,101 @@ begin
     FVcsServerNote.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerLoginFailed);
   end;
   VcsServerFillButtons;
+end;
+
+procedure TAtlasSettingsVcsServersPart.RefreshVcsServers;
+var
+  mOld: TArray<TAtlasVcsServerRow>;
+begin
+  if FVcsServerList = nil then
+  begin
+    Exit;
+  end;
+  mOld := FVcsServerRows;
+  CollectServerRows;
+  KeepChecking(FVcsServerRows, mOld);
+  if FVcsServerSelected > High(FVcsServerRows) then
+  begin
+    FVcsServerSelected := High(FVcsServerRows);
+  end;
+  if (FVcsServerSelected < 0) and (Length(FVcsServerRows) > 0) then
+  begin
+    FVcsServerSelected := 0;
+  end;
+  FillServerList;
+  VcsServerFillButtons;
+end;
+
+procedure TAtlasSettingsVcsServersPart.RevealVcsServer(const AFolder: string);
+var
+  mIndex: Integer;
+begin
+  if (FVcsServerList = nil) or (Trim(AFolder) = '') then
+  begin
+    Exit;
+  end;
+  FVcsServerExtra := ExcludeTrailingPathDelimiter(Trim(AFolder));
+  RefreshVcsServers;
+  for mIndex := 0 to High(FVcsServerRows) do
+  begin
+    if SameText(FVcsServerRows[mIndex].Folder, FVcsServerExtra) then
+    begin
+      FVcsServerSelected := mIndex;
+      if ListReady(FVcsServerList) and (mIndex < FVcsServerList.Items.Count) then
+      begin
+        FVcsServerList.Items[mIndex].Selected := True;
+      end;
+      Host.Reveal(TAtlasSettingsVcsProjectsPart.cProjectsKey);
+      VcsServerStart(mIndex);
+      Break;
+    end;
+  end;
+end;
+
+procedure TAtlasSettingsVcsServersPart.VcsServerDone(const AFolder: string; const ACheck: TAtlasVcsServerCheck);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FVcsServerRows) do
+  begin
+    if SameText(FVcsServerRows[mIndex].Folder, AFolder) then
+    begin
+      FVcsServerRows[mIndex].Check := ACheck;
+      FVcsServerRows[mIndex].Checking := False;
+      VcsServerShowItem(mIndex);
+    end;
+  end;
+  if FVcsServerNote <> nil then
+  begin
+    FVcsServerNote.Caption := '';
+  end;
+  VcsServerFillButtons;
+end;
+
+class function TAtlasSettingsVcsServersPart.VcsServerStateText(const ACheck: TAtlasVcsServerCheck;
+  AChecking: Boolean): string;
+begin
+  if AChecking then
+  begin
+    Exit(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerChecking));
+  end;
+  case ACheck.State of
+    TAtlasVcsServerState.Reachable:
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsServerReachable,
+        [FormatDateTime('hh:nn', ACheck.CheckedAt, FormatSettings)]);
+    TAtlasVcsServerState.LoginNeeded:
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerLoginNeeded);
+    TAtlasVcsServerState.Unreachable:
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerUnreachable);
+    TAtlasVcsServerState.NoServer:
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerNoServer);
+    TAtlasVcsServerState.ToolMissing:
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerToolMissing);
+    TAtlasVcsServerState.Failed:
+      Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerFailed);
+  else
+    Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerUnknown);
+  end;
 end;
 
 end.

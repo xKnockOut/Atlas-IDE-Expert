@@ -177,24 +177,15 @@ begin
   Result := cIdPrefixes[AKind] + '#' + IntToStr(mNumber);
 end;
 
-procedure TDiagnosticIds.SetLibraryRoots(const ARoots: TArray<string>);
-var
-  mRoots: TArray<string>;
-  mRoot: string;
+function TDiagnosticIds.UnitLabel(const AUnitName, AFileName: string): string;
 begin
-  mRoots := nil;
-  for mRoot in ARoots do
+  if (AFileName <> '') and IsLibraryFile(AFileName) then
   begin
-    if Trim(mRoot) <> '' then
-    begin
-      mRoots := mRoots + [IncludeTrailingPathDelimiter(NormalizedPath(Trim(mRoot))).Replace('/', '\')];
-    end;
-  end;
-  TMonitor.Enter(FLock);
-  try
-    FLibraryRoots := mRoots;
-  finally
-    TMonitor.Exit(FLock);
+    Result := AUnitName;
+  end
+  else
+  begin
+    Result := IdOf(TDiagnosticIdKind.UnitFile, AFileName);
   end;
 end;
 
@@ -220,18 +211,6 @@ begin
   Result := False;
 end;
 
-function TDiagnosticIds.UnitLabel(const AUnitName, AFileName: string): string;
-begin
-  if (AFileName <> '') and IsLibraryFile(AFileName) then
-  begin
-    Result := AUnitName;
-  end
-  else
-  begin
-    Result := IdOf(TDiagnosticIdKind.UnitFile, AFileName);
-  end;
-end;
-
 function TDiagnosticIds.MapLines: TArray<string>;
 var
   mKind: TDiagnosticIdKind;
@@ -247,6 +226,27 @@ begin
         Result := Result + [cIdPrefixes[mKind] + '#' + IntToStr(mIndex + 1) + #9 + FNames[mKind][mIndex]];
       end;
     end;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TDiagnosticIds.SetLibraryRoots(const ARoots: TArray<string>);
+var
+  mRoots: TArray<string>;
+  mRoot: string;
+begin
+  mRoots := nil;
+  for mRoot in ARoots do
+  begin
+    if Trim(mRoot) <> '' then
+    begin
+      mRoots := mRoots + [IncludeTrailingPathDelimiter(NormalizedPath(Trim(mRoot))).Replace('/', '\')];
+    end;
+  end;
+  TMonitor.Enter(FLock);
+  try
+    FLibraryRoots := mRoots;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -386,10 +386,7 @@ begin
   end;
 end;
 
-function TLogAnonymizer.LooksLikePath(const AText: string): Boolean;
-begin
-  Result := (Pos('\', AText) > 0) or StartsText('file:', AText) or FDrive.IsMatch(AText);
-end;
+{ TLogAnonymizer }
 
 constructor TLogAnonymizer.Create(const AIdentity: TArray<string>);
 var
@@ -430,46 +427,9 @@ begin
   inherited;
 end;
 
-procedure TLogAnonymizer.AddNameLocked(const AName: string);
-var
-  mKey: string;
+function TLogAnonymizer.LooksLikePath(const AText: string): Boolean;
 begin
-  mKey := AnsiLowerCase(Trim(AName));
-  // Kurze Namen wie "A" oder "UI" kämen sonst in jedem Satz vor.
-  if (Length(mKey) < 3) or FNames.ContainsKey(mKey) then
-  begin
-    Exit;
-  end;
-  FNames.Add(mKey, FNames.Count + 1);
-end;
-
-procedure TLogAnonymizer.AddNames(const ANames: TArray<string>);
-var
-  mName: string;
-begin
-  TMonitor.Enter(FLock);
-  try
-    for mName in ANames do
-    begin
-      AddNameLocked(mName);
-    end;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
-procedure TLogAnonymizer.AddUnit(const AUnitName, AFileName: string);
-begin
-  if (AFileName <> '') and FIds.IsLibraryFile(AFileName) then
-  begin
-    Exit;
-  end;
-  AddNames([AUnitName]);
-end;
-
-procedure TLogAnonymizer.SetLibraryRoots(const ARoots: TArray<string>);
-begin
-  FIds.SetLibraryRoots(ARoots);
+  Result := (Pos('\', AText) > 0) or StartsText('file:', AText) or FDrive.IsMatch(AText);
 end;
 
 function TLogAnonymizer.NameLabel(const AName: string): string;
@@ -519,45 +479,6 @@ begin
     mExtension := '';
   end;
   Result := 'datei#' + IntToStr(mNumber) + mExtension;
-end;
-
-function TLogAnonymizer.ValueLabel(const AValue: string): string;
-var
-  mNumber: Integer;
-begin
-  if not FValues.TryGetValue(AValue, mNumber) then
-  begin
-    mNumber := FValues.Count + 1;
-    FValues.Add(AValue, mNumber);
-  end;
-  Result := 'wert#' + IntToStr(mNumber);
-end;
-
-function TLogAnonymizer.MarkLabel(AKind: TLogMarkKind; const AValue: string): string;
-begin
-  case AKind of
-    TLogMarkKind.Name:
-      begin
-        // Kurze Namen bleiben aus dem Wörterbuch (sie kämen in jedem Satz vor), verborgen werden sie trotzdem.
-        AddNameLocked(AValue);
-        Result := NameLabel(Trim(AValue));
-        if Result = '' then
-        begin
-          Result := ValueLabel(AValue);
-        end;
-      end;
-    TLogMarkKind.Path:
-      Result := PathLabel(Trim(AValue));
-  else
-    if FNumber.IsMatch(AValue) then
-    begin
-      Result := AValue;
-    end
-    else
-    begin
-      Result := ValueLabel(AValue);
-    end;
-  end;
 end;
 
 function TLogAnonymizer.QuotedLabel(const AInner: string): string;
@@ -615,6 +536,58 @@ begin
   end;
 end;
 
+function TLogAnonymizer.MarkLabel(AKind: TLogMarkKind; const AValue: string): string;
+begin
+  case AKind of
+    TLogMarkKind.Name:
+      begin
+        // Kurze Namen bleiben aus dem Wörterbuch (sie kämen in jedem Satz vor), verborgen werden sie trotzdem.
+        AddNameLocked(AValue);
+        Result := NameLabel(Trim(AValue));
+        if Result = '' then
+        begin
+          Result := ValueLabel(AValue);
+        end;
+      end;
+    TLogMarkKind.Path:
+      Result := PathLabel(Trim(AValue));
+  else
+    if FNumber.IsMatch(AValue) then
+    begin
+      Result := AValue;
+    end
+    else
+    begin
+      Result := ValueLabel(AValue);
+    end;
+  end;
+end;
+
+function TLogAnonymizer.ValueLabel(const AValue: string): string;
+var
+  mNumber: Integer;
+begin
+  if not FValues.TryGetValue(AValue, mNumber) then
+  begin
+    mNumber := FValues.Count + 1;
+    FValues.Add(AValue, mNumber);
+  end;
+  Result := 'wert#' + IntToStr(mNumber);
+end;
+
+procedure TLogAnonymizer.AddNameLocked(const AName: string);
+var
+  mKey: string;
+begin
+  mKey := AnsiLowerCase(Trim(AName));
+  // Kurze Namen wie "A" oder "UI" kämen sonst in jedem Satz vor.
+  if (Length(mKey) < 3) or FNames.ContainsKey(mKey) then
+  begin
+    Exit;
+  end;
+  FNames.Add(mKey, FNames.Count + 1);
+end;
+
 function TLogAnonymizer.Anonymize(const AText: string): string;
 var
   mIndex: Integer;
@@ -657,6 +630,35 @@ begin
   finally
     TMonitor.Exit(FLock);
   end;
+end;
+
+procedure TLogAnonymizer.AddNames(const ANames: TArray<string>);
+var
+  mName: string;
+begin
+  TMonitor.Enter(FLock);
+  try
+    for mName in ANames do
+    begin
+      AddNameLocked(mName);
+    end;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TLogAnonymizer.AddUnit(const AUnitName, AFileName: string);
+begin
+  if (AFileName <> '') and FIds.IsLibraryFile(AFileName) then
+  begin
+    Exit;
+  end;
+  AddNames([AUnitName]);
+end;
+
+procedure TLogAnonymizer.SetLibraryRoots(const ARoots: TArray<string>);
+begin
+  FIds.SetLibraryRoots(ARoots);
 end;
 
 initialization

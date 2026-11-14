@@ -99,20 +99,6 @@ begin
     cTexts[TFreeFieldsText.LeakTitle].Text);
 end;
 
-class function TOwnedFieldNotFreedRule.Ignored(const AField: TOwnedField; const AIgnoreTypes: TArray<string>): Boolean;
-var
-  mDeclared: string;
-begin
-  // Generische Typen vergleichen ohne Typparameter: TObjectList<TFoo> -> TObjectList.
-  mDeclared := AField.TypeName;
-  if Pos('<', mDeclared) > 0 then
-  begin
-    mDeclared := Copy(mDeclared, 1, Pos('<', mDeclared) - 1);
-  end;
-  Result := MatchText(Trim(AField.CreatedType), AIgnoreTypes) or MatchText(Trim(mDeclared), AIgnoreTypes) or
-    MatchText(Trim(AField.TypeName), AIgnoreTypes);
-end;
-
 procedure TOwnedFieldNotFreedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mField: TOwnedField;
@@ -146,6 +132,20 @@ begin
     // Mittel: Ob das Objekt anderswo freigegeben wird, sieht die Regel nicht immer.
     AReport.Add(mField.Range, cTexts[TFreeFieldsText.Leak].Fmt([mField.Name]), TRuleConfidence.Medium, mFixes);
   end;
+end;
+
+class function TOwnedFieldNotFreedRule.Ignored(const AField: TOwnedField; const AIgnoreTypes: TArray<string>): Boolean;
+var
+  mDeclared: string;
+begin
+  // Generische Typen vergleichen ohne Typparameter: TObjectList<TFoo> -> TObjectList.
+  mDeclared := AField.TypeName;
+  if Pos('<', mDeclared) > 0 then
+  begin
+    mDeclared := Copy(mDeclared, 1, Pos('<', mDeclared) - 1);
+  end;
+  Result := MatchText(Trim(AField.CreatedType), AIgnoreTypes) or MatchText(Trim(mDeclared), AIgnoreTypes) or
+    MatchText(Trim(AField.TypeName), AIgnoreTypes);
 end;
 
 { TOwnedFieldFreeUnclearRule }
@@ -226,6 +226,8 @@ type
     /// <summary>True, wenn die Unit das Objekt nirgends freigibt und nirgends weitergibt.</summary>
     function Leaks(const ACreation: TInitCreation): Boolean;
   end;
+
+{ TInitUses }
 
 constructor TInitUses.Create(const AContext: TRuleContext; const ACreation: TInitCreation);
 begin
@@ -898,6 +900,8 @@ begin
     ATitle := cTexts[TFreeFieldsText.FreeInClassDestructor].Text;
   end;
 end;
+
+{ TInitializationNotFinalizedRule }
 
 function TInitializationNotFinalizedRule.Descriptor: TRuleDescriptor;
 begin

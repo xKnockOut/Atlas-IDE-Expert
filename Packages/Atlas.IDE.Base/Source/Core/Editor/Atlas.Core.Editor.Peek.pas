@@ -177,14 +177,6 @@ type
 
 { TPeekScanner }
 
-procedure TPeekScanner.Init(const ALines: TArray<string>; ALine, ALastLine: Integer);
-begin
-  FLines := ALines;
-  FLine := ALine;
-  FPos := 1;
-  FLastLine := Min(ALastLine, High(ALines));
-end;
-
 function TPeekScanner.CharAt(AIndex: Integer): Char;
 begin
   Result := #0;
@@ -313,6 +305,14 @@ begin
   begin
     Result := mText[mStart];
   end;
+end;
+
+procedure TPeekScanner.Init(const ALines: TArray<string>; ALine, ALastLine: Integer);
+begin
+  FLines := ALines;
+  FLine := ALine;
+  FPos := 1;
+  FLastLine := Min(ALastLine, High(ALines));
 end;
 
 function TPeekScanner.Next(out AToken: string; out ALine: Integer): Boolean;
@@ -989,6 +989,17 @@ begin
   FTop := 0;
 end;
 
+procedure TAtlasPeekView.SetTop(AValue: Integer);
+begin
+  FTop := EnsureRange(AValue, 0, MaxTop);
+end;
+
+procedure TAtlasPeekView.SetPageRows(AValue: Integer);
+begin
+  FPageRows := Max(1, AValue);
+  SetTop(FTop);
+end;
+
 function TAtlasPeekView.Count: Integer;
 begin
   Result := Length(FEntries);
@@ -1030,31 +1041,6 @@ begin
   end;
 end;
 
-function TAtlasPeekView.MaxTop: Integer;
-begin
-  Result := 0;
-  if Count > 0 then
-  begin
-    Result := Max(0, Length(Current.Rows) - FPageRows);
-  end;
-end;
-
-procedure TAtlasPeekView.SetTop(AValue: Integer);
-begin
-  FTop := EnsureRange(AValue, 0, MaxTop);
-end;
-
-procedure TAtlasPeekView.SetPageRows(AValue: Integer);
-begin
-  FPageRows := Max(1, AValue);
-  SetTop(FTop);
-end;
-
-procedure TAtlasPeekView.ScrollBy(ADelta: Integer);
-begin
-  SetTop(FTop + ADelta);
-end;
-
 procedure TAtlasPeekView.PageDown;
 begin
   ScrollBy(Max(1, FPageRows - 1));
@@ -1063,6 +1049,20 @@ end;
 procedure TAtlasPeekView.PageUp;
 begin
   ScrollBy(-Max(1, FPageRows - 1));
+end;
+
+procedure TAtlasPeekView.ScrollBy(ADelta: Integer);
+begin
+  SetTop(FTop + ADelta);
+end;
+
+function TAtlasPeekView.MaxTop: Integer;
+begin
+  Result := 0;
+  if Count > 0 then
+  begin
+    Result := Max(0, Length(Current.Rows) - FPageRows);
+  end;
 end;
 
 function TAtlasPeekView.OpenPlace: TAtlasPeekPlace;

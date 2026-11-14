@@ -119,6 +119,8 @@ begin
   end;
 end;
 
+{ TLspBulkFix }
+
 constructor TLspBulkFix.Create(const AInputFor: TLspBulkFixInputFunc);
 begin
   inherited Create;

@@ -260,6 +260,8 @@ const
 
 { TAtlasKeyMapForm, TAtlasKeyMapWindow }
 
+{ TAtlasKeyMapWindow }
+
 constructor TAtlasKeyMapWindow.CreateKeyMap(AOwner: TComponent);
 begin
   inherited CreateDialog(AOwner, TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapTitle), cWidth);
@@ -274,6 +276,192 @@ begin
   CreateBottom;
   CreateList;
   ApplyFilter;
+end;
+
+procedure TAtlasKeyMapWindow.KeyDown(var Key: Word; Shift: TShiftState);
+begin
+  if (Key = VK_ESCAPE) and (Shift = []) then
+  begin
+    Key := 0;
+    Close;
+    Exit;
+  end;
+  inherited;
+end;
+
+procedure TAtlasKeyMapWindow.DoShow;
+begin
+  inherited;
+  ApplyFilter;
+end;
+
+procedure TAtlasKeyMapWindow.ThemeChanged;
+begin
+  inherited;
+  ApplyFilter;
+end;
+
+procedure TAtlasKeyMapWindow.ApplyFilter;
+begin
+  FShown := TAtlasKeyMap.Filter(FItems, FSearch.Text, FOnlyConflicts.Checked);
+  FList.Items.Count := Length(FShown);
+  FList.FitColumns;
+  FList.Invalidate;
+  FSummary.Caption := SummaryText(Length(FShown), Length(FItems), TAtlasKeyMap.ConflictCount(FItems));
+end;
+
+procedure TAtlasKeyMapWindow.SearchChange(Sender: TObject);
+begin
+  ApplyFilter;
+end;
+
+{ TAtlasKeyMapForm }
+
+procedure TAtlasKeyMapForm.ExportClick(Sender: TObject);
+begin
+  if Assigned(FOnExport) then
+  begin
+    FOnExport();
+  end;
+end;
+
+procedure TAtlasKeyMapForm.SettingsClick(Sender: TObject);
+begin
+  if Assigned(FOnSettings) then
+  begin
+    FOnSettings();
+  end;
+end;
+
+procedure TAtlasKeyMapForm.RefreshClick(Sender: TObject);
+begin
+  if Assigned(FOnRefresh) then
+  begin
+    FOnRefresh();
+  end;
+end;
+
+procedure TAtlasKeyMapForm.CloseClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TAtlasKeyMapForm.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  // Nur verstecken: Die IDE-Schicht hält das Fenster und gibt es beim Entladen frei.
+  Action := caHide;
+end;
+
+class function TAtlasKeyMapForm.FunctionCaption(AFunc: TAtlasKeyFunction): string;
+begin
+  Result := Plain(TAtlasStrings.Text(cFunctionTexts[AFunc]));
+end;
+
+class function TAtlasKeyMapForm.OriginText(const AItem: TAtlasKeyItem): string;
+begin
+  case AItem.Origin of
+    TAtlasKeyOrigin.Atlas:
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapOriginAtlas);
+    TAtlasKeyOrigin.Plugin:
+      Result := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapOriginPlugin, [AItem.OriginName]);
+  else
+    Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapOriginIde);
+  end;
+end;
+
+class function TAtlasKeyMapForm.ContextText(AContext: TAtlasKeyContext): string;
+begin
+  case AContext of
+    TAtlasKeyContext.Editor:
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapContextEditor);
+    TAtlasKeyContext.Designer:
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapContextDesigner);
+    TAtlasKeyContext.WelcomePage:
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapContextWelcome);
+  else
+    Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapContextGlobal);
+  end;
+end;
+
+class function TAtlasKeyMapForm.ReasonText(AReason: TAtlasKeyReason): string;
+begin
+  case AReason of
+    TAtlasKeyReason.AtlasPriority:
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonAtlasPriority);
+    TAtlasKeyReason.AtlasYields:
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonAtlasYields);
+    TAtlasKeyReason.EditorBinding:
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonEditorBinding);
+    TAtlasKeyReason.LastBinding:
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonLastBinding);
+    TAtlasKeyReason.FirstAction:
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonFirstAction);
+    TAtlasKeyReason.OwnWindow:
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonOwnWindow);
+    TAtlasKeyReason.NoneActive:
+      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapNoneActive);
+  else
+    Result := '';
+  end;
+end;
+
+procedure TAtlasKeyMapWindow.OnlyConflictsClick(Sender: TObject);
+begin
+  ApplyFilter;
+end;
+
+procedure TAtlasKeyMapWindow.ListData(Sender: TObject; Item: TListItem);
+var
+  mValues: TArray<string>;
+  mIndex: Integer;
+begin
+  if (Item.Index < 0) or (Item.Index > High(FShown)) then
+  begin
+    Exit;
+  end;
+  mValues := Cells(FItems, FShown[Item.Index]);
+  Item.Caption := mValues[0];
+  for mIndex := 1 to High(mValues) do
+  begin
+    Item.SubItems.Add(mValues[mIndex]);
+  end;
+end;
+
+procedure TAtlasKeyMapWindow.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
+  State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  DefaultDraw := True;
+  if (Item.Index < 0) or (Item.Index > High(FShown)) then
+  begin
+    Exit;
+  end;
+  // Hintergrund und Schrift in den Farben des Themas, sonst zeichnet die Zeile weiß bzw. schwarz (clWindow,
+  // clWindowText ohne Stil).
+  if cdsSelected in State then
+  begin
+    Sender.Canvas.Font.Color := StyleColor(clHighlightText);
+  end
+  else
+  begin
+    Sender.Canvas.Brush.Color := StyleColor(clWindow);
+    Sender.Canvas.Font.Color := StyleColor(clWindowText);
+  end;
+  // Doppelt belegte Kürzel in der Fehlerfarbe der Fensterfläche (#520); ausgewählt in der Farbe der Auswahl.
+  if FItems[FShown[Item.Index]].Conflict and not (cdsSelected in State) then
+  begin
+    Sender.Canvas.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
+  end;
+end;
+
+function TAtlasKeyMapWindow.AddButton(const ACaption: string; AOnClick: TNotifyEvent): TButton;
+begin
+  Result := FButtons.AddButton(ACaption);
+  Result.OnClick := AOnClick;
+end;
+
+function TAtlasKeyMapWindow.StyleColor(AColor: TColor): TColor;
+begin
+  Result := StyleServices(FList).GetSystemColor(AColor);
 end;
 
 procedure TAtlasKeyMapWindow.CreateTop;
@@ -365,68 +553,39 @@ begin
   FList.FillColumn(High(mHeaders), cHintMinWidth);
 end;
 
-function TAtlasKeyMapWindow.AddButton(const ACaption: string; AOnClick: TNotifyEvent): TButton;
+function TAtlasKeyMapWindow.ExportHtml(const ACreated: string): string;
+var
+  mRows: TArray<TAtlasKeyHtmlRow>;
+  mIndex: Integer;
+  mSubtitle: string;
 begin
-  Result := FButtons.AddButton(ACaption);
-  Result.OnClick := AOnClick;
-end;
-
-function TAtlasKeyMapWindow.StyleColor(AColor: TColor): TColor;
-begin
-  Result := StyleServices(FList).GetSystemColor(AColor);
-end;
-
-class function TAtlasKeyMapForm.FunctionCaption(AFunc: TAtlasKeyFunction): string;
-begin
-  Result := Plain(TAtlasStrings.Text(cFunctionTexts[AFunc]));
-end;
-
-class function TAtlasKeyMapForm.OriginText(const AItem: TAtlasKeyItem): string;
-begin
-  case AItem.Origin of
-    TAtlasKeyOrigin.Atlas:
-      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapOriginAtlas);
-    TAtlasKeyOrigin.Plugin:
-      Result := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapOriginPlugin, [AItem.OriginName]);
+  mRows := nil;
+  for mIndex in FShown do
+  begin
+    mRows := mRows + [TAtlasKeyHtmlRow.Create(Cells(FItems, mIndex), FItems[mIndex].Conflict)];
+  end;
+  mSubtitle := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapCreated, [ACreated,
+    SummaryText(Length(FShown), Length(FItems), TAtlasKeyMap.ConflictCount(FItems))]);
+  if Trim(FSearch.Text) <> '' then
+  begin
+    mSubtitle := mSubtitle + ' · ' + TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapFilter, [Trim(FSearch.Text)]);
+  end;
+  if TAtlasStrings.Language = TAtlasLanguage.German then
+  begin
+    Result := TAtlasKeyMap.Html('de', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapTitle), mSubtitle,
+      TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapPrint), Headers, mRows);
+  end
   else
-    Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapOriginIde);
+  begin
+    Result := TAtlasKeyMap.Html('en', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapTitle), mSubtitle,
+      TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapPrint), Headers, mRows);
   end;
 end;
 
-class function TAtlasKeyMapForm.ContextText(AContext: TAtlasKeyContext): string;
+procedure TAtlasKeyMapWindow.SetItems(const AItems: TArray<TAtlasKeyItem>);
 begin
-  case AContext of
-    TAtlasKeyContext.Editor:
-      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapContextEditor);
-    TAtlasKeyContext.Designer:
-      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapContextDesigner);
-    TAtlasKeyContext.WelcomePage:
-      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapContextWelcome);
-  else
-    Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapContextGlobal);
-  end;
-end;
-
-class function TAtlasKeyMapForm.ReasonText(AReason: TAtlasKeyReason): string;
-begin
-  case AReason of
-    TAtlasKeyReason.AtlasPriority:
-      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonAtlasPriority);
-    TAtlasKeyReason.AtlasYields:
-      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonAtlasYields);
-    TAtlasKeyReason.EditorBinding:
-      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonEditorBinding);
-    TAtlasKeyReason.LastBinding:
-      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonLastBinding);
-    TAtlasKeyReason.FirstAction:
-      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonFirstAction);
-    TAtlasKeyReason.OwnWindow:
-      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapReasonOwnWindow);
-    TAtlasKeyReason.NoneActive:
-      Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapNoneActive);
-  else
-    Result := '';
-  end;
+  FItems := AItems;
+  ApplyFilter;
 end;
 
 class function TAtlasKeyMapForm.HintText(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer): string;
@@ -495,165 +654,10 @@ begin
   end;
 end;
 
-function TAtlasKeyMapWindow.ExportHtml(const ACreated: string): string;
-var
-  mRows: TArray<TAtlasKeyHtmlRow>;
-  mIndex: Integer;
-  mSubtitle: string;
-begin
-  mRows := nil;
-  for mIndex in FShown do
-  begin
-    mRows := mRows + [TAtlasKeyHtmlRow.Create(Cells(FItems, mIndex), FItems[mIndex].Conflict)];
-  end;
-  mSubtitle := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapCreated, [ACreated,
-    SummaryText(Length(FShown), Length(FItems), TAtlasKeyMap.ConflictCount(FItems))]);
-  if Trim(FSearch.Text) <> '' then
-  begin
-    mSubtitle := mSubtitle + ' · ' + TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapFilter, [Trim(FSearch.Text)]);
-  end;
-  if TAtlasStrings.Language = TAtlasLanguage.German then
-  begin
-    Result := TAtlasKeyMap.Html('de', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapTitle), mSubtitle,
-      TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapPrint), Headers, mRows);
-  end
-  else
-  begin
-    Result := TAtlasKeyMap.Html('en', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapTitle), mSubtitle,
-      TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapPrint), Headers, mRows);
-  end;
-end;
-
-procedure TAtlasKeyMapWindow.ApplyFilter;
-begin
-  FShown := TAtlasKeyMap.Filter(FItems, FSearch.Text, FOnlyConflicts.Checked);
-  FList.Items.Count := Length(FShown);
-  FList.FitColumns;
-  FList.Invalidate;
-  FSummary.Caption := SummaryText(Length(FShown), Length(FItems), TAtlasKeyMap.ConflictCount(FItems));
-end;
-
-procedure TAtlasKeyMapWindow.SetItems(const AItems: TArray<TAtlasKeyItem>);
-begin
-  FItems := AItems;
-  ApplyFilter;
-end;
-
-procedure TAtlasKeyMapWindow.DoShow;
-begin
-  inherited;
-  ApplyFilter;
-end;
-
-procedure TAtlasKeyMapWindow.ThemeChanged;
-begin
-  inherited;
-  ApplyFilter;
-end;
-
 procedure TAtlasKeyMapWindow.SetQuery(const AText: string);
 begin
   FSearch.Text := AText;
   ApplyFilter;
-end;
-
-procedure TAtlasKeyMapWindow.SearchChange(Sender: TObject);
-begin
-  ApplyFilter;
-end;
-
-procedure TAtlasKeyMapWindow.OnlyConflictsClick(Sender: TObject);
-begin
-  ApplyFilter;
-end;
-
-procedure TAtlasKeyMapWindow.ListData(Sender: TObject; Item: TListItem);
-var
-  mValues: TArray<string>;
-  mIndex: Integer;
-begin
-  if (Item.Index < 0) or (Item.Index > High(FShown)) then
-  begin
-    Exit;
-  end;
-  mValues := Cells(FItems, FShown[Item.Index]);
-  Item.Caption := mValues[0];
-  for mIndex := 1 to High(mValues) do
-  begin
-    Item.SubItems.Add(mValues[mIndex]);
-  end;
-end;
-
-procedure TAtlasKeyMapWindow.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
-  State: TCustomDrawState; var DefaultDraw: Boolean);
-begin
-  DefaultDraw := True;
-  if (Item.Index < 0) or (Item.Index > High(FShown)) then
-  begin
-    Exit;
-  end;
-  // Hintergrund und Schrift in den Farben des Themas, sonst zeichnet die Zeile weiß bzw. schwarz (clWindow,
-  // clWindowText ohne Stil).
-  if cdsSelected in State then
-  begin
-    Sender.Canvas.Font.Color := StyleColor(clHighlightText);
-  end
-  else
-  begin
-    Sender.Canvas.Brush.Color := StyleColor(clWindow);
-    Sender.Canvas.Font.Color := StyleColor(clWindowText);
-  end;
-  // Doppelt belegte Kürzel in der Fehlerfarbe der Fensterfläche (#520); ausgewählt in der Farbe der Auswahl.
-  if FItems[FShown[Item.Index]].Conflict and not (cdsSelected in State) then
-  begin
-    Sender.Canvas.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
-  end;
-end;
-
-procedure TAtlasKeyMapForm.ExportClick(Sender: TObject);
-begin
-  if Assigned(FOnExport) then
-  begin
-    FOnExport();
-  end;
-end;
-
-procedure TAtlasKeyMapForm.SettingsClick(Sender: TObject);
-begin
-  if Assigned(FOnSettings) then
-  begin
-    FOnSettings();
-  end;
-end;
-
-procedure TAtlasKeyMapForm.RefreshClick(Sender: TObject);
-begin
-  if Assigned(FOnRefresh) then
-  begin
-    FOnRefresh();
-  end;
-end;
-
-procedure TAtlasKeyMapForm.CloseClick(Sender: TObject);
-begin
-  Close;
-end;
-
-procedure TAtlasKeyMapForm.FormClose(Sender: TObject; var Action: TCloseAction);
-begin
-  // Nur verstecken: Die IDE-Schicht hält das Fenster und gibt es beim Entladen frei.
-  Action := caHide;
-end;
-
-procedure TAtlasKeyMapWindow.KeyDown(var Key: Word; Shift: TShiftState);
-begin
-  if (Key = VK_ESCAPE) and (Shift = []) then
-  begin
-    Key := 0;
-    Close;
-    Exit;
-  end;
-  inherited;
 end;
 
 end.

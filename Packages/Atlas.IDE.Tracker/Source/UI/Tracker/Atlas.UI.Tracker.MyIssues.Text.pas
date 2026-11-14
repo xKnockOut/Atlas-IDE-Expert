@@ -132,25 +132,159 @@ end;
 
 { TAtlasTrackerIssuesText }
 
-class function TAtlasTrackerIssuesText.TitleText(const AProjectName: string): string;
+class function TAtlasTrackerIssuesText.ActiveFooter(const AView: TAtlasIssuesView; out AText: string): Boolean;
+var
+  mItem: TAtlasTrackerIssue;
 begin
-  if AProjectName = '' then
+  // Aktuelles Issue, das die Liste nicht zeigt (z. B. schon geschlossen oder anderer Bearbeiter).
+  AText := '';
+  Result := AView.Active.Active;
+  for mItem in AView.Items do
   begin
-    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesTitle);
-  end
-  else
+    Result := Result and not SameText(mItem.Key, AView.Active.Key);
+  end;
+  if Result then
   begin
-    Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesTitleProject, [AProjectName]);
+    AText := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesActiveFooter,
+      [Trim(AView.Active.Key + ' ' + AView.Active.Title)]);
   end;
 end;
 
-class function TAtlasTrackerIssuesText.TitleText(const AProjectName: string; AUnseen: Boolean): string;
+class function TAtlasTrackerIssuesText.NotConfiguredFooter(const AView: TAtlasIssuesView): string;
 begin
-  Result := TitleText(AProjectName);
-  if AUnseen then
+  if AView.Project = '' then
   begin
-    Result := cUnseenMark + Result;
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesNoProject);
+  end
+  else if FooterIsAssign(AView) then
+  begin
+    // Weder .atlas noch persönliche Zuordnung: gleich zuordnen lassen (#1261).
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesAssign);
+  end
+  else
+  begin
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesNotConfigured);
   end;
+end;
+
+class function TAtlasTrackerIssuesText.StartFooter(const AView: TAtlasIssuesView): string;
+begin
+  if Length(AView.Items) = 0 then
+  begin
+    Result := '';
+  end
+  else if (AView.Options.Start = TAtlasIssueStart.Remember) or
+    ((AView.VcsKind <> TAtlasVcsKind.Git) and (AView.VcsKind <> TAtlasVcsKind.Svn)) then
+  begin
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesFooterRemember);
+  end
+  else
+  begin
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesFooter);
+  end;
+end;
+
+class function TAtlasTrackerIssuesText.StatusText(const AView: TAtlasIssuesView): string;
+var
+  mParts: TArray<string>;
+begin
+  mParts := nil;
+  case AView.Status of
+    TAtlasIssuesStatus.NotConfigured:
+      mParts := nil;
+    TAtlasIssuesStatus.Waiting:
+      if AView.Querying then
+      begin
+        mParts := [TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQuerying)];
+      end
+      else
+      begin
+        mParts := [AView.Tracker, TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsCiNotQueried)];
+      end;
+    TAtlasIssuesStatus.Failed:
+      mParts := [AView.Tracker, ErrorText(AView.Error)];
+    TAtlasIssuesStatus.Stale:
+      mParts := [AView.Tracker, ErrorText(AView.Error),
+        TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeTestsStale,
+        [FormatDateTime(cStaleTimeFormat, TTimeZone.Local.ToLocalTime(AView.At), FormatSettings)])];
+  else
+    if AView.Querying then
+    begin
+      mParts := [TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQuerying)];
+    end
+    else if (Length(AView.Items) = 0) and (Length(AView.Groups) = 0) then
+    begin
+      mParts := [TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesEmpty)];
+    end;
+  end;
+  if AView.Querying and (AView.Status in [TAtlasIssuesStatus.Failed, TAtlasIssuesStatus.Stale]) then
+  begin
+    mParts := mParts + [TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQuerying)];
+  end;
+  Result := JoinParts(mParts);
+end;
+
+class function TAtlasTrackerIssuesText.FilterText(const AView: TAtlasIssuesView): string;
+begin
+  Result := '';
+  if AView.Filter <> '' then
+  begin
+    Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesFilter, [AView.Filter]);
+  end;
+end;
+
+class function TAtlasTrackerIssuesText.FooterText(const AView: TAtlasIssuesView): string;
+begin
+  if AView.Notice <> '' then
+  begin
+    Result := AView.Notice;
+  end
+  else if AView.Status = TAtlasIssuesStatus.NotConfigured then
+  begin
+    Result := NotConfiguredFooter(AView);
+  end
+  else if not ActiveFooter(AView, Result) then
+  begin
+    Result := StartFooter(AView);
+  end;
+end;
+
+class function TAtlasTrackerIssuesText.FooterIsAssign(const AView: TAtlasIssuesView): Boolean;
+begin
+  Result := (AView.Notice = '') and (AView.Status = TAtlasIssuesStatus.NotConfigured) and (AView.Project <> '') and
+    AView.CanAssign;
+end;
+
+class function TAtlasTrackerIssuesText.SourceText(const AView: TAtlasIssuesView): string;
+begin
+  Result := '';
+  if (AView.Status <> TAtlasIssuesStatus.NotConfigured) and (AView.QueryText <> '') then
+  begin
+    Result := JoinParts([AView.Connection, AView.TrackerProject,
+      TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesSource, [AView.QueryText])]);
+  end;
+end;
+
+class function TAtlasTrackerIssuesText.QueryCaption(const AName: string; ACount: Integer): string;
+begin
+  if ACount < 0 then
+  begin
+    Result := AName;
+  end
+  else if ACount >= TAtlasMyIssues.cMaxItems then
+  begin
+    Result := Format(cQueryCaptionMore, [AName, TAtlasMyIssues.cMaxItems], TFormatSettings.Invariant);
+  end
+  else
+  begin
+    Result := Format(cQueryCaptionCount, [AName, ACount], TFormatSettings.Invariant);
+  end;
+end;
+
+class function TAtlasTrackerIssuesText.ShowsQueryPicker(const AView: TAtlasIssuesView): Boolean;
+begin
+  Result := AView.Picker and (AView.Status <> TAtlasIssuesStatus.NotConfigured) and (AView.QueryIndex >= 0) and
+    (AView.QueryIndex <= High(AView.Queries));
 end;
 
 class function TAtlasTrackerIssuesText.ErrorText(AError: TAtlasCiFetchError): string;
@@ -211,152 +345,6 @@ begin
   begin
     Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssuesGroupMore, [AGroup.More]);
   end;
-end;
-
-class function TAtlasTrackerIssuesText.StatusText(const AView: TAtlasIssuesView): string;
-var
-  mParts: TArray<string>;
-begin
-  mParts := nil;
-  case AView.Status of
-    TAtlasIssuesStatus.NotConfigured:
-      mParts := nil;
-    TAtlasIssuesStatus.Waiting:
-      if AView.Querying then
-      begin
-        mParts := [TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQuerying)];
-      end
-      else
-      begin
-        mParts := [AView.Tracker, TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsCiNotQueried)];
-      end;
-    TAtlasIssuesStatus.Failed:
-      mParts := [AView.Tracker, ErrorText(AView.Error)];
-    TAtlasIssuesStatus.Stale:
-      mParts := [AView.Tracker, ErrorText(AView.Error),
-        TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeTestsStale,
-        [FormatDateTime(cStaleTimeFormat, TTimeZone.Local.ToLocalTime(AView.At), FormatSettings)])];
-  else
-    if AView.Querying then
-    begin
-      mParts := [TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQuerying)];
-    end
-    else if (Length(AView.Items) = 0) and (Length(AView.Groups) = 0) then
-    begin
-      mParts := [TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesEmpty)];
-    end;
-  end;
-  if AView.Querying and (AView.Status in [TAtlasIssuesStatus.Failed, TAtlasIssuesStatus.Stale]) then
-  begin
-    mParts := mParts + [TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQuerying)];
-  end;
-  Result := JoinParts(mParts);
-end;
-
-class function TAtlasTrackerIssuesText.NotConfiguredFooter(const AView: TAtlasIssuesView): string;
-begin
-  if AView.Project = '' then
-  begin
-    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesNoProject);
-  end
-  else if FooterIsAssign(AView) then
-  begin
-    // Weder .atlas noch persönliche Zuordnung: gleich zuordnen lassen (#1261).
-    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesAssign);
-  end
-  else
-  begin
-    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesNotConfigured);
-  end;
-end;
-
-class function TAtlasTrackerIssuesText.ActiveFooter(const AView: TAtlasIssuesView; out AText: string): Boolean;
-var
-  mItem: TAtlasTrackerIssue;
-begin
-  // Aktuelles Issue, das die Liste nicht zeigt (z. B. schon geschlossen oder anderer Bearbeiter).
-  AText := '';
-  Result := AView.Active.Active;
-  for mItem in AView.Items do
-  begin
-    Result := Result and not SameText(mItem.Key, AView.Active.Key);
-  end;
-  if Result then
-  begin
-    AText := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesActiveFooter,
-      [Trim(AView.Active.Key + ' ' + AView.Active.Title)]);
-  end;
-end;
-
-class function TAtlasTrackerIssuesText.FooterText(const AView: TAtlasIssuesView): string;
-begin
-  if AView.Notice <> '' then
-  begin
-    Result := AView.Notice;
-  end
-  else if AView.Status = TAtlasIssuesStatus.NotConfigured then
-  begin
-    Result := NotConfiguredFooter(AView);
-  end
-  else if not ActiveFooter(AView, Result) then
-  begin
-    Result := StartFooter(AView);
-  end;
-end;
-
-class function TAtlasTrackerIssuesText.StartFooter(const AView: TAtlasIssuesView): string;
-begin
-  if Length(AView.Items) = 0 then
-  begin
-    Result := '';
-  end
-  else if (AView.Options.Start = TAtlasIssueStart.Remember) or
-    ((AView.VcsKind <> TAtlasVcsKind.Git) and (AView.VcsKind <> TAtlasVcsKind.Svn)) then
-  begin
-    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesFooterRemember);
-  end
-  else
-  begin
-    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesFooter);
-  end;
-end;
-
-class function TAtlasTrackerIssuesText.FooterIsAssign(const AView: TAtlasIssuesView): Boolean;
-begin
-  Result := (AView.Notice = '') and (AView.Status = TAtlasIssuesStatus.NotConfigured) and (AView.Project <> '') and
-    AView.CanAssign;
-end;
-
-class function TAtlasTrackerIssuesText.SourceText(const AView: TAtlasIssuesView): string;
-begin
-  Result := '';
-  if (AView.Status <> TAtlasIssuesStatus.NotConfigured) and (AView.QueryText <> '') then
-  begin
-    Result := JoinParts([AView.Connection, AView.TrackerProject,
-      TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesSource, [AView.QueryText])]);
-  end;
-end;
-
-class function TAtlasTrackerIssuesText.QueryCaption(const AName: string; ACount: Integer): string;
-begin
-  if ACount < 0 then
-  begin
-    Result := AName;
-  end
-  else if ACount >= TAtlasMyIssues.cMaxItems then
-  begin
-    Result := Format(cQueryCaptionMore, [AName, TAtlasMyIssues.cMaxItems], TFormatSettings.Invariant);
-  end
-  else
-  begin
-    Result := Format(cQueryCaptionCount, [AName, ACount], TFormatSettings.Invariant);
-  end;
-end;
-
-class function TAtlasTrackerIssuesText.ShowsQueryPicker(const AView: TAtlasIssuesView): Boolean;
-begin
-  Result := AView.Picker and (AView.Status <> TAtlasIssuesStatus.NotConfigured) and (AView.QueryIndex >= 0) and
-    (AView.QueryIndex <= High(AView.Queries));
 end;
 
 class function TAtlasTrackerIssuesText.PullRequestText(const APull: TAtlasTrackerPullRequest): string;
@@ -474,6 +462,27 @@ begin
   end;
 end;
 
+class function TAtlasTrackerIssuesText.TitleText(const AProjectName: string): string;
+begin
+  if AProjectName = '' then
+  begin
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesTitle);
+  end
+  else
+  begin
+    Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesTitleProject, [AProjectName]);
+  end;
+end;
+
+class function TAtlasTrackerIssuesText.TitleText(const AProjectName: string; AUnseen: Boolean): string;
+begin
+  Result := TitleText(AProjectName);
+  if AUnseen then
+  begin
+    Result := cUnseenMark + Result;
+  end;
+end;
+
 class function TAtlasTrackerIssuesText.ReasonText(const AReopen: TAtlasTrackerReopen; ANowUtc: TDateTime): string;
 var
   mWho: string;
@@ -504,15 +513,6 @@ begin
   else
   begin
     Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesContinue);
-  end;
-end;
-
-class function TAtlasTrackerIssuesText.FilterText(const AView: TAtlasIssuesView): string;
-begin
-  Result := '';
-  if AView.Filter <> '' then
-  begin
-    Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesFilter, [AView.Filter]);
   end;
 end;
 

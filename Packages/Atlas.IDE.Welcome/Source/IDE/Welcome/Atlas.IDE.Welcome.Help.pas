@@ -111,11 +111,6 @@ begin
   FShowKeys := AShowKeys;
 end;
 
-class function TAtlasIdeHelp.Active: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.WelcomePage and TAtlasIdeSettings.Current.WelcomePageHelp;
-end;
-
 procedure TAtlasIdeHelp.Start;
 begin
   FStarted := True;
@@ -137,16 +132,6 @@ begin
   FStarted := False;
   TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.cHelp);
   TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.cHelp);
-end;
-
-function TAtlasIdeHelp.Section: TAtlasWelcomeSection;
-begin
-  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.cHelp, TAtlasWelcomeHelpFrame.TitleText, cOrder,
-    TAtlasWelcomeColumn.Right,
-    function: Boolean
-    begin
-      Result := Active;
-    end);
 end;
 
 procedure TAtlasIdeHelp.Refresh;
@@ -175,9 +160,19 @@ begin
   TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cHelp);
 end;
 
-function TAtlasIdeHelp.KeysAvailable: Boolean;
+function TAtlasIdeHelp.Section: TAtlasWelcomeSection;
 begin
-  Result := Assigned(FShowKeys) and TAtlasIdeSettings.Current.KeyOverview;
+  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.cHelp, TAtlasWelcomeHelpFrame.TitleText, cOrder,
+    TAtlasWelcomeColumn.Right,
+    function: Boolean
+    begin
+      Result := Active;
+    end);
+end;
+
+class function TAtlasIdeHelp.Active: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.WelcomePage and TAtlasIdeSettings.Current.WelcomePageHelp;
 end;
 
 class function TAtlasIdeHelp.DocsTarget: string;
@@ -186,43 +181,6 @@ begin
     function(AFileName: string): Boolean
     begin
       Result := FileExists(AFileName);
-    end);
-end;
-
-procedure TAtlasIdeHelp.OpenDocs;
-begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-    procedure
-    begin
-      if not Active then
-      begin
-        Exit;
-      end;
-      OpenTarget(DocsTarget);
-    end);
-end;
-
-procedure TAtlasIdeHelp.ShowKeys;
-begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-    procedure
-    begin
-      if Active and KeysAvailable then
-      begin
-        FShowKeys();
-      end;
-    end);
-end;
-
-procedure TAtlasIdeHelp.Donate;
-begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-    procedure
-    begin
-      if Active then
-      begin
-        OpenTarget(TAtlasHelp.cDonateUrl);
-      end;
     end);
 end;
 
@@ -255,6 +213,36 @@ begin
   Result.Identity := TAtlasIdeBugReport.Identity;
   Result.PluginLogNames := TAtlasIdeSettings.Current.LogNames;
   Result.Created := Now;
+end;
+
+function TAtlasIdeHelp.KeysAvailable: Boolean;
+begin
+  Result := Assigned(FShowKeys) and TAtlasIdeSettings.Current.KeyOverview;
+end;
+
+procedure TAtlasIdeHelp.OpenDocs;
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      if not Active then
+      begin
+        Exit;
+      end;
+      OpenTarget(DocsTarget);
+    end);
+end;
+
+procedure TAtlasIdeHelp.ShowKeys;
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      if Active and KeysAvailable then
+      begin
+        FShowKeys();
+      end;
+    end);
 end;
 
 procedure TAtlasIdeHelp.ReportProblem;
@@ -292,6 +280,18 @@ begin
       TAtlasGuard.Log('Problem melden (#766): Dialog geöffnet');
       TAtlasReportDialog.Execute(PackageInput, ReportFolder, TAtlasIdeSettings.Current.WelcomePageHelpReportUrl,
         Actions);
+    end);
+end;
+
+procedure TAtlasIdeHelp.Donate;
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      if Active then
+      begin
+        OpenTarget(TAtlasHelp.cDonateUrl);
+      end;
     end);
 end;
 

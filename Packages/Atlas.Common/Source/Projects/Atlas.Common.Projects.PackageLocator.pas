@@ -230,40 +230,6 @@ begin
   inherited;
 end;
 
-class function TPackageLocator.CompiledContains(const AData: TBytes; const AUnitName: string): Boolean;
-var
-  mName: TBytes;
-  mStart, mOffset: Integer;
-  mMatches: Boolean;
-begin
-  Result := False;
-  mName := TEncoding.ASCII.GetBytes(UpperCase(AUnitName));
-  if Length(mName) = 0 then
-  begin
-    Exit;
-  end;
-  for mStart := 0 to Length(AData) - Length(mName) do
-  begin
-    if (mStart > 0) and IsNameByte(AData[mStart - 1]) then
-    begin
-      Continue;
-    end;
-    mMatches := True;
-    for mOffset := 0 to High(mName) do
-    begin
-      if UpperByte(AData[mStart + mOffset]) <> mName[mOffset] then
-      begin
-        mMatches := False;
-        Break;
-      end;
-    end;
-    if mMatches and ((mStart + Length(mName) >= Length(AData)) or not IsNameByte(AData[mStart + Length(mName)])) then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
 function TPackageLocator.Find(const APackage: string): TFound;
 var
   mKey, mFolder, mFileName: string;
@@ -355,19 +321,29 @@ begin
   end;
 end;
 
-class function TPackageLocator.ContainedFiles(const AFileName: string;
-  const ASource: TPackageSource): TArray<string>;
+function TPackageLocator.FindSource(const APackage: string; out AFileName: string;
+  out ASource: TPackageSource): Boolean;
 var
+  mFound: TFound;
+begin
+  mFound := Find(APackage);
+  Result := mFound.Known and mFound.Source.IsPackage;
+  AFileName := mFound.FileName;
+  ASource := mFound.Source;
+end;
+
+function TPackageLocator.Requires(const APackage: string): TArray<string>;
+var
+  mFileName: string;
+  mSource: TPackageSource;
   mEntry: TPackageEntry;
-  mFolder: string;
 begin
   Result := nil;
-  mFolder := ExtractFilePath(AFileName);
-  for mEntry in ASource.Contains do
+  if FindSource(APackage, mFileName, mSource) then
   begin
-    if mEntry.Path <> '' then
+    for mEntry in mSource.Requires do
     begin
-      Result := Result + [ExpandFileName(TPath.Combine(mFolder, mEntry.Path))];
+      Result := Result + [mEntry.Name];
     end;
   end;
 end;
@@ -384,6 +360,57 @@ begin
     begin
       ASeen.Add(UpperCase(mItem), True);
       AFiles.Add(mItem);
+    end;
+  end;
+end;
+
+class function TPackageLocator.CompiledContains(const AData: TBytes; const AUnitName: string): Boolean;
+var
+  mName: TBytes;
+  mStart, mOffset: Integer;
+  mMatches: Boolean;
+begin
+  Result := False;
+  mName := TEncoding.ASCII.GetBytes(UpperCase(AUnitName));
+  if Length(mName) = 0 then
+  begin
+    Exit;
+  end;
+  for mStart := 0 to Length(AData) - Length(mName) do
+  begin
+    if (mStart > 0) and IsNameByte(AData[mStart - 1]) then
+    begin
+      Continue;
+    end;
+    mMatches := True;
+    for mOffset := 0 to High(mName) do
+    begin
+      if UpperByte(AData[mStart + mOffset]) <> mName[mOffset] then
+      begin
+        mMatches := False;
+        Break;
+      end;
+    end;
+    if mMatches and ((mStart + Length(mName) >= Length(AData)) or not IsNameByte(AData[mStart + Length(mName)])) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+class function TPackageLocator.ContainedFiles(const AFileName: string;
+  const ASource: TPackageSource): TArray<string>;
+var
+  mEntry: TPackageEntry;
+  mFolder: string;
+begin
+  Result := nil;
+  mFolder := ExtractFilePath(AFileName);
+  for mEntry in ASource.Contains do
+  begin
+    if mEntry.Path <> '' then
+    begin
+      Result := Result + [ExpandFileName(TPath.Combine(mFolder, mEntry.Path))];
     end;
   end;
 end;
@@ -428,33 +455,6 @@ begin
     mFiles.Free;
     mKnown.Free;
     mSeen.Free;
-  end;
-end;
-
-function TPackageLocator.FindSource(const APackage: string; out AFileName: string;
-  out ASource: TPackageSource): Boolean;
-var
-  mFound: TFound;
-begin
-  mFound := Find(APackage);
-  Result := mFound.Known and mFound.Source.IsPackage;
-  AFileName := mFound.FileName;
-  ASource := mFound.Source;
-end;
-
-function TPackageLocator.Requires(const APackage: string): TArray<string>;
-var
-  mFileName: string;
-  mSource: TPackageSource;
-  mEntry: TPackageEntry;
-begin
-  Result := nil;
-  if FindSource(APackage, mFileName, mSource) then
-  begin
-    for mEntry in mSource.Requires do
-    begin
-      Result := Result + [mEntry.Name];
-    end;
   end;
 end;
 

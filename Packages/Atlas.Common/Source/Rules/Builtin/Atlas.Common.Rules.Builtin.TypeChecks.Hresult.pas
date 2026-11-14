@@ -241,25 +241,6 @@ begin
   end;
 end;
 
-procedure THresultScan.CheckClass(const AClass: TIndexSymbol);
-var
-  mName: string;
-  mAncestor: TResolvedSymbol;
-begin
-  FClass := AClass;
-  FSeen.Clear;
-  CollectMethods;
-  CollectResolutions;
-  for mName in AClass.Ancestors do
-  begin
-    if FResolver.ResolveTypeFrom(FLocal, mName, mAncestor) and
-      (mAncestor.SymbolKind = TIndexSymbolKind.InterfaceType) then
-    begin
-      CheckInterfaceChain(mAncestor);
-    end;
-  end;
-end;
-
 procedure THresultScan.CheckInterfaceChain(const AInterface: TResolvedSymbol);
 var
   mIntf, mParent: TResolvedSymbol;
@@ -374,6 +355,25 @@ begin
   end;
 end;
 
+procedure THresultScan.CheckClass(const AClass: TIndexSymbol);
+var
+  mName: string;
+  mAncestor: TResolvedSymbol;
+begin
+  FClass := AClass;
+  FSeen.Clear;
+  CollectMethods;
+  CollectResolutions;
+  for mName in AClass.Ancestors do
+  begin
+    if FResolver.ResolveTypeFrom(FLocal, mName, mAncestor) and
+      (mAncestor.SymbolKind = TIndexSymbolKind.InterfaceType) then
+    begin
+      CheckInterfaceChain(mAncestor);
+    end;
+  end;
+end;
+
 { THresultIntegerMixRule }
 
 function THresultIntegerMixRule.Descriptor: TRuleDescriptor;
@@ -401,12 +401,6 @@ begin
   begin
     Result := 0;
   end;
-end;
-
-class function THresultIntegerMixRule.Interchanged(const AExpected, AActual: string): Boolean;
-begin
-  Result := (ResultFamily(AExpected) <> 0) and (ResultFamily(AActual) <> 0) and
-    (ResultFamily(AExpected) <> ResultFamily(AActual));
 end;
 
 procedure THresultIntegerMixRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -445,6 +439,12 @@ begin
   finally
     mResolver.UnpinTree;
   end;
+end;
+
+class function THresultIntegerMixRule.Interchanged(const AExpected, AActual: string): Boolean;
+begin
+  Result := (ResultFamily(AExpected) <> 0) and (ResultFamily(AActual) <> 0) and
+    (ResultFamily(AExpected) <> ResultFamily(AActual));
 end;
 
 initialization

@@ -134,36 +134,6 @@ begin
   FWarnings := FWarnings + [AWarning];
 end;
 
-function TWorkspaceChanges.EditsOf(const AFileName: string): TArray<TTextEdit>;
-var
-  mItem: TWorkspaceFileEdits;
-begin
-  for mItem in FFiles do
-  begin
-    if SameText(mItem.FileName, AFileName) then
-    begin
-      Exit(mItem.Edits);
-    end;
-  end;
-  Result := nil;
-end;
-
-function TWorkspaceChanges.EditCount: Integer;
-var
-  mItem: TWorkspaceFileEdits;
-begin
-  Result := Length(FCreated) + Length(FDeleted);
-  for mItem in FFiles do
-  begin
-    Inc(Result, Length(mItem.Edits));
-  end;
-end;
-
-function TWorkspaceChanges.FileCount: Integer;
-begin
-  Result := Length(FFiles) + Length(FCreated) + Length(FDeleted);
-end;
-
 procedure TWorkspaceChanges.RegisterUnit(AHasProject: Boolean; const AProject: TProjectInfo;
   const AReadText: TReferenceReadText; const ANewFile, AUnitName: string);
 var
@@ -197,6 +167,36 @@ begin
       Add(mProjectFile, [mEdit]);
     end;
   end;
+end;
+
+function TWorkspaceChanges.EditsOf(const AFileName: string): TArray<TTextEdit>;
+var
+  mItem: TWorkspaceFileEdits;
+begin
+  for mItem in FFiles do
+  begin
+    if SameText(mItem.FileName, AFileName) then
+    begin
+      Exit(mItem.Edits);
+    end;
+  end;
+  Result := nil;
+end;
+
+function TWorkspaceChanges.EditCount: Integer;
+var
+  mItem: TWorkspaceFileEdits;
+begin
+  Result := Length(FCreated) + Length(FDeleted);
+  for mItem in FFiles do
+  begin
+    Inc(Result, Length(mItem.Edits));
+  end;
+end;
+
+function TWorkspaceChanges.FileCount: Integer;
+begin
+  Result := Length(FFiles) + Length(FCreated) + Length(FDeleted);
 end;
 
 function DocumentEdit(const AUri: string; const AEdits: TArray<TTextEdit>; const AAnnotationId: string): TJSONObject;

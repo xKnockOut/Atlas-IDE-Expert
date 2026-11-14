@@ -242,32 +242,6 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasObjectCounter.IsClassName(const AName: string): Boolean;
-var
-  mChar: Char;
-  mIndex: Integer;
-begin
-  Result := False;
-  if AName = '' then
-  begin
-    Exit;
-  end;
-  for mIndex := 1 to Length(AName) do
-  begin
-    mChar := AName[mIndex];
-    if CharInSet(mChar, ['A'..'Z', 'a'..'z', '_']) or (Ord(mChar) > cLastAscii) then
-    begin
-      Continue;
-    end;
-    // Ziffern, Punkte und die Zeichen generischer Typen nicht am Anfang.
-    if (mIndex = 1) or not CharInSet(mChar, ['0'..'9', '.', '<', '>', ',']) then
-    begin
-      Exit;
-    end;
-  end;
-  Result := True;
-end;
-
 function TAtlasObjectCounter.ReadPointer(AAddress: UInt64; out AValue: UInt64): Boolean;
 begin
   AValue := 0;
@@ -499,6 +473,32 @@ begin
   Result.Classes := Collect;
 end;
 
+class function TAtlasObjectCounter.IsClassName(const AName: string): Boolean;
+var
+  mChar: Char;
+  mIndex: Integer;
+begin
+  Result := False;
+  if AName = '' then
+  begin
+    Exit;
+  end;
+  for mIndex := 1 to Length(AName) do
+  begin
+    mChar := AName[mIndex];
+    if CharInSet(mChar, ['A'..'Z', 'a'..'z', '_']) or (Ord(mChar) > cLastAscii) then
+    begin
+      Continue;
+    end;
+    // Ziffern, Punkte und die Zeichen generischer Typen nicht am Anfang.
+    if (mIndex = 1) or not CharInSet(mChar, ['0'..'9', '.', '<', '>', ',']) then
+    begin
+      Exit;
+    end;
+  end;
+  Result := True;
+end;
+
 { TAtlasObjectCountCompare }
 
 function RowOf(const AName: string; ACount, ABefore, AInstanceSize: Integer): TAtlasObjectCountRow;
@@ -554,6 +554,8 @@ begin
     Result := CompareStr(ALeft.Name, ARight.Name);
   end;
 end;
+
+{ TAtlasObjectCountCompare }
 
 class function TAtlasObjectCountCompare.Rows(const ABase, ACurrent: TAtlasObjectCount; AHasBase: Boolean;
   const AFilter: string): TArray<TAtlasObjectCountRow>;

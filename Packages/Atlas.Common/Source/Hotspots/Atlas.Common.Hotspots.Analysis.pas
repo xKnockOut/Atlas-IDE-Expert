@@ -152,28 +152,66 @@ end;
 
 { THotspotAnalyzer }
 
-class function THotspotAnalyzer.UnitKey(const APath: string): string;
+class function THotspotAnalyzer.LineChanges(const ACommits: TArray<THotspotLineCommit>): THotspotChanges;
 var
-  mExtension: string;
+  mCommit: THotspotLineCommit;
 begin
-  mExtension := LowerCase(ExtractFileExt(APath));
-  if (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dfm') or (mExtension = '.fmx') or
-    (mExtension = '.lfm') then
+  Result := Default(THotspotChanges);
+  for mCommit in ACommits do
   begin
-    Result := LowerCase(ChangeFileExt(StringReplace(APath, '\', '/', [rfReplaceAll]), ''));
-  end
-  else
-  begin
-    Result := '';
+    Inc(Result.Changes);
+    Result.Authors := AddAuthor(Result.Authors, mCommit.Author);
+    if Result.Changes = 1 then
+    begin
+      Result.Added := Max(mCommit.Added, -1);
+      Result.Deleted := Max(mCommit.Deleted, -1);
+    end
+    else if (Result.Added >= 0) and (mCommit.Added >= 0) and (mCommit.Deleted >= 0) then
+    begin
+      Inc(Result.Added, mCommit.Added);
+      Inc(Result.Deleted, mCommit.Deleted);
+    end
+    else
+    begin
+      Result.Added := -1;
+      Result.Deleted := -1;
+    end;
+    if mCommit.Date > Result.LastChange then
+    begin
+      Result.LastChange := mCommit.Date;
+    end;
+    if Length(Result.History) < cHistoryLimit then
+    begin
+      Result.History := Result.History + [mCommit];
+    end;
   end;
 end;
 
-class function THotspotAnalyzer.IsSource(const APath: string): Boolean;
+class function THotspotAnalyzer.TrendOf(ANow, APast: Integer): THotspotTrend;
 var
-  mExtension: string;
+  mTolerance: Integer;
 begin
-  mExtension := LowerCase(ExtractFileExt(APath));
-  Result := (mExtension = '.pas') or (mExtension = '.dpr');
+  if APast = -2 then
+  begin
+    Exit(THotspotTrend.New);
+  end;
+  if APast < 0 then
+  begin
+    Exit(THotspotTrend.Unknown);
+  end;
+  mTolerance := Max(1, Round(APast * 0.05));
+  if ANow - APast > mTolerance then
+  begin
+    Result := THotspotTrend.Rising;
+  end
+  else if APast - ANow > mTolerance then
+  begin
+    Result := THotspotTrend.Falling;
+  end
+  else
+  begin
+    Result := THotspotTrend.Steady;
+  end;
 end;
 
 /// <summary>Zählt Zeilen einer weiteren Änderung zu AChanges; -1, sobald eine Änderung sie nicht kennt.</summary>
@@ -270,38 +308,19 @@ begin
   end;
 end;
 
-class function THotspotAnalyzer.LineChanges(const ACommits: TArray<THotspotLineCommit>): THotspotChanges;
+class function THotspotAnalyzer.UnitKey(const APath: string): string;
 var
-  mCommit: THotspotLineCommit;
+  mExtension: string;
 begin
-  Result := Default(THotspotChanges);
-  for mCommit in ACommits do
+  mExtension := LowerCase(ExtractFileExt(APath));
+  if (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dfm') or (mExtension = '.fmx') or
+    (mExtension = '.lfm') then
   begin
-    Inc(Result.Changes);
-    Result.Authors := AddAuthor(Result.Authors, mCommit.Author);
-    if Result.Changes = 1 then
-    begin
-      Result.Added := Max(mCommit.Added, -1);
-      Result.Deleted := Max(mCommit.Deleted, -1);
-    end
-    else if (Result.Added >= 0) and (mCommit.Added >= 0) and (mCommit.Deleted >= 0) then
-    begin
-      Inc(Result.Added, mCommit.Added);
-      Inc(Result.Deleted, mCommit.Deleted);
-    end
-    else
-    begin
-      Result.Added := -1;
-      Result.Deleted := -1;
-    end;
-    if mCommit.Date > Result.LastChange then
-    begin
-      Result.LastChange := mCommit.Date;
-    end;
-    if Length(Result.History) < cHistoryLimit then
-    begin
-      Result.History := Result.History + [mCommit];
-    end;
+    Result := LowerCase(ChangeFileExt(StringReplace(APath, '\', '/', [rfReplaceAll]), ''));
+  end
+  else
+  begin
+    Result := '';
   end;
 end;
 
@@ -377,31 +396,12 @@ begin
   end;
 end;
 
-class function THotspotAnalyzer.TrendOf(ANow, APast: Integer): THotspotTrend;
+class function THotspotAnalyzer.IsSource(const APath: string): Boolean;
 var
-  mTolerance: Integer;
+  mExtension: string;
 begin
-  if APast = -2 then
-  begin
-    Exit(THotspotTrend.New);
-  end;
-  if APast < 0 then
-  begin
-    Exit(THotspotTrend.Unknown);
-  end;
-  mTolerance := Max(1, Round(APast * 0.05));
-  if ANow - APast > mTolerance then
-  begin
-    Result := THotspotTrend.Rising;
-  end
-  else if APast - ANow > mTolerance then
-  begin
-    Result := THotspotTrend.Falling;
-  end
-  else
-  begin
-    Result := THotspotTrend.Steady;
-  end;
+  mExtension := LowerCase(ExtractFileExt(APath));
+  Result := (mExtension = '.pas') or (mExtension = '.dpr');
 end;
 
 function CompareCoupling(const ALeft, ARight: THotspotCoupling): Integer;

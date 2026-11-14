@@ -343,6 +343,8 @@ begin
   Result := TArray<TPoint>.Create(TPoint.Create(mFromX, mY), TPoint.Create(mToX, mY));
 end;
 
+{ TAtlasFlowPath }
+
 class function TAtlasFlowPath.Build(const AFrom, ATo: TRect; ASameRow, ABack: Boolean; AArc: Integer): TAtlasFlowPath;
 var
   mFirst, mSecond: TPoint;
@@ -420,6 +422,54 @@ begin
   FColors := TAtlasColors.Light;
 end;
 
+procedure TAtlasFlowView.Paint;
+var
+  mIndex, mMax: Integer;
+begin
+  Canvas.Font := Font;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(FColors.Surface);
+  Canvas.FillRect(ClientRect);
+  if Length(FLayout.Boxes) <> Length(FMap.States) then
+  begin
+    Exit;
+  end;
+  mMax := FMap.MaxCount;
+  for mIndex := 0 to High(FMap.Transitions) do
+  begin
+    PaintTransition(FMap.Transitions[mIndex], mMax);
+  end;
+  for mIndex := 0 to High(FMap.States) do
+  begin
+    PaintState(mIndex);
+  end;
+end;
+
+procedure TAtlasFlowView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mIndex: Integer;
+  mName: string;
+begin
+  inherited;
+  if Button <> mbLeft then
+  begin
+    Exit;
+  end;
+  mIndex := FLayout.StateAt(TPoint.Create(X, Y));
+  mName := '';
+  // Noch einmal auf den gewählten Zustand: Filter aufheben.
+  if (mIndex >= 0) and not SameText(FMap.States[mIndex].Name, FSelected) then
+  begin
+    mName := FMap.States[mIndex].Name;
+  end;
+  FSelected := mName;
+  Invalidate;
+  if Assigned(FOnSelect) then
+  begin
+    FOnSelect(mName);
+  end;
+end;
+
 function TAtlasFlowView.Metrics: TAtlasFlowMetrics;
 var
   mLine: Integer;
@@ -435,22 +485,6 @@ begin
     mLine := cFallbackLineHeight;
   end;
   Result := TAtlasFlowMetrics.Create(mLine).Scaled(CurrentPPI, USER_DEFAULT_SCREEN_DPI);
-end;
-
-procedure TAtlasFlowView.SetMap(const AMap: TAtlasFlowMap);
-begin
-  FMap := AMap;
-  if FMap.IndexOf(FSelected) < 0 then
-  begin
-    FSelected := '';
-  end;
-end;
-
-procedure TAtlasFlowView.Relayout;
-begin
-  FLayout := TAtlasFlowLayout.Build(FMap, Metrics);
-  SetBounds(0, 0, Max(FLayout.Width, 1), Max(FLayout.Height, 1));
-  Invalidate;
 end;
 
 /// <summary>Pfeilspitze am Ende von ATo, aus Richtung AFrom.</summary>
@@ -561,52 +595,20 @@ begin
     DT_NOPREFIX);
 end;
 
-procedure TAtlasFlowView.Paint;
-var
-  mIndex, mMax: Integer;
+procedure TAtlasFlowView.SetMap(const AMap: TAtlasFlowMap);
 begin
-  Canvas.Font := Font;
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(FColors.Surface);
-  Canvas.FillRect(ClientRect);
-  if Length(FLayout.Boxes) <> Length(FMap.States) then
+  FMap := AMap;
+  if FMap.IndexOf(FSelected) < 0 then
   begin
-    Exit;
-  end;
-  mMax := FMap.MaxCount;
-  for mIndex := 0 to High(FMap.Transitions) do
-  begin
-    PaintTransition(FMap.Transitions[mIndex], mMax);
-  end;
-  for mIndex := 0 to High(FMap.States) do
-  begin
-    PaintState(mIndex);
+    FSelected := '';
   end;
 end;
 
-procedure TAtlasFlowView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  mIndex: Integer;
-  mName: string;
+procedure TAtlasFlowView.Relayout;
 begin
-  inherited;
-  if Button <> mbLeft then
-  begin
-    Exit;
-  end;
-  mIndex := FLayout.StateAt(TPoint.Create(X, Y));
-  mName := '';
-  // Noch einmal auf den gewählten Zustand: Filter aufheben.
-  if (mIndex >= 0) and not SameText(FMap.States[mIndex].Name, FSelected) then
-  begin
-    mName := FMap.States[mIndex].Name;
-  end;
-  FSelected := mName;
+  FLayout := TAtlasFlowLayout.Build(FMap, Metrics);
+  SetBounds(0, 0, Max(FLayout.Width, 1), Max(FLayout.Height, 1));
   Invalidate;
-  if Assigned(FOnSelect) then
-  begin
-    FOnSelect(mName);
-  end;
 end;
 
 { TAtlasFlowFrame }
@@ -719,6 +721,8 @@ begin
   AFrame.FParts.Empty.Visible := False;
 end;
 
+{ TAtlasFlowFrame }
+
 constructor TAtlasFlowFrame.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
@@ -739,54 +743,6 @@ begin
   FEvents := Default(TAtlasFlowFrameEvents);
   FParts.View.OnSelect := nil;
   inherited;
-end;
-
-procedure TAtlasFlowFrame.CMShowingChanged(var AMessage: TMessage);
-begin
-  inherited;
-  if Showing and FListPending then
-  begin
-    FillList;
-  end;
-  // Das X versteckt die Form samt Frame: wie Schließen.
-  if not Showing and Assigned(FEvents.Hidden) then
-  begin
-    FEvents.Hidden();
-  end;
-end;
-
-procedure TAtlasFlowFrame.ApplyColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  FParts.View.Colors := AColors;
-  FParts.Scroll.Color := ToColor(AColors.Surface);
-  FParts.Scroll.ParentBackground := False;
-  FParts.Empty.Font.Color := ToColor(AColors.Muted);
-  FParts.Status.Font.Color := ToColor(AColors.Muted);
-  FParts.List.Color := ToColor(AColors.Surface);
-  FParts.List.Font.Color := ToColor(AColors.Text);
-  FParts.View.Invalidate;
-end;
-
-function TAtlasFlowFrame.VisibleRows: TArray<TAtlasFlowStuck>;
-begin
-  Result := FMap.StuckIn(FParts.View.Selected);
-end;
-
-function TAtlasFlowFrame.ListCaption: string;
-begin
-  if FParts.View.Selected = '' then
-  begin
-    Result := TAtlasFlowStrings.Fmt(TAtlasFlowTextId.FlowStuckTitle, [FStuckDays]);
-  end
-  else
-  begin
-    Result := TAtlasFlowStrings.Fmt(TAtlasFlowTextId.FlowStuckFilter, [FParts.View.Selected, FStuckDays]);
-  end;
-  if FHasMap and (Length(VisibleRows) = 0) then
-  begin
-    Result := Result + ' · ' + TAtlasFlowStrings.Text(TAtlasFlowTextId.FlowNoStuck);
-  end;
 end;
 
 procedure TAtlasFlowFrame.FillList;
@@ -823,6 +779,56 @@ procedure TAtlasFlowFrame.SelectState(const AState: string);
 begin
   FParts.View.Selected := AState;
   FillList;
+end;
+
+procedure TAtlasFlowFrame.RefreshClick(Sender: TObject);
+begin
+  if Assigned(FEvents.Refresh) then
+  begin
+    FEvents.Refresh();
+  end;
+end;
+
+procedure TAtlasFlowFrame.ListDblClick(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  mIndex := -1;
+  if FParts.List.Selected <> nil then
+  begin
+    mIndex := FParts.List.Selected.Index;
+  end;
+  if (mIndex >= 0) and (mIndex <= High(FRows)) and Assigned(FEvents.Open) then
+  begin
+    FEvents.Open(FRows[mIndex].Key);
+  end;
+end;
+
+procedure TAtlasFlowFrame.CMShowingChanged(var AMessage: TMessage);
+begin
+  inherited;
+  if Showing and FListPending then
+  begin
+    FillList;
+  end;
+  // Das X versteckt die Form samt Frame: wie Schließen.
+  if not Showing and Assigned(FEvents.Hidden) then
+  begin
+    FEvents.Hidden();
+  end;
+end;
+
+procedure TAtlasFlowFrame.ApplyColors(const AColors: TAtlasColors);
+begin
+  FColors := AColors;
+  FParts.View.Colors := AColors;
+  FParts.Scroll.Color := ToColor(AColors.Surface);
+  FParts.Scroll.ParentBackground := False;
+  FParts.Empty.Font.Color := ToColor(AColors.Muted);
+  FParts.Status.Font.Color := ToColor(AColors.Muted);
+  FParts.List.Color := ToColor(AColors.Surface);
+  FParts.List.Font.Color := ToColor(AColors.Text);
+  FParts.View.Invalidate;
 end;
 
 procedure TAtlasFlowFrame.SetMap(const AMap: TAtlasFlowMap; const AProject: string; AStuckDays: Integer;
@@ -863,15 +869,6 @@ begin
   FParts.Status.Visible := AText <> '';
 end;
 
-function TAtlasFlowFrame.StatusText: string;
-begin
-  Result := '';
-  if FParts.Status.Visible then
-  begin
-    Result := FParts.Status.Caption;
-  end;
-end;
-
 procedure TAtlasFlowFrame.SetLoading(AValue: Boolean);
 begin
   FParts.Refresh.Enabled := not AValue;
@@ -881,26 +878,33 @@ begin
   end;
 end;
 
-procedure TAtlasFlowFrame.RefreshClick(Sender: TObject);
+function TAtlasFlowFrame.StatusText: string;
 begin
-  if Assigned(FEvents.Refresh) then
+  Result := '';
+  if FParts.Status.Visible then
   begin
-    FEvents.Refresh();
+    Result := FParts.Status.Caption;
   end;
 end;
 
-procedure TAtlasFlowFrame.ListDblClick(Sender: TObject);
-var
-  mIndex: Integer;
+function TAtlasFlowFrame.VisibleRows: TArray<TAtlasFlowStuck>;
 begin
-  mIndex := -1;
-  if FParts.List.Selected <> nil then
+  Result := FMap.StuckIn(FParts.View.Selected);
+end;
+
+function TAtlasFlowFrame.ListCaption: string;
+begin
+  if FParts.View.Selected = '' then
   begin
-    mIndex := FParts.List.Selected.Index;
+    Result := TAtlasFlowStrings.Fmt(TAtlasFlowTextId.FlowStuckTitle, [FStuckDays]);
+  end
+  else
+  begin
+    Result := TAtlasFlowStrings.Fmt(TAtlasFlowTextId.FlowStuckFilter, [FParts.View.Selected, FStuckDays]);
   end;
-  if (mIndex >= 0) and (mIndex <= High(FRows)) and Assigned(FEvents.Open) then
+  if FHasMap and (Length(VisibleRows) = 0) then
   begin
-    FEvents.Open(FRows[mIndex].Key);
+    Result := Result + ' · ' + TAtlasFlowStrings.Text(TAtlasFlowTextId.FlowNoStuck);
   end;
 end;
 

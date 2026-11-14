@@ -72,20 +72,6 @@ begin
   inherited;
 end;
 
-class function TUsesLocator.UsesReferences(const AText: string; const ADefines: TArray<string>): TArray<TUsesReference>;
-var
-  mReference: TUsesReference;
-begin
-  Result := nil;
-  for mReference in TUsesClauses.References(TPascalLexer.Tokenize(TIndexExtractor.BlankInactive(AText, ADefines))) do
-  begin
-    if mReference.List = TUsesListKind.UsesList then
-    begin
-      Result := Result + [mReference];
-    end;
-  end;
-end;
-
 function TUsesLocator.ReferencesOf(const ANode: TUsesNode): TArray<TUsesReference>;
 var
   mKey, mText: string;
@@ -107,6 +93,20 @@ begin
     Result := UsesReferences(mText, mDefines);
   end;
   FCache.AddOrSetValue(mKey, Result);
+end;
+
+class function TUsesLocator.UsesReferences(const AText: string; const ADefines: TArray<string>): TArray<TUsesReference>;
+var
+  mReference: TUsesReference;
+begin
+  Result := nil;
+  for mReference in TUsesClauses.References(TPascalLexer.Tokenize(TIndexExtractor.BlankInactive(AText, ADefines))) do
+  begin
+    if mReference.List = TUsesListKind.UsesList then
+    begin
+      Result := Result + [mReference];
+    end;
+  end;
 end;
 
 function TUsesLocator.Locate(AGraph: TUsesGraph; const AEdge: TUsesEdge; out ALocation: TUsesLocation): Boolean;

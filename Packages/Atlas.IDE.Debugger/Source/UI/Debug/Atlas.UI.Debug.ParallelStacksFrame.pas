@@ -140,41 +140,6 @@ begin
   end;
 end;
 
-procedure TAtlasDebugParallelStacksFrame.SetTree(const AStacks: TAtlasDebugThreadStacks;
-  const ATree: TAtlasDebugStackTree; const AStatus: string);
-begin
-  FStacks := AStacks;
-  FData := ATree;
-  FStatus.Caption := AStatus;
-  if AStatus = '' then
-  begin
-    FStatus.Caption := TAtlasParallelStacksTexts.StatusText(ATree);
-  end;
-  FFilled := False;
-  if HandleAllocated then
-  begin
-    Fill;
-  end;
-end;
-
-procedure TAtlasDebugParallelStacksFrame.ShowStatus(const AText: string);
-begin
-  SetTree(nil, Default(TAtlasDebugStackTree), AText);
-end;
-
-procedure TAtlasDebugParallelStacksFrame.AddNodes(AParent: TTreeNode; const AIndexes: TArray<Integer>);
-var
-  mIndex: Integer;
-  mNode: TTreeNode;
-begin
-  for mIndex in AIndexes do
-  begin
-    mNode := FTree.Items.AddChildObject(AParent, TAtlasParallelStacksTexts.NodeText(FData.Nodes[mIndex]),
-      Pointer(NativeInt(mIndex)));
-    AddNodes(mNode, FData.Nodes[mIndex].Children);
-  end;
-end;
-
 procedure TAtlasDebugParallelStacksFrame.Fill;
 begin
   FFilled := True;
@@ -190,27 +155,16 @@ begin
   end;
 end;
 
-function TAtlasDebugParallelStacksFrame.Filter: TAtlasDebugStackFilter;
+procedure TAtlasDebugParallelStacksFrame.AddNodes(AParent: TTreeNode; const AIndexes: TArray<Integer>);
+var
+  mIndex: Integer;
+  mNode: TTreeNode;
 begin
-  Result := Default(TAtlasDebugStackFilter);
-  Result.OwnCodeOnly := FOwnOnly.Checked;
-  Result.WaitingOnly := FWaitingOnly.Checked;
-end;
-
-function TAtlasDebugParallelStacksFrame.SelectedNode: Integer;
-begin
-  Result := -1;
-  if FTree.Selected <> nil then
+  for mIndex in AIndexes do
   begin
-    Result := Integer(NativeInt(FTree.Selected.Data));
-  end;
-end;
-
-procedure TAtlasDebugParallelStacksFrame.OpenSelected;
-begin
-  if (SelectedNode >= 0) and Assigned(FOnOpen) then
-  begin
-    FOnOpen(SelectedNode);
+    mNode := FTree.Items.AddChildObject(AParent, TAtlasParallelStacksTexts.NodeText(FData.Nodes[mIndex]),
+      Pointer(NativeInt(mIndex)));
+    AddNodes(mNode, FData.Nodes[mIndex].Children);
   end;
 end;
 
@@ -264,6 +218,52 @@ begin
   if FData.Nodes[mIndex].AllWaiting and not (cdsSelected in State) then
   begin
     Sender.Canvas.Font.Color := cWaitingColor;
+  end;
+end;
+
+procedure TAtlasDebugParallelStacksFrame.SetTree(const AStacks: TAtlasDebugThreadStacks;
+  const ATree: TAtlasDebugStackTree; const AStatus: string);
+begin
+  FStacks := AStacks;
+  FData := ATree;
+  FStatus.Caption := AStatus;
+  if AStatus = '' then
+  begin
+    FStatus.Caption := TAtlasParallelStacksTexts.StatusText(ATree);
+  end;
+  FFilled := False;
+  if HandleAllocated then
+  begin
+    Fill;
+  end;
+end;
+
+procedure TAtlasDebugParallelStacksFrame.ShowStatus(const AText: string);
+begin
+  SetTree(nil, Default(TAtlasDebugStackTree), AText);
+end;
+
+function TAtlasDebugParallelStacksFrame.Filter: TAtlasDebugStackFilter;
+begin
+  Result := Default(TAtlasDebugStackFilter);
+  Result.OwnCodeOnly := FOwnOnly.Checked;
+  Result.WaitingOnly := FWaitingOnly.Checked;
+end;
+
+function TAtlasDebugParallelStacksFrame.SelectedNode: Integer;
+begin
+  Result := -1;
+  if FTree.Selected <> nil then
+  begin
+    Result := Integer(NativeInt(FTree.Selected.Data));
+  end;
+end;
+
+procedure TAtlasDebugParallelStacksFrame.OpenSelected;
+begin
+  if (SelectedNode >= 0) and Assigned(FOnOpen) then
+  begin
+    FOnOpen(SelectedNode);
   end;
 end;
 

@@ -86,31 +86,6 @@ uses
 
 { TAtlasHoverPainter }
 
-class function TAtlasHoverPainter.NoHot: TAtlasHoverHotSpot;
-begin
-  Result.Kind := TAtlasHoverHitKind.Action;
-  Result.Index := -1;
-  Result.HotIndex := -1;
-  Result.HotColor := 0;
-end;
-
-class function TAtlasHoverPainter.HoverHot(AKind: TAtlasHoverHitKind; AHotIndex: Integer;
-  AColor: TAtlasColor): TAtlasHoverHotSpot;
-begin
-  Result.Kind := AKind;
-  Result.Index := -1;
-  Result.HotIndex := AHotIndex;
-  Result.HotColor := AColor;
-end;
-
-class procedure TAtlasHoverPainter.MakeHot(var AItem: TAtlasHoverItem; AKind: TAtlasHoverHitKind; AIndex: Integer;
-  AColor: TAtlasColor);
-begin
-  AItem.HotKind := AKind;
-  AItem.HotIndex := AIndex;
-  AItem.HotColor := AColor;
-end;
-
 constructor TAtlasHoverPainter.Create(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure);
 begin
   inherited Create;
@@ -344,6 +319,31 @@ begin
     end;
   end;
   Result := '';
+end;
+
+class function TAtlasHoverPainter.NoHot: TAtlasHoverHotSpot;
+begin
+  Result.Kind := TAtlasHoverHitKind.Action;
+  Result.Index := -1;
+  Result.HotIndex := -1;
+  Result.HotColor := 0;
+end;
+
+class function TAtlasHoverPainter.HoverHot(AKind: TAtlasHoverHitKind; AHotIndex: Integer;
+  AColor: TAtlasColor): TAtlasHoverHotSpot;
+begin
+  Result.Kind := AKind;
+  Result.Index := -1;
+  Result.HotIndex := AHotIndex;
+  Result.HotColor := AColor;
+end;
+
+class procedure TAtlasHoverPainter.MakeHot(var AItem: TAtlasHoverItem; AKind: TAtlasHoverHitKind; AIndex: Integer;
+  AColor: TAtlasColor);
+begin
+  AItem.HotKind := AKind;
+  AItem.HotIndex := AIndex;
+  AItem.HotColor := AColor;
 end;
 
 end.

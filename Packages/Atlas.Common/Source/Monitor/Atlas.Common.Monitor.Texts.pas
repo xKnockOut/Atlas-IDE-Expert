@@ -112,6 +112,8 @@ const
     (De: 'Optionen'; En: 'Options'),
     (De: 'Ordner wählen'; En: 'Choose folder'));
 
+{ TMonitorTexts }
+
 class function TMonitorTexts.Text(AText: TMonitorText): string;
 begin
   Result := cTexts[AText].Text;

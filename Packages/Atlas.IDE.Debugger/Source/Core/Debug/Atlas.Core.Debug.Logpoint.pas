@@ -238,6 +238,8 @@ begin
   Result := True;
 end;
 
+{ TAtlasLogpointTemplate }
+
 class function TAtlasLogpointTemplate.Parse(const AText: string): TAtlasLogpointTemplate;
 var
   mIndex: Integer;
@@ -317,9 +319,9 @@ end;
 
 { TAtlasLogpointPlan }
 
-class function TAtlasLogpointPlan.Quoted(const AText: string): string;
+class function TAtlasLogpointPlan.ConditionOf(const AText: string): string;
 begin
-  Result := '''' + AText.Replace('''', '''''') + '''';
+  Result := Trim(AText.Replace('{', '').Replace('}', ''));
 end;
 
 /// <summary>Ausdruck AExpression nach Formatangabe AFormat als String.</summary>
@@ -422,9 +424,9 @@ begin
   end;
 end;
 
-class function TAtlasLogpointPlan.ConditionOf(const AText: string): string;
+class function TAtlasLogpointPlan.Quoted(const AText: string): string;
 begin
-  Result := Trim(AText.Replace('{', '').Replace('}', ''));
+  Result := '''' + AText.Replace('''', '''''') + '''';
 end;
 
 { TAtlasLogpointMerger }
@@ -433,33 +435,6 @@ constructor TAtlasLogpointMerger.Create(const APrefix: string);
 begin
   inherited Create;
   FPrefix := Trim(APrefix);
-end;
-
-class function TAtlasLogpointMerger.ValueOf(const ALine: string): string;
-var
-  mColon, mEquals, mSplit: Integer;
-begin
-  Result := Trim(ALine);
-  mColon := Pos(cColonMark, Result);
-  mEquals := Pos(cEqualsMark, Result);
-  mSplit := mColon;
-  if (mEquals > 0) and ((mSplit = 0) or (mEquals < mSplit)) then
-  begin
-    Result := Trim(Copy(Result, mEquals + Length(cEqualsMark), MaxInt));
-  end
-  else if mSplit > 0 then
-  begin
-    Result := Trim(Copy(Result, mSplit + Length(cColonMark), MaxInt));
-  end;
-  if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
-  begin
-    Result := Copy(Result, 2, Length(Result) - 2).Replace('''''', '''');
-  end;
-end;
-
-function TAtlasLogpointMerger.Pending: Boolean;
-begin
-  Result := FPending <> '';
 end;
 
 function TAtlasLogpointMerger.Feed(const AText: string; out AOutput: string; out AIsLogpoint: Boolean): Boolean;
@@ -488,6 +463,33 @@ begin
   end;
   AOutput := mText;
   Result := True;
+end;
+
+class function TAtlasLogpointMerger.ValueOf(const ALine: string): string;
+var
+  mColon, mEquals, mSplit: Integer;
+begin
+  Result := Trim(ALine);
+  mColon := Pos(cColonMark, Result);
+  mEquals := Pos(cEqualsMark, Result);
+  mSplit := mColon;
+  if (mEquals > 0) and ((mSplit = 0) or (mEquals < mSplit)) then
+  begin
+    Result := Trim(Copy(Result, mEquals + Length(cEqualsMark), MaxInt));
+  end
+  else if mSplit > 0 then
+  begin
+    Result := Trim(Copy(Result, mSplit + Length(cColonMark), MaxInt));
+  end;
+  if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
+  begin
+    Result := Copy(Result, 2, Length(Result) - 2).Replace('''''', '''');
+  end;
+end;
+
+function TAtlasLogpointMerger.Pending: Boolean;
+begin
+  Result := FPending <> '';
 end;
 
 end.

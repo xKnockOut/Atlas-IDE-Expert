@@ -380,6 +380,23 @@ begin
     TCheckOrigin.Make(AProject, TCheckSource.Default), AScopes);
 end;
 
+class function TFileChecker.PackageOf(const APackages: TArray<TPackageSource>; const AUnitName: string):
+  TCheckProject;
+var
+  mSource: TPackageSource;
+begin
+  Result := Default(TCheckProject);
+  for mSource in APackages do
+  begin
+    if mSource.IsPackage and (mSource.ContainsIndex(AUnitName) >= 0) then
+    begin
+      Result.Application := TRuleApplicationKind.Package;
+      Result.Name := mSource.Name;
+      Exit;
+    end;
+  end;
+end;
+
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const ARelativePath, AText: string; const ASource: TCheckSource): TArray<TRuleFinding>;
 var
@@ -419,23 +436,6 @@ begin
   begin
     Result := Default(TCheckProject);
     Result.FileName := AFileName;
-  end;
-end;
-
-class function TFileChecker.PackageOf(const APackages: TArray<TPackageSource>; const AUnitName: string):
-  TCheckProject;
-var
-  mSource: TPackageSource;
-begin
-  Result := Default(TCheckProject);
-  for mSource in APackages do
-  begin
-    if mSource.IsPackage and (mSource.ContainsIndex(AUnitName) >= 0) then
-    begin
-      Result.Application := TRuleApplicationKind.Package;
-      Result.Name := mSource.Name;
-      Exit;
-    end;
   end;
 end;
 

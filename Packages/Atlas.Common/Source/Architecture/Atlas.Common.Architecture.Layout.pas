@@ -302,6 +302,8 @@ begin
   end;
 end;
 
+{ TArchitectureLayouter }
+
 class function TArchitectureLayouter.Compute(const AOverview: TArchitectureOverview): TArchitectureLayout;
 var
   mCount, mIndex: Integer;

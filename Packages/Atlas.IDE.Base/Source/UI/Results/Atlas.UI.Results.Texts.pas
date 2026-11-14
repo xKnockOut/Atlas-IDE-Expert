@@ -48,6 +48,19 @@ uses
 
 { TAtlasResultsTexts }
 
+class function TAtlasResultsTexts.EntryText(const AEntry: TAtlasResultEntry): string;
+begin
+  Result := Format('%d: %s', [AEntry.Line + 1, AEntry.Text]);
+  if AEntry.Detail <> '' then
+  begin
+    Result := Result + '  →  ' + AEntry.Detail;
+  end;
+  if AEntry.Confidence.Inferred then
+  begin
+    Result := '≈ ' + Result + '  [' + ReasonText(AEntry.Confidence) + ']';
+  end;
+end;
+
 class function TAtlasResultsTexts.ReasonText(const AConfidence: TAtlasConfidence): string;
 begin
   Result := '';
@@ -83,19 +96,6 @@ begin
   begin
     // Gründe neuerer Server: wie geliefert.
     Result := AConfidence.Reason;
-  end;
-end;
-
-class function TAtlasResultsTexts.EntryText(const AEntry: TAtlasResultEntry): string;
-begin
-  Result := Format('%d: %s', [AEntry.Line + 1, AEntry.Text]);
-  if AEntry.Detail <> '' then
-  begin
-    Result := Result + '  →  ' + AEntry.Detail;
-  end;
-  if AEntry.Confidence.Inferred then
-  begin
-    Result := '≈ ' + Result + '  [' + ReasonText(AEntry.Confidence) + ']';
   end;
 end;
 
@@ -240,11 +240,6 @@ begin
   end;
 end;
 
-class function TAtlasResultsTexts.FlowPlaceText(const APlace: TAtlasDataFlowPlace): string;
-begin
-  Result := Format('%s:%d: %s', [ExtractFileName(APlace.FileName), APlace.Line + 1, APlace.LineText]);
-end;
-
 class function TAtlasResultsTexts.FlowNodeText(const ANode: TAtlasDataFlowNode): string;
 var
   mOrigin: TAtlasDataFlowOrigin;
@@ -284,6 +279,11 @@ begin
   begin
     Result := Result + '   ' + FlowPlaceText(ANode.Places[0]);
   end;
+end;
+
+class function TAtlasResultsTexts.FlowPlaceText(const APlace: TAtlasDataFlowPlace): string;
+begin
+  Result := Format('%s:%d: %s', [ExtractFileName(APlace.FileName), APlace.Line + 1, APlace.LineText]);
 end;
 
 class function TAtlasResultsTexts.FlowSourceText(const AChild: TAtlasDataFlowChild;

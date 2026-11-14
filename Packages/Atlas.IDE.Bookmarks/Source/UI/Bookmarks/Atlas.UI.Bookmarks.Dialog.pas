@@ -114,11 +114,6 @@ begin
   Result.Anchors := [akTop, akRight];
 end;
 
-function TAtlasBookmarkDialog.BookmarkName: string;
-begin
-  Result := Trim(FEdit.Text);
-end;
-
 procedure TAtlasBookmarkDialog.EditChange(Sender: TObject);
 begin
   FOk.Enabled := BookmarkName <> '';
@@ -136,6 +131,11 @@ end;
 procedure TAtlasBookmarkDialog.CancelClick(Sender: TObject);
 begin
   ModalResult := mrCancel;
+end;
+
+function TAtlasBookmarkDialog.BookmarkName: string;
+begin
+  Result := Trim(FEdit.Text);
 end;
 
 class function TAtlasBookmarkDialog.Execute(const ATitle: string; var AName: string): Boolean;

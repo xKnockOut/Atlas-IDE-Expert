@@ -254,104 +254,6 @@ begin
   Height := ScaleValue(cPartHeight) + ScaleValue(8);
 end;
 
-procedure TAtlasArrangeStrip.SetParts(const AParts: TArray<TAtlasArrangePart>);
-begin
-  FParts := Copy(AParts);
-  FHot := -1;
-  FPressed := -1;
-  FDragging := False;
-  if HandleAllocated then
-  begin
-    Measure;
-  end;
-  Invalidate;
-end;
-
-function TAtlasArrangeStrip.IndexOf(AKind: TAtlasArrangePartKind; const AValue: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(FParts) do
-  begin
-    if (FParts[mIndex].Kind = AKind) and ((AValue = '') or SameText(FParts[mIndex].Value, AValue)) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
-procedure TAtlasArrangeStrip.Measure;
-var
-  mIndex, X, Y, W, mLine, mPad, mGap, mMargin: Integer;
-begin
-  // Teile von links nach rechts; was nicht mehr passt, beginnt eine neue Zeile.
-  Canvas.Font := Font;
-  mLine := ScaleValue(cPartHeight);
-  mPad := ScaleValue(cPartPadding);
-  mGap := ScaleValue(cPartGap);
-  mMargin := ScaleValue(4);
-  X := mMargin + mGap;
-  Y := mMargin;
-  for mIndex := 0 to High(FParts) do
-  begin
-    W := Canvas.TextWidth(FParts[mIndex].Caption);
-    if FParts[mIndex].Kind <> TAtlasArrangePartKind.Text then
-    begin
-      Inc(W, 2 * mPad);
-    end;
-    if (X + W > ClientWidth - mGap) and (X > mMargin + mGap) then
-    begin
-      X := mMargin + mGap;
-      Inc(Y, mLine + mMargin);
-    end;
-    FParts[mIndex].Rect := TRect.Create(X, Y, X + W, Y + mLine);
-    Inc(X, W + mGap);
-  end;
-end;
-
-function TAtlasArrangeStrip.PreferredHeight: Integer;
-var
-  mPart: TAtlasArrangePart;
-begin
-  Result := ScaleValue(cPartHeight + 8);
-  if not HandleAllocated then
-  begin
-    Exit;
-  end;
-  Measure;
-  for mPart in FParts do
-  begin
-    if mPart.Rect.Bottom + ScaleValue(4) > Result then
-    begin
-      Result := mPart.Rect.Bottom + ScaleValue(4);
-    end;
-  end;
-end;
-
-procedure TAtlasArrangeStrip.Resize;
-begin
-  inherited;
-  if HandleAllocated then
-  begin
-    Measure;
-  end;
-end;
-
-function TAtlasArrangeStrip.PartAt(AX, AY: Integer): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(FParts) do
-  begin
-    if (FParts[mIndex].Kind <> TAtlasArrangePartKind.Text) and FParts[mIndex].Rect.Contains(Point(AX, AY)) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
 procedure TAtlasArrangeStrip.Paint;
 var
   mIndex, mRadius: Integer;
@@ -404,19 +306,13 @@ begin
   end;
 end;
 
-procedure TAtlasArrangeStrip.ClickPart(AIndex: Integer);
+procedure TAtlasArrangeStrip.Resize;
 begin
-  if (AIndex < 0) or (AIndex > High(FParts)) or (FParts[AIndex].Kind = TAtlasArrangePartKind.Text) then
+  inherited;
+  if HandleAllocated then
   begin
-    Exit;
+    Measure;
   end;
-  if Assigned(FOnClick) then
-    try
-      FOnClick(FParts[AIndex]);
-    except
-      on E: Exception do
-        TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
-    end;
 end;
 
 procedure TAtlasArrangeStrip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -499,6 +395,49 @@ begin
   end;
 end;
 
+procedure TAtlasArrangeStrip.Measure;
+var
+  mIndex, X, Y, W, mLine, mPad, mGap, mMargin: Integer;
+begin
+  // Teile von links nach rechts; was nicht mehr passt, beginnt eine neue Zeile.
+  Canvas.Font := Font;
+  mLine := ScaleValue(cPartHeight);
+  mPad := ScaleValue(cPartPadding);
+  mGap := ScaleValue(cPartGap);
+  mMargin := ScaleValue(4);
+  X := mMargin + mGap;
+  Y := mMargin;
+  for mIndex := 0 to High(FParts) do
+  begin
+    W := Canvas.TextWidth(FParts[mIndex].Caption);
+    if FParts[mIndex].Kind <> TAtlasArrangePartKind.Text then
+    begin
+      Inc(W, 2 * mPad);
+    end;
+    if (X + W > ClientWidth - mGap) and (X > mMargin + mGap) then
+    begin
+      X := mMargin + mGap;
+      Inc(Y, mLine + mMargin);
+    end;
+    FParts[mIndex].Rect := TRect.Create(X, Y, X + W, Y + mLine);
+    Inc(X, W + mGap);
+  end;
+end;
+
+function TAtlasArrangeStrip.PartAt(AX, AY: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FParts) do
+  begin
+    if (FParts[mIndex].Kind <> TAtlasArrangePartKind.Text) and FParts[mIndex].Rect.Contains(Point(AX, AY)) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
 procedure TAtlasArrangeStrip.CMMouseLeave(var Message: TMessage);
 begin
   inherited;
@@ -506,6 +445,67 @@ begin
   begin
     FHot := -1;
     Invalidate;
+  end;
+end;
+
+procedure TAtlasArrangeStrip.SetParts(const AParts: TArray<TAtlasArrangePart>);
+begin
+  FParts := Copy(AParts);
+  FHot := -1;
+  FPressed := -1;
+  FDragging := False;
+  if HandleAllocated then
+  begin
+    Measure;
+  end;
+  Invalidate;
+end;
+
+function TAtlasArrangeStrip.IndexOf(AKind: TAtlasArrangePartKind; const AValue: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FParts) do
+  begin
+    if (FParts[mIndex].Kind = AKind) and ((AValue = '') or SameText(FParts[mIndex].Value, AValue)) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+procedure TAtlasArrangeStrip.ClickPart(AIndex: Integer);
+begin
+  if (AIndex < 0) or (AIndex > High(FParts)) or (FParts[AIndex].Kind = TAtlasArrangePartKind.Text) then
+  begin
+    Exit;
+  end;
+  if Assigned(FOnClick) then
+    try
+      FOnClick(FParts[AIndex]);
+    except
+      on E: Exception do
+        TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
+    end;
+end;
+
+function TAtlasArrangeStrip.PreferredHeight: Integer;
+var
+  mPart: TAtlasArrangePart;
+begin
+  Result := ScaleValue(cPartHeight + 8);
+  if not HandleAllocated then
+  begin
+    Exit;
+  end;
+  Measure;
+  for mPart in FParts do
+  begin
+    if mPart.Rect.Bottom + ScaleValue(4) > Result then
+    begin
+      Result := mPart.Rect.Bottom + ScaleValue(4);
+    end;
   end;
 end;
 
@@ -567,10 +567,84 @@ begin
   Invalidate;
 end;
 
+procedure TAtlasWelcomeGrip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  if Button <> mbLeft then
+  begin
+    Exit;
+  end;
+  if CanFocus and (GetParentForm(Self) <> nil) and GetParentForm(Self).Visible then
+  begin
+    SetFocus;
+  end;
+  FPressed := True;
+  FDragging := False;
+  FPressPoint := Point(X, Y);
+end;
+
+procedure TAtlasWelcomeGrip.MouseMove(Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  if not FPressed or not (ssLeft in Shift) then
+  begin
+    Exit;
+  end;
+  if not FDragging and ((Abs(X - FPressPoint.X) > ScaleValue(TAtlasArrangeStrip.cDragDistance)) or
+    (Abs(Y - FPressPoint.Y) > ScaleValue(TAtlasArrangeStrip.cDragDistance))) then
+  begin
+    FDragging := True;
+    if Assigned(FOnDragStart) then
+    begin
+      FOnDragStart(FSectionId);
+    end;
+  end;
+  if FDragging and Assigned(FOnDragMove) then
+  begin
+    FOnDragMove(ClientToScreen(Point(X, Y)));
+  end;
+end;
+
+procedure TAtlasWelcomeGrip.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  if Button = mbLeft then
+  begin
+    EndDrag(True);
+  end;
+end;
+
 procedure TAtlasWelcomeGrip.WMGetDlgCode(var Message: TWMGetDlgCode);
 begin
   inherited;
   Message.Result := Message.Result or DLGC_WANTARROWS;
+end;
+
+procedure TAtlasWelcomeGrip.CNKeyDown(var Message: TWMKeyDown);
+begin
+  if HandleKey(Message.CharCode, KeyDataToShiftState(Message.KeyData)) then
+  begin
+    Message.Result := 1;
+    Exit;
+  end;
+  inherited;
+end;
+
+procedure TAtlasWelcomeGrip.EndDrag(ADrop: Boolean);
+var
+  mWas: Boolean;
+begin
+  mWas := FDragging;
+  FPressed := False;
+  FDragging := False;
+  if MouseCapture then
+  begin
+    MouseCapture := False;
+  end;
+  if mWas and Assigned(FOnDragEnd) then
+  begin
+    FOnDragEnd(ADrop);
+  end;
 end;
 
 function TAtlasWelcomeGrip.HandleKey(AKey: Word; AShift: TShiftState): Boolean;
@@ -610,80 +684,6 @@ begin
   Result := True;
 end;
 
-procedure TAtlasWelcomeGrip.CNKeyDown(var Message: TWMKeyDown);
-begin
-  if HandleKey(Message.CharCode, KeyDataToShiftState(Message.KeyData)) then
-  begin
-    Message.Result := 1;
-    Exit;
-  end;
-  inherited;
-end;
-
-procedure TAtlasWelcomeGrip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  inherited;
-  if Button <> mbLeft then
-  begin
-    Exit;
-  end;
-  if CanFocus and (GetParentForm(Self) <> nil) and GetParentForm(Self).Visible then
-  begin
-    SetFocus;
-  end;
-  FPressed := True;
-  FDragging := False;
-  FPressPoint := Point(X, Y);
-end;
-
-procedure TAtlasWelcomeGrip.MouseMove(Shift: TShiftState; X, Y: Integer);
-begin
-  inherited;
-  if not FPressed or not (ssLeft in Shift) then
-  begin
-    Exit;
-  end;
-  if not FDragging and ((Abs(X - FPressPoint.X) > ScaleValue(TAtlasArrangeStrip.cDragDistance)) or
-    (Abs(Y - FPressPoint.Y) > ScaleValue(TAtlasArrangeStrip.cDragDistance))) then
-  begin
-    FDragging := True;
-    if Assigned(FOnDragStart) then
-    begin
-      FOnDragStart(FSectionId);
-    end;
-  end;
-  if FDragging and Assigned(FOnDragMove) then
-  begin
-    FOnDragMove(ClientToScreen(Point(X, Y)));
-  end;
-end;
-
-procedure TAtlasWelcomeGrip.EndDrag(ADrop: Boolean);
-var
-  mWas: Boolean;
-begin
-  mWas := FDragging;
-  FPressed := False;
-  FDragging := False;
-  if MouseCapture then
-  begin
-    MouseCapture := False;
-  end;
-  if mWas and Assigned(FOnDragEnd) then
-  begin
-    FOnDragEnd(ADrop);
-  end;
-end;
-
-procedure TAtlasWelcomeGrip.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  inherited;
-  if Button = mbLeft then
-  begin
-    EndDrag(True);
-  end;
-end;
-
 { TAtlasWelcomeSectionTools }
 
 constructor TAtlasWelcomeSectionTools.Create(AOwner: TComponent);
@@ -692,22 +692,6 @@ begin
   ParentColor := True;
   Width := 2 * cToolWidth;
   ShowHint := True;
-end;
-
-function TAtlasWelcomeSectionTools.ToolAt(AX: Integer): TAtlasWelcomeTool;
-begin
-  if (AX < 0) or (AX >= ClientWidth) then
-  begin
-    Result := TAtlasWelcomeTool.None;
-  end
-  else if AX < ClientWidth div 2 then
-  begin
-    Result := TAtlasWelcomeTool.Width;
-  end
-  else
-  begin
-    Result := TAtlasWelcomeTool.Eye;
-  end;
 end;
 
 procedure TAtlasWelcomeSectionTools.Paint;
@@ -795,6 +779,31 @@ begin
   Invalidate;
 end;
 
+procedure TAtlasWelcomeSectionTools.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  if Button = mbLeft then
+  begin
+    Click(ToolAt(X));
+  end;
+end;
+
+function TAtlasWelcomeSectionTools.ToolAt(AX: Integer): TAtlasWelcomeTool;
+begin
+  if (AX < 0) or (AX >= ClientWidth) then
+  begin
+    Result := TAtlasWelcomeTool.None;
+  end
+  else if AX < ClientWidth div 2 then
+  begin
+    Result := TAtlasWelcomeTool.Width;
+  end
+  else
+  begin
+    Result := TAtlasWelcomeTool.Eye;
+  end;
+end;
+
 procedure TAtlasWelcomeSectionTools.CMMouseLeave(var Message: TMessage);
 begin
   inherited;
@@ -802,15 +811,6 @@ begin
   begin
     FHot := TAtlasWelcomeTool.None;
     Invalidate;
-  end;
-end;
-
-procedure TAtlasWelcomeSectionTools.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  inherited;
-  if Button = mbLeft then
-  begin
-    Click(ToolAt(X));
   end;
 end;
 

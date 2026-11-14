@@ -100,14 +100,22 @@ const
 
 { TServerPackage }
 
-class function TServerPackage.IsSecretKey(const AKey: string): Boolean;
+class function TServerPackage.ToJson(const AFiles: TArray<TServerPackageFile>): TJSONObject;
 var
-  mKey: string;
+  mFiles: TJSONArray;
+  mItem: TJSONObject;
+  mFile: TServerPackageFile;
 begin
-  mKey := LowerCase(AKey);
-  Result := mKey.Contains('token') or mKey.Contains('password') or mKey.Contains('passwort') or
-    mKey.Contains('secret') or mKey.Contains('apikey') or mKey.Contains('api_key') or
-    mKey.Contains('credential') or mKey.Contains('authorization');
+  Result := TJSONObject.Create;
+  mFiles := TJSONArray.Create;
+  for mFile in AFiles do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('name', mFile.Name);
+    mItem.AddPair('content', mFile.Content);
+    mFiles.AddElement(mItem);
+  end;
+  Result.AddPair('files', mFiles);
 end;
 
 /// <summary>Text, aber keine Zahl: TJSONNumber erbt von TJSONString.</summary>
@@ -377,22 +385,14 @@ begin
   end;
 end;
 
-class function TServerPackage.ToJson(const AFiles: TArray<TServerPackageFile>): TJSONObject;
+class function TServerPackage.IsSecretKey(const AKey: string): Boolean;
 var
-  mFiles: TJSONArray;
-  mItem: TJSONObject;
-  mFile: TServerPackageFile;
+  mKey: string;
 begin
-  Result := TJSONObject.Create;
-  mFiles := TJSONArray.Create;
-  for mFile in AFiles do
-  begin
-    mItem := TJSONObject.Create;
-    mItem.AddPair('name', mFile.Name);
-    mItem.AddPair('content', mFile.Content);
-    mFiles.AddElement(mItem);
-  end;
-  Result.AddPair('files', mFiles);
+  mKey := LowerCase(AKey);
+  Result := mKey.Contains('token') or mKey.Contains('password') or mKey.Contains('passwort') or
+    mKey.Contains('secret') or mKey.Contains('apikey') or mKey.Contains('api_key') or
+    mKey.Contains('credential') or mKey.Contains('authorization');
 end;
 
 initialization

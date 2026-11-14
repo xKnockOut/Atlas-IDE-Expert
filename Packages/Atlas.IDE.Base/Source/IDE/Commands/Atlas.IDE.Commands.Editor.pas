@@ -338,6 +338,14 @@ begin
   FOnUnitRelations := nil;
 end;
 
+class procedure TAtlasIdeEditorCommands.ApplySettings;
+begin
+  if FContextMenu <> nil then
+  begin
+    FContextMenu.UpdateVisibility;
+  end;
+end;
+
 class procedure TAtlasIdeEditorCommands.EnsureContextMenus;
 begin
   if FContextMenu <> nil then
@@ -347,14 +355,6 @@ begin
 end;
 
 class procedure TAtlasIdeEditorCommands.UpdateContextMenus;
-begin
-  if FContextMenu <> nil then
-  begin
-    FContextMenu.UpdateVisibility;
-  end;
-end;
-
-class procedure TAtlasIdeEditorCommands.ApplySettings;
 begin
   if FContextMenu <> nil then
   begin

@@ -57,6 +57,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeSearchEditor }
+
 class function TAtlasIdeSearchEditor.TopView(out AView: IOTAEditView): Boolean;
 var
   mEditors: IOTAEditorServices;

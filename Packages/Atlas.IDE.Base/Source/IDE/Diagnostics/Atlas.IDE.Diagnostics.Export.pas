@@ -31,6 +31,8 @@ uses
   Atlas.UI.Diagnostics.Strings,
   Atlas.IDE.Diagnostics.Timing;
 
+{ TAtlasIdeDiagnosticExport }
+
 class procedure TAtlasIdeDiagnosticExport.Execute(const AMessage: TProc<string>);
 var
   mFiles: TArray<string>;

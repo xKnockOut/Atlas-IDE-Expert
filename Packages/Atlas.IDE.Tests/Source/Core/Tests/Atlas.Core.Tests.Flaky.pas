@@ -324,14 +324,6 @@ begin
   end;
 end;
 
-function TAtlasTestHistory.MarksOf(const AKey: string): TArray<TAtlasTestRunMark>;
-begin
-  if not FMarks.TryGetValue(AKey, Result) then
-  begin
-    Result := nil;
-  end;
-end;
-
 function TAtlasTestHistory.Check(const AKey, ABody: string; out ATest: TAtlasFlakyTest): Boolean;
 var
   mMark: TAtlasTestRunMark;
@@ -413,6 +405,14 @@ begin
     end;
   end;
   Result := Result and IsFlaky(AKey, mLast.Body, ATest);
+end;
+
+function TAtlasTestHistory.MarksOf(const AKey: string): TArray<TAtlasTestRunMark>;
+begin
+  if not FMarks.TryGetValue(AKey, Result) then
+  begin
+    Result := nil;
+  end;
 end;
 
 function TAtlasTestHistory.Count: Integer;

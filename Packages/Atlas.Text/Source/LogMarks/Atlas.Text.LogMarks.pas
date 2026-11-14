@@ -88,14 +88,7 @@ begin
   end;
 end;
 
-class function TLogMarks.Mark(AKind: TLogMarkKind; const AValue: string): string;
-begin
-  if AValue = '' then
-  begin
-    Exit('');
-  end;
-  Result := cStartChar + cKindChars[AKind] + WithoutMarkChars(AValue) + cStopChar;
-end;
+{ TLogMarks }
 
 class function TLogMarks.Name(const AValue: string): string;
 begin
@@ -110,6 +103,15 @@ end;
 class function TLogMarks.Text(const AValue: string): string;
 begin
   Result := Mark(TLogMarkKind.Text, AValue);
+end;
+
+class function TLogMarks.Mark(AKind: TLogMarkKind; const AValue: string): string;
+begin
+  if AValue = '' then
+  begin
+    Exit('');
+  end;
+  Result := cStartChar + cKindChars[AKind] + WithoutMarkChars(AValue) + cStopChar;
 end;
 
 class function TLogMarks.HasMarks(const AText: string): Boolean;
@@ -134,6 +136,15 @@ begin
   end;
   Result := WithoutMarkChars(Copy(AText, mFirst, mStop - mFirst));
   AStart := mStop + 1;
+end;
+
+class function TLogMarks.Plain(const AText: string): string;
+begin
+  Result := Resolve(AText,
+    function(AKind: TLogMarkKind; const AValue: string): string
+    begin
+      Result := AValue;
+    end);
 end;
 
 class function TLogMarks.Resolve(const AText: string; const AMap: TLogMarkMap): string;
@@ -171,15 +182,6 @@ begin
   finally
     mBuilder.Free;
   end;
-end;
-
-class function TLogMarks.Plain(const AText: string): string;
-begin
-  Result := Resolve(AText,
-    function(AKind: TLogMarkKind; const AValue: string): string
-    begin
-      Result := AValue;
-    end);
 end;
 
 end.

@@ -318,85 +318,6 @@ begin
     TRuleConfidence.High, AFixes);
 end;
 
-/// <summary>Steht direkt vor dem Aufruf "New(AName);" oder "GetMem(AName, …);"? Dann füllt FillChar frischen
-/// Speicher: New hat die verwalteten Felder schon mit nil belegt, nach GetMem ist Nullen die Initialisierung
-/// (FP-Prüfung 28.10.2026, F10).</summary>
-function TRawMemoryScan.AllocatedJustBefore(const AName: string): Boolean;
-var
-  mSemicolon, mClose, mOpen, mDepth, mFirst: Integer;
-begin
-  Result := False;
-  mSemicolon := PreviousCode(FTokens, FCall);
-  if (mSemicolon < 0) or not FTokens[mSemicolon].IsSymbol(';') then
-  begin
-    Exit;
-  end;
-  mClose := PreviousCode(FTokens, mSemicolon);
-  if (mClose < 0) or not FTokens[mClose].IsSymbol(')') then
-  begin
-    Exit;
-  end;
-  mOpen := mClose;
-  mDepth := 0;
-  repeat
-    if FTokens[mOpen].IsSymbol(')') then
-    begin
-      Inc(mDepth);
-    end
-    else if FTokens[mOpen].IsSymbol('(') then
-    begin
-      Dec(mDepth);
-    end;
-    if mDepth > 0 then
-    begin
-      mOpen := PreviousCode(FTokens, mOpen);
-    end;
-  until (mDepth = 0) or (mOpen < 0);
-  if mOpen <= 0 then
-  begin
-    Exit;
-  end;
-  mFirst := NextCode(FTokens, mOpen + 1);
-  Result := MatchText(FTokens[PreviousCode(FTokens, mOpen)].Text, ['New', 'GetMem']) and
-    SameText(FTokens[mFirst].Text, AName) and (FTokens[NextCode(FTokens, mFirst + 1)].IsSymbol(')') or
-    FTokens[NextCode(FTokens, mFirst + 1)].IsSymbol(','));
-end;
-
-/// <summary>Folgt direkt auf den Aufruf "FillChar(AName^, …, 0);" oder "ZeroMemory(AName, …);"? Dann ist der mit
-/// GetMem geholte Speicher initialisiert.</summary>
-function TRawMemoryScan.ZeroedJustAfter(const AName: string): Boolean;
-var
-  mSemicolon, mCall, mOpen, mFirst, mClose: Integer;
-begin
-  Result := False;
-  mSemicolon := NextCode(FTokens, FClose + 1);
-  if (mSemicolon > High(FTokens)) or not FTokens[mSemicolon].IsSymbol(';') then
-  begin
-    Exit;
-  end;
-  mCall := NextCode(FTokens, mSemicolon + 1);
-  mOpen := NextCode(FTokens, mCall + 1);
-  if (mOpen > High(FTokens)) or not FTokens[mOpen].IsSymbol('(') then
-  begin
-    Exit;
-  end;
-  mClose := MatchingParen(FTokens, mOpen);
-  mFirst := NextCode(FTokens, mOpen + 1);
-  if (mClose < 0) or not SameText(FTokens[mFirst].Text, AName) then
-  begin
-    Exit;
-  end;
-  if SameText(FTokens[mCall].Text, 'FillChar') then
-  begin
-    Result := FTokens[NextCode(FTokens, mFirst + 1)].IsSymbol('^') and
-      MatchText(FTokens[PreviousCode(FTokens, mClose)].Text, ['0', '#0', '$0', '$00']);
-  end
-  else if SameText(FTokens[mCall].Text, 'ZeroMemory') then
-  begin
-    Result := FTokens[NextCode(FTokens, mFirst + 1)].IsSymbol(',');
-  end;
-end;
-
 procedure TRawMemoryScan.CheckOverwrite;
 var
   mName: Integer;
@@ -530,6 +451,85 @@ begin
   begin
     FClose := MatchingParen(FTokens, FOpen);
     Result := FClose >= 0;
+  end;
+end;
+
+/// <summary>Steht direkt vor dem Aufruf "New(AName);" oder "GetMem(AName, …);"? Dann füllt FillChar frischen
+/// Speicher: New hat die verwalteten Felder schon mit nil belegt, nach GetMem ist Nullen die Initialisierung
+/// (FP-Prüfung 28.10.2026, F10).</summary>
+function TRawMemoryScan.AllocatedJustBefore(const AName: string): Boolean;
+var
+  mSemicolon, mClose, mOpen, mDepth, mFirst: Integer;
+begin
+  Result := False;
+  mSemicolon := PreviousCode(FTokens, FCall);
+  if (mSemicolon < 0) or not FTokens[mSemicolon].IsSymbol(';') then
+  begin
+    Exit;
+  end;
+  mClose := PreviousCode(FTokens, mSemicolon);
+  if (mClose < 0) or not FTokens[mClose].IsSymbol(')') then
+  begin
+    Exit;
+  end;
+  mOpen := mClose;
+  mDepth := 0;
+  repeat
+    if FTokens[mOpen].IsSymbol(')') then
+    begin
+      Inc(mDepth);
+    end
+    else if FTokens[mOpen].IsSymbol('(') then
+    begin
+      Dec(mDepth);
+    end;
+    if mDepth > 0 then
+    begin
+      mOpen := PreviousCode(FTokens, mOpen);
+    end;
+  until (mDepth = 0) or (mOpen < 0);
+  if mOpen <= 0 then
+  begin
+    Exit;
+  end;
+  mFirst := NextCode(FTokens, mOpen + 1);
+  Result := MatchText(FTokens[PreviousCode(FTokens, mOpen)].Text, ['New', 'GetMem']) and
+    SameText(FTokens[mFirst].Text, AName) and (FTokens[NextCode(FTokens, mFirst + 1)].IsSymbol(')') or
+    FTokens[NextCode(FTokens, mFirst + 1)].IsSymbol(','));
+end;
+
+/// <summary>Folgt direkt auf den Aufruf "FillChar(AName^, …, 0);" oder "ZeroMemory(AName, …);"? Dann ist der mit
+/// GetMem geholte Speicher initialisiert.</summary>
+function TRawMemoryScan.ZeroedJustAfter(const AName: string): Boolean;
+var
+  mSemicolon, mCall, mOpen, mFirst, mClose: Integer;
+begin
+  Result := False;
+  mSemicolon := NextCode(FTokens, FClose + 1);
+  if (mSemicolon > High(FTokens)) or not FTokens[mSemicolon].IsSymbol(';') then
+  begin
+    Exit;
+  end;
+  mCall := NextCode(FTokens, mSemicolon + 1);
+  mOpen := NextCode(FTokens, mCall + 1);
+  if (mOpen > High(FTokens)) or not FTokens[mOpen].IsSymbol('(') then
+  begin
+    Exit;
+  end;
+  mClose := MatchingParen(FTokens, mOpen);
+  mFirst := NextCode(FTokens, mOpen + 1);
+  if (mClose < 0) or not SameText(FTokens[mFirst].Text, AName) then
+  begin
+    Exit;
+  end;
+  if SameText(FTokens[mCall].Text, 'FillChar') then
+  begin
+    Result := FTokens[NextCode(FTokens, mFirst + 1)].IsSymbol('^') and
+      MatchText(FTokens[PreviousCode(FTokens, mClose)].Text, ['0', '#0', '$0', '$00']);
+  end
+  else if SameText(FTokens[mCall].Text, 'ZeroMemory') then
+  begin
+    Result := FTokens[NextCode(FTokens, mFirst + 1)].IsSymbol(',');
   end;
 end;
 
@@ -701,6 +701,8 @@ const
   // Asynchrone Nachrichten: der Empfänger liest den Zeiger erst nach der Anweisung.
   cAsyncMessages: array[0..3] of string = ('PostMessage', 'PostThreadMessage', 'SendNotifyMessage',
     'SendMessageCallback');
+
+{ TPCharOfTemporaryRule }
 
 function TPCharOfTemporaryRule.Descriptor: TRuleDescriptor;
 begin
@@ -1045,27 +1047,12 @@ type
   TCommandLineKind = (None, Constant, Concatenation, Variable, Parameter);
 {$SCOPEDENUMS OFF}
 
+{ TCreateProcessReadonlyCommandLineRule }
+
 function TCreateProcessReadonlyCommandLineRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('createprocess-readonly-commandline', TRuleSeverity.Error,
     cTexts[TRtlTypePatternsMemoryText.CreateProcessTitle].Text);
-end;
-
-class function TCreateProcessReadonlyCommandLineRule.CommandLineIndex(const AName: string): Integer;
-begin
-  // CreateProcessA kopiert die Befehlszeile selbst in einen Puffer; nur die Unicode-Fassung schreibt hinein.
-  if MatchText(AName, ['CreateProcess', 'CreateProcessW']) then
-  begin
-    Result := 1;
-  end
-  else if MatchText(AName, ['CreateProcessAsUser', 'CreateProcessAsUserW']) then
-  begin
-    Result := 2;
-  end
-  else
-  begin
-    Result := -1;
-  end;
 end;
 
 procedure TCreateProcessReadonlyCommandLineRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1419,6 +1406,23 @@ begin
     Visit(AContext.Tree.Root);
   finally
     mTypes.Free;
+  end;
+end;
+
+class function TCreateProcessReadonlyCommandLineRule.CommandLineIndex(const AName: string): Integer;
+begin
+  // CreateProcessA kopiert die Befehlszeile selbst in einen Puffer; nur die Unicode-Fassung schreibt hinein.
+  if MatchText(AName, ['CreateProcess', 'CreateProcessW']) then
+  begin
+    Result := 1;
+  end
+  else if MatchText(AName, ['CreateProcessAsUser', 'CreateProcessAsUserW']) then
+  begin
+    Result := 2;
+  end
+  else
+  begin
+    Result := -1;
   end;
 end;
 

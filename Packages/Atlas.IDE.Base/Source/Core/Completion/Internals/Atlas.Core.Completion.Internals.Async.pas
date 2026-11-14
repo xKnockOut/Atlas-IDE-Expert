@@ -104,24 +104,28 @@ begin
   inherited;
 end;
 
-function TAtlasAsyncCompletionProvider.Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean;
+procedure TAtlasAsyncCompletionProvider.ReapWorkers;
+var
+  mIndex: Integer;
 begin
-  AData := nil;
-  Result := True;
-end;
-
-function TAtlasAsyncCompletionProvider.ProviderName: string;
-begin
-  Result := FName;
-  if Result = '' then
-  begin
-    Result := ClassName;
+  FLock.Enter;
+  try
+    for mIndex := FWorkers.Count - 1 downto 0 do
+    begin
+      if FWorkers[mIndex].Finished then
+      begin
+        FWorkers[mIndex].Free;
+        FWorkers.Delete(mIndex);
+      end;
+    end;
+  finally
+    FLock.Leave;
   end;
 end;
 
-function TAtlasAsyncCompletionProvider.IsFailure(AE: Exception): Boolean;
+function TAtlasAsyncCompletionProvider.IsCurrent(AGeneration: Integer): Boolean;
 begin
-  Result := not (AE is EAbort);
+  Result := TInterlocked.CompareExchange(FGeneration, 0, 0) = AGeneration;
 end;
 
 procedure TAtlasAsyncCompletionProvider.Failed(AE: Exception);
@@ -136,9 +140,15 @@ begin
   end;
 end;
 
-function TAtlasAsyncCompletionProvider.IsCurrent(AGeneration: Integer): Boolean;
+function TAtlasAsyncCompletionProvider.IsFailure(AE: Exception): Boolean;
 begin
-  Result := TInterlocked.CompareExchange(FGeneration, 0, 0) = AGeneration;
+  Result := not (AE is EAbort);
+end;
+
+function TAtlasAsyncCompletionProvider.Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean;
+begin
+  AData := nil;
+  Result := True;
 end;
 
 procedure TAtlasAsyncCompletionProvider.RunInBackground(const AWork: TProc);
@@ -167,25 +177,6 @@ begin
   mWorker.Start;
 end;
 
-procedure TAtlasAsyncCompletionProvider.ReapWorkers;
-var
-  mIndex: Integer;
-begin
-  FLock.Enter;
-  try
-    for mIndex := FWorkers.Count - 1 downto 0 do
-    begin
-      if FWorkers[mIndex].Finished then
-      begin
-        FWorkers[mIndex].Free;
-        FWorkers.Delete(mIndex);
-      end;
-    end;
-  finally
-    FLock.Leave;
-  end;
-end;
-
 procedure TAtlasAsyncCompletionProvider.Shutdown;
 var
   mWorkers: TArray<TThread>;
@@ -203,6 +194,50 @@ begin
   begin
     mWorker.WaitFor;
     mWorker.Free;
+  end;
+end;
+
+procedure TAtlasAsyncCompletionProvider.Query(const AContext: TAtlasContext; const ASink: IAtlasCompletionSink);
+var
+  mGeneration: Integer;
+  mContext: TAtlasContext;
+  mSink: IAtlasCompletionSink;
+  mData: TObject;
+  mWorker: TThread;
+begin
+  mGeneration := TInterlocked.Increment(FGeneration);
+  ReapWorkers;
+  if not Prepare(AContext, mData) then
+  begin
+    ASink.Complete;
+    Exit;
+  end;
+  mContext := AContext;
+  mSink := ASink;
+  mWorker := nil;
+  FLock.Enter;
+  try
+    // Prepare läuft im Zeitlimit-Arbeiter und kann das Zeitlimit überdauern: Ist die Anfrage
+    // inzwischen überholt, abgebrochen oder hat Shutdown die Arbeiter eingesammelt, keine Vollanfrage mehr stellen.
+    // Unter FLock und mit Start in der Sperre, damit Shutdown keinen danach gestarteten Arbeiter übersieht.
+    if IsCurrent(mGeneration) then
+    begin
+      mWorker := TThread.CreateAnonymousThread(
+        procedure
+        begin
+          RunFetch(mContext, mData, mSink, mGeneration);
+        end);
+      mWorker.FreeOnTerminate := False;
+      FWorkers.Add(mWorker);
+      mWorker.Start;
+    end;
+  finally
+    FLock.Leave;
+  end;
+  // Überholt: Die Senken verwerfen veraltete Aufrufe; Composite erwartet je Teil ein Complete.
+  if mWorker = nil then
+  begin
+    ASink.Complete;
   end;
 end;
 
@@ -267,47 +302,12 @@ begin
   end;
 end;
 
-procedure TAtlasAsyncCompletionProvider.Query(const AContext: TAtlasContext; const ASink: IAtlasCompletionSink);
-var
-  mGeneration: Integer;
-  mContext: TAtlasContext;
-  mSink: IAtlasCompletionSink;
-  mData: TObject;
-  mWorker: TThread;
+function TAtlasAsyncCompletionProvider.ProviderName: string;
 begin
-  mGeneration := TInterlocked.Increment(FGeneration);
-  ReapWorkers;
-  if not Prepare(AContext, mData) then
+  Result := FName;
+  if Result = '' then
   begin
-    ASink.Complete;
-    Exit;
-  end;
-  mContext := AContext;
-  mSink := ASink;
-  mWorker := nil;
-  FLock.Enter;
-  try
-    // Prepare läuft im Zeitlimit-Arbeiter und kann das Zeitlimit überdauern: Ist die Anfrage
-    // inzwischen überholt, abgebrochen oder hat Shutdown die Arbeiter eingesammelt, keine Vollanfrage mehr stellen.
-    // Unter FLock und mit Start in der Sperre, damit Shutdown keinen danach gestarteten Arbeiter übersieht.
-    if IsCurrent(mGeneration) then
-    begin
-      mWorker := TThread.CreateAnonymousThread(
-        procedure
-        begin
-          RunFetch(mContext, mData, mSink, mGeneration);
-        end);
-      mWorker.FreeOnTerminate := False;
-      FWorkers.Add(mWorker);
-      mWorker.Start;
-    end;
-  finally
-    FLock.Leave;
-  end;
-  // Überholt: Die Senken verwerfen veraltete Aufrufe; Composite erwartet je Teil ein Complete.
-  if mWorker = nil then
-  begin
-    ASink.Complete;
+    Result := ClassName;
   end;
 end;
 

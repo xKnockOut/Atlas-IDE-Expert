@@ -209,6 +209,8 @@ begin
   Result := nil;
 end;
 
+{ TResolverChainStart }
+
 class function TResolverChainStart.Plain: TResolverChainStart;
 begin
   Result := Make(False, nil, nil);
@@ -220,6 +222,8 @@ begin
   Result.Receiver := AReceiver;
   Result.Call := ACall;
 end;
+
+{ TResolverChains }
 
 constructor TResolverChains.Create(const AParts: TResolverParts; AExpressions: TResolverExpressions);
 begin
@@ -322,31 +326,6 @@ begin
   Result := True;
 end;
 
-function TResolverChains.ResolveNames(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
-  AOffset: Integer; const AStart: TResolverChainStart): TArray<TResolvedSymbol>;
-var
-  mConsumed: Integer;
-  mCandidates: TArray<TResolvedSymbol>;
-begin
-  Result := nil;
-  if (ATree = nil) or (Length(ANames) = 0) then
-  begin
-    Exit;
-  end;
-  FPlace.MoveTo(ATree, AFileName, AOffset);
-  if not StartCandidates(ANames, AStart, mConsumed, mCandidates) or
-    not FollowChain(ANames, mConsumed, mCandidates) then
-  begin
-    Exit;
-  end;
-  if AStart.Call <> nil then
-  begin
-    mCandidates := FExpressions.SelectOverloads(mCandidates, AStart.Call.ChildCount - 1,
-      FExpressions.ArgTypes(AStart.Call, 1));
-  end;
-  Result := WithoutBuiltins(mCandidates);
-end;
-
 function TResolverChains.UnitAtCursor(const AAt: TChainAt; out ASymbol: TResolvedSymbol): Boolean;
 var
   mLast: Integer;
@@ -441,6 +420,72 @@ begin
   end;
   Result := ResolveNames(AAt.Tree, AAt.FileName, AAt.Names, AAt.Tokens[AAt.Index].Offset,
     TResolverChainStart.Make(mInherited, AAt.Receiver, mCall));
+end;
+
+function TResolverChains.ElementDecides(AWith: TSyntaxNode; AIndex: Integer; const AName: string;
+  out AHidden: Boolean): Boolean;
+var
+  mType: TResolvedSymbol;
+  mComplete: Boolean;
+begin
+  AHidden := True;
+  if not FExpressions.WithElementType(AWith, AIndex, mType) then
+  begin
+    Exit(True);
+  end;
+  AHidden := False;
+  if Length(FMembers.FindMembers(mType, AName)) > 0 then
+  begin
+    Exit(True);
+  end;
+  FTyping.AncestorNames(mType, mComplete);
+  AHidden := not mComplete;
+  Result := AHidden;
+end;
+
+function TResolverChains.WithDecides(const AName: string; out AHidden: Boolean): Boolean;
+var
+  mWith: TSyntaxNode;
+  mIndex: Integer;
+begin
+  // with-Objekte verdecken alles weiter außen, innerstes zuerst (wie LookupWithOwner).
+  AHidden := False;
+  for mWith in FPlace.EnclosingWiths do
+  begin
+    for mIndex := mWith.ChildCount - 2 downto 0 do
+    begin
+      if ElementDecides(mWith, mIndex, AName, AHidden) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
+function TResolverChains.ResolveNames(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
+  AOffset: Integer; const AStart: TResolverChainStart): TArray<TResolvedSymbol>;
+var
+  mConsumed: Integer;
+  mCandidates: TArray<TResolvedSymbol>;
+begin
+  Result := nil;
+  if (ATree = nil) or (Length(ANames) = 0) then
+  begin
+    Exit;
+  end;
+  FPlace.MoveTo(ATree, AFileName, AOffset);
+  if not StartCandidates(ANames, AStart, mConsumed, mCandidates) or
+    not FollowChain(ANames, mConsumed, mCandidates) then
+  begin
+    Exit;
+  end;
+  if AStart.Call <> nil then
+  begin
+    mCandidates := FExpressions.SelectOverloads(mCandidates, AStart.Call.ChildCount - 1,
+      FExpressions.ArgTypes(AStart.Call, 1));
+  end;
+  Result := WithoutBuiltins(mCandidates);
 end;
 
 function TResolverChains.ResolveAt(ATree: TSyntaxTree; const AFileName: string;
@@ -576,47 +621,6 @@ begin
   end;
   FPlace.MoveTo(ATree, AFileName, ACallee.StartOffset);
   Result := FExpressions.ExprCandidates(ACallee);
-end;
-
-function TResolverChains.ElementDecides(AWith: TSyntaxNode; AIndex: Integer; const AName: string;
-  out AHidden: Boolean): Boolean;
-var
-  mType: TResolvedSymbol;
-  mComplete: Boolean;
-begin
-  AHidden := True;
-  if not FExpressions.WithElementType(AWith, AIndex, mType) then
-  begin
-    Exit(True);
-  end;
-  AHidden := False;
-  if Length(FMembers.FindMembers(mType, AName)) > 0 then
-  begin
-    Exit(True);
-  end;
-  FTyping.AncestorNames(mType, mComplete);
-  AHidden := not mComplete;
-  Result := AHidden;
-end;
-
-function TResolverChains.WithDecides(const AName: string; out AHidden: Boolean): Boolean;
-var
-  mWith: TSyntaxNode;
-  mIndex: Integer;
-begin
-  // with-Objekte verdecken alles weiter außen, innerstes zuerst (wie LookupWithOwner).
-  AHidden := False;
-  for mWith in FPlace.EnclosingWiths do
-  begin
-    for mIndex := mWith.ChildCount - 2 downto 0 do
-    begin
-      if ElementDecides(mWith, mIndex, AName, AHidden) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-  Result := False;
 end;
 
 function TResolverChains.MayBeHiddenMember(ATree: TSyntaxTree; const AFileName: string; ACallee: TSyntaxNode;

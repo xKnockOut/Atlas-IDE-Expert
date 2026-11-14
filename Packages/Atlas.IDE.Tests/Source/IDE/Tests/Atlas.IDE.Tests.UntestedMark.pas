@@ -104,66 +104,6 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasIdeUntestedMark.Wanted(const ASettings: TAtlasPluginSettings): Boolean;
-begin
-  Result := TAtlasUntested.Wanted(ASettings);
-end;
-
-procedure TAtlasIdeUntestedMark.Update(const AFileName, AText: string; const AUnit: TAtlasCoveredUnit);
-begin
-  FFileName := AFileName;
-  FUnit := AUnit;
-  FLine := TAtlasUntested.UnitLine(AText);
-  FRect := TRect.Empty;
-end;
-
-procedure TAtlasIdeUntestedMark.Clear;
-begin
-  FFileName := '';
-  FUnit := Default(TAtlasCoveredUnit);
-  FLine := -1;
-  FRect := TRect.Empty;
-end;
-
-procedure TAtlasIdeUntestedMark.PaintLine(const ARow: TRect; const AContext: INTACodeEditorPaintContext);
-var
-  mLineState: INTACodeEditorLineState;
-  mLine: string;
-  mRow: TRect;
-  mContext: INTACodeEditorPaintContext;
-begin
-  if (FLine < 0) or (AContext.LogicalLineNum - 1 <> FLine) or not SameText(AContext.FileName, FFileName) or
-    not TAtlasUntested.Wanted(TAtlasIdeSettings.Current) or
-    not TAtlasUntested.Shown(FUnit.HasTestUnit, Length(FUnit.Methods)) then
-  begin
-    Exit;
-  end;
-  mLineState := AContext.LineState;
-  if (mLineState = nil) or (AContext.EditView = nil) then
-  begin
-    Exit;
-  end;
-  mLine := mLineState.Text;
-  // Text seit der Antwort verschoben: keine Marke an einer Zeile ohne „unit“.
-  if Pos('unit', LowerCase(mLine)) = 0 then
-  begin
-    Exit;
-  end;
-  // Ausgeblendet am Element (#628): eine Marke je Datei, Anker ist der Name der Unit.
-  if TAtlasIdeElements.Hidden(TAtlasDrawnElement.CodeLensUntested, FFileName, FUnit.UnitName) then
-  begin
-    FRect := TRect.Empty;
-    Exit;
-  end;
-  mRow := ARow;
-  mContext := AContext;
-  TAtlasIdeLensPill.Guarded(AContext.Canvas,
-    procedure
-    begin
-      PaintMark(mRow, mContext, TAtlasIdeLensPill.LeftOf(mContext, mLine));
-    end);
-end;
-
 procedure TAtlasIdeUntestedMark.PaintMark(const ARow: TRect; const AContext: INTACodeEditorPaintContext;
   ALeft: Integer);
 var
@@ -209,31 +149,42 @@ begin
     (mView.TopRow = FTopRow);
 end;
 
-function TAtlasIdeUntestedMark.MouseDown(AX, AY: Integer; const AAt: TPoint): Boolean;
+procedure TAtlasIdeUntestedMark.ItemClick(Sender: TObject);
 var
-  mSelf: TAtlasIdeUntestedMark;
-  mState: IInterface;
-  mAt: TPoint;
+  mIndex: Integer;
 begin
-  // Nur, wenn die Marke noch dort steht: gleiche Datei, nicht gescrollt.
-  Result := not FRect.IsEmpty and PtInRect(FRect, Point(AX, AY)) and
-    TAtlasUntested.Wanted(TAtlasIdeSettings.Current) and StillShown;
-  if not Result then
+  mIndex := (Sender as TMenuItem).Tag;
+  if (mIndex >= 0) and (mIndex <= High(FListed)) then
   begin
-    Exit;
+    TAtlasIdeNavigation.GoToLocation(FFileName, FListed[mIndex].Line, FListed[mIndex].Character);
   end;
-  mSelf := Self;
-  mState := FStateRef;
-  mAt := AAt;
-  // Erst nach dem Mausereignis: der Editor setzt sonst den Cursor danach.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.CodeLens,
-    procedure
-    begin
-      if TState(mState as TObject).Alive then
-      begin
-        mSelf.Clicked(mAt);
-      end;
-    end);
+end;
+
+procedure TAtlasIdeUntestedMark.CreateTestClick(Sender: TObject);
+begin
+  // Testunit öffnen bzw. anlegen wie „Zur Testunit wechseln“.
+  TAtlasIdeHost.ExecuteCommand('Atlas.SwitchTestUnit');
+end;
+
+class function TAtlasIdeUntestedMark.Wanted(const ASettings: TAtlasPluginSettings): Boolean;
+begin
+  Result := TAtlasUntested.Wanted(ASettings);
+end;
+
+procedure TAtlasIdeUntestedMark.Update(const AFileName, AText: string; const AUnit: TAtlasCoveredUnit);
+begin
+  FFileName := AFileName;
+  FUnit := AUnit;
+  FLine := TAtlasUntested.UnitLine(AText);
+  FRect := TRect.Empty;
+end;
+
+procedure TAtlasIdeUntestedMark.Clear;
+begin
+  FFileName := '';
+  FUnit := Default(TAtlasCoveredUnit);
+  FLine := -1;
+  FRect := TRect.Empty;
 end;
 
 /// <summary>Menüeintrag mit ACaption (ohne Kurzwahl über &amp;); ohne AClick nur Text.</summary>
@@ -276,21 +227,70 @@ begin
   FMenu.Popup(AAt.X, AAt.Y);
 end;
 
-procedure TAtlasIdeUntestedMark.ItemClick(Sender: TObject);
+procedure TAtlasIdeUntestedMark.PaintLine(const ARow: TRect; const AContext: INTACodeEditorPaintContext);
 var
-  mIndex: Integer;
+  mLineState: INTACodeEditorLineState;
+  mLine: string;
+  mRow: TRect;
+  mContext: INTACodeEditorPaintContext;
 begin
-  mIndex := (Sender as TMenuItem).Tag;
-  if (mIndex >= 0) and (mIndex <= High(FListed)) then
+  if (FLine < 0) or (AContext.LogicalLineNum - 1 <> FLine) or not SameText(AContext.FileName, FFileName) or
+    not TAtlasUntested.Wanted(TAtlasIdeSettings.Current) or
+    not TAtlasUntested.Shown(FUnit.HasTestUnit, Length(FUnit.Methods)) then
   begin
-    TAtlasIdeNavigation.GoToLocation(FFileName, FListed[mIndex].Line, FListed[mIndex].Character);
+    Exit;
   end;
+  mLineState := AContext.LineState;
+  if (mLineState = nil) or (AContext.EditView = nil) then
+  begin
+    Exit;
+  end;
+  mLine := mLineState.Text;
+  // Text seit der Antwort verschoben: keine Marke an einer Zeile ohne „unit“.
+  if Pos('unit', LowerCase(mLine)) = 0 then
+  begin
+    Exit;
+  end;
+  // Ausgeblendet am Element (#628): eine Marke je Datei, Anker ist der Name der Unit.
+  if TAtlasIdeElements.Hidden(TAtlasDrawnElement.CodeLensUntested, FFileName, FUnit.UnitName) then
+  begin
+    FRect := TRect.Empty;
+    Exit;
+  end;
+  mRow := ARow;
+  mContext := AContext;
+  TAtlasIdeLensPill.Guarded(AContext.Canvas,
+    procedure
+    begin
+      PaintMark(mRow, mContext, TAtlasIdeLensPill.LeftOf(mContext, mLine));
+    end);
 end;
 
-procedure TAtlasIdeUntestedMark.CreateTestClick(Sender: TObject);
+function TAtlasIdeUntestedMark.MouseDown(AX, AY: Integer; const AAt: TPoint): Boolean;
+var
+  mSelf: TAtlasIdeUntestedMark;
+  mState: IInterface;
+  mAt: TPoint;
 begin
-  // Testunit öffnen bzw. anlegen wie „Zur Testunit wechseln“.
-  TAtlasIdeHost.ExecuteCommand('Atlas.SwitchTestUnit');
+  // Nur, wenn die Marke noch dort steht: gleiche Datei, nicht gescrollt.
+  Result := not FRect.IsEmpty and PtInRect(FRect, Point(AX, AY)) and
+    TAtlasUntested.Wanted(TAtlasIdeSettings.Current) and StillShown;
+  if not Result then
+  begin
+    Exit;
+  end;
+  mSelf := Self;
+  mState := FStateRef;
+  mAt := AAt;
+  // Erst nach dem Mausereignis: der Editor setzt sonst den Cursor danach.
+  TAtlasMainThread.ForceQueue(TAtlasFeature.CodeLens,
+    procedure
+    begin
+      if TState(mState as TObject).Alive then
+      begin
+        mSelf.Clicked(mAt);
+      end;
+    end);
 end;
 
 end.

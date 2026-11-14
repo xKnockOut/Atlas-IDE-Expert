@@ -145,10 +145,47 @@ begin
   Result := IncludeTrailingPathDelimiter(ARoot) + AName;
 end;
 
-class function TLspCompilerBaseline.Accepts(const AMessage: TLspCompilerMessage): Boolean;
+function TLspCompilerBaseline.Load(const ARoot: string; out APrevious: string): IRuleBaseline;
+var
+  mFileName, mText: string;
 begin
-  Result := (AMessage.FileName <> '') and TRuleBaseline.IsCompilerCode(AMessage.Code) and
-    CharInSet(UpCase(AMessage.Code[1]), ['W', 'H']);
+  Result := nil;
+  APrevious := 'none';
+  // Neuer Name, sonst der frühere (#403) wie atlas.updateBaseline.
+  mFileName := FileIn(ARoot, cBaselineFileName);
+  if not FFiles.Exists(mFileName) and FFiles.Exists(FileIn(ARoot, cLegacyBaselineFileName)) then
+  begin
+    mFileName := FileIn(ARoot, cLegacyBaselineFileName);
+  end;
+  if not (FFiles.Exists(mFileName) and FFiles.Read(mFileName, mText)) then
+  begin
+    Exit;
+  end;
+  try
+    Result := TRuleBaseline.FromJson(mText);
+    APrevious := 'valid';
+  except
+    on ERuleBaseline do
+      APrevious := 'invalid';
+    on EJSONException do
+      APrevious := 'invalid';
+  end;
+end;
+
+function TLspCompilerBaseline.SourceOf(const AArguments: TJSONArray): TLspMetricsSource;
+var
+  mFileName: string;
+begin
+  mFileName := '';
+  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+  begin
+    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+  end;
+  if not (Assigned(FSourceFor) and FSourceFor(mFileName, False, Result)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TCompilerBaselineText.NoWorkspaceFoundForThe].Text);
+  end;
 end;
 
 class function TLspCompilerBaseline.MessagesOf(const AValue: TJSONValue): TArray<TLspCompilerMessage>;
@@ -185,33 +222,6 @@ begin
     end;
     // Ungültige Einträge bleiben als leere Meldung stehen: Die Positionen der Antwort gelten für die Eingabe.
     Result := Result + [mMessage];
-  end;
-end;
-
-function TLspCompilerBaseline.Load(const ARoot: string; out APrevious: string): IRuleBaseline;
-var
-  mFileName, mText: string;
-begin
-  Result := nil;
-  APrevious := 'none';
-  // Neuer Name, sonst der frühere (#403) wie atlas.updateBaseline.
-  mFileName := FileIn(ARoot, cBaselineFileName);
-  if not FFiles.Exists(mFileName) and FFiles.Exists(FileIn(ARoot, cLegacyBaselineFileName)) then
-  begin
-    mFileName := FileIn(ARoot, cLegacyBaselineFileName);
-  end;
-  if not (FFiles.Exists(mFileName) and FFiles.Read(mFileName, mText)) then
-  begin
-    Exit;
-  end;
-  try
-    Result := TRuleBaseline.FromJson(mText);
-    APrevious := 'valid';
-  except
-    on ERuleBaseline do
-      APrevious := 'invalid';
-    on EJSONException do
-      APrevious := 'invalid';
   end;
 end;
 
@@ -277,6 +287,12 @@ begin
     mUnreadable.Free;
     mByPath.Free;
   end;
+end;
+
+class function TLspCompilerBaseline.Accepts(const AMessage: TLspCompilerMessage): Boolean;
+begin
+  Result := (AMessage.FileName <> '') and TRuleBaseline.IsCompilerCode(AMessage.Code) and
+    CharInSet(UpCase(AMessage.Code[1]), ['W', 'H']);
 end;
 
 function TLspCompilerBaseline.Add(const ASource: TLspMetricsSource;
@@ -350,22 +366,6 @@ begin
     begin
       Result[mIndex] := mMarks[mOwner[mIndex]][mSlot[mIndex]].State = TBaselineState.Unchanged;
     end;
-  end;
-end;
-
-function TLspCompilerBaseline.SourceOf(const AArguments: TJSONArray): TLspMetricsSource;
-var
-  mFileName: string;
-begin
-  mFileName := '';
-  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
-  begin
-    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
-  end;
-  if not (Assigned(FSourceFor) and FSourceFor(mFileName, False, Result)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TCompilerBaselineText.NoWorkspaceFoundForThe].Text);
   end;
 end;
 

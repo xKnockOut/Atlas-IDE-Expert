@@ -120,6 +120,8 @@ begin
   Result := cTexts[TFormatOutputText.Unstable].Fmt([AFile.Path]);
 end;
 
+{ TFormatOutput }
+
 class function TFormatOutput.Problems(const AFiles: TArray<TFormattedFile>): TArray<string>;
 var
   mFile: TFormattedFile;

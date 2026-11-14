@@ -168,6 +168,20 @@ end;
 
 { TAtlasTestSeries }
 
+function TAtlasTestSeries.IndexOfTest(const AFullName: string): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(Tests) do
+  begin
+    if SameText(Tests[mIndex].FullName, AFullName) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+end;
+
 class function TAtlasTestSeries.Repeating(const ASubject: TAtlasTestSeriesSubject; const ANames: TArray<string>;
   ACount: Integer): TAtlasTestSeries;
 var
@@ -223,20 +237,6 @@ begin
   if not Finished then
   begin
     Result := Steps[Done];
-  end;
-end;
-
-function TAtlasTestSeries.IndexOfTest(const AFullName: string): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := -1;
-  for mIndex := 0 to High(Tests) do
-  begin
-    if SameText(Tests[mIndex].FullName, AFullName) then
-    begin
-      Exit(mIndex);
-    end;
   end;
 end;
 

@@ -51,6 +51,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TEmptyRoutineRule }
+
 function TEmptyRoutineRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('empty-routine', TRuleSeverity.Hint,
@@ -166,6 +168,8 @@ type
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     procedure Run;
   end;
+
+{ TEmptyRoutineCheck }
 
 constructor TEmptyRoutineCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin

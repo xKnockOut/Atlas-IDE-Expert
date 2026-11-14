@@ -90,6 +90,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeWelcomeSettings }
+
 function TAtlasIdeWelcomeSettings.CreateSection: IAtlasSettingsSection;
 var
   mSection: TAtlasWelcomeSettingsSection;

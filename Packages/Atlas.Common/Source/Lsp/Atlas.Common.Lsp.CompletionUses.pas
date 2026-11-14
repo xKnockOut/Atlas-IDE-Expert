@@ -174,6 +174,8 @@ type
     function Site(ASection: TUsesSection): TUsesSite;
   end;
 
+{ TClauseReader }
+
 procedure TClauseReader.Flush;
 begin
   if (Name <> '') and not Current then
@@ -206,6 +208,8 @@ begin
     Current := Current or (Before(AToken.StartPos, APosition) and not Before(AToken.EndPos, APosition));
   end;
 end;
+
+{ TSectionLists }
 
 procedure TSectionLists.Add(ASection: TUsesSection; const ANames: TArray<string>);
 begin
@@ -638,24 +642,12 @@ type
     function Elsewhere(const AUnitName: string): string;
   end;
 
+{ TUsesItems }
+
 function TUsesItems.Wanted(const AUnitInfo: TUnitIndex; out AFound: TUsesMatch): Boolean;
 begin
   Result := not SameText(AUnitInfo.UnitName, Own) and not TUsesClauses.IsUsed(Site.Here, AUnitInfo.UnitName,
     Namespaces) and TCompletionUses.Match(AUnitInfo.UnitName, Prefix, Namespaces, Request.Matching, AFound);
-end;
-
-function TUsesItems.Elsewhere(const AUnitName: string): string;
-begin
-  Result := '';
-  if not TUsesClauses.IsUsed(Site.Other, AUnitName, Namespaces) then
-  begin
-    Exit;
-  end;
-  Result := TCompletionUses.cSectionNames[TUsesSection.Interface_];
-  if Site.Section = TUsesSection.Interface_ then
-  begin
-    Result := TCompletionUses.cSectionNames[TUsesSection.Implementation_];
-  end;
 end;
 
 function TUsesItems.Item(const AUnitInfo: TUnitIndex; const AFound: TUsesMatch;
@@ -684,6 +676,20 @@ begin
   Result.UsesTypes := TCompletionUses.ExportedTypes(AUnitInfo, TCompletionUses.cMaxTypes, mCount);
   Result.UsesTypeCount := mCount;
   Result.UsesHidden := HiddenUnits;
+end;
+
+function TUsesItems.Elsewhere(const AUnitName: string): string;
+begin
+  Result := '';
+  if not TUsesClauses.IsUsed(Site.Other, AUnitName, Namespaces) then
+  begin
+    Exit;
+  end;
+  Result := TCompletionUses.cSectionNames[TUsesSection.Interface_];
+  if Site.Section = TUsesSection.Interface_ then
+  begin
+    Result := TCompletionUses.cSectionNames[TUsesSection.Implementation_];
+  end;
 end;
 
 /// <summary>Bereich des ganzen getippten Namens samt Punkten, auch des Rests hinter dem Cursor.</summary>

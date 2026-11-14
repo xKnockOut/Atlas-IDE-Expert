@@ -150,6 +150,8 @@ begin
   end;
 end;
 
+{ TPeImage }
+
 class function TPeImage.Read(const ABytes: TBytes): TPeImage;
 var
   mHeader, mOptional, mSections, mCount: Integer;

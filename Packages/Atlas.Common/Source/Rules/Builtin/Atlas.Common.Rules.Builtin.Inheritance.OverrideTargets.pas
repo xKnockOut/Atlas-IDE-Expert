@@ -287,6 +287,8 @@ type
     procedure Run;
   end;
 
+{ TOverrideTargetMissingRule }
+
 function TOverrideTargetMissingRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('override-target-missing', TRuleSeverity.Error,

@@ -460,7 +460,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeIndexFiles.CacheFiles(const ARoot: string): TArray<string>;
+class function TAtlasWelcomeIndexFiles.LibraryCacheFiles(const ARoot: string): TArray<string>;
 var
   mVersion, mKey, mFileName: string;
 begin
@@ -469,14 +469,11 @@ begin
   begin
     Exit;
   end;
+  // Der Server legt je Bibliotheks-Schlüssel (Plattform, Suchpfade) einen Ordner unter „Bibliothek“ an.
   for mVersion in SubFolders(IncludeTrailingPathDelimiter(ARoot) + cIndexFolder) do
   begin
-    for mKey in SubFolders(mVersion) do
+    for mKey in SubFolders(IncludeTrailingPathDelimiter(mVersion) + cLibraryFolder) do
     begin
-      if SameText(ExtractFileName(mKey), cLibraryFolder) then
-      begin
-        Continue;
-      end;
       mFileName := IncludeTrailingPathDelimiter(mKey) + CacheFileName;
       if FileExists(mFileName) then
       begin
@@ -503,29 +500,6 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeIndexFiles.LibraryCacheFiles(const ARoot: string): TArray<string>;
-var
-  mVersion, mKey, mFileName: string;
-begin
-  Result := nil;
-  if ARoot = '' then
-  begin
-    Exit;
-  end;
-  // Der Server legt je Bibliotheks-Schlüssel (Plattform, Suchpfade) einen Ordner unter „Bibliothek“ an.
-  for mVersion in SubFolders(IncludeTrailingPathDelimiter(ARoot) + cIndexFolder) do
-  begin
-    for mKey in SubFolders(IncludeTrailingPathDelimiter(mVersion) + cLibraryFolder) do
-    begin
-      mFileName := IncludeTrailingPathDelimiter(mKey) + CacheFileName;
-      if FileExists(mFileName) then
-      begin
-        Result := Result + [mFileName];
-      end;
-    end;
-  end;
-end;
-
 class function TAtlasWelcomeIndexFiles.LoadUnits(const AFileName: string): TArray<TAtlasIndexFile>;
 begin
   Result := nil;
@@ -541,6 +515,32 @@ begin
       Result := nil;
     on EInOutError do
       Result := nil;
+  end;
+end;
+
+class function TAtlasWelcomeIndexFiles.CacheFiles(const ARoot: string): TArray<string>;
+var
+  mVersion, mKey, mFileName: string;
+begin
+  Result := nil;
+  if ARoot = '' then
+  begin
+    Exit;
+  end;
+  for mVersion in SubFolders(IncludeTrailingPathDelimiter(ARoot) + cIndexFolder) do
+  begin
+    for mKey in SubFolders(mVersion) do
+    begin
+      if SameText(ExtractFileName(mKey), cLibraryFolder) then
+      begin
+        Continue;
+      end;
+      mFileName := IncludeTrailingPathDelimiter(mKey) + CacheFileName;
+      if FileExists(mFileName) then
+      begin
+        Result := Result + [mFileName];
+      end;
+    end;
   end;
 end;
 

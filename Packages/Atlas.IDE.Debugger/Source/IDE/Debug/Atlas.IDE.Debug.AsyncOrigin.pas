@@ -196,68 +196,6 @@ end;
 
 { TAtlasIdeDebugAsyncOrigin }
 
-class procedure TAtlasIdeDebugAsyncOrigin.Start(const AMessage: TProc<string>; const ARegistry: IAtlasStatusRegistry);
-begin
-  FMessage := AMessage;
-  FRegistry := ARegistry;
-  if FTicker = nil then
-  begin
-    FTicker := TTicker.Create;
-  end;
-  if FTimer = nil then
-  begin
-    FTimer := TTimer.Create(nil);
-    FTimer.Enabled := False;
-    FTimer.Interval := cIntervalMs;
-    FTimer.OnTimer := FTicker.Tick;
-  end;
-  if FListener = nil then
-  begin
-    FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FListener);
-  end;
-  TAtlasIdeDebugSession.Start;
-  TAtlasIdeDebugSession.SetStopFilter(
-    function(AStop: TAtlasDebugStop): Boolean
-    begin
-      Result := TAtlasIdeDebugAsyncOrigin.Remember(AStop);
-    end);
-  TAtlasIdeDebugCallStack.SetOrigin(
-    procedure(var AStack: TAtlasDebugStackView)
-    begin
-      TAtlasIdeDebugAsyncOrigin.AddOrigin(AStack);
-    end);
-  FStarted := True;
-  // Eingeschaltet während einer Sitzung: gleich beobachten.
-  if TAtlasIdeDebugSession.Active then
-  begin
-    Arm;
-  end;
-end;
-
-class procedure TAtlasIdeDebugAsyncOrigin.Release;
-begin
-  FStarted := False;
-  TAtlasIdeDebugSession.SetStopFilter(nil);
-  TAtlasIdeDebugCallStack.SetOrigin(nil);
-  if FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(FListener);
-  end;
-  FListener := nil;
-  Disarm;
-  FRegistry := nil;
-  FreeAndNil(FTimer);
-  FreeAndNil(FTicker);
-  FMessage := nil;
-  TAtlasIdeResultsWindow.ReleaseItems(cOwner);
-end;
-
-class function TAtlasIdeDebugAsyncOrigin.Started: Boolean;
-begin
-  Result := FStarted;
-end;
-
 class procedure TAtlasIdeDebugAsyncOrigin.Arm;
 var
   mFileName, mText: string;
@@ -307,20 +245,6 @@ begin
   UpdateStatus;
 end;
 
-class function TAtlasIdeDebugAsyncOrigin.CurrentPosition(const AThread: IOTAThread; out AFileName: string;
-  out ALine: Integer): Boolean;
-var
-  mResolved: string;
-begin
-  Result := TAtlasIdeBreakpoints.Position(AThread, AFileName, ALine);
-  // Die IDE nennt oft nur den Dateinamen; die Aufrufstellen tragen den vollen Pfad.
-  mResolved := TAtlasIdeDebugSources.Resolve(AFileName);
-  if mResolved <> '' then
-  begin
-    AFileName := mResolved;
-  end;
-end;
-
 class function TAtlasIdeDebugAsyncOrigin.Remember(AStop: TAtlasDebugStop): Boolean;
 var
   mThread: IOTAThread;
@@ -354,22 +278,6 @@ begin
   Result := FOwnBreak[mSite] and TAtlasIdeDebugSession.Resume;
 end;
 
-class function TAtlasIdeDebugAsyncOrigin.StoppedFrames(out AThread: IOTAThread;
-  out AFrames: TAtlasDebugFrames): TAtlasDebugStackRead;
-begin
-  AFrames := nil;
-  AThread := TAtlasIdeDebugSession.StoppedThread;
-  if (FSites = nil) or (AThread = nil) then
-  begin
-    Exit(TAtlasDebugStackRead.None);
-  end;
-  Result := TAtlasIdeDebugSession.ReadStack(AThread, TAtlasDebugCallStack.cMaxFrames, AFrames);
-  if Result = TAtlasDebugStackRead.Ready then
-  begin
-    TAtlasIdeDebugSources.MarkFrames(AFrames);
-  end;
-end;
-
 class function TAtlasIdeDebugAsyncOrigin.TryShow: Boolean;
 var
   mThread: IOTAThread;
@@ -388,6 +296,22 @@ begin
     Assign(mThread.OSThreadID, mSite) then
   begin
     Report;
+  end;
+end;
+
+class function TAtlasIdeDebugAsyncOrigin.StoppedFrames(out AThread: IOTAThread;
+  out AFrames: TAtlasDebugFrames): TAtlasDebugStackRead;
+begin
+  AFrames := nil;
+  AThread := TAtlasIdeDebugSession.StoppedThread;
+  if (FSites = nil) or (AThread = nil) then
+  begin
+    Exit(TAtlasDebugStackRead.None);
+  end;
+  Result := TAtlasIdeDebugSession.ReadStack(AThread, TAtlasDebugCallStack.cMaxFrames, AFrames);
+  if Result = TAtlasDebugStackRead.Ready then
+  begin
+    TAtlasIdeDebugSources.MarkFrames(AFrames);
   end;
 end;
 
@@ -517,6 +441,82 @@ begin
   // Gelb: Das Anhalten an jeder Aufrufstelle bremst das Programm.
   mLine.Update(TAtlasAsyncOriginTexts.StatusText(Length(FSites)), TAtlasStatusState.Yellow,
     TAtlasDebugStrings.Fmt(TAtlasDebugTextId.AsyncOriginArmed, [Length(FSites)]));
+end;
+
+class function TAtlasIdeDebugAsyncOrigin.CurrentPosition(const AThread: IOTAThread; out AFileName: string;
+  out ALine: Integer): Boolean;
+var
+  mResolved: string;
+begin
+  Result := TAtlasIdeBreakpoints.Position(AThread, AFileName, ALine);
+  // Die IDE nennt oft nur den Dateinamen; die Aufrufstellen tragen den vollen Pfad.
+  mResolved := TAtlasIdeDebugSources.Resolve(AFileName);
+  if mResolved <> '' then
+  begin
+    AFileName := mResolved;
+  end;
+end;
+
+class procedure TAtlasIdeDebugAsyncOrigin.Start(const AMessage: TProc<string>; const ARegistry: IAtlasStatusRegistry);
+begin
+  FMessage := AMessage;
+  FRegistry := ARegistry;
+  if FTicker = nil then
+  begin
+    FTicker := TTicker.Create;
+  end;
+  if FTimer = nil then
+  begin
+    FTimer := TTimer.Create(nil);
+    FTimer.Enabled := False;
+    FTimer.Interval := cIntervalMs;
+    FTimer.OnTimer := FTicker.Tick;
+  end;
+  if FListener = nil then
+  begin
+    FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FListener);
+  end;
+  TAtlasIdeDebugSession.Start;
+  TAtlasIdeDebugSession.SetStopFilter(
+    function(AStop: TAtlasDebugStop): Boolean
+    begin
+      Result := TAtlasIdeDebugAsyncOrigin.Remember(AStop);
+    end);
+  TAtlasIdeDebugCallStack.SetOrigin(
+    procedure(var AStack: TAtlasDebugStackView)
+    begin
+      TAtlasIdeDebugAsyncOrigin.AddOrigin(AStack);
+    end);
+  FStarted := True;
+  // Eingeschaltet während einer Sitzung: gleich beobachten.
+  if TAtlasIdeDebugSession.Active then
+  begin
+    Arm;
+  end;
+end;
+
+class procedure TAtlasIdeDebugAsyncOrigin.Release;
+begin
+  FStarted := False;
+  TAtlasIdeDebugSession.SetStopFilter(nil);
+  TAtlasIdeDebugCallStack.SetOrigin(nil);
+  if FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(FListener);
+  end;
+  FListener := nil;
+  Disarm;
+  FRegistry := nil;
+  FreeAndNil(FTimer);
+  FreeAndNil(FTicker);
+  FMessage := nil;
+  TAtlasIdeResultsWindow.ReleaseItems(cOwner);
+end;
+
+class function TAtlasIdeDebugAsyncOrigin.Started: Boolean;
+begin
+  Result := FStarted;
 end;
 
 end.

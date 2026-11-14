@@ -400,11 +400,6 @@ end;
 
 { TAtlasStructure }
 
-class function TAtlasStructure.KindKey(AKind: TAtlasStructureKind): string;
-begin
-  Result := cKindKeys[AKind];
-end;
-
 class function TAtlasStructure.KindOf(const AClassChain: TArray<string>): TAtlasStructureKind;
 var
   mClass: string;
@@ -422,6 +417,11 @@ begin
     end;
   end;
   Result := TAtlasStructureKind.Other;
+end;
+
+class function TAtlasStructure.KindKey(AKind: TAtlasStructureKind): string;
+begin
+  Result := cKindKeys[AKind];
 end;
 
 class function TAtlasStructure.Nodes(const AItems: TArray<TAtlasStructureItem>; const ARoot: string;

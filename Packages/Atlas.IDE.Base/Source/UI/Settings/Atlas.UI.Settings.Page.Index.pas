@@ -66,14 +66,9 @@ uses
 
 { TAtlasSettingsIndexPart }
 
-procedure TAtlasSettingsIndexPart.Build;
+procedure TAtlasSettingsIndexPart.Load(const ASettings: TAtlasPluginSettings);
 begin
-  // Umfang des Index für alle Projekte, gespeichert in settings.json (index.*, #652, #227).
-  AddSheet(TAtlasTextId.SettingsTabIndex);
-  BindCheck('IndexProjectGroup', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexGroup)));
-  BindCheck('IndexSearchPaths', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexSearch)));
-  BindCheck('IndexLibraryPaths', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexLibrary)));
-  AddIndexSection;
+  RefreshIndex;
 end;
 
 procedure TAtlasSettingsIndexPart.AddIndexSection;
@@ -116,50 +111,6 @@ begin
   RefreshIndex;
 end;
 
-procedure TAtlasSettingsIndexPart.UpdateIndexButtons;
-begin
-  Allow(FIndexRefresh, Assigned(FOnIndexMetrics) and not FIndexBusy);
-  Allow(FIndexRebuild, Assigned(FOnIndexRebuild) and not FIndexBusy);
-  Allow(FIndexClear, Assigned(FOnIndexClear) and not FIndexBusy);
-end;
-
-procedure TAtlasSettingsIndexPart.StartIndexCommand(const ACommand: TProc);
-begin
-  if not Assigned(ACommand) or FIndexBusy then
-  begin
-    Exit;
-  end;
-  FIndexBusy := True;
-  FIndexInfo.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexAsking);
-  UpdateIndexButtons;
-  ACommand();
-end;
-
-procedure TAtlasSettingsIndexPart.IndexAnswered(const AText: string);
-begin
-  FIndexBusy := False;
-  FIndexInfo.Caption := AText;
-  UpdateIndexButtons;
-end;
-
-function TAtlasSettingsIndexPart.IndexBusy: Boolean;
-begin
-  Result := FIndexBusy;
-end;
-
-procedure TAtlasSettingsIndexPart.RefreshIndex;
-begin
-  if Assigned(FOnIndexMetrics) then
-  begin
-    StartIndexCommand(FOnIndexMetrics);
-  end
-  else if not FIndexBusy then
-  begin
-    FIndexInfo.Caption := '';
-  end;
-  UpdateIndexButtons;
-end;
-
 procedure TAtlasSettingsIndexPart.IndexRefreshClick(Sender: TObject);
 begin
   RefreshIndex;
@@ -193,9 +144,58 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsIndexPart.Load(const ASettings: TAtlasPluginSettings);
+procedure TAtlasSettingsIndexPart.UpdateIndexButtons;
 begin
-  RefreshIndex;
+  Allow(FIndexRefresh, Assigned(FOnIndexMetrics) and not FIndexBusy);
+  Allow(FIndexRebuild, Assigned(FOnIndexRebuild) and not FIndexBusy);
+  Allow(FIndexClear, Assigned(FOnIndexClear) and not FIndexBusy);
+end;
+
+procedure TAtlasSettingsIndexPart.StartIndexCommand(const ACommand: TProc);
+begin
+  if not Assigned(ACommand) or FIndexBusy then
+  begin
+    Exit;
+  end;
+  FIndexBusy := True;
+  FIndexInfo.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexAsking);
+  UpdateIndexButtons;
+  ACommand();
+end;
+
+procedure TAtlasSettingsIndexPart.Build;
+begin
+  // Umfang des Index für alle Projekte, gespeichert in settings.json (index.*, #652, #227).
+  AddSheet(TAtlasTextId.SettingsTabIndex);
+  BindCheck('IndexProjectGroup', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexGroup)));
+  BindCheck('IndexSearchPaths', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexSearch)));
+  BindCheck('IndexLibraryPaths', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexLibrary)));
+  AddIndexSection;
+end;
+
+procedure TAtlasSettingsIndexPart.RefreshIndex;
+begin
+  if Assigned(FOnIndexMetrics) then
+  begin
+    StartIndexCommand(FOnIndexMetrics);
+  end
+  else if not FIndexBusy then
+  begin
+    FIndexInfo.Caption := '';
+  end;
+  UpdateIndexButtons;
+end;
+
+procedure TAtlasSettingsIndexPart.IndexAnswered(const AText: string);
+begin
+  FIndexBusy := False;
+  FIndexInfo.Caption := AText;
+  UpdateIndexButtons;
+end;
+
+function TAtlasSettingsIndexPart.IndexBusy: Boolean;
+begin
+  Result := FIndexBusy;
 end;
 
 end.

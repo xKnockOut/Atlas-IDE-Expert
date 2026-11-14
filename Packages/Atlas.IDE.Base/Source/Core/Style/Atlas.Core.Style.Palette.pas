@@ -133,6 +133,86 @@ end;
 
 { TAtlasColors }
 
+function TAtlasColors.WithPairs(const ACustom: string): TAtlasColors;
+var
+  mCustom: TAtlasPairColors;
+begin
+  Result := Self;
+  if ParsePairs(ACustom, mCustom) then
+  begin
+    Result.Pairs := mCustom;
+  end;
+end;
+
+function TAtlasColors.WithNestedRoutine(const ACustom: string): TAtlasColors;
+var
+  mColor: TAtlasColor;
+begin
+  Result := Self;
+  if ParseColor(ACustom, mColor) then
+  begin
+    Result.NestedRoutine := mColor;
+  end;
+end;
+
+class function TAtlasColors.ParseColor(const AText: string; out AColor: TAtlasColor): Boolean;
+var
+  mText: string;
+begin
+  Result := False;
+  AColor := 0;
+  mText := Trim(AText);
+  if (Length(mText) <> 7) or (mText[1] <> '#') then
+  begin
+    Exit;
+  end;
+  try
+    AColor := Hex(mText);
+  except
+    on EConvertError do
+      Exit;
+  end;
+  Result := True;
+end;
+
+class function TAtlasColors.ParsePairs(const AText: string; out APairs: TAtlasPairColors): Boolean;
+var
+  mParts: TArray<string>;
+  mIndex: Integer;
+begin
+  Result := False;
+  mParts := AText.Split([',']);
+  if Length(mParts) <> Length(APairs) then
+  begin
+    Exit;
+  end;
+  try
+    for mIndex := 0 to High(mParts) do
+    begin
+      APairs[mIndex] := Hex(Trim(mParts[mIndex]));
+    end;
+  except
+    on EConvertError do
+      Exit;
+  end;
+  Result := True;
+end;
+
+class function TAtlasColors.PairsText(const APairs: TAtlasPairColors): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := 0 to High(APairs) do
+  begin
+    if mIndex > 0 then
+    begin
+      Result := Result + ',';
+    end;
+    Result := Result + TAtlasColorMath.ToHex(APairs[mIndex]);
+  end;
+end;
+
 class function TAtlasColors.Light: TAtlasColors;
 begin
   Result := Default(TAtlasColors);
@@ -237,86 +317,6 @@ begin
   Result.Placeholders[4] := Hex('#00A4A4');
   Result.Placeholders[5] := Hex('#D6B020');
   Result.Signals := TAtlasSignals.Dark;
-end;
-
-function TAtlasColors.WithPairs(const ACustom: string): TAtlasColors;
-var
-  mCustom: TAtlasPairColors;
-begin
-  Result := Self;
-  if ParsePairs(ACustom, mCustom) then
-  begin
-    Result.Pairs := mCustom;
-  end;
-end;
-
-function TAtlasColors.WithNestedRoutine(const ACustom: string): TAtlasColors;
-var
-  mColor: TAtlasColor;
-begin
-  Result := Self;
-  if ParseColor(ACustom, mColor) then
-  begin
-    Result.NestedRoutine := mColor;
-  end;
-end;
-
-class function TAtlasColors.ParseColor(const AText: string; out AColor: TAtlasColor): Boolean;
-var
-  mText: string;
-begin
-  Result := False;
-  AColor := 0;
-  mText := Trim(AText);
-  if (Length(mText) <> 7) or (mText[1] <> '#') then
-  begin
-    Exit;
-  end;
-  try
-    AColor := Hex(mText);
-  except
-    on EConvertError do
-      Exit;
-  end;
-  Result := True;
-end;
-
-class function TAtlasColors.ParsePairs(const AText: string; out APairs: TAtlasPairColors): Boolean;
-var
-  mParts: TArray<string>;
-  mIndex: Integer;
-begin
-  Result := False;
-  mParts := AText.Split([',']);
-  if Length(mParts) <> Length(APairs) then
-  begin
-    Exit;
-  end;
-  try
-    for mIndex := 0 to High(mParts) do
-    begin
-      APairs[mIndex] := Hex(Trim(mParts[mIndex]));
-    end;
-  except
-    on EConvertError do
-      Exit;
-  end;
-  Result := True;
-end;
-
-class function TAtlasColors.PairsText(const APairs: TAtlasPairColors): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to High(APairs) do
-  begin
-    if mIndex > 0 then
-    begin
-      Result := Result + ',';
-    end;
-    Result := Result + TAtlasColorMath.ToHex(APairs[mIndex]);
-  end;
 end;
 
 class function TAtlasColors.ForBackground(ABackground: TAtlasColor): TAtlasColors;

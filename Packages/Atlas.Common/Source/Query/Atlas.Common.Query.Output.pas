@@ -112,15 +112,6 @@ end;
 
 { TQueryOutput }
 
-class function TQueryOutput.MessageTemplate(const ATemplate: string): string;
-begin
-  Result := ATemplate;
-  if Result = '' then
-  begin
-    Result := cTexts[TOutputText.DefaultMessage].Text;
-  end;
-end;
-
 class function TQueryOutput.TryParseFormat(const AText: string; AFallback: TQueryOutputFormat;
   out AFormat: TQueryOutputFormat): Boolean;
 begin
@@ -166,20 +157,94 @@ begin
   end;
 end;
 
-class function TQueryOutput.ErrorText(const AResult: TQueryResult): string;
+class function TQueryOutput.Csv(const AResult: TQueryResult): string;
+var
+  mBuilder: TStringBuilder;
+  mRow: TQueryRow;
+  mIndex: Integer;
 begin
-  if AResult.ErrorColumn > 0 then
+  if AResult.Failed then
   begin
-    Result := cTexts[TOutputText.Column].Fmt([AResult.ErrorColumn, AResult.Error]) + sLineBreak + '  ' + AResult.Query +
-      sLineBreak + '  ' + StringOfChar(' ', AResult.ErrorColumn - 1) + '^';
-  end
-  else
-  begin
-    Result := AResult.Error;
+    Exit(ErrorText(AResult));
   end;
-  if (AResult.Suggestion <> '') and not ContainsText(AResult.Error, '`' + AResult.Suggestion + '`') then
+  mBuilder := TStringBuilder.Create;
+  try
+    for mIndex := 0 to High(AResult.Columns) do
+    begin
+      mBuilder.Append(CsvCell(AResult.Columns[mIndex])).Append(';');
+    end;
+    mBuilder.Append('path;inferred').Append(sLineBreak);
+    for mRow in AResult.Rows do
+    begin
+      for mIndex := 0 to High(AResult.Columns) do
+      begin
+        mBuilder.Append(CsvCell(TQueryResult.CellText(mRow, mIndex))).Append(';');
+      end;
+      mBuilder.Append(CsvCell(mRow.Path)).Append(';');
+      if mRow.Inferred then
+      begin
+        mBuilder.Append(cTexts[TOutputText.Inferred2].Text);
+      end;
+      mBuilder.Append(sLineBreak);
+    end;
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
+end;
+
+class function TQueryOutput.Text(const AResult: TQueryResult): string;
+var
+  mWidths: TArray<Integer>;
+  mBuilder: TStringBuilder;
+  mRow: TQueryRow;
+  mIndex: Integer;
+  mCell: string;
+begin
+  if AResult.Failed then
   begin
-    Result := Result + sLineBreak + cTexts[TOutputText.Suggestion].Fmt([AResult.Suggestion]);
+    Exit(ErrorText(AResult));
+  end;
+  SetLength(mWidths, Length(AResult.Columns));
+  for mIndex := 0 to High(AResult.Columns) do
+  begin
+    mWidths[mIndex] := Length(AResult.Columns[mIndex]);
+  end;
+  for mRow in AResult.Rows do
+  begin
+    for mIndex := 0 to High(AResult.Columns) do
+    begin
+      if Length(TQueryResult.CellText(mRow, mIndex)) > mWidths[mIndex] then
+      begin
+        mWidths[mIndex] := Length(TQueryResult.CellText(mRow, mIndex));
+      end;
+    end;
+  end;
+  mBuilder := TStringBuilder.Create;
+  try
+    for mIndex := 0 to High(AResult.Columns) do
+    begin
+      mBuilder.Append(AResult.Columns[mIndex].PadRight(mWidths[mIndex] + 2));
+    end;
+    mBuilder.Append('path').Append(sLineBreak);
+    for mRow in AResult.Rows do
+    begin
+      for mIndex := 0 to High(AResult.Columns) do
+      begin
+        mCell := TQueryResult.CellText(mRow, mIndex);
+        mBuilder.Append(mCell.PadRight(mWidths[mIndex] + 2));
+      end;
+      mBuilder.Append(mRow.Path);
+      if mRow.Inferred then
+      begin
+        mBuilder.Append(cTexts[TOutputText.Inferred3].Text);
+      end;
+      mBuilder.Append(sLineBreak);
+    end;
+    mBuilder.Append(Summary(AResult)).Append(sLineBreak);
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
   end;
 end;
 
@@ -392,94 +457,29 @@ begin
   end;
 end;
 
-class function TQueryOutput.Csv(const AResult: TQueryResult): string;
-var
-  mBuilder: TStringBuilder;
-  mRow: TQueryRow;
-  mIndex: Integer;
+class function TQueryOutput.ErrorText(const AResult: TQueryResult): string;
 begin
-  if AResult.Failed then
+  if AResult.ErrorColumn > 0 then
   begin
-    Exit(ErrorText(AResult));
+    Result := cTexts[TOutputText.Column].Fmt([AResult.ErrorColumn, AResult.Error]) + sLineBreak + '  ' + AResult.Query +
+      sLineBreak + '  ' + StringOfChar(' ', AResult.ErrorColumn - 1) + '^';
+  end
+  else
+  begin
+    Result := AResult.Error;
   end;
-  mBuilder := TStringBuilder.Create;
-  try
-    for mIndex := 0 to High(AResult.Columns) do
-    begin
-      mBuilder.Append(CsvCell(AResult.Columns[mIndex])).Append(';');
-    end;
-    mBuilder.Append('path;inferred').Append(sLineBreak);
-    for mRow in AResult.Rows do
-    begin
-      for mIndex := 0 to High(AResult.Columns) do
-      begin
-        mBuilder.Append(CsvCell(TQueryResult.CellText(mRow, mIndex))).Append(';');
-      end;
-      mBuilder.Append(CsvCell(mRow.Path)).Append(';');
-      if mRow.Inferred then
-      begin
-        mBuilder.Append(cTexts[TOutputText.Inferred2].Text);
-      end;
-      mBuilder.Append(sLineBreak);
-    end;
-    Result := mBuilder.ToString;
-  finally
-    mBuilder.Free;
+  if (AResult.Suggestion <> '') and not ContainsText(AResult.Error, '`' + AResult.Suggestion + '`') then
+  begin
+    Result := Result + sLineBreak + cTexts[TOutputText.Suggestion].Fmt([AResult.Suggestion]);
   end;
 end;
 
-class function TQueryOutput.Text(const AResult: TQueryResult): string;
-var
-  mWidths: TArray<Integer>;
-  mBuilder: TStringBuilder;
-  mRow: TQueryRow;
-  mIndex: Integer;
-  mCell: string;
+class function TQueryOutput.MessageTemplate(const ATemplate: string): string;
 begin
-  if AResult.Failed then
+  Result := ATemplate;
+  if Result = '' then
   begin
-    Exit(ErrorText(AResult));
-  end;
-  SetLength(mWidths, Length(AResult.Columns));
-  for mIndex := 0 to High(AResult.Columns) do
-  begin
-    mWidths[mIndex] := Length(AResult.Columns[mIndex]);
-  end;
-  for mRow in AResult.Rows do
-  begin
-    for mIndex := 0 to High(AResult.Columns) do
-    begin
-      if Length(TQueryResult.CellText(mRow, mIndex)) > mWidths[mIndex] then
-      begin
-        mWidths[mIndex] := Length(TQueryResult.CellText(mRow, mIndex));
-      end;
-    end;
-  end;
-  mBuilder := TStringBuilder.Create;
-  try
-    for mIndex := 0 to High(AResult.Columns) do
-    begin
-      mBuilder.Append(AResult.Columns[mIndex].PadRight(mWidths[mIndex] + 2));
-    end;
-    mBuilder.Append('path').Append(sLineBreak);
-    for mRow in AResult.Rows do
-    begin
-      for mIndex := 0 to High(AResult.Columns) do
-      begin
-        mCell := TQueryResult.CellText(mRow, mIndex);
-        mBuilder.Append(mCell.PadRight(mWidths[mIndex] + 2));
-      end;
-      mBuilder.Append(mRow.Path);
-      if mRow.Inferred then
-      begin
-        mBuilder.Append(cTexts[TOutputText.Inferred3].Text);
-      end;
-      mBuilder.Append(sLineBreak);
-    end;
-    mBuilder.Append(Summary(AResult)).Append(sLineBreak);
-    Result := mBuilder.ToString;
-  finally
-    mBuilder.Free;
+    Result := cTexts[TOutputText.DefaultMessage].Text;
   end;
 end;
 

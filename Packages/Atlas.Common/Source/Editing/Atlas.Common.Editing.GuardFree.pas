@@ -495,6 +495,8 @@ begin
   end;
 end;
 
+{ TGuardFree }
+
 class function TGuardFree.Check(ATree: TSyntaxTree; const AText: string; ALine: Integer;
   const AKindOf: TGuardTypeKindFunc; out AOffer: TGuardOffer): Boolean;
 var

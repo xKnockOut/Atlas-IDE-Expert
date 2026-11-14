@@ -167,95 +167,23 @@ begin
   Result := Scale(20);
 end;
 
-class function TAtlasTimingFrame.Caption(const ARow: TAtlasTimingRow): string;
-begin
-  case ARow.Kind of
-    TAtlasTimingRowKind.Provider:
-      Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagnosticRowProvider, [ARow.Name]);
-    TAtlasTimingRowKind.Entries:
-      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticRowEntries);
-  else
-    case ARow.Step of
-      TAtlasTimingStep.Context:
-        Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticRowContext);
-      TAtlasTimingStep.FilterSort:
-        Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticRowFilter);
-      TAtlasTimingStep.Draw:
-        Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticRowDraw);
-    else
-      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticRowFirst);
-    end;
-  end;
-end;
-
-procedure TAtlasTimingFrame.UpdateTitle;
+procedure TAtlasTimingFrame.GridPaint(Sender: TObject);
 var
-  mLast: TAtlasQueryTiming;
+  mBounds: TRect;
+  mTop, mIndex: Integer;
 begin
-  if Length(FQueries) = 0 then
+  mBounds := FGrid.ClientRect;
+  FGrid.Canvas.Font := Font;
+  FGrid.Canvas.Brush.Style := bsSolid;
+  FGrid.Canvas.Brush.Color := ToColor(FColors.Surface);
+  FGrid.Canvas.FillRect(mBounds);
+  DrawHeader(mBounds);
+  mTop := mBounds.Top + RowHeight;
+  for mIndex := 0 to High(FRows) do
   begin
-    FTitle.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticNoQuery);
-    Exit;
+    DrawRow(mBounds, mTop, FRows[mIndex]);
+    Inc(mTop, RowHeight);
   end;
-  mLast := FQueries[High(FQueries)];
-  FTitle.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagnosticLastQuery, [mLast.Kind,
-    FormatDateTime('hh":"nn":"ss', mLast.Started)]);
-end;
-
-procedure TAtlasTimingFrame.SetQueries(const AQueries: TArray<TAtlasQueryTiming>);
-begin
-  FQueries := AQueries;
-  FRows := TAtlasTimingRows.Build(FQueries);
-  UpdateTitle;
-  FGrid.Invalidate;
-end;
-
-procedure TAtlasTimingFrame.SetColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  FGrid.Invalidate;
-end;
-
-procedure TAtlasTimingFrame.ShowNote(const AText: string);
-begin
-  FNote.Caption := AText;
-end;
-
-procedure TAtlasTimingFrame.CopyClick(Sender: TObject);
-begin
-  if Assigned(FOnCopy) then
-  begin
-    FOnCopy(FFileNames.Checked);
-  end;
-end;
-
-type
-  TCellTexts = array[0..4] of string;
-  TCellWarns = array[0..4] of Boolean;
-
-/// <summary>Texte und Warnmarken der Spalten einer Zeile: Zähler ohne Budget, Zeiten in ms.</summary>
-procedure RowCells(const ARow: TAtlasTimingRow; out ATexts: TCellTexts; out AWarns: TCellWarns);
-begin
-  ATexts[0] := TAtlasTimingFrame.Caption(ARow);
-  if ARow.Kind = TAtlasTimingRowKind.Entries then
-  begin
-    ATexts[1] := TAtlasTimingRows.CountText(ARow.Last);
-    ATexts[2] := TAtlasTimingRows.CountText(ARow.Mean);
-    ATexts[3] := TAtlasTimingRows.CountText(ARow.Maximum);
-    ATexts[4] := '';
-  end
-  else
-  begin
-    ATexts[1] := TAtlasTimingRows.Ms(ARow.Last);
-    ATexts[2] := TAtlasTimingRows.Ms(ARow.Mean);
-    ATexts[3] := TAtlasTimingRows.Ms(ARow.Maximum);
-    ATexts[4] := TAtlasTimingRows.Ms(ARow.Budget);
-  end;
-  AWarns[0] := False;
-  AWarns[1] := ARow.LastWarn;
-  AWarns[2] := ARow.MeanWarn;
-  AWarns[3] := ARow.MaxWarn;
-  AWarns[4] := False;
 end;
 
 function TAtlasTimingFrame.CellRect(const ABounds: TRect; ATop, AColumn: Integer): TRect;
@@ -311,6 +239,65 @@ begin
   DrawText(mCanvas.Handle, PChar(AText), Length(AText), mRect, mFlags);
 end;
 
+procedure TAtlasTimingFrame.CopyClick(Sender: TObject);
+begin
+  if Assigned(FOnCopy) then
+  begin
+    FOnCopy(FFileNames.Checked);
+  end;
+end;
+
+procedure TAtlasTimingFrame.UpdateTitle;
+var
+  mLast: TAtlasQueryTiming;
+begin
+  if Length(FQueries) = 0 then
+  begin
+    FTitle.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticNoQuery);
+    Exit;
+  end;
+  mLast := FQueries[High(FQueries)];
+  FTitle.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagnosticLastQuery, [mLast.Kind,
+    FormatDateTime('hh":"nn":"ss', mLast.Started)]);
+end;
+
+procedure TAtlasTimingFrame.SetQueries(const AQueries: TArray<TAtlasQueryTiming>);
+begin
+  FQueries := AQueries;
+  FRows := TAtlasTimingRows.Build(FQueries);
+  UpdateTitle;
+  FGrid.Invalidate;
+end;
+
+type
+  TCellTexts = array[0..4] of string;
+  TCellWarns = array[0..4] of Boolean;
+
+/// <summary>Texte und Warnmarken der Spalten einer Zeile: Zähler ohne Budget, Zeiten in ms.</summary>
+procedure RowCells(const ARow: TAtlasTimingRow; out ATexts: TCellTexts; out AWarns: TCellWarns);
+begin
+  ATexts[0] := TAtlasTimingFrame.Caption(ARow);
+  if ARow.Kind = TAtlasTimingRowKind.Entries then
+  begin
+    ATexts[1] := TAtlasTimingRows.CountText(ARow.Last);
+    ATexts[2] := TAtlasTimingRows.CountText(ARow.Mean);
+    ATexts[3] := TAtlasTimingRows.CountText(ARow.Maximum);
+    ATexts[4] := '';
+  end
+  else
+  begin
+    ATexts[1] := TAtlasTimingRows.Ms(ARow.Last);
+    ATexts[2] := TAtlasTimingRows.Ms(ARow.Mean);
+    ATexts[3] := TAtlasTimingRows.Ms(ARow.Maximum);
+    ATexts[4] := TAtlasTimingRows.Ms(ARow.Budget);
+  end;
+  AWarns[0] := False;
+  AWarns[1] := ARow.LastWarn;
+  AWarns[2] := ARow.MeanWarn;
+  AWarns[3] := ARow.MaxWarn;
+  AWarns[4] := False;
+end;
+
 procedure TAtlasTimingFrame.DrawHeader(const ABounds: TRect);
 var
   mTexts: TCellTexts;
@@ -351,22 +338,35 @@ begin
   end;
 end;
 
-procedure TAtlasTimingFrame.GridPaint(Sender: TObject);
-var
-  mBounds: TRect;
-  mTop, mIndex: Integer;
+procedure TAtlasTimingFrame.SetColors(const AColors: TAtlasColors);
 begin
-  mBounds := FGrid.ClientRect;
-  FGrid.Canvas.Font := Font;
-  FGrid.Canvas.Brush.Style := bsSolid;
-  FGrid.Canvas.Brush.Color := ToColor(FColors.Surface);
-  FGrid.Canvas.FillRect(mBounds);
-  DrawHeader(mBounds);
-  mTop := mBounds.Top + RowHeight;
-  for mIndex := 0 to High(FRows) do
-  begin
-    DrawRow(mBounds, mTop, FRows[mIndex]);
-    Inc(mTop, RowHeight);
+  FColors := AColors;
+  FGrid.Invalidate;
+end;
+
+procedure TAtlasTimingFrame.ShowNote(const AText: string);
+begin
+  FNote.Caption := AText;
+end;
+
+class function TAtlasTimingFrame.Caption(const ARow: TAtlasTimingRow): string;
+begin
+  case ARow.Kind of
+    TAtlasTimingRowKind.Provider:
+      Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagnosticRowProvider, [ARow.Name]);
+    TAtlasTimingRowKind.Entries:
+      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticRowEntries);
+  else
+    case ARow.Step of
+      TAtlasTimingStep.Context:
+        Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticRowContext);
+      TAtlasTimingStep.FilterSort:
+        Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticRowFilter);
+      TAtlasTimingStep.Draw:
+        Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticRowDraw);
+    else
+      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticRowFirst);
+    end;
   end;
 end;
 

@@ -50,35 +50,55 @@ uses
 
 { TAtlasSettingsRobustnessPart }
 
-procedure TAtlasSettingsRobustnessPart.Build;
-var
-  mPanel: TWinControl;
+procedure TAtlasSettingsRobustnessPart.Load(const ASettings: TAtlasPluginSettings);
 begin
-  AddSheet(TAtlasTextId.SettingsTabRobustness);
-  // Einfrier-Wächter (#501).
-  BindText('HangThresholdMs', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHangThreshold)));
-  BindCheck('HangHint', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHangHint)));
-  // Blockierschutz für Datenquellen (#493).
-  BindText('ProviderTimeLimitMs',
-    AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProviderTimeLimit)));
-  mPanel := AddPanel(32);
-  // Künstlicher Hänger (#501) nur im Diagnosemodus (#479), nicht neben den regulären Einstellungen.
-  FHangTestRow := mPanel;
-  FHangTestRow.Visible := False;
-  FPage.Part<TAtlasSettingsGeneralPart>.DiagnosticMode.OnClick := DiagnosticModeClick;
-  FHangTest := TButton.Create(FPage);
-  FHangTest.Parent := mPanel;
-  FHangTest.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsHangTest);
-  FHangTest.Left := 0;
-  FHangTest.Top := FHangTest.ScaleValue(3);
-  FHangTest.Width := FHangTest.ScaleValue(150);
-  FHangTest.OnClick := HangTestClick;
-  AddFuseSection;
+  // Checked löst OnClick nur bei einer Änderung aus.
+  FHangTestRow.Visible := ASettings.DiagnosticMode;
+  RefreshFuse;
 end;
 
 procedure TAtlasSettingsRobustnessPart.WindowReady;
 begin
   // Die Liste der Sicherung braucht ein Fenster; vorher bleibt sie leer.
+  RefreshFuse;
+end;
+
+procedure TAtlasSettingsRobustnessPart.HangTestClick(Sender: TObject);
+begin
+  TAtlasActivity.HangTest;
+end;
+
+procedure TAtlasSettingsRobustnessPart.DiagnosticModeClick(Sender: TObject);
+begin
+  FHangTestRow.Visible := FPage.Part<TAtlasSettingsGeneralPart>.DiagnosticMode.Checked;
+end;
+
+procedure TAtlasSettingsRobustnessPart.FuseEnableSelectedClick(Sender: TObject);
+var
+  mIndex: Integer;
+  mTag: NativeInt;
+begin
+  for mIndex := 0 to FFuseList.Items.Count - 1 do
+  begin
+    if FFuseList.Selected[mIndex] then
+    begin
+      mTag := NativeInt(FFuseList.Items.Objects[mIndex]);
+      if mTag > 0 then
+      begin
+        TAtlasGuard.Enable(TAtlasFeature(mTag - 1));
+      end
+      else
+      begin
+        TAtlasGuard.EnableProvider(FFuseList.Items[mIndex]);
+      end;
+    end;
+  end;
+  RefreshFuse;
+end;
+
+procedure TAtlasSettingsRobustnessPart.FuseEnableAllClick(Sender: TObject);
+begin
+  TAtlasGuard.EnableAll;
   RefreshFuse;
 end;
 
@@ -107,6 +127,32 @@ begin
   FFuseEnableAll.Top := FFuseEnableAll.ScaleValue(3);
   FFuseEnableAll.Width := FFuseEnableAll.ScaleValue(150);
   FFuseEnableAll.OnClick := FuseEnableAllClick;
+end;
+
+procedure TAtlasSettingsRobustnessPart.Build;
+var
+  mPanel: TWinControl;
+begin
+  AddSheet(TAtlasTextId.SettingsTabRobustness);
+  // Einfrier-Wächter (#501).
+  BindText('HangThresholdMs', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHangThreshold)));
+  BindCheck('HangHint', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHangHint)));
+  // Blockierschutz für Datenquellen (#493).
+  BindText('ProviderTimeLimitMs',
+    AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProviderTimeLimit)));
+  mPanel := AddPanel(32);
+  // Künstlicher Hänger (#501) nur im Diagnosemodus (#479), nicht neben den regulären Einstellungen.
+  FHangTestRow := mPanel;
+  FHangTestRow.Visible := False;
+  FPage.Part<TAtlasSettingsGeneralPart>.DiagnosticMode.OnClick := DiagnosticModeClick;
+  FHangTest := TButton.Create(FPage);
+  FHangTest.Parent := mPanel;
+  FHangTest.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsHangTest);
+  FHangTest.Left := 0;
+  FHangTest.Top := FHangTest.ScaleValue(3);
+  FHangTest.Width := FHangTest.ScaleValue(150);
+  FHangTest.OnClick := HangTestClick;
+  AddFuseSection;
 end;
 
 procedure TAtlasSettingsRobustnessPart.RefreshFuse;
@@ -143,52 +189,6 @@ begin
   Allow(FFuseList, mAny);
   Allow(FFuseEnableSelected, mAny);
   Allow(FFuseEnableAll, mAny);
-end;
-
-procedure TAtlasSettingsRobustnessPart.FuseEnableSelectedClick(Sender: TObject);
-var
-  mIndex: Integer;
-  mTag: NativeInt;
-begin
-  for mIndex := 0 to FFuseList.Items.Count - 1 do
-  begin
-    if FFuseList.Selected[mIndex] then
-    begin
-      mTag := NativeInt(FFuseList.Items.Objects[mIndex]);
-      if mTag > 0 then
-      begin
-        TAtlasGuard.Enable(TAtlasFeature(mTag - 1));
-      end
-      else
-      begin
-        TAtlasGuard.EnableProvider(FFuseList.Items[mIndex]);
-      end;
-    end;
-  end;
-  RefreshFuse;
-end;
-
-procedure TAtlasSettingsRobustnessPart.FuseEnableAllClick(Sender: TObject);
-begin
-  TAtlasGuard.EnableAll;
-  RefreshFuse;
-end;
-
-procedure TAtlasSettingsRobustnessPart.Load(const ASettings: TAtlasPluginSettings);
-begin
-  // Checked löst OnClick nur bei einer Änderung aus.
-  FHangTestRow.Visible := ASettings.DiagnosticMode;
-  RefreshFuse;
-end;
-
-procedure TAtlasSettingsRobustnessPart.HangTestClick(Sender: TObject);
-begin
-  TAtlasActivity.HangTest;
-end;
-
-procedure TAtlasSettingsRobustnessPart.DiagnosticModeClick(Sender: TObject);
-begin
-  FHangTestRow.Visible := FPage.Part<TAtlasSettingsGeneralPart>.DiagnosticMode.Checked;
 end;
 
 end.

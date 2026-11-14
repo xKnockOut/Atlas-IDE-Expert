@@ -144,6 +144,20 @@ begin
   inherited Destroy;
 end;
 
+function TTreeUnits.EntryIndex(const AFileName: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to FEntries.Count - 1 do
+  begin
+    if SameText(FEntries[mIndex].FileName, AFileName) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
 class function TTreeUnits.Merge(const AIndex: ISymbolIndex; const AExtracted: TUnitIndex;
   const AFileName: string): TUnitIndex;
 var
@@ -171,20 +185,6 @@ begin
     Result.Includes := mIndexed.Includes;
   end;
   Result.PrepareNames;
-end;
-
-function TTreeUnits.EntryIndex(const AFileName: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to FEntries.Count - 1 do
-  begin
-    if SameText(FEntries[mIndex].FileName, AFileName) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
 end;
 
 function TTreeUnits.Holds(ATree: TSyntaxTree): Boolean;

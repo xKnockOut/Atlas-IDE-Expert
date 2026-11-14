@@ -209,89 +209,103 @@ begin
   inherited;
 end;
 
-class procedure TAtlasIdeUnwrap.Install(const ASession: TAtlasUnwrapSessionFunc; const AMessage: TProc<string>);
+procedure TAtlasIdeUnwrap.AppMessage(var Msg: TMsg; var Handled: Boolean);
 begin
-  if FInstance = nil then
+  if TAtlasGuard.Disabled(TAtlasFeature.Unwrap) or (FWindow = nil) or not FWindow.IsShown then
   begin
-    FInstance := TAtlasIdeUnwrap.Create(ASession, AMessage);
+    Exit;
+  end;
+  try
+    case Msg.message of
+      WM_KEYDOWN, WM_SYSKEYDOWN:
+        if IsEditorWindow(Msg.hwnd) then
+        begin
+          KeyDown(Msg, Handled);
+        end;
+      WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_NCLBUTTONDOWN:
+        if not FWindow.HandleAllocated or (Msg.hwnd <> FWindow.Handle) then
+        begin
+          Close;
+        end;
+    end;
+  except
+    // Keine Exception an die IDE (#493); die Nachricht geht dann normal weiter.
+    on E: Exception do
+    begin
+      Handled := False;
+      TAtlasGuard.Report(TAtlasFeature.Unwrap, E);
+    end;
   end;
 end;
 
-class procedure TAtlasIdeUnwrap.Uninstall;
-begin
-  FreeAndNil(FInstance);
-end;
-
-class function TAtlasIdeUnwrap.Enabled: Boolean;
+procedure TAtlasIdeUnwrap.KeyDown(const AMsg: TMsg; var AHandled: Boolean);
 var
-  mSettings: TAtlasPluginSettings;
+  mKey: Word;
 begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and mSettings.Unwrap;
-end;
-
-class function TAtlasIdeUnwrap.Active: Boolean;
-begin
-  Result := (FInstance <> nil) and (FInstance.FWindow <> nil) and FInstance.FWindow.IsShown;
-end;
-
-class procedure TAtlasIdeUnwrap.Run;
-begin
-  if (FInstance <> nil) and Enabled then
+  if (FWindow = nil) or not FWindow.IsShown then
   begin
-    FInstance.Execute;
+    Exit;
+  end;
+  mKey := Word(AMsg.wParam);
+  if (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) then
+  begin
+    Exit;
+  end;
+  if ListKey(mKey) then
+  begin
+    AHandled := True;
+  end
+  else
+  begin
+    // Jede andere Taste schließt ohne Änderung und geht an den Editor.
+    Close;
   end;
 end;
 
-class procedure TAtlasIdeUnwrap.Dismiss;
+/// <summary>Führt AKey in der Liste aus (Eingabe, Escape, Pfeile ohne Strg/Alt); False für jede andere Taste.
+/// </summary>
+function TAtlasIdeUnwrap.ListKey(AKey: Word): Boolean;
 begin
-  if FInstance <> nil then
+  Result := (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0);
+  if not Result then
   begin
-    FInstance.Close;
+    Exit;
+  end;
+  case AKey of
+    VK_RETURN:
+      FWindow.Accept;
+    VK_ESCAPE:
+      FWindow.Cancel;
+    VK_UP:
+      FWindow.MoveRow(-1);
+    VK_DOWN:
+      FWindow.MoveRow(1);
+  else
+    Result := False;
   end;
 end;
 
-class procedure TAtlasIdeUnwrap.EditorModified;
-begin
-  if (FInstance <> nil) and not FInstance.FWriting then
-  begin
-    FInstance.Close;
-  end;
-end;
-
-class procedure TAtlasIdeUnwrap.Invalidate;
+procedure TAtlasIdeUnwrap.Execute;
 var
-  mServices: INTACodeEditorServices;
+  mView: IOTAEditView;
+  mSession: TLspSession;
+  mEntries: TArray<TAtlasUnwrapEntry>;
+  mPoint: TPoint;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  Close;
+  if not Ready(mView, mSession) or not Ask(mSession, mView, mEntries) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+    Exit;
   end;
-end;
-
-procedure TAtlasIdeUnwrap.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
+  FEntries := mEntries;
+  if FWindow = nil then
   begin
-    FMessage(AText);
+    CreateWindow;
   end;
-end;
-
-procedure TAtlasIdeUnwrap.Close;
-var
-  mPainted: Boolean;
-begin
-  mPainted := FPreview >= 0;
-  FPreview := -1;
-  FEntries := nil;
-  if (FWindow <> nil) and FWindow.IsShown then
-  begin
-    FWindow.Dismiss;
-  end;
-  if mPainted then
-  begin
-    Invalidate;
-  end;
+  mPoint := CaretPoint;
+  FWindow.Colors := TAtlasIdeStyle.Colors;
+  FWindow.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
+  FWindow.ShowFor(FEntries, mPoint);
 end;
 
 function TAtlasIdeUnwrap.Ready(out AView: IOTAEditView; out ASession: TLspSession): Boolean;
@@ -397,29 +411,6 @@ begin
     end;
 end;
 
-procedure TAtlasIdeUnwrap.Execute;
-var
-  mView: IOTAEditView;
-  mSession: TLspSession;
-  mEntries: TArray<TAtlasUnwrapEntry>;
-  mPoint: TPoint;
-begin
-  Close;
-  if not Ready(mView, mSession) or not Ask(mSession, mView, mEntries) then
-  begin
-    Exit;
-  end;
-  FEntries := mEntries;
-  if FWindow = nil then
-  begin
-    CreateWindow;
-  end;
-  mPoint := CaretPoint;
-  FWindow.Colors := TAtlasIdeStyle.Colors;
-  FWindow.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
-  FWindow.ShowFor(FEntries, mPoint);
-end;
-
 procedure TAtlasIdeUnwrap.Preview(AIndex: Integer);
 var
   mView: IOTAEditView;
@@ -476,79 +467,88 @@ begin
   Report(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapDone, [TAtlasUnwrapWindow.EntryCaption(mEntry)]));
 end;
 
-/// <summary>Führt AKey in der Liste aus (Eingabe, Escape, Pfeile ohne Strg/Alt); False für jede andere Taste.
-/// </summary>
-function TAtlasIdeUnwrap.ListKey(AKey: Word): Boolean;
-begin
-  Result := (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0);
-  if not Result then
-  begin
-    Exit;
-  end;
-  case AKey of
-    VK_RETURN:
-      FWindow.Accept;
-    VK_ESCAPE:
-      FWindow.Cancel;
-    VK_UP:
-      FWindow.MoveRow(-1);
-    VK_DOWN:
-      FWindow.MoveRow(1);
-  else
-    Result := False;
-  end;
-end;
-
-procedure TAtlasIdeUnwrap.KeyDown(const AMsg: TMsg; var AHandled: Boolean);
+procedure TAtlasIdeUnwrap.Close;
 var
-  mKey: Word;
+  mPainted: Boolean;
 begin
-  if (FWindow = nil) or not FWindow.IsShown then
+  mPainted := FPreview >= 0;
+  FPreview := -1;
+  FEntries := nil;
+  if (FWindow <> nil) and FWindow.IsShown then
   begin
-    Exit;
+    FWindow.Dismiss;
   end;
-  mKey := Word(AMsg.wParam);
-  if (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) then
+  if mPainted then
   begin
-    Exit;
-  end;
-  if ListKey(mKey) then
-  begin
-    AHandled := True;
-  end
-  else
-  begin
-    // Jede andere Taste schließt ohne Änderung und geht an den Editor.
-    Close;
+    Invalidate;
   end;
 end;
 
-procedure TAtlasIdeUnwrap.AppMessage(var Msg: TMsg; var Handled: Boolean);
+procedure TAtlasIdeUnwrap.Report(const AText: string);
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.Unwrap) or (FWindow = nil) or not FWindow.IsShown then
+  if Assigned(FMessage) then
   begin
-    Exit;
+    FMessage(AText);
   end;
-  try
-    case Msg.message of
-      WM_KEYDOWN, WM_SYSKEYDOWN:
-        if IsEditorWindow(Msg.hwnd) then
-        begin
-          KeyDown(Msg, Handled);
-        end;
-      WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_NCLBUTTONDOWN:
-        if not FWindow.HandleAllocated or (Msg.hwnd <> FWindow.Handle) then
-        begin
-          Close;
-        end;
-    end;
-  except
-    // Keine Exception an die IDE (#493); die Nachricht geht dann normal weiter.
-    on E: Exception do
-    begin
-      Handled := False;
-      TAtlasGuard.Report(TAtlasFeature.Unwrap, E);
-    end;
+end;
+
+class procedure TAtlasIdeUnwrap.Invalidate;
+var
+  mServices: INTACodeEditorServices;
+begin
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+  end;
+end;
+
+class procedure TAtlasIdeUnwrap.Install(const ASession: TAtlasUnwrapSessionFunc; const AMessage: TProc<string>);
+begin
+  if FInstance = nil then
+  begin
+    FInstance := TAtlasIdeUnwrap.Create(ASession, AMessage);
+  end;
+end;
+
+class procedure TAtlasIdeUnwrap.Uninstall;
+begin
+  FreeAndNil(FInstance);
+end;
+
+class function TAtlasIdeUnwrap.Enabled: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.Unwrap;
+end;
+
+class function TAtlasIdeUnwrap.Active: Boolean;
+begin
+  Result := (FInstance <> nil) and (FInstance.FWindow <> nil) and FInstance.FWindow.IsShown;
+end;
+
+class procedure TAtlasIdeUnwrap.Run;
+begin
+  if (FInstance <> nil) and Enabled then
+  begin
+    FInstance.Execute;
+  end;
+end;
+
+class procedure TAtlasIdeUnwrap.Dismiss;
+begin
+  if FInstance <> nil then
+  begin
+    FInstance.Close;
+  end;
+end;
+
+class procedure TAtlasIdeUnwrap.EditorModified;
+begin
+  if (FInstance <> nil) and not FInstance.FWriting then
+  begin
+    FInstance.Close;
   end;
 end;
 

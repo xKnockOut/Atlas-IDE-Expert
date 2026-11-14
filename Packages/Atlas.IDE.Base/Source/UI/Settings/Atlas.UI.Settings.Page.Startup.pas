@@ -65,19 +65,39 @@ const
 
 { TAtlasSettingsStartupPart }
 
-procedure TAtlasSettingsStartupPart.Build;
+procedure TAtlasSettingsStartupPart.Load(const ASettings: TAtlasPluginSettings);
 begin
-  // Abgesicherter Start, Updates und Fehlerbericht (#722, #495, #108).
-  AddSheet(TAtlasTextId.SettingsTabStartup);
-  AddSafeSection;
-  AddUpdatesSection;
-  AddBugReportSection;
+  case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
+    TAtlasStartupKey.Ctrl:
+      FSafeKey.Choice := 1;
+    TAtlasStartupKey.None:
+      FSafeKey.Choice := 2;
+  else
+    FSafeKey.Choice := 0;
+  end;
+  FUndoOnConflict.Choice := Ord(TAtlasUndoNames.ParseConflictMode(ASettings.UndoMultiFileOnConflict));
+  FUndoNewFiles.Choice := Ord(TAtlasUndoNames.ParseNewFiles(ASettings.UndoMultiFileNewFiles));
+  FUpdatesInstall.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesInstall, cUpdatesInstallModes);
+  FUpdatesChannel.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesChannel, cUpdatesChannels);
+  FUpdatesNewModules.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesNewModules, cUpdatesNewModulesModes);
+end;
 
-  AddSheet(TAtlasTextId.SettingsTabUndo);
-  AddUndoSection;
-
-  AddSheet(TAtlasTextId.SettingsTabUnitSearch);
-  AddQuickOpenSection;
+procedure TAtlasSettingsStartupPart.Save(var ASettings: TAtlasPluginSettings);
+begin
+  case FSafeKey.Choice of
+    1:
+      ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.Ctrl);
+    2:
+      ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.None);
+  else
+    ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.Shift);
+  end;
+  ASettings.UndoMultiFileOnConflict := TAtlasUndoNames.ConflictModeName(TAtlasUndoConflictMode(
+    Max(0, FUndoOnConflict.Choice)));
+  ASettings.UndoMultiFileNewFiles := TAtlasUndoNames.NewFilesName(TAtlasNewFilesMode(Max(0, FUndoNewFiles.Choice)));
+  ASettings.UpdatesInstall := cUpdatesInstallModes[EnsureRange(FUpdatesInstall.Choice, 0, 2)];
+  ASettings.UpdatesChannel := cUpdatesChannels[EnsureRange(FUpdatesChannel.Choice, 0, 1)];
+  ASettings.UpdatesNewModules := cUpdatesNewModulesModes[EnsureRange(FUpdatesNewModules.Choice, 0, 2)];
 end;
 
 procedure TAtlasSettingsStartupPart.BindMarks;
@@ -118,15 +138,6 @@ begin
   BindText('SafeKeepSettingsHistory', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeHistory)));
 end;
 
-procedure TAtlasSettingsStartupPart.AddQuickOpenSection;
-begin
-  // Datei und Symbol schnell öffnen (#503); die Units-Suche baut ihr Modul als Abschnitt in diesen Reiter (#1455).
-  AddTitle(TAtlasTextId.QuickOpenTitle);
-  BindCheck('QuickOpen', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsQuickOpen)));
-  BindCheck('QuickOpenLibrary', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsQuickOpenLibrary)));
-  BindKey('QuickOpenKey', AddKey(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsQuickOpenKey)));
-end;
-
 procedure TAtlasSettingsStartupPart.AddUndoSection;
 begin
   // Atlas-Änderungen über mehrere Dateien zurücknehmen (#721).
@@ -143,6 +154,15 @@ begin
     [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUndoRecycle),
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUndoDelete),
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsUndoKeep)]);
+end;
+
+procedure TAtlasSettingsStartupPart.AddQuickOpenSection;
+begin
+  // Datei und Symbol schnell öffnen (#503); die Units-Suche baut ihr Modul als Abschnitt in diesen Reiter (#1455).
+  AddTitle(TAtlasTextId.QuickOpenTitle);
+  BindCheck('QuickOpen', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsQuickOpen)));
+  BindCheck('QuickOpenLibrary', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsQuickOpenLibrary)));
+  BindKey('QuickOpenKey', AddKey(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsQuickOpenKey)));
 end;
 
 procedure TAtlasSettingsStartupPart.AddUpdatesSection;
@@ -186,39 +206,19 @@ begin
     AddCheck(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SettingsEditionCheck)));
 end;
 
-procedure TAtlasSettingsStartupPart.Load(const ASettings: TAtlasPluginSettings);
+procedure TAtlasSettingsStartupPart.Build;
 begin
-  case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
-    TAtlasStartupKey.Ctrl:
-      FSafeKey.Choice := 1;
-    TAtlasStartupKey.None:
-      FSafeKey.Choice := 2;
-  else
-    FSafeKey.Choice := 0;
-  end;
-  FUndoOnConflict.Choice := Ord(TAtlasUndoNames.ParseConflictMode(ASettings.UndoMultiFileOnConflict));
-  FUndoNewFiles.Choice := Ord(TAtlasUndoNames.ParseNewFiles(ASettings.UndoMultiFileNewFiles));
-  FUpdatesInstall.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesInstall, cUpdatesInstallModes);
-  FUpdatesChannel.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesChannel, cUpdatesChannels);
-  FUpdatesNewModules.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesNewModules, cUpdatesNewModulesModes);
-end;
+  // Abgesicherter Start, Updates und Fehlerbericht (#722, #495, #108).
+  AddSheet(TAtlasTextId.SettingsTabStartup);
+  AddSafeSection;
+  AddUpdatesSection;
+  AddBugReportSection;
 
-procedure TAtlasSettingsStartupPart.Save(var ASettings: TAtlasPluginSettings);
-begin
-  case FSafeKey.Choice of
-    1:
-      ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.Ctrl);
-    2:
-      ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.None);
-  else
-    ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.Shift);
-  end;
-  ASettings.UndoMultiFileOnConflict := TAtlasUndoNames.ConflictModeName(TAtlasUndoConflictMode(
-    Max(0, FUndoOnConflict.Choice)));
-  ASettings.UndoMultiFileNewFiles := TAtlasUndoNames.NewFilesName(TAtlasNewFilesMode(Max(0, FUndoNewFiles.Choice)));
-  ASettings.UpdatesInstall := cUpdatesInstallModes[EnsureRange(FUpdatesInstall.Choice, 0, 2)];
-  ASettings.UpdatesChannel := cUpdatesChannels[EnsureRange(FUpdatesChannel.Choice, 0, 1)];
-  ASettings.UpdatesNewModules := cUpdatesNewModulesModes[EnsureRange(FUpdatesNewModules.Choice, 0, 2)];
+  AddSheet(TAtlasTextId.SettingsTabUndo);
+  AddUndoSection;
+
+  AddSheet(TAtlasTextId.SettingsTabUnitSearch);
+  AddQuickOpenSection;
 end;
 
 end.

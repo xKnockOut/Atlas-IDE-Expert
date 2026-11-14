@@ -59,6 +59,37 @@ begin
   FFillColumn := -1;
 end;
 
+procedure TAtlasListView.ChangeScale(AM, AD: Integer; AIsDpiChange: Boolean);
+var
+  mWidths: TArray<Integer>;
+  mIndex: Integer;
+begin
+  SetLength(mWidths, Columns.Count);
+  for mIndex := 0 to Columns.Count - 1 do
+  begin
+    mWidths[mIndex] := Columns[mIndex].Width;
+  end;
+  inherited ChangeScale(AM, AD, AIsDpiChange);
+  if (AD <= 0) or (AM = AD) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(mWidths) do
+  begin
+    if (mIndex < Columns.Count) and (mWidths[mIndex] > 0) then
+    begin
+      Columns[mIndex].Width := (mWidths[mIndex] * AM + AD div 2) div AD;
+    end;
+  end;
+  FitColumns;
+end;
+
+procedure TAtlasListView.Resize;
+begin
+  inherited;
+  FitColumns;
+end;
+
 procedure TAtlasListView.FillColumn(AIndex, AMinWidth96: Integer);
 begin
   FFillColumn := AIndex;
@@ -93,17 +124,6 @@ begin
   end;
 end;
 
-procedure TAtlasListView.Resize;
-begin
-  inherited;
-  FitColumns;
-end;
-
-function TAtlasListView.AddColumn(const ACaption: string; AWidth96: Integer): TListColumn;
-begin
-  Result := AddColumn(ACaption, AWidth96, taLeftJustify);
-end;
-
 function TAtlasListView.AddColumn(const ACaption: string; AWidth96: Integer; AAlignment: TAlignment): TListColumn;
 begin
   Result := Columns.Add;
@@ -112,29 +132,9 @@ begin
   Result.Width := TAtlasScaling.ToDevice(AWidth96, CurrentPPI);
 end;
 
-procedure TAtlasListView.ChangeScale(AM, AD: Integer; AIsDpiChange: Boolean);
-var
-  mWidths: TArray<Integer>;
-  mIndex: Integer;
+function TAtlasListView.AddColumn(const ACaption: string; AWidth96: Integer): TListColumn;
 begin
-  SetLength(mWidths, Columns.Count);
-  for mIndex := 0 to Columns.Count - 1 do
-  begin
-    mWidths[mIndex] := Columns[mIndex].Width;
-  end;
-  inherited ChangeScale(AM, AD, AIsDpiChange);
-  if (AD <= 0) or (AM = AD) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to High(mWidths) do
-  begin
-    if (mIndex < Columns.Count) and (mWidths[mIndex] > 0) then
-    begin
-      Columns[mIndex].Width := (mWidths[mIndex] * AM + AD div 2) div AD;
-    end;
-  end;
-  FitColumns;
+  Result := AddColumn(ACaption, AWidth96, taLeftJustify);
 end;
 
 end.

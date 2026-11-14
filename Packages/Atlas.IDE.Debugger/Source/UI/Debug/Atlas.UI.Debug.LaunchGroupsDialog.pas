@@ -126,31 +126,16 @@ begin
   ActiveControl := FGroupList;
 end;
 
-class function TAtlasLaunchGroupsDialog.WaitText(const AItem: TAtlasLaunchItem): string;
+procedure TAtlasLaunchGroupsDialog.DoShow;
 begin
-  case AItem.Wait of
-    TAtlasLaunchWaitKind.Seconds:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchWaitSeconds, [AItem.Value]);
-    TAtlasLaunchWaitKind.Port:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchWaitPort, [AItem.Value, AItem.TimeoutSeconds]);
-    TAtlasLaunchWaitKind.Window:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchWaitWindow, [AItem.TimeoutSeconds]);
-  else
-    Result := '';
-  end;
-end;
-
-class function TAtlasLaunchGroupsDialog.ProjectsText(const AGroup: TAtlasLaunchGroup): string;
-var
-  mNames: TArray<string>;
-  mIndex: Integer;
-begin
-  SetLength(mNames, Length(AGroup.Items));
-  for mIndex := 0 to High(AGroup.Items) do
+  inherited;
+  // Die Listen brauchen ein Fenster; nach dem Thema (VisibleChanging) ist es da.
+  if not FFilled then
   begin
-    mNames[mIndex] := AGroup.Items[mIndex].Caption;
+    FFilled := True;
+    Fill;
+    FillItems;
   end;
-  Result := string.Join(', ', mNames);
 end;
 
 procedure TAtlasLaunchGroupsDialog.Fill;
@@ -216,18 +201,6 @@ begin
   end;
 end;
 
-procedure TAtlasLaunchGroupsDialog.DoShow;
-begin
-  inherited;
-  // Die Listen brauchen ein Fenster; nach dem Thema (VisibleChanging) ist es da.
-  if not FFilled then
-  begin
-    FFilled := True;
-    Fill;
-    FillItems;
-  end;
-end;
-
 procedure TAtlasLaunchGroupsDialog.GroupSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
   FActivate.Enabled := FGroupList.Selected <> nil;
@@ -280,6 +253,33 @@ begin
   finally
     mDialog.Free;
   end;
+end;
+
+class function TAtlasLaunchGroupsDialog.WaitText(const AItem: TAtlasLaunchItem): string;
+begin
+  case AItem.Wait of
+    TAtlasLaunchWaitKind.Seconds:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchWaitSeconds, [AItem.Value]);
+    TAtlasLaunchWaitKind.Port:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchWaitPort, [AItem.Value, AItem.TimeoutSeconds]);
+    TAtlasLaunchWaitKind.Window:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchWaitWindow, [AItem.TimeoutSeconds]);
+  else
+    Result := '';
+  end;
+end;
+
+class function TAtlasLaunchGroupsDialog.ProjectsText(const AGroup: TAtlasLaunchGroup): string;
+var
+  mNames: TArray<string>;
+  mIndex: Integer;
+begin
+  SetLength(mNames, Length(AGroup.Items));
+  for mIndex := 0 to High(AGroup.Items) do
+  begin
+    mNames[mIndex] := AGroup.Items[mIndex].Caption;
+  end;
+  Result := string.Join(', ', mNames);
 end;
 
 end.

@@ -382,13 +382,10 @@ begin
   end;
 end;
 
-function TAtlasAccessibleList.Item(APosition: Integer): IAtlasRawElementProvider;
+procedure TAtlasAccessibleList.Detach;
 begin
-  Result := nil;
-  if (FSource <> nil) and (APosition >= 0) and (APosition < FSource.AccessibleCount) then
-  begin
-    Result := TAtlasAccessibleItem.Create(Self, APosition);
-  end;
+  FSource := nil;
+  inherited Detach;
 end;
 
 function TAtlasAccessibleList.Navigate(ADirection: Integer; out ARetVal: IAtlasRawElementFragment): HResult;
@@ -506,10 +503,13 @@ begin
   Result := S_OK;
 end;
 
-procedure TAtlasAccessibleList.Detach;
+function TAtlasAccessibleList.Item(APosition: Integer): IAtlasRawElementProvider;
 begin
-  FSource := nil;
-  inherited Detach;
+  Result := nil;
+  if (FSource <> nil) and (APosition >= 0) and (APosition < FSource.AccessibleCount) then
+  begin
+    Result := TAtlasAccessibleItem.Create(Self, APosition);
+  end;
 end;
 
 procedure TAtlasAccessibleList.SelectionChanged;

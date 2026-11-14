@@ -51,6 +51,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TMcpStatusTools }
+
 class function TMcpStatusTools.ServerStatus(const ACacheRoot, AFolder: string; AJson: Boolean; ANow: TDateTime;
   const AOwn: TMcpOwnStatusFunc): string;
 var

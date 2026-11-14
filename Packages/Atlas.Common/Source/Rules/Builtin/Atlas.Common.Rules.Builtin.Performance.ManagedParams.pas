@@ -1233,6 +1233,8 @@ begin
   end;
 end;
 
+{ TManagedParamWithoutConstRule }
+
 function TManagedParamWithoutConstRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cManagedParamRuleId, TRuleSeverity.Hint,

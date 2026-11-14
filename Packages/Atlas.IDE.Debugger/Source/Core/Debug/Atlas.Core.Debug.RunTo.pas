@@ -241,6 +241,8 @@ type
     procedure Feed(const ACode: string; ALine: Integer);
   end;
 
+{ TBlockScan }
+
 procedure TBlockScan.Feed(const ACode: string; ALine: Integer);
 var
   mWord: string;

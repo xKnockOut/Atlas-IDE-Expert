@@ -86,6 +86,8 @@ const
   /// <summary>Testprogramm höchstens so lange merken; ein neu angelegtes wird danach gefunden.</summary>
   cCacheMs = 10000;
 
+{ TShellTestUnits }
+
 constructor TShellTestUnits.Create(const AServices: TShellTestUnitServices);
 begin
   inherited Create;
@@ -101,77 +103,6 @@ begin
   FreeAndNil(FTestUnits);
   FreeAndNil(FTestPrograms);
   inherited Destroy;
-end;
-
-function TShellTestUnits.Actions(const AUri: string; ALine: Integer): TArray<TJSONObject>;
-begin
-  Result := FTestUnits.Actions(AUri, ALine);
-end;
-
-procedure TShellTestUnits.RegisterCommand(ACommands: TLspCommands);
-begin
-  // Closure: Free Pascal bricht ab, wenn eine Methode einer Klasse aus einer anderen Unit als Referenz geht.
-  // Nebenläufig: derselbe Weg wie die Code-Aktionen (Diagnose 06.11.2026: bis 9 s in der Schlange).
-  ACommands.RegisterConcurrent(TLspTestUnits.cCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FTestUnits.Execute(AArguments);
-    end);
-  ACommands.RegisterConcurrent(TLspTestFromDebug.cCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FFromDebug.Execute(AArguments);
-    end);
-  TLspBoundaryTests.Attach(ACommands, FTestUnits);
-end;
-
-procedure TShellTestUnits.RegisterCaseCommands(ACommands: TLspCommands);
-var
-  mReadText: TShellTestUnitReadText;
-  mReadUri: TLspTestCasesReadText;
-begin
-  mReadText := FServices.ReadText;
-  // Closure: Free Pascal bricht ab, wenn eine Methode einer Klasse aus einer anderen Unit als Referenz geht.
-  mReadUri :=
-    function(const AUri: string; out AText: string): Boolean
-    begin
-      Result := mReadText(TDocumentUris.ToPath(AUri), AText);
-    end;
-  TLspTestCases.Attach(ACommands, mReadUri);
-  TLspBoundaryCases.Attach(ACommands, mReadUri);
-  TLspMutants.Attach(ACommands, mReadUri);
-end;
-
-function TShellTestUnits.ContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
-var
-  mCandidates: TArray<string>;
-  mFound: string;
-begin
-  AContext := Default(TTestUnitContext);
-  if not Workspace(TDocumentUris.ToPath(AUri), AContext, mCandidates) then
-  begin
-    Result := False;
-    Exit;
-  end;
-  AContext.ReadText := SourceTextOrEmpty;
-  AContext.Exists := DocumentOrFileExists;
-  // Nur der Index: Diese Abfrage läuft bei jeder Code-Aktion und soll nichts nachladen.
-  AContext.FindUnit := ProjectUnitFile;
-  Result := True;
-  if AContext.Settings.Project <> '' then
-  begin
-    mFound := AContext.Settings.Project;
-    if not TPath.IsPathRooted(mFound) then
-    begin
-      mFound := TPath.Combine(AContext.Root, mFound);
-    end;
-    AContext.TestProgram := ChangeFileExt(ExpandFileName(mFound), '.dpr');
-  end
-  else if not CachedTestProgram(AContext.Root, AContext.TestProgram) then
-  begin
-    AContext.TestProgram := TTestUnits.FindTestProgram(mCandidates + DprFilesNear(AContext.Root), AContext.ReadText);
-    StoreTestProgram(AContext.Root, AContext.TestProgram);
-  end;
 end;
 
 function TShellTestUnits.Workspace(const AFileName: string; var AContext: TTestUnitContext;
@@ -287,6 +218,77 @@ begin
     on E: EInOutError do
       FServices.Logger.Debug('Testprojekt: Ordner nicht lesbar: ' + TLogMarks.Text(E.Message));
   end;
+end;
+
+function TShellTestUnits.ContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
+var
+  mCandidates: TArray<string>;
+  mFound: string;
+begin
+  AContext := Default(TTestUnitContext);
+  if not Workspace(TDocumentUris.ToPath(AUri), AContext, mCandidates) then
+  begin
+    Result := False;
+    Exit;
+  end;
+  AContext.ReadText := SourceTextOrEmpty;
+  AContext.Exists := DocumentOrFileExists;
+  // Nur der Index: Diese Abfrage läuft bei jeder Code-Aktion und soll nichts nachladen.
+  AContext.FindUnit := ProjectUnitFile;
+  Result := True;
+  if AContext.Settings.Project <> '' then
+  begin
+    mFound := AContext.Settings.Project;
+    if not TPath.IsPathRooted(mFound) then
+    begin
+      mFound := TPath.Combine(AContext.Root, mFound);
+    end;
+    AContext.TestProgram := ChangeFileExt(ExpandFileName(mFound), '.dpr');
+  end
+  else if not CachedTestProgram(AContext.Root, AContext.TestProgram) then
+  begin
+    AContext.TestProgram := TTestUnits.FindTestProgram(mCandidates + DprFilesNear(AContext.Root), AContext.ReadText);
+    StoreTestProgram(AContext.Root, AContext.TestProgram);
+  end;
+end;
+
+function TShellTestUnits.Actions(const AUri: string; ALine: Integer): TArray<TJSONObject>;
+begin
+  Result := FTestUnits.Actions(AUri, ALine);
+end;
+
+procedure TShellTestUnits.RegisterCommand(ACommands: TLspCommands);
+begin
+  // Closure: Free Pascal bricht ab, wenn eine Methode einer Klasse aus einer anderen Unit als Referenz geht.
+  // Nebenläufig: derselbe Weg wie die Code-Aktionen (Diagnose 06.11.2026: bis 9 s in der Schlange).
+  ACommands.RegisterConcurrent(TLspTestUnits.cCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FTestUnits.Execute(AArguments);
+    end);
+  ACommands.RegisterConcurrent(TLspTestFromDebug.cCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FFromDebug.Execute(AArguments);
+    end);
+  TLspBoundaryTests.Attach(ACommands, FTestUnits);
+end;
+
+procedure TShellTestUnits.RegisterCaseCommands(ACommands: TLspCommands);
+var
+  mReadText: TShellTestUnitReadText;
+  mReadUri: TLspTestCasesReadText;
+begin
+  mReadText := FServices.ReadText;
+  // Closure: Free Pascal bricht ab, wenn eine Methode einer Klasse aus einer anderen Unit als Referenz geht.
+  mReadUri :=
+    function(const AUri: string; out AText: string): Boolean
+    begin
+      Result := mReadText(TDocumentUris.ToPath(AUri), AText);
+    end;
+  TLspTestCases.Attach(ACommands, mReadUri);
+  TLspBoundaryCases.Attach(ACommands, mReadUri);
+  TLspMutants.Attach(ACommands, mReadUri);
 end;
 
 end.

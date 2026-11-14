@@ -238,6 +238,41 @@ begin
   end;
 end;
 
+class function THotspotReport.ForFile(const AResult: THotspotResult; const AFileName: string): string;
+var
+  mExtension: string;
+begin
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  if (mExtension = '.html') or (mExtension = '.htm') then
+  begin
+    Result := Html(AResult);
+  end
+  else if mExtension = '.json' then
+  begin
+    Result := Json(AResult);
+  end
+  else
+  begin
+    Result := Markdown(AResult);
+  end;
+end;
+
+class function THotspotReport.RangeText(const AResult: THotspotResult): string;
+var
+  mKind: string;
+begin
+  case AResult.Kind of
+    THotspotVcsKind.Git:
+      mKind := 'Git';
+    THotspotVcsKind.Svn:
+      mKind := 'SVN';
+  else
+    mKind := '';
+  end;
+  Result := cTexts[THotspotsReportText.MonthsSinceCommits].Fmt([mKind, AResult.Months, DateText(AResult.Since),
+    AResult.Commits]);
+end;
+
 class function THotspotReport.TrendCaption(ATrend: THotspotTrend): string;
 begin
   case ATrend of
@@ -264,34 +299,6 @@ begin
   begin
     Result := AResult.Units;
   end;
-end;
-
-class function THotspotReport.EntryName(const AEntry: THotspotEntry): string;
-begin
-  if AEntry.Method <> '' then
-  begin
-    Result := Format('%s (%s:%d)', [AEntry.Method, AEntry.Path, AEntry.Line]);
-  end
-  else
-  begin
-    Result := Format('%s (%s)', [AEntry.UnitName, AEntry.Path]);
-  end;
-end;
-
-class function THotspotReport.RangeText(const AResult: THotspotResult): string;
-var
-  mKind: string;
-begin
-  case AResult.Kind of
-    THotspotVcsKind.Git:
-      mKind := 'Git';
-    THotspotVcsKind.Svn:
-      mKind := 'SVN';
-  else
-    mKind := '';
-  end;
-  Result := cTexts[THotspotsReportText.MonthsSinceCommits].Fmt([mKind, AResult.Months, DateText(AResult.Since),
-    AResult.Commits]);
 end;
 
 function EntryJson(const AEntry: THotspotEntry): string;
@@ -777,22 +784,15 @@ begin
   end;
 end;
 
-class function THotspotReport.ForFile(const AResult: THotspotResult; const AFileName: string): string;
-var
-  mExtension: string;
+class function THotspotReport.EntryName(const AEntry: THotspotEntry): string;
 begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  if (mExtension = '.html') or (mExtension = '.htm') then
+  if AEntry.Method <> '' then
   begin
-    Result := Html(AResult);
-  end
-  else if mExtension = '.json' then
-  begin
-    Result := Json(AResult);
+    Result := Format('%s (%s:%d)', [AEntry.Method, AEntry.Path, AEntry.Line]);
   end
   else
   begin
-    Result := Markdown(AResult);
+    Result := Format('%s (%s)', [AEntry.UnitName, AEntry.Path]);
   end;
 end;
 

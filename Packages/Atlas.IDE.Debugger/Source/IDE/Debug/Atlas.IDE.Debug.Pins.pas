@@ -222,73 +222,6 @@ begin
   inherited Destroy;
 end;
 
-class procedure TAtlasIdeDebugPins.Start(const AMessage: TProc<string>);
-begin
-  if FInstance = nil then
-  begin
-    FInstance := TAtlasIdeDebugPins.Create(AMessage);
-    FInstance.FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FInstance.FListener);
-  end;
-  TAtlasIdeDebugSession.Start;
-  if TAtlasIdeDebugSession.StoppedThread <> nil then
-  begin
-    FInstance.Stopped;
-  end;
-end;
-
-class procedure TAtlasIdeDebugPins.Release;
-var
-  mInstance: TAtlasIdeDebugPins;
-begin
-  if FInstance = nil then
-  begin
-    Exit;
-  end;
-  mInstance := FInstance;
-  FInstance := nil;
-  if mInstance.FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(mInstance.FListener);
-  end;
-  mInstance.FListener := nil;
-  mInstance.Free;
-  TAtlasDebugLineEnd.Invalidate;
-end;
-
-class function TAtlasIdeDebugPins.Started: Boolean;
-begin
-  Result := FInstance <> nil;
-end;
-
-class function TAtlasIdeDebugPins.Enabled: Boolean;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and mSettings.DebugPinnedValues;
-end;
-
-class function TAtlasIdeDebugPins.Actions(const AValue: TAtlasDebugValue): TArray<TAtlasDebugValueFix>;
-begin
-  Result := nil;
-  if (FInstance <> nil) and (AValue.Expression <> '') then
-  begin
-    Result := TArray<TAtlasDebugValueFix>.Create(TAtlasDebugValueFix.Create(cPinAction,
-      TAtlasDebugStrings.Text(TAtlasDebugTextId.PinAction)));
-  end;
-end;
-
-class procedure TAtlasIdeDebugPins.Act(const AValue: TAtlasDebugValue; const AFileName: string;
-  ALine, AAction: Integer);
-begin
-  if (FInstance <> nil) and (AAction = cPinAction) then
-  begin
-    FInstance.Pin(TAtlasDebugPin.Create(TAtlasIdeEvaluateStore.CurrentProject, AFileName, ALine,
-      AValue.Expression));
-  end;
-end;
-
 procedure TAtlasIdeDebugPins.Load;
 begin
   // Gesperrt: leer beginnen und die Datei nicht überschreiben; TAtlasDataFile protokolliert ohne Pfad.
@@ -311,58 +244,6 @@ begin
     on E: Exception do
       TAtlasDataFile.ReportNotWritten(cWhat, E);
   end;
-end;
-
-procedure TAtlasIdeDebugPins.Pin(const APin: TAtlasDebugPin);
-begin
-  if FPins.Add(APin) then
-  begin
-    Save;
-    // Gleich auswerten, solange der Prozess steht.
-    if StillStopped then
-    begin
-      FQueue.Add(APin);
-      FTimer.Interval := cTickMs;
-      FTimer.Enabled := True;
-    end;
-    TAtlasDebugLineEnd.Invalidate;
-  end
-  else if (Length(FPins.All(APin.Project)) >= TAtlasDebugPins.cLimit) and Assigned(FMessage) then
-  begin
-    FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.PinLimit, [TAtlasDebugPins.cLimit]));
-  end;
-end;
-
-procedure TAtlasIdeDebugPins.Unpin(const APin: TAtlasDebugPin);
-var
-  mIndex: Integer;
-begin
-  if not FPins.Remove(APin) then
-  begin
-    Exit;
-  end;
-  for mIndex := FQueue.Count - 1 downto 0 do
-  begin
-    if FQueue[mIndex].Key = APin.Key then
-    begin
-      FQueue.Delete(mIndex);
-    end;
-  end;
-  Save;
-  TAtlasDebugLineEnd.Invalidate;
-end;
-
-class procedure TAtlasIdeDebugPins.Reevaluate;
-begin
-  if (FInstance <> nil) and FInstance.FVisible and (TAtlasIdeDebugSession.StoppedThread <> nil) then
-  begin
-    FInstance.Stopped;
-  end;
-end;
-
-function TAtlasIdeDebugPins.StillStopped: Boolean;
-begin
-  Result := FVisible and (TAtlasIdeDebugSession.StopCount = FStop) and (TAtlasIdeDebugSession.StoppedThread <> nil);
 end;
 
 procedure TAtlasIdeDebugPins.Stopped;
@@ -496,27 +377,48 @@ begin
   TAtlasDebugLineEnd.Invalidate;
 end;
 
-procedure TAtlasIdeDebugPins.RememberHit(const APin: TAtlasDebugPin; const ARect: TRect);
-var
-  mHit: THit;
-  mIndex: Integer;
+function TAtlasIdeDebugPins.StillStopped: Boolean;
 begin
-  for mIndex := FHits.Count - 1 downto 0 do
-  begin
-    if FHits[mIndex].Pin.Key = APin.Key then
-    begin
-      FHits.Delete(mIndex);
-    end;
-  end;
-  mHit.Pin := APin;
-  mHit.Rect := ARect;
-  FHits.Add(mHit);
+  Result := FVisible and (TAtlasIdeDebugSession.StopCount = FStop) and (TAtlasIdeDebugSession.StoppedThread <> nil);
 end;
 
-function TAtlasIdeDebugPins.CanPaint(const AContext: INTACodeEditorPaintContext): Boolean;
+procedure TAtlasIdeDebugPins.Pin(const APin: TAtlasDebugPin);
 begin
-  Result := FVisible and (AContext <> nil) and (AContext.LineState <> nil) and
-    not TAtlasGuard.Disabled(TAtlasFeature.Debugger);
+  if FPins.Add(APin) then
+  begin
+    Save;
+    // Gleich auswerten, solange der Prozess steht.
+    if StillStopped then
+    begin
+      FQueue.Add(APin);
+      FTimer.Interval := cTickMs;
+      FTimer.Enabled := True;
+    end;
+    TAtlasDebugLineEnd.Invalidate;
+  end
+  else if (Length(FPins.All(APin.Project)) >= TAtlasDebugPins.cLimit) and Assigned(FMessage) then
+  begin
+    FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.PinLimit, [TAtlasDebugPins.cLimit]));
+  end;
+end;
+
+procedure TAtlasIdeDebugPins.Unpin(const APin: TAtlasDebugPin);
+var
+  mIndex: Integer;
+begin
+  if not FPins.Remove(APin) then
+  begin
+    Exit;
+  end;
+  for mIndex := FQueue.Count - 1 downto 0 do
+  begin
+    if FQueue[mIndex].Key = APin.Key then
+    begin
+      FQueue.Delete(mIndex);
+    end;
+  end;
+  Save;
+  TAtlasDebugLineEnd.Invalidate;
 end;
 
 procedure TAtlasIdeDebugPins.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
@@ -598,6 +500,104 @@ begin
           end);
       end;
     end);
+end;
+
+procedure TAtlasIdeDebugPins.RememberHit(const APin: TAtlasDebugPin; const ARect: TRect);
+var
+  mHit: THit;
+  mIndex: Integer;
+begin
+  for mIndex := FHits.Count - 1 downto 0 do
+  begin
+    if FHits[mIndex].Pin.Key = APin.Key then
+    begin
+      FHits.Delete(mIndex);
+    end;
+  end;
+  mHit.Pin := APin;
+  mHit.Rect := ARect;
+  FHits.Add(mHit);
+end;
+
+function TAtlasIdeDebugPins.CanPaint(const AContext: INTACodeEditorPaintContext): Boolean;
+begin
+  Result := FVisible and (AContext <> nil) and (AContext.LineState <> nil) and
+    not TAtlasGuard.Disabled(TAtlasFeature.Debugger);
+end;
+
+class procedure TAtlasIdeDebugPins.Start(const AMessage: TProc<string>);
+begin
+  if FInstance = nil then
+  begin
+    FInstance := TAtlasIdeDebugPins.Create(AMessage);
+    FInstance.FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FInstance.FListener);
+  end;
+  TAtlasIdeDebugSession.Start;
+  if TAtlasIdeDebugSession.StoppedThread <> nil then
+  begin
+    FInstance.Stopped;
+  end;
+end;
+
+class procedure TAtlasIdeDebugPins.Release;
+var
+  mInstance: TAtlasIdeDebugPins;
+begin
+  if FInstance = nil then
+  begin
+    Exit;
+  end;
+  mInstance := FInstance;
+  FInstance := nil;
+  if mInstance.FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(mInstance.FListener);
+  end;
+  mInstance.FListener := nil;
+  mInstance.Free;
+  TAtlasDebugLineEnd.Invalidate;
+end;
+
+class function TAtlasIdeDebugPins.Started: Boolean;
+begin
+  Result := FInstance <> nil;
+end;
+
+class function TAtlasIdeDebugPins.Enabled: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.DebugPinnedValues;
+end;
+
+class function TAtlasIdeDebugPins.Actions(const AValue: TAtlasDebugValue): TArray<TAtlasDebugValueFix>;
+begin
+  Result := nil;
+  if (FInstance <> nil) and (AValue.Expression <> '') then
+  begin
+    Result := TArray<TAtlasDebugValueFix>.Create(TAtlasDebugValueFix.Create(cPinAction,
+      TAtlasDebugStrings.Text(TAtlasDebugTextId.PinAction)));
+  end;
+end;
+
+class procedure TAtlasIdeDebugPins.Act(const AValue: TAtlasDebugValue; const AFileName: string;
+  ALine, AAction: Integer);
+begin
+  if (FInstance <> nil) and (AAction = cPinAction) then
+  begin
+    FInstance.Pin(TAtlasDebugPin.Create(TAtlasIdeEvaluateStore.CurrentProject, AFileName, ALine,
+      AValue.Expression));
+  end;
+end;
+
+class procedure TAtlasIdeDebugPins.Reevaluate;
+begin
+  if (FInstance <> nil) and FInstance.FVisible and (TAtlasIdeDebugSession.StoppedThread <> nil) then
+  begin
+    FInstance.Stopped;
+  end;
 end;
 
 end.

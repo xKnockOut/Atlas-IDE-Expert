@@ -95,6 +95,8 @@ implementation
 uses
   System.SysUtils;
 
+{ TSymbolPathGraph }
+
 constructor TSymbolPathGraph.Create(ATable: TSymbolPathNodeTable; AGraph: TUsesGraph);
 begin
   inherited Create;
@@ -118,23 +120,45 @@ begin
   inherited;
 end;
 
-procedure TSymbolPathGraph.Configure(AVia: TSymbolPathEdgeKinds; AThroughLibrary: Boolean;
-  const AEndpoints: TArray<Integer>);
+function TSymbolPathGraph.InterfacesOf(ANode: Integer): TArray<Integer>;
 var
+  mAncestor: string;
+  mData: TSymbolPathUnit;
   mNode: Integer;
 begin
-  FVia := AVia;
-  FThroughLibrary := AThroughLibrary;
-  FEndpoints.Clear;
-  for mNode in AEndpoints do
+  Result := nil;
+  mData := FTable.NodeUnit(ANode);
+  if mData = nil then
   begin
-    FEndpoints.AddOrSetValue(mNode, True);
+    Exit;
+  end;
+  for mAncestor in FTable.Node(ANode).Symbol.Ancestors do
+  begin
+    for mNode in ResolveType(mData, mAncestor).Nodes do
+    begin
+      if FTable.Node(mNode).Symbol.Kind = TIndexSymbolKind.InterfaceType then
+      begin
+        Result := Result + [mNode];
+      end;
+    end;
   end;
 end;
 
-function TSymbolPathGraph.Passable(ANode: Integer): Boolean;
+procedure TSymbolPathGraph.AddTypeEdges(AList: TSymbolPathEdgeList; AUnit: TSymbolPathUnit; const ATypeText: string;
+  AKind: TSymbolPathEdgeKind; const ANode: TSymbolPathNode);
+var
+  mName: string;
+  mTarget: TTypeTarget;
+  mNode: Integer;
 begin
-  Result := not FTable.Node(ANode).Library_ or FThroughLibrary or FEndpoints.ContainsKey(ANode);
+  for mName in TSymbolPathNames.TypeNamesIn(ATypeText) do
+  begin
+    mTarget := ResolveType(AUnit, mName);
+    for mNode in mTarget.Nodes do
+    begin
+      AList.Add(mNode, AKind, mTarget.Inferred, ANode.FileName, ANode.Symbol.SelectionRange.StartPos);
+    end;
+  end;
 end;
 
 /// <summary>Stelle des letzten uses-Eintrags von AUnit, der AUnitName trifft (spätere verdecken frühere); -1 ohne.
@@ -266,27 +290,43 @@ begin
   FTypes.Add(mKey, Result);
 end;
 
-function TSymbolPathGraph.InterfacesOf(ANode: Integer): TArray<Integer>;
+function TSymbolPathGraph.BuildForward(ANode: Integer): TSymbolPathEdges;
 var
-  mAncestor: string;
+  mList: TSymbolPathEdgeList;
+  mNode: TSymbolPathNode;
   mData: TSymbolPathUnit;
-  mNode: Integer;
 begin
-  Result := nil;
-  mData := FTable.NodeUnit(ANode);
+  mNode := FTable.Node(ANode);
+  mData := FTable.UnitFor(mNode.UnitName);
   if mData = nil then
   begin
-    Exit;
+    Exit(nil);
   end;
-  for mAncestor in FTable.Node(ANode).Symbol.Ancestors do
-  begin
-    for mNode in ResolveType(mData, mAncestor).Nodes do
+  mList := TSymbolPathEdgeList.Create(FTable);
+  try
+    if mNode.IsUnit then
     begin
-      if FTable.Node(mNode).Symbol.Kind = TIndexSymbolKind.InterfaceType then
+      UnitEdges(mNode, mData, mList);
+    end
+    else
+    begin
+      if mNode.Symbol.Kind in cSymbolPathStructKinds then
       begin
-        Result := Result + [mNode];
+        StructEdges(ANode, mData, mList);
+      end;
+      if mNode.Symbol.Kind in cSymbolPathValueKinds then
+      begin
+        AddTypeEdges(mList, mData, mNode.Symbol.TypeName + ' ' + mNode.Symbol.TypeArgs, TSymbolPathEdgeKind.HasField,
+          mNode);
+      end;
+      if mNode.Symbol.Kind in cSymbolPathRoutineKinds then
+      begin
+        RoutineEdges(ANode, mData, mList);
       end;
     end;
+    Result := mList.ToArray;
+  finally
+    mList.Free;
   end;
 end;
 
@@ -365,23 +405,6 @@ begin
     Exit(FTable.MemberNamed(AClass, mResolved));
   end;
   Result := FTable.MemberNamed(AClass, AName);
-end;
-
-procedure TSymbolPathGraph.AddTypeEdges(AList: TSymbolPathEdgeList; AUnit: TSymbolPathUnit; const ATypeText: string;
-  AKind: TSymbolPathEdgeKind; const ANode: TSymbolPathNode);
-var
-  mName: string;
-  mTarget: TTypeTarget;
-  mNode: Integer;
-begin
-  for mName in TSymbolPathNames.TypeNamesIn(ATypeText) do
-  begin
-    mTarget := ResolveType(AUnit, mName);
-    for mNode in mTarget.Nodes do
-    begin
-      AList.Add(mNode, AKind, mTarget.Inferred, ANode.FileName, ANode.Symbol.SelectionRange.StartPos);
-    end;
-  end;
 end;
 
 procedure TSymbolPathGraph.UsesEdges(const ANode: TSymbolPathNode; AList: TSymbolPathEdgeList);
@@ -477,6 +500,37 @@ begin
   end;
 end;
 
+procedure TSymbolPathGraph.RoutineEdges(ANode: Integer; AData: TSymbolPathUnit; AList: TSymbolPathEdgeList);
+var
+  mNode: TSymbolPathNode;
+  mParamType: string;
+  mContainer: Integer;
+begin
+  mNode := FTable.Node(ANode);
+  for mParamType in mNode.Symbol.ParamTypes do
+  begin
+    AddTypeEdges(AList, AData, mParamType, TSymbolPathEdgeKind.Parameter, mNode);
+  end;
+  if mNode.Symbol.TypeName <> '' then
+  begin
+    AddTypeEdges(AList, AData, mNode.Symbol.TypeName + ' ' + mNode.Symbol.TypeArgs, TSymbolPathEdgeKind.Result_,
+      mNode);
+  end;
+  mContainer := FTable.ContainerNode(AData, mNode.Symbol);
+  if mContainer < 0 then
+  begin
+    Exit;
+  end;
+  if FTable.Node(mContainer).Symbol.Kind = TIndexSymbolKind.InterfaceType then
+  begin
+    InterfaceMethodEdges(mNode, mContainer, AList);
+  end
+  else
+  begin
+    ClassMethodEdges(ANode, mContainer, AList);
+  end;
+end;
+
 procedure TSymbolPathGraph.InterfaceMethodEdges(const ANode: TSymbolPathNode; AContainer: Integer;
   AList: TSymbolPathEdgeList);
 var
@@ -516,148 +570,6 @@ begin
   end;
 end;
 
-procedure TSymbolPathGraph.RoutineEdges(ANode: Integer; AData: TSymbolPathUnit; AList: TSymbolPathEdgeList);
-var
-  mNode: TSymbolPathNode;
-  mParamType: string;
-  mContainer: Integer;
-begin
-  mNode := FTable.Node(ANode);
-  for mParamType in mNode.Symbol.ParamTypes do
-  begin
-    AddTypeEdges(AList, AData, mParamType, TSymbolPathEdgeKind.Parameter, mNode);
-  end;
-  if mNode.Symbol.TypeName <> '' then
-  begin
-    AddTypeEdges(AList, AData, mNode.Symbol.TypeName + ' ' + mNode.Symbol.TypeArgs, TSymbolPathEdgeKind.Result_,
-      mNode);
-  end;
-  mContainer := FTable.ContainerNode(AData, mNode.Symbol);
-  if mContainer < 0 then
-  begin
-    Exit;
-  end;
-  if FTable.Node(mContainer).Symbol.Kind = TIndexSymbolKind.InterfaceType then
-  begin
-    InterfaceMethodEdges(mNode, mContainer, AList);
-  end
-  else
-  begin
-    ClassMethodEdges(ANode, mContainer, AList);
-  end;
-end;
-
-function TSymbolPathGraph.BuildForward(ANode: Integer): TSymbolPathEdges;
-var
-  mList: TSymbolPathEdgeList;
-  mNode: TSymbolPathNode;
-  mData: TSymbolPathUnit;
-begin
-  mNode := FTable.Node(ANode);
-  mData := FTable.UnitFor(mNode.UnitName);
-  if mData = nil then
-  begin
-    Exit(nil);
-  end;
-  mList := TSymbolPathEdgeList.Create(FTable);
-  try
-    if mNode.IsUnit then
-    begin
-      UnitEdges(mNode, mData, mList);
-    end
-    else
-    begin
-      if mNode.Symbol.Kind in cSymbolPathStructKinds then
-      begin
-        StructEdges(ANode, mData, mList);
-      end;
-      if mNode.Symbol.Kind in cSymbolPathValueKinds then
-      begin
-        AddTypeEdges(mList, mData, mNode.Symbol.TypeName + ' ' + mNode.Symbol.TypeArgs, TSymbolPathEdgeKind.HasField,
-          mNode);
-      end;
-      if mNode.Symbol.Kind in cSymbolPathRoutineKinds then
-      begin
-        RoutineEdges(ANode, mData, mList);
-      end;
-    end;
-    Result := mList.ToArray;
-  finally
-    mList.Free;
-  end;
-end;
-
-function TSymbolPathGraph.ForwardOf(ANode: Integer): TSymbolPathEdges;
-begin
-  if not FForward.TryGetValue(ANode, Result) then
-  begin
-    Result := BuildForward(ANode);
-    FForward.Add(ANode, Result);
-  end;
-end;
-
-function TSymbolPathGraph.Leads(ASource, ATarget: Integer): Boolean;
-var
-  mEdge: TSymbolPathEdge;
-begin
-  for mEdge in ForwardOf(ASource) do
-  begin
-    if (mEdge.Target = ATarget) and (mEdge.Kind in FVia) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-procedure TSymbolPathGraph.AddRef(const AName, AUnitName: string; AIndex: Integer);
-var
-  mKey: string;
-  mList: TRefList;
-  mRef: TSymbolRef;
-begin
-  mKey := UpperCase(TSymbolPathNames.LastSegment(AName));
-  if not FRefs.TryGetValue(mKey, mList) then
-  begin
-    mList := TRefList.Create;
-    FRefs.Add(mKey, mList);
-  end;
-  mRef.UnitName := AUnitName;
-  mRef.Index := AIndex;
-  mList.Add(mRef);
-end;
-
-/// <summary>Typangaben einer Deklaration: Typ samt Typargumenten und bei Routinen die Parametertypen.</summary>
-function TypeTexts(const ASymbol: TIndexSymbol): TArray<string>;
-begin
-  Result := [ASymbol.TypeName + ' ' + ASymbol.TypeArgs];
-  if ASymbol.Kind in cSymbolPathRoutineKinds then
-  begin
-    Result := Result + ASymbol.ParamTypes;
-  end;
-end;
-
-procedure TSymbolPathGraph.AddUnitRefs(const AItem: TUnitIndex);
-var
-  mIndex: Integer;
-  mText, mName: string;
-begin
-  for mIndex := 0 to High(AItem.Symbols) do
-  begin
-    if not (AItem.Symbols[mIndex].Kind in cSymbolPathValueKinds + cSymbolPathRoutineKinds) then
-    begin
-      Continue;
-    end;
-    for mText in TypeTexts(AItem.Symbols[mIndex]) do
-    begin
-      for mName in TSymbolPathNames.TypeNamesIn(mText) do
-      begin
-        AddRef(mName, AItem.UnitName, mIndex);
-      end;
-    end;
-  end;
-end;
-
 procedure TSymbolPathGraph.BuildRefs;
 var
   mItem: TUnitIndex;
@@ -682,6 +594,23 @@ begin
   finally
     mScope.Free;
   end;
+end;
+
+procedure TSymbolPathGraph.AddRef(const AName, AUnitName: string; AIndex: Integer);
+var
+  mKey: string;
+  mList: TRefList;
+  mRef: TSymbolRef;
+begin
+  mKey := UpperCase(TSymbolPathNames.LastSegment(AName));
+  if not FRefs.TryGetValue(mKey, mList) then
+  begin
+    mList := TRefList.Create;
+    FRefs.Add(mKey, mList);
+  end;
+  mRef.UnitName := AUnitName;
+  mRef.Index := AIndex;
+  mList.Add(mRef);
 end;
 
 procedure TSymbolPathGraph.UnitPredecessors(const ANode: TSymbolPathNode; ACandidates: TList<Integer>);
@@ -753,6 +682,37 @@ begin
     if FTable.Node(mCandidate).Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_] then
     begin
       ACandidates.Add(FTable.ContainerNode(mRefUnit, FTable.Node(mCandidate).Symbol));
+    end;
+  end;
+end;
+
+/// <summary>Typangaben einer Deklaration: Typ samt Typargumenten und bei Routinen die Parametertypen.</summary>
+function TypeTexts(const ASymbol: TIndexSymbol): TArray<string>;
+begin
+  Result := [ASymbol.TypeName + ' ' + ASymbol.TypeArgs];
+  if ASymbol.Kind in cSymbolPathRoutineKinds then
+  begin
+    Result := Result + ASymbol.ParamTypes;
+  end;
+end;
+
+procedure TSymbolPathGraph.AddUnitRefs(const AItem: TUnitIndex);
+var
+  mIndex: Integer;
+  mText, mName: string;
+begin
+  for mIndex := 0 to High(AItem.Symbols) do
+  begin
+    if not (AItem.Symbols[mIndex].Kind in cSymbolPathValueKinds + cSymbolPathRoutineKinds) then
+    begin
+      Continue;
+    end;
+    for mText in TypeTexts(AItem.Symbols[mIndex]) do
+    begin
+      for mName in TSymbolPathNames.TypeNamesIn(mText) do
+      begin
+        AddRef(mName, AItem.UnitName, mIndex);
+      end;
     end;
   end;
 end;
@@ -834,6 +794,29 @@ begin
   end;
 end;
 
+procedure TSymbolPathGraph.Configure(AVia: TSymbolPathEdgeKinds; AThroughLibrary: Boolean;
+  const AEndpoints: TArray<Integer>);
+var
+  mNode: Integer;
+begin
+  FVia := AVia;
+  FThroughLibrary := AThroughLibrary;
+  FEndpoints.Clear;
+  for mNode in AEndpoints do
+  begin
+    FEndpoints.AddOrSetValue(mNode, True);
+  end;
+end;
+
+function TSymbolPathGraph.ForwardOf(ANode: Integer): TSymbolPathEdges;
+begin
+  if not FForward.TryGetValue(ANode, Result) then
+  begin
+    Result := BuildForward(ANode);
+    FForward.Add(ANode, Result);
+  end;
+end;
+
 function TSymbolPathGraph.PredecessorsOf(ANode: Integer): TArray<Integer>;
 var
   mCandidates: TList<Integer>;
@@ -862,6 +845,25 @@ begin
     mCandidates.Free;
   end;
   FPredecessors.Add(ANode, Result);
+end;
+
+function TSymbolPathGraph.Leads(ASource, ATarget: Integer): Boolean;
+var
+  mEdge: TSymbolPathEdge;
+begin
+  for mEdge in ForwardOf(ASource) do
+  begin
+    if (mEdge.Target = ATarget) and (mEdge.Kind in FVia) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TSymbolPathGraph.Passable(ANode: Integer): Boolean;
+begin
+  Result := not FTable.Node(ANode).Library_ or FThroughLibrary or FEndpoints.ContainsKey(ANode);
 end;
 
 end.

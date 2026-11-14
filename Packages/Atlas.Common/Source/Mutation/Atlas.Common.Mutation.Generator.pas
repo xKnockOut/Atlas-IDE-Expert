@@ -275,18 +275,6 @@ begin
   Result := Copy(FText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
 end;
 
-function TMutationRun.Wanted(const AName: string): Boolean;
-var
-  mDot: Integer;
-begin
-  if FOptions.Routine = '' then
-  begin
-    Exit(True);
-  end;
-  mDot := LastDelimiter('.', AName);
-  Result := SameText(AName, FOptions.Routine) or SameText(Copy(AName, mDot + 1, MaxInt), FOptions.Routine);
-end;
-
 procedure TMutationRun.Add(AOperator: TMutationOperator; const AStartPos, AEndPos: TTextPosition; AStartOffset,
   AEndOffset: Integer; const AReplacement: string);
 var
@@ -317,26 +305,20 @@ begin
   Add(AOperator, ANode.StartPos, ANode.EndPos, ANode.StartOffset, ANode.EndOffset, AReplacement);
 end;
 
-function TMutationRun.OperatorToken(ANode: TSyntaxNode; out AToken: TPascalToken): Boolean;
+procedure TMutationRun.WalkBody(ABody: TSyntaxNode);
 var
-  mIndex, mUntil: Integer;
-  mTokens: TArray<TPascalToken>;
+  mStack: TStack<TWalkEntry>;
 begin
-  mTokens := FTree.Tokens;
-  mIndex := FTree.FirstTokenFrom(ANode[0].EndOffset);
-  mUntil := ANode[1].StartOffset;
-  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < mUntil) do
-  begin
-    if SameText(mTokens[mIndex].Text, ANode.Name) and
-      (mTokens[mIndex].Kind in [TPascalTokenKind.Symbol, TPascalTokenKind.Keyword]) then
+  mStack := TStack<TWalkEntry>.Create;
+  try
+    mStack.Push(TWalkEntry.Create(ABody, False));
+    while mStack.Count > 0 do
     begin
-      AToken := mTokens[mIndex];
-      Exit(True);
+      Visit(mStack.Pop, mStack);
     end;
-    Inc(mIndex);
+  finally
+    mStack.Free;
   end;
-  AToken := Default(TPascalToken);
-  Result := False;
 end;
 
 procedure TMutationRun.Binary(ANode: TSyntaxNode);
@@ -414,6 +396,28 @@ begin
   AddNode(TMutationOperator.ExitDefault, mArgument, 'Default(' + FResultType + ')');
 end;
 
+function TMutationRun.OperatorToken(ANode: TSyntaxNode; out AToken: TPascalToken): Boolean;
+var
+  mIndex, mUntil: Integer;
+  mTokens: TArray<TPascalToken>;
+begin
+  mTokens := FTree.Tokens;
+  mIndex := FTree.FirstTokenFrom(ANode[0].EndOffset);
+  mUntil := ANode[1].StartOffset;
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < mUntil) do
+  begin
+    if SameText(mTokens[mIndex].Text, ANode.Name) and
+      (mTokens[mIndex].Kind in [TPascalTokenKind.Symbol, TPascalTokenKind.Keyword]) then
+    begin
+      AToken := mTokens[mIndex];
+      Exit(True);
+    end;
+    Inc(mIndex);
+  end;
+  AToken := Default(TPascalToken);
+  Result := False;
+end;
+
 /// <summary>Ziel eines Aufrufs in einer Aufrufanweisung: bei Call dessen erstes Kind, sonst der Ausdruck.
 /// </summary>
 function CallTarget(AStatement: TSyntaxNode): TSyntaxNode;
@@ -428,60 +432,6 @@ begin
   begin
     Result := Result[0];
   end;
-end;
-
-procedure TMutationRun.Statement(ANode: TSyntaxNode; AInAnonymous: Boolean);
-var
-  mTarget: TSyntaxNode;
-begin
-  if ANode.Kind = TSyntaxKind.AssignStatement then
-  begin
-    AddNode(TMutationOperator.RemoveStatement, ANode, '');
-    Exit;
-  end;
-  mTarget := CallTarget(ANode);
-  if (mTarget <> nil) and (mTarget.Kind = TSyntaxKind.Identifier) and SameText(mTarget.Name, 'Exit') then
-  begin
-    if not AInAnonymous and (ANode[0].Kind = TSyntaxKind.Call) then
-    begin
-      ExitDefault(ANode[0]);
-    end;
-    Exit;
-  end;
-  if IndexText(ANode.Name, cFlowCalls) < 0 then
-  begin
-    AddNode(TMutationOperator.RemoveStatement, ANode, '');
-  end;
-end;
-
-class function TMutationGenerator.IsQuietTarget(ANode: TSyntaxNode): Boolean;
-var
-  mNode: TSyntaxNode;
-begin
-  mNode := ANode;
-  while mNode <> nil do
-  begin
-    case mNode.Kind of
-      TSyntaxKind.Identifier:
-        Exit(IsQuietName(mNode.Name));
-      TSyntaxKind.MemberAccess, TSyntaxKind.Call, TSyntaxKind.IndexAccess, TSyntaxKind.Dereference,
-        TSyntaxKind.GenericArgs:
-        begin
-          if (mNode.Kind = TSyntaxKind.MemberAccess) and IsQuietName(mNode.Name) then
-          begin
-            Exit(True);
-          end;
-          if mNode.ChildCount = 0 then
-          begin
-            Exit(False);
-          end;
-          mNode := mNode[0];
-        end;
-    else
-      Exit(False);
-    end;
-  end;
-  Result := False;
 end;
 
 procedure TMutationRun.Visit(const AEntry: TWalkEntry; AStack: TStack<TWalkEntry>);
@@ -528,20 +478,58 @@ begin
   end;
 end;
 
-procedure TMutationRun.WalkBody(ABody: TSyntaxNode);
+{ TMutationGenerator }
+
+class function TMutationGenerator.ForText(const AText: string; const AOptions: TMutationOptions): TArray<TMutant>;
 var
-  mStack: TStack<TWalkEntry>;
+  mTree: TSyntaxTree;
+  mPreprocessor: TPreprocessorOptions;
+  mProcessed: TPreprocessorResult;
 begin
-  mStack := TStack<TWalkEntry>.Create;
+  // Wie der Baum im Editor: ohne Symbole die Vordefinitionen (Win32, Delphi 13).
+  mPreprocessor := TPascalPreprocessor.EditorOptions(AOptions.Defines);
+  mTree := TSyntaxTreeCache.ParseActive(AText, mPreprocessor, nil, mProcessed);
   try
-    mStack.Push(TWalkEntry.Create(ABody, False));
-    while mStack.Count > 0 do
-    begin
-      Visit(mStack.Pop, mStack);
-    end;
+    Result := ForTree(mTree, AText, AOptions);
   finally
-    mStack.Free;
+    mTree.Free;
   end;
+end;
+
+procedure TMutationRun.Statement(ANode: TSyntaxNode; AInAnonymous: Boolean);
+var
+  mTarget: TSyntaxNode;
+begin
+  if ANode.Kind = TSyntaxKind.AssignStatement then
+  begin
+    AddNode(TMutationOperator.RemoveStatement, ANode, '');
+    Exit;
+  end;
+  mTarget := CallTarget(ANode);
+  if (mTarget <> nil) and (mTarget.Kind = TSyntaxKind.Identifier) and SameText(mTarget.Name, 'Exit') then
+  begin
+    if not AInAnonymous and (ANode[0].Kind = TSyntaxKind.Call) then
+    begin
+      ExitDefault(ANode[0]);
+    end;
+    Exit;
+  end;
+  if IndexText(ANode.Name, cFlowCalls) < 0 then
+  begin
+    AddNode(TMutationOperator.RemoveStatement, ANode, '');
+  end;
+end;
+
+function TMutationRun.Wanted(const AName: string): Boolean;
+var
+  mDot: Integer;
+begin
+  if FOptions.Routine = '' then
+  begin
+    Exit(True);
+  end;
+  mDot := LastDelimiter('.', AName);
+  Result := SameText(AName, FOptions.Routine) or SameText(Copy(AName, mDot + 1, MaxInt), FOptions.Routine);
 end;
 
 /// <summary>Ergebnistyp im Kopf von ARoutine als Text; '' ohne (Prozedur oder Kurzform ohne Signatur).</summary>
@@ -645,20 +633,34 @@ begin
   end;
 end;
 
-class function TMutationGenerator.ForText(const AText: string; const AOptions: TMutationOptions): TArray<TMutant>;
+class function TMutationGenerator.IsQuietTarget(ANode: TSyntaxNode): Boolean;
 var
-  mTree: TSyntaxTree;
-  mPreprocessor: TPreprocessorOptions;
-  mProcessed: TPreprocessorResult;
+  mNode: TSyntaxNode;
 begin
-  // Wie der Baum im Editor: ohne Symbole die Vordefinitionen (Win32, Delphi 13).
-  mPreprocessor := TPascalPreprocessor.EditorOptions(AOptions.Defines);
-  mTree := TSyntaxTreeCache.ParseActive(AText, mPreprocessor, nil, mProcessed);
-  try
-    Result := ForTree(mTree, AText, AOptions);
-  finally
-    mTree.Free;
+  mNode := ANode;
+  while mNode <> nil do
+  begin
+    case mNode.Kind of
+      TSyntaxKind.Identifier:
+        Exit(IsQuietName(mNode.Name));
+      TSyntaxKind.MemberAccess, TSyntaxKind.Call, TSyntaxKind.IndexAccess, TSyntaxKind.Dereference,
+        TSyntaxKind.GenericArgs:
+        begin
+          if (mNode.Kind = TSyntaxKind.MemberAccess) and IsQuietName(mNode.Name) then
+          begin
+            Exit(True);
+          end;
+          if mNode.ChildCount = 0 then
+          begin
+            Exit(False);
+          end;
+          mNode := mNode[0];
+        end;
+    else
+      Exit(False);
+    end;
   end;
+  Result := False;
 end;
 
 end.

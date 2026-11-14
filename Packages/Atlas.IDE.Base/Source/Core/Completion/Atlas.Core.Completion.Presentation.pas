@@ -321,58 +321,6 @@ begin
   end;
 end;
 
-class function TAtlasItemPresentation.MissingUnit(const AItem: TAtlasCompletionItem): string;
-var
-  mEdit: TAtlasTextEdit;
-  mSuffix: string;
-  mText: string;
-begin
-  Result := '';
-  if AItem.UnitUsed then
-  begin
-    Exit;
-  end;
-  // Der Server nennt die Unit im Detail ("System.Classes (uses ergänzen)" bzw. "System.Classes (add to uses)").
-  for mSuffix in cUsesSuffixes do
-  begin
-    if EndsText(mSuffix, AItem.Signature) then
-    begin
-      Exit(Copy(AItem.Signature, 1, Length(AItem.Signature) - Length(mSuffix)));
-    end;
-  end;
-  // Sonst aus der Ergänzung selbst (", System.Classes" bzw. "uses System.Classes;").
-  for mEdit in AItem.AdditionalEdits do
-  begin
-    mText := Trim(mEdit.NewText.Replace(',', ' ').Replace(';', ' '));
-    if StartsText('uses', mText) and ((Length(mText) = 4) or not mText[5].IsLetter) then
-    begin
-      mText := Trim(Copy(mText, 5, MaxInt));
-    end;
-    if mText <> '' then
-    begin
-      Exit(mText);
-    end;
-  end;
-end;
-
-class function TAtlasItemPresentation.Announcement(const AItem: TAtlasCompletionItem; const AKind, AOf: string;
-  APosition, ACount: Integer): string;
-var
-  mShort: string;
-begin
-  Result := AItem.Name;
-  if AKind <> '' then
-  begin
-    Result := Result + ', ' + AKind;
-  end;
-  Result := Result + ', ' + Format(AOf, [APosition, ACount]) + '.';
-  mShort := Detail(AItem);
-  if (mShort <> '') and not SameText(mShort, AItem.Name) then
-  begin
-    Result := Result + ' ' + mShort;
-  end;
-end;
-
 class function TAtlasItemPresentation.Detail(const AItem: TAtlasCompletionItem): string;
 begin
   if MissingUnit(AItem) <> '' then
@@ -408,6 +356,24 @@ begin
   end;
 end;
 
+class function TAtlasItemPresentation.Announcement(const AItem: TAtlasCompletionItem; const AKind, AOf: string;
+  APosition, ACount: Integer): string;
+var
+  mShort: string;
+begin
+  Result := AItem.Name;
+  if AKind <> '' then
+  begin
+    Result := Result + ', ' + AKind;
+  end;
+  Result := Result + ', ' + Format(AOf, [APosition, ACount]) + '.';
+  mShort := Detail(AItem);
+  if (mShort <> '') and not SameText(mShort, AItem.Name) then
+  begin
+    Result := Result + ' ' + mShort;
+  end;
+end;
+
 class function TAtlasItemPresentation.TagText(const AItem: TAtlasCompletionItem): string;
 var
   mTag: TAtlasTag;
@@ -422,6 +388,40 @@ begin
     else
     begin
       Result := Result + ', ' + mTag.Text;
+    end;
+  end;
+end;
+
+class function TAtlasItemPresentation.MissingUnit(const AItem: TAtlasCompletionItem): string;
+var
+  mEdit: TAtlasTextEdit;
+  mSuffix: string;
+  mText: string;
+begin
+  Result := '';
+  if AItem.UnitUsed then
+  begin
+    Exit;
+  end;
+  // Der Server nennt die Unit im Detail ("System.Classes (uses ergänzen)" bzw. "System.Classes (add to uses)").
+  for mSuffix in cUsesSuffixes do
+  begin
+    if EndsText(mSuffix, AItem.Signature) then
+    begin
+      Exit(Copy(AItem.Signature, 1, Length(AItem.Signature) - Length(mSuffix)));
+    end;
+  end;
+  // Sonst aus der Ergänzung selbst (", System.Classes" bzw. "uses System.Classes;").
+  for mEdit in AItem.AdditionalEdits do
+  begin
+    mText := Trim(mEdit.NewText.Replace(',', ' ').Replace(';', ' '));
+    if StartsText('uses', mText) and ((Length(mText) = 4) or not mText[5].IsLetter) then
+    begin
+      mText := Trim(Copy(mText, 5, MaxInt));
+    end;
+    if mText <> '' then
+    begin
+      Exit(mText);
     end;
   end;
 end;
@@ -698,20 +698,6 @@ begin
   Result := SubsequencePositions(APattern, AName);
 end;
 
-class function TAtlasItemPresentation.HiddenKinds(const AItems: TAtlasCompletionItems): string;
-var
-  mItem: TAtlasCompletionItem;
-begin
-  for mItem in AItems do
-  begin
-    if mItem.HiddenKinds <> '' then
-    begin
-      Exit(mItem.HiddenKinds);
-    end;
-  end;
-  Result := '';
-end;
-
 class function TAtlasItemPresentation.DataSource(const AItems: TAtlasCompletionItems): string;
 var
   mItem: TAtlasCompletionItem;
@@ -721,6 +707,20 @@ begin
     if mItem.DataSource <> '' then
     begin
       Exit(mItem.DataSource);
+    end;
+  end;
+  Result := '';
+end;
+
+class function TAtlasItemPresentation.HiddenKinds(const AItems: TAtlasCompletionItems): string;
+var
+  mItem: TAtlasCompletionItem;
+begin
+  for mItem in AItems do
+  begin
+    if mItem.HiddenKinds <> '' then
+    begin
+      Exit(mItem.HiddenKinds);
     end;
   end;
   Result := '';

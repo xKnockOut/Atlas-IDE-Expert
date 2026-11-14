@@ -229,6 +229,8 @@ begin
   end;
 end;
 
+{ TFormatCheck }
+
 class function TFormatCheck.Edits(const AText: string; const AStyle: TFormatStyle;
   const AScope: TFormatScope): TArray<TTextEdit>;
 var
@@ -370,6 +372,8 @@ type
     Rest: string;
     class function Create(const ALine: string; AIndentSize: Integer): TLeading; static;
   end;
+
+{ TLeading }
 
 class function TLeading.Create(const ALine: string; AIndentSize: Integer): TLeading;
 var

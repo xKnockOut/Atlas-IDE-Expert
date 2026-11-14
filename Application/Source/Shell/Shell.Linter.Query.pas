@@ -67,6 +67,8 @@ const
     (De: '--query gibt es mit --format text (Standard), json oder csv';
     En: '--query exists with --format text (default), json or csv'));
 
+{ TLinterQuery }
+
 class function TLinterQuery.Resolve(const AText: string; AFailOnMatch: Boolean; const ASettings: TServerSettings;
   out AQuery: TLinterQueryText): Boolean;
 var

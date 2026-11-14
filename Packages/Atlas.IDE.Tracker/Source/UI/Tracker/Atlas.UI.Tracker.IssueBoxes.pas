@@ -165,14 +165,41 @@ begin
   inherited;
 end;
 
-procedure TAtlasIssueImageBox.SetGraphic(AGraphic: TGraphic);
+procedure TAtlasIssueImageBox.Paint;
+var
+  mRect: TRect;
+  mWidth: Integer;
+  mText: string;
 begin
-  FreeAndNil(FGraphic);
-  FGraphic := AGraphic;
-  Hint := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewImageHint);
-  ShowHint := True;
+  Canvas.Brush.Color := ToColor(FColors.Surface);
+  Canvas.FillRect(ClientRect);
+  if (FGraphic = nil) or (FGraphic.Width <= 0) then
+  begin
+    // Noch nicht geladen bzw. nicht ladbar: Alternativtext gedämpft.
+    Canvas.Font := Font;
+    Canvas.Font.Color := ToColor(FColors.Muted);
+    mText := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewImageLink, [FAlt]);
+    Canvas.TextOut(0, ScaleValue(2), mText);
+    Exit;
+  end;
+  mWidth := Min(FGraphic.Width, ClientWidth);
+  mRect := Rect(0, 0, mWidth, ClientHeight);
+  Canvas.StretchDraw(mRect, FGraphic);
+end;
+
+procedure TAtlasIssueImageBox.Resize;
+begin
+  inherited;
   Fit;
-  Invalidate;
+end;
+
+procedure TAtlasIssueImageBox.Click;
+begin
+  inherited;
+  if (FGraphic <> nil) and Assigned(FOnEnlarge) then
+  begin
+    FOnEnlarge(Self);
+  end;
 end;
 
 procedure TAtlasIssueImageBox.Fit;
@@ -196,41 +223,14 @@ begin
   end;
 end;
 
-procedure TAtlasIssueImageBox.Resize;
+procedure TAtlasIssueImageBox.SetGraphic(AGraphic: TGraphic);
 begin
-  inherited;
+  FreeAndNil(FGraphic);
+  FGraphic := AGraphic;
+  Hint := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewImageHint);
+  ShowHint := True;
   Fit;
-end;
-
-procedure TAtlasIssueImageBox.Paint;
-var
-  mRect: TRect;
-  mWidth: Integer;
-  mText: string;
-begin
-  Canvas.Brush.Color := ToColor(FColors.Surface);
-  Canvas.FillRect(ClientRect);
-  if (FGraphic = nil) or (FGraphic.Width <= 0) then
-  begin
-    // Noch nicht geladen bzw. nicht ladbar: Alternativtext gedämpft.
-    Canvas.Font := Font;
-    Canvas.Font.Color := ToColor(FColors.Muted);
-    mText := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewImageLink, [FAlt]);
-    Canvas.TextOut(0, ScaleValue(2), mText);
-    Exit;
-  end;
-  mWidth := Min(FGraphic.Width, ClientWidth);
-  mRect := Rect(0, 0, mWidth, ClientHeight);
-  Canvas.StretchDraw(mRect, FGraphic);
-end;
-
-procedure TAtlasIssueImageBox.Click;
-begin
-  inherited;
-  if (FGraphic <> nil) and Assigned(FOnEnlarge) then
-  begin
-    FOnEnlarge(Self);
-  end;
+  Invalidate;
 end;
 
 { TAtlasIssueBadgeBar }
@@ -244,13 +244,66 @@ begin
   Height := ScaleValue(4);
 end;
 
-procedure TAtlasIssueBadgeBar.SetBadges(const ATexts, AHints: TArray<string>; const AColors: TAtlasColors);
+procedure TAtlasIssueBadgeBar.Paint;
+var
+  mIndex, mRadius: Integer;
+  mRect: TRect;
 begin
-  FTexts := ATexts;
-  FHints := AHints;
-  FColors := AColors;
+  Canvas.Brush.Color := ToColor(FColors.Surface);
+  Canvas.FillRect(ClientRect);
+  if Length(FRects) <> Length(FTexts) then
+  begin
+    Arrange;
+  end;
+  Canvas.Font := Font;
+  mRadius := MulDiv(8, CurrentPPI, 96);
+  for mIndex := 0 to High(FRects) do
+  begin
+    mRect := FRects[mIndex];
+    Canvas.Brush.Color := ToColor(FColors.Gutter);
+    Canvas.Pen.Color := ToColor(FColors.Line);
+    Canvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, mRadius, mRadius);
+    Canvas.Brush.Style := bsClear;
+    Canvas.Font.Color := ToColor(FColors.Text);
+    DrawText(Canvas.Handle, PChar(FTexts[mIndex]), Length(FTexts[mIndex]), mRect,
+      DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+    Canvas.Brush.Style := bsSolid;
+  end;
+end;
+
+procedure TAtlasIssueBadgeBar.Resize;
+begin
+  inherited;
   Arrange;
-  Invalidate;
+end;
+
+procedure TAtlasIssueBadgeBar.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  mIndex, mHit: Integer;
+begin
+  inherited;
+  mHit := -1;
+  for mIndex := 0 to High(FRects) do
+  begin
+    if FRects[mIndex].Contains(Point(X, Y)) then
+    begin
+      mHit := mIndex;
+    end;
+  end;
+  if mHit = FHintIndex then
+  begin
+    Exit;
+  end;
+  FHintIndex := mHit;
+  if (mHit >= 0) and (mHit <= High(FHints)) then
+  begin
+    Hint := FHints[mHit];
+  end
+  else
+  begin
+    Hint := '';
+  end;
+  Application.CancelHint;
 end;
 
 procedure TAtlasIssueBadgeBar.Arrange;
@@ -290,66 +343,13 @@ begin
   end;
 end;
 
-procedure TAtlasIssueBadgeBar.Resize;
+procedure TAtlasIssueBadgeBar.SetBadges(const ATexts, AHints: TArray<string>; const AColors: TAtlasColors);
 begin
-  inherited;
+  FTexts := ATexts;
+  FHints := AHints;
+  FColors := AColors;
   Arrange;
-end;
-
-procedure TAtlasIssueBadgeBar.Paint;
-var
-  mIndex, mRadius: Integer;
-  mRect: TRect;
-begin
-  Canvas.Brush.Color := ToColor(FColors.Surface);
-  Canvas.FillRect(ClientRect);
-  if Length(FRects) <> Length(FTexts) then
-  begin
-    Arrange;
-  end;
-  Canvas.Font := Font;
-  mRadius := MulDiv(8, CurrentPPI, 96);
-  for mIndex := 0 to High(FRects) do
-  begin
-    mRect := FRects[mIndex];
-    Canvas.Brush.Color := ToColor(FColors.Gutter);
-    Canvas.Pen.Color := ToColor(FColors.Line);
-    Canvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, mRadius, mRadius);
-    Canvas.Brush.Style := bsClear;
-    Canvas.Font.Color := ToColor(FColors.Text);
-    DrawText(Canvas.Handle, PChar(FTexts[mIndex]), Length(FTexts[mIndex]), mRect,
-      DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
-    Canvas.Brush.Style := bsSolid;
-  end;
-end;
-
-procedure TAtlasIssueBadgeBar.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  mIndex, mHit: Integer;
-begin
-  inherited;
-  mHit := -1;
-  for mIndex := 0 to High(FRects) do
-  begin
-    if FRects[mIndex].Contains(Point(X, Y)) then
-    begin
-      mHit := mIndex;
-    end;
-  end;
-  if mHit = FHintIndex then
-  begin
-    Exit;
-  end;
-  FHintIndex := mHit;
-  if (mHit >= 0) and (mHit <= High(FHints)) then
-  begin
-    Hint := FHints[mHit];
-  end
-  else
-  begin
-    Hint := '';
-  end;
-  Application.CancelHint;
+  Invalidate;
 end;
 
 { TAtlasIssueSectionHead }
@@ -359,12 +359,6 @@ begin
   inherited Create(AOwner);
   FColors := TAtlasColors.Light;
   Height := ScaleValue(cHeight);
-end;
-
-procedure TAtlasIssueSectionHead.SetColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
 end;
 
 procedure TAtlasIssueSectionHead.Paint;
@@ -399,6 +393,12 @@ begin
   end;
 end;
 
+procedure TAtlasIssueSectionHead.SetColors(const AColors: TAtlasColors);
+begin
+  FColors := AColors;
+  Invalidate;
+end;
+
 { TAtlasIssueCard }
 
 constructor TAtlasIssueCard.Create(AOwner: TComponent);
@@ -412,20 +412,20 @@ begin
   Padding.SetBounds(ScaleValue(cPadSide), ScaleValue(cPadEnd), ScaleValue(cPadSide), ScaleValue(cPadEnd));
 end;
 
-procedure TAtlasIssueCard.SetColors(AFill, ABorder: TAtlasColor);
-begin
-  FFill := AFill;
-  FBorder := ABorder;
-  Color := ToColor(AFill);
-  Invalidate;
-end;
-
 procedure TAtlasIssueCard.Paint;
 begin
   Canvas.Brush.Color := ToColor(FFill);
   Canvas.Pen.Color := ToColor(FBorder);
   Canvas.Pen.Width := 1;
   Canvas.Rectangle(ClientRect);
+end;
+
+procedure TAtlasIssueCard.SetColors(AFill, ABorder: TAtlasColor);
+begin
+  FFill := AFill;
+  FBorder := ABorder;
+  Color := ToColor(AFill);
+  Invalidate;
 end;
 
 { TAtlasIssueImageWindow }

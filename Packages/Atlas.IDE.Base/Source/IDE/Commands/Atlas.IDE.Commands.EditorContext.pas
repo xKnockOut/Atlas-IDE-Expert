@@ -124,6 +124,8 @@ begin
   end;
 end;
 
+{ TAtlasEditorCommandContext }
+
 class function TAtlasEditorCommandContext.Session: TLspSession;
 begin
   Result := nil;

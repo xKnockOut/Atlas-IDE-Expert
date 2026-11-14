@@ -142,93 +142,6 @@ begin
   inherited;
 end;
 
-procedure TAtlasIdeIssueState.Stop;
-begin
-  if FStopped then
-  begin
-    Exit;
-  end;
-  FWorker.Stop(cStopWaitMs);
-  if (FShown <> '') and Assigned(FHooks.Field) then
-  begin
-    FHooks.Field('', '', nil);
-  end;
-  FStopped := True;
-  FShown := '';
-  // Das Menü löst auch die Einträge der Zeiterfassung.
-  FreeAndNil(FMenu);
-  FTime := TAtlasIdeTimeField.None;
-  FHooks := Default(TAtlasIdeIssueStateHooks);
-  FSync := nil;
-end;
-
-class function TAtlasIdeIssueState.Active: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.IssuesStatusState;
-end;
-
-function TAtlasIdeIssueState.Writable(out AProvider: IAtlasTrackerProvider;
-  out ATarget: TAtlasTrackerTarget): Boolean;
-begin
-  AProvider := nil;
-  ATarget := TAtlasTrackerTarget.Create(FIssue.Provider, FIssue.Url, FIssue.Project, '');
-  if not FStopped and not FIssue.IsEmpty and Assigned(FHooks.Provider) then
-  begin
-    AProvider := FHooks.Provider(FIssue.Provider);
-  end;
-  Result := (AProvider <> nil) and (FSync <> nil) and FSync.Enabled(AProvider, ATarget);
-end;
-
-function TAtlasIdeIssueState.ShowsState: Boolean;
-var
-  mProvider: IAtlasTrackerProvider;
-  mTarget: TAtlasTrackerTarget;
-begin
-  Result := Active and Writable(mProvider, mTarget);
-end;
-
-procedure TAtlasIdeIssueState.SetIssue(const AIssue: TAtlasTimeIssue; const AState: string);
-begin
-  if FStopped then
-  begin
-    Exit;
-  end;
-  if not FIssue.Same(AIssue) then
-  begin
-    FIssue := AIssue;
-    FListState := AState;
-    FState := AState;
-    FRead := Default(TAtlasIssueStateRead);
-    FEntries := nil;
-    if ShowsState then
-    begin
-      Read(nil);
-    end;
-  end
-  else if not SameText(FListState, AState) then
-  begin
-    // „Meine Issues“ kennt einen neueren Stand (anderswo geändert).
-    FListState := AState;
-    FState := AState;
-  end
-  else if (FRead.Key = '') and (FWorker.Pending = 0) and ShowsState then
-  begin
-    // Erst später eingeschaltet (issues.statusState, issues.syncState): einmal lesen.
-    Read(nil);
-  end;
-  Render;
-end;
-
-procedure TAtlasIdeIssueState.TimeChanged(const AField: TAtlasIdeTimeField);
-begin
-  if FStopped then
-  begin
-    Exit;
-  end;
-  FTime := AField;
-  Render;
-end;
-
 procedure TAtlasIdeIssueState.Render;
 var
   mKey, mState, mText, mHint: string;
@@ -283,6 +196,91 @@ begin
           end);
       end;
     end);
+end;
+
+function TAtlasIdeIssueState.ShowsState: Boolean;
+var
+  mProvider: IAtlasTrackerProvider;
+  mTarget: TAtlasTrackerTarget;
+begin
+  Result := Active and Writable(mProvider, mTarget);
+end;
+
+function TAtlasIdeIssueState.Writable(out AProvider: IAtlasTrackerProvider;
+  out ATarget: TAtlasTrackerTarget): Boolean;
+begin
+  AProvider := nil;
+  ATarget := TAtlasTrackerTarget.Create(FIssue.Provider, FIssue.Url, FIssue.Project, '');
+  if not FStopped and not FIssue.IsEmpty and Assigned(FHooks.Provider) then
+  begin
+    AProvider := FHooks.Provider(FIssue.Provider);
+  end;
+  Result := (AProvider <> nil) and (FSync <> nil) and FSync.Enabled(AProvider, ATarget);
+end;
+
+procedure TAtlasIdeIssueState.Readed(const ARead: TAtlasIssueStateRead);
+var
+  mCurrent: string;
+begin
+  // Inzwischen ein anderes Issue: Die Antwort gilt nicht mehr.
+  if FStopped or not SameText(ARead.Key, FIssue.Key) then
+  begin
+    Exit;
+  end;
+  FRead := ARead;
+  if ARead.Succeeded and (ARead.Rules.Current <> '') then
+  begin
+    FState := ARead.Rules.Current;
+  end;
+  mCurrent := FState;
+  FEntries := nil;
+  if ARead.Succeeded then
+  begin
+    FEntries := TAtlasIssueStatus.Entries(ARead.Rules, ARead.States, mCurrent);
+  end;
+  Render;
+end;
+
+procedure TAtlasIdeIssueState.Clicked(const APoint: TPoint);
+var
+  mOwner: TAtlasIdeIssueState;
+  mPoint: TPoint;
+begin
+  if not ShowsState then
+  begin
+    ShowMenu(APoint);
+    Exit;
+  end;
+  // Übergänge frisch lesen, dann das Menü an derselben Stelle.
+  mOwner := Self;
+  mPoint := APoint;
+  Read(
+    procedure
+    begin
+      if not mOwner.FStopped then
+      begin
+        mOwner.ShowMenu(mPoint);
+      end;
+    end);
+end;
+
+procedure TAtlasIdeIssueState.EntryClick(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  mIndex := (Sender as TMenuItem).Tag;
+  if not FStopped and (mIndex >= 0) and (mIndex <= High(FEntries)) then
+  begin
+    Run(FEntries[mIndex], '');
+  end;
+end;
+
+procedure TAtlasIdeIssueState.EndClick(Sender: TObject);
+begin
+  if not FStopped and Assigned(FHooks.EndIssue) then
+  begin
+    FHooks.EndIssue();
+  end;
 end;
 
 /// <summary>Im Hintergrund: Regeln und Werte des Zustandsfeldes von AKey; ohne Regeln (GitHub) nur die Werte.
@@ -359,181 +357,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeIssueState.Readed(const ARead: TAtlasIssueStateRead);
-var
-  mCurrent: string;
-begin
-  // Inzwischen ein anderes Issue: Die Antwort gilt nicht mehr.
-  if FStopped or not SameText(ARead.Key, FIssue.Key) then
-  begin
-    Exit;
-  end;
-  FRead := ARead;
-  if ARead.Succeeded and (ARead.Rules.Current <> '') then
-  begin
-    FState := ARead.Rules.Current;
-  end;
-  mCurrent := FState;
-  FEntries := nil;
-  if ARead.Succeeded then
-  begin
-    FEntries := TAtlasIssueStatus.Entries(ARead.Rules, ARead.States, mCurrent);
-  end;
-  Render;
-end;
-
-procedure TAtlasIdeIssueState.Clicked(const APoint: TPoint);
-var
-  mOwner: TAtlasIdeIssueState;
-  mPoint: TPoint;
-begin
-  if not ShowsState then
-  begin
-    ShowMenu(APoint);
-    Exit;
-  end;
-  // Übergänge frisch lesen, dann das Menü an derselben Stelle.
-  mOwner := Self;
-  mPoint := APoint;
-  Read(
-    procedure
-    begin
-      if not mOwner.FStopped then
-      begin
-        mOwner.ShowMenu(mPoint);
-      end;
-    end);
-end;
-
-/// <summary>Eintrag mit Text ACaption an AParent; ohne AClick grau.</summary>
-function AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer; const AClick: TNotifyEvent): TMenuItem;
-begin
-  Result := TMenuItem.Create(AParent);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  Result.OnClick := AClick;
-  Result.Enabled := Assigned(AClick);
-  AParent.Add(Result);
-end;
-
-procedure TAtlasIdeIssueState.AddStateItems;
-var
-  mIndex: Integer;
-begin
-  if not FRead.Succeeded then
-  begin
-    AddItem(FMenu.Items, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.StatusMenuFailed), 0, nil);
-  end
-  else if Length(FEntries) = 0 then
-  begin
-    AddItem(FMenu.Items, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.StatusMenuNone), 0, nil);
-  end;
-  for mIndex := 0 to High(FEntries) do
-  begin
-    AddItem(FMenu.Items, FEntries[mIndex].Caption, mIndex, EntryClick);
-  end;
-  AddItem(FMenu.Items, cLineCaption, 0, nil);
-  AddItem(FMenu.Items, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.StatusMenuComment), 0, CommentClick);
-  AddItem(FMenu.Items, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewEnd), 0, EndClick);
-end;
-
-procedure TAtlasIdeIssueState.ShowMenu(const APoint: TPoint);
-var
-  mStates: Boolean;
-begin
-  // Ein Menü für die ganze Sitzung: Die Klicks kommen erst nach Popup an.
-  if FMenu = nil then
-  begin
-    FMenu := TPopupMenu.Create(nil);
-  end;
-  FMenu.Items.Clear;
-  mStates := ShowsState;
-  if mStates then
-  begin
-    AddStateItems;
-  end;
-  if Assigned(FTime.Menu) then
-  begin
-    if mStates then
-    begin
-      AddItem(FMenu.Items, cLineCaption, 0, nil);
-    end;
-    FTime.Menu(FMenu.Items);
-  end;
-  if FMenu.Items.Count > 0 then
-  begin
-    FMenu.Popup(APoint.X, APoint.Y);
-  end;
-end;
-
-procedure TAtlasIdeIssueState.EntryClick(Sender: TObject);
-var
-  mIndex: Integer;
-begin
-  mIndex := (Sender as TMenuItem).Tag;
-  if not FStopped and (mIndex >= 0) and (mIndex <= High(FEntries)) then
-  begin
-    Run(FEntries[mIndex], '');
-  end;
-end;
-
-/// <summary>Texte der Einträge für die Auswahl im Dialog.</summary>
-function Captions(const AEntries: TArray<TAtlasIssueStateEntry>): TArray<string>;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, Length(AEntries));
-  for mIndex := 0 to High(AEntries) do
-  begin
-    Result[mIndex] := AEntries[mIndex].Caption;
-  end;
-end;
-
-procedure TAtlasIdeIssueState.CommentClick(Sender: TObject);
-var
-  mDialog: TAtlasTrackerStateDialog;
-  mAssist: IAtlasCommentAssist;
-  mEntry: TAtlasIssueStateEntry;
-begin
-  if FStopped then
-  begin
-    Exit;
-  end;
-  mAssist := nil;
-  if Assigned(FHooks.Assist) then
-  begin
-    mAssist := FHooks.Assist(TAtlasTrackerTarget.Create(FIssue.Provider, FIssue.Url, FIssue.Project, ''), FIssue.Key,
-      TAtlasCommentDrafts.cFieldState);
-  end;
-  mDialog := TAtlasTrackerStateDialog.CreateDialog(nil, FIssue.Key, Captions(FEntries), -1);
-  try
-    mDialog.Editor.Enhanced := mAssist <> nil;
-    mDialog.Editor.Bind(mAssist);
-    if (mDialog.ShowModal <> mrOk) or FStopped then
-    begin
-      mDialog.Editor.Unbind;
-      Exit;
-    end;
-    mEntry := Default(TAtlasIssueStateEntry);
-    if (mDialog.Entry >= 0) and (mDialog.Entry <= High(FEntries)) then
-    begin
-      mEntry := FEntries[mDialog.Entry];
-    end;
-    Run(mEntry, mDialog.Comment);
-    mDialog.Editor.Sent;
-  finally
-    mDialog.Free;
-  end;
-end;
-
-procedure TAtlasIdeIssueState.EndClick(Sender: TObject);
-begin
-  if not FStopped and Assigned(FHooks.EndIssue) then
-  begin
-    FHooks.EndIssue();
-  end;
-end;
-
 procedure TAtlasIdeIssueState.Run(const AEntry: TAtlasIssueStateEntry; const AComment: string);
 var
   mOwner: TAtlasIdeIssueState;
@@ -588,6 +411,183 @@ begin
   end;
   // Neuer Zustand und die ab hier erlaubten Übergänge (benannte Ereignisse verraten ihr Ziel nicht).
   Read(nil);
+end;
+
+/// <summary>Eintrag mit Text ACaption an AParent; ohne AClick grau.</summary>
+function AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer; const AClick: TNotifyEvent): TMenuItem;
+begin
+  Result := TMenuItem.Create(AParent);
+  Result.Caption := ACaption;
+  Result.Tag := ATag;
+  Result.OnClick := AClick;
+  Result.Enabled := Assigned(AClick);
+  AParent.Add(Result);
+end;
+
+procedure TAtlasIdeIssueState.ShowMenu(const APoint: TPoint);
+var
+  mStates: Boolean;
+begin
+  // Ein Menü für die ganze Sitzung: Die Klicks kommen erst nach Popup an.
+  if FMenu = nil then
+  begin
+    FMenu := TPopupMenu.Create(nil);
+  end;
+  FMenu.Items.Clear;
+  mStates := ShowsState;
+  if mStates then
+  begin
+    AddStateItems;
+  end;
+  if Assigned(FTime.Menu) then
+  begin
+    if mStates then
+    begin
+      AddItem(FMenu.Items, cLineCaption, 0, nil);
+    end;
+    FTime.Menu(FMenu.Items);
+  end;
+  if FMenu.Items.Count > 0 then
+  begin
+    FMenu.Popup(APoint.X, APoint.Y);
+  end;
+end;
+
+procedure TAtlasIdeIssueState.AddStateItems;
+var
+  mIndex: Integer;
+begin
+  if not FRead.Succeeded then
+  begin
+    AddItem(FMenu.Items, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.StatusMenuFailed), 0, nil);
+  end
+  else if Length(FEntries) = 0 then
+  begin
+    AddItem(FMenu.Items, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.StatusMenuNone), 0, nil);
+  end;
+  for mIndex := 0 to High(FEntries) do
+  begin
+    AddItem(FMenu.Items, FEntries[mIndex].Caption, mIndex, EntryClick);
+  end;
+  AddItem(FMenu.Items, cLineCaption, 0, nil);
+  AddItem(FMenu.Items, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.StatusMenuComment), 0, CommentClick);
+  AddItem(FMenu.Items, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewEnd), 0, EndClick);
+end;
+
+procedure TAtlasIdeIssueState.Stop;
+begin
+  if FStopped then
+  begin
+    Exit;
+  end;
+  FWorker.Stop(cStopWaitMs);
+  if (FShown <> '') and Assigned(FHooks.Field) then
+  begin
+    FHooks.Field('', '', nil);
+  end;
+  FStopped := True;
+  FShown := '';
+  // Das Menü löst auch die Einträge der Zeiterfassung.
+  FreeAndNil(FMenu);
+  FTime := TAtlasIdeTimeField.None;
+  FHooks := Default(TAtlasIdeIssueStateHooks);
+  FSync := nil;
+end;
+
+/// <summary>Texte der Einträge für die Auswahl im Dialog.</summary>
+function Captions(const AEntries: TArray<TAtlasIssueStateEntry>): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(AEntries));
+  for mIndex := 0 to High(AEntries) do
+  begin
+    Result[mIndex] := AEntries[mIndex].Caption;
+  end;
+end;
+
+procedure TAtlasIdeIssueState.CommentClick(Sender: TObject);
+var
+  mDialog: TAtlasTrackerStateDialog;
+  mAssist: IAtlasCommentAssist;
+  mEntry: TAtlasIssueStateEntry;
+begin
+  if FStopped then
+  begin
+    Exit;
+  end;
+  mAssist := nil;
+  if Assigned(FHooks.Assist) then
+  begin
+    mAssist := FHooks.Assist(TAtlasTrackerTarget.Create(FIssue.Provider, FIssue.Url, FIssue.Project, ''), FIssue.Key,
+      TAtlasCommentDrafts.cFieldState);
+  end;
+  mDialog := TAtlasTrackerStateDialog.CreateDialog(nil, FIssue.Key, Captions(FEntries), -1);
+  try
+    mDialog.Editor.Enhanced := mAssist <> nil;
+    mDialog.Editor.Bind(mAssist);
+    if (mDialog.ShowModal <> mrOk) or FStopped then
+    begin
+      mDialog.Editor.Unbind;
+      Exit;
+    end;
+    mEntry := Default(TAtlasIssueStateEntry);
+    if (mDialog.Entry >= 0) and (mDialog.Entry <= High(FEntries)) then
+    begin
+      mEntry := FEntries[mDialog.Entry];
+    end;
+    Run(mEntry, mDialog.Comment);
+    mDialog.Editor.Sent;
+  finally
+    mDialog.Free;
+  end;
+end;
+
+class function TAtlasIdeIssueState.Active: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.IssuesStatusState;
+end;
+
+procedure TAtlasIdeIssueState.SetIssue(const AIssue: TAtlasTimeIssue; const AState: string);
+begin
+  if FStopped then
+  begin
+    Exit;
+  end;
+  if not FIssue.Same(AIssue) then
+  begin
+    FIssue := AIssue;
+    FListState := AState;
+    FState := AState;
+    FRead := Default(TAtlasIssueStateRead);
+    FEntries := nil;
+    if ShowsState then
+    begin
+      Read(nil);
+    end;
+  end
+  else if not SameText(FListState, AState) then
+  begin
+    // „Meine Issues“ kennt einen neueren Stand (anderswo geändert).
+    FListState := AState;
+    FState := AState;
+  end
+  else if (FRead.Key = '') and (FWorker.Pending = 0) and ShowsState then
+  begin
+    // Erst später eingeschaltet (issues.statusState, issues.syncState): einmal lesen.
+    Read(nil);
+  end;
+  Render;
+end;
+
+procedure TAtlasIdeIssueState.TimeChanged(const AField: TAtlasIdeTimeField);
+begin
+  if FStopped then
+  begin
+    Exit;
+  end;
+  FTime := AField;
+  Render;
 end;
 
 function TAtlasIdeIssueState.PaletteRows(const APattern: string): TArray<TAtlasCommand>;

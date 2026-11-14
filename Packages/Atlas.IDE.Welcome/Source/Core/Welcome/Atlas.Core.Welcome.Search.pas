@@ -137,6 +137,8 @@ begin
   Result := TAtlasCompletionMatcher.IsWordStart(AText, AIndex);
 end;
 
+{ TAtlasWelcomeSearch }
+
 class function TAtlasWelcomeSearch.Score(const APattern, AText: string): Integer;
 var
   mPattern: string;

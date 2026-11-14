@@ -213,6 +213,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeSafeDelete }
+
 class procedure TAtlasIdeSafeDelete.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var

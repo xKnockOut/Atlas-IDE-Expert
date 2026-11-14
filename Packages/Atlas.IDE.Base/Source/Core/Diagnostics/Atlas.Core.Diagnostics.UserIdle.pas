@@ -25,6 +25,8 @@ implementation
 uses
   Winapi.Windows;
 
+{ TAtlasUserIdle }
+
 class function TAtlasUserIdle.Elapsed(ANow, ALast: Cardinal): Cardinal;
 begin
   if ANow >= ALast then

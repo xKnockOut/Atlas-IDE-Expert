@@ -167,91 +167,6 @@ end;
 
 { TTestResults }
 
-class function TTestResults.SecondsToMs(const AText: string): Int64;
-var
-  mValue: Double;
-  mSettings: TFormatSettings;
-begin
-  mSettings := TFormatSettings.Invariant;
-  if not TryStrToFloat(StringReplace(Trim(AText), ',', '.', []), mValue, mSettings) or (mValue < 0) then
-  begin
-    Exit(0);
-  end;
-  Result := Round(mValue * 1000);
-end;
-
-class function TTestResults.DurationText(AMs: Int64; ADecimalSeparator: Char): string;
-const
-  cMsPerSecond = 1000;
-  cMsPerTenth = 100;
-  cTenthsPerSecond = 10;
-var
-  mTenths: Int64;
-begin
-  if AMs < cMsPerSecond then
-  begin
-    Exit(IntToStr(Max(AMs, 0)) + ' ms');
-  end;
-  // Auf Zehntel runden: 1250 ms ergibt „1,3 s“.
-  mTenths := (AMs + cMsPerTenth div 2) div cMsPerTenth;
-  Result := IntToStr(mTenths div cTenthsPerSecond) + ADecimalSeparator + IntToStr(mTenths mod cTenthsPerSecond) +
-    ' s';
-end;
-
-/// <summary>Kommt AA in der Liste der langsamsten vor AB?</summary>
-function SlowerFirst(const AA, AB: TTestCaseResult): Boolean;
-begin
-  Result := (AA.DurationMs > AB.DurationMs) or ((AA.DurationMs = AB.DurationMs) and
-    (CompareText(AA.FullName, AB.FullName) < 0));
-end;
-
-class function TTestResults.Slowest(const ACases: TArray<TTestCaseResult>;
-  ACount: Integer): TArray<TTestCaseResult>;
-var
-  mCase: TTestCaseResult;
-  mIndex: Integer;
-begin
-  Result := nil;
-  for mCase in ACases do
-  begin
-    if (mCase.DurationMs <= 0) or (mCase.Outcome = TTestOutcome.Skipped) then
-    begin
-      Continue;
-    end;
-    // Einfügen an der richtigen Stelle: stabil und ohne Sortierung der ganzen Liste.
-    mIndex := Length(Result);
-    while (mIndex > 0) and SlowerFirst(mCase, Result[mIndex - 1]) do
-    begin
-      Dec(mIndex);
-    end;
-    if mIndex < ACount then
-    begin
-      Insert(mCase, Result, mIndex);
-      if Length(Result) > ACount then
-      begin
-        SetLength(Result, ACount);
-      end;
-    end;
-  end;
-end;
-
-class function TTestResults.LeakBytesOf(const AMessage: string): Int64;
-const
-  cLeaked = ' bytes were leaked in the ';
-var
-  mText: string;
-  mAt: Integer;
-begin
-  Result := 0;
-  mText := TrimLeft(AMessage);
-  mAt := Pos(cLeaked, LowerCase(mText));
-  // Die Zahl steht allein vor dem Text, sonst ist es eine andere Meldung.
-  if (mAt <= 1) or not TryStrToInt64(Copy(mText, 1, mAt - 1), Result) or (Result < 0) then
-  begin
-    Result := 0;
-  end;
-end;
-
 class function TTestResults.SplitValues(const AMessage: string; out AExpected, AActual: string): Boolean;
 var
   mText: string;
@@ -315,6 +230,30 @@ begin
   Result := False;
 end;
 
+class function TTestResults.LeakBytesOf(const AMessage: string): Int64;
+const
+  cLeaked = ' bytes were leaked in the ';
+var
+  mText: string;
+  mAt: Integer;
+begin
+  Result := 0;
+  mText := TrimLeft(AMessage);
+  mAt := Pos(cLeaked, LowerCase(mText));
+  // Die Zahl steht allein vor dem Text, sonst ist es eine andere Meldung.
+  if (mAt <= 1) or not TryStrToInt64(Copy(mText, 1, mAt - 1), Result) or (Result < 0) then
+  begin
+    Result := 0;
+  end;
+end;
+
+/// <summary>Kommt AA in der Liste der langsamsten vor AB?</summary>
+function SlowerFirst(const AA, AB: TTestCaseResult): Boolean;
+begin
+  Result := (AA.DurationMs > AB.DurationMs) or ((AA.DurationMs = AB.DurationMs) and
+    (CompareText(AA.FullName, AB.FullName) < 0));
+end;
+
 class procedure TTestResults.SplitName(const AFullName, AFixture: string; out AUnitName, AFixtureName, AMethod,
   ACaseName: string);
 var
@@ -365,6 +304,67 @@ begin
   else
   begin
     AMethod := AFullName;
+  end;
+end;
+
+class function TTestResults.SecondsToMs(const AText: string): Int64;
+var
+  mValue: Double;
+  mSettings: TFormatSettings;
+begin
+  mSettings := TFormatSettings.Invariant;
+  if not TryStrToFloat(StringReplace(Trim(AText), ',', '.', []), mValue, mSettings) or (mValue < 0) then
+  begin
+    Exit(0);
+  end;
+  Result := Round(mValue * 1000);
+end;
+
+class function TTestResults.DurationText(AMs: Int64; ADecimalSeparator: Char): string;
+const
+  cMsPerSecond = 1000;
+  cMsPerTenth = 100;
+  cTenthsPerSecond = 10;
+var
+  mTenths: Int64;
+begin
+  if AMs < cMsPerSecond then
+  begin
+    Exit(IntToStr(Max(AMs, 0)) + ' ms');
+  end;
+  // Auf Zehntel runden: 1250 ms ergibt „1,3 s“.
+  mTenths := (AMs + cMsPerTenth div 2) div cMsPerTenth;
+  Result := IntToStr(mTenths div cTenthsPerSecond) + ADecimalSeparator + IntToStr(mTenths mod cTenthsPerSecond) +
+    ' s';
+end;
+
+class function TTestResults.Slowest(const ACases: TArray<TTestCaseResult>;
+  ACount: Integer): TArray<TTestCaseResult>;
+var
+  mCase: TTestCaseResult;
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mCase in ACases do
+  begin
+    if (mCase.DurationMs <= 0) or (mCase.Outcome = TTestOutcome.Skipped) then
+    begin
+      Continue;
+    end;
+    // Einfügen an der richtigen Stelle: stabil und ohne Sortierung der ganzen Liste.
+    mIndex := Length(Result);
+    while (mIndex > 0) and SlowerFirst(mCase, Result[mIndex - 1]) do
+    begin
+      Dec(mIndex);
+    end;
+    if mIndex < ACount then
+    begin
+      Insert(mCase, Result, mIndex);
+      if Length(Result) > ACount then
+      begin
+        SetLength(Result, ACount);
+      end;
+    end;
   end;
 end;
 
@@ -434,6 +434,8 @@ begin
     Result := TTestOutcome.Skipped;
   end;
 end;
+
+{ TReportReader }
 
 procedure TReportReader.SetRunTime(const ASeconds: string);
 begin

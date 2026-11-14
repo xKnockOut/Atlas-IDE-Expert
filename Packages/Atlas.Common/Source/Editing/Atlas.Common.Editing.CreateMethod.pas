@@ -258,6 +258,24 @@ type
     function StatementStart: Integer;
   end;
 
+{ TCallSiteScan }
+
+function TCallSiteScan.Read(const APosition: TTextPosition): Boolean;
+begin
+  Result := FindName(APosition) and ReadQualifier and not IsDeclaration;
+  if Result then
+  begin
+    // Fehlt die ")" (gerade getippt), zählt nur der Rest der Zeile: Die nächste Zeile ist dann meist schon die
+    // nächste Anweisung.
+    if not ReadArguments(False) then
+    begin
+      ReadArguments(True);
+    end;
+    ReadContext;
+    Site.StatementStart := StatementStart;
+  end;
+end;
+
 function TCallSiteScan.FindName(const APosition: TTextPosition): Boolean;
 var
   mIndex: Integer;
@@ -307,17 +325,19 @@ begin
     'property', 'operator']);
 end;
 
-procedure TCallSiteScan.AddArgument(AStart, AScan: Integer);
+function TCallSiteScan.ReadArguments(AOpenLineOnly: Boolean): Boolean;
 var
-  mArgument: TCallArgument;
+  mScan, mDepth, mStart: Integer;
 begin
-  if AStart < AScan then
+  Site.Arguments := nil;
+  mDepth := 0;
+  mScan := TRoutineBody.NextToken(Tokens, Site.OpenIndex);
+  mStart := mScan;
+  while (mScan <= High(Tokens) + 1) and not ArgumentStep(mScan, AOpenLineOnly, mDepth, mStart) do
   begin
-    mArgument.First := AStart;
-    mArgument.Last := PreviousCode(Tokens, AScan);
-    mArgument.Text := TokensText(Tokens, mArgument.First, mArgument.Last);
-    Site.Arguments := Site.Arguments + [mArgument];
+    mScan := TRoutineBody.NextToken(Tokens, mScan);
   end;
+  Result := Site.CloseIndex >= 0;
 end;
 
 function TCallSiteScan.ArgumentStep(AScan: Integer; AOpenLineOnly: Boolean; var ADepth, AStart: Integer): Boolean;
@@ -348,35 +368,16 @@ begin
   end;
 end;
 
-function TCallSiteScan.ReadArguments(AOpenLineOnly: Boolean): Boolean;
+procedure TCallSiteScan.AddArgument(AStart, AScan: Integer);
 var
-  mScan, mDepth, mStart: Integer;
+  mArgument: TCallArgument;
 begin
-  Site.Arguments := nil;
-  mDepth := 0;
-  mScan := TRoutineBody.NextToken(Tokens, Site.OpenIndex);
-  mStart := mScan;
-  while (mScan <= High(Tokens) + 1) and not ArgumentStep(mScan, AOpenLineOnly, mDepth, mStart) do
+  if AStart < AScan then
   begin
-    mScan := TRoutineBody.NextToken(Tokens, mScan);
-  end;
-  Result := Site.CloseIndex >= 0;
-end;
-
-procedure TCallSiteScan.ReadAssignmentTarget;
-var
-  mTarget, mPrior: Integer;
-begin
-  mTarget := PreviousCode(Tokens, Before);
-  mPrior := PreviousCode(Tokens, mTarget);
-  while (mPrior >= 0) and not StartsStatementAfter(Tokens[mPrior]) do
-  begin
-    mTarget := mPrior;
-    mPrior := PreviousCode(Tokens, mTarget);
-  end;
-  if mTarget >= 0 then
-  begin
-    Site.Target := TokensText(Tokens, mTarget, PreviousCode(Tokens, Before));
+    mArgument.First := AStart;
+    mArgument.Last := PreviousCode(Tokens, AScan);
+    mArgument.Text := TokensText(Tokens, mArgument.First, mArgument.Last);
+    Site.Arguments := Site.Arguments + [mArgument];
   end;
 end;
 
@@ -416,6 +417,23 @@ begin
   Result := IsKeywordIn(AToken, ['if', 'while', 'until', 'case', 'for', 'with']);
 end;
 
+procedure TCallSiteScan.ReadAssignmentTarget;
+var
+  mTarget, mPrior: Integer;
+begin
+  mTarget := PreviousCode(Tokens, Before);
+  mPrior := PreviousCode(Tokens, mTarget);
+  while (mPrior >= 0) and not StartsStatementAfter(Tokens[mPrior]) do
+  begin
+    mTarget := mPrior;
+    mPrior := PreviousCode(Tokens, mTarget);
+  end;
+  if mTarget >= 0 then
+  begin
+    Site.Target := TokensText(Tokens, mTarget, PreviousCode(Tokens, Before));
+  end;
+end;
+
 function TCallSiteScan.StatementStart: Integer;
 var
   mBefore, mDepth: Integer;
@@ -452,22 +470,6 @@ begin
     begin
       Result := mBefore;
     end;
-  end;
-end;
-
-function TCallSiteScan.Read(const APosition: TTextPosition): Boolean;
-begin
-  Result := FindName(APosition) and ReadQualifier and not IsDeclaration;
-  if Result then
-  begin
-    // Fehlt die ")" (gerade getippt), zählt nur der Rest der Zeile: Die nächste Zeile ist dann meist schon die
-    // nächste Anweisung.
-    if not ReadArguments(False) then
-    begin
-      ReadArguments(True);
-    end;
-    ReadContext;
-    Site.StatementStart := StatementStart;
   end;
 end;
 

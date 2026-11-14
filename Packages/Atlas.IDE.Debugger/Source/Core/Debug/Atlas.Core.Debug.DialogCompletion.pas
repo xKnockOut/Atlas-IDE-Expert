@@ -158,15 +158,6 @@ begin
   end;
 end;
 
-class function TAtlasDebugDialogs.CleanLabel(const ALabel: string): string;
-begin
-  Result := Fold(Trim(StringReplace(ALabel, '&', '', [rfReplaceAll])));
-  while (Result <> '') and CharInSet(Result[Length(Result)], [':', '.', ' ']) do
-  begin
-    Delete(Result, Length(Result), 1);
-  end;
-end;
-
 class function TAtlasDebugDialogs.FieldOf(ADialog: TAtlasDebugDialog; const ALabel: string): TAtlasDebugField;
 var
   mText: string;
@@ -208,6 +199,15 @@ end;
 class function TAtlasDebugDialogs.Completes(AField: TAtlasDebugField): Boolean;
 begin
   Result := AField in [TAtlasDebugField.Expression, TAtlasDebugField.Condition, TAtlasDebugField.LogExpression];
+end;
+
+class function TAtlasDebugDialogs.CleanLabel(const ALabel: string): string;
+begin
+  Result := Fold(Trim(StringReplace(ALabel, '&', '', [rfReplaceAll])));
+  while (Result <> '') and CharInSet(Result[Length(Result)], [':', '.', ' ']) do
+  begin
+    Delete(Result, Length(Result), 1);
+  end;
 end;
 
 class function TAtlasDebugDialogs.ScopeLine(const ALineText: string): Integer;

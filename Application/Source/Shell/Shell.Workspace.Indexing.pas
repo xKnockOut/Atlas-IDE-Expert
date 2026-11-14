@@ -227,11 +227,6 @@ begin
     end;
 end;
 
-procedure TShellWorkspaceIndexing.IndexEvent(const AText: string);
-begin
-  FParts.Events.IndexEvent(AText);
-end;
-
 procedure TShellWorkspaceIndexing.ProjectReady(const AResult: TIndexBuildResult; AElapsedMs: Int64);
 begin
   FParts.State.ProjectPending := False;
@@ -323,6 +318,11 @@ begin
   end;
   // Teilweise aufgebauter Index: Syntaxprüfung und Pull-Diagnosen sollen ihn trotzdem nutzen.
   FParts.Events.IndexFinished;
+end;
+
+procedure TShellWorkspaceIndexing.IndexEvent(const AText: string);
+begin
+  FParts.Events.IndexEvent(AText);
 end;
 
 function TShellWorkspaceIndexing.PublishLookups(const ALoaded: TShellLoadedProject): TPackageLocator;

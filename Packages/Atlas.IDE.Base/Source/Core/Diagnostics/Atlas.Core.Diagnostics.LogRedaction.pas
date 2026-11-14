@@ -59,6 +59,8 @@ const
   cFallbacks: array[TLogMarkKind] of string = (TTextAnonymizer.cNameLabel, TTextAnonymizer.cFileLabel,
     TTextAnonymizer.cTextLabel);
 
+{ TAtlasLogRedactor }
+
 constructor TAtlasLogRedactor.Create(const AIdentity: TArray<string>);
 var
   mName: string;
@@ -81,12 +83,6 @@ begin
   FLabels.Free;
   FLock.Free;
   inherited;
-end;
-
-class function TAtlasLogRedactor.EnvironmentIdentity: TArray<string>;
-begin
-  Result := [GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
-    GetEnvironmentVariable('USERDOMAIN')];
 end;
 
 function TAtlasLogRedactor.GetNames: Boolean;
@@ -141,16 +137,6 @@ begin
   end;
 end;
 
-procedure TAtlasLogRedactor.Forget;
-begin
-  FLock.Enter;
-  try
-    FLabels.Clear;
-  finally
-    FLock.Leave;
-  end;
-end;
-
 function TAtlasLogRedactor.Redact(const AText: string): string;
 begin
   FLock.Enter;
@@ -168,6 +154,22 @@ begin
   finally
     FLock.Leave;
   end;
+end;
+
+procedure TAtlasLogRedactor.Forget;
+begin
+  FLock.Enter;
+  try
+    FLabels.Clear;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+class function TAtlasLogRedactor.EnvironmentIdentity: TArray<string>;
+begin
+  Result := [GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
+    GetEnvironmentVariable('USERDOMAIN')];
 end;
 
 end.

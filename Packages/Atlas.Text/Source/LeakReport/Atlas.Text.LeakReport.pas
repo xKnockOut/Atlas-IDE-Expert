@@ -208,6 +208,8 @@ type
     function ReadLarge(const ALine: string): Boolean;
   end;
 
+{ TLeakSummary }
+
 procedure TLeakSummary.Add(const AName: string; ACount, AMinSize, AMaxSize: Integer);
 var
   mIndex: Integer;
@@ -579,27 +581,6 @@ end;
 
 { TLeakReports }
 
-class function TLeakReports.KindOf(const AName: string): TLeakKind;
-var
-  mName: string;
-begin
-  for mName in cTextNames do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(TLeakKind.Text);
-    end;
-  end;
-  for mName in cUnknownNames do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(TLeakKind.Unknown);
-    end;
-  end;
-  Result := TLeakKind.Instance;
-end;
-
 class function TLeakReports.ParseFrame(const ALine: string; out AFrame: TLeakFrame): Boolean;
 var
   mText, mRest, mPart: string;
@@ -647,6 +628,27 @@ begin
     end;
     Inc(mField);
   end;
+end;
+
+class function TLeakReports.KindOf(const AName: string): TLeakKind;
+var
+  mName: string;
+begin
+  for mName in cTextNames do
+  begin
+    if SameText(mName, AName) then
+    begin
+      Exit(TLeakKind.Text);
+    end;
+  end;
+  for mName in cUnknownNames do
+  begin
+    if SameText(mName, AName) then
+    begin
+      Exit(TLeakKind.Unknown);
+    end;
+  end;
+  Result := TLeakKind.Instance;
 end;
 
 /// <summary>Unit der RTL oder von FastMM (dort entsteht jeder Block, die Stelle liegt dahinter)?</summary>

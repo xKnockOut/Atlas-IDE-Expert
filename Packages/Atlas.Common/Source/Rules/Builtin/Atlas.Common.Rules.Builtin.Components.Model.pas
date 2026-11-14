@@ -231,6 +231,54 @@ begin
     end);
 end;
 
+/// <summary>Deklariert die Klasse AClassName aus Datei oder Index selbst Paint?</summary>
+function TComponentModel.DeclaresPaint(const AClassName: string): Boolean;
+var
+  mType: TSymbolLocation;
+  mSymbol: TIndexSymbol;
+begin
+  Result := False;
+  if FAncestry.FindClass(AClassName, mType) then
+  begin
+    for mSymbol in FAncestry.Methods(mType) do
+    begin
+      Result := Result or SameText(mSymbol.Name, 'Paint');
+    end;
+  end;
+end;
+
+/// <summary>Erstes Token und letztes Token vor dem abschließenden end des Blocks (ohne Kommentare); False, wenn
+/// der Block leer ist.</summary>
+function TComponentModel.BlockTokens(ABlock: TSyntaxNode; out AFirst, ALast: TPascalToken): Boolean;
+var
+  mToken: TPascalToken;
+  mIndex: Integer;
+begin
+  Result := False;
+  AFirst := Default(TPascalToken);
+  ALast := Default(TPascalToken);
+  mIndex := FContext.Tree.FirstTokenFrom(ABlock.StartOffset);
+  while mIndex <= High(FContext.Tree.Tokens) do
+  begin
+    mToken := FContext.Tree.Tokens[mIndex];
+    Inc(mIndex);
+    if (mToken.Offset >= ABlock.EndOffset) or mToken.IsKeyword('end') and
+      (mToken.Offset + Length(mToken.Text) = ABlock.EndOffset) then
+    begin
+      Break;
+    end;
+    if (mToken.Offset >= ABlock.StartOffset) and (mToken.Kind <> TPascalTokenKind.Comment) then
+    begin
+      if not Result then
+      begin
+        AFirst := mToken;
+      end;
+      ALast := mToken;
+      Result := True;
+    end;
+  end;
+end;
+
 function TComponentModel.IsComponent(const AClassName: string): Boolean;
 var
   mName: string;
@@ -252,22 +300,6 @@ begin
     Inc(mDepth);
   end;
   Result := False;
-end;
-
-/// <summary>Deklariert die Klasse AClassName aus Datei oder Index selbst Paint?</summary>
-function TComponentModel.DeclaresPaint(const AClassName: string): Boolean;
-var
-  mType: TSymbolLocation;
-  mSymbol: TIndexSymbol;
-begin
-  Result := False;
-  if FAncestry.FindClass(AClassName, mType) then
-  begin
-    for mSymbol in FAncestry.Methods(mType) do
-    begin
-      Result := Result or SameText(mSymbol.Name, 'Paint');
-    end;
-  end;
 end;
 
 function TComponentModel.PaintingAncestor(const AClassName: string; out AAncestor: string;
@@ -323,29 +355,6 @@ begin
     begin
       AMethod := mMethod;
       Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function TComponentModel.DeclaredWith(const AClass: TClassInfo; const AMethodName, ADirective: string): Boolean;
-var
-  mIndex, mInner: Integer;
-  mHeader: TSyntaxNode;
-begin
-  for mIndex := 0 to AClass.Body.ChildCount - 1 do
-  begin
-    mHeader := AClass.Body[mIndex];
-    if (mHeader.Kind <> TSyntaxKind.RoutineHeader) or not SameText(mHeader.Name, AMethodName) then
-    begin
-      Continue;
-    end;
-    for mInner := 0 to mHeader.ChildCount - 1 do
-    begin
-      if (mHeader[mInner].Kind = TSyntaxKind.Directive) and SameText(mHeader[mInner].Name, ADirective) then
-      begin
-        Exit(True);
-      end;
     end;
   end;
   Result := False;
@@ -435,6 +444,29 @@ begin
   begin
     Result.ReadName := '';
   end;
+end;
+
+function TComponentModel.DeclaredWith(const AClass: TClassInfo; const AMethodName, ADirective: string): Boolean;
+var
+  mIndex, mInner: Integer;
+  mHeader: TSyntaxNode;
+begin
+  for mIndex := 0 to AClass.Body.ChildCount - 1 do
+  begin
+    mHeader := AClass.Body[mIndex];
+    if (mHeader.Kind <> TSyntaxKind.RoutineHeader) or not SameText(mHeader.Name, AMethodName) then
+    begin
+      Continue;
+    end;
+    for mInner := 0 to mHeader.ChildCount - 1 do
+    begin
+      if (mHeader[mInner].Kind = TSyntaxKind.Directive) and SameText(mHeader[mInner].Name, ADirective) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
 end;
 
 function TComponentModel.Properties(const AClass: TClassInfo): TArray<TPropertyInfo>;
@@ -562,38 +594,6 @@ begin
     AEdit := TRuleEdit.Create(TTextRange.Create(mToken.EndPos, mToken.EndPos),
       FLineBreak + StringOfChar(' ', mIndent) + AText);
     Result := True;
-  end;
-end;
-
-/// <summary>Erstes Token und letztes Token vor dem abschließenden end des Blocks (ohne Kommentare); False, wenn
-/// der Block leer ist.</summary>
-function TComponentModel.BlockTokens(ABlock: TSyntaxNode; out AFirst, ALast: TPascalToken): Boolean;
-var
-  mToken: TPascalToken;
-  mIndex: Integer;
-begin
-  Result := False;
-  AFirst := Default(TPascalToken);
-  ALast := Default(TPascalToken);
-  mIndex := FContext.Tree.FirstTokenFrom(ABlock.StartOffset);
-  while mIndex <= High(FContext.Tree.Tokens) do
-  begin
-    mToken := FContext.Tree.Tokens[mIndex];
-    Inc(mIndex);
-    if (mToken.Offset >= ABlock.EndOffset) or mToken.IsKeyword('end') and
-      (mToken.Offset + Length(mToken.Text) = ABlock.EndOffset) then
-    begin
-      Break;
-    end;
-    if (mToken.Offset >= ABlock.StartOffset) and (mToken.Kind <> TPascalTokenKind.Comment) then
-    begin
-      if not Result then
-      begin
-        AFirst := mToken;
-      end;
-      ALast := mToken;
-      Result := True;
-    end;
   end;
 end;
 

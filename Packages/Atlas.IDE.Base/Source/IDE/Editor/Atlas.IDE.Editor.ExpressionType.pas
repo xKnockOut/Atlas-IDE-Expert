@@ -234,134 +234,56 @@ begin
   inherited;
 end;
 
-class procedure TAtlasIdeExpressionType.Install(const ASession: TAtlasExpressionTypeSessionFunc;
-  const AMessage: TProc<string>);
+procedure TAtlasIdeExpressionType.AppMessage(var Msg: TMsg; var Handled: Boolean);
 begin
-  if FInstance = nil then
+  if TAtlasGuard.Disabled(TAtlasFeature.ExpressionType) or (FTip = nil) or not FTip.IsShown then
   begin
-    FInstance := TAtlasIdeExpressionType.Create(ASession, AMessage);
+    Exit;
+  end;
+  try
+    case Msg.message of
+      WM_KEYDOWN, WM_SYSKEYDOWN:
+        if IsEditorWindow(Msg.hwnd) then
+        begin
+          KeyDown(Msg, Handled);
+        end;
+      WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_NCLBUTTONDOWN, WM_MOUSEWHEEL:
+        if not FTip.HandleAllocated or (Msg.hwnd <> FTip.Handle) then
+        begin
+          Close;
+        end;
+    end;
+  except
+    // Keine Exception an die IDE (#493); die Nachricht geht dann normal weiter.
+    on E: Exception do
+    begin
+      Handled := False;
+      TAtlasGuard.Report(TAtlasFeature.ExpressionType, E);
+    end;
   end;
 end;
 
-class procedure TAtlasIdeExpressionType.Uninstall;
-begin
-  FreeAndNil(FInstance);
-end;
-
-class function TAtlasIdeExpressionType.Enabled: Boolean;
+procedure TAtlasIdeExpressionType.KeyDown(const AMsg: TMsg; var AHandled: Boolean);
 var
-  mSettings: TAtlasPluginSettings;
+  mKey: Word;
 begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and mSettings.ExpressionType;
-end;
-
-class function TAtlasIdeExpressionType.Active: Boolean;
-begin
-  Result := (FInstance <> nil) and (FInstance.FTip <> nil) and FInstance.FTip.IsShown;
-end;
-
-class procedure TAtlasIdeExpressionType.Run;
-begin
-  if (FInstance <> nil) and Enabled then
+  mKey := Word(AMsg.wParam);
+  if (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) then
   begin
-    FInstance.Execute;
+    Exit;
   end;
-end;
-
-class procedure TAtlasIdeExpressionType.Dismiss;
-begin
-  if FInstance <> nil then
+  if (mKey = VK_ESCAPE) and (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) then
   begin
-    FInstance.Close;
+    Close;
+    AHandled := True;
+    Exit;
   end;
-end;
-
-class procedure TAtlasIdeExpressionType.EditorModified;
-begin
-  if FInstance <> nil then
+  // Das eigene Kürzel erweitert (Run); jede andere Taste schließt und geht an den Editor.
+  if PressedShortCut(mKey) = TShortCut(TAtlasIdeSettings.Current.ExpressionTypeKey) then
   begin
-    FInstance.Close;
+    Exit;
   end;
-end;
-
-class procedure TAtlasIdeExpressionType.Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
-class function TAtlasIdeExpressionType.KeyText: string;
-begin
-  Result := ShortCutToText(TShortCut(TAtlasIdeSettings.Current.ExpressionTypeKey));
-end;
-
-procedure TAtlasIdeExpressionType.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
-end;
-
-procedure TAtlasIdeExpressionType.Close;
-var
-  mPainted: Boolean;
-begin
-  mPainted := FShown.Active;
-  FShown.Active := False;
-  if (FTip <> nil) and FTip.IsShown then
-  begin
-    FTip.Dismiss;
-  end;
-  if mPainted then
-  begin
-    Invalidate;
-  end;
-end;
-
-function PositionIn(const ALines: TArray<string>; ARow, AColumn, ATabWidth: Integer): TLspTextPosition;
-var
-  mLineText: string;
-begin
-  mLineText := '';
-  if (ARow >= 1) and (ARow <= Length(ALines)) then
-  begin
-    mLineText := ALines[ARow - 1];
-  end;
-  Result := TLspTextPosition.Create(ARow - 1, Min(TLspSession.ColumnToIndex(mLineText, AColumn, ATabWidth),
-    Length(mLineText)));
-end;
-
-/// <summary>Markierung in AView, ohne sie die Schreibmarke, als Bereich in ALines.</summary>
-function SelectionOf(const AView: IOTAEditView; const ALines: TArray<string>; ATabWidth: Integer): TLspRange;
-var
-  mBlock: IOTAEditBlock;
-  mCursor: TOTAEditPos;
-begin
-  mCursor := AView.CursorPos;
-  Result.StartPos := PositionIn(ALines, mCursor.Line, mCursor.Col, ATabWidth);
-  Result.EndPos := Result.StartPos;
-  mBlock := AView.Block;
-  if (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0) then
-  begin
-    Result.StartPos := PositionIn(ALines, mBlock.StartingRow, mBlock.StartingColumn, ATabWidth);
-    Result.EndPos := PositionIn(ALines, mBlock.EndingRow, mBlock.EndingColumn, ATabWidth);
-  end;
-end;
-
-/// <summary>Argumente der Anfrage nach den Einstellungen.</summary>
-function ArgumentsFor(const AFileName: string; const ARange: TLspRange; AExpand: Boolean): string;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := TAtlasExpressionType.Arguments(TLspSession.PathToUri(AFileName), ARange, AExpand,
-    mSettings.ExpressionTypeConversions, mSettings.ExpressionTypeConstValue);
+  Close;
 end;
 
 function TAtlasIdeExpressionType.Ready(out AView: IOTAEditView; out ASession: TLspSession): Boolean;
@@ -407,6 +329,136 @@ begin
   end;
 end;
 
+procedure TAtlasIdeExpressionType.Show(const AInfo: TAtlasExpressionTypeInfo);
+var
+  mCaret: TRect;
+begin
+  FInfo := AInfo;
+  if FTip = nil then
+  begin
+    FTip := TAtlasExpressionTypeTip.Create(nil);
+    FTip.OnNavigate :=
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.ExpressionType,
+          procedure
+          begin
+            if FInstance <> nil then
+            begin
+              FInstance.Navigate;
+            end;
+          end);
+      end;
+  end;
+  // Farben, Editorschrift und Zoom wie der Editor; unter der Zeile der Schreibmarke.
+  mCaret := CaretRect;
+  TAtlasIdeStyle.Apply(FTip, mCaret);
+  FTip.ShowFor(TAtlasExpressionType.Rows(AInfo, TAtlasExpressionTypeTip.Texts(KeyText)),
+    TPoint.Create(mCaret.Left, mCaret.Bottom));
+  FShown.Active := True;
+  Invalidate;
+end;
+
+procedure TAtlasIdeExpressionType.Navigate;
+var
+  mTarget: TAtlasExpressionTypeInfo;
+begin
+  mTarget := FInfo;
+  Close;
+  if mTarget.HasLocation then
+  begin
+    TAtlasIdeNavigation.GoToLocation(mTarget.FileName, mTarget.Line, mTarget.Character);
+  end;
+end;
+
+procedure TAtlasIdeExpressionType.Close;
+var
+  mPainted: Boolean;
+begin
+  mPainted := FShown.Active;
+  FShown.Active := False;
+  if (FTip <> nil) and FTip.IsShown then
+  begin
+    FTip.Dismiss;
+  end;
+  if mPainted then
+  begin
+    Invalidate;
+  end;
+end;
+
+procedure TAtlasIdeExpressionType.Report(const AText: string);
+begin
+  if Assigned(FMessage) then
+  begin
+    FMessage(AText);
+  end;
+end;
+
+class function TAtlasIdeExpressionType.KeyText: string;
+begin
+  Result := ShortCutToText(TShortCut(TAtlasIdeSettings.Current.ExpressionTypeKey));
+end;
+
+class procedure TAtlasIdeExpressionType.Invalidate;
+var
+  mServices: INTACodeEditorServices;
+begin
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+  end;
+end;
+
+class procedure TAtlasIdeExpressionType.Install(const ASession: TAtlasExpressionTypeSessionFunc;
+  const AMessage: TProc<string>);
+begin
+  if FInstance = nil then
+  begin
+    FInstance := TAtlasIdeExpressionType.Create(ASession, AMessage);
+  end;
+end;
+
+function PositionIn(const ALines: TArray<string>; ARow, AColumn, ATabWidth: Integer): TLspTextPosition;
+var
+  mLineText: string;
+begin
+  mLineText := '';
+  if (ARow >= 1) and (ARow <= Length(ALines)) then
+  begin
+    mLineText := ALines[ARow - 1];
+  end;
+  Result := TLspTextPosition.Create(ARow - 1, Min(TLspSession.ColumnToIndex(mLineText, AColumn, ATabWidth),
+    Length(mLineText)));
+end;
+
+/// <summary>Markierung in AView, ohne sie die Schreibmarke, als Bereich in ALines.</summary>
+function SelectionOf(const AView: IOTAEditView; const ALines: TArray<string>; ATabWidth: Integer): TLspRange;
+var
+  mBlock: IOTAEditBlock;
+  mCursor: TOTAEditPos;
+begin
+  mCursor := AView.CursorPos;
+  Result.StartPos := PositionIn(ALines, mCursor.Line, mCursor.Col, ATabWidth);
+  Result.EndPos := Result.StartPos;
+  mBlock := AView.Block;
+  if (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0) then
+  begin
+    Result.StartPos := PositionIn(ALines, mBlock.StartingRow, mBlock.StartingColumn, ATabWidth);
+    Result.EndPos := PositionIn(ALines, mBlock.EndingRow, mBlock.EndingColumn, ATabWidth);
+  end;
+end;
+
+/// <summary>Argumente der Anfrage nach den Einstellungen.</summary>
+function ArgumentsFor(const AFileName: string; const ARange: TLspRange; AExpand: Boolean): string;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := TAtlasExpressionType.Arguments(TLspSession.PathToUri(AFileName), ARange, AExpand,
+    mSettings.ExpressionTypeConversions, mSettings.ExpressionTypeConstValue);
+end;
+
 procedure TAtlasIdeExpressionType.Execute;
 var
   mView: IOTAEditView;
@@ -450,97 +502,45 @@ begin
   Show(mInfo);
 end;
 
-procedure TAtlasIdeExpressionType.Show(const AInfo: TAtlasExpressionTypeInfo);
-var
-  mCaret: TRect;
+class procedure TAtlasIdeExpressionType.Uninstall;
 begin
-  FInfo := AInfo;
-  if FTip = nil then
-  begin
-    FTip := TAtlasExpressionTypeTip.Create(nil);
-    FTip.OnNavigate :=
-      procedure
-      begin
-        TAtlasGuard.Run(TAtlasFeature.ExpressionType,
-          procedure
-          begin
-            if FInstance <> nil then
-            begin
-              FInstance.Navigate;
-            end;
-          end);
-      end;
-  end;
-  // Farben, Editorschrift und Zoom wie der Editor; unter der Zeile der Schreibmarke.
-  mCaret := CaretRect;
-  TAtlasIdeStyle.Apply(FTip, mCaret);
-  FTip.ShowFor(TAtlasExpressionType.Rows(AInfo, TAtlasExpressionTypeTip.Texts(KeyText)),
-    TPoint.Create(mCaret.Left, mCaret.Bottom));
-  FShown.Active := True;
-  Invalidate;
+  FreeAndNil(FInstance);
 end;
 
-procedure TAtlasIdeExpressionType.Navigate;
+class function TAtlasIdeExpressionType.Enabled: Boolean;
 var
-  mTarget: TAtlasExpressionTypeInfo;
+  mSettings: TAtlasPluginSettings;
 begin
-  mTarget := FInfo;
-  Close;
-  if mTarget.HasLocation then
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.ExpressionType;
+end;
+
+class function TAtlasIdeExpressionType.Active: Boolean;
+begin
+  Result := (FInstance <> nil) and (FInstance.FTip <> nil) and FInstance.FTip.IsShown;
+end;
+
+class procedure TAtlasIdeExpressionType.Run;
+begin
+  if (FInstance <> nil) and Enabled then
   begin
-    TAtlasIdeNavigation.GoToLocation(mTarget.FileName, mTarget.Line, mTarget.Character);
+    FInstance.Execute;
   end;
 end;
 
-procedure TAtlasIdeExpressionType.KeyDown(const AMsg: TMsg; var AHandled: Boolean);
-var
-  mKey: Word;
+class procedure TAtlasIdeExpressionType.Dismiss;
 begin
-  mKey := Word(AMsg.wParam);
-  if (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) then
+  if FInstance <> nil then
   begin
-    Exit;
+    FInstance.Close;
   end;
-  if (mKey = VK_ESCAPE) and (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) then
-  begin
-    Close;
-    AHandled := True;
-    Exit;
-  end;
-  // Das eigene Kürzel erweitert (Run); jede andere Taste schließt und geht an den Editor.
-  if PressedShortCut(mKey) = TShortCut(TAtlasIdeSettings.Current.ExpressionTypeKey) then
-  begin
-    Exit;
-  end;
-  Close;
 end;
 
-procedure TAtlasIdeExpressionType.AppMessage(var Msg: TMsg; var Handled: Boolean);
+class procedure TAtlasIdeExpressionType.EditorModified;
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.ExpressionType) or (FTip = nil) or not FTip.IsShown then
+  if FInstance <> nil then
   begin
-    Exit;
-  end;
-  try
-    case Msg.message of
-      WM_KEYDOWN, WM_SYSKEYDOWN:
-        if IsEditorWindow(Msg.hwnd) then
-        begin
-          KeyDown(Msg, Handled);
-        end;
-      WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_NCLBUTTONDOWN, WM_MOUSEWHEEL:
-        if not FTip.HandleAllocated or (Msg.hwnd <> FTip.Handle) then
-        begin
-          Close;
-        end;
-    end;
-  except
-    // Keine Exception an die IDE (#493); die Nachricht geht dann normal weiter.
-    on E: Exception do
-    begin
-      Handled := False;
-      TAtlasGuard.Report(TAtlasFeature.ExpressionType, E);
-    end;
+    FInstance.Close;
   end;
 end;
 

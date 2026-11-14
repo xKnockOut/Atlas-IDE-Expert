@@ -81,6 +81,8 @@ begin
   end;
 end;
 
+{ TAtlasBookmarksSavedPlaces }
+
 class function TAtlasBookmarksSavedPlaces.FromNotes(const ABooks: TArray<TAtlasNoteBook>): TAtlasSavedPlaces;
 var
   mBook: TAtlasNoteBook;

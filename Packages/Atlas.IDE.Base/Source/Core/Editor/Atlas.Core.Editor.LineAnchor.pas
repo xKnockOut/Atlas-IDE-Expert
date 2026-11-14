@@ -96,6 +96,8 @@ begin
   end;
 end;
 
+{ TAtlasLineAnchor }
+
 function TAtlasLineAnchor.SameAs(const AOther: TAtlasLineAnchor): Boolean;
 begin
   Result := (Line = AOther.Line) and (Text = AOther.Text) and SameTexts(Before, AOther.Before) and

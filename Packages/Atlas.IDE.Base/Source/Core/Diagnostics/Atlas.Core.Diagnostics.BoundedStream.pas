@@ -35,6 +35,8 @@ type
 
 implementation
 
+{ TAtlasBoundedStream }
+
 constructor TAtlasBoundedStream.Create(AMaxBytes: Int64);
 begin
   inherited Create;

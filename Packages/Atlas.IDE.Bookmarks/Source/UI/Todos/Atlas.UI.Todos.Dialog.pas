@@ -170,17 +170,6 @@ begin
   Result.Anchors := [akTop, akRight];
 end;
 
-function TAtlasTodoFilterDialog.Filter: TAtlasTodoFilter;
-begin
-  Result := Default(TAtlasTodoFilter);
-  Result.Category := FCategory.Text;
-  Result.Owner := FOwner.Text;
-  Result.UnitName := FUnit.Text;
-  Result.Keyword := FKeyword.Text;
-  Result.IncludeDone := FIncludeDone.Checked;
-  Result := Result.Trimmed;
-end;
-
 procedure TAtlasTodoFilterDialog.OkClick(Sender: TObject);
 begin
   ModalResult := mrOk;
@@ -199,6 +188,17 @@ begin
   FKeyword.Text := '';
   FIncludeDone.Checked := False;
   ActiveControl := FCategory;
+end;
+
+function TAtlasTodoFilterDialog.Filter: TAtlasTodoFilter;
+begin
+  Result := Default(TAtlasTodoFilter);
+  Result.Category := FCategory.Text;
+  Result.Owner := FOwner.Text;
+  Result.UnitName := FUnit.Text;
+  Result.Keyword := FKeyword.Text;
+  Result.IncludeDone := FIncludeDone.Checked;
+  Result := Result.Trimmed;
 end;
 
 class function TAtlasTodoFilterDialog.Execute(const AChoices: TAtlasTodoChoices;

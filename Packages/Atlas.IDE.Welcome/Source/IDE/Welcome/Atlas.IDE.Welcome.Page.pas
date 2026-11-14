@@ -164,6 +164,21 @@ begin
   inherited;
 end;
 
+function TPlugin.GetView: TFrame;
+begin
+  Result := FView;
+end;
+
+function TPlugin.GetIconIndex: Integer;
+begin
+  Result := FIconIndex;
+end;
+
+procedure TPlugin.SetIconIndex(const Value: Integer);
+begin
+  FIconIndex := Value;
+end;
+
 function TPlugin.GetPluginID: string;
 begin
   Result := FId;
@@ -232,21 +247,6 @@ end;
 function TPlugin.GetIcon: TGraphicArray;
 begin
   Result := [];
-end;
-
-function TPlugin.GetIconIndex: Integer;
-begin
-  Result := FIconIndex;
-end;
-
-procedure TPlugin.SetIconIndex(const Value: Integer);
-begin
-  FIconIndex := Value;
-end;
-
-function TPlugin.GetView: TFrame;
-begin
-  Result := FView;
 end;
 
 { TAtlasIdeWelcomePage }

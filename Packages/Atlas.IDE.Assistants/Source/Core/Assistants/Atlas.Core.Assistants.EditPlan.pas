@@ -76,6 +76,8 @@ implementation
 uses
   Atlas.Core.Lsp.TextChanges;
 
+{ TAtlasEditInboxDecision }
+
 function TAtlasEditInboxDecision.Applies: Boolean;
 begin
   Result := Step = TAtlasEditInboxStep.Apply;
@@ -104,6 +106,8 @@ function TAtlasEditInboxDecision.SaveAfter: Boolean;
 begin
   Result := Applies and not WasModified;
 end;
+
+{ TAtlasEditInboxPlan }
 
 class function TAtlasEditInboxPlan.Decide(const ABuffer: TAtlasEditorFile;
   const AExpected: string): TAtlasEditInboxDecision;

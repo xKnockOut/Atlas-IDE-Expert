@@ -33,15 +33,6 @@ uses
 
 { TAtlasScaling }
 
-class function TAtlasScaling.ToDevice(AValue96, APPI: Integer): Integer;
-begin
-  if (AValue96 < 0) or (APPI <= 0) or (APPI = cBasePPI) then
-  begin
-    Exit(AValue96);
-  end;
-  Result := (AValue96 * APPI + cBasePPI div 2) div cBasePPI;
-end;
-
 class function TAtlasScaling.ZoomFromCaret(ACaretHeight, ATextHeight: Integer): Double;
 begin
   if (ACaretHeight <= 0) or (ATextHeight <= 0) then
@@ -60,6 +51,15 @@ begin
     Result := Result / (1 + cTolerance / 2);
   end;
   Result := EnsureRange(Result, cMinZoom, cMaxZoom);
+end;
+
+class function TAtlasScaling.ToDevice(AValue96, APPI: Integer): Integer;
+begin
+  if (AValue96 < 0) or (APPI <= 0) or (APPI = cBasePPI) then
+  begin
+    Exit(AValue96);
+  end;
+  Result := (AValue96 * APPI + cBasePPI div 2) div cBasePPI;
 end;
 
 end.

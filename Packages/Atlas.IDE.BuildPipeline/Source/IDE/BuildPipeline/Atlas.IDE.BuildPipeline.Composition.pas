@@ -294,6 +294,17 @@ end;
 
 { TAtlasBuildPipelineModule }
 
+class function TAtlasBuildPipelineModule.Parts: TArray<IAtlasFeaturePart>;
+begin
+  Result := [
+    // Läufer, Wächter und Prüfung: solange Base die Compile-Ereignisse hat.
+    TAtlasFeaturePart.When('BuildPipeline',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := TAtlasIdeHost.CompileEvents <> nil;
+      end, PipelineStarted, StartPipeline, StopPipeline)];
+end;
+
 function TAtlasBuildPipelineModule.Info: TAtlasModuleInfo;
 begin
   // Wächter und Prüfung liefen mit den Compile-Ereignissen auch im abgesicherten Start (mit CheckOnSave); der
@@ -375,6 +386,14 @@ begin
   Result := (GRunner <> nil) and GRunner.Busy;
 end;
 
+/// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
+/// ausgeschaltet einstellen lässt.</summary>
+procedure ProvideSettingsSections;
+begin
+  TAtlasBuildPipelineCompilerSection.ProvideIn(GScope);
+  TAtlasBuildPipelineReleaseSection.ProvideIn(GScope);
+end;
+
 procedure TAtlasBuildPipelineModule.MessagesRead(const AMessages: TArray<TAtlasCompilerMessage>;
   const AProject: TAtlasCompileProject);
 begin
@@ -383,14 +402,6 @@ begin
   begin
     GRunner.MessagesRead(AMessages, AProject);
   end;
-end;
-
-/// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
-/// ausgeschaltet einstellen lässt.</summary>
-procedure ProvideSettingsSections;
-begin
-  TAtlasBuildPipelineCompilerSection.ProvideIn(GScope);
-  TAtlasBuildPipelineReleaseSection.ProvideIn(GScope);
 end;
 
 function TAtlasBuildPipelineModule.Evaluate(const AMessages: TArray<TAtlasCompilerMessage>;
@@ -413,17 +424,6 @@ begin
     begin
       BuildEvaluated(mMessages, mProject, AVerdict);
     end);
-end;
-
-class function TAtlasBuildPipelineModule.Parts: TArray<IAtlasFeaturePart>;
-begin
-  Result := [
-    // Läufer, Wächter und Prüfung: solange Base die Compile-Ereignisse hat.
-    TAtlasFeaturePart.When('BuildPipeline',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := TAtlasIdeHost.CompileEvents <> nil;
-      end, PipelineStarted, StartPipeline, StopPipeline)];
 end;
 
 class function TAtlasBuildPipelineModule.RegisterModule: Boolean;

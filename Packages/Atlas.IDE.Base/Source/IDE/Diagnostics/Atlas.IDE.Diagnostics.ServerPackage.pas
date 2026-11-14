@@ -40,6 +40,42 @@ uses
   Atlas.UI.Diagnostics.ExportDialog,
   Atlas.UI.Diagnostics.Strings;
 
+{ TAtlasIdeServerPackage }
+
+class procedure TAtlasIdeServerPackage.Finish(const AReport: string; AAnonymize: Boolean;
+  const AServerAnswer: TJSONValue; const AMessage: TProc<string>);
+var
+  mServerFiles, mFiles: TAtlasPackageFiles;
+  mNote, mTarget: string;
+begin
+  mServerFiles := TAtlasServerDiagnostics.ServerFiles(AServerAnswer);
+  if Length(mServerFiles) = 0 then
+  begin
+    AMessage(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ServerPackageNoServer));
+  end;
+  mFiles := TAtlasServerDiagnostics.Build(AReport, mServerFiles);
+  if AAnonymize then
+  begin
+    mNote := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportAnonymized);
+  end
+  else
+  begin
+    mNote := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportPlain);
+  end;
+  if not TAtlasDiagnosticExportDialog.Execute(TAtlasExportDialogTexts.Create(
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ServerPackageTitle),
+    TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ServerPackageHint, [mNote]),
+    TAtlasServerDiagnostics.Preview(mFiles, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ServerPackageCut)),
+    TAtlasServerDiagnostics.ZipName(Now), TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ServerPackageFilter),
+    'zip'),
+    mTarget, TAtlasIdeDockWindow.ApplyIdeTheme) then
+  begin
+    Exit;
+  end;
+  TAtlasDiagnosticPackage.WriteZip(mFiles, mTarget);
+  AMessage(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ServerPackageDone, [mTarget]));
+end;
+
 class procedure TAtlasIdeServerPackage.Execute(const AServer: TAtlasServerCommandWithArguments;
   const AMessage: TProc<string>);
 var
@@ -89,40 +125,6 @@ begin
     FBusy := False;
     raise;
   end;
-end;
-
-class procedure TAtlasIdeServerPackage.Finish(const AReport: string; AAnonymize: Boolean;
-  const AServerAnswer: TJSONValue; const AMessage: TProc<string>);
-var
-  mServerFiles, mFiles: TAtlasPackageFiles;
-  mNote, mTarget: string;
-begin
-  mServerFiles := TAtlasServerDiagnostics.ServerFiles(AServerAnswer);
-  if Length(mServerFiles) = 0 then
-  begin
-    AMessage(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ServerPackageNoServer));
-  end;
-  mFiles := TAtlasServerDiagnostics.Build(AReport, mServerFiles);
-  if AAnonymize then
-  begin
-    mNote := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportAnonymized);
-  end
-  else
-  begin
-    mNote := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.BugReportPlain);
-  end;
-  if not TAtlasDiagnosticExportDialog.Execute(TAtlasExportDialogTexts.Create(
-    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ServerPackageTitle),
-    TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ServerPackageHint, [mNote]),
-    TAtlasServerDiagnostics.Preview(mFiles, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ServerPackageCut)),
-    TAtlasServerDiagnostics.ZipName(Now), TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ServerPackageFilter),
-    'zip'),
-    mTarget, TAtlasIdeDockWindow.ApplyIdeTheme) then
-  begin
-    Exit;
-  end;
-  TAtlasDiagnosticPackage.WriteZip(mFiles, mTarget);
-  AMessage(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ServerPackageDone, [mTarget]));
 end;
 
 end.

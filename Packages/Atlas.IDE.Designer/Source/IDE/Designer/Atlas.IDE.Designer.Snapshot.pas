@@ -35,6 +35,8 @@ uses
   ToolsAPI,
   Atlas.IDE.Designer.Access;
 
+{ TAtlasDesignerSnapshot }
+
 procedure TAtlasDesignerSnapshot.Take(const AFileName: string; ARoot: TComponent);
 var
   mIndex: Integer;

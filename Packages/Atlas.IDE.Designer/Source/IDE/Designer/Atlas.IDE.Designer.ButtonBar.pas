@@ -51,6 +51,8 @@ uses
 const
   cDefaultPpi = 96;
 
+{ TAtlasIdeButtonBar }
+
 class function TAtlasIdeButtonBar.Candidates(const ASelected: TArray<TComponent>): TArray<TButton>;
 var
   mComponent: TComponent;
@@ -150,6 +152,8 @@ type
     procedure Flag(AButton: TButton; ARole: TAtlasButtonRole);
     procedure SetModalResult(AButton: TButton; ARole: TAtlasButtonRole);
   end;
+
+{ TBarRun }
 
 procedure TBarRun.Note(const AText: string);
 begin

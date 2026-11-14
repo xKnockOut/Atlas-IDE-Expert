@@ -130,43 +130,6 @@ end;
 
 { TAtlasIdeProcessMemory }
 
-class function TAtlasIdeProcessMemory.Open(APid: Cardinal; out AMemory: IAtlasProcessMemory;
-  out AError: string): Boolean;
-var
-  mReader: TAtlasIdeProcessMemory;
-  mProcess: THandle;
-begin
-  AMemory := nil;
-  AError := '';
-  mProcess := OpenProcess(PROCESS_QUERY_INFORMATION or PROCESS_VM_READ, False, APid);
-  if mProcess = 0 then
-  begin
-    AError := SysErrorMessage(GetLastError);
-    Exit(False);
-  end;
-  mReader := TAtlasIdeProcessMemory.Create;
-  AMemory := mReader;
-  mReader.FProcess := mProcess;
-  mReader.FPointerSize := SizeOf(Pointer);
-  if IsWow64(mProcess) then
-  begin
-    mReader.FPointerSize := cPointerSize32;
-  end
-  else if (SizeOf(Pointer) = cPointerSize32) and IsWow64(GetCurrentProcess) then
-  begin
-    // 32-Bit-IDE auf 64-Bit-Windows, Programm ohne WOW64: ein 64-Bit-Programm.
-    mReader.FPointerSize := cPointerSize64;
-    mReader.FWide := True;
-    if not LoadWideCalls then
-    begin
-      AError := SysErrorMessage(ERROR_PROC_NOT_FOUND);
-      AMemory := nil;
-      Exit(False);
-    end;
-  end;
-  Result := True;
-end;
-
 destructor TAtlasIdeProcessMemory.Destroy;
 begin
   if FProcess <> 0 then
@@ -174,23 +137,6 @@ begin
     CloseHandle(FProcess);
   end;
   inherited Destroy;
-end;
-
-function TAtlasIdeProcessMemory.PointerSize: Integer;
-begin
-  Result := FPointerSize;
-end;
-
-function TAtlasIdeProcessMemory.Regions: TArray<TAtlasMemoryRegion>;
-begin
-  if FWide then
-  begin
-    Result := WideRegions;
-  end
-  else
-  begin
-    Result := NarrowRegions;
-  end;
 end;
 
 function TAtlasIdeProcessMemory.NarrowRegions: TArray<TAtlasMemoryRegion>;
@@ -249,6 +195,60 @@ begin
     Result := mList.ToArray;
   finally
     mList.Free;
+  end;
+end;
+
+class function TAtlasIdeProcessMemory.Open(APid: Cardinal; out AMemory: IAtlasProcessMemory;
+  out AError: string): Boolean;
+var
+  mReader: TAtlasIdeProcessMemory;
+  mProcess: THandle;
+begin
+  AMemory := nil;
+  AError := '';
+  mProcess := OpenProcess(PROCESS_QUERY_INFORMATION or PROCESS_VM_READ, False, APid);
+  if mProcess = 0 then
+  begin
+    AError := SysErrorMessage(GetLastError);
+    Exit(False);
+  end;
+  mReader := TAtlasIdeProcessMemory.Create;
+  AMemory := mReader;
+  mReader.FProcess := mProcess;
+  mReader.FPointerSize := SizeOf(Pointer);
+  if IsWow64(mProcess) then
+  begin
+    mReader.FPointerSize := cPointerSize32;
+  end
+  else if (SizeOf(Pointer) = cPointerSize32) and IsWow64(GetCurrentProcess) then
+  begin
+    // 32-Bit-IDE auf 64-Bit-Windows, Programm ohne WOW64: ein 64-Bit-Programm.
+    mReader.FPointerSize := cPointerSize64;
+    mReader.FWide := True;
+    if not LoadWideCalls then
+    begin
+      AError := SysErrorMessage(ERROR_PROC_NOT_FOUND);
+      AMemory := nil;
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+function TAtlasIdeProcessMemory.PointerSize: Integer;
+begin
+  Result := FPointerSize;
+end;
+
+function TAtlasIdeProcessMemory.Regions: TArray<TAtlasMemoryRegion>;
+begin
+  if FWide then
+  begin
+    Result := WideRegions;
+  end
+  else
+  begin
+    Result := NarrowRegions;
   end;
 end;
 

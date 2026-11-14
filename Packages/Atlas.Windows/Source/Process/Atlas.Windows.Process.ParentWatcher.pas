@@ -30,6 +30,8 @@ implementation
 uses
   Winapi.Windows;
 
+{ TParentWatcher }
+
 constructor TParentWatcher.Create(AProcessId: Cardinal; const AOnExited: TProc);
 var
   mProcess, mStop: THandle;

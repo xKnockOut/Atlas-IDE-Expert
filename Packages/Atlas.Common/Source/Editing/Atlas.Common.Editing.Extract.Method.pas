@@ -630,6 +630,35 @@ begin
     JumpsInside(FBody, FStatements, FWindow.Start, FWindow.Finish, FReason);
 end;
 
+function TMethodExtraction.Analyze: Boolean;
+var
+  mOccurrence: TLocalOccurrence;
+  mIndex: Integer;
+begin
+  FLocals := TRoutineLocals.Collect(FText, FTree, FRoutine);
+  FOnlyNames := TExtractSupport.RoutineOnlyNames(FRoutine);
+  FLookup := TFlowSignatures.FromTree(FTree.Root);
+  FindLoop;
+  SetLength(FUses, Length(FLocals));
+  for mIndex := 0 to High(FLocals) do
+  begin
+    FUses[mIndex] := Default(TLocalUse);
+    FUses[mIndex].Before := FLocals[mIndex].Kind = TRoutineLocalKind.Parameter;
+  end;
+  FOrder := nil;
+  Result := CollectOccurrences;
+  if Result then
+  begin
+    MarkForLoops;
+    for mOccurrence in FOccurrences do
+    begin
+      MarkOccurrence(mOccurrence);
+    end;
+    MarkAssumed;
+    Result := ChooseModes and CheckCaptures;
+  end;
+end;
+
 procedure TMethodExtraction.FindLoop;
 var
   mLoop: TSyntaxNode;
@@ -644,23 +673,6 @@ begin
       FLoop.Finish := mLoop.EndOffset;
     end;
     mLoop := mLoop.Parent;
-  end;
-end;
-
-function TMethodExtraction.VisibleOutside(ANode: TSyntaxNode; ALocal: Integer): Boolean;
-begin
-  Result := True;
-  if ALocal >= 0 then
-  begin
-    Exit;
-  end;
-  if SameText(ANode.Name, 'Result') then
-  begin
-    Result := Fail(cTexts[TExtractMethodText.ResultInTheSelection].Text, FReason);
-  end
-  else if IndexText(ANode.Name, FOnlyNames) >= 0 then
-  begin
-    Result := Fail(ANode.Name + cTexts[TExtractMethodText.IsOnlyVisibleInThe].Text, FReason);
   end;
 end;
 
@@ -695,6 +707,62 @@ begin
     end;
   finally
     mNodes.Free;
+  end;
+end;
+
+procedure TMethodExtraction.MarkOutside(ALocal, AStart, AEnd: Integer);
+begin
+  if AStart < FWindow.Start then
+  begin
+    FUses[ALocal].Before := True;
+    if (AStart >= FLoop.Start) and (AEnd <= FLoop.Finish) and (FLoop.Start < FWindow.Start) then
+    begin
+      FUses[ALocal].After := True;
+    end;
+  end
+  else
+  begin
+    FUses[ALocal].After := True;
+  end;
+end;
+
+procedure TMethodExtraction.MarkAssumed;
+var
+  mWindow: TExtractWindow;
+  mParameter: TExtractParameter;
+  mIndex: Integer;
+begin
+  for mWindow in FContext.Others do
+  begin
+    for mParameter in FContext.Assumed do
+    begin
+      mIndex := -1;
+      if Accesses(mParameter.Mode) then
+      begin
+        mIndex := TRoutineLocals.IndexOf(FLocals, mParameter.Name, mWindow.Start);
+      end;
+      if mIndex >= 0 then
+      begin
+        MarkOutside(mIndex, mWindow.Start, mWindow.Finish);
+      end;
+    end;
+  end;
+end;
+
+function TMethodExtraction.VisibleOutside(ANode: TSyntaxNode; ALocal: Integer): Boolean;
+begin
+  Result := True;
+  if ALocal >= 0 then
+  begin
+    Exit;
+  end;
+  if SameText(ANode.Name, 'Result') then
+  begin
+    Result := Fail(cTexts[TExtractMethodText.ResultInTheSelection].Text, FReason);
+  end
+  else if IndexText(ANode.Name, FOnlyNames) >= 0 then
+  begin
+    Result := Fail(ANode.Name + cTexts[TExtractMethodText.IsOnlyVisibleInThe].Text, FReason);
   end;
 end;
 
@@ -736,6 +804,22 @@ begin
   end;
 end;
 
+
+procedure TMethodExtraction.MarkOccurrence(const AOccurrence: TLocalOccurrence);
+var
+  mNode: TSyntaxNode;
+begin
+  mNode := AOccurrence.Node;
+  if TExtractSupport.InSelection(mNode, FWindow.Start, FWindow.Finish) then
+  begin
+    MarkInside(AOccurrence);
+  end
+  else
+  begin
+    MarkOutside(AOccurrence.Local, mNode.StartOffset, mNode.EndOffset);
+  end;
+end;
+
 procedure TMethodExtraction.MarkInside(const AOccurrence: TLocalOccurrence);
 var
   mIndex: Integer;
@@ -763,61 +847,6 @@ begin
   if AOccurrence.Access in [TLocalAccess.Write, TLocalAccess.ReadWrite] then
   begin
     FUses[mIndex].WriteIn := True;
-  end;
-end;
-
-procedure TMethodExtraction.MarkOccurrence(const AOccurrence: TLocalOccurrence);
-var
-  mNode: TSyntaxNode;
-begin
-  mNode := AOccurrence.Node;
-  if TExtractSupport.InSelection(mNode, FWindow.Start, FWindow.Finish) then
-  begin
-    MarkInside(AOccurrence);
-  end
-  else
-  begin
-    MarkOutside(AOccurrence.Local, mNode.StartOffset, mNode.EndOffset);
-  end;
-end;
-
-procedure TMethodExtraction.MarkOutside(ALocal, AStart, AEnd: Integer);
-begin
-  if AStart < FWindow.Start then
-  begin
-    FUses[ALocal].Before := True;
-    if (AStart >= FLoop.Start) and (AEnd <= FLoop.Finish) and (FLoop.Start < FWindow.Start) then
-    begin
-      FUses[ALocal].After := True;
-    end;
-  end
-  else
-  begin
-    FUses[ALocal].After := True;
-  end;
-end;
-
-
-procedure TMethodExtraction.MarkAssumed;
-var
-  mWindow: TExtractWindow;
-  mParameter: TExtractParameter;
-  mIndex: Integer;
-begin
-  for mWindow in FContext.Others do
-  begin
-    for mParameter in FContext.Assumed do
-    begin
-      mIndex := -1;
-      if Accesses(mParameter.Mode) then
-      begin
-        mIndex := TRoutineLocals.IndexOf(FLocals, mParameter.Name, mWindow.Start);
-      end;
-      if mIndex >= 0 then
-      begin
-        MarkOutside(mIndex, mWindow.Start, mWindow.Finish);
-      end;
-    end;
   end;
 end;
 
@@ -851,22 +880,6 @@ begin
   end;
 end;
 
-function TMethodExtraction.CapturedByReference(AAnonymous: TSyntaxNode): Boolean;
-var
-  mOccurrence: TLocalOccurrence;
-begin
-  Result := False;
-  for mOccurrence in FOccurrences do
-  begin
-    if not Result and TRoutineBody.Within(mOccurrence.Node, AAnonymous) and
-      (FUses[mOccurrence.Local].Mode in [TParameterMode.Var_, TParameterMode.Out_]) then
-    begin
-      Result := not Fail(cTexts[TExtractMethodText.AnAnonymousMethodCaptures].Fmt([FLocals[mOccurrence.Local].Name]),
-        FReason);
-    end;
-  end;
-end;
-
 function TMethodExtraction.CheckCaptures: Boolean;
 var
   mAnonymous: TList<TSyntaxNode>;
@@ -888,32 +901,37 @@ begin
   end;
 end;
 
-function TMethodExtraction.Analyze: Boolean;
+function TMethodExtraction.CapturedByReference(AAnonymous: TSyntaxNode): Boolean;
 var
   mOccurrence: TLocalOccurrence;
+begin
+  Result := False;
+  for mOccurrence in FOccurrences do
+  begin
+    if not Result and TRoutineBody.Within(mOccurrence.Node, AAnonymous) and
+      (FUses[mOccurrence.Local].Mode in [TParameterMode.Var_, TParameterMode.Out_]) then
+    begin
+      Result := not Fail(cTexts[TExtractMethodText.AnAnonymousMethodCaptures].Fmt([FLocals[mOccurrence.Local].Name]),
+        FReason);
+    end;
+  end;
+end;
+
+function TMethodExtraction.BuildSignature(ASignature: TExtractSignature): Boolean;
+var
   mIndex: Integer;
 begin
-  FLocals := TRoutineLocals.Collect(FText, FTree, FRoutine);
-  FOnlyNames := TExtractSupport.RoutineOnlyNames(FRoutine);
-  FLookup := TFlowSignatures.FromTree(FTree.Root);
-  FindLoop;
-  SetLength(FUses, Length(FLocals));
-  for mIndex := 0 to High(FLocals) do
+  Result := True;
+  for mIndex in SortedOrder(FOrder, FUses) do
   begin
-    FUses[mIndex] := Default(TLocalUse);
-    FUses[mIndex].Before := FLocals[mIndex].Kind = TRoutineLocalKind.Parameter;
-  end;
-  FOrder := nil;
-  Result := CollectOccurrences;
-  if Result then
-  begin
-    MarkForLoops;
-    for mOccurrence in FOccurrences do
+    if FUses[mIndex].Mode = TParameterMode.CopyConst then
     begin
-      MarkOccurrence(mOccurrence);
+      ASignature.AddConstant(FLocals[mIndex]);
+    end
+    else if Result and (FUses[mIndex].Mode <> TParameterMode.None) then
+    begin
+      Result := AddToSignature(ASignature, mIndex);
     end;
-    MarkAssumed;
-    Result := ChooseModes and CheckCaptures;
   end;
 end;
 
@@ -933,24 +951,6 @@ begin
   else
   begin
     ASignature.AddParameter(ArgumentText(FUses[AIndex].Mode), FLocals[AIndex].Name, mType);
-  end;
-end;
-
-function TMethodExtraction.BuildSignature(ASignature: TExtractSignature): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := True;
-  for mIndex in SortedOrder(FOrder, FUses) do
-  begin
-    if FUses[mIndex].Mode = TParameterMode.CopyConst then
-    begin
-      ASignature.AddConstant(FLocals[mIndex]);
-    end
-    else if Result and (FUses[mIndex].Mode <> TParameterMode.None) then
-    begin
-      Result := AddToSignature(ASignature, mIndex);
-    end;
   end;
 end;
 

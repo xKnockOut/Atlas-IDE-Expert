@@ -61,6 +61,15 @@ const
 
 { TMcpPathGuard }
 
+constructor TMcpPathGuard.Create(const ARoot: string; const AExtraRoots: TFunc<TArray<string>>;
+  const ACanonicalize: TFunc<string, string>);
+begin
+  inherited Create;
+  FExtraRoots := AExtraRoots;
+  FCanonicalize := ACanonicalize;
+  FRoot := Normalize(ARoot);
+end;
+
 constructor TMcpPathGuard.Create(const ARoot: string; const AExtraRoots: TFunc<TArray<string>>);
 begin
   Create(ARoot, AExtraRoots, nil);
@@ -71,15 +80,6 @@ begin
   Create(ARoot, nil, nil);
 end;
 
-constructor TMcpPathGuard.Create(const ARoot: string; const AExtraRoots: TFunc<TArray<string>>;
-  const ACanonicalize: TFunc<string, string>);
-begin
-  inherited Create;
-  FExtraRoots := AExtraRoots;
-  FCanonicalize := ACanonicalize;
-  FRoot := Normalize(ARoot);
-end;
-
 function TMcpPathGuard.Normalize(const APath: string): string;
 begin
   Result := ExcludeTrailingPathDelimiter(TPath.GetFullPath(APath.Replace('/', '\')));
@@ -87,11 +87,6 @@ begin
   begin
     Result := ExcludeTrailingPathDelimiter(FCanonicalize(Result));
   end;
-end;
-
-class function TMcpPathGuard.IsInside(const AFolder, APath: string): Boolean;
-begin
-  Result := (AFolder <> '') and (SameText(APath, AFolder) or StartsText(IncludeTrailingPathDelimiter(AFolder), APath));
 end;
 
 function TMcpPathGuard.Resolve(const APath: string): string;
@@ -125,6 +120,11 @@ begin
     end;
   end;
   raise EMcpToolError.CreateFmt(cTexts[TPathsText.LiesOutsideTheWorkspaceAnd].Text, [Result, FRoot]);
+end;
+
+class function TMcpPathGuard.IsInside(const AFolder, APath: string): Boolean;
+begin
+  Result := (AFolder <> '') and (SameText(APath, AFolder) or StartsText(IncludeTrailingPathDelimiter(AFolder), APath));
 end;
 
 initialization

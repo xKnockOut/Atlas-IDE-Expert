@@ -144,20 +144,14 @@ begin
   Result := ACheck.Filter.Apply(Result);
 end;
 
-class function TLinterFix.CheckFunc(const ACheck: TLinterFixCheck): TBulkFixCheck;
-var
-  mCheck: TLinterFixCheck;
+{ TLinterFix }
+
+constructor TLinterFix.Create(const AOptions: TCommandLineOptions);
 begin
-  mCheck := ACheck;
-  Result :=
-    function(const AText: string; const ALines: TBulkFixLineMap): TArray<TRuleFinding>
-    begin
-      Result := FindingsOf(mCheck, AText);
-      if (mCheck.Git <> nil) and mCheck.ChangedLines then
-      begin
-        Result := InChangedLines(mCheck, Result, ALines);
-      end;
-    end;
+  inherited Create;
+  FOptions := AOptions;
+  FFormats := TDictionary<string, TFileFormat>.Create;
+  FRelative := TDictionary<string, string>.Create;
 end;
 
 /// <summary>Schreibt in der Kodierung und mit den Zeilenenden, mit denen die Datei gelesen wurde (#121).</summary>
@@ -169,14 +163,6 @@ begin
       // Jede Datei der Ergebnisse steht in AFormats: Beide füllt FixFile.
       TFileEncoding.SaveToFile(AFileName, AText, AFormats[AFileName]); // lsp-ignore: dictionary-get-without-check
     end;
-end;
-
-constructor TLinterFix.Create(const AOptions: TCommandLineOptions);
-begin
-  inherited Create;
-  FOptions := AOptions;
-  FFormats := TDictionary<string, TFileFormat>.Create;
-  FRelative := TDictionary<string, string>.Create;
 end;
 
 destructor TLinterFix.Destroy;
@@ -363,6 +349,22 @@ begin
       Result := TFindingsOutput.cExitFailure;
     end;
   end;
+end;
+
+class function TLinterFix.CheckFunc(const ACheck: TLinterFixCheck): TBulkFixCheck;
+var
+  mCheck: TLinterFixCheck;
+begin
+  mCheck := ACheck;
+  Result :=
+    function(const AText: string; const ALines: TBulkFixLineMap): TArray<TRuleFinding>
+    begin
+      Result := FindingsOf(mCheck, AText);
+      if (mCheck.Git <> nil) and mCheck.ChangedLines then
+      begin
+        Result := InChangedLines(mCheck, Result, ALines);
+      end;
+    end;
 end;
 
 initialization

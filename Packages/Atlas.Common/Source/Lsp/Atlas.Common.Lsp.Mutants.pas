@@ -97,6 +97,48 @@ begin
   end;
 end;
 
+{ TLspMutants }
+
+class procedure TLspMutants.Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText);
+var
+  mReadText: TLspTestCasesReadText;
+begin
+  mReadText := AReadText;
+  ACommands.RegisterConcurrent(cCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := Execute(AArguments, mReadText);
+    end);
+end;
+
+/// <summary>Zeilen der Routine ANode als JSON-Objekt.</summary>
+function RangeJson(ANode: TSyntaxNode; const AName: string): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('name', AName);
+  Result.AddPair('line', TJSONNumber.Create(ANode.StartPos.Line));
+  Result.AddPair('endLine', TJSONNumber.Create(ANode.EndPos.Line));
+end;
+
+/// <summary>Routine ANode (Name AName) und ihre lokalen Routinen in AResult, soweit in ANames.</summary>
+procedure AddRanges(ANode: TSyntaxNode; const AName: string; ANames: TDictionary<string, Boolean>;
+  AResult: TJSONArray);
+var
+  mIndex: Integer;
+begin
+  if ANames.ContainsKey(AName) then
+  begin
+    AResult.AddElement(RangeJson(ANode, AName));
+  end;
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    if ANode[mIndex].Kind = TSyntaxKind.RoutineDecl then
+    begin
+      AddRanges(ANode[mIndex], AName + '.' + ANode[mIndex].Name, ANames, AResult);
+    end;
+  end;
+end;
+
 class function TLspMutants.OptionsOf(AValue: TJSONValue; out AOptions: TMutationOptions; out AError: string): Boolean;
 var
   mObject: TJSONObject;
@@ -129,31 +171,22 @@ begin
   AOptions.LastLine := LineOf(mObject, 'lastLine');
 end;
 
-/// <summary>Zeilen der Routine ANode als JSON-Objekt.</summary>
-function RangeJson(ANode: TSyntaxNode; const AName: string): TJSONObject;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('name', AName);
-  Result.AddPair('line', TJSONNumber.Create(ANode.StartPos.Line));
-  Result.AddPair('endLine', TJSONNumber.Create(ANode.EndPos.Line));
-end;
-
-/// <summary>Routine ANode (Name AName) und ihre lokalen Routinen in AResult, soweit in ANames.</summary>
-procedure AddRanges(ANode: TSyntaxNode; const AName: string; ANames: TDictionary<string, Boolean>;
-  AResult: TJSONArray);
+/// <summary>Namen der Routinen von AMutants, jeder einmal, in der Reihenfolge des Auftretens.</summary>
+function RoutineNames(const AMutants: TArray<TMutant>): TArray<string>;
 var
-  mIndex: Integer;
+  mMutant: TMutant;
+  mLast: string;
 begin
-  if ANames.ContainsKey(AName) then
+  Result := nil;
+  mLast := '';
+  for mMutant in AMutants do
   begin
-    AResult.AddElement(RangeJson(ANode, AName));
-  end;
-  for mIndex := 0 to ANode.ChildCount - 1 do
-  begin
-    if ANode[mIndex].Kind = TSyntaxKind.RoutineDecl then
+    // Mutanten sind nach Stelle sortiert: eine Routine kann nach einer lokalen wiederkommen.
+    if (mMutant.Routine <> mLast) and (IndexStr(mMutant.Routine, Result) < 0) then
     begin
-      AddRanges(ANode[mIndex], AName + '.' + ANode[mIndex].Name, ANames, AResult);
+      Result := Result + [mMutant.Routine];
     end;
+    mLast := mMutant.Routine;
   end;
 end;
 
@@ -191,25 +224,6 @@ begin
   finally
     mStack.Free;
     mNames.Free;
-  end;
-end;
-
-/// <summary>Namen der Routinen von AMutants, jeder einmal, in der Reihenfolge des Auftretens.</summary>
-function RoutineNames(const AMutants: TArray<TMutant>): TArray<string>;
-var
-  mMutant: TMutant;
-  mLast: string;
-begin
-  Result := nil;
-  mLast := '';
-  for mMutant in AMutants do
-  begin
-    // Mutanten sind nach Stelle sortiert: eine Routine kann nach einer lokalen wiederkommen.
-    if (mMutant.Routine <> mLast) and (IndexStr(mMutant.Routine, Result) < 0) then
-    begin
-      Result := Result + [mMutant.Routine];
-    end;
-    mLast := mMutant.Routine;
   end;
 end;
 
@@ -258,18 +272,6 @@ begin
     mTree.Free;
   end;
   Result := mResult;
-end;
-
-class procedure TLspMutants.Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText);
-var
-  mReadText: TLspTestCasesReadText;
-begin
-  mReadText := AReadText;
-  ACommands.RegisterConcurrent(cCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := Execute(AArguments, mReadText);
-    end);
 end;
 
 initialization

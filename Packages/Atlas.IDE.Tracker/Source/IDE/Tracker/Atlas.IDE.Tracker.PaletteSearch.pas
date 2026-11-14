@@ -152,92 +152,93 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeIssueSearch.Active: Boolean;
+procedure TAtlasIdeIssueSearch.TimerTick(Sender: TObject);
+var
+  mText: string;
 begin
-  Result := TAtlasIdeSettings.Current.IssuesPaletteSearch;
-end;
-
-class function TAtlasIdeIssueSearch.NowMs: UInt64;
-begin
-  Result := GetTickCount64;
-end;
-
-procedure TAtlasIdeIssueSearch.Stop;
-begin
-  if not FStarted then
-  begin
-    Exit;
-  end;
-  FStarted := False;
-  Inc(FGeneration);
-  // Der Zeitgeber gehört dem Hauptthread; die letzte Referenz kann ein Hintergrund-Thread lösen.
-  FreeAndNil(FTimer);
-  FDebounce.Clear;
-  CancelRequest;
-  FWorkers.Release(True);
-  FShow := nil;
-  FProvider := nil;
-  FHooks := Default(TAtlasIssueSearchHooks);
-end;
-
-procedure TAtlasIdeIssueSearch.CancelRequest;
-begin
-  // Die Antwort einer abgebrochenen Anfrage zählt nicht mehr (Generation).
-  Inc(FGeneration);
-  if FCancel <> nil then
-  begin
-    FCancel.Cancel;
-  end;
-  FCancel := nil;
-end;
-
-procedure TAtlasIdeIssueSearch.Opened(const AShow: TProc<TAtlasPaletteGroup>);
-begin
-  FShow := nil;
-  FProvider := nil;
-  FQuery := TAtlasIssueSearchQuery.None;
-  FHasLast := False;
-  FLastIssues := nil;
-  FIssues := nil;
-  if not FStarted then
-  begin
-    Exit;
-  end;
-  // Die Übergänge des aktuellen Issues (#2124) gibt es auch ohne Suche im Tracker.
-  FShow := AShow;
-  if Active and Assigned(FHooks.Target) then
-  begin
-    // Einmal je Öffnen: Tracker des aktiven Projekts (liest die .atlas, kein Netz).
-    FProvider := FHooks.Target(FTarget);
-  end;
-end;
-
-procedure TAtlasIdeIssueSearch.Closed;
-begin
-  FShow := nil;
   if FTimer <> nil then
   begin
     FTimer.Enabled := False;
   end;
-  FDebounce.Clear;
-  CancelRequest;
-  FWorkers.Release(False);
-  FIssues := nil;
-end;
-
-procedure TAtlasIdeIssueSearch.ShowGroup(const AGroup: TAtlasPaletteGroup);
-begin
-  if Assigned(FShow) then
+  if not FStarted or not Assigned(FShow) then
   begin
-    FShow(AGroup);
+    Exit;
   end;
+  TAtlasGuard.Run(TAtlasFeature.Palette,
+    procedure
+    begin
+      if FDebounce.Take(NowMs, mText) then
+      begin
+        Request(FQuery);
+      end
+      else
+      begin
+        Schedule;
+      end;
+    end);
 end;
 
-procedure TAtlasIdeIssueSearch.ShowStatus(const AStatus: string);
+procedure TAtlasIdeIssueSearch.Schedule;
+var
+  mWait: Integer;
 begin
-  FIssues := nil;
-  ShowGroup(TAtlasPaletteGroup.Create(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesGroup), AStatus, '',
-    nil));
+  if FTimer = nil then
+  begin
+    Exit;
+  end;
+  mWait := FDebounce.WaitMs(NowMs);
+  FTimer.Enabled := False;
+  if mWait < 0 then
+  begin
+    Exit;
+  end;
+  if mWait < 1 then
+  begin
+    mWait := 1;
+  end;
+  FTimer.Interval := Cardinal(mWait);
+  FTimer.Enabled := True;
+end;
+
+procedure TAtlasIdeIssueSearch.Answered(AGeneration: Integer; const AQuery: TAtlasIssueSearchQuery;
+  ASucceeded: Boolean; const AIssues: TArray<TAtlasTrackerIssue>; AError: TAtlasCiFetchError);
+var
+  mName, mState: string;
+begin
+  FWorkers.Release(False);
+  // Neuere Eingabe, abgebrochen oder Palette zu: diese Antwort zählt nicht.
+  if not FStarted or (AGeneration <> FGeneration) or not Assigned(FShow) then
+  begin
+    Exit;
+  end;
+  FCancel := nil;
+  mName := '';
+  if FProvider <> nil then
+  begin
+    mName := FProvider.Name;
+  end;
+  if ASucceeded then
+  begin
+    mState := IntToStr(Length(AIssues)) + ' Treffer';
+  end
+  else
+  begin
+    mState := 'keine Antwort (' + TAtlasCiBuild.ErrorKey(AError) + ')';
+  end;
+  TAtlasGuard.Log(Format('Palettensuche: %s, %s', [mName, mState]));
+  if ASucceeded then
+  begin
+    FLastQuery := AQuery;
+    FLastIssues := AIssues;
+    FHasLast := True;
+    ShowIssues(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesGroup), AQuery, AIssues);
+    Exit;
+  end;
+  if AError = TAtlasCiFetchError.Cancelled then
+  begin
+    Exit;
+  end;
+  ShowStatus(ErrorText(AError, AQuery));
 end;
 
 procedure TAtlasIdeIssueSearch.ShowIssues(const ATitle: string; const AQuery: TAtlasIssueSearchQuery;
@@ -255,6 +256,75 @@ begin
     mStatus := TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesKeys);
   end;
   ShowGroup(TAtlasPaletteGroup.Create(ATitle, mStatus, AQuery.Highlight, TAtlasIssuePaletteSearch.Rows(AIssues)));
+end;
+
+procedure TAtlasIdeIssueSearch.ShowStatus(const AStatus: string);
+begin
+  FIssues := nil;
+  ShowGroup(TAtlasPaletteGroup.Create(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesGroup), AStatus, '',
+    nil));
+end;
+
+procedure TAtlasIdeIssueSearch.ShowGroup(const AGroup: TAtlasPaletteGroup);
+begin
+  if Assigned(FShow) then
+  begin
+    FShow(AGroup);
+  end;
+end;
+
+procedure TAtlasIdeIssueSearch.CancelRequest;
+begin
+  // Die Antwort einer abgebrochenen Anfrage zählt nicht mehr (Generation).
+  Inc(FGeneration);
+  if FCancel <> nil then
+  begin
+    FCancel.Cancel;
+  end;
+  FCancel := nil;
+end;
+
+function TAtlasIdeIssueSearch.IssueOf(const AItem: TAtlasCommand; out AIssue: TAtlasTrackerIssue): Boolean;
+var
+  mIssue: TAtlasTrackerIssue;
+begin
+  for mIssue in FIssues do
+  begin
+    if SameText(mIssue.Key, AItem.Id) then
+    begin
+      AIssue := mIssue;
+      Exit(True);
+    end;
+  end;
+  AIssue := TAtlasTrackerIssue.Empty;
+  AIssue.Key := AItem.Id;
+  AIssue.Title := AItem.Description;
+  Result := AItem.Id <> '';
+end;
+
+function TAtlasIdeIssueSearch.ErrorText(AError: TAtlasCiFetchError; const AQuery: TAtlasIssueSearchQuery): string;
+begin
+  case AError of
+    TAtlasCiFetchError.NotConfigured:
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorConfig);
+    TAtlasCiFetchError.Unauthorized:
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorToken);
+    TAtlasCiFetchError.NotFound:
+      if AQuery.Kind = TAtlasIssueSearchKind.Key then
+      begin
+        Result := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewErrorNotFound, [AQuery.Key]);
+      end
+      else
+      begin
+        Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesNone);
+      end;
+    TAtlasCiFetchError.Timeout:
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesTimeout);
+    TAtlasCiFetchError.Network:
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorNetwork);
+  else
+    Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorInvalid);
+  end;
 end;
 
 /// <summary>Übergänge des aktuellen Issues zur Eingabe (#2124); ohne passende keine Gruppe.</summary>
@@ -327,88 +397,30 @@ begin
   end;
 end;
 
-procedure TAtlasIdeIssueSearch.Changed(const APattern: string);
+procedure TAtlasIdeIssueSearch.Browse(const AKey: string);
 var
-  mQuery: TAtlasIssueSearchQuery;
+  mUrl: string;
 begin
-  if not Assigned(FShow) then
+  if FProvider = nil then
   begin
     Exit;
   end;
-  TAtlasGuard.Run(TAtlasFeature.Palette,
-    procedure
-    begin
-      // Jede Eingabe ersetzt die laufende Anfrage.
-      if FTimer <> nil then
-      begin
-        FTimer.Enabled := False;
-      end;
-      FDebounce.Clear;
-      CancelRequest;
-      if FProvider = nil then
-      begin
-        ShowNoTracker(Self, APattern);
-        Exit;
-      end;
-      mQuery := TAtlasIssuePaletteSearch.Parse(FTarget, APattern);
-      FQuery := mQuery;
-      case mQuery.Kind of
-        TAtlasIssueSearchKind.None:
-          ShowStates(Self, APattern);
-        TAtlasIssueSearchKind.Recent:
-          ShowRecent(Self, mQuery);
-      else
-        ShowOrSearch(Self, mQuery);
-      end;
-    end);
+  // Nur die Seite aus der eingetragenen Adresse; nie eine Adresse aus der Antwort.
+  mUrl := FProvider.IssuePage(FTarget, AKey);
+  TAtlasIssuePreview.Browse(mUrl);
 end;
 
-procedure TAtlasIdeIssueSearch.Schedule;
-var
-  mWait: Integer;
+procedure TAtlasIdeIssueSearch.Report(const AText: string);
 begin
-  if FTimer = nil then
+  if Assigned(FHooks.Report) then
   begin
-    Exit;
+    FHooks.Report(AText);
   end;
-  mWait := FDebounce.WaitMs(NowMs);
-  FTimer.Enabled := False;
-  if mWait < 0 then
-  begin
-    Exit;
-  end;
-  if mWait < 1 then
-  begin
-    mWait := 1;
-  end;
-  FTimer.Interval := Cardinal(mWait);
-  FTimer.Enabled := True;
 end;
 
-procedure TAtlasIdeIssueSearch.TimerTick(Sender: TObject);
-var
-  mText: string;
+class function TAtlasIdeIssueSearch.NowMs: UInt64;
 begin
-  if FTimer <> nil then
-  begin
-    FTimer.Enabled := False;
-  end;
-  if not FStarted or not Assigned(FShow) then
-  begin
-    Exit;
-  end;
-  TAtlasGuard.Run(TAtlasFeature.Palette,
-    procedure
-    begin
-      if FDebounce.Take(NowMs, mText) then
-      begin
-        Request(FQuery);
-      end
-      else
-      begin
-        Schedule;
-      end;
-    end);
+  Result := GetTickCount64;
 end;
 
 type
@@ -517,109 +529,97 @@ begin
   FWorkers.Start(TThread.CreateAnonymousThread(SearchWorker(Self, Self, mJob)));
 end;
 
-procedure TAtlasIdeIssueSearch.Answered(AGeneration: Integer; const AQuery: TAtlasIssueSearchQuery;
-  ASucceeded: Boolean; const AIssues: TArray<TAtlasTrackerIssue>; AError: TAtlasCiFetchError);
-var
-  mName, mState: string;
+procedure TAtlasIdeIssueSearch.Stop;
 begin
-  FWorkers.Release(False);
-  // Neuere Eingabe, abgebrochen oder Palette zu: diese Antwort zählt nicht.
-  if not FStarted or (AGeneration <> FGeneration) or not Assigned(FShow) then
+  if not FStarted then
   begin
     Exit;
   end;
-  FCancel := nil;
-  mName := '';
-  if FProvider <> nil then
-  begin
-    mName := FProvider.Name;
-  end;
-  if ASucceeded then
-  begin
-    mState := IntToStr(Length(AIssues)) + ' Treffer';
-  end
-  else
-  begin
-    mState := 'keine Antwort (' + TAtlasCiBuild.ErrorKey(AError) + ')';
-  end;
-  TAtlasGuard.Log(Format('Palettensuche: %s, %s', [mName, mState]));
-  if ASucceeded then
-  begin
-    FLastQuery := AQuery;
-    FLastIssues := AIssues;
-    FHasLast := True;
-    ShowIssues(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesGroup), AQuery, AIssues);
-    Exit;
-  end;
-  if AError = TAtlasCiFetchError.Cancelled then
-  begin
-    Exit;
-  end;
-  ShowStatus(ErrorText(AError, AQuery));
+  FStarted := False;
+  Inc(FGeneration);
+  // Der Zeitgeber gehört dem Hauptthread; die letzte Referenz kann ein Hintergrund-Thread lösen.
+  FreeAndNil(FTimer);
+  FDebounce.Clear;
+  CancelRequest;
+  FWorkers.Release(True);
+  FShow := nil;
+  FProvider := nil;
+  FHooks := Default(TAtlasIssueSearchHooks);
 end;
 
-function TAtlasIdeIssueSearch.ErrorText(AError: TAtlasCiFetchError; const AQuery: TAtlasIssueSearchQuery): string;
+class function TAtlasIdeIssueSearch.Active: Boolean;
 begin
-  case AError of
-    TAtlasCiFetchError.NotConfigured:
-      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorConfig);
-    TAtlasCiFetchError.Unauthorized:
-      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorToken);
-    TAtlasCiFetchError.NotFound:
-      if AQuery.Kind = TAtlasIssueSearchKind.Key then
-      begin
-        Result := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewErrorNotFound, [AQuery.Key]);
-      end
-      else
-      begin
-        Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesNone);
-      end;
-    TAtlasCiFetchError.Timeout:
-      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesTimeout);
-    TAtlasCiFetchError.Network:
-      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorNetwork);
-  else
-    Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorInvalid);
+  Result := TAtlasIdeSettings.Current.IssuesPaletteSearch;
+end;
+
+procedure TAtlasIdeIssueSearch.Opened(const AShow: TProc<TAtlasPaletteGroup>);
+begin
+  FShow := nil;
+  FProvider := nil;
+  FQuery := TAtlasIssueSearchQuery.None;
+  FHasLast := False;
+  FLastIssues := nil;
+  FIssues := nil;
+  if not FStarted then
+  begin
+    Exit;
+  end;
+  // Die Übergänge des aktuellen Issues (#2124) gibt es auch ohne Suche im Tracker.
+  FShow := AShow;
+  if Active and Assigned(FHooks.Target) then
+  begin
+    // Einmal je Öffnen: Tracker des aktiven Projekts (liest die .atlas, kein Netz).
+    FProvider := FHooks.Target(FTarget);
   end;
 end;
 
-function TAtlasIdeIssueSearch.IssueOf(const AItem: TAtlasCommand; out AIssue: TAtlasTrackerIssue): Boolean;
+procedure TAtlasIdeIssueSearch.Changed(const APattern: string);
 var
-  mIssue: TAtlasTrackerIssue;
+  mQuery: TAtlasIssueSearchQuery;
 begin
-  for mIssue in FIssues do
+  if not Assigned(FShow) then
   begin
-    if SameText(mIssue.Key, AItem.Id) then
+    Exit;
+  end;
+  TAtlasGuard.Run(TAtlasFeature.Palette,
+    procedure
     begin
-      AIssue := mIssue;
-      Exit(True);
-    end;
-  end;
-  AIssue := TAtlasTrackerIssue.Empty;
-  AIssue.Key := AItem.Id;
-  AIssue.Title := AItem.Description;
-  Result := AItem.Id <> '';
+      // Jede Eingabe ersetzt die laufende Anfrage.
+      if FTimer <> nil then
+      begin
+        FTimer.Enabled := False;
+      end;
+      FDebounce.Clear;
+      CancelRequest;
+      if FProvider = nil then
+      begin
+        ShowNoTracker(Self, APattern);
+        Exit;
+      end;
+      mQuery := TAtlasIssuePaletteSearch.Parse(FTarget, APattern);
+      FQuery := mQuery;
+      case mQuery.Kind of
+        TAtlasIssueSearchKind.None:
+          ShowStates(Self, APattern);
+        TAtlasIssueSearchKind.Recent:
+          ShowRecent(Self, mQuery);
+      else
+        ShowOrSearch(Self, mQuery);
+      end;
+    end);
 end;
 
-procedure TAtlasIdeIssueSearch.Report(const AText: string);
+procedure TAtlasIdeIssueSearch.Closed;
 begin
-  if Assigned(FHooks.Report) then
+  FShow := nil;
+  if FTimer <> nil then
   begin
-    FHooks.Report(AText);
+    FTimer.Enabled := False;
   end;
-end;
-
-procedure TAtlasIdeIssueSearch.Browse(const AKey: string);
-var
-  mUrl: string;
-begin
-  if FProvider = nil then
-  begin
-    Exit;
-  end;
-  // Nur die Seite aus der eingetragenen Adresse; nie eine Adresse aus der Antwort.
-  mUrl := FProvider.IssuePage(FTarget, AKey);
-  TAtlasIssuePreview.Browse(mUrl);
+  FDebounce.Clear;
+  CancelRequest;
+  FWorkers.Release(False);
+  FIssues := nil;
 end;
 
 /// <summary>Übergang des aktuellen Issues (#2124): Enter und Strg+Enter führen ihn aus, die übrigen Tasten nichts.

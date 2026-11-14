@@ -217,55 +217,6 @@ begin
   inherited Destroy;
 end;
 
-function TAtlasIdeDataBindings.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
-begin
-  if not ASettings.DesignerDataBindings then
-  begin
-    Hide;
-    Exit(Default(TAtlasDesignerButton));
-  end;
-  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.DataBindings,
-    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.DbHint));
-  Result.Pressed := FShown;
-end;
-
-procedure TAtlasIdeDataBindings.Toggle;
-begin
-  if FShown then
-  begin
-    Hide;
-    Exit;
-  end;
-  FShown := True;
-  FKey := '';
-  FHost.Ensure;
-  Refresh;
-  FTimer.Enabled := True;
-end;
-
-procedure TAtlasIdeDataBindings.Hide;
-begin
-  FShown := False;
-  FTimer.Enabled := False;
-  FKey := '';
-  if FHost.Count > 0 then
-  begin
-    FHost.Clear;
-  end;
-end;
-
-procedure TAtlasIdeDataBindings.ApplyTheme;
-var
-  mColors: TAtlasColors;
-begin
-  mColors := TAtlasIdeStyle.BarColors;
-  FHost.ForEach(
-    procedure(ABar: TControl)
-    begin
-      TAtlasBindingBar(ABar).ApplyColors(mColors);
-    end);
-end;
-
 function TAtlasIdeDataBindings.CreateBar: TAtlasBindingBar;
 var
   mHost: TAtlasEditorBarHost;
@@ -307,38 +258,6 @@ begin
       FHost.Ensure;
       Refresh;
     end);
-end;
-
-function TAtlasIdeDataBindings.ObjectsOf(ARoot: TComponent): TArray<TAtlasBindingObject>;
-var
-  mIndex, mSet: Integer;
-  mComponent, mDataSet: TComponent;
-  mField: string;
-begin
-  Result := nil;
-  for mIndex := 0 to ARoot.ComponentCount - 1 do
-  begin
-    mComponent := ARoot.Components[mIndex];
-    if (mComponent.Name <> '') and not IsField(mComponent, mDataSet, mField) then
-    begin
-      FPalette.Remember(mComponent.ClassType);
-      Result := Result + [ObjectOf(mComponent, ARoot.Name)];
-    end;
-  end;
-  for mIndex := 0 to ARoot.ComponentCount - 1 do
-  begin
-    if not IsField(ARoot.Components[mIndex], mDataSet, mField) then
-    begin
-      Continue;
-    end;
-    for mSet := 0 to High(Result) do
-    begin
-      if SameText(Result[mSet].Name, mDataSet.Name) then
-      begin
-        Result[mSet].Fields := Result[mSet].Fields + [mField];
-      end;
-    end;
-  end;
 end;
 
 procedure TAtlasIdeDataBindings.Refresh;
@@ -383,6 +302,38 @@ begin
     end);
 end;
 
+function TAtlasIdeDataBindings.ObjectsOf(ARoot: TComponent): TArray<TAtlasBindingObject>;
+var
+  mIndex, mSet: Integer;
+  mComponent, mDataSet: TComponent;
+  mField: string;
+begin
+  Result := nil;
+  for mIndex := 0 to ARoot.ComponentCount - 1 do
+  begin
+    mComponent := ARoot.Components[mIndex];
+    if (mComponent.Name <> '') and not IsField(mComponent, mDataSet, mField) then
+    begin
+      FPalette.Remember(mComponent.ClassType);
+      Result := Result + [ObjectOf(mComponent, ARoot.Name)];
+    end;
+  end;
+  for mIndex := 0 to ARoot.ComponentCount - 1 do
+  begin
+    if not IsField(ARoot.Components[mIndex], mDataSet, mField) then
+    begin
+      Continue;
+    end;
+    for mSet := 0 to High(Result) do
+    begin
+      if SameText(Result[mSet].Name, mDataSet.Name) then
+      begin
+        Result[mSet].Fields := Result[mSet].Fields + [mField];
+      end;
+    end;
+  end;
+end;
+
 procedure TAtlasIdeDataBindings.Select(const AId: string);
 var
   mEditor, mCurrent: IOTAFormEditor;
@@ -409,6 +360,55 @@ begin
     mEditor.Show;
   end;
   TAtlasDesignerAccess.Select(TAtlasDesignerAccess.DesignerOf(mEditor), mRoot, [mComponent]);
+end;
+
+procedure TAtlasIdeDataBindings.Hide;
+begin
+  FShown := False;
+  FTimer.Enabled := False;
+  FKey := '';
+  if FHost.Count > 0 then
+  begin
+    FHost.Clear;
+  end;
+end;
+
+function TAtlasIdeDataBindings.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
+begin
+  if not ASettings.DesignerDataBindings then
+  begin
+    Hide;
+    Exit(Default(TAtlasDesignerButton));
+  end;
+  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.DataBindings,
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.DbHint));
+  Result.Pressed := FShown;
+end;
+
+procedure TAtlasIdeDataBindings.Toggle;
+begin
+  if FShown then
+  begin
+    Hide;
+    Exit;
+  end;
+  FShown := True;
+  FKey := '';
+  FHost.Ensure;
+  Refresh;
+  FTimer.Enabled := True;
+end;
+
+procedure TAtlasIdeDataBindings.ApplyTheme;
+var
+  mColors: TAtlasColors;
+begin
+  mColors := TAtlasIdeStyle.BarColors;
+  FHost.ForEach(
+    procedure(ABar: TControl)
+    begin
+      TAtlasBindingBar(ABar).ApplyColors(mColors);
+    end);
 end;
 
 end.

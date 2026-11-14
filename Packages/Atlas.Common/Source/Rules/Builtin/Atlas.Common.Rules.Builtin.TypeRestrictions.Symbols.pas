@@ -319,34 +319,6 @@ begin
   inherited;
 end;
 
-function TImplementationSymbols.Routines: TArray<TSyntaxNode>;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  if FLocal = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to FImplementation.ChildCount - 1 do
-  begin
-    if (FImplementation[mIndex].Kind = TSyntaxKind.RoutineDecl) and
-      (FImplementation[mIndex].FindChild(TSyntaxKind.RoutineHeader) <> nil) then
-    begin
-      Result := Result + [FImplementation[mIndex]];
-    end;
-  end;
-end;
-
-function TImplementationSymbols.OwnerType(ARoutine: TSyntaxNode): TSyntaxNode;
-begin
-  if Pos('.', ARoutine.Name) = 0 then
-  begin
-    Exit(nil);
-  end;
-  Result := FindStructDecl(FInterface, LastPart(Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1)));
-end;
-
 function TImplementationSymbols.VisibleMembers(ADecl: TSyntaxNode; out ANames: TArray<string>): Boolean;
 var
   mOuter: TSyntaxNode;
@@ -394,6 +366,34 @@ begin
   Result := True;
 end;
 
+function TImplementationSymbols.Routines: TArray<TSyntaxNode>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  if FLocal = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to FImplementation.ChildCount - 1 do
+  begin
+    if (FImplementation[mIndex].Kind = TSyntaxKind.RoutineDecl) and
+      (FImplementation[mIndex].FindChild(TSyntaxKind.RoutineHeader) <> nil) then
+    begin
+      Result := Result + [FImplementation[mIndex]];
+    end;
+  end;
+end;
+
+function TImplementationSymbols.OwnerType(ARoutine: TSyntaxNode): TSyntaxNode;
+begin
+  if Pos('.', ARoutine.Name) = 0 then
+  begin
+    Exit(nil);
+  end;
+  Result := FindStructDecl(FInterface, LastPart(Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1)));
+end;
+
 function TImplementationSymbols.UsesIn(ARoutine, ADecl: TSyntaxNode): TArray<TSyntaxNode>;
 var
   mKnown, mUsed: TArray<string>;
@@ -436,6 +436,8 @@ begin
   end;
 end;
 
+
+{ TDeclarationNames }
 
 constructor TDeclarationNames.Create(ARoot: TSyntaxNode);
 var
@@ -541,11 +543,6 @@ begin
   end;
 end;
 
-function TDeclarationNames.Declared(const AName: string): Boolean;
-begin
-  Result := FOthers.ContainsKey(LowerCase(AName)) or FVariables.ContainsKey(LowerCase(AName));
-end;
-
 function TDeclarationNames.OnlyVariables(const AName: string): TList<TSyntaxNode>;
 begin
   Result := nil;
@@ -554,6 +551,11 @@ begin
     Exit;
   end;
   FVariables.TryGetValue(LowerCase(AName), Result);
+end;
+
+function TDeclarationNames.Declared(const AName: string): Boolean;
+begin
+  Result := FOthers.ContainsKey(LowerCase(AName)) or FVariables.ContainsKey(LowerCase(AName));
 end;
 
 end.

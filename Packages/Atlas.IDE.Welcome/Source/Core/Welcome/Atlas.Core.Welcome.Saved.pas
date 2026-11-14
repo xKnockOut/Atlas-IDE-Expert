@@ -409,43 +409,22 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeSaved.ResolvePath(const AFolder, ARelative: string): string;
+class function TAtlasWelcomeSaved.FindUnit(const AFiles: TArray<TAtlasIndexFile>; const AUnitName: string): string;
 var
-  mParts, mKept: TArray<string>;
-  mPart, mPath: string;
+  mEntry: TAtlasIndexFile;
 begin
-  mPath := Trim(ARelative).Replace('/', '\');
-  // Laufwerk („C:\…“) oder Netzwerkpfad („\\server\…“): schon absolut.
-  if ((Length(mPath) >= 2) and (mPath[2] = ':')) or mPath.StartsWith('\\') or (Trim(AFolder) = '') then
+  Result := '';
+  if Trim(AUnitName) = '' then
   begin
-    Exit(mPath);
+    Exit;
   end;
-  mPath := Trim(AFolder).Replace('/', '\');
-  if not mPath.EndsWith('\') then
+  for mEntry in AFiles do
   begin
-    mPath := mPath + '\';
-  end;
-  mPath := mPath + Trim(ARelative).Replace('/', '\');
-  mParts := mPath.Split(['\']);
-  mKept := nil;
-  for mPart in mParts do
-  begin
-    if mPart = '.' then
+    if SameText(mEntry.UnitName, Trim(AUnitName)) then
     begin
-      Continue;
+      Exit(mEntry.FileName);
     end;
-    // „..“ nimmt den letzten Teil weg, aber nie das Laufwerk.
-    if mPart = '..' then
-    begin
-      if Length(mKept) > 1 then
-      begin
-        SetLength(mKept, Length(mKept) - 1);
-      end;
-      Continue;
-    end;
-    mKept := mKept + [mPart];
   end;
-  Result := string.Join('\', mKept);
 end;
 
 class function TAtlasWelcomeSaved.GroupProjects(const AGroupFile, AText: string): TArray<string>;
@@ -492,22 +471,43 @@ begin
   until False;
 end;
 
-class function TAtlasWelcomeSaved.FindUnit(const AFiles: TArray<TAtlasIndexFile>; const AUnitName: string): string;
+class function TAtlasWelcomeSaved.ResolvePath(const AFolder, ARelative: string): string;
 var
-  mEntry: TAtlasIndexFile;
+  mParts, mKept: TArray<string>;
+  mPart, mPath: string;
 begin
-  Result := '';
-  if Trim(AUnitName) = '' then
+  mPath := Trim(ARelative).Replace('/', '\');
+  // Laufwerk („C:\…“) oder Netzwerkpfad („\\server\…“): schon absolut.
+  if ((Length(mPath) >= 2) and (mPath[2] = ':')) or mPath.StartsWith('\\') or (Trim(AFolder) = '') then
   begin
-    Exit;
+    Exit(mPath);
   end;
-  for mEntry in AFiles do
+  mPath := Trim(AFolder).Replace('/', '\');
+  if not mPath.EndsWith('\') then
   begin
-    if SameText(mEntry.UnitName, Trim(AUnitName)) then
+    mPath := mPath + '\';
+  end;
+  mPath := mPath + Trim(ARelative).Replace('/', '\');
+  mParts := mPath.Split(['\']);
+  mKept := nil;
+  for mPart in mParts do
+  begin
+    if mPart = '.' then
     begin
-      Exit(mEntry.FileName);
+      Continue;
     end;
+    // „..“ nimmt den letzten Teil weg, aber nie das Laufwerk.
+    if mPart = '..' then
+    begin
+      if Length(mKept) > 1 then
+      begin
+        SetLength(mKept, Length(mKept) - 1);
+      end;
+      Continue;
+    end;
+    mKept := mKept + [mPart];
   end;
+  Result := string.Join('\', mKept);
 end;
 
 end.

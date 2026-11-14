@@ -112,6 +112,8 @@ uses
 const
   cWaitForever = Cardinal($FFFFFFFF);
 
+{ TShellWorkspaceRegistry }
+
 constructor TShellWorkspaceRegistry.Create(const AServices: TShellWorkspaceRegistryServices);
 begin
   inherited Create;
@@ -132,6 +134,130 @@ begin
   inherited Destroy;
 end;
 
+function TShellWorkspaceRegistry.FolderWorkspace(const AFileName: string): TShellWorkspace;
+var
+  mFolders: TArray<TWorkspaceFolder>;
+  mWorkspace: TShellWorkspace;
+  mIndex: Integer;
+begin
+  mFolders := nil;
+  for mWorkspace in FItems do
+  begin
+    mFolders := mFolders + [TWorkspaceFolder.Create(mWorkspace.Root, mWorkspace.Name)];
+  end;
+  mIndex := TLspWorkspaceFolders.FolderOf(mFolders, AFileName);
+  Result := nil;
+  if mIndex >= 0 then
+  begin
+    Result := FItems[mIndex];
+  end;
+end;
+
+function TShellWorkspaceRegistry.ChooseProject(const AFileName: string;
+  const ACandidates: TArray<TShellWorkspace>): TShellWorkspace;
+var
+  mReason: string;
+begin
+  Result := PreferredProject(ACandidates, mReason);
+  LogChoice(AFileName, Length(ACandidates), Result, mReason);
+end;
+
+function TShellWorkspaceRegistry.PreferredProject(const ACandidates: TArray<TShellWorkspace>;
+  out AReason: string): TShellWorkspace;
+var
+  mWorkspace: TShellWorkspace;
+  mActive: string;
+begin
+  for mWorkspace in ACandidates do
+  begin
+    if IsSelected(mWorkspace) then
+    begin
+      AReason := 'ausgewählt';
+      Exit(mWorkspace);
+    end;
+  end;
+  mActive := FServices.ActiveProject();
+  if mActive <> '' then
+  begin
+    for mWorkspace in ACandidates do
+    begin
+      if SameText(mWorkspace.State.ProjectFileName, mActive) then
+      begin
+        AReason := 'aktiv in der IDE';
+        Exit(mWorkspace);
+      end;
+    end;
+  end;
+  AReason := 'erstes der Gruppe';
+  Result := ACandidates[0];
+end;
+
+procedure TShellWorkspaceRegistry.LogChoice(const AFileName: string; ACount: Integer; AChosen: TShellWorkspace;
+  const AReason: string);
+var
+  mKnown: string;
+begin
+  // Nur Wechsel ins Log, nicht jede Anfrage.
+  if not FChoices.TryGetValue(AnsiUpperCase(AFileName), mKnown) or not SameText(mKnown, AChosen.Name) then
+  begin
+    FChoices.AddOrSetValue(AnsiUpperCase(AFileName), AChosen.Name);
+    FServices.Logger.Info(Format('%s gehört zu %d Projekten; es gilt %s (%s)',
+      [TLogMarks.Path(ExtractFileName(AFileName)), ACount,
+      TLogMarks.Name(AChosen.Name), TLogMarks.Text(AReason)]));
+  end;
+end;
+
+function TShellWorkspaceRegistry.CollectRuleProjects(out AStamp: Integer;
+  out AMainSources: TArray<string>): TArray<TRuleProject>;
+var
+  mWorkspace: TShellWorkspace;
+  mProject: TRuleProject;
+  mMainSource: string;
+begin
+  Result := nil;
+  AMainSources := nil;
+  System.TMonitor.Enter(FLock);
+  try
+    AStamp := FStamp;
+    for mWorkspace in FItems do
+    begin
+      if mWorkspace.State.RuleProject(mProject, mMainSource) then
+      begin
+        Result := Result + [mProject];
+        AMainSources := AMainSources + [mMainSource];
+      end;
+    end;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+function TShellWorkspaceRegistry.CachedRuleProjects(out AProjects: TArray<TRuleProject>): Boolean;
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    Result := FRuleProjectsStamp = FStamp;
+    AProjects := FRuleProjects;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TShellWorkspaceRegistry.StoreRuleProjects(const AProjects: TArray<TRuleProject>; AStamp: Integer);
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    // Inzwischen ein anderes Projekt geladen: Das Ergebnis gilt für diese Prüfung, aber nicht als Vorrat.
+    if AStamp = FStamp then
+    begin
+      FRuleProjects := AProjects;
+      FRuleProjectsStamp := AStamp;
+    end;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
 procedure TShellWorkspaceRegistry.FreeWorkspaces;
 begin
   // Nicht FreeAndNil: Index-Threads der Arbeitsbereiche melden beim Beenden und lesen dabei die Liste.
@@ -142,6 +268,21 @@ end;
 procedure TShellWorkspaceRegistry.Touch;
 begin
   Inc(FStamp);
+end;
+
+/// <summary>Arbeitsbereich mit der Projektdatei AFileName oder nil.</summary>
+function ProjectFileWorkspace(const AItems: TObjectList<TShellWorkspace>; const AFileName: string): TShellWorkspace;
+var
+  mWorkspace: TShellWorkspace;
+begin
+  Result := nil;
+  for mWorkspace in AItems do
+  begin
+    if SameText(mWorkspace.State.ProjectFileName, AFileName) then
+    begin
+      Exit(mWorkspace);
+    end;
+  end;
 end;
 
 procedure TShellWorkspaceRegistry.Add(AWorkspace: TShellWorkspace);
@@ -262,40 +403,6 @@ begin
   AWorkspace.Free;
 end;
 
-/// <summary>Arbeitsbereich mit der Projektdatei AFileName oder nil.</summary>
-function ProjectFileWorkspace(const AItems: TObjectList<TShellWorkspace>; const AFileName: string): TShellWorkspace;
-var
-  mWorkspace: TShellWorkspace;
-begin
-  Result := nil;
-  for mWorkspace in AItems do
-  begin
-    if SameText(mWorkspace.State.ProjectFileName, AFileName) then
-    begin
-      Exit(mWorkspace);
-    end;
-  end;
-end;
-
-function TShellWorkspaceRegistry.FolderWorkspace(const AFileName: string): TShellWorkspace;
-var
-  mFolders: TArray<TWorkspaceFolder>;
-  mWorkspace: TShellWorkspace;
-  mIndex: Integer;
-begin
-  mFolders := nil;
-  for mWorkspace in FItems do
-  begin
-    mFolders := mFolders + [TWorkspaceFolder.Create(mWorkspace.Root, mWorkspace.Name)];
-  end;
-  mIndex := TLspWorkspaceFolders.FolderOf(mFolders, AFileName);
-  Result := nil;
-  if mIndex >= 0 then
-  begin
-    Result := FItems[mIndex];
-  end;
-end;
-
 function TShellWorkspaceRegistry.WorkspaceOf(const AFileName: string): TShellWorkspace;
 var
   mWorkspace: TShellWorkspace;
@@ -330,71 +437,17 @@ begin
   end;
 end;
 
+function TShellWorkspaceRegistry.Pick(const AFileName: string): TShellWorkspace;
+begin
+  Result := TShellWorkspaces.Choose(WorkspaceOf(AFileName), FItems);
+end;
+
 function TShellWorkspaceRegistry.IsSelected(AWorkspace: TShellWorkspace): Boolean;
 var
   mSelected: string;
 begin
   mSelected := FServices.SelectedProject(AWorkspace.Setup.Origin);
   Result := (mSelected <> '') and SameText(mSelected, AWorkspace.State.ProjectFileName);
-end;
-
-function TShellWorkspaceRegistry.PreferredProject(const ACandidates: TArray<TShellWorkspace>;
-  out AReason: string): TShellWorkspace;
-var
-  mWorkspace: TShellWorkspace;
-  mActive: string;
-begin
-  for mWorkspace in ACandidates do
-  begin
-    if IsSelected(mWorkspace) then
-    begin
-      AReason := 'ausgewählt';
-      Exit(mWorkspace);
-    end;
-  end;
-  mActive := FServices.ActiveProject();
-  if mActive <> '' then
-  begin
-    for mWorkspace in ACandidates do
-    begin
-      if SameText(mWorkspace.State.ProjectFileName, mActive) then
-      begin
-        AReason := 'aktiv in der IDE';
-        Exit(mWorkspace);
-      end;
-    end;
-  end;
-  AReason := 'erstes der Gruppe';
-  Result := ACandidates[0];
-end;
-
-procedure TShellWorkspaceRegistry.LogChoice(const AFileName: string; ACount: Integer; AChosen: TShellWorkspace;
-  const AReason: string);
-var
-  mKnown: string;
-begin
-  // Nur Wechsel ins Log, nicht jede Anfrage.
-  if not FChoices.TryGetValue(AnsiUpperCase(AFileName), mKnown) or not SameText(mKnown, AChosen.Name) then
-  begin
-    FChoices.AddOrSetValue(AnsiUpperCase(AFileName), AChosen.Name);
-    FServices.Logger.Info(Format('%s gehört zu %d Projekten; es gilt %s (%s)',
-      [TLogMarks.Path(ExtractFileName(AFileName)), ACount,
-      TLogMarks.Name(AChosen.Name), TLogMarks.Text(AReason)]));
-  end;
-end;
-
-function TShellWorkspaceRegistry.ChooseProject(const AFileName: string;
-  const ACandidates: TArray<TShellWorkspace>): TShellWorkspace;
-var
-  mReason: string;
-begin
-  Result := PreferredProject(ACandidates, mReason);
-  LogChoice(AFileName, Length(ACandidates), Result, mReason);
-end;
-
-function TShellWorkspaceRegistry.Pick(const AFileName: string): TShellWorkspace;
-begin
-  Result := TShellWorkspaces.Choose(WorkspaceOf(AFileName), FItems);
 end;
 
 function TShellWorkspaceRegistry.IsLibrarySource(const AFileName: string): Boolean;
@@ -492,57 +545,6 @@ begin
       begin
         Exit(True);
       end;
-    end;
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
-end;
-
-function TShellWorkspaceRegistry.CachedRuleProjects(out AProjects: TArray<TRuleProject>): Boolean;
-begin
-  System.TMonitor.Enter(FLock);
-  try
-    Result := FRuleProjectsStamp = FStamp;
-    AProjects := FRuleProjects;
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
-end;
-
-function TShellWorkspaceRegistry.CollectRuleProjects(out AStamp: Integer;
-  out AMainSources: TArray<string>): TArray<TRuleProject>;
-var
-  mWorkspace: TShellWorkspace;
-  mProject: TRuleProject;
-  mMainSource: string;
-begin
-  Result := nil;
-  AMainSources := nil;
-  System.TMonitor.Enter(FLock);
-  try
-    AStamp := FStamp;
-    for mWorkspace in FItems do
-    begin
-      if mWorkspace.State.RuleProject(mProject, mMainSource) then
-      begin
-        Result := Result + [mProject];
-        AMainSources := AMainSources + [mMainSource];
-      end;
-    end;
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
-end;
-
-procedure TShellWorkspaceRegistry.StoreRuleProjects(const AProjects: TArray<TRuleProject>; AStamp: Integer);
-begin
-  System.TMonitor.Enter(FLock);
-  try
-    // Inzwischen ein anderes Projekt geladen: Das Ergebnis gilt für diese Prüfung, aber nicht als Vorrat.
-    if AStamp = FStamp then
-    begin
-      FRuleProjects := AProjects;
-      FRuleProjectsStamp := AStamp;
     end;
   finally
     System.TMonitor.Exit(FLock);

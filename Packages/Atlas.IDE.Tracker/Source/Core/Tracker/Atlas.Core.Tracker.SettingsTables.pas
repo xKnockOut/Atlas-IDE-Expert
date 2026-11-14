@@ -319,6 +319,18 @@ begin
   end;
 end;
 
+function TAtlasTrackerConnectionTable.ProviderCaption(const AName: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := AName;
+  mIndex := ProviderIndex(AName);
+  if (mIndex >= 0) and (mIndex <= High(FProviderCaptions)) then
+  begin
+    Result := FProviderCaptions[mIndex];
+  end;
+end;
+
 function TAtlasTrackerConnectionTable.ProviderIndex(const AName: string): Integer;
 var
   mIndex: Integer;
@@ -330,18 +342,6 @@ begin
     begin
       Exit(mIndex);
     end;
-  end;
-end;
-
-function TAtlasTrackerConnectionTable.ProviderCaption(const AName: string): string;
-var
-  mIndex: Integer;
-begin
-  Result := AName;
-  mIndex := ProviderIndex(AName);
-  if (mIndex >= 0) and (mIndex <= High(FProviderCaptions)) then
-  begin
-    Result := FProviderCaptions[mIndex];
   end;
 end;
 

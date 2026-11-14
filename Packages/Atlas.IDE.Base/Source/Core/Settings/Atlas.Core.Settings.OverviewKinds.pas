@@ -35,6 +35,8 @@ const
   cNames: array[TAtlasOverviewKind] of string = ('diagnostics', 'search', 'changes', 'breakpoints', 'bookmarks',
     'cursor');
 
+{ TAtlasOverviewKindNames }
+
 class function TAtlasOverviewKindNames.Name(AKind: TAtlasOverviewKind): string;
 begin
   Result := cNames[AKind];

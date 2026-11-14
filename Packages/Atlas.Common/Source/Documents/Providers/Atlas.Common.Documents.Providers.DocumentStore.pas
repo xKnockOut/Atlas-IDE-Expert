@@ -79,6 +79,15 @@ begin
   FCanonicalize := ACanonicalize;
 end;
 
+destructor TDocumentStore.Destroy;
+begin
+  FKeys.Free;
+  FListeners.Free;
+  FDocuments.Free;
+  FLock.Free;
+  inherited;
+end;
+
 function TDocumentStore.KeyOf(const AUri: string): string;
 var
   mFound: Boolean;
@@ -100,15 +109,6 @@ begin
   finally
     FLock.Leave;
   end;
-end;
-
-destructor TDocumentStore.Destroy;
-begin
-  FKeys.Free;
-  FListeners.Free;
-  FDocuments.Free;
-  FLock.Free;
-  inherited;
 end;
 
 procedure TDocumentStore.Notify(AKind: TDocumentEventKind; const ADocument: ITextDocument);

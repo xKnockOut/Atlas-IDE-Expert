@@ -24,6 +24,8 @@ type
 
 implementation
 
+{ TAtlasProjectVersion }
+
 class function TAtlasProjectVersion.IsOn(const AValue: string; ADefault: Boolean): Boolean;
 var
   mValue: string;

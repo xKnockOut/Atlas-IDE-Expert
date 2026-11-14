@@ -98,6 +98,46 @@ begin
   FList := Default(TAtlasResultsItemList);
 end;
 
+procedure TAtlasResultsItemsPart.Popup;
+begin
+  FEditItem.Caption := FList.EditCaption;
+  FDeleteItem.Caption := FList.DeleteCaption;
+  FEditItem.Visible := (FList.Owner <> '') and (FList.EditCaption <> '') and Assigned(FList.OnEdit);
+  FDeleteItem.Visible := (FList.Owner <> '') and (FList.DeleteCaption <> '') and Assigned(FList.OnDelete);
+  FEditItem.Enabled := SelectedId <> '';
+  FDeleteItem.Enabled := SelectedId <> '';
+end;
+
+function TAtlasResultsItemsPart.KeyDown(AKey: Word): Boolean;
+begin
+  Result := (AKey = VK_DELETE) and (FList.Owner <> '') and Assigned(FList.OnDelete);
+  if Result then
+  begin
+    DeleteSelected;
+  end;
+end;
+
+function TAtlasResultsItemsPart.Open(const AData: TAtlasResultsNode): Boolean;
+begin
+  // TAtlasResultsNode ist ein Record (kein nil-Vergleich, E2015).
+  Result := (AData.Kind = TAtlasResultsNodeKind.Item) and (AData.ItemId <> '') and
+    Assigned(FList.OnOpen);
+  if Result then
+  begin
+    FList.OnOpen(AData.ItemId);
+  end;
+end;
+
+procedure TAtlasResultsItemsPart.EditClick(Sender: TObject);
+begin
+  EditSelected;
+end;
+
+procedure TAtlasResultsItemsPart.DeleteClick(Sender: TObject);
+begin
+  DeleteSelected;
+end;
+
 procedure TAtlasResultsItemsPart.Show(const AList: TAtlasResultsItemList);
 var
   mGroup: TAtlasResultsItemGroup;
@@ -174,46 +214,6 @@ begin
   begin
     FList.OnDelete(mId);
   end;
-end;
-
-procedure TAtlasResultsItemsPart.Popup;
-begin
-  FEditItem.Caption := FList.EditCaption;
-  FDeleteItem.Caption := FList.DeleteCaption;
-  FEditItem.Visible := (FList.Owner <> '') and (FList.EditCaption <> '') and Assigned(FList.OnEdit);
-  FDeleteItem.Visible := (FList.Owner <> '') and (FList.DeleteCaption <> '') and Assigned(FList.OnDelete);
-  FEditItem.Enabled := SelectedId <> '';
-  FDeleteItem.Enabled := SelectedId <> '';
-end;
-
-function TAtlasResultsItemsPart.KeyDown(AKey: Word): Boolean;
-begin
-  Result := (AKey = VK_DELETE) and (FList.Owner <> '') and Assigned(FList.OnDelete);
-  if Result then
-  begin
-    DeleteSelected;
-  end;
-end;
-
-function TAtlasResultsItemsPart.Open(const AData: TAtlasResultsNode): Boolean;
-begin
-  // TAtlasResultsNode ist ein Record (kein nil-Vergleich, E2015).
-  Result := (AData.Kind = TAtlasResultsNodeKind.Item) and (AData.ItemId <> '') and
-    Assigned(FList.OnOpen);
-  if Result then
-  begin
-    FList.OnOpen(AData.ItemId);
-  end;
-end;
-
-procedure TAtlasResultsItemsPart.EditClick(Sender: TObject);
-begin
-  EditSelected;
-end;
-
-procedure TAtlasResultsItemsPart.DeleteClick(Sender: TObject);
-begin
-  DeleteSelected;
 end;
 
 end.

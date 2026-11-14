@@ -51,6 +51,8 @@ uses
   System.Generics.Defaults,
   Atlas.Core.Settings.Plugin;
 
+{ TAtlasSettingsStoreValues }
+
 constructor TAtlasSettingsStoreValues.Create(ACatalog: TAtlasSettingsCatalog;
   const AStore, ADefaults: IAtlasMemorySettingsStore);
 begin
@@ -58,18 +60,6 @@ begin
   FCatalog := ACatalog;
   FStore := AStore;
   FDefaults := ADefaults;
-end;
-
-class function TAtlasSettingsStoreValues.PluginName(ACatalog: TAtlasSettingsCatalog; const AKey: string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  mIndex := ACatalog.IndexOfKey(AKey);
-  if (mIndex >= 0) and (ACatalog[mIndex].Source = asPlugin) then
-  begin
-    Result := ACatalog[mIndex].Name;
-  end;
 end;
 
 function TAtlasSettingsStoreValues.NameOf(const AKey: string; AKind: TAtlasSettingKind): string;
@@ -197,6 +187,18 @@ begin
     Result := mKeys.ToArray;
   finally
     mKeys.Free;
+  end;
+end;
+
+class function TAtlasSettingsStoreValues.PluginName(ACatalog: TAtlasSettingsCatalog; const AKey: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  mIndex := ACatalog.IndexOfKey(AKey);
+  if (mIndex >= 0) and (ACatalog[mIndex].Source = asPlugin) then
+  begin
+    Result := ACatalog[mIndex].Name;
   end;
 end;
 

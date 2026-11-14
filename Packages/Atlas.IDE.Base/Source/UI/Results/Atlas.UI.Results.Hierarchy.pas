@@ -120,167 +120,6 @@ begin
   CreateDiagram;
 end;
 
-procedure TAtlasResultsHierarchyPart.CreateBar;
-var
-  mOwner: TComponent;
-begin
-  // Leiste des Diagramms: Richtung, Filter, Einpassen, HTML.
-  mOwner := View.Host;
-  // Fließende Leiste: Reihenfolge = Erzeugungsreihenfolge, bei schmalem Fenster Umbruch.
-  FControls.Bar := TAtlasResultsControls.Bar(mOwner, View);
-  FControls.Outgoing := TAtlasResultsControls.Radio(mOwner, FControls.Bar, 160,
-    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramOutgoing), DirectionClick);
-  FControls.Incoming := TAtlasResultsControls.Radio(mOwner, FControls.Bar, 150,
-    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramIncoming), DirectionClick);
-  FControls.ProjectOnly := TAtlasResultsControls.Check(mOwner, FControls.Bar, alNone, cProjectOnlyWidth,
-    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramProjectOnly), nil);
-  FControls.ProjectOnly.Checked := True;
-  FControls.ProjectOnly.OnClick := ProjectOnlyClick;
-  FControls.Fit := TAtlasResultsControls.Button(mOwner, FControls.Bar, alNone, cFitWidth,
-    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramFit), FitClick);
-  FControls.Save := TAtlasResultsControls.Button(mOwner, FControls.Bar, alNone, cSaveWidth,
-    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramSaveHtml), SaveClick);
-end;
-
-procedure TAtlasResultsHierarchyPart.CreateDiagram;
-begin
-  FControls.Diagram := TAtlasCallDiagramView.Create(View.Host);
-  FControls.Diagram.Parent := View.Host;
-  FControls.Diagram.Align := alClient;
-  FControls.Diagram.Visible := False;
-  FControls.Diagram.Hint := TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramHint);
-  FControls.Diagram.OnLoad := Load;
-  FControls.Diagram.OnOpen :=
-    procedure(const AItem: TAtlasHierarchyItem)
-    begin
-      if AItem.FileName <> '' then
-      begin
-        View.Open(TAtlasResultsNode.Place(TAtlasResultsNodeKind.Hierarchy, AItem.FileName, AItem.Line,
-          AItem.Character));
-      end;
-    end;
-end;
-
-procedure TAtlasResultsHierarchyPart.Reset;
-begin
-  // Andere Listen zeigen immer den Baum; der Umschalter behält seinen Stand für die nächste Aufrufhierarchie.
-  FRoots := nil;
-  UpdateControls;
-end;
-
-procedure TAtlasResultsHierarchyPart.AddHierarchy(AParent: TTreeNode; const AItems: TArray<TAtlasHierarchyItem>);
-var
-  mItem: TAtlasHierarchyItem;
-  mData: TAtlasResultsNode;
-  mNode: TTreeNode;
-begin
-  for mItem in AItems do
-  begin
-    mData := TAtlasResultsNode.Place(TAtlasResultsNodeKind.Hierarchy, mItem.FileName, mItem.Line, mItem.Character);
-    mData.Item := mItem;
-    mData.Hint := mItem.Confidence.Explanation;
-    mNode := View.AddNode(AParent, TAtlasResultsTexts.HierarchyText(mItem), mData);
-    // Platzhalter, damit sich der Knoten aufklappen lässt; geladen wird erst dann.
-    View.AddNode(mNode, '…', TAtlasResultsNode.Create(TAtlasResultsNodeKind.Placeholder));
-  end;
-end;
-
-function TAtlasResultsHierarchyPart.Load(ADirection: TAtlasHierarchyDirection;
-  const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
-begin
-  Result := nil;
-  if Assigned(FOnExpand) then
-  begin
-    Result := FOnExpand(ADirection, AItem);
-  end;
-end;
-
-function TAtlasResultsHierarchyPart.Expand(ANode: TTreeNode; const AData: TAtlasResultsNode;
-  var AAllowExpansion: Boolean): Boolean;
-var
-  mData: TAtlasResultsNode;
-  mChildren: TArray<TAtlasHierarchyItem>;
-begin
-  Result := AData.Kind = TAtlasResultsNodeKind.Hierarchy;
-  if not Result then
-  begin
-    Exit;
-  end;
-  mData := AData;
-  mData.Loaded := True;
-  View.Store(ANode, mData);
-  Screen.Cursor := crHourGlass;
-  try
-    mChildren := Load(FDirection, mData.Item);
-  finally
-    Screen.Cursor := crDefault;
-  end;
-  View.Tree.Items.BeginUpdate;
-  try
-    ANode.DeleteChildren;
-    AddHierarchy(ANode, mChildren);
-  finally
-    View.Tree.Items.EndUpdate;
-  end;
-  AAllowExpansion := ANode.HasChildren;
-end;
-
-procedure TAtlasResultsHierarchyPart.Show(const ATitle: string; ADirection: TAtlasHierarchyDirection;
-  const ARoots: TArray<TAtlasHierarchyItem>);
-begin
-  Show(ATitle, ADirection, ARoots, False);
-end;
-
-procedure TAtlasResultsHierarchyPart.Show(const ATitle: string; ADirection: TAtlasHierarchyDirection;
-  const ARoots: TArray<TAtlasHierarchyItem>; AAsDiagram: Boolean);
-begin
-  View.Clear(ATitle);
-  FDirection := ADirection;
-  FRoots := ARoots;
-  View.Tree.Items.BeginUpdate;
-  try
-    AddHierarchy(nil, ARoots);
-  finally
-    View.Tree.Items.EndUpdate;
-  end;
-  if View.Tree.Items.Count > 0 then
-  begin
-    View.Tree.Selected := View.Tree.Items[0];
-    View.Tree.Items[0].Expand(False);
-  end;
-  FTitle := ATitle;
-  UpdateControls;
-  if AAsDiagram or FControls.Toggle.Checked then
-  begin
-    SetShowsDiagram(True);
-  end;
-end;
-
-function TAtlasResultsHierarchyPart.IsCallHierarchy: Boolean;
-begin
-  Result := (Length(FRoots) > 0) and ((FDirection = TAtlasHierarchyDirection.Incoming) or
-    (FDirection = TAtlasHierarchyDirection.Outgoing));
-end;
-
-procedure TAtlasResultsHierarchyPart.UpdateControls;
-var
-  mPossible, mShowing: Boolean;
-begin
-  mPossible := FDiagramAllowed and IsCallHierarchy;
-  FControls.Toggle.Visible := mPossible;
-  mShowing := mPossible and FControls.Toggle.Checked;
-  FUpdating := True;
-  try
-    FControls.Outgoing.Checked := FDirection = TAtlasHierarchyDirection.Outgoing;
-    FControls.Incoming.Checked := FDirection = TAtlasHierarchyDirection.Incoming;
-  finally
-    FUpdating := False;
-  end;
-  FControls.Bar.Visible := mShowing;
-  FControls.Diagram.Visible := mShowing;
-  View.Tree.Visible := not mShowing;
-end;
-
 procedure TAtlasResultsHierarchyPart.SetDiagramAllowed(AValue: Boolean);
 begin
   FDiagramAllowed := AValue;
@@ -328,19 +167,134 @@ begin
   FControls.Diagram.IsProjectFile := AValue;
 end;
 
-procedure TAtlasResultsHierarchyPart.SwitchDirection(ADirection: TAtlasHierarchyDirection);
-const
-  cTitles: array[TAtlasHierarchyDirection] of TAtlasTextId = (TAtlasTextId.ResultsIncoming,
-    TAtlasTextId.ResultsOutgoing, TAtlasTextId.ResultsSupertypes, TAtlasTextId.ResultsSubtypes);
-var
-  mRoots: TArray<TAtlasHierarchyItem>;
+procedure TAtlasResultsHierarchyPart.Reset;
 begin
-  if (Length(FRoots) = 0) or (ADirection = FDirection) then
+  // Andere Listen zeigen immer den Baum; der Umschalter behält seinen Stand für die nächste Aufrufhierarchie.
+  FRoots := nil;
+  UpdateControls;
+end;
+
+function TAtlasResultsHierarchyPart.Expand(ANode: TTreeNode; const AData: TAtlasResultsNode;
+  var AAllowExpansion: Boolean): Boolean;
+var
+  mData: TAtlasResultsNode;
+  mChildren: TArray<TAtlasHierarchyItem>;
+begin
+  Result := AData.Kind = TAtlasResultsNodeKind.Hierarchy;
+  if not Result then
   begin
     Exit;
   end;
-  mRoots := FRoots;
-  Show(TAtlasStrings.Fmt(cTitles[ADirection], [mRoots[0].Name]), ADirection, mRoots, ShowsDiagram);
+  mData := AData;
+  mData.Loaded := True;
+  View.Store(ANode, mData);
+  Screen.Cursor := crHourGlass;
+  try
+    mChildren := Load(FDirection, mData.Item);
+  finally
+    Screen.Cursor := crDefault;
+  end;
+  View.Tree.Items.BeginUpdate;
+  try
+    ANode.DeleteChildren;
+    AddHierarchy(ANode, mChildren);
+  finally
+    View.Tree.Items.EndUpdate;
+  end;
+  AAllowExpansion := ANode.HasChildren;
+end;
+
+procedure TAtlasResultsHierarchyPart.CreateBar;
+var
+  mOwner: TComponent;
+begin
+  // Leiste des Diagramms: Richtung, Filter, Einpassen, HTML.
+  mOwner := View.Host;
+  // Fließende Leiste: Reihenfolge = Erzeugungsreihenfolge, bei schmalem Fenster Umbruch.
+  FControls.Bar := TAtlasResultsControls.Bar(mOwner, View);
+  FControls.Outgoing := TAtlasResultsControls.Radio(mOwner, FControls.Bar, 160,
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramOutgoing), DirectionClick);
+  FControls.Incoming := TAtlasResultsControls.Radio(mOwner, FControls.Bar, 150,
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramIncoming), DirectionClick);
+  FControls.ProjectOnly := TAtlasResultsControls.Check(mOwner, FControls.Bar, alNone, cProjectOnlyWidth,
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramProjectOnly), nil);
+  FControls.ProjectOnly.Checked := True;
+  FControls.ProjectOnly.OnClick := ProjectOnlyClick;
+  FControls.Fit := TAtlasResultsControls.Button(mOwner, FControls.Bar, alNone, cFitWidth,
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramFit), FitClick);
+  FControls.Save := TAtlasResultsControls.Button(mOwner, FControls.Bar, alNone, cSaveWidth,
+    TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramSaveHtml), SaveClick);
+end;
+
+procedure TAtlasResultsHierarchyPart.CreateDiagram;
+begin
+  FControls.Diagram := TAtlasCallDiagramView.Create(View.Host);
+  FControls.Diagram.Parent := View.Host;
+  FControls.Diagram.Align := alClient;
+  FControls.Diagram.Visible := False;
+  FControls.Diagram.Hint := TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramHint);
+  FControls.Diagram.OnLoad := Load;
+  FControls.Diagram.OnOpen :=
+    procedure(const AItem: TAtlasHierarchyItem)
+    begin
+      if AItem.FileName <> '' then
+      begin
+        View.Open(TAtlasResultsNode.Place(TAtlasResultsNodeKind.Hierarchy, AItem.FileName, AItem.Line,
+          AItem.Character));
+      end;
+    end;
+end;
+
+procedure TAtlasResultsHierarchyPart.AddHierarchy(AParent: TTreeNode; const AItems: TArray<TAtlasHierarchyItem>);
+var
+  mItem: TAtlasHierarchyItem;
+  mData: TAtlasResultsNode;
+  mNode: TTreeNode;
+begin
+  for mItem in AItems do
+  begin
+    mData := TAtlasResultsNode.Place(TAtlasResultsNodeKind.Hierarchy, mItem.FileName, mItem.Line, mItem.Character);
+    mData.Item := mItem;
+    mData.Hint := mItem.Confidence.Explanation;
+    mNode := View.AddNode(AParent, TAtlasResultsTexts.HierarchyText(mItem), mData);
+    // Platzhalter, damit sich der Knoten aufklappen lässt; geladen wird erst dann.
+    View.AddNode(mNode, '…', TAtlasResultsNode.Create(TAtlasResultsNodeKind.Placeholder));
+  end;
+end;
+
+function TAtlasResultsHierarchyPart.Load(ADirection: TAtlasHierarchyDirection;
+  const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
+begin
+  Result := nil;
+  if Assigned(FOnExpand) then
+  begin
+    Result := FOnExpand(ADirection, AItem);
+  end;
+end;
+
+function TAtlasResultsHierarchyPart.IsCallHierarchy: Boolean;
+begin
+  Result := (Length(FRoots) > 0) and ((FDirection = TAtlasHierarchyDirection.Incoming) or
+    (FDirection = TAtlasHierarchyDirection.Outgoing));
+end;
+
+procedure TAtlasResultsHierarchyPart.UpdateControls;
+var
+  mPossible, mShowing: Boolean;
+begin
+  mPossible := FDiagramAllowed and IsCallHierarchy;
+  FControls.Toggle.Visible := mPossible;
+  mShowing := mPossible and FControls.Toggle.Checked;
+  FUpdating := True;
+  try
+    FControls.Outgoing.Checked := FDirection = TAtlasHierarchyDirection.Outgoing;
+    FControls.Incoming.Checked := FDirection = TAtlasHierarchyDirection.Incoming;
+  finally
+    FUpdating := False;
+  end;
+  FControls.Bar.Visible := mShowing;
+  FControls.Diagram.Visible := mShowing;
+  View.Tree.Visible := not mShowing;
 end;
 
 procedure TAtlasResultsHierarchyPart.ToggleClick(Sender: TObject);
@@ -377,11 +331,6 @@ begin
   FControls.Diagram.FitView;
 end;
 
-function TAtlasResultsHierarchyPart.DiagramHtml: string;
-begin
-  Result := FControls.Diagram.Html(FTitle);
-end;
-
 procedure TAtlasResultsHierarchyPart.SaveClick(Sender: TObject);
 var
   mDialog: TSaveDialog;
@@ -402,6 +351,57 @@ begin
   finally
     mDialog.Free;
   end;
+end;
+
+procedure TAtlasResultsHierarchyPart.Show(const ATitle: string; ADirection: TAtlasHierarchyDirection;
+  const ARoots: TArray<TAtlasHierarchyItem>);
+begin
+  Show(ATitle, ADirection, ARoots, False);
+end;
+
+procedure TAtlasResultsHierarchyPart.Show(const ATitle: string; ADirection: TAtlasHierarchyDirection;
+  const ARoots: TArray<TAtlasHierarchyItem>; AAsDiagram: Boolean);
+begin
+  View.Clear(ATitle);
+  FDirection := ADirection;
+  FRoots := ARoots;
+  View.Tree.Items.BeginUpdate;
+  try
+    AddHierarchy(nil, ARoots);
+  finally
+    View.Tree.Items.EndUpdate;
+  end;
+  if View.Tree.Items.Count > 0 then
+  begin
+    View.Tree.Selected := View.Tree.Items[0];
+    View.Tree.Items[0].Expand(False);
+  end;
+  FTitle := ATitle;
+  UpdateControls;
+  if AAsDiagram or FControls.Toggle.Checked then
+  begin
+    SetShowsDiagram(True);
+  end;
+end;
+
+procedure TAtlasResultsHierarchyPart.SwitchDirection(ADirection: TAtlasHierarchyDirection);
+const
+  cTitles: array[TAtlasHierarchyDirection] of TAtlasTextId = (TAtlasTextId.ResultsIncoming,
+    TAtlasTextId.ResultsOutgoing, TAtlasTextId.ResultsSupertypes, TAtlasTextId.ResultsSubtypes);
+var
+  mRoots: TArray<TAtlasHierarchyItem>;
+begin
+  if (Length(FRoots) = 0) or (ADirection = FDirection) then
+  begin
+    Exit;
+  end;
+  mRoots := FRoots;
+  Show(TAtlasStrings.Fmt(cTitles[ADirection], [mRoots[0].Name]), ADirection, mRoots, ShowsDiagram);
+end;
+
+function TAtlasResultsHierarchyPart.DiagramHtml: string;
+begin
+  Result := FControls.Diagram.Html(FTitle);
 end;
 
 end.

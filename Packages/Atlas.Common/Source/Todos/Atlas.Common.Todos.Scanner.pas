@@ -120,6 +120,8 @@ type
     function Current: Char;
   end;
 
+{ TTodoBodyReader }
+
 procedure TTodoBodyReader.SkipSpaces;
 begin
   while not AtEnd and IsSpace(Current) do

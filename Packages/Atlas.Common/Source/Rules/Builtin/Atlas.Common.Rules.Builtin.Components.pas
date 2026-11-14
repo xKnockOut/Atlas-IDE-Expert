@@ -835,6 +835,8 @@ const
   // Ab hier ist Top/Left eine Reihenfolge für Align (alTop/alBottom), kein Pixelwert.
   cAlignOrder = 10000;
 
+{ TControlFixedBoundsRule }
+
 function TControlFixedBoundsRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('control-fixed-bounds', TRuleSeverity.Warning,

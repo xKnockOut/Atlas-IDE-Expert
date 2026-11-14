@@ -439,6 +439,8 @@ begin
   end;
 end;
 
+{ TQueryLexer }
+
 class function TQueryLexer.Tokenize(const AText: string): TArray<TQueryToken>;
 var
   mList: TList<TQueryToken>;
@@ -472,18 +474,6 @@ end;
 
 { TQueryParser }
 
-class function TQueryParser.UnknownText(const AWhat, AName, ASuggestion: string): string;
-begin
-  if ASuggestion <> '' then
-  begin
-    Result := cTexts[TLanguageText.DidYouMean].Fmt([AWhat, AName, ASuggestion]);
-  end
-  else
-  begin
-    Result := Format('%s `%s`', [AWhat, AName]);
-  end;
-end;
-
 function TQueryParser.Current: TQueryToken;
 begin
   Result := FTokens[FPosition];
@@ -506,6 +496,31 @@ end;
 procedure TQueryParser.Fail(const AMessage: string; AColumn: Integer; const ASuggestion: string);
 begin
   raise EQueryError.Create(AMessage, AColumn, ASuggestion);
+end;
+
+function TQueryParser.ParseExpression: TQueryNode;
+var
+  mLogic: TQueryLogicNode;
+begin
+  Result := ParseTerm;
+  if not Current.Is_('or') then
+  begin
+    Exit;
+  end;
+  mLogic := TQueryLogicNode.Create(TQueryLogic.Or_);
+  mLogic.Column := Result.Column;
+  mLogic.Items.Add(Result);
+  try
+    while Current.Is_('or') do
+    begin
+      Next;
+      mLogic.Items.Add(ParseTerm);
+    end;
+  except
+    mLogic.Free;
+    raise;
+  end;
+  Result := mLogic;
 end;
 
 function Describe(const AToken: TQueryToken): string;
@@ -554,93 +569,74 @@ begin
   end;
 end;
 
-function TQueryParser.IsComparisonStart(const AToken: TQueryToken): Boolean;
-begin
-  Result := (AToken.Kind = TQueryTokenKind.Symbol) or AToken.Is_('like') or AToken.Is_('not');
-end;
-
-function TQueryParser.FieldFor(const AToken: TQueryToken): TQueryFieldInfo;
+function TQueryParser.ParseTerm: TQueryNode;
 var
-  mSuggestion: string;
+  mLogic: TQueryLogicNode;
 begin
-  if AToken.Kind <> TQueryTokenKind.Name then
+  Result := ParseFactor;
+  if not Current.Is_('and') then
   begin
-    Fail(cTexts[TLanguageText.ExpectedFieldPredicateNotOr].Fmt([Describe(AToken)]), AToken.Column);
+    Exit;
   end;
-  if not TQueryCatalog.TryField(AToken.Text, Result) then
-  begin
-    mSuggestion := TTextFuzzy.Closest(AToken.Text, TQueryCatalog.FieldNames(FEntity));
-    if mSuggestion = '' then
+  mLogic := TQueryLogicNode.Create(TQueryLogic.And_);
+  mLogic.Column := Result.Column;
+  mLogic.Items.Add(Result);
+  try
+    while Current.Is_('and') do
     begin
-      mSuggestion := TTextFuzzy.Closest(AToken.Text, TQueryCatalog.FieldNames);
+      Next;
+      mLogic.Items.Add(ParseFactor);
     end;
-    if mSuggestion <> '' then
-    begin
-      Fail(UnknownText(cTexts[TLanguageText.UnknownField].Text, AToken.Text, mSuggestion), AToken.Column, mSuggestion);
-    end
-    else
-    begin
-      Fail(cTexts[TLanguageText.FieldsOf].Fmt([UnknownText(cTexts[TLanguageText.UnknownField].Text, AToken.Text, ''),
-        TQueryCatalog.EntityName(FEntity), string.Join(', ', TQueryCatalog.FieldNames(FEntity))]), AToken.Column);
-    end;
+  except
+    mLogic.Free;
+    raise;
   end;
-  if not (FEntity in Result.Entities) then
+  Result := mLogic;
+end;
+
+function TQueryParser.ParseFactor: TQueryNode;
+var
+  mKind: TQueryPredicateKind;
+begin
+  if Current.Is_('not') then
   begin
-    Fail(cTexts[TLanguageText.FieldDoesNotExistFor].Fmt([Result.Name, TQueryCatalog.EntityName(FEntity),
-      string.Join(', ', TQueryCatalog.FieldNames(FEntity))]), AToken.Column,
-      TTextFuzzy.Closest(AToken.Text, TQueryCatalog.FieldNames(FEntity)));
+    Result := ParseNot;
+  end
+  else if Current.Kind = TQueryTokenKind.OpenParen then
+  begin
+    Result := ParseGroup;
+  end
+  else if IsPredicateStart(Current, mKind) then
+  begin
+    Result := ParseKeywordPredicate(mKind);
+  end
+  else
+  begin
+    Result := ParseComparison;
   end;
 end;
 
-function TQueryParser.ParseValue(const AField: TQueryFieldInfo; ALike: Boolean): TQueryValue;
+function TQueryParser.ParsePredicate(AKind: TQueryPredicateKind; AColumn: Integer): TQueryNode;
 var
   mToken: TQueryToken;
-  mNumber: Int64;
+  mNode: TQueryPredicateNode;
 begin
-  mNumber := 0;
+  if not (FEntity in TQueryCatalog.PredicateEntities(AKind)) then
+  begin
+    Fail(cTexts[TLanguageText.DoesNotExistFor].Fmt([TQueryCatalog.PredicateName(AKind),
+      TQueryCatalog.EntityName(FEntity)]), AColumn);
+  end;
   mToken := Next;
-  if not (mToken.Kind in [TQueryTokenKind.Name, TQueryTokenKind.Number, TQueryTokenKind.Text]) then
+  if not (mToken.Kind in [TQueryTokenKind.Name, TQueryTokenKind.Text]) then
   begin
-    Fail(cTexts[TLanguageText.ExpectedValueAfterFound].Fmt([AField.Name, Describe(mToken)]), mToken.Column);
+    Fail(cTexts[TLanguageText.ExpectedNameAfterFound].Fmt([TQueryCatalog.PredicateName(AKind), Describe(mToken)]),
+      mToken.Column);
   end;
-  if ALike then
-  begin
-    if AField.FieldType <> TQueryFieldType.Text then
-    begin
-      Fail(cTexts[TLanguageText.LikeOnlyExistsForText].Fmt([AField.Name,
-        LowerCase(TQueryCatalog.FieldTypeName(AField.FieldType))]), mToken.Column);
-    end;
-    Exit(TQueryValue.OfText(mToken.Text));
-  end;
-  case AField.FieldType of
-    TQueryFieldType.Number:
-      begin
-        if (mToken.Kind <> TQueryTokenKind.Number) or not TryStrToInt64(mToken.Text, mNumber) then
-        begin
-          Fail(cTexts[TLanguageText.IsANumberIsNot].Fmt([AField.Name, Describe(mToken)]), mToken.Column);
-        end;
-        Result := TQueryValue.OfNumber(mNumber);
-      end;
-    TQueryFieldType.Flag:
-      begin
-        if mToken.Is_('true') then
-        begin
-          Result := TQueryValue.OfFlag(True);
-        end
-        else if mToken.Is_('false') then
-        begin
-          Result := TQueryValue.OfFlag(False);
-        end
-        else
-        begin
-          Fail(cTexts[TLanguageText.IsATruthValueTrue].Fmt([AField.Name,
-            Describe(mToken)]), mToken.Column);
-          Result := TQueryValue.Empty;
-        end;
-      end;
-  else
-    Result := TQueryValue.OfText(mToken.Text);
-  end;
+  mNode := TQueryPredicateNode.Create;
+  mNode.Column := AColumn;
+  mNode.Kind := AKind;
+  mNode.Argument := mToken.Text;
+  Result := mNode;
 end;
 
 function TQueryParser.ParseComparison: TQueryNode;
@@ -695,27 +691,93 @@ begin
   Result := mNode;
 end;
 
-function TQueryParser.ParsePredicate(AKind: TQueryPredicateKind; AColumn: Integer): TQueryNode;
+function TQueryParser.ParseValue(const AField: TQueryFieldInfo; ALike: Boolean): TQueryValue;
 var
   mToken: TQueryToken;
-  mNode: TQueryPredicateNode;
+  mNumber: Int64;
 begin
-  if not (FEntity in TQueryCatalog.PredicateEntities(AKind)) then
-  begin
-    Fail(cTexts[TLanguageText.DoesNotExistFor].Fmt([TQueryCatalog.PredicateName(AKind),
-      TQueryCatalog.EntityName(FEntity)]), AColumn);
-  end;
+  mNumber := 0;
   mToken := Next;
-  if not (mToken.Kind in [TQueryTokenKind.Name, TQueryTokenKind.Text]) then
+  if not (mToken.Kind in [TQueryTokenKind.Name, TQueryTokenKind.Number, TQueryTokenKind.Text]) then
   begin
-    Fail(cTexts[TLanguageText.ExpectedNameAfterFound].Fmt([TQueryCatalog.PredicateName(AKind), Describe(mToken)]),
-      mToken.Column);
+    Fail(cTexts[TLanguageText.ExpectedValueAfterFound].Fmt([AField.Name, Describe(mToken)]), mToken.Column);
   end;
-  mNode := TQueryPredicateNode.Create;
-  mNode.Column := AColumn;
-  mNode.Kind := AKind;
-  mNode.Argument := mToken.Text;
-  Result := mNode;
+  if ALike then
+  begin
+    if AField.FieldType <> TQueryFieldType.Text then
+    begin
+      Fail(cTexts[TLanguageText.LikeOnlyExistsForText].Fmt([AField.Name,
+        LowerCase(TQueryCatalog.FieldTypeName(AField.FieldType))]), mToken.Column);
+    end;
+    Exit(TQueryValue.OfText(mToken.Text));
+  end;
+  case AField.FieldType of
+    TQueryFieldType.Number:
+      begin
+        if (mToken.Kind <> TQueryTokenKind.Number) or not TryStrToInt64(mToken.Text, mNumber) then
+        begin
+          Fail(cTexts[TLanguageText.IsANumberIsNot].Fmt([AField.Name, Describe(mToken)]), mToken.Column);
+        end;
+        Result := TQueryValue.OfNumber(mNumber);
+      end;
+    TQueryFieldType.Flag:
+      begin
+        if mToken.Is_('true') then
+        begin
+          Result := TQueryValue.OfFlag(True);
+        end
+        else if mToken.Is_('false') then
+        begin
+          Result := TQueryValue.OfFlag(False);
+        end
+        else
+        begin
+          Fail(cTexts[TLanguageText.IsATruthValueTrue].Fmt([AField.Name,
+            Describe(mToken)]), mToken.Column);
+          Result := TQueryValue.Empty;
+        end;
+      end;
+  else
+    Result := TQueryValue.OfText(mToken.Text);
+  end;
+end;
+
+function TQueryParser.FieldFor(const AToken: TQueryToken): TQueryFieldInfo;
+var
+  mSuggestion: string;
+begin
+  if AToken.Kind <> TQueryTokenKind.Name then
+  begin
+    Fail(cTexts[TLanguageText.ExpectedFieldPredicateNotOr].Fmt([Describe(AToken)]), AToken.Column);
+  end;
+  if not TQueryCatalog.TryField(AToken.Text, Result) then
+  begin
+    mSuggestion := TTextFuzzy.Closest(AToken.Text, TQueryCatalog.FieldNames(FEntity));
+    if mSuggestion = '' then
+    begin
+      mSuggestion := TTextFuzzy.Closest(AToken.Text, TQueryCatalog.FieldNames);
+    end;
+    if mSuggestion <> '' then
+    begin
+      Fail(UnknownText(cTexts[TLanguageText.UnknownField].Text, AToken.Text, mSuggestion), AToken.Column, mSuggestion);
+    end
+    else
+    begin
+      Fail(cTexts[TLanguageText.FieldsOf].Fmt([UnknownText(cTexts[TLanguageText.UnknownField].Text, AToken.Text, ''),
+        TQueryCatalog.EntityName(FEntity), string.Join(', ', TQueryCatalog.FieldNames(FEntity))]), AToken.Column);
+    end;
+  end;
+  if not (FEntity in Result.Entities) then
+  begin
+    Fail(cTexts[TLanguageText.FieldDoesNotExistFor].Fmt([Result.Name, TQueryCatalog.EntityName(FEntity),
+      string.Join(', ', TQueryCatalog.FieldNames(FEntity))]), AToken.Column,
+      TTextFuzzy.Closest(AToken.Text, TQueryCatalog.FieldNames(FEntity)));
+  end;
+end;
+
+function TQueryParser.IsComparisonStart(const AToken: TQueryToken): Boolean;
+begin
+  Result := (AToken.Kind = TQueryTokenKind.Symbol) or AToken.Is_('like') or AToken.Is_('not');
 end;
 
 function TQueryParser.ParseNot: TQueryNode;
@@ -792,78 +854,6 @@ begin
     Next;
   end;
   Result := ParsePredicate(AKind, mColumn);
-end;
-
-function TQueryParser.ParseFactor: TQueryNode;
-var
-  mKind: TQueryPredicateKind;
-begin
-  if Current.Is_('not') then
-  begin
-    Result := ParseNot;
-  end
-  else if Current.Kind = TQueryTokenKind.OpenParen then
-  begin
-    Result := ParseGroup;
-  end
-  else if IsPredicateStart(Current, mKind) then
-  begin
-    Result := ParseKeywordPredicate(mKind);
-  end
-  else
-  begin
-    Result := ParseComparison;
-  end;
-end;
-
-function TQueryParser.ParseTerm: TQueryNode;
-var
-  mLogic: TQueryLogicNode;
-begin
-  Result := ParseFactor;
-  if not Current.Is_('and') then
-  begin
-    Exit;
-  end;
-  mLogic := TQueryLogicNode.Create(TQueryLogic.And_);
-  mLogic.Column := Result.Column;
-  mLogic.Items.Add(Result);
-  try
-    while Current.Is_('and') do
-    begin
-      Next;
-      mLogic.Items.Add(ParseFactor);
-    end;
-  except
-    mLogic.Free;
-    raise;
-  end;
-  Result := mLogic;
-end;
-
-function TQueryParser.ParseExpression: TQueryNode;
-var
-  mLogic: TQueryLogicNode;
-begin
-  Result := ParseTerm;
-  if not Current.Is_('or') then
-  begin
-    Exit;
-  end;
-  mLogic := TQueryLogicNode.Create(TQueryLogic.Or_);
-  mLogic.Column := Result.Column;
-  mLogic.Items.Add(Result);
-  try
-    while Current.Is_('or') do
-    begin
-      Next;
-      mLogic.Items.Add(ParseTerm);
-    end;
-  except
-    mLogic.Free;
-    raise;
-  end;
-  Result := mLogic;
 end;
 
 function TQueryParser.ParseEntity: TQueryEntity;
@@ -997,6 +987,18 @@ begin
       ASuggestion := E.Suggestion;
       Result := False;
     end;
+  end;
+end;
+
+class function TQueryParser.UnknownText(const AWhat, AName, ASuggestion: string): string;
+begin
+  if ASuggestion <> '' then
+  begin
+    Result := cTexts[TLanguageText.DidYouMean].Fmt([AWhat, AName, ASuggestion]);
+  end
+  else
+  begin
+    Result := Format('%s `%s`', [AWhat, AName]);
   end;
 end;
 

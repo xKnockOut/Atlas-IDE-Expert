@@ -110,40 +110,6 @@ end;
 
 { TAtlasIdeRunTo }
 
-class procedure TAtlasIdeRunTo.Start(const AMessage: TProc<string>);
-begin
-  FMessage := AMessage;
-  if FListener = nil then
-  begin
-    FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FListener);
-    TAtlasIdeDebugSession.Start;
-    LoadState;
-  end;
-end;
-
-class procedure TAtlasIdeRunTo.Release;
-begin
-  if FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(FListener);
-  end;
-  FListener := nil;
-  FMessage := nil;
-  // Der Zustand bleibt in der Datei; der nächste Start setzt ihn zurück.
-  FState := Default(TAtlasRunToState);
-end;
-
-class function TAtlasIdeRunTo.Started: Boolean;
-begin
-  Result := FListener <> nil;
-end;
-
-class function TAtlasIdeRunTo.Enabled: Boolean;
-begin
-  Result := Started and TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.DebugRunToClick;
-end;
-
 class procedure TAtlasIdeRunTo.Report(const AText: string);
 begin
   if Assigned(FMessage) then
@@ -186,6 +152,36 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeRunTo.Arrived;
+begin
+  // Erst ein Halt nach dem Weiter zählt; der Halt, von dem aus gestartet wurde, kann noch gemeldet werden.
+  if FState.Active and (TAtlasIdeDebugSession.StopCount > FStopCount) then
+  begin
+    Restore;
+  end;
+  RemoveOnce;
+end;
+
+class procedure TAtlasIdeRunTo.RemoveOnce;
+var
+  mThread: IOTAThread;
+  mFileName: string;
+  mLine: Integer;
+  mBreakpoints: TArray<IOTABreakpoint>;
+begin
+  mThread := TAtlasIdeDebugSession.StoppedThread;
+  if (mThread = nil) or not TAtlasIdeBreakpoints.Position(mThread, mFileName, mLine) then
+  begin
+    Exit;
+  end;
+  mBreakpoints := [TAtlasIdeBreakpoints.Find(mFileName, mLine)];
+  if (mBreakpoints[0] <> nil) and SameText(mBreakpoints[0].GroupName, TAtlasRunTo.cOnceGroup) then
+  begin
+    TAtlasIdeBreakpoints.RemoveAll(mBreakpoints);
+    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.RunToOnceRemoved, [ExtractFileName(mFileName), mLine + 1]));
+  end;
+end;
+
 class function TAtlasIdeRunTo.SourceStates: TAtlasBreakpointStates;
 var
   mServices: IOTADebuggerServices;
@@ -207,13 +203,6 @@ begin
         mBreakpoint.Enabled)];
     end;
   end;
-end;
-
-class function TAtlasIdeRunTo.CodeLine(const AFileName: string; ALine: Integer): Boolean;
-var
-  mText: string;
-begin
-  Result := TAtlasIdeFiles.SourceText(AFileName, mText) and TAtlasRunTo.CodeLine(mText, ALine);
 end;
 
 class function TAtlasIdeRunTo.TargetLine(out AFileName: string; out ALine: Integer): Boolean;
@@ -275,6 +264,47 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeRunTo.Start(const AMessage: TProc<string>);
+begin
+  FMessage := AMessage;
+  if FListener = nil then
+  begin
+    FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FListener);
+    TAtlasIdeDebugSession.Start;
+    LoadState;
+  end;
+end;
+
+class procedure TAtlasIdeRunTo.Release;
+begin
+  if FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(FListener);
+  end;
+  FListener := nil;
+  FMessage := nil;
+  // Der Zustand bleibt in der Datei; der nächste Start setzt ihn zurück.
+  FState := Default(TAtlasRunToState);
+end;
+
+class function TAtlasIdeRunTo.Started: Boolean;
+begin
+  Result := FListener <> nil;
+end;
+
+class function TAtlasIdeRunTo.Enabled: Boolean;
+begin
+  Result := Started and TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.DebugRunToClick;
+end;
+
+class function TAtlasIdeRunTo.CodeLine(const AFileName: string; ALine: Integer): Boolean;
+var
+  mText: string;
+begin
+  Result := TAtlasIdeFiles.SourceText(AFileName, mText) and TAtlasRunTo.CodeLine(mText, ALine);
+end;
+
 class procedure TAtlasIdeRunTo.RunToLine(const AFileName: string; ALine: Integer; ASkip: Boolean);
 var
   mProcess: IOTAProcess;
@@ -308,16 +338,6 @@ begin
   FStopCount := TAtlasIdeDebugSession.StopCount;
   SaveState;
   mProcess.Run(ormRun);
-end;
-
-class procedure TAtlasIdeRunTo.Arrived;
-begin
-  // Erst ein Halt nach dem Weiter zählt; der Halt, von dem aus gestartet wurde, kann noch gemeldet werden.
-  if FState.Active and (TAtlasIdeDebugSession.StopCount > FStopCount) then
-  begin
-    Restore;
-  end;
-  RemoveOnce;
 end;
 
 class procedure TAtlasIdeRunTo.Restore;
@@ -358,26 +378,6 @@ begin
   if Length(mDone) > 1 then
   begin
     Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.RunToRestored, [Length(mDone)]));
-  end;
-end;
-
-class procedure TAtlasIdeRunTo.RemoveOnce;
-var
-  mThread: IOTAThread;
-  mFileName: string;
-  mLine: Integer;
-  mBreakpoints: TArray<IOTABreakpoint>;
-begin
-  mThread := TAtlasIdeDebugSession.StoppedThread;
-  if (mThread = nil) or not TAtlasIdeBreakpoints.Position(mThread, mFileName, mLine) then
-  begin
-    Exit;
-  end;
-  mBreakpoints := [TAtlasIdeBreakpoints.Find(mFileName, mLine)];
-  if (mBreakpoints[0] <> nil) and SameText(mBreakpoints[0].GroupName, TAtlasRunTo.cOnceGroup) then
-  begin
-    TAtlasIdeBreakpoints.RemoveAll(mBreakpoints);
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.RunToOnceRemoved, [ExtractFileName(mFileName), mLine + 1]));
   end;
 end;
 

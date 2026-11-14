@@ -255,38 +255,6 @@ end;
 
 { TAtlasIdeSearch }
 
-class procedure TAtlasIdeSearch.Install(const AMessage: TProc<string>);
-begin
-  TAtlasIdeSearchSession.OnMessage := AMessage;
-  if FPainter = nil then
-  begin
-    FPainter := TAtlasIdeSearchPainter.Create;
-  end;
-  if FHost = nil then
-  begin
-    FHost := TAtlasEditorBarHost.Create('Suchleiste', TAtlasFeature.Search,
-      function(AEditorParent: TWinControl): TControl
-      begin
-        Result := CreateBar;
-      end,
-      procedure(ABar: TControl; AEditorParent: TWinControl)
-      begin
-        Place(TAtlasSearchBar(ABar), AEditorParent);
-      end);
-    FHost.OnRemoved :=
-      procedure(ABar: TControl)
-      begin
-        Removed(ABar);
-      end;
-  end;
-  CreateTimers;
-  if TAtlasIdeSearchSession.Histories = nil then
-  begin
-    TAtlasIdeSearchSession.Histories := TAtlasIdeSearchHistories.Create(TAtlasIdeSettings.Current.SearchHistory);
-  end;
-  TAtlasIdeSearchSession.Histories.Load;
-end;
-
 class procedure TAtlasIdeSearch.CreateTimers;
 begin
   if FProbeOwner = nil then
@@ -309,74 +277,67 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeSearch.Uninstall;
-begin
-  FreeAndNil(FPainter);
-  // Erst die Suche über Dateien beenden (wartet auf den Thread), dann das Fenster und die Leisten.
-  TAtlasIdeSearchAcrossFiles.Drop;
-  TAtlasIdeSearchReplaceWindow.Release;
-  FreeAndNil(FHost);
-  // Die Takte gehören ihrem Besitzer.
-  FProbe := nil;
-  TAtlasIdeSearchSession.Files.Timer := nil;
-  FEntered := nil;
-  FreeAndNil(FProbeOwner);
-  TAtlasIdeSearchSession.Bar := nil;
-  TAtlasIdeSearchSession.OnMessage := nil;
-  TAtlasIdeSearchSession.Highlight := False;
-  TAtlasIdeSearchSession.ListedKey := '';
-  TAtlasIdeSearchSession.Last := Default(TAtlasSearchQuery);
-  TAtlasIdeSearchSession.SaveHistories;
-  FreeAndNil(TAtlasIdeSearchSession.Histories);
-end;
-
-class procedure TAtlasIdeSearch.ApplySettings;
+class procedure TAtlasIdeSearch.Open(AInMethod, AReplace: Boolean);
 var
-  mListed: Boolean;
+  mView: IOTAEditView;
+  mEditors: INTAEditorServices;
+  mBar: TAtlasSearchBar;
+  mText: string;
+  mLines: TArray<string>;
+  mCursor: TAtlasSearchPos;
+  mSelection: TAtlasSearchArea;
+  mHasSelection: Boolean;
+  mQuery: TAtlasSearchQuery;
 begin
-  mListed := TAtlasIdeSettings.Current.SearchResultsInMessages;
-  if not mListed then
+  mBar := nil;
+  if TAtlasIdeSearchEditor.TopView(mView) and Supports(BorlandIDEServices, INTAEditorServices, mEditors) then
   begin
-    TAtlasIdeSearchMessages.Clear;
-    TAtlasIdeSearchSession.ListedKey := '';
+    mBar := BarFor(mEditors.TopEditWindow);
   end;
-  // Verlauf kürzen; 0 = aus (#893).
-  if TAtlasIdeSearchSession.Histories <> nil then
+  if mBar = nil then
   begin
-    TAtlasIdeSearchSession.Histories.SetCapacity(TAtlasIdeSettings.Current.SearchHistory);
+    Exit;
   end;
-  TAtlasIdeSearchSession.SaveHistories;
-  // Ohne Bereiche über Dateien bzw. ohne Ersetzen: laufende Suche und Fenster weg.
-  if not TAtlasIdeSettings.Current.SearchMultiFile or not TAtlasIdeSettings.Current.SearchReplace then
+  mText := TAtlasEditorBuffer.Text(mView.Buffer);
+  mLines := TTextLines.SplitLines(mText);
+  mCursor := TAtlasIdeSearchEditor.CursorOf(mView, mLines);
+  mHasSelection := TAtlasIdeSearchEditor.SelectionOf(mView, mLines, mSelection);
+  // Bereich Unit; Methode nur mit „In Methode suchen“, mehrzeilige Markierung als Auswahl.
+  mQuery := TAtlasSearchResults.StartQuery(TAtlasIdeSearchSession.Last,
+    Proposal(mLines, mCursor, mSelection, mHasSelection),
+    mHasSelection and (mSelection.Start.Line <> mSelection.Stop.Line), AInMethod);
+  // Ursprung der Suche: Anfang einer Markierung, sonst der Cursor.
+  TAtlasIdeSearchSession.Origin := mCursor;
+  if mHasSelection then
   begin
-    TAtlasIdeSearchReplaceWindow.Hide;
+    TAtlasIdeSearchSession.Origin := mSelection.Start;
   end;
-  if not TAtlasIdeSettings.Current.SearchMultiFile then
+  TAtlasIdeSearchSession.Selection := mSelection;
+  TAtlasIdeSearchSession.FileName := mView.Buffer.FileName;
+  // Eine andere Leiste (anderes Editorfenster) beenden.
+  if (TAtlasIdeSearchSession.Bar <> nil) and (TAtlasIdeSearchSession.Bar <> mBar) then
   begin
-    TAtlasIdeSearchAcrossFiles.Drop;
+    TAtlasIdeSearchSession.Bar.Visible := False;
   end;
-  if FHost <> nil then
+  TAtlasIdeSearchSession.Bar := mBar;
+  mBar.SetListVisible(TAtlasIdeSettings.Current.SearchResultsInMessages);
+  mBar.Features := Features;
+  // Strg+H mit, Strg+F ohne Ersetzen-Zeile.
+  mBar.ReplaceShown := AReplace;
+  mBar.Prepare(mQuery, Levels(mText, mCursor), mHasSelection);
+  mBar.Visible := True;
+  // Vor alle Geschwister: Kein Fenster der IDE soll über der Leiste liegen.
+  mBar.BringToFront;
+  LogLayout(mBar);
+  mBar.FocusText;
+  FProbed := 0;
+  FEntered := nil;
+  if FProbe <> nil then
   begin
-    FHost.ForEach(
-      procedure(ABar: TControl)
-      begin
-        TAtlasSearchBar(ABar).SetListVisible(mListed);
-        TAtlasSearchBar(ABar).Features := Features;
-      end);
+    FProbe.Enabled := True;
   end;
-end;
-
-class procedure TAtlasIdeSearch.ThemeChanged;
-begin
-  if FHost <> nil then
-  begin
-    FHost.ForEach(
-      procedure(ABar: TControl)
-      begin
-        ThemeBar(TAtlasSearchBar(ABar));
-      end);
-  end;
-  TAtlasIdeSearchReplaceWindow.ApplyTheme;
+  // Hervorheben und zählen, ohne zu springen: Der Vorschlag steht meist schon am Cursor.
+  TAtlasIdeSearchSteps.Sync(False);
 end;
 
 class function TAtlasIdeSearch.Features: TAtlasSearchBarFeatures;
@@ -385,11 +346,6 @@ var
 begin
   mSettings := TAtlasIdeSettings.Current;
   Result := TAtlasSearchBarFeatures.Create(mSettings.SearchReplace, mSettings.SearchRegex, mSettings.SearchMultiFile);
-end;
-
-class procedure TAtlasIdeSearch.ThemeBar(ABar: TAtlasSearchBar);
-begin
-  TAtlasIdeDockWindow.ApplyIdeTheme(ABar);
 end;
 
 class function TAtlasIdeSearch.BarFor(const AWindow: INTAEditWindow): TAtlasSearchBar;
@@ -486,67 +442,9 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeSearch.Open(AInMethod, AReplace: Boolean);
-var
-  mView: IOTAEditView;
-  mEditors: INTAEditorServices;
-  mBar: TAtlasSearchBar;
-  mText: string;
-  mLines: TArray<string>;
-  mCursor: TAtlasSearchPos;
-  mSelection: TAtlasSearchArea;
-  mHasSelection: Boolean;
-  mQuery: TAtlasSearchQuery;
+class procedure TAtlasIdeSearch.ThemeBar(ABar: TAtlasSearchBar);
 begin
-  mBar := nil;
-  if TAtlasIdeSearchEditor.TopView(mView) and Supports(BorlandIDEServices, INTAEditorServices, mEditors) then
-  begin
-    mBar := BarFor(mEditors.TopEditWindow);
-  end;
-  if mBar = nil then
-  begin
-    Exit;
-  end;
-  mText := TAtlasEditorBuffer.Text(mView.Buffer);
-  mLines := TTextLines.SplitLines(mText);
-  mCursor := TAtlasIdeSearchEditor.CursorOf(mView, mLines);
-  mHasSelection := TAtlasIdeSearchEditor.SelectionOf(mView, mLines, mSelection);
-  // Bereich Unit; Methode nur mit „In Methode suchen“, mehrzeilige Markierung als Auswahl.
-  mQuery := TAtlasSearchResults.StartQuery(TAtlasIdeSearchSession.Last,
-    Proposal(mLines, mCursor, mSelection, mHasSelection),
-    mHasSelection and (mSelection.Start.Line <> mSelection.Stop.Line), AInMethod);
-  // Ursprung der Suche: Anfang einer Markierung, sonst der Cursor.
-  TAtlasIdeSearchSession.Origin := mCursor;
-  if mHasSelection then
-  begin
-    TAtlasIdeSearchSession.Origin := mSelection.Start;
-  end;
-  TAtlasIdeSearchSession.Selection := mSelection;
-  TAtlasIdeSearchSession.FileName := mView.Buffer.FileName;
-  // Eine andere Leiste (anderes Editorfenster) beenden.
-  if (TAtlasIdeSearchSession.Bar <> nil) and (TAtlasIdeSearchSession.Bar <> mBar) then
-  begin
-    TAtlasIdeSearchSession.Bar.Visible := False;
-  end;
-  TAtlasIdeSearchSession.Bar := mBar;
-  mBar.SetListVisible(TAtlasIdeSettings.Current.SearchResultsInMessages);
-  mBar.Features := Features;
-  // Strg+H mit, Strg+F ohne Ersetzen-Zeile.
-  mBar.ReplaceShown := AReplace;
-  mBar.Prepare(mQuery, Levels(mText, mCursor), mHasSelection);
-  mBar.Visible := True;
-  // Vor alle Geschwister: Kein Fenster der IDE soll über der Leiste liegen.
-  mBar.BringToFront;
-  LogLayout(mBar);
-  mBar.FocusText;
-  FProbed := 0;
-  FEntered := nil;
-  if FProbe <> nil then
-  begin
-    FProbe.Enabled := True;
-  end;
-  // Hervorheben und zählen, ohne zu springen: Der Vorschlag steht meist schon am Cursor.
-  TAtlasIdeSearchSteps.Sync(False);
+  TAtlasIdeDockWindow.ApplyIdeTheme(ABar);
 end;
 
 class procedure TAtlasIdeSearch.BarStep(ABackward: Boolean);
@@ -582,14 +480,62 @@ begin
   TAtlasEditorBarHost.FocusEditor(mBar);
 end;
 
-class procedure TAtlasIdeSearch.StopProbe;
+class procedure TAtlasIdeSearch.Probe;
+var
+  mBar: TAtlasSearchBar;
+  mCursor: TPoint;
+  mWindow: HWND;
 begin
-  if FProbe <> nil then
+  EnableBars;
+  mBar := TAtlasIdeSearchSession.Bar;
+  if (mBar = nil) or not mBar.HandleAllocated or not mBar.Showing then
   begin
-    FProbe.Enabled := False;
+    Exit;
+  end;
+  RestoreFocus(mBar);
+  // Liegt über der Leiste ein anderes Fenster, bekommt sie keine Klicks: protokollieren, nach vorn holen.
+  if not GetCursorPos(mCursor) or not PtInRect(mBar.ClientRect, mBar.ScreenToClient(mCursor)) then
+  begin
+    Exit;
+  end;
+  mWindow := WindowFromPoint(mCursor);
+  if (mWindow = FProbed) or (mWindow = mBar.Handle) or IsChild(mBar.Handle, mWindow) then
+  begin
+    FProbed := mWindow;
+    Exit;
+  end;
+  FProbed := mWindow;
+  TAtlasGuard.Log(Format('Suchleiste: Über der Leiste liegt ein anderes Fenster (%s); hole die Leiste nach vorn',
+    [WindowName(mWindow)]));
+  mBar.BringToFront;
+end;
+
+class procedure TAtlasIdeSearch.RestoreFocus(ABar: TAtlasSearchBar);
+begin
+  if (FEntered = nil) or ABar.HasFocus then
+  begin
+    Exit;
+  end;
+  if TThread.GetTickCount64 - FEnteredAt <= cFocusGraceMs then
+  begin
+    TAtlasGuard.Log(Format('Suchleiste: Fokus nach dem Klick an %s %s verloren (an %s); hole ihn zurück',
+      [FEntered.ClassName, FEntered.Name, WindowName(Winapi.Windows.GetFocus)]));
+    if FEntered.CanFocus then
+    begin
+      FEntered.SetFocus;
+    end;
   end;
   FEntered := nil;
-  FProbed := 0;
+end;
+
+class procedure TAtlasIdeSearch.EnableBars;
+begin
+  // Beim Schließen aller Editoren (Projektwechsel) sperrt die IDE jedes Steuerelement im Editor-Panel und gibt danach
+  // nur ihre eigenen wieder frei; die Suchleiste flackerte dann beim Klick nur kurz und blieb taub.
+  if FHost <> nil then
+  begin
+    FHost.Enable;
+  end;
 end;
 
 /// <summary>Einmal je Leiste: Lage von Editor und Leiste im gemeinsamen Eltern-Steuerelement (Diagnose).</summary>
@@ -621,62 +567,116 @@ begin
     mParent.ClientHeight, mParts]));
 end;
 
-class procedure TAtlasIdeSearch.EnableBars;
+class procedure TAtlasIdeSearch.StopProbe;
 begin
-  // Beim Schließen aller Editoren (Projektwechsel) sperrt die IDE jedes Steuerelement im Editor-Panel und gibt danach
-  // nur ihre eigenen wieder frei; die Suchleiste flackerte dann beim Klick nur kurz und blieb taub.
-  if FHost <> nil then
+  if FProbe <> nil then
   begin
-    FHost.Enable;
-  end;
-end;
-
-class procedure TAtlasIdeSearch.RestoreFocus(ABar: TAtlasSearchBar);
-begin
-  if (FEntered = nil) or ABar.HasFocus then
-  begin
-    Exit;
-  end;
-  if TThread.GetTickCount64 - FEnteredAt <= cFocusGraceMs then
-  begin
-    TAtlasGuard.Log(Format('Suchleiste: Fokus nach dem Klick an %s %s verloren (an %s); hole ihn zurück',
-      [FEntered.ClassName, FEntered.Name, WindowName(Winapi.Windows.GetFocus)]));
-    if FEntered.CanFocus then
-    begin
-      FEntered.SetFocus;
-    end;
+    FProbe.Enabled := False;
   end;
   FEntered := nil;
+  FProbed := 0;
 end;
 
-class procedure TAtlasIdeSearch.Probe;
-var
-  mBar: TAtlasSearchBar;
-  mCursor: TPoint;
-  mWindow: HWND;
+class procedure TAtlasIdeSearch.Install(const AMessage: TProc<string>);
 begin
-  EnableBars;
-  mBar := TAtlasIdeSearchSession.Bar;
-  if (mBar = nil) or not mBar.HandleAllocated or not mBar.Showing then
+  TAtlasIdeSearchSession.OnMessage := AMessage;
+  if FPainter = nil then
   begin
-    Exit;
+    FPainter := TAtlasIdeSearchPainter.Create;
   end;
-  RestoreFocus(mBar);
-  // Liegt über der Leiste ein anderes Fenster, bekommt sie keine Klicks: protokollieren, nach vorn holen.
-  if not GetCursorPos(mCursor) or not PtInRect(mBar.ClientRect, mBar.ScreenToClient(mCursor)) then
+  if FHost = nil then
   begin
-    Exit;
+    FHost := TAtlasEditorBarHost.Create('Suchleiste', TAtlasFeature.Search,
+      function(AEditorParent: TWinControl): TControl
+      begin
+        Result := CreateBar;
+      end,
+      procedure(ABar: TControl; AEditorParent: TWinControl)
+      begin
+        Place(TAtlasSearchBar(ABar), AEditorParent);
+      end);
+    FHost.OnRemoved :=
+      procedure(ABar: TControl)
+      begin
+        Removed(ABar);
+      end;
   end;
-  mWindow := WindowFromPoint(mCursor);
-  if (mWindow = FProbed) or (mWindow = mBar.Handle) or IsChild(mBar.Handle, mWindow) then
+  CreateTimers;
+  if TAtlasIdeSearchSession.Histories = nil then
   begin
-    FProbed := mWindow;
-    Exit;
+    TAtlasIdeSearchSession.Histories := TAtlasIdeSearchHistories.Create(TAtlasIdeSettings.Current.SearchHistory);
   end;
-  FProbed := mWindow;
-  TAtlasGuard.Log(Format('Suchleiste: Über der Leiste liegt ein anderes Fenster (%s); hole die Leiste nach vorn',
-    [WindowName(mWindow)]));
-  mBar.BringToFront;
+  TAtlasIdeSearchSession.Histories.Load;
+end;
+
+class procedure TAtlasIdeSearch.Uninstall;
+begin
+  FreeAndNil(FPainter);
+  // Erst die Suche über Dateien beenden (wartet auf den Thread), dann das Fenster und die Leisten.
+  TAtlasIdeSearchAcrossFiles.Drop;
+  TAtlasIdeSearchReplaceWindow.Release;
+  FreeAndNil(FHost);
+  // Die Takte gehören ihrem Besitzer.
+  FProbe := nil;
+  TAtlasIdeSearchSession.Files.Timer := nil;
+  FEntered := nil;
+  FreeAndNil(FProbeOwner);
+  TAtlasIdeSearchSession.Bar := nil;
+  TAtlasIdeSearchSession.OnMessage := nil;
+  TAtlasIdeSearchSession.Highlight := False;
+  TAtlasIdeSearchSession.ListedKey := '';
+  TAtlasIdeSearchSession.Last := Default(TAtlasSearchQuery);
+  TAtlasIdeSearchSession.SaveHistories;
+  FreeAndNil(TAtlasIdeSearchSession.Histories);
+end;
+
+class procedure TAtlasIdeSearch.ApplySettings;
+var
+  mListed: Boolean;
+begin
+  mListed := TAtlasIdeSettings.Current.SearchResultsInMessages;
+  if not mListed then
+  begin
+    TAtlasIdeSearchMessages.Clear;
+    TAtlasIdeSearchSession.ListedKey := '';
+  end;
+  // Verlauf kürzen; 0 = aus (#893).
+  if TAtlasIdeSearchSession.Histories <> nil then
+  begin
+    TAtlasIdeSearchSession.Histories.SetCapacity(TAtlasIdeSettings.Current.SearchHistory);
+  end;
+  TAtlasIdeSearchSession.SaveHistories;
+  // Ohne Bereiche über Dateien bzw. ohne Ersetzen: laufende Suche und Fenster weg.
+  if not TAtlasIdeSettings.Current.SearchMultiFile or not TAtlasIdeSettings.Current.SearchReplace then
+  begin
+    TAtlasIdeSearchReplaceWindow.Hide;
+  end;
+  if not TAtlasIdeSettings.Current.SearchMultiFile then
+  begin
+    TAtlasIdeSearchAcrossFiles.Drop;
+  end;
+  if FHost <> nil then
+  begin
+    FHost.ForEach(
+      procedure(ABar: TControl)
+      begin
+        TAtlasSearchBar(ABar).SetListVisible(mListed);
+        TAtlasSearchBar(ABar).Features := Features;
+      end);
+  end;
+end;
+
+class procedure TAtlasIdeSearch.ThemeChanged;
+begin
+  if FHost <> nil then
+  begin
+    FHost.ForEach(
+      procedure(ABar: TControl)
+      begin
+        ThemeBar(TAtlasSearchBar(ABar));
+      end);
+  end;
+  TAtlasIdeSearchReplaceWindow.ApplyTheme;
 end;
 
 class procedure TAtlasIdeSearch.Show;

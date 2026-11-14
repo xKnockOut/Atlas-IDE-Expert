@@ -487,54 +487,6 @@ end;
 
 { TAtlasLineMover }
 
-class function TAtlasLineMover.IsCommentOnly(const AText: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  mIndex := 1;
-  Result := True;
-  while Result and (mIndex <= Length(AText)) do
-  begin
-    mIndex := SkipTrivia(AText, mIndex, Result);
-  end;
-end;
-
-class function TAtlasLineMover.Reindent(const ALine: string; ALevels, AIndent: Integer): string;
-var
-  mNeed, mRemoved, mIndex: Integer;
-begin
-  Result := ALine;
-  if (ALevels = 0) or (Trim(ALine) = '') then
-  begin
-    Exit;
-  end;
-  if ALevels > 0 then
-  begin
-    // Mit Tabulator eingerückte Zeilen bekommen Tabulatoren.
-    if ALine.StartsWith(#9) then
-    begin
-      Exit(StringOfChar(#9, ALevels) + ALine);
-    end;
-    Exit(StringOfChar(' ', ALevels * AIndent) + ALine);
-  end;
-  mNeed := -ALevels * AIndent;
-  mRemoved := 0;
-  mIndex := 1;
-  while (mIndex <= Length(ALine)) and (mRemoved < mNeed) and CharInSet(ALine[mIndex], [' ', #9]) do
-  begin
-    if ALine[mIndex] = #9 then
-    begin
-      Inc(mRemoved, AIndent);
-    end
-    else
-    begin
-      Inc(mRemoved);
-    end;
-    Inc(mIndex);
-  end;
-  Result := Copy(ALine, mIndex, MaxInt);
-end;
-
 class function TAtlasLineMover.Compute(const AText: string; const ASelection: TAtlasLineSelection;
   AKind: TAtlasLineMoveKind; AIndent: Integer; out AMove: TAtlasLineMove): Boolean;
 var
@@ -607,6 +559,54 @@ begin
   AOldLength := Length(AOld) - mSuffix - mPrefix;
   AInsert := Copy(ANew, mPrefix + 1, Length(ANew) - mSuffix - mPrefix);
   Result := True;
+end;
+
+class function TAtlasLineMover.IsCommentOnly(const AText: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  mIndex := 1;
+  Result := True;
+  while Result and (mIndex <= Length(AText)) do
+  begin
+    mIndex := SkipTrivia(AText, mIndex, Result);
+  end;
+end;
+
+class function TAtlasLineMover.Reindent(const ALine: string; ALevels, AIndent: Integer): string;
+var
+  mNeed, mRemoved, mIndex: Integer;
+begin
+  Result := ALine;
+  if (ALevels = 0) or (Trim(ALine) = '') then
+  begin
+    Exit;
+  end;
+  if ALevels > 0 then
+  begin
+    // Mit Tabulator eingerückte Zeilen bekommen Tabulatoren.
+    if ALine.StartsWith(#9) then
+    begin
+      Exit(StringOfChar(#9, ALevels) + ALine);
+    end;
+    Exit(StringOfChar(' ', ALevels * AIndent) + ALine);
+  end;
+  mNeed := -ALevels * AIndent;
+  mRemoved := 0;
+  mIndex := 1;
+  while (mIndex <= Length(ALine)) and (mRemoved < mNeed) and CharInSet(ALine[mIndex], [' ', #9]) do
+  begin
+    if ALine[mIndex] = #9 then
+    begin
+      Inc(mRemoved, AIndent);
+    end
+    else
+    begin
+      Inc(mRemoved);
+    end;
+    Inc(mIndex);
+  end;
+  Result := Copy(ALine, mIndex, MaxInt);
 end;
 
 end.

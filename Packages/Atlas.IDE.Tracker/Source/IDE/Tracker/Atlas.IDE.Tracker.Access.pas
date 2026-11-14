@@ -100,17 +100,6 @@ begin
   FParts := AParts;
 end;
 
-class procedure TAtlasTrackerAccess.Wipe(var AToken: string);
-begin
-  // Die Kopie des Tokens nicht im Speicher liegen lassen.
-  if AToken <> '' then
-  begin
-    UniqueString(AToken);
-    FillChar(PChar(AToken)^, Length(AToken) * SizeOf(Char), 0);
-  end;
-  AToken := '';
-end;
-
 procedure TAtlasTrackerAccess.Notice(const AText: string);
 begin
   if Assigned(FParts.Notice) then
@@ -129,6 +118,17 @@ begin
   begin
     Notice(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.TrackerLoginFailed));
   end;
+end;
+
+class procedure TAtlasTrackerAccess.Wipe(var AToken: string);
+begin
+  // Die Kopie des Tokens nicht im Speicher liegen lassen.
+  if AToken <> '' then
+  begin
+    UniqueString(AToken);
+    FillChar(PChar(AToken)^, Length(AToken) * SizeOf(Char), 0);
+  end;
+  AToken := '';
 end;
 
 function TAtlasTrackerAccess.Providers: TArray<IAtlasTrackerProvider>;
@@ -249,6 +249,29 @@ begin
   end;
 end;
 
+function TAtlasCiAccess.StoredUser(const AJob: TAtlasCiJob): string;
+var
+  mToken: string;
+begin
+  // Nur der Benutzer wird vorbelegt; das gespeicherte Token wird nie angezeigt.
+  Result := '';
+  FParts.Credentials.Read(AJob.CredentialTarget, Result, mToken);
+  TAtlasTrackerAccess.Wipe(mToken);
+end;
+
+function TAtlasCiAccess.Remove(const AJob: TAtlasCiJob): Boolean;
+begin
+  Result := FParts.Credentials.Delete(AJob.CredentialTarget);
+  if Result then
+  begin
+    Notice(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginRemoved));
+  end
+  else
+  begin
+    Notice(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginFailed));
+  end;
+end;
+
 function TAtlasCiAccess.Provider(const AName: string): IAtlasCiProvider;
 begin
   Result := nil;
@@ -276,29 +299,6 @@ begin
   end;
   Result := FParts.Transports.Basic(AJob.Server, mUser, mToken);
   TAtlasTrackerAccess.Wipe(mToken);
-end;
-
-function TAtlasCiAccess.StoredUser(const AJob: TAtlasCiJob): string;
-var
-  mToken: string;
-begin
-  // Nur der Benutzer wird vorbelegt; das gespeicherte Token wird nie angezeigt.
-  Result := '';
-  FParts.Credentials.Read(AJob.CredentialTarget, Result, mToken);
-  TAtlasTrackerAccess.Wipe(mToken);
-end;
-
-function TAtlasCiAccess.Remove(const AJob: TAtlasCiJob): Boolean;
-begin
-  Result := FParts.Credentials.Delete(AJob.CredentialTarget);
-  if Result then
-  begin
-    Notice(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginRemoved));
-  end
-  else
-  begin
-    Notice(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginFailed));
-  end;
 end;
 
 function TAtlasCiAccess.EnterCredentials(const AJob: TAtlasCiJob): Boolean;

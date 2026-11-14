@@ -58,6 +58,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Analysis.Strings;
 
+{ TAtlasArchitectureAssignment }
+
 class function TAtlasArchitectureAssignment.Available(const AModel: TAtlasArchitectureModel;
   AUnit: Integer): Boolean;
 begin

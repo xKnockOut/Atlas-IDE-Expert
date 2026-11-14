@@ -50,6 +50,8 @@ const
   cMore = ', …';
   cNameCount = '%s x %d';
 
+{ TAtlasTestLeaks }
+
 class function TAtlasTestLeaks.Shown(const ARun: TTestRunResult; AShow: Boolean): TTestRunResult;
 var
   mIndex: Integer;

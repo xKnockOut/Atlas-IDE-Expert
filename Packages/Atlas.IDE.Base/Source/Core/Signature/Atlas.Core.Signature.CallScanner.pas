@@ -133,6 +133,8 @@ type
     function Site: TAtlasCallSite;
   end;
 
+{ TCallScan }
+
 procedure TCallScan.SkipString;
 begin
   Inc(Index);
@@ -270,6 +272,8 @@ begin
     end;
   end;
 end;
+{ TAtlasCallScanner }
+
 class function TAtlasCallScanner.Scan(const AText: string; ACaret: Integer): TAtlasCallSite;
 var
   mScan: TCallScan;

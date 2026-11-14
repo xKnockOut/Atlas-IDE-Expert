@@ -259,6 +259,8 @@ type
     procedure Add(ARoot: TJsonNode; AIndex: Integer);
   end;
 
+{ TScopeFilter }
+
 procedure TScopeFilter.Report(AKeyStart: Integer; const AKeyText, APath: string);
 var
   mIssue: TConfigurationIssue;

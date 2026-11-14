@@ -814,24 +814,12 @@ const
     'EFDDBEngineException=EFDException', 'EEncodingError=Exception', 'EJSONException=Exception',
     'EComponentError=Exception');
 
+{ TExceptHandlerOrderRule }
+
 function TExceptHandlerOrderRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('except-handler-order', TRuleSeverity.Warning,
     cTexts[TExceptionsText.OrderTitle].Text);
-end;
-
-class function TExceptHandlerOrderRule.KnownParent(const AName: string): string;
-var
-  mEntry: string;
-begin
-  for mEntry in cKnownExceptionParents do
-  begin
-    if SameText(Copy(mEntry, 1, Pos('=', mEntry) - 1), AName) then
-    begin
-      Exit(Copy(mEntry, Pos('=', mEntry) + 1, MaxInt));
-    end;
-  end;
-  Result := '';
 end;
 
 procedure TExceptHandlerOrderRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1022,6 +1010,20 @@ begin
   finally
     mAncestry.Free;
   end;
+end;
+
+class function TExceptHandlerOrderRule.KnownParent(const AName: string): string;
+var
+  mEntry: string;
+begin
+  for mEntry in cKnownExceptionParents do
+  begin
+    if SameText(Copy(mEntry, 1, Pos('=', mEntry) - 1), AName) then
+    begin
+      Exit(Copy(mEntry, Pos('=', mEntry) + 1, MaxInt));
+    end;
+  end;
+  Result := '';
 end;
 
 { TReraiseExceptionObjectRule }

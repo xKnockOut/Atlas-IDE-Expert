@@ -89,95 +89,10 @@ begin
   FDebugger := ADebugger;
 end;
 
-class function TAtlasIdeTestCaseTable.Wanted: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.TestRun and TAtlasIdeSettings.Current.TestsCaseTable;
-end;
-
 function TAtlasIdeTestCaseTable.Ask(const AArgumentsJson: string; const ADone: TProc<string>): Boolean;
 begin
   Result := (TAtlasIdeHost.ActiveSession <> nil) and TAtlasIdeHost.RunServerCommandAsync(FScope,
     TAtlasFeature.Build, TAtlasTestCaseTables.cCommand, AArgumentsJson, cTimeoutMs, ADone);
-end;
-
-procedure TAtlasIdeTestCaseTable.OpenAtCursor;
-var
-  mEditors: IOTAEditorServices;
-  mView: IOTAEditView;
-begin
-  mView := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    mView := mEditors.TopView;
-  end;
-  if (mView = nil) or (mView.Buffer = nil) then
-  begin
-    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsCaseTableNone));
-    Exit;
-  end;
-  OpenAt(mView.Buffer.FileName, mView.CursorPos.Line - 1);
-end;
-
-procedure TAtlasIdeTestCaseTable.OpenAt(const AFileName: string; ALine: Integer);
-var
-  mSelf: TAtlasIdeTestCaseTable;
-begin
-  if not Wanted or (FDialog <> nil) then
-  begin
-    Exit;
-  end;
-  FFileName := AFileName;
-  FLine := ALine;
-  FUri := TLspUris.FromPath(AFileName);
-  mSelf := Self;
-  if not Ask(TAtlasTestCaseTables.RequestJson(FUri, ALine),
-    procedure(AAnswer: string)
-    var
-      mTable: TAtlasTestCaseTable;
-    begin
-      if not TAtlasTestCaseTables.Parse(AAnswer, mTable) then
-      begin
-        mSelf.FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsCaseTableNone));
-        Exit;
-      end;
-      mSelf.Show(mTable);
-    end) then
-  begin
-    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsCaseTableNoServer));
-  end;
-end;
-
-function TAtlasIdeTestCaseTable.Hooks: TAtlasTestsCaseTableDialog.THooks;
-var
-  mSelf: TAtlasIdeTestCaseTable;
-begin
-  mSelf := Self;
-  Result := Default(TAtlasTestsCaseTableDialog.THooks);
-  Result.Check :=
-    procedure(const ARows: TArray<TAtlasTestCaseRow>; AGeneration: Integer)
-    begin
-      mSelf.Check(ARows, AGeneration);
-    end;
-  Result.Apply :=
-    procedure(const ARows: TArray<TAtlasTestCaseRow>; AGeneration: Integer)
-    begin
-      mSelf.Apply(ARows, AGeneration);
-    end;
-  Result.Run :=
-    procedure(AFrom: Integer)
-    begin
-      mSelf.RunCase(AFrom, False);
-    end;
-  Result.LastRun :=
-    function(AFrom: Integer): string
-    begin
-      Result := mSelf.LastRun(AFrom);
-    end;
-  Result.Version :=
-    function: Integer
-    begin
-      Result := mSelf.FTests.Version;
-    end;
 end;
 
 procedure TAtlasIdeTestCaseTable.Show(const ATable: TAtlasTestCaseTable);
@@ -325,6 +240,91 @@ begin
   begin
     FDebugger.Run(FFileName, mSelection);
   end;
+end;
+
+function TAtlasIdeTestCaseTable.Hooks: TAtlasTestsCaseTableDialog.THooks;
+var
+  mSelf: TAtlasIdeTestCaseTable;
+begin
+  mSelf := Self;
+  Result := Default(TAtlasTestsCaseTableDialog.THooks);
+  Result.Check :=
+    procedure(const ARows: TArray<TAtlasTestCaseRow>; AGeneration: Integer)
+    begin
+      mSelf.Check(ARows, AGeneration);
+    end;
+  Result.Apply :=
+    procedure(const ARows: TArray<TAtlasTestCaseRow>; AGeneration: Integer)
+    begin
+      mSelf.Apply(ARows, AGeneration);
+    end;
+  Result.Run :=
+    procedure(AFrom: Integer)
+    begin
+      mSelf.RunCase(AFrom, False);
+    end;
+  Result.LastRun :=
+    function(AFrom: Integer): string
+    begin
+      Result := mSelf.LastRun(AFrom);
+    end;
+  Result.Version :=
+    function: Integer
+    begin
+      Result := mSelf.FTests.Version;
+    end;
+end;
+
+class function TAtlasIdeTestCaseTable.Wanted: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.TestRun and TAtlasIdeSettings.Current.TestsCaseTable;
+end;
+
+procedure TAtlasIdeTestCaseTable.OpenAt(const AFileName: string; ALine: Integer);
+var
+  mSelf: TAtlasIdeTestCaseTable;
+begin
+  if not Wanted or (FDialog <> nil) then
+  begin
+    Exit;
+  end;
+  FFileName := AFileName;
+  FLine := ALine;
+  FUri := TLspUris.FromPath(AFileName);
+  mSelf := Self;
+  if not Ask(TAtlasTestCaseTables.RequestJson(FUri, ALine),
+    procedure(AAnswer: string)
+    var
+      mTable: TAtlasTestCaseTable;
+    begin
+      if not TAtlasTestCaseTables.Parse(AAnswer, mTable) then
+      begin
+        mSelf.FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsCaseTableNone));
+        Exit;
+      end;
+      mSelf.Show(mTable);
+    end) then
+  begin
+    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsCaseTableNoServer));
+  end;
+end;
+
+procedure TAtlasIdeTestCaseTable.OpenAtCursor;
+var
+  mEditors: IOTAEditorServices;
+  mView: IOTAEditView;
+begin
+  mView := nil;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  begin
+    mView := mEditors.TopView;
+  end;
+  if (mView = nil) or (mView.Buffer = nil) then
+  begin
+    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsCaseTableNone));
+    Exit;
+  end;
+  OpenAt(mView.Buffer.FileName, mView.CursorPos.Line - 1);
 end;
 
 end.

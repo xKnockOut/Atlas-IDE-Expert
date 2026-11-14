@@ -185,50 +185,6 @@ begin
   inherited;
 end;
 
-function TAnonymousEmbedding.Run(out AAction: TCodeAction; out AReason: string): Boolean;
-begin
-  AAction := Default(TCodeAction);
-  AReason := RoutineReason;
-  if AReason = '' then
-  begin
-    AReason := HeaderReason;
-  end;
-  if AReason = '' then
-  begin
-    AReason := DeclarationReason;
-  end;
-  if AReason = '' then
-  begin
-    AReason := BodyReason;
-  end;
-  if AReason = '' then
-  begin
-    AReason := ParameterReason;
-  end;
-  if AReason = '' then
-  begin
-    FCache := TLocalsCache.Create(FInput.Text, FInput.Tree);
-    AReason := ReferenceReason;
-  end;
-  if AReason = '' then
-  begin
-    AReason := TargetReason;
-  end;
-  if AReason = '' then
-  begin
-    AReason := CallerReason;
-  end;
-  if AReason = '' then
-  begin
-    AReason := ShadowReason;
-  end;
-  Result := AReason = '';
-  if Result then
-  begin
-    AAction := Action;
-  end;
-end;
-
 /// <summary>Methode der Implementierung an der Stelle mit Kopf und Rumpf.</summary>
 function TAnonymousEmbedding.RoutineReason: string;
 var
@@ -573,6 +529,50 @@ begin
   Result.Kind := cRewriteKind;
   Result.Edits := mEdits;
   Result.Preview := cTexts[TEmbedText.IsPassedAsAnAnonymous].Fmt([FShort, FCaller.Name]) + mLineBreak + mHead;
+end;
+
+function TAnonymousEmbedding.Run(out AAction: TCodeAction; out AReason: string): Boolean;
+begin
+  AAction := Default(TCodeAction);
+  AReason := RoutineReason;
+  if AReason = '' then
+  begin
+    AReason := HeaderReason;
+  end;
+  if AReason = '' then
+  begin
+    AReason := DeclarationReason;
+  end;
+  if AReason = '' then
+  begin
+    AReason := BodyReason;
+  end;
+  if AReason = '' then
+  begin
+    AReason := ParameterReason;
+  end;
+  if AReason = '' then
+  begin
+    FCache := TLocalsCache.Create(FInput.Text, FInput.Tree);
+    AReason := ReferenceReason;
+  end;
+  if AReason = '' then
+  begin
+    AReason := TargetReason;
+  end;
+  if AReason = '' then
+  begin
+    AReason := CallerReason;
+  end;
+  if AReason = '' then
+  begin
+    AReason := ShadowReason;
+  end;
+  Result := AReason = '';
+  if Result then
+  begin
+    AAction := Action;
+  end;
 end;
 
 initialization

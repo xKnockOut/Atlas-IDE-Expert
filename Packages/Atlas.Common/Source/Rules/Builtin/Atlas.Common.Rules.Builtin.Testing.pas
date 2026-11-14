@@ -206,21 +206,6 @@ begin
     (Token(APosition).Kind = TPascalTokenKind.Identifier);
 end;
 
-function TAssertSearch.FindRoutine(const AName: string): TSyntaxNode;
-var
-  mRoutine: TSyntaxNode;
-begin
-  // Nur Routinen mit Rumpf: Die Deklaration im interface-Teil (procedure PruefePaar;) hat keinen.
-  for mRoutine in FRoutines do
-  begin
-    if SameText(mRoutine.Name, AName) and (mRoutine.FindChild(TSyntaxKind.Block) <> nil) then
-    begin
-      Exit(mRoutine);
-    end;
-  end;
-  Result := nil;
-end;
-
 function TAssertSearch.ChainStart(APosition: Integer; ABlock: TSyntaxNode): Boolean;
 begin
   Result := (Token(APosition).Offset >= ABlock.StartOffset) and (Token(APosition).Offset < ABlock.EndOffset) and
@@ -288,6 +273,21 @@ begin
   end;
 end;
 
+function TAssertSearch.FindRoutine(const AName: string): TSyntaxNode;
+var
+  mRoutine: TSyntaxNode;
+begin
+  // Nur Routinen mit Rumpf: Die Deklaration im interface-Teil (procedure PruefePaar;) hat keinen.
+  for mRoutine in FRoutines do
+  begin
+    if SameText(mRoutine.Name, AName) and (mRoutine.FindChild(TSyntaxKind.Block) <> nil) then
+    begin
+      Exit(mRoutine);
+    end;
+  end;
+  Result := nil;
+end;
+
 function TAssertSearch.Asserts(ARoutine: TSyntaxNode; const AClassName: string;
   var AVisited: TArray<TSyntaxNode>): Boolean;
 var
@@ -333,23 +333,6 @@ begin
   inherited Destroy;
 end;
 
-function TAssertsInOtherUnits.Asserts(const AName: string): Boolean;
-var
-  mKey: string;
-begin
-  if (FIndex = nil) or not Assigned(FReadFile) then
-  begin
-    Exit(False);
-  end;
-  mKey := UpperCase(AName);
-  if FKnown.TryGetValue(mKey, Result) then
-  begin
-    Exit;
-  end;
-  Result := Search(AName);
-  FKnown.Add(mKey, Result);
-end;
-
 function TAssertsInOtherUnits.Search(const AName: string): Boolean;
 var
   mLocation: TSymbolLocation;
@@ -362,13 +345,6 @@ begin
       Exit(True);
     end;
   end;
-end;
-
-function TAssertsInOtherUnits.IsCandidate(const ALocation: TSymbolLocation): Boolean;
-begin
-  Result := (ALocation.Symbol.Kind = TIndexSymbolKind.Routine) and (ALocation.Symbol.Container = '') and
-    ALocation.Symbol.InInterface and not SameText(ALocation.UnitName, FUnitName) and
-    not SameText(ALocation.FileName, FFileName);
 end;
 
 function TAssertsInOtherUnits.SearchIn(const ALocation: TSymbolLocation): Boolean;
@@ -400,6 +376,30 @@ begin
   end;
 end;
 
+function TAssertsInOtherUnits.IsCandidate(const ALocation: TSymbolLocation): Boolean;
+begin
+  Result := (ALocation.Symbol.Kind = TIndexSymbolKind.Routine) and (ALocation.Symbol.Container = '') and
+    ALocation.Symbol.InInterface and not SameText(ALocation.UnitName, FUnitName) and
+    not SameText(ALocation.FileName, FFileName);
+end;
+
+function TAssertsInOtherUnits.Asserts(const AName: string): Boolean;
+var
+  mKey: string;
+begin
+  if (FIndex = nil) or not Assigned(FReadFile) then
+  begin
+    Exit(False);
+  end;
+  mKey := UpperCase(AName);
+  if FKnown.TryGetValue(mKey, Result) then
+  begin
+    Exit;
+  end;
+  Result := Search(AName);
+  FKnown.Add(mKey, Result);
+end;
+
 { TDUnitXTestWithoutAssertRule }
 
 class function TDUnitXTestWithoutAssertRule.DefaultPatterns: TArray<string>;
@@ -410,37 +410,6 @@ end;
 function TDUnitXTestWithoutAssertRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cDUnitXTestWithoutAssertRuleId, TRuleSeverity.Hint, cTexts[TTestingText.Title].Text);
-end;
-
-class function TDUnitXTestWithoutAssertRule.IsAssertion(const AChain: string;
-  const APatterns: TArray<string>): Boolean;
-var
-  mPattern: string;
-  mParts: TArray<string>;
-  mIndex: Integer;
-begin
-  // System.Assert(Bedingung) löst EAssertionFailed aus und lässt den Test scheitern.
-  if SameText(AChain, 'Assert') or SameText(AChain, 'System.Assert') then
-  begin
-    Exit(True);
-  end;
-  for mPattern in APatterns do
-  begin
-    if MatchesGlob(mPattern, AChain) then
-    begin
-      Exit(True);
-    end;
-  end;
-  // Eigene Prüfklassen: TRuleAssert.Reports, TJsonAssert.Equal.
-  mParts := AChain.Split(['.']);
-  for mIndex := 0 to High(mParts) - 1 do
-  begin
-    if ContainsText(mParts[mIndex], 'Assert') then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 procedure TDUnitXTestWithoutAssertRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -619,6 +588,37 @@ begin
   finally
     mOtherUnits.Free;
   end;
+end;
+
+class function TDUnitXTestWithoutAssertRule.IsAssertion(const AChain: string;
+  const APatterns: TArray<string>): Boolean;
+var
+  mPattern: string;
+  mParts: TArray<string>;
+  mIndex: Integer;
+begin
+  // System.Assert(Bedingung) löst EAssertionFailed aus und lässt den Test scheitern.
+  if SameText(AChain, 'Assert') or SameText(AChain, 'System.Assert') then
+  begin
+    Exit(True);
+  end;
+  for mPattern in APatterns do
+  begin
+    if MatchesGlob(mPattern, AChain) then
+    begin
+      Exit(True);
+    end;
+  end;
+  // Eigene Prüfklassen: TRuleAssert.Reports, TJsonAssert.Equal.
+  mParts := AChain.Split(['.']);
+  for mIndex := 0 to High(mParts) - 1 do
+  begin
+    if ContainsText(mParts[mIndex], 'Assert') then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 procedure RegisterTestingRules(const ARegistry: TRuleRegistry);

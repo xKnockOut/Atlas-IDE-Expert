@@ -419,6 +419,15 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasIdeDesignerTabOrder.ApplyTheme;
+begin
+  inherited ApplyTheme;
+  if FOverlay <> nil then
+  begin
+    FOverlay.ApplyColors(TAtlasIdeStyle.Colors);
+  end;
+end;
+
 function TAtlasIdeDesignerTabOrder.PathsWanted: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DesignerTabOrderPaths <> FPathsToggled;
@@ -429,72 +438,25 @@ begin
   Result := TAtlasIdeSettings.Current.DesignerTabOrderColors <> FColorsToggled;
 end;
 
-function TAtlasIdeDesignerTabOrder.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
-var
-  mHint: string;
+procedure TAtlasIdeDesignerTabOrder.EnsureOverlay;
 begin
-  if FClicks.Active then
+  if FOverlay <> nil then
   begin
-    mHint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabModeHint);
-  end
-  else if ASettings.DesignerTabOrderClick then
-  begin
-    mHint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarTabOrderClickHint);
-  end
-  else
-  begin
-    mHint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarTabOrderHint);
-  end;
-  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.TabOrder, mHint);
-  Result.Pressed := FShown;
-  Result.Menu := True;
-end;
-
-procedure TAtlasIdeDesignerTabOrder.Toggle;
-begin
-  if FClicks.Active then
-  begin
-    FinishClicks(True);
     Exit;
   end;
-  FShown := not FShown;
-  Update;
-end;
-
-function TAtlasIdeDesignerTabOrder.AddItem(const ACaption: string; ATag: Integer;
-  AEnabled, AChecked: Boolean): TMenuItem;
-begin
-  Result := TMenuItem.Create(FMenu);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  Result.Enabled := AEnabled;
-  Result.Checked := AChecked;
-  if ATag > 0 then
-  begin
-    Result.OnClick := ItemClick;
-  end;
-  FMenu.Items.Add(Result);
-end;
-
-procedure TAtlasIdeDesignerTabOrder.Popup(const APoint: TPoint);
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-  mForm, mChange: Boolean;
-begin
-  mForm := TAtlasDesignerAccess.Current(mEditor, mRoot) and (mRoot is TWinControl);
-  mChange := mForm and TAtlasIdeSettings.Current.DesignerTabOrderClick;
-  FMenu.Items.Clear;
-  AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarTabOrderHint), cShow, mForm, FShown);
-  AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabPaths), cPaths, mForm, PathsWanted);
-  AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabColors), cColors, mForm, ColorsWanted);
-  AddItem('-', 0, True, False);
-  AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabClickMode), cClicks, mChange, FClicks.Active);
-  AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabSort), cSort, mChange and not FClicks.Active,
-    False);
-  AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabUndo), cUndo,
-    mChange and not FClicks.Active and CanUndo, False);
-  FMenu.Popup(APoint.X, APoint.Y);
+  FOverlay := TAtlasTabOrderOverlay.CreateOverlay(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
+  FOverlay.OnBadgeClick :=
+    procedure(AName: string)
+    var
+      mName: string;
+    begin
+      mName := AName;
+      TAtlasGuard.Run(TAtlasFeature.DesignerBar,
+        procedure
+        begin
+          BadgeClicked(mName);
+        end);
+    end;
 end;
 
 procedure TAtlasIdeDesignerTabOrder.ItemClick(Sender: TObject);
@@ -539,25 +501,64 @@ begin
     end);
 end;
 
-procedure TAtlasIdeDesignerTabOrder.EnsureOverlay;
+function TAtlasIdeDesignerTabOrder.AddItem(const ACaption: string; ATag: Integer;
+  AEnabled, AChecked: Boolean): TMenuItem;
 begin
-  if FOverlay <> nil then
+  Result := TMenuItem.Create(FMenu);
+  Result.Caption := ACaption;
+  Result.Tag := ATag;
+  Result.Enabled := AEnabled;
+  Result.Checked := AChecked;
+  if ATag > 0 then
+  begin
+    Result.OnClick := ItemClick;
+  end;
+  FMenu.Items.Add(Result);
+end;
+
+procedure TAtlasIdeDesignerTabOrder.Apply(ARoot: TComponent; const AList: TArray<TAtlasTabAssignment>);
+var
+  mAssignment: TAtlasTabAssignment;
+  mComponent: TComponent;
+begin
+  for mAssignment in AList do
+  begin
+    mComponent := ARoot.FindComponent(mAssignment.Name);
+    if (mComponent is TWinControl) and (TWinControl(mComponent).TabOrder <> mAssignment.Order) then
+    begin
+      TWinControl(mComponent).TabOrder := mAssignment.Order;
+    end;
+  end;
+end;
+
+procedure TAtlasIdeDesignerTabOrder.BadgeClicked(const AName: string);
+var
+  mEditor: IOTAFormEditor;
+  mRoot, mComponent: TComponent;
+  mDesigner: IDesigner;
+  mOrder: Integer;
+begin
+  if not FClicks.Active or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
   begin
     Exit;
   end;
-  FOverlay := TAtlasTabOrderOverlay.CreateOverlay(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
-  FOverlay.OnBadgeClick :=
-    procedure(AName: string)
-    var
-      mName: string;
-    begin
-      mName := AName;
-      TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-        procedure
-        begin
-          BadgeClicked(mName);
-        end);
-    end;
+  mComponent := mRoot.FindComponent(AName);
+  mDesigner := TAtlasDesignerAccess.DesignerOf(mEditor);
+  if not (mComponent is TWinControl) or (mDesigner = nil) then
+  begin
+    Exit;
+  end;
+  mOrder := FClicks.Next(AName, TAtlasDesignerAccess.ParentNameOf(TWinControl(mComponent), mRoot));
+  if mOrder < 0 then
+  begin
+    Exit;
+  end;
+  // Der Setter der VCL schiebt die übrigen Geschwister weiter: Der Zähler je Elternelement genügt.
+  TWinControl(mComponent).TabOrder := mOrder;
+  mDesigner.Modified;
+  Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerBarTabOrderSet,
+    [AName, TWinControl(mComponent).TabOrder]));
+  Update;
 end;
 
 procedure TAtlasIdeDesignerTabOrder.FormChanged(const AFileName: string);
@@ -573,6 +574,59 @@ begin
     FAutoShown.Add(AFileName);
     FShown := True;
   end;
+end;
+
+function TAtlasIdeDesignerTabOrder.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
+var
+  mHint: string;
+begin
+  if FClicks.Active then
+  begin
+    mHint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabModeHint);
+  end
+  else if ASettings.DesignerTabOrderClick then
+  begin
+    mHint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarTabOrderClickHint);
+  end
+  else
+  begin
+    mHint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarTabOrderHint);
+  end;
+  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.TabOrder, mHint);
+  Result.Pressed := FShown;
+  Result.Menu := True;
+end;
+
+procedure TAtlasIdeDesignerTabOrder.Toggle;
+begin
+  if FClicks.Active then
+  begin
+    FinishClicks(True);
+    Exit;
+  end;
+  FShown := not FShown;
+  Update;
+end;
+
+procedure TAtlasIdeDesignerTabOrder.Popup(const APoint: TPoint);
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+  mForm, mChange: Boolean;
+begin
+  mForm := TAtlasDesignerAccess.Current(mEditor, mRoot) and (mRoot is TWinControl);
+  mChange := mForm and TAtlasIdeSettings.Current.DesignerTabOrderClick;
+  FMenu.Items.Clear;
+  AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarTabOrderHint), cShow, mForm, FShown);
+  AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabPaths), cPaths, mForm, PathsWanted);
+  AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabColors), cColors, mForm, ColorsWanted);
+  AddItem('-', 0, True, False);
+  AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabClickMode), cClicks, mChange, FClicks.Active);
+  AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabSort), cSort, mChange and not FClicks.Active,
+    False);
+  AddItem(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabUndo), cUndo,
+    mChange and not FClicks.Active and CanUndo, False);
+  FMenu.Popup(APoint.X, APoint.Y);
 end;
 
 procedure TAtlasIdeDesignerTabOrder.Update;
@@ -641,21 +695,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDesignerTabOrder.Apply(ARoot: TComponent; const AList: TArray<TAtlasTabAssignment>);
-var
-  mAssignment: TAtlasTabAssignment;
-  mComponent: TComponent;
-begin
-  for mAssignment in AList do
-  begin
-    mComponent := ARoot.FindComponent(mAssignment.Name);
-    if (mComponent is TWinControl) and (TWinControl(mComponent).TabOrder <> mAssignment.Order) then
-    begin
-      TWinControl(mComponent).TabOrder := mAssignment.Order;
-    end;
-  end;
-end;
-
 procedure TAtlasIdeDesignerTabOrder.StartClicks;
 var
   mEditor: IOTAFormEditor;
@@ -712,36 +751,6 @@ begin
     end;
     Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabClickCanceled));
   end;
-  Update;
-end;
-
-procedure TAtlasIdeDesignerTabOrder.BadgeClicked(const AName: string);
-var
-  mEditor: IOTAFormEditor;
-  mRoot, mComponent: TComponent;
-  mDesigner: IDesigner;
-  mOrder: Integer;
-begin
-  if not FClicks.Active or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
-  begin
-    Exit;
-  end;
-  mComponent := mRoot.FindComponent(AName);
-  mDesigner := TAtlasDesignerAccess.DesignerOf(mEditor);
-  if not (mComponent is TWinControl) or (mDesigner = nil) then
-  begin
-    Exit;
-  end;
-  mOrder := FClicks.Next(AName, TAtlasDesignerAccess.ParentNameOf(TWinControl(mComponent), mRoot));
-  if mOrder < 0 then
-  begin
-    Exit;
-  end;
-  // Der Setter der VCL schiebt die übrigen Geschwister weiter: Der Zähler je Elternelement genügt.
-  TWinControl(mComponent).TabOrder := mOrder;
-  mDesigner.Modified;
-  Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerBarTabOrderSet,
-    [AName, TWinControl(mComponent).TabOrder]));
   Update;
 end;
 
@@ -833,15 +842,6 @@ begin
   else
   begin
     TAtlasKeyHook.Remove(FKeys);
-  end;
-end;
-
-procedure TAtlasIdeDesignerTabOrder.ApplyTheme;
-begin
-  inherited ApplyTheme;
-  if FOverlay <> nil then
-  begin
-    FOverlay.ApplyColors(TAtlasIdeStyle.Colors);
   end;
 end;
 

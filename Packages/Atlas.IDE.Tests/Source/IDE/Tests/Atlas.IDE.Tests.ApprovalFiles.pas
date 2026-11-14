@@ -38,21 +38,28 @@ uses
 
 { TAtlasIdeApprovalFiles }
 
-class function TAtlasIdeApprovalFiles.ActiveProject: string;
+class procedure TAtlasIdeApprovalFiles.SuggestIgnore(const AFolder: string);
 var
-  mServices: IOTAModuleServices;
-  mProject: IOTAProject;
+  mIgnore, mText: string;
 begin
-  Result := '';
-  mProject := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
+  mIgnore := TAtlasTestApproval.IgnoreFileFrom(AFolder);
+  if mIgnore = '' then
   begin
-    mProject := mServices.GetActiveProject;
+    Exit;
   end;
-  if mProject <> nil then
+  mText := TFile.ReadAllText(mIgnore, TEncoding.UTF8);
+  if TAtlasTestApproval.HasIgnoreEntry(mText) or (MessageDlg(TAtlasTestsStrings.Fmt(
+    TAtlasTestsTextId.TestsApprovalIgnoreAsk, [TAtlasTestApproval.cIgnorePattern, mIgnore]),
+    TMsgDlgType.mtConfirmation, [TMsgDlgBtn.mbYes, TMsgDlgBtn.mbNo], 0) <> mrYes) then
   begin
-    Result := mProject.FileName;
+    Exit;
   end;
+  if (mText <> '') and not mText.EndsWith(#10) then
+  begin
+    mText := mText + sLineBreak;
+  end;
+  // Ohne BOM: git läse sie als Teil des ersten Musters.
+  TFile.WriteAllBytes(mIgnore, TEncoding.UTF8.GetBytes(mText + TAtlasTestApproval.cIgnorePattern + sLineBreak));
 end;
 
 class procedure TAtlasIdeApprovalFiles.Clean(ATests: TAtlasIdeTests; const AProject: string);
@@ -96,28 +103,21 @@ begin
   SuggestIgnore(ExtractFileDir(mProject));
 end;
 
-class procedure TAtlasIdeApprovalFiles.SuggestIgnore(const AFolder: string);
+class function TAtlasIdeApprovalFiles.ActiveProject: string;
 var
-  mIgnore, mText: string;
+  mServices: IOTAModuleServices;
+  mProject: IOTAProject;
 begin
-  mIgnore := TAtlasTestApproval.IgnoreFileFrom(AFolder);
-  if mIgnore = '' then
+  Result := '';
+  mProject := nil;
+  if Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
   begin
-    Exit;
+    mProject := mServices.GetActiveProject;
   end;
-  mText := TFile.ReadAllText(mIgnore, TEncoding.UTF8);
-  if TAtlasTestApproval.HasIgnoreEntry(mText) or (MessageDlg(TAtlasTestsStrings.Fmt(
-    TAtlasTestsTextId.TestsApprovalIgnoreAsk, [TAtlasTestApproval.cIgnorePattern, mIgnore]),
-    TMsgDlgType.mtConfirmation, [TMsgDlgBtn.mbYes, TMsgDlgBtn.mbNo], 0) <> mrYes) then
+  if mProject <> nil then
   begin
-    Exit;
+    Result := mProject.FileName;
   end;
-  if (mText <> '') and not mText.EndsWith(#10) then
-  begin
-    mText := mText + sLineBreak;
-  end;
-  // Ohne BOM: git läse sie als Teil des ersten Musters.
-  TFile.WriteAllBytes(mIgnore, TEncoding.UTF8.GetBytes(mText + TAtlasTestApproval.cIgnorePattern + sLineBreak));
 end;
 
 end.

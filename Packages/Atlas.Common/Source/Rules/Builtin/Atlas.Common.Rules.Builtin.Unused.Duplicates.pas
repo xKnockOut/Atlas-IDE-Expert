@@ -61,6 +61,8 @@ const
   cStatementLists = [TSyntaxKind.Block, TSyntaxKind.RepeatStatement, TSyntaxKind.TryStatement, TSyntaxKind.ExceptBlock,
     TSyntaxKind.FinallyBlock, TSyntaxKind.CaseElse, TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection];
 
+{ TDuplicateAssignmentRule }
+
 function TDuplicateAssignmentRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('duplicate-assignment', TRuleSeverity.Warning,
@@ -313,6 +315,8 @@ type
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     procedure Visit(ARoot: TSyntaxNode);
   end;
+
+{ TDuplicateAssignmentCheck }
 
 constructor TDuplicateAssignmentCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin

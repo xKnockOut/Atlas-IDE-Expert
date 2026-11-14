@@ -626,6 +626,26 @@ begin
   Changed(nil);
 end;
 
+destructor TAtlasNewIssueDialog.Destroy;
+begin
+  // Antworten, die danach kommen, finden keinen Dialog mehr.
+  if FLink <> nil then
+  begin
+    FLink.Dialog := nil;
+  end;
+  FLinkRef := nil;
+  ClearFields;
+  // Die Steuerelemente gehören dem Formular; hier geht nur die Hülle.
+  FreeAndNil(FParts);
+  inherited Destroy;
+end;
+
+procedure TAtlasNewIssueDialog.DoShow;
+begin
+  inherited DoShow;
+  LoadFields;
+end;
+
 procedure TAtlasNewIssueDialog.ApplySetup;
 var
   mTracker: TAtlasNewIssueTracker;
@@ -672,18 +692,118 @@ begin
   end;
 end;
 
-destructor TAtlasNewIssueDialog.Destroy;
+procedure TAtlasNewIssueDialog.Changed(Sender: TObject);
+var
+  mTarget: TAtlasTrackerTarget;
+  mHasTarget: Boolean;
 begin
-  // Antworten, die danach kommen, finden keinen Dialog mehr.
-  if FLink <> nil then
+  mHasTarget := Target(mTarget) and mTarget.Configured;
+  FParts.Buttons.CreateButton.Enabled := not FSending and mHasTarget and (Trim(FParts.TitleEdit.Text) <> '') and
+    Assigned(FOnSend);
+  FParts.Buttons.CancelButton.Enabled := not FSending;
+  FParts.Buttons.BrowseButton.Enabled := not FSending and mHasTarget and
+    SameText(mTarget.Provider, TAtlasTrackerTarget.cGitHub) and Assigned(FSetup.OnBrowse);
+  FParts.Content.CodeMemo.Enabled := FParts.Content.IncludeCodeBox.Checked;
+  FParts.AssigneeBox.Enabled := not FParts.AssignToMeBox.Checked;
+  if not FSending and (Length(FSetup.Trackers) = 0) then
   begin
-    FLink.Dialog := nil;
+    FParts.StatusLabel.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueNoTracker);
   end;
-  FLinkRef := nil;
-  ClearFields;
-  // Die Steuerelemente gehören dem Formular; hier geht nur die Hülle.
-  FreeAndNil(FParts);
-  inherited Destroy;
+end;
+
+procedure TAtlasNewIssueDialog.TrackerChange(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  mIndex := FParts.TrackerBox.Choice;
+  if (mIndex >= 0) and (mIndex <= High(FSetup.Trackers)) then
+  begin
+    FParts.ProjectEdit.Text := FSetup.Trackers[mIndex].Target.Project;
+  end;
+  // Vorlagen und Felder des vorigen Trackers gelten nicht mehr.
+  FFields.GitHub := TAtlasNewIssueFields.Empty.GitHub;
+  ShowGitHub;
+  Changed(Sender);
+  LoadFields;
+end;
+
+procedure TAtlasNewIssueDialog.TemplateChange(Sender: TObject);
+begin
+  ApplyTemplate(FParts.TemplateBox.Choice - FParts.TemplateBox.Tag);
+end;
+
+/// <summary>Nummer des gewählten Meilensteins (Eintrag 0 = keiner); 0 ohne.</summary>
+function MilestoneOf(ABox: TAtlasNewIssueBox; const AMilestones: TArray<TAtlasGitHubMilestone>): Integer;
+begin
+  Result := 0;
+  if (ABox.Choice > 0) and (ABox.Choice - 1 <= High(AMilestones)) then
+  begin
+    Result := AMilestones[ABox.Choice - 1].Number;
+  end;
+end;
+
+procedure TAtlasNewIssueDialog.CreateClick(Sender: TObject);
+var
+  mTarget: TAtlasTrackerTarget;
+  mLinkRef: IInterface;
+  mLink: TAtlasNewIssueLink;
+  mProblem: string;
+begin
+  if FSending or not Assigned(FOnSend) or not Target(mTarget) then
+  begin
+    Exit;
+  end;
+  if Trim(FParts.TitleEdit.Text) = '' then
+  begin
+    FParts.StatusLabel.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueNoTitle);
+    Exit;
+  end;
+  // Pflichtfelder der Vorlage und Werte der Issue-Felder vor dem Senden (#2137).
+  mProblem := Problem;
+  if mProblem <> '' then
+  begin
+    FParts.StatusLabel.Caption := mProblem;
+    Exit;
+  end;
+  FSending := True;
+  FParts.StatusLabel.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueSending);
+  Changed(Sender);
+  mLinkRef := FLinkRef;
+  mLink := FLink;
+  FOnSend(mTarget, Draft,
+    procedure(const AResult: TAtlasNewIssueResult)
+    begin
+      if (mLinkRef <> nil) and (mLink.Dialog <> nil) then
+      begin
+        mLink.Dialog.ShowResult(AResult);
+      end;
+    end);
+end;
+
+procedure TAtlasNewIssueDialog.BrowseClick(Sender: TObject);
+var
+  mUrl: string;
+begin
+  mUrl := BrowserUrl;
+  if (mUrl <> '') and Assigned(FSetup.OnBrowse) then
+  begin
+    FSetup.OnBrowse(mUrl);
+  end;
+end;
+
+procedure TAtlasNewIssueDialog.CancelClick(Sender: TObject);
+begin
+  if FSending then
+  begin
+    Exit;
+  end;
+  ModalResult := mrCancel;
+end;
+
+procedure TAtlasNewIssueDialog.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+begin
+  // Während des Sendens nicht schließen: Sonst entstünde ein Issue, dessen Kennung nicht in den Code kommt.
+  CanClose := not FSending;
 end;
 
 procedure TAtlasNewIssueDialog.ClearFields;
@@ -693,10 +813,172 @@ begin
   FResult := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.NotConfigured);
 end;
 
-procedure TAtlasNewIssueDialog.DoShow;
+procedure TAtlasNewIssueDialog.ShowGitHub;
+var
+  mNames: TArray<string>;
+  mForm: TAtlasIssueForm;
+  mMilestone: TAtlasGitHubMilestone;
+  mOffset: Integer;
 begin
-  inherited DoShow;
-  LoadFields;
+  // Typ: Issue-Typen des Repositorys statt Labels.
+  if Length(FFields.GitHub.IssueTypes) > 0 then
+  begin
+    FParts.TypeBox.SetValues(FFields.GitHub.IssueTypes);
+  end;
+  mNames := [TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueNone)];
+  for mMilestone in FFields.GitHub.Milestones do
+  begin
+    mNames := mNames + [mMilestone.Title];
+  end;
+  FParts.MilestoneBox.SetValues(mNames);
+  FParts.MilestoneBox.Choice := 0;
+  if Length(FFields.GitHub.Milestones) > 0 then
+  begin
+    FParts.Resize(FParts.MilestoneRow, FParts.Scaled(cRowHeight));
+  end
+  else
+  begin
+    FParts.Resize(FParts.MilestoneRow, 0);
+  end;
+  FParts.FieldRows.ShowFields(FFields.GitHub.Fields, cLabelWidth, cRowHeight);
+  FParts.Resize(FParts.FieldRows, FParts.FieldRows.Height);
+  // Vorlagen: „Leeres Issue“ zuerst, wenn erlaubt; sonst ist die erste Vorlage gewählt.
+  mNames := nil;
+  mOffset := 0;
+  if FFields.GitHub.BlankAllowed then
+  begin
+    mNames := [TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueBlank)];
+    mOffset := 1;
+  end;
+  for mForm in FFields.GitHub.Forms do
+  begin
+    mNames := mNames + [mForm.Name];
+  end;
+  FParts.TemplateBox.SetValues(mNames);
+  FParts.TemplateBox.Choice := 0;
+  FParts.TemplateBox.Tag := mOffset;
+  if Length(FFields.GitHub.Forms) > 0 then
+  begin
+    FParts.Resize(FParts.TemplateRow, FParts.Scaled(cRowHeight));
+    ApplyTemplate(-mOffset);
+  end
+  else
+  begin
+    FParts.Resize(FParts.TemplateRow, 0);
+    ApplyTemplate(-1);
+  end;
+end;
+
+procedure TAtlasNewIssueDialog.ApplyTemplate(AIndex: Integer);
+var
+  mOld, mForm: TAtlasIssueForm;
+  mTitle: string;
+  mFacts: TAtlasIssueFormFacts;
+begin
+  CurrentForm(mOld);
+  FFormIndex := AIndex;
+  CurrentForm(mForm);
+  // Titel: Präfix der vorigen Vorlage weg, das der neuen davor (Eingetipptes bleibt).
+  mTitle := FParts.TitleEdit.Text;
+  if (Trim(mOld.TitlePrefix) <> '') and StartsText(mOld.TitlePrefix, mTitle) then
+  begin
+    mTitle := Copy(mTitle, Length(mOld.TitlePrefix) + 1, MaxInt);
+  end;
+  FParts.TitleEdit.Text := TAtlasIssueForms.TitleOf(mForm, mTitle);
+  if (mForm.IssueType <> '') and (Length(FFields.GitHub.IssueTypes) > 0) then
+  begin
+    FParts.TypeBox.Text := mForm.IssueType;
+  end;
+  // Markdown-Vorlage: ihr Text vor der Beschreibung von Atlas; Code bleibt beim Häkchen. Ohne Markdown-Vorlage
+  // vorher und nachher bleibt die Beschreibung, wie sie ist (auch Eingetipptes, wenn die Listen spät kommen).
+  if mOld.IsMarkdown or mForm.IsMarkdown then
+  begin
+    FParts.Content.DescriptionMemo.Text := StringReplace(Trim(Trim(mForm.Body + #10#10) + #10#10 + FSetup.Description),
+      #10, sLineBreak, [rfReplaceAll]);
+  end;
+  FParts.Content.ShowFormPanel((AIndex >= 0) and not mForm.IsMarkdown);
+  if (AIndex < 0) or mForm.IsMarkdown then
+  begin
+    Changed(nil);
+    Exit;
+  end;
+  mFacts := FSetup.Facts;
+  mFacts.Finding := FSetup.Description;
+  mFacts.Code := '';
+  if FParts.Content.IncludeCodeBox.Checked then
+  begin
+    mFacts.Code := FSetup.Code;
+  end;
+  FParts.Content.FormPanel.ShowForm(mForm, TAtlasIssueForms.Prefill(mForm, FSetup.Mappings, mFacts),
+    FParts.Content.FormWidth, TemplateNote(mForm));
+  Changed(nil);
+end;
+
+function TAtlasNewIssueDialog.TemplateNote(const AForm: TAtlasIssueForm): string;
+var
+  mParts: TArray<string>;
+begin
+  if AForm.Unsupported then
+  begin
+    Exit(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueUnsupported));
+  end;
+  mParts := nil;
+  if Length(AForm.Labels) > 0 then
+  begin
+    mParts := mParts + [TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueTemplateLabels,
+      [string.Join(', ', AForm.Labels)])];
+  end;
+  if Length(AForm.Assignees) > 0 then
+  begin
+    mParts := mParts + [TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueTemplateAssignees,
+      [string.Join(', ', AForm.Assignees)])];
+  end;
+  if Length(AForm.Projects) > 0 then
+  begin
+    mParts := mParts + [TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueTemplateProjects,
+      [string.Join(', ', AForm.Projects)])];
+  end;
+  Result := '';
+  if Length(mParts) > 0 then
+  begin
+    Result := TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueFromTemplate, [string.Join(' · ', mParts)]);
+  end;
+  if AForm.About <> '' then
+  begin
+    Result := Trim(AForm.About + sLineBreak + Result);
+  end;
+end;
+
+function TAtlasNewIssueDialog.Problem: string;
+var
+  mForm: TAtlasIssueForm;
+  mMissing: TArray<string>;
+  mInvalid: string;
+begin
+  Result := '';
+  if CurrentForm(mForm) and mForm.Unsupported then
+  begin
+    Exit(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueUnsupported));
+  end;
+  if CurrentForm(mForm) then
+  begin
+    mMissing := TAtlasIssueForms.Missing(mForm, FParts.Content.FormPanel.Answers);
+    if Length(mMissing) = 1 then
+    begin
+      FParts.Content.FormPanel.FocusCaption(mMissing[0]);
+      Exit(TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueRequired, [mMissing[0]]));
+    end;
+    if Length(mMissing) > 1 then
+    begin
+      FParts.Content.FormPanel.FocusCaption(mMissing[0]);
+      Exit(TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueRequiredMany, [string.Join(', ', mMissing)]));
+    end;
+  end;
+  mInvalid := FParts.FieldRows.InvalidField;
+  if mInvalid <> '' then
+  begin
+    Result := TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueFieldInvalid, [mInvalid]);
+  end;
 end;
 
 function TAtlasNewIssueDialog.Target(out ATarget: TAtlasTrackerTarget): Boolean;
@@ -728,16 +1010,6 @@ begin
   else
   begin
     AForm := TAtlasIssueForm.Empty;
-  end;
-end;
-
-/// <summary>Nummer des gewählten Meilensteins (Eintrag 0 = keiner); 0 ohne.</summary>
-function MilestoneOf(ABox: TAtlasNewIssueBox; const AMilestones: TArray<TAtlasGitHubMilestone>): Integer;
-begin
-  Result := 0;
-  if (ABox.Choice > 0) and (ABox.Choice - 1 <= High(AMilestones)) then
-  begin
-    Result := AMilestones[ABox.Choice - 1].Number;
   end;
 end;
 
@@ -824,41 +1096,6 @@ begin
   Result := TAtlasIssueForms.BrowserUrl(mLink);
 end;
 
-procedure TAtlasNewIssueDialog.Changed(Sender: TObject);
-var
-  mTarget: TAtlasTrackerTarget;
-  mHasTarget: Boolean;
-begin
-  mHasTarget := Target(mTarget) and mTarget.Configured;
-  FParts.Buttons.CreateButton.Enabled := not FSending and mHasTarget and (Trim(FParts.TitleEdit.Text) <> '') and
-    Assigned(FOnSend);
-  FParts.Buttons.CancelButton.Enabled := not FSending;
-  FParts.Buttons.BrowseButton.Enabled := not FSending and mHasTarget and
-    SameText(mTarget.Provider, TAtlasTrackerTarget.cGitHub) and Assigned(FSetup.OnBrowse);
-  FParts.Content.CodeMemo.Enabled := FParts.Content.IncludeCodeBox.Checked;
-  FParts.AssigneeBox.Enabled := not FParts.AssignToMeBox.Checked;
-  if not FSending and (Length(FSetup.Trackers) = 0) then
-  begin
-    FParts.StatusLabel.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueNoTracker);
-  end;
-end;
-
-procedure TAtlasNewIssueDialog.TrackerChange(Sender: TObject);
-var
-  mIndex: Integer;
-begin
-  mIndex := FParts.TrackerBox.Choice;
-  if (mIndex >= 0) and (mIndex <= High(FSetup.Trackers)) then
-  begin
-    FParts.ProjectEdit.Text := FSetup.Trackers[mIndex].Target.Project;
-  end;
-  // Vorlagen und Felder des vorigen Trackers gelten nicht mehr.
-  FFields.GitHub := TAtlasNewIssueFields.Empty.GitHub;
-  ShowGitHub;
-  Changed(Sender);
-  LoadFields;
-end;
-
 procedure TAtlasNewIssueDialog.LoadFields;
 var
   mTarget: TAtlasTrackerTarget;
@@ -885,6 +1122,28 @@ begin
     end);
 end;
 
+/// <summary>"Meilenstein, Typ, Projekt x" aus ADropped; '' ohne.</summary>
+function DroppedText(const ADropped: TAtlasGitHubDropped): string;
+var
+  mParts: TArray<string>;
+begin
+  mParts := nil;
+  if ADropped.Milestone then
+  begin
+    mParts := mParts + [TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueDroppedMilestone)];
+  end;
+  if ADropped.IssueType then
+  begin
+    mParts := mParts + [TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueDroppedType)];
+  end;
+  if Length(ADropped.Projects) > 0 then
+  begin
+    mParts := mParts + [TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueDroppedProjects,
+      [string.Join(', ', ADropped.Projects)])];
+  end;
+  Result := string.Join(', ', mParts);
+end;
+
 procedure TAtlasNewIssueDialog.ShowFields(const AFields: TAtlasNewIssueFields; ALoaded: Boolean);
 begin
   FFields := AFields;
@@ -906,228 +1165,6 @@ begin
   end;
 end;
 
-procedure TAtlasNewIssueDialog.ShowGitHub;
-var
-  mNames: TArray<string>;
-  mForm: TAtlasIssueForm;
-  mMilestone: TAtlasGitHubMilestone;
-  mOffset: Integer;
-begin
-  // Typ: Issue-Typen des Repositorys statt Labels.
-  if Length(FFields.GitHub.IssueTypes) > 0 then
-  begin
-    FParts.TypeBox.SetValues(FFields.GitHub.IssueTypes);
-  end;
-  mNames := [TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueNone)];
-  for mMilestone in FFields.GitHub.Milestones do
-  begin
-    mNames := mNames + [mMilestone.Title];
-  end;
-  FParts.MilestoneBox.SetValues(mNames);
-  FParts.MilestoneBox.Choice := 0;
-  if Length(FFields.GitHub.Milestones) > 0 then
-  begin
-    FParts.Resize(FParts.MilestoneRow, FParts.Scaled(cRowHeight));
-  end
-  else
-  begin
-    FParts.Resize(FParts.MilestoneRow, 0);
-  end;
-  FParts.FieldRows.ShowFields(FFields.GitHub.Fields, cLabelWidth, cRowHeight);
-  FParts.Resize(FParts.FieldRows, FParts.FieldRows.Height);
-  // Vorlagen: „Leeres Issue“ zuerst, wenn erlaubt; sonst ist die erste Vorlage gewählt.
-  mNames := nil;
-  mOffset := 0;
-  if FFields.GitHub.BlankAllowed then
-  begin
-    mNames := [TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueBlank)];
-    mOffset := 1;
-  end;
-  for mForm in FFields.GitHub.Forms do
-  begin
-    mNames := mNames + [mForm.Name];
-  end;
-  FParts.TemplateBox.SetValues(mNames);
-  FParts.TemplateBox.Choice := 0;
-  FParts.TemplateBox.Tag := mOffset;
-  if Length(FFields.GitHub.Forms) > 0 then
-  begin
-    FParts.Resize(FParts.TemplateRow, FParts.Scaled(cRowHeight));
-    ApplyTemplate(-mOffset);
-  end
-  else
-  begin
-    FParts.Resize(FParts.TemplateRow, 0);
-    ApplyTemplate(-1);
-  end;
-end;
-
-procedure TAtlasNewIssueDialog.TemplateChange(Sender: TObject);
-begin
-  ApplyTemplate(FParts.TemplateBox.Choice - FParts.TemplateBox.Tag);
-end;
-
-function TAtlasNewIssueDialog.TemplateNote(const AForm: TAtlasIssueForm): string;
-var
-  mParts: TArray<string>;
-begin
-  if AForm.Unsupported then
-  begin
-    Exit(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueUnsupported));
-  end;
-  mParts := nil;
-  if Length(AForm.Labels) > 0 then
-  begin
-    mParts := mParts + [TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueTemplateLabels,
-      [string.Join(', ', AForm.Labels)])];
-  end;
-  if Length(AForm.Assignees) > 0 then
-  begin
-    mParts := mParts + [TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueTemplateAssignees,
-      [string.Join(', ', AForm.Assignees)])];
-  end;
-  if Length(AForm.Projects) > 0 then
-  begin
-    mParts := mParts + [TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueTemplateProjects,
-      [string.Join(', ', AForm.Projects)])];
-  end;
-  Result := '';
-  if Length(mParts) > 0 then
-  begin
-    Result := TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueFromTemplate, [string.Join(' · ', mParts)]);
-  end;
-  if AForm.About <> '' then
-  begin
-    Result := Trim(AForm.About + sLineBreak + Result);
-  end;
-end;
-
-procedure TAtlasNewIssueDialog.ApplyTemplate(AIndex: Integer);
-var
-  mOld, mForm: TAtlasIssueForm;
-  mTitle: string;
-  mFacts: TAtlasIssueFormFacts;
-begin
-  CurrentForm(mOld);
-  FFormIndex := AIndex;
-  CurrentForm(mForm);
-  // Titel: Präfix der vorigen Vorlage weg, das der neuen davor (Eingetipptes bleibt).
-  mTitle := FParts.TitleEdit.Text;
-  if (Trim(mOld.TitlePrefix) <> '') and StartsText(mOld.TitlePrefix, mTitle) then
-  begin
-    mTitle := Copy(mTitle, Length(mOld.TitlePrefix) + 1, MaxInt);
-  end;
-  FParts.TitleEdit.Text := TAtlasIssueForms.TitleOf(mForm, mTitle);
-  if (mForm.IssueType <> '') and (Length(FFields.GitHub.IssueTypes) > 0) then
-  begin
-    FParts.TypeBox.Text := mForm.IssueType;
-  end;
-  // Markdown-Vorlage: ihr Text vor der Beschreibung von Atlas; Code bleibt beim Häkchen. Ohne Markdown-Vorlage
-  // vorher und nachher bleibt die Beschreibung, wie sie ist (auch Eingetipptes, wenn die Listen spät kommen).
-  if mOld.IsMarkdown or mForm.IsMarkdown then
-  begin
-    FParts.Content.DescriptionMemo.Text := StringReplace(Trim(Trim(mForm.Body + #10#10) + #10#10 + FSetup.Description),
-      #10, sLineBreak, [rfReplaceAll]);
-  end;
-  FParts.Content.ShowFormPanel((AIndex >= 0) and not mForm.IsMarkdown);
-  if (AIndex < 0) or mForm.IsMarkdown then
-  begin
-    Changed(nil);
-    Exit;
-  end;
-  mFacts := FSetup.Facts;
-  mFacts.Finding := FSetup.Description;
-  mFacts.Code := '';
-  if FParts.Content.IncludeCodeBox.Checked then
-  begin
-    mFacts.Code := FSetup.Code;
-  end;
-  FParts.Content.FormPanel.ShowForm(mForm, TAtlasIssueForms.Prefill(mForm, FSetup.Mappings, mFacts),
-    FParts.Content.FormWidth, TemplateNote(mForm));
-  Changed(nil);
-end;
-
-function TAtlasNewIssueDialog.Problem: string;
-var
-  mForm: TAtlasIssueForm;
-  mMissing: TArray<string>;
-  mInvalid: string;
-begin
-  Result := '';
-  if CurrentForm(mForm) and mForm.Unsupported then
-  begin
-    Exit(TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueUnsupported));
-  end;
-  if CurrentForm(mForm) then
-  begin
-    mMissing := TAtlasIssueForms.Missing(mForm, FParts.Content.FormPanel.Answers);
-    if Length(mMissing) = 1 then
-    begin
-      FParts.Content.FormPanel.FocusCaption(mMissing[0]);
-      Exit(TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueRequired, [mMissing[0]]));
-    end;
-    if Length(mMissing) > 1 then
-    begin
-      FParts.Content.FormPanel.FocusCaption(mMissing[0]);
-      Exit(TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueRequiredMany, [string.Join(', ', mMissing)]));
-    end;
-  end;
-  mInvalid := FParts.FieldRows.InvalidField;
-  if mInvalid <> '' then
-  begin
-    Result := TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueFieldInvalid, [mInvalid]);
-  end;
-end;
-
-procedure TAtlasNewIssueDialog.CreateClick(Sender: TObject);
-var
-  mTarget: TAtlasTrackerTarget;
-  mLinkRef: IInterface;
-  mLink: TAtlasNewIssueLink;
-  mProblem: string;
-begin
-  if FSending or not Assigned(FOnSend) or not Target(mTarget) then
-  begin
-    Exit;
-  end;
-  if Trim(FParts.TitleEdit.Text) = '' then
-  begin
-    FParts.StatusLabel.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueNoTitle);
-    Exit;
-  end;
-  // Pflichtfelder der Vorlage und Werte der Issue-Felder vor dem Senden (#2137).
-  mProblem := Problem;
-  if mProblem <> '' then
-  begin
-    FParts.StatusLabel.Caption := mProblem;
-    Exit;
-  end;
-  FSending := True;
-  FParts.StatusLabel.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueSending);
-  Changed(Sender);
-  mLinkRef := FLinkRef;
-  mLink := FLink;
-  FOnSend(mTarget, Draft,
-    procedure(const AResult: TAtlasNewIssueResult)
-    begin
-      if (mLinkRef <> nil) and (mLink.Dialog <> nil) then
-      begin
-        mLink.Dialog.ShowResult(AResult);
-      end;
-    end);
-end;
-
-procedure TAtlasNewIssueDialog.BrowseClick(Sender: TObject);
-var
-  mUrl: string;
-begin
-  mUrl := BrowserUrl;
-  if (mUrl <> '') and Assigned(FSetup.OnBrowse) then
-  begin
-    FSetup.OnBrowse(mUrl);
-  end;
-end;
-
 procedure TAtlasNewIssueDialog.ShowResult(const AResult: TAtlasNewIssueResult);
 var
   mTarget: TAtlasTrackerTarget;
@@ -1142,28 +1179,6 @@ begin
   Target(mTarget);
   FParts.StatusLabel.Caption := ResultText(AResult, mTarget.Project, mTarget.Server);
   Changed(nil);
-end;
-
-/// <summary>"Meilenstein, Typ, Projekt x" aus ADropped; '' ohne.</summary>
-function DroppedText(const ADropped: TAtlasGitHubDropped): string;
-var
-  mParts: TArray<string>;
-begin
-  mParts := nil;
-  if ADropped.Milestone then
-  begin
-    mParts := mParts + [TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueDroppedMilestone)];
-  end;
-  if ADropped.IssueType then
-  begin
-    mParts := mParts + [TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueDroppedType)];
-  end;
-  if Length(ADropped.Projects) > 0 then
-  begin
-    mParts := mParts + [TAtlasNewIssueStrings.Fmt(TAtlasNewIssueTextId.NewIssueDroppedProjects,
-      [string.Join(', ', ADropped.Projects)])];
-  end;
-  Result := string.Join(', ', mParts);
 end;
 
 class function TAtlasNewIssueDialog.ResultText(const AResult: TAtlasNewIssueResult;
@@ -1197,21 +1212,6 @@ begin
   else
     Result := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.NewIssueUnreachable);
   end;
-end;
-
-procedure TAtlasNewIssueDialog.CancelClick(Sender: TObject);
-begin
-  if FSending then
-  begin
-    Exit;
-  end;
-  ModalResult := mrCancel;
-end;
-
-procedure TAtlasNewIssueDialog.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
-begin
-  // Während des Sendens nicht schließen: Sonst entstünde ein Issue, dessen Kennung nicht in den Code kommt.
-  CanClose := not FSending;
 end;
 
 class function TAtlasNewIssueDialog.Execute(const ASetup: TAtlasNewIssueSetup;

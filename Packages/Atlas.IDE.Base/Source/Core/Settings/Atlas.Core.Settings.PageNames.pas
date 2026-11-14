@@ -77,6 +77,8 @@ begin
   Result := -1;
 end;
 
+{ TAtlasSettingsPageNames }
+
 class function TAtlasSettingsPageNames.Caption(const APage: string; AEnglish: Boolean): string;
 var
   mIndex: Integer;

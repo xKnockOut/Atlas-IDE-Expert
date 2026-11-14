@@ -220,107 +220,6 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeProjectSummaries.Current: TAtlasIdeProjectSummaries;
-begin
-  Result := FCurrent;
-end;
-
-class function TAtlasIdeProjectSummaries.Folder: string;
-begin
-  Result := TAtlasProjectSummaries.DefaultFolder;
-end;
-
-class function TAtlasIdeProjectSummaries.StampUtc: TDateTime;
-begin
-  Result := TTimeZone.Local.ToUniversalTime(Now);
-end;
-
-class function TAtlasIdeProjectSummaries.IsProjectFile(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  mExtension := LowerCase(ExtractFileExt(Trim(AFileName)));
-  Result := (mExtension = '.dproj') or (mExtension = '.dpr') or (mExtension = '.dpk') or
-    (mExtension = '.groupproj');
-end;
-
-class function TAtlasIdeProjectSummaries.ProjectFileOf(const AFileName: string): string;
-begin
-  Result := AFileName;
-  if (SameText(ExtractFileExt(Result), '.dpr') or SameText(ExtractFileExt(Result), '.dpk')) and
-    FileExists(ChangeFileExt(Result, '.dproj')) then
-  begin
-    Result := ChangeFileExt(Result, '.dproj');
-  end;
-end;
-
-class function TAtlasIdeProjectSummaries.GroupOf(const AProject: string): string;
-var
-  mModules: IOTAModuleServices;
-  mGroup: IOTAProjectGroup;
-  mIndex: Integer;
-begin
-  // Liegt das Projekt in der offenen Projektgruppe, zählt sein Build auch für die Gruppe (die Liste der IDE
-  // führt oft nur die Gruppe).
-  Result := '';
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
-  begin
-    Exit;
-  end;
-  mGroup := mModules.MainProjectGroup;
-  if (mGroup = nil) or (mGroup.FileName = '') or SameText(mGroup.FileName, AProject) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mGroup.ProjectCount - 1 do
-  begin
-    if (mGroup.Projects[mIndex] <> nil) and SameText(mGroup.Projects[mIndex].FileName, AProject) then
-    begin
-      Exit(mGroup.FileName);
-    end;
-  end;
-end;
-
-class function TAtlasIdeProjectSummaries.TrendsOn: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.WelcomePageTrends;
-end;
-
-procedure TAtlasIdeProjectSummaries.Start;
-var
-  mServices: IOTAServices;
-begin
-  FStopped := False;
-  if (FNotifier = nil) and Supports(BorlandIDEServices, IOTAServices, mServices) then
-  begin
-    FNotifier := TIdeNotifier.Create;
-    FNotifier.FOwner := Self;
-    FNotifierIndex := mServices.AddNotifier(FNotifier);
-  end;
-end;
-
-procedure TAtlasIdeProjectSummaries.Stop;
-var
-  mServices: IOTAServices;
-begin
-  if FStopped then
-  begin
-    Exit;
-  end;
-  FStopped := True;
-  if FNotifier <> nil then
-  begin
-    FNotifier.FOwner := nil;
-    // RemoveNotifier gibt die Referenz der IDE frei und damit den Beobachter (#493).
-    if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAServices, mServices) then
-    begin
-      mServices.RemoveNotifier(FNotifierIndex);
-    end;
-    FNotifier := nil;
-    FNotifierIndex := -1;
-  end;
-end;
-
 procedure TAtlasIdeProjectSummaries.Changed(const AProject: string);
 var
   mItem: IInterface;
@@ -345,92 +244,51 @@ begin
   end;
 end;
 
-function TAtlasIdeProjectSummaries.QueryingKey(const AKey: string): Boolean;
+procedure TAtlasIdeProjectSummaries.Opened(const AProject: string);
 var
-  mStarted: UInt64;
+  mStamp: TDateTime;
+  mProject: string;
 begin
-  // Eine Abfrage, die nicht binnen VcsQueryLimitMs zurückkam, gilt als beendet.
-  Result := FQuerying.TryGetValue(AKey, mStarted) and TAtlasProjectRecording.QueryRunning(mStarted, GetTickCount64);
-  if not Result then
-  begin
-    FQuerying.Remove(AKey);
-  end;
-end;
-
-function TAtlasIdeProjectSummaries.Querying(const AProject: string): Boolean;
-begin
-  Result := not FStopped and QueryingKey(TAtlasProjectSummaries.NormalizedPath(AProject));
-end;
-
-function TAtlasIdeProjectSummaries.LiveVcs(const AProject: string; out AVcs: TAtlasProjectVcs): Boolean;
-begin
-  AVcs := TAtlasProjectVcs.Empty;
-  Result := not FStopped and FLive.TryGetValue(TAtlasProjectSummaries.NormalizedPath(AProject), AVcs);
-end;
-
-function TAtlasIdeProjectSummaries.VcsOf(const AProject: string): TAtlasProjectVcs;
-var
-  mSummary: TAtlasProjectSummary;
-begin
-  Result := TAtlasProjectVcs.Empty;
-  if FStopped or (AProject = '') then
+  if FStopped then
   begin
     Exit;
   end;
-  if LiveVcs(AProject, Result) then
-  begin
-    Exit;
-  end;
-  if TAtlasProjectSummaries.Load(Folder, AProject, mSummary) then
-  begin
-    Result := mSummary.Vcs;
-  end;
-end;
-
-procedure TAtlasIdeProjectSummaries.QueryIfStale(const AProject: string);
-var
-  mLast: UInt64;
-begin
-  if FStopped or (AProject = '') then
-  begin
-    Exit;
-  end;
-  if not FFresh.TryGetValue(TAtlasProjectSummaries.NormalizedPath(AProject), mLast) or
-    (GetTickCount64 - mLast >= TAtlasProjectRecording.cVcsRefreshMs) then
-  begin
-    Query(AProject, 0);
-  end;
-end;
-
-procedure TAtlasIdeProjectSummaries.Refresh(const AProject: string);
-begin
-  if FStopped or (AProject = '') then
-  begin
-    Exit;
-  end;
-  // Auch ohne welcomePage.refreshVcs: Der Benutzer hat gerade geholt, der alte Stand wäre falsch.
-  FFresh.Remove(TAtlasProjectSummaries.NormalizedPath(AProject));
-  Query(AProject, 0);
-end;
-
-class procedure TAtlasIdeProjectSummaries.StoreVcs(const ARoot, AProject: string; const AState: TAtlasProjectVcs;
-  ABuildUtc: TDateTime);
-var
-  mState: TAtlasProjectVcs;
-  mBuildStamp: TDateTime;
-begin
-  mState := AState;
-  mBuildStamp := ABuildUtc;
-  TAtlasProjectSummaries.Update(ARoot, AProject,
+  mStamp := StampUtc;
+  mProject := ProjectFileOf(AProject);
+  TAtlasProjectSummaries.Update(Folder, mProject,
     procedure(var ASummary: TAtlasProjectSummary)
     begin
-      ASummary.Vcs := mState;
-      // Branch und Commit zum Zeitpunkt des Builds in dessen Messpunkt (#758).
-      if mBuildStamp > 0 then
-      begin
-        TAtlasProjectTrendLog.Fill(ASummary, mBuildStamp);
-      end;
+      ASummary.LastOpened := mStamp;
+      // Wieder geöffnet: erscheint wieder in der Liste.
+      ASummary.Hidden := False;
     end);
+  Changed(mProject);
+end;
+
+procedure TAtlasIdeProjectSummaries.Closing(const AProject: string);
+var
+  mStamp: TDateTime;
+  mProject: string;
+begin
+  if FStopped then
+  begin
+    Exit;
+  end;
+  mStamp := StampUtc;
+  mProject := ProjectFileOf(AProject);
+  TAtlasProjectSummaries.Update(Folder, mProject,
+    procedure(var ASummary: TAtlasProjectSummary)
+    begin
+      ASummary.LastClosed := mStamp;
+    end);
+  // Regeltreffer, solange die Probleme des Projekts noch im Speicher sind.
+  RecordRules(mProject, mStamp);
+  // Branch und Änderungen beim Schließen festhalten (im Hintergrund).
+  if TAtlasIdeSettings.Current.WelcomePageRefreshVcs then
+  begin
+    Query(mProject, 0);
+  end;
+  Changed(mProject);
 end;
 
 procedure TAtlasIdeProjectSummaries.Query(const AProject: string; ABuildUtc: TDateTime);
@@ -493,6 +351,38 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeProjectSummaries.StoreVcs(const ARoot, AProject: string; const AState: TAtlasProjectVcs;
+  ABuildUtc: TDateTime);
+var
+  mState: TAtlasProjectVcs;
+  mBuildStamp: TDateTime;
+begin
+  mState := AState;
+  mBuildStamp := ABuildUtc;
+  TAtlasProjectSummaries.Update(ARoot, AProject,
+    procedure(var ASummary: TAtlasProjectSummary)
+    begin
+      ASummary.Vcs := mState;
+      // Branch und Commit zum Zeitpunkt des Builds in dessen Messpunkt (#758).
+      if mBuildStamp > 0 then
+      begin
+        TAtlasProjectTrendLog.Fill(ASummary, mBuildStamp);
+      end;
+    end);
+end;
+
+function TAtlasIdeProjectSummaries.QueryingKey(const AKey: string): Boolean;
+var
+  mStarted: UInt64;
+begin
+  // Eine Abfrage, die nicht binnen VcsQueryLimitMs zurückkam, gilt als beendet.
+  Result := FQuerying.TryGetValue(AKey, mStarted) and TAtlasProjectRecording.QueryRunning(mStarted, GetTickCount64);
+  if not Result then
+  begin
+    FQuerying.Remove(AKey);
+  end;
+end;
+
 procedure TAtlasIdeProjectSummaries.RecordRules(const AProject: string; ANowUtc: TDateTime);
 var
   mSettings: TAtlasPluginSettings;
@@ -515,53 +405,6 @@ begin
     begin
       TAtlasProjectRecording.RecordRules(ASummary, mHits, mStamp);
     end);
-end;
-
-procedure TAtlasIdeProjectSummaries.Opened(const AProject: string);
-var
-  mStamp: TDateTime;
-  mProject: string;
-begin
-  if FStopped then
-  begin
-    Exit;
-  end;
-  mStamp := StampUtc;
-  mProject := ProjectFileOf(AProject);
-  TAtlasProjectSummaries.Update(Folder, mProject,
-    procedure(var ASummary: TAtlasProjectSummary)
-    begin
-      ASummary.LastOpened := mStamp;
-      // Wieder geöffnet: erscheint wieder in der Liste.
-      ASummary.Hidden := False;
-    end);
-  Changed(mProject);
-end;
-
-procedure TAtlasIdeProjectSummaries.Closing(const AProject: string);
-var
-  mStamp: TDateTime;
-  mProject: string;
-begin
-  if FStopped then
-  begin
-    Exit;
-  end;
-  mStamp := StampUtc;
-  mProject := ProjectFileOf(AProject);
-  TAtlasProjectSummaries.Update(Folder, mProject,
-    procedure(var ASummary: TAtlasProjectSummary)
-    begin
-      ASummary.LastClosed := mStamp;
-    end);
-  // Regeltreffer, solange die Probleme des Projekts noch im Speicher sind.
-  RecordRules(mProject, mStamp);
-  // Branch und Änderungen beim Schließen festhalten (im Hintergrund).
-  if TAtlasIdeSettings.Current.WelcomePageRefreshVcs then
-  begin
-    Query(mProject, 0);
-  end;
-  Changed(mProject);
 end;
 
 procedure TAtlasIdeProjectSummaries.RecordInto(const AProject: string;
@@ -609,6 +452,60 @@ begin
     begin
       TAtlasProjectTrendLog.Append(ASummary, mStamp, mLimit);
     end);
+end;
+
+class function TAtlasIdeProjectSummaries.TrendsOn: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.WelcomePageTrends;
+end;
+
+class function TAtlasIdeProjectSummaries.IsProjectFile(const AFileName: string): Boolean;
+var
+  mExtension: string;
+begin
+  mExtension := LowerCase(ExtractFileExt(Trim(AFileName)));
+  Result := (mExtension = '.dproj') or (mExtension = '.dpr') or (mExtension = '.dpk') or
+    (mExtension = '.groupproj');
+end;
+
+class function TAtlasIdeProjectSummaries.Current: TAtlasIdeProjectSummaries;
+begin
+  Result := FCurrent;
+end;
+
+procedure TAtlasIdeProjectSummaries.Start;
+var
+  mServices: IOTAServices;
+begin
+  FStopped := False;
+  if (FNotifier = nil) and Supports(BorlandIDEServices, IOTAServices, mServices) then
+  begin
+    FNotifier := TIdeNotifier.Create;
+    FNotifier.FOwner := Self;
+    FNotifierIndex := mServices.AddNotifier(FNotifier);
+  end;
+end;
+
+procedure TAtlasIdeProjectSummaries.Stop;
+var
+  mServices: IOTAServices;
+begin
+  if FStopped then
+  begin
+    Exit;
+  end;
+  FStopped := True;
+  if FNotifier <> nil then
+  begin
+    FNotifier.FOwner := nil;
+    // RemoveNotifier gibt die Referenz der IDE frei und damit den Beobachter (#493).
+    if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAServices, mServices) then
+    begin
+      mServices.RemoveNotifier(FNotifierIndex);
+    end;
+    FNotifier := nil;
+    FNotifierIndex := -1;
+  end;
 end;
 
 procedure TAtlasIdeProjectSummaries.Recorded(const AMessages: TArray<TAtlasCompilerMessage>;
@@ -702,33 +599,6 @@ begin
   Changed(AProject);
 end;
 
-procedure TAtlasIdeProjectSummaries.RecordTests(const AProject: string; const ATests: TAtlasProjectTests);
-var
-  mTests: TAtlasProjectTests;
-  mGroup: string;
-begin
-  if FStopped or (AProject = '') or not ATests.Known then
-  begin
-    Exit;
-  end;
-  mTests := ATests;
-  TAtlasProjectSummaries.Update(Folder, AProject,
-    procedure(var ASummary: TAtlasProjectSummary)
-    begin
-      ASummary.Tests := mTests;
-    end);
-  mGroup := GroupOf(AProject);
-  if mGroup <> '' then
-  begin
-    TAtlasProjectSummaries.Update(Folder, mGroup,
-      procedure(var ASummary: TAtlasProjectSummary)
-      begin
-        ASummary.Tests := mTests;
-      end);
-  end;
-  Changed(AProject);
-end;
-
 procedure TAtlasIdeProjectSummaries.RecordBaseline(const AProject: string; const AState: TAtlasBaselineState;
   AAtUtc: TDateTime);
 var
@@ -773,6 +643,33 @@ begin
   Changed(AProject);
 end;
 
+procedure TAtlasIdeProjectSummaries.RecordTests(const AProject: string; const ATests: TAtlasProjectTests);
+var
+  mTests: TAtlasProjectTests;
+  mGroup: string;
+begin
+  if FStopped or (AProject = '') or not ATests.Known then
+  begin
+    Exit;
+  end;
+  mTests := ATests;
+  TAtlasProjectSummaries.Update(Folder, AProject,
+    procedure(var ASummary: TAtlasProjectSummary)
+    begin
+      ASummary.Tests := mTests;
+    end);
+  mGroup := GroupOf(AProject);
+  if mGroup <> '' then
+  begin
+    TAtlasProjectSummaries.Update(Folder, mGroup,
+      procedure(var ASummary: TAtlasProjectSummary)
+      begin
+        ASummary.Tests := mTests;
+      end);
+  end;
+  Changed(AProject);
+end;
+
 procedure TAtlasIdeProjectSummaries.SetHidden(const AProject: string; AHidden: Boolean);
 var
   mHidden: Boolean;
@@ -789,6 +686,109 @@ begin
       ASummary.Hidden := mHidden;
     end);
   Changed(AProject);
+end;
+
+function TAtlasIdeProjectSummaries.VcsOf(const AProject: string): TAtlasProjectVcs;
+var
+  mSummary: TAtlasProjectSummary;
+begin
+  Result := TAtlasProjectVcs.Empty;
+  if FStopped or (AProject = '') then
+  begin
+    Exit;
+  end;
+  if LiveVcs(AProject, Result) then
+  begin
+    Exit;
+  end;
+  if TAtlasProjectSummaries.Load(Folder, AProject, mSummary) then
+  begin
+    Result := mSummary.Vcs;
+  end;
+end;
+
+function TAtlasIdeProjectSummaries.LiveVcs(const AProject: string; out AVcs: TAtlasProjectVcs): Boolean;
+begin
+  AVcs := TAtlasProjectVcs.Empty;
+  Result := not FStopped and FLive.TryGetValue(TAtlasProjectSummaries.NormalizedPath(AProject), AVcs);
+end;
+
+function TAtlasIdeProjectSummaries.Querying(const AProject: string): Boolean;
+begin
+  Result := not FStopped and QueryingKey(TAtlasProjectSummaries.NormalizedPath(AProject));
+end;
+
+procedure TAtlasIdeProjectSummaries.QueryIfStale(const AProject: string);
+var
+  mLast: UInt64;
+begin
+  if FStopped or (AProject = '') then
+  begin
+    Exit;
+  end;
+  if not FFresh.TryGetValue(TAtlasProjectSummaries.NormalizedPath(AProject), mLast) or
+    (GetTickCount64 - mLast >= TAtlasProjectRecording.cVcsRefreshMs) then
+  begin
+    Query(AProject, 0);
+  end;
+end;
+
+procedure TAtlasIdeProjectSummaries.Refresh(const AProject: string);
+begin
+  if FStopped or (AProject = '') then
+  begin
+    Exit;
+  end;
+  // Auch ohne welcomePage.refreshVcs: Der Benutzer hat gerade geholt, der alte Stand wäre falsch.
+  FFresh.Remove(TAtlasProjectSummaries.NormalizedPath(AProject));
+  Query(AProject, 0);
+end;
+
+class function TAtlasIdeProjectSummaries.Folder: string;
+begin
+  Result := TAtlasProjectSummaries.DefaultFolder;
+end;
+
+class function TAtlasIdeProjectSummaries.ProjectFileOf(const AFileName: string): string;
+begin
+  Result := AFileName;
+  if (SameText(ExtractFileExt(Result), '.dpr') or SameText(ExtractFileExt(Result), '.dpk')) and
+    FileExists(ChangeFileExt(Result, '.dproj')) then
+  begin
+    Result := ChangeFileExt(Result, '.dproj');
+  end;
+end;
+
+class function TAtlasIdeProjectSummaries.GroupOf(const AProject: string): string;
+var
+  mModules: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+  mIndex: Integer;
+begin
+  // Liegt das Projekt in der offenen Projektgruppe, zählt sein Build auch für die Gruppe (die Liste der IDE
+  // führt oft nur die Gruppe).
+  Result := '';
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
+    Exit;
+  end;
+  mGroup := mModules.MainProjectGroup;
+  if (mGroup = nil) or (mGroup.FileName = '') or SameText(mGroup.FileName, AProject) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mGroup.ProjectCount - 1 do
+  begin
+    if (mGroup.Projects[mIndex] <> nil) and SameText(mGroup.Projects[mIndex].FileName, AProject) then
+    begin
+      Exit(mGroup.FileName);
+    end;
+  end;
+end;
+
+class function TAtlasIdeProjectSummaries.StampUtc: TDateTime;
+begin
+  Result := TTimeZone.Local.ToUniversalTime(Now);
 end;
 
 end.

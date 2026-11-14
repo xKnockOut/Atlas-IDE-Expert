@@ -128,6 +128,8 @@ type
   TMemberStep = (Stop, Next, Report);
 {$SCOPEDENUMS OFF}
 
+{ TAssignToPropertyMemberRule }
+
 function TAssignToPropertyMemberRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cAssignToPropertyMemberRuleId, TRuleSeverity.Error,

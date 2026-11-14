@@ -161,6 +161,8 @@ begin
   PlaceRow(ADialog, ALayout, Result.Thing, TAtlasAnalysisTextId.RoleUnitThing, ALayout.Spacing * 2, AY);
 end;
 
+{ TAtlasRoleUnitDialog }
+
 constructor TAtlasRoleUnitDialog.CreateDialog(AOwner: TComponent; const APrefixes: TArray<string>);
 var
   mLayout: TDialogLayout;
@@ -207,33 +209,6 @@ begin
   ActiveControl := FFeature;
 end;
 
-class function TAtlasRoleUnitDialog.ProblemText(AProblem: TAtlasRoleUnitProblem): string;
-const
-  cIds: array[TAtlasRoleUnitProblem] of TAtlasAnalysisTextId = (TAtlasAnalysisTextId.RoleUnitPreview,
-    TAtlasAnalysisTextId.RoleUnitNoPrefix, TAtlasAnalysisTextId.RoleUnitBadPrefix,
-    TAtlasAnalysisTextId.RoleUnitNoFeature, TAtlasAnalysisTextId.RoleUnitBadFeature,
-    TAtlasAnalysisTextId.RoleUnitReservedFeature, TAtlasAnalysisTextId.RoleUnitBadThing,
-    TAtlasAnalysisTextId.RoleUnitReservedThing);
-begin
-  Result := '';
-  if AProblem <> TAtlasRoleUnitProblem.None then
-  begin
-    Result := TAtlasAnalysisStrings.Text(cIds[AProblem]);
-  end;
-end;
-
-class procedure TAtlasRoleUnitDialog.ImportTexts(ARole: TAtlasArchitectureRole; out AOwn, AForeign: string);
-var
-  mOwn, mForeign: TArray<TAtlasArchitectureRole>;
-  mRoot: string;
-begin
-  TAtlasRoleUnit.Imports(ARole, mOwn, mForeign);
-  mRoot := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.RoleUnitRootShort);
-  AOwn := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.RoleUnitOwn, [TAtlasRoleUnit.RoleList(mOwn, mRoot)]);
-  AForeign := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.RoleUnitForeign,
-    [TAtlasRoleUnit.RoleList(mForeign, mRoot)]);
-end;
-
 function TAtlasRoleUnitDialog.GetInput: TAtlasRoleUnitInput;
 begin
   Result.Prefix := Trim(FPrefix.Text);
@@ -253,20 +228,6 @@ begin
   FRole.ItemIndex := Ord(AValue.Role);
   FThing.Text := AValue.Thing;
   ShowState;
-end;
-
-procedure TAtlasRoleUnitDialog.ShowState;
-var
-  mInput: TAtlasRoleUnitInput;
-  mOwn, mForeign: string;
-begin
-  mInput := GetInput;
-  FPreview.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.RoleUnitPreview,
-    [TAtlasRoleUnit.UnitName(mInput)]);
-  ImportTexts(mInput.Role, mOwn, mForeign);
-  FOwn.Caption := mOwn;
-  FForeign.Caption := mForeign;
-  FMessage.Caption := '';
 end;
 
 procedure TAtlasRoleUnitDialog.InputChange(Sender: TObject);
@@ -293,6 +254,47 @@ begin
   else
     ActiveControl := FThing;
   end;
+end;
+
+procedure TAtlasRoleUnitDialog.ShowState;
+var
+  mInput: TAtlasRoleUnitInput;
+  mOwn, mForeign: string;
+begin
+  mInput := GetInput;
+  FPreview.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.RoleUnitPreview,
+    [TAtlasRoleUnit.UnitName(mInput)]);
+  ImportTexts(mInput.Role, mOwn, mForeign);
+  FOwn.Caption := mOwn;
+  FForeign.Caption := mForeign;
+  FMessage.Caption := '';
+end;
+
+class function TAtlasRoleUnitDialog.ProblemText(AProblem: TAtlasRoleUnitProblem): string;
+const
+  cIds: array[TAtlasRoleUnitProblem] of TAtlasAnalysisTextId = (TAtlasAnalysisTextId.RoleUnitPreview,
+    TAtlasAnalysisTextId.RoleUnitNoPrefix, TAtlasAnalysisTextId.RoleUnitBadPrefix,
+    TAtlasAnalysisTextId.RoleUnitNoFeature, TAtlasAnalysisTextId.RoleUnitBadFeature,
+    TAtlasAnalysisTextId.RoleUnitReservedFeature, TAtlasAnalysisTextId.RoleUnitBadThing,
+    TAtlasAnalysisTextId.RoleUnitReservedThing);
+begin
+  Result := '';
+  if AProblem <> TAtlasRoleUnitProblem.None then
+  begin
+    Result := TAtlasAnalysisStrings.Text(cIds[AProblem]);
+  end;
+end;
+
+class procedure TAtlasRoleUnitDialog.ImportTexts(ARole: TAtlasArchitectureRole; out AOwn, AForeign: string);
+var
+  mOwn, mForeign: TArray<TAtlasArchitectureRole>;
+  mRoot: string;
+begin
+  TAtlasRoleUnit.Imports(ARole, mOwn, mForeign);
+  mRoot := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.RoleUnitRootShort);
+  AOwn := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.RoleUnitOwn, [TAtlasRoleUnit.RoleList(mOwn, mRoot)]);
+  AForeign := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.RoleUnitForeign,
+    [TAtlasRoleUnit.RoleList(mForeign, mRoot)]);
 end;
 
 class function TAtlasRoleUnitDialog.Execute(const APrefixes: TArray<string>; var AInput: TAtlasRoleUnitInput): Boolean;

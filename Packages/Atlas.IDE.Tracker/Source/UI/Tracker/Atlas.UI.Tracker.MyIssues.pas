@@ -345,24 +345,6 @@ begin
   FOwner := AOwner;
 end;
 
-procedure TAtlasTrackerIssuesPainter.Reset(ACount: Integer);
-begin
-  FKeyRects := nil;
-  FPullRects := nil;
-  FStartRects := nil;
-  FReasonRects := nil;
-  FContinueRects := nil;
-  FDismissRects := nil;
-  FAssignRect := TRect.Empty;
-  FFilterRect := TRect.Empty;
-  SetLength(FKeyRects, ACount);
-  SetLength(FPullRects, ACount);
-  SetLength(FStartRects, ACount);
-  SetLength(FReasonRects, ACount);
-  SetLength(FContinueRects, ACount);
-  SetLength(FDismissRects, ACount);
-end;
-
 function TAtlasTrackerIssuesPainter.Scaled(AValue: Integer): Integer;
 begin
   Result := FOwner.ScaleValue(AValue);
@@ -386,92 +368,6 @@ begin
   mLeft := Scaled(TAtlasTrackerIssuesView.cIndent);
   Result := Rect(mLeft, ATop, Min(mLeft + ACanvas.TextWidth(AText), FOwner.PaintBox.Width - mLeft),
     ATop + ACanvas.TextHeight(AText));
-end;
-
-function TAtlasTrackerIssuesPainter.FilterTop: Integer;
-begin
-  Result := Scaled(TAtlasTrackerIssuesView.cIndent) div 2;
-  if TAtlasTrackerIssuesText.StatusText(FOwner.View) <> '' then
-  begin
-    Inc(Result, Scaled(TAtlasTrackerIssuesView.cStatusHeight));
-  end;
-end;
-
-function TAtlasTrackerIssuesPainter.ListTop: Integer;
-begin
-  Result := FilterTop;
-  if TAtlasTrackerIssuesText.FilterText(FOwner.View) <> '' then
-  begin
-    Inc(Result, Scaled(TAtlasTrackerIssuesView.cStatusHeight));
-  end;
-end;
-
-function TAtlasTrackerIssuesPainter.RowHeight(AIndex: Integer): Integer;
-var
-  mItem: TAtlasTrackerIssue;
-  mReopen: TAtlasTrackerReopen;
-  mReopened: Boolean;
-begin
-  Result := 2 * Scaled(TAtlasTrackerIssuesView.cRowPadding) + Scaled(TAtlasTrackerIssuesView.cLineHeight);
-  if (AIndex >= 0) and (AIndex <= High(FOwner.View.Items)) then
-  begin
-    mItem := FOwner.View.Items[AIndex];
-    mReopened := FOwner.View.ReopenOf(mItem.Key, mReopen);
-    if (Length(TAtlasMyIssues.Fields(mItem)) > 0) or (mItem.PullRequest.Number > 0) or
-      SameText(mItem.Key, FOwner.View.Active.Key) or mReopened then
-    begin
-      Inc(Result, Scaled(TAtlasTrackerIssuesView.cChipLineHeight));
-    end;
-    // Wieder geöffnet (#2127): Zeile mit dem Grund und Zeile mit den Knöpfen.
-    if mReopened then
-    begin
-      Inc(Result, Scaled(TAtlasTrackerIssuesView.cLineHeight) + Scaled(TAtlasTrackerIssuesView.cActionLineHeight));
-    end;
-  end;
-end;
-
-function TAtlasTrackerIssuesPainter.GroupsAbove(AIndex: Integer): Integer;
-var
-  mGroup: TAtlasIssuesGroup;
-begin
-  Result := 0;
-  for mGroup in FOwner.View.Groups do
-  begin
-    if mGroup.First <= AIndex then
-    begin
-      Inc(Result);
-    end;
-  end;
-end;
-
-function TAtlasTrackerIssuesPainter.RowTop(AIndex: Integer): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := ListTop + GroupsAbove(AIndex) * Scaled(TAtlasTrackerIssuesView.cStatusHeight);
-  for mIndex := 0 to AIndex - 1 do
-  begin
-    Inc(Result, RowHeight(mIndex));
-  end;
-end;
-
-function TAtlasTrackerIssuesPainter.FooterTop: Integer;
-begin
-  Result := RowTop(Length(FOwner.View.Items));
-end;
-
-function TAtlasTrackerIssuesPainter.SourceTop: Integer;
-begin
-  Result := FooterTop + Scaled(TAtlasTrackerIssuesView.cFooterHeight);
-end;
-
-function TAtlasTrackerIssuesPainter.Height: Integer;
-begin
-  Result := SourceTop + Scaled(TAtlasTrackerIssuesView.cIndent) div 2;
-  if TAtlasTrackerIssuesText.SourceText(FOwner.View) <> '' then
-  begin
-    Inc(Result, Scaled(TAtlasTrackerIssuesView.cFooterHeight));
-  end;
 end;
 
 function TAtlasTrackerIssuesPainter.ChipWidth(ACanvas: TCanvas; const AText: string): Integer;
@@ -748,45 +644,6 @@ begin
   ACanvas.Font.Assign(FOwner.Font);
 end;
 
-procedure TAtlasTrackerIssuesPainter.PaintGroups(ACanvas: TCanvas);
-var
-  mIndex, mTop, mHeight, mRow: Integer;
-  mGroup: TAtlasIssuesGroup;
-  mArea: TRect;
-  mNote: string;
-begin
-  mHeight := Scaled(TAtlasTrackerIssuesView.cStatusHeight);
-  for mIndex := 0 to High(FOwner.View.Groups) do
-  begin
-    mGroup := FOwner.View.Groups[mIndex];
-    // Über der ersten Zeile der Gruppe, unter den Köpfen davor.
-    mTop := ListTop + mIndex * mHeight;
-    for mRow := 0 to mGroup.First - 1 do
-    begin
-      Inc(mTop, RowHeight(mRow));
-    end;
-    mArea := TextArea(mTop, mHeight);
-    ACanvas.Font.Assign(FOwner.Font);
-    ACanvas.Font.Size := FOwner.Font.Size - 1;
-    ACanvas.Font.Style := [fsBold];
-    ACanvas.Font.Color := Color(clGrayText);
-    ACanvas.TextRect(mArea, mArea.Left, mTop + Scaled(cGroupTextOffset),
-      TAtlasTrackerIssuesText.GroupCaption(mGroup));
-    mNote := TAtlasTrackerIssuesText.GroupNote(mGroup);
-    ACanvas.Font.Style := [];
-    if mNote <> '' then
-    begin
-      if mGroup.Status in [TAtlasIssuesStatus.Failed, TAtlasIssuesStatus.Stale, TAtlasIssuesStatus.NotConfigured] then
-      begin
-        ACanvas.Font.Color := TAtlasTrackerIssuesText.cYellowColor;
-      end;
-      ACanvas.TextOut(Max(mArea.Left, mArea.Right - ACanvas.TextWidth(mNote)), mTop + Scaled(cGroupTextOffset),
-        mNote);
-    end;
-  end;
-  ACanvas.Font.Assign(FOwner.Font);
-end;
-
 procedure TAtlasTrackerIssuesPainter.PaintFilter(ACanvas: TCanvas);
 var
   mText: string;
@@ -859,23 +716,56 @@ begin
   ACanvas.Font.Assign(FOwner.Font);
 end;
 
-procedure TAtlasTrackerIssuesPainter.Paint(ACanvas: TCanvas);
+procedure TAtlasTrackerIssuesPainter.PaintGroups(ACanvas: TCanvas);
 var
-  mIndex: Integer;
+  mIndex, mTop, mHeight, mRow: Integer;
+  mGroup: TAtlasIssuesGroup;
+  mArea: TRect;
+  mNote: string;
 begin
-  ACanvas.Brush.Style := bsClear;
-  ACanvas.Font.Assign(FOwner.Font);
-  PaintStatus(ACanvas);
-  PaintFilter(ACanvas);
-  if Length(FStartRects) = Length(FOwner.View.Items) then
+  mHeight := Scaled(TAtlasTrackerIssuesView.cStatusHeight);
+  for mIndex := 0 to High(FOwner.View.Groups) do
   begin
-    for mIndex := 0 to High(FOwner.View.Items) do
+    mGroup := FOwner.View.Groups[mIndex];
+    // Über der ersten Zeile der Gruppe, unter den Köpfen davor.
+    mTop := ListTop + mIndex * mHeight;
+    for mRow := 0 to mGroup.First - 1 do
     begin
-      PaintRow(ACanvas, mIndex);
+      Inc(mTop, RowHeight(mRow));
     end;
-    PaintGroups(ACanvas);
-    PaintSource(ACanvas);
-    PaintFooter(ACanvas);
+    mArea := TextArea(mTop, mHeight);
+    ACanvas.Font.Assign(FOwner.Font);
+    ACanvas.Font.Size := FOwner.Font.Size - 1;
+    ACanvas.Font.Style := [fsBold];
+    ACanvas.Font.Color := Color(clGrayText);
+    ACanvas.TextRect(mArea, mArea.Left, mTop + Scaled(cGroupTextOffset),
+      TAtlasTrackerIssuesText.GroupCaption(mGroup));
+    mNote := TAtlasTrackerIssuesText.GroupNote(mGroup);
+    ACanvas.Font.Style := [];
+    if mNote <> '' then
+    begin
+      if mGroup.Status in [TAtlasIssuesStatus.Failed, TAtlasIssuesStatus.Stale, TAtlasIssuesStatus.NotConfigured] then
+      begin
+        ACanvas.Font.Color := TAtlasTrackerIssuesText.cYellowColor;
+      end;
+      ACanvas.TextOut(Max(mArea.Left, mArea.Right - ACanvas.TextWidth(mNote)), mTop + Scaled(cGroupTextOffset),
+        mNote);
+    end;
+  end;
+  ACanvas.Font.Assign(FOwner.Font);
+end;
+
+function TAtlasTrackerIssuesPainter.GroupsAbove(AIndex: Integer): Integer;
+var
+  mGroup: TAtlasIssuesGroup;
+begin
+  Result := 0;
+  for mGroup in FOwner.View.Groups do
+  begin
+    if mGroup.First <= AIndex then
+    begin
+      Inc(Result);
+    end;
   end;
 end;
 
@@ -911,6 +801,44 @@ begin
   end;
 end;
 
+procedure TAtlasTrackerIssuesPainter.Reset(ACount: Integer);
+begin
+  FKeyRects := nil;
+  FPullRects := nil;
+  FStartRects := nil;
+  FReasonRects := nil;
+  FContinueRects := nil;
+  FDismissRects := nil;
+  FAssignRect := TRect.Empty;
+  FFilterRect := TRect.Empty;
+  SetLength(FKeyRects, ACount);
+  SetLength(FPullRects, ACount);
+  SetLength(FStartRects, ACount);
+  SetLength(FReasonRects, ACount);
+  SetLength(FContinueRects, ACount);
+  SetLength(FDismissRects, ACount);
+end;
+
+procedure TAtlasTrackerIssuesPainter.Paint(ACanvas: TCanvas);
+var
+  mIndex: Integer;
+begin
+  ACanvas.Brush.Style := bsClear;
+  ACanvas.Font.Assign(FOwner.Font);
+  PaintStatus(ACanvas);
+  PaintFilter(ACanvas);
+  if Length(FStartRects) = Length(FOwner.View.Items) then
+  begin
+    for mIndex := 0 to High(FOwner.View.Items) do
+    begin
+      PaintRow(ACanvas, mIndex);
+    end;
+    PaintGroups(ACanvas);
+    PaintSource(ACanvas);
+    PaintFooter(ACanvas);
+  end;
+end;
+
 function TAtlasTrackerIssuesPainter.HitTest(AX, AY: Integer): TAtlasIssuesHit;
 var
   mIndex, mTop: Integer;
@@ -937,6 +865,78 @@ begin
         Result := HitRow(mIndex, mPoint);
       end;
     end;
+  end;
+end;
+
+function TAtlasTrackerIssuesPainter.FilterTop: Integer;
+begin
+  Result := Scaled(TAtlasTrackerIssuesView.cIndent) div 2;
+  if TAtlasTrackerIssuesText.StatusText(FOwner.View) <> '' then
+  begin
+    Inc(Result, Scaled(TAtlasTrackerIssuesView.cStatusHeight));
+  end;
+end;
+
+function TAtlasTrackerIssuesPainter.ListTop: Integer;
+begin
+  Result := FilterTop;
+  if TAtlasTrackerIssuesText.FilterText(FOwner.View) <> '' then
+  begin
+    Inc(Result, Scaled(TAtlasTrackerIssuesView.cStatusHeight));
+  end;
+end;
+
+function TAtlasTrackerIssuesPainter.RowTop(AIndex: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := ListTop + GroupsAbove(AIndex) * Scaled(TAtlasTrackerIssuesView.cStatusHeight);
+  for mIndex := 0 to AIndex - 1 do
+  begin
+    Inc(Result, RowHeight(mIndex));
+  end;
+end;
+
+function TAtlasTrackerIssuesPainter.RowHeight(AIndex: Integer): Integer;
+var
+  mItem: TAtlasTrackerIssue;
+  mReopen: TAtlasTrackerReopen;
+  mReopened: Boolean;
+begin
+  Result := 2 * Scaled(TAtlasTrackerIssuesView.cRowPadding) + Scaled(TAtlasTrackerIssuesView.cLineHeight);
+  if (AIndex >= 0) and (AIndex <= High(FOwner.View.Items)) then
+  begin
+    mItem := FOwner.View.Items[AIndex];
+    mReopened := FOwner.View.ReopenOf(mItem.Key, mReopen);
+    if (Length(TAtlasMyIssues.Fields(mItem)) > 0) or (mItem.PullRequest.Number > 0) or
+      SameText(mItem.Key, FOwner.View.Active.Key) or mReopened then
+    begin
+      Inc(Result, Scaled(TAtlasTrackerIssuesView.cChipLineHeight));
+    end;
+    // Wieder geöffnet (#2127): Zeile mit dem Grund und Zeile mit den Knöpfen.
+    if mReopened then
+    begin
+      Inc(Result, Scaled(TAtlasTrackerIssuesView.cLineHeight) + Scaled(TAtlasTrackerIssuesView.cActionLineHeight));
+    end;
+  end;
+end;
+
+function TAtlasTrackerIssuesPainter.FooterTop: Integer;
+begin
+  Result := RowTop(Length(FOwner.View.Items));
+end;
+
+function TAtlasTrackerIssuesPainter.SourceTop: Integer;
+begin
+  Result := FooterTop + Scaled(TAtlasTrackerIssuesView.cFooterHeight);
+end;
+
+function TAtlasTrackerIssuesPainter.Height: Integer;
+begin
+  Result := SourceTop + Scaled(TAtlasTrackerIssuesView.cIndent) div 2;
+  if TAtlasTrackerIssuesText.SourceText(FOwner.View) <> '' then
+  begin
+    Inc(Result, Scaled(TAtlasTrackerIssuesView.cFooterHeight));
   end;
 end;
 
@@ -976,6 +976,32 @@ begin
   FMenu.Items.Add(Result);
 end;
 
+function TAtlasTrackerIssuesMenu.MenuIssue(out AIssue: TAtlasTrackerIssue): Boolean;
+begin
+  AIssue := TAtlasTrackerIssue.Empty;
+  Result := (FOwner.Source <> nil) and (FMenuRow >= 0) and (FMenuRow <= High(FOwner.View.Items));
+  if Result then
+  begin
+    AIssue := FOwner.View.Items[FMenuRow];
+  end;
+end;
+
+procedure TAtlasTrackerIssuesMenu.StartFromMenu(AMode: TAtlasIssueStart);
+var
+  mItem: TAtlasTrackerIssue;
+  mMode: TAtlasIssueStart;
+begin
+  if FOwner.CanStart and MenuIssue(mItem) then
+  begin
+    mMode := AMode;
+    FOwner.SendIssue(FMenuRow,
+      procedure(const ASource: IAtlasIssuesSource; const AIssue: TAtlasTrackerIssue)
+      begin
+        ASource.Start(AIssue, mMode);
+      end);
+  end;
+end;
+
 procedure TAtlasTrackerIssuesMenu.MenuPopup(Sender: TObject);
 var
   mPosition: TPoint;
@@ -1003,32 +1029,6 @@ begin
   FQueryItem.Enabled := not mView.Querying;
   FCredentialsItem.Visible := mConfigured and (FOwner.Source <> nil) and FOwner.Source.CanEnterCredentials;
   FEndItem.Visible := mView.Active.Active;
-end;
-
-function TAtlasTrackerIssuesMenu.MenuIssue(out AIssue: TAtlasTrackerIssue): Boolean;
-begin
-  AIssue := TAtlasTrackerIssue.Empty;
-  Result := (FOwner.Source <> nil) and (FMenuRow >= 0) and (FMenuRow <= High(FOwner.View.Items));
-  if Result then
-  begin
-    AIssue := FOwner.View.Items[FMenuRow];
-  end;
-end;
-
-procedure TAtlasTrackerIssuesMenu.StartFromMenu(AMode: TAtlasIssueStart);
-var
-  mItem: TAtlasTrackerIssue;
-  mMode: TAtlasIssueStart;
-begin
-  if FOwner.CanStart and MenuIssue(mItem) then
-  begin
-    mMode := AMode;
-    FOwner.SendIssue(FMenuRow,
-      procedure(const ASource: IAtlasIssuesSource; const AIssue: TAtlasTrackerIssue)
-      begin
-        ASource.Start(AIssue, mMode);
-      end);
-  end;
 end;
 
 procedure TAtlasTrackerIssuesMenu.PreviewClick(Sender: TObject);
@@ -1150,6 +1150,41 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasTrackerIssuesQueries.LabelClick(Sender: TObject);
+var
+  mPoint: TPoint;
+begin
+  Fill;
+  mPoint := FLabel.ClientToScreen(Point(0, FLabel.Height));
+  FMenu.Popup(mPoint.X, mPoint.Y);
+end;
+
+procedure TAtlasTrackerIssuesQueries.ItemClick(Sender: TObject);
+var
+  mName: string;
+  mIndex: Integer;
+begin
+  mIndex := TMenuItem(Sender).Tag;
+  if (mIndex >= 0) and (mIndex <= High(FOwner.View.Queries)) then
+  begin
+    mName := FOwner.View.Queries[mIndex].Name;
+    FOwner.Send(
+      procedure(const ASource: IAtlasIssuesSource)
+      begin
+        ASource.SelectQuery(mName);
+      end);
+  end;
+end;
+
+procedure TAtlasTrackerIssuesQueries.EditClick(Sender: TObject);
+begin
+  FOwner.Send(
+    procedure(const ASource: IAtlasIssuesSource)
+    begin
+      ASource.EditQueries;
+    end);
+end;
+
 procedure TAtlasTrackerIssuesQueries.Update;
 var
   mView: TAtlasIssuesView;
@@ -1204,41 +1239,6 @@ begin
   FMenu.Items.Add(mItem);
 end;
 
-procedure TAtlasTrackerIssuesQueries.LabelClick(Sender: TObject);
-var
-  mPoint: TPoint;
-begin
-  Fill;
-  mPoint := FLabel.ClientToScreen(Point(0, FLabel.Height));
-  FMenu.Popup(mPoint.X, mPoint.Y);
-end;
-
-procedure TAtlasTrackerIssuesQueries.ItemClick(Sender: TObject);
-var
-  mName: string;
-  mIndex: Integer;
-begin
-  mIndex := TMenuItem(Sender).Tag;
-  if (mIndex >= 0) and (mIndex <= High(FOwner.View.Queries)) then
-  begin
-    mName := FOwner.View.Queries[mIndex].Name;
-    FOwner.Send(
-      procedure(const ASource: IAtlasIssuesSource)
-      begin
-        ASource.SelectQuery(mName);
-      end);
-  end;
-end;
-
-procedure TAtlasTrackerIssuesQueries.EditClick(Sender: TObject);
-begin
-  FOwner.Send(
-    procedure(const ASource: IAtlasIssuesSource)
-    begin
-      ASource.EditQueries;
-    end);
-end;
-
 { TAtlasTrackerIssuesView }
 
 constructor TAtlasTrackerIssuesView.Create(AOwner: TComponent);
@@ -1278,6 +1278,15 @@ begin
   end;
 end;
 
+function TAtlasTrackerIssuesView.BodyHeight: Integer;
+begin
+  Result := FPainter.Height;
+  if FQueries.Bar.Visible then
+  begin
+    Inc(Result, FQueries.Bar.Height);
+  end;
+end;
+
 procedure TAtlasTrackerIssuesView.UpdateContent;
 var
   mOldHeight: Integer;
@@ -1303,95 +1312,43 @@ begin
   end;
 end;
 
-function TAtlasTrackerIssuesView.CanStart: Boolean;
-begin
-  Result := (FSource <> nil) and not FView.Starting;
-end;
-
-function TAtlasTrackerIssuesView.BodyHeight: Integer;
-begin
-  Result := FPainter.Height;
-  if FQueries.Bar.Visible then
-  begin
-    Inc(Result, FQueries.Bar.Height);
-  end;
-end;
-
 procedure TAtlasTrackerIssuesView.BoxPaint(Sender: TObject);
 begin
   FPainter.Paint(FBox.Canvas);
 end;
 
-function TAtlasTrackerIssuesView.HitTest(AX, AY: Integer): TAtlasIssuesHit;
-begin
-  Result := FPainter.HitTest(AX, AY);
-end;
-
-class procedure TAtlasTrackerIssuesView.Post(const AAction: TThreadProcedure);
-begin
-  // Die Quelle füllt den Bereich danach neu: nicht im eigenen Maus- bzw. Menüereignis.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.Tracker, AAction);
-end;
-
-procedure TAtlasTrackerIssuesView.Send(const AAction: TAtlasIssuesAction);
+procedure TAtlasTrackerIssuesView.BoxMouseMove(Sender: TObject; Shift: TShiftState; AX, AY: Integer);
 var
-  mSource: IAtlasIssuesSource;
-  mAction: TAtlasIssuesAction;
+  mHit: TAtlasIssuesHit;
+  mKey: string;
 begin
-  mSource := FSource;
-  mAction := AAction;
-  if mSource <> nil then
+  mHit := HitTest(AX, AY);
+  if (mHit.Kind in [TAtlasIssuesHitKind.Key, TAtlasIssuesHitKind.PullRequest, TAtlasIssuesHitKind.Start,
+    TAtlasIssuesHitKind.Assign, TAtlasIssuesHitKind.Filter, TAtlasIssuesHitKind.Continue,
+    TAtlasIssuesHitKind.Dismiss, TAtlasIssuesHitKind.Reason]) or
+    ((mHit.Kind = TAtlasIssuesHitKind.Row) and FView.Options.Preview) then
   begin
-    Post(
-      procedure
-      begin
-        mAction(mSource);
-      end);
-  end;
-end;
-
-procedure TAtlasTrackerIssuesView.SendIssue(AIndex: Integer; const AAction: TAtlasIssuesItemAction);
-var
-  mItem: TAtlasTrackerIssue;
-  mAction: TAtlasIssuesItemAction;
-begin
-  if (AIndex >= 0) and (AIndex <= High(FView.Items)) then
-  begin
-    mItem := FView.Items[AIndex];
-    mAction := AAction;
-    Send(
-      procedure(const ASource: IAtlasIssuesSource)
-      begin
-        mAction(ASource, mItem);
-      end);
-  end;
-end;
-
-procedure TAtlasTrackerIssuesView.ClickAt(const AHit: TAtlasIssuesHit);
-begin
-  ClickAt(AHit, False);
-end;
-
-procedure TAtlasTrackerIssuesView.ClickAt(const AHit: TAtlasIssuesHit; ABrowse: Boolean);
-begin
-  case AHit.Kind of
-    TAtlasIssuesHitKind.Assign:
-      Send(
-        procedure(const ASource: IAtlasIssuesSource)
-        begin
-          ASource.AssignProject;
-        end);
-    TAtlasIssuesHitKind.Filter:
-      Send(
-        procedure(const ASource: IAtlasIssuesSource)
-        begin
-          ASource.ClearFilter;
-        end);
+    FBox.Cursor := crHandPoint;
+  end
   else
-    if (FSource <> nil) and (AHit.Index >= 0) and (AHit.Index <= High(FView.Items)) then
-    begin
-      ClickIssue(AHit, ABrowse);
-    end;
+  begin
+    FBox.Cursor := crDefault;
+  end;
+  mKey := Format(cHintKeyFormat, [Ord(mHit.Kind), mHit.Index], TFormatSettings.Invariant);
+  if mKey <> FHintKey then
+  begin
+    FHintKey := mKey;
+    FBox.Hint := TAtlasTrackerIssuesText.HintAt(FView, mHit);
+    Application.CancelHint;
+  end;
+end;
+
+procedure TAtlasTrackerIssuesView.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; AX,
+  AY: Integer);
+begin
+  if Button = mbLeft then
+  begin
+    ClickAt(HitTest(AX, AY), ssCtrl in Shift);
   end;
 end;
 
@@ -1477,38 +1434,81 @@ begin
     end);
 end;
 
-procedure TAtlasTrackerIssuesView.BoxMouseMove(Sender: TObject; Shift: TShiftState; AX, AY: Integer);
-var
-  mHit: TAtlasIssuesHit;
-  mKey: string;
+class procedure TAtlasTrackerIssuesView.Post(const AAction: TThreadProcedure);
 begin
-  mHit := HitTest(AX, AY);
-  if (mHit.Kind in [TAtlasIssuesHitKind.Key, TAtlasIssuesHitKind.PullRequest, TAtlasIssuesHitKind.Start,
-    TAtlasIssuesHitKind.Assign, TAtlasIssuesHitKind.Filter, TAtlasIssuesHitKind.Continue,
-    TAtlasIssuesHitKind.Dismiss, TAtlasIssuesHitKind.Reason]) or
-    ((mHit.Kind = TAtlasIssuesHitKind.Row) and FView.Options.Preview) then
-  begin
-    FBox.Cursor := crHandPoint;
-  end
+  // Die Quelle füllt den Bereich danach neu: nicht im eigenen Maus- bzw. Menüereignis.
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Tracker, AAction);
+end;
+
+function TAtlasTrackerIssuesView.HitTest(AX, AY: Integer): TAtlasIssuesHit;
+begin
+  Result := FPainter.HitTest(AX, AY);
+end;
+
+procedure TAtlasTrackerIssuesView.ClickAt(const AHit: TAtlasIssuesHit);
+begin
+  ClickAt(AHit, False);
+end;
+
+procedure TAtlasTrackerIssuesView.ClickAt(const AHit: TAtlasIssuesHit; ABrowse: Boolean);
+begin
+  case AHit.Kind of
+    TAtlasIssuesHitKind.Assign:
+      Send(
+        procedure(const ASource: IAtlasIssuesSource)
+        begin
+          ASource.AssignProject;
+        end);
+    TAtlasIssuesHitKind.Filter:
+      Send(
+        procedure(const ASource: IAtlasIssuesSource)
+        begin
+          ASource.ClearFilter;
+        end);
   else
-  begin
-    FBox.Cursor := crDefault;
-  end;
-  mKey := Format(cHintKeyFormat, [Ord(mHit.Kind), mHit.Index], TFormatSettings.Invariant);
-  if mKey <> FHintKey then
-  begin
-    FHintKey := mKey;
-    FBox.Hint := TAtlasTrackerIssuesText.HintAt(FView, mHit);
-    Application.CancelHint;
+    if (FSource <> nil) and (AHit.Index >= 0) and (AHit.Index <= High(FView.Items)) then
+    begin
+      ClickIssue(AHit, ABrowse);
+    end;
   end;
 end;
 
-procedure TAtlasTrackerIssuesView.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; AX,
-  AY: Integer);
+function TAtlasTrackerIssuesView.CanStart: Boolean;
 begin
-  if Button = mbLeft then
+  Result := (FSource <> nil) and not FView.Starting;
+end;
+
+procedure TAtlasTrackerIssuesView.Send(const AAction: TAtlasIssuesAction);
+var
+  mSource: IAtlasIssuesSource;
+  mAction: TAtlasIssuesAction;
+begin
+  mSource := FSource;
+  mAction := AAction;
+  if mSource <> nil then
   begin
-    ClickAt(HitTest(AX, AY), ssCtrl in Shift);
+    Post(
+      procedure
+      begin
+        mAction(mSource);
+      end);
+  end;
+end;
+
+procedure TAtlasTrackerIssuesView.SendIssue(AIndex: Integer; const AAction: TAtlasIssuesItemAction);
+var
+  mItem: TAtlasTrackerIssue;
+  mAction: TAtlasIssuesItemAction;
+begin
+  if (AIndex >= 0) and (AIndex <= High(FView.Items)) then
+  begin
+    mItem := FView.Items[AIndex];
+    mAction := AAction;
+    Send(
+      procedure(const ASource: IAtlasIssuesSource)
+      begin
+        mAction(ASource, mItem);
+      end);
   end;
 end;
 

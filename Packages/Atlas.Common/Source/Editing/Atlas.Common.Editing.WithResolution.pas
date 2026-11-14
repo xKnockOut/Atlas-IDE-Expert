@@ -106,6 +106,8 @@ begin
   end;
 end;
 
+{ TWithResolution }
+
 class function TWithResolution.WithAt(ATree: TSyntaxTree; const APosition: TTextPosition): TSyntaxNode;
 var
   mNode: TSyntaxNode;
@@ -297,6 +299,8 @@ type
     function Run(out AResolved: TWithResolved): Boolean;
   end;
 
+{ TWithResolver }
+
 constructor TWithResolver.Create(const AText: string; ATree: TSyntaxTree; AWith: TSyntaxNode;
   const ALookup: TWithOwnerLookup; const AOptions: TExtractOptions);
 begin
@@ -377,6 +381,28 @@ begin
   end;
 end;
 
+function TWithResolver.PrefixElement(AIndex: Integer): Boolean;
+var
+  mProbed: TProbedType;
+begin
+  Result := True;
+  if IsSimple(FItems[AIndex]) then
+  begin
+    FPrefixes[AIndex] := TRoutineBody.TextOf(FText, FItems[AIndex]);
+    Exit;
+  end;
+  mProbed := TExtractRefactoring.TypeOfExpression(FText, FTree, FItems[AIndex], FWith, FOptions);
+  if not mProbed.IsReference then
+  begin
+    Exit(Fail(cTexts[TWithResolutionText.TypeOfIsNotA].Fmt([TRoutineBody.TextOf(FText, FItems[AIndex])])));
+  end;
+  if not FInList then
+  begin
+    Exit(Fail(cTexts[TWithResolutionText.WithIsNotInA].Text));
+  end;
+  DeclareVariable(AIndex, mProbed);
+end;
+
 procedure TWithResolver.DeclareVariable(AIndex: Integer; const AProbed: TProbedType);
 var
   mName: string;
@@ -411,28 +437,6 @@ begin
   begin
     FEdits := FEdits + [mUsesEdit];
   end;
-end;
-
-function TWithResolver.PrefixElement(AIndex: Integer): Boolean;
-var
-  mProbed: TProbedType;
-begin
-  Result := True;
-  if IsSimple(FItems[AIndex]) then
-  begin
-    FPrefixes[AIndex] := TRoutineBody.TextOf(FText, FItems[AIndex]);
-    Exit;
-  end;
-  mProbed := TExtractRefactoring.TypeOfExpression(FText, FTree, FItems[AIndex], FWith, FOptions);
-  if not mProbed.IsReference then
-  begin
-    Exit(Fail(cTexts[TWithResolutionText.TypeOfIsNotA].Fmt([TRoutineBody.TextOf(FText, FItems[AIndex])])));
-  end;
-  if not FInList then
-  begin
-    Exit(Fail(cTexts[TWithResolutionText.WithIsNotInA].Text));
-  end;
-  DeclareVariable(AIndex, mProbed);
 end;
 
 function TWithResolver.QualifiedBody: string;
@@ -568,15 +572,6 @@ begin
 end;
 
 class function TWithResolution.Resolve(const AText: string; ATree: TSyntaxTree; AWith: TSyntaxNode;
-  const ALookup: TWithOwnerLookup; const AOptions: TExtractOptions; out AAction: TCodeAction): Boolean;
-var
-  mResolved: TWithResolved;
-begin
-  Result := Resolve(AText, ATree, AWith, ALookup, AOptions, mResolved);
-  AAction := mResolved.Action;
-end;
-
-class function TWithResolution.Resolve(const AText: string; ATree: TSyntaxTree; AWith: TSyntaxNode;
   const ALookup: TWithOwnerLookup; const AOptions: TExtractOptions; out AResolved: TWithResolved): Boolean;
 var
   mResolver: TWithResolver;
@@ -587,6 +582,15 @@ begin
   finally
     mResolver.Free;
   end;
+end;
+
+class function TWithResolution.Resolve(const AText: string; ATree: TSyntaxTree; AWith: TSyntaxNode;
+  const ALookup: TWithOwnerLookup; const AOptions: TExtractOptions; out AAction: TCodeAction): Boolean;
+var
+  mResolved: TWithResolved;
+begin
+  Result := Resolve(AText, ATree, AWith, ALookup, AOptions, mResolved);
+  AAction := mResolved.Action;
 end;
 
 initialization

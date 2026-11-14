@@ -108,16 +108,6 @@ uses
 
 { TFormModel }
 
-constructor TFormModel.Create(const AFormText, AUnitText: string);
-begin
-  Create(AFormText, AUnitText, '');
-end;
-
-constructor TFormModel.Create(const AFormText: string);
-begin
-  Create(AFormText, '', '');
-end;
-
 constructor TFormModel.Create(const AFormText, AUnitText, AUnitFile: string);
 var
   mSymbol: TIndexSymbol;
@@ -145,16 +135,20 @@ begin
   end;
 end;
 
+constructor TFormModel.Create(const AFormText, AUnitText: string);
+begin
+  Create(AFormText, AUnitText, '');
+end;
+
+constructor TFormModel.Create(const AFormText: string);
+begin
+  Create(AFormText, '', '');
+end;
+
 destructor TFormModel.Destroy;
 begin
   FDocument.Free;
   inherited;
-end;
-
-class function TFormModel.IsBinary(const AText: string): Boolean;
-begin
-  // Binäre DFMs beginnen mit der Signatur "TPF0", gefolgt von Längenbytes.
-  Result := StartsStr('TPF0', AText) or StartsStr(#$FF#$0A#$00, AText);
 end;
 
 function TFormModel.GetFormClass: string;
@@ -187,6 +181,12 @@ begin
       Exit(True);
     end;
   end;
+end;
+
+class function TFormModel.IsBinary(const AText: string): Boolean;
+begin
+  // Binäre DFMs beginnen mit der Signatur "TPF0", gefolgt von Längenbytes.
+  Result := StartsStr('TPF0', AText) or StartsStr(#$FF#$0A#$00, AText);
 end;
 
 /// <summary>Wert der Form Modul.Komponente (zwei Bezeichner mit Punkt)?</summary>

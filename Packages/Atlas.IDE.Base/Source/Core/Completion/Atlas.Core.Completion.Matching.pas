@@ -53,89 +53,6 @@ uses
 
 { TAtlasCompletionMatcher }
 
-class function TAtlasCompletionMatcher.Distance(const A, B: string): Integer;
-var
-  mLeft, mRight: string;
-  mRows: array of array of Integer;
-  I, J, mCost: Integer;
-begin
-  mLeft := LowerCase(A);
-  mRight := LowerCase(B);
-  SetLength(mRows, Length(mLeft) + 1, Length(mRight) + 1);
-  for I := 0 to Length(mLeft) do
-  begin
-    mRows[I][0] := I;
-  end;
-  for J := 0 to Length(mRight) do
-  begin
-    mRows[0][J] := J;
-  end;
-  for I := 1 to Length(mLeft) do
-  begin
-    for J := 1 to Length(mRight) do
-    begin
-      if mLeft[I] = mRight[J] then
-      begin
-        mCost := 0;
-      end
-      else
-      begin
-        mCost := 1;
-      end;
-      mRows[I][J] := Min(Min(mRows[I - 1][J] + 1, mRows[I][J - 1] + 1), mRows[I - 1][J - 1] + mCost);
-      // Vertauschte Nachbarn ("Lenght" statt "Length").
-      if (I > 1) and (J > 1) and (mLeft[I] = mRight[J - 1]) and (mLeft[I - 1] = mRight[J]) then
-      begin
-        mRows[I][J] := Min(mRows[I][J], mRows[I - 2][J - 2] + 1);
-      end;
-    end;
-  end;
-  Result := mRows[Length(mLeft)][Length(mRight)];
-end;
-
-class function TAtlasCompletionMatcher.TypoDistance(const APattern, AName: string): Integer;
-begin
-  Result := Distance(APattern, AName);
-  if Length(AName) > Length(APattern) then
-  begin
-    Result := Min(Result, Distance(APattern, Copy(AName, 1, Length(APattern))));
-  end;
-end;
-
-class function TAtlasCompletionMatcher.TypoLimit(const APattern: string): Integer;
-begin
-  if Length(APattern) < 3 then
-  begin
-    Result := 0;
-  end
-  else if Length(APattern) <= 5 then
-  begin
-    Result := 1;
-  end
-  else
-  begin
-    Result := 2;
-  end;
-end;
-
-class function TAtlasCompletionMatcher.CommitText(const ATyped, AName: string; AFixCase: Boolean): string;
-begin
-  if not AFixCase and (ATyped <> '') and (Length(ATyped) <= Length(AName)) and
-    SameText(ATyped, Copy(AName, 1, Length(ATyped))) then
-  begin
-    Result := ATyped + Copy(AName, Length(ATyped) + 1, MaxInt);
-  end
-  else
-  begin
-    Result := AName;
-  end;
-end;
-
-class function TAtlasCompletionMatcher.IsWordStart(const AName: string; AIndex: Integer): Boolean;
-begin
-  Result := TTextFuzzy.IsWordStart(AName, AIndex);
-end;
-
 class function TAtlasCompletionMatcher.Score(const APattern, AName: string): Integer;
 begin
   if APattern = '' then
@@ -228,6 +145,89 @@ begin
     Result := mMatches.ToArray;
   finally
     mMatches.Free;
+  end;
+end;
+
+class function TAtlasCompletionMatcher.IsWordStart(const AName: string; AIndex: Integer): Boolean;
+begin
+  Result := TTextFuzzy.IsWordStart(AName, AIndex);
+end;
+
+class function TAtlasCompletionMatcher.Distance(const A, B: string): Integer;
+var
+  mLeft, mRight: string;
+  mRows: array of array of Integer;
+  I, J, mCost: Integer;
+begin
+  mLeft := LowerCase(A);
+  mRight := LowerCase(B);
+  SetLength(mRows, Length(mLeft) + 1, Length(mRight) + 1);
+  for I := 0 to Length(mLeft) do
+  begin
+    mRows[I][0] := I;
+  end;
+  for J := 0 to Length(mRight) do
+  begin
+    mRows[0][J] := J;
+  end;
+  for I := 1 to Length(mLeft) do
+  begin
+    for J := 1 to Length(mRight) do
+    begin
+      if mLeft[I] = mRight[J] then
+      begin
+        mCost := 0;
+      end
+      else
+      begin
+        mCost := 1;
+      end;
+      mRows[I][J] := Min(Min(mRows[I - 1][J] + 1, mRows[I][J - 1] + 1), mRows[I - 1][J - 1] + mCost);
+      // Vertauschte Nachbarn ("Lenght" statt "Length").
+      if (I > 1) and (J > 1) and (mLeft[I] = mRight[J - 1]) and (mLeft[I - 1] = mRight[J]) then
+      begin
+        mRows[I][J] := Min(mRows[I][J], mRows[I - 2][J - 2] + 1);
+      end;
+    end;
+  end;
+  Result := mRows[Length(mLeft)][Length(mRight)];
+end;
+
+class function TAtlasCompletionMatcher.TypoDistance(const APattern, AName: string): Integer;
+begin
+  Result := Distance(APattern, AName);
+  if Length(AName) > Length(APattern) then
+  begin
+    Result := Min(Result, Distance(APattern, Copy(AName, 1, Length(APattern))));
+  end;
+end;
+
+class function TAtlasCompletionMatcher.TypoLimit(const APattern: string): Integer;
+begin
+  if Length(APattern) < 3 then
+  begin
+    Result := 0;
+  end
+  else if Length(APattern) <= 5 then
+  begin
+    Result := 1;
+  end
+  else
+  begin
+    Result := 2;
+  end;
+end;
+
+class function TAtlasCompletionMatcher.CommitText(const ATyped, AName: string; AFixCase: Boolean): string;
+begin
+  if not AFixCase and (ATyped <> '') and (Length(ATyped) <= Length(AName)) and
+    SameText(ATyped, Copy(AName, 1, Length(ATyped))) then
+  begin
+    Result := ATyped + Copy(AName, Length(ATyped) + 1, MaxInt);
+  end
+  else
+  begin
+    Result := AName;
   end;
 end;
 

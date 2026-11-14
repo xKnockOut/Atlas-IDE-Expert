@@ -440,23 +440,6 @@ begin
   inherited;
 end;
 
-procedure TAtlasIdeShortcutKeys.AddKeys(AShortCut: Word; const AId: string);
-var
-  mKey: string;
-  mIds: TArray<string>;
-begin
-  if (AShortCut = 0) or (AId = '') then
-  begin
-    Exit;
-  end;
-  mKey := TAtlasShortcutTips.StepsKey([AShortCut]);
-  if not FKeys.TryGetValue(mKey, mIds) then
-  begin
-    mIds := nil;
-  end;
-  FKeys.AddOrSetValue(mKey, mIds + [AId]);
-end;
-
 procedure TAtlasIdeShortcutKeys.AddKeys(const AKeyText, AId: string);
 var
   mSteps: TArray<Word>;
@@ -469,6 +452,23 @@ begin
     Exit;
   end;
   mKey := TAtlasShortcutTips.StepsKey(mSteps);
+  if not FKeys.TryGetValue(mKey, mIds) then
+  begin
+    mIds := nil;
+  end;
+  FKeys.AddOrSetValue(mKey, mIds + [AId]);
+end;
+
+procedure TAtlasIdeShortcutKeys.AddKeys(AShortCut: Word; const AId: string);
+var
+  mKey: string;
+  mIds: TArray<string>;
+begin
+  if (AShortCut = 0) or (AId = '') then
+  begin
+    Exit;
+  end;
+  mKey := TAtlasShortcutTips.StepsKey([AShortCut]);
   if not FKeys.TryGetValue(mKey, mIds) then
   begin
     mIds := nil;
@@ -571,26 +571,6 @@ begin
   AddMenuKeys;
 end;
 
-procedure TAtlasIdeShortcutKeys.ResetKeys;
-begin
-  FKeysBuiltAt := 0;
-end;
-
-procedure TAtlasIdeShortcutKeys.Learn(const AId, AKeyText: string);
-begin
-  if (AKeyText <> '') and (TAtlasIdeActionKeys.FindAction(AId) = nil) then
-  begin
-    FLearned.AddOrSetValue(AId, AKeyText);
-    ResetKeys;
-  end;
-end;
-
-procedure TAtlasIdeShortcutKeys.Explicit(const AId: string);
-begin
-  FExplicitId := AId;
-  FExplicitAt := TAtlasIdeActionKeys.Ticks;
-end;
-
 function TAtlasIdeShortcutKeys.ChordPending: Boolean;
 begin
   Result := (FPrevKey <> 0) and (TAtlasIdeActionKeys.Ticks - FPrevAt < TAtlasShortcutTips.cChordMs);
@@ -613,6 +593,26 @@ begin
   end;
   FPrevKey := AShortCut;
   FPrevAt := TAtlasIdeActionKeys.Ticks;
+end;
+
+procedure TAtlasIdeShortcutKeys.ResetKeys;
+begin
+  FKeysBuiltAt := 0;
+end;
+
+procedure TAtlasIdeShortcutKeys.Learn(const AId, AKeyText: string);
+begin
+  if (AKeyText <> '') and (TAtlasIdeActionKeys.FindAction(AId) = nil) then
+  begin
+    FLearned.AddOrSetValue(AId, AKeyText);
+    ResetKeys;
+  end;
+end;
+
+procedure TAtlasIdeShortcutKeys.Explicit(const AId: string);
+begin
+  FExplicitId := AId;
+  FExplicitAt := TAtlasIdeActionKeys.Ticks;
 end;
 
 function TAtlasIdeShortcutKeys.Stroke(const AMsg: TMsg): TArray<string>;

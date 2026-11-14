@@ -61,6 +61,8 @@ uses
   Atlas.Common.Projects.GroupReader,
   Atlas.Text.LogMarks;
 
+{ TShellBootstrap }
+
 class function TShellBootstrap.ReadSourceText(const AFileName: string; out AText: string): Boolean;
 var
   mFileFormat: TFileFormat;
@@ -89,6 +91,24 @@ begin
   Result := ReadSourceText(AFileName, AText);
 end;
 
+class function TShellBootstrap.GroupProjects(const ARoot: string; const ALogger: ILogger): TArray<string>;
+var
+  mGroups: TArray<string>;
+begin
+  Result := nil;
+  try
+    mGroups := TDirectory.GetFiles(ARoot, '*.groupproj');
+  except
+    // Nicht lesbare Ordner haben keine Gruppe.
+    on Exception do
+      mGroups := nil;
+  end;
+  if Length(mGroups) = 1 then
+  begin
+    Result := LoadGroup(mGroups[0], ALogger);
+  end;
+end;
+
 class function TShellBootstrap.LoadGroup(const AGroupFile: string; const ALogger: ILogger): TArray<string>;
 begin
   Result := nil;
@@ -108,24 +128,6 @@ begin
       end;
       Result := nil;
     end;
-  end;
-end;
-
-class function TShellBootstrap.GroupProjects(const ARoot: string; const ALogger: ILogger): TArray<string>;
-var
-  mGroups: TArray<string>;
-begin
-  Result := nil;
-  try
-    mGroups := TDirectory.GetFiles(ARoot, '*.groupproj');
-  except
-    // Nicht lesbare Ordner haben keine Gruppe.
-    on Exception do
-      mGroups := nil;
-  end;
-  if Length(mGroups) = 1 then
-  begin
-    Result := LoadGroup(mGroups[0], ALogger);
   end;
 end;
 

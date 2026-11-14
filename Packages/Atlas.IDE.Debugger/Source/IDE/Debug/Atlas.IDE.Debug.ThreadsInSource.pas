@@ -194,75 +194,6 @@ end;
 
 { TAtlasIdeDebugThreadsInSource }
 
-class procedure TAtlasIdeDebugThreadsInSource.Start(const AMessage: TProc<string>;
-  const ARegistry: IAtlasStatusRegistry);
-begin
-  FMessage := AMessage;
-  FRegistry := ARegistry;
-  if FTicker = nil then
-  begin
-    FTicker := TTicker.Create;
-  end;
-  if FTimer = nil then
-  begin
-    FTimer := TTimer.Create(nil);
-    FTimer.Enabled := False;
-    FTimer.Interval := cIntervalMs;
-    FTimer.OnTimer := FTicker.Tick;
-  end;
-  if FListener = nil then
-  begin
-    FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FListener);
-  end;
-  TAtlasIdeDebugSession.Start;
-end;
-
-class procedure TAtlasIdeDebugThreadsInSource.Release;
-begin
-  if FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(FListener);
-  end;
-  FListener := nil;
-  TAtlasIdeDebugThreadFreeze.Release;
-  FFlagged.Clear;
-  if (FRegistry <> nil) and (FStatusRef <> nil) then
-  begin
-    FRegistry.Remove(cStatusId);
-  end;
-  FStatusRef := nil;
-  FStatusLine := nil;
-  FRegistry := nil;
-  FreeAndNil(FTimer);
-  FreeAndNil(FMenu);
-  FreeAndNil(FTicker);
-  FMessage := nil;
-  FStacks := nil;
-  FMarks := Default(TAtlasDebugThreadMarks);
-  FPickThreads := nil;
-end;
-
-class function TAtlasIdeDebugThreadsInSource.Started: Boolean;
-begin
-  Result := FListener <> nil;
-end;
-
-class function TAtlasIdeDebugThreadsInSource.Marks: TAtlasDebugThreadMarks;
-begin
-  Result := FMarks;
-end;
-
-class function TAtlasIdeDebugThreadsInSource.Stacks: TAtlasDebugThreadStacks;
-begin
-  Result := FStacks;
-end;
-
-class function TAtlasIdeDebugThreadsInSource.Flagged: TAtlasDebugThreadSet;
-begin
-  Result := FFlagged;
-end;
-
 class function TAtlasIdeDebugThreadsInSource.TryRead: Boolean;
 var
   mProcess: IOTAProcess;
@@ -283,21 +214,6 @@ begin
   FStacks := mStacks;
 end;
 
-class procedure TAtlasIdeDebugThreadsInSource.Rebuild;
-var
-  mProcess: IOTAProcess;
-  mCurrent: Integer;
-begin
-  mCurrent := -1;
-  mProcess := TAtlasIdeDebugSession.Process;
-  if mProcess <> nil then
-  begin
-    mCurrent := TAtlasIdeDebugThreads.CurrentIndex(mProcess, FStacks);
-  end;
-  FMarks := TAtlasDebugThreadMarks.Build(FStacks, mCurrent, FFlagged);
-  TAtlasIdeGutterMarks.Invalidate;
-end;
-
 class procedure TAtlasIdeDebugThreadsInSource.Clear;
 begin
   if FTimer <> nil then
@@ -311,6 +227,21 @@ begin
   end;
   FStacks := nil;
   FMarks := Default(TAtlasDebugThreadMarks);
+  TAtlasIdeGutterMarks.Invalidate;
+end;
+
+class procedure TAtlasIdeDebugThreadsInSource.Rebuild;
+var
+  mProcess: IOTAProcess;
+  mCurrent: Integer;
+begin
+  mCurrent := -1;
+  mProcess := TAtlasIdeDebugSession.Process;
+  if mProcess <> nil then
+  begin
+    mCurrent := TAtlasIdeDebugThreads.CurrentIndex(mProcess, FStacks);
+  end;
+  FMarks := TAtlasDebugThreadMarks.Build(FStacks, mCurrent, FFlagged);
   TAtlasIdeGutterMarks.Invalidate;
 end;
 
@@ -355,74 +286,6 @@ begin
   if Assigned(FMessage) then
   begin
     FMessage(TAtlasDebugStrings.Fmt(AId, [TAtlasThreadMarkTexts.ThreadLabel(AThread, False)]));
-  end;
-end;
-
-class procedure TAtlasIdeDebugThreadsInSource.Switch(AThread: Integer);
-var
-  mJump: Integer;
-begin
-  if (AThread < 0) or (AThread > High(FStacks)) then
-  begin
-    Exit;
-  end;
-  TAtlasIdeDebugThreads.Select(FStacks[AThread].ThreadId);
-  mJump := FStacks[AThread].JumpFrame;
-  if mJump >= 0 then
-  begin
-    TAtlasIdeNavigation.MarkLine(FStacks[AThread].Frames[mJump].FileName, FStacks[AThread].Frames[mJump].Line - 1);
-  end;
-end;
-
-class procedure TAtlasIdeDebugThreadsInSource.ToggleFlag(const AStack: TAtlasDebugThreadStack);
-begin
-  if FFlagged.Toggle(AStack.ThreadId) then
-  begin
-    Say(TAtlasDebugTextId.ThreadMarksFlaggedOn, AStack);
-  end
-  else
-  begin
-    Say(TAtlasDebugTextId.ThreadMarksFlaggedOff, AStack);
-  end;
-  Rebuild;
-end;
-
-class procedure TAtlasIdeDebugThreadsInSource.Apply(AAction: TAtlasThreadAction; AThread: Integer);
-var
-  mStack: TAtlasDebugThreadStack;
-begin
-  if (AThread < 0) or (AThread > High(FStacks)) then
-  begin
-    Exit;
-  end;
-  mStack := FStacks[AThread];
-  case AAction of
-    TAtlasThreadAction.Switch:
-      Switch(AThread);
-    TAtlasThreadAction.Flag:
-      ToggleFlag(mStack);
-    TAtlasThreadAction.Freeze:
-      begin
-        if TAtlasIdeDebugThreadFreeze.Freeze(mStack.ThreadId) then
-        begin
-          Say(TAtlasDebugTextId.ThreadMarksFrozenOn, mStack);
-        end
-        else
-        begin
-          Say(TAtlasDebugTextId.ThreadMarksFreezeFailed, mStack);
-        end;
-        UpdateStatus;
-        TAtlasIdeGutterMarks.Invalidate;
-      end;
-    TAtlasThreadAction.Thaw:
-      begin
-        if TAtlasIdeDebugThreadFreeze.Thaw(mStack.ThreadId) then
-        begin
-          Say(TAtlasDebugTextId.ThreadMarksThawed, mStack);
-        end;
-        UpdateStatus;
-        TAtlasIdeGutterMarks.Invalidate;
-      end;
   end;
 end;
 
@@ -506,6 +369,143 @@ begin
     FMenu.Items.Add(mItem);
   end;
   FMenu.Popup(Mouse.CursorPos.X, Mouse.CursorPos.Y);
+end;
+
+class procedure TAtlasIdeDebugThreadsInSource.Apply(AAction: TAtlasThreadAction; AThread: Integer);
+var
+  mStack: TAtlasDebugThreadStack;
+begin
+  if (AThread < 0) or (AThread > High(FStacks)) then
+  begin
+    Exit;
+  end;
+  mStack := FStacks[AThread];
+  case AAction of
+    TAtlasThreadAction.Switch:
+      Switch(AThread);
+    TAtlasThreadAction.Flag:
+      ToggleFlag(mStack);
+    TAtlasThreadAction.Freeze:
+      begin
+        if TAtlasIdeDebugThreadFreeze.Freeze(mStack.ThreadId) then
+        begin
+          Say(TAtlasDebugTextId.ThreadMarksFrozenOn, mStack);
+        end
+        else
+        begin
+          Say(TAtlasDebugTextId.ThreadMarksFreezeFailed, mStack);
+        end;
+        UpdateStatus;
+        TAtlasIdeGutterMarks.Invalidate;
+      end;
+    TAtlasThreadAction.Thaw:
+      begin
+        if TAtlasIdeDebugThreadFreeze.Thaw(mStack.ThreadId) then
+        begin
+          Say(TAtlasDebugTextId.ThreadMarksThawed, mStack);
+        end;
+        UpdateStatus;
+        TAtlasIdeGutterMarks.Invalidate;
+      end;
+  end;
+end;
+
+class procedure TAtlasIdeDebugThreadsInSource.Start(const AMessage: TProc<string>;
+  const ARegistry: IAtlasStatusRegistry);
+begin
+  FMessage := AMessage;
+  FRegistry := ARegistry;
+  if FTicker = nil then
+  begin
+    FTicker := TTicker.Create;
+  end;
+  if FTimer = nil then
+  begin
+    FTimer := TTimer.Create(nil);
+    FTimer.Enabled := False;
+    FTimer.Interval := cIntervalMs;
+    FTimer.OnTimer := FTicker.Tick;
+  end;
+  if FListener = nil then
+  begin
+    FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FListener);
+  end;
+  TAtlasIdeDebugSession.Start;
+end;
+
+class procedure TAtlasIdeDebugThreadsInSource.Release;
+begin
+  if FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(FListener);
+  end;
+  FListener := nil;
+  TAtlasIdeDebugThreadFreeze.Release;
+  FFlagged.Clear;
+  if (FRegistry <> nil) and (FStatusRef <> nil) then
+  begin
+    FRegistry.Remove(cStatusId);
+  end;
+  FStatusRef := nil;
+  FStatusLine := nil;
+  FRegistry := nil;
+  FreeAndNil(FTimer);
+  FreeAndNil(FMenu);
+  FreeAndNil(FTicker);
+  FMessage := nil;
+  FStacks := nil;
+  FMarks := Default(TAtlasDebugThreadMarks);
+  FPickThreads := nil;
+end;
+
+class function TAtlasIdeDebugThreadsInSource.Started: Boolean;
+begin
+  Result := FListener <> nil;
+end;
+
+class function TAtlasIdeDebugThreadsInSource.Marks: TAtlasDebugThreadMarks;
+begin
+  Result := FMarks;
+end;
+
+class function TAtlasIdeDebugThreadsInSource.Stacks: TAtlasDebugThreadStacks;
+begin
+  Result := FStacks;
+end;
+
+class function TAtlasIdeDebugThreadsInSource.Flagged: TAtlasDebugThreadSet;
+begin
+  Result := FFlagged;
+end;
+
+class procedure TAtlasIdeDebugThreadsInSource.Switch(AThread: Integer);
+var
+  mJump: Integer;
+begin
+  if (AThread < 0) or (AThread > High(FStacks)) then
+  begin
+    Exit;
+  end;
+  TAtlasIdeDebugThreads.Select(FStacks[AThread].ThreadId);
+  mJump := FStacks[AThread].JumpFrame;
+  if mJump >= 0 then
+  begin
+    TAtlasIdeNavigation.MarkLine(FStacks[AThread].Frames[mJump].FileName, FStacks[AThread].Frames[mJump].Line - 1);
+  end;
+end;
+
+class procedure TAtlasIdeDebugThreadsInSource.ToggleFlag(const AStack: TAtlasDebugThreadStack);
+begin
+  if FFlagged.Toggle(AStack.ThreadId) then
+  begin
+    Say(TAtlasDebugTextId.ThreadMarksFlaggedOn, AStack);
+  end
+  else
+  begin
+    Say(TAtlasDebugTextId.ThreadMarksFlaggedOff, AStack);
+  end;
+  Rebuild;
 end;
 
 class procedure TAtlasIdeDebugThreadsInSource.FlagAtLine;

@@ -189,20 +189,6 @@ begin
   inherited Destroy;
 end;
 
-class procedure TAtlasIdeElements.Start;
-begin
-  if FInstance = nil then
-  begin
-    FInstance := TAtlasIdeElements.Create;
-  end;
-end;
-
-class procedure TAtlasIdeElements.Stop;
-begin
-  FreeAndNil(FInstance);
-  FOnOverlayMenu := nil;
-end;
-
 class function TAtlasIdeElements.KeyOf(const AFileName: string; ALine: Integer): string;
 begin
   Result := AnsiLowerCase(AFileName) + '|' + IntToStr(ALine);
@@ -234,33 +220,6 @@ begin
   Result := FHidden;
 end;
 
-procedure TAtlasIdeElements.DropOld(const AKey: string);
-var
-  mHits, mKept: TArray<TAtlasElementHit>;
-  mHit: TAtlasElementHit;
-begin
-  if not FHits.TryGetValue(AKey, mHits) then
-  begin
-    Exit;
-  end;
-  mKept := nil;
-  for mHit in mHits do
-  begin
-    if mHit.Round = FRound then
-    begin
-      mKept := mKept + [mHit];
-    end;
-  end;
-  if Length(mKept) = 0 then
-  begin
-    FHits.Remove(AKey);
-  end
-  else if Length(mKept) <> Length(mHits) then
-  begin
-    FHits[AKey] := mKept;
-  end;
-end;
-
 procedure TAtlasIdeElements.BeginPaint(const Editor: TWinControl; const ForceFullRepaint: Boolean);
 begin
   Inc(FRound);
@@ -278,165 +237,6 @@ begin
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Hide, E);
-  end;
-end;
-
-class procedure TAtlasIdeElements.Painted(const ATarget: TAtlasHideTarget; const ARect: TRect;
-  ATopRow, ALineHeight: Integer);
-var
-  mKey: string;
-  mHits: TArray<TAtlasElementHit>;
-  mHit: TAtlasElementHit;
-  mIndex: Integer;
-begin
-  if FInstance = nil then
-  begin
-    Exit;
-  end;
-  mKey := KeyOf(ATarget.FileName, ATarget.Line);
-  FInstance.DropOld(mKey);
-  if not FInstance.FHits.TryGetValue(mKey, mHits) then
-  begin
-    if FInstance.FHits.Count >= cMaxLines then
-    begin
-      FInstance.FHits.Clear;
-    end;
-    mHits := nil;
-  end;
-  // Dasselbe Element mehrmals in einer Zeile (Läufe, mehrere Befunde): Rechtecke zusammenfassen.
-  for mIndex := 0 to High(mHits) do
-  begin
-    if (mHits[mIndex].Target.Element = ATarget.Element) and (mHits[mIndex].Target.RuleId = ATarget.RuleId) then
-    begin
-      mHits[mIndex].Rect.Union(ARect);
-      FInstance.FHits.AddOrSetValue(mKey, mHits);
-      Exit;
-    end;
-  end;
-  mHit.Target := ATarget;
-  mHit.Rect := ARect;
-  mHit.TopRow := ATopRow;
-  mHit.LineHeight := ALineHeight;
-  mHit.Round := FInstance.FRound;
-  FInstance.FHits.AddOrSetValue(mKey, mHits + [mHit]);
-end;
-
-class function TAtlasIdeElements.Target(AElement: TAtlasDrawnElement; const AFileName: string; ALine: Integer;
-  const AAnchor: string): TAtlasHideTarget;
-begin
-  Result := TAtlasHideTarget.Create(AElement, AFileName, ALine, AAnchor);
-end;
-
-class function TAtlasIdeElements.Hidden(AElement: TAtlasDrawnElement; const AFileName, AAnchor: string): Boolean;
-var
-  mPlaces: TAtlasHiddenIndex;
-begin
-  if FInstance = nil then
-  begin
-    Exit(False);
-  end;
-  mPlaces := FInstance.Index;
-  Result := not mPlaces.IsEmpty and mPlaces.Hidden(TAtlasDrawnElements.SettingKey(AElement), AFileName,
-    TAtlasDrawnElements.Anchor(AAnchor));
-end;
-
-class function TAtlasIdeElements.FileHidden(AElement: TAtlasDrawnElement; const AFileName: string): Boolean;
-var
-  mPlaces: TAtlasHiddenIndex;
-begin
-  if FInstance = nil then
-  begin
-    Exit(False);
-  end;
-  mPlaces := FInstance.Index;
-  Result := not mPlaces.IsEmpty and mPlaces.FileHidden(TAtlasDrawnElements.SettingKey(AElement), AFileName);
-end;
-
-class function TAtlasIdeElements.OnLine(const AFileName: string; ALine: Integer): TArray<TAtlasHideTarget>;
-var
-  mHits: TArray<TAtlasElementHit>;
-  mHit: TAtlasElementHit;
-begin
-  Result := nil;
-  if (FInstance = nil) or not FInstance.FHits.TryGetValue(KeyOf(AFileName, ALine), mHits) then
-  begin
-    Exit;
-  end;
-  for mHit in mHits do
-  begin
-    Result := Result + [mHit.Target];
-  end;
-end;
-
-function TAtlasIdeElements.HitsAt(const AFileName: string; ATopRow, AX, AY: Integer): TArray<TAtlasHideTarget>;
-var
-  mPair: TPair<string, TArray<TAtlasElementHit>>;
-  mHit: TAtlasElementHit;
-  mShifted: TRect;
-begin
-  Result := nil;
-  for mPair in FHits do
-  begin
-    for mHit in mPair.Value do
-    begin
-      if not SameFile(mHit.Target.FileName, AFileName) then
-      begin
-        Break;
-      end;
-      mShifted := mHit.Rect;
-      // Gescrollt, ohne dass die Zeile neu gezeichnet wurde: um die Zeilen verschieben.
-      if (mHit.TopRow <> ATopRow) and (mHit.LineHeight > 0) then
-      begin
-        mShifted.Offset(0, (mHit.TopRow - ATopRow) * mHit.LineHeight);
-      end;
-      if PtInRect(mShifted, Point(AX, AY)) then
-      begin
-        Result := Result + [mHit.Target];
-      end;
-    end;
-  end;
-end;
-
-class function TAtlasIdeElements.At(const AFileName: string; ATopRow, AX, AY: Integer): TArray<TAtlasHideTarget>;
-begin
-  if FInstance = nil then
-  begin
-    Exit(nil);
-  end;
-  Result := FInstance.HitsAt(AFileName, ATopRow, AX, AY);
-end;
-
-class function TAtlasIdeElements.TakeClick(const AFileName: string; out ATargets: TArray<TAtlasHideTarget>): Boolean;
-begin
-  ATargets := nil;
-  Result := False;
-  if FInstance = nil then
-  begin
-    Exit;
-  end;
-  Result := (Length(FInstance.FClickTargets) > 0) and SameFile(FInstance.FClickFile, AFileName) and
-    (TThread.GetTickCount64 - FInstance.FClickAt <= cClickMs);
-  if Result then
-  begin
-    ATargets := FInstance.FClickTargets;
-  end;
-  FInstance.FClickTargets := nil;
-  FInstance.FClickFile := '';
-end;
-
-class procedure TAtlasIdeElements.Reset;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.FHits.Clear;
-    // .atlas wurde eben geschrieben: beim nächsten Zeichnen neu lesen.
-    FInstance.FHiddenVersion := -1;
-  end;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 
@@ -531,6 +331,206 @@ begin
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Hide, E);
+  end;
+end;
+
+procedure TAtlasIdeElements.DropOld(const AKey: string);
+var
+  mHits, mKept: TArray<TAtlasElementHit>;
+  mHit: TAtlasElementHit;
+begin
+  if not FHits.TryGetValue(AKey, mHits) then
+  begin
+    Exit;
+  end;
+  mKept := nil;
+  for mHit in mHits do
+  begin
+    if mHit.Round = FRound then
+    begin
+      mKept := mKept + [mHit];
+    end;
+  end;
+  if Length(mKept) = 0 then
+  begin
+    FHits.Remove(AKey);
+  end
+  else if Length(mKept) <> Length(mHits) then
+  begin
+    FHits[AKey] := mKept;
+  end;
+end;
+
+function TAtlasIdeElements.HitsAt(const AFileName: string; ATopRow, AX, AY: Integer): TArray<TAtlasHideTarget>;
+var
+  mPair: TPair<string, TArray<TAtlasElementHit>>;
+  mHit: TAtlasElementHit;
+  mShifted: TRect;
+begin
+  Result := nil;
+  for mPair in FHits do
+  begin
+    for mHit in mPair.Value do
+    begin
+      if not SameFile(mHit.Target.FileName, AFileName) then
+      begin
+        Break;
+      end;
+      mShifted := mHit.Rect;
+      // Gescrollt, ohne dass die Zeile neu gezeichnet wurde: um die Zeilen verschieben.
+      if (mHit.TopRow <> ATopRow) and (mHit.LineHeight > 0) then
+      begin
+        mShifted.Offset(0, (mHit.TopRow - ATopRow) * mHit.LineHeight);
+      end;
+      if PtInRect(mShifted, Point(AX, AY)) then
+      begin
+        Result := Result + [mHit.Target];
+      end;
+    end;
+  end;
+end;
+
+class procedure TAtlasIdeElements.Start;
+begin
+  if FInstance = nil then
+  begin
+    FInstance := TAtlasIdeElements.Create;
+  end;
+end;
+
+class procedure TAtlasIdeElements.Stop;
+begin
+  FreeAndNil(FInstance);
+  FOnOverlayMenu := nil;
+end;
+
+class procedure TAtlasIdeElements.Painted(const ATarget: TAtlasHideTarget; const ARect: TRect;
+  ATopRow, ALineHeight: Integer);
+var
+  mKey: string;
+  mHits: TArray<TAtlasElementHit>;
+  mHit: TAtlasElementHit;
+  mIndex: Integer;
+begin
+  if FInstance = nil then
+  begin
+    Exit;
+  end;
+  mKey := KeyOf(ATarget.FileName, ATarget.Line);
+  FInstance.DropOld(mKey);
+  if not FInstance.FHits.TryGetValue(mKey, mHits) then
+  begin
+    if FInstance.FHits.Count >= cMaxLines then
+    begin
+      FInstance.FHits.Clear;
+    end;
+    mHits := nil;
+  end;
+  // Dasselbe Element mehrmals in einer Zeile (Läufe, mehrere Befunde): Rechtecke zusammenfassen.
+  for mIndex := 0 to High(mHits) do
+  begin
+    if (mHits[mIndex].Target.Element = ATarget.Element) and (mHits[mIndex].Target.RuleId = ATarget.RuleId) then
+    begin
+      mHits[mIndex].Rect.Union(ARect);
+      FInstance.FHits.AddOrSetValue(mKey, mHits);
+      Exit;
+    end;
+  end;
+  mHit.Target := ATarget;
+  mHit.Rect := ARect;
+  mHit.TopRow := ATopRow;
+  mHit.LineHeight := ALineHeight;
+  mHit.Round := FInstance.FRound;
+  FInstance.FHits.AddOrSetValue(mKey, mHits + [mHit]);
+end;
+
+class function TAtlasIdeElements.Target(AElement: TAtlasDrawnElement; const AFileName: string; ALine: Integer;
+  const AAnchor: string): TAtlasHideTarget;
+begin
+  Result := TAtlasHideTarget.Create(AElement, AFileName, ALine, AAnchor);
+end;
+
+class function TAtlasIdeElements.Hidden(AElement: TAtlasDrawnElement; const AFileName, AAnchor: string): Boolean;
+var
+  mPlaces: TAtlasHiddenIndex;
+begin
+  if FInstance = nil then
+  begin
+    Exit(False);
+  end;
+  mPlaces := FInstance.Index;
+  Result := not mPlaces.IsEmpty and mPlaces.Hidden(TAtlasDrawnElements.SettingKey(AElement), AFileName,
+    TAtlasDrawnElements.Anchor(AAnchor));
+end;
+
+class function TAtlasIdeElements.FileHidden(AElement: TAtlasDrawnElement; const AFileName: string): Boolean;
+var
+  mPlaces: TAtlasHiddenIndex;
+begin
+  if FInstance = nil then
+  begin
+    Exit(False);
+  end;
+  mPlaces := FInstance.Index;
+  Result := not mPlaces.IsEmpty and mPlaces.FileHidden(TAtlasDrawnElements.SettingKey(AElement), AFileName);
+end;
+
+class function TAtlasIdeElements.OnLine(const AFileName: string; ALine: Integer): TArray<TAtlasHideTarget>;
+var
+  mHits: TArray<TAtlasElementHit>;
+  mHit: TAtlasElementHit;
+begin
+  Result := nil;
+  if (FInstance = nil) or not FInstance.FHits.TryGetValue(KeyOf(AFileName, ALine), mHits) then
+  begin
+    Exit;
+  end;
+  for mHit in mHits do
+  begin
+    Result := Result + [mHit.Target];
+  end;
+end;
+
+class function TAtlasIdeElements.At(const AFileName: string; ATopRow, AX, AY: Integer): TArray<TAtlasHideTarget>;
+begin
+  if FInstance = nil then
+  begin
+    Exit(nil);
+  end;
+  Result := FInstance.HitsAt(AFileName, ATopRow, AX, AY);
+end;
+
+class function TAtlasIdeElements.TakeClick(const AFileName: string; out ATargets: TArray<TAtlasHideTarget>): Boolean;
+begin
+  ATargets := nil;
+  Result := False;
+  if FInstance = nil then
+  begin
+    Exit;
+  end;
+  Result := (Length(FInstance.FClickTargets) > 0) and SameFile(FInstance.FClickFile, AFileName) and
+    (TThread.GetTickCount64 - FInstance.FClickAt <= cClickMs);
+  if Result then
+  begin
+    ATargets := FInstance.FClickTargets;
+  end;
+  FInstance.FClickTargets := nil;
+  FInstance.FClickFile := '';
+end;
+
+class procedure TAtlasIdeElements.Reset;
+var
+  mServices: INTACodeEditorServices;
+begin
+  if FInstance <> nil then
+  begin
+    FInstance.FHits.Clear;
+    // .atlas wurde eben geschrieben: beim nächsten Zeichnen neu lesen.
+    FInstance.FHiddenVersion := -1;
+  end;
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 

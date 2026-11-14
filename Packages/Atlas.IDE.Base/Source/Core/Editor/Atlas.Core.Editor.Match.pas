@@ -124,12 +124,16 @@ type
     function Run(const AText: string): TArray<TDirective>;
   end;
 
+{ TAtlasMatchSpot }
+
 class function TAtlasMatchSpot.Create(ALine, ACharacter, ALength: Integer): TAtlasMatchSpot;
 begin
   Result.Line := ALine;
   Result.Character := ACharacter;
   Result.Length := ALength;
 end;
+
+{ TAtlasMatch }
 
 function TAtlasMatch.Next: TAtlasMatchSpot;
 begin

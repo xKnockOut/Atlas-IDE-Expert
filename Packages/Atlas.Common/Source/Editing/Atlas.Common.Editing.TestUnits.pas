@@ -107,6 +107,8 @@ begin
   end;
 end;
 
+{ TTestUnits }
+
 class function TTestUnits.TestUnitName(const AUnitName, APattern: string): string;
 begin
   Result := StringReplace(PatternOrDefault(APattern), cPlaceholder, AUnitName, [rfIgnoreCase]);
@@ -386,6 +388,8 @@ type
     procedure WriteTearDown;
     procedure WriteTests;
   end;
+
+{ TTestUnitWriter }
 
 procedure TTestUnitWriter.Line(const AText: string);
 begin

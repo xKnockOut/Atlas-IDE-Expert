@@ -337,6 +337,8 @@ begin
   end;
 end;
 
+{ TAtlasBreadcrumbs }
+
 class function TAtlasBreadcrumbs.SectionAt(const ALines: TArray<string>; ALine: Integer): TAtlasCodeSection;
 var
   mIndex: Integer;
@@ -436,14 +438,21 @@ begin
   end;
 end;
 
-class function TAtlasBreadcrumbs.HasMenu(const ACrumb: TAtlasCrumb): Boolean;
+class function TAtlasBreadcrumbs.Prepare(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>):
+  TAtlasCrumbText;
 begin
-  Result := (Length(ACrumb.Siblings) > 0) or (Length(ACrumb.Places) > 0);
+  Result := Default(TAtlasCrumbText);
+  Result.Nodes := ANodes;
+  Result.Lines := ALines;
+  Result.Directives := TAtlasDirectiveScanner.Scan(ALines);
+  Result.Declarations := TAtlasDeclarationBlockFinder.Prepare(ANodes, ALines);
+  Result.Sections := SectionTable(ALines);
 end;
 
-class function TAtlasBreadcrumbs.ShortName(const AName: string): string;
+class function TAtlasBreadcrumbs.Path(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+  const ARequest: TAtlasCrumbRequest): TAtlasCrumbs;
 begin
-  Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
+  Result := Path(Prepare(ANodes, ALines), ARequest);
 end;
 
 class function TAtlasBreadcrumbs.BadgeOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
@@ -956,6 +965,8 @@ begin
   end;
 end;
 
+{ TAtlasCrumbRequest }
+
 class function TAtlasCrumbRequest.Create(ALine, ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean;
   AParts: TAtlasCrumbParts): TAtlasCrumbRequest;
 begin
@@ -1060,17 +1071,6 @@ begin
   end;
 end;
 
-class function TAtlasBreadcrumbs.Prepare(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>):
-  TAtlasCrumbText;
-begin
-  Result := Default(TAtlasCrumbText);
-  Result.Nodes := ANodes;
-  Result.Lines := ALines;
-  Result.Directives := TAtlasDirectiveScanner.Scan(ALines);
-  Result.Declarations := TAtlasDeclarationBlockFinder.Prepare(ANodes, ALines);
-  Result.Sections := SectionTable(ALines);
-end;
-
 class function TAtlasBreadcrumbs.Path(const AText: TAtlasCrumbText; const ARequest: TAtlasCrumbRequest):
   TAtlasCrumbs;
 begin
@@ -1087,12 +1087,6 @@ begin
   begin
     Result := Result + ConditionalCrumbs(AText.Directives, ARequest.Line, ARequest.Character);
   end;
-end;
-
-class function TAtlasBreadcrumbs.Path(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
-  const ARequest: TAtlasCrumbRequest): TAtlasCrumbs;
-begin
-  Result := Path(Prepare(ANodes, ALines), ARequest);
 end;
 
 class function TAtlasBreadcrumbs.UnitMembers(const ANodes: TAtlasOutlineNodes): TArray<Integer>;
@@ -1189,6 +1183,16 @@ begin
   end;
 end;
 
+class function TAtlasBreadcrumbs.HasMenu(const ACrumb: TAtlasCrumb): Boolean;
+begin
+  Result := (Length(ACrumb.Siblings) > 0) or (Length(ACrumb.Places) > 0);
+end;
+
+class function TAtlasBreadcrumbs.ShortName(const AName: string): string;
+begin
+  Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
+end;
+
 class function TAtlasBreadcrumbs.Target(const ANodes: TAtlasOutlineNodes; ANode: Integer;
   AImplementation: Boolean): Integer;
 begin
@@ -1207,6 +1211,21 @@ begin
   else if ANodes[ANode].Declaration >= 0 then
   begin
     Result := ANodes[ANode].Declaration;
+  end;
+end;
+
+class function TAtlasBreadcrumbs.Filter(const ANodes: TAtlasOutlineNodes; const ASiblings: TArray<Integer>;
+  const APattern: string): TArray<Integer>;
+var
+  mItem: Integer;
+begin
+  Result := nil;
+  for mItem in ASiblings do
+  begin
+    if MatchesAtWordStart(APattern, ShortName(ANodes[mItem].Name)) then
+    begin
+      Result := Result + [mItem];
+    end;
   end;
 end;
 
@@ -1231,21 +1250,6 @@ begin
     end;
   end;
   Result := False;
-end;
-
-class function TAtlasBreadcrumbs.Filter(const ANodes: TAtlasOutlineNodes; const ASiblings: TArray<Integer>;
-  const APattern: string): TArray<Integer>;
-var
-  mItem: Integer;
-begin
-  Result := nil;
-  for mItem in ASiblings do
-  begin
-    if MatchesAtWordStart(APattern, ShortName(ANodes[mItem].Name)) then
-    begin
-      Result := Result + [mItem];
-    end;
-  end;
 end;
 
 end.

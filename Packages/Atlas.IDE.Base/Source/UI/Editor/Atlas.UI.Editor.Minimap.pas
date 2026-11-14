@@ -133,9 +133,109 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasMinimapView.ViewWidth(const AOptions: TAtlasMinimapOptions; APPI: Integer): Integer;
+procedure TAtlasMinimapView.Paint;
+var
+  mFrame: TAtlasMinimapFrame;
 begin
-  Result := MulDiv(TAtlasMinimap.ClampWidth(AOptions.Width), Max(APPI, 96), 96);
+  FCode.Ensure(Map, FOptions, FColors, ClientWidth, ClientHeight);
+  Canvas.Draw(0, 0, FCode.Bitmap);
+  if FCode.Bitmap.Height < ClientHeight then
+  begin
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := TColor(FColors.Surface);
+    Canvas.FillRect(TRect.Create(0, FCode.Bitmap.Height, ClientWidth, ClientHeight));
+  end;
+  mFrame.Options := FOptions;
+  mFrame.Colors := FColors;
+  mFrame.PPI := CurrentPPI;
+  mFrame.Width := ClientWidth;
+  mFrame.Viewport := FViewport;
+  mFrame.SliderVisible := SliderVisible;
+  mFrame.Slider := SliderSpan;
+  FOverlays.Paint(Canvas, FMap, mFrame);
+end;
+
+procedure TAtlasMinimapView.Resize;
+begin
+  inherited Resize;
+  InvalidateLayout;
+end;
+
+procedure TAtlasMinimapView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mSpan: TAtlasMinimapSpan;
+  mTop: Integer;
+begin
+  inherited MouseDown(Button, Shift, X, Y);
+  if (Button <> mbLeft) or (Map.RowCount <= 0) then
+  begin
+    Exit;
+  end;
+  mSpan := SliderSpan;
+  FPointer.LastScroll := -1;
+  // Neben dem Schieber: springen oder scrollen, dann weiter ziehen, gegriffen in der Mitte des Schiebers.
+  FPointer.Grab := (mSpan.Bottom - mSpan.Top) div 2;
+  if (Y >= mSpan.Top) and (Y < mSpan.Bottom) then
+  begin
+    FPointer.Grab := Y - mSpan.Top;
+  end
+  else if FOptions.ClickJumps then
+  begin
+    if Assigned(FOnJump) then
+    begin
+      FOnJump(FMap.LineAt(Y));
+    end;
+    FPointer.LastScroll := FMap.ClickTop(Y, FMap.VisibleRows(FViewport.Top, FViewport.Bottom));
+  end
+  else
+  begin
+    mTop := FMap.ClickTop(Y, FMap.VisibleRows(FViewport.Top, FViewport.Bottom));
+    Scroll(mTop);
+  end;
+  FPointer.Dragging := True;
+  Invalidate;
+end;
+
+procedure TAtlasMinimapView.MouseMove(Shift: TShiftState; X, Y: Integer);
+begin
+  inherited MouseMove(Shift, X, Y);
+  if not FPointer.Dragging then
+  begin
+    Exit;
+  end;
+  if not (ssLeft in Shift) then
+  begin
+    FPointer.Dragging := False;
+    Invalidate;
+    Exit;
+  end;
+  Scroll(Map.DragTop(Y, FPointer.Grab, FMap.VisibleRows(FViewport.Top, FViewport.Bottom)));
+end;
+
+procedure TAtlasMinimapView.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited MouseUp(Button, Shift, X, Y);
+  if Button = mbLeft then
+  begin
+    FPointer.Dragging := False;
+    Invalidate;
+  end;
+end;
+
+function TAtlasMinimapView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
+var
+  mLines, mTop: Integer;
+begin
+  // Mausrad über der Minimap scrollt den Editor wie über dem Text: Zeilen je Raste aus Windows (Vorgabe 3).
+  mLines := Max(1, Mouse.WheelScrollLines);
+  mTop := Max(0, FViewport.Top - (WheelDelta * mLines) div WHEEL_DELTA);
+  Result := True;
+  if (mTop = FViewport.Top) or not Assigned(FOnScroll) then
+  begin
+    Exit;
+  end;
+  FPointer.LastScroll := mTop;
+  FOnScroll(mTop);
 end;
 
 procedure TAtlasMinimapView.ChangeScale(M, D: Integer; isDpiChange: Boolean);
@@ -153,6 +253,39 @@ begin
   FCode.Invalidate;
   FOverlays.Invalidate;
   Invalidate;
+end;
+
+procedure TAtlasMinimapView.Scroll(ATopLine: Integer);
+begin
+  if ATopLine = FPointer.LastScroll then
+  begin
+    Exit;
+  end;
+  FPointer.LastScroll := ATopLine;
+  if Assigned(FOnScroll) then
+  begin
+    FOnScroll(ATopLine);
+  end;
+end;
+
+procedure TAtlasMinimapView.CMMouseEnter(var Message: TMessage);
+begin
+  inherited;
+  FPointer.Hot := True;
+  if FOptions.Slider = TAtlasMinimapSlider.MouseOver then
+  begin
+    Invalidate;
+  end;
+end;
+
+procedure TAtlasMinimapView.CMMouseLeave(var Message: TMessage);
+begin
+  inherited;
+  FPointer.Hot := False;
+  if FOptions.Slider = TAtlasMinimapSlider.MouseOver then
+  begin
+    Invalidate;
+  end;
 end;
 
 procedure TAtlasMinimapView.SetOptions(const AOptions: TAtlasMinimapOptions);
@@ -247,142 +380,9 @@ begin
   Result := (FOptions.Slider = TAtlasMinimapSlider.Always) or FPointer.Hot or FPointer.Dragging;
 end;
 
-procedure TAtlasMinimapView.Resize;
+class function TAtlasMinimapView.ViewWidth(const AOptions: TAtlasMinimapOptions; APPI: Integer): Integer;
 begin
-  inherited Resize;
-  InvalidateLayout;
-end;
-
-procedure TAtlasMinimapView.Paint;
-var
-  mFrame: TAtlasMinimapFrame;
-begin
-  FCode.Ensure(Map, FOptions, FColors, ClientWidth, ClientHeight);
-  Canvas.Draw(0, 0, FCode.Bitmap);
-  if FCode.Bitmap.Height < ClientHeight then
-  begin
-    Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := TColor(FColors.Surface);
-    Canvas.FillRect(TRect.Create(0, FCode.Bitmap.Height, ClientWidth, ClientHeight));
-  end;
-  mFrame.Options := FOptions;
-  mFrame.Colors := FColors;
-  mFrame.PPI := CurrentPPI;
-  mFrame.Width := ClientWidth;
-  mFrame.Viewport := FViewport;
-  mFrame.SliderVisible := SliderVisible;
-  mFrame.Slider := SliderSpan;
-  FOverlays.Paint(Canvas, FMap, mFrame);
-end;
-
-procedure TAtlasMinimapView.Scroll(ATopLine: Integer);
-begin
-  if ATopLine = FPointer.LastScroll then
-  begin
-    Exit;
-  end;
-  FPointer.LastScroll := ATopLine;
-  if Assigned(FOnScroll) then
-  begin
-    FOnScroll(ATopLine);
-  end;
-end;
-
-function TAtlasMinimapView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
-var
-  mLines, mTop: Integer;
-begin
-  // Mausrad über der Minimap scrollt den Editor wie über dem Text: Zeilen je Raste aus Windows (Vorgabe 3).
-  mLines := Max(1, Mouse.WheelScrollLines);
-  mTop := Max(0, FViewport.Top - (WheelDelta * mLines) div WHEEL_DELTA);
-  Result := True;
-  if (mTop = FViewport.Top) or not Assigned(FOnScroll) then
-  begin
-    Exit;
-  end;
-  FPointer.LastScroll := mTop;
-  FOnScroll(mTop);
-end;
-
-procedure TAtlasMinimapView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  mSpan: TAtlasMinimapSpan;
-  mTop: Integer;
-begin
-  inherited MouseDown(Button, Shift, X, Y);
-  if (Button <> mbLeft) or (Map.RowCount <= 0) then
-  begin
-    Exit;
-  end;
-  mSpan := SliderSpan;
-  FPointer.LastScroll := -1;
-  // Neben dem Schieber: springen oder scrollen, dann weiter ziehen, gegriffen in der Mitte des Schiebers.
-  FPointer.Grab := (mSpan.Bottom - mSpan.Top) div 2;
-  if (Y >= mSpan.Top) and (Y < mSpan.Bottom) then
-  begin
-    FPointer.Grab := Y - mSpan.Top;
-  end
-  else if FOptions.ClickJumps then
-  begin
-    if Assigned(FOnJump) then
-    begin
-      FOnJump(FMap.LineAt(Y));
-    end;
-    FPointer.LastScroll := FMap.ClickTop(Y, FMap.VisibleRows(FViewport.Top, FViewport.Bottom));
-  end
-  else
-  begin
-    mTop := FMap.ClickTop(Y, FMap.VisibleRows(FViewport.Top, FViewport.Bottom));
-    Scroll(mTop);
-  end;
-  FPointer.Dragging := True;
-  Invalidate;
-end;
-
-procedure TAtlasMinimapView.MouseMove(Shift: TShiftState; X, Y: Integer);
-begin
-  inherited MouseMove(Shift, X, Y);
-  if not FPointer.Dragging then
-  begin
-    Exit;
-  end;
-  if not (ssLeft in Shift) then
-  begin
-    FPointer.Dragging := False;
-    Invalidate;
-    Exit;
-  end;
-  Scroll(Map.DragTop(Y, FPointer.Grab, FMap.VisibleRows(FViewport.Top, FViewport.Bottom)));
-end;
-
-procedure TAtlasMinimapView.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  inherited MouseUp(Button, Shift, X, Y);
-  if Button = mbLeft then
-  begin
-    FPointer.Dragging := False;
-    Invalidate;
-  end;
-end;
-
-procedure TAtlasMinimapView.CMMouseEnter(var Message: TMessage);
-begin
-  inherited;
-  FPointer.Hot := True;
-  if FOptions.Slider = TAtlasMinimapSlider.MouseOver then
-  begin
-    Invalidate;
-  end;
-end;
-
-procedure TAtlasMinimapView.CMMouseLeave(var Message: TMessage);
-begin
-  inherited;
-  FPointer.Hot := False;
-  if FOptions.Slider = TAtlasMinimapSlider.MouseOver then
-  begin
-    Invalidate;
-  end;
+  Result := MulDiv(TAtlasMinimap.ClampWidth(AOptions.Width), Max(APPI, 96), 96);
 end;
 
 end.

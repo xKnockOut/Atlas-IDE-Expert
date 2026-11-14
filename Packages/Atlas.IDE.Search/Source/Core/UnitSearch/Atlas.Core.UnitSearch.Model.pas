@@ -508,6 +508,8 @@ begin
   APreview.FormItems := SketchItemsOf(AForm);
 end;
 
+{ TAtlasUnitPreview }
+
 class function TAtlasUnitPreview.FromJson(const AValue: TJSONValue;
   const AUriToPath: TFunc<string, string>): TAtlasUnitPreview;
 var
@@ -549,6 +551,35 @@ begin
 end;
 
 { TAtlasUnitSearch }
+
+class function TAtlasUnitSearch.UnitsArguments(ACaptions: Boolean): string;
+begin
+  Result := '[]';
+  if ACaptions then
+  begin
+    Result := '[{"captions":true}]';
+  end;
+end;
+
+class function TAtlasUnitSearch.ProjectsFromJson(const AValue: TJSONValue): TArray<string>;
+var
+  mProjects: TJSONArray;
+  mItem: TJSONValue;
+  mName: string;
+begin
+  Result := nil;
+  if not (AValue is TJSONObject) or not TJSONObject(AValue).TryGetValue<TJSONArray>('projects', mProjects) then
+  begin
+    Exit;
+  end;
+  for mItem in mProjects do
+  begin
+    if (mItem is TJSONObject) and TJSONObject(mItem).TryGetValue<string>('name', mName) then
+    begin
+      Result := Result + [mName];
+    end;
+  end;
+end;
 
 class function TAtlasUnitSearch.KindFromText(const AText: string; out AKind: TAtlasUnitKind): Boolean;
 var
@@ -605,43 +636,6 @@ begin
     TAtlasUnitGrouping.None: Result := 'none';
   else
     Result := 'project';
-  end;
-end;
-
-class function TAtlasUnitSearch.PathStyleFromText(const AText: string): TAtlasUnitPathStyle;
-begin
-  if SameText(AText, 'compact') then
-  begin
-    Result := TAtlasUnitPathStyle.Compact;
-  end
-  else if SameText(AText, 'absolute') then
-  begin
-    Result := TAtlasUnitPathStyle.Absolute;
-  end
-  else
-  begin
-    Result := TAtlasUnitPathStyle.Relative;
-  end;
-end;
-
-class function TAtlasUnitSearch.OriginsForScope(const AScope: string): TAtlasUnitOrigins;
-begin
-  if SameText(AScope, 'project') then
-  begin
-    Result := [TAtlasUnitOrigin.Active];
-  end
-  else if SameText(AScope, 'searchPath') then
-  begin
-    Result := [TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Group, TAtlasUnitOrigin.SearchPath];
-  end
-  else if SameText(AScope, 'library') then
-  begin
-    Result := [TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Group, TAtlasUnitOrigin.SearchPath,
-      TAtlasUnitOrigin.Library_];
-  end
-  else
-  begin
-    Result := [TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Group];
   end;
 end;
 
@@ -742,32 +736,40 @@ begin
   end;
 end;
 
-class function TAtlasUnitSearch.UnitsArguments(ACaptions: Boolean): string;
+class function TAtlasUnitSearch.PathStyleFromText(const AText: string): TAtlasUnitPathStyle;
 begin
-  Result := '[]';
-  if ACaptions then
+  if SameText(AText, 'compact') then
   begin
-    Result := '[{"captions":true}]';
+    Result := TAtlasUnitPathStyle.Compact;
+  end
+  else if SameText(AText, 'absolute') then
+  begin
+    Result := TAtlasUnitPathStyle.Absolute;
+  end
+  else
+  begin
+    Result := TAtlasUnitPathStyle.Relative;
   end;
 end;
 
-class function TAtlasUnitSearch.ProjectsFromJson(const AValue: TJSONValue): TArray<string>;
-var
-  mProjects: TJSONArray;
-  mItem: TJSONValue;
-  mName: string;
+class function TAtlasUnitSearch.OriginsForScope(const AScope: string): TAtlasUnitOrigins;
 begin
-  Result := nil;
-  if not (AValue is TJSONObject) or not TJSONObject(AValue).TryGetValue<TJSONArray>('projects', mProjects) then
+  if SameText(AScope, 'project') then
   begin
-    Exit;
-  end;
-  for mItem in mProjects do
+    Result := [TAtlasUnitOrigin.Active];
+  end
+  else if SameText(AScope, 'searchPath') then
   begin
-    if (mItem is TJSONObject) and TJSONObject(mItem).TryGetValue<string>('name', mName) then
-    begin
-      Result := Result + [mName];
-    end;
+    Result := [TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Group, TAtlasUnitOrigin.SearchPath];
+  end
+  else if SameText(AScope, 'library') then
+  begin
+    Result := [TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Group, TAtlasUnitOrigin.SearchPath,
+      TAtlasUnitOrigin.Library_];
+  end
+  else
+  begin
+    Result := [TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Group];
   end;
 end;
 
@@ -831,6 +833,8 @@ type
     function MatchesSubsequence: Boolean;
     function Score: Integer;
   end;
+
+{ TScoreSegment }
 
 function TScoreSegment.UpperAt(AIndex: Integer): Char;
 begin
@@ -1013,18 +1017,24 @@ begin
   Result := FastScore(AWord, AWord.ToUpper, AName, AName.ToUpper);
 end;
 
-class function TAtlasUnitSearch.Order(const AEntries: TAtlasUnitEntries; const AQuery: TAtlasUnitQuery;
-  AOrigins: TAtlasUnitOrigins; AKinds: TAtlasUnitKinds): TArray<Integer>;
+class procedure TAtlasUnitSearch.SortByName(var AEntries: TAtlasUnitEntries);
 var
-  mAll: TArray<Integer>;
   mIndex: Integer;
 begin
-  SetLength(mAll, Length(AEntries));
-  for mIndex := 0 to High(mAll) do
+  for mIndex := 0 to High(AEntries) do
   begin
-    mAll[mIndex] := mIndex;
+    AEntries[mIndex].UpperName := AEntries[mIndex].Name.ToUpper;
+    AEntries[mIndex].UpperCaption := AEntries[mIndex].Caption.ToUpper;
   end;
-  Result := Order(AEntries, AQuery, AOrigins, AKinds, mAll);
+  TArray.Sort<TAtlasUnitEntry>(AEntries, TComparer<TAtlasUnitEntry>.Construct(
+    function(const A, B: TAtlasUnitEntry): Integer
+    begin
+      Result := CompareText(A.Name, B.Name);
+      if Result = 0 then
+      begin
+        Result := CompareText(A.FileName, B.FileName);
+      end;
+    end));
 end;
 
 function UppersOf(const AWords: TArray<string>): TArray<string>;
@@ -1125,35 +1135,17 @@ begin
 end;
 
 class function TAtlasUnitSearch.Order(const AEntries: TAtlasUnitEntries; const AQuery: TAtlasUnitQuery;
-  AOrigins: TAtlasUnitOrigins; AKinds: TAtlasUnitKinds; const ACandidates: TArray<Integer>): TArray<Integer>;
+  AOrigins: TAtlasUnitOrigins; AKinds: TAtlasUnitKinds): TArray<Integer>;
 var
-  mScores: TArray<Integer>;
-  mUppers: TArray<string>;
-  mList: TList<Integer>;
-  mIndex, mTotal: Integer;
+  mAll: TArray<Integer>;
+  mIndex: Integer;
 begin
-  SetLength(mScores, Length(AEntries));
-  mUppers := UppersOf(AQuery.Words);
-  mList := TList<Integer>.Create;
-  try
-    for mIndex in ACandidates do
-    begin
-      if (mIndex < 0) or (mIndex > High(AEntries)) or not Admits(AEntries[mIndex], AQuery, AOrigins, AKinds) then
-      begin
-        Continue;
-      end;
-      mTotal := EntryScore(AEntries[mIndex], AQuery.Words, mUppers);
-      if mTotal >= 0 then
-      begin
-        mScores[mIndex] := mTotal;
-        mList.Add(mIndex);
-      end;
-    end;
-    mList.Sort(ScoreComparer(mScores, AEntries));
-    Result := mList.ToArray;
-  finally
-    mList.Free;
+  SetLength(mAll, Length(AEntries));
+  for mIndex := 0 to High(mAll) do
+  begin
+    mAll[mIndex] := mIndex;
   end;
+  Result := Order(AEntries, AQuery, AOrigins, AKinds, mAll);
 end;
 
 /// <summary>Ordner mit „\“ am Ende (das Plugin läuft nur unter Windows).</summary>
@@ -1190,19 +1182,35 @@ begin
   end;
 end;
 
-class function TAtlasUnitSearch.GroupOf(const AEntry: TAtlasUnitEntry; AGrouping: TAtlasUnitGrouping;
-  const ARoot: string): string;
+class function TAtlasUnitSearch.Order(const AEntries: TAtlasUnitEntries; const AQuery: TAtlasUnitQuery;
+  AOrigins: TAtlasUnitOrigins; AKinds: TAtlasUnitKinds; const ACandidates: TArray<Integer>): TArray<Integer>;
+var
+  mScores: TArray<Integer>;
+  mUppers: TArray<string>;
+  mList: TList<Integer>;
+  mIndex, mTotal: Integer;
 begin
-  case AGrouping of
-    TAtlasUnitGrouping.Project:
-      Result := AEntry.Project;
-    TAtlasUnitGrouping.Folder:
+  SetLength(mScores, Length(AEntries));
+  mUppers := UppersOf(AQuery.Words);
+  mList := TList<Integer>.Create;
+  try
+    for mIndex in ACandidates do
+    begin
+      if (mIndex < 0) or (mIndex > High(AEntries)) or not Admits(AEntries[mIndex], AQuery, AOrigins, AKinds) then
       begin
-        Result := RelativeTo(AEntry.FileName, ARoot);
-        Result := Copy(Result, 1, LastDelimiter('\', Result) - 1);
+        Continue;
       end;
-  else
-    Result := '';
+      mTotal := EntryScore(AEntries[mIndex], AQuery.Words, mUppers);
+      if mTotal >= 0 then
+      begin
+        mScores[mIndex] := mTotal;
+        mList.Add(mIndex);
+      end;
+    end;
+    mList.Sort(ScoreComparer(mScores, AEntries));
+    Result := mList.ToArray;
+  finally
+    mList.Free;
   end;
 end;
 
@@ -1300,6 +1308,22 @@ begin
     mRow.Group := AKey;
     mRow.Entry := mIndex;
     AList.Add(mRow);
+  end;
+end;
+
+class function TAtlasUnitSearch.GroupOf(const AEntry: TAtlasUnitEntry; AGrouping: TAtlasUnitGrouping;
+  const ARoot: string): string;
+begin
+  case AGrouping of
+    TAtlasUnitGrouping.Project:
+      Result := AEntry.Project;
+    TAtlasUnitGrouping.Folder:
+      begin
+        Result := RelativeTo(AEntry.FileName, ARoot);
+        Result := Copy(Result, 1, LastDelimiter('\', Result) - 1);
+      end;
+  else
+    Result := '';
   end;
 end;
 
@@ -1401,26 +1425,6 @@ begin
     end;
   end;
   Result := WithoutSlash(Result);
-end;
-
-class procedure TAtlasUnitSearch.SortByName(var AEntries: TAtlasUnitEntries);
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(AEntries) do
-  begin
-    AEntries[mIndex].UpperName := AEntries[mIndex].Name.ToUpper;
-    AEntries[mIndex].UpperCaption := AEntries[mIndex].Caption.ToUpper;
-  end;
-  TArray.Sort<TAtlasUnitEntry>(AEntries, TComparer<TAtlasUnitEntry>.Construct(
-    function(const A, B: TAtlasUnitEntry): Integer
-    begin
-      Result := CompareText(A.Name, B.Name);
-      if Result = 0 then
-      begin
-        Result := CompareText(A.FileName, B.FileName);
-      end;
-    end));
 end;
 
 end.

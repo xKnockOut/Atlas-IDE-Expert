@@ -68,6 +68,8 @@ uses
   System.Math,
   Atlas.Core.Diagnostics.Shutdown;
 
+{ TAtlasAsyncWait }
+
 class function TAtlasAsyncWait.Await(const AIsCompleted: TFunc<Boolean>; const ACancel: TProc;
   const ADeadline: TAtlasDeadline; const ACancelled: TFunc<Boolean>): TAtlasAsyncResult;
 begin

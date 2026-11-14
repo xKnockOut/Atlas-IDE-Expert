@@ -210,32 +210,11 @@ begin
   end;
 end;
 
-class function TTextAnonymizer.ReplaceQuoted(const AText: string): string;
-var
-  mBuilder: TStringBuilder;
-  mIndex, mStop: Integer;
+{ TTextAnonymizer }
+
+class function TTextAnonymizer.AnonymizeLogLine(const ALine: string; const ARoots, AIdentity: TArray<string>): string;
 begin
-  mBuilder := TStringBuilder.Create;
-  try
-    mIndex := 1;
-    while mIndex <= Length(AText) do
-    begin
-      mStop := QuoteEnd(AText, mIndex);
-      if (mStop > mIndex + 1) and (Copy(AText, mIndex + 1, 1) <> '<') then
-      begin
-        mBuilder.Append(AText[mIndex]).Append(cValueLabel).Append(AText[mStop]);
-        mIndex := mStop + 1;
-      end
-      else
-      begin
-        mBuilder.Append(AText[mIndex]);
-        Inc(mIndex);
-      end;
-    end;
-    Result := mBuilder.ToString;
-  finally
-    mBuilder.Free;
-  end;
+  Result := ReplaceQuoted(AnonymizePaths(ALine, ARoots, AIdentity));
 end;
 
 /// <summary>Endung von AName mit Punkt, wenn sie wie eine Dateiendung aussieht (1 bis 8 Buchstaben oder Ziffern);
@@ -390,9 +369,32 @@ begin
   end;
 end;
 
-class function TTextAnonymizer.AnonymizeLogLine(const ALine: string; const ARoots, AIdentity: TArray<string>): string;
+class function TTextAnonymizer.ReplaceQuoted(const AText: string): string;
+var
+  mBuilder: TStringBuilder;
+  mIndex, mStop: Integer;
 begin
-  Result := ReplaceQuoted(AnonymizePaths(ALine, ARoots, AIdentity));
+  mBuilder := TStringBuilder.Create;
+  try
+    mIndex := 1;
+    while mIndex <= Length(AText) do
+    begin
+      mStop := QuoteEnd(AText, mIndex);
+      if (mStop > mIndex + 1) and (Copy(AText, mIndex + 1, 1) <> '<') then
+      begin
+        mBuilder.Append(AText[mIndex]).Append(cValueLabel).Append(AText[mStop]);
+        mIndex := mStop + 1;
+      end
+      else
+      begin
+        mBuilder.Append(AText[mIndex]);
+        Inc(mIndex);
+      end;
+    end;
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
 end;
 
 class function TTextAnonymizer.FenceSafe(const AText: string): string;

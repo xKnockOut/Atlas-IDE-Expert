@@ -54,6 +54,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Hover.DebugValue;
 
+{ TAtlasCodeInsightQueries }
+
 class function TAtlasCodeInsightQueries.CurrentEditView: IOTAEditView;
 var
   mServices: IOTACodeInsightServices;

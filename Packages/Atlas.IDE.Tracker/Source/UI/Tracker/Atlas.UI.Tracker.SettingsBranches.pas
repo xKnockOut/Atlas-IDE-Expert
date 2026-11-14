@@ -53,26 +53,6 @@ uses
 
 { TAtlasTrackerBranchSection }
 
-function TAtlasTrackerBranchSection.OwnerId: string;
-begin
-  Result := TAtlasTrackerSettingsSection.cOwnerId;
-end;
-
-function TAtlasTrackerBranchSection.AreaId: string;
-begin
-  Result := TAtlasTrackerSettingsSection.cAreaId;
-end;
-
-class function TAtlasTrackerBranchSection.IsAvailable: Boolean;
-begin
-  Result := Assigned(Available) and Available();
-end;
-
-class procedure TAtlasTrackerBranchSection.ProvideBranches(const AScope: IAtlasModuleScope);
-begin
-  AScope.Provide(IAtlasSettingsSectionProvider, TAtlasTrackerBranchProvider.Create as IAtlasSettingsSectionProvider);
-end;
-
 procedure TAtlasTrackerBranchSection.BuildRows;
 begin
   Choice('issues.start', TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesStart),
@@ -82,6 +62,16 @@ begin
   Line('issues.branchPattern', TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesBranchPattern));
   Line('issues.branchBase', TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesBranchBase));
   FCommitPattern := Line(cCommitPatternKey, TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesCommitPattern));
+end;
+
+function TAtlasTrackerBranchSection.OwnerId: string;
+begin
+  Result := TAtlasTrackerSettingsSection.cOwnerId;
+end;
+
+function TAtlasTrackerBranchSection.AreaId: string;
+begin
+  Result := TAtlasTrackerSettingsSection.cAreaId;
 end;
 
 procedure TAtlasTrackerBranchSection.Save(const AValues: IAtlasSettingsValues);
@@ -97,6 +87,16 @@ procedure TAtlasTrackerBranchSection.Close;
 begin
   FCommitPattern := nil;
   inherited Close;
+end;
+
+class procedure TAtlasTrackerBranchSection.ProvideBranches(const AScope: IAtlasModuleScope);
+begin
+  AScope.Provide(IAtlasSettingsSectionProvider, TAtlasTrackerBranchProvider.Create as IAtlasSettingsSectionProvider);
+end;
+
+class function TAtlasTrackerBranchSection.IsAvailable: Boolean;
+begin
+  Result := Assigned(Available) and Available();
 end;
 
 { TAtlasTrackerBranchProvider }

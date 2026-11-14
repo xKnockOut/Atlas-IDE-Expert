@@ -33,6 +33,8 @@ uses
   System.SysUtils,
   Atlas.UI.Bookmarks.Strings;
 
+{ TAtlasNotesList }
+
 class function TAtlasNotesList.GroupText(const AGroup: TAtlasNoteGroup): string;
 begin
   if AGroup.Orphaned then

@@ -188,68 +188,114 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasIdeBlameLinks.Enabled: Boolean;
-begin
-  Result := TAtlasIdeBlameScope.Enabled;
-end;
-
 function TAtlasIdeBlameLinks.PatternOf(out ATarget: TAtlasTrackerTarget;
   out APattern: TAtlasIssueKeyPattern): Boolean;
 begin
   Result := TAtlasIdeBlameScope.PatternOf(FHooks, ATarget, APattern);
 end;
 
-class function TAtlasIdeBlameLinks.MessageMatches(const APattern: TAtlasIssueKeyPattern;
-  const ACommit: TAtlasBlameCommit): TArray<TAtlasIssueKeyMatch>;
+function TAtlasIdeBlameLinks.Describe(const ACommit: TAtlasBlameCommit; var AText: string;
+  out ALinks: TArray<string>): Boolean;
+var
+  mTarget: TAtlasTrackerTarget;
+  mPattern: TAtlasIssueKeyPattern;
+  mMatches: TArray<TAtlasIssueKeyMatch>;
+  mMatch: TAtlasIssueKeyMatch;
+  mMethod: Boolean;
+  mCount: Integer;
 begin
-  Result := TAtlasBlameLinks.Keys(APattern, ACommit.Message);
+  ALinks := nil;
+  Result := False;
+  if not PatternOf(mTarget, mPattern) then
+  begin
+    Exit;
+  end;
+  // Anderer Commit: Stände der letzten Kennungen verwerfen, beim nächsten Hover wird neu gefragt.
+  if ACommit.Revision <> FStatesRevision then
+  begin
+    FKeyStates.Clear;
+    FStatesRevision := ACommit.Revision;
+  end;
+  mMatches := MessageMatches(mPattern, ACommit);
+  FDescribing := True;
+  try
+    for mMatch in mMatches do
+    begin
+      Ask(mTarget, mPattern, mMatch);
+    end;
+  finally
+    FDescribing := False;
+  end;
+  for mMatch in mMatches do
+  begin
+    ALinks := ALinks + [KeyText(mTarget, mPattern, mMatch)];
+  end;
+  if Length(mMatches) > 0 then
+  begin
+    AText := TrimRight(AText) + #10#10 + TAtlasIssueTip.BlameFooter(TAtlasIdeIssuePreview.Active);
+  end;
+  mCount := ScopeCount(ACommit.FileName, ACommit.Line, mMethod);
+  ALinks := ALinks + [TAtlasIssueTip.ScopeLink(mMethod, mCount)];
+  Result := True;
 end;
 
-function TAtlasIdeBlameLinks.LineHooks: TAtlasBlameHooks;
+procedure TAtlasIdeBlameLinks.Link(const ACommit: TAtlasBlameCommit; AIndex: Integer);
 var
-  mSerial: Integer;
+  mTarget: TAtlasTrackerTarget;
+  mPattern: TAtlasIssueKeyPattern;
+  mMatches: TArray<TAtlasIssueKeyMatch>;
 begin
-  mSerial := FSerialOf;
-  Result := Default(TAtlasBlameHooks);
-  Result.Wanted :=
-    function: Boolean
-    var
-      mTarget: TAtlasTrackerTarget;
-      mPattern: TAtlasIssueKeyPattern;
-    begin
-      Result := (FInstance <> nil) and (FInstance.FSerialOf = mSerial) and FInstance.PatternOf(mTarget, mPattern);
-    end;
-  Result.Messages := LoadMessages;
-  Result.Suffix :=
-    function(AMessage: string): string
-    var
-      mTarget: TAtlasTrackerTarget;
-      mPattern: TAtlasIssueKeyPattern;
-    begin
-      Result := '';
-      if (FInstance <> nil) and (FInstance.FSerialOf = mSerial) and FInstance.PatternOf(mTarget, mPattern) then
+  if not PatternOf(mTarget, mPattern) then
+  begin
+    Exit;
+  end;
+  mMatches := MessageMatches(mPattern, ACommit);
+  if (AIndex >= 0) and (AIndex < Length(mMatches)) then
+  begin
+    Act(ACommit, cMenuShow, AIndex);
+  end
+  else
+  begin
+    FScope.ShowAt(ACommit.FileName, ACommit.Line);
+  end;
+end;
+
+procedure TAtlasIdeBlameLinks.Act(const ACommit: TAtlasBlameCommit; ACommand, AKey: Integer);
+var
+  mTarget: TAtlasTrackerTarget;
+  mPattern: TAtlasIssueKeyPattern;
+  mMatches: TArray<TAtlasIssueKeyMatch>;
+  mMatch: TAtlasIssueKeyMatch;
+begin
+  if ACommand = cMenuScope then
+  begin
+    FScope.ShowAt(ACommit.FileName, ACommit.Line);
+    Exit;
+  end;
+  if not PatternOf(mTarget, mPattern) then
+  begin
+    Exit;
+  end;
+  mMatches := MessageMatches(mPattern, ACommit);
+  if (AKey < 0) or (AKey >= Length(mMatches)) then
+  begin
+    Exit;
+  end;
+  mMatch := mMatches[AKey];
+  case ACommand of
+    cMenuShow:
+      if Assigned(FHooks.Show) then
       begin
-        Result := TAtlasBlameLinks.CaptionSuffix(TAtlasBlameLinks.Keys(mPattern, AMessage));
+        FHooks.Show(mMatch.IssueTarget(mTarget), mMatch.IssueKey);
       end;
-    end;
-  Result.Describe :=
-    function(const ACommit: TAtlasBlameCommit; var AText: string; out ALinks: TArray<string>): Boolean
-    begin
-      ALinks := nil;
-      Result := (FInstance <> nil) and (FInstance.FSerialOf = mSerial) and FInstance.Describe(ACommit, AText, ALinks);
-    end;
-  Result.Link :=
-    procedure(const ACommit: TAtlasBlameCommit; AIndex: Integer)
-    begin
-      if (FInstance <> nil) and (FInstance.FSerialOf = mSerial) then
+    cMenuBrowse:
+      if Assigned(FHooks.Browse) then
       begin
-        TAtlasGuard.Run(TAtlasFeature.BlameIssues,
-          procedure
-          begin
-            FInstance.Link(ACommit, AIndex);
-          end);
+        FHooks.Browse(mMatch.IssueTarget(mTarget), mMatch.IssueKey);
       end;
-    end;
+    cMenuCopy:
+      Clipboard.AsText := mMatch.Key;
+  end;
 end;
 
 /// <summary>Schlüssel des Stands einer Kennung im Hover (Muster|Kennung).</summary>
@@ -349,49 +395,50 @@ begin
   end;
 end;
 
-function TAtlasIdeBlameLinks.Describe(const ACommit: TAtlasBlameCommit; var AText: string;
-  out ALinks: TArray<string>): Boolean;
+procedure TAtlasIdeBlameLinks.ShowMenu(const ACommit: TAtlasBlameCommit; const APoint: TPoint);
 var
   mTarget: TAtlasTrackerTarget;
   mPattern: TAtlasIssueKeyPattern;
   mMatches: TArray<TAtlasIssueKeyMatch>;
-  mMatch: TAtlasIssueKeyMatch;
+  mIndex: Integer;
+  mParent: TMenuItem;
   mMethod: Boolean;
-  mCount: Integer;
+  mFirst, mLast: Integer;
+  mLines: TArray<string>;
+  mText, mName: string;
 begin
-  ALinks := nil;
-  Result := False;
-  if not PatternOf(mTarget, mPattern) then
+  FMenu.Items.Clear;
+  FMenuCommit := ACommit;
+  mMatches := nil;
+  if PatternOf(mTarget, mPattern) then
   begin
-    Exit;
+    mMatches := MessageMatches(mPattern, ACommit);
   end;
-  // Anderer Commit: Stände der letzten Kennungen verwerfen, beim nächsten Hover wird neu gefragt.
-  if ACommit.Revision <> FStatesRevision then
+  for mIndex := 0 to High(mMatches) do
   begin
-    FKeyStates.Clear;
-    FStatesRevision := ACommit.Revision;
-  end;
-  mMatches := MessageMatches(mPattern, ACommit);
-  FDescribing := True;
-  try
-    for mMatch in mMatches do
+    // Eine Kennung: Einträge direkt; mehrere: je Kennung ein Untermenü.
+    mParent := FMenu.Items;
+    if Length(mMatches) > 1 then
     begin
-      Ask(mTarget, mPattern, mMatch);
+      mParent := AddMenuItem(FMenu.Items, mMatches[mIndex].Key, 0);
+      mParent.OnClick := nil;
     end;
-  finally
-    FDescribing := False;
-  end;
-  for mMatch in mMatches do
-  begin
-    ALinks := ALinks + [KeyText(mTarget, mPattern, mMatch)];
+    AddMenuItem(mParent, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueLinkMenuShow),
+      mIndex * cMenuStride + cMenuShow).Default :=
+      True;
+    AddMenuItem(mParent, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewBrowse),
+      mIndex * cMenuStride + cMenuBrowse);
+    AddMenuItem(mParent, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCopyKey),
+      mIndex * cMenuStride + cMenuCopy);
   end;
   if Length(mMatches) > 0 then
   begin
-    AText := TrimRight(AText) + #10#10 + TAtlasIssueTip.BlameFooter(TAtlasIdeIssuePreview.Active);
+    AddMenuItem(FMenu.Items, '-', 0).OnClick := nil;
   end;
-  mCount := ScopeCount(ACommit.FileName, ACommit.Line, mMethod);
-  ALinks := ALinks + [TAtlasIssueTip.ScopeLink(mMethod, mCount)];
-  Result := True;
+  mMethod := TAtlasIdeBlameScope.BufferLines(ACommit.FileName, mLines, mText) and
+    TAtlasBlameLinks.Scope(mText, ACommit.Line, mFirst, mLast, mName);
+  AddMenuItem(FMenu.Items, TAtlasIssueTip.ScopeLink(mMethod, -1), cMenuScope);
+  FMenu.Popup(APoint.X, APoint.Y);
 end;
 
 function CountKey(const AFileName: string; AFirst, ALast: Integer; const AName: string;
@@ -488,63 +535,27 @@ begin
   end;
 end;
 
-procedure TAtlasIdeBlameLinks.Link(const ACommit: TAtlasBlameCommit; AIndex: Integer);
+procedure TAtlasIdeBlameLinks.MenuClick(Sender: TObject);
 var
-  mTarget: TAtlasTrackerTarget;
-  mPattern: TAtlasIssueKeyPattern;
-  mMatches: TArray<TAtlasIssueKeyMatch>;
+  mTag: Integer;
+  mCommit: TAtlasBlameCommit;
 begin
-  if not PatternOf(mTarget, mPattern) then
-  begin
-    Exit;
-  end;
-  mMatches := MessageMatches(mPattern, ACommit);
-  if (AIndex >= 0) and (AIndex < Length(mMatches)) then
-  begin
-    Act(ACommit, cMenuShow, AIndex);
-  end
-  else
-  begin
-    FScope.ShowAt(ACommit.FileName, ACommit.Line);
-  end;
+  mTag := TMenuItem(Sender).Tag;
+  mCommit := FMenuCommit;
+  TAtlasGuard.Run(TAtlasFeature.BlameIssues,
+    procedure
+    begin
+      Act(mCommit, mTag mod cMenuStride, mTag div cMenuStride);
+    end);
 end;
 
-procedure TAtlasIdeBlameLinks.Act(const ACommit: TAtlasBlameCommit; ACommand, AKey: Integer);
-var
-  mTarget: TAtlasTrackerTarget;
-  mPattern: TAtlasIssueKeyPattern;
-  mMatches: TArray<TAtlasIssueKeyMatch>;
-  mMatch: TAtlasIssueKeyMatch;
+function TAtlasIdeBlameLinks.AddMenuItem(AParent: TMenuItem; const ACaption: string; ATag: Integer): TMenuItem;
 begin
-  if ACommand = cMenuScope then
-  begin
-    FScope.ShowAt(ACommit.FileName, ACommit.Line);
-    Exit;
-  end;
-  if not PatternOf(mTarget, mPattern) then
-  begin
-    Exit;
-  end;
-  mMatches := MessageMatches(mPattern, ACommit);
-  if (AKey < 0) or (AKey >= Length(mMatches)) then
-  begin
-    Exit;
-  end;
-  mMatch := mMatches[AKey];
-  case ACommand of
-    cMenuShow:
-      if Assigned(FHooks.Show) then
-      begin
-        FHooks.Show(mMatch.IssueTarget(mTarget), mMatch.IssueKey);
-      end;
-    cMenuBrowse:
-      if Assigned(FHooks.Browse) then
-      begin
-        FHooks.Browse(mMatch.IssueTarget(mTarget), mMatch.IssueKey);
-      end;
-    cMenuCopy:
-      Clipboard.AsText := mMatch.Key;
-  end;
+  Result := TMenuItem.Create(FMenu);
+  Result.Caption := ACaption;
+  Result.Tag := ATag;
+  Result.OnClick := MenuClick;
+  AParent.Add(Result);
 end;
 
 /// <summary>Im Hauptthread nachgereicht: Menü zum Rechtsklick auf ACommit an AWhere.</summary>
@@ -668,78 +679,67 @@ begin
   end;
 end;
 
-function TAtlasIdeBlameLinks.AddMenuItem(AParent: TMenuItem; const ACaption: string; ATag: Integer): TMenuItem;
+class function TAtlasIdeBlameLinks.MessageMatches(const APattern: TAtlasIssueKeyPattern;
+  const ACommit: TAtlasBlameCommit): TArray<TAtlasIssueKeyMatch>;
 begin
-  Result := TMenuItem.Create(FMenu);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  Result.OnClick := MenuClick;
-  AParent.Add(Result);
+  Result := TAtlasBlameLinks.Keys(APattern, ACommit.Message);
 end;
 
-procedure TAtlasIdeBlameLinks.ShowMenu(const ACommit: TAtlasBlameCommit; const APoint: TPoint);
+function TAtlasIdeBlameLinks.LineHooks: TAtlasBlameHooks;
 var
-  mTarget: TAtlasTrackerTarget;
-  mPattern: TAtlasIssueKeyPattern;
-  mMatches: TArray<TAtlasIssueKeyMatch>;
-  mIndex: Integer;
-  mParent: TMenuItem;
-  mMethod: Boolean;
-  mFirst, mLast: Integer;
-  mLines: TArray<string>;
-  mText, mName: string;
+  mSerial: Integer;
 begin
-  FMenu.Items.Clear;
-  FMenuCommit := ACommit;
-  mMatches := nil;
-  if PatternOf(mTarget, mPattern) then
-  begin
-    mMatches := MessageMatches(mPattern, ACommit);
-  end;
-  for mIndex := 0 to High(mMatches) do
-  begin
-    // Eine Kennung: Einträge direkt; mehrere: je Kennung ein Untermenü.
-    mParent := FMenu.Items;
-    if Length(mMatches) > 1 then
+  mSerial := FSerialOf;
+  Result := Default(TAtlasBlameHooks);
+  Result.Wanted :=
+    function: Boolean
+    var
+      mTarget: TAtlasTrackerTarget;
+      mPattern: TAtlasIssueKeyPattern;
     begin
-      mParent := AddMenuItem(FMenu.Items, mMatches[mIndex].Key, 0);
-      mParent.OnClick := nil;
+      Result := (FInstance <> nil) and (FInstance.FSerialOf = mSerial) and FInstance.PatternOf(mTarget, mPattern);
     end;
-    AddMenuItem(mParent, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueLinkMenuShow),
-      mIndex * cMenuStride + cMenuShow).Default :=
-      True;
-    AddMenuItem(mParent, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewBrowse),
-      mIndex * cMenuStride + cMenuBrowse);
-    AddMenuItem(mParent, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCopyKey),
-      mIndex * cMenuStride + cMenuCopy);
-  end;
-  if Length(mMatches) > 0 then
-  begin
-    AddMenuItem(FMenu.Items, '-', 0).OnClick := nil;
-  end;
-  mMethod := TAtlasIdeBlameScope.BufferLines(ACommit.FileName, mLines, mText) and
-    TAtlasBlameLinks.Scope(mText, ACommit.Line, mFirst, mLast, mName);
-  AddMenuItem(FMenu.Items, TAtlasIssueTip.ScopeLink(mMethod, -1), cMenuScope);
-  FMenu.Popup(APoint.X, APoint.Y);
-end;
-
-procedure TAtlasIdeBlameLinks.MenuClick(Sender: TObject);
-var
-  mTag: Integer;
-  mCommit: TAtlasBlameCommit;
-begin
-  mTag := TMenuItem(Sender).Tag;
-  mCommit := FMenuCommit;
-  TAtlasGuard.Run(TAtlasFeature.BlameIssues,
-    procedure
+  Result.Messages := LoadMessages;
+  Result.Suffix :=
+    function(AMessage: string): string
+    var
+      mTarget: TAtlasTrackerTarget;
+      mPattern: TAtlasIssueKeyPattern;
     begin
-      Act(mCommit, mTag mod cMenuStride, mTag div cMenuStride);
-    end);
+      Result := '';
+      if (FInstance <> nil) and (FInstance.FSerialOf = mSerial) and FInstance.PatternOf(mTarget, mPattern) then
+      begin
+        Result := TAtlasBlameLinks.CaptionSuffix(TAtlasBlameLinks.Keys(mPattern, AMessage));
+      end;
+    end;
+  Result.Describe :=
+    function(const ACommit: TAtlasBlameCommit; var AText: string; out ALinks: TArray<string>): Boolean
+    begin
+      ALinks := nil;
+      Result := (FInstance <> nil) and (FInstance.FSerialOf = mSerial) and FInstance.Describe(ACommit, AText, ALinks);
+    end;
+  Result.Link :=
+    procedure(const ACommit: TAtlasBlameCommit; AIndex: Integer)
+    begin
+      if (FInstance <> nil) and (FInstance.FSerialOf = mSerial) then
+      begin
+        TAtlasGuard.Run(TAtlasFeature.BlameIssues,
+          procedure
+          begin
+            FInstance.Link(ACommit, AIndex);
+          end);
+      end;
+    end;
 end;
 
 procedure TAtlasIdeBlameLinks.ShowScope;
 begin
   FScope.Show;
+end;
+
+class function TAtlasIdeBlameLinks.Enabled: Boolean;
+begin
+  Result := TAtlasIdeBlameScope.Enabled;
 end;
 
 end.

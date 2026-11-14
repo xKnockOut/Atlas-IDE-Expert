@@ -323,6 +323,8 @@ begin
   Result := TAtlasTrackerProjects.SplitPaths(string.Join(';', mTexts));
 end;
 
+{ TAtlasTrackerProjects }
+
 class function TAtlasTrackerProjects.Read(const AJson: string): TArray<TAtlasTrackerProjectMapping>;
 var
   mRoot: TJSONValue;
@@ -491,15 +493,6 @@ begin
   Result := TAtlasProjectMatching.IndexOfMatch(mMatches, AMatch);
 end;
 
-class function TAtlasTrackerProjects.WithoutTrailingDelimiter(const APath: string): string;
-begin
-  Result := Trim(APath);
-  while (Length(Result) > cRootLength) and CharInSet(Result[Length(Result)], ['\', '/']) do
-  begin
-    Delete(Result, Length(Result), 1);
-  end;
-end;
-
 class function TAtlasTrackerProjects.SplitPaths(const AText: string): TArray<string>;
 var
   mPart, mPath: string;
@@ -516,6 +509,15 @@ begin
     end;
     mSeen := mSeen + [mPath];
     Result := Result + [mPath];
+  end;
+end;
+
+class function TAtlasTrackerProjects.WithoutTrailingDelimiter(const APath: string): string;
+begin
+  Result := Trim(APath);
+  while (Length(Result) > cRootLength) and CharInSet(Result[Length(Result)], ['\', '/']) do
+  begin
+    Delete(Result, Length(Result), 1);
   end;
 end;
 
@@ -546,15 +548,6 @@ begin
   end;
 end;
 
-class function TAtlasTrackerProjects.ChoiceKey(const AProject, AConnection: string): string;
-begin
-  Result := '';
-  if Trim(AConnection) <> '' then
-  begin
-    Result := Trim(AProject) + '@' + Trim(AConnection);
-  end;
-end;
-
 class function TAtlasTrackerProjects.Choices(const AMappings: TArray<TAtlasTrackerProjectMapping>;
   const AConnections: TArray<TAtlasTrackerConnection>): TArray<TAtlasTrackerChoice>;
 var
@@ -579,6 +572,15 @@ begin
     mChoice.Match := AMappings[mIndex].Match;
     mChoice.Index := mIndex;
     Result := Result + [mChoice];
+  end;
+end;
+
+class function TAtlasTrackerProjects.ChoiceKey(const AProject, AConnection: string): string;
+begin
+  Result := '';
+  if Trim(AConnection) <> '' then
+  begin
+    Result := Trim(AProject) + '@' + Trim(AConnection);
   end;
 end;
 

@@ -561,25 +561,6 @@ begin
   end;
 end;
 
-procedure TFormatRun.Run(const ATokens: TArray<TPascalToken>);
-var
-  mTokens: TArray<TPascalToken>;
-begin
-  FLines := TFormatLayout.Place(FOriginal, ATokens, FSettings, FFirst, FLast, FJoined);
-  if Length(FLines) = Length(FOriginal) then
-  begin
-    mTokens := ATokens;
-  end
-  else
-  begin
-    mTokens := Tokenized;
-  end;
-  FormatLines(FLines, mTokens, FSettings, FFirst, FLast);
-  AlignAll;
-  WrapLong;
-  KeepProtected(ProtectedLines(ATokens, Length(FOriginal)));
-end;
-
 /// <summary>Letzte Ursprungszeile der Gruppe ab ALine: ALine und die an sie gehängten Folgezeilen.</summary>
 function TFormatRun.GroupEnd(ALine: Integer): Integer;
 begin
@@ -722,6 +703,25 @@ begin
   end;
 end;
 
+procedure TFormatRun.Run(const ATokens: TArray<TPascalToken>);
+var
+  mTokens: TArray<TPascalToken>;
+begin
+  FLines := TFormatLayout.Place(FOriginal, ATokens, FSettings, FFirst, FLast, FJoined);
+  if Length(FLines) = Length(FOriginal) then
+  begin
+    mTokens := ATokens;
+  end
+  else
+  begin
+    mTokens := Tokenized;
+  end;
+  FormatLines(FLines, mTokens, FSettings, FFirst, FLast);
+  AlignAll;
+  WrapLong;
+  KeepProtected(ProtectedLines(ATokens, Length(FOriginal)));
+end;
+
 function TFormatRun.Edits: TArray<TTextEdit>;
 var
   mEnd: Integer;
@@ -759,18 +759,6 @@ end;
 { TFormatter }
 
 class function TFormatter.Edits(const AText: string; const ATokens: TArray<TPascalToken>;
-  const ASettings: TFormatStyle; AFirstLine: Integer): TArray<TTextEdit>;
-begin
-  Result := Edits(AText, ATokens, ASettings, AFirstLine, -1);
-end;
-
-class function TFormatter.Edits(const AText: string; const ATokens: TArray<TPascalToken>;
-  const ASettings: TFormatStyle): TArray<TTextEdit>;
-begin
-  Result := Edits(AText, ATokens, ASettings, 0, -1);
-end;
-
-class function TFormatter.Edits(const AText: string; const ATokens: TArray<TPascalToken>;
   const ASettings: TFormatStyle; AFirstLine, ALastLine: Integer): TArray<TTextEdit>;
 var
   mRun: TFormatRun;
@@ -782,6 +770,18 @@ begin
   finally
     mRun.Free;
   end;
+end;
+
+class function TFormatter.Edits(const AText: string; const ATokens: TArray<TPascalToken>;
+  const ASettings: TFormatStyle; AFirstLine: Integer): TArray<TTextEdit>;
+begin
+  Result := Edits(AText, ATokens, ASettings, AFirstLine, -1);
+end;
+
+class function TFormatter.Edits(const AText: string; const ATokens: TArray<TPascalToken>;
+  const ASettings: TFormatStyle): TArray<TTextEdit>;
+begin
+  Result := Edits(AText, ATokens, ASettings, 0, -1);
 end;
 
 class function TFormatter.FormatText(const AText: string; const ATokens: TArray<TPascalToken>;

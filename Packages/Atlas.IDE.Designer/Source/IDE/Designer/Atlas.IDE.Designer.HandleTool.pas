@@ -100,29 +100,46 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasIdeHandleTool.ApplyTheme;
+begin
+  inherited ApplyTheme;
+  if FOverlay <> nil then
+  begin
+    FOverlay.ApplyColors(TAtlasIdeStyle.Colors);
+  end;
+end;
+
+procedure TAtlasIdeHandleTool.MenuClick(Sender: TObject);
+var
+  mTag, mLast: Integer;
+begin
+  mTag := TMenuItem(Sender).Tag;
+  mLast := FMenu.Items.Count - 1;
+  RunGuarded(
+    procedure
+    begin
+      if mTag = 0 then
+      begin
+        Toggle;
+      end
+      else if mTag = mLast then
+      begin
+        if FUndo.Restore then
+        begin
+          Say(UndoneText);
+          Tick;
+        end;
+      end
+      else
+      begin
+        Command(mTag - 1);
+      end;
+    end);
+end;
+
 procedure TAtlasIdeHandleTool.RunGuarded(const AAction: TProc);
 begin
   TAtlasGuard.Run(TAtlasFeature.DesignerBar, AAction);
-end;
-
-procedure TAtlasIdeHandleTool.DoubleClick(AIndex: Integer; AShift: TShiftState);
-begin
-  // Ohne Doppelklick-Befehl.
-end;
-
-function TAtlasIdeHandleTool.Commands: TArray<string>;
-begin
-  Result := nil;
-end;
-
-function TAtlasIdeHandleTool.CommandEnabled(AIndex: Integer): Boolean;
-begin
-  Result := True;
-end;
-
-procedure TAtlasIdeHandleTool.Command(AIndex: Integer);
-begin
-  // Ohne eigene Befehle.
 end;
 
 procedure TAtlasIdeHandleTool.EnsureOverlay;
@@ -173,6 +190,26 @@ begin
     end;
 end;
 
+procedure TAtlasIdeHandleTool.DoubleClick(AIndex: Integer; AShift: TShiftState);
+begin
+  // Ohne Doppelklick-Befehl.
+end;
+
+function TAtlasIdeHandleTool.Commands: TArray<string>;
+begin
+  Result := nil;
+end;
+
+function TAtlasIdeHandleTool.CommandEnabled(AIndex: Integer): Boolean;
+begin
+  Result := True;
+end;
+
+procedure TAtlasIdeHandleTool.Command(AIndex: Integer);
+begin
+  // Ohne eigene Befehle.
+end;
+
 procedure TAtlasIdeHandleTool.BeginStep;
 var
   mEditor: IOTAFormEditor;
@@ -185,11 +222,6 @@ begin
     FStep := TAtlasDesignerSnapshot.Create;
     FStep.Take(mEditor.FileName, mRoot);
   end;
-end;
-
-function TAtlasIdeHandleTool.InStep: Boolean;
-begin
-  Result := FStep <> nil;
 end;
 
 procedure TAtlasIdeHandleTool.CommitStep(const ADone: string; ARestore: Boolean);
@@ -220,9 +252,9 @@ begin
   FChanged := False;
 end;
 
-function TAtlasIdeHandleTool.Dragging: Boolean;
+function TAtlasIdeHandleTool.InStep: Boolean;
 begin
-  Result := (FOverlay <> nil) and FOverlay.Dragging;
+  Result := FStep <> nil;
 end;
 
 procedure TAtlasIdeHandleTool.Toggle;
@@ -235,23 +267,6 @@ begin
   else
   begin
     Hide;
-  end;
-end;
-
-procedure TAtlasIdeHandleTool.Hide;
-begin
-  if FOverlay <> nil then
-  begin
-    FOverlay.HideHandles;
-  end;
-end;
-
-procedure TAtlasIdeHandleTool.ApplyTheme;
-begin
-  inherited ApplyTheme;
-  if FOverlay <> nil then
-  begin
-    FOverlay.ApplyColors(TAtlasIdeStyle.Colors);
   end;
 end;
 
@@ -286,32 +301,17 @@ begin
   FMenu.Popup(APoint.X, APoint.Y);
 end;
 
-procedure TAtlasIdeHandleTool.MenuClick(Sender: TObject);
-var
-  mTag, mLast: Integer;
+procedure TAtlasIdeHandleTool.Hide;
 begin
-  mTag := TMenuItem(Sender).Tag;
-  mLast := FMenu.Items.Count - 1;
-  RunGuarded(
-    procedure
-    begin
-      if mTag = 0 then
-      begin
-        Toggle;
-      end
-      else if mTag = mLast then
-      begin
-        if FUndo.Restore then
-        begin
-          Say(UndoneText);
-          Tick;
-        end;
-      end
-      else
-      begin
-        Command(mTag - 1);
-      end;
-    end);
+  if FOverlay <> nil then
+  begin
+    FOverlay.HideHandles;
+  end;
+end;
+
+function TAtlasIdeHandleTool.Dragging: Boolean;
+begin
+  Result := (FOverlay <> nil) and FOverlay.Dragging;
 end;
 
 end.

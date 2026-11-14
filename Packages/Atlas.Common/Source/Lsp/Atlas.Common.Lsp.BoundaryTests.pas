@@ -97,6 +97,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TLspBoundaryTests }
+
 class function TLspBoundaryTests.SeparatorFor(const ACases: TArray<TLspBoundaryTestCase>): string;
 var
   mSeparator, mValue: string;

@@ -123,6 +123,8 @@ type
     function Pick(const ASize: TSize): Integer;
   end;
 
+{ TAxis }
+
 function TAxis.Lo(const ARect: TRect): Integer;
 begin
   Result := ARect.Top;

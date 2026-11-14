@@ -70,16 +70,6 @@ const
 
 { TAtlasBuildPipelineCompilerSection }
 
-function TAtlasBuildPipelineCompilerSection.OwnerId: string;
-begin
-  Result := cBuildPipelineSettingsOwner;
-end;
-
-function TAtlasBuildPipelineCompilerSection.AreaId: string;
-begin
-  Result := 'Compiler';
-end;
-
 procedure TAtlasBuildPipelineCompilerSection.BuildRows;
 var
   mGate: TAtlasBuildGate;
@@ -103,6 +93,16 @@ begin
     TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsBuildGateWarn),
     TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsBuildGateBlock)], mGates);
   Number('build.gateTimeoutMs', TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.SettingsBuildGateTimeout));
+end;
+
+function TAtlasBuildPipelineCompilerSection.OwnerId: string;
+begin
+  Result := cBuildPipelineSettingsOwner;
+end;
+
+function TAtlasBuildPipelineCompilerSection.AreaId: string;
+begin
+  Result := 'Compiler';
 end;
 
 procedure TAtlasBuildPipelineCompilerSection.Load(const AValues: IAtlasSettingsValues);
@@ -133,16 +133,6 @@ begin
 end;
 
 { TAtlasBuildPipelineReleaseSection }
-
-function TAtlasBuildPipelineReleaseSection.OwnerId: string;
-begin
-  Result := cBuildPipelineSettingsOwner;
-end;
-
-function TAtlasBuildPipelineReleaseSection.AreaId: string;
-begin
-  Result := 'Release-Build';
-end;
 
 procedure TAtlasBuildPipelineReleaseSection.BuildRows;
 const
@@ -183,51 +173,14 @@ begin
   end;
 end;
 
-function TAtlasBuildPipelineReleaseSection.CheckBox(ACheck: TAtlasReleaseCheck): TCheckBox;
+function TAtlasBuildPipelineReleaseSection.OwnerId: string;
 begin
-  Result := FCheckBoxes[ACheck];
+  Result := cBuildPipelineSettingsOwner;
 end;
 
-function TAtlasBuildPipelineReleaseSection.CheckChoice(ACheck: TAtlasReleaseCheck): TAtlasChoiceBox;
+function TAtlasBuildPipelineReleaseSection.AreaId: string;
 begin
-  Result := FCheckChoices[ACheck];
-end;
-
-procedure TAtlasBuildPipelineReleaseSection.LoadCheck(ACheck: TAtlasReleaseCheck;
-  const AItem: TAtlasReleaseCheckSetting);
-begin
-  if FCheckBoxes[ACheck] <> nil then
-  begin
-    FCheckBoxes[ACheck].Checked := AItem.Enabled;
-  end
-  else if not AItem.Enabled then
-  begin
-    FCheckChoices[ACheck].Choice := 0;
-  end
-  else if AItem.Expected then
-  begin
-    FCheckChoices[ACheck].Choice := 2;
-  end
-  else
-  begin
-    FCheckChoices[ACheck].Choice := 1;
-  end;
-end;
-
-procedure TAtlasBuildPipelineReleaseSection.SaveCheck(ACheck: TAtlasReleaseCheck; var AItem: TAtlasReleaseCheckSetting);
-begin
-  if FCheckBoxes[ACheck] <> nil then
-  begin
-    AItem.Enabled := FCheckBoxes[ACheck].Checked;
-  end
-  else if FCheckChoices[ACheck].Choice >= 0 then
-  begin
-    AItem.Enabled := FCheckChoices[ACheck].Choice > 0;
-    if AItem.Enabled then
-    begin
-      AItem.Expected := FCheckChoices[ACheck].Choice = 2;
-    end;
-  end;
+  Result := 'Release-Build';
 end;
 
 procedure TAtlasBuildPipelineReleaseSection.Load(const AValues: IAtlasSettingsValues);
@@ -278,6 +231,53 @@ begin
   end;
   FConfigs := nil;
   inherited Close;
+end;
+
+procedure TAtlasBuildPipelineReleaseSection.LoadCheck(ACheck: TAtlasReleaseCheck;
+  const AItem: TAtlasReleaseCheckSetting);
+begin
+  if FCheckBoxes[ACheck] <> nil then
+  begin
+    FCheckBoxes[ACheck].Checked := AItem.Enabled;
+  end
+  else if not AItem.Enabled then
+  begin
+    FCheckChoices[ACheck].Choice := 0;
+  end
+  else if AItem.Expected then
+  begin
+    FCheckChoices[ACheck].Choice := 2;
+  end
+  else
+  begin
+    FCheckChoices[ACheck].Choice := 1;
+  end;
+end;
+
+procedure TAtlasBuildPipelineReleaseSection.SaveCheck(ACheck: TAtlasReleaseCheck; var AItem: TAtlasReleaseCheckSetting);
+begin
+  if FCheckBoxes[ACheck] <> nil then
+  begin
+    AItem.Enabled := FCheckBoxes[ACheck].Checked;
+  end
+  else if FCheckChoices[ACheck].Choice >= 0 then
+  begin
+    AItem.Enabled := FCheckChoices[ACheck].Choice > 0;
+    if AItem.Enabled then
+    begin
+      AItem.Expected := FCheckChoices[ACheck].Choice = 2;
+    end;
+  end;
+end;
+
+function TAtlasBuildPipelineReleaseSection.CheckBox(ACheck: TAtlasReleaseCheck): TCheckBox;
+begin
+  Result := FCheckBoxes[ACheck];
+end;
+
+function TAtlasBuildPipelineReleaseSection.CheckChoice(ACheck: TAtlasReleaseCheck): TAtlasChoiceBox;
+begin
+  Result := FCheckChoices[ACheck];
 end;
 
 end.

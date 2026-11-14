@@ -123,6 +123,8 @@ begin
   end;
 end;
 
+{ TAtlasTestUnits }
+
 class function TAtlasTestUnits.UnitLine(const ALines: TArray<string>): Integer;
 var
   mIndex: Integer;

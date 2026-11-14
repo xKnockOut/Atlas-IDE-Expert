@@ -361,15 +361,17 @@ begin
   end;
 end;
 
-function TAtlasWelcomeDiscoverFrame.Button(AButton: TAtlasDiscoverButton): TButton;
-begin
-  Result := FButtons[AButton];
-end;
-
 procedure TAtlasWelcomeDiscoverFrame.SetSource(const AValue: IAtlasDiscoverSource);
 begin
   FSource := AValue;
   UpdateContent;
+end;
+
+function TAtlasWelcomeDiscoverFrame.BodyHeight: Integer;
+begin
+  // Für die aktuelle Breite: Der Frame „Atlas“ setzt erst die Breite, dann die Höhe.
+  Arrange;
+  Result := Max(FContentHeight, ScaleValue(40));
 end;
 
 procedure TAtlasWelcomeDiscoverFrame.UpdateContent;
@@ -408,19 +410,6 @@ begin
   FButtons[TAtlasDiscoverButton.Next].Enabled := FCard.Count > 1;
   Arrange;
   inherited;
-  if mOldHeight <> FContentHeight then
-  begin
-    HeightChanged;
-  end;
-end;
-
-procedure TAtlasWelcomeDiscoverFrame.BodyResize(Sender: TObject);
-var
-  mOldHeight: Integer;
-begin
-  mOldHeight := FContentHeight;
-  Arrange;
-  // Anderer Umbruch bei neuer Breite: Der Frame „Atlas“ ordnet die Spalten neu.
   if mOldHeight <> FContentHeight then
   begin
     HeightChanged;
@@ -550,11 +539,22 @@ begin
   Result := mButtonTop + ScaleValue(cButtonHeight) + ScaleValue(cGap) div 2;
 end;
 
-function TAtlasWelcomeDiscoverFrame.BodyHeight: Integer;
+procedure TAtlasWelcomeDiscoverFrame.BodyResize(Sender: TObject);
+var
+  mOldHeight: Integer;
 begin
-  // Für die aktuelle Breite: Der Frame „Atlas“ setzt erst die Breite, dann die Höhe.
+  mOldHeight := FContentHeight;
   Arrange;
-  Result := Max(FContentHeight, ScaleValue(40));
+  // Anderer Umbruch bei neuer Breite: Der Frame „Atlas“ ordnet die Spalten neu.
+  if mOldHeight <> FContentHeight then
+  begin
+    HeightChanged;
+  end;
+end;
+
+procedure TAtlasWelcomeDiscoverFrame.ButtonClick(Sender: TObject);
+begin
+  ClickButton(TAtlasDiscoverButton((Sender as TButton).Tag));
 end;
 
 procedure TAtlasWelcomeDiscoverFrame.ClickButton(AButton: TAtlasDiscoverButton);
@@ -583,9 +583,9 @@ begin
     end);
 end;
 
-procedure TAtlasWelcomeDiscoverFrame.ButtonClick(Sender: TObject);
+function TAtlasWelcomeDiscoverFrame.Button(AButton: TAtlasDiscoverButton): TButton;
 begin
-  ClickButton(TAtlasDiscoverButton((Sender as TButton).Tag));
+  Result := FButtons[AButton];
 end;
 
 end.

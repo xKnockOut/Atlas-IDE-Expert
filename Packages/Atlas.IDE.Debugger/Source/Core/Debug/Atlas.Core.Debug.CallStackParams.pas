@@ -142,6 +142,8 @@ begin
   end;
 end;
 
+{ TAtlasCallStackParams }
+
 class function TAtlasCallStackParams.SplitArguments(const AHeader: string): TArray<string>;
 var
   mOpen, mClose, mIndex, mStart, mDepth: Integer;
@@ -346,28 +348,6 @@ begin
   end;
 end;
 
-class function TAtlasCallStackParams.IsStringType(const ATypeName: string): Boolean;
-const
-  cStrings: array[0..5] of string = ('string', 'AnsiString', 'UnicodeString', 'WideString', 'RawByteString',
-    'UTF8String');
-var
-  mName: string;
-begin
-  for mName in cStrings do
-  begin
-    if SameText(mName, ATypeName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-class function TAtlasCallStackParams.IsStructure(const AValue: string): Boolean;
-begin
-  Result := AValue.StartsWith('(') and AValue.EndsWith(')') and AValue.Contains(':');
-end;
-
 class function TAtlasCallStackParams.ValueText(const AValue: string; AStringType: Boolean): string;
 begin
   Result := Trim(AValue);
@@ -392,6 +372,28 @@ begin
   begin
     Result := Result + ' (' + AAddress + ')';
   end;
+end;
+
+class function TAtlasCallStackParams.IsStringType(const ATypeName: string): Boolean;
+const
+  cStrings: array[0..5] of string = ('string', 'AnsiString', 'UnicodeString', 'WideString', 'RawByteString',
+    'UTF8String');
+var
+  mName: string;
+begin
+  for mName in cStrings do
+  begin
+    if SameText(mName, ATypeName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+class function TAtlasCallStackParams.IsStructure(const AValue: string): Boolean;
+begin
+  Result := AValue.StartsWith('(') and AValue.EndsWith(')') and AValue.Contains(':');
 end;
 
 class function TAtlasCallStackParams.ListText(const AParams: TAtlasCallStackParamList): string;

@@ -44,6 +44,8 @@ const
   cAttempts = 3;
   cRetryWaitMs = 2000;
 
+{ TUpdateDownloadProgress }
+
 constructor TUpdateDownloadProgress.Create(const AProgress: TUpdateProgress);
 begin
   inherited Create;

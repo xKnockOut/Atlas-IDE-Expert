@@ -95,37 +95,42 @@ begin
   Clear;
 end;
 
-procedure TAtlasCoverageState.Clear;
+function TAtlasCoverageState.IndexFor(const AFileName: string): Integer;
 begin
-  FPath := '';
-  FStamp := 0;
-  FReport := Default(TCoverageReport);
-  FLastFile := '';
-  FLastIndex := -1;
-end;
-
-function TAtlasCoverageState.Loaded: Boolean;
-begin
-  Result := FPath <> '';
-end;
-
-function TAtlasCoverageState.Accept(const APath, AXml: string; AStamp: TDateTime;
-  out AProblem: TCoverageProblem): Boolean;
-var
-  mReport: TCoverageReport;
-begin
-  mReport := TCoverage.Parse(AXml);
-  AProblem := mReport.Problem;
-  Result := mReport.Valid;
-  if not Result then
+  if not SameText(AFileName, FLastFile) or (FLastFile = '') then
   begin
-    Exit;
+    FLastFile := AFileName;
+    FLastIndex := FReport.IndexOf(AFileName);
   end;
-  FPath := APath;
-  FStamp := AStamp;
-  FReport := mReport;
-  FLastFile := '';
-  FLastIndex := -1;
+  Result := FLastIndex;
+end;
+
+class function TAtlasCoverageState.DecodeReport(const ABytes: TBytes): string;
+const
+  cHeadLength = 200;
+var
+  mEncoding: TEncoding;
+  mBom: Integer;
+  mHead: string;
+begin
+  // Mit Kennung (BOM) gilt sie; sonst entscheidet die Angabe im XML-Kopf.
+  mEncoding := nil;
+  mBom := TEncoding.GetBufferEncoding(ABytes, mEncoding, TEncoding.ANSI);
+  if mBom > 0 then
+  begin
+    Exit(mEncoding.GetString(ABytes, mBom, Length(ABytes) - mBom));
+  end;
+  // Der Kopf ist ASCII: als ANSI gelesen lässt sich die Angabe sicher finden.
+  mHead := LowerCase(TEncoding.ANSI.GetString(ABytes, 0, Min(Length(ABytes), cHeadLength)));
+  mHead := mHead.Replace('''', '"');
+  if mHead.Contains('encoding="utf-8"') then
+  begin
+    Result := TEncoding.UTF8.GetString(ABytes);
+  end
+  else
+  begin
+    Result := TEncoding.ANSI.GetString(ABytes);
+  end;
 end;
 
 function TAtlasCoverageState.Load(const APath: string; out AProblem: TCoverageProblem): Boolean;
@@ -157,32 +162,23 @@ begin
   Result := Accept(APath, mXml, mStamp, AProblem);
 end;
 
-class function TAtlasCoverageState.DecodeReport(const ABytes: TBytes): string;
-const
-  cHeadLength = 200;
+function TAtlasCoverageState.Accept(const APath, AXml: string; AStamp: TDateTime;
+  out AProblem: TCoverageProblem): Boolean;
 var
-  mEncoding: TEncoding;
-  mBom: Integer;
-  mHead: string;
+  mReport: TCoverageReport;
 begin
-  // Mit Kennung (BOM) gilt sie; sonst entscheidet die Angabe im XML-Kopf.
-  mEncoding := nil;
-  mBom := TEncoding.GetBufferEncoding(ABytes, mEncoding, TEncoding.ANSI);
-  if mBom > 0 then
+  mReport := TCoverage.Parse(AXml);
+  AProblem := mReport.Problem;
+  Result := mReport.Valid;
+  if not Result then
   begin
-    Exit(mEncoding.GetString(ABytes, mBom, Length(ABytes) - mBom));
+    Exit;
   end;
-  // Der Kopf ist ASCII: als ANSI gelesen lässt sich die Angabe sicher finden.
-  mHead := LowerCase(TEncoding.ANSI.GetString(ABytes, 0, Min(Length(ABytes), cHeadLength)));
-  mHead := mHead.Replace('''', '"');
-  if mHead.Contains('encoding="utf-8"') then
-  begin
-    Result := TEncoding.UTF8.GetString(ABytes);
-  end
-  else
-  begin
-    Result := TEncoding.ANSI.GetString(ABytes);
-  end;
+  FPath := APath;
+  FStamp := AStamp;
+  FReport := mReport;
+  FLastFile := '';
+  FLastIndex := -1;
 end;
 
 function TAtlasCoverageState.Reload: Boolean;
@@ -207,14 +203,18 @@ begin
   end;
 end;
 
-function TAtlasCoverageState.IndexFor(const AFileName: string): Integer;
+procedure TAtlasCoverageState.Clear;
 begin
-  if not SameText(AFileName, FLastFile) or (FLastFile = '') then
-  begin
-    FLastFile := AFileName;
-    FLastIndex := FReport.IndexOf(AFileName);
-  end;
-  Result := FLastIndex;
+  FPath := '';
+  FStamp := 0;
+  FReport := Default(TCoverageReport);
+  FLastFile := '';
+  FLastIndex := -1;
+end;
+
+function TAtlasCoverageState.Loaded: Boolean;
+begin
+  Result := FPath <> '';
 end;
 
 function TAtlasCoverageState.HasFile(const AFileName: string): Boolean;

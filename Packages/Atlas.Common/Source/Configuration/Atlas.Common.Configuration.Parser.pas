@@ -191,10 +191,19 @@ end;
 
 { TConfigurationParser }
 
-class function TConfigurationParser.TryParseConfidence(const AValue: string;
-  out AConfidence: TRuleConfidence): Boolean;
+class function TConfigurationParser.Parse(const AText: string;
+  out AIssues: TArray<TConfigurationIssue>): TServerSettings;
+var
+  mReader: TConfigurationReader;
 begin
-  Result := TryParseRuleConfidence(AValue, AConfidence);
+  Result := TServerSettings.Default;
+  mReader := TConfigurationReader.Create(AText);
+  try
+    ReadConfiguration(mReader, Result);
+    AIssues := mReader.Issues;
+  finally
+    mReader.Free;
+  end;
 end;
 
 class function TConfigurationParser.TryParseSeverity(const AValue: string; out ASeverity: TRuleSeverity): Boolean;
@@ -324,32 +333,6 @@ begin
   end;
 end;
 
-class function TConfigurationParser.MergeText(const ALower, AUpper: string): string;
-var
-  mLower, mUpper: TJsonNode;
-begin
-  mLower := ParseObject(ALower);
-  mUpper := ParseObject(AUpper);
-  try
-    if mLower = nil then
-    begin
-      if mUpper = nil then
-      begin
-        Exit('');
-      end;
-      Exit(AUpper);
-    end;
-    if mUpper = nil then
-    begin
-      Exit(ALower);
-    end;
-    Result := MergeObjects(ALower, mLower, AUpper, mUpper);
-  finally
-    mLower.Free;
-    mUpper.Free;
-  end;
-end;
-
 class function TConfigurationParser.ParseLayered(const AEditorText, AFileText: string;
   out AIssues: TArray<TConfigurationIssue>): TServerSettings;
 var
@@ -382,19 +365,36 @@ begin
   end;
 end;
 
-class function TConfigurationParser.Parse(const AText: string;
-  out AIssues: TArray<TConfigurationIssue>): TServerSettings;
+class function TConfigurationParser.MergeText(const ALower, AUpper: string): string;
 var
-  mReader: TConfigurationReader;
+  mLower, mUpper: TJsonNode;
 begin
-  Result := TServerSettings.Default;
-  mReader := TConfigurationReader.Create(AText);
+  mLower := ParseObject(ALower);
+  mUpper := ParseObject(AUpper);
   try
-    ReadConfiguration(mReader, Result);
-    AIssues := mReader.Issues;
+    if mLower = nil then
+    begin
+      if mUpper = nil then
+      begin
+        Exit('');
+      end;
+      Exit(AUpper);
+    end;
+    if mUpper = nil then
+    begin
+      Exit(ALower);
+    end;
+    Result := MergeObjects(ALower, mLower, AUpper, mUpper);
   finally
-    mReader.Free;
+    mLower.Free;
+    mUpper.Free;
   end;
+end;
+
+class function TConfigurationParser.TryParseConfidence(const AValue: string;
+  out AConfidence: TRuleConfidence): Boolean;
+begin
+  Result := TryParseRuleConfidence(AValue, AConfidence);
 end;
 
 initialization

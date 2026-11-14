@@ -152,52 +152,93 @@ begin
   inherited Destroy;
 end;
 
-class procedure TAtlasIdeHide.Start;
-begin
-  if FInstance <> nil then
-  begin
-    Exit;
-  end;
-  FInstance := TAtlasIdeHide.Create;
-  TAtlasIdeElements.OnOverlayMenu :=
-    procedure(const ATargets: TArray<TAtlasHideTarget>; const AScreen: TPoint)
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Hide,
-        procedure
-        begin
-          ShowMenu(ATargets, AScreen);
-        end);
-    end;
-end;
-
-class procedure TAtlasIdeHide.Stop;
-begin
-  TAtlasIdeElements.OnOverlayMenu := nil;
-  FreeAndNil(FInstance);
-end;
-
-class procedure TAtlasIdeHide.ShowMenu(const ATargets: TArray<TAtlasHideTarget>; const APoint: TPoint);
-begin
-  if (FInstance = nil) or (Length(ATargets) = 0) then
-  begin
-    Exit;
-  end;
-  FInstance.FWhere := APoint;
-  FInstance.FMenu.Build(ATargets);
-  FInstance.FMenu.Popup(APoint);
-end;
-
-class function TAtlasIdeHide.CaretPoint: TPoint;
+procedure TAtlasIdeHide.Choose(AChoice: TAtlasHideChoice);
 var
-  mFocus: HWND;
+  mStep: TStep;
+  mDetail: string;
 begin
-  Result := Mouse.CursorPos;
-  mFocus := GetFocus;
-  if (mFocus <> 0) and GetCaretPos(Result) then
+  if AChoice.Settings then
   begin
-    // Unter die Zeile der Schreibmarke, nicht in sie hinein.
-    Inc(Result.Y, 16);
-    Winapi.Windows.ClientToScreen(mFocus, Result);
+    ShowSetting(AChoice.Target.SettingKey);
+    Exit;
+  end;
+  if Run(AChoice, mStep, mDetail) then
+  begin
+    Done(mStep, mDetail);
+  end
+  else
+  begin
+    Refused(mDetail);
+  end;
+end;
+
+procedure TAtlasIdeHide.NoticeUndo(Sender: TObject);
+var
+  mStep: TStep;
+begin
+  mStep := FStep;
+  FStep := Default(TStep);
+  if not mStep.Valid then
+  begin
+    Exit;
+  end;
+  TAtlasGuard.Run(TAtlasFeature.Hide,
+    procedure
+    var
+      Ok: Boolean;
+    begin
+      try
+        Ok := UndoStep(mStep);
+      except
+        on E: Exception do
+        begin
+          TAtlasGuard.Log('Ausblenden: Rückgängig fehlgeschlagen (' + E.ClassName + ')');
+          Ok := False;
+        end;
+      end;
+      if Ok then
+      begin
+        Notice('', TAtlasEditorStrings.Text(TAtlasEditorTextId.HideUndone), False);
+      end
+      else
+      begin
+        Notice('', TAtlasEditorStrings.Text(TAtlasEditorTextId.HideUndoFailed), False);
+      end;
+    end);
+end;
+
+procedure TAtlasIdeHide.Done(const AStep: TStep; const ADetail: string);
+var
+  mMode: TAtlasNotificationMode;
+  mAction: TAtlasNotificationAction;
+begin
+  FStep := AStep;
+  mAction.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideUndo);
+  mAction.Run :=
+    procedure
+    begin
+      TAtlasIdeHide.Undo;
+    end;
+  // Anonym: kein Dateiname, kein Quelltext.
+  TAtlasGuard.Log('Element ausgeblendet (#628)');
+  mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cHidden, TAtlasNotificationSeverity.Info,
+    TAtlasEditorStrings.Text(TAtlasEditorTextId.HideNotice), ADetail, [mAction]);
+  if mMode = TAtlasNotificationMode.Show then
+  begin
+    Notice(TAtlasEditorStrings.Text(TAtlasEditorTextId.HideNotice), ADetail, True);
+  end;
+end;
+
+procedure TAtlasIdeHide.Refused(const AText: string);
+begin
+  if AText = '' then
+  begin
+    Exit;
+  end;
+  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cHidden, TAtlasNotificationSeverity.Info,
+    TAtlasStrings.Text(TAtlasTextId.HideElementCommand), AText) = TAtlasNotificationMode.Show then
+  begin
+    Notice('', AText, False);
   end;
 end;
 
@@ -217,138 +258,27 @@ begin
   end;
 end;
 
-class function TAtlasIdeHide.ShowForCaret: Boolean;
+procedure TAtlasIdeHide.Notice(const ATitle, ADetail: string; ACanUndo: Boolean);
 var
-  mView: IOTAEditView;
-  mTargets: TArray<TAtlasHideTarget>;
+  mFontName: string;
+  mFontSize: Integer;
+  mEditors: IOTAEditorServices;
 begin
-  Result := False;
-  mView := TopView;
-  if (FInstance = nil) or (mView = nil) then
+  if FNotice = nil then
   begin
-    Exit;
+    FNotice := TAtlasHideNoticeWindow.Create(nil);
+    FNotice.OnUndo := NoticeUndo;
   end;
-  mTargets := TAtlasIdeElements.OnLine(mView.Buffer.FileName, mView.CursorPos.Line - 1);
-  if Length(mTargets) = 0 then
+  mFontName := FNotice.Font.Name;
+  mFontSize := 10;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) and (mEditors.EditOptions <> nil) then
   begin
-    Exit;
+    mFontName := mEditors.EditOptions.FontName;
+    mFontSize := mEditors.EditOptions.FontSize;
   end;
-  ShowMenu(mTargets, CaretPoint);
-  Result := True;
-end;
-
-class procedure TAtlasIdeHide.ShowForCommand;
-var
-  mView: IOTAEditView;
-  mTargets: TArray<TAtlasHideTarget>;
-begin
-  mView := TopView;
-  if (FInstance = nil) or (mView = nil) then
-  begin
-    Exit;
-  end;
-  if TAtlasIdeElements.TakeClick(mView.Buffer.FileName, mTargets) then
-  begin
-    ShowMenu(mTargets, Mouse.CursorPos);
-    Exit;
-  end;
-  if ShowForCaret then
-  begin
-    Exit;
-  end;
-  FInstance.FWhere := CaretPoint;
-  FInstance.Refused(TAtlasEditorStrings.Text(TAtlasEditorTextId.HideNoElement));
-end;
-
-class procedure TAtlasIdeHide.ShowSetting(const AKey: string);
-begin
-  if Assigned(FOnShowSetting) then
-  begin
-    FOnShowSetting(AKey);
-  end;
-end;
-
-class function TAtlasIdeHide.HideSetting(const AKey: string; const APoint: TPoint): Boolean;
-var
-  mStep: TStep;
-  mDetail: string;
-begin
-  Result := False;
-  if FInstance = nil then
-  begin
-    Exit;
-  end;
-  FInstance.FWhere := APoint;
-  Result := FInstance.RunSetting(AKey, mStep, mDetail);
-  if Result then
-  begin
-    FInstance.Done(mStep, mDetail);
-  end
-  else
-  begin
-    FInstance.Refused(mDetail);
-  end;
-end;
-
-class procedure TAtlasIdeHide.Undo;
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.NoticeUndo(nil);
-  end;
-end;
-
-class function TAtlasIdeHide.RefusalText(ARefusal: TAtlasHideRefusal): string;
-begin
-  case ARefusal of
-    TAtlasHideRefusal.NoProjectFolder:
-      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideRefusedNoProject);
-    TAtlasHideRefusal.OutsideProject:
-      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideRefusedOutside);
-  else
-    Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideRefusedAlready);
-  end;
-end;
-
-class function TAtlasIdeHide.SettingCaption(const AKey: string): string;
-var
-  mToggle: TAtlasQuickToggle;
-begin
-  if TAtlasQuickToggles.Find(TAtlasIdeSettings.QuickToggles, AKey, mToggle) and (mToggle.Caption <> '') then
-  begin
-    Result := mToggle.Caption;
-  end
-  else
-  begin
-    Result := AKey;
-  end;
-end;
-
-class procedure TAtlasIdeHide.Applied;
-begin
-  // Wie die Schnellschalter: Strukturhervorhebung der IDE abgleichen, Treffer vergessen, neu zeichnen.
-  TAtlasIdeStructureSwitch.Sync;
-  TAtlasIdeElements.Reset;
-end;
-
-procedure TAtlasIdeHide.Choose(AChoice: TAtlasHideChoice);
-var
-  mStep: TStep;
-  mDetail: string;
-begin
-  if AChoice.Settings then
-  begin
-    ShowSetting(AChoice.Target.SettingKey);
-    Exit;
-  end;
-  if Run(AChoice, mStep, mDetail) then
-  begin
-    Done(mStep, mDetail);
-  end
-  else
-  begin
-    Refused(mDetail);
-  end;
+  FNotice.Colors := TAtlasIdeStyle.Colors;
+  FNotice.SetScaling(TAtlasPopupWindow.MonitorPPI(FWhere), 1, mFontName, mFontSize);
+  FNotice.ShowNotice(ATitle, ADetail, ACanUndo, FWhere);
 end;
 
 function TAtlasIdeHide.Run(const AChoice: TAtlasHideChoice; out AStep: TStep; out ADetail: string): Boolean;
@@ -381,60 +311,6 @@ begin
   else
     Result := RunSetting(mPlan.SettingKey, AStep, ADetail);
   end;
-end;
-
-/// <summary>Ersetzt in ABuffer (Text AText) die Zeichen AFrom bis ATill (0-basiert, ATill ausschließlich) durch
-/// ANew; ein Rückgängig-Schritt der IDE.</summary>
-procedure WriteRange(const ABuffer: IOTAEditBuffer; const AText: string; AFrom, ATill: Integer; const ANew: string);
-var
-  mWriter: IOTAEditWriter;
-begin
-  mWriter := ABuffer.CreateUndoableWriter;
-  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AFrom)));
-  if ATill > AFrom then
-  begin
-    mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, ATill)));
-  end;
-  if ANew <> '' then
-  begin
-    mWriter.Insert(PAnsiChar(UTF8Encode(ANew)));
-  end;
-  mWriter := nil;
-  // Eigener Schreibvorgang: Probleme und Inlay-Hints lesen den Puffer neu.
-  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
-end;
-
-function TAtlasIdeHide.RunText(const APlan: TAtlasHidePlan; out AStep: TStep; out ADetail: string): Boolean;
-var
-  mView: IOTAEditView;
-  mText, mChanged: string;
-  mLines: TArray<string>;
-  mOffset: Integer;
-begin
-  AStep := Default(TStep);
-  Result := False;
-  mView := TopView;
-  if (mView = nil) or not AnsiSameText(mView.Buffer.FileName, APlan.Target.FileName) or mView.Buffer.IsReadOnly then
-  begin
-    ADetail := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.HideFailed, [ExtractFileName(APlan.Target.FileName)]);
-    Exit;
-  end;
-  mText := TAtlasEditorBuffer.Text(mView.Buffer);
-  mOffset := APlan.Insert.OffsetIn(mText);
-  WriteRange(mView.Buffer, mText, mOffset, mOffset, APlan.Insert.Text);
-  AStep.Valid := True;
-  AStep.Kind := APlan.Kind;
-  AStep.Insert := APlan.Insert;
-  AStep.FileName := APlan.Target.FileName;
-  // Zeige die Kommentarzeile, wie sie jetzt dasteht.
-  mChanged := APlan.Insert.ApplyTo(mText);
-  mLines := TTextLines.SplitLines(mChanged);
-  ADetail := '';
-  if (APlan.Insert.Line >= 0) and (APlan.Insert.Line <= High(mLines)) then
-  begin
-    ADetail := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.HideDoneLineComment, [Trim(mLines[APlan.Insert.Line])]);
-  end;
-  Result := True;
 end;
 
 function TAtlasIdeHide.RunTeamFile(const APlan: TAtlasHidePlan; out AStep: TStep; out ADetail: string): Boolean;
@@ -492,6 +368,131 @@ begin
   Result := True;
 end;
 
+class function TAtlasIdeHide.RefusalText(ARefusal: TAtlasHideRefusal): string;
+begin
+  case ARefusal of
+    TAtlasHideRefusal.NoProjectFolder:
+      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideRefusedNoProject);
+    TAtlasHideRefusal.OutsideProject:
+      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideRefusedOutside);
+  else
+    Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideRefusedAlready);
+  end;
+end;
+
+class function TAtlasIdeHide.SettingCaption(const AKey: string): string;
+var
+  mToggle: TAtlasQuickToggle;
+begin
+  if TAtlasQuickToggles.Find(TAtlasIdeSettings.QuickToggles, AKey, mToggle) and (mToggle.Caption <> '') then
+  begin
+    Result := mToggle.Caption;
+  end
+  else
+  begin
+    Result := AKey;
+  end;
+end;
+
+class function TAtlasIdeHide.CaretPoint: TPoint;
+var
+  mFocus: HWND;
+begin
+  Result := Mouse.CursorPos;
+  mFocus := GetFocus;
+  if (mFocus <> 0) and GetCaretPos(Result) then
+  begin
+    // Unter die Zeile der Schreibmarke, nicht in sie hinein.
+    Inc(Result.Y, 16);
+    Winapi.Windows.ClientToScreen(mFocus, Result);
+  end;
+end;
+
+class procedure TAtlasIdeHide.Applied;
+begin
+  // Wie die Schnellschalter: Strukturhervorhebung der IDE abgleichen, Treffer vergessen, neu zeichnen.
+  TAtlasIdeStructureSwitch.Sync;
+  TAtlasIdeElements.Reset;
+end;
+
+class procedure TAtlasIdeHide.Start;
+begin
+  if FInstance <> nil then
+  begin
+    Exit;
+  end;
+  FInstance := TAtlasIdeHide.Create;
+  TAtlasIdeElements.OnOverlayMenu :=
+    procedure(const ATargets: TArray<TAtlasHideTarget>; const AScreen: TPoint)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Hide,
+        procedure
+        begin
+          ShowMenu(ATargets, AScreen);
+        end);
+    end;
+end;
+
+class procedure TAtlasIdeHide.Stop;
+begin
+  TAtlasIdeElements.OnOverlayMenu := nil;
+  FreeAndNil(FInstance);
+end;
+
+/// <summary>Ersetzt in ABuffer (Text AText) die Zeichen AFrom bis ATill (0-basiert, ATill ausschließlich) durch
+/// ANew; ein Rückgängig-Schritt der IDE.</summary>
+procedure WriteRange(const ABuffer: IOTAEditBuffer; const AText: string; AFrom, ATill: Integer; const ANew: string);
+var
+  mWriter: IOTAEditWriter;
+begin
+  mWriter := ABuffer.CreateUndoableWriter;
+  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AFrom)));
+  if ATill > AFrom then
+  begin
+    mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, ATill)));
+  end;
+  if ANew <> '' then
+  begin
+    mWriter.Insert(PAnsiChar(UTF8Encode(ANew)));
+  end;
+  mWriter := nil;
+  // Eigener Schreibvorgang: Probleme und Inlay-Hints lesen den Puffer neu.
+  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
+end;
+
+function TAtlasIdeHide.RunText(const APlan: TAtlasHidePlan; out AStep: TStep; out ADetail: string): Boolean;
+var
+  mView: IOTAEditView;
+  mText, mChanged: string;
+  mLines: TArray<string>;
+  mOffset: Integer;
+begin
+  AStep := Default(TStep);
+  Result := False;
+  mView := TopView;
+  if (mView = nil) or not AnsiSameText(mView.Buffer.FileName, APlan.Target.FileName) or mView.Buffer.IsReadOnly then
+  begin
+    ADetail := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.HideFailed, [ExtractFileName(APlan.Target.FileName)]);
+    Exit;
+  end;
+  mText := TAtlasEditorBuffer.Text(mView.Buffer);
+  mOffset := APlan.Insert.OffsetIn(mText);
+  WriteRange(mView.Buffer, mText, mOffset, mOffset, APlan.Insert.Text);
+  AStep.Valid := True;
+  AStep.Kind := APlan.Kind;
+  AStep.Insert := APlan.Insert;
+  AStep.FileName := APlan.Target.FileName;
+  // Zeige die Kommentarzeile, wie sie jetzt dasteht.
+  mChanged := APlan.Insert.ApplyTo(mText);
+  mLines := TTextLines.SplitLines(mChanged);
+  ADetail := '';
+  if (APlan.Insert.Line >= 0) and (APlan.Insert.Line <= High(mLines)) then
+  begin
+    ADetail := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.HideDoneLineComment, [Trim(mLines[APlan.Insert.Line])]);
+  end;
+  Result := True;
+end;
+
 function TAtlasIdeHide.UndoStep(const AStep: TStep): Boolean;
 var
   mView: IOTAEditView;
@@ -544,96 +545,95 @@ begin
   Result := True;
 end;
 
-procedure TAtlasIdeHide.NoticeUndo(Sender: TObject);
+class procedure TAtlasIdeHide.ShowMenu(const ATargets: TArray<TAtlasHideTarget>; const APoint: TPoint);
+begin
+  if (FInstance = nil) or (Length(ATargets) = 0) then
+  begin
+    Exit;
+  end;
+  FInstance.FWhere := APoint;
+  FInstance.FMenu.Build(ATargets);
+  FInstance.FMenu.Popup(APoint);
+end;
+
+class function TAtlasIdeHide.ShowForCaret: Boolean;
+var
+  mView: IOTAEditView;
+  mTargets: TArray<TAtlasHideTarget>;
+begin
+  Result := False;
+  mView := TopView;
+  if (FInstance = nil) or (mView = nil) then
+  begin
+    Exit;
+  end;
+  mTargets := TAtlasIdeElements.OnLine(mView.Buffer.FileName, mView.CursorPos.Line - 1);
+  if Length(mTargets) = 0 then
+  begin
+    Exit;
+  end;
+  ShowMenu(mTargets, CaretPoint);
+  Result := True;
+end;
+
+class procedure TAtlasIdeHide.ShowForCommand;
+var
+  mView: IOTAEditView;
+  mTargets: TArray<TAtlasHideTarget>;
+begin
+  mView := TopView;
+  if (FInstance = nil) or (mView = nil) then
+  begin
+    Exit;
+  end;
+  if TAtlasIdeElements.TakeClick(mView.Buffer.FileName, mTargets) then
+  begin
+    ShowMenu(mTargets, Mouse.CursorPos);
+    Exit;
+  end;
+  if ShowForCaret then
+  begin
+    Exit;
+  end;
+  FInstance.FWhere := CaretPoint;
+  FInstance.Refused(TAtlasEditorStrings.Text(TAtlasEditorTextId.HideNoElement));
+end;
+
+class function TAtlasIdeHide.HideSetting(const AKey: string; const APoint: TPoint): Boolean;
 var
   mStep: TStep;
+  mDetail: string;
 begin
-  mStep := FStep;
-  FStep := Default(TStep);
-  if not mStep.Valid then
+  Result := False;
+  if FInstance = nil then
   begin
     Exit;
   end;
-  TAtlasGuard.Run(TAtlasFeature.Hide,
-    procedure
-    var
-      Ok: Boolean;
-    begin
-      try
-        Ok := UndoStep(mStep);
-      except
-        on E: Exception do
-        begin
-          TAtlasGuard.Log('Ausblenden: Rückgängig fehlgeschlagen (' + E.ClassName + ')');
-          Ok := False;
-        end;
-      end;
-      if Ok then
-      begin
-        Notice('', TAtlasEditorStrings.Text(TAtlasEditorTextId.HideUndone), False);
-      end
-      else
-      begin
-        Notice('', TAtlasEditorStrings.Text(TAtlasEditorTextId.HideUndoFailed), False);
-      end;
-    end);
-end;
-
-procedure TAtlasIdeHide.Notice(const ATitle, ADetail: string; ACanUndo: Boolean);
-var
-  mFontName: string;
-  mFontSize: Integer;
-  mEditors: IOTAEditorServices;
-begin
-  if FNotice = nil then
+  FInstance.FWhere := APoint;
+  Result := FInstance.RunSetting(AKey, mStep, mDetail);
+  if Result then
   begin
-    FNotice := TAtlasHideNoticeWindow.Create(nil);
-    FNotice.OnUndo := NoticeUndo;
-  end;
-  mFontName := FNotice.Font.Name;
-  mFontSize := 10;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) and (mEditors.EditOptions <> nil) then
+    FInstance.Done(mStep, mDetail);
+  end
+  else
   begin
-    mFontName := mEditors.EditOptions.FontName;
-    mFontSize := mEditors.EditOptions.FontSize;
-  end;
-  FNotice.Colors := TAtlasIdeStyle.Colors;
-  FNotice.SetScaling(TAtlasPopupWindow.MonitorPPI(FWhere), 1, mFontName, mFontSize);
-  FNotice.ShowNotice(ATitle, ADetail, ACanUndo, FWhere);
-end;
-
-procedure TAtlasIdeHide.Done(const AStep: TStep; const ADetail: string);
-var
-  mMode: TAtlasNotificationMode;
-  mAction: TAtlasNotificationAction;
-begin
-  FStep := AStep;
-  mAction.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideUndo);
-  mAction.Run :=
-    procedure
-    begin
-      TAtlasIdeHide.Undo;
-    end;
-  // Anonym: kein Dateiname, kein Quelltext.
-  TAtlasGuard.Log('Element ausgeblendet (#628)');
-  mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cHidden, TAtlasNotificationSeverity.Info,
-    TAtlasEditorStrings.Text(TAtlasEditorTextId.HideNotice), ADetail, [mAction]);
-  if mMode = TAtlasNotificationMode.Show then
-  begin
-    Notice(TAtlasEditorStrings.Text(TAtlasEditorTextId.HideNotice), ADetail, True);
+    FInstance.Refused(mDetail);
   end;
 end;
 
-procedure TAtlasIdeHide.Refused(const AText: string);
+class procedure TAtlasIdeHide.ShowSetting(const AKey: string);
 begin
-  if AText = '' then
+  if Assigned(FOnShowSetting) then
   begin
-    Exit;
+    FOnShowSetting(AKey);
   end;
-  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cHidden, TAtlasNotificationSeverity.Info,
-    TAtlasStrings.Text(TAtlasTextId.HideElementCommand), AText) = TAtlasNotificationMode.Show then
+end;
+
+class procedure TAtlasIdeHide.Undo;
+begin
+  if FInstance <> nil then
   begin
-    Notice('', AText, False);
+    FInstance.NoticeUndo(nil);
   end;
 end;
 

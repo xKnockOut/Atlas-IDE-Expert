@@ -148,51 +148,62 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasIdeBlameScope.Enabled: Boolean;
+function TAtlasIdeBlameScope.IssueText(AIssue: Integer; AKnown: Boolean; const ADetails: TAtlasTrackerDetails): string;
 var
-  mSettings: TAtlasPluginSettings;
+  mIssue: TAtlasBlameIssue;
 begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and mSettings.IssuesBlameLinks and not TAtlasGuard.Disabled(TAtlasFeature.BlameIssues);
+  mIssue := FListResult.Issues[AIssue];
+  Result := TAtlasIssueTip.IssueRow(mIssue.Match.Key, AKnown, ADetails, mIssue.LastDate,
+    TTimeZone.Local.ToUniversalTime(Now), Length(mIssue.Commits));
 end;
 
-class function TAtlasIdeBlameScope.PatternOf(const AHooks: TAtlasCodeLinksHooks; out ATarget: TAtlasTrackerTarget;
-  out APattern: TAtlasIssueKeyPattern): Boolean;
-begin
-  APattern := TAtlasIssueKeyPattern.Empty;
-  ATarget := TAtlasTrackerTarget.Create('', '', '', '');
-  Result := Assigned(AHooks.Target) and Enabled and AHooks.Target(ATarget);
-  if Result then
-  begin
-    APattern := TAtlasIssueKeyPattern.ForTarget(ATarget);
-    Result := APattern.Active;
-  end;
-end;
-
-class function TAtlasIdeBlameScope.Preview(const AHooks: TAtlasCodeLinksHooks): TAtlasIdeIssuePreview;
-begin
-  Result := nil;
-  if Assigned(AHooks.Preview) then
-  begin
-    Result := AHooks.Preview();
-  end;
-end;
-
-class function TAtlasIdeBlameScope.BufferLines(const AFileName: string; out ALines: TArray<string>;
-  out AText: string): Boolean;
+procedure TAtlasIdeBlameScope.AskRow(const APreview: TAtlasIdeIssuePreview; AList, AId: Integer);
 var
-  mView: IOTAEditView;
+  mMatch: TAtlasIssueKeyMatch;
+  mSerial: Integer;
 begin
-  ALines := nil;
-  AText := '';
-  mView := TAtlasEditorBuffer.ActiveView;
-  Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, AFileName);
-  if not Result then
+  // Eigene Routine: Jede Rückmeldung fängt ihr eigenes AId ein (nicht die Schleifenvariable).
+  mMatch := FListResult.Issues[AId].Match;
+  mSerial := FSerialOf;
+  APreview.Lookups.Lookup(mMatch.IssueTarget(FListTarget), mMatch.IssueKey,
+    procedure(ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError)
+    begin
+      if ASucceeded and (FInstance <> nil) and (FInstance.FSerialOf = mSerial) and (FInstance.FList = AList) and
+        (AId <= High(FInstance.FListResult.Issues)) then
+      begin
+        TAtlasIdeResultsWindow.SetIssueText(AList, AId, FInstance.IssueText(AId, True, ADetails));
+      end;
+    end);
+end;
+
+procedure TAtlasIdeBlameScope.IssueOpen(AList, AId: Integer);
+var
+  mMatch: TAtlasIssueKeyMatch;
+begin
+  if (AList <> FList) or (AId < 0) or (AId > High(FListResult.Issues)) or not Assigned(FHooks.Show) then
   begin
     Exit;
   end;
-  AText := TAtlasEditorBuffer.Text(mView.Buffer);
-  ALines := TTextLines.SplitLines(AText);
+  mMatch := FListResult.Issues[AId].Match;
+  FHooks.Show(mMatch.IssueTarget(FListTarget), mMatch.IssueKey);
+end;
+
+procedure TAtlasIdeBlameScope.IssueCommit(AList, AId: Integer);
+var
+  mCommit: TAtlasVcsLineCommit;
+  mLines: TArray<string>;
+begin
+  if (AList <> FList) or (AId < 0) or (AId > High(FListResult.Commits)) then
+  begin
+    Exit;
+  end;
+  mCommit := FListResult.Commits[AId];
+  // Nachricht, Leerzeile, dann der Unterschied des Bereichs.
+  mLines := TTextLines.SplitLines(TrimRight(mCommit.Message));
+  mLines := mLines + [''] + mCommit.Patch;
+  TAtlasUndoDiffView.Execute(TAtlasIssueStrings.Fmt(TAtlasIssueTextId.BlameIssuesDiffTitle,
+    [TAtlasBlameLinks.ShortRevision(FListKind, mCommit.Revision), TAtlasBlameLinks.Subject(mCommit.Message)]),
+    mLines);
 end;
 
 procedure TAtlasIdeBlameScope.Show;
@@ -297,13 +308,12 @@ begin
   end;
 end;
 
-function TAtlasIdeBlameScope.IssueText(AIssue: Integer; AKnown: Boolean; const ADetails: TAtlasTrackerDetails): string;
+class function TAtlasIdeBlameScope.Enabled: Boolean;
 var
-  mIssue: TAtlasBlameIssue;
+  mSettings: TAtlasPluginSettings;
 begin
-  mIssue := FListResult.Issues[AIssue];
-  Result := TAtlasIssueTip.IssueRow(mIssue.Match.Key, AKnown, ADetails, mIssue.LastDate,
-    TTimeZone.Local.ToUniversalTime(Now), Length(mIssue.Commits));
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.IssuesBlameLinks and not TAtlasGuard.Disabled(TAtlasFeature.BlameIssues);
 end;
 
 /// <summary>Warum die Liste leer bleibt (nicht eingecheckt, gescheitert); '' = Commits gelesen.</summary>
@@ -424,53 +434,43 @@ begin
   end;
 end;
 
-procedure TAtlasIdeBlameScope.AskRow(const APreview: TAtlasIdeIssuePreview; AList, AId: Integer);
-var
-  mMatch: TAtlasIssueKeyMatch;
-  mSerial: Integer;
+class function TAtlasIdeBlameScope.PatternOf(const AHooks: TAtlasCodeLinksHooks; out ATarget: TAtlasTrackerTarget;
+  out APattern: TAtlasIssueKeyPattern): Boolean;
 begin
-  // Eigene Routine: Jede Rückmeldung fängt ihr eigenes AId ein (nicht die Schleifenvariable).
-  mMatch := FListResult.Issues[AId].Match;
-  mSerial := FSerialOf;
-  APreview.Lookups.Lookup(mMatch.IssueTarget(FListTarget), mMatch.IssueKey,
-    procedure(ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError)
-    begin
-      if ASucceeded and (FInstance <> nil) and (FInstance.FSerialOf = mSerial) and (FInstance.FList = AList) and
-        (AId <= High(FInstance.FListResult.Issues)) then
-      begin
-        TAtlasIdeResultsWindow.SetIssueText(AList, AId, FInstance.IssueText(AId, True, ADetails));
-      end;
-    end);
+  APattern := TAtlasIssueKeyPattern.Empty;
+  ATarget := TAtlasTrackerTarget.Create('', '', '', '');
+  Result := Assigned(AHooks.Target) and Enabled and AHooks.Target(ATarget);
+  if Result then
+  begin
+    APattern := TAtlasIssueKeyPattern.ForTarget(ATarget);
+    Result := APattern.Active;
+  end;
 end;
 
-procedure TAtlasIdeBlameScope.IssueOpen(AList, AId: Integer);
-var
-  mMatch: TAtlasIssueKeyMatch;
+class function TAtlasIdeBlameScope.Preview(const AHooks: TAtlasCodeLinksHooks): TAtlasIdeIssuePreview;
 begin
-  if (AList <> FList) or (AId < 0) or (AId > High(FListResult.Issues)) or not Assigned(FHooks.Show) then
+  Result := nil;
+  if Assigned(AHooks.Preview) then
+  begin
+    Result := AHooks.Preview();
+  end;
+end;
+
+class function TAtlasIdeBlameScope.BufferLines(const AFileName: string; out ALines: TArray<string>;
+  out AText: string): Boolean;
+var
+  mView: IOTAEditView;
+begin
+  ALines := nil;
+  AText := '';
+  mView := TAtlasEditorBuffer.ActiveView;
+  Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, AFileName);
+  if not Result then
   begin
     Exit;
   end;
-  mMatch := FListResult.Issues[AId].Match;
-  FHooks.Show(mMatch.IssueTarget(FListTarget), mMatch.IssueKey);
-end;
-
-procedure TAtlasIdeBlameScope.IssueCommit(AList, AId: Integer);
-var
-  mCommit: TAtlasVcsLineCommit;
-  mLines: TArray<string>;
-begin
-  if (AList <> FList) or (AId < 0) or (AId > High(FListResult.Commits)) then
-  begin
-    Exit;
-  end;
-  mCommit := FListResult.Commits[AId];
-  // Nachricht, Leerzeile, dann der Unterschied des Bereichs.
-  mLines := TTextLines.SplitLines(TrimRight(mCommit.Message));
-  mLines := mLines + [''] + mCommit.Patch;
-  TAtlasUndoDiffView.Execute(TAtlasIssueStrings.Fmt(TAtlasIssueTextId.BlameIssuesDiffTitle,
-    [TAtlasBlameLinks.ShortRevision(FListKind, mCommit.Revision), TAtlasBlameLinks.Subject(mCommit.Message)]),
-    mLines);
+  AText := TAtlasEditorBuffer.Text(mView.Buffer);
+  ALines := TTextLines.SplitLines(AText);
 end;
 
 end.

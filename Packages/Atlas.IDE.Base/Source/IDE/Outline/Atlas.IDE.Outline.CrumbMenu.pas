@@ -157,6 +157,8 @@ end;
 
 { TCrumbMenuState }
 
+{ TAtlasCrumbMenuFile }
+
 class function TAtlasCrumbMenuFile.Create(const AFileName: string; const ANodes: TAtlasOutlineNodes;
   const ALines: TArray<string>): TAtlasCrumbMenuFile;
 begin
@@ -164,6 +166,8 @@ begin
   Result.Nodes := ANodes;
   Result.Lines := ALines;
 end;
+
+{ TCrumbMenuState }
 
 constructor TCrumbMenuState.Create(const AFile: TAtlasCrumbMenuFile; const ACrumbs: TAtlasCrumbs; AIndex: Integer;
   const AHooks: TAtlasCrumbMenuHooks);
@@ -182,58 +186,6 @@ destructor TCrumbMenuState.Destroy;
 begin
   FMenu.Free;
   inherited Destroy;
-end;
-
-function TCrumbMenuState.Crumb: TAtlasCrumb;
-begin
-  Result := FCrumbs[FIndex];
-end;
-
-function TCrumbMenuState.UnitName: string;
-begin
-  Result := ChangeFileExt(ExtractFileName(FFileName), '');
-end;
-
-function TCrumbMenuState.Declaration: Integer;
-begin
-  Result := -1;
-  if (Crumb.Node >= 0) and (Crumb.Node <= High(FNodes)) then
-  begin
-    Result := TAtlasBreadcrumbs.Target(FNodes, Crumb.Node, False);
-  end;
-end;
-
-procedure TCrumbMenuState.Popup(const APoint: TPoint);
-var
-  mActions: TAtlasCrumbActions;
-  mAction: TAtlasCrumbAction;
-  mItem: TMenuItem;
-begin
-  FComponent := '';
-  if TAtlasCrumbMenu.MemberOf(FNodes, Crumb.Node) <> '' then
-  begin
-    FComponent := TAtlasCrumbMenu.ComponentOf(FormTextOf(FFileName, FHooks.CurrentText),
-      TAtlasCrumbMenu.MemberOf(FNodes, Crumb.Node));
-  end;
-  mActions := TAtlasCrumbMenu.ActionsOf(FNodes, Crumb, FComponent <> '');
-  for mAction in cOrder do
-  begin
-    if not (mAction in mActions) then
-    begin
-      Continue;
-    end;
-    if (mAction in [TAtlasCrumbAction.FindReferences, TAtlasCrumbAction.CopyUnitName]) and (FMenu.Items.Count > 0) then
-    begin
-      FMenu.Items.Add(NewLine);
-    end;
-    mItem := TMenuItem.Create(FMenu);
-    mItem.Caption := TAtlasStrings.Text(cTexts[mAction]);
-    mItem.Tag := Ord(mAction);
-    mItem.OnClick := Clicked;
-    FMenu.Items.Add(mItem);
-  end;
-  TAtlasGuard.Log(Format('Breadcrumbs: context menu on crumb %d, %d items', [FIndex, FMenu.Items.Count]));
-  FMenu.Popup(APoint.X, APoint.Y);
 end;
 
 procedure TCrumbMenuState.Clicked(Sender: TObject);
@@ -284,6 +236,25 @@ begin
   end;
 end;
 
+function TCrumbMenuState.Crumb: TAtlasCrumb;
+begin
+  Result := FCrumbs[FIndex];
+end;
+
+function TCrumbMenuState.UnitName: string;
+begin
+  Result := ChangeFileExt(ExtractFileName(FFileName), '');
+end;
+
+function TCrumbMenuState.Declaration: Integer;
+begin
+  Result := -1;
+  if (Crumb.Node >= 0) and (Crumb.Node <= High(FNodes)) then
+  begin
+    Result := TAtlasBreadcrumbs.Target(FNodes, Crumb.Node, False);
+  end;
+end;
+
 procedure TCrumbMenuState.ShowComponent;
 var
   mEditor: IOTAFormEditor;
@@ -306,6 +277,39 @@ begin
   begin
     mComponent.Select(False);
   end;
+end;
+
+procedure TCrumbMenuState.Popup(const APoint: TPoint);
+var
+  mActions: TAtlasCrumbActions;
+  mAction: TAtlasCrumbAction;
+  mItem: TMenuItem;
+begin
+  FComponent := '';
+  if TAtlasCrumbMenu.MemberOf(FNodes, Crumb.Node) <> '' then
+  begin
+    FComponent := TAtlasCrumbMenu.ComponentOf(FormTextOf(FFileName, FHooks.CurrentText),
+      TAtlasCrumbMenu.MemberOf(FNodes, Crumb.Node));
+  end;
+  mActions := TAtlasCrumbMenu.ActionsOf(FNodes, Crumb, FComponent <> '');
+  for mAction in cOrder do
+  begin
+    if not (mAction in mActions) then
+    begin
+      Continue;
+    end;
+    if (mAction in [TAtlasCrumbAction.FindReferences, TAtlasCrumbAction.CopyUnitName]) and (FMenu.Items.Count > 0) then
+    begin
+      FMenu.Items.Add(NewLine);
+    end;
+    mItem := TMenuItem.Create(FMenu);
+    mItem.Caption := TAtlasStrings.Text(cTexts[mAction]);
+    mItem.Tag := Ord(mAction);
+    mItem.OnClick := Clicked;
+    FMenu.Items.Add(mItem);
+  end;
+  TAtlasGuard.Log(Format('Breadcrumbs: context menu on crumb %d, %d items', [FIndex, FMenu.Items.Count]));
+  FMenu.Popup(APoint.X, APoint.Y);
 end;
 
 { TAtlasIdeCrumbMenu }

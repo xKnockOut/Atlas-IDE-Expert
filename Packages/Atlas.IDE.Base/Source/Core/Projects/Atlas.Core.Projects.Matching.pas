@@ -94,6 +94,8 @@ begin
   Result := (AIndex > High(AUsable)) or AUsable[AIndex];
 end;
 
+{ TAtlasProjectMatching }
+
 class function TAtlasProjectMatching.NormalizedPath(const APath: string): string;
 var
   mUnc: Boolean;

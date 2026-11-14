@@ -393,6 +393,8 @@ begin
   end;
 end;
 
+{ TAtlasGlyphs }
+
 class function TAtlasGlyphs.Shapes(AIcon: TAtlasToolbarIcon): TArray<TAtlasGlyphShape>;
 begin
   Result := SectionShapes(AIcon);

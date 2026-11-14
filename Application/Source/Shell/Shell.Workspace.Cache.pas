@@ -121,6 +121,84 @@ begin
   inherited;
 end;
 
+procedure TShellWorkspaceCache.Housekeep(const AKeep: TArray<string>; const ASettings: TServerSettings);
+var
+  mRemoved: Integer;
+begin
+  // Im Log nur Anzahlen, keine Pfade (anonymes Server-Log).
+  if ASettings.IndexRemoveOrphans then
+  begin
+    LogRemoved(TIndexCacheDirectory.RemoveOrphans(FSetup.CacheRoot, AKeep),
+      '%d verwaiste Index-Caches gelöscht (Projekt nicht mehr vorhanden)');
+  end;
+  LogRemoved(TIndexCacheDirectory.RemoveUnused(FSetup.CacheRoot, ASettings.IndexCacheMaxAgeDays, AKeep),
+    '%d Index-Caches gelöscht (länger als ' + IntToStr(ASettings.IndexCacheMaxAgeDays) + ' Tage nicht benutzt)');
+  mRemoved := TIndexCacheDirectory.Cleanup(FSetup.CacheRoot,
+    TIndexCacheHousekeeping.MaxBytesOf(ASettings.IndexCacheMaxMb), AKeep);
+  if mRemoved > 0 then
+  begin
+    FLogger.Info(Format('%d alte Index-Caches gelöscht (Höchstgröße %d MB)', [mRemoved, ASettings.IndexCacheMaxMb]));
+    // Auch ins Diagnose-Log: Ohne --log stand es nirgends, und gelöschte Caches anderer Projektgruppen sahen
+    // aus wie ein Cache, der nicht greift (29.10.2026).
+    FEvents.IndexEvent(Format('index project#%d cacheCleanup removed %d limit %d MB', [FSetup.Priority, mRemoved,
+      ASettings.IndexCacheMaxMb]));
+  end;
+end;
+
+procedure TShellWorkspaceCache.LogRemoved(ARemoved: Integer; const AText: string);
+begin
+  if ARemoved > 0 then
+  begin
+    FLogger.Info(Format(AText, [ARemoved]));
+  end;
+end;
+
+function TShellWorkspaceCache.Lock(const AFiles: TShellCacheFiles; const AOrigin: string;
+  const ASettings: TServerSettings): Boolean;
+begin
+  if SameText(AFiles.ProjectFile, FCacheLockFile) and (FCacheLock <> nil) then
+  begin
+    Report(AFiles.ProjectFile, TIndexProcessInfo.cStateBuilding, True, cTexts[TWorkspaceCacheText.Updating].Text);
+    Exit(True);
+  end;
+  FreeAndNil(FCacheLock);
+  FCacheLockFile := AFiles.ProjectFile;
+  FCacheLock := TIndexCacheDirectory.TryLock(AFiles.ProjectFile);
+  Result := FCacheLock <> nil;
+  // Für „Prozesse am Projekt“ (#62): wer schreibt, wer nur liest.
+  if Result then
+  begin
+    Report(AFiles.ProjectFile, TIndexProcessInfo.cStateBuilding, True, cTexts[TWorkspaceCacheText.Locked].Text);
+  end
+  else
+  begin
+    Report(AFiles.ProjectFile, TIndexProcessInfo.cStateReading, False, cTexts[TWorkspaceCacheText.ReadOnly].Text);
+  end;
+  try
+    // Herkunft und Benutzung vermerken (#905): Danach erkennt jede Instanz verwaiste und ungenutzte Caches.
+    if Result then
+    begin
+      TIndexCacheDirectory.WriteOrigin(AFiles.ProjectFile, AOrigin);
+    end;
+    TIndexCacheDirectory.TouchUse(AFiles.ProjectFile);
+    TIndexCacheDirectory.TouchUse(AFiles.LibraryFile);
+    TIndexCacheDirectory.TouchUse(AFiles.SearchFile);
+    // Der gemeinsame Bibliotheks-Cache ist nicht gesperrt; ohne ihn hier zu nennen, löschte das Aufräumen
+    // ihn bei jedem Start, sobald der Ordner über der Höchstgröße lag (#616: "0 aus dem Cache").
+    Housekeep(TArray<string>.Create(AFiles.ProjectFile, AFiles.LibraryFile, AFiles.SearchFile), ASettings);
+  except
+    on E: Exception do
+      FLogger.Warning(Format('Aufräumen des Cache-Ordners fehlgeschlagen: %s', [TLogMarks.Text(E.Message)]));
+  end;
+end;
+
+procedure TShellWorkspaceCache.Release;
+begin
+  FreeAndNil(FCacheLock);
+  FCacheLockFile := '';
+  Report(TIndexProcessInfo.cStateReady, False, cTexts[TWorkspaceCacheText.Released].Text);
+end;
+
 procedure TShellWorkspaceCache.Report(const ACacheFile, AState: string; AWriter: Boolean; const AEvent: string);
 var
   mIdentity: TIndexProcessInfo;
@@ -144,6 +222,19 @@ begin
   end;
 end;
 
+procedure TShellWorkspaceCache.Report(const AState: string; AWriter: Boolean; const AEvent: string);
+begin
+  TMonitor.Enter(FLock);
+  try
+    if FProcessEntry <> nil then
+    begin
+      FProcessEntry.Update(AState, AWriter, AEvent);
+    end;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
 procedure TShellWorkspaceCache.SetClient(const AClient: string);
 var
   mIdentity: TIndexProcessInfo;
@@ -156,19 +247,6 @@ begin
     if FProcessEntry <> nil then
     begin
       FProcessEntry.SetClient(AClient);
-    end;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
-procedure TShellWorkspaceCache.Report(const AState: string; AWriter: Boolean; const AEvent: string);
-begin
-  TMonitor.Enter(FLock);
-  try
-    if FProcessEntry <> nil then
-    begin
-      FProcessEntry.Update(AState, AWriter, AEvent);
     end;
   finally
     TMonitor.Exit(FLock);
@@ -213,84 +291,6 @@ begin
   if Result then
   begin
     AProcesses := TIndexProcesses.List(ACacheFile);
-  end;
-end;
-
-procedure TShellWorkspaceCache.Release;
-begin
-  FreeAndNil(FCacheLock);
-  FCacheLockFile := '';
-  Report(TIndexProcessInfo.cStateReady, False, cTexts[TWorkspaceCacheText.Released].Text);
-end;
-
-function TShellWorkspaceCache.Lock(const AFiles: TShellCacheFiles; const AOrigin: string;
-  const ASettings: TServerSettings): Boolean;
-begin
-  if SameText(AFiles.ProjectFile, FCacheLockFile) and (FCacheLock <> nil) then
-  begin
-    Report(AFiles.ProjectFile, TIndexProcessInfo.cStateBuilding, True, cTexts[TWorkspaceCacheText.Updating].Text);
-    Exit(True);
-  end;
-  FreeAndNil(FCacheLock);
-  FCacheLockFile := AFiles.ProjectFile;
-  FCacheLock := TIndexCacheDirectory.TryLock(AFiles.ProjectFile);
-  Result := FCacheLock <> nil;
-  // Für „Prozesse am Projekt“ (#62): wer schreibt, wer nur liest.
-  if Result then
-  begin
-    Report(AFiles.ProjectFile, TIndexProcessInfo.cStateBuilding, True, cTexts[TWorkspaceCacheText.Locked].Text);
-  end
-  else
-  begin
-    Report(AFiles.ProjectFile, TIndexProcessInfo.cStateReading, False, cTexts[TWorkspaceCacheText.ReadOnly].Text);
-  end;
-  try
-    // Herkunft und Benutzung vermerken (#905): Danach erkennt jede Instanz verwaiste und ungenutzte Caches.
-    if Result then
-    begin
-      TIndexCacheDirectory.WriteOrigin(AFiles.ProjectFile, AOrigin);
-    end;
-    TIndexCacheDirectory.TouchUse(AFiles.ProjectFile);
-    TIndexCacheDirectory.TouchUse(AFiles.LibraryFile);
-    TIndexCacheDirectory.TouchUse(AFiles.SearchFile);
-    // Der gemeinsame Bibliotheks-Cache ist nicht gesperrt; ohne ihn hier zu nennen, löschte das Aufräumen
-    // ihn bei jedem Start, sobald der Ordner über der Höchstgröße lag (#616: "0 aus dem Cache").
-    Housekeep(TArray<string>.Create(AFiles.ProjectFile, AFiles.LibraryFile, AFiles.SearchFile), ASettings);
-  except
-    on E: Exception do
-      FLogger.Warning(Format('Aufräumen des Cache-Ordners fehlgeschlagen: %s', [TLogMarks.Text(E.Message)]));
-  end;
-end;
-
-procedure TShellWorkspaceCache.LogRemoved(ARemoved: Integer; const AText: string);
-begin
-  if ARemoved > 0 then
-  begin
-    FLogger.Info(Format(AText, [ARemoved]));
-  end;
-end;
-
-procedure TShellWorkspaceCache.Housekeep(const AKeep: TArray<string>; const ASettings: TServerSettings);
-var
-  mRemoved: Integer;
-begin
-  // Im Log nur Anzahlen, keine Pfade (anonymes Server-Log).
-  if ASettings.IndexRemoveOrphans then
-  begin
-    LogRemoved(TIndexCacheDirectory.RemoveOrphans(FSetup.CacheRoot, AKeep),
-      '%d verwaiste Index-Caches gelöscht (Projekt nicht mehr vorhanden)');
-  end;
-  LogRemoved(TIndexCacheDirectory.RemoveUnused(FSetup.CacheRoot, ASettings.IndexCacheMaxAgeDays, AKeep),
-    '%d Index-Caches gelöscht (länger als ' + IntToStr(ASettings.IndexCacheMaxAgeDays) + ' Tage nicht benutzt)');
-  mRemoved := TIndexCacheDirectory.Cleanup(FSetup.CacheRoot,
-    TIndexCacheHousekeeping.MaxBytesOf(ASettings.IndexCacheMaxMb), AKeep);
-  if mRemoved > 0 then
-  begin
-    FLogger.Info(Format('%d alte Index-Caches gelöscht (Höchstgröße %d MB)', [mRemoved, ASettings.IndexCacheMaxMb]));
-    // Auch ins Diagnose-Log: Ohne --log stand es nirgends, und gelöschte Caches anderer Projektgruppen sahen
-    // aus wie ein Cache, der nicht greift (29.10.2026).
-    FEvents.IndexEvent(Format('index project#%d cacheCleanup removed %d limit %d MB', [FSetup.Priority, mRemoved,
-      ASettings.IndexCacheMaxMb]));
   end;
 end;
 

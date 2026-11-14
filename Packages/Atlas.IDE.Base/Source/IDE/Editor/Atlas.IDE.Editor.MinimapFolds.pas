@@ -94,29 +94,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasIdeMinimapFolds.Reset;
-begin
-  FFolds := nil;
-  FFoldLines := 0;
-  FPainted := nil;
-end;
-
-function TAtlasIdeMinimapFolds.Update(const AFileName: string; ALineCount: Integer): TAtlasMinimapFolds;
-begin
-  // Andere Zeilenzahl: Die bekannten Bereiche stimmen nicht mehr.
-  if ALineCount <> FFoldLines then
-  begin
-    FFolds := nil;
-    FFoldLines := ALineCount;
-  end;
-  if (FPainted <> nil) and SameText(FPaintedFile, AFileName) then
-  begin
-    FFolds := TAtlasMinimap.Folds(FFolds, FPainted, FRowHeight, ALineCount);
-  end;
-  FPainted := nil;
-  Result := FFolds;
-end;
-
 procedure TAtlasIdeMinimapFolds.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
@@ -159,6 +136,29 @@ begin
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Minimap, E);
   end;
+end;
+
+procedure TAtlasIdeMinimapFolds.Reset;
+begin
+  FFolds := nil;
+  FFoldLines := 0;
+  FPainted := nil;
+end;
+
+function TAtlasIdeMinimapFolds.Update(const AFileName: string; ALineCount: Integer): TAtlasMinimapFolds;
+begin
+  // Andere Zeilenzahl: Die bekannten Bereiche stimmen nicht mehr.
+  if ALineCount <> FFoldLines then
+  begin
+    FFolds := nil;
+    FFoldLines := ALineCount;
+  end;
+  if (FPainted <> nil) and SameText(FPaintedFile, AFileName) then
+  begin
+    FFolds := TAtlasMinimap.Folds(FFolds, FPainted, FRowHeight, ALineCount);
+  end;
+  FPainted := nil;
+  Result := FFolds;
 end;
 
 end.

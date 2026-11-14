@@ -45,6 +45,8 @@ uses
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Tracker.PathSuggestions;
 
+{ TAtlasIdeEndPull }
+
 class function TAtlasIdeEndPull.Offer(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
   const AOptions: TAtlasTrackerSyncOptions; const ATitle: string;
   const AValues: TAtlasTrackerPlaceholders): TAtlasEndPullOffer;

@@ -41,6 +41,13 @@ uses
 
 { TAtlasSearchUnitSearchSection }
 
+procedure TAtlasSearchUnitSearchSection.BuildRows;
+begin
+  ModuleSwitch('search.enabled');
+  BuildUnitSearch;
+  BuildSearchBar;
+end;
+
 function TAtlasSearchUnitSearchSection.OwnerId: string;
 begin
   Result := cSearchSettingsOwner;
@@ -49,13 +56,6 @@ end;
 function TAtlasSearchUnitSearchSection.AreaId: string;
 begin
   Result := 'Units suchen';
-end;
-
-procedure TAtlasSearchUnitSearchSection.BuildRows;
-begin
-  ModuleSwitch('search.enabled');
-  BuildUnitSearch;
-  BuildSearchBar;
 end;
 
 procedure TAtlasSearchUnitSearchSection.BuildUnitSearch;
@@ -108,6 +108,12 @@ end;
 
 { TAtlasSearchQuerySection }
 
+procedure TAtlasSearchQuerySection.BuildRows;
+begin
+  // Code-Abfragen (#1351): Fenster „Atlas-Abfrage“, Befehl und Menüeintrag; Unterpunkt über x-node.
+  Switch('query.enabled', TAtlasSearchStrings.Text(TAtlasSearchTextId.SettingsQuery));
+end;
+
 function TAtlasSearchQuerySection.OwnerId: string;
 begin
   Result := cSearchSettingsOwner;
@@ -116,12 +122,6 @@ end;
 function TAtlasSearchQuerySection.AreaId: string;
 begin
   Result := 'Allgemein';
-end;
-
-procedure TAtlasSearchQuerySection.BuildRows;
-begin
-  // Code-Abfragen (#1351): Fenster „Atlas-Abfrage“, Befehl und Menüeintrag; Unterpunkt über x-node.
-  Switch('query.enabled', TAtlasSearchStrings.Text(TAtlasSearchTextId.SettingsQuery));
 end;
 
 end.

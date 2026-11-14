@@ -150,58 +150,6 @@ end;
 
 { TDelphiInstallation }
 
-class function TDelphiInstallation.Versions: TArray<string>;
-var
-  mRegistry: TRegistry;
-  mNames: TStringList;
-  mFound: TList<string>;
-  mName: string;
-begin
-  mFound := TList<string>.Create;
-  mNames := TStringList.Create;
-  try
-    mRegistry := OpenRead(HKEY_CURRENT_USER, cBdsKey);
-    if mRegistry <> nil then
-      try
-        mRegistry.GetKeyNames(mNames);
-      finally
-        mRegistry.Free;
-      end;
-    for mName in mNames do
-    begin
-      if (StrToFloatDef(mName, 0, TFormatSettings.Invariant) > 0) and (ReadRootDir(mName) <> '') then
-      begin
-        mFound.Add(mName);
-      end;
-    end;
-    mFound.Sort(TComparer<string>.Construct(CompareVersions));
-    Result := mFound.ToArray;
-  finally
-    mNames.Free;
-    mFound.Free;
-  end;
-end;
-
-class function TDelphiInstallation.RootDirOf(const AVersion: string): string;
-begin
-  Result := ReadRootDir(AVersion);
-end;
-
-class function TDelphiInstallation.Latest: ILibraryPathProvider;
-var
-  mInstalled: TArray<string>;
-begin
-  mInstalled := Versions;
-  if Length(mInstalled) = 0 then
-  begin
-    Result := nil;
-  end
-  else
-  begin
-    Result := TDelphiInstallation.Create(mInstalled[High(mInstalled)]);
-  end;
-end;
-
 constructor TDelphiInstallation.Create(const AVersion: string);
 begin
   inherited Create;
@@ -212,6 +160,48 @@ begin
     raise EProjectError.CreateFmt('Delphi-Version %s ist nicht installiert', [AVersion]);
   end;
   LoadVariables;
+end;
+
+function TDelphiInstallation.ReadPaths(const APlatform, AValueName: string): TArray<string>;
+var
+  mRegistry: TRegistry;
+  mItem: string;
+begin
+  Result := nil;
+  mRegistry := OpenRead(HKEY_CURRENT_USER, cBdsKey + '\' + FVersion + '\Library\' + APlatform);
+  if mRegistry = nil then
+  begin
+    Exit;
+  end;
+  try
+    if not mRegistry.ValueExists(AValueName) then
+    begin
+      Exit;
+    end;
+    for mItem in TProjectPaths.SplitList(mRegistry.ReadString(AValueName)) do
+    begin
+      Result := Result + [TProjectPaths.Normalize(ExpandFor(mItem, APlatform))];
+    end;
+  finally
+    mRegistry.Free;
+  end;
+end;
+
+function TDelphiInstallation.ExpandFor(const AText, APlatform: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := AText;
+  // Variablen dürfen auf andere verweisen; drei Durchgänge genügen in der Praxis.
+  for mIndex := 1 to 3 do
+  begin
+    Result := TProjectPaths.ExpandVariables(Result,
+      FVariables + [TPair<string, string>.Create('Platform', APlatform)]);
+    if Pos('$(', Result) = 0 then
+    begin
+      Break;
+    end;
+  end;
 end;
 
 procedure TDelphiInstallation.LoadVariables;
@@ -262,46 +252,56 @@ begin
   end;
 end;
 
-function TDelphiInstallation.ExpandFor(const AText, APlatform: string): string;
+class function TDelphiInstallation.Versions: TArray<string>;
 var
-  mIndex: Integer;
+  mRegistry: TRegistry;
+  mNames: TStringList;
+  mFound: TList<string>;
+  mName: string;
 begin
-  Result := AText;
-  // Variablen dürfen auf andere verweisen; drei Durchgänge genügen in der Praxis.
-  for mIndex := 1 to 3 do
-  begin
-    Result := TProjectPaths.ExpandVariables(Result,
-      FVariables + [TPair<string, string>.Create('Platform', APlatform)]);
-    if Pos('$(', Result) = 0 then
+  mFound := TList<string>.Create;
+  mNames := TStringList.Create;
+  try
+    mRegistry := OpenRead(HKEY_CURRENT_USER, cBdsKey);
+    if mRegistry <> nil then
+      try
+        mRegistry.GetKeyNames(mNames);
+      finally
+        mRegistry.Free;
+      end;
+    for mName in mNames do
     begin
-      Break;
+      if (StrToFloatDef(mName, 0, TFormatSettings.Invariant) > 0) and (ReadRootDir(mName) <> '') then
+      begin
+        mFound.Add(mName);
+      end;
     end;
+    mFound.Sort(TComparer<string>.Construct(CompareVersions));
+    Result := mFound.ToArray;
+  finally
+    mNames.Free;
+    mFound.Free;
   end;
 end;
 
-function TDelphiInstallation.ReadPaths(const APlatform, AValueName: string): TArray<string>;
+class function TDelphiInstallation.Latest: ILibraryPathProvider;
 var
-  mRegistry: TRegistry;
-  mItem: string;
+  mInstalled: TArray<string>;
 begin
-  Result := nil;
-  mRegistry := OpenRead(HKEY_CURRENT_USER, cBdsKey + '\' + FVersion + '\Library\' + APlatform);
-  if mRegistry = nil then
+  mInstalled := Versions;
+  if Length(mInstalled) = 0 then
   begin
-    Exit;
+    Result := nil;
+  end
+  else
+  begin
+    Result := TDelphiInstallation.Create(mInstalled[High(mInstalled)]);
   end;
-  try
-    if not mRegistry.ValueExists(AValueName) then
-    begin
-      Exit;
-    end;
-    for mItem in TProjectPaths.SplitList(mRegistry.ReadString(AValueName)) do
-    begin
-      Result := Result + [TProjectPaths.Normalize(ExpandFor(mItem, APlatform))];
-    end;
-  finally
-    mRegistry.Free;
-  end;
+end;
+
+class function TDelphiInstallation.RootDirOf(const AVersion: string): string;
+begin
+  Result := ReadRootDir(AVersion);
 end;
 
 function TDelphiInstallation.LibraryPaths(const APlatform: string): TArray<string>;

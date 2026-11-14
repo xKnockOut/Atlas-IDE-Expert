@@ -118,58 +118,6 @@ begin
   inherited;
 end;
 
-class procedure TAtlasIdeFormatMarks.Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
-procedure TAtlasIdeFormatMarks.Show(const AFileName, AText: string; ATabWidth: Integer;
-  const AMarks: TArray<TAtlasFormatMark>);
-var
-  mMark: TAtlasFormatMark;
-  mMarks: TArray<TAtlasFormatMark>;
-  mPainted: Boolean;
-begin
-  mPainted := FByLine.Count > 0;
-  FByLine.Clear;
-  FFileName := AFileName;
-  FTabWidth := ATabWidth;
-  FLines := nil;
-  if Length(AMarks) > 0 then
-  begin
-    FLines := TTextLines.SplitLines(AText);
-  end;
-  for mMark in AMarks do
-  begin
-    if not FByLine.TryGetValue(mMark.Line, mMarks) then
-    begin
-      mMarks := nil;
-    end;
-    FByLine.AddOrSetValue(mMark.Line, mMarks + [mMark]);
-  end;
-  if mPainted or (FByLine.Count > 0) then
-  begin
-    Invalidate;
-  end;
-end;
-
-procedure TAtlasIdeFormatMarks.Clear;
-begin
-  FFileName := '';
-  FLines := nil;
-  if FByLine.Count = 0 then
-  begin
-    Exit;
-  end;
-  FByLine.Clear;
-  Invalidate;
-end;
-
 procedure TAtlasIdeFormatMarks.PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const AText: string; const AMarks: TArray<TAtlasFormatMark>; ABack: TAtlasColor);
 var
@@ -236,6 +184,58 @@ begin
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Signature, E);
   end;
+end;
+
+class procedure TAtlasIdeFormatMarks.Invalidate;
+var
+  mServices: INTACodeEditorServices;
+begin
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+  end;
+end;
+
+procedure TAtlasIdeFormatMarks.Show(const AFileName, AText: string; ATabWidth: Integer;
+  const AMarks: TArray<TAtlasFormatMark>);
+var
+  mMark: TAtlasFormatMark;
+  mMarks: TArray<TAtlasFormatMark>;
+  mPainted: Boolean;
+begin
+  mPainted := FByLine.Count > 0;
+  FByLine.Clear;
+  FFileName := AFileName;
+  FTabWidth := ATabWidth;
+  FLines := nil;
+  if Length(AMarks) > 0 then
+  begin
+    FLines := TTextLines.SplitLines(AText);
+  end;
+  for mMark in AMarks do
+  begin
+    if not FByLine.TryGetValue(mMark.Line, mMarks) then
+    begin
+      mMarks := nil;
+    end;
+    FByLine.AddOrSetValue(mMark.Line, mMarks + [mMark]);
+  end;
+  if mPainted or (FByLine.Count > 0) then
+  begin
+    Invalidate;
+  end;
+end;
+
+procedure TAtlasIdeFormatMarks.Clear;
+begin
+  FFileName := '';
+  FLines := nil;
+  if FByLine.Count = 0 then
+  begin
+    Exit;
+  end;
+  FByLine.Clear;
+  Invalidate;
 end;
 
 end.

@@ -512,31 +512,7 @@ begin
   end;
 end;
 
-class function TAtlasIdeWorkspaceEdit.CurrentText(const AFileName: string): string;
-var
-  mBuffer: IOTAEditBuffer;
-begin
-  Result := '';
-  mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
-  if mBuffer <> nil then
-  begin
-    Exit(TAtlasEditorBuffer.Text(mBuffer));
-  end;
-  // Offenes Formular: der Stand des Designers, wie ihn der Server kennt (#402).
-  if TAtlasIdeForms.SentText(AFileName, Result) then
-  begin
-    Exit;
-  end;
-  try
-    if FileExists(AFileName) then
-    begin
-      Result := TAtlasTextFile.Load(AFileName, TAtlasEncodingDefault.CodePageFor(AFileName)).Text;
-    end;
-  except
-    on Exception do
-      Result := '';
-  end;
-end;
+{ TAtlasIdeWorkspaceEdit }
 
 class procedure TAtlasIdeWorkspaceEdit.WriteBuffer(const ABuffer: IOTAEditBuffer; const AText: string;
   const ARanges: TArray<TLspTextRange>);
@@ -561,6 +537,32 @@ begin
   mWriter := nil;
   // Eigener Schreibvorgang: Probleme und Inlay-Hints lesen den Puffer neu.
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
+end;
+
+class function TAtlasIdeWorkspaceEdit.CurrentText(const AFileName: string): string;
+var
+  mBuffer: IOTAEditBuffer;
+begin
+  Result := '';
+  mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
+  if mBuffer <> nil then
+  begin
+    Exit(TAtlasEditorBuffer.Text(mBuffer));
+  end;
+  // Offenes Formular: der Stand des Designers, wie ihn der Server kennt (#402).
+  if TAtlasIdeForms.SentText(AFileName, Result) then
+  begin
+    Exit;
+  end;
+  try
+    if FileExists(AFileName) then
+    begin
+      Result := TAtlasTextFile.Load(AFileName, TAtlasEncodingDefault.CodePageFor(AFileName)).Text;
+    end;
+  except
+    on Exception do
+      Result := '';
+  end;
 end;
 
 class function TAtlasIdeWorkspaceEdit.Apply(const AEdit: TLspWorkspaceEdit; APolicy: TAtlasUnopenedPolicy;

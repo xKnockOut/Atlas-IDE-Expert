@@ -151,6 +151,8 @@ begin
   end;
 end;
 
+{ TAtlasDataBreakpoint }
+
 class function TAtlasDataBreakpoint.ExpressionAt(const ALine: string; ACharacter: Integer): string;
 var
   mLastPart: string;

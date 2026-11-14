@@ -90,6 +90,8 @@ begin
   end;
 end;
 
+{ TAtlasRenamePreview }
+
 class function TAtlasRenamePreview.Execute(const ATitle, AHint: string; const AGroups: TArray<TAtlasResultGroup>;
   const AOnOpen: TAtlasResultsOpen): Boolean;
 begin

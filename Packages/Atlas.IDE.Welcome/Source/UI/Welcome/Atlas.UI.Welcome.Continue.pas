@@ -363,31 +363,6 @@ end;
 
 { TAtlasContinueTexts }
 
-class function TAtlasContinueTexts.NowUtc: TDateTime;
-begin
-  Result := TTimeZone.Local.ToUniversalTime(Now);
-end;
-
-class function TAtlasContinueTexts.LocalText(AUtc: TDateTime): string;
-begin
-  Result := '';
-  if AUtc > 0 then
-  begin
-    Result := FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AUtc));
-  end;
-end;
-
-class function TAtlasContinueTexts.TabsText(ACount: Integer): string;
-begin
-  // Gemeinsam mit dem Reiter „Issues“ (#2052).
-  Result := TAtlasContinueIssueTexts.TabsText(ACount);
-end;
-
-class function TAtlasContinueTexts.AgeText(AAtUtc, ANowUtc: TDateTime): string;
-begin
-  Result := TAtlasContinueIssueTexts.AgeText(AAtUtc, ANowUtc);
-end;
-
 class function TAtlasContinueTexts.TitleText(const AEntry: TAtlasContinueEntry): string;
 begin
   Result := AEntry.Name + cSeparator + TabsText(AEntry.State.TabCount);
@@ -403,6 +378,17 @@ begin
   begin
     Result := Result + cArrow + mTab.Method;
   end;
+end;
+
+class function TAtlasContinueTexts.TabsText(ACount: Integer): string;
+begin
+  // Gemeinsam mit dem Reiter „Issues“ (#2052).
+  Result := TAtlasContinueIssueTexts.TabsText(ACount);
+end;
+
+class function TAtlasContinueTexts.AgeText(AAtUtc, ANowUtc: TDateTime): string;
+begin
+  Result := TAtlasContinueIssueTexts.AgeText(AAtUtc, ANowUtc);
 end;
 
 class function TAtlasContinueTexts.CommitText(const ACommit: TAtlasContinueCommit): string;
@@ -473,18 +459,6 @@ begin
   end;
 end;
 
-class function TAtlasContinueTexts.KindText(AKind: TAtlasSavedKind): string;
-begin
-  case AKind of
-    TAtlasSavedKind.Note:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedNote);
-    TAtlasSavedKind.Bookmark:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedBookmark);
-  else
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedFavorite);
-  end;
-end;
-
 class function TAtlasContinueTexts.SavedCells(const AItem: TAtlasSavedItem): TArray<string>;
 var
   mText, mProject: string;
@@ -500,6 +474,32 @@ begin
     mProject := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedAllProjects);
   end;
   Result := [KindText(AItem.Kind), mText, AItem.Place, mProject];
+end;
+
+class function TAtlasContinueTexts.KindText(AKind: TAtlasSavedKind): string;
+begin
+  case AKind of
+    TAtlasSavedKind.Note:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedNote);
+    TAtlasSavedKind.Bookmark:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedBookmark);
+  else
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedFavorite);
+  end;
+end;
+
+class function TAtlasContinueTexts.NowUtc: TDateTime;
+begin
+  Result := TTimeZone.Local.ToUniversalTime(Now);
+end;
+
+class function TAtlasContinueTexts.LocalText(AUtc: TDateTime): string;
+begin
+  Result := '';
+  if AUtc > 0 then
+  begin
+    Result := FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AUtc));
+  end;
 end;
 
 
@@ -788,35 +788,37 @@ begin
   FList.OnKeyDown := ListKeyDown;
 end;
 
-procedure TAtlasContinueSavedPage.AddColumns(const AWidths: array of Integer);
-const
-  cCaptions: array[0..3] of TAtlasWelcomeTextId = (TAtlasWelcomeTextId.WelcomeSavedColKind,
-    TAtlasWelcomeTextId.WelcomeSavedColText, TAtlasWelcomeTextId.WelcomeSavedColPlace,
-    TAtlasWelcomeTextId.WelcomeSavedColProject);
-var
-  mIndex: Integer;
-  mColumn: TListColumn;
+procedure TAtlasContinueSavedPage.FilterChange(Sender: TObject);
 begin
-  for mIndex := 0 to High(cCaptions) do
+  RefillSaved;
+end;
+
+procedure TAtlasContinueSavedPage.FilterKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if (Key = VK_DOWN) and FList.Visible and (FList.Items.Count > 0) then
   begin
-    mColumn := FList.Columns.Add;
-    mColumn.Caption := TAtlasWelcomeStrings.Text(cCaptions[mIndex]);
-    if mIndex <= High(AWidths) then
-    begin
-      mColumn.Width := AWidths[mIndex];
-    end;
+    FList.SetFocus;
+    Key := 0;
+  end
+  else if Key = VK_RETURN then
+  begin
+    OpenSelected;
+    Key := 0;
   end;
 end;
 
-procedure TAtlasContinueSavedPage.LoadSaved;
+procedure TAtlasContinueSavedPage.ListDblClick(Sender: TObject);
 begin
-  FSaved := nil;
-  if FSource <> nil then
+  OpenSelected;
+end;
+
+procedure TAtlasContinueSavedPage.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if Key = VK_RETURN then
   begin
-    FSaved := FSource.Saved;
+    OpenSelected;
+    Key := 0;
   end;
-  FSavedLoaded := True;
-  RefillSaved;
 end;
 
 procedure TAtlasContinueSavedPage.RefillSaved;
@@ -860,37 +862,35 @@ begin
   FList.Visible := not FSavedEmpty.Visible;
 end;
 
-procedure TAtlasContinueSavedPage.FilterChange(Sender: TObject);
+procedure TAtlasContinueSavedPage.AddColumns(const AWidths: array of Integer);
+const
+  cCaptions: array[0..3] of TAtlasWelcomeTextId = (TAtlasWelcomeTextId.WelcomeSavedColKind,
+    TAtlasWelcomeTextId.WelcomeSavedColText, TAtlasWelcomeTextId.WelcomeSavedColPlace,
+    TAtlasWelcomeTextId.WelcomeSavedColProject);
+var
+  mIndex: Integer;
+  mColumn: TListColumn;
 begin
+  for mIndex := 0 to High(cCaptions) do
+  begin
+    mColumn := FList.Columns.Add;
+    mColumn.Caption := TAtlasWelcomeStrings.Text(cCaptions[mIndex]);
+    if mIndex <= High(AWidths) then
+    begin
+      mColumn.Width := AWidths[mIndex];
+    end;
+  end;
+end;
+
+procedure TAtlasContinueSavedPage.LoadSaved;
+begin
+  FSaved := nil;
+  if FSource <> nil then
+  begin
+    FSaved := FSource.Saved;
+  end;
+  FSavedLoaded := True;
   RefillSaved;
-end;
-
-procedure TAtlasContinueSavedPage.FilterKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  if (Key = VK_DOWN) and FList.Visible and (FList.Items.Count > 0) then
-  begin
-    FList.SetFocus;
-    Key := 0;
-  end
-  else if Key = VK_RETURN then
-  begin
-    OpenSelected;
-    Key := 0;
-  end;
-end;
-
-procedure TAtlasContinueSavedPage.ListDblClick(Sender: TObject);
-begin
-  OpenSelected;
-end;
-
-procedure TAtlasContinueSavedPage.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  if Key = VK_RETURN then
-  begin
-    OpenSelected;
-    Key := 0;
-  end;
 end;
 
 procedure TAtlasContinueSavedPage.OpenSelected;
@@ -959,48 +959,6 @@ begin
   FQuick.Menus.Attach(FMenu);
 end;
 
-procedure TAtlasContinueRecentView.Fill;
-begin
-  FEntries := nil;
-  FIncoming := Default(TAtlasContinueIncoming);
-  FQuerying := False;
-  FNotice := '';
-  if FSource <> nil then
-  begin
-    FEntries := FSource.Entries;
-    FIncoming := FSource.Incoming;
-    FQuerying := FSource.IncomingQuerying;
-    FNotice := FSource.Notice;
-  end;
-  // Die Rechtecke der Schaltflächen entstehen beim Zeichnen.
-  FButtonRects := nil;
-  FHintKey := '';
-  FQuick.SetRows(ProjectNames(FEntries));
-  FBox.Invalidate;
-end;
-
-function TAtlasContinueRecentView.ContentHeight: Integer;
-var
-  mRows, mLines: Integer;
-begin
-  mRows := Length(FEntries);
-  if mRows < 1 then
-  begin
-    mRows := 1;
-  end;
-  mLines := IncomingLines(Self);
-  if FNotice <> '' then
-  begin
-    Inc(mLines);
-  end;
-  Result := mRows * FFrame.ScaleValue(cRowHeight) + mLines * FFrame.ScaleValue(cLineHeight) +
-    FFrame.ScaleValue(cIndent);
-  if mLines > 0 then
-  begin
-    Inc(Result, FFrame.ScaleValue(cIndent));
-  end;
-end;
-
 procedure TAtlasContinueRecentView.QuickOpenRow(ARow: Integer);
 var
   mHit: TAtlasContinueHit;
@@ -1062,21 +1020,84 @@ begin
   end;
 end;
 
-function TAtlasContinueRecentView.RowTop(ARow: Integer): Integer;
+procedure TAtlasContinueRecentView.BoxPaint(Sender: TObject);
+var
+  mPainter: TContinuePainter;
 begin
-  Result := FFrame.ScaleValue(cIndent) div 2 + ARow * FFrame.ScaleValue(cRowHeight);
+  mPainter.View := Self;
+  mPainter.Canvas := FBox.Canvas;
+  mPainter.Colors.Text := StyleServices(FFrame).GetSystemColor(clWindowText);
+  mPainter.Colors.Muted := StyleServices(FFrame).GetSystemColor(clGrayText);
+  mPainter.Colors.Line := StyleServices(FFrame).GetSystemColor(clBtnShadow);
+  mPainter.Colors.Link := StyleServices(FFrame).GetSystemColor(clHotLight);
+  mPainter.Stamp := TAtlasContinueTexts.NowUtc;
+  mPainter.Active := FQuick.ActiveRow;
+  mPainter.Paint;
 end;
 
-function TAtlasContinueRecentView.IncomingTop: Integer;
+procedure TAtlasContinueRecentView.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
+  Y: Integer);
+begin
+  // Knöpfe der Schnellaktionen (#764) handeln selbst.
+  if (Button = mbLeft) and not FQuick.ClickAt(X, Y) then
+  begin
+    ClickAt(HitTest(X, Y));
+  end;
+end;
+
+procedure TAtlasContinueRecentView.BoxMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
+  Y: Integer);
+begin
+  // Die Tastatur der Schnellaktionen übernimmt Zeile und Fokus (#764).
+  FQuick.MouseDown(HitTest(X, Y).Row);
+end;
+
+procedure TAtlasContinueRecentView.BoxMouseLeave(Sender: TObject);
+begin
+  FQuick.MouseLeave;
+  FHintKey := '';
+end;
+
+procedure TAtlasContinueRecentView.Fill;
+begin
+  FEntries := nil;
+  FIncoming := Default(TAtlasContinueIncoming);
+  FQuerying := False;
+  FNotice := '';
+  if FSource <> nil then
+  begin
+    FEntries := FSource.Entries;
+    FIncoming := FSource.Incoming;
+    FQuerying := FSource.IncomingQuerying;
+    FNotice := FSource.Notice;
+  end;
+  // Die Rechtecke der Schaltflächen entstehen beim Zeichnen.
+  FButtonRects := nil;
+  FHintKey := '';
+  FQuick.SetRows(ProjectNames(FEntries));
+  FBox.Invalidate;
+end;
+
+function TAtlasContinueRecentView.ContentHeight: Integer;
 var
-  mRows: Integer;
+  mRows, mLines: Integer;
 begin
   mRows := Length(FEntries);
   if mRows < 1 then
   begin
     mRows := 1;
   end;
-  Result := RowTop(mRows) + FFrame.ScaleValue(cIndent);
+  mLines := IncomingLines(Self);
+  if FNotice <> '' then
+  begin
+    Inc(mLines);
+  end;
+  Result := mRows * FFrame.ScaleValue(cRowHeight) + mLines * FFrame.ScaleValue(cLineHeight) +
+    FFrame.ScaleValue(cIndent);
+  if mLines > 0 then
+  begin
+    Inc(Result, FFrame.ScaleValue(cIndent));
+  end;
 end;
 
 function TAtlasContinueRecentView.HitTest(AX, AY: Integer): TAtlasContinueHit;
@@ -1161,42 +1182,21 @@ begin
   end;
 end;
 
-procedure TAtlasContinueRecentView.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
-  Y: Integer);
+function TAtlasContinueRecentView.RowTop(ARow: Integer): Integer;
 begin
-  // Knöpfe der Schnellaktionen (#764) handeln selbst.
-  if (Button = mbLeft) and not FQuick.ClickAt(X, Y) then
-  begin
-    ClickAt(HitTest(X, Y));
-  end;
+  Result := FFrame.ScaleValue(cIndent) div 2 + ARow * FFrame.ScaleValue(cRowHeight);
 end;
 
-procedure TAtlasContinueRecentView.BoxMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
-  Y: Integer);
-begin
-  // Die Tastatur der Schnellaktionen übernimmt Zeile und Fokus (#764).
-  FQuick.MouseDown(HitTest(X, Y).Row);
-end;
-
-procedure TAtlasContinueRecentView.BoxMouseLeave(Sender: TObject);
-begin
-  FQuick.MouseLeave;
-  FHintKey := '';
-end;
-
-procedure TAtlasContinueRecentView.BoxPaint(Sender: TObject);
+function TAtlasContinueRecentView.IncomingTop: Integer;
 var
-  mPainter: TContinuePainter;
+  mRows: Integer;
 begin
-  mPainter.View := Self;
-  mPainter.Canvas := FBox.Canvas;
-  mPainter.Colors.Text := StyleServices(FFrame).GetSystemColor(clWindowText);
-  mPainter.Colors.Muted := StyleServices(FFrame).GetSystemColor(clGrayText);
-  mPainter.Colors.Line := StyleServices(FFrame).GetSystemColor(clBtnShadow);
-  mPainter.Colors.Link := StyleServices(FFrame).GetSystemColor(clHotLight);
-  mPainter.Stamp := TAtlasContinueTexts.NowUtc;
-  mPainter.Active := FQuick.ActiveRow;
-  mPainter.Paint;
+  mRows := Length(FEntries);
+  if mRows < 1 then
+  begin
+    mRows := 1;
+  end;
+  Result := RowTop(mRows) + FFrame.ScaleValue(cIndent);
 end;
 
 /// <summary>Tooltip an der Stelle des Treffers AHit; QuickHint ist der Tooltip eines Knopfs ('' = keiner).</summary>
@@ -1290,12 +1290,7 @@ begin
   end;
 end;
 
-procedure TAtlasWelcomeContinueFrame.CreateWnd;
-begin
-  inherited;
-  // Reiter erst mit Fenster: TTabControl braucht dafür eins („kein übergeordnetes Fenster“).
-  SyncTabs;
-end;
+{ TAtlasWelcomeContinueFrame }
 
 constructor TAtlasWelcomeContinueFrame.Create(AOwner: TComponent);
 begin
@@ -1323,17 +1318,6 @@ begin
   FSavedPage.AddColumns([ScaleValue(80), ScaleValue(220), ScaleValue(140), ScaleValue(120)]);
 end;
 
-function TAtlasWelcomeContinueFrame.GetQuickActions: IAtlasQuickActionsSource;
-begin
-  Result := FRecent.Quick.Source;
-end;
-
-procedure TAtlasWelcomeContinueFrame.SetQuickActions(const AValue: IAtlasQuickActionsSource);
-begin
-  FRecent.Quick.Source := AValue;
-  UpdateContent;
-end;
-
 procedure TAtlasWelcomeContinueFrame.SetSource(const AValue: IAtlasContinueSource);
 begin
   FSource := AValue;
@@ -1354,28 +1338,102 @@ begin
   UpdateContent;
 end;
 
-function TAtlasWelcomeContinueFrame.IssuesShown: Boolean;
+function TAtlasWelcomeContinueFrame.GetQuickActions: IAtlasQuickActionsSource;
 begin
-  Result := (FIssuesSource <> nil) and FIssuesSource.IssuesEnabled;
+  Result := FRecent.Quick.Source;
 end;
 
-function TAtlasWelcomeContinueFrame.ShownPages: TArray<Integer>;
+procedure TAtlasWelcomeContinueFrame.SetQuickActions(const AValue: IAtlasQuickActionsSource);
 begin
-  SetLength(Result, 1);
-  Result[0] := cPageRecent;
-  if IssuesShown then
+  FRecent.Quick.Source := AValue;
+  UpdateContent;
+end;
+
+function TAtlasWelcomeContinueFrame.GetPage: Integer;
+begin
+  Result := FPage;
+  if IndexOfPage(ShownPages, Result) < 0 then
   begin
-    Result := Result + [cPageIssues];
-  end;
-  if (FSource <> nil) and FSource.SavedEnabled then
-  begin
-    Result := Result + [cPageSaved];
+    Result := cPageRecent;
   end;
 end;
 
-function TAtlasWelcomeContinueFrame.TabsShown: Boolean;
+procedure TAtlasWelcomeContinueFrame.SetPage(AValue: Integer);
 begin
-  Result := Length(ShownPages) > 1;
+  FPage := AValue;
+  ShowPage;
+end;
+
+function TAtlasWelcomeContinueFrame.BodyHeight: Integer;
+begin
+  Result := 0;
+  if TabsShown then
+  begin
+    Inc(Result, ScaleValue(cTabHeight));
+  end;
+  case Page of
+    cPageSaved:
+      Inc(Result, ScaleValue(cFilterHeight) + (cSavedRows + 1) * ScaleValue(cLineHeight) + ScaleValue(cIndent));
+    cPageIssues:
+      Inc(Result, FIssues.ContentHeight);
+  else
+    Inc(Result, FRecent.ContentHeight);
+  end;
+end;
+
+procedure TAtlasWelcomeContinueFrame.CreateWnd;
+begin
+  inherited;
+  // Reiter erst mit Fenster: TTabControl braucht dafür eins („kein übergeordnetes Fenster“).
+  SyncTabs;
+end;
+
+procedure TAtlasWelcomeContinueFrame.UpdateContent;
+var
+  mHeight: Integer;
+begin
+  // Ohne Fenster später: CreateWnd bzw. die Tafel ruft UpdateContent nach dem Einhängen.
+  if not HasWindow then
+  begin
+    Exit;
+  end;
+  mHeight := BodyHeight;
+  FRecent.Fill;
+  FIssues.Fill;
+  SyncTabs;
+  // „Gemerkt“ neu lesen, wenn der Reiter offen ist; sonst erst beim Wechsel dorthin.
+  FSavedPage.IsRead := False;
+  if Page = cPageSaved then
+  begin
+    FSavedPage.LoadSaved;
+  end;
+  ShowCurrentPage;
+  inherited;
+  // Andere Höhe: Der Frame „Atlas“ ordnet die Spalten neu.
+  if mHeight <> BodyHeight then
+  begin
+    HeightChanged;
+  end;
+end;
+
+procedure TAtlasWelcomeContinueFrame.TabsChange(Sender: TObject);
+begin
+  if (FTabs.TabIndex >= 0) and (FTabs.TabIndex <= High(FPages)) then
+  begin
+    FPage := FPages[FTabs.TabIndex];
+  end;
+  ShowPage;
+end;
+
+procedure TAtlasWelcomeContinueFrame.ShowPage;
+begin
+  SyncTabs;
+  if (Page = cPageSaved) and not FSavedPage.IsRead then
+  begin
+    FSavedPage.LoadSaved;
+  end;
+  ShowCurrentPage;
+  HeightChanged;
 end;
 
 procedure TAtlasWelcomeContinueFrame.SyncTabs;
@@ -1411,30 +1469,6 @@ begin
   FTabs.TabIndex := IndexOfPage(FPages, FPage);
 end;
 
-function TAtlasWelcomeContinueFrame.GetPage: Integer;
-begin
-  Result := FPage;
-  if IndexOfPage(ShownPages, Result) < 0 then
-  begin
-    Result := cPageRecent;
-  end;
-end;
-
-procedure TAtlasWelcomeContinueFrame.SetPage(AValue: Integer);
-begin
-  FPage := AValue;
-  ShowPage;
-end;
-
-procedure TAtlasWelcomeContinueFrame.TabsChange(Sender: TObject);
-begin
-  if (FTabs.TabIndex >= 0) and (FTabs.TabIndex <= High(FPages)) then
-  begin
-    FPage := FPages[FTabs.TabIndex];
-  end;
-  ShowPage;
-end;
-
 procedure TAtlasWelcomeContinueFrame.ShowCurrentPage;
 var
   mPage: Integer;
@@ -1447,59 +1481,27 @@ begin
   FRecent.Quick.Sink.Visible := mPage = cPageRecent;
 end;
 
-procedure TAtlasWelcomeContinueFrame.ShowPage;
+function TAtlasWelcomeContinueFrame.TabsShown: Boolean;
 begin
-  SyncTabs;
-  if (Page = cPageSaved) and not FSavedPage.IsRead then
-  begin
-    FSavedPage.LoadSaved;
-  end;
-  ShowCurrentPage;
-  HeightChanged;
+  Result := Length(ShownPages) > 1;
 end;
 
-procedure TAtlasWelcomeContinueFrame.UpdateContent;
-var
-  mHeight: Integer;
+function TAtlasWelcomeContinueFrame.IssuesShown: Boolean;
 begin
-  // Ohne Fenster später: CreateWnd bzw. die Tafel ruft UpdateContent nach dem Einhängen.
-  if not HasWindow then
-  begin
-    Exit;
-  end;
-  mHeight := BodyHeight;
-  FRecent.Fill;
-  FIssues.Fill;
-  SyncTabs;
-  // „Gemerkt“ neu lesen, wenn der Reiter offen ist; sonst erst beim Wechsel dorthin.
-  FSavedPage.IsRead := False;
-  if Page = cPageSaved then
-  begin
-    FSavedPage.LoadSaved;
-  end;
-  ShowCurrentPage;
-  inherited;
-  // Andere Höhe: Der Frame „Atlas“ ordnet die Spalten neu.
-  if mHeight <> BodyHeight then
-  begin
-    HeightChanged;
-  end;
+  Result := (FIssuesSource <> nil) and FIssuesSource.IssuesEnabled;
 end;
 
-function TAtlasWelcomeContinueFrame.BodyHeight: Integer;
+function TAtlasWelcomeContinueFrame.ShownPages: TArray<Integer>;
 begin
-  Result := 0;
-  if TabsShown then
+  SetLength(Result, 1);
+  Result[0] := cPageRecent;
+  if IssuesShown then
   begin
-    Inc(Result, ScaleValue(cTabHeight));
+    Result := Result + [cPageIssues];
   end;
-  case Page of
-    cPageSaved:
-      Inc(Result, ScaleValue(cFilterHeight) + (cSavedRows + 1) * ScaleValue(cLineHeight) + ScaleValue(cIndent));
-    cPageIssues:
-      Inc(Result, FIssues.ContentHeight);
-  else
-    Inc(Result, FRecent.ContentHeight);
+  if (FSource <> nil) and FSource.SavedEnabled then
+  begin
+    Result := Result + [cPageSaved];
   end;
 end;
 

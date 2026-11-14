@@ -83,6 +83,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TLspCommands }
+
 constructor TLspCommands.Create;
 begin
   inherited Create;
@@ -111,6 +113,27 @@ begin
     begin
       Result := mHandler(AArguments);
     end;
+end;
+
+function TLspCommands.HandleExecute(const AParams: TJSONValue): TJSONValue;
+var
+  mCommand: string;
+  mArguments: TJSONValue;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('command', mCommand)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TCommandsText.FieldCommandMissingIn].Text +
+      cMethod);
+  end;
+  mArguments := TJSONObject(AParams).GetValue('arguments');
+  if mArguments is TJSONArray then
+  begin
+    Result := Execute(mCommand, TJSONArray(mArguments));
+  end
+  else
+  begin
+    Result := Execute(mCommand, nil);
+  end;
 end;
 
 procedure TLspCommands.Register(const ACommand: string; const AHandler: TLspCommandHandler);
@@ -191,27 +214,6 @@ begin
   if Result = nil then
   begin
     Result := TJSONNull.Create;
-  end;
-end;
-
-function TLspCommands.HandleExecute(const AParams: TJSONValue): TJSONValue;
-var
-  mCommand: string;
-  mArguments: TJSONValue;
-begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('command', mCommand)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TCommandsText.FieldCommandMissingIn].Text +
-      cMethod);
-  end;
-  mArguments := TJSONObject(AParams).GetValue('arguments');
-  if mArguments is TJSONArray then
-  begin
-    Result := Execute(mCommand, TJSONArray(mArguments));
-  end
-  else
-  begin
-    Result := Execute(mCommand, nil);
   end;
 end;
 

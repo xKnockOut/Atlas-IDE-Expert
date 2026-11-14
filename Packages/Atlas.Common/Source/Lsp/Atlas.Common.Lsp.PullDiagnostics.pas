@@ -342,6 +342,23 @@ begin
   FCheck := CreateCheck(AFiles);
 end;
 
+destructor TLspPullDiagnostics.Destroy;
+begin
+  // Zuerst die Prüfungen geöffneter Dateien: Sie enden vor der nächsten Regel und rechnen mit FCheck, FReports,
+  // FDiagnostics und FStore.
+  FOpenJobs.Free;
+  // Dann: Der Thread der Projektprüfung rechnet mit FDiagnostics und FStore.
+  FCheck.Free;
+  FReports.Free;
+  inherited;
+end;
+
+procedure TLspPullDiagnostics.SetBusy(const AValue: TPullBusy);
+begin
+  FBusy := AValue;
+  FCheck.Busy := AValue;
+end;
+
 function TLspPullDiagnostics.CreateCheck(const AFiles: TPullFilesProvider): TLspWorkspaceCheck;
 var
   mOwner: TLspPullDiagnostics;
@@ -366,29 +383,13 @@ begin
     end;
 end;
 
-destructor TLspPullDiagnostics.Destroy;
+procedure TLspPullDiagnostics.NextGeneration;
 begin
-  // Zuerst die Prüfungen geöffneter Dateien: Sie enden vor der nächsten Regel und rechnen mit FCheck, FReports,
-  // FDiagnostics und FStore.
-  FOpenJobs.Free;
-  // Dann: Der Thread der Projektprüfung rechnet mit FDiagnostics und FStore.
-  FCheck.Free;
-  FReports.Free;
-  inherited;
+  TInterlocked.Increment(FGeneration);
+  SendRefresh;
 end;
 
-procedure TLspPullDiagnostics.SetBusy(const AValue: TPullBusy);
-begin
-  FBusy := AValue;
-  FCheck.Busy := AValue;
-end;
-
-procedure TLspPullDiagnostics.Attach(ADispatcher: TJsonRpcDispatcher);
-begin
-  ADispatcher.RegisterConcurrentRequest(cDocumentMethod, HandleDocument);
-  ADispatcher.RegisterConcurrentRequest(cWorkspaceMethod, WorkspaceReport);
-  ADispatcher.RegisterNotification(cPauseMethod, HandlePause);
-end;
+{ TLspPullProtocol }
 
 class function TLspPullProtocol.ClientSupportsPull(const AInitializeParams: TJSONObject): Boolean;
 begin
@@ -441,12 +442,6 @@ begin
 end;
 
 
-procedure TLspPullDiagnostics.NextGeneration;
-begin
-  TInterlocked.Increment(FGeneration);
-  SendRefresh;
-end;
-
 procedure TLspPullDiagnostics.SendRefresh;
 var
   mRequest: TJSONObject;
@@ -469,23 +464,22 @@ begin
   end;
 end;
 
-procedure TLspPullDiagnostics.Changed;
+function TLspPullDiagnostics.HandleDocument(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mUri, mPrevious: string;
 begin
-  NextGeneration;
-  // Erzwungener Lauf über alle Units: Einstellungen oder Index gelten für alle.
-  FCheck.Start(True);
-end;
-
-procedure TLspPullDiagnostics.FilesChanged(const AFiles: TArray<string>);
-begin
-  NextGeneration;
-  // Nur diese Dateien (#1247): Früher veralteten nach jedem Build die Befunde aller Units.
-  FCheck.Affected(AFiles, False);
-end;
-
-procedure TLspPullDiagnostics.Typed;
-begin
-  FCheck.Typed;
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TPullDiagnosticsText.FieldTextDocumentUriMissingIn].Text + cDocumentMethod);
+  end;
+  if not TJSONObject(AParams).TryGetValue<string>('previousResultId', mPrevious) then
+  begin
+    mPrevious := '';
+  end;
+  ACancellation.ThrowIfCancellationRequested;
+  Result := DocumentReport(mUri, mPrevious, ACancellation);
 end;
 
 procedure TLspPullDiagnostics.HandlePause(const AParams: TJSONValue);
@@ -498,6 +492,27 @@ begin
     Exit;
   end;
   FCheck.Pause(mReason, TJSONObject(AParams).GetValue<Boolean>('paused', False));
+end;
+
+procedure TLspPullDiagnostics.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  ADispatcher.RegisterConcurrentRequest(cDocumentMethod, HandleDocument);
+  ADispatcher.RegisterConcurrentRequest(cWorkspaceMethod, WorkspaceReport);
+  ADispatcher.RegisterNotification(cPauseMethod, HandlePause);
+end;
+
+procedure TLspPullDiagnostics.Changed;
+begin
+  NextGeneration;
+  // Erzwungener Lauf über alle Units: Einstellungen oder Index gelten für alle.
+  FCheck.Start(True);
+end;
+
+procedure TLspPullDiagnostics.FilesChanged(const AFiles: TArray<string>);
+begin
+  NextGeneration;
+  // Nur diese Dateien (#1247): Früher veralteten nach jedem Build die Befunde aller Units.
+  FCheck.Affected(AFiles, False);
 end;
 
 
@@ -573,27 +588,17 @@ begin
   inherited;
 end;
 
-function TPullDocumentJob.WaitFinished(ATimeoutMs: Cardinal): Boolean;
-begin
-  Result := Finished or (FDone.WaitFor(ATimeoutMs) = wrSignaled);
-end;
-
-procedure TPullDocumentJob.Succeed(const AItems: TJSONArray);
-begin
-  FItems := TCompactJson.Pack(AItems);
-end;
-
-function TPullDocumentJob.Failed: Boolean;
-begin
-  Result := FErrorClass <> nil;
-end;
-
 function TPullDocumentJob.Finished: Boolean;
 var
   mState: Integer;
 begin
   mState := TInterlocked.CompareExchange(FState, 0, 0);
   Result := (mState = cDone) or (mState = cDoneAbandoned);
+end;
+
+function TPullDocumentJob.WaitFinished(ATimeoutMs: Cardinal): Boolean;
+begin
+  Result := Finished or (FDone.WaitFor(ATimeoutMs) = wrSignaled);
 end;
 
 function TPullDocumentJob.Abandon: Boolean;
@@ -615,6 +620,11 @@ begin
   FDone.SetEvent;
 end;
 
+procedure TPullDocumentJob.Succeed(const AItems: TJSONArray);
+begin
+  FItems := TCompactJson.Pack(AItems);
+end;
+
 procedure TPullDocumentJob.Fail(AError: Exception);
 begin
   FErrorClass := ExceptClass(AError.ClassType);
@@ -624,6 +634,11 @@ begin
   begin
     FErrorCode := EJsonRpcError(AError).Code;
   end;
+end;
+
+function TPullDocumentJob.Failed: Boolean;
+begin
+  Result := FErrorClass <> nil;
 end;
 
 function TPullDocumentJob.Items: TJSONArray;
@@ -666,19 +681,6 @@ begin
   end;
   FJobs.Free;
   inherited;
-end;
-
-function TPullOpenJobs.Stopping: Boolean;
-begin
-  Result := TInterlocked.CompareExchange(FStopping, 0, 0) <> 0;
-end;
-
-function TPullOpenJobs.Outdated(const ADocument: ITextDocument; AGeneration: Integer): Boolean;
-var
-  mCurrent: ITextDocument;
-begin
-  Result := (TInterlocked.CompareExchange(FOwner.FGeneration, 0, 0) <> AGeneration) or
-    not FOwner.FStore.TryGet(ADocument.Uri, mCurrent) or (mCurrent.Version <> ADocument.Version);
 end;
 
 function TPullOpenJobs.Wait: Cardinal;
@@ -727,6 +729,19 @@ begin
   begin
     FOwner.SendRefresh;
   end;
+end;
+
+function TPullOpenJobs.Stopping: Boolean;
+begin
+  Result := TInterlocked.CompareExchange(FStopping, 0, 0) <> 0;
+end;
+
+function TPullOpenJobs.Outdated(const ADocument: ITextDocument; AGeneration: Integer): Boolean;
+var
+  mCurrent: ITextDocument;
+begin
+  Result := (TInterlocked.CompareExchange(FOwner.FGeneration, 0, 0) <> AGeneration) or
+    not FOwner.FStore.TryGet(ADocument.Uri, mCurrent) or (mCurrent.Version <> ADocument.Version);
 end;
 
 /// <summary>Arbeit des Threads einer Dateiprüfung; hält AJob bis zum Ende.</summary>
@@ -851,6 +866,11 @@ begin
   end;
 end;
 
+procedure TLspPullDiagnostics.Typed;
+begin
+  FCheck.Typed;
+end;
+
 function TLspPullDiagnostics.DocumentReport(const AUri, APreviousResultId: string;
   const ACancellation: IJsonRpcCancellationToken): TJSONObject;
 var
@@ -886,24 +906,6 @@ begin
     Result.Free;
     raise;
   end;
-end;
-
-function TLspPullDiagnostics.HandleDocument(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mUri, mPrevious: string;
-begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TPullDiagnosticsText.FieldTextDocumentUriMissingIn].Text + cDocumentMethod);
-  end;
-  if not TJSONObject(AParams).TryGetValue<string>('previousResultId', mPrevious) then
-  begin
-    mPrevious := '';
-  end;
-  ACancellation.ThrowIfCancellationRequested;
-  Result := DocumentReport(mUri, mPrevious, ACancellation);
 end;
 
 /// <summary>previousResultIds der Anfrage AParams nach APrevious (Uri -> Ergebnis-Id).</summary>

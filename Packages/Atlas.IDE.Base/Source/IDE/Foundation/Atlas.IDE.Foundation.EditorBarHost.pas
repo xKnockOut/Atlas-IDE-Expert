@@ -325,6 +325,62 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasEditorBarHost.Removed(ABar: TControl);
+var
+  mIndex: Integer;
+  mRemoved: TProc<TControl>;
+begin
+  mIndex := FBars.IndexOf(ABar);
+  if mIndex < 0 then
+  begin
+    Exit;
+  end;
+  FBars.Delete(mIndex);
+  FParents.Delete(mIndex);
+  mRemoved := FOnRemoved;
+  if Assigned(mRemoved) then
+  begin
+    mRemoved(ABar);
+  end;
+end;
+
+/// <summary>Eigene Methode: Jede Leiste braucht ihre eigene Variable (FreeNotification, Fehlerfall).</summary>
+function TAtlasEditorBarHost.CreateFor(AEditorParent: TWinControl): TControl;
+var
+  mBar: TControl;
+begin
+  Result := nil;
+  mBar := nil;
+  try
+    mBar := FCreate(AEditorParent);
+    if mBar = nil then
+    begin
+      Exit;
+    end;
+    mBar.FreeNotification(FWatcher);
+    FBars.Add(mBar);
+    FParents.Add(AEditorParent);
+    PlaceBar(Self, mBar, AEditorParent);
+    ApplyBarView(Self, mBar, AEditorParent);
+    Result := mBar;
+  except
+    on E: Exception do
+    begin
+      TAtlasGuard.Report(FFeature, E);
+      // Halb angelegt: wieder weg, beim nächsten Takt neu.
+      if (mBar <> nil) and FBars.Contains(mBar) then
+      begin
+        mBar.Free;
+      end
+      else if mBar <> nil then
+      begin
+        mBar.RemoveFreeNotification(FWatcher);
+        mBar.Free;
+      end;
+    end;
+  end;
+end;
+
 class function TAtlasEditorBarHost.EditorOf(const AWindow: INTAEditWindow): TWinControl;
 var
   mEditor: TComponent;
@@ -395,137 +451,6 @@ begin
   end;
 end;
 
-procedure TAtlasEditorBarHost.Removed(ABar: TControl);
-var
-  mIndex: Integer;
-  mRemoved: TProc<TControl>;
-begin
-  mIndex := FBars.IndexOf(ABar);
-  if mIndex < 0 then
-  begin
-    Exit;
-  end;
-  FBars.Delete(mIndex);
-  FParents.Delete(mIndex);
-  mRemoved := FOnRemoved;
-  if Assigned(mRemoved) then
-  begin
-    mRemoved(ABar);
-  end;
-end;
-
-procedure TAtlasEditorBarHost.Clear;
-var
-  mBar: TControl;
-begin
-  // Leisten selbst freigeben; der Wächter darf dabei nicht mehr zurückschreiben.
-  FWatcher.FHost := nil;
-  try
-    for mBar in FBars.ToArray do
-    begin
-      mBar.RemoveFreeNotification(FWatcher);
-      try
-        mBar.Free;
-      except
-        on E: Exception do
-          TAtlasGuard.Log(Format('%s: Leiste nicht freigegeben: %s', [FName, TAtlasGuard.MessageText(E.Message)]));
-      end;
-    end;
-  finally
-    FBars.Clear;
-    FParents.Clear;
-    FWatcher.FHost := Self;
-  end;
-end;
-
-function TAtlasEditorBarHost.BarOf(AEditorParent: TWinControl): TControl;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to FParents.Count - 1 do
-  begin
-    if FParents[mIndex] = AEditorParent then
-    begin
-      Exit(FBars[mIndex]);
-    end;
-  end;
-  Result := nil;
-end;
-
-function TAtlasEditorBarHost.Contains(ABar: TControl): Boolean;
-begin
-  Result := (ABar <> nil) and FBars.Contains(ABar);
-end;
-
-function TAtlasEditorBarHost.ActiveBar: TControl;
-var
-  mEditor: TWinControl;
-begin
-  Result := nil;
-  mEditor := TopEditor;
-  if mEditor <> nil then
-  begin
-    Result := BarOf(mEditor.Parent);
-  end;
-end;
-
-function TAtlasEditorBarHost.Bars: TArray<TControl>;
-begin
-  Result := FBars.ToArray;
-end;
-
-function TAtlasEditorBarHost.Count: Integer;
-begin
-  Result := FBars.Count;
-end;
-
-/// <summary>Eigene Methode: Jede Leiste braucht ihre eigene Variable (FreeNotification, Fehlerfall).</summary>
-function TAtlasEditorBarHost.CreateFor(AEditorParent: TWinControl): TControl;
-var
-  mBar: TControl;
-begin
-  Result := nil;
-  mBar := nil;
-  try
-    mBar := FCreate(AEditorParent);
-    if mBar = nil then
-    begin
-      Exit;
-    end;
-    mBar.FreeNotification(FWatcher);
-    FBars.Add(mBar);
-    FParents.Add(AEditorParent);
-    PlaceBar(Self, mBar, AEditorParent);
-    ApplyBarView(Self, mBar, AEditorParent);
-    Result := mBar;
-  except
-    on E: Exception do
-    begin
-      TAtlasGuard.Report(FFeature, E);
-      // Halb angelegt: wieder weg, beim nächsten Takt neu.
-      if (mBar <> nil) and FBars.Contains(mBar) then
-      begin
-        mBar.Free;
-      end
-      else if mBar <> nil then
-      begin
-        mBar.RemoveFreeNotification(FWatcher);
-        mBar.Free;
-      end;
-    end;
-  end;
-end;
-
-procedure TAtlasEditorBarHost.DockTop;
-begin
-  FDock := TAtlasBarDockPlace.Create(TAtlasBarSide.Top, TAtlasBarDock.cOrderNearest);
-end;
-
-procedure TAtlasEditorBarHost.DockBottom(AOrder: Integer);
-begin
-  FDock := TAtlasBarDockPlace.Create(TAtlasBarSide.Bottom, AOrder);
-end;
-
 procedure TAtlasEditorBarHost.Ensure;
 var
   mServices: INTAEditorServices;
@@ -582,6 +507,47 @@ begin
   end;
 end;
 
+function TAtlasEditorBarHost.BarOf(AEditorParent: TWinControl): TControl;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to FParents.Count - 1 do
+  begin
+    if FParents[mIndex] = AEditorParent then
+    begin
+      Exit(FBars[mIndex]);
+    end;
+  end;
+  Result := nil;
+end;
+
+function TAtlasEditorBarHost.ActiveBar: TControl;
+var
+  mEditor: TWinControl;
+begin
+  Result := nil;
+  mEditor := TopEditor;
+  if mEditor <> nil then
+  begin
+    Result := BarOf(mEditor.Parent);
+  end;
+end;
+
+function TAtlasEditorBarHost.Contains(ABar: TControl): Boolean;
+begin
+  Result := (ABar <> nil) and FBars.Contains(ABar);
+end;
+
+function TAtlasEditorBarHost.Bars: TArray<TControl>;
+begin
+  Result := FBars.ToArray;
+end;
+
+function TAtlasEditorBarHost.Count: Integer;
+begin
+  Result := FBars.Count;
+end;
+
 procedure TAtlasEditorBarHost.ForEach(const AAction: TProc<TControl>);
 var
   mBar: TControl;
@@ -593,6 +559,30 @@ begin
       on E: Exception do
         TAtlasGuard.Report(FFeature, E);
     end;
+end;
+
+procedure TAtlasEditorBarHost.Clear;
+var
+  mBar: TControl;
+begin
+  // Leisten selbst freigeben; der Wächter darf dabei nicht mehr zurückschreiben.
+  FWatcher.FHost := nil;
+  try
+    for mBar in FBars.ToArray do
+    begin
+      mBar.RemoveFreeNotification(FWatcher);
+      try
+        mBar.Free;
+      except
+        on E: Exception do
+          TAtlasGuard.Log(Format('%s: Leiste nicht freigegeben: %s', [FName, TAtlasGuard.MessageText(E.Message)]));
+      end;
+    end;
+  finally
+    FBars.Clear;
+    FParents.Clear;
+    FWatcher.FHost := Self;
+  end;
 end;
 
 procedure TAtlasEditorBarHost.Enable;
@@ -636,11 +626,6 @@ begin
     [FName, mChain]));
 end;
 
-function TAtlasEditorBarHost.Showing(ABar: TControl): Boolean;
-begin
-  Result := Contains(ABar) and ABar.Visible;
-end;
-
 function TAtlasEditorBarHost.Guard: Boolean;
 begin
   Result := not TAtlasGuard.Disabled(FFeature);
@@ -664,6 +649,21 @@ begin
     on E: Exception do
       TAtlasGuard.Log(FName + ': nicht ein- bzw. ausgeblendet: ' + TAtlasGuard.MessageText(E.Message));
   end;
+end;
+
+procedure TAtlasEditorBarHost.DockTop;
+begin
+  FDock := TAtlasBarDockPlace.Create(TAtlasBarSide.Top, TAtlasBarDock.cOrderNearest);
+end;
+
+procedure TAtlasEditorBarHost.DockBottom(AOrder: Integer);
+begin
+  FDock := TAtlasBarDockPlace.Create(TAtlasBarSide.Bottom, AOrder);
+end;
+
+function TAtlasEditorBarHost.Showing(ABar: TControl): Boolean;
+begin
+  Result := Contains(ABar) and ABar.Visible;
 end;
 
 end.

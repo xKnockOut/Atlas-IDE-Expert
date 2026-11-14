@@ -127,17 +127,67 @@ begin
   Height := Px(cNodeHeight);
 end;
 
-function TAtlasSymbolPathChain.Px(AValue: Integer): Integer;
+procedure TAtlasSymbolPathChain.SetSelected(AValue: Integer);
+var
+  mBounds: TRect;
 begin
-  Result := MulDiv(AValue, CurrentPPI, 96);
+  if (AValue < -1) or (AValue > High(FRows)) then
+  begin
+    AValue := -1;
+  end;
+  if FSelected = AValue then
+  begin
+    Exit;
+  end;
+  FSelected := AValue;
+  Invalidate;
+  // In der Scrollbox sichtbar halten.
+  if (FSelected >= 0) and (Parent is TScrollingWinControl) then
+  begin
+    mBounds := RowRect(FSelected);
+    if Top + mBounds.Top < 0 then
+    begin
+      TScrollingWinControl(Parent).VertScrollBar.Position := TScrollingWinControl(Parent).VertScrollBar.Position +
+        Top + mBounds.Top;
+    end
+    else if Top + mBounds.Bottom > Parent.ClientHeight then
+    begin
+      TScrollingWinControl(Parent).VertScrollBar.Position := TScrollingWinControl(Parent).VertScrollBar.Position +
+        Top + mBounds.Bottom - Parent.ClientHeight;
+    end;
+  end;
 end;
 
-class function TAtlasSymbolPathChain.LocationText(const AFileName: string; ALine: Integer): string;
+procedure TAtlasSymbolPathChain.Paint;
+var
+  mColors: TAtlasColors;
+  mIndex: Integer;
+  mBox: TRect;
+  mMain, mDetail: string;
+  mRow: TAtlasSymbolPathRow;
 begin
-  Result := '';
-  if AFileName <> '' then
+  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(mColors.Surface);
+  Canvas.FillRect(ClientRect);
+  Canvas.Font.Assign(Font);
+  for mIndex := 0 to High(FRows) do
   begin
-    Result := Format('%s:%d', [ExtractFileName(AFileName), ALine + 1]);
+    mRow := FRows[mIndex];
+    RowTexts(FAnswer, mRow, mMain, mDetail);
+    mBox := RowRect(mIndex);
+    case mRow.Kind of
+      TAtlasSymbolPathRowKind.Header:
+        DrawHeader(mBox, mMain, mColors);
+      TAtlasSymbolPathRowKind.Node, TAtlasSymbolPathRowKind.Candidate:
+        DrawNode(mBox, mMain, mDetail, mColors, mIndex = FSelected);
+      TAtlasSymbolPathRowKind.Step:
+        DrawStep(mBox, mMain, mDetail, mColors, mRow.Inferred, mIndex = FSelected);
+    end;
+  end;
+  if Focused and (FSelected >= 0) then
+  begin
+    Canvas.DrawFocusRect(RowRect(FSelected));
   end;
 end;
 
@@ -179,31 +229,10 @@ begin
   Result := False;
 end;
 
-class function TAtlasSymbolPathChain.StepCaption(const AStep: TAtlasSymbolPathStep): string;
-var
-  mId: TAtlasTextId;
+procedure TAtlasSymbolPathChain.Resize;
 begin
-  if AStep.Kind = 'uses' then
-  begin
-    Result := TAtlasStrings.Text(cUsesTexts[AStep.Implementation_]);
-  end
-  else if AStep.Kind = 'implements' then
-  begin
-    Result := TAtlasStrings.Text(cImplementsTexts[AStep.Reverse]);
-  end
-  else if AStep.Kind = 'hasField' then
-  begin
-    // Der Server unterscheidet „hat Feld“ (Typ → Typ) und „vom Typ“ (Feld, Variable → Typ).
-    Result := TAtlasStrings.Text(cHasFieldTexts[AStep.Caption = 'vom Typ']); // german-ok: Kennung des Servers
-  end
-  else if SimpleStepText(AStep.Kind, mId) then
-  begin
-    Result := TAtlasStrings.Text(mId);
-  end
-  else
-  begin
-    Result := AStep.Caption;
-  end;
+  inherited;
+  Invalidate;
 end;
 
 function NodeDetail(const ANode: TAtlasSymbolPathNode): string;
@@ -232,227 +261,6 @@ begin
     end;
     Result := Result + TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathLibrary);
   end;
-end;
-
-class procedure TAtlasSymbolPathChain.RowTexts(const AAnswer: TAtlasSymbolPathAnswer;
-  const ARow: TAtlasSymbolPathRow; out AMain, ADetail: string);
-var
-  mNode: TAtlasSymbolPathNode;
-  mStep: TAtlasSymbolPathStep;
-begin
-  AMain := '';
-  ADetail := '';
-  case ARow.Kind of
-    TAtlasSymbolPathRowKind.Header:
-      AMain := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathRouteHeader, [ARow.Route + 1]);
-    TAtlasSymbolPathRowKind.Node:
-      begin
-        mNode := AAnswer.Routes[ARow.Route].Nodes[ARow.Index];
-        AMain := Format('%d  %s', [ARow.Index + 1, mNode.Caption]);
-        ADetail := NodeDetail(mNode);
-      end;
-    TAtlasSymbolPathRowKind.Step:
-      begin
-        mStep := AAnswer.Routes[ARow.Route].Steps[ARow.Index];
-        AMain := StepCaption(mStep);
-        if mStep.Inferred then
-        begin
-          AMain := AMain + ' [' + TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathInferred) + ']';
-        end;
-        ADetail := LocationText(mStep.FileName, mStep.Line);
-      end;
-    TAtlasSymbolPathRowKind.Candidate:
-      begin
-        mNode := AAnswer.Candidates[ARow.Index];
-        AMain := mNode.Caption;
-        ADetail := NodeDetail(mNode);
-      end;
-  end;
-end;
-
-class function TAtlasSymbolPathChain.StatusText(const AAnswer: TAtlasSymbolPathAnswer): string;
-begin
-  case AAnswer.Status of
-    TAtlasSymbolPathStatus.Found:
-      begin
-        if Length(AAnswer.Routes) > 1 then
-        begin
-          Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathFoundMany, [AAnswer.StepCount,
-            Length(AAnswer.Routes),
-            AAnswer.Visited, AAnswer.ElapsedMs]);
-        end
-        else
-        begin
-          Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathFound, [AAnswer.StepCount,
-            AAnswer.Visited,
-            AAnswer.ElapsedMs]);
-        end;
-        if AAnswer.MoreRoutes then
-        begin
-          Result := Result + TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathMoreRoutes);
-        end;
-        if AAnswer.CallsIncomplete then
-        begin
-          Result := Result + TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathCallsIncomplete);
-        end;
-      end;
-    TAtlasSymbolPathStatus.NoPath:
-      Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathNoPath, [AAnswer.MaxSteps,
-        AAnswer.Visited]);
-    TAtlasSymbolPathStatus.Aborted:
-      Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathAborted, [AAnswer.SearchedSteps,
-        AAnswer.Visited,
-        AAnswer.AbortReason]);
-    TAtlasSymbolPathStatus.Ambiguous:
-      Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathAmbiguous, [AAnswer.Subject]);
-  else
-    Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathNotFound, [AAnswer.Subject]);
-  end;
-end;
-
-procedure TAtlasSymbolPathChain.SetAnswer(const AAnswer: TAtlasSymbolPathAnswer);
-begin
-  FAnswer := AAnswer;
-  FRows := FAnswer.Rows;
-  FSelected := -1;
-  // Erste anspringbare Zeile wählen, damit Enter gleich etwas tut.
-  if Length(FRows) > 0 then
-  begin
-    FSelected := 0;
-    if FRows[0].Kind = TAtlasSymbolPathRowKind.Header then
-    begin
-      FSelected := Min(1, High(FRows));
-    end;
-  end;
-  Layout;
-  Invalidate;
-end;
-
-procedure TAtlasSymbolPathChain.Layout;
-var
-  mIndex, mTop: Integer;
-begin
-  SetLength(FTops, Length(FRows));
-  SetLength(FHeights, Length(FRows));
-  mTop := Px(cMargin);
-  for mIndex := 0 to High(FRows) do
-  begin
-    FTops[mIndex] := mTop;
-    case FRows[mIndex].Kind of
-      TAtlasSymbolPathRowKind.Header:
-        FHeights[mIndex] := Px(cHeaderHeight);
-      TAtlasSymbolPathRowKind.Step:
-        FHeights[mIndex] := Px(cStepHeight);
-    else
-      FHeights[mIndex] := Px(cNodeHeight);
-    end;
-    Inc(mTop, FHeights[mIndex]);
-    // Treffer stehen ohne Pfeil untereinander, mit etwas Abstand.
-    if FRows[mIndex].Kind = TAtlasSymbolPathRowKind.Candidate then
-    begin
-      Inc(mTop, Px(4));
-    end;
-  end;
-  Height := mTop + Px(cMargin);
-end;
-
-procedure TAtlasSymbolPathChain.Resize;
-begin
-  inherited;
-  Invalidate;
-end;
-
-procedure TAtlasSymbolPathChain.ChangeScale(M, D: Integer; isDpiChange: Boolean);
-begin
-  inherited;
-  Layout;
-end;
-
-function TAtlasSymbolPathChain.RowAt(AY: Integer): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(FRows) do
-  begin
-    if (AY >= FTops[mIndex]) and (AY < FTops[mIndex] + FHeights[mIndex]) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
-function TAtlasSymbolPathChain.RowRect(AIndex: Integer): TRect;
-begin
-  Result := TRect.Empty;
-  if (AIndex >= 0) and (AIndex <= High(FRows)) then
-  begin
-    Result := TRect.Create(Px(cMargin), FTops[AIndex], ClientWidth - Px(cMargin), FTops[AIndex] + FHeights[AIndex]);
-  end;
-end;
-
-function TAtlasSymbolPathChain.Lines: TArray<string>;
-var
-  mRow: TAtlasSymbolPathRow;
-  mMain, mDetail: string;
-begin
-  Result := nil;
-  for mRow in FRows do
-  begin
-    RowTexts(FAnswer, mRow, mMain, mDetail);
-    if mDetail <> '' then
-    begin
-      mMain := mMain + ' · ' + mDetail;
-    end;
-    Result := Result + [mMain];
-  end;
-end;
-
-procedure TAtlasSymbolPathChain.SetSelected(AValue: Integer);
-var
-  mBounds: TRect;
-begin
-  if (AValue < -1) or (AValue > High(FRows)) then
-  begin
-    AValue := -1;
-  end;
-  if FSelected = AValue then
-  begin
-    Exit;
-  end;
-  FSelected := AValue;
-  Invalidate;
-  // In der Scrollbox sichtbar halten.
-  if (FSelected >= 0) and (Parent is TScrollingWinControl) then
-  begin
-    mBounds := RowRect(FSelected);
-    if Top + mBounds.Top < 0 then
-    begin
-      TScrollingWinControl(Parent).VertScrollBar.Position := TScrollingWinControl(Parent).VertScrollBar.Position +
-        Top + mBounds.Top;
-    end
-    else if Top + mBounds.Bottom > Parent.ClientHeight then
-    begin
-      TScrollingWinControl(Parent).VertScrollBar.Position := TScrollingWinControl(Parent).VertScrollBar.Position +
-        Top + mBounds.Bottom - Parent.ClientHeight;
-    end;
-  end;
-end;
-
-procedure TAtlasSymbolPathChain.OpenSelected;
-var
-  mRow: TAtlasSymbolPathRow;
-begin
-  if (FSelected < 0) or (FSelected > High(FRows)) then
-  begin
-    Exit;
-  end;
-  mRow := FRows[FSelected];
-  if (mRow.FileName = '') or not Assigned(FOnOpen) then
-  begin
-    Exit;
-  end;
-  FOnOpen(mRow.FileName, mRow.Line, mRow.Character);
 end;
 
 procedure TAtlasSymbolPathChain.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -508,6 +316,61 @@ begin
         Key := 0;
       end;
   end;
+end;
+
+procedure TAtlasSymbolPathChain.ChangeScale(M, D: Integer; isDpiChange: Boolean);
+begin
+  inherited;
+  Layout;
+end;
+
+function TAtlasSymbolPathChain.Px(AValue: Integer): Integer;
+begin
+  Result := MulDiv(AValue, CurrentPPI, 96);
+end;
+
+procedure TAtlasSymbolPathChain.Layout;
+var
+  mIndex, mTop: Integer;
+begin
+  SetLength(FTops, Length(FRows));
+  SetLength(FHeights, Length(FRows));
+  mTop := Px(cMargin);
+  for mIndex := 0 to High(FRows) do
+  begin
+    FTops[mIndex] := mTop;
+    case FRows[mIndex].Kind of
+      TAtlasSymbolPathRowKind.Header:
+        FHeights[mIndex] := Px(cHeaderHeight);
+      TAtlasSymbolPathRowKind.Step:
+        FHeights[mIndex] := Px(cStepHeight);
+    else
+      FHeights[mIndex] := Px(cNodeHeight);
+    end;
+    Inc(mTop, FHeights[mIndex]);
+    // Treffer stehen ohne Pfeil untereinander, mit etwas Abstand.
+    if FRows[mIndex].Kind = TAtlasSymbolPathRowKind.Candidate then
+    begin
+      Inc(mTop, Px(4));
+    end;
+  end;
+  Height := mTop + Px(cMargin);
+end;
+
+procedure TAtlasSymbolPathChain.OpenSelected;
+var
+  mRow: TAtlasSymbolPathRow;
+begin
+  if (FSelected < 0) or (FSelected > High(FRows)) then
+  begin
+    Exit;
+  end;
+  mRow := FRows[FSelected];
+  if (mRow.FileName = '') or not Assigned(FOnOpen) then
+  begin
+    Exit;
+  end;
+  FOnOpen(mRow.FileName, mRow.Line, mRow.Character);
 end;
 
 procedure TAtlasSymbolPathChain.DrawHeader(const ABox: TRect; const AMain: string; const AColors: TAtlasColors);
@@ -584,36 +447,173 @@ begin
   end;
 end;
 
-procedure TAtlasSymbolPathChain.Paint;
-var
-  mColors: TAtlasColors;
-  mIndex: Integer;
-  mBox: TRect;
-  mMain, mDetail: string;
-  mRow: TAtlasSymbolPathRow;
+procedure TAtlasSymbolPathChain.SetAnswer(const AAnswer: TAtlasSymbolPathAnswer);
 begin
-  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(mColors.Surface);
-  Canvas.FillRect(ClientRect);
-  Canvas.Font.Assign(Font);
-  for mIndex := 0 to High(FRows) do
+  FAnswer := AAnswer;
+  FRows := FAnswer.Rows;
+  FSelected := -1;
+  // Erste anspringbare Zeile wählen, damit Enter gleich etwas tut.
+  if Length(FRows) > 0 then
   begin
-    mRow := FRows[mIndex];
-    RowTexts(FAnswer, mRow, mMain, mDetail);
-    mBox := RowRect(mIndex);
-    case mRow.Kind of
-      TAtlasSymbolPathRowKind.Header:
-        DrawHeader(mBox, mMain, mColors);
-      TAtlasSymbolPathRowKind.Node, TAtlasSymbolPathRowKind.Candidate:
-        DrawNode(mBox, mMain, mDetail, mColors, mIndex = FSelected);
-      TAtlasSymbolPathRowKind.Step:
-        DrawStep(mBox, mMain, mDetail, mColors, mRow.Inferred, mIndex = FSelected);
+    FSelected := 0;
+    if FRows[0].Kind = TAtlasSymbolPathRowKind.Header then
+    begin
+      FSelected := Min(1, High(FRows));
     end;
   end;
-  if Focused and (FSelected >= 0) then
+  Layout;
+  Invalidate;
+end;
+
+function TAtlasSymbolPathChain.RowAt(AY: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FRows) do
   begin
-    Canvas.DrawFocusRect(RowRect(FSelected));
+    if (AY >= FTops[mIndex]) and (AY < FTops[mIndex] + FHeights[mIndex]) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+function TAtlasSymbolPathChain.RowRect(AIndex: Integer): TRect;
+begin
+  Result := TRect.Empty;
+  if (AIndex >= 0) and (AIndex <= High(FRows)) then
+  begin
+    Result := TRect.Create(Px(cMargin), FTops[AIndex], ClientWidth - Px(cMargin), FTops[AIndex] + FHeights[AIndex]);
+  end;
+end;
+
+function TAtlasSymbolPathChain.Lines: TArray<string>;
+var
+  mRow: TAtlasSymbolPathRow;
+  mMain, mDetail: string;
+begin
+  Result := nil;
+  for mRow in FRows do
+  begin
+    RowTexts(FAnswer, mRow, mMain, mDetail);
+    if mDetail <> '' then
+    begin
+      mMain := mMain + ' · ' + mDetail;
+    end;
+    Result := Result + [mMain];
+  end;
+end;
+
+class function TAtlasSymbolPathChain.StepCaption(const AStep: TAtlasSymbolPathStep): string;
+var
+  mId: TAtlasTextId;
+begin
+  if AStep.Kind = 'uses' then
+  begin
+    Result := TAtlasStrings.Text(cUsesTexts[AStep.Implementation_]);
+  end
+  else if AStep.Kind = 'implements' then
+  begin
+    Result := TAtlasStrings.Text(cImplementsTexts[AStep.Reverse]);
+  end
+  else if AStep.Kind = 'hasField' then
+  begin
+    // Der Server unterscheidet „hat Feld“ (Typ → Typ) und „vom Typ“ (Feld, Variable → Typ).
+    Result := TAtlasStrings.Text(cHasFieldTexts[AStep.Caption = 'vom Typ']); // german-ok: Kennung des Servers
+  end
+  else if SimpleStepText(AStep.Kind, mId) then
+  begin
+    Result := TAtlasStrings.Text(mId);
+  end
+  else
+  begin
+    Result := AStep.Caption;
+  end;
+end;
+
+class function TAtlasSymbolPathChain.LocationText(const AFileName: string; ALine: Integer): string;
+begin
+  Result := '';
+  if AFileName <> '' then
+  begin
+    Result := Format('%s:%d', [ExtractFileName(AFileName), ALine + 1]);
+  end;
+end;
+
+class procedure TAtlasSymbolPathChain.RowTexts(const AAnswer: TAtlasSymbolPathAnswer;
+  const ARow: TAtlasSymbolPathRow; out AMain, ADetail: string);
+var
+  mNode: TAtlasSymbolPathNode;
+  mStep: TAtlasSymbolPathStep;
+begin
+  AMain := '';
+  ADetail := '';
+  case ARow.Kind of
+    TAtlasSymbolPathRowKind.Header:
+      AMain := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathRouteHeader, [ARow.Route + 1]);
+    TAtlasSymbolPathRowKind.Node:
+      begin
+        mNode := AAnswer.Routes[ARow.Route].Nodes[ARow.Index];
+        AMain := Format('%d  %s', [ARow.Index + 1, mNode.Caption]);
+        ADetail := NodeDetail(mNode);
+      end;
+    TAtlasSymbolPathRowKind.Step:
+      begin
+        mStep := AAnswer.Routes[ARow.Route].Steps[ARow.Index];
+        AMain := StepCaption(mStep);
+        if mStep.Inferred then
+        begin
+          AMain := AMain + ' [' + TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathInferred) + ']';
+        end;
+        ADetail := LocationText(mStep.FileName, mStep.Line);
+      end;
+    TAtlasSymbolPathRowKind.Candidate:
+      begin
+        mNode := AAnswer.Candidates[ARow.Index];
+        AMain := mNode.Caption;
+        ADetail := NodeDetail(mNode);
+      end;
+  end;
+end;
+
+class function TAtlasSymbolPathChain.StatusText(const AAnswer: TAtlasSymbolPathAnswer): string;
+begin
+  case AAnswer.Status of
+    TAtlasSymbolPathStatus.Found:
+      begin
+        if Length(AAnswer.Routes) > 1 then
+        begin
+          Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathFoundMany, [AAnswer.StepCount,
+            Length(AAnswer.Routes),
+            AAnswer.Visited, AAnswer.ElapsedMs]);
+        end
+        else
+        begin
+          Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathFound, [AAnswer.StepCount,
+            AAnswer.Visited,
+            AAnswer.ElapsedMs]);
+        end;
+        if AAnswer.MoreRoutes then
+        begin
+          Result := Result + TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathMoreRoutes);
+        end;
+        if AAnswer.CallsIncomplete then
+        begin
+          Result := Result + TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathCallsIncomplete);
+        end;
+      end;
+    TAtlasSymbolPathStatus.NoPath:
+      Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathNoPath, [AAnswer.MaxSteps,
+        AAnswer.Visited]);
+    TAtlasSymbolPathStatus.Aborted:
+      Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathAborted, [AAnswer.SearchedSteps,
+        AAnswer.Visited,
+        AAnswer.AbortReason]);
+    TAtlasSymbolPathStatus.Ambiguous:
+      Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathAmbiguous, [AAnswer.Subject]);
+  else
+    Result := TAtlasSymbolPathStrings.Fmt(TAtlasSymbolPathTextId.SymbolPathNotFound, [AAnswer.Subject]);
   end;
 end;
 

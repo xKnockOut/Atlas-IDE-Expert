@@ -23,6 +23,8 @@ uses
   Vcl.Dialogs,
   Atlas.UI.Build.Strings;
 
+{ TAtlasRunningPrompt }
+
 class function TAtlasRunningPrompt.Ask(const AProgram, AProcesses: string): TAtlasRunningPromptChoice;
 const
   cAnswerStop = 100;

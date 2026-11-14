@@ -99,39 +99,6 @@ end;
 
 { TAtlasTextsDialog }
 
-class function TAtlasTextsDialog.FindingsText(const AEntry: TAtlasTextEntry): string;
-var
-  mFinding: TAtlasTextFinding;
-begin
-  Result := '';
-  for mFinding in AEntry.Findings do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + '; ';
-    end;
-    Result := Result + FindingText(mFinding);
-  end;
-end;
-
-class function TAtlasTextsDialog.Cell(const AEntry: TAtlasTextEntry; AColumn: Integer): string;
-begin
-  case AColumn of
-    cComponentColumn:
-      Result := AEntry.Component;
-    cClassColumn:
-      Result := AEntry.ClassName;
-    cPropertyColumn:
-      Result := AEntry.Path;
-    cTextColumn:
-      Result := AEntry.Text;
-    cLengthColumn:
-      Result := IntToStr(Length(AEntry.Text));
-  else
-    Result := FindingsText(AEntry);
-  end;
-end;
-
 constructor TAtlasTextsDialog.CreateDialog(AOwner: TComponent; const AForm: string;
   const AEntries: TArray<TAtlasTextEntry>; const AOnSelect: TProc<string>; const AOnChange: TAtlasTextsChange);
 begin
@@ -252,33 +219,6 @@ begin
   mPanel.Height := FText.Height;
 end;
 
-procedure TAtlasTextsDialog.SortRows;
-var
-  mColumn: Integer;
-begin
-  if FSortColumn < 0 then
-  begin
-    Exit;
-  end;
-  mColumn := FSortColumn;
-  TArray.Sort<Integer>(FRows, TComparer<Integer>.Construct(
-    function(const ALeft, ARight: Integer): Integer
-    begin
-      if mColumn = cLengthColumn then
-      begin
-        Result := Length(FEntries[ALeft].Text) - Length(FEntries[ARight].Text);
-      end
-      else
-      begin
-        Result := CompareText(Cell(FEntries[ALeft], mColumn), Cell(FEntries[ARight], mColumn));
-      end;
-      if Result = 0 then
-      begin
-        Result := ALeft - ARight;
-      end;
-    end));
-end;
-
 procedure TAtlasTextsDialog.Fill(ASelect: Integer);
 var
   mIndex, mColumn, mFindings: Integer;
@@ -320,6 +260,33 @@ begin
   finally
     FList.Items.EndUpdate;
   end;
+end;
+
+procedure TAtlasTextsDialog.SortRows;
+var
+  mColumn: Integer;
+begin
+  if FSortColumn < 0 then
+  begin
+    Exit;
+  end;
+  mColumn := FSortColumn;
+  TArray.Sort<Integer>(FRows, TComparer<Integer>.Construct(
+    function(const ALeft, ARight: Integer): Integer
+    begin
+      if mColumn = cLengthColumn then
+      begin
+        Result := Length(FEntries[ALeft].Text) - Length(FEntries[ARight].Text);
+      end
+      else
+      begin
+        Result := CompareText(Cell(FEntries[ALeft], mColumn), Cell(FEntries[ARight], mColumn));
+      end;
+      if Result = 0 then
+      begin
+        Result := ALeft - ARight;
+      end;
+    end));
 end;
 
 function TAtlasTextsDialog.CurrentEntry: Integer;
@@ -413,6 +380,39 @@ begin
     FList.Items[mRow].MakeVisible(False);
   end;
   FList.SetFocus;
+end;
+
+class function TAtlasTextsDialog.Cell(const AEntry: TAtlasTextEntry; AColumn: Integer): string;
+begin
+  case AColumn of
+    cComponentColumn:
+      Result := AEntry.Component;
+    cClassColumn:
+      Result := AEntry.ClassName;
+    cPropertyColumn:
+      Result := AEntry.Path;
+    cTextColumn:
+      Result := AEntry.Text;
+    cLengthColumn:
+      Result := IntToStr(Length(AEntry.Text));
+  else
+    Result := FindingsText(AEntry);
+  end;
+end;
+
+class function TAtlasTextsDialog.FindingsText(const AEntry: TAtlasTextEntry): string;
+var
+  mFinding: TAtlasTextFinding;
+begin
+  Result := '';
+  for mFinding in AEntry.Findings do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + '; ';
+    end;
+    Result := Result + FindingText(mFinding);
+  end;
 end;
 
 class procedure TAtlasTextsDialog.Execute(const AForm: string; const AEntries: TArray<TAtlasTextEntry>;

@@ -104,86 +104,27 @@ begin
   end;
 end;
 
-procedure TAtlasCaptionEditor.ApplyColors(const AColors: TAtlasColors);
-begin
-  Color := TColor(AColors.Accent);
-  FMemo.Color := TColor(AColors.Surface);
-end;
-
-procedure TAtlasCaptionEditor.Open(const AScreen: TRect; AFont: TFont; AAlignment: TAlignment; const AText: string;
-  AMultiLine: Boolean; const AOnDone: TAtlasCaptionDone);
-begin
-  FOnDone := AOnDone;
-  FDone := False;
-  FPassChar := False;
-  FMultiLine := AMultiLine;
-  if AFont <> nil then
-  begin
-    FMemo.Font.Assign(AFont);
-  end;
-  FMemo.Alignment := AAlignment;
-  FMemo.OnChange := nil;
-  FMemo.Text := AText;
-  FMemo.OnChange := MemoChange;
-  FMinWidth := AScreen.Width + 2 * cBorder;
-  FMinHeight := AScreen.Height + 2 * cBorder;
-  SetBounds(AScreen.Left - cBorder, AScreen.Top - cBorder, FMinWidth, FMinHeight);
-  Grow;
-  Show;
-  FMemo.SetFocus;
-  FMemo.SelectAll;
-end;
-
-procedure TAtlasCaptionEditor.Grow;
+function TAtlasCaptionEditor.IsShortCut(var Message: TWMKey): Boolean;
 var
-  mBitmap: TBitmap;
-  mLine: string;
-  mWidest, mLines: Integer;
+  mShift: TShiftState;
 begin
-  mBitmap := TBitmap.Create;
-  try
-    mBitmap.Canvas.Font.Assign(FMemo.Font);
-    mWidest := 0;
-    mLines := 0;
-    for mLine in FMemo.Lines do
-    begin
-      mWidest := Max(mWidest, mBitmap.Canvas.TextWidth(mLine));
-      Inc(mLines);
-    end;
-    ClientWidth := TAtlasInlineCaption.EditorWidth(FMinWidth, mWidest, MulDiv(cPadding, CurrentPPI, 96) +
-      2 * cBorder);
-    ClientHeight := Max(FMinHeight, Max(1, mLines) * mBitmap.Canvas.TextHeight('Ag') + 2 * cBorder + ScaleValue(2));
-  finally
-    mBitmap.Free;
-  end;
-end;
-
-procedure TAtlasCaptionEditor.MemoChange(Sender: TObject);
-begin
-  Grow;
-end;
-
-procedure TAtlasCaptionEditor.Finish(AEnd: TAtlasCaptionEnd);
-var
-  mDone: TAtlasCaptionDone;
-begin
-  if FDone then
+  // Strg allein und Alt allein gehören hier dem Feld, nicht den Aktionen der IDE. Strg+Alt (AltGr) bleibt
+  // frei für Zeichen wie @ oder €, Strg mit Pfeil-, Pos1-, Ende-, Rück- und Entf-Taste für das Feld.
+  mShift := KeyDataToShiftState(Message.KeyData);
+  Result := False;
+  if (ssCtrl in mShift) and (ssAlt in mShift) then
   begin
     Exit;
   end;
-  FDone := True;
-  mDone := FOnDone;
-  FOnDone := nil;
-  Hide;
-  if Assigned(mDone) then
+  if (ssCtrl in mShift) and not (Message.CharCode in [VK_BACK, VK_END .. VK_DOWN, VK_DELETE]) then
   begin
-    mDone(AEnd, FMemo.Text);
+    Result := True;
+    EditKey(Message.CharCode);
+  end
+  else if ssAlt in mShift then
+  begin
+    Result := True;
   end;
-end;
-
-procedure TAtlasCaptionEditor.FormDeactivate(Sender: TObject);
-begin
-  Finish(TAtlasCaptionEnd.Commit);
 end;
 
 procedure TAtlasCaptionEditor.MemoKeyDown(Sender: TObject; var AKey: Word; AShift: TShiftState);
@@ -229,6 +170,58 @@ begin
   FPassChar := False;
 end;
 
+procedure TAtlasCaptionEditor.MemoChange(Sender: TObject);
+begin
+  Grow;
+end;
+
+procedure TAtlasCaptionEditor.FormDeactivate(Sender: TObject);
+begin
+  Finish(TAtlasCaptionEnd.Commit);
+end;
+
+procedure TAtlasCaptionEditor.Finish(AEnd: TAtlasCaptionEnd);
+var
+  mDone: TAtlasCaptionDone;
+begin
+  if FDone then
+  begin
+    Exit;
+  end;
+  FDone := True;
+  mDone := FOnDone;
+  FOnDone := nil;
+  Hide;
+  if Assigned(mDone) then
+  begin
+    mDone(AEnd, FMemo.Text);
+  end;
+end;
+
+procedure TAtlasCaptionEditor.Grow;
+var
+  mBitmap: TBitmap;
+  mLine: string;
+  mWidest, mLines: Integer;
+begin
+  mBitmap := TBitmap.Create;
+  try
+    mBitmap.Canvas.Font.Assign(FMemo.Font);
+    mWidest := 0;
+    mLines := 0;
+    for mLine in FMemo.Lines do
+    begin
+      mWidest := Max(mWidest, mBitmap.Canvas.TextWidth(mLine));
+      Inc(mLines);
+    end;
+    ClientWidth := TAtlasInlineCaption.EditorWidth(FMinWidth, mWidest, MulDiv(cPadding, CurrentPPI, 96) +
+      2 * cBorder);
+    ClientHeight := Max(FMinHeight, Max(1, mLines) * mBitmap.Canvas.TextHeight('Ag') + 2 * cBorder + ScaleValue(2));
+  finally
+    mBitmap.Free;
+  end;
+end;
+
 procedure TAtlasCaptionEditor.EditKey(AKey: Word);
 begin
   case AKey of
@@ -247,27 +240,34 @@ begin
   end;
 end;
 
-function TAtlasCaptionEditor.IsShortCut(var Message: TWMKey): Boolean;
-var
-  mShift: TShiftState;
+procedure TAtlasCaptionEditor.Open(const AScreen: TRect; AFont: TFont; AAlignment: TAlignment; const AText: string;
+  AMultiLine: Boolean; const AOnDone: TAtlasCaptionDone);
 begin
-  // Strg allein und Alt allein gehören hier dem Feld, nicht den Aktionen der IDE. Strg+Alt (AltGr) bleibt
-  // frei für Zeichen wie @ oder €, Strg mit Pfeil-, Pos1-, Ende-, Rück- und Entf-Taste für das Feld.
-  mShift := KeyDataToShiftState(Message.KeyData);
-  Result := False;
-  if (ssCtrl in mShift) and (ssAlt in mShift) then
+  FOnDone := AOnDone;
+  FDone := False;
+  FPassChar := False;
+  FMultiLine := AMultiLine;
+  if AFont <> nil then
   begin
-    Exit;
+    FMemo.Font.Assign(AFont);
   end;
-  if (ssCtrl in mShift) and not (Message.CharCode in [VK_BACK, VK_END .. VK_DOWN, VK_DELETE]) then
-  begin
-    Result := True;
-    EditKey(Message.CharCode);
-  end
-  else if ssAlt in mShift then
-  begin
-    Result := True;
-  end;
+  FMemo.Alignment := AAlignment;
+  FMemo.OnChange := nil;
+  FMemo.Text := AText;
+  FMemo.OnChange := MemoChange;
+  FMinWidth := AScreen.Width + 2 * cBorder;
+  FMinHeight := AScreen.Height + 2 * cBorder;
+  SetBounds(AScreen.Left - cBorder, AScreen.Top - cBorder, FMinWidth, FMinHeight);
+  Grow;
+  Show;
+  FMemo.SetFocus;
+  FMemo.SelectAll;
+end;
+
+procedure TAtlasCaptionEditor.ApplyColors(const AColors: TAtlasColors);
+begin
+  Color := TColor(AColors.Accent);
+  FMemo.Color := TColor(AColors.Surface);
 end;
 
 end.

@@ -71,6 +71,8 @@ const
     ('# Created by Atlas: puts the prefix of the active issue at the start of the commit message.',
      '# Without an active issue the hook does nothing. To remove it, delete this file.'));
 
+{ TAtlasCommitHook }
+
 class function TAtlasCommitHook.Script(AEnglish: Boolean): string;
 begin
   Result :=

@@ -233,28 +233,6 @@ begin
   inherited;
 end;
 
-procedure TSymbolIndex.RemoveFileLocked(const AFileKey: string);
-var
-  mExisting: TUnitIndex;
-  mUnitFile: string;
-begin
-  if not FFiles.TryGetValue(AFileKey, mExisting) then
-  begin
-    Exit;
-  end;
-  FTotals.Count(mExisting, -1);
-  FFiles.Remove(AFileKey);
-  FUnitsSnapshot := nil;
-  FUnavailable.Remove(AFileKey);
-  FShrinkable.Remove(AFileKey);
-  FRefs.Drop(AFileKey);
-  Inc(FGeneration);
-  if FUnitFiles.TryGetValue(UpperCase(mExisting.UnitName), mUnitFile) and (mUnitFile = AFileKey) then
-  begin
-    FUnitFiles.Remove(UpperCase(mExisting.UnitName));
-  end;
-end;
-
 procedure TSymbolIndex.AddLocked(const AKey: string; const AUnit: TUnitIndex);
 var
   mStored: TUnitIndex;
@@ -277,6 +255,32 @@ begin
     FShrinkable.AddOrSetValue(AKey, True);
   end;
   FRefs.Add(AKey, AUnit);
+end;
+
+procedure TSymbolIndex.ShrinkLocked;
+var
+  mPass: Integer;
+  mKey: string;
+begin
+  // Erst Bibliotheken kompakt halten, dann die Verwendungen der Projekt-Units auslagern (#492), dann
+  // Projekt-Units kompakt halten; jeweils nur bis das Budget wieder reicht. Ohne Überschreitung nichts kopieren:
+  // AddUnit ruft
+  // das bei jeder Unit auf.
+  if not FTotals.OverBudget(FBudget) or (FShrinkable.Count = 0) then
+  begin
+    Exit;
+  end;
+  for mPass := 0 to 2 do
+  begin
+    for mKey in FShrinkable.Keys.ToArray do
+    begin
+      if not FTotals.OverBudget(FBudget) then
+      begin
+        Exit;
+      end;
+      ShrinkUnitLocked(mPass, mKey);
+    end;
+  end;
 end;
 
 { TSymbolIndexTotals }
@@ -324,18 +328,6 @@ begin
   inherited;
 end;
 
-procedure TSymbolRefTables.Clear;
-begin
-  FByName.Clear;
-  FByAncestor.Clear;
-  FSlotKeys.Clear;
-  FSlotRefs.Clear;
-  FSlotUnits.Clear;
-  FFileSlots.Clear;
-  FLiveRefs := 0;
-  FDeadRefs := 0;
-end;
-
 class procedure TSymbolRefTables.AddRef(ATable: TSymbolTable; const AKey: string; ASlot, APosition: Integer);
 var
   mRefs: TSymbolRefs;
@@ -349,6 +341,49 @@ begin
   mRef.Slot := ASlot;
   mRef.Position := APosition;
   mRefs.Add(mRef);
+end;
+
+function TSymbolRefTables.Locations(ATable: TSymbolTable; const AKey: string): TArray<TSymbolLocation>;
+var
+  mRefs: TSymbolRefs;
+  mIndex, mCount, mLastSlot: Integer;
+  mRef: TSymbolRef;
+  mOwner: TSlotUnit;
+begin
+  Result := nil;
+  if not ATable.TryGetValue(AKey, mRefs) then
+  begin
+    Exit;
+  end;
+  // Direkt ins Ergebnis statt über eine Liste und ToArray: jedes Symbol ist ein großer Record mit verwalteten
+  // Feldern, häufige Namen (Create, Count) haben Tausende Verweise, und die Regeln fragen je Bezeichner.
+  SetLength(Result, mRefs.Count);
+  mCount := 0;
+  mLastSlot := -1;
+  mOwner := Default(TSlotUnit);
+  for mIndex := 0 to mRefs.Count - 1 do
+  begin
+    mRef := mRefs[mIndex];
+    // Verweise einer Unit stehen beieinander: den Platz nur beim Wechsel lesen.
+    if mRef.Slot <> mLastSlot then
+    begin
+      mLastSlot := mRef.Slot;
+      mOwner := FSlotUnits[mRef.Slot];
+    end;
+    if not mOwner.Known or (mRef.Position > High(mOwner.Symbols)) then
+    begin
+      Continue;
+    end;
+    Result[mCount].UnitName := mOwner.UnitName;
+    Result[mCount].FileName := mOwner.Symbols[mRef.Position].FileName;
+    if Result[mCount].FileName = '' then
+    begin
+      Result[mCount].FileName := mOwner.FileName;
+    end;
+    Result[mCount].Symbol := mOwner.Symbols[mRef.Position];
+    Inc(mCount);
+  end;
+  SetLength(Result, mCount);
 end;
 
 /// <summary>Vorfahren eines Symbols ohne Unit-Präfix und Typargumente (groß), jeden einmal (class(TFoo, IFoo) mit
@@ -367,6 +402,18 @@ begin
       Result := Result + [mKey];
     end;
   end;
+end;
+
+procedure TSymbolRefTables.Clear;
+begin
+  FByName.Clear;
+  FByAncestor.Clear;
+  FSlotKeys.Clear;
+  FSlotRefs.Clear;
+  FSlotUnits.Clear;
+  FFileSlots.Clear;
+  FLiveRefs := 0;
+  FDeadRefs := 0;
 end;
 
 procedure TSymbolRefTables.Add(const AKey: string; const AUnit: TUnitIndex);
@@ -415,49 +462,6 @@ begin
   FSlotRefs[mSlot] := 0;
 end;
 
-function TSymbolRefTables.Locations(ATable: TSymbolTable; const AKey: string): TArray<TSymbolLocation>;
-var
-  mRefs: TSymbolRefs;
-  mIndex, mCount, mLastSlot: Integer;
-  mRef: TSymbolRef;
-  mOwner: TSlotUnit;
-begin
-  Result := nil;
-  if not ATable.TryGetValue(AKey, mRefs) then
-  begin
-    Exit;
-  end;
-  // Direkt ins Ergebnis statt über eine Liste und ToArray: jedes Symbol ist ein großer Record mit verwalteten
-  // Feldern, häufige Namen (Create, Count) haben Tausende Verweise, und die Regeln fragen je Bezeichner.
-  SetLength(Result, mRefs.Count);
-  mCount := 0;
-  mLastSlot := -1;
-  mOwner := Default(TSlotUnit);
-  for mIndex := 0 to mRefs.Count - 1 do
-  begin
-    mRef := mRefs[mIndex];
-    // Verweise einer Unit stehen beieinander: den Platz nur beim Wechsel lesen.
-    if mRef.Slot <> mLastSlot then
-    begin
-      mLastSlot := mRef.Slot;
-      mOwner := FSlotUnits[mRef.Slot];
-    end;
-    if not mOwner.Known or (mRef.Position > High(mOwner.Symbols)) then
-    begin
-      Continue;
-    end;
-    Result[mCount].UnitName := mOwner.UnitName;
-    Result[mCount].FileName := mOwner.Symbols[mRef.Position].FileName;
-    if Result[mCount].FileName = '' then
-    begin
-      Result[mCount].FileName := mOwner.FileName;
-    end;
-    Result[mCount].Symbol := mOwner.Symbols[mRef.Position];
-    Inc(mCount);
-  end;
-  SetLength(Result, mCount);
-end;
-
 function TSymbolRefTables.ByName(const AKey: string): TArray<TSymbolLocation>;
 begin
   Result := Locations(FByName, AKey);
@@ -500,26 +504,6 @@ end;
 
 { TSymbolIndex: Nachschlagetabellen und Budget }
 
-procedure TSymbolIndex.CleanRefsLocked;
-var
-  mPair: TPair<string, TUnitIndex>;
-begin
-  if (FRefs.DeadRefs < cRebuildDeadRefs) or (FRefs.DeadRefs <= FRefs.LiveRefs) then
-  begin
-    Exit;
-  end;
-  FRefs.Clear;
-  for mPair in FFiles do
-  begin
-    FRefs.Add(mPair.Key, mPair.Value);
-  end;
-end;
-
-function TSymbolIndexTotals.OverBudget(ABudget: Int64): Boolean;
-begin
-  Result := (ABudget > 0) and (Bytes > ABudget);
-end;
-
 procedure TSymbolIndex.ShrinkUnitLocked(APass: Integer; const AKey: string);
 var
   mExisting: TUnitIndex;
@@ -543,29 +527,45 @@ begin
   end;
 end;
 
-procedure TSymbolIndex.ShrinkLocked;
-var
-  mPass: Integer;
-  mKey: string;
+function TSymbolIndexTotals.OverBudget(ABudget: Int64): Boolean;
 begin
-  // Erst Bibliotheken kompakt halten, dann die Verwendungen der Projekt-Units auslagern (#492), dann
-  // Projekt-Units kompakt halten; jeweils nur bis das Budget wieder reicht. Ohne Überschreitung nichts kopieren:
-  // AddUnit ruft
-  // das bei jeder Unit auf.
-  if not FTotals.OverBudget(FBudget) or (FShrinkable.Count = 0) then
+  Result := (ABudget > 0) and (Bytes > ABudget);
+end;
+
+procedure TSymbolIndex.RemoveFileLocked(const AFileKey: string);
+var
+  mExisting: TUnitIndex;
+  mUnitFile: string;
+begin
+  if not FFiles.TryGetValue(AFileKey, mExisting) then
   begin
     Exit;
   end;
-  for mPass := 0 to 2 do
+  FTotals.Count(mExisting, -1);
+  FFiles.Remove(AFileKey);
+  FUnitsSnapshot := nil;
+  FUnavailable.Remove(AFileKey);
+  FShrinkable.Remove(AFileKey);
+  FRefs.Drop(AFileKey);
+  Inc(FGeneration);
+  if FUnitFiles.TryGetValue(UpperCase(mExisting.UnitName), mUnitFile) and (mUnitFile = AFileKey) then
   begin
-    for mKey in FShrinkable.Keys.ToArray do
-    begin
-      if not FTotals.OverBudget(FBudget) then
-      begin
-        Exit;
-      end;
-      ShrinkUnitLocked(mPass, mKey);
-    end;
+    FUnitFiles.Remove(UpperCase(mExisting.UnitName));
+  end;
+end;
+
+procedure TSymbolIndex.CleanRefsLocked;
+var
+  mPair: TPair<string, TUnitIndex>;
+begin
+  if (FRefs.DeadRefs < cRebuildDeadRefs) or (FRefs.DeadRefs <= FRefs.LiveRefs) then
+  begin
+    Exit;
+  end;
+  FRefs.Clear;
+  for mPair in FFiles do
+  begin
+    FRefs.Add(mPair.Key, mPair.Value);
   end;
 end;
 
@@ -726,31 +726,21 @@ begin
   end;
 end;
 
-function TSymbolIndex.Generation: Int64;
-begin
-  FLock.Enter;
-  try
-    Result := FGeneration;
-  finally
-    FLock.Leave;
-  end;
-end;
-
-function TSymbolIndex.UsageCount(const AName: string): Integer;
-begin
-  FLock.Enter;
-  try
-    Result := FUsageCounts.Count(AName);
-  finally
-    FLock.Leave;
-  end;
-end;
-
 function TSymbolIndex.UnitCount: Integer;
 begin
   FLock.Enter;
   try
     Result := FFiles.Count;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TSymbolIndex.SymbolCount: Integer;
+begin
+  FLock.Enter;
+  try
+    Result := FTotals.SymbolCount;
   finally
     FLock.Leave;
   end;
@@ -820,11 +810,21 @@ begin
   end;
 end;
 
-function TSymbolIndex.SymbolCount: Integer;
+function TSymbolIndex.Generation: Int64;
 begin
   FLock.Enter;
   try
-    Result := FTotals.SymbolCount;
+    Result := FGeneration;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TSymbolIndex.UsageCount(const AName: string): Integer;
+begin
+  FLock.Enter;
+  try
+    Result := FUsageCounts.Count(AName);
   finally
     FLock.Leave;
   end;

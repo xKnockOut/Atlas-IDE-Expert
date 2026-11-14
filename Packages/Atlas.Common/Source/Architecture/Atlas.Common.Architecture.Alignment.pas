@@ -95,6 +95,8 @@ begin
   Result := False;
 end;
 
+{ TArchitectureAlignment }
+
 class function TArchitectureAlignment.UniqueName(const ABase: string; const ATaken: TArray<string>): string;
 var
   mBase: string;
@@ -197,6 +199,8 @@ type
     destructor Destroy; override;
     procedure Run(var AOverview: TArchitectureOverview);
   end;
+
+{ TColorAlignment }
 
 constructor TColorAlignment.Create(const AOverview: TArchitectureOverview; const APrevious: TArchitectureSnapshot;
   const AOld: TArray<Integer>);

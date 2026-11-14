@@ -87,6 +87,13 @@ begin
   ActiveControl := FList;
 end;
 
+procedure TAtlasBreakpointOrphanDialog.DoShow;
+begin
+  inherited;
+  // Die Liste braucht ein Fenster: erst hier füllen.
+  Fill;
+end;
+
 procedure TAtlasBreakpointOrphanDialog.CreateHint;
 var
   mRow: TPanel;
@@ -130,11 +137,28 @@ begin
   mClose.ModalResult := mrCancel;
 end;
 
-class function TAtlasBreakpointOrphanDialog.ItemText(const AOrphan: TAtlasAnchorOrphan): string;
+procedure TAtlasBreakpointOrphanDialog.ApplyClick(Sender: TObject);
 begin
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointAnchorsItem,
-    [ExtractFileName(AOrphan.Item.FileName.Replace('/', PathDelim)), AOrphan.Item.Line + 1,
-    AOrphan.Item.Anchor.Anchor.Text, AOrphan.Suggestion + 1]);
+  Act(False);
+end;
+
+procedure TAtlasBreakpointOrphanDialog.DeleteClick(Sender: TObject);
+begin
+  Act(True);
+end;
+
+procedure TAtlasBreakpointOrphanDialog.ListClick(Sender: TObject);
+begin
+  UpdateButtons;
+end;
+
+procedure TAtlasBreakpointOrphanDialog.UpdateButtons;
+var
+  mChosen: Boolean;
+begin
+  mChosen := (FList.ItemIndex >= 0) and (FList.ItemIndex <= High(FOrphans));
+  FApply.Enabled := mChosen;
+  FDelete.Enabled := mChosen;
 end;
 
 procedure TAtlasBreakpointOrphanDialog.Fill;
@@ -156,22 +180,6 @@ begin
     FList.ItemIndex := 0;
   end;
   UpdateButtons;
-end;
-
-procedure TAtlasBreakpointOrphanDialog.DoShow;
-begin
-  inherited;
-  // Die Liste braucht ein Fenster: erst hier füllen.
-  Fill;
-end;
-
-procedure TAtlasBreakpointOrphanDialog.UpdateButtons;
-var
-  mChosen: Boolean;
-begin
-  mChosen := (FList.ItemIndex >= 0) and (FList.ItemIndex <= High(FOrphans));
-  FApply.Enabled := mChosen;
-  FDelete.Enabled := mChosen;
 end;
 
 procedure TAtlasBreakpointOrphanDialog.Act(ADelete: Boolean);
@@ -196,19 +204,11 @@ begin
   UpdateButtons;
 end;
 
-procedure TAtlasBreakpointOrphanDialog.ApplyClick(Sender: TObject);
+class function TAtlasBreakpointOrphanDialog.ItemText(const AOrphan: TAtlasAnchorOrphan): string;
 begin
-  Act(False);
-end;
-
-procedure TAtlasBreakpointOrphanDialog.DeleteClick(Sender: TObject);
-begin
-  Act(True);
-end;
-
-procedure TAtlasBreakpointOrphanDialog.ListClick(Sender: TObject);
-begin
-  UpdateButtons;
+  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointAnchorsItem,
+    [ExtractFileName(AOrphan.Item.FileName.Replace('/', PathDelim)), AOrphan.Item.Line + 1,
+    AOrphan.Item.Anchor.Anchor.Text, AOrphan.Suggestion + 1]);
 end;
 
 class function TAtlasBreakpointOrphanDialog.Execute(const AOrphans: TAtlasAnchorOrphans;

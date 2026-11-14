@@ -51,6 +51,8 @@ uses
   System.JSON,
   System.Generics.Collections;
 
+{ TAtlasEditInbox }
+
 class function TAtlasEditInbox.Folder(const ABase: string; APid: Cardinal): string;
 begin
   Result := TPath.Combine(TPath.Combine(ABase, 'ide-edits'), IntToStr(APid));

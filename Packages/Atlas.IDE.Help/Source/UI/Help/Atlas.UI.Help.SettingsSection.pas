@@ -28,6 +28,15 @@ uses
 
 { TAtlasHelpSettingsSection }
 
+procedure TAtlasHelpSettingsSection.BuildRows;
+begin
+  ModuleSwitch('help.enabled');
+  Choice('help.source', TAtlasHelpStrings.Text(TAtlasHelpTextId.SettingsHelpSource),
+    [TAtlasHelpStrings.Text(TAtlasHelpTextId.SettingsHelpOnline),
+    TAtlasHelpStrings.Text(TAtlasHelpTextId.SettingsHelpLocal)],
+    [TAtlasPluginSettings.cHelpSourceOnline, TAtlasPluginSettings.cHelpSourceLocal]);
+end;
+
 function TAtlasHelpSettingsSection.OwnerId: string;
 begin
   Result := cOwnerId;
@@ -36,15 +45,6 @@ end;
 function TAtlasHelpSettingsSection.AreaId: string;
 begin
   Result := cAreaId;
-end;
-
-procedure TAtlasHelpSettingsSection.BuildRows;
-begin
-  ModuleSwitch('help.enabled');
-  Choice('help.source', TAtlasHelpStrings.Text(TAtlasHelpTextId.SettingsHelpSource),
-    [TAtlasHelpStrings.Text(TAtlasHelpTextId.SettingsHelpOnline),
-    TAtlasHelpStrings.Text(TAtlasHelpTextId.SettingsHelpLocal)],
-    [TAtlasPluginSettings.cHelpSourceOnline, TAtlasPluginSettings.cHelpSourceLocal]);
 end;
 
 end.

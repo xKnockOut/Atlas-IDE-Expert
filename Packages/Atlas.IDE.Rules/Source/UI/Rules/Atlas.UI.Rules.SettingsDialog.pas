@@ -76,6 +76,15 @@ const
 
 { TAtlasRulesSettingsDialog }
 
+function TAtlasRulesSettingsDialog.GetRuleList: TListView;
+begin
+  Result := nil;
+  if FRuleEditor <> nil then
+  begin
+    Result := FRuleEditor.List;
+  end;
+end;
+
 function TAtlasRulesSettingsDialog.RuleGroups: TArray<string>;
 var
   mIndex: Integer;
@@ -104,6 +113,85 @@ begin
   end;
 end;
 
+procedure TAtlasRulesSettingsDialog.ShowGroup(AGroup: Integer);
+var
+  mTitle: TLabel;
+begin
+  ClearBox;
+  FCurrentPage := -1;
+  FCurrentGroup := AGroup;
+  mTitle := TLabel.Create(FBox);
+  mTitle.Parent := FBox;
+  mTitle.SetBounds(cGap * 2, cGap, 400, 16);
+  mTitle.Font.Style := [fsBold];
+  mTitle.Caption := AtlasRuleGroupCaption(FGroups[AGroup]);
+  AddRuleTable(cGap + 24, FGroups[AGroup]);
+end;
+
+procedure TAtlasRulesSettingsDialog.ClearBox;
+begin
+  inherited ClearBox;
+  FRuleEditor := nil;
+end;
+
+procedure TAtlasRulesSettingsDialog.ResetValue(AIndex: Integer);
+begin
+  inherited ResetValue(AIndex);
+  if AIndex = FRuleIndex then
+  begin
+    FRulesJson := '';
+  end;
+end;
+
+function TAtlasRulesSettingsDialog.HasRuleEditor: Boolean;
+begin
+  Result := True;
+end;
+
+function TAtlasRulesSettingsDialog.AddRuleTable(ATop: Integer; const AGroup: string): Integer;
+begin
+  // Regel-Editor (#909); er braucht für Tabelle und Auswahllisten ein Fenster. Mit AGroup nur diese Gruppe mit
+  // ihrem Hauptschalter.
+  FRuleEditor := TAtlasRulesEditor.Create(FBox);
+  FRuleEditor.Parent := FBox;
+  FRuleEditor.SetBounds(cGap * 2, ATop, FBox.ClientWidth - cGap * 5, 400);
+  FRuleEditor.Anchors := [akLeft, akTop, akRight];
+  FRuleEditor.FixedGroup := AGroup;
+  FRuleEditor.SetRules(FCatalog, FRulesJson, FGlobalRulesJson);
+  FRuleEditor.OnChange := RuleEditorChange;
+  FRuleEditor.HandleNeeded;
+  FRuleHeight := FRuleEditor.Height;
+  FRuleEditor.OnResize := RuleEditorResize;
+  Result := ATop + FRuleHeight + cGap;
+end;
+
+function TAtlasRulesSettingsDialog.SelectRule(const AId: string): Boolean;
+var
+  mTarget: TTreeNode;
+begin
+  Result := False;
+  mTarget := RuleTarget(AId);
+  if mTarget <> nil then
+  begin
+    SelectNode(mTarget);
+    Result := (FRuleEditor <> nil) and FRuleEditor.SelectRule(AId);
+  end;
+end;
+
+function TAtlasRulesSettingsDialog.HasRule(const AId: string): Boolean;
+var
+  mRow: TAtlasRuleRow;
+begin
+  Result := False;
+  for mRow in TAtlasRuleTable.Rows(FCatalog, FRulesJson, FGlobalRulesJson) do
+  begin
+    if SameText(mRow.Id, AId) then
+    begin
+      Result := True;
+    end;
+  end;
+end;
+
 function TAtlasRulesSettingsDialog.RuleTarget(const AId: string): TTreeNode;
 var
   mRow: TAtlasRuleRow;
@@ -127,69 +215,22 @@ begin
   end;
 end;
 
-function TAtlasRulesSettingsDialog.SelectRule(const AId: string): Boolean;
+procedure TAtlasRulesSettingsDialog.ApplyRules(const AUpdated: string);
 var
-  mTarget: TTreeNode;
+  mChange: TPair<string, string>;
 begin
-  Result := False;
-  mTarget := RuleTarget(AId);
-  if mTarget <> nil then
+  // Nur die geänderten Regeln in die Datei: Kommentare und andere Regeln bleiben.
+  for mChange in TAtlasRuleTable.Changes(FRulesJson, AUpdated) do
   begin
-    SelectNode(mTarget);
-    Result := (FRuleEditor <> nil) and FRuleEditor.SelectRule(AId);
+    FModel.SetPath(mChange.Key, mChange.Value);
   end;
+  FRulesJson := AUpdated;
 end;
 
-procedure TAtlasRulesSettingsDialog.ClearBox;
+procedure TAtlasRulesSettingsDialog.RuleEditorChange(Sender: TObject);
 begin
-  inherited ClearBox;
-  FRuleEditor := nil;
-end;
-
-procedure TAtlasRulesSettingsDialog.ResetValue(AIndex: Integer);
-begin
-  inherited ResetValue(AIndex);
-  if AIndex = FRuleIndex then
-  begin
-    FRulesJson := '';
-  end;
-end;
-
-procedure TAtlasRulesSettingsDialog.ShowGroup(AGroup: Integer);
-var
-  mTitle: TLabel;
-begin
-  ClearBox;
-  FCurrentPage := -1;
-  FCurrentGroup := AGroup;
-  mTitle := TLabel.Create(FBox);
-  mTitle.Parent := FBox;
-  mTitle.SetBounds(cGap * 2, cGap, 400, 16);
-  mTitle.Font.Style := [fsBold];
-  mTitle.Caption := AtlasRuleGroupCaption(FGroups[AGroup]);
-  AddRuleTable(cGap + 24, FGroups[AGroup]);
-end;
-
-function TAtlasRulesSettingsDialog.HasRuleEditor: Boolean;
-begin
-  Result := True;
-end;
-
-function TAtlasRulesSettingsDialog.AddRuleTable(ATop: Integer; const AGroup: string): Integer;
-begin
-  // Regel-Editor (#909); er braucht für Tabelle und Auswahllisten ein Fenster. Mit AGroup nur diese Gruppe mit
-  // ihrem Hauptschalter.
-  FRuleEditor := TAtlasRulesEditor.Create(FBox);
-  FRuleEditor.Parent := FBox;
-  FRuleEditor.SetBounds(cGap * 2, ATop, FBox.ClientWidth - cGap * 5, 400);
-  FRuleEditor.Anchors := [akLeft, akTop, akRight];
-  FRuleEditor.FixedGroup := AGroup;
-  FRuleEditor.SetRules(FCatalog, FRulesJson, FGlobalRulesJson);
-  FRuleEditor.OnChange := RuleEditorChange;
-  FRuleEditor.HandleNeeded;
-  FRuleHeight := FRuleEditor.Height;
-  FRuleEditor.OnResize := RuleEditorResize;
-  Result := ATop + FRuleHeight + cGap;
+  ApplyRules(FRuleEditor.RulesJson);
+  UpdateState(FRuleIndex);
 end;
 
 procedure TAtlasRulesSettingsDialog.RuleEditorResize(Sender: TObject);
@@ -222,47 +263,6 @@ begin
     end;
   finally
     FBox.EnableAlign;
-  end;
-end;
-
-function TAtlasRulesSettingsDialog.GetRuleList: TListView;
-begin
-  Result := nil;
-  if FRuleEditor <> nil then
-  begin
-    Result := FRuleEditor.List;
-  end;
-end;
-
-procedure TAtlasRulesSettingsDialog.ApplyRules(const AUpdated: string);
-var
-  mChange: TPair<string, string>;
-begin
-  // Nur die geänderten Regeln in die Datei: Kommentare und andere Regeln bleiben.
-  for mChange in TAtlasRuleTable.Changes(FRulesJson, AUpdated) do
-  begin
-    FModel.SetPath(mChange.Key, mChange.Value);
-  end;
-  FRulesJson := AUpdated;
-end;
-
-procedure TAtlasRulesSettingsDialog.RuleEditorChange(Sender: TObject);
-begin
-  ApplyRules(FRuleEditor.RulesJson);
-  UpdateState(FRuleIndex);
-end;
-
-function TAtlasRulesSettingsDialog.HasRule(const AId: string): Boolean;
-var
-  mRow: TAtlasRuleRow;
-begin
-  Result := False;
-  for mRow in TAtlasRuleTable.Rows(FCatalog, FRulesJson, FGlobalRulesJson) do
-  begin
-    if SameText(mRow.Id, AId) then
-    begin
-      Result := True;
-    end;
   end;
 end;
 

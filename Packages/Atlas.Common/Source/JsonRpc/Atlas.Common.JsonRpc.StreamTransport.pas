@@ -156,6 +156,26 @@ begin
   Result := TEncoding.ASCII.GetString(mLine, 0, mLen);
 end;
 
+function TJsonRpcStreamTransport.ReadBody(ACount: Integer): TBytes;
+var
+  mOffset: Integer;
+  mCount: Integer;
+begin
+  SetLength(Result, ACount);
+  mOffset := 0;
+  while mOffset < ACount do
+  begin
+    if (FBufferPos >= FBufferLen) and not FillBuffer then
+    begin
+      raise EJsonRpcTransportError.Create(cTexts[TStreamTransportText.InputClosedWithinAMessage].Text);
+    end;
+    mCount := Min(ACount - mOffset, FBufferLen - FBufferPos);
+    Move(FBuffer[FBufferPos], Result[mOffset], mCount);
+    Inc(FBufferPos, mCount);
+    Inc(mOffset, mCount);
+  end;
+end;
+
 function TJsonRpcStreamTransport.ReadContentLength: Integer;
 var
   mLine: string;
@@ -189,26 +209,6 @@ begin
   if Result < 0 then
   begin
     raise EJsonRpcTransportError.Create(cTexts[TStreamTransportText.HeaderContentLengthMissing].Text);
-  end;
-end;
-
-function TJsonRpcStreamTransport.ReadBody(ACount: Integer): TBytes;
-var
-  mOffset: Integer;
-  mCount: Integer;
-begin
-  SetLength(Result, ACount);
-  mOffset := 0;
-  while mOffset < ACount do
-  begin
-    if (FBufferPos >= FBufferLen) and not FillBuffer then
-    begin
-      raise EJsonRpcTransportError.Create(cTexts[TStreamTransportText.InputClosedWithinAMessage].Text);
-    end;
-    mCount := Min(ACount - mOffset, FBufferLen - FBufferPos);
-    Move(FBuffer[FBufferPos], Result[mOffset], mCount);
-    Inc(FBufferPos, mCount);
-    Inc(mOffset, mCount);
   end;
 end;
 

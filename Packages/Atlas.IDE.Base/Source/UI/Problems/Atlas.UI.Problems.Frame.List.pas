@@ -217,27 +217,7 @@ const
   cSectionIndent = 6;
   cCleanColor = TColor($0050A030);
 
-class procedure TAtlasProblemsFrameParts.FillCombo(ACombo: TComboBox; const ATexts: TArray<string>; AIndex: Integer);
-var
-  mText: string;
-begin
-  if ACombo.Items.Count = 0 then
-  begin
-    ACombo.Items.BeginUpdate;
-    try
-      for mText in ATexts do
-      begin
-        ACombo.Items.Add(mText);
-      end;
-    finally
-      ACombo.Items.EndUpdate;
-    end;
-  end;
-  if ACombo.ItemIndex < 0 then
-  begin
-    ACombo.ItemIndex := AIndex;
-  end;
-end;
+{ TAtlasProblemsFrameParts }
 
 function TAtlasProblemsFrameParts.AddMenuItem(AParent: TMenuItem; const ACaption: string;
   AClick: TNotifyEvent): TMenuItem;
@@ -266,6 +246,28 @@ begin
   Result.Width := MulDiv(AWidth, CurrentPPI, 96);
 end;
 
+class procedure TAtlasProblemsFrameParts.FillCombo(ACombo: TComboBox; const ATexts: TArray<string>; AIndex: Integer);
+var
+  mText: string;
+begin
+  if ACombo.Items.Count = 0 then
+  begin
+    ACombo.Items.BeginUpdate;
+    try
+      for mText in ATexts do
+      begin
+        ACombo.Items.Add(mText);
+      end;
+    finally
+      ACombo.Items.EndUpdate;
+    end;
+  end;
+  if ACombo.ItemIndex < 0 then
+  begin
+    ACombo.ItemIndex := AIndex;
+  end;
+end;
+
 function TAtlasProblemsFrameParts.ListBack: TColor;
 begin
   // Stil der Liste, nicht der globale: Die IDE themt ihre Fenster je Formular; global käme im dunklen Thema Weiß.
@@ -277,242 +279,7 @@ begin
   Result := ColorToRGB(StyleServices(FList).GetSystemColor(FList.Font.Color));
 end;
 
-procedure TAtlasProblemsFrameList.BuildImages;
-var
-  mKind: TAtlasFindingKind;
-  mBitmap: TBitmap;
-  mSize, mPass: Integer;
-  mSignals: TAtlasSignals;
-  mSignal: TAtlasSignal;
-begin
-  // Zuerst die drei Arten, dahinter dieselben Formen ausgegraut für nicht geöffnete Units (#1108): aufgehellt bzw.
-  // abgedunkelt zur Fläche der Liste, damit Fehler weiter von Warnungen unterscheidbar bleiben.
-  FImagesBack := ListBack;
-  FImages.Clear;
-  mSize := FImages.Width;
-  // Signalfarben der Liste (#1255): hell kräftig mit dunklem Rand, dunkel hell mit dunklem Zeichen.
-  mSignals := TAtlasColors.ForBackground(TAtlasColor(FImagesBack)).Signals;
-  for mPass := 0 to 1 do
-  begin
-    for mKind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
-    begin
-      mSignal := mSignals.Get(TAtlasFindingIcon.SignalOf(mKind));
-      if mPass = 1 then
-      begin
-        mSignal.Fill := DimmedIconColor(mSignal.Fill, TAtlasColor(FImagesBack));
-        mSignal.Ring := DimmedIconColor(mSignal.Ring, TAtlasColor(FImagesBack));
-        mSignal.Mark := DimmedIconColor(mSignal.Mark, TAtlasColor(FImagesBack));
-      end;
-      mBitmap := TBitmap.Create;
-      try
-        mBitmap.SetSize(mSize, mSize);
-        mBitmap.Canvas.Brush.Color := clFuchsia;
-        mBitmap.Canvas.FillRect(Rect(0, 0, mSize, mSize));
-        TAtlasFindingIcon.Draw(mBitmap.Canvas, Rect(0, 0, mSize, mSize), mKind, mSignal);
-        FImages.AddMasked(mBitmap, clFuchsia);
-      finally
-        mBitmap.Free;
-      end;
-    end;
-  end;
-end;
-
-function TAtlasProblemsFrameList.ColumnCaption(AColumn: TAtlasFindingColumn): string;
-begin
-  case AColumn of
-    TAtlasFindingColumn.Kind:
-      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnKind);
-    TAtlasFindingColumn.Category:
-      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsColumnCategory);
-    TAtlasFindingColumn.Message:
-      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnMessage);
-    TAtlasFindingColumn.Line:
-      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnLine);
-    TAtlasFindingColumn.Location:
-      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnLocation);
-    TAtlasFindingColumn.Rule:
-      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnRule);
-    TAtlasFindingColumn.Compiler:
-      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnCompiler);
-    TAtlasFindingColumn.Source:
-      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnSource);
-  else
-    Result := '';
-  end;
-end;
-
-class function TAtlasProblemsFrameParts.KindText(AKind: TAtlasFindingKind): string;
-begin
-  case AKind of
-    TAtlasFindingKind.Error:
-      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsKindError);
-    TAtlasFindingKind.Warning:
-      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsKindWarning);
-  else
-    Result := TAtlasStrings.Text(TAtlasTextId.ProblemsKindInfo);
-  end;
-end;
-
-class function TAtlasProblemsFrameParts.CategoryText(ACategory: TAtlasFindingCategory): string;
-begin
-  case ACategory of
-    TAtlasFindingCategory.Bug:
-      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryBug);
-    TAtlasFindingCategory.Vulnerability:
-      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryVulnerability);
-    TAtlasFindingCategory.CodeSmell:
-      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryCodeSmell);
-    TAtlasFindingCategory.SecurityHotspot:
-      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryHotspot);
-    TAtlasFindingCategory.Compiler:
-      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryCompiler);
-  else
-    Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryOther);
-  end;
-end;
-
-/// <summary>Breite der Spalte AColumn bei 96 dpi: gespeichert oder Vorgabe.</summary>
-function ColumnWidth(const AColumns: TArray<TAtlasFindingColumnState>; AColumn: TAtlasFindingColumn): Integer;
-var
-  mState: TAtlasFindingColumnState;
-begin
-  Result := cDefaultWidths[AColumn];
-  for mState in AColumns do
-  begin
-    if (mState.Column = AColumn) and (mState.Width > 0) then
-    begin
-      Result := mState.Width;
-    end;
-  end;
-end;
-
-procedure TAtlasProblemsFrameList.BuildColumns;
-var
-  mState: TAtlasFindingColumnState;
-  mColumn: TListColumn;
-  mIndex, mPosition: Integer;
-  mItem: TMenuItem;
-begin
-  // Das Icon ist immer Spalte 0 (SmallImages zeichnet nur dort); die Reihenfolge der Anzeige setzt die
-  // Spaltenreihenfolge des Kopfs.
-  FShown := [TAtlasFindingColumn.Icon];
-  for mState in FColumns do
-  begin
-    if mState.Visible and (mState.Column <> TAtlasFindingColumn.Icon) and not ColumnSuppressed(mState.Column) then
-    begin
-      FShown := FShown + [mState.Column];
-    end;
-  end;
-  FList.Columns.BeginUpdate;
-  try
-    FList.Columns.Clear;
-    for mIndex := 0 to High(FShown) do
-    begin
-      mColumn := FList.Columns.Add;
-      mColumn.Caption := ColumnCaption(FShown[mIndex]);
-      mColumn.Width := MulDiv(ColumnWidth(FColumns, FShown[mIndex]), CurrentPPI, 96);
-    end;
-  finally
-    FList.Columns.EndUpdate;
-  end;
-  FOrderPending := True;
-  ApplyOrder;
-  // Menü „Spalten“: nur die abwählbaren.
-  FColumnsItem.Clear;
-  for mPosition := 0 to High(FColumns) do
-  begin
-    if not TAtlasFindings.IsMandatory(FColumns[mPosition].Column) and
-      not ColumnSuppressed(FColumns[mPosition].Column) then
-    begin
-      mItem := AddMenuItem(FColumnsItem, ColumnCaption(FColumns[mPosition].Column), ColumnToggleClick);
-      mItem.Checked := FColumns[mPosition].Visible;
-      mItem.Tag := Ord(FColumns[mPosition].Column);
-    end;
-  end;
-  FList.Invalidate;
-end;
-
-procedure TAtlasProblemsFrameList.ApplyOrder;
-var
-  mOrder: TArray<Integer>;
-  mState: TAtlasFindingColumnState;
-  mIndex: Integer;
-begin
-  if not FList.HandleAllocated or (not FOrderPending and (FList.Handle = FOrderHandle)) then
-  begin
-    Exit;
-  end;
-  FOrderPending := False;
-  FOrderHandle := FList.Handle;
-  mOrder := nil;
-  for mState in FColumns do
-  begin
-    for mIndex := 0 to High(FShown) do
-    begin
-      if FShown[mIndex] = mState.Column then
-      begin
-        mOrder := mOrder + [mIndex];
-      end;
-    end;
-  end;
-  if Length(mOrder) = Length(FShown) then
-  begin
-    ListView_SetColumnOrderArray(FList.Handle, Length(mOrder), PInteger(@mOrder[0]));
-  end;
-end;
-
-procedure TAtlasProblemsFrameList.ReadColumns;
-var
-  mOrder: TArray<Integer>;
-  mNext: TArray<TAtlasFindingColumnState>;
-  mState: TAtlasFindingColumnState;
-  mIndex: Integer;
-  mSeen: Boolean;
-begin
-  // Noch nicht gesetzt oder Fenster neu: FColumns ist der Stand.
-  if FOrderPending or not FList.HandleAllocated or (FList.Handle <> FOrderHandle) or
-    (FList.Columns.Count <> Length(FShown)) then
-  begin
-    Exit;
-  end;
-  SetLength(mOrder, Length(FShown));
-  if not ListView_GetColumnOrderArray(FList.Handle, Length(mOrder), PInteger(@mOrder[0])) then
-  begin
-    Exit;
-  end;
-  mNext := nil;
-  for mIndex in mOrder do
-  begin
-    if (mIndex >= 0) and (mIndex <= High(FShown)) then
-    begin
-      mNext := mNext + [TAtlasFindingColumnState.Create(FShown[mIndex],
-        MulDiv(FList.Columns[mIndex].Width, 96, CurrentPPI), True)];
-    end;
-  end;
-  // Ausgeblendete behalten ihren Platz hinten mit ihrer Breite.
-  for mState in FColumns do
-  begin
-    mSeen := False;
-    for mIndex := 0 to High(mNext) do
-    begin
-      if mNext[mIndex].Column = mState.Column then
-      begin
-        mSeen := True;
-      end;
-    end;
-    if not mSeen then
-    begin
-      mNext := mNext + [mState];
-    end;
-  end;
-  FColumns := mNext;
-end;
-
-function TAtlasProblemsFrameList.ColumnsText: string;
-begin
-  ReadColumns;
-  Result := TAtlasFindings.FormatColumns(FColumns);
-end;
+{ TAtlasProblemsFrameList }
 
 procedure TAtlasProblemsFrameList.SetShowCompilerCode(AValue: Boolean);
 begin
@@ -552,184 +319,75 @@ begin
   Refill;
 end;
 
-function TAtlasProblemsFrameList.ColumnSuppressed(AColumn: TAtlasFindingColumn): Boolean;
+function TAtlasProblemsFrameParts.KindButton(AKind: TAtlasFindingKind): TSpeedButton;
 begin
-  Result := ((AColumn = TAtlasFindingColumn.Compiler) and not FShowCompilerCode) or
-    ((AColumn = TAtlasFindingColumn.Source) and not FShowIdeErrors);
+  Result := FKinds[AKind];
 end;
 
-function TAtlasProblemsFrameList.OpenFirst: Boolean;
+class function TAtlasProblemsFrameParts.KindText(AKind: TAtlasFindingKind): string;
 begin
-  Result := FOpenFirst.Down;
-end;
-
-function TAtlasProblemsFrameList.Scope: TAtlasFindingScope;
-begin
-  Result := FView.Filter.Scope;
-end;
-
-function TAtlasProblemsFrameList.ScopeProject: string;
-begin
-  Result := FScopeBox.Choice.Project;
-end;
-
-function TAtlasProblemsFrameList.Grouping: TAtlasFindingGrouping;
-begin
-  Result := FView.Grouping;
-end;
-
-procedure TAtlasProblemsFrameList.UpdateKindCaptions;
-var
-  mCounts: TAtlasFindingCounts;
-  mKind: TAtlasFindingKind;
-begin
-  mCounts := FView.Counts;
-  for mKind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
-  begin
-    FKinds[mKind].Caption := TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsKindCount, [KindText(mKind),
-      mCounts.OfKind(mKind)]);
+  case AKind of
+    TAtlasFindingKind.Error:
+      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsKindError);
+    TAtlasFindingKind.Warning:
+      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsKindWarning);
+  else
+    Result := TAtlasStrings.Text(TAtlasTextId.ProblemsKindInfo);
   end;
 end;
 
-procedure TAtlasProblemsFrameList.ClearListSelection;
-begin
-  if FList.HandleAllocated then
-  begin
-    ListView_SetItemState(FList.Handle, -1, 0, LVIS_SELECTED);
-  end;
-end;
-
-procedure TAtlasProblemsFrameList.Refill;
-var
-  mSelected: Integer;
-  mCount: Integer;
-begin
-  // Gezogene Spalten merken, bevor ein neues Fenster der Liste (Andocken) sie vergisst; dann wieder setzen.
-  ReadColumns;
-  // Thema gewechselt: ausgegraute Symbole zur neuen Fläche (#1108).
-  if ListBack <> FImagesBack then
-  begin
-    BuildImages;
-  end;
-  ApplyOrder;
-  FUpdating := True;
-  try
-    mCount := Length(FView.Rows);
-    // Virtuelle Liste: nur die Anzahl ändert sich; Bildlauf bleibt.
-    if FList.Items.Count <> mCount then
-    begin
-      FList.Items.Count := mCount;
-    end;
-    mSelected := FView.SelectedRow;
-    if mSelected <> FList.ItemIndex then
-    begin
-      ClearListSelection;
-      if mSelected >= 0 then
-      begin
-        FList.ItemIndex := mSelected;
-        if FList.Items[mSelected] <> nil then
-        begin
-          FList.Items[mSelected].Focused := True;
-        end;
-      end;
-    end;
-    FList.Invalidate;
-  finally
-    FUpdating := False;
-  end;
-  UpdateKindCaptions;
-  FEmpty.Visible := mCount = 0;
-  FList.Visible := not FEmpty.Visible;
-end;
-
-function TAtlasProblemsFrameList.GroupColumn: TAtlasFindingColumn;
+/// <summary>Breite der Spalte AColumn bei 96 dpi: gespeichert oder Vorgabe.</summary>
+function ColumnWidth(const AColumns: TArray<TAtlasFindingColumnState>; AColumn: TAtlasFindingColumn): Integer;
 var
   mState: TAtlasFindingColumnState;
 begin
-  Result := TAtlasFindingColumn.Kind;
-  for mState in FColumns do
+  Result := cDefaultWidths[AColumn];
+  for mState in AColumns do
   begin
-    if mState.Visible and (mState.Column <> TAtlasFindingColumn.Icon) then
+    if (mState.Column = AColumn) and (mState.Width > 0) then
     begin
-      Exit(mState.Column);
+      Result := mState.Width;
     end;
   end;
 end;
 
-/// <summary>Name einer Gruppe mit Pfeil, Nadel, Zahl und Kennzeichen der Stufe (#1108).</summary>
-function GroupCaption(const ARow: TAtlasFindingRow): string;
-begin
-  if ARow.Expanded then
-  begin
-    Result := #$25BE' ';
-  end
-  else
-  begin
-    Result := #$25B8' ';
-  end;
-  if ARow.Pinned then
-  begin
-    Result := Result + TAtlasProblemsFrameParts.cPinMark + ' ';
-  end;
-  Result := Result + ARow.Caption + ' (' + IntToStr(ARow.Count) + ')';
-  if ARow.Pinned then
-  begin
-    Result := Result + ' ' + #$00B7 + ' ' + TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsTagActive);
-  end
-  else if ARow.Dimmed then
-  begin
-    Result := Result + ' ' + #$00B7 + ' ' + TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsTagClosed);
-  end;
-end;
-
-function TAtlasProblemsFrameList.FindingCellText(const ARow: TAtlasFindingRow; AColumn: TAtlasFindingColumn): string;
+procedure TAtlasProblemsFrameList.BuildImages;
 var
-  mFinding: TAtlasFinding;
+  mKind: TAtlasFindingKind;
+  mBitmap: TBitmap;
+  mSize, mPass: Integer;
+  mSignals: TAtlasSignals;
+  mSignal: TAtlasSignal;
 begin
-  mFinding := FView.Finding(ARow.Finding);
-  case AColumn of
-    TAtlasFindingColumn.Kind:
-      Result := KindText(mFinding.Kind);
-    TAtlasFindingColumn.Category:
-      Result := CategoryText(mFinding.Category);
-    TAtlasFindingColumn.Message:
-      Result := mFinding.MessageText(FShowCompilerCode);
-    TAtlasFindingColumn.Line:
-      Result := mFinding.ShortLine(TAtlasFindings.cLineMax);
-    TAtlasFindingColumn.Location:
-      Result := mFinding.Location;
-    TAtlasFindingColumn.Rule:
-      Result := mFinding.Rule;
-    TAtlasFindingColumn.Compiler:
-      Result := mFinding.CompilerText;
-    TAtlasFindingColumn.Source:
-      Result := mFinding.SourceText;
-  else
-    // Symbol: kein Text.
-    Result := '';
-  end;
-end;
-
-function TAtlasProblemsFrameList.CellText(const ARow: TAtlasFindingRow; AColumn: TAtlasFindingColumn): string;
-begin
-  Result := '';
-  if not ARow.IsSection and not ARow.IsGroup then
+  // Zuerst die drei Arten, dahinter dieselben Formen ausgegraut für nicht geöffnete Units (#1108): aufgehellt bzw.
+  // abgedunkelt zur Fläche der Liste, damit Fehler weiter von Warnungen unterscheidbar bleiben.
+  FImagesBack := ListBack;
+  FImages.Clear;
+  mSize := FImages.Width;
+  // Signalfarben der Liste (#1255): hell kräftig mit dunklem Rand, dunkel hell mit dunklem Zeichen.
+  mSignals := TAtlasColors.ForBackground(TAtlasColor(FImagesBack)).Signals;
+  for mPass := 0 to 1 do
   begin
-    Result := FindingCellText(ARow, AColumn);
-  end
-  else if AColumn <> GroupColumn then
-  begin
-    // Gruppen- und Trennzeilen haben Text nur in der Gruppenspalte.
-    Exit;
-  end
-  else if ARow.IsSection then
-  begin
-    // Gezeichnet über die ganze Zeile (DrawSection); der Text steht für Bildschirmleser in der Gruppenspalte.
-    Result := SectionText(ARow);
-  end
-  else
-  begin
-    Result := GroupCaption(ARow);
+    for mKind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
+    begin
+      mSignal := mSignals.Get(TAtlasFindingIcon.SignalOf(mKind));
+      if mPass = 1 then
+      begin
+        mSignal.Fill := DimmedIconColor(mSignal.Fill, TAtlasColor(FImagesBack));
+        mSignal.Ring := DimmedIconColor(mSignal.Ring, TAtlasColor(FImagesBack));
+        mSignal.Mark := DimmedIconColor(mSignal.Mark, TAtlasColor(FImagesBack));
+      end;
+      mBitmap := TBitmap.Create;
+      try
+        mBitmap.SetSize(mSize, mSize);
+        mBitmap.Canvas.Brush.Color := clFuchsia;
+        mBitmap.Canvas.FillRect(Rect(0, 0, mSize, mSize));
+        TAtlasFindingIcon.Draw(mBitmap.Canvas, Rect(0, 0, mSize, mSize), mKind, mSignal);
+        FImages.AddMasked(mBitmap, clFuchsia);
+      finally
+        mBitmap.Free;
+      end;
+    end;
   end;
 end;
 
@@ -792,6 +450,221 @@ begin
   DrawText(ACanvas.Handle, PChar(mText), Length(mText), mBounds, DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or
     DT_NOPREFIX);
   ACanvas.Brush.Style := bsSolid;
+end;
+
+procedure TAtlasProblemsFrameList.BuildColumns;
+var
+  mState: TAtlasFindingColumnState;
+  mColumn: TListColumn;
+  mIndex, mPosition: Integer;
+  mItem: TMenuItem;
+begin
+  // Das Icon ist immer Spalte 0 (SmallImages zeichnet nur dort); die Reihenfolge der Anzeige setzt die
+  // Spaltenreihenfolge des Kopfs.
+  FShown := [TAtlasFindingColumn.Icon];
+  for mState in FColumns do
+  begin
+    if mState.Visible and (mState.Column <> TAtlasFindingColumn.Icon) and not ColumnSuppressed(mState.Column) then
+    begin
+      FShown := FShown + [mState.Column];
+    end;
+  end;
+  FList.Columns.BeginUpdate;
+  try
+    FList.Columns.Clear;
+    for mIndex := 0 to High(FShown) do
+    begin
+      mColumn := FList.Columns.Add;
+      mColumn.Caption := ColumnCaption(FShown[mIndex]);
+      mColumn.Width := MulDiv(ColumnWidth(FColumns, FShown[mIndex]), CurrentPPI, 96);
+    end;
+  finally
+    FList.Columns.EndUpdate;
+  end;
+  FOrderPending := True;
+  ApplyOrder;
+  // Menü „Spalten“: nur die abwählbaren.
+  FColumnsItem.Clear;
+  for mPosition := 0 to High(FColumns) do
+  begin
+    if not TAtlasFindings.IsMandatory(FColumns[mPosition].Column) and
+      not ColumnSuppressed(FColumns[mPosition].Column) then
+    begin
+      mItem := AddMenuItem(FColumnsItem, ColumnCaption(FColumns[mPosition].Column), ColumnToggleClick);
+      mItem.Checked := FColumns[mPosition].Visible;
+      mItem.Tag := Ord(FColumns[mPosition].Column);
+    end;
+  end;
+  FList.Invalidate;
+end;
+
+function TAtlasProblemsFrameList.ColumnSuppressed(AColumn: TAtlasFindingColumn): Boolean;
+begin
+  Result := ((AColumn = TAtlasFindingColumn.Compiler) and not FShowCompilerCode) or
+    ((AColumn = TAtlasFindingColumn.Source) and not FShowIdeErrors);
+end;
+
+procedure TAtlasProblemsFrameList.ReadColumns;
+var
+  mOrder: TArray<Integer>;
+  mNext: TArray<TAtlasFindingColumnState>;
+  mState: TAtlasFindingColumnState;
+  mIndex: Integer;
+  mSeen: Boolean;
+begin
+  // Noch nicht gesetzt oder Fenster neu: FColumns ist der Stand.
+  if FOrderPending or not FList.HandleAllocated or (FList.Handle <> FOrderHandle) or
+    (FList.Columns.Count <> Length(FShown)) then
+  begin
+    Exit;
+  end;
+  SetLength(mOrder, Length(FShown));
+  if not ListView_GetColumnOrderArray(FList.Handle, Length(mOrder), PInteger(@mOrder[0])) then
+  begin
+    Exit;
+  end;
+  mNext := nil;
+  for mIndex in mOrder do
+  begin
+    if (mIndex >= 0) and (mIndex <= High(FShown)) then
+    begin
+      mNext := mNext + [TAtlasFindingColumnState.Create(FShown[mIndex],
+        MulDiv(FList.Columns[mIndex].Width, 96, CurrentPPI), True)];
+    end;
+  end;
+  // Ausgeblendete behalten ihren Platz hinten mit ihrer Breite.
+  for mState in FColumns do
+  begin
+    mSeen := False;
+    for mIndex := 0 to High(mNext) do
+    begin
+      if mNext[mIndex].Column = mState.Column then
+      begin
+        mSeen := True;
+      end;
+    end;
+    if not mSeen then
+    begin
+      mNext := mNext + [mState];
+    end;
+  end;
+  FColumns := mNext;
+end;
+
+procedure TAtlasProblemsFrameList.ClearListSelection;
+begin
+  if FList.HandleAllocated then
+  begin
+    ListView_SetItemState(FList.Handle, -1, 0, LVIS_SELECTED);
+  end;
+end;
+
+procedure TAtlasProblemsFrameList.ApplyOrder;
+var
+  mOrder: TArray<Integer>;
+  mState: TAtlasFindingColumnState;
+  mIndex: Integer;
+begin
+  if not FList.HandleAllocated or (not FOrderPending and (FList.Handle = FOrderHandle)) then
+  begin
+    Exit;
+  end;
+  FOrderPending := False;
+  FOrderHandle := FList.Handle;
+  mOrder := nil;
+  for mState in FColumns do
+  begin
+    for mIndex := 0 to High(FShown) do
+    begin
+      if FShown[mIndex] = mState.Column then
+      begin
+        mOrder := mOrder + [mIndex];
+      end;
+    end;
+  end;
+  if Length(mOrder) = Length(FShown) then
+  begin
+    ListView_SetColumnOrderArray(FList.Handle, Length(mOrder), PInteger(@mOrder[0]));
+  end;
+end;
+
+function TAtlasProblemsFrameList.ColumnCaption(AColumn: TAtlasFindingColumn): string;
+begin
+  case AColumn of
+    TAtlasFindingColumn.Kind:
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnKind);
+    TAtlasFindingColumn.Category:
+      Result := TAtlasStrings.Text(TAtlasTextId.ProblemsColumnCategory);
+    TAtlasFindingColumn.Message:
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnMessage);
+    TAtlasFindingColumn.Line:
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnLine);
+    TAtlasFindingColumn.Location:
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnLocation);
+    TAtlasFindingColumn.Rule:
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnRule);
+    TAtlasFindingColumn.Compiler:
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnCompiler);
+    TAtlasFindingColumn.Source:
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsColumnSource);
+  else
+    Result := '';
+  end;
+end;
+
+function TAtlasProblemsFrameList.FindingCellText(const ARow: TAtlasFindingRow; AColumn: TAtlasFindingColumn): string;
+var
+  mFinding: TAtlasFinding;
+begin
+  mFinding := FView.Finding(ARow.Finding);
+  case AColumn of
+    TAtlasFindingColumn.Kind:
+      Result := KindText(mFinding.Kind);
+    TAtlasFindingColumn.Category:
+      Result := CategoryText(mFinding.Category);
+    TAtlasFindingColumn.Message:
+      Result := mFinding.MessageText(FShowCompilerCode);
+    TAtlasFindingColumn.Line:
+      Result := mFinding.ShortLine(TAtlasFindings.cLineMax);
+    TAtlasFindingColumn.Location:
+      Result := mFinding.Location;
+    TAtlasFindingColumn.Rule:
+      Result := mFinding.Rule;
+    TAtlasFindingColumn.Compiler:
+      Result := mFinding.CompilerText;
+    TAtlasFindingColumn.Source:
+      Result := mFinding.SourceText;
+  else
+    // Symbol: kein Text.
+    Result := '';
+  end;
+end;
+
+function TAtlasProblemsFrameList.GroupColumn: TAtlasFindingColumn;
+var
+  mState: TAtlasFindingColumnState;
+begin
+  Result := TAtlasFindingColumn.Kind;
+  for mState in FColumns do
+  begin
+    if mState.Visible and (mState.Column <> TAtlasFindingColumn.Icon) then
+    begin
+      Exit(mState.Column);
+    end;
+  end;
+end;
+
+procedure TAtlasProblemsFrameList.UpdateKindCaptions;
+var
+  mCounts: TAtlasFindingCounts;
+  mKind: TAtlasFindingKind;
+begin
+  mCounts := FView.Counts;
+  for mKind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
+  begin
+    FKinds[mKind].Caption := TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsKindCount, [KindText(mKind),
+      mCounts.OfKind(mKind)]);
+  end;
 end;
 
 function TAtlasProblemsFrameList.RowAt(AIndex: Integer; out ARow: TAtlasFindingRow): Boolean;
@@ -860,6 +733,55 @@ begin
   end;
 end;
 
+/// <summary>Name einer Gruppe mit Pfeil, Nadel, Zahl und Kennzeichen der Stufe (#1108).</summary>
+function GroupCaption(const ARow: TAtlasFindingRow): string;
+begin
+  if ARow.Expanded then
+  begin
+    Result := #$25BE' ';
+  end
+  else
+  begin
+    Result := #$25B8' ';
+  end;
+  if ARow.Pinned then
+  begin
+    Result := Result + TAtlasProblemsFrameParts.cPinMark + ' ';
+  end;
+  Result := Result + ARow.Caption + ' (' + IntToStr(ARow.Count) + ')';
+  if ARow.Pinned then
+  begin
+    Result := Result + ' ' + #$00B7 + ' ' + TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsTagActive);
+  end
+  else if ARow.Dimmed then
+  begin
+    Result := Result + ' ' + #$00B7 + ' ' + TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsTagClosed);
+  end;
+end;
+
+function TAtlasProblemsFrameList.CellText(const ARow: TAtlasFindingRow; AColumn: TAtlasFindingColumn): string;
+begin
+  Result := '';
+  if not ARow.IsSection and not ARow.IsGroup then
+  begin
+    Result := FindingCellText(ARow, AColumn);
+  end
+  else if AColumn <> GroupColumn then
+  begin
+    // Gruppen- und Trennzeilen haben Text nur in der Gruppenspalte.
+    Exit;
+  end
+  else if ARow.IsSection then
+  begin
+    // Gezeichnet über die ganze Zeile (DrawSection); der Text steht für Bildschirmleser in der Gruppenspalte.
+    Result := SectionText(ARow);
+  end
+  else
+  begin
+    Result := GroupCaption(ARow);
+  end;
+end;
+
 procedure TAtlasProblemsFrameList.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
   State: TCustomDrawState; var DefaultDraw: Boolean);
 var
@@ -913,11 +835,6 @@ begin
   end;
 end;
 
-function TAtlasProblemsFrameParts.KindButton(AKind: TAtlasFindingKind): TSpeedButton;
-begin
-  Result := FKinds[AKind];
-end;
-
 procedure TAtlasProblemsFrameList.ColumnToggleClick(Sender: TObject);
 var
   mColumn: TAtlasFindingColumn;
@@ -938,6 +855,93 @@ begin
   begin
     FOnLayout();
   end;
+end;
+
+procedure TAtlasProblemsFrameList.Refill;
+var
+  mSelected: Integer;
+  mCount: Integer;
+begin
+  // Gezogene Spalten merken, bevor ein neues Fenster der Liste (Andocken) sie vergisst; dann wieder setzen.
+  ReadColumns;
+  // Thema gewechselt: ausgegraute Symbole zur neuen Fläche (#1108).
+  if ListBack <> FImagesBack then
+  begin
+    BuildImages;
+  end;
+  ApplyOrder;
+  FUpdating := True;
+  try
+    mCount := Length(FView.Rows);
+    // Virtuelle Liste: nur die Anzahl ändert sich; Bildlauf bleibt.
+    if FList.Items.Count <> mCount then
+    begin
+      FList.Items.Count := mCount;
+    end;
+    mSelected := FView.SelectedRow;
+    if mSelected <> FList.ItemIndex then
+    begin
+      ClearListSelection;
+      if mSelected >= 0 then
+      begin
+        FList.ItemIndex := mSelected;
+        if FList.Items[mSelected] <> nil then
+        begin
+          FList.Items[mSelected].Focused := True;
+        end;
+      end;
+    end;
+    FList.Invalidate;
+  finally
+    FUpdating := False;
+  end;
+  UpdateKindCaptions;
+  FEmpty.Visible := mCount = 0;
+  FList.Visible := not FEmpty.Visible;
+end;
+
+function TAtlasProblemsFrameList.OpenFirst: Boolean;
+begin
+  Result := FOpenFirst.Down;
+end;
+
+function TAtlasProblemsFrameList.ColumnsText: string;
+begin
+  ReadColumns;
+  Result := TAtlasFindings.FormatColumns(FColumns);
+end;
+
+function TAtlasProblemsFrameList.Scope: TAtlasFindingScope;
+begin
+  Result := FView.Filter.Scope;
+end;
+
+function TAtlasProblemsFrameList.ScopeProject: string;
+begin
+  Result := FScopeBox.Choice.Project;
+end;
+
+class function TAtlasProblemsFrameParts.CategoryText(ACategory: TAtlasFindingCategory): string;
+begin
+  case ACategory of
+    TAtlasFindingCategory.Bug:
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryBug);
+    TAtlasFindingCategory.Vulnerability:
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryVulnerability);
+    TAtlasFindingCategory.CodeSmell:
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryCodeSmell);
+    TAtlasFindingCategory.SecurityHotspot:
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryHotspot);
+    TAtlasFindingCategory.Compiler:
+      Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryCompiler);
+  else
+    Result := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsCategoryOther);
+  end;
+end;
+
+function TAtlasProblemsFrameList.Grouping: TAtlasFindingGrouping;
+begin
+  Result := FView.Grouping;
 end;
 
 end.

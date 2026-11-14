@@ -281,99 +281,6 @@ end;
 
 { TAtlasIdeDebugStepFilter }
 
-class procedure TAtlasIdeDebugStepFilter.Install(const ASession: TAtlasStepFilterSessionFunc;
-  const AMessage: TProc<string>);
-begin
-  FSession := ASession;
-  FMessage := AMessage;
-  TAtlasIdeDebugStepFilterWindow.OnFrame :=
-    procedure(AFrame: TAtlasDebugStepFilterFrame)
-    begin
-      WireFrame(AFrame);
-    end;
-  TAtlasIdeDebugStepFilterWindow.Prepare;
-end;
-
-class procedure TAtlasIdeDebugStepFilter.Uninstall;
-begin
-  Release;
-  WaitCounts;
-  TAtlasIdeDebugStepFilterWindow.Release;
-  FSession := nil;
-  FMessage := nil;
-end;
-
-class procedure TAtlasIdeDebugStepFilter.Start;
-begin
-  if FTicker = nil then
-  begin
-    FTicker := TTicker.Create;
-  end;
-  if FTimer = nil then
-  begin
-    FTimer := TTimer.Create(nil);
-    FTimer.Enabled := False;
-    FTimer.Interval := cIntervalMs;
-    FTimer.OnTimer := FTicker.Tick;
-  end;
-  if FCache = nil then
-  begin
-    FCache := TAtlasStepRoutineCache.Create;
-  end;
-  FRun.Cancel;
-  FStep.Bypass := False;
-  TAtlasIdeDebugTrace.AddHandler(cTraceHandler,
-    procedure(AKind: TAtlasTraceKind; AOrigin: TAtlasTraceOrigin)
-    begin
-      Traced(AKind, AOrigin);
-    end);
-  if FListener = nil then
-  begin
-    FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FListener);
-  end;
-  TAtlasIdeDebugSession.Start;
-  UpdateSession;
-end;
-
-class procedure TAtlasIdeDebugStepFilter.Release;
-begin
-  if FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(FListener);
-  end;
-  FListener := nil;
-  TAtlasIdeDebugTrace.RemoveHandler(cTraceHandler);
-  FreeAndNil(FTimer);
-  FreeAndNil(FTicker);
-  FreeAndNil(FCache);
-  FRun.Cancel;
-  FStep.Bypass := False;
-  UpdateSession;
-end;
-
-class function TAtlasIdeDebugStepFilter.Started: Boolean;
-begin
-  Result := FListener <> nil;
-end;
-
-class function TAtlasIdeDebugStepFilter.Options: TAtlasStepFilterOptions;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := TAtlasStepFilterOptions.Create(mSettings.Enabled and mSettings.DebugStepFilters,
-    mSettings.DebugStepFilterKinds, mSettings.DebugStepFilterPatterns);
-end;
-
-class procedure TAtlasIdeDebugStepFilter.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
-end;
-
 class procedure TAtlasIdeDebugStepFilter.Traced(AKind: TAtlasTraceKind; AOrigin: TAtlasTraceOrigin);
 var
   mDepth: Integer;
@@ -549,30 +456,6 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeDebugStepFilter.Remember(const ARoutine: TAtlasStepRoutine;
-  const AVerdict: TAtlasStepVerdict);
-begin
-  Inc(FSkips.Count);
-  FSkips.LastName := ARoutine.Name;
-  FSkips.LastReason := TAtlasStepFilterTexts.VerdictText(AVerdict);
-  UpdateSession;
-end;
-
-class procedure TAtlasIdeDebugStepFilter.StepIntoAnyway;
-begin
-  if TAtlasIdeDebugSession.StoppedThread = nil then
-  begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterNotStopped));
-    Exit;
-  end;
-  // Ohne Ablauf (debug.stepFilters aus) ist es ein gewöhnliches F7.
-  FStep.Bypass := Started;
-  if not TAtlasIdeDebugTrace.StepInto then
-  begin
-    FStep.Bypass := False;
-  end;
-end;
-
 class function TAtlasIdeDebugStepFilter.RoutineAtCursor(out ARoutine: TAtlasStepRoutine): Boolean;
 var
   mView: IOTAEditView;
@@ -621,6 +504,23 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeDebugStepFilter.Remember(const ARoutine: TAtlasStepRoutine;
+  const AVerdict: TAtlasStepVerdict);
+begin
+  Inc(FSkips.Count);
+  FSkips.LastName := ARoutine.Name;
+  FSkips.LastReason := TAtlasStepFilterTexts.VerdictText(AVerdict);
+  UpdateSession;
+end;
+
+class procedure TAtlasIdeDebugStepFilter.Report(const AText: string);
+begin
+  if Assigned(FMessage) then
+  begin
+    FMessage(AText);
+  end;
+end;
+
 class procedure TAtlasIdeDebugStepFilter.SaveOptions(AEnabled: Boolean; AKinds: TStepFilterKinds;
   const APatterns: TArray<string>);
 var
@@ -631,77 +531,6 @@ begin
   mNext.DebugStepFilterKinds := TStepFilterNames.KindsText(AKinds);
   mNext.DebugStepFilterPatterns := TStepFilterNames.PatternsText(APatterns);
   TAtlasIdeSettings.Update(mNext);
-end;
-
-class procedure TAtlasIdeDebugStepFilter.SkipAtCursor;
-var
-  mRoutine: TAtlasStepRoutine;
-  mOptions: TAtlasStepFilterOptions;
-  mVerdict: TAtlasStepVerdict;
-  mStored: TAtlasPluginSettings;
-begin
-  if not RoutineAtCursor(mRoutine) then
-  begin
-    Exit;
-  end;
-  mStored := TAtlasIdeSettings.Stored;
-  mOptions := TAtlasStepFilterOptions.Create(True, mStored.DebugStepFilterKinds, mStored.DebugStepFilterPatterns);
-  mVerdict := TAtlasStepFilter.Verdict(mOptions, mRoutine);
-  if mVerdict.Filtered then
-  begin
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterAlready,
-      [mRoutine.Name, TAtlasStepFilterTexts.VerdictText(mVerdict)]));
-  end
-  else
-  begin
-    SaveOptions(mStored.DebugStepFilters, mOptions.Kinds, TStepFilterNames.WithPattern(mOptions.Patterns,
-      mRoutine.Name));
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterAdded, [mRoutine.Name]));
-  end;
-  if not mStored.DebugStepFilters then
-  begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterOff));
-  end;
-end;
-
-class procedure TAtlasIdeDebugStepFilter.UnskipAtCursor;
-var
-  mRoutine: TAtlasStepRoutine;
-  mOptions: TAtlasStepFilterOptions;
-  mVerdict: TAtlasStepVerdict;
-  mStored: TAtlasPluginSettings;
-  mRemoved: Boolean;
-begin
-  if not RoutineAtCursor(mRoutine) then
-  begin
-    Exit;
-  end;
-  mStored := TAtlasIdeSettings.Stored;
-  mOptions := TAtlasStepFilterOptions.Create(True, mStored.DebugStepFilterKinds, mStored.DebugStepFilterPatterns);
-  mRemoved := TStepFilterNames.IndexOfPattern(mOptions.Patterns, mRoutine.Name) >= 0;
-  if mRemoved then
-  begin
-    mOptions.Patterns := TStepFilterNames.WithoutPattern(mOptions.Patterns, mRoutine.Name);
-    SaveOptions(mStored.DebugStepFilters, mOptions.Kinds, mOptions.Patterns);
-  end;
-  // Weitere Muster oder Arten bleiben, wie sie sind: Der Benutzer erfährt, was noch filtert.
-  mVerdict := TAtlasStepFilter.Verdict(mOptions, mRoutine);
-  case mVerdict.Kind of
-    TAtlasStepVerdictKind.Pattern:
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterStillByPattern, [mRoutine.Name, mVerdict.Pattern]));
-    TAtlasStepVerdictKind.Kind:
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterStillByKind,
-        [mRoutine.Name, TAtlasStepFilterTexts.VerdictText(mVerdict)]));
-  else
-    if mRemoved then
-    begin
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterRemoved, [mRoutine.Name]));
-    end
-    else
-    begin
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterNotSkipped, [mRoutine.Name]));
-    end;
-  end;
 end;
 
 class function TAtlasIdeDebugStepFilter.Frame: TAtlasDebugStepFilterFrame;
@@ -748,39 +577,6 @@ begin
   begin
     mFrame.SetSession(Started, FSkips.Count, FSkips.LastName, FSkips.LastReason);
   end;
-end;
-
-class procedure TAtlasIdeDebugStepFilter.ShowWindow;
-var
-  mFrame: TAtlasDebugStepFilterFrame;
-begin
-  mFrame := TAtlasIdeDebugStepFilterWindow.Show;
-  if mFrame <> nil then
-  begin
-    FillFrame(mFrame);
-  end;
-end;
-
-class procedure TAtlasIdeDebugStepFilter.ApplySettings;
-var
-  mFrame: TAtlasDebugStepFilterFrame;
-begin
-  mFrame := Frame;
-  if mFrame = nil then
-  begin
-    Exit;
-  end;
-  FillFrame(mFrame);
-  // Neue Muster: Treffer neu zählen; die Arten zählt der Server ohnehin alle.
-  if TAtlasIdeSettings.Current.DebugStepFilterPatterns <> FCounts.Patterns then
-  begin
-    Recount;
-  end;
-end;
-
-class procedure TAtlasIdeDebugStepFilter.ThemeChanged;
-begin
-  TAtlasIdeDebugStepFilterWindow.ApplyTheme;
 end;
 
 class procedure TAtlasIdeDebugStepFilter.Recount;
@@ -866,6 +662,210 @@ begin
   end;
   FCounts.Thread.WaitFor;
   FreeAndNil(FCounts.Thread);
+end;
+
+class procedure TAtlasIdeDebugStepFilter.Install(const ASession: TAtlasStepFilterSessionFunc;
+  const AMessage: TProc<string>);
+begin
+  FSession := ASession;
+  FMessage := AMessage;
+  TAtlasIdeDebugStepFilterWindow.OnFrame :=
+    procedure(AFrame: TAtlasDebugStepFilterFrame)
+    begin
+      WireFrame(AFrame);
+    end;
+  TAtlasIdeDebugStepFilterWindow.Prepare;
+end;
+
+class procedure TAtlasIdeDebugStepFilter.Uninstall;
+begin
+  Release;
+  WaitCounts;
+  TAtlasIdeDebugStepFilterWindow.Release;
+  FSession := nil;
+  FMessage := nil;
+end;
+
+class procedure TAtlasIdeDebugStepFilter.Start;
+begin
+  if FTicker = nil then
+  begin
+    FTicker := TTicker.Create;
+  end;
+  if FTimer = nil then
+  begin
+    FTimer := TTimer.Create(nil);
+    FTimer.Enabled := False;
+    FTimer.Interval := cIntervalMs;
+    FTimer.OnTimer := FTicker.Tick;
+  end;
+  if FCache = nil then
+  begin
+    FCache := TAtlasStepRoutineCache.Create;
+  end;
+  FRun.Cancel;
+  FStep.Bypass := False;
+  TAtlasIdeDebugTrace.AddHandler(cTraceHandler,
+    procedure(AKind: TAtlasTraceKind; AOrigin: TAtlasTraceOrigin)
+    begin
+      Traced(AKind, AOrigin);
+    end);
+  if FListener = nil then
+  begin
+    FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FListener);
+  end;
+  TAtlasIdeDebugSession.Start;
+  UpdateSession;
+end;
+
+class procedure TAtlasIdeDebugStepFilter.Release;
+begin
+  if FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(FListener);
+  end;
+  FListener := nil;
+  TAtlasIdeDebugTrace.RemoveHandler(cTraceHandler);
+  FreeAndNil(FTimer);
+  FreeAndNil(FTicker);
+  FreeAndNil(FCache);
+  FRun.Cancel;
+  FStep.Bypass := False;
+  UpdateSession;
+end;
+
+class function TAtlasIdeDebugStepFilter.Started: Boolean;
+begin
+  Result := FListener <> nil;
+end;
+
+class function TAtlasIdeDebugStepFilter.Options: TAtlasStepFilterOptions;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := TAtlasStepFilterOptions.Create(mSettings.Enabled and mSettings.DebugStepFilters,
+    mSettings.DebugStepFilterKinds, mSettings.DebugStepFilterPatterns);
+end;
+
+class procedure TAtlasIdeDebugStepFilter.StepIntoAnyway;
+begin
+  if TAtlasIdeDebugSession.StoppedThread = nil then
+  begin
+    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterNotStopped));
+    Exit;
+  end;
+  // Ohne Ablauf (debug.stepFilters aus) ist es ein gewöhnliches F7.
+  FStep.Bypass := Started;
+  if not TAtlasIdeDebugTrace.StepInto then
+  begin
+    FStep.Bypass := False;
+  end;
+end;
+
+class procedure TAtlasIdeDebugStepFilter.SkipAtCursor;
+var
+  mRoutine: TAtlasStepRoutine;
+  mOptions: TAtlasStepFilterOptions;
+  mVerdict: TAtlasStepVerdict;
+  mStored: TAtlasPluginSettings;
+begin
+  if not RoutineAtCursor(mRoutine) then
+  begin
+    Exit;
+  end;
+  mStored := TAtlasIdeSettings.Stored;
+  mOptions := TAtlasStepFilterOptions.Create(True, mStored.DebugStepFilterKinds, mStored.DebugStepFilterPatterns);
+  mVerdict := TAtlasStepFilter.Verdict(mOptions, mRoutine);
+  if mVerdict.Filtered then
+  begin
+    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterAlready,
+      [mRoutine.Name, TAtlasStepFilterTexts.VerdictText(mVerdict)]));
+  end
+  else
+  begin
+    SaveOptions(mStored.DebugStepFilters, mOptions.Kinds, TStepFilterNames.WithPattern(mOptions.Patterns,
+      mRoutine.Name));
+    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterAdded, [mRoutine.Name]));
+  end;
+  if not mStored.DebugStepFilters then
+  begin
+    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterOff));
+  end;
+end;
+
+class procedure TAtlasIdeDebugStepFilter.UnskipAtCursor;
+var
+  mRoutine: TAtlasStepRoutine;
+  mOptions: TAtlasStepFilterOptions;
+  mVerdict: TAtlasStepVerdict;
+  mStored: TAtlasPluginSettings;
+  mRemoved: Boolean;
+begin
+  if not RoutineAtCursor(mRoutine) then
+  begin
+    Exit;
+  end;
+  mStored := TAtlasIdeSettings.Stored;
+  mOptions := TAtlasStepFilterOptions.Create(True, mStored.DebugStepFilterKinds, mStored.DebugStepFilterPatterns);
+  mRemoved := TStepFilterNames.IndexOfPattern(mOptions.Patterns, mRoutine.Name) >= 0;
+  if mRemoved then
+  begin
+    mOptions.Patterns := TStepFilterNames.WithoutPattern(mOptions.Patterns, mRoutine.Name);
+    SaveOptions(mStored.DebugStepFilters, mOptions.Kinds, mOptions.Patterns);
+  end;
+  // Weitere Muster oder Arten bleiben, wie sie sind: Der Benutzer erfährt, was noch filtert.
+  mVerdict := TAtlasStepFilter.Verdict(mOptions, mRoutine);
+  case mVerdict.Kind of
+    TAtlasStepVerdictKind.Pattern:
+      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterStillByPattern, [mRoutine.Name, mVerdict.Pattern]));
+    TAtlasStepVerdictKind.Kind:
+      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterStillByKind,
+        [mRoutine.Name, TAtlasStepFilterTexts.VerdictText(mVerdict)]));
+  else
+    if mRemoved then
+    begin
+      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterRemoved, [mRoutine.Name]));
+    end
+    else
+    begin
+      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterNotSkipped, [mRoutine.Name]));
+    end;
+  end;
+end;
+
+class procedure TAtlasIdeDebugStepFilter.ShowWindow;
+var
+  mFrame: TAtlasDebugStepFilterFrame;
+begin
+  mFrame := TAtlasIdeDebugStepFilterWindow.Show;
+  if mFrame <> nil then
+  begin
+    FillFrame(mFrame);
+  end;
+end;
+
+class procedure TAtlasIdeDebugStepFilter.ApplySettings;
+var
+  mFrame: TAtlasDebugStepFilterFrame;
+begin
+  mFrame := Frame;
+  if mFrame = nil then
+  begin
+    Exit;
+  end;
+  FillFrame(mFrame);
+  // Neue Muster: Treffer neu zählen; die Arten zählt der Server ohnehin alle.
+  if TAtlasIdeSettings.Current.DebugStepFilterPatterns <> FCounts.Patterns then
+  begin
+    Recount;
+  end;
+end;
+
+class procedure TAtlasIdeDebugStepFilter.ThemeChanged;
+begin
+  TAtlasIdeDebugStepFilterWindow.ApplyTheme;
 end;
 
 end.

@@ -70,6 +70,8 @@ begin
   end;
 end;
 
+{ TIdeUnitSource }
+
 class function TIdeUnitSource.ShortType(const ATypeText, AUnit: string; AUses: TList<string>): string;
 var
   mPos, mEnd, mDot: Integer;
@@ -105,6 +107,8 @@ type
     Uses_: TList<string>;
     function Short(const ATypeText: string): string;
   end;
+
+{ TSourceWriter }
 
 function TSourceWriter.Short(const ATypeText: string): string;
 begin

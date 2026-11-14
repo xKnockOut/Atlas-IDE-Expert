@@ -122,26 +122,6 @@ begin
   Result := TAtlasIdeSettings.Current.Breadcrumbs and TAtlasIdeSettings.Current.BreadcrumbsSectionAppend;
 end;
 
-class procedure TAtlasIdeSectionEdit.Append(const AFileName: string; const ANodes: TAtlasOutlineNodes;
-  const ALines: TArray<string>; ALine, ACharacter, ASection: Integer);
-begin
-  Run(AFileName, ANodes, ALines, ALine, ACharacter,
-    function(const APlace: TAtlasVisibilityPlace; AIndentWidth: Integer; out AEdit: TAtlasSectionEdit): Boolean
-    begin
-      Result := TAtlasSectionEditor.Append(ANodes, ALines, APlace, ASection, AIndentWidth, AEdit);
-    end);
-end;
-
-class procedure TAtlasIdeSectionEdit.Add(const AFileName: string; const ANodes: TAtlasOutlineNodes;
-  const ALines: TArray<string>; ALine, ACharacter: Integer; const AKeyword: string);
-begin
-  Run(AFileName, ANodes, ALines, ALine, ACharacter,
-    function(const APlace: TAtlasVisibilityPlace; AIndentWidth: Integer; out AEdit: TAtlasSectionEdit): Boolean
-    begin
-      Result := TAtlasSectionEditor.Add(ANodes, ALines, APlace, AKeyword, AIndentWidth, AEdit);
-    end);
-end;
-
 class procedure TAtlasIdeSectionEdit.AppendAtCursor;
 var
   mView: IOTAEditView;
@@ -174,6 +154,26 @@ begin
     function(const APlace: TAtlasVisibilityPlace; AIndentWidth: Integer; out AEdit: TAtlasSectionEdit): Boolean
     begin
       Result := TAtlasSectionEditor.Append(mNodes, mLines, APlace, APlace.Current, AIndentWidth, AEdit);
+    end);
+end;
+
+class procedure TAtlasIdeSectionEdit.Append(const AFileName: string; const ANodes: TAtlasOutlineNodes;
+  const ALines: TArray<string>; ALine, ACharacter, ASection: Integer);
+begin
+  Run(AFileName, ANodes, ALines, ALine, ACharacter,
+    function(const APlace: TAtlasVisibilityPlace; AIndentWidth: Integer; out AEdit: TAtlasSectionEdit): Boolean
+    begin
+      Result := TAtlasSectionEditor.Append(ANodes, ALines, APlace, ASection, AIndentWidth, AEdit);
+    end);
+end;
+
+class procedure TAtlasIdeSectionEdit.Add(const AFileName: string; const ANodes: TAtlasOutlineNodes;
+  const ALines: TArray<string>; ALine, ACharacter: Integer; const AKeyword: string);
+begin
+  Run(AFileName, ANodes, ALines, ALine, ACharacter,
+    function(const APlace: TAtlasVisibilityPlace; AIndentWidth: Integer; out AEdit: TAtlasSectionEdit): Boolean
+    begin
+      Result := TAtlasSectionEditor.Add(ANodes, ALines, APlace, AKeyword, AIndentWidth, AEdit);
     end);
 end;
 

@@ -240,22 +240,6 @@ end;
 
 { TArchitectureComparison }
 
-function TArchitectureComparison.ResolutionDiffers: Boolean;
-begin
-  Result := not TArchitectureGrouping.SameResolution(BaselineGrouping.Clamped.Resolution, Grouping.Clamped.Resolution);
-end;
-
-function TArchitectureComparison.GroupingNote: string;
-begin
-  Result := '';
-  if ResolutionDiffers then
-  begin
-    Result := cTexts[TComparisonText.NoteTheSavedStateWas].Fmt([
-      TArchitectureGrouping.ResolutionText(BaselineGrouping.Clamped.Resolution),
-      TArchitectureGrouping.ResolutionText(Grouping.Clamped.Resolution)]);
-  end;
-end;
-
 function TArchitectureComparison.Kinds: TArchitectureFailKinds;
 begin
   Result := [];
@@ -298,6 +282,22 @@ begin
   Result := '';
 end;
 
+function TArchitectureComparison.ResolutionDiffers: Boolean;
+begin
+  Result := not TArchitectureGrouping.SameResolution(BaselineGrouping.Clamped.Resolution, Grouping.Clamped.Resolution);
+end;
+
+function TArchitectureComparison.GroupingNote: string;
+begin
+  Result := '';
+  if ResolutionDiffers then
+  begin
+    Result := cTexts[TComparisonText.NoteTheSavedStateWas].Fmt([
+      TArchitectureGrouping.ResolutionText(BaselineGrouping.Clamped.Resolution),
+      TArchitectureGrouping.ResolutionText(Grouping.Clamped.Resolution)]);
+  end;
+end;
+
 { TArchitectureComparer }
 
 class function TArchitectureComparer.DefaultFailOn: TArchitectureFailKinds;
@@ -305,23 +305,40 @@ begin
   Result := [TArchitectureFailKind.NewCycle];
 end;
 
+class function TArchitectureComparer.CompareWithFile(const AFileName: string; const AOverview: TArchitectureOverview;
+  out AComparison: TArchitectureComparison; out AError: string): Boolean;
+var
+  mBaseline: TArchitectureSnapshot;
+begin
+  AComparison := Default(TArchitectureComparison);
+  Result := TArchitectureSnapshots.Load(AFileName, mBaseline, AError);
+  if Result then
+  begin
+    AComparison := Compare(mBaseline, TArchitectureSnapshots.FromOverview(AOverview));
+  end;
+end;
+
+class function TArchitectureComparer.ResolvePath(const ARoot, APath: string): string;
+var
+  mPath: string;
+begin
+  mPath := Trim(APath);
+  if (mPath = '') or (ARoot = '') or TPath.IsPathRooted(mPath) then
+  begin
+    Exit(mPath);
+  end;
+  Result := TPath.GetFullPath(TPath.Combine(ARoot, mPath));
+end;
+
+class function TArchitectureComparer.MatchSubsystems(const AOld, ANew: TArchitectureSnapshot)
+  : TArray<TComparisonMatch>;
+begin
+  Result := TSubsystemMatcher.Match(AOld, ANew, TSubsystemMatchMode.Overlap);
+end;
+
 class function TArchitectureComparer.KindName(AKind: TArchitectureFailKind): string;
 begin
   Result := cKindNameList[AKind];
-end;
-
-class function TArchitectureComparer.KindNames(AKinds: TArchitectureFailKinds): TArray<string>;
-var
-  mKind: TArchitectureFailKind;
-begin
-  Result := nil;
-  for mKind := Low(TArchitectureFailKind) to High(TArchitectureFailKind) do
-  begin
-    if mKind in AKinds then
-    begin
-      Result := Result + [KindName(mKind)];
-    end;
-  end;
 end;
 
 class function TArchitectureComparer.ParseKinds(const ANames: TArray<string>; out AKinds: TArchitectureFailKinds;
@@ -351,18 +368,6 @@ begin
     end;
   end;
   Result := True;
-end;
-
-class function TArchitectureComparer.ParseKindList(const AText: string; out AKinds: TArchitectureFailKinds;
-  out AError: string): Boolean;
-begin
-  Result := ParseKinds(AText.Split([',', ';', ' '], TStringSplitOptions.ExcludeEmpty), AKinds, AError);
-end;
-
-class function TArchitectureComparer.MatchSubsystems(const AOld, ANew: TArchitectureSnapshot)
-  : TArray<TComparisonMatch>;
-begin
-  Result := TSubsystemMatcher.Match(AOld, ANew, TSubsystemMatchMode.Overlap);
 end;
 
 function UnitMap(const ASnapshot: TArchitectureSnapshot): TDictionary<string, Integer>;
@@ -622,29 +627,24 @@ begin
   end;
 end;
 
-class function TArchitectureComparer.CompareWithFile(const AFileName: string; const AOverview: TArchitectureOverview;
-  out AComparison: TArchitectureComparison; out AError: string): Boolean;
-var
-  mBaseline: TArchitectureSnapshot;
+class function TArchitectureComparer.ParseKindList(const AText: string; out AKinds: TArchitectureFailKinds;
+  out AError: string): Boolean;
 begin
-  AComparison := Default(TArchitectureComparison);
-  Result := TArchitectureSnapshots.Load(AFileName, mBaseline, AError);
-  if Result then
-  begin
-    AComparison := Compare(mBaseline, TArchitectureSnapshots.FromOverview(AOverview));
-  end;
+  Result := ParseKinds(AText.Split([',', ';', ' '], TStringSplitOptions.ExcludeEmpty), AKinds, AError);
 end;
 
-class function TArchitectureComparer.ResolvePath(const ARoot, APath: string): string;
+class function TArchitectureComparer.KindNames(AKinds: TArchitectureFailKinds): TArray<string>;
 var
-  mPath: string;
+  mKind: TArchitectureFailKind;
 begin
-  mPath := Trim(APath);
-  if (mPath = '') or (ARoot = '') or TPath.IsPathRooted(mPath) then
+  Result := nil;
+  for mKind := Low(TArchitectureFailKind) to High(TArchitectureFailKind) do
   begin
-    Exit(mPath);
+    if mKind in AKinds then
+    begin
+      Result := Result + [KindName(mKind)];
+    end;
   end;
-  Result := TPath.GetFullPath(TPath.Combine(ARoot, mPath));
 end;
 
 class function TArchitectureComparer.CyclePath(const ACycle: TComparisonCycle): string;

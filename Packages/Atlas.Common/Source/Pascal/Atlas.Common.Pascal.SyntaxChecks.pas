@@ -494,6 +494,51 @@ begin
     FTokens[mIndex].StartPos, FTokens[mIndex].EndPos);
 end;
 
+procedure TTreeChecker.CheckGoto(AGoto: TSyntaxNode);
+var
+  mScope: TSyntaxNode;
+  mNameIndex: Integer;
+begin
+  if AGoto.Name = '' then
+  begin
+    Exit;
+  end;
+  mScope := GotoScope(AGoto);
+  if (mScope = nil) or LabelVisible(mScope, LabelKey(AGoto.Name)) then
+  begin
+    Exit;
+  end;
+  mNameIndex := IndexAt(AGoto.StartOffset);
+  if mNameIndex >= 0 then
+  begin
+    mNameIndex := NextCode(mNameIndex);
+  end;
+  if mNameIndex < 0 then
+  begin
+    Exit;
+  end;
+  Add('E2031', cTexts[TSyntaxChecksText.LabelExpectedIsNotDeclared].Fmt([AGoto.Name]),
+    FTokens[mNameIndex].StartPos, FTokens[mNameIndex].EndPos);
+end;
+
+function TTreeChecker.LabelsOf(AScope: TSyntaxNode): TArray<string>;
+var
+  mInner: Integer;
+  mContainer: TSyntaxNode;
+begin
+  Result := nil;
+  for mContainer in LabelContainers(AScope) do
+  begin
+    for mInner := 0 to mContainer.ChildCount - 1 do
+    begin
+      if mContainer[mInner].Kind = TSyntaxKind.LabelSection then
+      begin
+        AddSectionLabels(mContainer[mInner], Result);
+      end;
+    end;
+  end;
+end;
+
 function TTreeChecker.LabelContainers(AScope: TSyntaxNode): TArray<TSyntaxNode>;
 var
   mIndex: Integer;
@@ -533,24 +578,6 @@ begin
   end;
 end;
 
-function TTreeChecker.LabelsOf(AScope: TSyntaxNode): TArray<string>;
-var
-  mInner: Integer;
-  mContainer: TSyntaxNode;
-begin
-  Result := nil;
-  for mContainer in LabelContainers(AScope) do
-  begin
-    for mInner := 0 to mContainer.ChildCount - 1 do
-    begin
-      if mContainer[mInner].Kind = TSyntaxKind.LabelSection then
-      begin
-        AddSectionLabels(mContainer[mInner], Result);
-      end;
-    end;
-  end;
-end;
-
 function TTreeChecker.GotoScope(AGoto: TSyntaxNode): TSyntaxNode;
 begin
   Result := AGoto.Parent;
@@ -577,33 +604,6 @@ begin
     Result := (mOuter.Kind = TSyntaxKind.RoutineDecl) and (IndexStr(AKey, LabelsOf(mOuter)) >= 0);
     mOuter := mOuter.Parent;
   end;
-end;
-
-procedure TTreeChecker.CheckGoto(AGoto: TSyntaxNode);
-var
-  mScope: TSyntaxNode;
-  mNameIndex: Integer;
-begin
-  if AGoto.Name = '' then
-  begin
-    Exit;
-  end;
-  mScope := GotoScope(AGoto);
-  if (mScope = nil) or LabelVisible(mScope, LabelKey(AGoto.Name)) then
-  begin
-    Exit;
-  end;
-  mNameIndex := IndexAt(AGoto.StartOffset);
-  if mNameIndex >= 0 then
-  begin
-    mNameIndex := NextCode(mNameIndex);
-  end;
-  if mNameIndex < 0 then
-  begin
-    Exit;
-  end;
-  Add('E2031', cTexts[TSyntaxChecksText.LabelExpectedIsNotDeclared].Fmt([AGoto.Name]),
-    FTokens[mNameIndex].StartPos, FTokens[mNameIndex].EndPos);
 end;
 
 function TTreeChecker.Run(ARoot: TSyntaxNode): TArray<TSyntaxDiagnostic>;

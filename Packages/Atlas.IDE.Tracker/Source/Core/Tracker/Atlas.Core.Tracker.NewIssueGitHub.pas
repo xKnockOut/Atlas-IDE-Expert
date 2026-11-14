@@ -263,6 +263,8 @@ begin
   end;
 end;
 
+{ TAtlasGitHubNewIssue }
+
 class function TAtlasGitHubNewIssue.RepositoryPage(const ATarget: TAtlasTrackerTarget): string;
 begin
   Result := '';

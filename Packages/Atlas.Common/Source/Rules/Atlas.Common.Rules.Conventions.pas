@@ -54,6 +54,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TRuleConventions }
+
 class function TRuleConventions.IsNamingRule(const ARuleId: string): Boolean;
 begin
   Result := (Pos('name', LowerCase(ARuleId)) > 0) or (Pos('naming', LowerCase(ARuleId)) > 0);

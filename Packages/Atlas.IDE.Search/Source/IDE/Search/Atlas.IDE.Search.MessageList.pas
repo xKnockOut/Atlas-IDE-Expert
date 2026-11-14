@@ -49,6 +49,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeSearchMessages }
+
 class procedure TAtlasIdeSearchMessages.Show(const AFileName, ATitle: string;
   const AEntries: TArray<TAtlasSearchEntry>; ATotal: Integer);
 var

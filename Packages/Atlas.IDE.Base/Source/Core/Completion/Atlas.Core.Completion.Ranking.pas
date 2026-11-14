@@ -372,12 +372,61 @@ begin
   end;
 end;
 
-class function TAtlasRanking.Order(const AItems: TAtlasCompletionItems; const APattern: string;
-  const AOptions: TAtlasRankOptions): TArray<Integer>;
+class function TAtlasRanking.Typos(const AItems: TAtlasCompletionItems; const APattern: string;
+  const AOptions: TAtlasRankOptions; const AScores, ABoosts: TArray<Integer>): TArray<Integer>;
 var
-  mRestStart: Integer;
+  mItems: TAtlasCompletionItems;
+  mDistances: TArray<Integer>;
+  mCandidates: TList<Integer>;
+  mIndex, mLimit: Integer;
+  mBoosts: TArray<Integer>;
 begin
-  Result := Order(AItems, APattern, AOptions, mRestStart);
+  Result := nil;
+  mItems := AItems;
+  mBoosts := ABoosts;
+  mLimit := TAtlasCompletionMatcher.TypoLimit(APattern);
+  SetLength(mDistances, Length(mItems));
+  mCandidates := TList<Integer>.Create;
+  try
+    for mIndex := 0 to High(mItems) do
+    begin
+      // Nur, was nicht schon regulär passt; keine Aktionen.
+      if mItems[mIndex].IsAction or not Matches(mItems[mIndex], AOptions.Chip) or (mItems[mIndex].Conversion <> '') or
+        (AScores[mIndex] <> TAtlasCompletionMatcher.cNoMatch) or (mItems[mIndex].Inaccessible <> '') then
+      begin
+        Continue;
+      end;
+      mDistances[mIndex] := TAtlasCompletionMatcher.TypoDistance(APattern, NameOf(mItems[mIndex]));
+      if mDistances[mIndex] <= mLimit then
+      begin
+        mCandidates.Add(mIndex);
+      end;
+    end;
+    if mCandidates.Count = 0 then
+    begin
+      Exit;
+    end;
+    mCandidates.Sort(TComparer<Integer>.Construct(
+      function(const A, B: Integer): Integer
+      begin
+        Result := mDistances[A] - mDistances[B];
+        if Result = 0 then
+        begin
+          Result := mBoosts[B] - mBoosts[A];
+        end;
+        if Result = 0 then
+        begin
+          Result := CompareText(mItems[A].Name, mItems[B].Name);
+        end;
+      end));
+    Result := [cTypoHeader];
+    for mIndex := 0 to Min(mCandidates.Count, cMaxTypos) - 1 do
+    begin
+      Result := Result + [mCandidates[mIndex]];
+    end;
+  finally
+    mCandidates.Free;
+  end;
 end;
 
 /// <summary>Weder Hinweis noch angeheftet noch Deklaration eines unbekannten Namens.</summary>
@@ -539,6 +588,8 @@ type
     property Scores: TArray<Integer> read FScores;
     property Boosts: TArray<Integer> read FBoosts;
   end;
+
+{ TRanker }
 
 constructor TRanker.Create(const AItems: TAtlasCompletionItems; const APattern: string;
   const AOptions: TAtlasRankOptions);
@@ -911,6 +962,14 @@ begin
 end;
 
 class function TAtlasRanking.Order(const AItems: TAtlasCompletionItems; const APattern: string;
+  const AOptions: TAtlasRankOptions): TArray<Integer>;
+var
+  mRestStart: Integer;
+begin
+  Result := Order(AItems, APattern, AOptions, mRestStart);
+end;
+
+class function TAtlasRanking.Order(const AItems: TAtlasCompletionItems; const APattern: string;
   const AOptions: TAtlasRankOptions; out ARestStart: Integer): TArray<Integer>;
 var
   mRanker: TRanker;
@@ -935,63 +994,6 @@ begin
     end;
   finally
     mRanker.Free;
-  end;
-end;
-
-class function TAtlasRanking.Typos(const AItems: TAtlasCompletionItems; const APattern: string;
-  const AOptions: TAtlasRankOptions; const AScores, ABoosts: TArray<Integer>): TArray<Integer>;
-var
-  mItems: TAtlasCompletionItems;
-  mDistances: TArray<Integer>;
-  mCandidates: TList<Integer>;
-  mIndex, mLimit: Integer;
-  mBoosts: TArray<Integer>;
-begin
-  Result := nil;
-  mItems := AItems;
-  mBoosts := ABoosts;
-  mLimit := TAtlasCompletionMatcher.TypoLimit(APattern);
-  SetLength(mDistances, Length(mItems));
-  mCandidates := TList<Integer>.Create;
-  try
-    for mIndex := 0 to High(mItems) do
-    begin
-      // Nur, was nicht schon regulär passt; keine Aktionen.
-      if mItems[mIndex].IsAction or not Matches(mItems[mIndex], AOptions.Chip) or (mItems[mIndex].Conversion <> '') or
-        (AScores[mIndex] <> TAtlasCompletionMatcher.cNoMatch) or (mItems[mIndex].Inaccessible <> '') then
-      begin
-        Continue;
-      end;
-      mDistances[mIndex] := TAtlasCompletionMatcher.TypoDistance(APattern, NameOf(mItems[mIndex]));
-      if mDistances[mIndex] <= mLimit then
-      begin
-        mCandidates.Add(mIndex);
-      end;
-    end;
-    if mCandidates.Count = 0 then
-    begin
-      Exit;
-    end;
-    mCandidates.Sort(TComparer<Integer>.Construct(
-      function(const A, B: Integer): Integer
-      begin
-        Result := mDistances[A] - mDistances[B];
-        if Result = 0 then
-        begin
-          Result := mBoosts[B] - mBoosts[A];
-        end;
-        if Result = 0 then
-        begin
-          Result := CompareText(mItems[A].Name, mItems[B].Name);
-        end;
-      end));
-    Result := [cTypoHeader];
-    for mIndex := 0 to Min(mCandidates.Count, cMaxTypos) - 1 do
-    begin
-      Result := Result + [mCandidates[mIndex]];
-    end;
-  finally
-    mCandidates.Free;
   end;
 end;
 
@@ -1020,13 +1022,28 @@ begin
   end;
 end;
 
-class function TAtlasRanking.ProjectBoost(ACount: Integer): Integer;
+class function TAtlasRanking.ItemCount(const AOrder: TArray<Integer>): Integer;
+var
+  mIndex: Integer;
 begin
   Result := 0;
-  if ACount > 0 then
+  for mIndex in AOrder do
   begin
-    Result := Min(cMaxProjectBoost, 1 + Trunc(cProjectBoostPerDoubling * Log2(ACount)));
+    if not IsHeader(mIndex) then
+    begin
+      Inc(Result);
+    end;
   end;
+end;
+
+class function TAtlasRanking.IsHeader(AValue: Integer): Boolean;
+begin
+  Result := AValue < 0;
+end;
+
+class function TAtlasRanking.OnlyTypos(const AOrder: TArray<Integer>): Boolean;
+begin
+  Result := (Length(AOrder) > 1) and (AOrder[0] = cTypoHeader);
 end;
 
 class function TAtlasRanking.Inaccessible(const AItems: TAtlasCompletionItems;
@@ -1068,28 +1085,13 @@ begin
   end;
 end;
 
-class function TAtlasRanking.ItemCount(const AOrder: TArray<Integer>): Integer;
-var
-  mIndex: Integer;
+class function TAtlasRanking.ProjectBoost(ACount: Integer): Integer;
 begin
   Result := 0;
-  for mIndex in AOrder do
+  if ACount > 0 then
   begin
-    if not IsHeader(mIndex) then
-    begin
-      Inc(Result);
-    end;
+    Result := Min(cMaxProjectBoost, 1 + Trunc(cProjectBoostPerDoubling * Log2(ACount)));
   end;
-end;
-
-class function TAtlasRanking.IsHeader(AValue: Integer): Boolean;
-begin
-  Result := AValue < 0;
-end;
-
-class function TAtlasRanking.OnlyTypos(const AOrder: TArray<Integer>): Boolean;
-begin
-  Result := (Length(AOrder) > 1) and (AOrder[0] = cTypoHeader);
 end;
 
 end.

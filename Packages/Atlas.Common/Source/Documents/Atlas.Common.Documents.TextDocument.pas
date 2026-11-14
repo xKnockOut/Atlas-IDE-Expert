@@ -70,6 +70,12 @@ begin
   FLines := TLineTable.Build(FText);
 end;
 
+destructor TTextDocument.Destroy;
+begin
+  FDerived.Free;
+  inherited;
+end;
+
 function TTextDocument.GetUri: string;
 begin
   Result := FUri;
@@ -112,35 +118,6 @@ end;
 function TTextDocument.PositionAt(AOffset: Integer): TTextPosition;
 begin
   Result := FLines.PositionAt(AOffset);
-end;
-
-destructor TTextDocument.Destroy;
-begin
-  FDerived.Free;
-  inherited;
-end;
-
-function TTextDocument.Derived(const AKey: string; const AFactory: TFunc<IInterface>): IInterface;
-begin
-  // Die Sperre gilt auch während AFactory: weitere Aufrufer warten, statt selbst zu erzeugen.
-  TMonitor.Enter(Self);
-  try
-    if (FDerived <> nil) and FDerived.TryGetValue(AKey, Result) then
-    begin
-      Exit;
-    end;
-    Result := AFactory();
-    if Result <> nil then
-    begin
-      if FDerived = nil then
-      begin
-        FDerived := TDictionary<string, IInterface>.Create;
-      end;
-      FDerived.Add(AKey, Result);
-    end;
-  finally
-    TMonitor.Exit(Self);
-  end;
 end;
 
 function TTextDocument.ApplyChanges(const AChanges: TArray<TTextChange>; AVersion: Integer): ITextDocument;
@@ -186,6 +163,29 @@ begin
     mIntermediate := TTextDocument.Create(FUri, FLanguageId, AVersion, mText);
   end;
   Result := mIntermediate;
+end;
+
+function TTextDocument.Derived(const AKey: string; const AFactory: TFunc<IInterface>): IInterface;
+begin
+  // Die Sperre gilt auch während AFactory: weitere Aufrufer warten, statt selbst zu erzeugen.
+  TMonitor.Enter(Self);
+  try
+    if (FDerived <> nil) and FDerived.TryGetValue(AKey, Result) then
+    begin
+      Exit;
+    end;
+    Result := AFactory();
+    if Result <> nil then
+    begin
+      if FDerived = nil then
+      begin
+        FDerived := TDictionary<string, IInterface>.Create;
+      end;
+      FDerived.Add(AKey, Result);
+    end;
+  finally
+    TMonitor.Exit(Self);
+  end;
 end;
 
 initialization

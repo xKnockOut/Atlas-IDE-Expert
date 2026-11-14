@@ -254,103 +254,6 @@ begin
   inherited Destroy;
 end;
 
-class procedure TAtlasIdeDebugAccessViolation.Start(const ASession: TAtlasAvSessionFunc;
-  const AMessage: TProc<string>);
-begin
-  if FInstance = nil then
-  begin
-    FInstance := TAtlasIdeDebugAccessViolation.Create(ASession, AMessage);
-    FInstance.FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FInstance.FListener);
-    FInstance.FHandler := TAtlasIdeDebugExceptions.AddExceptionHandler(
-      procedure(const AStop: TAtlasDebugExceptionStop)
-      begin
-        if FInstance <> nil then
-        begin
-          FInstance.ExceptionTaken(AStop);
-        end;
-      end);
-    TAtlasIdeDebugExceptionBar.SetExplanationHandler(
-      procedure(AAction: TAtlasDebugBarAction)
-      begin
-        if FInstance <> nil then
-        begin
-          FInstance.RunAction(AAction);
-        end;
-      end);
-  end;
-  TAtlasIdeDebugSession.Start;
-end;
-
-class procedure TAtlasIdeDebugAccessViolation.Release;
-var
-  mInstance: TAtlasIdeDebugAccessViolation;
-begin
-  if FInstance = nil then
-  begin
-    Exit;
-  end;
-  mInstance := FInstance;
-  mInstance.Drop;
-  FInstance := nil;
-  // Abgeschaltet: Die Leiste zeigt wieder nur die Meldung.
-  TAtlasIdeDebugExceptionBar.Explain(mInstance.FProgress.Stop, Default(TAtlasDebugBannerExplanation));
-  TAtlasIdeDebugExceptionBar.SetExplanationHandler(nil);
-  if mInstance.FHandler <> 0 then
-  begin
-    TAtlasIdeDebugExceptions.RemoveExceptionHandler(mInstance.FHandler);
-  end;
-  if mInstance.FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(mInstance.FListener);
-  end;
-  mInstance.FListener := nil;
-  mInstance.Free;
-  TAtlasIdeAvUnderline.Invalidate;
-end;
-
-class function
- TAtlasIdeDebugAccessViolation.Started: Boolean;
-
-begin
-  Result := FInstance <> nil;
-end;
-
-class function TAtlasIdeDebugAccessViolation.Enabled: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.DebugExplainAccessViolation;
-end;
-
-class procedure TAtlasIdeDebugAccessViolation.SetWhereAssigned(const AProc: TAtlasAvWhereAssignedProc);
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.FHooks.WhereAssigned := AProc;
-  end;
-end;
-
-class procedure TAtlasIdeDebugAccessViolation.SetEvaluate(const AProc: TAtlasAvEvaluateProc);
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.FHooks.Evaluate := AProc;
-  end;
-end;
-
-procedure TAtlasIdeDebugAccessViolation.EndInternal;
-begin
-  if FInternal then
-  begin
-    FInternal := False;
-    TAtlasIdeDebugSession.EndInternal;
-  end;
-end;
-
-function TAtlasIdeDebugAccessViolation.StillStopped: Boolean;
-begin
-  Result := (TAtlasIdeDebugSession.StopCount = FProgress.Stop) and (TAtlasIdeDebugSession.StoppedThread <> nil);
-end;
-
 procedure TAtlasIdeDebugAccessViolation.Drop;
 begin
   // Antworten noch laufender Anfragen verwerfen.
@@ -378,58 +281,6 @@ begin
   begin
     TAtlasIdeAvUnderline.Invalidate;
   end;
-end;
-
-/// <summary>debug.moduleOfAddress (#1820) zusätzlich zu debug.explainAccessViolation?</summary>
-function ModuleOfAddressEnabled: Boolean;
-begin
-  Result := TAtlasIdeDebugAccessViolation.Enabled and TAtlasIdeSettings.Current.DebugModuleOfAddress;
-end;
-
-procedure TAtlasIdeDebugAccessViolation.ExceptionTaken(const AStop: TAtlasDebugExceptionStop);
-begin
-  Drop;
-  if AStop.Continued or not Enabled then
-  begin
-    Exit;
-  end;
-  FFacts.Access := TAtlasAvMessage.Parse(AStop.Exception.ExceptionClass, AStop.Exception.Message);
-  if not FFacts.Access.IsAccessViolation then
-  begin
-    Exit;
-  end;
-  if ModuleOfAddressEnabled then
-  begin
-    FFacts.Note := TAtlasIdeDebugModules.Note(AStop.Exception.Message, AStop.Frames);
-  end;
-  // Der Debugger wertet im obersten Rahmen aus: Nur wenn der eigener Code mit Quelltext ist, passt die Zeile.
-  // Sonst nennt Atlas nur das Modul der Fehleradresse (#1820), falls bekannt.
-  FFacts.ModuleOnly := (Length(AStop.Frames) = 0) or not AStop.Frames[0].HasSource or not AStop.Frames[0].Own;
-  if FFacts.ModuleOnly and not FFacts.Note.Known then
-  begin
-    TAtlasGuard.Log('Zugriffsverletzung erklären: Halt nicht in eigenem Code mit Quelltext; nur die Meldung');
-    Exit;
-  end;
-  FFacts.Exception := AStop.Exception;
-  FProgress.Stop := AStop.Stop;
-  if FFacts.ModuleOnly then
-  begin
-    // Ort für Kopf und Meldungen: die letzte eigene Stelle, sonst das Modul.
-    FFacts.FileName := FFacts.Note.FileName;
-    FFacts.Line := FFacts.Note.Line;
-  end
-  else
-  begin
-    FFacts.FileName := AStop.Frames[0].FileName;
-    FFacts.Line := AStop.Frames[0].Line - 1;
-    FFacts.PointerSize := TAtlasAvJson.PointerSize(TAtlasIdeDebugSession.LaunchPlatform);
-    TAtlasIdeDebugExceptionBar.Explain(FProgress.Stop, TAtlasAvTexts.Busy);
-  end;
-  FProgress.Since := TThread.GetTickCount64;
-  FProgress.Quiet := 0;
-  FProgress.Phase := TPhase.Wait;
-  FTimer.Interval := cWaitMs;
-  FTimer.Enabled := True;
 end;
 
 procedure TAtlasIdeDebugAccessViolation.Tick(Sender: TObject);
@@ -511,53 +362,6 @@ begin
     mSession.Sync(FFacts.FileName, mText);
   end;
   Fetch(mSession);
-end;
-
-procedure TAtlasIdeDebugAccessViolation.Fetch(ASession: TLspSession);
-var
-  mFileName: string;
-  mLine, mPointerSize, mRequest: Integer;
-  mWorker: TThread;
-begin
-  mFileName := FFacts.FileName;
-  mLine := FFacts.Line;
-  mPointerSize := FFacts.PointerSize;
-  ReapWorkers(False);
-  Inc(FProgress.Request);
-  mRequest := FProgress.Request;
-  FProgress.Phase := TPhase.Request;
-  mWorker := TThread.CreateAnonymousThread(
-    procedure
-    var
-      mChains: TAtlasAvChains;
-    begin
-      mChains := Default(TAtlasAvChains);
-      try
-        mChains := ASession.AccessChains(mFileName, mLine, mPointerSize, cRequestTimeoutMs);
-      except
-        // Server langsam oder weg: keine Ketten.
-        mChains := Default(TAtlasAvChains);
-      end;
-      // Atlas gehört der Eintrag: beim Entladen verworfen.
-      TAtlasMainThread.Queue(TAtlasFeature.Debugger,
-        procedure
-        begin
-          if FInstance <> nil then
-          begin
-            TAtlasGuard.Run(TAtlasFeature.Debugger,
-              procedure
-              begin
-                if FInstance <> nil then
-                begin
-                  FInstance.Accept(mRequest, mChains);
-                end;
-              end);
-          end;
-        end);
-    end);
-  mWorker.FreeOnTerminate := False;
-  FWorkers.Add(mWorker);
-  mWorker.Start;
 end;
 
 procedure TAtlasIdeDebugAccessViolation.Accept(ARequest: Integer; const AChains: TAtlasAvChains);
@@ -675,6 +479,105 @@ begin
   end;
 end;
 
+procedure TAtlasIdeDebugAccessViolation.Fetch(ASession: TLspSession);
+var
+  mFileName: string;
+  mLine, mPointerSize, mRequest: Integer;
+  mWorker: TThread;
+begin
+  mFileName := FFacts.FileName;
+  mLine := FFacts.Line;
+  mPointerSize := FFacts.PointerSize;
+  ReapWorkers(False);
+  Inc(FProgress.Request);
+  mRequest := FProgress.Request;
+  FProgress.Phase := TPhase.Request;
+  mWorker := TThread.CreateAnonymousThread(
+    procedure
+    var
+      mChains: TAtlasAvChains;
+    begin
+      mChains := Default(TAtlasAvChains);
+      try
+        mChains := ASession.AccessChains(mFileName, mLine, mPointerSize, cRequestTimeoutMs);
+      except
+        // Server langsam oder weg: keine Ketten.
+        mChains := Default(TAtlasAvChains);
+      end;
+      // Atlas gehört der Eintrag: beim Entladen verworfen.
+      TAtlasMainThread.Queue(TAtlasFeature.Debugger,
+        procedure
+        begin
+          if FInstance <> nil then
+          begin
+            TAtlasGuard.Run(TAtlasFeature.Debugger,
+              procedure
+              begin
+                if FInstance <> nil then
+                begin
+                  FInstance.Accept(mRequest, mChains);
+                end;
+              end);
+          end;
+        end);
+    end);
+  mWorker.FreeOnTerminate := False;
+  FWorkers.Add(mWorker);
+  mWorker.Start;
+end;
+
+/// <summary>debug.moduleOfAddress (#1820) zusätzlich zu debug.explainAccessViolation?</summary>
+function ModuleOfAddressEnabled: Boolean;
+begin
+  Result := TAtlasIdeDebugAccessViolation.Enabled and TAtlasIdeSettings.Current.DebugModuleOfAddress;
+end;
+
+procedure TAtlasIdeDebugAccessViolation.ExceptionTaken(const AStop: TAtlasDebugExceptionStop);
+begin
+  Drop;
+  if AStop.Continued or not Enabled then
+  begin
+    Exit;
+  end;
+  FFacts.Access := TAtlasAvMessage.Parse(AStop.Exception.ExceptionClass, AStop.Exception.Message);
+  if not FFacts.Access.IsAccessViolation then
+  begin
+    Exit;
+  end;
+  if ModuleOfAddressEnabled then
+  begin
+    FFacts.Note := TAtlasIdeDebugModules.Note(AStop.Exception.Message, AStop.Frames);
+  end;
+  // Der Debugger wertet im obersten Rahmen aus: Nur wenn der eigener Code mit Quelltext ist, passt die Zeile.
+  // Sonst nennt Atlas nur das Modul der Fehleradresse (#1820), falls bekannt.
+  FFacts.ModuleOnly := (Length(AStop.Frames) = 0) or not AStop.Frames[0].HasSource or not AStop.Frames[0].Own;
+  if FFacts.ModuleOnly and not FFacts.Note.Known then
+  begin
+    TAtlasGuard.Log('Zugriffsverletzung erklären: Halt nicht in eigenem Code mit Quelltext; nur die Meldung');
+    Exit;
+  end;
+  FFacts.Exception := AStop.Exception;
+  FProgress.Stop := AStop.Stop;
+  if FFacts.ModuleOnly then
+  begin
+    // Ort für Kopf und Meldungen: die letzte eigene Stelle, sonst das Modul.
+    FFacts.FileName := FFacts.Note.FileName;
+    FFacts.Line := FFacts.Note.Line;
+  end
+  else
+  begin
+    FFacts.FileName := AStop.Frames[0].FileName;
+    FFacts.Line := AStop.Frames[0].Line - 1;
+    FFacts.PointerSize := TAtlasAvJson.PointerSize(TAtlasIdeDebugSession.LaunchPlatform);
+    TAtlasIdeDebugExceptionBar.Explain(FProgress.Stop, TAtlasAvTexts.Busy);
+  end;
+  FProgress.Since := TThread.GetTickCount64;
+  FProgress.Quiet := 0;
+  FProgress.Phase := TPhase.Wait;
+  FTimer.Interval := cWaitMs;
+  FTimer.Enabled := True;
+end;
+
 procedure TAtlasIdeDebugAccessViolation.DeferredDone(const AValue: TAtlasDebugValue);
 begin
   if not FDeferred.Active or (FAnalysis = nil) then
@@ -684,26 +587,6 @@ begin
   EndInternal;
   FDeferred.Active := False;
   FAnalysis.Answer(AValue.State = TAtlasDebugValueState.Value, AValue.Text);
-end;
-
-function TAtlasIdeDebugAccessViolation.TStopFacts.Place: string;
-begin
-  // Ohne Zeile (nur das Modul bekannt, #1820) nur der Name.
-  if Line < 0 then
-  begin
-    Exit(ExtractFileName(FileName));
-  end;
-  Result := Format('%s:%d', [ExtractFileName(FileName), Line + 1]);
-end;
-
-function TAtlasIdeDebugAccessViolation.TStopFacts.Header: string;
-begin
-  Result := Exception.ExceptionClass;
-  if Exception.Message <> '' then
-  begin
-    Result := Result + ': ' + Exception.Message;
-  end;
-  Result := Result + ' (' + Place + ')';
 end;
 
 procedure TAtlasIdeDebugAccessViolation.Finish;
@@ -797,6 +680,20 @@ begin
   end;
 end;
 
+procedure TAtlasIdeDebugAccessViolation.EndInternal;
+begin
+  if FInternal then
+  begin
+    FInternal := False;
+    TAtlasIdeDebugSession.EndInternal;
+  end;
+end;
+
+function TAtlasIdeDebugAccessViolation.StillStopped: Boolean;
+begin
+  Result := (TAtlasIdeDebugSession.StopCount = FProgress.Stop) and (TAtlasIdeDebugSession.StoppedThread <> nil);
+end;
+
 procedure TAtlasIdeDebugAccessViolation.ReapWorkers(AWait: Boolean);
 var
   mIndex: Integer;
@@ -813,6 +710,111 @@ begin
       FWorkers[mIndex].Free;
       FWorkers.Delete(mIndex);
     end;
+  end;
+end;
+
+class procedure TAtlasIdeDebugAccessViolation.Start(const ASession: TAtlasAvSessionFunc;
+  const AMessage: TProc<string>);
+begin
+  if FInstance = nil then
+  begin
+    FInstance := TAtlasIdeDebugAccessViolation.Create(ASession, AMessage);
+    FInstance.FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FInstance.FListener);
+    FInstance.FHandler := TAtlasIdeDebugExceptions.AddExceptionHandler(
+      procedure(const AStop: TAtlasDebugExceptionStop)
+      begin
+        if FInstance <> nil then
+        begin
+          FInstance.ExceptionTaken(AStop);
+        end;
+      end);
+    TAtlasIdeDebugExceptionBar.SetExplanationHandler(
+      procedure(AAction: TAtlasDebugBarAction)
+      begin
+        if FInstance <> nil then
+        begin
+          FInstance.RunAction(AAction);
+        end;
+      end);
+  end;
+  TAtlasIdeDebugSession.Start;
+end;
+
+class procedure TAtlasIdeDebugAccessViolation.Release;
+var
+  mInstance: TAtlasIdeDebugAccessViolation;
+begin
+  if FInstance = nil then
+  begin
+    Exit;
+  end;
+  mInstance := FInstance;
+  mInstance.Drop;
+  FInstance := nil;
+  // Abgeschaltet: Die Leiste zeigt wieder nur die Meldung.
+  TAtlasIdeDebugExceptionBar.Explain(mInstance.FProgress.Stop, Default(TAtlasDebugBannerExplanation));
+  TAtlasIdeDebugExceptionBar.SetExplanationHandler(nil);
+  if mInstance.FHandler <> 0 then
+  begin
+    TAtlasIdeDebugExceptions.RemoveExceptionHandler(mInstance.FHandler);
+  end;
+  if mInstance.FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(mInstance.FListener);
+  end;
+  mInstance.FListener := nil;
+  mInstance.Free;
+  TAtlasIdeAvUnderline.Invalidate;
+end;
+
+{ TAtlasIdeDebugAccessViolation.TStopFacts }
+
+function TAtlasIdeDebugAccessViolation.TStopFacts.Place: string;
+begin
+  // Ohne Zeile (nur das Modul bekannt, #1820) nur der Name.
+  if Line < 0 then
+  begin
+    Exit(ExtractFileName(FileName));
+  end;
+  Result := Format('%s:%d', [ExtractFileName(FileName), Line + 1]);
+end;
+
+function TAtlasIdeDebugAccessViolation.TStopFacts.Header: string;
+begin
+  Result := Exception.ExceptionClass;
+  if Exception.Message <> '' then
+  begin
+    Result := Result + ': ' + Exception.Message;
+  end;
+  Result := Result + ' (' + Place + ')';
+end;
+
+class function
+ TAtlasIdeDebugAccessViolation.Started: Boolean;
+
+begin
+  Result := FInstance <> nil;
+end;
+
+class function TAtlasIdeDebugAccessViolation.Enabled: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.DebugExplainAccessViolation;
+end;
+
+class procedure TAtlasIdeDebugAccessViolation.SetWhereAssigned(const AProc: TAtlasAvWhereAssignedProc);
+begin
+  if FInstance <> nil then
+  begin
+    FInstance.FHooks.WhereAssigned := AProc;
+  end;
+end;
+
+class procedure TAtlasIdeDebugAccessViolation.SetEvaluate(const AProc: TAtlasAvEvaluateProc);
+begin
+  if FInstance <> nil then
+  begin
+    FInstance.FHooks.Evaluate := AProc;
   end;
 end;
 

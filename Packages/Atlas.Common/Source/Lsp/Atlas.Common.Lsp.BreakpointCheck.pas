@@ -174,23 +174,6 @@ begin
   end;
 end;
 
-class function TLspBreakpointCheck.CodeLines(ATree: TSyntaxTree): TArray<Boolean>;
-var
-  mLines: TArray<Boolean>;
-begin
-  mLines := nil;
-  if (ATree <> nil) and (ATree.Root <> nil) then
-  begin
-    ATree.Root.Walk(
-      function(ANode: TSyntaxNode): Boolean
-      begin
-        AddNode(mLines, ANode);
-        Result := True;
-      end);
-  end;
-  Result := mLines;
-end;
-
 class function TLspBreakpointCheck.InactiveCondition(const AProcessed: TPreprocessorResult; ALine: Integer;
   out ACondition: string): Boolean;
 var
@@ -253,26 +236,6 @@ begin
   end;
 end;
 
-class function TLspBreakpointCheck.EnclosingBody(ATree: TSyntaxTree; ALine: Integer): TSyntaxNode;
-var
-  mBest: TSyntaxNode;
-begin
-  mBest := nil;
-  if (ATree <> nil) and (ATree.Root <> nil) then
-  begin
-    ATree.Root.Walk(
-      function(ANode: TSyntaxNode): Boolean
-      begin
-        Result := (ANode.StartPos.Line <= ALine) and (ANode.EndPos.Line >= ALine);
-        if Result and IsBody(ANode) then
-        begin
-          mBest := ANode;
-        end;
-      end);
-  end;
-  Result := mBest;
-end;
-
 class function TLspBreakpointCheck.NextCodeLine(const ALines: TArray<Boolean>; ATree: TSyntaxTree;
   ALine: Integer): Integer;
 var
@@ -297,6 +260,43 @@ begin
       Exit(mLine);
     end;
   end;
+end;
+
+class function TLspBreakpointCheck.EnclosingBody(ATree: TSyntaxTree; ALine: Integer): TSyntaxNode;
+var
+  mBest: TSyntaxNode;
+begin
+  mBest := nil;
+  if (ATree <> nil) and (ATree.Root <> nil) then
+  begin
+    ATree.Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        Result := (ANode.StartPos.Line <= ALine) and (ANode.EndPos.Line >= ALine);
+        if Result and IsBody(ANode) then
+        begin
+          mBest := ANode;
+        end;
+      end);
+  end;
+  Result := mBest;
+end;
+
+class function TLspBreakpointCheck.CodeLines(ATree: TSyntaxTree): TArray<Boolean>;
+var
+  mLines: TArray<Boolean>;
+begin
+  mLines := nil;
+  if (ATree <> nil) and (ATree.Root <> nil) then
+  begin
+    ATree.Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        AddNode(mLines, ANode);
+        Result := True;
+      end);
+  end;
+  Result := mLines;
 end;
 
 class function TLspBreakpointCheck.Check(ATree: TSyntaxTree; const AProcessed: TPreprocessorResult;

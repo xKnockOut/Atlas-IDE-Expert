@@ -115,23 +115,6 @@ type
 
 { TAtlasIdeDockWindow }
 
-class procedure TAtlasIdeDockWindow.UpdateIcon(AHost: TAtlasIdeDockWindow);
-var
-  mIcon: TIcon;
-begin
-  if (AHost = nil) or (AHost.Form = nil) then
-  begin
-    Exit;
-  end;
-  mIcon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
-  try
-    // Icon ist erst in TForm öffentlich.
-    TForm(AHost.Form).Icon.Assign(mIcon);
-  finally
-    mIcon.Free;
-  end;
-end;
-
 constructor TAtlasIdeDockWindow.Create(const ADock: INTACustomDockableForm; APersistent: Boolean);
 var
   mServices: INTAServices;
@@ -196,6 +179,70 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeDockWindow.ThemeForm(AForm: TCustomForm);
+var
+  mTheming: IOTAIDEThemingServices;
+begin
+  if (AForm = nil) or not Supports(BorlandIDEServices, IOTAIDEThemingServices, mTheming) or
+    not mTheming.IDEThemingEnabled then
+  begin
+    Exit;
+  end;
+  try
+    mTheming.ApplyTheme(AForm);
+    // Der Frame ist durchsichtig und zeigt den Grund der Form; ApplyTheme setzt ihn nicht (schwebend hellgrau
+    // unter weißer Schrift).
+    if mTheming.StyleServices <> nil then
+    begin
+      TFormAccess(AForm).Color := mTheming.StyleServices.GetSystemColor(clBtnFace);
+    end;
+    ApplyDarkCaption(AForm);
+  except
+    // Thema ist Kosmetik: ein Fehler darf das Fenster nicht verhindern.
+    on E: Exception do
+      TAtlasGuard.Log(Format('Thema der Form %s: %s: %s', [AForm.ClassName, E.ClassName,
+        TAtlasGuard.MessageText(E.Message)]));
+  end;
+end;
+
+class procedure TAtlasIdeDockWindow.ApplyDarkCaption(AForm: TCustomForm);
+const
+  // Fehlt in Delphi 12 (Winapi.Dwmapi): ab Windows 10 20H1.
+  cDWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+var
+  mTheming: IOTAIDEThemingServices;
+  mWindow: TColor;
+  mDark: BOOL;
+begin
+  if (AForm = nil) or not AForm.HandleAllocated or
+    not Supports(BorlandIDEServices, IOTAIDEThemingServices, mTheming) or not mTheming.IDEThemingEnabled or
+    (mTheming.StyleServices = nil) then
+  begin
+    Exit;
+  end;
+  // Dunkel, wenn der Fenstergrund des IDE-Stils dunkel ist (Helligkeit nach Rec. 601).
+  mWindow := ColorToRGB(mTheming.StyleServices.GetSystemColor(clWindow));
+  mDark := (GetRValue(mWindow) * 299 + GetGValue(mWindow) * 587 + GetBValue(mWindow) * 114) div 1000 < 128;
+  // Ältere Windows-Versionen kennen den Wert nicht und lehnen ihn ab: dann bleibt die Titelleiste hell.
+  DwmSetWindowAttribute(AForm.Handle, cDWMWA_USE_IMMERSIVE_DARK_MODE, @mDark, SizeOf(mDark));
+end;
+
+procedure TAtlasIdeDockWindow.FormWndProc(var AMessage: TMessage);
+begin
+  if FWndHook <> nil then
+  begin
+    FWndHook.CallOld(AMessage);
+  end;
+  // Neu angelegtes Fenster (Ab- oder Andocken): Titelleiste wieder dunkel.
+  if (AMessage.Msg = WM_CREATE) and (FForm <> nil) then
+    try
+      ApplyDarkCaption(FForm);
+    except
+      on E: Exception do
+        TAtlasGuard.Log('Dunkle Titelleiste: ' + TAtlasGuard.ErrorText(E));
+    end;
+end;
+
 procedure TAtlasIdeDockWindow.SetForm(AForm: TCustomForm);
 var
   mIndex: Integer;
@@ -232,6 +279,69 @@ begin
   end;
 end;
 
+procedure TAtlasIdeDockWindow.FreeForm;
+var
+  mOld: TCustomForm;
+begin
+  mOld := FForm;
+  if FFrame <> nil then
+  begin
+    FFrame.RemoveFreeNotification(Self);
+  end;
+  FFrame := nil;
+  SetForm(nil);
+  // Nur freigeben, was noch lebt: Hat die IDE die Form schon zerstört, ist Old hier nil.
+  mOld.Free;
+end;
+
+procedure TAtlasIdeDockWindow.Reveal;
+var
+  mHost: TWinControl;
+  mSheet: TTabSheet;
+begin
+  if FForm = nil then
+  begin
+    Exit;
+  end;
+  FForm.Visible := True;
+  // Angedockt: Reiterseite wählen und versteckte Gastgeber (Dock-Fenster, Leisten) wieder zeigen.
+  mHost := FForm.Parent;
+  while mHost <> nil do
+  begin
+    if mHost is TTabSheet then
+    begin
+      mSheet := TTabSheet(mHost);
+      if mSheet.PageControl <> nil then
+      begin
+        mSheet.PageControl.ActivePage := mSheet;
+      end;
+    end
+    else if not mHost.Visible then
+    begin
+      mHost.Visible := True;
+    end;
+    mHost := mHost.Parent;
+  end;
+  FForm.BringToFront;
+end;
+
+class procedure TAtlasIdeDockWindow.UpdateIcon(AHost: TAtlasIdeDockWindow);
+var
+  mIcon: TIcon;
+begin
+  if (AHost = nil) or (AHost.Form = nil) then
+  begin
+    Exit;
+  end;
+  mIcon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
+  try
+    // Icon ist erst in TForm öffentlich.
+    TForm(AHost.Form).Icon.Assign(mIcon);
+  finally
+    mIcon.Free;
+  end;
+end;
+
 procedure TAtlasIdeDockWindow.FrameCreated(AFrame: TCustomFrame);
 var
   mParentForm: TCustomForm;
@@ -263,21 +373,6 @@ begin
   begin
     SetForm(mParentForm);
   end;
-end;
-
-procedure TAtlasIdeDockWindow.FreeForm;
-var
-  mOld: TCustomForm;
-begin
-  mOld := FForm;
-  if FFrame <> nil then
-  begin
-    FFrame.RemoveFreeNotification(Self);
-  end;
-  FFrame := nil;
-  SetForm(nil);
-  // Nur freigeben, was noch lebt: Hat die IDE die Form schon zerstört, ist Old hier nil.
-  mOld.Free;
 end;
 
 function TAtlasIdeDockWindow.Show(out ACreated: Boolean): Boolean;
@@ -314,35 +409,11 @@ begin
   Result := Frame <> nil;
 end;
 
-procedure TAtlasIdeDockWindow.Reveal;
+procedure TAtlasIdeDockWindow.Present;
 var
-  mHost: TWinControl;
-  mSheet: TTabSheet;
+  mCreated: Boolean;
 begin
-  if FForm = nil then
-  begin
-    Exit;
-  end;
-  FForm.Visible := True;
-  // Angedockt: Reiterseite wählen und versteckte Gastgeber (Dock-Fenster, Leisten) wieder zeigen.
-  mHost := FForm.Parent;
-  while mHost <> nil do
-  begin
-    if mHost is TTabSheet then
-    begin
-      mSheet := TTabSheet(mHost);
-      if mSheet.PageControl <> nil then
-      begin
-        mSheet.PageControl.ActivePage := mSheet;
-      end;
-    end
-    else if not mHost.Visible then
-    begin
-      mHost.Visible := True;
-    end;
-    mHost := mHost.Parent;
-  end;
-  FForm.BringToFront;
+  Show(mCreated);
 end;
 
 function TAtlasIdeDockWindow.Form: TCustomForm;
@@ -376,13 +447,6 @@ begin
     mHost := mHost.Parent;
   end;
   Result := TAtlasDockPlan.Shown(FForm.Visible, mHosts);
-end;
-
-procedure TAtlasIdeDockWindow.Present;
-var
-  mCreated: Boolean;
-begin
-  Show(mCreated);
 end;
 
 procedure TAtlasIdeDockWindow.Hide;
@@ -493,70 +557,6 @@ begin
   if not (AControl is TCustomForm) and IsDockForm(GetParentForm(AControl, False)) then
   begin
     ThemeForm(GetParentForm(AControl, False));
-  end;
-end;
-
-class procedure TAtlasIdeDockWindow.ApplyDarkCaption(AForm: TCustomForm);
-const
-  // Fehlt in Delphi 12 (Winapi.Dwmapi): ab Windows 10 20H1.
-  cDWMWA_USE_IMMERSIVE_DARK_MODE = 20;
-var
-  mTheming: IOTAIDEThemingServices;
-  mWindow: TColor;
-  mDark: BOOL;
-begin
-  if (AForm = nil) or not AForm.HandleAllocated or
-    not Supports(BorlandIDEServices, IOTAIDEThemingServices, mTheming) or not mTheming.IDEThemingEnabled or
-    (mTheming.StyleServices = nil) then
-  begin
-    Exit;
-  end;
-  // Dunkel, wenn der Fenstergrund des IDE-Stils dunkel ist (Helligkeit nach Rec. 601).
-  mWindow := ColorToRGB(mTheming.StyleServices.GetSystemColor(clWindow));
-  mDark := (GetRValue(mWindow) * 299 + GetGValue(mWindow) * 587 + GetBValue(mWindow) * 114) div 1000 < 128;
-  // Ältere Windows-Versionen kennen den Wert nicht und lehnen ihn ab: dann bleibt die Titelleiste hell.
-  DwmSetWindowAttribute(AForm.Handle, cDWMWA_USE_IMMERSIVE_DARK_MODE, @mDark, SizeOf(mDark));
-end;
-
-procedure TAtlasIdeDockWindow.FormWndProc(var AMessage: TMessage);
-begin
-  if FWndHook <> nil then
-  begin
-    FWndHook.CallOld(AMessage);
-  end;
-  // Neu angelegtes Fenster (Ab- oder Andocken): Titelleiste wieder dunkel.
-  if (AMessage.Msg = WM_CREATE) and (FForm <> nil) then
-    try
-      ApplyDarkCaption(FForm);
-    except
-      on E: Exception do
-        TAtlasGuard.Log('Dunkle Titelleiste: ' + TAtlasGuard.ErrorText(E));
-    end;
-end;
-
-class procedure TAtlasIdeDockWindow.ThemeForm(AForm: TCustomForm);
-var
-  mTheming: IOTAIDEThemingServices;
-begin
-  if (AForm = nil) or not Supports(BorlandIDEServices, IOTAIDEThemingServices, mTheming) or
-    not mTheming.IDEThemingEnabled then
-  begin
-    Exit;
-  end;
-  try
-    mTheming.ApplyTheme(AForm);
-    // Der Frame ist durchsichtig und zeigt den Grund der Form; ApplyTheme setzt ihn nicht (schwebend hellgrau
-    // unter weißer Schrift).
-    if mTheming.StyleServices <> nil then
-    begin
-      TFormAccess(AForm).Color := mTheming.StyleServices.GetSystemColor(clBtnFace);
-    end;
-    ApplyDarkCaption(AForm);
-  except
-    // Thema ist Kosmetik: ein Fehler darf das Fenster nicht verhindern.
-    on E: Exception do
-      TAtlasGuard.Log(Format('Thema der Form %s: %s: %s', [AForm.ClassName, E.ClassName,
-        TAtlasGuard.MessageText(E.Message)]));
   end;
 end;
 

@@ -121,6 +121,8 @@ begin
   end;
 end;
 
+{ TAbstractDeclarationInvalidRule }
+
 function TAbstractDeclarationInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cAbstractDeclarationInvalidRuleId, TRuleSeverity.Error,

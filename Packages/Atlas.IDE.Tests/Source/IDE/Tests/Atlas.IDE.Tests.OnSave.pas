@@ -118,37 +118,6 @@ begin
   inherited Destroy;
 end;
 
-function TAtlasIdeTestsOnSave.Situation: TAtlasOnSaveSituation;
-begin
-  Result := Default(TAtlasOnSaveSituation);
-  Result.Debugging := Debugging;
-  Result.Building := Building;
-  Result.TestsBusy := FTests.Busy;
-end;
-
-procedure TAtlasIdeTestsOnSave.Show(const AText: string; AState: TAtlasStatusState; const ASummary: string);
-begin
-  if FLine = nil then
-  begin
-    FLine := TAtlasStatusLine.Create(TAtlasStatusRegistry.Default, cStatusId, cStatusOrder, ShowResults);
-    FLineRef := FLine;
-    TAtlasStatusRegistry.Default.Add(FLineRef);
-  end;
-  FLine.Update(AText, AState, ASummary);
-end;
-
-procedure TAtlasIdeTestsOnSave.FileSaved(const AFileName: string);
-begin
-  if not TAtlasIdeSettings.Current.TestsOnSave or not TAtlasTestsOnSave.Counts(AFileName) then
-  begin
-    Exit;
-  end;
-  if FQueue.Add(AFileName) then
-  begin
-    Kick;
-  end;
-end;
-
 procedure TAtlasIdeTestsOnSave.Kick;
 var
   mFiles: TArray<string>;
@@ -259,6 +228,37 @@ end;
 procedure TAtlasIdeTestsOnSave.Done;
 begin
   if FQueue.Active and FQueue.Finish then
+  begin
+    Kick;
+  end;
+end;
+
+procedure TAtlasIdeTestsOnSave.Show(const AText: string; AState: TAtlasStatusState; const ASummary: string);
+begin
+  if FLine = nil then
+  begin
+    FLine := TAtlasStatusLine.Create(TAtlasStatusRegistry.Default, cStatusId, cStatusOrder, ShowResults);
+    FLineRef := FLine;
+    TAtlasStatusRegistry.Default.Add(FLineRef);
+  end;
+  FLine.Update(AText, AState, ASummary);
+end;
+
+function TAtlasIdeTestsOnSave.Situation: TAtlasOnSaveSituation;
+begin
+  Result := Default(TAtlasOnSaveSituation);
+  Result.Debugging := Debugging;
+  Result.Building := Building;
+  Result.TestsBusy := FTests.Busy;
+end;
+
+procedure TAtlasIdeTestsOnSave.FileSaved(const AFileName: string);
+begin
+  if not TAtlasIdeSettings.Current.TestsOnSave or not TAtlasTestsOnSave.Counts(AFileName) then
+  begin
+    Exit;
+  end;
+  if FQueue.Add(AFileName) then
   begin
     Kick;
   end;

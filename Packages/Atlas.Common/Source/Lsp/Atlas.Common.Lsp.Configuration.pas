@@ -186,17 +186,13 @@ begin
   inherited;
 end;
 
-procedure TLspConfiguration.Attach;
+function TLspConfiguration.GetSettings: TServerSettings;
 begin
-  Attach(nil);
-end;
-
-procedure TLspConfiguration.Attach(ADispatcher: TJsonRpcDispatcher);
-begin
-  FStore.Subscribe(HandleDocumentEvent);
-  if ADispatcher <> nil then
-  begin
-    ADispatcher.RegisterNotification(cDidChangeConfigurationMethod, HandleDidChangeConfiguration);
+  TMonitor.Enter(FLock);
+  try
+    Result := FSettings;
+  finally
+    TMonitor.Exit(FLock);
   end;
 end;
 
@@ -207,6 +203,84 @@ begin
   // Die Meldungen zur Datei sind schon veröffentlicht.
   Apply(TConfigurationParser.Parse(TConfigurationScopes.Effective(FTexts.Global, FTexts.Editor, FTexts.Workspace),
     mIgnored));
+end;
+
+procedure TLspConfiguration.HandleDidChangeConfiguration(const AParams: TJSONValue);
+begin
+  SetEditorSettings(EditorSettingsFromParams(AParams));
+end;
+
+procedure TLspConfiguration.HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  if not IsConfigurationUri(ADocument.Uri) then
+  begin
+    Exit;
+  end;
+  case AKind of
+    TDocumentEventKind.Opened, TDocumentEventKind.Changed:
+      begin
+        mIssues := FileIssues(ADocument.Text);
+        Publish(ADocument.Uri, ADocument.Version, mIssues);
+        if IsWorkspaceFile(ADocument.Uri) then
+        begin
+          FTexts.Workspace := ADocument.Text;
+          Recompute;
+        end;
+      end;
+    TDocumentEventKind.Closed:
+      if IsWorkspaceFile(ADocument.Uri) then
+      begin
+        LoadFromDisk;
+      end
+      else
+      begin
+        Publish(ADocument.Uri, -1, nil);
+      end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+procedure TLspConfiguration.Apply(const ASettings: TServerSettings);
+begin
+  TMonitor.Enter(FLock);
+  try
+    FSettings := ASettings;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  if Assigned(FOnChanged) then
+  begin
+    FOnChanged(ASettings);
+  end;
+end;
+
+procedure TLspConfiguration.LoadFromDisk;
+var
+  mText: string;
+  mIssues: TArray<TConfigurationIssue>;
+  mFound: Boolean;
+begin
+  FFiles.Read := FFiles.Primary;
+  mFound := (FFiles.Read <> '') and FReadFile(FFiles.Read, mText);
+  if not mFound and (FFiles.Legacy <> '') and FReadFile(FFiles.Legacy, mText) then
+  begin
+    FFiles.Read := FFiles.Legacy;
+    mFound := True;
+  end;
+  if mFound then
+  begin
+    mIssues := FileIssues(mText);
+    Publish(TDocumentUris.FromPath(FFiles.Read), -1, mIssues);
+    FTexts.Workspace := mText;
+  end
+  else
+  begin
+    FTexts.Workspace := '';
+  end;
+  Recompute;
 end;
 
 function TLspConfiguration.FileIssues(const AText: string): TArray<TConfigurationIssue>;
@@ -223,29 +297,51 @@ begin
   end;
 end;
 
-procedure TLspConfiguration.Revalidate;
-var
-  mUri: string;
-  mDocument: ITextDocument;
+function TLspConfiguration.IsWorkspaceFile(const AUri: string): Boolean;
 begin
-  if FFiles.Read = '' then
+  Result := (FFiles.Read <> '') and SameText(TDocumentUris.ToPath(AUri), FFiles.Read);
+end;
+
+procedure TLspConfiguration.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  FStore.Subscribe(HandleDocumentEvent);
+  if ADispatcher <> nil then
   begin
-    Exit;
-  end;
-  mUri := TDocumentUris.FromPath(FFiles.Read);
-  if (FStore <> nil) and FStore.TryGet(mUri, mDocument) then
-  begin
-    Publish(mUri, mDocument.Version, FileIssues(mDocument.Text));
-  end
-  else if FTexts.Workspace <> '' then
-  begin
-    Publish(mUri, -1, FileIssues(FTexts.Workspace));
+    ADispatcher.RegisterNotification(cDidChangeConfigurationMethod, HandleDidChangeConfiguration);
   end;
 end;
 
-procedure TLspConfiguration.HandleDidChangeConfiguration(const AParams: TJSONValue);
+procedure TLspConfiguration.Attach;
 begin
-  SetEditorSettings(EditorSettingsFromParams(AParams));
+  Attach(nil);
+end;
+
+procedure TLspConfiguration.DocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
+begin
+  HandleDocumentEvent(AKind, ADocument);
+end;
+
+{ TLspClientLocale }
+
+class function TLspClientLocale.FromInitialize(const AParams: TJSONValue): string;
+var
+  mValue: TJSONValue;
+begin
+  Result := '';
+  if not (AParams is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mValue := TJSONObject(AParams).FindValue('initializationOptions.locale');
+  if (mValue is TJSONString) and (Trim(TJSONString(mValue).Value) <> '') then
+  begin
+    Exit(Trim(TJSONString(mValue).Value));
+  end;
+  mValue := TJSONObject(AParams).GetValue('locale');
+  if mValue is TJSONString then
+  begin
+    Result := Trim(TJSONString(mValue).Value);
+  end;
 end;
 
 procedure TLspConfiguration.SetEditorSettings(const AText: string);
@@ -283,79 +379,6 @@ begin
     Exit(False);
   end;
   LoadFromDisk;
-end;
-
-procedure TLspConfiguration.DocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
-begin
-  HandleDocumentEvent(AKind, ADocument);
-end;
-
-class function TLspConfiguration.EditorSettingsFromParams(const AParams: TJSONValue): string;
-var
-  mSection: TJSONValue;
-begin
-  Result := '';
-  if not (AParams is TJSONObject) then
-  begin
-    Exit;
-  end;
-  mSection := TJSONObject(AParams).FindValue('settings.' + cEditorSection);
-  if mSection is TJSONObject then
-  begin
-    Result := mSection.ToJSON;
-  end;
-end;
-
-{ TLspClientLocale }
-
-class function TLspClientLocale.FromInitialize(const AParams: TJSONValue): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if not (AParams is TJSONObject) then
-  begin
-    Exit;
-  end;
-  mValue := TJSONObject(AParams).FindValue('initializationOptions.locale');
-  if (mValue is TJSONString) and (Trim(TJSONString(mValue).Value) <> '') then
-  begin
-    Exit(Trim(TJSONString(mValue).Value));
-  end;
-  mValue := TJSONObject(AParams).GetValue('locale');
-  if mValue is TJSONString then
-  begin
-    Result := Trim(TJSONString(mValue).Value);
-  end;
-end;
-
-function TLspConfiguration.GetSettings: TServerSettings;
-begin
-  TMonitor.Enter(FLock);
-  try
-    Result := FSettings;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
-procedure TLspConfiguration.Apply(const ASettings: TServerSettings);
-begin
-  TMonitor.Enter(FLock);
-  try
-    FSettings := ASettings;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-  if Assigned(FOnChanged) then
-  begin
-    FOnChanged(ASettings);
-  end;
-end;
-
-function TLspConfiguration.IsWorkspaceFile(const AUri: string): Boolean;
-begin
-  Result := (FFiles.Read <> '') and SameText(TDocumentUris.ToPath(AUri), FFiles.Read);
 end;
 
 /// <summary>Diagnostics zu den Fehlern; der Aufrufer übernimmt das Objekt.</summary>
@@ -404,30 +427,24 @@ begin
   end;
 end;
 
-procedure TLspConfiguration.LoadFromDisk;
+procedure TLspConfiguration.Revalidate;
 var
-  mText: string;
-  mIssues: TArray<TConfigurationIssue>;
-  mFound: Boolean;
+  mUri: string;
+  mDocument: ITextDocument;
 begin
-  FFiles.Read := FFiles.Primary;
-  mFound := (FFiles.Read <> '') and FReadFile(FFiles.Read, mText);
-  if not mFound and (FFiles.Legacy <> '') and FReadFile(FFiles.Legacy, mText) then
+  if FFiles.Read = '' then
   begin
-    FFiles.Read := FFiles.Legacy;
-    mFound := True;
+    Exit;
   end;
-  if mFound then
+  mUri := TDocumentUris.FromPath(FFiles.Read);
+  if (FStore <> nil) and FStore.TryGet(mUri, mDocument) then
   begin
-    mIssues := FileIssues(mText);
-    Publish(TDocumentUris.FromPath(FFiles.Read), -1, mIssues);
-    FTexts.Workspace := mText;
+    Publish(mUri, mDocument.Version, FileIssues(mDocument.Text));
   end
-  else
+  else if FTexts.Workspace <> '' then
   begin
-    FTexts.Workspace := '';
+    Publish(mUri, -1, FileIssues(FTexts.Workspace));
   end;
-  Recompute;
 end;
 
 procedure TLspConfiguration.LoadWorkspace(const ARootPath, AGlobalText: string);
@@ -505,39 +522,6 @@ begin
   LoadFromDisk;
 end;
 
-procedure TLspConfiguration.HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
-var
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  if not IsConfigurationUri(ADocument.Uri) then
-  begin
-    Exit;
-  end;
-  case AKind of
-    TDocumentEventKind.Opened, TDocumentEventKind.Changed:
-      begin
-        mIssues := FileIssues(ADocument.Text);
-        Publish(ADocument.Uri, ADocument.Version, mIssues);
-        if IsWorkspaceFile(ADocument.Uri) then
-        begin
-          FTexts.Workspace := ADocument.Text;
-          Recompute;
-        end;
-      end;
-    TDocumentEventKind.Closed:
-      if IsWorkspaceFile(ADocument.Uri) then
-      begin
-        LoadFromDisk;
-      end
-      else
-      begin
-        Publish(ADocument.Uri, -1, nil);
-      end;
-  else
-    // Übrige Werte bewusst ohne Wirkung.
-  end;
-end;
-
 class function TLspConfiguration.RootPathFromInitialize(const AParams: TJSONObject): string;
 var
   mValue: TJSONValue;
@@ -570,6 +554,22 @@ begin
   if mValue is TJSONString then
   begin
     Result := mValue.Value;
+  end;
+end;
+
+class function TLspConfiguration.EditorSettingsFromParams(const AParams: TJSONValue): string;
+var
+  mSection: TJSONValue;
+begin
+  Result := '';
+  if not (AParams is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mSection := TJSONObject(AParams).FindValue('settings.' + cEditorSection);
+  if mSection is TJSONObject then
+  begin
+    Result := mSection.ToJSON;
   end;
 end;
 

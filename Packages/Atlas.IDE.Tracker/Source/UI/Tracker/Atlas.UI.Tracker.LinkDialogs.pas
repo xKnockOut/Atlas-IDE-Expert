@@ -229,16 +229,6 @@ begin
   Result.Caption := ACaption;
 end;
 
-function TAtlasSubtaskDialog.IssueTitle: string;
-begin
-  Result := Trim(FTitle.Text);
-end;
-
-function TAtlasSubtaskDialog.Description: string;
-begin
-  Result := TrimRight(FDescription.Lines.Text);
-end;
-
 procedure TAtlasSubtaskDialog.TitleChange(Sender: TObject);
 begin
   FOk.Enabled := IssueTitle <> '';
@@ -256,6 +246,16 @@ end;
 procedure TAtlasSubtaskDialog.CancelClick(Sender: TObject);
 begin
   ModalResult := mrCancel;
+end;
+
+function TAtlasSubtaskDialog.IssueTitle: string;
+begin
+  Result := Trim(FTitle.Text);
+end;
+
+function TAtlasSubtaskDialog.Description: string;
+begin
+  Result := TrimRight(FDescription.Lines.Text);
 end;
 
 class function TAtlasSubtaskDialog.Execute(const AParentKey, AProject: string; out ATitle,
@@ -348,6 +348,25 @@ begin
   Result := MakeButton(Self, AParent, ACaption, AClick);
 end;
 
+procedure TAtlasIssueLinkDialog.OtherChange(Sender: TObject);
+begin
+  FOk.Enabled := OtherKey <> '';
+end;
+
+procedure TAtlasIssueLinkDialog.OkClick(Sender: TObject);
+begin
+  if OtherKey = '' then
+  begin
+    Exit;
+  end;
+  ModalResult := mrOk;
+end;
+
+procedure TAtlasIssueLinkDialog.CancelClick(Sender: TObject);
+begin
+  ModalResult := mrCancel;
+end;
+
 function TAtlasIssueLinkDialog.OtherKey: string;
 begin
   Result := TAtlasIssuePreview.KeyOf(FProvider, FOther.Text);
@@ -367,25 +386,6 @@ begin
   begin
     Result := TAtlasTrackerLinkKind.DependsOn;
   end;
-end;
-
-procedure TAtlasIssueLinkDialog.OtherChange(Sender: TObject);
-begin
-  FOk.Enabled := OtherKey <> '';
-end;
-
-procedure TAtlasIssueLinkDialog.OkClick(Sender: TObject);
-begin
-  if OtherKey = '' then
-  begin
-    Exit;
-  end;
-  ModalResult := mrOk;
-end;
-
-procedure TAtlasIssueLinkDialog.CancelClick(Sender: TObject);
-begin
-  ModalResult := mrCancel;
 end;
 
 class function TAtlasIssueLinkDialog.Execute(const AKey, AProvider: string; out AKind: TAtlasTrackerLinkKind;

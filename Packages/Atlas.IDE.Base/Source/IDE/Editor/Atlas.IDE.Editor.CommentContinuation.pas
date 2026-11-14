@@ -74,38 +74,7 @@ begin
   end;
 end;
 
-class function TAtlasIdeCommentContinuation.Options: TAtlasCommentOptions;
-begin
-  Result := TAtlasCommentOptions.Defaults;
-  Result.LineComments := TAtlasIdeSettings.Current.ContinueCommentsLineComments;
-  Result.Lists := TAtlasIdeSettings.Current.ContinueCommentsLists;
-  Result.BlockPrefix := TAtlasIdeSettings.Current.ContinueCommentsBlockPrefix;
-end;
-
 { TAtlasIdeCommentContinuation }
-
-class procedure TAtlasIdeCommentContinuation.Install;
-begin
-  TAtlasEnterWatch.Add(cHandlerName,
-    function: Boolean
-    begin
-      Result := Enabled;
-    end,
-    function(const AView: IOTAEditView): Boolean
-    begin
-      Result := Run(AView);
-    end);
-end;
-
-class procedure TAtlasIdeCommentContinuation.Uninstall;
-begin
-  TAtlasEnterWatch.Remove(cHandlerName);
-end;
-
-class function TAtlasIdeCommentContinuation.Enabled: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.ContinueComments;
-end;
 
 class function TAtlasIdeCommentContinuation.Run(const AView: IOTAEditView): Boolean;
 var
@@ -153,6 +122,39 @@ begin
   AView.MoveViewToCursor;
   AView.Paint;
   Result := True;
+end;
+
+{ TAtlasIdeCommentContinuation }
+
+class procedure TAtlasIdeCommentContinuation.Install;
+begin
+  TAtlasEnterWatch.Add(cHandlerName,
+    function: Boolean
+    begin
+      Result := Enabled;
+    end,
+    function(const AView: IOTAEditView): Boolean
+    begin
+      Result := Run(AView);
+    end);
+end;
+
+class procedure TAtlasIdeCommentContinuation.Uninstall;
+begin
+  TAtlasEnterWatch.Remove(cHandlerName);
+end;
+
+class function TAtlasIdeCommentContinuation.Enabled: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.ContinueComments;
+end;
+
+class function TAtlasIdeCommentContinuation.Options: TAtlasCommentOptions;
+begin
+  Result := TAtlasCommentOptions.Defaults;
+  Result.LineComments := TAtlasIdeSettings.Current.ContinueCommentsLineComments;
+  Result.Lists := TAtlasIdeSettings.Current.ContinueCommentsLists;
+  Result.BlockPrefix := TAtlasIdeSettings.Current.ContinueCommentsBlockPrefix;
 end;
 
 end.

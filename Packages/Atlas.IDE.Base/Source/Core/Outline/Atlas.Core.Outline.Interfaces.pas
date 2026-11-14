@@ -124,6 +124,8 @@ begin
   Result := (AMethod.Line >= 0) and (Length(AMethod.Targets) > 0);
 end;
 
+{ TAtlasOutlineInterfaces }
+
 class function TAtlasOutlineInterfaces.FromJson(AValue: TJSONValue): TAtlasInterfaceMethods;
 var
   mMethods: TJSONValue;

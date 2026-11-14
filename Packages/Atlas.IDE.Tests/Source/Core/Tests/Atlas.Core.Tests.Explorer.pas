@@ -387,41 +387,6 @@ end;
 
 { TAtlasTestExplorer }
 
-class function TAtlasTestExplorer.Build(const AUnits: TArray<TAtlasTestUnitInput>;
-  const ACases: TArray<TTestCaseResult>): TArray<TAtlasTestNode>;
-var
-  mUnitIndex: Integer;
-begin
-  Result := nil;
-  for mUnitIndex in SortedUnits(AUnits) do
-  begin
-    if Length(AUnits[mUnitIndex].Found.Fixtures) > 0 then
-    begin
-      AddUnit(Result, AUnits[mUnitIndex], mUnitIndex, ACases);
-    end;
-  end;
-end;
-
-class function TAtlasTestExplorer.StateOf(const ANode: TAtlasTestNode): TAtlasTestNodeState;
-begin
-  case ANode.Tally.Shown of
-    TAtlasTestStatus.Failed:
-      Result := TAtlasTestNodeState.Failed;
-    TAtlasTestStatus.Passed:
-      begin
-        Result := TAtlasTestNodeState.Passed;
-        if ANode.Tally.IsStale then
-        begin
-          Result := TAtlasTestNodeState.Stale;
-        end;
-      end;
-    TAtlasTestStatus.Partial:
-      Result := TAtlasTestNodeState.Partial;
-  else
-    Result := TAtlasTestNodeState.NotRun;
-  end;
-end;
-
 class function TAtlasTestExplorer.RowText(const ANode: TAtlasTestNode; const ATexts: TAtlasTestRowTexts): string;
 var
   mCounter: string;
@@ -499,6 +464,41 @@ begin
       Inc(AFailed, mNode.Tally.Failed);
       Inc(ANotRun, mNode.Tally.Total - mNode.Tally.Ran);
     end;
+  end;
+end;
+
+class function TAtlasTestExplorer.Build(const AUnits: TArray<TAtlasTestUnitInput>;
+  const ACases: TArray<TTestCaseResult>): TArray<TAtlasTestNode>;
+var
+  mUnitIndex: Integer;
+begin
+  Result := nil;
+  for mUnitIndex in SortedUnits(AUnits) do
+  begin
+    if Length(AUnits[mUnitIndex].Found.Fixtures) > 0 then
+    begin
+      AddUnit(Result, AUnits[mUnitIndex], mUnitIndex, ACases);
+    end;
+  end;
+end;
+
+class function TAtlasTestExplorer.StateOf(const ANode: TAtlasTestNode): TAtlasTestNodeState;
+begin
+  case ANode.Tally.Shown of
+    TAtlasTestStatus.Failed:
+      Result := TAtlasTestNodeState.Failed;
+    TAtlasTestStatus.Passed:
+      begin
+        Result := TAtlasTestNodeState.Passed;
+        if ANode.Tally.IsStale then
+        begin
+          Result := TAtlasTestNodeState.Stale;
+        end;
+      end;
+    TAtlasTestStatus.Partial:
+      Result := TAtlasTestNodeState.Partial;
+  else
+    Result := TAtlasTestNodeState.NotRun;
   end;
 end;
 

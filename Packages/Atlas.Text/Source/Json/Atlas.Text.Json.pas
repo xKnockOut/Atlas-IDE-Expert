@@ -118,6 +118,17 @@ end;
 
 { TJsonRead }
 
+class function TJsonRead.NumberText(AValue: TJSONValue; out AText: string): Boolean;
+begin
+  AText := '';
+  // TJSONNumber erbt bis Delphi 12 (und unter FPC) von TJSONString, ab Delphi 13 direkt von TJSONValue.
+  Result := (AValue is TJSONString) or (AValue is TJSONNumber);
+  if Result then
+  begin
+    AText := Trim(AValue.Value);
+  end;
+end;
+
 class function TJsonRead.Parse(const AJson: string): TJSONValue;
 begin
   Result := nil;
@@ -218,14 +229,27 @@ begin
   end;
 end;
 
-class function TJsonRead.NumberText(AValue: TJSONValue; out AText: string): Boolean;
+class function TJsonRead.Int(AObject: TJSONObject; const AName: string): Integer;
 begin
-  AText := '';
-  // TJSONNumber erbt bis Delphi 12 (und unter FPC) von TJSONString, ab Delphi 13 direkt von TJSONValue.
-  Result := (AValue is TJSONString) or (AValue is TJSONNumber);
-  if Result then
+  Result := IntOr(AObject, AName, 0);
+end;
+
+class function TJsonRead.IntOr(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
+var
+  mValue: Int64;
+begin
+  Result := ADefault;
+  if TryInt64(AObject, AName, mValue) and (mValue >= Low(Integer)) and (mValue <= High(Integer)) then
   begin
-    AText := Trim(AValue.Value);
+    Result := Integer(mValue);
+  end;
+end;
+
+class function TJsonRead.Int64Or(AObject: TJSONObject; const AName: string; ADefault: Int64): Int64;
+begin
+  if not TryInt64(AObject, AName, Result) then
+  begin
+    Result := ADefault;
   end;
 end;
 
@@ -254,30 +278,6 @@ begin
     begin
       AValue := Trunc(mDouble);
     end;
-  end;
-end;
-
-class function TJsonRead.Int(AObject: TJSONObject; const AName: string): Integer;
-begin
-  Result := IntOr(AObject, AName, 0);
-end;
-
-class function TJsonRead.IntOr(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
-var
-  mValue: Int64;
-begin
-  Result := ADefault;
-  if TryInt64(AObject, AName, mValue) and (mValue >= Low(Integer)) and (mValue <= High(Integer)) then
-  begin
-    Result := Integer(mValue);
-  end;
-end;
-
-class function TJsonRead.Int64Or(AObject: TJSONObject; const AName: string; ADefault: Int64): Int64;
-begin
-  if not TryInt64(AObject, AName, Result) then
-  begin
-    Result := ADefault;
   end;
 end;
 

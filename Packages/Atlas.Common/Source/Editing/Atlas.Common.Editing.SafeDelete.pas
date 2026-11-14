@@ -396,25 +396,7 @@ type
     function VariableName(AFound: TSyntaxNode): string;
   end;
 
-function TSymbolFinder.MemberHit(ALayout: TClassLayout): Integer;
-var
-  mGroup: TSyntaxNode;
-  mIndex: Integer;
-begin
-  Result := ALayout.MemberAtLine(Position.Line);
-  if (Result < 0) or (Token < 0) or not ALayout.Members[Result].IsFieldGroup then
-  begin
-    Exit;
-  end;
-  mGroup := ALayout.Members[Result].Node;
-  for mIndex in ALayout.Find(Tokens[Token].Text) do
-  begin
-    if ALayout.Members[mIndex].Node = mGroup then
-    begin
-      Result := mIndex;
-    end;
-  end;
-end;
+{ TSymbolFinder }
 
 function TSymbolFinder.InClass(ADecl: TSyntaxNode; var ATarget: TSafeDeleteTarget; out AReason: string): Boolean;
 var
@@ -445,6 +427,48 @@ begin
   finally
     mLayout.Free;
   end;
+end;
+
+function TSymbolFinder.MemberHit(ALayout: TClassLayout): Integer;
+var
+  mGroup: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := ALayout.MemberAtLine(Position.Line);
+  if (Result < 0) or (Token < 0) or not ALayout.Members[Result].IsFieldGroup then
+  begin
+    Exit;
+  end;
+  mGroup := ALayout.Members[Result].Node;
+  for mIndex in ALayout.Find(Tokens[Token].Text) do
+  begin
+    if ALayout.Members[mIndex].Node = mGroup then
+    begin
+      Result := mIndex;
+    end;
+  end;
+end;
+
+function TSymbolFinder.InRoutine(ARoutine: TSyntaxNode; var ATarget: TSafeDeleteTarget;
+  out AReason: string): Boolean;
+var
+  mLocal: Boolean;
+begin
+  AReason := '';
+  mLocal := IsInsideRoutine(ARoutine);
+  if not mLocal and (Pos('.', ARoutine.Name) > 0) then
+  begin
+    Exit(MethodBody(ARoutine, ATarget, AReason));
+  end;
+  ATarget.Kind := TSafeDeleteKind.Routine;
+  if mLocal then
+  begin
+    ATarget.Kind := TSafeDeleteKind.LocalRoutine;
+  end;
+  ATarget.Name := ARoutine.Name;
+  ATarget.Node := ARoutine;
+  NameRangeIn(Tree, ARoutine, ARoutine.Name, ATarget.NameRange);
+  Result := True;
 end;
 
 function TSymbolFinder.MethodBody(ARoutine: TSyntaxNode; var ATarget: TSafeDeleteTarget;
@@ -478,48 +502,6 @@ begin
   Result := Fail(AReason, cTexts[TEditingSafeDeleteText.TheDeclarationOfCannotBe].Fmt([ARoutine.Name]));
 end;
 
-function TSymbolFinder.InRoutine(ARoutine: TSyntaxNode; var ATarget: TSafeDeleteTarget;
-  out AReason: string): Boolean;
-var
-  mLocal: Boolean;
-begin
-  AReason := '';
-  mLocal := IsInsideRoutine(ARoutine);
-  if not mLocal and (Pos('.', ARoutine.Name) > 0) then
-  begin
-    Exit(MethodBody(ARoutine, ATarget, AReason));
-  end;
-  ATarget.Kind := TSafeDeleteKind.Routine;
-  if mLocal then
-  begin
-    ATarget.Kind := TSafeDeleteKind.LocalRoutine;
-  end;
-  ATarget.Name := ARoutine.Name;
-  ATarget.Node := ARoutine;
-  NameRangeIn(Tree, ARoutine, ARoutine.Name, ATarget.NameRange);
-  Result := True;
-end;
-
-function TSymbolFinder.VariableName(AFound: TSyntaxNode): string;
-var
-  mNames: TArray<string>;
-  mName: string;
-begin
-  mNames := AFound.Name.Split([',']);
-  Result := Trim(mNames[0]);
-  if Token < 0 then
-  begin
-    Exit;
-  end;
-  for mName in mNames do
-  begin
-    if SameText(Trim(mName), Tokens[Token].Text) then
-    begin
-      Result := Trim(mName);
-    end;
-  end;
-end;
-
 function TSymbolFinder.InDeclaration(AFound: TSyntaxNode; var ATarget: TSafeDeleteTarget;
   out AReason: string): Boolean;
 begin
@@ -549,6 +531,26 @@ begin
     ATarget.NameRange := TTextRange.Create(AFound.StartPos, AFound.StartPos);
   end;
   Result := True;
+end;
+
+function TSymbolFinder.VariableName(AFound: TSyntaxNode): string;
+var
+  mNames: TArray<string>;
+  mName: string;
+begin
+  mNames := AFound.Name.Split([',']);
+  Result := Trim(mNames[0]);
+  if Token < 0 then
+  begin
+    Exit;
+  end;
+  for mName in mNames do
+  begin
+    if SameText(Trim(mName), Tokens[Token].Text) then
+    begin
+      Result := Trim(mName);
+    end;
+  end;
 end;
 
 class function TSafeDelete.Find(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;
@@ -857,6 +859,19 @@ type
     function LineEdits: TArray<TTextEdit>;
   end;
 
+{ TDeletion }
+
+function TDeletion.MemberEdits: TArray<TTextEdit>;
+var
+  mClassName: string;
+begin
+  Result := nil;
+  for mClassName in MemberClasses do
+  begin
+    Result := Result + ClassEdits(mClassName);
+  end;
+end;
+
 function TDeletion.MemberClasses: TArray<string>;
 var
   mDeleted: TArray<string>;
@@ -911,14 +926,46 @@ begin
   end;
 end;
 
-function TDeletion.MemberEdits: TArray<TTextEdit>;
+procedure TDeletion.CollectDeclarations;
 var
-  mClassName: string;
+  mTarget: TSafeDeleteTarget;
 begin
-  Result := nil;
-  for mClassName in MemberClasses do
+  for mTarget in Targets do
   begin
-    Result := Result + ClassEdits(mClassName);
+    case mTarget.Kind of
+      TSafeDeleteKind.Type_, TSafeDeleteKind.Constant:
+        Nodes := Nodes + [mTarget.Node];
+      TSafeDeleteKind.Variable:
+        AddVariable(mTarget);
+      TSafeDeleteKind.LocalRoutine:
+        AddRemoval(mTarget.Node);
+      TSafeDeleteKind.Routine:
+        Spans := Spans + TSafeDelete.OwnLines(Tree, Text, mTarget);
+      TSafeDeleteKind.Method, TSafeDeleteKind.Field, TSafeDeleteKind.Property_, TSafeDeleteKind.Unit_: ;
+    end;
+  end;
+end;
+
+procedure TDeletion.AddVariable(const ATarget: TSafeDeleteTarget);
+var
+  mNames: TArray<string>;
+  mEdit: TTextEdit;
+begin
+  mNames := ATarget.Node.Name.Split([',']);
+  if Length(mNames) <= 1 then
+  begin
+    Nodes := Nodes + [ATarget.Node];
+  end
+  else if AllNamesTaken(ATarget.Node, mNames) then
+  begin
+    if not HasNode(Nodes, ATarget.Node) then
+    begin
+      Nodes := Nodes + [ATarget.Node];
+    end;
+  end
+  else if GroupNameEdit(Tree, ATarget.Node, ATarget.Name, mEdit) then
+  begin
+    Partial := Partial + [mEdit];
   end;
 end;
 
@@ -950,29 +997,6 @@ begin
   Result := True;
 end;
 
-procedure TDeletion.AddVariable(const ATarget: TSafeDeleteTarget);
-var
-  mNames: TArray<string>;
-  mEdit: TTextEdit;
-begin
-  mNames := ATarget.Node.Name.Split([',']);
-  if Length(mNames) <= 1 then
-  begin
-    Nodes := Nodes + [ATarget.Node];
-  end
-  else if AllNamesTaken(ATarget.Node, mNames) then
-  begin
-    if not HasNode(Nodes, ATarget.Node) then
-    begin
-      Nodes := Nodes + [ATarget.Node];
-    end;
-  end
-  else if GroupNameEdit(Tree, ATarget.Node, ATarget.Name, mEdit) then
-  begin
-    Partial := Partial + [mEdit];
-  end;
-end;
-
 procedure TDeletion.AddRemoval(ANode: TSyntaxNode);
 begin
   if AloneOnLines(ANode, Lines) then
@@ -982,26 +1006,6 @@ begin
   else
   begin
     Partial := Partial + [TTextEdit.Create(TTextRange.Create(ANode.StartPos, ANode.EndPos), '')];
-  end;
-end;
-
-procedure TDeletion.CollectDeclarations;
-var
-  mTarget: TSafeDeleteTarget;
-begin
-  for mTarget in Targets do
-  begin
-    case mTarget.Kind of
-      TSafeDeleteKind.Type_, TSafeDeleteKind.Constant:
-        Nodes := Nodes + [mTarget.Node];
-      TSafeDeleteKind.Variable:
-        AddVariable(mTarget);
-      TSafeDeleteKind.LocalRoutine:
-        AddRemoval(mTarget.Node);
-      TSafeDeleteKind.Routine:
-        Spans := Spans + TSafeDelete.OwnLines(Tree, Text, mTarget);
-      TSafeDeleteKind.Method, TSafeDeleteKind.Field, TSafeDeleteKind.Property_, TSafeDeleteKind.Unit_: ;
-    end;
   end;
 end;
 
@@ -1022,6 +1026,27 @@ begin
     for mIndex := 1 to High(mOwn) do
     begin
       Spans := Spans + [mOwn[mIndex]];
+    end;
+  end;
+end;
+
+procedure TDeletion.AddSections;
+var
+  mSection, mNode: TSyntaxNode;
+begin
+  for mSection in Sections do
+  begin
+    if IsEmptied(mSection) then
+    begin
+      Spans := Spans + [TLineSpan.Create(FirstLineOf(mSection, Lines), mSection.EndPos.Line)];
+      Continue;
+    end;
+    for mNode in Nodes do
+    begin
+      if mNode.Parent = mSection then
+      begin
+        AddRemoval(mNode);
+      end;
     end;
   end;
 end;
@@ -1053,27 +1078,6 @@ begin
   end;
   Result := (ASection.Kind in [TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection]) and
     AloneOnLines(ASection, Lines);
-end;
-
-procedure TDeletion.AddSections;
-var
-  mSection, mNode: TSyntaxNode;
-begin
-  for mSection in Sections do
-  begin
-    if IsEmptied(mSection) then
-    begin
-      Spans := Spans + [TLineSpan.Create(FirstLineOf(mSection, Lines), mSection.EndPos.Line)];
-      Continue;
-    end;
-    for mNode in Nodes do
-    begin
-      if mNode.Parent = mSection then
-      begin
-        AddRemoval(mNode);
-      end;
-    end;
-  end;
 end;
 
 function TDeletion.SpanEdit(const ASpan: TLineSpan): TTextEdit;

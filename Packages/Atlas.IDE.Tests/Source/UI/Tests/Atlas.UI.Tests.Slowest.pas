@@ -97,14 +97,6 @@ begin
   ShowRows;
 end;
 
-procedure TAtlasTestsSlowestDialog.ShowRows;
-begin
-  if FList.Items.Count = 0 then
-  begin
-    Fill;
-  end;
-end;
-
 procedure TAtlasTestsSlowestDialog.Fill;
 var
   mRow: TAtlasTestSlowRow;
@@ -156,6 +148,14 @@ begin
   begin
     Key := 0;
     Choose;
+  end;
+end;
+
+procedure TAtlasTestsSlowestDialog.ShowRows;
+begin
+  if FList.Items.Count = 0 then
+  begin
+    Fill;
   end;
 end;
 

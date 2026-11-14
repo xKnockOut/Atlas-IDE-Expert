@@ -106,121 +106,6 @@ begin
   Constraints.MaxWidth := Width;
 end;
 
-class function TAtlasOverviewRuler.RulerWidth(APPI: Integer): Integer;
-begin
-  Result := MulDiv(cBaseWidth, Max(APPI, 96), 96);
-end;
-
-class function TAtlasOverviewRuler.ColorOf(const AColors: TAtlasColors; AKind: TAtlasOverviewMarkKind): TAtlasColor;
-begin
-  case AKind of
-    TAtlasOverviewMarkKind.Cursor:
-      Result := AColors.Text;
-    TAtlasOverviewMarkKind.Added:
-      Result := AColors.Add;
-    TAtlasOverviewMarkKind.Modified:
-      Result := AColors.Accent;
-    TAtlasOverviewMarkKind.Deleted:
-      Result := AColors.ErrorSoft;
-    TAtlasOverviewMarkKind.Search:
-      Result := AColors.StringLiteral;
-    TAtlasOverviewMarkKind.Bookmark:
-      Result := AColors.Keyword;
-    TAtlasOverviewMarkKind.Breakpoint:
-      Result := AColors.Error;
-    TAtlasOverviewMarkKind.Info:
-      Result := AColors.Muted;
-    TAtlasOverviewMarkKind.Warning:
-      Result := AColors.Warn;
-  else
-    Result := AColors.Error;
-  end;
-end;
-
-procedure TAtlasOverviewRuler.ChangeScale(M, D: Integer; isDpiChange: Boolean);
-begin
-  Constraints.MinWidth := 0;
-  Constraints.MaxWidth := 0;
-  inherited ChangeScale(M, D, isDpiChange);
-  Width := RulerWidth(CurrentPPI);
-  Constraints.MinWidth := Width;
-  Constraints.MaxWidth := Width;
-  FLaidOut := False;
-end;
-
-function TAtlasOverviewRuler.Scale(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, Max(CurrentPPI, 96), 96);
-end;
-
-procedure TAtlasOverviewRuler.SetMarks(const AMarks: TAtlasOverviewMarks; ALineCount, AFirstVisible,
-  ALastVisible: Integer);
-begin
-  if TAtlasOverview.Same(AMarks, FMarks) and (ALineCount = FLineCount) and (AFirstVisible = FFirstVisible) and
-    (ALastVisible = FLastVisible) then
-  begin
-    Exit;
-  end;
-  FMarks := AMarks;
-  FLineCount := ALineCount;
-  FFirstVisible := AFirstVisible;
-  FLastVisible := ALastVisible;
-  FLaidOut := False;
-  Invalidate;
-end;
-
-procedure TAtlasOverviewRuler.SetColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
-end;
-
-procedure TAtlasOverviewRuler.Layout;
-begin
-  if FLaidOut then
-  begin
-    Exit;
-  end;
-  FBars := TAtlasOverview.Layout(FMarks, FLineCount, ClientHeight, Scale(cBaseMinHeight));
-  FLaidOut := True;
-end;
-
-procedure TAtlasOverviewRuler.Resize;
-begin
-  inherited Resize;
-  FLaidOut := False;
-  Invalidate;
-end;
-
-function TAtlasOverviewRuler.LineAtY(AY: Integer): Integer;
-begin
-  Result := TAtlasOverview.LineAt(AY, FLineCount, ClientHeight);
-end;
-
-function TAtlasOverviewRuler.MarkAtY(AY: Integer): Integer;
-begin
-  Layout;
-  if not TAtlasOverview.Hit(FBars, AY, Scale(cBaseTolerance), Result) then
-  begin
-    Result := -1;
-  end;
-end;
-
-function TAtlasOverviewRuler.TargetAtY(AY: Integer): Integer;
-var
-  mMark: Integer;
-begin
-  mMark := MarkAtY(AY);
-  if mMark >= 0 then
-  begin
-    Result := Min(FMarks[mMark].Line, Max(0, FLineCount - 1));
-  end
-  else
-  begin
-    Result := LineAtY(AY);
-  end;
-end;
-
 procedure TAtlasOverviewRuler.Paint;
 var
   mBar: TAtlasOverviewBar;
@@ -280,6 +165,13 @@ begin
   end;
 end;
 
+procedure TAtlasOverviewRuler.Resize;
+begin
+  inherited Resize;
+  FLaidOut := False;
+  Invalidate;
+end;
+
 procedure TAtlasOverviewRuler.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited MouseDown(Button, Shift, X, Y);
@@ -321,6 +213,32 @@ begin
   end;
 end;
 
+procedure TAtlasOverviewRuler.ChangeScale(M, D: Integer; isDpiChange: Boolean);
+begin
+  Constraints.MinWidth := 0;
+  Constraints.MaxWidth := 0;
+  inherited ChangeScale(M, D, isDpiChange);
+  Width := RulerWidth(CurrentPPI);
+  Constraints.MinWidth := Width;
+  Constraints.MaxWidth := Width;
+  FLaidOut := False;
+end;
+
+function TAtlasOverviewRuler.Scale(AValue: Integer): Integer;
+begin
+  Result := MulDiv(AValue, Max(CurrentPPI, 96), 96);
+end;
+
+procedure TAtlasOverviewRuler.Layout;
+begin
+  if FLaidOut then
+  begin
+    Exit;
+  end;
+  FBars := TAtlasOverview.Layout(FMarks, FLineCount, ClientHeight, Scale(cBaseMinHeight));
+  FLaidOut := True;
+end;
+
 procedure TAtlasOverviewRuler.CMMouseLeave(var Message: TMessage);
 begin
   inherited;
@@ -330,6 +248,88 @@ begin
   begin
     FOnHoverEnd;
   end;
+end;
+
+procedure TAtlasOverviewRuler.SetMarks(const AMarks: TAtlasOverviewMarks; ALineCount, AFirstVisible,
+  ALastVisible: Integer);
+begin
+  if TAtlasOverview.Same(AMarks, FMarks) and (ALineCount = FLineCount) and (AFirstVisible = FFirstVisible) and
+    (ALastVisible = FLastVisible) then
+  begin
+    Exit;
+  end;
+  FMarks := AMarks;
+  FLineCount := ALineCount;
+  FFirstVisible := AFirstVisible;
+  FLastVisible := ALastVisible;
+  FLaidOut := False;
+  Invalidate;
+end;
+
+procedure TAtlasOverviewRuler.SetColors(const AColors: TAtlasColors);
+begin
+  FColors := AColors;
+  Invalidate;
+end;
+
+function TAtlasOverviewRuler.LineAtY(AY: Integer): Integer;
+begin
+  Result := TAtlasOverview.LineAt(AY, FLineCount, ClientHeight);
+end;
+
+function TAtlasOverviewRuler.MarkAtY(AY: Integer): Integer;
+begin
+  Layout;
+  if not TAtlasOverview.Hit(FBars, AY, Scale(cBaseTolerance), Result) then
+  begin
+    Result := -1;
+  end;
+end;
+
+function TAtlasOverviewRuler.TargetAtY(AY: Integer): Integer;
+var
+  mMark: Integer;
+begin
+  mMark := MarkAtY(AY);
+  if mMark >= 0 then
+  begin
+    Result := Min(FMarks[mMark].Line, Max(0, FLineCount - 1));
+  end
+  else
+  begin
+    Result := LineAtY(AY);
+  end;
+end;
+
+class function TAtlasOverviewRuler.ColorOf(const AColors: TAtlasColors; AKind: TAtlasOverviewMarkKind): TAtlasColor;
+begin
+  case AKind of
+    TAtlasOverviewMarkKind.Cursor:
+      Result := AColors.Text;
+    TAtlasOverviewMarkKind.Added:
+      Result := AColors.Add;
+    TAtlasOverviewMarkKind.Modified:
+      Result := AColors.Accent;
+    TAtlasOverviewMarkKind.Deleted:
+      Result := AColors.ErrorSoft;
+    TAtlasOverviewMarkKind.Search:
+      Result := AColors.StringLiteral;
+    TAtlasOverviewMarkKind.Bookmark:
+      Result := AColors.Keyword;
+    TAtlasOverviewMarkKind.Breakpoint:
+      Result := AColors.Error;
+    TAtlasOverviewMarkKind.Info:
+      Result := AColors.Muted;
+    TAtlasOverviewMarkKind.Warning:
+      Result := AColors.Warn;
+  else
+    Result := AColors.Error;
+  end;
+end;
+
+class function TAtlasOverviewRuler.RulerWidth(APPI: Integer): Integer;
+begin
+  Result := MulDiv(cBaseWidth, Max(APPI, 96), 96);
 end;
 
 end.

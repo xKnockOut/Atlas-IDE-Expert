@@ -113,31 +113,6 @@ begin
   Result := SameText(ExtractFileExt(AFileName), cUnitExtension);
 end;
 
-class function TAtlasProjectSelection.KindOf(const AIdent: string): TAtlasProjectNodeKind;
-var
-  mExtension: string;
-begin
-  mExtension := LowerCase(ExtractFileExt(AIdent));
-  if mExtension = cUnitExtension then
-  begin
-    Exit(TAtlasProjectNodeKind.SourceFile);
-  end;
-  if (mExtension = '.dfm') or (mExtension = '.fmx') or (mExtension = '.lfm') then
-  begin
-    Exit(TAtlasProjectNodeKind.FormFile);
-  end;
-  if (mExtension = '.dproj') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.groupproj') then
-  begin
-    Exit(TAtlasProjectNodeKind.Project);
-  end;
-  // Ordner: ohne Endung oder mit Trennzeichen am Ende.
-  if (mExtension = '') or AIdent.EndsWith('\') or AIdent.EndsWith('/') then
-  begin
-    Exit(TAtlasProjectNodeKind.Folder);
-  end;
-  Result := TAtlasProjectNodeKind.OtherFile;
-end;
-
 class procedure TAtlasProjectSelection.AddUnique(var AUnits: TArray<string>; AKeys: TDictionary<string, Boolean>;
   const AFileName: string);
 var
@@ -151,6 +126,25 @@ begin
   AKeys.Add(mKey, True);
   SetLength(AUnits, Length(AUnits) + 1);
   AUnits[High(AUnits)] := AFileName;
+end;
+
+class procedure TAtlasProjectSelection.AddFolder(var AUnits: TArray<string>; AKeys: TDictionary<string, Boolean>;
+  const AFolder: string; const AProjectFiles: TArray<string>);
+var
+  mPrefix, mFile: string;
+begin
+  mPrefix := KeyOf(AFolder);
+  if not mPrefix.EndsWith('\') then
+  begin
+    mPrefix := mPrefix + '\';
+  end;
+  for mFile in AProjectFiles do
+  begin
+    if IsUnit(mFile) and KeyOf(mFile).StartsWith(mPrefix) then
+    begin
+      AddUnique(AUnits, AKeys, mFile);
+    end;
+  end;
 end;
 
 class function TAtlasProjectSelection.AnyUnit(const AProjectFiles: TArray<string>): Boolean;
@@ -175,60 +169,6 @@ begin
   for mUnit in AUnits do
   begin
     Result.AddOrSetValue(KeyOf(mUnit), True);
-  end;
-end;
-
-class function TAtlasProjectSelection.FindIn(const AFileName: string; const AProjectFiles: TArray<string>;
-  out AFound: string): Boolean;
-var
-  mKey, mFile: string;
-begin
-  mKey := KeyOf(AFileName);
-  for mFile in AProjectFiles do
-  begin
-    if KeyOf(mFile) = mKey then
-    begin
-      AFound := mFile;
-      Exit(True);
-    end;
-  end;
-  AFound := '';
-  Result := False;
-end;
-
-class procedure TAtlasProjectSelection.AddFolder(var AUnits: TArray<string>; AKeys: TDictionary<string, Boolean>;
-  const AFolder: string; const AProjectFiles: TArray<string>);
-var
-  mPrefix, mFile: string;
-begin
-  mPrefix := KeyOf(AFolder);
-  if not mPrefix.EndsWith('\') then
-  begin
-    mPrefix := mPrefix + '\';
-  end;
-  for mFile in AProjectFiles do
-  begin
-    if IsUnit(mFile) and KeyOf(mFile).StartsWith(mPrefix) then
-    begin
-      AddUnique(AUnits, AKeys, mFile);
-    end;
-  end;
-end;
-
-class function TAtlasProjectSelection.Resolve(const AIdents: TArray<string>; const AProjectFile: string;
-  const AProjectFiles: TArray<string>): TAtlasProjectSelection;
-var
-  mKeys: TDictionary<string, Boolean>;
-begin
-  Result := Default(TAtlasProjectSelection);
-  Result.ProjectFile := AProjectFile;
-  Result.Resolved := True;
-  Result.Multiple := Length(AIdents) > 1;
-  mKeys := TDictionary<string, Boolean>.Create;
-  try
-    ResolveInto(Result, mKeys, AIdents, AProjectFiles);
-  finally
-    mKeys.Free;
   end;
 end;
 
@@ -269,6 +209,92 @@ begin
         // Ressourcen, Includes und Ähnliches tragen keine Unit bei.
         Continue;
     end;
+  end;
+end;
+
+class function TAtlasProjectSelection.FindIn(const AFileName: string; const AProjectFiles: TArray<string>;
+  out AFound: string): Boolean;
+var
+  mKey, mFile: string;
+begin
+  mKey := KeyOf(AFileName);
+  for mFile in AProjectFiles do
+  begin
+    if KeyOf(mFile) = mKey then
+    begin
+      AFound := mFile;
+      Exit(True);
+    end;
+  end;
+  AFound := '';
+  Result := False;
+end;
+
+function TAtlasProjectSelection.HasUnits: Boolean;
+begin
+  if Resolved then
+  begin
+    Exit(Length(Units) > 0);
+  end;
+  Result := Kinds * [TAtlasProjectNodeKind.SourceFile, TAtlasProjectNodeKind.FormFile,
+    TAtlasProjectNodeKind.Folder, TAtlasProjectNodeKind.Project] <> [];
+end;
+
+function TAtlasProjectSelection.SingleUnit(out AFileName: string): Boolean;
+begin
+  AFileName := '';
+  if Resolved then
+  begin
+    Result := Length(Units) = 1;
+    if Result then
+    begin
+      AFileName := Units[0];
+    end;
+    Exit;
+  end;
+  Result := not Multiple and
+    ((Kinds = [TAtlasProjectNodeKind.SourceFile]) or (Kinds = [TAtlasProjectNodeKind.FormFile]));
+end;
+
+class function TAtlasProjectSelection.KindOf(const AIdent: string): TAtlasProjectNodeKind;
+var
+  mExtension: string;
+begin
+  mExtension := LowerCase(ExtractFileExt(AIdent));
+  if mExtension = cUnitExtension then
+  begin
+    Exit(TAtlasProjectNodeKind.SourceFile);
+  end;
+  if (mExtension = '.dfm') or (mExtension = '.fmx') or (mExtension = '.lfm') then
+  begin
+    Exit(TAtlasProjectNodeKind.FormFile);
+  end;
+  if (mExtension = '.dproj') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.groupproj') then
+  begin
+    Exit(TAtlasProjectNodeKind.Project);
+  end;
+  // Ordner: ohne Endung oder mit Trennzeichen am Ende.
+  if (mExtension = '') or AIdent.EndsWith('\') or AIdent.EndsWith('/') then
+  begin
+    Exit(TAtlasProjectNodeKind.Folder);
+  end;
+  Result := TAtlasProjectNodeKind.OtherFile;
+end;
+
+class function TAtlasProjectSelection.Resolve(const AIdents: TArray<string>; const AProjectFile: string;
+  const AProjectFiles: TArray<string>): TAtlasProjectSelection;
+var
+  mKeys: TDictionary<string, Boolean>;
+begin
+  Result := Default(TAtlasProjectSelection);
+  Result.ProjectFile := AProjectFile;
+  Result.Resolved := True;
+  Result.Multiple := Length(AIdents) > 1;
+  mKeys := TDictionary<string, Boolean>.Create;
+  try
+    ResolveInto(Result, mKeys, AIdents, AProjectFiles);
+  finally
+    mKeys.Free;
   end;
 end;
 
@@ -313,32 +339,6 @@ begin
   begin
     Result.Kinds := Result.Kinds - [TAtlasProjectNodeKind.Folder, TAtlasProjectNodeKind.Project];
   end;
-end;
-
-function TAtlasProjectSelection.HasUnits: Boolean;
-begin
-  if Resolved then
-  begin
-    Exit(Length(Units) > 0);
-  end;
-  Result := Kinds * [TAtlasProjectNodeKind.SourceFile, TAtlasProjectNodeKind.FormFile,
-    TAtlasProjectNodeKind.Folder, TAtlasProjectNodeKind.Project] <> [];
-end;
-
-function TAtlasProjectSelection.SingleUnit(out AFileName: string): Boolean;
-begin
-  AFileName := '';
-  if Resolved then
-  begin
-    Result := Length(Units) = 1;
-    if Result then
-    begin
-      AFileName := Units[0];
-    end;
-    Exit;
-  end;
-  Result := not Multiple and
-    ((Kinds = [TAtlasProjectNodeKind.SourceFile]) or (Kinds = [TAtlasProjectNodeKind.FormFile]));
 end;
 
 { TAtlasProjectContext }

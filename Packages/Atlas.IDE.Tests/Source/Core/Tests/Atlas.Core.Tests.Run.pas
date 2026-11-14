@@ -344,24 +344,6 @@ begin
   ALines := ATexts[mKey];
 end;
 
-class function TAtlasTestRun.Failures(const ARun: TTestRunResult; const AUnitFile: TAtlasTestUnitFile;
-  const AReadLines: TAtlasTestReadLines): TArray<TAtlasTestFailure>;
-begin
-  Result := Failures(ARun, AUnitFile, AReadLines, False);
-end;
-
-class function TAtlasTestRun.Failures(const ARun: TTestRunResult; const AUnitFile: TAtlasTestUnitFile;
-  const AReadLines: TAtlasTestReadLines; AAtAssert: Boolean): TArray<TAtlasTestFailure>;
-begin
-  Result := Placed(ARun.Failures, AUnitFile, AReadLines, AAtAssert);
-end;
-
-class function TAtlasTestRun.Locate(const ACases: TArray<TTestCaseResult>; const AUnitFile: TAtlasTestUnitFile;
-  const AReadLines: TAtlasTestReadLines): TArray<TAtlasTestFailure>;
-begin
-  Result := Placed(ACases, AUnitFile, AReadLines, False);
-end;
-
 class function TAtlasTestRun.Placed(const ACases: TArray<TTestCaseResult>; const AUnitFile: TAtlasTestUnitFile;
   const AReadLines: TAtlasTestReadLines; AAtAssert: Boolean): TArray<TAtlasTestFailure>;
 var
@@ -404,6 +386,24 @@ begin
     mTexts.Free;
     mUnits.Free;
   end;
+end;
+
+class function TAtlasTestRun.Failures(const ARun: TTestRunResult; const AUnitFile: TAtlasTestUnitFile;
+  const AReadLines: TAtlasTestReadLines): TArray<TAtlasTestFailure>;
+begin
+  Result := Failures(ARun, AUnitFile, AReadLines, False);
+end;
+
+class function TAtlasTestRun.Failures(const ARun: TTestRunResult; const AUnitFile: TAtlasTestUnitFile;
+  const AReadLines: TAtlasTestReadLines; AAtAssert: Boolean): TArray<TAtlasTestFailure>;
+begin
+  Result := Placed(ARun.Failures, AUnitFile, AReadLines, AAtAssert);
+end;
+
+class function TAtlasTestRun.Locate(const ACases: TArray<TTestCaseResult>; const AUnitFile: TAtlasTestUnitFile;
+  const AReadLines: TAtlasTestReadLines): TArray<TAtlasTestFailure>;
+begin
+  Result := Placed(ACases, AUnitFile, AReadLines, False);
 end;
 
 class function TAtlasTestRun.ShortName(const ACase: TTestCaseResult): string;
@@ -572,21 +572,6 @@ begin
     ((ACaseName = '') or SameText(AItem.CaseName, ACaseName));
 end;
 
-class function TAtlasTestRun.ResultsOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture, AMethod,
-  ACaseName: string): TArray<TTestCaseResult>;
-var
-  mItem: TTestCaseResult;
-begin
-  Result := nil;
-  for mItem in ACases do
-  begin
-    if Matches(mItem, AUnitName, AFixture, AMethod, ACaseName) then
-    begin
-      Result := Result + [mItem];
-    end;
-  end;
-end;
-
 class function TAtlasTestRun.StatusOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture,
   AMethod: string): TAtlasTestStatus;
 begin
@@ -614,6 +599,12 @@ begin
       Result := TAtlasTestStatus.Passed;
     end;
   end;
+end;
+
+class function TAtlasTestRun.TallyOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
+  const AKeys: TArray<TAtlasTestKey>): TAtlasTestTally;
+begin
+  Result := TallyOf(ACases, AUnitName, AFixture, AKeys, nil);
 end;
 
 /// <summary>Schlüssel des Tests ATest anhängen: alle Fälle (ACaseIndex -1), ein Fall oder der Test ohne Fälle.
@@ -726,12 +717,6 @@ begin
 end;
 
 class function TAtlasTestRun.TallyOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
-  const AKeys: TArray<TAtlasTestKey>): TAtlasTestTally;
-begin
-  Result := TallyOf(ACases, AUnitName, AFixture, AKeys, nil);
-end;
-
-class function TAtlasTestRun.TallyOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
   const AKeys: TArray<TAtlasTestKey>; const AStale: TAtlasTestStaleFunc): TAtlasTestTally;
 var
   mKey: TAtlasTestKey;
@@ -818,6 +803,21 @@ begin
     end;
   end;
   Result := Result + AFresh;
+end;
+
+class function TAtlasTestRun.ResultsOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture, AMethod,
+  ACaseName: string): TArray<TTestCaseResult>;
+var
+  mItem: TTestCaseResult;
+begin
+  Result := nil;
+  for mItem in ACases do
+  begin
+    if Matches(mItem, AUnitName, AFixture, AMethod, ACaseName) then
+    begin
+      Result := Result + [mItem];
+    end;
+  end;
 end;
 
 end.

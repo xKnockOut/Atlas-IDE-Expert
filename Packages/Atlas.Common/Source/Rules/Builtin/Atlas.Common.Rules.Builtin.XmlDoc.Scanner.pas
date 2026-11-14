@@ -168,12 +168,16 @@ const
   // Entitäten, die XML ohne DTD kennt.
   cXmlEntities: array[0..4] of string = ('lt', 'gt', 'amp', 'quot', 'apos');
 
+{ TDocReplacement }
+
 class function TDocReplacement.Create(AStart, AStop: Integer; const AText: string): TDocReplacement;
 begin
   Result.Start := AStart;
   Result.Stop := AStop;
   Result.Text := AText;
 end;
+
+{ TDocElement }
 
 function TDocElement.Attribute(const AName: string; out AAttribute: TDocAttribute): Boolean;
 var
@@ -190,6 +194,8 @@ begin
   AAttribute := Default(TDocAttribute);
   Result := False;
 end;
+
+{ TDocFlaw }
 
 class function TDocFlaw.Create(AStart, AStop: Integer; const AMessage, AFixTitle: string;
   const AReplacements: TArray<TDocReplacement>; AStructural: Boolean): TDocFlaw;
@@ -235,16 +241,6 @@ begin
   FStack.Free;
   FElements.Free;
   inherited;
-end;
-
-function TDocScanner.Elements: TArray<TDocElement>;
-begin
-  Result := FElements.ToArray;
-end;
-
-function TDocScanner.Flaws: TArray<TDocFlaw>;
-begin
-  Result := FFlaws.ToArray;
 end;
 
 function TDocScanner.IsSpaceAt(AIndex: Integer): Boolean;
@@ -384,25 +380,6 @@ begin
     EscapeAmpersand(AIndex, cTexts[TXmlDocScannerText.UndefinedEntity].Fmt([mName]));
   end;
   AIndex := mStop;
-end;
-
-procedure TDocScanner.Skip(var AIndex: Integer; const AOpen, AClose: string);
-var
-  mClose: Integer;
-begin
-  mClose := PosEx(AClose, FXml, AIndex + Length(AOpen));
-  if mClose = 0 then
-  begin
-    AddFlaw(TDocFlaw.Create(AIndex, AIndex + Length(AOpen), cTexts[TXmlDocScannerText.NotClosedWith].Fmt(
-      [AOpen, AClose]), cTexts[TXmlDocScannerText.AddName].Fmt([AClose]), [TDocReplacement.Create(FLength + 1, FLength +
-        1, AClose)],
-      True));
-    AIndex := FLength + 1;
-  end
-  else
-  begin
-    AIndex := mClose + Length(AClose);
-  end;
 end;
 
 function TDocScanner.TagEndAt(AIndex: Integer; var AElement: TDocElement): Boolean;
@@ -574,53 +551,6 @@ begin
   end;
 end;
 
-procedure TDocScanner.Unclosed(AElement, AInsertAt: Integer);
-var
-  mElement: TDocElement;
-  mIndex: Integer;
-begin
-  mElement := FElements[AElement];
-  // Ein offener Abschnitt endet vor dem nächsten Abschnitt darin, hinter dem letzten Zeichen davor.
-  if IndexText(mElement.Name, cBlockSections) >= 0 then
-  begin
-    for mIndex := FElements.Count - 1 downto AElement + 1 do
-    begin
-      if IndexText(FElements[mIndex].Name, cBlockSections) >= 0 then
-      begin
-        AInsertAt := FElements[mIndex].Start;
-      end;
-    end;
-  end;
-  while (AInsertAt > mElement.OpenStop) and IsSpaceAt(AInsertAt - 1) do
-  begin
-    Dec(AInsertAt);
-  end;
-  if SameText(mElement.Name, 'br') then
-  begin
-    AddFlaw(TDocFlaw.Create(mElement.Start, mElement.OpenStop, cTexts[TXmlDocScannerText.BrNotClosed].Text,
-      cTexts[TXmlDocScannerText.WriteBr].Text,
-      [TDocReplacement.Create(mElement.OpenStop - 1, mElement.OpenStop - 1, '/')], True));
-  end
-  else if (Length(mElement.Attributes) = 0) and not mElement.HasChildren and
-    ((IndexText(mElement.Name, cDocTags) < 0) or (IndexText(mElement.Name, cAttributeTags) >= 0)) then
-  begin
-    // Fremder Name oder Tag ohne sein Attribut, ohne Inhalt: gemeint ist Text wie TList<T>.
-    AddFlaw(TDocFlaw.Create(mElement.Start, mElement.OpenStop,
-      cTexts[TXmlDocScannerText.TagNotClosed].Fmt([mElement.Name]),
-      cTexts[TXmlDocScannerText.WriteAsText].Fmt([mElement.Name]),
-        [TDocReplacement.Create(mElement.Start, mElement.Start +
-        1,
-      '&lt;'), TDocReplacement.Create(mElement.OpenStop - 1, mElement.OpenStop, '&gt;')], True));
-  end
-  else
-  begin
-    AddFlaw(TDocFlaw.Create(mElement.Start, mElement.OpenStop,
-      cTexts[TXmlDocScannerText.TagNotClosed].Fmt([mElement.Name]),
-      cTexts[TXmlDocScannerText.AddClosing].Fmt([mElement.Name]), [TDocReplacement.Create(AInsertAt, AInsertAt,
-      Format('</%s>', [mElement.Name]))], True));
-  end;
-end;
-
 procedure TDocScanner.ScanEndTag(var AIndex: Integer);
 var
   mIndex, mLevel: Integer;
@@ -699,6 +629,72 @@ begin
   end;
 end;
 
+procedure TDocScanner.Skip(var AIndex: Integer; const AOpen, AClose: string);
+var
+  mClose: Integer;
+begin
+  mClose := PosEx(AClose, FXml, AIndex + Length(AOpen));
+  if mClose = 0 then
+  begin
+    AddFlaw(TDocFlaw.Create(AIndex, AIndex + Length(AOpen), cTexts[TXmlDocScannerText.NotClosedWith].Fmt(
+      [AOpen, AClose]), cTexts[TXmlDocScannerText.AddName].Fmt([AClose]), [TDocReplacement.Create(FLength + 1, FLength +
+        1, AClose)],
+      True));
+    AIndex := FLength + 1;
+  end
+  else
+  begin
+    AIndex := mClose + Length(AClose);
+  end;
+end;
+
+procedure TDocScanner.Unclosed(AElement, AInsertAt: Integer);
+var
+  mElement: TDocElement;
+  mIndex: Integer;
+begin
+  mElement := FElements[AElement];
+  // Ein offener Abschnitt endet vor dem nächsten Abschnitt darin, hinter dem letzten Zeichen davor.
+  if IndexText(mElement.Name, cBlockSections) >= 0 then
+  begin
+    for mIndex := FElements.Count - 1 downto AElement + 1 do
+    begin
+      if IndexText(FElements[mIndex].Name, cBlockSections) >= 0 then
+      begin
+        AInsertAt := FElements[mIndex].Start;
+      end;
+    end;
+  end;
+  while (AInsertAt > mElement.OpenStop) and IsSpaceAt(AInsertAt - 1) do
+  begin
+    Dec(AInsertAt);
+  end;
+  if SameText(mElement.Name, 'br') then
+  begin
+    AddFlaw(TDocFlaw.Create(mElement.Start, mElement.OpenStop, cTexts[TXmlDocScannerText.BrNotClosed].Text,
+      cTexts[TXmlDocScannerText.WriteBr].Text,
+      [TDocReplacement.Create(mElement.OpenStop - 1, mElement.OpenStop - 1, '/')], True));
+  end
+  else if (Length(mElement.Attributes) = 0) and not mElement.HasChildren and
+    ((IndexText(mElement.Name, cDocTags) < 0) or (IndexText(mElement.Name, cAttributeTags) >= 0)) then
+  begin
+    // Fremder Name oder Tag ohne sein Attribut, ohne Inhalt: gemeint ist Text wie TList<T>.
+    AddFlaw(TDocFlaw.Create(mElement.Start, mElement.OpenStop,
+      cTexts[TXmlDocScannerText.TagNotClosed].Fmt([mElement.Name]),
+      cTexts[TXmlDocScannerText.WriteAsText].Fmt([mElement.Name]),
+        [TDocReplacement.Create(mElement.Start, mElement.Start +
+        1,
+      '&lt;'), TDocReplacement.Create(mElement.OpenStop - 1, mElement.OpenStop, '&gt;')], True));
+  end
+  else
+  begin
+    AddFlaw(TDocFlaw.Create(mElement.Start, mElement.OpenStop,
+      cTexts[TXmlDocScannerText.TagNotClosed].Fmt([mElement.Name]),
+      cTexts[TXmlDocScannerText.AddClosing].Fmt([mElement.Name]), [TDocReplacement.Create(AInsertAt, AInsertAt,
+      Format('</%s>', [mElement.Name]))], True));
+  end;
+end;
+
 procedure TDocScanner.CloseOpen;
 var
   mStop: Integer;
@@ -732,6 +728,16 @@ begin
   begin
     CloseOpen;
   end;
+end;
+
+function TDocScanner.Elements: TArray<TDocElement>;
+begin
+  Result := FElements.ToArray;
+end;
+
+function TDocScanner.Flaws: TArray<TDocFlaw>;
+begin
+  Result := FFlaws.ToArray;
 end;
 
 initialization

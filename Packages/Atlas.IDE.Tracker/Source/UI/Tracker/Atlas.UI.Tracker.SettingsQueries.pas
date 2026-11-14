@@ -115,14 +115,6 @@ begin
   Result := FTables.Queries;
 end;
 
-procedure TAtlasTrackerQueriesPart.Build;
-begin
-  BuildList;
-  BuildFields;
-  BuildButtons;
-  BuildSwitches;
-end;
-
 procedure TAtlasTrackerQueriesPart.BuildList;
 begin
   FRows.AddTitle(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueries));
@@ -213,27 +205,6 @@ begin
   else
     Result := '';
   end;
-end;
-
-procedure TAtlasTrackerQueriesPart.Refresh;
-begin
-  if FView.List = nil then
-  begin
-    Exit;
-  end;
-  // Auswahl: „(alle)“, dann die Verbindungen mit Namen (wie bei den Projekten).
-  FFilling := True;
-  try
-    FView.Connection.SetChoices(TArray<string>.Create(
-      TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryAny)) + Table.Choices);
-  finally
-    FFilling := False;
-  end;
-  if FRows.ListReady(FView.List) then
-  begin
-    FillList;
-  end;
-  FillFields;
 end;
 
 procedure TAtlasTrackerQueriesPart.FillList;
@@ -409,6 +380,35 @@ begin
     Table.Replace(mQuery);
     Refresh;
   end;
+end;
+
+procedure TAtlasTrackerQueriesPart.Build;
+begin
+  BuildList;
+  BuildFields;
+  BuildButtons;
+  BuildSwitches;
+end;
+
+procedure TAtlasTrackerQueriesPart.Refresh;
+begin
+  if FView.List = nil then
+  begin
+    Exit;
+  end;
+  // Auswahl: „(alle)“, dann die Verbindungen mit Namen (wie bei den Projekten).
+  FFilling := True;
+  try
+    FView.Connection.SetChoices(TArray<string>.Create(
+      TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryAny)) + Table.Choices);
+  finally
+    FFilling := False;
+  end;
+  if FRows.ListReady(FView.List) then
+  begin
+    FillList;
+  end;
+  FillFields;
 end;
 
 end.

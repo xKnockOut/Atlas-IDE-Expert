@@ -187,17 +187,11 @@ begin
     LowerCase(APage.Name) + ASuffix;
 end;
 
+{ TWinApiDocs }
+
 class function TWinApiDocs.IsWinApiUnit(const AUnitName: string): Boolean;
 begin
   Result := StartsText('Winapi.', AUnitName);
-end;
-
-class function TWinApiDocs.IsKnown(const AName: string): Boolean;
-var
-  mFound: TApiPage;
-  mSuffix: string;
-begin
-  Result := FindPage(AName, mFound, mSuffix);
 end;
 
 class function TWinApiDocs.Url(const AName: string): string;
@@ -215,16 +209,12 @@ begin
   end;
 end;
 
-class function TWinApiDocs.PtrVariants: TArray<TPtrVariant>;
+class function TWinApiDocs.IsKnown(const AName: string): Boolean;
 var
-  mIndex: Integer;
+  mFound: TApiPage;
+  mSuffix: string;
 begin
-  SetLength(Result, Length(cPtrPairs));
-  for mIndex := 0 to High(cPtrPairs) do
-  begin
-    Result[mIndex].Name := cPtrPairs[mIndex, 0];
-    Result[mIndex].Replacement := cPtrPairs[mIndex, 1];
-  end;
+  Result := FindPage(AName, mFound, mSuffix);
 end;
 
 class function TWinApiDocs.PtrVariant(const AName: string): string;
@@ -245,6 +235,18 @@ begin
     end;
   end;
   Result := '';
+end;
+
+class function TWinApiDocs.PtrVariants: TArray<TPtrVariant>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(cPtrPairs));
+  for mIndex := 0 to High(cPtrPairs) do
+  begin
+    Result[mIndex].Name := cPtrPairs[mIndex, 0];
+    Result[mIndex].Replacement := cPtrPairs[mIndex, 1];
+  end;
 end;
 
 class function TWinApiDocs.KnownUrls: TArray<string>;

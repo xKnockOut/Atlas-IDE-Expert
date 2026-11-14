@@ -235,44 +235,11 @@ begin
   end;
 end;
 
-class function TAtlasTextFile.ReadAllBytes(const AFileName: string): TBytes;
-var
-  mHandle: THandle;
-  mSize: Int64;
-  mTotal, mCount: Integer;
+{ TAtlasTextFile }
+
+class function TAtlasTextFile.Decode(const ABytes: TBytes): TAtlasTextFileContent;
 begin
-  mHandle := CreateFile(PChar(AFileName), GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE,
-    nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL or FILE_FLAG_SEQUENTIAL_SCAN, 0);
-  if mHandle = INVALID_HANDLE_VALUE then
-  begin
-    raise EFOpenError.CreateResFmt(@SFOpenErrorEx, [ExpandFileName(AFileName), SysErrorMessage(GetLastError)]);
-  end;
-  try
-    mSize := FileSeek(mHandle, Int64(0), 2);
-    if (mSize < 0) or (mSize > MaxInt) or (FileSeek(mHandle, Int64(0), 0) <> 0) then
-    begin
-      raise EReadError.CreateRes(@SReadError);
-    end;
-    SetLength(Result, Integer(mSize));
-    mTotal := 0;
-    while mTotal < Length(Result) do
-    begin
-      mCount := FileRead(mHandle, Result[mTotal], Length(Result) - mTotal);
-      if mCount < 0 then
-      begin
-        raise EReadError.CreateRes(@SReadError);
-      end;
-      // Kürzer geworden (jemand schreibt an Ort und Stelle): lesen, was da ist.
-      if mCount = 0 then
-      begin
-        Break;
-      end;
-      Inc(mTotal, mCount);
-    end;
-    SetLength(Result, mTotal);
-  finally
-    CloseHandle(mHandle);
-  end;
+  Result := Decode(ABytes, 0);
 end;
 
 class function TAtlasTextFile.IsUtf8(const ABytes: TBytes; AStart: Integer): Boolean;
@@ -322,16 +289,6 @@ begin
   end;
 end;
 
-class function TAtlasTextFile.IsBinaryForm(const ABytes: TBytes): Boolean;
-begin
-  Result := TTextEncodingProbe.IsBinaryForm(ABytes);
-end;
-
-class function TAtlasTextFile.ParseCodePage(const AText: string; out ACodePage: Integer): Boolean;
-begin
-  Result := TTextEncodingProbe.ParseCodePage(AText, ACodePage);
-end;
-
 class function TAtlasTextFile.Decode(const ABytes: TBytes; ADefaultCodePage: Integer): TAtlasTextFileContent;
 var
   mCount: Integer;
@@ -378,11 +335,6 @@ begin
   end;
 end;
 
-class function TAtlasTextFile.Decode(const ABytes: TBytes): TAtlasTextFileContent;
-begin
-  Result := Decode(ABytes, 0);
-end;
-
 class function TAtlasTextFile.Encode(const AContent: TAtlasTextFileContent): TBytes;
 begin
   case AContent.Encoding of
@@ -396,6 +348,56 @@ begin
       Result := TEncoding.UTF8.GetBytes(AContent.Text);
   else
     Result := AnsiBytes(AContent.Text, AContent.CodePage);
+  end;
+end;
+
+class function TAtlasTextFile.IsBinaryForm(const ABytes: TBytes): Boolean;
+begin
+  Result := TTextEncodingProbe.IsBinaryForm(ABytes);
+end;
+
+class function TAtlasTextFile.ParseCodePage(const AText: string; out ACodePage: Integer): Boolean;
+begin
+  Result := TTextEncodingProbe.ParseCodePage(AText, ACodePage);
+end;
+
+class function TAtlasTextFile.ReadAllBytes(const AFileName: string): TBytes;
+var
+  mHandle: THandle;
+  mSize: Int64;
+  mTotal, mCount: Integer;
+begin
+  mHandle := CreateFile(PChar(AFileName), GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE,
+    nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL or FILE_FLAG_SEQUENTIAL_SCAN, 0);
+  if mHandle = INVALID_HANDLE_VALUE then
+  begin
+    raise EFOpenError.CreateResFmt(@SFOpenErrorEx, [ExpandFileName(AFileName), SysErrorMessage(GetLastError)]);
+  end;
+  try
+    mSize := FileSeek(mHandle, Int64(0), 2);
+    if (mSize < 0) or (mSize > MaxInt) or (FileSeek(mHandle, Int64(0), 0) <> 0) then
+    begin
+      raise EReadError.CreateRes(@SReadError);
+    end;
+    SetLength(Result, Integer(mSize));
+    mTotal := 0;
+    while mTotal < Length(Result) do
+    begin
+      mCount := FileRead(mHandle, Result[mTotal], Length(Result) - mTotal);
+      if mCount < 0 then
+      begin
+        raise EReadError.CreateRes(@SReadError);
+      end;
+      // Kürzer geworden (jemand schreibt an Ort und Stelle): lesen, was da ist.
+      if mCount = 0 then
+      begin
+        Break;
+      end;
+      Inc(mTotal, mCount);
+    end;
+    SetLength(Result, mTotal);
+  finally
+    CloseHandle(mHandle);
   end;
 end;
 

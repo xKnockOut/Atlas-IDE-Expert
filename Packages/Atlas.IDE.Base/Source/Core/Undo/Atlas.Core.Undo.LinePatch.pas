@@ -43,6 +43,8 @@ uses
   System.Math,
   Atlas.Text.Lines;
 
+{ TAtlasLinePatch }
+
 class function TAtlasLinePatch.SplitLines(const AText: string): TArray<string>;
 begin
   Result := TTextLines.SplitKeepingBreaks(AText);
@@ -84,6 +86,8 @@ type
     /// <summary>Beginnt der nächste Block an ALine, hängt er seine Zeilen an und rückt ALine hinter sich.</summary>
     function TakeAt(var ALine: Integer; ABuilder: TStringBuilder): Boolean;
   end;
+
+{ TPatchSide }
 
 function TPatchSide.HasMore: Boolean;
 begin

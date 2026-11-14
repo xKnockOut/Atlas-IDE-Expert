@@ -35,6 +35,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Text.Json;
 
+{ TAtlasGitHubJson }
+
 class function TAtlasGitHubJson.IntOf(AObject: TJSONObject; const AName: string): Integer;
 begin
   Result := Max(0, TJsonRead.Int(AObject, AName));

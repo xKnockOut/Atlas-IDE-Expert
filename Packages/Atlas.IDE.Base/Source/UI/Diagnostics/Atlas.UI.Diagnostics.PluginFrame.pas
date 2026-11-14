@@ -122,22 +122,6 @@ begin
   ShowPages;
 end;
 
-function TAtlasDiagnosticsFrame.NewLabel(AAlign: TAlign): TLabel;
-begin
-  Result := TLabel.Create(Self);
-  Result.Parent := Self;
-  Result.Align := AAlign;
-  Result.AlignWithMargins := True;
-  Result.ShowAccelChar := False;
-end;
-
-procedure TAtlasDiagnosticsFrame.Place(APage: TPanel);
-begin
-  APage.Parent := Self;
-  APage.Align := alClient;
-  APage.Visible := False;
-end;
-
 function TAtlasDiagnosticsFrame.Page(APage: TAtlasDiagnosticPage): TPanel;
 begin
   case APage of
@@ -154,15 +138,20 @@ begin
   end;
 end;
 
-function TAtlasDiagnosticsFrame.ActivePage: TAtlasDiagnosticPage;
+function TAtlasDiagnosticsFrame.NewLabel(AAlign: TAlign): TLabel;
 begin
-  Result := FTabs.Active;
+  Result := TLabel.Create(Self);
+  Result.Parent := Self;
+  Result.Align := AAlign;
+  Result.AlignWithMargins := True;
+  Result.ShowAccelChar := False;
 end;
 
-procedure TAtlasDiagnosticsFrame.SelectPage(APage: TAtlasDiagnosticPage);
+procedure TAtlasDiagnosticsFrame.Place(APage: TPanel);
 begin
-  FTabs.Active := APage;
-  ShowPages;
+  APage.Parent := Self;
+  APage.Align := alClient;
+  APage.Visible := False;
 end;
 
 procedure TAtlasDiagnosticsFrame.TabsChange(Sender: TObject);
@@ -184,12 +173,6 @@ begin
   begin
     Page(mPage).Visible := (mPage = FTabs.Active) and (FPluginOn or not mPluginPage);
   end;
-end;
-
-procedure TAtlasDiagnosticsFrame.SetPluginTimings(AOn: Boolean);
-begin
-  FPluginOn := AOn;
-  ShowPages;
 end;
 
 procedure TAtlasDiagnosticsFrame.SetSnapshot(const ASnapshot: TAtlasPluginSnapshot; AWorkers: Integer);
@@ -237,10 +220,27 @@ begin
   FCompletion.SetColors(AColors);
 end;
 
+procedure TAtlasDiagnosticsFrame.SetPluginTimings(AOn: Boolean);
+begin
+  FPluginOn := AOn;
+  ShowPages;
+end;
+
+procedure TAtlasDiagnosticsFrame.SelectPage(APage: TAtlasDiagnosticPage);
+begin
+  FTabs.Active := APage;
+  ShowPages;
+end;
+
 procedure TAtlasDiagnosticsFrame.FeatureDisabled(AFeature: TAtlasFeature);
 begin
   FBar.ShowNote(TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagDisabled,
     [TAtlasGuard.FeatureName(AFeature)]));
+end;
+
+function TAtlasDiagnosticsFrame.ActivePage: TAtlasDiagnosticPage;
+begin
+  Result := FTabs.Active;
 end;
 
 end.

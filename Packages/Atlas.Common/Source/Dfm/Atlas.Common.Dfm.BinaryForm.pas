@@ -705,6 +705,18 @@ begin
   Result := True;
 end;
 
+class function TDfmBinary.FromDecodedText(const AText: string; out AFormText: string): Boolean;
+var
+  mBytes: TBytes;
+begin
+  // Erst als Windows-1252 (ungültiges UTF-8), dann als UTF-8 zurückwandeln.
+  Result := Cp1252Bytes(AText, mBytes) and ToText(mBytes, AFormText);
+  if not Result then
+  begin
+    Result := ToText(TEncoding.UTF8.GetBytes(AText), AFormText);
+  end;
+end;
+
 class function TDfmBinary.UnderVersionControl(const AFileName: string): Boolean;
 var
   mFolder, mParent: string;
@@ -750,18 +762,6 @@ begin
   // Strings stehen mit #nnn im Text; UTF-8 ohne BOM betrifft nur Bezeichner außerhalb von ASCII.
   TFile.WriteAllBytes(AFileName, TEncoding.UTF8.GetBytes(mText));
   Result := True;
-end;
-
-class function TDfmBinary.FromDecodedText(const AText: string; out AFormText: string): Boolean;
-var
-  mBytes: TBytes;
-begin
-  // Erst als Windows-1252 (ungültiges UTF-8), dann als UTF-8 zurückwandeln.
-  Result := Cp1252Bytes(AText, mBytes) and ToText(mBytes, AFormText);
-  if not Result then
-  begin
-    Result := ToText(TEncoding.UTF8.GetBytes(AText), AFormText);
-  end;
 end;
 
 initialization

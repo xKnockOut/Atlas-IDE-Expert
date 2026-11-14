@@ -128,6 +128,23 @@ end;
 
 { TAtlasLeakSetupInfo }
 
+class function TAtlasLeakSetupInfo.FromJson(const AJson: string; out AInfo: TAtlasLeakSetupInfo): Boolean;
+var
+  mValue: TJSONValue;
+begin
+  AInfo := Default(TAtlasLeakSetupInfo);
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    Result := (mValue is TJSONObject) and (TJSONObject(mValue).GetValue('mainSource') is TJSONString);
+    if Result then
+    begin
+      AInfo := FromObject(TJSONObject(mValue));
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
 class function TAtlasLeakSetupInfo.FromObject(AObject: TJSONObject): TAtlasLeakSetupInfo;
 var
   mUses, mReport, mDll: TJSONObject;
@@ -157,23 +174,6 @@ begin
   Result.DllFile := TJsonRead.Text(mDll, 'file');
   Result.DllSource := TJsonRead.Text(mDll, 'source');
   Result.DllTarget := TJsonRead.Text(mDll, 'target');
-end;
-
-class function TAtlasLeakSetupInfo.FromJson(const AJson: string; out AInfo: TAtlasLeakSetupInfo): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  AInfo := Default(TAtlasLeakSetupInfo);
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    Result := (mValue is TJSONObject) and (TJSONObject(mValue).GetValue('mainSource') is TJSONString);
-    if Result then
-    begin
-      AInfo := FromObject(TJSONObject(mValue));
-    end;
-  finally
-    mValue.Free;
-  end;
 end;
 
 function TAtlasLeakSetupInfo.Available(AChoice: TAtlasLeakChoice): Boolean;

@@ -313,6 +313,24 @@ end;
 
 { TAtlasSettingField }
 
+function TAtlasSettingField.PicksFile: Boolean;
+begin
+  Result := Pos('Datei wählen', Control) > 0; // german-ok: Wert aus x-control des Schemas
+end;
+
+function TAtlasSettingField.DescriptionFor(AEnglish: Boolean): string;
+begin
+  Result := '';
+  if AEnglish then
+  begin
+    Result := DescriptionEn;
+  end;
+  if Result = '' then
+  begin
+    Result := Description;
+  end;
+end;
+
 function TAtlasSettingField.Accepts(const AJson: string): Boolean;
 var
   mValue: TJSONValue;
@@ -344,24 +362,6 @@ begin
   finally
     mValue.Free;
   end;
-end;
-
-function TAtlasSettingField.DescriptionFor(AEnglish: Boolean): string;
-begin
-  Result := '';
-  if AEnglish then
-  begin
-    Result := DescriptionEn;
-  end;
-  if Result = '' then
-  begin
-    Result := Description;
-  end;
-end;
-
-function TAtlasSettingField.PicksFile: Boolean;
-begin
-  Result := Pos('Datei wählen', Control) > 0; // german-ok: Wert aus x-control des Schemas
 end;
 
 { TAtlasSettingsSchema }

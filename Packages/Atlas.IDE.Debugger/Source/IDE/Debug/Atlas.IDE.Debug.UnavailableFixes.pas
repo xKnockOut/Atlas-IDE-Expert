@@ -105,6 +105,65 @@ end;
 
 { TAtlasIdeDebugUnavailableFixes }
 
+class function TAtlasIdeDebugUnavailableFixes.Confirm(const AText: string): Boolean;
+begin
+  Result := MessageDlg(AText, TMsgDlgType.mtConfirmation, [TMsgDlgBtn.mbOK, TMsgDlgBtn.mbCancel], 0) = mrOk;
+end;
+
+class function TAtlasIdeDebugUnavailableFixes.HasDebugInfo(const AProject: IOTAProject;
+  const AName: string): Boolean;
+begin
+  Result := TAtlasDebugUnavailable.OptionOn(
+    TAtlasIdeProjectContext.ConfigurationValue(AProject, AName, '', cDebugInfoOption), True);
+end;
+
+class function TAtlasIdeDebugUnavailableFixes.ChooseConfiguration(const AProject: IOTAProject): string;
+var
+  mName: string;
+  mConfigurations: TArray<string>;
+begin
+  Result := '';
+  mConfigurations := TAtlasIdeProjectContext.Configurations(AProject);
+  for mName in mConfigurations do
+  begin
+    if SameText(mName, cDebugConfiguration) and HasDebugInfo(AProject, mName) then
+    begin
+      Result := mName;
+    end;
+  end;
+  for mName in mConfigurations do
+  begin
+    if (Result = '') and not SameText(mName, 'Base') and HasDebugInfo(AProject, mName) then
+    begin
+      Result := mName;
+    end;
+  end;
+end;
+
+class function TAtlasIdeDebugUnavailableFixes.ExecuteAction(const AName: string; AShortCut: TShortCut): Boolean;
+var
+  mServices: INTAServices;
+  mFound: TContainedAction;
+begin
+  Result := False;
+  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
+  begin
+    Exit;
+  end;
+  mFound := FindAction(mServices, AName, AShortCut);
+  if mFound = nil then
+  begin
+    Exit;
+  end;
+  mFound.Update;
+  if (mFound is TCustomAction) and not TCustomAction(mFound).Enabled then
+  begin
+    Exit;
+  end;
+  mFound.Execute;
+  Result := True;
+end;
+
 class function TAtlasIdeDebugUnavailableFixes.FixText(AFix: TAtlasUnavailableFix): string;
 const
   cIds: array[TAtlasUnavailableFix] of TAtlasDebugTextId = (TAtlasDebugTextId.DebugUnavailableFixRestart,
@@ -112,11 +171,6 @@ const
     TAtlasDebugTextId.DebugUnavailableFixDcus, TAtlasDebugTextId.DebugUnavailableFixDirective);
 begin
   Result := TAtlasDebugStrings.Text(cIds[AFix]);
-end;
-
-class function TAtlasIdeDebugUnavailableFixes.Confirm(const AText: string): Boolean;
-begin
-  Result := MessageDlg(AText, TMsgDlgType.mtConfirmation, [TMsgDlgBtn.mbOK, TMsgDlgBtn.mbCancel], 0) = mrOk;
 end;
 
 class procedure TAtlasIdeDebugUnavailableFixes.ApplyEdit(AFix: TAtlasUnavailableFix;
@@ -155,36 +209,6 @@ begin
   else
   begin
     Say(ASay, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableEditDone, [FixText(AFix), mTarget]));
-  end;
-end;
-
-class function TAtlasIdeDebugUnavailableFixes.HasDebugInfo(const AProject: IOTAProject;
-  const AName: string): Boolean;
-begin
-  Result := TAtlasDebugUnavailable.OptionOn(
-    TAtlasIdeProjectContext.ConfigurationValue(AProject, AName, '', cDebugInfoOption), True);
-end;
-
-class function TAtlasIdeDebugUnavailableFixes.ChooseConfiguration(const AProject: IOTAProject): string;
-var
-  mName: string;
-  mConfigurations: TArray<string>;
-begin
-  Result := '';
-  mConfigurations := TAtlasIdeProjectContext.Configurations(AProject);
-  for mName in mConfigurations do
-  begin
-    if SameText(mName, cDebugConfiguration) and HasDebugInfo(AProject, mName) then
-    begin
-      Result := mName;
-    end;
-  end;
-  for mName in mConfigurations do
-  begin
-    if (Result = '') and not SameText(mName, 'Base') and HasDebugInfo(AProject, mName) then
-    begin
-      Result := mName;
-    end;
   end;
 end;
 
@@ -277,30 +301,6 @@ begin
   begin
     TAtlasIdeNavigation.GoToLocation(ASwitch.FileName, ASwitch.Line, 0);
   end;
-end;
-
-class function TAtlasIdeDebugUnavailableFixes.ExecuteAction(const AName: string; AShortCut: TShortCut): Boolean;
-var
-  mServices: INTAServices;
-  mFound: TContainedAction;
-begin
-  Result := False;
-  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
-  begin
-    Exit;
-  end;
-  mFound := FindAction(mServices, AName, AShortCut);
-  if mFound = nil then
-  begin
-    Exit;
-  end;
-  mFound.Update;
-  if (mFound is TCustomAction) and not TCustomAction(mFound).Enabled then
-  begin
-    Exit;
-  end;
-  mFound.Execute;
-  Result := True;
 end;
 
 end.

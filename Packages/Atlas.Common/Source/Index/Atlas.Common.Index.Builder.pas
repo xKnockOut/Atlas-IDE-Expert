@@ -317,22 +317,6 @@ end;
 
 { TIndexFileDefines }
 
-class function TIndexFileDefines.IsUnder(const AFileName: string; const ARoots: TArray<string>): Boolean;
-var
-  mRoot: string;
-begin
-  // Windows-Pfade auch unter anderen Systemen (Tests): beide Trenner gelten.
-  Result := False;
-  for mRoot in ARoots do
-  begin
-    if (mRoot <> '') and AFileName.StartsWith(mRoot, True) and (CharInSet(mRoot[Length(mRoot)], ['\', '/']) or
-      ((Length(AFileName) > Length(mRoot)) and CharInSet(AFileName[Length(mRoot) + 1], ['\', '/']))) then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
 function TIndexFileDefines.DefinesOf(const AFileName: string): TArray<string>;
 begin
   // RTL, VCL und FMX einmal je Compiler und Plattform statt je Projekt-Defines (#647).
@@ -349,6 +333,22 @@ end;
 function TIndexFileDefines.KeyOf(const AFileName: string): string;
 begin
   Result := AnsiUpperCase(String.Join(';', DefinesOf(AFileName)));
+end;
+
+class function TIndexFileDefines.IsUnder(const AFileName: string; const ARoots: TArray<string>): Boolean;
+var
+  mRoot: string;
+begin
+  // Windows-Pfade auch unter anderen Systemen (Tests): beide Trenner gelten.
+  Result := False;
+  for mRoot in ARoots do
+  begin
+    if (mRoot <> '') and AFileName.StartsWith(mRoot, True) and (CharInSet(mRoot[Length(mRoot)], ['\', '/']) or
+      ((Length(AFileName) > Length(mRoot)) and CharInSet(AFileName[Length(mRoot) + 1], ['\', '/']))) then
+    begin
+      Exit(True);
+    end;
+  end;
 end;
 
 { TIndexKeySet }
@@ -506,75 +506,12 @@ begin
   FInFlight := TIndexKeySet.Create;
 end;
 
-function TIndexBuilder.AlreadyIndexed(const AFileName: string; AStamp: Int64; ALibrary: Boolean): Boolean;
-var
-  mExisting: TUnitIndex;
-begin
-  // Ohne diese Prüfung übernahm jedes Projekt einer Gruppe die gemeinsamen Units erneut (aus dem Cache oder
-  // geparst) und ersetzte die des vorigen; die Namenslisten des Index behielten die ersetzten Einträge, bis es
-  // mehr tote als lebende gab (Speicher, Rückmeldung 01.11.2026). Bedingungen wie bei CacheFits.
-  Result := FIndex.FindFile(AFileName, mExisting) and (mExisting.Stamp = AStamp) and
-    (mExisting.DefinesKey <> '') and (mExisting.DefinesKey = FDefines.KeyOf(AFileName)) and
-    (mExisting.Library_ = ALibrary) and IncludesUnchanged(FFileSystem, mExisting) and
-    (mExisting.UsagesIndexed or not WantsUsages(ALibrary)) and
-    (not mExisting.Compact or (ALibrary and (FIndex.Budget > 0)));
-end;
-
 destructor TIndexBuilder.Destroy;
 begin
   FInFlight.Free;
   FFailedUnits.Free;
   FCache.Free;
   inherited;
-end;
-
-procedure TIndexBuilder.UseCache(const AUnits: TArray<TUnitIndex>);
-var
-  mUnitIndex: TUnitIndex;
-begin
-  // Ob ein kompakter Eintrag taugt, entscheidet CacheFits beim Einlesen.
-  for mUnitIndex in AUnits do
-  begin
-    FCache.Add(mUnitIndex.FileName, TIndexCacheEntry.FromUnit(mUnitIndex));
-  end;
-end;
-
-procedure TIndexBuilder.UseCache(const AEntries: TArray<TIndexCacheEntry>);
-var
-  mEntry: TIndexCacheEntry;
-begin
-  for mEntry in AEntries do
-  begin
-    FCache.Add(mEntry.Header.FileName, mEntry);
-  end;
-end;
-
-procedure TIndexBuilder.ReleaseCache;
-begin
-  FCache.Clear;
-end;
-
-function TIndexBuilder.CachedCount: Integer;
-begin
-  Result := FCache.Count;
-end;
-
-function TIndexBuilder.IncludeResolver: TIncludeResolver;
-var
-  mFileSystem: IIndexFileSystem;
-begin
-  mFileSystem := FFileSystem;
-  Result := TIncludeFiles.Resolver(FIncludePaths,
-    function(const AFileName: string): Boolean
-    var
-      Stamp: Int64;
-    begin
-      Result := mFileSystem.FileStamp(AFileName, Stamp);
-    end,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := mFileSystem.ReadText(AFileName, AText);
-    end);
 end;
 
 function TIndexBuilder.WantsUsages(ALibrary: Boolean): Boolean;
@@ -624,17 +561,36 @@ begin
   end;
 end;
 
-function TIndexBuilder.ReadUsages(const AFileName: string; out AUsages: TArray<TIndexUsage>): Boolean;
+function TIndexBuilder.IncludeResolver: TIncludeResolver;
 var
-  mText: string;
+  mFileSystem: IIndexFileSystem;
 begin
-  AUsages := nil;
-  Result := FFileSystem.ReadText(AFileName, mText);
-  if Result then
-  begin
-    AUsages := TIndexExtractor.ExtractText(mText, AFileName, FDefines.DefinesOf(AFileName), IncludeResolver(),
-      True).Usages;
-  end;
+  mFileSystem := FFileSystem;
+  Result := TIncludeFiles.Resolver(FIncludePaths,
+    function(const AFileName: string): Boolean
+    var
+      Stamp: Int64;
+    begin
+      Result := mFileSystem.FileStamp(AFileName, Stamp);
+    end,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := mFileSystem.ReadText(AFileName, AText);
+    end);
+end;
+
+function TIndexBuilder.AlreadyIndexed(const AFileName: string; AStamp: Int64; ALibrary: Boolean): Boolean;
+var
+  mExisting: TUnitIndex;
+begin
+  // Ohne diese Prüfung übernahm jedes Projekt einer Gruppe die gemeinsamen Units erneut (aus dem Cache oder
+  // geparst) und ersetzte die des vorigen; die Namenslisten des Index behielten die ersetzten Einträge, bis es
+  // mehr tote als lebende gab (Speicher, Rückmeldung 01.11.2026). Bedingungen wie bei CacheFits.
+  Result := FIndex.FindFile(AFileName, mExisting) and (mExisting.Stamp = AStamp) and
+    (mExisting.DefinesKey <> '') and (mExisting.DefinesKey = FDefines.KeyOf(AFileName)) and
+    (mExisting.Library_ = ALibrary) and IncludesUnchanged(FFileSystem, mExisting) and
+    (mExisting.UsagesIndexed or not WantsUsages(ALibrary)) and
+    (not mExisting.Compact or (ALibrary and (FIndex.Budget > 0)));
 end;
 
 function TIndexBuilder.IndexFile(const AFileName: string; ALibrary: Boolean;
@@ -739,6 +695,40 @@ begin
   Inc(AResult.Parsed);
 end;
 
+procedure TIndexBuilder.IndexReferenced(var AResult: TIndexBuildResult; const ARun: TIndexStageRun);
+var
+  mPending: TQueue<string>;
+  mSeen: TDictionary<string, Boolean>;
+  mName: string;
+  mUses_: TArray<string>;
+begin
+  if not Assigned(FResolveUnit) then
+  begin
+    Exit;
+  end;
+  mPending := TQueue<string>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
+  try
+    SeedReferenced(FIndex, mPending, mSeen);
+    while (mPending.Count > 0) and not AResult.Cancelled do
+    begin
+      AResult.Cancelled := IsCancelled(ARun.Cancelled);
+      mName := mPending.Dequeue;
+      if not AResult.Cancelled and not mSeen.ContainsKey(UpperCase(mName)) then
+      begin
+        mSeen.Add(UpperCase(mName), True);
+        if NextReferenced(mName, AResult, ARun.Progress, mUses_) then
+        begin
+          EnqueueAll(mPending, mUses_);
+        end;
+      end;
+    end;
+  finally
+    mSeen.Free;
+    mPending.Free;
+  end;
+end;
+
 function TIndexBuilder.NextReferenced(const AName: string; var AResult: TIndexBuildResult;
   const AProgress: TIndexProgressEvent; out AUses: TArray<string>): Boolean;
 var
@@ -776,46 +766,6 @@ begin
   // Nur das interface ist von außen sichtbar; dessen uses reichen.
   AUses := mExisting.InterfaceUses;
   Result := True;
-end;
-
-procedure TIndexBuilder.IndexReferenced(var AResult: TIndexBuildResult; const ARun: TIndexStageRun);
-var
-  mPending: TQueue<string>;
-  mSeen: TDictionary<string, Boolean>;
-  mName: string;
-  mUses_: TArray<string>;
-begin
-  if not Assigned(FResolveUnit) then
-  begin
-    Exit;
-  end;
-  mPending := TQueue<string>.Create;
-  mSeen := TDictionary<string, Boolean>.Create;
-  try
-    SeedReferenced(FIndex, mPending, mSeen);
-    while (mPending.Count > 0) and not AResult.Cancelled do
-    begin
-      AResult.Cancelled := IsCancelled(ARun.Cancelled);
-      mName := mPending.Dequeue;
-      if not AResult.Cancelled and not mSeen.ContainsKey(UpperCase(mName)) then
-      begin
-        mSeen.Add(UpperCase(mName), True);
-        if NextReferenced(mName, AResult, ARun.Progress, mUses_) then
-        begin
-          EnqueueAll(mPending, mUses_);
-        end;
-      end;
-    end;
-  finally
-    mSeen.Free;
-    mPending.Free;
-  end;
-end;
-
-function TIndexBuilder.Build(const AFiles: TArray<string>; const AProgress: TIndexProgressEvent;
-  const ACancelled: TIndexCancelled): TIndexBuildResult;
-begin
-  Result := Build(AFiles, nil, nil, AProgress, ACancelled, nil);
 end;
 
 function TIndexBuilder.RunStage(AStage: TIndexStage; const AFiles: TArray<string>; const ALabel: string;
@@ -864,6 +814,75 @@ begin
     end;
   end;
   Result := not AResult.Cancelled;
+end;
+
+function TIndexBuilder.ApplyChange(const AChange: TFileChange; var AIgnored: TIndexBuildResult): Integer;
+var
+  mExisting, mDependent: TUnitIndex;
+begin
+  Result := 0;
+  // Units, die die Datei per $I einbinden, neu einlesen.
+  for mDependent in DependentsOf(FIndex, AChange.FileName) do
+  begin
+    if IndexFile(mDependent.FileName, mDependent.Library_, AIgnored) then
+    begin
+      Inc(Result);
+    end;
+  end;
+  if not FIndex.FindFile(AChange.FileName, mExisting) then
+  begin
+    // Eine neue Datei kann eine bisher fehlende Unit sein.
+    if AChange.Kind <> TFileChangeKind.Deleted then
+    begin
+      FFailedUnits.Clear;
+    end;
+    Exit;
+  end;
+  // IndexFile vergleicht mit dem Cache vom Start; ein geänderter Zeitstempel
+  // führt zum Neueinlesen, gleicher Inhalt nicht. Was sich nicht mehr lesen
+  // lässt oder gelöscht ist, fällt aus dem Index.
+  if (AChange.Kind = TFileChangeKind.Deleted) or not IndexFile(AChange.FileName, mExisting.Library_, AIgnored) then
+  begin
+    FIndex.RemoveFile(AChange.FileName);
+  end;
+  Inc(Result);
+end;
+
+procedure TIndexBuilder.UseCache(const AUnits: TArray<TUnitIndex>);
+var
+  mUnitIndex: TUnitIndex;
+begin
+  // Ob ein kompakter Eintrag taugt, entscheidet CacheFits beim Einlesen.
+  for mUnitIndex in AUnits do
+  begin
+    FCache.Add(mUnitIndex.FileName, TIndexCacheEntry.FromUnit(mUnitIndex));
+  end;
+end;
+
+procedure TIndexBuilder.UseCache(const AEntries: TArray<TIndexCacheEntry>);
+var
+  mEntry: TIndexCacheEntry;
+begin
+  for mEntry in AEntries do
+  begin
+    FCache.Add(mEntry.Header.FileName, mEntry);
+  end;
+end;
+
+procedure TIndexBuilder.ReleaseCache;
+begin
+  FCache.Clear;
+end;
+
+function TIndexBuilder.CachedCount: Integer;
+begin
+  Result := FCache.Count;
+end;
+
+function TIndexBuilder.Build(const AFiles: TArray<string>; const AProgress: TIndexProgressEvent;
+  const ACancelled: TIndexCancelled): TIndexBuildResult;
+begin
+  Result := Build(AFiles, nil, nil, AProgress, ACancelled, nil);
 end;
 
 function TIndexBuilder.Build(const AFiles, ASearchFiles, ALibraryFiles: TArray<string>;
@@ -935,6 +954,19 @@ begin
   end;
 end;
 
+function TIndexBuilder.ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
+var
+  mChange: TFileChange;
+  mIgnored: TIndexBuildResult;
+begin
+  Result := 0;
+  mIgnored := Default(TIndexBuildResult);
+  for mChange in AChanges do
+  begin
+    Inc(Result, ApplyChange(mChange, mIgnored));
+  end;
+end;
+
 function TIndexBuilder.ApplyText(const AFileName, AText: string): Boolean;
 var
   mExisting, mUnitIndex: TUnitIndex;
@@ -962,48 +994,16 @@ begin
   Result := True;
 end;
 
-function TIndexBuilder.ApplyChange(const AChange: TFileChange; var AIgnored: TIndexBuildResult): Integer;
+function TIndexBuilder.ReadUsages(const AFileName: string; out AUsages: TArray<TIndexUsage>): Boolean;
 var
-  mExisting, mDependent: TUnitIndex;
+  mText: string;
 begin
-  Result := 0;
-  // Units, die die Datei per $I einbinden, neu einlesen.
-  for mDependent in DependentsOf(FIndex, AChange.FileName) do
+  AUsages := nil;
+  Result := FFileSystem.ReadText(AFileName, mText);
+  if Result then
   begin
-    if IndexFile(mDependent.FileName, mDependent.Library_, AIgnored) then
-    begin
-      Inc(Result);
-    end;
-  end;
-  if not FIndex.FindFile(AChange.FileName, mExisting) then
-  begin
-    // Eine neue Datei kann eine bisher fehlende Unit sein.
-    if AChange.Kind <> TFileChangeKind.Deleted then
-    begin
-      FFailedUnits.Clear;
-    end;
-    Exit;
-  end;
-  // IndexFile vergleicht mit dem Cache vom Start; ein geänderter Zeitstempel
-  // führt zum Neueinlesen, gleicher Inhalt nicht. Was sich nicht mehr lesen
-  // lässt oder gelöscht ist, fällt aus dem Index.
-  if (AChange.Kind = TFileChangeKind.Deleted) or not IndexFile(AChange.FileName, mExisting.Library_, AIgnored) then
-  begin
-    FIndex.RemoveFile(AChange.FileName);
-  end;
-  Inc(Result);
-end;
-
-function TIndexBuilder.ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
-var
-  mChange: TFileChange;
-  mIgnored: TIndexBuildResult;
-begin
-  Result := 0;
-  mIgnored := Default(TIndexBuildResult);
-  for mChange in AChanges do
-  begin
-    Inc(Result, ApplyChange(mChange, mIgnored));
+    AUsages := TIndexExtractor.ExtractText(mText, AFileName, FDefines.DefinesOf(AFileName), IncludeResolver(),
+      True).Usages;
   end;
 end;
 

@@ -210,118 +210,66 @@ begin
   inherited;
 end;
 
-class procedure TAtlasIdeStepInto.Install(const ASession: TAtlasStepIntoSessionFunc; const AMessage: TProc<string>);
+procedure TAtlasIdeStepInto.AppMessage(var Msg: TMsg; var Handled: Boolean);
 begin
-  if FInstance = nil then
+  if TAtlasGuard.Disabled(TAtlasFeature.Debugger) or (FWindow = nil) or not FWindow.IsShown then
   begin
-    FInstance := TAtlasIdeStepInto.Create(ASession, AMessage);
+    Exit;
+  end;
+  try
+    case Msg.message of
+      WM_KEYDOWN, WM_SYSKEYDOWN:
+        if IsEditorWindow(Msg.hwnd) then
+        begin
+          KeyDown(Msg, Handled);
+        end;
+      WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_NCLBUTTONDOWN:
+        if not FWindow.HandleAllocated or (Msg.hwnd <> FWindow.Handle) then
+        begin
+          Close;
+        end;
+    end;
+  except
+    // Keine Exception an die IDE (#493); die Nachricht geht dann normal weiter.
+    on E: Exception do
+    begin
+      Handled := False;
+      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
+    end;
   end;
 end;
 
-class procedure TAtlasIdeStepInto.Uninstall;
-begin
-  FreeAndNil(FInstance);
-end;
-
-class function TAtlasIdeStepInto.Enabled: Boolean;
+procedure TAtlasIdeStepInto.KeyDown(const AMsg: TMsg; var AHandled: Boolean);
 var
-  mSettings: TAtlasPluginSettings;
+  mKey: Word;
 begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and mSettings.DebugStepIntoTarget;
-end;
-
-class function TAtlasIdeStepInto.Stopped: Boolean;
-begin
-  Result := TAtlasIdeBreakpoints.StoppedProcess <> nil;
-end;
-
-class function TAtlasIdeStepInto.Active: Boolean;
-begin
-  Result := (FInstance <> nil) and (FInstance.FWindow <> nil) and FInstance.FWindow.IsShown;
-end;
-
-class procedure TAtlasIdeStepInto.Run;
-begin
-  if FInstance = nil then
+  if (FWindow = nil) or not FWindow.IsShown then
   begin
     Exit;
   end;
-  if not Enabled then
+  mKey := Word(AMsg.wParam);
+  if (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) then
   begin
-    FInstance.Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetOff));
     Exit;
   end;
-  if not Stopped then
+  if (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) and ListKey(FWindow, mKey) then
   begin
-    FInstance.Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNotStopped));
-    Exit;
-  end;
-  FInstance.Execute;
-end;
-
-class function TAtlasIdeStepInto.TryRun: Boolean;
-begin
-  Result := (FInstance <> nil) and Enabled and Stopped;
-  if Result then
+    AHandled := True;
+  end
+  else
   begin
-    FInstance.Execute;
+    // Jede andere Taste schließt ohne Sprung und geht an den Editor.
+    Close;
   end;
 end;
 
-class procedure TAtlasIdeStepInto.Dismiss;
+procedure TAtlasIdeStepInto.Tick(Sender: TObject);
 begin
-  if FInstance <> nil then
-  begin
-    FInstance.Close;
-  end;
-end;
-
-procedure TAtlasIdeStepInto.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
-end;
-
-class function TAtlasIdeStepInto.CanBreak(const AFileName: string): Boolean;
-var
-  mServices: IOTAServices;
-  mModules: IOTAModuleServices;
-  mProject: IOTAProject;
-  mRoot, mValue: string;
-begin
-  Result := True;
-  if not Supports(BorlandIDEServices, IOTAServices, mServices) then
-  begin
-    Exit;
-  end;
-  mRoot := mServices.GetRootDirectory;
-  if not TAtlasStepInto.IsLibraryFile(AFileName, mRoot) then
-  begin
-    Exit;
-  end;
-  // RTL, VCL und FMX: Haltepunkte greifen nur mit Debug-DCUs.
-  Result := False;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
-  begin
-    Exit;
-  end;
-  mProject := mModules.GetActiveProject;
-  if mProject = nil then
-  begin
-    Exit;
-  end;
-  mValue := TAtlasIdeProjectContext.ConfigurationValue(mProject, mProject.CurrentConfiguration,
-    mProject.CurrentPlatform, 'DCC_DebugDCUs');
-  Result := SameText(Trim(mValue), 'true');
-end;
-
-class function TAtlasIdeStepInto.Evaluate(const AExpression: string; out AValue: string): Boolean;
-begin
-  // ClassName ist eine Klassenfunktion: Aufrufe erlauben. Der Empfänger selbst ruft nichts auf (receiverSimple).
-  Result := TAtlasIdeDebugEvaluator.Evaluate(AExpression, TAtlasVisualizerEvaluation.Calls, cEvaluateMs, AValue);
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      Step;
+    end);
 end;
 
 function TAtlasIdeStepInto.Execute: Boolean;
@@ -454,84 +402,6 @@ begin
   FWindow.ShowFor(FRows, mPoint);
 end;
 
-procedure TAtlasIdeStepInto.StepInto;
-var
-  mProcess: IOTAProcess;
-begin
-  mProcess := TAtlasIdeBreakpoints.StoppedProcess;
-  if mProcess <> nil then
-  begin
-    mProcess.Run(ormStmtStepInto);
-  end;
-end;
-
-procedure TAtlasIdeStepInto.Close;
-begin
-  if (FWindow <> nil) and FWindow.IsShown then
-  begin
-    FWindow.Dismiss;
-  end;
-end;
-
-procedure TAtlasIdeStepInto.Accept(AIndex: Integer);
-begin
-  if (AIndex < 0) or (AIndex > High(FRows)) or not FRows[AIndex].Available then
-  begin
-    Close;
-    Exit;
-  end;
-  Close;
-  Launch(FRows[AIndex]);
-end;
-
-procedure TAtlasIdeStepInto.Launch(const ARow: TAtlasStepRow);
-var
-  mProcess: IOTAProcess;
-begin
-  mProcess := TAtlasIdeBreakpoints.StoppedProcess;
-  if mProcess = nil then
-  begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNotStopped));
-    Exit;
-  end;
-  TAtlasIdeBreakpoints.Position(mProcess.CurrentThread, FJump.StartFile, FJump.StartLine);
-  FJump.Target := ARow.Target;
-  FJump.Caption := ARow.Caption;
-  FJump.FollowLine := FAnswer.FollowLine;
-  FBreaks := [TAtlasIdeBreakpoints.Add(FJump.Target.FileName, FJump.Target.Line)];
-  // Hält das Programm zuerst an der Folgeanweisung, ist der Aufruf nicht erfolgt.
-  if (FJump.FollowLine >= 0) and
-    not (SameText(FJump.Target.FileName, FFileName) and (FJump.Target.Line = FJump.FollowLine)) then
-  begin
-    FBreaks := FBreaks + [TAtlasIdeBreakpoints.Add(FFileName, FJump.FollowLine)];
-  end;
-  FJump.Running := True;
-  FJump.SeenRunning := False;
-  FTimer.Enabled := True;
-  mProcess.Run(ormRun);
-end;
-
-procedure TAtlasIdeStepInto.RemoveBreakpoints;
-begin
-  TAtlasIdeBreakpoints.RemoveAll(FBreaks);
-end;
-
-procedure TAtlasIdeStepInto.Finish;
-begin
-  FTimer.Enabled := False;
-  FJump.Running := False;
-  RemoveBreakpoints;
-end;
-
-procedure TAtlasIdeStepInto.Tick(Sender: TObject);
-begin
-  TAtlasGuard.Run(TAtlasFeature.Debugger,
-    procedure
-    begin
-      Step;
-    end);
-end;
-
 procedure TAtlasIdeStepInto.Step;
 var
   mServices: IOTADebuggerServices;
@@ -592,56 +462,186 @@ begin
   end;
 end;
 
-procedure TAtlasIdeStepInto.KeyDown(const AMsg: TMsg; var AHandled: Boolean);
-var
-  mKey: Word;
+procedure TAtlasIdeStepInto.Accept(AIndex: Integer);
 begin
-  if (FWindow = nil) or not FWindow.IsShown then
+  if (AIndex < 0) or (AIndex > High(FRows)) or not FRows[AIndex].Available then
   begin
-    Exit;
-  end;
-  mKey := Word(AMsg.wParam);
-  if (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) then
-  begin
-    Exit;
-  end;
-  if (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) and ListKey(FWindow, mKey) then
-  begin
-    AHandled := True;
-  end
-  else
-  begin
-    // Jede andere Taste schließt ohne Sprung und geht an den Editor.
     Close;
+    Exit;
+  end;
+  Close;
+  Launch(FRows[AIndex]);
+end;
+
+procedure TAtlasIdeStepInto.Launch(const ARow: TAtlasStepRow);
+var
+  mProcess: IOTAProcess;
+begin
+  mProcess := TAtlasIdeBreakpoints.StoppedProcess;
+  if mProcess = nil then
+  begin
+    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNotStopped));
+    Exit;
+  end;
+  TAtlasIdeBreakpoints.Position(mProcess.CurrentThread, FJump.StartFile, FJump.StartLine);
+  FJump.Target := ARow.Target;
+  FJump.Caption := ARow.Caption;
+  FJump.FollowLine := FAnswer.FollowLine;
+  FBreaks := [TAtlasIdeBreakpoints.Add(FJump.Target.FileName, FJump.Target.Line)];
+  // Hält das Programm zuerst an der Folgeanweisung, ist der Aufruf nicht erfolgt.
+  if (FJump.FollowLine >= 0) and
+    not (SameText(FJump.Target.FileName, FFileName) and (FJump.Target.Line = FJump.FollowLine)) then
+  begin
+    FBreaks := FBreaks + [TAtlasIdeBreakpoints.Add(FFileName, FJump.FollowLine)];
+  end;
+  FJump.Running := True;
+  FJump.SeenRunning := False;
+  FTimer.Enabled := True;
+  mProcess.Run(ormRun);
+end;
+
+procedure TAtlasIdeStepInto.StepInto;
+var
+  mProcess: IOTAProcess;
+begin
+  mProcess := TAtlasIdeBreakpoints.StoppedProcess;
+  if mProcess <> nil then
+  begin
+    mProcess.Run(ormStmtStepInto);
   end;
 end;
 
-procedure TAtlasIdeStepInto.AppMessage(var Msg: TMsg; var Handled: Boolean);
+procedure TAtlasIdeStepInto.Close;
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.Debugger) or (FWindow = nil) or not FWindow.IsShown then
+  if (FWindow <> nil) and FWindow.IsShown then
+  begin
+    FWindow.Dismiss;
+  end;
+end;
+
+procedure TAtlasIdeStepInto.Finish;
+begin
+  FTimer.Enabled := False;
+  FJump.Running := False;
+  RemoveBreakpoints;
+end;
+
+procedure TAtlasIdeStepInto.RemoveBreakpoints;
+begin
+  TAtlasIdeBreakpoints.RemoveAll(FBreaks);
+end;
+
+procedure TAtlasIdeStepInto.Report(const AText: string);
+begin
+  if Assigned(FMessage) then
+  begin
+    FMessage(AText);
+  end;
+end;
+
+class function TAtlasIdeStepInto.CanBreak(const AFileName: string): Boolean;
+var
+  mServices: IOTAServices;
+  mModules: IOTAModuleServices;
+  mProject: IOTAProject;
+  mRoot, mValue: string;
+begin
+  Result := True;
+  if not Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
     Exit;
   end;
-  try
-    case Msg.message of
-      WM_KEYDOWN, WM_SYSKEYDOWN:
-        if IsEditorWindow(Msg.hwnd) then
-        begin
-          KeyDown(Msg, Handled);
-        end;
-      WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_NCLBUTTONDOWN:
-        if not FWindow.HandleAllocated or (Msg.hwnd <> FWindow.Handle) then
-        begin
-          Close;
-        end;
-    end;
-  except
-    // Keine Exception an die IDE (#493); die Nachricht geht dann normal weiter.
-    on E: Exception do
-    begin
-      Handled := False;
-      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
-    end;
+  mRoot := mServices.GetRootDirectory;
+  if not TAtlasStepInto.IsLibraryFile(AFileName, mRoot) then
+  begin
+    Exit;
+  end;
+  // RTL, VCL und FMX: Haltepunkte greifen nur mit Debug-DCUs.
+  Result := False;
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
+    Exit;
+  end;
+  mProject := mModules.GetActiveProject;
+  if mProject = nil then
+  begin
+    Exit;
+  end;
+  mValue := TAtlasIdeProjectContext.ConfigurationValue(mProject, mProject.CurrentConfiguration,
+    mProject.CurrentPlatform, 'DCC_DebugDCUs');
+  Result := SameText(Trim(mValue), 'true');
+end;
+
+class function TAtlasIdeStepInto.Evaluate(const AExpression: string; out AValue: string): Boolean;
+begin
+  // ClassName ist eine Klassenfunktion: Aufrufe erlauben. Der Empfänger selbst ruft nichts auf (receiverSimple).
+  Result := TAtlasIdeDebugEvaluator.Evaluate(AExpression, TAtlasVisualizerEvaluation.Calls, cEvaluateMs, AValue);
+end;
+
+class procedure TAtlasIdeStepInto.Install(const ASession: TAtlasStepIntoSessionFunc; const AMessage: TProc<string>);
+begin
+  if FInstance = nil then
+  begin
+    FInstance := TAtlasIdeStepInto.Create(ASession, AMessage);
+  end;
+end;
+
+class procedure TAtlasIdeStepInto.Uninstall;
+begin
+  FreeAndNil(FInstance);
+end;
+
+class function TAtlasIdeStepInto.Enabled: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.DebugStepIntoTarget;
+end;
+
+class function TAtlasIdeStepInto.Stopped: Boolean;
+begin
+  Result := TAtlasIdeBreakpoints.StoppedProcess <> nil;
+end;
+
+class function TAtlasIdeStepInto.Active: Boolean;
+begin
+  Result := (FInstance <> nil) and (FInstance.FWindow <> nil) and FInstance.FWindow.IsShown;
+end;
+
+class procedure TAtlasIdeStepInto.Run;
+begin
+  if FInstance = nil then
+  begin
+    Exit;
+  end;
+  if not Enabled then
+  begin
+    FInstance.Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetOff));
+    Exit;
+  end;
+  if not Stopped then
+  begin
+    FInstance.Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNotStopped));
+    Exit;
+  end;
+  FInstance.Execute;
+end;
+
+class function TAtlasIdeStepInto.TryRun: Boolean;
+begin
+  Result := (FInstance <> nil) and Enabled and Stopped;
+  if Result then
+  begin
+    FInstance.Execute;
+  end;
+end;
+
+class procedure TAtlasIdeStepInto.Dismiss;
+begin
+  if FInstance <> nil then
+  begin
+    FInstance.Close;
   end;
 end;
 

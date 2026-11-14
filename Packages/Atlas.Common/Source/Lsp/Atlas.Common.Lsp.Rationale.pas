@@ -221,6 +221,8 @@ begin
   end;
 end;
 
+{ TLspRationale }
+
 class function TLspRationale.OfSymbol(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol):
   TArray<TRationaleEntry>;
 var

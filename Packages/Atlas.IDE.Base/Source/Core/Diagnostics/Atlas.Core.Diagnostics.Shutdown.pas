@@ -122,11 +122,6 @@ begin
   Result := wrTimeout;
 end;
 
-class function TAtlasShutdown.WaitForThreads(const AThreads: TArray<TThread>): Boolean;
-begin
-  Result := WaitForThreads(AThreads, cStopMs);
-end;
-
 class function TAtlasShutdown.WaitForThreads(const AThreads: TArray<TThread>; AMs: Cardinal): Boolean;
 var
   mWatch: TStopwatch;
@@ -150,6 +145,11 @@ begin
     // beim Prozessende die Ladersperre, die das Entladen unter Umständen hält.
     Sleep(5);
   until mWatch.ElapsedMilliseconds >= AMs;
+end;
+
+class function TAtlasShutdown.WaitForThreads(const AThreads: TArray<TThread>): Boolean;
+begin
+  Result := WaitForThreads(AThreads, cStopMs);
 end;
 
 end.

@@ -44,6 +44,8 @@ uses
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.Evaluator;
 
+{ TAtlasIdeDebugStopSource }
+
 constructor TAtlasIdeDebugStopSource.Create;
 begin
   inherited Create;

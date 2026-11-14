@@ -140,33 +140,6 @@ begin
   Result.Anchors := [akTop, akRight];
 end;
 
-class function TAtlasNoteDialog.CleanText(const AText: string): string;
-begin
-  Result := AText.Replace(#13#10, #10).Replace(#13, #10).Trim;
-end;
-
-function TAtlasNoteDialog.NoteText: string;
-begin
-  Result := CleanText(FMemo.Lines.Text);
-end;
-
-procedure TAtlasNoteDialog.Accept;
-begin
-  if NoteText <> '' then
-  begin
-    FChoice := TAtlasNoteChoice.Save;
-  end
-  else if FCanDelete then
-  begin
-    FChoice := TAtlasNoteChoice.Delete;
-  end
-  else
-  begin
-    FChoice := TAtlasNoteChoice.Cancel;
-  end;
-  ModalResult := mrOk;
-end;
-
 procedure TAtlasNoteDialog.SaveClick(Sender: TObject);
 begin
   Accept;
@@ -202,6 +175,28 @@ begin
   end;
 end;
 
+procedure TAtlasNoteDialog.Accept;
+begin
+  if NoteText <> '' then
+  begin
+    FChoice := TAtlasNoteChoice.Save;
+  end
+  else if FCanDelete then
+  begin
+    FChoice := TAtlasNoteChoice.Delete;
+  end
+  else
+  begin
+    FChoice := TAtlasNoteChoice.Cancel;
+  end;
+  ModalResult := mrOk;
+end;
+
+function TAtlasNoteDialog.NoteText: string;
+begin
+  Result := CleanText(FMemo.Lines.Text);
+end;
+
 class function TAtlasNoteDialog.Execute(const ATitle: string; var AText: string;
   ACanDelete: Boolean): TAtlasNoteChoice;
 var
@@ -218,6 +213,11 @@ begin
   finally
     mDialog.Free;
   end;
+end;
+
+class function TAtlasNoteDialog.CleanText(const AText: string): string;
+begin
+  Result := AText.Replace(#13#10, #10).Replace(#13, #10).Trim;
 end;
 
 end.

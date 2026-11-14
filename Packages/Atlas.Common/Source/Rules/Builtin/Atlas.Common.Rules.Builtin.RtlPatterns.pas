@@ -310,6 +310,8 @@ type
     procedure Run;
   end;
 
+{ TSelfAssignmentScan }
+
 constructor TSelfAssignmentScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   inherited Create;

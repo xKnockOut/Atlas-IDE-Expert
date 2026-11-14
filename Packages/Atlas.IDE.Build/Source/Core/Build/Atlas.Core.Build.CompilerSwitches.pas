@@ -270,18 +270,18 @@ begin
   end;
 end;
 
+procedure TAtlasSwitchFollow.Invalidate;
+begin
+  FPending := True;
+  FImmediate := True;
+end;
+
 class function TAtlasSwitchFollow.Applies(const AFileName: string): Boolean;
 var
   mExtension: string;
 begin
   mExtension := LowerCase(ExtractFileExt(AFileName));
   Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.inc');
-end;
-
-procedure TAtlasSwitchFollow.Invalidate;
-begin
-  FPending := True;
-  FImmediate := True;
 end;
 
 end.

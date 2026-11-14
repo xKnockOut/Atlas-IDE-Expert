@@ -56,16 +56,6 @@ const
 
 { TAtlasBuildSettingsSection }
 
-function TAtlasBuildSettingsSection.OwnerId: string;
-begin
-  Result := cOwnerId;
-end;
-
-function TAtlasBuildSettingsSection.AreaId: string;
-begin
-  Result := cAreaId;
-end;
-
 procedure TAtlasBuildSettingsSection.BuildRows;
 begin
   ModuleSwitch('buildTools.enabled');
@@ -83,6 +73,64 @@ begin
     [cStopRunningProgramNames[0], cStopRunningProgramNames[1], cStopRunningProgramNames[2]]);
   BuildOpenBuild;
   BuildTasks;
+end;
+
+function TAtlasBuildSettingsSection.OwnerId: string;
+begin
+  Result := cOwnerId;
+end;
+
+function TAtlasBuildSettingsSection.AreaId: string;
+begin
+  Result := cAreaId;
+end;
+
+procedure TAtlasBuildSettingsSection.Load(const AValues: IAtlasSettingsValues);
+var
+  mIndex: Integer;
+  mKind: string;
+begin
+  if Closed then
+  begin
+    Exit;
+  end;
+  FOpenBuild.Choice := 0;
+  if AValues.ReadBoolean(cOnOpenKey) then
+  begin
+    mKind := TAtlasOpenBuildSettings.KindName(TAtlasOpenBuildSettings.KindOf(AValues.ReadString(cOnOpenKindKey)));
+    for mIndex := Low(TAtlasOpenBuildSettings.cKindNames) to High(TAtlasOpenBuildSettings.cKindNames) do
+    begin
+      if SameText(TAtlasOpenBuildSettings.cKindNames[mIndex], mKind) then
+      begin
+        FOpenBuild.Choice := mIndex + 1;
+      end;
+    end;
+  end;
+  FOpenBuildExclude.Text := TAtlasOpenBuildSettings.NormalizedExclude(AValues.ReadString(cOnOpenExcludeKey));
+end;
+
+procedure TAtlasBuildSettingsSection.Save(const AValues: IAtlasSettingsValues);
+begin
+  if Closed then
+  begin
+    Exit;
+  end;
+  // „nicht bauen“ behält die Art für das nächste Einschalten (Schnellschalter).
+  AValues.WriteBoolean(cOnOpenKey, FOpenBuild.Choice > 0);
+  if (FOpenBuild.Choice > 0) and (FOpenBuild.Choice - 1 <= High(TAtlasOpenBuildSettings.cKindNames)) then
+  begin
+    AValues.WriteString(cOnOpenKindKey, TAtlasOpenBuildSettings.cKindNames[FOpenBuild.Choice - 1]);
+  end;
+  AValues.WriteString(cOnOpenExcludeKey,
+    TAtlasOpenBuildSettings.NormalizedExclude(AValues.ReadString(cOnOpenExcludeKey)));
+end;
+
+procedure TAtlasBuildSettingsSection.Close;
+begin
+  // Die Elemente gehören der Seite: nur die Verweise lösen.
+  FOpenBuild := nil;
+  FOpenBuildExclude := nil;
+  inherited Close;
 end;
 
 procedure TAtlasBuildSettingsSection.BuildOpenBuild;
@@ -140,54 +188,6 @@ begin
   Switch('taskRunner.saveBeforeRun', TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsTasksSaveBeforeRun));
   Switch('taskRunner.runChecksParallel', TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsTasksRunChecksParallel));
   Switch('taskRunner.onlyFindings', TAtlasBuildStrings.Text(TAtlasBuildTextId.SettingsTasksOnlyFindings));
-end;
-
-procedure TAtlasBuildSettingsSection.Load(const AValues: IAtlasSettingsValues);
-var
-  mIndex: Integer;
-  mKind: string;
-begin
-  if Closed then
-  begin
-    Exit;
-  end;
-  FOpenBuild.Choice := 0;
-  if AValues.ReadBoolean(cOnOpenKey) then
-  begin
-    mKind := TAtlasOpenBuildSettings.KindName(TAtlasOpenBuildSettings.KindOf(AValues.ReadString(cOnOpenKindKey)));
-    for mIndex := Low(TAtlasOpenBuildSettings.cKindNames) to High(TAtlasOpenBuildSettings.cKindNames) do
-    begin
-      if SameText(TAtlasOpenBuildSettings.cKindNames[mIndex], mKind) then
-      begin
-        FOpenBuild.Choice := mIndex + 1;
-      end;
-    end;
-  end;
-  FOpenBuildExclude.Text := TAtlasOpenBuildSettings.NormalizedExclude(AValues.ReadString(cOnOpenExcludeKey));
-end;
-
-procedure TAtlasBuildSettingsSection.Save(const AValues: IAtlasSettingsValues);
-begin
-  if Closed then
-  begin
-    Exit;
-  end;
-  // „nicht bauen“ behält die Art für das nächste Einschalten (Schnellschalter).
-  AValues.WriteBoolean(cOnOpenKey, FOpenBuild.Choice > 0);
-  if (FOpenBuild.Choice > 0) and (FOpenBuild.Choice - 1 <= High(TAtlasOpenBuildSettings.cKindNames)) then
-  begin
-    AValues.WriteString(cOnOpenKindKey, TAtlasOpenBuildSettings.cKindNames[FOpenBuild.Choice - 1]);
-  end;
-  AValues.WriteString(cOnOpenExcludeKey,
-    TAtlasOpenBuildSettings.NormalizedExclude(AValues.ReadString(cOnOpenExcludeKey)));
-end;
-
-procedure TAtlasBuildSettingsSection.Close;
-begin
-  // Die Elemente gehören der Seite: nur die Verweise lösen.
-  FOpenBuild := nil;
-  FOpenBuildExclude := nil;
-  inherited Close;
 end;
 
 end.

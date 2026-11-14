@@ -335,6 +335,8 @@ begin
   APublic := mFound and (AVisibility in [TIndexVisibility.Public, TIndexVisibility.Published]) and mType.InInterface;
 end;
 
+{ TCoveredBy }
+
 class function TCoveredBy.Methods(const AFileName, AText: string;
   AIncludePrivate: Boolean): TArray<TCoveredMethod>;
 var
@@ -530,17 +532,22 @@ end;
 
 { JSON }
 
-class function TCoveredBy.VisibilityName(AVisibility: TIndexVisibility): string;
+class function TCoveredBy.UntestedOf(const AResult: TCoveredResult; const AFileName: string): TUntestedUnit;
+var
+  mMethod: TCoveredMethod;
 begin
-  case AVisibility of
-    TIndexVisibility.Public:
-      Result := 'public';
-    TIndexVisibility.Published:
-      Result := 'published';
-    TIndexVisibility.Protected, TIndexVisibility.StrictProtected:
-      Result := 'protected';
-  else
-    Result := 'private';
+  Result := Default(TUntestedUnit);
+  Result.FileName := AFileName;
+  Result.UnitName := AResult.UnitName;
+  Result.HasTestUnit := AResult.HasTestUnit;
+  Result.Tested := AResult.Tested;
+  Result.Total := Length(AResult.Methods);
+  for mMethod in AResult.Methods do
+  begin
+    if Length(mMethod.Tests) = 0 then
+    begin
+      Result.Untested := Result.Untested + [mMethod];
+    end;
   end;
 end;
 
@@ -596,43 +603,51 @@ begin
   end;
 end;
 
-class function TCoveredBy.ToJson(const AResult: TCoveredResult): TJSONObject;
+class function TCoveredBy.ProjectToJson(const AResult: TUntestedResult): TJSONObject;
 var
-  mMethods: TJSONArray;
+  mUnits, mMethods: TJSONArray;
+  mUnit: TUntestedUnit;
   mMethod: TCoveredMethod;
+  mEntry, mItem: TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('unit', AResult.UnitName);
-  Result.AddPair('depth', TJSONNumber.Create(AResult.Depth));
-  Result.AddPair('testUnit', TJSONBool.Create(AResult.IsTestUnit));
-  Result.AddPair('hasTestUnit', TJSONBool.Create(AResult.HasTestUnit));
-  Result.AddPair('tested', TJSONNumber.Create(AResult.Tested));
-  Result.AddPair('total', TJSONNumber.Create(Length(AResult.Methods)));
-  mMethods := TJSONArray.Create;
-  Result.AddPair('methods', mMethods);
-  for mMethod in AResult.Methods do
+  mUnits := TJSONArray.Create;
+  Result.AddPair('units', mUnits);
+  for mUnit in AResult.Units do
   begin
-    mMethods.AddElement(MethodJson(mMethod));
+    mEntry := TJSONObject.Create;
+    mUnits.AddElement(mEntry);
+    mEntry.AddPair('uri', TDocumentUris.FromPath(mUnit.FileName));
+    mEntry.AddPair('unit', mUnit.UnitName);
+    mEntry.AddPair('hasTestUnit', TJSONBool.Create(mUnit.HasTestUnit));
+    mEntry.AddPair('tested', TJSONNumber.Create(mUnit.Tested));
+    mEntry.AddPair('total', TJSONNumber.Create(mUnit.Total));
+    mMethods := TJSONArray.Create;
+    mEntry.AddPair('untested', mMethods);
+    for mMethod in mUnit.Untested do
+    begin
+      mItem := TJSONObject.Create;
+      mMethods.AddElement(mItem);
+      mItem.AddPair('name', mMethod.Name);
+      mItem.AddPair('line', TJSONNumber.Create(mMethod.Line));
+      mItem.AddPair('character', TJSONNumber.Create(mMethod.Character));
+    end;
   end;
+  Result.AddPair('skipped', TJSONNumber.Create(AResult.Skipped));
   Result.AddPair('limits', LimitsJson(AResult.Limits));
 end;
 
-class function TCoveredBy.UntestedOf(const AResult: TCoveredResult; const AFileName: string): TUntestedUnit;
-var
-  mMethod: TCoveredMethod;
+class function TCoveredBy.VisibilityName(AVisibility: TIndexVisibility): string;
 begin
-  Result := Default(TUntestedUnit);
-  Result.FileName := AFileName;
-  Result.UnitName := AResult.UnitName;
-  Result.HasTestUnit := AResult.HasTestUnit;
-  Result.Tested := AResult.Tested;
-  Result.Total := Length(AResult.Methods);
-  for mMethod in AResult.Methods do
-  begin
-    if Length(mMethod.Tests) = 0 then
-    begin
-      Result.Untested := Result.Untested + [mMethod];
-    end;
+  case AVisibility of
+    TIndexVisibility.Public:
+      Result := 'public';
+    TIndexVisibility.Published:
+      Result := 'published';
+    TIndexVisibility.Protected, TIndexVisibility.StrictProtected:
+      Result := 'protected';
+  else
+    Result := 'private';
   end;
 end;
 
@@ -692,37 +707,24 @@ begin
   end;
 end;
 
-class function TCoveredBy.ProjectToJson(const AResult: TUntestedResult): TJSONObject;
+class function TCoveredBy.ToJson(const AResult: TCoveredResult): TJSONObject;
 var
-  mUnits, mMethods: TJSONArray;
-  mUnit: TUntestedUnit;
+  mMethods: TJSONArray;
   mMethod: TCoveredMethod;
-  mEntry, mItem: TJSONObject;
 begin
   Result := TJSONObject.Create;
-  mUnits := TJSONArray.Create;
-  Result.AddPair('units', mUnits);
-  for mUnit in AResult.Units do
+  Result.AddPair('unit', AResult.UnitName);
+  Result.AddPair('depth', TJSONNumber.Create(AResult.Depth));
+  Result.AddPair('testUnit', TJSONBool.Create(AResult.IsTestUnit));
+  Result.AddPair('hasTestUnit', TJSONBool.Create(AResult.HasTestUnit));
+  Result.AddPair('tested', TJSONNumber.Create(AResult.Tested));
+  Result.AddPair('total', TJSONNumber.Create(Length(AResult.Methods)));
+  mMethods := TJSONArray.Create;
+  Result.AddPair('methods', mMethods);
+  for mMethod in AResult.Methods do
   begin
-    mEntry := TJSONObject.Create;
-    mUnits.AddElement(mEntry);
-    mEntry.AddPair('uri', TDocumentUris.FromPath(mUnit.FileName));
-    mEntry.AddPair('unit', mUnit.UnitName);
-    mEntry.AddPair('hasTestUnit', TJSONBool.Create(mUnit.HasTestUnit));
-    mEntry.AddPair('tested', TJSONNumber.Create(mUnit.Tested));
-    mEntry.AddPair('total', TJSONNumber.Create(mUnit.Total));
-    mMethods := TJSONArray.Create;
-    mEntry.AddPair('untested', mMethods);
-    for mMethod in mUnit.Untested do
-    begin
-      mItem := TJSONObject.Create;
-      mMethods.AddElement(mItem);
-      mItem.AddPair('name', mMethod.Name);
-      mItem.AddPair('line', TJSONNumber.Create(mMethod.Line));
-      mItem.AddPair('character', TJSONNumber.Create(mMethod.Character));
-    end;
+    mMethods.AddElement(MethodJson(mMethod));
   end;
-  Result.AddPair('skipped', TJSONNumber.Create(AResult.Skipped));
   Result.AddPair('limits', LimitsJson(AResult.Limits));
 end;
 

@@ -360,6 +360,8 @@ begin
     ', "required": ' + BoolJson(ACandidate.Required) + ', "selected": ' + BoolJson(ACandidate.Selected) + '}';
 end;
 
+{ TUpdateStage }
+
 function TUpdateStage.ToJson: string;
 var
   mBuilder: TStringBuilder;
@@ -549,6 +551,8 @@ begin
     // Unbekannte Namen übergeht der Aufruf (ältere oder neuere Plugins).
   end;
 end;
+
+{ TUpdateArguments }
 
 class function TUpdateArguments.Parse(const AArgs: TArray<string>): TUpdateArguments;
 var

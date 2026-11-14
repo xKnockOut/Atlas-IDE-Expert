@@ -37,6 +37,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Strings;
 
+{ TAtlasIdeExperimental }
+
 class procedure TAtlasIdeExperimental.ApplySettings;
 var
   mActive: TArray<string>;

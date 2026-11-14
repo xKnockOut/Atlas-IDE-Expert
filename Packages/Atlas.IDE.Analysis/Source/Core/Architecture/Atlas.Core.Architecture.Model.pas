@@ -1175,6 +1175,8 @@ begin
   end;
 end;
 
+{ TAtlasArchitectureModel }
+
 class function TAtlasArchitectureModel.Parse(const AAnswer: string; out AModel: TAtlasArchitectureModel;
   out AEnabled: Boolean): Boolean;
 var
@@ -1359,17 +1361,23 @@ begin
   Result := 5 + Sqrt(Max(0, Units[AUnit].Total)) * 1.8;
 end;
 
-function TAtlasArchitectureModel.IsHidden(AUnit: Integer; const AHidden: TArray<Boolean>): Boolean;
+function TAtlasArchitectureModel.PathText(AFrom: Integer; const AEdges: TArray<Integer>): string;
 var
-  mSubsystem: Integer;
+  mEdge: Integer;
 begin
-  Result := False;
-  if (AUnit < 0) or (AUnit > High(Units)) then
+  Result := '';
+  if (AFrom < 0) or (AFrom > High(Units)) then
   begin
     Exit;
   end;
-  mSubsystem := Units[AUnit].Subsystem;
-  Result := (mSubsystem >= 0) and (mSubsystem < Length(AHidden)) and AHidden[mSubsystem];
+  Result := Units[AFrom].Name;
+  for mEdge in AEdges do
+  begin
+    if (mEdge >= 0) and (mEdge <= High(Edges)) then
+    begin
+      Result := Result + ' → ' + Units[Edges[mEdge].Target].Name;
+    end;
+  end;
 end;
 
 /// <summary>Je Unit die Nummern der Kanten, die von ihr ausgehen.</summary>
@@ -1444,21 +1452,20 @@ begin
   end;
 end;
 
-function TAtlasArchitectureModel.PathText(AFrom: Integer; const AEdges: TArray<Integer>): string;
+function TAtlasArchitectureModel.RouteText(const AUnits: TArray<Integer>): string;
 var
-  mEdge: Integer;
+  mUnit_: Integer;
 begin
   Result := '';
-  if (AFrom < 0) or (AFrom > High(Units)) then
+  for mUnit_ in AUnits do
   begin
-    Exit;
-  end;
-  Result := Units[AFrom].Name;
-  for mEdge in AEdges do
-  begin
-    if (mEdge >= 0) and (mEdge <= High(Edges)) then
+    if (mUnit_ >= 0) and (mUnit_ <= High(Units)) then
     begin
-      Result := Result + ' → ' + Units[Edges[mEdge].Target].Name;
+      if Result <> '' then
+      begin
+        Result := Result + ' → ';
+      end;
+      Result := Result + Units[mUnit_].Name;
     end;
   end;
 end;
@@ -1534,22 +1541,17 @@ begin
   Result := Length(AUnits) > 0;
 end;
 
-function TAtlasArchitectureModel.RouteText(const AUnits: TArray<Integer>): string;
+function TAtlasArchitectureModel.IsHidden(AUnit: Integer; const AHidden: TArray<Boolean>): Boolean;
 var
-  mUnit_: Integer;
+  mSubsystem: Integer;
 begin
-  Result := '';
-  for mUnit_ in AUnits do
+  Result := False;
+  if (AUnit < 0) or (AUnit > High(Units)) then
   begin
-    if (mUnit_ >= 0) and (mUnit_ <= High(Units)) then
-    begin
-      if Result <> '' then
-      begin
-        Result := Result + ' → ';
-      end;
-      Result := Result + Units[mUnit_].Name;
-    end;
+    Exit;
   end;
+  mSubsystem := Units[AUnit].Subsystem;
+  Result := (mSubsystem >= 0) and (mSubsystem < Length(AHidden)) and AHidden[mSubsystem];
 end;
 
 function TAtlasArchitectureModel.SubsystemCount: Integer;
@@ -1608,15 +1610,6 @@ begin
   end;
 end;
 
-function TAtlasArchitectureModel.AlignedText: string;
-begin
-  Result := '';
-  if AlignedSource <> '' then
-  begin
-    Result := Copy(StringReplace(AlignedAt, 'T', ' ', []), 1, 16);
-  end;
-end;
-
 function TAtlasArchitectureModel.HasAssignment: Boolean;
 var
   mUnit: TAtlasArchUnit;
@@ -1628,6 +1621,15 @@ begin
     begin
       Exit(True);
     end;
+  end;
+end;
+
+function TAtlasArchitectureModel.AlignedText: string;
+begin
+  Result := '';
+  if AlignedSource <> '' then
+  begin
+    Result := Copy(StringReplace(AlignedAt, 'T', ' ', []), 1, 16);
   end;
 end;
 
@@ -1705,15 +1707,6 @@ end;
 
 { TAtlasArchResolution }
 
-class function TAtlasArchResolution.Clamp(AValue: Double): Double;
-begin
-  if IsNan(AValue) or (AValue <= 0) then
-  begin
-    Exit(1);
-  end;
-  Result := EnsureRange(AValue, cMinValue, cMaxValue);
-end;
-
 class function TAtlasArchResolution.ValueAt(APosition: Integer): Double;
 begin
   // 0,2 · 25^(p/Steps): Mitte 0,2 · 5 = 1,0.
@@ -1725,6 +1718,15 @@ class function TAtlasArchResolution.PositionOf(AValue: Double): Integer;
 begin
   Result := Round(Ln(Clamp(AValue) / cMinValue) / Ln(cMaxValue / cMinValue) * cSteps);
   Result := EnsureRange(Result, 0, cSteps);
+end;
+
+class function TAtlasArchResolution.Clamp(AValue: Double): Double;
+begin
+  if IsNan(AValue) or (AValue <= 0) then
+  begin
+    Exit(1);
+  end;
+  Result := EnsureRange(AValue, cMinValue, cMaxValue);
 end;
 
 class function TAtlasArchResolution.Text(AValue: Double; const AFormat: TFormatSettings): string;

@@ -269,14 +269,14 @@ begin
   inherited Destroy;
 end;
 
-function TAtlasHoverTreeNode.GetChild(AIndex: Integer): TAtlasHoverTreeNode;
-begin
-  Result := FChildren[AIndex];
-end;
-
 function TAtlasHoverTreeNode.GetChildCount: Integer;
 begin
   Result := FChildren.Count;
+end;
+
+function TAtlasHoverTreeNode.GetChild(AIndex: Integer): TAtlasHoverTreeNode;
+begin
+  Result := FChildren[AIndex];
 end;
 
 function TAtlasHoverTreeNode.AddChild(const AName, AExpression: string): TAtlasHoverTreeNode;
@@ -407,79 +407,118 @@ begin
   end;
 end;
 
-procedure TAtlasHoverTree.Bind(const AExpression, AText: string);
+function TAtlasHoverTree.FindNode(ANode: TAtlasHoverTreeNode; const AKey: string): TAtlasHoverTreeNode;
+var
+  mIndex: Integer;
 begin
-  if (FRoot <> nil) and (FRoot.Expression = AExpression) and (FRoot.Text = AText) then
+  if ANode.Expression = AKey then
   begin
-    Exit;
+    Exit(ANode);
   end;
-  FreeAndNil(FRoot);
-  FRoot := TAtlasHoverTreeNode.Create(nil, '', AExpression);
-  SetValue(FRoot, AText);
-  if FExpanded.ContainsKey(AExpression) and FRoot.CanExpand then
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    SetExpanded(FRoot, True);
+    Result := FindNode(ANode.Children[mIndex], AKey);
+    if Result <> nil then
+    begin
+      Exit;
+    end;
   end;
+  Result := nil;
 end;
 
-function TAtlasHoverTree.Decorate(const AValue: TAtlasDebugValue): TAtlasDebugValue;
+function TAtlasHoverTree.FindRequest(ANode: TAtlasHoverTreeNode; out ARequest: TAtlasHoverTreeRequest): Boolean;
+var
+  mIndex, mShown: Integer;
 begin
-  Result := AValue;
-  if (FRoot = nil) or (FRoot.Expression <> AValue.Expression) then
+  ARequest := Default(TAtlasHoverTreeRequest);
+  ARequest.Key := ANode.Expression;
+  if OwnRequest(ANode, ARequest) then
   begin
-    Exit;
+    Exit(True);
   end;
-  Result.Expandable := FRoot.CanExpand;
-  Result.Expanded := FRoot.Expanded and Result.Expandable;
-  if FShowChanges then
+  if not ANode.Expanded then
   begin
-    Result.OldText := FRoot.OldText;
+    Exit(False);
   end;
-  Result.Rows := Rows;
+  // Nur sichtbare Kinder: Elemente hinter „weitere …“ warten.
+  mShown := ANode.ChildCount;
+  if (ANode.Limit > 0) and (mShown > ANode.Limit) then
+  begin
+    mShown := ANode.Limit;
+  end;
+  for mIndex := 0 to mShown - 1 do
+  begin
+    if FindRequest(ANode.Children[mIndex], ARequest) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
-function TAtlasHoverTree.RowOf(ANode: TAtlasHoverTreeNode): TAtlasDebugValueRow;
+class function TAtlasHoverTree.OwnRequest(ANode: TAtlasHoverTreeNode; var ARequest: TAtlasHoverTreeRequest): Boolean;
 begin
-  Result := Default(TAtlasDebugValueRow);
-  Result.Expression := ANode.Expression;
-  Result.Name := ANode.Name;
-  Result.Text := ANode.Text;
-  Result.Depth := ANode.Depth - 1;
-  Result.Expandable := ANode.CanExpand;
-  Result.Expanded := ANode.Expanded and Result.Expandable;
-  if FShowChanges then
-  begin
-    Result.OldText := ANode.OldText;
-  end;
-  // Wert bzw. Meldung stehen in Text; ausstehende Werte und Getter tragen einen eigenen Text.
+  Result := True;
   if ANode.State in [TAtlasHoverTreeState.Pending, TAtlasHoverTreeState.Queued] then
   begin
-    Result.Pending := True;
-    Result.Text := FTexts.Pending;
+    ARequest.Expression := ANode.Expression;
+    ARequest.SideEffects := ANode.State = TAtlasHoverTreeState.Pending;
   end
-  else if ANode.State = TAtlasHoverTreeState.Lazy then
+  else if ANode.Expanded and ANode.WantsValue then
   begin
-    Result.Lazy := True;
-    Result.Text := FTexts.Evaluate;
+    ARequest.Expression := TAtlasEvalText.WithFieldNames(ANode.Expression);
+  end
+  else if ANode.Expanded and ANode.WantsLength then
+  begin
+    ARequest.Expression := 'Length(' + ANode.Expression + ')';
+  end
+  else if ANode.Expanded and ANode.WantsProperties then
+  begin
+    ARequest.Expression := ANode.Expression + '.';
+    ARequest.Properties := True;
+  end
+  else
+  begin
+    Result := False;
   end;
 end;
 
-procedure TAtlasHoverTree.AddRow(var ARows: TArray<TAtlasDebugValueRow>; const ARow: TAtlasDebugValueRow;
-  ANode: TAtlasHoverTreeNode; AMore: Boolean);
+procedure TAtlasHoverTree.SetCount(ANode: TAtlasHoverTreeNode; AOk: Boolean; const AText: string);
+var
+  mCount, mIndex: Integer;
+  mChild: TAtlasHoverTreeNode;
 begin
-  SetLength(ARows, Length(ARows) + 1);
-  ARows[High(ARows)] := ARow;
-  SetLength(FRowNodes, Length(FRowNodes) + 1);
-  FRowNodes[High(FRowNodes)] := ANode;
-  SetLength(FRowMore, Length(FRowMore) + 1);
-  FRowMore[High(FRowMore)] := AMore;
+  ANode.WantsLength := False;
+  ANode.Loaded := True;
+  ANode.ClearChildren;
+  if not AOk or not TryStrToInt(Trim(AText), mCount) then
+  begin
+    Exit;
+  end;
+  ANode.Limit := FMaxChildren;
+  for mIndex := 0 to mCount - 1 do
+  begin
+    mChild := ANode.AddChild('[' + IntToStr(mIndex) + ']', ANode.Expression + '[' + IntToStr(mIndex) + ']');
+    mChild.State := TAtlasHoverTreeState.Queued;
+  end;
 end;
 
-function TAtlasHoverTree.PlainRow(ANode: TAtlasHoverTreeNode; const AText: string): TAtlasDebugValueRow;
+procedure TAtlasHoverTree.SetOwnValue(ANode: TAtlasHoverTreeNode; AOk: Boolean; const AText: string);
 begin
-  Result := Default(TAtlasDebugValueRow);
-  Result.Text := AText;
-  Result.Depth := ANode.Depth;
+  // Getter bzw. Element ausgewertet: Wert oder Meldung, aufklappbar wie jedes andere Kind.
+  if AOk then
+  begin
+    SetValue(ANode, AText);
+    if FExpanded.ContainsKey(ANode.Expression) and ANode.CanExpand then
+    begin
+      SetExpanded(ANode, True);
+    end;
+  end
+  else
+  begin
+    ANode.Text := AText;
+    ANode.State := TAtlasHoverTreeState.Failed;
+  end;
 end;
 
 procedure TAtlasHoverTree.AddRows(ANode: TAtlasHoverTreeNode; var ARows: TArray<TAtlasDebugValueRow>);
@@ -515,6 +554,81 @@ begin
     mRow.More := True;
     AddRow(ARows, mRow, ANode, True);
   end;
+end;
+
+procedure TAtlasHoverTree.AddRow(var ARows: TArray<TAtlasDebugValueRow>; const ARow: TAtlasDebugValueRow;
+  ANode: TAtlasHoverTreeNode; AMore: Boolean);
+begin
+  SetLength(ARows, Length(ARows) + 1);
+  ARows[High(ARows)] := ARow;
+  SetLength(FRowNodes, Length(FRowNodes) + 1);
+  FRowNodes[High(FRowNodes)] := ANode;
+  SetLength(FRowMore, Length(FRowMore) + 1);
+  FRowMore[High(FRowMore)] := AMore;
+end;
+
+function TAtlasHoverTree.PlainRow(ANode: TAtlasHoverTreeNode; const AText: string): TAtlasDebugValueRow;
+begin
+  Result := Default(TAtlasDebugValueRow);
+  Result.Text := AText;
+  Result.Depth := ANode.Depth;
+end;
+
+function TAtlasHoverTree.RowOf(ANode: TAtlasHoverTreeNode): TAtlasDebugValueRow;
+begin
+  Result := Default(TAtlasDebugValueRow);
+  Result.Expression := ANode.Expression;
+  Result.Name := ANode.Name;
+  Result.Text := ANode.Text;
+  Result.Depth := ANode.Depth - 1;
+  Result.Expandable := ANode.CanExpand;
+  Result.Expanded := ANode.Expanded and Result.Expandable;
+  if FShowChanges then
+  begin
+    Result.OldText := ANode.OldText;
+  end;
+  // Wert bzw. Meldung stehen in Text; ausstehende Werte und Getter tragen einen eigenen Text.
+  if ANode.State in [TAtlasHoverTreeState.Pending, TAtlasHoverTreeState.Queued] then
+  begin
+    Result.Pending := True;
+    Result.Text := FTexts.Pending;
+  end
+  else if ANode.State = TAtlasHoverTreeState.Lazy then
+  begin
+    Result.Lazy := True;
+    Result.Text := FTexts.Evaluate;
+  end;
+end;
+
+procedure TAtlasHoverTree.Bind(const AExpression, AText: string);
+begin
+  if (FRoot <> nil) and (FRoot.Expression = AExpression) and (FRoot.Text = AText) then
+  begin
+    Exit;
+  end;
+  FreeAndNil(FRoot);
+  FRoot := TAtlasHoverTreeNode.Create(nil, '', AExpression);
+  SetValue(FRoot, AText);
+  if FExpanded.ContainsKey(AExpression) and FRoot.CanExpand then
+  begin
+    SetExpanded(FRoot, True);
+  end;
+end;
+
+function TAtlasHoverTree.Decorate(const AValue: TAtlasDebugValue): TAtlasDebugValue;
+begin
+  Result := AValue;
+  if (FRoot = nil) or (FRoot.Expression <> AValue.Expression) then
+  begin
+    Exit;
+  end;
+  Result.Expandable := FRoot.CanExpand;
+  Result.Expanded := FRoot.Expanded and Result.Expandable;
+  if FShowChanges then
+  begin
+    Result.OldText := FRoot.OldText;
+  end;
+  Result.Rows := Rows;
 end;
 
 function TAtlasHoverTree.Rows: TArray<TAtlasDebugValueRow>;
@@ -563,124 +677,10 @@ begin
   end;
 end;
 
-class function TAtlasHoverTree.OwnRequest(ANode: TAtlasHoverTreeNode; var ARequest: TAtlasHoverTreeRequest): Boolean;
-begin
-  Result := True;
-  if ANode.State in [TAtlasHoverTreeState.Pending, TAtlasHoverTreeState.Queued] then
-  begin
-    ARequest.Expression := ANode.Expression;
-    ARequest.SideEffects := ANode.State = TAtlasHoverTreeState.Pending;
-  end
-  else if ANode.Expanded and ANode.WantsValue then
-  begin
-    ARequest.Expression := TAtlasEvalText.WithFieldNames(ANode.Expression);
-  end
-  else if ANode.Expanded and ANode.WantsLength then
-  begin
-    ARequest.Expression := 'Length(' + ANode.Expression + ')';
-  end
-  else if ANode.Expanded and ANode.WantsProperties then
-  begin
-    ARequest.Expression := ANode.Expression + '.';
-    ARequest.Properties := True;
-  end
-  else
-  begin
-    Result := False;
-  end;
-end;
-
-function TAtlasHoverTree.FindRequest(ANode: TAtlasHoverTreeNode; out ARequest: TAtlasHoverTreeRequest): Boolean;
-var
-  mIndex, mShown: Integer;
-begin
-  ARequest := Default(TAtlasHoverTreeRequest);
-  ARequest.Key := ANode.Expression;
-  if OwnRequest(ANode, ARequest) then
-  begin
-    Exit(True);
-  end;
-  if not ANode.Expanded then
-  begin
-    Exit(False);
-  end;
-  // Nur sichtbare Kinder: Elemente hinter „weitere …“ warten.
-  mShown := ANode.ChildCount;
-  if (ANode.Limit > 0) and (mShown > ANode.Limit) then
-  begin
-    mShown := ANode.Limit;
-  end;
-  for mIndex := 0 to mShown - 1 do
-  begin
-    if FindRequest(ANode.Children[mIndex], ARequest) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 function TAtlasHoverTree.NextRequest(out ARequest: TAtlasHoverTreeRequest): Boolean;
 begin
   ARequest := Default(TAtlasHoverTreeRequest);
   Result := (FRoot <> nil) and FindRequest(FRoot, ARequest);
-end;
-
-function TAtlasHoverTree.FindNode(ANode: TAtlasHoverTreeNode; const AKey: string): TAtlasHoverTreeNode;
-var
-  mIndex: Integer;
-begin
-  if ANode.Expression = AKey then
-  begin
-    Exit(ANode);
-  end;
-  for mIndex := 0 to ANode.ChildCount - 1 do
-  begin
-    Result := FindNode(ANode.Children[mIndex], AKey);
-    if Result <> nil then
-    begin
-      Exit;
-    end;
-  end;
-  Result := nil;
-end;
-
-procedure TAtlasHoverTree.SetOwnValue(ANode: TAtlasHoverTreeNode; AOk: Boolean; const AText: string);
-begin
-  // Getter bzw. Element ausgewertet: Wert oder Meldung, aufklappbar wie jedes andere Kind.
-  if AOk then
-  begin
-    SetValue(ANode, AText);
-    if FExpanded.ContainsKey(ANode.Expression) and ANode.CanExpand then
-    begin
-      SetExpanded(ANode, True);
-    end;
-  end
-  else
-  begin
-    ANode.Text := AText;
-    ANode.State := TAtlasHoverTreeState.Failed;
-  end;
-end;
-
-procedure TAtlasHoverTree.SetCount(ANode: TAtlasHoverTreeNode; AOk: Boolean; const AText: string);
-var
-  mCount, mIndex: Integer;
-  mChild: TAtlasHoverTreeNode;
-begin
-  ANode.WantsLength := False;
-  ANode.Loaded := True;
-  ANode.ClearChildren;
-  if not AOk or not TryStrToInt(Trim(AText), mCount) then
-  begin
-    Exit;
-  end;
-  ANode.Limit := FMaxChildren;
-  for mIndex := 0 to mCount - 1 do
-  begin
-    mChild := ANode.AddChild('[' + IntToStr(mIndex) + ']', ANode.Expression + '[' + IntToStr(mIndex) + ']');
-    mChild.State := TAtlasHoverTreeState.Queued;
-  end;
 end;
 
 procedure TAtlasHoverTree.SetResult(const AKey: string; AOk: Boolean; const AText: string);
@@ -744,6 +744,19 @@ begin
   end;
 end;
 
+procedure TAtlasHoverTree.Reset;
+begin
+  FreeAndNil(FRoot);
+  FRowNodes := nil;
+  FRowMore := nil;
+end;
+
+procedure TAtlasHoverTree.Clear;
+begin
+  Reset;
+  FExpanded.Clear;
+end;
+
 class function TAtlasHoverTree.CompletionParams(const AUri: string; ALine: Integer;
   const AExpression: string): string;
 var
@@ -782,19 +795,6 @@ begin
   finally
     mAnswer.Free;
   end;
-end;
-
-procedure TAtlasHoverTree.Reset;
-begin
-  FreeAndNil(FRoot);
-  FRowNodes := nil;
-  FRowMore := nil;
-end;
-
-procedure TAtlasHoverTree.Clear;
-begin
-  Reset;
-  FExpanded.Clear;
 end;
 
 end.

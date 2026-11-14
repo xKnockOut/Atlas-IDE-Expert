@@ -178,6 +178,18 @@ begin
   Changed(nil);
 end;
 
+destructor TAtlasTrackerQueryDialog.Destroy;
+begin
+  // Ein Test, der danach fertig wird, findet keinen Dialog mehr.
+  if FLink <> nil then
+  begin
+    FLink.Dialog := nil;
+  end;
+  FLinkRef := nil;
+  ClearFields;
+  inherited Destroy;
+end;
+
 procedure TAtlasTrackerQueryDialog.BuildFields;
 begin
   FView.Name := TEdit.Create(Self);
@@ -265,26 +277,6 @@ begin
   FView.Connection.Choice := mChoice;
 end;
 
-destructor TAtlasTrackerQueryDialog.Destroy;
-begin
-  // Ein Test, der danach fertig wird, findet keinen Dialog mehr.
-  if FLink <> nil then
-  begin
-    FLink.Dialog := nil;
-  end;
-  FLinkRef := nil;
-  ClearFields;
-  inherited Destroy;
-end;
-
-procedure TAtlasTrackerQueryDialog.ClearFields;
-begin
-  FConnections := nil;
-  FTemplates := nil;
-  FTaken := nil;
-  FMissingConnection := '';
-end;
-
 function TAtlasTrackerQueryDialog.AddRow(const ACaption: string; AControl: TWinControl): TPanel;
 var
   mLabel: TLabel;
@@ -348,77 +340,6 @@ begin
   ALanguages := ALanguages + [ALanguage];
 end;
 
-class function TAtlasTrackerQueryDialog.TemplatesFor(const AConnections: TArray<TAtlasTrackerConnection>;
-  AChoice: Integer): TArray<TAtlasTrackerTemplate>;
-var
-  mProviders: TArray<string>;
-  mLanguages: TArray<string>;
-  mIndex: Integer;
-begin
-  Result := nil;
-  mProviders := nil;
-  mLanguages := nil;
-  if (AChoice >= 1) and (AChoice <= Length(AConnections)) then
-  begin
-    AddProvider(mProviders, mLanguages, AConnections[AChoice - 1].Provider, AConnections[AChoice - 1].Language);
-  end
-  else
-  begin
-    for mIndex := 0 to High(AConnections) do
-    begin
-      AddProvider(mProviders, mLanguages, AConnections[mIndex].Provider, AConnections[mIndex].Language);
-    end;
-  end;
-  // Ohne Verbindung: alle Vorlagen beider Anbieter.
-  if Length(mProviders) = 0 then
-  begin
-    mProviders := TArray<string>.Create(TAtlasTrackerTarget.cYouTrack, TAtlasTrackerTarget.cGitHub);
-    mLanguages := TArray<string>.Create('', '');
-  end;
-  for mIndex := 0 to High(mProviders) do
-  begin
-    Result := Result + TAtlasTrackerTemplates.Templates(mProviders[mIndex], mLanguages[mIndex]);
-  end;
-end;
-
-class function TAtlasTrackerQueryDialog.TemplateCaption(const ATemplate: TAtlasTrackerTemplate): string;
-var
-  mProvider, mKind: string;
-begin
-  if ATemplate.Provider = TAtlasTrackerTarget.cGitHub then
-  begin
-    mProvider := cGitHubCaption;
-  end
-  else
-  begin
-    mProvider := cYouTrackCaption;
-  end;
-  case ATemplate.Kind of
-    TAtlasTrackerTemplateKind.CurrentSprint:
-      mKind := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerTemplateCurrentSprint);
-    TAtlasTrackerTemplateKind.CreatedByMe:
-      mKind := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerTemplateCreatedByMe);
-    TAtlasTrackerTemplateKind.RecentlyChanged:
-      mKind := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerTemplateRecentlyChanged);
-  else
-    mKind := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQueryDefault);
-  end;
-  Result := mProvider + ' · ' + mKind;
-  // GitHub kennt nur englische Suchbegriffe; die Sprache zu nennen hilft nur bei YouTrack.
-  if ATemplate.Provider = TAtlasTrackerTarget.cGitHub then
-  begin
-    Exit;
-  end;
-  if ATemplate.Language = TAtlasTrackerTemplates.cGerman then
-  begin
-    Result := Result + ' (' + TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerLanguageGerman) + ')';
-  end
-  else
-  begin
-    Result := Result + ' (' + TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerLanguageEnglish) + ')';
-  end;
-end;
-
 procedure TAtlasTrackerQueryDialog.FillTemplates;
 var
   mCaptions: TArray<string>;
@@ -432,6 +353,96 @@ begin
   end;
   FView.Template.SetChoices(mCaptions);
   FView.Template.Choice := 0;
+end;
+
+procedure TAtlasTrackerQueryDialog.Changed(Sender: TObject);
+var
+  mQuery: TAtlasTrackerQuery;
+  mTaken: Boolean;
+  mName: string;
+  mConnection: TAtlasTrackerConnection;
+begin
+  mQuery := Query;
+  mTaken := False;
+  for mName in FTaken do
+  begin
+    if SameText(mName, mQuery.Name) then
+    begin
+      mTaken := True;
+    end;
+  end;
+  FView.Ok.Enabled := (mQuery.Name <> '') and not mTaken and (mQuery.Query <> '');
+  FView.Test.Enabled := not FTesting and Assigned(FOnTest) and TestConnection(mConnection);
+  if mTaken then
+  begin
+    FView.Result.Text := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryNameTaken);
+  end;
+end;
+
+procedure TAtlasTrackerQueryDialog.ConnectionChange(Sender: TObject);
+begin
+  FillTemplates;
+  Changed(Sender);
+end;
+
+procedure TAtlasTrackerQueryDialog.TemplateChange(Sender: TObject);
+begin
+  ApplyTemplate(FView.Template.Choice - 1);
+end;
+
+procedure TAtlasTrackerQueryDialog.TestClick(Sender: TObject);
+var
+  mConnection: TAtlasTrackerConnection;
+  mTarget: TAtlasTrackerTarget;
+  mQuery: TAtlasTrackerQuery;
+  mLinkRef: IInterface;
+  mLink: TAtlasQueryDialogLink;
+  mName: string;
+begin
+  if FTesting or not Assigned(FOnTest) or not TestConnection(mConnection) then
+  begin
+    Exit;
+  end;
+  mQuery := Query;
+  // Wie in „Meine Issues“: Projekt aus dem Feld, Abfrage leer = Vorgabe in der Sprache der Verbindung.
+  mTarget := TAtlasTrackerTarget.Create(mConnection.Provider, mConnection.Url, mQuery.Project, mQuery.Query);
+  mTarget.Language := mConnection.Language;
+  FTesting := True;
+  FView.Result.Text := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.QueryDialogTesting);
+  Changed(Sender);
+  mLinkRef := FLinkRef;
+  mLink := FLink;
+  mName := mConnection.Name;
+  FOnTest(mConnection, mTarget,
+    procedure(const AResult: TAtlasTrackerQueryTestResult)
+    begin
+      if (mLinkRef <> nil) and (mLink.Dialog <> nil) then
+      begin
+        mLink.Dialog.ShowResult(AResult, mName);
+      end;
+    end);
+end;
+
+procedure TAtlasTrackerQueryDialog.ClearFields;
+begin
+  FConnections := nil;
+  FTemplates := nil;
+  FTaken := nil;
+  FMissingConnection := '';
+end;
+
+procedure TAtlasTrackerQueryDialog.OkClick(Sender: TObject);
+begin
+  if not FView.Ok.Enabled then
+  begin
+    Exit;
+  end;
+  ModalResult := mrOk;
+end;
+
+procedure TAtlasTrackerQueryDialog.CancelClick(Sender: TObject);
+begin
+  ModalResult := mrCancel;
 end;
 
 function TAtlasTrackerQueryDialog.Query: TAtlasTrackerQuery;
@@ -478,45 +489,10 @@ begin
   end;
 end;
 
-procedure TAtlasTrackerQueryDialog.Changed(Sender: TObject);
-var
-  mQuery: TAtlasTrackerQuery;
-  mTaken: Boolean;
-  mName: string;
-  mConnection: TAtlasTrackerConnection;
-begin
-  mQuery := Query;
-  mTaken := False;
-  for mName in FTaken do
-  begin
-    if SameText(mName, mQuery.Name) then
-    begin
-      mTaken := True;
-    end;
-  end;
-  FView.Ok.Enabled := (mQuery.Name <> '') and not mTaken and (mQuery.Query <> '');
-  FView.Test.Enabled := not FTesting and Assigned(FOnTest) and TestConnection(mConnection);
-  if mTaken then
-  begin
-    FView.Result.Text := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryNameTaken);
-  end;
-end;
-
-procedure TAtlasTrackerQueryDialog.ConnectionChange(Sender: TObject);
-begin
-  FillTemplates;
-  Changed(Sender);
-end;
-
 procedure TAtlasTrackerQueryDialog.SelectConnection(AChoice: Integer);
 begin
   FView.Connection.Choice := AChoice;
   ConnectionChange(FView.Connection);
-end;
-
-procedure TAtlasTrackerQueryDialog.TemplateChange(Sender: TObject);
-begin
-  ApplyTemplate(FView.Template.Choice - 1);
 end;
 
 procedure TAtlasTrackerQueryDialog.ApplyTemplate(AIndex: Integer);
@@ -529,39 +505,6 @@ begin
   // Zurück auf „(Vorlage einsetzen …)“, damit dieselbe Vorlage noch einmal wählbar bleibt.
   FView.Template.Choice := 0;
   Changed(FView.Template);
-end;
-
-procedure TAtlasTrackerQueryDialog.TestClick(Sender: TObject);
-var
-  mConnection: TAtlasTrackerConnection;
-  mTarget: TAtlasTrackerTarget;
-  mQuery: TAtlasTrackerQuery;
-  mLinkRef: IInterface;
-  mLink: TAtlasQueryDialogLink;
-  mName: string;
-begin
-  if FTesting or not Assigned(FOnTest) or not TestConnection(mConnection) then
-  begin
-    Exit;
-  end;
-  mQuery := Query;
-  // Wie in „Meine Issues“: Projekt aus dem Feld, Abfrage leer = Vorgabe in der Sprache der Verbindung.
-  mTarget := TAtlasTrackerTarget.Create(mConnection.Provider, mConnection.Url, mQuery.Project, mQuery.Query);
-  mTarget.Language := mConnection.Language;
-  FTesting := True;
-  FView.Result.Text := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.QueryDialogTesting);
-  Changed(Sender);
-  mLinkRef := FLinkRef;
-  mLink := FLink;
-  mName := mConnection.Name;
-  FOnTest(mConnection, mTarget,
-    procedure(const AResult: TAtlasTrackerQueryTestResult)
-    begin
-      if (mLinkRef <> nil) and (mLink.Dialog <> nil) then
-      begin
-        mLink.Dialog.ShowResult(AResult, mName);
-      end;
-    end);
 end;
 
 procedure TAtlasTrackerQueryDialog.ShowResult(const AResult: TAtlasTrackerQueryTestResult;
@@ -621,18 +564,75 @@ begin
   Result := string.Join(sLineBreak, mLines);
 end;
 
-procedure TAtlasTrackerQueryDialog.OkClick(Sender: TObject);
+class function TAtlasTrackerQueryDialog.TemplateCaption(const ATemplate: TAtlasTrackerTemplate): string;
+var
+  mProvider, mKind: string;
 begin
-  if not FView.Ok.Enabled then
+  if ATemplate.Provider = TAtlasTrackerTarget.cGitHub then
+  begin
+    mProvider := cGitHubCaption;
+  end
+  else
+  begin
+    mProvider := cYouTrackCaption;
+  end;
+  case ATemplate.Kind of
+    TAtlasTrackerTemplateKind.CurrentSprint:
+      mKind := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerTemplateCurrentSprint);
+    TAtlasTrackerTemplateKind.CreatedByMe:
+      mKind := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerTemplateCreatedByMe);
+    TAtlasTrackerTemplateKind.RecentlyChanged:
+      mKind := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerTemplateRecentlyChanged);
+  else
+    mKind := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQueryDefault);
+  end;
+  Result := mProvider + ' · ' + mKind;
+  // GitHub kennt nur englische Suchbegriffe; die Sprache zu nennen hilft nur bei YouTrack.
+  if ATemplate.Provider = TAtlasTrackerTarget.cGitHub then
   begin
     Exit;
   end;
-  ModalResult := mrOk;
+  if ATemplate.Language = TAtlasTrackerTemplates.cGerman then
+  begin
+    Result := Result + ' (' + TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerLanguageGerman) + ')';
+  end
+  else
+  begin
+    Result := Result + ' (' + TAtlasOptionsStrings.Text(TAtlasOptionsTextId.TrackerLanguageEnglish) + ')';
+  end;
 end;
 
-procedure TAtlasTrackerQueryDialog.CancelClick(Sender: TObject);
+class function TAtlasTrackerQueryDialog.TemplatesFor(const AConnections: TArray<TAtlasTrackerConnection>;
+  AChoice: Integer): TArray<TAtlasTrackerTemplate>;
+var
+  mProviders: TArray<string>;
+  mLanguages: TArray<string>;
+  mIndex: Integer;
 begin
-  ModalResult := mrCancel;
+  Result := nil;
+  mProviders := nil;
+  mLanguages := nil;
+  if (AChoice >= 1) and (AChoice <= Length(AConnections)) then
+  begin
+    AddProvider(mProviders, mLanguages, AConnections[AChoice - 1].Provider, AConnections[AChoice - 1].Language);
+  end
+  else
+  begin
+    for mIndex := 0 to High(AConnections) do
+    begin
+      AddProvider(mProviders, mLanguages, AConnections[mIndex].Provider, AConnections[mIndex].Language);
+    end;
+  end;
+  // Ohne Verbindung: alle Vorlagen beider Anbieter.
+  if Length(mProviders) = 0 then
+  begin
+    mProviders := TArray<string>.Create(TAtlasTrackerTarget.cYouTrack, TAtlasTrackerTarget.cGitHub);
+    mLanguages := TArray<string>.Create('', '');
+  end;
+  for mIndex := 0 to High(mProviders) do
+  begin
+    Result := Result + TAtlasTrackerTemplates.Templates(mProviders[mIndex], mLanguages[mIndex]);
+  end;
 end;
 
 class function TAtlasTrackerQueryDialog.Execute(var AQuery: TAtlasTrackerQuery;

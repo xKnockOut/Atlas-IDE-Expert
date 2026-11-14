@@ -105,6 +105,8 @@ uses
   Atlas.Common.Semantics.TreeUnits,
   Atlas.Common.Semantics.NameResolver.Symbols;
 
+{ TResolverPlace }
+
 constructor TResolverPlace.Create(const AIndex: ISymbolIndex; const ATreeUnits: ITreeUnits);
 begin
   inherited Create;

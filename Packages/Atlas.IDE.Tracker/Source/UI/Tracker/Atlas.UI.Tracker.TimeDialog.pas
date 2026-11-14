@@ -175,6 +175,17 @@ begin
   ActiveControl := FParts.Duration;
 end;
 
+function TAtlasTrackerTimeDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;
+begin
+  Result := TButton.Create(Self);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  Canvas.Font := Font;
+  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
+end;
+
 procedure TAtlasTrackerTimeDialog.AddDuration(AMinutes: Integer);
 var
   mRow: TPanel;
@@ -271,21 +282,73 @@ begin
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
 end;
 
-function TAtlasTrackerTimeDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;
+procedure TAtlasTrackerTimeDialog.BookClick(Sender: TObject);
+var
+  mDialog: TAtlasTrackerTimeDialog;
 begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Canvas.Font := Font;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
+  if FSending or FTrackingOff then
+  begin
+    Exit;
+  end;
+  if not Item(FItem) then
+  begin
+    ShowNote(TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookInvalid), True);
+    Exit;
+  end;
+  // GitHub ohne Häkchen bzw. ohne Buchungsweg: nur lokal als gebucht vermerken.
+  if ((FRequest.Mode = TAtlasTimeBookMode.Comment) and not FParts.AsComment.Checked) or not Assigned(FOnBook) then
+  begin
+    FDecision := TAtlasTimeDecision.Booked;
+    ModalResult := mrOk;
+    Exit;
+  end;
+  ShowNote(TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookSending), False);
+  SetBusy(True);
+  mDialog := Self;
+  FOnBook(FItem,
+    procedure(const AResult: TAtlasTrackerWriteResult)
+    begin
+      mDialog.BookDone(AResult);
+    end);
 end;
 
-class function TAtlasTrackerTimeDialog.QuestionText(const AKey: string; AMinutes: Integer): string;
+procedure TAtlasTrackerTimeDialog.DiscardClick(Sender: TObject);
 begin
-  Result := TAtlasTimeStrings.Fmt(TAtlasTimeTextId.TimeBookQuestion,
-    [TAtlasTrackerWorkflow.DurationText(AMinutes), AKey]);
+  if FSending then
+  begin
+    Exit;
+  end;
+  FDecision := TAtlasTimeDecision.Discarded;
+  ModalResult := mrAbort;
+end;
+
+procedure TAtlasTrackerTimeDialog.DurationChange(Sender: TObject);
+var
+  mMinutes: Integer;
+begin
+  // Die Frage folgt der eingegebenen Dauer.
+  if TAtlasTimeRounding.ParseDuration(FParts.Duration.Text, mMinutes) then
+  begin
+    FParts.Question.Caption := QuestionText(FRequest.Key, mMinutes);
+  end;
+end;
+
+procedure TAtlasTrackerTimeDialog.DialogCloseQuery(Sender: TObject; var CanClose: Boolean);
+begin
+  // Während der Buchung nicht schließen: Das Ergebnis kommt noch an diesen Dialog.
+  CanClose := not FSending;
+end;
+
+procedure TAtlasTrackerTimeDialog.SetBusy(AValue: Boolean);
+begin
+  FSending := AValue;
+  FParts.Duration.ReadOnly := AValue;
+  FParts.WorkType.Enabled := not AValue;
+  FParts.Text.ReadOnly := AValue;
+  FParts.AsComment.Enabled := not AValue;
+  FParts.Book.Enabled := not AValue and not FTrackingOff;
+  FParts.Later.Enabled := not AValue;
+  FParts.Discard.Enabled := not AValue;
 end;
 
 procedure TAtlasTrackerTimeDialog.ShowNote(const AText: string; AError: Boolean);
@@ -318,17 +381,6 @@ begin
   ShowNote(TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookOff), False);
 end;
 
-procedure TAtlasTrackerTimeDialog.DurationChange(Sender: TObject);
-var
-  mMinutes: Integer;
-begin
-  // Die Frage folgt der eingegebenen Dauer.
-  if TAtlasTimeRounding.ParseDuration(FParts.Duration.Text, mMinutes) then
-  begin
-    FParts.Question.Caption := QuestionText(FRequest.Key, mMinutes);
-  end;
-end;
-
 function TAtlasTrackerTimeDialog.Item(out AItem: TAtlasTrackerWorkItem): Boolean;
 var
   mMinutes: Integer;
@@ -342,48 +394,6 @@ begin
   end;
   AItem := TAtlasTrackerWorkItem.Create(mMinutes, FRequest.Date, mType,
     Trim(StringReplace(FParts.Text.Text, #13#10, #10, [rfReplaceAll])));
-end;
-
-procedure TAtlasTrackerTimeDialog.SetBusy(AValue: Boolean);
-begin
-  FSending := AValue;
-  FParts.Duration.ReadOnly := AValue;
-  FParts.WorkType.Enabled := not AValue;
-  FParts.Text.ReadOnly := AValue;
-  FParts.AsComment.Enabled := not AValue;
-  FParts.Book.Enabled := not AValue and not FTrackingOff;
-  FParts.Later.Enabled := not AValue;
-  FParts.Discard.Enabled := not AValue;
-end;
-
-procedure TAtlasTrackerTimeDialog.BookClick(Sender: TObject);
-var
-  mDialog: TAtlasTrackerTimeDialog;
-begin
-  if FSending or FTrackingOff then
-  begin
-    Exit;
-  end;
-  if not Item(FItem) then
-  begin
-    ShowNote(TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookInvalid), True);
-    Exit;
-  end;
-  // GitHub ohne Häkchen bzw. ohne Buchungsweg: nur lokal als gebucht vermerken.
-  if ((FRequest.Mode = TAtlasTimeBookMode.Comment) and not FParts.AsComment.Checked) or not Assigned(FOnBook) then
-  begin
-    FDecision := TAtlasTimeDecision.Booked;
-    ModalResult := mrOk;
-    Exit;
-  end;
-  ShowNote(TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookSending), False);
-  SetBusy(True);
-  mDialog := Self;
-  FOnBook(FItem,
-    procedure(const AResult: TAtlasTrackerWriteResult)
-    begin
-      mDialog.BookDone(AResult);
-    end);
 end;
 
 procedure TAtlasTrackerTimeDialog.BookDone(const AResult: TAtlasTrackerWriteResult);
@@ -406,20 +416,10 @@ begin
   ShowNote(TAtlasTrackerEndDialog.ErrorText(FRequest.Key, AResult), True);
 end;
 
-procedure TAtlasTrackerTimeDialog.DiscardClick(Sender: TObject);
+class function TAtlasTrackerTimeDialog.QuestionText(const AKey: string; AMinutes: Integer): string;
 begin
-  if FSending then
-  begin
-    Exit;
-  end;
-  FDecision := TAtlasTimeDecision.Discarded;
-  ModalResult := mrAbort;
-end;
-
-procedure TAtlasTrackerTimeDialog.DialogCloseQuery(Sender: TObject; var CanClose: Boolean);
-begin
-  // Während der Buchung nicht schließen: Das Ergebnis kommt noch an diesen Dialog.
-  CanClose := not FSending;
+  Result := TAtlasTimeStrings.Fmt(TAtlasTimeTextId.TimeBookQuestion,
+    [TAtlasTrackerWorkflow.DurationText(AMinutes), AKey]);
 end;
 
 class function TAtlasTrackerTimeDialog.Execute(const ARequest: TAtlasTimeRequest; const AOnBook: TAtlasTimeBookEvent;

@@ -82,6 +82,8 @@ begin
   Result := TJSONNumber(AArguments.Items[1]).AsInt;
 end;
 
+{ TShellStepping }
+
 procedure TShellStepping.Register(ACommands: TLspCommands);
 begin
   ACommands.Register(TLspStepTargets.cCommand, StepTargets);

@@ -156,6 +156,34 @@ begin
   end;
 end;
 
+procedure TAtlasIdeNotifications.Changed;
+begin
+  TAtlasGuard.Run(TAtlasFeature.Notifications, Refresh);
+end;
+
+procedure TAtlasIdeNotifications.Refresh;
+var
+  mCenter: IAtlasNotificationCenter;
+  mWorst: TAtlasNotificationSeverity;
+  mUnread: Integer;
+begin
+  mCenter := TAtlasNotificationCenter.Default;
+  mUnread := 0;
+  mWorst := TAtlasNotificationSeverity.Info;
+  if Active and mCenter.WorstUnread(mWorst) then
+  begin
+    mUnread := mCenter.UnreadCount;
+  end;
+  if Assigned(FOnBadge) then
+  begin
+    FOnBadge(mUnread, mWorst);
+  end;
+  if FWindow <> nil then
+  begin
+    FWindow.Reload;
+  end;
+end;
+
 class function TAtlasIdeNotifications.Instance: TAtlasIdeNotifications;
 begin
   Result := FInstance;
@@ -202,34 +230,6 @@ begin
     end;
   end;
   Changed;
-end;
-
-procedure TAtlasIdeNotifications.Changed;
-begin
-  TAtlasGuard.Run(TAtlasFeature.Notifications, Refresh);
-end;
-
-procedure TAtlasIdeNotifications.Refresh;
-var
-  mCenter: IAtlasNotificationCenter;
-  mWorst: TAtlasNotificationSeverity;
-  mUnread: Integer;
-begin
-  mCenter := TAtlasNotificationCenter.Default;
-  mUnread := 0;
-  mWorst := TAtlasNotificationSeverity.Info;
-  if Active and mCenter.WorstUnread(mWorst) then
-  begin
-    mUnread := mCenter.UnreadCount;
-  end;
-  if Assigned(FOnBadge) then
-  begin
-    FOnBadge(mUnread, mWorst);
-  end;
-  if FWindow <> nil then
-  begin
-    FWindow.Reload;
-  end;
 end;
 
 procedure TAtlasIdeNotifications.Show(const AAnchor: TPoint);

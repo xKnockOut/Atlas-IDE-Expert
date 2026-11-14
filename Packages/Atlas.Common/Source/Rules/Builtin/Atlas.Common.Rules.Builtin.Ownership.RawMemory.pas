@@ -79,6 +79,8 @@ const
   // Teile eines Routinennamens, die auf eine eigene Freigaberoutine schließen lassen.
   cRawReleaseWords: array[0..5] of string = ('Free', 'Frei', 'Release', 'Dispose', 'Destroy', 'Dealloc');
 
+{ TRawMemoryLeakRule }
+
 function TRawMemoryLeakRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cRawMemoryLeakRuleId, TRuleSeverity.Warning,
@@ -431,28 +433,6 @@ begin
   Result := False;
 end;
 
-/// <summary>Variablen eines var-Abschnitts der Routine prüfen.</summary>
-procedure TRawMemoryScan.CheckSection(ARoutine, ASection: TSyntaxNode);
-var
-  mIndex: Integer;
-  mName: string;
-begin
-  for mIndex := 0 to ASection.ChildCount - 1 do
-  begin
-    if ASection[mIndex].Kind <> TSyntaxKind.VarDecl then
-    begin
-      Continue;
-    end;
-    for mName in ASection[mIndex].Name.Split([',']) do
-    begin
-      if Trim(mName) <> '' then
-      begin
-        CheckVariable(ARoutine, Trim(mName));
-      end;
-    end;
-  end;
-end;
-
 procedure TRawMemoryScan.CheckVariable(ARoutine: TSyntaxNode; const AName: string);
 var
   mFirst, mStatement: TSyntaxNode;
@@ -477,6 +457,28 @@ begin
   FReport.Add(TTextRange.Create(mStatement.StartPos, mStatement.EndPos),
     cTexts[TOwnershipRawMemoryText.NeverReleased].Fmt([AName, mAllocator]), TRuleConfidence.Medium,
     mFixes);
+end;
+
+/// <summary>Variablen eines var-Abschnitts der Routine prüfen.</summary>
+procedure TRawMemoryScan.CheckSection(ARoutine, ASection: TSyntaxNode);
+var
+  mIndex: Integer;
+  mName: string;
+begin
+  for mIndex := 0 to ASection.ChildCount - 1 do
+  begin
+    if ASection[mIndex].Kind <> TSyntaxKind.VarDecl then
+    begin
+      Continue;
+    end;
+    for mName in ASection[mIndex].Name.Split([',']) do
+    begin
+      if Trim(mName) <> '' then
+      begin
+        CheckVariable(ARoutine, Trim(mName));
+      end;
+    end;
+  end;
 end;
 
 procedure TRawMemoryScan.CheckRoutine(ARoutine: TSyntaxNode);

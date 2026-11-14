@@ -363,86 +363,6 @@ begin
   FParts.List := mList;
 end;
 
-function TAtlasReportDialog.Check(APart: TAtlasPackagePart): TCheckBox;
-begin
-  Result := FParts.Checks[APart];
-end;
-
-function TAtlasReportDialog.Parts: TAtlasPackageParts;
-var
-  mPart: TAtlasPackagePart;
-begin
-  Result := [];
-  for mPart := Low(TAtlasPackagePart) to High(TAtlasPackagePart) do
-  begin
-    if FParts.Checks[mPart].Checked and FParts.Checks[mPart].Enabled then
-    begin
-      Include(Result, mPart);
-    end;
-  end;
-end;
-
-class function TAtlasReportDialog.SizeText(ABytes: Int64): string;
-begin
-  if ABytes < 1024 then
-  begin
-    Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportSizeBytes, [ABytes]);
-  end
-  else if ABytes < 1024 * 1024 then
-  begin
-    Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportSizeKb, [FormatFloat('0.0', ABytes / cBytesPerKb,
-      FormatSettings)]);
-  end
-  else
-  begin
-    Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportSizeMb, [FormatFloat('0.0',
-      ABytes / cBytesPerMb, FormatSettings)]);
-  end;
-end;
-
-procedure TAtlasReportDialog.Reload;
-var
-  mItem: TAtlasPackageFile;
-  mRow: TListItem;
-begin
-  if FParts.List = nil then
-  begin
-    Exit;
-  end;
-  FFiles := TAtlasDiagnosticPackage.Build(FInput, Parts);
-  // Eine vorher angelegte ZIP passt nicht mehr zur Auswahl.
-  FZipFile := '';
-  FParts.Status.Caption := '';
-  FParts.List.Items.BeginUpdate;
-  try
-    FParts.List.Items.Clear;
-    for mItem in FFiles do
-    begin
-      mRow := FParts.List.Items.Add;
-      mRow.Caption := mItem.Name;
-      mRow.SubItems.Add(SizeText(mItem.Size));
-    end;
-  finally
-    FParts.List.Items.EndUpdate;
-  end;
-  if Length(FFiles) = 0 then
-  begin
-    FParts.Summary.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportEmpty);
-  end
-  else
-  begin
-    FParts.Summary.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportSummary, [Length(FFiles),
-      SizeText(TAtlasDiagnosticPackage.TotalSize(FFiles))]);
-  end;
-  FParts.ZipButton.Enabled := Length(FFiles) > 0;
-  FParts.ViewButton.Enabled := FParts.List.Selected <> nil;
-end;
-
-procedure TAtlasReportDialog.ShowFolder;
-begin
-  FParts.FolderLabel.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportFolder, [FFolder]);
-end;
-
 procedure TAtlasReportDialog.PartClick(Sender: TObject);
 begin
   Reload;
@@ -466,24 +386,6 @@ end;
 procedure TAtlasReportDialog.ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
   FParts.ViewButton.Enabled := FParts.List.Selected <> nil;
-end;
-
-function TAtlasReportDialog.ViewFile(AIndex: Integer): string;
-begin
-  Result := '';
-  if (AIndex < 0) or (AIndex >= Length(FFiles)) then
-  begin
-    Exit;
-  end;
-  Result := FFiles[AIndex].Text;
-  if Assigned(FActions.ShowText) then
-  begin
-    FActions.ShowText(FFiles[AIndex].Name, Result);
-  end
-  else
-  begin
-    ShowTextWindow(FFiles[AIndex].Name, Result);
-  end;
 end;
 
 procedure TAtlasReportDialog.ViewClick(Sender: TObject);
@@ -526,6 +428,91 @@ begin
   ShowFolder;
 end;
 
+procedure TAtlasReportDialog.ZipClick(Sender: TObject);
+begin
+  CreateZip;
+end;
+
+procedure TAtlasReportDialog.IssueClick(Sender: TObject);
+begin
+  OpenIssue;
+end;
+
+procedure TAtlasReportDialog.ShowFolder;
+begin
+  FParts.FolderLabel.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportFolder, [FFolder]);
+end;
+
+function TAtlasReportDialog.Parts: TAtlasPackageParts;
+var
+  mPart: TAtlasPackagePart;
+begin
+  Result := [];
+  for mPart := Low(TAtlasPackagePart) to High(TAtlasPackagePart) do
+  begin
+    if FParts.Checks[mPart].Checked and FParts.Checks[mPart].Enabled then
+    begin
+      Include(Result, mPart);
+    end;
+  end;
+end;
+
+procedure TAtlasReportDialog.Reload;
+var
+  mItem: TAtlasPackageFile;
+  mRow: TListItem;
+begin
+  if FParts.List = nil then
+  begin
+    Exit;
+  end;
+  FFiles := TAtlasDiagnosticPackage.Build(FInput, Parts);
+  // Eine vorher angelegte ZIP passt nicht mehr zur Auswahl.
+  FZipFile := '';
+  FParts.Status.Caption := '';
+  FParts.List.Items.BeginUpdate;
+  try
+    FParts.List.Items.Clear;
+    for mItem in FFiles do
+    begin
+      mRow := FParts.List.Items.Add;
+      mRow.Caption := mItem.Name;
+      mRow.SubItems.Add(SizeText(mItem.Size));
+    end;
+  finally
+    FParts.List.Items.EndUpdate;
+  end;
+  if Length(FFiles) = 0 then
+  begin
+    FParts.Summary.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportEmpty);
+  end
+  else
+  begin
+    FParts.Summary.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportSummary, [Length(FFiles),
+      SizeText(TAtlasDiagnosticPackage.TotalSize(FFiles))]);
+  end;
+  FParts.ZipButton.Enabled := Length(FFiles) > 0;
+  FParts.ViewButton.Enabled := FParts.List.Selected <> nil;
+end;
+
+function TAtlasReportDialog.ViewFile(AIndex: Integer): string;
+begin
+  Result := '';
+  if (AIndex < 0) or (AIndex >= Length(FFiles)) then
+  begin
+    Exit;
+  end;
+  Result := FFiles[AIndex].Text;
+  if Assigned(FActions.ShowText) then
+  begin
+    FActions.ShowText(FFiles[AIndex].Name, Result);
+  end
+  else
+  begin
+    ShowTextWindow(FFiles[AIndex].Name, Result);
+  end;
+end;
+
 function TAtlasReportDialog.CreateZip: Boolean;
 var
   mTarget: string;
@@ -560,12 +547,6 @@ begin
   Result := True;
 end;
 
-function TAtlasReportDialog.IssueText: string;
-begin
-  Result := TAtlasDiagnosticPackage.IssueTemplate(FParts.Description.Text, FInput, Parts, ExtractFileName(FZipFile),
-    TAtlasStrings.Language = TAtlasLanguage.English);
-end;
-
 procedure TAtlasReportDialog.OpenIssue;
 var
   mUrl: string;
@@ -587,14 +568,28 @@ begin
   FParts.Status.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportIssueDone);
 end;
 
-procedure TAtlasReportDialog.ZipClick(Sender: TObject);
+function TAtlasReportDialog.IssueText: string;
 begin
-  CreateZip;
+  Result := TAtlasDiagnosticPackage.IssueTemplate(FParts.Description.Text, FInput, Parts, ExtractFileName(FZipFile),
+    TAtlasStrings.Language = TAtlasLanguage.English);
 end;
 
-procedure TAtlasReportDialog.IssueClick(Sender: TObject);
+class function TAtlasReportDialog.SizeText(ABytes: Int64): string;
 begin
-  OpenIssue;
+  if ABytes < 1024 then
+  begin
+    Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportSizeBytes, [ABytes]);
+  end
+  else if ABytes < 1024 * 1024 then
+  begin
+    Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportSizeKb, [FormatFloat('0.0', ABytes / cBytesPerKb,
+      FormatSettings)]);
+  end
+  else
+  begin
+    Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportSizeMb, [FormatFloat('0.0',
+      ABytes / cBytesPerMb, FormatSettings)]);
+  end;
 end;
 
 class procedure TAtlasReportDialog.Execute(const AInput: TAtlasPackageInput; const AFolder, AReportUrl: string;
@@ -608,6 +603,11 @@ begin
   finally
     mDialog.Free;
   end;
+end;
+
+function TAtlasReportDialog.Check(APart: TAtlasPackagePart): TCheckBox;
+begin
+  Result := FParts.Checks[APart];
 end;
 
 end.

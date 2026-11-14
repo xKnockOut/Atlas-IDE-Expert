@@ -198,121 +198,23 @@ end;
 
 { TAtlasIdeGhostSuggestions }
 
-class procedure TAtlasIdeGhostSuggestions.Install(const ABusy: TFunc<Boolean>; const AStatus: TAtlasGhostStatus);
+class function TAtlasIdeGhostSuggestions.Run(const AView: IOTAEditView): Boolean;
 begin
-  FBusy := ABusy;
-  FStatus := AStatus;
-  if FPreview = nil then
-  begin
-    FPreview := TAtlasEditorPreview.Create;
-    FPreview.Element := TAtlasDrawnElement.PatternPreview;
-    FPreview.FollowCursor := True;
-  end;
-  if FKeys = nil then
-  begin
-    FKeys := TKeys.Create(cKeyPriority);
-  end;
-  if FEvents = nil then
-  begin
-    FEvents := TEvents.Create;
-  end;
-  if FTimer = nil then
-  begin
-    FTimer := TTimer.Create(nil);
-    FTimer.Enabled := False;
-    FTimer.OnTimer := FEvents.Tick;
-  end;
-  if FRequest = nil then
-  begin
-    FRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.LearnedSuggestions);
-  end;
-  TAtlasEnterWatch.Add(cHandlerName,
-    function: Boolean
-    begin
-      Result := Enabled;
-    end,
-    function(const AView: IOTAEditView): Boolean
-    begin
-      Result := Run(AView);
-    end);
-end;
-
-class procedure TAtlasIdeGhostSuggestions.Uninstall;
-begin
-  TAtlasEnterWatch.Remove(cHandlerName);
+  Result := False;
   Dismiss;
-  if FKeys <> nil then
-  begin
-    TAtlasKeyHook.Remove(FKeys);
-  end;
-  // Wartet die laufende Anfrage ab und verwirft ihre Antwort.
-  FreeAndNil(FRequest);
-  FreeAndNil(FTimer);
-  FreeAndNil(FMenu);
-  FreeAndNil(FEvents);
-  FreeAndNil(FKeys);
-  FreeAndNil(FPreview);
-  FBusy := nil;
-  FStatus := nil;
-end;
-
-class function TAtlasIdeGhostSuggestions.Enabled: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.Enabled and TAtlasGhostProviders.AnyEnabled;
-end;
-
-class function TAtlasIdeGhostSuggestions.Visible: Boolean;
-begin
-  Result := FFileName <> '';
-end;
-
-class procedure TAtlasIdeGhostSuggestions.ClearStatus;
-begin
-  if Assigned(FStatus) then
-  begin
-    FStatus('', '', nil);
-  end;
-end;
-
-class procedure TAtlasIdeGhostSuggestions.Dismiss;
-begin
-  if FTimer <> nil then
-  begin
-    FTimer.Enabled := False;
-  end;
-  FPending := Default(TAsked);
-  if FFileName = '' then
+  if (FTimer = nil) or not CanAsk(AView) then
   begin
     Exit;
   end;
-  FFileName := '';
-  FProvider := nil;
-  FProposal := Default(TAtlasGhostProposal);
-  FGhost := Default(TAtlasGhostText);
-  FOwnWrite := False;
-  if FKeys <> nil then
+  FPending := AskedOf(AView, AView.CursorPos.Line - 1);
+  // Eine Zeile "/befehl" darüber gehört den Schnellbefehlen (#293).
+  if not TAtlasSmartIndent.Applies(FPending.PreviousText) or (Trim(FPending.PreviousText) = '') then
   begin
-    TAtlasKeyHook.Remove(FKeys);
-  end;
-  if FPreview <> nil then
-  begin
-    FPreview.Clear;
-  end;
-  ClearStatus;
-end;
-
-class procedure TAtlasIdeGhostSuggestions.EditorModified;
-begin
-  if Visible and FOwnWrite and AtSuggestion then
-  begin
+    FPending := Default(TAsked);
     Exit;
   end;
-  // Die wartende Frage prüft beim Ablauf selbst, ob die Zeile noch leer ist (die Einrückung beim Tippen darf sie
-  // noch ändern); nur ein sichtbarer Vorschlag verschwindet.
-  if Visible then
-  begin
-    Dismiss;
-  end;
+  FTimer.Interval := TAtlasIdeSettings.Current.SuggestionsDelayMs;
+  FTimer.Enabled := True;
 end;
 
 class function TAtlasIdeGhostSuggestions.AskedOf(const AView: IOTAEditView; ALine: Integer): TAsked;
@@ -346,25 +248,6 @@ begin
   begin
     Result := mNow.LineText = AAsked.LineText;
   end;
-end;
-
-class function TAtlasIdeGhostSuggestions.Run(const AView: IOTAEditView): Boolean;
-begin
-  Result := False;
-  Dismiss;
-  if (FTimer = nil) or not CanAsk(AView) then
-  begin
-    Exit;
-  end;
-  FPending := AskedOf(AView, AView.CursorPos.Line - 1);
-  // Eine Zeile "/befehl" darüber gehört den Schnellbefehlen (#293).
-  if not TAtlasSmartIndent.Applies(FPending.PreviousText) or (Trim(FPending.PreviousText) = '') then
-  begin
-    FPending := Default(TAsked);
-    Exit;
-  end;
-  FTimer.Interval := TAtlasIdeSettings.Current.SuggestionsDelayMs;
-  FTimer.Enabled := True;
 end;
 
 class function TAtlasIdeGhostSuggestions.CanAsk(const AView: IOTAEditView): Boolean;
@@ -612,6 +495,148 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeGhostSuggestions.ClearStatus;
+begin
+  if Assigned(FStatus) then
+  begin
+    FStatus('', '', nil);
+  end;
+end;
+
+class procedure TAtlasIdeGhostSuggestions.StatusClick(APoint: TPoint);
+var
+  mIndex: Integer;
+  mItem: TMenuItem;
+  mEvidence: TAtlasLearnedEvidence;
+begin
+  if not Visible or (Length(FProposal.Locations) = 0) then
+  begin
+    Exit;
+  end;
+  FreeAndNil(FMenu);
+  FMenu := TPopupMenu.Create(nil);
+  for mIndex := 0 to High(FProposal.Locations) do
+  begin
+    mEvidence.FileName := FProposal.Locations[mIndex].FileName;
+    mEvidence.Line := FProposal.Locations[mIndex].Line;
+    mItem := TMenuItem.Create(FMenu);
+    mItem.Caption := TAtlasLearnedSuggestions.EvidenceText(mEvidence);
+    mItem.Tag := mIndex;
+    mItem.OnClick := FEvents.LocationClick;
+    FMenu.Items.Add(mItem);
+  end;
+  FMenu.Popup(APoint.X, APoint.Y);
+end;
+
+class procedure TAtlasIdeGhostSuggestions.Install(const ABusy: TFunc<Boolean>; const AStatus: TAtlasGhostStatus);
+begin
+  FBusy := ABusy;
+  FStatus := AStatus;
+  if FPreview = nil then
+  begin
+    FPreview := TAtlasEditorPreview.Create;
+    FPreview.Element := TAtlasDrawnElement.PatternPreview;
+    FPreview.FollowCursor := True;
+  end;
+  if FKeys = nil then
+  begin
+    FKeys := TKeys.Create(cKeyPriority);
+  end;
+  if FEvents = nil then
+  begin
+    FEvents := TEvents.Create;
+  end;
+  if FTimer = nil then
+  begin
+    FTimer := TTimer.Create(nil);
+    FTimer.Enabled := False;
+    FTimer.OnTimer := FEvents.Tick;
+  end;
+  if FRequest = nil then
+  begin
+    FRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.LearnedSuggestions);
+  end;
+  TAtlasEnterWatch.Add(cHandlerName,
+    function: Boolean
+    begin
+      Result := Enabled;
+    end,
+    function(const AView: IOTAEditView): Boolean
+    begin
+      Result := Run(AView);
+    end);
+end;
+
+class procedure TAtlasIdeGhostSuggestions.Uninstall;
+begin
+  TAtlasEnterWatch.Remove(cHandlerName);
+  Dismiss;
+  if FKeys <> nil then
+  begin
+    TAtlasKeyHook.Remove(FKeys);
+  end;
+  // Wartet die laufende Anfrage ab und verwirft ihre Antwort.
+  FreeAndNil(FRequest);
+  FreeAndNil(FTimer);
+  FreeAndNil(FMenu);
+  FreeAndNil(FEvents);
+  FreeAndNil(FKeys);
+  FreeAndNil(FPreview);
+  FBusy := nil;
+  FStatus := nil;
+end;
+
+class function TAtlasIdeGhostSuggestions.Enabled: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.Enabled and TAtlasGhostProviders.AnyEnabled;
+end;
+
+class function TAtlasIdeGhostSuggestions.Visible: Boolean;
+begin
+  Result := FFileName <> '';
+end;
+
+class procedure TAtlasIdeGhostSuggestions.Dismiss;
+begin
+  if FTimer <> nil then
+  begin
+    FTimer.Enabled := False;
+  end;
+  FPending := Default(TAsked);
+  if FFileName = '' then
+  begin
+    Exit;
+  end;
+  FFileName := '';
+  FProvider := nil;
+  FProposal := Default(TAtlasGhostProposal);
+  FGhost := Default(TAtlasGhostText);
+  FOwnWrite := False;
+  if FKeys <> nil then
+  begin
+    TAtlasKeyHook.Remove(FKeys);
+  end;
+  if FPreview <> nil then
+  begin
+    FPreview.Clear;
+  end;
+  ClearStatus;
+end;
+
+class procedure TAtlasIdeGhostSuggestions.EditorModified;
+begin
+  if Visible and FOwnWrite and AtSuggestion then
+  begin
+    Exit;
+  end;
+  // Die wartende Frage prüft beim Ablauf selbst, ob die Zeile noch leer ist (die Einrückung beim Tippen darf sie
+  // noch ändern); nur ein sichtbarer Vorschlag verschwindet.
+  if Visible then
+  begin
+    Dismiss;
+  end;
+end;
+
 class procedure TAtlasIdeGhostSuggestions.AcceptAll;
 begin
   if not Visible or not AtSuggestion then
@@ -656,31 +681,6 @@ begin
   begin
     mProvider.Rejected(mProposal);
   end;
-end;
-
-class procedure TAtlasIdeGhostSuggestions.StatusClick(APoint: TPoint);
-var
-  mIndex: Integer;
-  mItem: TMenuItem;
-  mEvidence: TAtlasLearnedEvidence;
-begin
-  if not Visible or (Length(FProposal.Locations) = 0) then
-  begin
-    Exit;
-  end;
-  FreeAndNil(FMenu);
-  FMenu := TPopupMenu.Create(nil);
-  for mIndex := 0 to High(FProposal.Locations) do
-  begin
-    mEvidence.FileName := FProposal.Locations[mIndex].FileName;
-    mEvidence.Line := FProposal.Locations[mIndex].Line;
-    mItem := TMenuItem.Create(FMenu);
-    mItem.Caption := TAtlasLearnedSuggestions.EvidenceText(mEvidence);
-    mItem.Tag := mIndex;
-    mItem.OnClick := FEvents.LocationClick;
-    FMenu.Items.Add(mItem);
-  end;
-  FMenu.Popup(APoint.X, APoint.Y);
 end;
 
 end.

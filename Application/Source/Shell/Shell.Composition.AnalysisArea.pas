@@ -77,6 +77,8 @@ uses
   Atlas.Common.Lsp.TestUnits,
   Shell.Composition.CoveredBy;
 
+{ TShellAnalysisArea }
+
 constructor TShellAnalysisArea.Create(ACore: TShellCore; const AServices: TShellAnalysisAreaServices);
 begin
   inherited Create;

@@ -154,30 +154,6 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasInlineValues.KeyOf(const AName: string): string;
-begin
-  Result := LowerCase(AName);
-end;
-
-class function TAtlasInlineValues.IsPlainIdentifier(const AName: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := False;
-  if (AName = '') or CharInSet(AName[1], ['0'..'9']) or TAtlasDebugExpression.IsReserved(AName) then
-  begin
-    Exit;
-  end;
-  for mIndex := 1 to Length(AName) do
-  begin
-    if not (CharInSet(AName[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AName[mIndex]) > 127)) then
-    begin
-      Exit;
-    end;
-  end;
-  Result := True;
-end;
-
 procedure TAtlasInlineValues.Remember;
 var
   mPair: TPair<string, TValue>;
@@ -198,6 +174,24 @@ begin
       FPrevious.AddOrSetValue(mPair.Key, mPair.Value.Raw);
     end;
   end;
+end;
+
+class function TAtlasInlineValues.KeyOf(const AName: string): string;
+begin
+  Result := LowerCase(AName);
+end;
+
+procedure TAtlasInlineValues.Clear;
+begin
+  Remember;
+  FLines.Clear;
+  FOrder.Clear;
+  FTypes.Clear;
+  FSpellings.Clear;
+  FValues.Clear;
+  FNext := 0;
+  FFileName := '';
+  FStoppedLine := -1;
 end;
 
 /// <summary>Bezüge mit einfachem Namen in der Reihenfolge im Text; der Server liefert sie schon so, aber darauf
@@ -302,30 +296,12 @@ begin
   end;
 end;
 
-procedure TAtlasInlineValues.Clear;
-begin
-  Remember;
-  FLines.Clear;
-  FOrder.Clear;
-  FTypes.Clear;
-  FSpellings.Clear;
-  FValues.Clear;
-  FNext := 0;
-  FFileName := '';
-  FStoppedLine := -1;
-end;
-
 procedure TAtlasInlineValues.Reset;
 begin
   Clear;
   FPrevious.Clear;
   FPreviousContext := '';
   FContext := '';
-end;
-
-function TAtlasInlineValues.Active: Boolean;
-begin
-  Result := FOrder.Count > 0;
 end;
 
 function TAtlasInlineValues.NextPending(out AName: string): Boolean;
@@ -344,6 +320,12 @@ begin
     Inc(FNext);
   end;
   Result := False;
+end;
+
+procedure TAtlasInlineValues.SetUnavailable(const AText: string; const APatterns: TArray<string>);
+begin
+  FUnavailableText := AText;
+  FUnavailablePatterns := APatterns;
 end;
 
 procedure TAtlasInlineValues.Put(const AName, ARaw: string; AOk: Boolean);
@@ -375,12 +357,6 @@ begin
   FValues[mKey] := mValue;
 end;
 
-procedure TAtlasInlineValues.SetUnavailable(const AText: string; const APatterns: TArray<string>);
-begin
-  FUnavailableText := AText;
-  FUnavailablePatterns := APatterns;
-end;
-
 function TAtlasInlineValues.Line(const AFileName: string; ALine: Integer): TAtlasInlineValueItems;
 var
   mNames: TArray<string>;
@@ -407,6 +383,30 @@ begin
       (mPrevious <> mValue.Raw);
     Result := Result + [mItem];
   end;
+end;
+
+function TAtlasInlineValues.Active: Boolean;
+begin
+  Result := FOrder.Count > 0;
+end;
+
+class function TAtlasInlineValues.IsPlainIdentifier(const AName: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  if (AName = '') or CharInSet(AName[1], ['0'..'9']) or TAtlasDebugExpression.IsReserved(AName) then
+  begin
+    Exit;
+  end;
+  for mIndex := 1 to Length(AName) do
+  begin
+    if not (CharInSet(AName[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AName[mIndex]) > 127)) then
+    begin
+      Exit;
+    end;
+  end;
+  Result := True;
 end;
 
 class function TAtlasInlineValues.Display(const ATypeName, ARaw: string): string;

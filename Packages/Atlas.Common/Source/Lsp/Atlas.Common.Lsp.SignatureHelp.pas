@@ -405,6 +405,22 @@ end;
 
 { TLspSignatureHelp }
 
+constructor TLspSignatureHelp.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AReadText: THoverReadText; const AEnsureUnit: TEnsureUnitFunc);
+begin
+  inherited Create;
+  FStore := AStore;
+  FIndex := AIndex;
+  FReadText := AReadText;
+  FEnsureUnit := AEnsureUnit;
+end;
+
+constructor TLspSignatureHelp.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AReadText: THoverReadText);
+begin
+  Create(AStore, AIndex, AReadText, nil);
+end;
+
 function TLspSignatureHelp.GetNamespaces: TArray<string>;
 begin
   Result := TLspNamespaces.Read(FNamespaces);
@@ -415,20 +431,47 @@ begin
   TLspNamespaces.Write(FNamespaces, AValue);
 end;
 
-constructor TLspSignatureHelp.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-  const AReadText: THoverReadText);
+function TLspSignatureHelp.Handle(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mPositionValue: TJSONValue;
+  mDocument: ITextDocument;
+  mTree: TSyntaxTree;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mHelp: TSignatureHelp;
+  mRequest: TSignatureHelpRequest;
 begin
-  Create(AStore, AIndex, AReadText, nil);
-end;
-
-constructor TLspSignatureHelp.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-  const AReadText: THoverReadText; const AEnsureUnit: TEnsureUnitFunc);
-begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FReadText := AReadText;
-  FEnsureUnit := AEnsureUnit;
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TSignatureHelpText.FieldsTextDocumentUriAndPosition].Text);
+  end;
+  if not FStore.TryGet(mUri, mDocument) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  mTree := mShared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  try
+    mResolver.Namespaces := Namespaces;
+    mRequest := TSignatureHelpRequest.Create(mResolver, FIndex, mTree, mDocument.Text, TDocumentUris.ToPath(mUri),
+      FReadText);
+    if Assigned(FFormatRoutinesFor) then
+    begin
+      mRequest.Routines := FFormatRoutinesFor(mUri);
+    end;
+    mHelp := HelpAt(mRequest, TLspPositions.ReadPosition(mPositionValue));
+  finally
+    mResolver.Free;
+  end;
+  Result := ToJson(mHelp);
 end;
 
 procedure TLspSignatureHelp.Attach(ADispatcher: TJsonRpcDispatcher);
@@ -448,30 +491,6 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('triggerCharacters', mTriggers);
   Result.AddPair('retriggerCharacters', mRetriggers);
-end;
-
-class function TLspSignatureHelp.CallSiteAt(ATree: TSyntaxTree; const APosition: TTextPosition): TCallSite;
-var
-  mScan: TCallScan;
-  mIndex: Integer;
-begin
-  Result := Default(TCallSite);
-  if ATree = nil then
-  begin
-    Exit;
-  end;
-  mScan := Default(TCallScan);
-  mScan.Tokens := ATree.Tokens;
-  mScan.Last := LastTokenBefore(mScan.Tokens, APosition);
-  // Argumente rückwärts gesammelt (#498).
-  mScan.SpanEnd := mScan.Last;
-  for mIndex := mScan.Last downto 0 do
-  begin
-    if mScan.Step(mIndex, Result) then
-    begin
-      Break;
-    end;
-  end;
 end;
 
 /// <summary>Position des ; außerhalb von Klammern in AText, 0 ohne; ADepth zählt offene Klammern über die Zeilen
@@ -686,26 +705,27 @@ begin
   end;
 end;
 
-class function TLspSignatureHelp.ParseSignature(const ALines: TArray<string>; ALine, AColumn: Integer): TSignature;
+class function TLspSignatureHelp.CallSiteAt(ATree: TSyntaxTree; const APosition: TTextPosition): TCallSite;
 var
-  mText: string;
-  mOpen, mClose: Integer;
+  mScan: TCallScan;
+  mIndex: Integer;
 begin
-  Result := Default(TSignature);
-  Result.Fits := True;
-  Result.Mismatch := -1;
-  mText := CollapseSpaces(CollectHeader(ALines, ALine, AColumn));
-  Result.Qualified := StripQualifier(mText);
-  Result.Text := mText;
-  mOpen := Pos('(', mText);
-  if mOpen = 0 then
+  Result := Default(TCallSite);
+  if ATree = nil then
   begin
     Exit;
   end;
-  mClose := ClosingParen(mText, mOpen);
-  if mClose > 0 then
+  mScan := Default(TCallScan);
+  mScan.Tokens := ATree.Tokens;
+  mScan.Last := LastTokenBefore(mScan.Tokens, APosition);
+  // Argumente rückwärts gesammelt (#498).
+  mScan.SpanEnd := mScan.Last;
+  for mIndex := mScan.Last downto 0 do
   begin
-    Result.Parameters := ParameterGroups(mText, mOpen, mClose);
+    if mScan.Step(mIndex, Result) then
+    begin
+      Break;
+    end;
   end;
 end;
 
@@ -1336,6 +1356,29 @@ begin
   end;
 end;
 
+class function TLspSignatureHelp.ParseSignature(const ALines: TArray<string>; ALine, AColumn: Integer): TSignature;
+var
+  mText: string;
+  mOpen, mClose: Integer;
+begin
+  Result := Default(TSignature);
+  Result.Fits := True;
+  Result.Mismatch := -1;
+  mText := CollapseSpaces(CollectHeader(ALines, ALine, AColumn));
+  Result.Qualified := StripQualifier(mText);
+  Result.Text := mText;
+  mOpen := Pos('(', mText);
+  if mOpen = 0 then
+  begin
+    Exit;
+  end;
+  mClose := ClosingParen(mText, mOpen);
+  if mClose > 0 then
+  begin
+    Result.Parameters := ParameterGroups(mText, mOpen, mClose);
+  end;
+end;
+
 class function TLspSignatureHelp.HelpAt(const ARequest: TSignatureHelpRequest;
   const APosition: TTextPosition): TSignatureHelp;
 var
@@ -1404,49 +1447,6 @@ begin
   begin
     TJSONObject(Result).AddPair('format', mFormatJson);
   end;
-end;
-
-function TLspSignatureHelp.Handle(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mCancellation: IPascalCancellation;
-  mUri: string;
-  mPositionValue: TJSONValue;
-  mDocument: ITextDocument;
-  mTree: TSyntaxTree;
-  mShared: ISharedSyntaxTree;
-  mResolver: TNameResolver;
-  mHelp: TSignatureHelp;
-  mRequest: TSignatureHelpRequest;
-begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TSignatureHelpText.FieldsTextDocumentUriAndPosition].Text);
-  end;
-  if not FStore.TryGet(mUri, mDocument) then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  mCancellation := TRequestCancellation.Create(ACancellation);
-  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
-  mTree := mShared.Tree;
-  ACancellation.ThrowIfCancellationRequested;
-  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
-  try
-    mResolver.Namespaces := Namespaces;
-    mRequest := TSignatureHelpRequest.Create(mResolver, FIndex, mTree, mDocument.Text, TDocumentUris.ToPath(mUri),
-      FReadText);
-    if Assigned(FFormatRoutinesFor) then
-    begin
-      mRequest.Routines := FFormatRoutinesFor(mUri);
-    end;
-    mHelp := HelpAt(mRequest, TLspPositions.ReadPosition(mPositionValue));
-  finally
-    mResolver.Free;
-  end;
-  Result := ToJson(mHelp);
 end;
 
 initialization

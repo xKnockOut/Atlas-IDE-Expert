@@ -180,17 +180,6 @@ begin
   inherited;
 end;
 
-procedure TAtlasCodeInsightState.ServerChanged;
-var
-  mChanged: TProc;
-begin
-  mChanged := FOnServerChanged;
-  if Assigned(mChanged) then
-  begin
-    mChanged();
-  end;
-end;
-
 procedure TAtlasCodeInsightState.SetPhase(APhase: TAtlasServerPhase; const AError: string);
 begin
   SetPhase(APhase, AError, False);
@@ -207,6 +196,17 @@ begin
   FPhase.Error := AError;
   FPhase.Ended := (APhase = TAtlasServerPhase.Stopped) and AEnded;
   ServerChanged;
+end;
+
+procedure TAtlasCodeInsightState.ServerChanged;
+var
+  mChanged: TProc;
+begin
+  mChanged := FOnServerChanged;
+  if Assigned(mChanged) then
+  begin
+    mChanged();
+  end;
 end;
 
 function TAtlasCodeInsightState.LogActions: TArray<TAtlasNotificationAction>;
@@ -248,16 +248,6 @@ begin
   begin
     TAtlasCodeInsightPaths.Append(AMessage);
   end;
-end;
-
-procedure TAtlasCodeInsightState.Log(const AMessage: string);
-begin
-  Diagnose(AMessage);
-end;
-
-procedure TAtlasCodeInsightState.Report(const AMessage: string);
-begin
-  TAtlasCodeInsightPaths.Append(AMessage);
 end;
 
 function TAtlasCodeInsightState.ReadySession: TLspSession;
@@ -322,6 +312,16 @@ function TAtlasCodeInsightState.ServerIndexingOf(const AToken: string; out APerc
 begin
   APercent := -1;
   Result := (FSession <> nil) and FSession.Initialized and FSession.IndexingOf(AToken, APercent);
+end;
+
+procedure TAtlasCodeInsightState.Log(const AMessage: string);
+begin
+  Diagnose(AMessage);
+end;
+
+procedure TAtlasCodeInsightState.Report(const AMessage: string);
+begin
+  TAtlasCodeInsightPaths.Append(AMessage);
 end;
 
 end.

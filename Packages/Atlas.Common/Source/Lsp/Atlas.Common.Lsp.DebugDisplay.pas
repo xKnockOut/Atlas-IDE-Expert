@@ -102,26 +102,37 @@ begin
   FReadText := AReadText;
 end;
 
-class function TLspDebugDisplay.MayContainRules(const AText: string): Boolean;
-begin
-  Result := ContainsText(AText, 'atlas-debug') or ContainsText(AText, 'AtlasDebug');
-end;
-
-class function TLspDebugDisplay.ShortName(const ATypeName: string): string;
+function TLspDebugDisplay.Execute(const AArguments: TJSONArray): TJSONValue;
 var
-  mAngle, mDot: Integer;
+  mFileName: string;
+  mSource: TLspMetricsSource;
+  mForeign: TArray<string>;
+  mItem: Integer;
+  mRules: TArray<TLspDebugDisplayRule>;
+  mInherits: TArray<TLspDebugDisplayInherit>;
 begin
-  Result := Trim(ATypeName);
-  mAngle := Pos('<', Result);
-  if mAngle > 0 then
+  mFileName := '';
+  mForeign := nil;
+  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
   begin
-    Result := Copy(Result, 1, mAngle - 1);
+    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
   end;
-  mDot := LastDelimiter('.', Result);
-  if mDot > 0 then
+  if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONArray) then
   begin
-    Result := Copy(Result, mDot + 1, MaxInt);
+    for mItem := 0 to TJSONArray(AArguments.Items[1]).Count - 1 do
+    begin
+      if TJSONArray(AArguments.Items[1]).Items[mItem] is TJSONString then
+      begin
+        mForeign := mForeign + [TJSONArray(AArguments.Items[1]).Items[mItem].Value];
+      end;
+    end;
   end;
+  if not (Assigned(FSourceFor) and FSourceFor(mFileName, True, mSource)) then
+  begin
+    mSource := Default(TLspMetricsSource);
+  end;
+  mRules := Collect(mSource.Files, mForeign, mInherits);
+  Result := TJSONObject.ParseJSONValue(ToJson(mRules, mInherits));
 end;
 
 class function TLspDebugDisplay.RulesOfUnit(const AUnit: TUnitIndex;
@@ -153,6 +164,11 @@ begin
     mRule.FileName := AUnit.FileName;
     Result := Result + [mRule];
   end;
+end;
+
+class function TLspDebugDisplay.MayContainRules(const AText: string): Boolean;
+begin
+  Result := ContainsText(AText, 'atlas-debug') or ContainsText(AText, 'AtlasDebug');
 end;
 
 /// <summary>Erster Vorfahr einer Klasse als Kurzname; '' ohne.</summary>
@@ -316,6 +332,23 @@ begin
   AInherits := InheritsOf(FIndex, mUnits, Result, AExternal);
 end;
 
+class function TLspDebugDisplay.ShortName(const ATypeName: string): string;
+var
+  mAngle, mDot: Integer;
+begin
+  Result := Trim(ATypeName);
+  mAngle := Pos('<', Result);
+  if mAngle > 0 then
+  begin
+    Result := Copy(Result, 1, mAngle - 1);
+  end;
+  mDot := LastDelimiter('.', Result);
+  if mDot > 0 then
+  begin
+    Result := Copy(Result, mDot + 1, MaxInt);
+  end;
+end;
+
 class function TLspDebugDisplay.ToJson(const ARules: TArray<TLspDebugDisplayRule>;
   const AInherits: TArray<TLspDebugDisplayInherit>): string;
 var
@@ -367,39 +400,6 @@ begin
   finally
     mRoot.Free;
   end;
-end;
-
-function TLspDebugDisplay.Execute(const AArguments: TJSONArray): TJSONValue;
-var
-  mFileName: string;
-  mSource: TLspMetricsSource;
-  mForeign: TArray<string>;
-  mItem: Integer;
-  mRules: TArray<TLspDebugDisplayRule>;
-  mInherits: TArray<TLspDebugDisplayInherit>;
-begin
-  mFileName := '';
-  mForeign := nil;
-  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
-  begin
-    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
-  end;
-  if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONArray) then
-  begin
-    for mItem := 0 to TJSONArray(AArguments.Items[1]).Count - 1 do
-    begin
-      if TJSONArray(AArguments.Items[1]).Items[mItem] is TJSONString then
-      begin
-        mForeign := mForeign + [TJSONArray(AArguments.Items[1]).Items[mItem].Value];
-      end;
-    end;
-  end;
-  if not (Assigned(FSourceFor) and FSourceFor(mFileName, True, mSource)) then
-  begin
-    mSource := Default(TLspMetricsSource);
-  end;
-  mRules := Collect(mSource.Files, mForeign, mInherits);
-  Result := TJSONObject.ParseJSONValue(ToJson(mRules, mInherits));
 end;
 
 end.

@@ -147,32 +147,6 @@ begin
   inherited;
 end;
 
-class procedure TAtlasIdeRegionFolds.Install;
-begin
-  if FInstance = nil then
-  begin
-    FInstance := TAtlasIdeRegionFolds.Create;
-  end;
-end;
-
-class procedure TAtlasIdeRegionFolds.Uninstall;
-begin
-  FreeAndNil(FInstance);
-end;
-
-class function TAtlasIdeRegionFolds.Mode: TAtlasRegionFoldMode;
-begin
-  Result := TAtlasRegionFolds.ModeOf(TAtlasIdeSettings.Current.RegionFolds);
-end;
-
-class function TAtlasIdeRegionFolds.Enabled: Boolean;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and (TAtlasRegionFolds.ModeOf(mSettings.RegionFolds) <> TAtlasRegionFoldMode.Off);
-end;
-
 procedure TAtlasIdeRegionFolds.Opened(const AFileName: string);
 begin
   if Enabled and (Mode in [TAtlasRegionFoldMode.Collapse, TAtlasRegionFoldMode.Expand]) then
@@ -181,15 +155,6 @@ begin
     // Die geöffnete Datei ist meist gleich die aktive Ansicht.
     FTimer.Enabled := False;
     FTimer.Enabled := True;
-  end;
-end;
-
-class procedure TAtlasIdeRegionFolds.ViewActivated;
-begin
-  if (FInstance <> nil) and (FInstance.FPending.Count > 0) then
-  begin
-    FInstance.FTimer.Enabled := False;
-    FInstance.FTimer.Enabled := True;
   end;
 end;
 
@@ -219,6 +184,11 @@ begin
   begin
     Apply(mView, Mode, True);
   end;
+end;
+
+class function TAtlasIdeRegionFolds.Mode: TAtlasRegionFoldMode;
+begin
+  Result := TAtlasRegionFolds.ModeOf(TAtlasIdeSettings.Current.RegionFolds);
 end;
 
 class procedure TAtlasIdeRegionFolds.Apply(const AView: IOTAEditView; AMode: TAtlasRegionFoldMode;
@@ -275,6 +245,36 @@ begin
   if Enabled and (mView <> nil) and (mView.Buffer <> nil) then
   begin
     Apply(mView, AMode, False);
+  end;
+end;
+
+class procedure TAtlasIdeRegionFolds.Install;
+begin
+  if FInstance = nil then
+  begin
+    FInstance := TAtlasIdeRegionFolds.Create;
+  end;
+end;
+
+class procedure TAtlasIdeRegionFolds.Uninstall;
+begin
+  FreeAndNil(FInstance);
+end;
+
+class function TAtlasIdeRegionFolds.Enabled: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and (TAtlasRegionFolds.ModeOf(mSettings.RegionFolds) <> TAtlasRegionFoldMode.Off);
+end;
+
+class procedure TAtlasIdeRegionFolds.ViewActivated;
+begin
+  if (FInstance <> nil) and (FInstance.FPending.Count > 0) then
+  begin
+    FInstance.FTimer.Enabled := False;
+    FInstance.FTimer.Enabled := True;
   end;
 end;
 

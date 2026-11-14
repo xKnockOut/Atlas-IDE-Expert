@@ -118,25 +118,6 @@ begin
     end;
 end;
 
-procedure TGenericListUsages.CollectUses(AFileIndex: Integer);
-begin
-  FFiles[AFileIndex].Tree.Root.Walk(UseVisitor(AFileIndex, UseNames(AFileIndex)));
-end;
-
-function TGenericListUsages.IsListMember(ANode: TSyntaxNode; const ANames: TArray<string>): Boolean;
-begin
-  // Mitglied der Liste selbst (L.Items, wenn eine Property der Klasse auch Items heißt).
-  Result := (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
-    TGenericListSyntax.IsPlainName(ANode[0]) and MatchText(ANode[0].Name, ANames) and
-    FKind.IsReadOrNeutral(ANode.Name);
-end;
-
-function TGenericListUsages.IsCandidate(ANode: TSyntaxNode; const ANames: TArray<string>): Boolean;
-begin
-  Result := TGenericListSyntax.IsPlainName(ANode) and MatchText(ANode.Name, ANames) and
-    not IsListMember(ANode, ANames);
-end;
-
 function TGenericListUsages.VisitUse(AFileIndex: Integer; const ANames: TArray<string>; ANode: TSyntaxNode): Boolean;
 var
   mMatch: TGenericListMatch;
@@ -163,21 +144,18 @@ begin
   end;
 end;
 
-function TGenericListUsages.IsOwnMethod(ANode: TSyntaxNode): Boolean;
-var
-  mRoutine: TSyntaxNode;
+function TGenericListUsages.IsCandidate(ANode: TSyntaxNode; const ANames: TArray<string>): Boolean;
 begin
-  // Bezeichner in einer Methode der eigenen Klasse (TKlasse.Methode), auch in einer lokalen Routine darin.
-  mRoutine := TGenericListSyntax.EnclosingRoutine(ANode);
-  while mRoutine <> nil do
-  begin
-    if StartsText(TGenericListSyntax.LastName(FTarget.OwnerType) + '.', mRoutine.Name) then
-    begin
-      Exit(True);
-    end;
-    mRoutine := TGenericListSyntax.EnclosingRoutine(mRoutine);
-  end;
-  Result := False;
+  Result := TGenericListSyntax.IsPlainName(ANode) and MatchText(ANode.Name, ANames) and
+    not IsListMember(ANode, ANames);
+end;
+
+function TGenericListUsages.IsListMember(ANode: TSyntaxNode; const ANames: TArray<string>): Boolean;
+begin
+  // Mitglied der Liste selbst (L.Items, wenn eine Property der Klasse auch Items heißt).
+  Result := (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
+    TGenericListSyntax.IsPlainName(ANode[0]) and MatchText(ANode[0].Name, ANames) and
+    FKind.IsReadOrNeutral(ANode.Name);
 end;
 
 function TGenericListUsages.IsAssumed(AFileIndex: Integer; ANode: TSyntaxNode): Boolean;
@@ -206,24 +184,21 @@ begin
   end;
 end;
 
-function TGenericListUsages.IsOtherMember(ASource: TGenericListSource; ANode: TSyntaxNode): Boolean;
+function TGenericListUsages.IsOwnMethod(ANode: TSyntaxNode): Boolean;
 var
-  mSymbol, mType: TResolvedSymbol;
-  mTypeFound: Boolean;
+  mRoutine: TSyntaxNode;
 begin
-  // X.Name mit bekanntem Typ von X, der nicht die eigene Klasse (oder ein Nachfahre) ist: ein anderes Mitglied.
-  if not FTarget.IsField or (ANode.Kind <> TSyntaxKind.MemberAccess) or (ANode.ChildCount <> 1) then
+  // Bezeichner in einer Methode der eigenen Klasse (TKlasse.Methode), auch in einer lokalen Routine darin.
+  mRoutine := TGenericListSyntax.EnclosingRoutine(ANode);
+  while mRoutine <> nil do
   begin
-    Exit(False);
+    if StartsText(TGenericListSyntax.LastName(FTarget.OwnerType) + '.', mRoutine.Name) then
+    begin
+      Exit(True);
+    end;
+    mRoutine := TGenericListSyntax.EnclosingRoutine(mRoutine);
   end;
-  if not Resolves(ASource, ANode[0], mSymbol, mType, mTypeFound) or not mTypeFound then
-  begin
-    Exit(False);
-  end;
-  Result := not SameText(TGenericListSyntax.LastName(mType.Name), TGenericListSyntax.LastName(FTarget.OwnerType)) and
-    FResolver.ResolveChain(ASource.Tree, ASource.FileName, [FTarget.OwnerType], ANode.StartOffset).Found and
-    not FResolver.Queries.TypeDescendsFrom(ASource.Tree, ASource.FileName, ANode.StartOffset, mType.Name,
-    FTarget.OwnerType);
+  Result := False;
 end;
 
 function TGenericListUsages.Matches(AFileIndex: Integer; ANode: TSyntaxNode): TGenericListMatch;
@@ -249,6 +224,26 @@ begin
   begin
     Result := TGenericListMatch.Unknown;
   end;
+end;
+
+function TGenericListUsages.IsOtherMember(ASource: TGenericListSource; ANode: TSyntaxNode): Boolean;
+var
+  mSymbol, mType: TResolvedSymbol;
+  mTypeFound: Boolean;
+begin
+  // X.Name mit bekanntem Typ von X, der nicht die eigene Klasse (oder ein Nachfahre) ist: ein anderes Mitglied.
+  if not FTarget.IsField or (ANode.Kind <> TSyntaxKind.MemberAccess) or (ANode.ChildCount <> 1) then
+  begin
+    Exit(False);
+  end;
+  if not Resolves(ASource, ANode[0], mSymbol, mType, mTypeFound) or not mTypeFound then
+  begin
+    Exit(False);
+  end;
+  Result := not SameText(TGenericListSyntax.LastName(mType.Name), TGenericListSyntax.LastName(FTarget.OwnerType)) and
+    FResolver.ResolveChain(ASource.Tree, ASource.FileName, [FTarget.OwnerType], ANode.StartOffset).Found and
+    not FResolver.Queries.TypeDescendsFrom(ASource.Tree, ASource.FileName, ANode.StartOffset, mType.Name,
+    FTarget.OwnerType);
 end;
 
 procedure TGenericListUsages.FailUse(AUse: TSyntaxNode);
@@ -440,14 +435,16 @@ begin
   end;
 end;
 
-procedure TGenericListUsages.NoteCast(AFileIndex: Integer; const ATypeText: string; ANode: TSyntaxNode);
+procedure TGenericListUsages.ClassifyRead(AFileIndex: Integer; ARead: TSyntaxNode; const AWhat: string);
 var
-  mCast: TGenericListCast;
+  mOuter: TSyntaxNode;
 begin
-  mCast.FileIndex := AFileIndex;
-  mCast.TypeText := ATypeText;
-  mCast.Line := ANode.StartPos.Line;
-  FCasts := FCasts + [mCast];
+  mOuter := TGenericListSyntax.Unparen(ARead);
+  if (mOuter.Parent <> nil) and not NoteCastRead(AFileIndex, ARead, mOuter) and
+    not IsHarmlessRead(FFiles[AFileIndex], mOuter) then
+  begin
+    Fail(cTexts[TUsagesText.IsReadWithoutACast].Fmt([AWhat, LineOf(ARead)]));
+  end;
 end;
 
 function TGenericListUsages.NoteCastRead(AFileIndex: Integer; ARead, AOuter: TSyntaxNode): Boolean;
@@ -475,14 +472,6 @@ begin
   end;
 end;
 
-function TGenericListUsages.IsPointerTarget(ASource: TGenericListSource; ANode: TSyntaxNode): Boolean;
-var
-  mSymbol, mType: TResolvedSymbol;
-  mTypeFound: Boolean;
-begin
-  Result := Resolves(ASource, ANode, mSymbol, mType, mTypeFound) and mTypeFound and SameText(mType.Name, 'Pointer');
-end;
-
 function TGenericListUsages.IsHarmlessRead(ASource: TGenericListSource; AOuter: TSyntaxNode): Boolean;
 var
   mParent: TSyntaxNode;
@@ -504,15 +493,23 @@ begin
   end;
 end;
 
-procedure TGenericListUsages.ClassifyRead(AFileIndex: Integer; ARead: TSyntaxNode; const AWhat: string);
+function TGenericListUsages.IsPointerTarget(ASource: TGenericListSource; ANode: TSyntaxNode): Boolean;
 var
-  mOuter: TSyntaxNode;
+  mSymbol, mType: TResolvedSymbol;
+  mTypeFound: Boolean;
 begin
-  mOuter := TGenericListSyntax.Unparen(ARead);
-  if (mOuter.Parent <> nil) and not NoteCastRead(AFileIndex, ARead, mOuter) and
-    not IsHarmlessRead(FFiles[AFileIndex], mOuter) then
+  Result := Resolves(ASource, ANode, mSymbol, mType, mTypeFound) and mTypeFound and SameText(mType.Name, 'Pointer');
+end;
+
+procedure TGenericListUsages.ClassifyLoop(AFileIndex: Integer; ALoop: TSyntaxNode);
+var
+  mScope: TSyntaxNode;
+begin
+  // for V in L do: V bekommt den Typ T, Casts auf V entfallen.
+  mScope := LoopScope(FFiles[AFileIndex], ALoop);
+  if mScope <> nil then
   begin
-    Fail(cTexts[TUsagesText.IsReadWithoutACast].Fmt([AWhat, LineOf(ARead)]));
+    mScope.Walk(LoopVisitor(AFileIndex, ALoop));
   end;
 end;
 
@@ -577,36 +574,24 @@ begin
   Result := True;
 end;
 
-procedure TGenericListUsages.ClassifyLoop(AFileIndex: Integer; ALoop: TSyntaxNode);
+procedure TGenericListUsages.NoteCast(AFileIndex: Integer; const ATypeText: string; ANode: TSyntaxNode);
 var
-  mScope: TSyntaxNode;
+  mCast: TGenericListCast;
 begin
-  // for V in L do: V bekommt den Typ T, Casts auf V entfallen.
-  mScope := LoopScope(FFiles[AFileIndex], ALoop);
-  if mScope <> nil then
-  begin
-    mScope.Walk(LoopVisitor(AFileIndex, ALoop));
-  end;
+  mCast.FileIndex := AFileIndex;
+  mCast.TypeText := ATypeText;
+  mCast.Line := ANode.StartPos.Line;
+  FCasts := FCasts + [mCast];
 end;
 
-function TGenericListUsages.ResolvedTypeOf(ASource: TGenericListSource; AValue: TSyntaxNode): string;
+procedure TGenericListUsages.NoteElement(AFileIndex: Integer; AArgument: TSyntaxNode);
 var
-  mSymbol, mType: TResolvedSymbol;
-  mTypeFound: Boolean;
+  mElement: TGenericListElement;
 begin
-  Result := '';
-  if not Resolves(ASource, AValue, mSymbol, mType, mTypeFound) then
-  begin
-    Exit;
-  end;
-  if mTypeFound then
-  begin
-    Result := mType.Name;
-  end
-  else
-  begin
-    Result := mSymbol.TypeName;
-  end;
+  mElement.FileIndex := AFileIndex;
+  mElement.Node := AArgument;
+  mElement.TypeName := ElementTypeOf(FFiles[AFileIndex], AArgument);
+  FElements := FElements + [mElement];
 end;
 
 function TGenericListUsages.ElementTypeOf(ASource: TGenericListSource; AArgument: TSyntaxNode): string;
@@ -644,14 +629,29 @@ begin
   end;
 end;
 
-procedure TGenericListUsages.NoteElement(AFileIndex: Integer; AArgument: TSyntaxNode);
+function TGenericListUsages.ResolvedTypeOf(ASource: TGenericListSource; AValue: TSyntaxNode): string;
 var
-  mElement: TGenericListElement;
+  mSymbol, mType: TResolvedSymbol;
+  mTypeFound: Boolean;
 begin
-  mElement.FileIndex := AFileIndex;
-  mElement.Node := AArgument;
-  mElement.TypeName := ElementTypeOf(FFiles[AFileIndex], AArgument);
-  FElements := FElements + [mElement];
+  Result := '';
+  if not Resolves(ASource, AValue, mSymbol, mType, mTypeFound) then
+  begin
+    Exit;
+  end;
+  if mTypeFound then
+  begin
+    Result := mType.Name;
+  end
+  else
+  begin
+    Result := mSymbol.TypeName;
+  end;
+end;
+
+procedure TGenericListUsages.CollectUses(AFileIndex: Integer);
+begin
+  FFiles[AFileIndex].Tree.Root.Walk(UseVisitor(AFileIndex, UseNames(AFileIndex)));
 end;
 
 initialization

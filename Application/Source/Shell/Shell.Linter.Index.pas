@@ -143,6 +143,8 @@ begin
   ATimings.UsageBytes := AIndex.MemoryParts.UsageBytes;
 end;
 
+{ TLinterIndex }
+
 class function TLinterIndex.Load(const AOptions: TCommandLineOptions; const AConfigRoot: string;
   var ATimings: TCheckTimings): TShellWorkspaceGroup;
 var

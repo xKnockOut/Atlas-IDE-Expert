@@ -95,6 +95,8 @@ uses
   Atlas.Core.Tracker.YouTrackParse,
   Atlas.Text.Json;
 
+{ TAtlasYouTrackBoards }
+
 class function TAtlasYouTrackBoards.AgilesUrl(const ATarget: TAtlasTrackerTarget): string;
 begin
   Result := '';

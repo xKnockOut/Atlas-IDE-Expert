@@ -54,6 +54,25 @@ begin
   FShows := False;
 end;
 
+function TAtlasResultsIssuesPart.Open(const AData: TAtlasResultsNode): Boolean;
+begin
+  // Issue öffnen, Commit zeigen.
+  Result := AData.Kind in [TAtlasResultsNodeKind.Issue, TAtlasResultsNodeKind.Commit];
+  if Result then
+  begin
+    OpenSelected;
+  end;
+end;
+
+procedure TAtlasResultsIssuesPart.Click(ANode: TTreeNode);
+begin
+  // Klick auf die Zeile eines Issues (nicht auf das Aufklappzeichen) öffnet es.
+  if FShows and (View.DataOf(ANode).Kind = TAtlasResultsNodeKind.Issue) then
+  begin
+    OpenSelected;
+  end;
+end;
+
 procedure TAtlasResultsIssuesPart.Show(const ATitle: string; AList: Integer;
   const AIssues: TArray<TAtlasResultIssue>);
 var
@@ -124,25 +143,6 @@ begin
   else if (mData.Kind = TAtlasResultsNodeKind.Commit) and Assigned(FHandlers.OnCommit) then
   begin
     FHandlers.OnCommit(FList, mData.SetId);
-  end;
-end;
-
-function TAtlasResultsIssuesPart.Open(const AData: TAtlasResultsNode): Boolean;
-begin
-  // Issue öffnen, Commit zeigen.
-  Result := AData.Kind in [TAtlasResultsNodeKind.Issue, TAtlasResultsNodeKind.Commit];
-  if Result then
-  begin
-    OpenSelected;
-  end;
-end;
-
-procedure TAtlasResultsIssuesPart.Click(ANode: TTreeNode);
-begin
-  // Klick auf die Zeile eines Issues (nicht auf das Aufklappzeichen) öffnet es.
-  if FShows and (View.DataOf(ANode).Kind = TAtlasResultsNodeKind.Issue) then
-  begin
-    OpenSelected;
   end;
 end;
 

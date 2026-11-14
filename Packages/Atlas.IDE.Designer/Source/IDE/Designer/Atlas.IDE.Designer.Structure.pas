@@ -384,37 +384,12 @@ begin
   inherited Destroy;
 end;
 
-function TAtlasIdeStructure.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
-begin
-  if not ASettings.DesignerStructure then
-  begin
-    CloseWindow;
-    Exit(Default(TAtlasDesignerButton));
-  end;
-  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.Structure,
-    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.StHint));
-  Result.Pressed := (FHost <> nil) and FHost.Shown;
-end;
-
 function TAtlasIdeStructure.Frame: TAtlasStructureFrame;
 begin
   Result := nil;
   if (FHost <> nil) and (FHost.Frame is TAtlasStructureFrame) then
   begin
     Result := TAtlasStructureFrame(FHost.Frame);
-  end;
-end;
-
-procedure TAtlasIdeStructure.Toggle;
-begin
-  if (FHost <> nil) and FHost.Shown then
-  begin
-    CloseWindow;
-  end
-  else if Open then
-  begin
-    HideOnForm(TAtlasIdeSettings.Current.DesignerStructureHideOnForm);
-    FTimer.Enabled := True;
   end;
 end;
 
@@ -595,11 +570,6 @@ begin
     end);
 end;
 
-function TAtlasIdeStructure.NodeImage(const ANode: TAtlasStructureNode): Integer;
-begin
-  Result := FPalette.IndexOfName(ANode.ClassName);
-end;
-
 procedure TAtlasIdeStructure.SyncSelection;
 var
   mEditor: IOTAFormEditor;
@@ -621,6 +591,11 @@ begin
     FMarked := mName;
     Frame.MarkName(mName);
   end;
+end;
+
+function TAtlasIdeStructure.NodeImage(const ANode: TAtlasStructureNode): Integer;
+begin
+  Result := FPalette.IndexOfName(ANode.ClassName);
 end;
 
 procedure TAtlasIdeStructure.SelectName(const AName: string);
@@ -801,6 +776,31 @@ begin
       mAction.Execute;
     end;
     FHidOnForm := False;
+  end;
+end;
+
+function TAtlasIdeStructure.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
+begin
+  if not ASettings.DesignerStructure then
+  begin
+    CloseWindow;
+    Exit(Default(TAtlasDesignerButton));
+  end;
+  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.Structure,
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.StHint));
+  Result.Pressed := (FHost <> nil) and FHost.Shown;
+end;
+
+procedure TAtlasIdeStructure.Toggle;
+begin
+  if (FHost <> nil) and FHost.Shown then
+  begin
+    CloseWindow;
+  end
+  else if Open then
+  begin
+    HideOnForm(TAtlasIdeSettings.Current.DesignerStructureHideOnForm);
+    FTimer.Enabled := True;
   end;
 end;
 

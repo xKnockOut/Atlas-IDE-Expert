@@ -167,14 +167,14 @@ begin
   end;
 end;
 
-function TAtlasSignatureModel.GetCount: Integer;
-begin
-  Result := Length(FRows);
-end;
-
 function TAtlasSignatureModel.GetRow(AIndex: Integer): TAtlasSignatureRow;
 begin
   Result := FRows[AIndex];
+end;
+
+function TAtlasSignatureModel.GetCount: Integer;
+begin
+  Result := Length(FRows);
 end;
 
 function TAtlasSignatureModel.Add(AIndex: Integer; const AName, ATypeName, AModifier, AValue: string): Integer;
@@ -282,18 +282,11 @@ begin
   end;
 end;
 
-function TAtlasSignatureModel.AddsParameters: Boolean;
+function TAtlasSignatureModel.Validate: TAtlasSignatureProblem;
 var
-  mRow: TAtlasSignatureRow;
+  mName: string;
 begin
-  for mRow in FRows do
-  begin
-    if mRow.IsNew then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
+  Result := Validate(mName);
 end;
 
 function TAtlasSignatureModel.Changed: Boolean;
@@ -313,11 +306,18 @@ begin
   end;
 end;
 
-function TAtlasSignatureModel.Validate: TAtlasSignatureProblem;
+function TAtlasSignatureModel.AddsParameters: Boolean;
 var
-  mName: string;
+  mRow: TAtlasSignatureRow;
 begin
-  Result := Validate(mName);
+  for mRow in FRows do
+  begin
+    if mRow.IsNew then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 /// <summary>Name schon in einer früheren Zeile als AIndex.</summary>

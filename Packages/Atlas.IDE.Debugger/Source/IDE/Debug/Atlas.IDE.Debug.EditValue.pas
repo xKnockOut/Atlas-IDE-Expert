@@ -202,6 +202,102 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasIdeDebugEditValue.Answered(ARequest: Integer; const APlace: TPlace; const AAnswer: string);
+begin
+  // Eine neuere Anfrage oder ein Schritt dazwischen: nichts mehr anzeigen.
+  if (ARequest <> FRequest) or (TAtlasIdeDebugValues.StoppedThread = nil) then
+  begin
+    Exit;
+  end;
+  Edit(APlace, TAtlasEditValue.ReadAnswerText(AAnswer, APlace.Expression));
+end;
+
+procedure TAtlasIdeDebugEditValue.Edit(const APlace: TPlace; const AInfo: TAtlasEditInfo);
+var
+  mNew: string;
+  mCheck: TAtlasEditCheck;
+begin
+  mNew := APlace.Direct;
+  if (mNew = '') and not TAtlasEditValueDialog.Execute(AInfo, APlace.Value, mNew) then
+  begin
+    Exit;
+  end;
+  // Umschalten und Rückgängig: wie der Dialog umsetzen (Typpräfix, Hochkommas), sonst unverändert.
+  mCheck := TAtlasEditValue.Check(AInfo, mNew);
+  if (APlace.Direct <> '') and mCheck.Ok then
+  begin
+    mNew := mCheck.Value;
+  end;
+  if TAtlasIdeDebugValues.StoppedThread = nil then
+  begin
+    Exit;
+  end;
+  if (AInfo.Setter <> '') and (MessageDlg(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueConfirmSetter,
+    [AInfo.Setter]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
+  begin
+    Exit;
+  end;
+  Apply(APlace, AInfo, mNew);
+end;
+
+procedure TAtlasIdeDebugEditValue.Forget;
+begin
+  Inc(FRequest);
+  if FChanges.Count > 0 then
+  begin
+    FChanges.Clear;
+    TAtlasDebugLineEnd.Invalidate;
+  end;
+end;
+
+procedure TAtlasIdeDebugEditValue.Report(const AText: string);
+begin
+  if Assigned(FMessage) then
+  begin
+    FMessage(AText);
+  end;
+end;
+
+class function TAtlasIdeDebugEditValue.PlaceAtCursor(out APlace: TPlace): Boolean;
+var
+  mView: IOTAEditView;
+  mLine: string;
+begin
+  APlace := Default(TPlace);
+  mView := TAtlasEditorBuffer.ActiveView;
+  Result := (mView <> nil) and (mView.Buffer <> nil);
+  if not Result then
+  begin
+    Exit;
+  end;
+  APlace.FileName := mView.Buffer.FileName;
+  APlace.Line := mView.CursorPos.Line;
+  mLine := TAtlasEditorBuffer.LineText(mView, APlace.Line);
+  // CursorPos.Col ist 1-basiert und steht hinter dem Zeichen; Tabs zählen hier wie ein Zeichen.
+  APlace.Expression := TAtlasDebugExpression.AtCharacter(mLine, mView.CursorPos.Col - 1);
+  if APlace.Expression = '' then
+  begin
+    APlace.Expression := TAtlasDebugExpression.AtCharacter(mLine, mView.CursorPos.Col - 2);
+  end;
+  Result := APlace.Expression <> '';
+end;
+
+/// <summary>APlace für „Rückgängig“: alter Wert als Direct; False ohne gemerkte Änderung.</summary>
+function UndoPlace(var APlace: TAtlasIdeDebugEditValue.TPlace): Boolean;
+var
+  mChange: TAtlasEditChange;
+begin
+  Result := (TAtlasIdeDebugEditValue.FInstance <> nil) and
+    TAtlasIdeDebugEditValue.FInstance.FChanges.Find(APlace.FileName, APlace.Expression, mChange);
+  if Result then
+  begin
+    APlace.Line := mChange.Line;
+    APlace.Value := mChange.NewValue;
+    APlace.Direct := mChange.OldValue;
+    APlace.Undoing := True;
+  end;
+end;
+
 class procedure TAtlasIdeDebugEditValue.Start(const ARun: TAtlasHostCommandRunner; const AMessage: TProc<string>;
   const AChanged: TProc);
 begin
@@ -275,19 +371,28 @@ begin
   end;
 end;
 
-/// <summary>APlace für „Rückgängig“: alter Wert als Direct; False ohne gemerkte Änderung.</summary>
-function UndoPlace(var APlace: TAtlasIdeDebugEditValue.TPlace): Boolean;
-var
-  mChange: TAtlasEditChange;
+/// <summary>Antwort des Servers zur Anfrage ARequest an die laufende Instanz.</summary>
+function AnswerTo(ARequest: Integer; const APlace: TAtlasIdeDebugEditValue.TPlace): TProc<string>;
 begin
-  Result := (TAtlasIdeDebugEditValue.FInstance <> nil) and
-    TAtlasIdeDebugEditValue.FInstance.FChanges.Find(APlace.FileName, APlace.Expression, mChange);
-  if Result then
+  Result :=
+    procedure(AAnswer: string)
+    begin
+      if TAtlasIdeDebugEditValue.FInstance <> nil then
+      begin
+        TAtlasIdeDebugEditValue.FInstance.Answered(ARequest, APlace, AAnswer);
+      end;
+    end;
+end;
+
+procedure TAtlasIdeDebugEditValue.Ask(const APlace: TPlace);
+begin
+  Inc(FRequest);
+  // Ohne laufenden Server freie Eingabe.
+  if not Assigned(FRun) or not FRun(TAtlasEditValue.cCommand,
+    TAtlasEditValue.Arguments(TLspSession.PathToUri(APlace.FileName), APlace.Line - 1, APlace.Expression),
+    cRequestTimeoutMs, AnswerTo(FRequest, APlace)) then
   begin
-    APlace.Line := mChange.Line;
-    APlace.Value := mChange.NewValue;
-    APlace.Direct := mChange.OldValue;
-    APlace.Undoing := True;
+    Edit(APlace, TAtlasEditInfo.Plain(APlace.Expression));
   end;
 end;
 
@@ -319,143 +424,12 @@ begin
   FInstance.Ask(mPlace);
 end;
 
-class function TAtlasIdeDebugEditValue.PlaceAtCursor(out APlace: TPlace): Boolean;
-var
-  mView: IOTAEditView;
-  mLine: string;
-begin
-  APlace := Default(TPlace);
-  mView := TAtlasEditorBuffer.ActiveView;
-  Result := (mView <> nil) and (mView.Buffer <> nil);
-  if not Result then
-  begin
-    Exit;
-  end;
-  APlace.FileName := mView.Buffer.FileName;
-  APlace.Line := mView.CursorPos.Line;
-  mLine := TAtlasEditorBuffer.LineText(mView, APlace.Line);
-  // CursorPos.Col ist 1-basiert und steht hinter dem Zeichen; Tabs zählen hier wie ein Zeichen.
-  APlace.Expression := TAtlasDebugExpression.AtCharacter(mLine, mView.CursorPos.Col - 1);
-  if APlace.Expression = '' then
-  begin
-    APlace.Expression := TAtlasDebugExpression.AtCharacter(mLine, mView.CursorPos.Col - 2);
-  end;
-  Result := APlace.Expression <> '';
-end;
-
 class procedure TAtlasIdeDebugEditValue.EditAtCursor;
 begin
   if not TryEditAtCursor and (FInstance <> nil) then
   begin
     FInstance.Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EditValueNoValue));
   end;
-end;
-
-class function TAtlasIdeDebugEditValue.TryEditAtCursor: Boolean;
-var
-  mPlace: TPlace;
-  mValue: TAtlasDebugValue;
-begin
-  Result := (FInstance <> nil) and Enabled and (TAtlasIdeDebugValues.StoppedThread <> nil) and
-    PlaceAtCursor(mPlace);
-  if not Result then
-  begin
-    Exit;
-  end;
-  // Jetziger Wert für den Dialog; verzögert (LLDB) bleibt er leer.
-  TAtlasIdeDebugSession.BeginInternal;
-  try
-    mValue := TAtlasIdeDebugValues.EvaluateNow(mPlace.Expression, mPlace.FileName, mPlace.Line);
-  finally
-    TAtlasIdeDebugSession.EndInternal;
-  end;
-  Result := mValue.State = TAtlasDebugValueState.Value;
-  if Result then
-  begin
-    mPlace.Value := mValue.Text;
-    FInstance.Ask(mPlace);
-  end;
-end;
-
-class procedure TAtlasIdeDebugEditValue.UndoAtCursor;
-var
-  mPlace: TPlace;
-begin
-  if (FInstance = nil) or (TAtlasIdeDebugValues.StoppedThread = nil) then
-  begin
-    Exit;
-  end;
-  if PlaceAtCursor(mPlace) and UndoPlace(mPlace) then
-  begin
-    FInstance.Ask(mPlace);
-  end
-  else
-  begin
-    FInstance.Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EditValueNoChange));
-  end;
-end;
-
-/// <summary>Antwort des Servers zur Anfrage ARequest an die laufende Instanz.</summary>
-function AnswerTo(ARequest: Integer; const APlace: TAtlasIdeDebugEditValue.TPlace): TProc<string>;
-begin
-  Result :=
-    procedure(AAnswer: string)
-    begin
-      if TAtlasIdeDebugEditValue.FInstance <> nil then
-      begin
-        TAtlasIdeDebugEditValue.FInstance.Answered(ARequest, APlace, AAnswer);
-      end;
-    end;
-end;
-
-procedure TAtlasIdeDebugEditValue.Ask(const APlace: TPlace);
-begin
-  Inc(FRequest);
-  // Ohne laufenden Server freie Eingabe.
-  if not Assigned(FRun) or not FRun(TAtlasEditValue.cCommand,
-    TAtlasEditValue.Arguments(TLspSession.PathToUri(APlace.FileName), APlace.Line - 1, APlace.Expression),
-    cRequestTimeoutMs, AnswerTo(FRequest, APlace)) then
-  begin
-    Edit(APlace, TAtlasEditInfo.Plain(APlace.Expression));
-  end;
-end;
-
-procedure TAtlasIdeDebugEditValue.Answered(ARequest: Integer; const APlace: TPlace; const AAnswer: string);
-begin
-  // Eine neuere Anfrage oder ein Schritt dazwischen: nichts mehr anzeigen.
-  if (ARequest <> FRequest) or (TAtlasIdeDebugValues.StoppedThread = nil) then
-  begin
-    Exit;
-  end;
-  Edit(APlace, TAtlasEditValue.ReadAnswerText(AAnswer, APlace.Expression));
-end;
-
-procedure TAtlasIdeDebugEditValue.Edit(const APlace: TPlace; const AInfo: TAtlasEditInfo);
-var
-  mNew: string;
-  mCheck: TAtlasEditCheck;
-begin
-  mNew := APlace.Direct;
-  if (mNew = '') and not TAtlasEditValueDialog.Execute(AInfo, APlace.Value, mNew) then
-  begin
-    Exit;
-  end;
-  // Umschalten und Rückgängig: wie der Dialog umsetzen (Typpräfix, Hochkommas), sonst unverändert.
-  mCheck := TAtlasEditValue.Check(AInfo, mNew);
-  if (APlace.Direct <> '') and mCheck.Ok then
-  begin
-    mNew := mCheck.Value;
-  end;
-  if TAtlasIdeDebugValues.StoppedThread = nil then
-  begin
-    Exit;
-  end;
-  if (AInfo.Setter <> '') and (MessageDlg(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueConfirmSetter,
-    [AInfo.Setter]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
-  begin
-    Exit;
-  end;
-  Apply(APlace, AInfo, mNew);
 end;
 
 /// <summary>ANew über den Setter in AInfo setzen (Aufruf mit Nebenwirkungen); AResult: Fehlertext.</summary>
@@ -529,21 +503,47 @@ begin
   TAtlasDebugLineEnd.Invalidate;
 end;
 
-procedure TAtlasIdeDebugEditValue.Forget;
+class function TAtlasIdeDebugEditValue.TryEditAtCursor: Boolean;
+var
+  mPlace: TPlace;
+  mValue: TAtlasDebugValue;
 begin
-  Inc(FRequest);
-  if FChanges.Count > 0 then
+  Result := (FInstance <> nil) and Enabled and (TAtlasIdeDebugValues.StoppedThread <> nil) and
+    PlaceAtCursor(mPlace);
+  if not Result then
   begin
-    FChanges.Clear;
-    TAtlasDebugLineEnd.Invalidate;
+    Exit;
+  end;
+  // Jetziger Wert für den Dialog; verzögert (LLDB) bleibt er leer.
+  TAtlasIdeDebugSession.BeginInternal;
+  try
+    mValue := TAtlasIdeDebugValues.EvaluateNow(mPlace.Expression, mPlace.FileName, mPlace.Line);
+  finally
+    TAtlasIdeDebugSession.EndInternal;
+  end;
+  Result := mValue.State = TAtlasDebugValueState.Value;
+  if Result then
+  begin
+    mPlace.Value := mValue.Text;
+    FInstance.Ask(mPlace);
   end;
 end;
 
-procedure TAtlasIdeDebugEditValue.Report(const AText: string);
+class procedure TAtlasIdeDebugEditValue.UndoAtCursor;
+var
+  mPlace: TPlace;
 begin
-  if Assigned(FMessage) then
+  if (FInstance = nil) or (TAtlasIdeDebugValues.StoppedThread = nil) then
   begin
-    FMessage(AText);
+    Exit;
+  end;
+  if PlaceAtCursor(mPlace) and UndoPlace(mPlace) then
+  begin
+    FInstance.Ask(mPlace);
+  end
+  else
+  begin
+    FInstance.Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EditValueNoChange));
   end;
 end;
 

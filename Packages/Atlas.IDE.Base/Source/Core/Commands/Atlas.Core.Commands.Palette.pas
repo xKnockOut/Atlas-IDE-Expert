@@ -311,15 +311,6 @@ begin
   end;
 end;
 
-class function TAtlasPaletteRows.ActionOf(ACtrl, AShift, AAlt: Boolean): TAtlasPaletteAction;
-begin
-  if AAlt then
-  begin
-    Exit(TAtlasPaletteAction.Toggle);
-  end;
-  Result := ActionOf(ACtrl, AShift);
-end;
-
 class function TAtlasPaletteRows.ActionOf(ACtrl, AShift: Boolean): TAtlasPaletteAction;
 begin
   if ACtrl then
@@ -334,6 +325,15 @@ begin
   begin
     Result := TAtlasPaletteAction.Open;
   end;
+end;
+
+class function TAtlasPaletteRows.ActionOf(ACtrl, AShift, AAlt: Boolean): TAtlasPaletteAction;
+begin
+  if AAlt then
+  begin
+    Exit(TAtlasPaletteAction.Toggle);
+  end;
+  Result := ActionOf(ACtrl, AShift);
 end;
 
 { TAtlasCommandHistory }
@@ -479,6 +479,12 @@ const
 
 { TAtlasCommandPalette }
 
+class function TAtlasCommandPalette.Order(const ACommands: TArray<TAtlasCommand>; const APattern: string;
+  AHistory: TAtlasCommandHistory): TArray<Integer>;
+begin
+  Result := Order(ACommands, APattern, AHistory, False);
+end;
+
 class function TAtlasCommandPalette.CleanCaption(const ACaption: string): string;
 var
   mIndex: Integer;
@@ -510,12 +516,6 @@ begin
   begin
     Result := TrimRight(Copy(Result, 1, Length(Result) - 1));
   end;
-end;
-
-class function TAtlasCommandPalette.Order(const ACommands: TArray<TAtlasCommand>; const APattern: string;
-  AHistory: TAtlasCommandHistory): TArray<Integer>;
-begin
-  Result := Order(ACommands, APattern, AHistory, False);
 end;
 
 /// <summary>Treffergüte von ACommand zu APattern: Beschriftung, ersatzweise mit Menüpfad ("projekt erz" findet

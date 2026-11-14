@@ -43,6 +43,8 @@ const
     (Version: '23.0'; Name: 'Athens'), (Version: '37.0'; Name: 'Florence'));
 
 
+{ TDocWiki }
+
 class function TDocWiki.ReleaseName(const ADelphiVersion: string): string;
 var
   mRelease: TRelease;

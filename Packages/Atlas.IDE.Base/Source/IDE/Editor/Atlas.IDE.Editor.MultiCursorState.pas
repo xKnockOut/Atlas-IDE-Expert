@@ -229,41 +229,6 @@ begin
   FOnRefresh := AOnRefresh;
 end;
 
-function TAtlasIdeMultiCursorState.Active: Boolean;
-begin
-  Result := Length(FCarets) > 1;
-end;
-
-function TAtlasIdeMultiCursorState.Count: Integer;
-begin
-  Result := Length(FCarets);
-end;
-
-function TAtlasIdeMultiCursorState.ShowsFile(const AFileName: string): Boolean;
-begin
-  Result := (FView <> nil) and (FView.Buffer <> nil) and SameText(AFileName, FView.Buffer.FileName);
-end;
-
-function TAtlasIdeMultiCursorState.Shows(const AView: IOTAEditView): Boolean;
-begin
-  Result := (AView <> nil) and (AView.Buffer <> nil) and ShowsFile(AView.Buffer.FileName);
-end;
-
-function TAtlasIdeMultiCursorState.LineText(ALine: Integer): string;
-begin
-  Result := LineOf(FLines, ALine);
-end;
-
-procedure TAtlasIdeMultiCursorState.Clear;
-begin
-  FCarets := nil;
-  FSteps := nil;
-  FStep := 0;
-  FView := nil;
-  FText := '';
-  FLines := nil;
-end;
-
 function TAtlasIdeMultiCursorState.Prepare(out AView: IOTAEditView; out AText: string): Boolean;
 var
   mMain: TAtlasCaret;
@@ -299,6 +264,27 @@ begin
     SetText(AText);
   end;
   Result := True;
+end;
+
+procedure TAtlasIdeMultiCursorState.Apply(const AView: IOTAEditView; const AText, ANewText: string;
+  const ACarets: TAtlasCarets);
+begin
+  WriteBuffer(AView.Buffer, AText, ANewText);
+  AddStep(AText, ANewText, FCarets, ACarets);
+  SetCarets(AView, ANewText, ACarets);
+end;
+
+procedure TAtlasIdeMultiCursorState.SetCarets(const AView: IOTAEditView; const AText: string;
+  const ACarets: TAtlasCarets);
+begin
+  FCarets := Copy(ACarets);
+  FView := AView;
+  SetText(AText);
+  if Length(FCarets) > 0 then
+  begin
+    WriteMain(AView, FLines, FCarets[0]);
+  end;
+  FOnRefresh();
 end;
 
 procedure TAtlasIdeMultiCursorState.WriteBuffer(const ABuffer: IOTAEditBuffer; const AText, ANewText: string);
@@ -347,41 +333,45 @@ begin
   FStep := Length(FSteps);
 end;
 
-procedure TAtlasIdeMultiCursorState.Apply(const AView: IOTAEditView; const AText, ANewText: string;
-  const ACarets: TAtlasCarets);
-begin
-  WriteBuffer(AView.Buffer, AText, ANewText);
-  AddStep(AText, ANewText, FCarets, ACarets);
-  SetCarets(AView, ANewText, ACarets);
-end;
-
-procedure TAtlasIdeMultiCursorState.SetCarets(const AView: IOTAEditView; const AText: string;
-  const ACarets: TAtlasCarets);
-begin
-  FCarets := Copy(ACarets);
-  FView := AView;
-  SetText(AText);
-  if Length(FCarets) > 0 then
-  begin
-    WriteMain(AView, FLines, FCarets[0]);
-  end;
-  FOnRefresh();
-end;
-
 procedure TAtlasIdeMultiCursorState.SetText(const AText: string);
 begin
   FText := AText;
   FLines := TAtlasMultiCursor.Lines(AText);
 end;
 
-procedure TAtlasIdeMultiCursorState.SyncMain;
+function TAtlasIdeMultiCursorState.Active: Boolean;
 begin
-  if not Active or (FView = nil) or (FView.Buffer = nil) then
-  begin
-    Exit;
-  end;
-  FCarets[0] := ReadMain(FView);
-  FCarets := TAtlasMultiCursor.Merge(FCarets);
+  Result := Length(FCarets) > 1;
+end;
+
+function TAtlasIdeMultiCursorState.Count: Integer;
+begin
+  Result := Length(FCarets);
+end;
+
+function TAtlasIdeMultiCursorState.Shows(const AView: IOTAEditView): Boolean;
+begin
+  Result := (AView <> nil) and (AView.Buffer <> nil) and ShowsFile(AView.Buffer.FileName);
+end;
+
+function TAtlasIdeMultiCursorState.ShowsFile(const AFileName: string): Boolean;
+begin
+  Result := (FView <> nil) and (FView.Buffer <> nil) and SameText(AFileName, FView.Buffer.FileName);
+end;
+
+procedure TAtlasIdeMultiCursorState.Clear;
+begin
+  FCarets := nil;
+  FSteps := nil;
+  FStep := 0;
+  FView := nil;
+  FText := '';
+  FLines := nil;
+end;
+
+function TAtlasIdeMultiCursorState.LineText(ALine: Integer): string;
+begin
+  Result := LineOf(FLines, ALine);
 end;
 
 procedure TAtlasIdeMultiCursorState.Reconcile(const AText: string);
@@ -423,6 +413,16 @@ begin
     FCarets := TAtlasMultiCursor.Shift(FText, AText, FCarets);
     SetText(AText);
   end;
+end;
+
+procedure TAtlasIdeMultiCursorState.SyncMain;
+begin
+  if not Active or (FView = nil) or (FView.Buffer = nil) then
+  begin
+    Exit;
+  end;
+  FCarets[0] := ReadMain(FView);
+  FCarets := TAtlasMultiCursor.Merge(FCarets);
 end;
 
 procedure TAtlasIdeMultiCursorState.DoEdit(AKind: TAtlasCaretEditKind; const AInsert: string);

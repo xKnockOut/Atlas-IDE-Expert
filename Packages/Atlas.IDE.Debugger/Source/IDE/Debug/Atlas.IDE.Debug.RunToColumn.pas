@@ -191,24 +191,6 @@ end;
 
 { TAtlasIdeRunToColumn }
 
-class procedure TAtlasIdeRunToColumn.Install;
-begin
-  if FInstance = nil then
-  begin
-    FInstance := TAtlasIdeRunToColumn.Create;
-  end;
-end;
-
-class procedure TAtlasIdeRunToColumn.Uninstall;
-begin
-  FreeAndNil(FInstance);
-end;
-
-class function TAtlasIdeRunToColumn.Installed: Boolean;
-begin
-  Result := FInstance <> nil;
-end;
-
 constructor TAtlasIdeRunToColumn.Create;
 var
   mEditors: INTACodeEditorServices;
@@ -359,6 +341,30 @@ begin
   Result := SameText(AFileName, FCodeFile) and TAtlasRunTo.CodeLine(FCodeLines, FCodePlaces, ALine);
 end;
 
+function TAtlasIdeRunToColumn.RowAt(AX, AY: Integer; out ARow: TRow): Boolean;
+var
+  mRow: TRow;
+  mView: IOTAEditView;
+begin
+  ARow := Default(TRow);
+  Result := False;
+  mView := TopView;
+  if (mView = nil) or (mView.Buffer = nil) then
+  begin
+    Exit;
+  end;
+  for mRow in FRows.Values do
+  begin
+    if (mRow.Line >= 0) and PtInRect(mRow.Rect, Point(AX, AY)) then
+    begin
+      // Nur, wenn die Zeile noch dort steht: gleiche Datei, nicht gescrollt.
+      Result := SameText(mRow.FileName, mView.Buffer.FileName) and (mRow.TopRow = mView.TopRow);
+      ARow := mRow;
+      Exit;
+    end;
+  end;
+end;
+
 procedure TAtlasIdeRunToColumn.PaintGutter(const Rect: TRect; const Stage: TPaintGutterStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
@@ -393,30 +399,6 @@ begin
     // Zeichnen darf die IDE nie stören.
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Debugger, E);
-  end;
-end;
-
-function TAtlasIdeRunToColumn.RowAt(AX, AY: Integer; out ARow: TRow): Boolean;
-var
-  mRow: TRow;
-  mView: IOTAEditView;
-begin
-  ARow := Default(TRow);
-  Result := False;
-  mView := TopView;
-  if (mView = nil) or (mView.Buffer = nil) then
-  begin
-    Exit;
-  end;
-  for mRow in FRows.Values do
-  begin
-    if (mRow.Line >= 0) and PtInRect(mRow.Rect, Point(AX, AY)) then
-    begin
-      // Nur, wenn die Zeile noch dort steht: gleiche Datei, nicht gescrollt.
-      Result := SameText(mRow.FileName, mView.Buffer.FileName) and (mRow.TopRow = mView.TopRow);
-      ARow := mRow;
-      Exit;
-    end;
   end;
 end;
 
@@ -509,6 +491,24 @@ begin
     FHovering := False;
     TAtlasIdeEditorRefresh.InvalidateTop(Services);
   end;
+end;
+
+class procedure TAtlasIdeRunToColumn.Install;
+begin
+  if FInstance = nil then
+  begin
+    FInstance := TAtlasIdeRunToColumn.Create;
+  end;
+end;
+
+class procedure TAtlasIdeRunToColumn.Uninstall;
+begin
+  FreeAndNil(FInstance);
+end;
+
+class function TAtlasIdeRunToColumn.Installed: Boolean;
+begin
+  Result := FInstance <> nil;
 end;
 
 end.

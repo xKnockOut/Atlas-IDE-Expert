@@ -165,6 +165,8 @@ uses
   Atlas.Core.Commands.KeyStroke,
   Atlas.IDE.Commands.ShortcutTips;
 
+{ TAtlasIdeContextMenu }
+
 constructor TAtlasIdeContextMenu.Create;
 begin
   inherited Create;
@@ -190,6 +192,11 @@ begin
   inherited;
 end;
 
+procedure TAtlasIdeContextMenu.Append(const AEntry: TEntry);
+begin
+  FEntries := FEntries + [AEntry];
+end;
+
 function TAtlasIdeContextMenu.NewEntry(AKind: TEntryKind; const ACaption: string): TEntry;
 begin
   Result := Default(TEntry);
@@ -199,103 +206,6 @@ begin
   Result.Parent := FGroup;
   Result.ModuleGroup := -1;
   Result.Slot := -1;
-end;
-
-procedure TAtlasIdeContextMenu.Append(const AEntry: TEntry);
-begin
-  FEntries := FEntries + [AEntry];
-end;
-
-procedure TAtlasIdeContextMenu.Add(const ACaption: string; const AKey: TFunc<Integer>; const AProc: TProc);
-begin
-  Add('', ACaption, AKey, AProc);
-end;
-
-procedure TAtlasIdeContextMenu.Add(const AId, ACaption: string; const AKey: TFunc<Integer>; const AProc: TProc);
-begin
-  AddGuarded(TAtlasFeature.EditorCommands, AId, ACaption, AKey, AProc);
-end;
-
-procedure TAtlasIdeContextMenu.AddGuarded(AFeature: TAtlasFeature; const AId, ACaption: string;
-  const AKey: TFunc<Integer>; const AProc: TProc);
-begin
-  AddWhen(AFeature, AId, ACaption, AKey, AProc, nil);
-end;
-
-procedure TAtlasIdeContextMenu.AddWhen(AFeature: TAtlasFeature; const AId, ACaption: string;
-  const AKey: TFunc<Integer>; const AProc: TProc; const AVisible: TFunc<Boolean>);
-var
-  mEntry: TEntry;
-begin
-  mEntry := NewEntry(TEntryKind.ekCommand, ACaption);
-  if ACaption = '-' then
-  begin
-    mEntry.Kind := TEntryKind.ekSeparator;
-  end;
-  mEntry.Id := AId;
-  mEntry.Key := AKey;
-  mEntry.Proc := AProc;
-  mEntry.Feature := AFeature;
-  mEntry.Visible := AVisible;
-  Append(mEntry);
-end;
-
-procedure TAtlasIdeContextMenu.BeginGroup(const ACaption, AKey: string; const ACount: TFunc<Integer>);
-var
-  mEntry: TEntry;
-begin
-  EndGroup;
-  mEntry := NewEntry(TEntryKind.ekGroup, ACaption);
-  mEntry.GroupKey := AKey;
-  mEntry.Count := ACount;
-  Append(mEntry);
-  FGroup := High(FEntries);
-end;
-
-procedure TAtlasIdeContextMenu.EndGroup;
-begin
-  FGroup := -1;
-end;
-
-procedure TAtlasIdeContextMenu.AddModuleSlots(ATopCount, AGroupCount, AGroupSize: Integer);
-var
-  mEntry: TEntry;
-  mGroup, mSlot, mParent: Integer;
-begin
-  EndGroup;
-  FModuleTop := ATopCount;
-  FModuleGroups := AGroupCount;
-  FModuleGroupSize := AGroupSize;
-  for mGroup := 0 to AGroupCount - 1 do
-  begin
-    mEntry := NewEntry(TEntryKind.ekModuleGroup, '');
-    mEntry.ModuleGroup := mGroup;
-    Append(mEntry);
-    mParent := High(FEntries);
-    for mSlot := 0 to AGroupSize - 1 do
-    begin
-      mEntry := NewEntry(TEntryKind.ekModuleSlot, '');
-      mEntry.Parent := mParent;
-      mEntry.ModuleGroup := mGroup;
-      mEntry.Slot := mSlot;
-      Append(mEntry);
-    end;
-  end;
-  for mSlot := 0 to ATopCount - 1 do
-  begin
-    mEntry := NewEntry(TEntryKind.ekModuleSlot, '');
-    mEntry.Slot := mSlot;
-    Append(mEntry);
-  end;
-end;
-
-function TAtlasIdeContextMenu.ActionOf(AIndex: Integer): TAction;
-begin
-  Result := nil;
-  if (AIndex >= 0) and (AIndex <= High(FItems)) and (FItems[AIndex] is TAction) then
-  begin
-    Result := TAction(FItems[AIndex]);
-  end;
 end;
 
 function TAtlasIdeContextMenu.KeyOf(AIndex: Integer): Integer;
@@ -316,6 +226,111 @@ begin
   end;
 end;
 
+function TAtlasIdeContextMenu.ActionOf(AIndex: Integer): TAction;
+begin
+  Result := nil;
+  if (AIndex >= 0) and (AIndex <= High(FItems)) and (FItems[AIndex] is TAction) then
+  begin
+    Result := TAction(FItems[AIndex]);
+  end;
+end;
+
+procedure TAtlasIdeContextMenu.UpdateGroups;
+var
+  mIndex, mParent: Integer;
+begin
+  // Gruppen nur mit mindestens einem sichtbaren Befehl.
+  for mIndex := 0 to Min(High(FEntries), High(FItems)) do
+  begin
+    if (FEntries[mIndex].Kind = TEntryKind.ekGroup) and (ActionOf(mIndex) <> nil) then
+    begin
+      ActionOf(mIndex).Visible := False;
+    end;
+  end;
+  for mIndex := 0 to Min(High(FEntries), High(FItems)) do
+  begin
+    mParent := FEntries[mIndex].Parent;
+    if (FEntries[mIndex].Kind = TEntryKind.ekCommand) and (mParent >= 0) and (ActionOf(mParent) <> nil) and
+      (ActionOf(mIndex) <> nil) and ActionOf(mIndex).Visible then
+    begin
+      ActionOf(mParent).Visible := TAtlasIdeMenuContext.GroupShown(FEntries[mParent].GroupKey);
+    end;
+  end;
+  // Zahl hinter dem Namen, etwa „Befunde (3)“.
+  for mIndex := 0 to Min(High(FEntries), High(FItems)) do
+  begin
+    if (FEntries[mIndex].Kind = TEntryKind.ekGroup) and Assigned(FEntries[mIndex].Count) and
+      (ActionOf(mIndex) <> nil) then
+    begin
+      ActionOf(mIndex).Caption := TAtlasMenuContextRules.CountedCaption(FEntries[mIndex].Caption,
+        FEntries[mIndex].Count());
+    end;
+  end;
+end;
+
+procedure TAtlasIdeContextMenu.UpdateSeparators(AParent: Integer);
+var
+  mIndexes: TArray<Integer>;
+  mIsLine, mVisible, mShown: TArray<Boolean>;
+  mIndex, mAt: Integer;
+begin
+  // Plätze in Untermenüs der Module ordnet schon TAtlasMenuSlots; hier die oberste Ebene und die Gruppen von Base.
+  for mIndex := 0 to Min(High(FEntries), High(FItems)) do
+  begin
+    if (FEntries[mIndex].Parent = AParent) and (ActionOf(mIndex) <> nil) then
+    begin
+      mIndexes := mIndexes + [mIndex];
+      mIsLine := mIsLine + [IsLine(mIndex)];
+      mVisible := mVisible + [ActionOf(mIndex).Visible];
+    end;
+  end;
+  mShown := TAtlasMenuContextRules.Separators(mIsLine, mVisible);
+  for mAt := 0 to High(mIndexes) do
+  begin
+    if mIsLine[mAt] then
+    begin
+      ActionOf(mIndexes[mAt]).Visible := mShown[mAt];
+    end;
+  end;
+end;
+
+function TAtlasIdeContextMenu.IsLine(AIndex: Integer): Boolean;
+begin
+  Result := (FEntries[AIndex].Kind = TEntryKind.ekSeparator) or
+    ((FEntries[AIndex].Kind = TEntryKind.ekModuleSlot) and (ActionOf(AIndex) <> nil) and
+    (ActionOf(AIndex).Caption = '-'));
+end;
+
+function TAtlasIdeContextMenu.ChildActions(AParent: Integer): TArray<TBasicAction>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to Min(High(FEntries), High(FItems)) do
+  begin
+    if FEntries[mIndex].Parent = AParent then
+    begin
+      Result := Result + [FItems[mIndex]];
+    end;
+  end;
+end;
+
+procedure TAtlasIdeContextMenu.FillGroups(ARootItem: TMenuItem);
+var
+  mChild, mIndex: Integer;
+  mItem: TMenuItem;
+begin
+  for mChild := 0 to ARootItem.Count - 1 do
+  begin
+    mItem := ARootItem.Items[mChild];
+    mIndex := IndexOfAction(mItem.Action);
+    if (mIndex >= 0) and (FEntries[mIndex].Kind in [TEntryKind.ekGroup, TEntryKind.ekModuleGroup]) then
+    begin
+      TAtlasIdeContextSubmenus.Fill(mItem, ChildActions(mIndex));
+    end;
+  end;
+end;
+
 procedure TAtlasIdeContextMenu.RunModuleSlot(AIndex: Integer);
 var
   mCommand: TAtlasModuleCommand;
@@ -330,6 +345,61 @@ begin
   end;
   TAtlasIdeShortcutTips.Invoked(mCommand.Id);
   TAtlasGuard.Run(TAtlasFeature.EditorCommands, mCommand.Run);
+end;
+
+function TAtlasIdeContextMenu.IndexOfAction(AAction: TBasicAction): Integer;
+begin
+  // Nicht über Tag: Die IDE setzt ihn beim Einbinden ins Kontextmenü selbst (Protokoll: „Eintrag 30“).
+  Result := Min(High(FItems), High(FEntries));
+  while (Result >= 0) and (FItems[Result] <> AAction) do
+  begin
+    Dec(Result);
+  end;
+end;
+
+procedure TAtlasIdeContextMenu.Register;
+var
+  mServices: IOTAEditorServices;
+  mRoot, mItem: TAction;
+  mIndex: Integer;
+begin
+  if FRegistered or not Supports(BorlandIDEServices, IOTAEditorServices, mServices) or
+    (mServices.GetEditorLocalMenu = nil) then
+  begin
+    Exit;
+  end;
+  // Elternaktion zuerst, die Einträge direkt danach, die einer Gruppe direkt nach ihr (so verlangt es
+  // INTAEditorLocalMenu).
+  mRoot := TAction.Create(FActions);
+  mRoot.ActionList := FActions;
+  mRoot.Category := cCategory;
+  mRoot.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuAtlas);
+  mRoot.OnExecute := RootExecute;
+  FRoot := mRoot;
+  for mIndex := 0 to High(FEntries) do
+  begin
+    // Einträge in Gruppen nicht in der registrierten Liste: Die IDE baut nur eine Ebene (siehe oben).
+    mItem := TAction.Create(FActions);
+    mItem.ActionList := FActions;
+    if FEntries[mIndex].Parent >= 0 then
+    begin
+      mItem.ActionList := FSubActions;
+    end;
+    mItem.Category := CategoryOf(mIndex);
+    mItem.Caption := FEntries[mIndex].Caption;
+    FItems := FItems + [mItem];
+    case FEntries[mIndex].Kind of
+      TEntryKind.ekCommand, TEntryKind.ekModuleSlot:
+        mItem.OnExecute := ItemExecute;
+      TEntryKind.ekGroup, TEntryKind.ekModuleGroup:
+        mItem.OnExecute := GroupExecute;
+    end;
+    // Plätze der Module bleiben aus, bis UpdateModuleSlots sie belegt.
+    mItem.Visible := not (FEntries[mIndex].Kind in [TEntryKind.ekModuleGroup, TEntryKind.ekModuleSlot]);
+  end;
+  UpdateVisibility;
+  mServices.GetEditorLocalMenu.RegisterActionList(FActions, cCategory, cEdMenuCatLast);
+  FRegistered := True;
 end;
 
 /// <summary>Einträge der Module im Kontextmenü in ihrer Reihenfolge; Trennlinien als Befehl „-“. AItems trägt je
@@ -432,99 +502,86 @@ begin
   end;
 end;
 
-procedure TAtlasIdeContextMenu.UpdateGroups;
-var
-  mIndex, mParent: Integer;
+procedure TAtlasIdeContextMenu.Add(const ACaption: string; const AKey: TFunc<Integer>; const AProc: TProc);
 begin
-  // Gruppen nur mit mindestens einem sichtbaren Befehl.
-  for mIndex := 0 to Min(High(FEntries), High(FItems)) do
-  begin
-    if (FEntries[mIndex].Kind = TEntryKind.ekGroup) and (ActionOf(mIndex) <> nil) then
-    begin
-      ActionOf(mIndex).Visible := False;
-    end;
-  end;
-  for mIndex := 0 to Min(High(FEntries), High(FItems)) do
-  begin
-    mParent := FEntries[mIndex].Parent;
-    if (FEntries[mIndex].Kind = TEntryKind.ekCommand) and (mParent >= 0) and (ActionOf(mParent) <> nil) and
-      (ActionOf(mIndex) <> nil) and ActionOf(mIndex).Visible then
-    begin
-      ActionOf(mParent).Visible := TAtlasIdeMenuContext.GroupShown(FEntries[mParent].GroupKey);
-    end;
-  end;
-  // Zahl hinter dem Namen, etwa „Befunde (3)“.
-  for mIndex := 0 to Min(High(FEntries), High(FItems)) do
-  begin
-    if (FEntries[mIndex].Kind = TEntryKind.ekGroup) and Assigned(FEntries[mIndex].Count) and
-      (ActionOf(mIndex) <> nil) then
-    begin
-      ActionOf(mIndex).Caption := TAtlasMenuContextRules.CountedCaption(FEntries[mIndex].Caption,
-        FEntries[mIndex].Count());
-    end;
-  end;
+  Add('', ACaption, AKey, AProc);
 end;
 
-function TAtlasIdeContextMenu.IsLine(AIndex: Integer): Boolean;
+procedure TAtlasIdeContextMenu.Add(const AId, ACaption: string; const AKey: TFunc<Integer>; const AProc: TProc);
 begin
-  Result := (FEntries[AIndex].Kind = TEntryKind.ekSeparator) or
-    ((FEntries[AIndex].Kind = TEntryKind.ekModuleSlot) and (ActionOf(AIndex) <> nil) and
-    (ActionOf(AIndex).Caption = '-'));
+  AddGuarded(TAtlasFeature.EditorCommands, AId, ACaption, AKey, AProc);
 end;
 
-procedure TAtlasIdeContextMenu.UpdateSeparators(AParent: Integer);
-var
-  mIndexes: TArray<Integer>;
-  mIsLine, mVisible, mShown: TArray<Boolean>;
-  mIndex, mAt: Integer;
+procedure TAtlasIdeContextMenu.AddGuarded(AFeature: TAtlasFeature; const AId, ACaption: string;
+  const AKey: TFunc<Integer>; const AProc: TProc);
 begin
-  // Plätze in Untermenüs der Module ordnet schon TAtlasMenuSlots; hier die oberste Ebene und die Gruppen von Base.
-  for mIndex := 0 to Min(High(FEntries), High(FItems)) do
-  begin
-    if (FEntries[mIndex].Parent = AParent) and (ActionOf(mIndex) <> nil) then
-    begin
-      mIndexes := mIndexes + [mIndex];
-      mIsLine := mIsLine + [IsLine(mIndex)];
-      mVisible := mVisible + [ActionOf(mIndex).Visible];
-    end;
-  end;
-  mShown := TAtlasMenuContextRules.Separators(mIsLine, mVisible);
-  for mAt := 0 to High(mIndexes) do
-  begin
-    if mIsLine[mAt] then
-    begin
-      ActionOf(mIndexes[mAt]).Visible := mShown[mAt];
-    end;
-  end;
+  AddWhen(AFeature, AId, ACaption, AKey, AProc, nil);
 end;
 
-function TAtlasIdeContextMenu.ChildActions(AParent: Integer): TArray<TBasicAction>;
+procedure TAtlasIdeContextMenu.AddWhen(AFeature: TAtlasFeature; const AId, ACaption: string;
+  const AKey: TFunc<Integer>; const AProc: TProc; const AVisible: TFunc<Boolean>);
 var
-  mIndex: Integer;
+  mEntry: TEntry;
 begin
-  Result := nil;
-  for mIndex := 0 to Min(High(FEntries), High(FItems)) do
+  mEntry := NewEntry(TEntryKind.ekCommand, ACaption);
+  if ACaption = '-' then
   begin
-    if FEntries[mIndex].Parent = AParent then
-    begin
-      Result := Result + [FItems[mIndex]];
-    end;
+    mEntry.Kind := TEntryKind.ekSeparator;
   end;
+  mEntry.Id := AId;
+  mEntry.Key := AKey;
+  mEntry.Proc := AProc;
+  mEntry.Feature := AFeature;
+  mEntry.Visible := AVisible;
+  Append(mEntry);
 end;
 
-procedure TAtlasIdeContextMenu.FillGroups(ARootItem: TMenuItem);
+procedure TAtlasIdeContextMenu.BeginGroup(const ACaption, AKey: string; const ACount: TFunc<Integer>);
 var
-  mChild, mIndex: Integer;
-  mItem: TMenuItem;
+  mEntry: TEntry;
 begin
-  for mChild := 0 to ARootItem.Count - 1 do
+  EndGroup;
+  mEntry := NewEntry(TEntryKind.ekGroup, ACaption);
+  mEntry.GroupKey := AKey;
+  mEntry.Count := ACount;
+  Append(mEntry);
+  FGroup := High(FEntries);
+end;
+
+procedure TAtlasIdeContextMenu.EndGroup;
+begin
+  FGroup := -1;
+end;
+
+procedure TAtlasIdeContextMenu.AddModuleSlots(ATopCount, AGroupCount, AGroupSize: Integer);
+var
+  mEntry: TEntry;
+  mGroup, mSlot, mParent: Integer;
+begin
+  EndGroup;
+  FModuleTop := ATopCount;
+  FModuleGroups := AGroupCount;
+  FModuleGroupSize := AGroupSize;
+  for mGroup := 0 to AGroupCount - 1 do
   begin
-    mItem := ARootItem.Items[mChild];
-    mIndex := IndexOfAction(mItem.Action);
-    if (mIndex >= 0) and (FEntries[mIndex].Kind in [TEntryKind.ekGroup, TEntryKind.ekModuleGroup]) then
+    mEntry := NewEntry(TEntryKind.ekModuleGroup, '');
+    mEntry.ModuleGroup := mGroup;
+    Append(mEntry);
+    mParent := High(FEntries);
+    for mSlot := 0 to AGroupSize - 1 do
     begin
-      TAtlasIdeContextSubmenus.Fill(mItem, ChildActions(mIndex));
+      mEntry := NewEntry(TEntryKind.ekModuleSlot, '');
+      mEntry.Parent := mParent;
+      mEntry.ModuleGroup := mGroup;
+      mEntry.Slot := mSlot;
+      Append(mEntry);
     end;
+  end;
+  for mSlot := 0 to ATopCount - 1 do
+  begin
+    mEntry := NewEntry(TEntryKind.ekModuleSlot, '');
+    mEntry.Slot := mSlot;
+    Append(mEntry);
   end;
 end;
 
@@ -552,61 +609,6 @@ begin
     begin
       UpdateSeparators(mIndex);
     end;
-  end;
-end;
-
-procedure TAtlasIdeContextMenu.Register;
-var
-  mServices: IOTAEditorServices;
-  mRoot, mItem: TAction;
-  mIndex: Integer;
-begin
-  if FRegistered or not Supports(BorlandIDEServices, IOTAEditorServices, mServices) or
-    (mServices.GetEditorLocalMenu = nil) then
-  begin
-    Exit;
-  end;
-  // Elternaktion zuerst, die Einträge direkt danach, die einer Gruppe direkt nach ihr (so verlangt es
-  // INTAEditorLocalMenu).
-  mRoot := TAction.Create(FActions);
-  mRoot.ActionList := FActions;
-  mRoot.Category := cCategory;
-  mRoot.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuAtlas);
-  mRoot.OnExecute := RootExecute;
-  FRoot := mRoot;
-  for mIndex := 0 to High(FEntries) do
-  begin
-    // Einträge in Gruppen nicht in der registrierten Liste: Die IDE baut nur eine Ebene (siehe oben).
-    mItem := TAction.Create(FActions);
-    mItem.ActionList := FActions;
-    if FEntries[mIndex].Parent >= 0 then
-    begin
-      mItem.ActionList := FSubActions;
-    end;
-    mItem.Category := CategoryOf(mIndex);
-    mItem.Caption := FEntries[mIndex].Caption;
-    FItems := FItems + [mItem];
-    case FEntries[mIndex].Kind of
-      TEntryKind.ekCommand, TEntryKind.ekModuleSlot:
-        mItem.OnExecute := ItemExecute;
-      TEntryKind.ekGroup, TEntryKind.ekModuleGroup:
-        mItem.OnExecute := GroupExecute;
-    end;
-    // Plätze der Module bleiben aus, bis UpdateModuleSlots sie belegt.
-    mItem.Visible := not (FEntries[mIndex].Kind in [TEntryKind.ekModuleGroup, TEntryKind.ekModuleSlot]);
-  end;
-  UpdateVisibility;
-  mServices.GetEditorLocalMenu.RegisterActionList(FActions, cCategory, cEdMenuCatLast);
-  FRegistered := True;
-end;
-
-procedure TAtlasIdeContextMenu.EnsureAll;
-begin
-  try
-    Register;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
   end;
 end;
 
@@ -654,6 +656,42 @@ begin
   end;
 end;
 
+procedure TAtlasIdeContextMenu.ItemExecute(Sender: TObject);
+var
+  mIndex: Integer;
+  mAction: TBasicAction;
+begin
+  // Die IDE kann statt unserer Aktion einen eigenen Menüeintrag melden; dessen Tag ist nicht unserer.
+  // Maßgeblich ist die eigene Aktion (aus FActions), sonst die verknüpfte des Menüeintrags.
+  mAction := OwnAction(Sender, FActions);
+  if mAction = nil then
+  begin
+    LogUnknownSender(Sender);
+    Exit;
+  end;
+  mIndex := IndexOfAction(mAction);
+  // Hat die Tastaturbindung denselben Tastendruck schon ausgeführt, nicht ein zweites Mal.
+  if (mAction is TAction) and not TAtlasKeyStroke.Claim(TAction(mAction).ShortCut, Cardinal(GetMessageTime)) then
+  begin
+    Exit;
+  end;
+  if (mIndex >= 0) and (FEntries[mIndex].Kind = TEntryKind.ekModuleSlot) then
+  begin
+    RunModuleSlot(mIndex);
+    Exit;
+  end;
+  if (mIndex < 0) or not Assigned(FEntries[mIndex].Proc) then
+  begin
+    TAtlasGuard.Log(Format('Kontextmenü: Eintrag %d ohne Befehl', [mIndex]));
+    Exit;
+  end;
+  if FEntries[mIndex].Id <> '' then
+  begin
+    TAtlasIdeShortcutTips.Invoked(FEntries[mIndex].Id);
+  end;
+  TAtlasGuard.Run(FEntries[mIndex].Feature, FEntries[mIndex].Proc);
+end;
+
 procedure TAtlasIdeContextMenu.RootExecute(Sender: TObject);
 var
   mRootItem: TMenuItem;
@@ -696,50 +734,14 @@ begin
   TAtlasIdeContextSubmenus.Popup(FGroupPopup, ChildActions(mIndex));
 end;
 
-function TAtlasIdeContextMenu.IndexOfAction(AAction: TBasicAction): Integer;
+procedure TAtlasIdeContextMenu.EnsureAll;
 begin
-  // Nicht über Tag: Die IDE setzt ihn beim Einbinden ins Kontextmenü selbst (Protokoll: „Eintrag 30“).
-  Result := Min(High(FItems), High(FEntries));
-  while (Result >= 0) and (FItems[Result] <> AAction) do
-  begin
-    Dec(Result);
+  try
+    Register;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
   end;
-end;
-
-procedure TAtlasIdeContextMenu.ItemExecute(Sender: TObject);
-var
-  mIndex: Integer;
-  mAction: TBasicAction;
-begin
-  // Die IDE kann statt unserer Aktion einen eigenen Menüeintrag melden; dessen Tag ist nicht unserer.
-  // Maßgeblich ist die eigene Aktion (aus FActions), sonst die verknüpfte des Menüeintrags.
-  mAction := OwnAction(Sender, FActions);
-  if mAction = nil then
-  begin
-    LogUnknownSender(Sender);
-    Exit;
-  end;
-  mIndex := IndexOfAction(mAction);
-  // Hat die Tastaturbindung denselben Tastendruck schon ausgeführt, nicht ein zweites Mal.
-  if (mAction is TAction) and not TAtlasKeyStroke.Claim(TAction(mAction).ShortCut, Cardinal(GetMessageTime)) then
-  begin
-    Exit;
-  end;
-  if (mIndex >= 0) and (FEntries[mIndex].Kind = TEntryKind.ekModuleSlot) then
-  begin
-    RunModuleSlot(mIndex);
-    Exit;
-  end;
-  if (mIndex < 0) or not Assigned(FEntries[mIndex].Proc) then
-  begin
-    TAtlasGuard.Log(Format('Kontextmenü: Eintrag %d ohne Befehl', [mIndex]));
-    Exit;
-  end;
-  if FEntries[mIndex].Id <> '' then
-  begin
-    TAtlasIdeShortcutTips.Invoked(FEntries[mIndex].Id);
-  end;
-  TAtlasGuard.Run(FEntries[mIndex].Feature, FEntries[mIndex].Proc);
 end;
 
 end.

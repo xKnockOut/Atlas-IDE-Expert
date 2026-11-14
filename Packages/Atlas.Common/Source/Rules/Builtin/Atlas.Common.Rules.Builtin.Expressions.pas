@@ -275,19 +275,6 @@ begin
     cTexts[TExpressionsText.IndexTitle].Text);
 end;
 
-class function TStringIndexBaseRule.IsStringType(const AType: string): Boolean;
-var
-  mName: string;
-begin
-  mName := LowerCase(Trim(AType));
-  if Pos('[', mName) > 0 then
-  begin
-    mName := Trim(Copy(mName, 1, Pos('[', mName) - 1));
-  end;
-  Result := MatchText(mName, ['string', 'unicodestring', 'ansistring', 'widestring', 'rawbytestring', 'utf8string',
-    'shortstring', 'tcaption', 'system.string']);
-end;
-
 procedure TStringIndexBaseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mTokens: TArray<TPascalToken>;
@@ -606,20 +593,25 @@ begin
   end;
 end;
 
+class function TStringIndexBaseRule.IsStringType(const AType: string): Boolean;
+var
+  mName: string;
+begin
+  mName := LowerCase(Trim(AType));
+  if Pos('[', mName) > 0 then
+  begin
+    mName := Trim(Copy(mName, 1, Pos('[', mName) - 1));
+  end;
+  Result := MatchText(mName, ['string', 'unicodestring', 'ansistring', 'widestring', 'rawbytestring', 'utf8string',
+    'shortstring', 'tcaption', 'system.string']);
+end;
+
 { TNullCompareRule }
 
 function TNullCompareRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cNullCompareRuleId, TRuleSeverity.Warning,
     cTexts[TExpressionsText.NullTitle].Text);
-end;
-
-class function TNullCompareRule.IsDataType(const AType: string): Boolean;
-var
-  mName: string;
-begin
-  mName := Copy(Trim(AType), LastDelimiter('.', Trim(AType)) + 1, MaxInt);
-  Result := (Length(mName) > 1) and (mName[1] = 'T') and (EndsText('Field', mName) or EndsText('Param', mName));
 end;
 
 procedure TNullCompareRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -887,17 +879,20 @@ begin
   end;
 end;
 
+class function TNullCompareRule.IsDataType(const AType: string): Boolean;
+var
+  mName: string;
+begin
+  mName := Copy(Trim(AType), LastDelimiter('.', Trim(AType)) + 1, MaxInt);
+  Result := (Length(mName) > 1) and (mName[1] = 'T') and (EndsText('Field', mName) or EndsText('Param', mName));
+end;
+
 { TPosArgumentsSwappedRule }
 
 function TPosArgumentsSwappedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cPosArgumentsSwappedRuleId, TRuleSeverity.Warning,
     cTexts[TExpressionsText.SwappedTitle].Text);
-end;
-
-class function TPosArgumentsSwappedRule.LiteralLength(const ALiteral: string): Integer;
-begin
-  Result := PascalLiteralLength(ALiteral);
 end;
 
 procedure TPosArgumentsSwappedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1181,19 +1176,17 @@ begin
   end;
 end;
 
+class function TPosArgumentsSwappedRule.LiteralLength(const ALiteral: string): Integer;
+begin
+  Result := PascalLiteralLength(ALiteral);
+end;
+
 { TIntegerDivisionToFloatRule }
 
 function TIntegerDivisionToFloatRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cIntegerDivisionToFloatRuleId, TRuleSeverity.Warning,
     cTexts[TExpressionsText.DivTitle].Text);
-end;
-
-class function TIntegerDivisionToFloatRule.IsFractional(const AType: string): Boolean;
-begin
-  // TDateTime, TDate und TTime nicht: A div B als ganze Tage ist dort meist gewollt; Comp ist ganzzahlig.
-  Result := MatchText(Trim(AType), ['Single', 'Double', 'Extended', 'Real', 'Real48', 'Float32', 'Float64',
-    'Currency', 'System.Single', 'System.Double', 'System.Extended', 'System.Currency']);
 end;
 
 procedure TIntegerDivisionToFloatRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1439,6 +1432,13 @@ begin
   end;
 end;
 
+class function TIntegerDivisionToFloatRule.IsFractional(const AType: string): Boolean;
+begin
+  // TDateTime, TDate und TTime nicht: A div B als ganze Tage ist dort meist gewollt; Comp ist ganzzahlig.
+  Result := MatchText(Trim(AType), ['Single', 'Double', 'Extended', 'Real', 'Real48', 'Float32', 'Float64',
+    'Currency', 'System.Single', 'System.Double', 'System.Extended', 'System.Currency']);
+end;
+
 { TConditionalExpressionVersionRule }
 
 type
@@ -1451,6 +1451,8 @@ type
     Start: Integer;
     Version: Boolean;
   end;
+
+{ TConditionalExpressionVersionRule }
 
 function TConditionalExpressionVersionRule.Descriptor: TRuleDescriptor;
 begin

@@ -241,6 +241,17 @@ end;
 
 { TAtlasWelcomeModule }
 
+class function TAtlasWelcomeModule.Parts: TArray<IAtlasFeaturePart>;
+begin
+  Result := [
+    // Abbau vor dem Statusfeld, dessen Zeilen die Zustandskachel beobachtet.
+    TAtlasFeaturePart.When('Welcome',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeHost.StatusLinesReady;
+      end, PageStarted, StartPage, StopPage)];
+end;
+
 function TAtlasWelcomeModule.Info: TAtlasModuleInfo;
 begin
   // Die Seite startet keinen Server und liest nur lokale Daten: auch im abgesicherten Start.
@@ -304,17 +315,6 @@ begin
   begin
     TAtlasIdeWelcomeStartup.Current.ThemeChanged;
   end;
-end;
-
-class function TAtlasWelcomeModule.Parts: TArray<IAtlasFeaturePart>;
-begin
-  Result := [
-    // Abbau vor dem Statusfeld, dessen Zeilen die Zustandskachel beobachtet.
-    TAtlasFeaturePart.When('Welcome',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeHost.StatusLinesReady;
-      end, PageStarted, StartPage, StopPage)];
 end;
 
 class function TAtlasWelcomeModule.RegisterModule: Boolean;

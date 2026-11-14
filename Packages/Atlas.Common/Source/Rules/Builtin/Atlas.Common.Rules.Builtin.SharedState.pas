@@ -213,12 +213,6 @@ begin
   end;
 end;
 
-function TSharedState.OwnNames(AMethod: TSyntaxNode): TArray<string>;
-begin
-  Result := ['Result'];
-  CollectNames(AMethod, Result);
-end;
-
 function TSharedState.Mentions(ANode: TSyntaxNode; const AName: string): Boolean;
 var
   mIndex: Integer;
@@ -276,6 +270,81 @@ begin
   finally
     mPending.Free;
   end;
+end;
+
+function TSharedState.DeclaresName(ADecl: TSyntaxNode; const AName: string; var ATypeName: string): Boolean;
+var
+  mName: string;
+  mTypeRef: TSyntaxNode;
+begin
+  Result := False;
+  for mName in SplitString(ADecl.Name, ',') do
+  begin
+    if SameText(Trim(mName), AName) then
+    begin
+      Result := True;
+      mTypeRef := ADecl.FindChild(TSyntaxKind.TypeReference);
+      if mTypeRef <> nil then
+      begin
+        ATypeName := mTypeRef.Name;
+      end;
+      Break;
+    end;
+  end;
+end;
+
+function TSharedState.FindLocalDecl(ARoutine: TSyntaxNode; const AName: string; var ATypeName: string): Boolean;
+var
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  Result := False;
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    for mIndex := ARoutine.ChildCount - 1 downto 0 do
+    begin
+      mPending.Push(ARoutine[mIndex]);
+    end;
+    while (mPending.Count > 0) and not Result do
+    begin
+      mChild := mPending.Pop;
+      if mChild.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter] then
+      begin
+        Result := DeclaresName(mChild, AName, ATypeName);
+      end;
+      // Verschachtelte Routinen und anonyme Methoden deklarieren eigene Namen.
+      if not (mChild.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl]) then
+      begin
+        for mIndex := mChild.ChildCount - 1 downto 0 do
+        begin
+          mPending.Push(mChild[mIndex]);
+        end;
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+function TSharedState.SymbolScope(const ASymbol: TIndexSymbol; const AOwner: string): TNameScope;
+begin
+  Result := TNameScope.Unknown;
+  if (ASymbol.Kind = TIndexSymbolKind.Field) and (AOwner <> '') and SameText(ASymbol.Container, AOwner) then
+  begin
+    Result := TNameScope.Field;
+  end
+  else if (ASymbol.Kind = TIndexSymbolKind.Variable) and (ASymbol.Container = '') then
+  begin
+    Result := TNameScope.Global;
+  end;
+end;
+
+function TSharedState.OwnNames(AMethod: TSyntaxNode): TArray<string>;
+begin
+  Result := ['Result'];
+  CollectNames(AMethod, Result);
 end;
 
 function TSharedState.Writes(AMethod: TSyntaxNode; ACollections: Boolean): TArray<TSharedWrite>;
@@ -427,75 +496,6 @@ begin
   mWrites_ := nil;
   Visit(mBody);
   Result := mWrites_;
-end;
-
-function TSharedState.DeclaresName(ADecl: TSyntaxNode; const AName: string; var ATypeName: string): Boolean;
-var
-  mName: string;
-  mTypeRef: TSyntaxNode;
-begin
-  Result := False;
-  for mName in SplitString(ADecl.Name, ',') do
-  begin
-    if SameText(Trim(mName), AName) then
-    begin
-      Result := True;
-      mTypeRef := ADecl.FindChild(TSyntaxKind.TypeReference);
-      if mTypeRef <> nil then
-      begin
-        ATypeName := mTypeRef.Name;
-      end;
-      Break;
-    end;
-  end;
-end;
-
-function TSharedState.FindLocalDecl(ARoutine: TSyntaxNode; const AName: string; var ATypeName: string): Boolean;
-var
-  mIndex: Integer;
-  mChild: TSyntaxNode;
-  mPending: TStack<TSyntaxNode>;
-begin
-  Result := False;
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  mPending := TStack<TSyntaxNode>.Create;
-  try
-    for mIndex := ARoutine.ChildCount - 1 downto 0 do
-    begin
-      mPending.Push(ARoutine[mIndex]);
-    end;
-    while (mPending.Count > 0) and not Result do
-    begin
-      mChild := mPending.Pop;
-      if mChild.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter] then
-      begin
-        Result := DeclaresName(mChild, AName, ATypeName);
-      end;
-      // Verschachtelte Routinen und anonyme Methoden deklarieren eigene Namen.
-      if not (mChild.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl]) then
-      begin
-        for mIndex := mChild.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mChild[mIndex]);
-        end;
-      end;
-    end;
-  finally
-    mPending.Free;
-  end;
-end;
-
-function TSharedState.SymbolScope(const ASymbol: TIndexSymbol; const AOwner: string): TNameScope;
-begin
-  Result := TNameScope.Unknown;
-  if (ASymbol.Kind = TIndexSymbolKind.Field) and (AOwner <> '') and SameText(ASymbol.Container, AOwner) then
-  begin
-    Result := TNameScope.Field;
-  end
-  else if (ASymbol.Kind = TIndexSymbolKind.Variable) and (ASymbol.Container = '') then
-  begin
-    Result := TNameScope.Global;
-  end;
 end;
 
 function TSharedState.Resolve(ARoutine: TSyntaxNode; const AName: string; out ATypeName: string): TNameScope;
@@ -690,11 +690,6 @@ begin
     cTexts[TSharedStateText.ParallelTitle].Text);
 end;
 
-class function TParallelForSharedWriteRule.DefaultThreadSafeTypes: TArray<string>;
-begin
-  Result := ['TThreadList', 'TThreadedQueue'];
-end;
-
 procedure TParallelForSharedWriteRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mState: TSharedState;
@@ -807,6 +802,11 @@ begin
   finally
     mState.Free;
   end;
+end;
+
+class function TParallelForSharedWriteRule.DefaultThreadSafeTypes: TArray<string>;
+begin
+  Result := ['TThreadList', 'TThreadedQueue'];
 end;
 
 { TThreadUnsafeIncrementRule }

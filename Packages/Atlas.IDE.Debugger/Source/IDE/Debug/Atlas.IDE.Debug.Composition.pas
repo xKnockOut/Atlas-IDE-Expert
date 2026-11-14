@@ -436,12 +436,6 @@ begin
   Result := Result + ValueKeys;
 end;
 
-procedure TAtlasDebugModule.EditorViewActivated;
-begin
-  // Gezielt hineinspringen (#836): Die Liste gehört zum Ausführungspunkt in der bisherigen Ansicht.
-  TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeStepInto.Dismiss);
-end;
-
 procedure TAtlasDebugModule.ApplySettings;
 begin
   // debug.breakOnNextEvent (#856).
@@ -473,6 +467,12 @@ begin
   RunThemeChanged;
   DebugThreadsThemeChanged;
   BreakpointsThemeChanged;
+end;
+
+procedure TAtlasDebugModule.EditorViewActivated;
+begin
+  // Gezielt hineinspringen (#836): Die Liste gehört zum Ausführungspunkt in der bisherigen Ansicht.
+  TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeStepInto.Dismiss);
 end;
 
 function TAtlasDebugModule.HoverValue(const AExpression: string; const ATypeChain: TArray<string>;

@@ -136,17 +136,9 @@ begin
   Result := TAtlasIdeSettings.RecursionMarkersOn;
 end;
 
-procedure TAtlasIdeRecursionGutter.Clear;
-var
-  mHad: Boolean;
+procedure TAtlasIdeRecursionGutter.Track(const AFileName, AText: string; AOpened: Boolean);
 begin
-  mHad := FMarks.HasCalls;
-  FMarks := Default(TAtlasFileRecursion);
-  FPoll.Forget;
-  if mHad then
-  begin
-    TAtlasIdeGutterMarks.Invalidate;
-  end;
+  // Der eigene Zeitgeber fragt den Server; hier gibt es nichts zu verankern.
 end;
 
 /// <summary>Oberer Editor mit einer Pascal-Quelle, sonst nil.</summary>
@@ -162,6 +154,81 @@ begin
   if (Result <> nil) and ((Result.Buffer = nil) or not IsSource(Result.Buffer.FileName)) then
   begin
     Result := nil;
+  end;
+end;
+
+function TAtlasIdeRecursionGutter.HasMarks(const AFileName: string): Boolean;
+begin
+  Result := SameText(AFileName, FPoll.FetchedFile) and FMarks.HasCalls;
+end;
+
+function TAtlasIdeRecursionGutter.MarkAt(const AFileName: string; ALine: Integer; const ALineText: string;
+  AHasText: Boolean): Boolean;
+begin
+  Result := Length(CallsAt(AFileName, ALine)) > 0;
+  // Zeile seit dem Abruf geändert: Das Symbol wartet auf die nächste Antwort.
+  if Result and AHasText then
+  begin
+    Result := TAtlasRecursionMarks.LineMatches(ALineText, TAtlasRecursionMarks.LineOf(FPoll.FetchedText, ALine));
+  end;
+end;
+
+procedure TAtlasIdeRecursionGutter.PaintIcon(ACanvas: TCanvas; const AIcon: TRect; const AColors: TAtlasColors;
+  ABack: TAtlasColor);
+var
+  mSize, mLeft, mTop, mHead: Integer;
+  mBox: TRect;
+begin
+  // Kreispfeil (↻): Dreiviertelbogen im Uhrzeigersinn, Spitze oben rechts, in der Warnfarbe.
+  mSize := Min(AIcon.Width, AIcon.Height);
+  mLeft := AIcon.Left + (AIcon.Width - mSize) div 2;
+  mTop := AIcon.Top + (AIcon.Height - mSize) div 2;
+  mBox := TRect.Create(mLeft + 1, mTop + 1, mLeft + mSize - 1, mTop + mSize - 1);
+  ACanvas.Brush.Style := bsClear;
+  ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.9));
+  ACanvas.Pen.Width := Max(1, mSize div 8);
+  // Arc läuft gegen den Uhrzeigersinn vom Start- zum Endpunkt: von oben rechts über links bis oben.
+  ACanvas.Arc(mBox.Left, mBox.Top, mBox.Right, mBox.Bottom, mBox.Right, mBox.Top + mBox.Height div 3,
+    mBox.Left + mBox.Width div 2, mBox.Top);
+  mHead := Max(2, mSize div 3);
+  ACanvas.Pen.Width := 1;
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := ACanvas.Pen.Color;
+  ACanvas.Polygon([Point(mBox.Right, mBox.Top + mBox.Height div 3 + 1),
+    Point(mBox.Right - mHead, mBox.Top + mBox.Height div 3 - mHead div 2),
+    Point(mBox.Right + 1, mBox.Top + mBox.Height div 3 - mHead)]);
+end;
+
+function TAtlasIdeRecursionGutter.TipText(const AFileName: string; ALine: Integer;
+  out ATitle, AText: string): Boolean;
+var
+  mCalls: TArray<TAtlasRecursionCall>;
+begin
+  mCalls := CallsAt(AFileName, ALine);
+  TAtlasRecursionMarks.TipText(mCalls, TAtlasEditorStrings.Text(TAtlasEditorTextId.RecursionTipDirect),
+    TAtlasEditorStrings.Text(TAtlasEditorTextId.RecursionTipChain), ATitle, AText);
+  Result := Length(mCalls) > 0;
+end;
+
+function TAtlasIdeRecursionGutter.TipLinks(const AFileName: string; ALine: Integer): TArray<string>;
+var
+  mStep: TAtlasRecursionStep;
+begin
+  Result := nil;
+  for mStep in TAtlasRecursionMarks.Links(CallsAt(AFileName, ALine)) do
+  begin
+    Result := Result + [mStep.Name];
+  end;
+end;
+
+procedure TAtlasIdeRecursionGutter.OpenLink(const AFileName: string; ALine, AIndex: Integer);
+var
+  mLinks: TArray<TAtlasRecursionStep>;
+begin
+  mLinks := TAtlasRecursionMarks.Links(CallsAt(AFileName, ALine));
+  if (AIndex >= 0) and (AIndex <= High(mLinks)) then
+  begin
+    TAtlasIdeNavigation.GoToLocation(AFileName, mLinks[AIndex].Line, mLinks[AIndex].Character);
   end;
 end;
 
@@ -235,14 +302,17 @@ begin
   TAtlasIdeGutterMarks.Invalidate;
 end;
 
-procedure TAtlasIdeRecursionGutter.Track(const AFileName, AText: string; AOpened: Boolean);
+procedure TAtlasIdeRecursionGutter.Clear;
+var
+  mHad: Boolean;
 begin
-  // Der eigene Zeitgeber fragt den Server; hier gibt es nichts zu verankern.
-end;
-
-function TAtlasIdeRecursionGutter.HasMarks(const AFileName: string): Boolean;
-begin
-  Result := SameText(AFileName, FPoll.FetchedFile) and FMarks.HasCalls;
+  mHad := FMarks.HasCalls;
+  FMarks := Default(TAtlasFileRecursion);
+  FPoll.Forget;
+  if mHad then
+  begin
+    TAtlasIdeGutterMarks.Invalidate;
+  end;
 end;
 
 function TAtlasIdeRecursionGutter.CallsAt(const AFileName: string; ALine: Integer): TArray<TAtlasRecursionCall>;
@@ -251,76 +321,6 @@ begin
   if SameText(AFileName, FPoll.FetchedFile) then
   begin
     Result := FMarks.CallsAt(ALine);
-  end;
-end;
-
-function TAtlasIdeRecursionGutter.MarkAt(const AFileName: string; ALine: Integer; const ALineText: string;
-  AHasText: Boolean): Boolean;
-begin
-  Result := Length(CallsAt(AFileName, ALine)) > 0;
-  // Zeile seit dem Abruf geändert: Das Symbol wartet auf die nächste Antwort.
-  if Result and AHasText then
-  begin
-    Result := TAtlasRecursionMarks.LineMatches(ALineText, TAtlasRecursionMarks.LineOf(FPoll.FetchedText, ALine));
-  end;
-end;
-
-procedure TAtlasIdeRecursionGutter.PaintIcon(ACanvas: TCanvas; const AIcon: TRect; const AColors: TAtlasColors;
-  ABack: TAtlasColor);
-var
-  mSize, mLeft, mTop, mHead: Integer;
-  mBox: TRect;
-begin
-  // Kreispfeil (↻): Dreiviertelbogen im Uhrzeigersinn, Spitze oben rechts, in der Warnfarbe.
-  mSize := Min(AIcon.Width, AIcon.Height);
-  mLeft := AIcon.Left + (AIcon.Width - mSize) div 2;
-  mTop := AIcon.Top + (AIcon.Height - mSize) div 2;
-  mBox := TRect.Create(mLeft + 1, mTop + 1, mLeft + mSize - 1, mTop + mSize - 1);
-  ACanvas.Brush.Style := bsClear;
-  ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.9));
-  ACanvas.Pen.Width := Max(1, mSize div 8);
-  // Arc läuft gegen den Uhrzeigersinn vom Start- zum Endpunkt: von oben rechts über links bis oben.
-  ACanvas.Arc(mBox.Left, mBox.Top, mBox.Right, mBox.Bottom, mBox.Right, mBox.Top + mBox.Height div 3,
-    mBox.Left + mBox.Width div 2, mBox.Top);
-  mHead := Max(2, mSize div 3);
-  ACanvas.Pen.Width := 1;
-  ACanvas.Brush.Style := bsSolid;
-  ACanvas.Brush.Color := ACanvas.Pen.Color;
-  ACanvas.Polygon([Point(mBox.Right, mBox.Top + mBox.Height div 3 + 1),
-    Point(mBox.Right - mHead, mBox.Top + mBox.Height div 3 - mHead div 2),
-    Point(mBox.Right + 1, mBox.Top + mBox.Height div 3 - mHead)]);
-end;
-
-function TAtlasIdeRecursionGutter.TipText(const AFileName: string; ALine: Integer;
-  out ATitle, AText: string): Boolean;
-var
-  mCalls: TArray<TAtlasRecursionCall>;
-begin
-  mCalls := CallsAt(AFileName, ALine);
-  TAtlasRecursionMarks.TipText(mCalls, TAtlasEditorStrings.Text(TAtlasEditorTextId.RecursionTipDirect),
-    TAtlasEditorStrings.Text(TAtlasEditorTextId.RecursionTipChain), ATitle, AText);
-  Result := Length(mCalls) > 0;
-end;
-
-function TAtlasIdeRecursionGutter.TipLinks(const AFileName: string; ALine: Integer): TArray<string>;
-var
-  mStep: TAtlasRecursionStep;
-begin
-  Result := nil;
-  for mStep in TAtlasRecursionMarks.Links(CallsAt(AFileName, ALine)) do
-  begin
-    Result := Result + [mStep.Name];
-  end;
-end;
-
-procedure TAtlasIdeRecursionGutter.OpenLink(const AFileName: string; ALine, AIndex: Integer);
-var
-  mLinks: TArray<TAtlasRecursionStep>;
-begin
-  mLinks := TAtlasRecursionMarks.Links(CallsAt(AFileName, ALine));
-  if (AIndex >= 0) and (AIndex <= High(mLinks)) then
-  begin
-    TAtlasIdeNavigation.GoToLocation(AFileName, mLinks[AIndex].Line, mLinks[AIndex].Character);
   end;
 end;
 

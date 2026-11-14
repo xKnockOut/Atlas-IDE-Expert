@@ -50,6 +50,8 @@ type
     function ReadText(const AFileName: string; out AText: string): Boolean;
   end;
 
+{ TShellLeakCandidateFiles }
+
 constructor TShellLeakCandidateFiles.Create(const AServices: TShellLeakSetupServices);
 begin
   inherited Create;

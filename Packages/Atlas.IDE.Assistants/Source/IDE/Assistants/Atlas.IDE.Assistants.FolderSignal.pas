@@ -36,6 +36,8 @@ implementation
 uses
   System.SysUtils;
 
+{ TAtlasFolderSignal }
+
 constructor TAtlasFolderSignal.Create(const AFolder: string);
 begin
   inherited Create;
@@ -63,19 +65,6 @@ begin
   FHandle := FindFirstChangeNotification(PChar(FFolder), False, FILE_NOTIFY_CHANGE_FILE_NAME);
 end;
 
-procedure TAtlasFolderSignal.Reopen;
-begin
-  if not Available then
-  begin
-    Open;
-  end;
-end;
-
-function TAtlasFolderSignal.Available: Boolean;
-begin
-  Result := FHandle <> INVALID_HANDLE_VALUE;
-end;
-
 function TAtlasFolderSignal.Changed: Boolean;
 begin
   Result := Available and (WaitForSingleObject(FHandle, 0) = WAIT_OBJECT_0);
@@ -84,6 +73,19 @@ begin
     // Nicht wieder scharf zu machen (Ordner gelöscht): ab jetzt nur das Sicherheitsnetz.
     FindCloseChangeNotification(FHandle);
     FHandle := INVALID_HANDLE_VALUE;
+  end;
+end;
+
+function TAtlasFolderSignal.Available: Boolean;
+begin
+  Result := FHandle <> INVALID_HANDLE_VALUE;
+end;
+
+procedure TAtlasFolderSignal.Reopen;
+begin
+  if not Available then
+  begin
+    Open;
   end;
 end;
 

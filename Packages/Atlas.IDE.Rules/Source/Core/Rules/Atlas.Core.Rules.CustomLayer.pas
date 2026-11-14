@@ -31,6 +31,8 @@ uses
   System.SysUtils,
   System.JSON;
 
+{ TAtlasCustomLayer }
+
 class function TAtlasCustomLayer.LayerFrom(const AUnitName: string): string;
 var
   mDot: Integer;

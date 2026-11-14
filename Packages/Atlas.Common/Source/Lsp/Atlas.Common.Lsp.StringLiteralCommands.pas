@@ -72,6 +72,8 @@ begin
   APosition := TLspPositions.ReadPosition(AArguments.Items[1]);
 end;
 
+{ TStringLiteralCommands }
+
 class function TStringLiteralCommands.ExecutePlainText(const AStore: IDocumentStore;
   const AArguments: TJSONArray): TJSONValue;
 var

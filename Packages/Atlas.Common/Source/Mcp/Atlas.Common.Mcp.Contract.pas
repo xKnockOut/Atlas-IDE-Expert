@@ -24,6 +24,8 @@ type
 
 implementation
 
+{ TMcpRuleScope }
+
 class function TMcpRuleScope.Create(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const ARoot: string): TMcpRuleScope;
 begin

@@ -59,17 +59,25 @@ begin
   DoubleBuffered := True;
 end;
 
+procedure TAtlasStyledCanvas.Paint;
+var
+  mColor: TColor;
+begin
+  mColor := BackgroundOf(Self);
+  ColorParents(Self, mColor);
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := mColor;
+  Canvas.FillRect(ClientRect);
+  if Assigned(FOnPaint) then
+  begin
+    FOnPaint(Self);
+  end;
+end;
+
 procedure TAtlasStyledCanvas.WMEraseBkgnd(var AMessage: TWMEraseBkgnd);
 begin
   // Paint deckt alles ab, auch den Hintergrund.
   AMessage.Result := 1;
-end;
-
-class function TAtlasStyledCanvas.BackgroundOf(AControl: TControl): TColor;
-begin
-  // Direkt aus dem Stil wie die Schriftfarben (clWindowText). Die Farbe der Vorfahren war nach einem Wechsel
-  // veraltet und bei „Windows-Design anpassen“ fest weiß.
-  Result := StyleServices(AControl).GetSystemColor(clWindow);
 end;
 
 class procedure TAtlasStyledCanvas.ColorParents(AControl: TControl; AColor: TColor);
@@ -95,19 +103,11 @@ begin
   end;
 end;
 
-procedure TAtlasStyledCanvas.Paint;
-var
-  mColor: TColor;
+class function TAtlasStyledCanvas.BackgroundOf(AControl: TControl): TColor;
 begin
-  mColor := BackgroundOf(Self);
-  ColorParents(Self, mColor);
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := mColor;
-  Canvas.FillRect(ClientRect);
-  if Assigned(FOnPaint) then
-  begin
-    FOnPaint(Self);
-  end;
+  // Direkt aus dem Stil wie die Schriftfarben (clWindowText). Die Farbe der Vorfahren war nach einem Wechsel
+  // veraltet und bei „Windows-Design anpassen“ fest weiß.
+  Result := StyleServices(AControl).GetSystemColor(clWindow);
 end;
 
 end.

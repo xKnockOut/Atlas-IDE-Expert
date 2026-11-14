@@ -227,43 +227,6 @@ begin
   inherited Destroy;
 end;
 
-class function TLspUpcomingConditions.ClampLines(ALines: Integer): Integer;
-begin
-  Result := ALines;
-  if Result <= 0 then
-  begin
-    Result := cDefaultLines;
-  end;
-  Result := Min(Result, cMaxLines);
-end;
-
-class function TLspUpcomingConditions.NamesIn(ANode: TSyntaxNode): TArray<string>;
-var
-  mNames: TArray<string>;
-begin
-  mNames := nil;
-  ANode.Walk(
-    function(ANext: TSyntaxNode): Boolean
-    begin
-      Result := ANext.Kind <> TSyntaxKind.AnonymousMethod;
-      if Result and (ANext.Kind = TSyntaxKind.Identifier) then
-      begin
-        mNames := mNames + [LowerCase(ANext.Name)];
-      end;
-    end);
-  Result := mNames;
-end;
-
-class function TLspUpcomingConditions.LastIndex(AList: TSyntaxNode): Integer;
-begin
-  // repeat: das letzte Kind ist die until-Bedingung, keine Anweisung.
-  Result := AList.ChildCount - 1;
-  if AList.Kind = TSyntaxKind.RepeatStatement then
-  begin
-    Dec(Result);
-  end;
-end;
-
 function TLspUpcomingConditions.StatementAt(ALine: Integer; out AList: TSyntaxNode; out AIndex: Integer): Boolean;
 var
   mNode: TSyntaxNode;
@@ -342,12 +305,39 @@ begin
   end;
 end;
 
-class function TLspUpcomingConditions.Branch(const AName: string; ANode: TSyntaxNode): TLspUpcomingBranch;
+function TLspUpcomingConditions.BlockOf(ANode: TSyntaxNode; out ABlock: TLspUpcomingBlock): Boolean;
 begin
-  Result := Default(TLspUpcomingBranch);
-  Result.Name := AName;
-  Result.FromLine := ANode.StartPos.Line;
-  Result.ToLine := ANode.EndPos.Line;
+  ABlock := Default(TLspUpcomingBlock);
+  ABlock.Start := ANode.StartPos;
+  Result := (ANode.ChildCount >= 2) and (ANode.Kind in [TSyntaxKind.IfStatement, TSyntaxKind.WhileStatement,
+    TSyntaxKind.CaseStatement]);
+  if not Result then
+  begin
+    Exit;
+  end;
+  ABlock.Line := ANode.Children[0].EndPos.Line;
+  case ANode.Kind of
+    TSyntaxKind.IfStatement:
+      begin
+        ABlock.Kind := 'if';
+        ABlock.Parts := FParts.ConditionParts(ANode.Children[0]);
+        ABlock.Branches := [Branch('then', ANode.Children[1])];
+        if ANode.ChildCount > 2 then
+        begin
+          ABlock.Branches := ABlock.Branches + [Branch('else', ANode.Children[2])];
+        end;
+      end;
+    TSyntaxKind.WhileStatement:
+      begin
+        ABlock.Kind := 'while';
+        ABlock.Parts := FParts.ConditionParts(ANode.Children[0]);
+        ABlock.Branches := [Branch('body', ANode.Children[1])];
+      end;
+  else
+    ABlock.Kind := 'case';
+    FParts.AppendValue(ABlock.Parts, ANode.Children[0]);
+    CaseBranches(ANode, ABlock);
+  end;
 end;
 
 procedure TLspUpcomingConditions.CaseBranches(ANode: TSyntaxNode; var ABlock: TLspUpcomingBlock);
@@ -394,38 +384,21 @@ begin
   end;
 end;
 
-function TLspUpcomingConditions.BlockOf(ANode: TSyntaxNode; out ABlock: TLspUpcomingBlock): Boolean;
+class function TLspUpcomingConditions.Branch(const AName: string; ANode: TSyntaxNode): TLspUpcomingBranch;
 begin
-  ABlock := Default(TLspUpcomingBlock);
-  ABlock.Start := ANode.StartPos;
-  Result := (ANode.ChildCount >= 2) and (ANode.Kind in [TSyntaxKind.IfStatement, TSyntaxKind.WhileStatement,
-    TSyntaxKind.CaseStatement]);
-  if not Result then
+  Result := Default(TLspUpcomingBranch);
+  Result.Name := AName;
+  Result.FromLine := ANode.StartPos.Line;
+  Result.ToLine := ANode.EndPos.Line;
+end;
+
+class function TLspUpcomingConditions.LastIndex(AList: TSyntaxNode): Integer;
+begin
+  // repeat: das letzte Kind ist die until-Bedingung, keine Anweisung.
+  Result := AList.ChildCount - 1;
+  if AList.Kind = TSyntaxKind.RepeatStatement then
   begin
-    Exit;
-  end;
-  ABlock.Line := ANode.Children[0].EndPos.Line;
-  case ANode.Kind of
-    TSyntaxKind.IfStatement:
-      begin
-        ABlock.Kind := 'if';
-        ABlock.Parts := FParts.ConditionParts(ANode.Children[0]);
-        ABlock.Branches := [Branch('then', ANode.Children[1])];
-        if ANode.ChildCount > 2 then
-        begin
-          ABlock.Branches := ABlock.Branches + [Branch('else', ANode.Children[2])];
-        end;
-      end;
-    TSyntaxKind.WhileStatement:
-      begin
-        ABlock.Kind := 'while';
-        ABlock.Parts := FParts.ConditionParts(ANode.Children[0]);
-        ABlock.Branches := [Branch('body', ANode.Children[1])];
-      end;
-  else
-    ABlock.Kind := 'case';
-    FParts.AppendValue(ABlock.Parts, ANode.Children[0]);
-    CaseBranches(ANode, ABlock);
+    Dec(Result);
   end;
 end;
 
@@ -469,6 +442,33 @@ end;
 function TLspUpcomingConditions.Execute(ALine, ALines: Integer): TJSONObject;
 begin
   Result := ToJson(Answer(ALine, ALines));
+end;
+
+class function TLspUpcomingConditions.ClampLines(ALines: Integer): Integer;
+begin
+  Result := ALines;
+  if Result <= 0 then
+  begin
+    Result := cDefaultLines;
+  end;
+  Result := Min(Result, cMaxLines);
+end;
+
+class function TLspUpcomingConditions.NamesIn(ANode: TSyntaxNode): TArray<string>;
+var
+  mNames: TArray<string>;
+begin
+  mNames := nil;
+  ANode.Walk(
+    function(ANext: TSyntaxNode): Boolean
+    begin
+      Result := ANext.Kind <> TSyntaxKind.AnonymousMethod;
+      if Result and (ANext.Kind = TSyntaxKind.Identifier) then
+      begin
+        mNames := mNames + [LowerCase(ANext.Name)];
+      end;
+    end);
+  Result := mNames;
 end;
 
 function BranchToJson(const ABranch: TLspUpcomingBranch): TJSONObject;

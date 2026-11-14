@@ -690,6 +690,27 @@ end;
 
 { TAtlasRuleTable }
 
+class function TAtlasRuleTable.Rows(ACatalog: TJSONValue; const ARulesJson: string): TArray<TAtlasRuleRow>;
+var
+  mRules: TJSONValue;
+begin
+  mRules := nil;
+  if ARulesJson <> '' then
+  begin
+    mRules := TJSONObject.ParseJSONValue(ARulesJson);
+  end;
+  try
+    Result := CatalogRows(ACatalog, mRules);
+    // Regeln, die der Katalog nicht kennt (oder ohne Server): trotzdem zeigen.
+    if mRules is TJSONObject then
+    begin
+      AddUnknownRows(TJSONObject(mRules), Result);
+    end;
+  finally
+    mRules.Free;
+  end;
+end;
+
 class function TAtlasRuleTable.Rows(ACatalog: TJSONValue; const ARulesJson,
   AGlobalRulesJson: string): TArray<TAtlasRuleRow>;
 var
@@ -711,27 +732,6 @@ begin
         Result[mIndex].GlobalSeverity := mGlobal[mOther].Severity;
       end;
     end;
-  end;
-end;
-
-class function TAtlasRuleTable.Rows(ACatalog: TJSONValue; const ARulesJson: string): TArray<TAtlasRuleRow>;
-var
-  mRules: TJSONValue;
-begin
-  mRules := nil;
-  if ARulesJson <> '' then
-  begin
-    mRules := TJSONObject.ParseJSONValue(ARulesJson);
-  end;
-  try
-    Result := CatalogRows(ACatalog, mRules);
-    // Regeln, die der Katalog nicht kennt (oder ohne Server): trotzdem zeigen.
-    if mRules is TJSONObject then
-    begin
-      AddUnknownRows(TJSONObject(mRules), Result);
-    end;
-  finally
-    mRules.Free;
   end;
 end;
 
@@ -884,11 +884,6 @@ begin
   end;
 end;
 
-class function TAtlasRuleTable.GroupKey(const AGroup: string): string;
-begin
-  Result := 'group:' + AGroup;
-end;
-
 class function TAtlasRuleTable.GroupOff(const ARulesJson, AGroup: string): Boolean;
 var
   mRules: TJSONObject;
@@ -1000,6 +995,11 @@ begin
   end;
 end;
 
+class function TAtlasRuleTable.GroupKey(const AGroup: string): string;
+begin
+  Result := 'group:' + AGroup;
+end;
+
 class function TAtlasRuleTable.Groups(const ARows: TArray<TAtlasRuleRow>): TArray<string>;
 var
   mRow: TAtlasRuleRow;
@@ -1039,44 +1039,6 @@ begin
     if ((AGroup = '') or SameText(ARows[mIndex].Group, AGroup)) and ARows[mIndex].Matches(AText.Trim) then
     begin
       Result := Result + [mIndex];
-    end;
-  end;
-end;
-
-class function TAtlasRuleTable.OverridingRule(const ARows: TArray<TAtlasRuleRow>;
-  const ARow: TAtlasRuleRow): string;
-var
-  mId: string;
-  mIndex: Integer;
-begin
-  for mId in ARow.OverriddenBy do
-  begin
-    for mIndex := 0 to High(ARows) do
-    begin
-      if SameText(ARows[mIndex].Id, mId) and ARows[mIndex].Enabled then
-      begin
-        Exit(ARows[mIndex].Id);
-      end;
-    end;
-  end;
-  Result := '';
-end;
-
-class function TAtlasRuleTable.ListText(const AItems: TArray<string>): string;
-begin
-  Result := string.Join('; ', AItems);
-end;
-
-class function TAtlasRuleTable.ParseList(const AText: string): TArray<string>;
-var
-  mPart: string;
-begin
-  Result := nil;
-  for mPart in AText.Split([';']) do
-  begin
-    if mPart.Trim <> '' then
-    begin
-      Result := Result + [mPart.Trim];
     end;
   end;
 end;
@@ -1122,6 +1084,40 @@ begin
     end;
   finally
     mValue.Free;
+  end;
+end;
+
+class function TAtlasRuleTable.OptionJson(const AKind, AText: string; out AJson: string): Boolean;
+var
+  mText: string;
+begin
+  AJson := '';
+  mText := AText.Trim;
+  Result := True;
+  if mText = '' then
+  begin
+    Exit;
+  end;
+  if SameText(AKind, 'integer') or SameText(AKind, 'boolean') then
+  begin
+    Result := ScalarJson(AKind, mText, AJson);
+  end
+  else if SameText(AKind, 'string') then
+  begin
+    AJson := StringJson(mText);
+  end
+  else if SameText(AKind, 'string-list') then
+  begin
+    AJson := StringListJson(mText);
+  end
+  else if SameText(AKind, 'number-list') then
+  begin
+    Result := NumberListJson(mText, AJson);
+  end
+  else
+  begin
+    // json und unbekannte Arten: der Text muss gültiges JSON sein.
+    Result := ParsedJson(mText, AJson);
   end;
 end;
 
@@ -1180,37 +1176,41 @@ begin
   end;
 end;
 
-class function TAtlasRuleTable.OptionJson(const AKind, AText: string; out AJson: string): Boolean;
+class function TAtlasRuleTable.OverridingRule(const ARows: TArray<TAtlasRuleRow>;
+  const ARow: TAtlasRuleRow): string;
 var
-  mText: string;
+  mId: string;
+  mIndex: Integer;
 begin
-  AJson := '';
-  mText := AText.Trim;
-  Result := True;
-  if mText = '' then
+  for mId in ARow.OverriddenBy do
   begin
-    Exit;
+    for mIndex := 0 to High(ARows) do
+    begin
+      if SameText(ARows[mIndex].Id, mId) and ARows[mIndex].Enabled then
+      begin
+        Exit(ARows[mIndex].Id);
+      end;
+    end;
   end;
-  if SameText(AKind, 'integer') or SameText(AKind, 'boolean') then
+  Result := '';
+end;
+
+class function TAtlasRuleTable.ListText(const AItems: TArray<string>): string;
+begin
+  Result := string.Join('; ', AItems);
+end;
+
+class function TAtlasRuleTable.ParseList(const AText: string): TArray<string>;
+var
+  mPart: string;
+begin
+  Result := nil;
+  for mPart in AText.Split([';']) do
   begin
-    Result := ScalarJson(AKind, mText, AJson);
-  end
-  else if SameText(AKind, 'string') then
-  begin
-    AJson := StringJson(mText);
-  end
-  else if SameText(AKind, 'string-list') then
-  begin
-    AJson := StringListJson(mText);
-  end
-  else if SameText(AKind, 'number-list') then
-  begin
-    Result := NumberListJson(mText, AJson);
-  end
-  else
-  begin
-    // json und unbekannte Arten: der Text muss gültiges JSON sein.
-    Result := ParsedJson(mText, AJson);
+    if mPart.Trim <> '' then
+    begin
+      Result := Result + [mPart.Trim];
+    end;
   end;
 end;
 

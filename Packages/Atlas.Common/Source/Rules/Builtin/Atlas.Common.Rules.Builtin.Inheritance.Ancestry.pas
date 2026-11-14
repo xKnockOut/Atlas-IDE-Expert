@@ -207,6 +207,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TMethodDecl }
+
 function TMethodDecl.Has(const ADirective: string): Boolean;
 begin
   Result := MatchText(ADirective, Directives);
@@ -291,6 +293,16 @@ begin
   Result := IntToStr(APos.Line) + ':' + IntToStr(APos.Character);
 end;
 
+destructor TAncestry.Destroy;
+begin
+  FLocalMethodsAt.Free;
+  FFieldsIndexed.Free;
+  FFieldsByName.Free;
+  FMembers.Free;
+  FUnitSymbols.Free;
+  inherited;
+end;
+
 procedure TAncestry.IndexLocalMethods;
 var
   mIndex: Integer;
@@ -314,37 +326,6 @@ begin
       FLocalMethodsAt.AddOrSetValue(mKey, mFound + [mIndex]);
     end;
   end;
-end;
-
-function TAncestry.LocalMethodAt(const ATypeName: string; const APos: TTextPosition;
-  out ASymbol: TIndexSymbol): Boolean;
-var
-  mIndex: Integer;
-  mFound: TArray<Integer>;
-begin
-  IndexLocalMethods;
-  if FLocalMethodsAt.TryGetValue(PositionKey(APos), mFound) then
-  begin
-    for mIndex in mFound do
-    begin
-      if SameText(FLocal.Symbols[mIndex].Container, ATypeName) then
-      begin
-        ASymbol := FLocal.Symbols[mIndex];
-        Exit(True);
-      end;
-    end;
-  end;
-  Result := False;
-end;
-
-destructor TAncestry.Destroy;
-begin
-  FLocalMethodsAt.Free;
-  FFieldsIndexed.Free;
-  FFieldsByName.Free;
-  FMembers.Free;
-  FUnitSymbols.Free;
-  inherited;
 end;
 
 function TAncestry.SymbolsOf(const AFileName: string; out ASymbols: TArray<TIndexSymbol>): Boolean;
@@ -371,42 +352,16 @@ begin
   FUnitSymbols.Add(mKey, ASymbols);
 end;
 
+function TAncestry.Reachable(const ALocation: TSymbolLocation): Boolean;
+begin
+  Result := ALocation.Symbol.InInterface or (ALocation.FileName = '') or SameText(ALocation.FileName, FLocal.FileName);
+end;
+
 /// <summary>Schlüssel eines Typs für die Caches von TAncestry.</summary>
 function TypeKey(const AType: TSymbolLocation): string;
 begin
   Result := AnsiLowerCase(AType.FileName) + '|' + AnsiLowerCase(AType.Symbol.Name) + '|' +
     IntToStr(AType.Symbol.Range.StartPos.Line) + ':' + IntToStr(AType.Symbol.Range.EndPos.Line);
-end;
-
-function TAncestry.FieldsNamed(const AType: TSymbolLocation; const AName: string): TArray<Integer>;
-var
-  mType, mKey: string;
-  mMembers: TArray<TIndexSymbol>;
-  mIndex: Integer;
-  mFound: TArray<Integer>;
-begin
-  mType := TypeKey(AType);
-  if not FFieldsIndexed.ContainsKey(mType) then
-  begin
-    mMembers := MemberList(AType);
-    for mIndex := 0 to High(mMembers) do
-    begin
-      if mMembers[mIndex].Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_] then
-      begin
-        mKey := mType + #0 + UpperCase(mMembers[mIndex].Name);
-        if not FFieldsByName.TryGetValue(mKey, mFound) then
-        begin
-          mFound := nil;
-        end;
-        FFieldsByName.AddOrSetValue(mKey, mFound + [mIndex]);
-      end;
-    end;
-    FFieldsIndexed.Add(mType, True);
-  end;
-  if not FFieldsByName.TryGetValue(mType + #0 + UpperCase(AName), Result) then
-  begin
-    Result := nil;
-  end;
 end;
 
 function TAncestry.MemberList(const AType: TSymbolLocation): TArray<TIndexSymbol>;
@@ -450,9 +405,49 @@ begin
   FMembers.Add(mKey, Result);
 end;
 
-function TAncestry.Reachable(const ALocation: TSymbolLocation): Boolean;
+function TAncestry.FieldsNamed(const AType: TSymbolLocation; const AName: string): TArray<Integer>;
+var
+  mType, mKey: string;
+  mMembers: TArray<TIndexSymbol>;
+  mIndex: Integer;
+  mFound: TArray<Integer>;
 begin
-  Result := ALocation.Symbol.InInterface or (ALocation.FileName = '') or SameText(ALocation.FileName, FLocal.FileName);
+  mType := TypeKey(AType);
+  if not FFieldsIndexed.ContainsKey(mType) then
+  begin
+    mMembers := MemberList(AType);
+    for mIndex := 0 to High(mMembers) do
+    begin
+      if mMembers[mIndex].Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_] then
+      begin
+        mKey := mType + #0 + UpperCase(mMembers[mIndex].Name);
+        if not FFieldsByName.TryGetValue(mKey, mFound) then
+        begin
+          mFound := nil;
+        end;
+        FFieldsByName.AddOrSetValue(mKey, mFound + [mIndex]);
+      end;
+    end;
+    FFieldsIndexed.Add(mType, True);
+  end;
+  if not FFieldsByName.TryGetValue(mType + #0 + UpperCase(AName), Result) then
+  begin
+    Result := nil;
+  end;
+end;
+
+function TAncestry.MethodsOf(const AType: TSymbolLocation; const AName: string): TArray<TIndexSymbol>;
+var
+  mSymbol: TIndexSymbol;
+begin
+  Result := nil;
+  for mSymbol in Methods(AType) do
+  begin
+    if SameText(mSymbol.Name, AName) then
+    begin
+      Result := Result + [mSymbol];
+    end;
+  end;
 end;
 
 /// <summary>Zahl der Einträge in einer Liste von Typparametern bzw. -argumenten ("K, V", "string, TList&lt;T&gt;");
@@ -562,140 +557,6 @@ begin
   end;
 end;
 
-function TAncestry.Methods(const AType: TSymbolLocation): TArray<TIndexSymbol>;
-var
-  mSymbol: TIndexSymbol;
-begin
-  Result := nil;
-  for mSymbol in Members(AType) do
-  begin
-    if mSymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_] then
-    begin
-      Result := Result + [mSymbol];
-    end;
-  end;
-end;
-
-function TAncestry.Members(const AType: TSymbolLocation): TArray<TIndexSymbol>;
-begin
-  // Eigene Kopie: Aufrufer dürfen das Ergebnis ändern, ohne den Vorrat zu berühren.
-  Result := Copy(MemberList(AType));
-end;
-
-function TAncestry.FindAnyType(const AName: string; out AType: TSymbolLocation): Boolean;
-const
-  cKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
-    TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias];
-var
-  mIndex: Integer;
-  mLocation: TSymbolLocation;
-begin
-  for mIndex := 0 to High(FLocal.Symbols) do
-  begin
-    if (FLocal.Symbols[mIndex].Kind in cKinds) and (FLocal.Symbols[mIndex].Container = '') and
-      SameText(FLocal.Symbols[mIndex].Name, AName) then
-    begin
-      AType := Default(TSymbolLocation);
-      AType.Symbol := FLocal.Symbols[mIndex];
-      Exit(True);
-    end;
-  end;
-  if FIndex <> nil then
-  begin
-    for mLocation in FIndex.FindSymbols(AName) do
-    begin
-      if (mLocation.Symbol.Kind in cKinds) and (mLocation.Symbol.Container = '') and Reachable(mLocation) then
-      begin
-        AType := mLocation;
-        Exit(True);
-      end;
-    end;
-  end;
-  Result := False;
-end;
-
-function TAncestry.FindNestedType(const AOwner, AName: string; out AType: TSymbolLocation): Boolean;
-const
-  cKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
-    TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias];
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(FLocal.Symbols) do
-  begin
-    if (FLocal.Symbols[mIndex].Kind in cKinds) and SameText(FLocal.Symbols[mIndex].Name, AName) and
-      (AOwner <> '') and SameText(FLocal.Symbols[mIndex].Container, AOwner) then
-    begin
-      AType := Default(TSymbolLocation);
-      AType.Symbol := FLocal.Symbols[mIndex];
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function TAncestry.SameType(const A, B: string; const AWildcards: TArray<string>): Boolean;
-begin
-  Result := (CanonicalType(A) = CanonicalType(B)) or MatchText(BareName(A), AWildcards) or
-    MatchText(BareName(B), AWildcards);
-  // Ein Alias der Datei oder des Index kann auf den anderen Typ zeigen: keine Aussage.
-  if not Result and (A <> '') and (B <> '') then
-  begin
-    Result := IsTypeAlias(BareName(A)) or IsTypeAlias(BareName(B));
-  end;
-end;
-
-function TAncestry.KnownType(const AName: string): Boolean;
-begin
-  Result := MatchText(CanonicalType(AName), cBuiltinTypes) or IsDeclaredType(BareName(AName));
-end;
-
-function TAncestry.OpenAbstractMethods(const AType: TSymbolLocation; out AOwners: TArray<string>):
-  TArray<TIndexSymbol>;
-var
-  mChain: TArray<TSymbolLocation>;
-  mLocation: TSymbolLocation;
-  mSymbol: TIndexSymbol;
-  mSeen, mLevel: TArray<string>;
-  mKey: string;
-  mComplete, mObjectMissing: Boolean;
-begin
-  Result := nil;
-  AOwners := nil;
-  mSeen := nil;
-  mChain := [AType] + Ancestors(AType.Symbol.Name, mComplete, mObjectMissing);
-  for mLocation in mChain do
-  begin
-    mLevel := nil;
-    for mSymbol in Methods(mLocation) do
-    begin
-      // Überladungen unterscheidet die Zahl der Parameter; gleich viele gelten als dieselbe Methode.
-      mKey := LowerCase(mSymbol.Name) + '/' + IntToStr(mSymbol.MaxArgs);
-      if mSymbol.HasDirective('abstract') and (IndexText(mKey, mSeen) < 0) then
-      begin
-        Result := Result + [mSymbol];
-        AOwners := AOwners + [mLocation.Symbol.Name];
-      end;
-      mLevel := mLevel + [mKey];
-    end;
-    mSeen := mSeen + mLevel;
-  end;
-end;
-
-function TAncestry.MethodsOf(const AType: TSymbolLocation; const AName: string): TArray<TIndexSymbol>;
-var
-  mSymbol: TIndexSymbol;
-begin
-  Result := nil;
-  for mSymbol in Methods(AType) do
-  begin
-    if SameText(mSymbol.Name, AName) then
-    begin
-      Result := Result + [mSymbol];
-    end;
-  end;
-end;
-
 function TAncestry.ParentLocation(const AType: TSymbolLocation; out AName: string;
   out AParent: TSymbolLocation): Boolean;
 var
@@ -717,6 +578,120 @@ begin
     end;
   end;
   Result := FindTypeOf(AName, mArity, AParent);
+end;
+
+function TAncestry.ParentOf(const ATypeName: string): string;
+var
+  mLocation: TSymbolLocation;
+begin
+  if not FindType(ATypeName, mLocation) then
+  begin
+    Exit('');
+  end;
+  if Length(mLocation.Symbol.Ancestors) = 0 then
+  begin
+    Result := 'TObject';
+  end
+  else
+  begin
+    Result := BareName(mLocation.Symbol.Ancestors[0]);
+  end;
+end;
+
+function TAncestry.DescendsFrom(const ATypeName, AAncestor: string): Boolean;
+var
+  mName: string;
+  mDepth: Integer;
+begin
+  mName := ParentOf(ATypeName);
+  mDepth := 0;
+  while (mName <> '') and (mDepth < 64) do
+  begin
+    if SameText(mName, AAncestor) then
+    begin
+      Exit(True);
+    end;
+    if SameText(mName, 'TObject') then
+    begin
+      Break;
+    end;
+    mName := ParentOf(mName);
+    Inc(mDepth);
+  end;
+  Result := False;
+end;
+
+function TAncestry.HasConstructor(const ATypeName: string): Boolean;
+var
+  mLocation: TSymbolLocation;
+  mMembers: TArray<TIndexSymbol>;
+  mIndex: Integer;
+begin
+  Result := False;
+  if not FindType(ATypeName, mLocation) then
+  begin
+    Exit;
+  end;
+  mMembers := MemberList(mLocation);
+  for mIndex := 0 to High(mMembers) do
+  begin
+    // Der Index führt Destruktoren ebenfalls als Constructor_.
+    if (mMembers[mIndex].Kind = TIndexSymbolKind.Constructor_) and not SameText(mMembers[mIndex].Name, 'Destroy') then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+function TAncestry.HasDestructor(const ATypeName: string): Boolean;
+var
+  mLocation: TSymbolLocation;
+  mMembers: TArray<TIndexSymbol>;
+  mIndex: Integer;
+begin
+  Result := False;
+  if not FindType(ATypeName, mLocation) then
+  begin
+    Exit;
+  end;
+  mMembers := MemberList(mLocation);
+  for mIndex := 0 to High(mMembers) do
+  begin
+    // Der Index führt Destruktoren als Constructor_.
+    if (mMembers[mIndex].Kind = TIndexSymbolKind.Constructor_) and SameText(mMembers[mIndex].Name, 'Destroy') then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+function TAncestry.LocalMethodAt(const ATypeName: string; const APos: TTextPosition;
+  out ASymbol: TIndexSymbol): Boolean;
+var
+  mIndex: Integer;
+  mFound: TArray<Integer>;
+begin
+  IndexLocalMethods;
+  if FLocalMethodsAt.TryGetValue(PositionKey(APos), mFound) then
+  begin
+    for mIndex in mFound do
+    begin
+      if SameText(FLocal.Symbols[mIndex].Container, ATypeName) then
+      begin
+        ASymbol := FLocal.Symbols[mIndex];
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
+function TAncestry.FindMember(const ATypeName, AName: string; out AMember: TIndexSymbol;
+  out AUnresolved: string): Boolean;
+var
+  mUnitName: string;
+begin
+  Result := FindMember(ATypeName, AName, AMember, AUnresolved, mUnitName);
 end;
 
 function TAncestry.Ancestors(const ATypeName: string; out AComplete, AObjectMissing: Boolean): TArray<TSymbolLocation>;
@@ -783,6 +758,77 @@ begin
   Result := FindType(AName, AType);
 end;
 
+function TAncestry.Methods(const AType: TSymbolLocation): TArray<TIndexSymbol>;
+var
+  mSymbol: TIndexSymbol;
+begin
+  Result := nil;
+  for mSymbol in Members(AType) do
+  begin
+    if mSymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_] then
+    begin
+      Result := Result + [mSymbol];
+    end;
+  end;
+end;
+
+function TAncestry.OpenAbstractMethods(const AType: TSymbolLocation; out AOwners: TArray<string>):
+  TArray<TIndexSymbol>;
+var
+  mChain: TArray<TSymbolLocation>;
+  mLocation: TSymbolLocation;
+  mSymbol: TIndexSymbol;
+  mSeen, mLevel: TArray<string>;
+  mKey: string;
+  mComplete, mObjectMissing: Boolean;
+begin
+  Result := nil;
+  AOwners := nil;
+  mSeen := nil;
+  mChain := [AType] + Ancestors(AType.Symbol.Name, mComplete, mObjectMissing);
+  for mLocation in mChain do
+  begin
+    mLevel := nil;
+    for mSymbol in Methods(mLocation) do
+    begin
+      // Überladungen unterscheidet die Zahl der Parameter; gleich viele gelten als dieselbe Methode.
+      mKey := LowerCase(mSymbol.Name) + '/' + IntToStr(mSymbol.MaxArgs);
+      if mSymbol.HasDirective('abstract') and (IndexText(mKey, mSeen) < 0) then
+      begin
+        Result := Result + [mSymbol];
+        AOwners := AOwners + [mLocation.Symbol.Name];
+      end;
+      mLevel := mLevel + [mKey];
+    end;
+    mSeen := mSeen + mLevel;
+  end;
+end;
+
+function TAncestry.IsTypeAlias(const AName: string): Boolean;
+var
+  mIndex: Integer;
+  mLocation: TSymbolLocation;
+begin
+  for mIndex := 0 to High(FLocal.Symbols) do
+  begin
+    if (FLocal.Symbols[mIndex].Kind = TIndexSymbolKind.TypeAlias) and SameText(FLocal.Symbols[mIndex].Name, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  if FIndex <> nil then
+  begin
+    for mLocation in FIndex.FindSymbols(AName) do
+    begin
+      if (mLocation.Symbol.Kind = TIndexSymbolKind.TypeAlias) and Reachable(mLocation) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
 function TAncestry.IsDeclaredType(const AName: string): Boolean;
 const
   cKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
@@ -812,15 +858,21 @@ begin
   Result := False;
 end;
 
-function TAncestry.IsTypeAlias(const AName: string): Boolean;
+function TAncestry.FindAnyType(const AName: string; out AType: TSymbolLocation): Boolean;
+const
+  cKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+    TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias];
 var
   mIndex: Integer;
   mLocation: TSymbolLocation;
 begin
   for mIndex := 0 to High(FLocal.Symbols) do
   begin
-    if (FLocal.Symbols[mIndex].Kind = TIndexSymbolKind.TypeAlias) and SameText(FLocal.Symbols[mIndex].Name, AName) then
+    if (FLocal.Symbols[mIndex].Kind in cKinds) and (FLocal.Symbols[mIndex].Container = '') and
+      SameText(FLocal.Symbols[mIndex].Name, AName) then
     begin
+      AType := Default(TSymbolLocation);
+      AType.Symbol := FLocal.Symbols[mIndex];
       Exit(True);
     end;
   end;
@@ -828,8 +880,9 @@ begin
   begin
     for mLocation in FIndex.FindSymbols(AName) do
     begin
-      if (mLocation.Symbol.Kind = TIndexSymbolKind.TypeAlias) and Reachable(mLocation) then
+      if (mLocation.Symbol.Kind in cKinds) and (mLocation.Symbol.Container = '') and Reachable(mLocation) then
       begin
+        AType := mLocation;
         Exit(True);
       end;
     end;
@@ -837,89 +890,41 @@ begin
   Result := False;
 end;
 
-function TAncestry.HasConstructor(const ATypeName: string): Boolean;
+function TAncestry.FindNestedType(const AOwner, AName: string; out AType: TSymbolLocation): Boolean;
+const
+  cKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+    TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias];
 var
-  mLocation: TSymbolLocation;
-  mMembers: TArray<TIndexSymbol>;
   mIndex: Integer;
 begin
-  Result := False;
-  if not FindType(ATypeName, mLocation) then
+  for mIndex := 0 to High(FLocal.Symbols) do
   begin
-    Exit;
-  end;
-  mMembers := MemberList(mLocation);
-  for mIndex := 0 to High(mMembers) do
-  begin
-    // Der Index führt Destruktoren ebenfalls als Constructor_.
-    if (mMembers[mIndex].Kind = TIndexSymbolKind.Constructor_) and not SameText(mMembers[mIndex].Name, 'Destroy') then
+    if (FLocal.Symbols[mIndex].Kind in cKinds) and SameText(FLocal.Symbols[mIndex].Name, AName) and
+      (AOwner <> '') and SameText(FLocal.Symbols[mIndex].Container, AOwner) then
     begin
+      AType := Default(TSymbolLocation);
+      AType.Symbol := FLocal.Symbols[mIndex];
       Exit(True);
     end;
   end;
-end;
-
-function TAncestry.HasDestructor(const ATypeName: string): Boolean;
-var
-  mLocation: TSymbolLocation;
-  mMembers: TArray<TIndexSymbol>;
-  mIndex: Integer;
-begin
   Result := False;
-  if not FindType(ATypeName, mLocation) then
-  begin
-    Exit;
-  end;
-  mMembers := MemberList(mLocation);
-  for mIndex := 0 to High(mMembers) do
-  begin
-    // Der Index führt Destruktoren als Constructor_.
-    if (mMembers[mIndex].Kind = TIndexSymbolKind.Constructor_) and SameText(mMembers[mIndex].Name, 'Destroy') then
-    begin
-      Exit(True);
-    end;
-  end;
 end;
 
-function TAncestry.ParentOf(const ATypeName: string): string;
-var
-  mLocation: TSymbolLocation;
+function TAncestry.Members(const AType: TSymbolLocation): TArray<TIndexSymbol>;
 begin
-  if not FindType(ATypeName, mLocation) then
-  begin
-    Exit('');
-  end;
-  if Length(mLocation.Symbol.Ancestors) = 0 then
-  begin
-    Result := 'TObject';
-  end
-  else
-  begin
-    Result := BareName(mLocation.Symbol.Ancestors[0]);
-  end;
+  // Eigene Kopie: Aufrufer dürfen das Ergebnis ändern, ohne den Vorrat zu berühren.
+  Result := Copy(MemberList(AType));
 end;
 
-function TAncestry.DescendsFrom(const ATypeName, AAncestor: string): Boolean;
-var
-  mName: string;
-  mDepth: Integer;
+function TAncestry.SameType(const A, B: string; const AWildcards: TArray<string>): Boolean;
 begin
-  mName := ParentOf(ATypeName);
-  mDepth := 0;
-  while (mName <> '') and (mDepth < 64) do
+  Result := (CanonicalType(A) = CanonicalType(B)) or MatchText(BareName(A), AWildcards) or
+    MatchText(BareName(B), AWildcards);
+  // Ein Alias der Datei oder des Index kann auf den anderen Typ zeigen: keine Aussage.
+  if not Result and (A <> '') and (B <> '') then
   begin
-    if SameText(mName, AAncestor) then
-    begin
-      Exit(True);
-    end;
-    if SameText(mName, 'TObject') then
-    begin
-      Break;
-    end;
-    mName := ParentOf(mName);
-    Inc(mDepth);
+    Result := IsTypeAlias(BareName(A)) or IsTypeAlias(BareName(B));
   end;
-  Result := False;
 end;
 
 function ResolverFileName(const AContext: TRuleContext): string;
@@ -1348,12 +1353,9 @@ begin
   Result := True;
 end;
 
-function TAncestry.FindMember(const ATypeName, AName: string; out AMember: TIndexSymbol;
-  out AUnresolved: string): Boolean;
-var
-  mUnitName: string;
+function TAncestry.KnownType(const AName: string): Boolean;
 begin
-  Result := FindMember(ATypeName, AName, AMember, AUnresolved, mUnitName);
+  Result := MatchText(CanonicalType(AName), cBuiltinTypes) or IsDeclaredType(BareName(AName));
 end;
 
 /// <summary>Index des Felds oder der Property in AMembers, das ein Nachfahre ADepth Stufen tiefer sieht:

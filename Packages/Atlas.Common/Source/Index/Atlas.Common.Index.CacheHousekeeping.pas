@@ -75,6 +75,8 @@ begin
   end;
 end;
 
+{ TIndexCacheHousekeeping }
+
 class function TIndexCacheHousekeeping.SelectForRemoval(const AFiles: TArray<TCacheFileInfo>;
   AMaxBytes: Int64; const AKeep: string): TArray<string>;
 begin

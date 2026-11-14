@@ -108,6 +108,21 @@ type
 
 { Pfade }
 
+{ TAtlasMutationShadows }
+
+class function TAtlasMutationShadows.DataFolderOf(const AProjectFile: string): string;
+begin
+  Result := FolderOf(AProjectFile) + '\' + cLocalFolder + '\' + cMutationFolder;
+end;
+
+class function TAtlasMutationShadows.CompanionFiles(const AUnitFile: string): TArray<string>;
+var
+  mBase: string;
+begin
+  mBase := Copy(AUnitFile, 1, Length(AUnitFile) - Length(ExtractFileExt(AUnitFile)));
+  Result := TArray<string>.Create(mBase + '.dfm', mBase + '.fmx');
+end;
+
 class function TAtlasMutationShadows.IsRooted(const APath: string): Boolean;
 begin
   Result := (APath <> '') and (CharInSet(APath[1], ['\', '/', '%']) or StartsStr('$(', APath) or
@@ -157,19 +172,6 @@ begin
   Result := mPrefix + string.Join('\', mKept);
 end;
 
-class function TAtlasMutationShadows.FolderOf(const AFileName: string): string;
-var
-  mIndex: Integer;
-begin
-  mIndex := LastDelimiter('\/', AFileName);
-  Result := Copy(AFileName, 1, mIndex - 1);
-end;
-
-class function TAtlasMutationShadows.FileNameOf(const AFileName: string): string;
-begin
-  Result := Copy(AFileName, LastDelimiter('\/', AFileName) + 1, MaxInt);
-end;
-
 /// <summary>Dateiname ohne Endung.</summary>
 function BaseNameOf(const AFileName: string): string;
 var
@@ -183,17 +185,17 @@ begin
   end;
 end;
 
-class function TAtlasMutationShadows.DataFolderOf(const AProjectFile: string): string;
+class function TAtlasMutationShadows.FolderOf(const AFileName: string): string;
+var
+  mIndex: Integer;
 begin
-  Result := FolderOf(AProjectFile) + '\' + cLocalFolder + '\' + cMutationFolder;
+  mIndex := LastDelimiter('\/', AFileName);
+  Result := Copy(AFileName, 1, mIndex - 1);
 end;
 
-class function TAtlasMutationShadows.CompanionFiles(const AUnitFile: string): TArray<string>;
-var
-  mBase: string;
+class function TAtlasMutationShadows.FileNameOf(const AFileName: string): string;
 begin
-  mBase := Copy(AUnitFile, 1, Length(AUnitFile) - Length(ExtractFileExt(AUnitFile)));
-  Result := TArray<string>.Create(mBase + '.dfm', mBase + '.fmx');
+  Result := Copy(AFileName, LastDelimiter('\/', AFileName) + 1, MaxInt);
 end;
 
 function XmlEscaped(const AText: string): string;

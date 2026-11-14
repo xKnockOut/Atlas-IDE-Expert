@@ -43,6 +43,89 @@ uses
 
 { TAtlasSettingsCommandsPart }
 
+procedure TAtlasSettingsCommandsPart.Load(const ASettings: TAtlasPluginSettings);
+var
+  mGroup: TAtlasContextMenuGroup;
+  mGroups: TAtlasContextMenuGroups;
+begin
+  mGroups := TAtlasContextMenuGroupNames.Parse(ASettings.EditorContextMenuGroups);
+  for mGroup := Low(TAtlasContextMenuGroup) to High(TAtlasContextMenuGroup) do
+  begin
+    FContextGroups[mGroup].Checked := mGroup in mGroups;
+  end;
+  FToggleBlockCommentStyle.Choice := Max(0, IndexText(ASettings.ToggleBlockCommentStyle, ['braces', 'parens']));
+  FToggleBlockCommentFallback.Choice := Max(0, IndexText(ASettings.ToggleBlockCommentFallback,
+    ['lineComments', 'refuse']));
+  FToggleBlockCommentScope.Choice := Max(0, IndexText(ASettings.ToggleBlockCommentWithoutSelection,
+    ['statement', 'line']));
+end;
+
+procedure TAtlasSettingsCommandsPart.Save(var ASettings: TAtlasPluginSettings);
+var
+  mGroup: TAtlasContextMenuGroup;
+  mGroups: TAtlasContextMenuGroups;
+begin
+  mGroups := [];
+  for mGroup := Low(TAtlasContextMenuGroup) to High(TAtlasContextMenuGroup) do
+  begin
+    if FContextGroups[mGroup].Checked then
+    begin
+      Include(mGroups, mGroup);
+    end;
+  end;
+  ASettings.EditorContextMenuGroups := TAtlasContextMenuGroupNames.Text(mGroups);
+  ASettings.ToggleBlockCommentStyle := 'braces';
+  if FToggleBlockCommentStyle.Choice = 1 then
+  begin
+    ASettings.ToggleBlockCommentStyle := 'parens';
+  end;
+  ASettings.ToggleBlockCommentFallback := 'lineComments';
+  if FToggleBlockCommentFallback.Choice = 1 then
+  begin
+    ASettings.ToggleBlockCommentFallback := 'refuse';
+  end;
+  ASettings.ToggleBlockCommentWithoutSelection := 'statement';
+  if FToggleBlockCommentScope.Choice = 1 then
+  begin
+    ASettings.ToggleBlockCommentWithoutSelection := 'line';
+  end;
+end;
+
+procedure TAtlasSettingsCommandsPart.BindMarks;
+var
+  mGroup: TAtlasContextMenuGroup;
+begin
+  for mGroup := Low(TAtlasContextMenuGroup) to High(TAtlasContextMenuGroup) do
+  begin
+    FPage.Marks.Bind(FContextGroups[mGroup], ['EditorContextMenuGroups']);
+  end;
+  FPage.Marks.Bind(FToggleBlockCommentStyle, ['ToggleBlockCommentStyle']);
+  FPage.Marks.Bind(FToggleBlockCommentFallback, ['ToggleBlockCommentFallback']);
+  FPage.Marks.Bind(FToggleBlockCommentScope, ['ToggleBlockCommentWithoutSelection']);
+end;
+
+procedure TAtlasSettingsCommandsPart.BuildContextMenu;
+const
+  // Eine Zeile Text über den Häkchen der Untermenüs.
+  cGroupsLabelHeight = 20;
+  cTexts: array[TAtlasContextMenuGroup] of TAtlasSettingsTextId = (
+    TAtlasSettingsTextId.SettingsContextGroupNavigation, TAtlasSettingsTextId.SettingsContextGroupEdit,
+    TAtlasSettingsTextId.SettingsContextGroupAnalysis, TAtlasSettingsTextId.SettingsContextGroupFindings,
+    TAtlasSettingsTextId.SettingsContextGroupDebug, TAtlasSettingsTextId.SettingsContextGroupTests,
+    TAtlasSettingsTextId.SettingsContextGroupNotes);
+var
+  mGroup: TAtlasContextMenuGroup;
+begin
+  // Untermenü Atlas im Kontextmenü des Editors (#2102): nur Passendes und je Untermenü ein Häkchen.
+  BindCheck('EditorContextMenuContextual',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorContextMenuContextual)));
+  AddWrappedLabel(cGroupsLabelHeight, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorContextMenuGroups));
+  for mGroup := Low(TAtlasContextMenuGroup) to High(TAtlasContextMenuGroup) do
+  begin
+    FContextGroups[mGroup] := AddCheck(TAtlasSettingsStrings.Text(cTexts[mGroup]));
+  end;
+end;
+
 procedure TAtlasSettingsCommandsPart.Build;
 begin
   // Editorbefehle (#399): ein Vorrang für alle.
@@ -172,89 +255,6 @@ begin
   BuildContextMenu;
   // Liste der Benachrichtigungen (#601).
   BindKey('NotificationsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NotificationsCommand)));
-end;
-
-procedure TAtlasSettingsCommandsPart.BuildContextMenu;
-const
-  // Eine Zeile Text über den Häkchen der Untermenüs.
-  cGroupsLabelHeight = 20;
-  cTexts: array[TAtlasContextMenuGroup] of TAtlasSettingsTextId = (
-    TAtlasSettingsTextId.SettingsContextGroupNavigation, TAtlasSettingsTextId.SettingsContextGroupEdit,
-    TAtlasSettingsTextId.SettingsContextGroupAnalysis, TAtlasSettingsTextId.SettingsContextGroupFindings,
-    TAtlasSettingsTextId.SettingsContextGroupDebug, TAtlasSettingsTextId.SettingsContextGroupTests,
-    TAtlasSettingsTextId.SettingsContextGroupNotes);
-var
-  mGroup: TAtlasContextMenuGroup;
-begin
-  // Untermenü Atlas im Kontextmenü des Editors (#2102): nur Passendes und je Untermenü ein Häkchen.
-  BindCheck('EditorContextMenuContextual',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorContextMenuContextual)));
-  AddWrappedLabel(cGroupsLabelHeight, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorContextMenuGroups));
-  for mGroup := Low(TAtlasContextMenuGroup) to High(TAtlasContextMenuGroup) do
-  begin
-    FContextGroups[mGroup] := AddCheck(TAtlasSettingsStrings.Text(cTexts[mGroup]));
-  end;
-end;
-
-procedure TAtlasSettingsCommandsPart.BindMarks;
-var
-  mGroup: TAtlasContextMenuGroup;
-begin
-  for mGroup := Low(TAtlasContextMenuGroup) to High(TAtlasContextMenuGroup) do
-  begin
-    FPage.Marks.Bind(FContextGroups[mGroup], ['EditorContextMenuGroups']);
-  end;
-  FPage.Marks.Bind(FToggleBlockCommentStyle, ['ToggleBlockCommentStyle']);
-  FPage.Marks.Bind(FToggleBlockCommentFallback, ['ToggleBlockCommentFallback']);
-  FPage.Marks.Bind(FToggleBlockCommentScope, ['ToggleBlockCommentWithoutSelection']);
-end;
-
-procedure TAtlasSettingsCommandsPart.Load(const ASettings: TAtlasPluginSettings);
-var
-  mGroup: TAtlasContextMenuGroup;
-  mGroups: TAtlasContextMenuGroups;
-begin
-  mGroups := TAtlasContextMenuGroupNames.Parse(ASettings.EditorContextMenuGroups);
-  for mGroup := Low(TAtlasContextMenuGroup) to High(TAtlasContextMenuGroup) do
-  begin
-    FContextGroups[mGroup].Checked := mGroup in mGroups;
-  end;
-  FToggleBlockCommentStyle.Choice := Max(0, IndexText(ASettings.ToggleBlockCommentStyle, ['braces', 'parens']));
-  FToggleBlockCommentFallback.Choice := Max(0, IndexText(ASettings.ToggleBlockCommentFallback,
-    ['lineComments', 'refuse']));
-  FToggleBlockCommentScope.Choice := Max(0, IndexText(ASettings.ToggleBlockCommentWithoutSelection,
-    ['statement', 'line']));
-end;
-
-procedure TAtlasSettingsCommandsPart.Save(var ASettings: TAtlasPluginSettings);
-var
-  mGroup: TAtlasContextMenuGroup;
-  mGroups: TAtlasContextMenuGroups;
-begin
-  mGroups := [];
-  for mGroup := Low(TAtlasContextMenuGroup) to High(TAtlasContextMenuGroup) do
-  begin
-    if FContextGroups[mGroup].Checked then
-    begin
-      Include(mGroups, mGroup);
-    end;
-  end;
-  ASettings.EditorContextMenuGroups := TAtlasContextMenuGroupNames.Text(mGroups);
-  ASettings.ToggleBlockCommentStyle := 'braces';
-  if FToggleBlockCommentStyle.Choice = 1 then
-  begin
-    ASettings.ToggleBlockCommentStyle := 'parens';
-  end;
-  ASettings.ToggleBlockCommentFallback := 'lineComments';
-  if FToggleBlockCommentFallback.Choice = 1 then
-  begin
-    ASettings.ToggleBlockCommentFallback := 'refuse';
-  end;
-  ASettings.ToggleBlockCommentWithoutSelection := 'statement';
-  if FToggleBlockCommentScope.Choice = 1 then
-  begin
-    ASettings.ToggleBlockCommentWithoutSelection := 'line';
-  end;
 end;
 
 end.

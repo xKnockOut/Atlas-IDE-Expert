@@ -125,6 +125,8 @@ type
     destructor Destroy; override;
   end;
 
+{ TAccessorUnit }
+
 constructor TAccessorUnit.Create;
 begin
   inherited Create;
@@ -223,6 +225,8 @@ begin
   Result.AddPair('command', mCommand);
 end;
 
+{ TLspInlineAccessor }
+
 class function TLspInlineAccessor.Actions(const AOffer: TInlineAccessorOffer; ATree: TSyntaxTree; const AText,
   AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
 var
@@ -293,6 +297,8 @@ type
     procedure Collect(ATree: TSyntaxTree; const AFileName, AText: string; const APosition: TTextPosition);
     function Answer: TJSONObject;
   end;
+
+{ TAccessorRun }
 
 constructor TAccessorRun.Create(AResolver: TNameResolver; const AContext: TInlineAccessorContext);
 begin
@@ -381,23 +387,6 @@ begin
   end;
 end;
 
-procedure TAccessorRun.Collect(ATree: TSyntaxTree; const AFileName, AText: string; const APosition: TTextPosition);
-var
-  mCurrent: TAccessorUnit;
-begin
-  mCurrent := AddUnit(AFileName, AText, ATree, False);
-  if FContext.Scope = TLspInlineAccessor.cScopeHere then
-  begin
-    AddHere(mCurrent, APosition);
-    Exit;
-  end;
-  AddClasses(mCurrent);
-  if FContext.Scope = TLspInlineAccessor.cScopeProject then
-  begin
-    AddProject(AFileName);
-  end;
-end;
-
 function TAccessorRun.ForeignUses(AUnit: TAccessorUnit; ALayout: TClassLayout;
   const AAccessor: TTrivialAccessor): TArray<string>;
 var
@@ -462,6 +451,23 @@ begin
     raise Fail(cTexts[TLspInlineAccessorText.NoTrivialAccessorFound].Text);
   end;
   raise Fail(string.Join(' ', FChanges.Warnings));
+end;
+
+procedure TAccessorRun.Collect(ATree: TSyntaxTree; const AFileName, AText: string; const APosition: TTextPosition);
+var
+  mCurrent: TAccessorUnit;
+begin
+  mCurrent := AddUnit(AFileName, AText, ATree, False);
+  if FContext.Scope = TLspInlineAccessor.cScopeHere then
+  begin
+    AddHere(mCurrent, APosition);
+    Exit;
+  end;
+  AddClasses(mCurrent);
+  if FContext.Scope = TLspInlineAccessor.cScopeProject then
+  begin
+    AddProject(AFileName);
+  end;
 end;
 
 /// <summary>Das Ergebnis muss weiter fehlerfrei parsen.</summary>

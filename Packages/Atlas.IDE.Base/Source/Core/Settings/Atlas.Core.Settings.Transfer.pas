@@ -424,6 +424,8 @@ begin
   end;
 end;
 
+{ TUserFolders }
+
 class function TUserFolders.From(const AEnvironment: TAtlasSettingsEnvironment): TUserFolders;
 var
   mName, mFolder: string;
@@ -613,6 +615,8 @@ begin
   end;
 end;
 
+{ TStateValues }
+
 constructor TStateValues.Create(ACatalog: TAtlasSettingsCatalog; const AState: TAtlasSettingsState);
 begin
   inherited Create;
@@ -634,22 +638,6 @@ begin
     FRoot := TAtlasJsonText.Parse(FText);
   end;
   Result := FRoot;
-end;
-
-function TStateValues.Get(AIndex: Integer): string;
-var
-  mEntry: TAtlasCatalogEntry;
-begin
-  mEntry := FCatalog[AIndex];
-  if mEntry.Source = asPlugin then
-  begin
-    Exit(PluginJson(FStore, mEntry));
-  end;
-  Result := '';
-  if Root <> nil then
-  begin
-    Result := TAtlasJsonText.ValueAt(Root, mEntry.Key);
-  end;
 end;
 
 procedure TStateValues.PutGlobal(const AEntry: TAtlasCatalogEntry; const AJson: string);
@@ -697,6 +685,22 @@ begin
     begin
       FStore.WriteString(AEntry.Name, TJSONString(AValue).Value);
     end;
+  end;
+end;
+
+function TStateValues.Get(AIndex: Integer): string;
+var
+  mEntry: TAtlasCatalogEntry;
+begin
+  mEntry := FCatalog[AIndex];
+  if mEntry.Source = asPlugin then
+  begin
+    Exit(PluginJson(FStore, mEntry));
+  end;
+  Result := '';
+  if Root <> nil then
+  begin
+    Result := TAtlasJsonText.ValueAt(Root, mEntry.Key);
   end;
 end;
 
@@ -788,6 +792,8 @@ begin
   Result.ProjectText := AProjectText;
   Result.TeamText := ATeamText;
 end;
+
+{ TAtlasImportPreview }
 
 function TAtlasImportPreview.SelectedCount: Integer;
 var
@@ -1271,15 +1277,31 @@ begin
   end;
 end;
 
-class function TAtlasSettingsTransfer.ModeOf(const AFile: TAtlasSettingsFile): TAtlasImportMode;
+class function TAtlasSettingsTransfer.Apply(ACatalog: TAtlasSettingsCatalog; const AState: TAtlasSettingsState;
+  const APreview: TAtlasImportPreview): TAtlasSettingsState;
+var
+  mValues: TStateValues;
+  mItem: TAtlasImportItem;
 begin
-  if SameText(AFile.Mode, 'replace') then
-  begin
-    Result := imReplace;
-  end
-  else
-  begin
-    Result := imMerge;
+  mValues := TStateValues.Create(ACatalog, AState);
+  try
+    for mItem in APreview.Items do
+    begin
+      if mItem.Selected and mItem.Selectable and (mItem.Entry >= 0) then
+      begin
+        if mItem.Status = isReset then
+        begin
+          mValues.Put(mItem.Entry, '');
+        end
+        else
+        begin
+          mValues.Put(mItem.Entry, mItem.NewJson);
+        end;
+      end;
+    end;
+    Result := mValues.State;
+  finally
+    mValues.Free;
   end;
 end;
 
@@ -1585,31 +1607,15 @@ begin
   MarkCovered(ACatalog, AOptions.ProjectText, AOptions.TeamText, Result.Items);
 end;
 
-class function TAtlasSettingsTransfer.Apply(ACatalog: TAtlasSettingsCatalog; const AState: TAtlasSettingsState;
-  const APreview: TAtlasImportPreview): TAtlasSettingsState;
-var
-  mValues: TStateValues;
-  mItem: TAtlasImportItem;
+class function TAtlasSettingsTransfer.ModeOf(const AFile: TAtlasSettingsFile): TAtlasImportMode;
 begin
-  mValues := TStateValues.Create(ACatalog, AState);
-  try
-    for mItem in APreview.Items do
-    begin
-      if mItem.Selected and mItem.Selectable and (mItem.Entry >= 0) then
-      begin
-        if mItem.Status = isReset then
-        begin
-          mValues.Put(mItem.Entry, '');
-        end
-        else
-        begin
-          mValues.Put(mItem.Entry, mItem.NewJson);
-        end;
-      end;
-    end;
-    Result := mValues.State;
-  finally
-    mValues.Free;
+  if SameText(AFile.Mode, 'replace') then
+  begin
+    Result := imReplace;
+  end
+  else
+  begin
+    Result := imMerge;
   end;
 end;
 

@@ -81,6 +81,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TLspMissingUnit }
+
 class function TLspMissingUnit.Handles(const ACode: string): Boolean;
 begin
   Result := MatchText(Trim(ACode), ['F2613', 'F1026']);
@@ -120,19 +122,49 @@ begin
   Result := CommandAction(ATitle, TLspMissingUnit.cInfoCommand, Arguments([AText]), False);
 end;
 
+class function TLspMissingUnit.Actions(AEnabled: Boolean; AFirstLine, ALastLine: Integer;
+  const AMessages: TArray<TCompilerMessage>; const AResolve: TMissingUnitResolve): TArray<TJSONObject>;
+var
+  mMessage: TCompilerMessage;
+  mUnitName: string;
+  mSeen: TArray<string>;
+  mSetup: TMissingUnitSetup;
+  mHits: TArray<TMissingUnitHit>;
+  mSearched: TArray<string>;
+begin
+  Result := nil;
+  if not AEnabled or not Assigned(AResolve) then
+  begin
+    Exit;
+  end;
+  mSeen := nil;
+  for mMessage in AMessages do
+  begin
+    if not Handles(mMessage.Code) or (mMessage.Line < AFirstLine) or (mMessage.Line > ALastLine) then
+    begin
+      Continue;
+    end;
+    mUnitName := TMissingUnitSearch.UnitOfMessage(mMessage.Code, mMessage.Text);
+    // Dieselbe Unit kommt bei mehreren Plattformen oder als F2613 und F1026 doppelt.
+    if (mUnitName = '') or (IndexText(mUnitName, mSeen) >= 0) then
+    begin
+      Continue;
+    end;
+    mSeen := mSeen + [mUnitName];
+    if not AResolve(mUnitName, mSetup) then
+    begin
+      Continue;
+    end;
+    mSetup.UnitName := mUnitName;
+    mHits := TMissingUnitSearch.Search(mSetup, mSearched);
+    Result := Result + ActionsFor(mSetup, mHits, mSearched);
+  end;
+end;
+
 class function TLspMissingUnit.PlatformText(const AUnitName, APlatform: string;
   const APlatforms: TArray<string>): string;
 begin
   Result := cTexts[TLspMissingUnitText.DoesNotExistForOnly].Fmt([AUnitName, APlatform, string.Join(', ', APlatforms)]);
-end;
-
-class function TLspMissingUnit.NotFoundText(const AUnitName: string; const ASearched: TArray<string>): string;
-begin
-  Result := cTexts[TLspMissingUnitText.NotFound].Fmt([AUnitName]);
-  if Length(ASearched) > 0 then
-  begin
-    Result := Result + cTexts[TLspMissingUnitText.Searched].Text + string.Join('; ', ASearched);
-  end;
 end;
 
 /// <summary>Herkunft eines Funds für den Titel: anderes Ziel oder Projektgruppe; sonst ''.</summary>
@@ -226,42 +258,12 @@ begin
   end;
 end;
 
-class function TLspMissingUnit.Actions(AEnabled: Boolean; AFirstLine, ALastLine: Integer;
-  const AMessages: TArray<TCompilerMessage>; const AResolve: TMissingUnitResolve): TArray<TJSONObject>;
-var
-  mMessage: TCompilerMessage;
-  mUnitName: string;
-  mSeen: TArray<string>;
-  mSetup: TMissingUnitSetup;
-  mHits: TArray<TMissingUnitHit>;
-  mSearched: TArray<string>;
+class function TLspMissingUnit.NotFoundText(const AUnitName: string; const ASearched: TArray<string>): string;
 begin
-  Result := nil;
-  if not AEnabled or not Assigned(AResolve) then
+  Result := cTexts[TLspMissingUnitText.NotFound].Fmt([AUnitName]);
+  if Length(ASearched) > 0 then
   begin
-    Exit;
-  end;
-  mSeen := nil;
-  for mMessage in AMessages do
-  begin
-    if not Handles(mMessage.Code) or (mMessage.Line < AFirstLine) or (mMessage.Line > ALastLine) then
-    begin
-      Continue;
-    end;
-    mUnitName := TMissingUnitSearch.UnitOfMessage(mMessage.Code, mMessage.Text);
-    // Dieselbe Unit kommt bei mehreren Plattformen oder als F2613 und F1026 doppelt.
-    if (mUnitName = '') or (IndexText(mUnitName, mSeen) >= 0) then
-    begin
-      Continue;
-    end;
-    mSeen := mSeen + [mUnitName];
-    if not AResolve(mUnitName, mSetup) then
-    begin
-      Continue;
-    end;
-    mSetup.UnitName := mUnitName;
-    mHits := TMissingUnitSearch.Search(mSetup, mSearched);
-    Result := Result + ActionsFor(mSetup, mHits, mSearched);
+    Result := Result + cTexts[TLspMissingUnitText.Searched].Text + string.Join('; ', ASearched);
   end;
 end;
 

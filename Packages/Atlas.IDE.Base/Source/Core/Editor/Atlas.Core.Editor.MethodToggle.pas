@@ -268,6 +268,11 @@ begin
   end;
 end;
 
+function TLexer.AtTripleQuote(AIndex: Integer): Boolean;
+begin
+  Result := (CharAt(AIndex) = '''') and (CharAt(AIndex + 1) = '''') and (CharAt(AIndex + 2) = '''');
+end;
+
 function TLexer.LexBlank: Boolean;
 var
   mChar: Char;
@@ -326,11 +331,6 @@ begin
   begin
     Result := False;
   end;
-end;
-
-function TLexer.AtTripleQuote(AIndex: Integer): Boolean;
-begin
-  Result := (CharAt(AIndex) = '''') and (CharAt(AIndex + 1) = '''') and (CharAt(AIndex + 2) = '''');
 end;
 
 procedure TLexer.SkipMultilineString;
@@ -528,11 +528,6 @@ end;
 
 { TSignatureReader }
 
-procedure TSignatureReader.Init;
-begin
-  Self := Default(TSignatureReader);
-end;
-
 class function TSignatureReader.IsSymbolIn(const AToken: TToken; const ASymbols: string): Boolean;
 begin
   Result := (AToken.Kind = tkSymbol) and (Length(AToken.Text) = 1) and (Pos(AToken.Text, ASymbols) > 0);
@@ -608,6 +603,11 @@ begin
   end;
 end;
 
+procedure TSignatureReader.Init;
+begin
+  Self := Default(TSignatureReader);
+end;
+
 procedure TSignatureReader.Feed(const AToken: TToken);
 begin
   if IsSymbolIn(AToken, '([<') then
@@ -657,12 +657,36 @@ begin
   Result := (mToken.Kind = tkIdent) and not mToken.Escaped and not mToken.AfterDot and (mToken.Lower = AWord);
 end;
 
+function TParser.KwIn(AOffset: Integer; const AWords: array of string): Boolean;
+var
+  mWord: string;
+begin
+  Result := False;
+  for mWord in AWords do
+  begin
+    Result := Result or Kw(AOffset, mWord);
+  end;
+end;
+
 function TParser.Sym(AOffset: Integer; const ASymbol: string): Boolean;
 var
   mToken: TToken;
 begin
   mToken := Tok(AOffset);
   Result := (mToken.Kind = tkSymbol) and (mToken.Text = ASymbol);
+end;
+
+function TParser.BracketDelta: Integer;
+begin
+  Result := 0;
+  if Sym(0, '(') or Sym(0, '[') then
+  begin
+    Result := 1;
+  end
+  else if Sym(0, ')') or Sym(0, ']') then
+  begin
+    Result := -1;
+  end;
 end;
 
 function TParser.IsRoutineStart: Boolean;
@@ -770,30 +794,6 @@ begin
   end;
 end;
 
-function TParser.KwIn(AOffset: Integer; const AWords: array of string): Boolean;
-var
-  mWord: string;
-begin
-  Result := False;
-  for mWord in AWords do
-  begin
-    Result := Result or Kw(AOffset, mWord);
-  end;
-end;
-
-function TParser.BracketDelta: Integer;
-begin
-  Result := 0;
-  if Sym(0, '(') or Sym(0, '[') then
-  begin
-    Result := 1;
-  end
-  else if Sym(0, ')') or Sym(0, ']') then
-  begin
-    Result := -1;
-  end;
-end;
-
 procedure TParser.SkipToSemicolon;
 var
   mDepth: Integer;
@@ -897,19 +897,22 @@ begin
   end;
 end;
 
-function TParser.Signature(AFirst, ALast: Integer; out ACount: Integer): string;
-var
-  mIndex: Integer;
-  mReader: TSignatureReader;
+procedure TParser.SkipProperty;
 begin
-  mReader.Init;
-  for mIndex := AFirst to ALast do
+  SkipToSemicolon;
+  if Kw(0, 'default') and Sym(1, ';') then
   begin
-    mReader.Feed(FTokens[mIndex]);
+    Inc(FPos, 2);
   end;
-  mReader.Finish;
-  ACount := mReader.Count;
-  Result := mReader.Text;
+end;
+
+procedure TParser.SkipVariantCase;
+begin
+  while (Tok(0).Kind <> tkEof) and not Kw(0, 'of') do
+  begin
+    Inc(FPos);
+  end;
+  Inc(FPos);
 end;
 
 function TParser.ParseHeading(out AHeading: THeading): Boolean;
@@ -988,38 +991,19 @@ begin
   end;
 end;
 
-procedure TParser.AddPlace(const AName: string; const AHeading: THeading; AFirst, ALast: Integer; AIsBody: Boolean);
+function TParser.Signature(AFirst, ALast: Integer; out ACount: Integer): string;
 var
-  mPlace: TAtlasMethodPlace;
+  mIndex: Integer;
+  mReader: TSignatureReader;
 begin
-  if (AHeading.NameToken < 0) or (AFirst < 0) or (AFirst >= FCount) then
+  mReader.Init;
+  for mIndex := AFirst to ALast do
   begin
-    Exit;
+    mReader.Feed(FTokens[mIndex]);
   end;
-  if ALast >= FCount then
-  begin
-    ALast := FCount - 1;
-  end;
-  if ALast < AFirst then
-  begin
-    ALast := AFirst;
-  end;
-  mPlace.Name := AName;
-  mPlace.Line := FTokens[AHeading.NameToken].Line;
-  mPlace.Character := FTokens[AHeading.NameToken].Character;
-  mPlace.FirstLine := FTokens[AFirst].Line;
-  mPlace.FirstCharacter := FTokens[AFirst].Character;
-  mPlace.LastLine := FTokens[ALast].Line;
-  mPlace.Signature := AHeading.Signature;
-  mPlace.ParameterCount := AHeading.ParameterCount;
-  mPlace.HasParameters := AHeading.HasParameters;
-  mPlace.IsBody := AIsBody;
-  if FPlaceCount = Length(FPlaces) then
-  begin
-    SetLength(FPlaces, 2 * FPlaceCount + 16);
-  end;
-  FPlaces[FPlaceCount] := mPlace;
-  Inc(FPlaceCount);
+  mReader.Finish;
+  ACount := mReader.Count;
+  Result := mReader.Text;
 end;
 
 function TParser.ParseBlockBody: Integer;
@@ -1063,47 +1047,6 @@ begin
       Inc(FPos);
     end;
     Result := FPos - 1;
-  end;
-end;
-
-procedure TParser.ParseRoutine(const AOwner: string; AInInterface, ACollect: Boolean);
-var
-  mFirst, mLast: Integer;
-  mHeading: THeading;
-  mIsForward, mIsExternal: Boolean;
-  mName: string;
-begin
-  mFirst := FPos;
-  if Kw(0, 'class') then
-  begin
-    Inc(FPos);
-  end;
-  if not ParseHeading(mHeading) then
-  begin
-    Exit;
-  end;
-  SkipDirectives(mIsForward, mIsExternal);
-  mName := mHeading.Name;
-  if AOwner <> '' then
-  begin
-    mName := AOwner + '.' + mName;
-  end;
-  if AInInterface or mIsForward then
-  begin
-    if ACollect then
-    begin
-      AddPlace(mName, mHeading, mFirst, FPos - 1, False);
-    end;
-    Exit;
-  end;
-  if mIsExternal then
-  begin
-    Exit;
-  end;
-  mLast := ParseBlockBody;
-  if ACollect then
-  begin
-    AddPlace(mName, mHeading, mFirst, mLast, True);
   end;
 end;
 
@@ -1254,24 +1197,6 @@ begin
   end;
 end;
 
-procedure TParser.SkipProperty;
-begin
-  SkipToSemicolon;
-  if Kw(0, 'default') and Sym(1, ';') then
-  begin
-    Inc(FPos, 2);
-  end;
-end;
-
-procedure TParser.SkipVariantCase;
-begin
-  while (Tok(0).Kind <> tkEof) and not Kw(0, 'of') do
-  begin
-    Inc(FPos);
-  end;
-  Inc(FPos);
-end;
-
 procedure TParser.ParseStructItem(const AOwner: string; ACollect: Boolean);
 begin
   if Sym(0, '[') then
@@ -1329,6 +1254,47 @@ begin
   end;
 end;
 
+procedure TParser.ParseRoutine(const AOwner: string; AInInterface, ACollect: Boolean);
+var
+  mFirst, mLast: Integer;
+  mHeading: THeading;
+  mIsForward, mIsExternal: Boolean;
+  mName: string;
+begin
+  mFirst := FPos;
+  if Kw(0, 'class') then
+  begin
+    Inc(FPos);
+  end;
+  if not ParseHeading(mHeading) then
+  begin
+    Exit;
+  end;
+  SkipDirectives(mIsForward, mIsExternal);
+  mName := mHeading.Name;
+  if AOwner <> '' then
+  begin
+    mName := AOwner + '.' + mName;
+  end;
+  if AInInterface or mIsForward then
+  begin
+    if ACollect then
+    begin
+      AddPlace(mName, mHeading, mFirst, FPos - 1, False);
+    end;
+    Exit;
+  end;
+  if mIsExternal then
+  begin
+    Exit;
+  end;
+  mLast := ParseBlockBody;
+  if ACollect then
+  begin
+    AddPlace(mName, mHeading, mFirst, mLast, True);
+  end;
+end;
+
 procedure TParser.ParseTopLevelItem(var AInInterface: Boolean);
 begin
   if KwIn(0, ['unit', 'program', 'library', 'package', 'uses', 'contains', 'requires', 'exports']) then
@@ -1382,6 +1348,40 @@ begin
   end;
 end;
 
+procedure TParser.AddPlace(const AName: string; const AHeading: THeading; AFirst, ALast: Integer; AIsBody: Boolean);
+var
+  mPlace: TAtlasMethodPlace;
+begin
+  if (AHeading.NameToken < 0) or (AFirst < 0) or (AFirst >= FCount) then
+  begin
+    Exit;
+  end;
+  if ALast >= FCount then
+  begin
+    ALast := FCount - 1;
+  end;
+  if ALast < AFirst then
+  begin
+    ALast := AFirst;
+  end;
+  mPlace.Name := AName;
+  mPlace.Line := FTokens[AHeading.NameToken].Line;
+  mPlace.Character := FTokens[AHeading.NameToken].Character;
+  mPlace.FirstLine := FTokens[AFirst].Line;
+  mPlace.FirstCharacter := FTokens[AFirst].Character;
+  mPlace.LastLine := FTokens[ALast].Line;
+  mPlace.Signature := AHeading.Signature;
+  mPlace.ParameterCount := AHeading.ParameterCount;
+  mPlace.HasParameters := AHeading.HasParameters;
+  mPlace.IsBody := AIsBody;
+  if FPlaceCount = Length(FPlaces) then
+  begin
+    SetLength(FPlaces, 2 * FPlaceCount + 16);
+  end;
+  FPlaces[FPlaceCount] := mPlace;
+  Inc(FPlaceCount);
+end;
+
 function TParser.Run(const AText: string; const ADefines: TArray<string>): TArray<TAtlasMethodPlace>;
 var
   mLexer: TLexer;
@@ -1405,11 +1405,6 @@ end;
 
 { TAtlasMethodToggle }
 
-class function TAtlasMethodToggle.Places(const AText: string): TArray<TAtlasMethodPlace>;
-begin
-  Result := Places(AText, nil);
-end;
-
 class function TAtlasMethodToggle.Places(const AText: string;
   const ADefines: TArray<string>): TArray<TAtlasMethodPlace>;
 var
@@ -1421,6 +1416,11 @@ begin
   finally
     mParser.Free;
   end;
+end;
+
+class function TAtlasMethodToggle.Places(const AText: string): TArray<TAtlasMethodPlace>;
+begin
+  Result := Places(AText, nil);
 end;
 
 class function TAtlasMethodToggle.PlaceAt(const APlaces: TArray<TAtlasMethodPlace>; ALine, ACharacter: Integer;
@@ -1447,17 +1447,6 @@ begin
   end;
 end;
 
-class function TAtlasMethodToggle.MethodNameAt(const AText: string; ALine: Integer): string;
-var
-  mPlace: TAtlasMethodPlace;
-begin
-  Result := '';
-  if (AText <> '') and (ALine >= 1) and BodyAt(Places(AText), ALine - 1, mPlace) then
-  begin
-    Result := mPlace.Name;
-  end;
-end;
-
 class function TAtlasMethodToggle.BodyAt(const APlaces: TArray<TAtlasMethodPlace>; ALine: Integer;
   out APlace: TAtlasMethodPlace): Boolean;
 var
@@ -1473,6 +1462,17 @@ begin
       APlace := mPlace;
       Result := True;
     end;
+  end;
+end;
+
+class function TAtlasMethodToggle.MethodNameAt(const AText: string; ALine: Integer): string;
+var
+  mPlace: TAtlasMethodPlace;
+begin
+  Result := '';
+  if (AText <> '') and (ALine >= 1) and BodyAt(Places(AText), ALine - 1, mPlace) then
+  begin
+    Result := mPlace.Name;
   end;
 end;
 
@@ -1522,12 +1522,6 @@ begin
 end;
 
 class function TAtlasMethodToggle.Counterpart(const AText: string; ALine, ACharacter: Integer;
-  out ATarget: TAtlasMethodPlace): Boolean;
-begin
-  Result := Counterpart(AText, ALine, ACharacter, ATarget, nil);
-end;
-
-class function TAtlasMethodToggle.Counterpart(const AText: string; ALine, ACharacter: Integer;
   out ATarget: TAtlasMethodPlace; const ADefines: TArray<string>): Boolean;
 var
   mAll: TArray<TAtlasMethodPlace>;
@@ -1536,6 +1530,12 @@ begin
   ATarget := Default(TAtlasMethodPlace);
   mAll := Places(AText, ADefines);
   Result := PlaceAt(mAll, ALine, ACharacter, mSource) and Match(mAll, mSource, ATarget);
+end;
+
+class function TAtlasMethodToggle.Counterpart(const AText: string; ALine, ACharacter: Integer;
+  out ATarget: TAtlasMethodPlace): Boolean;
+begin
+  Result := Counterpart(AText, ALine, ACharacter, ATarget, nil);
 end;
 
 end.

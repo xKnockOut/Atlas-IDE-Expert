@@ -105,16 +105,6 @@ end;
 
 { TAtlasServerSignatureProvider }
 
-class function TAtlasServerSignatureProvider.ProviderTitle: string;
-begin
-  Result := UiText(TServerText.ParameterHintServer);
-end;
-
-constructor TAtlasServerSignatureProvider.Create(const ASession: TAtlasSessionFunc);
-begin
-  Create(ASession, cDefaultTimeoutMs);
-end;
-
 constructor TAtlasServerSignatureProvider.Create(const ASession: TAtlasSessionFunc; ATimeoutMs: Cardinal);
 begin
   inherited Create;
@@ -127,6 +117,11 @@ begin
   FFlagRef := FFlag;
 end;
 
+constructor TAtlasServerSignatureProvider.Create(const ASession: TAtlasSessionFunc);
+begin
+  Create(ASession, cDefaultTimeoutMs);
+end;
+
 destructor TAtlasServerSignatureProvider.Destroy;
 begin
   Shutdown;
@@ -136,6 +131,11 @@ begin
   FWorkers.Free;
   FLock.Free;
   inherited;
+end;
+
+class function TAtlasServerSignatureProvider.ProviderTitle: string;
+begin
+  Result := UiText(TServerText.ParameterHintServer);
 end;
 
 function DocumentationText(AValue: TJSONValue): string;
@@ -334,33 +334,6 @@ begin
   Result.Parameters := ParametersFromLsp(AItem.GetValue('parameters'), Result.Label_);
 end;
 
-class function TAtlasServerSignatureProvider.HelpFromLsp(AResponse: TJSONValue): TAtlasSignatureHelp;
-var
-  mSignatures, mItem: TJSONValue;
-begin
-  Result := Default(TAtlasSignatureHelp);
-  Result.ActiveSignature := -1;
-  Result.ActiveParameter := -1;
-  if not (AResponse is TJSONObject) then
-  begin
-    Exit;
-  end;
-  Result.ActiveSignature := TJSONObject(AResponse).GetValue<Integer>('activeSignature', -1);
-  Result.ActiveParameter := TJSONObject(AResponse).GetValue<Integer>('activeParameter', -1);
-  Result.Format := FormatFromLsp(TJSONObject(AResponse).GetValue('format'));
-  mSignatures := TJSONObject(AResponse).GetValue('signatures');
-  if mSignatures is TJSONArray then
-  begin
-    for mItem in TJSONArray(mSignatures) do
-    begin
-      if mItem is TJSONObject then
-      begin
-        Result.Signatures := Result.Signatures + [SignatureFromLsp(TJSONObject(mItem))];
-      end;
-    end;
-  end;
-end;
-
 procedure TAtlasServerSignatureProvider.ReapWorkers;
 var
   mIndex: Integer;
@@ -377,31 +350,6 @@ begin
     end;
   finally
     FLock.Leave;
-  end;
-end;
-
-procedure TAtlasServerSignatureProvider.Cancel;
-begin
-  TInterlocked.Increment(FGeneration);
-end;
-
-procedure TAtlasServerSignatureProvider.Shutdown;
-var
-  mWorkers: TArray<TThread>;
-  mWorker: TThread;
-begin
-  Cancel;
-  FLock.Enter;
-  try
-    mWorkers := FWorkers.ToArray;
-    FWorkers.Clear;
-  finally
-    FLock.Leave;
-  end;
-  for mWorker in mWorkers do
-  begin
-    mWorker.WaitFor;
-    mWorker.Free;
   end;
 end;
 
@@ -438,6 +386,51 @@ begin
     TAtlasGuard.ReportProviderSlow(ProviderTitle, Format('Abgleich dauerte %d ms', [mWatch.ElapsedMilliseconds]));
   end;
   Result := ASession <> nil;
+end;
+
+function TAtlasServerSignatureProvider.Query(const AFileName, AText: string; ALine, ACharacter: Integer;
+  const ACallback: TAtlasSignatureCallback): Boolean;
+var
+  mSession: TLspSession;
+  mGeneration: Integer;
+begin
+  mGeneration := TInterlocked.Increment(FGeneration);
+  ReapWorkers;
+  Result := False;
+  if (AFileName = '') or TAtlasGuard.ProviderDisabled(ProviderTitle) then
+  begin
+    Exit;
+  end;
+  Result := SyncedSession(AFileName, AText, mSession);
+  if Result then
+  begin
+    StartWorker(mSession, AFileName, TPoint.Create(ACharacter, ALine), mGeneration, ACallback);
+  end;
+end;
+
+procedure TAtlasServerSignatureProvider.Cancel;
+begin
+  TInterlocked.Increment(FGeneration);
+end;
+
+procedure TAtlasServerSignatureProvider.Shutdown;
+var
+  mWorkers: TArray<TThread>;
+  mWorker: TThread;
+begin
+  Cancel;
+  FLock.Enter;
+  try
+    mWorkers := FWorkers.ToArray;
+    FWorkers.Clear;
+  finally
+    FLock.Leave;
+  end;
+  for mWorker in mWorkers do
+  begin
+    mWorker.WaitFor;
+    mWorker.Free;
+  end;
 end;
 
 /// <summary>Signaturen vom Server; leer, wenn er weg ist oder das Zeitlimit greift.</summary>
@@ -516,23 +509,30 @@ begin
   end;
   mWorker.Start;
 end;
-function TAtlasServerSignatureProvider.Query(const AFileName, AText: string; ALine, ACharacter: Integer;
-  const ACallback: TAtlasSignatureCallback): Boolean;
+class function TAtlasServerSignatureProvider.HelpFromLsp(AResponse: TJSONValue): TAtlasSignatureHelp;
 var
-  mSession: TLspSession;
-  mGeneration: Integer;
+  mSignatures, mItem: TJSONValue;
 begin
-  mGeneration := TInterlocked.Increment(FGeneration);
-  ReapWorkers;
-  Result := False;
-  if (AFileName = '') or TAtlasGuard.ProviderDisabled(ProviderTitle) then
+  Result := Default(TAtlasSignatureHelp);
+  Result.ActiveSignature := -1;
+  Result.ActiveParameter := -1;
+  if not (AResponse is TJSONObject) then
   begin
     Exit;
   end;
-  Result := SyncedSession(AFileName, AText, mSession);
-  if Result then
+  Result.ActiveSignature := TJSONObject(AResponse).GetValue<Integer>('activeSignature', -1);
+  Result.ActiveParameter := TJSONObject(AResponse).GetValue<Integer>('activeParameter', -1);
+  Result.Format := FormatFromLsp(TJSONObject(AResponse).GetValue('format'));
+  mSignatures := TJSONObject(AResponse).GetValue('signatures');
+  if mSignatures is TJSONArray then
   begin
-    StartWorker(mSession, AFileName, TPoint.Create(ACharacter, ALine), mGeneration, ACallback);
+    for mItem in TJSONArray(mSignatures) do
+    begin
+      if mItem is TJSONObject then
+      begin
+        Result.Signatures := Result.Signatures + [SignatureFromLsp(TJSONObject(mItem))];
+      end;
+    end;
   end;
 end;
 

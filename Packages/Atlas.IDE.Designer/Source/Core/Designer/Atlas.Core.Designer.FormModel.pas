@@ -186,6 +186,19 @@ type
     procedure Content(const ALine: string);
   end;
 
+{ TFormReader }
+
+procedure TFormReader.Line(const ALine: string);
+var
+  mLine: string;
+begin
+  mLine := Trim(ALine);
+  if mLine <> '' then
+  begin
+    SkipLine(mLine);
+  end;
+end;
+
 procedure TFormReader.Store(const APath, AValue: string);
 var
   mTop: Integer;
@@ -202,6 +215,40 @@ begin
   else
   begin
     Objects[mTop].Values := Objects[mTop].Values + [TAtlasFormValue.Create(APath, AValue)];
+  end;
+end;
+
+procedure TFormReader.Value(const APath, AValue: string);
+begin
+  if AValue = '' then
+  begin
+    // „Hint =“ und der Wert in den folgenden Zeilen.
+    Skip := TSkip.Continued;
+    PendingPath := APath;
+    PendingValue := '';
+  end
+  else if (AValue[1] = '(') and not AValue.EndsWith(')') then
+  begin
+    Skip := TSkip.List;
+  end
+  else if (AValue[1] = '{') and not AValue.EndsWith('}') then
+  begin
+    Skip := TSkip.Binary;
+  end
+  else if (AValue[1] = '<') and (AValue <> '<>') then
+  begin
+    Skip := TSkip.Collection;
+    CollectionDepth := 1;
+  end
+  else if AValue.EndsWith('+') then
+  begin
+    Skip := TSkip.Continued;
+    PendingPath := APath;
+    PendingValue := AValue;
+  end
+  else if not CharInSet(AValue[1], ['(', '{', '<']) then
+  begin
+    Store(APath, AValue);
   end;
 end;
 
@@ -282,51 +329,6 @@ begin
   begin
     Skip := TSkip.None;
     Store(PendingPath, PendingValue);
-  end;
-end;
-
-procedure TFormReader.Value(const APath, AValue: string);
-begin
-  if AValue = '' then
-  begin
-    // „Hint =“ und der Wert in den folgenden Zeilen.
-    Skip := TSkip.Continued;
-    PendingPath := APath;
-    PendingValue := '';
-  end
-  else if (AValue[1] = '(') and not AValue.EndsWith(')') then
-  begin
-    Skip := TSkip.List;
-  end
-  else if (AValue[1] = '{') and not AValue.EndsWith('}') then
-  begin
-    Skip := TSkip.Binary;
-  end
-  else if (AValue[1] = '<') and (AValue <> '<>') then
-  begin
-    Skip := TSkip.Collection;
-    CollectionDepth := 1;
-  end
-  else if AValue.EndsWith('+') then
-  begin
-    Skip := TSkip.Continued;
-    PendingPath := APath;
-    PendingValue := AValue;
-  end
-  else if not CharInSet(AValue[1], ['(', '{', '<']) then
-  begin
-    Store(APath, AValue);
-  end;
-end;
-
-procedure TFormReader.Line(const ALine: string);
-var
-  mLine: string;
-begin
-  mLine := Trim(ALine);
-  if mLine <> '' then
-  begin
-    SkipLine(mLine);
   end;
 end;
 

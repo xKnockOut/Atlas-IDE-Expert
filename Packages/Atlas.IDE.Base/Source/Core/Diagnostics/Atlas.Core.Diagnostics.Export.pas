@@ -108,11 +108,6 @@ begin
   end;
 end;
 
-class function TAtlasDiagnosticExport.Preview(const AFiles: TArray<string>): string;
-begin
-  Result := Preview(AFiles, cPreviewLines);
-end;
-
 class function TAtlasDiagnosticExport.Preview(const AFiles: TArray<string>; AMaxLines: Integer): string;
 var
   mBuilder: TStringBuilder;
@@ -152,10 +147,9 @@ begin
   end;
 end;
 
-class function TAtlasDiagnosticExport.Info(const AAtlasVersion, AIdeVersion, APlatform: string): string;
+class function TAtlasDiagnosticExport.Preview(const AFiles: TArray<string>): string;
 begin
-  Result := 'Atlas ' + AAtlasVersion + sLineBreak + 'IDE ' + AIdeVersion + sLineBreak + 'Plattform ' + APlatform +
-    sLineBreak;
+  Result := Preview(AFiles, cPreviewLines);
 end;
 
 class function TAtlasDiagnosticExport.Preview(const AFiles: TArray<string>; const AInfo: string): string;
@@ -203,6 +197,12 @@ begin
   finally
     mZip.Free;
   end;
+end;
+
+class function TAtlasDiagnosticExport.Info(const AAtlasVersion, AIdeVersion, APlatform: string): string;
+begin
+  Result := 'Atlas ' + AAtlasVersion + sLineBreak + 'IDE ' + AIdeVersion + sLineBreak + 'Plattform ' + APlatform +
+    sLineBreak;
 end;
 
 end.

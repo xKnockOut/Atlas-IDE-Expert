@@ -179,6 +179,8 @@ begin
     end;
 end;
 
+{ TLspTypeAlias }
+
 class function TLspTypeAlias.Lookup(AResolver: TNameResolver): TTypeAliasLookup;
 begin
   Result := TTypeAliasLookup.FromTree;
@@ -353,6 +355,8 @@ type
     Lines: TLineTable;
     destructor Destroy; override;
   end;
+
+{ TAliasFile }
 
 destructor TAliasFile.Destroy;
 begin

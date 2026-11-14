@@ -338,20 +338,6 @@ begin
   FreeAndNil(Guard);
 end;
 
-class function TAtlasIdeOutlineCache.IsPascal(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  for mExtension in cPascalExtensions do
-  begin
-    if SameText(ExtractFileExt(AFileName), mExtension) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 class procedure TAtlasIdeOutlineCache.Invalidate(const AFileName: string);
 begin
   if (Entries <> nil) and Guard.Remove(Key(AFileName)) then
@@ -366,6 +352,20 @@ begin
   begin
     Entries.Clear;
   end;
+end;
+
+class function TAtlasIdeOutlineCache.IsPascal(const AFileName: string): Boolean;
+var
+  mExtension: string;
+begin
+  for mExtension in cPascalExtensions do
+  begin
+    if SameText(ExtractFileExt(AFileName), mExtension) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 /// <summary>Eintrag von AFileName zum Stand ASnapshot laden, wenn nötig: neu, nach einer Tipppause oder nach

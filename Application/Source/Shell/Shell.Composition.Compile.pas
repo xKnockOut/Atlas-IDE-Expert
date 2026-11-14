@@ -119,6 +119,8 @@ const
     (De: 'Fehlgeschlagen'; En: 'Failed'),
     (De: '%d Fehler, %d Warnungen, %d Hinweise'; En: '%d errors, %d warnings, %d hints'));
 
+{ TShellCompileHost }
+
 constructor TShellCompileHost.Create(const AServices: TShellCompileServices);
 begin
   inherited Create;
@@ -137,6 +139,34 @@ begin
   inherited Destroy;
 end;
 
+function TShellCompileHost.Choose(const AFileName: string; out AJob: TShellCompileJob;
+  out AChoice: TCompilerBackendChoice): Boolean;
+var
+  mError: string;
+  mEdition: TCompilerEdition;
+begin
+  AJob := Default(TShellCompileJob);
+  Result := FServices.JobFor(AFileName, AJob, mError);
+  if not Result then
+  begin
+    AChoice := TCompilerBackendChoice.Unavailable(mError, '');
+    Exit;
+  end;
+  // Die Ausgabe der Installation zählt nur für auto und dcc; erkannt wird einmal je Installation (#261).
+  mEdition := TCompilerEdition.Unknown;
+  if (AJob.Settings.Backend = TCompilerBackendSetting.Auto) or (AJob.Settings.Backend = TCompilerBackendSetting.Dcc)
+  then
+  begin
+    mEdition := FServices.Editions.Resolve(AJob.BdsRoot, AJob.Version, AJob.Request.Executable);
+  end;
+  AChoice := ChoiceFor(AJob, mEdition);
+end;
+
+function TShellCompileHost.ChoiceFor(const AJob: TShellCompileJob; AEdition: TCompilerEdition): TCompilerBackendChoice;
+begin
+  Result := TCompilerBackends.Choose(AJob.Settings.Backend, AEdition);
+end;
+
 procedure TShellCompileHost.Remember(const AChoice: TCompilerBackendChoice);
 begin
   System.TMonitor.Enter(FLock);
@@ -145,6 +175,25 @@ begin
     FHasChoice := True;
   finally
     System.TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TShellCompileHost.Unavailable(const AChoice: TCompilerBackendChoice; AShow: Boolean);
+var
+  mFirst, mShow: Boolean;
+begin
+  mShow := MarkUnavailable(AChoice, AShow, mFirst);
+  if mFirst then
+  begin
+    FServices.Logger.Warning('Kompilieren nicht möglich: ' + TLogMarks.Text(AChoice.Reason) +
+      '. Nach dem Speichern wird bis zum nächsten Laden des Projekts nicht mehr kompiliert; ' +
+      'der Befehl "Projekt kompilieren" versucht es erneut.');
+  end;
+  // Das Log sieht im Editor kaum jemand (#261): Grund und Ausweg einmal je Grund und Sitzung als Meldung;
+  // dauerhaft steht es im Status (#28).
+  if mShow and (FServices.Transport <> nil) then
+  begin
+    ShowMessage(AChoice.MessageText);
   end;
 end;
 
@@ -186,53 +235,6 @@ begin
   finally
     mNotification.Free;
   end;
-end;
-
-procedure TShellCompileHost.Unavailable(const AChoice: TCompilerBackendChoice; AShow: Boolean);
-var
-  mFirst, mShow: Boolean;
-begin
-  mShow := MarkUnavailable(AChoice, AShow, mFirst);
-  if mFirst then
-  begin
-    FServices.Logger.Warning('Kompilieren nicht möglich: ' + TLogMarks.Text(AChoice.Reason) +
-      '. Nach dem Speichern wird bis zum nächsten Laden des Projekts nicht mehr kompiliert; ' +
-      'der Befehl "Projekt kompilieren" versucht es erneut.');
-  end;
-  // Das Log sieht im Editor kaum jemand (#261): Grund und Ausweg einmal je Grund und Sitzung als Meldung;
-  // dauerhaft steht es im Status (#28).
-  if mShow and (FServices.Transport <> nil) then
-  begin
-    ShowMessage(AChoice.MessageText);
-  end;
-end;
-
-function TShellCompileHost.ChoiceFor(const AJob: TShellCompileJob; AEdition: TCompilerEdition): TCompilerBackendChoice;
-begin
-  Result := TCompilerBackends.Choose(AJob.Settings.Backend, AEdition);
-end;
-
-function TShellCompileHost.Choose(const AFileName: string; out AJob: TShellCompileJob;
-  out AChoice: TCompilerBackendChoice): Boolean;
-var
-  mError: string;
-  mEdition: TCompilerEdition;
-begin
-  AJob := Default(TShellCompileJob);
-  Result := FServices.JobFor(AFileName, AJob, mError);
-  if not Result then
-  begin
-    AChoice := TCompilerBackendChoice.Unavailable(mError, '');
-    Exit;
-  end;
-  // Die Ausgabe der Installation zählt nur für auto und dcc; erkannt wird einmal je Installation (#261).
-  mEdition := TCompilerEdition.Unknown;
-  if (AJob.Settings.Backend = TCompilerBackendSetting.Auto) or (AJob.Settings.Backend = TCompilerBackendSetting.Dcc)
-  then
-  begin
-    mEdition := FServices.Editions.Resolve(AJob.BdsRoot, AJob.Version, AJob.Request.Executable);
-  end;
-  AChoice := ChoiceFor(AJob, mEdition);
 end;
 
 /// <summary>Grund für Workspace Trust (#186).</summary>
@@ -307,45 +309,6 @@ begin
     end);
   FThread.FreeOnTerminate := False;
   FThread.Start;
-end;
-
-function TShellCompileHost.Start(const AFileName: string; AManual: Boolean;
-  out AChoice: TCompilerBackendChoice): Boolean;
-var
-  mJob: TShellCompileJob;
-  mUnavailable: Boolean;
-begin
-  AChoice := Default(TCompilerBackendChoice);
-  if FRestricted then
-  begin
-    AChoice := RestrictedChoice;
-    if AManual then
-    begin
-      FServices.Logger.Warning('Kompilieren ist in einem nicht vertrauenswürdigen Arbeitsbereich abgeschaltet');
-    end;
-    Exit(False);
-  end;
-  System.TMonitor.Enter(FLock);
-  try
-    mUnavailable := FUnavailable <> '';
-    if mUnavailable then
-    begin
-      AChoice := FChoice;
-    end;
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
-  Result := (AManual or not mUnavailable) and Prepare(AFileName, mJob, AChoice);
-  // Nach dem Speichern nur, wenn der Weg das erlaubt (#261).
-  if Result and (AManual or TCompilerBackends.RunsOnSave(AChoice.Backend)) then
-  begin
-    mJob.Backend := AChoice.Backend;
-    mJob.Manual := AManual;
-    if Enqueue(mJob) then
-    begin
-      Launch(mJob);
-    end;
-  end;
 end;
 
 function TShellCompileHost.NextJob(var AJob: TShellCompileJob): Boolean;
@@ -424,6 +387,34 @@ begin
   FServices.Progress.Finish(cTexts[TCompileHostText.NotLicensed].Text);
 end;
 
+procedure TShellCompileHost.Publish(const AMessages: TArray<TCompilerMessage>; const AVia: string);
+var
+  mItem: TCompilerMessage;
+  mCounts: array[TCompilerSeverity] of Integer;
+  mSummary: string;
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    FUnavailable := '';
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+  FillChar(mCounts, SizeOf(mCounts), 0);
+  for mItem in AMessages do
+  begin
+    Inc(mCounts[mItem.Severity]);
+    if mItem.FileName = '' then
+    begin
+      FServices.Logger.Warning(Format('Compiler: %s %s', [mItem.Code, TLogMarks.Text(mItem.Text)]));
+    end;
+  end;
+  FServices.Publish(FResults.Replace(AMessages));
+  mSummary := cTexts[TCompileHostText.Summary].Fmt([mCounts[TCompilerSeverity.Error] +
+    mCounts[TCompilerSeverity.Fatal], mCounts[TCompilerSeverity.Warning], mCounts[TCompilerSeverity.Hint]]);
+  FServices.Logger.Info(Format('Kompiliert über %s: %s', [AVia, mSummary]));
+  FServices.Progress.Finish(mSummary);
+end;
+
 /// <summary>Die ersten drei nicht leeren Zeilen der Ausgabe, je mit Leerzeichen davor.</summary>
 function OutputStart(const ALines: TArray<string>): string;
 var
@@ -483,32 +474,43 @@ begin
   end;
 end;
 
-procedure TShellCompileHost.Publish(const AMessages: TArray<TCompilerMessage>; const AVia: string);
+function TShellCompileHost.Start(const AFileName: string; AManual: Boolean;
+  out AChoice: TCompilerBackendChoice): Boolean;
 var
-  mItem: TCompilerMessage;
-  mCounts: array[TCompilerSeverity] of Integer;
-  mSummary: string;
+  mJob: TShellCompileJob;
+  mUnavailable: Boolean;
 begin
+  AChoice := Default(TCompilerBackendChoice);
+  if FRestricted then
+  begin
+    AChoice := RestrictedChoice;
+    if AManual then
+    begin
+      FServices.Logger.Warning('Kompilieren ist in einem nicht vertrauenswürdigen Arbeitsbereich abgeschaltet');
+    end;
+    Exit(False);
+  end;
   System.TMonitor.Enter(FLock);
   try
-    FUnavailable := '';
+    mUnavailable := FUnavailable <> '';
+    if mUnavailable then
+    begin
+      AChoice := FChoice;
+    end;
   finally
     System.TMonitor.Exit(FLock);
   end;
-  FillChar(mCounts, SizeOf(mCounts), 0);
-  for mItem in AMessages do
+  Result := (AManual or not mUnavailable) and Prepare(AFileName, mJob, AChoice);
+  // Nach dem Speichern nur, wenn der Weg das erlaubt (#261).
+  if Result and (AManual or TCompilerBackends.RunsOnSave(AChoice.Backend)) then
   begin
-    Inc(mCounts[mItem.Severity]);
-    if mItem.FileName = '' then
+    mJob.Backend := AChoice.Backend;
+    mJob.Manual := AManual;
+    if Enqueue(mJob) then
     begin
-      FServices.Logger.Warning(Format('Compiler: %s %s', [mItem.Code, TLogMarks.Text(mItem.Text)]));
+      Launch(mJob);
     end;
   end;
-  FServices.Publish(FResults.Replace(AMessages));
-  mSummary := cTexts[TCompileHostText.Summary].Fmt([mCounts[TCompilerSeverity.Error] +
-    mCounts[TCompilerSeverity.Fatal], mCounts[TCompilerSeverity.Warning], mCounts[TCompilerSeverity.Hint]]);
-  FServices.Logger.Info(Format('Kompiliert über %s: %s', [AVia, mSummary]));
-  FServices.Progress.Finish(mSummary);
 end;
 
 procedure TShellCompileHost.Stop;

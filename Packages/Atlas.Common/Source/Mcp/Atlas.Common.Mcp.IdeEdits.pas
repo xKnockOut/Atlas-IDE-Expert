@@ -65,6 +65,8 @@ const
     (De: 'Die IDE hat die Änderung angenommen, aber nicht bestätigt.';
      En: 'The IDE accepted the change but did not confirm it.'));
 
+{ TMcpIdeEdits }
+
 class function TMcpIdeEdits.InboxOf(const ABase: string; APid: Cardinal): string;
 begin
   Result := TPath.Combine(TPath.Combine(ABase, 'ide-edits'), IntToStr(APid));
@@ -105,6 +107,8 @@ begin
       ;
   end;
 end;
+
+{ TMcpIdeEdit }
 
 class function TMcpIdeEdit.Make(const AFileName, AExpected, AText: string): TMcpIdeEdit;
 begin

@@ -57,6 +57,8 @@ uses
   Atlas.Common.Projects.Selection,
   Atlas.Text.LogMarks;
 
+{ TShellBuildChoice }
+
 constructor TShellBuildChoice.Create(const AName: string; const ALogger: ILogger; ASetup: TShellWorkspaceSetup);
 begin
   inherited Create;
@@ -71,20 +73,6 @@ begin
   FLock.Free;
   FLogger := nil;
   inherited;
-end;
-
-class function TShellBuildChoice.NormalizedDefines(const ADefines: TArray<string>): TArray<string>;
-var
-  mDefine: string;
-begin
-  Result := nil;
-  for mDefine in ADefines do
-  begin
-    if (Trim(mDefine) <> '') and (IndexText(Trim(mDefine), Result) < 0) then
-    begin
-      Result := Result + [UpperCase(Trim(mDefine))];
-    end;
-  end;
 end;
 
 function TShellBuildChoice.TakeRestore(const AConfig, APlatform: string): Boolean;
@@ -237,6 +225,20 @@ begin
     Result := (FConfig <> '') or (FPlatform <> '');
   finally
     TMonitor.Exit(FLock);
+  end;
+end;
+
+class function TShellBuildChoice.NormalizedDefines(const ADefines: TArray<string>): TArray<string>;
+var
+  mDefine: string;
+begin
+  Result := nil;
+  for mDefine in ADefines do
+  begin
+    if (Trim(mDefine) <> '') and (IndexText(Trim(mDefine), Result) < 0) then
+    begin
+      Result := Result + [UpperCase(Trim(mDefine))];
+    end;
   end;
 end;
 

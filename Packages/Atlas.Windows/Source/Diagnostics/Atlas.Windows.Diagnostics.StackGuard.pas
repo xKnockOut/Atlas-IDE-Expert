@@ -32,6 +32,22 @@ var
   ResetFunction: TResetStackOverflow;
   Looked: Boolean;
 
+{ TWindowsStackGuard }
+
+class procedure TWindowsStackGuard.Install;
+begin
+  TStackGuard.Restore :=
+    procedure
+    begin
+      ResetGuardPage;
+    end;
+end;
+
+class procedure TWindowsStackGuard.Uninstall;
+begin
+  TStackGuard.Restore := nil;
+end;
+
 class function TWindowsStackGuard.ResetGuardPage: Boolean;
 var
   mModule: HMODULE;
@@ -46,20 +62,6 @@ begin
     Looked := True;
   end;
   Result := Assigned(ResetFunction) and (ResetFunction() <> 0);
-end;
-
-class procedure TWindowsStackGuard.Install;
-begin
-  TStackGuard.Restore :=
-    procedure
-    begin
-      ResetGuardPage;
-    end;
-end;
-
-class procedure TWindowsStackGuard.Uninstall;
-begin
-  TStackGuard.Restore := nil;
 end;
 
 end.

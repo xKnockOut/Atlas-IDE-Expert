@@ -173,31 +173,24 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeTestStatusField.Wanted: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.TestRun and TAtlasIdeSettings.Current.EditorStatusBar and
-    TAtlasIdeSettings.Current.EditorStatusBarTests;
-end;
-
-procedure TAtlasIdeTestStatusField.ApplySettings;
-begin
-  FTimer.Enabled := Wanted;
-  if FTimer.Enabled then
-  begin
-    // Neue Texte (Sprache) und Einstellungen sofort.
-    FShown := '';
-    FResolvedFor := '';
-    Refresh;
-  end
-  else
-  begin
-    Clear;
-  end;
-end;
-
 procedure TAtlasIdeTestStatusField.Tick(Sender: TObject);
 begin
   TAtlasGuard.Run(TAtlasFeature.Build, Refresh);
+end;
+
+procedure TAtlasIdeTestStatusField.Refresh;
+var
+  mInput: TAtlasTestStatusInput;
+begin
+  ResolveProject;
+  if FProject = '' then
+  begin
+    Clear;
+    Exit;
+  end;
+  mInput := FExplorer.StatusInput(FProject);
+  mInput.Project := ChangeFileExt(ExtractFileName(FProject), '');
+  Show(TAtlasTestStatusField.Build(mInput, Texts));
 end;
 
 procedure TAtlasIdeTestStatusField.ResolveProject;
@@ -231,21 +224,6 @@ begin
   begin
     FProject := mFound[0].FileName;
   end;
-end;
-
-procedure TAtlasIdeTestStatusField.Refresh;
-var
-  mInput: TAtlasTestStatusInput;
-begin
-  ResolveProject;
-  if FProject = '' then
-  begin
-    Clear;
-    Exit;
-  end;
-  mInput := FExplorer.StatusInput(FProject);
-  mInput.Project := ChangeFileExt(ExtractFileName(FProject), '');
-  Show(TAtlasTestStatusField.Build(mInput, Texts));
 end;
 
 procedure TAtlasIdeTestStatusField.Show(const AStatus: TAtlasTestStatus);
@@ -351,6 +329,28 @@ begin
   end;
   // Die Testunit des ersten Fehlschlags bestimmt das Testprojekt wie bei der Testlinse.
   FTests.RunTests(mFile, mNames, False);
+end;
+
+class function TAtlasIdeTestStatusField.Wanted: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.TestRun and TAtlasIdeSettings.Current.EditorStatusBar and
+    TAtlasIdeSettings.Current.EditorStatusBarTests;
+end;
+
+procedure TAtlasIdeTestStatusField.ApplySettings;
+begin
+  FTimer.Enabled := Wanted;
+  if FTimer.Enabled then
+  begin
+    // Neue Texte (Sprache) und Einstellungen sofort.
+    FShown := '';
+    FResolvedFor := '';
+    Refresh;
+  end
+  else
+  begin
+    Clear;
+  end;
 end;
 
 end.

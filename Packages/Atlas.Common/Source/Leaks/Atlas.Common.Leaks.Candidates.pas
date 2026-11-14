@@ -109,6 +109,8 @@ begin
   end;
 end;
 
+{ TLeakCandidates }
+
 class function TLeakCandidates.InFile(const AFile: TLeakSourceFile;
   const AClassNames: TArray<string>): TArray<TLeakCandidate>;
 var

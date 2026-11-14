@@ -277,20 +277,6 @@ end;
 
 { TAtlasAsyncSites }
 
-class function TAtlasAsyncSites.KindName(AKind: TAtlasAsyncKind): string;
-var
-  mCall: TCallName;
-begin
-  for mCall in cCalls do
-  begin
-    if mCall.Kind = AKind then
-    begin
-      Exit(mCall.Owner + '.' + mCall.Method);
-    end;
-  end;
-  Result := '';
-end;
-
 class function TAtlasAsyncSites.Find(const AFileName, AText: string): TAtlasAsyncSiteList;
 var
   mCode, mOwner, mMethod: string;
@@ -348,6 +334,20 @@ begin
       Result := mIndex;
     end;
   end;
+end;
+
+class function TAtlasAsyncSites.KindName(AKind: TAtlasAsyncKind): string;
+var
+  mCall: TCallName;
+begin
+  for mCall in cCalls do
+  begin
+    if mCall.Kind = AKind then
+    begin
+      Exit(mCall.Owner + '.' + mCall.Method);
+    end;
+  end;
+  Result := '';
 end;
 
 class function TAtlasAsyncSites.SiteOnLine(const ASites: TAtlasAsyncSiteList; const AFileName: string;

@@ -122,6 +122,36 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasEditorMetricsSource.Fetch;
+begin
+  FPoll.AskAsync(FSession(), FRun, TAtlasFeature.CodeLens,
+    TAtlasLensRequest.Create(cMetricsCommand, FPoll.UriArguments, cTimeoutMs), cRetryMs, Answer());
+end;
+
+function TAtlasEditorMetricsSource.Answer: TProc<TJSONValue>;
+begin
+  Result :=
+    procedure(AAnswer: TJSONValue)
+    begin
+      Take(AAnswer);
+    end;
+end;
+
+/// <summary>Stärkster Bedarf aller Leser.</summary>
+class function TAtlasEditorMetricsSource.Demand: TAtlasMetricsDemand;
+var
+  mClient: TClient;
+begin
+  Result := TAtlasMetricsDemand.None;
+  for mClient in FClients do
+  begin
+    if mClient.Demand > Result then
+    begin
+      Result := mClient.Demand;
+    end;
+  end;
+end;
+
 class function TAtlasEditorMetricsSource.IndexOfClient(const AName: string): Integer;
 var
   mIndex: Integer;
@@ -154,33 +184,6 @@ begin
   end;
 end;
 
-/// <summary>Stärkster Bedarf aller Leser.</summary>
-class function TAtlasEditorMetricsSource.Demand: TAtlasMetricsDemand;
-var
-  mClient: TClient;
-begin
-  Result := TAtlasMetricsDemand.None;
-  for mClient in FClients do
-  begin
-    if mClient.Demand > Result then
-    begin
-      Result := mClient.Demand;
-    end;
-  end;
-end;
-
-class function TAtlasEditorMetricsSource.Fetched(out AFileName: string; out AMetrics: TAtlasFileMetrics): Boolean;
-begin
-  AFileName := '';
-  AMetrics := Default(TAtlasFileMetrics);
-  Result := (FCurrent <> nil) and (FCurrent.FPoll.FetchedFile <> '');
-  if Result then
-  begin
-    AFileName := FCurrent.FPoll.FetchedFile;
-    AMetrics := FCurrent.FMetrics;
-  end;
-end;
-
 class function TAtlasEditorMetricsSource.Latest(const AFileName: string; out AMetrics: TAtlasFileMetrics): Boolean;
 var
   mFileName: string;
@@ -190,11 +193,6 @@ begin
   begin
     AMetrics := Default(TAtlasFileMetrics);
   end;
-end;
-
-class function TAtlasEditorMetricsSource.Version: Cardinal;
-begin
-  Result := FVersion;
 end;
 
 /// <summary>Holen nur mit Bedarf eines Lesers, mit metrics und ohne gesperrte Code Lens.</summary>
@@ -222,25 +220,6 @@ begin
   end;
 end;
 
-procedure TAtlasEditorMetricsSource.Clear;
-begin
-  // Auch ohne geholten Stand: Eine ausstehende Antwort gilt nicht mehr (bei gesperrter Code Lens käme sie nie an).
-  FPoll.Asked.Drop;
-  if FPoll.FetchedFile = '' then
-  begin
-    Exit;
-  end;
-  FMetrics := Default(TAtlasFileMetrics);
-  FMetrics.Methods := nil;
-  FPoll.Forget;
-  Inc(FVersion);
-  // Gezeigte Werte verschwinden (metrics aus, Code Lens gesperrt).
-  if Demand = TAtlasMetricsDemand.Paint then
-  begin
-    InvalidateEditor;
-  end;
-end;
-
 procedure TAtlasEditorMetricsSource.Tick(Sender: TObject);
 var
   mView: IOTAEditView;
@@ -263,21 +242,6 @@ begin
   end;
 end;
 
-procedure TAtlasEditorMetricsSource.Fetch;
-begin
-  FPoll.AskAsync(FSession(), FRun, TAtlasFeature.CodeLens,
-    TAtlasLensRequest.Create(cMetricsCommand, FPoll.UriArguments, cTimeoutMs), cRetryMs, Answer());
-end;
-
-function TAtlasEditorMetricsSource.Answer: TProc<TJSONValue>;
-begin
-  Result :=
-    procedure(AAnswer: TJSONValue)
-    begin
-      Take(AAnswer);
-    end;
-end;
-
 procedure TAtlasEditorMetricsSource.Take(AAnswer: TJSONValue);
 begin
   // Den Wert gibt der Manager frei.
@@ -292,6 +256,42 @@ begin
   begin
     InvalidateEditor;
   end;
+end;
+
+procedure TAtlasEditorMetricsSource.Clear;
+begin
+  // Auch ohne geholten Stand: Eine ausstehende Antwort gilt nicht mehr (bei gesperrter Code Lens käme sie nie an).
+  FPoll.Asked.Drop;
+  if FPoll.FetchedFile = '' then
+  begin
+    Exit;
+  end;
+  FMetrics := Default(TAtlasFileMetrics);
+  FMetrics.Methods := nil;
+  FPoll.Forget;
+  Inc(FVersion);
+  // Gezeigte Werte verschwinden (metrics aus, Code Lens gesperrt).
+  if Demand = TAtlasMetricsDemand.Paint then
+  begin
+    InvalidateEditor;
+  end;
+end;
+
+class function TAtlasEditorMetricsSource.Fetched(out AFileName: string; out AMetrics: TAtlasFileMetrics): Boolean;
+begin
+  AFileName := '';
+  AMetrics := Default(TAtlasFileMetrics);
+  Result := (FCurrent <> nil) and (FCurrent.FPoll.FetchedFile <> '');
+  if Result then
+  begin
+    AFileName := FCurrent.FPoll.FetchedFile;
+    AMetrics := FCurrent.FMetrics;
+  end;
+end;
+
+class function TAtlasEditorMetricsSource.Version: Cardinal;
+begin
+  Result := FVersion;
 end;
 
 end.

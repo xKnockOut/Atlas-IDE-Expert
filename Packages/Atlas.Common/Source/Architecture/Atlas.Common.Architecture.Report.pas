@@ -458,148 +458,6 @@ end;
 
 { TArchitectureReport }
 
-class function TArchitectureReport.AlignedText(const AOverview: TArchitectureOverview): string;
-begin
-  Result := '';
-  if not AOverview.IsAligned then
-  begin
-    Exit;
-  end;
-  Result := cTexts[TArchitectureReportText.SubsystemsAlignedWithTheState].Fmt([FormatDateTime('yyyy-mm-dd hh:nn',
-    AOverview.AlignedAt,
-    TFormatSettings.Invariant)]);
-  if AOverview.AlignedSource = TArchitectureAnalyzer.cAlignedBaseline then
-  begin
-    Result := Result + 'architecture.baseline';
-  end
-  else
-  begin
-    Result := Result + cTexts[TArchitectureReportText.LastCalculatedState].Text;
-  end;
-  if AOverview.AlignedKept = 1 then
-  begin
-    Result := Result + cTexts[TArchitectureReportText.SubsystemKeepsColorAnd].Text;
-  end
-  else
-  begin
-    Result := Result + cTexts[TArchitectureReportText.SubsystemsKeepColorAndName].Fmt([
-      IntToStr(AOverview.AlignedKept)]);
-  end;
-end;
-
-class function TArchitectureReport.GroupingExplanation(const AGrouping: TArchitectureGrouping): string;
-var
-  mGrouping: TArchitectureGrouping;
-  mSplit: string;
-begin
-  mGrouping := AGrouping.Clamped;
-  Result := cTexts[TArchitectureReportText.AtlasFormsTheSubsystemsFrom].Fmt([
-    IntToStr(TArchitectureAnalyzer.cInterfaceWeight), IntToStr(TArchitectureAnalyzer.cImplementationWeight),
-    IntToStr(TArchitectureAnalyzer.cClosePercent)]);
-  Result := Result + cTexts[TArchitectureReportText.SettingsResolution].Text +
-    TArchitectureGrouping.ResolutionText(mGrouping.Resolution);
-  mSplit := '';
-  if mGrouping.MaxShare > 0 then
-  begin
-    mSplit := cTexts[TArchitectureReportText.FromPercentOfAllUnits].Fmt([IntToStr(Round(mGrouping.MaxShare * 100))]);
-  end;
-  if mGrouping.MinCohesion > 0 then
-  begin
-    if mSplit <> '' then
-    begin
-      mSplit := mSplit + cTexts[TArchitectureReportText.OrText].Text;
-    end;
-    mSplit := mSplit + cTexts[TArchitectureReportText.BelowCohesionFromUnits].Fmt([
-      TArchitectureGrouping.ResolutionText(mGrouping.MinCohesion), IntToStr(TArchitectureGrouping.cLooseMinUnits)]);
-  end;
-  if mSplit = '' then
-  begin
-    Result := Result + cTexts[TArchitectureReportText.DoNotSplit].Text;
-  end
-  else
-  begin
-    Result := Result + cTexts[TArchitectureReportText.Split].Text + mSplit;
-  end;
-  case mGrouping.Foundations of
-    TArchitectureFoundations.Group:
-      Result := Result + cTexts[TArchitectureReportText.FoundationsGroupedToo].Text;
-    TArchitectureFoundations.Attach:
-      Result := Result + cTexts[TArchitectureReportText.FoundationsAttached].Text;
-  else
-    Result := Result + cTexts[TArchitectureReportText.FoundationsSeparateEdgesThereDo].Text;
-  end;
-  Result := Result + '.';
-end;
-
-class function TArchitectureReport.CloseText(const AOverview: TArchitectureOverview;
-  const AAssignment: TOverviewAssignment): string;
-var
-  mRival: string;
-begin
-  if not AAssignment.Close then
-  begin
-    Exit('');
-  end;
-  mRival := SubsystemName(AOverview, AAssignment.Rows[AAssignment.Rival].Subsystem);
-  if AAssignment.Missing = 1 then
-  begin
-    Result := mRival + cTexts[TArchitectureReportText.ReachesOf1EdgeShort].Fmt([IntToStr(AAssignment.RivalSum),
-      IntToStr(AAssignment.OwnSum)]);
-  end
-  else if AAssignment.Missing > 1 then
-  begin
-    Result := mRival + cTexts[TArchitectureReportText.ReachesOfEdgesShortOf].Fmt([IntToStr(AAssignment.RivalSum),
-      IntToStr(AAssignment.OwnSum), IntToStr(AAssignment.Missing)]);
-  end
-  else
-  begin
-    Result := mRival + cTexts[TArchitectureReportText.AlreadyHasWeightedEdgesIts].Fmt([IntToStr(AAssignment.RivalSum),
-      IntToStr(AAssignment.OwnSum)]);
-  end;
-end;
-
-class function TArchitectureReport.AssignmentText(const AOverview: TArchitectureOverview; AUnit: Integer): string;
-var
-  mAssignment: TOverviewAssignment;
-  mIndex: Integer;
-  mRow: TOverviewAssignmentRow;
-  mLine: string;
-begin
-  Result := '';
-  if not AOverview.ShowsAssignment then
-  begin
-    Exit;
-  end;
-  mAssignment := AOverview.Assignment(AUnit);
-  if mAssignment.Own < 0 then
-  begin
-    Exit;
-  end;
-  Result := cTexts[TArchitectureReportText.AssignmentEdgesPerSubsystemInterface].Fmt([
-    IntToStr(TArchitectureAnalyzer.cInterfaceWeight), IntToStr(TArchitectureAnalyzer.cImplementationWeight),
-    cLineBreak]) + cLineBreak;
-  for mIndex := 0 to High(mAssignment.Rows) do
-  begin
-    mRow := mAssignment.Rows[mIndex];
-    mLine := '  ' + SubsystemName(AOverview, mRow.Subsystem);
-    if mIndex = mAssignment.Own then
-    begin
-      mLine := mLine + cTexts[TArchitectureReportText.Own].Text;
-    end;
-    mLine := mLine + ' | ' + IntToStr(mRow.Interfaces) + ' | ' + IntToStr(mRow.Implementations) + ' | ' +
-      IntToStr(mRow.Sum);
-    if not mRow.Counts then
-    begin
-      mLine := mLine + cTexts[TArchitectureReportText.DoesNotCount].Text;
-    end;
-    Result := Result + mLine + cLineBreak;
-  end;
-  if mAssignment.Close then
-  begin
-    Result := Result + cTexts[TArchitectureReportText.Narrow].Text + CloseText(AOverview, mAssignment) + cLineBreak;
-  end;
-end;
-
 class function TArchitectureReport.SectionName(ASection: TArchitectureSection): string;
 begin
   case ASection of
@@ -634,6 +492,55 @@ begin
     end;
   end;
   Result := False;
+end;
+
+class function TArchitectureReport.Json(const AOverview: TArchitectureOverview;
+  const ALayout: TArchitectureLayout): string;
+begin
+  Result := JsonWith(AOverview, ALayout, '');
+end;
+
+class function TArchitectureReport.Json(const AOverview: TArchitectureOverview; const ALayout: TArchitectureLayout;
+  const AComparison: TArchitectureComparison; AFailOn: TArchitectureFailKinds): string;
+begin
+  Result := JsonWith(AOverview, ALayout, ',' + cLineBreak + '"comparison":' + TArchitectureComparer.Json(AComparison,
+    AFailOn));
+end;
+
+class function TArchitectureReport.Markdown(const AOverview: TArchitectureOverview): string;
+begin
+  Result := MarkdownWith(AOverview, False);
+end;
+
+class function TArchitectureReport.Markdown(const AOverview: TArchitectureOverview;
+  const AComparison: TArchitectureComparison): string;
+begin
+  Result := MarkdownWith(AOverview, True) + cLineBreak + TArchitectureComparer.Markdown(AComparison);
+end;
+
+class function TArchitectureReport.EdgeText(const AOverview: TArchitectureOverview; const AEdge: TOverviewEdge): string;
+var
+  mLocation: string;
+begin
+  Result := AOverview.Units[AEdge.Source].Name + ' → ' + AOverview.Units[AEdge.Target].Name + ' (' +
+    SectionCaption(IsInterface(AEdge));
+  mLocation := LocationText(AOverview, AEdge);
+  if mLocation <> '' then
+  begin
+    Result := Result + ', ' + mLocation;
+  end;
+  Result := Result + ')';
+end;
+
+class function TArchitectureReport.LocationText(const AOverview: TArchitectureOverview;
+  const AEdge: TOverviewEdge): string;
+begin
+  if not AEdge.Located then
+  begin
+    Exit('');
+  end;
+  Result := AOverview.RelativePath(AEdge.Location.FileName) + ':' + IntToStr(AEdge.Location.Range.StartPos.Line + 1) +
+    ':' + IntToStr(AEdge.Location.Range.StartPos.Character + 1);
 end;
 
 class function TArchitectureReport.SectionCaption(AInterface: Boolean): string;
@@ -700,31 +607,6 @@ begin
   end;
 end;
 
-class function TArchitectureReport.LocationText(const AOverview: TArchitectureOverview;
-  const AEdge: TOverviewEdge): string;
-begin
-  if not AEdge.Located then
-  begin
-    Exit('');
-  end;
-  Result := AOverview.RelativePath(AEdge.Location.FileName) + ':' + IntToStr(AEdge.Location.Range.StartPos.Line + 1) +
-    ':' + IntToStr(AEdge.Location.Range.StartPos.Character + 1);
-end;
-
-class function TArchitectureReport.EdgeText(const AOverview: TArchitectureOverview; const AEdge: TOverviewEdge): string;
-var
-  mLocation: string;
-begin
-  Result := AOverview.Units[AEdge.Source].Name + ' → ' + AOverview.Units[AEdge.Target].Name + ' (' +
-    SectionCaption(IsInterface(AEdge));
-  mLocation := LocationText(AOverview, AEdge);
-  if mLocation <> '' then
-  begin
-    Result := Result + ', ' + mLocation;
-  end;
-  Result := Result + ')';
-end;
-
 /// <summary>"assignment" und "close" einer Unit (#1368, siehe Kopf der Unit).</summary>
 procedure AppendAssignment(ABuilder: TStringBuilder; const AAssignment: TOverviewAssignment);
 var
@@ -766,17 +648,77 @@ begin
   end;
 end;
 
-class function TArchitectureReport.Json(const AOverview: TArchitectureOverview;
-  const ALayout: TArchitectureLayout): string;
+class function TArchitectureReport.GroupingExplanation(const AGrouping: TArchitectureGrouping): string;
+var
+  mGrouping: TArchitectureGrouping;
+  mSplit: string;
 begin
-  Result := JsonWith(AOverview, ALayout, '');
+  mGrouping := AGrouping.Clamped;
+  Result := cTexts[TArchitectureReportText.AtlasFormsTheSubsystemsFrom].Fmt([
+    IntToStr(TArchitectureAnalyzer.cInterfaceWeight), IntToStr(TArchitectureAnalyzer.cImplementationWeight),
+    IntToStr(TArchitectureAnalyzer.cClosePercent)]);
+  Result := Result + cTexts[TArchitectureReportText.SettingsResolution].Text +
+    TArchitectureGrouping.ResolutionText(mGrouping.Resolution);
+  mSplit := '';
+  if mGrouping.MaxShare > 0 then
+  begin
+    mSplit := cTexts[TArchitectureReportText.FromPercentOfAllUnits].Fmt([IntToStr(Round(mGrouping.MaxShare * 100))]);
+  end;
+  if mGrouping.MinCohesion > 0 then
+  begin
+    if mSplit <> '' then
+    begin
+      mSplit := mSplit + cTexts[TArchitectureReportText.OrText].Text;
+    end;
+    mSplit := mSplit + cTexts[TArchitectureReportText.BelowCohesionFromUnits].Fmt([
+      TArchitectureGrouping.ResolutionText(mGrouping.MinCohesion), IntToStr(TArchitectureGrouping.cLooseMinUnits)]);
+  end;
+  if mSplit = '' then
+  begin
+    Result := Result + cTexts[TArchitectureReportText.DoNotSplit].Text;
+  end
+  else
+  begin
+    Result := Result + cTexts[TArchitectureReportText.Split].Text + mSplit;
+  end;
+  case mGrouping.Foundations of
+    TArchitectureFoundations.Group:
+      Result := Result + cTexts[TArchitectureReportText.FoundationsGroupedToo].Text;
+    TArchitectureFoundations.Attach:
+      Result := Result + cTexts[TArchitectureReportText.FoundationsAttached].Text;
+  else
+    Result := Result + cTexts[TArchitectureReportText.FoundationsSeparateEdgesThereDo].Text;
+  end;
+  Result := Result + '.';
 end;
 
-class function TArchitectureReport.Json(const AOverview: TArchitectureOverview; const ALayout: TArchitectureLayout;
-  const AComparison: TArchitectureComparison; AFailOn: TArchitectureFailKinds): string;
+class function TArchitectureReport.AlignedText(const AOverview: TArchitectureOverview): string;
 begin
-  Result := JsonWith(AOverview, ALayout, ',' + cLineBreak + '"comparison":' + TArchitectureComparer.Json(AComparison,
-    AFailOn));
+  Result := '';
+  if not AOverview.IsAligned then
+  begin
+    Exit;
+  end;
+  Result := cTexts[TArchitectureReportText.SubsystemsAlignedWithTheState].Fmt([FormatDateTime('yyyy-mm-dd hh:nn',
+    AOverview.AlignedAt,
+    TFormatSettings.Invariant)]);
+  if AOverview.AlignedSource = TArchitectureAnalyzer.cAlignedBaseline then
+  begin
+    Result := Result + 'architecture.baseline';
+  end
+  else
+  begin
+    Result := Result + cTexts[TArchitectureReportText.LastCalculatedState].Text;
+  end;
+  if AOverview.AlignedKept = 1 then
+  begin
+    Result := Result + cTexts[TArchitectureReportText.SubsystemKeepsColorAnd].Text;
+  end
+  else
+  begin
+    Result := Result + cTexts[TArchitectureReportText.SubsystemsKeepColorAndName].Fmt([
+      IntToStr(AOverview.AlignedKept)]);
+  end;
 end;
 
 /// <summary>Komma vor jedem Listeneintrag außer dem ersten.</summary>
@@ -1010,6 +952,75 @@ begin
   ABuilder.Append(']');
 end;
 
+class function TArchitectureReport.CloseText(const AOverview: TArchitectureOverview;
+  const AAssignment: TOverviewAssignment): string;
+var
+  mRival: string;
+begin
+  if not AAssignment.Close then
+  begin
+    Exit('');
+  end;
+  mRival := SubsystemName(AOverview, AAssignment.Rows[AAssignment.Rival].Subsystem);
+  if AAssignment.Missing = 1 then
+  begin
+    Result := mRival + cTexts[TArchitectureReportText.ReachesOf1EdgeShort].Fmt([IntToStr(AAssignment.RivalSum),
+      IntToStr(AAssignment.OwnSum)]);
+  end
+  else if AAssignment.Missing > 1 then
+  begin
+    Result := mRival + cTexts[TArchitectureReportText.ReachesOfEdgesShortOf].Fmt([IntToStr(AAssignment.RivalSum),
+      IntToStr(AAssignment.OwnSum), IntToStr(AAssignment.Missing)]);
+  end
+  else
+  begin
+    Result := mRival + cTexts[TArchitectureReportText.AlreadyHasWeightedEdgesIts].Fmt([IntToStr(AAssignment.RivalSum),
+      IntToStr(AAssignment.OwnSum)]);
+  end;
+end;
+
+class function TArchitectureReport.AssignmentText(const AOverview: TArchitectureOverview; AUnit: Integer): string;
+var
+  mAssignment: TOverviewAssignment;
+  mIndex: Integer;
+  mRow: TOverviewAssignmentRow;
+  mLine: string;
+begin
+  Result := '';
+  if not AOverview.ShowsAssignment then
+  begin
+    Exit;
+  end;
+  mAssignment := AOverview.Assignment(AUnit);
+  if mAssignment.Own < 0 then
+  begin
+    Exit;
+  end;
+  Result := cTexts[TArchitectureReportText.AssignmentEdgesPerSubsystemInterface].Fmt([
+    IntToStr(TArchitectureAnalyzer.cInterfaceWeight), IntToStr(TArchitectureAnalyzer.cImplementationWeight),
+    cLineBreak]) + cLineBreak;
+  for mIndex := 0 to High(mAssignment.Rows) do
+  begin
+    mRow := mAssignment.Rows[mIndex];
+    mLine := '  ' + SubsystemName(AOverview, mRow.Subsystem);
+    if mIndex = mAssignment.Own then
+    begin
+      mLine := mLine + cTexts[TArchitectureReportText.Own].Text;
+    end;
+    mLine := mLine + ' | ' + IntToStr(mRow.Interfaces) + ' | ' + IntToStr(mRow.Implementations) + ' | ' +
+      IntToStr(mRow.Sum);
+    if not mRow.Counts then
+    begin
+      mLine := mLine + cTexts[TArchitectureReportText.DoesNotCount].Text;
+    end;
+    Result := Result + mLine + cLineBreak;
+  end;
+  if mAssignment.Close then
+  begin
+    Result := Result + cTexts[TArchitectureReportText.Narrow].Text + CloseText(AOverview, mAssignment) + cLineBreak;
+  end;
+end;
+
 /// <summary>Daten der Übersicht; AExtra steht vor der schließenden Klammer (z. B. ',"comparison":…').</summary>
 class function TArchitectureReport.JsonWith(const AOverview: TArchitectureOverview; const ALayout: TArchitectureLayout;
   const AExtra: string): string;
@@ -1030,17 +1041,6 @@ begin
   finally
     mBuilder.Free;
   end;
-end;
-
-class function TArchitectureReport.Markdown(const AOverview: TArchitectureOverview): string;
-begin
-  Result := MarkdownWith(AOverview, False);
-end;
-
-class function TArchitectureReport.Markdown(const AOverview: TArchitectureOverview;
-  const AComparison: TArchitectureComparison): string;
-begin
-  Result := MarkdownWith(AOverview, True) + cLineBreak + TArchitectureComparer.Markdown(AComparison);
 end;
 
 /// <summary>Liste der knapp zugeordneten Units eines Teilsystems (#1368); nichts ohne solche.</summary>

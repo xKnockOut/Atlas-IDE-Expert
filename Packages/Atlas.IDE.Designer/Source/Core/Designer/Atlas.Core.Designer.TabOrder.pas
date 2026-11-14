@@ -299,20 +299,6 @@ begin
   end;
 end;
 
-class function TAtlasTabOrder.IndexOf(const AStops: TArray<TAtlasTabStop>; const AName: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(AStops) do
-  begin
-    if SameText(AStops[mIndex].Name, AName) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
 class function TAtlasTabOrder.Paths(const AStops: TArray<TAtlasTabStop>): TArray<string>;
 var
   mIndex, mParent, mGuard: Integer;
@@ -351,6 +337,19 @@ begin
   end;
 end;
 
+class function TAtlasTabOrder.GroupOf(const AStops: TArray<TAtlasTabStop>; const AGroups: TArray<Integer>;
+  AIndex: Integer): Integer;
+var
+  mParent: Integer;
+begin
+  mParent := IndexOf(AStops, AStops[AIndex].ParentName);
+  Result := -1;
+  if mParent >= 0 then
+  begin
+    Result := AGroups[mParent];
+  end;
+end;
+
 type
   /// <summary>Vergabe der Farbgruppen: von oben nach unten, je Elternelement in Tab-Reihenfolge.</summary>
   TAtlasTabGroupWalk = record
@@ -365,6 +364,8 @@ type
     function Take(AParent, APrevious: Integer): Integer;
     procedure Visit(const AParentName: string; AParentGroup, ADepth: Integer);
   end;
+
+{ TAtlasTabGroupWalk }
 
 function TAtlasTabGroupWalk.Take(AParent, APrevious: Integer): Integer;
 var
@@ -448,19 +449,6 @@ begin
   Result := mWalk.Groups;
 end;
 
-class function TAtlasTabOrder.GroupOf(const AStops: TArray<TAtlasTabStop>; const AGroups: TArray<Integer>;
-  AIndex: Integer): Integer;
-var
-  mParent: Integer;
-begin
-  mParent := IndexOf(AStops, AStops[AIndex].ParentName);
-  Result := -1;
-  if mParent >= 0 then
-  begin
-    Result := AGroups[mParent];
-  end;
-end;
-
 class function TAtlasTabOrder.ReadingOrder(const AStops: TArray<TAtlasTabStop>;
   ARightToLeft: Boolean): TArray<Integer>;
 var
@@ -526,6 +514,20 @@ begin
   begin
     Result := Result + [TAtlasTabAssignment.Create(mTarget[mOrder[mIndex]].Name, mTarget[mOrder[mIndex]].TabOrder)];
   end;
+end;
+
+class function TAtlasTabOrder.IndexOf(const AStops: TArray<TAtlasTabStop>; const AName: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AStops) do
+  begin
+    if SameText(AStops[mIndex].Name, AName) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
 end;
 
 function NumberOf(const AObject: TAtlasFormObject; const APath: string): Integer;

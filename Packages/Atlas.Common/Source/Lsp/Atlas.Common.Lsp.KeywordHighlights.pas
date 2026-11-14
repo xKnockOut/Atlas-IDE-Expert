@@ -134,14 +134,27 @@ begin
   FGroupOf.AddOrSetValue(AToken, AGroup);
 end;
 
-function TGroups.GroupTokens(AToken: Integer; out ATokens: TArray<Integer>): Boolean;
-var
-  mGroup: Integer;
+procedure TGroups.AddDirective(const AName: string; AToken: Integer; AConditions, ARegions: TStack<Integer>);
 begin
-  Result := FGroupOf.TryGetValue(AToken, mGroup);
-  if Result then
+  if MatchText(AName, ['IF', 'IFDEF', 'IFNDEF', 'IFOPT']) then
   begin
-    ATokens := FGroups[mGroup].ToArray;
+    AConditions.Push(NewGroup(AToken));
+  end
+  else if MatchText(AName, ['ELSEIF', 'ELSE']) and (AConditions.Count > 0) then
+  begin
+    AddTo(AConditions.Peek, AToken);
+  end
+  else if MatchText(AName, ['ENDIF', 'IFEND']) and (AConditions.Count > 0) then
+  begin
+    AddTo(AConditions.Pop, AToken);
+  end
+  else if AName = 'REGION' then
+  begin
+    ARegions.Push(NewGroup(AToken));
+  end
+  else if (AName = 'ENDREGION') and (ARegions.Count > 0) then
+  begin
+    AddTo(ARegions.Pop, AToken);
   end;
 end;
 
@@ -428,30 +441,6 @@ begin
   end;
 end;
 
-procedure TGroups.AddDirective(const AName: string; AToken: Integer; AConditions, ARegions: TStack<Integer>);
-begin
-  if MatchText(AName, ['IF', 'IFDEF', 'IFNDEF', 'IFOPT']) then
-  begin
-    AConditions.Push(NewGroup(AToken));
-  end
-  else if MatchText(AName, ['ELSEIF', 'ELSE']) and (AConditions.Count > 0) then
-  begin
-    AddTo(AConditions.Peek, AToken);
-  end
-  else if MatchText(AName, ['ENDIF', 'IFEND']) and (AConditions.Count > 0) then
-  begin
-    AddTo(AConditions.Pop, AToken);
-  end
-  else if AName = 'REGION' then
-  begin
-    ARegions.Push(NewGroup(AToken));
-  end
-  else if (AName = 'ENDREGION') and (ARegions.Count > 0) then
-  begin
-    AddTo(ARegions.Pop, AToken);
-  end;
-end;
-
 procedure TGroups.BuildDirectives;
 var
   mConditions, mRegions: TStack<Integer>;
@@ -470,6 +459,17 @@ begin
   finally
     mRegions.Free;
     mConditions.Free;
+  end;
+end;
+
+function TGroups.GroupTokens(AToken: Integer; out ATokens: TArray<Integer>): Boolean;
+var
+  mGroup: Integer;
+begin
+  Result := FGroupOf.TryGetValue(AToken, mGroup);
+  if Result then
+  begin
+    ATokens := FGroups[mGroup].ToArray;
   end;
 end;
 
@@ -701,6 +701,8 @@ const
   cLoops = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
     TSyntaxKind.RepeatStatement];
   cRoutines = [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod];
+
+{ TKeywordQuery }
 
 function TKeywordQuery.Token: TPascalToken;
 begin

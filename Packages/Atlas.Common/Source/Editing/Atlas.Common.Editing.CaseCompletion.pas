@@ -391,6 +391,8 @@ type
     function EditRange: TTextRange;
   end;
 
+{ TLabelScan }
+
 function TLabelScan.CheckTopLevel(AIndex: Integer; out AStop: Boolean): Boolean;
 begin
   Result := True;

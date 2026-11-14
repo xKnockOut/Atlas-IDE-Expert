@@ -203,6 +203,26 @@ begin
   end;
 end;
 
+function TLspEventHandlers.Execute(const AArguments: TJSONArray): TJSONValue;
+var
+  mFileName: string;
+  mSource: TLspMetricsSource;
+  mHandlers: TArray<TEventHandler>;
+  mUnresolved: Integer;
+begin
+  mFileName := '';
+  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+  begin
+    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+  end;
+  if not (Assigned(FSourceFor) and FSourceFor(mFileName, True, mSource)) then
+  begin
+    mSource := Default(TLspMetricsSource);
+  end;
+  mHandlers := Collect(mSource.Files, mUnresolved);
+  Result := TJSONObject.ParseJSONValue(ToJson(mHandlers, mUnresolved));
+end;
+
 function TLspEventHandlers.Collect(const AFiles: TArray<string>; out AUnresolved: Integer): TArray<TEventHandler>;
 var
   mFileName, mText: string;
@@ -272,26 +292,6 @@ begin
   finally
     mRoot.Free;
   end;
-end;
-
-function TLspEventHandlers.Execute(const AArguments: TJSONArray): TJSONValue;
-var
-  mFileName: string;
-  mSource: TLspMetricsSource;
-  mHandlers: TArray<TEventHandler>;
-  mUnresolved: Integer;
-begin
-  mFileName := '';
-  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
-  begin
-    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
-  end;
-  if not (Assigned(FSourceFor) and FSourceFor(mFileName, True, mSource)) then
-  begin
-    mSource := Default(TLspMetricsSource);
-  end;
-  mHandlers := Collect(mSource.Files, mUnresolved);
-  Result := TJSONObject.ParseJSONValue(ToJson(mHandlers, mUnresolved));
 end;
 
 end.

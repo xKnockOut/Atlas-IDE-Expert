@@ -539,6 +539,25 @@ end;
 
 { TUnusedLocalCheck }
 
+procedure TUnusedLocalCheck.CheckRoutine(ARoutine: TSyntaxNode);
+var
+  mDecl: TSyntaxNode;
+  mInlineVars: TArray<TSyntaxNode>;
+begin
+  // Lokale Routinen gehören dazu: sie dürfen Variablen der äußeren verwenden.
+  CollectRoutineUses(ARoutine, [TSyntaxKind.Block, TSyntaxKind.RoutineDecl]);
+  for mDecl in VarDecls(ARoutine) do
+  begin
+    CheckDecl(mDecl.Parent, mDecl);
+  end;
+  mInlineVars := nil;
+  CollectInlineVars(FInfo.Block, mInlineVars);
+  for mDecl in mInlineVars do
+  begin
+    CheckDecl(nil, mDecl);
+  end;
+end;
+
 procedure TUnusedLocalCheck.CheckDecl(ASection, ADecl: TSyntaxNode);
 var
   mName, mMessage: string;
@@ -561,25 +580,6 @@ begin
     begin
       FReport.Add(NameRange(FContext, ADecl, mName), mMessage, mConfidence);
     end;
-  end;
-end;
-
-procedure TUnusedLocalCheck.CheckRoutine(ARoutine: TSyntaxNode);
-var
-  mDecl: TSyntaxNode;
-  mInlineVars: TArray<TSyntaxNode>;
-begin
-  // Lokale Routinen gehören dazu: sie dürfen Variablen der äußeren verwenden.
-  CollectRoutineUses(ARoutine, [TSyntaxKind.Block, TSyntaxKind.RoutineDecl]);
-  for mDecl in VarDecls(ARoutine) do
-  begin
-    CheckDecl(mDecl.Parent, mDecl);
-  end;
-  mInlineVars := nil;
-  CollectInlineVars(FInfo.Block, mInlineVars);
-  for mDecl in mInlineVars do
-  begin
-    CheckDecl(nil, mDecl);
   end;
 end;
 
@@ -692,6 +692,48 @@ begin
   inherited Destroy;
 end;
 
+procedure TUnusedParameterCheck.CheckRoutine(ARoutine: TSyntaxNode);
+var
+  mHeader, mParams: TSyntaxNode;
+  mIndex: Integer;
+begin
+  if not RoutineParameters(ARoutine, mHeader, mParams) or HasSenderParameter(mParams) or
+    SignatureGiven(ARoutine) then
+  begin
+    Exit;
+  end;
+  CollectRoutineUses(ARoutine, [TSyntaxKind.Block, TSyntaxKind.RoutineDecl, TSyntaxKind.VarSection]);
+  for mIndex := 0 to mParams.ChildCount - 1 do
+  begin
+    if mParams[mIndex].Kind = TSyntaxKind.Parameter then
+    begin
+      CheckParameter(mHeader, mParams[mIndex]);
+    end;
+  end;
+end;
+
+procedure TUnusedParameterCheck.CheckParameter(AHeader, AParam: TSyntaxNode);
+var
+  mName: string;
+  mConfidence: TRuleConfidence;
+begin
+  for mName in SplitNames(AParam.Name) do
+  begin
+    if IsIgnored(mName, FPatterns) or not IsUnused(FContext, FInfo, FUses, mName, AHeader.EndOffset,
+      mConfidence) then
+    begin
+      Continue;
+    end;
+    // Parameter sind unsicherer als Variablen: die Signatur kann von außen vorgegeben sein.
+    if mConfidence = TRuleConfidence.High then
+    begin
+      mConfidence := TRuleConfidence.Medium;
+    end;
+    FReport.Add(NameRange(FContext, AParam, mName), cTexts[TUnusedText.ParamUnused].Fmt([mName]),
+      mConfidence);
+  end;
+end;
+
 function TUnusedParameterCheck.UsedAsValue(const AName: string): Boolean;
 begin
   if FValueNames = nil then
@@ -702,11 +744,33 @@ begin
   Result := FValueNames.ContainsKey(LowerCase(AName));
 end;
 
+/// <summary>Ist die Signatur von außen vorgegeben oder wird die Routine als Wert verwendet?</summary>
+function TUnusedParameterCheck.SignatureGiven(ARoutine: TSyntaxNode): Boolean;
+var
+  mIsMethod: Boolean;
+begin
+  mIsMethod := Pos('.', ARoutine.Name) > 0;
+  Result := (mIsMethod and (MethodSignatureFixed(FContext.Tree.Root, ARoutine.Name) or
+    ImplicitlyPublished(ARoutine.Name) or FormHandler(ShortName(ARoutine.Name)))) or
+    UsedAsValue(ShortName(ARoutine.Name));
+end;
+
 /// <summary>Weist die Formulardatei die Routine einem Ereignis zu (OnBeforePost = DataSet1BeforePost)?</summary>
 function TUnusedParameterCheck.FormHandler(const AName: string): Boolean;
 begin
   Result := (FContext.FormText <> '') and TRegEx.IsMatch(FContext.FormText, '=\s*' + AName + '\b',
     [roIgnoreCase]);
+end;
+
+/// <summary>Steht die Methode ohne Sichtbarkeitsangabe in einer Klasse mit RTTI für published? Dort ist sie
+/// published: Der Formulardesigner legt Ereignis-Handler so an.</summary>
+function TUnusedParameterCheck.ImplicitlyPublished(const AQualifiedName: string): Boolean;
+var
+  mBody: TSyntaxNode;
+begin
+  mBody := FindTypeBody(FContext.Tree.Root, MethodTypeName(AQualifiedName));
+  Result := (mBody <> nil) and (mBody.Kind = TSyntaxKind.ClassType) and
+    InDefaultSection(mBody, ShortName(AQualifiedName)) and ClassHasTypeInfo(mBody, 0);
 end;
 
 /// <summary>Wird die Klasse mit RTTI für published übersetzt ({$M+} bei der Deklaration oder ein so übersetzter
@@ -748,70 +812,6 @@ begin
     Exit(FTypeInfo.HasTypeInfo(mAncestor));
   end;
   Result := False;
-end;
-
-/// <summary>Steht die Methode ohne Sichtbarkeitsangabe in einer Klasse mit RTTI für published? Dort ist sie
-/// published: Der Formulardesigner legt Ereignis-Handler so an.</summary>
-function TUnusedParameterCheck.ImplicitlyPublished(const AQualifiedName: string): Boolean;
-var
-  mBody: TSyntaxNode;
-begin
-  mBody := FindTypeBody(FContext.Tree.Root, MethodTypeName(AQualifiedName));
-  Result := (mBody <> nil) and (mBody.Kind = TSyntaxKind.ClassType) and
-    InDefaultSection(mBody, ShortName(AQualifiedName)) and ClassHasTypeInfo(mBody, 0);
-end;
-
-/// <summary>Ist die Signatur von außen vorgegeben oder wird die Routine als Wert verwendet?</summary>
-function TUnusedParameterCheck.SignatureGiven(ARoutine: TSyntaxNode): Boolean;
-var
-  mIsMethod: Boolean;
-begin
-  mIsMethod := Pos('.', ARoutine.Name) > 0;
-  Result := (mIsMethod and (MethodSignatureFixed(FContext.Tree.Root, ARoutine.Name) or
-    ImplicitlyPublished(ARoutine.Name) or FormHandler(ShortName(ARoutine.Name)))) or
-    UsedAsValue(ShortName(ARoutine.Name));
-end;
-
-procedure TUnusedParameterCheck.CheckParameter(AHeader, AParam: TSyntaxNode);
-var
-  mName: string;
-  mConfidence: TRuleConfidence;
-begin
-  for mName in SplitNames(AParam.Name) do
-  begin
-    if IsIgnored(mName, FPatterns) or not IsUnused(FContext, FInfo, FUses, mName, AHeader.EndOffset,
-      mConfidence) then
-    begin
-      Continue;
-    end;
-    // Parameter sind unsicherer als Variablen: die Signatur kann von außen vorgegeben sein.
-    if mConfidence = TRuleConfidence.High then
-    begin
-      mConfidence := TRuleConfidence.Medium;
-    end;
-    FReport.Add(NameRange(FContext, AParam, mName), cTexts[TUnusedText.ParamUnused].Fmt([mName]),
-      mConfidence);
-  end;
-end;
-
-procedure TUnusedParameterCheck.CheckRoutine(ARoutine: TSyntaxNode);
-var
-  mHeader, mParams: TSyntaxNode;
-  mIndex: Integer;
-begin
-  if not RoutineParameters(ARoutine, mHeader, mParams) or HasSenderParameter(mParams) or
-    SignatureGiven(ARoutine) then
-  begin
-    Exit;
-  end;
-  CollectRoutineUses(ARoutine, [TSyntaxKind.Block, TSyntaxKind.RoutineDecl, TSyntaxKind.VarSection]);
-  for mIndex := 0 to mParams.ChildCount - 1 do
-  begin
-    if mParams[mIndex].Kind = TSyntaxKind.Parameter then
-    begin
-      CheckParameter(mHeader, mParams[mIndex]);
-    end;
-  end;
 end;
 
 procedure TUnusedParameterRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -978,6 +978,8 @@ type
     destructor Destroy; override;
     procedure Run;
   end;
+
+{ TUnusedAssignmentCheck }
 
 constructor TUnusedAssignmentCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin

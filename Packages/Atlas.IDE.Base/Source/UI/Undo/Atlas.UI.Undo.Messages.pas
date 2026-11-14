@@ -93,6 +93,8 @@ begin
   end;
 end;
 
+{ TAtlasUndoMessages }
+
 class function TAtlasUndoMessages.Report(const AReport: TAtlasUndoReport): TArray<string>;
 var
   mProblem: TAtlasUndoProblem;
@@ -109,18 +111,6 @@ begin
   for mProblem in mProblems do
   begin
     Result := Result + [ProblemLine(mProblem)];
-  end;
-end;
-
-class function TAtlasUndoMessages.StateText(AState: TAtlasChangeSetState): string;
-begin
-  case AState of
-    TAtlasChangeSetState.PartlyUndone:
-      Result := TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStatePartly);
-    TAtlasChangeSetState.Undone:
-      Result := TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStateUndone);
-  else
-    Result := TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStateApplied);
   end;
 end;
 
@@ -158,6 +148,18 @@ begin
   if AChange.Undone then
   begin
     Result := Result + ' · ' + TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStateUndone);
+  end;
+end;
+
+class function TAtlasUndoMessages.StateText(AState: TAtlasChangeSetState): string;
+begin
+  case AState of
+    TAtlasChangeSetState.PartlyUndone:
+      Result := TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStatePartly);
+    TAtlasChangeSetState.Undone:
+      Result := TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStateUndone);
+  else
+    Result := TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStateApplied);
   end;
 end;
 

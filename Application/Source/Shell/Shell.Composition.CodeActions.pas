@@ -131,6 +131,8 @@ begin
     end;
 end;
 
+{ TShellCodeActions }
+
 constructor TShellCodeActions.Create(const AServices: TShellCodeActionServices);
 begin
   inherited Create;
@@ -159,13 +161,6 @@ begin
   FreeAndNil(FDocumentLinks);
   FreeAndNil(FColors);
   inherited Destroy;
-end;
-
-procedure TShellCodeActions.Attach(ADispatcher: TJsonRpcDispatcher);
-begin
-  FCodeActions.Attach(ADispatcher);
-  FDocumentLinks.Attach(ADispatcher);
-  FColors.Attach(ADispatcher);
 end;
 
 function TShellCodeActions.ClassActionContextOf(const AUri: string): TClassActionContext;
@@ -214,6 +209,13 @@ begin
   begin
     Result := TFormModel.ForeignModulesOf(mText);
   end;
+end;
+
+procedure TShellCodeActions.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  FCodeActions.Attach(ADispatcher);
+  FDocumentLinks.Attach(ADispatcher);
+  FColors.Attach(ADispatcher);
 end;
 
 function TShellCodeActions.UsesContextOf(const AUri: string; out AContext: TUsesContext): Boolean;

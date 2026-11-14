@@ -107,6 +107,8 @@ begin
   Result := False;
 end;
 
+{ TAtlasIdeRoleUnit }
+
 class procedure TAtlasIdeRoleUnit.Execute;
 var
   mProject: IOTAProject;

@@ -56,6 +56,8 @@ const
     (De: 'Tabellen nachziehen'; En: 'Update tables'),
     (De: 'Überladung anlegen'; En: 'Create overload'));
 
+{ TShellTypeRefactorings }
+
 procedure TShellTypeRefactorings.Register(ACommands: TLspCommands);
 begin
   ACommands.Register(TLspTypeAlias.cApplyCommand, TypeAlias);

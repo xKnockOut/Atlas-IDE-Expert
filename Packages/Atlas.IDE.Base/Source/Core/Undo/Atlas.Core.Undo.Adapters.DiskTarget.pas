@@ -38,6 +38,8 @@ uses
   System.IOUtils,
   Atlas.Core.Files.EncodingDefault;
 
+{ TAtlasUndoDiskTarget }
+
 function TAtlasUndoDiskTarget.Read(const AFileName: string; out AContent: TAtlasTextFileContent): Boolean;
 begin
   AContent := Default(TAtlasTextFileContent);

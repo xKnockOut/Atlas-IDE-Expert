@@ -116,6 +116,8 @@ begin
   end;
 end;
 
+{ TAtlasAnalysisMetricsLens }
+
 constructor TAtlasAnalysisMetricsLens.Create;
 var
   mServices: INTACodeEditorServices;
@@ -152,25 +154,48 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasAnalysisMetricsLens.ApplySettings;
-var
-  mWanted: Boolean;
+/// <summary>Werte neu lesen, wenn der Abruf einen neuen Stand hat.</summary>
+procedure TAtlasAnalysisMetricsLens.Refresh;
 begin
-  mWanted := Wanted(TAtlasIdeSettings.Current);
-  if mWanted = FWanted then
+  if FVersion = TAtlasEditorMetricsSource.Version then
   begin
     Exit;
   end;
-  FWanted := mWanted;
-  if mWanted then
+  FVersion := TAtlasEditorMetricsSource.Version;
+  if not TAtlasEditorMetricsSource.Fetched(FFileName, FMetrics) then
   begin
-    TAtlasEditorMetricsSource.Want(cClient, TAtlasMetricsDemand.Paint);
-  end
-  else
-  begin
-    TAtlasEditorMetricsSource.Want(cClient, TAtlasMetricsDemand.None);
+    FFileName := '';
   end;
-  InvalidateEditor;
+  FFormats := Formats;
+  FStructureFormats := StructureFormats;
+end;
+
+function TAtlasAnalysisMetricsLens.Showing: Boolean;
+begin
+  Result := FWanted and (FFileName <> '') and FMetrics.Enabled and
+    ((Length(FMetrics.Methods) > 0) or (Length(FMetrics.Structures) > 0));
+end;
+
+procedure TAtlasAnalysisMetricsLens.PaintPill(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
+  const ALine, AName, AText: string; AOver: Boolean);
+var
+  mTailKey: string;
+  mCell, mPill: TRect;
+  mBack, mTone: TAtlasColor;
+begin
+  mCell := TAtlasLensPill.CellAfter(AContext, ALine);
+  mTailKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
+  mBack := TAtlasLensPill.BackAt(AContext.Canvas, mCell.Left, ARect.Top + 1);
+  mTone := TAtlasColors.ForBackground(mBack).Muted;
+  if AOver then
+  begin
+    mTone := TAtlasColors.ForBackground(mBack).Warn;
+  end;
+  mPill := TAtlasLensPill.Paint(AContext.Canvas, ARect, TAtlasLineTail.Start(Self, mTailKey, mCell.Left), AText,
+    TAtlasLensPillStyle.Create(mTone, mBack, 0.3, 0.1, []));
+  TAtlasLineTail.Finish(Self, mTailKey, mPill.Right);
+  TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensMetrics, AContext.FileName,
+    AContext.LogicalLineNum - 1, AName), mPill, AContext.EditView.TopRow, ARect.Height);
 end;
 
 class function TAtlasAnalysisMetricsLens.Formats: TAtlasMetricFormats;
@@ -192,28 +217,6 @@ begin
   Result[TAtlasStructureMetric.UsesCount] := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.MetricsLensUses);
   Result[TAtlasStructureMetric.InheritanceDepth] :=
     TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.MetricsLensInheritance);
-end;
-
-/// <summary>Werte neu lesen, wenn der Abruf einen neuen Stand hat.</summary>
-procedure TAtlasAnalysisMetricsLens.Refresh;
-begin
-  if FVersion = TAtlasEditorMetricsSource.Version then
-  begin
-    Exit;
-  end;
-  FVersion := TAtlasEditorMetricsSource.Version;
-  if not TAtlasEditorMetricsSource.Fetched(FFileName, FMetrics) then
-  begin
-    FFileName := '';
-  end;
-  FFormats := Formats;
-  FStructureFormats := StructureFormats;
-end;
-
-function TAtlasAnalysisMetricsLens.Showing: Boolean;
-begin
-  Result := FWanted and (FFileName <> '') and FMetrics.Enabled and
-    ((Length(FMetrics.Methods) > 0) or (Length(FMetrics.Structures) > 0));
 end;
 
 /// <summary>Lens der Methode, deren Kopf in Zeile ALine steht; False ohne.</summary>
@@ -266,28 +269,6 @@ begin
   end;
 end;
 
-procedure TAtlasAnalysisMetricsLens.PaintPill(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
-  const ALine, AName, AText: string; AOver: Boolean);
-var
-  mTailKey: string;
-  mCell, mPill: TRect;
-  mBack, mTone: TAtlasColor;
-begin
-  mCell := TAtlasLensPill.CellAfter(AContext, ALine);
-  mTailKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
-  mBack := TAtlasLensPill.BackAt(AContext.Canvas, mCell.Left, ARect.Top + 1);
-  mTone := TAtlasColors.ForBackground(mBack).Muted;
-  if AOver then
-  begin
-    mTone := TAtlasColors.ForBackground(mBack).Warn;
-  end;
-  mPill := TAtlasLensPill.Paint(AContext.Canvas, ARect, TAtlasLineTail.Start(Self, mTailKey, mCell.Left), AText,
-    TAtlasLensPillStyle.Create(mTone, mBack, 0.3, 0.1, []));
-  TAtlasLineTail.Finish(Self, mTailKey, mPill.Right);
-  TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensMetrics, AContext.FileName,
-    AContext.LogicalLineNum - 1, AName), mPill, AContext.EditView.TopRow, ARect.Height);
-end;
-
 procedure TAtlasAnalysisMetricsLens.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
@@ -315,6 +296,27 @@ begin
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.CodeLens, E);
   end;
+end;
+
+procedure TAtlasAnalysisMetricsLens.ApplySettings;
+var
+  mWanted: Boolean;
+begin
+  mWanted := Wanted(TAtlasIdeSettings.Current);
+  if mWanted = FWanted then
+  begin
+    Exit;
+  end;
+  FWanted := mWanted;
+  if mWanted then
+  begin
+    TAtlasEditorMetricsSource.Want(cClient, TAtlasMetricsDemand.Paint);
+  end
+  else
+  begin
+    TAtlasEditorMetricsSource.Want(cClient, TAtlasMetricsDemand.None);
+  end;
+  InvalidateEditor;
 end;
 
 end.

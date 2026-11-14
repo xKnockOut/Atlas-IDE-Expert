@@ -349,6 +349,8 @@ begin
   Result.Waiting := TJsonRead.Flag(mObject, 'waiting');
 end;
 
+{ TAtlasSetupServerStatus }
+
 class function TAtlasSetupServerStatus.Parse(const AJson: string): TAtlasSetupServerStatus;
 var
   mValue, mItem: TJSONValue;
@@ -446,33 +448,6 @@ end;
 
 { TAtlasSetupChecklist }
 
-class function TAtlasSetupChecklist.VersionsMatch(const AServer, APlugin: string): Boolean;
-
-  function Core(const AValue: string): string;
-  var
-    mPlus: Integer;
-  begin
-    Result := Trim(AValue);
-    if (Result <> '') and CharInSet(Result[1], ['v', 'V']) then
-    begin
-      Delete(Result, 1, 1);
-    end;
-    mPlus := Pos('+', Result);
-    if mPlus > 0 then
-    begin
-      Result := Copy(Result, 1, mPlus - 1);
-    end;
-  end;
-
-begin
-  Result := (Core(AServer) <> '') and SameText(Core(AServer), Core(APlugin));
-end;
-
-class function TAtlasSetupChecklist.ProjectName(const AProjectFile: string): string;
-begin
-  Result := ChangeFileExt(ExtractFileName(AProjectFile), '');
-end;
-
 class function TAtlasSetupChecklist.CheckServer(const AInput: TAtlasSetupInput): TAtlasSetupResult;
 const
   cC = TAtlasSetupCheck.Server;
@@ -539,6 +514,78 @@ begin
   end;
 end;
 
+class function TAtlasSetupChecklist.CheckLibraryCache(const AInput: TAtlasSetupInput): TAtlasSetupResult;
+const
+  cC = TAtlasSetupCheck.LibraryCache;
+var
+  mWorkspace: TAtlasSetupWorkspace;
+  mBytes: Int64;
+  mBuilding: Boolean;
+begin
+  if (AInput.Server.Phase <> TAtlasServerPhase.Running) or not AInput.Status.Known then
+  begin
+    Exit(Make(cC, TAtlasSetupFinding.LibraryUnknown, TAtlasStatusState.Yellow, TAtlasSetupFix.StartServer, True, nil));
+  end;
+  mBytes := 0;
+  mBuilding := AInput.Indexing;
+  for mWorkspace in AInput.Status.Workspaces do
+  begin
+    if mWorkspace.LibraryCacheBytes > mBytes then
+    begin
+      mBytes := mWorkspace.LibraryCacheBytes;
+    end;
+    if not mWorkspace.Done then
+    begin
+      mBuilding := True;
+    end;
+  end;
+  if mBytes > 0 then
+  begin
+    Result := Make(cC, TAtlasSetupFinding.LibraryReady, TAtlasStatusState.Green, TAtlasSetupFix.None, False,
+      [IntToStr(mBytes)]);
+  end
+  else if mBuilding or (Length(AInput.Status.Workspaces) = 0) then
+  begin
+    // Der Cache entsteht am Ende des ersten Indexlaufs.
+    Result := Make(cC, TAtlasSetupFinding.LibraryPending, TAtlasStatusState.Yellow, TAtlasSetupFix.Explain, True, nil);
+  end
+  else
+  begin
+    Result := Make(cC, TAtlasSetupFinding.LibraryMissing, TAtlasStatusState.Yellow, TAtlasSetupFix.BuildLibraryCache,
+      False, nil);
+  end;
+end;
+
+class function TAtlasSetupChecklist.CheckErrorInsight(const AInput: TAtlasSetupInput): TAtlasSetupResult;
+const
+  cC = TAtlasSetupCheck.ErrorInsight;
+begin
+  if AInput.ErrorInsightRestart then
+  begin
+    Result := Make(cC, TAtlasSetupFinding.ErrorInsightRestart, TAtlasStatusState.Yellow, TAtlasSetupFix.Explain, False,
+      nil);
+  end
+  else if AInput.ErrorInsight and AInput.AtlasProblems then
+  begin
+    Result := Make(cC, TAtlasSetupFinding.ErrorInsightDuplicate, TAtlasStatusState.Yellow,
+      TAtlasSetupFix.DisableErrorInsight, False, nil);
+  end
+  else if AInput.ErrorInsight then
+  begin
+    Result := Make(cC, TAtlasSetupFinding.ErrorInsightIde, TAtlasStatusState.Green, TAtlasSetupFix.None, False, nil);
+  end
+  else if AInput.AtlasProblems then
+  begin
+    Result := Make(cC, TAtlasSetupFinding.ErrorInsightAtlas, TAtlasStatusState.Green, TAtlasSetupFix.None, False, nil);
+  end
+  else
+  begin
+    // Weder die IDE noch Atlas zeigen Fehler im Editor.
+    Result := Make(cC, TAtlasSetupFinding.ErrorInsightNone, TAtlasStatusState.Yellow,
+      TAtlasSetupFix.EnableErrorInsight, False, nil);
+  end;
+end;
+
 function WorkspaceState(const AWorkspace: TAtlasSetupWorkspace): TAtlasSetupProjectState;
 begin
   // Ein neuer Aufbau (Rebuild, geänderte Units) läuft auch nach dem ersten fertigen Lauf (#2142).
@@ -591,6 +638,8 @@ type
     procedure Add(const AProject: TAtlasSetupProject);
     function Verdict(const AInput: TAtlasSetupInput): TAtlasSetupResult;
   end;
+
+{ TIndexTally }
 
 procedure TIndexTally.Add(const AProject: TAtlasSetupProject);
 begin
@@ -677,78 +726,6 @@ begin
   end;
   Result := mTally.Verdict(AInput);
   Result.Projects := mTally.Projects;
-end;
-
-class function TAtlasSetupChecklist.CheckLibraryCache(const AInput: TAtlasSetupInput): TAtlasSetupResult;
-const
-  cC = TAtlasSetupCheck.LibraryCache;
-var
-  mWorkspace: TAtlasSetupWorkspace;
-  mBytes: Int64;
-  mBuilding: Boolean;
-begin
-  if (AInput.Server.Phase <> TAtlasServerPhase.Running) or not AInput.Status.Known then
-  begin
-    Exit(Make(cC, TAtlasSetupFinding.LibraryUnknown, TAtlasStatusState.Yellow, TAtlasSetupFix.StartServer, True, nil));
-  end;
-  mBytes := 0;
-  mBuilding := AInput.Indexing;
-  for mWorkspace in AInput.Status.Workspaces do
-  begin
-    if mWorkspace.LibraryCacheBytes > mBytes then
-    begin
-      mBytes := mWorkspace.LibraryCacheBytes;
-    end;
-    if not mWorkspace.Done then
-    begin
-      mBuilding := True;
-    end;
-  end;
-  if mBytes > 0 then
-  begin
-    Result := Make(cC, TAtlasSetupFinding.LibraryReady, TAtlasStatusState.Green, TAtlasSetupFix.None, False,
-      [IntToStr(mBytes)]);
-  end
-  else if mBuilding or (Length(AInput.Status.Workspaces) = 0) then
-  begin
-    // Der Cache entsteht am Ende des ersten Indexlaufs.
-    Result := Make(cC, TAtlasSetupFinding.LibraryPending, TAtlasStatusState.Yellow, TAtlasSetupFix.Explain, True, nil);
-  end
-  else
-  begin
-    Result := Make(cC, TAtlasSetupFinding.LibraryMissing, TAtlasStatusState.Yellow, TAtlasSetupFix.BuildLibraryCache,
-      False, nil);
-  end;
-end;
-
-class function TAtlasSetupChecklist.CheckErrorInsight(const AInput: TAtlasSetupInput): TAtlasSetupResult;
-const
-  cC = TAtlasSetupCheck.ErrorInsight;
-begin
-  if AInput.ErrorInsightRestart then
-  begin
-    Result := Make(cC, TAtlasSetupFinding.ErrorInsightRestart, TAtlasStatusState.Yellow, TAtlasSetupFix.Explain, False,
-      nil);
-  end
-  else if AInput.ErrorInsight and AInput.AtlasProblems then
-  begin
-    Result := Make(cC, TAtlasSetupFinding.ErrorInsightDuplicate, TAtlasStatusState.Yellow,
-      TAtlasSetupFix.DisableErrorInsight, False, nil);
-  end
-  else if AInput.ErrorInsight then
-  begin
-    Result := Make(cC, TAtlasSetupFinding.ErrorInsightIde, TAtlasStatusState.Green, TAtlasSetupFix.None, False, nil);
-  end
-  else if AInput.AtlasProblems then
-  begin
-    Result := Make(cC, TAtlasSetupFinding.ErrorInsightAtlas, TAtlasStatusState.Green, TAtlasSetupFix.None, False, nil);
-  end
-  else
-  begin
-    // Weder die IDE noch Atlas zeigen Fehler im Editor.
-    Result := Make(cC, TAtlasSetupFinding.ErrorInsightNone, TAtlasStatusState.Yellow,
-      TAtlasSetupFix.EnableErrorInsight, False, nil);
-  end;
 end;
 
 class function TAtlasSetupChecklist.CheckKeys(const AInput: TAtlasSetupInput): TAtlasSetupResult;
@@ -853,6 +830,33 @@ begin
   begin
     Result := TAtlasSetupStartAction.Skip;
   end;
+end;
+
+class function TAtlasSetupChecklist.VersionsMatch(const AServer, APlugin: string): Boolean;
+
+  function Core(const AValue: string): string;
+  var
+    mPlus: Integer;
+  begin
+    Result := Trim(AValue);
+    if (Result <> '') and CharInSet(Result[1], ['v', 'V']) then
+    begin
+      Delete(Result, 1, 1);
+    end;
+    mPlus := Pos('+', Result);
+    if mPlus > 0 then
+    begin
+      Result := Copy(Result, 1, mPlus - 1);
+    end;
+  end;
+
+begin
+  Result := (Core(AServer) <> '') and SameText(Core(AServer), Core(APlugin));
+end;
+
+class function TAtlasSetupChecklist.ProjectName(const AProjectFile: string): string;
+begin
+  Result := ChangeFileExt(ExtractFileName(AProjectFile), '');
 end;
 
 class function TAtlasSetupChecklist.StateMark(AState: TAtlasStatusState): string;

@@ -670,6 +670,14 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasStatusField.THook.WndProc(var AMessage: TMessage);
+begin
+  if (Field = nil) or not Swallow(AMessage) then
+  begin
+    WndHook.CallOld(AMessage);
+  end;
+end;
+
 function TAtlasStatusField.THook.NewPanel(AStyle: TStatusPanelStyle): TFieldPanel;
 begin
   Result := TFieldPanel.Create(Bar.Panels);
@@ -718,56 +726,6 @@ begin
   begin
     Field.RequestRefresh;
   end;
-end;
-
-procedure TAtlasStatusField.THook.WndProc(var AMessage: TMessage);
-begin
-  if (Field = nil) or not Swallow(AMessage) then
-  begin
-    WndHook.CallOld(AMessage);
-  end;
-end;
-
-function TAtlasStatusField.THook.Swallow(var AMessage: TMessage): Boolean;
-var
-  mPosition: TPoint;
-  mContext: Boolean;
-begin
-  Result := False;
-  mContext := Assigned(Field.FEvents.OnContext);
-  case AMessage.Msg of
-    WM_LBUTTONDOWN:
-      // Ging das Loslassen nach einem Doppelklick verloren, gilt der nächste Klick wieder.
-      SkipUp := False;
-    WM_RBUTTONDOWN, WM_RBUTTONUP:
-      Result := mContext and TAtlasIdeSettings.Current.StatusTogglesOnRightClick and
-        PtInRect(PanelRect, SmallPointToPoint(TWMMouse(AMessage).Pos));
-    WM_LBUTTONDBLCLK:
-      Result := mContext and TAtlasIdeSettings.Current.StatusTogglesOnDoubleClick and
-        PtInRect(PanelRect, SmallPointToPoint(TWMMouse(AMessage).Pos));
-    WM_CONTEXTMENU:
-      // -1/-1 kommt von der Tastatur (Umschalt+F10): der IDE überlassen.
-      if (TWMContextMenu(AMessage).XPos <> -1) or (TWMContextMenu(AMessage).YPos <> -1) then
-      begin
-        mPosition := Bar.ScreenToClient(SmallPointToPoint(TWMContextMenu(AMessage).Pos));
-        Result := mContext and TAtlasIdeSettings.Current.StatusTogglesOnRightClick and
-          PtInRect(PanelRect, mPosition);
-      end;
-  end;
-  if not Result then
-  begin
-    Exit;
-  end;
-  // Über dem Feld weder die Standardbehandlung (erzeugt WM_CONTEXTMENU) noch die IDE.
-  if AMessage.Msg = WM_LBUTTONDBLCLK then
-  begin
-    SkipUp := True;
-  end;
-  if (AMessage.Msg = WM_RBUTTONUP) or (AMessage.Msg = WM_LBUTTONDBLCLK) then
-  begin
-    PostMessage(Field.FWnd, cWM_ATLAS_STATUS_CONTEXT, 0, LPARAM(Bar));
-  end;
-  AMessage.Result := 0;
 end;
 
 function TAtlasStatusField.THook.PanelRect(APanel: TStatusPanel): TRect;
@@ -970,37 +928,6 @@ begin
   end;
 end;
 
-function TAtlasStatusField.THook.Click(AZone, AX: Integer): Boolean;
-begin
-  Result := True;
-  // Klick auf die Plakette (#601): Liste der Benachrichtigungen statt Statusfenster.
-  if (AZone = 0) and (Field.FBadge.Count > 0) and Assigned(Field.FBadge.OnClick) and
-    (AX >= PanelRect.Right - BadgeWidth(Bar, Field.FBadge.Count)) then
-  begin
-    if Field.FWindow <> nil then
-    begin
-      Field.FWindow.Dismiss;
-    end;
-    RunClick(Field.FBadge.OnClick, ScreenCorner(PanelRect));
-  end
-  else if AZone = 0 then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Status,
-      procedure
-      begin
-        OpenWindow;
-      end);
-  end
-  else if (AZone > 0) and (AZone <= Length(Field.FExtras)) then
-  begin
-    RunClick(Field.FExtras[AZone - 1].OnClick, ScreenCorner(PanelRect(Extras[AZone - 1])));
-  end
-  else
-  begin
-    Result := False;
-  end;
-end;
-
 procedure TAtlasStatusField.THook.BarMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
   X, Y: Integer);
 begin
@@ -1058,6 +985,79 @@ begin
   begin
     OldMouseMove(Sender, Shift, X, Y);
   end;
+end;
+
+function TAtlasStatusField.THook.Click(AZone, AX: Integer): Boolean;
+begin
+  Result := True;
+  // Klick auf die Plakette (#601): Liste der Benachrichtigungen statt Statusfenster.
+  if (AZone = 0) and (Field.FBadge.Count > 0) and Assigned(Field.FBadge.OnClick) and
+    (AX >= PanelRect.Right - BadgeWidth(Bar, Field.FBadge.Count)) then
+  begin
+    if Field.FWindow <> nil then
+    begin
+      Field.FWindow.Dismiss;
+    end;
+    RunClick(Field.FBadge.OnClick, ScreenCorner(PanelRect));
+  end
+  else if AZone = 0 then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Status,
+      procedure
+      begin
+        OpenWindow;
+      end);
+  end
+  else if (AZone > 0) and (AZone <= Length(Field.FExtras)) then
+  begin
+    RunClick(Field.FExtras[AZone - 1].OnClick, ScreenCorner(PanelRect(Extras[AZone - 1])));
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+function TAtlasStatusField.THook.Swallow(var AMessage: TMessage): Boolean;
+var
+  mPosition: TPoint;
+  mContext: Boolean;
+begin
+  Result := False;
+  mContext := Assigned(Field.FEvents.OnContext);
+  case AMessage.Msg of
+    WM_LBUTTONDOWN:
+      // Ging das Loslassen nach einem Doppelklick verloren, gilt der nächste Klick wieder.
+      SkipUp := False;
+    WM_RBUTTONDOWN, WM_RBUTTONUP:
+      Result := mContext and TAtlasIdeSettings.Current.StatusTogglesOnRightClick and
+        PtInRect(PanelRect, SmallPointToPoint(TWMMouse(AMessage).Pos));
+    WM_LBUTTONDBLCLK:
+      Result := mContext and TAtlasIdeSettings.Current.StatusTogglesOnDoubleClick and
+        PtInRect(PanelRect, SmallPointToPoint(TWMMouse(AMessage).Pos));
+    WM_CONTEXTMENU:
+      // -1/-1 kommt von der Tastatur (Umschalt+F10): der IDE überlassen.
+      if (TWMContextMenu(AMessage).XPos <> -1) or (TWMContextMenu(AMessage).YPos <> -1) then
+      begin
+        mPosition := Bar.ScreenToClient(SmallPointToPoint(TWMContextMenu(AMessage).Pos));
+        Result := mContext and TAtlasIdeSettings.Current.StatusTogglesOnRightClick and
+          PtInRect(PanelRect, mPosition);
+      end;
+  end;
+  if not Result then
+  begin
+    Exit;
+  end;
+  // Über dem Feld weder die Standardbehandlung (erzeugt WM_CONTEXTMENU) noch die IDE.
+  if AMessage.Msg = WM_LBUTTONDBLCLK then
+  begin
+    SkipUp := True;
+  end;
+  if (AMessage.Msg = WM_RBUTTONUP) or (AMessage.Msg = WM_LBUTTONDBLCLK) then
+  begin
+    PostMessage(Field.FWnd, cWM_ATLAS_STATUS_CONTEXT, 0, LPARAM(Bar));
+  end;
+  AMessage.Result := 0;
 end;
 
 { TAtlasStatusField }
@@ -1120,12 +1120,30 @@ begin
   inherited;
 end;
 
-procedure TAtlasStatusField.RequestRefresh;
+procedure TAtlasStatusField.Notification(AComponent: TComponent; Operation: TOperation);
+var
+  mIndex: Integer;
 begin
-  // Nur eine Nachricht unterwegs; der Zeitgeber fasst alles in 250 ms zusammen.
-  if (FWnd <> 0) and (AtomicExchange(FPosted, 1) = 0) then
+  inherited;
+  if Operation <> opRemove then
   begin
-    PostMessage(FWnd, cWM_ATLAS_STATUS, 0, 0);
+    Exit;
+  end;
+  if AComponent = FWindow then
+  begin
+    FWindow := nil;
+  end;
+  if FHooks = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := FHooks.Count - 1 downto 0 do
+  begin
+    if FHooks[mIndex].Bar = AComponent then
+    begin
+      FHooks[mIndex].Field := nil;
+      FDead.Add(FHooks.Extract(FHooks[mIndex]));
+    end;
   end;
 end;
 
@@ -1168,31 +1186,111 @@ begin
   TAtlasGuard.Run(TAtlasFeature.Status, Refresh);
 end;
 
-procedure TAtlasStatusField.Notification(AComponent: TComponent; Operation: TOperation);
+procedure TAtlasStatusField.Refresh;
 var
-  mIndex: Integer;
+  mShown: Boolean;
+  mBar: TStatusBar;
+  mHook: THook;
 begin
-  inherited;
-  if Operation <> opRemove then
+  if Assigned(FEvents.OnRefresh) then
   begin
+    FEvents.OnRefresh();
+  end;
+  FShown := ShownState(FRegistry, FBadge);
+  if FWindow <> nil then
+  begin
+    FWindow.SetItems(FShown.Items);
+  end;
+  mShown := PanelShown;
+  // Ohne Atlas-Feld bleiben die Leisten nur für Zusatzfelder eingehängt (#575).
+  if not mShown and (Length(FExtras) = 0) then
+  begin
+    UnhookAll(Self);
     Exit;
   end;
-  if AComponent = FWindow then
+  // Neue Editorfenster bekommen hier ihr Feld.
+  for mBar in EditorBars(FHooks) do
   begin
-    FWindow := nil;
-  end;
-  if FHooks = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := FHooks.Count - 1 downto 0 do
-  begin
-    if FHooks[mIndex].Bar = AComponent then
+    HookBar(Self, mBar);
+    mHook := HookOf(FHooks, mBar);
+    if mHook <> nil then
     begin
-      FHooks[mIndex].Field := nil;
-      FDead.Add(FHooks.Extract(FHooks[mIndex]));
+      mHook.Layout(mShown);
     end;
   end;
+end;
+
+procedure TAtlasStatusField.RequestRefresh;
+begin
+  // Nur eine Nachricht unterwegs; der Zeitgeber fasst alles in 250 ms zusammen.
+  if (FWnd <> 0) and (AtomicExchange(FPosted, 1) = 0) then
+  begin
+    PostMessage(FWnd, cWM_ATLAS_STATUS, 0, 0);
+  end;
+end;
+
+function TAtlasStatusField.Anchor(out APoint: TPoint): Boolean;
+var
+  mHook: THook;
+  mArea: TRect;
+begin
+  APoint := Point(0, 0);
+  if Relocated then
+  begin
+    Result := Assigned(FEvents.OnRelocatedAnchor) and FEvents.OnRelocatedAnchor(APoint);
+    Exit;
+  end;
+  mHook := HookOf(FHooks, TopEditorBar);
+  Result := (mHook <> nil) and mHook.Bar.Visible;
+  if Result then
+  begin
+    mArea := mHook.PanelRect;
+    Result := not mArea.IsEmpty;
+  end;
+  if Result then
+  begin
+    APoint := mHook.ScreenCorner(mArea);
+  end;
+end;
+
+class function TAtlasStatusField.Relocated: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.EditorStatusBar and TAtlasStatusBarItems.Contains(TAtlasStatusBarItems.Parse(
+    mSettings.EditorStatusBarItems), TAtlasStatusBarItems.cStatus) and
+    not TAtlasGuard.Disabled(TAtlasFeature.StatusBar);
+end;
+
+procedure TAtlasStatusField.OpenWindowAt(const APoint: TPoint);
+begin
+  // Zweiter Klick schließt.
+  if FWindow <> nil then
+  begin
+    FWindow.Dismiss;
+    Exit;
+  end;
+  Refresh;
+  FWindow := TAtlasStatusWindow.CreateStatus(Application, TAtlasIdeStyle.Colors);
+  FWindow.FreeNotification(Self);
+  FWindow.OnOpenLog := FEvents.OnOpenLog;
+  FWindow.OnRestart := FEvents.OnRestart;
+  FWindow.SetItems(FShown.Items);
+  FWindow.ShowAbove(APoint);
+end;
+
+procedure TAtlasStatusField.ContextAt(const APoint: TPoint);
+begin
+  if not Assigned(FEvents.OnContext) then
+  begin
+    Exit;
+  end;
+  if FWindow <> nil then
+  begin
+    FWindow.Dismiss;
+  end;
+  FEvents.OnContext(APoint);
 end;
 
 procedure TAtlasStatusField.SetExtra(const AExtra: TAtlasStatusExtra);
@@ -1227,6 +1325,37 @@ begin
     end;
   end;
   RequestRefresh;
+end;
+
+procedure TAtlasStatusField.SetBadge(const ABadge: TAtlasStatusBadge);
+var
+  mCount: Integer;
+begin
+  mCount := ABadge.Count;
+  if mCount < 0 then
+  begin
+    mCount := 0;
+  end;
+  FBadge.OnClick := ABadge.OnClick;
+  // Unverändert: nicht neu zeichnen (die Zentrale meldet auch Änderungen ohne Wirkung auf die Plakette).
+  if (ABadge.Shown = FBadge.Shown) and (mCount = FBadge.Count) and (ABadge.State = FBadge.State) and
+    (ABadge.Hint = FBadge.Hint) then
+  begin
+    Exit;
+  end;
+  FBadge.Shown := ABadge.Shown;
+  FBadge.Count := mCount;
+  FBadge.State := ABadge.State;
+  FBadge.Hint := ABadge.Hint;
+  RequestRefresh;
+end;
+
+procedure TAtlasStatusField.ClickBadge(const APoint: TPoint);
+begin
+  if FBadge.Shown and Assigned(FBadge.OnClick) then
+  begin
+    FBadge.OnClick(APoint);
+  end;
 end;
 
 function TAtlasStatusField.ExtraItems: TArray<TAtlasStatusExtraItem>;
@@ -1266,135 +1395,6 @@ begin
     end;
     Exit;
   end;
-end;
-
-procedure TAtlasStatusField.ClickBadge(const APoint: TPoint);
-begin
-  if FBadge.Shown and Assigned(FBadge.OnClick) then
-  begin
-    FBadge.OnClick(APoint);
-  end;
-end;
-
-procedure TAtlasStatusField.SetBadge(const ABadge: TAtlasStatusBadge);
-var
-  mCount: Integer;
-begin
-  mCount := ABadge.Count;
-  if mCount < 0 then
-  begin
-    mCount := 0;
-  end;
-  FBadge.OnClick := ABadge.OnClick;
-  // Unverändert: nicht neu zeichnen (die Zentrale meldet auch Änderungen ohne Wirkung auf die Plakette).
-  if (ABadge.Shown = FBadge.Shown) and (mCount = FBadge.Count) and (ABadge.State = FBadge.State) and
-    (ABadge.Hint = FBadge.Hint) then
-  begin
-    Exit;
-  end;
-  FBadge.Shown := ABadge.Shown;
-  FBadge.Count := mCount;
-  FBadge.State := ABadge.State;
-  FBadge.Hint := ABadge.Hint;
-  RequestRefresh;
-end;
-
-procedure TAtlasStatusField.Refresh;
-var
-  mShown: Boolean;
-  mBar: TStatusBar;
-  mHook: THook;
-begin
-  if Assigned(FEvents.OnRefresh) then
-  begin
-    FEvents.OnRefresh();
-  end;
-  FShown := ShownState(FRegistry, FBadge);
-  if FWindow <> nil then
-  begin
-    FWindow.SetItems(FShown.Items);
-  end;
-  mShown := PanelShown;
-  // Ohne Atlas-Feld bleiben die Leisten nur für Zusatzfelder eingehängt (#575).
-  if not mShown and (Length(FExtras) = 0) then
-  begin
-    UnhookAll(Self);
-    Exit;
-  end;
-  // Neue Editorfenster bekommen hier ihr Feld.
-  for mBar in EditorBars(FHooks) do
-  begin
-    HookBar(Self, mBar);
-    mHook := HookOf(FHooks, mBar);
-    if mHook <> nil then
-    begin
-      mHook.Layout(mShown);
-    end;
-  end;
-end;
-
-class function TAtlasStatusField.Relocated: Boolean;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.EditorStatusBar and TAtlasStatusBarItems.Contains(TAtlasStatusBarItems.Parse(
-    mSettings.EditorStatusBarItems), TAtlasStatusBarItems.cStatus) and
-    not TAtlasGuard.Disabled(TAtlasFeature.StatusBar);
-end;
-
-function TAtlasStatusField.Anchor(out APoint: TPoint): Boolean;
-var
-  mHook: THook;
-  mArea: TRect;
-begin
-  APoint := Point(0, 0);
-  if Relocated then
-  begin
-    Result := Assigned(FEvents.OnRelocatedAnchor) and FEvents.OnRelocatedAnchor(APoint);
-    Exit;
-  end;
-  mHook := HookOf(FHooks, TopEditorBar);
-  Result := (mHook <> nil) and mHook.Bar.Visible;
-  if Result then
-  begin
-    mArea := mHook.PanelRect;
-    Result := not mArea.IsEmpty;
-  end;
-  if Result then
-  begin
-    APoint := mHook.ScreenCorner(mArea);
-  end;
-end;
-
-procedure TAtlasStatusField.OpenWindowAt(const APoint: TPoint);
-begin
-  // Zweiter Klick schließt.
-  if FWindow <> nil then
-  begin
-    FWindow.Dismiss;
-    Exit;
-  end;
-  Refresh;
-  FWindow := TAtlasStatusWindow.CreateStatus(Application, TAtlasIdeStyle.Colors);
-  FWindow.FreeNotification(Self);
-  FWindow.OnOpenLog := FEvents.OnOpenLog;
-  FWindow.OnRestart := FEvents.OnRestart;
-  FWindow.SetItems(FShown.Items);
-  FWindow.ShowAbove(APoint);
-end;
-
-procedure TAtlasStatusField.ContextAt(const APoint: TPoint);
-begin
-  if not Assigned(FEvents.OnContext) then
-  begin
-    Exit;
-  end;
-  if FWindow <> nil then
-  begin
-    FWindow.Dismiss;
-  end;
-  FEvents.OnContext(APoint);
 end;
 
 end.

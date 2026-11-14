@@ -50,6 +50,8 @@ implementation
 uses
   System.SysUtils;
 
+{ TIndexUsageCounts }
+
 constructor TIndexUsageCounts.Create;
 begin
   inherited Create;
@@ -64,6 +66,16 @@ begin
   FTotals.Free;
   FSlots.Free;
   inherited;
+end;
+
+procedure TIndexUsageCounts.Apply(const ACounts: TArray<TNameCount>; ASign: Integer);
+var
+  mEntry: TNameCount;
+begin
+  for mEntry in ACounts do
+  begin
+    FTotals[mEntry.Slot] := FTotals[mEntry.Slot] + ASign * mEntry.Count;
+  end;
 end;
 
 function TIndexUsageCounts.CountsOf(const AUnit: TUnitIndex): TArray<TNameCount>;
@@ -82,16 +94,6 @@ begin
     end;
     Result[mIndex].Slot := mSlot;
     Result[mIndex].Count := Length(AUnit.Usages[mIndex].Positions);
-  end;
-end;
-
-procedure TIndexUsageCounts.Apply(const ACounts: TArray<TNameCount>; ASign: Integer);
-var
-  mEntry: TNameCount;
-begin
-  for mEntry in ACounts do
-  begin
-    FTotals[mEntry.Slot] := FTotals[mEntry.Slot] + ASign * mEntry.Count;
   end;
 end;
 

@@ -77,6 +77,8 @@ begin
     (A.EndCharacter = B.EndCharacter);
 end;
 
+{ TAtlasCompletionSets }
+
 class function TAtlasCompletionSets.Active(const AItems: TAtlasCompletionItems): Boolean;
 var
   mItem: TAtlasCompletionItem;
@@ -128,6 +130,48 @@ begin
     end;
   end;
   Result := '[' + Result + ']';
+end;
+
+class function TAtlasCompletionSets.CommitItem(const AItems: TAtlasCompletionItems): TAtlasCompletionItem;
+var
+  mItem, mChosen: TAtlasCompletionItem;
+  mEdits: TArray<TAtlasTextEdit>;
+begin
+  Result := Default(TAtlasCompletionItem);
+  // Interface implementieren (#466): das getippte Wort weg, die Änderungen der angehakten Methoden dazu.
+  for mItem in AItems do
+  begin
+    if mItem.Batch then
+    begin
+      Result.Name := mItem.SetOf;
+      Result.Kind := TAtlasItemKind.Method;
+      // Erzeugt Code: die Zusatzänderungen gelten auch ohne automatische uses-Einträge.
+      Result.IsAction := True;
+      Result.HasTextEdit := True;
+      Result.TextEdit := mItem.SetRange;
+      Result.TextEdit.NewText := '';
+      mEdits := nil;
+      for mChosen in CheckedInOrder(AItems) do
+      begin
+        mEdits := mEdits + mChosen.AdditionalEdits;
+      end;
+      Result.AdditionalEdits := Merge(mEdits);
+      Exit;
+    end;
+  end;
+  Result.Name := Text(AItems);
+  Result.Kind := TAtlasItemKind.EnumMember;
+  Result.InsertText := Result.Name;
+  for mItem in AItems do
+  begin
+    if mItem.SetOf <> '' then
+    begin
+      Result.HasTextEdit := True;
+      Result.TextEdit := mItem.SetRange;
+      Result.TextEdit.NewText := Result.Name;
+      Break;
+    end;
+  end;
 end;
 
 class function TAtlasCompletionSets.Merge(const AEdits: TArray<TAtlasTextEdit>): TArray<TAtlasTextEdit>;
@@ -204,48 +248,6 @@ begin
     Result[mIndex].SetRange := mRange;
     mInsert.NewText := AItem.Assignments[mIndex].Text;
     Result[mIndex].AdditionalEdits := [mInsert];
-  end;
-end;
-
-class function TAtlasCompletionSets.CommitItem(const AItems: TAtlasCompletionItems): TAtlasCompletionItem;
-var
-  mItem, mChosen: TAtlasCompletionItem;
-  mEdits: TArray<TAtlasTextEdit>;
-begin
-  Result := Default(TAtlasCompletionItem);
-  // Interface implementieren (#466): das getippte Wort weg, die Änderungen der angehakten Methoden dazu.
-  for mItem in AItems do
-  begin
-    if mItem.Batch then
-    begin
-      Result.Name := mItem.SetOf;
-      Result.Kind := TAtlasItemKind.Method;
-      // Erzeugt Code: die Zusatzänderungen gelten auch ohne automatische uses-Einträge.
-      Result.IsAction := True;
-      Result.HasTextEdit := True;
-      Result.TextEdit := mItem.SetRange;
-      Result.TextEdit.NewText := '';
-      mEdits := nil;
-      for mChosen in CheckedInOrder(AItems) do
-      begin
-        mEdits := mEdits + mChosen.AdditionalEdits;
-      end;
-      Result.AdditionalEdits := Merge(mEdits);
-      Exit;
-    end;
-  end;
-  Result.Name := Text(AItems);
-  Result.Kind := TAtlasItemKind.EnumMember;
-  Result.InsertText := Result.Name;
-  for mItem in AItems do
-  begin
-    if mItem.SetOf <> '' then
-    begin
-      Result.HasTextEdit := True;
-      Result.TextEdit := mItem.SetRange;
-      Result.TextEdit.NewText := Result.Name;
-      Break;
-    end;
   end;
 end;
 

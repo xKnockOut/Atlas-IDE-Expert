@@ -175,22 +175,22 @@ begin
   end;
 end;
 
+procedure TIndexProcessEntry.Update(const AEvent: string);
+begin
+  TMonitor.Enter(FLock);
+  try
+    Update(FInfo.State, FInfo.Writer, AEvent);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
 procedure TIndexProcessEntry.SetClient(const AClient: string);
 begin
   TMonitor.Enter(FLock);
   try
     FInfo.Client := AClient;
     Save;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
-procedure TIndexProcessEntry.Update(const AEvent: string);
-begin
-  TMonitor.Enter(FLock);
-  try
-    Update(FInfo.State, FInfo.Writer, AEvent);
   finally
     TMonitor.Exit(FLock);
   end;

@@ -35,6 +35,8 @@ uses
   System.SysUtils,
   Atlas.Core.Settings.ToolbarItems;
 
+{ TAtlasToolbarIcons }
+
 class function TAtlasToolbarIcons.IconOf(const AId: string): TAtlasToolbarIcon;
 const
   cIds: array[0..18] of string = (TAtlasToolbarItems.cGotoInterface, TAtlasToolbarItems.cGotoImplementation,

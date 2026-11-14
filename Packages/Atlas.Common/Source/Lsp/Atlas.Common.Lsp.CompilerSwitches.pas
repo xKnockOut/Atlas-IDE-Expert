@@ -129,6 +129,33 @@ begin
   FContextFor := AContextFor;
 end;
 
+function TLspCompilerSwitches.Handle(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mUri: string;
+  mPositionValue: TJSONValue;
+  mDocument: ITextDocument;
+  mContext: TCompilerSwitchContext;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TCompilerSwitchesText.FieldsTextDocumentUriAndPosition].Text + cMethod);
+  end;
+  if not FStore.TryGet(mUri, mDocument) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  mContext := Default(TCompilerSwitchContext);
+  if Assigned(FContextFor) then
+  begin
+    mContext := FContextFor(mUri);
+  end;
+  ACancellation.ThrowIfCancellationRequested;
+  Result := ToJson(StateAt(mDocument.Text, TLspPositions.ReadPosition(mPositionValue), mContext), mContext);
+end;
+
 procedure TLspCompilerSwitches.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
@@ -164,33 +191,6 @@ end;
 class function TLspCompilerSwitches.EntryToJson(const AEntry: TSwitchEntry): TJSONObject;
 begin
   Result := EntryJson(AEntry, True);
-end;
-
-function TLspCompilerSwitches.Handle(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mUri: string;
-  mPositionValue: TJSONValue;
-  mDocument: ITextDocument;
-  mContext: TCompilerSwitchContext;
-begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TCompilerSwitchesText.FieldsTextDocumentUriAndPosition].Text + cMethod);
-  end;
-  if not FStore.TryGet(mUri, mDocument) then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  mContext := Default(TCompilerSwitchContext);
-  if Assigned(FContextFor) then
-  begin
-    mContext := FContextFor(mUri);
-  end;
-  ACancellation.ThrowIfCancellationRequested;
-  Result := ToJson(StateAt(mDocument.Text, TLspPositions.ReadPosition(mPositionValue), mContext), mContext);
 end;
 
 initialization

@@ -245,6 +245,8 @@ begin
   Result := Result and not ((TAtlasBreakpointFilter.NotEffective in AFilters) and not ARow.NotEffective);
 end;
 
+{ TAtlasBreakpointView }
+
 class function TAtlasBreakpointView.Matches(const ARow: TAtlasBreakpointRow; const ASearch: string;
   AFilters: TAtlasBreakpointFilters): Boolean;
 begin

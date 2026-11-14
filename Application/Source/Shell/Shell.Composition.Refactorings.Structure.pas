@@ -161,6 +161,8 @@ begin
     end;
 end;
 
+{ TShellStructureRefactorings }
+
 procedure TShellStructureRefactorings.Register(ACommands: TLspCommands);
 begin
   ACommands.Register(TLspChangeSignature.cPrepareCommand, ChangeSignaturePrepare);

@@ -263,25 +263,6 @@ begin
   end;
 end;
 
-procedure TBlockPlacing.MarkAll;
-var
-  mIndex, mPrevious: Integer;
-begin
-  mPrevious := -1;
-  for mIndex := 0 to High(FTokens) do
-  begin
-    if not IsCode(FTokens[mIndex]) then
-    begin
-      Continue;
-    end;
-    if mPrevious >= 0 then
-    begin
-      Mark(mPrevious, mIndex);
-    end;
-    mPrevious := mIndex;
-  end;
-end;
-
 function TBlockPlacing.PartIndent(const AIndent: string; const ASplit: TSplit): string;
 begin
   Result := AIndent;
@@ -322,6 +303,25 @@ begin
   end;
   mItem.Text := PartIndent(mIndent, FSplits[ALine][High(FSplits[ALine])]) + TrimLeft(Copy(AText, mColumn + 1, MaxInt));
   AOutput.Add(mItem);
+end;
+
+procedure TBlockPlacing.MarkAll;
+var
+  mIndex, mPrevious: Integer;
+begin
+  mPrevious := -1;
+  for mIndex := 0 to High(FTokens) do
+  begin
+    if not IsCode(FTokens[mIndex]) then
+    begin
+      Continue;
+    end;
+    if mPrevious >= 0 then
+    begin
+      Mark(mPrevious, mIndex);
+    end;
+    mPrevious := mIndex;
+  end;
 end;
 
 function TBlockPlacing.Lines(const ALines: TArray<string>): TArray<TFormatLine>;
@@ -614,18 +614,6 @@ end;
 
 { TFormatLayout }
 
-class function TFormatLayout.IndentUnit(const AStyle: TFormatStyle): string;
-begin
-  if AStyle.UseTabs then
-  begin
-    Result := #9;
-  end
-  else
-  begin
-    Result := StringOfChar(' ', Max(AStyle.IndentSize, 1));
-  end;
-end;
-
 class function TFormatLayout.FrozenLines(const ATokens: TArray<TPascalToken>; ACount: Integer): TArray<Boolean>;
 var
   mIndex, mLine, mAsmDepth: Integer;
@@ -730,6 +718,18 @@ begin
     end;
   finally
     mOutput.Free;
+  end;
+end;
+
+class function TFormatLayout.IndentUnit(const AStyle: TFormatStyle): string;
+begin
+  if AStyle.UseTabs then
+  begin
+    Result := #9;
+  end
+  else
+  begin
+    Result := StringOfChar(' ', Max(AStyle.IndentSize, 1));
   end;
 end;
 

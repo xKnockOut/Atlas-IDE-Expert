@@ -44,6 +44,8 @@ const
   /// <summary>Anteil des Akzents an der Füllung der Raute.</summary>
   cFillShare = 0.85;
 
+{ TAtlasIdeLogpointGutter }
+
 function TAtlasIdeLogpointGutter.Feature: TAtlasFeature;
 begin
   Result := TAtlasFeature.Debugger;

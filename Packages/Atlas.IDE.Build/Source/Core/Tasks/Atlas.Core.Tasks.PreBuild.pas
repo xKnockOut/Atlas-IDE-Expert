@@ -56,12 +56,6 @@ implementation
 
 { TAtlasTaskPreBuild }
 
-class function TAtlasTaskPreBuild.Applies(const AProject: TAtlasCompileProject): Boolean;
-begin
-  Result := not AProject.Background and (AProject.RequestedBy = '') and (AProject.FileName <> '') and
-    (AProject.Kind in [TAtlasCompileKind.Make, TAtlasCompileKind.Build, TAtlasCompileKind.Check]);
-end;
-
 function TAtlasTaskPreBuild.Decide(const AProject: TAtlasCompileProject; AHasBlock, AHasWarn: Boolean;
   ANowMs: Int64): TAtlasTaskPreBuildAction;
 begin
@@ -113,6 +107,12 @@ procedure TAtlasTaskPreBuild.Abandon;
 begin
   FRunning := False;
   FBlocking := False;
+end;
+
+class function TAtlasTaskPreBuild.Applies(const AProject: TAtlasCompileProject): Boolean;
+begin
+  Result := not AProject.Background and (AProject.RequestedBy = '') and (AProject.FileName <> '') and
+    (AProject.Kind in [TAtlasCompileKind.Make, TAtlasCompileKind.Build, TAtlasCompileKind.Check]);
 end;
 
 end.

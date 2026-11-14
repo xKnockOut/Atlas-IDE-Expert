@@ -107,6 +107,8 @@ begin
   end;
 end;
 
+{ TShellDiagnosticsArea }
+
 constructor TShellDiagnosticsArea.Create(const AServices: TShellDiagnosticsAreaServices);
 begin
   inherited Create;
@@ -123,41 +125,6 @@ begin
   FreeChecks;
   FreeAndNil(FIndexRecheck);
   inherited;
-end;
-
-procedure TShellDiagnosticsArea.FreeChecks;
-begin
-  FreeAndNil(FPull);
-  FreeAndNil(FSyntax);
-end;
-
-procedure TShellDiagnosticsArea.WirePull;
-var
-  mPull: TLspPullDiagnostics;
-begin
-  FPull := TLspPullDiagnostics.Create(FServices.Documents, FSyntax, FServices.Transport, CheckFiles, FileStampOf,
-    LoadExistingFile);
-  mPull := FPull;
-  FPull.Busy := IndexPending;
-  FPull.FileLabel := FServices.FileLabel;
-  FPull.RequestTimeout := FServices.RequestTimeout;
-  FPull.Attach(FServices.Dispatcher);
-  // Als anonyme Methode statt der Methode selbst: Free Pascal (Linux-Bau) bricht an der Zuweisung einer
-  // Methode an eine Methodenreferenz intern ab.
-  FSyntax.OnPullChanged :=
-    procedure
-    begin
-      mPull.Changed;
-    end;
-  // Neue Compilermeldungen (#1247): nur ihre Dateien neu prüfen, nicht alle Units.
-  FSyntax.OnPullFilesChanged :=
-    procedure(AFiles: TArray<string>)
-    begin
-      mPull.FilesChanged(AFiles);
-    end;
-  // Nach dem Speichern prüft die Projektprüfung auch die Units, die die Datei in uses haben (#1247).
-  FPull.Check.Dependents := DependentUnitsOf;
-  FPull.Check.OnLog := LogInfo;
 end;
 
 function TShellDiagnosticsArea.Providers: TSyntaxDiagnosticsProviders;
@@ -228,6 +195,41 @@ end;
 procedure TShellDiagnosticsArea.LogInfo(const AMessage: string);
 begin
   FServices.Logger.Info(AMessage);
+end;
+
+procedure TShellDiagnosticsArea.WirePull;
+var
+  mPull: TLspPullDiagnostics;
+begin
+  FPull := TLspPullDiagnostics.Create(FServices.Documents, FSyntax, FServices.Transport, CheckFiles, FileStampOf,
+    LoadExistingFile);
+  mPull := FPull;
+  FPull.Busy := IndexPending;
+  FPull.FileLabel := FServices.FileLabel;
+  FPull.RequestTimeout := FServices.RequestTimeout;
+  FPull.Attach(FServices.Dispatcher);
+  // Als anonyme Methode statt der Methode selbst: Free Pascal (Linux-Bau) bricht an der Zuweisung einer
+  // Methode an eine Methodenreferenz intern ab.
+  FSyntax.OnPullChanged :=
+    procedure
+    begin
+      mPull.Changed;
+    end;
+  // Neue Compilermeldungen (#1247): nur ihre Dateien neu prüfen, nicht alle Units.
+  FSyntax.OnPullFilesChanged :=
+    procedure(AFiles: TArray<string>)
+    begin
+      mPull.FilesChanged(AFiles);
+    end;
+  // Nach dem Speichern prüft die Projektprüfung auch die Units, die die Datei in uses haben (#1247).
+  FPull.Check.Dependents := DependentUnitsOf;
+  FPull.Check.OnLog := LogInfo;
+end;
+
+procedure TShellDiagnosticsArea.FreeChecks;
+begin
+  FreeAndNil(FPull);
+  FreeAndNil(FSyntax);
 end;
 
 procedure TShellDiagnosticsArea.ApplyClientCapabilities(const AInitializeParams: TJSONObject;

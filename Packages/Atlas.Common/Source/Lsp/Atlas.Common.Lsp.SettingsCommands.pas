@@ -90,6 +90,8 @@ begin
   end;
 end;
 
+{ TLspSettingsCommands }
+
 class function TLspSettingsCommands.Check(const AArguments: TJSONArray): TJSONObject;
 var
   mIssues, mMisplaced: TArray<TConfigurationIssue>;

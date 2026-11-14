@@ -374,141 +374,6 @@ begin
   inherited;
 end;
 
-procedure TAtlasEditorSignature.Log(const AMessage: string);
-begin
-  if Assigned(FLog) then
-  begin
-    FLog(AMessage);
-  end;
-end;
-
-procedure TAtlasEditorSignature.Shutdown;
-begin
-  Close;
-  FProvider.Shutdown;
-end;
-
-function TAtlasEditorSignature.Active: Boolean;
-begin
-  Result := FController.Active or FPending;
-end;
-
-procedure TAtlasEditorSignature.ApplyStyle(const ACaret: TRect);
-begin
-  TAtlasIdeStyle.Apply(FHint, ACaret);
-end;
-
-function TAtlasEditorSignature.Invoke(const AView: IOTAEditView): Boolean;
-var
-  mSpot: TCursorSpot;
-  mSite: TAtlasCallSite;
-  mWindow: HWND;
-  mAnchor: TRect;
-begin
-  Result := False;
-  // Parameter-Hint abgeschaltet (ARG-046): weder bei "(" und "," noch nach dem Übernehmen.
-  if (AView = nil) or (AView.Buffer = nil) or not TAtlasIdeSettings.Current.ParameterHints then
-  begin
-    Exit;
-  end;
-  mSpot := CursorSpot(AView);
-  mSite := TAtlasCallScanner.Scan(mSpot.Text, mSpot.Caret);
-  if not mSite.Found then
-  begin
-    Close;
-    Exit;
-  end;
-  // Schon offen für denselben Aufruf (z. B. "," gleich nach "("): nur den Parameter nachziehen.
-  if FController.Active and (mSite.OpenParen = FOpenParen) and (AView = FView) then
-  begin
-    FController.UpdateParameter(mSite.ActiveParameter);
-    Exit(True);
-  end;
-  if not CaretAnchor(mWindow, mAnchor) then
-  begin
-    Exit;
-  end;
-  ApplyStyle(mAnchor);
-  // Linke Kante an der öffnenden Klammer, wenn sie in derselben Zeile vor dem Caret steht.
-  FHint.Canvas.Font := FHint.Font;
-  if mSpot.Caret - mSite.OpenParen <= mSpot.Character then
-  begin
-    mAnchor.Left := mAnchor.Left - FHint.Canvas.TextWidth(Copy(mSpot.Text, mSite.OpenParen + 1,
-      mSpot.Caret - mSite.OpenParen));
-  end;
-  FHint.Anchor := mAnchor;
-  FHint.Above := Assigned(FCompletionOpen) and FCompletionOpen();
-  FHint.FormatPlaceholders := TAtlasIdeSettings.Current.FormatPlaceholders;
-  FController.Close;
-  FDismissed.OpenParen := -1;
-  FFormat.Text := mSpot.Text;
-  FFormat.Caret := mSpot.Caret;
-  FFormat.Due := 0;
-  FView := AView;
-  FEditorWindow := mWindow;
-  FOpenParen := mSite.OpenParen;
-  FOpened := WindowState(AView, FEditorWindow, FEditorWindow);
-  FAnchorLine := mSpot.Line;
-  FPending := FProvider.Query(AView.Buffer.FileName, mSpot.Text, mSpot.Line - 1, mSpot.Character,
-    procedure(const AHelp: TAtlasSignatureHelp)
-    begin
-      HelpArrived(AHelp, mSpot.Text);
-    end);
-  ActiveChanged;
-  Result := FPending;
-end;
-
-procedure TAtlasEditorSignature.HelpArrived(const AHelp: TAtlasSignatureHelp; const AText: string);
-var
-  mCurrent: TAtlasCallSite;
-  mSpot: TCursorSpot;
-begin
-  FPending := False;
-  if FView = nil then
-  begin
-    Exit;
-  end;
-  // Seit der Anfrage weitergetippt: Parameter lokal neu zählen.
-  mSpot := CursorSpot(FView);
-  mCurrent := TAtlasCallScanner.Scan(mSpot.Text, mSpot.Caret);
-  if not mCurrent.Found or (mCurrent.OpenParen <> FOpenParen) then
-  begin
-    Close;
-    Exit;
-  end;
-  FHint.Above := Assigned(FCompletionOpen) and FCompletionOpen();
-  FHint.SetPath(mCurrent.Outer, mCurrent.Name);
-  FController.Show(AHelp, mCurrent.ActiveParameter);
-  // Im Detailpanel gewählte Überladung übernehmen (#425), einmalig.
-  if (FPreferredName <> '') and SameText(FPreferredName, mCurrent.Name) and (FPreferredIndex > 0) and
-    (FPreferredIndex < Length(AHelp.Signatures)) then
-  begin
-    FController.SelectOverload(FPreferredIndex);
-  end;
-  FPreferredName := '';
-  ShowFormat(AHelp.Format, AText);
-  Log(Format('Parameter-Hint: %d Signaturen, Parameter %d', [Length(AHelp.Signatures), mCurrent.ActiveParameter]));
-  ActiveChanged;
-end;
-
-class procedure TAtlasEditorSignature.PreferOverload(const AName: string; AIndex: Integer);
-begin
-  FPreferredName := AName;
-  FPreferredIndex := AIndex;
-end;
-
-procedure TAtlasEditorSignature.Close;
-begin
-  FPending := False;
-  FProvider.Cancel;
-  FController.Close;
-  FMarks.Clear;
-  FFormat.Text := '';
-  FFormat.Caret := -1;
-  FFormat.Due := 0;
-  ActiveChanged;
-end;
-
 procedure TAtlasEditorSignature.ShowFormat(const AFormat: TAtlasSignatureFormat; const AText: string);
 begin
   if FHint.FormatPlaceholders and AFormat.Found and (FView <> nil) and (FView.Buffer <> nil) then
@@ -561,70 +426,6 @@ begin
     end);
 end;
 
-procedure TAtlasEditorSignature.ActiveChanged;
-begin
-  FTimer.Enabled := Active;
-  if FController.Active then
-  begin
-    TAtlasKeyHook.Add(FKeys);
-  end
-  else
-  begin
-    TAtlasKeyHook.Remove(FKeys);
-  end;
-  if not Active then
-  begin
-    FView := nil;
-    FOpenParen := -1;
-  end;
-end;
-
-procedure TAtlasEditorSignature.EditorModified(const AView: IOTAEditView);
-var
-  mFileName, mLineText: string;
-  mLine: Integer;
-  mRemoved: Boolean;
-begin
-  if Active then
-  begin
-    Recheck;
-  end;
-  if (AView = nil) or (AView.Buffer = nil) then
-  begin
-    Exit;
-  end;
-  mFileName := AView.Buffer.FileName;
-  mLine := AView.CursorPos.Line;
-  mLineText := TAtlasEditorBuffer.LineText(AView, mLine);
-  mRemoved := not Active and SameText(mFileName, FLast.FileName) and (mLine = FLast.Line) and
-    TAtlasCallScanner.RemovedClosingParen(FLast.Text, mLineText);
-  FLast.FileName := mFileName;
-  FLast.Line := mLine;
-  FLast.Text := mLineText;
-  if not mRemoved then
-  begin
-    Exit;
-  end;
-  // Erst nach der Änderung, wenn die IDE den Caret gesetzt hat.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.Signature,
-    procedure
-    begin
-      try
-        Reopen(AView);
-      except
-        on E: Exception do
-        begin
-          Log('Parameter-Hint: ' + E.Message);
-          // Server weg oder Zeitlimit ist erwartbar; anderes zählt die Sicherung.
-          if not (E is ELspClientError) then
-          begin
-            TAtlasGuard.Report(TAtlasFeature.Signature, E);
-          end;
-        end;
-      end;
-    end);
-end;
-
 procedure TAtlasEditorSignature.Reopen(const AView: IOTAEditView);
 var
   mSpot: TCursorSpot;
@@ -643,6 +444,47 @@ begin
   end;
   Log('Parameter-Hint: nach entfernter Klammer wieder geöffnet');
   Invoke(AView);
+end;
+
+procedure TAtlasEditorSignature.HelpArrived(const AHelp: TAtlasSignatureHelp; const AText: string);
+var
+  mCurrent: TAtlasCallSite;
+  mSpot: TCursorSpot;
+begin
+  FPending := False;
+  if FView = nil then
+  begin
+    Exit;
+  end;
+  // Seit der Anfrage weitergetippt: Parameter lokal neu zählen.
+  mSpot := CursorSpot(FView);
+  mCurrent := TAtlasCallScanner.Scan(mSpot.Text, mSpot.Caret);
+  if not mCurrent.Found or (mCurrent.OpenParen <> FOpenParen) then
+  begin
+    Close;
+    Exit;
+  end;
+  FHint.Above := Assigned(FCompletionOpen) and FCompletionOpen();
+  FHint.SetPath(mCurrent.Outer, mCurrent.Name);
+  FController.Show(AHelp, mCurrent.ActiveParameter);
+  // Im Detailpanel gewählte Überladung übernehmen (#425), einmalig.
+  if (FPreferredName <> '') and SameText(FPreferredName, mCurrent.Name) and (FPreferredIndex > 0) and
+    (FPreferredIndex < Length(AHelp.Signatures)) then
+  begin
+    FController.SelectOverload(FPreferredIndex);
+  end;
+  FPreferredName := '';
+  ShowFormat(AHelp.Format, AText);
+  Log(Format('Parameter-Hint: %d Signaturen, Parameter %d', [Length(AHelp.Signatures), mCurrent.ActiveParameter]));
+  ActiveChanged;
+end;
+
+procedure TAtlasEditorSignature.Log(const AMessage: string);
+begin
+  if Assigned(FLog) then
+  begin
+    FLog(AMessage);
+  end;
 end;
 
 procedure TAtlasEditorSignature.TimerTick(Sender: TObject);
@@ -712,6 +554,29 @@ begin
   end;
 end;
 
+procedure TAtlasEditorSignature.ApplyStyle(const ACaret: TRect);
+begin
+  TAtlasIdeStyle.Apply(FHint, ACaret);
+end;
+
+procedure TAtlasEditorSignature.ActiveChanged;
+begin
+  FTimer.Enabled := Active;
+  if FController.Active then
+  begin
+    TAtlasKeyHook.Add(FKeys);
+  end
+  else
+  begin
+    TAtlasKeyHook.Remove(FKeys);
+  end;
+  if not Active then
+  begin
+    FView := nil;
+    FOpenParen := -1;
+  end;
+end;
+
 function TAtlasEditorSignature.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 begin
   Result := FController.Active and
@@ -737,6 +602,141 @@ begin
     VK_DOWN:
       FController.NextOverload;
   end;
+end;
+
+class procedure TAtlasEditorSignature.PreferOverload(const AName: string; AIndex: Integer);
+begin
+  FPreferredName := AName;
+  FPreferredIndex := AIndex;
+end;
+
+function TAtlasEditorSignature.Invoke(const AView: IOTAEditView): Boolean;
+var
+  mSpot: TCursorSpot;
+  mSite: TAtlasCallSite;
+  mWindow: HWND;
+  mAnchor: TRect;
+begin
+  Result := False;
+  // Parameter-Hint abgeschaltet (ARG-046): weder bei "(" und "," noch nach dem Übernehmen.
+  if (AView = nil) or (AView.Buffer = nil) or not TAtlasIdeSettings.Current.ParameterHints then
+  begin
+    Exit;
+  end;
+  mSpot := CursorSpot(AView);
+  mSite := TAtlasCallScanner.Scan(mSpot.Text, mSpot.Caret);
+  if not mSite.Found then
+  begin
+    Close;
+    Exit;
+  end;
+  // Schon offen für denselben Aufruf (z. B. "," gleich nach "("): nur den Parameter nachziehen.
+  if FController.Active and (mSite.OpenParen = FOpenParen) and (AView = FView) then
+  begin
+    FController.UpdateParameter(mSite.ActiveParameter);
+    Exit(True);
+  end;
+  if not CaretAnchor(mWindow, mAnchor) then
+  begin
+    Exit;
+  end;
+  ApplyStyle(mAnchor);
+  // Linke Kante an der öffnenden Klammer, wenn sie in derselben Zeile vor dem Caret steht.
+  FHint.Canvas.Font := FHint.Font;
+  if mSpot.Caret - mSite.OpenParen <= mSpot.Character then
+  begin
+    mAnchor.Left := mAnchor.Left - FHint.Canvas.TextWidth(Copy(mSpot.Text, mSite.OpenParen + 1,
+      mSpot.Caret - mSite.OpenParen));
+  end;
+  FHint.Anchor := mAnchor;
+  FHint.Above := Assigned(FCompletionOpen) and FCompletionOpen();
+  FHint.FormatPlaceholders := TAtlasIdeSettings.Current.FormatPlaceholders;
+  FController.Close;
+  FDismissed.OpenParen := -1;
+  FFormat.Text := mSpot.Text;
+  FFormat.Caret := mSpot.Caret;
+  FFormat.Due := 0;
+  FView := AView;
+  FEditorWindow := mWindow;
+  FOpenParen := mSite.OpenParen;
+  FOpened := WindowState(AView, FEditorWindow, FEditorWindow);
+  FAnchorLine := mSpot.Line;
+  FPending := FProvider.Query(AView.Buffer.FileName, mSpot.Text, mSpot.Line - 1, mSpot.Character,
+    procedure(const AHelp: TAtlasSignatureHelp)
+    begin
+      HelpArrived(AHelp, mSpot.Text);
+    end);
+  ActiveChanged;
+  Result := FPending;
+end;
+
+procedure TAtlasEditorSignature.Close;
+begin
+  FPending := False;
+  FProvider.Cancel;
+  FController.Close;
+  FMarks.Clear;
+  FFormat.Text := '';
+  FFormat.Caret := -1;
+  FFormat.Due := 0;
+  ActiveChanged;
+end;
+
+procedure TAtlasEditorSignature.EditorModified(const AView: IOTAEditView);
+var
+  mFileName, mLineText: string;
+  mLine: Integer;
+  mRemoved: Boolean;
+begin
+  if Active then
+  begin
+    Recheck;
+  end;
+  if (AView = nil) or (AView.Buffer = nil) then
+  begin
+    Exit;
+  end;
+  mFileName := AView.Buffer.FileName;
+  mLine := AView.CursorPos.Line;
+  mLineText := TAtlasEditorBuffer.LineText(AView, mLine);
+  mRemoved := not Active and SameText(mFileName, FLast.FileName) and (mLine = FLast.Line) and
+    TAtlasCallScanner.RemovedClosingParen(FLast.Text, mLineText);
+  FLast.FileName := mFileName;
+  FLast.Line := mLine;
+  FLast.Text := mLineText;
+  if not mRemoved then
+  begin
+    Exit;
+  end;
+  // Erst nach der Änderung, wenn die IDE den Caret gesetzt hat.
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Signature,
+    procedure
+    begin
+      try
+        Reopen(AView);
+      except
+        on E: Exception do
+        begin
+          Log('Parameter-Hint: ' + E.Message);
+          // Server weg oder Zeitlimit ist erwartbar; anderes zählt die Sicherung.
+          if not (E is ELspClientError) then
+          begin
+            TAtlasGuard.Report(TAtlasFeature.Signature, E);
+          end;
+        end;
+      end;
+    end);
+end;
+
+procedure TAtlasEditorSignature.Shutdown;
+begin
+  Close;
+  FProvider.Shutdown;
+end;
+
+function TAtlasEditorSignature.Active: Boolean;
+begin
+  Result := FController.Active or FPending;
 end;
 
 end.

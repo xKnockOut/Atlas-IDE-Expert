@@ -221,14 +221,6 @@ begin
   inherited Destroy;
 end;
 
-function TBindingGraph.IndexOf(const AModule, AName: string): Integer;
-begin
-  if not FIndex.TryGetValue(IdOf(AModule, AName), Result) then
-  begin
-    Result := -1;
-  end;
-end;
-
 function TBindingGraph.Resolve(AFrom: Integer; const ARef: string): Integer;
 var
   mDot: Integer;
@@ -267,112 +259,6 @@ begin
   end;
   FOuts[mTarget] := FOuts[mTarget] + [AFrom];
   FIns[AFrom] := FIns[AFrom] + [mTarget];
-end;
-
-function TBindingGraph.DataSetBehind(AFrom: Integer; const ASource: string): Integer;
-var
-  mSource: Integer;
-begin
-  Result := -1;
-  mSource := Resolve(AFrom, ASource);
-  if mSource >= 0 then
-  begin
-    Result := Resolve(mSource, FAll[mSource].DataSet);
-  end;
-end;
-
-procedure TBindingGraph.CheckFields(var ANode: TAtlasBindingNode; AFrom: Integer; const ASource, AFields: string);
-var
-  mSet: Integer;
-  mField: string;
-begin
-  mSet := DataSetBehind(AFrom, ASource);
-  if (mSet < 0) or (ANode.Finding <> TAtlasBindingFinding.None) then
-  begin
-    Exit;
-  end;
-  for mField in AFields.Split([';']) do
-  begin
-    if (mField.Trim <> '') and not HasField(FAll[mSet], mField.Trim) then
-    begin
-      ANode.Finding := TAtlasBindingFinding.FieldMissing;
-      ANode.MissingField := mField.Trim;
-      ANode.DataSet := Node(mSet).Caption;
-      Exit;
-    end;
-  end;
-end;
-
-function TBindingGraph.Node(AIndex: Integer): TAtlasBindingNode;
-var
-  mObject: TAtlasBindingObject;
-begin
-  mObject := FAll[AIndex];
-  Result := Default(TAtlasBindingNode);
-  Result.Id := mObject.Module + '.' + mObject.Name;
-  Result.Module := mObject.Module;
-  Result.Name := mObject.Name;
-  Result.ClassName := mObject.ClassName;
-  Result.Caption := mObject.Name;
-  if not SameText(mObject.Module, FModule) then
-  begin
-    Result.Caption := Result.Id;
-  end;
-  Result.Field := mObject.DataField;
-  if Result.Field = '' then
-  begin
-    Result.Field := mObject.ListField;
-  end;
-  if (mObject.DataField <> '') and (mObject.DataSource = '') then
-  begin
-    Result.Finding := TAtlasBindingFinding.NoDataSource;
-    Result.MissingField := mObject.DataField;
-    Exit;
-  end;
-  CheckFields(Result, AIndex, mObject.DataSource, mObject.DataField);
-  CheckFields(Result, AIndex, mObject.ListSource, mObject.ListField + ';' + mObject.KeyField);
-end;
-
-/// <summary>Noch nicht erreichte Nachbarn ANext markieren und auf den Stapel legen.</summary>
-procedure Visit(const ANext: TArray<Integer>; var AReached: TArray<Boolean>; AStack: TStack<Integer>);
-var
-  mNext: Integer;
-begin
-  for mNext in ANext do
-  begin
-    if not AReached[mNext] then
-    begin
-      AReached[mNext] := True;
-      AStack.Push(mNext);
-    end;
-  end;
-end;
-
-function TBindingGraph.Reach(AStart: Integer; AForward, ABackward: Boolean): TArray<Boolean>;
-var
-  mStack: TStack<Integer>;
-  mIndex: Integer;
-begin
-  SetLength(Result, Length(FAll));
-  Result[AStart] := True;
-  mStack := TStack<Integer>.Create;
-  try
-    mStack.Push(AStart);
-    while mStack.Count > 0 do
-    begin
-      mIndex := mStack.Pop;
-      if AForward then
-      begin
-        Visit(FOuts[mIndex], Result, mStack);
-      end;
-      if ABackward then
-      begin
-        Visit(FIns[mIndex], Result, mStack);
-      end;
-    end;
-  finally
-    mStack.Free;
-  end;
 end;
 
 function TBindingGraph.DepthOf(AIndex: Integer; const AMembers: TArray<Boolean>): Integer;
@@ -444,6 +330,120 @@ begin
     ACrumb.Selected := mHead = ASelected;
     ACrumb.Many := (ACrumb.OnPath > 1) and not ACrumb.Selected;
   end;
+end;
+
+function TBindingGraph.DataSetBehind(AFrom: Integer; const ASource: string): Integer;
+var
+  mSource: Integer;
+begin
+  Result := -1;
+  mSource := Resolve(AFrom, ASource);
+  if mSource >= 0 then
+  begin
+    Result := Resolve(mSource, FAll[mSource].DataSet);
+  end;
+end;
+
+procedure TBindingGraph.CheckFields(var ANode: TAtlasBindingNode; AFrom: Integer; const ASource, AFields: string);
+var
+  mSet: Integer;
+  mField: string;
+begin
+  mSet := DataSetBehind(AFrom, ASource);
+  if (mSet < 0) or (ANode.Finding <> TAtlasBindingFinding.None) then
+  begin
+    Exit;
+  end;
+  for mField in AFields.Split([';']) do
+  begin
+    if (mField.Trim <> '') and not HasField(FAll[mSet], mField.Trim) then
+    begin
+      ANode.Finding := TAtlasBindingFinding.FieldMissing;
+      ANode.MissingField := mField.Trim;
+      ANode.DataSet := Node(mSet).Caption;
+      Exit;
+    end;
+  end;
+end;
+
+/// <summary>Noch nicht erreichte Nachbarn ANext markieren und auf den Stapel legen.</summary>
+procedure Visit(const ANext: TArray<Integer>; var AReached: TArray<Boolean>; AStack: TStack<Integer>);
+var
+  mNext: Integer;
+begin
+  for mNext in ANext do
+  begin
+    if not AReached[mNext] then
+    begin
+      AReached[mNext] := True;
+      AStack.Push(mNext);
+    end;
+  end;
+end;
+
+function TBindingGraph.Reach(AStart: Integer; AForward, ABackward: Boolean): TArray<Boolean>;
+var
+  mStack: TStack<Integer>;
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(FAll));
+  Result[AStart] := True;
+  mStack := TStack<Integer>.Create;
+  try
+    mStack.Push(AStart);
+    while mStack.Count > 0 do
+    begin
+      mIndex := mStack.Pop;
+      if AForward then
+      begin
+        Visit(FOuts[mIndex], Result, mStack);
+      end;
+      if ABackward then
+      begin
+        Visit(FIns[mIndex], Result, mStack);
+      end;
+    end;
+  finally
+    mStack.Free;
+  end;
+end;
+
+function TBindingGraph.IndexOf(const AModule, AName: string): Integer;
+begin
+  if not FIndex.TryGetValue(IdOf(AModule, AName), Result) then
+  begin
+    Result := -1;
+  end;
+end;
+
+function TBindingGraph.Node(AIndex: Integer): TAtlasBindingNode;
+var
+  mObject: TAtlasBindingObject;
+begin
+  mObject := FAll[AIndex];
+  Result := Default(TAtlasBindingNode);
+  Result.Id := mObject.Module + '.' + mObject.Name;
+  Result.Module := mObject.Module;
+  Result.Name := mObject.Name;
+  Result.ClassName := mObject.ClassName;
+  Result.Caption := mObject.Name;
+  if not SameText(mObject.Module, FModule) then
+  begin
+    Result.Caption := Result.Id;
+  end;
+  Result.Field := mObject.DataField;
+  if Result.Field = '' then
+  begin
+    Result.Field := mObject.ListField;
+  end;
+  if (mObject.DataField <> '') and (mObject.DataSource = '') then
+  begin
+    Result.Finding := TAtlasBindingFinding.NoDataSource;
+    Result.MissingField := mObject.DataField;
+    Exit;
+  end;
+  CheckFields(Result, AIndex, mObject.DataSource, mObject.DataField);
+  CheckFields(Result, AIndex, mObject.ListSource, mObject.ListField + ';' + mObject.KeyField);
 end;
 
 function TBindingGraph.Trail(ASelected: Integer): TAtlasBindingTrail;

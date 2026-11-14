@@ -40,6 +40,8 @@ implementation
 uses
   System.SysUtils;
 
+{ TAtlasNavigationOption }
+
 class function TAtlasNavigationOption.Find(const ANames: TArray<string>): string;
 var
   mName, mKey: string;

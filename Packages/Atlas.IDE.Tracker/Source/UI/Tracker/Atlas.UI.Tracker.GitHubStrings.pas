@@ -239,6 +239,36 @@ begin
   end;
 end;
 
+class function TAtlasGitHubStrings.LinkLine(const AKey, ARepository, AReason: string;
+  const ALink: TAtlasTrackerBranchLink; AFetched: Boolean): string;
+begin
+  case ALink.Outcome of
+    TAtlasTrackerBranchLinkOutcome.Created, TAtlasTrackerBranchLinkOutcome.Found:
+      if not AFetched then
+      begin
+        Result := Fmt(TAtlasGitHubTextId.LinkFetchFailed, [AKey, ALink.Branch, AReason]);
+      end
+      else if ALink.Outcome = TAtlasTrackerBranchLinkOutcome.Created then
+      begin
+        Result := Fmt(TAtlasGitHubTextId.LinkCreated, [AKey, ALink.Branch]);
+      end
+      else
+      begin
+        Result := Fmt(TAtlasGitHubTextId.LinkFound, [AKey, ALink.Branch]);
+      end;
+    TAtlasTrackerBranchLinkOutcome.Exists:
+      Result := Fmt(TAtlasGitHubTextId.LinkExists, [AKey, ALink.Branch]);
+    TAtlasTrackerBranchLinkOutcome.Foreign:
+      Result := Fmt(TAtlasGitHubTextId.LinkForeign, [AKey, ARepository]);
+    TAtlasTrackerBranchLinkOutcome.Denied:
+      Result := Fmt(TAtlasGitHubTextId.LinkDenied, [AKey]);
+    TAtlasTrackerBranchLinkOutcome.Failed:
+      Result := Fmt(TAtlasGitHubTextId.LinkFailed, [AKey, AReason]);
+  else
+    Result := '';
+  end;
+end;
+
 class function TAtlasGitHubStrings.PullLines(const AKey: string;
   const APull: TAtlasTrackerPullResult): TArray<string>;
 const
@@ -274,36 +304,6 @@ begin
       Result := Fmt(TAtlasGitHubTextId.EndPullForeign, [ARepository]);
     TAtlasTrackerPullOutcome.PushFailed:
       Result := Fmt(TAtlasGitHubTextId.EndPullPushFailed, [AHead, APull.Message]);
-  else
-    Result := '';
-  end;
-end;
-
-class function TAtlasGitHubStrings.LinkLine(const AKey, ARepository, AReason: string;
-  const ALink: TAtlasTrackerBranchLink; AFetched: Boolean): string;
-begin
-  case ALink.Outcome of
-    TAtlasTrackerBranchLinkOutcome.Created, TAtlasTrackerBranchLinkOutcome.Found:
-      if not AFetched then
-      begin
-        Result := Fmt(TAtlasGitHubTextId.LinkFetchFailed, [AKey, ALink.Branch, AReason]);
-      end
-      else if ALink.Outcome = TAtlasTrackerBranchLinkOutcome.Created then
-      begin
-        Result := Fmt(TAtlasGitHubTextId.LinkCreated, [AKey, ALink.Branch]);
-      end
-      else
-      begin
-        Result := Fmt(TAtlasGitHubTextId.LinkFound, [AKey, ALink.Branch]);
-      end;
-    TAtlasTrackerBranchLinkOutcome.Exists:
-      Result := Fmt(TAtlasGitHubTextId.LinkExists, [AKey, ALink.Branch]);
-    TAtlasTrackerBranchLinkOutcome.Foreign:
-      Result := Fmt(TAtlasGitHubTextId.LinkForeign, [AKey, ARepository]);
-    TAtlasTrackerBranchLinkOutcome.Denied:
-      Result := Fmt(TAtlasGitHubTextId.LinkDenied, [AKey]);
-    TAtlasTrackerBranchLinkOutcome.Failed:
-      Result := Fmt(TAtlasGitHubTextId.LinkFailed, [AKey, AReason]);
   else
     Result := '';
   end;

@@ -98,6 +98,168 @@ begin
   SetAccessible(cUiaListControlType, TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand));
 end;
 
+procedure TAtlasStepIntoWindow.Paint;
+begin
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Surface);
+  Canvas.FillRect(ClientRect);
+  Layout(True);
+  PaintBorder;
+end;
+
+procedure TAtlasStepIntoWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mIndex: Integer;
+  mPoint: TPoint;
+begin
+  inherited;
+  if Button <> mbLeft then
+  begin
+    Exit;
+  end;
+  mPoint := TPoint.Create(X, Y);
+  for mIndex := 0 to High(FRowRects) do
+  begin
+    if PtInRect(FRowRects[mIndex], mPoint) and FRows[mIndex].Available then
+    begin
+      Select(mIndex);
+      Accept;
+      Exit;
+    end;
+  end;
+end;
+
+procedure TAtlasStepIntoWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  mIndex: Integer;
+  mHot: Boolean;
+  mPoint: TPoint;
+begin
+  inherited;
+  mPoint := TPoint.Create(X, Y);
+  mHot := False;
+  for mIndex := 0 to High(FRowRects) do
+  begin
+    if PtInRect(FRowRects[mIndex], mPoint) and FRows[mIndex].Available then
+    begin
+      mHot := True;
+      Select(mIndex);
+    end;
+  end;
+  if mHot then
+  begin
+    Cursor := crHandPoint;
+  end
+  else
+  begin
+    Cursor := crDefault;
+  end;
+end;
+
+/// <summary>Rechts in der Zeile: Datei:Zeile, bei nicht wählbaren Einträgen der Grund davor.</summary>
+function PlaceText(const ARow: TAtlasStepRow): string;
+begin
+  Result := TAtlasStepIntoWindow.ReasonText(ARow);
+  if Result = '' then
+  begin
+    Result := ARow.Location;
+  end
+  else if ARow.Location <> '' then
+  begin
+    Result := Result + '  ·  ' + ARow.Location;
+  end;
+end;
+
+function TAtlasStepIntoWindow.Layout(ADraw: Boolean): TSize;
+var
+  mY, mTextHeight, mWidth, mIndex, mNameWidth, mRightX: Integer;
+  mText: string;
+begin
+  Canvas.Font := UIFont;
+  mTextHeight := Canvas.TextHeight('Wg');
+  if ADraw then
+  begin
+    Canvas.Brush.Style := bsClear;
+  end;
+  mY := Scale(cPad);
+  mText := TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand);
+  Canvas.Font.Style := [fsBold];
+  if ADraw then
+  begin
+    Canvas.Font.Color := ToColor(Colors.Text);
+    Canvas.TextOut(Scale(cPad), mY, mText);
+  end;
+  mWidth := Scale(cPad) + Canvas.TextWidth(mText);
+  Canvas.Font.Style := [];
+  // Spalte für den Ort: hinter dem breitesten Namen.
+  mNameWidth := 0;
+  for mIndex := 0 to High(FRows) do
+  begin
+    mNameWidth := Max(mNameWidth, Canvas.TextWidth(cMarker + RowCaption(FRows, mIndex)));
+  end;
+  mRightX := Scale(cPad) + mNameWidth + Scale(cColumnGap);
+  SetLength(FRowRects, Length(FRows));
+  for mIndex := 0 to High(FRows) do
+  begin
+    mY := mY + mTextHeight + Scale(cRowGap);
+    mWidth := Max(mWidth, LayoutRow(mIndex, mY, mRightX, mTextHeight, ADraw));
+  end;
+  // Fußzeile mit den Tasten.
+  mY := mY + mTextHeight + Scale(cRowGap) * 2;
+  mText := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetFooter);
+  if ADraw then
+  begin
+    Canvas.Font.Color := ToColor(Colors.Muted);
+    Canvas.TextOut(Scale(cPad), mY, mText);
+    Canvas.Brush.Style := bsSolid;
+  end;
+  Result.cx := Max(mWidth, Scale(cPad) + Canvas.TextWidth(mText)) + Scale(cPad);
+  Result.cy := mY + mTextHeight + Scale(cPad);
+end;
+
+function TAtlasStepIntoWindow.RowColor(AIndex: Integer): TColor;
+begin
+  if AIndex = FRow then
+  begin
+    Result := ToColor(Colors.Accent);
+  end
+  else if FRows[AIndex].Available then
+  begin
+    Result := ToColor(Colors.Text);
+  end
+  else
+  begin
+    Result := ToColor(Colors.Muted);
+  end;
+end;
+
+function TAtlasStepIntoWindow.LayoutRow(AIndex, AY, ARightX, ATextHeight: Integer; ADraw: Boolean): Integer;
+var
+  mX: Integer;
+  mText, mRight: string;
+begin
+  mX := Scale(cPad);
+  mText := RowCaption(FRows, AIndex);
+  if AIndex = FRow then
+  begin
+    mText := cMarker + mText;
+  end
+  else
+  begin
+    mX := mX + Canvas.TextWidth(cMarker);
+  end;
+  mRight := PlaceText(FRows[AIndex]);
+  if ADraw then
+  begin
+    Canvas.Font.Color := RowColor(AIndex);
+    Canvas.TextOut(mX, AY, mText);
+    Canvas.Font.Color := ToColor(Colors.Muted);
+    Canvas.TextOut(ARightX, AY, mRight);
+  end;
+  Result := ARightX + Canvas.TextWidth(mRight);
+  FRowRects[AIndex] := Rect(Scale(cPad), AY, Result, AY + ATextHeight);
+end;
+
 class function TAtlasStepIntoWindow.KindText(const ARow: TAtlasStepRow): string;
 begin
   case ARow.Kind of
@@ -159,110 +321,6 @@ begin
   end;
 end;
 
-/// <summary>Rechts in der Zeile: Datei:Zeile, bei nicht wählbaren Einträgen der Grund davor.</summary>
-function PlaceText(const ARow: TAtlasStepRow): string;
-begin
-  Result := TAtlasStepIntoWindow.ReasonText(ARow);
-  if Result = '' then
-  begin
-    Result := ARow.Location;
-  end
-  else if ARow.Location <> '' then
-  begin
-    Result := Result + '  ·  ' + ARow.Location;
-  end;
-end;
-
-function TAtlasStepIntoWindow.RowColor(AIndex: Integer): TColor;
-begin
-  if AIndex = FRow then
-  begin
-    Result := ToColor(Colors.Accent);
-  end
-  else if FRows[AIndex].Available then
-  begin
-    Result := ToColor(Colors.Text);
-  end
-  else
-  begin
-    Result := ToColor(Colors.Muted);
-  end;
-end;
-
-function TAtlasStepIntoWindow.LayoutRow(AIndex, AY, ARightX, ATextHeight: Integer; ADraw: Boolean): Integer;
-var
-  mX: Integer;
-  mText, mRight: string;
-begin
-  mX := Scale(cPad);
-  mText := RowCaption(FRows, AIndex);
-  if AIndex = FRow then
-  begin
-    mText := cMarker + mText;
-  end
-  else
-  begin
-    mX := mX + Canvas.TextWidth(cMarker);
-  end;
-  mRight := PlaceText(FRows[AIndex]);
-  if ADraw then
-  begin
-    Canvas.Font.Color := RowColor(AIndex);
-    Canvas.TextOut(mX, AY, mText);
-    Canvas.Font.Color := ToColor(Colors.Muted);
-    Canvas.TextOut(ARightX, AY, mRight);
-  end;
-  Result := ARightX + Canvas.TextWidth(mRight);
-  FRowRects[AIndex] := Rect(Scale(cPad), AY, Result, AY + ATextHeight);
-end;
-
-function TAtlasStepIntoWindow.Layout(ADraw: Boolean): TSize;
-var
-  mY, mTextHeight, mWidth, mIndex, mNameWidth, mRightX: Integer;
-  mText: string;
-begin
-  Canvas.Font := UIFont;
-  mTextHeight := Canvas.TextHeight('Wg');
-  if ADraw then
-  begin
-    Canvas.Brush.Style := bsClear;
-  end;
-  mY := Scale(cPad);
-  mText := TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand);
-  Canvas.Font.Style := [fsBold];
-  if ADraw then
-  begin
-    Canvas.Font.Color := ToColor(Colors.Text);
-    Canvas.TextOut(Scale(cPad), mY, mText);
-  end;
-  mWidth := Scale(cPad) + Canvas.TextWidth(mText);
-  Canvas.Font.Style := [];
-  // Spalte für den Ort: hinter dem breitesten Namen.
-  mNameWidth := 0;
-  for mIndex := 0 to High(FRows) do
-  begin
-    mNameWidth := Max(mNameWidth, Canvas.TextWidth(cMarker + RowCaption(FRows, mIndex)));
-  end;
-  mRightX := Scale(cPad) + mNameWidth + Scale(cColumnGap);
-  SetLength(FRowRects, Length(FRows));
-  for mIndex := 0 to High(FRows) do
-  begin
-    mY := mY + mTextHeight + Scale(cRowGap);
-    mWidth := Max(mWidth, LayoutRow(mIndex, mY, mRightX, mTextHeight, ADraw));
-  end;
-  // Fußzeile mit den Tasten.
-  mY := mY + mTextHeight + Scale(cRowGap) * 2;
-  mText := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetFooter);
-  if ADraw then
-  begin
-    Canvas.Font.Color := ToColor(Colors.Muted);
-    Canvas.TextOut(Scale(cPad), mY, mText);
-    Canvas.Brush.Style := bsSolid;
-  end;
-  Result.cx := Max(mWidth, Scale(cPad) + Canvas.TextWidth(mText)) + Scale(cPad);
-  Result.cy := mY + mTextHeight + Scale(cPad);
-end;
-
 procedure TAtlasStepIntoWindow.ShowFor(const ARows: TArray<TAtlasStepRow>; const APoint: TPoint);
 var
   mSize: TSize;
@@ -294,17 +352,6 @@ begin
   HidePopup;
 end;
 
-procedure TAtlasStepIntoWindow.Select(AIndex: Integer);
-begin
-  if (AIndex < 0) or (AIndex > High(FRows)) or not FRows[AIndex].Available or (AIndex = FRow) then
-  begin
-    Exit;
-  end;
-  FRow := AIndex;
-  Invalidate;
-  Announce(RowCaption(FRows, FRow));
-end;
-
 function TAtlasStepIntoWindow.MoveRow(ADelta: Integer): Boolean;
 var
   mNext: Integer;
@@ -329,6 +376,17 @@ begin
   end;
   Select(mIndex);
   Accept;
+end;
+
+procedure TAtlasStepIntoWindow.Select(AIndex: Integer);
+begin
+  if (AIndex < 0) or (AIndex > High(FRows)) or not FRows[AIndex].Available or (AIndex = FRow) then
+  begin
+    Exit;
+  end;
+  FRow := AIndex;
+  Invalidate;
+  Announce(RowCaption(FRows, FRow));
 end;
 
 function TAtlasStepIntoWindow.RowRect(AIndex: Integer): TRect;
@@ -362,64 +420,6 @@ begin
   if Assigned(FOnCancel) then
   begin
     FOnCancel();
-  end;
-end;
-
-procedure TAtlasStepIntoWindow.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
-end;
-
-procedure TAtlasStepIntoWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  mIndex: Integer;
-  mPoint: TPoint;
-begin
-  inherited;
-  if Button <> mbLeft then
-  begin
-    Exit;
-  end;
-  mPoint := TPoint.Create(X, Y);
-  for mIndex := 0 to High(FRowRects) do
-  begin
-    if PtInRect(FRowRects[mIndex], mPoint) and FRows[mIndex].Available then
-    begin
-      Select(mIndex);
-      Accept;
-      Exit;
-    end;
-  end;
-end;
-
-procedure TAtlasStepIntoWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  mIndex: Integer;
-  mHot: Boolean;
-  mPoint: TPoint;
-begin
-  inherited;
-  mPoint := TPoint.Create(X, Y);
-  mHot := False;
-  for mIndex := 0 to High(FRowRects) do
-  begin
-    if PtInRect(FRowRects[mIndex], mPoint) and FRows[mIndex].Available then
-    begin
-      mHot := True;
-      Select(mIndex);
-    end;
-  end;
-  if mHot then
-  begin
-    Cursor := crHandPoint;
-  end
-  else
-  begin
-    Cursor := crDefault;
   end;
 end;
 

@@ -70,6 +70,8 @@ type
     procedure Click; override;
   end;
 
+{ TTargetItem }
+
 procedure TTargetItem.Click;
 var
   mEditor: IOTAFormEditor;
@@ -122,17 +124,6 @@ end;
 
 { TAtlasIdeShowComponent }
 
-class procedure TAtlasIdeShowComponent.Install(const AOnMessage: TProc<string>);
-begin
-  FOnMessage := AOnMessage;
-end;
-
-class procedure TAtlasIdeShowComponent.Uninstall;
-begin
-  FreeAndNil(FMenu);
-  FOnMessage := nil;
-end;
-
 class procedure TAtlasIdeShowComponent.Say(const AText: string);
 begin
   TAtlasGuard.Log('Im Designer zeigen: ' + AText);
@@ -140,92 +131,6 @@ begin
   begin
     FOnMessage(AText);
   end;
-end;
-
-class function TAtlasIdeShowComponent.FindComponent(ARoot: TComponent; const AName: string): TComponent;
-var
-  mIndex: Integer;
-  mChild: TComponent;
-begin
-  Result := nil;
-  if (ARoot = nil) or (AName = '') then
-  begin
-    Exit;
-  end;
-  if SameText(ARoot.Name, AName) then
-  begin
-    Exit(ARoot);
-  end;
-  Result := ARoot.FindComponent(AName);
-  if Result <> nil then
-  begin
-    Exit;
-  end;
-  // Eingebettete Frames besitzen ihre Komponenten selbst.
-  for mIndex := 0 to ARoot.ComponentCount - 1 do
-  begin
-    mChild := ARoot.Components[mIndex];
-    if csInline in mChild.ComponentState then
-    begin
-      Result := FindComponent(mChild, AName);
-      if Result <> nil then
-      begin
-        Exit;
-      end;
-    end;
-  end;
-end;
-
-class function TAtlasIdeShowComponent.Reveal(AComponent: TComponent): Boolean;
-var
-  mControl: TControl;
-  mSheet: TTabSheet;
-begin
-  Result := False;
-  if not (AComponent is TControl) then
-  begin
-    Exit;
-  end;
-  mControl := TControl(AComponent);
-  while mControl <> nil do
-  begin
-    if mControl is TTabSheet then
-    begin
-      mSheet := TTabSheet(mControl);
-      if (mSheet.PageControl <> nil) and (mSheet.PageControl.ActivePage <> mSheet) then
-      begin
-        mSheet.PageControl.ActivePage := mSheet;
-        Result := True;
-      end;
-    end;
-    mControl := mControl.Parent;
-  end;
-end;
-
-class function TAtlasIdeShowComponent.Show(const AEditor: IOTAFormEditor; AComponent: TComponent): Boolean;
-var
-  mDesigner: IDesigner;
-  mRoot: TComponent;
-begin
-  Result := False;
-  if (AEditor = nil) or (AComponent = nil) then
-  begin
-    Exit;
-  end;
-  // Register „Design“; der Designer entsteht erst dabei.
-  AEditor.Show;
-  mDesigner := TAtlasDesignerAccess.DesignerOf(AEditor);
-  mRoot := TAtlasIdeDesignerView.RootOf(AEditor);
-  if (mDesigner = nil) or (mRoot = nil) then
-  begin
-    Exit;
-  end;
-  if Reveal(AComponent) then
-  begin
-    mDesigner.Modified;
-  end;
-  mDesigner.SelectComponent(AComponent);
-  Result := True;
 end;
 
 class procedure TAtlasIdeShowComponent.PickTarget(const AEditor: IOTAFormEditor;
@@ -290,6 +195,103 @@ begin
   else
     PickTarget(mEditor, mTargets);
   end;
+end;
+
+class function TAtlasIdeShowComponent.Show(const AEditor: IOTAFormEditor; AComponent: TComponent): Boolean;
+var
+  mDesigner: IDesigner;
+  mRoot: TComponent;
+begin
+  Result := False;
+  if (AEditor = nil) or (AComponent = nil) then
+  begin
+    Exit;
+  end;
+  // Register „Design“; der Designer entsteht erst dabei.
+  AEditor.Show;
+  mDesigner := TAtlasDesignerAccess.DesignerOf(AEditor);
+  mRoot := TAtlasIdeDesignerView.RootOf(AEditor);
+  if (mDesigner = nil) or (mRoot = nil) then
+  begin
+    Exit;
+  end;
+  if Reveal(AComponent) then
+  begin
+    mDesigner.Modified;
+  end;
+  mDesigner.SelectComponent(AComponent);
+  Result := True;
+end;
+
+class function TAtlasIdeShowComponent.Reveal(AComponent: TComponent): Boolean;
+var
+  mControl: TControl;
+  mSheet: TTabSheet;
+begin
+  Result := False;
+  if not (AComponent is TControl) then
+  begin
+    Exit;
+  end;
+  mControl := TControl(AComponent);
+  while mControl <> nil do
+  begin
+    if mControl is TTabSheet then
+    begin
+      mSheet := TTabSheet(mControl);
+      if (mSheet.PageControl <> nil) and (mSheet.PageControl.ActivePage <> mSheet) then
+      begin
+        mSheet.PageControl.ActivePage := mSheet;
+        Result := True;
+      end;
+    end;
+    mControl := mControl.Parent;
+  end;
+end;
+
+class function TAtlasIdeShowComponent.FindComponent(ARoot: TComponent; const AName: string): TComponent;
+var
+  mIndex: Integer;
+  mChild: TComponent;
+begin
+  Result := nil;
+  if (ARoot = nil) or (AName = '') then
+  begin
+    Exit;
+  end;
+  if SameText(ARoot.Name, AName) then
+  begin
+    Exit(ARoot);
+  end;
+  Result := ARoot.FindComponent(AName);
+  if Result <> nil then
+  begin
+    Exit;
+  end;
+  // Eingebettete Frames besitzen ihre Komponenten selbst.
+  for mIndex := 0 to ARoot.ComponentCount - 1 do
+  begin
+    mChild := ARoot.Components[mIndex];
+    if csInline in mChild.ComponentState then
+    begin
+      Result := FindComponent(mChild, AName);
+      if Result <> nil then
+      begin
+        Exit;
+      end;
+    end;
+  end;
+end;
+
+class procedure TAtlasIdeShowComponent.Install(const AOnMessage: TProc<string>);
+begin
+  FOnMessage := AOnMessage;
+end;
+
+class procedure TAtlasIdeShowComponent.Uninstall;
+begin
+  FreeAndNil(FMenu);
+  FOnMessage := nil;
 end;
 
 end.

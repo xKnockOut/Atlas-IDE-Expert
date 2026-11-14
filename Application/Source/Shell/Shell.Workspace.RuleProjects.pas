@@ -57,30 +57,7 @@ uses
   Atlas.Common.Rules.Builtin.FormFields,
   Shell.Workspace.Packages;
 
-class function TShellRuleProjects.IsMember(const AProject: TProjectInfo; const AFileName: string): Boolean;
-var
-  mUnit: TProjectUnit;
-begin
-  Result := SameText(AProject.MainSource, AFileName);
-  for mUnit in AProject.Units do
-  begin
-    Result := Result or SameText(mUnit.FileName, AFileName);
-  end;
-end;
-
-class function TShellRuleProjects.ConsoleTargetOf(const AProject: TProjectInfo): string;
-var
-  mPair: TPair<string, string>;
-begin
-  Result := '';
-  for mPair in AProject.Properties do
-  begin
-    if SameText(mPair.Key, 'DCC_ConsoleTarget') then
-    begin
-      Result := mPair.Value;
-    end;
-  end;
-end;
+{ TShellRuleProjects }
 
 class function TShellRuleProjects.RuleProjectOf(const AProject: TProjectInfo; const AFileName: string;
   const AReadText: TRuleProjectReadText): TCheckProject;
@@ -142,6 +119,31 @@ begin
     else if mProject.Application <> Result.Application then
     begin
       Result.Application := TRuleApplicationKind.Unknown;
+    end;
+  end;
+end;
+
+class function TShellRuleProjects.IsMember(const AProject: TProjectInfo; const AFileName: string): Boolean;
+var
+  mUnit: TProjectUnit;
+begin
+  Result := SameText(AProject.MainSource, AFileName);
+  for mUnit in AProject.Units do
+  begin
+    Result := Result or SameText(mUnit.FileName, AFileName);
+  end;
+end;
+
+class function TShellRuleProjects.ConsoleTargetOf(const AProject: TProjectInfo): string;
+var
+  mPair: TPair<string, string>;
+begin
+  Result := '';
+  for mPair in AProject.Properties do
+  begin
+    if SameText(mPair.Key, 'DCC_ConsoleTarget') then
+    begin
+      Result := mPair.Value;
     end;
   end;
 end;

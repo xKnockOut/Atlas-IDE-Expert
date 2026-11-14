@@ -192,11 +192,6 @@ end;
 
 { TAtlasProjectBaselines }
 
-class function TAtlasProjectBaselines.WrittenElsewhere(const AProject, AWrittenFile: string): Boolean;
-begin
-  Result := (Trim(AProject) <> '') and (Trim(AWrittenFile) <> '') and (FolderKey(AProject) <> FolderKey(AWrittenFile));
-end;
-
 class function TAtlasProjectBaselines.FileIn(const AFolder: string; const AExists: TAtlasBaselineFileExists): string;
 begin
   Result := '';
@@ -214,6 +209,29 @@ begin
   end;
 end;
 
+class function TAtlasProjectBaselines.StateOf(const AFolder: string; const AExists: TAtlasBaselineFileExists;
+  const ARead: TAtlasBaselineReadText): TAtlasBaselineState;
+var
+  mName, mText: string;
+begin
+  Result := Default(TAtlasBaselineState);
+  Result.Orphans := nil;
+  mName := FileIn(AFolder, AExists);
+  if mName = '' then
+  begin
+    Exit;
+  end;
+  if ARead(mName, mText) then
+  begin
+    Result := StateOfText(AFolder, mText, AExists);
+  end
+  else
+  begin
+    Result.Exists := True;
+  end;
+  Result.FileName := mName;
+end;
+
 type
   /// <summary>Fragt je Pfad einer Grundlinie nur einmal, ob die Datei fehlt: Eine Datei hat oft viele
   /// Einträge.</summary>
@@ -229,6 +247,8 @@ type
     /// ohne AExists.</summary>
     function Gone(const APath: string): Boolean;
   end;
+
+{ TBaselineFileCheck }
 
 constructor TBaselineFileCheck.Create(const AFolder: string; const AExists: TAtlasBaselineFileExists);
 begin
@@ -315,27 +335,9 @@ begin
   end;
 end;
 
-class function TAtlasProjectBaselines.StateOf(const AFolder: string; const AExists: TAtlasBaselineFileExists;
-  const ARead: TAtlasBaselineReadText): TAtlasBaselineState;
-var
-  mName, mText: string;
+class function TAtlasProjectBaselines.WrittenElsewhere(const AProject, AWrittenFile: string): Boolean;
 begin
-  Result := Default(TAtlasBaselineState);
-  Result.Orphans := nil;
-  mName := FileIn(AFolder, AExists);
-  if mName = '' then
-  begin
-    Exit;
-  end;
-  if ARead(mName, mText) then
-  begin
-    Result := StateOfText(AFolder, mText, AExists);
-  end
-  else
-  begin
-    Result.Exists := True;
-  end;
-  Result.FileName := mName;
+  Result := (Trim(AProject) <> '') and (Trim(AWrittenFile) <> '') and (FolderKey(AProject) <> FolderKey(AWrittenFile));
 end;
 
 function FileOnDisk(const AFileName: string): Boolean;

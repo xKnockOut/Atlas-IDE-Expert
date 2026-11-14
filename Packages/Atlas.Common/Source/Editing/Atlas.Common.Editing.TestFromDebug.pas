@@ -324,6 +324,8 @@ begin
     EndsText('Array', ATypeName);
 end;
 
+{ TTestFromDebug }
+
 class function TTestFromDebug.Literal(const AText, ATypeName: string; AMaxArray: Integer;
   out ALiteral: string): Boolean;
 var

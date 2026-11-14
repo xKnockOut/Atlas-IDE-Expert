@@ -195,6 +195,8 @@ begin
   Result := False;
 end;
 
+{ TResolverQueries }
+
 constructor TResolverQueries.Create(const AParts: TResolverParts; AExpressions: TResolverExpressions;
   AChains: TResolverChains);
 begin
@@ -222,6 +224,80 @@ begin
   end;
 end;
 
+function TResolverQueries.MemberCref(const AFromUnit: TUnitIndex; const AContainer, AName: string;
+  out AResult: TResolvedSymbol): Boolean;
+var
+  mDot: Integer;
+  mOwner: TResolvedSymbol;
+begin
+  // Typ.Mitglied
+  mDot := LastDelimiter('.', AName);
+  if mDot > 0 then
+  begin
+    Result := ResolveTypeFrom(AFromUnit, Copy(AName, 1, mDot - 1), mOwner) and not mOwner.Builtin and
+      FParts.Members.DeclaredMember(mOwner, Copy(AName, mDot + 1, MaxInt), AResult);
+    Exit;
+  end;
+  // Mitglied der eigenen Klasse.
+  Result := (AContainer <> '') and ResolveTypeFrom(AFromUnit, AContainer, mOwner) and
+    FParts.Members.DeclaredMember(mOwner, AName, AResult);
+end;
+
+function TResolverQueries.ClassTypeOf(const ASymbol: TResolvedSymbol; out AClass: TResolvedSymbol): Boolean;
+begin
+  Result := ASymbol.Found and ASymbol.IsType and FParts.Typing.TypeOf(ASymbol, AClass) and
+    (AClass.SymbolKind = TIndexSymbolKind.ClassType);
+end;
+
+function TResolverQueries.ChainReaches(const AClass: TResolvedSymbol; const ARoot: string;
+  out AOpenAncestor: string): Boolean;
+var
+  mCurrent, mNext: TResolvedSymbol;
+  mDepth: Integer;
+begin
+  // AOpenAncestor: erster Vorfahr, der sich nicht auflösen ließ; '' wenn die Kette bei TObject endet.
+  AOpenAncestor := '';
+  mCurrent := AClass;
+  for mDepth := 0 to cMaxDepth do
+  begin
+    if SameText(mCurrent.Name, ARoot) then
+    begin
+      Exit(True);
+    end;
+    if (Length(mCurrent.Ancestors) = 0) or TResolverText.IsObjectRoot(mCurrent.Ancestors[0]) then
+    begin
+      Break;
+    end;
+    if not FParts.Typing.AncestorOf(mCurrent, mNext) then
+    begin
+      AOpenAncestor := mCurrent.Ancestors[0];
+      Break;
+    end;
+    mCurrent := mNext;
+  end;
+  Result := False;
+end;
+
+function TResolverQueries.OwnAccessor(const AFromUnit: TUnitIndex; const AProperty: TResolvedSymbol;
+  const AName: string; out AReadsField: Boolean): Boolean;
+var
+  mPosition: Integer;
+  mSymbol: TIndexSymbol;
+begin
+  // Zuerst im Typ selbst, auch private: Der Zugriff steht meist privat neben der Property.
+  for mPosition in AFromUnit.SymbolsNamed(AName) do
+  begin
+    mSymbol := AFromUnit.Symbols[mPosition];
+    if SameText(mSymbol.Container, AProperty.Container) and
+      (mSymbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Method]) then
+    begin
+      AReadsField := mSymbol.Kind = TIndexSymbolKind.Field;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 function TResolverQueries.ResolveTypeFrom(const AFromUnit: TUnitIndex; const ATypeName: string;
   out AResult: TResolvedSymbol): Boolean;
 begin
@@ -242,25 +318,6 @@ function TResolverQueries.ResolveNameFrom(const AFromUnit: TUnitIndex; const ANa
 begin
   FParts.Place.MoveToUnit(AFromUnit);
   Result := FParts.Lookup.LookupGlobal(AFromUnit, AName, True, False, AResult);
-end;
-
-function TResolverQueries.MemberCref(const AFromUnit: TUnitIndex; const AContainer, AName: string;
-  out AResult: TResolvedSymbol): Boolean;
-var
-  mDot: Integer;
-  mOwner: TResolvedSymbol;
-begin
-  // Typ.Mitglied
-  mDot := LastDelimiter('.', AName);
-  if mDot > 0 then
-  begin
-    Result := ResolveTypeFrom(AFromUnit, Copy(AName, 1, mDot - 1), mOwner) and not mOwner.Builtin and
-      FParts.Members.DeclaredMember(mOwner, Copy(AName, mDot + 1, MaxInt), AResult);
-    Exit;
-  end;
-  // Mitglied der eigenen Klasse.
-  Result := (AContainer <> '') and ResolveTypeFrom(AFromUnit, AContainer, mOwner) and
-    FParts.Members.DeclaredMember(mOwner, AName, AResult);
 end;
 
 function TResolverQueries.LocateCref(const AFromUnit: TUnitIndex; const AContainer, ACref: string;
@@ -482,41 +539,6 @@ begin
   Result := FParts.Typing.HelperParent(AHelper, AParent);
 end;
 
-function TResolverQueries.ClassTypeOf(const ASymbol: TResolvedSymbol; out AClass: TResolvedSymbol): Boolean;
-begin
-  Result := ASymbol.Found and ASymbol.IsType and FParts.Typing.TypeOf(ASymbol, AClass) and
-    (AClass.SymbolKind = TIndexSymbolKind.ClassType);
-end;
-
-function TResolverQueries.ChainReaches(const AClass: TResolvedSymbol; const ARoot: string;
-  out AOpenAncestor: string): Boolean;
-var
-  mCurrent, mNext: TResolvedSymbol;
-  mDepth: Integer;
-begin
-  // AOpenAncestor: erster Vorfahr, der sich nicht auflösen ließ; '' wenn die Kette bei TObject endet.
-  AOpenAncestor := '';
-  mCurrent := AClass;
-  for mDepth := 0 to cMaxDepth do
-  begin
-    if SameText(mCurrent.Name, ARoot) then
-    begin
-      Exit(True);
-    end;
-    if (Length(mCurrent.Ancestors) = 0) or TResolverText.IsObjectRoot(mCurrent.Ancestors[0]) then
-    begin
-      Break;
-    end;
-    if not FParts.Typing.AncestorOf(mCurrent, mNext) then
-    begin
-      AOpenAncestor := mCurrent.Ancestors[0];
-      Break;
-    end;
-    mCurrent := mNext;
-  end;
-  Result := False;
-end;
-
 function TResolverQueries.AttributeClassOf(const ASymbol: TResolvedSymbol; out AClass: TResolvedSymbol): Boolean;
 var
   mCurrent: TResolvedSymbol;
@@ -618,26 +640,6 @@ begin
     mTarget.Name := Trim(ATypeName);
   end;
   Result := FParts.Typing.HelperFor(mTarget, AHelper);
-end;
-
-function TResolverQueries.OwnAccessor(const AFromUnit: TUnitIndex; const AProperty: TResolvedSymbol;
-  const AName: string; out AReadsField: Boolean): Boolean;
-var
-  mPosition: Integer;
-  mSymbol: TIndexSymbol;
-begin
-  // Zuerst im Typ selbst, auch private: Der Zugriff steht meist privat neben der Property.
-  for mPosition in AFromUnit.SymbolsNamed(AName) do
-  begin
-    mSymbol := AFromUnit.Symbols[mPosition];
-    if SameText(mSymbol.Container, AProperty.Container) and
-      (mSymbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Method]) then
-    begin
-      AReadsField := mSymbol.Kind = TIndexSymbolKind.Field;
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 function TResolverQueries.PropertyReadsField(const AProperty: TResolvedSymbol; out AReadsField: Boolean): Boolean;

@@ -112,33 +112,6 @@ end;
 
 { TAtlasIdeNotes }
 
-class procedure TAtlasIdeNotes.Start(const AMessage: TProc<string>);
-begin
-  FMessage := AMessage;
-  if FFolder = '' then
-  begin
-    FFolder := TAtlasNotes.DefaultFolder;
-  end;
-  if FBooks = nil then
-  begin
-    FBooks := TDictionary<string, TAtlasNoteBook>.Create;
-  end;
-  if FProjectOf = nil then
-  begin
-    FProjectOf := TDictionary<string, string>.Create;
-  end;
-end;
-
-class procedure TAtlasIdeNotes.Release;
-begin
-  // Die Liste im Ergebnisfenster darf das Modul danach nicht mehr erreichen (Regel 3).
-  TAtlasIdeResultsWindow.ReleaseItems(TAtlasNotesList.cOwner);
-  FMessage := nil;
-  FreeAndNil(FBooks);
-  FreeAndNil(FProjectOf);
-  FListProject := '';
-end;
-
 class function TAtlasIdeNotes.Key(const APath: string): string;
 begin
   Result := LowerCase(Trim(APath)).Replace('/', '\');
@@ -202,9 +175,64 @@ begin
   end;
 end;
 
+class function TAtlasIdeNotes.Target(out AFileName: string; out ALine: Integer): Boolean;
+var
+  mView: IOTAEditView;
+begin
+  AFileName := '';
+  ALine := -1;
+  Result := False;
+  if FBooks = nil then
+  begin
+    Exit;
+  end;
+  if not TAtlasIdeSettings.Current.Notes then
+  begin
+    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDisabled));
+    Exit;
+  end;
+  // Auch aus Palette und Menü, wenn der Fokus nicht im Editor liegt.
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView = nil) or (mView.Buffer = nil) or (mView.Buffer.FileName = '') then
+  begin
+    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesNoEditor));
+    Exit;
+  end;
+  AFileName := mView.Buffer.FileName;
+  // Rechtsklick in die Rinne (#545) gilt vor dem Cursor, solange er frisch ist und zur Datei passt.
+  if not TAtlasIdeGutterMarks.TakeLine(AFileName, ALine) then
+  begin
+    ALine := mView.CursorPos.Line - 1;
+  end;
+  Result := ALine >= 0;
+end;
+
 class function TAtlasIdeNotes.CurrentLines(const AFileName: string): TArray<string>;
 begin
   Result := TAtlasLineAnchors.Lines(TAtlasIdeWorkspaceEdit.CurrentText(AFileName));
+end;
+
+class function TAtlasIdeNotes.Confirm(const ANote: TAtlasNote): Boolean;
+begin
+  Result := MessageDlg(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesDeleteConfirm, [ANote.Title]),
+    mtConfirmation,
+    [mbYes, mbNo], 0) = mrYes;
+end;
+
+class procedure TAtlasIdeNotes.RefreshList(const ASelectId: string);
+var
+  mFrame: TAtlasResultsFrame;
+  mCurrent: TAtlasNoteBook;
+begin
+  mFrame := TAtlasIdeResultsWindow.ExistingFrame;
+  // Nur, wenn das Fenster gerade die Notizen zeigt; sonst bleibt seine Liste.
+  if (mFrame = nil) or (FListProject = '') or not mFrame.Items.ShowsItemsOf(TAtlasNotesList.cOwner) then
+  begin
+    Exit;
+  end;
+  mCurrent := Book(FListProject);
+  mFrame.Items.Show(ListOf(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesListTitle,
+    [ExtractFileName(FListProject), mCurrent.Count, mCurrent.OrphanCount]), mCurrent.Groups, ASelectId));
 end;
 
 class procedure TAtlasIdeNotes.Invalidate;
@@ -215,6 +243,33 @@ begin
   begin
     TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
+end;
+
+class procedure TAtlasIdeNotes.Start(const AMessage: TProc<string>);
+begin
+  FMessage := AMessage;
+  if FFolder = '' then
+  begin
+    FFolder := TAtlasNotes.DefaultFolder;
+  end;
+  if FBooks = nil then
+  begin
+    FBooks := TDictionary<string, TAtlasNoteBook>.Create;
+  end;
+  if FProjectOf = nil then
+  begin
+    FProjectOf := TDictionary<string, string>.Create;
+  end;
+end;
+
+class procedure TAtlasIdeNotes.Release;
+begin
+  // Die Liste im Ergebnisfenster darf das Modul danach nicht mehr erreichen (Regel 3).
+  TAtlasIdeResultsWindow.ReleaseItems(TAtlasNotesList.cOwner);
+  FMessage := nil;
+  FreeAndNil(FBooks);
+  FreeAndNil(FProjectOf);
+  FListProject := '';
 end;
 
 class function TAtlasIdeNotes.Track(const AFileName, AText: string): Boolean;
@@ -264,45 +319,6 @@ begin
   begin
     Result := mCurrent.AtLine(AFileName, ALine);
   end;
-end;
-
-class function TAtlasIdeNotes.Target(out AFileName: string; out ALine: Integer): Boolean;
-var
-  mView: IOTAEditView;
-begin
-  AFileName := '';
-  ALine := -1;
-  Result := False;
-  if FBooks = nil then
-  begin
-    Exit;
-  end;
-  if not TAtlasIdeSettings.Current.Notes then
-  begin
-    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDisabled));
-    Exit;
-  end;
-  // Auch aus Palette und Menü, wenn der Fokus nicht im Editor liegt.
-  mView := TAtlasEditorBuffer.ActiveView;
-  if (mView = nil) or (mView.Buffer = nil) or (mView.Buffer.FileName = '') then
-  begin
-    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesNoEditor));
-    Exit;
-  end;
-  AFileName := mView.Buffer.FileName;
-  // Rechtsklick in die Rinne (#545) gilt vor dem Cursor, solange er frisch ist und zur Datei passt.
-  if not TAtlasIdeGutterMarks.TakeLine(AFileName, ALine) then
-  begin
-    ALine := mView.CursorPos.Line - 1;
-  end;
-  Result := ALine >= 0;
-end;
-
-class function TAtlasIdeNotes.Confirm(const ANote: TAtlasNote): Boolean;
-begin
-  Result := MessageDlg(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesDeleteConfirm, [ANote.Title]),
-    mtConfirmation,
-    [mbYes, mbNo], 0) = mrYes;
 end;
 
 class procedure TAtlasIdeNotes.AddOrEdit;
@@ -360,41 +376,6 @@ begin
   RefreshList('');
 end;
 
-class procedure TAtlasIdeNotes.DeleteAtLine;
-var
-  mFileName, mProject: string;
-  mLine, mIndex: Integer;
-  mCurrent: TAtlasNoteBook;
-begin
-  if not Target(mFileName, mLine) then
-  begin
-    Exit;
-  end;
-  mProject := ResolveProject(mFileName);
-  if mProject = '' then
-  begin
-    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesNoProject));
-    Exit;
-  end;
-  mCurrent := Book(mProject);
-  mCurrent.Relocate(mFileName, CurrentLines(mFileName));
-  Put(mCurrent);
-  mIndex := mCurrent.IndexAt(mFileName, mLine);
-  if mIndex < 0 then
-  begin
-    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesNone));
-    Exit;
-  end;
-  if not Confirm(mCurrent.Notes[mIndex]) then
-  begin
-    Exit;
-  end;
-  mCurrent.Remove(mCurrent.Notes[mIndex].Id);
-  Store(mCurrent);
-  Invalidate;
-  RefreshList('');
-end;
-
 // Projekt der Liste: das der Datei im Editor, sonst das aktive. Auch aus Palette und Menü, wenn der Fokus nicht
 // im Editor liegt.
 function ListProject: string;
@@ -438,6 +419,41 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeNotes.DeleteAtLine;
+var
+  mFileName, mProject: string;
+  mLine, mIndex: Integer;
+  mCurrent: TAtlasNoteBook;
+begin
+  if not Target(mFileName, mLine) then
+  begin
+    Exit;
+  end;
+  mProject := ResolveProject(mFileName);
+  if mProject = '' then
+  begin
+    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesNoProject));
+    Exit;
+  end;
+  mCurrent := Book(mProject);
+  mCurrent.Relocate(mFileName, CurrentLines(mFileName));
+  Put(mCurrent);
+  mIndex := mCurrent.IndexAt(mFileName, mLine);
+  if mIndex < 0 then
+  begin
+    Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesNone));
+    Exit;
+  end;
+  if not Confirm(mCurrent.Notes[mIndex]) then
+  begin
+    Exit;
+  end;
+  mCurrent.Remove(mCurrent.Notes[mIndex].Id);
+  Store(mCurrent);
+  Invalidate;
+  RefreshList('');
+end;
+
 class procedure TAtlasIdeNotes.ShowList;
 var
   mProject: string;
@@ -470,22 +486,6 @@ begin
   FListProject := mProject;
   TAtlasIdeResultsWindow.ShowItems(ListOf(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesListTitle,
     [ExtractFileName(mProject), mCurrent.Count, mCurrent.OrphanCount]), mCurrent.Groups, ''));
-end;
-
-class procedure TAtlasIdeNotes.RefreshList(const ASelectId: string);
-var
-  mFrame: TAtlasResultsFrame;
-  mCurrent: TAtlasNoteBook;
-begin
-  mFrame := TAtlasIdeResultsWindow.ExistingFrame;
-  // Nur, wenn das Fenster gerade die Notizen zeigt; sonst bleibt seine Liste.
-  if (mFrame = nil) or (FListProject = '') or not mFrame.Items.ShowsItemsOf(TAtlasNotesList.cOwner) then
-  begin
-    Exit;
-  end;
-  mCurrent := Book(FListProject);
-  mFrame.Items.Show(ListOf(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesListTitle,
-    [ExtractFileName(FListProject), mCurrent.Count, mCurrent.OrphanCount]), mCurrent.Groups, ASelectId));
 end;
 
 class procedure TAtlasIdeNotes.EditNote(const AId: string);

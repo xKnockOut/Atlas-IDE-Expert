@@ -815,6 +815,8 @@ begin
   InspectRemote(AVcs, AFacts);
 end;
 
+{ TAtlasVcsBranchPlan }
+
 class function TAtlasVcsBranchPlan.Inspect(const AVcs: IAtlasVersionControl;
   const ACandidates: TArray<string>): TAtlasVcsBranchFacts;
 var
@@ -1005,6 +1007,117 @@ begin
   Result := ApplySvn(ARequest, AFacts, AOptions.Svn) and Result and ActionsChosen(ARequest.ExternalActions);
 end;
 
+class function TAtlasVcsBranchPlan.WorktreePath(const ARoot, APattern, AName, AKey: string): string;
+var
+  mRoot, mKey: string;
+begin
+  mRoot := ExcludeTrailingPathDelimiter(Trim(ARoot));
+  if mRoot = '' then
+  begin
+    Exit('');
+  end;
+  Result := Trim(APattern);
+  if Result = '' then
+  begin
+    Result := TAtlasVcsGitBranchOptions.cDefaultWorktreeFolder;
+  end;
+  mKey := FolderPart(AKey);
+  // Ohne Issue (Befehl „Branch anlegen …“) steht der Name an Stelle der Kennung.
+  if mKey = '' then
+  begin
+    mKey := FolderPart(AName);
+  end;
+  Result := StringReplace(Result, '{repo}', FolderPart(ExtractFileName(mRoot)), [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '{name}', FolderPart(AName), [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '{kennung}', mKey, [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(StringReplace(Result, '/', PathDelim, [rfReplaceAll]), '\', PathDelim, [rfReplaceAll]);
+  // Vollständig: Laufwerk, UNC bzw. Wurzel; sonst relativ zur Wurzel der Arbeitskopie.
+  if not ((Length(Result) > 1) and (Result[2] = ':')) and not ((Result <> '') and (Result[1] = PathDelim)) then
+  begin
+    Result := mRoot + PathDelim + Result;
+  end;
+  Result := ExcludeTrailingPathDelimiter(ExpandFileName(Result));
+end;
+
+class function TAtlasVcsBranchPlan.SafeFolder(const AFolder: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := (AFolder <> '') and (AFolder[1] <> '-') and (AFolder = Trim(AFolder)) and
+    (((Length(AFolder) > 1) and (AFolder[2] = ':')) or (AFolder[1] = PathDelim));
+  if not Result then
+  begin
+    Exit;
+  end;
+  for mIndex := 1 to Length(AFolder) do
+  begin
+    if Ord(AFolder[mIndex]) < 32 then
+    begin
+      Exit(False);
+    end;
+  end;
+end;
+
+class function TAtlasVcsBranchPlan.ProjectInFolder(const AProject, ARoot, AFolder: string): string;
+var
+  mRoot: string;
+begin
+  Result := '';
+  mRoot := IncludeTrailingPathDelimiter(ExcludeTrailingPathDelimiter(Trim(ARoot)));
+  if (Trim(ARoot) = '') or (AFolder = '') or not SameText(Copy(AProject, 1, Length(mRoot)), mRoot) then
+  begin
+    Exit;
+  end;
+  Result := IncludeTrailingPathDelimiter(AFolder) + Copy(AProject, Length(mRoot) + 1, MaxInt);
+end;
+
+class function TAtlasVcsBranchPlan.LocalChanges(const AChanges: TArray<TAtlasVcsChange>): Integer;
+var
+  mChange: TAtlasVcsChange;
+begin
+  Result := 0;
+  for mChange in AChanges do
+  begin
+    if mChange.Kind <> TAtlasVcsChangeKind.Untracked then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
+class function TAtlasVcsBranchPlan.StashMessage(const AName: string): string;
+begin
+  Result := 'Atlas: vor ' + AName;
+end;
+
+class function TAtlasVcsBranchPlan.FetchFailed(const ASteps: TArray<TAtlasVcsBranchStep>;
+  const ARun: TAtlasVcsBranchRun): Boolean;
+begin
+  Result := (ARun.Failed >= 0) and (ARun.Failed <= High(ASteps)) and (Length(ASteps[ARun.Failed].Arguments) > 0) and
+    (ASteps[ARun.Failed].Arguments[0] = 'fetch');
+end;
+
+class function TAtlasVcsBranchPlan.OnlyPushFailed(const ASteps: TArray<TAtlasVcsBranchStep>;
+  const ARun: TAtlasVcsBranchRun): Boolean;
+begin
+  Result := (ARun.Failed >= 0) and (ARun.Failed = High(ASteps)) and (ARun.Done = ARun.Failed) and
+    (Length(ASteps[ARun.Failed].Arguments) > 0) and (ASteps[ARun.Failed].Arguments[0] = 'push');
+end;
+
+class function TAtlasVcsBranchPlan.LocalFallback(const AFacts: TAtlasVcsBranchFacts;
+  const ARequest: TAtlasVcsBranchRequest): TAtlasVcsBranchRequest;
+var
+  mBase: TAtlasVcsBranchBase;
+begin
+  Result := ARequest;
+  Result.Fetch := False;
+  if (ARequest.Base.Kind = TAtlasVcsBranchBaseKind.RemoteMain) and
+    DefaultBase(AFacts, TAtlasVcsGitBranchOptions.Classic, mBase) then
+  begin
+    Result.Base := mBase;
+  end;
+end;
+
 class function TAtlasVcsBranchPlan.SvnLocation(const AFacts: TAtlasVcsBranchFacts;
   const ASvn: TAtlasVcsSvnBranchOptions; const AName: string; out APath: string): Boolean;
 begin
@@ -1168,117 +1281,6 @@ begin
   end;
 end;
 
-class function TAtlasVcsBranchPlan.WorktreePath(const ARoot, APattern, AName, AKey: string): string;
-var
-  mRoot, mKey: string;
-begin
-  mRoot := ExcludeTrailingPathDelimiter(Trim(ARoot));
-  if mRoot = '' then
-  begin
-    Exit('');
-  end;
-  Result := Trim(APattern);
-  if Result = '' then
-  begin
-    Result := TAtlasVcsGitBranchOptions.cDefaultWorktreeFolder;
-  end;
-  mKey := FolderPart(AKey);
-  // Ohne Issue (Befehl „Branch anlegen …“) steht der Name an Stelle der Kennung.
-  if mKey = '' then
-  begin
-    mKey := FolderPart(AName);
-  end;
-  Result := StringReplace(Result, '{repo}', FolderPart(ExtractFileName(mRoot)), [rfReplaceAll, rfIgnoreCase]);
-  Result := StringReplace(Result, '{name}', FolderPart(AName), [rfReplaceAll, rfIgnoreCase]);
-  Result := StringReplace(Result, '{kennung}', mKey, [rfReplaceAll, rfIgnoreCase]);
-  Result := StringReplace(StringReplace(Result, '/', PathDelim, [rfReplaceAll]), '\', PathDelim, [rfReplaceAll]);
-  // Vollständig: Laufwerk, UNC bzw. Wurzel; sonst relativ zur Wurzel der Arbeitskopie.
-  if not ((Length(Result) > 1) and (Result[2] = ':')) and not ((Result <> '') and (Result[1] = PathDelim)) then
-  begin
-    Result := mRoot + PathDelim + Result;
-  end;
-  Result := ExcludeTrailingPathDelimiter(ExpandFileName(Result));
-end;
-
-class function TAtlasVcsBranchPlan.SafeFolder(const AFolder: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := (AFolder <> '') and (AFolder[1] <> '-') and (AFolder = Trim(AFolder)) and
-    (((Length(AFolder) > 1) and (AFolder[2] = ':')) or (AFolder[1] = PathDelim));
-  if not Result then
-  begin
-    Exit;
-  end;
-  for mIndex := 1 to Length(AFolder) do
-  begin
-    if Ord(AFolder[mIndex]) < 32 then
-    begin
-      Exit(False);
-    end;
-  end;
-end;
-
-class function TAtlasVcsBranchPlan.ProjectInFolder(const AProject, ARoot, AFolder: string): string;
-var
-  mRoot: string;
-begin
-  Result := '';
-  mRoot := IncludeTrailingPathDelimiter(ExcludeTrailingPathDelimiter(Trim(ARoot)));
-  if (Trim(ARoot) = '') or (AFolder = '') or not SameText(Copy(AProject, 1, Length(mRoot)), mRoot) then
-  begin
-    Exit;
-  end;
-  Result := IncludeTrailingPathDelimiter(AFolder) + Copy(AProject, Length(mRoot) + 1, MaxInt);
-end;
-
-class function TAtlasVcsBranchPlan.LocalChanges(const AChanges: TArray<TAtlasVcsChange>): Integer;
-var
-  mChange: TAtlasVcsChange;
-begin
-  Result := 0;
-  for mChange in AChanges do
-  begin
-    if mChange.Kind <> TAtlasVcsChangeKind.Untracked then
-    begin
-      Inc(Result);
-    end;
-  end;
-end;
-
-class function TAtlasVcsBranchPlan.StashMessage(const AName: string): string;
-begin
-  Result := 'Atlas: vor ' + AName;
-end;
-
-class function TAtlasVcsBranchPlan.FetchFailed(const ASteps: TArray<TAtlasVcsBranchStep>;
-  const ARun: TAtlasVcsBranchRun): Boolean;
-begin
-  Result := (ARun.Failed >= 0) and (ARun.Failed <= High(ASteps)) and (Length(ASteps[ARun.Failed].Arguments) > 0) and
-    (ASteps[ARun.Failed].Arguments[0] = 'fetch');
-end;
-
-class function TAtlasVcsBranchPlan.OnlyPushFailed(const ASteps: TArray<TAtlasVcsBranchStep>;
-  const ARun: TAtlasVcsBranchRun): Boolean;
-begin
-  Result := (ARun.Failed >= 0) and (ARun.Failed = High(ASteps)) and (ARun.Done = ARun.Failed) and
-    (Length(ASteps[ARun.Failed].Arguments) > 0) and (ASteps[ARun.Failed].Arguments[0] = 'push');
-end;
-
-class function TAtlasVcsBranchPlan.LocalFallback(const AFacts: TAtlasVcsBranchFacts;
-  const ARequest: TAtlasVcsBranchRequest): TAtlasVcsBranchRequest;
-var
-  mBase: TAtlasVcsBranchBase;
-begin
-  Result := ARequest;
-  Result.Fetch := False;
-  if (ARequest.Base.Kind = TAtlasVcsBranchBaseKind.RemoteMain) and
-    DefaultBase(AFacts, TAtlasVcsGitBranchOptions.Classic, mBase) then
-  begin
-    Result.Base := mBase;
-  end;
-end;
-
 class function TAtlasVcsBranchPlan.SafeName(const AName: string): Boolean;
 begin
   Result := VcsSafeBranchName(AName);
@@ -1354,6 +1356,8 @@ type
     /// <summary>False, wenn eine Wahl fehlt (Ask) oder nicht taugt.</summary>
     function Build: Boolean;
   end;
+
+{ TExternalStepBuilder }
 
 constructor TExternalStepBuilder.Create(const ARequest: TAtlasVcsBranchRequest; const AMessage: string);
 var

@@ -124,6 +124,8 @@ type
     Counts: TArray<Integer>;
   end;
 
+{ TBeginEndSites }
+
 constructor TBeginEndSites.Create(const AContext: TRuleContext);
 var
   mStyle: TFormatStyle;
@@ -156,25 +158,6 @@ begin
   FSites := nil;
   Visit(AContext.Tree.Root, nil);
   SortSites;
-end;
-
-procedure TBeginEndSites.SortSites;
-var
-  mIndex, mOther: Integer;
-  mSite: TBodySite;
-begin
-  // Nach dem Schlüsselwort ordnen (else steht hinter den Stellen im then-Zweig); fast schon sortiert.
-  for mIndex := 1 to High(FSites) do
-  begin
-    mSite := FSites[mIndex];
-    mOther := mIndex - 1;
-    while (mOther >= 0) and (FSites[mOther].Keyword > mSite.Keyword) do
-    begin
-      FSites[mOther + 1] := FSites[mOther];
-      Dec(mOther);
-    end;
-    FSites[mOther + 1] := mSite;
-  end;
 end;
 
 function TBeginEndSites.LastTokenOf(ANode: TSyntaxNode): Integer;
@@ -258,6 +241,25 @@ begin
     Exit;
   end;
   FSites := FSites + [mSite];
+end;
+
+procedure TBeginEndSites.SortSites;
+var
+  mIndex, mOther: Integer;
+  mSite: TBodySite;
+begin
+  // Nach dem Schlüsselwort ordnen (else steht hinter den Stellen im then-Zweig); fast schon sortiert.
+  for mIndex := 1 to High(FSites) do
+  begin
+    mSite := FSites[mIndex];
+    mOther := mIndex - 1;
+    while (mOther >= 0) and (FSites[mOther].Keyword > mSite.Keyword) do
+    begin
+      FSites[mOther + 1] := FSites[mOther];
+      Dec(mOther);
+    end;
+    FSites[mOther + 1] := mSite;
+  end;
 end;
 
 procedure TBeginEndSites.Visit(ANode, ARoutine: TSyntaxNode);

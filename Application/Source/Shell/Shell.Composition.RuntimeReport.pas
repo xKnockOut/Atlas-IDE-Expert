@@ -53,6 +53,8 @@ type
     function UnitFileOf(const AUri: string): TReportUnitFileFunc;
   end;
 
+{ TShellRuntimeReportFiles }
+
 constructor TShellRuntimeReportFiles.Create(const AServices: TShellLeakSetupServices);
 begin
   inherited Create;

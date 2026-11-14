@@ -396,6 +396,8 @@ type
     function Run(out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
   end;
 
+{ TCaseCommand }
+
 constructor TCaseCommand.Create(const AContext: TSlashContext);
 begin
   inherited Create;

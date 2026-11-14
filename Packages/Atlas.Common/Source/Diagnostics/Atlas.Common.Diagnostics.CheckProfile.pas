@@ -177,11 +177,6 @@ end;
 
 { TCheckRunProfile }
 
-class function TCheckRunProfile.Milliseconds(AMicroseconds: Int64): Double;
-begin
-  Result := RoundTo(AMicroseconds / 1000, -1);
-end;
-
 function TCheckRunProfile.Anonymized(const AName: TCheckProfileNameFunc): TCheckRunProfile;
 var
   mIndex: Integer;
@@ -292,6 +287,11 @@ begin
   end;
 end;
 
+class function TCheckRunProfile.Milliseconds(AMicroseconds: Int64): Double;
+begin
+  Result := RoundTo(AMicroseconds / 1000, -1);
+end;
+
 { TCheckTimings }
 
 function MegaBytes(ABytes: Int64): string;
@@ -299,10 +299,7 @@ begin
   Result := FormatFloat('0.0', ABytes / (1024 * 1024), TFormatSettings.Invariant);
 end;
 
-class function TCheckTimings.IsJsonFile(const AFileName: string): Boolean;
-begin
-  Result := SameText(ExtractFileExt(AFileName), '.json');
-end;
+{ TCheckTimings }
 
 function TCheckTimings.ToMarkdown: string;
 var
@@ -356,6 +353,11 @@ begin
   mMemory.AddPair('total', TJSONNumber.Create(TotalBytes));
   Result.AddPair('memory', mMemory);
   Result.AddPair('checkRun', Profile.ToJson);
+end;
+
+class function TCheckTimings.IsJsonFile(const AFileName: string): Boolean;
+begin
+  Result := SameText(ExtractFileExt(AFileName), '.json');
 end;
 
 { TCheckProfiler }

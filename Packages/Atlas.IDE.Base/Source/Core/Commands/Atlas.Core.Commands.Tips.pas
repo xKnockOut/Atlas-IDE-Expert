@@ -191,6 +191,8 @@ begin
   Result.Column := Max(0, TJsonRead.Int(AItem, 'column'));
 end;
 
+{ TAtlasTipCatalog }
+
 class function TAtlasTipCatalog.Parse(const AJson: string): TAtlasTips;
 var
   mRoot, mTips, mValue: TJSONValue;

@@ -101,6 +101,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeChangeSignature }
+
 class procedure TAtlasIdeChangeSignature.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var

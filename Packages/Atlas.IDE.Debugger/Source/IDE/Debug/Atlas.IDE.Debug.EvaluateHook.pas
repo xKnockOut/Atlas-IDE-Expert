@@ -122,46 +122,6 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasIdeEvaluateHook.FindEvaluateAction: TContainedAction;
-var
-  mServices: INTAServices;
-  mName: string;
-begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
-  begin
-    Exit;
-  end;
-  for mName in cEvaluateActionNames do
-  begin
-    if Result = nil then
-    begin
-      Result := FirstAction(mServices, NamedAs(mName));
-    end;
-  end;
-  // Ersatz: die Aktion mit Strg+F7.
-  if Result = nil then
-  begin
-    Result := FirstAction(mServices, WithCtrlF7());
-  end;
-end;
-
-class function TAtlasIdeEvaluateHook.Install(const AIntercepts: TFunc<Boolean>;
-  const AShow: TProc): TAtlasIdeEvaluateHook;
-var
-  mAction: TContainedAction;
-begin
-  Result := nil;
-  mAction := FindEvaluateAction;
-  if mAction = nil then
-  begin
-    TAtlasGuard.Log('Auswerten: Aktion „Auswerten/Ändern“ der IDE nicht gefunden; Strg+F7 bleibt unverändert');
-    Exit;
-  end;
-  TAtlasGuard.Log('Auswerten: Strg+F7 über die IDE-Aktion ' + mAction.Name);
-  Result := TAtlasIdeEvaluateHook.Create(mAction, AIntercepts, AShow);
-end;
-
 procedure TAtlasIdeEvaluateHook.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   inherited Notification(AComponent, Operation);
@@ -185,19 +145,43 @@ begin
   RunOriginal;
 end;
 
-class procedure TAtlasIdeEvaluateHook.OpenIdeDialog(AHook: TAtlasIdeEvaluateHook);
+class function TAtlasIdeEvaluateHook.Install(const AIntercepts: TFunc<Boolean>;
+  const AShow: TProc): TAtlasIdeEvaluateHook;
 var
   mAction: TContainedAction;
 begin
-  if AHook <> nil then
+  Result := nil;
+  mAction := FindEvaluateAction;
+  if mAction = nil then
   begin
-    AHook.RunOriginal;
+    TAtlasGuard.Log('Auswerten: Aktion „Auswerten/Ändern“ der IDE nicht gefunden; Strg+F7 bleibt unverändert');
     Exit;
   end;
-  mAction := FindEvaluateAction;
-  if mAction <> nil then
+  TAtlasGuard.Log('Auswerten: Strg+F7 über die IDE-Aktion ' + mAction.Name);
+  Result := TAtlasIdeEvaluateHook.Create(mAction, AIntercepts, AShow);
+end;
+
+class function TAtlasIdeEvaluateHook.FindEvaluateAction: TContainedAction;
+var
+  mServices: INTAServices;
+  mName: string;
+begin
+  Result := nil;
+  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
   begin
-    mAction.Execute;
+    Exit;
+  end;
+  for mName in cEvaluateActionNames do
+  begin
+    if Result = nil then
+    begin
+      Result := FirstAction(mServices, NamedAs(mName));
+    end;
+  end;
+  // Ersatz: die Aktion mit Strg+F7.
+  if Result = nil then
+  begin
+    Result := FirstAction(mServices, WithCtrlF7());
   end;
 end;
 
@@ -223,6 +207,22 @@ begin
       FAction.OnExecute := Execute;
     end;
     FBypass := False;
+  end;
+end;
+
+class procedure TAtlasIdeEvaluateHook.OpenIdeDialog(AHook: TAtlasIdeEvaluateHook);
+var
+  mAction: TContainedAction;
+begin
+  if AHook <> nil then
+  begin
+    AHook.RunOriginal;
+    Exit;
+  end;
+  mAction := FindEvaluateAction;
+  if mAction <> nil then
+  begin
+    mAction.Execute;
   end;
 end;
 

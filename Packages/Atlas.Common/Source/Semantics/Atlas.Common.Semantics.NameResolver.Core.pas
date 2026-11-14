@@ -50,6 +50,8 @@ implementation
 uses
   Atlas.Common.Pascal.SyntaxTree;
 
+{ TResolverCore }
+
 constructor TResolverCore.Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc;
   const ATreeUnits: ITreeUnits);
 begin

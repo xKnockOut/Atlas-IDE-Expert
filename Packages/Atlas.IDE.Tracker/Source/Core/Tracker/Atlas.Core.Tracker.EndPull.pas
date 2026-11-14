@@ -45,6 +45,8 @@ uses
   System.SysUtils,
   Atlas.Core.CiBuild.Contract;
 
+{ TAtlasEndPull }
+
 class function TAtlasEndPull.Dirty(const AChanges: TArray<TAtlasVcsChange>): Boolean;
 var
   mChange: TAtlasVcsChange;

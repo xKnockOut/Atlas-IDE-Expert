@@ -315,6 +315,24 @@ begin
   end;
 end;
 
+class function TAtlasCoveredBy.RunNames(const ATests: TArray<TAtlasCoveredTest>): TArray<string>;
+var
+  mTest: TAtlasCoveredTest;
+  mName: string;
+begin
+  Result := nil;
+  for mTest in ATests do
+  begin
+    for mName in mTest.RunNames do
+    begin
+      if IndexText(mName, Result) < 0 then
+      begin
+        Result := Result + [mName];
+      end;
+    end;
+  end;
+end;
+
 class function TAtlasCoveredBy.StaleKeysOf(const ATests: TArray<TAtlasCoveredTest>;
   const AReadLines: TAtlasTestReadLines; const AStaleKeys: TAtlasTestStaleKeys): TArray<string>;
 var
@@ -338,24 +356,6 @@ begin
     if AReadLines(mTest.FileName, mLines) then
     begin
       Result := Result + AStaleKeys(TDUnitXSource.Scan(mLines), mLines);
-    end;
-  end;
-end;
-
-class function TAtlasCoveredBy.RunNames(const ATests: TArray<TAtlasCoveredTest>): TArray<string>;
-var
-  mTest: TAtlasCoveredTest;
-  mName: string;
-begin
-  Result := nil;
-  for mTest in ATests do
-  begin
-    for mName in mTest.RunNames do
-    begin
-      if IndexText(mName, Result) < 0 then
-      begin
-        Result := Result + [mName];
-      end;
     end;
   end;
 end;

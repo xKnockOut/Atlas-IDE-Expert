@@ -146,11 +146,6 @@ begin
   inherited;
 end;
 
-procedure TAtlasIdeIssuesQuery.Release(AWait: Boolean);
-begin
-  FWorker.Release(AWait);
-end;
-
 function TAtlasIdeIssuesQuery.NextProject(AForce: Boolean; out AProject: string; out AForced: Boolean): Boolean;
 var
   mProjects: TArray<string>;
@@ -215,44 +210,6 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeIssuesQuery.Deliver(const AKeep: IAtlasIdeIssuesActions; AOwner: TAtlasIdeIssuesQuery;
-  const AJob: TAtlasIssuesFetchJob);
-begin
-  TAtlasMainThread.Queue(TAtlasFeature.Tracker,
-    procedure
-    begin
-      if AKeep <> nil then
-      begin
-        AOwner.Fetched(AJob);
-      end;
-    end);
-end;
-
-procedure TAtlasIdeIssuesQuery.Fetch(AForce: Boolean);
-var
-  mJob: TAtlasIssuesFetchJob;
-  mKeep: IAtlasIdeIssuesActions;
-  mOwner: TAtlasIdeIssuesQuery;
-begin
-  if not Prepare(AForce, mJob) then
-  begin
-    Exit;
-  end;
-  FContext.QueryProject := mJob.Project;
-  mKeep := FContext.Actions;
-  mOwner := Self;
-  FWorker.Start(TThread.CreateAnonymousThread(
-    procedure
-    begin
-      mJob.Execute;
-      if not TAtlasShutdown.Signalled then
-      begin
-        Deliver(mKeep, mOwner, mJob);
-      end;
-    end));
-  FContext.Changed;
-end;
-
 procedure TAtlasIdeIssuesQuery.Fetched(const AJob: TAtlasIssuesFetchJob);
 var
   mState: TAtlasIssuesState;
@@ -311,6 +268,49 @@ begin
   begin
     FServices.Sprint.IssuesFetched(False);
   end;
+end;
+
+class procedure TAtlasIdeIssuesQuery.Deliver(const AKeep: IAtlasIdeIssuesActions; AOwner: TAtlasIdeIssuesQuery;
+  const AJob: TAtlasIssuesFetchJob);
+begin
+  TAtlasMainThread.Queue(TAtlasFeature.Tracker,
+    procedure
+    begin
+      if AKeep <> nil then
+      begin
+        AOwner.Fetched(AJob);
+      end;
+    end);
+end;
+
+procedure TAtlasIdeIssuesQuery.Fetch(AForce: Boolean);
+var
+  mJob: TAtlasIssuesFetchJob;
+  mKeep: IAtlasIdeIssuesActions;
+  mOwner: TAtlasIdeIssuesQuery;
+begin
+  if not Prepare(AForce, mJob) then
+  begin
+    Exit;
+  end;
+  FContext.QueryProject := mJob.Project;
+  mKeep := FContext.Actions;
+  mOwner := Self;
+  FWorker.Start(TThread.CreateAnonymousThread(
+    procedure
+    begin
+      mJob.Execute;
+      if not TAtlasShutdown.Signalled then
+      begin
+        Deliver(mKeep, mOwner, mJob);
+      end;
+    end));
+  FContext.Changed;
+end;
+
+procedure TAtlasIdeIssuesQuery.Release(AWait: Boolean);
+begin
+  FWorker.Release(AWait);
 end;
 
 procedure TAtlasIdeIssuesQuery.QueryNow;

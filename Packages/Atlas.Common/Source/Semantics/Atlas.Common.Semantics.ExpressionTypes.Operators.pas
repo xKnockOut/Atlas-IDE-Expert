@@ -119,10 +119,14 @@ const
     (Name: 'PByte'; Category: TExpressionCategory.Pointer_; Width: 0; Signed: False),
     (Name: 'nil'; Category: TExpressionCategory.Nil_; Width: 0; Signed: False));
 
+{ TExpressionTyped }
+
 function TExpressionTyped.Known: Boolean;
 begin
   Result := Name <> '';
 end;
+
+{ TExpressionOperators }
 
 class function TExpressionOperators.CategoryOf(const ATypeName: string; out AWidth: Integer;
   out ASigned: Boolean): TExpressionCategory;

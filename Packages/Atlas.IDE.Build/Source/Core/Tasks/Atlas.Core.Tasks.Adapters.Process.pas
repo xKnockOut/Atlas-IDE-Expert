@@ -361,6 +361,8 @@ begin
   CloseIf(AHandles.OutWrite);
 end;
 
+{ TAtlasTaskProcess }
+
 class function TAtlasTaskProcess.Run(const ATask: TAtlasTaskDefinition; ACodePage: Integer;
   const ACancelled: TFunc<Boolean>; const AOnLine: TAtlasTaskLineProc): TAtlasTaskProcessResult;
 var

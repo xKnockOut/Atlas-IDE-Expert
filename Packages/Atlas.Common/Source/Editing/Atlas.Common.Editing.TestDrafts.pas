@@ -249,50 +249,37 @@ end;
 
 { TTestDrafts }
 
-class function TTestDrafts.Placeholder(const ATypeName: string): string;
+class function TTestDrafts.HeaderOf(const AText: string; const ATokens: TArray<TPascalToken>;
+  const ADeclaration: TIndexSymbol; out AHeader: TSignatureHeader): Boolean;
+var
+  mNameToken: Integer;
 begin
-  case ValueKindOf(ATypeName) of
-    TValueKind.Integer_, TValueKind.Float:
-      Result := '0';
-    TValueKind.Text:
-      Result := '''''';
-    TValueKind.Char_:
-      Result := '#0';
-    TValueKind.Boolean_:
-      Result := 'False';
-    TValueKind.Reference:
-      Result := 'nil';
-  else
-    if ATypeName = '' then
-    begin
-      Result := '0';
-    end
-    else
-    begin
-      Result := 'Default(' + Trim(ATypeName) + ')';
-    end;
-  end;
+  mNameToken := TChangeSignature.NameTokenAt(ATokens, ADeclaration.SelectionRange.StartPos);
+  Result := TChangeSignature.ReadHeader(AText, ATokens, mNameToken, AHeader);
 end;
 
-class function TTestDrafts.LocalName(const AParameter: string; const ATaken: TArray<string>): string;
+class function TTestDrafts.DraftAt(const AText: string; const ATokens: TArray<TPascalToken>;
+  const AUnit: TUnitIndex; ALine: Integer; out ADraft: TTestDraft): Boolean;
 var
-  mNumber: Integer;
+  mDeclaration: TIndexSymbol;
+  mHeader: TSignatureHeader;
+  mClassName: string;
 begin
-  Result := AParameter;
-  if (Length(AParameter) > 1) and (AParameter[1] = 'A') and CharInSet(AParameter[2], ['A'..'Z']) then
+  ADraft := Default(TTestDraft);
+  Result := RoutineAt(AUnit, ALine, mDeclaration) and HeaderOf(AText, ATokens, mDeclaration, mHeader);
+  if not Result then
   begin
-    Result := Copy(AParameter, 2, MaxInt);
+    Exit;
   end;
-  if TPascalLexer.IsReservedWord(Result) or MatchText(Result, ATaken) then
+  mClassName := mDeclaration.Container;
+  if Pos('<', mClassName) > 0 then
   begin
-    Result := AParameter;
+    mClassName := Copy(mClassName, 1, Pos('<', mClassName) - 1);
   end;
-  mNumber := 1;
-  while TPascalLexer.IsReservedWord(Result) or MatchText(Result, ATaken) do
-  begin
-    Inc(mNumber);
-    Result := AParameter + IntToStr(mNumber);
-  end;
+  ADraft := FromHeader('', mClassName, mHeader);
+  // Von der Testunit aus nicht aufrufbar (privat, geschützt, nur im implementation-Teil): nur Assert.Fail.
+  ADraft.Bare := not mDeclaration.InInterface or
+    not (mDeclaration.Visibility in [TIndexVisibility.Public, TIndexVisibility.Published]);
 end;
 
 function IsRoutineKind(const ASymbol: TIndexSymbol): Boolean;
@@ -402,39 +389,6 @@ begin
   end;
 end;
 
-class function TTestDrafts.HeaderOf(const AText: string; const ATokens: TArray<TPascalToken>;
-  const ADeclaration: TIndexSymbol; out AHeader: TSignatureHeader): Boolean;
-var
-  mNameToken: Integer;
-begin
-  mNameToken := TChangeSignature.NameTokenAt(ATokens, ADeclaration.SelectionRange.StartPos);
-  Result := TChangeSignature.ReadHeader(AText, ATokens, mNameToken, AHeader);
-end;
-
-class function TTestDrafts.DraftAt(const AText: string; const ATokens: TArray<TPascalToken>;
-  const AUnit: TUnitIndex; ALine: Integer; out ADraft: TTestDraft): Boolean;
-var
-  mDeclaration: TIndexSymbol;
-  mHeader: TSignatureHeader;
-  mClassName: string;
-begin
-  ADraft := Default(TTestDraft);
-  Result := RoutineAt(AUnit, ALine, mDeclaration) and HeaderOf(AText, ATokens, mDeclaration, mHeader);
-  if not Result then
-  begin
-    Exit;
-  end;
-  mClassName := mDeclaration.Container;
-  if Pos('<', mClassName) > 0 then
-  begin
-    mClassName := Copy(mClassName, 1, Pos('<', mClassName) - 1);
-  end;
-  ADraft := FromHeader('', mClassName, mHeader);
-  // Von der Testunit aus nicht aufrufbar (privat, geschützt, nur im implementation-Teil): nur Assert.Fail.
-  ADraft.Bare := not mDeclaration.InInterface or
-    not (mDeclaration.Visibility in [TIndexVisibility.Public, TIndexVisibility.Published]);
-end;
-
 class function TTestDrafts.FromHeader(const AFixture, AClassName: string;
   const AHeader: TSignatureHeader): TTestDraft;
 var
@@ -465,6 +419,52 @@ begin
   end;
 end;
 
+class function TTestDrafts.Placeholder(const ATypeName: string): string;
+begin
+  case ValueKindOf(ATypeName) of
+    TValueKind.Integer_, TValueKind.Float:
+      Result := '0';
+    TValueKind.Text:
+      Result := '''''';
+    TValueKind.Char_:
+      Result := '#0';
+    TValueKind.Boolean_:
+      Result := 'False';
+    TValueKind.Reference:
+      Result := 'nil';
+  else
+    if ATypeName = '' then
+    begin
+      Result := '0';
+    end
+    else
+    begin
+      Result := 'Default(' + Trim(ATypeName) + ')';
+    end;
+  end;
+end;
+
+class function TTestDrafts.LocalName(const AParameter: string; const ATaken: TArray<string>): string;
+var
+  mNumber: Integer;
+begin
+  Result := AParameter;
+  if (Length(AParameter) > 1) and (AParameter[1] = 'A') and CharInSet(AParameter[2], ['A'..'Z']) then
+  begin
+    Result := Copy(AParameter, 2, MaxInt);
+  end;
+  if TPascalLexer.IsReservedWord(Result) or MatchText(Result, ATaken) then
+  begin
+    Result := AParameter;
+  end;
+  mNumber := 1;
+  while TPascalLexer.IsReservedWord(Result) or MatchText(Result, ATaken) do
+  begin
+    Inc(mNumber);
+    Result := AParameter + IntToStr(mNumber);
+  end;
+end;
+
 type
   /// <summary>Schreibt die Testmethode Zeile für Zeile.</summary>
   TDraftWriter = record
@@ -490,6 +490,8 @@ type
     function WriteSubjectStart: string;
     procedure WriteBody;
   end;
+
+{ TDraftWriter }
 
 procedure TDraftWriter.Line(const AText: string);
 begin
@@ -850,30 +852,6 @@ begin
   Line('end;');
 end;
 
-class function TTestDrafts.MethodText(const ADraft: TTestDraft; const ALineBreak: string): string;
-var
-  mWriter: TDraftWriter;
-begin
-  mWriter := Default(TDraftWriter);
-  mWriter.Builder := TStringBuilder.Create;
-  try
-    mWriter.LineBreak := ALineBreak;
-    mWriter.Prepare(ADraft);
-    mWriter.Builder.Append('procedure ' + ADraft.Fixture + '.' + ADraft.TestName + ParameterList(ADraft) + ';');
-    if ADraft.Bare then
-    begin
-      mWriter.WriteBare;
-    end
-    else
-    begin
-      mWriter.WriteBody;
-    end;
-    Result := mWriter.Builder.ToString;
-  finally
-    mWriter.Builder.Free;
-  end;
-end;
-
 class function TTestDrafts.ParameterList(const ADraft: TTestDraft): string;
 var
   mParts: TArray<string>;
@@ -896,6 +874,30 @@ begin
   if Length(mParts) > 0 then
   begin
     Result := '(' + string.Join('; ', mParts) + ')';
+  end;
+end;
+
+class function TTestDrafts.MethodText(const ADraft: TTestDraft; const ALineBreak: string): string;
+var
+  mWriter: TDraftWriter;
+begin
+  mWriter := Default(TDraftWriter);
+  mWriter.Builder := TStringBuilder.Create;
+  try
+    mWriter.LineBreak := ALineBreak;
+    mWriter.Prepare(ADraft);
+    mWriter.Builder.Append('procedure ' + ADraft.Fixture + '.' + ADraft.TestName + ParameterList(ADraft) + ';');
+    if ADraft.Bare then
+    begin
+      mWriter.WriteBare;
+    end
+    else
+    begin
+      mWriter.WriteBody;
+    end;
+    Result := mWriter.Builder.ToString;
+  finally
+    mWriter.Builder.Free;
   end;
 end;
 

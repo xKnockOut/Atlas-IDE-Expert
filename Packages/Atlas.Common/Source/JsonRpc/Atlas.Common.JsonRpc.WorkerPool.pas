@@ -161,43 +161,6 @@ begin
   inherited Destroy;
 end;
 
-function TJsonRpcWorkerPool.Run(const AWork: TProc): Boolean;
-var
-  mWorker: TWorker;
-begin
-  System.TMonitor.Enter(FLock);
-  try
-    if FClosed then
-    begin
-      Exit(False);
-    end;
-    // Mehr Aufträge als wartende Threads: sofort einen weiteren starten, nicht auf einen freien warten.
-    if (FQueue.Count >= FWaiting) and (FAlive < FMaxThreads) then
-    begin
-      // Erst den Thread, dann den Auftrag: Scheitert der Start, sieht der Aufrufer die Ausnahme und der
-      // Auftrag läuft nicht. Der neue Thread wartet in Take auf die Sperre, bis der Auftrag eingereiht ist.
-      mWorker := TWorker.Create(Self);
-      try
-        mWorker.Start;
-      except
-        mWorker.Free;
-        raise;
-      end;
-      FWorkers.Add(mWorker);
-      Inc(FAlive);
-      FQueue.Enqueue(AWork);
-    end
-    else
-    begin
-      FQueue.Enqueue(AWork);
-      System.TMonitor.Pulse(FLock);
-    end;
-    Result := True;
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
-end;
-
 function TJsonRpcWorkerPool.Take(AWorker: TWorker; out AWork: TProc): Boolean;
 var
   mSignaled: Boolean;
@@ -275,6 +238,43 @@ begin
     System.TMonitor.Wait(FLock, Cardinal(ADue - mNow));
   end;
   Result := True;
+end;
+
+function TJsonRpcWorkerPool.Run(const AWork: TProc): Boolean;
+var
+  mWorker: TWorker;
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    if FClosed then
+    begin
+      Exit(False);
+    end;
+    // Mehr Aufträge als wartende Threads: sofort einen weiteren starten, nicht auf einen freien warten.
+    if (FQueue.Count >= FWaiting) and (FAlive < FMaxThreads) then
+    begin
+      // Erst den Thread, dann den Auftrag: Scheitert der Start, sieht der Aufrufer die Ausnahme und der
+      // Auftrag läuft nicht. Der neue Thread wartet in Take auf die Sperre, bis der Auftrag eingereiht ist.
+      mWorker := TWorker.Create(Self);
+      try
+        mWorker.Start;
+      except
+        mWorker.Free;
+        raise;
+      end;
+      FWorkers.Add(mWorker);
+      Inc(FAlive);
+      FQueue.Enqueue(AWork);
+    end
+    else
+    begin
+      FQueue.Enqueue(AWork);
+      System.TMonitor.Pulse(FLock);
+    end;
+    Result := True;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
 end;
 
 function TJsonRpcWorkerPool.Close(ATimeoutMs: Cardinal): Boolean;

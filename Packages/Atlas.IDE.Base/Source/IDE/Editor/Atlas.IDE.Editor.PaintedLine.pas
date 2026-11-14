@@ -26,6 +26,8 @@ implementation
 uses
   System.SysUtils;
 
+{ TAtlasPaintedLine }
+
 class function TAtlasPaintedLine.Resolve(AStage: TPaintLineStage; ABeforeEvent: Boolean;
   const AContext: INTACodeEditorPaintContext; const AFileName: string; const ALines: TArray<string>;
   out ALine: Integer): Boolean;

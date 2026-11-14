@@ -428,22 +428,6 @@ begin
   end;
 end;
 
-function TAtlasMethodGroupStore.Find(const AProject, APattern: string; out AGroup: TAtlasMethodGroup): Boolean;
-var
-  mGroup: TAtlasMethodGroup;
-begin
-  AGroup := Default(TAtlasMethodGroup);
-  for mGroup in Groups(AProject) do
-  begin
-    if SameText(mGroup.Pattern, APattern) then
-    begin
-      AGroup := mGroup;
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 procedure TAtlasMethodGroupStore.Put(const AProject: string; const AGroup: TAtlasMethodGroup);
 var
   mIndex, mGroup: Integer;
@@ -485,6 +469,22 @@ begin
       Exit(True);
     end;
   end;
+end;
+
+function TAtlasMethodGroupStore.Find(const AProject, APattern: string; out AGroup: TAtlasMethodGroup): Boolean;
+var
+  mGroup: TAtlasMethodGroup;
+begin
+  AGroup := Default(TAtlasMethodGroup);
+  for mGroup in Groups(AProject) do
+  begin
+    if SameText(mGroup.Pattern, APattern) then
+    begin
+      AGroup := mGroup;
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 procedure TAtlasMethodGroupStore.Clear;
@@ -543,41 +543,6 @@ begin
   end;
 end;
 
-function TAtlasMethodGroupStore.ToText: string;
-var
-  mRoot, mProject: TJSONObject;
-  mProjects, mGroups: TJSONArray;
-  mIndex: Integer;
-  mGroup: TAtlasMethodGroup;
-begin
-  mRoot := TJSONObject.Create;
-  try
-    mRoot.AddPair('format', TJSONNumber.Create(1));
-    mProjects := TJSONArray.Create;
-    mRoot.AddPair('projects', mProjects);
-    for mIndex := 0 to High(FProjects) do
-    begin
-      if FGroups[mIndex] = nil then
-      begin
-        Continue;
-      end;
-      mProject := TJSONObject.Create;
-      mProjects.AddElement(mProject);
-      mProject.AddPair('project', FProjects[mIndex]);
-      mGroups := TJSONArray.Create;
-      mProject.AddPair('groups', mGroups);
-      for mGroup in FGroups[mIndex] do
-      begin
-        mGroups.AddElement(GroupToJson(mGroup));
-      end;
-    end;
-    // Lesbar mit Umlauten im Muster.
-    Result := mRoot.ToJSON([]);
-  finally
-    mRoot.Free;
-  end;
-end;
-
 function TAtlasMethodGroupStore.Parse(const AText: string): Boolean;
 var
   mRoot, mProjects, mGroups: TJSONValue;
@@ -621,6 +586,41 @@ begin
         end;
       end;
     end;
+  finally
+    mRoot.Free;
+  end;
+end;
+
+function TAtlasMethodGroupStore.ToText: string;
+var
+  mRoot, mProject: TJSONObject;
+  mProjects, mGroups: TJSONArray;
+  mIndex: Integer;
+  mGroup: TAtlasMethodGroup;
+begin
+  mRoot := TJSONObject.Create;
+  try
+    mRoot.AddPair('format', TJSONNumber.Create(1));
+    mProjects := TJSONArray.Create;
+    mRoot.AddPair('projects', mProjects);
+    for mIndex := 0 to High(FProjects) do
+    begin
+      if FGroups[mIndex] = nil then
+      begin
+        Continue;
+      end;
+      mProject := TJSONObject.Create;
+      mProjects.AddElement(mProject);
+      mProject.AddPair('project', FProjects[mIndex]);
+      mGroups := TJSONArray.Create;
+      mProject.AddPair('groups', mGroups);
+      for mGroup in FGroups[mIndex] do
+      begin
+        mGroups.AddElement(GroupToJson(mGroup));
+      end;
+    end;
+    // Lesbar mit Umlauten im Muster.
+    Result := mRoot.ToJSON([]);
   finally
     mRoot.Free;
   end;

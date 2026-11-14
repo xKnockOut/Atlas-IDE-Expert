@@ -138,24 +138,7 @@ type
     procedure UpdateButtons;
   end;
 
-procedure TListWindow.AddColumn(const ACaption: string; AWidth: Integer);
-var
-  mColumn: TListColumn;
-begin
-  mColumn := FList.Columns.Add;
-  mColumn.Caption := ACaption;
-  mColumn.Width := ScaleValue(AWidth);
-end;
-
-function TListWindow.AddButton(AParent: TWinControl; const ACaption: string; ALeft: Integer): TButton;
-begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.Width := ScaleValue(cButtonWidth);
-  Result.Top := ScaleValue(cButtonTop);
-  Result.Left := ScaleValue(ALeft);
-end;
+{ TListWindow }
 
 procedure TListWindow.Fill(AItem: TListItem; const ARow: TAtlasLearnedListItem);
 var
@@ -275,13 +258,23 @@ begin
   end;
 end;
 
-procedure TListWindow.UpdateButtons;
+procedure TListWindow.AddColumn(const ACaption: string; AWidth: Integer);
 var
-  mSelected: Boolean;
+  mColumn: TListColumn;
 begin
-  mSelected := FList.Selected <> nil;
-  FForget.Enabled := mSelected;
-  FGoTo.Enabled := mSelected and (Length(FItems[NativeInt(FList.Selected.Data)].Pattern.Evidence) > 0);
+  mColumn := FList.Columns.Add;
+  mColumn.Caption := ACaption;
+  mColumn.Width := ScaleValue(AWidth);
+end;
+
+function TListWindow.AddButton(AParent: TWinControl; const ACaption: string; ALeft: Integer): TButton;
+begin
+  Result := TButton.Create(Self);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  Result.Width := ScaleValue(cButtonWidth);
+  Result.Top := ScaleValue(cButtonTop);
+  Result.Left := ScaleValue(ALeft);
 end;
 
 procedure TListWindow.ItemChecked(Sender: TObject; Item: TListItem);
@@ -330,6 +323,15 @@ begin
   begin
     FEvents.GoTo_(NativeInt(FList.Selected.Data));
   end;
+end;
+
+procedure TListWindow.UpdateButtons;
+var
+  mSelected: Boolean;
+begin
+  mSelected := FList.Selected <> nil;
+  FForget.Enabled := mSelected;
+  FGoTo.Enabled := mSelected and (Length(FItems[NativeInt(FList.Selected.Data)].Pattern.Evidence) > 0);
 end;
 
 { TAtlasLearnedList }

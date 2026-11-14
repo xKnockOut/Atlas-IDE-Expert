@@ -161,98 +161,6 @@ end;
 
 { TAtlasEditValue }
 
-class function TAtlasEditValue.Arguments(const AUri: string; ALine: Integer; const AExpression: string): string;
-var
-  mItems: TJSONArray;
-begin
-  mItems := TJSONArray.Create;
-  try
-    mItems.Add(AUri);
-    mItems.Add(ALine);
-    mItems.Add(AExpression);
-    Result := mItems.ToJSON;
-  finally
-    mItems.Free;
-  end;
-end;
-
-class function TAtlasEditValue.KindOf(const AName: string): TAtlasEditKind;
-var
-  mKind: TAtlasEditKind;
-begin
-  for mKind := Low(TAtlasEditKind) to High(TAtlasEditKind) do
-  begin
-    if cKindNames[mKind] = AName then
-    begin
-      Exit(mKind);
-    end;
-  end;
-  Result := TAtlasEditKind.Other;
-end;
-
-class function TAtlasEditValue.ReadAnswerText(const AText, AExpression: string): TAtlasEditInfo;
-var
-  mJson: TJSONValue;
-  mAnswer: TJSONObject;
-  mValues: TJSONArray;
-  mIndex: Integer;
-begin
-  Result := TAtlasEditInfo.Plain(AExpression);
-  if AText = '' then
-  begin
-    Exit;
-  end;
-  mJson := TJSONObject.ParseJSONValue(AText);
-  try
-    if not (mJson is TJSONObject) then
-    begin
-      Exit;
-    end;
-    mAnswer := TJSONObject(mJson);
-    Result.TypeName := TJsonRead.Text(mAnswer, 'type');
-    Result.Kind := KindOf(TJsonRead.Text(mAnswer, 'kind'));
-    Result.Prefix := TJsonRead.Text(mAnswer, 'prefix');
-    Result.Low := TJsonRead.Text(mAnswer, 'low');
-    Result.High := TJsonRead.Text(mAnswer, 'high');
-    Result.Setter := TJsonRead.Text(mAnswer, 'setter');
-    Result.ReadOnly := TJsonRead.Flag(mAnswer, 'readOnly');
-    mValues := TJsonRead.Items(mAnswer, 'values');
-    if mValues <> nil then
-    begin
-      for mIndex := 0 to mValues.Count - 1 do
-      begin
-        Result.Values := Result.Values + [mValues.Items[mIndex].Value];
-      end;
-    end;
-  finally
-    mJson.Free;
-  end;
-end;
-
-class function TAtlasEditValue.Quote(const AText: string): string;
-begin
-  Result := cQuote + StringReplace(AText, cQuote, cQuote + cQuote, [rfReplaceAll]) + cQuote;
-end;
-
-class function TAtlasEditValue.SetterCall(const AInfo: TAtlasEditInfo; const AValue: string): string;
-var
-  mDot: Integer;
-begin
-  Result := '';
-  if AInfo.Setter = '' then
-  begin
-    Exit;
-  end;
-  mDot := AInfo.Expression.LastIndexOf('.');
-  Result := Copy(AInfo.Expression, 1, mDot + 1) + AInfo.Setter + '(' + AValue + ')';
-end;
-
-/// <summary>Steht AText in Hochkommas?</summary>
-function IsQuoted(const AText: string): Boolean;
-begin
-  Result := (Length(AText) >= 2) and (AText[1] = cQuote) and (AText[Length(AText)] = cQuote);
-end;
-
 class function TAtlasEditValue.CheckInteger(const AInfo: TAtlasEditInfo; const AInput: string): TAtlasEditCheck;
 var
   mValue, mLow, mHigh: Int64;
@@ -303,6 +211,42 @@ begin
   end;
 end;
 
+class function TAtlasEditValue.CheckColor(const AInput: string): TAtlasEditCheck;
+var
+  mColor: Integer;
+begin
+  // Farbnamen (clRed) kennt der Debugger selbst.
+  if AInput.StartsWith('cl') then
+  begin
+    Exit(Accepted(AInput));
+  end;
+  if not ColorOf(AInput, mColor) then
+  begin
+    Exit(Rejected(TAtlasEditProblem.NotInteger, AInput));
+  end;
+  Result := Accepted(ColorText(mColor));
+end;
+
+class function TAtlasEditValue.KindOf(const AName: string): TAtlasEditKind;
+var
+  mKind: TAtlasEditKind;
+begin
+  for mKind := Low(TAtlasEditKind) to High(TAtlasEditKind) do
+  begin
+    if cKindNames[mKind] = AName then
+    begin
+      Exit(mKind);
+    end;
+  end;
+  Result := TAtlasEditKind.Other;
+end;
+
+/// <summary>Steht AText in Hochkommas?</summary>
+function IsQuoted(const AText: string): Boolean;
+begin
+  Result := (Length(AText) >= 2) and (AText[1] = cQuote) and (AText[Length(AText)] = cQuote);
+end;
+
 class function TAtlasEditValue.CheckChar(const AInput: string): TAtlasEditCheck;
 var
   mCode: Integer;
@@ -323,6 +267,102 @@ begin
   else
   begin
     Result := Rejected(TAtlasEditProblem.NotChar, AInput);
+  end;
+end;
+
+class function TAtlasEditValue.Arguments(const AUri: string; ALine: Integer; const AExpression: string): string;
+var
+  mItems: TJSONArray;
+begin
+  mItems := TJSONArray.Create;
+  try
+    mItems.Add(AUri);
+    mItems.Add(ALine);
+    mItems.Add(AExpression);
+    Result := mItems.ToJSON;
+  finally
+    mItems.Free;
+  end;
+end;
+
+class function TAtlasEditValue.ReadAnswerText(const AText, AExpression: string): TAtlasEditInfo;
+var
+  mJson: TJSONValue;
+  mAnswer: TJSONObject;
+  mValues: TJSONArray;
+  mIndex: Integer;
+begin
+  Result := TAtlasEditInfo.Plain(AExpression);
+  if AText = '' then
+  begin
+    Exit;
+  end;
+  mJson := TJSONObject.ParseJSONValue(AText);
+  try
+    if not (mJson is TJSONObject) then
+    begin
+      Exit;
+    end;
+    mAnswer := TJSONObject(mJson);
+    Result.TypeName := TJsonRead.Text(mAnswer, 'type');
+    Result.Kind := KindOf(TJsonRead.Text(mAnswer, 'kind'));
+    Result.Prefix := TJsonRead.Text(mAnswer, 'prefix');
+    Result.Low := TJsonRead.Text(mAnswer, 'low');
+    Result.High := TJsonRead.Text(mAnswer, 'high');
+    Result.Setter := TJsonRead.Text(mAnswer, 'setter');
+    Result.ReadOnly := TJsonRead.Flag(mAnswer, 'readOnly');
+    mValues := TJsonRead.Items(mAnswer, 'values');
+    if mValues <> nil then
+    begin
+      for mIndex := 0 to mValues.Count - 1 do
+      begin
+        Result.Values := Result.Values + [mValues.Items[mIndex].Value];
+      end;
+    end;
+  finally
+    mJson.Free;
+  end;
+end;
+
+class function TAtlasEditValue.Check(const AInfo: TAtlasEditInfo; const AInput: string): TAtlasEditCheck;
+var
+  mInput: string;
+begin
+  if AInfo.ReadOnly then
+  begin
+    Exit(Rejected(TAtlasEditProblem.ReadOnly, AInfo.Expression));
+  end;
+  // Strings dürfen leer sein und Leerzeichen am Rand haben.
+  if AInfo.Kind = TAtlasEditKind.String_ then
+  begin
+    if IsQuoted(AInput) then
+    begin
+      Exit(Accepted(AInput));
+    end;
+    Exit(Accepted(Quote(AInput)));
+  end;
+  mInput := Trim(AInput);
+  if (mInput = '') and (AInfo.Kind <> TAtlasEditKind.Set_) then
+  begin
+    Exit(Rejected(TAtlasEditProblem.Empty, ''));
+  end;
+  case AInfo.Kind of
+    TAtlasEditKind.Integer_:
+      Result := CheckInteger(AInfo, mInput);
+    TAtlasEditKind.Float:
+      Result := CheckFloat(mInput);
+    TAtlasEditKind.Boolean_:
+      Result := CheckBoolean(mInput);
+    TAtlasEditKind.Char_:
+      Result := CheckChar(mInput);
+    TAtlasEditKind.Enum:
+      Result := CheckEnum(AInfo, mInput);
+    TAtlasEditKind.Set_:
+      Result := CheckSet(AInfo, mInput);
+    TAtlasEditKind.Color:
+      Result := CheckColor(mInput);
+  else
+    Result := Accepted(mInput);
   end;
 end;
 
@@ -356,6 +396,20 @@ begin
     Exit(Rejected(TAtlasEditProblem.UnknownValue, AInput));
   end;
   Result := Accepted(mValue);
+end;
+
+class function TAtlasEditValue.CheckSet(const AInfo: TAtlasEditInfo; const AInput: string): TAtlasEditCheck;
+var
+  mItem: string;
+begin
+  for mItem in SetItems(AInput) do
+  begin
+    if KnownValue(AInfo, mItem) = '' then
+    begin
+      Exit(Rejected(TAtlasEditProblem.UnknownValue, mItem));
+    end;
+  end;
+  Result := Accepted(SetText(AInfo, SetItems(AInput)));
 end;
 
 class function TAtlasEditValue.SetItems(const AValue: string): TArray<string>;
@@ -399,18 +453,18 @@ begin
   Result := '[' + string.Join(', ', mNames) + ']';
 end;
 
-class function TAtlasEditValue.CheckSet(const AInfo: TAtlasEditInfo; const AInput: string): TAtlasEditCheck;
-var
-  mItem: string;
+class function TAtlasEditValue.Toggled(const AValue: string; out ANew: string): Boolean;
 begin
-  for mItem in SetItems(AInput) do
+  ANew := '';
+  if SameText(Trim(AValue), cTrue) then
   begin
-    if KnownValue(AInfo, mItem) = '' then
-    begin
-      Exit(Rejected(TAtlasEditProblem.UnknownValue, mItem));
-    end;
+    ANew := cFalse;
+  end
+  else if SameText(Trim(AValue), cFalse) then
+  begin
+    ANew := cTrue;
   end;
-  Result := Accepted(SetText(AInfo, SetItems(AInput)));
+  Result := ANew <> '';
 end;
 
 class function TAtlasEditValue.ColorOf(const AValue: string; out AColor: Integer): Boolean;
@@ -435,76 +489,22 @@ begin
   Result := '$' + IntToHex(AColor, cColorDigits);
 end;
 
-class function TAtlasEditValue.CheckColor(const AInput: string): TAtlasEditCheck;
-var
-  mColor: Integer;
+class function TAtlasEditValue.Quote(const AText: string): string;
 begin
-  // Farbnamen (clRed) kennt der Debugger selbst.
-  if AInput.StartsWith('cl') then
-  begin
-    Exit(Accepted(AInput));
-  end;
-  if not ColorOf(AInput, mColor) then
-  begin
-    Exit(Rejected(TAtlasEditProblem.NotInteger, AInput));
-  end;
-  Result := Accepted(ColorText(mColor));
+  Result := cQuote + StringReplace(AText, cQuote, cQuote + cQuote, [rfReplaceAll]) + cQuote;
 end;
 
-class function TAtlasEditValue.Toggled(const AValue: string; out ANew: string): Boolean;
-begin
-  ANew := '';
-  if SameText(Trim(AValue), cTrue) then
-  begin
-    ANew := cFalse;
-  end
-  else if SameText(Trim(AValue), cFalse) then
-  begin
-    ANew := cTrue;
-  end;
-  Result := ANew <> '';
-end;
-
-class function TAtlasEditValue.Check(const AInfo: TAtlasEditInfo; const AInput: string): TAtlasEditCheck;
+class function TAtlasEditValue.SetterCall(const AInfo: TAtlasEditInfo; const AValue: string): string;
 var
-  mInput: string;
+  mDot: Integer;
 begin
-  if AInfo.ReadOnly then
+  Result := '';
+  if AInfo.Setter = '' then
   begin
-    Exit(Rejected(TAtlasEditProblem.ReadOnly, AInfo.Expression));
+    Exit;
   end;
-  // Strings dürfen leer sein und Leerzeichen am Rand haben.
-  if AInfo.Kind = TAtlasEditKind.String_ then
-  begin
-    if IsQuoted(AInput) then
-    begin
-      Exit(Accepted(AInput));
-    end;
-    Exit(Accepted(Quote(AInput)));
-  end;
-  mInput := Trim(AInput);
-  if (mInput = '') and (AInfo.Kind <> TAtlasEditKind.Set_) then
-  begin
-    Exit(Rejected(TAtlasEditProblem.Empty, ''));
-  end;
-  case AInfo.Kind of
-    TAtlasEditKind.Integer_:
-      Result := CheckInteger(AInfo, mInput);
-    TAtlasEditKind.Float:
-      Result := CheckFloat(mInput);
-    TAtlasEditKind.Boolean_:
-      Result := CheckBoolean(mInput);
-    TAtlasEditKind.Char_:
-      Result := CheckChar(mInput);
-    TAtlasEditKind.Enum:
-      Result := CheckEnum(AInfo, mInput);
-    TAtlasEditKind.Set_:
-      Result := CheckSet(AInfo, mInput);
-    TAtlasEditKind.Color:
-      Result := CheckColor(mInput);
-  else
-    Result := Accepted(mInput);
-  end;
+  mDot := AInfo.Expression.LastIndexOf('.');
+  Result := Copy(AInfo.Expression, 1, mDot + 1) + AInfo.Setter + '(' + AValue + ')';
 end;
 
 { TAtlasEditChanges }

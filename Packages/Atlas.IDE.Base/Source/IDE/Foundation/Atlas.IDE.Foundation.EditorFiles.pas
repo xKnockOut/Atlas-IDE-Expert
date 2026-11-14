@@ -24,6 +24,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files;
 
+{ TAtlasIdeEditorFiles }
+
 function TAtlasIdeEditorFiles.Buffer(const AFileName: string): TAtlasEditorFile;
 var
   mBuffer: IOTAEditBuffer;

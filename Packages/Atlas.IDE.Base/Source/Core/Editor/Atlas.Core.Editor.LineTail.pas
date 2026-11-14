@@ -36,6 +36,8 @@ type
 
 implementation
 
+{ TAtlasLineTail }
+
 class function TAtlasLineTail.Has(AOwner: Pointer): Boolean;
 var
   mOwner: Pointer;

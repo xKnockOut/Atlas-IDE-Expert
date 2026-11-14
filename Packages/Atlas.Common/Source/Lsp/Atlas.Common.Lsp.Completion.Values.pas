@@ -563,32 +563,6 @@ begin
   Result := TypeUnitEdits(TEnumLookup.FromRequest(FRequest), FTypeName, FSource.LineBreak, AOffset);
 end;
 
-procedure TDeclareBuilder.AddLocal(AInlineVar: Boolean);
-var
-  mItem: TCompletionItem;
-begin
-  // Lokale Variable im var-Abschnitt; der Cursor bleibt im Namen.
-  mItem := FBase;
-  mItem.Name := cTexts[TValuesText.CreateALocalVariable].Text;
-  mItem.Kind := cKindVariable;
-  mItem.Detail := Format('%s: %s', [FSlot.Name, FDeclType]);
-  mItem.TextEdit := TRuleEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret(FSlot.Name, FSlot.CursorOffset));
-  mItem.AdditionalEdits := [Atlas.Common.Editing.CommandSource.AddLocal(FSource, FRoutine, TSyntaxKind.VarSection,
-    'var', Format('%s: %s;', [FSlot.Name, FDeclType]))] + TypeEdits(FRoutine.StartOffset);
-  Items := Items + [mItem];
-  // Inline-Variable an der Stelle (ab Delphi 10.3): Den Typ leitet der Compiler ab.
-  if AInlineVar and FSlot.InlineAllowed then
-  begin
-    mItem := FBase;
-    mItem.Name := cTexts[TValuesText.CreateInlineVariable].Text;
-    mItem.Kind := cKindVariable;
-    mItem.Detail := Format('var %s := …', [FSlot.Name]);
-    mItem.TextEdit := TRuleEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret('var ' + FSlot.Name,
-      FSlot.CursorOffset + 4));
-    Items := Items + [mItem];
-  end;
-end;
-
 function TDeclareBuilder.ClassFields(const AClass: TIndexSymbol): TArray<string>;
 var
   mSymbol: TIndexSymbol;
@@ -620,6 +594,60 @@ begin
     '  ' + mDeclaration);
 end;
 
+function TDeclareBuilder.ConstantEdit(const ADetail: string): TRuleEdit;
+var
+  mSection, mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  mSection := FSource.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  mNode := nil;
+  if mSection <> nil then
+  begin
+    for mIndex := 0 to mSection.ChildCount - 1 do
+    begin
+      if (mSection[mIndex].Kind = TSyntaxKind.ConstSection) and (mNode = nil) then
+      begin
+        mNode := mSection[mIndex];
+      end;
+    end;
+  end;
+  if mNode <> nil then
+  begin
+    Result := FSource.AfterLine(mNode.EndPos.Line, '  ' + ADetail);
+  end
+  else
+  begin
+    Result := FSource.AfterLine(FSource.ImplementationStart, FSource.LineBreak + 'const' + FSource.LineBreak + '  ' +
+      ADetail);
+  end;
+end;
+
+procedure TDeclareBuilder.AddLocal(AInlineVar: Boolean);
+var
+  mItem: TCompletionItem;
+begin
+  // Lokale Variable im var-Abschnitt; der Cursor bleibt im Namen.
+  mItem := FBase;
+  mItem.Name := cTexts[TValuesText.CreateALocalVariable].Text;
+  mItem.Kind := cKindVariable;
+  mItem.Detail := Format('%s: %s', [FSlot.Name, FDeclType]);
+  mItem.TextEdit := TRuleEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret(FSlot.Name, FSlot.CursorOffset));
+  mItem.AdditionalEdits := [Atlas.Common.Editing.CommandSource.AddLocal(FSource, FRoutine, TSyntaxKind.VarSection,
+    'var', Format('%s: %s;', [FSlot.Name, FDeclType]))] + TypeEdits(FRoutine.StartOffset);
+  Items := Items + [mItem];
+  // Inline-Variable an der Stelle (ab Delphi 10.3): Den Typ leitet der Compiler ab.
+  if AInlineVar and FSlot.InlineAllowed then
+  begin
+    mItem := FBase;
+    mItem.Name := cTexts[TValuesText.CreateInlineVariable].Text;
+    mItem.Kind := cKindVariable;
+    mItem.Detail := Format('var %s := …', [FSlot.Name]);
+    mItem.TextEdit := TRuleEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret('var ' + FSlot.Name,
+      FSlot.CursorOffset + 4));
+    Items := Items + [mItem];
+  end;
+end;
+
 procedure TDeclareBuilder.AddField;
 var
   mClass: TIndexSymbol;
@@ -647,34 +675,6 @@ begin
     FSlot.CursorOffset + Length(mField) - Length(FSlot.Name)));
   mItem.AdditionalEdits := [FieldEdit(mClass, mField)] + TypeEdits(FSource.Offset(mClass.Range.StartPos.Line));
   Items := Items + [mItem];
-end;
-
-function TDeclareBuilder.ConstantEdit(const ADetail: string): TRuleEdit;
-var
-  mSection, mNode: TSyntaxNode;
-  mIndex: Integer;
-begin
-  mSection := FSource.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
-  mNode := nil;
-  if mSection <> nil then
-  begin
-    for mIndex := 0 to mSection.ChildCount - 1 do
-    begin
-      if (mSection[mIndex].Kind = TSyntaxKind.ConstSection) and (mNode = nil) then
-      begin
-        mNode := mSection[mIndex];
-      end;
-    end;
-  end;
-  if mNode <> nil then
-  begin
-    Result := FSource.AfterLine(mNode.EndPos.Line, '  ' + ADetail);
-  end
-  else
-  begin
-    Result := FSource.AfterLine(FSource.ImplementationStart, FSource.LineBreak + 'const' + FSource.LineBreak + '  ' +
-      ADetail);
-  end;
 end;
 
 procedure TDeclareBuilder.AddConstant;

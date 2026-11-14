@@ -42,6 +42,8 @@ const
   cTexts: array[TVisibilityRefactoringText] of TAtlasText = (
     (De: 'Die Datei der Deklaration lässt sich nicht lesen.'; En: 'The file of the declaration cannot be read.'));
 
+{ TShellVisibilityRefactorings }
+
 procedure TShellVisibilityRefactorings.Register(ACommands: TLspCommands);
 begin
   ACommands.Register(TLspRaiseVisibility.cCommand, MemberActions);

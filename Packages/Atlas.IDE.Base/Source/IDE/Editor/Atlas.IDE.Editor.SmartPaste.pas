@@ -218,18 +218,45 @@ begin
   inherited;
 end;
 
-class procedure TAtlasIdeSmartPaste.Install(const ABusy: TFunc<Boolean>; const ASession: TAtlasSmartPasteSessionFunc;
-  const AMessage: TProc<string>);
+function TAtlasIdeSmartPaste.IsBusy: Boolean;
 begin
-  if FInstance = nil then
-  begin
-    FInstance := TAtlasIdeSmartPaste.Create(ABusy, ASession, AMessage);
-  end;
+  Result := Assigned(FBusy) and FBusy();
 end;
 
-class procedure TAtlasIdeSmartPaste.Uninstall;
+procedure TAtlasIdeSmartPaste.AppMessage(var Msg: TMsg; var Handled: Boolean);
 begin
-  FreeAndNil(FInstance);
+  if TAtlasGuard.Disabled(TAtlasFeature.SmartPaste) then
+  begin
+    Exit;
+  end;
+  try
+    case Msg.message of
+      WM_KEYDOWN, WM_SYSKEYDOWN:
+        if IsEditorWindow(Msg.hwnd) then
+        begin
+          KeyDown(Msg, Handled);
+        end;
+      WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_NCLBUTTONDOWN:
+        if (FWindow = nil) or not FWindow.HandleAllocated or (Msg.hwnd <> FWindow.Handle) then
+        begin
+          if FWindow <> nil then
+          begin
+            FWindow.Dismiss;
+          end;
+          if IsEditorWindow(Msg.hwnd) then
+          begin
+            FArmed := True;
+          end;
+        end;
+    end;
+  except
+    // Keine Exception an die IDE (#493); die Nachricht geht dann normal weiter.
+    on E: Exception do
+    begin
+      Handled := False;
+      TAtlasGuard.Report(TAtlasFeature.SmartPaste, E);
+    end;
+  end;
 end;
 
 function WantedMode: TAtlasPasteMode;
@@ -242,55 +269,6 @@ begin
   begin
     Result := TAtlasSmartPaste.ModeOf(mSettings.SmartPaste);
   end;
-end;
-
-class function TAtlasIdeSmartPaste.Enabled: Boolean;
-begin
-  Result := WantedMode <> TAtlasPasteMode.Off;
-end;
-
-class function TAtlasIdeSmartPaste.Active: Boolean;
-begin
-  Result := (FInstance <> nil) and (FInstance.FWindow <> nil) and FInstance.FWindow.IsShown;
-end;
-
-class procedure TAtlasIdeSmartPaste.Dismiss;
-begin
-  if FInstance = nil then
-  begin
-    Exit;
-  end;
-  Inc(FInstance.FRequest);
-  FInstance.FArmed := True;
-  if FInstance.FWindow <> nil then
-  begin
-    FInstance.FWindow.Dismiss;
-  end;
-end;
-
-class procedure TAtlasIdeSmartPaste.EditorModified;
-begin
-  if (FInstance = nil) or FInstance.FWriting then
-  begin
-    Exit;
-  end;
-  // Jede Änderung verwirft ein offenes Fenster und eine laufende Anfrage.
-  Inc(FInstance.FRequest);
-  if FInstance.FWindow <> nil then
-  begin
-    FInstance.FWindow.Dismiss;
-  end;
-  if not FInstance.FArmed or not Enabled then
-  begin
-    Exit;
-  end;
-  FInstance.FTimer.Enabled := False;
-  FInstance.FTimer.Enabled := True;
-end;
-
-function TAtlasIdeSmartPaste.IsBusy: Boolean;
-begin
-  Result := Assigned(FBusy) and FBusy();
 end;
 
 procedure TAtlasIdeSmartPaste.TimerTick(Sender: TObject);
@@ -325,6 +303,157 @@ begin
     FClipLines := TTextLines.SplitLines(FClipText);
   end;
   Result := (FClipText <> '') and TAtlasSmartPaste.Qualifies(FClipText);
+end;
+
+procedure TAtlasIdeSmartPaste.Ask(const AView: IOTAEditView);
+var
+  mSession: TLspSession;
+  mArguments: string;
+  mRequest: Integer;
+  mWorker: TThread;
+begin
+  if not Assigned(FSession) then
+  begin
+    Exit;
+  end;
+  mSession := FSession();
+  if mSession = nil then
+  begin
+    Exit;
+  end;
+  // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
+  FText := TAtlasEditorBuffer.Text(AView.Buffer);
+  mSession.Sync(FFileName, FText);
+  mArguments := TAtlasSmartPaste.Arguments(TLspSession.PathToUri(FFileName), FStartLine, FStartCharacter, FEndLine,
+    FEndCharacter);
+  FWorkers.Prune;
+  Inc(FRequest);
+  mRequest := FRequest;
+  mWorker := TThread.CreateAnonymousThread(
+    procedure
+    var
+      Answer: TJSONValue;
+      Analysis: TAtlasPasteAnalysis;
+    begin
+      Analysis := Default(TAtlasPasteAnalysis);
+      try
+        Answer := mSession.RunCommand(TAtlasSmartPaste.cCommand, mArguments, cTimeoutMs);
+        try
+          Analysis := TAtlasSmartPaste.ReadAnalysis(Answer);
+        finally
+          Answer.Free;
+        end;
+      except
+        // Server langsam oder weg: kein Fenster, das Einfügen bleibt, wie es ist.
+        Analysis := Default(TAtlasPasteAnalysis);
+      end;
+      // Atlas gehört der Eintrag: beim Entladen verworfen.
+      TAtlasMainThread.Queue(TAtlasFeature.SmartPaste,
+        procedure
+        begin
+          if FInstance <> nil then
+          begin
+            TAtlasGuard.Run(TAtlasFeature.SmartPaste,
+              procedure
+              begin
+                if FInstance <> nil then
+                begin
+                  FInstance.Answered(mRequest, Analysis);
+                end;
+              end);
+          end;
+        end);
+    end);
+  FWorkers.Start(mWorker);
+end;
+
+procedure TAtlasIdeSmartPaste.Answered(ARequest: Integer; const AAnalysis: TAtlasPasteAnalysis);
+var
+  mView: IOTAEditView;
+  mPoint: TPoint;
+begin
+  // Nur die jüngste Antwort zählt; jede Änderung dazwischen hat sie verworfen.
+  if (ARequest <> FRequest) or not AAnalysis.Valid or
+    ((Length(AAnalysis.Units) = 0) and (Length(AAnalysis.Choices) = 0)) or IsBusy then
+  begin
+    Exit;
+  end;
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, FFileName) then
+  begin
+    Exit;
+  end;
+  if FWindow = nil then
+  begin
+    FWindow := TAtlasSmartPasteWindow.Create(nil);
+    FWindow.OnAccept :=
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.SmartPaste,
+          procedure
+          begin
+            if FInstance <> nil then
+            begin
+              FInstance.Accept;
+            end;
+          end);
+      end;
+  end;
+  mPoint := CaretPoint;
+  FWindow.Colors := TAtlasIdeStyle.Colors;
+  FWindow.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
+  FWindow.ShowFor(AAnalysis, mPoint);
+end;
+
+/// <summary>Fragt mit den gewählten Units AUnits nach der Änderung; False mit Meldung, wenn der Server scheitert.
+/// </summary>
+function TAtlasIdeSmartPaste.FetchUses(ASession: TLspSession; const AUnits: TArray<string>;
+  out AEdit: TLspWorkspaceEdit; out AAdded, AMoved: TArray<string>): Boolean;
+var
+  mAnswer: TJSONValue;
+begin
+  Result := False;
+  AEdit := TLspWorkspaceEdit.FromJson(nil);
+  AAdded := nil;
+  AMoved := nil;
+  try
+    ASession.Sync(FFileName, FText);
+    mAnswer := ASession.RunCommand(TAtlasSmartPaste.cCommand, TAtlasSmartPaste.Arguments(
+      TLspSession.PathToUri(FFileName), FStartLine, FStartCharacter, FEndLine, FEndCharacter, AUnits), cTimeoutMs);
+    try
+      if mAnswer is TJSONObject then
+      begin
+        AEdit := TLspWorkspaceEdit.FromJson(TJSONObject(mAnswer).GetValue('edit'));
+        AAdded := ReadNames(TJSONObject(mAnswer).GetValue('added'));
+        AMoved := ReadNames(TJSONObject(mAnswer).GetValue('toImplementation'));
+      end;
+    finally
+      mAnswer.Free;
+    end;
+    Result := True;
+  except
+    on E: Exception do
+    begin
+      if Assigned(FMessage) then
+      begin
+        FMessage(TAtlasStrings.Fmt(TAtlasTextId.SmartPasteFailed, [E.Message]));
+      end;
+    end;
+  end;
+end;
+
+class procedure TAtlasIdeSmartPaste.Install(const ABusy: TFunc<Boolean>; const ASession: TAtlasSmartPasteSessionFunc;
+  const AMessage: TProc<string>);
+begin
+  if FInstance = nil then
+  begin
+    FInstance := TAtlasIdeSmartPaste.Create(ABusy, ASession, AMessage);
+  end;
+end;
+
+class procedure TAtlasIdeSmartPaste.Uninstall;
+begin
+  FreeAndNil(FInstance);
 end;
 
 /// <summary>Beschreibbare Pascal-Datei vorn?</summary>
@@ -500,140 +629,27 @@ begin
   PlaceCursor(AView, AStartLine + High(FClipLines), AEndCharacter);
 end;
 
-procedure TAtlasIdeSmartPaste.Ask(const AView: IOTAEditView);
-var
-  mSession: TLspSession;
-  mArguments: string;
-  mRequest: Integer;
-  mWorker: TThread;
+class function TAtlasIdeSmartPaste.Enabled: Boolean;
 begin
-  if not Assigned(FSession) then
-  begin
-    Exit;
-  end;
-  mSession := FSession();
-  if mSession = nil then
-  begin
-    Exit;
-  end;
-  // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
-  FText := TAtlasEditorBuffer.Text(AView.Buffer);
-  mSession.Sync(FFileName, FText);
-  mArguments := TAtlasSmartPaste.Arguments(TLspSession.PathToUri(FFileName), FStartLine, FStartCharacter, FEndLine,
-    FEndCharacter);
-  FWorkers.Prune;
-  Inc(FRequest);
-  mRequest := FRequest;
-  mWorker := TThread.CreateAnonymousThread(
-    procedure
-    var
-      Answer: TJSONValue;
-      Analysis: TAtlasPasteAnalysis;
-    begin
-      Analysis := Default(TAtlasPasteAnalysis);
-      try
-        Answer := mSession.RunCommand(TAtlasSmartPaste.cCommand, mArguments, cTimeoutMs);
-        try
-          Analysis := TAtlasSmartPaste.ReadAnalysis(Answer);
-        finally
-          Answer.Free;
-        end;
-      except
-        // Server langsam oder weg: kein Fenster, das Einfügen bleibt, wie es ist.
-        Analysis := Default(TAtlasPasteAnalysis);
-      end;
-      // Atlas gehört der Eintrag: beim Entladen verworfen.
-      TAtlasMainThread.Queue(TAtlasFeature.SmartPaste,
-        procedure
-        begin
-          if FInstance <> nil then
-          begin
-            TAtlasGuard.Run(TAtlasFeature.SmartPaste,
-              procedure
-              begin
-                if FInstance <> nil then
-                begin
-                  FInstance.Answered(mRequest, Analysis);
-                end;
-              end);
-          end;
-        end);
-    end);
-  FWorkers.Start(mWorker);
+  Result := WantedMode <> TAtlasPasteMode.Off;
 end;
 
-procedure TAtlasIdeSmartPaste.Answered(ARequest: Integer; const AAnalysis: TAtlasPasteAnalysis);
-var
-  mView: IOTAEditView;
-  mPoint: TPoint;
+class function TAtlasIdeSmartPaste.Active: Boolean;
 begin
-  // Nur die jüngste Antwort zählt; jede Änderung dazwischen hat sie verworfen.
-  if (ARequest <> FRequest) or not AAnalysis.Valid or
-    ((Length(AAnalysis.Units) = 0) and (Length(AAnalysis.Choices) = 0)) or IsBusy then
-  begin
-    Exit;
-  end;
-  mView := TAtlasEditorBuffer.ActiveView;
-  if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, FFileName) then
-  begin
-    Exit;
-  end;
-  if FWindow = nil then
-  begin
-    FWindow := TAtlasSmartPasteWindow.Create(nil);
-    FWindow.OnAccept :=
-      procedure
-      begin
-        TAtlasGuard.Run(TAtlasFeature.SmartPaste,
-          procedure
-          begin
-            if FInstance <> nil then
-            begin
-              FInstance.Accept;
-            end;
-          end);
-      end;
-  end;
-  mPoint := CaretPoint;
-  FWindow.Colors := TAtlasIdeStyle.Colors;
-  FWindow.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
-  FWindow.ShowFor(AAnalysis, mPoint);
+  Result := (FInstance <> nil) and (FInstance.FWindow <> nil) and FInstance.FWindow.IsShown;
 end;
 
-/// <summary>Fragt mit den gewählten Units AUnits nach der Änderung; False mit Meldung, wenn der Server scheitert.
-/// </summary>
-function TAtlasIdeSmartPaste.FetchUses(ASession: TLspSession; const AUnits: TArray<string>;
-  out AEdit: TLspWorkspaceEdit; out AAdded, AMoved: TArray<string>): Boolean;
-var
-  mAnswer: TJSONValue;
+class procedure TAtlasIdeSmartPaste.Dismiss;
 begin
-  Result := False;
-  AEdit := TLspWorkspaceEdit.FromJson(nil);
-  AAdded := nil;
-  AMoved := nil;
-  try
-    ASession.Sync(FFileName, FText);
-    mAnswer := ASession.RunCommand(TAtlasSmartPaste.cCommand, TAtlasSmartPaste.Arguments(
-      TLspSession.PathToUri(FFileName), FStartLine, FStartCharacter, FEndLine, FEndCharacter, AUnits), cTimeoutMs);
-    try
-      if mAnswer is TJSONObject then
-      begin
-        AEdit := TLspWorkspaceEdit.FromJson(TJSONObject(mAnswer).GetValue('edit'));
-        AAdded := ReadNames(TJSONObject(mAnswer).GetValue('added'));
-        AMoved := ReadNames(TJSONObject(mAnswer).GetValue('toImplementation'));
-      end;
-    finally
-      mAnswer.Free;
-    end;
-    Result := True;
-  except
-    on E: Exception do
-    begin
-      if Assigned(FMessage) then
-      begin
-        FMessage(TAtlasStrings.Fmt(TAtlasTextId.SmartPasteFailed, [E.Message]));
-      end;
-    end;
+  if FInstance = nil then
+  begin
+    Exit;
+  end;
+  Inc(FInstance.FRequest);
+  FInstance.FArmed := True;
+  if FInstance.FWindow <> nil then
+  begin
+    FInstance.FWindow.Dismiss;
   end;
 end;
 
@@ -735,40 +751,24 @@ begin
   FArmed := True;
 end;
 
-procedure TAtlasIdeSmartPaste.AppMessage(var Msg: TMsg; var Handled: Boolean);
+class procedure TAtlasIdeSmartPaste.EditorModified;
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.SmartPaste) then
+  if (FInstance = nil) or FInstance.FWriting then
   begin
     Exit;
   end;
-  try
-    case Msg.message of
-      WM_KEYDOWN, WM_SYSKEYDOWN:
-        if IsEditorWindow(Msg.hwnd) then
-        begin
-          KeyDown(Msg, Handled);
-        end;
-      WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_NCLBUTTONDOWN:
-        if (FWindow = nil) or not FWindow.HandleAllocated or (Msg.hwnd <> FWindow.Handle) then
-        begin
-          if FWindow <> nil then
-          begin
-            FWindow.Dismiss;
-          end;
-          if IsEditorWindow(Msg.hwnd) then
-          begin
-            FArmed := True;
-          end;
-        end;
-    end;
-  except
-    // Keine Exception an die IDE (#493); die Nachricht geht dann normal weiter.
-    on E: Exception do
-    begin
-      Handled := False;
-      TAtlasGuard.Report(TAtlasFeature.SmartPaste, E);
-    end;
+  // Jede Änderung verwirft ein offenes Fenster und eine laufende Anfrage.
+  Inc(FInstance.FRequest);
+  if FInstance.FWindow <> nil then
+  begin
+    FInstance.FWindow.Dismiss;
   end;
+  if not FInstance.FArmed or not Enabled then
+  begin
+    Exit;
+  end;
+  FInstance.FTimer.Enabled := False;
+  FInstance.FTimer.Enabled := True;
 end;
 
 end.

@@ -422,6 +422,8 @@ begin
   end;
 end;
 
+{ TNameSuggestions }
+
 class function TNameSuggestions.Site(ATree: TSyntaxTree; const APosition: TTextPosition;
   out ASite: TNameSite): Boolean;
 var
@@ -449,29 +451,6 @@ begin
   Result := ClassifySite(ATree, mTokens, mPrev, ASite);
 end;
 
-class function TNameSuggestions.LastWord(const AName: string): string;
-var
-  mIndex: Integer;
-begin
-  mIndex := Length(AName);
-  // Endet der Name groß (FileIO), gilt die ganze Folge von Großbuchstaben.
-  if (mIndex > 0) and CharInSet(AName[mIndex], ['A'..'Z']) then
-  begin
-    while (mIndex > 1) and CharInSet(AName[mIndex - 1], ['A'..'Z']) do
-    begin
-      Dec(mIndex);
-    end;
-    Exit(Copy(AName, mIndex, MaxInt));
-  end;
-  // HTTPClient: das Wort beginnt am letzten Großbuchstaben vor Kleinbuchstaben.
-  while (mIndex > 1) and not (CharInSet(AName[mIndex], ['A'..'Z']) and
-    ((mIndex = Length(AName)) or not CharInSet(AName[mIndex + 1], ['A'..'Z']))) do
-  begin
-    Dec(mIndex);
-  end;
-  Result := Copy(AName, mIndex, MaxInt);
-end;
-
 class function TNameSuggestions.Plural(const AWord: string): string;
 var
   mLast: Char;
@@ -494,6 +473,29 @@ begin
   begin
     Result := AWord + 's';
   end;
+end;
+
+class function TNameSuggestions.LastWord(const AName: string): string;
+var
+  mIndex: Integer;
+begin
+  mIndex := Length(AName);
+  // Endet der Name groß (FileIO), gilt die ganze Folge von Großbuchstaben.
+  if (mIndex > 0) and CharInSet(AName[mIndex], ['A'..'Z']) then
+  begin
+    while (mIndex > 1) and CharInSet(AName[mIndex - 1], ['A'..'Z']) do
+    begin
+      Dec(mIndex);
+    end;
+    Exit(Copy(AName, mIndex, MaxInt));
+  end;
+  // HTTPClient: das Wort beginnt am letzten Großbuchstaben vor Kleinbuchstaben.
+  while (mIndex > 1) and not (CharInSet(AName[mIndex], ['A'..'Z']) and
+    ((mIndex = Length(AName)) or not CharInSet(AName[mIndex + 1], ['A'..'Z']))) do
+  begin
+    Dec(mIndex);
+  end;
+  Result := Copy(AName, mIndex, MaxInt);
 end;
 
 /// <summary>Elementtyp eines Listen- oder Array-Typs ('' ohne): array of T, TArray&lt;T&gt;, TList&lt;T&gt;.</summary>

@@ -68,34 +68,7 @@ const
   // Verweise, Überschreibungen und Formulare im Projekt suchen dauert; wie beim Umbenennen.
   cTimeoutMs = 60000;
 
-class procedure TAtlasIdeNamedRefactoring.Execute(ASession: TLspSession; const AArgumentsJson, AApplyCommand: string;
-  const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
-var
-  mName, mApplyArguments: string;
-begin
-  if ASession = nil then
-  begin
-    AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
-    Exit;
-  end;
-  // Namen abfragen (Vorschlag des Servers) und das dritte Argument ersetzen.
-  if TAtlasIdeServerEdit.AskName(AArgumentsJson, ATexts.Title, ATexts.Prompt, mName, mApplyArguments) then
-  begin
-    Run(ASession, mApplyArguments, AApplyCommand, ATexts, APolicy, AMessage);
-  end;
-end;
-
-class procedure TAtlasIdeNamedRefactoring.ExecuteWithoutName(ASession: TLspSession; const AArgumentsJson,
-  AApplyCommand: string; const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy;
-  const AMessage: TProc<string>);
-begin
-  if ASession = nil then
-  begin
-    AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
-    Exit;
-  end;
-  Run(ASession, AArgumentsJson, AApplyCommand, ATexts, APolicy, AMessage);
-end;
+{ TAtlasIdeNamedRefactoring }
 
 class procedure TAtlasIdeNamedRefactoring.Run(ASession: TLspSession; const AApplyArguments, AApplyCommand: string;
   const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
@@ -138,6 +111,35 @@ begin
     AMessage(TAtlasStrings.Fmt(ATexts.Done, [mOutcome.Edits, mOutcome.Files]));
     TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, ATexts.Warning, AMessage);
   end;
+end;
+
+class procedure TAtlasIdeNamedRefactoring.Execute(ASession: TLspSession; const AArgumentsJson, AApplyCommand: string;
+  const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
+var
+  mName, mApplyArguments: string;
+begin
+  if ASession = nil then
+  begin
+    AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+    Exit;
+  end;
+  // Namen abfragen (Vorschlag des Servers) und das dritte Argument ersetzen.
+  if TAtlasIdeServerEdit.AskName(AArgumentsJson, ATexts.Title, ATexts.Prompt, mName, mApplyArguments) then
+  begin
+    Run(ASession, mApplyArguments, AApplyCommand, ATexts, APolicy, AMessage);
+  end;
+end;
+
+class procedure TAtlasIdeNamedRefactoring.ExecuteWithoutName(ASession: TLspSession; const AArgumentsJson,
+  AApplyCommand: string; const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy;
+  const AMessage: TProc<string>);
+begin
+  if ASession = nil then
+  begin
+    AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+    Exit;
+  end;
+  Run(ASession, AArgumentsJson, AApplyCommand, ATexts, APolicy, AMessage);
 end;
 
 end.

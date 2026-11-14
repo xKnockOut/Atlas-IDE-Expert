@@ -114,9 +114,35 @@ end;
 
 { TAtlasUnitSections }
 
+function TAtlasUnitSections.OtherUses(AToImplementation: Boolean): TAtlasSectionMark;
+begin
+  if AToImplementation then
+  begin
+    Result := ImplementationUses.Start;
+    if not Result.Found then
+    begin
+      Result := ImplementationPart;
+    end;
+  end
+  else
+  begin
+    Result := InterfaceUses.Start;
+    if not Result.Found then
+    begin
+      Result := InterfacePart;
+    end;
+  end;
+end;
+
 function TAtlasUnitSections.HasParts: Boolean;
 begin
   Result := (Kind = TAtlasSourceKind.Unit_) and (InterfacePart.Found or ImplementationPart.Found);
+end;
+
+/// <summary>Steht ALine/ACharacter genau auf der Marke?</summary>
+function OnMark(const AMark: TAtlasSectionMark; ALine, ACharacter: Integer): Boolean;
+begin
+  Result := AMark.Found and (AMark.Line = ALine) and (AMark.Character = ACharacter);
 end;
 
 function TAtlasUnitSections.SectionAt(ALine, ACharacter: Integer): TAtlasCodeSection;
@@ -145,55 +171,6 @@ begin
   else
   begin
     Result := TAtlasCodeSection.None;
-  end;
-end;
-
-/// <summary>Steht ALine/ACharacter genau auf der Marke?</summary>
-function OnMark(const AMark: TAtlasSectionMark; ALine, ACharacter: Integer): Boolean;
-begin
-  Result := AMark.Found and (AMark.Line = ALine) and (AMark.Character = ACharacter);
-end;
-
-function TAtlasUnitSections.UsesToggle(ALine, ACharacter: Integer; out AToImplementation: Boolean): Boolean;
-begin
-  AToImplementation := False;
-  Result := False;
-  if (Kind <> TAtlasSourceKind.Unit_) or not HasParts then
-  begin
-    Exit;
-  end;
-  // Auf dem Schlüsselwort eines Teils ohne eigene Klausel gilt der Cursor als „in dessen Klausel“: Dorthin führt
-  // der Sprung, wenn die andere Klausel fehlt.
-  if InterfaceUses.Contains(ALine, ACharacter) or
-    (not InterfaceUses.Start.Found and OnMark(InterfacePart, ALine, ACharacter)) then
-  begin
-    AToImplementation := True;
-    Result := ImplementationUses.Start.Found or InterfaceUses.Start.Found;
-  end
-  else if ImplementationUses.Contains(ALine, ACharacter) or
-    (not ImplementationUses.Start.Found and OnMark(ImplementationPart, ALine, ACharacter)) then
-  begin
-    Result := InterfaceUses.Start.Found or ImplementationUses.Start.Found;
-  end;
-end;
-
-function TAtlasUnitSections.OtherUses(AToImplementation: Boolean): TAtlasSectionMark;
-begin
-  if AToImplementation then
-  begin
-    Result := ImplementationUses.Start;
-    if not Result.Found then
-    begin
-      Result := ImplementationPart;
-    end;
-  end
-  else
-  begin
-    Result := InterfaceUses.Start;
-    if not Result.Found then
-    begin
-      Result := InterfacePart;
-    end;
   end;
 end;
 
@@ -238,6 +215,29 @@ begin
     AMark := Default(TAtlasSectionMark);
   end;
   Result := AMark.Found;
+end;
+
+function TAtlasUnitSections.UsesToggle(ALine, ACharacter: Integer; out AToImplementation: Boolean): Boolean;
+begin
+  AToImplementation := False;
+  Result := False;
+  if (Kind <> TAtlasSourceKind.Unit_) or not HasParts then
+  begin
+    Exit;
+  end;
+  // Auf dem Schlüsselwort eines Teils ohne eigene Klausel gilt der Cursor als „in dessen Klausel“: Dorthin führt
+  // der Sprung, wenn die andere Klausel fehlt.
+  if InterfaceUses.Contains(ALine, ACharacter) or
+    (not InterfaceUses.Start.Found and OnMark(InterfacePart, ALine, ACharacter)) then
+  begin
+    AToImplementation := True;
+    Result := ImplementationUses.Start.Found or InterfaceUses.Start.Found;
+  end
+  else if ImplementationUses.Contains(ALine, ACharacter) or
+    (not ImplementationUses.Start.Found and OnMark(ImplementationPart, ALine, ACharacter)) then
+  begin
+    Result := InterfaceUses.Start.Found or ImplementationUses.Start.Found;
+  end;
 end;
 
 { TAtlasSectionScanner }
@@ -321,6 +321,8 @@ const
   cSectionWords: array[TSectionWord.Unit_..TSectionWord.End_] of string = ('unit', 'program', 'library',
     'package', 'uses', 'contains', 'interface', 'implementation', 'initialization', 'finalization', 'end');
 
+{ TSectionToken }
+
 function TSectionToken.Mark: TAtlasSectionMark;
 begin
   Result := TAtlasSectionMark.At(Line, Character);
@@ -370,6 +372,37 @@ begin
   begin
     Inc(Result);
   end;
+end;
+
+{ TTokenReader }
+
+function TTokenReader.Next(out AToken: TSectionToken): Boolean;
+begin
+  AToken := Default(TSectionToken);
+  while Position <= Length(Text) do
+  begin
+    if SkipBreak then
+    begin
+      // Zeilenanfang: ein offener mehrzeiliger String endet nur hier.
+      if MultiQuotes > 0 then
+      begin
+        SkipMultiLine;
+      end;
+    end
+    else if MultiQuotes > 0 then
+    begin
+      SkipToLineEnd;
+    end
+    else if Comment <> #0 then
+    begin
+      SkipInComment;
+    end
+    else if TokenAt(AToken) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 function TTokenReader.IsBreak(APosition: Integer): Boolean;
@@ -522,14 +555,6 @@ begin
   end;
 end;
 
-function TTokenReader.Emit(AWord: TSectionWord; AStart: Integer; var AToken: TSectionToken): Boolean;
-begin
-  AToken.Word := AWord;
-  AToken.Line := Line;
-  AToken.Character := AStart - LineStart;
-  Result := True;
-end;
-
 function TTokenReader.TokenAt(var AToken: TSectionToken): Boolean;
 var
   mStart: Integer;
@@ -578,34 +603,15 @@ begin
   end;
 end;
 
-function TTokenReader.Next(out AToken: TSectionToken): Boolean;
+function TTokenReader.Emit(AWord: TSectionWord; AStart: Integer; var AToken: TSectionToken): Boolean;
 begin
-  AToken := Default(TSectionToken);
-  while Position <= Length(Text) do
-  begin
-    if SkipBreak then
-    begin
-      // Zeilenanfang: ein offener mehrzeiliger String endet nur hier.
-      if MultiQuotes > 0 then
-      begin
-        SkipMultiLine;
-      end;
-    end
-    else if MultiQuotes > 0 then
-    begin
-      SkipToLineEnd;
-    end
-    else if Comment <> #0 then
-    begin
-      SkipInComment;
-    end
-    else if TokenAt(AToken) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
+  AToken.Word := AWord;
+  AToken.Line := Line;
+  AToken.Character := AStart - LineStart;
+  Result := True;
 end;
+
+{ TSectionScan }
 
 function TSectionScan.TakeKind(AWord: TSectionWord): Boolean;
 begin
@@ -625,19 +631,20 @@ begin
   Previous := AWord;
 end;
 
-procedure TSectionScan.UnitUses;
+procedure TSectionScan.UnitToken(const AToken: TSectionToken);
 begin
-  // uses gehört zum Abschnitt, in dem es steht; je Abschnitt zählt die erste Klausel.
-  if Sections.ImplementationPart.Found then
+  if AToken.Word = TSectionWord.Uses_ then
   begin
-    if not Sections.ImplementationUses.Start.Found then
+    UnitUses;
+    if OpenUses <> nil then
     begin
-      OpenUses := @Sections.ImplementationUses;
+      OpenUses^.Start := AToken.Mark;
     end;
   end
-  else if Sections.InterfacePart.Found and not Sections.InterfaceUses.Start.Found then
+  else
   begin
-    OpenUses := @Sections.InterfaceUses;
+    FrontPart(AToken);
+    BackPart(AToken);
   end;
 end;
 
@@ -673,20 +680,19 @@ begin
   end;
 end;
 
-procedure TSectionScan.UnitToken(const AToken: TSectionToken);
+procedure TSectionScan.UnitUses;
 begin
-  if AToken.Word = TSectionWord.Uses_ then
+  // uses gehört zum Abschnitt, in dem es steht; je Abschnitt zählt die erste Klausel.
+  if Sections.ImplementationPart.Found then
   begin
-    UnitUses;
-    if OpenUses <> nil then
+    if not Sections.ImplementationUses.Start.Found then
     begin
-      OpenUses^.Start := AToken.Mark;
+      OpenUses := @Sections.ImplementationUses;
     end;
   end
-  else
+  else if Sections.InterfacePart.Found and not Sections.InterfaceUses.Start.Found then
   begin
-    FrontPart(AToken);
-    BackPart(AToken);
+    OpenUses := @Sections.InterfaceUses;
   end;
 end;
 
@@ -738,6 +744,8 @@ begin
   end;
   Previous := AToken.Word;
 end;
+
+{ TAtlasSectionScanner }
 
 class function TAtlasSectionScanner.Scan(const ALines: TArray<string>): TAtlasUnitSections;
 begin

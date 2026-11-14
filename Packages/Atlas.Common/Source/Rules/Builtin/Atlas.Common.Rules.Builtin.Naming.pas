@@ -225,6 +225,11 @@ end;
 
 { TNamingPrefixRule }
 
+function TNamingPrefixRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(cRuleId, TRuleSeverity.Hint, cTexts[TNamingText.Title].Text);
+end;
+
 function TNamingPrefixRule.NewNames(const AContext: TRuleContext): TPascalNamePrefixes;
 var
   mConvention: TNamingConvention;
@@ -234,11 +239,6 @@ begin
   Result.FieldPrefix := mConvention.Prefixes[TRuleNamingKind.Field];
   Result.ParameterPrefix := mConvention.Prefixes[TRuleNamingKind.Parameter];
   Result.ConstantPrefix := mConvention.Prefixes[TRuleNamingKind.Constant];
-end;
-
-function TNamingPrefixRule.Descriptor: TRuleDescriptor;
-begin
-  Result := TRuleDescriptor.Create(cRuleId, TRuleSeverity.Hint, cTexts[TNamingText.Title].Text);
 end;
 
 type
@@ -868,6 +868,15 @@ begin
   Result := False;
 end;
 
+function TNamingCheck.IsInlineFor(AFor: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+begin
+  // Binär zum Anfang der Schleife statt ab Dateianfang (#1342).
+  mIndex := TSyntaxTree.FirstTokenOf(FTokens, AFor.StartOffset);
+  Result := (mIndex < High(FTokens)) and FTokens[mIndex].IsKeyword('for') and FTokens[mIndex + 1].IsKeyword('var');
+end;
+
 function TNamingCheck.IsComponentHost(ABody: TSyntaxNode): Boolean;
 var
   mIndex: Integer;
@@ -913,22 +922,6 @@ begin
   end;
 end;
 
-function TNamingCheck.DeclarationOf(ARoutine: TSyntaxNode): TSyntaxNode;
-var
-  mRoutine: TSyntaxNode;
-begin
-  // Routine mit Rumpf ohne Punkt: Deklaration im interface-Abschnitt oder forward davor.
-  for mRoutine in FRoutineDecls do
-  begin
-    if (mRoutine <> ARoutine) and IsForwardOrInterface(mRoutine) and SameText(mRoutine.Name, ARoutine.Name) and
-      (EnclosingScope(mRoutine) = EnclosingScope(ARoutine)) then
-    begin
-      Exit(mRoutine);
-    end;
-  end;
-  Result := nil;
-end;
-
 function TNamingCheck.ImplementationOf(const AQualified: string; APosition: Integer; const AName: string):
   TSyntaxNode;
 var
@@ -953,22 +946,20 @@ begin
   Result := nil;
 end;
 
-function TNamingCheck.Wanted(AKind: TRuleNamingKind; const AName: string): Boolean;
+function TNamingCheck.DeclarationOf(ARoutine: TSyntaxNode): TSyntaxNode;
 var
-  mPattern: string;
+  mRoutine: TSyntaxNode;
 begin
-  Result := (FConvention.Prefixes[AKind] <> '') and (AName <> '') and not MatchText(AName, ['Self', 'Result']) and
-    not TNamingConvention.Follows(AName, FConvention.Prefixes[AKind]);
-  if Result then
+  // Routine mit Rumpf ohne Punkt: Deklaration im interface-Abschnitt oder forward davor.
+  for mRoutine in FRoutineDecls do
   begin
-    for mPattern in FConvention.Ignore do
+    if (mRoutine <> ARoutine) and IsForwardOrInterface(mRoutine) and SameText(mRoutine.Name, ARoutine.Name) and
+      (EnclosingScope(mRoutine) = EnclosingScope(ARoutine)) then
     begin
-      if MatchesWildcard(AName, mPattern) then
-      begin
-        Exit(False);
-      end;
+      Exit(mRoutine);
     end;
   end;
+  Result := nil;
 end;
 
 procedure TNamingCheck.Report(AKind: TRuleNamingKind; ADeclaration: TSyntaxNode; const AName: string;
@@ -995,6 +986,24 @@ begin
     mFixes := [TRuleFix.Create(cTexts[TNamingText.RenameTo].Fmt([mNewName]), EditsFor(FTokens, AEdits, mNewName))];
   end;
   FReport.Add(TTextRange.Create(FTokens[mAt].StartPos, FTokens[mAt].EndPos), mMessage, TRuleConfidence.High, mFixes);
+end;
+
+function TNamingCheck.Wanted(AKind: TRuleNamingKind; const AName: string): Boolean;
+var
+  mPattern: string;
+begin
+  Result := (FConvention.Prefixes[AKind] <> '') and (AName <> '') and not MatchText(AName, ['Self', 'Result']) and
+    not TNamingConvention.Follows(AName, FConvention.Prefixes[AKind]);
+  if Result then
+  begin
+    for mPattern in FConvention.Ignore do
+    begin
+      if MatchesWildcard(AName, mPattern) then
+      begin
+        Exit(False);
+      end;
+    end;
+  end;
 end;
 
 procedure TNamingCheck.CheckLocal(ADecl: TSyntaxNode; const AName: string; AKind: TRuleNamingKind);
@@ -1026,15 +1035,6 @@ begin
   mCanFix := not ContainsKind(mScope, TSyntaxKind.WithStatement) and not Redeclares(mScope, ADecl, AName);
   Report(AKind, ADecl, AName, NameTokens(mStart, mStop, AName, []), mCanFix,
     [Point(mScope.StartOffset, mScope.EndOffset)]);
-end;
-
-function TNamingCheck.IsInlineFor(AFor: TSyntaxNode): Boolean;
-var
-  mIndex: Integer;
-begin
-  // Binär zum Anfang der Schleife statt ab Dateianfang (#1342).
-  mIndex := TSyntaxTree.FirstTokenOf(FTokens, AFor.StartOffset);
-  Result := (mIndex < High(FTokens)) and FTokens[mIndex].IsKeyword('for') and FTokens[mIndex + 1].IsKeyword('var');
 end;
 
 procedure TNamingCheck.CheckInlineFor(AFor: TSyntaxNode);

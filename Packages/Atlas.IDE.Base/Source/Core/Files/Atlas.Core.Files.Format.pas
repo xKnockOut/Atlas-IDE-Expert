@@ -86,27 +86,23 @@ end;
 
 { TAtlasFileFormats }
 
-class function TAtlasFileFormats.EncodingText(AEncoding: TAtlasFileEncoding): string;
-const
-  cNames: array[TAtlasLanguage, TAtlasFileEncoding] of string = (
-    ('UTF-8 ohne BOM', 'UTF-8 mit BOM', 'ANSI', 'UTF-16 LE', 'UTF-16 BE'),
-    ('UTF-8 without BOM', 'UTF-8 with BOM', 'ANSI', 'UTF-16 LE', 'UTF-16 BE'));
+class function TAtlasFileFormats.Detect(const ABytes: TBytes): TAtlasFileFormat;
 begin
-  Result := cNames[TAtlasTextLanguage.Current, AEncoding];
-end;
-
-class function TAtlasFileFormats.LineBreakText(ALineBreak: TAtlasLineBreak): string;
-const
-  cNames: array[TAtlasLanguage, TAtlasLineBreak] of string = (
-    ('ohne Zeilenende', 'CRLF', 'LF', 'CR', 'gemischte Zeilenenden'),
-    ('no line break', 'CRLF', 'LF', 'CR', 'mixed line breaks'));
-begin
-  Result := cNames[TAtlasTextLanguage.Current, ALineBreak];
-end;
-
-class function TAtlasFileFormats.IsUtf8(const ABytes: TBytes; AStart: Integer): Boolean;
-begin
-  Result := TTextEncodingProbe.IsValidUtf8(ABytes, AStart);
+  case TTextEncodingProbe.BomOf(ABytes) of
+    TTextBom.Utf8:
+      Result.Encoding := TAtlasFileEncoding.Utf8Bom;
+    TTextBom.Utf16LE:
+      Result.Encoding := TAtlasFileEncoding.Utf16LE;
+    TTextBom.Utf16BE:
+      Result.Encoding := TAtlasFileEncoding.Utf16BE;
+  else
+    Result.Encoding := TAtlasFileEncoding.Ansi;
+  end;
+  if (Result.Encoding = TAtlasFileEncoding.Ansi) and IsUtf8(ABytes, 0) then
+  begin
+    Result.Encoding := TAtlasFileEncoding.Utf8;
+  end;
+  Result.LineBreak := LineBreakOf(Decode(ABytes, Result.Encoding));
 end;
 
 class function TAtlasFileFormats.LineBreakOf(const AText: string): TAtlasLineBreak;
@@ -125,23 +121,9 @@ begin
   end;
 end;
 
-class function TAtlasFileFormats.Detect(const ABytes: TBytes): TAtlasFileFormat;
+class function TAtlasFileFormats.IsUtf8(const ABytes: TBytes; AStart: Integer): Boolean;
 begin
-  case TTextEncodingProbe.BomOf(ABytes) of
-    TTextBom.Utf8:
-      Result.Encoding := TAtlasFileEncoding.Utf8Bom;
-    TTextBom.Utf16LE:
-      Result.Encoding := TAtlasFileEncoding.Utf16LE;
-    TTextBom.Utf16BE:
-      Result.Encoding := TAtlasFileEncoding.Utf16BE;
-  else
-    Result.Encoding := TAtlasFileEncoding.Ansi;
-  end;
-  if (Result.Encoding = TAtlasFileEncoding.Ansi) and IsUtf8(ABytes, 0) then
-  begin
-    Result.Encoding := TAtlasFileEncoding.Utf8;
-  end;
-  Result.LineBreak := LineBreakOf(Decode(ABytes, Result.Encoding));
+  Result := TTextEncodingProbe.IsValidUtf8(ABytes, AStart);
 end;
 
 class function TAtlasFileFormats.Decode(const ABytes: TBytes; AEncoding: TAtlasFileEncoding): string;
@@ -181,20 +163,6 @@ begin
   end;
 end;
 
-class function TAtlasFileFormats.NormalizeLineBreaks(const AText: string; ABreak: TAtlasLineBreak): string;
-begin
-  case ABreak of
-    TAtlasLineBreak.CRLF:
-      Result := TTextLines.NormalizeLineBreaks(AText, #13#10);
-    TAtlasLineBreak.LF:
-      Result := TTextLines.NormalizeLineBreaks(AText, #10);
-    TAtlasLineBreak.CR:
-      Result := TTextLines.NormalizeLineBreaks(AText, #13);
-  else
-    Result := AText;
-  end;
-end;
-
 class function TAtlasFileFormats.Encode(const AText: string; const ATarget: TAtlasFileFormat): TBytes;
 var
   mText: string;
@@ -219,11 +187,6 @@ begin
   Result := Encode(Decode(ABytes, Detect(ABytes).Encoding), ATarget);
 end;
 
-class function TAtlasFileFormats.IsAscii(const ABytes: TBytes): Boolean;
-begin
-  Result := TTextEncodingProbe.IsAscii(ABytes);
-end;
-
 class function TAtlasFileFormats.Satisfies(const ABytes: TBytes; const ATarget: TAtlasFileFormat): Boolean;
 var
   mActual: TAtlasFileFormat;
@@ -237,6 +200,11 @@ begin
     mSameEncoding := IsAscii(ABytes);
   end;
   Result := mSameEncoding and ((mActual.LineBreak = ATarget.LineBreak) or (mActual.LineBreak = TAtlasLineBreak.None));
+end;
+
+class function TAtlasFileFormats.IsAscii(const ABytes: TBytes): Boolean;
+begin
+  Result := TTextEncodingProbe.IsAscii(ABytes);
 end;
 
 class function TAtlasFileFormats.AnsiLosses(const AText: string): Integer;
@@ -255,6 +223,20 @@ begin
   end;
 end;
 
+class function TAtlasFileFormats.NormalizeLineBreaks(const AText: string; ABreak: TAtlasLineBreak): string;
+begin
+  case ABreak of
+    TAtlasLineBreak.CRLF:
+      Result := TTextLines.NormalizeLineBreaks(AText, #13#10);
+    TAtlasLineBreak.LF:
+      Result := TTextLines.NormalizeLineBreaks(AText, #10);
+    TAtlasLineBreak.CR:
+      Result := TTextLines.NormalizeLineBreaks(AText, #13);
+  else
+    Result := AText;
+  end;
+end;
+
 class function TAtlasFileFormats.Targets: TArray<TAtlasFileFormat>;
 begin
   Result := [TAtlasFileFormat.Create(TAtlasFileEncoding.Utf8Bom, TAtlasLineBreak.CRLF),
@@ -263,6 +245,24 @@ begin
     TAtlasFileFormat.Create(TAtlasFileEncoding.Utf8, TAtlasLineBreak.LF),
     TAtlasFileFormat.Create(TAtlasFileEncoding.Ansi, TAtlasLineBreak.CRLF),
     TAtlasFileFormat.Create(TAtlasFileEncoding.Ansi, TAtlasLineBreak.LF)];
+end;
+
+class function TAtlasFileFormats.EncodingText(AEncoding: TAtlasFileEncoding): string;
+const
+  cNames: array[TAtlasLanguage, TAtlasFileEncoding] of string = (
+    ('UTF-8 ohne BOM', 'UTF-8 mit BOM', 'ANSI', 'UTF-16 LE', 'UTF-16 BE'),
+    ('UTF-8 without BOM', 'UTF-8 with BOM', 'ANSI', 'UTF-16 LE', 'UTF-16 BE'));
+begin
+  Result := cNames[TAtlasTextLanguage.Current, AEncoding];
+end;
+
+class function TAtlasFileFormats.LineBreakText(ALineBreak: TAtlasLineBreak): string;
+const
+  cNames: array[TAtlasLanguage, TAtlasLineBreak] of string = (
+    ('ohne Zeilenende', 'CRLF', 'LF', 'CR', 'gemischte Zeilenenden'),
+    ('no line break', 'CRLF', 'LF', 'CR', 'mixed line breaks'));
+begin
+  Result := cNames[TAtlasTextLanguage.Current, ALineBreak];
 end;
 
 end.

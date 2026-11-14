@@ -81,6 +81,8 @@ uses
   Atlas.Core.Style.Signal,
   Atlas.UI.Tests.Strings;
 
+{ TAtlasTestsListDialog }
+
 constructor TAtlasTestsListDialog.CreateFor(AOwner: TComponent; const AList: TAtlasTestList; ANew: Boolean;
   const ATaken, ACategories: TArray<string>; const ATexts: TAtlasTestListTexts);
 const
@@ -112,6 +114,29 @@ begin
     TAtlasButtonKind.Cancel);
   mCancel.ModalResult := mrCancel;
   FitHeight;
+end;
+
+procedure TAtlasTestsListDialog.DoShow;
+begin
+  inherited DoShow;
+  if FFilled then
+  begin
+    Exit;
+  end;
+  FFilled := True;
+  FStore.Items.Text := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListDialogStoreProject) + sLineBreak +
+    TAtlasTestsStrings.Text(TAtlasTestsTextId.ListDialogStorePersonal);
+  FStore.ItemIndex := Ord(FList.Store);
+  FKind.Items.Text := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListDialogRuleCategory) + sLineBreak +
+    TAtlasTestsStrings.Text(TAtlasTestsTextId.ListDialogRulePattern) + sLineBreak +
+    TAtlasTestsStrings.Text(TAtlasTestsTextId.ListDialogRuleState);
+  FKind.ItemIndex := 0;
+  FMode.Items.Text := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListDialogIs) + sLineBreak +
+    TAtlasTestsStrings.Text(TAtlasTestsTextId.ListDialogIsNot);
+  FMode.ItemIndex := 0;
+  FillValues;
+  FillRules;
+  KindOfListClick(nil);
 end;
 
 function TAtlasTestsListDialog.AddField(const ACaption: string): TPanel;
@@ -176,34 +201,6 @@ begin
   FRemoveRule.SetBounds(FAddRule.Width + ScaleValue(cRowGap), 0, ScaleValue(cModeWidth),
     ScaleValue(cLineHeight - 2));
   FRemoveRule.OnClick := RemoveRuleClick;
-end;
-
-procedure TAtlasTestsListDialog.DoShow;
-begin
-  inherited DoShow;
-  if FFilled then
-  begin
-    Exit;
-  end;
-  FFilled := True;
-  FStore.Items.Text := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListDialogStoreProject) + sLineBreak +
-    TAtlasTestsStrings.Text(TAtlasTestsTextId.ListDialogStorePersonal);
-  FStore.ItemIndex := Ord(FList.Store);
-  FKind.Items.Text := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListDialogRuleCategory) + sLineBreak +
-    TAtlasTestsStrings.Text(TAtlasTestsTextId.ListDialogRulePattern) + sLineBreak +
-    TAtlasTestsStrings.Text(TAtlasTestsTextId.ListDialogRuleState);
-  FKind.ItemIndex := 0;
-  FMode.Items.Text := TAtlasTestsStrings.Text(TAtlasTestsTextId.ListDialogIs) + sLineBreak +
-    TAtlasTestsStrings.Text(TAtlasTestsTextId.ListDialogIsNot);
-  FMode.ItemIndex := 0;
-  FillValues;
-  FillRules;
-  KindOfListClick(nil);
-end;
-
-function TAtlasTestsListDialog.Dynamic: Boolean;
-begin
-  Result := FDynamic.Checked;
 end;
 
 procedure TAtlasTestsListDialog.FillRules;
@@ -340,6 +337,11 @@ begin
     Exit;
   end;
   ModalResult := mrOk;
+end;
+
+function TAtlasTestsListDialog.Dynamic: Boolean;
+begin
+  Result := FDynamic.Checked;
 end;
 
 class function TAtlasTestsListDialog.Execute(var AList: TAtlasTestList; ANew: Boolean;

@@ -144,13 +144,6 @@ begin
   Result.OnClick := AClick;
 end;
 
-procedure TAtlasServerPage.Reload;
-begin
-  FEditGlobal.Enabled := Assigned(FHooks.EditGlobal);
-  FEditProject.Enabled := Assigned(FHooks.EditProject);
-  FCacheClear.Enabled := Assigned(FHooks.ClearCache);
-end;
-
 function TAtlasServerPage.Confirmed(const AQuestion: string): Boolean;
 begin
   if Assigned(FHooks.Confirm) then
@@ -186,6 +179,13 @@ begin
   begin
     FCacheInfo.Caption := FHooks.ClearCache();
   end;
+end;
+
+procedure TAtlasServerPage.Reload;
+begin
+  FEditGlobal.Enabled := Assigned(FHooks.EditGlobal);
+  FEditProject.Enabled := Assigned(FHooks.EditProject);
+  FCacheClear.Enabled := Assigned(FHooks.ClearCache);
 end;
 
 end.

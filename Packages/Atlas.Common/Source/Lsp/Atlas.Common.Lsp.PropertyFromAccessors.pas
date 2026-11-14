@@ -128,6 +128,8 @@ type
     destructor Destroy; override;
   end;
 
+{ TSourceFile }
+
 destructor TSourceFile.Destroy;
 begin
   if OwnsTree then
@@ -184,40 +186,62 @@ begin
   Result := mFound;
 end;
 
-class function TLspPropertyFromAccessors.IsProcedural(const ATypeName: string; const AIndex: ISymbolIndex): Boolean;
+{ TLspPropertyFromAccessors }
+
+class function TLspPropertyFromAccessors.Actions(ATree: TSyntaxTree; const AText, AUri: string;
+  const APosition: TTextPosition; const AOptions: TPropertyFromAccessorsOptions;
+  AReplaceCalls: TReplaceCalls): TArray<TJSONObject>;
+
+  function Action(const ATitle: string; AWithCalls: Boolean): TJSONObject;
+  var
+    mArguments: TJSONArray;
+    mCommand: TJSONObject;
+  begin
+    mArguments := TJSONArray.Create;
+    mArguments.Add(AUri);
+    mArguments.AddElement(TLspPositions.PositionToJson(APosition));
+    mArguments.AddElement(TJSONBool.Create(AWithCalls));
+    mCommand := TJSONObject.Create;
+    mCommand.AddPair('title', ATitle);
+    mCommand.AddPair('command', cClientCommand);
+    mCommand.AddPair('arguments', mArguments);
+    Result := TJSONObject.Create;
+    Result.AddPair('title', ATitle);
+    Result.AddPair('kind', cKind);
+    Result.AddPair('command', mCommand);
+  end;
+
 var
-  mName: string;
-  mLocation: TSymbolLocation;
+  mFound: TArray<TAccessorProperty>;
+  mWhole: Boolean;
+  mTitle: string;
 begin
-  if TRegEx.IsMatch(ATypeName, '^\s*(reference\s+to\s+)?(procedure|function)\b', [roIgnoreCase]) then
+  Result := nil;
+  if ATree = nil then
   begin
-    Exit(True);
+    Exit;
   end;
-  mName := Trim(ATypeName);
-  if Pos('<', mName) > 0 then
+  mFound := TPropertyFromAccessors.At(ATree, AText, APosition.Line, AOptions, mWhole);
+  if mFound = nil then
   begin
-    mName := Copy(mName, 1, Pos('<', mName) - 1);
+    Exit;
   end;
-  if Pos('.', mName) > 0 then
+  if mWhole then
   begin
-    mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
-  end;
-  if IndexText(mName, cKnownProcedural) >= 0 then
+    mTitle := cTexts[TPropertyFromAccessorsText.CreateMissingProperties].Fmt([Length(mFound)]);
+  end
+  else
   begin
-    Exit(True);
+    mTitle := cTexts[TPropertyFromAccessorsText.CreateProperty].Fmt([mFound[0].Name]);
   end;
-  if AIndex <> nil then
+  if AReplaceCalls <> TReplaceCalls.Always then
   begin
-    for mLocation in AIndex.FindSymbols(mName) do
-    begin
-      if (mLocation.Symbol.Container = '') and (mLocation.Symbol.Kind = TIndexSymbolKind.TypeAlias) and
-        TRegEx.IsMatch(mLocation.Symbol.Signature, cProceduralPattern, [roIgnoreCase]) then
-      begin
-        Exit(True);
-      end;
-    end;
+    Result := Result + [Action(mTitle, False)];
   end;
-  Result := False;
+  if AReplaceCalls <> TReplaceCalls.Never then
+  begin
+    Result := Result + [Action(mTitle + cTexts[TPropertyFromAccessorsText.AndUpdateCalls].Text, True)];
+  end;
 end;
 
 /// <summary>Wert oder Methodenzeiger nach dem Typnamen ATypeName.</summary>
@@ -462,6 +486,8 @@ type
     function Answer(APropertyCount: Integer): TJSONObject;
   end;
 
+{ TPropertyRun }
+
 constructor TPropertyRun.Create(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
   const AContext: TPropertyFromAccessorsContext);
 begin
@@ -646,29 +672,6 @@ begin
   end;
 end;
 
-procedure TPropertyRun.Run(const AProperties: TArray<TAccessorProperty>);
-var
-  mItem: TAccessorProperty;
-  mMethods: TArray<TAccessorMethod>;
-  mOwn: TSourceFile;
-begin
-  Source(FFileName);
-  for mItem in AProperties do
-  begin
-    mMethods := MethodsOf(mItem);
-    if FContext.ReplaceCalls or (FContext.Options.Hiding <> TAccessorHiding.Off) then
-    begin
-      CollectReferences(mItem, mMethods);
-    end;
-    if FContext.Options.Hiding <> TAccessorHiding.Off then
-    begin
-      HideMethods(mMethods);
-    end;
-  end;
-  mOwn := Source(FFileName);
-  mOwn.Edits := mOwn.Edits + TPropertyFromAccessors.Edits(FTree, FText, AProperties, FHidden, FContext.Options);
-end;
-
 function TPropertyRun.Changes: TJSONArray;
 var
   mName: string;
@@ -692,6 +695,29 @@ begin
     Result.Free;
     raise;
   end;
+end;
+
+procedure TPropertyRun.Run(const AProperties: TArray<TAccessorProperty>);
+var
+  mItem: TAccessorProperty;
+  mMethods: TArray<TAccessorMethod>;
+  mOwn: TSourceFile;
+begin
+  Source(FFileName);
+  for mItem in AProperties do
+  begin
+    mMethods := MethodsOf(mItem);
+    if FContext.ReplaceCalls or (FContext.Options.Hiding <> TAccessorHiding.Off) then
+    begin
+      CollectReferences(mItem, mMethods);
+    end;
+    if FContext.Options.Hiding <> TAccessorHiding.Off then
+    begin
+      HideMethods(mMethods);
+    end;
+  end;
+  mOwn := Source(FFileName);
+  mOwn.Edits := mOwn.Edits + TPropertyFromAccessors.Edits(FTree, FText, AProperties, FHidden, FContext.Options);
 end;
 
 function TPropertyRun.Answer(APropertyCount: Integer): TJSONObject;
@@ -723,62 +749,6 @@ end;
 
 { TLspPropertyFromAccessors }
 
-class function TLspPropertyFromAccessors.Actions(ATree: TSyntaxTree; const AText, AUri: string;
-  const APosition: TTextPosition; const AOptions: TPropertyFromAccessorsOptions;
-  AReplaceCalls: TReplaceCalls): TArray<TJSONObject>;
-
-  function Action(const ATitle: string; AWithCalls: Boolean): TJSONObject;
-  var
-    mArguments: TJSONArray;
-    mCommand: TJSONObject;
-  begin
-    mArguments := TJSONArray.Create;
-    mArguments.Add(AUri);
-    mArguments.AddElement(TLspPositions.PositionToJson(APosition));
-    mArguments.AddElement(TJSONBool.Create(AWithCalls));
-    mCommand := TJSONObject.Create;
-    mCommand.AddPair('title', ATitle);
-    mCommand.AddPair('command', cClientCommand);
-    mCommand.AddPair('arguments', mArguments);
-    Result := TJSONObject.Create;
-    Result.AddPair('title', ATitle);
-    Result.AddPair('kind', cKind);
-    Result.AddPair('command', mCommand);
-  end;
-
-var
-  mFound: TArray<TAccessorProperty>;
-  mWhole: Boolean;
-  mTitle: string;
-begin
-  Result := nil;
-  if ATree = nil then
-  begin
-    Exit;
-  end;
-  mFound := TPropertyFromAccessors.At(ATree, AText, APosition.Line, AOptions, mWhole);
-  if mFound = nil then
-  begin
-    Exit;
-  end;
-  if mWhole then
-  begin
-    mTitle := cTexts[TPropertyFromAccessorsText.CreateMissingProperties].Fmt([Length(mFound)]);
-  end
-  else
-  begin
-    mTitle := cTexts[TPropertyFromAccessorsText.CreateProperty].Fmt([mFound[0].Name]);
-  end;
-  if AReplaceCalls <> TReplaceCalls.Always then
-  begin
-    Result := Result + [Action(mTitle, False)];
-  end;
-  if AReplaceCalls <> TReplaceCalls.Never then
-  begin
-    Result := Result + [Action(mTitle + cTexts[TPropertyFromAccessorsText.AndUpdateCalls].Text, True)];
-  end;
-end;
-
 class function TLspPropertyFromAccessors.Execute(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName, AText: string; const APosition: TTextPosition;
   const AContext: TPropertyFromAccessorsContext): TJSONObject;
@@ -799,6 +769,42 @@ begin
   finally
     mRun.Free;
   end;
+end;
+
+class function TLspPropertyFromAccessors.IsProcedural(const ATypeName: string; const AIndex: ISymbolIndex): Boolean;
+var
+  mName: string;
+  mLocation: TSymbolLocation;
+begin
+  if TRegEx.IsMatch(ATypeName, '^\s*(reference\s+to\s+)?(procedure|function)\b', [roIgnoreCase]) then
+  begin
+    Exit(True);
+  end;
+  mName := Trim(ATypeName);
+  if Pos('<', mName) > 0 then
+  begin
+    mName := Copy(mName, 1, Pos('<', mName) - 1);
+  end;
+  if Pos('.', mName) > 0 then
+  begin
+    mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
+  end;
+  if IndexText(mName, cKnownProcedural) >= 0 then
+  begin
+    Exit(True);
+  end;
+  if AIndex <> nil then
+  begin
+    for mLocation in AIndex.FindSymbols(mName) do
+    begin
+      if (mLocation.Symbol.Container = '') and (mLocation.Symbol.Kind = TIndexSymbolKind.TypeAlias) and
+        TRegEx.IsMatch(mLocation.Symbol.Signature, cProceduralPattern, [roIgnoreCase]) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
 end;
 
 initialization

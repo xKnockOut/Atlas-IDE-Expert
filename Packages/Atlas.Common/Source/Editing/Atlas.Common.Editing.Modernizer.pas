@@ -35,6 +35,8 @@ uses
   Atlas.Text.Chars,
   Atlas.Text.Lines;
 
+{ TModernizer }
+
 class function TModernizer.WordPos(const AWord, ALine: string): Integer;
 begin
   Result := WordPos(AWord, ALine, 1);

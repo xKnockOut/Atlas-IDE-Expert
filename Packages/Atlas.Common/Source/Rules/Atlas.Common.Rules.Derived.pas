@@ -141,6 +141,8 @@ type
     function Answer(const AName: string): Boolean;
   end;
 
+{ TNoReturnMemo }
+
 constructor TNoReturnMemo.Create;
 begin
   inherited Create;

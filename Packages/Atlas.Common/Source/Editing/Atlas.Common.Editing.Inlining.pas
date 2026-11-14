@@ -854,14 +854,6 @@ end;
 { TInlineRefactoring }
 
 class function TInlineRefactoring.InlineVariable(const ASource: TInlineSource; const APosition: TTextPosition;
-  const AOptions: TInlineOptions; out AAction: TCodeAction): Boolean;
-var
-  mReason: string;
-begin
-  Result := InlineVariable(ASource, APosition, AOptions, AAction, mReason);
-end;
-
-class function TInlineRefactoring.InlineVariable(const ASource: TInlineSource; const APosition: TTextPosition;
   const AOptions: TInlineOptions; out AAction: TCodeAction; out AReason: string): Boolean;
 var
   mInliner: TVariableInliner;
@@ -874,6 +866,14 @@ begin
   begin
     AAction := mInliner.Action;
   end;
+end;
+
+class function TInlineRefactoring.InlineVariable(const ASource: TInlineSource; const APosition: TTextPosition;
+  const AOptions: TInlineOptions; out AAction: TCodeAction): Boolean;
+var
+  mReason: string;
+begin
+  Result := InlineVariable(ASource, APosition, AOptions, AAction, mReason);
 end;
 
 class function TInlineRefactoring.CallAt(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;

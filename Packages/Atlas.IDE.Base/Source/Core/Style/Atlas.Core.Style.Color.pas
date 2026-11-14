@@ -223,6 +223,8 @@ begin
   Result := (Max(mLumA, mLumB) + 0.05) / (Min(mLumA, mLumB) + 0.05);
 end;
 
+{ TAtlasLab }
+
 class function TAtlasLab.Create(AL, AA, AB: Double): TAtlasLab;
 begin
   Result.L := AL;
@@ -230,45 +232,10 @@ begin
   Result.B := AB;
 end;
 
-class function TAtlasColorMath.ToLab(AColor: TAtlasColor): TAtlasLab;
-
-  function Linear(AValue: Byte): Double;
-  var
-    mValue: Double;
-  begin
-    mValue := AValue / 255;
-    if mValue <= 0.04045 then
-    begin
-      Result := mValue / 12.92;
-    end
-    else
-    begin
-      Result := Power((mValue + 0.055) / 1.055, 2.4);
-    end;
-  end;
-
-  function F(AValue: Double): Double;
-  begin
-    if AValue > 216 / 24389 then
-    begin
-      Result := Power(AValue, 1 / 3);
-    end
-    else
-    begin
-      Result := (24389 / 27 * AValue + 16) / 116;
-    end;
-  end;
-
-var
-  R, G, B, X, Y, Z: Double;
+class function TAtlasColorMath.IsDark(AColor: TAtlasColor): Boolean;
 begin
-  R := Linear(Red(AColor));
-  G := Linear(Green(AColor));
-  B := Linear(Blue(AColor));
-  X := F((0.4124 * R + 0.3576 * G + 0.1805 * B) / 0.95047);
-  Y := F(0.2126 * R + 0.7152 * G + 0.0722 * B);
-  Z := F((0.0193 * R + 0.1192 * G + 0.9505 * B) / 1.08883);
-  Result := TAtlasLab.Create(116 * Y - 16, 500 * (X - Y), 200 * (Y - Z));
+  // 0,18 ist die Leuchtdichte, bei der Schwarz und Weiß gleich gut kontrastieren.
+  Result := Luminance(AColor) < 0.18;
 end;
 
 const
@@ -365,6 +332,47 @@ begin
   Result.Sh := 1 + 0.015 * ACpMean * mT;
   Result.Rt := -Sin(DegToRad(2 * mDTheta)) * mRc;
 end;
+class function TAtlasColorMath.ToLab(AColor: TAtlasColor): TAtlasLab;
+
+  function Linear(AValue: Byte): Double;
+  var
+    mValue: Double;
+  begin
+    mValue := AValue / 255;
+    if mValue <= 0.04045 then
+    begin
+      Result := mValue / 12.92;
+    end
+    else
+    begin
+      Result := Power((mValue + 0.055) / 1.055, 2.4);
+    end;
+  end;
+
+  function F(AValue: Double): Double;
+  begin
+    if AValue > 216 / 24389 then
+    begin
+      Result := Power(AValue, 1 / 3);
+    end
+    else
+    begin
+      Result := (24389 / 27 * AValue + 16) / 116;
+    end;
+  end;
+
+var
+  R, G, B, X, Y, Z: Double;
+begin
+  R := Linear(Red(AColor));
+  G := Linear(Green(AColor));
+  B := Linear(Blue(AColor));
+  X := F((0.4124 * R + 0.3576 * G + 0.1805 * B) / 0.95047);
+  Y := F(0.2126 * R + 0.7152 * G + 0.0722 * B);
+  Z := F((0.0193 * R + 0.1192 * G + 0.9505 * B) / 1.08883);
+  Result := TAtlasLab.Create(116 * Y - 16, 500 * (X - Y), 200 * (Y - Z));
+end;
+
 class function TAtlasColorMath.DeltaE2000(const A, B: TAtlasLab): Double;
 var
   mFirst, mSecond: TPrimedLab;
@@ -383,12 +391,6 @@ end;
 class function TAtlasColorMath.DeltaE2000(A, B: TAtlasColor): Double;
 begin
   Result := DeltaE2000(ToLab(A), ToLab(B));
-end;
-
-class function TAtlasColorMath.IsDark(AColor: TAtlasColor): Boolean;
-begin
-  // 0,18 ist die Leuchtdichte, bei der Schwarz und Weiß gleich gut kontrastieren.
-  Result := Luminance(AColor) < 0.18;
 end;
 
 end.

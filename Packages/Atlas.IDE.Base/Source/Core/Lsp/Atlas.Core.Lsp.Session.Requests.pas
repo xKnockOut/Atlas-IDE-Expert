@@ -201,31 +201,14 @@ begin
   end;
 end;
 
-function TLspSessionRequests.References(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
-var
-  mParams: TJSONObject;
-  mContext: TJSONObject;
-  mResponse: TJSONValue;
-begin
-  mParams := PositionParams(AFileName, ALine, ACharacter);
-  mContext := TJSONObject.Create;
-  mContext.AddPair('includeDeclaration', TJSONBool.Create(False));
-  mParams.AddPair('context', mContext);
-  // Die Suche geht über das ganze Projekt; dafür mehr Zeit als für einen Hover.
-  mResponse := FClient.Request('textDocument/references', mParams, FTimeoutMs * 10);
-  try
-    Result := ReferenceLocationsOf(mResponse);
-  finally
-    mResponse.Free;
-  end;
-end;
-
 { TLspSessionRequests }
 
 procedure TLspSessionRequests.Notify(const AMethod: string; AParams: TJSONObject);
 begin
   FClient.Notify(AMethod, AParams);
 end;
+
+{ TLspSessionRequests }
 
 procedure TLspSessionRequests.Saved(const AFileName: string);
 begin
@@ -292,6 +275,25 @@ begin
   end;
 end;
 
+function TLspSessionRequests.References(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
+var
+  mParams: TJSONObject;
+  mContext: TJSONObject;
+  mResponse: TJSONValue;
+begin
+  mParams := PositionParams(AFileName, ALine, ACharacter);
+  mContext := TJSONObject.Create;
+  mContext.AddPair('includeDeclaration', TJSONBool.Create(False));
+  mParams.AddPair('context', mContext);
+  // Die Suche geht über das ganze Projekt; dafür mehr Zeit als für einen Hover.
+  mResponse := FClient.Request('textDocument/references', mParams, FTimeoutMs * 10);
+  try
+    Result := ReferenceLocationsOf(mResponse);
+  finally
+    mResponse.Free;
+  end;
+end;
+
 function TLspSessionRequests.Implementations(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
 var
   mResponse: TJSONValue;
@@ -303,6 +305,67 @@ begin
   finally
     mResponse.Free;
   end;
+end;
+
+function TLspSessionRequests.WorkspaceSymbols(const AQuery: string; ATimeoutMs: Cardinal): TArray<TAtlasSymbol>;
+var
+  mResponse, mItem: TJSONValue;
+  mEntry: TJSONObject;
+  mSymbol: TAtlasSymbol;
+  mLocations: TArray<TLspLocation>;
+  mLocation: TJSONValue;
+begin
+  Result := nil;
+  mResponse := FClient.Request('workspace/symbol', TJSONObject.Create(TJSONPair.Create('query', AQuery)), ATimeoutMs);
+  try
+    if not (mResponse is TJSONArray) then
+    begin
+      Exit;
+    end;
+    for mItem in TJSONArray(mResponse) do
+    begin
+      if not (mItem is TJSONObject) then
+      begin
+        Continue;
+      end;
+      mEntry := TJSONObject(mItem);
+      mSymbol := Default(TAtlasSymbol);
+      mSymbol.Name := mEntry.GetValue<string>('name', '');
+      mSymbol.Container := mEntry.GetValue<string>('containerName', '');
+      mSymbol.Kind := mEntry.GetValue<Integer>('kind', 0);
+      mLocation := mEntry.GetValue('location');
+      mLocations := LocationsOf(mLocation);
+      if (mSymbol.Name = '') or (Length(mLocations) = 0) then
+      begin
+        Continue;
+      end;
+      mSymbol.FileName := mLocations[0].FileName;
+      mSymbol.Line := mLocations[0].Line;
+      mSymbol.Character := mLocations[0].Character;
+      Result := Result + [mSymbol];
+    end;
+  finally
+    mResponse.Free;
+  end;
+end;
+
+function TLspSessionRequests.DocumentSymbols(const AFileName: string; ATimeoutMs: Cardinal): TArray<TAtlasSymbol>;
+var
+  mResponse: TJSONValue;
+begin
+  mResponse := DocumentSymbolTree(AFileName, ATimeoutMs);
+  try
+    Result := SymbolsOfDocument(mResponse, AFileName);
+  finally
+    mResponse.Free;
+  end;
+end;
+
+function TLspSessionRequests.DocumentSymbolTree(const AFileName: string; ATimeoutMs: Cardinal): TJSONValue;
+begin
+  Result := FClient.Request('textDocument/documentSymbol',
+    TJSONObject.Create(TJSONPair.Create('textDocument', TJSONObject.Create(TJSONPair.Create('uri',
+    PathToUri(AFileName))))), ATimeoutMs);
 end;
 
 function TLspSessionRequests.CodeActions(const AFileName: string; const ARange: TLspRange): TArray<TLspCodeAction>;
@@ -332,19 +395,6 @@ begin
   end;
 end;
 
-function TLspSessionRequests.CommandActions(const ACommand, AArgumentsJson: string;
-  ATimeoutMs: Cardinal): TArray<TLspCodeAction>;
-var
-  mResponse: TJSONValue;
-begin
-  mResponse := RunCommand(ACommand, AArgumentsJson, ATimeoutMs);
-  try
-    Result := TLspCodeAction.ListFromJson(mResponse);
-  finally
-    mResponse.Free;
-  end;
-end;
-
 function TLspSessionRequests.RunCommand(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal): TJSONValue;
 var
   mArguments: TJSONValue;
@@ -361,6 +411,19 @@ begin
   end;
   Result := FClient.Request('workspace/executeCommand',
     TJSONObject.Create.AddPair('command', ACommand).AddPair('arguments', mArguments), ATimeoutMs);
+end;
+
+function TLspSessionRequests.CommandActions(const ACommand, AArgumentsJson: string;
+  ATimeoutMs: Cardinal): TArray<TLspCodeAction>;
+var
+  mResponse: TJSONValue;
+begin
+  mResponse := RunCommand(ACommand, AArgumentsJson, ATimeoutMs);
+  try
+    Result := TLspCodeAction.ListFromJson(mResponse);
+  finally
+    mResponse.Free;
+  end;
 end;
 
 function TLspSessionRequests.RunRequest(const AMethod, AParamsJson: string; ATimeoutMs: Cardinal;
@@ -466,67 +529,6 @@ begin
   end;
 end;
 
-function TLspSessionRequests.WorkspaceSymbols(const AQuery: string; ATimeoutMs: Cardinal): TArray<TAtlasSymbol>;
-var
-  mResponse, mItem: TJSONValue;
-  mEntry: TJSONObject;
-  mSymbol: TAtlasSymbol;
-  mLocations: TArray<TLspLocation>;
-  mLocation: TJSONValue;
-begin
-  Result := nil;
-  mResponse := FClient.Request('workspace/symbol', TJSONObject.Create(TJSONPair.Create('query', AQuery)), ATimeoutMs);
-  try
-    if not (mResponse is TJSONArray) then
-    begin
-      Exit;
-    end;
-    for mItem in TJSONArray(mResponse) do
-    begin
-      if not (mItem is TJSONObject) then
-      begin
-        Continue;
-      end;
-      mEntry := TJSONObject(mItem);
-      mSymbol := Default(TAtlasSymbol);
-      mSymbol.Name := mEntry.GetValue<string>('name', '');
-      mSymbol.Container := mEntry.GetValue<string>('containerName', '');
-      mSymbol.Kind := mEntry.GetValue<Integer>('kind', 0);
-      mLocation := mEntry.GetValue('location');
-      mLocations := LocationsOf(mLocation);
-      if (mSymbol.Name = '') or (Length(mLocations) = 0) then
-      begin
-        Continue;
-      end;
-      mSymbol.FileName := mLocations[0].FileName;
-      mSymbol.Line := mLocations[0].Line;
-      mSymbol.Character := mLocations[0].Character;
-      Result := Result + [mSymbol];
-    end;
-  finally
-    mResponse.Free;
-  end;
-end;
-
-function TLspSessionRequests.DocumentSymbolTree(const AFileName: string; ATimeoutMs: Cardinal): TJSONValue;
-begin
-  Result := FClient.Request('textDocument/documentSymbol',
-    TJSONObject.Create(TJSONPair.Create('textDocument', TJSONObject.Create(TJSONPair.Create('uri',
-    PathToUri(AFileName))))), ATimeoutMs);
-end;
-
-function TLspSessionRequests.DocumentSymbols(const AFileName: string; ATimeoutMs: Cardinal): TArray<TAtlasSymbol>;
-var
-  mResponse: TJSONValue;
-begin
-  mResponse := DocumentSymbolTree(AFileName, ATimeoutMs);
-  try
-    Result := SymbolsOfDocument(mResponse, AFileName);
-  finally
-    mResponse.Free;
-  end;
-end;
-
 function TLspSessionRequests.Definition(const AFileName, AText: string; ALine, ACharacter: Integer;
   out ALocation: TLspLocation): Boolean;
 var
@@ -596,6 +598,33 @@ begin
   end;
 end;
 
+function TLspSessionRequests.Completion(const AFileName: string; ALine, ACharacter: Integer;
+  ATimeoutMs: Cardinal): TJSONValue;
+begin
+  Result := FClient.Request('textDocument/completion', PositionParams(AFileName, ALine, ACharacter), ATimeoutMs);
+end;
+
+function TLspSessionRequests.Completion(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal;
+  const ATrigger: string; const AOnPartial: TLspPartialProc): TJSONValue;
+var
+  mParams: TJSONObject;
+begin
+  mParams := PositionParams(AFileName, ALine, ACharacter);
+  // CompletionContext: triggerKind 2 = TriggerCharacter, 1 = Invoked.
+  if ATrigger <> '' then
+  begin
+    mParams.AddPair('context', TJSONObject.Create.AddPair('triggerKind', TJSONNumber.Create(2))
+      .AddPair('triggerCharacter', ATrigger));
+  end;
+  Result := FClient.Request('textDocument/completion', mParams, ATimeoutMs, AOnPartial);
+end;
+
+function TLspSessionRequests.SignatureHelp(const AFileName: string; ALine, ACharacter: Integer;
+  ATimeoutMs: Cardinal): TJSONValue;
+begin
+  Result := FClient.Request('textDocument/signatureHelp', PositionParams(AFileName, ALine, ACharacter), ATimeoutMs);
+end;
+
 function TLspSessionRequests.PrepareRename(const AFileName, AText: string; ALine, ACharacter: Integer;
   out APlaceholder: string): Boolean;
 var
@@ -644,33 +673,6 @@ begin
   mParams := PositionParams(AFileName, ALine, ACharacter);
   mParams.AddPair('newName', ANewName);
   Result := FClient.Request('textDocument/rename', mParams, ATimeoutMs);
-end;
-
-function TLspSessionRequests.Completion(const AFileName: string; ALine, ACharacter: Integer;
-  ATimeoutMs: Cardinal): TJSONValue;
-begin
-  Result := FClient.Request('textDocument/completion', PositionParams(AFileName, ALine, ACharacter), ATimeoutMs);
-end;
-
-function TLspSessionRequests.Completion(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal;
-  const ATrigger: string; const AOnPartial: TLspPartialProc): TJSONValue;
-var
-  mParams: TJSONObject;
-begin
-  mParams := PositionParams(AFileName, ALine, ACharacter);
-  // CompletionContext: triggerKind 2 = TriggerCharacter, 1 = Invoked.
-  if ATrigger <> '' then
-  begin
-    mParams.AddPair('context', TJSONObject.Create.AddPair('triggerKind', TJSONNumber.Create(2))
-      .AddPair('triggerCharacter', ATrigger));
-  end;
-  Result := FClient.Request('textDocument/completion', mParams, ATimeoutMs, AOnPartial);
-end;
-
-function TLspSessionRequests.SignatureHelp(const AFileName: string; ALine, ACharacter: Integer;
-  ATimeoutMs: Cardinal): TJSONValue;
-begin
-  Result := FClient.Request('textDocument/signatureHelp', PositionParams(AFileName, ALine, ACharacter), ATimeoutMs);
 end;
 
 function TLspSessionRequests.ResolveCompletion(AItem: TJSONObject; ATimeoutMs: Cardinal): TJSONValue;

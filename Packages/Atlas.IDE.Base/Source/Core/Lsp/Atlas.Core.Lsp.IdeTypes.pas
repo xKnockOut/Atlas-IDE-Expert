@@ -90,6 +90,8 @@ begin
   AUnits.Add(UpperCase(AUnit), Result);
 end;
 
+{ TAtlasIdeTypes }
+
 class function TAtlasIdeTypes.ToJson(const ATypes: TArray<TAtlasIdeType>): TJSONObject;
 var
   mOrder: TJSONArray;

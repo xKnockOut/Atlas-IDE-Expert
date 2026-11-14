@@ -631,179 +631,6 @@ begin
   FitKeys(Self);
 end;
 
-procedure TAtlasDebugEvaluateFrame.SetList(AList: TAtlasEvalList);
-begin
-  FState.List := AList;
-  FState.LinesKey := '';
-  Refresh;
-end;
-
-procedure TAtlasDebugEvaluateFrame.Refresh;
-begin
-  if HandleAllocated then
-  begin
-    SyncTree(Self);
-  end;
-  UpdateButtons(Self);
-  UpdateDetail(Self);
-end;
-
-function TAtlasDebugEvaluateFrame.Selected: TAtlasEvalNode;
-begin
-  Result := nil;
-  if HandleAllocated then
-  begin
-    Result := NodeOf(Self, FParts.Tree.Selected);
-  end;
-end;
-
-procedure TAtlasDebugEvaluateFrame.Select(const AKey: string);
-var
-  mItem: TTreeNode;
-begin
-  if not HandleAllocated then
-  begin
-    Exit;
-  end;
-  mItem := FState.Sync.ItemOf(AKey);
-  if mItem <> nil then
-  begin
-    FParts.Tree.Selected := mItem;
-  end;
-end;
-
-class function TAtlasDebugEvaluateFrame.DetailText(ANode: TAtlasEvalNode; AView: TAtlasEvalView;
-  ALinesOk: Boolean; const ALines: string; out AUnfit: Boolean): string;
-begin
-  AUnfit := False;
-  if ANode = nil then
-  begin
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateNoSelection);
-  end
-  else if ANode.State <> TAtlasEvalState.Value then
-  begin
-    Result := StateDetail(ANode);
-  end
-  else if AView <> TAtlasEvalView.Lines then
-  begin
-    AUnfit := not TAtlasEvalText.Render(ANode.Value, AView, Result);
-  end
-  else if ALinesOk then
-  begin
-    AUnfit := not TAtlasEvalText.Render(ALines, AView, Result);
-  end
-  else
-  begin
-    AUnfit := True;
-    Result := LinesFailedDetail(ANode, ALines);
-  end;
-end;
-
-procedure TAtlasDebugEvaluateFrame.SetLines(const AKey: string; AOk: Boolean; const AText: string);
-begin
-  FState.LinesKey := AKey;
-  FState.LinesOk := AOk;
-  FState.LinesText := AText;
-  UpdateDetail(Self);
-end;
-
-procedure TAtlasDebugEvaluateFrame.InvalidateLines;
-begin
-  FState.LinesKey := '';
-  FState.LinesText := '';
-end;
-
-procedure TAtlasDebugEvaluateFrame.SetSideEffects(AValue: Boolean);
-var
-  mHandler: TNotifyEvent;
-begin
-  mHandler := FParts.SideEffectsCheck.OnClick;
-  FParts.SideEffectsCheck.OnClick := nil;
-  try
-    FParts.SideEffectsCheck.Checked := AValue;
-  finally
-    FParts.SideEffectsCheck.OnClick := mHandler;
-  end;
-end;
-
-procedure TAtlasDebugEvaluateFrame.SetView(AView: TAtlasEvalView);
-begin
-  FState.View := AView;
-  FParts.ViewButtons[AView].Down := True;
-  // Neu fragen: „.Text“ kann sich seit dem letzten Mal geändert haben.
-  FState.LinesKey := '';
-  UpdateDetail(Self);
-end;
-
-procedure TAtlasDebugEvaluateFrame.FocusInput(const AExpression: string);
-begin
-  if AExpression <> '' then
-  begin
-    FParts.Input.Text := AExpression;
-    FParts.Input.SelectAll;
-  end;
-  if FParts.Input.CanFocus and FParts.Input.Showing then
-  begin
-    FParts.Input.SetFocus;
-  end;
-end;
-
-procedure TAtlasDebugEvaluateFrame.ShowHistory;
-var
-  mItems: TArray<string>;
-  mPlace: TPoint;
-begin
-  mItems := nil;
-  if Assigned(Hooks.History) then
-  begin
-    mItems := Hooks.History();
-  end;
-  FillHistory(FParts.HistoryMenu, mItems, HistoryClick);
-  mPlace := FParts.Input.ClientToScreen(System.Types.Point(0, FParts.Input.Height));
-  FParts.HistoryMenu.Popup(mPlace.X, mPlace.Y);
-end;
-
-procedure TAtlasDebugEvaluateFrame.HistoryClick(Sender: TObject);
-begin
-  if Sender is TMenuItem then
-  begin
-    FocusInput(TMenuItem(Sender).Hint);
-  end;
-end;
-
-procedure TAtlasDebugEvaluateFrame.TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
-  State: TCustomDrawState; var DefaultDraw: Boolean);
-var
-  mInfo: TAtlasEvalItemInfo;
-  mCanvas: TCanvas;
-begin
-  DefaultDraw := True;
-  mCanvas := Sender.Canvas;
-  // Darstellung steht am Baumknoten (FState.Sync): Zeichnen sucht nicht in der Liste.
-  mInfo := FState.Sync.InfoOf(Node);
-  mCanvas.Font.Style := [];
-  if mInfo.Bold then
-  begin
-    mCanvas.Font.Style := [fsBold];
-  end;
-  if cdsSelected in State then
-  begin
-    mCanvas.Brush.Color := TreeColor(Self, clHighlight);
-    mCanvas.Font.Color := TreeColor(Self, clHighlightText);
-    Exit;
-  end;
-  mCanvas.Brush.Color := TreeColor(Self, FParts.Tree.Color);
-  case mInfo.Look of
-    TAtlasEvalLook.Changed:
-      mCanvas.Font.Color := ColorToRGB(TColor(TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(
-        mCanvas.Brush.Color))).Warn));
-    TAtlasEvalLook.Gray:
-      mCanvas.Font.Color := TreeColor(Self, clGrayText);
-  else
-    mCanvas.Font.Color := TreeColor(Self, FParts.Tree.Font.Color);
-  end;
-end;
-
 procedure TAtlasDebugEvaluateFrame.InputKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   if (Key = VK_RETURN) and (Shift = []) then
@@ -879,6 +706,39 @@ begin
   UpdateDetail(Self);
 end;
 
+procedure TAtlasDebugEvaluateFrame.TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
+  State: TCustomDrawState; var DefaultDraw: Boolean);
+var
+  mInfo: TAtlasEvalItemInfo;
+  mCanvas: TCanvas;
+begin
+  DefaultDraw := True;
+  mCanvas := Sender.Canvas;
+  // Darstellung steht am Baumknoten (FState.Sync): Zeichnen sucht nicht in der Liste.
+  mInfo := FState.Sync.InfoOf(Node);
+  mCanvas.Font.Style := [];
+  if mInfo.Bold then
+  begin
+    mCanvas.Font.Style := [fsBold];
+  end;
+  if cdsSelected in State then
+  begin
+    mCanvas.Brush.Color := TreeColor(Self, clHighlight);
+    mCanvas.Font.Color := TreeColor(Self, clHighlightText);
+    Exit;
+  end;
+  mCanvas.Brush.Color := TreeColor(Self, FParts.Tree.Color);
+  case mInfo.Look of
+    TAtlasEvalLook.Changed:
+      mCanvas.Font.Color := ColorToRGB(TColor(TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(
+        mCanvas.Brush.Color))).Warn));
+    TAtlasEvalLook.Gray:
+      mCanvas.Font.Color := TreeColor(Self, clGrayText);
+  else
+    mCanvas.Font.Color := TreeColor(Self, FParts.Tree.Font.Color);
+  end;
+end;
+
 procedure TAtlasDebugEvaluateFrame.ViewClick(Sender: TObject);
 begin
   if Sender is TSpeedButton then
@@ -910,6 +770,146 @@ begin
   if Assigned(Hooks.SideEffects) then
   begin
     Hooks.SideEffects(FParts.SideEffectsCheck.Checked);
+  end;
+end;
+
+procedure TAtlasDebugEvaluateFrame.HistoryClick(Sender: TObject);
+begin
+  if Sender is TMenuItem then
+  begin
+    FocusInput(TMenuItem(Sender).Hint);
+  end;
+end;
+
+procedure TAtlasDebugEvaluateFrame.SetList(AList: TAtlasEvalList);
+begin
+  FState.List := AList;
+  FState.LinesKey := '';
+  Refresh;
+end;
+
+procedure TAtlasDebugEvaluateFrame.Refresh;
+begin
+  if HandleAllocated then
+  begin
+    SyncTree(Self);
+  end;
+  UpdateButtons(Self);
+  UpdateDetail(Self);
+end;
+
+procedure TAtlasDebugEvaluateFrame.SetLines(const AKey: string; AOk: Boolean; const AText: string);
+begin
+  FState.LinesKey := AKey;
+  FState.LinesOk := AOk;
+  FState.LinesText := AText;
+  UpdateDetail(Self);
+end;
+
+procedure TAtlasDebugEvaluateFrame.InvalidateLines;
+begin
+  FState.LinesKey := '';
+  FState.LinesText := '';
+end;
+
+procedure TAtlasDebugEvaluateFrame.SetSideEffects(AValue: Boolean);
+var
+  mHandler: TNotifyEvent;
+begin
+  mHandler := FParts.SideEffectsCheck.OnClick;
+  FParts.SideEffectsCheck.OnClick := nil;
+  try
+    FParts.SideEffectsCheck.Checked := AValue;
+  finally
+    FParts.SideEffectsCheck.OnClick := mHandler;
+  end;
+end;
+
+procedure TAtlasDebugEvaluateFrame.FocusInput(const AExpression: string);
+begin
+  if AExpression <> '' then
+  begin
+    FParts.Input.Text := AExpression;
+    FParts.Input.SelectAll;
+  end;
+  if FParts.Input.CanFocus and FParts.Input.Showing then
+  begin
+    FParts.Input.SetFocus;
+  end;
+end;
+
+function TAtlasDebugEvaluateFrame.Selected: TAtlasEvalNode;
+begin
+  Result := nil;
+  if HandleAllocated then
+  begin
+    Result := NodeOf(Self, FParts.Tree.Selected);
+  end;
+end;
+
+procedure TAtlasDebugEvaluateFrame.Select(const AKey: string);
+var
+  mItem: TTreeNode;
+begin
+  if not HandleAllocated then
+  begin
+    Exit;
+  end;
+  mItem := FState.Sync.ItemOf(AKey);
+  if mItem <> nil then
+  begin
+    FParts.Tree.Selected := mItem;
+  end;
+end;
+
+procedure TAtlasDebugEvaluateFrame.ShowHistory;
+var
+  mItems: TArray<string>;
+  mPlace: TPoint;
+begin
+  mItems := nil;
+  if Assigned(Hooks.History) then
+  begin
+    mItems := Hooks.History();
+  end;
+  FillHistory(FParts.HistoryMenu, mItems, HistoryClick);
+  mPlace := FParts.Input.ClientToScreen(System.Types.Point(0, FParts.Input.Height));
+  FParts.HistoryMenu.Popup(mPlace.X, mPlace.Y);
+end;
+
+procedure TAtlasDebugEvaluateFrame.SetView(AView: TAtlasEvalView);
+begin
+  FState.View := AView;
+  FParts.ViewButtons[AView].Down := True;
+  // Neu fragen: „.Text“ kann sich seit dem letzten Mal geändert haben.
+  FState.LinesKey := '';
+  UpdateDetail(Self);
+end;
+
+class function TAtlasDebugEvaluateFrame.DetailText(ANode: TAtlasEvalNode; AView: TAtlasEvalView;
+  ALinesOk: Boolean; const ALines: string; out AUnfit: Boolean): string;
+begin
+  AUnfit := False;
+  if ANode = nil then
+  begin
+    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateNoSelection);
+  end
+  else if ANode.State <> TAtlasEvalState.Value then
+  begin
+    Result := StateDetail(ANode);
+  end
+  else if AView <> TAtlasEvalView.Lines then
+  begin
+    AUnfit := not TAtlasEvalText.Render(ANode.Value, AView, Result);
+  end
+  else if ALinesOk then
+  begin
+    AUnfit := not TAtlasEvalText.Render(ALines, AView, Result);
+  end
+  else
+  begin
+    AUnfit := True;
+    Result := LinesFailedDetail(ANode, ALines);
   end;
 end;
 

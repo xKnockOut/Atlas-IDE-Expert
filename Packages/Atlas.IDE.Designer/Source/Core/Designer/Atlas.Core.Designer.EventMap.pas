@@ -82,50 +82,17 @@ uses
 const
   cEmptyBody = 'beginend;';
 
-class function TAtlasEventMap.Skeleton(const AText: string): string;
-var
-  mIndex: Integer;
-  mBuilder: TStringBuilder;
+{ TAtlasEventMap }
+
+class function TAtlasEventMap.GroupKey(const ARow: TAtlasEventRow; AGroup: TAtlasEventGroup): string;
 begin
-  mBuilder := TStringBuilder.Create;
-  try
-    mIndex := 1;
-    while mIndex <= Length(AText) do
-    begin
-      if AText[mIndex] = '{' then
-      begin
-        mIndex := PosEx('}', AText, mIndex + 1);
-        if mIndex = 0 then
-        begin
-          Break;
-        end;
-      end
-      else if Copy(AText, mIndex, 2) = '(*' then
-      begin
-        mIndex := PosEx('*)', AText, mIndex + 2);
-        if mIndex = 0 then
-        begin
-          Break;
-        end;
-        Inc(mIndex);
-      end
-      else if Copy(AText, mIndex, 2) = '//' then
-      begin
-        mIndex := PosEx(#10, AText, mIndex + 2);
-        if mIndex = 0 then
-        begin
-          Break;
-        end;
-      end
-      else if AText[mIndex] > ' ' then
-      begin
-        mBuilder.Append(AText[mIndex]);
-      end;
-      Inc(mIndex);
-    end;
-    Result := LowerCase(mBuilder.ToString);
-  finally
-    mBuilder.Free;
+  case AGroup of
+    TAtlasEventGroup.Event:
+      Result := ARow.Event;
+    TAtlasEventGroup.Handler:
+      Result := ARow.Handler;
+  else
+    Result := ARow.Component;
   end;
 end;
 
@@ -296,18 +263,6 @@ begin
   end;
 end;
 
-class function TAtlasEventMap.GroupKey(const ARow: TAtlasEventRow; AGroup: TAtlasEventGroup): string;
-begin
-  case AGroup of
-    TAtlasEventGroup.Event:
-      Result := ARow.Event;
-    TAtlasEventGroup.Handler:
-      Result := ARow.Handler;
-  else
-    Result := ARow.Component;
-  end;
-end;
-
 class function TAtlasEventMap.Sorted(const ARows: TArray<TAtlasEventRow>;
   AGroup: TAtlasEventGroup): TArray<TAtlasEventRow>;
 var
@@ -409,6 +364,53 @@ begin
   Delete(mUnit.Lines, mFirst, mLast - mFirst + 1);
   Delete(mUnit.Lines, mDecl, 1);
   Result := mUnit.Text;
+end;
+
+class function TAtlasEventMap.Skeleton(const AText: string): string;
+var
+  mIndex: Integer;
+  mBuilder: TStringBuilder;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    mIndex := 1;
+    while mIndex <= Length(AText) do
+    begin
+      if AText[mIndex] = '{' then
+      begin
+        mIndex := PosEx('}', AText, mIndex + 1);
+        if mIndex = 0 then
+        begin
+          Break;
+        end;
+      end
+      else if Copy(AText, mIndex, 2) = '(*' then
+      begin
+        mIndex := PosEx('*)', AText, mIndex + 2);
+        if mIndex = 0 then
+        begin
+          Break;
+        end;
+        Inc(mIndex);
+      end
+      else if Copy(AText, mIndex, 2) = '//' then
+      begin
+        mIndex := PosEx(#10, AText, mIndex + 2);
+        if mIndex = 0 then
+        begin
+          Break;
+        end;
+      end
+      else if AText[mIndex] > ' ' then
+      begin
+        mBuilder.Append(AText[mIndex]);
+      end;
+      Inc(mIndex);
+    end;
+    Result := LowerCase(mBuilder.ToString);
+  finally
+    mBuilder.Free;
+  end;
 end;
 
 end.

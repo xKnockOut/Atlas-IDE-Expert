@@ -132,20 +132,26 @@ begin
   FLock.Free;
 end;
 
+procedure TWriterThread.Execute;
+var
+  mBytes: TBytes;
+begin
+  while not Terminated do
+  begin
+    FWake.WaitFor(INFINITE);
+    for mBytes in TakeQueue do
+    begin
+      if not WriteAll(mBytes) then
+      begin
+        Exit;
+      end;
+    end;
+  end;
+end;
+
 procedure TWriterThread.TerminatedSet;
 begin
   inherited;
-  FWake.SetEvent;
-end;
-
-procedure TWriterThread.Add(const ABytes: TBytes);
-begin
-  TMonitor.Enter(FLock);
-  try
-    FQueue := FQueue + [ABytes];
-  finally
-    TMonitor.Exit(FLock);
-  end;
   FWake.SetEvent;
 end;
 
@@ -185,21 +191,15 @@ begin
   end;
 end;
 
-procedure TWriterThread.Execute;
-var
-  mBytes: TBytes;
+procedure TWriterThread.Add(const ABytes: TBytes);
 begin
-  while not Terminated do
-  begin
-    FWake.WaitFor(INFINITE);
-    for mBytes in TakeQueue do
-    begin
-      if not WriteAll(mBytes) then
-      begin
-        Exit;
-      end;
-    end;
+  TMonitor.Enter(FLock);
+  try
+    FQueue := FQueue + [ABytes];
+  finally
+    TMonitor.Exit(FLock);
   end;
+  FWake.SetEvent;
 end;
 
 { TReaderThread }
@@ -261,6 +261,8 @@ begin
   end;
 end;
 
+{ TLspServerProcess }
+
 constructor TLspServerProcess.Create(const AExeName, AArguments: string);
 var
   mInputRead, mOutputWrite, mErrorHandle: THandle;
@@ -292,17 +294,40 @@ begin
   FReader := TReaderThread.Create(FOutputRead, FClient, Self);
 end;
 
-procedure TLspServerProcess.CreatePipes(var AInputRead, AOutputWrite: THandle);
+destructor TLspServerProcess.Destroy;
 begin
-  // Alle Enden nicht vererbbar; die Kindenden vererbt TAtlasProcessLauncher gezielt (R-101).
-  // Großer Puffer: Ein ganzer Unit-Text passt meist hinein, ohne auf den Server zu warten.
-  if not CreatePipe(AInputRead, FInputWrite, nil, 1 shl cPipeBufferBits) then
+  if FClient <> nil then
   begin
-    RaiseLastOSError;
+    FClient.Close;
   end;
-  if not CreatePipe(FOutputRead, AOutputWrite, nil, 0) then
+  // Schreib-Thread beenden; hängt er an einem Server, der nicht liest, den Server beenden.
+  // Beim Entladen bzw. Schließen der IDE (#493): alles zusammen unter TAtlasShutdown.cStopMs.
+  if TAtlasShutdown.Signalled then
   begin
-    RaiseLastOSError;
+    StopWriter(300, 150);
+    StopProcess(400);
+  end
+  else
+  begin
+    StopWriter(1000, 500);
+    StopProcess(2000);
+  end;
+  FClient.Free;
+  FWriterLock.Free;
+  inherited;
+end;
+
+procedure TLspServerProcess.Write(const ABytes: TBytes);
+begin
+  System.TMonitor.Enter(FWriterLock);
+  try
+    // nil: Destroy hat den Schreib-Thread schon abgebaut (Antwort des Lese-Threads beim Beenden).
+    if FWriter <> nil then
+    begin
+      TWriterThread(FWriter).Add(ABytes);
+    end;
+  finally
+    System.TMonitor.Exit(FWriterLock);
   end;
 end;
 
@@ -347,6 +372,67 @@ begin
       Result := CreateFile('NUL', GENERIC_WRITE, FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
     end;
   end;
+end;
+
+procedure TLspServerProcess.CreatePipes(var AInputRead, AOutputWrite: THandle);
+begin
+  // Alle Enden nicht vererbbar; die Kindenden vererbt TAtlasProcessLauncher gezielt (R-101).
+  // Großer Puffer: Ein ganzer Unit-Text passt meist hinein, ohne auf den Server zu warten.
+  if not CreatePipe(AInputRead, FInputWrite, nil, 1 shl cPipeBufferBits) then
+  begin
+    RaiseLastOSError;
+  end;
+  if not CreatePipe(FOutputRead, AOutputWrite, nil, 0) then
+  begin
+    RaiseLastOSError;
+  end;
+end;
+
+procedure TLspServerProcess.StopWriter(AWriterMs, ACancelMs: Cardinal);
+var
+  mWriter: TThread;
+begin
+  if FWriter = nil then
+  begin
+    Exit;
+  end;
+  FWriter.Terminate;
+  if WaitForSingleObject(FWriter.Handle, AWriterMs) <> WAIT_OBJECT_0 then
+  begin
+    CancelSynchronousIoOf(FWriter.Handle);
+    if (FProcess <> 0) and (WaitForSingleObject(FWriter.Handle, ACancelMs) <> WAIT_OBJECT_0) then
+    begin
+      TerminateProcess(FProcess, 1);
+    end;
+  end;
+  FWriter.WaitFor;
+  // Erst aus dem Zugriff nehmen, dann freigeben: Antworten des Lese-Threads fallen danach weg.
+  System.TMonitor.Enter(FWriterLock);
+  try
+    mWriter := FWriter;
+    FWriter := nil;
+  finally
+    System.TMonitor.Exit(FWriterLock);
+  end;
+  mWriter.Free;
+end;
+
+procedure TLspServerProcess.StopProcess(AProcessMs: Cardinal);
+begin
+  // stdin schließen: Der Server sieht das Ende der Eingabe und beendet sich.
+  CloseIfOpen(FInputWrite);
+  if (FProcess <> 0) and (WaitForSingleObject(FProcess, AProcessMs) <> WAIT_OBJECT_0) then
+  begin
+    TerminateProcess(FProcess, 1);
+  end;
+  if FReader <> nil then
+  begin
+    FReader.WaitFor;
+    FReader.Free;
+  end;
+  // Erst nach dem Lese-Thread: Der fragt beim Ende den Exit-Code über dieses Handle ab (EndInfo).
+  CloseIfOpen(FProcess);
+  CloseIfOpen(FOutputRead);
 end;
 
 function TLspServerProcess.StderrLines: Integer;
@@ -424,98 +510,14 @@ begin
   Result.ErrorLines := StderrLines;
 end;
 
-procedure TLspServerProcess.StopWriter(AWriterMs, ACancelMs: Cardinal);
-var
-  mWriter: TThread;
+function TLspServerProcess.Running: Boolean;
 begin
-  if FWriter = nil then
-  begin
-    Exit;
-  end;
-  FWriter.Terminate;
-  if WaitForSingleObject(FWriter.Handle, AWriterMs) <> WAIT_OBJECT_0 then
-  begin
-    CancelSynchronousIoOf(FWriter.Handle);
-    if (FProcess <> 0) and (WaitForSingleObject(FWriter.Handle, ACancelMs) <> WAIT_OBJECT_0) then
-    begin
-      TerminateProcess(FProcess, 1);
-    end;
-  end;
-  FWriter.WaitFor;
-  // Erst aus dem Zugriff nehmen, dann freigeben: Antworten des Lese-Threads fallen danach weg.
-  System.TMonitor.Enter(FWriterLock);
-  try
-    mWriter := FWriter;
-    FWriter := nil;
-  finally
-    System.TMonitor.Exit(FWriterLock);
-  end;
-  mWriter.Free;
-end;
-
-procedure TLspServerProcess.StopProcess(AProcessMs: Cardinal);
-begin
-  // stdin schließen: Der Server sieht das Ende der Eingabe und beendet sich.
-  CloseIfOpen(FInputWrite);
-  if (FProcess <> 0) and (WaitForSingleObject(FProcess, AProcessMs) <> WAIT_OBJECT_0) then
-  begin
-    TerminateProcess(FProcess, 1);
-  end;
-  if FReader <> nil then
-  begin
-    FReader.WaitFor;
-    FReader.Free;
-  end;
-  // Erst nach dem Lese-Thread: Der fragt beim Ende den Exit-Code über dieses Handle ab (EndInfo).
-  CloseIfOpen(FProcess);
-  CloseIfOpen(FOutputRead);
-end;
-
-destructor TLspServerProcess.Destroy;
-begin
-  if FClient <> nil then
-  begin
-    FClient.Close;
-  end;
-  // Schreib-Thread beenden; hängt er an einem Server, der nicht liest, den Server beenden.
-  // Beim Entladen bzw. Schließen der IDE (#493): alles zusammen unter TAtlasShutdown.cStopMs.
-  if TAtlasShutdown.Signalled then
-  begin
-    StopWriter(300, 150);
-    StopProcess(400);
-  end
-  else
-  begin
-    StopWriter(1000, 500);
-    StopProcess(2000);
-  end;
-  FClient.Free;
-  FWriterLock.Free;
-  inherited;
-end;
-
-procedure TLspServerProcess.Write(const ABytes: TBytes);
-begin
-  System.TMonitor.Enter(FWriterLock);
-  try
-    // nil: Destroy hat den Schreib-Thread schon abgebaut (Antwort des Lese-Threads beim Beenden).
-    if FWriter <> nil then
-    begin
-      TWriterThread(FWriter).Add(ABytes);
-    end;
-  finally
-    System.TMonitor.Exit(FWriterLock);
-  end;
+  Result := (FProcess <> 0) and (WaitForSingleObject(FProcess, 0) = WAIT_TIMEOUT) and not FClient.Closed;
 end;
 
 function TLspServerProcess.GetClient: TLspClient;
 begin
   Result := FClient;
-end;
-
-function TLspServerProcess.Running: Boolean;
-begin
-  Result := (FProcess <> 0) and (WaitForSingleObject(FProcess, 0) = WAIT_TIMEOUT) and not FClient.Closed;
 end;
 
 end.

@@ -62,6 +62,8 @@ begin
   end;
 end;
 
+{ TAtlasServerPlaceholders }
+
 class function TAtlasServerPlaceholders.Expansion(const AValue: TJSONValue;
   const ADocument: string): TAtlasSnippetExpansion;
 var

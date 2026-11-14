@@ -232,53 +232,6 @@ begin
   Result := not FStopped and (FRun = ARun) and (FDialog <> nil);
 end;
 
-function TAtlasIdeIssueReview.Busy: Boolean;
-begin
-  Result := FDialog <> nil;
-end;
-
-function TAtlasIdeIssueReview.ProvideIn(const AScope: IAtlasModuleScope): IAtlasRegistration;
-begin
-  Result := AScope.Provide(IAtlasTestsListener, Self as IAtlasTestsListener);
-end;
-
-procedure TAtlasIdeIssueReview.Review(const AIssue: TAtlasTrackerIssue; const AOptions: TAtlasIssuesOptions);
-begin
-  if FStopped or (AIssue.Key = '') then
-  begin
-    Exit;
-  end;
-  if FDialog <> nil then
-  begin
-    FDialog.Show;
-    if not SameText(FState.Key, AIssue.Key) then
-    begin
-      FDialog.ShowNote(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewBusy, [FState.Key]));
-    end;
-    Exit;
-  end;
-  FProject := FContext.Selection.CurrentProject;
-  if FProject = '' then
-  begin
-    Exit;
-  end;
-  FFolder := TAtlasIdeTrackerWorkingCopies.FolderOf(FProject);
-  FTarget := FContext.TargetOf(FProject);
-  FInspection := Default(TAtlasReviewInspection);
-  Inc(FRun);
-  // Eigener Stand (#2052): Arbeitsstand des aktiven Issues sichern, bevor der Branch wechselt.
-  TAtlasTrackerIssueWorkLink.BeforeStart(FContext, FProject, AIssue.Key);
-  FState := TAtlasReviewState.Create(AIssue.Key, TAtlasIdeSettings.Current.IssuesReviewBuild);
-  FState.OwnKey := TAtlasTrackerIssueWorkLink.ActiveKey(FContext, FProject);
-  if SameText(FState.OwnKey, AIssue.Key) then
-  begin
-    FState.OwnKey := '';
-  end;
-  FState.Marks[TAtlasReviewStep.Saved] := TAtlasReviewMark.Running;
-  OpenDialog;
-  Inspect(AIssue, AOptions);
-end;
-
 procedure TAtlasIdeIssueReview.OpenDialog;
 var
   mAssist: IAtlasCommentAssist;
@@ -492,31 +445,6 @@ begin
   StartBuild;
 end;
 
-/// <summary>Branch gewechselt: Stand und Willkommensseite neu abfragen.</summary>
-procedure TAtlasIdeIssueReview.Moved;
-begin
-  FContext.Selection.ForgetHead(FFolder);
-  if FContext.Welcome <> nil then
-  begin
-    FContext.Welcome.Refresh(FProject);
-  end;
-  FContext.Changed;
-end;
-
-function TAtlasIdeIssueReview.BuildProject: string;
-begin
-  // Ein Ordner als Tracker-Projekt (#1927) lässt sich nicht bauen: dann das aktive Projekt der IDE.
-  Result := FProject;
-  if not SameText(ExtractFileExt(Result), cProjectExtension) then
-  begin
-    Result := TAtlasIdeFiles.ActiveProjectFile;
-  end;
-  if not SameText(ExtractFileExt(Result), cProjectExtension) then
-  begin
-    Result := '';
-  end;
-end;
-
 procedure TAtlasIdeIssueReview.StartBuild;
 var
   mRequests: IAtlasBuildRequests;
@@ -597,16 +525,6 @@ begin
   FState.Marks[TAtlasReviewStep.Tests] := TAtlasReviewMark.Running;
   ShowState;
   TAtlasIdeHost.ExecuteCommand(cAffectedTests);
-end;
-
-procedure TAtlasIdeIssueReview.TestsFinished(const ATestProject: string; APassed, AFailed: Integer);
-begin
-  if FStopped or (FDialog = nil) or (FState.Marks[TAtlasReviewStep.Tests] <> TAtlasReviewMark.Running) then
-  begin
-    Exit;
-  end;
-  FState.Tested(APassed, AFailed);
-  ShowState;
 end;
 
 procedure TAtlasIdeIssueReview.Send(const AChange: TAtlasTrackerWrite; const ADone: TAtlasTrackerSendDone);
@@ -718,6 +636,68 @@ begin
   end;
 end;
 
+/// <summary>Branch gewechselt: Stand und Willkommensseite neu abfragen.</summary>
+procedure TAtlasIdeIssueReview.Moved;
+begin
+  FContext.Selection.ForgetHead(FFolder);
+  if FContext.Welcome <> nil then
+  begin
+    FContext.Welcome.Refresh(FProject);
+  end;
+  FContext.Changed;
+end;
+
+function TAtlasIdeIssueReview.BuildProject: string;
+begin
+  // Ein Ordner als Tracker-Projekt (#1927) lässt sich nicht bauen: dann das aktive Projekt der IDE.
+  Result := FProject;
+  if not SameText(ExtractFileExt(Result), cProjectExtension) then
+  begin
+    Result := TAtlasIdeFiles.ActiveProjectFile;
+  end;
+  if not SameText(ExtractFileExt(Result), cProjectExtension) then
+  begin
+    Result := '';
+  end;
+end;
+
+procedure TAtlasIdeIssueReview.Review(const AIssue: TAtlasTrackerIssue; const AOptions: TAtlasIssuesOptions);
+begin
+  if FStopped or (AIssue.Key = '') then
+  begin
+    Exit;
+  end;
+  if FDialog <> nil then
+  begin
+    FDialog.Show;
+    if not SameText(FState.Key, AIssue.Key) then
+    begin
+      FDialog.ShowNote(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewBusy, [FState.Key]));
+    end;
+    Exit;
+  end;
+  FProject := FContext.Selection.CurrentProject;
+  if FProject = '' then
+  begin
+    Exit;
+  end;
+  FFolder := TAtlasIdeTrackerWorkingCopies.FolderOf(FProject);
+  FTarget := FContext.TargetOf(FProject);
+  FInspection := Default(TAtlasReviewInspection);
+  Inc(FRun);
+  // Eigener Stand (#2052): Arbeitsstand des aktiven Issues sichern, bevor der Branch wechselt.
+  TAtlasTrackerIssueWorkLink.BeforeStart(FContext, FProject, AIssue.Key);
+  FState := TAtlasReviewState.Create(AIssue.Key, TAtlasIdeSettings.Current.IssuesReviewBuild);
+  FState.OwnKey := TAtlasTrackerIssueWorkLink.ActiveKey(FContext, FProject);
+  if SameText(FState.OwnKey, AIssue.Key) then
+  begin
+    FState.OwnKey := '';
+  end;
+  FState.Marks[TAtlasReviewStep.Saved] := TAtlasReviewMark.Running;
+  OpenDialog;
+  Inspect(AIssue, AOptions);
+end;
+
 procedure TAtlasIdeIssueReview.Stop;
 var
   mRequests: IAtlasBuildRequests;
@@ -731,6 +711,26 @@ begin
     mRequests.Forget(TAtlasTrackerReview.cRequestedBy);
   end;
   CloseDialog;
+end;
+
+function TAtlasIdeIssueReview.ProvideIn(const AScope: IAtlasModuleScope): IAtlasRegistration;
+begin
+  Result := AScope.Provide(IAtlasTestsListener, Self as IAtlasTestsListener);
+end;
+
+function TAtlasIdeIssueReview.Busy: Boolean;
+begin
+  Result := FDialog <> nil;
+end;
+
+procedure TAtlasIdeIssueReview.TestsFinished(const ATestProject: string; APassed, AFailed: Integer);
+begin
+  if FStopped or (FDialog = nil) or (FState.Marks[TAtlasReviewStep.Tests] <> TAtlasReviewMark.Running) then
+  begin
+    Exit;
+  end;
+  FState.Tested(APassed, AFailed);
+  ShowState;
 end;
 
 end.

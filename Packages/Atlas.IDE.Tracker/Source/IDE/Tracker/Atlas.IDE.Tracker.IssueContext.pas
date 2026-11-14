@@ -87,6 +87,8 @@ uses
   Atlas.Core.Files.DataFile,
   Atlas.IDE.Tracker.IssueWindow;
 
+{ TAtlasIdeIssueContext }
+
 constructor TAtlasIdeIssueContext.Create(AOwner: TInterfacedObject; const AProvider: TAtlasIssuePreviewProviderHook;
   const ATransport: TAtlasIssuePreviewTransportHook; const ACacheFolder: string);
 begin

@@ -52,6 +52,22 @@ implementation
 uses
   System.Generics.Collections;
 
+{ TTypeMembers }
+
+class function TTypeMembers.Contains(const AMembers: TArray<TTypeMember>; const AName: string): Boolean;
+var
+  mMember: TTypeMember;
+begin
+  for mMember in AMembers do
+  begin
+    if SameText(mMember.Name, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 class function TTypeMembers.ShortName(const ATypeName: string): string;
 var
   mAngle, mDot: Integer;
@@ -67,20 +83,6 @@ begin
   begin
     Result := Copy(Result, mDot + 1, MaxInt);
   end;
-end;
-
-class function TTypeMembers.Contains(const AMembers: TArray<TTypeMember>; const AName: string): Boolean;
-var
-  mMember: TTypeMember;
-begin
-  for mMember in AMembers do
-  begin
-    if SameText(mMember.Name, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 /// <summary>Sucht die Klasse AName erst in ALocal, dann im Index.</summary>

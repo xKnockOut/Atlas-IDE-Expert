@@ -110,6 +110,8 @@ const
     (Bds: '23.0'; Name: 'Delphi 12 Athens'),
     (Bds: '37.0'; Name: 'Delphi 13 Florence'));
 
+{ TLanguageFeatures }
+
 class function TLanguageFeatures.MinimumVersion(AFeature: TLanguageFeature): string;
 begin
   Result := cMinimums[AFeature];

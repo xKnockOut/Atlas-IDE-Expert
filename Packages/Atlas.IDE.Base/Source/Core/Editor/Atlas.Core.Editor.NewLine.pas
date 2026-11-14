@@ -438,32 +438,6 @@ end;
 
 { TAtlasNewLine }
 
-class function TAtlasNewLine.StatementLines(const ALines: TArray<string>; ALine: Integer;
-  ADirection: TAtlasNewLineDirection; out AFirstLine, ALastLine: Integer): Boolean;
-var
-  mTokens: TCodeTokens;
-  mFirst, mLast, mStart, mStop: Integer;
-begin
-  AFirstLine := ALine;
-  ALastLine := ALine;
-  mTokens := TAtlasBlockComment.Tokens(ALines);
-  Result := LineTokens(mTokens, ALine, mFirst, mLast);
-  if not Result then
-  begin
-    Exit;
-  end;
-  if ADirection = TAtlasNewLineDirection.Below then
-  begin
-    Extent(mTokens, DepthsOf(mTokens), mLast, mStart, mStop);
-  end
-  else
-  begin
-    Extent(mTokens, DepthsOf(mTokens), mFirst, mStart, mStop);
-  end;
-  AFirstLine := mTokens[mStart].StartPos.Line;
-  ALastLine := mTokens[mStop].StartPos.Line;
-end;
-
 class function TAtlasNewLine.Insert(const ALines: TArray<string>; ALine: Integer;
   ADirection: TAtlasNewLineDirection; const AOptions: TAtlasNewLineOptions): TAtlasNewLineResult;
 var
@@ -506,6 +480,32 @@ begin
   Result.Line := mTarget;
   Result.Text := mText;
   Result.Cursor := TLspTextPosition.Create(mTarget, mCharacter);
+end;
+
+class function TAtlasNewLine.StatementLines(const ALines: TArray<string>; ALine: Integer;
+  ADirection: TAtlasNewLineDirection; out AFirstLine, ALastLine: Integer): Boolean;
+var
+  mTokens: TCodeTokens;
+  mFirst, mLast, mStart, mStop: Integer;
+begin
+  AFirstLine := ALine;
+  ALastLine := ALine;
+  mTokens := TAtlasBlockComment.Tokens(ALines);
+  Result := LineTokens(mTokens, ALine, mFirst, mLast);
+  if not Result then
+  begin
+    Exit;
+  end;
+  if ADirection = TAtlasNewLineDirection.Below then
+  begin
+    Extent(mTokens, DepthsOf(mTokens), mLast, mStart, mStop);
+  end
+  else
+  begin
+    Extent(mTokens, DepthsOf(mTokens), mFirst, mStart, mStop);
+  end;
+  AFirstLine := mTokens[mStart].StartPos.Line;
+  ALastLine := mTokens[mStop].StartPos.Line;
 end;
 
 end.

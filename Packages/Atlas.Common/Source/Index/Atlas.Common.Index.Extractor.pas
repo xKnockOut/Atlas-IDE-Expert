@@ -319,41 +319,6 @@ begin
   inherited;
 end;
 
-class function TIndexExtractor.DeclaredType(ANode: TSyntaxNode): string;
-begin
-  Result := TIndexTypeText.DeclaredType(ANode);
-end;
-
-class function TIndexExtractor.DeclaredTypeNode(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := TIndexTypeText.DeclaredTypeNode(ANode);
-end;
-
-class function TIndexExtractor.TypeText(ANode: TSyntaxNode): string;
-begin
-  Result := TIndexTypeText.TypeText(ANode);
-end;
-
-class function TIndexExtractor.GenericArgsText(ATypeRef: TSyntaxNode): string;
-begin
-  Result := TIndexTypeText.GenericArgsText(ATypeRef);
-end;
-
-class procedure TIndexExtractor.ParamInfo(ANode: TSyntaxNode; out AMin, AMax: Integer; out ATypes: TArray<string>);
-begin
-  TIndexTypeText.ParamInfo(ANode, AMin, AMax, ATypes);
-end;
-
-class function TIndexExtractor.HasNamePrefix(const AName, APrefix: string): Boolean;
-begin
-  Result := TIndexTypeText.HasNamePrefix(AName, APrefix);
-end;
-
-class function TIndexExtractor.NamingOf(ARoot: TSyntaxNode): TNamingCounts;
-begin
-  Result := TIndexTypeText.NamingOf(ARoot);
-end;
-
 function TIndexExtractor.NewSymbol(ANode: TSyntaxNode; const AName, AContainer: string;
   AKind: TIndexSymbolKind): TIndexSymbol;
 begin
@@ -661,28 +626,6 @@ begin
   end;
 end;
 
-procedure TIndexExtractor.AddRoutine(ANode: TSyntaxNode);
-var
-  mName: string;
-  mDot: Integer;
-begin
-  // TFoo.Bar in implementation: Methode von TFoo; sonst freie Routine.
-  mName := ANode.Name;
-  mDot := mName.LastIndexOf('.');
-  if mDot < 0 then
-  begin
-    Add(ANode, mName, '', TIndexSymbolKind.Routine, nil);
-  end
-  else if FReader.IsConstructor(ANode) then
-  begin
-    Add(ANode, mName.Substring(mDot + 1), mName.Substring(0, mDot), TIndexSymbolKind.Constructor_, nil);
-  end
-  else
-  begin
-    Add(ANode, mName.Substring(mDot + 1), mName.Substring(0, mDot), TIndexSymbolKind.Method, nil);
-  end;
-end;
-
 procedure TIndexExtractor.AddDeclarations(ANode: TSyntaxNode);
 var
   mIndex: Integer;
@@ -705,6 +648,28 @@ begin
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;
+  end;
+end;
+
+procedure TIndexExtractor.AddRoutine(ANode: TSyntaxNode);
+var
+  mName: string;
+  mDot: Integer;
+begin
+  // TFoo.Bar in implementation: Methode von TFoo; sonst freie Routine.
+  mName := ANode.Name;
+  mDot := mName.LastIndexOf('.');
+  if mDot < 0 then
+  begin
+    Add(ANode, mName, '', TIndexSymbolKind.Routine, nil);
+  end
+  else if FReader.IsConstructor(ANode) then
+  begin
+    Add(ANode, mName.Substring(mDot + 1), mName.Substring(0, mDot), TIndexSymbolKind.Constructor_, nil);
+  end
+  else
+  begin
+    Add(ANode, mName.Substring(mDot + 1), mName.Substring(0, mDot), TIndexSymbolKind.Method, nil);
   end;
 end;
 
@@ -802,6 +767,31 @@ begin
   AUnit.Naming := TIndexTypeText.NamingOf(ARoot);
 end;
 
+class function TIndexExtractor.DeclaredType(ANode: TSyntaxNode): string;
+begin
+  Result := TIndexTypeText.DeclaredType(ANode);
+end;
+
+class function TIndexExtractor.DeclaredTypeNode(ANode: TSyntaxNode): TSyntaxNode;
+begin
+  Result := TIndexTypeText.DeclaredTypeNode(ANode);
+end;
+
+class function TIndexExtractor.TypeText(ANode: TSyntaxNode): string;
+begin
+  Result := TIndexTypeText.TypeText(ANode);
+end;
+
+class function TIndexExtractor.GenericArgsText(ATypeRef: TSyntaxNode): string;
+begin
+  Result := TIndexTypeText.GenericArgsText(ATypeRef);
+end;
+
+class procedure TIndexExtractor.ParamInfo(ANode: TSyntaxNode; out AMin, AMax: Integer; out ATypes: TArray<string>);
+begin
+  TIndexTypeText.ParamInfo(ANode, AMin, AMax, ATypes);
+end;
+
 class function TIndexExtractor.Extract(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
 var
   mExtractor: TIndexExtractor;
@@ -821,12 +811,22 @@ begin
   end;
 end;
 
-class function TIndexExtractor.BlankInactive(const AText: string; const ADefines: TArray<string>): string;
-var
-  mIncludes: TArray<string>;
-  mConditionals: TArray<TConditionalRange>;
+class function TIndexExtractor.ExtractText(const AText, AFileName: string;
+  const ADefines: TArray<string>; const AResolver: TIncludeResolver; AUsages: Boolean): TUnitIndex;
 begin
-  Result := TIndexConditions.BlankInactive(AText, '', ADefines, nil, mIncludes, mConditionals);
+  Result := ExtractText(AText, AFileName, ADefines, AResolver, AUsages, False);
+end;
+
+class function TIndexExtractor.ExtractText(const AText, AFileName: string; const ADefines: TArray<string>;
+  const AResolver: TIncludeResolver): TUnitIndex;
+begin
+  Result := ExtractText(AText, AFileName, ADefines, AResolver, False);
+end;
+
+class function TIndexExtractor.ExtractText(const AText, AFileName: string;
+  const ADefines: TArray<string>): TUnitIndex;
+begin
+  Result := ExtractText(AText, AFileName, ADefines, nil, False);
 end;
 
 type
@@ -836,6 +836,8 @@ type
     constructor Create(const AName: string);
     destructor Destroy; override;
   end;
+
+{ TUsageBucket }
 
 constructor TUsageBucket.Create(const AName: string);
 begin
@@ -1173,6 +1175,8 @@ type
       const AResolver: TIncludeResolver; const AStack: TArray<string>; AExtras: TExtractExtras): TUnitIndex; static;
   end;
 
+{ TIncludeMerger }
+
 constructor TIncludeMerger.Create(ATree: TSyntaxTree; const AFileName: string; const ADefines: TArray<string>;
   const AResolver: TIncludeResolver; const AStack: TArray<string>);
 var
@@ -1364,24 +1368,6 @@ begin
   end;
 end;
 
-class function TIndexExtractor.ExtractText(const AText, AFileName: string; const ADefines: TArray<string>;
-  const AResolver: TIncludeResolver): TUnitIndex;
-begin
-  Result := ExtractText(AText, AFileName, ADefines, AResolver, False);
-end;
-
-class function TIndexExtractor.ExtractText(const AText, AFileName: string;
-  const ADefines: TArray<string>): TUnitIndex;
-begin
-  Result := ExtractText(AText, AFileName, ADefines, nil, False);
-end;
-
-class function TIndexExtractor.ExtractText(const AText, AFileName: string;
-  const ADefines: TArray<string>; const AResolver: TIncludeResolver; AUsages: Boolean): TUnitIndex;
-begin
-  Result := ExtractText(AText, AFileName, ADefines, AResolver, AUsages, False);
-end;
-
 class function TIndexExtractor.ExtractText(const AText, AFileName: string;
   const ADefines: TArray<string>; const AResolver: TIncludeResolver; AUsages, APatterns: Boolean): TUnitIndex;
 var
@@ -1397,6 +1383,24 @@ begin
     Include(mExtras, TExtractExtra.Patterns);
   end;
   Result := TIncludeMerger.ExtractLevel(AText, AFileName, ADefines, AResolver, [AFileName], mExtras);
+end;
+
+class function TIndexExtractor.BlankInactive(const AText: string; const ADefines: TArray<string>): string;
+var
+  mIncludes: TArray<string>;
+  mConditionals: TArray<TConditionalRange>;
+begin
+  Result := TIndexConditions.BlankInactive(AText, '', ADefines, nil, mIncludes, mConditionals);
+end;
+
+class function TIndexExtractor.HasNamePrefix(const AName, APrefix: string): Boolean;
+begin
+  Result := TIndexTypeText.HasNamePrefix(AName, APrefix);
+end;
+
+class function TIndexExtractor.NamingOf(ARoot: TSyntaxNode): TNamingCounts;
+begin
+  Result := TIndexTypeText.NamingOf(ARoot);
 end;
 
 end.

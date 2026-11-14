@@ -240,6 +240,8 @@ begin
   end;
 end;
 
+{ TIdeProjectContext }
+
 class function TIdeProjectContext.FromJson(const AValue: TJSONValue): TIdeProjectContext;
 var
   mItem: TJSONObject;
@@ -267,6 +269,13 @@ begin
   end;
   ReadNaming(mItem, Result);
   ReadFormatFunctions(mItem, Result);
+end;
+
+function TIdeProjectContext.Key: string;
+begin
+  Result := AnsiUpperCase(Project) + '|' + Configuration + '|' + Platform + '|' + BdsVersion + '|' +
+    BoolToStr(HasOptions, True) + '|' + string.Join(';', Defines) + '|' + string.Join(';', SearchPaths) + '|' +
+    string.Join(';', Namespaces) + '|' + string.Join(';', LibraryPaths);
 end;
 
 function TIdeProjectContext.NamingKey: string;
@@ -313,13 +322,6 @@ begin
     Result.Known[TRuleNamingKind.Constant] := True;
     Result.Prefixes[TRuleNamingKind.Constant] := ConstantPrefix;
   end;
-end;
-
-function TIdeProjectContext.Key: string;
-begin
-  Result := AnsiUpperCase(Project) + '|' + Configuration + '|' + Platform + '|' + BdsVersion + '|' +
-    BoolToStr(HasOptions, True) + '|' + string.Join(';', Defines) + '|' + string.Join(';', SearchPaths) + '|' +
-    string.Join(';', Namespaces) + '|' + string.Join(';', LibraryPaths);
 end;
 
 procedure TIdeProjectContext.ApplyTo(var AProject: TProjectInfo; const AVariables: TArray<TPair<string, string>>);
@@ -375,6 +377,29 @@ begin
   FContexts.Free;
   FLock.Free;
   inherited;
+end;
+
+procedure TLspIdeProject.HandleNotification(const AParams: TJSONValue);
+var
+  mContext: TIdeProjectContext;
+  mNamingChanged: Boolean;
+begin
+  mContext := TIdeProjectContext.FromJson(AParams);
+  if mContext.Project = '' then
+  begin
+    Exit;
+  end;
+  if Update(mContext, mNamingChanged) then
+  begin
+    if Assigned(FOnChanged) then
+    begin
+      FOnChanged(mContext);
+    end;
+  end
+  else if mNamingChanged and Assigned(FOnNamingChanged) then
+  begin
+    FOnNamingChanged(mContext);
+  end;
 end;
 
 procedure TLspIdeProject.Attach(ADispatcher: TJsonRpcDispatcher);
@@ -458,29 +483,6 @@ begin
     Result := FActive;
   finally
     TMonitor.Exit(FLock);
-  end;
-end;
-
-procedure TLspIdeProject.HandleNotification(const AParams: TJSONValue);
-var
-  mContext: TIdeProjectContext;
-  mNamingChanged: Boolean;
-begin
-  mContext := TIdeProjectContext.FromJson(AParams);
-  if mContext.Project = '' then
-  begin
-    Exit;
-  end;
-  if Update(mContext, mNamingChanged) then
-  begin
-    if Assigned(FOnChanged) then
-    begin
-      FOnChanged(mContext);
-    end;
-  end
-  else if mNamingChanged and Assigned(FOnNamingChanged) then
-  begin
-    FOnNamingChanged(mContext);
   end;
 end;
 

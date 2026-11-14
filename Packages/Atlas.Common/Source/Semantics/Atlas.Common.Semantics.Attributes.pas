@@ -119,6 +119,8 @@ begin
   Result := nil;
 end;
 
+{ TAttributes }
+
 class function TAttributes.At(ATree: TSyntaxTree; const APosition: TTextPosition; out AUse: TAttributeUse): Boolean;
 var
   mAttribute, mItem, mNameNode: TSyntaxNode;
@@ -161,36 +163,15 @@ begin
   Result := False;
 end;
 
-class function TAttributes.Names(AAttribute: TSyntaxNode): TArray<string>;
-var
-  mIndex, mDot: Integer;
-  mItem: TSyntaxNode;
-  mName: string;
+class function TAttributes.ClassNames(const AName: string): TArray<string>;
 begin
-  Result := nil;
-  if (AAttribute = nil) or (AAttribute.Kind <> TSyntaxKind.Attribute) then
+  if EndsText('Attribute', AName) then
   begin
-    Exit;
-  end;
-  for mIndex := 0 to AAttribute.ChildCount - 1 do
+    Result := [AName];
+  end
+  else
   begin
-    mItem := AAttribute[mIndex];
-    if (mItem.Kind = TSyntaxKind.Call) and (mItem.ChildCount > 0) then
-    begin
-      mItem := mItem[0];
-    end;
-    mName := DottedName(mItem);
-    if mName = '' then
-    begin
-      Continue;
-    end;
-    mDot := LastDelimiter('.', mName);
-    mName := Copy(mName, mDot + 1, MaxInt);
-    if EndsText('Attribute', mName) and (Length(mName) > Length('Attribute')) then
-    begin
-      mName := Copy(mName, 1, Length(mName) - Length('Attribute'));
-    end;
-    Result := Result + [mName];
+    Result := [AName + 'Attribute', AName];
   end;
 end;
 
@@ -351,9 +332,37 @@ begin
   end;
 end;
 
-class function TAttributes.Opens(const ATokens: TArray<TPascalToken>; AOpen: Integer): Boolean;
+class function TAttributes.Names(AAttribute: TSyntaxNode): TArray<string>;
+var
+  mIndex, mDot: Integer;
+  mItem: TSyntaxNode;
+  mName: string;
 begin
-  Result := OpensAt(ATokens, AOpen, 0);
+  Result := nil;
+  if (AAttribute = nil) or (AAttribute.Kind <> TSyntaxKind.Attribute) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to AAttribute.ChildCount - 1 do
+  begin
+    mItem := AAttribute[mIndex];
+    if (mItem.Kind = TSyntaxKind.Call) and (mItem.ChildCount > 0) then
+    begin
+      mItem := mItem[0];
+    end;
+    mName := DottedName(mItem);
+    if mName = '' then
+    begin
+      Continue;
+    end;
+    mDot := LastDelimiter('.', mName);
+    mName := Copy(mName, mDot + 1, MaxInt);
+    if EndsText('Attribute', mName) and (Length(mName) > Length('Attribute')) then
+    begin
+      mName := Copy(mName, 1, Length(mName) - Length('Attribute'));
+    end;
+    Result := Result + [mName];
+  end;
 end;
 
 /// <summary>Ein Schritt der Suche nach der offenen "[": True beendet die Suche, AOpen sagt, ob AToken sie
@@ -401,6 +410,11 @@ begin
   end;
 end;
 
+class function TAttributes.Opens(const ATokens: TArray<TPascalToken>; AOpen: Integer): Boolean;
+begin
+  Result := OpensAt(ATokens, AOpen, 0);
+end;
+
 class function TAttributes.InBracket(const ATokens: TArray<TPascalToken>; ALast: Integer): Boolean;
 var
   mOpen: Integer;
@@ -431,18 +445,6 @@ begin
   if EndsText('Attribute', Result) and (Length(Result) > Length('Attribute')) then
   begin
     Result := Copy(Result, 1, Length(Result) - Length('Attribute'));
-  end;
-end;
-
-class function TAttributes.ClassNames(const AName: string): TArray<string>;
-begin
-  if EndsText('Attribute', AName) then
-  begin
-    Result := [AName];
-  end
-  else
-  begin
-    Result := [AName + 'Attribute', AName];
   end;
 end;
 

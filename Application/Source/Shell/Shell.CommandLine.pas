@@ -260,32 +260,17 @@ end;
 
 { TCommandLineOptions }
 
-class function TCommandLineOptions.TryParseLogLevel(const AText: string; out ALevel: TLogLevel): Boolean;
+class function TCommandLineOptions.FromProcess: TCommandLineOptions;
 var
-  mText: string;
+  mArgs: TArray<string>;
+  I: Integer;
 begin
-  mText := AText.Trim.ToLower;
-  Result := True;
-  if mText = 'debug' then
+  SetLength(mArgs, ParamCount);
+  for I := 1 to ParamCount do
   begin
-    ALevel := TLogLevel.Debug;
-  end
-  else if mText = 'info' then
-  begin
-    ALevel := TLogLevel.Info;
-  end
-  else if (mText = 'warning') or (mText = 'warn') then
-  begin
-    ALevel := TLogLevel.Warning;
-  end
-  else if mText = 'error' then
-  begin
-    ALevel := TLogLevel.Error;
-  end
-  else
-  begin
-    Result := False;
+    mArgs[I - 1] := ParamStr(I);
   end;
+  Result := Parse(mArgs);
 end;
 
 /// <summary>"-log" und "–log" (Gedankenstrich, z. B. aus Word oder Chat kopiert) gelten als "--log" (#647).</summary>
@@ -358,6 +343,8 @@ type
     /// <summary>Optionaler Wert: aus "=" oder dem folgenden Argument, wenn es nicht mit "-" beginnt.</summary>
     function OptionalValue(out AValue: string): Boolean;
   end;
+
+{ TArgReader }
 
 function TArgReader.Next: Boolean;
 var
@@ -716,6 +703,34 @@ begin
   end;
 end;
 
+class function TCommandLineOptions.TryParseLogLevel(const AText: string; out ALevel: TLogLevel): Boolean;
+var
+  mText: string;
+begin
+  mText := AText.Trim.ToLower;
+  Result := True;
+  if mText = 'debug' then
+  begin
+    ALevel := TLogLevel.Debug;
+  end
+  else if mText = 'info' then
+  begin
+    ALevel := TLogLevel.Info;
+  end
+  else if (mText = 'warning') or (mText = 'warn') then
+  begin
+    ALevel := TLogLevel.Warning;
+  end
+  else if mText = 'error' then
+  begin
+    ALevel := TLogLevel.Error;
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
 function TCommandLineOptions.RunCommand: string;
 begin
   // Reihenfolge wie die Wahl des Modus in TApplicationShell.
@@ -773,19 +788,6 @@ begin
   begin
     Result := Result + [mValue.Name];
   end;
-end;
-
-class function TCommandLineOptions.FromProcess: TCommandLineOptions;
-var
-  mArgs: TArray<string>;
-  I: Integer;
-begin
-  SetLength(mArgs, ParamCount);
-  for I := 1 to ParamCount do
-  begin
-    mArgs[I - 1] := ParamStr(I);
-  end;
-  Result := Parse(mArgs);
 end;
 
 initialization

@@ -243,6 +243,8 @@ begin
     end;
 end;
 
+{ TAtlasIdeLeakSetup }
+
 class procedure TAtlasIdeLeakSetup.Run(const AScope: IAtlasModuleScope);
 var
   mProject: string;

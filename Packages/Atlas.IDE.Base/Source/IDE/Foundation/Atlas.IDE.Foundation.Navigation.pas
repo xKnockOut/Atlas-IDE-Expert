@@ -69,6 +69,8 @@ begin
   Result := nil;
 end;
 
+{ TAtlasIdeNavigation }
+
 class procedure TAtlasIdeNavigation.GoToLocation(const AFileName: string; ALine, ACharacter: Integer);
 var
   mModule: IOTAModule;

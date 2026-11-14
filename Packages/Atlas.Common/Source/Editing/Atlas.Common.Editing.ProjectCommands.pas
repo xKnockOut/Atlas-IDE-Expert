@@ -151,6 +151,8 @@ type
     class function Create(const AConfig, APropertyName, AValue: string): TListEntry; static;
   end;
 
+{ TListEntry }
+
 class function TListEntry.Create(const AConfig, APropertyName, AValue: string): TListEntry;
 begin
   Result.Config := AConfig;

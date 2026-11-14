@@ -489,16 +489,6 @@ begin
   end;
 end;
 
-/// <summary>Feld der Klasse: Analyse wie field-not-freed, sonst Free im Destruktor bzw. in einer anderen Methode.
-/// </summary>
-procedure TOwnershipScan.ClassifyField(const ARaw: TOwnershipRaw; const AField: string; var ASite: TOwnershipSite);
-begin
-  if not FieldVerdict(ARaw, AField, ASite) then
-  begin
-    FieldRelease(ARaw, AField, ASite);
-  end;
-end;
-
 /// <summary>Freigabe des Felds in einer Methode der Klasse; die im Destruktor geht vor.</summary>
 procedure TOwnershipScan.FieldRelease(const ARaw: TOwnershipRaw; const AField: string; var ASite: TOwnershipSite);
 var
@@ -522,6 +512,35 @@ begin
         ASite.Detail := Copy(mMethod.Name, Length(ARaw.ClassName) + 2, MaxInt);
       end;
     end;
+  end;
+end;
+
+/// <summary>Feld der Klasse: Analyse wie field-not-freed, sonst Free im Destruktor bzw. in einer anderen Methode.
+/// </summary>
+procedure TOwnershipScan.ClassifyField(const ARaw: TOwnershipRaw; const AField: string; var ASite: TOwnershipSite);
+begin
+  if not FieldVerdict(ARaw, AField, ASite) then
+  begin
+    FieldRelease(ARaw, AField, ASite);
+  end;
+end;
+
+/// <summary>Lokale Variable: Befund der Regeln, sonst Freigabe, Rückgabe oder Weitergabe in der Routine.</summary>
+procedure TOwnershipScan.ClassifyLocal(const ARaw: TOwnershipRaw; const AName: string; var ASite: TOwnershipSite);
+var
+  mFinding: TRuleFinding;
+  mNode: TSyntaxNode;
+begin
+  if FindingAt(ARaw.StatementLine, mFinding) then
+  begin
+    ASite.Kind := TOwnershipKind.Never;
+    ASite.Rule := mFinding.RuleId;
+    ASite.Message := mFinding.Message;
+    Exit;
+  end;
+  for mNode in TOwnershipTree.Occurrences(ARaw.Routine, AName) do
+  begin
+    UseOfLocal(ARaw, mNode, ASite);
   end;
 end;
 
@@ -562,25 +581,6 @@ begin
   else if (mParent.Kind = TSyntaxKind.Call) and (mParent[0] <> AOccurrence) then
   begin
     Handover(ARaw.ClassName, mParent, ASite);
-  end;
-end;
-
-/// <summary>Lokale Variable: Befund der Regeln, sonst Freigabe, Rückgabe oder Weitergabe in der Routine.</summary>
-procedure TOwnershipScan.ClassifyLocal(const ARaw: TOwnershipRaw; const AName: string; var ASite: TOwnershipSite);
-var
-  mFinding: TRuleFinding;
-  mNode: TSyntaxNode;
-begin
-  if FindingAt(ARaw.StatementLine, mFinding) then
-  begin
-    ASite.Kind := TOwnershipKind.Never;
-    ASite.Rule := mFinding.RuleId;
-    ASite.Message := mFinding.Message;
-    Exit;
-  end;
-  for mNode in TOwnershipTree.Occurrences(ARaw.Routine, AName) do
-  begin
-    UseOfLocal(ARaw, mNode, ASite);
   end;
 end;
 
@@ -692,11 +692,6 @@ end;
 
 { TOwnershipSites }
 
-class function TOwnershipSites.IsOwnershipRule(const ARuleId: string): Boolean;
-begin
-  Result := MatchText(ARuleId, cRuleIds);
-end;
-
 class function TOwnershipSites.Analyze(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex;
   const AFindings: TArray<TRuleFinding>): TArray<TOwnershipSite>;
 var
@@ -713,6 +708,11 @@ begin
   finally
     mScan.Free;
   end;
+end;
+
+class function TOwnershipSites.IsOwnershipRule(const ARuleId: string): Boolean;
+begin
+  Result := MatchText(ARuleId, cRuleIds);
 end;
 
 end.

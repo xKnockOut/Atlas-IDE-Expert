@@ -156,6 +156,14 @@ begin
     TPascalPreprocessor.CompilerVersionOfBds(mVersion)) + TPascalPreprocessor.ProjectSwitches(AProject.Properties);
 end;
 
+class function TIndexProjectFiles.Signature(const AProject: TProjectInfo; const ACompilerVersion: string): string;
+begin
+  Result := AnsiUpperCase(AProject.FileName) + '|' + UpperCase(AProject.Config) + '|' +
+    UpperCase(AProject.Platform) + '|' + ACompilerVersion + '|' + SortedKey(AProject.Defines) + '|' +
+    AnsiUpperCase(String.Join(';', AProject.SearchPaths)) + '|' + UpperCase(String.Join(';', AProject.Namespaces)) +
+    '|' + String.Join(';', TPascalPreprocessor.ProjectSwitches(AProject.Properties));
+end;
+
 class function TIndexProjectFiles.LibraryDefines(const AProject: TProjectInfo;
   const ABdsVersion: string): TArray<string>;
 var
@@ -174,14 +182,6 @@ class function TIndexProjectFiles.LibrarySignature(const AProject: TProjectInfo;
 begin
   // "2": Ältere Caches enthielten Units, die mit den Defines des Projekts gelesen wurden.
   Result := 'LIBRARY2|' + UpperCase(AProject.Platform) + '|' + ACompilerVersion;
-end;
-
-class function TIndexProjectFiles.Signature(const AProject: TProjectInfo; const ACompilerVersion: string): string;
-begin
-  Result := AnsiUpperCase(AProject.FileName) + '|' + UpperCase(AProject.Config) + '|' +
-    UpperCase(AProject.Platform) + '|' + ACompilerVersion + '|' + SortedKey(AProject.Defines) + '|' +
-    AnsiUpperCase(String.Join(';', AProject.SearchPaths)) + '|' + UpperCase(String.Join(';', AProject.Namespaces)) +
-    '|' + String.Join(';', TPascalPreprocessor.ProjectSwitches(AProject.Properties));
 end;
 
 end.

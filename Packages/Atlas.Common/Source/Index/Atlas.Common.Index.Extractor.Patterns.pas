@@ -449,46 +449,6 @@ begin
     TSyntaxKind.RepeatStatement, TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection];
 end;
 
-class function TIndexFollowPatterns.Text(ATree: TSyntaxTree; ANode: TSyntaxNode): string;
-begin
-  Result := Join(PiecesOf(ATree, ANode));
-end;
-
-class function TIndexFollowPatterns.NormalizeText(const AText: string): string;
-const
-  // Der Lexer liest $S als Hex-Zahl; vorher durch Bezeichner ersetzt, die kein Quelltext enthält.
-  cMarkers: array[0..2] of string = (cSubject, cArgument, cTypeName);
-  cStandIns: array[0..2] of string = ('AtlasMarkerSubject__', 'AtlasMarkerArgument__', 'AtlasMarkerType__');
-var
-  mPieces: TPieces;
-  mToken: TPascalToken;
-  mText: string;
-  mIndex, mMarker: Integer;
-begin
-  mText := AText;
-  for mIndex := 0 to High(cMarkers) do
-  begin
-    mText := StringReplace(mText, cMarkers[mIndex], ' ' + cStandIns[mIndex] + ' ', [rfReplaceAll, rfIgnoreCase]);
-  end;
-  mPieces := nil;
-  for mToken in TPascalLexer.Tokenize(mText) do
-  begin
-    if IsCode(mToken) then
-    begin
-      mMarker := IndexText(mToken.Text, cStandIns);
-      if mMarker >= 0 then
-      begin
-        mPieces := mPieces + [MarkerPiece(cMarkers[mMarker])];
-      end
-      else
-      begin
-        mPieces := mPieces + [PieceOf(mToken)];
-      end;
-    end;
-  end;
-  Result := Join(mPieces);
-end;
-
 class function TIndexFollowPatterns.TriggerOf(ATree: TSyntaxTree; AStatement: TSyntaxNode;
   out ATrigger: TFollowTrigger): Boolean;
 begin
@@ -550,6 +510,46 @@ begin
   end;
 end;
 
+class function TIndexFollowPatterns.Text(ATree: TSyntaxTree; ANode: TSyntaxNode): string;
+begin
+  Result := Join(PiecesOf(ATree, ANode));
+end;
+
+class function TIndexFollowPatterns.NormalizeText(const AText: string): string;
+const
+  // Der Lexer liest $S als Hex-Zahl; vorher durch Bezeichner ersetzt, die kein Quelltext enthält.
+  cMarkers: array[0..2] of string = (cSubject, cArgument, cTypeName);
+  cStandIns: array[0..2] of string = ('AtlasMarkerSubject__', 'AtlasMarkerArgument__', 'AtlasMarkerType__');
+var
+  mPieces: TPieces;
+  mToken: TPascalToken;
+  mText: string;
+  mIndex, mMarker: Integer;
+begin
+  mText := AText;
+  for mIndex := 0 to High(cMarkers) do
+  begin
+    mText := StringReplace(mText, cMarkers[mIndex], ' ' + cStandIns[mIndex] + ' ', [rfReplaceAll, rfIgnoreCase]);
+  end;
+  mPieces := nil;
+  for mToken in TPascalLexer.Tokenize(mText) do
+  begin
+    if IsCode(mToken) then
+    begin
+      mMarker := IndexText(mToken.Text, cStandIns);
+      if mMarker >= 0 then
+      begin
+        mPieces := mPieces + [MarkerPiece(cMarkers[mMarker])];
+      end
+      else
+      begin
+        mPieces := mPieces + [PieceOf(mToken)];
+      end;
+    end;
+  end;
+  Result := Join(mPieces);
+end;
+
 type
   /// <summary>Zählt die Muster einer Unit je Trigger und Folge.</summary>
   TPatternCounter = class
@@ -562,6 +562,8 @@ type
     procedure Add(const ATrigger, AFollow: string; ALine: Integer);
     function ToArray: TArray<TIndexFollowPattern>;
   end;
+
+{ TPatternCounter }
 
 constructor TPatternCounter.Create;
 begin

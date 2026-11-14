@@ -68,6 +68,8 @@ begin
   Result := TAtlasModuleContributions.MenuEntries(AtlasModuleRegistry, APlace);
 end;
 
+{ TAtlasMenuModuleItems }
+
 constructor TAtlasMenuModuleItems.Create(ARoot, AAnchor: TMenuItem);
 begin
   inherited Create;
@@ -75,19 +77,52 @@ begin
   FAnchor := AAnchor;
 end;
 
-procedure TAtlasMenuModuleItems.Clear;
+procedure TAtlasMenuModuleItems.ItemClick(Sender: TObject);
 var
-  mItem: TMenuItem;
+  mIndex: Integer;
+  mId: string;
+  mCommand: TAtlasModuleCommand;
+  mEntry: TAtlasMenuEntry;
 begin
-  for mItem in FItems do
+  mIndex := TMenuItem(Sender).Tag;
+  if (mIndex < 0) or (mIndex > High(FIds)) then
   begin
-    if mItem.Parent = FRoot then
-    begin
-      mItem.Free;
-    end;
+    Exit;
   end;
-  FItems := nil;
-  FIds := nil;
+  mId := FIds[mIndex];
+  // Beim Klick neu suchen (Regel 3): Befehl, sonst Eintrag ohne Befehl.
+  if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mId, mCommand) then
+  begin
+    if Assigned(mCommand.Run) then
+    begin
+      TAtlasIdeShortcutTips.Invoked(mId);
+      TAtlasGuard.Run(TAtlasFeature.Menu, mCommand.Run);
+    end;
+  end
+  else if TAtlasModuleContributions.FindMenuEntry(AtlasModuleRegistry, TAtlasMenuPlace.AtlasMenu, mId, mEntry) and
+    Assigned(mEntry.Run) then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Menu, mEntry.Run);
+  end;
+end;
+
+procedure TAtlasMenuModuleItems.ViewItemClick(Sender: TObject);
+var
+  mIndex: Integer;
+  mCommand: TAtlasModuleCommand;
+begin
+  mIndex := TMenuItem(Sender).Tag;
+  if (mIndex < 0) or (mIndex > High(FViewIds)) then
+  begin
+    Exit;
+  end;
+  // Beim Klick neu suchen (Regel 3).
+  if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, FViewIds[mIndex], mCommand) and
+    Assigned(mCommand.Run) then
+  begin
+    TAtlasIdeShortcutTips.Invoked(mCommand.Id);
+    TAtlasGuard.Run(TAtlasFeature.Menu, mCommand.Run);
+  end;
 end;
 
 function TAtlasMenuModuleItems.NewItem(const AEntry: TAtlasMenuEntry): TMenuItem;
@@ -147,6 +182,55 @@ begin
   FItems := FItems + [Result];
 end;
 
+procedure TAtlasMenuModuleItems.Clear;
+var
+  mItem: TMenuItem;
+begin
+  for mItem in FItems do
+  begin
+    if mItem.Parent = FRoot then
+    begin
+      mItem.Free;
+    end;
+  end;
+  FItems := nil;
+  FIds := nil;
+end;
+
+class procedure TAtlasMenuModuleItems.TidySection(AGroup: TMenuItem);
+var
+  mIndex: Integer;
+  mItem: TMenuItem;
+  mSeenItem: Boolean;
+  mLine: TMenuItem;
+begin
+  // Trennlinien nur zwischen sichtbaren Einträgen; das Untermenü nur mit mindestens einem.
+  mSeenItem := False;
+  mLine := nil;
+  for mIndex := 0 to AGroup.Count - 1 do
+  begin
+    mItem := AGroup.Items[mIndex];
+    if mItem.IsLine then
+    begin
+      mItem.Visible := False;
+      if mSeenItem then
+      begin
+        mLine := mItem;
+      end;
+    end
+    else if mItem.Visible then
+    begin
+      if mLine <> nil then
+      begin
+        mLine.Visible := True;
+      end;
+      mLine := nil;
+      mSeenItem := True;
+    end;
+  end;
+  AGroup.Visible := mSeenItem;
+end;
+
 procedure TAtlasMenuModuleItems.Update;
 var
   mEntry: TAtlasMenuEntry;
@@ -183,40 +267,6 @@ begin
   begin
     TidySection(mGroup);
   end;
-end;
-
-class procedure TAtlasMenuModuleItems.TidySection(AGroup: TMenuItem);
-var
-  mIndex: Integer;
-  mItem: TMenuItem;
-  mSeenItem: Boolean;
-  mLine: TMenuItem;
-begin
-  // Trennlinien nur zwischen sichtbaren Einträgen; das Untermenü nur mit mindestens einem.
-  mSeenItem := False;
-  mLine := nil;
-  for mIndex := 0 to AGroup.Count - 1 do
-  begin
-    mItem := AGroup.Items[mIndex];
-    if mItem.IsLine then
-    begin
-      mItem.Visible := False;
-      if mSeenItem then
-      begin
-        mLine := mItem;
-      end;
-    end
-    else if mItem.Visible then
-    begin
-      if mLine <> nil then
-      begin
-        mLine.Visible := True;
-      end;
-      mLine := nil;
-      mSeenItem := True;
-    end;
-  end;
-  AGroup.Visible := mSeenItem;
 end;
 
 procedure TAtlasMenuModuleItems.UpdateView;
@@ -271,54 +321,6 @@ begin
     end;
   end;
   Result := False;
-end;
-
-procedure TAtlasMenuModuleItems.ViewItemClick(Sender: TObject);
-var
-  mIndex: Integer;
-  mCommand: TAtlasModuleCommand;
-begin
-  mIndex := TMenuItem(Sender).Tag;
-  if (mIndex < 0) or (mIndex > High(FViewIds)) then
-  begin
-    Exit;
-  end;
-  // Beim Klick neu suchen (Regel 3).
-  if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, FViewIds[mIndex], mCommand) and
-    Assigned(mCommand.Run) then
-  begin
-    TAtlasIdeShortcutTips.Invoked(mCommand.Id);
-    TAtlasGuard.Run(TAtlasFeature.Menu, mCommand.Run);
-  end;
-end;
-
-procedure TAtlasMenuModuleItems.ItemClick(Sender: TObject);
-var
-  mIndex: Integer;
-  mId: string;
-  mCommand: TAtlasModuleCommand;
-  mEntry: TAtlasMenuEntry;
-begin
-  mIndex := TMenuItem(Sender).Tag;
-  if (mIndex < 0) or (mIndex > High(FIds)) then
-  begin
-    Exit;
-  end;
-  mId := FIds[mIndex];
-  // Beim Klick neu suchen (Regel 3): Befehl, sonst Eintrag ohne Befehl.
-  if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mId, mCommand) then
-  begin
-    if Assigned(mCommand.Run) then
-    begin
-      TAtlasIdeShortcutTips.Invoked(mId);
-      TAtlasGuard.Run(TAtlasFeature.Menu, mCommand.Run);
-    end;
-  end
-  else if TAtlasModuleContributions.FindMenuEntry(AtlasModuleRegistry, TAtlasMenuPlace.AtlasMenu, mId, mEntry) and
-    Assigned(mEntry.Run) then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Menu, mEntry.Run);
-  end;
 end;
 
 end.

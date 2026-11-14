@@ -83,33 +83,49 @@ begin
   SetAccessible(cUiaToolTipControlType, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.NoSourceTitle, ['']));
 end;
 
-class function TAtlasNoSourcePopup.WayText(AWay: TAtlasNoSourceWay): string;
+procedure TAtlasNoSourcePopup.Paint;
 begin
-  case AWay of
-    TAtlasNoSourceWay.EnableDebugDcus:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceEnableDcus);
-    TAtlasNoSourceWay.ReturnToOwnCode:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceReturn);
-    TAtlasNoSourceWay.FindSource:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceFind);
-  else
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceKeepCpu);
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Surface);
+  Canvas.FillRect(ClientRect);
+  Layout(True);
+  PaintBorder;
+end;
+
+procedure TAtlasNoSourcePopup.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mIndex: Integer;
+begin
+  inherited;
+  if Button <> mbLeft then
+  begin
+    Exit;
+  end;
+  mIndex := LinkAt(TPoint.Create(X, Y));
+  if mIndex >= 0 then
+  begin
+    Choose(mIndex);
   end;
 end;
 
-class function TAtlasNoSourcePopup.ReasonText(AReason: TAtlasNoSourceReason): string;
+procedure TAtlasNoSourcePopup.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  mHot: Integer;
 begin
-  case AReason of
-    TAtlasNoSourceReason.DebugDcusOff:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceDebugDcusOff);
-    TAtlasNoSourceReason.NoDebugInfo:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceNoDebugInfo);
-    TAtlasNoSourceReason.DcuOnly:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceDcuOnly);
-    TAtlasNoSourceReason.NotInSearchPath:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceNotInPath);
+  inherited;
+  mHot := LinkAt(TPoint.Create(X, Y));
+  if mHot >= 0 then
+  begin
+    Cursor := crHandPoint;
+  end
   else
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceSystem);
+  begin
+    Cursor := crDefault;
+  end;
+  if mHot <> FHot then
+  begin
+    FHot := mHot;
+    Invalidate;
   end;
 end;
 
@@ -178,6 +194,50 @@ begin
   Result.cy := Y - Scale(cGap) + Scale(cPad);
 end;
 
+function TAtlasNoSourcePopup.LinkAt(const APoint: TPoint): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := Low(FLinks) to High(FLinks) do
+  begin
+    if not FLinks[mIndex].IsEmpty and PtInRect(FLinks[mIndex], APoint) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+class function TAtlasNoSourcePopup.WayText(AWay: TAtlasNoSourceWay): string;
+begin
+  case AWay of
+    TAtlasNoSourceWay.EnableDebugDcus:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceEnableDcus);
+    TAtlasNoSourceWay.ReturnToOwnCode:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceReturn);
+    TAtlasNoSourceWay.FindSource:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceFind);
+  else
+    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceKeepCpu);
+  end;
+end;
+
+class function TAtlasNoSourcePopup.ReasonText(AReason: TAtlasNoSourceReason): string;
+begin
+  case AReason of
+    TAtlasNoSourceReason.DebugDcusOff:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceDebugDcusOff);
+    TAtlasNoSourceReason.NoDebugInfo:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceNoDebugInfo);
+    TAtlasNoSourceReason.DcuOnly:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceDcuOnly);
+    TAtlasNoSourceReason.NotInSearchPath:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceNotInPath);
+  else
+    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceSystem);
+  end;
+end;
+
 procedure TAtlasNoSourcePopup.ShowFor(const ATitle, APlace, AReason: string; AWays: TAtlasNoSourceWays;
   ACanIgnore: Boolean; const APoint: TPoint);
 var
@@ -225,66 +285,6 @@ end;
 function TAtlasNoSourcePopup.LinkRect(AIndex: Integer): TRect;
 begin
   Result := FLinks[AIndex];
-end;
-
-function TAtlasNoSourcePopup.LinkAt(const APoint: TPoint): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := Low(FLinks) to High(FLinks) do
-  begin
-    if not FLinks[mIndex].IsEmpty and PtInRect(FLinks[mIndex], APoint) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
-procedure TAtlasNoSourcePopup.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
-end;
-
-procedure TAtlasNoSourcePopup.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  mIndex: Integer;
-begin
-  inherited;
-  if Button <> mbLeft then
-  begin
-    Exit;
-  end;
-  mIndex := LinkAt(TPoint.Create(X, Y));
-  if mIndex >= 0 then
-  begin
-    Choose(mIndex);
-  end;
-end;
-
-procedure TAtlasNoSourcePopup.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  mHot: Integer;
-begin
-  inherited;
-  mHot := LinkAt(TPoint.Create(X, Y));
-  if mHot >= 0 then
-  begin
-    Cursor := crHandPoint;
-  end
-  else
-  begin
-    Cursor := crDefault;
-  end;
-  if mHot <> FHot then
-  begin
-    FHot := mHot;
-    Invalidate;
-  end;
 end;
 
 end.

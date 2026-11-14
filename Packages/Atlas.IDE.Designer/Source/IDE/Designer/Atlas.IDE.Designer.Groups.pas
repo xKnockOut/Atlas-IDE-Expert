@@ -419,29 +419,6 @@ begin
   FUndo.Has := True;
 end;
 
-procedure TAtlasIdeDesignerGroups.Deleted(AComponent: TComponent);
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-begin
-  FSeen.Remove(AComponent);
-  FInserted.Remove(AComponent);
-  if TAtlasIdeSettings.Current.DesignerGroups and TAtlasDesignerAccess.Current(mEditor, mRoot) and
-    (AComponent.Owner = mRoot) then
-  begin
-    Store(mEditor.FileName).ComponentDeleted(FormKey(mEditor.FileName), AComponent.Name);
-    Save(mEditor.FileName);
-  end;
-end;
-
-procedure TAtlasIdeDesignerGroups.Inserted(AComponent: TComponent);
-begin
-  if not FBusy and TAtlasIdeSettings.Current.DesignerGroups and (AComponent is TControl) then
-  begin
-    FInserted.Add(AComponent);
-  end;
-end;
-
 procedure TAtlasIdeDesignerGroups.Queue;
 var
   mOwner: TAtlasIdeDesignerGroups;
@@ -663,6 +640,35 @@ begin
   end;
 end;
 
+procedure TAtlasIdeDesignerGroups.Refresh(ARoot: TComponent; const AEditor: IOTAFormEditor);
+begin
+  FClick.Selected := Names(TAtlasDesignerAccess.Selection(AEditor, ARoot));
+  ShowFrames(ARoot, AEditor.FileName);
+end;
+
+procedure TAtlasIdeDesignerGroups.Deleted(AComponent: TComponent);
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+begin
+  FSeen.Remove(AComponent);
+  FInserted.Remove(AComponent);
+  if TAtlasIdeSettings.Current.DesignerGroups and TAtlasDesignerAccess.Current(mEditor, mRoot) and
+    (AComponent.Owner = mRoot) then
+  begin
+    Store(mEditor.FileName).ComponentDeleted(FormKey(mEditor.FileName), AComponent.Name);
+    Save(mEditor.FileName);
+  end;
+end;
+
+procedure TAtlasIdeDesignerGroups.Inserted(AComponent: TComponent);
+begin
+  if not FBusy and TAtlasIdeSettings.Current.DesignerGroups and (AComponent is TControl) then
+  begin
+    FInserted.Add(AComponent);
+  end;
+end;
+
 procedure TAtlasIdeDesignerGroups.Group;
 var
   mEditor: IOTAFormEditor;
@@ -722,12 +728,6 @@ begin
   Save(mEditor.FileName);
   Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerGroupsUngrouped));
   Refresh(mRoot, mEditor);
-end;
-
-procedure TAtlasIdeDesignerGroups.Refresh(ARoot: TComponent; const AEditor: IOTAFormEditor);
-begin
-  FClick.Selected := Names(TAtlasDesignerAccess.Selection(AEditor, ARoot));
-  ShowFrames(ARoot, AEditor.FileName);
 end;
 
 function TAtlasIdeDesignerGroups.CanUndo: Boolean;

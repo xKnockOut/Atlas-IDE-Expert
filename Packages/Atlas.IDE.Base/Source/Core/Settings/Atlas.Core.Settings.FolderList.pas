@@ -24,6 +24,8 @@ implementation
 uses
   System.SysUtils;
 
+{ TAtlasFolderList }
+
 class function TAtlasFolderList.Normal(const AFolder: string): string;
 begin
   Result := Trim(AFolder);

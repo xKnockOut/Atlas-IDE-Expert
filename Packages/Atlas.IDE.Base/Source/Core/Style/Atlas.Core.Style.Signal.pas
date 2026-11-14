@@ -64,6 +64,16 @@ end;
 
 { TAtlasSignals }
 
+function TAtlasSignals.Get(AKind: TAtlasSignalKind): TAtlasSignal;
+begin
+  Result := Items[AKind];
+end;
+
+function TAtlasSignals.ForStatus(AState: TAtlasStatusState): TAtlasSignal;
+begin
+  Result := Items[KindOf(AState)];
+end;
+
 class function TAtlasSignals.Light: TAtlasSignals;
 begin
   Result.Items[TAtlasSignalKind.Ok] := Signal('#22C55E', '#15803D', '#FFFFFF', '#15803D', '#FFFFFF');
@@ -96,16 +106,6 @@ begin
   else
     Result := TAtlasSignalKind.Idle;
   end;
-end;
-
-function TAtlasSignals.Get(AKind: TAtlasSignalKind): TAtlasSignal;
-begin
-  Result := Items[AKind];
-end;
-
-function TAtlasSignals.ForStatus(AState: TAtlasStatusState): TAtlasSignal;
-begin
-  Result := Items[KindOf(AState)];
 end;
 
 end.

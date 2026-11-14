@@ -302,26 +302,6 @@ type
 
 { TSvnXmlScan }
 
-procedure TSvnXmlScan.Run(const AText: string);
-begin
-  FReader := TAtlasVcsXmlReader.Create(AText);
-  try
-    while not FDone and FReader.Next do
-    begin
-      case FReader.Node of
-        TAtlasVcsXmlNode.StartTag:
-          OnStart;
-        TAtlasVcsXmlNode.EndTag:
-          OnEnd;
-        TAtlasVcsXmlNode.Text:
-          OnText;
-      end;
-    end;
-  finally
-    FreeAndNil(FReader);
-  end;
-end;
-
 procedure TSvnXmlScan.OnStart;
 begin
   // Ohne Wirkung, wenn der Leser StartTag nicht braucht.
@@ -342,6 +322,26 @@ begin
   if not FReader.EmptyElement then
   begin
     FElement := FReader.Name;
+  end;
+end;
+
+procedure TSvnXmlScan.Run(const AText: string);
+begin
+  FReader := TAtlasVcsXmlReader.Create(AText);
+  try
+    while not FDone and FReader.Next do
+    begin
+      case FReader.Node of
+        TAtlasVcsXmlNode.StartTag:
+          OnStart;
+        TAtlasVcsXmlNode.EndTag:
+          OnEnd;
+        TAtlasVcsXmlNode.Text:
+          OnText;
+      end;
+    end;
+  finally
+    FreeAndNil(FReader);
   end;
 end;
 
@@ -419,6 +419,29 @@ begin
   Result := (Pos(':', APath) = 2) or (Copy(APath, 1, 1) = '/') or (Copy(APath, 1, 2) = '\\');
 end;
 
+procedure TSvnStatusScan.OnStart;
+begin
+  if FReader.Name = 'entry' then
+  begin
+    FInEntry := True;
+    FPath := FReader.Attr('path');
+  end
+  else if (FReader.Name = 'wc-status') and FInEntry then
+  begin
+    AddChange(FReader.Attr('item'), FReader.Attr('props'));
+    // Nur der erste wc-status je Eintrag; repos-status (mit --show-updates) folgt getrennt.
+    FInEntry := False;
+  end;
+end;
+
+procedure TSvnStatusScan.OnEnd;
+begin
+  if FReader.Name = 'entry' then
+  begin
+    FInEntry := False;
+  end;
+end;
+
 procedure TSvnStatusScan.AddChange(const AItem, AProps: string);
 var
   mChange: TAtlasVcsChange;
@@ -444,29 +467,6 @@ begin
   Changes := Changes + [mChange];
 end;
 
-procedure TSvnStatusScan.OnStart;
-begin
-  if FReader.Name = 'entry' then
-  begin
-    FInEntry := True;
-    FPath := FReader.Attr('path');
-  end
-  else if (FReader.Name = 'wc-status') and FInEntry then
-  begin
-    AddChange(FReader.Attr('item'), FReader.Attr('props'));
-    // Nur der erste wc-status je Eintrag; repos-status (mit --show-updates) folgt getrennt.
-    FInEntry := False;
-  end;
-end;
-
-procedure TSvnStatusScan.OnEnd;
-begin
-  if FReader.Name = 'entry' then
-  begin
-    FInEntry := False;
-  end;
-end;
-
 { TSvnLogScan }
 
 constructor TSvnLogScan.Create(const ARoot, ARelativeUrl: string);
@@ -483,35 +483,6 @@ begin
   FreeAndNil(FFiles);
   FreeAndNil(FEntries);
   inherited;
-end;
-
-function TSvnLogScan.Entries: TArray<TAtlasVcsLogEntry>;
-begin
-  Result := FEntries.ToArray;
-end;
-
-procedure TSvnLogScan.StartEntry;
-begin
-  FEntry := Default(TAtlasVcsLogEntry);
-  FEntry.Revision := FReader.Attr('revision');
-  if FEntry.Revision = '' then
-  begin
-    raise EAtlasVcsParse.Create('svn log: revision fehlt');
-  end;
-  FFiles.Clear;
-  FInEntry := not FReader.EmptyElement;
-  if not FInEntry then
-  begin
-    FEntries.Add(FEntry);
-  end;
-end;
-
-procedure TSvnLogScan.StartPath;
-begin
-  FFile := Default(TAtlasVcsLogFile);
-  FFile.Kind := ActionKind(FReader.Attr('action'));
-  FKind := FReader.Attr('kind');
-  KeepElement;
 end;
 
 procedure TSvnLogScan.OnStart;
@@ -546,22 +517,6 @@ begin
   FElement := '';
 end;
 
-procedure TSvnLogScan.SetMessage(const AText: string);
-var
-  mBreak: Integer;
-begin
-  FEntry.Message := StringReplace(AText, #13#10, #10, [rfReplaceAll]).TrimRight([#10, #13, ' ']);
-  mBreak := Pos(#10, FEntry.Message);
-  if mBreak > 0 then
-  begin
-    FEntry.Summary := Copy(FEntry.Message, 1, mBreak - 1);
-  end
-  else
-  begin
-    FEntry.Summary := FEntry.Message;
-  end;
-end;
-
 procedure TSvnLogScan.OnText;
 var
   mDate: TDateTime;
@@ -586,6 +541,51 @@ begin
   begin
     SetMessage(FReader.Value);
   end;
+end;
+
+procedure TSvnLogScan.StartEntry;
+begin
+  FEntry := Default(TAtlasVcsLogEntry);
+  FEntry.Revision := FReader.Attr('revision');
+  if FEntry.Revision = '' then
+  begin
+    raise EAtlasVcsParse.Create('svn log: revision fehlt');
+  end;
+  FFiles.Clear;
+  FInEntry := not FReader.EmptyElement;
+  if not FInEntry then
+  begin
+    FEntries.Add(FEntry);
+  end;
+end;
+
+procedure TSvnLogScan.StartPath;
+begin
+  FFile := Default(TAtlasVcsLogFile);
+  FFile.Kind := ActionKind(FReader.Attr('action'));
+  FKind := FReader.Attr('kind');
+  KeepElement;
+end;
+
+procedure TSvnLogScan.SetMessage(const AText: string);
+var
+  mBreak: Integer;
+begin
+  FEntry.Message := StringReplace(AText, #13#10, #10, [rfReplaceAll]).TrimRight([#10, #13, ' ']);
+  mBreak := Pos(#10, FEntry.Message);
+  if mBreak > 0 then
+  begin
+    FEntry.Summary := Copy(FEntry.Message, 1, mBreak - 1);
+  end
+  else
+  begin
+    FEntry.Summary := FEntry.Message;
+  end;
+end;
+
+function TSvnLogScan.Entries: TArray<TAtlasVcsLogEntry>;
+begin
+  Result := FEntries.ToArray;
 end;
 
 { TSvnListScan }
@@ -646,23 +646,6 @@ end;
 
 { TSvnBlameScan }
 
-procedure TSvnBlameScan.StartEntry;
-var
-  mNumber: Integer;
-begin
-  FItem := Default(TAtlasVcsBlameLine);
-  if not TryStrToInt(FReader.Attr('line-number'), mNumber) then
-  begin
-    raise EAtlasVcsParse.Create('svn blame: line-number fehlt');
-  end;
-  FItem.Line := mNumber;
-  FInEntry := not FReader.EmptyElement;
-  if not FInEntry then
-  begin
-    Lines := Lines + [FItem];
-  end;
-end;
-
 procedure TSvnBlameScan.OnStart;
 begin
   if FReader.Name = 'entry' then
@@ -712,6 +695,23 @@ begin
   else if (FElement = 'date') and VcsParseIsoDate(FReader.Value, mDate) then
   begin
     FItem.Date := mDate;
+  end;
+end;
+
+procedure TSvnBlameScan.StartEntry;
+var
+  mNumber: Integer;
+begin
+  FItem := Default(TAtlasVcsBlameLine);
+  if not TryStrToInt(FReader.Attr('line-number'), mNumber) then
+  begin
+    raise EAtlasVcsParse.Create('svn blame: line-number fehlt');
+  end;
+  FItem.Line := mNumber;
+  FInEntry := not FReader.EmptyElement;
+  if not FInEntry then
+  begin
+    Lines := Lines + [FItem];
   end;
 end;
 
@@ -789,11 +789,6 @@ begin
   end;
 end;
 
-function TSvnLogDiffReader.AtSeparator: Boolean;
-begin
-  Result := FLines[FIndex] = TAtlasSvnParser.cLogSeparator;
-end;
-
 procedure TSvnLogDiffReader.Add(const ALine: string);
 begin
   // Die Länge ist vorher unbekannt: Platz verdoppeln, am Ende kürzen.
@@ -803,6 +798,11 @@ begin
   end;
   FPatch[FCount] := ALine;
   Inc(FCount);
+end;
+
+function TSvnLogDiffReader.AtSeparator: Boolean;
+begin
+  Result := FLines[FIndex] = TAtlasSvnParser.cLogSeparator;
 end;
 
 procedure TSvnLogDiffReader.ReadHunk(const AHunk: TAtlasVcsHunk);
@@ -909,97 +909,6 @@ begin
   end;
 end;
 
-class function TAtlasSvnParser.ParseStatus(const AText, ARoot: string): TArray<TAtlasVcsChange>;
-var
-  mScan: TSvnStatusScan;
-begin
-  mScan := TSvnStatusScan.Create(ARoot);
-  try
-    mScan.Run(AText);
-    Result := mScan.Changes;
-  finally
-    mScan.Free;
-  end;
-end;
-
-class function TAtlasSvnParser.ParseLog(const AText, ARoot, ARelativeUrl: string): TArray<TAtlasVcsLogEntry>;
-var
-  mScan: TSvnLogScan;
-begin
-  mScan := TSvnLogScan.Create(ARoot, ARelativeUrl);
-  try
-    mScan.Run(AText);
-    Result := mScan.Entries;
-  finally
-    mScan.Free;
-  end;
-end;
-
-class function TAtlasSvnParser.ParseList(const AText, ACurrent: string): TArray<TAtlasVcsRef>;
-var
-  mScan: TSvnListScan;
-begin
-  mScan := TSvnListScan.Create(ACurrent);
-  try
-    mScan.Run(AText);
-    Result := mScan.Refs;
-  finally
-    mScan.Free;
-  end;
-end;
-
-class function TAtlasSvnParser.ParseBlame(const AText: string): TArray<TAtlasVcsBlameLine>;
-var
-  mScan: TSvnBlameScan;
-begin
-  mScan := TSvnBlameScan.Create;
-  try
-    mScan.Run(AText);
-    Result := mScan.Lines;
-  finally
-    mScan.Free;
-  end;
-end;
-
-class function TAtlasSvnParser.ParseLog(const AText: string): TArray<TAtlasVcsLineCommit>;
-var
-  mScan: TSvnLineLogScan;
-begin
-  mScan := TSvnLineLogScan.Create;
-  try
-    mScan.Run(AText);
-    Result := mScan.Commits;
-  finally
-    mScan.Free;
-  end;
-end;
-
-class function TAtlasSvnParser.ParseLogDiff(const AText: string): TArray<TAtlasSvnLogDiff>;
-var
-  mReader: TSvnLogDiffReader;
-  mItem: TAtlasSvnLogDiff;
-  mFound: Integer;
-begin
-  // Die Zahl der Revisionen ist vorher unbekannt: Platz verdoppeln, am Ende kürzen.
-  Result := nil;
-  mFound := 0;
-  mReader := TSvnLogDiffReader.Create(AText);
-  try
-    while mReader.Next(mItem) do
-    begin
-      if mFound = Length(Result) then
-      begin
-        SetLength(Result, mFound * 2 + 4);
-      end;
-      Result[mFound] := mItem;
-      Inc(mFound);
-    end;
-  finally
-    mReader.Free;
-  end;
-  SetLength(Result, mFound);
-end;
-
 class function TAtlasSvnParser.BranchOf(const ARelativeUrl: string): string;
 var
   mParts: TArray<string>;
@@ -1020,6 +929,32 @@ begin
     end;
   end;
   Result := string.Join('/', mParts);
+end;
+
+class function TAtlasSvnParser.ParseStatus(const AText, ARoot: string): TArray<TAtlasVcsChange>;
+var
+  mScan: TSvnStatusScan;
+begin
+  mScan := TSvnStatusScan.Create(ARoot);
+  try
+    mScan.Run(AText);
+    Result := mScan.Changes;
+  finally
+    mScan.Free;
+  end;
+end;
+
+class function TAtlasSvnParser.ParseBlame(const AText: string): TArray<TAtlasVcsBlameLine>;
+var
+  mScan: TSvnBlameScan;
+begin
+  mScan := TSvnBlameScan.Create;
+  try
+    mScan.Run(AText);
+    Result := mScan.Lines;
+  finally
+    mScan.Free;
+  end;
 end;
 
 class function TAtlasSvnParser.KindOf(const AItem, AProps: string; out AKind: TAtlasVcsChangeKind): Boolean;
@@ -1071,6 +1006,71 @@ begin
     // normal, none, ignored, external
     AKind := TAtlasVcsChangeKind.Modified;
     Result := False;
+  end;
+end;
+
+class function TAtlasSvnParser.ParseLog(const AText: string): TArray<TAtlasVcsLineCommit>;
+var
+  mScan: TSvnLineLogScan;
+begin
+  mScan := TSvnLineLogScan.Create;
+  try
+    mScan.Run(AText);
+    Result := mScan.Commits;
+  finally
+    mScan.Free;
+  end;
+end;
+
+class function TAtlasSvnParser.ParseLogDiff(const AText: string): TArray<TAtlasSvnLogDiff>;
+var
+  mReader: TSvnLogDiffReader;
+  mItem: TAtlasSvnLogDiff;
+  mFound: Integer;
+begin
+  // Die Zahl der Revisionen ist vorher unbekannt: Platz verdoppeln, am Ende kürzen.
+  Result := nil;
+  mFound := 0;
+  mReader := TSvnLogDiffReader.Create(AText);
+  try
+    while mReader.Next(mItem) do
+    begin
+      if mFound = Length(Result) then
+      begin
+        SetLength(Result, mFound * 2 + 4);
+      end;
+      Result[mFound] := mItem;
+      Inc(mFound);
+    end;
+  finally
+    mReader.Free;
+  end;
+  SetLength(Result, mFound);
+end;
+
+class function TAtlasSvnParser.ParseLog(const AText, ARoot, ARelativeUrl: string): TArray<TAtlasVcsLogEntry>;
+var
+  mScan: TSvnLogScan;
+begin
+  mScan := TSvnLogScan.Create(ARoot, ARelativeUrl);
+  try
+    mScan.Run(AText);
+    Result := mScan.Entries;
+  finally
+    mScan.Free;
+  end;
+end;
+
+class function TAtlasSvnParser.ParseList(const AText, ACurrent: string): TArray<TAtlasVcsRef>;
+var
+  mScan: TSvnListScan;
+begin
+  mScan := TSvnListScan.Create(ACurrent);
+  try
+    mScan.Run(AText);
+    Result := mScan.Refs;
+  finally
+    mScan.Free;
   end;
 end;
 

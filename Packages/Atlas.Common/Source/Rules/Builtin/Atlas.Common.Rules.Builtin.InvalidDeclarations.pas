@@ -114,30 +114,6 @@ begin
     cTexts[TInvalidDeclarationsText.Title].Text);
 end;
 
-class function TDeclarationInvalidRule.CppOutput(const ADproj: string): Boolean;
-var
-  mValue, mSwitch: string;
-begin
-  for mValue in ElementValues(ADproj, 'DCC_CBuilderOutput') do
-  begin
-    if (mValue <> '') and not SameText(mValue, 'None') then
-    begin
-      Exit(True);
-    end;
-  end;
-  for mValue in ElementValues(ADproj, 'DCC_AdditionalSwitches') do
-  begin
-    for mSwitch in mValue.Split([' ', #9]) do
-    begin
-      if StartsText('-J', mSwitch) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-  Result := False;
-end;
-
 procedure TDeclarationInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mTokens: TArray<TPascalToken>;
@@ -485,6 +461,30 @@ begin
   mCppKnown := False;
   mCpp := False;
   Visit(AContext.Tree.Root);
+end;
+
+class function TDeclarationInvalidRule.CppOutput(const ADproj: string): Boolean;
+var
+  mValue, mSwitch: string;
+begin
+  for mValue in ElementValues(ADproj, 'DCC_CBuilderOutput') do
+  begin
+    if (mValue <> '') and not SameText(mValue, 'None') then
+    begin
+      Exit(True);
+    end;
+  end;
+  for mValue in ElementValues(ADproj, 'DCC_AdditionalSwitches') do
+  begin
+    for mSwitch in mValue.Split([' ', #9]) do
+    begin
+      if StartsText('-J', mSwitch) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
 end;
 
 procedure RegisterInvalidDeclarationRules(const ARegistry: TRuleRegistry);

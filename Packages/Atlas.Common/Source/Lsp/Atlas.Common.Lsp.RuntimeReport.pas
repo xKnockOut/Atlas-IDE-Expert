@@ -107,6 +107,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TLspRuntimeReport }
+
 constructor TLspRuntimeReport.Create(const AFiles: IRuntimeReportFiles; AResults: TCompilerResults;
   const APublish: TRuntimeReportPublish);
 begin
@@ -172,6 +174,20 @@ begin
   end;
 end;
 
+function TLspRuntimeReport.Store(const AMessages: TArray<TCompilerMessage>): Integer;
+var
+  mFiles: TArray<string>;
+begin
+  mFiles := FResults.Replace(AMessages);
+  Result := Length(mFiles);
+  if (mFiles <> nil) and Assigned(FPublish) then
+  begin
+    FPublish(mFiles);
+  end;
+end;
+
+{ Antwort }
+
 class function TLspRuntimeReport.MessagesOf(const AReport: TRuntimeReport): TArray<TCompilerMessage>;
 var
   mStack: TRuntimeStack;
@@ -188,29 +204,6 @@ begin
       Result := Result + [MessageAt(mStack.Frames[mStack.Site], TCompilerSeverity.Warning, AReport.Source,
         cTexts[TLspRuntimeReportText.LeakSite].Fmt([mStack.Name, mStack.Count, mStack.Size]))];
     end;
-  end;
-end;
-
-{ Antwort }
-
-class function TLspRuntimeReport.TitleOf(const AReport: TRuntimeReport): string;
-var
-  mStack: TRuntimeStack;
-  mTotal: Integer;
-begin
-  Result := '';
-  if AReport.Kind = TRuntimeReportKind.Crash then
-  begin
-    Result := CrashText(AReport);
-  end
-  else if AReport.Kind = TRuntimeReportKind.Leaks then
-  begin
-    mTotal := 0;
-    for mStack in AReport.Stacks do
-    begin
-      Inc(mTotal, mStack.Count);
-    end;
-    Result := cTexts[TLspRuntimeReportText.LeakTitle].Fmt([mTotal, Length(AReport.Stacks)]);
   end;
 end;
 
@@ -303,24 +296,24 @@ begin
   end;
 end;
 
-class function TLspRuntimeReport.ToJson(const AReport: TRuntimeReport; const ASymbols: TReportSymbols;
-  ADiagnostics: Integer): TJSONObject;
+class function TLspRuntimeReport.TitleOf(const AReport: TRuntimeReport): string;
+var
+  mStack: TRuntimeStack;
+  mTotal: Integer;
 begin
-  Result := TJSONObject.Create;
-  Result.AddPair('kind', cReportKinds[AReport.Kind]);
-  Result.AddPair('source', AReport.Source);
-  Result.AddPair('title', TitleOf(AReport));
-  Result.AddPair('mapStatus', cMapStates[ASymbols.MapState]);
-  Result.AddPair('map', ASymbols.MapName);
-  Result.AddPair('diagnostics', TJSONNumber.Create(ADiagnostics));
+  Result := '';
   if AReport.Kind = TRuntimeReportKind.Crash then
   begin
-    Result.AddPair('crash', CrashToJson(AReport));
-    Result.AddPair('threads', StacksToJson(AReport));
+    Result := CrashText(AReport);
   end
   else if AReport.Kind = TRuntimeReportKind.Leaks then
   begin
-    Result.AddPair('groups', StacksToJson(AReport));
+    mTotal := 0;
+    for mStack in AReport.Stacks do
+    begin
+      Inc(mTotal, mStack.Count);
+    end;
+    Result := cTexts[TLspRuntimeReportText.LeakTitle].Fmt([mTotal, Length(AReport.Stacks)]);
   end;
 end;
 
@@ -349,15 +342,24 @@ begin
   end;
 end;
 
-function TLspRuntimeReport.Store(const AMessages: TArray<TCompilerMessage>): Integer;
-var
-  mFiles: TArray<string>;
+class function TLspRuntimeReport.ToJson(const AReport: TRuntimeReport; const ASymbols: TReportSymbols;
+  ADiagnostics: Integer): TJSONObject;
 begin
-  mFiles := FResults.Replace(AMessages);
-  Result := Length(mFiles);
-  if (mFiles <> nil) and Assigned(FPublish) then
+  Result := TJSONObject.Create;
+  Result.AddPair('kind', cReportKinds[AReport.Kind]);
+  Result.AddPair('source', AReport.Source);
+  Result.AddPair('title', TitleOf(AReport));
+  Result.AddPair('mapStatus', cMapStates[ASymbols.MapState]);
+  Result.AddPair('map', ASymbols.MapName);
+  Result.AddPair('diagnostics', TJSONNumber.Create(ADiagnostics));
+  if AReport.Kind = TRuntimeReportKind.Crash then
   begin
-    FPublish(mFiles);
+    Result.AddPair('crash', CrashToJson(AReport));
+    Result.AddPair('threads', StacksToJson(AReport));
+  end
+  else if AReport.Kind = TRuntimeReportKind.Leaks then
+  begin
+    Result.AddPair('groups', StacksToJson(AReport));
   end;
 end;
 

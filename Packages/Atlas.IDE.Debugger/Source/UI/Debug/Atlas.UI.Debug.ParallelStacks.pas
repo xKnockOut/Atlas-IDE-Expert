@@ -53,15 +53,6 @@ begin
   end;
 end;
 
-class function TAtlasParallelStacksTexts.ThreadText(const AStack: TAtlasDebugThreadStack): string;
-begin
-  Result := IntToStr(AStack.ThreadId);
-  if AStack.Name <> '' then
-  begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsThreadName, [Result, AStack.Name]);
-  end;
-end;
-
 class function TAtlasParallelStacksTexts.ThreadsText(const ANode: TAtlasDebugStackNode;
   const AStacks: TAtlasDebugThreadStacks): string;
 var
@@ -90,6 +81,15 @@ begin
     end;
   end;
   Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ParallelStacksStatus, [Length(ATree.Waiting), mCount]);
+end;
+
+class function TAtlasParallelStacksTexts.ThreadText(const AStack: TAtlasDebugThreadStack): string;
+begin
+  Result := IntToStr(AStack.ThreadId);
+  if AStack.Name <> '' then
+  begin
+    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsThreadName, [Result, AStack.Name]);
+  end;
 end;
 
 end.

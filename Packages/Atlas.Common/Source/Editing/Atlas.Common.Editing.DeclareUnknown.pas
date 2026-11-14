@@ -306,6 +306,8 @@ type
     function TypeName(const ATokens: TArray<TPascalToken>; ALast: Integer): string;
   end;
 
+{ TExpressionShape }
+
 procedure TExpressionShape.Scan(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer);
 var
   mIndex: Integer;

@@ -177,6 +177,8 @@ type
     function Run(var ACommunity: TArray<Integer>): Boolean;
   end;
 
+{ TNodeMover }
+
 constructor TNodeMover.Create(const AGraph: TLevelGraph; AResolution: Double; const ACommunity: TArray<Integer>);
 var
   mNode: Integer;

@@ -54,6 +54,8 @@ uses
   System.StrUtils,
   System.RegularExpressions;
 
+{ TAtlasCompilerMessages }
+
 class function TAtlasCompilerMessages.FromIde(const AKind, AMessage, AFileName: string; ALine,
   AColumn: Integer): TAtlasCompilerMessage;
 var
@@ -104,6 +106,13 @@ begin
   end;
 end;
 
+class function TAtlasCompilerMessages.SeverityText(ASeverity: TAtlasCompilerSeverity): string;
+const
+  cTexts: array[TAtlasCompilerSeverity] of string = ('info', 'hint', 'warning', 'error', 'fatal');
+begin
+  Result := cTexts[ASeverity];
+end;
+
 class function TAtlasCompilerMessages.Resolve(const AMessages: TArray<TAtlasCompilerMessage>;
   const AProjectFile: string; const AKnownFiles: TArray<string>): TArray<TAtlasCompilerMessage>;
 var
@@ -141,19 +150,6 @@ begin
   end;
 end;
 
-class function TAtlasCompilerMessages.SeverityText(ASeverity: TAtlasCompilerSeverity): string;
-const
-  cTexts: array[TAtlasCompilerSeverity] of string = ('info', 'hint', 'warning', 'error', 'fatal');
-begin
-  Result := cTexts[ASeverity];
-end;
-
-class function TAtlasCompilerMessages.ToJson(const AMessages: TArray<TAtlasCompilerMessage>; const AProject,
-  APlatform: string; ASucceeded: Boolean): TJSONObject;
-begin
-  Result := ToJson(AMessages, AProject, APlatform, ASucceeded, False);
-end;
-
 class function TAtlasCompilerMessages.ToJson(const AMessages: TArray<TAtlasCompilerMessage>; const AProject,
   APlatform: string; ASucceeded, ABackground: Boolean): TJSONObject;
 var
@@ -186,6 +182,12 @@ begin
     mItem.AddPair('text', mMessage.Text);
     mItems.AddElement(mItem);
   end;
+end;
+
+class function TAtlasCompilerMessages.ToJson(const AMessages: TArray<TAtlasCompilerMessage>; const AProject,
+  APlatform: string; ASucceeded: Boolean): TJSONObject;
+begin
+  Result := ToJson(AMessages, AProject, APlatform, ASucceeded, False);
 end;
 
 end.

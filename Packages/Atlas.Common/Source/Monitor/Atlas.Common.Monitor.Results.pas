@@ -165,6 +165,8 @@ begin
   end;
 end;
 
+{ TMonitorResults }
+
 class function TMonitorResults.ParseSarif(const AText, ATarget: string; out AFindings: TArray<TMonitorFinding>;
   out AError: string): Boolean;
 var

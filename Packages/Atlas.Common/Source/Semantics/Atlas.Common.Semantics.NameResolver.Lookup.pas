@@ -76,29 +76,13 @@ begin
   end;
 end;
 
+{ TResolverLookup }
+
 constructor TResolverLookup.Create(APlace: TResolverPlace; AUnits: TResolverUnits);
 begin
   inherited Create;
   FPlace := APlace;
   FUnits := AUnits;
-end;
-
-function TResolverLookup.LookupInUnit(const AUnit: TUnitIndex; const AName: string;
-  AOnlyInterface, AOnlyTypes: Boolean; out AResult: TResolvedSymbol): Boolean;
-begin
-  Result := LookupInUnit(AUnit, AName, AOnlyInterface, AOnlyTypes, AResult, -1);
-end;
-
-function TResolverLookup.LookupGlobal(const AUnit: TUnitIndex; const AName: string;
-  AWithImplementation, AOnlyTypes: Boolean; out AResult: TResolvedSymbol): Boolean;
-begin
-  Result := LookupGlobal(AUnit, AName, AWithImplementation, AOnlyTypes, AResult, -1);
-end;
-
-function TResolverLookup.ResolveTypeName(const ATypeName: string; const AFromUnit: TUnitIndex;
-  AWithImplementation: Boolean; out AResult: TResolvedSymbol): Boolean;
-begin
-  Result := ResolveTypeName(ATypeName, AFromUnit, AWithImplementation, AResult, -1);
 end;
 
 function TResolverLookup.LookupInUnit(const AUnit: TUnitIndex; const AName: string;
@@ -126,6 +110,12 @@ begin
     end;
   end;
   Result := False;
+end;
+
+function TResolverLookup.LookupInUnit(const AUnit: TUnitIndex; const AName: string;
+  AOnlyInterface, AOnlyTypes: Boolean; out AResult: TResolvedSymbol): Boolean;
+begin
+  Result := LookupInUnit(AUnit, AName, AOnlyInterface, AOnlyTypes, AResult, -1);
 end;
 
 function TResolverLookup.LookupGlobal(const AUnit: TUnitIndex; const AName: string;
@@ -156,6 +146,12 @@ begin
   Result := False;
 end;
 
+function TResolverLookup.LookupGlobal(const AUnit: TUnitIndex; const AName: string;
+  AWithImplementation, AOnlyTypes: Boolean; out AResult: TResolvedSymbol): Boolean;
+begin
+  Result := LookupGlobal(AUnit, AName, AWithImplementation, AOnlyTypes, AResult, -1);
+end;
+
 function TResolverLookup.ResolveTypeName(const ATypeName: string; const AFromUnit: TUnitIndex;
   AWithImplementation: Boolean; out AResult: TResolvedSymbol; AArity: Integer): Boolean;
 var
@@ -178,6 +174,12 @@ begin
     Result := LookupInUnit(mQualifier, Copy(ATypeName, mDot + 1, MaxInt),
       not FPlace.IsCurrentFile(mQualifier.FileName), True, AResult, AArity);
   end;
+end;
+
+function TResolverLookup.ResolveTypeName(const ATypeName: string; const AFromUnit: TUnitIndex;
+  AWithImplementation: Boolean; out AResult: TResolvedSymbol): Boolean;
+begin
+  Result := ResolveTypeName(ATypeName, AFromUnit, AWithImplementation, AResult, -1);
 end;
 
 function TResolverLookup.ResolveTypeText(const AText: string; const AFromUnit: TUnitIndex;

@@ -123,72 +123,6 @@ end;
 
 { TAtlasIdeDebugProfiler }
 
-class procedure TAtlasIdeDebugProfiler.Start(const AScopeOf: TFunc<IAtlasModuleScope>;
-  const AMessage: TProc<string>);
-begin
-  FScopeOf := AScopeOf;
-  FMessage := AMessage;
-  if FTimer = nil then
-  begin
-    FTicker := TTicker.Create;
-    FTimer := TTimer.Create(nil);
-    FTimer.Enabled := False;
-    FTimer.Interval := cStatusIntervalMs;
-    FTimer.OnTimer := FTicker.Tick;
-  end;
-  TAtlasIdeDebugProfileWindow.OnFrame :=
-    procedure(AFrame: TAtlasDebugProfileFrame)
-    begin
-      WireFrame(AFrame);
-    end;
-  TAtlasIdeDebugProfileWindow.Prepare;
-end;
-
-class procedure TAtlasIdeDebugProfiler.Release;
-var
-  mFrame: TAtlasDebugProfileFrame;
-begin
-  // Zuerst der Zeitgeber: Nach dem Abmelden darf keine Anfrage mehr gehen.
-  FreeAndNil(FTimer);
-  FreeAndNil(FTicker);
-  // Der Frame kann das Abmelden überleben (angedocktes Fenster): Ereignisse lösen.
-  mFrame := TAtlasIdeDebugProfileWindow.ExistingFrame;
-  if mFrame <> nil then
-  begin
-    mFrame.OnRunChange := nil;
-    mFrame.OnOptionsChange := nil;
-    mFrame.OnToggle := nil;
-    mFrame.OnReload := nil;
-    mFrame.OnOpen := nil;
-  end;
-  TAtlasIdeDebugProfileWindow.OnFrame := nil;
-  TAtlasIdeDebugProfileWindow.Release;
-  FRun := Default(TRunState);
-  FRuns := nil;
-  FCurrent := Default(TLoaded);
-  FPrevious := Default(TLoaded);
-  FScopeOf := nil;
-  FMessage := nil;
-end;
-
-class function TAtlasIdeDebugProfiler.Started: Boolean;
-begin
-  Result := FTimer <> nil;
-end;
-
-class procedure TAtlasIdeDebugProfiler.ApplySettings;
-begin
-  if not TAtlasIdeSettings.Current.DebugProfiler then
-  begin
-    TAtlasIdeDebugProfileWindow.Hide;
-  end;
-end;
-
-class procedure TAtlasIdeDebugProfiler.ThemeChanged;
-begin
-  TAtlasIdeDebugProfileWindow.ApplyTheme;
-end;
-
 class procedure TAtlasIdeDebugProfiler.Say(const AText: string);
 begin
   if Assigned(FMessage) then
@@ -197,149 +131,12 @@ begin
   end;
 end;
 
-class function TAtlasIdeDebugProfiler.Folder: string;
-begin
-  Result := TAtlasProfileStore.Folder(TPath.Combine(TPath.GetCachePath, 'Atlas'));
-end;
-
 class function TAtlasIdeDebugProfiler.Request(const ACommand, AArguments: string;
   const ADone: TProc<string>): Boolean;
 begin
   // Nebenläufig zu anderen Befehlen: Der Zeitgeber fragt den Status, während andere Fenster den Server fragen.
   Result := Assigned(FScopeOf) and TAtlasIdeHost.RunServerCommandAsync(FScopeOf(), TAtlasFeature.Debugger,
     ACommand, AArguments, cRequestTimeoutMs, ADone);
-end;
-
-class procedure TAtlasIdeDebugProfiler.ShowWindow;
-begin
-  if not (Started and TAtlasIdeSettings.Current.DebugProfiler) then
-  begin
-    Say(TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileOff));
-    Exit;
-  end;
-  WireFrame(TAtlasIdeDebugProfileWindow.Show);
-  Reload(FCurrent.Path);
-end;
-
-class procedure TAtlasIdeDebugProfiler.WireFrame(AFrame: TAtlasDebugProfileFrame);
-begin
-  if AFrame = nil then
-  begin
-    Exit;
-  end;
-  AFrame.OnRunChange := ShowRun;
-  AFrame.OnOptionsChange := ShowRun;
-  AFrame.OnToggle := Toggle;
-  AFrame.OnReload :=
-    procedure
-    begin
-      Reload(FCurrent.Path);
-    end;
-  // Eigene anonyme Methode: OpenRow nimmt die Zeile als const, TProc<T> ohne (E2010 in Delphi).
-  AFrame.OnOpen :=
-    procedure(ARow: TAtlasProfileRow)
-    begin
-      OpenRow(ARow);
-    end;
-  AFrame.SetRunning(FRun.Running);
-end;
-
-{ Messung }
-
-class function TAtlasIdeDebugProfiler.TargetOfActiveProject(out ATarget: TAtlasProfilerTarget): Boolean;
-var
-  mProject: IOTAProject;
-begin
-  ATarget := Default(TAtlasProfilerTarget);
-  ATarget.IntervalMs := TAtlasIdeSettings.Current.DebugProfilerIntervalMs;
-  mProject := TAtlasIdeStartOptions.ActiveProject;
-  Result := (mProject <> nil) and (mProject.ProjectOptions <> nil);
-  if Result then
-  begin
-    ATarget.ProgramName := mProject.ProjectOptions.TargetName;
-    ATarget.Project := mProject.FileName;
-    ATarget.Platform := mProject.CurrentPlatform;
-  end;
-end;
-
-class procedure TAtlasIdeDebugProfiler.RunWithProfile;
-var
-  mTarget: TAtlasProfilerTarget;
-begin
-  if FRun.Running or FRun.Busy then
-  begin
-    Toggle;
-  end
-  else if LaunchActiveProject(mTarget) then
-  begin
-    StartFor(mTarget);
-  end;
-end;
-
-class function TAtlasIdeDebugProfiler.LaunchActiveProject(out ATarget: TAtlasProfilerTarget): Boolean;
-var
-  mProject: IOTAProject;
-  mOptions: TAtlasStartOptions;
-begin
-  Result := False;
-  if not TargetOfActiveProject(ATarget) then
-  begin
-    Say(TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileNoProject));
-    Exit;
-  end;
-  mProject := TAtlasIdeStartOptions.ActiveProject;
-  if (mProject.ProjectBuilder <> nil) and mProject.ProjectBuilder.ShouldBuild and
-    not mProject.ProjectBuilder.BuildProject(cmOTAMake, True, True) then
-  begin
-    Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileBuildFailed, [ExtractFileName(ATarget.Project)]));
-    Exit;
-  end;
-  if not FileExists(ATarget.ProgramName) then
-  begin
-    Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileNoExe, [ATarget.ProgramName]));
-    Exit;
-  end;
-  // Ohne Konfiguration startet das Programm ohne Parameter im Ordner der EXE.
-  if not TAtlasIdeStartOptions.ReadOptions(mProject, mOptions) then
-  begin
-    mOptions := Default(TAtlasStartOptions);
-  end;
-  ATarget.ProcessId := TAtlasIdeLaunchProcesses.Start(ATarget.ProgramName, mOptions.Parameters, mOptions.WorkingDir,
-    TAtlasStartProfiles.DecodeEnvironment(mOptions.Environment));
-  Result := ATarget.ProcessId <> 0;
-  if not Result then
-  begin
-    Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileStartFailed, [ExtractFileName(ATarget.ProgramName)]));
-  end;
-end;
-
-class procedure TAtlasIdeDebugProfiler.Toggle;
-var
-  mTarget: TAtlasProfilerTarget;
-  mProcess: IOTAProcess;
-begin
-  if FRun.Busy then
-  begin
-    Exit;
-  end;
-  if FRun.Running then
-  begin
-    Stop;
-    Exit;
-  end;
-  mProcess := nil;
-  if TAtlasIdeDebugSession.Active then
-  begin
-    mProcess := TAtlasIdeDebugSession.Process;
-  end;
-  if (mProcess = nil) or (mProcess.ProcessId = 0) then
-  begin
-    Say(TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileNoProcess));
-    Exit;
-  end;
-  TargetOfActiveProject(mTarget);
-  mTarget.ProcessId := mProcess.ProcessId;
-  StartFor(mTarget);
 end;
 
 class procedure TAtlasIdeDebugProfiler.StartFor(const ATarget: TAtlasProfilerTarget);
@@ -458,6 +255,19 @@ begin
   Finished(mAnswer.LastFile);
 end;
 
+class procedure TAtlasIdeDebugProfiler.Finished(const AFile: string);
+begin
+  if AFile = '' then
+  begin
+    Exit;
+  end;
+  if TAtlasIdeSettings.Current.DebugProfiler then
+  begin
+    TAtlasIdeDebugProfileWindow.Show;
+  end;
+  Reload(AFile);
+end;
+
 class procedure TAtlasIdeDebugProfiler.SetRunning(ARunning: Boolean);
 var
   mFrame: TAtlasDebugProfileFrame;
@@ -474,20 +284,242 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeDebugProfiler.Finished(const AFile: string);
+{ Messung }
+
+class function TAtlasIdeDebugProfiler.TargetOfActiveProject(out ATarget: TAtlasProfilerTarget): Boolean;
+var
+  mProject: IOTAProject;
 begin
-  if AFile = '' then
+  ATarget := Default(TAtlasProfilerTarget);
+  ATarget.IntervalMs := TAtlasIdeSettings.Current.DebugProfilerIntervalMs;
+  mProject := TAtlasIdeStartOptions.ActiveProject;
+  Result := (mProject <> nil) and (mProject.ProjectOptions <> nil);
+  if Result then
+  begin
+    ATarget.ProgramName := mProject.ProjectOptions.TargetName;
+    ATarget.Project := mProject.FileName;
+    ATarget.Platform := mProject.CurrentPlatform;
+  end;
+end;
+
+class function TAtlasIdeDebugProfiler.LaunchActiveProject(out ATarget: TAtlasProfilerTarget): Boolean;
+var
+  mProject: IOTAProject;
+  mOptions: TAtlasStartOptions;
+begin
+  Result := False;
+  if not TargetOfActiveProject(ATarget) then
+  begin
+    Say(TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileNoProject));
+    Exit;
+  end;
+  mProject := TAtlasIdeStartOptions.ActiveProject;
+  if (mProject.ProjectBuilder <> nil) and mProject.ProjectBuilder.ShouldBuild and
+    not mProject.ProjectBuilder.BuildProject(cmOTAMake, True, True) then
+  begin
+    Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileBuildFailed, [ExtractFileName(ATarget.Project)]));
+    Exit;
+  end;
+  if not FileExists(ATarget.ProgramName) then
+  begin
+    Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileNoExe, [ATarget.ProgramName]));
+    Exit;
+  end;
+  // Ohne Konfiguration startet das Programm ohne Parameter im Ordner der EXE.
+  if not TAtlasIdeStartOptions.ReadOptions(mProject, mOptions) then
+  begin
+    mOptions := Default(TAtlasStartOptions);
+  end;
+  ATarget.ProcessId := TAtlasIdeLaunchProcesses.Start(ATarget.ProgramName, mOptions.Parameters, mOptions.WorkingDir,
+    TAtlasStartProfiles.DecodeEnvironment(mOptions.Environment));
+  Result := ATarget.ProcessId <> 0;
+  if not Result then
+  begin
+    Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileStartFailed, [ExtractFileName(ATarget.ProgramName)]));
+  end;
+end;
+
+class function TAtlasIdeDebugProfiler.Load(const APath: string; var ALoaded: TLoaded): Boolean;
+begin
+  Result := SameText(ALoaded.Path, APath) and (APath <> '');
+  if Result then
   begin
     Exit;
   end;
-  if TAtlasIdeSettings.Current.DebugProfiler then
+  ALoaded := Default(TLoaded);
+  Result := FileExists(APath) and TAtlasProfileJson.TryParse(TFile.ReadAllText(APath, TEncoding.UTF8),
+    ALoaded.Profile);
+  if Result then
   begin
-    TAtlasIdeDebugProfileWindow.Show;
+    ALoaded.Path := APath;
+  end
+  else
+  begin
+    Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileUnreadable, [ExtractFileName(APath)]));
   end;
-  Reload(AFile);
+end;
+
+class procedure TAtlasIdeDebugProfiler.WireFrame(AFrame: TAtlasDebugProfileFrame);
+begin
+  if AFrame = nil then
+  begin
+    Exit;
+  end;
+  AFrame.OnRunChange := ShowRun;
+  AFrame.OnOptionsChange := ShowRun;
+  AFrame.OnToggle := Toggle;
+  AFrame.OnReload :=
+    procedure
+    begin
+      Reload(FCurrent.Path);
+    end;
+  // Eigene anonyme Methode: OpenRow nimmt die Zeile als const, TProc<T> ohne (E2010 in Delphi).
+  AFrame.OnOpen :=
+    procedure(ARow: TAtlasProfileRow)
+    begin
+      OpenRow(ARow);
+    end;
+  AFrame.SetRunning(FRun.Running);
+end;
+
+class procedure TAtlasIdeDebugProfiler.OpenRow(const ARow: TAtlasProfileRow);
+var
+  mPath: string;
+begin
+  if ARow.FileName = '' then
+  begin
+    Exit;
+  end;
+  mPath := TAtlasIdeDebugSources.Resolve(ARow.FileName);
+  if mPath = '' then
+  begin
+    Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileNoSource, [ARow.FileName]));
+    Exit;
+  end;
+  TAtlasIdeNavigation.GoToLocation(mPath, Max(ARow.Line - 1, 0), 0);
+end;
+
+class procedure TAtlasIdeDebugProfiler.Start(const AScopeOf: TFunc<IAtlasModuleScope>;
+  const AMessage: TProc<string>);
+begin
+  FScopeOf := AScopeOf;
+  FMessage := AMessage;
+  if FTimer = nil then
+  begin
+    FTicker := TTicker.Create;
+    FTimer := TTimer.Create(nil);
+    FTimer.Enabled := False;
+    FTimer.Interval := cStatusIntervalMs;
+    FTimer.OnTimer := FTicker.Tick;
+  end;
+  TAtlasIdeDebugProfileWindow.OnFrame :=
+    procedure(AFrame: TAtlasDebugProfileFrame)
+    begin
+      WireFrame(AFrame);
+    end;
+  TAtlasIdeDebugProfileWindow.Prepare;
+end;
+
+class procedure TAtlasIdeDebugProfiler.Release;
+var
+  mFrame: TAtlasDebugProfileFrame;
+begin
+  // Zuerst der Zeitgeber: Nach dem Abmelden darf keine Anfrage mehr gehen.
+  FreeAndNil(FTimer);
+  FreeAndNil(FTicker);
+  // Der Frame kann das Abmelden überleben (angedocktes Fenster): Ereignisse lösen.
+  mFrame := TAtlasIdeDebugProfileWindow.ExistingFrame;
+  if mFrame <> nil then
+  begin
+    mFrame.OnRunChange := nil;
+    mFrame.OnOptionsChange := nil;
+    mFrame.OnToggle := nil;
+    mFrame.OnReload := nil;
+    mFrame.OnOpen := nil;
+  end;
+  TAtlasIdeDebugProfileWindow.OnFrame := nil;
+  TAtlasIdeDebugProfileWindow.Release;
+  FRun := Default(TRunState);
+  FRuns := nil;
+  FCurrent := Default(TLoaded);
+  FPrevious := Default(TLoaded);
+  FScopeOf := nil;
+  FMessage := nil;
+end;
+
+class function TAtlasIdeDebugProfiler.Started: Boolean;
+begin
+  Result := FTimer <> nil;
+end;
+
+class procedure TAtlasIdeDebugProfiler.ApplySettings;
+begin
+  if not TAtlasIdeSettings.Current.DebugProfiler then
+  begin
+    TAtlasIdeDebugProfileWindow.Hide;
+  end;
+end;
+
+class procedure TAtlasIdeDebugProfiler.ThemeChanged;
+begin
+  TAtlasIdeDebugProfileWindow.ApplyTheme;
+end;
+
+class procedure TAtlasIdeDebugProfiler.ShowWindow;
+begin
+  if not (Started and TAtlasIdeSettings.Current.DebugProfiler) then
+  begin
+    Say(TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileOff));
+    Exit;
+  end;
+  WireFrame(TAtlasIdeDebugProfileWindow.Show);
+  Reload(FCurrent.Path);
+end;
+
+class procedure TAtlasIdeDebugProfiler.RunWithProfile;
+var
+  mTarget: TAtlasProfilerTarget;
+begin
+  if FRun.Running or FRun.Busy then
+  begin
+    Toggle;
+  end
+  else if LaunchActiveProject(mTarget) then
+  begin
+    StartFor(mTarget);
+  end;
 end;
 
 { Anzeige }
+
+class procedure TAtlasIdeDebugProfiler.Toggle;
+var
+  mTarget: TAtlasProfilerTarget;
+  mProcess: IOTAProcess;
+begin
+  if FRun.Busy then
+  begin
+    Exit;
+  end;
+  if FRun.Running then
+  begin
+    Stop;
+    Exit;
+  end;
+  mProcess := nil;
+  if TAtlasIdeDebugSession.Active then
+  begin
+    mProcess := TAtlasIdeDebugSession.Process;
+  end;
+  if (mProcess = nil) or (mProcess.ProcessId = 0) then
+  begin
+    Say(TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileNoProcess));
+    Exit;
+  end;
+  TargetOfActiveProject(mTarget);
+  mTarget.ProcessId := mProcess.ProcessId;
+  StartFor(mTarget);
+end;
 
 class procedure TAtlasIdeDebugProfiler.Reload(const ASelect: string);
 var
@@ -521,26 +553,6 @@ begin
   FCurrent := Default(TLoaded);
   FPrevious := Default(TLoaded);
   ShowRun;
-end;
-
-class function TAtlasIdeDebugProfiler.Load(const APath: string; var ALoaded: TLoaded): Boolean;
-begin
-  Result := SameText(ALoaded.Path, APath) and (APath <> '');
-  if Result then
-  begin
-    Exit;
-  end;
-  ALoaded := Default(TLoaded);
-  Result := FileExists(APath) and TAtlasProfileJson.TryParse(TFile.ReadAllText(APath, TEncoding.UTF8),
-    ALoaded.Profile);
-  if Result then
-  begin
-    ALoaded.Path := APath;
-  end
-  else
-  begin
-    Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileUnreadable, [ExtractFileName(APath)]));
-  end;
 end;
 
 /// <summary>„App.exe · 980 Proben · 12,5 s · alle 10 ms“.</summary>
@@ -590,21 +602,9 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeDebugProfiler.OpenRow(const ARow: TAtlasProfileRow);
-var
-  mPath: string;
+class function TAtlasIdeDebugProfiler.Folder: string;
 begin
-  if ARow.FileName = '' then
-  begin
-    Exit;
-  end;
-  mPath := TAtlasIdeDebugSources.Resolve(ARow.FileName);
-  if mPath = '' then
-  begin
-    Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileNoSource, [ARow.FileName]));
-    Exit;
-  end;
-  TAtlasIdeNavigation.GoToLocation(mPath, Max(ARow.Line - 1, 0), 0);
+  Result := TAtlasProfileStore.Folder(TPath.Combine(TPath.GetCachePath, 'Atlas'));
 end;
 
 end.

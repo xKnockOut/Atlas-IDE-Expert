@@ -205,6 +205,41 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasIdeDesignerLayers.Restore;
+var
+  mEditor: IOTAFormEditor;
+  mRoot, mParent, mComponent: TComponent;
+  mName: string;
+begin
+  if not CanUndo or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
+  begin
+    Exit;
+  end;
+  mParent := mRoot;
+  if FUndoParent <> '' then
+  begin
+    mParent := mRoot.FindComponent(FUndoParent);
+  end;
+  if mParent is TWinControl then
+  begin
+    for mName in FUndoOrder do
+    begin
+      mComponent := mRoot.FindComponent(mName);
+      if (mName <> '') and (mComponent is TControl) and (TControl(mComponent).Parent = mParent) then
+      begin
+        TControl(mComponent).BringToFront;
+      end;
+    end;
+  end;
+  FUndoFile := '';
+  FUndoOrder := nil;
+  if TAtlasDesignerAccess.DesignerOf(mEditor) <> nil then
+  begin
+    TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
+  end;
+  Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerLayerUndone));
+end;
+
 procedure TAtlasIdeDesignerLayers.UpdateKeys(AWanted: Boolean);
 var
   mSettings: TAtlasPluginSettings;
@@ -218,15 +253,6 @@ begin
   begin
     TAtlasKeyHook.Remove(FKeys);
   end;
-end;
-
-class function TAtlasIdeDesignerLayers.HasTarget: Boolean;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-  mControl: TControl;
-begin
-  Result := Target(mEditor, mRoot, mControl);
 end;
 
 function NewOrder(const AItems: TArray<TAtlasLayerItem>; AIndex: Integer;
@@ -285,50 +311,6 @@ begin
   Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerLayerDone, [mControl.Name]));
 end;
 
-function TAtlasIdeDesignerLayers.CanUndo: Boolean;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-begin
-  Result := (FUndoFile <> '') and TAtlasDesignerAccess.Current(mEditor, mRoot) and
-    SameText(mEditor.FileName, FUndoFile);
-end;
-
-procedure TAtlasIdeDesignerLayers.Restore;
-var
-  mEditor: IOTAFormEditor;
-  mRoot, mParent, mComponent: TComponent;
-  mName: string;
-begin
-  if not CanUndo or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
-  begin
-    Exit;
-  end;
-  mParent := mRoot;
-  if FUndoParent <> '' then
-  begin
-    mParent := mRoot.FindComponent(FUndoParent);
-  end;
-  if mParent is TWinControl then
-  begin
-    for mName in FUndoOrder do
-    begin
-      mComponent := mRoot.FindComponent(mName);
-      if (mName <> '') and (mComponent is TControl) and (TControl(mComponent).Parent = mParent) then
-      begin
-        TControl(mComponent).BringToFront;
-      end;
-    end;
-  end;
-  FUndoFile := '';
-  FUndoOrder := nil;
-  if TAtlasDesignerAccess.DesignerOf(mEditor) <> nil then
-  begin
-    TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
-  end;
-  Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerLayerUndone));
-end;
-
 procedure TAtlasIdeDesignerLayers.Execute(ACommand: TAtlasLayersCommand);
 begin
   if ACommand = TAtlasLayersCommand.Undo then
@@ -339,6 +321,24 @@ begin
   begin
     Reorder(ACommand);
   end;
+end;
+
+function TAtlasIdeDesignerLayers.CanUndo: Boolean;
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+begin
+  Result := (FUndoFile <> '') and TAtlasDesignerAccess.Current(mEditor, mRoot) and
+    SameText(mEditor.FileName, FUndoFile);
+end;
+
+class function TAtlasIdeDesignerLayers.HasTarget: Boolean;
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+  mControl: TControl;
+begin
+  Result := Target(mEditor, mRoot, mControl);
 end;
 
 function EntryOf(AControl: TControl; ASelected, ABreak: Boolean): TAtlasStackEntry;

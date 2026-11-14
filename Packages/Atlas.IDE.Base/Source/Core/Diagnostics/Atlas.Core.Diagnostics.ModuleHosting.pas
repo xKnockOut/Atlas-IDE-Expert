@@ -152,95 +152,70 @@ begin
   inherited;
 end;
 
-class function TAtlasModuleHosting.PartName(const AModuleId: string): string;
-begin
-  Result := cPartPrefix + AModuleId;
-end;
-
-class function TAtlasModuleHosting.IsActiveOf(const AModule: IAtlasModule): TFunc<Boolean>;
-begin
-  Result :=
-    function: Boolean
-    begin
-      Result := AModule.IsActive;
-    end;
-end;
-
-class function TAtlasModuleHosting.StartOf(const AModule: IAtlasModule): TProc;
-begin
-  Result :=
-    procedure
-    begin
-      AModule.Start;
-    end;
-end;
-
-class function TAtlasModuleHosting.StopOf(const AModule: IAtlasModule): TProc;
-begin
-  Result :=
-    procedure
-    begin
-      AModule.Stop;
-    end;
-end;
-
-class function TAtlasModuleHosting.PartWanted(const APart: IAtlasFeaturePart): TAtlasFeatureWanted;
-begin
-  Result :=
-    function(ALevel: TAtlasSafeLevel): Boolean
-    begin
-      Result := APart.Wanted(ALevel);
-    end;
-end;
-
-class function TAtlasModuleHosting.PartIsActive(const APart: IAtlasFeaturePart): TFunc<Boolean>;
-begin
-  Result :=
-    function: Boolean
-    begin
-      Result := APart.IsActive;
-    end;
-end;
-
-class function TAtlasModuleHosting.PartStart(const APart: IAtlasFeaturePart): TProc;
-begin
-  Result :=
-    procedure
-    begin
-      APart.Start;
-    end;
-end;
-
-class function TAtlasModuleHosting.PartStop(const APart: IAtlasFeaturePart): TProc;
-begin
-  Result :=
-    procedure
-    begin
-      APart.Stop;
-    end;
-end;
-
-function TAtlasModuleHosting.SwitchOf(const AOwnerId: string): string;
+procedure TAtlasModuleHosting.Added(const AModuleId: string);
 var
   mModule: IAtlasModule;
 begin
-  Result := '';
-  if (AOwnerId <> '') and FRegistry.FindModule(AOwnerId, mModule) then
+  if not FRegistry.FindModule(AModuleId, mModule) then
   begin
-    Result := mModule.Info.Switch;
+    Exit;
+  end;
+  AddPart(mModule);
+  if Assigned(FOnChanged) then
+  begin
+    FOnChanged();
   end;
 end;
 
-function TAtlasModuleHosting.IndexOfPart(const APart: IAtlasFeaturePart): Integer;
-var
-  mIndex: Integer;
+procedure TAtlasModuleHosting.Removed(const AModuleId: string);
 begin
-  Result := -1;
-  for mIndex := 0 to High(FParts) do
+  // Die Registry hat das Modul schon gestoppt und seinen Scope gelöst.
+  FFeatures.Remove(PartName(AModuleId));
+end;
+
+procedure TAtlasModuleHosting.AddPart(const AModule: IAtlasModule);
+var
+  mInfo: TAtlasModuleInfo;
+  mName: string;
+begin
+  mInfo := AModule.Info;
+  mName := PartName(mInfo.Id);
+  if FFeatures.Contains(mName) then
   begin
-    if Pointer(FParts[mIndex].Part) = Pointer(APart) then
+    Exit;
+  end;
+  FFeatures.Add(mName, mInfo.MinLevel, IsActiveOf(AModule), StartOf(AModule), StopOf(AModule));
+  if mInfo.Switch <> '' then
+  begin
+    FFeatures.Join(mInfo.Switch, [mName]);
+  end;
+end;
+
+function TAtlasModuleHosting.SyncParts: Boolean;
+var
+  mProvided: TArray<TAtlasProvided>;
+  mItem: TAtlasProvided;
+  mWanted: TArray<IAtlasFeaturePart>;
+  mPart: IAtlasFeaturePart;
+begin
+  Result := False;
+  mProvided := FRegistry.Provisions(IAtlasFeaturePart);
+  mWanted := nil;
+  for mItem in mProvided do
+  begin
+    if Supports(mItem.Instance, IAtlasFeaturePart, mPart) then
     begin
-      Exit(mIndex);
+      mWanted := mWanted + [mPart];
+    end;
+  end;
+  DropWithdrawn(mWanted);
+  // Neu: in Reihenfolge der Bereitstellung anhängen.
+  for mItem in mProvided do
+  begin
+    if Supports(mItem.Instance, IAtlasFeaturePart, mPart) and (IndexOfPart(mPart) < 0) then
+    begin
+      AppendPart(mItem, mPart);
+      Result := True;
     end;
   end;
 end;
@@ -308,78 +283,103 @@ begin
   FParts := FParts + [mEntry];
 end;
 
-function TAtlasModuleHosting.SyncParts: Boolean;
+function TAtlasModuleHosting.SwitchOf(const AOwnerId: string): string;
 var
-  mProvided: TArray<TAtlasProvided>;
-  mItem: TAtlasProvided;
-  mWanted: TArray<IAtlasFeaturePart>;
-  mPart: IAtlasFeaturePart;
+  mModule: IAtlasModule;
 begin
-  Result := False;
-  mProvided := FRegistry.Provisions(IAtlasFeaturePart);
-  mWanted := nil;
-  for mItem in mProvided do
+  Result := '';
+  if (AOwnerId <> '') and FRegistry.FindModule(AOwnerId, mModule) then
   begin
-    if Supports(mItem.Instance, IAtlasFeaturePart, mPart) then
+    Result := mModule.Info.Switch;
+  end;
+end;
+
+function TAtlasModuleHosting.IndexOfPart(const APart: IAtlasFeaturePart): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(FParts) do
+  begin
+    if Pointer(FParts[mIndex].Part) = Pointer(APart) then
     begin
-      mWanted := mWanted + [mPart];
+      Exit(mIndex);
     end;
   end;
-  DropWithdrawn(mWanted);
-  // Neu: in Reihenfolge der Bereitstellung anhängen.
-  for mItem in mProvided do
-  begin
-    if Supports(mItem.Instance, IAtlasFeaturePart, mPart) and (IndexOfPart(mPart) < 0) then
+end;
+
+class function TAtlasModuleHosting.IsActiveOf(const AModule: IAtlasModule): TFunc<Boolean>;
+begin
+  Result :=
+    function: Boolean
     begin
-      AppendPart(mItem, mPart);
-      Result := True;
+      Result := AModule.IsActive;
     end;
-  end;
+end;
+
+class function TAtlasModuleHosting.StartOf(const AModule: IAtlasModule): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      AModule.Start;
+    end;
+end;
+
+class function TAtlasModuleHosting.StopOf(const AModule: IAtlasModule): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      AModule.Stop;
+    end;
+end;
+
+class function TAtlasModuleHosting.PartWanted(const APart: IAtlasFeaturePart): TAtlasFeatureWanted;
+begin
+  Result :=
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := APart.Wanted(ALevel);
+    end;
+end;
+
+class function TAtlasModuleHosting.PartIsActive(const APart: IAtlasFeaturePart): TFunc<Boolean>;
+begin
+  Result :=
+    function: Boolean
+    begin
+      Result := APart.IsActive;
+    end;
+end;
+
+class function TAtlasModuleHosting.PartStart(const APart: IAtlasFeaturePart): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      APart.Start;
+    end;
+end;
+
+class function TAtlasModuleHosting.PartStop(const APart: IAtlasFeaturePart): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      APart.Stop;
+    end;
+end;
+
+class function TAtlasModuleHosting.PartName(const AModuleId: string): string;
+begin
+  Result := cPartPrefix + AModuleId;
 end;
 
 function TAtlasModuleHosting.TakeFailures: TArray<string>;
 begin
   Result := FFailures;
   FFailures := nil;
-end;
-
-procedure TAtlasModuleHosting.AddPart(const AModule: IAtlasModule);
-var
-  mInfo: TAtlasModuleInfo;
-  mName: string;
-begin
-  mInfo := AModule.Info;
-  mName := PartName(mInfo.Id);
-  if FFeatures.Contains(mName) then
-  begin
-    Exit;
-  end;
-  FFeatures.Add(mName, mInfo.MinLevel, IsActiveOf(AModule), StartOf(AModule), StopOf(AModule));
-  if mInfo.Switch <> '' then
-  begin
-    FFeatures.Join(mInfo.Switch, [mName]);
-  end;
-end;
-
-procedure TAtlasModuleHosting.Added(const AModuleId: string);
-var
-  mModule: IAtlasModule;
-begin
-  if not FRegistry.FindModule(AModuleId, mModule) then
-  begin
-    Exit;
-  end;
-  AddPart(mModule);
-  if Assigned(FOnChanged) then
-  begin
-    FOnChanged();
-  end;
-end;
-
-procedure TAtlasModuleHosting.Removed(const AModuleId: string);
-begin
-  // Die Registry hat das Modul schon gestoppt und seinen Scope gelöst.
-  FFeatures.Remove(PartName(AModuleId));
 end;
 
 end.

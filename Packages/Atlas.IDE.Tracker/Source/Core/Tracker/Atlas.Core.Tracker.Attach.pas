@@ -290,26 +290,6 @@ begin
   end;
 end;
 
-class function TAtlasAttachFile.SafeName(const AName: string): string;
-var
-  mIndex: Integer;
-begin
-  // Regeln für Dateinamen wie beim Laden von Anhängen (#1264) …
-  Result := TAtlasIssuePreview.SafeFileName(AName);
-  // … dazu Zeichen, die einen Markdown-Verweis ![](Name) beenden; Leerzeichen trennen dort die Adresse vom Titel.
-  for mIndex := 1 to Length(Result) do
-  begin
-    if CharInSet(Result[mIndex], ['(', ')', '[', ']']) then
-    begin
-      Result[mIndex] := '_';
-    end
-    else if Result[mIndex] = ' ' then
-    begin
-      Result[mIndex] := '-';
-    end;
-  end;
-end;
-
 class function TAtlasAttachFile.UniqueNames(const AFiles: TArray<TAtlasAttachFile>): TArray<TAtlasAttachFile>;
 var
   mIndex, mNumber: Integer;
@@ -335,6 +315,26 @@ begin
     end;
   finally
     mSeen.Free;
+  end;
+end;
+
+class function TAtlasAttachFile.SafeName(const AName: string): string;
+var
+  mIndex: Integer;
+begin
+  // Regeln für Dateinamen wie beim Laden von Anhängen (#1264) …
+  Result := TAtlasIssuePreview.SafeFileName(AName);
+  // … dazu Zeichen, die einen Markdown-Verweis ![](Name) beenden; Leerzeichen trennen dort die Adresse vom Titel.
+  for mIndex := 1 to Length(Result) do
+  begin
+    if CharInSet(Result[mIndex], ['(', ')', '[', ']']) then
+    begin
+      Result[mIndex] := '_';
+    end
+    else if Result[mIndex] = ' ' then
+    begin
+      Result[mIndex] := '-';
+    end;
   end;
 end;
 
@@ -870,6 +870,8 @@ begin
     SendComment(AAttach, ASend, ARequest, mTexts, ATimeoutMs, AOutcome);
   end;
 end;
+
+{ TAtlasAttachSender }
 
 class function TAtlasAttachSender.Send(const AProvider: IAtlasTrackerProvider; const ATransport: IAtlasCiTransport;
   const ARequest: TAtlasAttachRequest; ATimeoutMs: Integer): TAtlasAttachOutcome;

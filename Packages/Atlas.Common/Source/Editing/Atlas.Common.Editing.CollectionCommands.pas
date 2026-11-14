@@ -178,12 +178,16 @@ type
     procedure AddDeclarations;
   end;
 
+{ TCollectionSpec }
+
 class function TCollectionSpec.Create(const AName, ATypeName, AConstruction: string): TCollectionSpec;
 begin
   Result.Name := AName;
   Result.TypeName := ATypeName;
   Result.Construction := AConstruction;
 end;
+
+{ TOwnedField }
 
 procedure TOwnedField.AddBody(const ABody: string);
 begin
@@ -764,6 +768,8 @@ type
     UseInline: Boolean;
     function Text(const AIndent, ALineBreak: string): string;
   end;
+
+{ TFilterLoop }
 
 function TFilterLoop.Text(const AIndent, ALineBreak: string): string;
 var

@@ -80,6 +80,8 @@ begin
   end;
 end;
 
+{ TShellEditing }
+
 constructor TShellEditing.Create(const AServices: TShellEditingServices);
 begin
   inherited Create;
@@ -109,14 +111,14 @@ begin
   inherited Destroy;
 end;
 
-function TShellEditing.LanguageLevel(const AUri: string): string;
-begin
-  Result := FServices.LanguageLevelFor(AUri);
-end;
-
 function TShellEditing.GetSlashHost: ISlashHost;
 begin
   Result := FFormatting.SlashHost;
+end;
+
+function TShellEditing.LanguageLevel(const AUri: string): string;
+begin
+  Result := FServices.LanguageLevelFor(AUri);
 end;
 
 procedure TShellEditing.Attach(ADispatcher: TJsonRpcDispatcher);

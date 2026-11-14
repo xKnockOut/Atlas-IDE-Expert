@@ -144,6 +144,8 @@ begin
   Result := SameText(AName, AWanted) or SameText(ChangeFileExt(AName, ''), AWanted);
 end;
 
+{ TMcpProfileTools }
+
 class function TMcpProfileTools.SelectRun(const ARuns: TArray<TMcpProfileRun>; const ARun: string): Integer;
 var
   mNumber, mIndex: Integer;

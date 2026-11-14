@@ -580,6 +580,8 @@ type
     function Edits: TArray<TTextEdit>;
   end;
 
+{ TInlineMove }
+
 function TInlineMove.IsCandidate: Boolean;
 begin
   Routine := Symbol.Routine;
@@ -820,6 +822,8 @@ type
       var AAdd: TTextEdit): TArray<TTextEdit>;
     function BuildEdits(const AInfo: TLineInfo; const AStyle: TFormatStyle; out AEdits: TArray<TTextEdit>): Boolean;
   end;
+
+{ TSectionMove }
 
 function TSectionMove.IsCandidate: Boolean;
 begin
@@ -1241,6 +1245,8 @@ type
     function OldText: string;
     function Action(const AOptions: TVarBlockOptions; out AAction: TCodeAction): Boolean;
   end;
+
+{ TCleanup }
 
 class function TCleanup.Create(const AText: string; ATree: TSyntaxTree; const AInfo: TLineInfo;
   const ASymbols: TArray<TReassignedSymbol>; ASection: TSyntaxNode): TCleanup;

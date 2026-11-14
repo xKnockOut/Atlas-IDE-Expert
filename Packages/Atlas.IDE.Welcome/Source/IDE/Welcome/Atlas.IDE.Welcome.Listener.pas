@@ -37,6 +37,8 @@ uses
   Atlas.IDE.Welcome.QuickActions,
   Atlas.IDE.Welcome.Discover;
 
+{ TAtlasWelcomeListener }
+
 constructor TAtlasWelcomeListener.Create(const ACurrent: TFunc<TAtlasIdeWelcome>);
 begin
   inherited Create;

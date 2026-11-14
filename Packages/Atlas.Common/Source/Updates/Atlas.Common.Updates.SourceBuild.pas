@@ -54,6 +54,8 @@ begin
   end;
 end;
 
+{ TUpdateSourceBuild }
+
 class function TUpdateSourceBuild.Projects(const AFiles: TArray<string>): TArray<string>;
 var
   mFirst, mRest: TList<string>;

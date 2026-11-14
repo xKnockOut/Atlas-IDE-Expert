@@ -412,15 +412,6 @@ begin
   inherited Destroy;
 end;
 
-function TInaccessibleMemberCheck.IndexHasRestricted(const AName: string): Boolean;
-begin
-  Result := (FContext.Index <> nil) and FContext.Index.HasSymbol(AName,
-    function(const ASymbol: TIndexSymbol): Boolean
-    begin
-      Result := (ASymbol.Container <> '') and (ASymbol.Visibility in cRestricted);
-    end);
-end;
-
 function TInaccessibleMemberCheck.Suspect(const AName: string): Boolean;
 var
   mSymbol: TIndexSymbol;
@@ -442,6 +433,15 @@ begin
     Result := IndexHasRestricted(AName);
   end;
   FSuspects.Add(LowerCase(AName), Result);
+end;
+
+function TInaccessibleMemberCheck.IndexHasRestricted(const AName: string): Boolean;
+begin
+  Result := (FContext.Index <> nil) and FContext.Index.HasSymbol(AName,
+    function(const ASymbol: TIndexSymbol): Boolean
+    begin
+      Result := (ASymbol.Container <> '') and (ASymbol.Visibility in cRestricted);
+    end);
 end;
 
 /// <summary>Darf die Methode AMethod mehr sehen als die Regel prüft? Methoden von Helfern (protected
@@ -466,6 +466,17 @@ begin
   end;
 end;
 
+/// <summary>Beginnt die Routine ANode mit "class" (class function/procedure)?</summary>
+function TInaccessibleMemberCheck.IsClassMethod(ANode: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+begin
+  mIndex := TokenAt(ANode.StartOffset);
+  Result := (mIndex < High(FTokens)) and (FTokens[mIndex].Offset = ANode.StartOffset) and
+    FTokens[mIndex].IsKeyword('class');
+  Result := Result and (FTokens[mIndex + 1].IsKeyword('function') or FTokens[mIndex + 1].IsKeyword('procedure'));
+end;
+
 /// <summary>Erstes Token, das nicht vor AOffset beginnt (binäre Suche).</summary>
 function TInaccessibleMemberCheck.TokenAt(AOffset: Integer): Integer;
 var
@@ -487,15 +498,22 @@ begin
   end;
 end;
 
-/// <summary>Beginnt die Routine ANode mit "class" (class function/procedure)?</summary>
-function TInaccessibleMemberCheck.IsClassMethod(ANode: TSyntaxNode): Boolean;
+/// <summary>Ist ANode ein Zugriff A.B, dessen Mitglied B die Auflösung mit Sichtbarkeit nicht findet, ohne sie
+/// aber als nicht öffentliches Mitglied ohne Bedingung kennt?</summary>
+function TInaccessibleMemberCheck.HiddenMember(ANode: TSyntaxNode; out AReceiverType,
+  AMember: TResolvedSymbol): Boolean;
 var
-  mIndex: Integer;
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
 begin
-  mIndex := TokenAt(ANode.StartOffset);
-  Result := (mIndex < High(FTokens)) and (FTokens[mIndex].Offset = ANode.StartOffset) and
-    FTokens[mIndex].IsKeyword('class');
-  Result := Result and (FTokens[mIndex + 1].IsKeyword('function') or FTokens[mIndex + 1].IsKeyword('procedure'));
+  Result := (ANode.ChildCount = 1) and (ANode.Name <> '') and (ANode.EndPos.Line = ANode[0].EndPos.Line) and
+    Suspect(ANode.Name);
+  Result := Result and not FResolver.NodeType(FContext.Tree, FFileName, ANode, mSymbol, mTypeInfo, mTypeFound) and
+    ReceiverTyped(ANode[0], AReceiverType);
+  // Sichtbar über Helfer oder Vorfahren: kein Fall für diese Regel.
+  Result := Result and not FResolver.FindMember(AReceiverType, ANode.Name, AMember) and
+    FResolver.DeclaredMember(AReceiverType, ANode.Name, AMember);
+  Result := Result and (AMember.Visibility in cRestricted) and (AMember.Condition = '');
 end;
 
 /// <summary>Ist der Empfänger ANode sicher bekannt und hat einen Typ, der keine Unit und nicht eingebaut ist?
@@ -530,24 +548,6 @@ begin
   Result := Result and (mReceiver.Kind <> TResolvedKind.UnitName) and not AReceiverType.Builtin;
   // var APanel: TPanel mit geschachteltem record TPanel: Der Auflöser fände sonst Vcl.ExtCtrls.TPanel.
   Result := Result and not NestedSomewhere(AReceiverType.Name);
-end;
-
-/// <summary>Ist ANode ein Zugriff A.B, dessen Mitglied B die Auflösung mit Sichtbarkeit nicht findet, ohne sie
-/// aber als nicht öffentliches Mitglied ohne Bedingung kennt?</summary>
-function TInaccessibleMemberCheck.HiddenMember(ANode: TSyntaxNode; out AReceiverType,
-  AMember: TResolvedSymbol): Boolean;
-var
-  mSymbol, mTypeInfo: TResolvedSymbol;
-  mTypeFound: Boolean;
-begin
-  Result := (ANode.ChildCount = 1) and (ANode.Name <> '') and (ANode.EndPos.Line = ANode[0].EndPos.Line) and
-    Suspect(ANode.Name);
-  Result := Result and not FResolver.NodeType(FContext.Tree, FFileName, ANode, mSymbol, mTypeInfo, mTypeFound) and
-    ReceiverTyped(ANode[0], AReceiverType);
-  // Sichtbar über Helfer oder Vorfahren: kein Fall für diese Regel.
-  Result := Result and not FResolver.FindMember(AReceiverType, ANode.Name, AMember) and
-    FResolver.DeclaredMember(AReceiverType, ANode.Name, AMember);
-  Result := Result and (AMember.Visibility in cRestricted) and (AMember.Condition = '');
 end;
 
 /// <summary>Fälle, die dcc trotz unsichtbarem Mitglied übersetzt oder die die Regel nicht sicher beurteilt.

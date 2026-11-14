@@ -97,62 +97,10 @@ begin
   FNext := ANext;
 end;
 
-class function TAtlasIdeBoundaryCases.Wanted: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.TestRun and TAtlasIdeSettings.Current.TestsBoundaryCases;
-end;
-
 function TAtlasIdeBoundaryCases.Ask(const ACommand, AArgumentsJson: string; const ADone: TProc<string>): Boolean;
 begin
   Result := (TAtlasIdeHost.ActiveSession <> nil) and TAtlasIdeHost.RunServerCommandAsync(FScope,
     TAtlasFeature.Build, ACommand, AArgumentsJson, cTimeoutMs, ADone);
-end;
-
-procedure TAtlasIdeBoundaryCases.OpenAtCursor;
-var
-  mEditors: IOTAEditorServices;
-  mView: IOTAEditView;
-begin
-  mView := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    mView := mEditors.TopView;
-  end;
-  if (mView = nil) or (mView.Buffer = nil) then
-  begin
-    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBoundaryNone));
-    Exit;
-  end;
-  OpenAt(mView.Buffer.FileName, mView.CursorPos.Line - 1);
-end;
-
-procedure TAtlasIdeBoundaryCases.OpenAt(const AFileName: string; ALine: Integer);
-var
-  mSelf: TAtlasIdeBoundaryCases;
-begin
-  if not Wanted or FShowing then
-  begin
-    Exit;
-  end;
-  FUri := TLspUris.FromPath(AFileName);
-  FLine := ALine;
-  mSelf := Self;
-  if not Ask(TAtlasBoundaryCases.cCommand,
-    TAtlasBoundaryCases.RequestJson(FUri, ALine, TAtlasIdeSettings.Current.TestsBoundaryMax),
-    procedure(AAnswer: string)
-    var
-      mSuggestion: TAtlasBoundarySuggestion;
-    begin
-      if not TAtlasBoundaryCases.Parse(AAnswer, mSuggestion) or (mSuggestion.Cases = nil) then
-      begin
-        mSelf.FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBoundaryNone));
-        Exit;
-      end;
-      mSelf.Show(mSuggestion);
-    end) then
-  begin
-    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBoundaryNoServer));
-  end;
 end;
 
 class function TAtlasIdeBoundaryCases.TodayLock: string;
@@ -223,27 +171,6 @@ begin
   end;
 end;
 
-function TAtlasIdeBoundaryCases.WriteEdit(const AEditJson: string): Boolean;
-var
-  mEdit: TLspWorkspaceEdit;
-  mValue: TJSONValue;
-  mOutcome: TAtlasWorkspaceEditResult;
-begin
-  mValue := TJSONObject.ParseJSONValue(AEditJson);
-  try
-    mEdit := TLspWorkspaceEdit.FromJson(mValue);
-  finally
-    mValue.Free;
-  end;
-  mOutcome := TAtlasIdeWorkspaceEdit.Apply(mEdit, TAtlasUnopenedPolicy.OpenInEditor,
-    TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBoundaryEditAction));
-  Result := mOutcome.Error = '';
-  if not Result then
-  begin
-    FTests.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBoundaryRefused, [mOutcome.Error]));
-  end;
-end;
-
 procedure TAtlasIdeBoundaryCases.Applied(const AJson: string; const ACases: TArray<TAtlasBoundaryCase>;
   AToday: Boolean);
 var
@@ -269,6 +196,81 @@ begin
   begin
     StartToday(mApplied, TAtlasBoundaryCases.OpenCases(ACases));
   end;
+end;
+
+function TAtlasIdeBoundaryCases.WriteEdit(const AEditJson: string): Boolean;
+var
+  mEdit: TLspWorkspaceEdit;
+  mValue: TJSONValue;
+  mOutcome: TAtlasWorkspaceEditResult;
+begin
+  mValue := TJSONObject.ParseJSONValue(AEditJson);
+  try
+    mEdit := TLspWorkspaceEdit.FromJson(mValue);
+  finally
+    mValue.Free;
+  end;
+  mOutcome := TAtlasIdeWorkspaceEdit.Apply(mEdit, TAtlasUnopenedPolicy.OpenInEditor,
+    TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBoundaryEditAction));
+  Result := mOutcome.Error = '';
+  if not Result then
+  begin
+    FTests.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBoundaryRefused, [mOutcome.Error]));
+  end;
+end;
+
+procedure TAtlasIdeBoundaryCases.TodayTable(const AToday: TToday; const ARun: TTestRunResult;
+  const ATable: TAtlasTestCaseTable);
+var
+  mSelf: TAtlasIdeBoundaryCases;
+  mRows: TArray<TAtlasTestCaseRow>;
+  mFilled, mCount: Integer;
+begin
+  mRows := TAtlasBoundaryCases.TodayRows(ATable, AToday.Open, ARun, mFilled);
+  if mFilled = 0 then
+  begin
+    FTests.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBoundaryTodayMissing, [AToday.Method]));
+    Exit;
+  end;
+  mSelf := Self;
+  mCount := Length(AToday.Open);
+  Ask(TAtlasTestCaseTables.cCommand, TAtlasTestCaseTables.ProposalJson(ATable.Uri, ATable.MethodLine, mRows),
+    procedure(AAnswer: string)
+    var
+      mProposal: TAtlasTestCaseProposal;
+    begin
+      if not TAtlasTestCaseTables.ParseProposal(AAnswer, mProposal) or (mProposal.EditJson = '') then
+      begin
+        mSelf.FTests.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBoundaryRefused, [mProposal.Reason]));
+      end
+      else if mSelf.WriteEdit(mProposal.EditJson) then
+      begin
+        mSelf.FTests.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBoundaryTodayDone, [mFilled, mCount]));
+      end;
+    end);
+end;
+
+class function TAtlasIdeBoundaryCases.Wanted: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.TestRun and TAtlasIdeSettings.Current.TestsBoundaryCases;
+end;
+
+procedure TAtlasIdeBoundaryCases.OpenAtCursor;
+var
+  mEditors: IOTAEditorServices;
+  mView: IOTAEditView;
+begin
+  mView := nil;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  begin
+    mView := mEditors.TopView;
+  end;
+  if (mView = nil) or (mView.Buffer = nil) then
+  begin
+    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBoundaryNone));
+    Exit;
+  end;
+  OpenAt(mView.Buffer.FileName, mView.CursorPos.Line - 1);
 end;
 
 /// <summary>Fixture und Test der Methode AMethod in der Testunit AFileName (Text im Editor).</summary>
@@ -310,23 +312,6 @@ begin
   FTests.RunTests(FToday.TestFile, TDUnitXCommandLine.RunNames(mUnit, mFixture, mTest, -1), True);
 end;
 
-procedure TAtlasIdeBoundaryCases.Remember(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
-var
-  mToday: TToday;
-begin
-  if FToday.Active then
-  begin
-    // Der nächste gemeldete Lauf ist der eigene (der Läufer startet keinen zweiten, solange einer läuft).
-    mToday := FToday;
-    FToday := Default(TToday);
-    FillToday(mToday, ARun);
-  end;
-  if Assigned(FNext) then
-  begin
-    FNext(ATarget, ARun);
-  end;
-end;
-
 procedure TAtlasIdeBoundaryCases.FillToday(const AToday: TToday; const ARun: TTestRunResult);
 var
   mSelf: TAtlasIdeBoundaryCases;
@@ -356,35 +341,50 @@ begin
     end);
 end;
 
-procedure TAtlasIdeBoundaryCases.TodayTable(const AToday: TToday; const ARun: TTestRunResult;
-  const ATable: TAtlasTestCaseTable);
+procedure TAtlasIdeBoundaryCases.OpenAt(const AFileName: string; ALine: Integer);
 var
   mSelf: TAtlasIdeBoundaryCases;
-  mRows: TArray<TAtlasTestCaseRow>;
-  mFilled, mCount: Integer;
 begin
-  mRows := TAtlasBoundaryCases.TodayRows(ATable, AToday.Open, ARun, mFilled);
-  if mFilled = 0 then
+  if not Wanted or FShowing then
   begin
-    FTests.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBoundaryTodayMissing, [AToday.Method]));
     Exit;
   end;
+  FUri := TLspUris.FromPath(AFileName);
+  FLine := ALine;
   mSelf := Self;
-  mCount := Length(AToday.Open);
-  Ask(TAtlasTestCaseTables.cCommand, TAtlasTestCaseTables.ProposalJson(ATable.Uri, ATable.MethodLine, mRows),
+  if not Ask(TAtlasBoundaryCases.cCommand,
+    TAtlasBoundaryCases.RequestJson(FUri, ALine, TAtlasIdeSettings.Current.TestsBoundaryMax),
     procedure(AAnswer: string)
     var
-      mProposal: TAtlasTestCaseProposal;
+      mSuggestion: TAtlasBoundarySuggestion;
     begin
-      if not TAtlasTestCaseTables.ParseProposal(AAnswer, mProposal) or (mProposal.EditJson = '') then
+      if not TAtlasBoundaryCases.Parse(AAnswer, mSuggestion) or (mSuggestion.Cases = nil) then
       begin
-        mSelf.FTests.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBoundaryRefused, [mProposal.Reason]));
-      end
-      else if mSelf.WriteEdit(mProposal.EditJson) then
-      begin
-        mSelf.FTests.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBoundaryTodayDone, [mFilled, mCount]));
+        mSelf.FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBoundaryNone));
+        Exit;
       end;
-    end);
+      mSelf.Show(mSuggestion);
+    end) then
+  begin
+    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBoundaryNoServer));
+  end;
+end;
+
+procedure TAtlasIdeBoundaryCases.Remember(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
+var
+  mToday: TToday;
+begin
+  if FToday.Active then
+  begin
+    // Der nächste gemeldete Lauf ist der eigene (der Läufer startet keinen zweiten, solange einer läuft).
+    mToday := FToday;
+    FToday := Default(TToday);
+    FillToday(mToday, ARun);
+  end;
+  if Assigned(FNext) then
+  begin
+    FNext(ATarget, ARun);
+  end;
 end;
 
 end.

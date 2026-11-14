@@ -243,11 +243,6 @@ end;
 
 { TParserCursor }
 
-constructor TParserCursor.Create(const AText: string; const ACancellation: IPascalCancellation);
-begin
-  Create(AText, ACancellation, nil);
-end;
-
 constructor TParserCursor.Create(const AText: string; const ACancellation: IPascalCancellation;
   const ASkip: TArray<TTextRange>);
 var
@@ -277,6 +272,11 @@ begin
     FEndPos := FAllTokens[High(FAllTokens)].EndPos;
     FEndOffset := FAllTokens[High(FAllTokens)].Offset + Length(FAllTokens[High(FAllTokens)].Text);
   end;
+end;
+
+constructor TParserCursor.Create(const AText: string; const ACancellation: IPascalCancellation);
+begin
+  Create(AText, ACancellation, nil);
 end;
 
 destructor TParserCursor.Destroy;
@@ -380,11 +380,6 @@ begin
   end;
 end;
 
-function TParserCursor.NodeStart: Integer;
-begin
-  Result := FIndex;
-end;
-
 function TParserCursor.StartNode(AKind: TSyntaxKind): TSyntaxNode;
 begin
   Result := TSyntaxNode.Create(AKind);
@@ -409,6 +404,11 @@ begin
   end;
 end;
 
+function TParserCursor.NodeStart: Integer;
+begin
+  Result := FIndex;
+end;
+
 function TParserCursor.Leaf(AKind: TSyntaxKind; const AName: string): TSyntaxNode;
 var
   mStart: Integer;
@@ -418,21 +418,6 @@ begin
   Result.Name := AName;
   Advance;
   FinishNode(Result, mStart);
-end;
-
-function TParserCursor.IsControlChar: Boolean;
-var
-  mNext: TPascalToken;
-begin
-  Result := IsSym('^');
-  if not Result then
-  begin
-    Exit;
-  end;
-  mNext := PeekToken(1);
-  // Ohne Leerraum dahinter; als Typ (^TFoo) kommt der Parser nicht hierher, P^ ist nachgestellt.
-  Result := (mNext.Offset = Current.Offset + 1) and (Length(mNext.Text) = 1) and
-    (mNext.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Symbol, TPascalTokenKind.Unknown]);
 end;
 
 procedure TParserCursor.SplitGreaterEqual;
@@ -450,6 +435,21 @@ begin
   Insert(mEqual, FTokens, FIndex + 1);
 end;
 
+function TParserCursor.IsControlChar: Boolean;
+var
+  mNext: TPascalToken;
+begin
+  Result := IsSym('^');
+  if not Result then
+  begin
+    Exit;
+  end;
+  mNext := PeekToken(1);
+  // Ohne Leerraum dahinter; als Typ (^TFoo) kommt der Parser nicht hierher, P^ ist nachgestellt.
+  Result := (mNext.Offset = Current.Offset + 1) and (Length(mNext.Text) = 1) and
+    (mNext.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Symbol, TPascalTokenKind.Unknown]);
+end;
+
 { TParserBase }
 
 function DiagnosticBefore(const A, B: TSyntaxDiagnostic): Integer;
@@ -460,6 +460,8 @@ begin
     Result := A.StartPos.Character - B.StartPos.Character;
   end;
 end;
+
+{ TParserBase }
 
 procedure TParserBase.ExpectKw(const AWord: string);
 begin
@@ -496,6 +498,143 @@ begin
       Dec(mBreak);
     end;
     Result := TTextPosition.Create(AToken.StartPos.Line, AToken.StartPos.Character + mBreak - 1);
+  end;
+end;
+
+procedure TParserBase.ExpectSym(const ASymbol: string);
+begin
+  if AcceptSym(ASymbol) then
+  begin
+    Exit;
+  end;
+  if ASymbol = ';' then
+  begin
+    DiagnoseMissingSemicolon;
+  end
+  else
+  begin
+    DiagnoseUnexpected('"' + ASymbol + '"');
+  end;
+end;
+
+function TParserBase.ExpectIdent: string;
+begin
+  if IsIdent then
+  begin
+    Result := Current.Text;
+    Advance;
+  end
+  else
+  begin
+    DiagnoseUnexpected(cTexts[TCursorText.Identifier].Text);
+    Result := '';
+  end;
+end;
+
+procedure TParserBase.Diagnose(const AMessage: string);
+begin
+  DiagnoseAt(AMessage, Current.StartPos, Current.EndPos);
+end;
+
+procedure TParserBase.DiagnoseMissingSemicolon;
+begin
+  DiagnoseMissingSemicolon(False);
+end;
+
+procedure TParserBase.DiagnoseMissingSemicolon(AStatement: Boolean);
+var
+  mPrevious: TPascalToken;
+  mCode: string;
+begin
+  // Folgefehler: An dieser Stelle wurde schon etwas gemeldet.
+  if (FDiagnostics.Count > 0) and (FDiagnostics.Last.StartPos = Current.StartPos) then
+  begin
+    Exit;
+  end;
+  mPrevious := PeekToken(-1);
+  // Am Zeilenende dort melden, wo es fehlt, nicht erst in der nächsten Zeile.
+  mCode := 'E2029';
+  if AStatement then
+  begin
+    mCode := 'E2066';
+  end;
+  if (FIndex > 0) and (AtEnd or (Current.StartPos.Line > mPrevious.EndPos.Line)) then
+  begin
+    DiagnoseCode(mCode, cTexts[TCursorText.Missing].Text, mPrevious.EndPos, mPrevious.EndPos,
+      TParserFix.Create(cTexts[TCursorText.Add].Text, mPrevious.EndPos, mPrevious.EndPos, ';', False));
+  end
+  else if AStatement then
+  begin
+    // B := 1 2; – es fehlt ein Operator oder das Semikolon.
+    DiagnoseCode(mCode, cTexts[TCursorText.OperatorOrMissing].Text, Current.StartPos, Current.EndPos);
+  end
+  else
+  begin
+    DiagnoseUnexpected('";"');
+  end;
+end;
+
+procedure TParserBase.DiagnoseAt(const AMessage: string; const AStartPos, AEndPos: TTextPosition);
+var
+  mDiagnostic: TSyntaxDiagnostic;
+begin
+  mDiagnostic := Default(TSyntaxDiagnostic);
+  mDiagnostic.Message := AMessage;
+  mDiagnostic.StartPos := AStartPos;
+  mDiagnostic.EndPos := AEndPos;
+  AddDiagnostic(mDiagnostic);
+end;
+
+procedure TParserBase.DiagnoseCode(const ACode, AMessage: string; const AStartPos, AEndPos: TTextPosition);
+begin
+  DiagnoseCode(ACode, AMessage, AStartPos, AEndPos, Default(TParserFix));
+end;
+
+procedure TParserBase.DiagnoseCode(const ACode, AMessage: string; const AStartPos, AEndPos: TTextPosition;
+  const AFix: TParserFix);
+var
+  mDiagnostic: TSyntaxDiagnostic;
+begin
+  mDiagnostic := Default(TSyntaxDiagnostic);
+  mDiagnostic.Message := AMessage + cTexts[TCursorText.Like].Fmt([ACode]);
+  mDiagnostic.StartPos := AStartPos;
+  mDiagnostic.EndPos := AEndPos;
+  mDiagnostic.Code := ACode;
+  mDiagnostic.FixTitle := AFix.Title;
+  mDiagnostic.FixEdits := AFix.Edits;
+  mDiagnostic.FixSafe := AFix.Safe;
+  AddDiagnostic(mDiagnostic);
+end;
+
+procedure TParserBase.AddDiagnostic(const ADiagnostic: TSyntaxDiagnostic);
+begin
+  // Mehrere Folgefehler an derselben Stelle melden wir nur einmal.
+  if (FDiagnostics.Count > 0) and (FDiagnostics.Last.StartPos = ADiagnostic.StartPos) then
+  begin
+    Exit;
+  end;
+  FDiagnostics.Add(ADiagnostic);
+end;
+
+procedure TParserBase.DiagnoseUnexpected(const AExpected: string);
+begin
+  DiagnoseUnexpected('E2029', AExpected);
+end;
+
+procedure TParserBase.DiagnoseUnexpected(const ACode, AExpected: string);
+var
+  mExpected: string;
+begin
+  // Wie der Compiler: '%s' erwartet, aber '%s' gefunden.
+  mExpected := StringReplace(AExpected, '"', '''', [rfReplaceAll]);
+  if AtEnd then
+  begin
+    DiagnoseCode(ACode, mExpected + cTexts[TCursorText.ExpectedButEndOfFile].Text, Current.StartPos, Current.EndPos);
+  end
+  else
+  begin
+    DiagnoseCode(ACode, cTexts[TCursorText.ExpectedButFound].Fmt([mExpected, Current.Text]), Current.StartPos,
+      Current.EndPos);
   end;
 end;
 
@@ -587,143 +726,6 @@ begin
     TTextPosition.Create(mFirst.Line, mFirst.Character + Length(mCloser)),
     TParserFix.Create(cTexts[TCursorText.CloseCommentInLine].Fmt([mFirst.Line + 1]), mLineEnd, mLineEnd, mCloser,
     False));
-end;
-
-procedure TParserBase.ExpectSym(const ASymbol: string);
-begin
-  if AcceptSym(ASymbol) then
-  begin
-    Exit;
-  end;
-  if ASymbol = ';' then
-  begin
-    DiagnoseMissingSemicolon;
-  end
-  else
-  begin
-    DiagnoseUnexpected('"' + ASymbol + '"');
-  end;
-end;
-
-procedure TParserBase.DiagnoseMissingSemicolon;
-begin
-  DiagnoseMissingSemicolon(False);
-end;
-
-procedure TParserBase.DiagnoseMissingSemicolon(AStatement: Boolean);
-var
-  mPrevious: TPascalToken;
-  mCode: string;
-begin
-  // Folgefehler: An dieser Stelle wurde schon etwas gemeldet.
-  if (FDiagnostics.Count > 0) and (FDiagnostics.Last.StartPos = Current.StartPos) then
-  begin
-    Exit;
-  end;
-  mPrevious := PeekToken(-1);
-  // Am Zeilenende dort melden, wo es fehlt, nicht erst in der nächsten Zeile.
-  mCode := 'E2029';
-  if AStatement then
-  begin
-    mCode := 'E2066';
-  end;
-  if (FIndex > 0) and (AtEnd or (Current.StartPos.Line > mPrevious.EndPos.Line)) then
-  begin
-    DiagnoseCode(mCode, cTexts[TCursorText.Missing].Text, mPrevious.EndPos, mPrevious.EndPos,
-      TParserFix.Create(cTexts[TCursorText.Add].Text, mPrevious.EndPos, mPrevious.EndPos, ';', False));
-  end
-  else if AStatement then
-  begin
-    // B := 1 2; – es fehlt ein Operator oder das Semikolon.
-    DiagnoseCode(mCode, cTexts[TCursorText.OperatorOrMissing].Text, Current.StartPos, Current.EndPos);
-  end
-  else
-  begin
-    DiagnoseUnexpected('";"');
-  end;
-end;
-
-function TParserBase.ExpectIdent: string;
-begin
-  if IsIdent then
-  begin
-    Result := Current.Text;
-    Advance;
-  end
-  else
-  begin
-    DiagnoseUnexpected(cTexts[TCursorText.Identifier].Text);
-    Result := '';
-  end;
-end;
-
-procedure TParserBase.Diagnose(const AMessage: string);
-begin
-  DiagnoseAt(AMessage, Current.StartPos, Current.EndPos);
-end;
-
-procedure TParserBase.DiagnoseAt(const AMessage: string; const AStartPos, AEndPos: TTextPosition);
-var
-  mDiagnostic: TSyntaxDiagnostic;
-begin
-  mDiagnostic := Default(TSyntaxDiagnostic);
-  mDiagnostic.Message := AMessage;
-  mDiagnostic.StartPos := AStartPos;
-  mDiagnostic.EndPos := AEndPos;
-  AddDiagnostic(mDiagnostic);
-end;
-
-procedure TParserBase.AddDiagnostic(const ADiagnostic: TSyntaxDiagnostic);
-begin
-  // Mehrere Folgefehler an derselben Stelle melden wir nur einmal.
-  if (FDiagnostics.Count > 0) and (FDiagnostics.Last.StartPos = ADiagnostic.StartPos) then
-  begin
-    Exit;
-  end;
-  FDiagnostics.Add(ADiagnostic);
-end;
-
-procedure TParserBase.DiagnoseCode(const ACode, AMessage: string; const AStartPos, AEndPos: TTextPosition);
-begin
-  DiagnoseCode(ACode, AMessage, AStartPos, AEndPos, Default(TParserFix));
-end;
-
-procedure TParserBase.DiagnoseCode(const ACode, AMessage: string; const AStartPos, AEndPos: TTextPosition;
-  const AFix: TParserFix);
-var
-  mDiagnostic: TSyntaxDiagnostic;
-begin
-  mDiagnostic := Default(TSyntaxDiagnostic);
-  mDiagnostic.Message := AMessage + cTexts[TCursorText.Like].Fmt([ACode]);
-  mDiagnostic.StartPos := AStartPos;
-  mDiagnostic.EndPos := AEndPos;
-  mDiagnostic.Code := ACode;
-  mDiagnostic.FixTitle := AFix.Title;
-  mDiagnostic.FixEdits := AFix.Edits;
-  mDiagnostic.FixSafe := AFix.Safe;
-  AddDiagnostic(mDiagnostic);
-end;
-
-procedure TParserBase.DiagnoseUnexpected(const AExpected: string);
-begin
-  DiagnoseUnexpected('E2029', AExpected);
-end;
-
-procedure TParserBase.DiagnoseUnexpected(const ACode, AExpected: string);
-var
-  mExpected: string;
-begin
-  // Wie der Compiler: '%s' erwartet, aber '%s' gefunden.
-  mExpected := StringReplace(AExpected, '"', '''', [rfReplaceAll]);
-  if AtEnd then
-  begin
-    DiagnoseCode(ACode, mExpected + cTexts[TCursorText.ExpectedButEndOfFile].Text, Current.StartPos, Current.EndPos);
-  end
-  else
-  begin
-    DiagnoseCode(ACode, cTexts[TCursorText.ExpectedButFound].Fmt([mExpected, Current.Text]), Current.StartPos,
-      Current.EndPos);
-  end;
 end;
 
 function TParserBase.IsRecoveryPoint(ARecovery: TRecovery): Boolean;

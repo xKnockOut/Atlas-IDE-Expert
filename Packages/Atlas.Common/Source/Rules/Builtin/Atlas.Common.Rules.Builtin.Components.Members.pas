@@ -382,6 +382,8 @@ const
   // Generische Sammlungen, deren erster Typparameter der Schlüssel ist.
   cHashedCollections: array[0..3] of string = ('TDictionary', 'TObjectDictionary', 'THashSet', 'TMultiMap');
 
+{ TEqualsWithoutGetHashCodeRule }
+
 function TEqualsWithoutGetHashCodeRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('equals-without-gethashcode', TRuleSeverity.Warning,

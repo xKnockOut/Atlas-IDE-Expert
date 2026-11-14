@@ -286,14 +286,45 @@ begin
   FOnMessage := AOnMessage;
 end;
 
-function TAtlasIdeExtractFrame.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
+procedure TAtlasIdeExtractFrame.Undo;
+var
+  mLast: TUndoState;
+  mOnMessage: TProc<string>;
 begin
-  if not ASettings.DesignerExtractFrame then
-  begin
-    Exit(Default(TAtlasDesignerButton));
-  end;
-  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.ExtractFrame,
-    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EfHint));
+  mLast := FLast;
+  FLast := Default(TUndoState);
+  mOnMessage := FOnMessage;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.DesignerBar,
+    procedure
+    var
+      mProject: IOTAProject;
+    begin
+      CloseModule(mLast.FrameFile);
+      CloseModule(mLast.FormFile);
+      mProject := ProjectOf(mLast.Project);
+      if mProject <> nil then
+      begin
+        mProject.RemoveFile(mLast.FrameFile);
+      end;
+      try
+        SaveText(mLast.FormFile, mLast.OldUnit);
+        SaveText(mLast.FormDfm, mLast.OldDfm);
+        TAtlasIdeUndoTarget.Recycle(ChangeFileExt(mLast.FrameFile, '.dfm'));
+        TAtlasIdeUndoTarget.Recycle(mLast.FrameFile);
+      except
+        on E: EAtlasTextFileError do
+        begin
+          mOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.EfFailed, [E.Message]));
+        end;
+        on E: EInOutError do
+        begin
+          mOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.EfFailed, [E.Message]));
+        end;
+      end;
+      OpenForm(mLast.FormFile);
+      mOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.EfUndone,
+        [ExtractFileName(mLast.FormFile)]));
+    end);
 end;
 
 function SourceOf(const AEditor: IOTAFormEditor; ARoot: TComponent; out ASource: TExtractSource): Boolean;
@@ -381,6 +412,16 @@ begin
     end);
 end;
 
+function TAtlasIdeExtractFrame.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
+begin
+  if not ASettings.DesignerExtractFrame then
+  begin
+    Exit(Default(TAtlasDesignerButton));
+  end;
+  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.ExtractFrame,
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EfHint));
+end;
+
 procedure TAtlasIdeExtractFrame.Run;
 var
   mEditor: IOTAFormEditor;
@@ -434,47 +475,6 @@ begin
     TAtlasExtractDialogResult.Undo:
       Undo;
   end;
-end;
-
-procedure TAtlasIdeExtractFrame.Undo;
-var
-  mLast: TUndoState;
-  mOnMessage: TProc<string>;
-begin
-  mLast := FLast;
-  FLast := Default(TUndoState);
-  mOnMessage := FOnMessage;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.DesignerBar,
-    procedure
-    var
-      mProject: IOTAProject;
-    begin
-      CloseModule(mLast.FrameFile);
-      CloseModule(mLast.FormFile);
-      mProject := ProjectOf(mLast.Project);
-      if mProject <> nil then
-      begin
-        mProject.RemoveFile(mLast.FrameFile);
-      end;
-      try
-        SaveText(mLast.FormFile, mLast.OldUnit);
-        SaveText(mLast.FormDfm, mLast.OldDfm);
-        TAtlasIdeUndoTarget.Recycle(ChangeFileExt(mLast.FrameFile, '.dfm'));
-        TAtlasIdeUndoTarget.Recycle(mLast.FrameFile);
-      except
-        on E: EAtlasTextFileError do
-        begin
-          mOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.EfFailed, [E.Message]));
-        end;
-        on E: EInOutError do
-        begin
-          mOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.EfFailed, [E.Message]));
-        end;
-      end;
-      OpenForm(mLast.FormFile);
-      mOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.EfUndone,
-        [ExtractFileName(mLast.FormFile)]));
-    end);
 end;
 
 end.

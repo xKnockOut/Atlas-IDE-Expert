@@ -140,29 +140,18 @@ begin
   FBox.OnMouseUp := BoxMouseUp;
 end;
 
-function TAtlasWelcomeStateFrame.Button(AButton: TAtlasStateButton): TButton;
-begin
-  Result := FButtons[AButton];
-end;
-
-class function TAtlasWelcomeStateFrame.ButtonCaption(AButton: TAtlasStateButton): string;
-begin
-  case AButton of
-    TAtlasStateButton.Restart:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateRestart);
-    TAtlasStateButton.Settings:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateSettings);
-    TAtlasStateButton.LogFolder:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateLogFolder);
-  else
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateUpdate);
-  end;
-end;
-
 procedure TAtlasWelcomeStateFrame.SetSource(const AValue: IAtlasStateSource);
 begin
   FSource := AValue;
   UpdateContent;
+end;
+
+function TAtlasWelcomeStateFrame.BodyHeight: Integer;
+var
+  mRows: Integer;
+begin
+  mRows := Max(Length(FRows), 1);
+  Result := mRows * ScaleValue(cRowHeight) + ScaleValue(cIndent) + BarHeight;
 end;
 
 procedure TAtlasWelcomeStateFrame.UpdateContent;
@@ -206,119 +195,6 @@ begin
   if mCount <> Length(FRows) then
   begin
     HeightChanged;
-  end;
-end;
-
-function TAtlasWelcomeStateFrame.RowTop(ARow: Integer): Integer;
-begin
-  Result := ScaleValue(cIndent) div 2 + ARow * ScaleValue(cRowHeight);
-end;
-
-function TAtlasWelcomeStateFrame.BarHeight: Integer;
-begin
-  Result := FBarRows * (ScaleValue(cButtonHeight) + ScaleValue(cButtonGap)) + ScaleValue(cButtonGap);
-end;
-
-function TAtlasWelcomeStateFrame.BodyHeight: Integer;
-var
-  mRows: Integer;
-begin
-  mRows := Max(Length(FRows), 1);
-  Result := mRows * ScaleValue(cRowHeight) + ScaleValue(cIndent) + BarHeight;
-end;
-
-function TAtlasWelcomeStateFrame.LayoutButtons: Integer;
-var
-  mKind: TAtlasStateButton;
-  mLeft, mTop, mWidth, mRight: Integer;
-  mMeasure: TBitmap;
-begin
-  Result := 1;
-  mLeft := ScaleValue(cIndent);
-  mTop := ScaleValue(cButtonGap);
-  mRight := FBar.ClientWidth - ScaleValue(cIndent);
-  // Messen auf einer Bitmap: Der Frame hat beim Anlegen noch kein Fenster.
-  mMeasure := TBitmap.Create;
-  try
-    mMeasure.Canvas.Font.Assign(Font);
-    for mKind := Low(TAtlasStateButton) to High(TAtlasStateButton) do
-    begin
-      if not FButtons[mKind].Visible then
-      begin
-        Continue;
-      end;
-      mWidth := mMeasure.Canvas.TextWidth(FButtons[mKind].Caption) + 2 * ScaleValue(cButtonPadding);
-      // Zu schmal: nächste Reihe (nicht für den ersten Knopf einer Reihe).
-      if (mLeft > ScaleValue(cIndent)) and (mRight > 0) and (mLeft + mWidth > mRight) then
-      begin
-        mLeft := ScaleValue(cIndent);
-        Inc(mTop, ScaleValue(cButtonHeight) + ScaleValue(cButtonGap));
-        Inc(Result);
-      end;
-      FButtons[mKind].SetBounds(mLeft, mTop, mWidth, ScaleValue(cButtonHeight));
-      Inc(mLeft, mWidth + ScaleValue(cButtonGap));
-    end;
-  finally
-    mMeasure.Free;
-  end;
-end;
-
-procedure TAtlasWelcomeStateFrame.BarResize(Sender: TObject);
-var
-  mBarRows: Integer;
-begin
-  mBarRows := LayoutButtons;
-  if mBarRows = FBarRows then
-  begin
-    Exit;
-  end;
-  // Mehr oder weniger Reihen Knöpfe: Der Frame „Atlas“ ordnet die Spalten neu.
-  FBarRows := mBarRows;
-  FBar.Height := BarHeight;
-  HeightChanged;
-end;
-
-class function TAtlasWelcomeStateFrame.DotColor(AState: TAtlasStatusState): TColor;
-begin
-  // Dieselben Töne wie die Marken der Projekte (#592): lesbar im hellen und im dunklen Thema.
-  case AState of
-    TAtlasStatusState.Green:
-      Result := TColor($0043A02E);
-    TAtlasStatusState.Yellow:
-      Result := TColor($001A8CC9);
-    TAtlasStatusState.Red:
-      Result := TColor($002E22CF);
-  else
-    Result := TColor($00817666);
-  end;
-end;
-
-class function TAtlasWelcomeStateFrame.RowText(const ARow: TAtlasStateRow): string;
-begin
-  if ARow.Present and (ARow.Text <> '') then
-  begin
-    Exit(ARow.Text);
-  end;
-  case ARow.Kind of
-    TAtlasStateRowKind.Server:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateServerMissing);
-    TAtlasStateRowKind.Version:
-      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeStateVersion, [TAtlasPluginVersion.cVersion]);
-    TAtlasStateRowKind.Index:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateIndexMissing);
-    TAtlasStateRowKind.Setup:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateSetupMissing);
-  else
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateDiagnosticOff);
-  end;
-end;
-
-class function TAtlasWelcomeStateFrame.DetailText(const ARow: TAtlasStateRow): string;
-begin
-  Result := '';
-  if ARow.Present then
-  begin
-    Result := ARow.Detail;
   end;
 end;
 
@@ -384,6 +260,110 @@ begin
   ACanvas.Font.Style := [];
 end;
 
+procedure TAtlasWelcomeStateFrame.BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+var
+  mRow: Integer;
+begin
+  mRow := HitTest(Y);
+  if (mRow >= 0) and FRows[mRow].HasAction then
+  begin
+    FBox.Cursor := crHandPoint;
+  end
+  else
+  begin
+    FBox.Cursor := crDefault;
+  end;
+  if mRow = FHintRow then
+  begin
+    Exit;
+  end;
+  FHintRow := mRow;
+  if (mRow >= 0) and FRows[mRow].Present then
+  begin
+    FBox.Hint := FRows[mRow].Hint;
+  end
+  else
+  begin
+    FBox.Hint := '';
+  end;
+  Application.CancelHint;
+end;
+
+procedure TAtlasWelcomeStateFrame.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
+  Y: Integer);
+begin
+  if Button = mbLeft then
+  begin
+    ClickRow(HitTest(Y));
+  end;
+end;
+
+procedure TAtlasWelcomeStateFrame.ButtonClick(Sender: TObject);
+begin
+  ClickButton(TAtlasStateButton((Sender as TButton).Tag));
+end;
+
+procedure TAtlasWelcomeStateFrame.BarResize(Sender: TObject);
+var
+  mBarRows: Integer;
+begin
+  mBarRows := LayoutButtons;
+  if mBarRows = FBarRows then
+  begin
+    Exit;
+  end;
+  // Mehr oder weniger Reihen Knöpfe: Der Frame „Atlas“ ordnet die Spalten neu.
+  FBarRows := mBarRows;
+  FBar.Height := BarHeight;
+  HeightChanged;
+end;
+
+function TAtlasWelcomeStateFrame.LayoutButtons: Integer;
+var
+  mKind: TAtlasStateButton;
+  mLeft, mTop, mWidth, mRight: Integer;
+  mMeasure: TBitmap;
+begin
+  Result := 1;
+  mLeft := ScaleValue(cIndent);
+  mTop := ScaleValue(cButtonGap);
+  mRight := FBar.ClientWidth - ScaleValue(cIndent);
+  // Messen auf einer Bitmap: Der Frame hat beim Anlegen noch kein Fenster.
+  mMeasure := TBitmap.Create;
+  try
+    mMeasure.Canvas.Font.Assign(Font);
+    for mKind := Low(TAtlasStateButton) to High(TAtlasStateButton) do
+    begin
+      if not FButtons[mKind].Visible then
+      begin
+        Continue;
+      end;
+      mWidth := mMeasure.Canvas.TextWidth(FButtons[mKind].Caption) + 2 * ScaleValue(cButtonPadding);
+      // Zu schmal: nächste Reihe (nicht für den ersten Knopf einer Reihe).
+      if (mLeft > ScaleValue(cIndent)) and (mRight > 0) and (mLeft + mWidth > mRight) then
+      begin
+        mLeft := ScaleValue(cIndent);
+        Inc(mTop, ScaleValue(cButtonHeight) + ScaleValue(cButtonGap));
+        Inc(Result);
+      end;
+      FButtons[mKind].SetBounds(mLeft, mTop, mWidth, ScaleValue(cButtonHeight));
+      Inc(mLeft, mWidth + ScaleValue(cButtonGap));
+    end;
+  finally
+    mMeasure.Free;
+  end;
+end;
+
+function TAtlasWelcomeStateFrame.RowTop(ARow: Integer): Integer;
+begin
+  Result := ScaleValue(cIndent) div 2 + ARow * ScaleValue(cRowHeight);
+end;
+
+function TAtlasWelcomeStateFrame.BarHeight: Integer;
+begin
+  Result := FBarRows * (ScaleValue(cButtonHeight) + ScaleValue(cButtonGap)) + ScaleValue(cButtonGap);
+end;
+
 function TAtlasWelcomeStateFrame.HitTest(AY: Integer): Integer;
 begin
   Result := -1;
@@ -433,47 +413,67 @@ begin
     end);
 end;
 
-procedure TAtlasWelcomeStateFrame.ButtonClick(Sender: TObject);
+class function TAtlasWelcomeStateFrame.RowText(const ARow: TAtlasStateRow): string;
 begin
-  ClickButton(TAtlasStateButton((Sender as TButton).Tag));
+  if ARow.Present and (ARow.Text <> '') then
+  begin
+    Exit(ARow.Text);
+  end;
+  case ARow.Kind of
+    TAtlasStateRowKind.Server:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateServerMissing);
+    TAtlasStateRowKind.Version:
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeStateVersion, [TAtlasPluginVersion.cVersion]);
+    TAtlasStateRowKind.Index:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateIndexMissing);
+    TAtlasStateRowKind.Setup:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateSetupMissing);
+  else
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateDiagnosticOff);
+  end;
 end;
 
-procedure TAtlasWelcomeStateFrame.BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
-var
-  mRow: Integer;
+class function TAtlasWelcomeStateFrame.DetailText(const ARow: TAtlasStateRow): string;
 begin
-  mRow := HitTest(Y);
-  if (mRow >= 0) and FRows[mRow].HasAction then
+  Result := '';
+  if ARow.Present then
   begin
-    FBox.Cursor := crHandPoint;
-  end
-  else
-  begin
-    FBox.Cursor := crDefault;
+    Result := ARow.Detail;
   end;
-  if mRow = FHintRow then
-  begin
-    Exit;
-  end;
-  FHintRow := mRow;
-  if (mRow >= 0) and FRows[mRow].Present then
-  begin
-    FBox.Hint := FRows[mRow].Hint;
-  end
-  else
-  begin
-    FBox.Hint := '';
-  end;
-  Application.CancelHint;
 end;
 
-procedure TAtlasWelcomeStateFrame.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
-  Y: Integer);
+class function TAtlasWelcomeStateFrame.DotColor(AState: TAtlasStatusState): TColor;
 begin
-  if Button = mbLeft then
-  begin
-    ClickRow(HitTest(Y));
+  // Dieselben Töne wie die Marken der Projekte (#592): lesbar im hellen und im dunklen Thema.
+  case AState of
+    TAtlasStatusState.Green:
+      Result := TColor($0043A02E);
+    TAtlasStatusState.Yellow:
+      Result := TColor($001A8CC9);
+    TAtlasStatusState.Red:
+      Result := TColor($002E22CF);
+  else
+    Result := TColor($00817666);
   end;
+end;
+
+class function TAtlasWelcomeStateFrame.ButtonCaption(AButton: TAtlasStateButton): string;
+begin
+  case AButton of
+    TAtlasStateButton.Restart:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateRestart);
+    TAtlasStateButton.Settings:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateSettings);
+    TAtlasStateButton.LogFolder:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateLogFolder);
+  else
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateUpdate);
+  end;
+end;
+
+function TAtlasWelcomeStateFrame.Button(AButton: TAtlasStateButton): TButton;
+begin
+  Result := FButtons[AButton];
 end;
 
 end.

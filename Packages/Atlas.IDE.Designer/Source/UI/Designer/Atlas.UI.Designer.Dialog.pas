@@ -40,6 +40,8 @@ const
   /// <summary>Abstand der Beschriftung nach oben, damit sie auf der Textzeile eines Eingabefelds steht.</summary>
   cLabelTop = 3;
 
+{ TAtlasDesignerDialog }
+
 procedure TAtlasDesignerDialog.InitDialog(const ACaption: string; AWidth: Integer; ABorder: TFormBorderStyle);
 begin
   Caption := ACaption;

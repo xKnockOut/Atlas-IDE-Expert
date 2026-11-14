@@ -100,29 +100,6 @@ begin
   inherited;
 end;
 
-class function TAtlasWatchedChanges.IsWatched(const AFileName: string): Boolean;
-const
-  cExtensions: array[0..6] of string = ('.pas', '.inc', '.dpr', '.dpk', '.dfm', '.dproj', '.groupproj');
-var
-  mExtension, mLower: string;
-  mCandidate: string;
-begin
-  mLower := AnsiLowerCase(AFileName);
-  if (Pos('\.git\', mLower) > 0) or (Pos('\__history\', mLower) > 0) or (Pos('\__recovery\', mLower) > 0) then
-  begin
-    Exit(False);
-  end;
-  mExtension := ExtractFileExt(mLower);
-  for mCandidate in cExtensions do
-  begin
-    if mExtension = mCandidate then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 procedure TAtlasWatchedChanges.Merge(const AFileName: string; AKind: TAtlasFileChangeKind);
 var
   mKey: string;
@@ -202,6 +179,29 @@ begin
   finally
     FLock.Leave;
   end;
+end;
+
+class function TAtlasWatchedChanges.IsWatched(const AFileName: string): Boolean;
+const
+  cExtensions: array[0..6] of string = ('.pas', '.inc', '.dpr', '.dpk', '.dfm', '.dproj', '.groupproj');
+var
+  mExtension, mLower: string;
+  mCandidate: string;
+begin
+  mLower := AnsiLowerCase(AFileName);
+  if (Pos('\.git\', mLower) > 0) or (Pos('\__history\', mLower) > 0) or (Pos('\__recovery\', mLower) > 0) then
+  begin
+    Exit(False);
+  end;
+  mExtension := ExtractFileExt(mLower);
+  for mCandidate in cExtensions do
+  begin
+    if mExtension = mCandidate then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 /// <summary>Nach oben bis zum Git-Arbeitsverzeichnis; ohne Git der Ordner selbst.</summary>

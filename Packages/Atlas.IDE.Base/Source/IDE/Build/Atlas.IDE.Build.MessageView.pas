@@ -179,6 +179,23 @@ begin
   FProject := AProject;
 end;
 
+procedure TAtlasMessageViewReader.GroupFinished(ASucceeded: Boolean; ADurationMs: Int64);
+begin
+  // Dauer des ganzen Laufs für die Zusammenfassung der Projektgruppe (#758); das Lesen wartet ohnehin auf die
+  // Nachrichtenschleife.
+  FProject.GroupDurationMs := ADurationMs;
+  ReadSoon(ASucceeded);
+end;
+
+procedure TAtlasMessageViewReader.ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean;
+  ADurationMs: Int64);
+begin
+  FProject := AProject;
+  // Build-Dauer für den Projektverlauf (#758).
+  FProject.DurationMs := ADurationMs;
+  ReadSoon(ASucceeded);
+end;
+
 procedure TAtlasMessageViewReader.ReadSoon(ASucceeded: Boolean);
 begin
   FSucceeded := ASucceeded;
@@ -209,23 +226,6 @@ begin
         FOnMessages(Messages, FProject, FSucceeded, Info, Readable);
       end;
     end);
-end;
-
-procedure TAtlasMessageViewReader.GroupFinished(ASucceeded: Boolean; ADurationMs: Int64);
-begin
-  // Dauer des ganzen Laufs für die Zusammenfassung der Projektgruppe (#758); das Lesen wartet ohnehin auf die
-  // Nachrichtenschleife.
-  FProject.GroupDurationMs := ADurationMs;
-  ReadSoon(ASucceeded);
-end;
-
-procedure TAtlasMessageViewReader.ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean;
-  ADurationMs: Int64);
-begin
-  FProject := AProject;
-  // Build-Dauer für den Projektverlauf (#758).
-  FProject.DurationMs := ADurationMs;
-  ReadSoon(ASucceeded);
 end;
 
 { TAtlasMessageView }
@@ -293,6 +293,8 @@ type
     function DataOf(ANode: Pointer): Pointer;
   end;
 
+{ TTreeWalk }
+
 function TTreeWalk.Resolve(const AContext: TRttiContext; out AInfo: string): Boolean;
 var
   mType: TRttiType;
@@ -345,6 +347,8 @@ function TTreeWalk.DataOf(ANode: Pointer): Pointer;
 begin
   Result := GetNodeData.Invoke(Tree, [PointerArg(GetNodeData.GetParameters[0], ANode)]).AsType<Pointer>;
 end;
+
+{ TAtlasMessageView }
 
 class function TAtlasMessageView.Read(out AMessages: TArray<TAtlasCompilerMessage>; out AInfo: string): Boolean;
 var

@@ -99,6 +99,8 @@ const
     (De: 'In case umwandeln'; En: 'Convert to case'),
     (De: 'In if-Kette umwandeln'; En: 'Convert to if chain'));
 
+{ TIfCase }
+
 class function TIfCase.ToCaseTitle: string;
 begin
   Result := cTexts[TIfCaseText.ConvertToCase].Text;
@@ -197,6 +199,117 @@ begin
   end;
 end;
 
+function TChainReader.ReadLabels(ANode: TSyntaxNode; var ALabels: TArray<TCaseLabel>): Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  Result := False;
+  mNode := TExpressionText.Strip(ANode);
+  if (mNode.Kind <> TSyntaxKind.BinaryExpr) or (mNode.ChildCount <> 2) then
+  begin
+    Exit;
+  end;
+  if SameText(mNode.Name, 'or') then
+  begin
+    Result := ReadLabels(mNode[0], ALabels) and ReadLabels(mNode[1], ALabels);
+  end
+  else if SameText(mNode.Name, 'and') then
+  begin
+    Result := ReadRange(mNode, ALabels);
+  end
+  else if mNode.Name = '=' then
+  begin
+    Result := ReadEqual(mNode, ALabels);
+  end
+  else if SameText(mNode.Name, 'in') and (TExpressionText.Strip(mNode[1]).Kind = TSyntaxKind.SetConstructor) and
+    MatchSelector(mNode[0]) then
+  begin
+    Result := ReadSet(TExpressionText.Strip(mNode[1]), ALabels);
+  end;
+end;
+
+function TChainReader.ReadEqual(ANode: TSyntaxNode; var ALabels: TArray<TCaseLabel>): Boolean;
+var
+  mItem: TCaseLabel;
+begin
+  mItem := Default(TCaseLabel);
+  if IsConstantLabel(ANode[1]) and MatchSelector(ANode[0]) then
+  begin
+    mItem.Low := TExpressionText.Strip(ANode[1]);
+  end
+  else if IsConstantLabel(ANode[0]) and MatchSelector(ANode[1]) then
+  begin
+    mItem.Low := TExpressionText.Strip(ANode[0]);
+  end
+  else
+  begin
+    Exit(False);
+  end;
+  ALabels := ALabels + [mItem];
+  Result := True;
+end;
+
+function TChainReader.ReadSet(ASet: TSyntaxNode; var ALabels: TArray<TCaseLabel>): Boolean;
+var
+  mIndex: Integer;
+  mItem: TCaseLabel;
+begin
+  Result := ASet.ChildCount > 0;
+  for mIndex := 0 to ASet.ChildCount - 1 do
+  begin
+    if not ElementLabel(ASet[mIndex], mItem) then
+    begin
+      Exit(False);
+    end;
+    ALabels := ALabels + [mItem];
+  end;
+end;
+
+function TChainReader.ElementLabel(AElement: TSyntaxNode; out AItem: TCaseLabel): Boolean;
+begin
+  AItem := Default(TCaseLabel);
+  if AElement.Kind = TSyntaxKind.RangeExpr then
+  begin
+    Result := (AElement.ChildCount = 2) and IsConstantLabel(AElement[0]) and IsConstantLabel(AElement[1]);
+    if Result then
+    begin
+      AItem.Low := TExpressionText.Strip(AElement[0]);
+      AItem.High := TExpressionText.Strip(AElement[1]);
+    end;
+  end
+  else
+  begin
+    Result := IsConstantLabel(AElement);
+    AItem.Low := TExpressionText.Strip(AElement);
+  end;
+end;
+
+function TChainReader.ReadRange(ANode: TSyntaxNode; var ALabels: TArray<TCaseLabel>): Boolean;
+var
+  mFirst, mSecond: TSyntaxNode;
+  mFirstLower, mSecondLower: Boolean;
+  mItem: TCaseLabel;
+begin
+  Result := (ANode.ChildCount = 2) and Bound(ANode[0], mFirst, mFirstLower) and
+    Bound(ANode[1], mSecond, mSecondLower) and
+    (mFirstLower <> mSecondLower);
+  if not Result then
+  begin
+    Exit;
+  end;
+  if mFirstLower then
+  begin
+    mItem.Low := mFirst;
+    mItem.High := mSecond;
+  end
+  else
+  begin
+    mItem.Low := mSecond;
+    mItem.High := mFirst;
+  end;
+  ALabels := ALabels + [mItem];
+end;
+
 function TChainReader.Bound(ANode: TSyntaxNode; out AValue: TSyntaxNode; out ALower: Boolean): Boolean;
 var
   mNode: TSyntaxNode;
@@ -227,117 +340,6 @@ begin
     AValue := TExpressionText.Strip(mNode[0]);
     ALower := mOp = '<=';
     Result := True;
-  end;
-end;
-
-function TChainReader.ReadRange(ANode: TSyntaxNode; var ALabels: TArray<TCaseLabel>): Boolean;
-var
-  mFirst, mSecond: TSyntaxNode;
-  mFirstLower, mSecondLower: Boolean;
-  mItem: TCaseLabel;
-begin
-  Result := (ANode.ChildCount = 2) and Bound(ANode[0], mFirst, mFirstLower) and
-    Bound(ANode[1], mSecond, mSecondLower) and
-    (mFirstLower <> mSecondLower);
-  if not Result then
-  begin
-    Exit;
-  end;
-  if mFirstLower then
-  begin
-    mItem.Low := mFirst;
-    mItem.High := mSecond;
-  end
-  else
-  begin
-    mItem.Low := mSecond;
-    mItem.High := mFirst;
-  end;
-  ALabels := ALabels + [mItem];
-end;
-
-function TChainReader.ReadEqual(ANode: TSyntaxNode; var ALabels: TArray<TCaseLabel>): Boolean;
-var
-  mItem: TCaseLabel;
-begin
-  mItem := Default(TCaseLabel);
-  if IsConstantLabel(ANode[1]) and MatchSelector(ANode[0]) then
-  begin
-    mItem.Low := TExpressionText.Strip(ANode[1]);
-  end
-  else if IsConstantLabel(ANode[0]) and MatchSelector(ANode[1]) then
-  begin
-    mItem.Low := TExpressionText.Strip(ANode[0]);
-  end
-  else
-  begin
-    Exit(False);
-  end;
-  ALabels := ALabels + [mItem];
-  Result := True;
-end;
-
-function TChainReader.ElementLabel(AElement: TSyntaxNode; out AItem: TCaseLabel): Boolean;
-begin
-  AItem := Default(TCaseLabel);
-  if AElement.Kind = TSyntaxKind.RangeExpr then
-  begin
-    Result := (AElement.ChildCount = 2) and IsConstantLabel(AElement[0]) and IsConstantLabel(AElement[1]);
-    if Result then
-    begin
-      AItem.Low := TExpressionText.Strip(AElement[0]);
-      AItem.High := TExpressionText.Strip(AElement[1]);
-    end;
-  end
-  else
-  begin
-    Result := IsConstantLabel(AElement);
-    AItem.Low := TExpressionText.Strip(AElement);
-  end;
-end;
-
-function TChainReader.ReadSet(ASet: TSyntaxNode; var ALabels: TArray<TCaseLabel>): Boolean;
-var
-  mIndex: Integer;
-  mItem: TCaseLabel;
-begin
-  Result := ASet.ChildCount > 0;
-  for mIndex := 0 to ASet.ChildCount - 1 do
-  begin
-    if not ElementLabel(ASet[mIndex], mItem) then
-    begin
-      Exit(False);
-    end;
-    ALabels := ALabels + [mItem];
-  end;
-end;
-
-function TChainReader.ReadLabels(ANode: TSyntaxNode; var ALabels: TArray<TCaseLabel>): Boolean;
-var
-  mNode: TSyntaxNode;
-begin
-  Result := False;
-  mNode := TExpressionText.Strip(ANode);
-  if (mNode.Kind <> TSyntaxKind.BinaryExpr) or (mNode.ChildCount <> 2) then
-  begin
-    Exit;
-  end;
-  if SameText(mNode.Name, 'or') then
-  begin
-    Result := ReadLabels(mNode[0], ALabels) and ReadLabels(mNode[1], ALabels);
-  end
-  else if SameText(mNode.Name, 'and') then
-  begin
-    Result := ReadRange(mNode, ALabels);
-  end
-  else if mNode.Name = '=' then
-  begin
-    Result := ReadEqual(mNode, ALabels);
-  end
-  else if SameText(mNode.Name, 'in') and (TExpressionText.Strip(mNode[1]).Kind = TSyntaxKind.SetConstructor) and
-    MatchSelector(mNode[0]) then
-  begin
-    Result := ReadSet(TExpressionText.Strip(mNode[1]), ALabels);
   end;
 end;
 
@@ -532,6 +534,45 @@ end;
 
 { TIfCaseLookup }
 
+class function TIfCaseLookup.FromResolver(AResolver: TNameResolver; ATree: TSyntaxTree;
+  const AFileName: string): TIfCaseLookup;
+var
+  mFileName: string;
+begin
+  mFileName := AFileName;
+  Result.SelectorKind :=
+    function(ANode: TSyntaxNode; out ACallable: Boolean): TCaseSelectorKind
+    var
+      Symbol, TypeInfo: TResolvedSymbol;
+      TypeFound: Boolean;
+    begin
+      Result := TCaseSelectorKind.Unknown;
+      ACallable := False;
+      if not (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
+        TSyntaxKind.Call]) or not AResolver.NodeType(ATree, mFileName, ANode, Symbol, TypeInfo, TypeFound) then
+      begin
+        Exit;
+      end;
+      // Eine Funktion (auch ohne Klammern) liefe in der if-Kette mehrmals.
+      ACallable := (ANode.Kind = TSyntaxKind.Call) or (Symbol.SymbolKind in [TIndexSymbolKind.Method,
+        TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_]);
+      if TypeFound then
+      begin
+        Result := KindOfType(TypeInfo);
+      end;
+    end;
+  Result.IsConstant :=
+    function(ANode: TSyntaxNode): Boolean
+    var
+      Symbol, TypeInfo: TResolvedSymbol;
+      TypeFound: Boolean;
+    begin
+      Result := AResolver.NodeType(ATree, mFileName, ANode, Symbol, TypeInfo, TypeFound) and
+        ((Symbol.SymbolKind = TIndexSymbolKind.EnumMember) or ((Symbol.SymbolKind = TIndexSymbolKind.Constant) and
+        (Symbol.TypeName = ''))) and not Symbol.IsParameter;
+    end;
+end;
+
 class function TIfCaseLookup.KindOfType(const AType: TResolvedSymbol): TCaseSelectorKind;
 begin
   Result := TCaseSelectorKind.Unknown;
@@ -572,51 +613,7 @@ begin
   end;
 end;
 
-class function TIfCaseLookup.FromResolver(AResolver: TNameResolver; ATree: TSyntaxTree;
-  const AFileName: string): TIfCaseLookup;
-var
-  mFileName: string;
-begin
-  mFileName := AFileName;
-  Result.SelectorKind :=
-    function(ANode: TSyntaxNode; out ACallable: Boolean): TCaseSelectorKind
-    var
-      Symbol, TypeInfo: TResolvedSymbol;
-      TypeFound: Boolean;
-    begin
-      Result := TCaseSelectorKind.Unknown;
-      ACallable := False;
-      if not (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
-        TSyntaxKind.Call]) or not AResolver.NodeType(ATree, mFileName, ANode, Symbol, TypeInfo, TypeFound) then
-      begin
-        Exit;
-      end;
-      // Eine Funktion (auch ohne Klammern) liefe in der if-Kette mehrmals.
-      ACallable := (ANode.Kind = TSyntaxKind.Call) or (Symbol.SymbolKind in [TIndexSymbolKind.Method,
-        TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_]);
-      if TypeFound then
-      begin
-        Result := KindOfType(TypeInfo);
-      end;
-    end;
-  Result.IsConstant :=
-    function(ANode: TSyntaxNode): Boolean
-    var
-      Symbol, TypeInfo: TResolvedSymbol;
-      TypeFound: Boolean;
-    begin
-      Result := AResolver.NodeType(ATree, mFileName, ANode, Symbol, TypeInfo, TypeFound) and
-        ((Symbol.SymbolKind = TIndexSymbolKind.EnumMember) or ((Symbol.SymbolKind = TIndexSymbolKind.Constant) and
-        (Symbol.TypeName = ''))) and not Symbol.IsParameter;
-    end;
-end;
-
 { TIfCase }
-
-class function TIfCase.IsChainHead(AIf: TSyntaxNode): Boolean;
-begin
-  Result := (AIf <> nil) and (AIf.Kind = TSyntaxKind.IfStatement) and not IsChainElse(AIf);
-end;
 
 class function TIfCase.ConvertibleConditions(const AText: string; ATree: TSyntaxTree; AIf: TSyntaxNode;
   const ALookup: TIfCaseLookup): Integer;
@@ -640,6 +637,11 @@ begin
   finally
     mReader.Free;
   end;
+end;
+
+class function TIfCase.IsChainHead(AIf: TSyntaxNode): Boolean;
+begin
+  Result := (AIf <> nil) and (AIf.Kind = TSyntaxKind.IfStatement) and not IsChainElse(AIf);
 end;
 
 /// <summary>Kopf der if-Kette, deren if … then APosition enthält; nil ohne.</summary>
@@ -938,6 +940,8 @@ type
     /// <summary>if-Kette zu den Zweigen von ACase (ACount Stück) und den else-Anweisungen AElse.</summary>
     function Code(ACase: TSyntaxNode; ACount: Integer; const AElse: TArray<TSyntaxNode>): string;
   end;
+
+{ TIfChainWriter }
 
 function TIfChainWriter.ItemCode(AItem: TSyntaxNode; AGuard: Boolean): string;
 begin

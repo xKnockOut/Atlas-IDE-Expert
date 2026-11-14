@@ -200,36 +200,6 @@ begin
   FParts.List.OnSelectItem := ListSelectItem;
 end;
 
-procedure TAtlasEventFrame.ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
-begin
-  // Überschriften sind nicht wählbar: Windows malt die Auswahl ohne Fokus hell (weiß im dunklen Thema), und
-  // eine gewählte Überschrift hat ohnehin keine Aktion.
-  if Selected and (Item <> nil) and (Item.Index <= High(FItemRows)) and (FItemRows[Item.Index] < 0) then
-  begin
-    Item.Selected := False;
-  end;
-end;
-
-function TAtlasEventFrame.AddCombo(const AItems: array of string): TComboBox;
-var
-  mItem: string;
-begin
-  Result := TComboBox.Create(Self);
-  Result.Parent := FParts.Top;
-  Result.AlignWithMargins := True;
-  Result.Style := csDropDownList;
-  Result.Width := MulDiv(cComboWidth, CurrentPPI, cBasePpi);
-  // Items braucht ein Fenster (ohne Parent: kein übergeordnetes Fenster): erst in CreateWnd füllen.
-  SetLength(FComboFills, Length(FComboFills) + 1);
-  FComboFills[High(FComboFills)].Combo := Result;
-  FComboFills[High(FComboFills)].Items := nil;
-  for mItem in AItems do
-  begin
-    FComboFills[High(FComboFills)].Items := FComboFills[High(FComboFills)].Items + [mItem];
-  end;
-  Result.OnChange := OptionsChanged;
-end;
-
 procedure TAtlasEventFrame.CreateWnd;
 var
   mFill: TComboFill;
@@ -255,162 +225,32 @@ begin
   end;
 end;
 
+function TAtlasEventFrame.AddCombo(const AItems: array of string): TComboBox;
+var
+  mItem: string;
+begin
+  Result := TComboBox.Create(Self);
+  Result.Parent := FParts.Top;
+  Result.AlignWithMargins := True;
+  Result.Style := csDropDownList;
+  Result.Width := MulDiv(cComboWidth, CurrentPPI, cBasePpi);
+  // Items braucht ein Fenster (ohne Parent: kein übergeordnetes Fenster): erst in CreateWnd füllen.
+  SetLength(FComboFills, Length(FComboFills) + 1);
+  FComboFills[High(FComboFills)].Combo := Result;
+  FComboFills[High(FComboFills)].Items := nil;
+  for mItem in AItems do
+  begin
+    FComboFills[High(FComboFills)].Items := FComboFills[High(FComboFills)].Items + [mItem];
+  end;
+  Result.OnChange := OptionsChanged;
+end;
+
 function TAtlasEventFrame.AddMenuItem(const ACaption: string; const AOnClick: TNotifyEvent): TMenuItem;
 begin
   Result := TMenuItem.Create(FParts.Menu);
   Result.Caption := ACaption;
   Result.OnClick := AOnClick;
   FParts.Menu.Items.Add(Result);
-end;
-
-procedure TAtlasEventFrame.OptionsChanged(Sender: TObject);
-begin
-  if not FUpdating and Assigned(FOnOptions) then
-  begin
-    FOnOptions();
-  end;
-end;
-
-function TAtlasEventFrame.FilterText: string;
-begin
-  Result := Trim(FParts.Filter.Text);
-end;
-
-function TAtlasEventFrame.EventFilter: string;
-begin
-  Result := '';
-  if FParts.Event.ItemIndex > 0 then
-  begin
-    Result := FParts.Event.Items[FParts.Event.ItemIndex];
-  end;
-end;
-
-function TAtlasEventFrame.OnlyFindings: Boolean;
-begin
-  Result := FParts.OnlyFindings.Checked;
-end;
-
-function TAtlasEventFrame.Group: TAtlasEventGroup;
-begin
-  case FParts.Group.ItemIndex of
-    1:
-      Result := TAtlasEventGroup.Event;
-    2:
-      Result := TAtlasEventGroup.Handler;
-  else
-    Result := TAtlasEventGroup.Component;
-  end;
-end;
-
-/// <summary>Überschrift der Gruppe von ARow.</summary>
-function HeaderOf(const ARow: TAtlasEventRow; AGroup: TAtlasEventGroup): string;
-begin
-  Result := TAtlasEventMap.GroupKey(ARow, AGroup);
-  if Result = '' then
-  begin
-    Result := cNoGroup;
-  end
-  else if (AGroup = TAtlasEventGroup.Handler) and (ARow.UseCount > 1) then
-  begin
-    Result := Result + ' (' + IntToStr(ARow.UseCount) + ')';
-  end;
-end;
-
-procedure TAtlasEventFrame.FillEvents(const AEvents: TArray<string>);
-var
-  mCurrent, mEvent: string;
-begin
-  mCurrent := EventFilter;
-  FParts.Event.Items.BeginUpdate;
-  try
-    while FParts.Event.Items.Count > 1 do
-    begin
-      FParts.Event.Items.Delete(1);
-    end;
-    for mEvent in AEvents do
-    begin
-      FParts.Event.Items.Add(mEvent);
-    end;
-    FParts.Event.ItemIndex := FParts.Event.Items.IndexOf(mCurrent);
-    if FParts.Event.ItemIndex < 0 then
-    begin
-      FParts.Event.ItemIndex := 0;
-    end;
-  finally
-    FParts.Event.Items.EndUpdate;
-  end;
-end;
-
-/// <summary>Listeneintrag für ARow: Komponente, Klasse, Ereignis, Handler, Zeilen (leer ohne), Befund.</summary>
-procedure AddRowItem(AItems: TListItems; const ARow: TAtlasEventRow; const AFinding: string);
-var
-  mItem: TListItem;
-begin
-  mItem := AItems.Add;
-  mItem.Caption := ARow.Component;
-  mItem.SubItems.Add(ARow.ClassName);
-  mItem.SubItems.Add(ARow.Event);
-  mItem.SubItems.Add(ARow.Handler);
-  if ARow.Lines > 0 then
-  begin
-    mItem.SubItems.Add(IntToStr(ARow.Lines));
-  end
-  else
-  begin
-    mItem.SubItems.Add('');
-  end;
-  mItem.SubItems.Add(AFinding);
-end;
-
-procedure TAtlasEventFrame.ShowRows(const ARows: TArray<TAtlasEventRow>; const AEvents: TArray<string>;
-  const AFinding: TFunc<TAtlasEventRow, string>);
-var
-  mRow: TAtlasEventRow;
-  mItem: TListItem;
-  mHeaders: TStringList;
-  mGroup: TAtlasEventGroup;
-  mHeader: Integer;
-  mIndex: Integer;
-begin
-  FUpdating := True;
-  FParts.List.Items.BeginUpdate;
-  mHeaders := TStringList.Create;
-  try
-    FillEvents(AEvents);
-    FParts.List.Items.Clear;
-    FRows := ARows;
-    FItemRows := nil;
-    FLastJump := -1;
-    mGroup := Group;
-    // Überschriften in der Reihenfolge ihres ersten Auftretens, darunter ihre Zeilen.
-    for mRow in ARows do
-    begin
-      if mHeaders.IndexOf(HeaderOf(mRow, mGroup)) < 0 then
-      begin
-        mHeaders.Add(HeaderOf(mRow, mGroup));
-      end;
-    end;
-    for mHeader := 0 to mHeaders.Count - 1 do
-    begin
-      mItem := FParts.List.Items.Add;
-      mItem.Caption := mHeaders[mHeader];
-      FItemRows := FItemRows + [-1];
-      for mIndex := 0 to High(ARows) do
-      begin
-        mRow := ARows[mIndex];
-        if HeaderOf(mRow, mGroup) <> mHeaders[mHeader] then
-        begin
-          Continue;
-        end;
-        AddRowItem(FParts.List.Items, mRow, AFinding(mRow));
-        FItemRows := FItemRows + [mIndex];
-      end;
-    end;
-  finally
-    mHeaders.Free;
-    FParts.List.Items.EndUpdate;
-    FUpdating := False;
-  end;
 end;
 
 function TAtlasEventFrame.SelectedRow(out ARow: TAtlasEventRow): Boolean;
@@ -421,6 +261,14 @@ begin
   if Result then
   begin
     ARow := FRows[FItemRows[FParts.List.Selected.Index]];
+  end;
+end;
+
+procedure TAtlasEventFrame.OptionsChanged(Sender: TObject);
+begin
+  if not FUpdating and Assigned(FOnOptions) then
+  begin
+    FOnOptions();
   end;
 end;
 
@@ -479,6 +327,20 @@ begin
   end;
 end;
 
+/// <summary>Überschrift der Gruppe von ARow.</summary>
+function HeaderOf(const ARow: TAtlasEventRow; AGroup: TAtlasEventGroup): string;
+begin
+  Result := TAtlasEventMap.GroupKey(ARow, AGroup);
+  if Result = '' then
+  begin
+    Result := cNoGroup;
+  end
+  else if (AGroup = TAtlasEventGroup.Handler) and (ARow.UseCount > 1) then
+  begin
+    Result := Result + ' (' + IntToStr(ARow.UseCount) + ')';
+  end;
+end;
+
 procedure TAtlasEventFrame.RemoveClick(Sender: TObject);
 var
   mRow: TAtlasEventRow;
@@ -486,6 +348,37 @@ begin
   if SelectedRow(mRow) and Assigned(FOnRemove) then
   begin
     FOnRemove(mRow);
+  end;
+end;
+
+/// <summary>Listeneintrag für ARow: Komponente, Klasse, Ereignis, Handler, Zeilen (leer ohne), Befund.</summary>
+procedure AddRowItem(AItems: TListItems; const ARow: TAtlasEventRow; const AFinding: string);
+var
+  mItem: TListItem;
+begin
+  mItem := AItems.Add;
+  mItem.Caption := ARow.Component;
+  mItem.SubItems.Add(ARow.ClassName);
+  mItem.SubItems.Add(ARow.Event);
+  mItem.SubItems.Add(ARow.Handler);
+  if ARow.Lines > 0 then
+  begin
+    mItem.SubItems.Add(IntToStr(ARow.Lines));
+  end
+  else
+  begin
+    mItem.SubItems.Add('');
+  end;
+  mItem.SubItems.Add(AFinding);
+end;
+
+procedure TAtlasEventFrame.ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+begin
+  // Überschriften sind nicht wählbar: Windows malt die Auswahl ohne Fokus hell (weiß im dunklen Thema), und
+  // eine gewählte Überschrift hat ohnehin keine Aktion.
+  if Selected and (Item <> nil) and (Item.Index <= High(FItemRows)) and (FItemRows[Item.Index] < 0) then
+  begin
+    Item.Selected := False;
   end;
 end;
 
@@ -525,6 +418,113 @@ begin
     begin
       Sender.Canvas.Font.Color := FErrorColor;
     end;
+  end;
+end;
+
+procedure TAtlasEventFrame.FillEvents(const AEvents: TArray<string>);
+var
+  mCurrent, mEvent: string;
+begin
+  mCurrent := EventFilter;
+  FParts.Event.Items.BeginUpdate;
+  try
+    while FParts.Event.Items.Count > 1 do
+    begin
+      FParts.Event.Items.Delete(1);
+    end;
+    for mEvent in AEvents do
+    begin
+      FParts.Event.Items.Add(mEvent);
+    end;
+    FParts.Event.ItemIndex := FParts.Event.Items.IndexOf(mCurrent);
+    if FParts.Event.ItemIndex < 0 then
+    begin
+      FParts.Event.ItemIndex := 0;
+    end;
+  finally
+    FParts.Event.Items.EndUpdate;
+  end;
+end;
+
+procedure TAtlasEventFrame.ShowRows(const ARows: TArray<TAtlasEventRow>; const AEvents: TArray<string>;
+  const AFinding: TFunc<TAtlasEventRow, string>);
+var
+  mRow: TAtlasEventRow;
+  mItem: TListItem;
+  mHeaders: TStringList;
+  mGroup: TAtlasEventGroup;
+  mHeader: Integer;
+  mIndex: Integer;
+begin
+  FUpdating := True;
+  FParts.List.Items.BeginUpdate;
+  mHeaders := TStringList.Create;
+  try
+    FillEvents(AEvents);
+    FParts.List.Items.Clear;
+    FRows := ARows;
+    FItemRows := nil;
+    FLastJump := -1;
+    mGroup := Group;
+    // Überschriften in der Reihenfolge ihres ersten Auftretens, darunter ihre Zeilen.
+    for mRow in ARows do
+    begin
+      if mHeaders.IndexOf(HeaderOf(mRow, mGroup)) < 0 then
+      begin
+        mHeaders.Add(HeaderOf(mRow, mGroup));
+      end;
+    end;
+    for mHeader := 0 to mHeaders.Count - 1 do
+    begin
+      mItem := FParts.List.Items.Add;
+      mItem.Caption := mHeaders[mHeader];
+      FItemRows := FItemRows + [-1];
+      for mIndex := 0 to High(ARows) do
+      begin
+        mRow := ARows[mIndex];
+        if HeaderOf(mRow, mGroup) <> mHeaders[mHeader] then
+        begin
+          Continue;
+        end;
+        AddRowItem(FParts.List.Items, mRow, AFinding(mRow));
+        FItemRows := FItemRows + [mIndex];
+      end;
+    end;
+  finally
+    mHeaders.Free;
+    FParts.List.Items.EndUpdate;
+    FUpdating := False;
+  end;
+end;
+
+function TAtlasEventFrame.FilterText: string;
+begin
+  Result := Trim(FParts.Filter.Text);
+end;
+
+function TAtlasEventFrame.EventFilter: string;
+begin
+  Result := '';
+  if FParts.Event.ItemIndex > 0 then
+  begin
+    Result := FParts.Event.Items[FParts.Event.ItemIndex];
+  end;
+end;
+
+function TAtlasEventFrame.OnlyFindings: Boolean;
+begin
+  Result := FParts.OnlyFindings.Checked;
+end;
+
+function TAtlasEventFrame.Group: TAtlasEventGroup;
+begin
+  case FParts.Group.ItemIndex of
+    1:
+      Result := TAtlasEventGroup.Event;
+    2:
+      Result := TAtlasEventGroup.Handler;
+  else
+    Result := TAtlasEventGroup.Component;
   end;
 end;
 

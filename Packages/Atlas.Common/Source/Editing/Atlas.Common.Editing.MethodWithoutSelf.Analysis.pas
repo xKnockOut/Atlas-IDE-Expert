@@ -97,22 +97,23 @@ const
     'ShortInt', 'SmallInt', 'LongInt', 'LongWord', 'Double', 'Single', 'Extended', 'Currency', 'Boolean',
     'TDateTime', 'TDate', 'TTime', 'TGUID');
 
-class function TMethodPlan.Fail(const AReason: string; out AOut: string): Boolean;
+{ TMethodPlan }
+
+constructor TMethodPlan.Create(const AText: string; ATree: TSyntaxTree; const ALookup: TMethodLookup);
 begin
-  AOut := AReason;
-  Result := False;
+  inherited Create;
+  Text := AText;
+  Tree := ATree;
+  Tokens := ATree.Tokens;
+  Lines := TLineTable.Build(AText);
+  Lookup := ALookup;
+  Cache := TLocalsCache.Create(AText, ATree);
 end;
 
-class function TMethodPlan.Where(const AFileName: string; ALine: Integer): string;
+destructor TMethodPlan.Destroy;
 begin
-  if AFileName = '' then
-  begin
-    Result := cTexts[TEditingMethodWithoutSelfText.Line].Fmt([ALine + 1]);
-  end
-  else
-  begin
-    Result := cTexts[TEditingMethodWithoutSelfText.Line2].Fmt([ExtractFileName(AFileName), ALine + 1]);
-  end;
+  Cache.Free;
+  inherited;
 end;
 
 /// <summary>Verwendung des gefundenen Namens nach seinem Elternknoten; ACall: der Aufruf mit Argumenten.</summary>
@@ -145,51 +146,36 @@ begin
   end;
 end;
 
-class function TMethodPlan.UseAt(ATree: TSyntaxTree; AOffset: Integer; const AName: string;
-  out ACallee, ACall: TSyntaxNode): TMethodUse;
+function TMethodPlan.HasAttributes: Boolean;
 var
-  mScan: TMethodUseScan;
+  mIndex: Integer;
 begin
-  ACallee := nil;
-  ACall := nil;
-  mScan := TMethodUseScan.Scan(ATree, AOffset, AName);
-  if mScan.InProperty then
-  begin
-    Result := TMethodUse.Accessor;
-  end
-  else if mScan.InInherited then
-  begin
-    Result := TMethodUse.Inherited_;
-  end
-  else if mScan.Found = nil then
-  begin
-    Result := TMethodUse.Unknown;
-  end
-  else
-  begin
-    ACallee := mScan.Found;
-    Result := FoundUse(mScan.Found, ACall);
-  end;
+  mIndex := PreviousCode(Tokens, TRoutineBody.TokenAt(Tokens, Declaration.StartOffset));
+  Result := (mIndex >= 0) and Tokens[mIndex].IsSymbol(']');
 end;
 
 
 { TMethodPlan }
 
-constructor TMethodPlan.Create(const AText: string; ATree: TSyntaxTree; const ALookup: TMethodLookup);
+procedure TMethodPlan.NoteStatic(ANode: TSyntaxNode; ALevel: TMemberLevel; AVisible: TIndexVisibility;
+  AInHead: Boolean);
 begin
-  inherited Create;
-  Text := AText;
-  Tree := ATree;
-  Tokens := ATree.Tokens;
-  Lines := TLineTable.Build(AText);
-  Lookup := ALookup;
-  Cache := TLocalsCache.Create(AText, ATree);
-end;
-
-destructor TMethodPlan.Destroy;
-begin
-  Cache.Free;
-  inherited;
+  if ALevel = TMemberLevel.ClassLevel then
+  begin
+    UsesClassLevel := True;
+  end;
+  if AInHead then
+  begin
+    HeadUsesClassType := True;
+  end
+  else
+  begin
+    Statics := Statics + [ANode];
+  end;
+  if (StrictName = '') and (AVisible in [TIndexVisibility.StrictPrivate, TIndexVisibility.StrictProtected]) then
+  begin
+    StrictName := TMethodLookup.HeadName(ANode.Name);
+  end;
 end;
 
 function TMethodPlan.UnitName: string;
@@ -200,6 +186,31 @@ end;
 function TMethodPlan.IsPointer(AUse: TMethodUse): Boolean;
 begin
   Result := (AUse = TMethodUse.Pointer) or ((AUse = TMethodUse.Value) and (not IsFunction or (Parameters <> nil)));
+end;
+
+function TMethodPlan.FirstParameterUses(out AReason: string): Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  Result := False;
+  AReason := '';
+  for mNode in FirstParameterNodes do
+  begin
+    // const schreibt der Compiler ohnehin nicht; ein Wertparameter würde als Self den Wert des Aufrufers ändern.
+    if (Parameters[0].Modifier = '') and (TRoutineLocals.AccessOf(mNode, Lookup.Flow) <> TLocalAccess.Read) then
+    begin
+      Exit(not TMethodPlan.Fail(Parameters[0].Name + cTexts[TEditingMethodWithoutSelfText.IsWritten].Text, AReason));
+    end;
+    if (mNode.Parent <> nil) and (mNode.Parent.Kind = TSyntaxKind.AddressOf) then
+    begin
+      Exit(not TMethodPlan.Fail('@' + Parameters[0].Name, AReason));
+    end;
+    if TRoutineParts.InAnonymous(mNode, Routine) then
+    begin
+      Exit(not Fail(Parameters[0].Name + cTexts[TEditingMethodWithoutSelfText.InAnAnonymousMethod].Text,
+        AReason));
+    end;
+  end;
 end;
 
 function ClassNameIssue(const AClassName: string): string;
@@ -422,14 +433,6 @@ begin
   end;
 end;
 
-function TMethodPlan.HasAttributes: Boolean;
-var
-  mIndex: Integer;
-begin
-  mIndex := PreviousCode(Tokens, TRoutineBody.TokenAt(Tokens, Declaration.StartOffset));
-  Result := (mIndex >= 0) and Tokens[mIndex].IsSymbol(']');
-end;
-
 function TMethodPlan.DeclarationIssue: string;
 var
   mIndex: Integer;
@@ -456,6 +459,32 @@ begin
   if Assigned(Lookup.InForm) and Lookup.InForm(Target.Name) then
   begin
     Result := cTexts[TEditingMethodWithoutSelfText.IsAnEventInThe].Text;
+  end;
+end;
+
+function TMethodPlan.FirstParameterNodes: TArray<TSyntaxNode>;
+var
+  mNodes: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
+begin
+  Result := nil;
+  if Parameters = nil then
+  begin
+    Exit;
+  end;
+  mNodes := TList<TSyntaxNode>.Create;
+  try
+    TRoutineLocals.CollectKind(Body, TSyntaxKind.Identifier, mNodes);
+    for mNode in mNodes do
+    begin
+      if SameText(mNode.Name, Parameters[0].Name) and not TRoutineParts.Shadowed(Cache, mNode, Routine,
+        Parameters[0].Name, False) then
+      begin
+        Result := Result + [mNode];
+      end;
+    end;
+  finally
+    mNodes.Free;
   end;
 end;
 
@@ -568,25 +597,10 @@ begin
   end;
 end;
 
-procedure TMethodPlan.NoteStatic(ANode: TSyntaxNode; ALevel: TMemberLevel; AVisible: TIndexVisibility;
-  AInHead: Boolean);
+class function TMethodPlan.Fail(const AReason: string; out AOut: string): Boolean;
 begin
-  if ALevel = TMemberLevel.ClassLevel then
-  begin
-    UsesClassLevel := True;
-  end;
-  if AInHead then
-  begin
-    HeadUsesClassType := True;
-  end
-  else
-  begin
-    Statics := Statics + [ANode];
-  end;
-  if (StrictName = '') and (AVisible in [TIndexVisibility.StrictPrivate, TIndexVisibility.StrictProtected]) then
-  begin
-    StrictName := TMethodLookup.HeadName(ANode.Name);
-  end;
+  AOut := AReason;
+  Result := False;
 end;
 
 /// <summary>Benutzt die Methode AOther die Methode als Methodenzeiger?</summary>
@@ -659,54 +673,42 @@ begin
   end;
 end;
 
-function TMethodPlan.FirstParameterNodes: TArray<TSyntaxNode>;
-var
-  mNodes: TList<TSyntaxNode>;
-  mNode: TSyntaxNode;
+class function TMethodPlan.Where(const AFileName: string; ALine: Integer): string;
 begin
-  Result := nil;
-  if Parameters = nil then
+  if AFileName = '' then
   begin
-    Exit;
-  end;
-  mNodes := TList<TSyntaxNode>.Create;
-  try
-    TRoutineLocals.CollectKind(Body, TSyntaxKind.Identifier, mNodes);
-    for mNode in mNodes do
-    begin
-      if SameText(mNode.Name, Parameters[0].Name) and not TRoutineParts.Shadowed(Cache, mNode, Routine,
-        Parameters[0].Name, False) then
-      begin
-        Result := Result + [mNode];
-      end;
-    end;
-  finally
-    mNodes.Free;
+    Result := cTexts[TEditingMethodWithoutSelfText.Line].Fmt([ALine + 1]);
+  end
+  else
+  begin
+    Result := cTexts[TEditingMethodWithoutSelfText.Line2].Fmt([ExtractFileName(AFileName), ALine + 1]);
   end;
 end;
 
-function TMethodPlan.FirstParameterUses(out AReason: string): Boolean;
+class function TMethodPlan.UseAt(ATree: TSyntaxTree; AOffset: Integer; const AName: string;
+  out ACallee, ACall: TSyntaxNode): TMethodUse;
 var
-  mNode: TSyntaxNode;
+  mScan: TMethodUseScan;
 begin
-  Result := False;
-  AReason := '';
-  for mNode in FirstParameterNodes do
+  ACallee := nil;
+  ACall := nil;
+  mScan := TMethodUseScan.Scan(ATree, AOffset, AName);
+  if mScan.InProperty then
   begin
-    // const schreibt der Compiler ohnehin nicht; ein Wertparameter würde als Self den Wert des Aufrufers ändern.
-    if (Parameters[0].Modifier = '') and (TRoutineLocals.AccessOf(mNode, Lookup.Flow) <> TLocalAccess.Read) then
-    begin
-      Exit(not TMethodPlan.Fail(Parameters[0].Name + cTexts[TEditingMethodWithoutSelfText.IsWritten].Text, AReason));
-    end;
-    if (mNode.Parent <> nil) and (mNode.Parent.Kind = TSyntaxKind.AddressOf) then
-    begin
-      Exit(not TMethodPlan.Fail('@' + Parameters[0].Name, AReason));
-    end;
-    if TRoutineParts.InAnonymous(mNode, Routine) then
-    begin
-      Exit(not Fail(Parameters[0].Name + cTexts[TEditingMethodWithoutSelfText.InAnAnonymousMethod].Text,
-        AReason));
-    end;
+    Result := TMethodUse.Accessor;
+  end
+  else if mScan.InInherited then
+  begin
+    Result := TMethodUse.Inherited_;
+  end
+  else if mScan.Found = nil then
+  begin
+    Result := TMethodUse.Unknown;
+  end
+  else
+  begin
+    ACallee := mScan.Found;
+    Result := FoundUse(mScan.Found, ACall);
   end;
 end;
 

@@ -91,6 +91,8 @@ uses
   System.StrUtils,
   Atlas.Text.Lines;
 
+{ TAtlasLeakCapture }
+
 function TAtlasLeakCapture.IsEmpty: Boolean;
 begin
   Result := (Source = TAtlasLeakSource.None) or Report.IsEmpty;
@@ -110,6 +112,8 @@ begin
   Result := -1;
 end;
 
+{ TAtlasLeakHistory }
+
 function TAtlasLeakHistory.CountOf(const AName: string): Integer;
 var
   mIndex: Integer;
@@ -126,6 +130,8 @@ function TAtlasLeakHistory.IsKnown(const AName: string): Boolean;
 begin
   Result := IndexOfName(Known, AName) >= 0;
 end;
+
+{ TAtlasLeakCaptures }
 
 class function TAtlasLeakCaptures.LogFileOf(const AExeFile: string): string;
 begin

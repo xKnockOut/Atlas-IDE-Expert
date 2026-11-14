@@ -196,6 +196,17 @@ end;
 
 { TAtlasToolbarButton }
 
+function TAtlasToolbarButton.IsSeparator: Boolean;
+begin
+  Result := TAtlasToolbarItems.IsSeparator(Id);
+end;
+
+function TAtlasToolbarButton.SameAs(const AOther: TAtlasToolbarButton): Boolean;
+begin
+  Result := (Id = AOther.Id) and (Caption = AOther.Caption) and (Hint = AOther.Hint) and (Icon = AOther.Icon) and
+    (Enabled = AOther.Enabled) and (Pressed = AOther.Pressed) and (Dot = AOther.Dot) and (Pinned = AOther.Pinned);
+end;
+
 class function TAtlasToolbarButton.Create(const AId, ACaption, AHint: string;
   AIcon: TAtlasToolbarIcon): TAtlasToolbarButton;
 begin
@@ -211,17 +222,6 @@ class function TAtlasToolbarButton.Separator: TAtlasToolbarButton;
 begin
   Result := Default(TAtlasToolbarButton);
   Result.Id := TAtlasToolbarItems.cSeparator;
-end;
-
-function TAtlasToolbarButton.IsSeparator: Boolean;
-begin
-  Result := TAtlasToolbarItems.IsSeparator(Id);
-end;
-
-function TAtlasToolbarButton.SameAs(const AOther: TAtlasToolbarButton): Boolean;
-begin
-  Result := (Id = AOther.Id) and (Caption = AOther.Caption) and (Hint = AOther.Hint) and (Icon = AOther.Icon) and
-    (Enabled = AOther.Enabled) and (Pressed = AOther.Pressed) and (Dot = AOther.Dot) and (Pinned = AOther.Pinned);
 end;
 
 { TAtlasToolbarPlaces }
@@ -543,6 +543,25 @@ begin
   FBar := ABar;
 end;
 
+procedure TAtlasToolbarMenu.CommandClick(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  mIndex := TMenuItem(Sender).Tag;
+  if (mIndex >= 0) and (mIndex <= High(FIds)) and Assigned(FBar.FEvents.Command) then
+  begin
+    FBar.FEvents.Command(FIds[mIndex]);
+  end;
+end;
+
+procedure TAtlasToolbarMenu.CustomizeClick(Sender: TObject);
+begin
+  if Assigned(FBar.FEvents.Customize) then
+  begin
+    FBar.FEvents.Customize();
+  end;
+end;
+
 procedure TAtlasToolbarMenu.AddButton(const AButton: TAtlasToolbarButton);
 var
   mItem: TMenuItem;
@@ -573,25 +592,6 @@ begin
   Items.Add(mItem);
 end;
 
-procedure TAtlasToolbarMenu.CommandClick(Sender: TObject);
-var
-  mIndex: Integer;
-begin
-  mIndex := TMenuItem(Sender).Tag;
-  if (mIndex >= 0) and (mIndex <= High(FIds)) and Assigned(FBar.FEvents.Command) then
-  begin
-    FBar.FEvents.Command(FIds[mIndex]);
-  end;
-end;
-
-procedure TAtlasToolbarMenu.CustomizeClick(Sender: TObject);
-begin
-  if Assigned(FBar.FEvents.Customize) then
-  begin
-    FBar.FEvents.Customize();
-  end;
-end;
-
 { TAtlasEditorToolbar }
 
 constructor TAtlasEditorToolbar.Create(AOwner: TComponent);
@@ -601,51 +601,6 @@ begin
   FTexts.Gear := '';
   FTexts.Customize := '';
   FPlaces := TAtlasToolbarPlaces.Create(nil);
-end;
-
-class function TAtlasEditorToolbar.BaseHeight: Integer;
-begin
-  Result := 24;
-end;
-
-procedure TAtlasEditorToolbar.ChangeScale(M, D: Integer; isDpiChange: Boolean);
-begin
-  inherited ChangeScale(M, D, isDpiChange);
-  FLaidOut := False;
-end;
-
-procedure TAtlasEditorToolbar.SetButtons(const AButtons: TArray<TAtlasToolbarButton>);
-var
-  mIndex: Integer;
-  mSame: Boolean;
-begin
-  mSame := Length(AButtons) = Length(FButtons);
-  mIndex := 0;
-  while mSame and (mIndex <= High(AButtons)) do
-  begin
-    mSame := AButtons[mIndex].SameAs(FButtons[mIndex]);
-    Inc(mIndex);
-  end;
-  if mSame then
-  begin
-    Exit;
-  end;
-  FButtons := AButtons;
-  FLaidOut := False;
-  Invalidate;
-end;
-
-procedure TAtlasEditorToolbar.SetReturn(AShown: Boolean; const AText, AHint: string);
-begin
-  if (AShown = FReturn.Shown) and (AText = FReturn.Text) and (AHint = FReturn.Hint) then
-  begin
-    Exit;
-  end;
-  FReturn.Shown := AShown;
-  FReturn.Text := AText;
-  FReturn.Hint := AHint;
-  FLaidOut := False;
-  Invalidate;
 end;
 
 procedure TAtlasEditorToolbar.SetLabels(AValue: Boolean);
@@ -672,57 +627,9 @@ begin
   Invalidate;
 end;
 
-procedure TAtlasEditorToolbar.Resize;
+class function TAtlasEditorToolbar.BaseHeight: Integer;
 begin
-  inherited Resize;
-  FLaidOut := False;
-  Invalidate;
-end;
-
-procedure TAtlasEditorToolbar.CMFontChanged(var Message: TMessage);
-begin
-  inherited;
-  FLaidOut := False;
-  Invalidate;
-end;
-
-procedure TAtlasEditorToolbar.Layout;
-var
-  mMeasure: TAtlasToolbarMeasure;
-  mOrder: TArray<Integer>;
-  mSlots: TArray<TAtlasToolbarSlot>;
-  mWidth: Integer;
-begin
-  if FLaidOut or not HandleAllocated then
-  begin
-    Exit;
-  end;
-  FLaidOut := True;
-  mMeasure.Bar := Self;
-  mOrder := mMeasure.Entries;
-  mSlots := mMeasure.Slots(mOrder);
-  mWidth := Scale(cBaseButton);
-  FPlaces := TAtlasToolbarPlaces.Create(FButtons);
-  FPlaces.Arrange(mOrder, mSlots, TAtlasToolbarLayout.Fit(mSlots, ClientWidth - 2 * Scale(cMargin) - mWidth, mWidth),
-    Rect(Scale(cMargin), Scale(1), ClientWidth - Scale(cMargin), ClientHeight - Scale(1)), mWidth);
-end;
-
-function TAtlasEditorToolbar.PreferredWidth: Integer;
-var
-  mMeasure: TAtlasToolbarMeasure;
-begin
-  mMeasure.Bar := Self;
-  Result := TAtlasToolbarLayout.FullWidth(mMeasure.Slots(mMeasure.Entries)) + 2 * Scale(cMargin) + Scale(cBaseButton);
-  if FInline then
-  begin
-    Inc(Result, Scale(cMargin));
-  end;
-end;
-
-function TAtlasEditorToolbar.Places: TAtlasToolbarPlaces;
-begin
-  Layout;
-  Result := FPlaces;
+  Result := 24;
 end;
 
 function TAtlasEditorToolbar.PartAt(X, Y: Integer): Integer;
@@ -756,9 +663,20 @@ begin
   Result := (APart < 0) or FButtons[APart].Enabled;
 end;
 
-function TAtlasEditorToolbar.HintAt(AX, AY: Integer): string;
+procedure TAtlasEditorToolbar.PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer);
 begin
-  Result := PartHint(PartAt(AX, AY));
+  Fire(APart);
+end;
+
+procedure TAtlasEditorToolbar.ContextMenu(const APoint: TPoint; APart: Integer);
+begin
+  ShowMenu(ClientToScreen(APoint), False);
+end;
+
+function TAtlasEditorToolbar.KeyboardMenuPoint: TPoint;
+begin
+  Layout;
+  Result := Point(FPlaces.Gear.Left, FPlaces.Gear.Bottom);
 end;
 
 procedure TAtlasEditorToolbar.Paint;
@@ -805,25 +723,62 @@ begin
   mPainter.Button(FPlaces.Gear, TAtlasToolbarButton.Create('', '', '', TAtlasToolbarIcon.Gear), Hot = cPartGear, '');
 end;
 
-procedure TAtlasEditorToolbar.ClickAt(AX, AY: Integer);
+procedure TAtlasEditorToolbar.Resize;
 begin
-  Fire(PartAt(AX, AY));
+  inherited Resize;
+  FLaidOut := False;
+  Invalidate;
 end;
 
-procedure TAtlasEditorToolbar.PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer);
+procedure TAtlasEditorToolbar.ChangeScale(M, D: Integer; isDpiChange: Boolean);
 begin
-  Fire(APart);
+  inherited ChangeScale(M, D, isDpiChange);
+  FLaidOut := False;
 end;
 
-procedure TAtlasEditorToolbar.ContextMenu(const APoint: TPoint; APart: Integer);
+procedure TAtlasEditorToolbar.Layout;
+var
+  mMeasure: TAtlasToolbarMeasure;
+  mOrder: TArray<Integer>;
+  mSlots: TArray<TAtlasToolbarSlot>;
+  mWidth: Integer;
 begin
-  ShowMenu(ClientToScreen(APoint), False);
+  if FLaidOut or not HandleAllocated then
+  begin
+    Exit;
+  end;
+  FLaidOut := True;
+  mMeasure.Bar := Self;
+  mOrder := mMeasure.Entries;
+  mSlots := mMeasure.Slots(mOrder);
+  mWidth := Scale(cBaseButton);
+  FPlaces := TAtlasToolbarPlaces.Create(FButtons);
+  FPlaces.Arrange(mOrder, mSlots, TAtlasToolbarLayout.Fit(mSlots, ClientWidth - 2 * Scale(cMargin) - mWidth, mWidth),
+    Rect(Scale(cMargin), Scale(1), ClientWidth - Scale(cMargin), ClientHeight - Scale(1)), mWidth);
 end;
 
-function TAtlasEditorToolbar.KeyboardMenuPoint: TPoint;
+procedure TAtlasEditorToolbar.ShowMenu(const APoint: TPoint; AOverflow: Boolean);
+var
+  mMenu: TAtlasToolbarMenu;
+  mIndex: Integer;
 begin
   Layout;
-  Result := Point(FPlaces.Gear.Left, FPlaces.Gear.Bottom);
+  FreeAndNil(FMenu);
+  mMenu := TAtlasToolbarMenu.CreateFor(Self);
+  FMenu := mMenu;
+  if AOverflow then
+  begin
+    for mIndex in FPlaces.Overflow do
+    begin
+      mMenu.AddButton(FButtons[mIndex]);
+    end;
+    if mMenu.Items.Count > 0 then
+    begin
+      mMenu.Items.Add(NewLine);
+    end;
+  end;
+  mMenu.AddCustomize(FTexts.Customize);
+  mMenu.Popup(APoint.X, APoint.Y);
 end;
 
 procedure TAtlasEditorToolbar.Fire(APart: Integer);
@@ -856,28 +811,73 @@ begin
   end;
 end;
 
-procedure TAtlasEditorToolbar.ShowMenu(const APoint: TPoint; AOverflow: Boolean);
+procedure TAtlasEditorToolbar.CMFontChanged(var Message: TMessage);
+begin
+  inherited;
+  FLaidOut := False;
+  Invalidate;
+end;
+
+procedure TAtlasEditorToolbar.SetButtons(const AButtons: TArray<TAtlasToolbarButton>);
 var
-  mMenu: TAtlasToolbarMenu;
   mIndex: Integer;
+  mSame: Boolean;
+begin
+  mSame := Length(AButtons) = Length(FButtons);
+  mIndex := 0;
+  while mSame and (mIndex <= High(AButtons)) do
+  begin
+    mSame := AButtons[mIndex].SameAs(FButtons[mIndex]);
+    Inc(mIndex);
+  end;
+  if mSame then
+  begin
+    Exit;
+  end;
+  FButtons := AButtons;
+  FLaidOut := False;
+  Invalidate;
+end;
+
+procedure TAtlasEditorToolbar.SetReturn(AShown: Boolean; const AText, AHint: string);
+begin
+  if (AShown = FReturn.Shown) and (AText = FReturn.Text) and (AHint = FReturn.Hint) then
+  begin
+    Exit;
+  end;
+  FReturn.Shown := AShown;
+  FReturn.Text := AText;
+  FReturn.Hint := AHint;
+  FLaidOut := False;
+  Invalidate;
+end;
+
+function TAtlasEditorToolbar.PreferredWidth: Integer;
+var
+  mMeasure: TAtlasToolbarMeasure;
+begin
+  mMeasure.Bar := Self;
+  Result := TAtlasToolbarLayout.FullWidth(mMeasure.Slots(mMeasure.Entries)) + 2 * Scale(cMargin) + Scale(cBaseButton);
+  if FInline then
+  begin
+    Inc(Result, Scale(cMargin));
+  end;
+end;
+
+function TAtlasEditorToolbar.Places: TAtlasToolbarPlaces;
 begin
   Layout;
-  FreeAndNil(FMenu);
-  mMenu := TAtlasToolbarMenu.CreateFor(Self);
-  FMenu := mMenu;
-  if AOverflow then
-  begin
-    for mIndex in FPlaces.Overflow do
-    begin
-      mMenu.AddButton(FButtons[mIndex]);
-    end;
-    if mMenu.Items.Count > 0 then
-    begin
-      mMenu.Items.Add(NewLine);
-    end;
-  end;
-  mMenu.AddCustomize(FTexts.Customize);
-  mMenu.Popup(APoint.X, APoint.Y);
+  Result := FPlaces;
+end;
+
+function TAtlasEditorToolbar.HintAt(AX, AY: Integer): string;
+begin
+  Result := PartHint(PartAt(AX, AY));
+end;
+
+procedure TAtlasEditorToolbar.ClickAt(AX, AY: Integer);
+begin
+  Fire(PartAt(AX, AY));
 end;
 
 end.

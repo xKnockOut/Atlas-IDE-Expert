@@ -47,6 +47,8 @@ uses
   System.StrUtils,
   System.Generics.Collections;
 
+{ TIndexTypeText }
+
 class function TIndexTypeText.HeaderOf(ANode: TSyntaxNode): TSyntaxNode;
 begin
   Result := ANode;

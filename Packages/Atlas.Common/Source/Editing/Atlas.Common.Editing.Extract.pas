@@ -148,21 +148,7 @@ const
     TSyntaxKind.IndexAccess, TSyntaxKind.Dereference, TSyntaxKind.AddressOf, TSyntaxKind.SetConstructor,
     TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr, TSyntaxKind.IfExpr];
 
-class function TExtractRefactoring.TypeOfExpression(const AText: string; ATree: TSyntaxTree; AExpression,
-  AStatement: TSyntaxNode; const AOptions: TExtractOptions): TProbedType;
-begin
-  Result := TExtractSupport.TypeOfExpression(AText, ATree, AExpression, AStatement, AOptions);
-end;
-
-{ Methode extrahieren }
-
-class function TExtractRefactoring.ExtractMethod(const AText: string; ATree: TSyntaxTree;
-  const ARange: TTextRange; const AOptions: TExtractOptions; out AAction: TCodeAction): Boolean;
-var
-  mReason: string;
-begin
-  Result := ExtractMethod(AText, ATree, ARange, AOptions, AAction, mReason);
-end;
+{ TExtractRefactoring }
 
 class function TExtractRefactoring.ExtractMethod(const AText: string; ATree: TSyntaxTree;
   const ARange: TTextRange; const AOptions: TExtractOptions; out AAction: TCodeAction;
@@ -178,6 +164,16 @@ begin
   end;
 end;
 
+{ Methode extrahieren }
+
+class function TExtractRefactoring.ExtractMethod(const AText: string; ATree: TSyntaxTree;
+  const ARange: TTextRange; const AOptions: TExtractOptions; out AAction: TCodeAction): Boolean;
+var
+  mReason: string;
+begin
+  Result := ExtractMethod(AText, ATree, ARange, AOptions, AAction, mReason);
+end;
+
 class function TExtractRefactoring.ExtractMethodWithDuplicates(const AText: string; ATree: TSyntaxTree;
   const ARange: TTextRange; const AOptions: TExtractOptions; out AAction: TCodeAction; out AReason: string): Boolean;
 var
@@ -189,6 +185,14 @@ begin
   finally
     mDuplicates.Free;
   end;
+end;
+
+class function TExtractRefactoring.ExtractCondition(const AText: string; ATree: TSyntaxTree;
+  const ARange: TTextRange; const AOptions: TExtractOptions; out AAction: TCodeAction): Boolean;
+var
+  mReason: string;
+begin
+  Result := ExtractCondition(AText, ATree, ARange, AOptions, AAction, mReason);
 end;
 
 { Variable einführen }
@@ -295,12 +299,46 @@ type
     function Run(const ARange: TTextRange; AAll: Boolean; out AAction: TCodeAction): Boolean;
   end;
 
+{ TVariableIntroduction }
+
 constructor TVariableIntroduction.Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
 begin
   inherited Create;
   FText := AText;
   FTree := ATree;
   FOptions := AOptions;
+end;
+
+function TVariableIntroduction.Find(const ARange: TTextRange; AAll: Boolean): Boolean;
+var
+  mStart, mEnd: Integer;
+begin
+  Result := TExtractSupport.Selection(FText, FTree, ARange, mStart, mEnd);
+  if Result then
+  begin
+    FRoutine := TRoutineBody.RoutineAt(FTree, mStart);
+    Result := FRoutine <> nil;
+  end;
+  if Result then
+  begin
+    FBody := TRoutineBody.BodyOf(FRoutine);
+    FExpression := SelectedExpression(FBody, mStart, mEnd);
+    FHost := nil;
+    if FExpression <> nil then
+    begin
+      FHost := TRoutineBody.HostStatement(FExpression, FBody);
+    end;
+    Result := FHost <> nil;
+  end;
+  if Result then
+  begin
+    FTargets := Targets(FHost, AAll);
+    Result := FTargets <> nil;
+  end;
+  if Result then
+  begin
+    FHost := TRoutineBody.HostStatement(FTargets[0], FBody);
+  end;
 end;
 
 function TVariableIntroduction.SameExpressions(AHost: TSyntaxNode): TArray<TSyntaxNode>;
@@ -341,38 +379,6 @@ begin
     Result[High(Result)].EndOffset) then
   begin
     Result := nil;
-  end;
-end;
-
-function TVariableIntroduction.Find(const ARange: TTextRange; AAll: Boolean): Boolean;
-var
-  mStart, mEnd: Integer;
-begin
-  Result := TExtractSupport.Selection(FText, FTree, ARange, mStart, mEnd);
-  if Result then
-  begin
-    FRoutine := TRoutineBody.RoutineAt(FTree, mStart);
-    Result := FRoutine <> nil;
-  end;
-  if Result then
-  begin
-    FBody := TRoutineBody.BodyOf(FRoutine);
-    FExpression := SelectedExpression(FBody, mStart, mEnd);
-    FHost := nil;
-    if FExpression <> nil then
-    begin
-      FHost := TRoutineBody.HostStatement(FExpression, FBody);
-    end;
-    Result := FHost <> nil;
-  end;
-  if Result then
-  begin
-    FTargets := Targets(FHost, AAll);
-    Result := FTargets <> nil;
-  end;
-  if Result then
-  begin
-    FHost := TRoutineBody.HostStatement(FTargets[0], FBody);
   end;
 end;
 
@@ -506,6 +512,8 @@ type
     constructor Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
     function Run(const ARange: TTextRange; AUnit: Boolean; out AAction: TCodeAction): Boolean;
   end;
+
+{ TConstantExtraction }
 
 constructor TConstantExtraction.Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
 begin
@@ -674,6 +682,8 @@ type
     function Run(const ARange: TTextRange; out AAction: TCodeAction; out AReason: string): Boolean;
   end;
 
+{ TConditionExtraction }
+
 constructor TConditionExtraction.Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
 begin
   inherited Create;
@@ -708,16 +718,25 @@ begin
   end;
 end;
 
-function TConditionExtraction.VisibleOutside(ANode: TSyntaxNode): Boolean;
+function TConditionExtraction.CollectNames: Boolean;
+var
+  mNodes: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
 begin
+  FLocals := TRoutineLocals.Collect(FText, FTree, FRoutine);
+  FOnlyNames := TExtractSupport.RoutineOnlyNames(FRoutine);
+  FLookup := TFlowSignatures.FromTree(FTree.Root);
+  FOrder := nil;
   Result := True;
-  if SameText(ANode.Name, 'Result') then
-  begin
-    Result := Fail(cTexts[TExtractText.ResultInTheCondition].Text, FReason);
-  end
-  else if IndexText(ANode.Name, FOnlyNames) >= 0 then
-  begin
-    Result := Fail(ANode.Name + cTexts[TExtractText.IsOnlyVisibleInThe].Text, FReason);
+  mNodes := TList<TSyntaxNode>.Create;
+  try
+    TRoutineLocals.CollectKind(FCondition, TSyntaxKind.Identifier, mNodes);
+    for mNode in mNodes do
+    begin
+      Result := Result and AddName(mNode);
+    end;
+  finally
+    mNodes.Free;
   end;
 end;
 
@@ -742,25 +761,16 @@ begin
   end;
 end;
 
-function TConditionExtraction.CollectNames: Boolean;
-var
-  mNodes: TList<TSyntaxNode>;
-  mNode: TSyntaxNode;
+function TConditionExtraction.VisibleOutside(ANode: TSyntaxNode): Boolean;
 begin
-  FLocals := TRoutineLocals.Collect(FText, FTree, FRoutine);
-  FOnlyNames := TExtractSupport.RoutineOnlyNames(FRoutine);
-  FLookup := TFlowSignatures.FromTree(FTree.Root);
-  FOrder := nil;
   Result := True;
-  mNodes := TList<TSyntaxNode>.Create;
-  try
-    TRoutineLocals.CollectKind(FCondition, TSyntaxKind.Identifier, mNodes);
-    for mNode in mNodes do
-    begin
-      Result := Result and AddName(mNode);
-    end;
-  finally
-    mNodes.Free;
+  if SameText(ANode.Name, 'Result') then
+  begin
+    Result := Fail(cTexts[TExtractText.ResultInTheCondition].Text, FReason);
+  end
+  else if IndexText(ANode.Name, FOnlyNames) >= 0 then
+  begin
+    Result := Fail(ANode.Name + cTexts[TExtractText.IsOnlyVisibleInThe].Text, FReason);
   end;
 end;
 
@@ -852,14 +862,6 @@ begin
 end;
 
 class function TExtractRefactoring.ExtractCondition(const AText: string; ATree: TSyntaxTree;
-  const ARange: TTextRange; const AOptions: TExtractOptions; out AAction: TCodeAction): Boolean;
-var
-  mReason: string;
-begin
-  Result := ExtractCondition(AText, ATree, ARange, AOptions, AAction, mReason);
-end;
-
-class function TExtractRefactoring.ExtractCondition(const AText: string; ATree: TSyntaxTree;
   const ARange: TTextRange; const AOptions: TExtractOptions; out AAction: TCodeAction;
   out AReason: string): Boolean;
 var
@@ -908,6 +910,12 @@ begin
   begin
     Result := Result + [mAction];
   end;
+end;
+
+class function TExtractRefactoring.TypeOfExpression(const AText: string; ATree: TSyntaxTree; AExpression,
+  AStatement: TSyntaxNode; const AOptions: TExtractOptions): TProbedType;
+begin
+  Result := TExtractSupport.TypeOfExpression(AText, ATree, AExpression, AStatement, AOptions);
 end;
 
 initialization

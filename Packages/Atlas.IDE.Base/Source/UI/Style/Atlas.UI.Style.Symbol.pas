@@ -259,20 +259,6 @@ begin
   Invalidate;
 end;
 
-procedure TAtlasSymbolImage.UpdateSize;
-var
-  mPixels: Integer;
-begin
-  mPixels := TAtlasSymbol.PixelSize(FLogicalSize, CurrentPPI);
-  SetBounds(Left, Top, mPixels, mPixels);
-end;
-
-procedure TAtlasSymbolImage.ChangeScale(M, D: Integer; isDpiChange: Boolean);
-begin
-  inherited ChangeScale(M, D, isDpiChange);
-  UpdateSize;
-end;
-
 procedure TAtlasSymbolImage.Paint;
 var
   mImage: TWICImage;
@@ -298,6 +284,20 @@ begin
   begin
     Canvas.StretchDraw(mTarget, mImage);
   end;
+end;
+
+procedure TAtlasSymbolImage.ChangeScale(M, D: Integer; isDpiChange: Boolean);
+begin
+  inherited ChangeScale(M, D, isDpiChange);
+  UpdateSize;
+end;
+
+procedure TAtlasSymbolImage.UpdateSize;
+var
+  mPixels: Integer;
+begin
+  mPixels := TAtlasSymbol.PixelSize(FLogicalSize, CurrentPPI);
+  SetBounds(Left, Top, mPixels, mPixels);
 end;
 
 initialization

@@ -29,6 +29,8 @@ uses
   Atlas.Text.Lines,
   Atlas.Text.Diff;
 
+{ TTextChanges }
+
 class function TTextChanges.Apply(const AText: string; const AEdits: TArray<TTextEdit>): string;
 var
   mSorted: TArray<TTextEdit>;

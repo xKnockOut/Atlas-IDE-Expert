@@ -62,6 +62,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TResourceStringCommands }
+
 class function TResourceStringCommands.AddEdit(const AText, AName, AValue: string; out AEdit: TTextEdit): Boolean;
 var
   mEntry: TResourceEntry;

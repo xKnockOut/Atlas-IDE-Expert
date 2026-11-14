@@ -82,11 +82,6 @@ begin
   inherited Destroy;
 end;
 
-function TUpdateFileSwap.Steps: TArray<TUpdateFileStep>;
-begin
-  Result := FSteps.ToArray;
-end;
-
 function TUpdateFileSwap.Backup(const APath: string): Boolean;
 begin
   Result := FFiles.FileExists(TUpdateLayout.Join(FTarget, APath));
@@ -183,6 +178,11 @@ begin
       end;
     end;
   end;
+end;
+
+function TUpdateFileSwap.Steps: TArray<TUpdateFileStep>;
+begin
+  Result := FSteps.ToArray;
 end;
 
 initialization

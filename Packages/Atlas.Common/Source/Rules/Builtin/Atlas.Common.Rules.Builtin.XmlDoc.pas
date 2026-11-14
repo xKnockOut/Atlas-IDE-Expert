@@ -133,14 +133,7 @@ type
     HasResult: Boolean;
   end;
 
-function TDocBlock.RowOf(AIndex: Integer): Integer;
-begin
-  Result := High(Starts);
-  while (Result > 0) and (Starts[Result] > AIndex) do
-  begin
-    Dec(Result);
-  end;
-end;
+{ TDocBlock }
 
 function TDocBlock.OffsetOf(AIndex: Integer): Integer;
 var
@@ -148,6 +141,15 @@ var
 begin
   mRow := RowOf(AIndex);
   Result := Offsets[mRow] + AIndex - Starts[mRow];
+end;
+
+function TDocBlock.RowOf(AIndex: Integer): Integer;
+begin
+  Result := High(Starts);
+  while (Result > 0) and (Starts[Result] > AIndex) do
+  begin
+    Dec(Result);
+  end;
 end;
 
 function TDocBlock.OwnsLines(AStart, AStop: Integer): Boolean;
@@ -700,64 +702,9 @@ begin
   Result := (mOffset >= FInterfaceStart) and (mOffset < FInterfaceStop);
 end;
 
-function TXmlDocCheck.WithCode(const ABlock: TDocBlock; const AMessage, ACode: string): string;
-begin
-  Result := AMessage;
-  if (ACode = '') or not CompilerChecks(ABlock) then
-  begin
-    Exit;
-  end;
-  if EndsStr('.', Result) then
-  begin
-    Result := Copy(Result, 1, Length(Result) - 1) + cTexts[TXmlDocText.LikeCodeDot].Fmt([ACode]);
-  end
-  else
-  begin
-    Result := Result + cTexts[TXmlDocText.LikeCodeParen].Fmt([ACode]);
-  end;
-end;
-
-function TXmlDocCheck.DeclarationRange(ANode: TSyntaxNode): TTextRange;
-var
-  mFirst, mLast: Integer;
-begin
-  mFirst := TokenExactly(FTokens, ANode.StartOffset);
-  if (mFirst >= 0) and NameRange(FTokens, mFirst, mFirst, mLast) then
-  begin
-    Result := TTextRange.Create(FTokens[mFirst].StartPos, FTokens[mLast].EndPos);
-  end
-  else
-  begin
-    Result := TTextRange.Create(ANode.StartPos, ANode.StartPos);
-  end;
-end;
-
-function TXmlDocCheck.XmlRange(const ABlock: TDocBlock; AStart, AStop: Integer): TTextRange;
-begin
-  Result := TRuleDerived.OffsetRange(FCache, FContext, ABlock.OffsetOf(AStart), ABlock.OffsetOf(AStop));
-end;
-
 function TXmlDocCheck.ReplacementEdit(const ABlock: TDocBlock; const AReplacement: TDocReplacement): TRuleEdit;
 begin
   Result := TRuleEdit.Create(XmlRange(ABlock, AReplacement.Start, AReplacement.Stop), AReplacement.Text);
-end;
-
-function TXmlDocCheck.RemoveEdit(const ABlock: TDocBlock; const AElement: TDocElement): TRuleEdit;
-begin
-  if ABlock.OwnsLines(AElement.Start, AElement.Stop) then
-  begin
-    Result := TRuleEdit.Create(TTextRange.Create(ABlock.Lines[ABlock.RowOf(AElement.Start)], 0,
-      ABlock.Lines[ABlock.RowOf(AElement.Stop)] + 1, 0), '');
-  end
-  else
-  begin
-    Result := TRuleEdit.Create(XmlRange(ABlock, AElement.Start, AElement.Stop), '');
-  end;
-end;
-
-function TXmlDocCheck.DocLine(const ABlock: TDocBlock; const AText: string): string;
-begin
-  Result := ABlock.Indent + '/// ' + AText + FLineBreak;
 end;
 
 procedure TXmlDocCheck.ReportFlaws(const ABlock: TDocBlock; const AFlaws: TArray<TDocFlaw>);
@@ -977,6 +924,61 @@ begin
   begin
     CheckInterfaceMembers;
   end;
+end;
+
+function TXmlDocCheck.WithCode(const ABlock: TDocBlock; const AMessage, ACode: string): string;
+begin
+  Result := AMessage;
+  if (ACode = '') or not CompilerChecks(ABlock) then
+  begin
+    Exit;
+  end;
+  if EndsStr('.', Result) then
+  begin
+    Result := Copy(Result, 1, Length(Result) - 1) + cTexts[TXmlDocText.LikeCodeDot].Fmt([ACode]);
+  end
+  else
+  begin
+    Result := Result + cTexts[TXmlDocText.LikeCodeParen].Fmt([ACode]);
+  end;
+end;
+
+function TXmlDocCheck.DeclarationRange(ANode: TSyntaxNode): TTextRange;
+var
+  mFirst, mLast: Integer;
+begin
+  mFirst := TokenExactly(FTokens, ANode.StartOffset);
+  if (mFirst >= 0) and NameRange(FTokens, mFirst, mFirst, mLast) then
+  begin
+    Result := TTextRange.Create(FTokens[mFirst].StartPos, FTokens[mLast].EndPos);
+  end
+  else
+  begin
+    Result := TTextRange.Create(ANode.StartPos, ANode.StartPos);
+  end;
+end;
+
+function TXmlDocCheck.XmlRange(const ABlock: TDocBlock; AStart, AStop: Integer): TTextRange;
+begin
+  Result := TRuleDerived.OffsetRange(FCache, FContext, ABlock.OffsetOf(AStart), ABlock.OffsetOf(AStop));
+end;
+
+function TXmlDocCheck.RemoveEdit(const ABlock: TDocBlock; const AElement: TDocElement): TRuleEdit;
+begin
+  if ABlock.OwnsLines(AElement.Start, AElement.Stop) then
+  begin
+    Result := TRuleEdit.Create(TTextRange.Create(ABlock.Lines[ABlock.RowOf(AElement.Start)], 0,
+      ABlock.Lines[ABlock.RowOf(AElement.Stop)] + 1, 0), '');
+  end
+  else
+  begin
+    Result := TRuleEdit.Create(XmlRange(ABlock, AElement.Start, AElement.Stop), '');
+  end;
+end;
+
+function TXmlDocCheck.DocLine(const ABlock: TDocBlock; const AText: string): string;
+begin
+  Result := ABlock.Indent + '/// ' + AText + FLineBreak;
 end;
 
 { TDocCrefCheck }

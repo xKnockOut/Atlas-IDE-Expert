@@ -179,26 +179,6 @@ begin
     cTexts[TJumpsText.Title].Text);
 end;
 
-class function TJumpOutsideAllowedScopeRule.PlainCallName(AStatement: TSyntaxNode): string;
-var
-  mTarget: TSyntaxNode;
-begin
-  Result := '';
-  if (AStatement = nil) or (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount <> 1) then
-  begin
-    Exit;
-  end;
-  mTarget := AStatement[0];
-  if (mTarget.Kind = TSyntaxKind.Call) and (mTarget.ChildCount > 0) then
-  begin
-    mTarget := mTarget[0];
-  end;
-  if mTarget.Kind = TSyntaxKind.Identifier then
-  begin
-    Result := LowerCase(mTarget.Name);
-  end;
-end;
-
 procedure TJumpOutsideAllowedScopeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mDeclared: TDictionary<string, Boolean>;
@@ -316,26 +296,31 @@ begin
   end;
 end;
 
+class function TJumpOutsideAllowedScopeRule.PlainCallName(AStatement: TSyntaxNode): string;
+var
+  mTarget: TSyntaxNode;
+begin
+  Result := '';
+  if (AStatement = nil) or (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount <> 1) then
+  begin
+    Exit;
+  end;
+  mTarget := AStatement[0];
+  if (mTarget.Kind = TSyntaxKind.Call) and (mTarget.ChildCount > 0) then
+  begin
+    mTarget := mTarget[0];
+  end;
+  if mTarget.Kind = TSyntaxKind.Identifier then
+  begin
+    Result := LowerCase(mTarget.Name);
+  end;
+end;
+
 { TLabelMisuseRule }
 
 function TLabelMisuseRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cLabelMisuseRuleId, TRuleSeverity.Error, cTexts[TJumpsText.LabelTitle].Text);
-end;
-
-class function TLabelMisuseRule.LabelKey(const AName: string): string;
-var
-  mNumber: Integer;
-begin
-  // Ziffernmarken vergleicht Delphi als Zahl: 007 und 7 sind dieselbe Marke.
-  if (AName <> '') and CharInSet(AName[1], ['0'..'9']) and TryStrToInt(AName, mNumber) then
-  begin
-    Result := IntToStr(mNumber);
-  end
-  else
-  begin
-    Result := LowerCase(AName);
-  end;
 end;
 
 procedure TLabelMisuseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -749,6 +734,21 @@ begin
   mTokens := AContext.Tree.Tokens;
   mPaths := TConditionalBranches.Paths(mTokens);
   Visit(AContext.Tree.Root);
+end;
+
+class function TLabelMisuseRule.LabelKey(const AName: string): string;
+var
+  mNumber: Integer;
+begin
+  // Ziffernmarken vergleicht Delphi als Zahl: 007 und 7 sind dieselbe Marke.
+  if (AName <> '') and CharInSet(AName[1], ['0'..'9']) and TryStrToInt(AName, mNumber) then
+  begin
+    Result := IntToStr(mNumber);
+  end
+  else
+  begin
+    Result := LowerCase(AName);
+  end;
 end;
 
 procedure RegisterJumpRules(const ARegistry: TRuleRegistry);

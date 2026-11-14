@@ -303,27 +303,6 @@ begin
   end;
 end;
 
-procedure TInterfaceScan.AddMark(const AClass, ADeclaration: TIndexSymbol; const AMember: TInterfaceMember);
-var
-  mMark: TInterfaceMethodMark;
-  mTarget: TInterfaceMethodTarget;
-  mLine: Integer;
-begin
-  mLine := ADeclaration.SelectionRange.StartPos.Line;
-  if not FMarks.TryGetValue(mLine, mMark) then
-  begin
-    mMark := Default(TInterfaceMethodMark);
-    mMark.Line := mLine;
-    mMark.Name := AClass.Name + '.' + ADeclaration.Name;
-  end;
-  mTarget.Name := TResolverText.BareTypeName(AMember.Owner.Name) + '.' + AMember.Symbol.Name;
-  mTarget.UnitName := AMember.Owner.UnitName;
-  mTarget.FileName := AMember.Owner.FileName;
-  mTarget.Range := AMember.Symbol.SelectionRange;
-  mMark.Targets := mMark.Targets + [mTarget];
-  FMarks.AddOrSetValue(mLine, mMark);
-end;
-
 procedure TInterfaceScan.Match(const AClass: TIndexSymbol; const AMember: TInterfaceMember;
   const ADeclarations: TArray<TIndexSymbol>);
 var
@@ -355,6 +334,27 @@ begin
   begin
     AddMark(AClass, mOnly, AMember);
   end;
+end;
+
+procedure TInterfaceScan.AddMark(const AClass, ADeclaration: TIndexSymbol; const AMember: TInterfaceMember);
+var
+  mMark: TInterfaceMethodMark;
+  mTarget: TInterfaceMethodTarget;
+  mLine: Integer;
+begin
+  mLine := ADeclaration.SelectionRange.StartPos.Line;
+  if not FMarks.TryGetValue(mLine, mMark) then
+  begin
+    mMark := Default(TInterfaceMethodMark);
+    mMark.Line := mLine;
+    mMark.Name := AClass.Name + '.' + ADeclaration.Name;
+  end;
+  mTarget.Name := TResolverText.BareTypeName(AMember.Owner.Name) + '.' + AMember.Symbol.Name;
+  mTarget.UnitName := AMember.Owner.UnitName;
+  mTarget.FileName := AMember.Owner.FileName;
+  mTarget.Range := AMember.Symbol.SelectionRange;
+  mMark.Targets := mMark.Targets + [mTarget];
+  FMarks.AddOrSetValue(mLine, mMark);
 end;
 
 procedure TInterfaceScan.ScanClass(const AClass: TIndexSymbol);

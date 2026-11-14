@@ -442,6 +442,8 @@ begin
   end;
 end;
 
+{ TCrashReports }
+
 class function TCrashReports.ParseMadExceptFrame(const ALine: string; out AFrame: TCrashFrame): Boolean;
 var
   mWords: TArray<string>;
@@ -531,6 +533,8 @@ type
     function IsStack: Boolean;
     function IsModules: Boolean;
   end;
+
+{ TEurekaColumns }
 
 function TEurekaColumns.IsStack: Boolean;
 begin
@@ -832,37 +836,6 @@ end;
 
 { TCrashReports }
 
-class function TCrashReports.TryParseHex(const AText: string; out AValue: UInt64): Boolean;
-var
-  mText: string;
-  mChar: Char;
-begin
-  AValue := 0;
-  mText := AText;
-  if StartsText(cHexPrefix, mText) then
-  begin
-    mText := Copy(mText, Length(cHexPrefix) + 1, MaxInt);
-  end
-  else if mText.StartsWith('$') then
-  begin
-    mText := Copy(mText, 2, MaxInt);
-  end;
-  Result := (mText <> '') and (Length(mText) <= cMaxHexDigits);
-  if not Result then
-  begin
-    Exit;
-  end;
-  for mChar in mText do
-  begin
-    if not IsHexDigit(mChar) then
-    begin
-      AValue := 0;
-      Exit(False);
-    end;
-    AValue := (AValue shl cBitsPerHexDigit) or UInt64(Pos(UpCase(mChar), '0123456789ABCDEF') - 1);
-  end;
-end;
-
 class function TCrashReports.IsLibraryUnit(const AUnitName: string): Boolean;
 var
   mLower, mName: string;
@@ -897,6 +870,37 @@ begin
     end;
   end;
   Result := -1;
+end;
+
+class function TCrashReports.TryParseHex(const AText: string; out AValue: UInt64): Boolean;
+var
+  mText: string;
+  mChar: Char;
+begin
+  AValue := 0;
+  mText := AText;
+  if StartsText(cHexPrefix, mText) then
+  begin
+    mText := Copy(mText, Length(cHexPrefix) + 1, MaxInt);
+  end
+  else if mText.StartsWith('$') then
+  begin
+    mText := Copy(mText, 2, MaxInt);
+  end;
+  Result := (mText <> '') and (Length(mText) <= cMaxHexDigits);
+  if not Result then
+  begin
+    Exit;
+  end;
+  for mChar in mText do
+  begin
+    if not IsHexDigit(mChar) then
+    begin
+      AValue := 0;
+      Exit(False);
+    end;
+    AValue := (AValue shl cBitsPerHexDigit) or UInt64(Pos(UpCase(mChar), '0123456789ABCDEF') - 1);
+  end;
 end;
 
 /// <summary>Adresse und Modul ergänzen: aus der Meldung, sonst aus der ersten Stapelzeile.</summary>

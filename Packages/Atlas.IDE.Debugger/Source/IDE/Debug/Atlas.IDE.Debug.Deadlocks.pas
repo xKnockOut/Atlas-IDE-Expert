@@ -84,61 +84,6 @@ end;
 
 { TAtlasIdeDebugDeadlocks }
 
-class procedure TAtlasIdeDebugDeadlocks.Start(const AMessage: TProc<string>);
-begin
-  FMessage := AMessage;
-  if FTicker = nil then
-  begin
-    FTicker := TTicker.Create;
-  end;
-  if FTimer = nil then
-  begin
-    FTimer := TTimer.Create(nil);
-    FTimer.Enabled := False;
-    FTimer.Interval := cIntervalMs;
-    FTimer.OnTimer := FTicker.Tick;
-  end;
-  FStarted := True;
-end;
-
-class procedure TAtlasIdeDebugDeadlocks.Release;
-begin
-  FStarted := False;
-  FreeAndNil(FTimer);
-  FreeAndNil(FTicker);
-  FMessage := nil;
-  FReport := Default(TAtlasDebugWaitReport);
-  TAtlasIdeResultsWindow.ReleaseItems(cOwner);
-end;
-
-class function TAtlasIdeDebugDeadlocks.Started: Boolean;
-begin
-  Result := FStarted;
-end;
-
-class procedure TAtlasIdeDebugDeadlocks.Run;
-begin
-  if not FStarted then
-  begin
-    Exit;
-  end;
-  FTimer.Enabled := False;
-  if TAtlasIdeDebugSession.StoppedThread = nil then
-  begin
-    FMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsNotStopped));
-    Exit;
-  end;
-  FRetries := 0;
-  if TryRead then
-  begin
-    Show;
-  end
-  else
-  begin
-    FTimer.Enabled := True;
-  end;
-end;
-
 class function TAtlasIdeDebugDeadlocks.TryRead: Boolean;
 var
   mProcess: IOTAProcess;
@@ -228,6 +173,61 @@ begin
   begin
     TAtlasIdeNavigation.MarkLine(FReport.Stacks[mIndex].Frames[mJump].FileName,
       FReport.Stacks[mIndex].Frames[mJump].Line - 1);
+  end;
+end;
+
+class procedure TAtlasIdeDebugDeadlocks.Start(const AMessage: TProc<string>);
+begin
+  FMessage := AMessage;
+  if FTicker = nil then
+  begin
+    FTicker := TTicker.Create;
+  end;
+  if FTimer = nil then
+  begin
+    FTimer := TTimer.Create(nil);
+    FTimer.Enabled := False;
+    FTimer.Interval := cIntervalMs;
+    FTimer.OnTimer := FTicker.Tick;
+  end;
+  FStarted := True;
+end;
+
+class procedure TAtlasIdeDebugDeadlocks.Release;
+begin
+  FStarted := False;
+  FreeAndNil(FTimer);
+  FreeAndNil(FTicker);
+  FMessage := nil;
+  FReport := Default(TAtlasDebugWaitReport);
+  TAtlasIdeResultsWindow.ReleaseItems(cOwner);
+end;
+
+class function TAtlasIdeDebugDeadlocks.Started: Boolean;
+begin
+  Result := FStarted;
+end;
+
+class procedure TAtlasIdeDebugDeadlocks.Run;
+begin
+  if not FStarted then
+  begin
+    Exit;
+  end;
+  FTimer.Enabled := False;
+  if TAtlasIdeDebugSession.StoppedThread = nil then
+  begin
+    FMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsNotStopped));
+    Exit;
+  end;
+  FRetries := 0;
+  if TryRead then
+  begin
+    Show;
+  end
+  else
+  begin
+    FTimer.Enabled := True;
   end;
 end;
 

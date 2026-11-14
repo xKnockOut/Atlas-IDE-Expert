@@ -1270,12 +1270,6 @@ begin
     cTexts[TTypedExpressionsText.OrdinalTitle].Text);
 end;
 
-class function TCaseSelectorNotOrdinalRule.NotOrdinal(const ATypeName: string): Boolean;
-begin
-  Result := MatchText(ATypeName, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'ShortString',
-    'RawByteString', 'UTF8String', 'Double', 'Single', 'Extended', 'Real', 'Currency', 'Comp', 'Real48']);
-end;
-
 procedure TCaseSelectorNotOrdinalRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mScope: TTypedScope;
@@ -1623,6 +1617,12 @@ begin
   finally
     mScope.Free;
   end;
+end;
+
+class function TCaseSelectorNotOrdinalRule.NotOrdinal(const ATypeName: string): Boolean;
+begin
+  Result := MatchText(ATypeName, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'ShortString',
+    'RawByteString', 'UTF8String', 'Double', 'Single', 'Extended', 'Real', 'Currency', 'Comp', 'Real48']);
 end;
 
 { TSuspiciousStringPointerCastRule }

@@ -431,13 +431,12 @@ begin
   end;
 end;
 
-class function TAtlasBoardLayout.LaneKey(const ALane: TAtlasBoardLane): string;
+{ TAtlasBoardLayout }
+
+class function TAtlasBoardLayout.Build(const ASnapshot: TAtlasBoardSnapshot; const AVisible: TArray<Integer>;
+  AWidth: Integer; const ACollapsed: TArray<Integer>; const AMetrics: TAtlasBoardMetrics): TAtlasBoardLayout;
 begin
-  Result := '';
-  if not ALane.Orphans then
-  begin
-    Result := ALane.Name;
-  end;
+  Result := Build(ASnapshot, AVisible, AWidth, ACollapsed, nil, AMetrics);
 end;
 
 /// <summary>Linke Kante der Spalte AIndex neben den Namen der Swimlanes.</summary>
@@ -515,12 +514,6 @@ begin
 end;
 
 class function TAtlasBoardLayout.Build(const ASnapshot: TAtlasBoardSnapshot; const AVisible: TArray<Integer>;
-  AWidth: Integer; const ACollapsed: TArray<Integer>; const AMetrics: TAtlasBoardMetrics): TAtlasBoardLayout;
-begin
-  Result := Build(ASnapshot, AVisible, AWidth, ACollapsed, nil, AMetrics);
-end;
-
-class function TAtlasBoardLayout.Build(const ASnapshot: TAtlasBoardSnapshot; const AVisible: TArray<Integer>;
   AWidth: Integer; const ACollapsed: TArray<Integer>; const ACollapsedLanes: TArray<string>;
   const AMetrics: TAtlasBoardMetrics): TAtlasBoardLayout;
 var
@@ -580,6 +573,29 @@ begin
   end;
 end;
 
+class function TAtlasBoardLayout.LaneKey(const ALane: TAtlasBoardLane): string;
+begin
+  Result := '';
+  if not ALane.Orphans then
+  begin
+    Result := ALane.Name;
+  end;
+end;
+
+function TAtlasBoardLayout.LaneAt(const APoint: TPoint): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(LaneBoxes) do
+  begin
+    if LaneBoxes[mIndex].Contains(APoint) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
 function TAtlasBoardLayout.CardAt(const APoint: TPoint): Integer;
 var
   mPlace: TAtlasBoardPlace;
@@ -606,20 +622,6 @@ begin
     end;
   end;
   Result := -2;
-end;
-
-function TAtlasBoardLayout.LaneAt(const APoint: TPoint): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(LaneBoxes) do
-  begin
-    if LaneBoxes[mIndex].Contains(APoint) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
 end;
 
 function TAtlasBoardLayout.HeaderAt(const APoint: TPoint): Integer;
@@ -665,6 +667,149 @@ begin
   FDropColumn := -2;
 end;
 
+procedure TAtlasBoardView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mCard: Integer;
+begin
+  inherited;
+  if CanFocus then
+  begin
+    SetFocus;
+  end;
+  mCard := FLayout.CardAt(Point(X, Y));
+  if Button = mbRight then
+  begin
+    if (mCard >= 0) and Assigned(FEvents.Context) then
+    begin
+      FEvents.Context(mCard, ClientToScreen(Point(X, Y)));
+    end;
+    Exit;
+  end;
+  if Button <> mbLeft then
+  begin
+    Exit;
+  end;
+  FPressCard := mCard;
+  FPressPoint := Point(X, Y);
+  FDragging := False;
+  // Schmal: Klick auf die Kopfzeile klappt die Gruppe; breit: Klick auf den Namen die Swimlane.
+  if (mCard < 0) and FLayout.Narrow and (FLayout.HeaderAt(Point(X, Y)) > -2) then
+  begin
+    ToggleColumn(FLayout.HeaderAt(Point(X, Y)));
+    Relayout(Width);
+  end
+  else if (mCard < 0) and (FLayout.LaneAt(Point(X, Y)) >= 0) then
+  begin
+    ToggleLane(TAtlasBoardLayout.LaneKey(FLayout.Lanes[FLayout.LaneAt(Point(X, Y))]));
+    Relayout(Width);
+  end;
+end;
+
+procedure TAtlasBoardView.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  mDistance: Integer;
+begin
+  inherited;
+  if (FPressCard < 0) or not (ssLeft in Shift) then
+  begin
+    Exit;
+  end;
+  mDistance := MulDiv(cDragDistance, CurrentPPI, 96);
+  if not FDragging and FCanDrag and ((Abs(X - FPressPoint.X) > mDistance) or (Abs(Y - FPressPoint.Y) > mDistance))
+  then
+  begin
+    FDragging := True;
+    MouseCapture := True;
+  end;
+  if FDragging then
+  begin
+    FDragPoint := Point(X, Y);
+    FDropColumn := FLayout.ColumnAt(FDragPoint);
+    // Spalten, die der Workflow des Trackers sicher nicht zulässt, nehmen nichts an (Grund beim Loslassen).
+    if TAtlasBoardTransitions.Allowed(FSnapshot, FPressCard, FDropColumn) then
+    begin
+      Cursor := crDrag;
+    end
+    else
+    begin
+      Cursor := crNoDrop;
+    end;
+    Invalidate;
+  end;
+end;
+
+procedure TAtlasBoardView.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mCard, mColumn: Integer;
+  mDragging: Boolean;
+begin
+  inherited;
+  if Button <> mbLeft then
+  begin
+    Exit;
+  end;
+  mCard := FPressCard;
+  mDragging := FDragging;
+  mColumn := FLayout.ColumnAt(Point(X, Y));
+  CancelDrag;
+  if mCard < 0 then
+  begin
+    Exit;
+  end;
+  if mDragging then
+  begin
+    if TAtlasTrackerBoard.CanMove(FSnapshot, mCard, mColumn) and Assigned(FEvents.Move) then
+    begin
+      FEvents.Move(mCard, mColumn);
+    end;
+  end
+  else if (FLayout.CardAt(Point(X, Y)) = mCard) and Assigned(FEvents.Open) then
+  begin
+    FEvents.Open(mCard);
+  end;
+end;
+
+procedure TAtlasBoardView.DblClick;
+var
+  mCard: Integer;
+begin
+  inherited;
+  mCard := FLayout.CardAt(ScreenToClient(Mouse.CursorPos));
+  if (mCard >= 0) and Assigned(FEvents.Start) then
+  begin
+    FEvents.Start(mCard);
+  end;
+end;
+
+procedure TAtlasBoardView.KeyDown(var Key: Word; Shift: TShiftState);
+begin
+  inherited;
+  if (Key = VK_ESCAPE) and FDragging then
+  begin
+    Key := 0;
+    CancelDrag;
+  end;
+end;
+
+function TAtlasBoardView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
+begin
+  Result := inherited DoMouseWheel(Shift, WheelDelta, MousePos);
+  if Result or not (Parent is TScrollBox) then
+  begin
+    Exit;
+  end;
+  // Das Rad blättert die umgebende Fläche, mit Umschalt waagerecht.
+  if ssShift in Shift then
+  begin
+    TScrollBox(Parent).HorzScrollBar.Position := TScrollBox(Parent).HorzScrollBar.Position - WheelDelta div 2;
+  end
+  else
+  begin
+    TScrollBox(Parent).VertScrollBar.Position := TScrollBox(Parent).VertScrollBar.Position - WheelDelta div 2;
+  end;
+  Result := True;
+end;
+
 function TAtlasBoardView.Metrics: TAtlasBoardMetrics;
 var
   mLine: Integer;
@@ -681,60 +826,6 @@ begin
   end;
   // Zeilenhöhe ist schon in Bildschirmpixeln; Breiten und Abstände skalieren mit der Schrift.
   Result := TAtlasBoardMetrics.Create(mLine).Scaled(CurrentPPI, 96);
-end;
-
-procedure TAtlasBoardView.SetData(const ASnapshot: TAtlasBoardSnapshot; const AVisible: TArray<Integer>);
-begin
-  CancelDrag;
-  FSnapshot := ASnapshot;
-  FVisible := AVisible;
-end;
-
-procedure TAtlasBoardView.Relayout(AWidth: Integer);
-begin
-  FLayout := TAtlasBoardLayout.Build(FSnapshot, FVisible, AWidth, FCollapsed, FCollapsedLanes, Metrics);
-  SetBounds(0, 0, FLayout.Width, Max(FLayout.Height, 1));
-  Invalidate;
-end;
-
-function TAtlasBoardView.Collapsed(AColumn: Integer): Boolean;
-begin
-  Result := Contains(FCollapsed, AColumn);
-end;
-
-procedure TAtlasBoardView.ToggleColumn(AColumn: Integer);
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(FCollapsed) do
-  begin
-    if FCollapsed[mIndex] = AColumn then
-    begin
-      Delete(FCollapsed, mIndex, 1);
-      Exit;
-    end;
-  end;
-  FCollapsed := FCollapsed + [AColumn];
-end;
-
-function TAtlasBoardView.LaneCollapsed(const AKey: string): Boolean;
-begin
-  Result := ContainsKey(FCollapsedLanes, AKey);
-end;
-
-procedure TAtlasBoardView.ToggleLane(const AKey: string);
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(FCollapsedLanes) do
-  begin
-    if FCollapsedLanes[mIndex] = AKey then
-    begin
-      Delete(FCollapsedLanes, mIndex, 1);
-      Exit;
-    end;
-  end;
-  FCollapsedLanes := FCollapsedLanes + [AKey];
 end;
 
 function PriorityColor(const ACard: TAtlasBoardCard; const AColors: TAtlasColors): TColor;
@@ -1024,149 +1115,6 @@ begin
   end;
 end;
 
-procedure TAtlasBoardView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  mCard: Integer;
-begin
-  inherited;
-  if CanFocus then
-  begin
-    SetFocus;
-  end;
-  mCard := FLayout.CardAt(Point(X, Y));
-  if Button = mbRight then
-  begin
-    if (mCard >= 0) and Assigned(FEvents.Context) then
-    begin
-      FEvents.Context(mCard, ClientToScreen(Point(X, Y)));
-    end;
-    Exit;
-  end;
-  if Button <> mbLeft then
-  begin
-    Exit;
-  end;
-  FPressCard := mCard;
-  FPressPoint := Point(X, Y);
-  FDragging := False;
-  // Schmal: Klick auf die Kopfzeile klappt die Gruppe; breit: Klick auf den Namen die Swimlane.
-  if (mCard < 0) and FLayout.Narrow and (FLayout.HeaderAt(Point(X, Y)) > -2) then
-  begin
-    ToggleColumn(FLayout.HeaderAt(Point(X, Y)));
-    Relayout(Width);
-  end
-  else if (mCard < 0) and (FLayout.LaneAt(Point(X, Y)) >= 0) then
-  begin
-    ToggleLane(TAtlasBoardLayout.LaneKey(FLayout.Lanes[FLayout.LaneAt(Point(X, Y))]));
-    Relayout(Width);
-  end;
-end;
-
-procedure TAtlasBoardView.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  mDistance: Integer;
-begin
-  inherited;
-  if (FPressCard < 0) or not (ssLeft in Shift) then
-  begin
-    Exit;
-  end;
-  mDistance := MulDiv(cDragDistance, CurrentPPI, 96);
-  if not FDragging and FCanDrag and ((Abs(X - FPressPoint.X) > mDistance) or (Abs(Y - FPressPoint.Y) > mDistance))
-  then
-  begin
-    FDragging := True;
-    MouseCapture := True;
-  end;
-  if FDragging then
-  begin
-    FDragPoint := Point(X, Y);
-    FDropColumn := FLayout.ColumnAt(FDragPoint);
-    // Spalten, die der Workflow des Trackers sicher nicht zulässt, nehmen nichts an (Grund beim Loslassen).
-    if TAtlasBoardTransitions.Allowed(FSnapshot, FPressCard, FDropColumn) then
-    begin
-      Cursor := crDrag;
-    end
-    else
-    begin
-      Cursor := crNoDrop;
-    end;
-    Invalidate;
-  end;
-end;
-
-procedure TAtlasBoardView.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  mCard, mColumn: Integer;
-  mDragging: Boolean;
-begin
-  inherited;
-  if Button <> mbLeft then
-  begin
-    Exit;
-  end;
-  mCard := FPressCard;
-  mDragging := FDragging;
-  mColumn := FLayout.ColumnAt(Point(X, Y));
-  CancelDrag;
-  if mCard < 0 then
-  begin
-    Exit;
-  end;
-  if mDragging then
-  begin
-    if TAtlasTrackerBoard.CanMove(FSnapshot, mCard, mColumn) and Assigned(FEvents.Move) then
-    begin
-      FEvents.Move(mCard, mColumn);
-    end;
-  end
-  else if (FLayout.CardAt(Point(X, Y)) = mCard) and Assigned(FEvents.Open) then
-  begin
-    FEvents.Open(mCard);
-  end;
-end;
-
-procedure TAtlasBoardView.DblClick;
-var
-  mCard: Integer;
-begin
-  inherited;
-  mCard := FLayout.CardAt(ScreenToClient(Mouse.CursorPos));
-  if (mCard >= 0) and Assigned(FEvents.Start) then
-  begin
-    FEvents.Start(mCard);
-  end;
-end;
-
-procedure TAtlasBoardView.KeyDown(var Key: Word; Shift: TShiftState);
-begin
-  inherited;
-  if (Key = VK_ESCAPE) and FDragging then
-  begin
-    Key := 0;
-    CancelDrag;
-  end;
-end;
-
-function TAtlasBoardView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
-begin
-  Result := inherited DoMouseWheel(Shift, WheelDelta, MousePos);
-  if Result or not (Parent is TScrollBox) then
-  begin
-    Exit;
-  end;
-  // Das Rad blättert die umgebende Fläche, mit Umschalt waagerecht.
-  if ssShift in Shift then
-  begin
-    TScrollBox(Parent).HorzScrollBar.Position := TScrollBox(Parent).HorzScrollBar.Position - WheelDelta div 2;
-  end
-  else
-  begin
-    TScrollBox(Parent).VertScrollBar.Position := TScrollBox(Parent).VertScrollBar.Position - WheelDelta div 2;
-  end;
-  Result := True;
-end;
-
 procedure TAtlasBoardView.CancelDrag;
 begin
   if FDragging then
@@ -1187,6 +1135,60 @@ begin
   begin
     FPressCard := -1;
   end;
+end;
+
+procedure TAtlasBoardView.Relayout(AWidth: Integer);
+begin
+  FLayout := TAtlasBoardLayout.Build(FSnapshot, FVisible, AWidth, FCollapsed, FCollapsedLanes, Metrics);
+  SetBounds(0, 0, FLayout.Width, Max(FLayout.Height, 1));
+  Invalidate;
+end;
+
+procedure TAtlasBoardView.SetData(const ASnapshot: TAtlasBoardSnapshot; const AVisible: TArray<Integer>);
+begin
+  CancelDrag;
+  FSnapshot := ASnapshot;
+  FVisible := AVisible;
+end;
+
+procedure TAtlasBoardView.ToggleColumn(AColumn: Integer);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FCollapsed) do
+  begin
+    if FCollapsed[mIndex] = AColumn then
+    begin
+      Delete(FCollapsed, mIndex, 1);
+      Exit;
+    end;
+  end;
+  FCollapsed := FCollapsed + [AColumn];
+end;
+
+function TAtlasBoardView.Collapsed(AColumn: Integer): Boolean;
+begin
+  Result := Contains(FCollapsed, AColumn);
+end;
+
+procedure TAtlasBoardView.ToggleLane(const AKey: string);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FCollapsedLanes) do
+  begin
+    if FCollapsedLanes[mIndex] = AKey then
+    begin
+      Delete(FCollapsedLanes, mIndex, 1);
+      Exit;
+    end;
+  end;
+  FCollapsedLanes := FCollapsedLanes + [AKey];
+end;
+
+function TAtlasBoardView.LaneCollapsed(const AKey: string): Boolean;
+begin
+  Result := ContainsKey(FCollapsedLanes, AKey);
 end;
 
 { TAtlasBoardFrame }
@@ -1337,6 +1339,8 @@ begin
   AFrame.FParts.Menu.Items.Add(Result);
 end;
 
+{ TAtlasBoardFrame }
+
 constructor TAtlasBoardFrame.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
@@ -1363,6 +1367,25 @@ begin
   inherited;
 end;
 
+procedure TAtlasBoardFrame.ButtonClick(Sender: TObject);
+begin
+  if Sender = FParts.Refresh then
+  begin
+    if Assigned(FEvents.Refresh) then
+    begin
+      FEvents.Refresh();
+    end;
+  end
+  else if FParts.Mine.Down <> FOnlyMine then
+  begin
+    SetOnlyMine(FParts.Mine.Down);
+    if Assigned(FEvents.OnlyMine) then
+    begin
+      FEvents.OnlyMine(FOnlyMine);
+    end;
+  end;
+end;
+
 procedure TAtlasBoardFrame.CMShowingChanged(var AMessage: TMessage);
 begin
   inherited;
@@ -1384,38 +1407,18 @@ begin
   FParts.View.Invalidate;
 end;
 
-function TAtlasBoardFrame.ColumnCaption(AColumn: Integer): string;
+procedure TAtlasBoardFrame.SetStatus(const AText: string);
 begin
-  if (AColumn < 0) or (AColumn > High(FSnapshot.Columns)) then
-  begin
-    Exit(TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardNoColumn));
-  end;
-  Result := FSnapshot.Columns[AColumn].Name;
-  // GitHub ohne Projekt: Zustände des Issues in der Sprache der Oberfläche.
-  if FSnapshot.Kind = TAtlasBoardKind.Repository then
-  begin
-    if FSnapshot.Columns[AColumn].Resolved then
-    begin
-      Result := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardColumnClosed);
-    end
-    else
-    begin
-      Result := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardColumnOpen);
-    end;
-  end;
+  FParts.Status.Caption := AText;
+  FParts.Status.Visible := AText <> '';
 end;
 
-function TAtlasBoardFrame.VisibleCards: TArray<Integer>;
+procedure TAtlasBoardFrame.SetLoading(AValue: Boolean);
 begin
-  Result := TAtlasTrackerBoard.Visible(FSnapshot, FOnlyMine, FParts.Search.Text);
-end;
-
-function TAtlasBoardFrame.Card(AIndex: Integer): TAtlasBoardCard;
-begin
-  Result := Default(TAtlasBoardCard);
-  if (AIndex >= 0) and (AIndex <= High(FSnapshot.Cards)) then
+  FParts.Refresh.Enabled := not AValue;
+  if AValue then
   begin
-    Result := FSnapshot.Cards[AIndex];
+    SetStatus(TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardLoading));
   end;
 end;
 
@@ -1541,6 +1544,15 @@ begin
   end;
 end;
 
+procedure TAtlasBoardFrame.ScrollResize(Sender: TObject);
+begin
+  if FHasSnapshot then
+  begin
+    FParts.View.Relayout(ScrollWidth(FParts.Scroll));
+  end;
+  FParts.Empty.Width := Max(ScrollWidth(FParts.Scroll), ScaleValue(100));
+end;
+
 procedure TAtlasBoardFrame.SetSnapshot(const ASnapshot: TAtlasBoardSnapshot; const AStatus: string);
 begin
   FSnapshot := ASnapshot;
@@ -1561,30 +1573,6 @@ begin
   FParts.Empty.Top := ScaleValue(40);
   FParts.Empty.Width := Max(ScrollWidth(FParts.Scroll), ScaleValue(100));
   FParts.Empty.Visible := AText <> '';
-end;
-
-procedure TAtlasBoardFrame.SetStatus(const AText: string);
-begin
-  FParts.Status.Caption := AText;
-  FParts.Status.Visible := AText <> '';
-end;
-
-function TAtlasBoardFrame.StatusText: string;
-begin
-  Result := '';
-  if FParts.Status.Visible then
-  begin
-    Result := FParts.Status.Caption;
-  end;
-end;
-
-procedure TAtlasBoardFrame.SetLoading(AValue: Boolean);
-begin
-  FParts.Refresh.Enabled := not AValue;
-  if AValue then
-  begin
-    SetStatus(TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardLoading));
-  end;
 end;
 
 function TAtlasBoardFrame.MoveCard(ACard, AColumn: Integer): string;
@@ -1637,6 +1625,20 @@ begin
   end;
 end;
 
+function TAtlasBoardFrame.VisibleCards: TArray<Integer>;
+begin
+  Result := TAtlasTrackerBoard.Visible(FSnapshot, FOnlyMine, FParts.Search.Text);
+end;
+
+function TAtlasBoardFrame.StatusText: string;
+begin
+  Result := '';
+  if FParts.Status.Visible then
+  begin
+    Result := FParts.Status.Caption;
+  end;
+end;
+
 /// <summary>Gewählte ID aus ABox; False beim Füllen oder ohne Auswahl.</summary>
 function ChosenId(AFrame: TAtlasBoardFrame; ABox: TComboBox; const AIds: TArray<string>; out AId: string): Boolean;
 begin
@@ -1671,32 +1673,34 @@ begin
   end;
 end;
 
-procedure TAtlasBoardFrame.ButtonClick(Sender: TObject);
+function TAtlasBoardFrame.Card(AIndex: Integer): TAtlasBoardCard;
 begin
-  if Sender = FParts.Refresh then
+  Result := Default(TAtlasBoardCard);
+  if (AIndex >= 0) and (AIndex <= High(FSnapshot.Cards)) then
   begin
-    if Assigned(FEvents.Refresh) then
-    begin
-      FEvents.Refresh();
-    end;
-  end
-  else if FParts.Mine.Down <> FOnlyMine then
-  begin
-    SetOnlyMine(FParts.Mine.Down);
-    if Assigned(FEvents.OnlyMine) then
-    begin
-      FEvents.OnlyMine(FOnlyMine);
-    end;
+    Result := FSnapshot.Cards[AIndex];
   end;
 end;
 
-procedure TAtlasBoardFrame.ScrollResize(Sender: TObject);
+function TAtlasBoardFrame.ColumnCaption(AColumn: Integer): string;
 begin
-  if FHasSnapshot then
+  if (AColumn < 0) or (AColumn > High(FSnapshot.Columns)) then
   begin
-    FParts.View.Relayout(ScrollWidth(FParts.Scroll));
+    Exit(TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardNoColumn));
   end;
-  FParts.Empty.Width := Max(ScrollWidth(FParts.Scroll), ScaleValue(100));
+  Result := FSnapshot.Columns[AColumn].Name;
+  // GitHub ohne Projekt: Zustände des Issues in der Sprache der Oberfläche.
+  if FSnapshot.Kind = TAtlasBoardKind.Repository then
+  begin
+    if FSnapshot.Columns[AColumn].Resolved then
+    begin
+      Result := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardColumnClosed);
+    end
+    else
+    begin
+      Result := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardColumnOpen);
+    end;
+  end;
 end;
 
 procedure FireCard(const AEvent: TAtlasBoardCardEvent; ACard: Integer);

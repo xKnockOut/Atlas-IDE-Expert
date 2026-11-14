@@ -118,22 +118,6 @@ begin
   inherited Destroy;
 end;
 
-function TAtlasVcsSettingsSection.Add(APart: TAtlasVcsSettingsPart): TAtlasVcsSettingsPart;
-begin
-  FParts.Add(APart);
-  Result := APart;
-end;
-
-function TAtlasVcsSettingsSection.OwnerId: string;
-begin
-  Result := cOwnerId;
-end;
-
-function TAtlasVcsSettingsSection.AreaId: string;
-begin
-  Result := cAreaId;
-end;
-
 procedure TAtlasVcsSettingsSection.BuildRows;
 var
   mPart: TAtlasVcsSettingsPart;
@@ -152,6 +136,16 @@ begin
   FServers.Build;
   FKind.Build2;
   FBranch.Build;
+end;
+
+function TAtlasVcsSettingsSection.OwnerId: string;
+begin
+  Result := cOwnerId;
+end;
+
+function TAtlasVcsSettingsSection.AreaId: string;
+begin
+  Result := cAreaId;
 end;
 
 procedure TAtlasVcsSettingsSection.Load(const AValues: IAtlasSettingsValues);
@@ -207,20 +201,6 @@ begin
   end;
 end;
 
-function TAtlasVcsSettingsSection.Alive: TFunc<Boolean>;
-var
-  mRef: IInterface;
-  mAlive: TAtlasVcsSectionAlive;
-begin
-  mRef := FAliveRef;
-  mAlive := FAlive;
-  Result :=
-    function: Boolean
-    begin
-      Result := (mRef <> nil) and mAlive.Open;
-    end;
-end;
-
 procedure TAtlasVcsSettingsSection.Close;
 var
   mPart: TAtlasVcsSettingsPart;
@@ -238,6 +218,26 @@ begin
   end;
   FreeAndNil(FOwner);
   inherited Close;
+end;
+
+function TAtlasVcsSettingsSection.Add(APart: TAtlasVcsSettingsPart): TAtlasVcsSettingsPart;
+begin
+  FParts.Add(APart);
+  Result := APart;
+end;
+
+function TAtlasVcsSettingsSection.Alive: TFunc<Boolean>;
+var
+  mRef: IInterface;
+  mAlive: TAtlasVcsSectionAlive;
+begin
+  mRef := FAliveRef;
+  mAlive := FAlive;
+  Result :=
+    function: Boolean
+    begin
+      Result := (mRef <> nil) and mAlive.Open;
+    end;
 end;
 
 end.

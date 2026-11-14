@@ -153,6 +153,8 @@ begin
   end;
 end;
 
+{ TRationaleReferences }
+
 class function TRationaleReferences.Find(const AText: string): TArray<TRationaleLink>;
 var
   mIndex, mEnd: Integer;

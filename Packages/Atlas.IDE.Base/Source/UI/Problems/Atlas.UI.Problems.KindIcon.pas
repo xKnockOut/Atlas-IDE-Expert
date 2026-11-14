@@ -35,6 +35,8 @@ implementation
 uses
   System.Math;
 
+{ TAtlasFindingIcon }
+
 class function TAtlasFindingIcon.SignalOf(AKind: TAtlasFindingKind): TAtlasSignalKind;
 begin
   case AKind of

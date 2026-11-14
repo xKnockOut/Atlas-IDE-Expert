@@ -311,18 +311,6 @@ begin
   TAtlasGuard.Run(TAtlasFeature.DesignerBar, Tick);
 end;
 
-function TRunner.DefaultLayout(ANow: UInt64): string;
-begin
-  // Die Registry nicht in jedem Takt lesen.
-  if not FDefaultReadOnce or (ANow < FDefaultRead) or (ANow - FDefaultRead >= cRegistryMilliseconds) then
-  begin
-    FDefaultLayout := StoredDefaultLayout;
-    FDefaultRead := ANow;
-    FDefaultReadOnce := True;
-  end;
-  Result := FDefaultLayout;
-end;
-
 procedure TRunner.Tick;
 var
   mOptions: TAtlasDesktopSwitchOptions;
@@ -365,6 +353,18 @@ begin
   begin
     FOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.DesktopMissing, [mAction.Layout]));
   end;
+end;
+
+function TRunner.DefaultLayout(ANow: UInt64): string;
+begin
+  // Die Registry nicht in jedem Takt lesen.
+  if not FDefaultReadOnce or (ANow < FDefaultRead) or (ANow - FDefaultRead >= cRegistryMilliseconds) then
+  begin
+    FDefaultLayout := StoredDefaultLayout;
+    FDefaultRead := ANow;
+    FDefaultReadOnce := True;
+  end;
+  Result := FDefaultLayout;
 end;
 
 procedure TRunner.Load(ACombo: TCustomComboBox; const AAction: TAtlasDesktopAction);

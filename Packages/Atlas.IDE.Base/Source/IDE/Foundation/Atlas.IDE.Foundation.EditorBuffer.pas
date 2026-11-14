@@ -67,18 +67,7 @@ begin
   end;
 end;
 
-class function TAtlasEditorBuffer.ActiveView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
-begin
-  // Zuerst das aktuelle Modul: TopView ist leer, solange der Fokus nicht im Editor liegt
-  // (Befehl aus Palette, Hauptmenü oder einem angedockten Fenster).
-  Result := CurrentModuleView;
-  if (Result = nil) and Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
-  end;
-end;
+{ TAtlasEditorBuffer }
 
 class function TAtlasEditorBuffer.Text(const ABuffer: IOTAEditBuffer): string;
 const
@@ -173,6 +162,11 @@ begin
   end;
 end;
 
+class function TAtlasEditorBuffer.ByteOffset(const AText: string; ALine, ACharacter: Integer): Integer;
+begin
+  Result := TEncoding.UTF8.GetByteCount(Copy(AText, 1, CharOffset(AText, ALine, ACharacter)));
+end;
+
 class function TAtlasEditorBuffer.CharOffset(const AText: string; ALine, ACharacter: Integer): Integer;
 var
   mLine, mIndex, mLineEnd: Integer;
@@ -195,9 +189,17 @@ begin
   Result := Min(mIndex + ACharacter, mLineEnd) - 1;
 end;
 
-class function TAtlasEditorBuffer.ByteOffset(const AText: string; ALine, ACharacter: Integer): Integer;
+class function TAtlasEditorBuffer.ActiveView: IOTAEditView;
+var
+  mEditors: IOTAEditorServices;
 begin
-  Result := TEncoding.UTF8.GetByteCount(Copy(AText, 1, CharOffset(AText, ALine, ACharacter)));
+  // Zuerst das aktuelle Modul: TopView ist leer, solange der Fokus nicht im Editor liegt
+  // (Befehl aus Palette, Hauptmenü oder einem angedockten Fenster).
+  Result := CurrentModuleView;
+  if (Result = nil) and Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  begin
+    Result := mEditors.TopView;
+  end;
 end;
 
 end.

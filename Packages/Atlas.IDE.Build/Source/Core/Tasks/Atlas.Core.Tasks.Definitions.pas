@@ -233,68 +233,68 @@ end;
 
 { TAtlasTasks }
 
-class function TAtlasTasks.TryGroup(const AText: string; out AGroup: TAtlasTaskGroup): Boolean;
+class function TAtlasTasks.Parse(const AText: string; AGlobal: Boolean;
+  var AIssues: TAtlasTaskIssues): TAtlasTaskDefinitions;
 var
-  mGroup: TAtlasTaskGroup;
+  mRoot: TJSONObject;
 begin
-  for mGroup := Low(TAtlasTaskGroup) to High(TAtlasTaskGroup) do
+  Result := nil;
+  if Trim(AText) = '' then
   begin
-    if SameText(Trim(AText), cGroupNames[mGroup]) then
-    begin
-      AGroup := mGroup;
-      Exit(True);
-    end;
+    Exit;
   end;
-  AGroup := TAtlasTaskGroup.Other;
-  Result := False;
+  mRoot := TAtlasJsonText.Parse(AText);
+  if mRoot = nil then
+  begin
+    Exit;
+  end;
+  try
+    Result := Parse(mRoot, AGlobal, AIssues);
+  finally
+    mRoot.Free;
+  end;
 end;
 
-class function TAtlasTasks.TryBeforeBuild(const AText: string; out AValue: TAtlasTaskBeforeBuild): Boolean;
+class function TAtlasTasks.Merge(const AProject, AGlobal: TAtlasTaskDefinitions): TAtlasTaskDefinitions;
 var
-  mValue: TAtlasTaskBeforeBuild;
+  mTask: TAtlasTaskDefinition;
 begin
-  for mValue := Low(TAtlasTaskBeforeBuild) to High(TAtlasTaskBeforeBuild) do
+  Result := Copy(AProject);
+  for mTask in AGlobal do
   begin
-    if SameText(Trim(AText), cBeforeBuildNames[mValue]) then
+    if IndexOf(AProject, mTask.Name) < 0 then
     begin
-      AValue := mValue;
-      Exit(True);
+      Result := Result + [mTask];
     end;
   end;
-  AValue := TAtlasTaskBeforeBuild.Off;
-  Result := False;
 end;
 
-class function TAtlasTasks.NormalizedBeforeBuild(const AText: string): string;
+class function TAtlasTasks.IndexOf(const ATasks: TAtlasTaskDefinitions; const AName: string): Integer;
 var
-  mValue: TAtlasTaskBeforeBuild;
+  mIndex: Integer;
 begin
-  TryBeforeBuild(AText, mValue);
-  Result := cBeforeBuildNames[mValue];
-end;
-
-class function TAtlasTasks.TrySeverity(const AText: string; out ASeverity: TAtlasTaskSeverity): Boolean;
-var
-  mSeverity: TAtlasTaskSeverity;
-begin
-  for mSeverity := Low(TAtlasTaskSeverity) to High(TAtlasTaskSeverity) do
+  for mIndex := 0 to High(ATasks) do
   begin
-    if SameText(Trim(AText), cSeverityNames[mSeverity]) then
+    if SameText(ATasks[mIndex].Name, AName) then
     begin
-      ASeverity := mSeverity;
-      Exit(True);
+      Exit(mIndex);
     end;
   end;
-  // Übliche andere Schreibweisen.
-  Result := True;
-  if SameText(Trim(AText), 'information') or SameText(Trim(AText), 'hint') then
+  Result := -1;
+end;
+
+class function TAtlasTasks.OfGroup(const ATasks: TAtlasTaskDefinitions;
+  AGroup: TAtlasTaskGroup): TAtlasTaskDefinitions;
+var
+  mTask: TAtlasTaskDefinition;
+begin
+  Result := nil;
+  for mTask in ATasks do
   begin
-    ASeverity := TAtlasTaskSeverity.Info;
-  end
-  else
-  begin
-    ASeverity := TAtlasTaskSeverity.Error;
-    Result := False;
+    if mTask.Group = AGroup then
+    begin
+      Result := Result + [mTask];
+    end;
   end;
 end;
 
@@ -350,24 +350,19 @@ begin
   end;
 end;
 
-class function TAtlasTasks.ParseKey(const AText: string): Word;
+class function TAtlasTasks.BeforeBuild(const ATasks: TAtlasTaskDefinitions;
+  AGlobal: TAtlasTaskBeforeBuild): TAtlasTaskDefinitions;
 var
-  mParts: TArray<string>;
-  mModifiers, mKey: Word;
+  mTask: TAtlasTaskDefinition;
 begin
-  Result := 0;
-  mParts := Trim(AText).Split(['+']);
-  if (Length(mParts) = 0) or not KeyModifiers(mParts, mModifiers) then
+  Result := nil;
+  for mTask in ATasks do
   begin
-    Exit;
+    if mTask.BeforeBuildFor(AGlobal) <> TAtlasTaskBeforeBuild.Off then
+    begin
+      Result := Result + [mTask];
+    end;
   end;
-  mKey := KeyCode(UpperCase(Trim(mParts[High(mParts)])));
-  // Eine Taste ohne Strg oder Alt würde das Tippen stören (nur Funktionstasten dürfen allein stehen).
-  if (mKey = 0) or ((mModifiers and (cCtrlBit or cAltBit) = 0) and (mKey < $70)) then
-  begin
-    Exit;
-  end;
-  Result := mModifiers or mKey;
 end;
 
 /// <summary>Eingebautes Muster nach Name; unbekannte (außer leer und none) melden.</summary>
@@ -643,84 +638,89 @@ begin
   end;
 end;
 
-class function TAtlasTasks.Parse(const AText: string; AGlobal: Boolean;
-  var AIssues: TAtlasTaskIssues): TAtlasTaskDefinitions;
+class function TAtlasTasks.TryGroup(const AText: string; out AGroup: TAtlasTaskGroup): Boolean;
 var
-  mRoot: TJSONObject;
+  mGroup: TAtlasTaskGroup;
 begin
-  Result := nil;
-  if Trim(AText) = '' then
+  for mGroup := Low(TAtlasTaskGroup) to High(TAtlasTaskGroup) do
+  begin
+    if SameText(Trim(AText), cGroupNames[mGroup]) then
+    begin
+      AGroup := mGroup;
+      Exit(True);
+    end;
+  end;
+  AGroup := TAtlasTaskGroup.Other;
+  Result := False;
+end;
+
+class function TAtlasTasks.TryBeforeBuild(const AText: string; out AValue: TAtlasTaskBeforeBuild): Boolean;
+var
+  mValue: TAtlasTaskBeforeBuild;
+begin
+  for mValue := Low(TAtlasTaskBeforeBuild) to High(TAtlasTaskBeforeBuild) do
+  begin
+    if SameText(Trim(AText), cBeforeBuildNames[mValue]) then
+    begin
+      AValue := mValue;
+      Exit(True);
+    end;
+  end;
+  AValue := TAtlasTaskBeforeBuild.Off;
+  Result := False;
+end;
+
+class function TAtlasTasks.NormalizedBeforeBuild(const AText: string): string;
+var
+  mValue: TAtlasTaskBeforeBuild;
+begin
+  TryBeforeBuild(AText, mValue);
+  Result := cBeforeBuildNames[mValue];
+end;
+
+class function TAtlasTasks.TrySeverity(const AText: string; out ASeverity: TAtlasTaskSeverity): Boolean;
+var
+  mSeverity: TAtlasTaskSeverity;
+begin
+  for mSeverity := Low(TAtlasTaskSeverity) to High(TAtlasTaskSeverity) do
+  begin
+    if SameText(Trim(AText), cSeverityNames[mSeverity]) then
+    begin
+      ASeverity := mSeverity;
+      Exit(True);
+    end;
+  end;
+  // Übliche andere Schreibweisen.
+  Result := True;
+  if SameText(Trim(AText), 'information') or SameText(Trim(AText), 'hint') then
+  begin
+    ASeverity := TAtlasTaskSeverity.Info;
+  end
+  else
+  begin
+    ASeverity := TAtlasTaskSeverity.Error;
+    Result := False;
+  end;
+end;
+
+class function TAtlasTasks.ParseKey(const AText: string): Word;
+var
+  mParts: TArray<string>;
+  mModifiers, mKey: Word;
+begin
+  Result := 0;
+  mParts := Trim(AText).Split(['+']);
+  if (Length(mParts) = 0) or not KeyModifiers(mParts, mModifiers) then
   begin
     Exit;
   end;
-  mRoot := TAtlasJsonText.Parse(AText);
-  if mRoot = nil then
+  mKey := KeyCode(UpperCase(Trim(mParts[High(mParts)])));
+  // Eine Taste ohne Strg oder Alt würde das Tippen stören (nur Funktionstasten dürfen allein stehen).
+  if (mKey = 0) or ((mModifiers and (cCtrlBit or cAltBit) = 0) and (mKey < $70)) then
   begin
     Exit;
   end;
-  try
-    Result := Parse(mRoot, AGlobal, AIssues);
-  finally
-    mRoot.Free;
-  end;
-end;
-
-class function TAtlasTasks.Merge(const AProject, AGlobal: TAtlasTaskDefinitions): TAtlasTaskDefinitions;
-var
-  mTask: TAtlasTaskDefinition;
-begin
-  Result := Copy(AProject);
-  for mTask in AGlobal do
-  begin
-    if IndexOf(AProject, mTask.Name) < 0 then
-    begin
-      Result := Result + [mTask];
-    end;
-  end;
-end;
-
-class function TAtlasTasks.IndexOf(const ATasks: TAtlasTaskDefinitions; const AName: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(ATasks) do
-  begin
-    if SameText(ATasks[mIndex].Name, AName) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
-class function TAtlasTasks.OfGroup(const ATasks: TAtlasTaskDefinitions;
-  AGroup: TAtlasTaskGroup): TAtlasTaskDefinitions;
-var
-  mTask: TAtlasTaskDefinition;
-begin
-  Result := nil;
-  for mTask in ATasks do
-  begin
-    if mTask.Group = AGroup then
-    begin
-      Result := Result + [mTask];
-    end;
-  end;
-end;
-
-class function TAtlasTasks.BeforeBuild(const ATasks: TAtlasTaskDefinitions;
-  AGlobal: TAtlasTaskBeforeBuild): TAtlasTaskDefinitions;
-var
-  mTask: TAtlasTaskDefinition;
-begin
-  Result := nil;
-  for mTask in ATasks do
-  begin
-    if mTask.BeforeBuildFor(AGlobal) <> TAtlasTaskBeforeBuild.Off then
-    begin
-      Result := Result + [mTask];
-    end;
-  end;
+  Result := mModifiers or mKey;
 end;
 
 /// <summary>Absoluter Pfad: Laufwerk („C:“), UNC oder mit Trenner vorn.</summary>

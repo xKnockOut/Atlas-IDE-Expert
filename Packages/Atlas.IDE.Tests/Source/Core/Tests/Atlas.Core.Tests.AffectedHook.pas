@@ -104,6 +104,8 @@ begin
   Result := '''' + StringReplace(Result, '''', '''\''''', [rfReplaceAll]) + '''';
 end;
 
+{ TAtlasAffectedHook }
+
 class function TAtlasAffectedHook.Script(const ATexts: TAtlasAffectedHookTexts): string;
 begin
   Result :=

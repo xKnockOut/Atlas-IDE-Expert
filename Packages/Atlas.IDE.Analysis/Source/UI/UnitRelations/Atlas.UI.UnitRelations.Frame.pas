@@ -800,6 +800,47 @@ begin
   end;
 end;
 
+procedure TAtlasUnitRelationsFrame.OpenNode(ANode: TTreeNode; AToEntry: Boolean);
+var
+  mRelation: TAtlasUnitRelation;
+  mOpen: TAtlasUnitRelationsOpen;
+begin
+  mOpen := FHandlers.OnOpen;
+  if not EntryOf(ANode, mRelation) or not Assigned(mOpen) then
+  begin
+    Exit;
+  end;
+  if AToEntry and (mRelation.LocationFile <> '') and (mRelation.Line >= 0) then
+  begin
+    mOpen(mRelation.LocationFile, mRelation.Line, mRelation.Character);
+  end
+  else if mRelation.FileName <> '' then
+  begin
+    mOpen(mRelation.FileName, -1, -1);
+  end
+  else if (mRelation.LocationFile <> '') and (mRelation.Line >= 0) then
+  begin
+    // Unit ohne Quelltext (RTL ohne Pfad): wenigstens der Eintrag.
+    mOpen(mRelation.LocationFile, mRelation.Line, mRelation.Character);
+  end;
+end;
+
+procedure TAtlasUnitRelationsFrame.UpdateMenu;
+var
+  mData: TNodeData;
+  mIsEntry, mDirect: Boolean;
+begin
+  mData := DataOf(Self, FParts.Tree.Selected);
+  mIsEntry := (FParts.Tree.Selected <> nil) and (mData.Kind = TNodeKind.Entry);
+  // Ändern lassen sich nur die eigenen uses: direkte Einträge unter „Verwendet“.
+  mDirect := mIsEntry and mData.UsesSide and mData.TopLevel and Assigned(FHandlers.OnMove);
+  FParts.MoveImplementationItem.Visible := mDirect and mData.Relation.InInterface;
+  FParts.MoveInterfaceItem.Visible := mDirect and not mData.Relation.InInterface;
+  FParts.RemoveItem.Visible := mIsEntry and mData.UsesSide and mData.TopLevel and mData.Relation.Unused and
+    Assigned(FHandlers.OnRemove);
+  FParts.CopyPathItem.Visible := mIsEntry and (mData.Relation.FileName <> '');
+end;
+
 function TAtlasUnitRelationsFrame.EntryOf(ANode: TTreeNode; out ARelation: TAtlasUnitRelation): Boolean;
 var
   mData: TNodeData;
@@ -807,16 +848,6 @@ begin
   mData := DataOf(Self, ANode);
   ARelation := mData.Relation;
   Result := (ANode <> nil) and (mData.Kind = TNodeKind.Entry);
-end;
-
-function TAtlasUnitRelationsFrame.IsLibraryGroup(ANode: TTreeNode): Boolean;
-begin
-  Result := (ANode <> nil) and (DataOf(Self, ANode).Kind = TNodeKind.LibraryGroup);
-end;
-
-function TAtlasUnitRelationsFrame.IsSectionGroup(ANode: TTreeNode): Boolean;
-begin
-  Result := (ANode <> nil) and (DataOf(Self, ANode).Kind = TNodeKind.SectionGroup);
 end;
 
 function TAtlasUnitRelationsFrame.FindEntry(const AName: string; AUsesSide: Boolean): TTreeNode;
@@ -861,45 +892,14 @@ begin
   end;
 end;
 
-procedure TAtlasUnitRelationsFrame.OpenNode(ANode: TTreeNode; AToEntry: Boolean);
-var
-  mRelation: TAtlasUnitRelation;
-  mOpen: TAtlasUnitRelationsOpen;
+function TAtlasUnitRelationsFrame.IsLibraryGroup(ANode: TTreeNode): Boolean;
 begin
-  mOpen := FHandlers.OnOpen;
-  if not EntryOf(ANode, mRelation) or not Assigned(mOpen) then
-  begin
-    Exit;
-  end;
-  if AToEntry and (mRelation.LocationFile <> '') and (mRelation.Line >= 0) then
-  begin
-    mOpen(mRelation.LocationFile, mRelation.Line, mRelation.Character);
-  end
-  else if mRelation.FileName <> '' then
-  begin
-    mOpen(mRelation.FileName, -1, -1);
-  end
-  else if (mRelation.LocationFile <> '') and (mRelation.Line >= 0) then
-  begin
-    // Unit ohne Quelltext (RTL ohne Pfad): wenigstens der Eintrag.
-    mOpen(mRelation.LocationFile, mRelation.Line, mRelation.Character);
-  end;
+  Result := (ANode <> nil) and (DataOf(Self, ANode).Kind = TNodeKind.LibraryGroup);
 end;
 
-procedure TAtlasUnitRelationsFrame.UpdateMenu;
-var
-  mData: TNodeData;
-  mIsEntry, mDirect: Boolean;
+function TAtlasUnitRelationsFrame.IsSectionGroup(ANode: TTreeNode): Boolean;
 begin
-  mData := DataOf(Self, FParts.Tree.Selected);
-  mIsEntry := (FParts.Tree.Selected <> nil) and (mData.Kind = TNodeKind.Entry);
-  // Ändern lassen sich nur die eigenen uses: direkte Einträge unter „Verwendet“.
-  mDirect := mIsEntry and mData.UsesSide and mData.TopLevel and Assigned(FHandlers.OnMove);
-  FParts.MoveImplementationItem.Visible := mDirect and mData.Relation.InInterface;
-  FParts.MoveInterfaceItem.Visible := mDirect and not mData.Relation.InInterface;
-  FParts.RemoveItem.Visible := mIsEntry and mData.UsesSide and mData.TopLevel and mData.Relation.Unused and
-    Assigned(FHandlers.OnRemove);
-  FParts.CopyPathItem.Visible := mIsEntry and (mData.Relation.FileName <> '');
+  Result := (ANode <> nil) and (DataOf(Self, ANode).Kind = TNodeKind.SectionGroup);
 end;
 
 end.

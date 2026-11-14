@@ -132,19 +132,29 @@ end;
 
 { TAtlasDebugNote }
 
-class function TAtlasDebugNote.IsSecretName(const AName: string): Boolean;
+class function TAtlasDebugNote.Excerpt(const ALines: TArray<string>; AFirstLine, ALine, AContext: Integer;
+  out AStart: Integer): TArray<string>;
 var
-  mName, mWord: string;
+  mFrom, mTo: Integer;
 begin
-  mName := LowerCase(StringReplace(StringReplace(AName, '_', '', [rfReplaceAll]), '-', '', [rfReplaceAll]));
-  for mWord in cSecretWords do
+  Result := nil;
+  AStart := 0;
+  if (Length(ALines) = 0) or (ALine < AFirstLine) or (ALine >= AFirstLine + Length(ALines)) then
   begin
-    if Pos(mWord, mName) > 0 then
-    begin
-      Exit(True);
-    end;
+    Exit;
   end;
-  Result := False;
+  mFrom := ALine - AContext;
+  if mFrom < AFirstLine then
+  begin
+    mFrom := AFirstLine;
+  end;
+  mTo := ALine + AContext;
+  if mTo > AFirstLine + High(ALines) then
+  begin
+    mTo := AFirstLine + High(ALines);
+  end;
+  AStart := mFrom;
+  Result := Copy(ALines, mFrom - AFirstLine, mTo - mFrom + 1);
 end;
 
 function IsNameChar(AC: Char): Boolean;
@@ -257,6 +267,21 @@ begin
   end;
 end;
 
+class function TAtlasDebugNote.IsSecretName(const AName: string): Boolean;
+var
+  mName, mWord: string;
+begin
+  mName := LowerCase(StringReplace(StringReplace(AName, '_', '', [rfReplaceAll]), '-', '', [rfReplaceAll]));
+  for mWord in cSecretWords do
+  begin
+    if Pos(mWord, mName) > 0 then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 class function TAtlasDebugNote.Redact(const AText: string): string;
 begin
   Result := Masked(AText, True);
@@ -265,31 +290,6 @@ end;
 class function TAtlasDebugNote.RedactCode(const ALine: string): string;
 begin
   Result := Masked(ALine, False);
-end;
-
-class function TAtlasDebugNote.Excerpt(const ALines: TArray<string>; AFirstLine, ALine, AContext: Integer;
-  out AStart: Integer): TArray<string>;
-var
-  mFrom, mTo: Integer;
-begin
-  Result := nil;
-  AStart := 0;
-  if (Length(ALines) = 0) or (ALine < AFirstLine) or (ALine >= AFirstLine + Length(ALines)) then
-  begin
-    Exit;
-  end;
-  mFrom := ALine - AContext;
-  if mFrom < AFirstLine then
-  begin
-    mFrom := AFirstLine;
-  end;
-  mTo := ALine + AContext;
-  if mTo > AFirstLine + High(ALines) then
-  begin
-    mTo := AFirstLine + High(ALines);
-  end;
-  AStart := mFrom;
-  Result := Copy(ALines, mFrom - AFirstLine, mTo - mFrom + 1);
 end;
 
 class function TAtlasDebugNote.FileName(const AStem: string; ATime: TDateTime): string;

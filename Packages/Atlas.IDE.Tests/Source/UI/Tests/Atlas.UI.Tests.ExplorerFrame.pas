@@ -292,6 +292,40 @@ begin
   Result := mBar.Top + mBar.Height;
 end;
 
+procedure TAtlasTestsExplorerBar.ButtonClick(Sender: TObject);
+begin
+  if Sender = FRunAll then
+  begin
+    Fire(FHandlers.OnRunAll);
+  end
+  else if Sender = FRunSelected then
+  begin
+    Fire(FHandlers.OnRunSelected);
+  end
+  else if Sender = FDebugSelected then
+  begin
+    Fire(FHandlers.OnDebugSelected);
+  end
+  else if Sender = FRefresh then
+  begin
+    Fire(FHandlers.OnRefresh);
+  end;
+end;
+
+procedure TAtlasTestsExplorerBar.FilterChange(Sender: TObject);
+begin
+  Fire(FHandlers.OnFilter);
+end;
+
+procedure TAtlasTestsExplorerBar.ProjectChange(Sender: TObject);
+begin
+  FProjectIndex := FProject.ItemIndex;
+  if Assigned(FHandlers.OnProject) then
+  begin
+    FHandlers.OnProject(FProjectIndex);
+  end;
+end;
+
 procedure TAtlasTestsExplorerBar.SetProjects(const ANames: TArray<string>; AIndex: Integer);
 begin
   FProjects := ANames;
@@ -369,40 +403,6 @@ begin
   Result := Trim(FSearch.Text);
 end;
 
-procedure TAtlasTestsExplorerBar.ButtonClick(Sender: TObject);
-begin
-  if Sender = FRunAll then
-  begin
-    Fire(FHandlers.OnRunAll);
-  end
-  else if Sender = FRunSelected then
-  begin
-    Fire(FHandlers.OnRunSelected);
-  end
-  else if Sender = FDebugSelected then
-  begin
-    Fire(FHandlers.OnDebugSelected);
-  end
-  else if Sender = FRefresh then
-  begin
-    Fire(FHandlers.OnRefresh);
-  end;
-end;
-
-procedure TAtlasTestsExplorerBar.FilterChange(Sender: TObject);
-begin
-  Fire(FHandlers.OnFilter);
-end;
-
-procedure TAtlasTestsExplorerBar.ProjectChange(Sender: TObject);
-begin
-  FProjectIndex := FProject.ItemIndex;
-  if Assigned(FHandlers.OnProject) then
-  begin
-    FHandlers.OnProject(FProjectIndex);
-  end;
-end;
-
 { TAtlasTestsExplorerFrame }
 
 constructor TAtlasTestsExplorerFrame.Create(AOwner: TComponent);
@@ -433,6 +433,15 @@ begin
   FTree.OnChange := TreeChange;
   FTree.Parent := Self;
   FListBar := TAtlasTestsListBar.Create(Self, FTree);
+end;
+
+procedure TAtlasTestsExplorerFrame.CreateWnd;
+begin
+  inherited CreateWnd;
+  if not FFilled then
+  begin
+    Fill;
+  end;
 end;
 
 procedure TAtlasTestsExplorerFrame.BuildImages;
@@ -468,68 +477,33 @@ begin
   end;
 end;
 
-procedure TAtlasTestsExplorerFrame.CreateWnd;
+procedure TAtlasTestsExplorerFrame.Fill;
+var
+  mItems: TArray<TTreeNode>;
+  mWasSelected: TArray<Integer>;
+  mFocused: Integer;
+  mFocusItem: TTreeNode;
 begin
-  inherited CreateWnd;
-  if not FFilled then
-  begin
-    Fill;
+  FFilled := True;
+  FBar.FillProjects;
+  FListBar.FillTabs;
+  FTree.HandleNeeded;
+  // Auswahl und Fokus über die Knoten des Modells behalten.
+  mWasSelected := SelectedNodes;
+  mFocused := FocusedNode;
+  FTree.Items.BeginUpdate;
+  try
+    FTree.Items.Clear;
+    AddItems(mFocused, mItems, mFocusItem);
+    Restore(mItems, mWasSelected);
+    if mFocusItem <> nil then
+    begin
+      mFocusItem.Focused := True;
+    end;
+  finally
+    FTree.Items.EndUpdate;
   end;
-end;
-
-procedure TAtlasTestsExplorerFrame.SetHandlers(const AHandlers: TAtlasTestsExplorerHandlers);
-begin
-  FHandlers := AHandlers;
-  FBar.Handlers := AHandlers;
-  FDetails.OnOpenLine := AHandlers.OnOpenLine;
-end;
-
-procedure TAtlasTestsExplorerFrame.SetProjects(const ANames: TArray<string>; AIndex: Integer);
-begin
-  FBar.SetProjects(ANames, AIndex);
-end;
-
-procedure TAtlasTestsExplorerFrame.SetRows(const ARows: TArray<TAtlasTestRow>; const AStatus: string);
-begin
-  FRows := ARows;
-  FBar.SetStatus(AStatus);
-  FFilled := False;
-  if HandleAllocated then
-  begin
-    Fill;
-  end;
-end;
-
-procedure TAtlasTestsExplorerFrame.SetStatus(const AStatus: string);
-begin
-  FBar.SetStatus(AStatus);
-end;
-
-procedure TAtlasTestsExplorerFrame.SetDetails(const ALines: TArray<TAtlasTestStackLine>);
-begin
-  FDetails.SetDetails(ALines);
-end;
-
-procedure TAtlasTestsExplorerFrame.SetLog(const ALines: TArray<TAtlasTestStackLine>; ACount: Integer;
-  AEnabled: Boolean);
-begin
-  FDetails.SetLog(ALines, ACount, AEnabled);
-end;
-
-procedure TAtlasTestsExplorerFrame.SetBusy(ABusy: Boolean);
-begin
-  FBar.SetBusy(ABusy);
-  FListBar.SetBusy(ABusy);
-end;
-
-function TAtlasTestsExplorerFrame.Filters: TAtlasTestFilters;
-begin
-  Result := FBar.Filters;
-end;
-
-function TAtlasTestsExplorerFrame.SearchText: string;
-begin
-  Result := FBar.SearchText;
+  FDetails.Fill;
 end;
 
 procedure TAtlasTestsExplorerFrame.AddItems(AFocused: Integer; out AItems: TArray<TTreeNode>;
@@ -583,76 +557,6 @@ begin
   end;
 end;
 
-procedure TAtlasTestsExplorerFrame.Fill;
-var
-  mItems: TArray<TTreeNode>;
-  mWasSelected: TArray<Integer>;
-  mFocused: Integer;
-  mFocusItem: TTreeNode;
-begin
-  FFilled := True;
-  FBar.FillProjects;
-  FListBar.FillTabs;
-  FTree.HandleNeeded;
-  // Auswahl und Fokus über die Knoten des Modells behalten.
-  mWasSelected := SelectedNodes;
-  mFocused := FocusedNode;
-  FTree.Items.BeginUpdate;
-  try
-    FTree.Items.Clear;
-    AddItems(mFocused, mItems, mFocusItem);
-    Restore(mItems, mWasSelected);
-    if mFocusItem <> nil then
-    begin
-      mFocusItem.Focused := True;
-    end;
-  finally
-    FTree.Items.EndUpdate;
-  end;
-  FDetails.Fill;
-end;
-
-/// <summary>Zeile in ARows zu ANode (Data = Zeile); -1 ohne.</summary>
-function RowOf(ANode: TTreeNode; const ARows: TArray<TAtlasTestRow>): Integer;
-begin
-  Result := -1;
-  if ANode <> nil then
-  begin
-    Result := Integer(NativeInt(ANode.Data));
-  end;
-  if (Result < 0) or (Result > High(ARows)) then
-  begin
-    Result := -1;
-  end;
-end;
-
-function TAtlasTestsExplorerFrame.SelectedNodes: TArray<Integer>;
-var
-  mIndex, mRow: Integer;
-begin
-  Result := nil;
-  for mIndex := 0 to Integer(FTree.SelectionCount) - 1 do
-  begin
-    mRow := RowOf(FTree.Selections[mIndex], FRows);
-    if mRow >= 0 then
-    begin
-      Result := Result + [FRows[mRow].Node];
-    end;
-  end;
-end;
-
-function TAtlasTestsExplorerFrame.FocusedNode: Integer;
-var
-  mRow: Integer;
-begin
-  Result := -1;
-  mRow := RowOf(FTree.Selected, FRows);
-  if mRow >= 0 then
-  begin
-    Result := FRows[mRow].Node;
-  end;
-end;
-
 procedure TAtlasTestsExplorerFrame.TreeDblClick(Sender: TObject);
 var
   mNode: Integer;
@@ -688,6 +592,102 @@ begin
   if Assigned(FHandlers.OnSelect) then
   begin
     FHandlers.OnSelect(FocusedNode);
+  end;
+end;
+
+procedure TAtlasTestsExplorerFrame.SetHandlers(const AHandlers: TAtlasTestsExplorerHandlers);
+begin
+  FHandlers := AHandlers;
+  FBar.Handlers := AHandlers;
+  FDetails.OnOpenLine := AHandlers.OnOpenLine;
+end;
+
+procedure TAtlasTestsExplorerFrame.SetProjects(const ANames: TArray<string>; AIndex: Integer);
+begin
+  FBar.SetProjects(ANames, AIndex);
+end;
+
+procedure TAtlasTestsExplorerFrame.SetRows(const ARows: TArray<TAtlasTestRow>; const AStatus: string);
+begin
+  FRows := ARows;
+  FBar.SetStatus(AStatus);
+  FFilled := False;
+  if HandleAllocated then
+  begin
+    Fill;
+  end;
+end;
+
+procedure TAtlasTestsExplorerFrame.SetStatus(const AStatus: string);
+begin
+  FBar.SetStatus(AStatus);
+end;
+
+procedure TAtlasTestsExplorerFrame.SetDetails(const ALines: TArray<TAtlasTestStackLine>);
+begin
+  FDetails.SetDetails(ALines);
+end;
+
+procedure TAtlasTestsExplorerFrame.SetLog(const ALines: TArray<TAtlasTestStackLine>; ACount: Integer;
+  AEnabled: Boolean);
+begin
+  FDetails.SetLog(ALines, ACount, AEnabled);
+end;
+
+/// <summary>Zeile in ARows zu ANode (Data = Zeile); -1 ohne.</summary>
+function RowOf(ANode: TTreeNode; const ARows: TArray<TAtlasTestRow>): Integer;
+begin
+  Result := -1;
+  if ANode <> nil then
+  begin
+    Result := Integer(NativeInt(ANode.Data));
+  end;
+  if (Result < 0) or (Result > High(ARows)) then
+  begin
+    Result := -1;
+  end;
+end;
+
+procedure TAtlasTestsExplorerFrame.SetBusy(ABusy: Boolean);
+begin
+  FBar.SetBusy(ABusy);
+  FListBar.SetBusy(ABusy);
+end;
+
+function TAtlasTestsExplorerFrame.Filters: TAtlasTestFilters;
+begin
+  Result := FBar.Filters;
+end;
+
+function TAtlasTestsExplorerFrame.SearchText: string;
+begin
+  Result := FBar.SearchText;
+end;
+
+function TAtlasTestsExplorerFrame.SelectedNodes: TArray<Integer>;
+var
+  mIndex, mRow: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to Integer(FTree.SelectionCount) - 1 do
+  begin
+    mRow := RowOf(FTree.Selections[mIndex], FRows);
+    if mRow >= 0 then
+    begin
+      Result := Result + [FRows[mRow].Node];
+    end;
+  end;
+end;
+
+function TAtlasTestsExplorerFrame.FocusedNode: Integer;
+var
+  mRow: Integer;
+begin
+  Result := -1;
+  mRow := RowOf(FTree.Selected, FRows);
+  if mRow >= 0 then
+  begin
+    Result := FRows[mRow].Node;
   end;
 end;
 

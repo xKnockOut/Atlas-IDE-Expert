@@ -61,6 +61,8 @@ begin
   Result := MulDiv(AValue, ADialog.CurrentPPI, 96);
 end;
 
+{ TAtlasChoiceDialog }
+
 constructor TAtlasChoiceDialog.CreateDialog(AOwner: TComponent; const ACaption, APrompt: string;
   const AItems: TArray<string>);
 var
@@ -108,34 +110,6 @@ begin
   ActiveControl := FSearch;
 end;
 
-procedure TAtlasChoiceDialog.Fill(APreselect: Integer);
-var
-  mIndex: Integer;
-begin
-  FMatches := TAtlasChoiceFilter.Matches(FItems, FSearch.Text);
-  FList.Items.BeginUpdate;
-  try
-    FList.Items.Clear;
-    for mIndex in FMatches do
-    begin
-      FList.Items.Add(FItems[mIndex]);
-    end;
-  finally
-    FList.Items.EndUpdate;
-  end;
-  FList.ItemIndex := TAtlasChoiceFilter.PositionOf(FMatches, APreselect);
-  FOk.Enabled := FList.ItemIndex >= 0;
-end;
-
-function TAtlasChoiceDialog.Chosen: Integer;
-begin
-  Result := -1;
-  if (FList.ItemIndex >= 0) and (FList.ItemIndex <= High(FMatches)) then
-  begin
-    Result := FMatches[FList.ItemIndex];
-  end;
-end;
-
 procedure TAtlasChoiceDialog.SearchChange(Sender: TObject);
 begin
   Fill(Chosen);
@@ -168,6 +142,34 @@ begin
   if Chosen >= 0 then
   begin
     ModalResult := mrOk;
+  end;
+end;
+
+procedure TAtlasChoiceDialog.Fill(APreselect: Integer);
+var
+  mIndex: Integer;
+begin
+  FMatches := TAtlasChoiceFilter.Matches(FItems, FSearch.Text);
+  FList.Items.BeginUpdate;
+  try
+    FList.Items.Clear;
+    for mIndex in FMatches do
+    begin
+      FList.Items.Add(FItems[mIndex]);
+    end;
+  finally
+    FList.Items.EndUpdate;
+  end;
+  FList.ItemIndex := TAtlasChoiceFilter.PositionOf(FMatches, APreselect);
+  FOk.Enabled := FList.ItemIndex >= 0;
+end;
+
+function TAtlasChoiceDialog.Chosen: Integer;
+begin
+  Result := -1;
+  if (FList.ItemIndex >= 0) and (FList.ItemIndex <= High(FMatches)) then
+  begin
+    Result := FMatches[FList.ItemIndex];
   end;
 end;
 

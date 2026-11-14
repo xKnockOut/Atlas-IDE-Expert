@@ -780,11 +780,6 @@ begin
   Result := TRuleDescriptor.Create(cHandleLeakRuleId, TRuleSeverity.Warning, cTexts[TFlowHandleLeakText.Title].Text);
 end;
 
-class function THandleLeakRule.Pairs(const AOptions: string): TArray<string>;
-begin
-  Result := HandlePairs(AOptions);
-end;
-
 procedure THandleLeakRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mCheck: THandleCheck;
@@ -795,6 +790,11 @@ begin
   finally
     mCheck.Free;
   end;
+end;
+
+class function THandleLeakRule.Pairs(const AOptions: string): TArray<string>;
+begin
+  Result := HandlePairs(AOptions);
 end;
 
 initialization

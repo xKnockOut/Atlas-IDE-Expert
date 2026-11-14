@@ -131,6 +131,56 @@ begin
   FData.Hour := 12;
 end;
 
+procedure TAtlasWelcomeHeaderFrame.Resize;
+begin
+  inherited;
+  Arrange;
+end;
+
+procedure TAtlasWelcomeHeaderFrame.Arrange;
+var
+  mTextRight: Integer;
+  mBelow: Boolean;
+begin
+  // Reicht die Breite nicht für Gruß und Suchfeld nebeneinander, steht das Feld in einer
+  // eigenen Zeile darunter (schmales Fenster „Atlas-Start“).
+  // Ohne Fenster lässt sich kein Text messen; Resize ordnet nach dem Einhängen.
+  if not HasWindow then
+  begin
+    Exit;
+  end;
+  if FArranging or (FSearch = nil) or not FSearch.Visible then
+  begin
+    if not FArranging and (FSearchHost.Align <> alRight) then
+    begin
+      FSearchHost.Align := alRight;
+      Height := ScaleValue(cHeaderHeight);
+    end;
+    Exit;
+  end;
+  FArranging := True;
+  try
+    mTextRight := FGreeting.Left + Max(FGreeting.Width, FInfo.Width) + ScaleValue(16);
+    mBelow := ClientWidth - mTextRight < ScaleValue(cSearchWidth) + ScaleValue(20);
+    if mBelow then
+    begin
+      FSearchHost.Align := alBottom;
+      FSearchHost.Margins.SetBounds(FGreeting.Left, 0, ScaleValue(12), ScaleValue(8));
+      FSearchHost.Height := ScaleValue(cSearchRowHeight) - ScaleValue(8);
+      Height := ScaleValue(cHeaderHeight + cSearchRowHeight);
+    end
+    else
+    begin
+      FSearchHost.Align := alRight;
+      FSearchHost.Margins.SetBounds(8, 19, 12, 19);
+      FSearchHost.Width := ScaleValue(cSearchWidth);
+      Height := ScaleValue(cHeaderHeight);
+    end;
+  finally
+    FArranging := False;
+  end;
+end;
+
 procedure TAtlasWelcomeHeaderFrame.ShowInfo(const AInfo: TAtlasWelcomeHeaderInfo);
 begin
   if FFilled and SameInfo(FData, AInfo) then
@@ -200,56 +250,6 @@ begin
   Arrange;
 end;
 
-procedure TAtlasWelcomeHeaderFrame.Resize;
-begin
-  inherited;
-  Arrange;
-end;
-
-procedure TAtlasWelcomeHeaderFrame.Arrange;
-var
-  mTextRight: Integer;
-  mBelow: Boolean;
-begin
-  // Reicht die Breite nicht für Gruß und Suchfeld nebeneinander, steht das Feld in einer
-  // eigenen Zeile darunter (schmales Fenster „Atlas-Start“).
-  // Ohne Fenster lässt sich kein Text messen; Resize ordnet nach dem Einhängen.
-  if not HasWindow then
-  begin
-    Exit;
-  end;
-  if FArranging or (FSearch = nil) or not FSearch.Visible then
-  begin
-    if not FArranging and (FSearchHost.Align <> alRight) then
-    begin
-      FSearchHost.Align := alRight;
-      Height := ScaleValue(cHeaderHeight);
-    end;
-    Exit;
-  end;
-  FArranging := True;
-  try
-    mTextRight := FGreeting.Left + Max(FGreeting.Width, FInfo.Width) + ScaleValue(16);
-    mBelow := ClientWidth - mTextRight < ScaleValue(cSearchWidth) + ScaleValue(20);
-    if mBelow then
-    begin
-      FSearchHost.Align := alBottom;
-      FSearchHost.Margins.SetBounds(FGreeting.Left, 0, ScaleValue(12), ScaleValue(8));
-      FSearchHost.Height := ScaleValue(cSearchRowHeight) - ScaleValue(8);
-      Height := ScaleValue(cHeaderHeight + cSearchRowHeight);
-    end
-    else
-    begin
-      FSearchHost.Align := alRight;
-      FSearchHost.Margins.SetBounds(8, 19, 12, 19);
-      FSearchHost.Width := ScaleValue(cSearchWidth);
-      Height := ScaleValue(cHeaderHeight);
-    end;
-  finally
-    FArranging := False;
-  end;
-end;
-
 class function TAtlasWelcomeHeaderFrame.GreetingText(AHour: Integer; const AFirstName: string): string;
 begin
   case TAtlasWelcomeGreeting.DayTimeOf(AHour) of
@@ -266,24 +266,6 @@ begin
   begin
     Result := Result + ', ' + AFirstName;
   end;
-end;
-
-class function TAtlasWelcomeHeaderFrame.Thousands(AValue: Integer): string;
-var
-  mSettings: TFormatSettings;
-begin
-  mSettings := TFormatSettings.Invariant;
-  if TAtlasStrings.Language = TAtlasLanguage.German then
-  begin
-    mSettings.ThousandSeparator := '.';
-    mSettings.DecimalSeparator := ',';
-  end
-  else
-  begin
-    mSettings.ThousandSeparator := ',';
-    mSettings.DecimalSeparator := '.';
-  end;
-  Result := FormatFloat('#,##0', AValue, mSettings);
 end;
 
 class function TAtlasWelcomeHeaderFrame.StatusText(APhase: TAtlasServerPhase; AUnits: Integer;
@@ -324,6 +306,24 @@ class function TAtlasWelcomeHeaderFrame.InfoText(const AInfo: TAtlasWelcomeHeade
 begin
   Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeVersion, [AInfo.Version]) + ' · ' +
     StatusText(AInfo.Phase, AInfo.Units, AInfo.Indexing, AInfo.Percent);
+end;
+
+class function TAtlasWelcomeHeaderFrame.Thousands(AValue: Integer): string;
+var
+  mSettings: TFormatSettings;
+begin
+  mSettings := TFormatSettings.Invariant;
+  if TAtlasStrings.Language = TAtlasLanguage.German then
+  begin
+    mSettings.ThousandSeparator := '.';
+    mSettings.DecimalSeparator := ',';
+  end
+  else
+  begin
+    mSettings.ThousandSeparator := ',';
+    mSettings.DecimalSeparator := '.';
+  end;
+  Result := FormatFloat('#,##0', AValue, mSettings);
 end;
 
 end.

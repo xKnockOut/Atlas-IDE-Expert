@@ -112,6 +112,16 @@ begin
   ActiveControl := FComment;
 end;
 
+procedure TAtlasBoardMoveDialog.DialogKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  // Im Kommentar ist Enter ein Zeilenumbruch; Strg+Enter verschiebt.
+  if (Key = VK_RETURN) and (ssCtrl in Shift) then
+  begin
+    Key := 0;
+    ModalResult := mrOk;
+  end;
+end;
+
 function TAtlasBoardMoveDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;
 begin
   Result := TButton.Create(Self);
@@ -142,16 +152,6 @@ begin
   FCancel.Cancel := True;
   FCancel.ModalResult := mrCancel;
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
-end;
-
-procedure TAtlasBoardMoveDialog.DialogKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  // Im Kommentar ist Enter ein Zeilenumbruch; Strg+Enter verschiebt.
-  if (Key = VK_RETURN) and (ssCtrl in Shift) then
-  begin
-    Key := 0;
-    ModalResult := mrOk;
-  end;
 end;
 
 function TAtlasBoardMoveDialog.Comment: string;

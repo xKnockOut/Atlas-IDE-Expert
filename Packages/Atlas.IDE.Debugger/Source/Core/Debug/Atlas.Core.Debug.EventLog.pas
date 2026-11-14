@@ -258,6 +258,8 @@ begin
   end;
 end;
 
+{ TAtlasEventColors }
+
 class function TAtlasEventColors.Parse(const AText: string): TAtlasEventColors;
 var
   mPart: string;
@@ -286,19 +288,6 @@ begin
   Result := Parse(AText).ToText;
 end;
 
-function TAtlasEventColors.ToText: string;
-var
-  mRule: TAtlasEventColorRule;
-  mParts: TArray<string>;
-begin
-  mParts := nil;
-  for mRule in Rules do
-  begin
-    mParts := mParts + [mRule.Pattern + '=' + TAtlasColorMath.ToHex(mRule.Color)];
-  end;
-  Result := string.Join('; ', mParts);
-end;
-
 function TAtlasEventColors.TryColorOf(const AText: string; out AColor: TAtlasColor): Boolean;
 var
   mRule: TAtlasEventColorRule;
@@ -315,6 +304,19 @@ begin
     end;
   end;
   Result := False;
+end;
+
+function TAtlasEventColors.ToText: string;
+var
+  mRule: TAtlasEventColorRule;
+  mParts: TArray<string>;
+begin
+  mParts := nil;
+  for mRule in Rules do
+  begin
+    mParts := mParts + [mRule.Pattern + '=' + TAtlasColorMath.ToHex(mRule.Color)];
+  end;
+  Result := string.Join('; ', mParts);
 end;
 
 { TAtlasEventJump }
@@ -345,6 +347,8 @@ begin
   end;
   Result := False;
 end;
+
+{ TAtlasEventJump }
 
 class function TAtlasEventJump.Find(const AText: string): TAtlasEventJump;
 var

@@ -76,11 +76,26 @@ uses
   Atlas.Common.Editing.TypeComments,
   Shell.Workspace;
 
+{ TShellFileOptions }
+
 constructor TShellFileOptions.Create(AWorkspaces: TShellWorkspaceRegistry; ASettings: TShellSettings);
 begin
   inherited Create;
   FWorkspaces := AWorkspaces;
   FSettings := ASettings;
+end;
+
+function TShellFileOptions.ResolvedFormatStyleWith(const AUri: string; const AEditorOptions: TJSONValue): TFormatStyle;
+begin
+  Result := TLspFormatting.Resolve(AEditorOptions, TDocumentUris.ToPath(AUri), FormatStyleFor(AUri),
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := FileExists(AFileName);
+      if Result then
+      begin
+        AText := TFileEncoding.LoadText(AFileName);
+      end;
+    end);
 end;
 
 function TShellFileOptions.DelphiVersionFor(const AUri: string): string;
@@ -169,19 +184,6 @@ begin
   Result.IndentSize := mStyle.IndentSize;
   Result.UseTabs := mStyle.UseTabs;
   Result.Team := FSettings.SettingsFor(AUri).Suggestions.Patterns;
-end;
-
-function TShellFileOptions.ResolvedFormatStyleWith(const AUri: string; const AEditorOptions: TJSONValue): TFormatStyle;
-begin
-  Result := TLspFormatting.Resolve(AEditorOptions, TDocumentUris.ToPath(AUri), FormatStyleFor(AUri),
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := FileExists(AFileName);
-      if Result then
-      begin
-        AText := TFileEncoding.LoadText(AFileName);
-      end;
-    end);
 end;
 
 function TShellFileOptions.NewNamesFor(const AUri: string): TPascalNamePrefixes;

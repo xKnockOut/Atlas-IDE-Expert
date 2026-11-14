@@ -1187,6 +1187,8 @@ type
     Locale: Boolean;
   end;
 
+{ TCaseInsensitiveCompareRule }
+
 function TCaseInsensitiveCompareRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('case-insensitive-compare', TRuleSeverity.Hint,

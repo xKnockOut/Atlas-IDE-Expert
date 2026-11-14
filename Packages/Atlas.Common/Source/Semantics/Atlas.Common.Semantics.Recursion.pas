@@ -348,45 +348,110 @@ begin
   end;
 end;
 
-procedure TGraph.AddProperty(ANode: TSyntaxNode);
+procedure TGraph.CollectRoutines;
 var
-  mInfo: TPropertyInfo;
+  mStack: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
-  mInfo := TPropertyInfo.Create;
-  mInfo.Name := ANode.Name;
-  // read/write stehen nicht im Baum, nur in den Token der Deklaration.
-  ReadAccessors(FTree.Tokens, FirstToken(FTree.Tokens, ANode.StartOffset), ANode.EndOffset, mInfo);
-  FProperties.AddOrSetValue(UpperCase(TypeOwner(ANode) + '.' + ANode.Name), mInfo);
-end;
-
-procedure TGraph.AddFields(ANode: TSyntaxNode);
-var
-  mOwner, mName: string;
-begin
-  mOwner := TypeOwner(ANode);
-  for mName in ANode.Name.Split([',']) do
-  begin
-    if Trim(mName) <> '' then
+  mStack := TStack<TSyntaxNode>.Create;
+  try
+    mStack.Push(FTree.Root);
+    while mStack.Count > 0 do
     begin
-      FFields.AddOrSetValue(UpperCase(mOwner + '.' + Trim(mName)), Trim(mName));
+      mNode := mStack.Pop;
+      if mNode.Kind = TSyntaxKind.RoutineDecl then
+      begin
+        AddRoutine(mNode, nil);
+        Continue;
+      end;
+      if mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] + cTypeBodies then
+      begin
+        Continue;
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mStack.Push(mNode[mIndex]);
+      end;
     end;
+  finally
+    mStack.Free;
   end;
 end;
 
-procedure TGraph.LinkPropertyFields;
+procedure TGraph.CollectEdges(ARoutine: TRoutineInfo);
 var
-  mName, mField: string;
+  mStack: TStack<TSyntaxNode>;
+  mNode, mBody: TSyntaxNode;
+  mDeclaration: TSyntaxNode;
+  mIndex: Integer;
 begin
-  // Das Feld aus read bzw. write der Deklaration, sonst F<Name> derselben Klasse.
-  for mName in FProperties.Keys do
-  begin
-    if FFields.TryGetValue(OwnerPart(mName) + '.' + UpperCase(FProperties[mName].Reader), mField) or
-      FFields.TryGetValue(OwnerPart(mName) + '.' + UpperCase(FProperties[mName].Writer), mField) or
-      FFields.TryGetValue(OwnerPart(mName) + '.F' + LastPart(mName), mField) then
+  mStack := TStack<TSyntaxNode>.Create;
+  try
+    for mDeclaration in ARoutine.Nodes do
     begin
-      FProperties[mName].Field := mField;
+      mBody := mDeclaration.FindChild(TSyntaxKind.Block);
+      if mBody <> nil then
+      begin
+        mStack.Push(mBody);
+      end;
     end;
+    while mStack.Count > 0 do
+    begin
+      mNode := mStack.Pop;
+      case mNode.Kind of
+        // Nicht verfolgt: Vorfahr, spätere Ausführung, unklare Bindung.
+        TSyntaxKind.InheritedExpr, TSyntaxKind.AnonymousMethod, TSyntaxKind.WithStatement, TSyntaxKind.AsmBlock,
+          TSyntaxKind.RoutineDecl:
+          Continue;
+        TSyntaxKind.InlineVar, TSyntaxKind.InlineConst:
+          ARoutine.Hidden := ARoutine.Hidden + NamesOf(mNode.Name);
+        TSyntaxKind.Identifier:
+          Resolve(ARoutine, mNode, mNode.Name, False, TTextRange.Create(mNode.StartPos, mNode.EndPos));
+        TSyntaxKind.MemberAccess:
+          begin
+            // Self.X: Mitglied der eigenen Klasse; andere Empfänger nur durchsuchen.
+            if (mNode.ChildCount > 0) and (mNode[0].Kind = TSyntaxKind.Identifier) and SameText(mNode[0].Name, 'Self') then
+            begin
+              Resolve(ARoutine, mNode, mNode.Name, True, TailRange(mNode, mNode.Name));
+              Continue;
+            end;
+          end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mStack.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mStack.Free;
   end;
+end;
+
+function TGraph.Hides(ARoutine: TRoutineInfo; const AName: string): Boolean;
+var
+  mRoutine: TRoutineInfo;
+  mName: string;
+begin
+  if SameText(AName, 'Result') or SameText(AName, 'Self') then
+  begin
+    Exit(True);
+  end;
+  mRoutine := ARoutine;
+  while mRoutine <> nil do
+  begin
+    for mName in mRoutine.Hidden do
+    begin
+      if mName = UpperCase(AName) then
+      begin
+        Exit(True);
+      end;
+    end;
+    mRoutine := mRoutine.Parent;
+  end;
+  Result := False;
 end;
 
 /// <summary>ANode ist eine Deklaration der Art AKind in einem Klassen-, Record- oder Helper-Rumpf.</summary>
@@ -429,71 +494,42 @@ begin
   LinkPropertyFields;
 end;
 
-procedure TGraph.CollectRoutines;
+function TGraph.LocalRoutine(ARoutine: TRoutineInfo; const AName: string): TRoutineInfo;
 var
-  mStack: TStack<TSyntaxNode>;
-  mNode: TSyntaxNode;
-  mIndex: Integer;
+  mRoutine, mLocal: TRoutineInfo;
 begin
-  mStack := TStack<TSyntaxNode>.Create;
-  try
-    mStack.Push(FTree.Root);
-    while mStack.Count > 0 do
+  // Die Routine selbst, ihre lokalen Routinen und die der umgebenden.
+  mRoutine := ARoutine;
+  while mRoutine <> nil do
+  begin
+    if (mRoutine.Parent <> nil) and SameText(LastPart(mRoutine.Name), AName) then
     begin
-      mNode := mStack.Pop;
-      if mNode.Kind = TSyntaxKind.RoutineDecl then
+      Exit(mRoutine);
+    end;
+    for mLocal in mRoutine.Locals do
+    begin
+      if SameText(LastPart(mLocal.Name), AName) then
       begin
-        AddRoutine(mNode, nil);
-        Continue;
-      end;
-      if mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] + cTypeBodies then
-      begin
-        Continue;
-      end;
-      for mIndex := mNode.ChildCount - 1 downto 0 do
-      begin
-        mStack.Push(mNode[mIndex]);
+        Exit(mLocal);
       end;
     end;
-  finally
-    mStack.Free;
+    mRoutine := mRoutine.Parent;
   end;
+  Result := nil;
 end;
 
-function TGraph.RoutineInfoFor(ANode: TSyntaxNode; AParent: TRoutineInfo): TRoutineInfo;
+function TGraph.Member(const AOwner, AName: string): TRoutineInfo;
 var
-  mHeader: TSyntaxNode;
-  mName, mKey: string;
+  mKey: string;
 begin
-  mName := PlainName(ANode.Name);
-  mKey := UpperCase(mName);
-  if AParent <> nil then
+  mKey := UpperCase(AName);
+  if AOwner <> '' then
   begin
-    mKey := AParent.Key + '.' + mKey;
+    mKey := UpperCase(AOwner) + '.' + mKey;
   end;
-  if FByKey.TryGetValue(mKey, Result) then
+  if (AName = '') or not FByKey.TryGetValue(mKey, Result) then
   begin
-    Exit;
-  end;
-  Result := TRoutineInfo.Create;
-  FRoutines.Add(Result);
-  FByKey.Add(mKey, Result);
-  Result.Key := mKey;
-  Result.Parent := AParent;
-  Result.Name := mName;
-  Result.Owner := OwnerPart(mName);
-  if AParent <> nil then
-  begin
-    Result.Name := AParent.Name + '.' + mName;
-    Result.Owner := AParent.Owner;
-    AParent.Locals := AParent.Locals + [Result];
-  end;
-  Result.NameRange := TTextRange.Create(ANode.StartPos, ANode.StartPos);
-  mHeader := ANode.FindChild(TSyntaxKind.RoutineHeader);
-  if mHeader <> nil then
-  begin
-    Result.NameRange := HeaderNameRange(FTree.Tokens, mHeader);
-    Result.IsFunction := mHeader.FindChild(TSyntaxKind.TypeReference) <> nil;
+    Result := nil;
   end;
 end;
 
@@ -566,74 +602,52 @@ begin
   end;
 end;
 
-function TGraph.Hides(ARoutine: TRoutineInfo; const AName: string): Boolean;
-var
-  mRoutine: TRoutineInfo;
-  mName: string;
-begin
-  if SameText(AName, 'Result') or SameText(AName, 'Self') then
-  begin
-    Exit(True);
-  end;
-  mRoutine := ARoutine;
-  while mRoutine <> nil do
-  begin
-    for mName in mRoutine.Hidden do
-    begin
-      if mName = UpperCase(AName) then
-      begin
-        Exit(True);
-      end;
-    end;
-    mRoutine := mRoutine.Parent;
-  end;
-  Result := False;
-end;
-
-function TGraph.LocalRoutine(ARoutine: TRoutineInfo; const AName: string): TRoutineInfo;
-var
-  mRoutine, mLocal: TRoutineInfo;
-begin
-  // Die Routine selbst, ihre lokalen Routinen und die der umgebenden.
-  mRoutine := ARoutine;
-  while mRoutine <> nil do
-  begin
-    if (mRoutine.Parent <> nil) and SameText(LastPart(mRoutine.Name), AName) then
-    begin
-      Exit(mRoutine);
-    end;
-    for mLocal in mRoutine.Locals do
-    begin
-      if SameText(LastPart(mLocal.Name), AName) then
-      begin
-        Exit(mLocal);
-      end;
-    end;
-    mRoutine := mRoutine.Parent;
-  end;
-  Result := nil;
-end;
-
-function TGraph.Member(const AOwner, AName: string): TRoutineInfo;
-var
-  mKey: string;
-begin
-  mKey := UpperCase(AName);
-  if AOwner <> '' then
-  begin
-    mKey := UpperCase(AOwner) + '.' + mKey;
-  end;
-  if (AName = '') or not FByKey.TryGetValue(mKey, Result) then
-  begin
-    Result := nil;
-  end;
-end;
-
 function TGraph.PropertyOf(const AOwner, AName: string): TPropertyInfo;
 begin
   if not FProperties.TryGetValue(UpperCase(AOwner + '.' + AName), Result) then
   begin
     Result := nil;
+  end;
+end;
+
+procedure TGraph.AddProperty(ANode: TSyntaxNode);
+var
+  mInfo: TPropertyInfo;
+begin
+  mInfo := TPropertyInfo.Create;
+  mInfo.Name := ANode.Name;
+  // read/write stehen nicht im Baum, nur in den Token der Deklaration.
+  ReadAccessors(FTree.Tokens, FirstToken(FTree.Tokens, ANode.StartOffset), ANode.EndOffset, mInfo);
+  FProperties.AddOrSetValue(UpperCase(TypeOwner(ANode) + '.' + ANode.Name), mInfo);
+end;
+
+procedure TGraph.AddFields(ANode: TSyntaxNode);
+var
+  mOwner, mName: string;
+begin
+  mOwner := TypeOwner(ANode);
+  for mName in ANode.Name.Split([',']) do
+  begin
+    if Trim(mName) <> '' then
+    begin
+      FFields.AddOrSetValue(UpperCase(mOwner + '.' + Trim(mName)), Trim(mName));
+    end;
+  end;
+end;
+
+procedure TGraph.LinkPropertyFields;
+var
+  mName, mField: string;
+begin
+  // Das Feld aus read bzw. write der Deklaration, sonst F<Name> derselben Klasse.
+  for mName in FProperties.Keys do
+  begin
+    if FFields.TryGetValue(OwnerPart(mName) + '.' + UpperCase(FProperties[mName].Reader), mField) or
+      FFields.TryGetValue(OwnerPart(mName) + '.' + UpperCase(FProperties[mName].Writer), mField) or
+      FFields.TryGetValue(OwnerPart(mName) + '.F' + LastPart(mName), mField) then
+    begin
+      FProperties[mName].Field := mField;
+    end;
   end;
 end;
 
@@ -657,6 +671,43 @@ begin
     (mParent[0] = ANode);
 end;
 
+function TGraph.RoutineInfoFor(ANode: TSyntaxNode; AParent: TRoutineInfo): TRoutineInfo;
+var
+  mHeader: TSyntaxNode;
+  mName, mKey: string;
+begin
+  mName := PlainName(ANode.Name);
+  mKey := UpperCase(mName);
+  if AParent <> nil then
+  begin
+    mKey := AParent.Key + '.' + mKey;
+  end;
+  if FByKey.TryGetValue(mKey, Result) then
+  begin
+    Exit;
+  end;
+  Result := TRoutineInfo.Create;
+  FRoutines.Add(Result);
+  FByKey.Add(mKey, Result);
+  Result.Key := mKey;
+  Result.Parent := AParent;
+  Result.Name := mName;
+  Result.Owner := OwnerPart(mName);
+  if AParent <> nil then
+  begin
+    Result.Name := AParent.Name + '.' + mName;
+    Result.Owner := AParent.Owner;
+    AParent.Locals := AParent.Locals + [Result];
+  end;
+  Result.NameRange := TTextRange.Create(ANode.StartPos, ANode.StartPos);
+  mHeader := ANode.FindChild(TSyntaxKind.RoutineHeader);
+  if mHeader <> nil then
+  begin
+    Result.NameRange := HeaderNameRange(FTree.Tokens, mHeader);
+    Result.IsFunction := mHeader.FindChild(TSyntaxKind.TypeReference) <> nil;
+  end;
+end;
+
 function TGraph.OwnerTarget(const AOwner, AName: string; AWritten: Boolean;
   out AProp: TPropertyInfo): TRoutineInfo;
 begin
@@ -672,30 +723,6 @@ begin
   else
   begin
     Result := Member(AOwner, AProp.Reader);
-  end;
-end;
-
-function TGraph.FindTarget(ARoutine: TRoutineInfo; const AName: string; ASelf, AWritten: Boolean;
-  out AProp: TPropertyInfo): TRoutineInfo;
-begin
-  AProp := nil;
-  Result := nil;
-  if not ASelf then
-  begin
-    if Hides(ARoutine, AName) then
-    begin
-      Exit;
-    end;
-    Result := LocalRoutine(ARoutine, AName);
-  end;
-  if (Result = nil) and (ARoutine.Owner <> '') then
-  begin
-    Result := OwnerTarget(ARoutine.Owner, AName, AWritten, AProp);
-  end;
-  // Eine Property ohne passendes read bzw. write führt nirgends hin.
-  if (Result = nil) and (AProp = nil) and not ASelf then
-  begin
-    Result := Member('', AName);
   end;
 end;
 
@@ -735,54 +762,27 @@ begin
   ARoutine.Edges := ARoutine.Edges + [mEdge];
 end;
 
-procedure TGraph.CollectEdges(ARoutine: TRoutineInfo);
-var
-  mStack: TStack<TSyntaxNode>;
-  mNode, mBody: TSyntaxNode;
-  mDeclaration: TSyntaxNode;
-  mIndex: Integer;
+function TGraph.FindTarget(ARoutine: TRoutineInfo; const AName: string; ASelf, AWritten: Boolean;
+  out AProp: TPropertyInfo): TRoutineInfo;
 begin
-  mStack := TStack<TSyntaxNode>.Create;
-  try
-    for mDeclaration in ARoutine.Nodes do
+  AProp := nil;
+  Result := nil;
+  if not ASelf then
+  begin
+    if Hides(ARoutine, AName) then
     begin
-      mBody := mDeclaration.FindChild(TSyntaxKind.Block);
-      if mBody <> nil then
-      begin
-        mStack.Push(mBody);
-      end;
+      Exit;
     end;
-    while mStack.Count > 0 do
-    begin
-      mNode := mStack.Pop;
-      case mNode.Kind of
-        // Nicht verfolgt: Vorfahr, spätere Ausführung, unklare Bindung.
-        TSyntaxKind.InheritedExpr, TSyntaxKind.AnonymousMethod, TSyntaxKind.WithStatement, TSyntaxKind.AsmBlock,
-          TSyntaxKind.RoutineDecl:
-          Continue;
-        TSyntaxKind.InlineVar, TSyntaxKind.InlineConst:
-          ARoutine.Hidden := ARoutine.Hidden + NamesOf(mNode.Name);
-        TSyntaxKind.Identifier:
-          Resolve(ARoutine, mNode, mNode.Name, False, TTextRange.Create(mNode.StartPos, mNode.EndPos));
-        TSyntaxKind.MemberAccess:
-          begin
-            // Self.X: Mitglied der eigenen Klasse; andere Empfänger nur durchsuchen.
-            if (mNode.ChildCount > 0) and (mNode[0].Kind = TSyntaxKind.Identifier) and SameText(mNode[0].Name, 'Self') then
-            begin
-              Resolve(ARoutine, mNode, mNode.Name, True, TailRange(mNode, mNode.Name));
-              Continue;
-            end;
-          end;
-      else
-        // Übrige Werte bewusst ohne Wirkung.
-      end;
-      for mIndex := mNode.ChildCount - 1 downto 0 do
-      begin
-        mStack.Push(mNode[mIndex]);
-      end;
-    end;
-  finally
-    mStack.Free;
+    Result := LocalRoutine(ARoutine, AName);
+  end;
+  if (Result = nil) and (ARoutine.Owner <> '') then
+  begin
+    Result := OwnerTarget(ARoutine.Owner, AName, AWritten, AProp);
+  end;
+  // Eine Property ohne passendes read bzw. write führt nirgends hin.
+  if (Result = nil) and (AProp = nil) and not ASelf then
+  begin
+    Result := Member('', AName);
   end;
 end;
 
@@ -895,6 +895,8 @@ begin
     mPrevious.Free;
   end;
 end;
+
+{ TRecursionAnalysis }
 
 class function TRecursionAnalysis.Calls(ATree: TSyntaxTree; AMaxDepth: Integer): TArray<TRecursiveCall>;
 var

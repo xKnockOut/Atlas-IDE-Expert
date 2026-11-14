@@ -512,50 +512,34 @@ begin
   inherited Destroy;
 end;
 
+function TAtlasIdeWrap.Ready(const AEditor: IOTAFormEditor; ARoot: TComponent; const AClassName: string;
+  out AControls: TArray<TControl>; out AClass: TComponentClass): Boolean;
+begin
+  AClass := ClassOf(AClassName);
+  Result := False;
+  if not Targets(AEditor, ARoot, AControls) then
+  begin
+    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerWrapParents));
+  end
+  else if Length(AControls) = 0 then
+  begin
+    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerWrapNeedSelection));
+  end
+  else if AClass = nil then
+  begin
+    Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerWrapUnknownClass, [AClassName]));
+  end
+  else
+  begin
+    Result := True;
+  end;
+end;
+
 procedure TAtlasIdeWrap.ClearState;
 begin
   FreeAndNil(FTemplate);
   FreeAndNil(FSheetTemplate);
   FState := Default(TAtlasWrapState);
-end;
-
-class function TAtlasIdeWrap.ClassNames: TArray<string>;
-var
-  mName: string;
-  mSettings: TAtlasPluginSettings;
-begin
-  Result := nil;
-  for mName in cBuiltIn do
-  begin
-    Result := Result + [mName];
-  end;
-  mSettings := TAtlasIdeSettings.Current;
-  for mName in (mSettings.DesignerWrapInContainerClasses + ',' + mSettings.DesignerWrapInContainerDefaultClass).Split(
-    [',', ';']) do
-  begin
-    if (Trim(mName) <> '') and not Contains(Result, Trim(mName)) then
-    begin
-      Result := Result + [Trim(mName)];
-    end;
-  end;
-end;
-
-class function TAtlasIdeWrap.CanWrap: Boolean;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-  mControls: TArray<TControl>;
-begin
-  Result := TAtlasDesignerAccess.Current(mEditor, mRoot) and Targets(mEditor, mRoot, mControls) and
-    (Length(mControls) > 0);
-end;
-
-class function TAtlasIdeWrap.CanUnwrap: Boolean;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-begin
-  Result := TAtlasDesignerAccess.Current(mEditor, mRoot) and (SelectedContainer(mEditor, mRoot) <> nil);
 end;
 
 procedure TAtlasIdeWrap.Remember(AStep: TAtlasWrapStep; const AFileName: string; AParent: TWinControl;
@@ -595,6 +579,52 @@ begin
       Copy(AName, Length(TAtlasContainerWrap.PrefixFor(AClass.ClassName)) + 1, MaxInt));
     FState.Sheet := mSheet.Name;
   end;
+end;
+
+procedure TAtlasIdeWrap.KeepTemplate(AContainer, AInner: TWinControl);
+begin
+  FTemplate := TComponentClass(AContainer.ClassType).Create(nil);
+  TAtlasIdeDuplicateRow.CopyProperties(AContainer, FTemplate, True);
+  if AInner <> AContainer then
+  begin
+    FSheetTemplate := TComponentClass(AInner.ClassType).Create(nil);
+    TAtlasIdeDuplicateRow.CopyProperties(AInner, FSheetTemplate, True);
+    FState.Sheet := AInner.Name;
+  end;
+end;
+
+procedure TAtlasIdeWrap.FinishUnwrap(ARoot: TComponent; AParent: TWinControl);
+var
+  mNames: TArray<string>;
+  mTabs: TArray<Integer>;
+  mStack: TArray<string>;
+  mIndex: Integer;
+  mName: string;
+begin
+  mNames := nil;
+  mTabs := nil;
+  for mIndex := 0 to High(FState.Children) do
+  begin
+    if FState.ChildTabs[mIndex] >= 0 then
+    begin
+      mNames := mNames + [FState.Children[mIndex]];
+      mTabs := mTabs + [FState.ChildTabs[mIndex]];
+    end;
+  end;
+  SetTabs(ARoot, mNames, TAtlasContainerWrap.UnwrapTabOrders(FState.ContainerTab, mTabs));
+  mStack := nil;
+  for mName in FState.Stack do
+  begin
+    if SameText(mName, FState.Container) then
+    begin
+      mStack := mStack + FState.Children;
+    end
+    else
+    begin
+      mStack := mStack + [mName];
+    end;
+  end;
+  Restack(AParent, ARoot, mStack);
 end;
 
 /// <summary>Kinder in den Container: Koordinaten, Reihenfolge (Flow/Grid zeilenweise), TabOrder, Anchors.</summary>
@@ -696,27 +726,86 @@ begin
     [AContainer.Name, ReferenceText(mSource, mLines), sLineBreak + sLineBreak]), mtWarning, [mbYes, mbNo], 0) = mrYes);
 end;
 
-function TAtlasIdeWrap.Ready(const AEditor: IOTAFormEditor; ARoot: TComponent; const AClassName: string;
-  out AControls: TArray<TControl>; out AClass: TComponentClass): Boolean;
+procedure TAtlasIdeWrap.UndoWrap(const AEditor: IOTAFormEditor; ARoot: TComponent);
+var
+  mParent: TWinControl;
 begin
-  AClass := ClassOf(AClassName);
-  Result := False;
-  if not Targets(AEditor, ARoot, AControls) then
+  mParent := ParentByName(ARoot, FState.ParentName);
+  if ARoot.FindComponent(FState.Container) = nil then
   begin
-    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerWrapParents));
-  end
-  else if Length(AControls) = 0 then
-  begin
-    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerWrapNeedSelection));
-  end
-  else if AClass = nil then
-  begin
-    Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerWrapUnknownClass, [AClassName]));
-  end
-  else
-  begin
-    Result := True;
+    Exit;
   end;
+  MoveTo(ARoot, mParent, FState.Children, FState.ChildBounds);
+  DeleteComponent(AEditor, FState.Container);
+  SetTabs(ARoot, FState.Children, FState.ChildTabs);
+  Restack(mParent, ARoot, FState.Stack);
+end;
+
+procedure TAtlasIdeWrap.UndoUnwrap(const ADesigner: IDesigner; ARoot: TComponent);
+var
+  mParent, mContainer, mInner: TWinControl;
+begin
+  mParent := ParentByName(ARoot, FState.ParentName);
+  if (ARoot.FindComponent(FState.Container) <> nil) or (FTemplate = nil) then
+  begin
+    Exit;
+  end;
+  mContainer := TWinControl(ADesigner.CreateComponent(FState.ContainerClass, mParent, 0, 0, 0, 0));
+  mContainer.Name := FState.Container;
+  TAtlasIdeDuplicateRow.CopyProperties(FTemplate, mContainer, True);
+  mContainer.BoundsRect := FState.ContainerBounds;
+  mInner := mContainer;
+  if (FSheetTemplate <> nil) and (mContainer is TPageControl) then
+  begin
+    mInner := TWinControl(ADesigner.CreateComponent(TComponentClass(FSheetTemplate.ClassType), mContainer, 0, 0, 0,
+      0));
+    TTabSheet(mInner).PageControl := TPageControl(mContainer);
+    mInner.Name := FState.Sheet;
+    TAtlasIdeDuplicateRow.CopyProperties(FSheetTemplate, mInner, True);
+  end;
+  MoveTo(ARoot, mInner, FState.Children, FState.ChildBounds);
+  SetTabs(ARoot, FState.Children, FState.ChildTabs);
+  mContainer.TabOrder := FState.ContainerTab;
+  Restack(mParent, ARoot, FState.Stack);
+end;
+
+class function TAtlasIdeWrap.ClassNames: TArray<string>;
+var
+  mName: string;
+  mSettings: TAtlasPluginSettings;
+begin
+  Result := nil;
+  for mName in cBuiltIn do
+  begin
+    Result := Result + [mName];
+  end;
+  mSettings := TAtlasIdeSettings.Current;
+  for mName in (mSettings.DesignerWrapInContainerClasses + ',' + mSettings.DesignerWrapInContainerDefaultClass).Split(
+    [',', ';']) do
+  begin
+    if (Trim(mName) <> '') and not Contains(Result, Trim(mName)) then
+    begin
+      Result := Result + [Trim(mName)];
+    end;
+  end;
+end;
+
+class function TAtlasIdeWrap.CanWrap: Boolean;
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+  mControls: TArray<TControl>;
+begin
+  Result := TAtlasDesignerAccess.Current(mEditor, mRoot) and Targets(mEditor, mRoot, mControls) and
+    (Length(mControls) > 0);
+end;
+
+class function TAtlasIdeWrap.CanUnwrap: Boolean;
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+begin
+  Result := TAtlasDesignerAccess.Current(mEditor, mRoot) and (SelectedContainer(mEditor, mRoot) <> nil);
 end;
 
 procedure TAtlasIdeWrap.Wrap(const AClassName: string);
@@ -753,18 +842,6 @@ begin
   TAtlasDesignerAccess.Select(TAtlasDesignerAccess.DesignerOf(mEditor), mRoot, [mContainer]);
   TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
   Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerWrapDone, [Length(mControls), mContainer.Name]));
-end;
-
-procedure TAtlasIdeWrap.KeepTemplate(AContainer, AInner: TWinControl);
-begin
-  FTemplate := TComponentClass(AContainer.ClassType).Create(nil);
-  TAtlasIdeDuplicateRow.CopyProperties(AContainer, FTemplate, True);
-  if AInner <> AContainer then
-  begin
-    FSheetTemplate := TComponentClass(AInner.ClassType).Create(nil);
-    TAtlasIdeDuplicateRow.CopyProperties(AInner, FSheetTemplate, True);
-    FState.Sheet := AInner.Name;
-  end;
 end;
 
 procedure TAtlasIdeWrap.Unwrap;
@@ -821,40 +898,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeWrap.FinishUnwrap(ARoot: TComponent; AParent: TWinControl);
-var
-  mNames: TArray<string>;
-  mTabs: TArray<Integer>;
-  mStack: TArray<string>;
-  mIndex: Integer;
-  mName: string;
-begin
-  mNames := nil;
-  mTabs := nil;
-  for mIndex := 0 to High(FState.Children) do
-  begin
-    if FState.ChildTabs[mIndex] >= 0 then
-    begin
-      mNames := mNames + [FState.Children[mIndex]];
-      mTabs := mTabs + [FState.ChildTabs[mIndex]];
-    end;
-  end;
-  SetTabs(ARoot, mNames, TAtlasContainerWrap.UnwrapTabOrders(FState.ContainerTab, mTabs));
-  mStack := nil;
-  for mName in FState.Stack do
-  begin
-    if SameText(mName, FState.Container) then
-    begin
-      mStack := mStack + FState.Children;
-    end
-    else
-    begin
-      mStack := mStack + [mName];
-    end;
-  end;
-  Restack(AParent, ARoot, mStack);
-end;
-
 function TAtlasIdeWrap.CanUndo: Boolean;
 var
   mEditor: IOTAFormEditor;
@@ -862,49 +905,6 @@ var
 begin
   Result := (FState.Step <> TAtlasWrapStep.None) and TAtlasDesignerAccess.Current(mEditor, mRoot) and
     SameText(mEditor.FileName, FState.FileName) and (ParentByName(mRoot, FState.ParentName) <> nil);
-end;
-
-procedure TAtlasIdeWrap.UndoWrap(const AEditor: IOTAFormEditor; ARoot: TComponent);
-var
-  mParent: TWinControl;
-begin
-  mParent := ParentByName(ARoot, FState.ParentName);
-  if ARoot.FindComponent(FState.Container) = nil then
-  begin
-    Exit;
-  end;
-  MoveTo(ARoot, mParent, FState.Children, FState.ChildBounds);
-  DeleteComponent(AEditor, FState.Container);
-  SetTabs(ARoot, FState.Children, FState.ChildTabs);
-  Restack(mParent, ARoot, FState.Stack);
-end;
-
-procedure TAtlasIdeWrap.UndoUnwrap(const ADesigner: IDesigner; ARoot: TComponent);
-var
-  mParent, mContainer, mInner: TWinControl;
-begin
-  mParent := ParentByName(ARoot, FState.ParentName);
-  if (ARoot.FindComponent(FState.Container) <> nil) or (FTemplate = nil) then
-  begin
-    Exit;
-  end;
-  mContainer := TWinControl(ADesigner.CreateComponent(FState.ContainerClass, mParent, 0, 0, 0, 0));
-  mContainer.Name := FState.Container;
-  TAtlasIdeDuplicateRow.CopyProperties(FTemplate, mContainer, True);
-  mContainer.BoundsRect := FState.ContainerBounds;
-  mInner := mContainer;
-  if (FSheetTemplate <> nil) and (mContainer is TPageControl) then
-  begin
-    mInner := TWinControl(ADesigner.CreateComponent(TComponentClass(FSheetTemplate.ClassType), mContainer, 0, 0, 0,
-      0));
-    TTabSheet(mInner).PageControl := TPageControl(mContainer);
-    mInner.Name := FState.Sheet;
-    TAtlasIdeDuplicateRow.CopyProperties(FSheetTemplate, mInner, True);
-  end;
-  MoveTo(ARoot, mInner, FState.Children, FState.ChildBounds);
-  SetTabs(ARoot, FState.Children, FState.ChildTabs);
-  mContainer.TabOrder := FState.ContainerTab;
-  Restack(mParent, ARoot, FState.Stack);
 end;
 
 procedure TAtlasIdeWrap.Undo;

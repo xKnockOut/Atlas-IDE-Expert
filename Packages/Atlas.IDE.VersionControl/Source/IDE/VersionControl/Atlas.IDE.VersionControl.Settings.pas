@@ -77,20 +77,8 @@ begin
   TAtlasVcsOptions.Connect(mSection, mSection.Alive());
 end;
 
+
 { TAtlasVcsOptions }
-
-
-class procedure TAtlasVcsOptions.Connect(ASection: TAtlasVcsSettingsSection; const AAlive: TFunc<Boolean>);
-begin
-  ASection.Projects.OnVcsContext :=
-    function: TAtlasVcsProjectContext
-    begin
-      Result := VcsProjectContext;
-    end;
-  ConnectTools(ASection, AAlive);
-  ConnectProject(ASection, AAlive);
-  ConnectServer(ASection, AAlive);
-end;
 
 class procedure TAtlasVcsOptions.ConnectTools(ASection: TAtlasVcsSettingsSection; const AAlive: TFunc<Boolean>);
 begin
@@ -173,6 +161,18 @@ begin
           end;
         end);
     end;
+end;
+
+class procedure TAtlasVcsOptions.Connect(ASection: TAtlasVcsSettingsSection; const AAlive: TFunc<Boolean>);
+begin
+  ASection.Projects.OnVcsContext :=
+    function: TAtlasVcsProjectContext
+    begin
+      Result := VcsProjectContext;
+    end;
+  ConnectTools(ASection, AAlive);
+  ConnectProject(ASection, AAlive);
+  ConnectServer(ASection, AAlive);
 end;
 
 class procedure TAtlasVcsOptions.CheckServer(ASection: TAtlasVcsSettingsSection; const AAlive: TFunc<Boolean>;

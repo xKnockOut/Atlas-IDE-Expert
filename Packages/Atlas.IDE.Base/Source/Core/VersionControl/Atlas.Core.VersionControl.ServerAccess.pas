@@ -180,23 +180,6 @@ begin
   end;
 end;
 
-class function TAtlasVcsServerAccess.VariableName(const AEntry: string): string;
-var
-  mAt: Integer;
-begin
-  // Einträge der Laufwerke („=C:=C:\…“) sind keine Variablen.
-  if AEntry.StartsWith('=') then
-  begin
-    Exit('');
-  end;
-  mAt := Pos('=', AEntry);
-  if mAt <= 1 then
-  begin
-    Exit('');
-  end;
-  Result := Copy(AEntry, 1, mAt - 1);
-end;
-
 class function TAtlasVcsServerAccess.NoPromptEnvironment(const AEnvironment: TArray<string>): TArray<string>;
 var
   mEntry, mVariable: string;
@@ -222,6 +205,23 @@ begin
   begin
     Result := Result + [mVariable];
   end;
+end;
+
+class function TAtlasVcsServerAccess.VariableName(const AEntry: string): string;
+var
+  mAt: Integer;
+begin
+  // Einträge der Laufwerke („=C:=C:\…“) sind keine Variablen.
+  if AEntry.StartsWith('=') then
+  begin
+    Exit('');
+  end;
+  mAt := Pos('=', AEntry);
+  if mAt <= 1 then
+  begin
+    Exit('');
+  end;
+  Result := Copy(AEntry, 1, mAt - 1);
 end;
 
 end.

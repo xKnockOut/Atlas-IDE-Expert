@@ -99,22 +99,83 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasTrackerPathsPart.Caption(const ARow: TAtlasTrackerProjectMapping): string;
+procedure TAtlasTrackerPathsPart.PathsChange(Sender: TObject);
 begin
-  case Length(ARow.Paths) of
-    0:
-      Result := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesPathsOwnFolder);
-    1:
-      Result := ARow.Paths[0];
-  else
-    Result := TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.SettingsIssuesPathsMore,
-      [ARow.Paths[0], Length(ARow.Paths) - 1]);
+  if FFilling or not FEditable then
+  begin
+    Exit;
+  end;
+  FRow.Paths := PathsOf(FView.Paths.Text);
+  if Assigned(FOnChanged) then
+  begin
+    FOnChanged(FRow.Paths);
   end;
 end;
 
-class function TAtlasTrackerPathsPart.PathsOf(const AText: string): TArray<string>;
+procedure TAtlasTrackerPathsPart.AddClick(Sender: TObject);
+var
+  mPath: string;
 begin
-  Result := TAtlasTrackerProjects.SplitPaths(AText);
+  if FEditable and Assigned(FBrowse) and FBrowse(mPath) and (Trim(mPath) <> '') then
+  begin
+    Append([mPath]);
+  end;
+end;
+
+procedure TAtlasTrackerPathsPart.CheckClick(Sender: TObject);
+var
+  mGeneration: Integer;
+  mOwner: TAtlasTrackerPathsPart;
+  mAlive: IAtlasTrackerPathsAlive;
+begin
+  if not Assigned(FHooks.OnCheckPaths) then
+  begin
+    Exit;
+  end;
+  Inc(FGeneration);
+  mGeneration := FGeneration;
+  mOwner := Self;
+  mAlive := FAlive;
+  FView.Note.Caption := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesPathsChecking);
+  FHooks.OnCheckPaths(FRow.Folders,
+    procedure(ALines: TArray<string>)
+    begin
+      // Andere Zeile gewählt oder Seite zu: das Ergebnis gilt nicht mehr.
+      if mAlive.Alive and (mGeneration = mOwner.FGeneration) and mOwner.FRows.Active then
+      begin
+        mOwner.FView.Note.Caption := string.Join(cNoteSeparator, ALines);
+      end;
+    end);
+end;
+
+procedure TAtlasTrackerPathsPart.SuggestClick(Sender: TObject);
+var
+  mPaths: TArray<string>;
+begin
+  if not (FEditable and Assigned(FHooks.OnSuggestPaths) and FHooks.OnSuggestPaths(FRow, mPaths)) then
+  begin
+    Exit;
+  end;
+  // Leer nach „Nichts gefunden – Ordner selbst wählen …“.
+  if Length(mPaths) = 0 then
+  begin
+    AddClick(Sender);
+    Exit;
+  end;
+  Append(mPaths);
+end;
+
+procedure TAtlasTrackerPathsPart.Append(const APaths: TArray<string>);
+var
+  mText: string;
+begin
+  mText := Trim(FView.Paths.Text);
+  if mText <> '' then
+  begin
+    mText := mText + cLineBreak;
+  end;
+  // OnChange übernimmt die Liste (doppelte fallen dort weg).
+  FView.Paths.Text := mText + string.Join(cLineBreak, APaths);
 end;
 
 procedure TAtlasTrackerPathsPart.Build;
@@ -169,83 +230,22 @@ begin
   FRows.Allow(FView.Suggest, AEditable);
 end;
 
-procedure TAtlasTrackerPathsPart.PathsChange(Sender: TObject);
+class function TAtlasTrackerPathsPart.Caption(const ARow: TAtlasTrackerProjectMapping): string;
 begin
-  if FFilling or not FEditable then
-  begin
-    Exit;
-  end;
-  FRow.Paths := PathsOf(FView.Paths.Text);
-  if Assigned(FOnChanged) then
-  begin
-    FOnChanged(FRow.Paths);
+  case Length(ARow.Paths) of
+    0:
+      Result := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesPathsOwnFolder);
+    1:
+      Result := ARow.Paths[0];
+  else
+    Result := TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.SettingsIssuesPathsMore,
+      [ARow.Paths[0], Length(ARow.Paths) - 1]);
   end;
 end;
 
-procedure TAtlasTrackerPathsPart.Append(const APaths: TArray<string>);
-var
-  mText: string;
+class function TAtlasTrackerPathsPart.PathsOf(const AText: string): TArray<string>;
 begin
-  mText := Trim(FView.Paths.Text);
-  if mText <> '' then
-  begin
-    mText := mText + cLineBreak;
-  end;
-  // OnChange übernimmt die Liste (doppelte fallen dort weg).
-  FView.Paths.Text := mText + string.Join(cLineBreak, APaths);
-end;
-
-procedure TAtlasTrackerPathsPart.AddClick(Sender: TObject);
-var
-  mPath: string;
-begin
-  if FEditable and Assigned(FBrowse) and FBrowse(mPath) and (Trim(mPath) <> '') then
-  begin
-    Append([mPath]);
-  end;
-end;
-
-procedure TAtlasTrackerPathsPart.CheckClick(Sender: TObject);
-var
-  mGeneration: Integer;
-  mOwner: TAtlasTrackerPathsPart;
-  mAlive: IAtlasTrackerPathsAlive;
-begin
-  if not Assigned(FHooks.OnCheckPaths) then
-  begin
-    Exit;
-  end;
-  Inc(FGeneration);
-  mGeneration := FGeneration;
-  mOwner := Self;
-  mAlive := FAlive;
-  FView.Note.Caption := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesPathsChecking);
-  FHooks.OnCheckPaths(FRow.Folders,
-    procedure(ALines: TArray<string>)
-    begin
-      // Andere Zeile gewählt oder Seite zu: das Ergebnis gilt nicht mehr.
-      if mAlive.Alive and (mGeneration = mOwner.FGeneration) and mOwner.FRows.Active then
-      begin
-        mOwner.FView.Note.Caption := string.Join(cNoteSeparator, ALines);
-      end;
-    end);
-end;
-
-procedure TAtlasTrackerPathsPart.SuggestClick(Sender: TObject);
-var
-  mPaths: TArray<string>;
-begin
-  if not (FEditable and Assigned(FHooks.OnSuggestPaths) and FHooks.OnSuggestPaths(FRow, mPaths)) then
-  begin
-    Exit;
-  end;
-  // Leer nach „Nichts gefunden – Ordner selbst wählen …“.
-  if Length(mPaths) = 0 then
-  begin
-    AddClick(Sender);
-    Exit;
-  end;
-  Append(mPaths);
+  Result := TAtlasTrackerProjects.SplitPaths(AText);
 end;
 
 end.

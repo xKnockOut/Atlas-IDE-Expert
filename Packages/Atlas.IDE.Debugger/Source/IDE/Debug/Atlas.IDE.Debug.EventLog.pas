@@ -231,6 +231,186 @@ end;
 
 { TAtlasIdeDebugEventLog }
 
+class procedure TAtlasIdeDebugEventLog.Poll;
+var
+  mLine, mText, mThread: string;
+  mKind: TAtlasEventKind;
+begin
+  if GMirror = nil then
+  begin
+    Exit;
+  end;
+  for mLine in GMirror.NewLines do
+  begin
+    mKind := TAtlasEventLog.Classify(mLine, mText, mThread);
+    // Module, Threads und Prozess meldet der Notifier; aus dem Fenster nur, wenn er fehlt.
+    if (GWatchIndex >= 0) and (mKind in [TAtlasEventKind.Module, TAtlasEventKind.Thread,
+      TAtlasEventKind.Process]) then
+    begin
+      Continue;
+    end;
+    if not MergeLogpoint(mKind, mText) then
+    begin
+      AddEntry(mKind, mThread, mText);
+    end;
+  end;
+end;
+
+class function TAtlasIdeDebugEventLog.MergeLogpoint(var AKind: TAtlasEventKind; var AText: string): Boolean;
+var
+  mPrefix, mOutput: string;
+  mIsLogpoint: Boolean;
+begin
+  Result := False;
+  if not TAtlasIdeSettings.Current.DebugLogpoints then
+  begin
+    Exit;
+  end;
+  mPrefix := TAtlasIdeSettings.Current.DebugLogpointPrefix;
+  if (FMerger = nil) or (FMerger.Prefix <> mPrefix) then
+  begin
+    FreeAndNil(FMerger);
+    FMerger := TAtlasLogpointMerger.Create(mPrefix);
+  end;
+  // Logpunkte (#583): Meldung mit „{0}“ wartet auf die Zeile mit dem Wert.
+  if (AKind <> TAtlasEventKind.Breakpoint) and not FMerger.Pending then
+  begin
+    Exit;
+  end;
+  if FMerger.Feed(AText, mOutput, mIsLogpoint) then
+  begin
+    AKind := TAtlasEventKind.Logpoint;
+    AText := mOutput;
+    Exit(False);
+  end;
+  Result := mIsLogpoint;
+end;
+
+class procedure TAtlasIdeDebugEventLog.Refresh;
+var
+  mFrame: TAtlasDebugEventLogFrame;
+begin
+  if not FDirty then
+  begin
+    if not TAtlasIdeDebugSession.Active and (FTimer <> nil) then
+    begin
+      FTimer.Enabled := False;
+    end;
+    Exit;
+  end;
+  FDirty := False;
+  mFrame := TAtlasIdeDebugEventLogWindow.ExistingFrame;
+  if (mFrame <> nil) and TAtlasIdeDebugEventLogWindow.Visible then
+  begin
+    mFrame.SetLog(FLog, TAtlasEventColors.Parse(TAtlasIdeSettings.Current.DebugEventLogColors), SavedFilters);
+  end;
+end;
+
+class procedure TAtlasIdeDebugEventLog.WireFrame(AFrame: TAtlasDebugEventLogFrame);
+begin
+  AFrame.OnOpen :=
+    procedure(AEntry: TAtlasEventEntry)
+    begin
+      OpenEntry(AEntry);
+    end;
+  AFrame.OnSave :=
+    procedure
+    begin
+      SaveToFile;
+    end;
+  AFrame.OnClear :=
+    procedure
+    begin
+      FLog.Clear;
+      FDirty := True;
+      Refresh;
+    end;
+  AFrame.OnRememberFilter :=
+    procedure(AText: string)
+    begin
+      ChangeFilter(AText, True);
+    end;
+  AFrame.OnForgetFilter :=
+    procedure(AText: string)
+    begin
+      ChangeFilter(AText, False);
+    end;
+end;
+
+class procedure TAtlasIdeDebugEventLog.SaveToFile;
+var
+  mDialog: TSaveDialog;
+begin
+  mDialog := TSaveDialog.Create(nil);
+  try
+    mDialog.Filter := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogFileTypes);
+    mDialog.DefaultExt := 'txt';
+    mDialog.FileName := ChangeFileExt(ExtractFileName(TAtlasIdeEvaluateStore.CurrentProject), '') + '-events.txt';
+    mDialog.Options := mDialog.Options + [ofOverwritePrompt];
+    if not mDialog.Execute then
+    begin
+      Exit;
+    end;
+    TFile.WriteAllText(mDialog.FileName, FLog.ToText, TEncoding.UTF8);
+    if Assigned(FServices.Message) then
+    begin
+      FServices.Message(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEventLogSaved, [mDialog.FileName]));
+    end;
+  finally
+    mDialog.Free;
+  end;
+end;
+
+class function TAtlasIdeDebugEventLog.SavedFilters: TArray<string>;
+begin
+  Result := nil;
+  if FFilters = nil then
+  begin
+    Exit;
+  end;
+  if not FFiltersLoaded then
+  begin
+    FFiltersLoaded := True;
+    // Gesperrt: leer beginnen und die Datei nicht überschreiben.
+    FFiltersKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(FilterFile, cFiltersWhat,
+      function(const AText: string): Boolean
+      begin
+        Result := FFilters.LoadFromText(AText);
+      end));
+  end;
+  Result := FFilters.Items(TAtlasIdeEvaluateStore.CurrentProject);
+end;
+
+class procedure TAtlasIdeDebugEventLog.ChangeFilter(const AText: string; ARemember: Boolean);
+var
+  mChanged: Boolean;
+  mFrame: TAtlasDebugEventLogFrame;
+begin
+  SavedFilters;
+  if ARemember then
+  begin
+    mChanged := FFilters.Add(TAtlasIdeEvaluateStore.CurrentProject, AText);
+  end
+  else
+  begin
+    mChanged := FFilters.Remove(TAtlasIdeEvaluateStore.CurrentProject, AText);
+  end;
+  if mChanged and not FFiltersKept then
+  begin
+    try
+      TAtlasDataFile.Write(FilterFile, FFilters.ToText);
+    except
+      on E: Exception do
+        TAtlasDataFile.ReportNotWritten(cFiltersWhat, E);
+    end;
+  end;
+  mFrame := TAtlasIdeDebugEventLogWindow.ExistingFrame;
+  if mFrame <> nil then
+  begin
+    mFrame.SetLog(FLog, TAtlasEventColors.Parse(TAtlasIdeSettings.Current.DebugEventLogColors), SavedFilters);
+  end;
+end;
+
 class procedure TAtlasIdeDebugEventLog.Start(const AServices: TAtlasEventLogServices);
 begin
   FServices := AServices;
@@ -332,183 +512,6 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeDebugEventLog.AddEntry(AKind: TAtlasEventKind; const AThread, AText: string);
-var
-  mElapsed: Int64;
-begin
-  if FLog = nil then
-  begin
-    Exit;
-  end;
-  mElapsed := 0;
-  if FStartTick > 0 then
-  begin
-    mElapsed := Int64(GetTickCount64 - FStartTick);
-  end;
-  FLog.Add(TAtlasEventEntry.Create(mElapsed, AKind, AThread, AText));
-  FDirty := True;
-  if (FTimer <> nil) and not FTimer.Enabled then
-  begin
-    FTimer.Enabled := True;
-  end;
-end;
-
-class procedure TAtlasIdeDebugEventLog.Poll;
-var
-  mLine, mText, mThread: string;
-  mKind: TAtlasEventKind;
-begin
-  if GMirror = nil then
-  begin
-    Exit;
-  end;
-  for mLine in GMirror.NewLines do
-  begin
-    mKind := TAtlasEventLog.Classify(mLine, mText, mThread);
-    // Module, Threads und Prozess meldet der Notifier; aus dem Fenster nur, wenn er fehlt.
-    if (GWatchIndex >= 0) and (mKind in [TAtlasEventKind.Module, TAtlasEventKind.Thread,
-      TAtlasEventKind.Process]) then
-    begin
-      Continue;
-    end;
-    if not MergeLogpoint(mKind, mText) then
-    begin
-      AddEntry(mKind, mThread, mText);
-    end;
-  end;
-end;
-
-class function TAtlasIdeDebugEventLog.MergeLogpoint(var AKind: TAtlasEventKind; var AText: string): Boolean;
-var
-  mPrefix, mOutput: string;
-  mIsLogpoint: Boolean;
-begin
-  Result := False;
-  if not TAtlasIdeSettings.Current.DebugLogpoints then
-  begin
-    Exit;
-  end;
-  mPrefix := TAtlasIdeSettings.Current.DebugLogpointPrefix;
-  if (FMerger = nil) or (FMerger.Prefix <> mPrefix) then
-  begin
-    FreeAndNil(FMerger);
-    FMerger := TAtlasLogpointMerger.Create(mPrefix);
-  end;
-  // Logpunkte (#583): Meldung mit „{0}“ wartet auf die Zeile mit dem Wert.
-  if (AKind <> TAtlasEventKind.Breakpoint) and not FMerger.Pending then
-  begin
-    Exit;
-  end;
-  if FMerger.Feed(AText, mOutput, mIsLogpoint) then
-  begin
-    AKind := TAtlasEventKind.Logpoint;
-    AText := mOutput;
-    Exit(False);
-  end;
-  Result := mIsLogpoint;
-end;
-
-class procedure TAtlasIdeDebugEventLog.Refresh;
-var
-  mFrame: TAtlasDebugEventLogFrame;
-begin
-  if not FDirty then
-  begin
-    if not TAtlasIdeDebugSession.Active and (FTimer <> nil) then
-    begin
-      FTimer.Enabled := False;
-    end;
-    Exit;
-  end;
-  FDirty := False;
-  mFrame := TAtlasIdeDebugEventLogWindow.ExistingFrame;
-  if (mFrame <> nil) and TAtlasIdeDebugEventLogWindow.Visible then
-  begin
-    mFrame.SetLog(FLog, TAtlasEventColors.Parse(TAtlasIdeSettings.Current.DebugEventLogColors), SavedFilters);
-  end;
-end;
-
-class function TAtlasIdeDebugEventLog.SavedFilters: TArray<string>;
-begin
-  Result := nil;
-  if FFilters = nil then
-  begin
-    Exit;
-  end;
-  if not FFiltersLoaded then
-  begin
-    FFiltersLoaded := True;
-    // Gesperrt: leer beginnen und die Datei nicht überschreiben.
-    FFiltersKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(FilterFile, cFiltersWhat,
-      function(const AText: string): Boolean
-      begin
-        Result := FFilters.LoadFromText(AText);
-      end));
-  end;
-  Result := FFilters.Items(TAtlasIdeEvaluateStore.CurrentProject);
-end;
-
-class procedure TAtlasIdeDebugEventLog.ChangeFilter(const AText: string; ARemember: Boolean);
-var
-  mChanged: Boolean;
-  mFrame: TAtlasDebugEventLogFrame;
-begin
-  SavedFilters;
-  if ARemember then
-  begin
-    mChanged := FFilters.Add(TAtlasIdeEvaluateStore.CurrentProject, AText);
-  end
-  else
-  begin
-    mChanged := FFilters.Remove(TAtlasIdeEvaluateStore.CurrentProject, AText);
-  end;
-  if mChanged and not FFiltersKept then
-  begin
-    try
-      TAtlasDataFile.Write(FilterFile, FFilters.ToText);
-    except
-      on E: Exception do
-        TAtlasDataFile.ReportNotWritten(cFiltersWhat, E);
-    end;
-  end;
-  mFrame := TAtlasIdeDebugEventLogWindow.ExistingFrame;
-  if mFrame <> nil then
-  begin
-    mFrame.SetLog(FLog, TAtlasEventColors.Parse(TAtlasIdeSettings.Current.DebugEventLogColors), SavedFilters);
-  end;
-end;
-
-class procedure TAtlasIdeDebugEventLog.WireFrame(AFrame: TAtlasDebugEventLogFrame);
-begin
-  AFrame.OnOpen :=
-    procedure(AEntry: TAtlasEventEntry)
-    begin
-      OpenEntry(AEntry);
-    end;
-  AFrame.OnSave :=
-    procedure
-    begin
-      SaveToFile;
-    end;
-  AFrame.OnClear :=
-    procedure
-    begin
-      FLog.Clear;
-      FDirty := True;
-      Refresh;
-    end;
-  AFrame.OnRememberFilter :=
-    procedure(AText: string)
-    begin
-      ChangeFilter(AText, True);
-    end;
-  AFrame.OnForgetFilter :=
-    procedure(AText: string)
-    begin
-      ChangeFilter(AText, False);
-    end;
-end;
-
 /// <summary>Symbol, dessen Name und Container zu ASymbol ("Unit.Routine", "Klasse.Methode") passen.</summary>
 function TryFindSymbol(const ASession: TLspSession; const ASymbol: string; out AFound: TAtlasSymbol): Boolean;
 var
@@ -580,27 +583,24 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeDebugEventLog.SaveToFile;
+class procedure TAtlasIdeDebugEventLog.AddEntry(AKind: TAtlasEventKind; const AThread, AText: string);
 var
-  mDialog: TSaveDialog;
+  mElapsed: Int64;
 begin
-  mDialog := TSaveDialog.Create(nil);
-  try
-    mDialog.Filter := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogFileTypes);
-    mDialog.DefaultExt := 'txt';
-    mDialog.FileName := ChangeFileExt(ExtractFileName(TAtlasIdeEvaluateStore.CurrentProject), '') + '-events.txt';
-    mDialog.Options := mDialog.Options + [ofOverwritePrompt];
-    if not mDialog.Execute then
-    begin
-      Exit;
-    end;
-    TFile.WriteAllText(mDialog.FileName, FLog.ToText, TEncoding.UTF8);
-    if Assigned(FServices.Message) then
-    begin
-      FServices.Message(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEventLogSaved, [mDialog.FileName]));
-    end;
-  finally
-    mDialog.Free;
+  if FLog = nil then
+  begin
+    Exit;
+  end;
+  mElapsed := 0;
+  if FStartTick > 0 then
+  begin
+    mElapsed := Int64(GetTickCount64 - FStartTick);
+  end;
+  FLog.Add(TAtlasEventEntry.Create(mElapsed, AKind, AThread, AText));
+  FDirty := True;
+  if (FTimer <> nil) and not FTimer.Enabled then
+  begin
+    FTimer.Enabled := True;
   end;
 end;
 

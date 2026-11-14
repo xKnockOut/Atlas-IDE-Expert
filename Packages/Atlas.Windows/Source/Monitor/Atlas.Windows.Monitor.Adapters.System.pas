@@ -52,6 +52,8 @@ const
 function QueryFullProcessImageNameW(AProcess: THandle; AFlags: DWORD; AName: PWideChar;
   var ASize: DWORD): BOOL; stdcall; external kernel32 name 'QueryFullProcessImageNameW';
 
+{ TMonitorSystem }
+
 class function TMonitorSystem.IsRunning(APid: Cardinal): Boolean;
 begin
   Result := TProcessInstances.Running(APid);

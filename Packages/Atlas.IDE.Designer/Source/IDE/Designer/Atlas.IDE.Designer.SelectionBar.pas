@@ -323,17 +323,13 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasIdeSelectionBar.Available(const ASettings: TAtlasPluginSettings): Boolean;
+procedure TAtlasIdeSelectionBar.ApplyTheme;
 begin
-  Result := ASettings.DesignerSelectionBar;
-end;
-
-function TAtlasIdeSelectionBar.Button: TAtlasDesignerButton;
-begin
-  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.SelectionBar,
-    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.BarHint));
-  Result.Pressed := FActive;
-  Result.Menu := True;
+  inherited ApplyTheme;
+  if FWindow <> nil then
+  begin
+    FWindow.ApplyColors(TAtlasIdeStyle.Colors);
+  end;
 end;
 
 procedure TAtlasIdeSelectionBar.EnsureWindow;
@@ -360,23 +356,6 @@ begin
           mOwner.Click(mIndex, mAt);
         end);
     end;
-end;
-
-procedure TAtlasIdeSelectionBar.UpdateKeys;
-begin
-  if Wanted and SameText(TAtlasIdeSettings.Current.DesignerSelectionBarMode, TAtlasSelectionBar.cModeShortcut) then
-  begin
-    TAtlasKeyHook.Add(FKeys);
-  end
-  else
-  begin
-    TAtlasKeyHook.Remove(FKeys);
-  end;
-end;
-
-function TAtlasIdeSelectionBar.Wanted: Boolean;
-begin
-  Result := FActive and TAtlasIdeSettings.Current.DesignerSelectionBar and TAtlasDesignerAccess.Shown;
 end;
 
 function TAtlasIdeSelectionBar.FindControls: Boolean;
@@ -419,6 +398,11 @@ begin
     FSelection.Bounds := mBounds;
     FSelection.Since := GetTickCount64;
   end;
+end;
+
+function TAtlasIdeSelectionBar.Wanted: Boolean;
+begin
+  Result := FActive and TAtlasIdeSettings.Current.DesignerSelectionBar and TAtlasDesignerAccess.Shown;
 end;
 
 function TAtlasIdeSelectionBar.SelectionBounds(out AScreen, AArea: TRect): Boolean;
@@ -487,25 +471,6 @@ begin
   end;
 end;
 
-function TAtlasIdeSelectionBar.TransferButton: TAtlasBarButton;
-begin
-  if not TAtlasIdeSettings.Current.DesignerPropertyPainter then
-  begin
-    Result := TAtlasBarButton.Create(cTexts[TAtlasBarItem.Transfer], TAtlasBarState.None,
-      TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.BarTransferOff));
-  end
-  else if Assigned(FPainter) and FPainter.CanApply then
-  begin
-    Result := TAtlasBarButton.Create(cTexts[TAtlasBarItem.Transfer], TAtlasBarState.Off,
-      TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.BarTransfer));
-  end
-  else
-  begin
-    Result := TAtlasBarButton.Create(cTexts[TAtlasBarItem.Transfer], TAtlasBarState.None,
-      TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.BarTransferNeeds));
-  end;
-end;
-
 function TAtlasIdeSelectionBar.ButtonOf(AItem: TAtlasBarItem): TAtlasBarButton;
 var
   mProps: TArray<TAtlasBarProp>;
@@ -560,6 +525,25 @@ begin
   end;
 end;
 
+function TAtlasIdeSelectionBar.TransferButton: TAtlasBarButton;
+begin
+  if not TAtlasIdeSettings.Current.DesignerPropertyPainter then
+  begin
+    Result := TAtlasBarButton.Create(cTexts[TAtlasBarItem.Transfer], TAtlasBarState.None,
+      TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.BarTransferOff));
+  end
+  else if Assigned(FPainter) and FPainter.CanApply then
+  begin
+    Result := TAtlasBarButton.Create(cTexts[TAtlasBarItem.Transfer], TAtlasBarState.Off,
+      TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.BarTransfer));
+  end
+  else
+  begin
+    Result := TAtlasBarButton.Create(cTexts[TAtlasBarItem.Transfer], TAtlasBarState.None,
+      TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.BarTransferNeeds));
+  end;
+end;
+
 procedure TAtlasIdeSelectionBar.ShowBar;
 var
   mButtons: TArray<TAtlasBarButton>;
@@ -595,74 +579,6 @@ begin
   else
   begin
     Hide;
-  end;
-end;
-
-procedure TAtlasIdeSelectionBar.Tick;
-var
-  mSettings: TAtlasPluginSettings;
-  mShortcut: Boolean;
-begin
-  UpdateKeys;
-  if not Wanted or not FindControls then
-  begin
-    Hide;
-    Exit;
-  end;
-  mSettings := TAtlasIdeSettings.Current;
-  mShortcut := SameText(mSettings.DesignerSelectionBarMode, TAtlasSelectionBar.cModeShortcut);
-  // Ziehen oder Größe ändern im Designer, Fokus im Objektinspektor: weg.
-  if ((FWindow = nil) or not FWindow.MouseOver) and (GetKeyState(VK_LBUTTON) < 0) then
-  begin
-    FSelection.Since := GetTickCount64;
-    Hide;
-    Exit;
-  end;
-  if not TAtlasDesignerAccess.Focused or (mShortcut and not FSelection.Requested) or
-    (not mShortcut and (GetTickCount64 - FSelection.Since < UInt64(mSettings.DesignerSelectionBarDelayMs))) then
-  begin
-    Hide;
-    Exit;
-  end;
-  ShowBar;
-end;
-
-procedure TAtlasIdeSelectionBar.Request;
-begin
-  if Wanted then
-  begin
-    Refresh;
-  end;
-end;
-
-procedure TAtlasIdeSelectionBar.Hide;
-begin
-  if FWindow <> nil then
-  begin
-    FWindow.HideBar;
-  end;
-end;
-
-procedure TAtlasIdeSelectionBar.ApplyTheme;
-begin
-  inherited ApplyTheme;
-  if FWindow <> nil then
-  begin
-    FWindow.ApplyColors(TAtlasIdeStyle.Colors);
-  end;
-end;
-
-procedure TAtlasIdeSelectionBar.Toggle;
-begin
-  FActive := not FActive;
-  if FActive then
-  begin
-    Tick;
-  end
-  else
-  begin
-    Hide;
-    UpdateKeys;
   end;
 end;
 
@@ -914,6 +830,27 @@ begin
     end);
 end;
 
+procedure TAtlasIdeSelectionBar.MenuClick(Sender: TObject);
+var
+  mTag: NativeInt;
+  mOwner: TAtlasIdeSelectionBar;
+begin
+  mTag := TMenuItem(Sender).Tag;
+  mOwner := Self;
+  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
+    procedure
+    begin
+      if mTag = cMenuShow then
+      begin
+        mOwner.Toggle;
+      end
+      else
+      begin
+        mOwner.Undo;
+      end;
+    end);
+end;
+
 function TAtlasIdeSelectionBar.CanUndo: Boolean;
 var
   mEditor: IOTAFormEditor;
@@ -955,6 +892,45 @@ begin
   end;
 end;
 
+procedure TAtlasIdeSelectionBar.UpdateKeys;
+begin
+  if Wanted and SameText(TAtlasIdeSettings.Current.DesignerSelectionBarMode, TAtlasSelectionBar.cModeShortcut) then
+  begin
+    TAtlasKeyHook.Add(FKeys);
+  end
+  else
+  begin
+    TAtlasKeyHook.Remove(FKeys);
+  end;
+end;
+
+class function TAtlasIdeSelectionBar.Available(const ASettings: TAtlasPluginSettings): Boolean;
+begin
+  Result := ASettings.DesignerSelectionBar;
+end;
+
+function TAtlasIdeSelectionBar.Button: TAtlasDesignerButton;
+begin
+  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.SelectionBar,
+    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.BarHint));
+  Result.Pressed := FActive;
+  Result.Menu := True;
+end;
+
+procedure TAtlasIdeSelectionBar.Toggle;
+begin
+  FActive := not FActive;
+  if FActive then
+  begin
+    Tick;
+  end
+  else
+  begin
+    Hide;
+    UpdateKeys;
+  end;
+end;
+
 procedure TAtlasIdeSelectionBar.Popup(const APoint: TPoint);
 var
   mItem: TMenuItem;
@@ -975,25 +951,49 @@ begin
   FMenus.Menu.Popup(APoint.X, APoint.Y);
 end;
 
-procedure TAtlasIdeSelectionBar.MenuClick(Sender: TObject);
-var
-  mTag: NativeInt;
-  mOwner: TAtlasIdeSelectionBar;
+procedure TAtlasIdeSelectionBar.Request;
 begin
-  mTag := TMenuItem(Sender).Tag;
-  mOwner := Self;
-  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-    procedure
-    begin
-      if mTag = cMenuShow then
-      begin
-        mOwner.Toggle;
-      end
-      else
-      begin
-        mOwner.Undo;
-      end;
-    end);
+  if Wanted then
+  begin
+    Refresh;
+  end;
+end;
+
+procedure TAtlasIdeSelectionBar.Tick;
+var
+  mSettings: TAtlasPluginSettings;
+  mShortcut: Boolean;
+begin
+  UpdateKeys;
+  if not Wanted or not FindControls then
+  begin
+    Hide;
+    Exit;
+  end;
+  mSettings := TAtlasIdeSettings.Current;
+  mShortcut := SameText(mSettings.DesignerSelectionBarMode, TAtlasSelectionBar.cModeShortcut);
+  // Ziehen oder Größe ändern im Designer, Fokus im Objektinspektor: weg.
+  if ((FWindow = nil) or not FWindow.MouseOver) and (GetKeyState(VK_LBUTTON) < 0) then
+  begin
+    FSelection.Since := GetTickCount64;
+    Hide;
+    Exit;
+  end;
+  if not TAtlasDesignerAccess.Focused or (mShortcut and not FSelection.Requested) or
+    (not mShortcut and (GetTickCount64 - FSelection.Since < UInt64(mSettings.DesignerSelectionBarDelayMs))) then
+  begin
+    Hide;
+    Exit;
+  end;
+  ShowBar;
+end;
+
+procedure TAtlasIdeSelectionBar.Hide;
+begin
+  if FWindow <> nil then
+  begin
+    FWindow.HideBar;
+  end;
 end;
 
 end.

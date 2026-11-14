@@ -342,32 +342,6 @@ begin
   end;
 end;
 
-procedure TAtlasQueryInput.ShowSuggestions;
-var
-  mName: string;
-begin
-  FSuggestions := CompletionNames(FCatalog, FEvents, FEdit.Text, FEdit.SelStart, FSuggestStart);
-  if (Length(FSuggestions) = 0) or not CanFill(FSuggest) then
-  begin
-    HideSuggest;
-    Exit;
-  end;
-  FSuggest.Items.BeginUpdate;
-  try
-    FSuggest.Items.Clear;
-    for mName in FSuggestions do
-    begin
-      FSuggest.Items.Add(mName);
-    end;
-  finally
-    FSuggest.Items.EndUpdate;
-  end;
-  FSuggest.ItemIndex := 0;
-  PlaceSuggest;
-  FSuggest.Visible := True;
-  FSuggest.BringToFront;
-end;
-
 procedure TAtlasQueryInput.PlaceSuggest;
 var
   mPoint: TPoint;
@@ -379,75 +353,9 @@ begin
     mRows * FSuggest.ItemHeight + 4);
 end;
 
-procedure TAtlasQueryInput.HideSuggest;
+procedure TAtlasQueryInput.MoveSuggestion(ADelta: Integer);
 begin
-  FSuggest.Visible := False;
-end;
-
-procedure TAtlasQueryInput.AcceptSuggestion(AIndex: Integer);
-var
-  mText, mWord: string;
-  mCursor: Integer;
-begin
-  if (AIndex < 0) or (AIndex > High(FSuggestions)) then
-  begin
-    Exit;
-  end;
-  mWord := FSuggestions[AIndex];
-  mText := FEdit.Text;
-  mCursor := Min(FEdit.SelStart, Length(mText));
-  FUpdating := True;
-  try
-    FEdit.Text := Copy(mText, 1, FSuggestStart) + mWord + ' ' + Copy(mText, mCursor + 1, MaxInt);
-    FEdit.SelStart := FSuggestStart + Length(mWord) + 1;
-    FEdit.SelLength := 0;
-  finally
-    FUpdating := False;
-  end;
-  HideSuggest;
-end;
-
-procedure TAtlasQueryInput.ReplaceText(const AText: string);
-begin
-  FUpdating := True;
-  try
-    FEdit.Text := AText;
-    FEdit.SelStart := Length(FEdit.Text);
-  finally
-    FUpdating := False;
-  end;
-end;
-
-/// <summary>Fehlertext der Antwort: Meldung, Spalte und Vorschlag.</summary>
-function ErrorText(const AAnswer: TAtlasQueryAnswer): string;
-begin
-  Result := AAnswer.Error;
-  if AAnswer.ErrorColumn > 0 then
-  begin
-    Result := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryError, [AAnswer.ErrorColumn, AAnswer.Error]);
-  end;
-  if AAnswer.Suggestion <> '' then
-  begin
-    Result := Result + ' ' + TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QuerySuggestion, [AAnswer.Suggestion]);
-  end;
-end;
-
-procedure TAtlasQueryInput.ShowError(const AAnswer: TAtlasQueryAnswer; AHasAnswer: Boolean);
-begin
-  if not AHasAnswer or not AAnswer.Failed then
-  begin
-    FError.Visible := False;
-    FError.Caption := '';
-    Exit;
-  end;
-  FError.Caption := ErrorText(AAnswer);
-  FError.Visible := True;
-  // Schreibmarke an die Fehlerstelle, damit man gleich verbessern kann.
-  if (AAnswer.ErrorColumn > 0) and (AAnswer.ErrorColumn <= Length(FEdit.Text) + 1) then
-  begin
-    FEdit.SelStart := AAnswer.ErrorColumn - 1;
-    FEdit.SelLength := 0;
-  end;
+  FSuggest.ItemIndex := EnsureRange(FSuggest.ItemIndex + ADelta, 0, FSuggest.Items.Count - 1);
 end;
 
 procedure TAtlasQueryInput.EditChange(Sender: TObject);
@@ -460,11 +368,6 @@ begin
   begin
     ShowSuggestions;
   end;
-end;
-
-procedure TAtlasQueryInput.MoveSuggestion(ADelta: Integer);
-begin
-  FSuggest.ItemIndex := EnsureRange(FSuggest.ItemIndex + ADelta, 0, FSuggest.Items.Count - 1);
 end;
 
 procedure TAtlasQueryInput.EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -509,6 +412,20 @@ begin
   end;
 end;
 
+/// <summary>Fehlertext der Antwort: Meldung, Spalte und Vorschlag.</summary>
+function ErrorText(const AAnswer: TAtlasQueryAnswer): string;
+begin
+  Result := AAnswer.Error;
+  if AAnswer.ErrorColumn > 0 then
+  begin
+    Result := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryError, [AAnswer.ErrorColumn, AAnswer.Error]);
+  end;
+  if AAnswer.Suggestion <> '' then
+  begin
+    Result := Result + ' ' + TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QuerySuggestion, [AAnswer.Suggestion]);
+  end;
+end;
+
 procedure TAtlasQueryInput.EditExit(Sender: TObject);
 begin
   // Ein Klick in die Vorschlagsliste nimmt den Fokus nicht (TabStop aus, OnClick übernimmt vorher).
@@ -524,6 +441,89 @@ begin
   if FEdit.CanFocus and Showing then
   begin
     FEdit.SetFocus;
+  end;
+end;
+
+procedure TAtlasQueryInput.ShowSuggestions;
+var
+  mName: string;
+begin
+  FSuggestions := CompletionNames(FCatalog, FEvents, FEdit.Text, FEdit.SelStart, FSuggestStart);
+  if (Length(FSuggestions) = 0) or not CanFill(FSuggest) then
+  begin
+    HideSuggest;
+    Exit;
+  end;
+  FSuggest.Items.BeginUpdate;
+  try
+    FSuggest.Items.Clear;
+    for mName in FSuggestions do
+    begin
+      FSuggest.Items.Add(mName);
+    end;
+  finally
+    FSuggest.Items.EndUpdate;
+  end;
+  FSuggest.ItemIndex := 0;
+  PlaceSuggest;
+  FSuggest.Visible := True;
+  FSuggest.BringToFront;
+end;
+
+procedure TAtlasQueryInput.AcceptSuggestion(AIndex: Integer);
+var
+  mText, mWord: string;
+  mCursor: Integer;
+begin
+  if (AIndex < 0) or (AIndex > High(FSuggestions)) then
+  begin
+    Exit;
+  end;
+  mWord := FSuggestions[AIndex];
+  mText := FEdit.Text;
+  mCursor := Min(FEdit.SelStart, Length(mText));
+  FUpdating := True;
+  try
+    FEdit.Text := Copy(mText, 1, FSuggestStart) + mWord + ' ' + Copy(mText, mCursor + 1, MaxInt);
+    FEdit.SelStart := FSuggestStart + Length(mWord) + 1;
+    FEdit.SelLength := 0;
+  finally
+    FUpdating := False;
+  end;
+  HideSuggest;
+end;
+
+procedure TAtlasQueryInput.HideSuggest;
+begin
+  FSuggest.Visible := False;
+end;
+
+procedure TAtlasQueryInput.ReplaceText(const AText: string);
+begin
+  FUpdating := True;
+  try
+    FEdit.Text := AText;
+    FEdit.SelStart := Length(FEdit.Text);
+  finally
+    FUpdating := False;
+  end;
+end;
+
+procedure TAtlasQueryInput.ShowError(const AAnswer: TAtlasQueryAnswer; AHasAnswer: Boolean);
+begin
+  if not AHasAnswer or not AAnswer.Failed then
+  begin
+    FError.Visible := False;
+    FError.Caption := '';
+    Exit;
+  end;
+  FError.Caption := ErrorText(AAnswer);
+  FError.Visible := True;
+  // Schreibmarke an die Fehlerstelle, damit man gleich verbessern kann.
+  if (AAnswer.ErrorColumn > 0) and (AAnswer.ErrorColumn <= Length(FEdit.Text) + 1) then
+  begin
+    FEdit.SelStart := AAnswer.ErrorColumn - 1;
+    FEdit.SelLength := 0;
   end;
 end;
 
@@ -543,6 +543,28 @@ begin
   OwnerData := True;
   ColumnClick := True;
   OnData := ListData;
+end;
+
+procedure TAtlasQueryResults.ColClick(Field: TListColumn);
+begin
+  inherited ColClick(Field);
+  SortBy(Field.Index);
+end;
+
+procedure TAtlasQueryResults.DblClick;
+begin
+  inherited DblClick;
+  OpenRow(ItemIndex);
+end;
+
+procedure TAtlasQueryResults.KeyDown(var Key: Word; Shift: TShiftState);
+begin
+  inherited KeyDown(Key, Shift);
+  if Key = VK_RETURN then
+  begin
+    OpenRow(ItemIndex);
+    Key := 0;
+  end;
 end;
 
 procedure TAtlasQueryResults.FillColumns;
@@ -618,6 +640,50 @@ begin
   FillRows;
 end;
 
+function LocationText(const ARow: TAtlasQueryRow): string;
+begin
+  Result := ARow.Path;
+  if Result = '' then
+  begin
+    Result := ARow.FileName;
+  end;
+  if ARow.Line > 0 then
+  begin
+    Result := Result + ':' + IntToStr(ARow.Line);
+  end;
+  if ARow.Inferred then
+  begin
+    Result := Result + ' · ' + TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryInferred);
+  end;
+end;
+
+procedure TAtlasQueryResults.ListData(Sender: TObject; Item: TListItem);
+var
+  mRow: TAtlasQueryRow;
+  mIndex: Integer;
+begin
+  if not FHasAnswer or (Item.Index < 0) or (Item.Index > High(FAnswer.Rows)) then
+  begin
+    Exit;
+  end;
+  mRow := FAnswer.Rows[Item.Index];
+  Item.Caption := '';
+  if Length(mRow.Cells) > 0 then
+  begin
+    Item.Caption := mRow.Cells[0].Text;
+  end;
+  for mIndex := 1 to High(mRow.Cells) do
+  begin
+    Item.SubItems.Add(mRow.Cells[mIndex].Text);
+  end;
+  // Fehlen Zellen (kürzere Zeile), bleibt „Datei“ trotzdem in seiner Spalte.
+  for mIndex := Max(1, Length(mRow.Cells)) to High(FAnswer.Columns) do
+  begin
+    Item.SubItems.Add('');
+  end;
+  Item.SubItems.Add(LocationText(mRow));
+end;
+
 procedure TAtlasQueryResults.SortBy(AColumn: Integer);
 begin
   if not FHasAnswer then
@@ -668,23 +734,6 @@ begin
   end;
 end;
 
-function LocationText(const ARow: TAtlasQueryRow): string;
-begin
-  Result := ARow.Path;
-  if Result = '' then
-  begin
-    Result := ARow.FileName;
-  end;
-  if ARow.Line > 0 then
-  begin
-    Result := Result + ':' + IntToStr(ARow.Line);
-  end;
-  if ARow.Inferred then
-  begin
-    Result := Result + ' · ' + TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryInferred);
-  end;
-end;
-
 function TAtlasQueryResults.RowText: TArray<string>;
 var
   mRow: TAtlasQueryRow;
@@ -705,55 +754,6 @@ begin
     end;
     mCells := mCells + [LocationText(mRow)];
     Result := Result + [string.Join(' | ', mCells)];
-  end;
-end;
-
-procedure TAtlasQueryResults.ListData(Sender: TObject; Item: TListItem);
-var
-  mRow: TAtlasQueryRow;
-  mIndex: Integer;
-begin
-  if not FHasAnswer or (Item.Index < 0) or (Item.Index > High(FAnswer.Rows)) then
-  begin
-    Exit;
-  end;
-  mRow := FAnswer.Rows[Item.Index];
-  Item.Caption := '';
-  if Length(mRow.Cells) > 0 then
-  begin
-    Item.Caption := mRow.Cells[0].Text;
-  end;
-  for mIndex := 1 to High(mRow.Cells) do
-  begin
-    Item.SubItems.Add(mRow.Cells[mIndex].Text);
-  end;
-  // Fehlen Zellen (kürzere Zeile), bleibt „Datei“ trotzdem in seiner Spalte.
-  for mIndex := Max(1, Length(mRow.Cells)) to High(FAnswer.Columns) do
-  begin
-    Item.SubItems.Add('');
-  end;
-  Item.SubItems.Add(LocationText(mRow));
-end;
-
-procedure TAtlasQueryResults.ColClick(Field: TListColumn);
-begin
-  inherited ColClick(Field);
-  SortBy(Field.Index);
-end;
-
-procedure TAtlasQueryResults.DblClick;
-begin
-  inherited DblClick;
-  OpenRow(ItemIndex);
-end;
-
-procedure TAtlasQueryResults.KeyDown(var Key: Word; Shift: TShiftState);
-begin
-  inherited KeyDown(Key, Shift);
-  if Key = VK_RETURN then
-  begin
-    OpenRow(ItemIndex);
-    Key := 0;
   end;
 end;
 

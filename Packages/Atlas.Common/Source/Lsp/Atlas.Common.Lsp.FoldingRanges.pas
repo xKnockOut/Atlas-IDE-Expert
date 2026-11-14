@@ -157,6 +157,8 @@ type
     procedure CloseLineComments;
   end;
 
+{ TTokenFolds }
+
 procedure TTokenFolds.Directive(const AToken: TPascalToken);
 begin
   if IsDirective(AToken, 'REGION') then
@@ -166,14 +168,6 @@ begin
   else if IsDirective(AToken, 'ENDREGION') and (Regions.Count > 0) then
   begin
     AddRange(List, Regions.Pop, AToken.EndPos.Line, cKindRegion);
-  end;
-end;
-
-procedure TTokenFolds.CloseLineComments;
-begin
-  if LineStart >= 0 then
-  begin
-    AddRange(List, LineStart, LineEnd, cKindComment);
   end;
 end;
 
@@ -200,6 +194,14 @@ begin
   begin
     // Blockkommentar über mehrere Zeilen.
     AddRange(List, AToken.StartPos.Line, AToken.EndPos.Line, cKindComment);
+  end;
+end;
+
+procedure TTokenFolds.CloseLineComments;
+begin
+  if LineStart >= 0 then
+  begin
+    AddRange(List, LineStart, LineEnd, cKindComment);
   end;
 end;
 
@@ -248,6 +250,44 @@ constructor TLspFoldingRanges.Create(const AStore: IDocumentStore);
 begin
   inherited Create;
   FStore := AStore;
+end;
+
+function TLspFoldingRanges.HandleFoldingRange(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mDocument: ITextDocument;
+  mTree: TSyntaxTree;
+  mShared: ISharedSyntaxTree;
+  mForm: TDfmDocument;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TFoldingRangesText.FieldTextDocumentUriMissingIn].Text + cMethod);
+  end;
+  // Nicht geöffnete Dokumente haben keine Faltbereiche.
+  if not FStore.TryGet(mUri, mDocument) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  // Formulardateien (#44) haben einen eigenen Baum.
+  if TDfmParser.IsFormFile(mUri) then
+  begin
+    mForm := TDfmParser.Parse(mDocument.Text);
+    try
+      Exit(TLspFormFiles.BuildFoldingRanges(mForm));
+    finally
+      mForm.Free;
+    end;
+  end;
+  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  mTree := mShared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  Result := ToJson(Collect(mTree));
 end;
 
 procedure TLspFoldingRanges.Attach(ADispatcher: TJsonRpcDispatcher);
@@ -308,44 +348,6 @@ begin
     end;
     Result.AddElement(mItem);
   end;
-end;
-
-function TLspFoldingRanges.HandleFoldingRange(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mCancellation: IPascalCancellation;
-  mUri: string;
-  mDocument: ITextDocument;
-  mTree: TSyntaxTree;
-  mShared: ISharedSyntaxTree;
-  mForm: TDfmDocument;
-begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TFoldingRangesText.FieldTextDocumentUriMissingIn].Text + cMethod);
-  end;
-  // Nicht geöffnete Dokumente haben keine Faltbereiche.
-  if not FStore.TryGet(mUri, mDocument) then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  // Formulardateien (#44) haben einen eigenen Baum.
-  if TDfmParser.IsFormFile(mUri) then
-  begin
-    mForm := TDfmParser.Parse(mDocument.Text);
-    try
-      Exit(TLspFormFiles.BuildFoldingRanges(mForm));
-    finally
-      mForm.Free;
-    end;
-  end;
-  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
-  mCancellation := TRequestCancellation.Create(ACancellation);
-  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
-  mTree := mShared.Tree;
-  ACancellation.ThrowIfCancellationRequested;
-  Result := ToJson(Collect(mTree));
 end;
 
 initialization

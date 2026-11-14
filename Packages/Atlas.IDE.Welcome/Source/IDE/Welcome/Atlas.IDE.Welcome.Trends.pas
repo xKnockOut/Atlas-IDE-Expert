@@ -63,11 +63,6 @@ begin
   FProjects := AProjects;
 end;
 
-class function TAtlasIdeTrends.Active: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.WelcomePageTrends;
-end;
-
 procedure TAtlasIdeTrends.Start;
 var
   mKeep: IAtlasTrendsSource;
@@ -99,16 +94,6 @@ begin
   FProjects := nil;
 end;
 
-function TAtlasIdeTrends.Section: TAtlasWelcomeSection;
-begin
-  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.cHistory, TAtlasWelcomeTrendsFrame.TitleText, cOrder,
-    TAtlasWelcomeColumn.Left,
-    function: Boolean
-    begin
-      Result := Active;
-    end);
-end;
-
 procedure TAtlasIdeTrends.Refresh;
 var
   mNext: TAtlasWelcomeSection;
@@ -133,6 +118,21 @@ begin
     TAtlasWelcomeSections.Default.Changed;
   end;
   TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cHistory);
+end;
+
+function TAtlasIdeTrends.Section: TAtlasWelcomeSection;
+begin
+  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.cHistory, TAtlasWelcomeTrendsFrame.TitleText, cOrder,
+    TAtlasWelcomeColumn.Left,
+    function: Boolean
+    begin
+      Result := Active;
+    end);
+end;
+
+class function TAtlasIdeTrends.Active: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.WelcomePageTrends;
 end;
 
 function TAtlasIdeTrends.View: TAtlasTrendView;

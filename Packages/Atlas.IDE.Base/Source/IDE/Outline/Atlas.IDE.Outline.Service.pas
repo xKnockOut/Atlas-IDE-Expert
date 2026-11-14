@@ -115,13 +115,44 @@ begin
   inherited Destroy;
 end;
 
-procedure TOutlineState.Reset;
+procedure TOutlineState.Tick(Sender: TObject);
 begin
-  FFileName := '';
-  FStamp := 0;
-  FShown := False;
-  FCursorLine := -1;
-  FCursorCharacter := -1;
+  if not Active or not TAtlasIdeOutlineWindow.Visible then
+  begin
+    Exit;
+  end;
+  TAtlasGuard.Run(TAtlasFeature.Outline,
+    procedure
+    begin
+      Update;
+    end);
+end;
+
+procedure TOutlineState.Follow(const AView: IOTAEditView);
+var
+  mFrame: TAtlasOutlineFrame;
+  mCursor: TOTAEditPos;
+  mCharacter: Integer;
+begin
+  mFrame := TAtlasIdeOutlineWindow.ExistingFrame;
+  if (mFrame = nil) or not mFrame.FollowCursor or (AView = nil) or (AView.Buffer = nil) then
+  begin
+    Exit;
+  end;
+  mCursor := AView.CursorPos;
+  if mCursor.Line < 1 then
+  begin
+    Exit;
+  end;
+  mCharacter := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(AView, mCursor.Line), mCursor.Col,
+    TAtlasEditorBuffer.TabWidth(AView.Buffer));
+  if (mCursor.Line - 1 = FCursorLine) and (mCharacter = FCursorCharacter) then
+  begin
+    Exit;
+  end;
+  FCursorLine := mCursor.Line - 1;
+  FCursorCharacter := mCharacter;
+  mFrame.HighlightAt(FCursorLine, FCursorCharacter);
 end;
 
 procedure TOutlineState.Wire(AFrame: TAtlasOutlineFrame);
@@ -177,31 +208,13 @@ begin
   TAtlasIdeNavigation.GoToLocation(FFileName, mFrame.Nodes[mTarget].NameLine, mFrame.Nodes[mTarget].NameCharacter);
 end;
 
-procedure TOutlineState.Follow(const AView: IOTAEditView);
-var
-  mFrame: TAtlasOutlineFrame;
-  mCursor: TOTAEditPos;
-  mCharacter: Integer;
+procedure TOutlineState.Reset;
 begin
-  mFrame := TAtlasIdeOutlineWindow.ExistingFrame;
-  if (mFrame = nil) or not mFrame.FollowCursor or (AView = nil) or (AView.Buffer = nil) then
-  begin
-    Exit;
-  end;
-  mCursor := AView.CursorPos;
-  if mCursor.Line < 1 then
-  begin
-    Exit;
-  end;
-  mCharacter := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(AView, mCursor.Line), mCursor.Col,
-    TAtlasEditorBuffer.TabWidth(AView.Buffer));
-  if (mCursor.Line - 1 = FCursorLine) and (mCharacter = FCursorCharacter) then
-  begin
-    Exit;
-  end;
-  FCursorLine := mCursor.Line - 1;
-  FCursorCharacter := mCharacter;
-  mFrame.HighlightAt(FCursorLine, FCursorCharacter);
+  FFileName := '';
+  FStamp := 0;
+  FShown := False;
+  FCursorLine := -1;
+  FCursorCharacter := -1;
 end;
 
 procedure TOutlineState.Update;
@@ -242,19 +255,6 @@ begin
   begin
     Follow(mView);
   end;
-end;
-
-procedure TOutlineState.Tick(Sender: TObject);
-begin
-  if not Active or not TAtlasIdeOutlineWindow.Visible then
-  begin
-    Exit;
-  end;
-  TAtlasGuard.Run(TAtlasFeature.Outline,
-    procedure
-    begin
-      Update;
-    end);
 end;
 
 { TAtlasIdeOutline }

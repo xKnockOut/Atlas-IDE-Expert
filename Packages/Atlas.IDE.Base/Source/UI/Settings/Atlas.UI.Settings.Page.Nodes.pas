@@ -436,6 +436,35 @@ begin
   inherited Destroy;
 end;
 
+function TAtlasSettingsPageNodes.PageOf(AControl: TControl): Integer;
+var
+  mParent: TControl;
+  mIndex: Integer;
+begin
+  Result := -1;
+  mParent := AControl;
+  while (mParent <> nil) and not (mParent is TTabSheet) do
+  begin
+    mParent := mParent.Parent;
+  end;
+  if mParent = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(FNodePages) do
+  begin
+    if FNodePages[mIndex].Sheet = mParent then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+end;
+
+function TAtlasSettingsPageNodes.NodeBox(AArea: Integer; const ANode, ACaption: string): TScrollBox;
+begin
+  Result := FNodePages[AddNodePageCaption(AArea, ANode, ACaption)].Box;
+end;
+
 procedure TAtlasSettingsPageNodes.AddPages;
 begin
   FPages := TPageControl.Create(Self);
@@ -443,6 +472,48 @@ begin
   FPages.Align := alClient;
   FPages.AlignWithMargins := True;
   FPages.Top := FPages.ScaleValue(100);
+end;
+
+procedure TAtlasSettingsPageNodes.BuildNodes;
+var
+  mArea: Integer;
+  mFrame: TAtlasSettingsGroup;
+  mPart: TAtlasSettingsPagePart;
+begin
+  FGroups := TAtlasSettingsGroups.Create(Catalog);
+  for mArea := 0 to High(FSheets) do
+  begin
+    BuildArea(mArea);
+  end;
+  for mPart in FParts do
+  begin
+    mPart.AddNodePages;
+  end;
+  for mFrame in FFrames do
+  begin
+    if not (mFrame.Parent is TAtlasSettingsGroup) then
+    begin
+      mFrame.AdjustHeight;
+    end;
+  end;
+  for mArea := 0 to High(FSheets) do
+  begin
+    AddOverview(mArea);
+  end;
+end;
+
+function TAtlasSettingsPageNodes.IsOverview(AFrame: TAtlasSettingsGroup): Boolean;
+var
+  mOverview: TAtlasSettingsGroup;
+begin
+  for mOverview in FOverviews do
+  begin
+    if mOverview = AFrame then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 function TAtlasSettingsPageNodes.AddNodePage(AArea: Integer; const ANode: string): Integer;
@@ -456,11 +527,6 @@ begin
     Result := AddNodePageCaption(AArea, ANode,
       FGroups.NodeCaption(ANode, TAtlasStrings.Language = TAtlasLanguage.English));
   end;
-end;
-
-function TAtlasSettingsPageNodes.NodeBox(AArea: Integer; const ANode, ACaption: string): TScrollBox;
-begin
-  Result := FNodePages[AddNodePageCaption(AArea, ANode, ACaption)].Box;
 end;
 
 function TAtlasSettingsPageNodes.AddNodePageCaption(AArea: Integer; const ANode, ACaption: string): Integer;
@@ -529,34 +595,6 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsPageNodes.BuildNodes;
-var
-  mArea: Integer;
-  mFrame: TAtlasSettingsGroup;
-  mPart: TAtlasSettingsPagePart;
-begin
-  FGroups := TAtlasSettingsGroups.Create(Catalog);
-  for mArea := 0 to High(FSheets) do
-  begin
-    BuildArea(mArea);
-  end;
-  for mPart in FParts do
-  begin
-    mPart.AddNodePages;
-  end;
-  for mFrame in FFrames do
-  begin
-    if not (mFrame.Parent is TAtlasSettingsGroup) then
-    begin
-      mFrame.AdjustHeight;
-    end;
-  end;
-  for mArea := 0 to High(FSheets) do
-  begin
-    AddOverview(mArea);
-  end;
-end;
-
 procedure TAtlasSettingsPageNodes.BuildArea(AArea: Integer);
 var
   mLayout: TAtlasSettingsAreaLayout;
@@ -567,6 +605,43 @@ begin
     mLayout.Run;
   finally
     mLayout.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageNodes.AddOverview(AArea: Integer);
+var
+  mOverview, mFrame: TAtlasSettingsGroup;
+  mMain, mIndex, mChild: Integer;
+  mBox: TScrollBox;
+begin
+  // Hauptknoten: je Hauptschalter der Unterpunkte eine Zeile mit Spiegel und „Details“.
+  mMain := AddNodePage(AArea, '');
+  mOverview := nil;
+  for mIndex := 0 to High(FNodePages) do
+  begin
+    if (FNodePages[mIndex].Area <> AArea) or (FNodePages[mIndex].Node = '') then
+    begin
+      Continue;
+    end;
+    mBox := FNodePages[mIndex].Box;
+    for mChild := 0 to mBox.ControlCount - 1 do
+    begin
+      if not (mBox.Controls[mChild] is TAtlasSettingsGroup) or
+        (TAtlasSettingsGroup(mBox.Controls[mChild]).Master = nil) then
+      begin
+        Continue;
+      end;
+      mFrame := TAtlasSettingsGroup(mBox.Controls[mChild]);
+      if mOverview = nil then
+      begin
+        mOverview := NewOverview(mMain);
+      end;
+      AddOverviewRow(mOverview, mFrame, mIndex);
+    end;
+  end;
+  if mOverview <> nil then
+  begin
+    mOverview.AdjustHeight;
   end;
 end;
 
@@ -628,43 +703,6 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsPageNodes.AddOverview(AArea: Integer);
-var
-  mOverview, mFrame: TAtlasSettingsGroup;
-  mMain, mIndex, mChild: Integer;
-  mBox: TScrollBox;
-begin
-  // Hauptknoten: je Hauptschalter der Unterpunkte eine Zeile mit Spiegel und „Details“.
-  mMain := AddNodePage(AArea, '');
-  mOverview := nil;
-  for mIndex := 0 to High(FNodePages) do
-  begin
-    if (FNodePages[mIndex].Area <> AArea) or (FNodePages[mIndex].Node = '') then
-    begin
-      Continue;
-    end;
-    mBox := FNodePages[mIndex].Box;
-    for mChild := 0 to mBox.ControlCount - 1 do
-    begin
-      if not (mBox.Controls[mChild] is TAtlasSettingsGroup) or
-        (TAtlasSettingsGroup(mBox.Controls[mChild]).Master = nil) then
-      begin
-        Continue;
-      end;
-      mFrame := TAtlasSettingsGroup(mBox.Controls[mChild]);
-      if mOverview = nil then
-      begin
-        mOverview := NewOverview(mMain);
-      end;
-      AddOverviewRow(mOverview, mFrame, mIndex);
-    end;
-  end;
-  if mOverview <> nil then
-  begin
-    mOverview.AdjustHeight;
-  end;
-end;
-
 procedure TAtlasSettingsPageNodes.MirrorClick(Sender: TObject);
 var
   mIndex: Integer;
@@ -685,44 +723,6 @@ begin
   if Sender is TControl then
   begin
     SelectPage(TControl(Sender).Tag);
-  end;
-end;
-
-function TAtlasSettingsPageNodes.IsOverview(AFrame: TAtlasSettingsGroup): Boolean;
-var
-  mOverview: TAtlasSettingsGroup;
-begin
-  for mOverview in FOverviews do
-  begin
-    if mOverview = AFrame then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function TAtlasSettingsPageNodes.PageOf(AControl: TControl): Integer;
-var
-  mParent: TControl;
-  mIndex: Integer;
-begin
-  Result := -1;
-  mParent := AControl;
-  while (mParent <> nil) and not (mParent is TTabSheet) do
-  begin
-    mParent := mParent.Parent;
-  end;
-  if mParent = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to High(FNodePages) do
-  begin
-    if FNodePages[mIndex].Sheet = mParent then
-    begin
-      Exit(mIndex);
-    end;
   end;
 end;
 

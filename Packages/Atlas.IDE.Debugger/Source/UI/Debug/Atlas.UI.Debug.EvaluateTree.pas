@@ -191,48 +191,6 @@ begin
   Result := Pointer(NativeInt(FInfoCount));
 end;
 
-function TAtlasEvalTreeSync.KeyOf(AItem: TTreeNode): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  mIndex := InfoIndex(AItem);
-  if mIndex >= 0 then
-  begin
-    Result := FInfos[mIndex].Key;
-  end;
-end;
-
-function TAtlasEvalTreeSync.InfoOf(AItem: TTreeNode): TAtlasEvalItemInfo;
-var
-  mIndex: Integer;
-begin
-  Result := Default(TAtlasEvalItemInfo);
-  Result.Look := TAtlasEvalLook.Gray;
-  mIndex := InfoIndex(AItem);
-  if mIndex >= 0 then
-  begin
-    Result := FInfos[mIndex];
-  end;
-end;
-
-function TAtlasEvalTreeSync.ItemOf(const AKey: string): TTreeNode;
-var
-  mItem: TTreeNode;
-begin
-  Result := nil;
-  if AKey = '' then
-  begin
-    Exit;
-  end;
-  mItem := FTree.Items.GetFirstNode;
-  while (mItem <> nil) and (KeyOf(mItem) <> AKey) do
-  begin
-    mItem := mItem.GetNext;
-  end;
-  Result := mItem;
-end;
-
 procedure TAtlasEvalTreeSync.Structure;
 begin
   // Erst bei der ersten Änderung an den Zeilen: Texte allein zeichnen nur ihre Zeile neu.
@@ -339,27 +297,6 @@ begin
   end;
 end;
 
-procedure TAtlasEvalTreeSync.SyncChildren(AItem: TTreeNode; ANode: TAtlasEvalNode);
-begin
-  if ANode.ChildrenLoaded and (ANode.ChildCount = 0) then
-  begin
-    SyncPlaceholder(AItem, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateNoFields));
-  end
-  else if ANode.ChildrenLoaded then
-  begin
-    SyncLevel(AItem, Filtered(ChildrenOf(ANode)));
-  end
-  else if ShowsExpander(ANode) then
-  begin
-    // Platzhalter für das Aufklappzeichen; die Felder holt OnExpand.
-    SyncPlaceholder(AItem, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluatePending));
-  end
-  else
-  begin
-    DeleteFrom(AItem.getFirstChild);
-  end;
-end;
-
 procedure TAtlasEvalTreeSync.SyncItem(AItem: TTreeNode; ANode: TAtlasEvalNode);
 var
   mText: string;
@@ -397,6 +334,27 @@ begin
   else if not ANode.Expanded and AItem.Expanded then
   begin
     AItem.Collapse(False);
+  end;
+end;
+
+procedure TAtlasEvalTreeSync.SyncChildren(AItem: TTreeNode; ANode: TAtlasEvalNode);
+begin
+  if ANode.ChildrenLoaded and (ANode.ChildCount = 0) then
+  begin
+    SyncPlaceholder(AItem, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateNoFields));
+  end
+  else if ANode.ChildrenLoaded then
+  begin
+    SyncLevel(AItem, Filtered(ChildrenOf(ANode)));
+  end
+  else if ShowsExpander(ANode) then
+  begin
+    // Platzhalter für das Aufklappzeichen; die Felder holt OnExpand.
+    SyncPlaceholder(AItem, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluatePending));
+  end
+  else
+  begin
+    DeleteFrom(AItem.getFirstChild);
   end;
 end;
 
@@ -447,6 +405,48 @@ begin
   begin
     FTree.Invalidate;
   end;
+end;
+
+function TAtlasEvalTreeSync.KeyOf(AItem: TTreeNode): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  mIndex := InfoIndex(AItem);
+  if mIndex >= 0 then
+  begin
+    Result := FInfos[mIndex].Key;
+  end;
+end;
+
+function TAtlasEvalTreeSync.InfoOf(AItem: TTreeNode): TAtlasEvalItemInfo;
+var
+  mIndex: Integer;
+begin
+  Result := Default(TAtlasEvalItemInfo);
+  Result.Look := TAtlasEvalLook.Gray;
+  mIndex := InfoIndex(AItem);
+  if mIndex >= 0 then
+  begin
+    Result := FInfos[mIndex];
+  end;
+end;
+
+function TAtlasEvalTreeSync.ItemOf(const AKey: string): TTreeNode;
+var
+  mItem: TTreeNode;
+begin
+  Result := nil;
+  if AKey = '' then
+  begin
+    Exit;
+  end;
+  mItem := FTree.Items.GetFirstNode;
+  while (mItem <> nil) and (KeyOf(mItem) <> AKey) do
+  begin
+    mItem := mItem.GetNext;
+  end;
+  Result := mItem;
 end;
 
 class function TAtlasEvalTreeSync.NodeText(ANode: TAtlasEvalNode): string;

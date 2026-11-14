@@ -84,6 +84,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings;
 
+{ TAtlasSettingsOverview }
+
 constructor TAtlasSettingsOverview.Create(AOwner: TComponent);
 var
   mTop: Integer;
@@ -128,6 +130,55 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasSettingsOverview.SearchKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  // Enter: erster Treffer (#1884).
+  if (Key = VK_RETURN) and (Length(FHitNames) > 0) then
+  begin
+    ClickHit(0);
+    Key := 0;
+  end;
+end;
+
+function TAtlasSettingsOverview.HitText(const AHit: TAtlasSettingHit): string;
+var
+  mState: string;
+begin
+  Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsAtlasHit,
+    [AHit.Caption, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesNode), ModuleName(AHit.Module),
+    AHit.Path]);
+  mState := TAtlasSettingsSearch.StateText(AHit);
+  if mState <> '' then
+  begin
+    Result := Result + '  ·  ' + mState;
+  end;
+end;
+
+procedure TAtlasSettingsOverview.HitClick(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  mIndex := (Sender as TComponent).Tag;
+  if Assigned(FOnOpen) and (mIndex >= 0) and (mIndex <= High(FHitNames)) then
+  begin
+    FOnOpen(FHitNames[mIndex], FHitModules[mIndex]);
+  end;
+end;
+
+procedure TAtlasSettingsOverview.PackagesClick(Sender: TObject);
+begin
+  if Assigned(FOnOpen) then
+  begin
+    FOnOpen('', '');
+  end;
+end;
+
+class procedure TAtlasSettingsOverview.MakeLink(ALabel: TLabel);
+begin
+  ALabel.Cursor := crHandPoint;
+  ALabel.Font.Style := ALabel.Font.Style + [fsUnderline];
+end;
+
 procedure TAtlasSettingsOverview.AddRow(var ATop: Integer; AControl: TControl; AHeight: Integer);
 begin
   AControl.Parent := Self;
@@ -136,34 +187,6 @@ begin
   AControl.Width := Width - AControl.ScaleValue(24);
   AControl.Anchors := [akLeft, akTop, akRight];
   Inc(ATop, AHeight);
-end;
-
-procedure TAtlasSettingsOverview.Load(AInstalled, AKnown, ASwitchedOn: Integer);
-begin
-  FPackages.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsAtlasPackages, [AInstalled, AKnown,
-    ASwitchedOn]);
-end;
-
-function TAtlasSettingsOverview.PackagesText: string;
-begin
-  Result := FPackages.Caption;
-end;
-
-function TAtlasSettingsOverview.ModuleName(const ASwitch: string): string;
-begin
-  Result := '';
-  if Assigned(FOnModuleName) then
-  begin
-    Result := FOnModuleName(ASwitch);
-  end;
-  if Result = '' then
-  begin
-    Result := ASwitch;
-  end;
-  if ASwitch = '' then
-  begin
-    Result := 'Base';
-  end;
 end;
 
 procedure TAtlasSettingsOverview.SearchChange(Sender: TObject);
@@ -213,59 +236,51 @@ begin
   end;
 end;
 
-function TAtlasSettingsOverview.HitText(const AHit: TAtlasSettingHit): string;
-var
-  mState: string;
+function TAtlasSettingsOverview.ModuleName(const ASwitch: string): string;
 begin
-  Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsAtlasHit,
-    [AHit.Caption, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesNode), ModuleName(AHit.Module),
-    AHit.Path]);
-  mState := TAtlasSettingsSearch.StateText(AHit);
-  if mState <> '' then
+  Result := '';
+  if Assigned(FOnModuleName) then
   begin
-    Result := Result + '  ·  ' + mState;
+    Result := FOnModuleName(ASwitch);
+  end;
+  if Result = '' then
+  begin
+    Result := ASwitch;
+  end;
+  if ASwitch = '' then
+  begin
+    Result := 'Base';
   end;
 end;
 
-procedure TAtlasSettingsOverview.SearchKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+procedure TAtlasSettingsOverview.Load(AInstalled, AKnown, ASwitchedOn: Integer);
 begin
-  // Enter: erster Treffer (#1884).
-  if (Key = VK_RETURN) and (Length(FHitNames) > 0) then
-  begin
-    ClickHit(0);
-    Key := 0;
-  end;
+  FPackages.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsAtlasPackages, [AInstalled, AKnown,
+    ASwitchedOn]);
 end;
 
-procedure TAtlasSettingsOverview.SetSearchAvailable(AValue: Boolean);
+function TAtlasSettingsOverview.PackagesText: string;
 begin
-  FSearchCaption.Visible := AValue;
-  FSearch.Visible := AValue;
-  FHits.Visible := AValue;
+  Result := FPackages.Caption;
 end;
 
-class procedure TAtlasSettingsOverview.MakeLink(ALabel: TLabel);
+procedure TAtlasSettingsOverview.SearchFor(const AText: string);
 begin
-  ALabel.Cursor := crHandPoint;
-  ALabel.Font.Style := ALabel.Font.Style + [fsUnderline];
+  FSearch.Text := AText;
+  SearchChange(FSearch);
 end;
 
-procedure TAtlasSettingsOverview.HitClick(Sender: TObject);
+function TAtlasSettingsOverview.HitTexts: TArray<string>;
 var
   mIndex: Integer;
 begin
-  mIndex := (Sender as TComponent).Tag;
-  if Assigned(FOnOpen) and (mIndex >= 0) and (mIndex <= High(FHitNames)) then
+  Result := nil;
+  for mIndex := 0 to FHits.ControlCount - 1 do
   begin
-    FOnOpen(FHitNames[mIndex], FHitModules[mIndex]);
-  end;
-end;
-
-procedure TAtlasSettingsOverview.PackagesClick(Sender: TObject);
-begin
-  if Assigned(FOnOpen) then
-  begin
-    FOnOpen('', '');
+    if FHits.Controls[mIndex] is TLabel then
+    begin
+      Result := Result + [TLabel(FHits.Controls[mIndex]).Caption];
+    end;
   end;
 end;
 
@@ -288,24 +303,11 @@ begin
   PackagesClick(FPackages);
 end;
 
-procedure TAtlasSettingsOverview.SearchFor(const AText: string);
+procedure TAtlasSettingsOverview.SetSearchAvailable(AValue: Boolean);
 begin
-  FSearch.Text := AText;
-  SearchChange(FSearch);
-end;
-
-function TAtlasSettingsOverview.HitTexts: TArray<string>;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  for mIndex := 0 to FHits.ControlCount - 1 do
-  begin
-    if FHits.Controls[mIndex] is TLabel then
-    begin
-      Result := Result + [TLabel(FHits.Controls[mIndex]).Caption];
-    end;
-  end;
+  FSearchCaption.Visible := AValue;
+  FSearch.Visible := AValue;
+  FHits.Visible := AValue;
 end;
 
 end.

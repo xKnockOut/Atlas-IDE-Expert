@@ -461,6 +461,45 @@ end;
 
 { TAtlasBuildModule }
 
+class function TAtlasBuildModule.Parts: TArray<IAtlasFeaturePart>;
+begin
+  Result := [
+    // Beim Öffnen bauen: nur im normalen Start, mit den Compile-Ereignissen und solange BuildOnOpen an ist.
+    TAtlasFeaturePart.When('OpenBuild',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.BuildOnOpen and
+          (TAtlasIdeHost.CompileEvents <> nil);
+      end, OpenBuildStarted, StartOpenBuild, StopOpenBuild),
+    // Projektaufgaben (#900): nur im normalen Start und solange tasks.enabled an ist.
+    TAtlasFeaturePart.When('Tasks',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TasksEnabled;
+      end, TasksStarted, StartTasks, StopTasks),
+    // Laufendes Programm vor dem Build beenden (#551): nur im normalen Start, mit den Compile-Ereignissen und solange
+    // build.stopRunningProgram nicht never ist (Modul aus: wirksam never).
+    TAtlasFeaturePart.When('StopRunningProgram',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and (TAtlasIdeHost.CompileEvents <> nil) and
+          (TAtlasRunningProgram.ModeOf(TAtlasIdeSettings.Current.BuildStopRunningProgram) <>
+          TAtlasStopRunningMode.Never);
+      end, RunningProgramStarted, StartRunningProgram, StopRunningProgram),
+    // Startprofile (#575): nur im normalen Start und solange StartProfiles an ist; liest .atlas über TeamFile.
+    TAtlasFeaturePart.When('StartProfiles',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.StartProfiles;
+      end, StartProfilesStarted, StartStartProfiles, StopStartProfiles),
+    // Wirksame Compiler-Schalter an der Cursorposition (#558): Fenster, Befehl und Statusfeld; aus = kein Zeitgeber.
+    TAtlasFeaturePart.When('CompilerSwitches',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.BuildCompilerSwitches;
+      end, CompilerSwitchesStarted, StartCompilerSwitches, StopCompilerSwitches)];
+end;
+
 function TAtlasBuildModule.Info: TAtlasModuleInfo;
 begin
   // Die Compiler-Schalter liefen schon im abgesicherten Start; die übrigen Teile verlangen den normalen Start.
@@ -483,6 +522,22 @@ begin
   Result := FActive;
 end;
 
+function MenuEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := Default(TAtlasMenuEntry);
+  Result.CommandId := ACommandId;
+  Result.Place := TAtlasMenuPlace.AtlasMenu;
+end;
+
+/// <summary>Eintrag ohne Befehl im Untermenü „Aufgaben“; ARun nil = ausgegraut.</summary>
+function TaskEntry(const AId, ACaption: string; const ARun: TProc): TAtlasMenuEntry;
+begin
+  Result := MenuEntry(AId);
+  Result.Section := TAtlasBuildStrings.Text(TAtlasBuildTextId.MenuGroupTasks);
+  Result.Caption := ACaption;
+  Result.Run := ARun;
+end;
+
 function TAtlasBuildModule.Commands: TArray<TAtlasModuleCommand>;
 begin
   Result := [
@@ -500,22 +555,6 @@ begin
     // Startprofile (#575): Auswahl für das aktive Projekt; sichtbar, solange StartProfiles an ist.
     Command('Atlas.StartProfile', TAtlasBuildTextId.StartProfilesCommand,
       Guarded(TAtlasFeature.Build, TAtlasIdeStartProfiles.ShowPicker), StartProfilesVisible)];
-end;
-
-function MenuEntry(const ACommandId: string): TAtlasMenuEntry;
-begin
-  Result := Default(TAtlasMenuEntry);
-  Result.CommandId := ACommandId;
-  Result.Place := TAtlasMenuPlace.AtlasMenu;
-end;
-
-/// <summary>Eintrag ohne Befehl im Untermenü „Aufgaben“; ARun nil = ausgegraut.</summary>
-function TaskEntry(const AId, ACaption: string; const ARun: TProc): TAtlasMenuEntry;
-begin
-  Result := MenuEntry(AId);
-  Result.Section := TAtlasBuildStrings.Text(TAtlasBuildTextId.MenuGroupTasks);
-  Result.Caption := ACaption;
-  Result.Run := ARun;
 end;
 
 function TAtlasBuildModule.MenuEntries: TArray<TAtlasMenuEntry>;
@@ -589,6 +628,13 @@ begin
   Result := TAtlasIdeStartProfiles.Run(AProject, AProfile, True, AReason);
 end;
 
+/// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
+/// ausgeschaltet einstellen lässt.</summary>
+procedure ProvideSettingsSections;
+begin
+  TAtlasBuildSettingsSection.ProvideIn(GScope);
+end;
+
 function TAtlasBuildModule.TaskNames(const AProject: string): TArray<string>;
 begin
   Result := nil;
@@ -596,13 +642,6 @@ begin
   begin
     Result := GTasks.TaskNamesOf(AProject);
   end;
-end;
-
-/// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
-/// ausgeschaltet einstellen lässt.</summary>
-procedure ProvideSettingsSections;
-begin
-  TAtlasBuildSettingsSection.ProvideIn(GScope);
 end;
 
 function TAtlasBuildModule.RunTask(const AProject, AName: string; out AReason: string): Boolean;
@@ -614,45 +653,6 @@ begin
     Exit(False);
   end;
   Result := GTasks.RunInProject(AProject, AName, AReason);
-end;
-
-class function TAtlasBuildModule.Parts: TArray<IAtlasFeaturePart>;
-begin
-  Result := [
-    // Beim Öffnen bauen: nur im normalen Start, mit den Compile-Ereignissen und solange BuildOnOpen an ist.
-    TAtlasFeaturePart.When('OpenBuild',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.BuildOnOpen and
-          (TAtlasIdeHost.CompileEvents <> nil);
-      end, OpenBuildStarted, StartOpenBuild, StopOpenBuild),
-    // Projektaufgaben (#900): nur im normalen Start und solange tasks.enabled an ist.
-    TAtlasFeaturePart.When('Tasks',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TasksEnabled;
-      end, TasksStarted, StartTasks, StopTasks),
-    // Laufendes Programm vor dem Build beenden (#551): nur im normalen Start, mit den Compile-Ereignissen und solange
-    // build.stopRunningProgram nicht never ist (Modul aus: wirksam never).
-    TAtlasFeaturePart.When('StopRunningProgram',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := (ALevel = TAtlasSafeLevel.Normal) and (TAtlasIdeHost.CompileEvents <> nil) and
-          (TAtlasRunningProgram.ModeOf(TAtlasIdeSettings.Current.BuildStopRunningProgram) <>
-          TAtlasStopRunningMode.Never);
-      end, RunningProgramStarted, StartRunningProgram, StopRunningProgram),
-    // Startprofile (#575): nur im normalen Start und solange StartProfiles an ist; liest .atlas über TeamFile.
-    TAtlasFeaturePart.When('StartProfiles',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.StartProfiles;
-      end, StartProfilesStarted, StartStartProfiles, StopStartProfiles),
-    // Wirksame Compiler-Schalter an der Cursorposition (#558): Fenster, Befehl und Statusfeld; aus = kein Zeitgeber.
-    TAtlasFeaturePart.When('CompilerSwitches',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.BuildCompilerSwitches;
-      end, CompilerSwitchesStarted, StartCompilerSwitches, StopCompilerSwitches)];
 end;
 
 class function TAtlasBuildModule.RegisterModule: Boolean;

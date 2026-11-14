@@ -236,17 +236,6 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasIdeDesignerArrange.Available(const ASettings: TAtlasPluginSettings): Boolean;
-begin
-  Result := ASettings.DesignerFitToText or ASettings.DesignerButtonBar or ASettings.DesignerDuplicateRow or
-    ASettings.DesignerInsertSpace or ASettings.DesignerFitContainer or ASettings.DesignerNearAlignment or
-    ASettings.DesignerDefaultSizes or ASettings.DesignerZOrder or
-    ASettings.DesignerPropertyPainter or ASettings.DesignerSuggestAnchors or
-    ASettings.DesignerTextTable or ASettings.DesignerLabelPairs or
-    ASettings.DesignerArrangeForm or ASettings.DesignerWrapInContainer or ASettings.DesignerFontsColors or
-    ASettings.DesignerGroups or ASettings.DesignerInlineCaption;
-end;
-
 function TAtlasIdeDesignerArrange.AddItem(AParent: TMenuItem; const ACaption: string; ATag: Integer;
   AEnabled: Boolean): TMenuItem;
 begin
@@ -353,55 +342,6 @@ begin
     cPaintFirst + Ord(TAtlasPaintCommand.Undo), FPainter.CanUndo);
 end;
 
-procedure TAtlasIdeDesignerArrange.Popup(const APoint: TPoint);
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-  mSelected: TArray<TComponent>;
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  if not Available(mSettings) or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
-  begin
-    Exit;
-  end;
-  mSelected := TAtlasDesignerAccess.Selection(mEditor, mRoot);
-  FMenu.Items.Clear;
-  if mSettings.DesignerFitToText then
-  begin
-    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerFitToText), cFitToText,
-      Length(TAtlasIdeFitText.Candidates(mSelected)) > 0);
-  end;
-  if mSettings.DesignerButtonBar then
-  begin
-    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerButtonBarCmd), cButtonBar,
-      Length(TAtlasIdeButtonBar.Candidates(mSelected)) > 0);
-  end;
-  if mSettings.DesignerDuplicateRow then
-  begin
-    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateCmd), cDuplicate,
-      Length(TAtlasDesignerAccess.Siblings(mSelected)) > 0);
-    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateUndoCmd), cDuplicateUndo,
-      FDuplicate.CanUndo);
-  end;
-  if mSettings.DesignerInsertSpace then
-  begin
-    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceInsertCmd), cSpaceInsert,
-      Length(TAtlasDesignerAccess.Siblings(mSelected)) > 0);
-    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceRemoveCmd), cSpaceRemove,
-      Length(TAtlasDesignerAccess.Siblings(mSelected)) > 0);
-    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceUndoCmd), cSpaceUndo,
-      FSpace.CanUndo);
-  end;
-  if mSettings.DesignerFitContainer then
-  begin
-    AddFitItems(Length(TAtlasIdeFitContainer.Candidates(mSelected, mRoot)) > 0,
-      Length(TAtlasIdeFitContainer.Candidates(mSelected, mRoot)) > 1);
-  end;
-  AddFormItems(mSettings, Length(mSelected) > 0);
-  FMenu.Popup(APoint.X, APoint.Y);
-end;
-
 procedure TAtlasIdeDesignerArrange.AddPairItems;
 var
   mSub: TMenuItem;
@@ -442,6 +382,22 @@ begin
     cWrapFirst + cWrapUnwrap, TAtlasIdeWrap.CanUnwrap);
   AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerWrapUndoCmd), cWrapFirst + cWrapUndo,
     FWrap.CanUndo);
+end;
+
+procedure TAtlasIdeDesignerArrange.RunWrap(ACommand: Integer);
+begin
+  if ACommand = cWrapUnwrap then
+  begin
+    FWrap.Unwrap;
+  end
+  else if ACommand = cWrapUndo then
+  begin
+    FWrap.Undo;
+  end
+  else if ACommand - cWrapClasses <= High(FWrapClasses) then
+  begin
+    FWrap.Wrap(FWrapClasses[ACommand - cWrapClasses]);
+  end;
 end;
 
 procedure TAtlasIdeDesignerArrange.AddExtraItems(const ASettings: TAtlasPluginSettings; ASelection: Boolean);
@@ -491,22 +447,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDesignerArrange.RunWrap(ACommand: Integer);
-begin
-  if ACommand = cWrapUnwrap then
-  begin
-    FWrap.Unwrap;
-  end
-  else if ACommand = cWrapUndo then
-  begin
-    FWrap.Undo;
-  end
-  else if ACommand - cWrapClasses <= High(FWrapClasses) then
-  begin
-    FWrap.Wrap(FWrapClasses[ACommand - cWrapClasses]);
-  end;
-end;
-
 procedure TAtlasIdeDesignerArrange.AddFormItems(const ASettings: TAtlasPluginSettings; ASelection: Boolean);
 begin
   if ASettings.DesignerNearAlignment then
@@ -552,6 +492,63 @@ begin
     AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsCmd), cTexts, True);
     AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsUndoCmd), cTextsUndo,
       FTexts.CanUndo);
+  end;
+end;
+
+procedure TAtlasIdeDesignerArrange.ItemClick(Sender: TObject);
+var
+  mTag: Integer;
+  mSelf: TAtlasIdeDesignerArrange;
+begin
+  mTag := TMenuItem(Sender).Tag;
+  mSelf := Self;
+  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
+    procedure
+    begin
+      mSelf.Run(mTag);
+    end);
+end;
+
+procedure TAtlasIdeDesignerArrange.Run(ATag: Integer);
+begin
+  if ATag >= cStackFirst then
+  begin
+    if ATag - cStackFirst <= High(FStackNames) then
+    begin
+      TAtlasIdeDesignerLayers.SelectName(FStackNames[ATag - cStackFirst]);
+    end;
+  end
+  else if ATag >= cFontsFirst then
+  begin
+    RunExtra(ATag - cFontsFirst);
+  end
+  else if ATag >= cWrapFirst then
+  begin
+    RunWrap(ATag - cWrapFirst);
+  end
+  else if ATag >= cPairsFirst then
+  begin
+    FPairs.Execute(TAtlasPairsCommand(ATag - cPairsFirst));
+  end
+  else if ATag >= cPaintFirst then
+  begin
+    FPainter.Execute(TAtlasPaintCommand(ATag - cPaintFirst));
+  end
+  else if ATag >= cLayersFirst then
+  begin
+    FLayers.Execute(TAtlasLayersCommand(ATag - cLayersFirst));
+  end
+  else if ATag >= cSizesFirst then
+  begin
+    FSizes.Execute(TAtlasSizesCommand(ATag - cSizesFirst));
+  end
+  else if ATag >= cNearFirst then
+  begin
+    FNear.Execute(TAtlasNearCommand(ATag - cNearFirst));
+  end
+  else
+  begin
+    RunArrange(ATag);
   end;
 end;
 
@@ -605,69 +602,64 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDesignerArrange.Run(ATag: Integer);
+class function TAtlasIdeDesignerArrange.Available(const ASettings: TAtlasPluginSettings): Boolean;
 begin
-  if ATag >= cStackFirst then
-  begin
-    if ATag - cStackFirst <= High(FStackNames) then
-    begin
-      TAtlasIdeDesignerLayers.SelectName(FStackNames[ATag - cStackFirst]);
-    end;
-  end
-  else if ATag >= cFontsFirst then
-  begin
-    RunExtra(ATag - cFontsFirst);
-  end
-  else if ATag >= cWrapFirst then
-  begin
-    RunWrap(ATag - cWrapFirst);
-  end
-  else if ATag >= cPairsFirst then
-  begin
-    FPairs.Execute(TAtlasPairsCommand(ATag - cPairsFirst));
-  end
-  else if ATag >= cPaintFirst then
-  begin
-    FPainter.Execute(TAtlasPaintCommand(ATag - cPaintFirst));
-  end
-  else if ATag >= cLayersFirst then
-  begin
-    FLayers.Execute(TAtlasLayersCommand(ATag - cLayersFirst));
-  end
-  else if ATag >= cSizesFirst then
-  begin
-    FSizes.Execute(TAtlasSizesCommand(ATag - cSizesFirst));
-  end
-  else if ATag >= cNearFirst then
-  begin
-    FNear.Execute(TAtlasNearCommand(ATag - cNearFirst));
-  end
-  else
-  begin
-    RunArrange(ATag);
-  end;
+  Result := ASettings.DesignerFitToText or ASettings.DesignerButtonBar or ASettings.DesignerDuplicateRow or
+    ASettings.DesignerInsertSpace or ASettings.DesignerFitContainer or ASettings.DesignerNearAlignment or
+    ASettings.DesignerDefaultSizes or ASettings.DesignerZOrder or
+    ASettings.DesignerPropertyPainter or ASettings.DesignerSuggestAnchors or
+    ASettings.DesignerTextTable or ASettings.DesignerLabelPairs or
+    ASettings.DesignerArrangeForm or ASettings.DesignerWrapInContainer or ASettings.DesignerFontsColors or
+    ASettings.DesignerGroups or ASettings.DesignerInlineCaption;
 end;
 
-procedure TAtlasIdeDesignerArrange.ItemClick(Sender: TObject);
+procedure TAtlasIdeDesignerArrange.Popup(const APoint: TPoint);
 var
-  mTag: Integer;
-  mSelf: TAtlasIdeDesignerArrange;
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+  mSelected: TArray<TComponent>;
+  mSettings: TAtlasPluginSettings;
 begin
-  mTag := TMenuItem(Sender).Tag;
-  mSelf := Self;
-  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-    procedure
-    begin
-      mSelf.Run(mTag);
-    end);
-end;
-
-procedure TAtlasIdeDesignerArrange.UpdateKeys(AWanted: Boolean);
-begin
-  FLayers.UpdateKeys(AWanted);
-  FPainter.UpdateKeys(AWanted);
-  FExtra.Groups.UpdateKeys(AWanted);
-  FExtra.Caption.UpdateKeys(AWanted);
+  mSettings := TAtlasIdeSettings.Current;
+  if not Available(mSettings) or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
+  begin
+    Exit;
+  end;
+  mSelected := TAtlasDesignerAccess.Selection(mEditor, mRoot);
+  FMenu.Items.Clear;
+  if mSettings.DesignerFitToText then
+  begin
+    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerFitToText), cFitToText,
+      Length(TAtlasIdeFitText.Candidates(mSelected)) > 0);
+  end;
+  if mSettings.DesignerButtonBar then
+  begin
+    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerButtonBarCmd), cButtonBar,
+      Length(TAtlasIdeButtonBar.Candidates(mSelected)) > 0);
+  end;
+  if mSettings.DesignerDuplicateRow then
+  begin
+    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateCmd), cDuplicate,
+      Length(TAtlasDesignerAccess.Siblings(mSelected)) > 0);
+    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateUndoCmd), cDuplicateUndo,
+      FDuplicate.CanUndo);
+  end;
+  if mSettings.DesignerInsertSpace then
+  begin
+    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceInsertCmd), cSpaceInsert,
+      Length(TAtlasDesignerAccess.Siblings(mSelected)) > 0);
+    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceRemoveCmd), cSpaceRemove,
+      Length(TAtlasDesignerAccess.Siblings(mSelected)) > 0);
+    AddItem(FMenu.Items, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceUndoCmd), cSpaceUndo,
+      FSpace.CanUndo);
+  end;
+  if mSettings.DesignerFitContainer then
+  begin
+    AddFitItems(Length(TAtlasIdeFitContainer.Candidates(mSelected, mRoot)) > 0,
+      Length(TAtlasIdeFitContainer.Candidates(mSelected, mRoot)) > 1);
+  end;
+  AddFormItems(mSettings, Length(mSelected) > 0);
+  FMenu.Popup(APoint.X, APoint.Y);
 end;
 
 procedure TAtlasIdeDesignerArrange.ApplyTheme;
@@ -679,6 +671,14 @@ begin
   FGrid.ApplyTheme;
   FExtra.Groups.ApplyTheme;
   FExtra.Caption.ApplyTheme;
+end;
+
+procedure TAtlasIdeDesignerArrange.UpdateKeys(AWanted: Boolean);
+begin
+  FLayers.UpdateKeys(AWanted);
+  FPainter.UpdateKeys(AWanted);
+  FExtra.Groups.UpdateKeys(AWanted);
+  FExtra.Caption.UpdateKeys(AWanted);
 end;
 
 end.

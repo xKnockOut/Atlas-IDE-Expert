@@ -48,6 +48,8 @@ begin
   Result := Result and not CharInSet(AName[1], ['0'..'9', '.']) and (AName[Length(AName)] <> '.');
 end;
 
+{ TUsesCommand }
+
 class function TUsesCommand.Parse(const ALine: string; out AUnits: TArray<string>): Boolean;
 var
   mRest, mName: string;

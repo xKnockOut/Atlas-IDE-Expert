@@ -369,6 +369,23 @@ end;
 
 { TAtlasBusyMeter }
 
+procedure TAtlasBusyMeter.AddSecond(ASecond, AUs: Int64);
+var
+  mSlot: Integer;
+begin
+  if ASecond < FStartSecond then
+  begin
+    Exit;
+  end;
+  mSlot := ASecond mod cSeconds;
+  if FSecond[mSlot] <> ASecond then
+  begin
+    FSecond[mSlot] := ASecond;
+    FUs[mSlot] := 0;
+  end;
+  Inc(FUs[mSlot], AUs);
+end;
+
 procedure TAtlasBusyMeter.Reset(ANowUs: Int64);
 begin
   FillChar(FUs, SizeOf(FUs), 0);
@@ -388,23 +405,6 @@ begin
     AddSecond(mSecond, mEnd - mFrom);
     mFrom := mEnd;
   end;
-end;
-
-procedure TAtlasBusyMeter.AddSecond(ASecond, AUs: Int64);
-var
-  mSlot: Integer;
-begin
-  if ASecond < FStartSecond then
-  begin
-    Exit;
-  end;
-  mSlot := ASecond mod cSeconds;
-  if FSecond[mSlot] <> ASecond then
-  begin
-    FSecond[mSlot] := ASecond;
-    FUs[mSlot] := 0;
-  end;
-  Inc(FUs[mSlot], AUs);
 end;
 
 function TAtlasBusyMeter.Values(ANowUs: Int64): TArray<Double>;
@@ -478,6 +478,15 @@ begin
   end;
 end;
 
+procedure TAtlasCallStack.Activity(const AName: string; AUs: Int64);
+begin
+  if (FDepth > 0) and (AUs > FFrames[FDepth - 1].ActivityUs) then
+  begin
+    FFrames[FDepth - 1].ActivityUs := AUs;
+    FFrames[FDepth - 1].Activity := AName;
+  end;
+end;
+
 function TAtlasCallStack.TopChildUs: Int64;
 begin
   Result := 0;
@@ -496,15 +505,6 @@ begin
   // Aufrufe im Dialog sind darin enthalten; sie zählen für sich, aber nicht doppelt.
   FFrames[FDepth - 1].ChildUs := AChildUsBefore + AUs;
   Inc(FFrames[FDepth - 1].IdleUs, AUs);
-end;
-
-procedure TAtlasCallStack.Activity(const AName: string; AUs: Int64);
-begin
-  if (FDepth > 0) and (AUs > FFrames[FDepth - 1].ActivityUs) then
-  begin
-    FFrames[FDepth - 1].ActivityUs := AUs;
-    FFrames[FDepth - 1].Activity := AName;
-  end;
 end;
 
 { TAtlasModalWatch }
@@ -570,6 +570,8 @@ begin
   Result := Now;
 end;
 
+{ TAtlasPluginRecorder }
+
 constructor TAtlasPluginRecorder.Create(const AClock: TAtlasMicroClock; const ANow: TFunc<TDateTime>;
   const AIsMainThread: TFunc<Boolean>);
 begin
@@ -605,14 +607,26 @@ begin
   inherited;
 end;
 
-function TAtlasPluginRecorder.Stamp: Int64;
+procedure TAtlasPluginRecorder.SetThresholdMs(AValue: Integer);
 begin
-  Result := FClock();
+  FLock.Enter;
+  try
+    FThresholdMs := EnsureRange(AValue, cMinThresholdMs, cMaxThresholdMs);
+    Inc(FVersion);
+  finally
+    FLock.Leave;
+  end;
 end;
 
-function TAtlasPluginRecorder.OnMainThread: Boolean;
+procedure TAtlasPluginRecorder.SetPaused(AValue: Boolean);
 begin
-  Result := FIsMainThread();
+  FLock.Enter;
+  try
+    FPaused := AValue;
+    Inc(FVersion);
+  finally
+    FLock.Leave;
+  end;
 end;
 
 function TAtlasPluginRecorder.Enter: Integer;
@@ -641,6 +655,61 @@ begin
   end;
 end;
 
+procedure TAtlasPluginRecorder.ProviderSlow(const AName: string);
+var
+  mSource: TAtlasSourceTiming;
+begin
+  FLock.Enter;
+  try
+    if FPaused then
+    begin
+      Exit;
+    end;
+    if not FSources.TryGetValue(AName, mSource) then
+    begin
+      mSource := Default(TAtlasSourceTiming);
+      mSource.Name := AName;
+    end;
+    Inc(mSource.Slow);
+    FSources.AddOrSetValue(AName, mSource);
+    Inc(FVersion);
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TAtlasPluginRecorder.ModalBegin;
+begin
+  if FIsMainThread() then
+  begin
+    FModal.Opened(FStack, FClock());
+  end;
+end;
+
+procedure TAtlasPluginRecorder.ModalEnd;
+begin
+  if FIsMainThread() then
+  begin
+    FModal.Closed(FStack, FClock());
+  end;
+end;
+
+procedure TAtlasPluginRecorder.AddSlow(AFeature: TAtlasFeature; const AActivity: string; AMs: Double);
+var
+  mCall: TAtlasSlowCall;
+begin
+  mCall := Default(TAtlasSlowCall);
+  mCall.At := FNow();
+  mCall.Feature := AFeature;
+  mCall.Activity := AActivity;
+  mCall.Ms := AMs;
+  if FSlow.Count >= cSlowCapacity then
+  begin
+    FSlow.Delete(0);
+  end;
+  FSlow.Add(mCall);
+end;
+
 procedure TAtlasPluginRecorder.RecordCall(AFeature: TAtlasFeature; const AFrame: TAtlasCallFrame;
   AOwnUs, AStop: Int64; AOuter: Boolean);
 var
@@ -666,36 +735,14 @@ begin
   end;
 end;
 
-procedure TAtlasPluginRecorder.AddSlow(AFeature: TAtlasFeature; const AActivity: string; AMs: Double);
-var
-  mCall: TAtlasSlowCall;
+function TAtlasPluginRecorder.Stamp: Int64;
 begin
-  mCall := Default(TAtlasSlowCall);
-  mCall.At := FNow();
-  mCall.Feature := AFeature;
-  mCall.Activity := AActivity;
-  mCall.Ms := AMs;
-  if FSlow.Count >= cSlowCapacity then
-  begin
-    FSlow.Delete(0);
-  end;
-  FSlow.Add(mCall);
+  Result := FClock();
 end;
 
-procedure TAtlasPluginRecorder.ModalBegin;
+function TAtlasPluginRecorder.OnMainThread: Boolean;
 begin
-  if FIsMainThread() then
-  begin
-    FModal.Opened(FStack, FClock());
-  end;
-end;
-
-procedure TAtlasPluginRecorder.ModalEnd;
-begin
-  if FIsMainThread() then
-  begin
-    FModal.Closed(FStack, FClock());
-  end;
+  Result := FIsMainThread();
 end;
 
 procedure TAtlasPluginRecorder.ActivityDone(const AName: string; AStarted: Int64);
@@ -703,52 +750,6 @@ begin
   if FIsMainThread() then
   begin
     FStack.Activity(AName, FClock() - AStarted);
-  end;
-end;
-
-procedure TAtlasPluginRecorder.ProviderSlow(const AName: string);
-var
-  mSource: TAtlasSourceTiming;
-begin
-  FLock.Enter;
-  try
-    if FPaused then
-    begin
-      Exit;
-    end;
-    if not FSources.TryGetValue(AName, mSource) then
-    begin
-      mSource := Default(TAtlasSourceTiming);
-      mSource.Name := AName;
-    end;
-    Inc(mSource.Slow);
-    FSources.AddOrSetValue(AName, mSource);
-    Inc(FVersion);
-  finally
-    FLock.Leave;
-  end;
-end;
-
-procedure TAtlasPluginRecorder.SourceDone(const AName: string; AMs: Double);
-var
-  mSource: TAtlasSourceTiming;
-begin
-  FLock.Enter;
-  try
-    if FPaused then
-    begin
-      Exit;
-    end;
-    if not FSources.TryGetValue(AName, mSource) then
-    begin
-      mSource := Default(TAtlasSourceTiming);
-      mSource.Name := AName;
-    end;
-    mSource.Stat.Add(AMs, AMs >= FThresholdMs);
-    FSources.AddOrSetValue(AName, mSource);
-    Inc(FVersion);
-  finally
-    FLock.Leave;
   end;
 end;
 
@@ -787,6 +788,29 @@ begin
       Inc(mRequest.Failed);
     end;
     FRequests.AddOrSetValue(AMethod, mRequest);
+    Inc(FVersion);
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TAtlasPluginRecorder.SourceDone(const AName: string; AMs: Double);
+var
+  mSource: TAtlasSourceTiming;
+begin
+  FLock.Enter;
+  try
+    if FPaused then
+    begin
+      Exit;
+    end;
+    if not FSources.TryGetValue(AName, mSource) then
+    begin
+      mSource := Default(TAtlasSourceTiming);
+      mSource.Name := AName;
+    end;
+    mSource.Stat.Add(AMs, AMs >= FThresholdMs);
+    FSources.AddOrSetValue(AName, mSource);
     Inc(FVersion);
   finally
     FLock.Leave;
@@ -878,43 +902,12 @@ begin
   end;
 end;
 
-procedure TAtlasPluginRecorder.SetThresholdMs(AValue: Integer);
-begin
-  FLock.Enter;
-  try
-    FThresholdMs := EnsureRange(AValue, cMinThresholdMs, cMaxThresholdMs);
-    Inc(FVersion);
-  finally
-    FLock.Leave;
-  end;
-end;
-
-procedure TAtlasPluginRecorder.SetPaused(AValue: Boolean);
-begin
-  FLock.Enter;
-  try
-    FPaused := AValue;
-    Inc(FVersion);
-  finally
-    FLock.Leave;
-  end;
-end;
-
 { TAtlasPluginTimings }
 
 class destructor TAtlasPluginTimings.DestroyShared;
 begin
   Enabled := False;
   FreeAndNil(FShared);
-end;
-
-class function TAtlasPluginTimings.Shared: TAtlasPluginRecorder;
-begin
-  if FShared = nil then
-  begin
-    FShared := TAtlasPluginRecorder.Create;
-  end;
-  Result := FShared;
 end;
 
 class procedure TAtlasPluginTimings.SetEnabled(AValue: Boolean);
@@ -928,6 +921,15 @@ begin
     TAtlasGuard.Timing := nil;
   end;
   FEnabled := AValue;
+end;
+
+class function TAtlasPluginTimings.Shared: TAtlasPluginRecorder;
+begin
+  if FShared = nil then
+  begin
+    FShared := TAtlasPluginRecorder.Create;
+  end;
+  Result := FShared;
 end;
 
 class function TAtlasPluginTimings.StampIfEnabled: Int64;

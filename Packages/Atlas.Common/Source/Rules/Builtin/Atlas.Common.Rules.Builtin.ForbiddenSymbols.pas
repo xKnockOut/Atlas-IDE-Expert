@@ -278,65 +278,6 @@ begin
     cTexts[TForbiddenSymbolsText.Title].Text);
 end;
 
-class function TForbiddenSymbolRule.TryParseKind(const AText: string; out AKind: TForbiddenKind): Boolean;
-var
-  mKind: TForbiddenKind;
-begin
-  for mKind := Low(TForbiddenKind) to High(TForbiddenKind) do
-  begin
-    if SameText(cKindNames[mKind], AText) then
-    begin
-      AKind := mKind;
-      Exit(True);
-    end;
-  end;
-  AKind := TForbiddenKind.Any;
-  Result := False;
-end;
-
-class function TForbiddenSymbolRule.ParseSymbols(const AOptions: string): TArray<TForbiddenSymbol>;
-var
-  mValue: TJSONValue;
-  mList: TJSONArray;
-  mItem: TJSONValue;
-  mEntry: TForbiddenSymbol;
-begin
-  Result := nil;
-  if Trim(AOptions) = '' then
-  begin
-    Exit;
-  end;
-  mValue := TJSONObject.ParseJSONValue(AOptions);
-  try
-    if not ((mValue is TJSONObject) and TJSONObject(mValue).TryGetValue<TJSONArray>('symbols', mList)) then
-    begin
-      Exit;
-    end;
-    for mItem in mList do
-    begin
-      if not (mItem is TJSONObject) then
-      begin
-        Continue;
-      end;
-      mEntry := Default(TForbiddenSymbol);
-      mEntry.Name := Trim(TJsonRead.Text(TJSONObject(mItem), 'name'));
-      if (mEntry.Name = '') or not TryParseKind(TJsonRead.Text(TJSONObject(mItem), 'kind'), mEntry.Kind) then
-      begin
-        Continue;
-      end;
-      mEntry.Message := TJsonRead.Text(TJSONObject(mItem), 'message');
-      mEntry.Replacement := TJsonRead.Text(TJSONObject(mItem), 'replacement');
-      mEntry.Severity := ParseSeverity(TJsonRead.Text(TJSONObject(mItem), 'severity'));
-      mEntry.Units := ReadStrings(TJSONObject(mItem), 'units');
-      mEntry.FirstArgument := ReadStrings(TJSONObject(mItem), 'firstArgument');
-      mEntry.AllowFirstArgument := ReadStrings(TJSONObject(mItem), 'allowFirstArgument');
-      Result := Result + [mEntry];
-    end;
-  finally
-    mValue.Free;
-  end;
-end;
-
 procedure TForbiddenSymbolRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mEntries: TArray<TForbiddenSymbol>;
@@ -727,6 +668,65 @@ begin
   finally
     mScope.Free;
   end;
+end;
+
+class function TForbiddenSymbolRule.ParseSymbols(const AOptions: string): TArray<TForbiddenSymbol>;
+var
+  mValue: TJSONValue;
+  mList: TJSONArray;
+  mItem: TJSONValue;
+  mEntry: TForbiddenSymbol;
+begin
+  Result := nil;
+  if Trim(AOptions) = '' then
+  begin
+    Exit;
+  end;
+  mValue := TJSONObject.ParseJSONValue(AOptions);
+  try
+    if not ((mValue is TJSONObject) and TJSONObject(mValue).TryGetValue<TJSONArray>('symbols', mList)) then
+    begin
+      Exit;
+    end;
+    for mItem in mList do
+    begin
+      if not (mItem is TJSONObject) then
+      begin
+        Continue;
+      end;
+      mEntry := Default(TForbiddenSymbol);
+      mEntry.Name := Trim(TJsonRead.Text(TJSONObject(mItem), 'name'));
+      if (mEntry.Name = '') or not TryParseKind(TJsonRead.Text(TJSONObject(mItem), 'kind'), mEntry.Kind) then
+      begin
+        Continue;
+      end;
+      mEntry.Message := TJsonRead.Text(TJSONObject(mItem), 'message');
+      mEntry.Replacement := TJsonRead.Text(TJSONObject(mItem), 'replacement');
+      mEntry.Severity := ParseSeverity(TJsonRead.Text(TJSONObject(mItem), 'severity'));
+      mEntry.Units := ReadStrings(TJSONObject(mItem), 'units');
+      mEntry.FirstArgument := ReadStrings(TJSONObject(mItem), 'firstArgument');
+      mEntry.AllowFirstArgument := ReadStrings(TJSONObject(mItem), 'allowFirstArgument');
+      Result := Result + [mEntry];
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
+class function TForbiddenSymbolRule.TryParseKind(const AText: string; out AKind: TForbiddenKind): Boolean;
+var
+  mKind: TForbiddenKind;
+begin
+  for mKind := Low(TForbiddenKind) to High(TForbiddenKind) do
+  begin
+    if SameText(cKindNames[mKind], AText) then
+    begin
+      AKind := mKind;
+      Exit(True);
+    end;
+  end;
+  AKind := TForbiddenKind.Any;
+  Result := False;
 end;
 
 procedure RegisterForbiddenSymbolRules(const ARegistry: TRuleRegistry);

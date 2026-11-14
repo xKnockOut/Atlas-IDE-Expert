@@ -185,24 +185,6 @@ end;
 
 { TAtlasDataFlowJson }
 
-class function TAtlasDataFlowJson.KindOf(const AName: string): TAtlasDataFlowKind;
-const
-  cNames: array[TAtlasDataFlowKind] of string = ('assignment', 'varArgument', 'outArgument', 'input',
-    'initialization', 'loop', 'callerArgument', 'return', 'propertyWrite', 'propertyRead', 'modify', 'argument',
-    'output', 'use', 'constant', 'outside', 'address', '');
-var
-  mKind: TAtlasDataFlowKind;
-begin
-  for mKind := Low(TAtlasDataFlowKind) to Pred(TAtlasDataFlowKind.Unknown) do
-  begin
-    if SameText(cNames[mKind], AName) then
-    begin
-      Exit(mKind);
-    end;
-  end;
-  Result := TAtlasDataFlowKind.Unknown;
-end;
-
 class function TAtlasDataFlowJson.Params(const ARequest: TAtlasDataFlowRequest): TJSONObject;
 var
   mPosition: TJSONObject;
@@ -266,6 +248,24 @@ begin
       Result.Nodes := Result.Nodes + [mNode];
     end;
   end;
+end;
+
+class function TAtlasDataFlowJson.KindOf(const AName: string): TAtlasDataFlowKind;
+const
+  cNames: array[TAtlasDataFlowKind] of string = ('assignment', 'varArgument', 'outArgument', 'input',
+    'initialization', 'loop', 'callerArgument', 'return', 'propertyWrite', 'propertyRead', 'modify', 'argument',
+    'output', 'use', 'constant', 'outside', 'address', '');
+var
+  mKind: TAtlasDataFlowKind;
+begin
+  for mKind := Low(TAtlasDataFlowKind) to Pred(TAtlasDataFlowKind.Unknown) do
+  begin
+    if SameText(cNames[mKind], AName) then
+    begin
+      Exit(mKind);
+    end;
+  end;
+  Result := TAtlasDataFlowKind.Unknown;
 end;
 
 end.

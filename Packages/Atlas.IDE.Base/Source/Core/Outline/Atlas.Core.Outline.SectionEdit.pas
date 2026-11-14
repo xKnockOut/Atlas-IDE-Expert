@@ -68,6 +68,8 @@ const
   cOrder: array[0..5] of string = ('strict private', 'private', 'strict protected', 'protected', 'public',
     'published');
 
+{ TAtlasSectionEdit }
+
 function TAtlasSectionEdit.Applied(const ALines: TArray<string>): TArray<string>;
 begin
   Result := Copy(ALines, 0, Line) + Lines + Copy(ALines, Line, Length(ALines) - Line);
@@ -131,19 +133,7 @@ begin
   Result := False;
 end;
 
-class function TAtlasSectionEditor.Rank(const AKeyword: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(cOrder) do
-  begin
-    if SameText(cOrder[mIndex], AKeyword) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
+{ TAtlasSectionEditor }
 
 class function TAtlasSectionEditor.Append(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
   const APlace: TAtlasVisibilityPlace; ASection, AIndentWidth: Integer; out AEdit: TAtlasSectionEdit): Boolean;
@@ -186,6 +176,20 @@ begin
   end;
   AEdit := NewEdit(mAnchor + 1, [mIndent], 0);
   Result := True;
+end;
+
+class function TAtlasSectionEditor.Rank(const AKeyword: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(cOrder) do
+  begin
+    if SameText(cOrder[mIndex], AKeyword) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
 end;
 
 /// <summary>Darf ein Typ der Art ADetail den Abschnitt AKeyword haben?</summary>

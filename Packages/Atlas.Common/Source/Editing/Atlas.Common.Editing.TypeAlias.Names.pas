@@ -31,6 +31,8 @@ uses
   System.SysUtils,
   System.StrUtils;
 
+{ TTypeAliasNames }
+
 class function TTypeAliasNames.LastPart(const AName: string): string;
 begin
   Result := AName;

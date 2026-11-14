@@ -91,17 +91,17 @@ type
 
 { TMSBuildProperties }
 
-constructor TMSBuildProperties.Create;
-begin
-  Create(nil);
-end;
-
 constructor TMSBuildProperties.Create(const AFileExists: TFunc<string, Boolean>);
 begin
   inherited Create;
   FValues := TDictionary<string, string>.Create;
   FNames := TList<string>.Create;
   FFileExists := AFileExists;
+end;
+
+constructor TMSBuildProperties.Create;
+begin
+  Create(nil);
 end;
 
 destructor TMSBuildProperties.Destroy;
@@ -119,11 +119,6 @@ begin
   end;
 end;
 
-function TMSBuildProperties.Has(const AName: string): Boolean;
-begin
-  Result := FValues.ContainsKey(UpperCase(AName));
-end;
-
 procedure TMSBuildProperties.SetValue(const AName, AValue: string);
 var
   mKey: string;
@@ -134,6 +129,11 @@ begin
     FNames.Add(AName);
   end;
   FValues.AddOrSetValue(mKey, AValue);
+end;
+
+function TMSBuildProperties.Has(const AName: string): Boolean;
+begin
+  Result := FValues.ContainsKey(UpperCase(AName));
 end;
 
 function TMSBuildProperties.Expand(const AText: string): string;
@@ -234,16 +234,6 @@ begin
   end;
 end;
 
-function TConditionParser.Run: Boolean;
-begin
-  Result := ParseOr;
-  SkipSpace;
-  if FPos <= Length(FText) then
-  begin
-    raise EConditionError.Create(cTexts[TMSBuildText.UnexpectedCharacter].Text);
-  end;
-end;
-
 function TConditionParser.ParseOr: Boolean;
 var
   mRight: Boolean;
@@ -278,6 +268,43 @@ begin
     Exit(not ParseNot);
   end;
   Result := ParsePrimary;
+end;
+
+function TConditionParser.ParseOperand: string;
+begin
+  SkipSpace;
+  if FPos > Length(FText) then
+  begin
+    raise EConditionError.Create(cTexts[TMSBuildText.OperandExpected].Text);
+  end;
+  if CharInSet(FText[FPos], ['''', '"']) then
+  begin
+    Result := ParseQuoted;
+  end
+  else
+  begin
+    Result := ParseBare;
+  end;
+end;
+
+function TConditionParser.ParseFunction(const AName: string): Boolean;
+var
+  mArgument: string;
+begin
+  mArgument := ParseOperand;
+  ExpectClose;
+  if SameText(AName, 'Exists') then
+  begin
+    Result := Assigned(FProperties.FFileExists) and FProperties.FFileExists(mArgument);
+  end
+  else if SameText(AName, 'HasTrailingSlash') then
+  begin
+    Result := (mArgument <> '') and CharInSet(mArgument[Length(mArgument)], ['\', '/']);
+  end
+  else
+  begin
+    Result := False;
+  end;
 end;
 
 function TConditionParser.ParseQuoted: string;
@@ -323,43 +350,6 @@ begin
     raise EConditionError.Create(cTexts[TMSBuildText.OperandExpected].Text);
   end;
   Result := FProperties.Expand(Copy(FText, mStart, FPos - mStart));
-end;
-
-function TConditionParser.ParseOperand: string;
-begin
-  SkipSpace;
-  if FPos > Length(FText) then
-  begin
-    raise EConditionError.Create(cTexts[TMSBuildText.OperandExpected].Text);
-  end;
-  if CharInSet(FText[FPos], ['''', '"']) then
-  begin
-    Result := ParseQuoted;
-  end
-  else
-  begin
-    Result := ParseBare;
-  end;
-end;
-
-function TConditionParser.ParseFunction(const AName: string): Boolean;
-var
-  mArgument: string;
-begin
-  mArgument := ParseOperand;
-  ExpectClose;
-  if SameText(AName, 'Exists') then
-  begin
-    Result := Assigned(FProperties.FFileExists) and FProperties.FFileExists(mArgument);
-  end
-  else if SameText(AName, 'HasTrailingSlash') then
-  begin
-    Result := (mArgument <> '') and CharInSet(mArgument[Length(mArgument)], ['\', '/']);
-  end
-  else
-  begin
-    Result := False;
-  end;
 end;
 
 procedure TConditionParser.ExpectClose;
@@ -409,6 +399,16 @@ begin
   else
   begin
     Result := '';
+  end;
+end;
+
+function TConditionParser.Run: Boolean;
+begin
+  Result := ParseOr;
+  SkipSpace;
+  if FPos <= Length(FText) then
+  begin
+    raise EConditionError.Create(cTexts[TMSBuildText.UnexpectedCharacter].Text);
   end;
 end;
 

@@ -169,79 +169,11 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasMinimapCode.TokenColor(const AColors: TAtlasColors; AKind: TAtlasTokenKind): TAtlasColor;
-begin
-  case AKind of
-    TAtlasTokenKind.Keyword:
-      Result := AColors.Keyword;
-    TAtlasTokenKind.StringLiteral:
-      Result := AColors.StringLiteral;
-    TAtlasTokenKind.Comment:
-      Result := AColors.Comment;
-    TAtlasTokenKind.Number:
-      Result := AColors.Accent;
-  else
-    // Kräftig wie in VS Code: Bezeichner sind der Großteil des Codes und müssen auf einen Blick lesbar sein.
-    Result := TAtlasColorMath.Mix(AColors.Text, AColors.Surface, 0.85);
-  end;
-end;
-
-procedure TAtlasMinimapCode.SetContent(const ALines: TArray<string>; const ARuns: TAtlasMinimapLines;
-  ATabWidth: Integer);
-begin
-  if (Length(ARuns) = Length(FRuns)) and (ATabWidth = FTabWidth) then
-  begin
-    FDirty := FDirty + TAtlasMinimap.ChangedLines(FRuns, ARuns);
-  end
-  else
-  begin
-    FValid := False;
-  end;
-  FLines := ALines;
-  FRuns := ARuns;
-  FTabWidth := Max(1, ATabWidth);
-end;
-
-procedure TAtlasMinimapCode.Invalidate;
-begin
-  FValid := False;
-end;
-
-function TAtlasMinimapCode.LineCount: Integer;
-begin
-  Result := Length(FRuns);
-end;
-
 function TAtlasMinimapCode.Matches(const AMap: TAtlasMinimapMap; AWidth, AHeight: Integer): Boolean;
 begin
   Result := (FWidth = AWidth) and (FHeight = AHeight) and (FRows = AMap.RowCount) and
     (FRowHeight = AMap.RowHeight);
   Result := Result and (FOffset = AMap.Offset) and TAtlasMinimap.SameFolds(FFolds, AMap.Folds);
-end;
-
-procedure TAtlasMinimapCode.Ensure(const AMap: TAtlasMinimapMap; const AOptions: TAtlasMinimapOptions;
-  const AColors: TAtlasColors; AWidth, AHeight: Integer);
-var
-  mSame: Boolean;
-begin
-  FOptions := AOptions;
-  FColors := AColors;
-  mSame := FValid and Matches(AMap, AWidth, AHeight);
-  if mSame and (FDirty = nil) then
-  begin
-    Exit;
-  end;
-  FBitmap.Canvas.Brush.Style := bsSolid;
-  // Gestaucht teilen sich Zeilen ein Pixel: dann immer alles neu.
-  if mSame and not AMap.Compressed then
-  begin
-    RepaintDirty(AMap);
-  end
-  else
-  begin
-    RepaintAll(AMap, AWidth, AHeight);
-  end;
-  FDirty := nil;
 end;
 
 procedure TAtlasMinimapCode.RepaintDirty(const AMap: TAtlasMinimapMap);
@@ -353,34 +285,75 @@ begin
   end;
 end;
 
-{ TAtlasMinimapOverlays }
-
-class function TAtlasMinimapOverlays.Scaled(AValue, APPI: Integer): Integer;
+class function TAtlasMinimapCode.TokenColor(const AColors: TAtlasColors; AKind: TAtlasTokenKind): TAtlasColor;
 begin
-  Result := MulDiv(AValue, Max(APPI, 96), 96);
-end;
-
-procedure TAtlasMinimapOverlays.SetNodes(const ANodes: TAtlasOutlineNodes);
-begin
-  FNodes := ANodes;
-  FHeadersValid := False;
-end;
-
-function TAtlasMinimapOverlays.SetMarks(const AMarks: TAtlasOverviewMarks): Boolean;
-begin
-  Result := not TAtlasOverview.Same(AMarks, FMarks);
-  if Result then
-  begin
-    FMarks := AMarks;
-    FBarsValid := False;
+  case AKind of
+    TAtlasTokenKind.Keyword:
+      Result := AColors.Keyword;
+    TAtlasTokenKind.StringLiteral:
+      Result := AColors.StringLiteral;
+    TAtlasTokenKind.Comment:
+      Result := AColors.Comment;
+    TAtlasTokenKind.Number:
+      Result := AColors.Accent;
+  else
+    // Kräftig wie in VS Code: Bezeichner sind der Großteil des Codes und müssen auf einen Blick lesbar sein.
+    Result := TAtlasColorMath.Mix(AColors.Text, AColors.Surface, 0.85);
   end;
 end;
 
-procedure TAtlasMinimapOverlays.Invalidate;
+procedure TAtlasMinimapCode.SetContent(const ALines: TArray<string>; const ARuns: TAtlasMinimapLines;
+  ATabWidth: Integer);
 begin
-  FHeadersValid := False;
-  FBarsValid := False;
+  if (Length(ARuns) = Length(FRuns)) and (ATabWidth = FTabWidth) then
+  begin
+    FDirty := FDirty + TAtlasMinimap.ChangedLines(FRuns, ARuns);
+  end
+  else
+  begin
+    FValid := False;
+  end;
+  FLines := ALines;
+  FRuns := ARuns;
+  FTabWidth := Max(1, ATabWidth);
 end;
+
+procedure TAtlasMinimapCode.Invalidate;
+begin
+  FValid := False;
+end;
+
+procedure TAtlasMinimapCode.Ensure(const AMap: TAtlasMinimapMap; const AOptions: TAtlasMinimapOptions;
+  const AColors: TAtlasColors; AWidth, AHeight: Integer);
+var
+  mSame: Boolean;
+begin
+  FOptions := AOptions;
+  FColors := AColors;
+  mSame := FValid and Matches(AMap, AWidth, AHeight);
+  if mSame and (FDirty = nil) then
+  begin
+    Exit;
+  end;
+  FBitmap.Canvas.Brush.Style := bsSolid;
+  // Gestaucht teilen sich Zeilen ein Pixel: dann immer alles neu.
+  if mSame and not AMap.Compressed then
+  begin
+    RepaintDirty(AMap);
+  end
+  else
+  begin
+    RepaintAll(AMap, AWidth, AHeight);
+  end;
+  FDirty := nil;
+end;
+
+function TAtlasMinimapCode.LineCount: Integer;
+begin
+  Result := Length(FRuns);
+end;
+
+{ TAtlasMinimapOverlays }
 
 procedure TAtlasMinimapOverlays.PaintMethod(ACanvas: TCanvas; const AMap: TAtlasMinimapMap;
   const AFrame: TAtlasMinimapFrame);
@@ -456,6 +429,33 @@ begin
     ACanvas.TextRect(mArea, mArea.Left + Scaled(2, AFrame.PPI), mArea.Top, mHeader.Text);
     ACanvas.Brush.Style := bsSolid;
   end;
+end;
+
+class function TAtlasMinimapOverlays.Scaled(AValue, APPI: Integer): Integer;
+begin
+  Result := MulDiv(AValue, Max(APPI, 96), 96);
+end;
+
+procedure TAtlasMinimapOverlays.SetNodes(const ANodes: TAtlasOutlineNodes);
+begin
+  FNodes := ANodes;
+  FHeadersValid := False;
+end;
+
+function TAtlasMinimapOverlays.SetMarks(const AMarks: TAtlasOverviewMarks): Boolean;
+begin
+  Result := not TAtlasOverview.Same(AMarks, FMarks);
+  if Result then
+  begin
+    FMarks := AMarks;
+    FBarsValid := False;
+  end;
+end;
+
+procedure TAtlasMinimapOverlays.Invalidate;
+begin
+  FHeadersValid := False;
+  FBarsValid := False;
 end;
 
 procedure TAtlasMinimapOverlays.Paint(ACanvas: TCanvas; const AMap: TAtlasMinimapMap;

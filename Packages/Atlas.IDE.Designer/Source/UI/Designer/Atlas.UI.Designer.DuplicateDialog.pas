@@ -143,19 +143,6 @@ begin
   ActiveControl := FList;
 end;
 
-function TAtlasDuplicateDialog.AddFlowRow: TFlowPanel;
-begin
-  Result := TFlowPanel.Create(Self);
-  Result.Parent := Self;
-  Result.Align := alTop;
-  Result.AutoSize := True;
-  Result.BevelOuter := bvNone;
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
-  // Hinter alle bisherigen Zeilen (alTop ordnet nach Top).
-  Result.Top := ScaleValue(2000) + ComponentCount;
-end;
-
 function TAtlasDuplicateDialog.AddFlowLabel(AParent: TWinControl; const ACaption: string): TLabel;
 begin
   Result := TLabel.Create(Self);
@@ -187,6 +174,19 @@ begin
   Result.OnClick := Changed;
 end;
 
+function TAtlasDuplicateDialog.AddFlowRow: TFlowPanel;
+begin
+  Result := TFlowPanel.Create(Self);
+  Result.Parent := Self;
+  Result.Align := alTop;
+  Result.AutoSize := True;
+  Result.BevelOuter := bvNone;
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
+  // Hinter alle bisherigen Zeilen (alTop ordnet nach Top).
+  Result.Top := ScaleValue(2000) + ComponentCount;
+end;
+
 procedure TAtlasDuplicateDialog.AddButtons;
 var
   mButtons: TFlowPanel;
@@ -211,6 +211,21 @@ begin
   FCancel.Cancel := True;
   FCancel.ModalResult := mrCancel;
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
+end;
+
+procedure TAtlasDuplicateDialog.Changed(Sender: TObject);
+begin
+  if FLoading then
+  begin
+    Exit;
+  end;
+  // Mit Liste ergibt sie die Anzahl; DataField gibt es nur mit Liste.
+  FCount.Enabled := Length(TAtlasDuplicateRow.ParseList(FList.Text)) = 0;
+  FDataFields.Enabled := not FCount.Enabled;
+  if Assigned(FOnChange) then
+  begin
+    FOnChange(Options);
+  end;
 end;
 
 procedure TAtlasDuplicateDialog.Load(const AOptions: TAtlasDuplicateOptions);
@@ -243,21 +258,6 @@ begin
   Result.ShareEvents := FShare.Checked;
   Result.DataFields := FDataFields.Checked;
   Result.Push := FPush.Checked;
-end;
-
-procedure TAtlasDuplicateDialog.Changed(Sender: TObject);
-begin
-  if FLoading then
-  begin
-    Exit;
-  end;
-  // Mit Liste ergibt sie die Anzahl; DataField gibt es nur mit Liste.
-  FCount.Enabled := Length(TAtlasDuplicateRow.ParseList(FList.Text)) = 0;
-  FDataFields.Enabled := not FCount.Enabled;
-  if Assigned(FOnChange) then
-  begin
-    FOnChange(Options);
-  end;
 end;
 
 procedure TAtlasDuplicateDialog.SetPreview(const AText: string; ABad: Boolean);

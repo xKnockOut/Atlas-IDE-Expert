@@ -276,6 +276,17 @@ begin
   Result := Active and FState.Pattern.Active and (FState.FileName <> '');
 end;
 
+procedure TAtlasIdeCodeLinks.Tick(Sender: TObject);
+begin
+  try
+    Update;
+    FHover.Check(Shown, FState.Target);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.IssueLinks, E);
+  end;
+end;
+
 procedure TAtlasIdeCodeLinks.Clear;
 begin
   FState := Default(TState);
@@ -287,17 +298,6 @@ begin
   if FHits <> nil then
   begin
     FHits.Clear;
-  end;
-end;
-
-procedure TAtlasIdeCodeLinks.Tick(Sender: TObject);
-begin
-  try
-    Update;
-    FHover.Check(Shown, FState.Target);
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.IssueLinks, E);
   end;
 end;
 

@@ -340,9 +340,41 @@ begin
   inherited;
 end;
 
-procedure TMcpServer.AddTool(const AName, ADescription, AInputSchema: string; const AHandler: TMcpToolHandler);
+function TMcpServer.Execute(const ATool: TMcpTool; const AArguments: TJSONObject; out AText: string): Boolean;
 begin
-  AddTool(AName, ADescription, AInputSchema, AHandler, TMcpToolKind.Read);
+  Result := False;
+  if not Available(ATool) then
+  begin
+    if FRestricted and (ATool.Kind <> TMcpToolKind.Read) then
+    begin
+      AText := cTexts[TServerText.ToolIsOffInRestricted].Fmt([ATool.Name]);
+    end
+    else
+    begin
+      AText := cTexts[TServerText.ToolIsSwitchedOffIn].Fmt([ATool.Name]);
+    end;
+    Exit(True);
+  end;
+  try
+    if ATool.Kind <> TMcpToolKind.Read then
+    begin
+      if AArguments <> nil then
+      begin
+        Audit(Format('MCP %s %s', [ATool.Name, TLogMarks.Text(AArguments.ToJSON)]));
+      end
+      else
+      begin
+        Audit(Format('MCP %s', [ATool.Name]));
+      end;
+    end;
+    AText := ATool.Handler(AArguments);
+  except
+    on E: EMcpToolError do
+    begin
+      AText := E.Message;
+      Result := True;
+    end;
+  end;
 end;
 
 procedure TMcpServer.AddTool(const AName, ADescription, AInputSchema: string; const AHandler: TMcpToolHandler;
@@ -367,6 +399,11 @@ begin
   Result.MimeType := AMimeType;
   Result.Handler := AHandler;
   Result.WithPrompts := AWithPrompts;
+end;
+
+procedure TMcpServer.AddTool(const AName, ADescription, AInputSchema: string; const AHandler: TMcpToolHandler);
+begin
+  AddTool(AName, ADescription, AInputSchema, AHandler, TMcpToolKind.Read);
 end;
 
 procedure TMcpServer.AddResource(const AUri, AName, ADescription, AMimeType: string; const AHandler: TFunc<string>);
@@ -453,35 +490,6 @@ begin
     Exit(False);
   end;
   Result := not Execute(mTool, AArguments, AText);
-end;
-
-function TMcpServer.ListPrompts: TJSONObject;
-var
-  mItems, mArguments: TJSONArray;
-  mItem, mArgument: TJSONObject;
-  mPrompt: TMcpPrompt;
-  mInfo: TMcpPromptArgument;
-begin
-  mItems := TJSONArray.Create;
-  for mPrompt in Prompts do
-  begin
-    mItem := TJSONObject.Create;
-    mItem.AddPair('name', mPrompt.Name);
-    mItem.AddPair('description', mPrompt.Description);
-    mArguments := TJSONArray.Create;
-    for mInfo in mPrompt.Arguments do
-    begin
-      mArgument := TJSONObject.Create;
-      mArgument.AddPair('name', mInfo.Name);
-      mArgument.AddPair('description', mInfo.Description);
-      mArgument.AddPair('required', TJSONBool.Create(mInfo.Required));
-      mArguments.Add(mArgument);
-    end;
-    mItem.AddPair('arguments', mArguments);
-    mItems.Add(mItem);
-  end;
-  Result := TJSONObject.Create;
-  Result.AddPair('prompts', mItems);
 end;
 
 /// <summary>Name des Prompts aus den Parametern von prompts/get; EJsonRpcError ohne.</summary>
@@ -592,6 +600,35 @@ begin
   Result := False;
 end;
 
+function TMcpServer.ListPrompts: TJSONObject;
+var
+  mItems, mArguments: TJSONArray;
+  mItem, mArgument: TJSONObject;
+  mPrompt: TMcpPrompt;
+  mInfo: TMcpPromptArgument;
+begin
+  mItems := TJSONArray.Create;
+  for mPrompt in Prompts do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('name', mPrompt.Name);
+    mItem.AddPair('description', mPrompt.Description);
+    mArguments := TJSONArray.Create;
+    for mInfo in mPrompt.Arguments do
+    begin
+      mArgument := TJSONObject.Create;
+      mArgument.AddPair('name', mInfo.Name);
+      mArgument.AddPair('description', mInfo.Description);
+      mArgument.AddPair('required', TJSONBool.Create(mInfo.Required));
+      mArguments.Add(mArgument);
+    end;
+    mItem.AddPair('arguments', mArguments);
+    mItems.Add(mItem);
+  end;
+  Result := TJSONObject.Create;
+  Result.AddPair('prompts', mItems);
+end;
+
 function TMcpServer.GetPrompt(const AParams: TJSONValue): TJSONObject;
 var
   mName, mText: string;
@@ -651,30 +688,6 @@ begin
   begin
     FEvents.OnAudit(AText);
   end;
-end;
-
-function TMcpServer.ListResources: TJSONObject;
-var
-  mItems: TJSONArray;
-  mItem: TJSONObject;
-  mResource: TMcpResource;
-begin
-  mItems := TJSONArray.Create;
-  for mResource in FCatalog.Resources do
-  begin
-    if mResource.WithPrompts and not PromptsEnabled then
-    begin
-      Continue;
-    end;
-    mItem := TJSONObject.Create;
-    mItem.AddPair('uri', mResource.Uri);
-    mItem.AddPair('name', mResource.Name);
-    mItem.AddPair('description', mResource.Description);
-    mItem.AddPair('mimeType', mResource.MimeType);
-    mItems.Add(mItem);
-  end;
-  Result := TJSONObject.Create;
-  Result.AddPair('resources', mItems);
 end;
 
 function ResourceJson(const AUri, AMimeType, AText: string): TJSONObject;
@@ -749,6 +762,30 @@ begin
     on E: EMcpToolError do
       raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, E.Message);
   end;
+end;
+
+function TMcpServer.ListResources: TJSONObject;
+var
+  mItems: TJSONArray;
+  mItem: TJSONObject;
+  mResource: TMcpResource;
+begin
+  mItems := TJSONArray.Create;
+  for mResource in FCatalog.Resources do
+  begin
+    if mResource.WithPrompts and not PromptsEnabled then
+    begin
+      Continue;
+    end;
+    mItem := TJSONObject.Create;
+    mItem.AddPair('uri', mResource.Uri);
+    mItem.AddPair('name', mResource.Name);
+    mItem.AddPair('description', mResource.Description);
+    mItem.AddPair('mimeType', mResource.MimeType);
+    mItems.Add(mItem);
+  end;
+  Result := TJSONObject.Create;
+  Result.AddPair('resources', mItems);
 end;
 
 function TMcpServer.ReadResource(const AParams: TJSONValue): TJSONObject;
@@ -938,43 +975,6 @@ begin
   Result.AddPair('tools', mTools);
 end;
 
-function TMcpServer.Execute(const ATool: TMcpTool; const AArguments: TJSONObject; out AText: string): Boolean;
-begin
-  Result := False;
-  if not Available(ATool) then
-  begin
-    if FRestricted and (ATool.Kind <> TMcpToolKind.Read) then
-    begin
-      AText := cTexts[TServerText.ToolIsOffInRestricted].Fmt([ATool.Name]);
-    end
-    else
-    begin
-      AText := cTexts[TServerText.ToolIsSwitchedOffIn].Fmt([ATool.Name]);
-    end;
-    Exit(True);
-  end;
-  try
-    if ATool.Kind <> TMcpToolKind.Read then
-    begin
-      if AArguments <> nil then
-      begin
-        Audit(Format('MCP %s %s', [ATool.Name, TLogMarks.Text(AArguments.ToJSON)]));
-      end
-      else
-      begin
-        Audit(Format('MCP %s', [ATool.Name]));
-      end;
-    end;
-    AText := ATool.Handler(AArguments);
-  except
-    on E: EMcpToolError do
-    begin
-      AText := E.Message;
-      Result := True;
-    end;
-  end;
-end;
-
 function TMcpServer.CallTool(const AParams: TJSONValue): TJSONObject;
 var
   mName, mText: string;
@@ -1034,10 +1034,7 @@ begin
   end;
 end;
 
-class function TMcpArgs.StringSchema(const ANames, ADescriptions: array of string): string;
-begin
-  Result := StringSchema(ANames, ADescriptions, -1);
-end;
+{ TMcpArgs }
 
 class function TMcpArgs.StringSchema(const ANames, ADescriptions: array of string; ARequired: Integer): string;
 var
@@ -1072,6 +1069,20 @@ begin
   Result := '{"type":"object","properties":{' + mProperties + '},"required":[' + mRequired + ']}';
 end;
 
+class function TMcpArgs.StringSchema(const ANames, ADescriptions: array of string): string;
+begin
+  Result := StringSchema(ANames, ADescriptions, -1);
+end;
+
+class function TMcpArgs.RequiredString(const AArguments: TJSONObject; const AName: string): string;
+begin
+  Result := OptionalString(AArguments, AName);
+  if Result = '' then
+  begin
+    raise EMcpToolError.CreateFmt(cTexts[TServerText.ParameterMissing].Text, [AName]);
+  end;
+end;
+
 class function TMcpArgs.OptionalString(const AArguments: TJSONObject; const AName: string): string;
 var
   mValue: TJSONValue;
@@ -1085,15 +1096,6 @@ begin
   if (mValue <> nil) and not (mValue is TJSONNull) then
   begin
     Result := Trim(mValue.Value);
-  end;
-end;
-
-class function TMcpArgs.RequiredString(const AArguments: TJSONObject; const AName: string): string;
-begin
-  Result := OptionalString(AArguments, AName);
-  if Result = '' then
-  begin
-    raise EMcpToolError.CreateFmt(cTexts[TServerText.ParameterMissing].Text, [AName]);
   end;
 end;
 

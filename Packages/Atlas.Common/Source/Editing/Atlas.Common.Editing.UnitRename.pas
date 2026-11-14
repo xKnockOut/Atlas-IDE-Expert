@@ -118,6 +118,8 @@ begin
   Result := True;
 end;
 
+{ TUnitRename }
+
 class function TUnitRename.UnitNameOf(const AFileName: string): string;
 begin
   Result := '';

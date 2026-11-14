@@ -130,13 +130,6 @@ begin
   Result := FTables.Projects;
 end;
 
-procedure TAtlasTrackerProjectsPart.Build;
-begin
-  BuildList;
-  BuildFields;
-  BuildButtons;
-end;
-
 procedure TAtlasTrackerProjectsPart.PathsChanged(APaths: TArray<string>);
 begin
   Table.SetPaths(APaths);
@@ -245,35 +238,6 @@ begin
   end;
 end;
 
-procedure TAtlasTrackerProjectsPart.Refresh;
-begin
-  if FView.List = nil then
-  begin
-    Exit;
-  end;
-  if Assigned(FHooks.OnContext) then
-  begin
-    Table.SetContext(FHooks.OnContext());
-  end
-  else
-  begin
-    Table.SetContext(TAtlasTrackerProjectContext.Empty);
-  end;
-  // Auswahl der Verbindung: die persönlichen mit Namen (eine Zeile verweist per Name auf sie).
-  FFilling := True;
-  try
-    FView.Connection.SetChoices(Table.Choices);
-  finally
-    FFilling := False;
-  end;
-  if FRows.ListReady(FView.List) then
-  begin
-    FillList;
-  end;
-  FillFields;
-  FOnChanged;
-end;
-
 procedure TAtlasTrackerProjectsPart.FillList;
 var
   mRow: TAtlasTrackerProjectMapping;
@@ -336,6 +300,39 @@ end;
 function TAtlasTrackerProjectsPart.ItemReady: Boolean;
 begin
   Result := FRows.ListReady(FView.List) and (Table.Selected < FView.List.Items.Count);
+end;
+
+function TAtlasTrackerProjectsPart.Browse(AFolder: Boolean; out APath: string): Boolean;
+var
+  mFolder: TFileOpenDialog;
+  mFile: TOpenDialog;
+begin
+  APath := '';
+  if Assigned(FHooks.OnBrowse) then
+  begin
+    Exit(FHooks.OnBrowse(AFolder, APath));
+  end;
+  if AFolder then
+  begin
+    mFolder := TFileOpenDialog.Create(nil);
+    try
+      mFolder.Options := mFolder.Options + [fdoPickFolders, fdoPathMustExist];
+      Result := mFolder.Execute;
+      APath := mFolder.FileName;
+    finally
+      mFolder.Free;
+    end;
+    Exit;
+  end;
+  mFile := TOpenDialog.Create(nil);
+  try
+    mFile.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectFileFilter);
+    mFile.Options := mFile.Options + [ofFileMustExist];
+    Result := mFile.Execute;
+    APath := mFile.FileName;
+  finally
+    mFile.Free;
+  end;
 end;
 
 procedure TAtlasTrackerProjectsPart.SelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -417,15 +414,6 @@ begin
   end;
 end;
 
-procedure TAtlasTrackerProjectsPart.AddMatch(const AMatch: string);
-begin
-  if Table.Add(AMatch) then
-  begin
-    Refresh;
-    TRows.Focus(FView.Project);
-  end;
-end;
-
 procedure TAtlasTrackerProjectsPart.AddCurrentClick(Sender: TObject);
 begin
   Refresh;
@@ -442,39 +430,6 @@ procedure TAtlasTrackerProjectsPart.AddClick(Sender: TObject);
 begin
   // Unter dem Knopf aufklappen.
   FView.AddMenu.Popup(FView.Add.ClientOrigin.X, FView.Add.ClientOrigin.Y + FView.Add.Height);
-end;
-
-function TAtlasTrackerProjectsPart.Browse(AFolder: Boolean; out APath: string): Boolean;
-var
-  mFolder: TFileOpenDialog;
-  mFile: TOpenDialog;
-begin
-  APath := '';
-  if Assigned(FHooks.OnBrowse) then
-  begin
-    Exit(FHooks.OnBrowse(AFolder, APath));
-  end;
-  if AFolder then
-  begin
-    mFolder := TFileOpenDialog.Create(nil);
-    try
-      mFolder.Options := mFolder.Options + [fdoPickFolders, fdoPathMustExist];
-      Result := mFolder.Execute;
-      APath := mFolder.FileName;
-    finally
-      mFolder.Free;
-    end;
-    Exit;
-  end;
-  mFile := TOpenDialog.Create(nil);
-  try
-    mFile.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectFileFilter);
-    mFile.Options := mFile.Options + [ofFileMustExist];
-    Result := mFile.Execute;
-    APath := mFile.FileName;
-  finally
-    mFile.Free;
-  end;
 end;
 
 procedure TAtlasTrackerProjectsPart.AddFileClick(Sender: TObject);
@@ -503,6 +458,51 @@ begin
   begin
     Table.Remove;
     Refresh;
+  end;
+end;
+
+procedure TAtlasTrackerProjectsPart.Build;
+begin
+  BuildList;
+  BuildFields;
+  BuildButtons;
+end;
+
+procedure TAtlasTrackerProjectsPart.Refresh;
+begin
+  if FView.List = nil then
+  begin
+    Exit;
+  end;
+  if Assigned(FHooks.OnContext) then
+  begin
+    Table.SetContext(FHooks.OnContext());
+  end
+  else
+  begin
+    Table.SetContext(TAtlasTrackerProjectContext.Empty);
+  end;
+  // Auswahl der Verbindung: die persönlichen mit Namen (eine Zeile verweist per Name auf sie).
+  FFilling := True;
+  try
+    FView.Connection.SetChoices(Table.Choices);
+  finally
+    FFilling := False;
+  end;
+  if FRows.ListReady(FView.List) then
+  begin
+    FillList;
+  end;
+  FillFields;
+  FOnChanged;
+end;
+
+procedure TAtlasTrackerProjectsPart.AddMatch(const AMatch: string);
+begin
+  if Table.Add(AMatch) then
+  begin
+    Refresh;
+    TRows.Focus(FView.Project);
   end;
 end;
 

@@ -95,77 +95,6 @@ begin
   FParts.Bar.Visible := False;
 end;
 
-procedure TAtlasResultsFlowPart.AddChild(AParent: TTreeNode; const AChild: TAtlasDataFlowChild; ALevel: Integer;
-  const APath: TArray<string>);
-var
-  mData: TAtlasResultsNode;
-  mSourceNode: TTreeNode;
-begin
-  if AChild.Kind = TAtlasDataFlowChildKind.Place then
-  begin
-    View.AddNode(AParent, TAtlasResultsTexts.FlowPlaceText(AChild.Place),
-      TAtlasResultsNode.Place(TAtlasResultsNodeKind.FlowPlace, AChild.Place.FileName, AChild.Place.Line,
-      AChild.Place.Character));
-    Exit;
-  end;
-  mData := TAtlasResultsNode.Place(TAtlasResultsNodeKind.FlowSource, AChild.Source.FileName, AChild.Source.Line,
-    AChild.Source.Character);
-  mData.FlowSource := AChild.Source;
-  mData.FlowPath := TAtlasDataFlowTree.ChildPath(APath, AChild.Source.Key);
-  mData.FlowLevel := ALevel;
-  mData.Loaded := not AChild.Expandable;
-  mSourceNode := View.AddNode(AParent, TAtlasResultsTexts.FlowSourceText(AChild, FDirection), mData);
-  if AChild.Expandable then
-  begin
-    // Platzhalter, damit sich die Quelle aufklappen lässt; geladen wird erst dann.
-    View.AddNode(mSourceNode, '…', TAtlasResultsNode.Create(TAtlasResultsNodeKind.Placeholder));
-  end;
-end;
-
-procedure TAtlasResultsFlowPart.AddNodes(AParent: TTreeNode; const ANodes: TArray<TAtlasDataFlowNode>;
-  ALevel: Integer; const APath: TArray<string>);
-var
-  mNode: TAtlasDataFlowNode;
-  mChild: TAtlasDataFlowChild;
-  mPlace: TAtlasDataFlowPlace;
-  mFlowNode: TTreeNode;
-begin
-  for mNode in ANodes do
-  begin
-    mPlace := TAtlasDataFlowTree.FirstPlace(mNode);
-    mFlowNode := View.AddNode(AParent, TAtlasResultsTexts.FlowNodeText(mNode),
-      TAtlasResultsNode.Place(TAtlasResultsNodeKind.Flow, mPlace.FileName, mPlace.Line, mPlace.Character));
-    for mChild in TAtlasDataFlowTree.Children(mNode, ALevel, FMaxDepth) do
-    begin
-      AddChild(mFlowNode, mChild, ALevel, APath);
-    end;
-  end;
-end;
-
-procedure TAtlasResultsFlowPart.Show(const ATitle: string; ADirection: TAtlasDataFlowDirection;
-  const AResult: TAtlasDataFlowResult; AMaxDepth: Integer; AOnlyProject, AExcludeTests: Boolean);
-begin
-  View.Clear(ATitle);
-  FShows := True;
-  FDirection := ADirection;
-  FMaxDepth := TAtlasDataFlowTree.ClampDepth(AMaxDepth);
-  FSettingFilter := True;
-  try
-    FParts.OnlyProject.Checked := AOnlyProject;
-    FParts.ExcludeTests.Checked := AExcludeTests;
-  finally
-    FSettingFilter := False;
-  end;
-  FParts.Bar.Visible := True;
-  View.Tree.Items.BeginUpdate;
-  try
-    AddNodes(nil, AResult.Nodes, 1, TArray<string>.Create(AResult.Symbol.Key));
-  finally
-    View.Tree.Items.EndUpdate;
-  end;
-  View.Select(nil);
-end;
-
 function TAtlasResultsFlowPart.Expand(ANode: TTreeNode; const AData: TAtlasResultsNode;
   var AAllowExpansion: Boolean): Boolean;
 var
@@ -200,6 +129,53 @@ begin
   AAllowExpansion := ANode.HasChildren;
 end;
 
+procedure TAtlasResultsFlowPart.AddNodes(AParent: TTreeNode; const ANodes: TArray<TAtlasDataFlowNode>;
+  ALevel: Integer; const APath: TArray<string>);
+var
+  mNode: TAtlasDataFlowNode;
+  mChild: TAtlasDataFlowChild;
+  mPlace: TAtlasDataFlowPlace;
+  mFlowNode: TTreeNode;
+begin
+  for mNode in ANodes do
+  begin
+    mPlace := TAtlasDataFlowTree.FirstPlace(mNode);
+    mFlowNode := View.AddNode(AParent, TAtlasResultsTexts.FlowNodeText(mNode),
+      TAtlasResultsNode.Place(TAtlasResultsNodeKind.Flow, mPlace.FileName, mPlace.Line, mPlace.Character));
+    for mChild in TAtlasDataFlowTree.Children(mNode, ALevel, FMaxDepth) do
+    begin
+      AddChild(mFlowNode, mChild, ALevel, APath);
+    end;
+  end;
+end;
+
+procedure TAtlasResultsFlowPart.AddChild(AParent: TTreeNode; const AChild: TAtlasDataFlowChild; ALevel: Integer;
+  const APath: TArray<string>);
+var
+  mData: TAtlasResultsNode;
+  mSourceNode: TTreeNode;
+begin
+  if AChild.Kind = TAtlasDataFlowChildKind.Place then
+  begin
+    View.AddNode(AParent, TAtlasResultsTexts.FlowPlaceText(AChild.Place),
+      TAtlasResultsNode.Place(TAtlasResultsNodeKind.FlowPlace, AChild.Place.FileName, AChild.Place.Line,
+      AChild.Place.Character));
+    Exit;
+  end;
+  mData := TAtlasResultsNode.Place(TAtlasResultsNodeKind.FlowSource, AChild.Source.FileName, AChild.Source.Line,
+    AChild.Source.Character);
+  mData.FlowSource := AChild.Source;
+  mData.FlowPath := TAtlasDataFlowTree.ChildPath(APath, AChild.Source.Key);
+  mData.FlowLevel := ALevel;
+  mData.Loaded := not AChild.Expandable;
+  mSourceNode := View.AddNode(AParent, TAtlasResultsTexts.FlowSourceText(AChild, FDirection), mData);
+  if AChild.Expandable then
+  begin
+    // Platzhalter, damit sich die Quelle aufklappen lässt; geladen wird erst dann.
+    View.AddNode(mSourceNode, '…', TAtlasResultsNode.Create(TAtlasResultsNodeKind.Placeholder));
+  end;
+end;
+
 procedure TAtlasResultsFlowPart.FilterClick(Sender: TObject);
 begin
   if FSettingFilter or not FShows or not Assigned(FHandlers.OnFilter) then
@@ -207,6 +183,30 @@ begin
     Exit;
   end;
   FHandlers.OnFilter(FParts.OnlyProject.Checked, FParts.ExcludeTests.Checked);
+end;
+
+procedure TAtlasResultsFlowPart.Show(const ATitle: string; ADirection: TAtlasDataFlowDirection;
+  const AResult: TAtlasDataFlowResult; AMaxDepth: Integer; AOnlyProject, AExcludeTests: Boolean);
+begin
+  View.Clear(ATitle);
+  FShows := True;
+  FDirection := ADirection;
+  FMaxDepth := TAtlasDataFlowTree.ClampDepth(AMaxDepth);
+  FSettingFilter := True;
+  try
+    FParts.OnlyProject.Checked := AOnlyProject;
+    FParts.ExcludeTests.Checked := AExcludeTests;
+  finally
+    FSettingFilter := False;
+  end;
+  FParts.Bar.Visible := True;
+  View.Tree.Items.BeginUpdate;
+  try
+    AddNodes(nil, AResult.Nodes, 1, TArray<string>.Create(AResult.Symbol.Key));
+  finally
+    View.Tree.Items.EndUpdate;
+  end;
+  View.Select(nil);
 end;
 
 end.

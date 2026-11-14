@@ -280,6 +280,8 @@ type
     procedure Run(const AText: string);
   end;
 
+{ TUndoReader }
+
 procedure TUndoReader.Open(const AKind, AName, ATypeName: string);
 var
   mObject: TAtlasUndoObject;
@@ -462,6 +464,8 @@ begin
   end;
 end;
 
+{ TUndoPlanner }
+
 procedure TUndoPlanner.Init(const ACurrent, ATarget: string);
 var
   mIndex: Integer;
@@ -494,18 +498,6 @@ procedure TUndoPlanner.Done;
 begin
   CurrentIndex.Free;
   TargetIndex.Free;
-end;
-
-function TUndoPlanner.SameValues(const A, B: TAtlasUndoObject): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := (A.TypeName = B.TypeName) and (Length(A.Values) = Length(B.Values));
-  for mIndex := 0 to High(A.Values) do
-  begin
-    Result := Result and SameText(A.Values[mIndex].Path, B.Values[mIndex].Path) and
-      (A.Values[mIndex].Value = B.Values[mIndex].Value);
-  end;
 end;
 
 procedure TUndoPlanner.MatchRenames;
@@ -554,18 +546,6 @@ begin
   end;
 end;
 
-function TUndoPlanner.MappedParent(ACurrent: Integer): string;
-var
-  mParent: Integer;
-begin
-  Result := Current[ACurrent].ParentKey;
-  mParent := Lookup(CurrentIndex, Result);
-  if (mParent >= 0) and (Match[mParent] >= 0) then
-  begin
-    Result := Target[Match[mParent]].Key;
-  end;
-end;
-
 procedure TUndoPlanner.MarkGone;
 var
   mIndex, mParent: Integer;
@@ -609,6 +589,30 @@ begin
     begin
       Steps.Skipped := Steps.Skipped + [Current[mIndex].Key];
     end;
+  end;
+end;
+
+function TUndoPlanner.SameValues(const A, B: TAtlasUndoObject): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := (A.TypeName = B.TypeName) and (Length(A.Values) = Length(B.Values));
+  for mIndex := 0 to High(A.Values) do
+  begin
+    Result := Result and SameText(A.Values[mIndex].Path, B.Values[mIndex].Path) and
+      (A.Values[mIndex].Value = B.Values[mIndex].Value);
+  end;
+end;
+
+function TUndoPlanner.MappedParent(ACurrent: Integer): string;
+var
+  mParent: Integer;
+begin
+  Result := Current[ACurrent].ParentKey;
+  mParent := Lookup(CurrentIndex, Result);
+  if (mParent >= 0) and (Match[mParent] >= 0) then
+  begin
+    Result := Target[Match[mParent]].Key;
   end;
 end;
 

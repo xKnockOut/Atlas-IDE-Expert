@@ -57,6 +57,8 @@ begin
   end;
 end;
 
+{ TResourceNames }
+
 class function TResourceNames.Read(const AData: TBytes): TArray<string>;
 var
   mAt, mNext, mHeaderEnd, mPos: Integer;

@@ -389,11 +389,27 @@ begin
   inherited;
 end;
 
-procedure TQueryFacts.CheckCancelled;
+procedure TQueryFacts.LoadLength(AUnit: TQueryUnit);
+var
+  mText: string;
+  mItem: TStructureMetrics;
 begin
-  if Assigned(FSource.Cancelled) and FSource.Cancelled() then
+  if AUnit.HasLength then
   begin
-    raise EQueryCancelled.Create(cTexts[TQueryEngineText.QueryCancelled].Text);
+    Exit;
+  end;
+  AUnit.HasLength := True;
+  AUnit.UnitLength := -1;
+  if not (Assigned(FSource.ReadText) and FSource.ReadText(AUnit.Data.FileName, mText)) then
+  begin
+    Exit;
+  end;
+  for mItem in TMetricsCalculator.StructureForText(mText) do
+  begin
+    if mItem.Kind = TStructureKind.UnitLength then
+    begin
+      AUnit.UnitLength := mItem.Value;
+    end;
   end;
 end;
 
@@ -596,30 +612,6 @@ begin
   end;
 end;
 
-procedure TQueryFacts.LoadLength(AUnit: TQueryUnit);
-var
-  mText: string;
-  mItem: TStructureMetrics;
-begin
-  if AUnit.HasLength then
-  begin
-    Exit;
-  end;
-  AUnit.HasLength := True;
-  AUnit.UnitLength := -1;
-  if not (Assigned(FSource.ReadText) and FSource.ReadText(AUnit.Data.FileName, mText)) then
-  begin
-    Exit;
-  end;
-  for mItem in TMetricsCalculator.StructureForText(mText) do
-  begin
-    if mItem.Kind = TStructureKind.UnitLength then
-    begin
-      AUnit.UnitLength := mItem.Value;
-    end;
-  end;
-end;
-
 procedure TQueryFacts.LoadTokens(AUnit: TQueryUnit);
 var
   mText: string;
@@ -646,6 +638,15 @@ begin
     end;
   end;
   SetLength(AUnit.Tokens, mCount);
+end;
+
+function TQueryFacts.Ancestry(AUnit: TQueryUnit): TAncestry;
+begin
+  if AUnit.Ancestry = nil then
+  begin
+    AUnit.Ancestry := TAncestry.Create(FSource.Index, AUnit.Data);
+  end;
+  Result := AUnit.Ancestry;
 end;
 
 function CountComponents(AObject: TDfmObject): Integer;
@@ -702,15 +703,6 @@ begin
       mDocument.Free;
     end;
   end;
-end;
-
-function TQueryFacts.Ancestry(AUnit: TQueryUnit): TAncestry;
-begin
-  if AUnit.Ancestry = nil then
-  begin
-    AUnit.Ancestry := TAncestry.Create(FSource.Index, AUnit.Data);
-  end;
-  Result := AUnit.Ancestry;
 end;
 
 function TQueryFacts.Graph: TUsesGraph;
@@ -838,6 +830,44 @@ begin
   end;
 end;
 
+function TQueryFacts.Implements(AElement: TQueryElement; const AName: string): Boolean;
+var
+  mType, mLink: TSymbolLocation;
+  mTarget, mName: string;
+  mIndex, mFirst: Integer;
+begin
+  if not TypeOf(AElement, mType) then
+  begin
+    Exit(False);
+  end;
+  mTarget := TCodeQueryEngine.ShortName(AName);
+  // Ein Interface „setzt um“, wovon es abgeleitet ist.
+  if mType.Symbol.Kind = TIndexSymbolKind.InterfaceType then
+  begin
+    Exit(Inherits(AElement, AName));
+  end;
+  for mLink in Chain(AElement.Owner, mType) do
+  begin
+    // Bei Klassen ist der erste Eintrag der Vorfahr, die übrigen sind Interfaces.
+    mFirst := 0;
+    if mLink.Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType] then
+    begin
+      mFirst := 1;
+    end;
+    for mIndex := mFirst to High(mLink.Symbol.Ancestors) do
+    begin
+      for mName in InterfaceClosure(mLink.Symbol.Ancestors[mIndex]) do
+      begin
+        if SameText(mName, mTarget) then
+        begin
+          Exit(True);
+        end;
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
 /// <summary>Vorfahren aller Interfaces namens AName im Index, als Kurznamen.</summary>
 function InterfaceAncestors(const AIndex: ISymbolIndex; const AName: string): TArray<string>;
 var
@@ -953,44 +983,6 @@ begin
   end;
 end;
 
-function TQueryFacts.Implements(AElement: TQueryElement; const AName: string): Boolean;
-var
-  mType, mLink: TSymbolLocation;
-  mTarget, mName: string;
-  mIndex, mFirst: Integer;
-begin
-  if not TypeOf(AElement, mType) then
-  begin
-    Exit(False);
-  end;
-  mTarget := TCodeQueryEngine.ShortName(AName);
-  // Ein Interface „setzt um“, wovon es abgeleitet ist.
-  if mType.Symbol.Kind = TIndexSymbolKind.InterfaceType then
-  begin
-    Exit(Inherits(AElement, AName));
-  end;
-  for mLink in Chain(AElement.Owner, mType) do
-  begin
-    // Bei Klassen ist der erste Eintrag der Vorfahr, die übrigen sind Interfaces.
-    mFirst := 0;
-    if mLink.Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType] then
-    begin
-      mFirst := 1;
-    end;
-    for mIndex := mFirst to High(mLink.Symbol.Ancestors) do
-    begin
-      for mName in InterfaceClosure(mLink.Symbol.Ancestors[mIndex]) do
-      begin
-        if SameText(mName, mTarget) then
-        begin
-          Exit(True);
-        end;
-      end;
-    end;
-  end;
-  Result := False;
-end;
-
 function TQueryFacts.UsesTarget(AElement: TQueryElement; const AName: string): Boolean;
 begin
   Result := TCodeQueryEngine.UsesUnit(AElement.Owner.Data.InterfaceUses, AName, FSource.Namespaces) or
@@ -1043,6 +1035,14 @@ begin
     end;
   end;
   Result := False;
+end;
+
+procedure TQueryFacts.CheckCancelled;
+begin
+  if Assigned(FSource.Cancelled) and FSource.Cancelled() then
+  begin
+    raise EQueryCancelled.Create(cTexts[TQueryEngineText.QueryCancelled].Text);
+  end;
 end;
 
 /// <summary>Gehört ASymbol aus AUnit zur Menge AEntity (ohne Prüfung, ob es ein deklariertes Mitglied ist)?
@@ -1137,37 +1137,43 @@ begin
   end;
 end;
 
-function TQueryFacts.Elements(AEntity: TQueryEntity): TObjectList<TQueryElement>;
-var
-  mUnit: TQueryUnit;
-  mSeen: TDictionary<string, Integer>;
+function TQueryFacts.TryCountValue(AElement: TQueryElement; const AField: string; out AValue: TQueryValue): Boolean;
 begin
-  Result := TObjectList<TQueryElement>.Create(True);
-  mSeen := TDictionary<string, Integer>.Create;
-  try
-    try
-      for mUnit in FUnits do
+  Result := True;
+  case IndexText(AField, ['classes', 'methods', 'fields', 'properties', 'overrides', 'uses']) of
+    0:
       begin
-        CheckCancelled;
-        if AEntity = TQueryEntity.Units then
-        begin
-          Result.Add(NewElement(mUnit, -1));
-          Continue;
-        end;
-        if AEntity = TQueryEntity.Forms then
-        begin
-          LoadForm(mUnit);
-        end;
-        mSeen.Clear;
-        AddUnitElements(mUnit, AEntity, Result, mSeen);
+        LoadCounts(AElement.Owner);
+        AValue := TQueryValue.OfNumber(AElement.Owner.ClassCount);
       end;
-    except
-      // Abbruch (EQueryCancelled) mitten im Sammeln: die Liste gehört noch niemandem.
-      Result.Free;
-      raise;
-    end;
-  finally
-    mSeen.Free;
+    1:
+      if AElement.IsUnit then
+      begin
+        LoadCounts(AElement.Owner);
+        AValue := TQueryValue.OfNumber(AElement.Owner.RoutineCount);
+      end
+      else
+      begin
+        AValue := TQueryValue.OfNumber(CountsOf(AElement).Methods);
+      end;
+    2:
+      AValue := TQueryValue.OfNumber(CountsOf(AElement).Fields);
+    3:
+      AValue := TQueryValue.OfNumber(CountsOf(AElement).Properties);
+    4:
+      if AElement.Symbol.Kind in cMethodKinds then
+      begin
+        AValue := TQueryValue.OfNumber(Ord(AElement.Symbol.HasDirective('override')));
+      end
+      else
+      begin
+        AValue := TQueryValue.OfNumber(CountsOf(AElement).Overrides);
+      end;
+    5:
+      AValue := TQueryValue.OfNumber(Length(AElement.Owner.Data.InterfaceUses) +
+        Length(AElement.Owner.Data.ImplementationUses));
+  else
+    Result := False;
   end;
 end;
 
@@ -1236,46 +1242,6 @@ begin
       AValue := TQueryValue.OfFlag(AElement.Symbol.IsVirtual);
     9:
       AValue := AncestorValue(AElement.Symbol);
-  else
-    Result := False;
-  end;
-end;
-
-function TQueryFacts.TryCountValue(AElement: TQueryElement; const AField: string; out AValue: TQueryValue): Boolean;
-begin
-  Result := True;
-  case IndexText(AField, ['classes', 'methods', 'fields', 'properties', 'overrides', 'uses']) of
-    0:
-      begin
-        LoadCounts(AElement.Owner);
-        AValue := TQueryValue.OfNumber(AElement.Owner.ClassCount);
-      end;
-    1:
-      if AElement.IsUnit then
-      begin
-        LoadCounts(AElement.Owner);
-        AValue := TQueryValue.OfNumber(AElement.Owner.RoutineCount);
-      end
-      else
-      begin
-        AValue := TQueryValue.OfNumber(CountsOf(AElement).Methods);
-      end;
-    2:
-      AValue := TQueryValue.OfNumber(CountsOf(AElement).Fields);
-    3:
-      AValue := TQueryValue.OfNumber(CountsOf(AElement).Properties);
-    4:
-      if AElement.Symbol.Kind in cMethodKinds then
-      begin
-        AValue := TQueryValue.OfNumber(Ord(AElement.Symbol.HasDirective('override')));
-      end
-      else
-      begin
-        AValue := TQueryValue.OfNumber(CountsOf(AElement).Overrides);
-      end;
-    5:
-      AValue := TQueryValue.OfNumber(Length(AElement.Owner.Data.InterfaceUses) +
-        Length(AElement.Owner.Data.ImplementationUses));
   else
     Result := False;
   end;
@@ -1371,12 +1337,36 @@ begin
   end;
 end;
 
-function TQueryFacts.Value(AElement: TQueryElement; const AField: string): TQueryValue;
+function TQueryFacts.LogicHolds(AElement: TQueryElement; ANode: TQueryLogicNode): Boolean;
+var
+  mItem: TQueryNode;
+  mAll: Boolean;
 begin
-  if not TryPlainValue(AElement, AField, Result) and not TryCountValue(AElement, AField, Result) and
-    not TryMetricValue(AElement, AField, Result) and not TryRelationValue(AElement, AField, Result) then
+  // and: gilt, bis ein Glied nicht gilt; or: gilt nicht, bis ein Glied gilt.
+  mAll := ANode.Logic = TQueryLogic.And_;
+  for mItem in ANode.Items do
   begin
-    Result := TQueryValue.Empty;
+    if Holds(AElement, mItem) <> mAll then
+    begin
+      Exit(not mAll);
+    end;
+  end;
+  Result := mAll;
+end;
+
+function TQueryFacts.PredicateHolds(AElement: TQueryElement; ANode: TQueryPredicateNode): Boolean;
+begin
+  case ANode.Kind of
+    TQueryPredicateKind.Inherits:
+      Result := Inherits(AElement, ANode.Argument);
+    TQueryPredicateKind.Implements:
+      Result := Implements(AElement, ANode.Argument);
+    TQueryPredicateKind.Uses_:
+      Result := UsesTarget(AElement, ANode.Argument);
+    TQueryPredicateKind.Calls:
+      Result := CallsTarget(AElement, ANode.Argument);
+  else
+    Result := HasAttribute(AElement, ANode.Argument);
   end;
 end;
 
@@ -1429,36 +1419,46 @@ begin
   end;
 end;
 
-function TQueryFacts.LogicHolds(AElement: TQueryElement; ANode: TQueryLogicNode): Boolean;
+function TQueryFacts.Elements(AEntity: TQueryEntity): TObjectList<TQueryElement>;
 var
-  mItem: TQueryNode;
-  mAll: Boolean;
+  mUnit: TQueryUnit;
+  mSeen: TDictionary<string, Integer>;
 begin
-  // and: gilt, bis ein Glied nicht gilt; or: gilt nicht, bis ein Glied gilt.
-  mAll := ANode.Logic = TQueryLogic.And_;
-  for mItem in ANode.Items do
-  begin
-    if Holds(AElement, mItem) <> mAll then
-    begin
-      Exit(not mAll);
+  Result := TObjectList<TQueryElement>.Create(True);
+  mSeen := TDictionary<string, Integer>.Create;
+  try
+    try
+      for mUnit in FUnits do
+      begin
+        CheckCancelled;
+        if AEntity = TQueryEntity.Units then
+        begin
+          Result.Add(NewElement(mUnit, -1));
+          Continue;
+        end;
+        if AEntity = TQueryEntity.Forms then
+        begin
+          LoadForm(mUnit);
+        end;
+        mSeen.Clear;
+        AddUnitElements(mUnit, AEntity, Result, mSeen);
+      end;
+    except
+      // Abbruch (EQueryCancelled) mitten im Sammeln: die Liste gehört noch niemandem.
+      Result.Free;
+      raise;
     end;
+  finally
+    mSeen.Free;
   end;
-  Result := mAll;
 end;
 
-function TQueryFacts.PredicateHolds(AElement: TQueryElement; ANode: TQueryPredicateNode): Boolean;
+function TQueryFacts.Value(AElement: TQueryElement; const AField: string): TQueryValue;
 begin
-  case ANode.Kind of
-    TQueryPredicateKind.Inherits:
-      Result := Inherits(AElement, ANode.Argument);
-    TQueryPredicateKind.Implements:
-      Result := Implements(AElement, ANode.Argument);
-    TQueryPredicateKind.Uses_:
-      Result := UsesTarget(AElement, ANode.Argument);
-    TQueryPredicateKind.Calls:
-      Result := CallsTarget(AElement, ANode.Argument);
-  else
-    Result := HasAttribute(AElement, ANode.Argument);
+  if not TryPlainValue(AElement, AField, Result) and not TryCountValue(AElement, AField, Result) and
+    not TryMetricValue(AElement, AField, Result) and not TryRelationValue(AElement, AField, Result) then
+  begin
+    Result := TQueryValue.Empty;
   end;
 end;
 

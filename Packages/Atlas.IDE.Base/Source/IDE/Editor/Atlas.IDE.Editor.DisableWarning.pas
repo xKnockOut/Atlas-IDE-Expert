@@ -151,6 +151,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeDisableWarning }
+
 class procedure TAtlasIdeDisableWarning.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var

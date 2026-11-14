@@ -114,14 +114,6 @@ begin
   Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
 end;
 
-procedure TAtlasUpdateConsent.ShowIn(const AArea: TRect);
-begin
-  Left := AArea.Right - Width - ScaleValue(cGap);
-  Top := AArea.Bottom - Height - ScaleValue(cGap);
-  // Nicht modal: Die IDE arbeitet weiter, während die Frage offen ist.
-  Show;
-end;
-
 procedure TAtlasUpdateConsent.Run(const AProc: TProc);
 begin
   // Nur die erste Antwort zählt; ausgeführt wird nach dem Schließen.
@@ -154,6 +146,14 @@ end;
 procedure TAtlasUpdateConsent.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   Action := caFree;
+end;
+
+procedure TAtlasUpdateConsent.ShowIn(const AArea: TRect);
+begin
+  Left := AArea.Right - Width - ScaleValue(cGap);
+  Top := AArea.Bottom - Height - ScaleValue(cGap);
+  // Nicht modal: Die IDE arbeitet weiter, während die Frage offen ist.
+  Show;
 end;
 
 end.

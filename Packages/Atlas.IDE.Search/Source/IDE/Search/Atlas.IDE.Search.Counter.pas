@@ -45,6 +45,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeSearchCounter }
+
 class procedure TAtlasIdeSearchCounter.Update;
 var
   mView: IOTAEditView;

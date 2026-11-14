@@ -203,6 +203,8 @@ type
     function TopLevel: Boolean;
   end;
 
+{ TPropertyParser }
+
 procedure TPropertyParser.Open;
 begin
   if (Depth = 0) and Tokens[Index].IsSymbol('[') and (TypeStart < 0) then

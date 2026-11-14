@@ -107,6 +107,8 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormFiles;
 
+{ TDataNameCall }
+
 function TDataNameCall.DisplayName: string;
 begin
   Result := DataSet;
@@ -134,6 +136,8 @@ type
 
 const
   cSuffixes: array[0..3] of string = ('.Params', '.Parameters', '.ParamData', '.Fields');
+
+{ TSqlToken }
 
 function TSqlToken.IsWord(const AText: string): Boolean;
 begin
@@ -789,11 +793,6 @@ begin
   end;
 end;
 
-class function TDataFieldNames.ShortSql(const ASql: string): string;
-begin
-  Result := ShortSql(ASql, 60);
-end;
-
 class function TDataFieldNames.ShortSql(const ASql: string; AMaxLength: Integer): string;
 begin
   Result := Trim(TRegEx.Replace(ASql, '\s+', ' '));
@@ -801,6 +800,11 @@ begin
   begin
     Result := Copy(Result, 1, AMaxLength - 1) + '…';
   end;
+end;
+
+class function TDataFieldNames.ShortSql(const ASql: string): string;
+begin
+  Result := ShortSql(ASql, 60);
 end;
 
 /// <summary>Name des Wurzelobjekts der Formulardatei; '' ohne.</summary>
@@ -820,6 +824,8 @@ begin
   end;
 end;
 
+{ TDataLookupSource }
+
 class function TDataLookupSource.Create(const AText, AFileName: string; const AIndex: ISymbolIndex;
   const AReadText: TDataTextReader): TDataLookupSource;
 begin
@@ -827,6 +833,20 @@ begin
   Result.FileName := AFileName;
   Result.Index := AIndex;
   Result.ReadText := AReadText;
+end;
+
+class function TDataFieldNames.Contains(const ANames: TArray<TDataName>; const AName: string): Boolean;
+var
+  mItem: TDataName;
+begin
+  for mItem in ANames do
+  begin
+    if SameText(mItem.Name, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 class function TDataFieldNames.Lookup(const ASource: TDataLookupSource; const ACall: TDataNameCall; out ASql: string;
@@ -877,20 +897,6 @@ begin
     end;
   end;
   Result := nil;
-end;
-
-class function TDataFieldNames.Contains(const ANames: TArray<TDataName>; const AName: string): Boolean;
-var
-  mItem: TDataName;
-begin
-  for mItem in ANames do
-  begin
-    if SameText(mItem.Name, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 end.

@@ -183,46 +183,7 @@ begin
   end;
 end;
 
-class function TAtlasBuildVerdicts.ParseCodes(const AText: string): TArray<string>;
-var
-  mPart, mCode: string;
-begin
-  Result := nil;
-  for mPart in UpperCase(AText).Split([',', ';', ' ', #9, #13, #10], TStringSplitOptions.ExcludeEmpty) do
-  begin
-    mCode := Trim(mPart);
-    if IsWarningOrHintCode(mCode) and (IndexText(mCode, Result) < 0) then
-    begin
-      Result := Result + [mCode];
-    end;
-  end;
-end;
-
-class function TAtlasBuildVerdicts.NormalizeCodes(const AText: string): string;
-begin
-  Result := string.Join(', ', ParseCodes(AText));
-end;
-
-class function TAtlasBuildVerdicts.Baselinable(const AMessage: TAtlasCompilerMessage): Boolean;
-begin
-  Result := ((AMessage.Severity = TAtlasCompilerSeverity.Warning) or
-    (AMessage.Severity = TAtlasCompilerSeverity.Hint)) and (AMessage.FileName <> '') and
-    IsWarningOrHintCode(UpperCase(AMessage.Code));
-end;
-
-class function TAtlasBuildVerdicts.AnyBaselinable(const AMessages: TArray<TAtlasCompilerMessage>): Boolean;
-var
-  mMessage: TAtlasCompilerMessage;
-begin
-  Result := False;
-  for mMessage in AMessages do
-  begin
-    if Baselinable(mMessage) then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
+{ TAtlasBuildVerdicts }
 
 class procedure TAtlasBuildVerdicts.Remember(var AFirst: Integer; AIndex: Integer;
   const AMessage: TAtlasCompilerMessage);
@@ -275,6 +236,47 @@ begin
   else
   begin
     Result := TAtlasBuildVerdictReason.None;
+  end;
+end;
+
+class function TAtlasBuildVerdicts.ParseCodes(const AText: string): TArray<string>;
+var
+  mPart, mCode: string;
+begin
+  Result := nil;
+  for mPart in UpperCase(AText).Split([',', ';', ' ', #9, #13, #10], TStringSplitOptions.ExcludeEmpty) do
+  begin
+    mCode := Trim(mPart);
+    if IsWarningOrHintCode(mCode) and (IndexText(mCode, Result) < 0) then
+    begin
+      Result := Result + [mCode];
+    end;
+  end;
+end;
+
+class function TAtlasBuildVerdicts.NormalizeCodes(const AText: string): string;
+begin
+  Result := string.Join(', ', ParseCodes(AText));
+end;
+
+class function TAtlasBuildVerdicts.Baselinable(const AMessage: TAtlasCompilerMessage): Boolean;
+begin
+  Result := ((AMessage.Severity = TAtlasCompilerSeverity.Warning) or
+    (AMessage.Severity = TAtlasCompilerSeverity.Hint)) and (AMessage.FileName <> '') and
+    IsWarningOrHintCode(UpperCase(AMessage.Code));
+end;
+
+class function TAtlasBuildVerdicts.AnyBaselinable(const AMessages: TArray<TAtlasCompilerMessage>): Boolean;
+var
+  mMessage: TAtlasCompilerMessage;
+begin
+  Result := False;
+  for mMessage in AMessages do
+  begin
+    if Baselinable(mMessage) then
+    begin
+      Exit(True);
+    end;
   end;
 end;
 

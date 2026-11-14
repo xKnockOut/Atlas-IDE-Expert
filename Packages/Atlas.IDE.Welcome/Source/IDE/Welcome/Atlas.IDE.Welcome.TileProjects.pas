@@ -57,6 +57,8 @@ begin
   end;
 end;
 
+{ TAtlasWelcomeTileProjects }
+
 class function TAtlasWelcomeTileProjects.Access(const ACurrent: TFunc<TAtlasIdeWelcome>):
   TAtlasWelcomeProjectsAccess;
 var

@@ -179,6 +179,15 @@ begin
   inherited Destroy;
 end;
 
+function TAtlasTrackerSettingsRows.AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
+begin
+  Result := TLabel.Create(FOwner);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  Result.Left := 0;
+  Result.Top := Result.ScaleValue(cLabelTop);
+end;
+
 procedure TAtlasTrackerSettingsRows.Detach;
 begin
   FHost := nil;
@@ -225,15 +234,6 @@ function TAtlasTrackerSettingsRows.AddChoice(const AKey, ACaption: string;
   const ACaptions, AValues: TArray<string>): TAtlasChoiceBox;
 begin
   Result := FHost.AddChoice(AKey, ACaption, ACaptions, AValues) as TAtlasChoiceBox;
-end;
-
-function TAtlasTrackerSettingsRows.AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
-begin
-  Result := TLabel.Create(FOwner);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.Left := 0;
-  Result.Top := Result.ScaleValue(cLabelTop);
 end;
 
 function TAtlasTrackerSettingsRows.AddLabelled(const ACaption: string; AControl: TWinControl;

@@ -289,32 +289,6 @@ begin
   FControls.SeriesBox.ItemIndex := Ord(FControls.Chart.Series);
 end;
 
-procedure TAtlasDebugMemoryFrame.SetTimeline(ATimeline: TAtlasMemoryTimeline);
-begin
-  FTimeline := ATimeline;
-  FControls.Chart.Timeline := ATimeline;
-  Refresh;
-end;
-
-procedure TAtlasDebugMemoryFrame.Refresh;
-begin
-  FControls.Chart.Invalidate;
-  UpdateLabels;
-end;
-
-procedure TAtlasDebugMemoryFrame.ShowObjectCount(AVisible: Boolean);
-begin
-  if FControls.ObjectCount.Visible = AVisible then
-  begin
-    Exit;
-  end;
-  // Ganz nach unten (unter die Beschriftungen), die Trennleiste direkt darüber.
-  FControls.ObjectCount.Top := ClientHeight + cOrderObjectCount;
-  FControls.ObjectCount.Visible := AVisible;
-  FControls.ObjectCountSplitter.Top := FControls.ObjectCount.Top - 1;
-  FControls.ObjectCountSplitter.Visible := AVisible;
-end;
-
 procedure TAtlasDebugMemoryFrame.UpdateLabels;
 var
   mHas: Boolean;
@@ -375,6 +349,32 @@ end;
 procedure TAtlasDebugMemoryFrame.ChartSelection(Sender: TObject);
 begin
   UpdateLabels;
+end;
+
+procedure TAtlasDebugMemoryFrame.SetTimeline(ATimeline: TAtlasMemoryTimeline);
+begin
+  FTimeline := ATimeline;
+  FControls.Chart.Timeline := ATimeline;
+  Refresh;
+end;
+
+procedure TAtlasDebugMemoryFrame.Refresh;
+begin
+  FControls.Chart.Invalidate;
+  UpdateLabels;
+end;
+
+procedure TAtlasDebugMemoryFrame.ShowObjectCount(AVisible: Boolean);
+begin
+  if FControls.ObjectCount.Visible = AVisible then
+  begin
+    Exit;
+  end;
+  // Ganz nach unten (unter die Beschriftungen), die Trennleiste direkt darüber.
+  FControls.ObjectCount.Top := ClientHeight + cOrderObjectCount;
+  FControls.ObjectCount.Visible := AVisible;
+  FControls.ObjectCountSplitter.Top := FControls.ObjectCount.Top - 1;
+  FControls.ObjectCountSplitter.Visible := AVisible;
 end;
 
 end.

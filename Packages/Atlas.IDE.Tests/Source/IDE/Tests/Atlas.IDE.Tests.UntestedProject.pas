@@ -115,50 +115,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasIdeUntestedProject.Run;
-var
-  mSettings: TAtlasPluginSettings;
-  mFileName: string;
-  mSelf: TAtlasIdeUntestedProject;
-  mState: IInterface;
-begin
-  if FState.Busy then
-  begin
-    Exit;
-  end;
-  mFileName := TopUnit;
-  if mFileName = '' then
-  begin
-    FOutput.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.UntestedProjectNoFile));
-    FOutput.ShowView;
-    Exit;
-  end;
-  mSettings := TAtlasIdeSettings.Current;
-  mSelf := Self;
-  mState := FStateRef;
-  FState.Busy := Assigned(FScopeOf) and TAtlasIdeHost.RunRequestAsync(FScopeOf(), TAtlasFeature.Build,
-    TAtlasServerRequest.Create(TAtlasUntested.cProjectMethod,
-    TAtlasUntested.ProjectParams(TLspSessionJson.PathToUri(mFileName), mSettings.TestsCoveredByDepth,
-    mSettings.TestsCoveredByPrivate), cTimeoutMs, CancelledFor(mState)),
-    procedure(AJson: string)
-    begin
-      // Der Befehl kann vor der Antwort gehen (Tests ausführen aus): dann nichts mehr anfassen (Regel 3).
-      if TState(mState as TObject).Alive then
-      begin
-        mSelf.Answered(AJson);
-      end;
-    end);
-  if FState.Busy then
-  begin
-    FOutput.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.UntestedProjectRunning));
-  end
-  else
-  begin
-    FOutput.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.UntestedProjectNoServer));
-  end;
-  FOutput.ShowView;
-end;
-
 procedure TAtlasIdeUntestedProject.Answered(const AJson: string);
 var
   mProject: TAtlasUntestedProject;
@@ -214,6 +170,50 @@ begin
   begin
     FOutput.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.UntestedProjectIncomplete));
   end;
+end;
+
+procedure TAtlasIdeUntestedProject.Run;
+var
+  mSettings: TAtlasPluginSettings;
+  mFileName: string;
+  mSelf: TAtlasIdeUntestedProject;
+  mState: IInterface;
+begin
+  if FState.Busy then
+  begin
+    Exit;
+  end;
+  mFileName := TopUnit;
+  if mFileName = '' then
+  begin
+    FOutput.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.UntestedProjectNoFile));
+    FOutput.ShowView;
+    Exit;
+  end;
+  mSettings := TAtlasIdeSettings.Current;
+  mSelf := Self;
+  mState := FStateRef;
+  FState.Busy := Assigned(FScopeOf) and TAtlasIdeHost.RunRequestAsync(FScopeOf(), TAtlasFeature.Build,
+    TAtlasServerRequest.Create(TAtlasUntested.cProjectMethod,
+    TAtlasUntested.ProjectParams(TLspSessionJson.PathToUri(mFileName), mSettings.TestsCoveredByDepth,
+    mSettings.TestsCoveredByPrivate), cTimeoutMs, CancelledFor(mState)),
+    procedure(AJson: string)
+    begin
+      // Der Befehl kann vor der Antwort gehen (Tests ausführen aus): dann nichts mehr anfassen (Regel 3).
+      if TState(mState as TObject).Alive then
+      begin
+        mSelf.Answered(AJson);
+      end;
+    end);
+  if FState.Busy then
+  begin
+    FOutput.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.UntestedProjectRunning));
+  end
+  else
+  begin
+    FOutput.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.UntestedProjectNoServer));
+  end;
+  FOutput.ShowView;
 end;
 
 end.

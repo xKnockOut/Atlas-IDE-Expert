@@ -316,12 +316,6 @@ end;
 { TCompletionDetails }
 
 class function TCompletionDetails.Details(const AIndex: ISymbolIndex; const AFileName, AText: string;
-  const APosition: TTextPosition): TJSONObject;
-begin
-  Result := Details(AIndex, AFileName, AText, APosition, nil);
-end;
-
-class function TCompletionDetails.Details(const AIndex: ISymbolIndex; const AFileName, AText: string;
   const APosition: TTextPosition; const AReadText: TCompletionReadText): TJSONObject;
 var
   mSite: TDetailsSite;
@@ -344,6 +338,12 @@ begin
   AddContainer(Result, mSite);
   AddDirectives(Result, mDeclaration);
   AddDocFields(Result, AddDocumentation(Result, mSite));
+end;
+
+class function TCompletionDetails.Details(const AIndex: ISymbolIndex; const AFileName, AText: string;
+  const APosition: TTextPosition): TJSONObject;
+begin
+  Result := Details(AIndex, AFileName, AText, APosition, nil);
 end;
 
 class procedure TCompletionDetails.Bind(ADetails: TJSONObject; const ABindings: TArray<string>);

@@ -78,6 +78,40 @@ begin
   Text := '';
 end;
 
+procedure TAtlasAutoParen.Update(const ANew: string; out ARemoveAt: Integer);
+var
+  mIndex: Integer;
+  mKeep: Boolean;
+begin
+  ARemoveAt := -1;
+  if not Active then
+  begin
+    Exit;
+  end;
+  // Erste Abweichung (0-basiert).
+  mIndex := FirstDifference(ANew);
+  if Length(ANew) = Length(Text) + 1 then
+  begin
+    mKeep := Inserted(ANew, mIndex, ARemoveAt);
+  end
+  else if Length(ANew) = Length(Text) - 1 then
+  begin
+    mKeep := Deleted(ANew, mIndex);
+  end
+  else
+  begin
+    mKeep := ANew = Text;
+  end;
+  if mKeep then
+  begin
+    Text := ANew;
+  end;
+  if not mKeep or (Close < 0) or (Close >= Length(Text)) or (Text[Close + 1] <> ')') then
+  begin
+    Stop;
+  end;
+end;
+
 function TAtlasAutoParen.FirstDifference(const ANew: string): Integer;
 begin
   Result := 0;
@@ -131,40 +165,6 @@ begin
     Dec(Close);
   end;
   Result := True;
-end;
-
-procedure TAtlasAutoParen.Update(const ANew: string; out ARemoveAt: Integer);
-var
-  mIndex: Integer;
-  mKeep: Boolean;
-begin
-  ARemoveAt := -1;
-  if not Active then
-  begin
-    Exit;
-  end;
-  // Erste Abweichung (0-basiert).
-  mIndex := FirstDifference(ANew);
-  if Length(ANew) = Length(Text) + 1 then
-  begin
-    mKeep := Inserted(ANew, mIndex, ARemoveAt);
-  end
-  else if Length(ANew) = Length(Text) - 1 then
-  begin
-    mKeep := Deleted(ANew, mIndex);
-  end
-  else
-  begin
-    mKeep := ANew = Text;
-  end;
-  if mKeep then
-  begin
-    Text := ANew;
-  end;
-  if not mKeep or (Close < 0) or (Close >= Length(Text)) or (Text[Close + 1] <> ')') then
-  begin
-    Stop;
-  end;
 end;
 
 { TAtlasParentheses }

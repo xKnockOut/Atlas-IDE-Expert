@@ -125,6 +125,16 @@ begin
   end;
 end;
 
+class function TAtlasDebugOwnCode.ParseFolders(const AText: string): TArray<string>;
+begin
+  Result := TAtlasFolderList.Parse(AText);
+end;
+
+class function TAtlasDebugOwnCode.FoldersText(const AFolders: TArray<string>): string;
+begin
+  Result := string.Join(';', ParseFolders(string.Join(';', AFolders)));
+end;
+
 procedure TAtlasDebugOwnCode.AddFolder(const AFolder: string);
 var
   mFolder, mKnown: string;
@@ -142,16 +152,6 @@ begin
     end;
   end;
   Folders := Folders + [mFolder];
-end;
-
-class function TAtlasDebugOwnCode.ParseFolders(const AText: string): TArray<string>;
-begin
-  Result := TAtlasFolderList.Parse(AText);
-end;
-
-class function TAtlasDebugOwnCode.FoldersText(const AFolders: TArray<string>): string;
-begin
-  Result := string.Join(';', ParseFolders(string.Join(';', AFolders)));
 end;
 
 function TAtlasDebugOwnCode.IsOwnFile(const APath: string): Boolean;

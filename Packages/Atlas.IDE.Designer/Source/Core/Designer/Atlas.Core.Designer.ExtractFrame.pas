@@ -216,6 +216,8 @@ begin
   end;
 end;
 
+{ TDfm }
+
 function TDfm.IndexOf(const AName: string): Integer;
 var
   mIndex: Integer;

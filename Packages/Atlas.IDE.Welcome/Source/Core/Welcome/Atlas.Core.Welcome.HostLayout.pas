@@ -136,6 +136,8 @@ begin
   Result := TAtlasRegValue.Create(AName, TAtlasRegKind.Number, IntToStr(AValue));
 end;
 
+{ TAtlasHostLayout }
+
 class function TAtlasHostLayout.Read(AWelcomeKey: TAtlasRegKey; out ALayout: TAtlasHostLayout): Boolean;
 var
   mLayout, mAvailable, mItem: TAtlasRegKey;

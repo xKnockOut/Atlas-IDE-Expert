@@ -130,10 +130,18 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasForecast.Arguments(const AUri: string; ALine, ALines: Integer): string;
+function TAtlasForecast.BranchIndex(ABlock: Integer; const AName: string): Integer;
+var
+  mIndex: Integer;
 begin
-  // Gleicher Aufbau wie bei „Warum bin ich hier?“: [uri, line, Zahl].
-  Result := TAtlasWhyHere.Arguments(AUri, ALine, ALines);
+  for mIndex := 0 to High(FBranches[ABlock]) do
+  begin
+    if FBranches[ABlock][mIndex].Name = AName then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := cNone;
 end;
 
 function IntItem(AItems: TJSONArray; AIndex: Integer): Integer;
@@ -142,6 +150,179 @@ begin
   if AItems.Items[AIndex] is TJSONNumber then
   begin
     Result := TJSONNumber(AItems.Items[AIndex]).AsInt;
+  end;
+end;
+
+function TAtlasForecast.KnownValue(ABlock, APart: Integer; out AValue: string): Boolean;
+begin
+  AValue := '';
+  Result := (APart >= 0) and (APart <= High(FWhy.Blocks[ABlock].Parts)) and
+    (FWhy.Blocks[ABlock].Parts[APart].State = TAtlasWhyHereState.Value);
+  if Result then
+  begin
+    AValue := Trim(FWhy.Blocks[ABlock].Parts[APart].Value);
+  end;
+end;
+
+function TAtlasForecast.CaseTaken(ABlock: Integer): Integer;
+var
+  mSelector: string;
+  mBranch: Integer;
+  mLabel: TArray<Integer>;
+  mKnown: Boolean;
+begin
+  if not KnownValue(ABlock, 0, mSelector) then
+  begin
+    Exit(cUnknown);
+  end;
+  for mBranch := 0 to High(FBranches[ABlock]) do
+  begin
+    for mLabel in FBranches[ABlock][mBranch].Labels do
+    begin
+      if MatchesLabel(ABlock, mSelector, mLabel, mKnown) then
+      begin
+        Exit(mBranch);
+      end;
+      // Eine Marke ohne Wert könnte passen: dann lieber keine Vorhersage.
+      if not mKnown then
+      begin
+        Exit(cUnknown);
+      end;
+    end;
+  end;
+  Result := BranchIndex(ABlock, 'else');
+end;
+
+function TAtlasForecast.Decisive(ABlock: Integer): string;
+var
+  mRoot: TAtlasWhyHerePart;
+  mTruth, mDecides: TAtlasWhyHereTruth;
+  mChild: Integer;
+begin
+  // Bei and entscheidet der erste False-Teil, bei or der erste True-Teil.
+  Result := '';
+  mRoot := FWhy.Blocks[ABlock].Parts[0];
+  mTruth := FWhy.Truth(ABlock, 0);
+  if mRoot.Kind = 'and' then
+  begin
+    mDecides := TAtlasWhyHereTruth.IsFalse;
+  end
+  else if mRoot.Kind = 'or' then
+  begin
+    mDecides := TAtlasWhyHereTruth.IsTrue;
+  end
+  else
+  begin
+    Exit;
+  end;
+  if mTruth <> mDecides then
+  begin
+    Exit;
+  end;
+  for mChild in FWhy.ChildrenOf(ABlock, 0) do
+  begin
+    if FWhy.Truth(ABlock, mChild) = mDecides then
+    begin
+      Exit(Trim(FWhy.Blocks[ABlock].Parts[mChild].Text));
+    end;
+  end;
+end;
+
+function TAtlasForecast.LabelText(ABlock, ABranch: Integer): string;
+var
+  mLabel: TArray<Integer>;
+  mTexts: TArray<string>;
+  mText: string;
+begin
+  mTexts := nil;
+  for mLabel in FBranches[ABlock][ABranch].Labels do
+  begin
+    mText := Trim(FWhy.Blocks[ABlock].Parts[mLabel[0]].Text);
+    if mLabel[1] >= 0 then
+    begin
+      mText := mText + '..' + Trim(FWhy.Blocks[ABlock].Parts[mLabel[1]].Text);
+    end;
+    mTexts := mTexts + [mText];
+  end;
+  Result := string.Join(', ', mTexts);
+end;
+
+function TAtlasForecast.BlockText(ABlock: Integer; const ATexts: TAtlasForecastTexts): string;
+begin
+  if FWhy.Blocks[ABlock].Kind = 'case' then
+  begin
+    Result := CaseText(ABlock, ATexts);
+  end
+  else
+  begin
+    Result := ConditionText(ABlock);
+  end;
+  if Result <> '' then
+  begin
+    Result := cOpen + Result + cClose;
+  end;
+end;
+
+function TAtlasForecast.ConditionText(ABlock: Integer): string;
+var
+  mDecisive: string;
+begin
+  case FWhy.Truth(ABlock, 0) of
+    TAtlasWhyHereTruth.IsTrue:
+      Result := cIsTrue;
+    TAtlasWhyHereTruth.IsFalse:
+      Result := cIsFalse;
+  else
+    Exit('');
+  end;
+  mDecisive := Decisive(ABlock);
+  if mDecisive <> '' then
+  begin
+    Result := Result + cDot + mDecisive;
+  end;
+end;
+
+function TAtlasForecast.CaseText(ABlock: Integer; const ATexts: TAtlasForecastTexts): string;
+var
+  mTaken: Integer;
+begin
+  mTaken := CaseTaken(ABlock);
+  if mTaken = cUnknown then
+  begin
+    Result := '';
+  end
+  else if mTaken = cNone then
+  begin
+    Result := cArrow + ATexts.NoBranch;
+  end
+  else if FBranches[ABlock][mTaken].Name = 'else' then
+  begin
+    Result := cArrow + ATexts.ElseBranch;
+  end
+  else
+  begin
+    Result := cArrow + LabelText(ABlock, mTaken);
+  end;
+end;
+
+function TAtlasForecast.SkippedIn(ABlock, ALine: Integer): Boolean;
+var
+  mTaken, mBranch: Integer;
+begin
+  Result := False;
+  mTaken := Taken(ABlock);
+  // Offen: nichts blass. Die Kopfzeile und Zeilen des gewählten Zweigs bleiben normal.
+  if (mTaken = cUnknown) or (ALine = FWhy.Blocks[ABlock].Line) or
+    ((mTaken >= 0) and FBranches[ABlock][mTaken].Holds(ALine)) then
+  begin
+    Exit;
+  end;
+  for mBranch := 0 to High(FBranches[ABlock]) do
+  begin
+    if (mBranch <> mTaken) and FBranches[ABlock][mBranch].Holds(ALine) then
+    begin
+      Exit(True);
+    end;
   end;
 end;
 
@@ -186,6 +367,50 @@ begin
       Result := Result + [ReadBranch(TJSONObject(mItem))];
     end;
   end;
+end;
+
+/// <summary>Ordnungszahl eines Werts: ganze Zahl oder ein Zeichen in Hochkommas ('a').</summary>
+function OrdinalOf(const AValue: string; out AOrdinal: Int64): Boolean;
+begin
+  Result := TryStrToInt64(AValue, AOrdinal);
+  if not Result and (Length(AValue) = cQuotedCharLength) and (AValue[1] = '''') and
+    (AValue[cQuotedCharLength] = '''') then
+  begin
+    AOrdinal := Ord(AValue[2]);
+    Result := True;
+  end;
+end;
+
+function TAtlasForecast.MatchesLabel(ABlock: Integer; const ASelector: string; const ALabel: TArray<Integer>;
+  out AKnown: Boolean): Boolean;
+var
+  mLow, mHigh: string;
+  mSelector, mFrom, mTo: Int64;
+begin
+  Result := False;
+  AKnown := KnownValue(ABlock, ALabel[0], mLow);
+  if not AKnown then
+  begin
+    Exit;
+  end;
+  if ALabel[1] < 0 then
+  begin
+    if OrdinalOf(ASelector, mSelector) and OrdinalOf(mLow, mFrom) then
+    begin
+      Exit(mSelector = mFrom);
+    end;
+    Exit(SameText(ASelector, mLow));
+  end;
+  // Bereiche nur bei Zahlen und Zeichen; bei Aufzählungen kennt Atlas die Reihenfolge nicht.
+  AKnown := KnownValue(ABlock, ALabel[1], mHigh) and OrdinalOf(ASelector, mSelector) and OrdinalOf(mLow, mFrom) and
+    OrdinalOf(mHigh, mTo);
+  Result := AKnown and (mFrom <= mSelector) and (mSelector <= mTo);
+end;
+
+class function TAtlasForecast.Arguments(const AUri: string; ALine, ALines: Integer): string;
+begin
+  // Gleicher Aufbau wie bei „Warum bin ich hier?“: [uri, line, Zahl].
+  Result := TAtlasWhyHere.Arguments(AUri, ALine, ALines);
 end;
 
 class function TAtlasForecast.ReadAnswerText(const AText: string; out ABlocks: TAtlasWhyHereBlocks;
@@ -262,98 +487,6 @@ begin
   FWhy.Put(ARef, AValue, AOk);
 end;
 
-function TAtlasForecast.BranchIndex(ABlock: Integer; const AName: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(FBranches[ABlock]) do
-  begin
-    if FBranches[ABlock][mIndex].Name = AName then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := cNone;
-end;
-
-function TAtlasForecast.KnownValue(ABlock, APart: Integer; out AValue: string): Boolean;
-begin
-  AValue := '';
-  Result := (APart >= 0) and (APart <= High(FWhy.Blocks[ABlock].Parts)) and
-    (FWhy.Blocks[ABlock].Parts[APart].State = TAtlasWhyHereState.Value);
-  if Result then
-  begin
-    AValue := Trim(FWhy.Blocks[ABlock].Parts[APart].Value);
-  end;
-end;
-
-/// <summary>Ordnungszahl eines Werts: ganze Zahl oder ein Zeichen in Hochkommas ('a').</summary>
-function OrdinalOf(const AValue: string; out AOrdinal: Int64): Boolean;
-begin
-  Result := TryStrToInt64(AValue, AOrdinal);
-  if not Result and (Length(AValue) = cQuotedCharLength) and (AValue[1] = '''') and
-    (AValue[cQuotedCharLength] = '''') then
-  begin
-    AOrdinal := Ord(AValue[2]);
-    Result := True;
-  end;
-end;
-
-function TAtlasForecast.MatchesLabel(ABlock: Integer; const ASelector: string; const ALabel: TArray<Integer>;
-  out AKnown: Boolean): Boolean;
-var
-  mLow, mHigh: string;
-  mSelector, mFrom, mTo: Int64;
-begin
-  Result := False;
-  AKnown := KnownValue(ABlock, ALabel[0], mLow);
-  if not AKnown then
-  begin
-    Exit;
-  end;
-  if ALabel[1] < 0 then
-  begin
-    if OrdinalOf(ASelector, mSelector) and OrdinalOf(mLow, mFrom) then
-    begin
-      Exit(mSelector = mFrom);
-    end;
-    Exit(SameText(ASelector, mLow));
-  end;
-  // Bereiche nur bei Zahlen und Zeichen; bei Aufzählungen kennt Atlas die Reihenfolge nicht.
-  AKnown := KnownValue(ABlock, ALabel[1], mHigh) and OrdinalOf(ASelector, mSelector) and OrdinalOf(mLow, mFrom) and
-    OrdinalOf(mHigh, mTo);
-  Result := AKnown and (mFrom <= mSelector) and (mSelector <= mTo);
-end;
-
-function TAtlasForecast.CaseTaken(ABlock: Integer): Integer;
-var
-  mSelector: string;
-  mBranch: Integer;
-  mLabel: TArray<Integer>;
-  mKnown: Boolean;
-begin
-  if not KnownValue(ABlock, 0, mSelector) then
-  begin
-    Exit(cUnknown);
-  end;
-  for mBranch := 0 to High(FBranches[ABlock]) do
-  begin
-    for mLabel in FBranches[ABlock][mBranch].Labels do
-    begin
-      if MatchesLabel(ABlock, mSelector, mLabel, mKnown) then
-      begin
-        Exit(mBranch);
-      end;
-      // Eine Marke ohne Wert könnte passen: dann lieber keine Vorhersage.
-      if not mKnown then
-      begin
-        Exit(cUnknown);
-      end;
-    end;
-  end;
-  Result := BranchIndex(ABlock, 'else');
-end;
-
 function TAtlasForecast.Taken(ABlock: Integer): Integer;
 var
   mKind: string;
@@ -383,118 +516,6 @@ begin
   end;
 end;
 
-function TAtlasForecast.Decisive(ABlock: Integer): string;
-var
-  mRoot: TAtlasWhyHerePart;
-  mTruth, mDecides: TAtlasWhyHereTruth;
-  mChild: Integer;
-begin
-  // Bei and entscheidet der erste False-Teil, bei or der erste True-Teil.
-  Result := '';
-  mRoot := FWhy.Blocks[ABlock].Parts[0];
-  mTruth := FWhy.Truth(ABlock, 0);
-  if mRoot.Kind = 'and' then
-  begin
-    mDecides := TAtlasWhyHereTruth.IsFalse;
-  end
-  else if mRoot.Kind = 'or' then
-  begin
-    mDecides := TAtlasWhyHereTruth.IsTrue;
-  end
-  else
-  begin
-    Exit;
-  end;
-  if mTruth <> mDecides then
-  begin
-    Exit;
-  end;
-  for mChild in FWhy.ChildrenOf(ABlock, 0) do
-  begin
-    if FWhy.Truth(ABlock, mChild) = mDecides then
-    begin
-      Exit(Trim(FWhy.Blocks[ABlock].Parts[mChild].Text));
-    end;
-  end;
-end;
-
-function TAtlasForecast.ConditionText(ABlock: Integer): string;
-var
-  mDecisive: string;
-begin
-  case FWhy.Truth(ABlock, 0) of
-    TAtlasWhyHereTruth.IsTrue:
-      Result := cIsTrue;
-    TAtlasWhyHereTruth.IsFalse:
-      Result := cIsFalse;
-  else
-    Exit('');
-  end;
-  mDecisive := Decisive(ABlock);
-  if mDecisive <> '' then
-  begin
-    Result := Result + cDot + mDecisive;
-  end;
-end;
-
-function TAtlasForecast.LabelText(ABlock, ABranch: Integer): string;
-var
-  mLabel: TArray<Integer>;
-  mTexts: TArray<string>;
-  mText: string;
-begin
-  mTexts := nil;
-  for mLabel in FBranches[ABlock][ABranch].Labels do
-  begin
-    mText := Trim(FWhy.Blocks[ABlock].Parts[mLabel[0]].Text);
-    if mLabel[1] >= 0 then
-    begin
-      mText := mText + '..' + Trim(FWhy.Blocks[ABlock].Parts[mLabel[1]].Text);
-    end;
-    mTexts := mTexts + [mText];
-  end;
-  Result := string.Join(', ', mTexts);
-end;
-
-function TAtlasForecast.CaseText(ABlock: Integer; const ATexts: TAtlasForecastTexts): string;
-var
-  mTaken: Integer;
-begin
-  mTaken := CaseTaken(ABlock);
-  if mTaken = cUnknown then
-  begin
-    Result := '';
-  end
-  else if mTaken = cNone then
-  begin
-    Result := cArrow + ATexts.NoBranch;
-  end
-  else if FBranches[ABlock][mTaken].Name = 'else' then
-  begin
-    Result := cArrow + ATexts.ElseBranch;
-  end
-  else
-  begin
-    Result := cArrow + LabelText(ABlock, mTaken);
-  end;
-end;
-
-function TAtlasForecast.BlockText(ABlock: Integer; const ATexts: TAtlasForecastTexts): string;
-begin
-  if FWhy.Blocks[ABlock].Kind = 'case' then
-  begin
-    Result := CaseText(ABlock, ATexts);
-  end
-  else
-  begin
-    Result := ConditionText(ABlock);
-  end;
-  if Result <> '' then
-  begin
-    Result := cOpen + Result + cClose;
-  end;
-end;
-
 function TAtlasForecast.LineText(const AFileName: string; ALine: Integer; const ATexts: TAtlasForecastTexts): string;
 var
   mBlock: Integer;
@@ -519,27 +540,6 @@ begin
     end;
   end;
   Result := string.Join('  ', mTexts);
-end;
-
-function TAtlasForecast.SkippedIn(ABlock, ALine: Integer): Boolean;
-var
-  mTaken, mBranch: Integer;
-begin
-  Result := False;
-  mTaken := Taken(ABlock);
-  // Offen: nichts blass. Die Kopfzeile und Zeilen des gewählten Zweigs bleiben normal.
-  if (mTaken = cUnknown) or (ALine = FWhy.Blocks[ABlock].Line) or
-    ((mTaken >= 0) and FBranches[ABlock][mTaken].Holds(ALine)) then
-  begin
-    Exit;
-  end;
-  for mBranch := 0 to High(FBranches[ABlock]) do
-  begin
-    if (mBranch <> mTaken) and FBranches[ABlock][mBranch].Holds(ALine) then
-    begin
-      Exit(True);
-    end;
-  end;
 end;
 
 function TAtlasForecast.Dimmed(const AFileName: string; ALine: Integer): Boolean;

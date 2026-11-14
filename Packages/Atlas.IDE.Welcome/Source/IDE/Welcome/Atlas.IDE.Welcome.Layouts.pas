@@ -104,60 +104,27 @@ begin
   end;
 end;
 
-class function TAtlasIdeWelcomeLayouts.Description(const AId: string): string;
+procedure TAtlasIdeWelcomeLayouts.Save(const ASettings: TAtlasPluginSettings);
 begin
-  if SameText(AId, TAtlasWelcomeIds.cContinue) then
+  // Update meldet die Änderung; die Komposition füllt daraufhin die Tafeln neu (Sync).
+  TAtlasIdeSettings.Update(ASettings);
+end;
+
+procedure TAtlasIdeWelcomeLayouts.DropSession(const AId: string);
+var
+  mSession: TAtlasToggleSession;
+  mKey: string;
+  mValue: Boolean;
+begin
+  // Ein Schnellschalter für diese Sitzung überdeckt die gespeicherte Einstellung; Auge und Leiste meinen sie.
+  mKey := TAtlasWelcomeCustomizing.SettingOf(AId);
+  mSession := TAtlasIdeSettings.Session;
+  if (mKey = '') or not mSession.TryGet(mKey, mValue) then
   begin
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescContinue);
-  end
-  else if SameText(AId, TAtlasWelcomeIds.cProjects) then
-  begin
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescProjects);
-  end
-  else if SameText(AId, TAtlasWelcomeIds.cHistory) then
-  begin
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescHistory);
-  end
-  else if SameText(AId, TAtlasWelcomeIds.cTests) then
-  begin
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescTests);
-  end
-  else if SameText(AId, TAtlasWelcomeIds.cState) then
-  begin
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescState);
-  end
-  else if SameText(AId, TAtlasWelcomeIds.cUnsaved) then
-  begin
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescUnsaved);
-  end
-  else if SameText(AId, TAtlasWelcomeIds.cNews) then
-  begin
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescNews);
-  end
-  else if SameText(AId, TAtlasWelcomeIds.cDiscover) then
-  begin
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescDiscover);
-  end
-  else if SameText(AId, TAtlasWelcomeIds.cSetup) then
-  begin
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescSetup);
-  end
-  else if SameText(AId, TAtlasWelcomeIds.cIssues) then
-  begin
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescIssues);
-  end
-  else if SameText(AId, TAtlasWelcomeIds.cSprint) then
-  begin
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescSprint);
-  end
-  else if SameText(AId, TAtlasWelcomeIds.cHelp) then
-  begin
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescHelp);
-  end
-  else
-  begin
-    Result := DescriptionOfSection(AId);
+    Exit;
   end;
+  mSession.Drop(mKey);
+  TAtlasIdeSettings.SetSession(mSession);
 end;
 
 function TAtlasIdeWelcomeLayouts.Registered: TArray<string>;
@@ -217,27 +184,60 @@ begin
     end);
 end;
 
-procedure TAtlasIdeWelcomeLayouts.Save(const ASettings: TAtlasPluginSettings);
+class function TAtlasIdeWelcomeLayouts.Description(const AId: string): string;
 begin
-  // Update meldet die Änderung; die Komposition füllt daraufhin die Tafeln neu (Sync).
-  TAtlasIdeSettings.Update(ASettings);
-end;
-
-procedure TAtlasIdeWelcomeLayouts.DropSession(const AId: string);
-var
-  mSession: TAtlasToggleSession;
-  mKey: string;
-  mValue: Boolean;
-begin
-  // Ein Schnellschalter für diese Sitzung überdeckt die gespeicherte Einstellung; Auge und Leiste meinen sie.
-  mKey := TAtlasWelcomeCustomizing.SettingOf(AId);
-  mSession := TAtlasIdeSettings.Session;
-  if (mKey = '') or not mSession.TryGet(mKey, mValue) then
+  if SameText(AId, TAtlasWelcomeIds.cContinue) then
   begin
-    Exit;
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescContinue);
+  end
+  else if SameText(AId, TAtlasWelcomeIds.cProjects) then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescProjects);
+  end
+  else if SameText(AId, TAtlasWelcomeIds.cHistory) then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescHistory);
+  end
+  else if SameText(AId, TAtlasWelcomeIds.cTests) then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescTests);
+  end
+  else if SameText(AId, TAtlasWelcomeIds.cState) then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescState);
+  end
+  else if SameText(AId, TAtlasWelcomeIds.cUnsaved) then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescUnsaved);
+  end
+  else if SameText(AId, TAtlasWelcomeIds.cNews) then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescNews);
+  end
+  else if SameText(AId, TAtlasWelcomeIds.cDiscover) then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescDiscover);
+  end
+  else if SameText(AId, TAtlasWelcomeIds.cSetup) then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescSetup);
+  end
+  else if SameText(AId, TAtlasWelcomeIds.cIssues) then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescIssues);
+  end
+  else if SameText(AId, TAtlasWelcomeIds.cSprint) then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescSprint);
+  end
+  else if SameText(AId, TAtlasWelcomeIds.cHelp) then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescHelp);
+  end
+  else
+  begin
+    Result := DescriptionOfSection(AId);
   end;
-  mSession.Drop(mKey);
-  TAtlasIdeSettings.SetSession(mSession);
 end;
 
 function TAtlasIdeWelcomeLayouts.CanCustomize: Boolean;

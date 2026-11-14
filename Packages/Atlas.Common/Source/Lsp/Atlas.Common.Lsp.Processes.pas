@@ -195,12 +195,6 @@ begin
   Result := Format('%s · %s (pid %d)', [AProcess.Kind, mClient, AProcess.Pid]);
 end;
 
-class function TLspProcesses.ToMarkdown(const AWorkspaces: TArray<TLspProcessWorkspace>; AOwnPid: Cardinal;
-  ANow: TDateTime): string;
-begin
-  Result := TLogMarks.Plain(MarkedMarkdown(AWorkspaces, AOwnPid, ANow));
-end;
-
 class function TLspProcesses.MarkedMarkdown(const AWorkspaces: TArray<TLspProcessWorkspace>; AOwnPid: Cardinal;
   ANow: TDateTime): string;
 var
@@ -257,6 +251,12 @@ begin
   finally
     mBuilder.Free;
   end;
+end;
+
+class function TLspProcesses.ToMarkdown(const AWorkspaces: TArray<TLspProcessWorkspace>; AOwnPid: Cardinal;
+  ANow: TDateTime): string;
+begin
+  Result := TLogMarks.Plain(MarkedMarkdown(AWorkspaces, AOwnPid, ANow));
 end;
 
 class function TLspProcesses.ToJson(const AWorkspaces: TArray<TLspProcessWorkspace>; AOwnPid: Cardinal;

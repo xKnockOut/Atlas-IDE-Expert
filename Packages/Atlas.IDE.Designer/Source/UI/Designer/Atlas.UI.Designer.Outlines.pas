@@ -89,16 +89,6 @@ begin
   end;
 end;
 
-procedure TAtlasDesignerOutlines.WMMouseActivate(var Message: TWMMouseActivate);
-begin
-  Message.Result := MA_NOACTIVATE;
-end;
-
-function TAtlasDesignerOutlines.S(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
-end;
-
 procedure TAtlasDesignerOutlines.Paint;
 var
   mOutline: TAtlasOutline;
@@ -125,6 +115,16 @@ begin
   Canvas.Brush.Style := bsSolid;
 end;
 
+function TAtlasDesignerOutlines.S(AValue: Integer): Integer;
+begin
+  Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
+end;
+
+procedure TAtlasDesignerOutlines.WMMouseActivate(var Message: TWMMouseActivate);
+begin
+  Message.Result := MA_NOACTIVATE;
+end;
+
 procedure TAtlasDesignerOutlines.ShowOutlines(const AScreen: TRect; const AOutlines: TArray<TAtlasOutline>);
 begin
   FOutlines := AOutlines;
@@ -139,18 +139,18 @@ begin
   Invalidate;
 end;
 
-procedure TAtlasDesignerOutlines.ApplyColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
-end;
-
 procedure TAtlasDesignerOutlines.HideOutlines;
 begin
   if HandleAllocated then
   begin
     ShowWindow(Handle, SW_HIDE);
   end;
+end;
+
+procedure TAtlasDesignerOutlines.ApplyColors(const AColors: TAtlasColors);
+begin
+  FColors := AColors;
+  Invalidate;
 end;
 
 end.

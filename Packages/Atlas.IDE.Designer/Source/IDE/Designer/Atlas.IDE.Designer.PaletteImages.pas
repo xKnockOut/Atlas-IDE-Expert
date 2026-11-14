@@ -223,17 +223,6 @@ begin
   FClasses.Clear;
 end;
 
-function TAtlasPaletteImages.IndexOfName(const AClassName: string): Integer;
-var
-  mClass: TClass;
-begin
-  Result := -1;
-  if (AClassName <> '') and FClasses.TryGetValue(AClassName.ToLower, mClass) then
-  begin
-    Result := IndexOf(mClass);
-  end;
-end;
-
 function TAtlasPaletteImages.IndexOf(AClass: TClass): Integer;
 var
   mIndex: Integer;
@@ -275,6 +264,17 @@ begin
     mClass := mClass.ClassParent;
   end;
   FLoaded.AddObject(AClass.ClassName, TObject(Result));
+end;
+
+function TAtlasPaletteImages.IndexOfName(const AClassName: string): Integer;
+var
+  mClass: TClass;
+begin
+  Result := -1;
+  if (AClassName <> '') and FClasses.TryGetValue(AClassName.ToLower, mClass) then
+  begin
+    Result := IndexOf(mClass);
+  end;
 end;
 
 end.

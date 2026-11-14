@@ -382,10 +382,36 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasIdeTasks.TWorker.Cancel;
+procedure TAtlasIdeTasks.TWorker.Execute;
+var
+  mOutcome: TAtlasTaskProcessResult;
+  mStarted: UInt64;
 begin
-  FFlag.Cancelled := True;
-  Terminate;
+  FRun := Default(TAtlasTaskRun);
+  FRun.Name := FTask.Name;
+  FRun.CommandLine := FTask.CommandLine;
+  FRun.Cwd := FTask.Cwd;
+  mStarted := TThread.GetTickCount64;
+  FLastFlush := mStarted;
+  FExists := ExistsProc();
+  FLineCount := 0;
+  try
+    mOutcome := RunProcess;
+    Deliver;
+    FRun.Outcome := mOutcome.Outcome;
+    FRun.ExitCode := mOutcome.ExitCode;
+    FRun.Error := mOutcome.Error;
+  except
+    on E: Exception do
+    begin
+      FRun.Outcome := TAtlasTaskOutcome.StartFailed;
+      FRun.ExitCode := -1;
+      FRun.Error := E.Message;
+    end;
+  end;
+  FRun.DurationMs := Int64(TThread.GetTickCount64 - mStarted);
+  FRun.FinishedAt := Now;
+  Finish(FRun);
 end;
 
 procedure TAtlasIdeTasks.TWorker.Deliver;
@@ -494,36 +520,10 @@ begin
   end;
 end;
 
-procedure TAtlasIdeTasks.TWorker.Execute;
-var
-  mOutcome: TAtlasTaskProcessResult;
-  mStarted: UInt64;
+procedure TAtlasIdeTasks.TWorker.Cancel;
 begin
-  FRun := Default(TAtlasTaskRun);
-  FRun.Name := FTask.Name;
-  FRun.CommandLine := FTask.CommandLine;
-  FRun.Cwd := FTask.Cwd;
-  mStarted := TThread.GetTickCount64;
-  FLastFlush := mStarted;
-  FExists := ExistsProc();
-  FLineCount := 0;
-  try
-    mOutcome := RunProcess;
-    Deliver;
-    FRun.Outcome := mOutcome.Outcome;
-    FRun.ExitCode := mOutcome.ExitCode;
-    FRun.Error := mOutcome.Error;
-  except
-    on E: Exception do
-    begin
-      FRun.Outcome := TAtlasTaskOutcome.StartFailed;
-      FRun.ExitCode := -1;
-      FRun.Error := E.Message;
-    end;
-  end;
-  FRun.DurationMs := Int64(TThread.GetTickCount64 - mStarted);
-  FRun.FinishedAt := Now;
-  Finish(FRun);
+  FFlag.Cancelled := True;
+  Terminate;
 end;
 
 { TAtlasIdeTasks.TJob }
@@ -592,22 +592,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeTasks.CreateParticipant(const AGet: TFunc<TAtlasIdeTasks>): TAtlasCompileParticipant;
-begin
-  Result := TParticipant.Create(AGet);
-end;
-
-function TAtlasIdeTasks.TaskNamesOf(const AProject: string): TArray<string>;
-begin
-  Result := FLoaded.Names.NamesOf(AProject);
-end;
-
-function TAtlasIdeTasks.Definitions: TAtlasTaskDefinitions;
-begin
-  Refresh(False);
-  Result := FLoaded.Tasks;
-end;
-
 procedure TAtlasIdeTasks.Tick(Sender: TObject);
 begin
   TAtlasGuard.Run(TAtlasFeature.Tasks,
@@ -650,25 +634,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeTasks.ApplySettings;
-begin
-  FOutput.OnlyFindings := TAtlasIdeSettings.Current.TasksOnlyFindings;
-  Refresh(True);
-end;
-
-function TAtlasIdeTasks.LastText(const AProject, AName: string): string;
-var
-  mLast: TAtlasTaskLastRun;
-  mHas: Boolean;
-begin
-  if IsRunning(AProject, AName) then
-  begin
-    Exit(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksRunningShort));
-  end;
-  mHas := FHistory.Data.LastRun(AProject, AName, mLast);
-  Result := TAtlasTaskTexts.LastResult(mLast, mHas);
-end;
-
 procedure TAtlasIdeTasks.UpdateStatus(const AName: string);
 var
   mLast: TAtlasTaskLastRun;
@@ -705,18 +670,69 @@ begin
   Result := False;
 end;
 
-function TAtlasIdeTasks.Busy: Boolean;
+procedure TAtlasIdeTasks.StartBatch(const AProject: string; const ATasks: TAtlasTaskDefinitions;
+  const AModes: TArray<TAtlasTaskBeforeBuild>; APreBuild: Boolean);
 var
-  mJob: TJob;
+  mBatch: TBatch;
 begin
-  for mJob in FRuns.Jobs do
+  Inc(FRuns.NextId);
+  mBatch := TBatch.Create;
+  mBatch.FId := FRuns.NextId;
+  mBatch.FProject := AProject;
+  mBatch.FPreBuild := APreBuild;
+  mBatch.FWaiting := ATasks;
+  mBatch.FWaitingModes := AModes;
+  FRuns.Batches.Add(mBatch);
+  StartNextOf(mBatch);
+end;
+
+function TAtlasIdeTasks.LastText(const AProject, AName: string): string;
+var
+  mLast: TAtlasTaskLastRun;
+  mHas: Boolean;
+begin
+  if IsRunning(AProject, AName) then
   begin
-    if not mJob.FDone then
-    begin
-      Exit(True);
-    end;
+    Exit(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksRunningShort));
   end;
-  Result := False;
+  mHas := FHistory.Data.LastRun(AProject, AName, mLast);
+  Result := TAtlasTaskTexts.LastResult(mLast, mHas);
+end;
+
+function TAtlasIdeTasks.Definitions: TAtlasTaskDefinitions;
+begin
+  Refresh(False);
+  Result := FLoaded.Tasks;
+end;
+
+function TAtlasIdeTasks.TaskNamesOf(const AProject: string): TArray<string>;
+begin
+  Result := FLoaded.Names.NamesOf(AProject);
+end;
+
+procedure TAtlasIdeTasks.Choose;
+var
+  mTasks: TAtlasTaskDefinitions;
+  mKey: string;
+begin
+  mTasks := Definitions;
+  if Length(mTasks) = 0 then
+  begin
+    TAtlasIdeTaskProjects.Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksNone), True);
+    Exit;
+  end;
+  mKey := TAtlasIdeTaskProjects.KeyOf(FLoaded.Project);
+  TAtlasIdeTaskPickers.ChooseTask(mTasks,
+    function(AName: string): string
+    begin
+      Result := LastText(mKey, AName);
+    end, RunByNameOf(Self), AliveCheck(FAlive));
+end;
+
+function TAtlasIdeTasks.RunByName(const AName: string; out AReason: string): Boolean;
+begin
+  Refresh(False);
+  Result := RunInProject(FLoaded.Project, AName, AReason);
 end;
 
 /// <summary>Fertige Läufe abräumen (ihr Thread ist zu Ende).</summary>
@@ -788,6 +804,40 @@ begin
   end;
 end;
 
+procedure TAtlasIdeTasks.StartNextOf(ABatch: TBatch);
+var
+  mTask: TAtlasTaskDefinition;
+  mMode: TAtlasTaskBeforeBuild;
+  mParallel: Boolean;
+  mReason: string;
+begin
+  mParallel := TAtlasIdeSettings.Current.TasksRunChecksParallel;
+  while Length(ABatch.FWaiting) > 0 do
+  begin
+    mTask := ABatch.FWaiting[0];
+    mMode := ABatch.FWaitingModes[0];
+    Delete(ABatch.FWaiting, 0, 1);
+    Delete(ABatch.FWaitingModes, 0, 1);
+    if NeedsMissingCompiler(mTask, mReason) then
+    begin
+      TAtlasIdeTaskProjects.Say(mReason, not ABatch.FPreBuild);
+      Continue;
+    end;
+    if Start(ABatch.FProject, mTask, ABatch.FId, mMode, not ABatch.FPreBuild) then
+    begin
+      Inc(ABatch.FRunning);
+      if not mParallel then
+      begin
+        Exit;
+      end;
+    end;
+  end;
+  if ABatch.FRunning = 0 then
+  begin
+    BatchDone(ABatch);
+  end;
+end;
+
 function TAtlasIdeTasks.RunInProject(const AProject, AName: string; out AReason: string): Boolean;
 var
   mTasks: TAtlasTaskDefinitions;
@@ -827,27 +877,6 @@ begin
   end;
 end;
 
-function TAtlasIdeTasks.RunByName(const AName: string; out AReason: string): Boolean;
-begin
-  Refresh(False);
-  Result := RunInProject(FLoaded.Project, AName, AReason);
-end;
-
-procedure TAtlasIdeTasks.RepeatLast;
-var
-  mReason: string;
-begin
-  if FLast.Name = '' then
-  begin
-    TAtlasIdeTaskProjects.Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksNoLast), True);
-    Exit;
-  end;
-  if not RunInProject(FLast.Project, FLast.Name, mReason) and (mReason <> '') then
-  begin
-    TAtlasIdeTaskProjects.Say(mReason, True);
-  end;
-end;
-
 procedure TAtlasIdeTasks.RunChecks;
 var
   mChecks: TAtlasTaskDefinitions;
@@ -873,53 +902,60 @@ begin
   StartBatch(FLoaded.Project, mChecks, mModes, False);
 end;
 
-procedure TAtlasIdeTasks.StartBatch(const AProject: string; const ATasks: TAtlasTaskDefinitions;
-  const AModes: TArray<TAtlasTaskBeforeBuild>; APreBuild: Boolean);
+procedure TAtlasIdeTasks.RepeatLast;
 var
-  mBatch: TBatch;
-begin
-  Inc(FRuns.NextId);
-  mBatch := TBatch.Create;
-  mBatch.FId := FRuns.NextId;
-  mBatch.FProject := AProject;
-  mBatch.FPreBuild := APreBuild;
-  mBatch.FWaiting := ATasks;
-  mBatch.FWaitingModes := AModes;
-  FRuns.Batches.Add(mBatch);
-  StartNextOf(mBatch);
-end;
-
-procedure TAtlasIdeTasks.StartNextOf(ABatch: TBatch);
-var
-  mTask: TAtlasTaskDefinition;
-  mMode: TAtlasTaskBeforeBuild;
-  mParallel: Boolean;
   mReason: string;
 begin
-  mParallel := TAtlasIdeSettings.Current.TasksRunChecksParallel;
-  while Length(ABatch.FWaiting) > 0 do
+  if FLast.Name = '' then
   begin
-    mTask := ABatch.FWaiting[0];
-    mMode := ABatch.FWaitingModes[0];
-    Delete(ABatch.FWaiting, 0, 1);
-    Delete(ABatch.FWaitingModes, 0, 1);
-    if NeedsMissingCompiler(mTask, mReason) then
-    begin
-      TAtlasIdeTaskProjects.Say(mReason, not ABatch.FPreBuild);
-      Continue;
-    end;
-    if Start(ABatch.FProject, mTask, ABatch.FId, mMode, not ABatch.FPreBuild) then
-    begin
-      Inc(ABatch.FRunning);
-      if not mParallel then
-      begin
-        Exit;
-      end;
-    end;
+    TAtlasIdeTaskProjects.Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksNoLast), True);
+    Exit;
   end;
-  if ABatch.FRunning = 0 then
+  if not RunInProject(FLast.Project, FLast.Name, mReason) and (mReason <> '') then
   begin
-    BatchDone(ABatch);
+    TAtlasIdeTaskProjects.Say(mReason, True);
+  end;
+end;
+
+procedure TAtlasIdeTasks.ToggleOutput;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Stored;
+  mSettings.TasksOnlyFindings := not FOutput.OnlyFindings;
+  TAtlasIdeSettings.Update(mSettings);
+  FOutput.OnlyFindings := mSettings.TasksOnlyFindings;
+  if FOutput.OnlyFindings then
+  begin
+    TAtlasIdeTaskProjects.Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksOutputOnlyFindings), False);
+  end
+  else
+  begin
+    TAtlasIdeTaskProjects.Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksOutputAll), False);
+  end;
+end;
+
+function TAtlasIdeTasks.MenuItems: TArray<TAtlasTaskMenuItem>;
+var
+  mTasks: TAtlasTaskDefinitions;
+  mTask: TAtlasTaskDefinition;
+  mItem: TAtlasTaskMenuItem;
+  mKey: string;
+begin
+  Result := nil;
+  mTasks := Definitions;
+  mKey := TAtlasIdeTaskProjects.KeyOf(FLoaded.Project);
+  for mTask in mTasks do
+  begin
+    // Ohne ShortCut am Eintrag: Die Taste belegt TAtlasIdeKeyBinding (Konfliktmeldung), hier steht sie nur.
+    mItem.Name := mTask.Name;
+    mItem.Caption := TAtlasTaskTexts.GroupName(mTask.Group) + ': ' + mTask.Name + ' (' + LastText(mKey, mTask.Name) +
+      ')';
+    if mTask.KeyText <> '' then
+    begin
+      mItem.Caption := mItem.Caption + #9 + mTask.KeyText;
+    end;
+    Result := Result + [mItem];
   end;
 end;
 
@@ -1152,45 +1188,13 @@ begin
   end;
 end;
 
-function TAtlasIdeTasks.BeforeCompile(const AProject: TAtlasCompileProject; out AReason: string): Boolean;
+procedure TAtlasIdeTasks.RunFromMenu(const AName: string);
 var
-  mGlobal: TAtlasTaskBeforeBuild;
-  mTasks: TAtlasTaskDefinitions;
-  mModes: TArray<TAtlasTaskBeforeBuild>;
-  mIssues: TArray<string>;
-  mHasBlock, mHasWarn: Boolean;
-  mNames: string;
-  mAction: TAtlasTaskPreBuildAction;
+  mReason: string;
 begin
-  AReason := '';
-  Result := False;
-  if not TAtlasIdeSettings.Current.TasksEnabled or not TAtlasTaskPreBuild.Applies(AProject) then
+  if not RunByName(AName, mReason) and (mReason <> '') then
   begin
-    Exit;
-  end;
-  TAtlasTasks.TryBeforeBuild(TAtlasIdeSettings.Current.TasksBeforeBuild, mGlobal);
-  if SameText(AProject.FileName, FLoaded.Project) then
-  begin
-    mTasks := TAtlasTasks.BeforeBuild(Definitions, mGlobal);
-  end
-  else
-  begin
-    mTasks := TAtlasTasks.BeforeBuild(TAtlasIdeTaskProjects.DefinitionsOf(AProject.FileName, mIssues), mGlobal);
-  end;
-  PlanPreBuild(mTasks, mGlobal, mModes, mHasBlock, mHasWarn, mNames);
-  mAction := FPreBuild.Decide(AProject, mHasBlock, mHasWarn, TThread.GetTickCount64);
-  case mAction of
-    TAtlasTaskPreBuildAction.StartAndCancel:
-      AReason := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksGateRunning, [mNames]);
-    TAtlasTaskPreBuildAction.Busy:
-      AReason := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksGateBusy);
-    TAtlasTaskPreBuildAction.None, TAtlasTaskPreBuildAction.StartWarn: ;
-  end;
-  Result := mAction in [TAtlasTaskPreBuildAction.StartAndCancel, TAtlasTaskPreBuildAction.Busy];
-  if mAction in [TAtlasTaskPreBuildAction.StartWarn, TAtlasTaskPreBuildAction.StartAndCancel] then
-  begin
-    SaveBeforeRun;
-    StartBatch(AProject.FileName, mTasks, mModes, True);
+    TAtlasIdeTaskProjects.Say(mReason, True);
   end;
 end;
 
@@ -1240,41 +1244,52 @@ begin
   end;
 end;
 
-procedure TAtlasIdeTasks.ToggleOutput;
+function TAtlasIdeTasks.BeforeCompile(const AProject: TAtlasCompileProject; out AReason: string): Boolean;
 var
-  mSettings: TAtlasPluginSettings;
+  mGlobal: TAtlasTaskBeforeBuild;
+  mTasks: TAtlasTaskDefinitions;
+  mModes: TArray<TAtlasTaskBeforeBuild>;
+  mIssues: TArray<string>;
+  mHasBlock, mHasWarn: Boolean;
+  mNames: string;
+  mAction: TAtlasTaskPreBuildAction;
 begin
-  mSettings := TAtlasIdeSettings.Stored;
-  mSettings.TasksOnlyFindings := not FOutput.OnlyFindings;
-  TAtlasIdeSettings.Update(mSettings);
-  FOutput.OnlyFindings := mSettings.TasksOnlyFindings;
-  if FOutput.OnlyFindings then
+  AReason := '';
+  Result := False;
+  if not TAtlasIdeSettings.Current.TasksEnabled or not TAtlasTaskPreBuild.Applies(AProject) then
   begin
-    TAtlasIdeTaskProjects.Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksOutputOnlyFindings), False);
+    Exit;
+  end;
+  TAtlasTasks.TryBeforeBuild(TAtlasIdeSettings.Current.TasksBeforeBuild, mGlobal);
+  if SameText(AProject.FileName, FLoaded.Project) then
+  begin
+    mTasks := TAtlasTasks.BeforeBuild(Definitions, mGlobal);
   end
   else
   begin
-    TAtlasIdeTaskProjects.Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksOutputAll), False);
+    mTasks := TAtlasTasks.BeforeBuild(TAtlasIdeTaskProjects.DefinitionsOf(AProject.FileName, mIssues), mGlobal);
+  end;
+  PlanPreBuild(mTasks, mGlobal, mModes, mHasBlock, mHasWarn, mNames);
+  mAction := FPreBuild.Decide(AProject, mHasBlock, mHasWarn, TThread.GetTickCount64);
+  case mAction of
+    TAtlasTaskPreBuildAction.StartAndCancel:
+      AReason := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksGateRunning, [mNames]);
+    TAtlasTaskPreBuildAction.Busy:
+      AReason := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksGateBusy);
+    TAtlasTaskPreBuildAction.None, TAtlasTaskPreBuildAction.StartWarn: ;
+  end;
+  Result := mAction in [TAtlasTaskPreBuildAction.StartAndCancel, TAtlasTaskPreBuildAction.Busy];
+  if mAction in [TAtlasTaskPreBuildAction.StartWarn, TAtlasTaskPreBuildAction.StartAndCancel] then
+  begin
+    SaveBeforeRun;
+    StartBatch(AProject.FileName, mTasks, mModes, True);
   end;
 end;
 
-procedure TAtlasIdeTasks.Choose;
-var
-  mTasks: TAtlasTaskDefinitions;
-  mKey: string;
+procedure TAtlasIdeTasks.ApplySettings;
 begin
-  mTasks := Definitions;
-  if Length(mTasks) = 0 then
-  begin
-    TAtlasIdeTaskProjects.Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksNone), True);
-    Exit;
-  end;
-  mKey := TAtlasIdeTaskProjects.KeyOf(FLoaded.Project);
-  TAtlasIdeTaskPickers.ChooseTask(mTasks,
-    function(AName: string): string
-    begin
-      Result := LastText(mKey, AName);
-    end, RunByNameOf(Self), AliveCheck(FAlive));
+  FOutput.OnlyFindings := TAtlasIdeSettings.Current.TasksOnlyFindings;
+  Refresh(True);
 end;
 
 /// <summary>Befunde der Aufgabe AName im Projekt AKey ein- bzw. ausblenden und merken.</summary>
@@ -1318,38 +1333,23 @@ begin
     end, FindingsToggle(Self, mKey), AliveCheck(FAlive));
 end;
 
-procedure TAtlasIdeTasks.RunFromMenu(const AName: string);
+function TAtlasIdeTasks.Busy: Boolean;
 var
-  mReason: string;
+  mJob: TJob;
 begin
-  if not RunByName(AName, mReason) and (mReason <> '') then
+  for mJob in FRuns.Jobs do
   begin
-    TAtlasIdeTaskProjects.Say(mReason, True);
+    if not mJob.FDone then
+    begin
+      Exit(True);
+    end;
   end;
+  Result := False;
 end;
 
-function TAtlasIdeTasks.MenuItems: TArray<TAtlasTaskMenuItem>;
-var
-  mTasks: TAtlasTaskDefinitions;
-  mTask: TAtlasTaskDefinition;
-  mItem: TAtlasTaskMenuItem;
-  mKey: string;
+class function TAtlasIdeTasks.CreateParticipant(const AGet: TFunc<TAtlasIdeTasks>): TAtlasCompileParticipant;
 begin
-  Result := nil;
-  mTasks := Definitions;
-  mKey := TAtlasIdeTaskProjects.KeyOf(FLoaded.Project);
-  for mTask in mTasks do
-  begin
-    // Ohne ShortCut am Eintrag: Die Taste belegt TAtlasIdeKeyBinding (Konfliktmeldung), hier steht sie nur.
-    mItem.Name := mTask.Name;
-    mItem.Caption := TAtlasTaskTexts.GroupName(mTask.Group) + ': ' + mTask.Name + ' (' + LastText(mKey, mTask.Name) +
-      ')';
-    if mTask.KeyText <> '' then
-    begin
-      mItem.Caption := mItem.Caption + #9 + mTask.KeyText;
-    end;
-    Result := Result + [mItem];
-  end;
+  Result := TParticipant.Create(AGet);
 end;
 
 end.

@@ -61,6 +61,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TLspSmartIndent }
+
 class function TLspSmartIndent.OptionsFrom(const ASettings: TSmartIndentSettings; const AStyle: TFormatStyle;
   out AOptions: TSmartIndentOptions): Boolean;
 begin

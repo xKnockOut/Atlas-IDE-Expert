@@ -81,6 +81,13 @@ end;
 
 { TJsoncScanner }
 
+class function TJsoncScanner.SkipSpace(const AText: string; var APos: Integer): Boolean;
+var
+  mOpenComment: Integer;
+begin
+  Result := SkipSpace(AText, APos, mOpenComment);
+end;
+
 class function TJsoncScanner.SkipSpace(const AText: string; var APos: Integer; out AOpenComment: Integer): Boolean;
 var
   mClose: Integer;
@@ -113,13 +120,6 @@ begin
     end;
   end;
   Result := True;
-end;
-
-class function TJsoncScanner.SkipSpace(const AText: string; var APos: Integer): Boolean;
-var
-  mOpenComment: Integer;
-begin
-  Result := SkipSpace(AText, APos, mOpenComment);
 end;
 
 class procedure TJsoncScanner.SkipString(const AText: string; var APos: Integer);

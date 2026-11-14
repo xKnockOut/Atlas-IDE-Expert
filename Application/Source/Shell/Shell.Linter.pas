@@ -136,6 +136,8 @@ const
   cTexts: array[TLinterShellText] of TAtlasText = (
     (De: '%d Index-Caches gelöscht in %s'; En: '%d index caches deleted in %s'));
 
+{ TLinterShell }
+
 class function TLinterShell.Run(const AOptions: TCommandLineOptions): Integer;
 begin
   if AOptions.FixRules <> nil then
@@ -182,11 +184,6 @@ begin
   Result := TLinterFormatting.Run(AOptions);
 end;
 
-class function TLinterShell.AffectedTests(const AOptions: TCommandLineOptions): Integer;
-begin
-  Result := TLinterAffectedTests.Run(AOptions);
-end;
-
 class function TLinterShell.ClearCache: Integer;
 begin
   try
@@ -200,6 +197,11 @@ begin
       Result := TFindingsOutput.cExitFailure;
     end;
   end;
+end;
+
+class function TLinterShell.AffectedTests(const AOptions: TCommandLineOptions): Integer;
+begin
+  Result := TLinterAffectedTests.Run(AOptions);
 end;
 
 initialization

@@ -331,6 +331,39 @@ begin
   Result := (AResolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) and (AResolved.FileName <> '');
 end;
 
+function TDataFlowBase.ResolveSymbol(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
+  out ASymbol: TDataFlowSymbol): Boolean;
+var
+  mIndex: Integer;
+  mResolved: TResolvedSymbol;
+  mTargets: TArray<TDefinitionTarget>;
+begin
+  ASymbol := Default(TDataFlowSymbol);
+  mIndex := TDataFlowSyntax.TokenIndexAt(ATree, APosition);
+  // Result steht für die Funktion, in der es vorkommt.
+  if IsResultToken(ATree, mIndex) then
+  begin
+    Exit(EnclosingFunction(ATree, AFileName, TDataFlowSyntax.NodeAt(ATree.Root, APosition), ASymbol));
+  end;
+  if ResolvedAt(ATree, AFileName, APosition, mResolved) then
+  begin
+    ASymbol := SymbolFromResolved(mResolved);
+    Exit(True);
+  end;
+  mTargets := TLspDefinition.Targets(FResolver, FIndex, ATree, AFileName, APosition, True);
+  Result := Length(mTargets) > 0;
+  if Result then
+  begin
+    ASymbol.FileName := mTargets[0].FileName;
+    ASymbol.Position := mTargets[0].SelectionRange.StartPos;
+    ASymbol.SymbolKind := TIndexSymbolKind.Variable;
+    if mIndex >= 0 then
+    begin
+      ASymbol.Name := TDataFlowSyntax.CleanName(ATree.Tokens[mIndex].Text);
+    end;
+  end;
+end;
+
 function TDataFlowBase.FunctionOf(ATree: TSyntaxTree; const AFileName: string; ARoutine: TSyntaxNode;
   out ASymbol: TDataFlowSymbol): Boolean;
 var
@@ -382,39 +415,6 @@ begin
   end;
   Result := (mCurrent <> nil) and (mCurrent.Kind <> TSyntaxKind.AnonymousMethod) and
     FunctionOf(ATree, AFileName, mCurrent, ASymbol);
-end;
-
-function TDataFlowBase.ResolveSymbol(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
-  out ASymbol: TDataFlowSymbol): Boolean;
-var
-  mIndex: Integer;
-  mResolved: TResolvedSymbol;
-  mTargets: TArray<TDefinitionTarget>;
-begin
-  ASymbol := Default(TDataFlowSymbol);
-  mIndex := TDataFlowSyntax.TokenIndexAt(ATree, APosition);
-  // Result steht für die Funktion, in der es vorkommt.
-  if IsResultToken(ATree, mIndex) then
-  begin
-    Exit(EnclosingFunction(ATree, AFileName, TDataFlowSyntax.NodeAt(ATree.Root, APosition), ASymbol));
-  end;
-  if ResolvedAt(ATree, AFileName, APosition, mResolved) then
-  begin
-    ASymbol := SymbolFromResolved(mResolved);
-    Exit(True);
-  end;
-  mTargets := TLspDefinition.Targets(FResolver, FIndex, ATree, AFileName, APosition, True);
-  Result := Length(mTargets) > 0;
-  if Result then
-  begin
-    ASymbol.FileName := mTargets[0].FileName;
-    ASymbol.Position := mTargets[0].SelectionRange.StartPos;
-    ASymbol.SymbolKind := TIndexSymbolKind.Variable;
-    if mIndex >= 0 then
-    begin
-      ASymbol.Name := TDataFlowSyntax.CleanName(ATree.Tokens[mIndex].Text);
-    end;
-  end;
 end;
 
 function TDataFlowBase.ParamsOf(const AFileName: string; const APosition: TTextPosition): TArray<TDataFlowParam>;

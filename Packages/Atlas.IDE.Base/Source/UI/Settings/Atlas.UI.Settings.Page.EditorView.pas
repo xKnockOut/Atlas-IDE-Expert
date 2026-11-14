@@ -75,6 +75,95 @@ uses
 
 { TAtlasSettingsEditorViewPart }
 
+procedure TAtlasSettingsEditorViewPart.Load(const ASettings: TAtlasPluginSettings);
+begin
+  FEditorToolbarPosition.Choice := Max(0, IndexText(ASettings.EditorToolbarPosition, cAtlasToolbarPositions));
+  FEditorToolbarItems.Text := ASettings.EditorToolbarItems;
+  FEditorStatusBarItems.Text := ASettings.EditorStatusBarItems;
+  FStickyScrollBlockMinLines.Text := IntToStr(ASettings.StickyScrollBlockMinLines);
+  FMinimapRender.Choice := Max(0, IndexText(ASettings.MinimapRender, ['blocks', 'characters']));
+  FMinimapSide.Choice := Max(0, IndexText(ASettings.MinimapSide, ['right', 'left']));
+  FMinimapShowSlider.Choice := Max(0, IndexText(ASettings.MinimapShowSlider, ['always', 'mouseover']));
+  FSelectionMatchesMinLength.Text := IntToStr(ASettings.SelectionMatchesMinLength);
+  FSelectionMatchesMaxMatches.Text := IntToStr(ASettings.SelectionMatchesMaxMatches);
+  FXmlDocExpand.Choice := Ord(TAtlasDocDisplay.ExpandOf(ASettings.XmlDocExpand));
+  FNestedRoutines.Choice := Ord(TAtlasRoutineNesting.StyleOf(ASettings.NestedRoutines));
+end;
+
+procedure TAtlasSettingsEditorViewPart.Save(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.EditorToolbarPosition := cAtlasToolbarPositions[EnsureRange(FEditorToolbarPosition.Choice, 0,
+    High(cAtlasToolbarPositions))];
+  ASettings.EditorToolbarItems := TAtlasToolbarItems.Normalize(FEditorToolbarItems.Text);
+  ASettings.EditorStatusBarItems := TAtlasStatusBarItems.Normalize(FEditorStatusBarItems.Text);
+  ASettings.StickyScrollBlockMinLines := StrToIntDef(FStickyScrollBlockMinLines.Text,
+    ASettings.StickyScrollBlockMinLines);
+  ASettings.MinimapRender := 'blocks';
+  if FMinimapRender.Choice = 1 then
+  begin
+    ASettings.MinimapRender := 'characters';
+  end;
+  ASettings.MinimapSide := 'right';
+  if FMinimapSide.Choice = 1 then
+  begin
+    ASettings.MinimapSide := 'left';
+  end;
+  ASettings.MinimapShowSlider := 'always';
+  if FMinimapShowSlider.Choice = 1 then
+  begin
+    ASettings.MinimapShowSlider := 'mouseover';
+  end;
+  ASettings.SelectionMatchesMinLength := StrToIntDef(FSelectionMatchesMinLength.Text,
+    ASettings.SelectionMatchesMinLength);
+  ASettings.SelectionMatchesMaxMatches := StrToIntDef(FSelectionMatchesMaxMatches.Text,
+    ASettings.SelectionMatchesMaxMatches);
+  ASettings.XmlDocExpand := TAtlasDocDisplay.ExpandName(TAtlasDocExpand(EnsureRange(FXmlDocExpand.Choice, 0, 2)));
+  ASettings.NestedRoutines := TAtlasRoutineNesting.cStyleNames[TAtlasNestedRoutineStyle(EnsureRange(
+    FNestedRoutines.Choice, Ord(Low(TAtlasNestedRoutineStyle)), Ord(High(TAtlasNestedRoutineStyle))))];
+end;
+
+procedure TAtlasSettingsEditorViewPart.BindMarks;
+begin
+  // Aus SaveTo: Element und die Einstellungen, die es schreibt. Listen aus mehreren Haken zeigen keinen Punkt
+  // (der gälte für jeden Haken), lassen sich aber zurücksetzen.
+  FPage.Marks.Bind(FEditorToolbarPosition, ['EditorToolbarPosition']);
+  FPage.Marks.Bind(FEditorToolbarItems, ['EditorToolbarItems']);
+  FPage.Marks.Bind(FEditorStatusBarItems, ['EditorStatusBarItems']);
+  FPage.Marks.Bind(FStickyScrollBlockMinLines, ['StickyScrollBlockMinLines']);
+  FPage.Marks.Bind(FMinimapRender, ['MinimapRender']);
+  FPage.Marks.Bind(FMinimapSide, ['MinimapSide']);
+  FPage.Marks.Bind(FMinimapShowSlider, ['MinimapShowSlider']);
+  FPage.Marks.Bind(FSelectionMatchesMinLength, ['SelectionMatchesMinLength']);
+  FPage.Marks.Bind(FSelectionMatchesMaxMatches, ['SelectionMatchesMaxMatches']);
+  FPage.Marks.Bind(FXmlDocExpand, ['XmlDocExpand']);
+  FPage.Marks.Bind(FNestedRoutines, ['NestedRoutines']);
+end;
+
+/// <summary>„Leiste anpassen …“ (#1101): Dialog auf den Werten der Seite; übernommen wird erst mit OK der Optionen.
+/// </summary>
+procedure TAtlasSettingsEditorViewPart.EditorToolbarCustomizeClick(Sender: TObject);
+var
+  mCommands: TArray<TAtlasToolbarCommandInfo>;
+  mConfig: TAtlasToolbarConfig;
+begin
+  mCommands := nil;
+  if Assigned(FOnToolbarCommands) then
+  begin
+    mCommands := FOnToolbarCommands();
+  end;
+  mConfig.Items := TAtlasToolbarItems.Parse(FEditorToolbarItems.Text);
+  mConfig.Labels := FEditorToolbarLabels.Checked;
+  mConfig.Position := cAtlasToolbarPositions[EnsureRange(FEditorToolbarPosition.Choice, 0,
+    High(cAtlasToolbarPositions))];
+  if not TAtlasToolbarCustomizeDialog.Execute(mCommands, mConfig) then
+  begin
+    Exit;
+  end;
+  FEditorToolbarItems.Text := TAtlasToolbarItems.Format(mConfig.Items);
+  FEditorToolbarLabels.Checked := mConfig.Labels;
+  FEditorToolbarPosition.Choice := Max(0, IndexText(mConfig.Position, cAtlasToolbarPositions));
+end;
+
 /// <summary>Brotkrumenleiste (#590): Glieder, Sprungmenüs, Farben und Tastenkürzel.</summary>
 procedure TAtlasSettingsEditorViewPart.BuildBreadcrumbs;
 begin
@@ -126,6 +215,36 @@ begin
     AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsInterfaces)));
   BindCheck('BreadcrumbsMetrics',
     AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBreadcrumbsMetrics)));
+end;
+
+/// <summary>Atlas-Editorleiste (#1101): Position, Einträge mit Anpassen-Knopf, Beschriftungen.</summary>
+procedure TAtlasSettingsEditorViewPart.BuildEditorToolbar;
+const
+  // Zeile mit dem Knopf „Anpassen …“ in Pixeln bei 96 dpi: Höhe, Abstand oben, Breite des Knopfs.
+  cCustomizeRowHeight = 32;
+  cCustomizeTop = 3;
+  cCustomizeWidth = 180;
+var
+  mPanel: TWinControl;
+begin
+  BindCheck('EditorToolbar', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbar)));
+  FEditorToolbarPosition := AddChoice(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPosition),
+    [TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionBelow),
+    TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionAbove),
+    TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionInline)]);
+  FEditorToolbarItems := AddTextLine(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbarItems));
+  mPanel := AddPanel(cCustomizeRowHeight);
+  FEditorToolbarCustomize := TButton.Create(FPage);
+  FEditorToolbarCustomize.Parent := mPanel;
+  FEditorToolbarCustomize.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbarCustomize);
+  FEditorToolbarCustomize.Left := 0;
+  FEditorToolbarCustomize.Top := FEditorToolbarCustomize.ScaleValue(cCustomizeTop);
+  FEditorToolbarCustomize.Width := FEditorToolbarCustomize.ScaleValue(cCustomizeWidth);
+  FEditorToolbarCustomize.OnClick := EditorToolbarCustomizeClick;
+  Attach(mPanel, FEditorToolbarItems);
+  BindCheck('EditorToolbarReturnButton',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbarReturnButton)));
+  FEditorToolbarLabels := BindCheck('EditorToolbarLabels', AddCheck(TAtlasStrings.Text(TAtlasTextId.EditorToolbarLabels)));
 end;
 
 procedure TAtlasSettingsEditorViewPart.Build;
@@ -184,36 +303,6 @@ begin
   BuildBreadcrumbs;
   BindCheck('MouseNavButtons', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMouseNavButtons)));
   BuildEditorToolbar;
-end;
-
-/// <summary>Atlas-Editorleiste (#1101): Position, Einträge mit Anpassen-Knopf, Beschriftungen.</summary>
-procedure TAtlasSettingsEditorViewPart.BuildEditorToolbar;
-const
-  // Zeile mit dem Knopf „Anpassen …“ in Pixeln bei 96 dpi: Höhe, Abstand oben, Breite des Knopfs.
-  cCustomizeRowHeight = 32;
-  cCustomizeTop = 3;
-  cCustomizeWidth = 180;
-var
-  mPanel: TWinControl;
-begin
-  BindCheck('EditorToolbar', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbar)));
-  FEditorToolbarPosition := AddChoice(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPosition),
-    [TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionBelow),
-    TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionAbove),
-    TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionInline)]);
-  FEditorToolbarItems := AddTextLine(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbarItems));
-  mPanel := AddPanel(cCustomizeRowHeight);
-  FEditorToolbarCustomize := TButton.Create(FPage);
-  FEditorToolbarCustomize.Parent := mPanel;
-  FEditorToolbarCustomize.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbarCustomize);
-  FEditorToolbarCustomize.Left := 0;
-  FEditorToolbarCustomize.Top := FEditorToolbarCustomize.ScaleValue(cCustomizeTop);
-  FEditorToolbarCustomize.Width := FEditorToolbarCustomize.ScaleValue(cCustomizeWidth);
-  FEditorToolbarCustomize.OnClick := EditorToolbarCustomizeClick;
-  Attach(mPanel, FEditorToolbarItems);
-  BindCheck('EditorToolbarReturnButton',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsEditorToolbarReturnButton)));
-  FEditorToolbarLabels := BindCheck('EditorToolbarLabels', AddCheck(TAtlasStrings.Text(TAtlasTextId.EditorToolbarLabels)));
 end;
 
 procedure TAtlasSettingsEditorViewPart.Build2;
@@ -289,95 +378,6 @@ begin
     AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSelectionMatchesF3)));
   FSelectionMatchesMaxMatches := AddNumber(TAtlasSettingsStrings.Text(
     TAtlasSettingsTextId.SettingsSelectionMatchesMax));
-end;
-
-procedure TAtlasSettingsEditorViewPart.BindMarks;
-begin
-  // Aus SaveTo: Element und die Einstellungen, die es schreibt. Listen aus mehreren Haken zeigen keinen Punkt
-  // (der gälte für jeden Haken), lassen sich aber zurücksetzen.
-  FPage.Marks.Bind(FEditorToolbarPosition, ['EditorToolbarPosition']);
-  FPage.Marks.Bind(FEditorToolbarItems, ['EditorToolbarItems']);
-  FPage.Marks.Bind(FEditorStatusBarItems, ['EditorStatusBarItems']);
-  FPage.Marks.Bind(FStickyScrollBlockMinLines, ['StickyScrollBlockMinLines']);
-  FPage.Marks.Bind(FMinimapRender, ['MinimapRender']);
-  FPage.Marks.Bind(FMinimapSide, ['MinimapSide']);
-  FPage.Marks.Bind(FMinimapShowSlider, ['MinimapShowSlider']);
-  FPage.Marks.Bind(FSelectionMatchesMinLength, ['SelectionMatchesMinLength']);
-  FPage.Marks.Bind(FSelectionMatchesMaxMatches, ['SelectionMatchesMaxMatches']);
-  FPage.Marks.Bind(FXmlDocExpand, ['XmlDocExpand']);
-  FPage.Marks.Bind(FNestedRoutines, ['NestedRoutines']);
-end;
-
-procedure TAtlasSettingsEditorViewPart.Load(const ASettings: TAtlasPluginSettings);
-begin
-  FEditorToolbarPosition.Choice := Max(0, IndexText(ASettings.EditorToolbarPosition, cAtlasToolbarPositions));
-  FEditorToolbarItems.Text := ASettings.EditorToolbarItems;
-  FEditorStatusBarItems.Text := ASettings.EditorStatusBarItems;
-  FStickyScrollBlockMinLines.Text := IntToStr(ASettings.StickyScrollBlockMinLines);
-  FMinimapRender.Choice := Max(0, IndexText(ASettings.MinimapRender, ['blocks', 'characters']));
-  FMinimapSide.Choice := Max(0, IndexText(ASettings.MinimapSide, ['right', 'left']));
-  FMinimapShowSlider.Choice := Max(0, IndexText(ASettings.MinimapShowSlider, ['always', 'mouseover']));
-  FSelectionMatchesMinLength.Text := IntToStr(ASettings.SelectionMatchesMinLength);
-  FSelectionMatchesMaxMatches.Text := IntToStr(ASettings.SelectionMatchesMaxMatches);
-  FXmlDocExpand.Choice := Ord(TAtlasDocDisplay.ExpandOf(ASettings.XmlDocExpand));
-  FNestedRoutines.Choice := Ord(TAtlasRoutineNesting.StyleOf(ASettings.NestedRoutines));
-end;
-
-procedure TAtlasSettingsEditorViewPart.Save(var ASettings: TAtlasPluginSettings);
-begin
-  ASettings.EditorToolbarPosition := cAtlasToolbarPositions[EnsureRange(FEditorToolbarPosition.Choice, 0,
-    High(cAtlasToolbarPositions))];
-  ASettings.EditorToolbarItems := TAtlasToolbarItems.Normalize(FEditorToolbarItems.Text);
-  ASettings.EditorStatusBarItems := TAtlasStatusBarItems.Normalize(FEditorStatusBarItems.Text);
-  ASettings.StickyScrollBlockMinLines := StrToIntDef(FStickyScrollBlockMinLines.Text,
-    ASettings.StickyScrollBlockMinLines);
-  ASettings.MinimapRender := 'blocks';
-  if FMinimapRender.Choice = 1 then
-  begin
-    ASettings.MinimapRender := 'characters';
-  end;
-  ASettings.MinimapSide := 'right';
-  if FMinimapSide.Choice = 1 then
-  begin
-    ASettings.MinimapSide := 'left';
-  end;
-  ASettings.MinimapShowSlider := 'always';
-  if FMinimapShowSlider.Choice = 1 then
-  begin
-    ASettings.MinimapShowSlider := 'mouseover';
-  end;
-  ASettings.SelectionMatchesMinLength := StrToIntDef(FSelectionMatchesMinLength.Text,
-    ASettings.SelectionMatchesMinLength);
-  ASettings.SelectionMatchesMaxMatches := StrToIntDef(FSelectionMatchesMaxMatches.Text,
-    ASettings.SelectionMatchesMaxMatches);
-  ASettings.XmlDocExpand := TAtlasDocDisplay.ExpandName(TAtlasDocExpand(EnsureRange(FXmlDocExpand.Choice, 0, 2)));
-  ASettings.NestedRoutines := TAtlasRoutineNesting.cStyleNames[TAtlasNestedRoutineStyle(EnsureRange(
-    FNestedRoutines.Choice, Ord(Low(TAtlasNestedRoutineStyle)), Ord(High(TAtlasNestedRoutineStyle))))];
-end;
-
-/// <summary>„Leiste anpassen …“ (#1101): Dialog auf den Werten der Seite; übernommen wird erst mit OK der Optionen.
-/// </summary>
-procedure TAtlasSettingsEditorViewPart.EditorToolbarCustomizeClick(Sender: TObject);
-var
-  mCommands: TArray<TAtlasToolbarCommandInfo>;
-  mConfig: TAtlasToolbarConfig;
-begin
-  mCommands := nil;
-  if Assigned(FOnToolbarCommands) then
-  begin
-    mCommands := FOnToolbarCommands();
-  end;
-  mConfig.Items := TAtlasToolbarItems.Parse(FEditorToolbarItems.Text);
-  mConfig.Labels := FEditorToolbarLabels.Checked;
-  mConfig.Position := cAtlasToolbarPositions[EnsureRange(FEditorToolbarPosition.Choice, 0,
-    High(cAtlasToolbarPositions))];
-  if not TAtlasToolbarCustomizeDialog.Execute(mCommands, mConfig) then
-  begin
-    Exit;
-  end;
-  FEditorToolbarItems.Text := TAtlasToolbarItems.Format(mConfig.Items);
-  FEditorToolbarLabels.Checked := mConfig.Labels;
-  FEditorToolbarPosition.Choice := Max(0, IndexText(mConfig.Position, cAtlasToolbarPositions));
 end;
 
 end.

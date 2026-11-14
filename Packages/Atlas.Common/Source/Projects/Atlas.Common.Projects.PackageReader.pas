@@ -210,6 +210,8 @@ begin
   end;
 end;
 
+{ TPackageReader }
+
 class function TPackageReader.Read(const AText: string): TPackageSource;
 var
   mTokens: TArray<TPascalToken>;

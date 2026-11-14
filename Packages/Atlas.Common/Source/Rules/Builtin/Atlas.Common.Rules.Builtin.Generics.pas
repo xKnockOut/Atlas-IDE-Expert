@@ -1025,6 +1025,8 @@ const
     TGenericsText.StringFamily, TGenericsText.LogicalFamily);
   cRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Routine];
 
+{ TGenericInferenceFailedRule }
+
 function TGenericInferenceFailedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cGenericInferenceFailedRuleId, TRuleSeverity.Error,

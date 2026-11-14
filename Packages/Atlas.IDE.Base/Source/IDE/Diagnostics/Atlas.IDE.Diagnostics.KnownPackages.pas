@@ -162,30 +162,6 @@ begin
   inherited;
 end;
 
-procedure TAtlasIdeKnownPackages.TWatcher.Shutdown;
-begin
-  Terminate;
-  FStop.SetEvent;
-  WaitFor;
-end;
-
-procedure TAtlasIdeKnownPackages.TWatcher.Changed;
-var
-  mNow: TArray<string>;
-  mChange: TAtlasKnownPackagesChange;
-begin
-  mNow := TAtlasIdeKnownPackages.ValuesOf(FKey);
-  mChange := TAtlasKnownPackages.Compare(FLast, mNow);
-  FLast := mNow;
-  if mChange.IsEmpty then
-  begin
-    Exit;
-  end;
-  TAtlasGuard.Log(Format('Known Packages geändert: entfernt %s; neu %s; in dieser IDE %d Module angemeldet, ' + // german-ok Protokoll
-    'andere bds.exe: %d', [TAtlasKnownPackages.Names(mChange.Removed), TAtlasKnownPackages.Names(mChange.Added),
-    TAtlasIdeKnownPackages.ModuleCount, TAtlasIdeKnownPackages.OtherIdes]));
-end;
-
 procedure TAtlasIdeKnownPackages.TWatcher.Execute;
 var
   mKey: HKEY;
@@ -219,6 +195,30 @@ begin
   end;
 end;
 
+procedure TAtlasIdeKnownPackages.TWatcher.Changed;
+var
+  mNow: TArray<string>;
+  mChange: TAtlasKnownPackagesChange;
+begin
+  mNow := TAtlasIdeKnownPackages.ValuesOf(FKey);
+  mChange := TAtlasKnownPackages.Compare(FLast, mNow);
+  FLast := mNow;
+  if mChange.IsEmpty then
+  begin
+    Exit;
+  end;
+  TAtlasGuard.Log(Format('Known Packages geändert: entfernt %s; neu %s; in dieser IDE %d Module angemeldet, ' + // german-ok Protokoll
+    'andere bds.exe: %d', [TAtlasKnownPackages.Names(mChange.Removed), TAtlasKnownPackages.Names(mChange.Added),
+    TAtlasIdeKnownPackages.ModuleCount, TAtlasIdeKnownPackages.OtherIdes]));
+end;
+
+procedure TAtlasIdeKnownPackages.TWatcher.Shutdown;
+begin
+  Terminate;
+  FStop.SetEvent;
+  WaitFor;
+end;
+
 { TAtlasIdeKnownPackages }
 
 constructor TAtlasIdeKnownPackages.Create(const ARegistryKey, ABaseFile: string);
@@ -240,51 +240,6 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeKnownPackages.KnownKey(const ARegistryKey: string): string;
-begin
-{$IFDEF WIN64}
-  Result := ARegistryKey + '\Known Packages x64';
-{$ELSE}
-  Result := ARegistryKey + '\Known Packages';
-{$ENDIF}
-end;
-
-class function TAtlasIdeKnownPackages.DisabledKey(const ARegistryKey: string): string;
-begin
-{$IFDEF WIN64}
-  Result := ARegistryKey + '\Disabled Packages x64';
-{$ELSE}
-  Result := ARegistryKey + '\Disabled Packages';
-{$ENDIF}
-end;
-
-class function TAtlasIdeKnownPackages.ValuesOf(const AKey: string): TArray<string>;
-var
-  mRegistry: TRegistry;
-  mNames: TStringList;
-  mIndex: Integer;
-begin
-  Result := nil;
-  mRegistry := TRegistry.Create(KEY_READ);
-  mNames := TStringList.Create;
-  try
-    mRegistry.RootKey := HKEY_CURRENT_USER;
-    if not mRegistry.OpenKeyReadOnly(AKey) then
-    begin
-      Exit;
-    end;
-    mRegistry.GetValueNames(mNames);
-    SetLength(Result, mNames.Count);
-    for mIndex := 0 to mNames.Count - 1 do
-    begin
-      Result[mIndex] := Expanded(mNames[mIndex]);
-    end;
-  finally
-    mNames.Free;
-    mRegistry.Free;
-  end;
-end;
-
 function TAtlasIdeKnownPackages.Input: TAtlasKnownPackagesInput;
 var
   mFolder: string;
@@ -298,6 +253,77 @@ begin
   end;
   Result.Known := ValuesOf(KnownKey(FRegistryKey));
   Result.Disabled := ValuesOf(DisabledKey(FRegistryKey));
+end;
+
+procedure TAtlasIdeKnownPackages.Notify;
+begin
+  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cPackages, TAtlasNotificationSeverity.Warning,
+    UiText(TKnownPackagesText.Title), Format(UiText(TKnownPackagesText.Text),
+    [TAtlasKnownPackages.Names(FState.Missing)]), [TAtlasNotificationCenter.Action(UiText(TKnownPackagesText.Restore),
+    RestoreAction(KnownKey(FRegistryKey), FState.Missing))]);
+end;
+
+class function TAtlasIdeKnownPackages.RestoreAction(const AKey: string; const AMissing: TArray<string>): TProc;
+var
+  mKey: string;
+  mMissing: TArray<string>;
+begin
+  mKey := AKey;
+  mMissing := AMissing;
+  Result :=
+    procedure
+    begin
+      Restore(mKey, mMissing);
+    end;
+end;
+
+class procedure TAtlasIdeKnownPackages.Restore(const AKey: string; const AMissing: TArray<string>);
+var
+  mNames, mError: string;
+begin
+  mNames := TAtlasKnownPackages.Names(AMissing);
+  mError := '';
+  try
+    if not WriteMissing(AKey, AMissing) then
+    begin
+      mError := 'Known Packages';
+    end;
+  except
+    on mFailure: Exception do
+      mError := mFailure.Message;
+  end;
+  if mError <> '' then
+  begin
+    TAtlasGuard.Log('Known Packages: Wieder eintragen fehlgeschlagen: ' + TAtlasGuard.MessageText(mError));
+    TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cPackages, TAtlasNotificationSeverity.Error,
+      UiText(TKnownPackagesText.Title), Format(UiText(TKnownPackagesText.Failed), [mError]));
+    Exit;
+  end;
+  TAtlasGuard.Log('Known Packages: wieder eingetragen: ' + mNames);
+  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cPackages, TAtlasNotificationSeverity.Info,
+    UiText(TKnownPackagesText.DoneTitle), Format(UiText(TKnownPackagesText.DoneText), [mNames]));
+end;
+
+class function TAtlasIdeKnownPackages.WriteMissing(const AKey: string; const AMissing: TArray<string>): Boolean;
+var
+  mRegistry: TRegistry;
+  mFile: string;
+begin
+  mRegistry := TRegistry.Create(KEY_READ or KEY_WRITE);
+  try
+    mRegistry.RootKey := HKEY_CURRENT_USER;
+    Result := mRegistry.OpenKey(AKey, False);
+    if not Result then
+    begin
+      Exit;
+    end;
+    for mFile in AMissing do
+    begin
+      mRegistry.WriteString(mFile, TAtlasKnownPackages.Description(mFile));
+    end;
+  finally
+    mRegistry.Free;
+  end;
 end;
 
 class function TAtlasIdeKnownPackages.OtherIdes: Integer;
@@ -355,75 +381,49 @@ begin
   FWatcher := TWatcher.Create(KnownKey(FRegistryKey), mInput.Known);
 end;
 
-procedure TAtlasIdeKnownPackages.Notify;
+class function TAtlasIdeKnownPackages.KnownKey(const ARegistryKey: string): string;
 begin
-  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cPackages, TAtlasNotificationSeverity.Warning,
-    UiText(TKnownPackagesText.Title), Format(UiText(TKnownPackagesText.Text),
-    [TAtlasKnownPackages.Names(FState.Missing)]), [TAtlasNotificationCenter.Action(UiText(TKnownPackagesText.Restore),
-    RestoreAction(KnownKey(FRegistryKey), FState.Missing))]);
+{$IFDEF WIN64}
+  Result := ARegistryKey + '\Known Packages x64';
+{$ELSE}
+  Result := ARegistryKey + '\Known Packages';
+{$ENDIF}
 end;
 
-class function TAtlasIdeKnownPackages.RestoreAction(const AKey: string; const AMissing: TArray<string>): TProc;
-var
-  mKey: string;
-  mMissing: TArray<string>;
+class function TAtlasIdeKnownPackages.DisabledKey(const ARegistryKey: string): string;
 begin
-  mKey := AKey;
-  mMissing := AMissing;
-  Result :=
-    procedure
-    begin
-      Restore(mKey, mMissing);
-    end;
+{$IFDEF WIN64}
+  Result := ARegistryKey + '\Disabled Packages x64';
+{$ELSE}
+  Result := ARegistryKey + '\Disabled Packages';
+{$ENDIF}
 end;
 
-class function TAtlasIdeKnownPackages.WriteMissing(const AKey: string; const AMissing: TArray<string>): Boolean;
+class function TAtlasIdeKnownPackages.ValuesOf(const AKey: string): TArray<string>;
 var
   mRegistry: TRegistry;
-  mFile: string;
+  mNames: TStringList;
+  mIndex: Integer;
 begin
-  mRegistry := TRegistry.Create(KEY_READ or KEY_WRITE);
+  Result := nil;
+  mRegistry := TRegistry.Create(KEY_READ);
+  mNames := TStringList.Create;
   try
     mRegistry.RootKey := HKEY_CURRENT_USER;
-    Result := mRegistry.OpenKey(AKey, False);
-    if not Result then
+    if not mRegistry.OpenKeyReadOnly(AKey) then
     begin
       Exit;
     end;
-    for mFile in AMissing do
+    mRegistry.GetValueNames(mNames);
+    SetLength(Result, mNames.Count);
+    for mIndex := 0 to mNames.Count - 1 do
     begin
-      mRegistry.WriteString(mFile, TAtlasKnownPackages.Description(mFile));
+      Result[mIndex] := Expanded(mNames[mIndex]);
     end;
   finally
+    mNames.Free;
     mRegistry.Free;
   end;
-end;
-
-class procedure TAtlasIdeKnownPackages.Restore(const AKey: string; const AMissing: TArray<string>);
-var
-  mNames, mError: string;
-begin
-  mNames := TAtlasKnownPackages.Names(AMissing);
-  mError := '';
-  try
-    if not WriteMissing(AKey, AMissing) then
-    begin
-      mError := 'Known Packages';
-    end;
-  except
-    on mFailure: Exception do
-      mError := mFailure.Message;
-  end;
-  if mError <> '' then
-  begin
-    TAtlasGuard.Log('Known Packages: Wieder eintragen fehlgeschlagen: ' + TAtlasGuard.MessageText(mError));
-    TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cPackages, TAtlasNotificationSeverity.Error,
-      UiText(TKnownPackagesText.Title), Format(UiText(TKnownPackagesText.Failed), [mError]));
-    Exit;
-  end;
-  TAtlasGuard.Log('Known Packages: wieder eingetragen: ' + mNames);
-  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cPackages, TAtlasNotificationSeverity.Info,
-    UiText(TKnownPackagesText.DoneTitle), Format(UiText(TKnownPackagesText.DoneText), [mNames]));
 end;
 
 procedure StartKnownPackages;

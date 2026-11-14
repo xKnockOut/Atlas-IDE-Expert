@@ -189,6 +189,8 @@ type
       out ATokens: TArray<TAtlasCodeToken>);
   end;
 
+{ TCommentLexer }
+
 function TCommentLexer.CharAt(AIndex: Integer): Char;
 begin
   Result := #0;
@@ -565,6 +567,8 @@ type
     function LevelStep(const AToken: TAtlasCodeToken): TStatementStep;
     function Step(const AToken: TAtlasCodeToken): TStatementStep;
   end;
+
+{ TStatementScan }
 
 function TStatementScan.OuterStep(const AToken: TAtlasCodeToken): TStatementStep;
 begin

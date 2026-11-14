@@ -75,11 +75,6 @@ uses
 
 { TAccessorPlan }
 
-function TAccessorPlan.FieldName: string;
-begin
-  Result := 'F' + PropertyName;
-end;
-
 function TAccessorPlan.Name: string;
 begin
   case Kind of
@@ -90,6 +85,11 @@ begin
   else
     Result := FieldName;
   end;
+end;
+
+function TAccessorPlan.FieldName: string;
+begin
+  Result := 'F' + PropertyName;
 end;
 
 { TAccessorCreation }

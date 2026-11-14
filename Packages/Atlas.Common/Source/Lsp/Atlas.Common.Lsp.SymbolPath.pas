@@ -198,31 +198,33 @@ begin
   end;
 end;
 
-class function TLspSymbolPath.ReadRequest(const AParams: TJSONObject): TSymbolPathRequest;
+function TLspSymbolPath.Execute(const AArguments: TJSONArray): TJSONValue;
 var
-  mValue: TJSONValue;
+  mParams: TJSONObject;
+  mOptions: TJSONObject;
+  mPair: TJSONPair;
 begin
-  Result := TSymbolPathRequest.Default;
-  Result.From := TJsonRead.TrimmedText(AParams, 'from');
-  Result.To_ := TJsonRead.TrimmedText(AParams, 'to');
-  if (Result.From = '') or (Result.To_ = '') then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TLspSymbolPathText.FromAndToAreRequired].Text);
-  end;
-  mValue := ParamValue(AParams, 'via');
-  if mValue is TJSONArray then
-  begin
-    ReadVia(TJSONArray(mValue), Result);
-  end;
-  mValue := ParamValue(AParams, 'maxSteps');
-  if mValue is TJSONNumber then
-  begin
-    Result.MaxSteps := ReadMaxSteps(TJSONNumber(mValue));
-  end;
-  mValue := ParamValue(AParams, 'all');
-  if mValue is TJSONBool then
-  begin
-    Result.All := TJSONBool(mValue).AsBoolean;
+  mParams := TJSONObject.Create;
+  try
+    if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+    begin
+      mParams.AddPair('uri', AArguments.Items[0].Value);
+    end;
+    if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONObject) then
+    begin
+      mOptions := TJSONObject(AArguments.Items[1]);
+      for mPair in mOptions do
+      begin
+        if mPair.JsonString.Value <> 'uri' then
+        begin
+          mParams.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
+        end;
+      end;
+    end;
+    // Befehle laufen ohne eigenes Token-Argument: Abbruch über die laufende Anfrage.
+    Result := Request(mParams, TJsonRpcCurrentRequest.Token);
+  finally
+    mParams.Free;
   end;
 end;
 
@@ -299,33 +301,31 @@ begin
   end;
 end;
 
-function TLspSymbolPath.Execute(const AArguments: TJSONArray): TJSONValue;
+class function TLspSymbolPath.ReadRequest(const AParams: TJSONObject): TSymbolPathRequest;
 var
-  mParams: TJSONObject;
-  mOptions: TJSONObject;
-  mPair: TJSONPair;
+  mValue: TJSONValue;
 begin
-  mParams := TJSONObject.Create;
-  try
-    if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
-    begin
-      mParams.AddPair('uri', AArguments.Items[0].Value);
-    end;
-    if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONObject) then
-    begin
-      mOptions := TJSONObject(AArguments.Items[1]);
-      for mPair in mOptions do
-      begin
-        if mPair.JsonString.Value <> 'uri' then
-        begin
-          mParams.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
-        end;
-      end;
-    end;
-    // Befehle laufen ohne eigenes Token-Argument: Abbruch über die laufende Anfrage.
-    Result := Request(mParams, TJsonRpcCurrentRequest.Token);
-  finally
-    mParams.Free;
+  Result := TSymbolPathRequest.Default;
+  Result.From := TJsonRead.TrimmedText(AParams, 'from');
+  Result.To_ := TJsonRead.TrimmedText(AParams, 'to');
+  if (Result.From = '') or (Result.To_ = '') then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TLspSymbolPathText.FromAndToAreRequired].Text);
+  end;
+  mValue := ParamValue(AParams, 'via');
+  if mValue is TJSONArray then
+  begin
+    ReadVia(TJSONArray(mValue), Result);
+  end;
+  mValue := ParamValue(AParams, 'maxSteps');
+  if mValue is TJSONNumber then
+  begin
+    Result.MaxSteps := ReadMaxSteps(TJSONNumber(mValue));
+  end;
+  mValue := ParamValue(AParams, 'all');
+  if mValue is TJSONBool then
+  begin
+    Result.All := TJSONBool(mValue).AsBoolean;
   end;
 end;
 

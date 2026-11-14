@@ -89,6 +89,93 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasUsage.Evict;
+var
+  mPairs: TArray<TPair<string, TEntry>>;
+  mIndex: Integer;
+begin
+  // Älteste zuerst entfernen, bis wieder Platz ist (ein Zehntel Luft, damit nicht bei jeder Übernahme sortiert wird).
+  mPairs := FEntries.ToArray;
+  TArray.Sort<TPair<string, TEntry>>(mPairs, TComparer<TPair<string, TEntry>>.Construct(
+    function(const A, B: TPair<string, TEntry>): Integer
+    begin
+      Result := CompareValue(A.Value.Last, B.Value.Last);
+    end));
+  for mIndex := 0 to Length(mPairs) - cMaxEntries + cMaxEntries div 10 - 1 do
+  begin
+    FEntries.Remove(mPairs[mIndex].Key);
+  end;
+end;
+
+function TAtlasUsage.Parse(const AText: string): Boolean;
+var
+  mRoot, mItems, mRecent: TJSONValue;
+begin
+  Result := False;
+  mRoot := TJSONObject.ParseJSONValue(AText);
+  try
+    if not (mRoot is TJSONObject) then
+    begin
+      Exit;
+    end;
+    mItems := TJSONObject(mRoot).GetValue('entries');
+    mRecent := TJSONObject(mRoot).GetValue('recent');
+    if ((mItems <> nil) and not (mItems is TJSONArray)) or ((mRecent <> nil) and not (mRecent is TJSONObject)) then
+    begin
+      Exit;
+    end;
+    Result := True;
+    if mItems <> nil then
+    begin
+      ReadEntries(TJSONArray(mItems));
+    end;
+    if mRecent <> nil then
+    begin
+      ReadRecent(TJSONObject(mRecent));
+    end;
+  finally
+    mRoot.Free;
+  end;
+end;
+
+procedure TAtlasUsage.ReadEntries(AItems: TJSONArray);
+var
+  mValue: TJSONValue;
+  mItem: TJSONObject;
+  mEntry: TEntry;
+begin
+  for mValue in AItems do
+  begin
+    if not (mValue is TJSONObject) then
+    begin
+      Continue;
+    end;
+    mItem := TJSONObject(mValue);
+    mEntry.Count := mItem.GetValue<Integer>('count', 0);
+    mEntry.Last := mItem.GetValue<Int64>('last', 0);
+    if mItem.GetValue<string>('key', '') <> '' then
+    begin
+      FEntries.AddOrSetValue(mItem.GetValue<string>('key', ''), mEntry);
+    end;
+    FClock := Max(FClock, mEntry.Last);
+  end;
+end;
+
+procedure TAtlasUsage.ReadRecent(ARecent: TJSONObject);
+var
+  mPair: TJSONPair;
+begin
+  for mPair in ARecent do
+  begin
+    FRecent.AddOrSetValue(mPair.JsonString.Value, mPair.JsonValue.Value);
+  end;
+end;
+
+class function TAtlasUsage.KeyOf(const AItem: TAtlasCompletionItem): string;
+begin
+  Result := TypeOf(AItem) + '|' + LowerCase(AItem.Name);
+end;
+
 class function TAtlasUsage.TypeOf(const AItem: TAtlasCompletionItem): string;
 begin
   // Typ des Members; auf Unit-Ebene die Unit, sonst leer.
@@ -97,11 +184,6 @@ begin
   begin
     Result := LowerCase(AItem.DeclaringUnit);
   end;
-end;
-
-class function TAtlasUsage.KeyOf(const AItem: TAtlasCompletionItem): string;
-begin
-  Result := TypeOf(AItem) + '|' + LowerCase(AItem.Name);
 end;
 
 procedure TAtlasUsage.Record_(const AItem: TAtlasCompletionItem);
@@ -123,24 +205,6 @@ begin
   if FEntries.Count > cMaxEntries then
   begin
     Evict;
-  end;
-end;
-
-procedure TAtlasUsage.Evict;
-var
-  mPairs: TArray<TPair<string, TEntry>>;
-  mIndex: Integer;
-begin
-  // Älteste zuerst entfernen, bis wieder Platz ist (ein Zehntel Luft, damit nicht bei jeder Übernahme sortiert wird).
-  mPairs := FEntries.ToArray;
-  TArray.Sort<TPair<string, TEntry>>(mPairs, TComparer<TPair<string, TEntry>>.Construct(
-    function(const A, B: TPair<string, TEntry>): Integer
-    begin
-      Result := CompareValue(A.Value.Last, B.Value.Last);
-    end));
-  for mIndex := 0 to Length(mPairs) - cMaxEntries + cMaxEntries div 10 - 1 do
-  begin
-    FEntries.Remove(mPairs[mIndex].Key);
   end;
 end;
 
@@ -187,70 +251,6 @@ begin
   FRecent.Clear;
   FClock := 0;
   FChanged := True;
-end;
-
-procedure TAtlasUsage.ReadEntries(AItems: TJSONArray);
-var
-  mValue: TJSONValue;
-  mItem: TJSONObject;
-  mEntry: TEntry;
-begin
-  for mValue in AItems do
-  begin
-    if not (mValue is TJSONObject) then
-    begin
-      Continue;
-    end;
-    mItem := TJSONObject(mValue);
-    mEntry.Count := mItem.GetValue<Integer>('count', 0);
-    mEntry.Last := mItem.GetValue<Int64>('last', 0);
-    if mItem.GetValue<string>('key', '') <> '' then
-    begin
-      FEntries.AddOrSetValue(mItem.GetValue<string>('key', ''), mEntry);
-    end;
-    FClock := Max(FClock, mEntry.Last);
-  end;
-end;
-
-procedure TAtlasUsage.ReadRecent(ARecent: TJSONObject);
-var
-  mPair: TJSONPair;
-begin
-  for mPair in ARecent do
-  begin
-    FRecent.AddOrSetValue(mPair.JsonString.Value, mPair.JsonValue.Value);
-  end;
-end;
-
-function TAtlasUsage.Parse(const AText: string): Boolean;
-var
-  mRoot, mItems, mRecent: TJSONValue;
-begin
-  Result := False;
-  mRoot := TJSONObject.ParseJSONValue(AText);
-  try
-    if not (mRoot is TJSONObject) then
-    begin
-      Exit;
-    end;
-    mItems := TJSONObject(mRoot).GetValue('entries');
-    mRecent := TJSONObject(mRoot).GetValue('recent');
-    if ((mItems <> nil) and not (mItems is TJSONArray)) or ((mRecent <> nil) and not (mRecent is TJSONObject)) then
-    begin
-      Exit;
-    end;
-    Result := True;
-    if mItems <> nil then
-    begin
-      ReadEntries(TJSONArray(mItems));
-    end;
-    if mRecent <> nil then
-    begin
-      ReadRecent(TJSONObject(mRecent));
-    end;
-  finally
-    mRoot.Free;
-  end;
 end;
 
 function TAtlasUsage.LoadFromFile(const AFileName: string): TAtlasDataLoad;

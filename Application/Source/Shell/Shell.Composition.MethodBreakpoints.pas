@@ -32,6 +32,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Shell.Texts;
 
+{ TShellMethodBreakpoints }
+
 procedure TShellMethodBreakpoints.Register(ACommands: TLspCommands);
 begin
   ACommands.Register(TLspMethodBreakpoints.cCommand, MethodBreakpoints);
@@ -40,6 +42,28 @@ end;
 function TShellMethodBreakpoints.Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
 begin
   Result := nil;
+end;
+
+function TShellMethodBreakpoints.MethodBreakpoints(const AArguments: TJSONArray): TJSONValue;
+var
+  mText: string;
+  mOptions: TMethodBreakpointOptions;
+  mPattern: TMethodPattern;
+  mHits: TArray<TMethodBreakpointHit>;
+  mTruncated: Boolean;
+begin
+  // Argument: {"pattern": …, "overrides": …, "overloads": …} aus dem Fenster bzw. beim Mitwachsen vor dem Start.
+  if not TLspMethodBreakpoints.ReadRequest(AArguments, mText, mOptions) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TShellTexts.Missing(['pattern']));
+  end;
+  if not TMethodPattern.Parse(mText, Index, mPattern) then
+  begin
+    Exit(TLspMethodBreakpoints.ErrorToJson(TLspMethodBreakpoints.InvalidPattern(mText)));
+  end;
+  mHits := TLspMethodBreakpoints.Search(Index, mPattern, mOptions, BodiesOf, mTruncated);
+  Log(Format('Method breakpoints: %d hits', [Length(mHits)]));
+  Result := TLspMethodBreakpoints.ToJson(mPattern.Text, mHits, mTruncated);
 end;
 
 function TShellMethodBreakpoints.BodiesOf(const AFileName: string): TArray<TMethodBody>;
@@ -64,28 +88,6 @@ begin
   finally
     mTree.Free;
   end;
-end;
-
-function TShellMethodBreakpoints.MethodBreakpoints(const AArguments: TJSONArray): TJSONValue;
-var
-  mText: string;
-  mOptions: TMethodBreakpointOptions;
-  mPattern: TMethodPattern;
-  mHits: TArray<TMethodBreakpointHit>;
-  mTruncated: Boolean;
-begin
-  // Argument: {"pattern": …, "overrides": …, "overloads": …} aus dem Fenster bzw. beim Mitwachsen vor dem Start.
-  if not TLspMethodBreakpoints.ReadRequest(AArguments, mText, mOptions) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TShellTexts.Missing(['pattern']));
-  end;
-  if not TMethodPattern.Parse(mText, Index, mPattern) then
-  begin
-    Exit(TLspMethodBreakpoints.ErrorToJson(TLspMethodBreakpoints.InvalidPattern(mText)));
-  end;
-  mHits := TLspMethodBreakpoints.Search(Index, mPattern, mOptions, BodiesOf, mTruncated);
-  Log(Format('Method breakpoints: %d hits', [Length(mHits)]));
-  Result := TLspMethodBreakpoints.ToJson(mPattern.Text, mHits, mTruncated);
 end;
 
 end.

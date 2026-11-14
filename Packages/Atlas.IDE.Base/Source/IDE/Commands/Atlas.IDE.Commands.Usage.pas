@@ -145,6 +145,29 @@ begin
   inherited;
 end;
 
+procedure TAtlasIdeCommandUsage.SaveTick(Sender: TObject);
+begin
+  FSaveTimer.Enabled := False;
+  TAtlasGuard.Run(TAtlasFeature.ShortcutTips,
+    procedure
+    begin
+      FUsage.SaveToFiles(TipsFile, UsageFile);
+    end);
+end;
+
+procedure TAtlasIdeCommandUsage.LoadTips;
+begin
+  FTipsLoaded := True;
+  FTips := nil;
+  FFolder := FindFolder(ExtractFilePath(GetModuleName(HInstance)));
+  if FFolder <> '' then
+  begin
+    FTips := TAtlasTipCatalog.Parse(ReadText(FFolder + TAtlasTipCatalog.cFileName));
+  end;
+  // Anonym: nur die Zahl.
+  TAtlasGuard.Log(Format('Tipps (#757): %d aus tips.json', [Length(FTips)]));
+end;
+
 class function TAtlasIdeCommandUsage.Instance: TAtlasIdeCommandUsage;
 begin
   Result := FInstance;
@@ -181,12 +204,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeCommandUsage.UsageOf(const AId: string; out AEntry: TAtlasCommandUsageEntry): Boolean;
-begin
-  AEntry := TAtlasCommandUsageEntry.Create(AId);
-  Result := (FInstance <> nil) and FInstance.Usage.Find(AId, AEntry);
-end;
-
 class procedure TAtlasIdeCommandUsage.ResetCounts;
 var
   mUsage: TAtlasCommandUsage;
@@ -215,6 +232,12 @@ begin
   TAtlasGuard.Log('Nutzungszählung zurückgesetzt (#757)');
 end;
 
+class function TAtlasIdeCommandUsage.UsageOf(const AId: string; out AEntry: TAtlasCommandUsageEntry): Boolean;
+begin
+  AEntry := TAtlasCommandUsageEntry.Create(AId);
+  Result := (FInstance <> nil) and FInstance.Usage.Find(AId, AEntry);
+end;
+
 procedure TAtlasIdeCommandUsage.ApplySettings;
 begin
   FUsage.Tracking := TAtlasIdeSettings.Current.TipsUsageTracking;
@@ -238,29 +261,6 @@ begin
     FSaveTimer.Enabled := False;
   end;
   FUsage.SaveToFiles(TipsFile, UsageFile);
-end;
-
-procedure TAtlasIdeCommandUsage.SaveTick(Sender: TObject);
-begin
-  FSaveTimer.Enabled := False;
-  TAtlasGuard.Run(TAtlasFeature.ShortcutTips,
-    procedure
-    begin
-      FUsage.SaveToFiles(TipsFile, UsageFile);
-    end);
-end;
-
-procedure TAtlasIdeCommandUsage.LoadTips;
-begin
-  FTipsLoaded := True;
-  FTips := nil;
-  FFolder := FindFolder(ExtractFilePath(GetModuleName(HInstance)));
-  if FFolder <> '' then
-  begin
-    FTips := TAtlasTipCatalog.Parse(ReadText(FFolder + TAtlasTipCatalog.cFileName));
-  end;
-  // Anonym: nur die Zahl.
-  TAtlasGuard.Log(Format('Tipps (#757): %d aus tips.json', [Length(FTips)]));
 end;
 
 function TAtlasIdeCommandUsage.Tips: TAtlasTips;

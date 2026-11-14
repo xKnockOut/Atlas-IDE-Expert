@@ -53,6 +53,8 @@ begin
   Result := Result or ASettings.ConditionalExpression or ASettings.NestedRoutine;
 end;
 
+{ TShellEditingRefactorings }
+
 procedure TShellEditingRefactorings.Register(ACommands: TLspCommands);
 begin
   ACommands.Register(TLspUnwrap.cCommand, Unwrap);
@@ -80,6 +82,18 @@ begin
     mContext) do
   begin
     Result := Result + [TLspCodeActions.ActionToJson(AUri, mAction)];
+  end;
+end;
+
+function TShellEditingRefactorings.InterfaceUses(const AUnitName: string): TArray<string>;
+var
+  mUnit: TUnitIndex;
+begin
+  Result := nil;
+  EnsureUnit(AUnitName);
+  if Index.FindUnit(AUnitName, mUnit) then
+  begin
+    Result := mUnit.InterfaceUses;
   end;
 end;
 
@@ -137,18 +151,6 @@ begin
     TDocumentUris.ToPath(AArguments.Items[1].Value), mFiles, Reader);
   Log(Format('Unit umbenannt: %d von %d Dateien betroffen', [Number(mAnswer, 'count'), Length(mFiles)]));
   Result := mAnswer;
-end;
-
-function TShellEditingRefactorings.InterfaceUses(const AUnitName: string): TArray<string>;
-var
-  mUnit: TUnitIndex;
-begin
-  Result := nil;
-  EnsureUnit(AUnitName);
-  if Index.FindUnit(AUnitName, mUnit) then
-  begin
-    Result := mUnit.InterfaceUses;
-  end;
 end;
 
 function TShellEditingRefactorings.PasteUses(const AArguments: TJSONArray): TJSONValue;

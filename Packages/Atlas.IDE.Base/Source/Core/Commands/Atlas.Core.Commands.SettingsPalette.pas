@@ -115,39 +115,12 @@ begin
   FEnglish := AEnglish;
 end;
 
-function TAtlasSettingsPaletteSource.Ready: Boolean;
-begin
-  if (FCatalog = nil) and Assigned(FCatalogOf) then
-  begin
-    FCatalog := FCatalogOf();
-    FCatalogOf := nil;
-    if FCatalog <> nil then
-    begin
-      FGroups := TAtlasSettingsGroups.Create(FCatalog);
-    end;
-  end;
-  Result := FGroups <> nil;
-end;
-
 destructor TAtlasSettingsPaletteSource.Destroy;
 begin
   FHits := nil;
   FreeAndNil(FGroups);
   FreeAndNil(FCatalog);
   inherited Destroy;
-end;
-
-class function TAtlasSettingsPaletteSource.QueryOf(const APattern: string; out AQuery: string): Boolean;
-var
-  mPattern: string;
-begin
-  mPattern := TrimLeft(APattern);
-  Result := mPattern.StartsWith(cPrefix);
-  AQuery := '';
-  if Result then
-  begin
-    AQuery := Trim(Copy(mPattern, Length(cPrefix) + 1, MaxInt));
-  end;
 end;
 
 function TAtlasSettingsPaletteSource.ItemOf(const AHit: TAtlasSettingHit): TAtlasCommand;
@@ -168,6 +141,49 @@ begin
     begin
       Result.Badge := UiText(TPaletteText.Off);
     end;
+  end;
+end;
+
+function TAtlasSettingsPaletteSource.HitOf(const AId: string; out AHit: TAtlasSettingHit): Boolean;
+var
+  mHit: TAtlasSettingHit;
+begin
+  for mHit in FHits do
+  begin
+    if mHit.Name = AId then
+    begin
+      AHit := mHit;
+      Exit(True);
+    end;
+  end;
+  AHit := Default(TAtlasSettingHit);
+  Result := False;
+end;
+
+function TAtlasSettingsPaletteSource.Ready: Boolean;
+begin
+  if (FCatalog = nil) and Assigned(FCatalogOf) then
+  begin
+    FCatalog := FCatalogOf();
+    FCatalogOf := nil;
+    if FCatalog <> nil then
+    begin
+      FGroups := TAtlasSettingsGroups.Create(FCatalog);
+    end;
+  end;
+  Result := FGroups <> nil;
+end;
+
+class function TAtlasSettingsPaletteSource.QueryOf(const APattern: string; out AQuery: string): Boolean;
+var
+  mPattern: string;
+begin
+  mPattern := TrimLeft(APattern);
+  Result := mPattern.StartsWith(cPrefix);
+  AQuery := '';
+  if Result then
+  begin
+    AQuery := Trim(Copy(mPattern, Length(cPrefix) + 1, MaxInt));
   end;
 end;
 
@@ -213,22 +229,6 @@ begin
     mStatus := UiText(TPaletteText.NoHits);
   end;
   FShow(TAtlasPaletteGroup.Create(UiText(TPaletteText.Title), mStatus, mQuery, mItems));
-end;
-
-function TAtlasSettingsPaletteSource.HitOf(const AId: string; out AHit: TAtlasSettingHit): Boolean;
-var
-  mHit: TAtlasSettingHit;
-begin
-  for mHit in FHits do
-  begin
-    if mHit.Name = AId then
-    begin
-      AHit := mHit;
-      Exit(True);
-    end;
-  end;
-  AHit := Default(TAtlasSettingHit);
-  Result := False;
 end;
 
 procedure TAtlasSettingsPaletteSource.Execute(const AItem: TAtlasCommand; AAction: TAtlasPaletteAction);

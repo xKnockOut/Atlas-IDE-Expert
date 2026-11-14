@@ -196,11 +196,6 @@ end;
 
 { TLspCompletion }
 
-constructor TLspCompletion.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);
-begin
-  Create(AStore, AIndex, nil);
-end;
-
 constructor TLspCompletion.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc);
 begin
@@ -215,12 +210,22 @@ begin
   FTreeCases := TCompletionCases.TreeCases;
 end;
 
+constructor TLspCompletion.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);
+begin
+  Create(AStore, AIndex, nil);
+end;
+
 destructor TLspCompletion.Destroy;
 begin
   FForms.Free;
   FCacheLock.Free;
   FHooks.Free;
   inherited;
+end;
+
+procedure TLspCompletion.HandlePostfixTemplates(const AParams: TJSONValue);
+begin
+  FHooks.SetCustomPostfix(TCompletionPostfix.ParseTemplates(AParams));
 end;
 
 function TLspCompletion.ReadCached(const AFileName: string; out AText: string): Boolean;
@@ -259,52 +264,6 @@ begin
   end;
 end;
 
-procedure TLspCompletion.Attach(ADispatcher: TJsonRpcDispatcher);
-begin
-  ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
-  ADispatcher.RegisterConcurrentRequest(cResolveMethod, HandleResolve);
-  ADispatcher.RegisterNotification(cPostfixTemplatesMethod, HandlePostfixTemplates);
-end;
-
-procedure TLspCompletion.HandlePostfixTemplates(const AParams: TJSONValue);
-begin
-  FHooks.SetCustomPostfix(TCompletionPostfix.ParseTemplates(AParams));
-end;
-
-class function TLspCompletion.Capability: TJSONObject;
-var
-  mTriggers: TJSONArray;
-begin
-  mTriggers := TJSONArray.Create;
-  mTriggers.Add('.');
-  // {$ startet die Vervollständigung von Direktiven (#102).
-  mTriggers.Add('$');
-  // "/" am Zeilenanfang listet die Schnellbefehle (#293).
-  mTriggers.Add('/');
-  Result := TJSONObject.Create;
-  Result.AddPair('triggerCharacters', mTriggers);
-  // Details für das Detailpanel von Atlas erst für den gewählten Eintrag (#405, #424).
-  Result.AddPair('resolveProvider', TJSONBool.Create(True));
-end;
-
-class function TLspCompletion.ClientSupportsSnippets(const AInitializeParams: TJSONObject): Boolean;
-var
-  mValue: Boolean;
-begin
-  Result := (AInitializeParams <> nil) and AInitializeParams.TryGetValue<Boolean>(
-    'capabilities.textDocument.completion.completionItem.snippetSupport', mValue) and mValue;
-end;
-
-class function TLspCompletion.ToJson(const AItems: TCompletionItems): TJSONObject;
-begin
-  Result := CompletionListToJson(AItems.Items, AItems.Incomplete, 0);
-end;
-
-class function TLspCompletion.ToJson(const AItems: TArray<TCompletionItem>; AFirstSort: Integer): TJSONArray;
-begin
-  Result := CompletionItemsToJson(AItems, AFirstSort);
-end;
-
 function TLspCompletion.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   mUri: string;
@@ -323,26 +282,6 @@ begin
   end;
   Result := CompleteDocument(mDocument, mUri, TLspPositions.ReadPosition(mPosition), TJSONObject(AParams),
     ACancellation);
-end;
-
-function TLspCompletion.Complete(const ADocument: ITextDocument; const AUri: string; const APosition: TTextPosition;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-begin
-  Result := CompleteDocument(ADocument, AUri, APosition, nil, ACancellation);
-end;
-
-function TLspCompletion.NewAnswer(const AParams: TJSONObject; const ACancellation: IJsonRpcCancellationToken):
-  TCompletionAnswer;
-begin
-  Result := TCompletionAnswer.Create;
-  Result.Hooks := FHooks;
-  Result.Cancellation := ACancellation;
-  // Formulare über den Zwischenspeicher der Instanz.
-  Result.Forms := TCompletionForms.Cached(FStore, FHooks.ReadText, FForms);
-  if Assigned(FHooks.Notify) and (AParams <> nil) and (AParams.GetValue('partialResultToken') is TJSONString) then
-  begin
-    Result.Token := TJSONString(AParams.GetValue('partialResultToken')).Value;
-  end;
 end;
 
 function TLspCompletion.CompleteDocument(const ADocument: ITextDocument; const AUri: string;
@@ -386,6 +325,20 @@ begin
   finally
     mAnswer.Free;
     mRequest.Free;
+  end;
+end;
+
+function TLspCompletion.NewAnswer(const AParams: TJSONObject; const ACancellation: IJsonRpcCancellationToken):
+  TCompletionAnswer;
+begin
+  Result := TCompletionAnswer.Create;
+  Result.Hooks := FHooks;
+  Result.Cancellation := ACancellation;
+  // Formulare über den Zwischenspeicher der Instanz.
+  Result.Forms := TCompletionForms.Cached(FStore, FHooks.ReadText, FForms);
+  if Assigned(FHooks.Notify) and (AParams <> nil) and (AParams.GetValue('partialResultToken') is TJSONString) then
+  begin
+    Result.Token := TJSONString(AParams.GetValue('partialResultToken')).Value;
   end;
 end;
 
@@ -491,6 +444,53 @@ begin
     mDetails.AddPair('xmlDoc', TLspDocumentation.HintsJson(FHooks.HintsFor(TDocumentUris.FromPath(mFileName))));
   end;
   mData.AddPair('atlas', mDetails);
+end;
+
+procedure TLspCompletion.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
+  ADispatcher.RegisterConcurrentRequest(cResolveMethod, HandleResolve);
+  ADispatcher.RegisterNotification(cPostfixTemplatesMethod, HandlePostfixTemplates);
+end;
+
+function TLspCompletion.Complete(const ADocument: ITextDocument; const AUri: string; const APosition: TTextPosition;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+begin
+  Result := CompleteDocument(ADocument, AUri, APosition, nil, ACancellation);
+end;
+
+class function TLspCompletion.Capability: TJSONObject;
+var
+  mTriggers: TJSONArray;
+begin
+  mTriggers := TJSONArray.Create;
+  mTriggers.Add('.');
+  // {$ startet die Vervollständigung von Direktiven (#102).
+  mTriggers.Add('$');
+  // "/" am Zeilenanfang listet die Schnellbefehle (#293).
+  mTriggers.Add('/');
+  Result := TJSONObject.Create;
+  Result.AddPair('triggerCharacters', mTriggers);
+  // Details für das Detailpanel von Atlas erst für den gewählten Eintrag (#405, #424).
+  Result.AddPair('resolveProvider', TJSONBool.Create(True));
+end;
+
+class function TLspCompletion.ClientSupportsSnippets(const AInitializeParams: TJSONObject): Boolean;
+var
+  mValue: Boolean;
+begin
+  Result := (AInitializeParams <> nil) and AInitializeParams.TryGetValue<Boolean>(
+    'capabilities.textDocument.completion.completionItem.snippetSupport', mValue) and mValue;
+end;
+
+class function TLspCompletion.ToJson(const AItems: TCompletionItems): TJSONObject;
+begin
+  Result := CompletionListToJson(AItems.Items, AItems.Incomplete, 0);
+end;
+
+class function TLspCompletion.ToJson(const AItems: TArray<TCompletionItem>; AFirstSort: Integer): TJSONArray;
+begin
+  Result := CompletionItemsToJson(AItems, AFirstSort);
 end;
 
 initialization

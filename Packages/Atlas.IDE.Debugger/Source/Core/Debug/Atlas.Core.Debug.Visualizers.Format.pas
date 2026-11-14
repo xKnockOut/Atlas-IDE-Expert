@@ -432,11 +432,6 @@ begin
   end;
 end;
 
-class function TAtlasVisualizerFormat.HexLineCount(ALength: Integer): Integer;
-begin
-  Result := (ALength + 15) div 16;
-end;
-
 class function TAtlasVisualizerFormat.HexLine(const ABytes: TBytes; AOffset: Integer): string;
 var
   mIndex: Integer;
@@ -461,6 +456,11 @@ begin
     end;
   end;
   Result := IntToHex(AOffset, 8) + '  ' + mHex + ' ' + mText;
+end;
+
+class function TAtlasVisualizerFormat.HexLineCount(ALength: Integer): Integer;
+begin
+  Result := (ALength + 15) div 16;
 end;
 
 class function TAtlasVisualizerFormat.CompactJson(const AText: string): string;

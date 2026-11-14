@@ -60,6 +60,8 @@ type
     EndCharacter: Integer;
   end;
 
+{ TAtlasTypeText }
+
 class function TAtlasTypeText.Before(ALine, ACharacter, AOtherLine, AOtherCharacter: Integer): Boolean;
 begin
   Result := (ALine < AOtherLine) or ((ALine = AOtherLine) and (ACharacter < AOtherCharacter));
@@ -150,6 +152,8 @@ type
     constructor Create(const ARange: TRange; const ASkip: TArray<TRange>);
     function Run(const ALines: TArray<string>): TAtlasTypeTokens;
   end;
+
+{ TTokenizer }
 
 constructor TTokenizer.Create(const ARange: TRange; const ASkip: TArray<TRange>);
 begin
@@ -317,20 +321,6 @@ begin
   end;
 end;
 
-class function TAtlasTypeText.RoutineTokens(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
-  ARoutine: Integer): TAtlasTypeTokens;
-var
-  mTokenizer: TTokenizer;
-begin
-  mTokenizer := TTokenizer.Create(RangeOf(ANodes[ARoutine]), NestedRanges(ANodes, ARoutine,
-    [TAtlasOutlineCategory.TypeDecl, TAtlasOutlineCategory.Method, TAtlasOutlineCategory.Routine]));
-  try
-    Result := mTokenizer.Run(ALines);
-  finally
-    mTokenizer.Free;
-  end;
-end;
-
 class function TAtlasTypeText.UnitTokens(const ANodes: TAtlasOutlineNodes;
   const ALines: TArray<string>): TAtlasTypeTokens;
 var
@@ -353,6 +343,20 @@ begin
   mWhole.EndLine := High(ALines);
   mWhole.EndCharacter := MaxInt;
   mTokenizer := TTokenizer.Create(mWhole, mSkip);
+  try
+    Result := mTokenizer.Run(ALines);
+  finally
+    mTokenizer.Free;
+  end;
+end;
+
+class function TAtlasTypeText.RoutineTokens(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+  ARoutine: Integer): TAtlasTypeTokens;
+var
+  mTokenizer: TTokenizer;
+begin
+  mTokenizer := TTokenizer.Create(RangeOf(ANodes[ARoutine]), NestedRanges(ANodes, ARoutine,
+    [TAtlasOutlineCategory.TypeDecl, TAtlasOutlineCategory.Method, TAtlasOutlineCategory.Routine]));
   try
     Result := mTokenizer.Run(ALines);
   finally

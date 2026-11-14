@@ -122,29 +122,10 @@ end;
 
 { TAtlasSettingsTeamFilePart }
 
-procedure TAtlasSettingsTeamFilePart.Build;
+procedure TAtlasSettingsTeamFilePart.SetOnTeamFile(const AValue: TFunc<TAtlasTeamSettings>);
 begin
-  // Was beim Übernehmen eingefügt wird.
-  AddSheet(TAtlasTextId.SettingsTabInsert);
-  BindCheck('AutoParentheses', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsParentheses)));
-  BindCheck('FixCase', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFixCase)));
-  BindCheck('CommitCharacters', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCommitChars)));
-  BindCheck('AutoUses', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAutoUses)));
-  BindCheck('ParameterHints', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsParameterHints)));
-  BindCheck('FormatPlaceholders',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFormatPlaceholders)));
-  // Code-Vorlagen (#51).
-  BindCheck('Snippets', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSnippets)));
-  BindCheck('ImportIdeTemplates',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportIdeTemplates)));
-  // Vorlagen aus der Projektdatei (#486); leer ohne .atlas.
-  FTeamSnippets := AddWrappedLabel(20, '');
-end;
-
-procedure TAtlasSettingsTeamFilePart.Build2;
-begin
-  AddSheet(TAtlasTextId.SettingsTabTeamFile);
-  AddTeamFileSection;
+  FOnTeamFile := AValue;
+  RefreshTeamFile;
 end;
 
 procedure TAtlasSettingsTeamFilePart.Load(const ASettings: TAtlasPluginSettings);
@@ -189,10 +170,29 @@ begin
   RefreshTeamFile;
 end;
 
-procedure TAtlasSettingsTeamFilePart.SetOnTeamFile(const AValue: TFunc<TAtlasTeamSettings>);
+procedure TAtlasSettingsTeamFilePart.Build;
 begin
-  FOnTeamFile := AValue;
-  RefreshTeamFile;
+  // Was beim Übernehmen eingefügt wird.
+  AddSheet(TAtlasTextId.SettingsTabInsert);
+  BindCheck('AutoParentheses', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsParentheses)));
+  BindCheck('FixCase', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFixCase)));
+  BindCheck('CommitCharacters', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCommitChars)));
+  BindCheck('AutoUses', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAutoUses)));
+  BindCheck('ParameterHints', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsParameterHints)));
+  BindCheck('FormatPlaceholders',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFormatPlaceholders)));
+  // Code-Vorlagen (#51).
+  BindCheck('Snippets', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSnippets)));
+  BindCheck('ImportIdeTemplates',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportIdeTemplates)));
+  // Vorlagen aus der Projektdatei (#486); leer ohne .atlas.
+  FTeamSnippets := AddWrappedLabel(20, '');
+end;
+
+procedure TAtlasSettingsTeamFilePart.Build2;
+begin
+  AddSheet(TAtlasTextId.SettingsTabTeamFile);
+  AddTeamFileSection;
 end;
 
 procedure TAtlasSettingsTeamFilePart.RefreshTeamFile;

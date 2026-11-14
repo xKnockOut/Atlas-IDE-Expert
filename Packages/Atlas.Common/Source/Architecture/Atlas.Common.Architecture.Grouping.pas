@@ -115,6 +115,30 @@ begin
     FormatFloat('0.####', mGrouping.MinCohesion, TFormatSettings.Invariant) + ';f' + FoundationsText(Foundations);
 end;
 
+function TArchitectureGrouping.ResolutionChanged: Boolean;
+begin
+  Result := not SameResolution(Clamped.Resolution, 1);
+end;
+
+class function TArchitectureGrouping.ResolutionText(AValue: Double): string;
+var
+  mSettings: TFormatSettings;
+begin
+  mSettings := TFormatSettings.Invariant;
+  mSettings.DecimalSeparator := ',';
+  Result := FormatFloat('0.0#', AValue, mSettings);
+end;
+
+class function TArchitectureGrouping.ValidResolution(AValue: Double): Boolean;
+begin
+  Result := not IsNan(AValue) and (AValue >= cMinResolution - 1E-9) and (AValue <= cMaxResolution + 1E-9);
+end;
+
+class function TArchitectureGrouping.SameResolution(ALeft, ARight: Double): Boolean;
+begin
+  Result := Abs(ALeft - ARight) < 0.005;
+end;
+
 class function TArchitectureGrouping.FoundationsText(AValue: TArchitectureFoundations): string;
 begin
   case AValue of
@@ -147,30 +171,6 @@ begin
     AValue := TArchitectureFoundations.Group;
     Result := False;
   end;
-end;
-
-function TArchitectureGrouping.ResolutionChanged: Boolean;
-begin
-  Result := not SameResolution(Clamped.Resolution, 1);
-end;
-
-class function TArchitectureGrouping.ResolutionText(AValue: Double): string;
-var
-  mSettings: TFormatSettings;
-begin
-  mSettings := TFormatSettings.Invariant;
-  mSettings.DecimalSeparator := ',';
-  Result := FormatFloat('0.0#', AValue, mSettings);
-end;
-
-class function TArchitectureGrouping.ValidResolution(AValue: Double): Boolean;
-begin
-  Result := not IsNan(AValue) and (AValue >= cMinResolution - 1E-9) and (AValue <= cMaxResolution + 1E-9);
-end;
-
-class function TArchitectureGrouping.SameResolution(ALeft, ARight: Double): Boolean;
-begin
-  Result := Abs(ALeft - ARight) < 0.005;
 end;
 
 end.

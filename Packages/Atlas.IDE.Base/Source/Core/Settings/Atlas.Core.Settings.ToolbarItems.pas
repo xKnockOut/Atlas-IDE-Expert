@@ -88,6 +88,8 @@ begin
   end;
 end;
 
+{ TAtlasToolbarItems }
+
 class function TAtlasToolbarItems.Parse(const AText: string): TArray<string>;
 var
   mPart: string;
@@ -105,11 +107,6 @@ end;
 class function TAtlasToolbarItems.Format(const AItems: TArray<string>): string;
 begin
   Result := string.Join(cDelimiter, AItems);
-end;
-
-class function TAtlasToolbarItems.IsSeparator(const AId: string): Boolean;
-begin
-  Result := AId = cSeparator;
 end;
 
 class function TAtlasToolbarItems.Clean(const AItems: TArray<string>): TArray<string>;
@@ -135,6 +132,11 @@ begin
   Result := Format(Clean(Parse(AText)));
 end;
 
+class function TAtlasToolbarItems.DefaultText: string;
+begin
+  Result := Format(Default);
+end;
+
 class function TAtlasToolbarItems.Default: TArray<string>;
 var
   mIndex: Integer;
@@ -146,9 +148,9 @@ begin
   end;
 end;
 
-class function TAtlasToolbarItems.DefaultText: string;
+class function TAtlasToolbarItems.IsSeparator(const AId: string): Boolean;
 begin
-  Result := Format(Default);
+  Result := AId = cSeparator;
 end;
 
 class function TAtlasToolbarItems.IsSection(const AId: string): Boolean;

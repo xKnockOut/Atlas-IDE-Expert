@@ -254,25 +254,6 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasIdeDesignerUndo.Available(const ASettings: TAtlasPluginSettings): Boolean;
-begin
-  Result := ASettings.DesignerUndo;
-end;
-
-class function TAtlasIdeDesignerUndo.Words: TAtlasUndoWords;
-begin
-  Result.Moved := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoMoved);
-  Result.Resized := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoResized);
-  Result.Changed := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoChanged);
-  Result.ChangedMany := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoChangedMany);
-  Result.Inserted := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoInserted);
-  Result.Deleted := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoDeleted);
-  Result.Renamed := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoRenamed);
-  Result.MovedMany := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoMovedMany);
-  Result.Several := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoSeveral);
-  Result.DefaultValue := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoDefault);
-end;
-
 procedure TAtlasIdeDesignerUndo.Say(const AText: string);
 begin
   TAtlasGuard.Log('Designer undo: ' + AText);
@@ -308,15 +289,6 @@ begin
           end);
       end;
     end);
-end;
-
-function TAtlasIdeDesignerUndo.HistoryOf(ARoot: TComponent): TAtlasFormUndoHistory;
-begin
-  if not FHistories.TryGetValue(ARoot, Result) then
-  begin
-    Result := TAtlasFormUndoHistory.Create(TAtlasIdeSettings.Current.DesignerUndoSteps);
-    FHistories.Add(ARoot, Result);
-  end;
 end;
 
 procedure TAtlasIdeDesignerUndo.Capture;
@@ -368,6 +340,15 @@ begin
   FHistories.Remove(ADesigner.Root);
 end;
 
+function TAtlasIdeDesignerUndo.HistoryOf(ARoot: TComponent): TAtlasFormUndoHistory;
+begin
+  if not FHistories.TryGetValue(ARoot, Result) then
+  begin
+    Result := TAtlasFormUndoHistory.Create(TAtlasIdeSettings.Current.DesignerUndoSteps);
+    FHistories.Add(ARoot, Result);
+  end;
+end;
+
 function TAtlasIdeDesignerUndo.Active(out ADesigner: IDesigner; out AHistory: TAtlasFormUndoHistory): Boolean;
 var
   mEditor: IOTAFormEditor;
@@ -381,102 +362,6 @@ begin
   begin
     ADesigner := TAtlasDesignerAccess.DesignerOf(mEditor);
     Result := ADesigner <> nil;
-  end;
-end;
-
-function TAtlasIdeDesignerUndo.CanUndo: Boolean;
-var
-  mDesigner: IDesigner;
-  mHistory: TAtlasFormUndoHistory;
-begin
-  Result := Active(mDesigner, mHistory) and mHistory.CanUndo;
-end;
-
-function TAtlasIdeDesignerUndo.CanRedo: Boolean;
-var
-  mDesigner: IDesigner;
-  mHistory: TAtlasFormUndoHistory;
-begin
-  Result := Active(mDesigner, mHistory) and mHistory.CanRedo;
-end;
-
-procedure TAtlasIdeDesignerUndo.Undo;
-var
-  mDesigner: IDesigner;
-  mHistory: TAtlasFormUndoHistory;
-begin
-  if Active(mDesigner, mHistory) and mHistory.CanUndo then
-  begin
-    Restore(mHistory.Index - 1);
-  end
-  else
-  begin
-    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoNothing));
-  end;
-end;
-
-procedure TAtlasIdeDesignerUndo.Redo;
-var
-  mDesigner: IDesigner;
-  mHistory: TAtlasFormUndoHistory;
-begin
-  if Active(mDesigner, mHistory) and mHistory.CanRedo then
-  begin
-    Restore(mHistory.Index + 1);
-  end;
-end;
-
-/// <summary>Meldungen nach dem Zurückladen: fehlende Handler, nicht Hergestelltes.</summary>
-function Messages(AApply: TAtlasDesignerUndoApply): TArray<string>;
-var
-  mMissing: TAtlasUndoMissingMethod;
-begin
-  Result := nil;
-  for mMissing in AApply.MissingMethods do
-  begin
-    Result := Result + [TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.UndoMethodMissing, [mMissing.Handler,
-      mMissing.Component, mMissing.Path])];
-  end;
-  if Length(AApply.Failures) > 0 then
-  begin
-    Result := Result + [TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.UndoNotRestored,
-      [string.Join('; ', AApply.Failures)])];
-  end;
-end;
-
-procedure TAtlasIdeDesignerUndo.Restore(AIndex: Integer);
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-  mDesigner: IDesigner;
-  mHistory: TAtlasFormUndoHistory;
-  mTarget: string;
-  mApply: TAtlasDesignerUndoApply;
-  mMessage: string;
-begin
-  if not Active(mDesigner, mHistory) or (AIndex < 0) or (AIndex >= mHistory.Count) or
-    not TAtlasDesignerAccess.Current(mEditor, mRoot) then
-  begin
-    Exit;
-  end;
-  mTarget := mHistory.State(AIndex).Text;
-  mApply := TAtlasDesignerUndoApply.Create(mEditor, mDesigner, mRoot);
-  FBusy := True;
-  try
-    try
-      mApply.Run(TAtlasFormUndo.Plan(TAtlasDesignerAccess.FormText(mRoot, mDesigner), mTarget), mTarget);
-    finally
-      mDesigner.Modified;
-      // Der tatsächliche Stand gilt; was nicht herstellbar war, bleibt so auch beim nächsten Schritt.
-      mHistory.MoveTo(AIndex, TAtlasDesignerAccess.FormText(mRoot, mDesigner));
-      FBusy := False;
-    end;
-    for mMessage in Messages(mApply) do
-    begin
-      Say(mMessage);
-    end;
-  finally
-    mApply.Free;
   end;
 end;
 
@@ -553,6 +438,79 @@ begin
     end);
 end;
 
+class function TAtlasIdeDesignerUndo.Available(const ASettings: TAtlasPluginSettings): Boolean;
+begin
+  Result := ASettings.DesignerUndo;
+end;
+
+class function TAtlasIdeDesignerUndo.Words: TAtlasUndoWords;
+begin
+  Result.Moved := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoMoved);
+  Result.Resized := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoResized);
+  Result.Changed := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoChanged);
+  Result.ChangedMany := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoChangedMany);
+  Result.Inserted := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoInserted);
+  Result.Deleted := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoDeleted);
+  Result.Renamed := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoRenamed);
+  Result.MovedMany := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoMovedMany);
+  Result.Several := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoSeveral);
+  Result.DefaultValue := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoDefault);
+end;
+
+/// <summary>Meldungen nach dem Zurückladen: fehlende Handler, nicht Hergestelltes.</summary>
+function Messages(AApply: TAtlasDesignerUndoApply): TArray<string>;
+var
+  mMissing: TAtlasUndoMissingMethod;
+begin
+  Result := nil;
+  for mMissing in AApply.MissingMethods do
+  begin
+    Result := Result + [TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.UndoMethodMissing, [mMissing.Handler,
+      mMissing.Component, mMissing.Path])];
+  end;
+  if Length(AApply.Failures) > 0 then
+  begin
+    Result := Result + [TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.UndoNotRestored,
+      [string.Join('; ', AApply.Failures)])];
+  end;
+end;
+
+procedure TAtlasIdeDesignerUndo.Restore(AIndex: Integer);
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+  mDesigner: IDesigner;
+  mHistory: TAtlasFormUndoHistory;
+  mTarget: string;
+  mApply: TAtlasDesignerUndoApply;
+  mMessage: string;
+begin
+  if not Active(mDesigner, mHistory) or (AIndex < 0) or (AIndex >= mHistory.Count) or
+    not TAtlasDesignerAccess.Current(mEditor, mRoot) then
+  begin
+    Exit;
+  end;
+  mTarget := mHistory.State(AIndex).Text;
+  mApply := TAtlasDesignerUndoApply.Create(mEditor, mDesigner, mRoot);
+  FBusy := True;
+  try
+    try
+      mApply.Run(TAtlasFormUndo.Plan(TAtlasDesignerAccess.FormText(mRoot, mDesigner), mTarget), mTarget);
+    finally
+      mDesigner.Modified;
+      // Der tatsächliche Stand gilt; was nicht herstellbar war, bleibt so auch beim nächsten Schritt.
+      mHistory.MoveTo(AIndex, TAtlasDesignerAccess.FormText(mRoot, mDesigner));
+      FBusy := False;
+    end;
+    for mMessage in Messages(mApply) do
+    begin
+      Say(mMessage);
+    end;
+  finally
+    mApply.Free;
+  end;
+end;
+
 function TAtlasIdeDesignerUndo.Button: TAtlasDesignerButton;
 var
   mDesigner: IDesigner;
@@ -568,6 +526,48 @@ begin
   Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.DesignerUndo, mHint);
   Result.Menu := True;
   Result.Enabled := Active(mDesigner, mHistory);
+end;
+
+function TAtlasIdeDesignerUndo.CanUndo: Boolean;
+var
+  mDesigner: IDesigner;
+  mHistory: TAtlasFormUndoHistory;
+begin
+  Result := Active(mDesigner, mHistory) and mHistory.CanUndo;
+end;
+
+function TAtlasIdeDesignerUndo.CanRedo: Boolean;
+var
+  mDesigner: IDesigner;
+  mHistory: TAtlasFormUndoHistory;
+begin
+  Result := Active(mDesigner, mHistory) and mHistory.CanRedo;
+end;
+
+procedure TAtlasIdeDesignerUndo.Undo;
+var
+  mDesigner: IDesigner;
+  mHistory: TAtlasFormUndoHistory;
+begin
+  if Active(mDesigner, mHistory) and mHistory.CanUndo then
+  begin
+    Restore(mHistory.Index - 1);
+  end
+  else
+  begin
+    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoNothing));
+  end;
+end;
+
+procedure TAtlasIdeDesignerUndo.Redo;
+var
+  mDesigner: IDesigner;
+  mHistory: TAtlasFormUndoHistory;
+begin
+  if Active(mDesigner, mHistory) and mHistory.CanRedo then
+  begin
+    Restore(mHistory.Index + 1);
+  end;
 end;
 
 procedure TAtlasIdeDesignerUndo.Popup(const APoint: TPoint);

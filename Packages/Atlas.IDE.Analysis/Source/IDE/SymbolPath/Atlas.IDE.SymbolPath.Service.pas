@@ -72,97 +72,6 @@ const
 
 { TAtlasIdeSymbolPath }
 
-class procedure TAtlasIdeSymbolPath.Install(const ARun: TAtlasArchitectureRun;
-  const ASessionOf: TFunc<TLspSession>);
-begin
-  FRun := ARun;
-  FSessionOf := ASessionOf;
-  FLast := Default(TAtlasSymbolPathRequestInput);
-  FLast.MaxSteps := TAtlasSymbolPathCommands.cDefaultSteps;
-  FInstalled := True;
-  TAtlasIdeResultsWindow.OnShowRoute :=
-    procedure(const AUnits: TArray<string>)
-    begin
-      TAtlasGuard.Run(TAtlasFeature.SymbolPath,
-        procedure
-        begin
-          TAtlasIdeArchitecture.ShowRoute(AUnits);
-        end);
-    end;
-end;
-
-class procedure TAtlasIdeSymbolPath.Uninstall;
-begin
-  // Antworten, die noch unterwegs sind, fallen weg.
-  Inc(FRequest);
-  FInstalled := False;
-  FRun := nil;
-  FSessionOf := nil;
-  TAtlasIdeResultsWindow.OnShowRoute := nil;
-end;
-
-class function TAtlasIdeSymbolPath.Enabled: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.SymbolPath and not TAtlasGuard.Disabled(TAtlasFeature.SymbolPath);
-end;
-
-class procedure TAtlasIdeSymbolPath.ShowDialog;
-begin
-  ShowDialogFrom(FLast.From);
-end;
-
-class function TAtlasIdeSymbolPath.Suggestions(const APattern: string): TArray<string>;
-var
-  mSession: TLspSession;
-  mSymbols: TArray<TAtlasSymbol>;
-  mSymbol: TAtlasSymbol;
-begin
-  Result := nil;
-  mSession := nil;
-  if Assigned(FSessionOf) then
-  begin
-    mSession := FSessionOf();
-  end;
-  if mSession = nil then
-  begin
-    Exit;
-  end;
-  try
-    mSymbols := mSession.WorkspaceSymbols(APattern, cSuggestTimeoutMs);
-  except
-    on ELspClientError do
-      mSymbols := nil;
-  end;
-  for mSymbol in mSymbols do
-  begin
-    Result := Result + [TAtlasSymbolPathCommands.QualifiedName(mSymbol.Name, mSymbol.Container)];
-  end;
-end;
-
-class procedure TAtlasIdeSymbolPath.ShowDialogFrom(const AFrom: string);
-var
-  mInput: TAtlasSymbolPathRequestInput;
-  mSuggest: TAtlasSymbolPathSuggest;
-begin
-  if not FInstalled or not Enabled then
-  begin
-    Exit;
-  end;
-  mInput := FLast;
-  mInput.From := AFrom;
-  mSuggest :=
-    function(const APattern: string): TArray<string>
-    begin
-      Result := Suggestions(APattern);
-    end;
-  if not TAtlasSymbolPathDialog.Execute(mSuggest, mInput) then
-  begin
-    Exit;
-  end;
-  FLast := mInput;
-  Search(mInput);
-end;
-
 class procedure TAtlasIdeSymbolPath.Search(const AInput: TAtlasSymbolPathRequestInput);
 var
   mProject: IOTAProject;
@@ -218,6 +127,97 @@ begin
     TAtlasIdeResultsWindow.ShowSymbolPathMessage(mTitle,
       TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoServer));
   end;
+end;
+
+class function TAtlasIdeSymbolPath.Suggestions(const APattern: string): TArray<string>;
+var
+  mSession: TLspSession;
+  mSymbols: TArray<TAtlasSymbol>;
+  mSymbol: TAtlasSymbol;
+begin
+  Result := nil;
+  mSession := nil;
+  if Assigned(FSessionOf) then
+  begin
+    mSession := FSessionOf();
+  end;
+  if mSession = nil then
+  begin
+    Exit;
+  end;
+  try
+    mSymbols := mSession.WorkspaceSymbols(APattern, cSuggestTimeoutMs);
+  except
+    on ELspClientError do
+      mSymbols := nil;
+  end;
+  for mSymbol in mSymbols do
+  begin
+    Result := Result + [TAtlasSymbolPathCommands.QualifiedName(mSymbol.Name, mSymbol.Container)];
+  end;
+end;
+
+class procedure TAtlasIdeSymbolPath.Install(const ARun: TAtlasArchitectureRun;
+  const ASessionOf: TFunc<TLspSession>);
+begin
+  FRun := ARun;
+  FSessionOf := ASessionOf;
+  FLast := Default(TAtlasSymbolPathRequestInput);
+  FLast.MaxSteps := TAtlasSymbolPathCommands.cDefaultSteps;
+  FInstalled := True;
+  TAtlasIdeResultsWindow.OnShowRoute :=
+    procedure(const AUnits: TArray<string>)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.SymbolPath,
+        procedure
+        begin
+          TAtlasIdeArchitecture.ShowRoute(AUnits);
+        end);
+    end;
+end;
+
+class procedure TAtlasIdeSymbolPath.Uninstall;
+begin
+  // Antworten, die noch unterwegs sind, fallen weg.
+  Inc(FRequest);
+  FInstalled := False;
+  FRun := nil;
+  FSessionOf := nil;
+  TAtlasIdeResultsWindow.OnShowRoute := nil;
+end;
+
+class function TAtlasIdeSymbolPath.Enabled: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.SymbolPath and not TAtlasGuard.Disabled(TAtlasFeature.SymbolPath);
+end;
+
+class procedure TAtlasIdeSymbolPath.ShowDialog;
+begin
+  ShowDialogFrom(FLast.From);
+end;
+
+class procedure TAtlasIdeSymbolPath.ShowDialogFrom(const AFrom: string);
+var
+  mInput: TAtlasSymbolPathRequestInput;
+  mSuggest: TAtlasSymbolPathSuggest;
+begin
+  if not FInstalled or not Enabled then
+  begin
+    Exit;
+  end;
+  mInput := FLast;
+  mInput.From := AFrom;
+  mSuggest :=
+    function(const APattern: string): TArray<string>
+    begin
+      Result := Suggestions(APattern);
+    end;
+  if not TAtlasSymbolPathDialog.Execute(mSuggest, mInput) then
+  begin
+    Exit;
+  end;
+  FLast := mInput;
+  Search(mInput);
 end;
 
 end.

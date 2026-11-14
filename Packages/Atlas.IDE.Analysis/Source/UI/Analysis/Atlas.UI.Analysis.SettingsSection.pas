@@ -39,16 +39,6 @@ uses
 
 { TAtlasAnalysisSettingsSection }
 
-function TAtlasAnalysisSettingsSection.OwnerId: string;
-begin
-  Result := cOwnerId;
-end;
-
-function TAtlasAnalysisSettingsSection.AreaId: string;
-begin
-  Result := cAreaId;
-end;
-
 procedure TAtlasAnalysisSettingsSection.BuildRows;
 begin
   ModuleSwitch('analysis.enabled');
@@ -65,7 +55,22 @@ begin
   Number('hotspots.coupling.minCommits', TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SettingsHotspotsMinCommits));
 end;
 
+function TAtlasAnalysisSettingsSection.OwnerId: string;
+begin
+  Result := cOwnerId;
+end;
+
+function TAtlasAnalysisSettingsSection.AreaId: string;
+begin
+  Result := cAreaId;
+end;
+
 { TAtlasAnalysisEditorSection }
+
+procedure TAtlasAnalysisEditorSection.BuildRows;
+begin
+  Switch('codeLens.metrics', TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SettingsCodeLensMetrics));
+end;
 
 function TAtlasAnalysisEditorSection.OwnerId: string;
 begin
@@ -75,11 +80,6 @@ end;
 function TAtlasAnalysisEditorSection.AreaId: string;
 begin
   Result := cAreaId;
-end;
-
-procedure TAtlasAnalysisEditorSection.BuildRows;
-begin
-  Switch('codeLens.metrics', TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SettingsCodeLensMetrics));
 end;
 
 end.

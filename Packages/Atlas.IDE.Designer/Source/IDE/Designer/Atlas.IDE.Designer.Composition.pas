@@ -157,6 +157,17 @@ end;
 
 { TAtlasDesignerModule }
 
+class function TAtlasDesignerModule.Parts: TArray<IAtlasFeaturePart>;
+begin
+  // Designer-Leiste (#1442): ab abgesichertem Start und solange editor.designerBar an ist.
+  Result := [
+    TAtlasFeaturePart.When('DesignerBar',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.EditorDesignerBar;
+      end, DesignerBarStarted, StartDesignerBar, StopDesignerBar)];
+end;
+
 function TAtlasDesignerModule.Info: TAtlasModuleInfo;
 begin
   // Die Leiste lief mit den Editorbefehlen schon im abgesicherten Start.
@@ -182,11 +193,6 @@ begin
   TAtlasIdeDesktopLayout.Uninstall;
 end;
 
-function TAtlasDesignerModule.IsActive: Boolean;
-begin
-  Result := FActive;
-end;
-
 function Command(const AId, ACaption: string; const ARun: TProc; const AVisible: TFunc<Boolean>;
   const AKey: TFunc<Integer>): TAtlasModuleCommand;
 begin
@@ -198,20 +204,9 @@ begin
   Result.Key := AKey;
 end;
 
-function TAtlasDesignerModule.Commands: TArray<TAtlasModuleCommand>;
+function TAtlasDesignerModule.IsActive: Boolean;
 begin
-  // Im Designer zeigen (#511): nur sichtbar mit designer.showInDesigner.
-  Result := [Command(cShowCommandId, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerShowCommand),
-    ShowInDesigner, ShowInDesignerVisible, ShowInDesignerKey),
-    // Eigenschaften suchen (#524): ohne eigene Taste.
-    Command(cPropertySearchCommandId, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.PropertySearchCommand),
-    SearchProperties, SearchPropertiesVisible, nil),
-    // Verwendungen im Code (#750): die Taste gilt nur im Designer (designer.usages.key), nicht im Code-Editor.
-    Command(cUsagesCommandId, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesCommand), ShowUsages,
-    UsagesVisible, nil),
-    // Eigenes Desktop-Layout (#2079): öffnet den Dialog „Desktop speichern“ der IDE.
-    Command(cSaveLayoutCommandId, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.DesktopSaveCommand),
-    SaveDesignerLayout, SaveDesignerLayoutVisible, nil)];
+  Result := FActive;
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -232,6 +227,22 @@ function ShowInDesignerContextEntry: TAtlasMenuEntry;
 begin
   Result := MenuEntry(TAtlasDesignerModule.cShowCommandId, TAtlasMenuPlace.EditorContext);
   Result.When := WithForm;
+end;
+
+function TAtlasDesignerModule.Commands: TArray<TAtlasModuleCommand>;
+begin
+  // Im Designer zeigen (#511): nur sichtbar mit designer.showInDesigner.
+  Result := [Command(cShowCommandId, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerShowCommand),
+    ShowInDesigner, ShowInDesignerVisible, ShowInDesignerKey),
+    // Eigenschaften suchen (#524): ohne eigene Taste.
+    Command(cPropertySearchCommandId, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.PropertySearchCommand),
+    SearchProperties, SearchPropertiesVisible, nil),
+    // Verwendungen im Code (#750): die Taste gilt nur im Designer (designer.usages.key), nicht im Code-Editor.
+    Command(cUsagesCommandId, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesCommand), ShowUsages,
+    UsagesVisible, nil),
+    // Eigenes Desktop-Layout (#2079): öffnet den Dialog „Desktop speichern“ der IDE.
+    Command(cSaveLayoutCommandId, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.DesktopSaveCommand),
+    SaveDesignerLayout, SaveDesignerLayoutVisible, nil)];
 end;
 
 function TAtlasDesignerModule.MenuEntries: TArray<TAtlasMenuEntry>;
@@ -263,12 +274,6 @@ begin
   Result := [mKey];
 end;
 
-procedure TAtlasDesignerModule.ApplySettings;
-begin
-  // editor.designerBar.* (#1442).
-  TAtlasIdeDesignerBar.ApplySettings;
-end;
-
 /// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
 /// ausgeschaltet einstellen lässt.</summary>
 procedure ProvideSettingsSections;
@@ -276,20 +281,15 @@ begin
   TAtlasDesignerSettingsSection.ProvideIn(GScope);
 end;
 
+procedure TAtlasDesignerModule.ApplySettings;
+begin
+  // editor.designerBar.* (#1442).
+  TAtlasIdeDesignerBar.ApplySettings;
+end;
+
 procedure TAtlasDesignerModule.ThemeChanged;
 begin
   TAtlasIdeDesignerBar.ThemeChanged;
-end;
-
-class function TAtlasDesignerModule.Parts: TArray<IAtlasFeaturePart>;
-begin
-  // Designer-Leiste (#1442): ab abgesichertem Start und solange editor.designerBar an ist.
-  Result := [
-    TAtlasFeaturePart.When('DesignerBar',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.EditorDesignerBar;
-      end, DesignerBarStarted, StartDesignerBar, StopDesignerBar)];
 end;
 
 class function TAtlasDesignerModule.RegisterModule: Boolean;

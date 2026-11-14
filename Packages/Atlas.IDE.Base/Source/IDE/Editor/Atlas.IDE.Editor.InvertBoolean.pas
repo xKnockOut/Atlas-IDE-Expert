@@ -36,6 +36,8 @@ uses
 const
   cApplyCommand = 'atlas.server.invertBoolean';
 
+{ TAtlasIdeInvertBoolean }
+
 class procedure TAtlasIdeInvertBoolean.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var

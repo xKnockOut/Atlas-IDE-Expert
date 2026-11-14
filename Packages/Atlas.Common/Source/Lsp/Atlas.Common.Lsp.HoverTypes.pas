@@ -82,14 +82,7 @@ begin
     not AResolved.Builtin and (AResolved.FileName <> '');
 end;
 
-class function TLspHoverTypes.FromResolved(const ASymbol: TResolvedSymbol): THoverTypeRef;
-begin
-  Result.Name := ASymbol.Name;
-  Result.UnitName := ASymbol.UnitName;
-  Result.FileName := ASymbol.FileName;
-  Result.Line := ASymbol.SelectionRange.StartPos.Line;
-  Result.Character := ASymbol.SelectionRange.StartPos.Character;
-end;
+{ TLspHoverTypes }
 
 class function TLspHoverTypes.Links(AResolver: TNameResolver; const AUnit: TUnitIndex; const ADeclaration,
   ASelf: string): TArray<THoverLink>;
@@ -173,6 +166,18 @@ begin
   end;
 end;
 
+class function TLspHoverTypes.KindOf(AKind: TIndexSymbolKind; const ADeclaration: string): string;
+begin
+  if (AKind = TIndexSymbolKind.ClassType) and (ClassRefTarget(ADeclaration) <> '') then
+  begin
+    Result := cKindClassRef;
+  end
+  else
+  begin
+    Result := cKindNames[AKind];
+  end;
+end;
+
 class function TLspHoverTypes.ClassRefTarget(const ADeclaration: string): string;
 var
   mMatch: TMatch;
@@ -185,18 +190,6 @@ begin
   else
   begin
     Result := '';
-  end;
-end;
-
-class function TLspHoverTypes.KindOf(AKind: TIndexSymbolKind; const ADeclaration: string): string;
-begin
-  if (AKind = TIndexSymbolKind.ClassType) and (ClassRefTarget(ADeclaration) <> '') then
-  begin
-    Result := cKindClassRef;
-  end
-  else
-  begin
-    Result := cKindNames[AKind];
   end;
 end;
 
@@ -218,6 +211,15 @@ begin
   begin
     Result := 'RTL';
   end;
+end;
+
+class function TLspHoverTypes.FromResolved(const ASymbol: TResolvedSymbol): THoverTypeRef;
+begin
+  Result.Name := ASymbol.Name;
+  Result.UnitName := ASymbol.UnitName;
+  Result.FileName := ASymbol.FileName;
+  Result.Line := ASymbol.SelectionRange.StartPos.Line;
+  Result.Character := ASymbol.SelectionRange.StartPos.Character;
 end;
 
 end.

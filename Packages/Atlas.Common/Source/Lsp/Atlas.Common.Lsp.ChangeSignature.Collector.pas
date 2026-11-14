@@ -498,23 +498,6 @@ begin
   end;
 end;
 
-procedure THierarchyWalk.AddInheritedImplementation(const AClass: TIndexSymbol; ADepth: Integer);
-var
-  mFile: string;
-  mFound: TIndexSymbol;
-begin
-  if (Length(AClass.Ancestors) = 0) or
-    not FOwner.FirstDeclaring(AClass.Ancestors[0], FRoot, FTypes, mFile, mFound) then
-  begin
-    Exit;
-  end;
-  if Visit(mFound.Container) then
-  begin
-    FOwner.AddMember(TMemberKind.Method, mFile, mFound, False);
-    Enqueue(mFound.Container, ADepth + 1);
-  end;
-end;
-
 procedure THierarchyWalk.VisitDescendants(const AOwner: TIndexSymbol; AIsInterface: Boolean; ADepth: Integer);
 var
   mLocation: TSymbolLocation;
@@ -535,6 +518,23 @@ begin
       AddInheritedImplementation(mLocation.Symbol, ADepth);
     end;
     Enqueue(mLocation.Symbol.QualifiedName, ADepth + 1);
+  end;
+end;
+
+procedure THierarchyWalk.AddInheritedImplementation(const AClass: TIndexSymbol; ADepth: Integer);
+var
+  mFile: string;
+  mFound: TIndexSymbol;
+begin
+  if (Length(AClass.Ancestors) = 0) or
+    not FOwner.FirstDeclaring(AClass.Ancestors[0], FRoot, FTypes, mFile, mFound) then
+  begin
+    Exit;
+  end;
+  if Visit(mFound.Container) then
+  begin
+    FOwner.AddMember(TMemberKind.Method, mFile, mFound, False);
+    Enqueue(mFound.Container, ADepth + 1);
   end;
 end;
 
@@ -588,11 +588,6 @@ begin
   inherited;
 end;
 
-function TSignatureCollector.InProject(const AFileName: string): Boolean;
-begin
-  Result := SameText(AFileName, FSource.FileName) or (IndexText(AFileName, FSource.Files) >= 0);
-end;
-
 function TSignatureCollector.Source(const AFileName: string): TSourceFile;
 var
   mText: string;
@@ -615,6 +610,44 @@ begin
     Result.Symbols := TIndexExtractor.Extract(Result.Tree, AFileName).Symbols;
   end;
   FSources.Add(UpperCase(AFileName), Result);
+end;
+
+function TSignatureCollector.InProject(const AFileName: string): Boolean;
+begin
+  Result := SameText(AFileName, FSource.FileName) or (IndexText(AFileName, FSource.Files) >= 0);
+end;
+
+procedure TSignatureCollector.Collect;
+var
+  mDeclFile: string;
+  mPosition: TTextPosition;
+  mDecl: TIndexSymbol;
+begin
+  if not (TargetPosition(mDeclFile, mPosition) and DeclarationAt(mDeclFile, mPosition, mDecl)) then
+  begin
+    raise SignatureError(cTexts[TCollectorText.ThereIsNoRoutineHere].Text);
+  end;
+  if not InProject(mDeclFile) then
+  begin
+    raise SignatureError(cTexts[TCollectorText.IsDeclaredOutsideTheProject].Fmt([mDecl.Name,
+      ExtractFileName(mDeclFile)]));
+  end;
+  CollectHierarchy(mDeclFile, mDecl);
+  CollectUses(mDecl);
+end;
+
+function TSignatureCollector.Root: TMember;
+var
+  mMember: TMember;
+begin
+  for mMember in Members do
+  begin
+    if mMember.IsRoot then
+    begin
+      Exit(mMember);
+    end;
+  end;
+  Result := Members[0];
 end;
 
 function TSignatureCollector.TargetPosition(out AFile: string; out APosition: TTextPosition): Boolean;
@@ -683,39 +716,6 @@ begin
   end;
 end;
 
-function TSignatureCollector.TypeSymbol(const ATypeName: string; out ALocation: TSymbolLocation): Boolean;
-var
-  mLocation: TSymbolLocation;
-  mName: string;
-begin
-  mName := ATypeName;
-  if LastDelimiter('.', mName) > 0 then
-  begin
-    mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
-  end;
-  for mLocation in FSource.Index.FindSymbols(mName) do
-  begin
-    if (mLocation.Symbol.Kind in cClassKinds + [TIndexSymbolKind.InterfaceType]) and
-      (SameText(mLocation.Symbol.QualifiedName, ATypeName) or SameText(mLocation.Symbol.Name, ATypeName)) then
-    begin
-      ALocation := mLocation;
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function TSignatureCollector.NextAncestor(const ATypeName: string): string;
-var
-  mOwner: TSymbolLocation;
-begin
-  Result := '';
-  if TypeSymbol(ATypeName, mOwner) and (Length(mOwner.Symbol.Ancestors) > 0) then
-  begin
-    Result := mOwner.Symbol.Ancestors[0];
-  end;
-end;
-
 function TSignatureCollector.DeclaredIn(const ATypeName: string; const AName: string;
   const AParamTypes: TArray<string>; out AFile: string; out ADecl: TIndexSymbol): Boolean;
 var
@@ -767,18 +767,37 @@ begin
   Result := False;
 end;
 
-function TSignatureCollector.ReadableSource(const AFileName: string; const ADecl: TIndexSymbol): TSourceFile;
+function TSignatureCollector.NextAncestor(const ATypeName: string): string;
+var
+  mOwner: TSymbolLocation;
 begin
-  if not InProject(AFileName) then
+  Result := '';
+  if TypeSymbol(ATypeName, mOwner) and (Length(mOwner.Symbol.Ancestors) > 0) then
   begin
-    raise SignatureError(cTexts[TCollectorText.IsOutsideTheProjectThe].Fmt([ADecl.QualifiedName,
-      ExtractFileName(AFileName)]));
+    Result := mOwner.Symbol.Ancestors[0];
   end;
-  Result := Source(AFileName);
-  if (Result = nil) or (Result.Tree = nil) then
+end;
+
+function TSignatureCollector.TypeSymbol(const ATypeName: string; out ALocation: TSymbolLocation): Boolean;
+var
+  mLocation: TSymbolLocation;
+  mName: string;
+begin
+  mName := ATypeName;
+  if LastDelimiter('.', mName) > 0 then
   begin
-    raise SignatureError(cTexts[TCollectorText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
+    mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
   end;
+  for mLocation in FSource.Index.FindSymbols(mName) do
+  begin
+    if (mLocation.Symbol.Kind in cClassKinds + [TIndexSymbolKind.InterfaceType]) and
+      (SameText(mLocation.Symbol.QualifiedName, ATypeName) or SameText(mLocation.Symbol.Name, ATypeName)) then
+    begin
+      ALocation := mLocation;
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 function TSignatureCollector.AddMember(AKind: TMemberKind; const AFileName: string; const ADecl: TIndexSymbol;
@@ -797,6 +816,20 @@ begin
   if Result then
   begin
     Members := Members + [ReadMember(ReadableSource(AFileName, ADecl), AKind, ADecl, AIsRoot)];
+  end;
+end;
+
+function TSignatureCollector.ReadableSource(const AFileName: string; const ADecl: TIndexSymbol): TSourceFile;
+begin
+  if not InProject(AFileName) then
+  begin
+    raise SignatureError(cTexts[TCollectorText.IsOutsideTheProjectThe].Fmt([ADecl.QualifiedName,
+      ExtractFileName(AFileName)]));
+  end;
+  Result := Source(AFileName);
+  if (Result = nil) or (Result.Tree = nil) then
+  begin
+    raise SignatureError(cTexts[TCollectorText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
   end;
 end;
 
@@ -869,191 +902,6 @@ begin
   end;
 end;
 
-function TSignatureCollector.IsHeaderName(const AFileName: string; const APosition: TTextPosition): Boolean;
-var
-  mMember: TMember;
-  mUnit: TSourceFile;
-begin
-  for mMember in Members do
-  begin
-    if not SameText(mMember.FileName, AFileName) then
-    begin
-      Continue;
-    end;
-    mUnit := Source(mMember.FileName);
-    if (mUnit.Tokens[mMember.Decl.NameToken].StartPos = APosition) or
-      (mMember.HasBody and (mUnit.Tokens[mMember.Body.NameToken].StartPos = APosition)) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function TSignatureCollector.InMemberBody(const AFileName: string; ATokenIndex: Integer): Boolean;
-var
-  mMember: TMember;
-begin
-  for mMember in Members do
-  begin
-    if SameText(mMember.FileName, AFileName) and mMember.HasBody and (ATokenIndex > mMember.Body.LastToken) and
-      (ATokenIndex <= mMember.BodyLast) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function TSignatureCollector.SymbolsOf(const AOwner: TSymbolLocation): TArray<TIndexSymbol>;
-var
-  mUnit: TSourceFile;
-  mUnitIndex: TUnitIndex;
-begin
-  Result := nil;
-  mUnit := Source(AOwner.FileName);
-  if (mUnit <> nil) and (mUnit.Tree <> nil) then
-  begin
-    Result := mUnit.Symbols;
-  end
-  else if FSource.Index.FindFile(AOwner.FileName, mUnitIndex) then
-  begin
-    Result := mUnitIndex.Symbols;
-  end;
-end;
-
-function TSignatureCollector.EventTypeOf(const AClassName, AProperty: string): string;
-var
-  mClimb: string;
-  mOwner: TSymbolLocation;
-  mDepth: Integer;
-begin
-  Result := '';
-  mClimb := AClassName;
-  mDepth := 0;
-  while (mClimb <> '') and (mDepth < cMaxDepth) and TypeSymbol(mClimb, mOwner) do
-  begin
-    Inc(mDepth);
-    Result := PropertyType(SymbolsOf(mOwner), mOwner.Symbol.QualifiedName, AProperty);
-    if Result <> '' then
-    begin
-      Exit;
-    end;
-    mClimb := '';
-    if Length(mOwner.Symbol.Ancestors) > 0 then
-    begin
-      mClimb := mOwner.Symbol.Ancestors[0];
-    end;
-  end;
-end;
-
-function TSignatureCollector.AddEventType(const AEventType: string): Boolean;
-var
-  mLocation: TSymbolLocation;
-  mUnit: TSourceFile;
-  mMember: TMember;
-begin
-  for mLocation in FSource.Index.FindSymbols(AEventType) do
-  begin
-    if (mLocation.Symbol.Kind <> TIndexSymbolKind.TypeAlias) or not InProject(mLocation.FileName) then
-    begin
-      Continue;
-    end;
-    mUnit := Source(mLocation.FileName);
-    if (mUnit = nil) or (mUnit.Tree = nil) or not ReadEventType(mUnit, AEventType, mMember) then
-    begin
-      Continue;
-    end;
-    if not FSeen.ContainsKey('EVENT|' + UpperCase(AEventType)) then
-    begin
-      FSeen.Add('EVENT|' + UpperCase(AEventType), True);
-      Members := Members + [mMember];
-      Warnings := Warnings + [cTexts[TCollectorText.TheEventTypeChangesToo].Fmt([AEventType])];
-    end;
-    Exit(True);
-  end;
-  Result := False;
-end;
-
-procedure TSignatureCollector.CollectFormBinding(const AFormFile: string; const APosition: TTextPosition);
-var
-  mForm: TSourceFile;
-  mDocument: TDfmDocument;
-  mComponentClass, mPropertyName, mEventType: string;
-  mFound: Boolean;
-begin
-  mForm := Source(AFormFile);
-  if mForm = nil then
-  begin
-    Exit;
-  end;
-  mDocument := TDfmParser.Parse(mForm.Text);
-  try
-    mFound := (mDocument.Root <> nil) and FindEvent(mDocument.Root, APosition, mComponentClass, mPropertyName);
-  finally
-    mDocument.Free;
-  end;
-  if not mFound then
-  begin
-    Exit;
-  end;
-  mEventType := EventTypeOf(mComponentClass, mPropertyName);
-  if mEventType = '' then
-  begin
-    BoundEvent := mPropertyName;
-    EventFixed := True;
-  end
-  else
-  begin
-    BoundEvent := mEventType;
-    // Ereignistyp im Projekt: seine Parameterliste ändert sich mit.
-    if not AddEventType(mEventType) then
-    begin
-      EventFixed := True;
-    end;
-  end;
-end;
-
-procedure TSignatureCollector.AddCall(AUnit: TSourceFile; AToken: Integer; const ALocation: TReferenceLocation);
-var
-  mSite: TCallSite;
-begin
-  mSite.FileName := ALocation.FileName;
-  mSite.NamePos := ALocation.Range.StartPos;
-  mSite.InheritedInMember := AfterInherited(AUnit.Tokens, AToken) and InMemberBody(ALocation.FileName, AToken);
-  Calls := Calls + [mSite];
-end;
-
-procedure TSignatureCollector.AddUse(const ALocation: TReferenceLocation; AHasRequired: Boolean; const AName: string);
-var
-  mOther: TSourceFile;
-  mToken: Integer;
-begin
-  if MatchText(ExtractFileExt(ALocation.FileName), ['.dfm', '.fmx']) then
-  begin
-    CollectFormBinding(ALocation.FileName, ALocation.Range.StartPos);
-    Exit;
-  end;
-  mOther := Source(ALocation.FileName);
-  mToken := -1;
-  if (mOther <> nil) and (mOther.Tree <> nil) then
-  begin
-    mToken := TChangeSignature.NameTokenAt(mOther.Tokens, ALocation.Range.StartPos);
-  end;
-  if mToken < 0 then
-  begin
-    Exit;
-  end;
-  case TChangeSignature.UseOf(mOther.Tokens, mToken, AHasRequired) of
-    TSignatureUse.Accessor:
-      Accessors := Accessors + [PlaceOf(ALocation)];
-    TSignatureUse.Pointer_:
-      Warnings := Warnings + [cTexts[TCollectorText.IsUsedAsAMethod].Fmt([PlaceOf(ALocation), AName])];
-  else
-    AddCall(mOther, mToken, ALocation);
-  end;
-end;
-
 procedure TSignatureCollector.CollectUses(const ADecl: TIndexSymbol);
 var
   mMember: TMember;
@@ -1095,37 +943,189 @@ begin
   end;
 end;
 
-function TSignatureCollector.Root: TMember;
+procedure TSignatureCollector.AddUse(const ALocation: TReferenceLocation; AHasRequired: Boolean; const AName: string);
+var
+  mOther: TSourceFile;
+  mToken: Integer;
+begin
+  if MatchText(ExtractFileExt(ALocation.FileName), ['.dfm', '.fmx']) then
+  begin
+    CollectFormBinding(ALocation.FileName, ALocation.Range.StartPos);
+    Exit;
+  end;
+  mOther := Source(ALocation.FileName);
+  mToken := -1;
+  if (mOther <> nil) and (mOther.Tree <> nil) then
+  begin
+    mToken := TChangeSignature.NameTokenAt(mOther.Tokens, ALocation.Range.StartPos);
+  end;
+  if mToken < 0 then
+  begin
+    Exit;
+  end;
+  case TChangeSignature.UseOf(mOther.Tokens, mToken, AHasRequired) of
+    TSignatureUse.Accessor:
+      Accessors := Accessors + [PlaceOf(ALocation)];
+    TSignatureUse.Pointer_:
+      Warnings := Warnings + [cTexts[TCollectorText.IsUsedAsAMethod].Fmt([PlaceOf(ALocation), AName])];
+  else
+    AddCall(mOther, mToken, ALocation);
+  end;
+end;
+
+procedure TSignatureCollector.AddCall(AUnit: TSourceFile; AToken: Integer; const ALocation: TReferenceLocation);
+var
+  mSite: TCallSite;
+begin
+  mSite.FileName := ALocation.FileName;
+  mSite.NamePos := ALocation.Range.StartPos;
+  mSite.InheritedInMember := AfterInherited(AUnit.Tokens, AToken) and InMemberBody(ALocation.FileName, AToken);
+  Calls := Calls + [mSite];
+end;
+
+procedure TSignatureCollector.CollectFormBinding(const AFormFile: string; const APosition: TTextPosition);
+var
+  mForm: TSourceFile;
+  mDocument: TDfmDocument;
+  mComponentClass, mPropertyName, mEventType: string;
+  mFound: Boolean;
+begin
+  mForm := Source(AFormFile);
+  if mForm = nil then
+  begin
+    Exit;
+  end;
+  mDocument := TDfmParser.Parse(mForm.Text);
+  try
+    mFound := (mDocument.Root <> nil) and FindEvent(mDocument.Root, APosition, mComponentClass, mPropertyName);
+  finally
+    mDocument.Free;
+  end;
+  if not mFound then
+  begin
+    Exit;
+  end;
+  mEventType := EventTypeOf(mComponentClass, mPropertyName);
+  if mEventType = '' then
+  begin
+    BoundEvent := mPropertyName;
+    EventFixed := True;
+  end
+  else
+  begin
+    BoundEvent := mEventType;
+    // Ereignistyp im Projekt: seine Parameterliste ändert sich mit.
+    if not AddEventType(mEventType) then
+    begin
+      EventFixed := True;
+    end;
+  end;
+end;
+
+function TSignatureCollector.AddEventType(const AEventType: string): Boolean;
+var
+  mLocation: TSymbolLocation;
+  mUnit: TSourceFile;
+  mMember: TMember;
+begin
+  for mLocation in FSource.Index.FindSymbols(AEventType) do
+  begin
+    if (mLocation.Symbol.Kind <> TIndexSymbolKind.TypeAlias) or not InProject(mLocation.FileName) then
+    begin
+      Continue;
+    end;
+    mUnit := Source(mLocation.FileName);
+    if (mUnit = nil) or (mUnit.Tree = nil) or not ReadEventType(mUnit, AEventType, mMember) then
+    begin
+      Continue;
+    end;
+    if not FSeen.ContainsKey('EVENT|' + UpperCase(AEventType)) then
+    begin
+      FSeen.Add('EVENT|' + UpperCase(AEventType), True);
+      Members := Members + [mMember];
+      Warnings := Warnings + [cTexts[TCollectorText.TheEventTypeChangesToo].Fmt([AEventType])];
+    end;
+    Exit(True);
+  end;
+  Result := False;
+end;
+
+function TSignatureCollector.IsHeaderName(const AFileName: string; const APosition: TTextPosition): Boolean;
+var
+  mMember: TMember;
+  mUnit: TSourceFile;
+begin
+  for mMember in Members do
+  begin
+    if not SameText(mMember.FileName, AFileName) then
+    begin
+      Continue;
+    end;
+    mUnit := Source(mMember.FileName);
+    if (mUnit.Tokens[mMember.Decl.NameToken].StartPos = APosition) or
+      (mMember.HasBody and (mUnit.Tokens[mMember.Body.NameToken].StartPos = APosition)) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TSignatureCollector.InMemberBody(const AFileName: string; ATokenIndex: Integer): Boolean;
 var
   mMember: TMember;
 begin
   for mMember in Members do
   begin
-    if mMember.IsRoot then
+    if SameText(mMember.FileName, AFileName) and mMember.HasBody and (ATokenIndex > mMember.Body.LastToken) and
+      (ATokenIndex <= mMember.BodyLast) then
     begin
-      Exit(mMember);
+      Exit(True);
     end;
   end;
-  Result := Members[0];
+  Result := False;
 end;
 
-procedure TSignatureCollector.Collect;
+function TSignatureCollector.EventTypeOf(const AClassName, AProperty: string): string;
 var
-  mDeclFile: string;
-  mPosition: TTextPosition;
-  mDecl: TIndexSymbol;
+  mClimb: string;
+  mOwner: TSymbolLocation;
+  mDepth: Integer;
 begin
-  if not (TargetPosition(mDeclFile, mPosition) and DeclarationAt(mDeclFile, mPosition, mDecl)) then
+  Result := '';
+  mClimb := AClassName;
+  mDepth := 0;
+  while (mClimb <> '') and (mDepth < cMaxDepth) and TypeSymbol(mClimb, mOwner) do
   begin
-    raise SignatureError(cTexts[TCollectorText.ThereIsNoRoutineHere].Text);
+    Inc(mDepth);
+    Result := PropertyType(SymbolsOf(mOwner), mOwner.Symbol.QualifiedName, AProperty);
+    if Result <> '' then
+    begin
+      Exit;
+    end;
+    mClimb := '';
+    if Length(mOwner.Symbol.Ancestors) > 0 then
+    begin
+      mClimb := mOwner.Symbol.Ancestors[0];
+    end;
   end;
-  if not InProject(mDeclFile) then
+end;
+
+function TSignatureCollector.SymbolsOf(const AOwner: TSymbolLocation): TArray<TIndexSymbol>;
+var
+  mUnit: TSourceFile;
+  mUnitIndex: TUnitIndex;
+begin
+  Result := nil;
+  mUnit := Source(AOwner.FileName);
+  if (mUnit <> nil) and (mUnit.Tree <> nil) then
   begin
-    raise SignatureError(cTexts[TCollectorText.IsDeclaredOutsideTheProject].Fmt([mDecl.Name,
-      ExtractFileName(mDeclFile)]));
+    Result := mUnit.Symbols;
+  end
+  else if FSource.Index.FindFile(AOwner.FileName, mUnitIndex) then
+  begin
+    Result := mUnitIndex.Symbols;
   end;
-  CollectHierarchy(mDeclFile, mDecl);
-  CollectUses(mDecl);
 end;
 
 initialization

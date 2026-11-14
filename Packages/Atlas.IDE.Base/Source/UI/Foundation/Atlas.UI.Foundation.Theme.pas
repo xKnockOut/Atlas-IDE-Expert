@@ -116,11 +116,6 @@ begin
   Result := TAtlasColors.Light;
 end;
 
-class function TAtlasUiTheme.UsesStyleText(AKind: TAtlasSignalKind): Boolean;
-begin
-  Result := (AKind = TAtlasSignalKind.Info) or (AKind = TAtlasSignalKind.Idle);
-end;
-
 class function TAtlasUiTheme.TextColor(AKind: TAtlasSignalKind): TColor;
 var
   mColors: TAtlasColors;
@@ -138,6 +133,11 @@ begin
   else
     Result := TColor(mColors.Error);
   end;
+end;
+
+class function TAtlasUiTheme.UsesStyleText(AKind: TAtlasSignalKind): Boolean;
+begin
+  Result := (AKind = TAtlasSignalKind.Info) or (AKind = TAtlasSignalKind.Idle);
 end;
 
 class procedure TAtlasUiTheme.AssignDialogFont(AFont: TFont);

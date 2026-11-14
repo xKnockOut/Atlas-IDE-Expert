@@ -185,18 +185,28 @@ begin
   inherited Destroy;
 end;
 
-procedure TSymbolBuilder.SetConditionals(const AConditionals: TArray<TConditionalRange>);
+function TSymbolBuilder.IsClassMember(ANode: TSyntaxNode): Boolean;
 var
-  mConditional: TConditionalRange;
+  mIndex: Integer;
 begin
-  FConditionals := nil;
-  for mConditional in AConditionals do
+  // "class procedure", "class function": class steht vorn; bei "class property" und "class var" hat der
+  // Parser das Wort schon übersprungen, es steht also davor.
+  mIndex := TokenIndexAt(ANode.StartOffset);
+  while (mIndex < Length(FTokens)) and (FTokens[mIndex].Kind in [TPascalTokenKind.Comment,
+    TPascalTokenKind.Directive]) do
   begin
-    if mConditional.Active and (mConditional.Condition <> '') then
-    begin
-      FConditionals := FConditionals + [mConditional];
-    end;
+    Inc(mIndex);
   end;
+  if (mIndex < Length(FTokens)) and FTokens[mIndex].IsKeyword('class') then
+  begin
+    Exit(True);
+  end;
+  Dec(mIndex);
+  while (mIndex >= 0) and (FTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
+    Dec(mIndex);
+  end;
+  Result := (mIndex >= 0) and FTokens[mIndex].IsKeyword('class');
 end;
 
 /// <summary>A vor B?</summary>
@@ -265,28 +275,89 @@ begin
   end;
 end;
 
-function TSymbolBuilder.IsClassMember(ANode: TSyntaxNode): Boolean;
+procedure TSymbolBuilder.AddExtras(ASymbol: TJSONObject; ANode: TSyntaxNode; ARoutine: Boolean);
+var
+  mExisting: TJSONValue;
+  mExtras: TJSONObject;
+begin
+  // NewSymbol legt "atlas" schon an, wenn das Symbol eine Bedingung hat.
+  mExisting := ASymbol.GetValue('atlas');
+  if mExisting is TJSONObject then
+  begin
+    mExtras := TJSONObject(mExisting);
+  end
+  else
+  begin
+    mExtras := TJSONObject.Create;
+  end;
+  if FVisibility <> '' then
+  begin
+    mExtras.AddPair('visibility', FVisibility);
+  end;
+  if IsClassMember(ANode) then
+  begin
+    mExtras.AddPair('classMember', TJSONBool.Create(True));
+  end;
+  if ARoutine then
+  begin
+    AddRoutineFlags(mExtras, ANode);
+    if IsUnimplemented(ANode) then
+    begin
+      mExtras.AddPair('unimplemented', TJSONBool.Create(True));
+    end;
+  end;
+  if mExtras = mExisting then
+  begin
+    Exit;
+  end;
+  if mExtras.Count > 0 then
+  begin
+    ASymbol.AddPair('atlas', mExtras);
+  end
+  else
+  begin
+    mExtras.Free;
+  end;
+end;
+
+procedure TSymbolBuilder.AddRoutineFlags(AExtras: TJSONObject; ANode: TSyntaxNode);
 var
   mIndex: Integer;
+  mDirective: string;
 begin
-  // "class procedure", "class function": class steht vorn; bei "class property" und "class var" hat der
-  // Parser das Wort schon übersprungen, es steht also davor.
-  mIndex := TokenIndexAt(ANode.StartOffset);
-  while (mIndex < Length(FTokens)) and (FTokens[mIndex].Kind in [TPascalTokenKind.Comment,
-    TPascalTokenKind.Directive]) do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    Inc(mIndex);
+    if ANode[mIndex].Kind <> TSyntaxKind.Directive then
+    begin
+      Continue;
+    end;
+    mDirective := ANode[mIndex].Name;
+    // dynamic ist virtuell wie virtual.
+    if mDirective = 'dynamic' then
+    begin
+      mDirective := 'virtual';
+    end;
+    if ((mDirective = 'override') or (mDirective = 'virtual') or (mDirective = 'abstract')) and
+      (AExtras.GetValue(mDirective) = nil) then
+    begin
+      AExtras.AddPair(mDirective, TJSONBool.Create(True));
+    end;
   end;
-  if (mIndex < Length(FTokens)) and FTokens[mIndex].IsKeyword('class') then
+end;
+
+function TSymbolBuilder.IsUnimplemented(ANode: TSyntaxNode): Boolean;
+var
+  mStart, mPosition: TTextPosition;
+begin
+  mStart := NameRange(ANode, ANode.Name).StartPos;
+  for mPosition in FUnimplemented do
   begin
-    Exit(True);
+    if (mPosition.Line = mStart.Line) and (mPosition.Character = mStart.Character) then
+    begin
+      Exit(True);
+    end;
   end;
-  Dec(mIndex);
-  while (mIndex >= 0) and (FTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(mIndex);
-  end;
-  Result := (mIndex >= 0) and FTokens[mIndex].IsKeyword('class');
+  Result := False;
 end;
 
 function TSymbolBuilder.AncestorHasTypeInfo(const AAncestor: string): Boolean;
@@ -342,91 +413,6 @@ begin
   end;
 end;
 
-procedure TSymbolBuilder.AddRoutineFlags(AExtras: TJSONObject; ANode: TSyntaxNode);
-var
-  mIndex: Integer;
-  mDirective: string;
-begin
-  for mIndex := 0 to ANode.ChildCount - 1 do
-  begin
-    if ANode[mIndex].Kind <> TSyntaxKind.Directive then
-    begin
-      Continue;
-    end;
-    mDirective := ANode[mIndex].Name;
-    // dynamic ist virtuell wie virtual.
-    if mDirective = 'dynamic' then
-    begin
-      mDirective := 'virtual';
-    end;
-    if ((mDirective = 'override') or (mDirective = 'virtual') or (mDirective = 'abstract')) and
-      (AExtras.GetValue(mDirective) = nil) then
-    begin
-      AExtras.AddPair(mDirective, TJSONBool.Create(True));
-    end;
-  end;
-end;
-
-function TSymbolBuilder.IsUnimplemented(ANode: TSyntaxNode): Boolean;
-var
-  mStart, mPosition: TTextPosition;
-begin
-  mStart := NameRange(ANode, ANode.Name).StartPos;
-  for mPosition in FUnimplemented do
-  begin
-    if (mPosition.Line = mStart.Line) and (mPosition.Character = mStart.Character) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-procedure TSymbolBuilder.AddExtras(ASymbol: TJSONObject; ANode: TSyntaxNode; ARoutine: Boolean);
-var
-  mExisting: TJSONValue;
-  mExtras: TJSONObject;
-begin
-  // NewSymbol legt "atlas" schon an, wenn das Symbol eine Bedingung hat.
-  mExisting := ASymbol.GetValue('atlas');
-  if mExisting is TJSONObject then
-  begin
-    mExtras := TJSONObject(mExisting);
-  end
-  else
-  begin
-    mExtras := TJSONObject.Create;
-  end;
-  if FVisibility <> '' then
-  begin
-    mExtras.AddPair('visibility', FVisibility);
-  end;
-  if IsClassMember(ANode) then
-  begin
-    mExtras.AddPair('classMember', TJSONBool.Create(True));
-  end;
-  if ARoutine then
-  begin
-    AddRoutineFlags(mExtras, ANode);
-    if IsUnimplemented(ANode) then
-    begin
-      mExtras.AddPair('unimplemented', TJSONBool.Create(True));
-    end;
-  end;
-  if mExtras = mExisting then
-  begin
-    Exit;
-  end;
-  if mExtras.Count > 0 then
-  begin
-    ASymbol.AddPair('atlas', mExtras);
-  end
-  else
-  begin
-    mExtras.Free;
-  end;
-end;
-
 function TSymbolBuilder.TokenIndexAt(AOffset: Integer): Integer;
 var
   mLeft: Integer;
@@ -475,11 +461,6 @@ begin
   Result := NodeRange(ANode);
 end;
 
-function TSymbolBuilder.NewSymbol(ANode: TSyntaxNode; const AName: string; AKind: Integer): TJSONObject;
-begin
-  Result := NewSymbol(ANode, AName, AKind, '');
-end;
-
 function TSymbolBuilder.NewSymbol(ANode: TSyntaxNode; const AName: string; AKind: Integer;
   const ADetail: string): TJSONObject;
 var
@@ -509,6 +490,11 @@ begin
   begin
     Result.AddPair('atlas', TJSONObject.Create(TJSONPair.Create('condition', mCondition)));
   end;
+end;
+
+function TSymbolBuilder.NewSymbol(ANode: TSyntaxNode; const AName: string; AKind: Integer): TJSONObject;
+begin
+  Result := NewSymbol(ANode, AName, AKind, '');
 end;
 
 procedure TSymbolBuilder.AddChild(ASymbol, AChild: TJSONObject);
@@ -550,6 +536,24 @@ begin
   else
   begin
     Result := TLspSymbolKind.cFunction_;
+  end;
+end;
+
+procedure TSymbolBuilder.AddTypeMembers(ASymbol: TJSONObject; ADecl, ABody: TSyntaxNode);
+var
+  mMembers: TJSONArray;
+  mOuter: string;
+begin
+  // Verschachtelte Typen haben eigene Abschnitte; danach gilt wieder der äußere.
+  mOuter := FVisibility;
+  FVisibility := DefaultVisibility(ADecl, ABody);
+  mMembers := TJSONArray.Create;
+  try
+    AddDeclarations(ABody, mMembers, True);
+    MoveChildren(mMembers, ASymbol);
+  finally
+    mMembers.Free;
+    FVisibility := mOuter;
   end;
 end;
 
@@ -610,24 +614,6 @@ begin
   end;
 end;
 
-procedure TSymbolBuilder.AddTypeMembers(ASymbol: TJSONObject; ADecl, ABody: TSyntaxNode);
-var
-  mMembers: TJSONArray;
-  mOuter: string;
-begin
-  // Verschachtelte Typen haben eigene Abschnitte; danach gilt wieder der äußere.
-  mOuter := FVisibility;
-  FVisibility := DefaultVisibility(ADecl, ABody);
-  mMembers := TJSONArray.Create;
-  try
-    AddDeclarations(ABody, mMembers, True);
-    MoveChildren(mMembers, ASymbol);
-  finally
-    mMembers.Free;
-    FVisibility := mOuter;
-  end;
-end;
-
 function TSymbolBuilder.TypeSymbol(ADecl: TSyntaxNode): TJSONObject;
 var
   mBody: TSyntaxNode;
@@ -655,97 +641,6 @@ begin
     TSyntaxKind.RecordType, TSyntaxKind.InterfaceType] then
   begin
     AddTypeMembers(Result, ADecl, mBody);
-  end;
-end;
-
-procedure TSymbolBuilder.AddNames(ANode: TSyntaxNode; ATarget: TJSONArray; AKind: Integer);
-var
-  mName: string;
-  mSymbol: TJSONObject;
-begin
-  // Felder und Variablen mit mehreren Namen: A, B: Integer.
-  for mName in ANode.Name.Split([',']) do
-  begin
-    mSymbol := NewSymbol(ANode, mName.Trim, AKind);
-    if AKind = TLspSymbolKind.cField then
-    begin
-      AddExtras(mSymbol, ANode, False);
-    end;
-    ATarget.AddElement(mSymbol);
-  end;
-end;
-
-/// <summary>Typ des Selektors eines varianten Teils: "Integer" bei case Integer of und case Tag: Integer of.</summary>
-function SelectorType(AVariant: TSyntaxNode): string;
-var
-  mIndex, mInner: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to AVariant.ChildCount - 1 do
-  begin
-    if AVariant[mIndex].Kind = TSyntaxKind.TypeReference then
-    begin
-      Exit(AVariant[mIndex].Name);
-    end
-    else if AVariant[mIndex].Kind = TSyntaxKind.Field then
-    begin
-      for mInner := 0 to AVariant[mIndex].ChildCount - 1 do
-      begin
-        if AVariant[mIndex][mInner].Kind = TSyntaxKind.TypeReference then
-        begin
-          Exit(AVariant[mIndex][mInner].Name);
-        end;
-      end;
-    end;
-  end;
-end;
-
-procedure TSymbolBuilder.AddVariantPart(ANode: TSyntaxNode; ATarget: TJSONArray; AInType: Boolean);
-var
-  mGroup: TJSONObject;
-  mFields: TJSONArray;
-  mTitle: string;
-  mIndex: Integer;
-begin
-  // case Tag: Typ of (#846): das Selektorfeld neben die Felder des Records, die Zweige in eine Gruppe.
-  mTitle := 'case ';
-  if ANode.Name <> '' then
-  begin
-    mTitle := mTitle + ANode.Name + ': ';
-  end;
-  mTitle := mTitle + SelectorType(ANode) + ' of';
-  mFields := TJSONArray.Create;
-  try
-    for mIndex := 0 to ANode.ChildCount - 1 do
-    begin
-      if ANode[mIndex].Kind = TSyntaxKind.Field then
-      begin
-        AddNames(ANode[mIndex], ATarget, TLspSymbolKind.cField);
-      end
-      else if ANode[mIndex].Kind = TSyntaxKind.CaseItem then
-      begin
-        AddDeclarations(ANode[mIndex], mFields, AInType);
-      end;
-    end;
-    if mFields.Count = 0 then
-    begin
-      Exit;
-    end;
-    mGroup := NewSymbol(ANode, mTitle, TLspSymbolKind.cNamespace);
-    ATarget.AddElement(mGroup);
-    MoveChildren(mFields, mGroup);
-  finally
-    mFields.Free;
-  end;
-end;
-
-procedure TSymbolBuilder.AddDeclarations(ANode: TSyntaxNode; ATarget: TJSONArray; AInType: Boolean);
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to ANode.ChildCount - 1 do
-  begin
-    AddDeclaration(ANode[mIndex], ATarget, AInType);
   end;
 end;
 
@@ -788,6 +683,41 @@ begin
   finally
     mNested.Free;
     FVisibility := mOuter;
+  end;
+end;
+
+/// <summary>Typ des Selektors eines varianten Teils: "Integer" bei case Integer of und case Tag: Integer of.</summary>
+function SelectorType(AVariant: TSyntaxNode): string;
+var
+  mIndex, mInner: Integer;
+begin
+  Result := '';
+  for mIndex := 0 to AVariant.ChildCount - 1 do
+  begin
+    if AVariant[mIndex].Kind = TSyntaxKind.TypeReference then
+    begin
+      Exit(AVariant[mIndex].Name);
+    end
+    else if AVariant[mIndex].Kind = TSyntaxKind.Field then
+    begin
+      for mInner := 0 to AVariant[mIndex].ChildCount - 1 do
+      begin
+        if AVariant[mIndex][mInner].Kind = TSyntaxKind.TypeReference then
+        begin
+          Exit(AVariant[mIndex][mInner].Name);
+        end;
+      end;
+    end;
+  end;
+end;
+
+procedure TSymbolBuilder.AddDeclarations(ANode: TSyntaxNode; ATarget: TJSONArray; AInType: Boolean);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    AddDeclaration(ANode[mIndex], ATarget, AInType);
   end;
 end;
 
@@ -848,6 +778,76 @@ begin
   end;
 end;
 
+procedure TSymbolBuilder.AddNames(ANode: TSyntaxNode; ATarget: TJSONArray; AKind: Integer);
+var
+  mName: string;
+  mSymbol: TJSONObject;
+begin
+  // Felder und Variablen mit mehreren Namen: A, B: Integer.
+  for mName in ANode.Name.Split([',']) do
+  begin
+    mSymbol := NewSymbol(ANode, mName.Trim, AKind);
+    if AKind = TLspSymbolKind.cField then
+    begin
+      AddExtras(mSymbol, ANode, False);
+    end;
+    ATarget.AddElement(mSymbol);
+  end;
+end;
+
+procedure TSymbolBuilder.AddVariantPart(ANode: TSyntaxNode; ATarget: TJSONArray; AInType: Boolean);
+var
+  mGroup: TJSONObject;
+  mFields: TJSONArray;
+  mTitle: string;
+  mIndex: Integer;
+begin
+  // case Tag: Typ of (#846): das Selektorfeld neben die Felder des Records, die Zweige in eine Gruppe.
+  mTitle := 'case ';
+  if ANode.Name <> '' then
+  begin
+    mTitle := mTitle + ANode.Name + ': ';
+  end;
+  mTitle := mTitle + SelectorType(ANode) + ' of';
+  mFields := TJSONArray.Create;
+  try
+    for mIndex := 0 to ANode.ChildCount - 1 do
+    begin
+      if ANode[mIndex].Kind = TSyntaxKind.Field then
+      begin
+        AddNames(ANode[mIndex], ATarget, TLspSymbolKind.cField);
+      end
+      else if ANode[mIndex].Kind = TSyntaxKind.CaseItem then
+      begin
+        AddDeclarations(ANode[mIndex], mFields, AInType);
+      end;
+    end;
+    if mFields.Count = 0 then
+    begin
+      Exit;
+    end;
+    mGroup := NewSymbol(ANode, mTitle, TLspSymbolKind.cNamespace);
+    ATarget.AddElement(mGroup);
+    MoveChildren(mFields, mGroup);
+  finally
+    mFields.Free;
+  end;
+end;
+
+procedure TSymbolBuilder.SetConditionals(const AConditionals: TArray<TConditionalRange>);
+var
+  mConditional: TConditionalRange;
+begin
+  FConditionals := nil;
+  for mConditional in AConditionals do
+  begin
+    if mConditional.Active and (mConditional.Condition <> '') then
+    begin
+      FConditionals := FConditionals + [mConditional];
+    end;
+  end;
+end;
+
 function TSymbolBuilder.Build(ARoot: TSyntaxNode): TJSONArray;
 var
   mRoot: TJSONObject;
@@ -896,6 +896,44 @@ constructor TLspDocumentSymbols.Create(const AStore: IDocumentStore);
 begin
   inherited Create;
   FStore := AStore;
+end;
+
+function TLspDocumentSymbols.HandleDocumentSymbol(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mDocument: ITextDocument;
+  mTree: TSyntaxTree;
+  mShared: ISharedSyntaxTree;
+  mForm: TDfmDocument;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TDocumentSymbolsText.FieldTextDocumentUriMissingIn].Text + cMethod);
+  end;
+  // Nicht geöffnete Dokumente haben keine Gliederung.
+  if not FStore.TryGet(mUri, mDocument) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  // Formulardateien (#44) haben einen eigenen Baum.
+  if TDfmParser.IsFormFile(mUri) then
+  begin
+    mForm := TDfmParser.Parse(mDocument.Text);
+    try
+      Exit(TLspFormFiles.BuildSymbols(mForm));
+    finally
+      mForm.Free;
+    end;
+  end;
+  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  mTree := mShared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  Result := BuildSymbols(mTree, mDocument.Text, FIndex, FReadText, mShared.Conditionals);
 end;
 
 procedure TLspDocumentSymbols.Attach(ADispatcher: TJsonRpcDispatcher);
@@ -956,44 +994,6 @@ begin
   finally
     mTypeInfo.Free;
   end;
-end;
-
-function TLspDocumentSymbols.HandleDocumentSymbol(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mCancellation: IPascalCancellation;
-  mUri: string;
-  mDocument: ITextDocument;
-  mTree: TSyntaxTree;
-  mShared: ISharedSyntaxTree;
-  mForm: TDfmDocument;
-begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TDocumentSymbolsText.FieldTextDocumentUriMissingIn].Text + cMethod);
-  end;
-  // Nicht geöffnete Dokumente haben keine Gliederung.
-  if not FStore.TryGet(mUri, mDocument) then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  // Formulardateien (#44) haben einen eigenen Baum.
-  if TDfmParser.IsFormFile(mUri) then
-  begin
-    mForm := TDfmParser.Parse(mDocument.Text);
-    try
-      Exit(TLspFormFiles.BuildSymbols(mForm));
-    finally
-      mForm.Free;
-    end;
-  end;
-  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
-  mCancellation := TRequestCancellation.Create(ACancellation);
-  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
-  mTree := mShared.Tree;
-  ACancellation.ThrowIfCancellationRequested;
-  Result := BuildSymbols(mTree, mDocument.Text, FIndex, FReadText, mShared.Conditionals);
 end;
 
 initialization

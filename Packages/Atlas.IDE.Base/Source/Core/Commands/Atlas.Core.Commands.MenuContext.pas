@@ -42,6 +42,8 @@ uses
   System.SysUtils,
   System.StrUtils;
 
+{ TAtlasMenuContextRules }
+
 class function TAtlasMenuContextRules.IsTestUnit(const AText: string): Boolean;
 begin
   Result := ContainsText(AText, 'DUnitX.TestFramework') or ContainsText(AText, '[TestFixture');

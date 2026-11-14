@@ -171,6 +171,8 @@ begin
   end;
 end;
 
+{ TAtlasDefaultSizes }
+
 class function TAtlasDefaultSizes.Parse(const AText: string): TArray<TAtlasSizeEntry>;
 var
   mPart: string;

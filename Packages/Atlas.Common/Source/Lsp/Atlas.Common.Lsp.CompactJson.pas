@@ -25,6 +25,8 @@ type
 
 implementation
 
+{ TCompactJson }
+
 class function TCompactJson.Pack(const AValue: TJSONValue): TBytes;
 begin
   // Zeichen über 127 unmaskiert: In UTF-8 sind sie kürzer als \uXXXX. Steuerzeichen bleiben maskiert,

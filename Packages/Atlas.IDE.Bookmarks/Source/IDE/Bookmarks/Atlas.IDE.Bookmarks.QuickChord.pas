@@ -98,60 +98,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TChordState.Start;
-begin
-  FBaseKey := Word(TAtlasIdeSettings.Current.QuickBookmarkKey) and $00FF;
-  FStarted := TThread.GetTickCount64;
-  FWaiting := True;
-  if not TAtlasKeyHook.Contains(Self) then
-  begin
-    TAtlasKeyHook.Add(Self);
-  end;
-  FTimer.Enabled := True;
-end;
-
-procedure TChordState.Finish;
-begin
-  FWaiting := False;
-  FTimer.Enabled := False;
-  if TAtlasKeyHook.Contains(Self) then
-  begin
-    TAtlasKeyHook.Remove(Self);
-  end;
-end;
-
-procedure TChordState.Toggle;
-begin
-  TAtlasMainThread.ForceQueue(TAtlasFeature.QuickBookmarks,
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.QuickBookmarks, TAtlasIdeQuickBookmarks.QuickToggle);
-    end);
-end;
-
-procedure TChordState.Tick(Sender: TObject);
-var
-  mElapsed: Integer;
-begin
-  try
-    if not FWaiting then
-    begin
-      FTimer.Enabled := False;
-      Exit;
-    end;
-    mElapsed := Integer(TThread.GetTickCount64 - FStarted);
-    if TAtlasQuickBookmarks.Chord(TAtlasIdeSettings.Current.QuickBookmarkChordWait, mElapsed, 0) =
-      TAtlasChordAction.Toggle then
-    begin
-      Finish;
-      Toggle;
-    end;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.QuickBookmarks, E);
-  end;
-end;
-
 function TChordState.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 begin
   // Im Hook gefragt, auch beim Loslassen: Die Taste des ersten Teils (Loslassen, Wiederholung) ist noch kein
@@ -191,6 +137,48 @@ procedure TChordState.HandleKey(AKey: Word; AShift: TShiftState);
 begin
   Finish;
   PassOn(AKey);
+end;
+
+procedure TChordState.Tick(Sender: TObject);
+var
+  mElapsed: Integer;
+begin
+  try
+    if not FWaiting then
+    begin
+      FTimer.Enabled := False;
+      Exit;
+    end;
+    mElapsed := Integer(TThread.GetTickCount64 - FStarted);
+    if TAtlasQuickBookmarks.Chord(TAtlasIdeSettings.Current.QuickBookmarkChordWait, mElapsed, 0) =
+      TAtlasChordAction.Toggle then
+    begin
+      Finish;
+      Toggle;
+    end;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.QuickBookmarks, E);
+  end;
+end;
+
+procedure TChordState.Finish;
+begin
+  FWaiting := False;
+  FTimer.Enabled := False;
+  if TAtlasKeyHook.Contains(Self) then
+  begin
+    TAtlasKeyHook.Remove(Self);
+  end;
+end;
+
+procedure TChordState.Toggle;
+begin
+  TAtlasMainThread.ForceQueue(TAtlasFeature.QuickBookmarks,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.QuickBookmarks, TAtlasIdeQuickBookmarks.QuickToggle);
+    end);
 end;
 
 procedure TChordState.PassOn(AKey: Word);
@@ -250,6 +238,18 @@ begin
     FPassAt := 0;
     TAtlasIdeHost.Message(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkChordFailed, [Char(AKey)]));
   end;
+end;
+
+procedure TChordState.Start;
+begin
+  FBaseKey := Word(TAtlasIdeSettings.Current.QuickBookmarkKey) and $00FF;
+  FStarted := TThread.GetTickCount64;
+  FWaiting := True;
+  if not TAtlasKeyHook.Contains(Self) then
+  begin
+    TAtlasKeyHook.Add(Self);
+  end;
+  FTimer.Enabled := True;
 end;
 
 { TAtlasIdeQuickChord }

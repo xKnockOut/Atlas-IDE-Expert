@@ -288,23 +288,32 @@ end;
 
 { TTargetTypes }
 
-procedure TTargetTypes.Init(ADefines: TDictionary<string, Boolean>; const APlatform: string);
+function TTargetTypes.PlatformSize(const AName: string; out AKnown: Boolean): Integer;
 begin
-  FPlatform := APlatform;
-  FWindows := ADefines.ContainsKey('MSWINDOWS');
-  FArm := ADefines.ContainsKey('CPUARM');
-  FX64 := ADefines.ContainsKey('CPUX64');
-  if ADefines.ContainsKey('CPU64BITS') or ADefines.ContainsKey('WIN64') then
+  AKnown := True;
+  if MatchStr(AName, ['POINTER', 'NATIVEINT', 'NATIVEUINT', 'INTPTR', 'UINTPTR', 'PCHAR', 'PANSICHAR', 'PWIDECHAR',
+    'STRING', 'UNICODESTRING', 'ANSISTRING', 'RAWBYTESTRING', 'UTF8STRING', 'WIDESTRING', 'TOBJECT', 'TCLASS',
+    'IINTERFACE', 'IUNKNOWN', 'THANDLE', 'HWND', 'WPARAM', 'LPARAM', 'LRESULT']) then
   begin
-    FPointerSize := 8;
+    Result := FPointerSize;
   end
-  else if ADefines.ContainsKey('CPU32BITS') or ADefines.ContainsKey('WIN32') then
+  else if MatchStr(AName, ['LONGINT', 'LONGWORD']) then
   begin
-    FPointerSize := 4;
+    Result := LongSize;
+  end
+  else if AName = 'EXTENDED' then
+  begin
+    Result := ExtendedSize;
   end
   else
   begin
-    FPointerSize := 0;
+    // Variant nur mit bekannter Größe, sonst wie ein unbekannter Typ ohne Herkunft.
+    Result := 0;
+    if AName = 'VARIANT' then
+    begin
+      Result := VariantSize;
+    end;
+    AKnown := Result > 0;
   end;
 end;
 
@@ -357,32 +366,23 @@ begin
   end;
 end;
 
-function TTargetTypes.PlatformSize(const AName: string; out AKnown: Boolean): Integer;
+procedure TTargetTypes.Init(ADefines: TDictionary<string, Boolean>; const APlatform: string);
 begin
-  AKnown := True;
-  if MatchStr(AName, ['POINTER', 'NATIVEINT', 'NATIVEUINT', 'INTPTR', 'UINTPTR', 'PCHAR', 'PANSICHAR', 'PWIDECHAR',
-    'STRING', 'UNICODESTRING', 'ANSISTRING', 'RAWBYTESTRING', 'UTF8STRING', 'WIDESTRING', 'TOBJECT', 'TCLASS',
-    'IINTERFACE', 'IUNKNOWN', 'THANDLE', 'HWND', 'WPARAM', 'LPARAM', 'LRESULT']) then
+  FPlatform := APlatform;
+  FWindows := ADefines.ContainsKey('MSWINDOWS');
+  FArm := ADefines.ContainsKey('CPUARM');
+  FX64 := ADefines.ContainsKey('CPUX64');
+  if ADefines.ContainsKey('CPU64BITS') or ADefines.ContainsKey('WIN64') then
   begin
-    Result := FPointerSize;
+    FPointerSize := 8;
   end
-  else if MatchStr(AName, ['LONGINT', 'LONGWORD']) then
+  else if ADefines.ContainsKey('CPU32BITS') or ADefines.ContainsKey('WIN32') then
   begin
-    Result := LongSize;
-  end
-  else if AName = 'EXTENDED' then
-  begin
-    Result := ExtendedSize;
+    FPointerSize := 4;
   end
   else
   begin
-    // Variant nur mit bekannter Größe, sonst wie ein unbekannter Typ ohne Herkunft.
-    Result := 0;
-    if AName = 'VARIANT' then
-    begin
-      Result := VariantSize;
-    end;
-    AKnown := Result > 0;
+    FPointerSize := 0;
   end;
 end;
 
@@ -457,26 +457,6 @@ begin
   inherited Destroy;
 end;
 
-function TExpressionEvaluator.Parts: TArray<TConditionPart>;
-begin
-  Result := FParts.ToArray;
-end;
-
-procedure TExpressionEvaluator.AddPart(const AText, AValue, AOrigin: string);
-var
-  mPart: TConditionPart;
-begin
-  mPart.Text := AText;
-  mPart.Value := AValue;
-  mPart.Origin := AOrigin;
-  FParts.Add(mPart);
-end;
-
-function TExpressionEvaluator.AtEnd: Boolean;
-begin
-  Result := FIndex >= Length(FTokens);
-end;
-
 function TExpressionEvaluator.Peek: TPascalToken;
 begin
   if AtEnd then
@@ -488,6 +468,11 @@ begin
   begin
     Result := FTokens[FIndex];
   end;
+end;
+
+function TExpressionEvaluator.AtEnd: Boolean;
+begin
+  Result := FIndex >= Length(FTokens);
 end;
 
 function TExpressionEvaluator.Next: TPascalToken;
@@ -513,76 +498,6 @@ function TExpressionEvaluator.IsWord(const AWord: string): Boolean;
 begin
   Result := not AtEnd and (Peek.Kind in [TPascalTokenKind.Keyword, TPascalTokenKind.Identifier]) and
     SameText(Peek.Text, AWord);
-end;
-
-function TExpressionEvaluator.ReadName: string;
-begin
-  if AtEnd or not (Peek.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
-  begin
-    raise EPreprocessorExpression.Create(cTexts[TExpressionsText.NameExpected].Text);
-  end;
-  Result := Next.Text;
-  // Qualifizierte Namen wie System.SysUtils
-  while not AtEnd and Peek.IsSymbol('.') do
-  begin
-    Inc(FIndex);
-    if AtEnd or not (Peek.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
-    begin
-      raise EPreprocessorExpression.Create(cTexts[TExpressionsText.NameExpected].Text);
-    end;
-    Result := Result + '.' + Next.Text;
-  end;
-end;
-
-function TExpressionEvaluator.ReadArgument: string;
-begin
-  Expect('(');
-  Result := ReadName;
-  Expect(')');
-end;
-
-function TExpressionEvaluator.Evaluate(const AExpression: string): TConditionValue;
-var
-  mSignificant: TList<TPascalToken>;
-  mToken: TPascalToken;
-  mValue: TEvalValue;
-begin
-  mSignificant := TList<TPascalToken>.Create;
-  try
-    for mToken in TPascalLexer.Tokenize(AExpression) do
-    begin
-      if mToken.Kind <> TPascalTokenKind.Comment then
-      begin
-        mSignificant.Add(mToken);
-      end;
-    end;
-    FTokens := mSignificant.ToArray;
-  finally
-    mSignificant.Free;
-  end;
-  FIndex := 0;
-  FParts.Clear;
-  if AtEnd then
-  begin
-    raise EPreprocessorExpression.Create(cTexts[TExpressionsText.ExpressionMissing].Text);
-  end;
-  mValue := ParseOr;
-  if not AtEnd then
-  begin
-    raise EPreprocessorExpression.CreateFmt(cTexts[TExpressionsText.Unexpected].Text, [Peek.Text]);
-  end;
-  if not mValue.Known then
-  begin
-    Result := TConditionValue.Unknown;
-  end
-  else if mValue.Number <> 0 then
-  begin
-    Result := TConditionValue.Yes;
-  end
-  else
-  begin
-    Result := TConditionValue.No;
-  end;
 end;
 
 function TExpressionEvaluator.ParseOr: TEvalValue;
@@ -757,6 +672,211 @@ begin
   end;
 end;
 
+function TExpressionEvaluator.ParsePrimary: TEvalValue;
+var
+  mToken: TPascalToken;
+  mNumber: Double;
+begin
+  mToken := Peek;
+  if mToken.IsSymbol('(') then
+  begin
+    Inc(FIndex);
+    Result := ParseOr;
+    Expect(')');
+  end
+  else if mToken.Kind = TPascalTokenKind.Number then
+  begin
+    Inc(FIndex);
+    if not TryStrToFloat(mToken.Text, mNumber, TFormatSettings.Invariant) then
+    begin
+      mNumber := StrToIntDef(mToken.Text, 0);
+    end;
+    Result := TEvalValue.Make(mNumber);
+  end
+  else if IsWord('True') or IsWord('False') then
+  begin
+    Result := TEvalValue.Make(cBooleanValue[IsWord('True')]);
+    Inc(FIndex);
+  end
+  else
+  begin
+    Result := ParseNamed;
+  end;
+end;
+
+function TExpressionEvaluator.ParseNamed: TEvalValue;
+var
+  mName: string;
+begin
+  mName := ReadName;
+  if not AtEnd and Peek.IsSymbol('(') and ParseFunction(mName, Result) then
+  begin
+    Exit;
+  end;
+  if KnownConstant(mName, Result) then
+  begin
+    Exit;
+  end;
+  // Konstante aus dem Code oder einer anderen Unit: Der Wert ist hier nicht bekannt.
+  if not AtEnd and Peek.IsSymbol('(') then
+  begin
+    raise EPreprocessorExpression.CreateFmt(cTexts[TExpressionsText.UnknownFunction].Text, [mName]);
+  end;
+  Result := TEvalValue.Unknown;
+  AddPart(mName, cTexts[TExpressionsText.Unknown].Text, cTexts[TExpressionsText.ConstantFromTheCode].Text);
+end;
+
+function TExpressionEvaluator.ParseFunction(const AName: string; out AValue: TEvalValue): Boolean;
+var
+  mArgument, mOrigin: string;
+begin
+  Result := True;
+  if SameText(AName, 'Defined') then
+  begin
+    AValue := TEvalValue.Make(cBooleanValue[FDefines.ContainsKey(UpperCase(ReadArgument))]);
+  end
+  else if SameText(AName, 'Declared') then
+  begin
+    mArgument := ReadArgument;
+    AValue := Declared(mArgument, mOrigin);
+    AddPart('Declared(' + mArgument + ')', BoolText(AValue), mOrigin);
+  end
+  else if SameText(AName, 'SizeOf') then
+  begin
+    AValue := ParseSizeOf;
+  end
+  else if SameText(AName, 'High') or SameText(AName, 'Low') then
+  begin
+    AValue := ParseRange(AName);
+  end
+  else if SameText(AName, 'Ord') then
+  begin
+    AValue := ParseOrd;
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+function TExpressionEvaluator.ParseSizeOf: TEvalValue;
+var
+  mArgument, mOrigin: string;
+  mSize: Integer;
+begin
+  mArgument := ReadArgument;
+  mSize := FTypes.Size(mArgument, mOrigin);
+  Result := TEvalValue.Unknown;
+  if mSize > 0 then
+  begin
+    Result := TEvalValue.Make(mSize);
+  end;
+  AddPart('SizeOf(' + mArgument + ')', NumberText(Result), mOrigin);
+end;
+
+function TExpressionEvaluator.ParseRange(const AName: string): TEvalValue;
+var
+  mArgument, mOrigin: string;
+  mLow, mHigh: Double;
+begin
+  mArgument := ReadArgument;
+  if not FTypes.Range(mArgument, mLow, mHigh, mOrigin) then
+  begin
+    Result := TEvalValue.Unknown;
+  end
+  else if SameText(AName, 'High') then
+  begin
+    Result := TEvalValue.Make(mHigh);
+  end
+  else
+  begin
+    Result := TEvalValue.Make(mLow);
+  end;
+  AddPart(AName + '(' + mArgument + ')', NumberText(Result), mOrigin);
+end;
+
+function TExpressionEvaluator.ParseOrd: TEvalValue;
+var
+  mToken: TPascalToken;
+begin
+  Expect('(');
+  mToken := Peek;
+  if (mToken.Kind = TPascalTokenKind.StringLiteral) and (Length(mToken.Text) = 3) then
+  begin
+    Inc(FIndex);
+    Result := TEvalValue.Make(Ord(mToken.Text[2]));
+  end
+  else
+  begin
+    Result := ParseOr;
+  end;
+  Expect(')');
+end;
+
+function TExpressionEvaluator.ReadArgument: string;
+begin
+  Expect('(');
+  Result := ReadName;
+  Expect(')');
+end;
+
+function TExpressionEvaluator.ReadName: string;
+begin
+  if AtEnd or not (Peek.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
+  begin
+    raise EPreprocessorExpression.Create(cTexts[TExpressionsText.NameExpected].Text);
+  end;
+  Result := Next.Text;
+  // Qualifizierte Namen wie System.SysUtils
+  while not AtEnd and Peek.IsSymbol('.') do
+  begin
+    Inc(FIndex);
+    if AtEnd or not (Peek.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
+    begin
+      raise EPreprocessorExpression.Create(cTexts[TExpressionsText.NameExpected].Text);
+    end;
+    Result := Result + '.' + Next.Text;
+  end;
+end;
+
+procedure TExpressionEvaluator.AddPart(const AText, AValue, AOrigin: string);
+var
+  mPart: TConditionPart;
+begin
+  mPart.Text := AText;
+  mPart.Value := AValue;
+  mPart.Origin := AOrigin;
+  FParts.Add(mPart);
+end;
+
+function TExpressionEvaluator.KnownConstant(const AName: string; out AValue: TEvalValue): Boolean;
+begin
+  Result := True;
+  if SameText(AName, 'CompilerVersion') and (FSettings.CompilerVersion > 0) then
+  begin
+    AValue := TEvalValue.Make(FSettings.CompilerVersion);
+    AddPart(AName, NumberText(AValue), FSettings.ProductName);
+  end
+  else if SameText(AName, 'RTLVersion') and (FSettings.RTLVersion > 0) then
+  begin
+    AValue := TEvalValue.Make(FSettings.RTLVersion);
+    AddPart(AName, NumberText(AValue), FSettings.ProductName);
+  end
+  else if SameText(AName, 'CompilerVersion') or SameText(AName, 'RTLVersion') then
+  begin
+    AValue := TEvalValue.Unknown;
+    AddPart(AName, NumberText(AValue), FSettings.ProductName);
+  end
+  else if VersionConstant(AName, AValue) then
+  begin
+    AddPart(AName, BoolText(AValue), FSettings.ProductName);
+  end
+  else
+  begin
+    Result := SettingsConstant(AName, AValue);
+  end;
+end;
+
 function TExpressionEvaluator.SettingsConstant(const AName: string; out AValue: TEvalValue): Boolean;
 var
   mPair: TPair<string, Double>;
@@ -828,173 +948,53 @@ begin
   end;
 end;
 
-function TExpressionEvaluator.ParseSizeOf: TEvalValue;
+function TExpressionEvaluator.Evaluate(const AExpression: string): TConditionValue;
 var
-  mArgument, mOrigin: string;
-  mSize: Integer;
-begin
-  mArgument := ReadArgument;
-  mSize := FTypes.Size(mArgument, mOrigin);
-  Result := TEvalValue.Unknown;
-  if mSize > 0 then
-  begin
-    Result := TEvalValue.Make(mSize);
-  end;
-  AddPart('SizeOf(' + mArgument + ')', NumberText(Result), mOrigin);
-end;
-
-function TExpressionEvaluator.ParseRange(const AName: string): TEvalValue;
-var
-  mArgument, mOrigin: string;
-  mLow, mHigh: Double;
-begin
-  mArgument := ReadArgument;
-  if not FTypes.Range(mArgument, mLow, mHigh, mOrigin) then
-  begin
-    Result := TEvalValue.Unknown;
-  end
-  else if SameText(AName, 'High') then
-  begin
-    Result := TEvalValue.Make(mHigh);
-  end
-  else
-  begin
-    Result := TEvalValue.Make(mLow);
-  end;
-  AddPart(AName + '(' + mArgument + ')', NumberText(Result), mOrigin);
-end;
-
-function TExpressionEvaluator.ParseOrd: TEvalValue;
-var
+  mSignificant: TList<TPascalToken>;
   mToken: TPascalToken;
+  mValue: TEvalValue;
 begin
-  Expect('(');
-  mToken := Peek;
-  if (mToken.Kind = TPascalTokenKind.StringLiteral) and (Length(mToken.Text) = 3) then
-  begin
-    Inc(FIndex);
-    Result := TEvalValue.Make(Ord(mToken.Text[2]));
-  end
-  else
-  begin
-    Result := ParseOr;
-  end;
-  Expect(')');
-end;
-
-function TExpressionEvaluator.ParseFunction(const AName: string; out AValue: TEvalValue): Boolean;
-var
-  mArgument, mOrigin: string;
-begin
-  Result := True;
-  if SameText(AName, 'Defined') then
-  begin
-    AValue := TEvalValue.Make(cBooleanValue[FDefines.ContainsKey(UpperCase(ReadArgument))]);
-  end
-  else if SameText(AName, 'Declared') then
-  begin
-    mArgument := ReadArgument;
-    AValue := Declared(mArgument, mOrigin);
-    AddPart('Declared(' + mArgument + ')', BoolText(AValue), mOrigin);
-  end
-  else if SameText(AName, 'SizeOf') then
-  begin
-    AValue := ParseSizeOf;
-  end
-  else if SameText(AName, 'High') or SameText(AName, 'Low') then
-  begin
-    AValue := ParseRange(AName);
-  end
-  else if SameText(AName, 'Ord') then
-  begin
-    AValue := ParseOrd;
-  end
-  else
-  begin
-    Result := False;
-  end;
-end;
-
-function TExpressionEvaluator.KnownConstant(const AName: string; out AValue: TEvalValue): Boolean;
-begin
-  Result := True;
-  if SameText(AName, 'CompilerVersion') and (FSettings.CompilerVersion > 0) then
-  begin
-    AValue := TEvalValue.Make(FSettings.CompilerVersion);
-    AddPart(AName, NumberText(AValue), FSettings.ProductName);
-  end
-  else if SameText(AName, 'RTLVersion') and (FSettings.RTLVersion > 0) then
-  begin
-    AValue := TEvalValue.Make(FSettings.RTLVersion);
-    AddPart(AName, NumberText(AValue), FSettings.ProductName);
-  end
-  else if SameText(AName, 'CompilerVersion') or SameText(AName, 'RTLVersion') then
-  begin
-    AValue := TEvalValue.Unknown;
-    AddPart(AName, NumberText(AValue), FSettings.ProductName);
-  end
-  else if VersionConstant(AName, AValue) then
-  begin
-    AddPart(AName, BoolText(AValue), FSettings.ProductName);
-  end
-  else
-  begin
-    Result := SettingsConstant(AName, AValue);
-  end;
-end;
-
-function TExpressionEvaluator.ParseNamed: TEvalValue;
-var
-  mName: string;
-begin
-  mName := ReadName;
-  if not AtEnd and Peek.IsSymbol('(') and ParseFunction(mName, Result) then
-  begin
-    Exit;
-  end;
-  if KnownConstant(mName, Result) then
-  begin
-    Exit;
-  end;
-  // Konstante aus dem Code oder einer anderen Unit: Der Wert ist hier nicht bekannt.
-  if not AtEnd and Peek.IsSymbol('(') then
-  begin
-    raise EPreprocessorExpression.CreateFmt(cTexts[TExpressionsText.UnknownFunction].Text, [mName]);
-  end;
-  Result := TEvalValue.Unknown;
-  AddPart(mName, cTexts[TExpressionsText.Unknown].Text, cTexts[TExpressionsText.ConstantFromTheCode].Text);
-end;
-
-function TExpressionEvaluator.ParsePrimary: TEvalValue;
-var
-  mToken: TPascalToken;
-  mNumber: Double;
-begin
-  mToken := Peek;
-  if mToken.IsSymbol('(') then
-  begin
-    Inc(FIndex);
-    Result := ParseOr;
-    Expect(')');
-  end
-  else if mToken.Kind = TPascalTokenKind.Number then
-  begin
-    Inc(FIndex);
-    if not TryStrToFloat(mToken.Text, mNumber, TFormatSettings.Invariant) then
+  mSignificant := TList<TPascalToken>.Create;
+  try
+    for mToken in TPascalLexer.Tokenize(AExpression) do
     begin
-      mNumber := StrToIntDef(mToken.Text, 0);
+      if mToken.Kind <> TPascalTokenKind.Comment then
+      begin
+        mSignificant.Add(mToken);
+      end;
     end;
-    Result := TEvalValue.Make(mNumber);
-  end
-  else if IsWord('True') or IsWord('False') then
+    FTokens := mSignificant.ToArray;
+  finally
+    mSignificant.Free;
+  end;
+  FIndex := 0;
+  FParts.Clear;
+  if AtEnd then
   begin
-    Result := TEvalValue.Make(cBooleanValue[IsWord('True')]);
-    Inc(FIndex);
+    raise EPreprocessorExpression.Create(cTexts[TExpressionsText.ExpressionMissing].Text);
+  end;
+  mValue := ParseOr;
+  if not AtEnd then
+  begin
+    raise EPreprocessorExpression.CreateFmt(cTexts[TExpressionsText.Unexpected].Text, [Peek.Text]);
+  end;
+  if not mValue.Known then
+  begin
+    Result := TConditionValue.Unknown;
+  end
+  else if mValue.Number <> 0 then
+  begin
+    Result := TConditionValue.Yes;
   end
   else
   begin
-    Result := ParseNamed;
+    Result := TConditionValue.No;
   end;
+end;
+
+function TExpressionEvaluator.Parts: TArray<TConditionPart>;
+begin
+  Result := FParts.ToArray;
 end;
 
 initialization

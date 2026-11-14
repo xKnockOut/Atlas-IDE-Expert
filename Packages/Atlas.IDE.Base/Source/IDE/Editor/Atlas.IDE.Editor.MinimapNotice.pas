@@ -108,52 +108,6 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasIdeMinimapNotice.IdeMinimap(AParent: TWinControl): TControl;
-var
-  mForm: TCustomForm;
-begin
-  Result := nil;
-  if AParent = nil then
-  begin
-    Exit;
-  end;
-  mForm := GetParentForm(AParent);
-  if mForm <> nil then
-  begin
-    Result := FindIn(mForm, 0);
-  end
-  else
-  begin
-    Result := FindIn(AParent, 0);
-  end;
-end;
-
-procedure TAtlasIdeMinimapNotice.Check(AMinimap: TControl);
-var
-  mIde: TControl;
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Stored;
-  // Schon gezeigt und nichts auszublenden: den Fensterbaum nicht durchsuchen.
-  if mSettings.MinimapNoticeShown and not FHideIde then
-  begin
-    Exit;
-  end;
-  mIde := IdeMinimap(AMinimap.Parent);
-  if (mIde <> nil) and FHideIde then
-  begin
-    mIde.Visible := False;
-    Exit;
-  end;
-  if TAtlasMinimap.ShouldNotice(AMinimap.Visible, mIde <> nil, mSettings.MinimapNoticeShown) then
-  begin
-    // Nur einmal: gleich merken, auch wenn der Hinweis nur gesammelt wird.
-    mSettings.MinimapNoticeShown := True;
-    TAtlasIdeSettings.Update(mSettings);
-    Notify;
-  end;
-end;
-
 procedure TAtlasIdeMinimapNotice.Notify;
 var
   mActions: TArray<TAtlasNotificationAction>;
@@ -204,6 +158,52 @@ begin
   FNotice.SetScaling(TAtlasPopupWindow.MonitorPPI(mArea.BottomRight), 1, '', 10);
   FNotice.ShowNotice(ATitle, AText, [TAtlasEditorStrings.Text(TAtlasEditorTextId.MinimapHideIde),
     TAtlasEditorStrings.Text(TAtlasEditorTextId.MinimapTurnOff)], mArea);
+end;
+
+class function TAtlasIdeMinimapNotice.IdeMinimap(AParent: TWinControl): TControl;
+var
+  mForm: TCustomForm;
+begin
+  Result := nil;
+  if AParent = nil then
+  begin
+    Exit;
+  end;
+  mForm := GetParentForm(AParent);
+  if mForm <> nil then
+  begin
+    Result := FindIn(mForm, 0);
+  end
+  else
+  begin
+    Result := FindIn(AParent, 0);
+  end;
+end;
+
+procedure TAtlasIdeMinimapNotice.Check(AMinimap: TControl);
+var
+  mIde: TControl;
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Stored;
+  // Schon gezeigt und nichts auszublenden: den Fensterbaum nicht durchsuchen.
+  if mSettings.MinimapNoticeShown and not FHideIde then
+  begin
+    Exit;
+  end;
+  mIde := IdeMinimap(AMinimap.Parent);
+  if (mIde <> nil) and FHideIde then
+  begin
+    mIde.Visible := False;
+    Exit;
+  end;
+  if TAtlasMinimap.ShouldNotice(AMinimap.Visible, mIde <> nil, mSettings.MinimapNoticeShown) then
+  begin
+    // Nur einmal: gleich merken, auch wenn der Hinweis nur gesammelt wird.
+    mSettings.MinimapNoticeShown := True;
+    TAtlasIdeSettings.Update(mSettings);
+    Notify;
+  end;
 end;
 
 end.

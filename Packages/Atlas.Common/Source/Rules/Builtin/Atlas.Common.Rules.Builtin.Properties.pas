@@ -260,6 +260,8 @@ type
     procedure Run;
   end;
 
+{ TAccessorScan }
+
 constructor TAccessorScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   inherited Create;
@@ -858,6 +860,8 @@ type
     procedure Run;
   end;
 
+{ TDefaultPropertyScan }
+
 constructor TDefaultPropertyScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   inherited Create;
@@ -1182,6 +1186,8 @@ type
     procedure Run;
   end;
 
+{ TRedeclarationScan }
+
 constructor TRedeclarationScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   inherited Create;
@@ -1385,6 +1391,8 @@ type
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     procedure Run;
   end;
+
+{ TWriteOnlyScan }
 
 constructor TWriteOnlyScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin

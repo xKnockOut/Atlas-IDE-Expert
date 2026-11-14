@@ -112,31 +112,6 @@ begin
   end;
 end;
 
-class function TAtlasTestProjectChoices.FormatOf(const AText: string): Integer;
-var
-  mRoot, mValue: TJSONValue;
-begin
-  Result := 0;
-  if Trim(AText) = '' then
-  begin
-    Exit;
-  end;
-  mRoot := TJSONObject.ParseJSONValue(AText);
-  try
-    if not (mRoot is TJSONObject) then
-    begin
-      Exit;
-    end;
-    mValue := TJSONObject(mRoot).GetValue('format');
-    if mValue is TJSONNumber then
-    begin
-      Result := TJSONNumber(mValue).AsInt;
-    end;
-  finally
-    mRoot.Free;
-  end;
-end;
-
 class function TAtlasTestProjectChoices.Parse(const AText: string): TArray<TAtlasTestProjectChoice>;
 var
   mRoot, mValue: TJSONValue;
@@ -175,6 +150,31 @@ begin
           Result := Result + [mChoice];
         end;
       end;
+    end;
+  finally
+    mRoot.Free;
+  end;
+end;
+
+class function TAtlasTestProjectChoices.FormatOf(const AText: string): Integer;
+var
+  mRoot, mValue: TJSONValue;
+begin
+  Result := 0;
+  if Trim(AText) = '' then
+  begin
+    Exit;
+  end;
+  mRoot := TJSONObject.ParseJSONValue(AText);
+  try
+    if not (mRoot is TJSONObject) then
+    begin
+      Exit;
+    end;
+    mValue := TJSONObject(mRoot).GetValue('format');
+    if mValue is TJSONNumber then
+    begin
+      Result := TJSONNumber(mValue).AsInt;
     end;
   finally
     mRoot.Free;

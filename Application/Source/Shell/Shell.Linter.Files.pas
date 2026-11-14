@@ -56,6 +56,8 @@ uses
   Shell.Platform,
   Shell.Linter.Output;
 
+{ TLinterFiles }
+
 class function TLinterFiles.IsSourceFile(const AFileName: string): Boolean;
 var
   mExt: string;

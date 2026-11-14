@@ -167,6 +167,8 @@ type
     procedure Run;
   end;
 
+{ TMixedScan }
+
 constructor TMixedScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   inherited Create;
@@ -334,48 +336,6 @@ begin
   end;
 end;
 
-procedure TMixedScan.CheckVariable(ARoutine: TSyntaxNode; const AName, AClassName: string);
-var
-  mNode: TSyntaxNode;
-  mTrack: TMixedTrack;
-begin
-  mTrack := Default(TMixedTrack);
-  for mNode in Occurrences(TRoutineBody.BodyOf(ARoutine), AName) do
-  begin
-    // X := … nach der Weitergabe: ab hier ein anderes Objekt.
-    if (mTrack.Temporary <> nil) and (mNode.Parent.Kind = TSyntaxKind.AssignStatement) and
-      (mNode.Parent[0] = mNode) then
-    begin
-      Break;
-    end;
-    Track(mTrack, mNode, Classify(mNode));
-  end;
-  if (mTrack.Free <> nil) and ((mTrack.Held <> nil) or (mTrack.Temporary <> nil)) then
-  begin
-    FReport.Add(TTextRange.Create(StatementOf(mTrack.Free).StartPos, StatementOf(mTrack.Free).EndPos),
-      cTexts[TInterfaceText.DoubleFree].Fmt([AName, AClassName]), TRuleConfidence.Medium);
-  end
-  else if (mTrack.Later <> nil) and (mTrack.Held = nil) then
-  begin
-    FReport.Add(TTextRange.Create(StatementOf(mTrack.Later).StartPos, StatementOf(mTrack.Later).EndPos),
-      cTexts[TInterfaceText.FreedByInterface].Fmt([AName, AClassName, mTrack.Temporary.StartPos.Line + 1, AName]),
-      TRuleConfidence.Medium);
-  end;
-end;
-
-/// <summary>Hat die Funktion ARoutine ein Interface als Ergebnis?</summary>
-function ResultIsInterface(ARoutine: TSyntaxNode): Boolean;
-var
-  mType: TSyntaxNode;
-begin
-  mType := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-  if mType <> nil then
-  begin
-    mType := mType.FindChild(TSyntaxKind.TypeReference);
-  end;
-  Result := (mType <> nil) and LooksLikeInterface(mType.Name);
-end;
-
 /// <summary>Interface-Variablen des var-Abschnitts nach FInterfaceLocals, Objekte gezählter Klassen nach AObjects
 /// (Name, Klasse).</summary>
 procedure TMixedScan.CollectSection(ASection: TSyntaxNode; var AObjects: TArray<TPair<string, string>>);
@@ -402,6 +362,48 @@ begin
         AObjects := AObjects + [TPair<string, string>.Create(Trim(mName), mType)];
       end;
     end;
+  end;
+end;
+
+/// <summary>Hat die Funktion ARoutine ein Interface als Ergebnis?</summary>
+function ResultIsInterface(ARoutine: TSyntaxNode): Boolean;
+var
+  mType: TSyntaxNode;
+begin
+  mType := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if mType <> nil then
+  begin
+    mType := mType.FindChild(TSyntaxKind.TypeReference);
+  end;
+  Result := (mType <> nil) and LooksLikeInterface(mType.Name);
+end;
+
+procedure TMixedScan.CheckVariable(ARoutine: TSyntaxNode; const AName, AClassName: string);
+var
+  mNode: TSyntaxNode;
+  mTrack: TMixedTrack;
+begin
+  mTrack := Default(TMixedTrack);
+  for mNode in Occurrences(TRoutineBody.BodyOf(ARoutine), AName) do
+  begin
+    // X := … nach der Weitergabe: ab hier ein anderes Objekt.
+    if (mTrack.Temporary <> nil) and (mNode.Parent.Kind = TSyntaxKind.AssignStatement) and
+      (mNode.Parent[0] = mNode) then
+    begin
+      Break;
+    end;
+    Track(mTrack, mNode, Classify(mNode));
+  end;
+  if (mTrack.Free <> nil) and ((mTrack.Held <> nil) or (mTrack.Temporary <> nil)) then
+  begin
+    FReport.Add(TTextRange.Create(StatementOf(mTrack.Free).StartPos, StatementOf(mTrack.Free).EndPos),
+      cTexts[TInterfaceText.DoubleFree].Fmt([AName, AClassName]), TRuleConfidence.Medium);
+  end
+  else if (mTrack.Later <> nil) and (mTrack.Held = nil) then
+  begin
+    FReport.Add(TTextRange.Create(StatementOf(mTrack.Later).StartPos, StatementOf(mTrack.Later).EndPos),
+      cTexts[TInterfaceText.FreedByInterface].Fmt([AName, AClassName, mTrack.Temporary.StartPos.Line + 1, AName]),
+      TRuleConfidence.Medium);
   end;
 end;
 
@@ -485,6 +487,8 @@ type
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     procedure Run;
   end;
+
+{ TCycleScan }
 
 constructor TCycleScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
@@ -587,6 +591,19 @@ begin
   end;
 end;
 
+/// <summary>Feld A der Klasse AX zeigt auf ein Interface von AY, Feld B von AY auf ein Interface von AX, keins
+/// ist [weak]. In derselben Klasse (Baum) muss eine Seite eine Liste und die andere ein einzelnes Feld sein.
+/// </summary>
+function TCycleScan.IsCycle(AX, AY: Integer; const A, B: TInterfaceField): Boolean;
+begin
+  Result := not A.Weak and not B.Weak and MatchText(A.Target, FClasses[AY].Interfaces) and
+    MatchText(B.Target, FClasses[AX].Interfaces);
+  if AX = AY then
+  begin
+    Result := Result and (A.IsList <> B.IsList);
+  end;
+end;
+
 /// <summary>Meldung an beiden Feldern; [weak] am einzelnen Feld, wenn die andere Seite eine Liste ist.</summary>
 procedure TCycleScan.ReportPair(const A, B: TInterfaceField);
 
@@ -612,19 +629,6 @@ begin
   if A.Node <> B.Node then
   begin
     ReportAt(B, A);
-  end;
-end;
-
-/// <summary>Feld A der Klasse AX zeigt auf ein Interface von AY, Feld B von AY auf ein Interface von AX, keins
-/// ist [weak]. In derselben Klasse (Baum) muss eine Seite eine Liste und die andere ein einzelnes Feld sein.
-/// </summary>
-function TCycleScan.IsCycle(AX, AY: Integer; const A, B: TInterfaceField): Boolean;
-begin
-  Result := not A.Weak and not B.Weak and MatchText(A.Target, FClasses[AY].Interfaces) and
-    MatchText(B.Target, FClasses[AX].Interfaces);
-  if AX = AY then
-  begin
-    Result := Result and (A.IsList <> B.IsList);
   end;
 end;
 

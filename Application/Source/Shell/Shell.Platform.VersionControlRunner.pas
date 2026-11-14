@@ -89,6 +89,8 @@ type
     procedure DrainFrom(AChild: TProcess);
   end;
 
+{ TCapturedOutput }
+
 procedure TCapturedOutput.DrainFrom(AChild: TProcess);
 begin
   Drain(AChild.Output, Output, OutputCount, TLinuxVcsRunner.cMaxOutputBytes + 1);

@@ -1249,27 +1249,6 @@ begin
   Result := SummaryTimeOf(AText);
 end;
 
-class function TAtlasProjectSummaries.FormatOf(const AJson: string): Integer;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mValue := nil;
-  end;
-  try
-    if mValue is TJSONObject then
-    begin
-      Result := TJsonRead.IntOr(TJSONObject(mValue), 'format', 0);
-    end;
-  finally
-    mValue.Free;
-  end;
-end;
-
 class function TAtlasProjectSummaries.Parse(const AJson: string; out ASummary: TAtlasProjectSummary): Boolean;
 var
   mValue: TJSONValue;
@@ -1354,6 +1333,27 @@ begin
   end;
 end;
 
+class function TAtlasProjectSummaries.FormatOf(const AJson: string): Integer;
+var
+  mValue: TJSONValue;
+begin
+  Result := 0;
+  try
+    mValue := TJSONObject.ParseJSONValue(AJson);
+  except
+    on Exception do
+      mValue := nil;
+  end;
+  try
+    if mValue is TJSONObject then
+    begin
+      Result := TJsonRead.IntOr(TJSONObject(mValue), 'format', 0);
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
 /// <summary>Liest die Übersicht aus AFileName über TAtlasDataFile. AParsed: gelesen; sonst ist
 /// ASummary leer mit Project = AProject. Ergebnis Kept: vorhanden, aber nicht gelesen; nicht überschreiben.
 /// </summary>
@@ -1383,23 +1383,6 @@ begin
   else
   begin
     ASummary := TAtlasProjectSummary.Create(AProject);
-  end;
-end;
-
-class function TAtlasProjectSummaries.DefaultFolder: string;
-begin
-  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), cFolderName);
-end;
-
-class function TAtlasProjectSummaries.FailedTestsOf(const AFolder, ATestProject: string): TArray<string>;
-var
-  mSummary: TAtlasProjectSummary;
-begin
-  Result := nil;
-  if (ATestProject <> '') and Load(AFolder, ATestProject, mSummary) and mSummary.Tests.Known and
-    SameText(mSummary.Tests.Project, ATestProject) then
-  begin
-    Result := mSummary.Tests.FailedTests;
   end;
 end;
 
@@ -1463,6 +1446,23 @@ begin
     AChange(mSummary);
   end;
   Result := Save(AFolder, mSummary);
+end;
+
+class function TAtlasProjectSummaries.DefaultFolder: string;
+begin
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), cFolderName);
+end;
+
+class function TAtlasProjectSummaries.FailedTestsOf(const AFolder, ATestProject: string): TArray<string>;
+var
+  mSummary: TAtlasProjectSummary;
+begin
+  Result := nil;
+  if (ATestProject <> '') and Load(AFolder, ATestProject, mSummary) and mSummary.Tests.Known and
+    SameText(mSummary.Tests.Project, ATestProject) then
+  begin
+    Result := mSummary.Tests.FailedTests;
+  end;
 end;
 
 end.

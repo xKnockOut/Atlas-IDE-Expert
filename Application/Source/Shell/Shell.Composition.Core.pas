@@ -112,6 +112,8 @@ uses
   Atlas.Common.Editing.UsesClause,
   Shell.Bootstrap;
 
+{ TShellCore }
+
 constructor TShellCore.Create(const AServices: TShellCoreServices);
 begin
   inherited Create;
@@ -143,30 +145,6 @@ begin
   FreeAndNil(FConfiguration);
   FServices := Default(TShellCoreServices);
   inherited Destroy;
-end;
-
-procedure TShellCore.Attach(ADispatcher: TJsonRpcDispatcher);
-begin
-  FConfiguration.Attach(ADispatcher);
-  // Editor-Baum nur aus den aktiven Zweigen des Projekts (#845).
-  TSyntaxTreeCache.SetDefinesProvider(FDirectives.TreeDefines());
-  // $I-Dateien im Editor-Baum, in Syntaxprüfung und Abblenden (#264, #860): Suchpfade des Projekts.
-  TSyntaxTreeCache.SetIncludeProvider(FDirectives.TreeIncludes());
-end;
-
-procedure TShellCore.StopIndexThreads;
-var
-  mWorkspace: TShellWorkspace;
-begin
-  for mWorkspace in FWorkspaces.Items do
-  begin
-    mWorkspace.Stop;
-  end;
-end;
-
-procedure TShellCore.FreeWorkspaces;
-begin
-  FWorkspaces.FreeWorkspaces;
 end;
 
 function TShellCore.RegistryServices: TShellWorkspaceRegistryServices;
@@ -247,6 +225,60 @@ begin
     end;
 end;
 
+function TShellCore.FilesOf(AWorkspace: TShellWorkspace;
+  ASeen: TDictionary<string, Boolean>): TArray<string>;
+var
+  mFileName: string;
+begin
+  Result := nil;
+  for mFileName in AWorkspace.State.ProjectFiles do
+  begin
+    if ASeen.ContainsKey(AnsiLowerCase(mFileName)) then
+    begin
+      Continue;
+    end;
+    ASeen.Add(AnsiLowerCase(mFileName), True);
+    if not (AWorkspace.Configuration.Settings.ExcludeTests and IsIndexedTestUnit(mFileName)) then
+    begin
+      Result := Result + [mFileName];
+    end;
+  end;
+end;
+
+function TShellCore.IsIndexedTestUnit(const AFileName: string): Boolean;
+var
+  mIndexed: TUnitIndex;
+  mIndex: ISymbolIndex;
+begin
+  mIndex := FServices.Index();
+  Result := (mIndex <> nil) and mIndex.FindFile(AFileName, mIndexed) and
+    TUsesClauses.UsesTestFramework(mIndexed.InterfaceUses + mIndexed.ImplementationUses);
+end;
+
+procedure TShellCore.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  FConfiguration.Attach(ADispatcher);
+  // Editor-Baum nur aus den aktiven Zweigen des Projekts (#845).
+  TSyntaxTreeCache.SetDefinesProvider(FDirectives.TreeDefines());
+  // $I-Dateien im Editor-Baum, in Syntaxprüfung und Abblenden (#264, #860): Suchpfade des Projekts.
+  TSyntaxTreeCache.SetIncludeProvider(FDirectives.TreeIncludes());
+end;
+
+procedure TShellCore.StopIndexThreads;
+var
+  mWorkspace: TShellWorkspace;
+begin
+  for mWorkspace in FWorkspaces.Items do
+  begin
+    mWorkspace.Stop;
+  end;
+end;
+
+procedure TShellCore.FreeWorkspaces;
+begin
+  FWorkspaces.FreeWorkspaces;
+end;
+
 function TShellCore.ReadText(const AFileName: string; out AText: string): Boolean;
 var
   mDocument: ITextDocument;
@@ -320,36 +352,6 @@ begin
   begin
     Result := Result + [TDocumentUris.ToPath(mDocument.Uri)];
   end;
-end;
-
-function TShellCore.FilesOf(AWorkspace: TShellWorkspace;
-  ASeen: TDictionary<string, Boolean>): TArray<string>;
-var
-  mFileName: string;
-begin
-  Result := nil;
-  for mFileName in AWorkspace.State.ProjectFiles do
-  begin
-    if ASeen.ContainsKey(AnsiLowerCase(mFileName)) then
-    begin
-      Continue;
-    end;
-    ASeen.Add(AnsiLowerCase(mFileName), True);
-    if not (AWorkspace.Configuration.Settings.ExcludeTests and IsIndexedTestUnit(mFileName)) then
-    begin
-      Result := Result + [mFileName];
-    end;
-  end;
-end;
-
-function TShellCore.IsIndexedTestUnit(const AFileName: string): Boolean;
-var
-  mIndexed: TUnitIndex;
-  mIndex: ISymbolIndex;
-begin
-  mIndex := FServices.Index();
-  Result := (mIndex <> nil) and mIndex.FindFile(AFileName, mIndexed) and
-    TUsesClauses.UsesTestFramework(mIndexed.InterfaceUses + mIndexed.ImplementationUses);
 end;
 
 end.

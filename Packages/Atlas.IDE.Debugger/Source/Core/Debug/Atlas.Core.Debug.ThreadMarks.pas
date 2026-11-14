@@ -124,61 +124,6 @@ end;
 
 { TAtlasDebugThreadMarks }
 
-class function TAtlasDebugThreadMarks.SameFile(const A, B: string): Boolean;
-begin
-  Result := SameText(A.Replace('/', '\'), B.Replace('/', '\'));
-end;
-
-class function TAtlasDebugThreadMarks.Ordered(const AStacks: TAtlasDebugThreadStacks;
-  const AThreads: TArray<Integer>; const AFlagged: TAtlasDebugThreadSet): TArray<Integer>;
-var
-  mFlagged, mOthers: TArray<Integer>;
-  mThread: Integer;
-begin
-  mFlagged := nil;
-  mOthers := nil;
-  for mThread in AThreads do
-  begin
-    if (mThread >= 0) and (mThread <= High(AStacks)) and AFlagged.Contains(AStacks[mThread].ThreadId) then
-    begin
-      mFlagged := mFlagged + [mThread];
-    end
-    else
-    begin
-      mOthers := mOthers + [mThread];
-    end;
-  end;
-  Result := mFlagged + mOthers;
-end;
-
-function TAtlasDebugThreadMarks.IndexAt(const AFileName: string; ALine: Integer): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(Marks) do
-  begin
-    if (Marks[mIndex].Line = ALine) and SameFile(Marks[mIndex].FileName, AFileName) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
-function TAtlasDebugThreadMarks.HasFile(const AFileName: string): Boolean;
-var
-  mMark: TAtlasDebugThreadMark;
-begin
-  for mMark in Marks do
-  begin
-    if SameFile(mMark.FileName, AFileName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 class function TAtlasDebugThreadMarks.Build(const AStacks: TAtlasDebugThreadStacks; ACurrent: Integer;
   const AFlagged: TAtlasDebugThreadSet): TAtlasDebugThreadMarks;
 var
@@ -212,6 +157,61 @@ begin
   begin
     Result.Marks[mMark].Threads := Ordered(AStacks, Result.Marks[mMark].Threads, AFlagged);
   end;
+end;
+
+class function TAtlasDebugThreadMarks.Ordered(const AStacks: TAtlasDebugThreadStacks;
+  const AThreads: TArray<Integer>; const AFlagged: TAtlasDebugThreadSet): TArray<Integer>;
+var
+  mFlagged, mOthers: TArray<Integer>;
+  mThread: Integer;
+begin
+  mFlagged := nil;
+  mOthers := nil;
+  for mThread in AThreads do
+  begin
+    if (mThread >= 0) and (mThread <= High(AStacks)) and AFlagged.Contains(AStacks[mThread].ThreadId) then
+    begin
+      mFlagged := mFlagged + [mThread];
+    end
+    else
+    begin
+      mOthers := mOthers + [mThread];
+    end;
+  end;
+  Result := mFlagged + mOthers;
+end;
+
+class function TAtlasDebugThreadMarks.SameFile(const A, B: string): Boolean;
+begin
+  Result := SameText(A.Replace('/', '\'), B.Replace('/', '\'));
+end;
+
+function TAtlasDebugThreadMarks.IndexAt(const AFileName: string; ALine: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(Marks) do
+  begin
+    if (Marks[mIndex].Line = ALine) and SameFile(Marks[mIndex].FileName, AFileName) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+function TAtlasDebugThreadMarks.HasFile(const AFileName: string): Boolean;
+var
+  mMark: TAtlasDebugThreadMark;
+begin
+  for mMark in Marks do
+  begin
+    if SameFile(mMark.FileName, AFileName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 end.

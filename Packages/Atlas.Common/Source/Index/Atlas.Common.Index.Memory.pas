@@ -94,29 +94,6 @@ begin
   inherited;
 end;
 
-function TStringPool.Intern(const AValue: string): string;
-begin
-  if AValue = '' then
-  begin
-    Exit('');
-  end;
-  if not FStrings.TryGetValue(AValue, Result) then
-  begin
-    Result := AValue;
-    FStrings.Add(Result, Result);
-  end;
-end;
-
-procedure TStringPool.InternUnit(var AUnit: TUnitIndex);
-begin
-  FLock.Enter;
-  try
-    InternUnitNow(AUnit);
-  finally
-    FLock.Leave;
-  end;
-end;
-
 procedure TStringPool.InternUnitNow(var AUnit: TUnitIndex);
 var
   mIndex, mInner: Integer;
@@ -162,6 +139,29 @@ begin
   end;
 end;
 
+function TStringPool.Intern(const AValue: string): string;
+begin
+  if AValue = '' then
+  begin
+    Exit('');
+  end;
+  if not FStrings.TryGetValue(AValue, Result) then
+  begin
+    Result := AValue;
+    FStrings.Add(Result, Result);
+  end;
+end;
+
+procedure TStringPool.InternUnit(var AUnit: TUnitIndex);
+begin
+  FLock.Enter;
+  try
+    InternUnitNow(AUnit);
+  finally
+    FLock.Leave;
+  end;
+end;
+
 function TStringPool.Count: Integer;
 begin
   FLock.Enter;
@@ -195,6 +195,28 @@ begin
   Inc(Result, UsageBytes(AUnit));
 end;
 
+class function TIndexMemory.Compacted(const AUnit: TUnitIndex): TUnitIndex;
+var
+  mKept: TArray<TIndexSymbol>;
+  mCount: Integer;
+  mSymbol: TIndexSymbol;
+begin
+  Result := AUnit;
+  Result.Compact := True;
+  SetLength(mKept, Length(AUnit.Symbols));
+  mCount := 0;
+  for mSymbol in AUnit.Symbols do
+  begin
+    if mSymbol.InInterface then
+    begin
+      mKept[mCount] := mSymbol;
+      Inc(mCount);
+    end;
+  end;
+  SetLength(mKept, mCount);
+  Result.Symbols := mKept;
+end;
+
 class function TIndexMemory.UsageBytes(const AUnit: TUnitIndex): Int64;
 var
   mUsage: TIndexUsage;
@@ -219,28 +241,6 @@ begin
   end;
   Result.Usages := nil;
   Result.UsagesOffloaded := True;
-end;
-
-class function TIndexMemory.Compacted(const AUnit: TUnitIndex): TUnitIndex;
-var
-  mKept: TArray<TIndexSymbol>;
-  mCount: Integer;
-  mSymbol: TIndexSymbol;
-begin
-  Result := AUnit;
-  Result.Compact := True;
-  SetLength(mKept, Length(AUnit.Symbols));
-  mCount := 0;
-  for mSymbol in AUnit.Symbols do
-  begin
-    if mSymbol.InInterface then
-    begin
-      mKept[mCount] := mSymbol;
-      Inc(mCount);
-    end;
-  end;
-  SetLength(mKept, mCount);
-  Result.Symbols := mKept;
 end;
 
 end.

@@ -235,6 +235,8 @@ begin
   ACore := mRest.Split(['.']);
 end;
 
+{ TUpdateVersions }
+
 class function TUpdateVersions.IsValidVersion(const AVersion: string): Boolean;
 begin
   Result := TRegEx.IsMatch(AVersion, cSemVerPattern);
@@ -420,6 +422,8 @@ begin
     AManifest.Source := mSource;
   end;
 end;
+
+{ TUpdateManifests }
 
 class function TUpdateManifests.TryParse(const AJson, AReleasesUrl: string; out AManifest: TUpdateManifest): Boolean;
 var

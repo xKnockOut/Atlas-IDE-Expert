@@ -402,16 +402,19 @@ begin
   FTip.UpdateContent(CurrentView);
 end;
 
-procedure TAtlasEditorHoverContent.Hide;
+function TAtlasEditorHoverContent.MouseOverTip: Boolean;
 begin
-  FTip.HidePopup;
-  FHistory.Clear;
-  FProblems := nil;
-  FExamples := nil;
-  FUsagesCount := -1;
-  FShownKey := '';
-  FKey := '';
-  FView := nil;
+  Result := FTip.IsShown and PtInRect(FTip.BoundsRect, Mouse.CursorPos);
+end;
+
+function TAtlasEditorHoverContent.MouseOverEditor: Boolean;
+var
+  mUnder: HWND;
+begin
+  // Liegt ein anderes Fenster über dem Editor (z. B. „Units suchen“), kein Tooltip darüber.
+  mUnder := WindowFromPoint(Mouse.CursorPos);
+  Result := (FEditor <> nil) and FEditor.HandleAllocated and
+    ((mUnder = FEditor.Handle) or IsChild(FEditor.Handle, mUnder));
 end;
 
 function TAtlasEditorHoverContent.CurrentEditView: IOTAEditView;
@@ -425,19 +428,16 @@ begin
   end;
 end;
 
-function TAtlasEditorHoverContent.MouseOverEditor: Boolean;
-var
-  mUnder: HWND;
+procedure TAtlasEditorHoverContent.Hide;
 begin
-  // Liegt ein anderes Fenster über dem Editor (z. B. „Units suchen“), kein Tooltip darüber.
-  mUnder := WindowFromPoint(Mouse.CursorPos);
-  Result := (FEditor <> nil) and FEditor.HandleAllocated and
-    ((mUnder = FEditor.Handle) or IsChild(FEditor.Handle, mUnder));
-end;
-
-function TAtlasEditorHoverContent.MouseOverTip: Boolean;
-begin
-  Result := FTip.IsShown and PtInRect(FTip.BoundsRect, Mouse.CursorPos);
+  FTip.HidePopup;
+  FHistory.Clear;
+  FProblems := nil;
+  FExamples := nil;
+  FUsagesCount := -1;
+  FShownKey := '';
+  FKey := '';
+  FView := nil;
 end;
 
 { TAtlasEditorHoverDebug }
@@ -482,45 +482,36 @@ begin
   end;
 end;
 
-class function TAtlasEditorHoverDebug.Subject(const AValue: TAtlasDebugValue; ARow: Integer): TAtlasDebugValue;
+procedure TAtlasEditorHoverDebug.Hide;
 begin
-  Result := AValue;
-  if (ARow < 0) or (ARow > High(AValue.Rows)) or AValue.Rows[ARow].More then
+  FDebug.Cancel;
+  FDebugValue := Default(TAtlasDebugValue);
+  FVisualizedKey := '';
+  FVisualized := '';
+  inherited Hide;
+end;
+
+procedure TAtlasEditorHoverDebug.DebugValueDone(const AKey: string; const AValue: TAtlasDebugValue);
+begin
+  // Nur für das Wort, auf dem die Maus noch steht; FDebug verwirft ältere Auswertungen ohnehin.
+  if AKey <> FKey then
   begin
     Exit;
   end;
-  Result.Expression := AValue.Rows[ARow].Expression;
-  Result.Text := AValue.Rows[ARow].Text;
-  Result.OldText := AValue.Rows[ARow].OldText;
-  Result.Expandable := AValue.Rows[ARow].Expandable;
-  Result.Expanded := AValue.Rows[ARow].Expanded;
-  Result.Rows := nil;
-  // Ausstehender Wert oder nicht ausgewerteter Getter: noch nichts zum Kopieren, Anheften oder Ändern.
-  if AValue.Rows[ARow].Pending or AValue.Rows[ARow].Lazy then
+  FDebugValue := AValue;
+  if not FTip.IsShown or (FShownKey <> AKey) then
   begin
-    Result.State := TAtlasDebugValueState.Pending;
+    Exit;
   end;
-end;
-
-function TAtlasEditorHoverDebug.DebugTreeRefresh: TProc;
-var
-  mOwner: TAtlasEditorHoverDebug;
-  mAlive: TAtlasHoverAlive;
-  mAliveRef: IInterface;
-  mKey: string;
-begin
-  mOwner := Self;
-  mAlive := FAlive;
-  mAliveRef := FAliveRef;
-  mKey := FKey;
-  Result :=
-    procedure
-    begin
-      if mAlive.Alive and (mAliveRef <> nil) and (mOwner.FShownKey = mKey) and mOwner.FTip.IsShown then
-      begin
-        mOwner.Refresh;
-      end;
-    end;
+  // Kein Wert (Fehler, weitergelaufen) und sonst nichts zu zeigen: schließen.
+  if not FDebugValue.Visible and not FHistory.Current.Found and (Length(FProblems) = 0) then
+  begin
+    Hide;
+  end
+  else
+  begin
+    Refresh;
+  end;
 end;
 
 /// <summary>Typ der Deklaration, dann seine Vorfahren (für die Visualisierer, #835).</summary>
@@ -533,64 +524,6 @@ begin
   begin
     Result := Result + [mAncestor.Name];
   end;
-end;
-
-function TAtlasEditorHoverDebug.VisualizedDebugValue: TAtlasDebugValue;
-var
-  mData: TAtlasHoverData;
-  mKey: string;
-begin
-  Result := FDebugValue;
-  if (FDebugValue.State <> TAtlasDebugValueState.Value) or not Assigned(FOnVisualize) then
-  begin
-    Exit;
-  end;
-  mData := FHistory.Current;
-  if not mData.Found then
-  begin
-    Exit;
-  end;
-  // Einmal je Wert und Typ: Die Visualisierer werten im Debugger aus, Refresh kommt öfter.
-  mKey := FDebugValue.Expression + #0 + FDebugValue.Text + #0 + mData.Declaration;
-  if mKey <> FVisualizedKey then
-  begin
-    FVisualizedKey := mKey;
-    FVisualized := FOnVisualize(FDebugValue.Expression, TypeChain(mData), FDebugValue.Text);
-  end;
-  if FVisualized <> '' then
-  begin
-    Result := TAtlasDebugValue.Evaluated(FDebugValue.Expression, FVisualized);
-  end;
-end;
-
-procedure TAtlasEditorHoverDebug.Hide;
-begin
-  FDebug.Cancel;
-  FDebugValue := Default(TAtlasDebugValue);
-  FVisualizedKey := '';
-  FVisualized := '';
-  inherited Hide;
-end;
-
-procedure TAtlasEditorHoverDebug.EvaluateDebugValue;
-var
-  mOwner: TAtlasEditorHoverDebug;
-  mKey: string;
-begin
-  FDebug.Cancel;
-  FDebugValue := Default(TAtlasDebugValue);
-  if (FDebugExpression = '') or FProblemsOnly or not TAtlasIdeSettings.Current.DebugHoverValues then
-  begin
-    Exit;
-  end;
-  mOwner := Self;
-  mKey := FKey;
-  // Im Hauptthread: Der Debugger der IDE ist nicht threadsicher. Sofortige Werte stehen gleich im Tooltip.
-  FDebugValue := Explain(mKey, FDebug.Evaluate(FDebugExpression, FView.Buffer.FileName, FLine,
-    procedure(const AValue: TAtlasDebugValue)
-    begin
-      mOwner.DebugValueDone(mKey, mOwner.Explain(mKey, AValue));
-    end));
 end;
 
 function TAtlasEditorHoverDebug.Explain(const AKey: string; const AValue: TAtlasDebugValue): TAtlasDebugValue;
@@ -619,26 +552,31 @@ begin
     end);
 end;
 
-procedure TAtlasEditorHoverDebug.DebugValueDone(const AKey: string; const AValue: TAtlasDebugValue);
+function TAtlasEditorHoverDebug.VisualizedDebugValue: TAtlasDebugValue;
+var
+  mData: TAtlasHoverData;
+  mKey: string;
 begin
-  // Nur für das Wort, auf dem die Maus noch steht; FDebug verwirft ältere Auswertungen ohnehin.
-  if AKey <> FKey then
+  Result := FDebugValue;
+  if (FDebugValue.State <> TAtlasDebugValueState.Value) or not Assigned(FOnVisualize) then
   begin
     Exit;
   end;
-  FDebugValue := AValue;
-  if not FTip.IsShown or (FShownKey <> AKey) then
+  mData := FHistory.Current;
+  if not mData.Found then
   begin
     Exit;
   end;
-  // Kein Wert (Fehler, weitergelaufen) und sonst nichts zu zeigen: schließen.
-  if not FDebugValue.Visible and not FHistory.Current.Found and (Length(FProblems) = 0) then
+  // Einmal je Wert und Typ: Die Visualisierer werten im Debugger aus, Refresh kommt öfter.
+  mKey := FDebugValue.Expression + #0 + FDebugValue.Text + #0 + mData.Declaration;
+  if mKey <> FVisualizedKey then
   begin
-    Hide;
-  end
-  else
+    FVisualizedKey := mKey;
+    FVisualized := FOnVisualize(FDebugValue.Expression, TypeChain(mData), FDebugValue.Text);
+  end;
+  if FVisualized <> '' then
   begin
-    Refresh;
+    Result := TAtlasDebugValue.Evaluated(FDebugValue.Expression, FVisualized);
   end;
 end;
 
@@ -738,6 +676,68 @@ begin
   TipDebugAction(Sender, TMenuItem(Sender).Tag);
 end;
 
+function TAtlasEditorHoverDebug.DebugTreeRefresh: TProc;
+var
+  mOwner: TAtlasEditorHoverDebug;
+  mAlive: TAtlasHoverAlive;
+  mAliveRef: IInterface;
+  mKey: string;
+begin
+  mOwner := Self;
+  mAlive := FAlive;
+  mAliveRef := FAliveRef;
+  mKey := FKey;
+  Result :=
+    procedure
+    begin
+      if mAlive.Alive and (mAliveRef <> nil) and (mOwner.FShownKey = mKey) and mOwner.FTip.IsShown then
+      begin
+        mOwner.Refresh;
+      end;
+    end;
+end;
+
+class function TAtlasEditorHoverDebug.Subject(const AValue: TAtlasDebugValue; ARow: Integer): TAtlasDebugValue;
+begin
+  Result := AValue;
+  if (ARow < 0) or (ARow > High(AValue.Rows)) or AValue.Rows[ARow].More then
+  begin
+    Exit;
+  end;
+  Result.Expression := AValue.Rows[ARow].Expression;
+  Result.Text := AValue.Rows[ARow].Text;
+  Result.OldText := AValue.Rows[ARow].OldText;
+  Result.Expandable := AValue.Rows[ARow].Expandable;
+  Result.Expanded := AValue.Rows[ARow].Expanded;
+  Result.Rows := nil;
+  // Ausstehender Wert oder nicht ausgewerteter Getter: noch nichts zum Kopieren, Anheften oder Ändern.
+  if AValue.Rows[ARow].Pending or AValue.Rows[ARow].Lazy then
+  begin
+    Result.State := TAtlasDebugValueState.Pending;
+  end;
+end;
+
+procedure TAtlasEditorHoverDebug.EvaluateDebugValue;
+var
+  mOwner: TAtlasEditorHoverDebug;
+  mKey: string;
+begin
+  FDebug.Cancel;
+  FDebugValue := Default(TAtlasDebugValue);
+  if (FDebugExpression = '') or FProblemsOnly or not TAtlasIdeSettings.Current.DebugHoverValues then
+  begin
+    Exit;
+  end;
+  mOwner := Self;
+  mKey := FKey;
+  // Im Hauptthread: Der Debugger der IDE ist nicht threadsicher. Sofortige Werte stehen gleich im Tooltip.
+  FDebugValue := Explain(mKey, FDebug.Evaluate(FDebugExpression, FView.Buffer.FileName, FLine,
+    procedure(const AValue: TAtlasDebugValue)
+    begin
+      mOwner.DebugValueDone(mKey, mOwner.Explain(mKey, AValue));
+    end));
+end;
+
 { TAtlasEditorHoverActions }
 
 constructor TAtlasEditorHoverActions.Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
@@ -750,130 +750,6 @@ begin
   FTip.OnAction := TipAction;
   FTip.OnUrl := TipUrl;
   FTip.OnProblemAction := TipProblemAction;
-end;
-
-procedure TAtlasEditorHoverActions.TipLink(Sender: TObject; const ARef: TAtlasHoverTypeRef; AControl: Boolean);
-begin
-  try
-    // Strg+Klick: wie bisher zur Deklaration im Quelltext.
-    if AControl then
-    begin
-      if ARef.HasLocation then
-      begin
-        Hide;
-        TAtlasIdeNavigation.GoToLocation(ARef.FileName, ARef.Line, ARef.Character);
-      end;
-      Exit;
-    end;
-    if FHistory.Open(ARef) then
-    begin
-      FUsagesCount := -1;
-      Refresh;
-    end;
-  except
-    on E: Exception do
-    begin
-      Log('Hover: ' + E.Message);
-      TAtlasGuard.Report(TAtlasFeature.Hover, E);
-    end;
-  end;
-end;
-
-procedure TAtlasEditorHoverActions.TipPath(Sender: TObject; AIndex: Integer);
-begin
-  try
-    if FHistory.JumpTo(AIndex) then
-    begin
-      FUsagesCount := -1;
-      Refresh;
-    end;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Hover, E);
-  end;
-end;
-
-procedure TAtlasEditorHoverActions.TipBack(Sender: TObject);
-begin
-  try
-    if FHistory.Back then
-    begin
-      FUsagesCount := -1;
-      Refresh;
-    end;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Hover, E);
-  end;
-end;
-
-procedure TAtlasEditorHoverActions.TipAction(Sender: TObject; AAction: TAtlasHoverAction);
-begin
-  try
-    Execute(AAction);
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Hover, E);
-  end;
-end;
-
-procedure TAtlasEditorHoverActions.TipProblemAction(Sender: TObject; AProblem: Integer;
-  AAction: TAtlasHoverProblemAction; AItem: Integer);
-const
-  // Related und ShowGraph (#896) sind Client-Aktionen: „related:<Stelle>“ springt an Problem.Related[Stelle].
-  // Explain (#54) öffnet den Dialog „Erklären“; DocWiki öffnet der Tooltip selbst; Example (#145) bleibt im
-  // Tooltip und hat keine Kennung; Compare (#1779) zeigt erwartet und erhalten des Tests.
-  cTags: array[TAtlasHoverProblemAction] of string = ('uses.remove', 'uses.removeAll', 'uses.move', 'rule.fix',
-    'rule.suppressLine', 'rule.configure', 'related:', 'cycle.showGraph', 'problem.explain', '', '', 'test.compare');
-var
-  mProblem: TAtlasProblem;
-  mTag: string;
-begin
-  try
-    if AAction = TAtlasHoverProblemAction.Example then
-    begin
-      ToggleExample(AProblem);
-      Exit;
-    end;
-    if not Assigned(FOnProblemAction) or (AProblem < 0) or (AProblem > High(FTip.View.Problems)) then
-    begin
-      Exit;
-    end;
-    mProblem := FTip.View.Problems[AProblem];
-    if AAction = TAtlasHoverProblemAction.DocWiki then
-    begin
-      if AProblem <= High(FTip.View.Explanations) then
-      begin
-        mTag := FTip.View.Explanations[AProblem].DocWiki;
-        Hide;
-        TipUrl(Self, mTag);
-      end;
-      Exit;
-    end;
-    mTag := cTags[AAction];
-    if AAction = TAtlasHoverProblemAction.Related then
-    begin
-      mTag := mTag + IntToStr(AItem);
-    end;
-    Hide;
-    FOnProblemAction(mProblem, mTag);
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Hover, E);
-  end;
-end;
-
-procedure TAtlasEditorHoverActions.SetExample(AProblem: Integer; const AExample: TAtlasRuleExplanation);
-begin
-  if Length(FExamples) <> Length(FProblems) then
-  begin
-    SetLength(FExamples, Length(FProblems));
-  end;
-  if (AProblem >= 0) and (AProblem <= High(FExamples)) then
-  begin
-    FExamples[AProblem] := AExample;
-  end;
-  FTip.SetExample(AProblem, AExample, FHistory.Pinned);
 end;
 
 procedure TAtlasEditorHoverActions.ToggleExample(AProblem: Integer);
@@ -938,6 +814,70 @@ begin
   end;
 end;
 
+procedure TAtlasEditorHoverActions.SetExample(AProblem: Integer; const AExample: TAtlasRuleExplanation);
+begin
+  if Length(FExamples) <> Length(FProblems) then
+  begin
+    SetLength(FExamples, Length(FProblems));
+  end;
+  if (AProblem >= 0) and (AProblem <= High(FExamples)) then
+  begin
+    FExamples[AProblem] := AExample;
+  end;
+  FTip.SetExample(AProblem, AExample, FHistory.Pinned);
+end;
+
+procedure TAtlasEditorHoverActions.TipLink(Sender: TObject; const ARef: TAtlasHoverTypeRef; AControl: Boolean);
+begin
+  try
+    // Strg+Klick: wie bisher zur Deklaration im Quelltext.
+    if AControl then
+    begin
+      if ARef.HasLocation then
+      begin
+        Hide;
+        TAtlasIdeNavigation.GoToLocation(ARef.FileName, ARef.Line, ARef.Character);
+      end;
+      Exit;
+    end;
+    if FHistory.Open(ARef) then
+    begin
+      FUsagesCount := -1;
+      Refresh;
+    end;
+  except
+    on E: Exception do
+    begin
+      Log('Hover: ' + E.Message);
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
+    end;
+  end;
+end;
+
+procedure TAtlasEditorHoverActions.TipPath(Sender: TObject; AIndex: Integer);
+begin
+  try
+    if FHistory.JumpTo(AIndex) then
+    begin
+      FUsagesCount := -1;
+      Refresh;
+    end;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
+  end;
+end;
+
+procedure TAtlasEditorHoverActions.TipAction(Sender: TObject; AAction: TAtlasHoverAction);
+begin
+  try
+    Execute(AAction);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
+  end;
+end;
+
 procedure TAtlasEditorHoverActions.TipUrl(Sender: TObject; const AUrl: string);
 begin
   try
@@ -946,6 +886,52 @@ begin
     begin
       ShellExecute(0, 'open', PChar(AUrl), nil, nil, SW_SHOWNORMAL);
     end;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
+  end;
+end;
+
+procedure TAtlasEditorHoverActions.TipProblemAction(Sender: TObject; AProblem: Integer;
+  AAction: TAtlasHoverProblemAction; AItem: Integer);
+const
+  // Related und ShowGraph (#896) sind Client-Aktionen: „related:<Stelle>“ springt an Problem.Related[Stelle].
+  // Explain (#54) öffnet den Dialog „Erklären“; DocWiki öffnet der Tooltip selbst; Example (#145) bleibt im
+  // Tooltip und hat keine Kennung; Compare (#1779) zeigt erwartet und erhalten des Tests.
+  cTags: array[TAtlasHoverProblemAction] of string = ('uses.remove', 'uses.removeAll', 'uses.move', 'rule.fix',
+    'rule.suppressLine', 'rule.configure', 'related:', 'cycle.showGraph', 'problem.explain', '', '', 'test.compare');
+var
+  mProblem: TAtlasProblem;
+  mTag: string;
+begin
+  try
+    if AAction = TAtlasHoverProblemAction.Example then
+    begin
+      ToggleExample(AProblem);
+      Exit;
+    end;
+    if not Assigned(FOnProblemAction) or (AProblem < 0) or (AProblem > High(FTip.View.Problems)) then
+    begin
+      Exit;
+    end;
+    mProblem := FTip.View.Problems[AProblem];
+    if AAction = TAtlasHoverProblemAction.DocWiki then
+    begin
+      if AProblem <= High(FTip.View.Explanations) then
+      begin
+        mTag := FTip.View.Explanations[AProblem].DocWiki;
+        Hide;
+        TipUrl(Self, mTag);
+      end;
+      Exit;
+    end;
+    mTag := cTags[AAction];
+    if AAction = TAtlasHoverProblemAction.Related then
+    begin
+      mTag := mTag + IntToStr(AItem);
+    end;
+    Hide;
+    FOnProblemAction(mProblem, mTag);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Hover, E);
@@ -983,6 +969,20 @@ begin
   else
   begin
     Clipboard.AsText := AData.Declaration;
+  end;
+end;
+
+procedure TAtlasEditorHoverActions.TipBack(Sender: TObject);
+begin
+  try
+    if FHistory.Back then
+    begin
+      FUsagesCount := -1;
+      Refresh;
+    end;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
   end;
 end;
 

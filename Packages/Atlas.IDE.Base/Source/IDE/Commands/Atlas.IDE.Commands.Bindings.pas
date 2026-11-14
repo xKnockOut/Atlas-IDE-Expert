@@ -134,34 +134,6 @@ end;
 
 { TAtlasIdeEditorKeys.TBinding }
 
-function TAtlasIdeEditorKeys.TBinding.GetBindingType: TBindingType;
-begin
-  Result := btPartial;
-end;
-
-function TAtlasIdeEditorKeys.TBinding.GetDisplayName: string;
-begin
-  Result := 'Atlas-Editorbefehle';
-end;
-
-function TAtlasIdeEditorKeys.TBinding.GetName: string;
-begin
-  Result := 'Atlas.EditorCommands';
-end;
-
-procedure TAtlasIdeEditorKeys.TBinding.BindKeyboard(const BindingServices: IOTAKeyBindingServices);
-var
-  mKey: TAtlasEditorKey;
-begin
-  if FOwner <> nil then
-  begin
-    for mKey in FOwner.Keys do
-    begin
-      BindingServices.AddKeyBinding([mKey.Key], Pressed, nil);
-    end;
-  end;
-end;
-
 procedure TAtlasIdeEditorKeys.TBinding.Pressed(const Context: IOTAKeyContext; KeyCode: TShortCut;
   var BindingResult: TKeyBindingResult);
 var
@@ -215,6 +187,34 @@ begin
           TAtlasGuard.Run(mFeature, mProc);
         end);
       Exit;
+    end;
+  end;
+end;
+
+function TAtlasIdeEditorKeys.TBinding.GetBindingType: TBindingType;
+begin
+  Result := btPartial;
+end;
+
+function TAtlasIdeEditorKeys.TBinding.GetDisplayName: string;
+begin
+  Result := 'Atlas-Editorbefehle';
+end;
+
+function TAtlasIdeEditorKeys.TBinding.GetName: string;
+begin
+  Result := 'Atlas.EditorCommands';
+end;
+
+procedure TAtlasIdeEditorKeys.TBinding.BindKeyboard(const BindingServices: IOTAKeyBindingServices);
+var
+  mKey: TAtlasEditorKey;
+begin
+  if FOwner <> nil then
+  begin
+    for mKey in FOwner.Keys do
+    begin
+      BindingServices.AddKeyBinding([mKey.Key], Pressed, nil);
     end;
   end;
 end;

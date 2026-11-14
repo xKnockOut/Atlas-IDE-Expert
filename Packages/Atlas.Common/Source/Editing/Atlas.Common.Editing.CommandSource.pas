@@ -132,6 +132,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TCommandSource }
+
 constructor TCommandSource.Create(const AContext: TSlashContext);
 var
   mBlanked: string;
@@ -582,6 +584,8 @@ begin
     Result[mIndex] := ALines[mIndex];
   end;
 end;
+
+{ TWrapFrame }
 
 class function TWrapFrame.Create(const AHead, ATail: array of string; const ABodyIndent: string): TWrapFrame;
 begin

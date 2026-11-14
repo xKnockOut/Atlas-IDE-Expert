@@ -91,6 +91,19 @@ begin
   inherited Destroy;
 end;
 
+function TAtlasIdeDesignerTools.HandleToolOf(const AId: string): TAtlasIdeHandleTool;
+begin
+  Result := nil;
+  if SameText(AId, TAtlasIdeGapHandles.cId) then
+  begin
+    Result := FGaps;
+  end
+  else if SameText(AId, TAtlasIdeMultiResize.cId) then
+  begin
+    Result := FResize;
+  end;
+end;
+
 function TAtlasIdeDesignerTools.Buttons(const ASettings: TAtlasPluginSettings): TArray<TAtlasDesignerButton>;
 begin
   Result := nil;
@@ -121,19 +134,6 @@ begin
   if TAtlasIdeDesignerUndo.Available(ASettings) then
   begin
     Result := Result + [FUndo.Button];
-  end;
-end;
-
-function TAtlasIdeDesignerTools.HandleToolOf(const AId: string): TAtlasIdeHandleTool;
-begin
-  Result := nil;
-  if SameText(AId, TAtlasIdeGapHandles.cId) then
-  begin
-    Result := FGaps;
-  end
-  else if SameText(AId, TAtlasIdeMultiResize.cId) then
-  begin
-    Result := FResize;
   end;
 end;
 

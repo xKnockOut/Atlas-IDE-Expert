@@ -398,6 +398,8 @@ type
     procedure AddGroup(AGroup: TAtlasGenerateGroup; const AMembers: TArray<Integer>);
   end;
 
+{ TRowBuilder }
+
 class function TRowBuilder.Create(const AEntries: TArray<TAtlasGenerateEntry>;
   const AOptions: TAtlasGenerateOptions; const APattern: string): TRowBuilder;
 var
@@ -556,20 +558,6 @@ begin
   end;
 end;
 
-class function TAtlasGenerateMenu.FirstEntryRow(const ARows: TArray<TAtlasGenerateRow>): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := -1;
-  for mIndex := 0 to High(ARows) do
-  begin
-    if not ARows[mIndex].IsHeader then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-end;
-
 class function TAtlasGenerateMenu.StepRow(const ARows: TArray<TAtlasGenerateRow>; AFrom, ADelta: Integer): Integer;
 var
   mIndex: Integer;
@@ -592,6 +580,20 @@ begin
       Exit(mIndex);
     end;
     Inc(mIndex, Sign(ADelta));
+  end;
+end;
+
+class function TAtlasGenerateMenu.FirstEntryRow(const ARows: TArray<TAtlasGenerateRow>): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(ARows) do
+  begin
+    if not ARows[mIndex].IsHeader then
+    begin
+      Exit(mIndex);
+    end;
   end;
 end;
 

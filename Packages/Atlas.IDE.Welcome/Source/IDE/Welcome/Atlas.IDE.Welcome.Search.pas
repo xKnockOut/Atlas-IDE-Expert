@@ -93,6 +93,8 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   end;
 
+{ TBoxWatch }
+
 procedure TBoxWatch.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   inherited;
@@ -135,9 +137,31 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeWelcomeSearch.CacheRoot: string;
+procedure TAtlasIdeWelcomeSearch.AppMessage(var Msg: TMsg; var Handled: Boolean);
+var
+  mKey: TShortCut;
+  mBox: TAtlasWelcomeSearchBox;
 begin
-  Result := TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas');
+  if ((Msg.message <> WM_KEYDOWN) and (Msg.message <> WM_SYSKEYDOWN)) or (FBoxes.Count = 0) then
+  begin
+    Exit;
+  end;
+  mKey := TShortCut(TAtlasIdeSettings.Current.WelcomePageSearchKey);
+  if (mKey = 0) or not TAtlasIdeSettings.Current.WelcomePageSearch then
+  begin
+    Exit;
+  end;
+  if ShortCut(Word(Msg.wParam), KeyDataToShiftState(Msg.lParam)) <> mKey then
+  begin
+    Exit;
+  end;
+  mBox := ActiveBox;
+  if mBox = nil then
+  begin
+    Exit;
+  end;
+  mBox.FocusSearch;
+  Handled := True;
 end;
 
 function ReadProjectValues(ARegistry: TRegistry; const AKey: string): TArray<TPair<string, string>>;
@@ -200,17 +224,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeWelcomeSearch.RecentProjects: TArray<string>;
-begin
-  // Favoriten der Willkommensseite zuerst, dann die Liste „Wieder öffnen“.
-  Result := ProjectsIn(['Favorite Projects', 'WelcomePage\Favorites', 'Closed Projects']);
-end;
-
-class function TAtlasIdeWelcomeSearch.ClosedProjects: TArray<string>;
-begin
-  Result := ProjectsIn(['Closed Projects']);
-end;
-
 function TAtlasIdeWelcomeSearch.ProjectFiles: TArray<string>;
 var
   mSeen: TDictionary<string, Boolean>;
@@ -256,6 +269,61 @@ begin
   finally
     mSeen.Free;
   end;
+end;
+
+function TAtlasIdeWelcomeSearch.ActiveBox: TAtlasWelcomeSearchBox;
+var
+  mBox: TAtlasWelcomeSearchBox;
+  mForm: TCustomForm;
+begin
+  Result := nil;
+  for mBox in FBoxes do
+  begin
+    if not mBox.Showing or not mBox.Edit.CanFocus then
+    begin
+      Continue;
+    end;
+    // Innerste Form, nicht die oberste: Angedockt ist die oberste Form von
+    // „Atlas-Start“ das Hauptfenster der IDE; die Taste gehört Atlas daher
+    // nur, wenn der Fokus im Fenster selbst liegt, sonst bliebe Strg+E im
+    // Editor nicht die inkrementelle Suche der IDE. Auf der Willkommensseite
+    // der IDE ist es das Editorfenster; Showing gilt dort nur, solange die
+    // Willkommensseite der sichtbare Reiter ist.
+    mForm := GetParentForm(mBox, False);
+    if mForm = nil then
+    begin
+      Continue;
+    end;
+    if (mForm = Screen.ActiveCustomForm) or
+      ((Screen.ActiveControl <> nil) and mForm.ContainsControl(Screen.ActiveControl)) then
+    begin
+      Exit(mBox);
+    end;
+  end;
+end;
+
+procedure TAtlasIdeWelcomeSearch.Attach(ABox: TAtlasWelcomeSearchBox);
+begin
+  if ABox = nil then
+  begin
+    Exit;
+  end;
+  if FBoxes.IndexOf(ABox) < 0 then
+  begin
+    FBoxes.Add(ABox);
+    ABox.FreeNotification(FWatch);
+  end;
+  ABox.Colors := TAtlasIdeStyle.Colors;
+  ABox.OnQuery :=
+    function(const APattern: string): TArray<TAtlasWelcomeSearchResult>
+    begin
+      Result := Query(APattern);
+    end;
+  ABox.OnOpen :=
+    procedure(const AHit: TAtlasWelcomeHit)
+    begin
+      Open(AHit);
+    end;
 end;
 
 function ProjectHits(const AProjects: TArray<string>): TArray<TAtlasWelcomeHit>;
@@ -475,86 +543,20 @@ begin
     end);
 end;
 
-procedure TAtlasIdeWelcomeSearch.Attach(ABox: TAtlasWelcomeSearchBox);
+class function TAtlasIdeWelcomeSearch.RecentProjects: TArray<string>;
 begin
-  if ABox = nil then
-  begin
-    Exit;
-  end;
-  if FBoxes.IndexOf(ABox) < 0 then
-  begin
-    FBoxes.Add(ABox);
-    ABox.FreeNotification(FWatch);
-  end;
-  ABox.Colors := TAtlasIdeStyle.Colors;
-  ABox.OnQuery :=
-    function(const APattern: string): TArray<TAtlasWelcomeSearchResult>
-    begin
-      Result := Query(APattern);
-    end;
-  ABox.OnOpen :=
-    procedure(const AHit: TAtlasWelcomeHit)
-    begin
-      Open(AHit);
-    end;
+  // Favoriten der Willkommensseite zuerst, dann die Liste „Wieder öffnen“.
+  Result := ProjectsIn(['Favorite Projects', 'WelcomePage\Favorites', 'Closed Projects']);
 end;
 
-function TAtlasIdeWelcomeSearch.ActiveBox: TAtlasWelcomeSearchBox;
-var
-  mBox: TAtlasWelcomeSearchBox;
-  mForm: TCustomForm;
+class function TAtlasIdeWelcomeSearch.ClosedProjects: TArray<string>;
 begin
-  Result := nil;
-  for mBox in FBoxes do
-  begin
-    if not mBox.Showing or not mBox.Edit.CanFocus then
-    begin
-      Continue;
-    end;
-    // Innerste Form, nicht die oberste: Angedockt ist die oberste Form von
-    // „Atlas-Start“ das Hauptfenster der IDE; die Taste gehört Atlas daher
-    // nur, wenn der Fokus im Fenster selbst liegt, sonst bliebe Strg+E im
-    // Editor nicht die inkrementelle Suche der IDE. Auf der Willkommensseite
-    // der IDE ist es das Editorfenster; Showing gilt dort nur, solange die
-    // Willkommensseite der sichtbare Reiter ist.
-    mForm := GetParentForm(mBox, False);
-    if mForm = nil then
-    begin
-      Continue;
-    end;
-    if (mForm = Screen.ActiveCustomForm) or
-      ((Screen.ActiveControl <> nil) and mForm.ContainsControl(Screen.ActiveControl)) then
-    begin
-      Exit(mBox);
-    end;
-  end;
+  Result := ProjectsIn(['Closed Projects']);
 end;
 
-procedure TAtlasIdeWelcomeSearch.AppMessage(var Msg: TMsg; var Handled: Boolean);
-var
-  mKey: TShortCut;
-  mBox: TAtlasWelcomeSearchBox;
+class function TAtlasIdeWelcomeSearch.CacheRoot: string;
 begin
-  if ((Msg.message <> WM_KEYDOWN) and (Msg.message <> WM_SYSKEYDOWN)) or (FBoxes.Count = 0) then
-  begin
-    Exit;
-  end;
-  mKey := TShortCut(TAtlasIdeSettings.Current.WelcomePageSearchKey);
-  if (mKey = 0) or not TAtlasIdeSettings.Current.WelcomePageSearch then
-  begin
-    Exit;
-  end;
-  if ShortCut(Word(Msg.wParam), KeyDataToShiftState(Msg.lParam)) <> mKey then
-  begin
-    Exit;
-  end;
-  mBox := ActiveBox;
-  if mBox = nil then
-  begin
-    Exit;
-  end;
-  mBox.FocusSearch;
-  Handled := True;
+  Result := TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas');
 end;
 
 end.

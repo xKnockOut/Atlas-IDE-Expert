@@ -121,31 +121,6 @@ end;
 
 { TAtlasIdeGenerate }
 
-class procedure TAtlasIdeGenerate.Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>;
-  const ASnippets: TFunc<TAtlasSnippetList>; const AInsertSnippet: TProc<IOTAEditView, TAtlasSnippet>;
-  const AApplyAction: TProc<TLspCodeAction>);
-begin
-  FSessionOf := ASessionOf;
-  FMessage := AMessage;
-  FSnippets := ASnippets;
-  FInsertSnippet := AInsertSnippet;
-  FApplyAction := AApplyAction;
-  FRecent := TAtlasGenerateRecent.Create;
-  FRecentLoaded := False;
-  FRecentKept := False;
-end;
-
-class procedure TAtlasIdeGenerate.Uninstall;
-begin
-  FreeAndNil(FRecent);
-  FRecentLoaded := False;
-  FSessionOf := nil;
-  FMessage := nil;
-  FSnippets := nil;
-  FInsertSnippet := nil;
-  FApplyAction := nil;
-end;
-
 class function TAtlasIdeGenerate.Session: TLspSession;
 begin
   Result := nil;
@@ -161,11 +136,6 @@ begin
   begin
     FMessage(AText);
   end;
-end;
-
-class function TAtlasIdeGenerate.RecentFile: string;
-begin
-  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('APPDATA'), 'Atlas'), 'generate-recent.txt');
 end;
 
 class procedure TAtlasIdeGenerate.LoadRecent;
@@ -209,9 +179,39 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeGenerate.Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>;
+  const ASnippets: TFunc<TAtlasSnippetList>; const AInsertSnippet: TProc<IOTAEditView, TAtlasSnippet>;
+  const AApplyAction: TProc<TLspCodeAction>);
+begin
+  FSessionOf := ASessionOf;
+  FMessage := AMessage;
+  FSnippets := ASnippets;
+  FInsertSnippet := AInsertSnippet;
+  FApplyAction := AApplyAction;
+  FRecent := TAtlasGenerateRecent.Create;
+  FRecentLoaded := False;
+  FRecentKept := False;
+end;
+
+class procedure TAtlasIdeGenerate.Uninstall;
+begin
+  FreeAndNil(FRecent);
+  FRecentLoaded := False;
+  FSessionOf := nil;
+  FMessage := nil;
+  FSnippets := nil;
+  FInsertSnippet := nil;
+  FApplyAction := nil;
+end;
+
 class procedure TAtlasIdeGenerate.Show;
 begin
   Show(nil);
+end;
+
+class function TAtlasIdeGenerate.RecentFile: string;
+begin
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('APPDATA'), 'Atlas'), 'generate-recent.txt');
 end;
 
 /// <summary>Stelle für den Server und Bereich für die Code-Aktionen aus Cursor bzw. Markierung.</summary>

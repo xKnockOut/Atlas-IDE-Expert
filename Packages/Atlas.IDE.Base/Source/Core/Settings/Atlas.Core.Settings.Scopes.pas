@@ -292,6 +292,31 @@ begin
   end;
 end;
 
+procedure TAtlasRoutedSettingsStore.MigrateOne(const ARouted: TAtlasRoutedSetting);
+const
+  cMissing = Low(Integer);
+var
+  mValue: Integer;
+  mText: string;
+begin
+  if ARouted.Text then
+  begin
+    mText := FInner.ReadString(ARouted.Name, '');
+    if mText <> '' then
+    begin
+      WriteString(ARouted.Name, mText);
+    end;
+  end
+  else
+  begin
+    mValue := FInner.ReadInteger(ARouted.Name, cMissing);
+    if mValue <> cMissing then
+    begin
+      WriteInteger(ARouted.Name, mValue);
+    end;
+  end;
+end;
+
 function TAtlasRoutedSettingsStore.ReadInteger(const AName: string; ADefault: Integer): Integer;
 var
   mRouted: TAtlasRoutedSetting;
@@ -401,31 +426,6 @@ begin
   if JsonValue(mRouted.Path) <> mJson then
   begin
     FText := TAtlasJsonText.SetValue(FText, mRouted.Path, mJson);
-  end;
-end;
-
-procedure TAtlasRoutedSettingsStore.MigrateOne(const ARouted: TAtlasRoutedSetting);
-const
-  cMissing = Low(Integer);
-var
-  mValue: Integer;
-  mText: string;
-begin
-  if ARouted.Text then
-  begin
-    mText := FInner.ReadString(ARouted.Name, '');
-    if mText <> '' then
-    begin
-      WriteString(ARouted.Name, mText);
-    end;
-  end
-  else
-  begin
-    mValue := FInner.ReadInteger(ARouted.Name, cMissing);
-    if mValue <> cMissing then
-    begin
-      WriteInteger(ARouted.Name, mValue);
-    end;
   end;
 end;
 

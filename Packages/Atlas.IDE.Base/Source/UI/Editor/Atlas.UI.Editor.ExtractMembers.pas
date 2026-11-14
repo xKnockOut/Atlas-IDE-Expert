@@ -270,6 +270,72 @@ begin
   end;
 end;
 
+procedure TAtlasExtractMembersDialog.DoShow;
+begin
+  inherited;
+  // Liste und Auswahlfeld brauchen ein Fenster: erst hier füllen.
+  if FModel.IsMove and (FList.Items.Count = 0) then
+  begin
+    FUpdating := True;
+    try
+      if FTargetList <> nil then
+      begin
+        FillTargetList(FTargetList, FModel);
+      end
+      else
+      begin
+        FillTargetBox(FTarget, FModel);
+      end;
+    finally
+      FUpdating := False;
+    end;
+    FillList;
+  end;
+  if (FUnit <> nil) and (FUnit.Items.Count = 0) then
+  begin
+    FUpdating := True;
+    try
+      FillUnits(FUnit, FModel);
+    finally
+      FUpdating := False;
+    end;
+    FillList;
+  end;
+  if FName <> nil then
+  begin
+    FName.SelectAll;
+  end;
+end;
+
+function TAtlasExtractMembersDialog.AddButton(AParent: TWinControl; const ACaption: string;
+  AClick: TNotifyEvent): TButton;
+begin
+  Result := TButton.Create(Self);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  Result.OnClick := AClick;
+  Result.Width := ScaleValue(100);
+  Result.Top := ScaleValue(cGap);
+  Result.Height := ScaleValue(28);
+  Result.Anchors := [akTop, akRight];
+end;
+
+function TAtlasExtractMembersDialog.AddLabeled(AParent: TWinControl; const ACaption: string; ATop: Integer;
+  AControl: TWinControl): Integer;
+var
+  mCaption: TLabel;
+begin
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := AParent;
+  mCaption.Caption := ACaption;
+  mCaption.SetBounds(ScaleValue(cGap), ATop + ScaleValue(3), ScaleValue(110), ScaleValue(20));
+  mCaption.FocusControl := AControl;
+  AControl.Parent := AParent;
+  AControl.SetBounds(ScaleValue(120), ATop, ScaleValue(cDialogWidth - 120 - cGap), ScaleValue(23));
+  AControl.Anchors := [akLeft, akTop, akRight];
+  Result := ATop + ScaleValue(28);
+end;
+
 procedure TAtlasExtractMembersDialog.CreateFooter;
 var
   mBottom: TPanel;
@@ -438,78 +504,6 @@ begin
   AddColumn(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersColReason), cReasonWidth);
 end;
 
-function TAtlasExtractMembersDialog.AddButton(AParent: TWinControl; const ACaption: string;
-  AClick: TNotifyEvent): TButton;
-begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.OnClick := AClick;
-  Result.Width := ScaleValue(100);
-  Result.Top := ScaleValue(cGap);
-  Result.Height := ScaleValue(28);
-  Result.Anchors := [akTop, akRight];
-end;
-
-function TAtlasExtractMembersDialog.AddLabeled(AParent: TWinControl; const ACaption: string; ATop: Integer;
-  AControl: TWinControl): Integer;
-var
-  mCaption: TLabel;
-begin
-  mCaption := TLabel.Create(Self);
-  mCaption.Parent := AParent;
-  mCaption.Caption := ACaption;
-  mCaption.SetBounds(ScaleValue(cGap), ATop + ScaleValue(3), ScaleValue(110), ScaleValue(20));
-  mCaption.FocusControl := AControl;
-  AControl.Parent := AParent;
-  AControl.SetBounds(ScaleValue(120), ATop, ScaleValue(cDialogWidth - 120 - cGap), ScaleValue(23));
-  AControl.Anchors := [akLeft, akTop, akRight];
-  Result := ATop + ScaleValue(28);
-end;
-
-procedure TAtlasExtractMembersDialog.DoShow;
-begin
-  inherited;
-  // Liste und Auswahlfeld brauchen ein Fenster: erst hier füllen.
-  if FModel.IsMove and (FList.Items.Count = 0) then
-  begin
-    FUpdating := True;
-    try
-      if FTargetList <> nil then
-      begin
-        FillTargetList(FTargetList, FModel);
-      end
-      else
-      begin
-        FillTargetBox(FTarget, FModel);
-      end;
-    finally
-      FUpdating := False;
-    end;
-    FillList;
-  end;
-  if (FUnit <> nil) and (FUnit.Items.Count = 0) then
-  begin
-    FUpdating := True;
-    try
-      FillUnits(FUnit, FModel);
-    finally
-      FUpdating := False;
-    end;
-    FillList;
-  end;
-  if FName <> nil then
-  begin
-    FName.SelectAll;
-  end;
-end;
-
-procedure TAtlasExtractMembersDialog.CheckAllClick(Sender: TObject);
-begin
-  FModel.CheckAll((Sender as TComponent).Tag = 1);
-  FillList;
-end;
-
 procedure TAtlasExtractMembersDialog.FillList;
 var
   mIndex, mSelected: Integer;
@@ -550,6 +544,16 @@ begin
   Refresh;
 end;
 
+procedure TAtlasExtractMembersDialog.Refresh;
+var
+  mProblem: TAtlasExtractionProblem;
+  mSubject: string;
+begin
+  mProblem := FModel.Validate(mSubject);
+  FError.Caption := ProblemText(FModel, mProblem, mSubject);
+  FOk.Enabled := mProblem = TAtlasExtractionProblem.None;
+end;
+
 /// <summary>„Nur abstrakt“ nach der markierten Methode.</summary>
 procedure TAtlasExtractMembersDialog.ShowMode;
 var
@@ -575,16 +579,6 @@ begin
   finally
     FUpdating := False;
   end;
-end;
-
-procedure TAtlasExtractMembersDialog.Refresh;
-var
-  mProblem: TAtlasExtractionProblem;
-  mSubject: string;
-begin
-  mProblem := FModel.Validate(mSubject);
-  FError.Caption := ProblemText(FModel, mProblem, mSubject);
-  FOk.Enabled := mProblem = TAtlasExtractionProblem.None;
 end;
 
 procedure TAtlasExtractMembersDialog.NameChange(Sender: TObject);
@@ -639,6 +633,12 @@ begin
     FModel.TargetUnit := FUnit.Text;
   end;
   Refresh;
+end;
+
+procedure TAtlasExtractMembersDialog.CheckAllClick(Sender: TObject);
+begin
+  FModel.CheckAll((Sender as TComponent).Tag = 1);
+  FillList;
 end;
 
 procedure TAtlasExtractMembersDialog.NeedsClick(Sender: TObject);

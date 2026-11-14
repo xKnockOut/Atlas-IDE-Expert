@@ -180,6 +180,13 @@ end;
 
 { TJsonRpcInboxItem }
 
+procedure TJsonRpcInboxItem.Release;
+begin
+  FreeAndNil(Message);
+  FreeAndNil(Error);
+  Work := nil;
+end;
+
 function TJsonRpcInboxItem.WaitedMs: Int64;
 begin
   Result := 0;
@@ -187,13 +194,6 @@ begin
   begin
     Result := Int64(TThread.GetTickCount64 - Received);
   end;
-end;
-
-procedure TJsonRpcInboxItem.Release;
-begin
-  FreeAndNil(Message);
-  FreeAndNil(Error);
-  Work := nil;
 end;
 
 { TJsonRpcInbox }
@@ -526,6 +526,28 @@ begin
   end;
 end;
 
+procedure TJsonRpcConnection.Process(const AMessage: TJSONObject; AQueueMs: Int64);
+var
+  mResponse: TJSONObject;
+begin
+  try
+    // Wartezeit im Posteingang mitgeben: Sie steht sonst nicht im Diagnoselog (#874).
+    mResponse := FDispatcher.DispatchMessage(AMessage, AQueueMs);
+  except
+    // Fehler eines Benachrichtigungs-Handlers: melden und weiterarbeiten.
+    // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Workers; Fehler wird gemeldet
+    on E: Exception do
+    begin
+      ReportError(E);
+      Exit;
+    end;
+  end;
+  if mResponse <> nil then
+  begin
+    Send(mResponse);
+  end;
+end;
+
 function TJsonRpcConnection.CreateResponder: TJsonRpcResponder;
 var
   mTransport: IJsonRpcTransport;
@@ -555,28 +577,6 @@ begin
             end;
       end;
     end;
-end;
-
-procedure TJsonRpcConnection.Process(const AMessage: TJSONObject; AQueueMs: Int64);
-var
-  mResponse: TJSONObject;
-begin
-  try
-    // Wartezeit im Posteingang mitgeben: Sie steht sonst nicht im Diagnoselog (#874).
-    mResponse := FDispatcher.DispatchMessage(AMessage, AQueueMs);
-  except
-    // Fehler eines Benachrichtigungs-Handlers: melden und weiterarbeiten.
-    // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Workers; Fehler wird gemeldet
-    on E: Exception do
-    begin
-      ReportError(E);
-      Exit;
-    end;
-  end;
-  if mResponse <> nil then
-  begin
-    Send(mResponse);
-  end;
 end;
 
 procedure TJsonRpcConnection.Run;
@@ -699,6 +699,17 @@ begin
   end;
 end;
 
+procedure TJsonRpcConnection.Stop;
+var
+  mInbox: IJsonRpcInbox;
+begin
+  FStopped := True;
+  if Supports(LockedInbox, IJsonRpcInbox, mInbox) then
+  begin
+    mInbox.Put(InboxItem(ikWakeUp));
+  end;
+end;
+
 function TJsonRpcConnection.Post(AMessage: TJSONObject): Boolean;
 var
   mInbox: IJsonRpcInbox;
@@ -732,17 +743,6 @@ begin
   begin
     mItem.Release;
     Result := False;
-  end;
-end;
-
-procedure TJsonRpcConnection.Stop;
-var
-  mInbox: IJsonRpcInbox;
-begin
-  FStopped := True;
-  if Supports(LockedInbox, IJsonRpcInbox, mInbox) then
-  begin
-    mInbox.Put(InboxItem(ikWakeUp));
   end;
 end;
 

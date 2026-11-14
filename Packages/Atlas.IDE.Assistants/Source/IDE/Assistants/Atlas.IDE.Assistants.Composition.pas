@@ -127,6 +127,23 @@ end;
 
 { TAtlasAssistantsModule }
 
+class function TAtlasAssistantsModule.Parts: TArray<IAtlasFeaturePart>;
+begin
+  Result := [
+    // Builds für KI-Assistenten (#261): nur im normalen Start und solange compiler.mcpBuild an ist.
+    TAtlasFeaturePart.When('AssistantBuilds',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.McpBuild;
+      end, BuildsStarted, StartBuilds, StopBuilds),
+    // Änderungen an offenen Dateien (#397): nur im normalen Start und solange assistants.edit an ist.
+    TAtlasFeaturePart.When('AssistantEdits',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsEdit;
+      end, EditsStarted, StartEdits, StopEdits)];
+end;
+
 function TAtlasAssistantsModule.Info: TAtlasModuleInfo;
 begin
   // Wie bisher: Aufträge nimmt die IDE nur im normalen Start an.
@@ -147,23 +164,6 @@ end;
 function TAtlasAssistantsModule.IsActive: Boolean;
 begin
   Result := FActive;
-end;
-
-class function TAtlasAssistantsModule.Parts: TArray<IAtlasFeaturePart>;
-begin
-  Result := [
-    // Builds für KI-Assistenten (#261): nur im normalen Start und solange compiler.mcpBuild an ist.
-    TAtlasFeaturePart.When('AssistantBuilds',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.McpBuild;
-      end, BuildsStarted, StartBuilds, StopBuilds),
-    // Änderungen an offenen Dateien (#397): nur im normalen Start und solange assistants.edit an ist.
-    TAtlasFeaturePart.When('AssistantEdits',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.AssistantsEdit;
-      end, EditsStarted, StartEdits, StopEdits)];
 end;
 
 class function TAtlasAssistantsModule.RegisterModule: Boolean;

@@ -51,6 +51,8 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Lsp.DataFlow.Syntax;
 
+{ TDataFlowFiles }
+
 constructor TDataFlowFiles.Create(const ARequest: TDataFlowRequest);
 var
   mFileName: string;
@@ -82,19 +84,6 @@ begin
   inherited;
 end;
 
-function TDataFlowFiles.TextOf(const AFileName: string): string;
-begin
-  if FTexts.TryGetValue(AnsiUpperCase(AFileName), Result) then
-  begin
-    Exit;
-  end;
-  if not (Assigned(FReadText) and FReadText(AFileName, Result)) then
-  begin
-    Result := '';
-  end;
-  FTexts.Add(AnsiUpperCase(AFileName), Result);
-end;
-
 function TDataFlowFiles.TreeOf(const AFileName: string): TSyntaxTree;
 var
   mText: string;
@@ -118,6 +107,19 @@ begin
     Result := TSyntaxTreeCache.Parse(mText);
     FTrees.Add(AnsiUpperCase(AFileName), Result);
   end;
+end;
+
+function TDataFlowFiles.TextOf(const AFileName: string): string;
+begin
+  if FTexts.TryGetValue(AnsiUpperCase(AFileName), Result) then
+  begin
+    Exit;
+  end;
+  if not (Assigned(FReadText) and FReadText(AFileName, Result)) then
+  begin
+    Result := '';
+  end;
+  FTexts.Add(AnsiUpperCase(AFileName), Result);
 end;
 
 function TDataFlowFiles.LineText(const AFileName: string; ALine: Integer): string;

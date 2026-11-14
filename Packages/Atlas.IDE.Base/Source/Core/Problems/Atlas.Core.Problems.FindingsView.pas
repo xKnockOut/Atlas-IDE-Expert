@@ -187,6 +187,97 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasFindingsSource.SetFilter(const AValue: TAtlasFindingFilter);
+begin
+  FFilter := AValue;
+  Rebuild;
+end;
+
+procedure TAtlasFindingsSource.SetOpenFirst(AValue: Boolean);
+begin
+  FOpenFirst := AValue;
+  Rebuild;
+end;
+
+procedure TAtlasFindingsSource.SetClosedUnits(AValue: TAtlasClosedUnits);
+begin
+  FClosedUnits := AValue;
+  Rebuild;
+end;
+
+procedure TAtlasFindingsSource.SetShowCleanActive(AValue: Boolean);
+begin
+  FShowCleanActive := AValue;
+  Rebuild;
+end;
+
+function TAtlasFindingsSource.TierOf(const AFileName: string): TAtlasFindingTier;
+var
+  mKey: string;
+begin
+  mKey := TAtlasFindings.UnitKey(AFileName);
+  if (FActiveKey <> '') and (mKey = FActiveKey) then
+  begin
+    Result := TAtlasFindingTier.Active;
+  end
+  else if FOpenKeys.ContainsKey(mKey) then
+  begin
+    Result := TAtlasFindingTier.Open;
+  end
+  else
+  begin
+    Result := TAtlasFindingTier.Closed;
+  end;
+end;
+
+procedure TAtlasFindingsSource.AssignTiers;
+var
+  mIndex: Integer;
+  mLast: string;
+  mTier: TAtlasFindingTier;
+begin
+  // Befunde einer Datei stehen hintereinander: die Stufe je Datei nur einmal bestimmen.
+  mLast := '';
+  mTier := TAtlasFindingTier.Closed;
+  for mIndex := 0 to High(FFindings) do
+  begin
+    if (mIndex = 0) or (FFindings[mIndex].FileName <> mLast) then
+    begin
+      mLast := FFindings[mIndex].FileName;
+      mTier := TierOf(mLast);
+    end;
+    FFindings[mIndex].Tier := mTier;
+  end;
+end;
+
+function TAtlasFindingsSource.HiddenByTier(const AFinding: TAtlasFinding): Boolean;
+begin
+  Result := TiersActive and (FClosedUnits = TAtlasClosedUnits.Hidden) and
+    (AFinding.Tier = TAtlasFindingTier.Closed);
+end;
+
+function TAtlasFindingsSource.IsActiveInScope: Boolean;
+var
+  mName: string;
+begin
+  if FActiveKey = '' then
+  begin
+    Exit(False);
+  end;
+  if (FFilter.Scope = TAtlasFindingScope.CurrentFile) or (FFilter.Files = nil) then
+  begin
+    Exit(True);
+  end;
+  for mName in FFilter.Files do
+  begin
+    if TAtlasFindings.UnitKey(mName) = FActiveKey then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 procedure TAtlasFindingsSource.SetFindings(const AFindings: TArray<TAtlasFinding>);
 var
   mFinding: TAtlasFinding;
@@ -242,72 +333,9 @@ begin
   Rebuild;
 end;
 
-function TAtlasFindingsSource.TierOf(const AFileName: string): TAtlasFindingTier;
-var
-  mKey: string;
-begin
-  mKey := TAtlasFindings.UnitKey(AFileName);
-  if (FActiveKey <> '') and (mKey = FActiveKey) then
-  begin
-    Result := TAtlasFindingTier.Active;
-  end
-  else if FOpenKeys.ContainsKey(mKey) then
-  begin
-    Result := TAtlasFindingTier.Open;
-  end
-  else
-  begin
-    Result := TAtlasFindingTier.Closed;
-  end;
-end;
-
-procedure TAtlasFindingsSource.AssignTiers;
-var
-  mIndex: Integer;
-  mLast: string;
-  mTier: TAtlasFindingTier;
-begin
-  // Befunde einer Datei stehen hintereinander: die Stufe je Datei nur einmal bestimmen.
-  mLast := '';
-  mTier := TAtlasFindingTier.Closed;
-  for mIndex := 0 to High(FFindings) do
-  begin
-    if (mIndex = 0) or (FFindings[mIndex].FileName <> mLast) then
-    begin
-      mLast := FFindings[mIndex].FileName;
-      mTier := TierOf(mLast);
-    end;
-    FFindings[mIndex].Tier := mTier;
-  end;
-end;
-
 function TAtlasFindingsSource.TiersActive: Boolean;
 begin
   Result := FOpenFirst and (FFilter.Scope <> TAtlasFindingScope.CurrentFile);
-end;
-
-function TAtlasFindingsSource.HiddenByTier(const AFinding: TAtlasFinding): Boolean;
-begin
-  Result := TiersActive and (FClosedUnits = TAtlasClosedUnits.Hidden) and
-    (AFinding.Tier = TAtlasFindingTier.Closed);
-end;
-
-procedure TAtlasFindingsSource.SetOpenFirst(AValue: Boolean);
-begin
-  FOpenFirst := AValue;
-  Rebuild;
-end;
-
-procedure TAtlasFindingsSource.SetClosedUnits(AValue: TAtlasClosedUnits);
-begin
-  FClosedUnits := AValue;
-  Rebuild;
-end;
-
-procedure TAtlasFindingsSource.SetShowCleanActive(AValue: Boolean);
-begin
-  FShowCleanActive := AValue;
-  Rebuild;
 end;
 
 procedure TAtlasFindingsSource.ClearNew;
@@ -318,34 +346,6 @@ begin
   end;
   FNew.Clear;
   Rebuild;
-end;
-
-procedure TAtlasFindingsSource.SetFilter(const AValue: TAtlasFindingFilter);
-begin
-  FFilter := AValue;
-  Rebuild;
-end;
-
-function TAtlasFindingsSource.IsActiveInScope: Boolean;
-var
-  mName: string;
-begin
-  if FActiveKey = '' then
-  begin
-    Exit(False);
-  end;
-  if (FFilter.Scope = TAtlasFindingScope.CurrentFile) or (FFilter.Files = nil) then
-  begin
-    Exit(True);
-  end;
-  for mName in FFilter.Files do
-  begin
-    if TAtlasFindings.UnitKey(mName) = FActiveKey then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 function TAtlasFindingsSource.Finding(AIndex: Integer): TAtlasFinding;
@@ -367,28 +367,6 @@ begin
   Rebuild;
 end;
 
-procedure TAtlasFindingsSorted.SortBy(AColumn: TAtlasFindingColumn);
-begin
-  if FSortCustom and (FSortColumn = AColumn) then
-  begin
-    FSortDescending := not FSortDescending;
-  end
-  else
-  begin
-    FSortCustom := True;
-    FSortColumn := AColumn;
-    FSortDescending := False;
-  end;
-  Rebuild;
-end;
-
-procedure TAtlasFindingsSorted.ResetSort;
-begin
-  FSortCustom := False;
-  FSortDescending := False;
-  Rebuild;
-end;
-
 function TAtlasFindingsSorted.GroupKeyOf(const AFinding: TAtlasFinding): string;
 begin
   case FGrouping of
@@ -400,6 +378,59 @@ begin
       Result := 'category:' + IntToStr(Ord(AFinding.Category));
   else
     Result := '';
+  end;
+end;
+
+function TAtlasFindingsSorted.CompareGroups(const AFirstA, AFirstB: TAtlasFinding;
+  const AKeyA, AKeyB: string): Integer;
+begin
+  // Gruppen nach Datei, Regel bzw. Kategorie; innerhalb der Gruppe die gewählte Sortierung. Nach Datei mit
+  // Offene-zuerst (#1108) kommt die Stufe vor dem Namen: aktive Unit, geöffnete und nicht geöffnete je
+  // alphabetisch, damit beim Editorwechsel nur die angepinnte Gruppe springt.
+  Result := 0;
+  if TiersByFile then
+  begin
+    Result := Ord(AFirstA.Tier) - Ord(AFirstB.Tier);
+  end;
+  if Result = 0 then
+  begin
+    case FGrouping of
+      TAtlasFindingGrouping.ByFile:
+        Result := CompareText(ExtractFileName(AFirstA.FileName), ExtractFileName(AFirstB.FileName));
+      TAtlasFindingGrouping.ByRule:
+        Result := CompareText(AFirstA.Problem.Code, AFirstB.Problem.Code);
+    else
+      Result := Ord(AFirstA.Category) - Ord(AFirstB.Category);
+    end;
+  end;
+  if Result = 0 then
+  begin
+    Result := CompareText(AKeyA, AKeyB);
+  end;
+end;
+
+function TAtlasFindingsSorted.SortedMatches: TArray<Integer>;
+var
+  mIndex: Integer;
+  mOrder: TList<Integer>;
+begin
+  mOrder := TList<Integer>.Create;
+  try
+    for mIndex := 0 to High(FFindings) do
+    begin
+      if FFilter.Matches(FFindings[mIndex]) and not HiddenByTier(FFindings[mIndex]) then
+      begin
+        mOrder.Add(mIndex);
+      end;
+    end;
+    mOrder.Sort(TComparer<Integer>.Construct(
+      function(const A, B: Integer): Integer
+      begin
+        Result := Compare(FFindings[A], FFindings[B]);
+      end));
+    Result := mOrder.ToArray;
+  finally
+    mOrder.Free;
   end;
 end;
 
@@ -489,57 +520,26 @@ begin
   Result := TiersActive and (FGrouping = TAtlasFindingGrouping.ByFile);
 end;
 
-function TAtlasFindingsSorted.CompareGroups(const AFirstA, AFirstB: TAtlasFinding;
-  const AKeyA, AKeyB: string): Integer;
+procedure TAtlasFindingsSorted.SortBy(AColumn: TAtlasFindingColumn);
 begin
-  // Gruppen nach Datei, Regel bzw. Kategorie; innerhalb der Gruppe die gewählte Sortierung. Nach Datei mit
-  // Offene-zuerst (#1108) kommt die Stufe vor dem Namen: aktive Unit, geöffnete und nicht geöffnete je
-  // alphabetisch, damit beim Editorwechsel nur die angepinnte Gruppe springt.
-  Result := 0;
-  if TiersByFile then
+  if FSortCustom and (FSortColumn = AColumn) then
   begin
-    Result := Ord(AFirstA.Tier) - Ord(AFirstB.Tier);
-  end;
-  if Result = 0 then
+    FSortDescending := not FSortDescending;
+  end
+  else
   begin
-    case FGrouping of
-      TAtlasFindingGrouping.ByFile:
-        Result := CompareText(ExtractFileName(AFirstA.FileName), ExtractFileName(AFirstB.FileName));
-      TAtlasFindingGrouping.ByRule:
-        Result := CompareText(AFirstA.Problem.Code, AFirstB.Problem.Code);
-    else
-      Result := Ord(AFirstA.Category) - Ord(AFirstB.Category);
-    end;
+    FSortCustom := True;
+    FSortColumn := AColumn;
+    FSortDescending := False;
   end;
-  if Result = 0 then
-  begin
-    Result := CompareText(AKeyA, AKeyB);
-  end;
+  Rebuild;
 end;
 
-function TAtlasFindingsSorted.SortedMatches: TArray<Integer>;
-var
-  mIndex: Integer;
-  mOrder: TList<Integer>;
+procedure TAtlasFindingsSorted.ResetSort;
 begin
-  mOrder := TList<Integer>.Create;
-  try
-    for mIndex := 0 to High(FFindings) do
-    begin
-      if FFilter.Matches(FFindings[mIndex]) and not HiddenByTier(FFindings[mIndex]) then
-      begin
-        mOrder.Add(mIndex);
-      end;
-    end;
-    mOrder.Sort(TComparer<Integer>.Construct(
-      function(const A, B: Integer): Integer
-      begin
-        Result := Compare(FFindings[A], FFindings[B]);
-      end));
-    Result := mOrder.ToArray;
-  finally
-    mOrder.Free;
-  end;
+  FSortCustom := False;
+  FSortDescending := False;
+  Rebuild;
 end;
 
 /// <summary>AOrder je Stufe aufgeteilt, Reihenfolge bleibt.</summary>
@@ -585,22 +585,67 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasFindingsView.BeginUpdate;
+function TAtlasFindingsView.GetSelectedRow: Integer;
+var
+  mIndex: Integer;
 begin
-  Inc(FUpdateCount);
-end;
-
-procedure TAtlasFindingsView.EndUpdate;
-begin
-  if FUpdateCount = 0 then
+  Result := -1;
+  if FSelectedKey = '' then
   begin
     Exit;
   end;
-  Dec(FUpdateCount);
-  if (FUpdateCount = 0) and FRebuildPending then
+  for mIndex := 0 to High(FRows) do
   begin
-    Rebuild;
+    if FRows[mIndex].IsSection then
+    begin
+      Continue;
+    end
+    else if FRows[mIndex].IsGroup then
+    begin
+      if FSelectedKey = 'group:' + FRows[mIndex].GroupKey then
+      begin
+        Exit(mIndex);
+      end;
+    end
+    else if FFindings[FRows[mIndex].Finding].Key = FSelectedKey then
+    begin
+      Exit(mIndex);
+    end;
   end;
+end;
+
+procedure TAtlasFindingsView.Rebuild;
+var
+  mOrder: TArray<Integer>;
+  mOfTier: TAtlasFindingTierMembers;
+  mRows: TList<TAtlasFindingRow>;
+begin
+  FCountsValid := False;
+  if FUpdateCount > 0 then
+  begin
+    FRebuildPending := True;
+    Exit;
+  end;
+  FRebuildPending := False;
+  mOrder := SortedMatches;
+  mOfTier := SplitByTier(FFindings, mOrder);
+  // Zeilen über Listen statt Array + [x]: Mit zehntausenden Befunden wäre jeder Neuaufbau quadratisch.
+  mRows := TList<TAtlasFindingRow>.Create;
+  try
+    if FGrouping = TAtlasFindingGrouping.None then
+    begin
+      RebuildFlat(mOrder, mOfTier, mRows);
+    end
+    else
+    begin
+      RebuildGrouped(mOrder, mOfTier, mRows);
+    end;
+    FRows := mRows.ToArray;
+  finally
+    mRows.Free;
+  end;
+  // Zugeklappte Gruppen, die gerade keine Befunde haben, bleiben gemerkt: Kommen ihre Befunde wieder, bleiben sie
+  // zugeklappt.
 end;
 
 function TAtlasFindingsView.FindingRow(AIndex: Integer; const AGroupKey: string): TAtlasFindingRow;
@@ -691,40 +736,6 @@ begin
   Result.Expanded := not mCollapsed;
 end;
 
-procedure TAtlasFindingsView.Rebuild;
-var
-  mOrder: TArray<Integer>;
-  mOfTier: TAtlasFindingTierMembers;
-  mRows: TList<TAtlasFindingRow>;
-begin
-  FCountsValid := False;
-  if FUpdateCount > 0 then
-  begin
-    FRebuildPending := True;
-    Exit;
-  end;
-  FRebuildPending := False;
-  mOrder := SortedMatches;
-  mOfTier := SplitByTier(FFindings, mOrder);
-  // Zeilen über Listen statt Array + [x]: Mit zehntausenden Befunden wäre jeder Neuaufbau quadratisch.
-  mRows := TList<TAtlasFindingRow>.Create;
-  try
-    if FGrouping = TAtlasFindingGrouping.None then
-    begin
-      RebuildFlat(mOrder, mOfTier, mRows);
-    end
-    else
-    begin
-      RebuildGrouped(mOrder, mOfTier, mRows);
-    end;
-    FRows := mRows.ToArray;
-  finally
-    mRows.Free;
-  end;
-  // Zugeklappte Gruppen, die gerade keine Befunde haben, bleiben gemerkt: Kommen ihre Befunde wieder, bleiben sie
-  // zugeklappt.
-end;
-
 procedure TAtlasFindingsView.RebuildFlat(const AOrder: TArray<Integer>; const AOfTier: TAtlasFindingTierMembers;
   ARows: TList<TAtlasFindingRow>);
 var
@@ -750,6 +761,26 @@ begin
       ARows.Add(SectionRow(mTier, AOfTier[mTier]));
     end;
     ARows.Add(FindingRow(mIndex, ''));
+  end;
+end;
+
+function TAtlasFindingsView.GroupMembers(const AGroupKey: string): TArray<Integer>;
+var
+  mIndex: Integer;
+  mList: TList<Integer>;
+begin
+  mList := TList<Integer>.Create;
+  try
+    for mIndex in FVisible do
+    begin
+      if GroupKeyOf(FFindings[mIndex]) = AGroupKey then
+      begin
+        mList.Add(mIndex);
+      end;
+    end;
+    Result := mList.ToArray;
+  finally
+    mList.Free;
   end;
 end;
 
@@ -833,19 +864,21 @@ begin
   end;
 end;
 
-function TAtlasFindingsView.Rows: TArray<TAtlasFindingRow>;
+procedure TAtlasFindingsView.BeginUpdate;
 begin
-  Result := FRows;
+  Inc(FUpdateCount);
 end;
 
-function TAtlasFindingsView.Visible: TArray<TAtlasFinding>;
-var
-  mIndex: Integer;
+procedure TAtlasFindingsView.EndUpdate;
 begin
-  SetLength(Result, Length(FVisible));
-  for mIndex := 0 to High(FVisible) do
+  if FUpdateCount = 0 then
   begin
-    Result[mIndex] := FFindings[FVisible[mIndex]];
+    Exit;
+  end;
+  Dec(FUpdateCount);
+  if (FUpdateCount = 0) and FRebuildPending then
+  begin
+    Rebuild;
   end;
 end;
 
@@ -859,6 +892,8 @@ type
     procedure Init;
     procedure Done;
   end;
+
+{ TCountUnits }
 
 procedure TCountUnits.Init;
 begin
@@ -915,6 +950,22 @@ begin
   if AInKinds then
   begin
     AUnits.Files.AddOrSetValue(AnsiLowerCase(AFinding.FileName), True);
+  end;
+end;
+
+function TAtlasFindingsView.Rows: TArray<TAtlasFindingRow>;
+begin
+  Result := FRows;
+end;
+
+function TAtlasFindingsView.Visible: TArray<TAtlasFinding>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(FVisible));
+  for mIndex := 0 to High(FVisible) do
+  begin
+    Result[mIndex] := FFindings[FVisible[mIndex]];
   end;
 end;
 
@@ -993,48 +1044,6 @@ begin
   end;
 end;
 
-function TAtlasFindingsView.GetSelectedRow: Integer;
-var
-  mIndex: Integer;
-begin
-  Result := -1;
-  if FSelectedKey = '' then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to High(FRows) do
-  begin
-    if FRows[mIndex].IsSection then
-    begin
-      Continue;
-    end
-    else if FRows[mIndex].IsGroup then
-    begin
-      if FSelectedKey = 'group:' + FRows[mIndex].GroupKey then
-      begin
-        Exit(mIndex);
-      end;
-    end
-    else if FFindings[FRows[mIndex].Finding].Key = FSelectedKey then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-end;
-
-function TAtlasFindingsView.SelectedFinding(out AFinding: TAtlasFinding): Boolean;
-var
-  mRow: Integer;
-begin
-  AFinding := Default(TAtlasFinding);
-  mRow := GetSelectedRow;
-  Result := (mRow >= 0) and not FRows[mRow].IsGroup and not FRows[mRow].IsSection;
-  if Result then
-  begin
-    AFinding := FFindings[FRows[mRow].Finding];
-  end;
-end;
-
 function TAtlasFindingsView.SelectAt(const AFileName: string; ALine: Integer): Boolean;
 var
   mIndex: Integer;
@@ -1106,26 +1115,6 @@ begin
   Result := True;
 end;
 
-function TAtlasFindingsView.GroupMembers(const AGroupKey: string): TArray<Integer>;
-var
-  mIndex: Integer;
-  mList: TList<Integer>;
-begin
-  mList := TList<Integer>.Create;
-  try
-    for mIndex in FVisible do
-    begin
-      if GroupKeyOf(FFindings[mIndex]) = AGroupKey then
-      begin
-        mList.Add(mIndex);
-      end;
-    end;
-    Result := mList.ToArray;
-  finally
-    mList.Free;
-  end;
-end;
-
 function TAtlasFindingsView.FindingsOfRows(const ARows: TArray<Integer>): TArray<TAtlasFinding>;
 var
   mRow, mIndex: Integer;
@@ -1163,6 +1152,19 @@ begin
   finally
     mList.Free;
     mDone.Free;
+  end;
+end;
+
+function TAtlasFindingsView.SelectedFinding(out AFinding: TAtlasFinding): Boolean;
+var
+  mRow: Integer;
+begin
+  AFinding := Default(TAtlasFinding);
+  mRow := GetSelectedRow;
+  Result := (mRow >= 0) and not FRows[mRow].IsGroup and not FRows[mRow].IsSection;
+  if Result then
+  begin
+    AFinding := FFindings[FRows[mRow].Finding];
   end;
 end;
 

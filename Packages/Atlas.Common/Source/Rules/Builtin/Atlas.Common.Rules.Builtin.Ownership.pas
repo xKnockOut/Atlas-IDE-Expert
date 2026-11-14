@@ -936,54 +936,6 @@ end;
 
 { TCreateWithoutAssignmentScan }
 
-/// <summary>Hat ein Konstruktor Create der Klasse AClassName einen var- oder out-Parameter? Dann gibt er das Objekt
-/// selbst weiter (FP-Prüfung 28.10.2026).</summary>
-function TCreateWithoutAssignmentScan.PassesItselfOut(const AClassName: string): Boolean;
-var
-  mSymbol: TIndexSymbol;
-  mSignature: string;
-begin
-  for mSymbol in LocalAndIndexSymbols(FAncestry, FContext.Index, 'Create') do
-  begin
-    mSignature := ' ' + LowerCase(mSymbol.Signature).Replace('(', ' ').Replace(';', ' ').Replace(#9, ' ');
-    if (mSymbol.Kind = TIndexSymbolKind.Constructor_) and
-      (SameText(mSymbol.Container, AClassName) or EndsText('.' + AClassName, mSymbol.Container)) and
-      (mSignature.Contains(' out ') or mSignature.Contains(' var ')) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-/// <summary>Steht AStatement in einer anonymen Methode, die an Assert.WillRaise… geht? Dort soll Create
-/// scheitern (FP-Prüfung 28.10.2026).</summary>
-function TCreateWithoutAssignmentScan.ExpectedToRaise(AStatement: TSyntaxNode): Boolean;
-var
-  mNode, mCall: TSyntaxNode;
-begin
-  Result := False;
-  mNode := AStatement.Parent;
-  while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.RoutineDecl) do
-  begin
-    if mNode.Kind = TSyntaxKind.AnonymousMethod then
-    begin
-      mCall := mNode.Parent;
-      while (mCall <> nil) and (mCall.Kind = TSyntaxKind.ParenExpr) do
-      begin
-        mCall := mCall.Parent;
-      end;
-      if (mCall <> nil) and (mCall.Kind = TSyntaxKind.Call) and (mCall.ChildCount > 0) and
-        ContainsText(Copy(FContext.Text, mCall[0].StartOffset + 1, mCall[0].EndOffset - mCall[0].StartOffset),
-        'WillRaise') then
-      begin
-        Exit(True);
-      end;
-    end;
-    mNode := mNode.Parent;
-  end;
-end;
-
 function TCreateWithoutAssignmentScan.IsSelfRegistering(const AClassName: string): Boolean;
 var
   mPattern: string;
@@ -1119,6 +1071,54 @@ begin
   end;
   Result := not ACall.HasArguments or SameText(ACall.FirstArgument, 'nil') or ((mKind = TCreatedKind.Plain) and
     not MatchText(ACall.FirstArgument, ['Self', 'Owner', 'AOwner', 'Application']));
+end;
+
+/// <summary>Hat ein Konstruktor Create der Klasse AClassName einen var- oder out-Parameter? Dann gibt er das Objekt
+/// selbst weiter (FP-Prüfung 28.10.2026).</summary>
+function TCreateWithoutAssignmentScan.PassesItselfOut(const AClassName: string): Boolean;
+var
+  mSymbol: TIndexSymbol;
+  mSignature: string;
+begin
+  for mSymbol in LocalAndIndexSymbols(FAncestry, FContext.Index, 'Create') do
+  begin
+    mSignature := ' ' + LowerCase(mSymbol.Signature).Replace('(', ' ').Replace(';', ' ').Replace(#9, ' ');
+    if (mSymbol.Kind = TIndexSymbolKind.Constructor_) and
+      (SameText(mSymbol.Container, AClassName) or EndsText('.' + AClassName, mSymbol.Container)) and
+      (mSignature.Contains(' out ') or mSignature.Contains(' var ')) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Steht AStatement in einer anonymen Methode, die an Assert.WillRaise… geht? Dort soll Create
+/// scheitern (FP-Prüfung 28.10.2026).</summary>
+function TCreateWithoutAssignmentScan.ExpectedToRaise(AStatement: TSyntaxNode): Boolean;
+var
+  mNode, mCall: TSyntaxNode;
+begin
+  Result := False;
+  mNode := AStatement.Parent;
+  while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    if mNode.Kind = TSyntaxKind.AnonymousMethod then
+    begin
+      mCall := mNode.Parent;
+      while (mCall <> nil) and (mCall.Kind = TSyntaxKind.ParenExpr) do
+      begin
+        mCall := mCall.Parent;
+      end;
+      if (mCall <> nil) and (mCall.Kind = TSyntaxKind.Call) and (mCall.ChildCount > 0) and
+        ContainsText(Copy(FContext.Text, mCall[0].StartOffset + 1, mCall[0].EndOffset - mCall[0].StartOffset),
+        'WillRaise') then
+      begin
+        Exit(True);
+      end;
+    end;
+    mNode := mNode.Parent;
+  end;
 end;
 
 procedure TCreateWithoutAssignmentScan.ReportCreate(ARoutine, AStatement: TSyntaxNode; const ACall: TCreateCall);
@@ -1608,20 +1608,6 @@ begin
     cTexts[TOwnershipText.OwnedFreedTitle].Text);
 end;
 
-class function TOwnedItemFreedRule.CreatesOwning(const ATypeName, AArguments: string;
-  out AIsDictionary: Boolean): Boolean;
-begin
-  AIsDictionary := ContainsText(ATypeName, 'TObjectDictionary');
-  if AIsDictionary then
-  begin
-    Result := ContainsText(AArguments, 'doOwnsValues');
-  end
-  else
-  begin
-    Result := not TRegEx.IsMatch(AArguments, '\bFalse\b', [roIgnoreCase]);
-  end;
-end;
-
 procedure TOwnedItemFreedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mScan: TOwnedItemFreedScan;
@@ -1639,12 +1625,42 @@ begin
   end;
 end;
 
+class function TOwnedItemFreedRule.CreatesOwning(const ATypeName, AArguments: string;
+  out AIsDictionary: Boolean): Boolean;
+begin
+  AIsDictionary := ContainsText(ATypeName, 'TObjectDictionary');
+  if AIsDictionary then
+  begin
+    Result := ContainsText(AArguments, 'doOwnsValues');
+  end
+  else
+  begin
+    Result := not TRegEx.IsMatch(AArguments, '\bFalse\b', [roIgnoreCase]);
+  end;
+end;
+
 { TCreateWithoutAssignmentRule }
 
 function TCreateWithoutAssignmentRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cCreateWithoutAssignmentRuleId, TRuleSeverity.Warning,
     cTexts[TOwnershipText.LostTitle].Text);
+end;
+
+procedure TCreateWithoutAssignmentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TCreateWithoutAssignmentScan;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Create') then
+  begin
+    Exit;
+  end;
+  mScan := TCreateWithoutAssignmentScan.Create(AContext, AReport);
+  try
+    mScan.Run;
+  finally
+    mScan.Free;
+  end;
 end;
 
 class function TCreateWithoutAssignmentRule.LooksLikeType(const AName: string): Boolean;
@@ -1670,41 +1686,12 @@ begin
   end;
 end;
 
-procedure TCreateWithoutAssignmentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mScan: TCreateWithoutAssignmentScan;
-begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Create') then
-  begin
-    Exit;
-  end;
-  mScan := TCreateWithoutAssignmentScan.Create(AContext, AReport);
-  try
-    mScan.Run;
-  finally
-    mScan.Free;
-  end;
-end;
-
 { TSelfAsInterfaceInConstructorRule }
 
 function TSelfAsInterfaceInConstructorRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cSelfAsInterfaceInConstructorRuleId, TRuleSeverity.Warning,
     cTexts[TOwnershipText.SelfInterfaceTitle].Text);
-end;
-
-class function TSelfAsInterfaceInConstructorRule.IsInterfaceType(const AType: string): Boolean;
-var
-  mName: string;
-begin
-  mName := Trim(AType);
-  if Pos('<', mName) > 0 then
-  begin
-    mName := Copy(mName, 1, Pos('<', mName) - 1);
-  end;
-  mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
-  Result := (Length(mName) >= 2) and (mName[1] = 'I') and CharInSet(mName[2], ['A'..'Z']);
 end;
 
 procedure TSelfAsInterfaceInConstructorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1721,6 +1708,19 @@ begin
   finally
     mScan.Free;
   end;
+end;
+
+class function TSelfAsInterfaceInConstructorRule.IsInterfaceType(const AType: string): Boolean;
+var
+  mName: string;
+begin
+  mName := Trim(AType);
+  if Pos('<', mName) > 0 then
+  begin
+    mName := Copy(mName, 1, Pos('<', mName) - 1);
+  end;
+  mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
+  Result := (Length(mName) >= 2) and (mName[1] = 'I') and CharInSet(mName[2], ['A'..'Z']);
 end;
 
 procedure RegisterOwnershipRules(const ARegistry: TRuleRegistry);

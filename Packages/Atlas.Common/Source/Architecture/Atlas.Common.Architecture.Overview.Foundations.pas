@@ -104,26 +104,7 @@ begin
   end;
 end;
 
-class procedure TFoundationSeparation.Renumber(var AValues: TArray<Integer>);
-var
-  mMap: TDictionary<Integer, Integer>;
-  mIndex, mNumber: Integer;
-begin
-  mMap := TDictionary<Integer, Integer>.Create;
-  try
-    for mIndex := 0 to High(AValues) do
-    begin
-      if not mMap.TryGetValue(AValues[mIndex], mNumber) then
-      begin
-        mNumber := mMap.Count;
-        mMap.Add(AValues[mIndex], mNumber);
-      end;
-      AValues[mIndex] := mNumber;
-    end;
-  finally
-    mMap.Free;
-  end;
-end;
+{ TFoundationSeparation }
 
 constructor TFoundationSeparation.Create(ANodeCount: Integer; const AEdges: TArray<TLouvainEdge>;
   const ASettings: TFoundationSettings);
@@ -439,6 +420,27 @@ begin
     AttachAll;
   end;
   ACommunities := FSecond;
+end;
+
+class procedure TFoundationSeparation.Renumber(var AValues: TArray<Integer>);
+var
+  mMap: TDictionary<Integer, Integer>;
+  mIndex, mNumber: Integer;
+begin
+  mMap := TDictionary<Integer, Integer>.Create;
+  try
+    for mIndex := 0 to High(AValues) do
+    begin
+      if not mMap.TryGetValue(AValues[mIndex], mNumber) then
+      begin
+        mNumber := mMap.Count;
+        mMap.Add(AValues[mIndex], mNumber);
+      end;
+      AValues[mIndex] := mNumber;
+    end;
+  finally
+    mMap.Free;
+  end;
 end;
 
 end.

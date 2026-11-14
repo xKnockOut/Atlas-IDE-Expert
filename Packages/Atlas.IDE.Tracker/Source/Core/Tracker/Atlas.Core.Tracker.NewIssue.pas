@@ -627,16 +627,6 @@ begin
   Result := Result + ' ' + KeyComment(AKey);
 end;
 
-class function TAtlasNewIssues.ShortTitle(const AText: string): string;
-begin
-  Result := Trim(StringReplace(StringReplace(StringReplace(AText, #13#10, ' ', [rfReplaceAll]), #10, ' ',
-    [rfReplaceAll]), #9, ' ', [rfReplaceAll]));
-  if Length(Result) > cMaxTitle then
-  begin
-    Result := TrimRight(Copy(Result, 1, cMaxTitle - 1)) + '…';
-  end;
-end;
-
 class function TAtlasNewIssues.TitleOf(const AContext: TAtlasNewIssueContext): string;
 var
   mLine: string;
@@ -664,6 +654,27 @@ begin
   begin
     Result := ShortTitle(mTodo.Text);
   end;
+end;
+
+class function TAtlasNewIssues.Compose(const ADescription, ACode: string; AIncludeCode: Boolean): string;
+var
+  mCode: string;
+begin
+  Result := TrimRight(StringReplace(ADescription, #13#10, #10, [rfReplaceAll]));
+  mCode := StringReplace(ACode, #13#10, #10, [rfReplaceAll]);
+  while (mCode <> '') and CharInSet(mCode[Length(mCode)], [#10, ' ', #9]) do
+  begin
+    Delete(mCode, Length(mCode), 1);
+  end;
+  if not AIncludeCode or (Trim(mCode) = '') then
+  begin
+    Exit;
+  end;
+  if Result <> '' then
+  begin
+    Result := Result + #10#10;
+  end;
+  Result := Result + CodeBlock(mCode);
 end;
 
 /// <summary>Kleinster Einzug der nicht leeren Zeilen von AFirst bis ALast.</summary>
@@ -810,60 +821,6 @@ begin
   Result := TrimRight(Result);
 end;
 
-class function TAtlasNewIssues.Compose(const ADescription, ACode: string; AIncludeCode: Boolean): string;
-var
-  mCode: string;
-begin
-  Result := TrimRight(StringReplace(ADescription, #13#10, #10, [rfReplaceAll]));
-  mCode := StringReplace(ACode, #13#10, #10, [rfReplaceAll]);
-  while (mCode <> '') and CharInSet(mCode[Length(mCode)], [#10, ' ', #9]) do
-  begin
-    Delete(mCode, Length(mCode), 1);
-  end;
-  if not AIncludeCode or (Trim(mCode) = '') then
-  begin
-    Exit;
-  end;
-  if Result <> '' then
-  begin
-    Result := Result + #10#10;
-  end;
-  Result := Result + CodeBlock(mCode);
-end;
-
-function UnitOfLocation(const ALocation: string): string;
-var
-  mIndex: Integer;
-begin
-  Result := ALocation;
-  // "Unit1.pas:12:5" → "Unit1.pas"; Laufwerksbuchstaben gibt es in der Fundstelle nicht.
-  mIndex := Pos(':', Result);
-  if mIndex > 0 then
-  begin
-    Result := Copy(Result, 1, mIndex - 1);
-  end;
-end;
-
-class function TAtlasNewIssues.TitleOfFindings(const AFindings: TArray<TAtlasNewIssueFinding>;
-  const ALabels: TAtlasNewIssueLabels): string;
-begin
-  Result := '';
-  if Length(AFindings) = 0 then
-  begin
-    Exit;
-  end;
-  if Length(AFindings) = 1 then
-  begin
-    Result := AFindings[0].Message;
-    if AFindings[0].Rule <> '' then
-    begin
-      Result := AFindings[0].Rule + ': ' + Result;
-    end;
-    Exit(ShortTitle(Result));
-  end;
-  Result := ShortTitle(Format(ALabels.FindingsTitle, [Length(AFindings), UnitOfLocation(AFindings[0].Location)]));
-end;
-
 class function TAtlasNewIssues.DescriptionOfFindings(const AFindings: TArray<TAtlasNewIssueFinding>;
   const AContext: TAtlasNewIssueContext; const ALabels: TAtlasNewIssueLabels): string;
 var
@@ -903,6 +860,39 @@ begin
   Result := TrimRight(Result);
 end;
 
+function UnitOfLocation(const ALocation: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := ALocation;
+  // "Unit1.pas:12:5" → "Unit1.pas"; Laufwerksbuchstaben gibt es in der Fundstelle nicht.
+  mIndex := Pos(':', Result);
+  if mIndex > 0 then
+  begin
+    Result := Copy(Result, 1, mIndex - 1);
+  end;
+end;
+
+class function TAtlasNewIssues.TitleOfFindings(const AFindings: TArray<TAtlasNewIssueFinding>;
+  const ALabels: TAtlasNewIssueLabels): string;
+begin
+  Result := '';
+  if Length(AFindings) = 0 then
+  begin
+    Exit;
+  end;
+  if Length(AFindings) = 1 then
+  begin
+    Result := AFindings[0].Message;
+    if AFindings[0].Rule <> '' then
+    begin
+      Result := AFindings[0].Rule + ': ' + Result;
+    end;
+    Exit(ShortTitle(Result));
+  end;
+  Result := ShortTitle(Format(ALabels.FindingsTitle, [Length(AFindings), UnitOfLocation(AFindings[0].Location)]));
+end;
+
 class function TAtlasNewIssues.CodeOfFindings(const AFindings: TArray<TAtlasNewIssueFinding>): string;
 var
   mFinding: TAtlasNewIssueFinding;
@@ -923,6 +913,16 @@ begin
       Result := Result + '// ' + mFinding.Location + #10;
     end;
     Result := Result + Trim(mFinding.LineText);
+  end;
+end;
+
+class function TAtlasNewIssues.ShortTitle(const AText: string): string;
+begin
+  Result := Trim(StringReplace(StringReplace(StringReplace(AText, #13#10, ' ', [rfReplaceAll]), #10, ' ',
+    [rfReplaceAll]), #9, ' ', [rfReplaceAll]));
+  if Length(Result) > cMaxTitle then
+  begin
+    Result := TrimRight(Copy(Result, 1, cMaxTitle - 1)) + '…';
   end;
 end;
 
@@ -961,48 +961,6 @@ begin
   Result := Result + [AValue];
 end;
 
-class function TAtlasNewIssues.ParseNames(const AText, AName: string; out ANames: TArray<string>): Boolean;
-var
-  mRoot, mItem: TJSONValue;
-begin
-  ANames := nil;
-  mRoot := TJSONObject.ParseJSONValue(AText);
-  try
-    Result := mRoot is TJSONArray;
-    if not Result then
-    begin
-      Exit;
-    end;
-    for mItem in TJSONArray(mRoot) do
-    begin
-      if mItem is TJSONObject then
-      begin
-        ANames := AddUnique(ANames, TJsonRead.Text(TJSONObject(mItem), AName));
-      end;
-    end;
-  finally
-    mRoot.Free;
-  end;
-end;
-
-class function TAtlasNewIssues.ParseLogin(const AText: string): string;
-var
-  mRoot: TJSONValue;
-begin
-  Result := '';
-  mRoot := TJSONObject.ParseJSONValue(AText);
-  try
-    if mRoot is TJSONObject then
-    begin
-      Result := TJsonRead.Text(TJSONObject(mRoot), 'login');
-    end;
-  finally
-    mRoot.Free;
-  end;
-end;
-
-{ YouTrack }
-
 class function TAtlasNewIssues.YouTrackProjectsUrl(const ATarget: TAtlasTrackerTarget): string;
 begin
   Result := '';
@@ -1037,6 +995,8 @@ begin
   end;
 end;
 
+{ YouTrack }
+
 class function TAtlasNewIssues.YouTrackFieldsUrl(const ATarget: TAtlasTrackerTarget;
   const AProjectId: string): string;
 begin
@@ -1047,6 +1007,35 @@ begin
   end;
   Result := ATarget.Url + '/api/admin/projects/' + TTextUris.PercentEncode(AProjectId) + '/customFields?fields=' +
     TTextUris.PercentEncode('field(name),bundle(values(name,login),aggregatedUsers(login))') + '&$top=100';
+end;
+
+class function TAtlasNewIssues.YouTrackCreateUrl(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := '';
+  if ATarget.Server <> '' then
+  begin
+    Result := ATarget.Url + '/api/issues?fields=idReadable,numberInProject';
+  end;
+end;
+
+class function TAtlasNewIssues.ParseYouTrackCreated(const AText: string; out AKey: string;
+  out ANumber: Integer): Boolean;
+var
+  mRoot: TJSONValue;
+begin
+  AKey := '';
+  ANumber := 0;
+  mRoot := TJSONObject.ParseJSONValue(AText);
+  try
+    if mRoot is TJSONObject then
+    begin
+      AKey := TJsonRead.Text(TJSONObject(mRoot), 'idReadable');
+      ANumber := TJsonRead.Int(TJSONObject(mRoot), 'numberInProject');
+    end;
+  finally
+    mRoot.Free;
+  end;
+  Result := AKey <> '';
 end;
 
 /// <summary>Name bzw. bei AUsers der Anmeldename eines Werts aus "values".</summary>
@@ -1149,13 +1138,21 @@ begin
   end;
 end;
 
-class function TAtlasNewIssues.YouTrackCreateUrl(const ATarget: TAtlasTrackerTarget): string;
+class function TAtlasNewIssues.ParseGitHubCreated(const AText: string; out ANumber: Integer): Boolean;
+var
+  mRoot: TJSONValue;
 begin
-  Result := '';
-  if ATarget.Server <> '' then
-  begin
-    Result := ATarget.Url + '/api/issues?fields=idReadable,numberInProject';
+  ANumber := 0;
+  mRoot := TJSONObject.ParseJSONValue(AText);
+  try
+    if mRoot is TJSONObject then
+    begin
+      ANumber := TJsonRead.Int(TJSONObject(mRoot), 'number');
+    end;
+  finally
+    mRoot.Free;
   end;
+  Result := ANumber > 0;
 end;
 
 function FieldName(const AName, ADefault: string): string;
@@ -1229,24 +1226,43 @@ begin
   end;
 end;
 
-class function TAtlasNewIssues.ParseYouTrackCreated(const AText: string; out AKey: string;
-  out ANumber: Integer): Boolean;
+class function TAtlasNewIssues.GitHubBody(const ADraft: TAtlasNewIssueDraft; const AMe: string): string;
 var
-  mRoot: TJSONValue;
+  mRoot: TJSONObject;
+  mLabels, mAssignees: TJSONArray;
+  mAssignee: string;
 begin
-  AKey := '';
-  ANumber := 0;
-  mRoot := TJSONObject.ParseJSONValue(AText);
+  mRoot := TJSONObject.Create;
   try
-    if mRoot is TJSONObject then
+    mRoot.AddPair('title', Trim(ADraft.Title));
+    mRoot.AddPair('body', ADraft.Description);
+    // Typ und Priorität sind bei GitHub Labels.
+    if (Trim(ADraft.IssueType) <> '') or (Trim(ADraft.Priority) <> '') then
     begin
-      AKey := TJsonRead.Text(TJSONObject(mRoot), 'idReadable');
-      ANumber := TJsonRead.Int(TJSONObject(mRoot), 'numberInProject');
+      mLabels := TJSONArray.Create;
+      if Trim(ADraft.IssueType) <> '' then
+      begin
+        mLabels.Add(Trim(ADraft.IssueType));
+      end;
+      if (Trim(ADraft.Priority) <> '') and not SameText(Trim(ADraft.Priority), Trim(ADraft.IssueType)) then
+      begin
+        mLabels.Add(Trim(ADraft.Priority));
+      end;
+      mRoot.AddPair('labels', mLabels);
     end;
+    mAssignee := AssigneeOf(ADraft, AMe);
+    if mAssignee <> '' then
+    begin
+      mAssignees := TJSONArray.Create;
+      mAssignees.Add(mAssignee);
+      mRoot.AddPair('assignees', mAssignees);
+    end;
+    // Vorlage, Meilenstein, Issue-Typ und Issue-Felder (#2137).
+    TAtlasGitHubNewIssue.AddTo(mRoot, ADraft.GitHub);
+    Result := mRoot.ToJSON;
   finally
     mRoot.Free;
   end;
-  Result := AKey <> '';
 end;
 
 { GitHub }
@@ -1287,60 +1303,44 @@ begin
   end;
 end;
 
-class function TAtlasNewIssues.GitHubBody(const ADraft: TAtlasNewIssueDraft; const AMe: string): string;
+class function TAtlasNewIssues.ParseNames(const AText, AName: string; out ANames: TArray<string>): Boolean;
 var
-  mRoot: TJSONObject;
-  mLabels, mAssignees: TJSONArray;
-  mAssignee: string;
+  mRoot, mItem: TJSONValue;
 begin
-  mRoot := TJSONObject.Create;
+  ANames := nil;
+  mRoot := TJSONObject.ParseJSONValue(AText);
   try
-    mRoot.AddPair('title', Trim(ADraft.Title));
-    mRoot.AddPair('body', ADraft.Description);
-    // Typ und Priorität sind bei GitHub Labels.
-    if (Trim(ADraft.IssueType) <> '') or (Trim(ADraft.Priority) <> '') then
+    Result := mRoot is TJSONArray;
+    if not Result then
     begin
-      mLabels := TJSONArray.Create;
-      if Trim(ADraft.IssueType) <> '' then
-      begin
-        mLabels.Add(Trim(ADraft.IssueType));
-      end;
-      if (Trim(ADraft.Priority) <> '') and not SameText(Trim(ADraft.Priority), Trim(ADraft.IssueType)) then
-      begin
-        mLabels.Add(Trim(ADraft.Priority));
-      end;
-      mRoot.AddPair('labels', mLabels);
+      Exit;
     end;
-    mAssignee := AssigneeOf(ADraft, AMe);
-    if mAssignee <> '' then
+    for mItem in TJSONArray(mRoot) do
     begin
-      mAssignees := TJSONArray.Create;
-      mAssignees.Add(mAssignee);
-      mRoot.AddPair('assignees', mAssignees);
+      if mItem is TJSONObject then
+      begin
+        ANames := AddUnique(ANames, TJsonRead.Text(TJSONObject(mItem), AName));
+      end;
     end;
-    // Vorlage, Meilenstein, Issue-Typ und Issue-Felder (#2137).
-    TAtlasGitHubNewIssue.AddTo(mRoot, ADraft.GitHub);
-    Result := mRoot.ToJSON;
   finally
     mRoot.Free;
   end;
 end;
 
-class function TAtlasNewIssues.ParseGitHubCreated(const AText: string; out ANumber: Integer): Boolean;
+class function TAtlasNewIssues.ParseLogin(const AText: string): string;
 var
   mRoot: TJSONValue;
 begin
-  ANumber := 0;
+  Result := '';
   mRoot := TJSONObject.ParseJSONValue(AText);
   try
     if mRoot is TJSONObject then
     begin
-      ANumber := TJsonRead.Int(TJSONObject(mRoot), 'number');
+      Result := TJsonRead.Text(TJSONObject(mRoot), 'login');
     end;
   finally
     mRoot.Free;
   end;
-  Result := ANumber > 0;
 end;
 
 { Ablauf }

@@ -376,11 +376,6 @@ begin
     cTexts[TFlowFieldFreeWithoutNilText.Title].Text);
 end;
 
-class function TFieldFreeWithoutNilRule.DefaultIgnoreMethods: TArray<string>;
-begin
-  Result := ['Destroy', 'BeforeDestruction'];
-end;
-
 procedure TFieldFreeWithoutNilRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mCheck: TFieldFreeCheck;
@@ -391,6 +386,11 @@ begin
   finally
     mCheck.Free;
   end;
+end;
+
+class function TFieldFreeWithoutNilRule.DefaultIgnoreMethods: TArray<string>;
+begin
+  Result := ['Destroy', 'BeforeDestruction'];
 end;
 
 initialization

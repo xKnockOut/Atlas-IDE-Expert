@@ -78,35 +78,46 @@ end;
 
 { TEditorConfig }
 
-class function TEditorConfig.Matches(const APattern, AFileName: string): Boolean;
+class function TEditorConfig.ForFile(const AFileName: string; const AReadFile: TEditorConfigReadFile;
+  const ABase: TFormatStyle): TFormatStyle;
 var
-  mOpen, mClose: Integer;
-  mPrefix, mSuffix: string;
-  mAlternative: string;
-  mPattern: string;
+  mDirectory, mParent, mText: string;
+  mTexts: TList<string>;
+  mRoot: Boolean;
+  mIndex: Integer;
+  mProbe: TFormatStyle;
 begin
-  mPattern := APattern;
-  // Muster mit Pfad ("src/*.pas") gelten ab dem Ordner der .editorconfig; hier zählt nur der Name.
-  if LastDelimiter('/', mPattern) > 0 then
-  begin
-    mPattern := Copy(mPattern, LastDelimiter('/', mPattern) + 1, MaxInt);
-  end;
-  mOpen := Pos('{', mPattern);
-  mClose := Pos('}', mPattern);
-  if (mOpen > 0) and (mClose > mOpen) then
-  begin
-    mPrefix := Copy(mPattern, 1, mOpen - 1);
-    mSuffix := Copy(mPattern, mClose + 1, MaxInt);
-    for mAlternative in Copy(mPattern, mOpen + 1, mClose - mOpen - 1).Split([',']) do
+  Result := ABase;
+  mTexts := TList<string>.Create;
+  try
+    mDirectory := TProjectPaths.DirectoryOf(AFileName);
+    while mDirectory <> '' do
     begin
-      if MatchWildcard(mPrefix + Trim(mAlternative) + mSuffix, AFileName) then
+      if AReadFile(TProjectPaths.Combine(mDirectory, cFileName), mText) then
       begin
-        Exit(True);
+        mTexts.Add(mText);
+        mProbe := ABase;
+        Apply(mText, AFileName, mProbe, mRoot);
+        if mRoot then
+        begin
+          Break;
+        end;
       end;
+      mParent := TProjectPaths.DirectoryOf(mDirectory);
+      if (mParent = '') or SameText(mParent, mDirectory) then
+      begin
+        Break;
+      end;
+      mDirectory := mParent;
     end;
-    Exit(False);
+    // Die fernste Datei zuerst, damit nähere sie überschreiben.
+    for mIndex := mTexts.Count - 1 downto 0 do
+    begin
+      Apply(mTexts[mIndex], AFileName, Result, mRoot);
+    end;
+  finally
+    mTexts.Free;
   end;
-  Result := MatchWildcard(mPattern, AFileName);
 end;
 
 type
@@ -254,46 +265,35 @@ begin
   end;
 end;
 
-class function TEditorConfig.ForFile(const AFileName: string; const AReadFile: TEditorConfigReadFile;
-  const ABase: TFormatStyle): TFormatStyle;
+class function TEditorConfig.Matches(const APattern, AFileName: string): Boolean;
 var
-  mDirectory, mParent, mText: string;
-  mTexts: TList<string>;
-  mRoot: Boolean;
-  mIndex: Integer;
-  mProbe: TFormatStyle;
+  mOpen, mClose: Integer;
+  mPrefix, mSuffix: string;
+  mAlternative: string;
+  mPattern: string;
 begin
-  Result := ABase;
-  mTexts := TList<string>.Create;
-  try
-    mDirectory := TProjectPaths.DirectoryOf(AFileName);
-    while mDirectory <> '' do
-    begin
-      if AReadFile(TProjectPaths.Combine(mDirectory, cFileName), mText) then
-      begin
-        mTexts.Add(mText);
-        mProbe := ABase;
-        Apply(mText, AFileName, mProbe, mRoot);
-        if mRoot then
-        begin
-          Break;
-        end;
-      end;
-      mParent := TProjectPaths.DirectoryOf(mDirectory);
-      if (mParent = '') or SameText(mParent, mDirectory) then
-      begin
-        Break;
-      end;
-      mDirectory := mParent;
-    end;
-    // Die fernste Datei zuerst, damit nähere sie überschreiben.
-    for mIndex := mTexts.Count - 1 downto 0 do
-    begin
-      Apply(mTexts[mIndex], AFileName, Result, mRoot);
-    end;
-  finally
-    mTexts.Free;
+  mPattern := APattern;
+  // Muster mit Pfad ("src/*.pas") gelten ab dem Ordner der .editorconfig; hier zählt nur der Name.
+  if LastDelimiter('/', mPattern) > 0 then
+  begin
+    mPattern := Copy(mPattern, LastDelimiter('/', mPattern) + 1, MaxInt);
   end;
+  mOpen := Pos('{', mPattern);
+  mClose := Pos('}', mPattern);
+  if (mOpen > 0) and (mClose > mOpen) then
+  begin
+    mPrefix := Copy(mPattern, 1, mOpen - 1);
+    mSuffix := Copy(mPattern, mClose + 1, MaxInt);
+    for mAlternative in Copy(mPattern, mOpen + 1, mClose - mOpen - 1).Split([',']) do
+    begin
+      if MatchWildcard(mPrefix + Trim(mAlternative) + mSuffix, AFileName) then
+      begin
+        Exit(True);
+      end;
+    end;
+    Exit(False);
+  end;
+  Result := MatchWildcard(mPattern, AFileName);
 end;
 
 end.

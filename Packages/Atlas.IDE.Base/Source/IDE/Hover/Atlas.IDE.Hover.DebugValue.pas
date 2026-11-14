@@ -184,14 +184,14 @@ begin
   Complete(ResultStr, ReturnCode);
 end;
 
+procedure TAtlasIdeDebugValues.TDeferred.ModifyComplete(const ExprStr, ResultStr: string; ReturnCode: Integer);
+begin
+end;
+
 procedure TAtlasIdeDebugValues.TDeferred.EvaluateComplete(const ExprStr, ResultStr: string; CanModify: Boolean;
   ResultAddress: TOTAAddress; ResultSize: LongWord; ReturnCode: Integer);
 begin
   Complete(ResultStr, ReturnCode);
-end;
-
-procedure TAtlasIdeDebugValues.TDeferred.ModifyComplete(const ExprStr, ResultStr: string; ReturnCode: Integer);
-begin
 end;
 
 procedure TAtlasIdeDebugValues.TDeferred.Destroyed;
@@ -215,6 +215,25 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasIdeDebugValues.Release(ADeferred: TDeferred);
+begin
+  if (ADeferred = nil) or (ADeferred <> FDeferred) then
+  begin
+    Exit;
+  end;
+  if (FThread <> nil) and (FIndex >= 0) and not FDeferred.FThreadGone then
+    try
+      FThread.RemoveNotifier(FIndex);
+    except
+      // Thread schon abgebaut: nichts mehr abzumelden.
+    end;
+  FDeferred.FOwner := nil;
+  FDeferred := nil;
+  FDeferredRef := nil;
+  FThread := nil;
+  FIndex := -1;
+end;
+
 class function TAtlasIdeDebugValues.StoppedThread: IOTAThread;
 var
   mDebugger: IOTADebuggerServices;
@@ -236,34 +255,6 @@ end;
 class function TAtlasIdeDebugValues.Stopped: Boolean;
 begin
   Result := StoppedThread <> nil;
-end;
-
-procedure TAtlasIdeDebugValues.Release(ADeferred: TDeferred);
-begin
-  if (ADeferred = nil) or (ADeferred <> FDeferred) then
-  begin
-    Exit;
-  end;
-  if (FThread <> nil) and (FIndex >= 0) and not FDeferred.FThreadGone then
-    try
-      FThread.RemoveNotifier(FIndex);
-    except
-      // Thread schon abgebaut: nichts mehr abzumelden.
-    end;
-  FDeferred.FOwner := nil;
-  FDeferred := nil;
-  FDeferredRef := nil;
-  FThread := nil;
-  FIndex := -1;
-end;
-
-procedure TAtlasIdeDebugValues.Cancel;
-begin
-  if FDeferred <> nil then
-  begin
-    FDeferred.FDone := True;
-    Release(FDeferred);
-  end;
 end;
 
 function TAtlasIdeDebugValues.Evaluate(const AExpression, AFileName: string; ALine: Integer;
@@ -304,29 +295,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeDebugValues.EvaluateNow(const AExpression, AFileName: string;
-  ALine: Integer): TAtlasDebugValue;
-var
-  mThread: IOTAThread;
-  mOutcome: TOutcome;
-begin
-  Result := Default(TAtlasDebugValue);
-  mThread := StoppedThread;
-  if (mThread = nil) or (AExpression = '') then
-  begin
-    Exit;
-  end;
-  mOutcome := RunEvaluate(mThread, AExpression, AFileName, ALine, False);
-  if mOutcome.Code = erOK then
-  begin
-    Result := TAtlasDebugValue.Evaluated(AExpression, mOutcome.Text);
-  end
-  else
-  begin
-    Result := TAtlasDebugValue.Failed(AExpression, mOutcome.Text);
-  end;
-end;
-
 class function TAtlasIdeDebugValues.Modify(const AExpression, AFileName: string; ALine: Integer;
   const ANewValue: string; out AResult: string): Boolean;
 var
@@ -354,6 +322,38 @@ begin
   mCode := mThread.Modify(ANewValue, @mBuffer[0], Length(mBuffer), mResultVal);
   AResult := mBuffer;
   Result := mCode in [erOK, erDeferred];
+end;
+
+class function TAtlasIdeDebugValues.EvaluateNow(const AExpression, AFileName: string;
+  ALine: Integer): TAtlasDebugValue;
+var
+  mThread: IOTAThread;
+  mOutcome: TOutcome;
+begin
+  Result := Default(TAtlasDebugValue);
+  mThread := StoppedThread;
+  if (mThread = nil) or (AExpression = '') then
+  begin
+    Exit;
+  end;
+  mOutcome := RunEvaluate(mThread, AExpression, AFileName, ALine, False);
+  if mOutcome.Code = erOK then
+  begin
+    Result := TAtlasDebugValue.Evaluated(AExpression, mOutcome.Text);
+  end
+  else
+  begin
+    Result := TAtlasDebugValue.Failed(AExpression, mOutcome.Text);
+  end;
+end;
+
+procedure TAtlasIdeDebugValues.Cancel;
+begin
+  if FDeferred <> nil then
+  begin
+    FDeferred.FDone := True;
+    Release(FDeferred);
+  end;
 end;
 
 end.

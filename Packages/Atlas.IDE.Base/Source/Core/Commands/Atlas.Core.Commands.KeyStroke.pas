@@ -31,6 +31,8 @@ type
 
 implementation
 
+{ TAtlasKeyStroke }
+
 class function TAtlasKeyStroke.Claim(AKey: Integer; ATime: Cardinal): Boolean;
 begin
   Result := True;

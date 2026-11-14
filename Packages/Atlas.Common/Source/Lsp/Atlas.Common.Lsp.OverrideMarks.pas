@@ -163,6 +163,8 @@ type
     function Sorted: TArray<TOverrideMark>;
   end;
 
+{ TMarkScan }
+
 constructor TMarkScan.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; const ACurrent: TUnitIndex);
 var
   mSymbol: TIndexSymbol;

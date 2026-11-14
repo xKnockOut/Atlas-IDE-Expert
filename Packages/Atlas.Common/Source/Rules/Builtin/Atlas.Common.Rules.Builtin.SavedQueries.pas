@@ -59,29 +59,6 @@ begin
   FQuery := AQuery;
 end;
 
-class function TSavedQueryRule.RuleId(const AName: string): string;
-begin
-  Result := cPrefix + AName;
-end;
-
-class function TSavedQueryRule.RulesOf(const ASettings: TServerSettings): TArray<IRule>;
-var
-  mQuery: TSavedQuery;
-begin
-  Result := nil;
-  if not ASettings.QueryEnabled then
-  begin
-    Exit;
-  end;
-  for mQuery in ASettings.Queries do
-  begin
-    if mQuery.FailIfAny then
-    begin
-      Result := Result + [TSavedQueryRule.Create(mQuery) as IRule];
-    end;
-  end;
-end;
-
 function TSavedQueryRule.Descriptor: TRuleDescriptor;
 var
   mDescription: string;
@@ -118,6 +95,29 @@ begin
     if SameText(mRow.FileName, AContext.FileName) then
     begin
       AReport.Add(mRow.Range, mResult.Message(TQueryOutput.MessageTemplate(FQuery.Message), mRow));
+    end;
+  end;
+end;
+
+class function TSavedQueryRule.RuleId(const AName: string): string;
+begin
+  Result := cPrefix + AName;
+end;
+
+class function TSavedQueryRule.RulesOf(const ASettings: TServerSettings): TArray<IRule>;
+var
+  mQuery: TSavedQuery;
+begin
+  Result := nil;
+  if not ASettings.QueryEnabled then
+  begin
+    Exit;
+  end;
+  for mQuery in ASettings.Queries do
+  begin
+    if mQuery.FailIfAny then
+    begin
+      Result := Result + [TSavedQueryRule.Create(mQuery) as IRule];
     end;
   end;
 end;

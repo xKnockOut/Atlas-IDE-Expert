@@ -112,6 +112,12 @@ begin
   ActiveControl := FName;
 end;
 
+procedure TAtlasTestFromDebugDialog.DoShow;
+begin
+  inherited DoShow;
+  Fill;
+end;
+
 /// <summary>Überschrift und Liste der Werte.</summary>
 procedure TAtlasTestFromDebugDialog.CreateValues(const ALocation: string);
 var
@@ -196,40 +202,6 @@ begin
   FExpected.Enabled := FWorks.Checked;
 end;
 
-procedure TAtlasTestFromDebugDialog.DoShow;
-begin
-  inherited DoShow;
-  Fill;
-end;
-
-class function TAtlasTestFromDebugDialog.RowCaption(const ARow: TAtlasStopValueRow): string;
-var
-  mValue: string;
-begin
-  Result := ARow.Name;
-  if ARow.Field then
-  begin
-    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsFromDebugField, [ARow.Name]);
-  end;
-  if ARow.Text = '' then
-  begin
-    mValue := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsFromDebugUnread);
-  end
-  else if ARow.Todo then
-  begin
-    mValue := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsFromDebugTodo);
-  end
-  else if ARow.Literal <> '' then
-  begin
-    mValue := ARow.Literal;
-  end
-  else
-  begin
-    mValue := ARow.Text;
-  end;
-  Result := Result + ': ' + ARow.TypeName + ' = ' + mValue;
-end;
-
 procedure TAtlasTestFromDebugDialog.Fill;
 var
   mIndex: Integer;
@@ -272,6 +244,34 @@ begin
     Result.Expected := Trim(FExpected.Text);
   end;
   Result.TestName := Trim(FName.Text);
+end;
+
+class function TAtlasTestFromDebugDialog.RowCaption(const ARow: TAtlasStopValueRow): string;
+var
+  mValue: string;
+begin
+  Result := ARow.Name;
+  if ARow.Field then
+  begin
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsFromDebugField, [ARow.Name]);
+  end;
+  if ARow.Text = '' then
+  begin
+    mValue := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsFromDebugUnread);
+  end
+  else if ARow.Todo then
+  begin
+    mValue := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsFromDebugTodo);
+  end
+  else if ARow.Literal <> '' then
+  begin
+    mValue := ARow.Literal;
+  end
+  else
+  begin
+    mValue := ARow.Text;
+  end;
+  Result := Result + ': ' + ARow.TypeName + ' = ' + mValue;
 end;
 
 class function TAtlasTestFromDebugDialog.Execute(var ADescription: TAtlasStopDescription;

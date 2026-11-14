@@ -130,6 +130,8 @@ type
     destructor Destroy; override;
   end;
 
+{ TActivityScope }
+
 constructor TActivityScope.Create(const AName: string; ATimed: Boolean; AStarted: Int64);
 begin
   inherited Create;
@@ -158,6 +160,24 @@ begin
   FLock.Free;
 end;
 
+class procedure TAtlasActivity.Leave(const AName: string; ATimed: Boolean; AStarted: Int64);
+begin
+  FLock.Enter;
+  try
+    if Length(FNames) > 0 then
+    begin
+      SetLength(FNames, Length(FNames) - 1);
+    end;
+    // Unter der Sperre: Nach TimeInto(nil) schreibt keine Aktion mehr in die freigegebenen Startanteile.
+    if ATimed and (FTimes <> nil) then
+    begin
+      FTimes.Add('Aktion ' + AName, FTimes.Clock - AStarted);
+    end;
+  finally
+    FLock.Leave;
+  end;
+end;
+
 class function TAtlasActivity.Scope(const AName: string): IInterface;
 var
   mTimed: Boolean;
@@ -177,24 +197,6 @@ begin
     FLock.Leave;
   end;
   Result := TActivityScope.Create(AName, mTimed, mStarted);
-end;
-
-class procedure TAtlasActivity.Leave(const AName: string; ATimed: Boolean; AStarted: Int64);
-begin
-  FLock.Enter;
-  try
-    if Length(FNames) > 0 then
-    begin
-      SetLength(FNames, Length(FNames) - 1);
-    end;
-    // Unter der Sperre: Nach TimeInto(nil) schreibt keine Aktion mehr in die freigegebenen Startanteile.
-    if ATimed and (FTimes <> nil) then
-    begin
-      FTimes.Add('Aktion ' + AName, FTimes.Clock - AStarted);
-    end;
-  finally
-    FLock.Leave;
-  end;
 end;
 
 class procedure TAtlasActivity.TimeInto(ATimes: TAtlasStartTimes);
@@ -248,12 +250,6 @@ end;
 
 { TAtlasStackScan }
 
-class function TAtlasStackScan.Frames(const AAddresses: TArray<UInt64>;
-  const AModules: TArray<TAtlasModuleRange>): TArray<string>;
-begin
-  Result := Frames(AAddresses, AModules, 24);
-end;
-
 class function TAtlasStackScan.Frames(const AAddresses: TArray<UInt64>; const AModules: TArray<TAtlasModuleRange>;
   AMax: Integer): TArray<string>;
 var
@@ -281,6 +277,12 @@ begin
       end;
     end;
   end;
+end;
+
+class function TAtlasStackScan.Frames(const AAddresses: TArray<UInt64>;
+  const AModules: TArray<TAtlasModuleRange>): TArray<string>;
+begin
+  Result := Frames(AAddresses, AModules, 24);
 end;
 
 class function TAtlasStackScan.FirstIn(const AAddresses: TArray<UInt64>; const AModules: TArray<TAtlasModuleRange>;
@@ -332,10 +334,7 @@ begin
   end;
 end;
 
-constructor TAtlasHangMonitor.Create;
-begin
-  Create(500);
-end;
+{ TAtlasHangMonitor }
 
 constructor TAtlasHangMonitor.Create(AThresholdMs: Integer);
 begin
@@ -343,18 +342,9 @@ begin
   FThresholdMs := AThresholdMs;
 end;
 
-class function TAtlasHangMonitor.InvolvesAtlas(const AHang: TAtlasHang): Boolean;
-var
-  mFrame: string;
+constructor TAtlasHangMonitor.Create;
 begin
-  Result := (AHang.Activity <> '') or (AHang.AtlasFrame <> '');
-  for mFrame in AHang.Frames do
-  begin
-    if mFrame.StartsWith('Atlas', True) then
-    begin
-      Result := True;
-    end;
-  end;
+  Create(500);
 end;
 
 function TAtlasHangMonitor.Finish(const AHang: TAtlasHang): string;
@@ -415,6 +405,20 @@ end;
 function TAtlasHangMonitor.Summary: string;
 begin
   Result := Format('Sitzung: %d Hänger, längster %d ms, %d mit Atlas', [FCount, FLongestMs, FWithAtlas]);
+end;
+
+class function TAtlasHangMonitor.InvolvesAtlas(const AHang: TAtlasHang): Boolean;
+var
+  mFrame: string;
+begin
+  Result := (AHang.Activity <> '') or (AHang.AtlasFrame <> '');
+  for mFrame in AHang.Frames do
+  begin
+    if mFrame.StartsWith('Atlas', True) then
+    begin
+      Result := True;
+    end;
+  end;
 end;
 
 end.

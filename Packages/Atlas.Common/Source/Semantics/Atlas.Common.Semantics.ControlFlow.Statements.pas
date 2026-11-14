@@ -37,6 +37,8 @@ uses
   System.SysUtils,
   Atlas.Common.Semantics.OrdinalConstants;
 
+{ TFlowStatements }
+
 class function TFlowStatements.IsStatement(AKind: TSyntaxKind): Boolean;
 begin
   case AKind of

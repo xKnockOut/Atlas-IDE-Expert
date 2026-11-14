@@ -145,12 +145,6 @@ begin
   inherited;
 end;
 
-procedure TAtlasMemoryTimeline.Clear;
-begin
-  FSamples.Clear;
-  FMarks.Clear;
-end;
-
 function TAtlasMemoryTimeline.GetCount: Integer;
 begin
   Result := FSamples.Count;
@@ -187,22 +181,6 @@ begin
   end;
 end;
 
-procedure TAtlasMemoryTimeline.AddSample(const ASample: TAtlasMemorySample);
-begin
-  FSamples.Add(ASample);
-  DropOldest;
-end;
-
-procedure TAtlasMemoryTimeline.AddMark(AAtMs: Int64; AKind: TAtlasMemoryMarkKind; const AName: string);
-var
-  mMark: TAtlasMemoryMark;
-begin
-  mMark.AtMs := AAtMs;
-  mMark.Kind := AKind;
-  mMark.Name := AName;
-  FMarks.Add(mMark);
-end;
-
 function TAtlasMemoryTimeline.FirstAtOrAfter(AAtMs: Int64): Integer;
 begin
   Result := 0;
@@ -219,6 +197,46 @@ begin
   begin
     Dec(Result);
   end;
+end;
+
+function TAtlasMemoryTimeline.MarksText(AFromMs, AToMs: Int64): string;
+var
+  mMark: TAtlasMemoryMark;
+begin
+  Result := '';
+  for mMark in FMarks do
+  begin
+    if (mMark.AtMs > AFromMs) and (mMark.AtMs <= AToMs) then
+    begin
+      if Result <> '' then
+      begin
+        Result := Result + ' / ';
+      end;
+      Result := Result + mMark.Name;
+    end;
+  end;
+end;
+
+procedure TAtlasMemoryTimeline.Clear;
+begin
+  FSamples.Clear;
+  FMarks.Clear;
+end;
+
+procedure TAtlasMemoryTimeline.AddSample(const ASample: TAtlasMemorySample);
+begin
+  FSamples.Add(ASample);
+  DropOldest;
+end;
+
+procedure TAtlasMemoryTimeline.AddMark(AAtMs: Int64; AKind: TAtlasMemoryMarkKind; const AName: string);
+var
+  mMark: TAtlasMemoryMark;
+begin
+  mMark.AtMs := AAtMs;
+  mMark.Kind := AKind;
+  mMark.Name := AName;
+  FMarks.Add(mMark);
 end;
 
 function TAtlasMemoryTimeline.Growth(AFromMs, AToMs: Int64): TAtlasMemoryGrowth;
@@ -250,24 +268,6 @@ begin
   for mSample in FSamples do
   begin
     Result := Max(Result, mSample.Values[ASeries]);
-  end;
-end;
-
-function TAtlasMemoryTimeline.MarksText(AFromMs, AToMs: Int64): string;
-var
-  mMark: TAtlasMemoryMark;
-begin
-  Result := '';
-  for mMark in FMarks do
-  begin
-    if (mMark.AtMs > AFromMs) and (mMark.AtMs <= AToMs) then
-    begin
-      if Result <> '' then
-      begin
-        Result := Result + ' / ';
-      end;
-      Result := Result + mMark.Name;
-    end;
   end;
 end;
 
@@ -310,11 +310,6 @@ begin
 end;
 
 { TAtlasMemoryFormat }
-
-class function TAtlasMemoryFormat.IsBytes(ASeries: TAtlasMemorySeries): Boolean;
-begin
-  Result := ASeries in [TAtlasMemorySeries.PrivateBytes, TAtlasMemorySeries.WorkingSet];
-end;
 
 class function TAtlasMemoryFormat.Bytes(AValue: Int64; const AFormat: TFormatSettings): string;
 const
@@ -360,6 +355,11 @@ begin
   begin
     Result := '+' + Result;
   end;
+end;
+
+class function TAtlasMemoryFormat.IsBytes(ASeries: TAtlasMemorySeries): Boolean;
+begin
+  Result := ASeries in [TAtlasMemorySeries.PrivateBytes, TAtlasMemorySeries.WorkingSet];
 end;
 
 { TAtlasMemoryChartScale }

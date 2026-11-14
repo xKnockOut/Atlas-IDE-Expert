@@ -421,109 +421,6 @@ begin
   inherited Destroy;
 end;
 
-class procedure TAtlasIdeDebugVariables.Start(const ASession: TAtlasVariablesSessionFunc;
-  const ARun: TAtlasVariablesRunner);
-begin
-  if FInstance = nil then
-  begin
-    FInstance := TAtlasIdeDebugVariables.Create(ASession, ARun);
-    FInstance.FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FInstance.FListener);
-  end;
-  TAtlasIdeDebugSession.Start;
-  TAtlasIdeDebugVariablesWindow.OnFrame :=
-    procedure(AFrame: TAtlasDebugVariablesFrame)
-    begin
-      WireFrame(AFrame);
-    end;
-  TAtlasIdeDebugVariablesWindow.Prepare;
-  // Eingeschaltet, während der Prozess steht und das Fenster schon besteht: gleich für diesen Halt.
-  if (TAtlasIdeDebugSession.StoppedThread <> nil) and (Frame <> nil) then
-  begin
-    FInstance.Stopped;
-  end;
-end;
-
-class procedure TAtlasIdeDebugVariables.Release;
-var
-  mInstance: TAtlasIdeDebugVariables;
-begin
-  if FInstance = nil then
-  begin
-    Exit;
-  end;
-  mInstance := FInstance;
-  FInstance := nil;
-  if mInstance.FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(mInstance.FListener);
-  end;
-  mInstance.FListener := nil;
-  // Der Frame zeigt die Listen der Instanz: erst lösen, dann Fenster und Instanz freigeben.
-  if Frame <> nil then
-  begin
-    Frame.SetList(nil, nil);
-  end;
-  TAtlasIdeDebugVariablesWindow.Release;
-  mInstance.Free;
-end;
-
-class function TAtlasIdeDebugVariables.Started: Boolean;
-begin
-  Result := FInstance <> nil;
-end;
-
-class function TAtlasIdeDebugVariables.Enabled: Boolean;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and mSettings.DebugVariablesWindow;
-end;
-
-class procedure TAtlasIdeDebugVariables.ApplySettings;
-begin
-  if (FInstance <> nil) and not Enabled then
-  begin
-    TAtlasIdeDebugVariablesWindow.Hide;
-  end;
-end;
-
-class procedure TAtlasIdeDebugVariables.ThemeChanged;
-begin
-  TAtlasIdeDebugVariablesWindow.ApplyTheme;
-end;
-
-class procedure TAtlasIdeDebugVariables.ShowWindow;
-var
-  mShown: TAtlasDebugVariablesFrame;
-begin
-  if (FInstance = nil) or not Enabled then
-  begin
-    Exit;
-  end;
-  mShown := TAtlasIdeDebugVariablesWindow.Show;
-  if mShown <> nil then
-  begin
-    WireFrame(mShown);
-  end;
-end;
-
-class procedure TAtlasIdeDebugVariables.Reevaluate;
-var
-  mSearch: TAtlasVariableSearch;
-begin
-  if not StillStopped or (Frame = nil) then
-  begin
-    Exit;
-  end;
-  // Wie ein neuer Halt am selben Ort: Autos und Lokal bleiben, alle Werte kommen neu.
-  FInstance.CancelWork;
-  FInstance.FLists.BeginStop;
-  mSearch := FInstance.FLists.Search;
-  FInstance.Search(mSearch.Text, mSearch.Mode, mSearch.Deep);
-end;
-
 procedure TAtlasIdeDebugVariables.CancelWork;
 begin
   if FTimer <> nil then
@@ -562,6 +459,41 @@ begin
   if ReadLocation then
   begin
     Ask;
+  end;
+end;
+
+procedure TAtlasIdeDebugVariables.Tick(Sender: TObject);
+begin
+  if TAtlasGuard.Disabled(TAtlasFeature.Debugger) then
+  begin
+    FTimer.Enabled := False;
+    Exit;
+  end;
+  try
+    case FProgress.Phase of
+      TPhase.Location:
+        begin
+          FTimer.Enabled := False;
+          if not StillStopped then
+          begin
+            FProgress.Phase := TPhase.Idle;
+          end
+          else if ReadLocation then
+          begin
+            Ask;
+          end;
+        end;
+      TPhase.Evaluate:
+        EvaluateSlice;
+    else
+      FTimer.Enabled := False;
+    end;
+  except
+    on E: Exception do
+    begin
+      FTimer.Enabled := False;
+      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
+    end;
   end;
 end;
 
@@ -653,41 +585,6 @@ begin
   FProgress.Phase := TPhase.Evaluate;
   FTimer.Interval := cTickMs;
   FTimer.Enabled := True;
-end;
-
-procedure TAtlasIdeDebugVariables.Tick(Sender: TObject);
-begin
-  if TAtlasGuard.Disabled(TAtlasFeature.Debugger) then
-  begin
-    FTimer.Enabled := False;
-    Exit;
-  end;
-  try
-    case FProgress.Phase of
-      TPhase.Location:
-        begin
-          FTimer.Enabled := False;
-          if not StillStopped then
-          begin
-            FProgress.Phase := TPhase.Idle;
-          end
-          else if ReadLocation then
-          begin
-            Ask;
-          end;
-        end;
-      TPhase.Evaluate:
-        EvaluateSlice;
-    else
-      FTimer.Enabled := False;
-    end;
-  except
-    on E: Exception do
-    begin
-      FTimer.Enabled := False;
-      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
-    end;
-  end;
 end;
 
 procedure TAtlasIdeDebugVariables.EvaluateSlice;
@@ -940,6 +837,109 @@ begin
   mHasServer := Assigned(FSession) and (FSession() <> nil);
   mFrame.Refresh;
   mFrame.SetStatus(StatusText(FLists, FTab, FProgress.SearchDone, mHasServer));
+end;
+
+class procedure TAtlasIdeDebugVariables.Start(const ASession: TAtlasVariablesSessionFunc;
+  const ARun: TAtlasVariablesRunner);
+begin
+  if FInstance = nil then
+  begin
+    FInstance := TAtlasIdeDebugVariables.Create(ASession, ARun);
+    FInstance.FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FInstance.FListener);
+  end;
+  TAtlasIdeDebugSession.Start;
+  TAtlasIdeDebugVariablesWindow.OnFrame :=
+    procedure(AFrame: TAtlasDebugVariablesFrame)
+    begin
+      WireFrame(AFrame);
+    end;
+  TAtlasIdeDebugVariablesWindow.Prepare;
+  // Eingeschaltet, während der Prozess steht und das Fenster schon besteht: gleich für diesen Halt.
+  if (TAtlasIdeDebugSession.StoppedThread <> nil) and (Frame <> nil) then
+  begin
+    FInstance.Stopped;
+  end;
+end;
+
+class procedure TAtlasIdeDebugVariables.Release;
+var
+  mInstance: TAtlasIdeDebugVariables;
+begin
+  if FInstance = nil then
+  begin
+    Exit;
+  end;
+  mInstance := FInstance;
+  FInstance := nil;
+  if mInstance.FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(mInstance.FListener);
+  end;
+  mInstance.FListener := nil;
+  // Der Frame zeigt die Listen der Instanz: erst lösen, dann Fenster und Instanz freigeben.
+  if Frame <> nil then
+  begin
+    Frame.SetList(nil, nil);
+  end;
+  TAtlasIdeDebugVariablesWindow.Release;
+  mInstance.Free;
+end;
+
+class function TAtlasIdeDebugVariables.Started: Boolean;
+begin
+  Result := FInstance <> nil;
+end;
+
+class function TAtlasIdeDebugVariables.Enabled: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.DebugVariablesWindow;
+end;
+
+class procedure TAtlasIdeDebugVariables.ApplySettings;
+begin
+  if (FInstance <> nil) and not Enabled then
+  begin
+    TAtlasIdeDebugVariablesWindow.Hide;
+  end;
+end;
+
+class procedure TAtlasIdeDebugVariables.ThemeChanged;
+begin
+  TAtlasIdeDebugVariablesWindow.ApplyTheme;
+end;
+
+class procedure TAtlasIdeDebugVariables.ShowWindow;
+var
+  mShown: TAtlasDebugVariablesFrame;
+begin
+  if (FInstance = nil) or not Enabled then
+  begin
+    Exit;
+  end;
+  mShown := TAtlasIdeDebugVariablesWindow.Show;
+  if mShown <> nil then
+  begin
+    WireFrame(mShown);
+  end;
+end;
+
+class procedure TAtlasIdeDebugVariables.Reevaluate;
+var
+  mSearch: TAtlasVariableSearch;
+begin
+  if not StillStopped or (Frame = nil) then
+  begin
+    Exit;
+  end;
+  // Wie ein neuer Halt am selben Ort: Autos und Lokal bleiben, alle Werte kommen neu.
+  FInstance.CancelWork;
+  FInstance.FLists.BeginStop;
+  mSearch := FInstance.FLists.Search;
+  FInstance.Search(mSearch.Text, mSearch.Mode, mSearch.Deep);
 end;
 
 end.

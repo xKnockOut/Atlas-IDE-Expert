@@ -129,6 +129,8 @@ begin
   end;
 end;
 
+{ TAtlasFormTextProps }
+
 class function TAtlasFormTextProps.Read(AComponent: TComponent; const APath: string; out AText: string): Boolean;
 var
   mObject: TObject;

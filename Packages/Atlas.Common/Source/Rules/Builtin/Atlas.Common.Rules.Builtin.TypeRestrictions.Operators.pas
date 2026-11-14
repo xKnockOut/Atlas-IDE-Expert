@@ -237,6 +237,8 @@ begin
   end;
 end;
 
+{ TOperatorDeclarationInvalidRule }
+
 function TOperatorDeclarationInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cOperatorDeclarationInvalidRuleId, TRuleSeverity.Error,

@@ -261,23 +261,6 @@ begin
   end;
 end;
 
-function TAtlasTestsCaseTableDialog.CurrentRow: Integer;
-begin
-  Result := FGrid.Row - 1;
-  if (Result < 0) or (Result > High(FRows)) then
-  begin
-    Result := -1;
-  end;
-end;
-
-procedure TAtlasTestsCaseTableDialog.SelectRow(AIndex: Integer);
-begin
-  if (AIndex >= 0) and (AIndex + 1 < FGrid.RowCount) then
-  begin
-    FGrid.Row := AIndex + 1;
-  end;
-end;
-
 procedure TAtlasTestsCaseTableDialog.UpdateButtons;
 var
   mRow: Integer;
@@ -319,6 +302,23 @@ procedure TAtlasTestsCaseTableDialog.Edited;
 begin
   FEditedAt := TAtlasTicks.Now;
   UpdateButtons;
+end;
+
+function TAtlasTestsCaseTableDialog.CurrentRow: Integer;
+begin
+  Result := FGrid.Row - 1;
+  if (Result < 0) or (Result > High(FRows)) then
+  begin
+    Result := -1;
+  end;
+end;
+
+procedure TAtlasTestsCaseTableDialog.SelectRow(AIndex: Integer);
+begin
+  if (AIndex >= 0) and (AIndex + 1 < FGrid.RowCount) then
+  begin
+    FGrid.Row := AIndex + 1;
+  end;
 end;
 
 function TAtlasTestsCaseTableDialog.ProblemAt(ACol, ARow: Integer): string;
@@ -487,6 +487,33 @@ begin
   FHooks.Apply(FRows, FGeneration);
 end;
 
+procedure TAtlasTestsCaseTableDialog.Tick(Sender: TObject);
+var
+  mVersion: Integer;
+begin
+  if FGrid.Row <> FShownRow then
+  begin
+    FShownRow := FGrid.Row;
+    UpdateButtons;
+    ShowNote;
+  end;
+  if (FEditedAt <> 0) and not FApplying and (TAtlasTicks.Since(FEditedAt) >= cQuietMs) and Assigned(FHooks.Check) then
+  begin
+    FEditedAt := 0;
+    Inc(FGeneration);
+    FHooks.Check(FRows, FGeneration);
+  end;
+  if Assigned(FHooks.Version) then
+  begin
+    mVersion := FHooks.Version();
+    if mVersion <> FVersion then
+    begin
+      FVersion := mVersion;
+      FillLastRun;
+    end;
+  end;
+end;
+
 procedure TAtlasTestsCaseTableDialog.ShowProblems(AGeneration: Integer; const AProposal: TAtlasTestCaseProposal);
 begin
   if AGeneration <> FGeneration then
@@ -519,33 +546,6 @@ procedure TAtlasTestsCaseTableDialog.Applied;
 begin
   FApplying := False;
   ModalResult := mrOk;
-end;
-
-procedure TAtlasTestsCaseTableDialog.Tick(Sender: TObject);
-var
-  mVersion: Integer;
-begin
-  if FGrid.Row <> FShownRow then
-  begin
-    FShownRow := FGrid.Row;
-    UpdateButtons;
-    ShowNote;
-  end;
-  if (FEditedAt <> 0) and not FApplying and (TAtlasTicks.Since(FEditedAt) >= cQuietMs) and Assigned(FHooks.Check) then
-  begin
-    FEditedAt := 0;
-    Inc(FGeneration);
-    FHooks.Check(FRows, FGeneration);
-  end;
-  if Assigned(FHooks.Version) then
-  begin
-    mVersion := FHooks.Version();
-    if mVersion <> FVersion then
-    begin
-      FVersion := mVersion;
-      FillLastRun;
-    end;
-  end;
 end;
 
 end.

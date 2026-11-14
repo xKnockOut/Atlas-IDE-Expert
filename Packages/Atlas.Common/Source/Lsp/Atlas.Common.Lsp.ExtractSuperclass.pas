@@ -210,6 +210,8 @@ begin
     end;
 end;
 
+{ TLspExtractSuperclass }
+
 class function TLspExtractSuperclass.Actions(AEnabled: Boolean; ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition): TArray<TJSONObject>;
 var
@@ -397,6 +399,8 @@ type
     function Run: TJSONObject;
   end;
 
+{ TSuperclassExtraction }
+
 constructor TSuperclassExtraction.Create(ATree: TSyntaxTree; const AFileName, AText: string;
   const APosition: TTextPosition; const AContext: TExtractSuperclassContext);
 begin
@@ -413,29 +417,6 @@ destructor TSuperclassExtraction.Destroy;
 begin
   FChanges.Free;
   inherited;
-end;
-
-procedure TSuperclassExtraction.ReadRequest(ARequest: TJSONValue);
-var
-  mBody: TJSONObject;
-begin
-  if not (ARequest is TJSONObject) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TLspExtractSuperclassText.RequestWithNameUnitAnd].Text);
-  end;
-  mBody := TJSONObject(ARequest);
-  FRequest := Default(TSuperclassRequest);
-  FRequest.Name := Field(mBody, 'name');
-  FRequest.Members := Ids(mBody, 'members');
-  FRequest.Abstract := Ids(mBody, 'abstract');
-  FUnitName := Field(mBody, 'unit');
-  FRequest.SameUnit := (FUnitName = '') or SameText(FUnitName, TUsesClauses.OwnName(FTree.Tokens));
-  FRequest.RaiseVisibility := RaiseVisibilityOf(FContext.RaiseVisibility);
-  if not FRequest.SameUnit and not IsIdentifier(StringReplace(FUnitName, '.', '_', [rfReplaceAll])) then
-  begin
-    raise Failed(cTexts[TLspExtractSuperclassText.IsNotAValidUnit].Fmt([FUnitName]));
-  end;
 end;
 
 procedure TSuperclassExtraction.MakePlan;
@@ -533,6 +514,29 @@ begin
   end;
   Result.AddPair('name', FPlan.BaseName);
   Result.AddPair('moved', TJSONNumber.Create(mMoved));
+end;
+
+procedure TSuperclassExtraction.ReadRequest(ARequest: TJSONValue);
+var
+  mBody: TJSONObject;
+begin
+  if not (ARequest is TJSONObject) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TLspExtractSuperclassText.RequestWithNameUnitAnd].Text);
+  end;
+  mBody := TJSONObject(ARequest);
+  FRequest := Default(TSuperclassRequest);
+  FRequest.Name := Field(mBody, 'name');
+  FRequest.Members := Ids(mBody, 'members');
+  FRequest.Abstract := Ids(mBody, 'abstract');
+  FUnitName := Field(mBody, 'unit');
+  FRequest.SameUnit := (FUnitName = '') or SameText(FUnitName, TUsesClauses.OwnName(FTree.Tokens));
+  FRequest.RaiseVisibility := RaiseVisibilityOf(FContext.RaiseVisibility);
+  if not FRequest.SameUnit and not IsIdentifier(StringReplace(FUnitName, '.', '_', [rfReplaceAll])) then
+  begin
+    raise Failed(cTexts[TLspExtractSuperclassText.IsNotAValidUnit].Fmt([FUnitName]));
+  end;
 end;
 
 function TSuperclassExtraction.Run: TJSONObject;

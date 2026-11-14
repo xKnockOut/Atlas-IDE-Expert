@@ -133,6 +133,8 @@ const
   // Methoden, die den Datensatzzeiger weiterbewegen oder die Schleife über Eof beenden.
   cDatasetAdvancing: array[0..6] of string = ('Next', 'Delete', 'MoveBy', 'Last', 'Close', 'FindNext', 'Free');
 
+{ TDatasetLoopWithoutNextRule }
+
 function TDatasetLoopWithoutNextRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('dataset-loop-without-next', TRuleSeverity.Error,
@@ -541,6 +543,8 @@ const
   // Methoden, die den Bearbeitungsmodus beenden.
   cDatasetPostMethods: array[0..2] of string = ('Post', 'Cancel', 'CheckBrowseMode');
 
+{ TDatasetEditWithoutPostRule }
+
 function TDatasetEditWithoutPostRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('dataset-edit-without-post', TRuleSeverity.Warning,
@@ -890,6 +894,8 @@ const
   cBuiltinTransactionPairs: array[0..2, 0..2] of string = (('StartTransaction', 'Commit', 'Rollback'),
     ('BeginTransaction', 'CommitFreeAndNil', 'RollbackFreeAndNil'), ('BeginTrans', 'CommitTrans', 'RollbackTrans'));
 
+{ TTransactionWithoutRollbackRule }
+
 function TTransactionWithoutRollbackRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('transaction-without-rollback', TRuleSeverity.Warning,
@@ -948,25 +954,6 @@ begin
     end;
   finally
     mValue.Free;
-  end;
-end;
-
-class function TTransactionWithoutRollbackRule.Pairs(const AOptions: string): TArray<TTransactionPair>;
-var
-  mIndex: Integer;
-  mPair: TTransactionPair;
-begin
-  // Eine eigene Liste ersetzt die eingebauten Paare.
-  if PairsFromOptions(AOptions, Result) then
-  begin
-    Exit;
-  end;
-  for mIndex := Low(cBuiltinTransactionPairs) to High(cBuiltinTransactionPairs) do
-  begin
-    mPair.Start := cBuiltinTransactionPairs[mIndex, 0];
-    mPair.Commit := cBuiltinTransactionPairs[mIndex, 1];
-    mPair.Rollback := cBuiltinTransactionPairs[mIndex, 2];
-    Result := Result + [mPair];
   end;
 end;
 
@@ -1267,6 +1254,25 @@ begin
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
     end);
   Visit(AContext.Tree.Root);
+end;
+
+class function TTransactionWithoutRollbackRule.Pairs(const AOptions: string): TArray<TTransactionPair>;
+var
+  mIndex: Integer;
+  mPair: TTransactionPair;
+begin
+  // Eine eigene Liste ersetzt die eingebauten Paare.
+  if PairsFromOptions(AOptions, Result) then
+  begin
+    Exit;
+  end;
+  for mIndex := Low(cBuiltinTransactionPairs) to High(cBuiltinTransactionPairs) do
+  begin
+    mPair.Start := cBuiltinTransactionPairs[mIndex, 0];
+    mPair.Commit := cBuiltinTransactionPairs[mIndex, 1];
+    mPair.Rollback := cBuiltinTransactionPairs[mIndex, 2];
+    Result := Result + [mPair];
+  end;
 end;
 
 initialization

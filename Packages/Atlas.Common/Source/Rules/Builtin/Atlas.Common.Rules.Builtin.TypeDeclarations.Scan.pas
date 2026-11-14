@@ -129,6 +129,8 @@ begin
 end;
 
 
+{ TDeclarationScan }
+
 constructor TDeclarationScan.Create(const AContext: TRuleContext);
 var
   mFileName: string;
@@ -319,20 +321,6 @@ begin
   Result := NextCode(AIndex + 1, ClauseEnd(AProperty));
 end;
 
-function TDeclarationScan.Text(AFirst, AStop: Integer): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := AFirst to AStop - 1 do
-  begin
-    if not IsTrivia(FTokens[mIndex]) then
-    begin
-      Result := Result + FTokens[mIndex].Text;
-    end;
-  end;
-end;
-
 function TDeclarationScan.TypeKey(ANode: TSyntaxNode): string;
 begin
   Result := TypeKey(FirstToken(ANode), StopToken(ANode));
@@ -351,6 +339,20 @@ begin
   end;
   mHead := Copy(Result, 1, mAngle - 1);
   Result := Copy(mHead, LastDelimiter('.', mHead) + 1, MaxInt) + Copy(Result, mAngle, MaxInt);
+end;
+
+function TDeclarationScan.Text(AFirst, AStop: Integer): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := AFirst to AStop - 1 do
+  begin
+    if not IsTrivia(FTokens[mIndex]) then
+    begin
+      Result := Result + FTokens[mIndex].Text;
+    end;
+  end;
 end;
 
 end.

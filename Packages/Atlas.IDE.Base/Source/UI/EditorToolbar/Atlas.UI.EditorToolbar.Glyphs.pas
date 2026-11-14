@@ -141,6 +141,8 @@ begin
   SetBrushOrgEx(ACanvas.Handle, mOrigin.X, mOrigin.Y, nil);
 end;
 
+{ TAtlasGlyphPainter }
+
 class procedure TAtlasGlyphPainter.Draw(ACanvas: TCanvas; AIcon: TAtlasToolbarIcon; const ARect: TRect; AFore,
   ABack: TColor; const ALetter: string);
 var

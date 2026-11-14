@@ -244,452 +244,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TBreadcrumbsState.Removed(ABar: TControl);
-begin
-  if FActiveBar = ABar then
-  begin
-    FActiveBar := nil;
-    FShown := False;
-  end;
-end;
-
-procedure TBreadcrumbsState.Reset;
-var
-  mHide: Boolean;
-begin
-  FSource.FileName := '';
-  FKey.Stamp := 0;
-  FShown := False;
-  HideCard;
-  FSource.Line := -1;
-  FSource.Character := -1;
-  // Farben und Navigationsleiste der IDE nach geänderten Einstellungen. Die Leiste blendet die IDE über ihre
-  // Option aus; umgehängt wird nur ohne diese Option (Netz).
-  ApplyTheme;
-  mHide := TAtlasIdeSettings.Current.BreadcrumbsHideIdeToolbar;
-  FToolbarByIde := TAtlasIdeNavigationOption.Apply(mHide);
-  if FToolbarByIde or not mHide then
-  begin
-    FToolbars.RestoreAll;
-  end;
-end;
-
-procedure TBreadcrumbsState.ApplyTheme;
-var
-  mColors: TAtlasColors;
-begin
-  mColors := TAtlasIdeStyle.BarColors;
-  FHost.ForEach(
-    procedure(ABar: TControl)
-    begin
-      TAtlasBreadcrumbBar(ABar).SetColors(mColors);
-    end);
-end;
-
-/// <summary>Netz, nur ohne Option der IDE (siehe Reset): Navigationsleiste in ein eigenes Panel umhängen.</summary>
-procedure TBreadcrumbsState.ApplyToolbar(AParent: TWinControl);
-begin
-  if FToolbarByIde then
-  begin
-    Exit;
-  end;
-  if TAtlasIdeSettings.Current.BreadcrumbsHideIdeToolbar then
-  begin
-    FToolbars.Apply(AParent, True);
-  end;
-end;
-
-procedure TBreadcrumbsState.EnsureBars;
-var
-  mServices: INTAEditorServices;
-  mIndex: Integer;
-begin
-  FHost.Ensure;
-  if not Supports(BorlandIDEServices, INTAEditorServices, mServices) then
-  begin
-    Exit;
-  end;
-  // Die IDE legt die Navigationsleiste je Fenster an; neue Fenster beim nächsten Takt.
-  for mIndex := 0 to mServices.EditWindowCount - 1 do
-  begin
-    if TAtlasEditorBarHost.EditorOf(mServices.EditWindow[mIndex]) <> nil then
-    begin
-      ApplyToolbar(mServices.EditWindow[mIndex].Form);
-    end;
-  end;
-end;
-
-/// <summary>Hinweistexte der Leiste aus den Texten der Gliederung.</summary>
-function BarTexts: TAtlasCrumbBarSetup;
-begin
-  Result := Default(TAtlasCrumbBarSetup);
-  Result.CrumbHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsCrumbHint);
-  Result.SeparatorHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsChildrenHint);
-  Result.MarkHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsMarkHint);
-  Result.OverloadHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsOverloadsHint);
-  Result.InterfaceHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesHint);
-  Result.InterfaceKeyHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesKey);
-end;
-
-/// <summary>Menü am Glied erst nach dem Klick öffnen (siehe Later); AOpen bekommt Glied und Stelle.</summary>
-function Deferred(AState: TBreadcrumbsState; ABar: TAtlasBreadcrumbBar;
-  const AOpen: TProc<Integer, TPoint>): TAtlasCrumbMenuEvent;
-begin
-  Result :=
-    procedure(AIndex: Integer; const APoint: TPoint)
-    var
-      At: TPoint;
-    begin
-      At := APoint;
-      AState.Later(ABar,
-        procedure
-        begin
-          AOpen(AIndex, At);
-        end);
-    end;
-end;
-
-/// <summary>Sprungmenü AList am Glied, nach dem Klick geöffnet.</summary>
-function ListEvent(AState: TBreadcrumbsState; ABar: TAtlasBreadcrumbBar; AList: TAtlasCrumbList): TAtlasCrumbMenuEvent;
-begin
-  Result := Deferred(AState, ABar,
-    procedure(AIndex: Integer; APoint: TPoint)
-    begin
-      AState.Open(AList, ABar, AIndex, APoint);
-    end);
-end;
-
-/// <summary>Kennzahlen-Karte (#1787) an den Gliedern von ABar in ASetup eintragen.</summary>
-procedure AddCardEvents(AState: TBreadcrumbsState; ABar: TAtlasBreadcrumbBar; var ASetup: TAtlasCrumbBarSetup);
-begin
-  ASetup.HasCard :=
-    function(AIndex: Integer): Boolean
-    begin
-      Result := AState.HasCard(ABar, AIndex);
-    end;
-  ASetup.OnShowCard :=
-    procedure(AIndex: Integer; const APoint: TPoint)
-    var
-      At: TPoint;
-    begin
-      At := APoint;
-      TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
-        procedure
-        begin
-          AState.ShowCard(ABar, AIndex, At);
-        end);
-    end;
-  ASetup.OnHideCard :=
-    procedure
-    begin
-      AState.HideCard;
-    end;
-end;
-
-/// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
-function TBreadcrumbsState.CreateBar: TAtlasBreadcrumbBar;
-var
-  mBar: TAtlasBreadcrumbBar;
-  mHost: TAtlasEditorBarHost;
-  mSetup: TAtlasCrumbBarSetup;
-begin
-  mBar := TAtlasBreadcrumbBar.Create(nil);
-  mHost := FHost;
-  mBar.SetColors(TAtlasIdeStyle.BarColors);
-  mBar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsEmpty);
-  mSetup := BarTexts;
-  mSetup.OnOpenMenu := ListEvent(Self, mBar, TAtlasCrumbList.Siblings);
-  mSetup.OnOpenChildren := ListEvent(Self, mBar, TAtlasCrumbList.Children);
-  mSetup.OnOpenOverloads := ListEvent(Self, mBar, TAtlasCrumbList.Overloads);
-  mSetup.OnOpenInterfaces := ListEvent(Self, mBar, TAtlasCrumbList.Interfaces);
-  mSetup.OnContextMenu := Deferred(Self, mBar,
-    procedure(AIndex: Integer; APoint: TPoint)
-    begin
-      ContextMenu(mBar, AIndex, APoint);
-    end);
-  mSetup.OnJump :=
-    procedure(AIndex: Integer; ADeclaration: Boolean)
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
-        procedure
-        begin
-          Jump(mBar, AIndex, ADeclaration);
-        end);
-    end;
-  mSetup.OnLeave :=
-    procedure
-    begin
-      Leave(mBar);
-    end;
-  AddCardEvents(Self, mBar, mSetup);
-  mBar.Setup := mSetup;
-  mBar.OnDisabled :=
-    procedure(ASender: TObject)
-    begin
-      mHost.Disabled(ASender);
-    end;
-  Result := mBar;
-end;
-
-procedure TBreadcrumbsState.Place(ABar: TAtlasBreadcrumbBar; AParent: TWinControl);
-begin
-  if ABar.Parent = AParent then
-  begin
-    Exit;
-  end;
-  // Über dem Editor: zuerst ganz oben einhängen, dann oben ausrichten.
-  ABar.Top := 0;
-  ABar.Align := alTop;
-  ABar.Parent := AParent;
-end;
-
-function TBreadcrumbsState.ActiveBar: TAtlasBreadcrumbBar;
-begin
-  Result := TAtlasBreadcrumbBar(FHost.ActiveBar);
-end;
-
-/// <summary>Zusätzliche Glieder nach den Einstellungen (#1759, #1767, #1765, #1766, #1763, #1764, #1769, #1784).
-/// </summary>
-function CrumbParts: TAtlasCrumbParts;
-begin
-  Result := [];
-  if TAtlasIdeSettings.Current.BreadcrumbsVisibility then
-  begin
-    Include(Result, TAtlasCrumbPart.Visibility);
-  end;
-  if TAtlasIdeSettings.Current.BreadcrumbsMemberBlocks then
-  begin
-    Include(Result, TAtlasCrumbPart.MemberBlocks);
-  end;
-  if TAtlasIdeSettings.Current.BreadcrumbsVisibilityMark then
-  begin
-    Include(Result, TAtlasCrumbPart.VisibilityMark);
-  end;
-  if TAtlasIdeSettings.Current.BreadcrumbsDeclarationBlocks then
-  begin
-    Include(Result, TAtlasCrumbPart.DeclarationBlocks);
-  end;
-  if TAtlasIdeSettings.Current.BreadcrumbsConditionals then
-  begin
-    Include(Result, TAtlasCrumbPart.Conditionals);
-  end;
-  if TAtlasIdeSettings.Current.BreadcrumbsRegions then
-  begin
-    Include(Result, TAtlasCrumbPart.Regions);
-  end;
-  if TAtlasIdeSettings.Current.BreadcrumbsStatements then
-  begin
-    Include(Result, TAtlasCrumbPart.Statements);
-  end;
-  if TAtlasIdeSettings.Current.BreadcrumbsOverloads then
-  begin
-    Include(Result, TAtlasCrumbPart.Overloads);
-  end;
-end;
-
-/// <summary>Stand ASnapshot und Leiste ABar übernehmen; True, wenn sich gegenüber dem letzten Stand etwas
-/// geändert hat (dann ist der Pfad neu zu bilden).</summary>
-function TBreadcrumbsState.Remember(ABar: TAtlasBreadcrumbBar; const ASnapshot: TAtlasOutlineSnapshot): Boolean;
-var
-  mShowUnit, mWithInterfaces: Boolean;
-  mParts: TAtlasCrumbParts;
-  mLines: TArray<string>;
-begin
-  mShowUnit := TAtlasIdeSettings.Current.BreadcrumbsShowUnit;
-  mWithInterfaces := TAtlasIdeSettings.Current.BreadcrumbsInterfaces;
-  mParts := CrumbParts;
-  Result := not FShown or (ABar <> FActiveBar) or (ASnapshot.Status <> FKey.Status) or
-    not SameText(ASnapshot.FileName, FSource.FileName) or (ASnapshot.Stamp <> FKey.Stamp) or
-    (mShowUnit <> FKey.ShowUnit) or (mParts <> FKey.Parts) or (mWithInterfaces <> FKey.WithInterfaces);
-  if (ASnapshot.Stamp <> FKey.Stamp) or (Pointer(ASnapshot.Nodes) <> Pointer(FSource.Nodes)) then
-  begin
-    mLines := FSource.Lines;
-    if ASnapshot.Stamp <> FKey.Stamp then
-    begin
-      mLines := TTextLines.SplitLines(ASnapshot.Text);
-    end;
-    FText := TAtlasBreadcrumbs.Prepare(ASnapshot.Nodes, mLines);
-    FSource.Lines := mLines;
-  end;
-  FShown := True;
-  FActiveBar := ABar;
-  FKey.Status := ASnapshot.Status;
-  FSource.FileName := ASnapshot.FileName;
-  FKey.Stamp := ASnapshot.Stamp;
-  FKey.ShowUnit := mShowUnit;
-  FKey.Parts := mParts;
-  FKey.WithInterfaces := mWithInterfaces;
-  FSource.Nodes := ASnapshot.Nodes;
-  FInterfaces := ASnapshot.Interfaces;
-end;
-
-/// <summary>Ob ABar beim Stand AStatus einen Pfad zeigt; sonst steht der passende Hinweis darin (beim Warten
-/// bleibt der alte Pfad).</summary>
-function ShowsPath(ABar: TAtlasBreadcrumbBar; AStatus: TAtlasOutlineStatus): Boolean;
-begin
-  Result := False;
-  case AStatus of
-    TAtlasOutlineStatus.NoFile:
-      begin
-        ABar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsEmpty);
-        ABar.SetCrumbs(nil);
-      end;
-    TAtlasOutlineStatus.NoServer:
-      begin
-        ABar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineNoServer);
-        ABar.SetCrumbs(nil);
-      end;
-    TAtlasOutlineStatus.Waiting:
-      // Alter Pfad bleibt stehen, bis die Gliederung da ist.
-      Result := False;
-  else
-    Result := True;
-  end;
-end;
-
-/// <summary>Caret der Ansicht AView als Zeile und Zeichen (0-basiert); False ohne gültige Zeile.</summary>
-function CaretOf(const AView: IOTAEditView; out ALine, ACharacter: Integer): Boolean;
-var
-  mCursor: TOTAEditPos;
-begin
-  mCursor := AView.CursorPos;
-  ALine := mCursor.Line - 1;
-  ACharacter := 0;
-  Result := mCursor.Line >= 1;
-  if Result then
-  begin
-    ACharacter := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(AView, mCursor.Line), mCursor.Col,
-      TAtlasEditorBuffer.TabWidth(AView.Buffer));
-  end;
-end;
-
-procedure TBreadcrumbsState.Update;
-var
-  mBar: TAtlasBreadcrumbBar;
-  mView: IOTAEditView;
-  mSnapshot: TAtlasOutlineSnapshot;
-  mLine, mCharacter: Integer;
-  mChanged: Boolean;
-  mRequest: TAtlasCrumbRequest;
-  mInterfaces: TAtlasInterfaceMethods;
-begin
-  EnsureBars;
-  mBar := ActiveBar;
-  if mBar = nil then
-  begin
-    Exit;
-  end;
-  mView := TAtlasEditorBuffer.ActiveView;
-  // Interface-Marke (#1785): Der Cache holt die Angaben mit der Gliederung.
-  TAtlasIdeOutlineCache.WithInterfaces := TAtlasIdeSettings.Current.BreadcrumbsInterfaces;
-  mSnapshot := TAtlasIdeOutlineCache.Refresh(mView);
-  mChanged := Remember(mBar, mSnapshot);
-  if not ShowsPath(mBar, mSnapshot.Status) or not CaretOf(mView, mLine, mCharacter) then
-  begin
-    Exit;
-  end;
-  if not mChanged and (mLine = FSource.Line) and (mCharacter = FSource.Character) then
-  begin
-    Exit;
-  end;
-  FSource.Line := mLine;
-  FSource.Character := mCharacter;
-  mBar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsEmpty);
-  mRequest := TAtlasCrumbRequest.Create(FSource.Line, FSource.Character,
-    ChangeFileExt(ExtractFileName(FSource.FileName), ''), FKey.ShowUnit, FKey.Parts);
-  mInterfaces := nil;
-  if FKey.WithInterfaces then
-  begin
-    mInterfaces := FInterfaces;
-  end;
-  mBar.SetCrumbs(TAtlasIdeCrumbLists.Prepared(TAtlasBreadcrumbs.Path(FText, mRequest),
-    mInterfaces, FSource.Nodes));
-end;
-
-procedure TBreadcrumbsState.Jump(ABar: TAtlasBreadcrumbBar; AIndex: Integer; ADeclaration: Boolean);
-var
-  mCrumb: TAtlasCrumb;
-  mTarget: Integer;
-begin
-  if (ABar <> FActiveBar) or (AIndex < 0) or (AIndex > High(ABar.Crumbs)) or (FSource.FileName = '') then
-  begin
-    Exit;
-  end;
-  mCrumb := ABar.Crumbs[AIndex];
-  TAtlasGuard.Log(Format('Brotkrumen: Sprung zu Glied %d', [AIndex]));
-  if mCrumb.Node < 0 then
-  begin
-    // Unit-Glied: an den Anfang der Datei.
-    if mCrumb.Badge.Kind = TAtlasBadgeKind.Unit_ then
-    begin
-      TAtlasIdeNavigation.GoToLocation(FSource.FileName, 0, 0);
-    end
-    else if (mCrumb.Current >= 0) and (mCrumb.Current <= High(mCrumb.Places)) then
-    begin
-      // Abschnittsglied: zu seinem Schlüsselwort.
-      TAtlasIdeNavigation.GoToLocation(FSource.FileName, mCrumb.Places[mCrumb.Current].Line,
-        mCrumb.Places[mCrumb.Current].Character);
-    end;
-    Exit;
-  end;
-  mTarget := TAtlasBreadcrumbs.Target(FSource.Nodes, mCrumb.Node, not ADeclaration);
-  if mTarget < 0 then
-  begin
-    Exit;
-  end;
-  TAtlasIdeNavigation.GoToLocation(FSource.FileName, FSource.Nodes[mTarget].NameLine,
-    FSource.Nodes[mTarget].NameCharacter);
-end;
-
-procedure TBreadcrumbsState.Open(AList: TAtlasCrumbList; ABar: TAtlasBreadcrumbBar; AIndex: Integer;
-  const APoint: TPoint);
-begin
-  if (ABar = FActiveBar) and (AIndex >= 0) and (AIndex <= High(ABar.Crumbs)) then
-  begin
-    TAtlasIdeCrumbLists.Open(AList, FSource, ABar, AIndex, APoint);
-  end;
-end;
-
-/// <summary>Kontextmenü am Glied AIndex (#1786); nur mit editor.breadcrumbsContextMenu.</summary>
-procedure TBreadcrumbsState.ContextMenu(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
-begin
-  if (ABar <> FActiveBar) or (FSource.FileName = '') or not TAtlasIdeSettings.Current.BreadcrumbsContextMenu then
-  begin
-    Exit;
-  end;
-  TAtlasIdeCrumbMenu.Show(APoint, TAtlasCrumbMenuFile.Create(FSource.FileName, FSource.Nodes, FSource.Lines),
-    ABar.Crumbs, AIndex, TAtlasIdeBreadcrumbs.FMenuHooks);
-end;
-
-/// <summary>Menü erst nach dem Klick öffnen: Die IDE holt den Fokus in den Editor zurück; ein sofort geöffnetes
-/// Menü verlöre die Aktivierung und ginge gleich wieder zu. Läuft nur, wenn Zustand und Leiste dann noch
-/// leben.</summary>
-procedure TBreadcrumbsState.Later(ABar: TAtlasBreadcrumbBar; const AAction: TProc);
-var
-  mState: TBreadcrumbsState;
-  mBar: TAtlasBreadcrumbBar;
-  mAction: TProc;
-begin
-  TAtlasGuard.Log('Brotkrumen: Klick, Menü folgt');
-  mState := Self;
-  mBar := ABar;
-  mAction := AAction;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.Breadcrumbs,
-    procedure
-    begin
-      if (TAtlasIdeBreadcrumbs.FState <> mState) or not mState.FHost.Contains(mBar) then
-      begin
-        Exit;
-      end;
-      mAction();
-    end);
-end;
-
-procedure TBreadcrumbsState.Leave(ABar: TAtlasBreadcrumbBar);
-begin
-  TAtlasEditorBarHost.FocusEditor(ABar);
-end;
-
 function TBreadcrumbsState.HasCard(ABar: TAtlasBreadcrumbBar; AIndex: Integer): Boolean;
 begin
   Result := TAtlasIdeSettings.Current.BreadcrumbsMetrics and (ABar = FActiveBar) and (AIndex >= 0) and
@@ -771,6 +325,452 @@ begin
       TAtlasBreadcrumbBar(ABar).EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsDisabled);
       TAtlasBreadcrumbBar(ABar).SetCrumbs(nil);
     end);
+end;
+
+/// <summary>Hinweistexte der Leiste aus den Texten der Gliederung.</summary>
+function BarTexts: TAtlasCrumbBarSetup;
+begin
+  Result := Default(TAtlasCrumbBarSetup);
+  Result.CrumbHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsCrumbHint);
+  Result.SeparatorHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsChildrenHint);
+  Result.MarkHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsMarkHint);
+  Result.OverloadHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsOverloadsHint);
+  Result.InterfaceHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesHint);
+  Result.InterfaceKeyHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsInterfacesKey);
+end;
+
+/// <summary>Menü am Glied erst nach dem Klick öffnen (siehe Later); AOpen bekommt Glied und Stelle.</summary>
+function Deferred(AState: TBreadcrumbsState; ABar: TAtlasBreadcrumbBar;
+  const AOpen: TProc<Integer, TPoint>): TAtlasCrumbMenuEvent;
+begin
+  Result :=
+    procedure(AIndex: Integer; const APoint: TPoint)
+    var
+      At: TPoint;
+    begin
+      At := APoint;
+      AState.Later(ABar,
+        procedure
+        begin
+          AOpen(AIndex, At);
+        end);
+    end;
+end;
+
+/// <summary>Sprungmenü AList am Glied, nach dem Klick geöffnet.</summary>
+function ListEvent(AState: TBreadcrumbsState; ABar: TAtlasBreadcrumbBar; AList: TAtlasCrumbList): TAtlasCrumbMenuEvent;
+begin
+  Result := Deferred(AState, ABar,
+    procedure(AIndex: Integer; APoint: TPoint)
+    begin
+      AState.Open(AList, ABar, AIndex, APoint);
+    end);
+end;
+
+/// <summary>Kennzahlen-Karte (#1787) an den Gliedern von ABar in ASetup eintragen.</summary>
+procedure AddCardEvents(AState: TBreadcrumbsState; ABar: TAtlasBreadcrumbBar; var ASetup: TAtlasCrumbBarSetup);
+begin
+  ASetup.HasCard :=
+    function(AIndex: Integer): Boolean
+    begin
+      Result := AState.HasCard(ABar, AIndex);
+    end;
+  ASetup.OnShowCard :=
+    procedure(AIndex: Integer; const APoint: TPoint)
+    var
+      At: TPoint;
+    begin
+      At := APoint;
+      TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
+        procedure
+        begin
+          AState.ShowCard(ABar, AIndex, At);
+        end);
+    end;
+  ASetup.OnHideCard :=
+    procedure
+    begin
+      AState.HideCard;
+    end;
+end;
+
+procedure TBreadcrumbsState.EnsureBars;
+var
+  mServices: INTAEditorServices;
+  mIndex: Integer;
+begin
+  FHost.Ensure;
+  if not Supports(BorlandIDEServices, INTAEditorServices, mServices) then
+  begin
+    Exit;
+  end;
+  // Die IDE legt die Navigationsleiste je Fenster an; neue Fenster beim nächsten Takt.
+  for mIndex := 0 to mServices.EditWindowCount - 1 do
+  begin
+    if TAtlasEditorBarHost.EditorOf(mServices.EditWindow[mIndex]) <> nil then
+    begin
+      ApplyToolbar(mServices.EditWindow[mIndex].Form);
+    end;
+  end;
+end;
+
+/// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
+function TBreadcrumbsState.CreateBar: TAtlasBreadcrumbBar;
+var
+  mBar: TAtlasBreadcrumbBar;
+  mHost: TAtlasEditorBarHost;
+  mSetup: TAtlasCrumbBarSetup;
+begin
+  mBar := TAtlasBreadcrumbBar.Create(nil);
+  mHost := FHost;
+  mBar.SetColors(TAtlasIdeStyle.BarColors);
+  mBar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsEmpty);
+  mSetup := BarTexts;
+  mSetup.OnOpenMenu := ListEvent(Self, mBar, TAtlasCrumbList.Siblings);
+  mSetup.OnOpenChildren := ListEvent(Self, mBar, TAtlasCrumbList.Children);
+  mSetup.OnOpenOverloads := ListEvent(Self, mBar, TAtlasCrumbList.Overloads);
+  mSetup.OnOpenInterfaces := ListEvent(Self, mBar, TAtlasCrumbList.Interfaces);
+  mSetup.OnContextMenu := Deferred(Self, mBar,
+    procedure(AIndex: Integer; APoint: TPoint)
+    begin
+      ContextMenu(mBar, AIndex, APoint);
+    end);
+  mSetup.OnJump :=
+    procedure(AIndex: Integer; ADeclaration: Boolean)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
+        procedure
+        begin
+          Jump(mBar, AIndex, ADeclaration);
+        end);
+    end;
+  mSetup.OnLeave :=
+    procedure
+    begin
+      Leave(mBar);
+    end;
+  AddCardEvents(Self, mBar, mSetup);
+  mBar.Setup := mSetup;
+  mBar.OnDisabled :=
+    procedure(ASender: TObject)
+    begin
+      mHost.Disabled(ASender);
+    end;
+  Result := mBar;
+end;
+
+procedure TBreadcrumbsState.Place(ABar: TAtlasBreadcrumbBar; AParent: TWinControl);
+begin
+  if ABar.Parent = AParent then
+  begin
+    Exit;
+  end;
+  // Über dem Editor: zuerst ganz oben einhängen, dann oben ausrichten.
+  ABar.Top := 0;
+  ABar.Align := alTop;
+  ABar.Parent := AParent;
+end;
+
+/// <summary>Zusätzliche Glieder nach den Einstellungen (#1759, #1767, #1765, #1766, #1763, #1764, #1769, #1784).
+/// </summary>
+function CrumbParts: TAtlasCrumbParts;
+begin
+  Result := [];
+  if TAtlasIdeSettings.Current.BreadcrumbsVisibility then
+  begin
+    Include(Result, TAtlasCrumbPart.Visibility);
+  end;
+  if TAtlasIdeSettings.Current.BreadcrumbsMemberBlocks then
+  begin
+    Include(Result, TAtlasCrumbPart.MemberBlocks);
+  end;
+  if TAtlasIdeSettings.Current.BreadcrumbsVisibilityMark then
+  begin
+    Include(Result, TAtlasCrumbPart.VisibilityMark);
+  end;
+  if TAtlasIdeSettings.Current.BreadcrumbsDeclarationBlocks then
+  begin
+    Include(Result, TAtlasCrumbPart.DeclarationBlocks);
+  end;
+  if TAtlasIdeSettings.Current.BreadcrumbsConditionals then
+  begin
+    Include(Result, TAtlasCrumbPart.Conditionals);
+  end;
+  if TAtlasIdeSettings.Current.BreadcrumbsRegions then
+  begin
+    Include(Result, TAtlasCrumbPart.Regions);
+  end;
+  if TAtlasIdeSettings.Current.BreadcrumbsStatements then
+  begin
+    Include(Result, TAtlasCrumbPart.Statements);
+  end;
+  if TAtlasIdeSettings.Current.BreadcrumbsOverloads then
+  begin
+    Include(Result, TAtlasCrumbPart.Overloads);
+  end;
+end;
+
+procedure TBreadcrumbsState.Open(AList: TAtlasCrumbList; ABar: TAtlasBreadcrumbBar; AIndex: Integer;
+  const APoint: TPoint);
+begin
+  if (ABar = FActiveBar) and (AIndex >= 0) and (AIndex <= High(ABar.Crumbs)) then
+  begin
+    TAtlasIdeCrumbLists.Open(AList, FSource, ABar, AIndex, APoint);
+  end;
+end;
+
+/// <summary>Ob ABar beim Stand AStatus einen Pfad zeigt; sonst steht der passende Hinweis darin (beim Warten
+/// bleibt der alte Pfad).</summary>
+function ShowsPath(ABar: TAtlasBreadcrumbBar; AStatus: TAtlasOutlineStatus): Boolean;
+begin
+  Result := False;
+  case AStatus of
+    TAtlasOutlineStatus.NoFile:
+      begin
+        ABar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsEmpty);
+        ABar.SetCrumbs(nil);
+      end;
+    TAtlasOutlineStatus.NoServer:
+      begin
+        ABar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineNoServer);
+        ABar.SetCrumbs(nil);
+      end;
+    TAtlasOutlineStatus.Waiting:
+      // Alter Pfad bleibt stehen, bis die Gliederung da ist.
+      Result := False;
+  else
+    Result := True;
+  end;
+end;
+
+/// <summary>Caret der Ansicht AView als Zeile und Zeichen (0-basiert); False ohne gültige Zeile.</summary>
+function CaretOf(const AView: IOTAEditView; out ALine, ACharacter: Integer): Boolean;
+var
+  mCursor: TOTAEditPos;
+begin
+  mCursor := AView.CursorPos;
+  ALine := mCursor.Line - 1;
+  ACharacter := 0;
+  Result := mCursor.Line >= 1;
+  if Result then
+  begin
+    ACharacter := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(AView, mCursor.Line), mCursor.Col,
+      TAtlasEditorBuffer.TabWidth(AView.Buffer));
+  end;
+end;
+
+/// <summary>Kontextmenü am Glied AIndex (#1786); nur mit editor.breadcrumbsContextMenu.</summary>
+procedure TBreadcrumbsState.ContextMenu(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
+begin
+  if (ABar <> FActiveBar) or (FSource.FileName = '') or not TAtlasIdeSettings.Current.BreadcrumbsContextMenu then
+  begin
+    Exit;
+  end;
+  TAtlasIdeCrumbMenu.Show(APoint, TAtlasCrumbMenuFile.Create(FSource.FileName, FSource.Nodes, FSource.Lines),
+    ABar.Crumbs, AIndex, TAtlasIdeBreadcrumbs.FMenuHooks);
+end;
+
+procedure TBreadcrumbsState.Jump(ABar: TAtlasBreadcrumbBar; AIndex: Integer; ADeclaration: Boolean);
+var
+  mCrumb: TAtlasCrumb;
+  mTarget: Integer;
+begin
+  if (ABar <> FActiveBar) or (AIndex < 0) or (AIndex > High(ABar.Crumbs)) or (FSource.FileName = '') then
+  begin
+    Exit;
+  end;
+  mCrumb := ABar.Crumbs[AIndex];
+  TAtlasGuard.Log(Format('Brotkrumen: Sprung zu Glied %d', [AIndex]));
+  if mCrumb.Node < 0 then
+  begin
+    // Unit-Glied: an den Anfang der Datei.
+    if mCrumb.Badge.Kind = TAtlasBadgeKind.Unit_ then
+    begin
+      TAtlasIdeNavigation.GoToLocation(FSource.FileName, 0, 0);
+    end
+    else if (mCrumb.Current >= 0) and (mCrumb.Current <= High(mCrumb.Places)) then
+    begin
+      // Abschnittsglied: zu seinem Schlüsselwort.
+      TAtlasIdeNavigation.GoToLocation(FSource.FileName, mCrumb.Places[mCrumb.Current].Line,
+        mCrumb.Places[mCrumb.Current].Character);
+    end;
+    Exit;
+  end;
+  mTarget := TAtlasBreadcrumbs.Target(FSource.Nodes, mCrumb.Node, not ADeclaration);
+  if mTarget < 0 then
+  begin
+    Exit;
+  end;
+  TAtlasIdeNavigation.GoToLocation(FSource.FileName, FSource.Nodes[mTarget].NameLine,
+    FSource.Nodes[mTarget].NameCharacter);
+end;
+
+/// <summary>Menü erst nach dem Klick öffnen: Die IDE holt den Fokus in den Editor zurück; ein sofort geöffnetes
+/// Menü verlöre die Aktivierung und ginge gleich wieder zu. Läuft nur, wenn Zustand und Leiste dann noch
+/// leben.</summary>
+procedure TBreadcrumbsState.Later(ABar: TAtlasBreadcrumbBar; const AAction: TProc);
+var
+  mState: TBreadcrumbsState;
+  mBar: TAtlasBreadcrumbBar;
+  mAction: TProc;
+begin
+  TAtlasGuard.Log('Brotkrumen: Klick, Menü folgt');
+  mState := Self;
+  mBar := ABar;
+  mAction := AAction;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Breadcrumbs,
+    procedure
+    begin
+      if (TAtlasIdeBreadcrumbs.FState <> mState) or not mState.FHost.Contains(mBar) then
+      begin
+        Exit;
+      end;
+      mAction();
+    end);
+end;
+
+/// <summary>Netz, nur ohne Option der IDE (siehe Reset): Navigationsleiste in ein eigenes Panel umhängen.</summary>
+procedure TBreadcrumbsState.ApplyToolbar(AParent: TWinControl);
+begin
+  if FToolbarByIde then
+  begin
+    Exit;
+  end;
+  if TAtlasIdeSettings.Current.BreadcrumbsHideIdeToolbar then
+  begin
+    FToolbars.Apply(AParent, True);
+  end;
+end;
+
+procedure TBreadcrumbsState.Leave(ABar: TAtlasBreadcrumbBar);
+begin
+  TAtlasEditorBarHost.FocusEditor(ABar);
+end;
+
+/// <summary>Stand ASnapshot und Leiste ABar übernehmen; True, wenn sich gegenüber dem letzten Stand etwas
+/// geändert hat (dann ist der Pfad neu zu bilden).</summary>
+function TBreadcrumbsState.Remember(ABar: TAtlasBreadcrumbBar; const ASnapshot: TAtlasOutlineSnapshot): Boolean;
+var
+  mShowUnit, mWithInterfaces: Boolean;
+  mParts: TAtlasCrumbParts;
+  mLines: TArray<string>;
+begin
+  mShowUnit := TAtlasIdeSettings.Current.BreadcrumbsShowUnit;
+  mWithInterfaces := TAtlasIdeSettings.Current.BreadcrumbsInterfaces;
+  mParts := CrumbParts;
+  Result := not FShown or (ABar <> FActiveBar) or (ASnapshot.Status <> FKey.Status) or
+    not SameText(ASnapshot.FileName, FSource.FileName) or (ASnapshot.Stamp <> FKey.Stamp) or
+    (mShowUnit <> FKey.ShowUnit) or (mParts <> FKey.Parts) or (mWithInterfaces <> FKey.WithInterfaces);
+  if (ASnapshot.Stamp <> FKey.Stamp) or (Pointer(ASnapshot.Nodes) <> Pointer(FSource.Nodes)) then
+  begin
+    mLines := FSource.Lines;
+    if ASnapshot.Stamp <> FKey.Stamp then
+    begin
+      mLines := TTextLines.SplitLines(ASnapshot.Text);
+    end;
+    FText := TAtlasBreadcrumbs.Prepare(ASnapshot.Nodes, mLines);
+    FSource.Lines := mLines;
+  end;
+  FShown := True;
+  FActiveBar := ABar;
+  FKey.Status := ASnapshot.Status;
+  FSource.FileName := ASnapshot.FileName;
+  FKey.Stamp := ASnapshot.Stamp;
+  FKey.ShowUnit := mShowUnit;
+  FKey.Parts := mParts;
+  FKey.WithInterfaces := mWithInterfaces;
+  FSource.Nodes := ASnapshot.Nodes;
+  FInterfaces := ASnapshot.Interfaces;
+end;
+
+procedure TBreadcrumbsState.Removed(ABar: TControl);
+begin
+  if FActiveBar = ABar then
+  begin
+    FActiveBar := nil;
+    FShown := False;
+  end;
+end;
+
+procedure TBreadcrumbsState.Reset;
+var
+  mHide: Boolean;
+begin
+  FSource.FileName := '';
+  FKey.Stamp := 0;
+  FShown := False;
+  HideCard;
+  FSource.Line := -1;
+  FSource.Character := -1;
+  // Farben und Navigationsleiste der IDE nach geänderten Einstellungen. Die Leiste blendet die IDE über ihre
+  // Option aus; umgehängt wird nur ohne diese Option (Netz).
+  ApplyTheme;
+  mHide := TAtlasIdeSettings.Current.BreadcrumbsHideIdeToolbar;
+  FToolbarByIde := TAtlasIdeNavigationOption.Apply(mHide);
+  if FToolbarByIde or not mHide then
+  begin
+    FToolbars.RestoreAll;
+  end;
+end;
+
+procedure TBreadcrumbsState.Update;
+var
+  mBar: TAtlasBreadcrumbBar;
+  mView: IOTAEditView;
+  mSnapshot: TAtlasOutlineSnapshot;
+  mLine, mCharacter: Integer;
+  mChanged: Boolean;
+  mRequest: TAtlasCrumbRequest;
+  mInterfaces: TAtlasInterfaceMethods;
+begin
+  EnsureBars;
+  mBar := ActiveBar;
+  if mBar = nil then
+  begin
+    Exit;
+  end;
+  mView := TAtlasEditorBuffer.ActiveView;
+  // Interface-Marke (#1785): Der Cache holt die Angaben mit der Gliederung.
+  TAtlasIdeOutlineCache.WithInterfaces := TAtlasIdeSettings.Current.BreadcrumbsInterfaces;
+  mSnapshot := TAtlasIdeOutlineCache.Refresh(mView);
+  mChanged := Remember(mBar, mSnapshot);
+  if not ShowsPath(mBar, mSnapshot.Status) or not CaretOf(mView, mLine, mCharacter) then
+  begin
+    Exit;
+  end;
+  if not mChanged and (mLine = FSource.Line) and (mCharacter = FSource.Character) then
+  begin
+    Exit;
+  end;
+  FSource.Line := mLine;
+  FSource.Character := mCharacter;
+  mBar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsEmpty);
+  mRequest := TAtlasCrumbRequest.Create(FSource.Line, FSource.Character,
+    ChangeFileExt(ExtractFileName(FSource.FileName), ''), FKey.ShowUnit, FKey.Parts);
+  mInterfaces := nil;
+  if FKey.WithInterfaces then
+  begin
+    mInterfaces := FInterfaces;
+  end;
+  mBar.SetCrumbs(TAtlasIdeCrumbLists.Prepared(TAtlasBreadcrumbs.Path(FText, mRequest),
+    mInterfaces, FSource.Nodes));
+end;
+
+procedure TBreadcrumbsState.ApplyTheme;
+var
+  mColors: TAtlasColors;
+begin
+  mColors := TAtlasIdeStyle.BarColors;
+  FHost.ForEach(
+    procedure(ABar: TControl)
+    begin
+      TAtlasBreadcrumbBar(ABar).SetColors(mColors);
+    end);
+end;
+
+function TBreadcrumbsState.ActiveBar: TAtlasBreadcrumbBar;
+begin
+  Result := TAtlasBreadcrumbBar(FHost.ActiveBar);
 end;
 
 /// <summary>Steuerelement mit seinen Eltern bis zum Formular, für das Protokoll.</summary>
@@ -921,11 +921,6 @@ end;
 
 { TAtlasIdeBreadcrumbs }
 
-class function TAtlasIdeBreadcrumbs.Enabled: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.Breadcrumbs;
-end;
-
 /// <summary>Bedarf an den Metriken nur mit Leiste und Karte (#1787); meldet nur Änderungen.</summary>
 class procedure TAtlasIdeBreadcrumbs.WantMetrics;
 var
@@ -1010,6 +1005,11 @@ begin
   begin
     mBar.FocusLast;
   end;
+end;
+
+class function TAtlasIdeBreadcrumbs.Enabled: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.Breadcrumbs;
 end;
 
 end.

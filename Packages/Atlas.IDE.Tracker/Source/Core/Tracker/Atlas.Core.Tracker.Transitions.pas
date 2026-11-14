@@ -118,6 +118,11 @@ begin
   end;
 end;
 
+class function TAtlasTrackerTransitions.IsAt(const ARules: TAtlasTrackerStateRules; const AState: string): Boolean;
+begin
+  Result := (Trim(AState) <> '') and SameText(Trim(ARules.Current), Trim(AState));
+end;
+
 class function TAtlasTrackerTransitions.ChoiceText(const ATransition: TAtlasTrackerTransition;
   const AStates: TArray<string>): string;
 var
@@ -129,11 +134,6 @@ begin
   begin
     Result := Result + ' → ' + mTarget;
   end;
-end;
-
-class function TAtlasTrackerTransitions.IsAt(const ARules: TAtlasTrackerStateRules; const AState: string): Boolean;
-begin
-  Result := (Trim(AState) <> '') and SameText(Trim(ARules.Current), Trim(AState));
 end;
 
 class function TAtlasTrackerTransitions.Captions(const ARules: TAtlasTrackerStateRules): TArray<string>;

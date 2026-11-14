@@ -284,6 +284,8 @@ begin
   end;
 end;
 
+{ TDocComments }
+
 class function TDocComments.Signature(const ALines: TArray<string>; ALine: Integer): TDocSignature;
 var
   mWord, mText: string;
@@ -725,6 +727,8 @@ type
     /// <summary>Fehlende &lt;param&gt; aus AParams am Anker einfügen; leer, wenn keiner fehlt.</summary>
     function InsertMissing(const AParams: TArray<string>): TArray<TTextEdit>;
   end;
+
+{ TDocBlock }
 
 class function TDocBlock.Create(const AText: string; const ALines: TArray<string>; ALine: Integer): TDocBlock;
 begin

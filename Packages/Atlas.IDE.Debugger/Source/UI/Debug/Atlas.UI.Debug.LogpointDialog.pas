@@ -67,21 +67,6 @@ const
 
 { TAtlasLogpointDialog }
 
-function TAtlasLogpointDialog.LabeledEdit(const ACaption, AHint: string): TEdit;
-var
-  mRow: TPanel;
-begin
-  mRow := AddRow(cRowHeight);
-  AddLabel(mRow, ACaption);
-  Result := TEdit.Create(Self);
-  Result.Parent := mRow;
-  Result.Left := ScaleValue(cLabelWidth);
-  Result.Width := mRow.Width - Result.Left;
-  Result.TextHint := AHint;
-  Result.OnChange := InputChange;
-  FitRight(Result);
-end;
-
 constructor TAtlasLogpointDialog.CreateFor(AOwner: TComponent; const APlace: string; ACanRemove: Boolean);
 var
   mButtons: TAtlasButtonRow;
@@ -111,19 +96,23 @@ begin
   InputChange(nil);
 end;
 
-class function TAtlasLogpointDialog.ErrorText(const ATemplate: TAtlasLogpointTemplate): string;
+function TAtlasLogpointDialog.GetInput: TAtlasLogpointInput;
 begin
-  Result := '';
-  case ATemplate.Error of
-    TAtlasLogpointError.MissingClose:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LogpointMissingClose, [ATemplate.ErrorPos]);
-    TAtlasLogpointError.StrayClose:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LogpointStrayClose, [ATemplate.ErrorPos]);
-    TAtlasLogpointError.EmptyPlaceholder:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LogpointEmpty, [ATemplate.ErrorPos]);
-    TAtlasLogpointError.None:
-      Result := '';
+  Result.Text := FText.Text;
+  Result.Condition := Trim(FCondition.Text);
+  Result.PassCount := StrToIntDef(Trim(FHits.Text), 0);
+end;
+
+procedure TAtlasLogpointDialog.SetInput(const AValue: TAtlasLogpointInput);
+begin
+  FText.Text := AValue.Text;
+  FCondition.Text := AValue.Condition;
+  FHits.Text := '';
+  if AValue.PassCount > 0 then
+  begin
+    FHits.Text := IntToStr(AValue.PassCount);
   end;
+  InputChange(nil);
 end;
 
 procedure TAtlasLogpointDialog.InputChange(Sender: TObject);
@@ -152,23 +141,34 @@ begin
   end;
 end;
 
-function TAtlasLogpointDialog.GetInput: TAtlasLogpointInput;
+function TAtlasLogpointDialog.LabeledEdit(const ACaption, AHint: string): TEdit;
+var
+  mRow: TPanel;
 begin
-  Result.Text := FText.Text;
-  Result.Condition := Trim(FCondition.Text);
-  Result.PassCount := StrToIntDef(Trim(FHits.Text), 0);
+  mRow := AddRow(cRowHeight);
+  AddLabel(mRow, ACaption);
+  Result := TEdit.Create(Self);
+  Result.Parent := mRow;
+  Result.Left := ScaleValue(cLabelWidth);
+  Result.Width := mRow.Width - Result.Left;
+  Result.TextHint := AHint;
+  Result.OnChange := InputChange;
+  FitRight(Result);
 end;
 
-procedure TAtlasLogpointDialog.SetInput(const AValue: TAtlasLogpointInput);
+class function TAtlasLogpointDialog.ErrorText(const ATemplate: TAtlasLogpointTemplate): string;
 begin
-  FText.Text := AValue.Text;
-  FCondition.Text := AValue.Condition;
-  FHits.Text := '';
-  if AValue.PassCount > 0 then
-  begin
-    FHits.Text := IntToStr(AValue.PassCount);
+  Result := '';
+  case ATemplate.Error of
+    TAtlasLogpointError.MissingClose:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LogpointMissingClose, [ATemplate.ErrorPos]);
+    TAtlasLogpointError.StrayClose:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LogpointStrayClose, [ATemplate.ErrorPos]);
+    TAtlasLogpointError.EmptyPlaceholder:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LogpointEmpty, [ATemplate.ErrorPos]);
+    TAtlasLogpointError.None:
+      Result := '';
   end;
-  InputChange(nil);
 end;
 
 class function TAtlasLogpointDialog.Execute(const APlace: string; ACanRemove: Boolean;

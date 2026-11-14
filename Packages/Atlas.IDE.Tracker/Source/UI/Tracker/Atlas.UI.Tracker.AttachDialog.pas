@@ -245,15 +245,16 @@ begin
   inherited;
 end;
 
+procedure TAtlasAttachDialog.CreateWnd;
+begin
+  inherited;
+  FillLists;
+end;
+
 procedure TAtlasAttachDialog.DoClose(var Action: TCloseAction);
 begin
   FPicker.Cancel;
   inherited;
-end;
-
-class function TAtlasAttachDialog.SizeText(ABytes: Int64): string;
-begin
-  Result := FormatFloat('#,##0.0', ABytes / 1024, FormatSettings) + ' KB';
 end;
 
 function AddCheck(ADialog: TAtlasAttachDialog; AParent: TWinControl; ATop: Integer;
@@ -553,12 +554,6 @@ begin
   end;
 end;
 
-procedure TAtlasAttachDialog.CreateWnd;
-begin
-  inherited;
-  FillLists;
-end;
-
 procedure TAtlasAttachDialog.FillLists;
 var
   mInfo: TAtlasWindowInfo;
@@ -620,47 +615,42 @@ begin
   end;
 end;
 
-procedure TAtlasAttachDialog.SetScreenshot(ABitmap: TBitmap);
+procedure TAtlasAttachDialog.Changed(Sender: TObject);
 begin
-  FreeAndNil(FImages.Shot);
-  FImages.ShotPng := nil;
-  if ABitmap <> nil then
+  if not FUpdating then
   begin
-    FImages.Shot := TBitmap.Create;
-    FImages.Shot.Assign(ABitmap);
-    FParts.ShotInfo.Caption := Format('%d × %d', [FImages.Shot.Width, FImages.Shot.Height]);
-  end
-  else
-  begin
-    FParts.ShotInfo.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachCaptureFailed);
+    Rebuild;
   end;
-  FUpdating := True;
-  try
-    FParts.Screenshot.Checked := FImages.Shot <> nil;
-  finally
-    FUpdating := False;
+end;
+
+procedure TAtlasAttachDialog.TextChanged(Sender: TObject);
+begin
+  UpdateSend;
+end;
+
+procedure TAtlasAttachDialog.CommentChanged(Sender: TObject);
+begin
+  // Wer Text einträgt, will ihn senden: Haken setzen (OnClick baut die Liste neu).
+  if Trim(FParts.CommentMemo.Lines.Text) <> '' then
+  begin
+    FParts.Comment.Checked := True;
+  end;
+  UpdateSend;
+end;
+
+procedure TAtlasAttachDialog.LogChanged(Sender: TObject);
+begin
+  if FUpdating then
+  begin
+    Exit;
+  end;
+  // Pfad eingetragen oder gewählt: Logdatei anhängen. Checked löst über OnClick schon Rebuild aus.
+  if (Trim(FParts.LogBox.Text) <> '') and not FParts.Log.Checked then
+  begin
+    FParts.Log.Checked := True;
+    Exit;
   end;
   Rebuild;
-end;
-
-procedure TAtlasAttachDialog.CaptureWindow(AWindow: HWND);
-var
-  mBitmap: TBitmap;
-begin
-  mBitmap := TAtlasWindowCapture.Capture(AWindow);
-  try
-    SetScreenshot(mBitmap);
-  finally
-    mBitmap.Free;
-  end;
-end;
-
-procedure TAtlasAttachDialog.WindowChanged(Sender: TObject);
-begin
-  if (FParts.WindowBox.ItemIndex >= 0) and (FParts.WindowBox.ItemIndex < Length(FWindows)) then
-  begin
-    CaptureWindow(FWindows[FParts.WindowBox.ItemIndex].Handle);
-  end;
 end;
 
 /// <summary>Hauptfenster des debuggten Programms nach vorn; False ohne Programm, Fenster oder Einstellung.</summary>
@@ -676,6 +666,14 @@ begin
   // Neu suchen: Seit dem Öffnen des Dialogs kann das Programm ein Fenster bekommen haben.
   mWindows := TAtlasWindowCapture.WindowsOf(AInput.ProcessId);
   Result := (Length(mWindows) > 0) and TAtlasWindowCapture.BringToFront(mWindows[0].Handle);
+end;
+
+procedure TAtlasAttachDialog.WindowChanged(Sender: TObject);
+begin
+  if (FParts.WindowBox.ItemIndex >= 0) and (FParts.WindowBox.ItemIndex < Length(FWindows)) then
+  begin
+    CaptureWindow(FWindows[FParts.WindowBox.ItemIndex].Handle);
+  end;
 end;
 
 procedure TAtlasAttachDialog.PickClick(Sender: TObject);
@@ -777,40 +775,45 @@ begin
   end;
 end;
 
-procedure TAtlasAttachDialog.Changed(Sender: TObject);
+procedure TAtlasAttachDialog.CaptureWindow(AWindow: HWND);
+var
+  mBitmap: TBitmap;
 begin
-  if not FUpdating then
-  begin
-    Rebuild;
+  mBitmap := TAtlasWindowCapture.Capture(AWindow);
+  try
+    SetScreenshot(mBitmap);
+  finally
+    mBitmap.Free;
   end;
 end;
 
-procedure TAtlasAttachDialog.TextChanged(Sender: TObject);
+procedure TAtlasAttachDialog.UpdateSend;
 begin
-  UpdateSend;
+  if FParts.Send <> nil then
+  begin
+    FParts.Send.Enabled := CanSend;
+  end;
 end;
 
-procedure TAtlasAttachDialog.CommentChanged(Sender: TObject);
+procedure TAtlasAttachDialog.SetScreenshot(ABitmap: TBitmap);
 begin
-  // Wer Text einträgt, will ihn senden: Haken setzen (OnClick baut die Liste neu).
-  if Trim(FParts.CommentMemo.Lines.Text) <> '' then
+  FreeAndNil(FImages.Shot);
+  FImages.ShotPng := nil;
+  if ABitmap <> nil then
   begin
-    FParts.Comment.Checked := True;
+    FImages.Shot := TBitmap.Create;
+    FImages.Shot.Assign(ABitmap);
+    FParts.ShotInfo.Caption := Format('%d × %d', [FImages.Shot.Width, FImages.Shot.Height]);
+  end
+  else
+  begin
+    FParts.ShotInfo.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachCaptureFailed);
   end;
-  UpdateSend;
-end;
-
-procedure TAtlasAttachDialog.LogChanged(Sender: TObject);
-begin
-  if FUpdating then
-  begin
-    Exit;
-  end;
-  // Pfad eingetragen oder gewählt: Logdatei anhängen. Checked löst über OnClick schon Rebuild aus.
-  if (Trim(FParts.LogBox.Text) <> '') and not FParts.Log.Checked then
-  begin
-    FParts.Log.Checked := True;
-    Exit;
+  FUpdating := True;
+  try
+    FParts.Screenshot.Checked := FImages.Shot <> nil;
+  finally
+    FUpdating := False;
   end;
   Rebuild;
 end;
@@ -966,14 +969,6 @@ begin
   UpdateSend;
 end;
 
-procedure TAtlasAttachDialog.UpdateSend;
-begin
-  if FParts.Send <> nil then
-  begin
-    FParts.Send.Enabled := CanSend;
-  end;
-end;
-
 function TAtlasAttachDialog.Key: string;
 var
   mText: string;
@@ -1018,6 +1013,11 @@ end;
 function TAtlasAttachDialog.CanSend: Boolean;
 begin
   Result := (Key <> '') and ((Length(FFiles) > 0) or (CommentText <> ''));
+end;
+
+class function TAtlasAttachDialog.SizeText(ABytes: Int64): string;
+begin
+  Result := FormatFloat('#,##0.0', ABytes / 1024, FormatSettings) + ' KB';
 end;
 
 end.

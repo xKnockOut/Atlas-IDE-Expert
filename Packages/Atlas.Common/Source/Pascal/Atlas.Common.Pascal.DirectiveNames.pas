@@ -86,6 +86,8 @@ const
     'XML_CREF_NO_RESOLVE', 'XML_EXPECTED_CHARACTER', 'XML_INVALID_NAME', 'XML_INVALID_NAME_START',
     'XML_NO_MATCHING_PARM', 'XML_NO_PARM', 'XML_UNKNOWN_ENTITY', 'XML_WHITESPACE_NOT_ALLOWED', 'ZERO_NIL_COMPAT');
 
+{ TDirectiveNames }
+
 class function TDirectiveNames.Body(const ADirective: string): string;
 begin
   Result := Trim(ADirective);

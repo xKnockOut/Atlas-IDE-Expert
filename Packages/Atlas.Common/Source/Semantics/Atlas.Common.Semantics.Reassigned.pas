@@ -186,11 +186,6 @@ begin
   end;
 end;
 
-function TReassignedSymbol.WriteCount: Integer;
-begin
-  Result := Writes + LoopWrites;
-end;
-
 function TReassignedSymbol.IsReassigned: Boolean;
 begin
   case Kind of
@@ -207,6 +202,11 @@ function TReassignedSymbol.IsConstCandidate: Boolean;
 begin
   Result := (Kind in [TReassignedKind.Local, TReassignedKind.InlineVariable]) and (Writes = 1) and
     (LoopWrites = 0) and (MaybeWrites = 0);
+end;
+
+function TReassignedSymbol.WriteCount: Integer;
+begin
+  Result := Writes + LoopWrites;
 end;
 
 function TReassignedSymbol.WriteLines: TArray<Integer>;
@@ -254,35 +254,29 @@ end;
 
 { TReassigned }
 
-class function TReassigned.TryParseTarget(const AName: string; out ATarget: TReassignedTarget): Boolean;
-var
-  mTarget: TReassignedTarget;
+class function TReassigned.Analyze(const AText: string; ATree: TSyntaxTree;
+  const ALookup: TFlowSignatureLookup): TArray<TReassignedSymbol>;
 begin
-  for mTarget := Low(TReassignedTarget) to High(TReassignedTarget) do
-  begin
-    if SameText(cTargetNames[mTarget], Trim(AName)) then
-    begin
-      ATarget := mTarget;
-      Exit(True);
-    end;
-  end;
-  ATarget := TReassignedTarget.Locals;
-  Result := False;
+  Result := Analyze(AText, ATree, ALookup, TReassignedScope.Whole);
 end;
 
-class function TReassigned.TargetsOf(const ANames: TArray<string>): TReassignedTargets;
+class function TReassigned.Filter(const ASymbols: TArray<TReassignedSymbol>;
+  ATargets: TReassignedTargets): TArray<TReassignedSymbol>;
 var
-  mName: string;
-  mTarget: TReassignedTarget;
+  mSymbol: TReassignedSymbol;
+  mCount: Integer;
 begin
-  Result := [];
-  for mName in ANames do
+  SetLength(Result, Length(ASymbols));
+  mCount := 0;
+  for mSymbol in ASymbols do
   begin
-    if TryParseTarget(mName, mTarget) then
+    if (mSymbol.Target in ATargets) and mSymbol.IsReassigned then
     begin
-      Include(Result, mTarget);
+      Result[mCount] := mSymbol;
+      Inc(mCount);
     end;
   end;
+  SetLength(Result, mCount);
 end;
 
 /// <summary>Schreibt das Elternteil von ANode direkt (Ziel einer Zuweisung, @X)? AWrite trägt die Art.</summary>
@@ -422,6 +416,8 @@ type
     function Run: TArray<TReassignedSymbol>;
   end;
 
+{ TReassignedRun }
+
 constructor TReassignedRun.Create(const AText: string; ATree: TSyntaxTree; const ALookup: TFlowSignatureLookup;
   const AScope: TReassignedScope);
 begin
@@ -506,156 +502,21 @@ begin
   end;
 end;
 
-function TReassignedRun.Add(const ASymbol: TReassignedSymbol): Integer;
-begin
-  // In Stufen wachsen: Anhängen mit + kopierte bei Tausenden Namen je Eintrag das ganze Feld.
-  if FCount = Length(FSymbols) then
-  begin
-    SetLength(FSymbols, Max(64, 2 * FCount));
-  end;
-  FSymbols[FCount] := ASymbol;
-  Result := FCount;
-  Inc(FCount);
-end;
-
-procedure TReassignedRun.AddOccurrence(AIndex: Integer; const ARange: TTextRange; AOffset: Integer;
-  AWrite: TReassignedWrite; ANode: TSyntaxNode);
+procedure TReassignedRun.AddLocals(ARoutine: TSyntaxNode);
 var
-  mOccurrence: TReassignedOccurrence;
+  mLocals: TArray<TRoutineLocal>;
+  mIndex: Integer;
 begin
-  mOccurrence.Range := ARange;
-  mOccurrence.Offset := AOffset;
-  mOccurrence.Write := AWrite;
-  mOccurrence.Node := ANode;
-  FSymbols[AIndex].Occurrences := FSymbols[AIndex].Occurrences + [mOccurrence];
-end;
-
-procedure TReassignedRun.Count(AIndex: Integer; AWrite: TReassignedWrite; AMethod: TSyntaxNode);
-begin
-  case AWrite of
-    TReassignedWrite.Write:
-      Inc(FSymbols[AIndex].Writes);
-    TReassignedWrite.LoopWrite:
-      Inc(FSymbols[AIndex].LoopWrites);
-    TReassignedWrite.MaybeWrite:
-      Inc(FSymbols[AIndex].MaybeWrites);
-    TReassignedWrite.None: ;
-  end;
-  if (FSymbols[AIndex].Kind <> TReassignedKind.Field) or
-    not (AWrite in [TReassignedWrite.Write, TReassignedWrite.LoopWrite]) or (AMethod = nil) then
+  mLocals := TRoutineLocals.Collect(FText, FTree, ARoutine);
+  // Auch Routinen außerhalb des Ausschnitts: Ihre Namen verdecken Felder (OwnerOf -2), Einträge bekommen sie nicht.
+  FLocals.AddOrSetValue(ARoutine, mLocals);
+  if not FScope.Covers(ARoutine) then
   begin
     Exit;
   end;
-  if FSymbols[AIndex].Routine = nil then
+  for mIndex := 0 to High(mLocals) do
   begin
-    FSymbols[AIndex].Routine := AMethod;
-    FSymbols[AIndex].RoutineName := AMethod.Name;
-    FSymbols[AIndex].WriterCount := 1;
-  end
-  else if FSymbols[AIndex].Routine <> AMethod then
-  begin
-    Inc(FSymbols[AIndex].WriterCount);
-  end;
-  if IsConstructor(AMethod) then
-  begin
-    FSymbols[AIndex].InConstructor := True;
-  end;
-end;
-
-function TReassignedRun.NameToken(AFrom, ATo: Integer; const AName: string): Integer;
-var
-  mIndex: Integer;
-begin
-  mIndex := TRoutineBody.TokenAt(FTokens, AFrom);
-  while (mIndex <= High(FTokens)) and (FTokens[mIndex].Offset < ATo) do
-  begin
-    if (FTokens[mIndex].Kind = TPascalTokenKind.Identifier) and
-      (SameText(FTokens[mIndex].Text, AName) or SameText(FTokens[mIndex].Text, '&' + AName)) then
-    begin
-      Exit(mIndex);
-    end;
-    Inc(mIndex);
-  end;
-  Result := -1;
-end;
-
-function TReassignedRun.IsConstructor(AMethod: TSyntaxNode): Boolean;
-var
-  mIndex: Integer;
-begin
-  mIndex := TRoutineBody.TokenAt(FTokens, AMethod.StartOffset);
-  if (mIndex <= High(FTokens)) and SameText(FTokens[mIndex].Text, 'class') then
-  begin
-    mIndex := TRoutineBody.NextToken(FTokens, mIndex);
-  end;
-  Result := (mIndex <= High(FTokens)) and SameText(FTokens[mIndex].Text, 'constructor');
-end;
-
-class function TReassignedRun.MethodOf(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode.Parent;
-  while (Result <> nil) and ((Result.Kind <> TSyntaxKind.RoutineDecl) or (Pos('.', Result.Name) = 0)) do
-  begin
-    Result := Result.Parent;
-  end;
-end;
-
-class function TReassignedRun.NamedRoutineOf(ARoutine: TSyntaxNode): string;
-var
-  mNode: TSyntaxNode;
-begin
-  mNode := ARoutine;
-  while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.RoutineDecl) do
-  begin
-    mNode := mNode.Parent;
-  end;
-  Result := '';
-  if mNode <> nil then
-  begin
-    Result := mNode.Name;
-  end;
-end;
-
-class function TReassignedRun.ClassOf(const AMethodName: string): string;
-var
-  mParts: TArray<string>;
-begin
-  // TFoo.Bar -> TFoo, TAussen.TInnen.Bar -> TInnen.
-  mParts := AMethodName.Split(['.']);
-  Result := '';
-  if Length(mParts) >= 2 then
-  begin
-    Result := mParts[High(mParts) - 1];
-  end;
-end;
-
-/// <summary>Art des Eintrags für ALocal; False für Namen ohne Eintrag (const-Parameter, Inline-Konstanten).</summary>
-function LocalKindOf(const ALocal: TRoutineLocal; out AKind: TReassignedKind): Boolean;
-begin
-  Result := True;
-  AKind := TReassignedKind.Local;
-  case ALocal.Kind of
-    TRoutineLocalKind.Parameter:
-      case ALocal.Decl.Modifier of
-        TParameterModifier.None:
-          AKind := TReassignedKind.ValueParameter;
-        TParameterModifier.VarParam, TParameterModifier.OutParam:
-          AKind := TReassignedKind.VarParameter;
-      else
-        Result := False;
-      end;
-    TRoutineLocalKind.Variable:
-      AKind := TReassignedKind.Local;
-    TRoutineLocalKind.InlineVariable:
-      begin
-        AKind := TReassignedKind.InlineVariable;
-        // Inline-Konstanten führt Collect als Inline-Variable.
-        Result := ALocal.Decl.Kind = TSyntaxKind.InlineVar;
-      end;
-    TRoutineLocalKind.LoopVariable:
-      AKind := TReassignedKind.LoopVariable;
-  else
-    Result := False;
+    AddLocal(ARoutine, mIndex, mLocals[mIndex]);
   end;
 end;
 
@@ -681,159 +542,6 @@ begin
     begin
       Result := TReassignedWrite.Write;
     end;
-  end;
-end;
-
-procedure TReassignedRun.AddLocal(ARoutine: TSyntaxNode; AIndex: Integer; const ALocal: TRoutineLocal);
-var
-  mSymbol: TReassignedSymbol;
-  mToken: Integer;
-  mWrite: TReassignedWrite;
-begin
-  mSymbol := Default(TReassignedSymbol);
-  if not LocalKindOf(ALocal, mSymbol.Kind) then
-  begin
-    Exit;
-  end;
-  mSymbol.Name := ALocal.Name;
-  mSymbol.Decl := ALocal.Decl;
-  mSymbol.Routine := ARoutine;
-  mSymbol.RoutineName := NamedRoutineOf(ARoutine);
-  FKeys.Add(IntToStr(ARoutine.StartOffset) + ':' + IntToStr(AIndex), Add(mSymbol));
-  mToken := NameToken(mSymbol.Decl.StartOffset, mSymbol.Decl.EndOffset, mSymbol.Name);
-  if mToken < 0 then
-  begin
-    Exit;
-  end;
-  mWrite := DeclarationWrite(mSymbol, mToken);
-  if (mSymbol.Kind = TReassignedKind.InlineVariable) and (mWrite = TReassignedWrite.Write) then
-  begin
-    FSymbols[FCount - 1].Initialized := True;
-  end;
-  AddOccurrence(FCount - 1, TTextRange.Create(FTokens[mToken].StartPos, FTokens[mToken].EndPos),
-    FTokens[mToken].Offset, mWrite, nil);
-  Count(FCount - 1, mWrite, nil);
-end;
-
-procedure TReassignedRun.AddLocals(ARoutine: TSyntaxNode);
-var
-  mLocals: TArray<TRoutineLocal>;
-  mIndex: Integer;
-begin
-  mLocals := TRoutineLocals.Collect(FText, FTree, ARoutine);
-  // Auch Routinen außerhalb des Ausschnitts: Ihre Namen verdecken Felder (OwnerOf -2), Einträge bekommen sie nicht.
-  FLocals.AddOrSetValue(ARoutine, mLocals);
-  if not FScope.Covers(ARoutine) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to High(mLocals) do
-  begin
-    AddLocal(ARoutine, mIndex, mLocals[mIndex]);
-  end;
-end;
-
-procedure TReassignedRun.AddFields(ATypeDecl: TSyntaxNode);
-var
-  mBody, mNode: TSyntaxNode;
-  mFields: TList<TSyntaxNode>;
-  mName, mKey: string;
-  mSymbol: TReassignedSymbol;
-  mIndex, mToken: Integer;
-begin
-  mBody := nil;
-  for mIndex := 0 to ATypeDecl.ChildCount - 1 do
-  begin
-    if ATypeDecl[mIndex].Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType] then
-    begin
-      mBody := ATypeDecl[mIndex];
-    end;
-  end;
-  if mBody = nil then
-  begin
-    Exit;
-  end;
-  mFields := TList<TSyntaxNode>.Create;
-  try
-    mBody.Walk(
-      function(ANode: TSyntaxNode): Boolean
-      begin
-        // Geschachtelte Typen bringen eigene Felder mit; Methoden und Properties haben keine.
-        Result := not (ANode.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl,
-          TSyntaxKind.PropertyDecl, TSyntaxKind.Field]);
-        if ANode.Kind = TSyntaxKind.Field then
-        begin
-          mFields.Add(ANode);
-        end;
-      end);
-    for mNode in mFields do
-    begin
-      for mName in mNode.Name.Split([',']) do
-      begin
-        mKey := LowerCase(ATypeDecl.Name + '.' + Trim(mName));
-        if FKeys.ContainsKey(mKey) then
-        begin
-          Continue;
-        end;
-        mSymbol := Default(TReassignedSymbol);
-        mSymbol.Name := Trim(mName);
-        mSymbol.Kind := TReassignedKind.Field;
-        mSymbol.Decl := mNode;
-        FKeys.Add(mKey, Add(mSymbol));
-        mToken := NameToken(mNode.StartOffset, mNode.EndOffset, mSymbol.Name);
-        if mToken >= 0 then
-        begin
-          AddOccurrence(FCount - 1, TTextRange.Create(FTokens[mToken].StartPos, FTokens[mToken].EndPos),
-            FTokens[mToken].Offset, TReassignedWrite.None, nil);
-        end;
-      end;
-    end;
-  finally
-    mFields.Free;
-  end;
-end;
-
-function TReassignedRun.OwnerOf(ANode: TSyntaxNode; const AName: string; AOffset: Integer): Integer;
-var
-  mRoutine, mBody: TSyntaxNode;
-  mLocals: TArray<TRoutineLocal>;
-  mOffset, mIndex: Integer;
-begin
-  mRoutine := ANode.Parent;
-  while mRoutine <> nil do
-  begin
-    if FLocals.TryGetValue(mRoutine, mLocals) then
-    begin
-      mBody := TRoutineBody.BodyOf(mRoutine);
-      mOffset := AOffset;
-      // Aus einer verschachtelten Routine heraus gelten die Namen der äußeren vor ihrem Rumpf.
-      if (mOffset < mBody.StartOffset) or (mOffset > mBody.EndOffset) then
-      begin
-        mOffset := mBody.StartOffset;
-      end;
-      mIndex := TRoutineLocals.IndexOf(mLocals, AName, mOffset);
-      if mIndex >= 0 then
-      begin
-        if FKeys.TryGetValue(IntToStr(mRoutine.StartOffset) + ':' + IntToStr(mIndex), Result) then
-        begin
-          Exit;
-        end;
-        Exit(-2);
-      end;
-    end;
-    mRoutine := mRoutine.Parent;
-  end;
-  Result := -1;
-end;
-
-function TReassignedRun.FieldOf(ANode: TSyntaxNode; const AName: string; out AMethod: TSyntaxNode): Integer;
-begin
-  Result := -1;
-  AMethod := MethodOf(ANode);
-  if (AMethod = nil) or not FKeys.TryGetValue(LowerCase(ClassOf(AMethod.Name) + '.' + AName), Result) or
-    (FSymbols[Result].Kind <> TReassignedKind.Field) then
-  begin
-    Result := -1;
   end;
 end;
 
@@ -906,6 +614,294 @@ begin
   end;
 end;
 
+procedure TReassignedRun.AddFields(ATypeDecl: TSyntaxNode);
+var
+  mBody, mNode: TSyntaxNode;
+  mFields: TList<TSyntaxNode>;
+  mName, mKey: string;
+  mSymbol: TReassignedSymbol;
+  mIndex, mToken: Integer;
+begin
+  mBody := nil;
+  for mIndex := 0 to ATypeDecl.ChildCount - 1 do
+  begin
+    if ATypeDecl[mIndex].Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType] then
+    begin
+      mBody := ATypeDecl[mIndex];
+    end;
+  end;
+  if mBody = nil then
+  begin
+    Exit;
+  end;
+  mFields := TList<TSyntaxNode>.Create;
+  try
+    mBody.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        // Geschachtelte Typen bringen eigene Felder mit; Methoden und Properties haben keine.
+        Result := not (ANode.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl,
+          TSyntaxKind.PropertyDecl, TSyntaxKind.Field]);
+        if ANode.Kind = TSyntaxKind.Field then
+        begin
+          mFields.Add(ANode);
+        end;
+      end);
+    for mNode in mFields do
+    begin
+      for mName in mNode.Name.Split([',']) do
+      begin
+        mKey := LowerCase(ATypeDecl.Name + '.' + Trim(mName));
+        if FKeys.ContainsKey(mKey) then
+        begin
+          Continue;
+        end;
+        mSymbol := Default(TReassignedSymbol);
+        mSymbol.Name := Trim(mName);
+        mSymbol.Kind := TReassignedKind.Field;
+        mSymbol.Decl := mNode;
+        FKeys.Add(mKey, Add(mSymbol));
+        mToken := NameToken(mNode.StartOffset, mNode.EndOffset, mSymbol.Name);
+        if mToken >= 0 then
+        begin
+          AddOccurrence(FCount - 1, TTextRange.Create(FTokens[mToken].StartPos, FTokens[mToken].EndPos),
+            FTokens[mToken].Offset, TReassignedWrite.None, nil);
+        end;
+      end;
+    end;
+  finally
+    mFields.Free;
+  end;
+end;
+
+function TReassignedRun.Add(const ASymbol: TReassignedSymbol): Integer;
+begin
+  // In Stufen wachsen: Anhängen mit + kopierte bei Tausenden Namen je Eintrag das ganze Feld.
+  if FCount = Length(FSymbols) then
+  begin
+    SetLength(FSymbols, Max(64, 2 * FCount));
+  end;
+  FSymbols[FCount] := ASymbol;
+  Result := FCount;
+  Inc(FCount);
+end;
+
+procedure TReassignedRun.AddOccurrence(AIndex: Integer; const ARange: TTextRange; AOffset: Integer;
+  AWrite: TReassignedWrite; ANode: TSyntaxNode);
+var
+  mOccurrence: TReassignedOccurrence;
+begin
+  mOccurrence.Range := ARange;
+  mOccurrence.Offset := AOffset;
+  mOccurrence.Write := AWrite;
+  mOccurrence.Node := ANode;
+  FSymbols[AIndex].Occurrences := FSymbols[AIndex].Occurrences + [mOccurrence];
+end;
+
+/// <summary>Art des Eintrags für ALocal; False für Namen ohne Eintrag (const-Parameter, Inline-Konstanten).</summary>
+function LocalKindOf(const ALocal: TRoutineLocal; out AKind: TReassignedKind): Boolean;
+begin
+  Result := True;
+  AKind := TReassignedKind.Local;
+  case ALocal.Kind of
+    TRoutineLocalKind.Parameter:
+      case ALocal.Decl.Modifier of
+        TParameterModifier.None:
+          AKind := TReassignedKind.ValueParameter;
+        TParameterModifier.VarParam, TParameterModifier.OutParam:
+          AKind := TReassignedKind.VarParameter;
+      else
+        Result := False;
+      end;
+    TRoutineLocalKind.Variable:
+      AKind := TReassignedKind.Local;
+    TRoutineLocalKind.InlineVariable:
+      begin
+        AKind := TReassignedKind.InlineVariable;
+        // Inline-Konstanten führt Collect als Inline-Variable.
+        Result := ALocal.Decl.Kind = TSyntaxKind.InlineVar;
+      end;
+    TRoutineLocalKind.LoopVariable:
+      AKind := TReassignedKind.LoopVariable;
+  else
+    Result := False;
+  end;
+end;
+
+procedure TReassignedRun.AddLocal(ARoutine: TSyntaxNode; AIndex: Integer; const ALocal: TRoutineLocal);
+var
+  mSymbol: TReassignedSymbol;
+  mToken: Integer;
+  mWrite: TReassignedWrite;
+begin
+  mSymbol := Default(TReassignedSymbol);
+  if not LocalKindOf(ALocal, mSymbol.Kind) then
+  begin
+    Exit;
+  end;
+  mSymbol.Name := ALocal.Name;
+  mSymbol.Decl := ALocal.Decl;
+  mSymbol.Routine := ARoutine;
+  mSymbol.RoutineName := NamedRoutineOf(ARoutine);
+  FKeys.Add(IntToStr(ARoutine.StartOffset) + ':' + IntToStr(AIndex), Add(mSymbol));
+  mToken := NameToken(mSymbol.Decl.StartOffset, mSymbol.Decl.EndOffset, mSymbol.Name);
+  if mToken < 0 then
+  begin
+    Exit;
+  end;
+  mWrite := DeclarationWrite(mSymbol, mToken);
+  if (mSymbol.Kind = TReassignedKind.InlineVariable) and (mWrite = TReassignedWrite.Write) then
+  begin
+    FSymbols[FCount - 1].Initialized := True;
+  end;
+  AddOccurrence(FCount - 1, TTextRange.Create(FTokens[mToken].StartPos, FTokens[mToken].EndPos),
+    FTokens[mToken].Offset, mWrite, nil);
+  Count(FCount - 1, mWrite, nil);
+end;
+
+procedure TReassignedRun.Count(AIndex: Integer; AWrite: TReassignedWrite; AMethod: TSyntaxNode);
+begin
+  case AWrite of
+    TReassignedWrite.Write:
+      Inc(FSymbols[AIndex].Writes);
+    TReassignedWrite.LoopWrite:
+      Inc(FSymbols[AIndex].LoopWrites);
+    TReassignedWrite.MaybeWrite:
+      Inc(FSymbols[AIndex].MaybeWrites);
+    TReassignedWrite.None: ;
+  end;
+  if (FSymbols[AIndex].Kind <> TReassignedKind.Field) or
+    not (AWrite in [TReassignedWrite.Write, TReassignedWrite.LoopWrite]) or (AMethod = nil) then
+  begin
+    Exit;
+  end;
+  if FSymbols[AIndex].Routine = nil then
+  begin
+    FSymbols[AIndex].Routine := AMethod;
+    FSymbols[AIndex].RoutineName := AMethod.Name;
+    FSymbols[AIndex].WriterCount := 1;
+  end
+  else if FSymbols[AIndex].Routine <> AMethod then
+  begin
+    Inc(FSymbols[AIndex].WriterCount);
+  end;
+  if IsConstructor(AMethod) then
+  begin
+    FSymbols[AIndex].InConstructor := True;
+  end;
+end;
+
+function TReassignedRun.OwnerOf(ANode: TSyntaxNode; const AName: string; AOffset: Integer): Integer;
+var
+  mRoutine, mBody: TSyntaxNode;
+  mLocals: TArray<TRoutineLocal>;
+  mOffset, mIndex: Integer;
+begin
+  mRoutine := ANode.Parent;
+  while mRoutine <> nil do
+  begin
+    if FLocals.TryGetValue(mRoutine, mLocals) then
+    begin
+      mBody := TRoutineBody.BodyOf(mRoutine);
+      mOffset := AOffset;
+      // Aus einer verschachtelten Routine heraus gelten die Namen der äußeren vor ihrem Rumpf.
+      if (mOffset < mBody.StartOffset) or (mOffset > mBody.EndOffset) then
+      begin
+        mOffset := mBody.StartOffset;
+      end;
+      mIndex := TRoutineLocals.IndexOf(mLocals, AName, mOffset);
+      if mIndex >= 0 then
+      begin
+        if FKeys.TryGetValue(IntToStr(mRoutine.StartOffset) + ':' + IntToStr(mIndex), Result) then
+        begin
+          Exit;
+        end;
+        Exit(-2);
+      end;
+    end;
+    mRoutine := mRoutine.Parent;
+  end;
+  Result := -1;
+end;
+
+function TReassignedRun.FieldOf(ANode: TSyntaxNode; const AName: string; out AMethod: TSyntaxNode): Integer;
+begin
+  Result := -1;
+  AMethod := MethodOf(ANode);
+  if (AMethod = nil) or not FKeys.TryGetValue(LowerCase(ClassOf(AMethod.Name) + '.' + AName), Result) or
+    (FSymbols[Result].Kind <> TReassignedKind.Field) then
+  begin
+    Result := -1;
+  end;
+end;
+
+function TReassignedRun.NameToken(AFrom, ATo: Integer; const AName: string): Integer;
+var
+  mIndex: Integer;
+begin
+  mIndex := TRoutineBody.TokenAt(FTokens, AFrom);
+  while (mIndex <= High(FTokens)) and (FTokens[mIndex].Offset < ATo) do
+  begin
+    if (FTokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+      (SameText(FTokens[mIndex].Text, AName) or SameText(FTokens[mIndex].Text, '&' + AName)) then
+    begin
+      Exit(mIndex);
+    end;
+    Inc(mIndex);
+  end;
+  Result := -1;
+end;
+
+function TReassignedRun.IsConstructor(AMethod: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+begin
+  mIndex := TRoutineBody.TokenAt(FTokens, AMethod.StartOffset);
+  if (mIndex <= High(FTokens)) and SameText(FTokens[mIndex].Text, 'class') then
+  begin
+    mIndex := TRoutineBody.NextToken(FTokens, mIndex);
+  end;
+  Result := (mIndex <= High(FTokens)) and SameText(FTokens[mIndex].Text, 'constructor');
+end;
+
+class function TReassignedRun.MethodOf(ANode: TSyntaxNode): TSyntaxNode;
+begin
+  Result := ANode.Parent;
+  while (Result <> nil) and ((Result.Kind <> TSyntaxKind.RoutineDecl) or (Pos('.', Result.Name) = 0)) do
+  begin
+    Result := Result.Parent;
+  end;
+end;
+
+class function TReassignedRun.NamedRoutineOf(ARoutine: TSyntaxNode): string;
+var
+  mNode: TSyntaxNode;
+begin
+  mNode := ARoutine;
+  while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    mNode := mNode.Parent;
+  end;
+  Result := '';
+  if mNode <> nil then
+  begin
+    Result := mNode.Name;
+  end;
+end;
+
+class function TReassignedRun.ClassOf(const AMethodName: string): string;
+var
+  mParts: TArray<string>;
+begin
+  // TFoo.Bar -> TFoo, TAussen.TInnen.Bar -> TInnen.
+  mParts := AMethodName.Split(['.']);
+  Result := '';
+  if Length(mParts) >= 2 then
+  begin
+    Result := mParts[High(mParts) - 1];
+  end;
+end;
+
 /// <summary>Vorkommen nach Offset, bei Gleichstand nach Art.</summary>
 function OccurrenceComparer: IComparer<TReassignedOccurrence>;
 begin
@@ -965,12 +961,6 @@ begin
   Result := Copy(FSymbols, 0, FCount);
 end;
 
-class function TReassigned.Analyze(const AText: string; ATree: TSyntaxTree;
-  const ALookup: TFlowSignatureLookup): TArray<TReassignedSymbol>;
-begin
-  Result := Analyze(AText, ATree, ALookup, TReassignedScope.Whole);
-end;
-
 class function TReassigned.Analyze(const AText: string; ATree: TSyntaxTree; const ALookup: TFlowSignatureLookup;
   const AScope: TReassignedScope): TArray<TReassignedSymbol>;
 var
@@ -989,25 +979,6 @@ begin
   end;
 end;
 
-class function TReassigned.Filter(const ASymbols: TArray<TReassignedSymbol>;
-  ATargets: TReassignedTargets): TArray<TReassignedSymbol>;
-var
-  mSymbol: TReassignedSymbol;
-  mCount: Integer;
-begin
-  SetLength(Result, Length(ASymbols));
-  mCount := 0;
-  for mSymbol in ASymbols do
-  begin
-    if (mSymbol.Target in ATargets) and mSymbol.IsReassigned then
-    begin
-      Result[mCount] := mSymbol;
-      Inc(mCount);
-    end;
-  end;
-  SetLength(Result, mCount);
-end;
-
 class function TReassigned.SymbolAt(const ASymbols: TArray<TReassignedSymbol>; const APosition: TTextPosition;
   out ASymbol: TReassignedSymbol): Boolean;
 var
@@ -1023,6 +994,37 @@ begin
   end;
   ASymbol := Default(TReassignedSymbol);
   Result := False;
+end;
+
+class function TReassigned.TryParseTarget(const AName: string; out ATarget: TReassignedTarget): Boolean;
+var
+  mTarget: TReassignedTarget;
+begin
+  for mTarget := Low(TReassignedTarget) to High(TReassignedTarget) do
+  begin
+    if SameText(cTargetNames[mTarget], Trim(AName)) then
+    begin
+      ATarget := mTarget;
+      Exit(True);
+    end;
+  end;
+  ATarget := TReassignedTarget.Locals;
+  Result := False;
+end;
+
+class function TReassigned.TargetsOf(const ANames: TArray<string>): TReassignedTargets;
+var
+  mName: string;
+  mTarget: TReassignedTarget;
+begin
+  Result := [];
+  for mName in ANames do
+  begin
+    if TryParseTarget(mName, mTarget) then
+    begin
+      Include(Result, mTarget);
+    end;
+  end;
 end;
 
 end.

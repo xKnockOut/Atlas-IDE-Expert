@@ -89,10 +89,53 @@ begin
   FStore := AStore;
 end;
 
-procedure TLspSelectionRanges.Attach(ADispatcher: TJsonRpcDispatcher);
+function TLspSelectionRanges.HandleSelectionRange(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mPositions: TJSONArray;
+  mPosition: TJSONValue;
+  mDocument: ITextDocument;
+  mTree: TSyntaxTree;
+  mShared: ISharedSyntaxTree;
+  mItem: TJSONObject;
+  mOffset: Integer;
 begin
-  // Nebenläufig: Parsen großer Dateien blockiert die Nachrichtenschleife nicht.
-  ADispatcher.RegisterConcurrentRequest(cMethod, HandleSelectionRange);
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONArray>('positions', mPositions)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TSelectionRangesText.FieldsTextDocumentUriAndPositions].Text + cMethod);
+  end;
+  if not FStore.TryGet(mUri, mDocument) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  mTree := mShared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  Result := TJSONArray.Create;
+  try
+    for mPosition in mPositions do
+    begin
+      mOffset := mDocument.OffsetAt(TLspPositions.ReadPosition(mPosition));
+      mItem := ToJson(RangesAt(mTree, mOffset));
+      // Die Antwort braucht je Position ein Element; ohne Bereich die Position selbst.
+      if mItem = nil then
+      begin
+        mItem := TJSONObject.Create;
+        mItem.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(mDocument.PositionAt(mOffset),
+          mDocument.PositionAt(mOffset))));
+      end;
+      TJSONArray(Result).AddElement(mItem);
+    end;
+  except
+    Result.Free;
+    raise;
+  end;
 end;
 
 /// <summary>Token unter dem Cursor AOffset, auch Kommentare und Strings. Zwischen zwei Token gewinnt das rechte,
@@ -145,6 +188,12 @@ begin
   end;
 end;
 
+procedure TLspSelectionRanges.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  // Nebenläufig: Parsen großer Dateien blockiert die Nachrichtenschleife nicht.
+  ADispatcher.RegisterConcurrentRequest(cMethod, HandleSelectionRange);
+end;
+
 class function TLspSelectionRanges.RangesAt(ATree: TSyntaxTree; AOffset: Integer): TArray<TTextRange>;
 var
   mBest: TPascalToken;
@@ -191,55 +240,6 @@ begin
       mItem.AddPair('parent', Result);
     end;
     Result := mItem;
-  end;
-end;
-
-function TLspSelectionRanges.HandleSelectionRange(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mCancellation: IPascalCancellation;
-  mUri: string;
-  mPositions: TJSONArray;
-  mPosition: TJSONValue;
-  mDocument: ITextDocument;
-  mTree: TSyntaxTree;
-  mShared: ISharedSyntaxTree;
-  mItem: TJSONObject;
-  mOffset: Integer;
-begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
-    TJSONObject(AParams).TryGetValue<TJSONArray>('positions', mPositions)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TSelectionRangesText.FieldsTextDocumentUriAndPositions].Text + cMethod);
-  end;
-  if not FStore.TryGet(mUri, mDocument) then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
-  mCancellation := TRequestCancellation.Create(ACancellation);
-  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
-  mTree := mShared.Tree;
-  ACancellation.ThrowIfCancellationRequested;
-  Result := TJSONArray.Create;
-  try
-    for mPosition in mPositions do
-    begin
-      mOffset := mDocument.OffsetAt(TLspPositions.ReadPosition(mPosition));
-      mItem := ToJson(RangesAt(mTree, mOffset));
-      // Die Antwort braucht je Position ein Element; ohne Bereich die Position selbst.
-      if mItem = nil then
-      begin
-        mItem := TJSONObject.Create;
-        mItem.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(mDocument.PositionAt(mOffset),
-          mDocument.PositionAt(mOffset))));
-      end;
-      TJSONArray(Result).AddElement(mItem);
-    end;
-  except
-    Result.Free;
-    raise;
   end;
 end;
 

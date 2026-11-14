@@ -80,41 +80,32 @@ end;
 
 { TAtlasTestsSeriesMenu }
 
-class procedure TAtlasTestsSeriesMenu.Attach(ATree: TTreeView; const AHandlers: TAtlasTestsSeriesHandlers);
-var
-  mMenu: TAtlasTestsSeriesMenu;
-begin
-  mMenu := TAtlasTestsSeriesMenu.Create(ATree);
-  mMenu.FHandlers := AHandlers;
-  mMenu.FLine := mMenu.NewItem(cLineCaption);
-  mMenu.FRepeat := mMenu.NewItem(TAtlasTestsStrings.Text(TAtlasTestsTextId.SeriesMenuRepeat));
-  mMenu.FShuffle := mMenu.NewItem(TAtlasTestsStrings.Text(TAtlasTestsTextId.SeriesMenuShuffle));
-  mMenu.FAgain := mMenu.NewItem(TAtlasTestsStrings.Text(TAtlasTestsTextId.SeriesShuffleAgainCommand));
-  mMenu.FCancel := mMenu.NewItem(TAtlasTestsStrings.Text(TAtlasTestsTextId.SeriesCancelCommand));
-  ATree.OnContextPopup := mMenu.TreeContextPopup;
-end;
-
-class procedure TAtlasTestsSeriesMenu.Detach(ATree: TTreeView);
-var
-  mIndex: Integer;
-begin
-  ATree.OnContextPopup := nil;
-  for mIndex := ATree.ComponentCount - 1 downto 0 do
-  begin
-    if ATree.Components[mIndex] is TAtlasTestsSeriesMenu then
-    begin
-      // Freigeben meldet sich beim Baum ab (PopupMenu wird nil); die Einträge lösen sich aus einem fremden Menü.
-      ATree.Components[mIndex].Free;
-    end;
-  end;
-end;
-
 function TAtlasTestsSeriesMenu.NewItem(const ACaption: string): TMenuItem;
 begin
   Result := TMenuItem.Create(Self);
   Result.Caption := ACaption;
   Result.OnClick := ItemClick;
   Items.Add(Result);
+end;
+
+procedure TAtlasTestsSeriesMenu.ItemClick(Sender: TObject);
+begin
+  if Sender = FRepeat then
+  begin
+    Fire(FHandlers.OnRepeat);
+  end
+  else if Sender = FShuffle then
+  begin
+    Fire(FHandlers.OnShuffle);
+  end
+  else if Sender = FAgain then
+  begin
+    Fire(FHandlers.OnShuffleAgain);
+  end
+  else if Sender = FCancel then
+  begin
+    Fire(FHandlers.OnCancel);
+  end;
 end;
 
 procedure TAtlasTestsSeriesMenu.TreeContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
@@ -149,23 +140,32 @@ begin
   FCancel.Enabled := mRunning;
 end;
 
-procedure TAtlasTestsSeriesMenu.ItemClick(Sender: TObject);
+class procedure TAtlasTestsSeriesMenu.Attach(ATree: TTreeView; const AHandlers: TAtlasTestsSeriesHandlers);
+var
+  mMenu: TAtlasTestsSeriesMenu;
 begin
-  if Sender = FRepeat then
+  mMenu := TAtlasTestsSeriesMenu.Create(ATree);
+  mMenu.FHandlers := AHandlers;
+  mMenu.FLine := mMenu.NewItem(cLineCaption);
+  mMenu.FRepeat := mMenu.NewItem(TAtlasTestsStrings.Text(TAtlasTestsTextId.SeriesMenuRepeat));
+  mMenu.FShuffle := mMenu.NewItem(TAtlasTestsStrings.Text(TAtlasTestsTextId.SeriesMenuShuffle));
+  mMenu.FAgain := mMenu.NewItem(TAtlasTestsStrings.Text(TAtlasTestsTextId.SeriesShuffleAgainCommand));
+  mMenu.FCancel := mMenu.NewItem(TAtlasTestsStrings.Text(TAtlasTestsTextId.SeriesCancelCommand));
+  ATree.OnContextPopup := mMenu.TreeContextPopup;
+end;
+
+class procedure TAtlasTestsSeriesMenu.Detach(ATree: TTreeView);
+var
+  mIndex: Integer;
+begin
+  ATree.OnContextPopup := nil;
+  for mIndex := ATree.ComponentCount - 1 downto 0 do
   begin
-    Fire(FHandlers.OnRepeat);
-  end
-  else if Sender = FShuffle then
-  begin
-    Fire(FHandlers.OnShuffle);
-  end
-  else if Sender = FAgain then
-  begin
-    Fire(FHandlers.OnShuffleAgain);
-  end
-  else if Sender = FCancel then
-  begin
-    Fire(FHandlers.OnCancel);
+    if ATree.Components[mIndex] is TAtlasTestsSeriesMenu then
+    begin
+      // Freigeben meldet sich beim Baum ab (PopupMenu wird nil); die Einträge lösen sich aus einem fremden Menü.
+      ATree.Components[mIndex].Free;
+    end;
   end;
 end;
 

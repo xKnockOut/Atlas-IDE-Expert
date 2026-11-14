@@ -307,48 +307,12 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeSprint.Active: Boolean;
+procedure TAtlasIdeSprint.Changed;
 begin
-  Result := TAtlasIdeSettings.Current.WelcomePageSprint;
-end;
-
-class function TAtlasIdeSprint.NowUtc: TDateTime;
-begin
-  Result := TTimeZone.Local.ToUniversalTime(Now);
-end;
-
-procedure TAtlasIdeSprint.Start;
-begin
-  if FStarted then
+  if FStarted and (FHooks.Welcome <> nil) then
   begin
-    Exit;
+    FHooks.Welcome.TileChanged(cTileId);
   end;
-  FStarted := True;
-  FTitle := '';
-  UpdateTileInfo;
-end;
-
-procedure TAtlasIdeSprint.Stop;
-begin
-  if not FStarted then
-  begin
-    Exit;
-  end;
-  FStarted := False;
-  Inc(FGeneration);
-  CancelLoad;
-  FWorker.Stop(cStopWaitMs);
-  // Die Hooks halten den Bereich „Meine Issues“: Stop löst den Ring.
-  FHooks := Default(TAtlasSprintHooks);
-end;
-
-procedure TAtlasIdeSprint.CancelLoad;
-begin
-  if FCancel <> nil then
-  begin
-    FCancel.Cancel;
-  end;
-  FCancel := nil;
 end;
 
 procedure TAtlasIdeSprint.UpdateTileInfo;
@@ -372,26 +336,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeSprint.Refresh;
-begin
-  if not FStarted then
-  begin
-    Exit;
-  end;
-  UpdateTileInfo;
-  // Anderes Projekt bzw. andere Zuordnung: Stand aus dem Zwischenspeicher des neuen Trackers.
-  FPrepared := False;
-  Changed;
-end;
-
-procedure TAtlasIdeSprint.Changed;
-begin
-  if FStarted and (FHooks.Welcome <> nil) then
-  begin
-    FHooks.Welcome.TileChanged(cTileId);
-  end;
-end;
-
 function TAtlasIdeSprint.CurrentTarget(out ATarget: TAtlasTrackerTarget): Boolean;
 var
   mProject: string;
@@ -406,29 +350,6 @@ begin
   if Result and Assigned(FHooks.Target) then
   begin
     ATarget := FHooks.Target(mProject);
-  end;
-end;
-
-class function TAtlasIdeSprint.CachedSummary(const AFolder: string; const ATarget: TAtlasTrackerTarget;
-  const ABoardId, ASprintId: string; out ASummary: TAtlasSprintSummary): Boolean;
-var
-  mFile, mText: string;
-begin
-  ASummary := Default(TAtlasSprintSummary);
-  mFile := TAtlasTrackerBoard.CacheFile(AFolder, ATarget, TAtlasTrackerSprint.SummaryName(ABoardId, ASprintId));
-  Result := (mFile <> '') and TAtlasTrackerBoard.ReadText(mFile, mText) and
-    TAtlasTrackerSprint.SummaryFromJson(mText, ASummary);
-end;
-
-class procedure TAtlasIdeSprint.SaveSummary(const AFolder: string; const ATarget: TAtlasTrackerTarget;
-  const ABoardId: string; const ASummary: TAtlasSprintSummary);
-var
-  mFile: string;
-begin
-  mFile := TAtlasTrackerBoard.CacheFile(AFolder, ATarget, TAtlasTrackerSprint.SummaryName(ABoardId, ASummary.Id));
-  if mFile <> '' then
-  begin
-    TAtlasTrackerBoard.WriteText(mFile, TAtlasTrackerSprint.SummaryToJson(ASummary));
   end;
 end;
 
@@ -480,22 +401,6 @@ begin
       FState.Previous := FState.Previous + [mSummary];
     end;
   end;
-end;
-
-function TAtlasIdeSprint.Due(const ATarget: TAtlasTrackerTarget): Boolean;
-begin
-  Result := (FLoadedTick = 0) or (GetTickCount64 - FLoadedTick >= UInt64(TAtlasMyIssues.cDueMinutes) * cMsPerMinute) or
-    (TAtlasIdeSettings.Current.IssuesSprintCompare and not FState.WithPrevious);
-end;
-
-procedure TAtlasIdeSprint.Shown;
-begin
-  Load(False);
-end;
-
-procedure TAtlasIdeSprint.IssuesFetched(AForce: Boolean);
-begin
-  Load(AForce);
 end;
 
 procedure TAtlasIdeSprint.Load(AForce: Boolean);
@@ -636,6 +541,101 @@ begin
     end;
   end;
   Changed;
+end;
+
+procedure TAtlasIdeSprint.CancelLoad;
+begin
+  if FCancel <> nil then
+  begin
+    FCancel.Cancel;
+  end;
+  FCancel := nil;
+end;
+
+function TAtlasIdeSprint.Due(const ATarget: TAtlasTrackerTarget): Boolean;
+begin
+  Result := (FLoadedTick = 0) or (GetTickCount64 - FLoadedTick >= UInt64(TAtlasMyIssues.cDueMinutes) * cMsPerMinute) or
+    (TAtlasIdeSettings.Current.IssuesSprintCompare and not FState.WithPrevious);
+end;
+
+class function TAtlasIdeSprint.NowUtc: TDateTime;
+begin
+  Result := TTimeZone.Local.ToUniversalTime(Now);
+end;
+
+procedure TAtlasIdeSprint.Start;
+begin
+  if FStarted then
+  begin
+    Exit;
+  end;
+  FStarted := True;
+  FTitle := '';
+  UpdateTileInfo;
+end;
+
+procedure TAtlasIdeSprint.Stop;
+begin
+  if not FStarted then
+  begin
+    Exit;
+  end;
+  FStarted := False;
+  Inc(FGeneration);
+  CancelLoad;
+  FWorker.Stop(cStopWaitMs);
+  // Die Hooks halten den Bereich „Meine Issues“: Stop löst den Ring.
+  FHooks := Default(TAtlasSprintHooks);
+end;
+
+procedure TAtlasIdeSprint.Refresh;
+begin
+  if not FStarted then
+  begin
+    Exit;
+  end;
+  UpdateTileInfo;
+  // Anderes Projekt bzw. andere Zuordnung: Stand aus dem Zwischenspeicher des neuen Trackers.
+  FPrepared := False;
+  Changed;
+end;
+
+procedure TAtlasIdeSprint.IssuesFetched(AForce: Boolean);
+begin
+  Load(AForce);
+end;
+
+class function TAtlasIdeSprint.Active: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.WelcomePageSprint;
+end;
+
+class function TAtlasIdeSprint.CachedSummary(const AFolder: string; const ATarget: TAtlasTrackerTarget;
+  const ABoardId, ASprintId: string; out ASummary: TAtlasSprintSummary): Boolean;
+var
+  mFile, mText: string;
+begin
+  ASummary := Default(TAtlasSprintSummary);
+  mFile := TAtlasTrackerBoard.CacheFile(AFolder, ATarget, TAtlasTrackerSprint.SummaryName(ABoardId, ASprintId));
+  Result := (mFile <> '') and TAtlasTrackerBoard.ReadText(mFile, mText) and
+    TAtlasTrackerSprint.SummaryFromJson(mText, ASummary);
+end;
+
+class procedure TAtlasIdeSprint.SaveSummary(const AFolder: string; const ATarget: TAtlasTrackerTarget;
+  const ABoardId: string; const ASummary: TAtlasSprintSummary);
+var
+  mFile: string;
+begin
+  mFile := TAtlasTrackerBoard.CacheFile(AFolder, ATarget, TAtlasTrackerSprint.SummaryName(ABoardId, ASummary.Id));
+  if mFile <> '' then
+  begin
+    TAtlasTrackerBoard.WriteText(mFile, TAtlasTrackerSprint.SummaryToJson(ASummary));
+  end;
+end;
+
+procedure TAtlasIdeSprint.Shown;
+begin
+  Load(False);
 end;
 
 /// <summary>Status ohne Stand: lädt noch, kein Board oder fehlgeschlagen.</summary>
