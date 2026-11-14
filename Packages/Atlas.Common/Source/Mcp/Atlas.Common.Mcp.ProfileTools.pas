@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Mcp.ProfileTools;
 
 // Stichproben-Profiler für KI-Assistenten (MCP-Werkzeug get_profile, #2057). Liest die gespeicherten Läufe
-// (Atlas.Common.Profiling.Profile, neueste zuerst) und liefert die teuersten Methoden mit Datei und heißester
+// (Atlas.Text.Profile, neueste zuerst) und liefert die teuersten Methoden mit Datei und heißester
 // Zeile, auf Wunsch gefiltert nach Unit und verglichen mit einem zweiten Lauf, als Text oder JSON. Die Dateien
 // liest die Shell; hier nur Auswahl, Auswertung und Ausgabe, damit es ohne Dateisystem testbar bleibt.
 
@@ -10,7 +10,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Profiling.Profile;
+  Atlas.Text.Profile;
 
 type
   /// <summary>Ein gespeicherter Lauf; Name = Dateiname ohne Ordner.</summary>
@@ -52,7 +52,7 @@ uses
   System.StrUtils,
   System.DateUtils,
   Atlas.Common.Mcp.Server,
-  Atlas.Common.Profiling.Report,
+  Atlas.Text.ProfileReport,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

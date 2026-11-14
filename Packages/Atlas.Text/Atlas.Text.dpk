@@ -63,6 +63,8 @@ contains
   Atlas.Text.MapFile in 'Source\MapFile\Atlas.Text.MapFile.pas',
   Atlas.Text.PeImage in 'Source\MapFile\Atlas.Text.PeImage.pas',
   Atlas.Text.LeakReport in 'Source\LeakReport\Atlas.Text.LeakReport.pas',
+  Atlas.Text.Profile in 'Source\Profile\Atlas.Text.Profile.pas',
+  Atlas.Text.ProfileReport in 'Source\Profile\Atlas.Text.ProfileReport.pas',
   Atlas.Text.CrashReport in 'Source\CrashReport\Atlas.Text.CrashReport.pas',
   Atlas.Text.StepFilter in 'Source\StepFilter\Atlas.Text.StepFilter.pas',
   Atlas.Text.Updates in 'Source\Updates\Atlas.Text.Updates.pas',
