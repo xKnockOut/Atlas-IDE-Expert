@@ -14,6 +14,8 @@
 //     Halt an derselben Stelle steht er neben dem aktuellen.
 //   - Enter bzw. Doppelklick auf einen Rahmen springt auf seine Zeile; den Rahmen im Fenster Aufrufstack der IDE
 //     wählt die ToolsAPI nicht.
+//   - Herkunft eingereihter Methoden (#859): Ist der Teil „DebugAsyncOrigin“ an, ergänzt er über SetOrigin den
+//     gelesenen Stapel hinter der anonymen Methode um den Stapel der Einreihung.
 // Teil „DebugCallStackWindow“ (debug.callStackWindow); Release meldet den Zuhörer ab und gibt Zeitgeber und Fenster
 // frei (Regel 3). Nur im Hauptthread verwenden.
 
@@ -32,6 +34,9 @@ type
   /// False = nicht gestartet.</summary>
   TAtlasCallStackRunner = reference to function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal;
     const ADone: TProc<string>): Boolean;
+
+  /// <summary>Ergänzt den gelesenen Stapel (Herkunft eingereihter Methoden, #859).</summary>
+  TAtlasCallStackOrigin = reference to procedure(var AStack: TAtlasDebugStackView);
 
   TAtlasIdeDebugCallStack = class
   public const
@@ -59,6 +64,7 @@ type
     FTicker: TTicker;
     FTimer: TTimer;
     FRun: TAtlasCallStackRunner;
+    FOrigin: TAtlasCallStackOrigin;
     FMessage: TProc<string>;
     FHistory: TAtlasDebugStackHistory;
     FStack: TAtlasDebugStackView;
@@ -89,6 +95,9 @@ type
     /// <summary>Befehl Atlas.DebugCallStack: Fenster zeigen und füllen.</summary>
     class procedure ShowWindow; static;
     class procedure ThemeChanged; static;
+    /// <summary>Ergänzung der Herkunft setzen; nil löst sie. Gehört dem Teil „DebugAsyncOrigin“ und bleibt beim
+    /// Lösen dieses Teils bestehen.</summary>
+    class procedure SetOrigin(const AOrigin: TAtlasCallStackOrigin); static;
   end;
 
 implementation
@@ -270,6 +279,11 @@ begin
   TAtlasIdeDebugCallStackWindow.ApplyTheme;
 end;
 
+class procedure TAtlasIdeDebugCallStack.SetOrigin(const AOrigin: TAtlasCallStackOrigin);
+begin
+  FOrigin := AOrigin;
+end;
+
 class procedure TAtlasIdeDebugCallStack.Schedule(APhase: TPhase);
 begin
   FPhase := APhase;
@@ -381,6 +395,10 @@ begin
   FStack := TAtlasDebugStackView.FromFrames(mFrames);
   FHasPrevious := FHistory.Previous(FStack.Key, FPrevious);
   mFrame := ShownFrame;
+  if Assigned(FOrigin) then
+  begin
+    FOrigin(FStack);
+  end;
   if FHasPrevious then
   begin
     FStack.CompareWith(FPrevious);

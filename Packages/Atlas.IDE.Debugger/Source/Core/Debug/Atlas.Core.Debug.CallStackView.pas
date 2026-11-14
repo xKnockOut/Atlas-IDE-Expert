@@ -10,6 +10,9 @@
 //     Code.
 //   - Vergleich mit dem Stapel beim letzten Halt an derselben Stelle (TAtlasDebugStackHistory): Rahmen werden von
 //     unten (Thread-Start) her verglichen; neue oder andere Rahmen und geänderte Parameter sind markiert.
+//   - Herkunft eingereihter Methoden (#859): Hinter dem Rahmen der anonymen Methode stehen eine Überschrift
+//     („Eingereiht mit TThread.Queue von Thread 4120“) und der Stapel der Einreihung. Diese Einträge zählen beim
+//     Vergleich nicht mit und werden nicht gemerkt.
 
 interface
 
@@ -27,6 +30,10 @@ type
     Named: Boolean;
     /// <summary>Neu oder eine andere Routine als beim letzten Halt.</summary>
     Changed: Boolean;
+    /// <summary>Gehört zur Herkunft einer eingereihten Methode (#859), nicht zum Stapel des Threads.</summary>
+    Origin: Boolean;
+    /// <summary>Überschrift statt Rahmen (Herkunft); '' bei Rahmen.</summary>
+    Caption: string;
     function Routine: string;
     /// <summary>Unit des Rahmens: Dateiname ohne Pfad, ohne Quelltext der Unit-Teil der Routine.</summary>
     function UnitName: string;
@@ -65,6 +72,12 @@ type
     function Unnamed(const ARows: TAtlasDebugStackRows): TArray<Integer>;
     /// <summary>Markiert, was sich gegenüber APrevious geändert hat (von unten her verglichen).</summary>
     procedure CompareWith(const APrevious: TAtlasDebugStackView);
+    /// <summary>Herkunft einer eingereihten Methode (#859) hinter dem Eintrag AAfter einfügen: Überschrift
+    /// ACaption, dann AFrames ohne die Bibliotheksrahmen unter dem letzten eigenen (Nachrichtenschleife,
+    /// Thread-Start). Ohne Einträge davor (AAfter außerhalb) nichts.</summary>
+    procedure InsertOrigin(AAfter: Integer; const ACaption: string; const AFrames: TAtlasDebugFrames);
+    /// <summary>Stapel ohne die Einträge der Herkunft.</summary>
+    function WithoutOrigin: TAtlasDebugStackView;
     /// <summary>Bibliothek zu einem Unit-Namen (Vcl.Controls → VCL, System.Classes → RTL).</summary>
     class function AreaOf(const AUnitName: string): string; static;
   end;
@@ -89,13 +102,18 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.Math;
 
 { TAtlasDebugStackEntry }
 
 function TAtlasDebugStackEntry.Routine: string;
 begin
-  Result := Frame.Routine;
+  Result := Caption;
+  if Result = '' then
+  begin
+    Result := Frame.Routine;
+  end;
 end;
 
 function TAtlasDebugStackEntry.UnitName: string;
@@ -103,6 +121,11 @@ var
   mParts: TArray<string>;
   mIndex: Integer;
 begin
+  Result := '';
+  if Caption <> '' then
+  begin
+    Exit;
+  end;
   if Frame.FileName <> '' then
   begin
     // Windows- wie Linux-Trenner (die Tests laufen auch unter Linux).
@@ -110,7 +133,6 @@ begin
   end;
   // Ohne Datei: der Teil der Routine vor dem ersten Typ (T…) bzw. vor dem letzten Namen.
   mParts := Routine.Split(['.']);
-  Result := '';
   for mIndex := 0 to High(mParts) - 1 do
   begin
     if (Length(mParts[mIndex]) > 1) and (mParts[mIndex][1] = 'T') and CharInSet(mParts[mIndex][2], ['A'..'Z']) then
@@ -364,23 +386,42 @@ begin
   end;
 end;
 
+/// <summary>Indizes der Einträge, die zum Stapel des Threads gehören (ohne Herkunft).</summary>
+function ThreadEntries(const AEntries: TAtlasDebugStackEntries): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(AEntries) do
+  begin
+    if not AEntries[mIndex].Origin then
+    begin
+      Result := Result + [mIndex];
+    end;
+  end;
+end;
+
 procedure TAtlasDebugStackView.CompareWith(const APrevious: TAtlasDebugStackView);
 var
   mStep, mCurrent, mOld, mParam: Integer;
+  mOwn, mOther: TArray<Integer>;
 begin
   for mCurrent := 0 to High(Entries) do
   begin
-    Entries[mCurrent].Changed := True;
+    // Die Herkunft gilt nur für diesen Halt: nie als geändert markiert.
+    Entries[mCurrent].Changed := not Entries[mCurrent].Origin;
     for mParam := 0 to High(Entries[mCurrent].Params) do
     begin
       Entries[mCurrent].Params[mParam].Changed := False;
     end;
   end;
-  for mStep := 0 to Count - 1 do
+  mOwn := ThreadEntries(Entries);
+  mOther := ThreadEntries(APrevious.Entries);
+  for mStep := 0 to Min(High(mOwn), High(mOther)) do
   begin
-    mCurrent := Count - 1 - mStep;
-    mOld := APrevious.Count - 1 - mStep;
-    if (mOld < 0) or not SameText(Entries[mCurrent].Routine, APrevious.Entries[mOld].Routine) then
+    mCurrent := mOwn[High(mOwn) - mStep];
+    mOld := mOther[High(mOther) - mStep];
+    if not SameText(Entries[mCurrent].Routine, APrevious.Entries[mOld].Routine) then
     begin
       // Ab hier weichen die Stapel ab: Alles darüber ist neu.
       Break;
@@ -391,6 +432,50 @@ begin
       Entries[mCurrent].Params[mParam].Changed := (mParam > High(APrevious.Entries[mOld].Params)) or
         not SameParam(Entries[mCurrent].Params[mParam], APrevious.Entries[mOld].Params[mParam]);
     end;
+  end;
+end;
+
+procedure TAtlasDebugStackView.InsertOrigin(AAfter: Integer; const ACaption: string;
+  const AFrames: TAtlasDebugFrames);
+var
+  mLast, mIndex: Integer;
+  mAdded: TAtlasDebugStackEntries;
+begin
+  if (AAfter < 0) or (AAfter > High(Entries)) then
+  begin
+    Exit;
+  end;
+  mLast := High(AFrames);
+  while (mLast >= 0) and not AFrames[mLast].Own do
+  begin
+    Dec(mLast);
+  end;
+  SetLength(mAdded, mLast + 2);
+  mAdded[0] := Default(TAtlasDebugStackEntry);
+  mAdded[0].Origin := True;
+  mAdded[0].Named := True;
+  mAdded[0].Caption := ACaption;
+  // Eigene Zeile, keine Gruppe mit Bibliotheksrahmen davor oder danach.
+  mAdded[0].Frame.Own := True;
+  for mIndex := 0 to mLast do
+  begin
+    // Parameter gehören zu einem vergangenen Zeitpunkt: weder benennen noch auswerten.
+    mAdded[mIndex + 1] := Default(TAtlasDebugStackEntry);
+    mAdded[mIndex + 1].Origin := True;
+    mAdded[mIndex + 1].Named := True;
+    mAdded[mIndex + 1].Frame := AFrames[mIndex];
+  end;
+  Insert(mAdded, Entries, AAfter + 1);
+end;
+
+function TAtlasDebugStackView.WithoutOrigin: TAtlasDebugStackView;
+var
+  mIndex: Integer;
+begin
+  Result := Default(TAtlasDebugStackView);
+  for mIndex in ThreadEntries(Entries) do
+  begin
+    Result.Entries := Result.Entries + [Entries[mIndex]];
   end;
 end;
 
@@ -421,7 +506,7 @@ begin
   end;
   FKeys.Remove(mKey);
   FKeys.Add(mKey);
-  FStacks.AddOrSetValue(mKey, AStack);
+  FStacks.AddOrSetValue(mKey, AStack.WithoutOrigin);
   while FKeys.Count > cMaxKeys do
   begin
     FStacks.Remove(FKeys[0]);
