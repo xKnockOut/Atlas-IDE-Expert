@@ -1967,6 +1967,8 @@ uses
   Atlas.Core.Designer.Components.Tests in 'IDE.Expert\Atlas.Core.Designer.Components.Tests.pas',
   Atlas.Core.Designer.TabOrder in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.TabOrder.pas',
   Atlas.Core.Designer.TabOrder.Tests in 'IDE.Expert\Atlas.Core.Designer.TabOrder.Tests.pas',
+  Atlas.Core.Designer.DesktopSwitch in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.DesktopSwitch.pas',
+  Atlas.Core.Designer.DesktopSwitch.Tests in 'IDE.Expert\Atlas.Core.Designer.DesktopSwitch.Tests.pas',
   Atlas.Core.Designer.CodeLink in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.CodeLink.pas',
   Atlas.Core.Designer.CodeLink.Tests in 'IDE.Expert\Atlas.Core.Designer.CodeLink.Tests.pas',
   Atlas.Core.Designer.PropertySearch in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.PropertySearch.pas',
