@@ -45,9 +45,14 @@ uses
 const
   cAll = [Low(TAtlasTextCheck) .. High(TAtlasTextCheck)];
 
-function Entry(const AComponent, AText: string; const AGroup: string = 'pnlMain'): TAtlasTextEntry;
+function Entry(const AComponent, AText: string; const AGroup: string): TAtlasTextEntry; overload;
 begin
   Result := TAtlasTextEntry.Create(AComponent, 'TButton', 'Caption', AText, AGroup);
+end;
+
+function Entry(const AComponent, AText: string): TAtlasTextEntry; overload;
+begin
+  Result := Entry(AComponent, AText, 'pnlMain');
 end;
 
 function Kinds(const AEntry: TAtlasTextEntry): string;

@@ -78,196 +78,196 @@ end;
 /// <summary>Zeilen als Text: "#Gruppe" für Köpfe, sonst "Ziffer:Name".</summary>
 function Show(const AEntries: TArray<TAtlasGenerateEntry>; const ARows: TArray<TAtlasGenerateRow>): string;
 var
-  Row: TAtlasGenerateRow;
+  mRow: TAtlasGenerateRow;
 begin
   Result := '';
-  for Row in ARows do
+  for mRow in ARows do
   begin
     if Result <> '' then
     begin
       Result := Result + ' ';
     end;
-    if Row.IsHeader then
+    if mRow.IsHeader then
     begin
-      Result := Result + '#' + TAtlasGenerateOptions.GroupName(Row.Group);
+      Result := Result + '#' + TAtlasGenerateOptions.GroupName(mRow.Group);
     end
     else
     begin
-      Result := Result + IntToStr(Row.Digit) + ':' + AEntries[Row.Entry].Name;
+      Result := Result + IntToStr(mRow.Digit) + ':' + AEntries[mRow.Entry].Name;
     end;
   end;
 end;
 
 procedure TAtlasGenerateMenuTests.GroupsInConfiguredOrder;
 var
-  Entries: TArray<TAtlasGenerateEntry>;
-  Options: TAtlasGenerateOptions;
+  mEntries: TArray<TAtlasGenerateEntry>;
+  mOptions: TAtlasGenerateOptions;
 begin
-  Entries := Sample;
-  Options := TAtlasGenerateOptions.Default;
+  mEntries := Sample;
+  mOptions := TAtlasGenerateOptions.Default;
   Assert.AreEqual('#generate 1:ctor 2:dtor 3:prop 4:override 5:implement 6:equals #surround 7:try ' +
-    '#templates 8:tryf', Show(Entries, TAtlasGenerateMenu.Rows(Entries, Options, nil, '')));
+    '#templates 8:tryf', Show(mEntries, TAtlasGenerateMenu.Rows(mEntries, mOptions, nil, '')));
   // Reihenfolge und Auswahl der Gruppen aus keys.generateMenu.groups.
-  Options := TAtlasGenerateOptions.Create('templates, generate', '', True, True);
+  mOptions := TAtlasGenerateOptions.Create('templates, generate', '', True, True);
   Assert.AreEqual('#templates 1:tryf #generate 2:ctor 3:dtor 4:prop 5:override 6:implement 7:equals',
-    Show(Entries, TAtlasGenerateMenu.Rows(Entries, Options, nil, '')));
+    Show(mEntries, TAtlasGenerateMenu.Rows(mEntries, mOptions, nil, '')));
   // Leere Gruppen haben keinen Kopf.
-  Assert.AreEqual('#generate 1:ctor', Show([Entries[0]], TAtlasGenerateMenu.Rows([Entries[0]],
+  Assert.AreEqual('#generate 1:ctor', Show([mEntries[0]], TAtlasGenerateMenu.Rows([mEntries[0]],
     TAtlasGenerateOptions.Default, nil, '')));
 end;
 
 procedure TAtlasGenerateMenuTests.DigitsForFirstNineEntries;
 var
-  Entries: TArray<TAtlasGenerateEntry>;
-  Rows: TArray<TAtlasGenerateRow>;
-  Index: Integer;
+  mEntries: TArray<TAtlasGenerateEntry>;
+  mRows: TArray<TAtlasGenerateRow>;
+  mIndex: Integer;
 begin
-  Entries := nil;
-  for Index := 1 to 12 do
+  mEntries := nil;
+  for mIndex := 1 to 12 do
   begin
-    Entries := Entries + [Slash('c' + IntToStr(Index), 'Befehl ' + IntToStr(Index))];
+    mEntries := mEntries + [Slash('c' + IntToStr(mIndex), 'Befehl ' + IntToStr(mIndex))];
   end;
-  Rows := TAtlasGenerateMenu.Rows(Entries, TAtlasGenerateOptions.Default, nil, '');
-  Assert.AreEqual(13, Integer(Length(Rows)));
-  Assert.AreEqual(9, Rows[9].Digit);
-  Assert.AreEqual(0, Rows[10].Digit, 'ab dem zehnten ohne Ziffer');
-  Assert.AreEqual(1, TAtlasGenerateMenu.RowOfDigit(Rows, 1));
-  Assert.AreEqual(9, TAtlasGenerateMenu.RowOfDigit(Rows, 9));
-  Assert.AreEqual(-1, TAtlasGenerateMenu.RowOfDigit(Rows, 0));
-  Assert.AreEqual(-1, TAtlasGenerateMenu.RowOfDigit(TAtlasGenerateMenu.Rows([Entries[0]],
+  mRows := TAtlasGenerateMenu.Rows(mEntries, TAtlasGenerateOptions.Default, nil, '');
+  Assert.AreEqual(13, Integer(Length(mRows)));
+  Assert.AreEqual(9, mRows[9].Digit);
+  Assert.AreEqual(0, mRows[10].Digit, 'ab dem zehnten ohne Ziffer');
+  Assert.AreEqual(1, TAtlasGenerateMenu.RowOfDigit(mRows, 1));
+  Assert.AreEqual(9, TAtlasGenerateMenu.RowOfDigit(mRows, 9));
+  Assert.AreEqual(-1, TAtlasGenerateMenu.RowOfDigit(mRows, 0));
+  Assert.AreEqual(-1, TAtlasGenerateMenu.RowOfDigit(TAtlasGenerateMenu.Rows([mEntries[0]],
     TAtlasGenerateOptions.Default, nil, ''), 2));
 end;
 
 procedure TAtlasGenerateMenuTests.HiddenByIdOrName;
 var
-  Entries: TArray<TAtlasGenerateEntry>;
-  Options: TAtlasGenerateOptions;
-  Action: TAtlasGenerateEntry;
+  mEntries: TArray<TAtlasGenerateEntry>;
+  mOptions: TAtlasGenerateOptions;
+  mAction: TAtlasGenerateEntry;
 begin
-  Entries := Sample;
-  Options := TAtlasGenerateOptions.Create('', '/ctor, slash:equals, tryf, dtor', True, True);
+  mEntries := Sample;
+  mOptions := TAtlasGenerateOptions.Create('', '/ctor, slash:equals, tryf, dtor', True, True);
   Assert.AreEqual('#generate 1:prop 2:override 3:implement #surround 4:try',
-    Show(Entries, TAtlasGenerateMenu.Rows(Entries, Options, nil, '')));
+    Show(mEntries, TAtlasGenerateMenu.Rows(mEntries, mOptions, nil, '')));
   // Code-Aktionen nur über ihre Kennung; ein Name wie „ctor“ trifft sie nicht.
-  Action := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Action, TAtlasGenerateGroup.Generate, 'ctor', 'ctor');
-  Assert.IsFalse(Options.IsHidden(Action));
-  Options := TAtlasGenerateOptions.Create('', 'action:ctor', True, True);
-  Assert.IsTrue(Options.IsHidden(Action));
+  mAction := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Action, TAtlasGenerateGroup.Generate, 'ctor', 'ctor');
+  Assert.IsFalse(mOptions.IsHidden(mAction));
+  mOptions := TAtlasGenerateOptions.Create('', 'action:ctor', True, True);
+  Assert.IsTrue(mOptions.IsHidden(mAction));
 end;
 
 procedure TAtlasGenerateMenuTests.FilterIsFuzzyAndKeepsGroups;
 var
-  Entries: TArray<TAtlasGenerateEntry>;
-  Options: TAtlasGenerateOptions;
+  mEntries: TArray<TAtlasGenerateEntry>;
+  mOptions: TAtlasGenerateOptions;
 begin
-  Entries := Sample;
-  Options := TAtlasGenerateOptions.Default;
+  mEntries := Sample;
+  mOptions := TAtlasGenerateOptions.Default;
   // Über die Beschriftung …
-  Assert.AreEqual('#generate 1:prop', Show(Entries, TAtlasGenerateMenu.Rows(Entries, Options, nil, 'Property')));
+  Assert.AreEqual('#generate 1:prop', Show(mEntries, TAtlasGenerateMenu.Rows(mEntries, mOptions, nil, 'Property')));
   // … und den Befehlsnamen, auch mit "/".
-  Assert.AreEqual('#generate 1:ctor', Show(Entries, TAtlasGenerateMenu.Rows(Entries, Options, nil, '/ctor')));
+  Assert.AreEqual('#generate 1:ctor', Show(mEntries, TAtlasGenerateMenu.Rows(mEntries, mOptions, nil, '/ctor')));
   // Unscharf über Wortanfänge (#229): „EG“ trifft „Equals / GetHashCode“.
-  Assert.AreEqual('#generate 1:equals', Show(Entries, TAtlasGenerateMenu.Rows(Entries, Options, nil, 'EG')));
+  Assert.AreEqual('#generate 1:equals', Show(mEntries, TAtlasGenerateMenu.Rows(mEntries, mOptions, nil, 'EG')));
   // Gruppen bleiben, Ziffern zählen weiter.
-  Assert.AreEqual('#surround 1:try #templates 2:tryf', Show(Entries, TAtlasGenerateMenu.Rows(Entries, Options, nil,
+  Assert.AreEqual('#surround 1:try #templates 2:tryf', Show(mEntries, TAtlasGenerateMenu.Rows(mEntries, mOptions, nil,
     'try')));
-  Assert.AreEqual('', Show(Entries, TAtlasGenerateMenu.Rows(Entries, Options, nil, 'xyzzy')));
+  Assert.AreEqual('', Show(mEntries, TAtlasGenerateMenu.Rows(mEntries, mOptions, nil, 'xyzzy')));
 end;
 
 procedure TAtlasGenerateMenuTests.RecentFirstWithoutDuplicates;
 var
-  Entries: TArray<TAtlasGenerateEntry>;
-  Recent: TAtlasGenerateRecent;
+  mEntries: TArray<TAtlasGenerateEntry>;
+  mRecent: TAtlasGenerateRecent;
 begin
-  Entries := Sample;
-  Recent := TAtlasGenerateRecent.Create;
+  mEntries := Sample;
+  mRecent := TAtlasGenerateRecent.Create;
   try
-    Recent.Chosen('slash:prop');
-    Recent.Chosen('snippet:tryf');
-    Recent.Chosen('slash:equals');
-    Recent.Chosen('slash:dtor');
+    mRecent.Chosen('slash:prop');
+    mRecent.Chosen('snippet:tryf');
+    mRecent.Chosen('slash:equals');
+    mRecent.Chosen('slash:dtor');
     // Höchstens drei, der zuletzt gewählte zuerst; in ihrer Gruppe stehen sie nicht noch einmal.
     Assert.AreEqual('#recent 1:dtor 2:equals 3:tryf #generate 4:ctor 5:prop 6:override 7:implement ' +
-      '#surround 8:try', Show(Entries, TAtlasGenerateMenu.Rows(Entries, TAtlasGenerateOptions.Default, Recent, '')));
+      '#surround 8:try', Show(mEntries, TAtlasGenerateMenu.Rows(mEntries, TAtlasGenerateOptions.Default, mRecent, '')));
     // Auch beim Filtern oben.
     Assert.AreEqual('#recent 1:tryf #surround 2:try',
-      Show(Entries, TAtlasGenerateMenu.Rows(Entries, TAtlasGenerateOptions.Default, Recent, 'try')));
+      Show(mEntries, TAtlasGenerateMenu.Rows(mEntries, TAtlasGenerateOptions.Default, mRecent, 'try')));
     // Ausgeblendete zählen nicht.
-    Assert.StartsWith('#recent 1:equals 2:tryf 3:prop #generate', Show(Entries, TAtlasGenerateMenu.Rows(Entries,
-      TAtlasGenerateOptions.Create('', 'dtor', True, True), Recent, '')));
+    Assert.StartsWith('#recent 1:equals 2:tryf 3:prop #generate', Show(mEntries, TAtlasGenerateMenu.Rows(mEntries,
+      TAtlasGenerateOptions.Create('', 'dtor', True, True), mRecent, '')));
   finally
-    Recent.Free;
+    mRecent.Free;
   end;
 end;
 
 procedure TAtlasGenerateMenuTests.RecentCanBeSwitchedOff;
 var
-  Entries: TArray<TAtlasGenerateEntry>;
-  Recent: TAtlasGenerateRecent;
+  mEntries: TArray<TAtlasGenerateEntry>;
+  mRecent: TAtlasGenerateRecent;
 begin
-  Entries := Sample;
-  Recent := TAtlasGenerateRecent.Create;
+  mEntries := Sample;
+  mRecent := TAtlasGenerateRecent.Create;
   try
-    Recent.Chosen('slash:equals');
-    Assert.StartsWith('#generate 1:ctor', Show(Entries, TAtlasGenerateMenu.Rows(Entries,
-      TAtlasGenerateOptions.Create('', '', False, True), Recent, '')));
+    mRecent.Chosen('slash:equals');
+    Assert.StartsWith('#generate 1:ctor', Show(mEntries, TAtlasGenerateMenu.Rows(mEntries,
+      TAtlasGenerateOptions.Create('', '', False, True), mRecent, '')));
   finally
-    Recent.Free;
+    mRecent.Free;
   end;
 end;
 
 procedure TAtlasGenerateMenuTests.OnlyShowsRequestedGroups;
 var
-  Entries: TArray<TAtlasGenerateEntry>;
-  Options: TAtlasGenerateOptions;
+  mEntries: TArray<TAtlasGenerateEntry>;
+  mOptions: TAtlasGenerateOptions;
 begin
-  Entries := Sample;
+  mEntries := Sample;
   // #759: „Neu mit Atlas“ öffnet das Menü nur mit Vorlagen.
-  Options := TAtlasGenerateOptions.Default.Only([TAtlasGenerateGroup.Templates]);
-  Assert.AreEqual('#templates 1:tryf', Show(Entries, TAtlasGenerateMenu.Rows(Entries, Options, nil, '')));
+  mOptions := TAtlasGenerateOptions.Default.Only([TAtlasGenerateGroup.Templates]);
+  Assert.AreEqual('#templates 1:tryf', Show(mEntries, TAtlasGenerateMenu.Rows(mEntries, mOptions, nil, '')));
   // Eingestellte Reihenfolge bleibt.
-  Options := TAtlasGenerateOptions.Create('templates,generate,surround', '', True, True).Only(
+  mOptions := TAtlasGenerateOptions.Create('templates,generate,surround', '', True, True).Only(
     [TAtlasGenerateGroup.Generate, TAtlasGenerateGroup.Templates]);
-  Assert.AreEqual(2, Integer(Length(Options.Groups)));
-  Assert.AreEqual<TAtlasGenerateGroup>(TAtlasGenerateGroup.Templates, Options.Groups[0]);
+  Assert.AreEqual(2, Integer(Length(mOptions.Groups)));
+  Assert.AreEqual<TAtlasGenerateGroup>(TAtlasGenerateGroup.Templates, mOptions.Groups[0]);
   // Abgeschaltet, aber verlangt: trotzdem da.
-  Options := TAtlasGenerateOptions.Create('generate', '', True, True).Only([TAtlasGenerateGroup.Templates]);
-  Assert.IsTrue(Options.HasGroup(TAtlasGenerateGroup.Templates));
+  mOptions := TAtlasGenerateOptions.Create('generate', '', True, True).Only([TAtlasGenerateGroup.Templates]);
+  Assert.IsTrue(mOptions.HasGroup(TAtlasGenerateGroup.Templates));
 end;
 
 procedure TAtlasGenerateMenuTests.StepsOverHeaders;
 var
-  Entries: TArray<TAtlasGenerateEntry>;
-  Rows: TArray<TAtlasGenerateRow>;
+  mEntries: TArray<TAtlasGenerateEntry>;
+  mRows: TArray<TAtlasGenerateRow>;
 begin
-  Entries := Sample;
-  Rows := TAtlasGenerateMenu.Rows(Entries, TAtlasGenerateOptions.Default, nil, '');
-  Assert.AreEqual(1, TAtlasGenerateMenu.FirstEntryRow(Rows));
+  mEntries := Sample;
+  mRows := TAtlasGenerateMenu.Rows(mEntries, TAtlasGenerateOptions.Default, nil, '');
+  Assert.AreEqual(1, TAtlasGenerateMenu.FirstEntryRow(mRows));
   // Zeile 6 ist equals, 7 der Kopf Umschließen, 8 try.
-  Assert.AreEqual(8, TAtlasGenerateMenu.StepRow(Rows, 6, 1));
-  Assert.AreEqual(6, TAtlasGenerateMenu.StepRow(Rows, 8, -1));
-  Assert.AreEqual(1, TAtlasGenerateMenu.StepRow(Rows, 1, -1), 'oben bleibt stehen');
-  Assert.AreEqual(Integer(High(Rows)), TAtlasGenerateMenu.StepRow(Rows, High(Rows), 1), 'unten bleibt stehen');
+  Assert.AreEqual(8, TAtlasGenerateMenu.StepRow(mRows, 6, 1));
+  Assert.AreEqual(6, TAtlasGenerateMenu.StepRow(mRows, 8, -1));
+  Assert.AreEqual(1, TAtlasGenerateMenu.StepRow(mRows, 1, -1), 'oben bleibt stehen');
+  Assert.AreEqual(Integer(High(mRows)), TAtlasGenerateMenu.StepRow(mRows, High(mRows), 1), 'unten bleibt stehen');
   Assert.AreEqual(-1, TAtlasGenerateMenu.StepRow(nil, 0, 1));
 end;
 
 procedure TAtlasGenerateMenuTests.ChoicesFilterAndJoin;
 var
-  Choices: TArray<string>;
-  Order: TArray<Integer>;
+  mChoices: TArray<string>;
+  mOrder: TArray<Integer>;
 begin
-  Choices := ['FListe', 'FName', 'FAlter'];
-  Order := TAtlasGenerateMenu.FilterChoices(Choices, '');
-  Assert.AreEqual(3, Integer(Length(Order)));
-  Assert.AreEqual(0, Order[0]);
-  Order := TAtlasGenerateMenu.FilterChoices(Choices, 'na');
-  Assert.AreEqual(1, Integer(Length(Order)));
-  Assert.AreEqual(1, Order[0]);
+  mChoices := ['FListe', 'FName', 'FAlter'];
+  mOrder := TAtlasGenerateMenu.FilterChoices(mChoices, '');
+  Assert.AreEqual(3, Integer(Length(mOrder)));
+  Assert.AreEqual(0, mOrder[0]);
+  mOrder := TAtlasGenerateMenu.FilterChoices(mChoices, 'na');
+  Assert.AreEqual(1, Integer(Length(mOrder)));
+  Assert.AreEqual(1, mOrder[0]);
   // Alle bzw. keins angehakt = ohne Argument (/ctor nimmt dann alle Felder).
-  Assert.AreEqual('', TAtlasGenerateMenu.JoinChoices(Choices, [True, True, True], ', ', True));
-  Assert.AreEqual('', TAtlasGenerateMenu.JoinChoices(Choices, [False, False, False], ', ', True));
-  Assert.AreEqual('FListe, FAlter', TAtlasGenerateMenu.JoinChoices(Choices, [True, False, True], ', ', True));
-  Assert.AreEqual('FListe FName FAlter', TAtlasGenerateMenu.JoinChoices(Choices, [True, True, True], ' ', False));
+  Assert.AreEqual('', TAtlasGenerateMenu.JoinChoices(mChoices, [True, True, True], ', ', True));
+  Assert.AreEqual('', TAtlasGenerateMenu.JoinChoices(mChoices, [False, False, False], ', ', True));
+  Assert.AreEqual('FListe, FAlter', TAtlasGenerateMenu.JoinChoices(mChoices, [True, False, True], ', ', True));
+  Assert.AreEqual('FListe FName FAlter', TAtlasGenerateMenu.JoinChoices(mChoices, [True, True, True], ' ', False));
 end;
 
 procedure TAtlasGenerateMenuTests.SettingsAreNormalized;
@@ -282,50 +282,50 @@ end;
 
 procedure TAtlasGenerateMenuTests.RecentListRoundTrips;
 var
-  Recent: TAtlasGenerateRecent;
-  Index: Integer;
+  mRecent: TAtlasGenerateRecent;
+  mIndex: Integer;
 begin
-  Recent := TAtlasGenerateRecent.Create;
+  mRecent := TAtlasGenerateRecent.Create;
   try
-    Recent.LoadFromText('slash:ctor'#13#10#13#10'snippet:tryf'#10'slash:ctor');
-    Assert.AreEqual(2, Integer(Length(Recent.Ids)));
-    Assert.AreEqual(0, Recent.Rank('slash:ctor'));
-    Assert.AreEqual(-1, Recent.Rank('slash:dtor'));
-    Recent.Chosen('snippet:tryf');
-    Assert.AreEqual('snippet:tryf'#13#10'slash:ctor', Recent.ToText);
-    for Index := 1 to 30 do
+    mRecent.LoadFromText('slash:ctor'#13#10#13#10'snippet:tryf'#10'slash:ctor');
+    Assert.AreEqual(2, Integer(Length(mRecent.Ids)));
+    Assert.AreEqual(0, mRecent.Rank('slash:ctor'));
+    Assert.AreEqual(-1, mRecent.Rank('slash:dtor'));
+    mRecent.Chosen('snippet:tryf');
+    Assert.AreEqual('snippet:tryf'#13#10'slash:ctor', mRecent.ToText);
+    for mIndex := 1 to 30 do
     begin
-      Recent.Chosen('slash:c' + IntToStr(Index));
+      mRecent.Chosen('slash:c' + IntToStr(mIndex));
     end;
-    Assert.AreEqual(TAtlasGenerateRecent.cMaxCount, Integer(Length(Recent.Ids)));
-    Recent.Clear;
-    Assert.AreEqual('', Recent.ToText);
+    Assert.AreEqual(TAtlasGenerateRecent.cMaxCount, Integer(Length(mRecent.Ids)));
+    mRecent.Clear;
+    Assert.AreEqual('', mRecent.ToText);
   finally
-    Recent.Free;
+    mRecent.Free;
   end;
 end;
 
 procedure TAtlasGenerateMenuTests.EntryIdsAndSteps;
 var
-  Entry: TAtlasGenerateEntry;
+  mEntry: TAtlasGenerateEntry;
 begin
-  Entry := Slash('ctor', 'Konstruktor aus Feldern');
-  Assert.AreEqual('slash:ctor', Entry.Id);
-  Assert.AreEqual('/ctor', Entry.CommandName);
-  Assert.AreEqual(-1, Entry.Source);
-  Assert.IsFalse(Entry.NeedsStep, 'ohne Argument sofort');
-  Entry.HasChoices := True;
-  Assert.IsTrue(Entry.NeedsStep, 'Felder wählen');
-  Entry := Slash('prop', 'Property');
-  Entry.Argument := TAtlasGenerateArgument.Required;
-  Assert.IsTrue(Entry.NeedsStep, 'Argument eingeben');
-  Entry := Template('tryf', 'try');
-  Assert.AreEqual('snippet:tryf', Entry.Id);
-  Assert.AreEqual('tryf', Entry.CommandName);
-  Assert.IsFalse(Entry.NeedsStep);
-  Entry := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Action, TAtlasGenerateGroup.Generate, 'Umbauen', 'Umbauen');
-  Assert.AreEqual('action:Umbauen', Entry.Id);
-  Assert.AreEqual('', Entry.CommandName);
+  mEntry := Slash('ctor', 'Konstruktor aus Feldern');
+  Assert.AreEqual('slash:ctor', mEntry.Id);
+  Assert.AreEqual('/ctor', mEntry.CommandName);
+  Assert.AreEqual(-1, mEntry.Source);
+  Assert.IsFalse(mEntry.NeedsStep, 'ohne Argument sofort');
+  mEntry.HasChoices := True;
+  Assert.IsTrue(mEntry.NeedsStep, 'Felder wählen');
+  mEntry := Slash('prop', 'Property');
+  mEntry.Argument := TAtlasGenerateArgument.Required;
+  Assert.IsTrue(mEntry.NeedsStep, 'Argument eingeben');
+  mEntry := Template('tryf', 'try');
+  Assert.AreEqual('snippet:tryf', mEntry.Id);
+  Assert.AreEqual('tryf', mEntry.CommandName);
+  Assert.IsFalse(mEntry.NeedsStep);
+  mEntry := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Action, TAtlasGenerateGroup.Generate, 'Umbauen', 'Umbauen');
+  Assert.AreEqual('action:Umbauen', mEntry.Id);
+  Assert.AreEqual('', mEntry.CommandName);
 end;
 
 procedure TAtlasGenerateMenuTests.SelectionEndLineSkipsLineStart;
@@ -339,15 +339,15 @@ end;
 
 procedure TAtlasGenerateMenuTests.ContractListsMatchOptions;
 var
-  Group: TAtlasGenerateGroup;
+  mGroup: TAtlasGenerateGroup;
 begin
   // Die Einstellungen normalisieren über den Contract, das Menü leitet nur weiter.
   Assert.AreEqual('templates,generate', TAtlasGenerateLists.NormalizeGroups(' Templates; quatsch, generate '));
   Assert.AreEqual(TAtlasGenerateOptions.NormalizeGroups('surround'), TAtlasGenerateLists.NormalizeGroups('surround'));
   Assert.AreEqual('/json, tryf', TAtlasGenerateLists.NormalizeHidden('/json, , /json,tryf'));
   Assert.AreEqual(2, Integer(Length(TAtlasGenerateLists.Split('a;; b,'#10))));
-  Assert.IsTrue(TAtlasGenerateLists.TryParseGroup(' Surround ', Group));
-  Assert.AreEqual<TAtlasGenerateGroup>(TAtlasGenerateGroup.Surround, Group);
+  Assert.IsTrue(TAtlasGenerateLists.TryParseGroup(' Surround ', mGroup));
+  Assert.AreEqual<TAtlasGenerateGroup>(TAtlasGenerateGroup.Surround, mGroup);
   Assert.AreEqual('recent', TAtlasGenerateLists.GroupName(TAtlasGenerateGroup.Recent));
 end;
 

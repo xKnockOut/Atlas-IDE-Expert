@@ -198,9 +198,27 @@ end;
 
 type
   TSourceBox = class
-    Source: TQuerySource;
-    Available: Boolean;
+  private
+    FSource: TQuerySource;
+    FAvailable: Boolean;
+  public
+    /// <summary>Ändert nur die Dateiauswahl der Quelle.</summary>
+    procedure ChangeFiles(const AFiles: TArray<string>);
+    /// <summary>Ändert nur die Abbruchabfrage der Quelle.</summary>
+    procedure ChangeCancelled(const ACancelled: TQueryCancelled);
+    property Source: TQuerySource read FSource write FSource;
+    property Available: Boolean read FAvailable write FAvailable;
   end;
+
+procedure TSourceBox.ChangeFiles(const AFiles: TArray<string>);
+begin
+  FSource.Files := AFiles;
+end;
+
+procedure TSourceBox.ChangeCancelled(const ACancelled: TQueryCancelled);
+begin
+  FSource.Cancelled := ACancelled;
+end;
 
 function ServiceOf(ABox: TSourceBox): TCodeQueryService;
 begin
@@ -256,7 +274,7 @@ begin
     mService := ServiceOf(mBox);
     mQueries := mService;
     mQueries.Execute(TQueryRequest.Create('units where name like ''*''', 0));
-    mBox.Source.Files := TArray<string>.Create('C:\P\Main.pas');
+    mBox.ChangeFiles(TArray<string>.Create('C:\P\Main.pas'));
     Assert.AreEqual('Main', RowNames(mQueries.Execute(TQueryRequest.Create('units where name like ''*''', 0))));
     Assert.AreEqual(2, mService.Computations);
   finally
@@ -296,11 +314,11 @@ begin
     mBox.Source := QueryTestSource;
     mBox.Available := True;
     mCancel := True;
-    mBox.Source.Cancelled :=
+    mBox.ChangeCancelled(
       function: Boolean
       begin
         Result := mCancel;
-      end;
+      end);
     mService := ServiceOf(mBox);
     mQueries := mService;
     Assert.IsTrue(mQueries.Execute(TQueryRequest.Create('classes where methods > 0', 0)).Failed);

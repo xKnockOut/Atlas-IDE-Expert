@@ -52,11 +52,11 @@ uses
   Atlas.Common.Lsp.PropertyFromAccessors;
 
 const
-  PanelsFile = 'C:\P\Panels.pas';
-  MainFile = 'C:\P\Main.pas';
-  OtherFile = 'C:\P\Other.pas';
+  cPanelsFile = 'C:\P\Panels.pas';
+  cMainFile = 'C:\P\Main.pas';
+  cOtherFile = 'C:\P\Other.pas';
 
-  UnitPanels =
+  cUnitPanels =
     'unit Panels;'#10 +                                       // 0
     'interface'#10 +                                          // 1
     'type'#10 +                                               // 2
@@ -83,7 +83,7 @@ const
     '  SetCaption('''');'#10 +
     'end;'#10 +
     'end.'#10;
-  UnitMain =
+  cUnitMain =
     'unit Main;'#10 +
     'interface'#10 +
     'uses'#10 +
@@ -104,7 +104,7 @@ const
     '  Hook(P.GetCaption);'#10 +
     'end;'#10 +
     'end.'#10;
-  UnitOther =
+  cUnitOther =
     'unit Other;'#10 +
     'interface'#10 +
     'uses'#10 +
@@ -120,17 +120,17 @@ const
 
 function TextOf(const AFileName: string): string;
 begin
-  if SameText(AFileName, PanelsFile) then
+  if SameText(AFileName, cPanelsFile) then
   begin
-    Result := UnitPanels;
+    Result := cUnitPanels;
   end
-  else if SameText(AFileName, MainFile) then
+  else if SameText(AFileName, cMainFile) then
   begin
-    Result := UnitMain;
+    Result := cUnitMain;
   end
-  else if SameText(AFileName, OtherFile) then
+  else if SameText(AFileName, cOtherFile) then
   begin
-    Result := UnitOther;
+    Result := cUnitOther;
   end
   else
   begin
@@ -141,75 +141,75 @@ end;
 /// <summary>Wendet die Edits aus einem documentChanges-Eintrag auf AText an.</summary>
 function Apply(const AText: string; ADocument: TJSONObject): string;
 var
-  Item: TJSONValue;
-  Edits: TArray<TTextEdit>;
-  Range: TJSONObject;
+  mItem: TJSONValue;
+  mEdits: TArray<TTextEdit>;
+  mRange: TJSONObject;
 begin
-  Edits := nil;
-  for Item in ADocument.GetValue('edits') as TJSONArray do
+  mEdits := nil;
+  for mItem in ADocument.GetValue('edits') as TJSONArray do
   begin
-    Range := TJSONObject(Item).GetValue('range') as TJSONObject;
-    Edits := Edits + [TTextEdit.Create(TTextRange.Create(TLspPositions.ReadPosition(Range.GetValue('start')),
-      TLspPositions.ReadPosition(Range.GetValue('end'))), TJSONObject(Item).GetValue('newText').Value)];
+    mRange := TJSONObject(mItem).GetValue('range') as TJSONObject;
+    mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(TLspPositions.ReadPosition(mRange.GetValue('start')),
+      TLspPositions.ReadPosition(mRange.GetValue('end'))), TJSONObject(mItem).GetValue('newText').Value)];
   end;
-  Result := TChangeSignature.ApplyEdits(AText, Edits);
+  Result := TChangeSignature.ApplyEdits(AText, mEdits);
 end;
 
 /// <summary>Ergebnis je Datei als "Name|Text" hintereinander; AWarnings: Zahl der Hinweise.</summary>
 function Run(const AIndex: ISymbolIndex; const APosition: TTextPosition; AReplaceCalls: Boolean;
   const AOptions: TPropertyFromAccessorsOptions; out AWarnings: TArray<string>): TArray<string>;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Answer: TJSONObject;
-  Context: TPropertyFromAccessorsContext;
-  Item: TJSONValue;
-  Document: TJSONObject;
-  FileName: string;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mAnswer: TJSONObject;
+  mContext: TPropertyFromAccessorsContext;
+  mItem: TJSONValue;
+  mDocument: TJSONObject;
+  mFileName: string;
 begin
   Result := nil;
   AWarnings := nil;
-  Context := Default(TPropertyFromAccessorsContext);
-  Context.Index := AIndex;
-  Context.Files := [PanelsFile, MainFile, OtherFile];
-  Context.Options := AOptions;
-  Context.ReplaceCalls := AReplaceCalls;
-  Context.ReadText :=
+  mContext := Default(TPropertyFromAccessorsContext);
+  mContext.Index := AIndex;
+  mContext.Files := [cPanelsFile, cMainFile, cOtherFile];
+  mContext.Options := AOptions;
+  mContext.ReplaceCalls := AReplaceCalls;
+  mContext.ReadText :=
     function(const AFileName: string; out AText: string): Boolean
     begin
       AText := TextOf(AFileName);
       Result := AText <> '';
     end;
-  Tree := TPascalParser.Parse(UnitPanels);
-  Resolver := TNameResolver.Create(AIndex, nil);
-  Answer := nil;
+  mTree := TPascalParser.Parse(cUnitPanels);
+  mResolver := TNameResolver.Create(AIndex, nil);
+  mAnswer := nil;
   try
-    Answer := TLspPropertyFromAccessors.Execute(Resolver, Tree, PanelsFile, UnitPanels, APosition, Context);
-    for Item in (Answer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray do
+    mAnswer := TLspPropertyFromAccessors.Execute(mResolver, mTree, cPanelsFile, cUnitPanels, APosition, mContext);
+    for mItem in (mAnswer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray do
     begin
-      Document := TJSONObject(Item);
-      FileName := TDocumentUris.ToPath((Document.GetValue('textDocument') as TJSONObject).GetValue('uri').Value);
-      Result := Result + [ExtractFileName(FileName) + '|' + Apply(TextOf(FileName), Document)];
+      mDocument := TJSONObject(mItem);
+      mFileName := TDocumentUris.ToPath((mDocument.GetValue('textDocument') as TJSONObject).GetValue('uri').Value);
+      Result := Result + [ExtractFileName(mFileName) + '|' + Apply(TextOf(mFileName), mDocument)];
     end;
-    for Item in Answer.GetValue('warnings') as TJSONArray do
+    for mItem in mAnswer.GetValue('warnings') as TJSONArray do
     begin
-      AWarnings := AWarnings + [Item.Value];
+      AWarnings := AWarnings + [mItem.Value];
     end;
-    Assert.IsNotNull(((Answer.GetValue('edit') as TJSONObject).GetValue('changeAnnotations') as TJSONObject)
+    Assert.IsNotNull(((mAnswer.GetValue('edit') as TJSONObject).GetValue('changeAnnotations') as TJSONObject)
       .GetValue(TLspPropertyFromAccessors.cAnnotationId));
   finally
-    Answer.Free;
-    Resolver.Free;
-    Tree.Free;
+    mAnswer.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspPropertyFromAccessorsTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitPanels, PanelsFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitMain, MainFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitOther, OtherFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitPanels, cPanelsFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitOther, cOtherFile, nil));
 end;
 
 procedure TLspPropertyFromAccessorsTests.TearDown;
@@ -219,94 +219,94 @@ end;
 
 procedure TLspPropertyFromAccessorsTests.ReplacesCallsInSeveralUnits;
 var
-  Results, Warnings: TArray<string>;
+  mResults, mWarnings: TArray<string>;
 begin
   // Auf der Kopfzeile der Klasse; der Getter liefert nur das Feld: read FCaption.
-  Results := Run(FIndex, TTextPosition.Create(4, 4), True, TPropertyFromAccessorsOptions.Default, Warnings);
-  Assert.AreEqual(3, Integer(Length(Results)), string.Join(#10'----'#10, Results));
-  Assert.AreEqual('Panels.pas|' + StringReplace(StringReplace(UnitPanels, '    procedure Reset;'#10,
+  mResults := Run(FIndex, TTextPosition.Create(4, 4), True, TPropertyFromAccessorsOptions.Default, mWarnings);
+  Assert.AreEqual(3, Integer(Length(mResults)), string.Join(#10'----'#10, mResults));
+  Assert.AreEqual('Panels.pas|' + StringReplace(StringReplace(cUnitPanels, '    procedure Reset;'#10,
     '    procedure Reset;'#10'    property Caption: string read FCaption write SetCaption;'#10, []),
-    '  SetCaption('''');', '  Caption := '''';', []), Results[0]);
-  Assert.AreEqual('Main.pas|' + StringReplace(StringReplace(UnitMain, '  P.SetCaption(''Bereit'');',
-    '  P.Caption := ''Bereit'';', []), '  S := P.GetCaption;', '  S := P.Caption;', []), Results[1]);
-  Assert.AreEqual('Other.pas|' + StringReplace(StringReplace(UnitOther, '  if P.GetCaption <>', '  if P.Caption <>',
-    []), '    P.SetCaption(P.GetCaption + ''!'');', '    P.Caption := P.Caption + ''!'';', []), Results[2]);
+    '  SetCaption('''');', '  Caption := '''';', []), mResults[0]);
+  Assert.AreEqual('Main.pas|' + StringReplace(StringReplace(cUnitMain, '  P.SetCaption(''Bereit'');',
+    '  P.Caption := ''Bereit'';', []), '  S := P.GetCaption;', '  S := P.Caption;', []), mResults[1]);
+  Assert.AreEqual('Other.pas|' + StringReplace(StringReplace(cUnitOther, '  if P.GetCaption <>', '  if P.Caption <>',
+    []), '    P.SetCaption(P.GetCaption + ''!'');', '    P.Caption := P.Caption + ''!'';', []), mResults[2]);
   // Zuweisung an einen Methodenzeiger und Übergabe als Methodenzeiger bleiben.
-  Assert.AreEqual(2, Integer(Length(Warnings)), string.Join(#10, Warnings));
-  Assert.Contains(Warnings[0], 'Main.pas, Zeile 17');
-  Assert.Contains(Warnings[1], 'Main.pas, Zeile 18');
+  Assert.AreEqual(2, Integer(Length(mWarnings)), string.Join(#10, mWarnings));
+  Assert.Contains(mWarnings[0], 'Main.pas, Zeile 17');
+  Assert.Contains(mWarnings[1], 'Main.pas, Zeile 18');
 end;
 
 procedure TLspPropertyFromAccessorsTests.WithoutCallsOnlyTheClassChanges;
 var
-  Results, Warnings: TArray<string>;
+  mResults, mWarnings: TArray<string>;
 begin
   // Auf dem Setter; ohne Umstellen ändert sich nur die Klasse.
-  Results := Run(FIndex, TTextPosition.Create(9, 14), False, TPropertyFromAccessorsOptions.Default, Warnings);
-  Assert.AreEqual(1, Integer(Length(Results)));
-  Assert.AreEqual('Panels.pas|' + StringReplace(UnitPanels, '    procedure Reset;'#10,
-    '    procedure Reset;'#10'    property Caption: string read FCaption write SetCaption;'#10, []), Results[0]);
-  Assert.AreEqual(0, Integer(Length(Warnings)));
+  mResults := Run(FIndex, TTextPosition.Create(9, 14), False, TPropertyFromAccessorsOptions.Default, mWarnings);
+  Assert.AreEqual(1, Integer(Length(mResults)));
+  Assert.AreEqual('Panels.pas|' + StringReplace(cUnitPanels, '    procedure Reset;'#10,
+    '    procedure Reset;'#10'    property Caption: string read FCaption write SetCaption;'#10, []), mResults[0]);
+  Assert.AreEqual(0, Integer(Length(mWarnings)));
 end;
 
 procedure TLspPropertyFromAccessorsTests.HidesOnlyUnusedAccessors;
 var
-  Results, Warnings: TArray<string>;
-  Options: TPropertyFromAccessorsOptions;
+  mResults, mWarnings: TArray<string>;
+  mOptions: TPropertyFromAccessorsOptions;
 begin
-  Options := TPropertyFromAccessorsOptions.Default;
-  Options.Hiding := TAccessorHiding.Private_;
-  Results := Run(FIndex, TTextPosition.Create(4, 4), True, Options, Warnings);
+  mOptions := TPropertyFromAccessorsOptions.Default;
+  mOptions.Hiding := TAccessorHiding.Private_;
+  mResults := Run(FIndex, TTextPosition.Create(4, 4), True, mOptions, mWarnings);
   // SetCaption hat nach dem Umstellen keine Verwendung außerhalb mehr, GetCaption wird als Methodenzeiger benutzt.
-  Assert.Contains(Results[0], '  private'#10'    FCaption: string;'#10 +
+  Assert.Contains(mResults[0], '  private'#10'    FCaption: string;'#10 +
     '    procedure SetCaption(const AValue: string);'#10'  public'#10'    function GetCaption: string;'#10 +
     '    procedure Reset;'#10'    property Caption: string read FCaption write SetCaption;'#10'  end;');
-  Assert.Contains(Warnings[High(Warnings)], 'GetCaption bleibt sichtbar');
+  Assert.Contains(mWarnings[High(mWarnings)], 'GetCaption bleibt sichtbar');
   // Ohne Umstellen bleibt auch SetCaption sichtbar.
-  Results := Run(FIndex, TTextPosition.Create(4, 4), False, Options, Warnings);
-  Assert.Contains(Results[0], '  public'#10'    function GetCaption: string;'#10 +
+  mResults := Run(FIndex, TTextPosition.Create(4, 4), False, mOptions, mWarnings);
+  Assert.Contains(mResults[0], '  public'#10'    function GetCaption: string;'#10 +
     '    procedure SetCaption(const AValue: string);'#10);
-  Assert.AreEqual(2, Integer(Length(Warnings)), string.Join(#10, Warnings));
+  Assert.AreEqual(2, Integer(Length(mWarnings)), string.Join(#10, mWarnings));
 end;
 
 procedure TLspPropertyFromAccessorsTests.ActionsFollowSettings;
 var
-  Tree: TSyntaxTree;
-  Actions: TArray<TJSONObject>;
-  Action: TJSONObject;
+  mTree: TSyntaxTree;
+  mActions: TArray<TJSONObject>;
+  mAction: TJSONObject;
 
   function Titles(const AActions: TArray<TJSONObject>): string;
   var
-    Item: TJSONObject;
+    mItem: TJSONObject;
   begin
     Result := '';
-    for Item in AActions do
+    for mItem in AActions do
     begin
-      Result := Result + Item.GetValue('title').Value + '|';
-      Item.Free;
+      Result := Result + mItem.GetValue('title').Value + '|';
+      mItem.Free;
     end;
   end;
 
 begin
-  Tree := TPascalParser.Parse(UnitPanels);
+  mTree := TPascalParser.Parse(cUnitPanels);
   try
-    Actions := TLspPropertyFromAccessors.Actions(Tree, UnitPanels, 'file:///C:/P/Panels.pas',
+    mActions := TLspPropertyFromAccessors.Actions(mTree, cUnitPanels, 'file:///C:/P/Panels.pas',
       TTextPosition.Create(8, 14), TPropertyFromAccessorsOptions.Default, TReplaceCalls.Ask);
-    Action := Actions[1];
+    mAction := mActions[1];
     Assert.AreEqual(TLspPropertyFromAccessors.cClientCommand,
-      (Action.GetValue('command') as TJSONObject).GetValue('command').Value);
-    Assert.AreEqual('Property Caption anlegen|Property Caption anlegen und Aufrufe umstellen|', Titles(Actions));
+      (mAction.GetValue('command') as TJSONObject).GetValue('command').Value);
+    Assert.AreEqual('Property Caption anlegen|Property Caption anlegen und Aufrufe umstellen|', Titles(mActions));
     Assert.AreEqual('Fehlende Properties anlegen (1) und Aufrufe umstellen|', Titles(
-      TLspPropertyFromAccessors.Actions(Tree, UnitPanels, 'file:///C:/P/Panels.pas', TTextPosition.Create(4, 4),
+      TLspPropertyFromAccessors.Actions(mTree, cUnitPanels, 'file:///C:/P/Panels.pas', TTextPosition.Create(4, 4),
       TPropertyFromAccessorsOptions.Default, TReplaceCalls.Always)));
-    Assert.AreEqual('Property Caption anlegen|', Titles(TLspPropertyFromAccessors.Actions(Tree, UnitPanels,
+    Assert.AreEqual('Property Caption anlegen|', Titles(TLspPropertyFromAccessors.Actions(mTree, cUnitPanels,
       'file:///C:/P/Panels.pas', TTextPosition.Create(9, 14), TPropertyFromAccessorsOptions.Default,
       TReplaceCalls.Never)));
     // Neben den Zugriffsmethoden: nichts.
-    Assert.AreEqual('', Titles(TLspPropertyFromAccessors.Actions(Tree, UnitPanels, 'file:///C:/P/Panels.pas',
+    Assert.AreEqual('', Titles(TLspPropertyFromAccessors.Actions(mTree, cUnitPanels, 'file:///C:/P/Panels.pas',
       TTextPosition.Create(10, 14), TPropertyFromAccessorsOptions.Default, TReplaceCalls.Ask)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

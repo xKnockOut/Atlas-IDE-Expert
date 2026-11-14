@@ -145,22 +145,22 @@ end;
 
 class function TProtocolReplay.DataDirectory: string;
 var
-  Directory: string;
-  Candidate: string;
+  mDirectory: string;
+  mCandidate: string;
 begin
-  Directory := ExtractFileDir(ParamStr(0));
-  while Directory <> '' do
+  mDirectory := ExtractFileDir(ParamStr(0));
+  while mDirectory <> '' do
   begin
-    Candidate := TPath.Combine(Directory, TPath.Combine('Tests', TPath.Combine('Data', 'Protocol')));
-    if TDirectory.Exists(Candidate) then
+    mCandidate := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data', 'Protocol')));
+    if TDirectory.Exists(mCandidate) then
     begin
-      Exit(Candidate);
+      Exit(mCandidate);
     end;
-    if ExtractFileDir(Directory) = Directory then
+    if ExtractFileDir(mDirectory) = mDirectory then
     begin
       Break;
     end;
-    Directory := ExtractFileDir(Directory);
+    mDirectory := ExtractFileDir(mDirectory);
   end;
   raise EProtocolMismatch.Create('Ordner Tests\Data\Protocol nicht gefunden');
 end;
@@ -237,62 +237,62 @@ end;
 
 procedure TProtocolReplay.Send(const AMessage: TJSONObject);
 var
-  Response: TJSONObject;
+  mResponse: TJSONObject;
 begin
-  Response := FDispatcher.DispatchMessage(AMessage);
-  if Response <> nil then
+  mResponse := FDispatcher.DispatchMessage(AMessage);
+  if mResponse <> nil then
   begin
-    FOutput.Enqueue(Response);
+    FOutput.Enqueue(mResponse);
   end;
 end;
 
 procedure TProtocolReplay.Expect(const AExpected: TJSONObject; AStep: Integer);
 var
-  Actual: TJSONObject;
-  Difference: string;
+  mActual: TJSONObject;
+  mDifference: string;
 begin
   if FOutput.Count = 0 then
   begin
     raise EProtocolMismatch.CreateFmt('Schritt %d: keine Nachricht vom Server, erwartet %s',
       [AStep, AExpected.ToJSON]);
   end;
-  Actual := FOutput.Extract;
+  mActual := FOutput.Extract;
   try
-    Difference := Mismatch(AExpected, Actual, '$');
-    if Difference <> '' then
+    mDifference := Mismatch(AExpected, mActual, '$');
+    if mDifference <> '' then
     begin
-      raise EProtocolMismatch.CreateFmt('Schritt %d: %s', [AStep, Difference]);
+      raise EProtocolMismatch.CreateFmt('Schritt %d: %s', [AStep, mDifference]);
     end;
   finally
-    Actual.Free;
+    mActual.Free;
   end;
 end;
 
 procedure TProtocolReplay.Run(const ARecording: TJSONObject);
 var
-  Steps: TJSONArray;
-  Step: TJSONObject;
-  Index: Integer;
-  Value: TJSONObject;
+  mSteps: TJSONArray;
+  mStep: TJSONObject;
+  mIndex: Integer;
+  mValue: TJSONObject;
 begin
-  if not ARecording.TryGetValue<TJSONArray>('steps', Steps) then
+  if not ARecording.TryGetValue<TJSONArray>('steps', mSteps) then
   begin
     raise EProtocolMismatch.Create('Feld "steps" fehlt');
   end;
-  for Index := 0 to Steps.Count - 1 do
+  for mIndex := 0 to mSteps.Count - 1 do
   begin
-    Step := Steps.Items[Index] as TJSONObject;
-    if Step.TryGetValue<TJSONObject>('send', Value) then
+    mStep := mSteps.Items[mIndex] as TJSONObject;
+    if mStep.TryGetValue<TJSONObject>('send', mValue) then
     begin
-      Send(Value);
+      Send(mValue);
     end
-    else if Step.TryGetValue<TJSONObject>('expect', Value) then
+    else if mStep.TryGetValue<TJSONObject>('expect', mValue) then
     begin
-      Expect(Value, Index);
+      Expect(mValue, mIndex);
     end
     else
     begin
-      raise EProtocolMismatch.CreateFmt('Schritt %d: "send" oder "expect" fehlt', [Index]);
+      raise EProtocolMismatch.CreateFmt('Schritt %d: "send" oder "expect" fehlt', [mIndex]);
     end;
   end;
   if FOutput.Count > 0 then

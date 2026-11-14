@@ -74,11 +74,11 @@ uses
 function Suggested(const AText: string; AMinLines: Integer; const AEnums: TAtlasEnumLookup;
   const AExists: TAtlasNameExists; out ASuggestion: TAtlasPatternSuggestion): string; overload;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
   Result := '-';
-  Lines := AText.Split([#10]);
-  if TAtlasPatternContinuation.Suggest(Lines, High(Lines), AMinLines, AEnums, AExists, ASuggestion) then
+  mLines := AText.Split([#10]);
+  if TAtlasPatternContinuation.Suggest(mLines, High(mLines), AMinLines, AEnums, AExists, ASuggestion) then
   begin
     Result := ASuggestion.Indent + ASuggestion.Text;
   end;
@@ -86,21 +86,21 @@ end;
 
 function Suggested(const AText: string): string; overload;
 var
-  Suggestion: TAtlasPatternSuggestion;
+  mSuggestion: TAtlasPatternSuggestion;
 begin
-  Result := Suggested(AText, TAtlasPatternContinuation.cMinLines, nil, nil, Suggestion);
+  Result := Suggested(AText, TAtlasPatternContinuation.cMinLines, nil, nil, mSuggestion);
 end;
 
 function Suggested(const AText: string; AMinLines: Integer): string; overload;
 var
-  Suggestion: TAtlasPatternSuggestion;
+  mSuggestion: TAtlasPatternSuggestion;
 begin
-  Result := Suggested(AText, AMinLines, nil, nil, Suggestion);
+  Result := Suggested(AText, AMinLines, nil, nil, mSuggestion);
 end;
 
 function SuggestedWithText(const AText: string): string;
 var
-  Suggestion: TAtlasPatternSuggestion;
+  mSuggestion: TAtlasPatternSuggestion;
 begin
   Result := Suggested(AText, TAtlasPatternContinuation.cMinLines,
     function(const AMember: string; ALine, ACharacter: Integer): TArray<string>
@@ -110,7 +110,7 @@ begin
     function(const AName: string): Boolean
     begin
       Result := TAtlasPatternContinuation.ContainsWord(AText, AName);
-    end, Suggestion);
+    end, mSuggestion);
 end;
 
 { TAtlasPatternContinuationTests }
@@ -141,14 +141,14 @@ end;
 
 procedure TAtlasPatternContinuationTests.ContinuesCaseBranches;
 var
-  Suggestion: TAtlasPatternSuggestion;
+  mSuggestion: TAtlasPatternSuggestion;
 begin
   Assert.AreEqual('    2: Result := '''';', Suggested('    0: Result := ''Null'';'#10 +
-    '    1: Result := ''Eins'';'#10, TAtlasPatternContinuation.cMinLines, nil, nil, Suggestion));
-  Assert.AreEqual(1, Integer(Length(Suggestion.Fields)));
+    '    1: Result := ''Eins'';'#10, TAtlasPatternContinuation.cMinLines, nil, nil, mSuggestion));
+  Assert.AreEqual(1, Integer(Length(mSuggestion.Fields)));
   // Zwischen den Hochkommas: "2: Result := '|';"
-  Assert.AreEqual(14, Suggestion.Fields[0]);
-  Assert.AreEqual('''', Copy(Suggestion.Text, Suggestion.Fields[0], 1));
+  Assert.AreEqual(14, mSuggestion.Fields[0]);
+  Assert.AreEqual('''', Copy(mSuggestion.Text, mSuggestion.Fields[0], 1));
 end;
 
 procedure TAtlasPatternContinuationTests.ContinuesArrayConstants;
@@ -159,13 +159,13 @@ end;
 
 procedure TAtlasPatternContinuationTests.NumberedIdentifierNeedsExistingName;
 const
-  Form = 'var Edit1, Edit2, Edit3: TEdit;'#10 +
+  cForm = 'var Edit1, Edit2, Edit3: TEdit;'#10 +
     '  Edit1.Text := '''';'#10 +
     '  Edit2.Text := '''';'#10;
 begin
-  Assert.AreEqual('  Edit3.Text := '''';', SuggestedWithText(Form));
+  Assert.AreEqual('  Edit3.Text := '''';', SuggestedWithText(cForm));
   Assert.AreEqual('-', SuggestedWithText('  Edit1.Text := '''';'#10'  Edit2.Text := '''';'#10));
-  Assert.AreEqual('-', Suggested(Form));
+  Assert.AreEqual('-', Suggested(cForm));
 end;
 
 procedure TAtlasPatternContinuationTests.NumberedDeclarationMayBeNew;
@@ -176,34 +176,34 @@ end;
 
 procedure TAtlasPatternContinuationTests.RegisterClassWithExistingName;
 const
-  Text = 'type TFoo1 = class end; TFoo2 = class end; TFoo3 = class end;'#10 +
+  cText = 'type TFoo1 = class end; TFoo2 = class end; TFoo3 = class end;'#10 +
     '  RegisterClass(TFoo1);'#10'  RegisterClass(TFoo2);'#10;
 begin
-  Assert.AreEqual('  RegisterClass(TFoo3);', SuggestedWithText(Text));
+  Assert.AreEqual('  RegisterClass(TFoo3);', SuggestedWithText(cText));
 end;
 
 procedure TAtlasPatternContinuationTests.ContinuesLocalEnum;
 const
-  Text = 'type TAmpel = (Rot, Gelb, Gruen, Aus);'#10 +
+  cText = 'type TAmpel = (Rot, Gelb, Gruen, Aus);'#10 +
     '  Show(Rot);'#10'  Show(Gelb);'#10;
 var
-  Lookups: Integer;
-  Suggestion: TAtlasPatternSuggestion;
+  mLookups: Integer;
+  mSuggestion: TAtlasPatternSuggestion;
 begin
-  Assert.AreEqual('  Show(Gruen);', SuggestedWithText(Text));
+  Assert.AreEqual('  Show(Gruen);', SuggestedWithText(cText));
   // Die Stelle des letzten Werts geht an den Nachschlag.
-  Lookups := 0;
-  Suggested(Text, TAtlasPatternContinuation.cMinLines,
+  mLookups := 0;
+  Suggested(cText, TAtlasPatternContinuation.cMinLines,
     function(const AMember: string; ALine, ACharacter: Integer): TArray<string>
     begin
-      Inc(Lookups);
+      Inc(mLookups);
       Assert.AreEqual('Gelb', AMember);
       Assert.AreEqual(2, ALine);
       Assert.AreEqual(7, ACharacter);
       Result := ['Rot', 'Gelb', 'Gruen'];
-    end, nil, Suggestion);
-  Assert.AreEqual(1, Lookups);
-  Assert.AreEqual('Show(Gruen);', Suggestion.Text);
+    end, nil, mSuggestion);
+  Assert.AreEqual(1, mLookups);
+  Assert.AreEqual('Show(Gruen);', mSuggestion.Text);
 end;
 
 procedure TAtlasPatternContinuationTests.NoSuggestionAtEndOfEnum;
@@ -214,13 +214,13 @@ end;
 
 procedure TAtlasPatternContinuationTests.FreeStringsBecomeFields;
 var
-  Suggestion: TAtlasPatternSuggestion;
+  mSuggestion: TAtlasPatternSuggestion;
 begin
   Assert.AreEqual('  Add(3, '''', '''');', Suggested('  Add(1, ''ab'', ''x'');'#10'  Add(2, ''cd'', ''xy'');'#10,
-    TAtlasPatternContinuation.cMinLines, nil, nil, Suggestion));
-  Assert.AreEqual(2, Integer(Length(Suggestion.Fields)));
-  Assert.AreEqual(8, Suggestion.Fields[0]);
-  Assert.AreEqual(12, Suggestion.Fields[1]);
+    TAtlasPatternContinuation.cMinLines, nil, nil, mSuggestion));
+  Assert.AreEqual(2, Integer(Length(mSuggestion.Fields)));
+  Assert.AreEqual(8, mSuggestion.Fields[0]);
+  Assert.AreEqual(12, mSuggestion.Fields[1]);
 end;
 
 procedure TAtlasPatternContinuationTests.OnlyFreeStringsIsNoPattern;
@@ -231,10 +231,10 @@ end;
 
 procedure TAtlasPatternContinuationTests.NeedsMinLines;
 const
-  Text = '  A[1] := 1;'#10'  A[2] := 2;'#10;
+  cText = '  A[1] := 1;'#10'  A[2] := 2;'#10;
 begin
-  Assert.AreEqual('  A[3] := 3;', Suggested(Text));
-  Assert.AreEqual('-', Suggested(Text, 3));
+  Assert.AreEqual('  A[3] := 3;', Suggested(cText));
+  Assert.AreEqual('-', Suggested(cText, 3));
   Assert.AreEqual('  A[4] := 4;', Suggested('  A[1] := 1;'#10'  A[2] := 2;'#10'  A[3] := 3;'#10, 3));
 end;
 
@@ -273,11 +273,11 @@ end;
 
 procedure TAtlasPatternContinuationTests.LocalEnumValuesSkipsParentheses;
 var
-  Values: TArray<string>;
+  mValues: TArray<string>;
 begin
-  Values := TAtlasPatternContinuation.LocalEnumValues('X := (A + B); type TS = (sA = 1, sB, sC);', 'sb');
-  Assert.AreEqual(3, Integer(Length(Values)));
-  Assert.AreEqual('sC', Values[2]);
+  mValues := TAtlasPatternContinuation.LocalEnumValues('X := (A + B); type TS = (sA = 1, sB, sC);', 'sb');
+  Assert.AreEqual(3, Integer(Length(mValues)));
+  Assert.AreEqual('sC', mValues[2]);
   Assert.AreEqual(0, Integer(Length(TAtlasPatternContinuation.LocalEnumValues('F := (A, B);', 'C'))));
 end;
 
@@ -290,26 +290,26 @@ end;
 
 procedure TAtlasPatternContinuationTests.LargeUnitIsFast;
 var
-  Lines: TArray<string>;
-  Index: Integer;
-  Watch: TStopwatch;
-  Suggestion: TAtlasPatternSuggestion;
-  Found: Boolean;
+  mLines: TArray<string>;
+  mIndex: Integer;
+  mWatch: TStopwatch;
+  mSuggestion: TAtlasPatternSuggestion;
+  mFound: Boolean;
 begin
-  SetLength(Lines, 5001);
-  for Index := 0 to 4999 do
+  SetLength(mLines, 5001);
+  for mIndex := 0 to 4999 do
   begin
-    Lines[Index] := Format('  Grid.Cells[%d, %d] := Werte[%d]; // Zeile', [Index mod 1000, Index, Index]);
+    mLines[mIndex] := Format('  Grid.Cells[%d, %d] := Werte[%d]; // Zeile', [mIndex mod 1000, mIndex, mIndex]);
   end;
-  Lines[5000] := '';
-  Watch := TStopwatch.StartNew;
-  Found := TAtlasPatternContinuation.Suggest(Lines, 5000, TAtlasPatternContinuation.cMinLines, nil, nil,
-    Suggestion);
-  Watch.Stop;
-  Assert.IsTrue(Found);
-  Assert.AreEqual('Grid.Cells[1000, 5000] := Werte[5000]; // Zeile', Suggestion.Text);
-  Assert.IsTrue(Watch.ElapsedMilliseconds < 20, Format('%d ms', [Watch.ElapsedMilliseconds]));
-  Lines := nil;
+  mLines[5000] := '';
+  mWatch := TStopwatch.StartNew;
+  mFound := TAtlasPatternContinuation.Suggest(mLines, 5000, TAtlasPatternContinuation.cMinLines, nil, nil,
+    mSuggestion);
+  mWatch.Stop;
+  Assert.IsTrue(mFound);
+  Assert.AreEqual('Grid.Cells[1000, 5000] := Werte[5000]; // Zeile', mSuggestion.Text);
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < 20, Format('%d ms', [mWatch.ElapsedMilliseconds]));
+  mLines := nil;
 end;
 
 initialization

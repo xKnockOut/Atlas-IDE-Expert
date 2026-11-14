@@ -76,311 +76,311 @@ end;
 
 procedure TAtlasCallDiagramTests.LoadsLevelByLevel;
 var
-  Diagram: TAtlasCallDiagram;
-  Layout: TAtlasCallLayout;
+  mDiagram: TAtlasCallDiagram;
+  mLayout: TAtlasCallLayout;
 begin
-  Diagram := NewDiagram;
+  mDiagram := NewDiagram;
   try
-    Diagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Start', 'C:\P\A.pas', 1)]);
-    Assert.IsTrue(Diagram.NeedsLoad(0));
-    Assert.IsFalse(Diagram.Toggle(0), 'erst laden');
-    Layout := Diagram.Layout;
-    Assert.AreEqual(1, Integer(Length(Layout.Boxes)));
+    mDiagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Start', 'C:\P\A.pas', 1)]);
+    Assert.IsTrue(mDiagram.NeedsLoad(0));
+    Assert.IsFalse(mDiagram.Toggle(0), 'erst laden');
+    mLayout := mDiagram.Layout;
+    Assert.AreEqual(1, Integer(Length(mLayout.Boxes)));
     // Erste Ebene: zwei Aufgerufene rechts daneben, der Start mittig davor.
-    Diagram.SetChildren(0, [Item('Laden', 'C:\P\A.pas', 10), Item('Zeigen', 'C:\P\B.pas', 20)]);
-    Assert.IsFalse(Diagram.NeedsLoad(0));
-    Layout := Diagram.Layout;
-    Assert.AreEqual(3, Integer(Length(Layout.Boxes)));
-    Assert.AreEqual(2, Integer(Length(Layout.Edges)));
-    Assert.AreEqual(0, Layout.Boxes[Layout.BoxOf(0)].Column);
-    Assert.AreEqual(0.5, Layout.Boxes[Layout.BoxOf(0)].Row, 0.001);
-    Assert.AreEqual(1, Layout.Boxes[Layout.BoxOf(1)].Column);
-    Assert.AreEqual(0.0, Layout.Boxes[Layout.BoxOf(1)].Row, 0.001);
-    Assert.AreEqual(1.0, Layout.Boxes[Layout.BoxOf(2)].Row, 0.001);
-    Assert.AreEqual(2, Layout.Columns);
+    mDiagram.SetChildren(0, [Item('Laden', 'C:\P\A.pas', 10), Item('Zeigen', 'C:\P\B.pas', 20)]);
+    Assert.IsFalse(mDiagram.NeedsLoad(0));
+    mLayout := mDiagram.Layout;
+    Assert.AreEqual(3, Integer(Length(mLayout.Boxes)));
+    Assert.AreEqual(2, Integer(Length(mLayout.Edges)));
+    Assert.AreEqual(0, mLayout.Boxes[mLayout.BoxOf(0)].Column);
+    Assert.AreEqual(0.5, mLayout.Boxes[mLayout.BoxOf(0)].Row, 0.001);
+    Assert.AreEqual(1, mLayout.Boxes[mLayout.BoxOf(1)].Column);
+    Assert.AreEqual(0.0, mLayout.Boxes[mLayout.BoxOf(1)].Row, 0.001);
+    Assert.AreEqual(1.0, mLayout.Boxes[mLayout.BoxOf(2)].Row, 0.001);
+    Assert.AreEqual(2, mLayout.Columns);
     // Dritte Ebene erst nach Klick auf „Laden“.
-    Assert.IsTrue(Diagram.NeedsLoad(1));
-    Diagram.SetChildren(1, [Item('Lesen', 'C:\P\C.pas', 5)]);
-    Layout := Diagram.Layout;
-    Assert.AreEqual(3, Layout.Columns);
-    Assert.AreEqual(2, Diagram[3].Level);
+    Assert.IsTrue(mDiagram.NeedsLoad(1));
+    mDiagram.SetChildren(1, [Item('Lesen', 'C:\P\C.pas', 5)]);
+    mLayout := mDiagram.Layout;
+    Assert.AreEqual(3, mLayout.Columns);
+    Assert.AreEqual(2, mDiagram[3].Level);
     // Zuklappen blendet die Ebenen darunter aus, Aufklappen zeigt sie ohne neues Laden.
-    Assert.IsTrue(Diagram.Toggle(0));
-    Assert.AreEqual(1, Integer(Length(Diagram.Layout.Boxes)));
-    Assert.IsTrue(Diagram.Toggle(0));
-    Assert.AreEqual(4, Integer(Length(Diagram.Layout.Boxes)));
+    Assert.IsTrue(mDiagram.Toggle(0));
+    Assert.AreEqual(1, Integer(Length(mDiagram.Layout.Boxes)));
+    Assert.IsTrue(mDiagram.Toggle(0));
+    Assert.AreEqual(4, Integer(Length(mDiagram.Layout.Boxes)));
     // Ohne Kinder lässt sich nichts aufklappen.
-    Diagram.SetChildren(2, []);
-    Assert.IsTrue(Diagram.Toggle(2), 'zuklappen geht');
-    Assert.IsFalse(Diagram.Toggle(2), 'aufklappen ohne Kinder nicht');
+    mDiagram.SetChildren(2, []);
+    Assert.IsTrue(mDiagram.Toggle(2), 'zuklappen geht');
+    Assert.IsFalse(mDiagram.Toggle(2), 'aufklappen ohne Kinder nicht');
   finally
-    Diagram.Free;
+    mDiagram.Free;
   end;
 end;
 
 procedure TAtlasCallDiagramTests.RecursionBecomesBackArrow;
 var
-  Diagram: TAtlasCallDiagram;
-  Layout: TAtlasCallLayout;
-  Edge: TAtlasCallEdge;
-  Backs: Integer;
+  mDiagram: TAtlasCallDiagram;
+  mLayout: TAtlasCallLayout;
+  mEdge: TAtlasCallEdge;
+  mBacks: Integer;
 begin
-  Diagram := NewDiagram;
+  mDiagram := NewDiagram;
   try
-    Diagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Zaehle', 'C:\P\A.pas', 3)]);
-    Diagram.SetChildren(0, [Item('Hilfe', 'C:\P\A.pas', 9)]);
+    mDiagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Zaehle', 'C:\P\A.pas', 3)]);
+    mDiagram.SetChildren(0, [Item('Hilfe', 'C:\P\A.pas', 9)]);
     // Hilfe ruft Zaehle zurück: kein neuer Kasten, sondern ein Pfeil zurück.
-    Diagram.SetChildren(1, [Item('Zaehle', 'C:\P\A.pas', 3), Item('Hilfe', 'C:\P\A.pas', 9)]);
-    Assert.AreEqual(0, Diagram[2].BackTo);
-    Assert.AreEqual(1, Diagram[3].BackTo, 'Selbstaufruf');
-    Assert.IsFalse(Diagram.NeedsLoad(2));
-    Assert.IsFalse(Diagram.Toggle(2));
-    Layout := Diagram.Layout;
-    Assert.AreEqual(2, Integer(Length(Layout.Boxes)));
-    Backs := 0;
-    for Edge in Layout.Edges do
+    mDiagram.SetChildren(1, [Item('Zaehle', 'C:\P\A.pas', 3), Item('Hilfe', 'C:\P\A.pas', 9)]);
+    Assert.AreEqual(0, mDiagram[2].BackTo);
+    Assert.AreEqual(1, mDiagram[3].BackTo, 'Selbstaufruf');
+    Assert.IsFalse(mDiagram.NeedsLoad(2));
+    Assert.IsFalse(mDiagram.Toggle(2));
+    mLayout := mDiagram.Layout;
+    Assert.AreEqual(2, Integer(Length(mLayout.Boxes)));
+    mBacks := 0;
+    for mEdge in mLayout.Edges do
     begin
-      if Edge.Back then
+      if mEdge.Back then
       begin
-        Inc(Backs);
-        Assert.AreEqual(Layout.BoxOf(1), Edge.Source);
+        Inc(mBacks);
+        Assert.AreEqual(mLayout.BoxOf(1), mEdge.Source);
       end;
     end;
-    Assert.AreEqual(2, Backs);
+    Assert.AreEqual(2, mBacks);
     // Weiteres Laden unter einer Rekursion wird ignoriert.
-    Diagram.SetChildren(2, [Item('X', 'C:\P\A.pas', 1)]);
-    Assert.AreEqual(0, Integer(Length(Diagram[2].Children)));
+    mDiagram.SetChildren(2, [Item('X', 'C:\P\A.pas', 1)]);
+    Assert.AreEqual(0, Integer(Length(mDiagram[2].Children)));
   finally
-    Diagram.Free;
+    mDiagram.Free;
   end;
 end;
 
 procedure TAtlasCallDiagramTests.MoreThanEightChildrenAreSummarized;
 var
-  Diagram: TAtlasCallDiagram;
-  Children: TArray<TAtlasHierarchyItem>;
-  Index, More: Integer;
-  Layout: TAtlasCallLayout;
-  Box: TAtlasCallBox;
-  Found: Boolean;
+  mDiagram: TAtlasCallDiagram;
+  mChildren: TArray<TAtlasHierarchyItem>;
+  mIndex, mMore: Integer;
+  mLayout: TAtlasCallLayout;
+  mBox: TAtlasCallBox;
+  mFound: Boolean;
 begin
-  Diagram := NewDiagram;
+  mDiagram := NewDiagram;
   try
-    Diagram.Reset(TAtlasHierarchyDirection.Incoming, [Item('Speichern', 'C:\P\A.pas', 3)]);
-    Children := nil;
-    for Index := 1 to 11 do
+    mDiagram.Reset(TAtlasHierarchyDirection.Incoming, [Item('Speichern', 'C:\P\A.pas', 3)]);
+    mChildren := nil;
+    for mIndex := 1 to 11 do
     begin
-      Children := Children + [Item('Aufrufer' + IntToStr(Index), 'C:\P\A.pas', 10 + Index)];
+      mChildren := mChildren + [Item('Aufrufer' + IntToStr(mIndex), 'C:\P\A.pas', 10 + mIndex)];
     end;
-    Diagram.SetChildren(0, Children);
-    Assert.AreEqual(8, Integer(Length(Diagram.VisibleChildren(0, More))));
-    Assert.AreEqual(3, More);
-    Layout := Diagram.Layout;
-    Assert.AreEqual(10, Integer(Length(Layout.Boxes)), 'Wurzel, 8 Kinder, „+ 3 …“');
-    Found := False;
-    for Box in Layout.Boxes do
+    mDiagram.SetChildren(0, mChildren);
+    Assert.AreEqual(8, Integer(Length(mDiagram.VisibleChildren(0, mMore))));
+    Assert.AreEqual(3, mMore);
+    mLayout := mDiagram.Layout;
+    Assert.AreEqual(10, Integer(Length(mLayout.Boxes)), 'Wurzel, 8 Kinder, „+ 3 …“');
+    mFound := False;
+    for mBox in mLayout.Boxes do
     begin
-      if Box.Kind = TAtlasCallBoxKind.More then
+      if mBox.Kind = TAtlasCallBoxKind.More then
       begin
-        Found := True;
-        Assert.AreEqual(3, Box.Hidden);
-        Assert.AreEqual(0, Box.Node);
-        Assert.AreEqual(1, Box.Column);
+        mFound := True;
+        Assert.AreEqual(3, mBox.Hidden);
+        Assert.AreEqual(0, mBox.Node);
+        Assert.AreEqual(1, mBox.Column);
       end;
     end;
-    Assert.IsTrue(Found);
-    Diagram.ShowAll(0);
-    Assert.AreEqual(12, Integer(Length(Diagram.Layout.Boxes)));
+    Assert.IsTrue(mFound);
+    mDiagram.ShowAll(0);
+    Assert.AreEqual(12, Integer(Length(mDiagram.Layout.Boxes)));
     // Genau acht bleiben ohne Zusammenfassung.
-    Diagram.Reset(TAtlasHierarchyDirection.Incoming, [Item('Speichern', 'C:\P\A.pas', 3)]);
-    Diagram.SetChildren(0, Copy(Children, 0, 8));
-    Assert.AreEqual(8, Integer(Length(Diagram.VisibleChildren(0, More))));
-    Assert.AreEqual(0, More);
+    mDiagram.Reset(TAtlasHierarchyDirection.Incoming, [Item('Speichern', 'C:\P\A.pas', 3)]);
+    mDiagram.SetChildren(0, Copy(mChildren, 0, 8));
+    Assert.AreEqual(8, Integer(Length(mDiagram.VisibleChildren(0, mMore))));
+    Assert.AreEqual(0, mMore);
   finally
-    Diagram.Free;
+    mDiagram.Free;
   end;
 end;
 
 procedure TAtlasCallDiagramTests.ProjectOnlyHidesLibraryUnits;
 var
-  Diagram: TAtlasCallDiagram;
-  More: Integer;
+  mDiagram: TAtlasCallDiagram;
+  mMore: Integer;
 begin
-  Diagram := NewDiagram;
+  mDiagram := NewDiagram;
   try
-    Assert.IsTrue(Diagram.ProjectOnly, 'Vorgabe an');
-    Diagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Start', 'C:\P\A.pas', 1)]);
-    Diagram.SetChildren(0, [Item('Laden', 'C:\P\A.pas', 10), Item('Format', 'C:\RTL\System.SysUtils.pas', 99),
+    Assert.IsTrue(mDiagram.ProjectOnly, 'Vorgabe an');
+    mDiagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Start', 'C:\P\A.pas', 1)]);
+    mDiagram.SetChildren(0, [Item('Laden', 'C:\P\A.pas', 10), Item('Format', 'C:\RTL\System.SysUtils.pas', 99),
       Item('Ohne', '', 0)]);
-    Assert.IsTrue(Diagram[2].Library_);
-    Assert.IsTrue(Diagram[3].Library_, 'ohne Datei');
-    Assert.AreEqual(1, Integer(Length(Diagram.VisibleChildren(0, More))));
-    Diagram.ProjectOnly := False;
-    Assert.AreEqual(3, Integer(Length(Diagram.VisibleChildren(0, More))));
-    Assert.AreEqual(4, Integer(Length(Diagram.Layout.Boxes)));
+    Assert.IsTrue(mDiagram[2].Library_);
+    Assert.IsTrue(mDiagram[3].Library_, 'ohne Datei');
+    Assert.AreEqual(1, Integer(Length(mDiagram.VisibleChildren(0, mMore))));
+    mDiagram.ProjectOnly := False;
+    Assert.AreEqual(3, Integer(Length(mDiagram.VisibleChildren(0, mMore))));
+    Assert.AreEqual(4, Integer(Length(mDiagram.Layout.Boxes)));
   finally
-    Diagram.Free;
+    mDiagram.Free;
   end;
   // Ohne Entscheider gehört alles mit Datei zum Projekt.
-  Diagram := TAtlasCallDiagram.Create(nil);
+  mDiagram := TAtlasCallDiagram.Create(nil);
   try
-    Diagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Start', 'C:\P\A.pas', 1)]);
-    Diagram.SetChildren(0, [Item('Format', 'C:\RTL\System.SysUtils.pas', 99)]);
-    Assert.IsFalse(Diagram[1].Library_);
+    mDiagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Start', 'C:\P\A.pas', 1)]);
+    mDiagram.SetChildren(0, [Item('Format', 'C:\RTL\System.SysUtils.pas', 99)]);
+    Assert.IsFalse(mDiagram[1].Library_);
   finally
-    Diagram.Free;
+    mDiagram.Free;
   end;
 end;
 
 procedure TAtlasCallDiagramTests.DispatchedCallsAreDashed;
 var
-  Diagram: TAtlasCallDiagram;
-  Over, ViaVirtual, Plain: TAtlasHierarchyItem;
-  Layout: TAtlasCallLayout;
-  Edge: TAtlasCallEdge;
+  mDiagram: TAtlasCallDiagram;
+  mOver, mViaVirtual, mPlain: TAtlasHierarchyItem;
+  mLayout: TAtlasCallLayout;
+  mEdge: TAtlasCallEdge;
 begin
-  Over := Item('Speichern', 'C:\P\A.pas', 4);
-  Over.Dispatch := 'interface';
-  Over.Implementations := 3;
+  mOver := Item('Speichern', 'C:\P\A.pas', 4);
+  mOver.Dispatch := 'interface';
+  mOver.Implementations := 3;
   // Eingehend: erschlossen über virtual (#1119) ohne atlasDispatch eines älteren Servers.
-  ViaVirtual := Item('Laden', 'C:\P\A.pas', 5);
-  ViaVirtual.Confidence.Inferred := True;
-  ViaVirtual.Confidence.Reason := 'virtual';
-  Plain := Item('Fertig', 'C:\P\A.pas', 6);
-  Diagram := NewDiagram;
+  mViaVirtual := Item('Laden', 'C:\P\A.pas', 5);
+  mViaVirtual.Confidence.Inferred := True;
+  mViaVirtual.Confidence.Reason := 'virtual';
+  mPlain := Item('Fertig', 'C:\P\A.pas', 6);
+  mDiagram := NewDiagram;
   try
-    Diagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Start', 'C:\P\A.pas', 1)]);
-    Diagram.SetChildren(0, [Over, ViaVirtual, Plain]);
-    Layout := Diagram.Layout;
-    for Edge in Layout.Edges do
+    mDiagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Start', 'C:\P\A.pas', 1)]);
+    mDiagram.SetChildren(0, [mOver, mViaVirtual, mPlain]);
+    mLayout := mDiagram.Layout;
+    for mEdge in mLayout.Edges do
     begin
-      if Layout.Boxes[Edge.Target].Node = 1 then
+      if mLayout.Boxes[mEdge.Target].Node = 1 then
       begin
-        Assert.IsTrue(Edge.Dashed);
-        Assert.AreEqual(3, Edge.Implementations);
+        Assert.IsTrue(mEdge.Dashed);
+        Assert.AreEqual(3, mEdge.Implementations);
       end
-      else if Layout.Boxes[Edge.Target].Node = 2 then
+      else if mLayout.Boxes[mEdge.Target].Node = 2 then
       begin
-        Assert.IsTrue(Edge.Dashed);
+        Assert.IsTrue(mEdge.Dashed);
       end
       else
       begin
-        Assert.IsFalse(Edge.Dashed);
+        Assert.IsFalse(mEdge.Dashed);
       end;
     end;
   finally
-    Diagram.Free;
+    mDiagram.Free;
   end;
 end;
 
 procedure TAtlasCallDiagramTests.DuplicateChildrenAreMerged;
 var
-  Diagram: TAtlasCallDiagram;
-  Inferred: TAtlasHierarchyItem;
+  mDiagram: TAtlasCallDiagram;
+  mInferred: TAtlasHierarchyItem;
 begin
-  Inferred := Item('Aufrufer', 'C:\P\A.pas', 7);
-  Inferred.Confidence.Inferred := True;
-  Diagram := NewDiagram;
+  mInferred := Item('Aufrufer', 'C:\P\A.pas', 7);
+  mInferred.Confidence.Inferred := True;
+  mDiagram := NewDiagram;
   try
-    Diagram.Reset(TAtlasHierarchyDirection.Incoming, [Item('Ziel', 'C:\P\A.pas', 1)]);
-    Diagram.SetChildren(0, [Item('Aufrufer', 'C:\P\A.pas', 7), Inferred]);
-    Assert.AreEqual(1, Integer(Length(Diagram[0].Children)));
-    Assert.AreEqual(2, Diagram.Count);
+    mDiagram.Reset(TAtlasHierarchyDirection.Incoming, [Item('Ziel', 'C:\P\A.pas', 1)]);
+    mDiagram.SetChildren(0, [Item('Aufrufer', 'C:\P\A.pas', 7), mInferred]);
+    Assert.AreEqual(1, Integer(Length(mDiagram[0].Children)));
+    Assert.AreEqual(2, mDiagram.Count);
   finally
-    Diagram.Free;
+    mDiagram.Free;
   end;
 end;
 
 procedure TAtlasCallDiagramTests.TitleAndLocation;
 var
-  Entry: TAtlasHierarchyItem;
+  mEntry: TAtlasHierarchyItem;
 begin
-  Entry := Item('Laden', 'C:\P\Ref.Kunden.pas', 11);
-  Entry.Detail := 'TKunde · Ref.Kunden';
-  Assert.AreEqual('TKunde.Laden', TAtlasCallDiagram.Title(Entry));
-  Entry.Detail := 'Ref.Kunden';
-  Assert.AreEqual('Laden', TAtlasCallDiagram.Title(Entry));
-  Entry.Detail := 'TKunde';
-  Assert.AreEqual('TKunde.Laden', TAtlasCallDiagram.Title(Entry));
-  Assert.AreEqual('Ref.Kunden.pas:12', TAtlasCallDiagram.Location(Entry));
-  Entry.FileName := '';
-  Assert.AreEqual('', TAtlasCallDiagram.Location(Entry));
+  mEntry := Item('Laden', 'C:\P\Ref.Kunden.pas', 11);
+  mEntry.Detail := 'TKunde · Ref.Kunden';
+  Assert.AreEqual('TKunde.Laden', TAtlasCallDiagram.Title(mEntry));
+  mEntry.Detail := 'Ref.Kunden';
+  Assert.AreEqual('Laden', TAtlasCallDiagram.Title(mEntry));
+  mEntry.Detail := 'TKunde';
+  Assert.AreEqual('TKunde.Laden', TAtlasCallDiagram.Title(mEntry));
+  Assert.AreEqual('Ref.Kunden.pas:12', TAtlasCallDiagram.Location(mEntry));
+  mEntry.FileName := '';
+  Assert.AreEqual('', TAtlasCallDiagram.Location(mEntry));
 end;
 
 procedure TAtlasCallDiagramTests.ViewFitsZoomsAndHits;
 var
-  Diagram: TAtlasCallDiagram;
-  Layout: TAtlasCallLayout;
-  View: TAtlasCallView;
-  Box: TAtlasCallBox;
-  X, Y, BeforeX: Double;
+  mDiagram: TAtlasCallDiagram;
+  mLayout: TAtlasCallLayout;
+  mView: TAtlasCallView;
+  mBox: TAtlasCallBox;
+  X, Y, mBeforeX: Double;
 begin
-  Diagram := NewDiagram;
+  mDiagram := NewDiagram;
   try
-    Diagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Start', 'C:\P\A.pas', 1)]);
-    Diagram.SetChildren(0, [Item('Laden', 'C:\P\A.pas', 10), Item('Zeigen', 'C:\P\B.pas', 20)]);
-    Layout := Diagram.Layout;
+    mDiagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Start', 'C:\P\A.pas', 1)]);
+    mDiagram.SetChildren(0, [Item('Laden', 'C:\P\A.pas', 10), Item('Zeigen', 'C:\P\B.pas', 20)]);
+    mLayout := mDiagram.Layout;
   finally
-    Diagram.Free;
+    mDiagram.Free;
   end;
-  View := Default(TAtlasCallView);
-  View.Fit(Layout, 1000, 600);
-  Assert.AreEqual(1.0, View.Scale, 0.001, 'kleine Diagramme nicht vergrößert');
-  View.Fit(Layout, 250, 100);
-  Assert.IsTrue(View.Scale < 1);
-  View.Fit(Layout, 1000, 600);
-  Box := Layout.Boxes[Layout.BoxOf(2)];
-  X := View.ScreenX(TAtlasCallView.BoxX(Box)) + 10;
-  Y := View.ScreenY(TAtlasCallView.BoxY(Box)) + 10;
-  Assert.AreEqual(Layout.BoxOf(2), View.BoxAt(Layout, X, Y));
-  Assert.AreEqual(-1, View.BoxAt(Layout, 1, 1));
+  mView := Default(TAtlasCallView);
+  mView.Fit(mLayout, 1000, 600);
+  Assert.AreEqual(1.0, mView.Scale, 0.001, 'kleine Diagramme nicht vergrößert');
+  mView.Fit(mLayout, 250, 100);
+  Assert.IsTrue(mView.Scale < 1);
+  mView.Fit(mLayout, 1000, 600);
+  mBox := mLayout.Boxes[mLayout.BoxOf(2)];
+  X := mView.ScreenX(TAtlasCallView.BoxX(mBox)) + 10;
+  Y := mView.ScreenY(TAtlasCallView.BoxY(mBox)) + 10;
+  Assert.AreEqual(mLayout.BoxOf(2), mView.BoxAt(mLayout, X, Y));
+  Assert.AreEqual(-1, mView.BoxAt(mLayout, 1, 1));
   // Zoomen um den Punkt lässt ihn stehen.
-  BeforeX := View.ScreenX(TAtlasCallView.BoxX(Box));
-  View.ZoomAt(2, BeforeX, Y);
-  Assert.AreEqual(BeforeX, View.ScreenX(TAtlasCallView.BoxX(Box)), 0.001);
-  Assert.AreEqual(2.0, View.Scale, 0.001);
-  View.ZoomAt(100, 0, 0);
-  Assert.AreEqual(TAtlasCallView.cMaxScale, View.Scale, 0.001);
-  View.Pan(5, -5);
-  Assert.AreEqual(Layout.BoxOf(2), View.BoxAt(Layout, View.ScreenX(TAtlasCallView.BoxX(Box)) + 1,
-    View.ScreenY(TAtlasCallView.BoxY(Box)) + 1));
+  mBeforeX := mView.ScreenX(TAtlasCallView.BoxX(mBox));
+  mView.ZoomAt(2, mBeforeX, Y);
+  Assert.AreEqual(mBeforeX, mView.ScreenX(TAtlasCallView.BoxX(mBox)), 0.001);
+  Assert.AreEqual(2.0, mView.Scale, 0.001);
+  mView.ZoomAt(100, 0, 0);
+  Assert.AreEqual(TAtlasCallView.cMaxScale, mView.Scale, 0.001);
+  mView.Pan(5, -5);
+  Assert.AreEqual(mLayout.BoxOf(2), mView.BoxAt(mLayout, mView.ScreenX(TAtlasCallView.BoxX(mBox)) + 1,
+    mView.ScreenY(TAtlasCallView.BoxY(mBox)) + 1));
 end;
 
 procedure TAtlasCallDiagramTests.JsonHoldsLoadedLevels;
 var
-  Diagram: TAtlasCallDiagram;
-  Over: TAtlasHierarchyItem;
-  Data: TJSONValue;
-  Nodes: TJSONArray;
+  mDiagram: TAtlasCallDiagram;
+  mOver: TAtlasHierarchyItem;
+  mData: TJSONValue;
+  mNodes: TJSONArray;
 begin
-  Over := Item('Speichern', 'C:\P\A.pas', 4);
-  Over.Dispatch := 'interface';
-  Over.Implementations := 2;
-  Diagram := NewDiagram;
+  mOver := Item('Speichern', 'C:\P\A.pas', 4);
+  mOver.Dispatch := 'interface';
+  mOver.Implementations := 2;
+  mDiagram := NewDiagram;
   try
-    Diagram.Reset(TAtlasHierarchyDirection.Incoming, [Item('Start', 'C:\P\A.pas', 1)]);
-    Diagram.SetChildren(0, [Over, Item('Start', 'C:\P\A.pas', 1), Item('Format', 'C:\RTL\System.SysUtils.pas', 9)]);
-    Data := TJSONObject.ParseJSONValue(Diagram.Json('Start'));
+    mDiagram.Reset(TAtlasHierarchyDirection.Incoming, [Item('Start', 'C:\P\A.pas', 1)]);
+    mDiagram.SetChildren(0, [mOver, Item('Start', 'C:\P\A.pas', 1), Item('Format', 'C:\RTL\System.SysUtils.pas', 9)]);
+    mData := TJSONObject.ParseJSONValue(mDiagram.Json('Start'));
     try
-      Assert.AreEqual(1, Data.GetValue<Integer>('format'));
-      Assert.AreEqual('incoming', Data.GetValue<string>('direction'));
-      Assert.IsTrue(Data.GetValue<Boolean>('projectOnly'));
-      Assert.AreEqual(8, Data.GetValue<Integer>('maxChildren'));
-      Nodes := Data.GetValue<TJSONArray>('nodes');
-      Assert.AreEqual(4, Nodes.Count);
-      Assert.AreEqual(-1.0, Nodes.Items[0].GetValue<Double>('parent'), 0.001);
-      Assert.IsTrue(Nodes.Items[0].GetValue<Boolean>('expanded'));
-      Assert.AreEqual('interface', Nodes.Items[1].GetValue<string>('dispatch'));
-      Assert.AreEqual(2, Nodes.Items[1].GetValue<Integer>('implementations'));
-      Assert.AreEqual(5, Nodes.Items[1].GetValue<Integer>('line'), 'Zeilen ab 1');
-      Assert.AreEqual('A.pas:5', Nodes.Items[1].GetValue<string>('location'));
-      Assert.AreEqual(0, Nodes.Items[2].GetValue<Integer>('backTo'));
-      Assert.IsTrue(Nodes.Items[3].GetValue<Boolean>('library'));
+      Assert.AreEqual(1, mData.GetValue<Integer>('format'));
+      Assert.AreEqual('incoming', mData.GetValue<string>('direction'));
+      Assert.IsTrue(mData.GetValue<Boolean>('projectOnly'));
+      Assert.AreEqual(8, mData.GetValue<Integer>('maxChildren'));
+      mNodes := mData.GetValue<TJSONArray>('nodes');
+      Assert.AreEqual(4, mNodes.Count);
+      Assert.AreEqual(-1.0, mNodes.Items[0].GetValue<Double>('parent'), 0.001);
+      Assert.IsTrue(mNodes.Items[0].GetValue<Boolean>('expanded'));
+      Assert.AreEqual('interface', mNodes.Items[1].GetValue<string>('dispatch'));
+      Assert.AreEqual(2, mNodes.Items[1].GetValue<Integer>('implementations'));
+      Assert.AreEqual(5, mNodes.Items[1].GetValue<Integer>('line'), 'Zeilen ab 1');
+      Assert.AreEqual('A.pas:5', mNodes.Items[1].GetValue<string>('location'));
+      Assert.AreEqual(0, mNodes.Items[2].GetValue<Integer>('backTo'));
+      Assert.IsTrue(mNodes.Items[3].GetValue<Boolean>('library'));
     finally
-      Data.Free;
+      mData.Free;
     end;
   finally
-    Diagram.Free;
+    mDiagram.Free;
   end;
 end;
 
@@ -409,26 +409,26 @@ end;
 
 procedure TAtlasCallDiagramTests.HtmlIsSelfContained;
 var
-  Diagram: TAtlasCallDiagram;
-  Html: string;
+  mDiagram: TAtlasCallDiagram;
+  mHtml: string;
 begin
-  Diagram := NewDiagram;
+  mDiagram := NewDiagram;
   try
-    Diagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Start</script>', 'C:\P\A.pas', 1)]);
-    Diagram.SetChildren(0, [Item('Laden', 'C:\P\A.pas', 10)]);
-    Html := Diagram.Html('TForm1.Start & Co');
+    mDiagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Start</script>', 'C:\P\A.pas', 1)]);
+    mDiagram.SetChildren(0, [Item('Laden', 'C:\P\A.pas', 10)]);
+    mHtml := mDiagram.Html('TForm1.Start & Co');
   finally
-    Diagram.Free;
+    mDiagram.Free;
   end;
-  Assert.StartsWith('<!doctype html>', Html);
-  Assert.IsTrue(Pos('<title>Aufrufdiagramm: TForm1.Start &amp; Co</title>', Html) > 0, 'Titel maskiert');
-  Assert.AreEqual(0, Pos('{{DATA}}', Html));
-  Assert.AreEqual(0, Pos('{{TITLE}}', Html));
+  Assert.StartsWith('<!doctype html>', mHtml);
+  Assert.IsTrue(Pos('<title>Aufrufdiagramm: TForm1.Start &amp; Co</title>', mHtml) > 0, 'Titel maskiert');
+  Assert.AreEqual(0, Pos('{{DATA}}', mHtml));
+  Assert.AreEqual(0, Pos('{{TITLE}}', mHtml));
   // Nur ein schließendes script je Skript: der Name im JSON beendet das Datenelement nicht.
-  Assert.AreEqual(0, Pos('Start</script>', Html));
-  Assert.IsTrue(Pos('"name":"Laden"', Html) > 0);
-  Assert.AreEqual(0, Pos('src="http', Html));
-  Assert.AreEqual(0, Pos('href="http', Html));
+  Assert.AreEqual(0, Pos('Start</script>', mHtml));
+  Assert.IsTrue(Pos('"name":"Laden"', mHtml) > 0);
+  Assert.AreEqual(0, Pos('src="http', mHtml));
+  Assert.AreEqual(0, Pos('href="http', mHtml));
 end;
 
 initialization

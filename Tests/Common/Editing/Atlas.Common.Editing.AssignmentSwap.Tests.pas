@@ -43,32 +43,37 @@ uses
 /// <summary>Wendet die Edits zeilenweise an (eine Edit je ganze Zeile).</summary>
 function Apply(const AText: string; const AEdits: TArray<TRuleEdit>): string;
 var
-  Lines: TArray<string>;
-  Edit: TRuleEdit;
-  Index: Integer;
+  mLines: TArray<string>;
+  mEdit: TRuleEdit;
+  mIndex: Integer;
 begin
-  Lines := AText.Split([#10]);
-  for Edit in AEdits do
+  mLines := AText.Split([#10]);
+  for mEdit in AEdits do
   begin
-    Lines[Edit.Range.StartPos.Line] := Edit.NewText;
+    mLines[mEdit.Range.StartPos.Line] := mEdit.NewText;
   end;
   Result := '';
-  for Index := 0 to High(Lines) do
+  for mIndex := 0 to High(mLines) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
       Result := Result + #10;
     end;
-    Result := Result + Lines[Index];
+    Result := Result + mLines[mIndex];
   end;
 end;
 
-function SwapAll(const AText: string; const AReadOnly: TReadOnlyCheck = nil): string;
+function SwapAll(const AText: string; const AReadOnly: TReadOnlyCheck): string; overload;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Assert.IsTrue(TAssignmentSwap.Swap(AText, TTextRange.Create(0, 0, 99, 0), AReadOnly, Edits), AText);
-  Result := Apply(AText, Edits);
+  Assert.IsTrue(TAssignmentSwap.Swap(AText, TTextRange.Create(0, 0, 99, 0), AReadOnly, mEdits), AText);
+  Result := Apply(AText, mEdits);
+end;
+
+function SwapAll(const AText: string): string; overload;
+begin
+  Result := SwapAll(AText, nil);
 end;
 
 procedure TAssignmentSwapTests.SwapsExampleLinesKeepingComments;
@@ -98,17 +103,17 @@ end;
 
 procedure TAssignmentSwapTests.TwiceGivesOriginal;
 const
-  Original = '  edtName.Text := Kunde.Name; // Name'#10'  Ini.Werte[''A''] := Wert^'#10'  X:=Y;';
+  cOriginal = '  edtName.Text := Kunde.Name; // Name'#10'  Ini.Werte[''A''] := Wert^'#10'  X:=Y;';
 begin
-  Assert.AreEqual(Original, SwapAll(SwapAll(Original)));
+  Assert.AreEqual(cOriginal, SwapAll(SwapAll(cOriginal)));
 end;
 
 procedure TAssignmentSwapTests.AlignedBlockStaysAligned;
 const
-  Original = '  edtName.Text     := Kunde.Name;'#10'  chkAktiv.Checked := Kunde.Aktiv;';
+  cOriginal = '  edtName.Text     := Kunde.Name;'#10'  chkAktiv.Checked := Kunde.Aktiv;';
 begin
-  Assert.AreEqual('  Kunde.Name  := edtName.Text;'#10'  Kunde.Aktiv := chkAktiv.Checked;', SwapAll(Original));
-  Assert.AreEqual(Original, SwapAll(SwapAll(Original)));
+  Assert.AreEqual('  Kunde.Name  := edtName.Text;'#10'  Kunde.Aktiv := chkAktiv.Checked;', SwapAll(cOriginal));
+  Assert.AreEqual(cOriginal, SwapAll(SwapAll(cOriginal)));
 end;
 
 procedure TAssignmentSwapTests.AssignableExpressions;
@@ -125,33 +130,33 @@ end;
 
 procedure TAssignmentSwapTests.NothingToSwap;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
   Assert.IsFalse(TAssignmentSwap.Swap('  Label1.Caption := IntToStr(N);'#10'  Save;',
-    TTextRange.Create(0, 0, 1, 0), nil, Edits));
-  Assert.IsFalse(TAssignmentSwap.Swap('  if A then B := C;', TTextRange.Create(0, 0, 0, 0), nil, Edits));
+    TTextRange.Create(0, 0, 1, 0), nil, mEdits));
+  Assert.IsFalse(TAssignmentSwap.Swap('  if A then B := C;', TTextRange.Create(0, 0, 0, 0), nil, mEdits));
 end;
 
 procedure TAssignmentSwapTests.ReadOnlyFromIndex;
 const
-  FileName = 'C:\P\Liste.pas';
-  Source = 'unit Liste;'#10'interface'#10'type'#10'  TListe = class'#10'  public'#10 +
+  cFileName = 'C:\P\Liste.pas';
+  cSource = 'unit Liste;'#10'interface'#10'type'#10'  TListe = class'#10'  public'#10 +
     '    property Count: Integer read FCount;'#10'    property Name: string read FName write FName;'#10 +
     '  end;'#10'implementation'#10'end.';
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
   mCheck: TReadOnlyCheck;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(Source, FileName, nil));
-  Assert.IsTrue(TAssignmentSwap.ReadOnlyByIndex(Index, FileName, Source, 'Liste.Count'));
-  Assert.IsFalse(TAssignmentSwap.ReadOnlyByIndex(Index, FileName, Source, 'Kunden[0].Name'));
-  Assert.IsFalse(TAssignmentSwap.ReadOnlyByIndex(Index, FileName, Source, 'Unbekannt'));
-  Assert.IsFalse(TAssignmentSwap.ReadOnlyByIndex(nil, FileName, Source, 'Liste.Count'));
-  mCheck := TAssignmentSwap.ReadOnlyCheckOf(Index, FileName, Source);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cSource, cFileName, nil));
+  Assert.IsTrue(TAssignmentSwap.ReadOnlyByIndex(mIndex, cFileName, cSource, 'Liste.Count'));
+  Assert.IsFalse(TAssignmentSwap.ReadOnlyByIndex(mIndex, cFileName, cSource, 'Kunden[0].Name'));
+  Assert.IsFalse(TAssignmentSwap.ReadOnlyByIndex(mIndex, cFileName, cSource, 'Unbekannt'));
+  Assert.IsFalse(TAssignmentSwap.ReadOnlyByIndex(nil, cFileName, cSource, 'Liste.Count'));
+  mCheck := TAssignmentSwap.ReadOnlyCheckOf(mIndex, cFileName, cSource);
   Assert.IsTrue(mCheck('Liste.Count'));
   Assert.IsFalse(mCheck('Kunden[0].Name'));
-  mCheck := TAssignmentSwap.ReadOnlyCheckOf(nil, FileName, Source);
+  mCheck := TAssignmentSwap.ReadOnlyCheckOf(nil, cFileName, cSource);
   Assert.IsFalse(Assigned(mCheck));
 end;
 

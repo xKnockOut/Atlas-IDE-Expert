@@ -75,10 +75,10 @@ uses
   Atlas.Common.Lsp.Completion.Details;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
-  BasisFile = 'C:\P\Basis.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
+  cBasisFile = 'C:\P\Basis.pas';
 
-  UnitBasis =
+  cUnitBasis =
     'unit Basis;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -109,7 +109,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -135,36 +135,36 @@ const
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
-  Index, Line, LineStart, Scan: Integer;
+  mIndex, mLine, mLineStart, mScan: Integer;
 begin
   // Cursor hinter AMarker.
-  Index := Pos(AMarker, AText);
-  if Index = 0 then
+  mIndex := Pos(AMarker, AText);
+  if mIndex = 0 then
   begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
   end;
-  Inc(Index, Length(AMarker));
-  Line := 0;
-  LineStart := 1;
-  for Scan := 1 to Index - 1 do
+  Inc(mIndex, Length(AMarker));
+  mLine := 0;
+  mLineStart := 1;
+  for mScan := 1 to mIndex - 1 do
   begin
-    if AText[Scan] = #10 then
+    if AText[mScan] = #10 then
     begin
-      Inc(Line);
-      LineStart := Scan + 1;
+      Inc(mLine);
+      mLineStart := mScan + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 function InMethod(const ACode: string): string;
 begin
-  Result := StringReplace(UnitHaupt, '  { Methode }', ACode, []);
+  Result := StringReplace(cUnitHaupt, '  { Methode }', ACode, []);
 end;
 
 function InRoutine(const ACode: string): string;
 begin
-  Result := StringReplace(UnitHaupt, '  { Frei }', ACode, []);
+  Result := StringReplace(cUnitHaupt, '  { Frei }', ACode, []);
 end;
 
 { TLspCompletionContextTests }
@@ -172,7 +172,7 @@ end;
 procedure TLspCompletionContextTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, BasisFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -184,37 +184,37 @@ end;
 
 function TLspCompletionContextTests.ItemsAt(const AText, AMarker: string): TCompletionItems;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(AText, AMarker),
+    Result := TCompletionLists.Collect(FResolver, FIndex, mTree, cHauptFile, PositionOf(AText, AMarker),
       TCompletionMatching.Prefix);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function TLspCompletionContextTests.Names(const AItems: TCompletionItems): string;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
   Result := '';
-  for Item in AItems.Items do
+  for mItem in AItems.Items do
   begin
-    Result := Result + Item.Name + ' ';
+    Result := Result + mItem.Name + ' ';
   end;
   Result := Result.Trim;
 end;
 
 function TLspCompletionContextTests.Has(const AItems: TCompletionItems; const AName: string): Boolean;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
   Result := False;
-  for Item in AItems.Items do
+  for mItem in AItems.Items do
   begin
-    if SameText(Item.Name, AName) then
+    if SameText(mItem.Name, AName) then
     begin
       Exit(True);
     end;
@@ -223,107 +223,107 @@ end;
 
 procedure TLspCompletionContextTests.PrivateFieldOfOtherUnitIsHidden;
 var
-  Items: TCompletionItems;
+  mItems: TCompletionItems;
 begin
-  Items := ItemsAt(InRoutine('  Fremd.'), 'Fremd.');
-  Assert.IsTrue(Has(Items, 'Oeffentlich'), Names(Items));
-  Assert.IsTrue(Has(Items, 'Zaehler'), Names(Items));
+  mItems := ItemsAt(InRoutine('  Fremd.'), 'Fremd.');
+  Assert.IsTrue(Has(mItems, 'Oeffentlich'), Names(mItems));
+  Assert.IsTrue(Has(mItems, 'Zaehler'), Names(mItems));
   // private aus einer anderen Unit nie, protected außerhalb von Nachfahren nicht.
-  Assert.IsFalse(Has(Items, 'FGeheim'), Names(Items));
-  Assert.IsFalse(Has(Items, 'Geschuetzt'), Names(Items));
+  Assert.IsFalse(Has(mItems, 'FGeheim'), Names(mItems));
+  Assert.IsFalse(Has(mItems, 'Geschuetzt'), Names(mItems));
 end;
 
 procedure TLspCompletionContextTests.ProtectedOnlyInDescendants;
 var
-  Items: TCompletionItems;
+  mItems: TCompletionItems;
 begin
   // In einer Methode des Nachfahren ist protected sichtbar, private weiterhin nicht.
-  Items := ItemsAt(InMethod('  Self.'), 'Self.');
-  Assert.IsTrue(Has(Items, 'Geschuetzt'), Names(Items));
-  Assert.IsFalse(Has(Items, 'FGeheim'), Names(Items));
+  mItems := ItemsAt(InMethod('  Self.'), 'Self.');
+  Assert.IsTrue(Has(mItems, 'Geschuetzt'), Names(mItems));
+  Assert.IsFalse(Has(mItems, 'FGeheim'), Names(mItems));
 end;
 
 procedure TLspCompletionContextTests.InheritedOffersAncestorMethodsOnly;
 var
-  Items: TCompletionItems;
+  mItems: TCompletionItems;
 begin
-  Items := ItemsAt(InMethod('  inherited '), 'inherited ');
-  Assert.AreEqual('Geschuetzt Oeffentlich Anzahl', Names(Items));
-  Assert.AreEqual(1, Items.Items[0].Depth);
+  mItems := ItemsAt(InMethod('  inherited '), 'inherited ');
+  Assert.AreEqual('Geschuetzt Oeffentlich Anzahl', Names(mItems));
+  Assert.AreEqual(1, mItems.Items[0].Depth);
   // Weder lokale Variablen, Felder noch Routinen der Unit; außerhalb einer Methode nichts.
-  Assert.IsFalse(Has(Items, 'Wert'), Names(Items));
-  Assert.IsFalse(Has(Items, 'Zaehler'), Names(Items));
-  Assert.IsFalse(Has(Items, 'Rechne'), Names(Items));
+  Assert.IsFalse(Has(mItems, 'Wert'), Names(mItems));
+  Assert.IsFalse(Has(mItems, 'Zaehler'), Names(mItems));
+  Assert.IsFalse(Has(mItems, 'Rechne'), Names(mItems));
   Assert.AreEqual('', Names(ItemsAt(InRoutine('  inherited '), 'inherited ')));
 end;
 
 procedure TLspCompletionContextTests.ClassAncestorListOffersTypesOnly;
 var
-  Text: string;
-  Items: TCompletionItems;
+  mText: string;
+  mItems: TCompletionItems;
 begin
-  Text := StringReplace(UnitHaupt, '  TFoo = class(TBasis)', '  TNeu = class('#10'  end;'#10 +
+  mText := StringReplace(cUnitHaupt, '  TFoo = class(TBasis)', '  TNeu = class('#10'  end;'#10 +
     '  TFoo = class(TBasis)', []);
-  Items := ItemsAt(Text, 'TNeu = class(');
-  Assert.IsTrue(Has(Items, 'TBasis'), Names(Items));
-  Assert.IsTrue(Has(Items, 'TFoo'), Names(Items));
-  Assert.IsFalse(Has(Items, 'Rechne'), Names(Items));
-  Assert.IsFalse(Has(Items, 'Frei'), Names(Items));
+  mItems := ItemsAt(mText, 'TNeu = class(');
+  Assert.IsTrue(Has(mItems, 'TBasis'), Names(mItems));
+  Assert.IsTrue(Has(mItems, 'TFoo'), Names(mItems));
+  Assert.IsFalse(Has(mItems, 'Rechne'), Names(mItems));
+  Assert.IsFalse(Has(mItems, 'Frei'), Names(mItems));
   // Ohne "class(" im Gültigkeitsbereich auch Routinen.
-  Items := ItemsAt(InMethod('  Re'), '  Re');
-  Assert.IsTrue(Has(Items, 'Rechne'), Names(Items));
+  mItems := ItemsAt(InMethod('  Re'), '  Re');
+  Assert.IsTrue(Has(mItems, 'Rechne'), Names(mItems));
 end;
 
 procedure TLspCompletionContextTests.ColonInDeclarationOffersTypes;
 var
-  Text: string;
-  Items: TCompletionItems;
+  mText: string;
+  mItems: TCompletionItems;
 begin
-  Text := StringReplace(UnitHaupt, '  Wert: TBasis;', '  Wert: ', []);
-  Items := ItemsAt(Text, '  Wert: ');
-  Assert.IsTrue(Has(Items, 'TBasis'), Names(Items));
-  Assert.IsFalse(Has(Items, 'Rechne'), Names(Items));
-  Assert.IsFalse(Has(Items, 'Name'), Names(Items));
+  mText := StringReplace(cUnitHaupt, '  Wert: TBasis;', '  Wert: ', []);
+  mItems := ItemsAt(mText, '  Wert: ');
+  Assert.IsTrue(Has(mItems, 'TBasis'), Names(mItems));
+  Assert.IsFalse(Has(mItems, 'Rechne'), Names(mItems));
+  Assert.IsFalse(Has(mItems, 'Name'), Names(mItems));
   // Typ-Schlüsselwörter nur nach ":".
-  Text := StringReplace(UnitHaupt, '  Wert: TBasis;', '  Wert: str', []);
-  Assert.IsTrue(Has(ItemsAt(Text, 'Wert: str'), 'string'));
+  mText := StringReplace(cUnitHaupt, '  Wert: TBasis;', '  Wert: str', []);
+  Assert.IsTrue(Has(ItemsAt(mText, 'Wert: str'), 'string'));
   // Inline-Variable in einer Anweisung ebenfalls; case-Marke dagegen nicht.
-  Items := ItemsAt(InMethod('  var X: '), 'var X: ');
-  Assert.IsTrue(Has(Items, 'TBasis'), Names(Items));
-  Assert.IsFalse(Has(Items, 'Wert'), Names(Items));
-  Items := ItemsAt(InMethod('  case 1 of 1: '), 'of 1: ');
-  Assert.IsTrue(Has(Items, 'Wert'), Names(Items));
+  mItems := ItemsAt(InMethod('  var X: '), 'var X: ');
+  Assert.IsTrue(Has(mItems, 'TBasis'), Names(mItems));
+  Assert.IsFalse(Has(mItems, 'Wert'), Names(mItems));
+  mItems := ItemsAt(InMethod('  case 1 of 1: '), 'of 1: ');
+  Assert.IsTrue(Has(mItems, 'Wert'), Names(mItems));
 end;
 
 procedure TLspCompletionContextTests.IsNotAndNotInBehave;
 var
-  Items: TCompletionItems;
+  mItems: TCompletionItems;
 begin
   // Delphi 13: "is not" erwartet einen Typ.
-  Items := ItemsAt(InMethod('  if Wert is not '), 'is not ');
-  Assert.IsTrue(Has(Items, 'TFoo'), Names(Items));
-  Assert.IsFalse(Has(Items, 'Wert'), Names(Items));
-  Items := ItemsAt(InMethod('  if Wert is '), 'is ');
-  Assert.IsTrue(Has(Items, 'TBasis'), Names(Items));
-  Assert.IsFalse(Has(Items, 'Rechne'), Names(Items));
+  mItems := ItemsAt(InMethod('  if Wert is not '), 'is not ');
+  Assert.IsTrue(Has(mItems, 'TFoo'), Names(mItems));
+  Assert.IsFalse(Has(mItems, 'Wert'), Names(mItems));
+  mItems := ItemsAt(InMethod('  if Wert is '), 'is ');
+  Assert.IsTrue(Has(mItems, 'TBasis'), Names(mItems));
+  Assert.IsFalse(Has(mItems, 'Rechne'), Names(mItems));
   // "not in" erwartet eine Menge: keine Einschränkung auf Typen.
-  Items := ItemsAt(InMethod('  if 1 not in '), 'not in ');
-  Assert.IsTrue(Has(Items, 'Wert'), Names(Items));
+  mItems := ItemsAt(InMethod('  if 1 not in '), 'not in ');
+  Assert.IsTrue(Has(mItems, 'Wert'), Names(mItems));
 end;
 
 procedure TLspCompletionContextTests.NothingInMultiLineString;
 var
-  Text: string;
+  mText: string;
 begin
   // Mehrzeiliger String (ab Delphi 12): mitten darin nichts anbieten, dahinter wieder.
-  Text := InMethod('  Name := '''''''#10'    We'#10'    ''''''; We');
-  Assert.AreEqual('', Names(ItemsAt(Text, '    We')));
-  Assert.AreEqual('Wert', Names(ItemsAt(Text, '; We')));
+  mText := InMethod('  Name := '''''''#10'    We'#10'    ''''''; We');
+  Assert.AreEqual('', Names(ItemsAt(mText, '    We')));
+  Assert.AreEqual('Wert', Names(ItemsAt(mText, '; We')));
 end;
 
 procedure TLspCompletionContextTests.PropertyReadOffersMatchingGetters;
 const
-  Text =
+  cText =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -342,30 +342,30 @@ const
     'implementation'#10 +
     'end.';
 var
-  Tree: TSyntaxTree;
-  Items: TCompletionItems;
+  mTree: TSyntaxTree;
+  mItems: TCompletionItems;
 begin
-  Tree := TPascalParser.Parse(Text);
+  mTree := TPascalParser.Parse(cText);
   try
-    Assert.IsTrue(PropertyAt(LookupOf(FResolver, nil, Tree, Text, nil),
-      PositionOf(Text, 'Wert: Integer read '), TCompletionMatching.Prefix, Items));
+    Assert.IsTrue(PropertyAt(LookupOf(FResolver, nil, mTree, cText, nil),
+      PositionOf(cText, 'Wert: Integer read '), TCompletionMatching.Prefix, mItems));
     // Felder und Funktionen vom Typ Integer, auch geerbte (Zaehler, Anzahl); kein string, kein Setter.
-    Assert.AreEqual('FWert GetWert Zaehler Anzahl', Names(Items));
-    Assert.IsTrue(PropertyAt(LookupOf(FResolver, nil, Tree, Text, nil),
-      PositionOf(Text, 'string read '), TCompletionMatching.Prefix, Items));
+    Assert.AreEqual('FWert GetWert Zaehler Anzahl', Names(mItems));
+    Assert.IsTrue(PropertyAt(LookupOf(FResolver, nil, mTree, cText, nil),
+      PositionOf(cText, 'string read '), TCompletionMatching.Prefix, mItems));
     // Dazu „GetItems anlegen“ (#467) oben; ein Feld gibt es zu Indexeigenschaften nicht.
-    Assert.AreEqual('GetItems anlegen GetItem', Names(Items));
+    Assert.AreEqual('GetItems anlegen GetItem', Names(mItems));
     // Außerhalb einer property-Zeile kein Kontext.
-    Assert.IsFalse(PropertyAt(LookupOf(FResolver, nil, Tree, Text, nil),
-      PositionOf(Text, 'FWert: '), TCompletionMatching.Prefix, Items));
+    Assert.IsFalse(PropertyAt(LookupOf(FResolver, nil, mTree, cText, nil),
+      PositionOf(cText, 'FWert: '), TCompletionMatching.Prefix, mItems));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspCompletionContextTests.PropertyWriteOffersMatchingSetters;
 const
-  Text =
+  cText =
     'unit Haupt;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -381,21 +381,21 @@ const
     'implementation'#10 +
     'end.';
 var
-  Tree: TSyntaxTree;
-  Items: TCompletionItems;
+  mTree: TSyntaxTree;
+  mItems: TCompletionItems;
 begin
-  Tree := TPascalParser.Parse(Text);
+  mTree := TPascalParser.Parse(cText);
   try
-    Assert.IsTrue(PropertyAt(LookupOf(FResolver, nil, Tree, Text, nil),
-      PositionOf(Text, 'write Se'), TCompletionMatching.Prefix, Items));
-    Assert.AreEqual('SetWert', Names(Items));
+    Assert.IsTrue(PropertyAt(LookupOf(FResolver, nil, mTree, cText, nil),
+      PositionOf(cText, 'write Se'), TCompletionMatching.Prefix, mItems));
+    Assert.AreEqual('SetWert', Names(mItems));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 const
-  UnitEigenschaft =
+  cUnitEigenschaft =
     'unit Haupt;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -413,98 +413,98 @@ const
 function AccessorItemsAt(AResolver: TNameResolver; const AMarker: string;
   const ASettings: TCompletionSettings): TCompletionItems;
 var
-  Request: TCompletionRequest;
-  Tree: TSyntaxTree;
-  Lines: TArray<string>;
-  Line: Integer;
-  Position: TTextPosition;
+  mRequest: TCompletionRequest;
+  mTree: TSyntaxTree;
+  mLines: TArray<string>;
+  mLine: Integer;
+  mPosition: TTextPosition;
 begin
-  Lines := string(UnitEigenschaft).Split([#10]);
-  Position := TTextPosition.Create(0, 0);
-  for Line := 0 to High(Lines) do
+  mLines := string(cUnitEigenschaft).Split([#10]);
+  mPosition := TTextPosition.Create(0, 0);
+  for mLine := 0 to High(mLines) do
   begin
-    if Pos(AMarker, Lines[Line]) > 0 then
+    if Pos(AMarker, mLines[mLine]) > 0 then
     begin
-      Position := TTextPosition.Create(Line, Pos(AMarker, Lines[Line]) - 1 + Length(AMarker));
+      mPosition := TTextPosition.Create(mLine, Pos(AMarker, mLines[mLine]) - 1 + Length(AMarker));
     end;
   end;
-  Tree := TPascalParser.Parse(UnitEigenschaft);
-  Request := TCompletionRequest.Create(UnitEigenschaft, HauptFile, Position);
+  mTree := TPascalParser.Parse(cUnitEigenschaft);
+  mRequest := TCompletionRequest.Create(cUnitEigenschaft, cHauptFile, mPosition);
   try
-    Request.Tree := Tree;
-    Request.Resolver := AResolver;
-    Request.Matching := TCompletionMatching.Prefix;
-    Request.Settings := ASettings;
-    Assert.IsTrue(TCompletionDeclarations.PropertyItems(Request, Result));
+    mRequest.Tree := mTree;
+    mRequest.Resolver := AResolver;
+    mRequest.Matching := TCompletionMatching.Prefix;
+    mRequest.Settings := ASettings;
+    Assert.IsTrue(TCompletionDeclarations.PropertyItems(mRequest, Result));
   finally
-    Request.Free;
-    Tree.Free;
+    mRequest.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspCompletionContextTests.PropertyOffersAccessorCreation;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
-  Edit: TTextEdit;
-  Inserted: string;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
+  mEdit: TTextEdit;
+  mInserted: string;
 begin
   // #467: Nach "read Ca" stehen „Feld FCaption anlegen“ und „GetCaption anlegen“ oben.
-  Items := AccessorItemsAt(FResolver, 'read Ca', TCompletionSettings.Default);
-  Assert.AreEqual('Feld FCaption anlegen GetCaption anlegen', Names(Items));
-  Item := Items.Items[0];
-  Assert.AreEqual('create', Item.Action);
-  Assert.IsTrue(Item.Pinned);
-  Assert.AreEqual('FCaption: string;', Item.Detail);
+  mItems := AccessorItemsAt(FResolver, 'read Ca', TCompletionSettings.Default);
+  Assert.AreEqual('Feld FCaption anlegen GetCaption anlegen', Names(mItems));
+  mItem := mItems.Items[0];
+  Assert.AreEqual('create', mItem.Action);
+  Assert.IsTrue(mItem.Pinned);
+  Assert.AreEqual('FCaption: string;', mItem.Detail);
   // "Ca" wird zu "FCaption"; das Feld kommt hinter FName.
-  Assert.IsTrue(Item.HasTextEdit);
-  Assert.AreEqual('FCaption', Item.TextEdit.NewText);
-  Assert.AreEqual(Integer(7), Item.TextEdit.Range.StartPos.Line);
-  Assert.AreEqual(Integer(34), Item.TextEdit.Range.StartPos.Character);
-  Assert.AreEqual(Integer(36), Item.TextEdit.Range.EndPos.Character);
-  Assert.AreEqual(Integer(1), Integer(Length(Item.AdditionalEdits)));
-  Assert.AreEqual(#10'    FCaption: string;', Item.AdditionalEdits[0].NewText);
+  Assert.IsTrue(mItem.HasTextEdit);
+  Assert.AreEqual('FCaption', mItem.TextEdit.NewText);
+  Assert.AreEqual(Integer(7), mItem.TextEdit.Range.StartPos.Line);
+  Assert.AreEqual(Integer(34), mItem.TextEdit.Range.StartPos.Character);
+  Assert.AreEqual(Integer(36), mItem.TextEdit.Range.EndPos.Character);
+  Assert.AreEqual(Integer(1), Integer(Length(mItem.AdditionalEdits)));
+  Assert.AreEqual(#10'    FCaption: string;', mItem.AdditionalEdits[0].NewText);
   // Der Getter hat Deklaration und Rumpf.
-  Inserted := '';
-  for Edit in Items.Items[1].AdditionalEdits do
+  mInserted := '';
+  for mEdit in mItems.Items[1].AdditionalEdits do
   begin
-    Inserted := Inserted + Edit.NewText;
+    mInserted := mInserted + mEdit.NewText;
   end;
-  Assert.Contains(Inserted, 'function GetCaption: string;');
-  Assert.Contains(Inserted, 'function TFoo.GetCaption: string;');
+  Assert.Contains(mInserted, 'function GetCaption: string;');
+  Assert.Contains(mInserted, 'function TFoo.GetCaption: string;');
   // Nach "write " ohne Feld FTitel: „Feld FTitel anlegen“, „SetTitel anlegen“ legt das Feld mit an; danach das
   // vorhandene Feld FName.
-  Items := AccessorItemsAt(FResolver, 'FName write ', TCompletionSettings.Default);
-  Assert.AreEqual('Feld FTitel anlegen SetTitel anlegen FName', Names(Items));
-  Assert.AreEqual('procedure SetTitel(const Value: string); + FTitel: string;', Items.Items[1].Detail);
+  mItems := AccessorItemsAt(FResolver, 'FName write ', TCompletionSettings.Default);
+  Assert.AreEqual('Feld FTitel anlegen SetTitel anlegen FName', Names(mItems));
+  Assert.AreEqual('procedure SetTitel(const Value: string); + FTitel: string;', mItems.Items[1].Detail);
 end;
 
 procedure TLspCompletionContextTests.AccessorCreationFollowsSettings;
 var
-  Settings: TCompletionSettings;
-  Items: TCompletionItems;
-  Edit: TTextEdit;
-  Inserted: string;
+  mSettings: TCompletionSettings;
+  mItems: TCompletionItems;
+  mEdit: TTextEdit;
+  mInserted: string;
 begin
-  Settings := TCompletionSettings.Default;
-  Settings.AccessorSection := TCompletionAccessorSection.Protected;
-  Items := AccessorItemsAt(FResolver, 'read Ca', Settings);
-  Inserted := '';
-  for Edit in Items.Items[1].AdditionalEdits do
+  mSettings := TCompletionSettings.Default;
+  mSettings.AccessorSection := TCompletionAccessorSection.Protected;
+  mItems := AccessorItemsAt(FResolver, 'read Ca', mSettings);
+  mInserted := '';
+  for mEdit in mItems.Items[1].AdditionalEdits do
   begin
-    Inserted := Inserted + Edit.NewText;
+    mInserted := mInserted + mEdit.NewText;
   end;
   // Kein protected vor der Eigenschaft: eigener Abschnitt, danach weiter public.
-  Assert.Contains(Inserted, '  protected'#10'    function GetCaption: string;'#10'  public'#10);
+  Assert.Contains(mInserted, '  protected'#10'    function GetCaption: string;'#10'  public'#10);
   // Abgeschaltet: nur vorhandene Mitglieder.
-  Settings.CreateAccessors := False;
-  Items := AccessorItemsAt(FResolver, 'read Ca', Settings);
-  Assert.AreEqual('', Names(Items));
+  mSettings.CreateAccessors := False;
+  mItems := AccessorItemsAt(FResolver, 'read Ca', mSettings);
+  Assert.AreEqual('', Names(mItems));
 end;
 
 procedure TLspCompletionContextTests.OverrideKeywordOffersVirtualMethods;
 const
-  Text =
+  cText =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -520,97 +520,97 @@ const
     'end;'#10 +
     'end.';
 var
-  Tree: TSyntaxTree;
-  Items: TCompletionItems;
+  mTree: TSyntaxTree;
+  mItems: TCompletionItems;
 begin
-  Tree := TPascalParser.Parse(Text);
+  mTree := TPascalParser.Parse(cText);
   try
-    Assert.IsTrue(OverrideAt(LookupOf(FResolver, nil, Tree, Text,
+    Assert.IsTrue(OverrideAt(LookupOf(FResolver, nil, mTree, cText,
       function(const AFileName: string; out AText: string): Boolean
       begin
-        AText := UnitBasis;
-        Result := SameText(AFileName, BasisFile);
+        AText := cUnitBasis;
+        Result := SameText(AFileName, cBasisFile);
       end),
-      PositionOf(Text, '    override '), Items));
-    Assert.AreEqual('Geschuetzt Oeffentlich', Names(Items));
-    Assert.IsTrue(Items.Items[1].HasTextEdit);
-    Assert.AreEqual('procedure Oeffentlich; override;', Items.Items[1].TextEdit.NewText);
-    Assert.AreEqual(4, Items.Items[1].TextEdit.Range.StartPos.Character);
-    Assert.AreEqual('override Oeffentlich', Items.Items[1].FilterText);
+      PositionOf(cText, '    override '), mItems));
+    Assert.AreEqual('Geschuetzt Oeffentlich', Names(mItems));
+    Assert.IsTrue(mItems.Items[1].HasTextEdit);
+    Assert.AreEqual('procedure Oeffentlich; override;', mItems.Items[1].TextEdit.NewText);
+    Assert.AreEqual(4, mItems.Items[1].TextEdit.Range.StartPos.Character);
+    Assert.AreEqual('override Oeffentlich', mItems.Items[1].FilterText);
     // In einem Routinenrumpf kein Override-Kontext.
-    Assert.IsFalse(OverrideAt(LookupOf(FResolver, nil, Tree, Text, nil),
-      PositionOf(Text,
-      'begin'#10'  override '), Items));
+    Assert.IsFalse(OverrideAt(LookupOf(FResolver, nil, mTree, cText, nil),
+      PositionOf(cText,
+      'begin'#10'  override '), mItems));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspCompletionContextTests.KeywordsFitThePlace;
 var
-  Text: string;
+  mText: string;
 begin
   // Anweisung.
   Assert.IsTrue(Has(ItemsAt(InMethod('  beg'), '  beg'), 'begin'));
   Assert.IsTrue(Has(ItemsAt(InMethod('  tr'), '  tr'), 'try'));
   Assert.IsFalse(Has(ItemsAt(InMethod('  prop'), '  prop'), 'property'));
   // Klassenrumpf.
-  Text := StringReplace(UnitHaupt, '    Name: string;', '    prop', []);
-  Assert.IsTrue(Has(ItemsAt(Text, '    prop'), 'property'));
-  Text := StringReplace(UnitHaupt, '    Name: string;', '    tr', []);
-  Assert.IsFalse(Has(ItemsAt(Text, '    tr'), 'try'));
+  mText := StringReplace(cUnitHaupt, '    Name: string;', '    prop', []);
+  Assert.IsTrue(Has(ItemsAt(mText, '    prop'), 'property'));
+  mText := StringReplace(cUnitHaupt, '    Name: string;', '    tr', []);
+  Assert.IsFalse(Has(ItemsAt(mText, '    tr'), 'try'));
   // Deklarationsteil.
-  Text := StringReplace(UnitHaupt, 'procedure Frei;', 'proc'#10'procedure Frei;', []);
-  Assert.IsTrue(Has(ItemsAt(Text, #10'proc'), 'procedure'));
-  Text := StringReplace(UnitHaupt, 'procedure Frei;', 'tr'#10'procedure Frei;', []);
-  Assert.IsFalse(Has(ItemsAt(Text, #10'tr'), 'try'));
+  mText := StringReplace(cUnitHaupt, 'procedure Frei;', 'proc'#10'procedure Frei;', []);
+  Assert.IsTrue(Has(ItemsAt(mText, #10'proc'), 'procedure'));
+  mText := StringReplace(cUnitHaupt, 'procedure Frei;', 'tr'#10'procedure Frei;', []);
+  Assert.IsFalse(Has(ItemsAt(mText, #10'tr'), 'try'));
   // Ohne Eingabe keine Schlüsselwörter.
   Assert.IsFalse(Has(ItemsAt(InMethod('  '), #10'begin'#10'  '), 'begin'));
 end;
 
 procedure TLspCompletionContextTests.DocumentationFollowsClientFormat;
 var
-  Params, Details: TJSONObject;
-  Documentation: TJSONValue;
+  mParams, mDetails: TJSONObject;
+  mDocumentation: TJSONValue;
 begin
-  Params := TJSONObject.ParseJSONValue('{"capabilities":{"textDocument":{"completion":{"completionItem":' +
+  mParams := TJSONObject.ParseJSONValue('{"capabilities":{"textDocument":{"completion":{"completionItem":' +
     '{"documentationFormat":["plaintext"]}}}}}') as TJSONObject;
   try
-    Assert.IsFalse(TCompletionDetails.ClientPrefersMarkdown(Params), 'plaintext');
+    Assert.IsFalse(TCompletionDetails.ClientPrefersMarkdown(mParams), 'plaintext');
   finally
-    Params.Free;
+    mParams.Free;
   end;
-  Params := TJSONObject.ParseJSONValue('{"capabilities":{"textDocument":{"completion":{"completionItem":' +
+  mParams := TJSONObject.ParseJSONValue('{"capabilities":{"textDocument":{"completion":{"completionItem":' +
     '{"documentationFormat":["markdown","plaintext"]}}}}}') as TJSONObject;
   try
-    Assert.IsTrue(TCompletionDetails.ClientPrefersMarkdown(Params), 'markdown');
+    Assert.IsTrue(TCompletionDetails.ClientPrefersMarkdown(mParams), 'markdown');
   finally
-    Params.Free;
+    mParams.Free;
   end;
   Assert.IsFalse(TCompletionDetails.ClientPrefersMarkdown(nil));
-  Details := TJSONObject.Create;
+  mDetails := TJSONObject.Create;
   try
-    Details.AddPair('summary', 'Kurz');
-    Details.AddPair('documentationText', 'Kurz'#10'Mehr Text');
-    Details.AddPair('documentationMarkdown', '**Kurz**');
+    mDetails.AddPair('summary', 'Kurz');
+    mDetails.AddPair('documentationText', 'Kurz'#10'Mehr Text');
+    mDetails.AddPair('documentationMarkdown', '**Kurz**');
     // Klartext: ganzer Text als String.
-    Documentation := TCompletionDetails.ResolveDocumentation(Details, False);
+    mDocumentation := TCompletionDetails.ResolveDocumentation(mDetails, False);
     try
-      Assert.IsTrue(Documentation is TJSONString, 'Klartext als String');
-      Assert.AreEqual('Kurz'#10'Mehr Text', Documentation.Value);
+      Assert.IsTrue(mDocumentation is TJSONString, 'Klartext als String');
+      Assert.AreEqual('Kurz'#10'Mehr Text', mDocumentation.Value);
     finally
-      Documentation.Free;
+      mDocumentation.Free;
     end;
     // Markdown: MarkupContent.
-    Documentation := TCompletionDetails.ResolveDocumentation(Details, True);
+    mDocumentation := TCompletionDetails.ResolveDocumentation(mDetails, True);
     try
-      Assert.AreEqual('markdown', (Documentation as TJSONObject).GetValue<string>('kind'));
-      Assert.AreEqual('**Kurz**', (Documentation as TJSONObject).GetValue<string>('value'));
+      Assert.AreEqual('markdown', (mDocumentation as TJSONObject).GetValue<string>('kind'));
+      Assert.AreEqual('**Kurz**', (mDocumentation as TJSONObject).GetValue<string>('value'));
     finally
-      Documentation.Free;
+      mDocumentation.Free;
     end;
   finally
-    Details.Free;
+    mDetails.Free;
   end;
   Assert.IsNull(TCompletionDetails.ResolveDocumentation(nil, False));
 end;

@@ -42,7 +42,7 @@ uses
   Atlas.Common.Pascal.TreeCache;
 
 const
-  Source = 'unit A;'#10'interface'#10'procedure P;'#10'implementation'#10'procedure P;'#10'begin'#10'end;'#10'end.';
+  cSource = 'unit A;'#10'interface'#10'procedure P;'#10'implementation'#10'procedure P;'#10'begin'#10'end;'#10'end.';
 
 var
   // Ergebnisse der Threads in ConcurrentRequestsShareOneParse.
@@ -62,24 +62,24 @@ begin
   Result.FreeOnTerminate := False;
 end;
 
-function NewDocument(AVersion: Integer = 1; const AText: string = Source): ITextDocument;
+function NewDocument(AVersion: Integer; const AText: string): ITextDocument;
 begin
   Result := TTextDocument.Create('file:///c:/a.pas', 'objectpascal', AVersion, AText);
 end;
 
 procedure TSyntaxTreeCacheTests.SameVersionParsesOnce;
 var
-  Document: ITextDocument;
-  Before: Integer;
-  First, Second: ISharedSyntaxTree;
+  mDocument: ITextDocument;
+  mBefore: Integer;
+  mFirst, mSecond: ISharedSyntaxTree;
 begin
-  Document := NewDocument;
-  Before := TSyntaxTreeCache.ParseCount;
-  First := TSyntaxTreeCache.Get(Document);
-  Second := TSyntaxTreeCache.Get(Document);
-  Assert.AreEqual(1, TSyntaxTreeCache.ParseCount - Before);
-  Assert.AreSame(First.Tree, Second.Tree);
-  Assert.AreEqual('A', First.Tree.Root.Name);
+  mDocument := NewDocument(1, cSource);
+  mBefore := TSyntaxTreeCache.ParseCount;
+  mFirst := TSyntaxTreeCache.Get(mDocument);
+  mSecond := TSyntaxTreeCache.Get(mDocument);
+  Assert.AreEqual(1, TSyntaxTreeCache.ParseCount - mBefore);
+  Assert.AreSame(mFirst.Tree, mSecond.Tree);
+  Assert.AreEqual('A', mFirst.Tree.Root.Name);
 end;
 
 procedure TSyntaxTreeCacheTests.StatsCountHitsAndLiveBytes;
@@ -88,7 +88,7 @@ var
   mBefore, mHeld, mAfter: TSyntaxTreeCacheStats;
   mFirst, mSecond: ISharedSyntaxTree;
 begin
-  mDocument := NewDocument(7);
+  mDocument := NewDocument(7, cSource);
   mBefore := TSyntaxTreeCache.Stats;
   mFirst := TSyntaxTreeCache.Get(mDocument);
   mSecond := TSyntaxTreeCache.Get(mDocument);
@@ -97,7 +97,7 @@ begin
   Assert.AreEqual<Int64>(1, mHeld.Parses - mBefore.Parses);
   Assert.AreEqual(1, mHeld.Trees - mBefore.Trees);
   Assert.AreEqual<Int64>(TSyntaxTreeCache.EstimatedBytes(mFirst.Tree), mHeld.Bytes - mBefore.Bytes);
-  Assert.IsTrue(TSyntaxTreeCache.EstimatedBytes(mFirst.Tree) > Length(Source) * SizeOf(Char));
+  Assert.IsTrue(TSyntaxTreeCache.EstimatedBytes(mFirst.Tree) > Length(cSource) * SizeOf(Char));
   mFirst := nil;
   mSecond := nil;
   mDocument := nil;
@@ -113,62 +113,62 @@ end;
 
 procedure TSyntaxTreeCacheTests.NewVersionGetsNewTree;
 var
-  Document, Changed: ITextDocument;
-  Old, New: ISharedSyntaxTree;
+  mDocument, mChanged: ITextDocument;
+  mOld, mNew: ISharedSyntaxTree;
 begin
-  Document := NewDocument;
-  Old := TSyntaxTreeCache.Get(Document);
-  Changed := Document.ApplyChanges([TTextChange.Full(StringReplace(Source, 'unit A', 'unit B', []))], 2);
-  New := TSyntaxTreeCache.Get(Changed);
-  Assert.AreNotSame(Old.Tree, New.Tree);
-  Assert.AreEqual('A', Old.Tree.Root.Name);
-  Assert.AreEqual('B', New.Tree.Root.Name);
+  mDocument := NewDocument(1, cSource);
+  mOld := TSyntaxTreeCache.Get(mDocument);
+  mChanged := mDocument.ApplyChanges([TTextChange.Full(StringReplace(cSource, 'unit A', 'unit B', []))], 2);
+  mNew := TSyntaxTreeCache.Get(mChanged);
+  Assert.AreNotSame(mOld.Tree, mNew.Tree);
+  Assert.AreEqual('A', mOld.Tree.Root.Name);
+  Assert.AreEqual('B', mNew.Tree.Root.Name);
 end;
 
 procedure TSyntaxTreeCacheTests.ConcurrentRequestsShareOneParse;
 const
-  Features = 6;
+  cFeatures = 6;
 var
-  Document: ITextDocument;
-  Text: string;
-  Index, Before: Integer;
-  Threads: array[0..Features - 1] of TThread;
-  Start: TEvent;
-  Shared: ISharedSyntaxTree;
+  mDocument: ITextDocument;
+  mText: string;
+  mIndex, mBefore: Integer;
+  mThreads: array[0..cFeatures - 1] of TThread;
+  mStart: TEvent;
+  mShared: ISharedSyntaxTree;
 begin
   // Groß genug, dass alle Anfragen während des ersten Parse eintreffen.
-  Text := 'unit A;'#10'interface'#10'implementation'#10;
-  for Index := 1 to 3000 do
+  mText := 'unit A;'#10'interface'#10'implementation'#10;
+  for mIndex := 1 to 3000 do
   begin
-    Text := Text + Format('procedure P%d;'#10'begin'#10'  X := %d;'#10'end;'#10, [Index, Index]);
+    mText := mText + Format('procedure P%d;'#10'begin'#10'  X := %d;'#10'end;'#10, [mIndex, mIndex]);
   end;
-  Text := Text + 'end.';
-  Document := NewDocument(1, Text);
-  Before := TSyntaxTreeCache.ParseCount;
-  SetLength(SharedTrees, Features);
-  Start := TEvent.Create(nil, True, False, '');
+  mText := mText + 'end.';
+  mDocument := NewDocument(1, mText);
+  mBefore := TSyntaxTreeCache.ParseCount;
+  SetLength(SharedTrees, cFeatures);
+  mStart := TEvent.Create(nil, True, False, '');
   try
-    for Index := 0 to Features - 1 do
+    for mIndex := 0 to cFeatures - 1 do
     begin
-      Threads[Index] := Worker(Document, Start, Index);
-      Threads[Index].Start;
+      mThreads[mIndex] := Worker(mDocument, mStart, mIndex);
+      mThreads[mIndex].Start;
     end;
-    Start.SetEvent;
-    for Index := 0 to Features - 1 do
+    mStart.SetEvent;
+    for mIndex := 0 to cFeatures - 1 do
     begin
-      Threads[Index].WaitFor;
-      Threads[Index].Free;
+      mThreads[mIndex].WaitFor;
+      mThreads[mIndex].Free;
     end;
   finally
-    Start.Free;
+    mStart.Free;
   end;
-  Assert.AreEqual(1, TSyntaxTreeCache.ParseCount - Before);
+  Assert.AreEqual(1, TSyntaxTreeCache.ParseCount - mBefore);
   // Das Dokument hält den Baum; die Zeiger der Threads sind deshalb noch gültig.
-  Shared := TSyntaxTreeCache.Get(Document);
+  mShared := TSyntaxTreeCache.Get(mDocument);
   try
-    for Index := 0 to Features - 1 do
+    for mIndex := 0 to cFeatures - 1 do
     begin
-      Assert.AreSame(Shared.Tree, SharedTrees[Index]);
+      Assert.AreSame(mShared.Tree, SharedTrees[mIndex]);
     end;
   finally
     // Unit-Variable: sonst bleibt das Array über den Test hinaus liegen (Leck-Monitor).
@@ -178,27 +178,27 @@ end;
 
 procedure TSyntaxTreeCacheTests.TreeOutlivesDocument;
 var
-  Document: ITextDocument;
-  Shared: ISharedSyntaxTree;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
 begin
-  Document := NewDocument;
-  Shared := TSyntaxTreeCache.Get(Document);
-  Document := nil;
+  mDocument := NewDocument(1, cSource);
+  mShared := TSyntaxTreeCache.Get(mDocument);
+  mDocument := nil;
   // Das Feature hält den Baum noch, obwohl die Momentaufnahme schon frei ist.
-  Assert.AreEqual('A', Shared.Tree.Root.Name);
+  Assert.AreEqual('A', mShared.Tree.Root.Name);
 end;
 
 procedure TSyntaxTreeCacheTests.DerivedWithoutValueIsNotStored;
 var
-  Document: ITextDocument;
-  Calls: Integer;
+  mDocument: ITextDocument;
+  mCalls: Integer;
 begin
-  Document := NewDocument;
-  Calls := 0;
-  Document.Derived('probe', function: IInterface begin Inc(Calls); Result := nil; end);
-  Document.Derived('probe', function: IInterface begin Inc(Calls); Result := TInterfacedObject.Create; end);
-  Document.Derived('probe', function: IInterface begin Inc(Calls); Result := nil; end);
-  Assert.AreEqual(2, Calls);
+  mDocument := NewDocument(1, cSource);
+  mCalls := 0;
+  mDocument.Derived('probe', function: IInterface begin Inc(mCalls); Result := nil; end);
+  mDocument.Derived('probe', function: IInterface begin Inc(mCalls); Result := TInterfacedObject.Create; end);
+  mDocument.Derived('probe', function: IInterface begin Inc(mCalls); Result := nil; end);
+  Assert.AreEqual(2, mCalls);
 end;
 
 /// <summary>Ordner über der Test-exe, der Packages enthält; '' ohne.</summary>
@@ -245,26 +245,26 @@ end;
 
 procedure TSyntaxTreeCacheTests.NoParserCallsOutsideCache;
 var
-  Directory, Root: string;
-  Offenders: string;
-  Folders: TArray<string>;
+  mDirectory, mRoot: string;
+  mOffenders: string;
+  mFolders: TArray<string>;
 begin
   // Wächter (#262): außerhalb des Caches ruft niemand den Parser direkt auf.
-  Root := SourceRoot;
-  if Root = '' then
+  mRoot := SourceRoot;
+  if mRoot = '' then
   begin
     Assert.Pass('Quelltexte nicht gefunden; Prüfung übersprungen');
   end;
-  Offenders := '';
-  Folders := [TPath.Combine(Root, 'Packages'), TPath.Combine(Root, 'Application')];
-  for Directory in Folders do
+  mOffenders := '';
+  mFolders := [TPath.Combine(mRoot, 'Packages'), TPath.Combine(mRoot, 'Application')];
+  for mDirectory in mFolders do
   begin
-    if TDirectory.Exists(Directory) then
+    if TDirectory.Exists(mDirectory) then
     begin
-      Offenders := Offenders + ParserCallers(Directory);
+      mOffenders := mOffenders + ParserCallers(mDirectory);
     end;
   end;
-  Assert.AreEqual('', Offenders, 'TPascalParser.Parse außerhalb des Caches');
+  Assert.AreEqual('', mOffenders, 'TPascalParser.Parse außerhalb des Caches');
 end;
 
 initialization

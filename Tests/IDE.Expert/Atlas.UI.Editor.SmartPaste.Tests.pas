@@ -36,18 +36,18 @@ uses
 
 function Analysis: TAtlasPasteAnalysis;
 var
-  Choice: TAtlasPasteChoice;
+  mChoice: TAtlasPasteChoice;
 begin
   Result := Default(TAtlasPasteAnalysis);
   Result.Valid := True;
   Result.Units := ['System.JSON'];
-  Choice.Name := 'TList';
-  Choice.Units := ['System.Classes', 'System.Generics.Collections'];
-  Choice.Chosen := -1;
-  Result.Choices := [Choice];
-  Choice.Name := 'TRect';
-  Choice.Units := ['System.Types', 'Winapi.Windows'];
-  Result.Choices := Result.Choices + [Choice];
+  mChoice.Name := 'TList';
+  mChoice.Units := ['System.Classes', 'System.Generics.Collections'];
+  mChoice.Chosen := -1;
+  Result.Choices := [mChoice];
+  mChoice.Name := 'TRect';
+  mChoice.Units := ['System.Types', 'Winapi.Windows'];
+  Result.Choices := Result.Choices + [mChoice];
 end;
 
 function NewWindow: TAtlasSmartPasteWindow;
@@ -64,104 +64,104 @@ end;
 
 procedure TAtlasSmartPasteWindowTests.TitleCountsUniqueAndChosenUnits;
 var
-  Window: TAtlasSmartPasteWindow;
+  mWindow: TAtlasSmartPasteWindow;
 begin
   TAtlasStrings.Language := TAtlasLanguage.German;
-  Window := NewWindow;
+  mWindow := NewWindow;
   try
-    Window.ShowFor(Analysis, Point(100, 100));
+    mWindow.ShowFor(Analysis, Point(100, 100));
     try
-      Assert.AreEqual('Unit ergänzen: System.JSON', Window.Caption);
-      Window.Choose(0, 1);
-      Assert.AreEqual('2 Units ergänzen: System.JSON, System.Generics.Collections', Window.Caption);
-      Window.Choose(1, 0);
-      Window.Choose(0, 0);
-      Assert.AreEqual('3 Units ergänzen: System.JSON, System.Classes, System.Types', Window.Caption);
+      Assert.AreEqual('Unit ergänzen: System.JSON', mWindow.Caption);
+      mWindow.Choose(0, 1);
+      Assert.AreEqual('2 Units ergänzen: System.JSON, System.Generics.Collections', mWindow.Caption);
+      mWindow.Choose(1, 0);
+      mWindow.Choose(0, 0);
+      Assert.AreEqual('3 Units ergänzen: System.JSON, System.Classes, System.Types', mWindow.Caption);
       // Ungültige Wahl bleibt ohne Wirkung.
-      Window.Choose(0, 5);
-      Window.Choose(7, 0);
-      Assert.AreEqual(0, Window.Analysis.Choices[0].Chosen);
-      Assert.IsFalse(Window.OptionRect(0, -1).IsEmpty, '„keine“ ist anklickbar');
-      Assert.IsFalse(Window.OptionRect(1, 1).IsEmpty);
-      Assert.IsTrue(Window.OptionRect(1, 2).IsEmpty);
-      Assert.IsTrue(Window.OptionRect(1, 0).Left > Window.OptionRect(1, -1).Right, 'nebeneinander');
+      mWindow.Choose(0, 5);
+      mWindow.Choose(7, 0);
+      Assert.AreEqual(0, mWindow.Analysis.Choices[0].Chosen);
+      Assert.IsFalse(mWindow.OptionRect(0, -1).IsEmpty, '„keine“ ist anklickbar');
+      Assert.IsFalse(mWindow.OptionRect(1, 1).IsEmpty);
+      Assert.IsTrue(mWindow.OptionRect(1, 2).IsEmpty);
+      Assert.IsTrue(mWindow.OptionRect(1, 0).Left > mWindow.OptionRect(1, -1).Right, 'nebeneinander');
     finally
-      Window.Dismiss;
+      mWindow.Dismiss;
     end;
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasSmartPasteWindowTests.KeysMoveRowAndChoice;
 var
-  Window: TAtlasSmartPasteWindow;
-  Plain: TAtlasPasteAnalysis;
+  mWindow: TAtlasSmartPasteWindow;
+  mPlain: TAtlasPasteAnalysis;
 begin
-  Window := NewWindow;
+  mWindow := NewWindow;
   try
-    Window.ShowFor(Analysis, Point(100, 100));
+    mWindow.ShowFor(Analysis, Point(100, 100));
     try
-      Assert.AreEqual(0, Window.Row);
-      Assert.IsTrue(Window.MoveChoice(1));
-      Assert.AreEqual(0, Window.Analysis.Choices[0].Chosen);
-      Assert.IsTrue(Window.MoveChoice(-2), 'ringsum');
-      Assert.AreEqual(1, Window.Analysis.Choices[0].Chosen);
-      Assert.IsTrue(Window.MoveRow(1));
-      Assert.AreEqual(1, Window.Row);
-      Assert.IsTrue(Window.MoveRow(1));
-      Assert.AreEqual(0, Window.Row, 'ringsum');
+      Assert.AreEqual(0, mWindow.Row);
+      Assert.IsTrue(mWindow.MoveChoice(1));
+      Assert.AreEqual(0, mWindow.Analysis.Choices[0].Chosen);
+      Assert.IsTrue(mWindow.MoveChoice(-2), 'ringsum');
+      Assert.AreEqual(1, mWindow.Analysis.Choices[0].Chosen);
+      Assert.IsTrue(mWindow.MoveRow(1));
+      Assert.AreEqual(1, mWindow.Row);
+      Assert.IsTrue(mWindow.MoveRow(1));
+      Assert.AreEqual(0, mWindow.Row, 'ringsum');
     finally
-      Window.Dismiss;
+      mWindow.Dismiss;
     end;
     // Nur eindeutige Units: Pfeiltasten gehören dem Editor.
-    Plain := Analysis;
-    Plain.Choices := nil;
-    Window.ShowFor(Plain, Point(100, 100));
+    mPlain := Analysis;
+    mPlain.Choices := nil;
+    mWindow.ShowFor(mPlain, Point(100, 100));
     try
-      Assert.AreEqual(-1, Window.Row);
-      Assert.IsFalse(Window.MoveRow(1));
-      Assert.IsFalse(Window.MoveChoice(1));
+      Assert.AreEqual(-1, mWindow.Row);
+      Assert.IsFalse(mWindow.MoveRow(1));
+      Assert.IsFalse(mWindow.MoveChoice(1));
     finally
-      Window.Dismiss;
+      mWindow.Dismiss;
     end;
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasSmartPasteWindowTests.AcceptAndCancelReportAndHide;
 var
-  Window: TAtlasSmartPasteWindow;
-  Accepted, Cancelled: Integer;
+  mWindow: TAtlasSmartPasteWindow;
+  mAccepted, mCancelled: Integer;
 begin
-  Accepted := 0;
-  Cancelled := 0;
-  Window := NewWindow;
+  mAccepted := 0;
+  mCancelled := 0;
+  mWindow := NewWindow;
   try
-    Window.OnAccept :=
+    mWindow.OnAccept :=
       procedure
       begin
-        Inc(Accepted);
+        Inc(mAccepted);
       end;
-    Window.OnCancel :=
+    mWindow.OnCancel :=
       procedure
       begin
-        Inc(Cancelled);
+        Inc(mCancelled);
       end;
-    Window.ShowFor(Analysis, Point(100, 100));
-    Assert.IsTrue(Window.IsShown);
-    Assert.IsFalse(Window.AcceptRect.IsEmpty);
-    Window.Accept;
-    Assert.AreEqual(1, Accepted);
-    Assert.IsFalse(Window.IsShown);
-    Window.ShowFor(Analysis, Point(100, 100));
-    Window.Cancel;
-    Assert.AreEqual(1, Cancelled);
-    Assert.AreEqual(1, Accepted);
-    Assert.IsFalse(Window.IsShown);
+    mWindow.ShowFor(Analysis, Point(100, 100));
+    Assert.IsTrue(mWindow.IsShown);
+    Assert.IsFalse(mWindow.AcceptRect.IsEmpty);
+    mWindow.Accept;
+    Assert.AreEqual(1, mAccepted);
+    Assert.IsFalse(mWindow.IsShown);
+    mWindow.ShowFor(Analysis, Point(100, 100));
+    mWindow.Cancel;
+    Assert.AreEqual(1, mCancelled);
+    Assert.AreEqual(1, mAccepted);
+    Assert.IsFalse(mWindow.IsShown);
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 

@@ -44,7 +44,7 @@ uses
   Atlas.Common.Lsp.References;
 
 const
-  UnitAttribute =
+  cUnitAttribute =
     'unit DUnitX.Attributes;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -68,7 +68,7 @@ const
     'implementation'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses DUnitX.Attributes;'#10 +
@@ -90,40 +90,40 @@ const
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
-  Index, Line, LineStart, Run: Integer;
+  mIndex, mLine, mLineStart, mRun: Integer;
 begin
-  Index := Pos(AMarker, AText);
-  if Index = 0 then
+  mIndex := Pos(AMarker, AText);
+  if mIndex = 0 then
   begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
   end;
-  Line := 0;
-  LineStart := 1;
-  for Run := 1 to Index - 1 do
+  mLine := 0;
+  mLineStart := 1;
+  for mRun := 1 to mIndex - 1 do
   begin
-    if AText[Run] = #10 then
+    if AText[mRun] = #10 then
     begin
-      Inc(Line);
-      LineStart := Run + 1;
+      Inc(mLine);
+      mLineStart := mRun + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 const
-  AttributeFile = 'C:\P\DUnitX.Attributes.pas';
-  HauptFile = 'C:\P\Haupt.pas';
+  cAttributeFile = 'C:\P\DUnitX.Attributes.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
 
 function ReadText(const AFileName: string; out AText: string): Boolean;
 begin
-  Result := SameText(AFileName, AttributeFile);
-  AText := UnitAttribute;
+  Result := SameText(AFileName, cAttributeFile);
+  AText := cUnitAttribute;
 end;
 
 procedure TLspAttributesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitAttribute, AttributeFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAttribute, cAttributeFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -135,14 +135,14 @@ end;
 
 function Hover(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AMarker: string): THoverInfo;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Result := TLspHover.InfoAt(THoverSource.Create(AResolver, AIndex, ReadText), Tree, UnitHaupt, HauptFile,
-      PositionOf(UnitHaupt, AMarker));
+    Result := TLspHover.InfoAt(THoverSource.Create(AResolver, AIndex, ReadText), mTree, cUnitHaupt, cHauptFile,
+      PositionOf(cUnitHaupt, AMarker));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -159,14 +159,14 @@ end;
 
 procedure TLspAttributesTests.HoverShowsMatchingConstructor;
 var
-  Info: THoverInfo;
+  mInfo: THoverInfo;
 begin
-  Info := Hover(FResolver, FIndex, 'TestCase(');
-  Assert.Contains(Info.Declaration, 'TestCaseAttribute = class(TCustomAttribute)');
-  Assert.AreEqual('constructor Create(const AName, AValues: string);', Info.Constructors);
-  Info := Hover(FResolver, FIndex, 'TestFixture(''Name'')');
-  Assert.AreEqual('constructor Create(const AName: string); overload;', Info.Constructors);
-  Assert.Contains(Info.ToMarkdown, 'constructor Create(const AName: string); overload;');
+  mInfo := Hover(FResolver, FIndex, 'TestCase(');
+  Assert.Contains(mInfo.Declaration, 'TestCaseAttribute = class(TCustomAttribute)');
+  Assert.AreEqual('constructor Create(const AName, AValues: string);', mInfo.Constructors);
+  mInfo := Hover(FResolver, FIndex, 'TestFixture(''Name'')');
+  Assert.AreEqual('constructor Create(const AName: string); overload;', mInfo.Constructors);
+  Assert.Contains(mInfo.ToMarkdown, 'constructor Create(const AName: string); overload;');
 end;
 
 procedure TLspAttributesTests.HoverWithoutArgumentsShowsParameterless;
@@ -178,30 +178,30 @@ end;
 
 procedure TLspAttributesTests.ReferencesFindBothSpellings;
 var
-  Tree: TSyntaxTree;
-  Found: TArray<TReferenceLocation>;
-  Location: TReferenceLocation;
-  Text: string;
+  mTree: TSyntaxTree;
+  mFound: TArray<TReferenceLocation>;
+  mLocation: TReferenceLocation;
+  mText: string;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Found := TLspReferences.Find(FResolver, FIndex, Tree,
-      TReferenceSearch.Create(HauptFile, PositionOf(UnitHaupt, 'TestFixture]'), True,
-      [AttributeFile, HauptFile],
+    mFound := TLspReferences.Find(FResolver, FIndex, mTree,
+      TReferenceSearch.Create(cHauptFile, PositionOf(cUnitHaupt, 'TestFixture]'), True,
+      [cAttributeFile, cHauptFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := ReadText(AFileName, AText);
       end));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Text := '';
-  for Location in Found do
+  mText := '';
+  for mLocation in mFound do
   begin
-    Text := Text + Format('%s:%d ', [ExtractFileName(Location.FileName), Location.Range.StartPos.Line]);
+    mText := mText + Format('%s:%d ', [ExtractFileName(mLocation.FileName), mLocation.Range.StartPos.Line]);
   end;
   // Deklaration, [TestFixture], [DUnitX.Attributes.TestFixture(…)] und [TestFixtureAttribute].
-  Assert.AreEqual('Haupt.pas:4 Haupt.pas:5 Haupt.pas:7 DUnitX.Attributes.pas:5', Trim(Text));
+  Assert.AreEqual('Haupt.pas:4 Haupt.pas:5 Haupt.pas:7 DUnitX.Attributes.pas:5', Trim(mText));
 end;
 
 initialization

@@ -43,7 +43,7 @@ uses
   Atlas.Core.Outline.Model;
 
 const
-  FormCode =
+  cFormCode =
     'unit F;'#13#10 +                                          // 0
     'interface'#13#10 +                                        // 1
     'uses Vcl.Forms;'#13#10 +                                  // 2
@@ -80,34 +80,34 @@ const
 
 function Nodes: TAtlasOutlineNodes;
 var
-  Tree: TSyntaxTree;
-  Symbols: TJSONArray;
+  mTree: TSyntaxTree;
+  mSymbols: TJSONArray;
 begin
-  Tree := TPascalParser.Parse(FormCode);
+  mTree := TPascalParser.Parse(cFormCode);
   try
-    Symbols := TLspDocumentSymbols.BuildSymbols(Tree, FormCode);
+    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, cFormCode);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   try
-    Result := TAtlasOutline.FromJson(Symbols);
+    Result := TAtlasOutline.FromJson(mSymbols);
   finally
-    Symbols.Free;
+    mSymbols.Free;
   end;
 end;
 
 // Index des n-ten Knotens mit dem Namen (0 = erster); -1, wenn es keinen gibt.
 function Find(const ANodes: TAtlasOutlineNodes; const AName: string; ANth: Integer): Integer; overload;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ANodes) do
+  for mIndex := 0 to High(ANodes) do
   begin
-    if ANodes[Index].Name = AName then
+    if ANodes[mIndex].Name = AName then
     begin
       if ANth = 0 then
       begin
-        Exit(Index);
+        Exit(mIndex);
       end;
       Dec(ANth);
     end;
@@ -123,17 +123,17 @@ end;
 // Zeilen als Text: "Name" je Zeile, mit "*" für Treffer, getrennt durch Komma.
 function RowText(const ANodes: TAtlasOutlineNodes; const ARows: TArray<TAtlasOutlineRow>): string;
 var
-  Row: TAtlasOutlineRow;
+  mRow: TAtlasOutlineRow;
 begin
   Result := '';
-  for Row in ARows do
+  for mRow in ARows do
   begin
     if Result <> '' then
     begin
       Result := Result + ',';
     end;
-    Result := Result + ANodes[Row.Node].Name;
-    if Row.Matched then
+    Result := Result + ANodes[mRow.Node].Name;
+    if mRow.Matched then
     begin
       Result := Result + '*';
     end;
@@ -142,124 +142,124 @@ end;
 
 procedure TAtlasOutlineModelTests.ReadsMembersAndMarks;
 var
-  List: TAtlasOutlineNodes;
-  Node: TAtlasOutlineNode;
+  mList: TAtlasOutlineNodes;
+  mNode: TAtlasOutlineNode;
 begin
-  List := Nodes;
-  Assert.AreEqual(-1, Find(List, 'F'), 'die Unit selbst ist kein Eintrag');
-  Node := List[Find(List, 'TForm1')];
-  Assert.AreEqual<TAtlasOutlineCategory>(TAtlasOutlineCategory.TypeDecl, Node.Category);
-  Assert.AreEqual(4, Node.NameLine);
-  Node := List[Find(List, 'Button1')];
-  Assert.AreEqual<TAtlasOutlineCategory>(TAtlasOutlineCategory.Field, Node.Category);
-  Assert.AreEqual<TAtlasOutlineVisibility>(TAtlasOutlineVisibility.Published, Node.Visibility);
-  Assert.AreEqual(5, Node.NameLine);
-  Node := List[Find(List, 'Button1Click')];
-  Assert.AreEqual<TAtlasOutlineCategory>(TAtlasOutlineCategory.Method, Node.Category);
-  Assert.AreEqual<TAtlasOutlineVisibility>(TAtlasOutlineVisibility.Published, Node.Visibility);
-  Assert.IsFalse(Node.Unimplemented);
-  Node := List[Find(List, 'Missing')];
-  Assert.AreEqual<TAtlasOutlineVisibility>(TAtlasOutlineVisibility.Private, Node.Visibility);
-  Assert.IsTrue(Node.Unimplemented, 'Missing hat keinen Rumpf');
-  Node := List[Find(List, 'Paint')];
-  Assert.AreEqual<TAtlasOutlineVisibility>(TAtlasOutlineVisibility.Protected, Node.Visibility);
-  Assert.IsTrue(Node.IsOverride);
-  Node := List[Find(List, 'Make')];
-  Assert.IsTrue(Node.ClassMember);
-  Assert.AreEqual<TAtlasOutlineVisibility>(TAtlasOutlineVisibility.Public, Node.Visibility);
-  Assert.AreEqual<TAtlasOutlineCategory>(TAtlasOutlineCategory.PropertyDecl, List[Find(List, 'Count')].Category);
-  Assert.AreEqual<TAtlasOutlineCategory>(TAtlasOutlineCategory.Constant, List[Find(List, 'Limit')].Category);
-  Node := List[Find(List, 'Run')];
-  Assert.AreEqual<TAtlasOutlineCategory>(TAtlasOutlineCategory.Routine, Node.Category);
-  Assert.AreEqual<TAtlasOutlineVisibility>(TAtlasOutlineVisibility.None, Node.Visibility);
+  mList := Nodes;
+  Assert.AreEqual(-1, Find(mList, 'F'), 'die Unit selbst ist kein Eintrag');
+  mNode := mList[Find(mList, 'TForm1')];
+  Assert.AreEqual<TAtlasOutlineCategory>(TAtlasOutlineCategory.TypeDecl, mNode.Category);
+  Assert.AreEqual(4, mNode.NameLine);
+  mNode := mList[Find(mList, 'Button1')];
+  Assert.AreEqual<TAtlasOutlineCategory>(TAtlasOutlineCategory.Field, mNode.Category);
+  Assert.AreEqual<TAtlasOutlineVisibility>(TAtlasOutlineVisibility.Published, mNode.Visibility);
+  Assert.AreEqual(5, mNode.NameLine);
+  mNode := mList[Find(mList, 'Button1Click')];
+  Assert.AreEqual<TAtlasOutlineCategory>(TAtlasOutlineCategory.Method, mNode.Category);
+  Assert.AreEqual<TAtlasOutlineVisibility>(TAtlasOutlineVisibility.Published, mNode.Visibility);
+  Assert.IsFalse(mNode.Unimplemented);
+  mNode := mList[Find(mList, 'Missing')];
+  Assert.AreEqual<TAtlasOutlineVisibility>(TAtlasOutlineVisibility.Private, mNode.Visibility);
+  Assert.IsTrue(mNode.Unimplemented, 'Missing hat keinen Rumpf');
+  mNode := mList[Find(mList, 'Paint')];
+  Assert.AreEqual<TAtlasOutlineVisibility>(TAtlasOutlineVisibility.Protected, mNode.Visibility);
+  Assert.IsTrue(mNode.IsOverride);
+  mNode := mList[Find(mList, 'Make')];
+  Assert.IsTrue(mNode.ClassMember);
+  Assert.AreEqual<TAtlasOutlineVisibility>(TAtlasOutlineVisibility.Public, mNode.Visibility);
+  Assert.AreEqual<TAtlasOutlineCategory>(TAtlasOutlineCategory.PropertyDecl, mList[Find(mList, 'Count')].Category);
+  Assert.AreEqual<TAtlasOutlineCategory>(TAtlasOutlineCategory.Constant, mList[Find(mList, 'Limit')].Category);
+  mNode := mList[Find(mList, 'Run')];
+  Assert.AreEqual<TAtlasOutlineCategory>(TAtlasOutlineCategory.Routine, mNode.Category);
+  Assert.AreEqual<TAtlasOutlineVisibility>(TAtlasOutlineVisibility.None, mNode.Visibility);
   Assert.AreEqual('+', TAtlasOutline.VisibilityMark(TAtlasOutlineVisibility.Public));
   Assert.AreEqual('', TAtlasOutline.VisibilityMark(TAtlasOutlineVisibility.None));
 end;
 
 procedure TAtlasOutlineModelTests.BodiesBelongToTheirDeclarations;
 var
-  List: TAtlasOutlineNodes;
-  Text: string;
-  First, Second: Integer;
+  mList: TAtlasOutlineNodes;
+  mText: string;
+  mFirst, mSecond: Integer;
 begin
-  List := Nodes;
-  Text := RowText(List, TAtlasOutline.Rows(List, TAtlasOutlineFilter.All, TAtlasOutlineSort.Source));
+  mList := Nodes;
+  mText := RowText(mList, TAtlasOutline.Rows(mList, TAtlasOutlineFilter.All, TAtlasOutlineSort.Source));
   Assert.AreEqual('interface,TForm1*,Button1*,Button1Click*,FCount*,Missing*,Add*,Add*,Paint*,Make*,Count*,' +
-    'Limit*,Run*,implementation,Helper*', Text);
-  First := Find(List, 'Add', 0);
-  Second := Find(List, 'Add', 1);
+    'Limit*,Run*,implementation,Helper*', mText);
+  mFirst := Find(mList, 'Add', 0);
+  mSecond := Find(mList, 'Add', 1);
   // Überladungen in Reihenfolge.
-  Assert.AreEqual(26, List[List[First].Body].StartLine);
-  Assert.AreEqual(27, List[List[Second].Body].StartLine);
-  Assert.AreEqual(First, List[List[First].Body].Declaration);
-  Assert.AreEqual(30, List[List[Find(List, 'Run')].Body].StartLine, 'Routine aus dem interface');
-  Assert.AreEqual(-1, List[Find(List, 'Missing')].Body);
-  Assert.AreEqual(-1, List[Find(List, 'Helper')].Declaration);
+  Assert.AreEqual(26, mList[mList[mFirst].Body].StartLine);
+  Assert.AreEqual(27, mList[mList[mSecond].Body].StartLine);
+  Assert.AreEqual(mFirst, mList[mList[mFirst].Body].Declaration);
+  Assert.AreEqual(30, mList[mList[Find(mList, 'Run')].Body].StartLine, 'Routine aus dem interface');
+  Assert.AreEqual(-1, mList[Find(mList, 'Missing')].Body);
+  Assert.AreEqual(-1, mList[Find(mList, 'Helper')].Declaration);
 end;
 
 procedure TAtlasOutlineModelTests.PublishedFilterShowsFormFieldsAndHandlers;
 var
-  List: TAtlasOutlineNodes;
-  Filter: TAtlasOutlineFilter;
+  mList: TAtlasOutlineNodes;
+  mFilter: TAtlasOutlineFilter;
 begin
-  List := Nodes;
-  Filter := TAtlasOutlineFilter.All;
-  Filter.Visibilities := [TAtlasOutlineVisibility.Published];
-  Assert.IsFalse(Filter.AllVisibilities);
+  mList := Nodes;
+  mFilter := TAtlasOutlineFilter.All;
+  mFilter.Visibilities := [TAtlasOutlineVisibility.Published];
+  Assert.IsFalse(mFilter.AllVisibilities);
   // TForm1 bleibt als Rahmen, Abschnitte ohne Treffer entfallen.
   Assert.AreEqual('interface,TForm1,Button1*,Button1Click*',
-    RowText(List, TAtlasOutline.Rows(List, Filter, TAtlasOutlineSort.Source)));
-  Filter.Visibilities := [TAtlasOutlineVisibility.Private];
+    RowText(mList, TAtlasOutline.Rows(mList, mFilter, TAtlasOutlineSort.Source)));
+  mFilter.Visibilities := [TAtlasOutlineVisibility.Private];
   Assert.AreEqual('interface,TForm1,FCount*,Missing*,Add*,Add*',
-    RowText(List, TAtlasOutline.Rows(List, Filter, TAtlasOutlineSort.Source)));
+    RowText(mList, TAtlasOutline.Rows(mList, mFilter, TAtlasOutlineSort.Source)));
 end;
 
 procedure TAtlasOutlineModelTests.FiltersByTextAndCategory;
 var
-  List: TAtlasOutlineNodes;
-  Filter: TAtlasOutlineFilter;
+  mList: TAtlasOutlineNodes;
+  mFilter: TAtlasOutlineFilter;
 begin
-  List := Nodes;
-  Filter := TAtlasOutlineFilter.All;
-  Filter.Text := 'BuCl';
-  Assert.AreEqual('interface,TForm1,Button1Click*', RowText(List, TAtlasOutline.Rows(List, Filter,
+  mList := Nodes;
+  mFilter := TAtlasOutlineFilter.All;
+  mFilter.Text := 'BuCl';
+  Assert.AreEqual('interface,TForm1,Button1Click*', RowText(mList, TAtlasOutline.Rows(mList, mFilter,
     TAtlasOutlineSort.Source)));
-  Filter := TAtlasOutlineFilter.All;
-  Filter.Categories := [TAtlasOutlineCategory.PropertyDecl, TAtlasOutlineCategory.Constant];
-  Assert.IsFalse(Filter.AllCategories);
-  Assert.AreEqual('interface,TForm1,Count*,Limit*', RowText(List, TAtlasOutline.Rows(List, Filter,
+  mFilter := TAtlasOutlineFilter.All;
+  mFilter.Categories := [TAtlasOutlineCategory.PropertyDecl, TAtlasOutlineCategory.Constant];
+  Assert.IsFalse(mFilter.AllCategories);
+  Assert.AreEqual('interface,TForm1,Count*,Limit*', RowText(mList, TAtlasOutline.Rows(mList, mFilter,
     TAtlasOutlineSort.Source)));
-  Filter.Text := 'zzz';
-  Assert.AreEqual(0, Integer(Length(TAtlasOutline.Rows(List, Filter, TAtlasOutlineSort.Source))));
+  mFilter.Text := 'zzz';
+  Assert.AreEqual(0, Integer(Length(TAtlasOutline.Rows(mList, mFilter, TAtlasOutlineSort.Source))));
 end;
 
 procedure TAtlasOutlineModelTests.SortsAlphabeticallyWithinParents;
 var
-  List: TAtlasOutlineNodes;
+  mList: TAtlasOutlineNodes;
 begin
-  List := Nodes;
+  mList := Nodes;
   Assert.AreEqual('interface,Limit*,Run*,TForm1*,Add*,Add*,Button1*,Button1Click*,Count*,FCount*,Make*,' +
     'Missing*,Paint*,implementation,Helper*',
-    RowText(List, TAtlasOutline.Rows(List, TAtlasOutlineFilter.All, TAtlasOutlineSort.Alphabetical)));
+    RowText(mList, TAtlasOutline.Rows(mList, TAtlasOutlineFilter.All, TAtlasOutlineSort.Alphabetical)));
 end;
 
 procedure TAtlasOutlineModelTests.NodeAtMapsBodiesToDeclarations;
 var
-  List: TAtlasOutlineNodes;
+  mList: TAtlasOutlineNodes;
 begin
-  List := Nodes;
-  Assert.AreEqual(Find(List, 'Missing'), TAtlasOutline.NodeAt(List, 9, 8));
-  Assert.AreEqual(Find(List, 'TForm1'), TAtlasOutline.NodeAt(List, 7, 2), 'zwischen Mitgliedern: der Typ');
-  Assert.AreEqual(Find(List, 'Button1Click'), TAtlasOutline.NodeAt(List, 24, 2), 'Rumpf zur Deklaration');
-  Assert.AreEqual(Find(List, 'Button1Click'), TAtlasOutline.NodeAt(List, 22, 14), 'lokale Routine');
-  Assert.AreEqual(Find(List, 'Add', 1), TAtlasOutline.NodeAt(List, 27, 40));
-  Assert.AreEqual(Find(List, 'Helper'), TAtlasOutline.NodeAt(List, 31, 20));
-  Assert.AreEqual(-1, TAtlasOutline.NodeAt(List, 2, 4), 'uses');
+  mList := Nodes;
+  Assert.AreEqual(Find(mList, 'Missing'), TAtlasOutline.NodeAt(mList, 9, 8));
+  Assert.AreEqual(Find(mList, 'TForm1'), TAtlasOutline.NodeAt(mList, 7, 2), 'zwischen Mitgliedern: der Typ');
+  Assert.AreEqual(Find(mList, 'Button1Click'), TAtlasOutline.NodeAt(mList, 24, 2), 'Rumpf zur Deklaration');
+  Assert.AreEqual(Find(mList, 'Button1Click'), TAtlasOutline.NodeAt(mList, 22, 14), 'lokale Routine');
+  Assert.AreEqual(Find(mList, 'Add', 1), TAtlasOutline.NodeAt(mList, 27, 40));
+  Assert.AreEqual(Find(mList, 'Helper'), TAtlasOutline.NodeAt(mList, 31, 20));
+  Assert.AreEqual(-1, TAtlasOutline.NodeAt(mList, 2, 4), 'uses');
 end;
 
 procedure TAtlasOutlineModelTests.ConditionOfBodyGoesToDeclaration;
 const
-  Response =
+  cResponse =
     '[{"name":"U","kind":2,"range":{"start":{"line":0,"character":0},"end":{"line":20,"character":0}},' +
     '"children":[' +
     '{"name":"interface","kind":3,"range":{"start":{"line":1,"character":0},"end":{"line":3,"character":0}},' +
@@ -271,32 +271,32 @@ const
     '"atlas":{"condition":"CPUX64"}},' +
     '{"name":"Log","kind":12,"range":{"start":{"line":11,"character":0},"end":{"line":13,"character":4}}}]}]}]';
 var
-  Value: TJSONValue;
-  List: TAtlasOutlineNodes;
+  mValue: TJSONValue;
+  mList: TAtlasOutlineNodes;
 begin
   // #845: Steht nur der Rumpf im {$IFDEF}-Zweig, trägt die sichtbare Deklaration dessen Bedingung.
-  Value := TJSONObject.ParseJSONValue(Response);
+  mValue := TJSONObject.ParseJSONValue(cResponse);
   try
-    List := TAtlasOutline.FromJson(Value);
+    mList := TAtlasOutline.FromJson(mValue);
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Assert.AreEqual('CPUX64', List[Find(List, 'Foo', 0)].Condition);
-  Assert.IsTrue(List[Find(List, 'Foo', 1)].Hidden);
+  Assert.AreEqual('CPUX64', mList[Find(mList, 'Foo', 0)].Condition);
+  Assert.IsTrue(mList[Find(mList, 'Foo', 1)].Hidden);
   // Eine eigene Bedingung der Deklaration bleibt.
-  Assert.AreEqual('DEBUG', List[Find(List, 'Log', 0)].Condition);
+  Assert.AreEqual('DEBUG', mList[Find(mList, 'Log', 0)].Condition);
 end;
 
 procedure TAtlasOutlineModelTests.EmptyResponseGivesNoNodes;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Assert.AreEqual(0, Integer(Length(TAtlasOutline.FromJson(nil))));
-  Value := TJSONObject.ParseJSONValue('[]');
+  mValue := TJSONObject.ParseJSONValue('[]');
   try
-    Assert.AreEqual(0, Integer(Length(TAtlasOutline.FromJson(Value))));
+    Assert.AreEqual(0, Integer(Length(TAtlasOutline.FromJson(mValue))));
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 

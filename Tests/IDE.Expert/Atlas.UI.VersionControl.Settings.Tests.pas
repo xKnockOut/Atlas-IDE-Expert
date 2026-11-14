@@ -236,7 +236,8 @@ begin
   Assert.AreSame(mVcs, APage.Pages.ActivePage);
   GSection.Project.CheckShown;
   Assert.AreEqual(1, AProbe.FProjectCalls);
-  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectQuerying), GSection.Project.VcsProjectInfo.Caption);
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectQuerying),
+    GSection.Project.VcsProjectInfo.Caption);
   APage.Navigation.OnChange(APage.Navigation, AOther);
   APage.Navigation.OnChange(APage.Navigation, AVcsNode);
   GSection.Project.CheckShown;
@@ -361,7 +362,8 @@ begin
   mCheck.ExitCode := 128;
   Assert.Contains(TAtlasSettingsVcsToolsPart.VcsCheckText(mCheck), '128');
   mCheck.State := TAtlasVcsToolState.NoAnswer;
-  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsToolNoAnswer), TAtlasSettingsVcsToolsPart.VcsCheckText(mCheck));
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsToolNoAnswer),
+    TAtlasSettingsVcsToolsPart.VcsCheckText(mCheck));
   mCheck.State := TAtlasVcsToolState.Found;
   mCheck.Version := 'git version 2.47.1';
   mText := TAtlasSettingsVcsToolsPart.VcsCheckText(mCheck);
@@ -403,7 +405,8 @@ var
 begin
   AssertVcsToolTexts;
   mState := TAtlasVcsProjectState.Empty;
-  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectNone), TAtlasSettingsVcsProjectPart.VcsProjectText(mState));
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectNone),
+    TAtlasSettingsVcsProjectPart.VcsProjectText(mState));
   mState.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
   mState.Outcome := TAtlasVcsOutcome.Ok;
   mState.WorkingCopy.Kind := TAtlasVcsKind.Git;
@@ -426,8 +429,10 @@ begin
   mState.MainBranch := 'develop';
   Assert.Contains(TAtlasSettingsVcsProjectPart.VcsProjectText(mState),
     TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsProjectMainBranch, ['develop']));
-  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProviderSvn), TAtlasSettingsVcsPart.VcsProviderCaption('SVN'));
-  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProviderAuto), TAtlasSettingsVcsPart.VcsProviderCaption(''));
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProviderSvn),
+    TAtlasSettingsVcsPart.VcsProviderCaption('SVN'));
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProviderAuto),
+    TAtlasSettingsVcsPart.VcsProviderCaption(''));
   AssertVcsServerTexts;
 end;
 /// <summary>Kontext: Projekt und Gruppe Kasse, eine Zeile aus der .atlas.</summary>
@@ -454,14 +459,16 @@ begin
   Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProviderAuto), AList.Items[1].SubItems[0]);
   Assert.AreEqual('develop', AList.Items[1].SubItems[1]);
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectTeam), AList.Items[1].SubItems[2]);
-  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsCoveredHint), GSection.Projects.VcsProjectNote.Caption);
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsCoveredHint),
+    GSection.Projects.VcsProjectNote.Caption);
   Assert.IsTrue(GSection.Projects.VcsProjectMatch.Enabled);
   // Zeile aus der .atlas: nur ansehen.
   AList.Items[1].Selected := True;
   Assert.IsFalse(GSection.Projects.VcsProjectMatch.Enabled);
   Assert.IsFalse(GSection.Projects.VcsProjectProvider.Enabled);
   Assert.IsFalse(GSection.Projects.VcsProjectRemove.Enabled);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectReadOnly), GSection.Projects.VcsProjectNote.Caption);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectReadOnly),
+    GSection.Projects.VcsProjectNote.Caption);
 end;
 /// <summary>Aktuelles Projekt übernehmen, Hauptbranch prüfen, doppelten Pfad abweisen.</summary>
 procedure EditVcsProjectRows(AList: TListView);
@@ -481,14 +488,16 @@ begin
   Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsGuess), AList.Items[1].SubItems[1]);
   // Hauptbranch: Leerraum wird abgewiesen.
   GSection.Projects.VcsProjectMainBranch.Text := 'release 1';
-  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsBranchInvalid), GSection.Projects.VcsProjectNote.Caption);
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsBranchInvalid),
+    GSection.Projects.VcsProjectNote.Caption);
   Assert.AreEqual('', GSection.Projects.VcsProjects[1].MainBranch);
   GSection.Projects.VcsProjectMainBranch.Text := 'branches/develop';
   Assert.AreEqual('branches/develop', GSection.Projects.VcsProjects[1].MainBranch);
   Assert.AreEqual('branches/develop', AList.Items[1].SubItems[1]);
   // Derselbe Pfad zweimal wird nicht übernommen.
   GSection.Projects.VcsProjectMatch.Text := 'c:\projekte';
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectMatchTaken), GSection.Projects.VcsProjectNote.Caption);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectMatchTaken),
+    GSection.Projects.VcsProjectNote.Caption);
   Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', GSection.Projects.VcsProjects[1].Match);
 end;
 /// <summary>Nur persönliche Zeilen landen in vcs.projects.</summary>
@@ -582,7 +591,8 @@ procedure AssertVcsLoginRechecked(AList: TListView; const ACheck: TAtlasVcsServe
 var
   mCheck: TAtlasVcsServerCheck;
 begin
-  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerLoginOpen), GSection.Servers.VcsServerNote.Caption);
+  Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerLoginOpen),
+    GSection.Servers.VcsServerNote.Caption);
   Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerChecking), AList.Items[0].SubItems[1]);
   mCheck := ACheck;
   mCheck.State := TAtlasVcsServerState.Reachable;

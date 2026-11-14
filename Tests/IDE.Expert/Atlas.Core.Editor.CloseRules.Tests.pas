@@ -66,132 +66,132 @@ end;
 
 procedure TAtlasCloseRulesTests.NothingChangedKeepsAllOpen;
 var
-  Move: Boolean;
+  mMove: Boolean;
 begin
   Same(TAtlasCloseReason.None, TAtlasCloseRules.Popup(Opened, Opened));
-  Same(TAtlasCloseReason.None, TAtlasCloseRules.Hint(Opened, Opened, 120, Move));
-  Assert.IsFalse(Move);
+  Same(TAtlasCloseReason.None, TAtlasCloseRules.Hint(Opened, Opened, 120, mMove));
+  Assert.IsFalse(mMove);
   Same(TAtlasCloseReason.None, TAtlasCloseRules.Tooltip(Opened, Opened, False, False));
 end;
 
 procedure TAtlasCloseRulesTests.InactiveIdeClosesAll;
 var
-  Now: TAtlasEditorWindowState;
-  Move: Boolean;
+  mNow: TAtlasEditorWindowState;
+  mMove: Boolean;
 begin
   // Wechsel zu einer anderen Anwendung: kein Atlas-Fenster bleibt sichtbar, auch angeheftet nicht.
-  Now := Opened;
-  Now.AppActive := False;
-  Same(TAtlasCloseReason.Inactive, TAtlasCloseRules.Popup(Opened, Now));
-  Same(TAtlasCloseReason.Inactive, TAtlasCloseRules.Hint(Opened, Now, 120, Move));
-  Same(TAtlasCloseReason.Inactive, TAtlasCloseRules.Tooltip(Opened, Now, True, True));
+  mNow := Opened;
+  mNow.AppActive := False;
+  Same(TAtlasCloseReason.Inactive, TAtlasCloseRules.Popup(Opened, mNow));
+  Same(TAtlasCloseReason.Inactive, TAtlasCloseRules.Hint(Opened, mNow, 120, mMove));
+  Same(TAtlasCloseReason.Inactive, TAtlasCloseRules.Tooltip(Opened, mNow, True, True));
 end;
 
 procedure TAtlasCloseRulesTests.FocusElsewhereClosesAll;
 var
-  Now: TAtlasEditorWindowState;
-  Move: Boolean;
+  mNow: TAtlasEditorWindowState;
+  mMove: Boolean;
 begin
   // Objektinspektor oder Projektverwaltung im Fokus.
-  Now := Opened;
-  Now.Focus := 7;
-  Same(TAtlasCloseReason.FocusLost, TAtlasCloseRules.Popup(Opened, Now));
-  Same(TAtlasCloseReason.FocusLost, TAtlasCloseRules.Hint(Opened, Now, 120, Move));
-  Same(TAtlasCloseReason.FocusLost, TAtlasCloseRules.Tooltip(Opened, Now, False, False));
+  mNow := Opened;
+  mNow.Focus := 7;
+  Same(TAtlasCloseReason.FocusLost, TAtlasCloseRules.Popup(Opened, mNow));
+  Same(TAtlasCloseReason.FocusLost, TAtlasCloseRules.Hint(Opened, mNow, 120, mMove));
+  Same(TAtlasCloseReason.FocusLost, TAtlasCloseRules.Tooltip(Opened, mNow, False, False));
 end;
 
 procedure TAtlasCloseRulesTests.ResizeClosesAll;
 var
-  Now: TAtlasEditorWindowState;
-  Move: Boolean;
+  mNow: TAtlasEditorWindowState;
+  mMove: Boolean;
 begin
-  Now := Opened;
-  Now.Size := Point(700, 600);
-  Same(TAtlasCloseReason.Resized, TAtlasCloseRules.Popup(Opened, Now));
-  Same(TAtlasCloseReason.Resized, TAtlasCloseRules.Hint(Opened, Now, 120, Move));
-  Same(TAtlasCloseReason.Resized, TAtlasCloseRules.Tooltip(Opened, Now, False, False));
+  mNow := Opened;
+  mNow.Size := Point(700, 600);
+  Same(TAtlasCloseReason.Resized, TAtlasCloseRules.Popup(Opened, mNow));
+  Same(TAtlasCloseReason.Resized, TAtlasCloseRules.Hint(Opened, mNow, 120, mMove));
+  Same(TAtlasCloseReason.Resized, TAtlasCloseRules.Tooltip(Opened, mNow, False, False));
 end;
 
 procedure TAtlasCloseRulesTests.TabSwitchClosesAll;
 var
-  Now: TAtlasEditorWindowState;
-  Move: Boolean;
+  mNow: TAtlasEditorWindowState;
+  mMove: Boolean;
 begin
-  Now := Opened;
-  Now.FileName := 'C:\P\Unit2.pas';
-  Same(TAtlasCloseReason.OtherFile, TAtlasCloseRules.Popup(Opened, Now));
-  Same(TAtlasCloseReason.OtherFile, TAtlasCloseRules.Hint(Opened, Now, 120, Move));
-  Same(TAtlasCloseReason.OtherFile, TAtlasCloseRules.Tooltip(Opened, Now, False, False));
+  mNow := Opened;
+  mNow.FileName := 'C:\P\Unit2.pas';
+  Same(TAtlasCloseReason.OtherFile, TAtlasCloseRules.Popup(Opened, mNow));
+  Same(TAtlasCloseReason.OtherFile, TAtlasCloseRules.Hint(Opened, mNow, 120, mMove));
+  Same(TAtlasCloseReason.OtherFile, TAtlasCloseRules.Tooltip(Opened, mNow, False, False));
 end;
 
 procedure TAtlasCloseRulesTests.ScrollClosesPopupAndTooltip;
 var
-  Now: TAtlasEditorWindowState;
+  mNow: TAtlasEditorWindowState;
 begin
-  Now := Opened;
-  Now.TopRow := 103;
-  Same(TAtlasCloseReason.Scrolled, TAtlasCloseRules.Popup(Opened, Now));
-  Same(TAtlasCloseReason.Scrolled, TAtlasCloseRules.Tooltip(Opened, Now, False, False));
+  mNow := Opened;
+  mNow.TopRow := 103;
+  Same(TAtlasCloseReason.Scrolled, TAtlasCloseRules.Popup(Opened, mNow));
+  Same(TAtlasCloseReason.Scrolled, TAtlasCloseRules.Tooltip(Opened, mNow, False, False));
 end;
 
 procedure TAtlasCloseRulesTests.ScrollMovesHintWhileAnchorVisible;
 var
-  Now: TAtlasEditorWindowState;
-  Move: Boolean;
+  mNow: TAtlasEditorWindowState;
+  mMove: Boolean;
 begin
-  Now := Opened;
-  Now.TopRow := 110;
+  mNow := Opened;
+  mNow.TopRow := 110;
   // Sichtbar sind die Zeilen 110 bis 149.
-  Same(TAtlasCloseReason.None, TAtlasCloseRules.Hint(Opened, Now, 110, Move));
-  Assert.IsTrue(Move);
-  Same(TAtlasCloseReason.None, TAtlasCloseRules.Hint(Opened, Now, 149, Move));
-  Assert.IsTrue(Move);
+  Same(TAtlasCloseReason.None, TAtlasCloseRules.Hint(Opened, mNow, 110, mMove));
+  Assert.IsTrue(mMove);
+  Same(TAtlasCloseReason.None, TAtlasCloseRules.Hint(Opened, mNow, 149, mMove));
+  Assert.IsTrue(mMove);
 end;
 
 procedure TAtlasCloseRulesTests.ScrollClosesHintWhenAnchorOutOfView;
 var
-  Now: TAtlasEditorWindowState;
-  Move: Boolean;
+  mNow: TAtlasEditorWindowState;
+  mMove: Boolean;
 begin
   // Mehrzeiliger Aufruf: Der Caret steht noch im Bild, die Klammer mit dem Hint nicht mehr.
-  Now := Opened;
-  Now.TopRow := 110;
-  Same(TAtlasCloseReason.OutOfView, TAtlasCloseRules.Hint(Opened, Now, 109, Move));
-  Assert.IsFalse(Move);
-  Same(TAtlasCloseReason.OutOfView, TAtlasCloseRules.Hint(Opened, Now, 150, Move));
+  mNow := Opened;
+  mNow.TopRow := 110;
+  Same(TAtlasCloseReason.OutOfView, TAtlasCloseRules.Hint(Opened, mNow, 109, mMove));
+  Assert.IsFalse(mMove);
+  Same(TAtlasCloseReason.OutOfView, TAtlasCloseRules.Hint(Opened, mNow, 150, mMove));
 end;
 
 procedure TAtlasCloseRulesTests.PinnedOrHoveredTooltipStaysOnFocusChange;
 var
-  Now: TAtlasEditorWindowState;
+  mNow: TAtlasEditorWindowState;
 begin
-  Now := Opened;
-  Now.Focus := 7;
-  Same(TAtlasCloseReason.None, TAtlasCloseRules.Tooltip(Opened, Now, True, False));
-  Same(TAtlasCloseReason.None, TAtlasCloseRules.Tooltip(Opened, Now, False, True));
-  Now := Opened;
-  Now.FileName := 'C:\P\Unit2.pas';
-  Same(TAtlasCloseReason.None, TAtlasCloseRules.Tooltip(Opened, Now, True, False));
+  mNow := Opened;
+  mNow.Focus := 7;
+  Same(TAtlasCloseReason.None, TAtlasCloseRules.Tooltip(Opened, mNow, True, False));
+  Same(TAtlasCloseReason.None, TAtlasCloseRules.Tooltip(Opened, mNow, False, True));
+  mNow := Opened;
+  mNow.FileName := 'C:\P\Unit2.pas';
+  Same(TAtlasCloseReason.None, TAtlasCloseRules.Tooltip(Opened, mNow, True, False));
 end;
 
 procedure TAtlasCloseRulesTests.LeavingTheWordClosesPopup;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // "  Liste.Ad|": Wortanfang hinter dem Punkt (8), Cursor bei 10.
-  Same(TAtlasCloseReason.OtherLine, TAtlasCloseRules.PopupWord(False, '', 8, 0, Index));
-  Same(TAtlasCloseReason.BeforeWord, TAtlasCloseRules.PopupWord(True, '  Liste.Ad', 8, 7, Index));
-  Same(TAtlasCloseReason.NonIdentifier, TAtlasCloseRules.PopupWord(True, '  Liste.Ad ', 8, 11, Index));
-  Assert.AreEqual(11, Index);
-  Same(TAtlasCloseReason.NonIdentifier, TAtlasCloseRules.PopupWord(True, '  Liste.Ad(', 8, 11, Index));
+  Same(TAtlasCloseReason.OtherLine, TAtlasCloseRules.PopupWord(False, '', 8, 0, mIndex));
+  Same(TAtlasCloseReason.BeforeWord, TAtlasCloseRules.PopupWord(True, '  Liste.Ad', 8, 7, mIndex));
+  Same(TAtlasCloseReason.NonIdentifier, TAtlasCloseRules.PopupWord(True, '  Liste.Ad ', 8, 11, mIndex));
+  Assert.AreEqual(11, mIndex);
+  Same(TAtlasCloseReason.NonIdentifier, TAtlasCloseRules.PopupWord(True, '  Liste.Ad(', 8, 11, mIndex));
 end;
 
 procedure TAtlasCloseRulesTests.TypingIdentifierKeepsPopup;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Same(TAtlasCloseReason.None, TAtlasCloseRules.PopupWord(True, '  Liste.Add_2', 8, 13, Index));
-  Same(TAtlasCloseReason.None, TAtlasCloseRules.PopupWord(True, '  Liste.', 8, 8, Index));
+  Same(TAtlasCloseReason.None, TAtlasCloseRules.PopupWord(True, '  Liste.Add_2', 8, 13, mIndex));
+  Same(TAtlasCloseReason.None, TAtlasCloseRules.PopupWord(True, '  Liste.', 8, 8, mIndex));
 end;
 
 procedure TAtlasCloseRulesTests.TooltipHidesAfter300Ms;
@@ -201,7 +201,7 @@ end;
 
 procedure TAtlasCloseRulesTests.DelayedOpenOnlyWhileTypingIdentifier;
 var
-  Now_: TAtlasEditorWindowState;
+  mNow_: TAtlasEditorWindowState;
 begin
   // ARG-046: "List." ausgelöst an Zeichen 5, danach "Co" getippt: öffnen.
   Assert.IsTrue(TAtlasCloseRules.DelayedOpen(Opened, Opened, True, 'List.Co', 5, 7));
@@ -211,12 +211,12 @@ begin
   Assert.IsFalse(TAtlasCloseRules.DelayedOpen(Opened, Opened, True, 'List', 5, 4));
   Assert.IsFalse(TAtlasCloseRules.DelayedOpen(Opened, Opened, False, 'List.', 5, 5));
   // Fenster gewechselt oder gescrollt.
-  Now_ := Opened;
-  Now_.TopRow := 120;
-  Assert.IsFalse(TAtlasCloseRules.DelayedOpen(Opened, Now_, True, 'List.', 5, 5));
-  Now_ := Opened;
-  Now_.Focus := 7;
-  Assert.IsFalse(TAtlasCloseRules.DelayedOpen(Opened, Now_, True, 'List.', 5, 5));
+  mNow_ := Opened;
+  mNow_.TopRow := 120;
+  Assert.IsFalse(TAtlasCloseRules.DelayedOpen(Opened, mNow_, True, 'List.', 5, 5));
+  mNow_ := Opened;
+  mNow_.Focus := 7;
+  Assert.IsFalse(TAtlasCloseRules.DelayedOpen(Opened, mNow_, True, 'List.', 5, 5));
 end;
 
 initialization

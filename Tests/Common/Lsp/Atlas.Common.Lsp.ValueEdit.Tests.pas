@@ -53,39 +53,39 @@ uses
   Atlas.Common.Lsp.ValueEdit;
 
 const
-  LB = #13#10;
-  MainFile = 'C:\P\Kasse.pas';
+  cLB = #13#10;
+  cMainFile = 'C:\P\Kasse.pas';
 
-  UnitMain =
-    'unit Kasse;' + LB +
-    'interface' + LB +
-    'type' + LB +
-    '  TColor = -$7FFFFFFF-1..$7FFFFFFF;' + LB +
-    '  TModus = (mdAuto, mdHand, mdAus);' + LB +
-    '  {$SCOPEDENUMS ON}' + LB +
-    '  TArt = (Bar, Karte);' + LB +
-    '  {$SCOPEDENUMS OFF}' + LB +
-    '  TModi = set of TModus;' + LB +
-    '  TKasse = class' + LB +
-    '  private' + LB +
-    '    FBetrag: Currency;' + LB +
-    '    FName: string;' + LB +
-    '    procedure SetBetrag(AValue: Currency);' + LB +
-    '  public' + LB +
-    '    property Betrag: Currency read FBetrag write SetBetrag;' + LB +
-    '    property Name: string read FName write FName;' + LB +
-    '    property Laenge: Integer read GetLaenge;' + LB +
-    '  end;' + LB +
-    'implementation' + LB +                                       // 19
-    'procedure Probe(K: TKasse);' + LB +
-    'var' + LB +
-    '  N: Integer; B: Byte; W: Word; U: UInt64; D: Double; F: Boolean; C: Char; S: string;' + LB +
-    '  M: TModus; A: TArt; Mm: TModi; Farbe: TColor;' + LB +
-    'begin' + LB +
-    '  N := B + W; D := 1.5; F := not F; C := ''x''; S := S + ''y'';' + LB +   // 25
-    '  M := mdHand; A := TArt.Bar; Mm := [mdAuto]; Farbe := 0; U := 1;' + LB + // 26
-    '  K.Betrag := K.Betrag + 1; K.Name := ''a''; N := K.Laenge;' + LB +       // 27
-    'end;' + LB +
+  cUnitMain =
+    'unit Kasse;' + cLB +
+    'interface' + cLB +
+    'type' + cLB +
+    '  TColor = -$7FFFFFFF-1..$7FFFFFFF;' + cLB +
+    '  TModus = (mdAuto, mdHand, mdAus);' + cLB +
+    '  {$SCOPEDENUMS ON}' + cLB +
+    '  TArt = (Bar, Karte);' + cLB +
+    '  {$SCOPEDENUMS OFF}' + cLB +
+    '  TModi = set of TModus;' + cLB +
+    '  TKasse = class' + cLB +
+    '  private' + cLB +
+    '    FBetrag: Currency;' + cLB +
+    '    FName: string;' + cLB +
+    '    procedure SetBetrag(AValue: Currency);' + cLB +
+    '  public' + cLB +
+    '    property Betrag: Currency read FBetrag write SetBetrag;' + cLB +
+    '    property Name: string read FName write FName;' + cLB +
+    '    property Laenge: Integer read GetLaenge;' + cLB +
+    '  end;' + cLB +
+    'implementation' + cLB +                                       // 19
+    'procedure Probe(K: TKasse);' + cLB +
+    'var' + cLB +
+    '  N: Integer; B: Byte; W: Word; U: UInt64; D: Double; F: Boolean; C: Char; S: string;' + cLB +
+    '  M: TModus; A: TArt; Mm: TModi; Farbe: TColor;' + cLB +
+    'begin' + cLB +
+    '  N := B + W; D := 1.5; F := not F; C := ''x''; S := S + ''y'';' + cLB +   // 25
+    '  M := mdHand; A := TArt.Bar; Mm := [mdAuto]; Farbe := 0; U := 1;' + cLB + // 26
+    '  K.Betrag := K.Betrag + 1; K.Name := ''a''; N := K.Laenge;' + cLB +       // 27
+    'end;' + cLB +
     'end.';
 
 { TLspValueEditTests }
@@ -94,7 +94,7 @@ procedure TLspValueEditTests.Setup;
 begin
   FStore := TDocumentStore.Create;
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitMain, MainFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
 end;
 
 procedure TLspValueEditTests.TearDown;
@@ -109,9 +109,9 @@ var
   mArguments: TJSONArray;
   mReply: TJSONValue;
 begin
-  mUri := TDocumentUris.FromPath(MainFile);
+  mUri := TDocumentUris.FromPath(cMainFile);
   FStore.Close(mUri);
-  FStore.Open(mUri, 'delphi', 1, UnitMain);
+  FStore.Open(mUri, 'delphi', 1, cUnitMain);
   mArguments := TJSONArray.Create;
   try
     mArguments.Add(mUri);

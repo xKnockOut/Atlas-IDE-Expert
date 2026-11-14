@@ -41,95 +41,95 @@ uses
 
 procedure TAtlasDrawnElementsTests.EveryElementHasCatalogKey;
 var
-  Catalog, Properties, Entry: TJSONValue;
-  Element: TAtlasDrawnElement;
-  Key: string;
-  Value: Boolean;
-  Toggles: TArray<TAtlasQuickToggle>;
-  Toggle: TAtlasQuickToggle;
+  mCatalog, mProperties, mEntry: TJSONValue;
+  mElement: TAtlasDrawnElement;
+  mKey: string;
+  mValue: Boolean;
+  mToggles: TArray<TAtlasQuickToggle>;
+  mToggle: TAtlasQuickToggle;
 begin
-  Catalog := TJSONObject.ParseJSONValue(TAtlasQuickToggles.PluginCatalog);
+  mCatalog := TJSONObject.ParseJSONValue(TAtlasQuickToggles.PluginCatalog);
   try
-    Assert.IsTrue(Catalog is TJSONObject);
-    Properties := TJSONObject(Catalog).GetValue('properties');
-    Assert.IsTrue(Properties is TJSONObject);
-    for Element in TAtlasDrawnElements.All do
+    Assert.IsTrue(mCatalog is TJSONObject);
+    mProperties := TJSONObject(mCatalog).GetValue('properties');
+    Assert.IsTrue(mProperties is TJSONObject);
+    for mElement in TAtlasDrawnElements.All do
     begin
-      Key := TAtlasDrawnElements.SettingKey(Element);
-      Assert.AreNotEqual('', Key, 'Element ohne Schlüssel');
-      Entry := TJSONObject(Properties).GetValue(Key);
-      Assert.IsTrue(Entry is TJSONObject, 'nicht im Katalog: ' + Key);
+      mKey := TAtlasDrawnElements.SettingKey(mElement);
+      Assert.AreNotEqual('', mKey, 'Element ohne Schlüssel');
+      mEntry := TJSONObject(mProperties).GetValue(mKey);
+      Assert.IsTrue(mEntry is TJSONObject, 'nicht im Katalog: ' + mKey);
       // Auswahl mit "off" (Fehlertext am Zeilenende #509): „Überall“ setzt "off"; „Alles aus“ erfasst sie über
       // die Problem-Markierungen, von denen sie abhängt.
-      if TJSONObject(Entry).GetValue<string>('type', '') = 'string' then
+      if TJSONObject(mEntry).GetValue<string>('type', '') = 'string' then
       begin
-        Assert.IsTrue(Pos('"off"', TJSONObject(Entry).GetValue('enum').ToJSON) > 0, 'Auswahl ohne off: ' + Key);
-        Assert.IsTrue(TAtlasHide.IsOn(TAtlasPluginSettings.Defaults, Key), 'standardmäßig aus: ' + Key);
+        Assert.IsTrue(Pos('"off"', TJSONObject(mEntry).GetValue('enum').ToJSON) > 0, 'Auswahl ohne off: ' + mKey);
+        Assert.IsTrue(TAtlasHide.IsOn(TAtlasPluginSettings.Defaults, mKey), 'standardmäßig aus: ' + mKey);
         Continue;
       end;
-      Assert.IsTrue(TJSONObject(Entry).GetValue('x-drawing') is TJSONBool, 'ohne x-drawing: ' + Key);
-      Assert.IsTrue(TJSONBool(TJSONObject(Entry).GetValue('x-drawing')).AsBoolean, 'keine Zeichnung: ' + Key);
+      Assert.IsTrue(TJSONObject(mEntry).GetValue('x-drawing') is TJSONBool, 'ohne x-drawing: ' + mKey);
+      Assert.IsTrue(TJSONBool(TJSONObject(mEntry).GetValue('x-drawing')).AsBoolean, 'keine Zeichnung: ' + mKey);
       // Über den Namen schaltbar: „Überall ausblenden“ setzt genau diesen Wert.
-      Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, Key, Value), 'keine Einstellung: ' + Key);
+      Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, mKey, mValue), 'keine Einstellung: ' + mKey);
     end;
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
   // Umgekehrt: jede Zeichnung im Katalog ist ein bekanntes Element.
-  Toggles := TAtlasQuickToggles.Build(TAtlasQuickToggles.PluginCatalog, '');
-  for Toggle in Toggles do
+  mToggles := TAtlasQuickToggles.Build(TAtlasQuickToggles.PluginCatalog, '');
+  for mToggle in mToggles do
   begin
-    if Toggle.Drawing then
+    if mToggle.Drawing then
     begin
-      Assert.IsTrue(TAtlasDrawnElements.ForSetting(Toggle.Key, Element), 'Zeichnung ohne Element: ' + Toggle.Key);
+      Assert.IsTrue(TAtlasDrawnElements.ForSetting(mToggle.Key, mElement), 'Zeichnung ohne Element: ' + mToggle.Key);
     end;
   end;
 end;
 
 procedure TAtlasDrawnElementsTests.KeysAreUniqueAndFindable;
 var
-  Element, Found: TAtlasDrawnElement;
-  Seen: TList<string>;
-  Key: string;
+  mElement, mFound: TAtlasDrawnElement;
+  mSeen: TList<string>;
+  mKey: string;
 begin
-  Seen := TList<string>.Create;
+  mSeen := TList<string>.Create;
   try
-    for Element in TAtlasDrawnElements.All do
+    for mElement in TAtlasDrawnElements.All do
     begin
-      Key := LowerCase(TAtlasDrawnElements.SettingKey(Element));
-      Assert.IsFalse(Seen.Contains(Key), 'doppelt: ' + Key);
-      Seen.Add(Key);
-      Assert.IsTrue(TAtlasDrawnElements.ForSetting(UpperCase(Key), Found));
-      Assert.AreEqual<TAtlasDrawnElement>(Element, Found, Key);
+      mKey := LowerCase(TAtlasDrawnElements.SettingKey(mElement));
+      Assert.IsFalse(mSeen.Contains(mKey), 'doppelt: ' + mKey);
+      mSeen.Add(mKey);
+      Assert.IsTrue(TAtlasDrawnElements.ForSetting(UpperCase(mKey), mFound));
+      Assert.AreEqual<TAtlasDrawnElement>(mElement, mFound, mKey);
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
-  Assert.IsFalse(TAtlasDrawnElements.ForSetting('GibtEsNicht', Found));
+  Assert.IsFalse(TAtlasDrawnElements.ForSetting('GibtEsNicht', mFound));
   // Abnahme: die Blockende-Beschriftung hat den Schlüssel editor.blockEndLabels (Registry BlockEndLabels).
   Assert.AreEqual('BlockEndLabels', TAtlasDrawnElements.SettingKey(TAtlasDrawnElement.BlockEndLabels));
 end;
 
 procedure TAtlasDrawnElementsTests.ScopesFitTheElements;
 var
-  Element: TAtlasDrawnElement;
-  Info: TAtlasDrawnElementInfo;
+  mElement: TAtlasDrawnElement;
+  mInfo: TAtlasDrawnElementInfo;
 begin
-  for Element in TAtlasDrawnElements.All do
+  for mElement in TAtlasDrawnElements.All do
   begin
-    Info := TAtlasDrawnElements.Info(Element);
-    Assert.AreEqual<TAtlasDrawnElement>(Element, Info.Element);
+    mInfo := TAtlasDrawnElements.Info(mElement);
+    Assert.AreEqual<TAtlasDrawnElement>(mElement, mInfo.Element);
     // „Überall“ gibt es immer: es setzt die Einstellung aus.
-    Assert.IsTrue(TAtlasHideScope.Everywhere in Info.Scopes, Info.SettingKey);
-    Assert.IsFalse(Info.Overlay and Info.Gutter, Info.SettingKey);
+    Assert.IsTrue(TAtlasHideScope.Everywhere in mInfo.Scopes, mInfo.SettingKey);
+    Assert.IsFalse(mInfo.Overlay and mInfo.Gutter, mInfo.SettingKey);
   end;
-  Info := TAtlasDrawnElements.Info(TAtlasDrawnElement.BlockEndLabels);
-  Assert.IsTrue(Info.Overlay);
+  mInfo := TAtlasDrawnElements.Info(TAtlasDrawnElement.BlockEndLabels);
+  Assert.IsTrue(mInfo.Overlay);
   Assert.AreEqual<TAtlasHideScopes>([TAtlasHideScope.Here, TAtlasHideScope.InFile, TAtlasHideScope.Everywhere],
-    Info.Scopes);
-  Info := TAtlasDrawnElements.Info(TAtlasDrawnElement.Problems);
-  Assert.IsFalse(Info.Overlay);
-  Assert.IsTrue(TAtlasHideScope.Here in Info.Scopes);
+    mInfo.Scopes);
+  mInfo := TAtlasDrawnElements.Info(TAtlasDrawnElement.Problems);
+  Assert.IsFalse(mInfo.Overlay);
+  Assert.IsTrue(TAtlasHideScope.Here in mInfo.Scopes);
   Assert.IsTrue(TAtlasDrawnElements.Info(TAtlasDrawnElement.Notes).Gutter);
   Assert.IsTrue(TAtlasDrawnElements.Info(TAtlasDrawnElement.Bookmarks).Gutter);
   // Spalte der schnellen Lesezeichen (#1104).
@@ -140,24 +140,24 @@ end;
 
 procedure TAtlasDrawnElementsTests.WelcomeSectionsKnowTheirSetting;
 var
-  Id, Key: string;
-  Store: IAtlasMemorySettingsStore;
-  Names: TArray<string>;
-  Name: string;
-  Found: Boolean;
+  mId, mKey: string;
+  mStore: IAtlasMemorySettingsStore;
+  mNames: TArray<string>;
+  mName: string;
+  mFound: Boolean;
 begin
-  Store := TAtlasMemorySettingsStore.FromSettings(TAtlasPluginSettings.Defaults);
-  Names := Store.Names;
-  for Id in TAtlasDrawnElements.KnownSections do
+  mStore := TAtlasMemorySettingsStore.FromSettings(TAtlasPluginSettings.Defaults);
+  mNames := mStore.Names;
+  for mId in TAtlasDrawnElements.KnownSections do
   begin
-    Key := TAtlasDrawnElements.SectionSetting(Id);
-    Assert.AreNotEqual('', Key, Id);
-    Found := False;
-    for Name in Names do
+    mKey := TAtlasDrawnElements.SectionSetting(mId);
+    Assert.AreNotEqual('', mKey, mId);
+    mFound := False;
+    for mName in mNames do
     begin
-      Found := Found or SameText(Name, Key);
+      mFound := mFound or SameText(mName, mKey);
     end;
-    Assert.IsTrue(Found, 'keine Einstellung: ' + Key);
+    Assert.IsTrue(mFound, 'keine Einstellung: ' + mKey);
   end;
   Assert.AreEqual('WelcomePageStatusTile', TAtlasDrawnElements.SectionSetting(TAtlasWelcomeIds.cState));
   Assert.AreEqual('WelcomePageProjectStatus', TAtlasDrawnElements.SectionSetting(TAtlasWelcomeIds.cProjects));

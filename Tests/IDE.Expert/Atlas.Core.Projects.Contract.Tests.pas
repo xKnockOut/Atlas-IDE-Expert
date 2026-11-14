@@ -62,99 +62,99 @@ end;
 
 procedure TAtlasProjectContextTests.KeyChangesWithEveryField;
 var
-  Base, Changed: TAtlasProjectContext;
+  mBase, mChanged: TAtlasProjectContext;
 begin
-  Base := Sample;
-  Changed := Sample;
-  Assert.AreEqual(Base.Key, Changed.Key);
-  Changed.Project := 'c:\p\a.dproj';
-  Assert.AreEqual(Base.Key, Changed.Key, 'Pfad ohne Groß-/Kleinschreibung');
-  Changed := Sample;
-  Changed.Configuration := 'Release';
-  Assert.AreNotEqual(Base.Key, Changed.Key);
-  Changed := Sample;
-  Changed.Platform := 'Win64';
-  Assert.AreNotEqual(Base.Key, Changed.Key);
-  Changed := Sample;
-  Changed.Defines := ['DEBUG', 'TRACE'];
-  Assert.AreNotEqual(Base.Key, Changed.Key);
-  Changed := Sample;
-  Changed.SearchPaths := nil;
-  Assert.AreNotEqual(Base.Key, Changed.Key);
-  Changed := Sample;
-  Changed.LibraryPaths := ['$(BDSLIB)\$(Platform)\release'];
-  Assert.AreNotEqual(Base.Key, Changed.Key);
+  mBase := Sample;
+  mChanged := Sample;
+  Assert.AreEqual(mBase.Key, mChanged.Key);
+  mChanged.Project := 'c:\p\a.dproj';
+  Assert.AreEqual(mBase.Key, mChanged.Key, 'Pfad ohne Groß-/Kleinschreibung');
+  mChanged := Sample;
+  mChanged.Configuration := 'Release';
+  Assert.AreNotEqual(mBase.Key, mChanged.Key);
+  mChanged := Sample;
+  mChanged.Platform := 'Win64';
+  Assert.AreNotEqual(mBase.Key, mChanged.Key);
+  mChanged := Sample;
+  mChanged.Defines := ['DEBUG', 'TRACE'];
+  Assert.AreNotEqual(mBase.Key, mChanged.Key);
+  mChanged := Sample;
+  mChanged.SearchPaths := nil;
+  Assert.AreNotEqual(mBase.Key, mChanged.Key);
+  mChanged := Sample;
+  mChanged.LibraryPaths := ['$(BDSLIB)\$(Platform)\release'];
+  Assert.AreNotEqual(mBase.Key, mChanged.Key);
   // Präfix-Vorgabe der Projektdatei (#452), auch eine leere.
-  Changed := Sample;
-  Changed.HasNaming[TAtlasProjectNamingKind.Field] := True;
-  Assert.AreNotEqual(Base.Key, Changed.Key);
-  Base := Changed;
-  Changed.Naming[TAtlasProjectNamingKind.Field] := 'F';
-  Assert.AreNotEqual(Base.Key, Changed.Key);
+  mChanged := Sample;
+  mChanged.HasNaming[TAtlasProjectNamingKind.Field] := True;
+  Assert.AreNotEqual(mBase.Key, mChanged.Key);
+  mBase := mChanged;
+  mChanged.Naming[TAtlasProjectNamingKind.Field] := 'F';
+  Assert.AreNotEqual(mBase.Key, mChanged.Key);
   // Wechsel des aktiven Projekts (#46).
-  Changed := Sample;
-  Changed.Active := True;
-  Assert.AreNotEqual(Sample.Key, Changed.Key);
+  mChanged := Sample;
+  mChanged.Active := True;
+  Assert.AreNotEqual(Sample.Key, mChanged.Key);
   // Eigene Formatroutine der Projektdatei (#451).
-  Changed := Sample;
-  SetLength(Changed.FormatFunctions, 1);
-  Changed.FormatFunctions[0].Name := 'Log';
-  Changed.FormatFunctions[0].FormatIndex := 0;
-  Assert.AreNotEqual(Sample.Key, Changed.Key);
+  mChanged := Sample;
+  SetLength(mChanged.FormatFunctions, 1);
+  mChanged.FormatFunctions[0].Name := 'Log';
+  mChanged.FormatFunctions[0].FormatIndex := 0;
+  Assert.AreNotEqual(Sample.Key, mChanged.Key);
 end;
 
 procedure TAtlasProjectContextTests.WritesJson;
 var
-  Json: TJSONObject;
-  Context: TAtlasProjectContext;
+  mJson: TJSONObject;
+  mContext: TAtlasProjectContext;
 begin
-  Json := Sample.ToJson;
+  mJson := Sample.ToJson;
   try
-    Assert.AreEqual('C:\P\A.dproj', Json.GetValue<string>('project'));
-    Assert.AreEqual('Win32', Json.GetValue<string>('platform'));
-    Assert.AreEqual('23.0', Json.GetValue<string>('bdsVersion'));
-    Assert.AreEqual('["DEBUG"]', Json.GetValue<TJSONArray>('defines').ToJSON);
-    Assert.AreEqual('["System","Vcl"]', Json.GetValue<TJSONArray>('namespaces').ToJSON);
+    Assert.AreEqual('C:\P\A.dproj', mJson.GetValue<string>('project'));
+    Assert.AreEqual('Win32', mJson.GetValue<string>('platform'));
+    Assert.AreEqual('23.0', mJson.GetValue<string>('bdsVersion'));
+    Assert.AreEqual('["DEBUG"]', mJson.GetValue<TJSONArray>('defines').ToJSON);
+    Assert.AreEqual('["System","Vcl"]', mJson.GetValue<TJSONArray>('namespaces').ToJSON);
     // Ohne Bibliothekspfade nimmt der Server die der Installation.
-    Assert.IsNull(Json.FindValue('libraryPaths'));
-    Assert.IsNull(Json.FindValue('naming'));
-    Assert.AreEqual('false', Json.GetValue('active').ToJSON);
+    Assert.IsNull(mJson.FindValue('libraryPaths'));
+    Assert.IsNull(mJson.FindValue('naming'));
+    Assert.AreEqual('false', mJson.GetValue('active').ToJSON);
   finally
-    Json.Free;
+    mJson.Free;
   end;
   // Präfix-Vorgaben der Projektdatei (#452): nur die gesetzten, auch leer.
-  Context := Sample;
-  Context.HasNaming[TAtlasProjectNamingKind.Field] := True;
-  Context.Naming[TAtlasProjectNamingKind.Field] := 'F';
-  Context.HasNaming[TAtlasProjectNamingKind.Local] := True;
+  mContext := Sample;
+  mContext.HasNaming[TAtlasProjectNamingKind.Field] := True;
+  mContext.Naming[TAtlasProjectNamingKind.Field] := 'F';
+  mContext.HasNaming[TAtlasProjectNamingKind.Local] := True;
   // Konstanten für naming-prefix (#1111).
-  Context.HasNaming[TAtlasProjectNamingKind.Constant] := True;
-  Context.Naming[TAtlasProjectNamingKind.Constant] := 'c';
-  Json := Context.ToJson;
+  mContext.HasNaming[TAtlasProjectNamingKind.Constant] := True;
+  mContext.Naming[TAtlasProjectNamingKind.Constant] := 'c';
+  mJson := mContext.ToJson;
   try
-    Assert.AreEqual('{"field":"F","local":"","constant":"c"}', Json.GetValue<TJSONObject>('naming').ToJSON);
+    Assert.AreEqual('{"field":"F","local":"","constant":"c"}', mJson.GetValue<TJSONObject>('naming').ToJSON);
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Context := Sample;
-  Context.Active := True;
-  Json := Context.ToJson;
+  mContext := Sample;
+  mContext.Active := True;
+  mJson := mContext.ToJson;
   try
-    Assert.AreEqual('true', Json.GetValue('active').ToJSON);
-    Assert.IsNull(Json.FindValue('formatFunctions'));
+    Assert.AreEqual('true', mJson.GetValue('active').ToJSON);
+    Assert.IsNull(mJson.FindValue('formatFunctions'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
   // Formatroutinen der Projektdatei (#451).
-  Context := Sample;
-  SetLength(Context.FormatFunctions, 1);
-  Context.FormatFunctions[0].Name := 'Log';
-  Context.FormatFunctions[0].FormatIndex := 1;
-  Json := Context.ToJson;
+  mContext := Sample;
+  SetLength(mContext.FormatFunctions, 1);
+  mContext.FormatFunctions[0].Name := 'Log';
+  mContext.FormatFunctions[0].FormatIndex := 1;
+  mJson := mContext.ToJson;
   try
-    Assert.AreEqual('[{"name":"Log","formatIndex":1}]', Json.GetValue<TJSONArray>('formatFunctions').ToJSON);
+    Assert.AreEqual('[{"name":"Log","formatIndex":1}]', mJson.GetValue<TJSONArray>('formatFunctions').ToJSON);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
@@ -172,16 +172,16 @@ end;
 
 procedure TAtlasProjectContextTests.DescribesForTheLog;
 var
-  Context: TAtlasProjectContext;
+  mContext: TAtlasProjectContext;
 begin
-  Context := Sample;
-  Context.Source := TAtlasProjectContext.cSourceConfiguration;
+  mContext := Sample;
+  mContext.Source := TAtlasProjectContext.cSourceConfiguration;
   Assert.AreEqual('A.dproj Debug/Win32 (Konfiguration, BDS 23.0): Defines DEBUG; 1 Suchpfade, 2 Namespaces, ' +
-    '0 Bibliothekspfade', Context.Describe);
+    '0 Bibliothekspfade', mContext.Describe);
   // Die Herkunft gehört nur ins Protokoll: Der Server bekommt deshalb nichts Neues.
-  Assert.AreEqual(Sample.Key, Context.Key);
-  Context.Active := True;
-  Assert.IsTrue(Context.Describe.EndsWith(', aktiv'), Context.Describe);
+  Assert.AreEqual(Sample.Key, mContext.Key);
+  mContext.Active := True;
+  Assert.IsTrue(mContext.Describe.EndsWith(', aktiv'), mContext.Describe);
 end;
 
 initialization

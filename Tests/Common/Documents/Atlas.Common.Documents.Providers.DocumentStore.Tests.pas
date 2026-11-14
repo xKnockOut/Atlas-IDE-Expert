@@ -42,11 +42,11 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore;
 
 const
-  UriA = 'file:///c%3A/a.pas';
-  UriB = 'file:///c%3A/b.pas';
+  cUriA = 'file:///c%3A/a.pas';
+  cUriB = 'file:///c%3A/b.pas';
 
 const
-  EventNames: array[TDocumentEventKind] of string = ('Opened', 'Changed', 'Saved', 'Closed');
+  cEventNames: array[TDocumentEventKind] of string = ('Opened', 'Changed', 'Saved', 'Closed');
 
 { TDocumentStoreTests }
 
@@ -57,7 +57,7 @@ begin
   FStore.Subscribe(
     procedure(AKind: TDocumentEventKind; const ADocument: ITextDocument)
     begin
-      FEvents := FEvents + [Format('%s %s %d', [EventNames[AKind], ADocument.Uri, ADocument.Version])];
+      FEvents := FEvents + [Format('%s %s %d', [cEventNames[AKind], ADocument.Uri, ADocument.Version])];
     end);
 end;
 
@@ -70,24 +70,24 @@ end;
 
 procedure TDocumentStoreTests.OpensAndFindsDocument;
 var
-  Document: ITextDocument;
+  mDocument: ITextDocument;
 begin
-  FStore.Open(UriA, 'pascal', 1, 'unit A;');
-  Assert.IsTrue(FStore.TryGet(UriA, Document));
-  Assert.AreEqual('unit A;', Document.Text);
-  Assert.AreEqual('pascal', Document.LanguageId);
-  Assert.IsFalse(FStore.TryGet(UriB, Document));
+  FStore.Open(cUriA, 'pascal', 1, 'unit A;');
+  Assert.IsTrue(FStore.TryGet(cUriA, mDocument));
+  Assert.AreEqual('unit A;', mDocument.Text);
+  Assert.AreEqual('pascal', mDocument.LanguageId);
+  Assert.IsFalse(FStore.TryGet(cUriB, mDocument));
 end;
 
 procedure TDocumentStoreTests.ChangeAppliesChangesAndVersion;
 var
-  Document: ITextDocument;
+  mDocument: ITextDocument;
 begin
-  FStore.Open(UriA, 'pascal', 1, 'unit A;');
-  FStore.Change(UriA, 2, [TTextChange.Ranged(TTextRange.Create(0, 5, 0, 6), 'B')]);
-  Assert.IsTrue(FStore.TryGet(UriA, Document));
-  Assert.AreEqual('unit B;', Document.Text);
-  Assert.AreEqual(2, Document.Version);
+  FStore.Open(cUriA, 'pascal', 1, 'unit A;');
+  FStore.Change(cUriA, 2, [TTextChange.Ranged(TTextRange.Create(0, 5, 0, 6), 'B')]);
+  Assert.IsTrue(FStore.TryGet(cUriA, mDocument));
+  Assert.AreEqual('unit B;', mDocument.Text);
+  Assert.AreEqual(2, mDocument.Version);
 end;
 
 procedure TDocumentStoreTests.ChangeOfUnknownDocumentRaises;
@@ -95,59 +95,59 @@ begin
   Assert.WillRaise(
     procedure
     begin
-      FStore.Change(UriA, 2, [TTextChange.Full('x')]);
+      FStore.Change(cUriA, 2, [TTextChange.Full('x')]);
     end,
     EDocumentError);
 end;
 
 procedure TDocumentStoreTests.CloseRemovesDocument;
 var
-  Document: ITextDocument;
+  mDocument: ITextDocument;
 begin
-  FStore.Open(UriA, 'pascal', 1, 'unit A;');
-  FStore.Close(UriA);
-  Assert.IsFalse(FStore.TryGet(UriA, Document));
+  FStore.Open(cUriA, 'pascal', 1, 'unit A;');
+  FStore.Close(cUriA);
+  Assert.IsFalse(FStore.TryGet(cUriA, mDocument));
 end;
 
 procedure TDocumentStoreTests.IgnoresSaveAndCloseOfUnknownDocument;
 begin
-  FStore.Save(UriA);
-  FStore.Close(UriA);
+  FStore.Save(cUriA);
+  FStore.Close(cUriA);
   Assert.AreEqual<NativeInt>(0, Length(FEvents));
 end;
 
 procedure TDocumentStoreTests.ReportsEventsPerDocument;
 begin
-  FStore.Open(UriA, 'pascal', 1, 'a');
-  FStore.Open(UriB, 'pascal', 1, 'b');
-  FStore.Change(UriA, 2, [TTextChange.Full('aa')]);
-  FStore.Save(UriA);
-  FStore.Close(UriB);
+  FStore.Open(cUriA, 'pascal', 1, 'a');
+  FStore.Open(cUriB, 'pascal', 1, 'b');
+  FStore.Change(cUriA, 2, [TTextChange.Full('aa')]);
+  FStore.Save(cUriA);
+  FStore.Close(cUriB);
   Assert.AreEqual<NativeInt>(5, Length(FEvents));
-  Assert.AreEqual('Opened ' + UriA + ' 1', FEvents[0]);
-  Assert.AreEqual('Opened ' + UriB + ' 1', FEvents[1]);
-  Assert.AreEqual('Changed ' + UriA + ' 2', FEvents[2]);
-  Assert.AreEqual('Saved ' + UriA + ' 2', FEvents[3]);
-  Assert.AreEqual('Closed ' + UriB + ' 1', FEvents[4]);
+  Assert.AreEqual('Opened ' + cUriA + ' 1', FEvents[0]);
+  Assert.AreEqual('Opened ' + cUriB + ' 1', FEvents[1]);
+  Assert.AreEqual('Changed ' + cUriA + ' 2', FEvents[2]);
+  Assert.AreEqual('Saved ' + cUriA + ' 2', FEvents[3]);
+  Assert.AreEqual('Closed ' + cUriB + ' 1', FEvents[4]);
 end;
 
 procedure TDocumentStoreTests.ListsOpenDocuments;
 begin
-  FStore.Open(UriA, 'pascal', 1, 'a');
-  FStore.Open(UriB, 'pascal', 1, 'b');
-  FStore.Close(UriA);
+  FStore.Open(cUriA, 'pascal', 1, 'a');
+  FStore.Open(cUriB, 'pascal', 1, 'b');
+  FStore.Close(cUriA);
   Assert.AreEqual<NativeInt>(1, Length(FStore.Documents));
-  Assert.AreEqual(UriB, FStore.Documents[0].Uri);
+  Assert.AreEqual(cUriB, FStore.Documents[0].Uri);
 end;
 
 procedure TDocumentStoreTests.FindsDocumentUnderOtherSpelling;
 var
-  Document: ITextDocument;
+  mDocument: ITextDocument;
 begin
   FStore.Open('file:///c%3A/Projekt/%C3%84.pas', 'pascal', 1, 'a');
-  Assert.IsTrue(FStore.TryGet('file:///C:/projekt/' + #$00E4 + '.pas', Document));
+  Assert.IsTrue(FStore.TryGet('file:///C:/projekt/' + #$00E4 + '.pas', mDocument));
   // Das Dokument behält die URI des Clients.
-  Assert.AreEqual('file:///c%3A/Projekt/%C3%84.pas', Document.Uri);
+  Assert.AreEqual('file:///c%3A/Projekt/%C3%84.pas', mDocument.Uri);
   FStore.Change('file:///C:/Projekt/%C3%84.pas', 2, [TTextChange.Full('b')]);
   Assert.AreEqual<NativeInt>(1, Length(FStore.Documents));
   FStore.Close('file:///C:/PROJEKT/%C3%84.pas');

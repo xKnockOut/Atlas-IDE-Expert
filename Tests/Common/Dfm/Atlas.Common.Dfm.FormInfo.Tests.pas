@@ -34,7 +34,7 @@ uses
   Atlas.Common.Dfm.FormInfo;
 
 const
-  FormText =
+  cFormText =
     'object Form1: TForm1'#10 +
     '  Caption = ''Haupt'''#10 +
     '  object btnSpeichern: TButton'#10 +
@@ -61,35 +61,35 @@ const
 
 function Markdown(const AName: string): string;
 var
-  Document: TDfmDocument;
+  mDocument: TDfmDocument;
 begin
-  Document := TDfmParser.Parse(FormText);
+  mDocument := TDfmParser.Parse(cFormText);
   try
-    Result := TFormInfo.ComponentMarkdown(TFormInfo.FindComponent(Document, 'TForm1', AName), 'C:\P\Unit1.dfm');
+    Result := TFormInfo.ComponentMarkdown(TFormInfo.FindComponent(mDocument, 'TForm1', AName), 'C:\P\Unit1.dfm');
   finally
-    Document.Free;
+    mDocument.Free;
   end;
 end;
 
 procedure TFormInfoTests.ShowsPropertiesEventsAndLink;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Markdown('btnSpeichern');
-  Assert.AreEqual(1, Pos('**In Unit1.dfm** ([Zeile 3](file:///', Text), Text);
-  Assert.IsTrue(Pos('#L3)', Text) > 0, Text);
-  Assert.IsTrue(Pos('- Caption = `''Speichern''`', Text) > 0, Text);
-  Assert.IsTrue(Pos('- OnClick → `btnSpeichernClick`', Text) > 0, Text);
-  Assert.IsTrue(Pos('- Left = `8`', Text) > 0, Text);
+  mText := Markdown('btnSpeichern');
+  Assert.AreEqual(1, Pos('**In Unit1.dfm** ([Zeile 3](file:///', mText), mText);
+  Assert.IsTrue(Pos('#L3)', mText) > 0, mText);
+  Assert.IsTrue(Pos('- Caption = `''Speichern''`', mText) > 0, mText);
+  Assert.IsTrue(Pos('- OnClick → `btnSpeichernClick`', mText) > 0, mText);
+  Assert.IsTrue(Pos('- Left = `8`', mText) > 0, mText);
 end;
 
 procedure TFormInfoTests.PictureDataShowsSize;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Markdown('Bild');
-  Assert.IsTrue(Pos('- Picture.Data = `Bild, 13 Bytes`', Text) > 0, Text);
-  Assert.AreEqual(0, Pos('4A504547', Text), 'keine Hex-Daten');
+  mText := Markdown('Bild');
+  Assert.IsTrue(Pos('- Picture.Data = `Bild, 13 Bytes`', mText) > 0, mText);
+  Assert.AreEqual(0, Pos('4A504547', mText), 'keine Hex-Daten');
 end;
 
 procedure TFormInfoTests.OtherBinaryDataShowsSize;
@@ -99,43 +99,43 @@ end;
 
 procedure TFormInfoTests.LongListIsShortened;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Markdown('Liste');
-  Assert.IsTrue(Pos('''9'' ''10'' … 2 weitere)', Text) > 0, Text);
-  Assert.AreEqual(0, Pos('''11''', Text), Text);
+  mText := Markdown('Liste');
+  Assert.IsTrue(Pos('''9'' ''10'' … 2 weitere)', mText) > 0, mText);
+  Assert.AreEqual(0, Pos('''11''', mText), mText);
 end;
 
 procedure TFormInfoTests.HoverAndDescribeAgree;
 var
-  Described: string;
+  mDescribed: string;
 begin
   // get_dfm_info und Hover zeigen dieselben Werte.
-  Described := TFormInfo.Describe(FormText);
-  Assert.IsTrue(Pos('Picture.Data = Bild, 13 Bytes', Described) > 0, Described);
-  Assert.IsTrue(Pos('Caption = ''Speichern''', Described) > 0, Described);
-  Assert.IsTrue(Pos('… 2 weitere)', Described) > 0, Described);
-  Assert.IsTrue(Pos('Ereignisse: OnClick → btnSpeichernClick', Described) > 0, Described);
+  mDescribed := TFormInfo.Describe(cFormText);
+  Assert.IsTrue(Pos('Picture.Data = Bild, 13 Bytes', mDescribed) > 0, mDescribed);
+  Assert.IsTrue(Pos('Caption = ''Speichern''', mDescribed) > 0, mDescribed);
+  Assert.IsTrue(Pos('… 2 weitere)', mDescribed) > 0, mDescribed);
+  Assert.IsTrue(Pos('Ereignisse: OnClick → btnSpeichernClick', mDescribed) > 0, mDescribed);
 end;
 
 procedure TFormInfoTests.FindsOnlyInMatchingForm;
 var
-  Document: TDfmDocument;
+  mDocument: TDfmDocument;
 begin
-  Document := TDfmParser.Parse(FormText);
+  mDocument := TDfmParser.Parse(cFormText);
   try
-    Assert.IsNotNull(TFormInfo.FindComponent(Document, 'TForm1', 'Liste'));
-    Assert.IsNull(TFormInfo.FindComponent(Document, 'TAnders', 'Liste'));
-    Assert.IsNull(TFormInfo.FindComponent(Document, 'TForm1', 'Fehlt'));
+    Assert.IsNotNull(TFormInfo.FindComponent(mDocument, 'TForm1', 'Liste'));
+    Assert.IsNull(TFormInfo.FindComponent(mDocument, 'TAnders', 'Liste'));
+    Assert.IsNull(TFormInfo.FindComponent(mDocument, 'TForm1', 'Fehlt'));
   finally
-    Document.Free;
+    mDocument.Free;
   end;
 end;
 
 procedure TFormInfoTests.FieldMarkdownParsesTheForm;
 begin
-  Assert.AreEqual(Markdown('Liste'), TFormInfo.FieldMarkdown(FormText, 'C:\P\Unit1.dfm', 'TForm1', 'Liste'));
-  Assert.AreEqual('', TFormInfo.FieldMarkdown(FormText, 'C:\P\Unit1.dfm', 'TAnders', 'Liste'));
+  Assert.AreEqual(Markdown('Liste'), TFormInfo.FieldMarkdown(cFormText, 'C:\P\Unit1.dfm', 'TForm1', 'Liste'));
+  Assert.AreEqual('', TFormInfo.FieldMarkdown(cFormText, 'C:\P\Unit1.dfm', 'TAnders', 'Liste'));
   Assert.AreEqual('', TFormInfo.FieldMarkdown('', 'C:\P\Unit1.dfm', 'TForm1', 'Liste'));
 end;
 

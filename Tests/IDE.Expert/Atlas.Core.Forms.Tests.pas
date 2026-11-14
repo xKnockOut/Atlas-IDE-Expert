@@ -60,11 +60,11 @@ uses
 
 procedure TTestRoot.GetChildren(Proc: TGetChildProc; Root: TComponent);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to ComponentCount - 1 do
+  for mIndex := 0 to ComponentCount - 1 do
   begin
-    Proc(Components[Index]);
+    Proc(Components[mIndex]);
   end;
 end;
 
@@ -76,7 +76,7 @@ begin
 end;
 
 const
-  Form =
+  cForm =
     'object Form1: TForm1'#13#10 +
     '  Caption = ''Kunden'''#13#10 +
     '  OnCreate = FormCreate'#13#10 +
@@ -102,24 +102,24 @@ end;
 
 procedure TAtlasFormsTests.WritesComponentsAndHandlers;
 var
-  Root: TTestRoot;
-  Ping: TTestPing;
-  Handler: TTestHandler;
-  Text: string;
+  mRoot: TTestRoot;
+  mPing: TTestPing;
+  mHandler: TTestHandler;
+  mText: string;
 begin
-  Root := TTestRoot.Create(nil);
-  Handler := TTestHandler.Create;
+  mRoot := TTestRoot.Create(nil);
+  mHandler := TTestHandler.Create;
   try
-    Root.Name := 'Form1';
-    Ping := TTestPing.Create(Root);
-    Ping.Name := 'Ping1';
-    Ping.Caption := 'Hallo';
-    Ping.OnPing := Handler.Ping;
-    Text := TAtlasFormText.Write(Root,
+    mRoot.Name := 'Form1';
+    mPing := TTestPing.Create(mRoot);
+    mPing.Name := 'Ping1';
+    mPing.Caption := 'Hallo';
+    mPing.OnPing := mHandler.Ping;
+    mText := TAtlasFormText.Write(mRoot,
       function(AMethod: TMethod): string
       begin
         // Im Designer weiß das der Designer; hier reicht ein fester Name.
-        if AMethod.Data = Pointer(Handler) then
+        if AMethod.Data = Pointer(mHandler) then
         begin
           Result := 'Ping1Ping';
         end
@@ -129,113 +129,113 @@ begin
         end;
       end);
   finally
-    Handler.Free;
-    Root.Free;
+    mHandler.Free;
+    mRoot.Free;
   end;
-  Assert.Contains(Text, 'object Form1: TTestRoot');
-  Assert.Contains(Text, 'object Ping1: TTestPing');
-  Assert.Contains(Text, 'Caption = ''Hallo''');
-  Assert.Contains(Text, 'OnPing = Ping1Ping');
+  Assert.Contains(mText, 'object Form1: TTestRoot');
+  Assert.Contains(mText, 'object Ping1: TTestPing');
+  Assert.Contains(mText, 'Caption = ''Hallo''');
+  Assert.Contains(mText, 'OnPing = Ping1Ping');
 end;
 
 procedure TAtlasFormsTests.FindsRenamedHandlers;
 var
-  Changes: TArray<TAtlasFormEventChange>;
-  Reason: string;
+  mChanges: TArray<TAtlasFormEventChange>;
+  mReason: string;
 begin
-  Assert.IsTrue(TAtlasFormChanges.Diff(Form, Form.Replace('OnClick = Button1Click', 'OnClick = SaveClick')
+  Assert.IsTrue(TAtlasFormChanges.Diff(cForm, cForm.Replace('OnClick = Button1Click', 'OnClick = SaveClick')
     .Replace('OnCreate = FormCreate', 'OnCreate = Startup').Replace('OnDblClick = GridDblClick',
-    'OnDblClick = OpenCustomer'), Changes, Reason), Reason);
-  Assert.AreEqual(3, Integer(Length(Changes)));
-  Assert.AreEqual('', Changes[0].Component, 'das Formular selbst');
-  Assert.AreEqual('OnCreate', Changes[0].EventName);
-  Assert.AreEqual('Startup', Changes[0].NewHandler);
-  Assert.AreEqual('Button1', Changes[1].Component, 'verschachtelt im Panel');
-  Assert.AreEqual('Button1Click', Changes[1].OldHandler);
-  Assert.AreEqual('SaveClick', Changes[1].NewHandler);
-  Assert.AreEqual('Grid', Changes[2].Component, 'nach einer Kollektion');
-  Assert.IsTrue(TAtlasFormChanges.Diff(Form, Form, Changes, Reason));
-  Assert.AreEqual(0, Integer(Length(Changes)), 'unverändert');
+    'OnDblClick = OpenCustomer'), mChanges, mReason), mReason);
+  Assert.AreEqual(3, Integer(Length(mChanges)));
+  Assert.AreEqual('', mChanges[0].Component, 'das Formular selbst');
+  Assert.AreEqual('OnCreate', mChanges[0].EventName);
+  Assert.AreEqual('Startup', mChanges[0].NewHandler);
+  Assert.AreEqual('Button1', mChanges[1].Component, 'verschachtelt im Panel');
+  Assert.AreEqual('Button1Click', mChanges[1].OldHandler);
+  Assert.AreEqual('SaveClick', mChanges[1].NewHandler);
+  Assert.AreEqual('Grid', mChanges[2].Component, 'nach einer Kollektion');
+  Assert.IsTrue(TAtlasFormChanges.Diff(cForm, cForm, mChanges, mReason));
+  Assert.AreEqual(0, Integer(Length(mChanges)), 'unverändert');
 end;
 
 procedure TAtlasFormsTests.RejectsOtherChanges;
 var
-  Changes: TArray<TAtlasFormEventChange>;
-  Reason: string;
+  mChanges: TArray<TAtlasFormEventChange>;
+  mReason: string;
 begin
-  Assert.IsFalse(TAtlasFormChanges.Diff(Form, Form.Replace('object Button1: TButton', 'object Save: TButton'),
-    Changes, Reason), 'Komponente umbenannt');
-  Assert.Contains(Reason, 'Zeile 5');
-  Assert.IsFalse(TAtlasFormChanges.Diff(Form, Form.Replace('''OK''', '''Speichern'''), Changes, Reason),
+  Assert.IsFalse(TAtlasFormChanges.Diff(cForm, cForm.Replace('object Button1: TButton', 'object Save: TButton'),
+    mChanges, mReason), 'Komponente umbenannt');
+  Assert.Contains(mReason, 'Zeile 5');
+  Assert.IsFalse(TAtlasFormChanges.Diff(cForm, cForm.Replace('''OK''', '''Speichern'''), mChanges, mReason),
     'andere Eigenschaft');
-  Assert.IsFalse(TAtlasFormChanges.Diff(Form, Form.Replace('    end'#13#10'  end', '    end'#13#10'  end'#13#10),
-    Changes, Reason), 'Zeile hinzugefügt');
-  Assert.IsFalse(TAtlasFormChanges.Diff(Form, Form.Replace('OnClick = Button1Click', 'OnPress = Button1Click'),
-    Changes, Reason), 'anderes Ereignis');
+  Assert.IsFalse(TAtlasFormChanges.Diff(cForm, cForm.Replace('    end'#13#10'  end', '    end'#13#10'  end'#13#10),
+    mChanges, mReason), 'Zeile hinzugefügt');
+  Assert.IsFalse(TAtlasFormChanges.Diff(cForm, cForm.Replace('OnClick = Button1Click', 'OnPress = Button1Click'),
+    mChanges, mReason), 'anderes Ereignis');
 end;
 
 procedure TAtlasFormsTests.FindsPropertyChanges;
 var
-  Changes: TArray<TAtlasFormEventChange>;
-  Properties: TArray<TAtlasFormPropertyChange>;
-  Reason: string;
+  mChanges: TArray<TAtlasFormEventChange>;
+  mProperties: TArray<TAtlasFormPropertyChange>;
+  mReason: string;
 begin
   // Eigenschaftsregeln (#309): geänderter Wert, eingefügte Zeile; Ereignisse wie bisher.
-  Assert.IsTrue(TAtlasFormChanges.Diff(Form, Form.Replace('''OK''', '''Speichern''')
+  Assert.IsTrue(TAtlasFormChanges.Diff(cForm, cForm.Replace('''OK''', '''Speichern''')
     .Replace('    object Button1: TButton'#13#10, '    object Button1: TButton'#13#10'      Default = True'#13#10)
-    .Replace('OnCreate = FormCreate', 'OnCreate = Startup'), Changes, Properties, Reason), Reason);
-  Assert.AreEqual(1, Integer(Length(Changes)));
-  Assert.AreEqual(2, Integer(Length(Properties)));
-  Assert.AreEqual('Button1', Properties[0].Component);
-  Assert.AreEqual('Default', Properties[0].PropertyPath);
-  Assert.AreEqual('True', Properties[0].Value);
-  Assert.IsFalse(Properties[0].Removed);
-  Assert.AreEqual('Caption', Properties[1].PropertyPath);
-  Assert.AreEqual('''Speichern''', Properties[1].Value);
+    .Replace('OnCreate = FormCreate', 'OnCreate = Startup'), mChanges, mProperties, mReason), mReason);
+  Assert.AreEqual(1, Integer(Length(mChanges)));
+  Assert.AreEqual(2, Integer(Length(mProperties)));
+  Assert.AreEqual('Button1', mProperties[0].Component);
+  Assert.AreEqual('Default', mProperties[0].PropertyPath);
+  Assert.AreEqual('True', mProperties[0].Value);
+  Assert.IsFalse(mProperties[0].Removed);
+  Assert.AreEqual('Caption', mProperties[1].PropertyPath);
+  Assert.AreEqual('''Speichern''', mProperties[1].Value);
   // Entfernte Zeile (Rückgängig): zurück zum Vorgabewert.
-  Assert.IsTrue(TAtlasFormChanges.Diff(Form, Form.Replace('  Caption = ''Kunden'''#13#10, ''), Changes, Properties,
-    Reason), Reason);
-  Assert.AreEqual(1, Integer(Length(Properties)));
-  Assert.AreEqual('', Properties[0].Component, 'das Formular selbst');
-  Assert.IsTrue(Properties[0].Removed);
+  Assert.IsTrue(TAtlasFormChanges.Diff(cForm, cForm.Replace('  Caption = ''Kunden'''#13#10, ''), mChanges, mProperties,
+    mReason), mReason);
+  Assert.AreEqual(1, Integer(Length(mProperties)));
+  Assert.AreEqual('', mProperties[0].Component, 'das Formular selbst');
+  Assert.IsTrue(mProperties[0].Removed);
   // Verschachtelte Pfade zählen, Kollektionseinträge und neue Objekte nicht.
-  Assert.IsTrue(TAtlasFormChanges.Diff(Form, Form.Replace('  Caption = ''Kunden'''#13#10,
-    '  Caption = ''Kunden'''#13#10'  Font.Name = ''Segoe UI'''#13#10), Changes, Properties, Reason), Reason);
-  Assert.AreEqual('Font.Name', Properties[0].PropertyPath);
-  Assert.IsFalse(TAtlasFormChanges.Diff(Form, Form.Replace('''Name''', '''Vorname'''), Changes, Properties, Reason),
+  Assert.IsTrue(TAtlasFormChanges.Diff(cForm, cForm.Replace('  Caption = ''Kunden'''#13#10,
+    '  Caption = ''Kunden'''#13#10'  Font.Name = ''Segoe UI'''#13#10), mChanges, mProperties, mReason), mReason);
+  Assert.AreEqual('Font.Name', mProperties[0].PropertyPath);
+  Assert.IsFalse(TAtlasFormChanges.Diff(cForm, cForm.Replace('''Name''', '''Vorname'''), mChanges, mProperties, mReason),
     'Kollektionseintrag');
-  Assert.IsFalse(TAtlasFormChanges.Diff(Form, Form.Replace('  object Grid: TDBGrid'#13#10,
-    '  object Neu: TButton'#13#10'  end'#13#10'  object Grid: TDBGrid'#13#10), Changes, Properties, Reason),
+  Assert.IsFalse(TAtlasFormChanges.Diff(cForm, cForm.Replace('  object Grid: TDBGrid'#13#10,
+    '  object Neu: TButton'#13#10'  end'#13#10'  object Grid: TDBGrid'#13#10), mChanges, mProperties, mReason),
     'neues Objekt');
   // Die alte Überladung bleibt bei Ereignissen.
-  Assert.IsFalse(TAtlasFormChanges.Diff(Form, Form.Replace('''OK''', '''Speichern'''), Changes, Reason));
+  Assert.IsFalse(TAtlasFormChanges.Diff(cForm, cForm.Replace('''OK''', '''Speichern'''), mChanges, mReason));
 end;
 
 procedure TAtlasFormsTests.ReadsStringValues;
 var
-  Text: string;
+  mText: string;
 begin
-  Assert.IsTrue(TAtlasFormChanges.StringValue('''Segoe UI''', Text));
-  Assert.AreEqual('Segoe UI', Text);
-  Assert.IsTrue(TAtlasFormChanges.StringValue('''It''''s''', Text));
-  Assert.AreEqual('It''s', Text);
-  Assert.IsTrue(TAtlasFormChanges.StringValue('''Gr''#252''n''', Text));
-  Assert.AreEqual('Gr' + Char(252) + 'n', Text);
-  Assert.IsFalse(TAtlasFormChanges.StringValue('True', Text));
+  Assert.IsTrue(TAtlasFormChanges.StringValue('''Segoe UI''', mText));
+  Assert.AreEqual('Segoe UI', mText);
+  Assert.IsTrue(TAtlasFormChanges.StringValue('''It''''s''', mText));
+  Assert.AreEqual('It''s', mText);
+  Assert.IsTrue(TAtlasFormChanges.StringValue('''Gr''#252''n''', mText));
+  Assert.AreEqual('Gr' + Char(252) + 'n', mText);
+  Assert.IsFalse(TAtlasFormChanges.StringValue('True', mText));
 end;
 
 procedure TAtlasFormsTests.ReadsObjectNames;
 var
-  IsObject: Boolean;
+  mIsObject: Boolean;
 begin
-  Assert.AreEqual('Button1', TAtlasFormChanges.ObjectName('    object Button1: TButton', IsObject));
-  Assert.IsTrue(IsObject);
-  Assert.AreEqual('Form2', TAtlasFormChanges.ObjectName('inherited Form2: TForm2', IsObject));
-  Assert.AreEqual('Frame1', TAtlasFormChanges.ObjectName('  inline Frame1: TFrame1 [0]', IsObject));
-  Assert.AreEqual('', TAtlasFormChanges.ObjectName('  object TTimer', IsObject));
-  Assert.IsTrue(IsObject, 'ohne Namen');
-  Assert.AreEqual('', TAtlasFormChanges.ObjectName('  ObjectName = ''x''', IsObject));
-  Assert.IsFalse(IsObject);
+  Assert.AreEqual('Button1', TAtlasFormChanges.ObjectName('    object Button1: TButton', mIsObject));
+  Assert.IsTrue(mIsObject);
+  Assert.AreEqual('Form2', TAtlasFormChanges.ObjectName('inherited Form2: TForm2', mIsObject));
+  Assert.AreEqual('Frame1', TAtlasFormChanges.ObjectName('  inline Frame1: TFrame1 [0]', mIsObject));
+  Assert.AreEqual('', TAtlasFormChanges.ObjectName('  object TTimer', mIsObject));
+  Assert.IsTrue(mIsObject, 'ohne Namen');
+  Assert.AreEqual('', TAtlasFormChanges.ObjectName('  ObjectName = ''x''', mIsObject));
+  Assert.IsFalse(mIsObject);
 end;
 
 initialization

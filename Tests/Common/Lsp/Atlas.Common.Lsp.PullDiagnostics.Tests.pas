@@ -57,7 +57,8 @@ type
     /// Diagnoselog nennt die Unit anonym.</summary>
     [Test]
     procedure WorkspaceSkipsFailingFile;
-    /// <summary>#1094: Endet textDocument/diagnostic mit einem Fehler, bleibt die Unit für das Diagnoselog offen.</summary>
+    /// <summary>#1094: Endet textDocument/diagnostic mit einem Fehler, bleibt die Unit für das Diagnoselog
+    /// offen.</summary>
     [Test]
     procedure DocumentErrorKeepsUnitForLog;
     /// <summary>#1220: Eine Datei über der Frist blockiert nichts; der Hintergrund prüft sie zu Ende, die nächste
@@ -99,11 +100,11 @@ uses
   Atlas.Common.Diagnostics.RequestScope;
 
 const
-  OpenFile = 'C:\P\Offen.pas';
-  ClosedFile = 'C:\P\Zu.pas';
+  cOpenFile = 'C:\P\Offen.pas';
+  cClosedFile = 'C:\P\Zu.pas';
   // Syntaxfehler: fehlendes "then".
-  Broken = 'unit Zu;'#10'interface'#10'implementation'#10'procedure X;'#10'begin'#10'  if True'#10'  X;'#10'end;'#10'end.';
-  Valid = 'unit Offen;'#10'interface'#10'implementation'#10'end.';
+  cBroken = 'unit Zu;'#10'interface'#10'implementation'#10'procedure X;'#10'begin'#10'  if True'#10'  X;'#10'end;'#10'end.';
+  cValid = 'unit Offen;'#10'interface'#10'implementation'#10'end.';
 
 type
   TFixture = record
@@ -123,18 +124,18 @@ end;
 
 procedure TFixture.Init(const ARules: TRuleContextProvider);
 var
-  Providers: TSyntaxDiagnosticsProviders;
+  mProviders: TSyntaxDiagnosticsProviders;
 begin
   Store := TDocumentStore.Create;
-  Store.Open(TDocumentUris.FromPath(OpenFile), 'objectpascal', 1, Valid);
-  Providers := Default(TSyntaxDiagnosticsProviders);
-  Providers.Rules := ARules;
-  Diagnostics := TLspSyntaxDiagnostics.Create(Store, nil, Providers, 0);
+  Store.Open(TDocumentUris.FromPath(cOpenFile), 'objectpascal', 1, cValid);
+  mProviders := Default(TSyntaxDiagnosticsProviders);
+  mProviders.Rules := ARules;
+  Diagnostics := TLspSyntaxDiagnostics.Create(Store, nil, mProviders, 0);
   Diagnostics.PullMode := True;
   Pull := TLspPullDiagnostics.Create(Store, Diagnostics, nil,
     function: TArray<string>
     begin
-      Result := [OpenFile, ClosedFile];
+      Result := [cOpenFile, cClosedFile];
     end,
     function(const AFileName: string; out AStamp: Int64): Boolean
     begin
@@ -143,8 +144,8 @@ begin
     end,
     function(const AFileName: string; out AText: string): Boolean
     begin
-      AText := Broken;
-      Result := SameText(AFileName, ClosedFile);
+      AText := cBroken;
+      Result := SameText(AFileName, cClosedFile);
     end);
   Pull.WaitMs := 0;
 end;
@@ -167,289 +168,289 @@ end;
 
 procedure TLspPullDiagnosticsTests.DetectsClientSupport;
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
-  Params := TJSONObject.ParseJSONValue(
+  mParams := TJSONObject.ParseJSONValue(
     '{"capabilities":{"textDocument":{"diagnostic":{}},"workspace":{"diagnostics":{"refreshSupport":true}}}}')
     as TJSONObject;
   try
-    Assert.IsTrue(TLspPullProtocol.ClientSupportsPull(Params));
-    Assert.IsTrue(TLspPullProtocol.ClientSupportsRefresh(Params));
+    Assert.IsTrue(TLspPullProtocol.ClientSupportsPull(mParams));
+    Assert.IsTrue(TLspPullProtocol.ClientSupportsRefresh(mParams));
   finally
-    Params.Free;
+    mParams.Free;
   end;
-  Params := TJSONObject.ParseJSONValue('{"capabilities":{"textDocument":{}}}') as TJSONObject;
+  mParams := TJSONObject.ParseJSONValue('{"capabilities":{"textDocument":{}}}') as TJSONObject;
   try
-    Assert.IsFalse(TLspPullProtocol.ClientSupportsPull(Params));
-    Assert.IsFalse(TLspPullProtocol.ClientSupportsRefresh(Params));
+    Assert.IsFalse(TLspPullProtocol.ClientSupportsPull(mParams));
+    Assert.IsFalse(TLspPullProtocol.ClientSupportsRefresh(mParams));
   finally
-    Params.Free;
+    mParams.Free;
   end;
   Assert.IsFalse(TLspPullProtocol.ClientSupportsPull(nil));
 end;
 
 procedure TLspPullDiagnosticsTests.OffersWorkspaceDiagnostics;
 var
-  Capability: TJSONObject;
+  mCapability: TJSONObject;
 begin
-  Capability := TLspPullProtocol.Capability;
+  mCapability := TLspPullProtocol.Capability;
   try
-    Assert.IsTrue(Capability.GetValue<Boolean>('workspaceDiagnostics'));
-    Assert.IsTrue(Capability.GetValue<Boolean>('interFileDependencies'));
+    Assert.IsTrue(mCapability.GetValue<Boolean>('workspaceDiagnostics'));
+    Assert.IsTrue(mCapability.GetValue<Boolean>('interFileDependencies'));
   finally
-    Capability.Free;
+    mCapability.Free;
   end;
 end;
 
 procedure TLspPullDiagnosticsTests.ReportsOpenDocumentThenUnchanged;
 var
-  Fixture: TFixture;
-  Report: TJSONObject;
-  ResultId: string;
+  mFixture: TFixture;
+  mReport: TJSONObject;
+  mResultId: string;
 begin
-  Fixture.Init;
+  mFixture.Init;
   try
-    Report := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(OpenFile), '', nil);
+    mReport := mFixture.Pull.DocumentReport(TDocumentUris.FromPath(cOpenFile), '', nil);
     try
-      Assert.AreEqual('full', Report.GetValue<string>('kind'));
-      Assert.AreEqual(0, Report.GetValue<TJSONArray>('items').Count);
-      ResultId := Report.GetValue<string>('resultId');
+      Assert.AreEqual('full', mReport.GetValue<string>('kind'));
+      Assert.AreEqual(0, mReport.GetValue<TJSONArray>('items').Count);
+      mResultId := mReport.GetValue<string>('resultId');
     finally
-      Report.Free;
+      mReport.Free;
     end;
-    Report := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(OpenFile), ResultId, nil);
+    mReport := mFixture.Pull.DocumentReport(TDocumentUris.FromPath(cOpenFile), mResultId, nil);
     try
-      Assert.AreEqual('unchanged', Report.GetValue<string>('kind'));
-      Assert.IsNull(Report.GetValue('items'));
+      Assert.AreEqual('unchanged', mReport.GetValue<string>('kind'));
+      Assert.IsNull(mReport.GetValue('items'));
     finally
-      Report.Free;
+      mReport.Free;
     end;
   finally
-    Fixture.Done;
+    mFixture.Done;
   end;
 end;
 
 procedure TLspPullDiagnosticsTests.ChangeStartsNewGeneration;
 var
-  Fixture: TFixture;
-  Report: TJSONObject;
-  ResultId: string;
+  mFixture: TFixture;
+  mReport: TJSONObject;
+  mResultId: string;
 begin
-  Fixture.Init;
+  mFixture.Init;
   try
-    Report := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), '', nil);
+    mReport := mFixture.Pull.DocumentReport(TDocumentUris.FromPath(cClosedFile), '', nil);
     try
-      Assert.IsTrue(Report.GetValue<TJSONArray>('items').Count > 0, 'Syntaxfehler der geschlossenen Datei');
-      ResultId := Report.GetValue<string>('resultId');
+      Assert.IsTrue(mReport.GetValue<TJSONArray>('items').Count > 0, 'Syntaxfehler der geschlossenen Datei');
+      mResultId := mReport.GetValue<string>('resultId');
     finally
-      Report.Free;
+      mReport.Free;
     end;
-    Fixture.Pull.Changed;
-    Report := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), ResultId, nil);
+    mFixture.Pull.Changed;
+    mReport := mFixture.Pull.DocumentReport(TDocumentUris.FromPath(cClosedFile), mResultId, nil);
     try
-      Assert.AreEqual('full', Report.GetValue<string>('kind'));
+      Assert.AreEqual('full', mReport.GetValue<string>('kind'));
     finally
-      Report.Free;
+      mReport.Free;
     end;
   finally
-    Fixture.Done;
+    mFixture.Done;
   end;
 end;
 
 procedure TLspPullDiagnosticsTests.ReportsClosedFilesInWorkspace;
 var
-  Fixture: TFixture;
-  Result_: TJSONValue;
-  Items: TJSONArray;
+  mFixture: TFixture;
+  mResult_: TJSONValue;
+  mItems: TJSONArray;
 begin
-  Fixture.Init;
+  mFixture.Init;
   try
     // Die Projektprüfung rechnet im eigenen Thread; das Long-Polling wartet auf ihr Ergebnis.
-    Fixture.Pull.WaitMs := 5000;
-    Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
+    mFixture.Pull.WaitMs := 5000;
+    mResult_ := mFixture.Pull.WorkspaceReport(nil, Token);
     try
-      Items := (Result_ as TJSONObject).GetValue<TJSONArray>('items');
-      Assert.AreEqual(1, Integer(Items.Count), 'nur die geschlossene Datei');
-      Assert.AreEqual(TDocumentUris.FromPath(ClosedFile), Items.Items[0].GetValue<string>('uri'));
-      Assert.AreEqual('full', Items.Items[0].GetValue<string>('kind'));
-      Assert.IsTrue(Items.Items[0].GetValue<TJSONArray>('items').Count > 0);
+      mItems := (mResult_ as TJSONObject).GetValue<TJSONArray>('items');
+      Assert.AreEqual(1, Integer(mItems.Count), 'nur die geschlossene Datei');
+      Assert.AreEqual(TDocumentUris.FromPath(cClosedFile), mItems.Items[0].GetValue<string>('uri'));
+      Assert.AreEqual('full', mItems.Items[0].GetValue<string>('kind'));
+      Assert.IsTrue(mItems.Items[0].GetValue<TJSONArray>('items').Count > 0);
     finally
-      Result_.Free;
+      mResult_.Free;
     end;
   finally
-    Fixture.Done;
+    mFixture.Done;
   end;
 end;
 
 /// <summary>previousResultIds mit AUri und AId.</summary>
 function PreviousParams(const AUri, AId: string): TJSONObject;
 var
-  Entry: TJSONObject;
+  mEntry: TJSONObject;
 begin
-  Entry := TJSONObject.Create;
-  Entry.AddPair('uri', AUri);
-  Entry.AddPair('value', AId);
+  mEntry := TJSONObject.Create;
+  mEntry.AddPair('uri', AUri);
+  mEntry.AddPair('value', AId);
   Result := TJSONObject.Create;
-  Result.AddPair('previousResultIds', TJSONArray.Create(Entry));
+  Result.AddPair('previousResultIds', TJSONArray.Create(mEntry));
 end;
 
 procedure TLspPullDiagnosticsTests.WorkspaceSkipsKnownAndOpenFiles;
 var
-  Fixture: TFixture;
-  Params: TJSONObject;
-  Result_: TJSONValue;
-  Id: string;
+  mFixture: TFixture;
+  mParams: TJSONObject;
+  mResult_: TJSONValue;
+  mId: string;
 begin
-  Fixture.Init;
+  mFixture.Init;
   try
-    Fixture.Pull.WorkspaceReport(nil, Token).Free;
-    Assert.IsTrue(Fixture.Pull.Check.WaitIdle(5000));
-    Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
+    mFixture.Pull.WorkspaceReport(nil, Token).Free;
+    Assert.IsTrue(mFixture.Pull.Check.WaitIdle(5000));
+    mResult_ := mFixture.Pull.WorkspaceReport(nil, Token);
     try
-      Id := (Result_ as TJSONObject).GetValue<TJSONArray>('items').Items[0].GetValue<string>('resultId');
+      mId := (mResult_ as TJSONObject).GetValue<TJSONArray>('items').Items[0].GetValue<string>('resultId');
     finally
-      Result_.Free;
+      mResult_.Free;
     end;
-    Params := PreviousParams(TDocumentUris.FromPath(ClosedFile), Id);
+    mParams := PreviousParams(TDocumentUris.FromPath(cClosedFile), mId);
     try
-      Result_ := Fixture.Pull.WorkspaceReport(Params, Token);
+      mResult_ := mFixture.Pull.WorkspaceReport(mParams, Token);
       try
-        Assert.AreEqual(0, (Result_ as TJSONObject).GetValue<TJSONArray>('items').Count);
+        Assert.AreEqual(0, (mResult_ as TJSONObject).GetValue<TJSONArray>('items').Count);
       finally
-        Result_.Free;
+        mResult_.Free;
       end;
     finally
-      Params.Free;
+      mParams.Free;
     end;
   finally
-    Fixture.Done;
+    mFixture.Done;
   end;
 end;
 
 procedure TLspPullDiagnosticsTests.WorkspaceWaitsWhileIndexLoads;
 var
-  Fixture: TFixture;
-  Result_: TJSONValue;
+  mFixture: TFixture;
+  mResult_: TJSONValue;
 begin
   // Während des Indexaufbaus keine Befunde: Sie wären voller nicht gefundener Units (#647).
-  Fixture.Init;
+  mFixture.Init;
   try
-    Fixture.Pull.Busy :=
+    mFixture.Pull.Busy :=
       function: Boolean
       begin
         Result := True;
       end;
-    Fixture.Pull.WorkspaceReport(nil, Token).Free;
+    mFixture.Pull.WorkspaceReport(nil, Token).Free;
     Sleep(300);
-    Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
+    mResult_ := mFixture.Pull.WorkspaceReport(nil, Token);
     try
-      Assert.AreEqual(0, (Result_ as TJSONObject).GetValue<TJSONArray>('items').Count);
-      Assert.AreEqual('index', (Result_ as TJSONObject).GetValue<string>('atlas.run.paused'));
+      Assert.AreEqual(0, (mResult_ as TJSONObject).GetValue<TJSONArray>('items').Count);
+      Assert.AreEqual('index', (mResult_ as TJSONObject).GetValue<string>('atlas.run.paused'));
     finally
-      Result_.Free;
+      mResult_.Free;
     end;
-    Assert.AreEqual(0, Fixture.Pull.Computed);
+    Assert.AreEqual(0, mFixture.Pull.Computed);
   finally
-    Fixture.Done;
+    mFixture.Done;
   end;
 end;
 
 procedure TLspPullDiagnosticsTests.WorkspaceStartsWhenIndexFinishes;
 var
-  Fixture: TFixture;
-  Result_: TJSONValue;
-  Calls, Attempts: Integer;
+  mFixture: TFixture;
+  mResult_: TJSONValue;
+  mCalls, mAttempts: Integer;
 begin
   // Wird der Index während des Wartens fertig, kommen die Befunde, sobald die Prüfung sie hat.
-  Fixture.Init;
+  mFixture.Init;
   try
-    Calls := 0;
-    Fixture.Pull.WaitMs := 5000;
-    Fixture.Pull.Busy :=
+    mCalls := 0;
+    mFixture.Pull.WaitMs := 5000;
+    mFixture.Pull.Busy :=
       function: Boolean
       begin
-        Inc(Calls);
-        Result := Calls < 3;
+        Inc(mCalls);
+        Result := mCalls < 3;
       end;
     // Antworten ohne Befunde melden Beginn und Ende der Pause; der Client fragt gleich wieder.
-    Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
+    mResult_ := mFixture.Pull.WorkspaceReport(nil, Token);
     try
-      Attempts := 1;
-      while ((Result_ as TJSONObject).GetValue<TJSONArray>('items').Count = 0) and (Attempts < 5) do
+      mAttempts := 1;
+      while ((mResult_ as TJSONObject).GetValue<TJSONArray>('items').Count = 0) and (mAttempts < 5) do
       begin
-        Result_.Free;
-        Result_ := nil;
-        Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
-        Inc(Attempts);
+        mResult_.Free;
+        mResult_ := nil;
+        mResult_ := mFixture.Pull.WorkspaceReport(nil, Token);
+        Inc(mAttempts);
       end;
-      Assert.AreEqual(1, (Result_ as TJSONObject).GetValue<TJSONArray>('items').Count);
+      Assert.AreEqual(1, (mResult_ as TJSONObject).GetValue<TJSONArray>('items').Count);
     finally
-      Result_.Free;
+      mResult_.Free;
     end;
   finally
-    Fixture.Done;
+    mFixture.Done;
   end;
 end;
 
 procedure TLspPullDiagnosticsTests.ReusesReportForSameState;
 var
-  Fixture: TFixture;
-  First, Second: TJSONObject;
+  mFixture: TFixture;
+  mFirst, mSecond: TJSONObject;
 begin
-  Fixture.Init;
+  mFixture.Init;
   try
-    First := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), '', nil);
-    Second := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), '', nil);
+    mFirst := mFixture.Pull.DocumentReport(TDocumentUris.FromPath(cClosedFile), '', nil);
+    mSecond := mFixture.Pull.DocumentReport(TDocumentUris.FromPath(cClosedFile), '', nil);
     try
-      Assert.AreEqual(1, Fixture.Pull.Computed, 'einmal geprüft');
-      Assert.AreEqual('full', Second.GetValue<string>('kind'));
-      Assert.AreEqual(First.GetValue<TJSONArray>('items').ToJSON, Second.GetValue<TJSONArray>('items').ToJSON);
+      Assert.AreEqual(1, mFixture.Pull.Computed, 'einmal geprüft');
+      Assert.AreEqual('full', mSecond.GetValue<string>('kind'));
+      Assert.AreEqual(mFirst.GetValue<TJSONArray>('items').ToJSON, mSecond.GetValue<TJSONArray>('items').ToJSON);
       // Neue Generation: wieder prüfen.
-      Fixture.Pull.Changed;
-      Second.Free;
-      Second := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), '', nil);
-      Assert.AreEqual(2, Fixture.Pull.Computed, 'nach Changed neu geprüft');
+      mFixture.Pull.Changed;
+      mSecond.Free;
+      mSecond := mFixture.Pull.DocumentReport(TDocumentUris.FromPath(cClosedFile), '', nil);
+      Assert.AreEqual(2, mFixture.Pull.Computed, 'nach Changed neu geprüft');
     finally
-      Second.Free;
-      First.Free;
+      mSecond.Free;
+      mFirst.Free;
     end;
   finally
-    Fixture.Done;
+    mFixture.Done;
   end;
 end;
 
 procedure TLspPullDiagnosticsTests.WorkspaceRequestDoesNotCompute;
 var
-  Fixture: TFixture;
-  Result_: TJSONValue;
+  mFixture: TFixture;
+  mResult_: TJSONValue;
 begin
   // Anfragen liefern nur gespeicherte Befunde (#1247): auch gleichzeitige oder wiederholte rechnen nicht.
-  Fixture.Init;
+  mFixture.Init;
   try
-    Fixture.Pull.WorkspaceReport(nil, Token).Free;
-    Assert.IsTrue(Fixture.Pull.Check.WaitIdle(5000));
-    Assert.AreEqual(1, Fixture.Pull.Computed);
-    Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
+    mFixture.Pull.WorkspaceReport(nil, Token).Free;
+    Assert.IsTrue(mFixture.Pull.Check.WaitIdle(5000));
+    Assert.AreEqual(1, mFixture.Pull.Computed);
+    mResult_ := mFixture.Pull.WorkspaceReport(nil, Token);
     try
-      Assert.AreEqual(1, (Result_ as TJSONObject).GetValue<TJSONArray>('items').Count);
+      Assert.AreEqual(1, (mResult_ as TJSONObject).GetValue<TJSONArray>('items').Count);
     finally
-      Result_.Free;
+      mResult_.Free;
     end;
-    Fixture.Pull.WorkspaceReport(nil, Token).Free;
-    Assert.AreEqual(1, Fixture.Pull.Computed, 'nicht neu geprüft');
+    mFixture.Pull.WorkspaceReport(nil, Token).Free;
+    Assert.AreEqual(1, mFixture.Pull.Computed, 'nicht neu geprüft');
   finally
-    Fixture.Done;
+    mFixture.Done;
   end;
 end;
 
 procedure TLspPullDiagnosticsTests.CancelStopsRuleChecks;
 var
-  Fixture: TFixture;
-  Rules: TRuleContextProvider;
-  Source: IJsonRpcCancellationSource;
-  Runs: Integer;
+  mFixture: TFixture;
+  mRules: TRuleContextProvider;
+  mSource: IJsonRpcCancellationSource;
+  mRuns: Integer;
 begin
-  Rules :=
+  mRules :=
     function(const AUri: string; out AContext: TRuleCheckContext): Boolean
     begin
       AContext := Default(TRuleCheckContext);
@@ -458,30 +459,30 @@ begin
         TCallbackRule.Create('erste',
           procedure
           begin
-            Inc(Runs);
-            Source.Cancel;
+            Inc(mRuns);
+            mSource.Cancel;
           end),
         TCallbackRule.Create('zweite',
           procedure
           begin
-            Inc(Runs);
+            Inc(mRuns);
           end)];
       Result := True;
     end;
-  Fixture.Init(Rules);
+  mFixture.Init(mRules);
   try
-    Runs := 0;
-    Source := TJsonRpcCancellation.Create;
+    mRuns := 0;
+    mSource := TJsonRpcCancellation.Create;
     // Datei von der Platte: Geöffnete Dateien prüft ein eigener Thread zu Ende (#1761).
     Assert.WillRaise(
       procedure
       begin
-        Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), '', Source).Free;
+        mFixture.Pull.DocumentReport(TDocumentUris.FromPath(cClosedFile), '', mSource).Free;
       end, EJsonRpcRequestCancelled);
-    Assert.AreEqual(1, Runs);
-    Assert.AreEqual(0, Fixture.Pull.Computed);
+    Assert.AreEqual(1, mRuns);
+    Assert.AreEqual(0, mFixture.Pull.Computed);
   finally
-    Fixture.Done;
+    mFixture.Done;
   end;
 end;
 
@@ -513,7 +514,7 @@ begin
     mFixture.Init(mRules);
     try
       mFixture.Pull.OpenJobs.WaitMs := 50;
-      mUri := TDocumentUris.FromPath(OpenFile);
+      mUri := TDocumentUris.FromPath(cOpenFile);
       mCode := 0;
       try
         mFixture.Pull.DocumentReport(mUri, '', Token).Free;
@@ -548,13 +549,13 @@ end;
 
 procedure TLspPullDiagnosticsTests.ParallelRequestsForSameStateComputeOnce;
 var
-  Fixture: TFixture;
-  Rules: TRuleContextProvider;
-  Runs: Integer;
-  Worker: TThread;
-  Mine, Other: TJSONObject;
+  mFixture: TFixture;
+  mRules: TRuleContextProvider;
+  mRuns: Integer;
+  mWorker: TThread;
+  mMine, mOther: TJSONObject;
 begin
-  Rules :=
+  mRules :=
     function(const AUri: string; out AContext: TRuleCheckContext): Boolean
     begin
       AContext := Default(TRuleCheckContext);
@@ -563,40 +564,40 @@ begin
         TCallbackRule.Create('langsam',
           procedure
           begin
-            TInterlocked.Increment(Runs);
+            TInterlocked.Increment(mRuns);
             Sleep(300);
           end)];
       Result := True;
     end;
-  Fixture.Init(Rules);
+  mFixture.Init(mRules);
   try
-    Runs := 0;
-    Other := nil;
-    Worker := TThread.CreateAnonymousThread(
+    mRuns := 0;
+    mOther := nil;
+    mWorker := TThread.CreateAnonymousThread(
       procedure
       begin
-        Other := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(OpenFile), '', Token);
+        mOther := mFixture.Pull.DocumentReport(TDocumentUris.FromPath(cOpenFile), '', Token);
       end);
-    Worker.FreeOnTerminate := False;
-    Worker.Start;
+    mWorker.FreeOnTerminate := False;
+    mWorker.Start;
     try
       Sleep(100);
-      Mine := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(OpenFile), '', Token);
-      Worker.WaitFor;
+      mMine := mFixture.Pull.DocumentReport(TDocumentUris.FromPath(cOpenFile), '', Token);
+      mWorker.WaitFor;
     finally
-      Worker.Free;
+      mWorker.Free;
     end;
     try
-      Assert.AreEqual(1, Runs);
-      Assert.AreEqual(1, Fixture.Pull.Computed);
-      Assert.IsNotNull(Other);
-      Assert.AreEqual(Other.GetValue('resultId').Value, Mine.GetValue('resultId').Value);
+      Assert.AreEqual(1, mRuns);
+      Assert.AreEqual(1, mFixture.Pull.Computed);
+      Assert.IsNotNull(mOther);
+      Assert.AreEqual(mOther.GetValue('resultId').Value, mMine.GetValue('resultId').Value);
     finally
-      Mine.Free;
-      Other.Free;
+      mMine.Free;
+      mOther.Free;
     end;
   finally
-    Fixture.Done;
+    mFixture.Done;
   end;
 end;
 
@@ -611,101 +612,101 @@ end;
 
 procedure TLspPullDiagnosticsTests.WorkspaceWaitEndsBeforeRequestTimeout;
 var
-  Fixture: TFixture;
-  Result_: TJSONValue;
-  Clock: TStopwatch;
+  mFixture: TFixture;
+  mResult_: TJSONValue;
+  mClock: TStopwatch;
 begin
-  Fixture.Init;
+  mFixture.Init;
   try
-    Fixture.Pull.WaitMs := 10000;
+    mFixture.Pull.WaitMs := 10000;
     // Index lädt: nichts zu prüfen, die Anfrage wartet bis zum Zeitrahmen (1000 ms Limit -> 500 ms).
-    Fixture.Pull.Busy :=
+    mFixture.Pull.Busy :=
       function: Boolean
       begin
         Result := True;
       end;
-    Fixture.Pull.RequestTimeout :=
+    mFixture.Pull.RequestTimeout :=
       function: Cardinal
       begin
         Result := 1000;
       end;
     // Die erste Anfrage meldet den Beginn des Laufs; die zweite hat nichts Neues und wartet.
-    Fixture.Pull.WorkspaceReport(nil, Token).Free;
+    mFixture.Pull.WorkspaceReport(nil, Token).Free;
     Sleep(300);
-    Clock := TStopwatch.StartNew;
-    Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
+    mClock := TStopwatch.StartNew;
+    mResult_ := mFixture.Pull.WorkspaceReport(nil, Token);
     try
-      Assert.AreEqual(0, (Result_ as TJSONObject).GetValue<TJSONArray>('items').Count);
+      Assert.AreEqual(0, (mResult_ as TJSONObject).GetValue<TJSONArray>('items').Count);
     finally
-      Result_.Free;
+      mResult_.Free;
     end;
-    Assert.IsTrue(Clock.ElapsedMilliseconds >= 400, IntToStr(Clock.ElapsedMilliseconds));
-    Assert.IsTrue(Clock.ElapsedMilliseconds <= 900, IntToStr(Clock.ElapsedMilliseconds));
+    Assert.IsTrue(mClock.ElapsedMilliseconds >= 400, IntToStr(mClock.ElapsedMilliseconds));
+    Assert.IsTrue(mClock.ElapsedMilliseconds <= 900, IntToStr(mClock.ElapsedMilliseconds));
   finally
-    Fixture.Done;
+    mFixture.Done;
   end;
 end;
 
 procedure TLspPullDiagnosticsTests.SecondWorkspaceRequestWakesOnChange;
 var
-  Fixture: TFixture;
-  Pull: TLspPullDiagnostics;
-  Loading: Boolean;
-  First, Second: TThread;
-  FirstMs, SecondMs: Int64;
-  Clock: TStopwatch;
+  mFixture: TFixture;
+  mPull: TLspPullDiagnostics;
+  mLoading: Boolean;
+  mFirst, mSecond: TThread;
+  mFirstMs, mSecondMs: Int64;
+  mClock: TStopwatch;
 begin
-  Fixture.Init;
+  mFixture.Init;
   try
-    Pull := Fixture.Pull;
-    Pull.WaitMs := 5000;
-    Loading := True;
-    Pull.Busy :=
+    mPull := mFixture.Pull;
+    mPull.WaitMs := 5000;
+    mLoading := True;
+    mPull.Busy :=
       function: Boolean
       begin
-        Result := Loading;
+        Result := mLoading;
       end;
-    FirstMs := -1;
-    SecondMs := -1;
-    Clock := TStopwatch.StartNew;
-    First := TThread.CreateAnonymousThread(
+    mFirstMs := -1;
+    mSecondMs := -1;
+    mClock := TStopwatch.StartNew;
+    mFirst := TThread.CreateAnonymousThread(
       procedure
       begin
-        Pull.WorkspaceReport(nil, Token).Free;
-        FirstMs := Clock.ElapsedMilliseconds;
+        mPull.WorkspaceReport(nil, Token).Free;
+        mFirstMs := mClock.ElapsedMilliseconds;
       end);
-    First.FreeOnTerminate := False;
-    Second := TThread.CreateAnonymousThread(
+    mFirst.FreeOnTerminate := False;
+    mSecond := TThread.CreateAnonymousThread(
       procedure
       begin
-        Pull.WorkspaceReport(nil, Token).Free;
-        SecondMs := Clock.ElapsedMilliseconds;
+        mPull.WorkspaceReport(nil, Token).Free;
+        mSecondMs := mClock.ElapsedMilliseconds;
       end);
-    Second.FreeOnTerminate := False;
+    mSecond.FreeOnTerminate := False;
     try
-      First.Start;
+      mFirst.Start;
       // Die erste hält den Platz; die zweite wartet nur.
       Sleep(50);
-      Second.Start;
+      mSecond.Start;
       Sleep(200);
       // Index fertig: Changed weckt beide.
-      Loading := False;
-      Pull.Changed;
-      First.WaitFor;
-      Second.WaitFor;
+      mLoading := False;
+      mPull.Changed;
+      mFirst.WaitFor;
+      mSecond.WaitFor;
     finally
-      First.Free;
-      Second.Free;
+      mFirst.Free;
+      mSecond.Free;
     end;
-    Assert.IsTrue((FirstMs >= 0) and (FirstMs < 1000), IntToStr(FirstMs));
-    Assert.IsTrue((SecondMs >= 0) and (SecondMs < 1000), IntToStr(SecondMs));
+    Assert.IsTrue((mFirstMs >= 0) and (mFirstMs < 1000), IntToStr(mFirstMs));
+    Assert.IsTrue((mSecondMs >= 0) and (mSecondMs < 1000), IntToStr(mSecondMs));
   finally
-    Fixture.Done;
+    mFixture.Done;
   end;
 end;
 
 const
-  FailingFile = 'C:\P\Kaputt.pas';
+  cFailingFile = 'C:\P\Kaputt.pas';
 
 /// <summary>Regeln für alle Dateien; für FailingFile scheitert schon das Bereitstellen.</summary>
 function FailingRules: TRuleContextProvider;
@@ -713,7 +714,7 @@ begin
   Result :=
     function(const AUri: string; out AContext: TRuleCheckContext): Boolean
     begin
-      if SameText(TDocumentUris.ToPath(AUri), FailingFile) then
+      if SameText(TDocumentUris.ToPath(AUri), cFailingFile) then
       begin
         raise EArgumentException.Create('Unit kaputt');
       end;
@@ -726,7 +727,7 @@ end;
 function LabelOfFile(const AFileName: string): string;
 begin
   Result := 'unit#2';
-  if SameText(AFileName, FailingFile) then
+  if SameText(AFileName, cFailingFile) then
   begin
     Result := 'unit#1';
   end;
@@ -739,7 +740,7 @@ begin
   Result := TLspPullDiagnostics.Create(AStore, ADiagnostics, nil,
     function: TArray<string>
     begin
-      Result := [FailingFile, ClosedFile];
+      Result := [cFailingFile, cClosedFile];
     end,
     function(const AFileName: string; out AStamp: Int64): Boolean
     begin
@@ -748,7 +749,7 @@ begin
     end,
     function(const AFileName: string; out AText: string): Boolean
     begin
-      AText := Broken;
+      AText := cBroken;
       Result := True;
     end);
   Result.WaitMs := 0;
@@ -781,7 +782,7 @@ begin
     if mItem.GetValue<TJSONArray>('items').Count = 0 then
     begin
       Inc(mEmpty);
-      Assert.AreEqual(TDocumentUris.FromPath(FailingFile), mItem.GetValue<string>('uri'), 'übersprungen');
+      Assert.AreEqual(TDocumentUris.FromPath(cFailingFile), mItem.GetValue<string>('uri'), 'übersprungen');
     end
     else
     begin
@@ -794,79 +795,79 @@ end;
 
 procedure TLspPullDiagnosticsTests.WorkspaceSkipsFailingFile;
 var
-  Store: IDocumentStore;
-  Diagnostics: TLspSyntaxDiagnostics;
-  Providers: TSyntaxDiagnosticsProviders;
-  Pull: TLspPullDiagnostics;
-  Result_: TJSONValue;
-  Logged: TStringList;
+  mStore: IDocumentStore;
+  mDiagnostics: TLspSyntaxDiagnostics;
+  mProviders: TSyntaxDiagnosticsProviders;
+  mPull: TLspPullDiagnostics;
+  mResult_: TJSONValue;
+  mLogged: TStringList;
 begin
-  Store := TDocumentStore.Create;
-  Providers := Default(TSyntaxDiagnosticsProviders);
-  Providers.Rules := FailingRules();
-  Diagnostics := TLspSyntaxDiagnostics.Create(Store, nil, Providers, 0);
-  Logged := TStringList.Create;
-  Pull := nil;
+  mStore := TDocumentStore.Create;
+  mProviders := Default(TSyntaxDiagnosticsProviders);
+  mProviders.Rules := FailingRules();
+  mDiagnostics := TLspSyntaxDiagnostics.Create(mStore, nil, mProviders, 0);
+  mLogged := TStringList.Create;
+  mPull := nil;
   try
-    Diagnostics.PullMode := True;
+    mDiagnostics.PullMode := True;
     // Die kaputte Datei steht vorn: früher scheiterte daran jede Anfrage, bis der Server starb.
-    Pull := CreateFailingFirstPull(Store, Diagnostics, Logged);
-    Pull.WorkspaceReport(nil, Token).Free;
-    Assert.IsTrue(Pull.Check.WaitIdle(5000));
-    Result_ := Pull.WorkspaceReport(nil, Token);
+    mPull := CreateFailingFirstPull(mStore, mDiagnostics, mLogged);
+    mPull.WorkspaceReport(nil, Token).Free;
+    Assert.IsTrue(mPull.Check.WaitIdle(5000));
+    mResult_ := mPull.WorkspaceReport(nil, Token);
     try
-      AssertFailingFileSkipped(Result_);
+      AssertFailingFileSkipped(mResult_);
     finally
-      Result_.Free;
+      mResult_.Free;
     end;
-    Assert.AreEqual(1, Pull.Check.Skipped);
-    Assert.Contains(Logged.Text, 'unit#1 übersprungen (EArgumentException)');
-    Assert.DoesNotContain(Logged.Text, 'Kaputt.pas');
+    Assert.AreEqual(1, mPull.Check.Skipped);
+    Assert.Contains(mLogged.Text, 'unit#1 übersprungen (EArgumentException)');
+    Assert.DoesNotContain(mLogged.Text, 'Kaputt.pas');
   finally
-    Pull.Free;
-    Diagnostics.Free;
-    Logged.Free;
+    mPull.Free;
+    mDiagnostics.Free;
+    mLogged.Free;
   end;
 end;
 
 procedure TLspPullDiagnosticsTests.DocumentErrorKeepsUnitForLog;
 var
-  Fixture: TFixture;
-  Rules: TRuleContextProvider;
-  Notes: TRequestNotes;
+  mFixture: TFixture;
+  mRules: TRuleContextProvider;
+  mNotes: TRequestNotes;
 begin
-  Rules :=
+  mRules :=
     function(const AUri: string; out AContext: TRuleCheckContext): Boolean
     begin
       AContext := Default(TRuleCheckContext);
       raise EArgumentException.Create('Unit kaputt');
     end;
-  Fixture.Init(Rules);
+  mFixture.Init(mRules);
   try
-    Fixture.Pull.FileLabel := LabelOfFile;
+    mFixture.Pull.FileLabel := LabelOfFile;
     TRequestDiagnostics.Open;
     try
       Assert.WillRaise(
         procedure
         begin
-          Fixture.Pull.DocumentReport(TDocumentUris.FromPath(OpenFile), '', Token).Free;
+          mFixture.Pull.DocumentReport(TDocumentUris.FromPath(cOpenFile), '', Token).Free;
         end, EArgumentException);
     finally
-      Notes := TRequestDiagnostics.Close;
+      mNotes := TRequestDiagnostics.Close;
     end;
-    Assert.AreEqual('unit#2', Notes.Subject);
+    Assert.AreEqual('unit#2', mNotes.Subject);
   finally
-    Fixture.Done;
+    mFixture.Done;
   end;
 end;
 
 procedure TLspPullDiagnosticsTests.SlowFileFinishesAtEndOfRun;
 var
-  Fixture: TFixture;
-  Rules: TRuleContextProvider;
-  Answer: TJSONValue;
+  mFixture: TFixture;
+  mRules: TRuleContextProvider;
+  mAnswer: TJSONValue;
 begin
-  Rules :=
+  mRules :=
     function(const AUri: string; out AContext: TRuleCheckContext): Boolean
     begin
       AContext := Default(TRuleCheckContext);
@@ -883,109 +884,109 @@ begin
           end)];
       Result := True;
     end;
-  Fixture.Init(Rules);
+  mFixture.Init(mRules);
   try
     // Über der Frist (#1220): Die Datei kommt ans Ende des Laufs und wird ohne Frist zu Ende geprüft.
-    Fixture.Pull.Check.FileLimitMs := 50;
-    Fixture.Pull.WorkspaceReport(nil, Token).Free;
-    Assert.IsTrue(Fixture.Pull.Check.WaitIdle(5000));
-    Answer := Fixture.Pull.WorkspaceReport(nil, Token);
+    mFixture.Pull.Check.FileLimitMs := 50;
+    mFixture.Pull.WorkspaceReport(nil, Token).Free;
+    Assert.IsTrue(mFixture.Pull.Check.WaitIdle(5000));
+    mAnswer := mFixture.Pull.WorkspaceReport(nil, Token);
     try
-      Assert.AreEqual(1, TJSONObject(Answer).GetValue<TJSONArray>('items').Count);
+      Assert.AreEqual(1, TJSONObject(mAnswer).GetValue<TJSONArray>('items').Count);
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Fixture.Done;
+    mFixture.Done;
   end;
 end;
 
 procedure TLspPullDiagnosticsTests.CompilerMessagesRecheckOnlyTheirFiles;
 var
-  Fixture: TFixture;
-  Pull: TLspPullDiagnostics;
-  Generation: Integer;
+  mFixture: TFixture;
+  mPull: TLspPullDiagnostics;
+  mGeneration: Integer;
 begin
-  Fixture.Init;
+  mFixture.Init;
   try
-    Fixture.Pull.WorkspaceReport(nil, Token).Free;
-    Assert.IsTrue(Fixture.Pull.Check.WaitIdle(5000));
-    Assert.AreEqual(1, Fixture.Pull.Computed);
-    Generation := Fixture.Pull.Generation;
+    mFixture.Pull.WorkspaceReport(nil, Token).Free;
+    Assert.IsTrue(mFixture.Pull.Check.WaitIdle(5000));
+    Assert.AreEqual(1, mFixture.Pull.Computed);
+    mGeneration := mFixture.Pull.Generation;
     // Verdrahtung wie in der Composition.
-    Pull := Fixture.Pull;
-    Fixture.Diagnostics.OnPullFilesChanged :=
+    mPull := mFixture.Pull;
+    mFixture.Diagnostics.OnPullFilesChanged :=
       procedure(AFiles: TArray<string>)
       begin
-        Pull.FilesChanged(AFiles);
+        mPull.FilesChanged(AFiles);
       end;
     // Neue Compilermeldungen nur für die geschlossene Datei: Nur sie wird neu geprüft (#1247).
-    Fixture.Diagnostics.RefreshFiles(TArray<string>.Create(ClosedFile));
-    Assert.IsTrue(Fixture.Pull.Check.WaitIdle(5000));
-    Assert.AreEqual(2, Fixture.Pull.Computed);
-    Assert.AreEqual(1, Fixture.Pull.Check.Run.Total);
-    Assert.AreEqual(Generation + 1, Fixture.Pull.Generation, 'geöffnete Dateien holt der Client neu');
+    mFixture.Diagnostics.RefreshFiles(TArray<string>.Create(cClosedFile));
+    Assert.IsTrue(mFixture.Pull.Check.WaitIdle(5000));
+    Assert.AreEqual(2, mFixture.Pull.Computed);
+    Assert.AreEqual(1, mFixture.Pull.Check.Run.Total);
+    Assert.AreEqual(mGeneration + 1, mFixture.Pull.Generation, 'geöffnete Dateien holt der Client neu');
   finally
-    Fixture.Done;
+    mFixture.Done;
   end;
 end;
 
 procedure Notify(ADispatcher: TJsonRpcDispatcher; const AMethod, AParams: string);
 var
-  Message: TJSONObject;
+  mMessage: TJSONObject;
 begin
-  Message := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + AMethod + '","params":' + AParams + '}')
+  mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + AMethod + '","params":' + AParams + '}')
     as TJSONObject;
   try
-    ADispatcher.DispatchMessage(Message).Free;
+    ADispatcher.DispatchMessage(mMessage).Free;
   finally
-    Message.Free;
+    mMessage.Free;
   end;
 end;
 
 procedure TLspPullDiagnosticsTests.ClientPausesRun;
 var
-  Fixture: TFixture;
-  Dispatcher: TJsonRpcDispatcher;
+  mFixture: TFixture;
+  mDispatcher: TJsonRpcDispatcher;
 begin
   // Beim Debuggen ruht die Projektprüfung (#1241); das Plugin meldet es mit atlas/workspaceCheck/pause.
-  Fixture.Init;
-  Dispatcher := TJsonRpcDispatcher.Create;
+  mFixture.Init;
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Fixture.Pull.Attach(Dispatcher);
-    Notify(Dispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":true}');
-    Fixture.Pull.WorkspaceReport(nil, Token).Free;
+    mFixture.Pull.Attach(mDispatcher);
+    Notify(mDispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":true}');
+    mFixture.Pull.WorkspaceReport(nil, Token).Free;
     Sleep(300);
-    Assert.AreEqual(0, Fixture.Pull.Computed);
-    Assert.AreEqual('debug', Fixture.Pull.Check.Run.Paused);
-    Notify(Dispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":false}');
-    Assert.IsTrue(Fixture.Pull.Check.WaitIdle(5000));
-    Assert.AreEqual(1, Fixture.Pull.Computed);
+    Assert.AreEqual(0, mFixture.Pull.Computed);
+    Assert.AreEqual('debug', mFixture.Pull.Check.Run.Paused);
+    Notify(mDispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":false}');
+    Assert.IsTrue(mFixture.Pull.Check.WaitIdle(5000));
+    Assert.AreEqual(1, mFixture.Pull.Computed);
   finally
-    Dispatcher.Free;
-    Fixture.Done;
+    mDispatcher.Free;
+    mFixture.Done;
   end;
 end;
 
 procedure TLspPullDiagnosticsTests.WorkspaceReportCarriesRun;
 var
-  Fixture: TFixture;
-  Answer: TJSONValue;
+  mFixture: TFixture;
+  mAnswer: TJSONValue;
 begin
-  Fixture.Init;
+  mFixture.Init;
   try
-    Fixture.Pull.WorkspaceReport(nil, Token).Free;
-    Assert.IsTrue(Fixture.Pull.Check.WaitIdle(5000));
-    Answer := Fixture.Pull.WorkspaceReport(nil, Token);
+    mFixture.Pull.WorkspaceReport(nil, Token).Free;
+    Assert.IsTrue(mFixture.Pull.Check.WaitIdle(5000));
+    mAnswer := mFixture.Pull.WorkspaceReport(nil, Token);
     try
-      Assert.IsFalse(TJSONObject(Answer).GetValue<Boolean>('atlas.run.active'));
-      Assert.AreEqual(2, TJSONObject(Answer).GetValue<Integer>('atlas.run.done'));
-      Assert.AreEqual(2, TJSONObject(Answer).GetValue<Integer>('atlas.run.total'));
+      Assert.IsFalse(TJSONObject(mAnswer).GetValue<Boolean>('atlas.run.active'));
+      Assert.AreEqual(2, TJSONObject(mAnswer).GetValue<Integer>('atlas.run.done'));
+      Assert.AreEqual(2, TJSONObject(mAnswer).GetValue<Integer>('atlas.run.total'));
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Fixture.Done;
+    mFixture.Done;
   end;
 end;
 
@@ -1043,7 +1044,7 @@ begin
       end,
       function(const AFileName: string; out AText: string): Boolean
       begin
-        AText := Broken;
+        AText := cBroken;
         Result := True;
       end);
     try

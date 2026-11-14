@@ -34,7 +34,7 @@ uses
   Atlas.Common.Editing.RoutineParts;
 
 const
-  Source =
+  cSource =
     'unit U;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -50,62 +50,62 @@ const
 
 function FirstOf(ATree: TSyntaxTree; AKind: TSyntaxKind): TSyntaxNode;
 var
-  Nodes: TList<TSyntaxNode>;
+  mNodes: TList<TSyntaxNode>;
 begin
-  Nodes := TList<TSyntaxNode>.Create;
+  mNodes := TList<TSyntaxNode>.Create;
   try
-    TRoutineLocals.CollectKind(ATree.Root, AKind, Nodes);
-    Assert.IsTrue(Nodes.Count > 0);
-    Result := Nodes[0];
+    TRoutineLocals.CollectKind(ATree.Root, AKind, mNodes);
+    Assert.IsTrue(mNodes.Count > 0);
+    Result := mNodes[0];
   finally
-    Nodes.Free;
+    mNodes.Free;
   end;
 end;
 
 procedure TRoutinePartsTests.ParametersAndHeads;
 var
-  Tree: TSyntaxTree;
-  Routine: TSyntaxNode;
-  Parameters: TArray<TParameterText>;
+  mTree: TSyntaxTree;
+  mRoutine: TSyntaxNode;
+  mParameters: TArray<TParameterText>;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Routine := FirstOf(Tree, TSyntaxKind.RoutineDecl);
-    Parameters := TRoutineParts.ParameterTexts(Source, TRoutineParts.HeaderOf(Routine));
-    Assert.AreEqual(3, Integer(Length(Parameters)));
-    Assert.AreEqual('const A: Integer', Parameters[0].Text);
-    Assert.AreEqual('B', Parameters[1].Name);
-    Assert.AreEqual('var', Parameters[2].Modifier);
+    mRoutine := FirstOf(mTree, TSyntaxKind.RoutineDecl);
+    mParameters := TRoutineParts.ParameterTexts(cSource, TRoutineParts.HeaderOf(mRoutine));
+    Assert.AreEqual(3, Integer(Length(mParameters)));
+    Assert.AreEqual('const A: Integer', mParameters[0].Text);
+    Assert.AreEqual('B', mParameters[1].Name);
+    Assert.AreEqual('var', mParameters[2].Modifier);
     Assert.AreEqual('function Neu(const A: Integer; const B: Integer; var C: string): Integer;',
-      TRoutineParts.HeadText(Source, TRoutineParts.HeaderOf(Routine), 'Neu', Parameters, False));
-    Assert.AreEqual('class function Neu: Integer;', TRoutineParts.HeadText(Source, TRoutineParts.HeaderOf(Routine),
+      TRoutineParts.HeadText(cSource, TRoutineParts.HeaderOf(mRoutine), 'Neu', mParameters, False));
+    Assert.AreEqual('class function Neu: Integer;', TRoutineParts.HeadText(cSource, TRoutineParts.HeaderOf(mRoutine),
       'Neu', nil, True));
-    Assert.IsTrue(TRoutineParts.IsFunction(Routine));
+    Assert.IsTrue(TRoutineParts.IsFunction(mRoutine));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TRoutinePartsTests.AnonymousHeadAndFunction;
 var
-  Tree: TSyntaxTree;
-  Anonymous: TSyntaxNode;
-  Parameters: TArray<TParameterText>;
+  mTree: TSyntaxTree;
+  mAnonymous: TSyntaxNode;
+  mParameters: TArray<TParameterText>;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Anonymous := FirstOf(Tree, TSyntaxKind.AnonymousMethod);
-    Assert.IsFalse(TRoutineParts.IsFunction(Anonymous));
-    Parameters := TRoutineParts.ParameterTexts(Source, Anonymous);
-    Assert.AreEqual(1, Integer(Length(Parameters)));
-    Assert.AreEqual('procedure(const X: Integer)', TRoutineParts.AnonymousHead(Source, Anonymous, Parameters));
-    Assert.AreEqual('procedure Name(const X: Integer);', TRoutineParts.HeadText(Source, Anonymous, 'Name',
-      Parameters, False));
+    mAnonymous := FirstOf(mTree, TSyntaxKind.AnonymousMethod);
+    Assert.IsFalse(TRoutineParts.IsFunction(mAnonymous));
+    mParameters := TRoutineParts.ParameterTexts(cSource, mAnonymous);
+    Assert.AreEqual(1, Integer(Length(mParameters)));
+    Assert.AreEqual('procedure(const X: Integer)', TRoutineParts.AnonymousHead(cSource, mAnonymous, mParameters));
+    Assert.AreEqual('procedure Name(const X: Integer);', TRoutineParts.HeadText(cSource, mAnonymous, 'Name',
+      mParameters, False));
     Assert.AreEqual('function(const A: Integer; const B: Integer; var C: string): Integer',
-      TRoutineParts.AnonymousHead(Source, TRoutineParts.HeaderOf(FirstOf(Tree, TSyntaxKind.RoutineDecl)),
-      TRoutineParts.ParameterTexts(Source, TRoutineParts.HeaderOf(FirstOf(Tree, TSyntaxKind.RoutineDecl)))));
+      TRoutineParts.AnonymousHead(cSource, TRoutineParts.HeaderOf(FirstOf(mTree, TSyntaxKind.RoutineDecl)),
+      TRoutineParts.ParameterTexts(cSource, TRoutineParts.HeaderOf(FirstOf(mTree, TSyntaxKind.RoutineDecl)))));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -120,38 +120,38 @@ end;
 
 procedure TRoutinePartsTests.AnonymousParametersShadow;
 var
-  Tree: TSyntaxTree;
-  Anonymous, Routine, Node: TSyntaxNode;
-  Cache: TLocalsCache;
-  Nodes: TList<TSyntaxNode>;
-  Inside: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mAnonymous, mRoutine, mNode: TSyntaxNode;
+  mCache: TLocalsCache;
+  mNodes: TList<TSyntaxNode>;
+  mInside: TSyntaxNode;
 begin
-  Tree := TPascalParser.Parse(Source);
-  Cache := TLocalsCache.Create(Source, Tree);
-  Nodes := TList<TSyntaxNode>.Create;
+  mTree := TPascalParser.Parse(cSource);
+  mCache := TLocalsCache.Create(cSource, mTree);
+  mNodes := TList<TSyntaxNode>.Create;
   try
-    Anonymous := FirstOf(Tree, TSyntaxKind.AnonymousMethod);
-    Routine := FirstOf(Tree, TSyntaxKind.RoutineDecl);
+    mAnonymous := FirstOf(mTree, TSyntaxKind.AnonymousMethod);
+    mRoutine := FirstOf(mTree, TSyntaxKind.RoutineDecl);
     // Das X in Log(X) ist der Parameter der anonymen Methode, nicht die Variable der Routine.
-    TRoutineLocals.CollectKind(Anonymous, TSyntaxKind.Identifier, Nodes);
-    Inside := nil;
-    for Node in Nodes do
+    TRoutineLocals.CollectKind(mAnonymous, TSyntaxKind.Identifier, mNodes);
+    mInside := nil;
+    for mNode in mNodes do
     begin
-      if Node.Name = 'X' then
+      if mNode.Name = 'X' then
       begin
-        Inside := Node;
+        mInside := mNode;
       end;
     end;
-    Assert.IsNotNull(Inside);
-    Assert.IsTrue(TRoutineParts.Shadowed(Cache, Inside, Routine, 'X', False));
-    Assert.IsFalse(TRoutineParts.Shadowed(Cache, Inside, Routine, 'C', False));
-    Assert.IsTrue(TRoutineParts.InAnonymous(Inside, Routine));
-    Assert.IsTrue(Cache.Declares(Routine, 'Result', 0));
-    Assert.IsFalse(Cache.Declares(Anonymous, 'Result', 0));
+    Assert.IsNotNull(mInside);
+    Assert.IsTrue(TRoutineParts.Shadowed(mCache, mInside, mRoutine, 'X', False));
+    Assert.IsFalse(TRoutineParts.Shadowed(mCache, mInside, mRoutine, 'C', False));
+    Assert.IsTrue(TRoutineParts.InAnonymous(mInside, mRoutine));
+    Assert.IsTrue(mCache.Declares(mRoutine, 'Result', 0));
+    Assert.IsFalse(mCache.Declares(mAnonymous, 'Result', 0));
   finally
-    Nodes.Free;
-    Cache.Free;
-    Tree.Free;
+    mNodes.Free;
+    mCache.Free;
+    mTree.Free;
   end;
 end;
 

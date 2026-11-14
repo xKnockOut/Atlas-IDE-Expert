@@ -53,7 +53,7 @@ end;
 
 procedure TSqlTextTests.SqlFromSource;
 const
-  Source = 'begin'#10 +
+  cSource = 'begin'#10 +
     '  Q.SQL.Text := ''select * from T'' + sLineBreak + ''where A = :A'';'#10 +
     '  DM.Q.SQL.Text := ''falsch'';'#10 +
     '  Q2.SQL.Clear;'#10 +
@@ -61,15 +61,15 @@ const
     '  Q2.SQL.Add(''from T where B = :B'');'#10 +
     'end;';
 begin
-  Assert.AreEqual('select * from T'#13#10'where A = :A', TSqlText.FromSource(Source, 'Q'));
-  Assert.AreEqual('falsch', TSqlText.FromSource(Source, 'DM.Q'));
-  Assert.AreEqual('select 1'#13#10'from T where B = :B', TSqlText.FromSource(Source, 'q2'));
-  Assert.AreEqual('', TSqlText.FromSource(Source, 'Q3'));
+  Assert.AreEqual('select * from T'#13#10'where A = :A', TSqlText.FromSource(cSource, 'Q'));
+  Assert.AreEqual('falsch', TSqlText.FromSource(cSource, 'DM.Q'));
+  Assert.AreEqual('select 1'#13#10'from T where B = :B', TSqlText.FromSource(cSource, 'q2'));
+  Assert.AreEqual('', TSqlText.FromSource(cSource, 'Q3'));
 end;
 
 procedure TSqlTextTests.SqlFromForm;
 const
-  Form = 'object DM: TDM'#13#10 +
+  cForm = 'object DM: TDM'#13#10 +
     '  object Q: TFDQuery'#13#10 +
     '    SQL.Strings = ('#13#10 +
     '      ''select * from T'''#13#10 +
@@ -78,22 +78,22 @@ const
     '  end'#13#10 +
     'end'#13#10;
 begin
-  Assert.AreEqual('select * from T'#13#10'where A = :A and B = :B', TSqlText.FromForm(Form, 'DM.Q'));
-  Assert.AreEqual('', TSqlText.FromForm(Form, 'Fehlt'));
+  Assert.AreEqual('select * from T'#13#10'where A = :A and B = :B', TSqlText.FromForm(cForm, 'DM.Q'));
+  Assert.AreEqual('', TSqlText.FromForm(cForm, 'Fehlt'));
 end;
 
 procedure TSqlTextTests.AssignedAndMissing;
 const
-  Source = 'begin'#10 +
+  cSource = 'begin'#10 +
     '  Q.ParamByName(''A'').AsInteger := 1;'#10 +
     '  Q.Params.ParamByName(''b'').Value := 2;'#10 +
     '  Ado.Parameters.ParamByName(''C'').Value := 3;'#10 +
     '  Q2.ParamByName(''X'').Value := 4;'#10 +
     'end;';
 begin
-  Assert.AreEqual('A|b', Joined(TSqlText.AssignedParams(Source, 'Q')));
-  Assert.AreEqual('C', Joined(TSqlText.AssignedParams(Source, 'Ado')));
-  Assert.AreEqual('C', Joined(TSqlText.Missing(['A', 'B', 'C'], TSqlText.AssignedParams(Source, 'Q'))));
+  Assert.AreEqual('A|b', Joined(TSqlText.AssignedParams(cSource, 'Q')));
+  Assert.AreEqual('C', Joined(TSqlText.AssignedParams(cSource, 'Ado')));
+  Assert.AreEqual('C', Joined(TSqlText.Missing(['A', 'B', 'C'], TSqlText.AssignedParams(cSource, 'Q'))));
 end;
 
 initialization

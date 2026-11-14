@@ -53,47 +53,47 @@ end;
 
 procedure TAtlasGenerateProtocolTests.ArgumentsAsJsonArray;
 var
-  Value: TJSONValue;
-  Items: TJSONArray;
-  Selection: TAtlasGenerateSpot;
+  mValue: TJSONValue;
+  mItems: TJSONArray;
+  mSelection: TAtlasGenerateSpot;
 begin
   // [uri, position, endLine, name, argument]; Text über den Parser vergleichen (Escapes egal).
-  Value := Parse(TAtlasGenerateProtocol.RunArguments(Spot, 'ctor', 'FName, FAlter'));
+  mValue := Parse(TAtlasGenerateProtocol.RunArguments(Spot, 'ctor', 'FName, FAlter'));
   try
-    Assert.IsTrue(Value is TJSONArray);
-    Items := TJSONArray(Value);
-    Assert.AreEqual(5, Integer(Items.Count));
-    Assert.AreEqual('file:///C:/P/U.pas', Items.Items[0].Value);
-    Assert.AreEqual('{"line":4,"character":2}', Items.Items[1].ToJSON);
-    Assert.AreEqual('-1', Items.Items[2].Value);
-    Assert.AreEqual('ctor', Items.Items[3].Value);
-    Assert.AreEqual('FName, FAlter', Items.Items[4].Value);
+    Assert.IsTrue(mValue is TJSONArray);
+    mItems := TJSONArray(mValue);
+    Assert.AreEqual(5, Integer(mItems.Count));
+    Assert.AreEqual('file:///C:/P/U.pas', mItems.Items[0].Value);
+    Assert.AreEqual('{"line":4,"character":2}', mItems.Items[1].ToJSON);
+    Assert.AreEqual('-1', mItems.Items[2].Value);
+    Assert.AreEqual('ctor', mItems.Items[3].Value);
+    Assert.AreEqual('FName, FAlter', mItems.Items[4].Value);
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Value := Parse(TAtlasGenerateProtocol.ChoicesArguments(Spot, 'ctor'));
+  mValue := Parse(TAtlasGenerateProtocol.ChoicesArguments(Spot, 'ctor'));
   try
-    Assert.AreEqual(4, Integer(TJSONArray(Value).Count));
+    Assert.AreEqual(4, Integer(TJSONArray(mValue).Count));
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Value := Parse(TAtlasGenerateProtocol.MenuArguments(Spot));
+  mValue := Parse(TAtlasGenerateProtocol.MenuArguments(Spot));
   try
-    Assert.AreEqual(3, Integer(TJSONArray(Value).Count));
+    Assert.AreEqual(3, Integer(TJSONArray(mValue).Count));
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Selection := TAtlasGenerateSpot.Create('file:///C:/P/U.pas', 4, 2, 7);
-  Assert.IsTrue(Selection.HasSelection);
+  mSelection := TAtlasGenerateSpot.Create('file:///C:/P/U.pas', 4, 2, 7);
+  Assert.IsTrue(mSelection.HasSelection);
   Assert.IsFalse(Spot.HasSelection);
 end;
 
 procedure TAtlasGenerateProtocolTests.ParsesMenuOfServer;
 var
-  Value: TJSONValue;
-  Menu: TAtlasGenerateServerMenu;
+  mValue: TJSONValue;
+  mMenu: TAtlasGenerateServerMenu;
 begin
-  Value := Parse('{"enabled":true,"places":["class","interface"],"commands":[' +
+  mValue := Parse('{"enabled":true,"places":["class","interface"],"commands":[' +
     '{"name":"ctor","summary":"Konstruktor","example":"/ctor FName","group":"generate","argument":"optional",' +
     '"choices":true,"multi":true,"separator":", "},' +
     '{"name":"try","summary":"try","example":"","group":"surround","argument":"none","choices":false,' +
@@ -101,151 +101,151 @@ begin
     '{"name":"","summary":"ohne Namen"},' +
     '{"name":"seltsam","group":"templates","argument":"required"}]}');
   try
-    Menu := TAtlasGenerateProtocol.ParseMenu(Value);
+    mMenu := TAtlasGenerateProtocol.ParseMenu(mValue);
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Assert.IsTrue(Menu.Enabled);
-  Assert.AreEqual('class,interface', string.Join(',', Menu.Places));
-  Assert.AreEqual(3, Integer(Length(Menu.Entries)), 'ohne Namen entfällt');
-  Assert.AreEqual('slash:ctor', Menu.Entries[0].Id);
-  Assert.AreEqual(Ord(TAtlasGenerateGroup.Generate), Ord(Menu.Entries[0].Group));
-  Assert.AreEqual(Ord(TAtlasGenerateArgument.Optional), Ord(Menu.Entries[0].Argument));
-  Assert.IsTrue(Menu.Entries[0].HasChoices);
-  Assert.IsTrue(Menu.Entries[0].Multi);
-  Assert.AreEqual(', ', Menu.Entries[0].Separator);
-  Assert.AreEqual('/ctor FName', Menu.Entries[0].Example);
-  Assert.AreEqual('Konstruktor', Menu.Entries[0].Caption);
-  Assert.AreEqual(Ord(TAtlasGenerateGroup.Surround), Ord(Menu.Entries[1].Group));
-  Assert.AreEqual(' ', Menu.Entries[1].Separator, 'leer: Leerzeichen');
+  Assert.IsTrue(mMenu.Enabled);
+  Assert.AreEqual('class,interface', string.Join(',', mMenu.Places));
+  Assert.AreEqual(3, Integer(Length(mMenu.Entries)), 'ohne Namen entfällt');
+  Assert.AreEqual('slash:ctor', mMenu.Entries[0].Id);
+  Assert.AreEqual(Ord(TAtlasGenerateGroup.Generate), Ord(mMenu.Entries[0].Group));
+  Assert.AreEqual(Ord(TAtlasGenerateArgument.Optional), Ord(mMenu.Entries[0].Argument));
+  Assert.IsTrue(mMenu.Entries[0].HasChoices);
+  Assert.IsTrue(mMenu.Entries[0].Multi);
+  Assert.AreEqual(', ', mMenu.Entries[0].Separator);
+  Assert.AreEqual('/ctor FName', mMenu.Entries[0].Example);
+  Assert.AreEqual('Konstruktor', mMenu.Entries[0].Caption);
+  Assert.AreEqual(Ord(TAtlasGenerateGroup.Surround), Ord(mMenu.Entries[1].Group));
+  Assert.AreEqual(' ', mMenu.Entries[1].Separator, 'leer: Leerzeichen');
   // Der Server liefert keine Vorlagen: unbekannte Gruppe wird Erzeugen.
-  Assert.AreEqual(Ord(TAtlasGenerateGroup.Generate), Ord(Menu.Entries[2].Group));
-  Assert.AreEqual(Ord(TAtlasGenerateArgument.Required), Ord(Menu.Entries[2].Argument));
-  Assert.IsTrue(Menu.Entries[2].NeedsStep);
+  Assert.AreEqual(Ord(TAtlasGenerateGroup.Generate), Ord(mMenu.Entries[2].Group));
+  Assert.AreEqual(Ord(TAtlasGenerateArgument.Required), Ord(mMenu.Entries[2].Argument));
+  Assert.IsTrue(mMenu.Entries[2].NeedsStep);
 end;
 
 procedure TAtlasGenerateProtocolTests.MenuWithSlashCommandsOff;
 var
-  Value: TJSONValue;
-  Menu: TAtlasGenerateServerMenu;
+  mValue: TJSONValue;
+  mMenu: TAtlasGenerateServerMenu;
 begin
-  Value := Parse('{"enabled":false,"places":["routine"],"commands":[]}');
+  mValue := Parse('{"enabled":false,"places":["routine"],"commands":[]}');
   try
-    Menu := TAtlasGenerateProtocol.ParseMenu(Value);
+    mMenu := TAtlasGenerateProtocol.ParseMenu(mValue);
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Assert.IsFalse(Menu.Enabled);
-  Assert.AreEqual('routine', string.Join(',', Menu.Places), 'Orte gibt es trotzdem (für Vorlagen)');
-  Menu := TAtlasGenerateProtocol.ParseMenu(nil);
-  Assert.IsFalse(Menu.Enabled);
-  Assert.AreEqual(0, Integer(Length(Menu.Entries)));
+  Assert.IsFalse(mMenu.Enabled);
+  Assert.AreEqual('routine', string.Join(',', mMenu.Places), 'Orte gibt es trotzdem (für Vorlagen)');
+  mMenu := TAtlasGenerateProtocol.ParseMenu(nil);
+  Assert.IsFalse(mMenu.Enabled);
+  Assert.AreEqual(0, Integer(Length(mMenu.Entries)));
 end;
 
 procedure TAtlasGenerateProtocolTests.ParsesChoices;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := Parse('["FName", 3, "FAlter"]');
+  mValue := Parse('["FName", 3, "FAlter"]');
   try
-    Assert.AreEqual('FName,FAlter', string.Join(',', TAtlasGenerateProtocol.ParseChoices(Value)));
+    Assert.AreEqual('FName,FAlter', string.Join(',', TAtlasGenerateProtocol.ParseChoices(mValue)));
   finally
-    Value.Free;
+    mValue.Free;
   end;
   Assert.AreEqual(0, Integer(Length(TAtlasGenerateProtocol.ParseChoices(nil))));
 end;
 
 procedure TAtlasGenerateProtocolTests.RunGivesEditsOrReason;
 var
-  Value: TJSONValue;
-  Edits: TArray<TLspTextEdit>;
-  Reason: string;
-  Done: Boolean;
+  mValue: TJSONValue;
+  mEdits: TArray<TLspTextEdit>;
+  mReason: string;
+  mDone: Boolean;
 begin
-  Value := Parse('{"edits":[{"range":{"start":{"line":3,"character":0},"end":{"line":3,"character":0}},' +
+  mValue := Parse('{"edits":[{"range":{"start":{"line":3,"character":0},"end":{"line":3,"character":0}},' +
     '"newText":"x"}],"reason":""}');
   try
-    Done := TAtlasGenerateProtocol.ParseRun(Value, Edits, Reason);
+    mDone := TAtlasGenerateProtocol.ParseRun(mValue, mEdits, mReason);
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Assert.IsTrue(Done);
-  Assert.AreEqual(1, Integer(Length(Edits)));
-  Assert.AreEqual('x', Edits[0].NewText);
-  Assert.AreEqual('', Reason);
-  Value := Parse('{"edits":[],"reason":"Keine Felder"}');
+  Assert.IsTrue(mDone);
+  Assert.AreEqual(1, Integer(Length(mEdits)));
+  Assert.AreEqual('x', mEdits[0].NewText);
+  Assert.AreEqual('', mReason);
+  mValue := Parse('{"edits":[],"reason":"Keine Felder"}');
   try
-    Done := TAtlasGenerateProtocol.ParseRun(Value, Edits, Reason);
+    mDone := TAtlasGenerateProtocol.ParseRun(mValue, mEdits, mReason);
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Assert.IsFalse(Done);
-  Assert.AreEqual('Keine Felder', Reason);
-  Value := Parse('{"edits":[]}');
+  Assert.IsFalse(mDone);
+  Assert.AreEqual('Keine Felder', mReason);
+  mValue := Parse('{"edits":[]}');
   try
-    Done := TAtlasGenerateProtocol.ParseRun(Value, Edits, Reason);
+    mDone := TAtlasGenerateProtocol.ParseRun(mValue, mEdits, mReason);
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Assert.IsFalse(Done);
-  Assert.AreNotEqual('', Reason, 'ohne Änderung ein Grund');
-  Assert.IsFalse(TAtlasGenerateProtocol.ParseRun(nil, Edits, Reason));
-  Assert.AreNotEqual('', Reason);
+  Assert.IsFalse(mDone);
+  Assert.AreNotEqual('', mReason, 'ohne Änderung ein Grund');
+  Assert.IsFalse(TAtlasGenerateProtocol.ParseRun(nil, mEdits, mReason));
+  Assert.AreNotEqual('', mReason);
 end;
 
 procedure TAtlasGenerateProtocolTests.SnippetsByContext;
 var
-  Snippets: TAtlasSnippetList;
-  Entries: TArray<TAtlasGenerateEntry>;
+  mSnippets: TAtlasSnippetList;
+  mEntries: TArray<TAtlasGenerateEntry>;
 begin
-  SetLength(Snippets, 5);
-  Snippets[0].Prefix := 'tryf';
-  Snippets[0].Name := 'try…finally';
-  Snippets[0].Context := 'statement';
-  Snippets[1].Prefix := 'cls';
-  Snippets[1].Context := 'declaration';
-  Snippets[2].Prefix := 'todo';
-  Snippets[2].Context := '';
-  Snippets[3].Prefix := 'nn';
-  Snippets[3].Postfix := True;
+  SetLength(mSnippets, 5);
+  mSnippets[0].Prefix := 'tryf';
+  mSnippets[0].Name := 'try…finally';
+  mSnippets[0].Context := 'statement';
+  mSnippets[1].Prefix := 'cls';
+  mSnippets[1].Context := 'declaration';
+  mSnippets[2].Prefix := 'todo';
+  mSnippets[2].Context := '';
+  mSnippets[3].Prefix := 'nn';
+  mSnippets[3].Postfix := True;
   // Dateivorlage (#759): nur für „Neu mit Atlas“, nie am Cursor.
-  Snippets[4].Prefix := 'newunit';
-  Snippets[4].FileKind := 'unit';
+  mSnippets[4].Prefix := 'newunit';
+  mSnippets[4].FileKind := 'unit';
   // In einer Routine: Anweisungen und „überall“, keine Deklarationen, keine Postfix-Vorlagen.
-  Entries := TAtlasGenerateProtocol.FromSnippets(Snippets, ['routine', 'implementation']);
-  Assert.AreEqual(2, Integer(Length(Entries)));
-  Assert.AreEqual('snippet:tryf', Entries[0].Id);
-  Assert.AreEqual('try…finally', Entries[0].Caption);
-  Assert.AreEqual(0, Entries[0].Source);
-  Assert.AreEqual(Ord(TAtlasGenerateGroup.Templates), Ord(Entries[0].Group));
-  Assert.AreEqual('todo', Entries[1].Caption, 'ohne Namen: Kürzel');
-  Assert.AreEqual(2, Entries[1].Source);
+  mEntries := TAtlasGenerateProtocol.FromSnippets(mSnippets, ['routine', 'implementation']);
+  Assert.AreEqual(2, Integer(Length(mEntries)));
+  Assert.AreEqual('snippet:tryf', mEntries[0].Id);
+  Assert.AreEqual('try…finally', mEntries[0].Caption);
+  Assert.AreEqual(0, mEntries[0].Source);
+  Assert.AreEqual(Ord(TAtlasGenerateGroup.Templates), Ord(mEntries[0].Group));
+  Assert.AreEqual('todo', mEntries[1].Caption, 'ohne Namen: Kürzel');
+  Assert.AreEqual(2, mEntries[1].Source);
   // Auf Unit-Ebene: Deklarationen statt Anweisungen.
-  Entries := TAtlasGenerateProtocol.FromSnippets(Snippets, ['implementation']);
-  Assert.AreEqual('snippet:cls,snippet:todo', Entries[0].Id + ',' + Entries[1].Id);
+  mEntries := TAtlasGenerateProtocol.FromSnippets(mSnippets, ['implementation']);
+  Assert.AreEqual('snippet:cls,snippet:todo', mEntries[0].Id + ',' + mEntries[1].Id);
   // Kommentar oder String (keine Orte): keine Vorlage.
-  Assert.AreEqual(0, Integer(Length(TAtlasGenerateProtocol.FromSnippets(Snippets, nil))));
+  Assert.AreEqual(0, Integer(Length(TAtlasGenerateProtocol.FromSnippets(mSnippets, nil))));
 end;
 
 procedure TAtlasGenerateProtocolTests.ActionsOnlyRefactor;
 var
-  Actions: TArray<TLspCodeAction>;
-  Entries: TArray<TAtlasGenerateEntry>;
+  mActions: TArray<TLspCodeAction>;
+  mEntries: TArray<TAtlasGenerateEntry>;
 begin
-  SetLength(Actions, 3);
-  Actions[0].Title := 'Methode extrahieren';
-  Actions[0].Kind := 'refactor.extract';
-  Actions[1].Title := 'Schreibfehler beheben';
-  Actions[1].Kind := 'quickfix';
-  Actions[2].Title := 'Variable einführen';
-  Actions[2].Kind := 'refactor.extract';
-  Actions[2].Disabled := 'Keine Auswahl';
-  Entries := TAtlasGenerateProtocol.FromActions(Actions);
-  Assert.AreEqual(1, Integer(Length(Entries)));
-  Assert.AreEqual('action:Methode extrahieren', Entries[0].Id);
-  Assert.AreEqual(0, Entries[0].Source);
-  Assert.AreEqual('', Entries[0].CommandName, 'Code-Aktionen haben keinen /name');
-  Assert.AreEqual(Ord(TAtlasGenerateGroup.Generate), Ord(Entries[0].Group));
+  SetLength(mActions, 3);
+  mActions[0].Title := 'Methode extrahieren';
+  mActions[0].Kind := 'refactor.extract';
+  mActions[1].Title := 'Schreibfehler beheben';
+  mActions[1].Kind := 'quickfix';
+  mActions[2].Title := 'Variable einführen';
+  mActions[2].Kind := 'refactor.extract';
+  mActions[2].Disabled := 'Keine Auswahl';
+  mEntries := TAtlasGenerateProtocol.FromActions(mActions);
+  Assert.AreEqual(1, Integer(Length(mEntries)));
+  Assert.AreEqual('action:Methode extrahieren', mEntries[0].Id);
+  Assert.AreEqual(0, mEntries[0].Source);
+  Assert.AreEqual('', mEntries[0].CommandName, 'Code-Aktionen haben keinen /name');
+  Assert.AreEqual(Ord(TAtlasGenerateGroup.Generate), Ord(mEntries[0].Group));
 end;
 
 initialization

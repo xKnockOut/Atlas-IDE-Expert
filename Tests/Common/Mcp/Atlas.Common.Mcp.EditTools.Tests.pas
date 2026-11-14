@@ -109,15 +109,15 @@ end;
 
 procedure TRenameRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Token: TPascalToken;
-  Range: TTextRange;
+  mToken: TPascalToken;
+  mRange: TTextRange;
 begin
-  for Token in AContext.Tree.Tokens do
+  for mToken in AContext.Tree.Tokens do
   begin
-    if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'Alt') then
+    if (mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, 'Alt') then
     begin
-      Range := TTextRange.Create(Token.StartPos, Token.EndPos);
-      AReport.Add(Range, 'Alt gefunden', [TRuleFix.Create('Alt durch Neu ersetzen', [TRuleEdit.Create(Range, 'Neu')])]);
+      mRange := TTextRange.Create(mToken.StartPos, mToken.EndPos);
+      AReport.Add(mRange, 'Alt gefunden', [TRuleFix.Create('Alt durch Neu ersetzen', [TRuleEdit.Create(mRange, 'Neu')])]);
     end;
   end;
 end;
@@ -129,13 +129,13 @@ end;
 
 procedure TNoFixRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
-  for Token in AContext.Tree.Tokens do
+  for mToken in AContext.Tree.Tokens do
   begin
-    if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'Alt') then
+    if (mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, 'Alt') then
     begin
-      AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), 'Alt gefunden');
+      AReport.Add(TTextRange.Create(mToken.StartPos, mToken.EndPos), 'Alt gefunden');
     end;
   end;
 end;
@@ -212,131 +212,131 @@ end;
 
 procedure TMcpEditToolsTests.DisabledAndRestrictedToolsAreHiddenAndRefused;
 var
-  Server: TMcpServer;
-  Listed: TJSONObject;
+  mServer: TMcpServer;
+  mListed: TJSONObject;
 begin
-  Server := TMcpServer.Create('Atlas', '0');
+  mServer := TMcpServer.Create('Atlas', '0');
   try
-    Server.AddTool('lesen', 'l', '{}',
+    mServer.AddTool('lesen', 'l', '{}',
       function(const AArguments: TJSONObject): string
       begin
         Result := 'ok';
       end);
-    Server.AddTool('schreiben', 's', '{}',
+    mServer.AddTool('schreiben', 's', '{}',
       function(const AArguments: TJSONObject): string
       begin
         Result := 'geschrieben';
       end, TMcpToolKind.Write);
-    Server.OnDisabledTools :=
+    mServer.OnDisabledTools :=
       function: TArray<string>
       begin
         Result := ['Lesen'];
       end;
-    Listed := Server.ListTools;
+    mListed := mServer.ListTools;
     try
-      Assert.AreEqual(1, Integer(TJSONArray(Listed.GetValue('tools')).Count), 'abgeschaltet fehlt');
+      Assert.AreEqual(1, Integer(TJSONArray(mListed.GetValue('tools')).Count), 'abgeschaltet fehlt');
     finally
-      Listed.Free;
+      mListed.Free;
     end;
-    AssertToolRefused(Server, 'lesen', 'mcp.disabledTools');
-    Server.OnDisabledTools := nil;
-    Server.Restricted := True;
-    Listed := Server.ListTools;
+    AssertToolRefused(mServer, 'lesen', 'mcp.disabledTools');
+    mServer.OnDisabledTools := nil;
+    mServer.Restricted := True;
+    mListed := mServer.ListTools;
     try
-      Assert.AreEqual(1, Integer(TJSONArray(Listed.GetValue('tools')).Count), 'eingeschränkt: nur lesend');
-      Assert.Contains(Listed.ToJSON, '"lesen"');
+      Assert.AreEqual(1, Integer(TJSONArray(mListed.GetValue('tools')).Count), 'eingeschränkt: nur lesend');
+      Assert.Contains(mListed.ToJSON, '"lesen"');
     finally
-      Listed.Free;
+      mListed.Free;
     end;
-    AssertToolRefused(Server, 'schreiben', 'Modus aus');
+    AssertToolRefused(mServer, 'schreiben', 'Modus aus');
   finally
-    Server.Free;
+    mServer.Free;
   end;
 end;
 
 procedure TMcpEditToolsTests.WritingCallsAreAudited;
 var
-  Server: TMcpServer;
-  Log: TList<string>;
-  Params, Called: TJSONObject;
+  mServer: TMcpServer;
+  mLog: TList<string>;
+  mParams, mCalled: TJSONObject;
 begin
-  Log := TList<string>.Create;
-  Server := TMcpServer.Create('Atlas', '0');
+  mLog := TList<string>.Create;
+  mServer := TMcpServer.Create('Atlas', '0');
   try
-    Server.AddTool('schreiben', 's', '{}',
+    mServer.AddTool('schreiben', 's', '{}',
       function(const AArguments: TJSONObject): string
       begin
         Result := 'geschrieben';
       end, TMcpToolKind.Write);
-    Server.AddTool('lesen', 'l', '{}',
+    mServer.AddTool('lesen', 'l', '{}',
       function(const AArguments: TJSONObject): string
       begin
         Result := 'ok';
       end);
-    Server.OnAudit :=
+    mServer.OnAudit :=
       procedure(AText: string)
       begin
-        Log.Add(AText);
+        mLog.Add(AText);
       end;
-    Params := TJSONObject.ParseJSONValue('{"name":"schreiben","arguments":{"file":"A.pas"}}') as TJSONObject;
+    mParams := TJSONObject.ParseJSONValue('{"name":"schreiben","arguments":{"file":"A.pas"}}') as TJSONObject;
     try
-      Server.CallTool(Params).Free;
+      mServer.CallTool(mParams).Free;
     finally
-      Params.Free;
+      mParams.Free;
     end;
-    Params := TJSONObject.ParseJSONValue('{"name":"lesen"}') as TJSONObject;
+    mParams := TJSONObject.ParseJSONValue('{"name":"lesen"}') as TJSONObject;
     try
-      Called := Server.CallTool(Params);
-      Called.Free;
+      mCalled := mServer.CallTool(mParams);
+      mCalled.Free;
     finally
-      Params.Free;
+      mParams.Free;
     end;
-    Assert.AreEqual(1, Integer(Log.Count), 'nur der schreibende Aufruf');
-    Assert.Contains(Log[0], 'schreiben');
-    Assert.Contains(Log[0], 'A.pas');
+    Assert.AreEqual(1, Integer(mLog.Count), 'nur der schreibende Aufruf');
+    Assert.Contains(mLog[0], 'schreiben');
+    Assert.Contains(mLog[0], 'A.pas');
   finally
-    Server.Free;
-    Log.Free;
+    mServer.Free;
+    mLog.Free;
   end;
 end;
 
 procedure TMcpEditToolsTests.ListsAndReadsResources;
 var
-  Server: TMcpServer;
-  Listed, Read, Params, Init: TJSONObject;
+  mServer: TMcpServer;
+  mListed, mRead, mParams, mInit: TJSONObject;
 begin
-  Server := TMcpServer.Create('Atlas', '0');
+  mServer := TMcpServer.Create('Atlas', '0');
   try
-    Server.AddResource('delphi://conventions', 'Konventionen', 'd', 'text/markdown',
+    mServer.AddResource('delphi://conventions', 'Konventionen', 'd', 'text/markdown',
       function: string
       begin
         Result := '# Konventionen';
       end);
-    Init := Server.Initialize(nil);
+    mInit := mServer.Initialize(nil);
     try
-      Assert.IsNotNull(Init.GetValue<TJSONObject>('capabilities').GetValue('resources'));
+      Assert.IsNotNull(mInit.GetValue<TJSONObject>('capabilities').GetValue('resources'));
     finally
-      Init.Free;
+      mInit.Free;
     end;
-    Listed := Server.ListResources;
+    mListed := mServer.ListResources;
     try
-      Assert.Contains(Listed.ToJSON, 'delphi://conventions');
+      Assert.Contains(mListed.ToJSON, 'delphi://conventions');
     finally
-      Listed.Free;
+      mListed.Free;
     end;
-    Params := TJSONObject.ParseJSONValue('{"uri":"delphi://conventions"}') as TJSONObject;
+    mParams := TJSONObject.ParseJSONValue('{"uri":"delphi://conventions"}') as TJSONObject;
     try
-      Read := Server.ReadResource(Params);
+      mRead := mServer.ReadResource(mParams);
       try
-        Assert.Contains(Read.ToJSON, '# Konventionen');
+        Assert.Contains(mRead.ToJSON, '# Konventionen');
       finally
-        Read.Free;
+        mRead.Free;
       end;
     finally
-      Params.Free;
+      mParams.Free;
     end;
   finally
-    Server.Free;
+    mServer.Free;
   end;
 end;
 
@@ -362,67 +362,67 @@ end;
 
 procedure TMcpEditToolsTests.DryRunWritesNothingAndShowsDiff;
 var
-  Files: TMemoryFiles;
-  Edit: TMcpEditTools;
-  Report: string;
+  mFiles: TMemoryFiles;
+  mEdit: TMcpEditTools;
+  mReport: string;
 begin
-  Files := TMemoryFiles.Create;
-  Edit := Tools(Files);
+  mFiles := TMemoryFiles.Create;
+  mEdit := Tools(mFiles);
   try
-    Files.Files.Add('A.pas', 'Alt;');
-    Files.Files.Add('B.dfm', 'x'#10'  Alt'#10'y');
-    Report := Edit.Apply('test', Edits, True);
-    Assert.AreEqual(0, Files.Writes);
-    Assert.AreEqual('Alt;', Files.Files['A.pas']);
-    Assert.Contains(Report, 'Vorschau');
-    Assert.Contains(Report, '- Alt;');
-    Assert.Contains(Report, '+ Neu;');
-    Assert.Contains(Report, '+   Neu');
-    Assert.Contains(Report, 'Zeile 2:', 'nur geänderte Zeilen mit Nummer');
+    mFiles.Files.Add('A.pas', 'Alt;');
+    mFiles.Files.Add('B.dfm', 'x'#10'  Alt'#10'y');
+    mReport := mEdit.Apply('test', Edits, True);
+    Assert.AreEqual(0, mFiles.Writes);
+    Assert.AreEqual('Alt;', mFiles.Files['A.pas']);
+    Assert.Contains(mReport, 'Vorschau');
+    Assert.Contains(mReport, '- Alt;');
+    Assert.Contains(mReport, '+ Neu;');
+    Assert.Contains(mReport, '+   Neu');
+    Assert.Contains(mReport, 'Zeile 2:', 'nur geänderte Zeilen mit Nummer');
   finally
-    Edit.Free;
-    Files.Free;
+    mEdit.Free;
+    mFiles.Free;
   end;
 end;
 
 procedure TMcpEditToolsTests.WritesAllFilesAndAuditsThem;
 var
-  Files: TMemoryFiles;
-  Edit: TMcpEditTools;
-  Logged: string;
+  mFiles: TMemoryFiles;
+  mEdit: TMcpEditTools;
+  mLogged: string;
 begin
-  Files := TMemoryFiles.Create;
-  Edit := Tools(Files);
+  mFiles := TMemoryFiles.Create;
+  mEdit := Tools(mFiles);
   try
-    Files.Files.Add('A.pas', 'Alt;');
-    Files.Files.Add('B.dfm', 'x'#10'  Alt'#10'y');
-    Edit.Audit :=
+    mFiles.Files.Add('A.pas', 'Alt;');
+    mFiles.Files.Add('B.dfm', 'x'#10'  Alt'#10'y');
+    mEdit.Audit :=
       procedure(const AText: string)
       begin
-        Logged := AText;
+        mLogged := AText;
       end;
-    Edit.Apply('rename_symbol', Edits, False);
-    Assert.AreEqual('Neu;', Files.Files['A.pas']);
-    Assert.AreEqual('x'#10'  Neu'#10'y', Files.Files['B.dfm']);
-    Assert.Contains(Logged, 'rename_symbol');
-    Assert.Contains(Logged, 'B.dfm');
+    mEdit.Apply('rename_symbol', Edits, False);
+    Assert.AreEqual('Neu;', mFiles.Files['A.pas']);
+    Assert.AreEqual('x'#10'  Neu'#10'y', mFiles.Files['B.dfm']);
+    Assert.Contains(mLogged, 'rename_symbol');
+    Assert.Contains(mLogged, 'B.dfm');
   finally
-    Edit.Free;
-    Files.Free;
+    mEdit.Free;
+    mFiles.Free;
   end;
 end;
 
 procedure TMcpEditToolsTests.DirtyOrChangedFileAbortsWithoutChanges;
 var
-  Files: TMemoryFiles;
-  Edit: TMcpEditTools;
+  mFiles: TMemoryFiles;
+  mEdit: TMcpEditTools;
 begin
-  Files := TMemoryFiles.Create;
-  Edit := Tools(Files);
+  mFiles := TMemoryFiles.Create;
+  mEdit := Tools(mFiles);
   try
-    Files.Files.Add('A.pas', 'Alt;');
-    Files.Files.Add('B.dfm', 'x'#10'  Alt'#10'y');
-    Edit.DirtyFiles :=
+    mFiles.Files.Add('A.pas', 'Alt;');
+    mFiles.Files.Add('B.dfm', 'x'#10'  Alt'#10'y');
+    mEdit.DirtyFiles :=
       function: TArray<string>
       begin
         Result := ['b.dfm'];
@@ -430,116 +430,116 @@ begin
     Assert.WillRaise(
       procedure
       begin
-        Edit.Apply('test', Edits, False);
+        mEdit.Apply('test', Edits, False);
       end, EMcpToolError);
-    Assert.AreEqual(0, Files.Writes, 'ungespeichert im Editor: nichts geschrieben');
+    Assert.AreEqual(0, mFiles.Writes, 'ungespeichert im Editor: nichts geschrieben');
   finally
-    Edit.Free;
-    Files.Free;
+    mEdit.Free;
+    mFiles.Free;
   end;
 end;
 
 procedure TMcpEditToolsTests.FailedWriteRestoresWrittenFiles;
 var
-  Files: TMemoryFiles;
-  Edit: TMcpEditTools;
+  mFiles: TMemoryFiles;
+  mEdit: TMcpEditTools;
 begin
-  Files := TMemoryFiles.Create;
-  Edit := Tools(Files);
+  mFiles := TMemoryFiles.Create;
+  mEdit := Tools(mFiles);
   try
-    Files.Files.Add('A.pas', 'Alt;');
-    Files.Files.Add('B.dfm', 'x'#10'  Alt'#10'y');
-    Files.FailOn := 'B.dfm';
+    mFiles.Files.Add('A.pas', 'Alt;');
+    mFiles.Files.Add('B.dfm', 'x'#10'  Alt'#10'y');
+    mFiles.FailOn := 'B.dfm';
     Assert.WillRaise(
       procedure
       begin
-        Edit.Apply('test', Edits, False);
+        mEdit.Apply('test', Edits, False);
       end, EMcpToolError);
-    Assert.AreEqual('Alt;', Files.Files['A.pas'], 'zurückgesetzt');
-    Assert.AreEqual('x'#10'  Alt'#10'y', Files.Files['B.dfm']);
+    Assert.AreEqual('Alt;', mFiles.Files['A.pas'], 'zurückgesetzt');
+    Assert.AreEqual('x'#10'  Alt'#10'y', mFiles.Files['B.dfm']);
   finally
-    Edit.Free;
-    Files.Free;
+    mEdit.Free;
+    mFiles.Free;
   end;
 end;
 
 procedure TMcpEditToolsTests.CodeActionListsAndAppliesFix;
 var
-  Files: TMemoryFiles;
-  Edit: TMcpEditTools;
-  Listed: string;
+  mFiles: TMemoryFiles;
+  mEdit: TMcpEditTools;
+  mListed: string;
 begin
-  Files := TMemoryFiles.Create;
-  Edit := Tools(Files);
+  mFiles := TMemoryFiles.Create;
+  mEdit := Tools(mFiles);
   try
-    Files.Files.Add('U.pas', 'unit U;'#10'interface'#10'var'#10'  Alt: Integer;'#10'implementation'#10'end.');
-    Listed := Edit.ApplyCodeAction(TMcpRuleScope.Create([TRenameRule.Create], Default(TServerSettings), ''),
+    mFiles.Files.Add('U.pas', 'unit U;'#10'interface'#10'var'#10'  Alt: Integer;'#10'implementation'#10'end.');
+    mListed := mEdit.ApplyCodeAction(TMcpRuleScope.Create([TRenameRule.Create], Default(TServerSettings), ''),
       'U.pas', 4, '', False);
-    Assert.Contains(Listed, 'Alt durch Neu ersetzen');
-    Assert.AreEqual(0, Files.Writes, 'ohne title nur auflisten');
-    Edit.ApplyCodeAction(TMcpRuleScope.Create([TRenameRule.Create], Default(TServerSettings), ''),
+    Assert.Contains(mListed, 'Alt durch Neu ersetzen');
+    Assert.AreEqual(0, mFiles.Writes, 'ohne title nur auflisten');
+    mEdit.ApplyCodeAction(TMcpRuleScope.Create([TRenameRule.Create], Default(TServerSettings), ''),
       'U.pas', 4, 'test-alt', False);
-    Assert.Contains(Files.Files['U.pas'], '  Neu: Integer;');
+    Assert.Contains(mFiles.Files['U.pas'], '  Neu: Integer;');
     // Die Regelkennung wählt nie das Unterdrücken (#1109); das geht nur über seinen Titel.
-    Files.Files['U.pas'] := 'unit U;'#10'interface'#10'var'#10'  Alt: Integer;'#10'implementation'#10'end.';
+    mFiles.Files['U.pas'] := 'unit U;'#10'interface'#10'var'#10'  Alt: Integer;'#10'implementation'#10'end.';
     Assert.WillRaise(
       procedure
       begin
-        Edit.ApplyCodeAction(TMcpRuleScope.Create([TNoFixRule.Create], Default(TServerSettings), ''),
+        mEdit.ApplyCodeAction(TMcpRuleScope.Create([TNoFixRule.Create], Default(TServerSettings), ''),
           'U.pas', 4, 'test-ohne', False);
       end, EMcpToolError);
-    Assert.IsFalse(Pos('lsp-ignore', Files.Files['U.pas']) > 0, 'nichts unterdrückt');
-    Edit.ApplyCodeAction(TMcpRuleScope.Create([TNoFixRule.Create], Default(TServerSettings), ''), 'U.pas', 4,
+    Assert.IsFalse(Pos('lsp-ignore', mFiles.Files['U.pas']) > 0, 'nichts unterdrückt');
+    mEdit.ApplyCodeAction(TMcpRuleScope.Create([TNoFixRule.Create], Default(TServerSettings), ''), 'U.pas', 4,
       '"test-ohne" für diese Zeile unterdrücken', False);
-    Assert.IsTrue(Pos('lsp-ignore: test-ohne', Files.Files['U.pas']) > 0, 'mit Titel unterdrückt');
+    Assert.IsTrue(Pos('lsp-ignore: test-ohne', mFiles.Files['U.pas']) > 0, 'mit Titel unterdrückt');
   finally
-    Edit.Free;
-    Files.Free;
+    mEdit.Free;
+    mFiles.Free;
   end;
 end;
 
 procedure TMcpEditToolsTests.PromptHasRuleCodeAndExamples;
 var
-  Finding: TRuleFinding;
-  Catalog: TRuleCatalog;
-  Text: string;
+  mFinding: TRuleFinding;
+  mCatalog: TRuleCatalog;
+  mText: string;
 begin
-  Finding := Default(TRuleFinding);
-  Finding.RuleId := 'empty-except';
-  Finding.Range := TTextRange.Create(2, 2, 2, 8);
-  Finding.Message := 'Leerer except-Block';
-  Finding.Severity := TRuleSeverity.Warning;
-  Catalog := TFindingPrompt.GermanCatalog;
+  mFinding := Default(TRuleFinding);
+  mFinding.RuleId := 'empty-except';
+  mFinding.Range := TTextRange.Create(2, 2, 2, 8);
+  mFinding.Message := 'Leerer except-Block';
+  mFinding.Severity := TRuleSeverity.Warning;
+  mCatalog := TFindingPrompt.GermanCatalog;
   try
-    Text := TFindingPrompt.Markdown(Finding, 'U.pas', 'a'#13#10'b'#13#10'c'#13#10'd', Catalog, 1);
+    mText := TFindingPrompt.Markdown(mFinding, 'U.pas', 'a'#13#10'b'#13#10'c'#13#10'd', mCatalog, 1);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
-  Assert.Contains(Text, '## Befund empty-except');
-  Assert.Contains(Text, 'Zeile 3, Spalte 3');
-  Assert.Contains(Text, '>    3 | c');
-  Assert.Contains(Text, '     2 | b');
-  Assert.IsFalse(Text.Contains('   1 | a'), 'nur ±1 Zeile');
-  Assert.Contains(Text, '```pascal');
+  Assert.Contains(mText, '## Befund empty-except');
+  Assert.Contains(mText, 'Zeile 3, Spalte 3');
+  Assert.Contains(mText, '>    3 | c');
+  Assert.Contains(mText, '     2 | b');
+  Assert.IsFalse(mText.Contains('   1 | a'), 'nur ±1 Zeile');
+  Assert.Contains(mText, '```pascal');
 end;
 
 procedure TMcpEditToolsTests.ConventionsListActiveRules;
 var
-  Settings: TServerSettings;
-  Catalog: TRuleCatalog;
-  Text: string;
+  mSettings: TServerSettings;
+  mCatalog: TRuleCatalog;
+  mText: string;
 begin
-  Settings := Default(TServerSettings);
-  Catalog := TFindingPrompt.GermanCatalog;
+  mSettings := Default(TServerSettings);
+  mCatalog := TFindingPrompt.GermanCatalog;
   try
-    Text := TRuleConventions.Markdown(BuiltinRules, Settings, Catalog);
+    mText := TRuleConventions.Markdown(BuiltinRules, mSettings, mCatalog);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
-  Assert.Contains(Text, '# Konventionen des Projekts');
-  Assert.Contains(Text, 'Regelprofil: `standard`');
-  Assert.Contains(Text, '## Aktive Regeln');
-  Assert.IsFalse(Text.Contains('## Aktive Regeln (0)'), 'Standardprofil hat aktive Regeln');
+  Assert.Contains(mText, '# Konventionen des Projekts');
+  Assert.Contains(mText, 'Regelprofil: `standard`');
+  Assert.Contains(mText, '## Aktive Regeln');
+  Assert.IsFalse(mText.Contains('## Aktive Regeln (0)'), 'Standardprofil hat aktive Regeln');
   Assert.IsTrue(TRuleConventions.IsNamingRule('naming-convention'));
 end;
 
@@ -550,91 +550,91 @@ const
 
 procedure TMcpEditToolsTests.FixFindingsPreviewsAndWrites;
 var
-  Files: TMemoryFiles;
-  Edit: TMcpEditTools;
-  Report, Audit: string;
+  mFiles: TMemoryFiles;
+  mEdit: TMcpEditTools;
+  mReport, mAudit: string;
 begin
-  Files := TMemoryFiles.Create;
-  Edit := Tools(Files);
+  mFiles := TMemoryFiles.Create;
+  mEdit := Tools(mFiles);
   try
-    Audit := '';
-    Edit.Audit :=
+    mAudit := '';
+    mEdit.Audit :=
       procedure(const AText: string)
       begin
-        Audit := Audit + AText;
+        mAudit := mAudit + AText;
       end;
-    Files.Files.Add('U.pas', cAssignedFree);
-    Report := Edit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''),
+    mFiles.Files.Add('U.pas', cAssignedFree);
+    mReport := mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''),
       ['U.pas'], ['redundant-assigned-free'], '', True);
-    Assert.Contains(Report, 'Vorschau: 1 Korrekturen in 1 Dateien');
-    Assert.Contains(Report, '--- a/U.pas');
-    Assert.Contains(Report, '-  if Assigned(AList) then');
-    Assert.AreEqual(0, Files.Writes, 'Vorschau schreibt nichts');
-    Assert.AreEqual('', Audit);
-    Report := Edit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''),
+    Assert.Contains(mReport, 'Vorschau: 1 Korrekturen in 1 Dateien');
+    Assert.Contains(mReport, '--- a/U.pas');
+    Assert.Contains(mReport, '-  if Assigned(AList) then');
+    Assert.AreEqual(0, mFiles.Writes, 'Vorschau schreibt nichts');
+    Assert.AreEqual('', mAudit);
+    mReport := mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''),
       ['U.pas'], ['redundant-assigned-free'], '', False);
-    Assert.Contains(Report, '1 Korrekturen in 1 Dateien geschrieben');
-    Assert.AreEqual(1, Files.Writes);
-    Assert.IsFalse(Pos('Assigned', Files.Files['U.pas']) > 0, Files.Files['U.pas']);
-    Assert.Contains(Audit, 'fix_findings (redundant-assigned-free)');
-    Assert.Contains(Audit, 'U.pas');
+    Assert.Contains(mReport, '1 Korrekturen in 1 Dateien geschrieben');
+    Assert.AreEqual(1, mFiles.Writes);
+    Assert.IsFalse(Pos('Assigned', mFiles.Files['U.pas']) > 0, mFiles.Files['U.pas']);
+    Assert.Contains(mAudit, 'fix_findings (redundant-assigned-free)');
+    Assert.Contains(mAudit, 'U.pas');
   finally
-    Edit.Free;
-    Files.Free;
+    mEdit.Free;
+    mFiles.Free;
   end;
 end;
 
 procedure TMcpEditToolsTests.FixFindingsSkipsDirtyFiles;
 var
-  Files: TMemoryFiles;
-  Edit: TMcpEditTools;
-  Report: string;
+  mFiles: TMemoryFiles;
+  mEdit: TMcpEditTools;
+  mReport: string;
 begin
-  Files := TMemoryFiles.Create;
-  Edit := Tools(Files);
+  mFiles := TMemoryFiles.Create;
+  mEdit := Tools(mFiles);
   try
-    Edit.DirtyFiles :=
+    mEdit.DirtyFiles :=
       function: TArray<string>
       begin
         Result := ['u.pas'];
       end;
-    Files.Files.Add('U.pas', cAssignedFree);
-    Files.Files.Add('V.pas', StringReplace(cAssignedFree, 'unit U;', 'unit V;', []));
-    Report := Edit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), ['U.pas', 'V.pas'],
+    mFiles.Files.Add('U.pas', cAssignedFree);
+    mFiles.Files.Add('V.pas', StringReplace(cAssignedFree, 'unit U;', 'unit V;', []));
+    mReport := mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), ['U.pas', 'V.pas'],
       ['redundant-assigned-free'], '', False);
-    Assert.Contains(Report, 'Nicht angefasst (ungespeicherte Änderungen im Editor): U.pas');
-    Assert.AreEqual(cAssignedFree, Files.Files['U.pas']);
-    Assert.AreEqual(1, Files.Writes, 'V.pas geschrieben');
+    Assert.Contains(mReport, 'Nicht angefasst (ungespeicherte Änderungen im Editor): U.pas');
+    Assert.AreEqual(cAssignedFree, mFiles.Files['U.pas']);
+    Assert.AreEqual(1, mFiles.Writes, 'V.pas geschrieben');
   finally
-    Edit.Free;
-    Files.Free;
+    mEdit.Free;
+    mFiles.Free;
   end;
 end;
 
 procedure TMcpEditToolsTests.FixFindingsRefusesLowerConfidence;
 var
-  Files: TMemoryFiles;
-  Edit: TMcpEditTools;
+  mFiles: TMemoryFiles;
+  mEdit: TMcpEditTools;
 begin
-  Files := TMemoryFiles.Create;
-  Edit := Tools(Files);
+  mFiles := TMemoryFiles.Create;
+  mEdit := Tools(mFiles);
   try
-    Files.Files.Add('U.pas', cAssignedFree);
+    mFiles.Files.Add('U.pas', cAssignedFree);
     Assert.WillRaise(
       procedure
       begin
-        Edit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''),
+        mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''),
           ['U.pas'], ['redundant-assigned-free'], 'medium', True);
       end, EMcpToolError);
     Assert.WillRaise(
       procedure
       begin
-        Edit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), ['U.pas'], nil, '', True);
+        mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), ['U.pas'], nil, '', True);
       end, EMcpToolError);
-    Assert.AreEqual(0, Files.Writes);
+    Assert.AreEqual(0, mFiles.Writes);
   finally
-    Edit.Free;
-    Files.Free;
+    mEdit.Free;
+    mFiles.Free;
   end;
 end;
 

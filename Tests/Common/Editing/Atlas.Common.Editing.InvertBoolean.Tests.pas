@@ -55,53 +55,53 @@ type
 
 function OffsetsOf(ATree: TSyntaxTree; const AName: string): TArray<Integer>;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
   Result := nil;
-  for Token in ATree.Tokens do
+  for mToken in ATree.Tokens do
   begin
-    if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, AName) then
+    if (mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, AName) then
     begin
-      Result := Result + [Token.Offset];
+      Result := Result + [mToken.Offset];
     end;
   end;
 end;
 
 procedure AddNames(ATree: TSyntaxTree; var ATargets: TInvertTargets; const AOld, ANew: string; AInvert: Boolean);
 var
-  Offset: Integer;
+  mOffset: Integer;
 begin
-  for Offset in OffsetsOf(ATree, AOld) do
+  for mOffset in OffsetsOf(ATree, AOld) do
   begin
-    ATargets.AddName(Offset, ANew, AInvert);
+    ATargets.AddName(mOffset, ANew, AInvert);
   end;
 end;
 
 function RewriteWith(const AText: string; const ASetup: TTargetsSetup; out AWarnings: TArray<TInvertWarning>): string;
 var
-  Tree: TSyntaxTree;
-  Targets: TInvertTargets;
+  mTree: TSyntaxTree;
+  mTargets: TInvertTargets;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Targets := Default(TInvertTargets);
-    ASetup(Tree, Targets);
-    Result := TChangeSignature.ApplyEdits(AText, TInvertBoolean.Rewrite(Tree, AText, Targets, AWarnings));
+    mTargets := Default(TInvertTargets);
+    ASetup(mTree, mTargets);
+    Result := TChangeSignature.ApplyEdits(AText, TInvertBoolean.Rewrite(mTree, AText, mTargets, AWarnings));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 /// <summary>Alle Bezeichner AOld werden zu ANew mit Gegenbedeutung.</summary>
 function Invert(const AText, AOld, ANew: string): string;
 var
-  Warnings: TArray<TInvertWarning>;
+  mWarnings: TArray<TInvertWarning>;
 begin
   Result := RewriteWith(AText,
     procedure(ATree: TSyntaxTree; var ATargets: TInvertTargets)
     begin
       AddNames(ATree, ATargets, AOld, ANew, True);
-    end, Warnings);
+    end, mWarnings);
 end;
 
 function InProc(const ABody: string): string;
@@ -136,7 +136,7 @@ type
 
 function TEvaluator.Peek: string;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
   while (Position <= Length(Text)) and (Text[Position] = ' ') do
   begin
@@ -147,14 +147,14 @@ begin
   begin
     Exit;
   end;
-  Start := Position;
+  mStart := Position;
   if CharInSet(Text[Position], ['A'..'Z', 'a'..'z']) then
   begin
-    while (Start <= Length(Text)) and CharInSet(Text[Start], ['A'..'Z', 'a'..'z', '0'..'9']) do
+    while (mStart <= Length(Text)) and CharInSet(Text[mStart], ['A'..'Z', 'a'..'z', '0'..'9']) do
     begin
-      Inc(Start);
+      Inc(mStart);
     end;
-    Result := Copy(Text, Position, Start - Position);
+    Result := Copy(Text, Position, mStart - Position);
   end
   else if Copy(Text, Position, 2) = '<>' then
   begin
@@ -174,7 +174,7 @@ end;
 
 function TEvaluator.Value(const AName: string): Boolean;
 var
-  Item: string;
+  mItem: string;
 begin
   if SameText(AName, 'True') then
   begin
@@ -184,11 +184,11 @@ begin
   begin
     Exit(False);
   end;
-  for Item in Values do
+  for mItem in Values do
   begin
-    if SameText(Copy(Item, 1, Pos('=', Item) - 1), AName) then
+    if SameText(Copy(mItem, 1, Pos('=', mItem) - 1), AName) then
     begin
-      Exit(Copy(Item, Pos('=', Item) + 1, MaxInt) = '1');
+      Exit(Copy(mItem, Pos('=', mItem) + 1, MaxInt) = '1');
     end;
   end;
   raise Exception.Create('Unbekannt: ' + AName);
@@ -196,20 +196,20 @@ end;
 
 function TEvaluator.Factor: Boolean;
 var
-  Token: string;
+  mToken: string;
 begin
-  Token := Next;
-  if SameText(Token, 'not') then
+  mToken := Next;
+  if SameText(mToken, 'not') then
   begin
     Exit(not Factor);
   end;
-  if Token = '(' then
+  if mToken = '(' then
   begin
     Result := Expression;
     Next;
     Exit;
   end;
-  Result := Value(Token);
+  Result := Value(mToken);
 end;
 
 function TEvaluator.Term: Boolean;
@@ -224,56 +224,56 @@ end;
 
 function TEvaluator.Simple: Boolean;
 var
-  Op: string;
-  Right: Boolean;
+  mOp: string;
+  mRight: Boolean;
 begin
   Result := Term;
   while SameText(Peek, 'or') or SameText(Peek, 'xor') do
   begin
-    Op := LowerCase(Next);
-    Right := Term;
-    if Op = 'or' then
+    mOp := LowerCase(Next);
+    mRight := Term;
+    if mOp = 'or' then
     begin
-      Result := Result or Right;
+      Result := Result or mRight;
     end
     else
     begin
-      Result := Result xor Right;
+      Result := Result xor mRight;
     end;
   end;
 end;
 
 function TEvaluator.Expression: Boolean;
 var
-  Op: string;
-  Right: Boolean;
+  mOp: string;
+  mRight: Boolean;
 begin
   Result := Simple;
-  Op := Peek;
-  if (Op = '=') or (Op = '<>') then
+  mOp := Peek;
+  if (mOp = '=') or (mOp = '<>') then
   begin
     Next;
-    Right := Simple;
-    if Op = '=' then
+    mRight := Simple;
+    if mOp = '=' then
     begin
-      Result := Result = Right;
+      Result := Result = mRight;
     end
     else
     begin
-      Result := Result <> Right;
+      Result := Result <> mRight;
     end;
   end;
 end;
 
 function Evaluate(const AText: string; const AValues: TArray<string>): Boolean;
 var
-  Evaluator: TEvaluator;
+  mEvaluator: TEvaluator;
 begin
-  Evaluator.Text := AText;
-  Evaluator.Position := 1;
-  Evaluator.Values := AValues;
-  Result := Evaluator.Expression;
-  Assert.AreEqual('', Evaluator.Peek, 'Rest in ' + AText);
+  mEvaluator.Text := AText;
+  mEvaluator.Position := 1;
+  mEvaluator.Values := AValues;
+  Result := mEvaluator.Expression;
+  Assert.AreEqual('', mEvaluator.Peek, 'Rest in ' + AText);
 end;
 
 { TInvertBooleanTests }
@@ -373,35 +373,35 @@ end;
 
 procedure TInvertBooleanTests.TruthTableIsKept;
 const
-  Expressions: array[0..13] of string = ('X', 'not X', 'X and A', 'A or X', 'not (X or A)', 'X = False',
+  cExpressions: array[0..13] of string = ('X', 'not X', 'X and A', 'A or X', 'not (X or A)', 'X = False',
     'X <> A', '(X)', 'not (not X and A)', 'X xor A', 'not (X = A) and B', '(X or A) and (B or not X)',
     'True = X', 'not ((X))');
 var
-  Expression, Rewritten, Assigned: string;
-  Bits: Integer;
-  Values, Inverted: TArray<string>;
+  mExpression, mRewritten, mAssigned: string;
+  mBits: Integer;
+  mValues, mInverted: TArray<string>;
 begin
-  for Expression in Expressions do
+  for mExpression in cExpressions do
   begin
-    Rewritten := Statement(Invert(InProc('  R := ' + Expression + ';'), 'X', 'Y'));
-    Rewritten := Copy(Rewritten, Length('  R := ') + 1, Length(Rewritten) - Length('  R := ;'));
-    Assigned := Statement(Invert(InProc('  X := ' + Expression + ';'), 'X', 'Y'));
-    Assert.IsTrue(StartsStr('  Y := ', Assigned), Assigned);
-    Assigned := Copy(Assigned, Length('  Y := ') + 1, Length(Assigned) - Length('  Y := ;'));
-    for Bits := 0 to 7 do
+    mRewritten := Statement(Invert(InProc('  R := ' + mExpression + ';'), 'X', 'Y'));
+    mRewritten := Copy(mRewritten, Length('  R := ') + 1, Length(mRewritten) - Length('  R := ;'));
+    mAssigned := Statement(Invert(InProc('  X := ' + mExpression + ';'), 'X', 'Y'));
+    Assert.IsTrue(StartsStr('  Y := ', mAssigned), mAssigned);
+    mAssigned := Copy(mAssigned, Length('  Y := ') + 1, Length(mAssigned) - Length('  Y := ;'));
+    for mBits := 0 to 7 do
     begin
-      Values := ['X=' + IntToStr(Bits and 1), 'A=' + IntToStr((Bits shr 1) and 1), 'B=' + IntToStr((Bits shr 2) and 1)];
-      Inverted := ['Y=' + IntToStr(1 - (Bits and 1)), Values[1], Values[2]];
-      Assert.AreEqual(Evaluate(Expression, Values), Evaluate(Rewritten, Inverted), Expression + ' → ' + Rewritten);
+      mValues := ['X=' + IntToStr(mBits and 1), 'A=' + IntToStr((mBits shr 1) and 1), 'B=' + IntToStr((mBits shr 2) and 1)];
+      mInverted := ['Y=' + IntToStr(1 - (mBits and 1)), mValues[1], mValues[2]];
+      Assert.AreEqual(Evaluate(mExpression, mValues), Evaluate(mRewritten, mInverted), mExpression + ' → ' + mRewritten);
       // Zuweisung an X: Y bekommt den Gegenwert.
-      Assert.AreEqual(not Evaluate(Expression, Values), Evaluate(Assigned, Inverted), Expression + ' → ' + Assigned);
+      Assert.AreEqual(not Evaluate(mExpression, mValues), Evaluate(mAssigned, mInverted), mExpression + ' → ' + mAssigned);
     end;
   end;
 end;
 
 procedure TInvertBooleanTests.FunctionBodyReturnsOpposite;
 const
-  Source =
+  cSource =
     'unit U;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -429,10 +429,10 @@ const
     'end;'#13#10 +
     'end.'#13#10;
 var
-  Warnings: TArray<TInvertWarning>;
-  Text: string;
+  mWarnings: TArray<TInvertWarning>;
+  mText: string;
 begin
-  Text := RewriteWith(Source,
+  mText := RewriteWith(cSource,
     procedure(ATree: TSyntaxTree; var ATargets: TInvertTargets)
     var
       Offsets: TArray<Integer>;
@@ -441,21 +441,21 @@ begin
       Offsets := OffsetsOf(ATree, 'IsEmpty');
       // Name im Rumpfkopf (zweites Vorkommen).
       ATargets.AddBody(Offsets[1]);
-    end, Warnings);
-  Assert.Contains(Text, '    function HasItems: Boolean;');
-  Assert.Contains(Text, 'function TFoo.HasItems: Boolean;');
-  Assert.Contains(Text, '    Exit(False);');
-  Assert.Contains(Text, '  Result := not (Inner and (Count < 0));');
-  Assert.Contains(Text, '  if not Result then');
+    end, mWarnings);
+  Assert.Contains(mText, '    function HasItems: Boolean;');
+  Assert.Contains(mText, 'function TFoo.HasItems: Boolean;');
+  Assert.Contains(mText, '    Exit(False);');
+  Assert.Contains(mText, '  Result := not (Inner and (Count < 0));');
+  Assert.Contains(mText, '  if not Result then');
   // Die lokale Funktion hat ihr eigenes Result.
-  Assert.Contains(Text, '    Result := True;');
-  Assert.Contains(Text, '  if not F.HasItems then');
-  Assert.Contains(Text, '  F.HasItems;');
+  Assert.Contains(mText, '    Result := True;');
+  Assert.Contains(mText, '  if not F.HasItems then');
+  Assert.Contains(mText, '  F.HasItems;');
 end;
 
 procedure TInvertBooleanTests.SetterParameterAndCalls;
 const
-  Source =
+  cSource =
     'unit U;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -481,10 +481,10 @@ const
     'end;'#13#10 +
     'end.'#13#10;
 var
-  Warnings: TArray<TInvertWarning>;
-  Text: string;
+  mWarnings: TArray<TInvertWarning>;
+  mText: string;
 begin
-  Text := RewriteWith(Source,
+  mText := RewriteWith(cSource,
     procedure(ATree: TSyntaxTree; var ATargets: TInvertTargets)
     var
       Offsets: TArray<Integer>;
@@ -500,23 +500,23 @@ begin
       begin
         Assert.IsTrue(Offset > 0);
       end;
-    end, Warnings);
-  Assert.Contains(Text, '    FVisible: Boolean;');
-  Assert.Contains(Text, '    procedure SetVisible(const Value: Boolean);');
-  Assert.Contains(Text, '    property Visible: Boolean read FVisible write SetVisible;');
-  Assert.Contains(Text, '  if Value = FVisible then');
-  Assert.Contains(Text, '  FVisible := Value;');
-  Assert.Contains(Text, '  Panel.Visible := Value;');
-  Assert.Contains(Text, '  F.SetVisible(not (A and B));');
-  Assert.Contains(Text, '  F.Visible := False;');
+    end, mWarnings);
+  Assert.Contains(mText, '    FVisible: Boolean;');
+  Assert.Contains(mText, '    procedure SetVisible(const Value: Boolean);');
+  Assert.Contains(mText, '    property Visible: Boolean read FVisible write SetVisible;');
+  Assert.Contains(mText, '  if Value = FVisible then');
+  Assert.Contains(mText, '  FVisible := Value;');
+  Assert.Contains(mText, '  Panel.Visible := Value;');
+  Assert.Contains(mText, '  F.SetVisible(not (A and B));');
+  Assert.Contains(mText, '  F.Visible := False;');
 end;
 
 procedure TInvertBooleanTests.VarArgumentIsReported;
 var
-  Warnings: TArray<TInvertWarning>;
-  Text: string;
+  mWarnings: TArray<TInvertWarning>;
+  mText: string;
 begin
-  Text := RewriteWith(InProc('  Toggle(X, X);'#13#10'  Watch(@X);'),
+  mText := RewriteWith(InProc('  Toggle(X, X);'#13#10'  Watch(@X);'),
     procedure(ATree: TSyntaxTree; var ATargets: TInvertTargets)
     begin
       AddNames(ATree, ATargets, 'X', 'Y', True);
@@ -525,18 +525,18 @@ begin
         begin
           Result := AArgument = 0;
         end;
-    end, Warnings);
-  Assert.AreEqual('  Toggle(Y, not Y);'#13#10'  Watch(@Y);', Statement(Text));
-  Assert.AreEqual(2, Integer(Length(Warnings)));
-  Assert.AreEqual(5, Warnings[0].Position.Line);
-  Assert.AreEqual(9, Warnings[0].Position.Character);
-  Assert.AreEqual(6, Warnings[1].Position.Line);
-  Assert.AreEqual(8, Warnings[1].Position.Character);
+    end, mWarnings);
+  Assert.AreEqual('  Toggle(Y, not Y);'#13#10'  Watch(@Y);', Statement(mText));
+  Assert.AreEqual(2, Integer(Length(mWarnings)));
+  Assert.AreEqual(5, mWarnings[0].Position.Line);
+  Assert.AreEqual(9, mWarnings[0].Position.Character);
+  Assert.AreEqual(6, mWarnings[1].Position.Line);
+  Assert.AreEqual(8, mWarnings[1].Position.Character);
 end;
 
 procedure TInvertBooleanTests.InitialValuesAreNegated;
 const
-  Source =
+  cSource =
     'unit U;'#13#10 +
     'interface'#13#10 +
     'var'#13#10 +
@@ -549,12 +549,12 @@ const
     'end;'#13#10 +
     'end.'#13#10;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Invert(Source, 'X', 'Y');
-  Assert.Contains(Text, '  Y: Boolean = False;');
-  Assert.Contains(Text, '  Z: Boolean = not Y;');
-  Assert.Contains(Text, '  var L := Y;');
+  mText := Invert(cSource, 'X', 'Y');
+  Assert.Contains(mText, '  Y: Boolean = False;');
+  Assert.Contains(mText, '  Z: Boolean = not Y;');
+  Assert.Contains(mText, '  var L := Y;');
 end;
 
 procedure TInvertBooleanTests.AnonymousMethodIsRewritten;
@@ -565,7 +565,7 @@ end;
 
 procedure TInvertBooleanTests.DfmValuesAreInverted;
 const
-  Dfm =
+  cDfm =
     'object Form1: TForm1'#13#10 +
     '  object Panel1: TFooPanel'#13#10 +
     '    Hidden = True'#13#10 +
@@ -578,16 +578,16 @@ const
     '  end'#13#10 +
     'end'#13#10;
 var
-  Warnings: TArray<TInvertWarning>;
-  Text: string;
+  mWarnings: TArray<TInvertWarning>;
+  mText: string;
 begin
-  Text := TChangeSignature.ApplyEdits(Dfm, TInvertBoolean.DfmEdits(Dfm, ['TFooPanel'], 'Hidden', 'Visible',
-    Warnings));
-  Assert.Contains(Text, '  object Panel1: TFooPanel'#13#10'    Visible = False');
-  Assert.Contains(Text, '  object Panel2: TFooPanel'#13#10'    Visible = Maybe');
-  Assert.Contains(Text, '  object Other: TOther'#13#10'    Hidden = True');
-  Assert.AreEqual(1, Integer(Length(Warnings)));
-  Assert.AreEqual(5, Warnings[0].Position.Line);
+  mText := TChangeSignature.ApplyEdits(cDfm, TInvertBoolean.DfmEdits(cDfm, ['TFooPanel'], 'Hidden', 'Visible',
+    mWarnings));
+  Assert.Contains(mText, '  object Panel1: TFooPanel'#13#10'    Visible = False');
+  Assert.Contains(mText, '  object Panel2: TFooPanel'#13#10'    Visible = Maybe');
+  Assert.Contains(mText, '  object Other: TOther'#13#10'    Hidden = True');
+  Assert.AreEqual(1, Integer(Length(mWarnings)));
+  Assert.AreEqual(5, mWarnings[0].Position.Line);
 end;
 
 initialization

@@ -42,27 +42,27 @@ uses
   Atlas.Common.Lsp.SymbolPath;
 
 const
-  AFile = 'C:\P\uA.pas';
-  BFile = 'C:\P\uB.pas';
-  CFile = 'C:\P\uC.pas';
-  AText = 'unit uA;'#10'interface'#10'uses uB;'#10'implementation'#10'end.';
-  BText = 'unit uB;'#10'interface'#10'implementation'#10'uses uC;'#10'end.';
-  CText = 'unit uC;'#10'interface'#10'implementation'#10'end.';
+  cAFile = 'C:\P\uA.pas';
+  cBFile = 'C:\P\uB.pas';
+  cCFile = 'C:\P\uC.pas';
+  cAText = 'unit uA;'#10'interface'#10'uses uB;'#10'implementation'#10'end.';
+  cBText = 'unit uB;'#10'interface'#10'implementation'#10'uses uC;'#10'end.';
+  cCText = 'unit uC;'#10'interface'#10'implementation'#10'end.';
 
 function TextOf(const AFileName: string; out AText_: string): Boolean;
 begin
   Result := True;
-  if SameText(AFileName, AFile) then
+  if SameText(AFileName, cAFile) then
   begin
-    AText_ := AText;
+    AText_ := cAText;
   end
-  else if SameText(AFileName, BFile) then
+  else if SameText(AFileName, cBFile) then
   begin
-    AText_ := BText;
+    AText_ := cBText;
   end
-  else if SameText(AFileName, CFile) then
+  else if SameText(AFileName, cCFile) then
   begin
-    AText_ := CText;
+    AText_ := cCText;
   end
   else
   begin
@@ -73,9 +73,9 @@ end;
 function NewIndex: ISymbolIndex;
 begin
   Result := TSymbolIndex.Create;
-  Result.AddUnit(TIndexExtractor.ExtractText(AText, AFile, nil));
-  Result.AddUnit(TIndexExtractor.ExtractText(BText, BFile, nil));
-  Result.AddUnit(TIndexExtractor.ExtractText(CText, CFile, nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cAText, cAFile, nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cBText, cBFile, nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cCText, cCFile, nil));
 end;
 
 function NewService(const AIndex: ISymbolIndex; const AConfig: string; AProject: Boolean): TLspSymbolPath;
@@ -105,21 +105,21 @@ end;
 
 function Run(AService: TLspSymbolPath; const AOptions: string): string;
 var
-  Args: TJSONArray;
-  Answer: TJSONValue;
+  mArgs: TJSONArray;
+  mAnswer: TJSONValue;
 begin
-  Args := TJSONArray.Create;
+  mArgs := TJSONArray.Create;
   try
-    Args.Add(TDocumentUris.FromPath(AFile));
-    Args.AddElement(TJSONObject.ParseJSONValue(AOptions));
-    Answer := AService.Execute(Args);
+    mArgs.Add(TDocumentUris.FromPath(cAFile));
+    mArgs.AddElement(TJSONObject.ParseJSONValue(AOptions));
+    mAnswer := AService.Execute(mArgs);
     try
-      Result := Answer.ToJSON;
+      Result := mAnswer.ToJSON;
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Args.Free;
+    mArgs.Free;
   end;
 end;
 
@@ -132,100 +132,100 @@ end;
 
 procedure TLspSymbolPathTests.ReadsRequest;
 var
-  Params: TJSONObject;
-  Request: TSymbolPathRequest;
+  mParams: TJSONObject;
+  mRequest: TSymbolPathRequest;
 begin
-  Params := ParamsOf('{"from":"uA","to":"uC","via":["uses","library"],"maxSteps":3,"all":true}');
+  mParams := ParamsOf('{"from":"uA","to":"uC","via":["uses","library"],"maxSteps":3,"all":true}');
   try
-    Request := TLspSymbolPath.ReadRequest(Params);
-    Assert.AreEqual('uA', Request.From);
-    Assert.AreEqual('uC', Request.To_);
-    Assert.AreEqual<TSymbolPathEdgeKinds>([TSymbolPathEdgeKind.Uses_], Request.Via);
-    Assert.IsTrue(Request.ThroughLibrary);
-    Assert.AreEqual(3, Request.MaxSteps);
-    Assert.IsTrue(Request.All);
+    mRequest := TLspSymbolPath.ReadRequest(mParams);
+    Assert.AreEqual('uA', mRequest.From);
+    Assert.AreEqual('uC', mRequest.To_);
+    Assert.AreEqual<TSymbolPathEdgeKinds>([TSymbolPathEdgeKind.Uses_], mRequest.Via);
+    Assert.IsTrue(mRequest.ThroughLibrary);
+    Assert.AreEqual(3, mRequest.MaxSteps);
+    Assert.IsTrue(mRequest.All);
   finally
-    Params.Free;
+    mParams.Free;
   end;
   // Ohne via: alle Kantenarten, Bibliothek kein Durchgang, Vorgabe 8 Schritte.
-  Params := ParamsOf('{"from":"uA","to":"uC"}');
+  mParams := ParamsOf('{"from":"uA","to":"uC"}');
   try
-    Request := TLspSymbolPath.ReadRequest(Params);
-    Assert.AreEqual<TSymbolPathEdgeKinds>(cAllSymbolPathEdges, Request.Via);
-    Assert.IsFalse(Request.ThroughLibrary);
-    Assert.AreEqual(TSymbolPathRequest.cDefaultSteps, Request.MaxSteps);
-    Assert.IsFalse(Request.All);
+    mRequest := TLspSymbolPath.ReadRequest(mParams);
+    Assert.AreEqual<TSymbolPathEdgeKinds>(cAllSymbolPathEdges, mRequest.Via);
+    Assert.IsFalse(mRequest.ThroughLibrary);
+    Assert.AreEqual(TSymbolPathRequest.cDefaultSteps, mRequest.MaxSteps);
+    Assert.IsFalse(mRequest.All);
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 
 procedure TLspSymbolPathTests.RejectsInvalidRequest;
 const
-  Invalid: array[0..3] of string = ('{"from":"uA"}', '{"from":"uA","to":"uC","via":["foo"]}',
+  cInvalid: array[0..3] of string = ('{"from":"uA"}', '{"from":"uA","to":"uC","via":["foo"]}',
     '{"from":"uA","to":"uC","maxSteps":0}', '{"from":"uA","to":"uC","maxSteps":17}');
 var
-  Item: string;
-  Params: TJSONObject;
+  mItem: string;
+  mParams: TJSONObject;
 begin
-  for Item in Invalid do
+  for mItem in cInvalid do
   begin
-    Params := ParamsOf(Item);
+    mParams := ParamsOf(mItem);
     try
       Assert.WillRaise(
         procedure
         begin
-          TLspSymbolPath.ReadRequest(Params);
-        end, EJsonRpcError, Item);
+          TLspSymbolPath.ReadRequest(mParams);
+        end, EJsonRpcError, mItem);
     finally
-      Params.Free;
+      mParams.Free;
     end;
   end;
 end;
 
 procedure TLspSymbolPathTests.FindsUsesPath;
 var
-  Service: TLspSymbolPath;
-  Text: string;
+  mService: TLspSymbolPath;
+  mText: string;
 begin
-  Service := NewService(NewIndex, '{}', True);
+  mService := NewService(NewIndex, '{}', True);
   try
-    Text := Run(Service, '{"from":"uA","to":"uC"}');
-    Assert.Contains(Text, '"enabled":true');
-    Assert.Contains(Text, '"status":"found"');
-    Assert.Contains(Text, '"uses"');
-    Assert.Contains(Text, '"implementation":true');
+    mText := Run(mService, '{"from":"uA","to":"uC"}');
+    Assert.Contains(mText, '"enabled":true');
+    Assert.Contains(mText, '"status":"found"');
+    Assert.Contains(mText, '"uses"');
+    Assert.Contains(mText, '"implementation":true');
   finally
-    Service.Free;
+    mService.Free;
   end;
 end;
 
 procedure TLspSymbolPathTests.DisabledSettingAnswersWithoutSearch;
 var
-  Service: TLspSymbolPath;
+  mService: TLspSymbolPath;
 begin
-  Service := NewService(NewIndex, '{"navigation": {"symbolPath": false}}', True);
+  mService := NewService(NewIndex, '{"navigation": {"symbolPath": false}}', True);
   try
     // Ohne Suche werden auch ungültige Argumente nicht geprüft.
-    Assert.AreEqual('{"enabled":false}', Run(Service, '{}'));
+    Assert.AreEqual('{"enabled":false}', Run(mService, '{}'));
   finally
-    Service.Free;
+    mService.Free;
   end;
 end;
 
 procedure TLspSymbolPathTests.NoProjectIsRejected;
 var
-  Service: TLspSymbolPath;
+  mService: TLspSymbolPath;
 begin
-  Service := NewService(NewIndex, '{}', False);
+  mService := NewService(NewIndex, '{}', False);
   try
     Assert.WillRaise(
       procedure
       begin
-        Run(Service, '{"from":"uA","to":"uC"}');
+        Run(mService, '{"from":"uA","to":"uC"}');
       end, EJsonRpcError);
   finally
-    Service.Free;
+    mService.Free;
   end;
 end;
 

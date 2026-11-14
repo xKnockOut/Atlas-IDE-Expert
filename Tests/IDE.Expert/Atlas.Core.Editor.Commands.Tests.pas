@@ -50,43 +50,43 @@ end;
 
 procedure TAtlasEditorCommandsTests.ExpandsStepByStep;
 var
-  Next: TLspRange;
+  mNext: TLspRange;
 begin
-  Assert.IsTrue(TAtlasSelectionSteps.Expand(Chain, TLspRange.Create(3, 4, 3, 4), Next));
-  Assert.IsTrue(Next.Same(TLspRange.Create(3, 2, 3, 7)), 'erst der Bezeichner');
-  Assert.IsTrue(TAtlasSelectionSteps.Expand(Chain, Next, Next));
-  Assert.IsTrue(Next.Same(TLspRange.Create(3, 2, 3, 20)), 'dann die Anweisung');
+  Assert.IsTrue(TAtlasSelectionSteps.Expand(Chain, TLspRange.Create(3, 4, 3, 4), mNext));
+  Assert.IsTrue(mNext.Same(TLspRange.Create(3, 2, 3, 7)), 'erst der Bezeichner');
+  Assert.IsTrue(TAtlasSelectionSteps.Expand(Chain, mNext, mNext));
+  Assert.IsTrue(mNext.Same(TLspRange.Create(3, 2, 3, 20)), 'dann die Anweisung');
   // Eine selbst gezogene Auswahl springt zum nächsten Bereich, der sie ganz enthält.
-  Assert.IsTrue(TAtlasSelectionSteps.Expand(Chain, TLspRange.Create(3, 5, 3, 12), Next));
-  Assert.IsTrue(Next.Same(TLspRange.Create(3, 2, 3, 20)));
-  Assert.IsFalse(TAtlasSelectionSteps.Expand(Chain, TLspRange.Create(0, 0, 9, 0), Next), 'ganze Datei');
-  Assert.IsFalse(TAtlasSelectionSteps.Expand(nil, TLspRange.Create(3, 4, 3, 4), Next), 'ohne Server');
+  Assert.IsTrue(TAtlasSelectionSteps.Expand(Chain, TLspRange.Create(3, 5, 3, 12), mNext));
+  Assert.IsTrue(mNext.Same(TLspRange.Create(3, 2, 3, 20)));
+  Assert.IsFalse(TAtlasSelectionSteps.Expand(Chain, TLspRange.Create(0, 0, 9, 0), mNext), 'ganze Datei');
+  Assert.IsFalse(TAtlasSelectionSteps.Expand(nil, TLspRange.Create(3, 4, 3, 4), mNext), 'ohne Server');
 end;
 
 procedure TAtlasEditorCommandsTests.ShrinksBackToCursor;
 var
-  Next: TLspRange;
+  mNext: TLspRange;
 begin
-  Assert.IsTrue(TAtlasSelectionSteps.Shrink(Chain, TLspRange.Create(0, 0, 9, 0), Next));
-  Assert.IsTrue(Next.Same(TLspRange.Create(3, 2, 3, 20)));
-  Assert.IsTrue(TAtlasSelectionSteps.Shrink(Chain, Next, Next));
-  Assert.IsTrue(Next.Same(TLspRange.Create(3, 2, 3, 7)));
-  Assert.IsTrue(TAtlasSelectionSteps.Shrink(Chain, Next, Next));
-  Assert.IsTrue(Next.Same(TLspRange.Create(3, 2, 3, 2)), 'zuletzt leer am Anfang');
-  Assert.IsFalse(TAtlasSelectionSteps.Shrink(Chain, Next, Next), 'leere Auswahl bleibt');
+  Assert.IsTrue(TAtlasSelectionSteps.Shrink(Chain, TLspRange.Create(0, 0, 9, 0), mNext));
+  Assert.IsTrue(mNext.Same(TLspRange.Create(3, 2, 3, 20)));
+  Assert.IsTrue(TAtlasSelectionSteps.Shrink(Chain, mNext, mNext));
+  Assert.IsTrue(mNext.Same(TLspRange.Create(3, 2, 3, 7)));
+  Assert.IsTrue(TAtlasSelectionSteps.Shrink(Chain, mNext, mNext));
+  Assert.IsTrue(mNext.Same(TLspRange.Create(3, 2, 3, 2)), 'zuletzt leer am Anfang');
+  Assert.IsFalse(TAtlasSelectionSteps.Shrink(Chain, mNext, mNext), 'leere Auswahl bleibt');
 end;
 
 procedure TAtlasEditorCommandsTests.FetchesChainAtAnchor;
 var
-  Position: TLspTextPosition;
+  mPosition: TLspTextPosition;
 begin
-  Position := TAtlasSelectionSteps.ChainPosition(TLspRange.Create(3, 2, 3, 20), True, TLspTextPosition.Create(3, 4));
-  Assert.AreEqual(4, Position.Character, 'Anker in der Auswahl');
-  Position := TAtlasSelectionSteps.ChainPosition(TLspRange.Create(5, 1, 5, 8), True, TLspTextPosition.Create(3, 4));
-  Assert.AreEqual(5, Position.Line, 'Anker außerhalb: Anfang der Auswahl');
-  Assert.AreEqual(1, Position.Character);
-  Position := TAtlasSelectionSteps.ChainPosition(TLspRange.Create(5, 1, 5, 8), False, TLspTextPosition.Create(5, 4));
-  Assert.AreEqual(1, Position.Character, 'ohne Anker');
+  mPosition := TAtlasSelectionSteps.ChainPosition(TLspRange.Create(3, 2, 3, 20), True, TLspTextPosition.Create(3, 4));
+  Assert.AreEqual(4, mPosition.Character, 'Anker in der Auswahl');
+  mPosition := TAtlasSelectionSteps.ChainPosition(TLspRange.Create(5, 1, 5, 8), True, TLspTextPosition.Create(3, 4));
+  Assert.AreEqual(5, mPosition.Line, 'Anker außerhalb: Anfang der Auswahl');
+  Assert.AreEqual(1, mPosition.Character);
+  mPosition := TAtlasSelectionSteps.ChainPosition(TLspRange.Create(5, 1, 5, 8), False, TLspTextPosition.Create(5, 4));
+  Assert.AreEqual(1, mPosition.Character, 'ohne Anker');
 end;
 
 procedure TAtlasEditorCommandsTests.DetectsSlashCommandAfterEnter;
@@ -103,23 +103,23 @@ end;
 
 procedure TAtlasEditorCommandsTests.DocCommentPlaceholdersInDescriptions;
 const
-  Text = '  /// <summary></summary>'#13#10'  /// <param name="A"></param>'#13#10'  /// <returns></returns>'#13#10;
+  cText = '  /// <summary></summary>'#13#10'  /// <param name="A"></param>'#13#10'  /// <returns></returns>'#13#10;
 var
-  Expansion: TAtlasSnippetExpansion;
+  mExpansion: TAtlasSnippetExpansion;
 begin
-  Expansion := TAtlasSlashTrigger.DocCommentExpansion(Text);
-  Assert.AreEqual(Text, Expansion.Text);
-  Assert.IsTrue(Expansion.HasPlaceholders);
-  Assert.AreEqual(4, Integer(Length(Expansion.Stops)));
-  Assert.AreEqual(1, Expansion.Stops[0].Number);
-  Assert.AreEqual(Length('  /// <summary>'), Expansion.Stops[0].Start);
-  Assert.AreEqual(0, Expansion.Stops[0].Length);
-  Assert.AreEqual(2, Expansion.Stops[1].Number);
-  Assert.AreEqual(Pos('"></param>', Text) + 1, Expansion.Stops[1].Start);
-  Assert.AreEqual(3, Expansion.Stops[2].Number);
+  mExpansion := TAtlasSlashTrigger.DocCommentExpansion(cText);
+  Assert.AreEqual(cText, mExpansion.Text);
+  Assert.IsTrue(mExpansion.HasPlaceholders);
+  Assert.AreEqual(4, Integer(Length(mExpansion.Stops)));
+  Assert.AreEqual(1, mExpansion.Stops[0].Number);
+  Assert.AreEqual(Length('  /// <summary>'), mExpansion.Stops[0].Start);
+  Assert.AreEqual(0, mExpansion.Stops[0].Length);
+  Assert.AreEqual(2, mExpansion.Stops[1].Number);
+  Assert.AreEqual(Pos('"></param>', cText) + 1, mExpansion.Stops[1].Start);
+  Assert.AreEqual(3, mExpansion.Stops[2].Number);
   // Ende ohne den abschließenden Zeilenumbruch.
-  Assert.AreEqual(0, Expansion.Stops[3].Number);
-  Assert.AreEqual(Length(Text) - 2, Expansion.Stops[3].Start);
+  Assert.AreEqual(0, mExpansion.Stops[3].Number);
+  Assert.AreEqual(Length(cText) - 2, mExpansion.Stops[3].Start);
   // Ohne leere Beschreibung keine Platzhalter.
   Assert.IsFalse(TAtlasSlashTrigger.DocCommentExpansion('/// <summary>X</summary>').HasPlaceholders);
 end;
@@ -145,23 +145,23 @@ end;
 
 procedure TAtlasEditorCommandsTests.SearchFindsNextAndPreviousWithWrap;
 var
-  Lines: TArray<string>;
-  Found: TLspRange;
+  mLines: TArray<string>;
+  mFound: TLspRange;
 begin
-  Lines := ['Foo := Bar;', 'if foo then', '  Baz(Foo);'];
+  mLines := ['Foo := Bar;', 'if foo then', '  Baz(Foo);'];
   // Markierung „Foo“ in Zeile 0, Zeichen 0..3: weiter ab dem Ende.
-  Assert.IsTrue(TAtlasSelectionSearch.Find(Lines, 'Foo', TLspTextPosition.Create(0, 3), False, Found));
-  Assert.IsTrue(Found.Same(TLspRange.Create(1, 3, 1, 6)), 'ohne Groß-/Kleinschreibung');
-  Assert.IsTrue(TAtlasSelectionSearch.Find(Lines, 'Foo', TLspTextPosition.Create(2, 9), False, Found));
-  Assert.IsTrue(Found.Same(TLspRange.Create(0, 0, 0, 3)), 'am Ende von vorn');
+  Assert.IsTrue(TAtlasSelectionSearch.Find(mLines, 'Foo', TLspTextPosition.Create(0, 3), False, mFound));
+  Assert.IsTrue(mFound.Same(TLspRange.Create(1, 3, 1, 6)), 'ohne Groß-/Kleinschreibung');
+  Assert.IsTrue(TAtlasSelectionSearch.Find(mLines, 'Foo', TLspTextPosition.Create(2, 9), False, mFound));
+  Assert.IsTrue(mFound.Same(TLspRange.Create(0, 0, 0, 3)), 'am Ende von vorn');
   // Rückwärts: endet vor dem Anfang der Markierung.
-  Assert.IsTrue(TAtlasSelectionSearch.Find(Lines, 'Foo', TLspTextPosition.Create(2, 6), True, Found));
-  Assert.IsTrue(Found.Same(TLspRange.Create(1, 3, 1, 6)));
-  Assert.IsTrue(TAtlasSelectionSearch.Find(Lines, 'Foo', TLspTextPosition.Create(0, 0), True, Found));
-  Assert.IsTrue(Found.Same(TLspRange.Create(2, 6, 2, 9)), 'am Anfang von hinten');
-  Assert.IsTrue(TAtlasSelectionSearch.Find(Lines, 'Bar', TLspTextPosition.Create(0, 10), False, Found));
-  Assert.IsTrue(Found.Same(TLspRange.Create(0, 7, 0, 10)), 'einziges Vorkommen: wieder dasselbe');
-  Assert.IsFalse(TAtlasSelectionSearch.Find(Lines, 'Nichts', TLspTextPosition.Create(0, 0), False, Found));
+  Assert.IsTrue(TAtlasSelectionSearch.Find(mLines, 'Foo', TLspTextPosition.Create(2, 6), True, mFound));
+  Assert.IsTrue(mFound.Same(TLspRange.Create(1, 3, 1, 6)));
+  Assert.IsTrue(TAtlasSelectionSearch.Find(mLines, 'Foo', TLspTextPosition.Create(0, 0), True, mFound));
+  Assert.IsTrue(mFound.Same(TLspRange.Create(2, 6, 2, 9)), 'am Anfang von hinten');
+  Assert.IsTrue(TAtlasSelectionSearch.Find(mLines, 'Bar', TLspTextPosition.Create(0, 10), False, mFound));
+  Assert.IsTrue(mFound.Same(TLspRange.Create(0, 7, 0, 10)), 'einziges Vorkommen: wieder dasselbe');
+  Assert.IsFalse(TAtlasSelectionSearch.Find(mLines, 'Nichts', TLspTextPosition.Create(0, 0), False, mFound));
 end;
 
 initialization

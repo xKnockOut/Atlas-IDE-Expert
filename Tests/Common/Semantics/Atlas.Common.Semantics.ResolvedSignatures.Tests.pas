@@ -44,64 +44,64 @@ uses
   Atlas.Common.Semantics.ResolvedSignatures;
 
 const
-  LB = #13#10;
-  MainFile = 'C:\P\Haupt.pas';
-  OtherFile = 'C:\P\Lader.pas';
-  ModeNames: array[TFlowArgumentMode] of string = ('value', 'ref', 'out', '?');
+  cLB = #13#10;
+  cMainFile = 'C:\P\Haupt.pas';
+  cOtherFile = 'C:\P\Lader.pas';
+  cModeNames: array[TFlowArgumentMode] of string = ('value', 'ref', 'out', '?');
 
-  UnitOther =
-    'unit Lader;' + LB +
-    'interface' + LB +
-    'type' + LB +
-    '  TListe = class' + LB +
-    '    procedure Take(var AValue: Integer; ACount: Integer);' + LB +
-    '    procedure Twice(A: Integer); overload;' + LB +
-    '    procedure Twice(var A: string); overload;' + LB +
-    '  end;' + LB +
-    'procedure Fill(out AText: string; const AValue: Integer);' + LB +
-    'implementation' + LB +
-    'procedure TListe.Take(var AValue: Integer; ACount: Integer);' + LB +
-    'begin' + LB +
-    'end;' + LB +
-    'procedure TListe.Twice(A: Integer);' + LB +
-    'begin' + LB +
-    'end;' + LB +
-    'procedure TListe.Twice(var A: string);' + LB +
-    'begin' + LB +
-    'end;' + LB +
-    'procedure Fill(out AText: string; const AValue: Integer);' + LB +
-    'begin' + LB +
-    'end;' + LB +
+  cUnitOther =
+    'unit Lader;' + cLB +
+    'interface' + cLB +
+    'type' + cLB +
+    '  TListe = class' + cLB +
+    '    procedure Take(var AValue: Integer; ACount: Integer);' + cLB +
+    '    procedure Twice(A: Integer); overload;' + cLB +
+    '    procedure Twice(var A: string); overload;' + cLB +
+    '  end;' + cLB +
+    'procedure Fill(out AText: string; const AValue: Integer);' + cLB +
+    'implementation' + cLB +
+    'procedure TListe.Take(var AValue: Integer; ACount: Integer);' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
+    'procedure TListe.Twice(A: Integer);' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
+    'procedure TListe.Twice(var A: string);' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
+    'procedure Fill(out AText: string; const AValue: Integer);' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
     'end.';
 
-  UnitMain =
-    'unit Haupt;' + LB +
-    'interface' + LB +
-    'implementation' + LB +
-    'uses Lader;' + LB +
-    'procedure Local(var A: Integer);' + LB +
-    'begin' + LB +
-    'end;' + LB +
-    'procedure Run;' + LB +
-    'var' + LB +
-    '  L: TListe;' + LB +
-    '  N: Integer;' + LB +
-    '  S: string;' + LB +
-    'begin' + LB +
-    '  Local(N);' + LB +
-    '  Fill(S, N);' + LB +
-    '  L.Take(N, 1);' + LB +
-    '  L.Twice(N);' + LB +
-    '  L.Twice(Unbekannt);' + LB +
-    '  Writeln(PChar(S));' + LB +
-    'end;' + LB +
+  cUnitMain =
+    'unit Haupt;' + cLB +
+    'interface' + cLB +
+    'implementation' + cLB +
+    'uses Lader;' + cLB +
+    'procedure Local(var A: Integer);' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
+    'procedure Run;' + cLB +
+    'var' + cLB +
+    '  L: TListe;' + cLB +
+    '  N: Integer;' + cLB +
+    '  S: string;' + cLB +
+    'begin' + cLB +
+    '  Local(N);' + cLB +
+    '  Fill(S, N);' + cLB +
+    '  L.Take(N, 1);' + cLB +
+    '  L.Twice(N);' + cLB +
+    '  L.Twice(Unbekannt);' + cLB +
+    '  Writeln(PChar(S));' + cLB +
+    'end;' + cLB +
     'end.';
 
 procedure TResolvedSignaturesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitOther, OtherFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitMain, MainFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitOther, cOtherFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
 end;
 
 procedure TResolvedSignaturesTests.TearDown;
@@ -111,69 +111,69 @@ end;
 
 function TResolvedSignaturesTests.Modes(AWithResolver: Boolean): string;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Lookup: TFlowSignatureLookup;
-  Calls: TList<TSyntaxNode>;
-  Call: TSyntaxNode;
-  Item: string;
-  Argument: Integer;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mLookup: TFlowSignatureLookup;
+  mCalls: TList<TSyntaxNode>;
+  mCall: TSyntaxNode;
+  mItem: string;
+  mArgument: Integer;
 begin
   Result := '';
-  Resolver := nil;
-  Calls := TList<TSyntaxNode>.Create;
-  Tree := TPascalParser.Parse(UnitMain);
+  mResolver := nil;
+  mCalls := TList<TSyntaxNode>.Create;
+  mTree := TPascalParser.Parse(cUnitMain);
   try
     if AWithResolver then
     begin
-      Resolver := TNameResolver.Create(FIndex, nil);
+      mResolver := TNameResolver.Create(FIndex, nil);
     end;
-    Lookup := TResolvedSignatures.Lookup(Resolver, Tree, MainFile);
-    Tree.Root.Walk(
+    mLookup := TResolvedSignatures.Lookup(mResolver, mTree, cMainFile);
+    mTree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         if ANode.Kind = TSyntaxKind.Call then
         begin
-          Calls.Add(ANode);
+          mCalls.Add(ANode);
         end;
         Result := True;
       end);
-    for Call in Calls do
+    for mCall in mCalls do
     begin
-      Item := Call.Name + ':';
-      for Argument := 0 to Call.ChildCount - 2 do
+      mItem := mCall.Name + ':';
+      for mArgument := 0 to mCall.ChildCount - 2 do
       begin
-        if Argument > 0 then
+        if mArgument > 0 then
         begin
-          Item := Item + ',';
+          mItem := mItem + ',';
         end;
-        Item := Item + ModeNames[Lookup(Call, Argument)];
+        mItem := mItem + cModeNames[mLookup(mCall, mArgument)];
       end;
       if Result <> '' then
       begin
         Result := Result + ' ';
       end;
-      Result := Result + Item;
+      Result := Result + mItem;
     end;
   finally
-    Lookup := nil;
-    Resolver.Free;
-    Tree.Free;
-    Calls.Free;
+    mLookup := nil;
+    mResolver.Free;
+    mTree.Free;
+    mCalls.Free;
   end;
 end;
 
 procedure TResolvedSignaturesTests.ModesFromSignature;
 var
-  Found: TArray<string>;
+  mFound: TArray<string>;
 begin
   Assert.IsTrue(TResolvedSignatures.SignatureModes('procedure Foo(var A: Integer; const B, C: string; D: Byte)',
-    Found));
-  Assert.AreEqual('var|const|const|', string.Join('|', Found));
-  Assert.IsTrue(TResolvedSignatures.SignatureModes('function Bar(out X: TArray<Integer>): Boolean', Found));
-  Assert.AreEqual('out', string.Join('|', Found));
-  Assert.IsFalse(TResolvedSignatures.SignatureModes('procedure Ohne', Found));
-  Assert.AreEqual(0, Integer(Length(Found)));
+    mFound));
+  Assert.AreEqual('var|const|const|', string.Join('|', mFound));
+  Assert.IsTrue(TResolvedSignatures.SignatureModes('function Bar(out X: TArray<Integer>): Boolean', mFound));
+  Assert.AreEqual('out', string.Join('|', mFound));
+  Assert.IsFalse(TResolvedSignatures.SignatureModes('procedure Ohne', mFound));
+  Assert.AreEqual(0, Integer(Length(mFound)));
 end;
 
 procedure TResolvedSignaturesTests.TreeOnlyWithoutResolver;

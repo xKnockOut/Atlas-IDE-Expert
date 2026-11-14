@@ -34,124 +34,134 @@ uses
   Atlas.Core.Files.ExternalChanges,
   Atlas.Core.Files.TextDiff;
 
-function F(const AName: string; AStamp: Int64; AModified: Boolean = False; AExists: Boolean = True): TAtlasObservedFile;
+function F(const AName: string; AStamp: Int64; AModified: Boolean; AExists: Boolean): TAtlasObservedFile; overload;
 begin
   Result := TAtlasObservedFile.Create(AName, AExists, AStamp, AModified);
 end;
 
+function F(const AName: string; AStamp: Int64): TAtlasObservedFile; overload;
+begin
+  Result := F(AName, AStamp, False, True);
+end;
+
+function F(const AName: string; AStamp: Int64; AModified: Boolean): TAtlasObservedFile; overload;
+begin
+  Result := F(AName, AStamp, AModified, True);
+end;
+
 function Text(const ADecisions: TArray<TAtlasReloadDecision>): string;
 const
-  Names: array[TAtlasReloadAction] of string = ('neu', 'behalten', 'gelöscht');
+  cNames: array[TAtlasReloadAction] of string = ('neu', 'behalten', 'gelöscht');
 var
-  Decision: TAtlasReloadDecision;
+  mDecision: TAtlasReloadDecision;
 begin
   Result := '';
-  for Decision in ADecisions do
+  for mDecision in ADecisions do
   begin
-    Result := Result + ExtractFileName(Decision.FileName) + '=' + Names[Decision.Action] + ' ';
+    Result := Result + ExtractFileName(mDecision.FileName) + '=' + cNames[mDecision.Action] + ' ';
   end;
 end;
 
 procedure TAtlasExternalChangesTests.FirstLookOnlyRemembers;
 var
-  Changes: TAtlasExternalChanges;
+  mChanges: TAtlasExternalChanges;
 begin
-  Changes := TAtlasExternalChanges.Create;
+  mChanges := TAtlasExternalChanges.Create;
   try
-    Changes.Observe([F('C:\P\A.pas', 1), F('C:\P\B.pas', 1)], 0);
-    Assert.IsFalse(Changes.Due(10000));
+    mChanges.Observe([F('C:\P\A.pas', 1), F('C:\P\B.pas', 1)], 0);
+    Assert.IsFalse(mChanges.Due(10000));
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TAtlasExternalChangesTests.BundlesChangesUntilQuiet;
 var
-  Changes: TAtlasExternalChanges;
+  mChanges: TAtlasExternalChanges;
 begin
-  Changes := TAtlasExternalChanges.Create;
+  mChanges := TAtlasExternalChanges.Create;
   try
-    Changes.Observe([F('C:\P\A.pas', 1), F('C:\P\B.pas', 1)], 0);
-    Changes.Observe([F('C:\P\A.pas', 2), F('C:\P\B.pas', 1)], 1000);
-    Assert.IsFalse(Changes.Due(1300));
+    mChanges.Observe([F('C:\P\A.pas', 1), F('C:\P\B.pas', 1)], 0);
+    mChanges.Observe([F('C:\P\A.pas', 2), F('C:\P\B.pas', 1)], 1000);
+    Assert.IsFalse(mChanges.Due(1300));
     // Zweite Datei 300 ms später: Der Vorgang verlängert sich.
-    Changes.Observe([F('C:\P\A.pas', 2), F('C:\P\B.pas', 2)], 1300);
-    Assert.IsFalse(Changes.Due(1700));
-    Assert.IsTrue(Changes.Due(1800));
-    Assert.AreEqual('A.pas=neu B.pas=neu ', Text(Changes.TakeBatch));
-    Changes.Observe([F('C:\P\A.pas', 2), F('C:\P\B.pas', 2)], 2000);
-    Assert.IsFalse(Changes.Due(9000));
+    mChanges.Observe([F('C:\P\A.pas', 2), F('C:\P\B.pas', 2)], 1300);
+    Assert.IsFalse(mChanges.Due(1700));
+    Assert.IsTrue(mChanges.Due(1800));
+    Assert.AreEqual('A.pas=neu B.pas=neu ', Text(mChanges.TakeBatch));
+    mChanges.Observe([F('C:\P\A.pas', 2), F('C:\P\B.pas', 2)], 2000);
+    Assert.IsFalse(mChanges.Due(9000));
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TAtlasExternalChangesTests.DecidesPerFile;
 var
-  Changes: TAtlasExternalChanges;
+  mChanges: TAtlasExternalChanges;
 begin
-  Changes := TAtlasExternalChanges.Create;
+  mChanges := TAtlasExternalChanges.Create;
   try
-    Changes.Observe([F('C:\P\A.pas', 1), F('C:\P\B.pas', 1, True), F('C:\P\C.pas', 1)], 0);
-    Changes.Observe([F('C:\P\A.pas', 2), F('C:\P\B.pas', 2, True), F('C:\P\C.pas', 0, False, False)], 100);
-    Assert.IsTrue(Changes.Due(600));
-    Assert.AreEqual('A.pas=neu B.pas=behalten C.pas=gelöscht ', Text(Changes.TakeBatch));
+    mChanges.Observe([F('C:\P\A.pas', 1), F('C:\P\B.pas', 1, True), F('C:\P\C.pas', 1)], 0);
+    mChanges.Observe([F('C:\P\A.pas', 2), F('C:\P\B.pas', 2, True), F('C:\P\C.pas', 0, False, False)], 100);
+    Assert.IsTrue(mChanges.Due(600));
+    Assert.AreEqual('A.pas=neu B.pas=behalten C.pas=gelöscht ', Text(mChanges.TakeBatch));
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TAtlasExternalChangesTests.FirstSaveOfNewFileIsNoChange;
 var
-  Changes: TAtlasExternalChanges;
+  mChanges: TAtlasExternalChanges;
 begin
-  Changes := TAtlasExternalChanges.Create;
+  mChanges := TAtlasExternalChanges.Create;
   try
-    Changes.Observe([F('C:\P\Unit2.pas', 0, True, False)], 0);
-    Changes.Observe([F('C:\P\Unit2.pas', 5)], 100);
-    Assert.IsFalse(Changes.Due(5000));
+    mChanges.Observe([F('C:\P\Unit2.pas', 0, True, False)], 0);
+    mChanges.Observe([F('C:\P\Unit2.pas', 5)], 100);
+    Assert.IsFalse(mChanges.Due(5000));
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TAtlasExternalChangesTests.ChangeBackBeforeQuietCancels;
 var
-  Changes: TAtlasExternalChanges;
+  mChanges: TAtlasExternalChanges;
 begin
-  Changes := TAtlasExternalChanges.Create;
+  mChanges := TAtlasExternalChanges.Create;
   try
-    Changes.Observe([F('C:\P\A.pas', 1)], 0);
-    Changes.Observe([F('C:\P\A.pas', 2)], 100);
-    Changes.Observe([F('C:\P\A.pas', 1)], 200);
-    Assert.IsFalse(Changes.Due(5000));
+    mChanges.Observe([F('C:\P\A.pas', 1)], 0);
+    mChanges.Observe([F('C:\P\A.pas', 2)], 100);
+    mChanges.Observe([F('C:\P\A.pas', 1)], 200);
+    Assert.IsFalse(mChanges.Due(5000));
     // Geschlossene Dateien werden vergessen; erneut geöffnet zählt wieder als erster Blick.
-    Changes.Observe([], 300);
-    Changes.Observe([F('C:\P\A.pas', 9)], 400);
-    Assert.IsFalse(Changes.Due(5000));
+    mChanges.Observe([], 300);
+    mChanges.Observe([F('C:\P\A.pas', 9)], 400);
+    Assert.IsFalse(mChanges.Due(5000));
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 
 procedure TAtlasExternalChangesTests.DiffShowsChangedLinesOnly;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
   Assert.AreEqual(0, Integer(Length(TAtlasTextDiff.Lines('a'#13#10'b', 'a'#10'b'))), 'gleich trotz Zeilenenden');
-  Lines := TAtlasTextDiff.Lines('a'#10'b'#10'c', 'a'#10'B'#10'c');
-  Assert.AreEqual('Zeile 2:|- b|+ B', string.Join('|', Lines));
-  Lines := TAtlasTextDiff.Lines('a'#10'c', 'a'#10'b'#10'c');
-  Assert.AreEqual('ab Zeile 2:|+ b', string.Join('|', Lines));
+  mLines := TAtlasTextDiff.Lines('a'#10'b'#10'c', 'a'#10'B'#10'c');
+  Assert.AreEqual('Zeile 2:|- b|+ B', string.Join('|', mLines));
+  mLines := TAtlasTextDiff.Lines('a'#10'c', 'a'#10'b'#10'c');
+  Assert.AreEqual('ab Zeile 2:|+ b', string.Join('|', mLines));
 end;
 
 procedure TAtlasExternalChangesTests.TextDiffReportsTrailingNewline;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
   // Eine zusätzliche letzte Zeilenschaltung ist ein Unterschied (früher von Split verschluckt).
-  Lines := TAtlasTextDiff.Lines('a'#10'b', 'a'#10'b'#10);
-  Assert.AreEqual('ab Zeile 3:|+ ', string.Join('|', Lines));
+  mLines := TAtlasTextDiff.Lines('a'#10'b', 'a'#10'b'#10);
+  Assert.AreEqual('ab Zeile 3:|+ ', string.Join('|', mLines));
   // Alleinstehendes CR trennt Zeilen wie LF.
   Assert.AreEqual(0, Integer(Length(TAtlasTextDiff.Lines('a'#13'b', 'a'#10'b'))), 'CR wie LF');
 end;

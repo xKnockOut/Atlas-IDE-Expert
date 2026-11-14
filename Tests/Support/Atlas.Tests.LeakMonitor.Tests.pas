@@ -67,18 +67,18 @@ uses
 
 const
   // Anzahl der Durchläufe aller Aufzeichnungen im Dauerlauf.
-  ReplayRounds = 500;
+  cReplayRounds = 500;
   // Toleranz für Schwankungen des Speichermanagers.
-  AllowedGrowth = 64 * 1024;
+  cAllowedGrowth = 64 * 1024;
   // Dauerlauf über TJsonRpcConnection: Runden zu je SoakGroups Gruppen aus echo,
   // Worker-Anfrage, abgebrochener Worker-Anfrage, Anfrage über dem Zeitlimit,
   // Benachrichtigung, Änderung über den Debouncer und ungültigem JSON.
-  SoakRounds = 50;
-  SoakGroups = 20;
+  cSoakRounds = 50;
+  cSoakGroups = 20;
   // Zeitlimit des Watchdogs im Dauerlauf; "stuck" läuft bis dahin.
-  SoakTimeoutMs = 100;
+  cSoakTimeoutMs = 100;
   // Verzögerung des Debouncers im Dauerlauf.
-  SoakDebounceMs = 5;
+  cSoakDebounceMs = 5;
 
 type
   /// <summary>Absichtliches Leck im Worker-Pfad: Plätze werden vor der Messung angelegt, damit nur die
@@ -101,23 +101,23 @@ end;
 
 destructor TWorkerLeak.Destroy;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FSlots) do
+  for mIndex := 0 to High(FSlots) do
   begin
-    FSlots[Index].Free;
+    FSlots[mIndex].Free;
   end;
   inherited;
 end;
 
 procedure TWorkerLeak.Leak;
 var
-  Slot: Integer;
+  mSlot: Integer;
 begin
-  Slot := TInterlocked.Increment(FCount) - 1;
-  if Slot <= High(FSlots) then
+  mSlot := TInterlocked.Increment(FCount) - 1;
+  if mSlot <= High(FSlots) then
   begin
-    FSlots[Slot] := TStringBuilder.Create(256);
+    FSlots[mSlot] := TStringBuilder.Create(256);
   end;
 end;
 
@@ -202,15 +202,15 @@ end;
 
 function CreateSoakDispatcher(ALeak: TWorkerLeak; ASoak: TSoak): TJsonRpcDispatcher;
 var
-  Dispatcher: TJsonRpcDispatcher;
+  mDispatcher: TJsonRpcDispatcher;
 begin
-  Dispatcher := TJsonRpcDispatcher.Create;
-  Dispatcher.RegisterRequest('echo',
+  mDispatcher := TJsonRpcDispatcher.Create;
+  mDispatcher.RegisterRequest('echo',
     function(const AParams: TJSONValue): TJSONValue
     begin
       Result := TJSONValue(AParams.Clone);
     end);
-  Dispatcher.RegisterConcurrentRequest('parallel',
+  mDispatcher.RegisterConcurrentRequest('parallel',
     function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
     begin
       if Assigned(ALeak) then
@@ -219,29 +219,29 @@ begin
       end;
       Result := TJSONString.Create('aus dem Worker');
     end);
-  RegisterSoakWaiters(Dispatcher);
-  Dispatcher.RegisterNotification('note',
+  RegisterSoakWaiters(mDispatcher);
+  mDispatcher.RegisterNotification('note',
     procedure(const AParams: TJSONValue)
     begin
     end);
-  RegisterSoakChangeAndAwait(Dispatcher, ASoak);
-  Result := Dispatcher;
+  RegisterSoakChangeAndAwait(mDispatcher, ASoak);
+  Result := mDispatcher;
 end;
 
 { TSoak }
 
 constructor TSoak.Create(ALeak: TWorkerLeak);
 var
-  Soak: TSoak;
+  mSoak: TSoak;
 begin
   inherited Create;
-  Soak := Self;
-  FDebouncer := TDebouncer.Create(SoakDebounceMs);
+  mSoak := Self;
+  FDebouncer := TDebouncer.Create(cSoakDebounceMs);
   FDispatcher := CreateSoakDispatcher(ALeak, Self);
-  FDispatcher.Watchdog := TJsonRpcWatchdog.Create(FDispatcher.PendingRequests, SoakTimeoutMs,
+  FDispatcher.Watchdog := TJsonRpcWatchdog.Create(FDispatcher.PendingRequests, cSoakTimeoutMs,
     procedure(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean)
     begin
-      TInterlocked.Increment(Soak.FTimeouts);
+      TInterlocked.Increment(mSoak.FTimeouts);
     end);
 end;
 
@@ -261,287 +261,287 @@ end;
 /// <summary>Eine Runde: eine Verbindung, SoakGroups Gruppen, am Ende "await". Liefert die Antworten.</summary>
 function RunSoakRound(ADispatcher: TJsonRpcDispatcher): TObjectList<TJSONObject>;
 var
-  Messages: TList<string>;
-  Output: TBytesStream;
-  Input: TBytesStream;
-  Connection: TJsonRpcConnection;
-  Group, Id: Integer;
+  mMessages: TList<string>;
+  mOutput: TBytesStream;
+  mInput: TBytesStream;
+  mConnection: TJsonRpcConnection;
+  mGroup, mId: Integer;
 begin
-  Messages := TList<string>.Create;
+  mMessages := TList<string>.Create;
   try
-    Id := 0;
-    for Group := 1 to SoakGroups do
+    mId := 0;
+    for mGroup := 1 to cSoakGroups do
     begin
-      Messages.Add(Format('{"jsonrpc":"2.0","id":%d,"method":"echo","params":{"n":%d}}', [Id + 1, Group]));
-      Messages.Add(Format('{"jsonrpc":"2.0","id":%d,"method":"parallel"}', [Id + 2]));
-      Messages.Add(Format('{"jsonrpc":"2.0","id":%d,"method":"slow"}', [Id + 3]));
-      Messages.Add(Format('{"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":%d}}', [Id + 3]));
-      Messages.Add(Format('{"jsonrpc":"2.0","id":%d,"method":"stuck"}', [Id + 4]));
-      Messages.Add('{"jsonrpc":"2.0","method":"note","params":{}}');
-      Messages.Add(Format('{"jsonrpc":"2.0","method":"change","params":{"key":"k%d","text":"{\"n\":%d}"}}',
-        [Group mod 3, Group]));
-      Messages.Add('{kein json');
-      Inc(Id, 4);
+      mMessages.Add(Format('{"jsonrpc":"2.0","id":%d,"method":"echo","params":{"n":%d}}', [mId + 1, mGroup]));
+      mMessages.Add(Format('{"jsonrpc":"2.0","id":%d,"method":"parallel"}', [mId + 2]));
+      mMessages.Add(Format('{"jsonrpc":"2.0","id":%d,"method":"slow"}', [mId + 3]));
+      mMessages.Add(Format('{"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":%d}}', [mId + 3]));
+      mMessages.Add(Format('{"jsonrpc":"2.0","id":%d,"method":"stuck"}', [mId + 4]));
+      mMessages.Add('{"jsonrpc":"2.0","method":"note","params":{}}');
+      mMessages.Add(Format('{"jsonrpc":"2.0","method":"change","params":{"key":"k%d","text":"{\"n\":%d}"}}',
+        [mGroup mod 3, mGroup]));
+      mMessages.Add('{kein json');
+      Inc(mId, 4);
     end;
-    Messages.Add(Format('{"jsonrpc":"2.0","id":%d,"method":"await"}', [Id + 1]));
-    Input := TJsonRpcTestSupport.InputOf(Messages.ToArray);
+    mMessages.Add(Format('{"jsonrpc":"2.0","id":%d,"method":"await"}', [mId + 1]));
+    mInput := TJsonRpcTestSupport.InputOf(mMessages.ToArray);
   finally
-    Messages.Free;
+    mMessages.Free;
   end;
-  Output := TBytesStream.Create;
+  mOutput := TBytesStream.Create;
   try
     try
-      Connection := TJsonRpcConnection.Create(TJsonRpcStreamTransport.Create(Input, Output, False), ADispatcher);
+      mConnection := TJsonRpcConnection.Create(TJsonRpcStreamTransport.Create(mInput, mOutput, False), ADispatcher);
       try
-        Connection.Run;
+        mConnection.Run;
       finally
-        Connection.Free;
+        mConnection.Free;
       end;
     finally
-      Input.Free;
+      mInput.Free;
     end;
-    Result := TJsonRpcTestSupport.ReadMessages(Output);
+    Result := TJsonRpcTestSupport.ReadMessages(mOutput);
   finally
-    Output.Free;
+    mOutput.Free;
   end;
 end;
 
 /// <summary>Speicherwachstum über SoakRounds Runden nach einer Aufwärmrunde.</summary>
 function SoakGrowth(ALeak: TWorkerLeak): Int64;
 var
-  Soak: TSoak;
-  Responses: TObjectList<TJSONObject>;
-  Before: Int64;
-  Round, Window: Integer;
+  mSoak: TSoak;
+  mResponses: TObjectList<TJSONObject>;
+  mBefore: Int64;
+  mRound, mWindow: Integer;
 begin
-  Soak := TSoak.Create(ALeak);
+  mSoak := TSoak.Create(ALeak);
   try
     // Zwei Aufwärmrunden: Pool-Threads, RTTI und JSON-Caches. Nach nur einer Runde maß die erste Messung
     // bis zu 87 KB, weitere Messungen und doppelt so viele Runden blieben unter 5 KB (kein Leck).
-    RunSoakRound(Soak.Dispatcher).Free;
-    Soak.WaitIdle;
-    RunSoakRound(Soak.Dispatcher).Free;
-    Soak.WaitIdle;
+    RunSoakRound(mSoak.Dispatcher).Free;
+    mSoak.WaitIdle;
+    RunSoakRound(mSoak.Dispatcher).Free;
+    mSoak.WaitIdle;
     // Bis zu zwei Messabschnitte: Liegt der erste über der Toleranz, zählt der kleinere. Einmaliger Speicher
     // nach den Aufwärmrunden (gemessen bis 82 KB) fällt so heraus; ein echtes Leck wächst in beiden Abschnitten.
     Result := High(Int64);
-    for Window := 1 to 2 do
+    for mWindow := 1 to 2 do
     begin
-      Before := AllocatedBytes;
-      for Round := 1 to SoakRounds do
+      mBefore := AllocatedBytes;
+      for mRound := 1 to cSoakRounds do
       begin
-        Responses := RunSoakRound(Soak.Dispatcher);
+        mResponses := RunSoakRound(mSoak.Dispatcher);
         try
           // echo, parallel, slow, stuck und Parse-Fehler je Gruppe, dazu "await".
-          Assert.AreEqual<NativeInt>(5 * SoakGroups + 1, Responses.Count, Format('Runde %d', [Round]));
+          Assert.AreEqual<NativeInt>(5 * cSoakGroups + 1, mResponses.Count, Format('Runde %d', [mRound]));
         finally
-          Responses.Free;
+          mResponses.Free;
         end;
       end;
       // Messung erst in Ruhe: Worker sind durch "await" beendet, der Debouncer muss leer sein.
-      Soak.WaitIdle;
-      Result := Min(Result, AllocatedBytes - Before);
-      if Result <= AllowedGrowth then
+      mSoak.WaitIdle;
+      Result := Min(Result, AllocatedBytes - mBefore);
+      if Result <= cAllowedGrowth then
       begin
         Break;
       end;
     end;
     // Jede "stuck"-Anfrage lief ins Zeitlimit, jede Änderungsrunde lief durch den Debouncer.
-    Assert.IsTrue(Soak.Timeouts >= (SoakRounds + 2) * SoakGroups, Format('nur %d Zeitlimits', [Soak.Timeouts]));
-    Assert.IsTrue(Soak.Debounced > 0, 'Debouncer lief nicht');
+    Assert.IsTrue(mSoak.Timeouts >= (cSoakRounds + 2) * cSoakGroups, Format('nur %d Zeitlimits', [mSoak.Timeouts]));
+    Assert.IsTrue(mSoak.Debounced > 0, 'Debouncer lief nicht');
   finally
-    Soak.Free;
+    mSoak.Free;
   end;
 end;
 
 
 procedure TLeakMonitorTests.DetectsDeliberateLeak;
 var
-  Monitor: IMemoryLeakMonitor;
-  Leak: TObject;
+  mMonitor: IMemoryLeakMonitor;
+  mLeak: TObject;
 begin
-  Monitor := TLeakMonitor.Create;
-  Monitor.PreTest;
+  mMonitor := TLeakMonitor.Create;
+  mMonitor.PreTest;
   // Absichtliches Leck: wird erst nach der Messung freigegeben.
-  Leak := TStringBuilder.Create(1024);
-  Monitor.PostTest;
-  Leak.Free;
-  Assert.IsTrue(Monitor.TestMemoryAllocated > 0, 'Leck nicht erkannt');
+  mLeak := TStringBuilder.Create(1024);
+  mMonitor.PostTest;
+  mLeak.Free;
+  Assert.IsTrue(mMonitor.TestMemoryAllocated > 0, 'Leck nicht erkannt');
 end;
 
 procedure TLeakMonitorTests.BalancedAllocationIsNoLeak;
 var
-  Monitor: IMemoryLeakMonitor;
-  Temp: TObject;
+  mMonitor: IMemoryLeakMonitor;
+  mTemp: TObject;
 begin
-  Monitor := TLeakMonitor.Create;
-  Monitor.PreTest;
-  Temp := TStringBuilder.Create(1024);
-  Temp.Free;
-  Monitor.PostTest;
-  Assert.AreEqual(Int64(0), Monitor.TestMemoryAllocated);
+  mMonitor := TLeakMonitor.Create;
+  mMonitor.PreTest;
+  mTemp := TStringBuilder.Create(1024);
+  mTemp.Free;
+  mMonitor.PostTest;
+  Assert.AreEqual(Int64(0), mMonitor.TestMemoryAllocated);
 end;
 
 procedure TLeakMonitorTests.NegativeBalanceIsNoLeak;
 var
-  Monitor: IMemoryLeakMonitor;
-  Old: TObject;
+  mMonitor: IMemoryLeakMonitor;
+  mOld: TObject;
 begin
   // Freigaben älteren Speichers (z. B. durch Threads früherer Tests) sind kein Leck.
-  Monitor := TLeakMonitor.Create;
-  Old := TStringBuilder.Create(1024);
-  Monitor.PreTest;
-  Old.Free;
-  Monitor.PostTest;
-  Assert.AreEqual(Int64(0), Monitor.TestMemoryAllocated);
+  mMonitor := TLeakMonitor.Create;
+  mOld := TStringBuilder.Create(1024);
+  mMonitor.PreTest;
+  mOld.Free;
+  mMonitor.PostTest;
+  Assert.AreEqual(Int64(0), mMonitor.TestMemoryAllocated);
 end;
 
 procedure TLeakMonitorTests.FreeOnOtherThreadIsNoLeak;
 var
-  Monitor: IMemoryLeakMonitor;
-  Shared: TObject;
-  Worker: TThread;
+  mMonitor: IMemoryLeakMonitor;
+  mShared: TObject;
+  mWorker: TThread;
 begin
   // Ein Thread des Tests gibt Speicher frei, während der Test schon endet: Der
   // Monitor wartet die Freigabe ab, statt ein Leck zu melden.
-  Monitor := TLeakMonitor.Create;
-  Worker := TThread.CreateAnonymousThread(
+  mMonitor := TLeakMonitor.Create;
+  mWorker := TThread.CreateAnonymousThread(
     procedure
     begin
-      FreeAndNil(Shared); // lsp-ignore: captured-loop-variable -- Absicht: der Thread gibt das Objekt später frei
+      FreeAndNil(mShared); // lsp-ignore: captured-loop-variable -- Absicht: der Thread gibt das Objekt später frei
     end);
-  Worker.FreeOnTerminate := False;
+  mWorker.FreeOnTerminate := False;
   try
-    Monitor.PreTest;
-    Shared := TStringBuilder.Create(1024);
-    Worker.Start;
-    Monitor.PostTest;
-    Worker.WaitFor;
+    mMonitor.PreTest;
+    mShared := TStringBuilder.Create(1024);
+    mWorker.Start;
+    mMonitor.PostTest;
+    mWorker.WaitFor;
   finally
-    Worker.Free;
+    mWorker.Free;
   end;
-  Assert.AreEqual(Int64(0), Monitor.TestMemoryAllocated);
+  Assert.AreEqual(Int64(0), mMonitor.TestMemoryAllocated);
 end;
 
 procedure TLeakMonitorTests.FreeBetweenSetupAndTestIsNoLeak;
 var
-  Monitor: TLeakMonitor;
-  Block: Pointer;
+  mMonitor: TLeakMonitor;
+  mBlock: Pointer;
 begin
-  Monitor := TLeakMonitor.Create;
+  mMonitor := TLeakMonitor.Create;
   try
-    Monitor.PreSetup;
-    GetMem(Block, 4096);
+    mMonitor.PreSetup;
+    GetMem(mBlock, 4096);
     try
-      Monitor.PostSetUp;
+      mMonitor.PostSetUp;
     finally
       // Wie die Startdaten eines Threads: im Setup belegt, vor PreTest frei.
-      FreeMem(Block);
+      FreeMem(mBlock);
     end;
-    Monitor.PreTest;
-    Monitor.PostTest;
-    Monitor.PreTearDown;
-    Monitor.PostTearDown;
-    Assert.IsTrue(Monitor.SetUpMemoryAllocated + Monitor.TestMemoryAllocated + Monitor.TearDownMemoryAllocated <= 0,
-      Monitor.GetReport);
+    mMonitor.PreTest;
+    mMonitor.PostTest;
+    mMonitor.PreTearDown;
+    mMonitor.PostTearDown;
+    Assert.IsTrue(mMonitor.SetUpMemoryAllocated + mMonitor.TestMemoryAllocated + mMonitor.TearDownMemoryAllocated <= 0,
+      mMonitor.GetReport);
   finally
-    Monitor.Free;
+    mMonitor.Free;
   end;
 end;
 
 procedure TLeakMonitorTests.ReportNamesThreads;
 var
-  Monitor: IMemoryLeakMonitor;
-  Report: IMemoryLeakMonitor2;
+  mMonitor: IMemoryLeakMonitor;
+  mReport: IMemoryLeakMonitor2;
 begin
-  Monitor := TLeakMonitor.Create;
-  Monitor.PreTest;
-  Monitor.PostTest;
-  Assert.IsTrue(Supports(Monitor, IMemoryLeakMonitor2, Report));
-  Assert.Contains(Report.GetReport, 'Threads am Anfang');
+  mMonitor := TLeakMonitor.Create;
+  mMonitor.PreTest;
+  mMonitor.PostTest;
+  Assert.IsTrue(Supports(mMonitor, IMemoryLeakMonitor2, mReport));
+  Assert.Contains(mReport.GetReport, 'Threads am Anfang');
   Assert.IsTrue(ProcessThreadCount > 0);
 end;
 
 procedure TLeakMonitorTests.ReplayDoesNotGrowMemory;
 var
-  Recordings: TObjectList<TJSONObject>;
-  FileName: string;
-  Value: TJSONValue;
+  mRecordings: TObjectList<TJSONObject>;
+  mFileName: string;
+  mValue: TJSONValue;
 
   procedure ReplayAll;
   var
-    Recording: TJSONObject;
-    Replay: TProtocolReplay;
+    mRecording: TJSONObject;
+    mReplay: TProtocolReplay;
   begin
-    for Recording in Recordings do
+    for mRecording in mRecordings do
     begin
-      Replay := TProtocolReplay.Create;
+      mReplay := TProtocolReplay.Create;
       try
-        Replay.Run(Recording);
+        mReplay.Run(mRecording);
       finally
-        Replay.Free;
+        mReplay.Free;
       end;
     end;
   end;
 
 var
-  Before: Int64;
-  Pass: Integer;
+  mBefore: Int64;
+  mPass: Integer;
 begin
-  Recordings := TObjectList<TJSONObject>.Create(True);
+  mRecordings := TObjectList<TJSONObject>.Create(True);
   try
-    for FileName in TDirectory.GetFiles(TProtocolReplay.DataDirectory, '*.json') do
+    for mFileName in TDirectory.GetFiles(TProtocolReplay.DataDirectory, '*.json') do
     begin
-      Value := TJSONObject.ParseJSONValue(TFile.ReadAllText(FileName, TEncoding.UTF8));
-      if Value is TJSONObject then
+      mValue := TJSONObject.ParseJSONValue(TFile.ReadAllText(mFileName, TEncoding.UTF8));
+      if mValue is TJSONObject then
       begin
-        Recordings.Add(TJSONObject(Value));
+        mRecordings.Add(TJSONObject(mValue));
       end
       else
       begin
-        Value.Free;
+        mValue.Free;
       end;
     end;
-    Assert.IsTrue(Recordings.Count > 0, 'Keine Aufzeichnungen gefunden');
+    Assert.IsTrue(mRecordings.Count > 0, 'Keine Aufzeichnungen gefunden');
 
     // Aufwärmrunde füllt Caches, die bewusst bestehen bleiben.
     ReplayAll;
-    Before := AllocatedBytes;
-    for Pass := 1 to ReplayRounds do
+    mBefore := AllocatedBytes;
+    for mPass := 1 to cReplayRounds do
     begin
       ReplayAll;
     end;
-    Assert.IsTrue(AllocatedBytes - Before <= AllowedGrowth,
+    Assert.IsTrue(AllocatedBytes - mBefore <= cAllowedGrowth,
       Format('Speicher nach %d Durchläufen um %d Bytes gewachsen',
-        [ReplayRounds, AllocatedBytes - Before]));
+        [cReplayRounds, AllocatedBytes - mBefore]));
   finally
-    Recordings.Free;
+    mRecordings.Free;
   end;
 end;
 
 procedure TLeakMonitorTests.ConnectionSoakDoesNotGrowMemory;
 var
-  Growth: Int64;
+  mGrowth: Int64;
 begin
-  Growth := SoakGrowth(nil);
-  Assert.IsTrue(Growth <= AllowedGrowth, Format('Speicher nach %d Anfragen um %d Bytes gewachsen',
-    [SoakRounds * (SoakGroups * 4 + 1), Growth]));
+  mGrowth := SoakGrowth(nil);
+  Assert.IsTrue(mGrowth <= cAllowedGrowth, Format('Speicher nach %d Anfragen um %d Bytes gewachsen',
+    [cSoakRounds * (cSoakGroups * 4 + 1), mGrowth]));
 end;
 
 procedure TLeakMonitorTests.ConnectionSoakDetectsWorkerLeak;
 var
-  Leak: TWorkerLeak;
-  Growth: Int64;
+  mLeak: TWorkerLeak;
+  mGrowth: Int64;
 begin
   // Ein TStringBuilder je Worker-Anfrage: weit über der Toleranz.
   // Zwei Aufwärmrunden und bis zu zwei Messabschnitte.
-  Leak := TWorkerLeak.Create((2 * SoakRounds + 2) * SoakGroups);
+  mLeak := TWorkerLeak.Create((2 * cSoakRounds + 2) * cSoakGroups);
   try
-    Growth := SoakGrowth(Leak);
+    mGrowth := SoakGrowth(mLeak);
   finally
-    Leak.Free;
+    mLeak.Free;
   end;
-  Assert.IsTrue(Growth > AllowedGrowth, Format('Leck im Worker-Pfad nicht erkannt (%d Bytes)', [Growth]));
+  Assert.IsTrue(mGrowth > cAllowedGrowth, Format('Leck im Worker-Pfad nicht erkannt (%d Bytes)', [mGrowth]));
 end;
 
 initialization

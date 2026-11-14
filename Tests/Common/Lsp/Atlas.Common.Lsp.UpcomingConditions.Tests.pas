@@ -48,7 +48,7 @@ uses
   Atlas.Common.Pascal.TreeCache;
 
 const
-  Source =
+  cSource =
     'unit Vorschau;'#10 +                                        // 0
     'interface'#10 +                                             // 1
     'implementation'#10 +                                        // 2
@@ -91,7 +91,7 @@ const
 
 procedure TLspUpcomingConditionsTests.Setup;
 begin
-  FTree := TSyntaxTreeCache.Parse(Source);
+  FTree := TSyntaxTreeCache.Parse(cSource);
 end;
 
 procedure TLspUpcomingConditionsTests.TearDown;
@@ -101,40 +101,40 @@ end;
 
 function TLspUpcomingConditionsTests.LineOf(const AMarker: string): Integer;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := Source.Split([#10]);
+  mLines := cSource.Split([#10]);
   Result := 0;
-  while (Result <= High(Lines)) and (Pos(AMarker, Lines[Result]) = 0) do
+  while (Result <= High(mLines)) and (Pos(AMarker, mLines[Result]) = 0) do
   begin
     Inc(Result);
   end;
-  Assert.IsTrue(Result <= High(Lines), AMarker + ' nicht gefunden');
+  Assert.IsTrue(Result <= High(mLines), AMarker + ' nicht gefunden');
 end;
 
 function TLspUpcomingConditionsTests.Blocks(const AMarker: string; ALines: Integer): TLspUpcomingBlocks;
 var
-  Conditions: TLspUpcomingConditions;
+  mConditions: TLspUpcomingConditions;
 begin
-  Conditions := TLspUpcomingConditions.Create(FTree, Source, nil);
+  mConditions := TLspUpcomingConditions.Create(FTree, cSource, nil);
   try
-    Result := Conditions.Answer(LineOf(AMarker), ALines);
+    Result := mConditions.Answer(LineOf(AMarker), ALines);
   finally
-    Conditions.Free;
+    mConditions.Free;
   end;
 end;
 
 function TLspUpcomingConditionsTests.Kinds(const ABlocks: TLspUpcomingBlocks): string;
 var
-  Block: TLspUpcomingBlock;
-  Texts: TArray<string>;
+  mBlock: TLspUpcomingBlock;
+  mTexts: TArray<string>;
 begin
-  Texts := nil;
-  for Block in ABlocks do
+  mTexts := nil;
+  for mBlock in ABlocks do
   begin
-    Texts := Texts + [Format('%s@%d', [Block.Kind, Block.Line])];
+    mTexts := mTexts + [Format('%s@%d', [mBlock.Kind, mBlock.Line])];
   end;
-  Result := string.Join(' ', Texts);
+  Result := string.Join(' ', mTexts);
 end;
 
 procedure TLspUpcomingConditionsTests.CallInBranchHidesFieldConditionsAfterIt;
@@ -151,27 +151,27 @@ end;
 
 procedure TLspUpcomingConditionsTests.CaseBranchesWithLabelsRangesAndElse;
 var
-  Answer: TLspUpcomingBlocks;
-  Block: TLspUpcomingBlock;
+  mAnswer: TLspUpcomingBlocks;
+  mBlock: TLspUpcomingBlock;
 begin
-  Answer := Blocks('// Fall', 0);
-  Assert.AreEqual('case@13 while@20', Kinds(Answer));
-  Block := Answer[0];
-  Assert.AreEqual(6, Integer(Length(Block.Parts)));
-  Assert.AreEqual('FMode', Block.Parts[0].Text);
-  Assert.AreEqual('smAuto', Block.Parts[1].Text);
-  Assert.AreEqual('1', Block.Parts[3].Text);
-  Assert.AreEqual('3', Block.Parts[4].Text);
-  Assert.AreEqual(4, Integer(Length(Block.Branches)));
-  Assert.AreEqual('item', Block.Branches[2].Name);
-  Assert.AreEqual(2, Integer(Length(Block.Branches[2].Labels)));
-  Assert.AreEqual(3, Block.Branches[2].Labels[0][0]);
-  Assert.AreEqual(4, Block.Branches[2].Labels[0][1]);
-  Assert.AreEqual(5, Block.Branches[2].Labels[1][0]);
-  Assert.AreEqual(-1, Block.Branches[2].Labels[1][1]);
-  Assert.AreEqual('else', Block.Branches[3].Name);
-  Assert.AreEqual(14, Block.Branches[0].FromLine);
-  Assert.AreEqual(18, Block.Branches[3].ToLine);
+  mAnswer := Blocks('// Fall', 0);
+  Assert.AreEqual('case@13 while@20', Kinds(mAnswer));
+  mBlock := mAnswer[0];
+  Assert.AreEqual(6, Integer(Length(mBlock.Parts)));
+  Assert.AreEqual('FMode', mBlock.Parts[0].Text);
+  Assert.AreEqual('smAuto', mBlock.Parts[1].Text);
+  Assert.AreEqual('1', mBlock.Parts[3].Text);
+  Assert.AreEqual('3', mBlock.Parts[4].Text);
+  Assert.AreEqual(4, Integer(Length(mBlock.Branches)));
+  Assert.AreEqual('item', mBlock.Branches[2].Name);
+  Assert.AreEqual(2, Integer(Length(mBlock.Branches[2].Labels)));
+  Assert.AreEqual(3, mBlock.Branches[2].Labels[0][0]);
+  Assert.AreEqual(4, mBlock.Branches[2].Labels[0][1]);
+  Assert.AreEqual(5, mBlock.Branches[2].Labels[1][0]);
+  Assert.AreEqual(-1, mBlock.Branches[2].Labels[1][1]);
+  Assert.AreEqual('else', mBlock.Branches[3].Name);
+  Assert.AreEqual(14, mBlock.Branches[0].FromLine);
+  Assert.AreEqual(18, mBlock.Branches[3].ToLine);
 end;
 
 procedure TLspUpcomingConditionsTests.ExitStopsLookingAhead;
@@ -197,25 +197,25 @@ end;
 
 procedure TLspUpcomingConditionsTests.IfBranchesAndJsonShape;
 var
-  Answer: TLspUpcomingBlocks;
-  Json: TJSONObject;
-  Item: TJSONObject;
+  mAnswer: TLspUpcomingBlocks;
+  mJson: TJSONObject;
+  mItem: TJSONObject;
 begin
-  Answer := Blocks('// Wenn', 0);
-  Assert.AreEqual('then', Answer[0].Branches[0].Name);
-  Assert.AreEqual(10, Answer[0].Branches[0].FromLine);
-  Assert.AreEqual('else', Answer[0].Branches[1].Name);
-  Assert.AreEqual(12, Answer[0].Branches[1].FromLine);
-  Assert.AreEqual('and', Answer[0].Parts[0].Kind);
-  Json := TLspUpcomingConditions.ToJson(Answer);
+  mAnswer := Blocks('// Wenn', 0);
+  Assert.AreEqual('then', mAnswer[0].Branches[0].Name);
+  Assert.AreEqual(10, mAnswer[0].Branches[0].FromLine);
+  Assert.AreEqual('else', mAnswer[0].Branches[1].Name);
+  Assert.AreEqual(12, mAnswer[0].Branches[1].FromLine);
+  Assert.AreEqual('and', mAnswer[0].Parts[0].Kind);
+  mJson := TLspUpcomingConditions.ToJson(mAnswer);
   try
-    Assert.AreEqual(1, (Json.GetValue('format') as TJSONNumber).AsInt);
-    Item := (Json.GetValue('blocks') as TJSONArray).Items[0] as TJSONObject;
-    Assert.AreEqual('if', Item.GetValue('kind').Value);
-    Assert.AreEqual(2, Integer((Item.GetValue('branches') as TJSONArray).Count));
-    Assert.IsTrue((Item.GetValue('parts') as TJSONArray).Count >= 3);
+    Assert.AreEqual(1, (mJson.GetValue('format') as TJSONNumber).AsInt);
+    mItem := (mJson.GetValue('blocks') as TJSONArray).Items[0] as TJSONObject;
+    Assert.AreEqual('if', mItem.GetValue('kind').Value);
+    Assert.AreEqual(2, Integer((mItem.GetValue('branches') as TJSONArray).Count));
+    Assert.IsTrue((mItem.GetValue('parts') as TJSONArray).Count >= 3);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 

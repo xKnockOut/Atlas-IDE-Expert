@@ -42,40 +42,40 @@ uses
 /// <summary>Führt den Befehl in Zeile ALine aus und wendet die Änderungen an; '' wenn er nicht passt.</summary>
 function Expand(const AText: string; ALine: Integer): string;
 var
-  Edits: TArray<TRuleEdit>;
-  Lines: TArray<string>;
-  Edit: TRuleEdit;
-  Offsets: TArray<Integer>;
-  Index, Start, Stop: Integer;
+  mEdits: TArray<TRuleEdit>;
+  mLines: TArray<string>;
+  mEdit: TRuleEdit;
+  mOffsets: TArray<Integer>;
+  mIndex, mStart, mStop: Integer;
 begin
-  if not TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, Edits) then
+  if not TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, mEdits) then
   begin
     Exit('');
   end;
-  Lines := AText.Split([#10]);
-  SetLength(Offsets, Length(Lines) + 1);
-  Offsets[0] := 0;
-  for Index := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  SetLength(mOffsets, Length(mLines) + 1);
+  mOffsets[0] := 0;
+  for mIndex := 0 to High(mLines) do
   begin
-    Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
   end;
-  TArray.Sort<TRuleEdit>(Edits, TComparer<TRuleEdit>.Construct(
+  TArray.Sort<TRuleEdit>(mEdits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
     begin
       Result := (ARight.Range.StartPos.Line - ALeft.Range.StartPos.Line) * 100000 +
         ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
     end));
   Result := AText;
-  for Edit in Edits do
+  for mEdit in mEdits do
   begin
-    Start := Offsets[Edit.Range.StartPos.Line] + Edit.Range.StartPos.Character;
-    Stop := Offsets[Edit.Range.EndPos.Line] + Edit.Range.EndPos.Character;
-    Result := Copy(Result, 1, Start) + Edit.NewText + Copy(Result, Stop + 1, MaxInt);
+    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
+    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
+    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
   end;
 end;
 
 const
-  Knopf =
+  cKnopf =
     'unit U;'#10 +                          // 0
     'interface'#10 +                        // 1
     'uses System.Classes;'#10 +             // 2
@@ -91,9 +91,9 @@ const
 
 procedure TComponentCommandsTests.NotifyCreatesEvent;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(Format(Knopf, ['/notify OnChange']), 8);
+  mText := Expand(Format(cKnopf, ['/notify OnChange']), 8);
   Assert.AreEqual(
     'unit U;'#10'interface'#10'uses System.Classes;'#10'type'#10 +
     '  TKnopf = class(TComponent)'#10 +
@@ -113,31 +113,31 @@ begin
     '    FOnChange(Self);'#10 +
     'end;'#10 +
     #10 +
-    'end.', Text);
+    'end.', mText);
 end;
 
 procedure TComponentCommandsTests.NotifyTwiceOnlyHint;
 var
-  Once: string;
+  mOnce: string;
 begin
-  Once := Expand(Format(Knopf, ['/notify OnChange']), 8);
-  Assert.AreEqual('', Expand(StringReplace(Once, '  public'#10, '  public'#10'    /notify OnChange'#10, []), 9));
+  mOnce := Expand(Format(cKnopf, ['/notify OnChange']), 8);
+  Assert.AreEqual('', Expand(StringReplace(mOnce, '  public'#10, '  public'#10'    /notify OnChange'#10, []), 9));
 end;
 
 procedure TComponentCommandsTests.NotifyWithEventType;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(StringReplace(Format(Knopf, ['/notify OnFehler: TFehlerEvent']), 'type'#10,
+  mText := Expand(StringReplace(Format(cKnopf, ['/notify OnFehler: TFehlerEvent']), 'type'#10,
     'type'#10'  TFehlerEvent = procedure(Sender: TObject; const AText: string) of object;'#10, []), 9);
-  Assert.Contains(Text, '    procedure DoFehler(const AText: string); virtual;'#10);
-  Assert.Contains(Text, '    FOnFehler(Self, AText);'#10);
-  Assert.AreEqual('', Expand(Format(Knopf, ['/notify OnFehler: TUnbekannt']), 8));
+  Assert.Contains(mText, '    procedure DoFehler(const AText: string); virtual;'#10);
+  Assert.Contains(mText, '    FOnFehler(Self, AText);'#10);
+  Assert.AreEqual('', Expand(Format(cKnopf, ['/notify OnFehler: TUnbekannt']), 8));
 end;
 
 procedure TComponentCommandsTests.ChangedInControlInvalidates;
 const
-  Source =
+  cSource =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -156,40 +156,40 @@ const
     'end;'#10 +
     'end.';
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(Source, 8);
-  Assert.Contains(Text, 'procedure TAnzeige.SetFarbe(const AFarbe: TColor);'#10'begin'#10 +
+  mText := Expand(cSource, 8);
+  Assert.Contains(mText, 'procedure TAnzeige.SetFarbe(const AFarbe: TColor);'#10'begin'#10 +
     '  if FFarbe <> AFarbe then'#10'  begin'#10'    FFarbe := AFarbe;'#10'    Invalidate;'#10'  end;'#10'end;'#10 +
     'end.');
-  Assert.AreEqual(0, Pos('/changed', Text));
+  Assert.AreEqual(0, Pos('/changed', mText));
 end;
 
 procedure TComponentCommandsTests.ChangedCreatesSetter;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(StringReplace(Format(Knopf, ['/changed Text']), '  end;'#10,
+  mText := Expand(StringReplace(Format(cKnopf, ['/changed Text']), '  end;'#10,
     '    property Text: string read FText write FText;'#10'  end;'#10, []), 8);
-  Assert.Contains(Text, 'property Text: string read FText write SetText;');
-  Assert.Contains(Text, '    procedure SetText(const Value: string);'#10);
-  Assert.Contains(Text, '  if FText <> Value then'#10'  begin'#10'    FText := Value;'#10'    Changed;'#10);
+  Assert.Contains(mText, 'property Text: string read FText write SetText;');
+  Assert.Contains(mText, '    procedure SetText(const Value: string);'#10);
+  Assert.Contains(mText, '  if FText <> Value then'#10'  begin'#10'    FText := Value;'#10'    Changed;'#10);
 end;
 
 procedure TComponentCommandsTests.LoadedOnlyForComponents;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(Format(Knopf, ['/loaded']), 8);
-  Assert.Contains(Text, '  protected'#10'    procedure Loaded; override;'#10);
-  Assert.Contains(Text, 'procedure TKnopf.Loaded;'#10'begin'#10'  inherited Loaded;'#10'end;');
-  Assert.AreEqual('', Expand(StringReplace(Format(Knopf, ['/loaded']), 'class(TComponent)', 'class(TObject)', []),
+  mText := Expand(Format(cKnopf, ['/loaded']), 8);
+  Assert.Contains(mText, '  protected'#10'    procedure Loaded; override;'#10);
+  Assert.Contains(mText, 'procedure TKnopf.Loaded;'#10'begin'#10'  inherited Loaded;'#10'end;');
+  Assert.AreEqual('', Expand(StringReplace(Format(cKnopf, ['/loaded']), 'class(TComponent)', 'class(TObject)', []),
     8));
 end;
 
 procedure TComponentCommandsTests.NotificationExtendsExisting;
 const
-  Source =
+  cSource =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -218,29 +218,29 @@ const
     'end;'#10 +
     'end.';
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(Source, 12);
-  Assert.Contains(Text, '    FQuelle := nil;'#10'  if (Operation = opRemove) and (AComponent = FZiel) then'#10 +
+  mText := Expand(cSource, 12);
+  Assert.Contains(mText, '    FQuelle := nil;'#10'  if (Operation = opRemove) and (AComponent = FZiel) then'#10 +
     '    FZiel := nil;'#10'end;');
   // Keine zweite Notification, keine doppelte Bedingung.
-  Assert.AreEqual(1, Integer(Length(Text.Split(['procedure TVerbinder.Notification']))) - 1);
-  Assert.AreEqual(1, Integer(Length(Text.Split(['(AComponent = FQuelle)']))) - 1);
-  Assert.Contains(Text, 'begin'#10'  if FZiel <> nil then'#10'    FZiel.RemoveFreeNotification(Self);'#10 +
+  Assert.AreEqual(1, Integer(Length(mText.Split(['procedure TVerbinder.Notification']))) - 1);
+  Assert.AreEqual(1, Integer(Length(mText.Split(['(AComponent = FQuelle)']))) - 1);
+  Assert.Contains(mText, 'begin'#10'  if FZiel <> nil then'#10'    FZiel.RemoveFreeNotification(Self);'#10 +
     '  FZiel := Value;'#10'  if FZiel <> nil then'#10'    FZiel.FreeNotification(Self);'#10'end;');
   // Zweiter Aufruf: nichts mehr zu tun.
-  Assert.AreEqual('', Expand(StringReplace(Text, '  public'#10, '  public'#10'    /notification'#10, []), 12));
+  Assert.AreEqual('', Expand(StringReplace(mText, '  public'#10, '  public'#10'    /notification'#10, []), 12));
 end;
 
 procedure TComponentCommandsTests.OutsideClassFails;
 const
-  Outside = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  %s'#10'end;'#10'end.';
+  cOutside = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  %s'#10'end;'#10'end.';
 var
-  Command: string;
+  mCommand: string;
 begin
-  for Command in TArray<string>.Create('/notify OnChange', '/changed Farbe', '/loaded', '/notification') do
+  for mCommand in TArray<string>.Create('/notify OnChange', '/changed Farbe', '/loaded', '/notification') do
   begin
-    Assert.AreEqual('', Expand(Format(Outside, [Command]), 5), Command);
+    Assert.AreEqual('', Expand(Format(cOutside, [mCommand]), 5), mCommand);
   end;
 end;
 

@@ -55,9 +55,9 @@ uses
   Atlas.Core.Settings.TeamFile;
 
 const
-  Folder = 'C:\Repo\App';
-  Unit1 = 'C:\Repo\App\Source\Kunde.pas';
-  Code =
+  cFolder = 'C:\Repo\App';
+  cUnit1 = 'C:\Repo\App\Source\Kunde.pas';
+  cCode =
     'unit Kunde;' + #13#10 +
     #13#10 +
     'implementation' + #13#10 +
@@ -72,215 +72,215 @@ const
 
 function TAtlasHideTests.Suppressed(const AText, ARuleId: string; ALine: Integer): Boolean;
 var
-  Suppressions: TSuppressions;
+  mSuppressions: TSuppressions;
 begin
-  Suppressions := TSuppressions.Create(TPascalLexer.Tokenize(AText));
+  mSuppressions := TSuppressions.Create(TPascalLexer.Tokenize(AText));
   try
-    Result := Suppressions.IsSuppressed(ARuleId, ALine);
+    Result := mSuppressions.IsSuppressed(ARuleId, ALine);
   finally
-    Suppressions.Free;
+    mSuppressions.Free;
   end;
 end;
 
 procedure TAtlasHideTests.HereOnFindingWritesValidLineComment;
 var
-  Plan: TAtlasHidePlan;
-  Refusal: TAtlasHideRefusal;
-  Text: string;
+  mPlan: TAtlasHidePlan;
+  mRefusal: TAtlasHideRefusal;
+  mText: string;
 begin
   // Befund „with“ in Zeile 6 (0-basiert).
-  Assert.IsFalse(Suppressed(Code, 'no-with', 6));
-  Assert.IsTrue(TAtlasHide.Plan(TAtlasHideTarget.Finding(Unit1, 6, 'no-with', '  with Daten do'),
-    TAtlasHideScope.Here, Code, Folder, Plan, Refusal));
-  Assert.AreEqual<TAtlasHideKind>(TAtlasHideKind.LineComment, Plan.Kind);
-  Assert.AreEqual(6, Plan.Insert.Line);
-  Assert.AreEqual('  // lsp-ignore: no-with'#13#10, Plan.Insert.Text, 'eingerückt wie die Zeile, gleiche Zeilenenden');
-  Text := Plan.Insert.ApplyTo(Code);
+  Assert.IsFalse(Suppressed(cCode, 'no-with', 6));
+  Assert.IsTrue(TAtlasHide.Plan(TAtlasHideTarget.Finding(cUnit1, 6, 'no-with', '  with Daten do'),
+    TAtlasHideScope.Here, cCode, cFolder, mPlan, mRefusal));
+  Assert.AreEqual<TAtlasHideKind>(TAtlasHideKind.LineComment, mPlan.Kind);
+  Assert.AreEqual(6, mPlan.Insert.Line);
+  Assert.AreEqual('  // lsp-ignore: no-with'#13#10, mPlan.Insert.Text, 'eingerückt wie die Zeile, gleiche Zeilenenden');
+  mText := mPlan.Insert.ApplyTo(cCode);
   // Gültig: Der Server unterdrückt die Regel in der Zeile darunter (jetzt 7) und nur dort.
-  Assert.IsTrue(Suppressed(Text, 'no-with', 7));
-  Assert.IsFalse(Suppressed(Text, 'no-with', 8));
-  Assert.IsFalse(Suppressed(Text, 'andere-regel', 7));
+  Assert.IsTrue(Suppressed(mText, 'no-with', 7));
+  Assert.IsFalse(Suppressed(mText, 'no-with', 8));
+  Assert.IsFalse(Suppressed(mText, 'andere-regel', 7));
 end;
 
 procedure TAtlasHideTests.HereExtendsExistingCommentBeforeReason;
 var
-  Text, Changed: string;
-  Insert: TAtlasTextInsert;
+  mText, mChanged: string;
+  mInsert: TAtlasTextInsert;
 begin
-  Text := 'begin' + #10 + '  // lsp-ignore: a -- Altcode' + #10 + '  with X do Y;' + #10 + 'end;';
-  Insert := TAtlasHide.SuppressLine(Text, 2, 'no-with');
-  Assert.AreEqual(1, Insert.Line);
-  Assert.AreEqual(', no-with', Insert.Text);
-  Changed := Insert.ApplyTo(Text);
-  Assert.Contains(Changed, '// lsp-ignore: a, no-with -- Altcode');
-  Assert.IsTrue(Suppressed(Changed, 'no-with', 2));
-  Assert.IsTrue(Suppressed(Changed, 'a', 2));
+  mText := 'begin' + #10 + '  // lsp-ignore: a -- Altcode' + #10 + '  with X do Y;' + #10 + 'end;';
+  mInsert := TAtlasHide.SuppressLine(mText, 2, 'no-with');
+  Assert.AreEqual(1, mInsert.Line);
+  Assert.AreEqual(', no-with', mInsert.Text);
+  mChanged := mInsert.ApplyTo(mText);
+  Assert.Contains(mChanged, '// lsp-ignore: a, no-with -- Altcode');
+  Assert.IsTrue(Suppressed(mChanged, 'no-with', 2));
+  Assert.IsTrue(Suppressed(mChanged, 'a', 2));
   // Leerer Kommentar ohne Kennung und Schreibweise ohne Leerzeichen.
-  Text := 'begin' + #10 + '  //lsp-ignore:' + #10 + '  with X do Y;' + #10 + 'end;';
-  Changed := TAtlasHide.SuppressLine(Text, 2, 'no-with').ApplyTo(Text);
-  Assert.Contains(Changed, '//lsp-ignore: no-with' + #10);
-  Assert.IsTrue(Suppressed(Changed, 'no-with', 2));
+  mText := 'begin' + #10 + '  //lsp-ignore:' + #10 + '  with X do Y;' + #10 + 'end;';
+  mChanged := TAtlasHide.SuppressLine(mText, 2, 'no-with').ApplyTo(mText);
+  Assert.Contains(mChanged, '//lsp-ignore: no-with' + #10);
+  Assert.IsTrue(Suppressed(mChanged, 'no-with', 2));
   // Ein Kommentar am Zeilenende darüber gilt für seine eigene Zeile: neue Zeile.
-  Text := 'begin' + #10 + '  A; // lsp-ignore: a' + #10 + '  with X do Y;' + #10 + 'end;';
-  Insert := TAtlasHide.SuppressLine(Text, 2, 'no-with');
-  Assert.AreEqual(2, Insert.Line);
-  Assert.AreEqual(0, Insert.Character);
-  Assert.AreEqual('  // lsp-ignore: no-with'#10, Insert.Text);
-  Assert.IsTrue(Suppressed(Insert.ApplyTo(Text), 'no-with', 3));
+  mText := 'begin' + #10 + '  A; // lsp-ignore: a' + #10 + '  with X do Y;' + #10 + 'end;';
+  mInsert := TAtlasHide.SuppressLine(mText, 2, 'no-with');
+  Assert.AreEqual(2, mInsert.Line);
+  Assert.AreEqual(0, mInsert.Character);
+  Assert.AreEqual('  // lsp-ignore: no-with'#10, mInsert.Text);
+  Assert.IsTrue(Suppressed(mInsert.ApplyTo(mText), 'no-with', 3));
 end;
 
 procedure TAtlasHideTests.InFileOnFindingWritesValidFileComment;
 var
-  Plan: TAtlasHidePlan;
-  Refusal: TAtlasHideRefusal;
-  Text: string;
+  mPlan: TAtlasHidePlan;
+  mRefusal: TAtlasHideRefusal;
+  mText: string;
 begin
-  Assert.IsTrue(TAtlasHide.Plan(TAtlasHideTarget.Finding(Unit1, 6, 'no-with', '  with Daten do'),
-    TAtlasHideScope.InFile, Code, Folder, Plan, Refusal));
-  Assert.AreEqual<TAtlasHideKind>(TAtlasHideKind.FileComment, Plan.Kind);
-  Assert.AreEqual(0, Plan.Insert.Line);
-  Text := Plan.Insert.ApplyTo(Code);
-  Assert.IsTrue(Text.StartsWith('// lsp-ignore-file: no-with'#13#10'unit Kunde;'));
-  Assert.IsTrue(Suppressed(Text, 'no-with', 7));
-  Assert.IsTrue(Suppressed(Text, 'no-with', 1));
+  Assert.IsTrue(TAtlasHide.Plan(TAtlasHideTarget.Finding(cUnit1, 6, 'no-with', '  with Daten do'),
+    TAtlasHideScope.InFile, cCode, cFolder, mPlan, mRefusal));
+  Assert.AreEqual<TAtlasHideKind>(TAtlasHideKind.FileComment, mPlan.Kind);
+  Assert.AreEqual(0, mPlan.Insert.Line);
+  mText := mPlan.Insert.ApplyTo(cCode);
+  Assert.IsTrue(mText.StartsWith('// lsp-ignore-file: no-with'#13#10'unit Kunde;'));
+  Assert.IsTrue(Suppressed(mText, 'no-with', 7));
+  Assert.IsTrue(Suppressed(mText, 'no-with', 1));
   // Ein vorhandener Dateikommentar wird ergänzt.
-  Text := TAtlasHide.SuppressFile(Text, 'max-length').ApplyTo(Text);
-  Assert.IsTrue(Text.StartsWith('// lsp-ignore-file: no-with, max-length'#13#10));
-  Assert.IsTrue(Suppressed(Text, 'max-length', 5));
+  mText := TAtlasHide.SuppressFile(mText, 'max-length').ApplyTo(mText);
+  Assert.IsTrue(mText.StartsWith('// lsp-ignore-file: no-with, max-length'#13#10));
+  Assert.IsTrue(Suppressed(mText, 'max-length', 5));
 end;
 
 procedure TAtlasHideTests.AlreadySuppressedIsRefused;
 var
-  Plan: TAtlasHidePlan;
-  Refusal: TAtlasHideRefusal;
-  Text: string;
+  mPlan: TAtlasHidePlan;
+  mRefusal: TAtlasHideRefusal;
+  mText: string;
 begin
-  Text := '  // lsp-ignore: *' + #13#10 + '  with X do Y;';
-  Assert.IsFalse(TAtlasHide.Plan(TAtlasHideTarget.Finding(Unit1, 1, 'no-with', '  with X do Y;'),
-    TAtlasHideScope.Here, Text, Folder, Plan, Refusal));
-  Assert.AreEqual<TAtlasHideRefusal>(TAtlasHideRefusal.AlreadyHidden, Refusal);
-  Text := '// lsp-ignore-file: NO-WITH' + #13#10 + 'unit A;';
-  Assert.IsFalse(TAtlasHide.Plan(TAtlasHideTarget.Finding(Unit1, 1, 'no-with', 'unit A;'),
-    TAtlasHideScope.InFile, Text, Folder, Plan, Refusal));
-  Assert.AreEqual<TAtlasHideRefusal>(TAtlasHideRefusal.AlreadyHidden, Refusal);
+  mText := '  // lsp-ignore: *' + #13#10 + '  with X do Y;';
+  Assert.IsFalse(TAtlasHide.Plan(TAtlasHideTarget.Finding(cUnit1, 1, 'no-with', '  with X do Y;'),
+    TAtlasHideScope.Here, mText, cFolder, mPlan, mRefusal));
+  Assert.AreEqual<TAtlasHideRefusal>(TAtlasHideRefusal.AlreadyHidden, mRefusal);
+  mText := '// lsp-ignore-file: NO-WITH' + #13#10 + 'unit A;';
+  Assert.IsFalse(TAtlasHide.Plan(TAtlasHideTarget.Finding(cUnit1, 1, 'no-with', 'unit A;'),
+    TAtlasHideScope.InFile, mText, cFolder, mPlan, mRefusal));
+  Assert.AreEqual<TAtlasHideRefusal>(TAtlasHideRefusal.AlreadyHidden, mRefusal);
 end;
 
 procedure TAtlasHideTests.HereAndInFileWriteTeamFileEntries;
 var
-  Plan: TAtlasHidePlan;
-  Refusal: TAtlasHideRefusal;
-  Target: TAtlasHideTarget;
+  mPlan: TAtlasHidePlan;
+  mRefusal: TAtlasHideRefusal;
+  mTarget: TAtlasHideTarget;
 begin
-  Target := TAtlasHideTarget.Create(TAtlasDrawnElement.BlockEndLabels, Unit1, 8, ' TKunde.Speichern ');
-  Assert.AreEqual('TKunde.Speichern', Target.Anchor);
-  Assert.IsTrue(TAtlasHide.Plan(Target, TAtlasHideScope.Here, Code, Folder, Plan, Refusal));
-  Assert.AreEqual<TAtlasHideKind>(TAtlasHideKind.TeamFile, Plan.Kind);
-  Assert.AreEqual('BlockEndLabels', Plan.Place.Setting);
-  Assert.AreEqual('Source/Kunde.pas', Plan.Place.FileName);
-  Assert.AreEqual('TKunde.Speichern', Plan.Place.Anchor);
-  Assert.IsTrue(TAtlasHide.Plan(Target, TAtlasHideScope.InFile, Code, Folder, Plan, Refusal));
-  Assert.AreEqual<TAtlasHideKind>(TAtlasHideKind.TeamFile, Plan.Kind);
-  Assert.IsTrue(Plan.Place.WholeFile);
-  Assert.AreEqual('Source/Kunde.pas', Plan.Place.FileName);
+  mTarget := TAtlasHideTarget.Create(TAtlasDrawnElement.BlockEndLabels, cUnit1, 8, ' TKunde.Speichern ');
+  Assert.AreEqual('TKunde.Speichern', mTarget.Anchor);
+  Assert.IsTrue(TAtlasHide.Plan(mTarget, TAtlasHideScope.Here, cCode, cFolder, mPlan, mRefusal));
+  Assert.AreEqual<TAtlasHideKind>(TAtlasHideKind.TeamFile, mPlan.Kind);
+  Assert.AreEqual('BlockEndLabels', mPlan.Place.Setting);
+  Assert.AreEqual('Source/Kunde.pas', mPlan.Place.FileName);
+  Assert.AreEqual('TKunde.Speichern', mPlan.Place.Anchor);
+  Assert.IsTrue(TAtlasHide.Plan(mTarget, TAtlasHideScope.InFile, cCode, cFolder, mPlan, mRefusal));
+  Assert.AreEqual<TAtlasHideKind>(TAtlasHideKind.TeamFile, mPlan.Kind);
+  Assert.IsTrue(mPlan.Place.WholeFile);
+  Assert.AreEqual('Source/Kunde.pas', mPlan.Place.FileName);
 end;
 
 procedure TAtlasHideTests.FindingWithoutRuleUsesTeamFile;
 var
-  Plan: TAtlasHidePlan;
-  Refusal: TAtlasHideRefusal;
+  mPlan: TAtlasHidePlan;
+  mRefusal: TAtlasHideRefusal;
 begin
   // Compilermeldung: kein lsp-ignore möglich, Eintrag mit der Codezeile als Anker.
-  Assert.IsTrue(TAtlasHide.Plan(TAtlasHideTarget.Finding(Unit1, 7, '', '    Schreiben;'), TAtlasHideScope.Here, Code,
-    Folder, Plan, Refusal));
-  Assert.AreEqual<TAtlasHideKind>(TAtlasHideKind.TeamFile, Plan.Kind);
-  Assert.AreEqual('Problems', Plan.Place.Setting);
-  Assert.AreEqual('Schreiben;', Plan.Place.Anchor);
+  Assert.IsTrue(TAtlasHide.Plan(TAtlasHideTarget.Finding(cUnit1, 7, '', '    Schreiben;'), TAtlasHideScope.Here, cCode,
+    cFolder, mPlan, mRefusal));
+  Assert.AreEqual<TAtlasHideKind>(TAtlasHideKind.TeamFile, mPlan.Kind);
+  Assert.AreEqual('Problems', mPlan.Place.Setting);
+  Assert.AreEqual('Schreiben;', mPlan.Place.Anchor);
 end;
 
 procedure TAtlasHideTests.RefusesWithoutProjectOrScope;
 var
-  Plan: TAtlasHidePlan;
-  Refusal: TAtlasHideRefusal;
+  mPlan: TAtlasHidePlan;
+  mRefusal: TAtlasHideRefusal;
 begin
-  Assert.IsFalse(TAtlasHide.Plan(TAtlasHideTarget.Create(TAtlasDrawnElement.InlayHints, Unit1, 3, 'F(1)'),
-    TAtlasHideScope.Here, Code, '', Plan, Refusal));
-  Assert.AreEqual<TAtlasHideRefusal>(TAtlasHideRefusal.NoProjectFolder, Refusal);
+  Assert.IsFalse(TAtlasHide.Plan(TAtlasHideTarget.Create(TAtlasDrawnElement.InlayHints, cUnit1, 3, 'F(1)'),
+    TAtlasHideScope.Here, cCode, '', mPlan, mRefusal));
+  Assert.AreEqual<TAtlasHideRefusal>(TAtlasHideRefusal.NoProjectFolder, mRefusal);
   Assert.IsFalse(TAtlasHide.Plan(TAtlasHideTarget.Create(TAtlasDrawnElement.InlayHints, 'D:\Fremd\A.pas', 3, 'F(1)'),
-    TAtlasHideScope.Here, Code, Folder, Plan, Refusal));
-  Assert.AreEqual<TAtlasHideRefusal>(TAtlasHideRefusal.OutsideProject, Refusal);
-  Assert.IsFalse(TAtlasHide.Plan(TAtlasHideTarget.Create(TAtlasDrawnElement.PairColors, Unit1, 3, 'begin'),
-    TAtlasHideScope.Here, Code, Folder, Plan, Refusal));
-  Assert.AreEqual<TAtlasHideRefusal>(TAtlasHideRefusal.ScopeNotOffered, Refusal);
-  Assert.IsFalse(TAtlasHide.Plan(TAtlasHideTarget.Create(TAtlasDrawnElement.CompletionPreview, Unit1, 3, ''),
-    TAtlasHideScope.InFile, Code, Folder, Plan, Refusal));
-  Assert.AreEqual<TAtlasHideRefusal>(TAtlasHideRefusal.ScopeNotOffered, Refusal);
+    TAtlasHideScope.Here, cCode, cFolder, mPlan, mRefusal));
+  Assert.AreEqual<TAtlasHideRefusal>(TAtlasHideRefusal.OutsideProject, mRefusal);
+  Assert.IsFalse(TAtlasHide.Plan(TAtlasHideTarget.Create(TAtlasDrawnElement.PairColors, cUnit1, 3, 'begin'),
+    TAtlasHideScope.Here, cCode, cFolder, mPlan, mRefusal));
+  Assert.AreEqual<TAtlasHideRefusal>(TAtlasHideRefusal.ScopeNotOffered, mRefusal);
+  Assert.IsFalse(TAtlasHide.Plan(TAtlasHideTarget.Create(TAtlasDrawnElement.CompletionPreview, cUnit1, 3, ''),
+    TAtlasHideScope.InFile, cCode, cFolder, mPlan, mRefusal));
+  Assert.AreEqual<TAtlasHideRefusal>(TAtlasHideRefusal.ScopeNotOffered, mRefusal);
   // Ohne Anker keine einzelne Stelle.
-  Assert.IsFalse(TAtlasHide.Plan(TAtlasHideTarget.Create(TAtlasDrawnElement.Notes, Unit1, 3, '   '),
-    TAtlasHideScope.Here, Code, Folder, Plan, Refusal));
-  Assert.AreEqual<TAtlasHideRefusal>(TAtlasHideRefusal.ScopeNotOffered, Refusal);
+  Assert.IsFalse(TAtlasHide.Plan(TAtlasHideTarget.Create(TAtlasDrawnElement.Notes, cUnit1, 3, '   '),
+    TAtlasHideScope.Here, cCode, cFolder, mPlan, mRefusal));
+  Assert.AreEqual<TAtlasHideRefusal>(TAtlasHideRefusal.ScopeNotOffered, mRefusal);
 end;
 
 procedure TAtlasHideTests.EverywhereSwitchesSettingOffAndBack;
 var
-  Plan: TAtlasHidePlan;
-  Refusal: TAtlasHideRefusal;
-  Settings: TAtlasPluginSettings;
-  Old: string;
+  mPlan: TAtlasHidePlan;
+  mRefusal: TAtlasHideRefusal;
+  mSettings: TAtlasPluginSettings;
+  mOld: string;
 begin
   // Abnahme: „Überall ausblenden“ auf einer Blockende-Beschriftung setzt editor.blockEndLabels auf false.
-  Assert.IsTrue(TAtlasHide.Plan(TAtlasHideTarget.Create(TAtlasDrawnElement.BlockEndLabels, Unit1, 8, 'TKunde'),
-    TAtlasHideScope.Everywhere, Code, '', Plan, Refusal));
-  Assert.AreEqual<TAtlasHideKind>(TAtlasHideKind.Setting, Plan.Kind);
-  Assert.AreEqual('BlockEndLabels', Plan.SettingKey);
-  Settings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(Settings.BlockEndLabels);
-  Assert.IsTrue(TAtlasHide.SwitchOff(Settings, Plan.SettingKey, Old));
-  Assert.IsFalse(Settings.BlockEndLabels);
-  Assert.IsFalse(TAtlasHide.IsOn(Settings, Plan.SettingKey));
-  Assert.IsFalse(TAtlasHide.SwitchOff(Settings, Plan.SettingKey, Old), 'schon aus');
-  Assert.IsTrue(TAtlasHide.Restore(Settings, 'BlockEndLabels', '1'));
-  Assert.IsTrue(Settings.BlockEndLabels);
+  Assert.IsTrue(TAtlasHide.Plan(TAtlasHideTarget.Create(TAtlasDrawnElement.BlockEndLabels, cUnit1, 8, 'TKunde'),
+    TAtlasHideScope.Everywhere, cCode, '', mPlan, mRefusal));
+  Assert.AreEqual<TAtlasHideKind>(TAtlasHideKind.Setting, mPlan.Kind);
+  Assert.AreEqual('BlockEndLabels', mPlan.SettingKey);
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.BlockEndLabels);
+  Assert.IsTrue(TAtlasHide.SwitchOff(mSettings, mPlan.SettingKey, mOld));
+  Assert.IsFalse(mSettings.BlockEndLabels);
+  Assert.IsFalse(TAtlasHide.IsOn(mSettings, mPlan.SettingKey));
+  Assert.IsFalse(TAtlasHide.SwitchOff(mSettings, mPlan.SettingKey, mOld), 'schon aus');
+  Assert.IsTrue(TAtlasHide.Restore(mSettings, 'BlockEndLabels', '1'));
+  Assert.IsTrue(mSettings.BlockEndLabels);
   // Textauswahl (Willkommensseite, „Neu in Atlas“): aus = "off", zurück auf den alten Wert.
-  Assert.IsTrue(TAtlasHide.SwitchOff(Settings, 'WelcomePageWhatsNew', Old));
-  Assert.AreEqual('afterUpdate', Old);
-  Assert.AreEqual('off', Settings.WelcomePageWhatsNew);
-  Assert.IsTrue(TAtlasHide.Restore(Settings, 'WelcomePageWhatsNew', Old));
-  Assert.AreEqual('afterUpdate', Settings.WelcomePageWhatsNew);
+  Assert.IsTrue(TAtlasHide.SwitchOff(mSettings, 'WelcomePageWhatsNew', mOld));
+  Assert.AreEqual('afterUpdate', mOld);
+  Assert.AreEqual('off', mSettings.WelcomePageWhatsNew);
+  Assert.IsTrue(TAtlasHide.Restore(mSettings, 'WelcomePageWhatsNew', mOld));
+  Assert.AreEqual('afterUpdate', mSettings.WelcomePageWhatsNew);
   // Fehlertext am Zeilenende (#509): „Überall“ stellt den Modus auf aus, Rückgängig auf den alten.
-  Assert.IsTrue(TAtlasHide.Plan(TAtlasHideTarget.Create(TAtlasDrawnElement.InlineDiagnostics, Unit1, 8, 'X := 1;'),
-    TAtlasHideScope.Everywhere, Code, '', Plan, Refusal));
-  Assert.AreEqual('InlineDiagnostics', Plan.SettingKey);
-  Settings.InlineDiagnostics := 'all';
-  Assert.IsTrue(TAtlasHide.SwitchOff(Settings, Plan.SettingKey, Old));
-  Assert.AreEqual('all', Old);
-  Assert.AreEqual('off', Settings.InlineDiagnostics);
-  Assert.IsTrue(TAtlasHide.Restore(Settings, Plan.SettingKey, Old));
-  Assert.AreEqual('all', Settings.InlineDiagnostics);
-  Assert.IsFalse(TAtlasHide.SwitchOff(Settings, 'GibtEsNicht', Old));
-  Assert.IsFalse(TAtlasHide.Restore(Settings, 'GibtEsNicht', '1'));
+  Assert.IsTrue(TAtlasHide.Plan(TAtlasHideTarget.Create(TAtlasDrawnElement.InlineDiagnostics, cUnit1, 8, 'X := 1;'),
+    TAtlasHideScope.Everywhere, cCode, '', mPlan, mRefusal));
+  Assert.AreEqual('InlineDiagnostics', mPlan.SettingKey);
+  mSettings.InlineDiagnostics := 'all';
+  Assert.IsTrue(TAtlasHide.SwitchOff(mSettings, mPlan.SettingKey, mOld));
+  Assert.AreEqual('all', mOld);
+  Assert.AreEqual('off', mSettings.InlineDiagnostics);
+  Assert.IsTrue(TAtlasHide.Restore(mSettings, mPlan.SettingKey, mOld));
+  Assert.AreEqual('all', mSettings.InlineDiagnostics);
+  Assert.IsFalse(TAtlasHide.SwitchOff(mSettings, 'GibtEsNicht', mOld));
+  Assert.IsFalse(TAtlasHide.Restore(mSettings, 'GibtEsNicht', '1'));
 end;
 
 procedure TAtlasHideTests.InsertRevertsOnlyUnchangedText;
 var
-  Insert: TAtlasTextInsert;
-  Text, Reverted: string;
+  mInsert: TAtlasTextInsert;
+  mText, mReverted: string;
 begin
-  Insert := TAtlasHide.SuppressLine(Code, 6, 'no-with');
-  Text := Insert.ApplyTo(Code);
-  Assert.IsTrue(Insert.RevertIn(Text, Reverted));
-  Assert.AreEqual(Code, Reverted);
-  Text := StringReplace(Text, 'lsp-ignore', 'lsp-IGNORE', []);
-  Assert.IsFalse(Insert.RevertIn(Text, Reverted), 'inzwischen geändert');
-  Assert.AreEqual(Text, Reverted);
+  mInsert := TAtlasHide.SuppressLine(cCode, 6, 'no-with');
+  mText := mInsert.ApplyTo(cCode);
+  Assert.IsTrue(mInsert.RevertIn(mText, mReverted));
+  Assert.AreEqual(cCode, mReverted);
+  mText := StringReplace(mText, 'lsp-ignore', 'lsp-IGNORE', []);
+  Assert.IsFalse(mInsert.RevertIn(mText, mReverted), 'inzwischen geändert');
+  Assert.AreEqual(mText, mReverted);
 end;
 
 procedure TAtlasHideTests.TeamFileReadsAndChecksHidden;
 var
-  Team: TAtlasTeamSettings;
-  Issue: TAtlasTeamIssue;
-  Paths: string;
+  mTeam: TAtlasTeamSettings;
+  mIssue: TAtlasTeamIssue;
+  mPaths: string;
 begin
-  Team := TAtlasTeamFile.Parse('{"version": 1, "hidden": [' +
+  mTeam := TAtlasTeamFile.Parse('{"version": 1, "hidden": [' +
     '{"setting": "BlockEndLabels", "file": "Source/Kunde.pas", "anchor": "TKunde.Speichern"},' +
     '{"setting": "InlayHints", "file": "Source\\Kunde.pas"},' +
     '{"setting": "Notes", "file": "C:\\Fremd\\A.pas"},' +
@@ -288,90 +288,90 @@ begin
     '{"file": "A.pas"},' +
     '{"setting": "Notes", "file": "A.pas", "zeile": 3},' +
     '"kein Objekt"]}', 'C:\Repo\App\.atlas', 'C:\Repo');
-  Assert.IsTrue(Team.Valid);
-  Assert.AreEqual(3, Integer(Length(Team.Hidden)));
-  Assert.AreEqual('BlockEndLabels', Team.Hidden[0].Setting);
-  Assert.AreEqual('TKunde.Speichern', Team.Hidden[0].Anchor);
-  Assert.AreEqual('Source/Kunde.pas', Team.Hidden[1].FileName, 'Trenner "/"');
-  Assert.IsTrue(Team.Hidden[1].WholeFile);
-  Assert.AreEqual('A.pas', Team.Hidden[2].FileName);
-  Paths := '';
-  for Issue in Team.Issues do
+  Assert.IsTrue(mTeam.Valid);
+  Assert.AreEqual(3, Integer(Length(mTeam.Hidden)));
+  Assert.AreEqual('BlockEndLabels', mTeam.Hidden[0].Setting);
+  Assert.AreEqual('TKunde.Speichern', mTeam.Hidden[0].Anchor);
+  Assert.AreEqual('Source/Kunde.pas', mTeam.Hidden[1].FileName, 'Trenner "/"');
+  Assert.IsTrue(mTeam.Hidden[1].WholeFile);
+  Assert.AreEqual('A.pas', mTeam.Hidden[2].FileName);
+  mPaths := '';
+  for mIssue in mTeam.Issues do
   begin
-    Paths := Paths + Issue.Path + '|';
+    mPaths := mPaths + mIssue.Path + '|';
   end;
-  Assert.Contains(Paths, 'hidden[2].file');
-  Assert.Contains(Paths, 'hidden[3].file');
-  Assert.Contains(Paths, 'hidden[4]');
-  Assert.Contains(Paths, 'hidden[5].zeile');
-  Assert.Contains(Paths, 'hidden[6]');
-  Assert.IsTrue(Team.HasValues);
-  Team := TAtlasTeamFile.Parse('{"version": 1, "hidden": {}}', 'C:\Repo\App\.atlas', 'C:\Repo');
-  Assert.AreEqual(0, Integer(Length(Team.Hidden)));
-  Assert.AreEqual(1, Integer(Length(Team.Issues)));
+  Assert.Contains(mPaths, 'hidden[2].file');
+  Assert.Contains(mPaths, 'hidden[3].file');
+  Assert.Contains(mPaths, 'hidden[4]');
+  Assert.Contains(mPaths, 'hidden[5].zeile');
+  Assert.Contains(mPaths, 'hidden[6]');
+  Assert.IsTrue(mTeam.HasValues);
+  mTeam := TAtlasTeamFile.Parse('{"version": 1, "hidden": {}}', 'C:\Repo\App\.atlas', 'C:\Repo');
+  Assert.AreEqual(0, Integer(Length(mTeam.Hidden)));
+  Assert.AreEqual(1, Integer(Length(mTeam.Issues)));
 end;
 
 procedure TAtlasHideTests.AddAndRemoveKeepTheRestOfTheFile;
 var
-  Text, Changed: string;
-  Place, Second: TAtlasHiddenPlace;
-  Team: TAtlasTeamSettings;
+  mText, mChanged: string;
+  mPlace, mSecond: TAtlasHiddenPlace;
+  mTeam: TAtlasTeamSettings;
 begin
   // Neue Datei aus dem Gerüst: gültig, ohne Meldungen, Kommentare bleiben.
-  Place := TAtlasHiddenPlace.Create('BlockEndLabels', 'Source\Kunde.pas', 'TKunde.Speichern');
-  Changed := TAtlasHiddenPlaces.AddTo('', TAtlasTeamFile.Skeleton, Place);
-  Team := TAtlasTeamFile.Parse(Changed, 'C:\Repo\App\.atlas', 'C:\Repo');
-  Assert.IsTrue(Team.Valid);
-  Assert.AreEqual(0, Integer(Length(Team.Issues)));
-  Assert.AreEqual(1, Integer(Length(Team.Hidden)));
-  Assert.AreEqual('Source/Kunde.pas', Team.Hidden[0].FileName);
-  Assert.Contains(Changed, '// Projekteinstellungen von Atlas');
+  mPlace := TAtlasHiddenPlace.Create('BlockEndLabels', 'Source\Kunde.pas', 'TKunde.Speichern');
+  mChanged := TAtlasHiddenPlaces.AddTo('', TAtlasTeamFile.Skeleton, mPlace);
+  mTeam := TAtlasTeamFile.Parse(mChanged, 'C:\Repo\App\.atlas', 'C:\Repo');
+  Assert.IsTrue(mTeam.Valid);
+  Assert.AreEqual(0, Integer(Length(mTeam.Issues)));
+  Assert.AreEqual(1, Integer(Length(mTeam.Hidden)));
+  Assert.AreEqual('Source/Kunde.pas', mTeam.Hidden[0].FileName);
+  Assert.Contains(mChanged, '// Projekteinstellungen von Atlas');
   // Vorhandene Datei: übrige Werte und Kommentare bleiben, doppelter Eintrag entfällt.
-  Text := '{' + #13#10 + '  // Team' + #13#10 + '  "version": 1,' + #13#10 + '  "sqlTargets": ["TQ.SQL"]' + #13#10 +
+  mText := '{' + #13#10 + '  // Team' + #13#10 + '  "version": 1,' + #13#10 + '  "sqlTargets": ["TQ.SQL"]' + #13#10 +
     '}' + #13#10;
-  Changed := TAtlasHiddenPlaces.AddTo(Text, TAtlasTeamFile.Skeleton, Place);
-  Assert.AreEqual(Changed, TAtlasHiddenPlaces.AddTo(Changed, TAtlasTeamFile.Skeleton, Place), 'schon drin');
-  Second := TAtlasHiddenPlace.Create('InlayHints', 'Source/Kunde.pas', '');
-  Changed := TAtlasHiddenPlaces.AddTo(Changed, TAtlasTeamFile.Skeleton, Second);
-  Assert.Contains(Changed, '// Team');
-  Assert.Contains(Changed, '"sqlTargets": ["TQ.SQL"]');
-  Team := TAtlasTeamFile.Parse(Changed, 'C:\Repo\App\.atlas', 'C:\Repo');
-  Assert.AreEqual(0, Integer(Length(Team.Issues)));
-  Assert.AreEqual(2, Integer(Length(Team.Hidden)));
-  Assert.AreEqual(1, Integer(Length(Team.SqlTargets)));
+  mChanged := TAtlasHiddenPlaces.AddTo(mText, TAtlasTeamFile.Skeleton, mPlace);
+  Assert.AreEqual(mChanged, TAtlasHiddenPlaces.AddTo(mChanged, TAtlasTeamFile.Skeleton, mPlace), 'schon drin');
+  mSecond := TAtlasHiddenPlace.Create('InlayHints', 'Source/Kunde.pas', '');
+  mChanged := TAtlasHiddenPlaces.AddTo(mChanged, TAtlasTeamFile.Skeleton, mSecond);
+  Assert.Contains(mChanged, '// Team');
+  Assert.Contains(mChanged, '"sqlTargets": ["TQ.SQL"]');
+  mTeam := TAtlasTeamFile.Parse(mChanged, 'C:\Repo\App\.atlas', 'C:\Repo');
+  Assert.AreEqual(0, Integer(Length(mTeam.Issues)));
+  Assert.AreEqual(2, Integer(Length(mTeam.Hidden)));
+  Assert.AreEqual(1, Integer(Length(mTeam.SqlTargets)));
   // Rückgängig: genau der Eintrag fällt weg.
-  Changed := TAtlasHiddenPlaces.RemoveFrom(Changed, Place);
-  Team := TAtlasTeamFile.Parse(Changed, 'C:\Repo\App\.atlas', 'C:\Repo');
-  Assert.AreEqual(1, Integer(Length(Team.Hidden)));
-  Assert.AreEqual('InlayHints', Team.Hidden[0].Setting);
-  Changed := TAtlasHiddenPlaces.RemoveFrom(Changed, Second);
-  Assert.AreEqual(0, Integer(Length(TAtlasHiddenPlaces.FromText(Changed))));
-  Assert.AreEqual(Changed, TAtlasHiddenPlaces.RemoveFrom(Changed, Second), 'fehlt schon');
+  mChanged := TAtlasHiddenPlaces.RemoveFrom(mChanged, mPlace);
+  mTeam := TAtlasTeamFile.Parse(mChanged, 'C:\Repo\App\.atlas', 'C:\Repo');
+  Assert.AreEqual(1, Integer(Length(mTeam.Hidden)));
+  Assert.AreEqual('InlayHints', mTeam.Hidden[0].Setting);
+  mChanged := TAtlasHiddenPlaces.RemoveFrom(mChanged, mSecond);
+  Assert.AreEqual(0, Integer(Length(TAtlasHiddenPlaces.FromText(mChanged))));
+  Assert.AreEqual(mChanged, TAtlasHiddenPlaces.RemoveFrom(mChanged, mSecond), 'fehlt schon');
 end;
 
 procedure TAtlasHideTests.IndexAnswersHiddenQuickly;
 var
-  Index: TAtlasHiddenIndex;
+  mIndex: TAtlasHiddenIndex;
 begin
-  Index := TAtlasHiddenIndex.Create([TAtlasHiddenPlace.Create('BlockEndLabels', 'Source/Kunde.pas', 'TKunde.Speichern'),
-    TAtlasHiddenPlace.Create('InlayHints', 'source/kunde.pas', '')], Folder);
+  mIndex := TAtlasHiddenIndex.Create([TAtlasHiddenPlace.Create('BlockEndLabels', 'Source/Kunde.pas', 'TKunde.Speichern'),
+    TAtlasHiddenPlace.Create('InlayHints', 'source/kunde.pas', '')], cFolder);
   try
-    Assert.IsFalse(Index.IsEmpty);
-    Assert.IsTrue(Index.Hidden('BlockEndLabels', Unit1, 'TKunde.Speichern'));
-    Assert.IsFalse(Index.Hidden('BlockEndLabels', Unit1, 'TKunde.Laden'));
-    Assert.IsFalse(Index.FileHidden('BlockEndLabels', Unit1));
-    Assert.IsTrue(Index.FileHidden('inlayhints', Unit1));
-    Assert.IsTrue(Index.Hidden('InlayHints', 'c:\repo\app\SOURCE\Kunde.pas', 'egal'));
-    Assert.IsFalse(Index.Hidden('InlayHints', 'C:\Repo\App\Source\Andere.pas', ''));
-    Assert.IsFalse(Index.Hidden('InlayHints', 'C:\Anderswo\Source\Kunde.pas', ''));
+    Assert.IsFalse(mIndex.IsEmpty);
+    Assert.IsTrue(mIndex.Hidden('BlockEndLabels', cUnit1, 'TKunde.Speichern'));
+    Assert.IsFalse(mIndex.Hidden('BlockEndLabels', cUnit1, 'TKunde.Laden'));
+    Assert.IsFalse(mIndex.FileHidden('BlockEndLabels', cUnit1));
+    Assert.IsTrue(mIndex.FileHidden('inlayhints', cUnit1));
+    Assert.IsTrue(mIndex.Hidden('InlayHints', 'c:\repo\app\SOURCE\Kunde.pas', 'egal'));
+    Assert.IsFalse(mIndex.Hidden('InlayHints', 'C:\Repo\App\Source\Andere.pas', ''));
+    Assert.IsFalse(mIndex.Hidden('InlayHints', 'C:\Anderswo\Source\Kunde.pas', ''));
   finally
-    Index.Free;
+    mIndex.Free;
   end;
-  Index := TAtlasHiddenIndex.Create([TAtlasHiddenPlace.Create('Notes', 'A.pas', '')], '');
+  mIndex := TAtlasHiddenIndex.Create([TAtlasHiddenPlace.Create('Notes', 'A.pas', '')], '');
   try
-    Assert.IsTrue(Index.IsEmpty, 'ohne Ordner wirkt nichts');
+    Assert.IsTrue(mIndex.IsEmpty, 'ohne Ordner wirkt nichts');
   finally
-    Index.Free;
+    mIndex.Free;
   end;
 end;
 

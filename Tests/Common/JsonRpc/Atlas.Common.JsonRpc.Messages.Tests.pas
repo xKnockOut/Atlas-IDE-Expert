@@ -39,96 +39,96 @@ uses
 
 procedure TJsonRpcMessagesTests.ResponseCopiesIdAndTakesResult;
 var
-  Id: TJSONNumber;
-  Message: TJSONObject;
+  mId: TJSONNumber;
+  mMessage: TJSONObject;
 begin
-  Id := TJSONNumber.Create(7);
+  mId := TJSONNumber.Create(7);
   try
-    Message := TJsonRpcMessages.Response(Id, TJSONString.Create('fertig'));
+    mMessage := TJsonRpcMessages.Response(mId, TJSONString.Create('fertig'));
     try
-      Assert.AreEqual('{"jsonrpc":"2.0","id":7,"result":"fertig"}', Message.ToJSON);
+      Assert.AreEqual('{"jsonrpc":"2.0","id":7,"result":"fertig"}', mMessage.ToJSON);
       // Die id ist kopiert: Das Original gehört weiter dem Aufrufer.
-      Assert.AreNotEqual<Pointer>(Pointer(Id), Pointer(Message.GetValue('id')));
+      Assert.AreNotEqual<Pointer>(Pointer(mId), Pointer(mMessage.GetValue('id')));
     finally
-      Message.Free;
+      mMessage.Free;
     end;
   finally
-    Id.Free;
+    mId.Free;
   end;
 end;
 
 procedure TJsonRpcMessagesTests.ResponseWithoutIdAndResultSendsNull;
 var
-  Message: TJSONObject;
+  mMessage: TJSONObject;
 begin
-  Message := TJsonRpcMessages.Response(nil, nil);
+  mMessage := TJsonRpcMessages.Response(nil, nil);
   try
-    Assert.AreEqual('{"jsonrpc":"2.0","id":null,"result":null}', Message.ToJSON);
+    Assert.AreEqual('{"jsonrpc":"2.0","id":null,"result":null}', mMessage.ToJSON);
   finally
-    Message.Free;
+    mMessage.Free;
   end;
 end;
 
 procedure TJsonRpcMessagesTests.ErrorCarriesCodeAndMessage;
 var
-  Id: TJSONString;
-  Message: TJSONObject;
+  mId: TJSONString;
+  mMessage: TJSONObject;
 begin
-  Id := TJSONString.Create('a1');
+  mId := TJSONString.Create('a1');
   try
-    Message := TJsonRpcMessages.Error(Id, -32601, 'Methode unbekannt');
+    mMessage := TJsonRpcMessages.Error(mId, -32601, 'Methode unbekannt');
     try
       Assert.AreEqual('{"jsonrpc":"2.0","id":"a1","error":{"code":-32601,"message":"Methode unbekannt"}}',
-        Message.ToJSON);
+        mMessage.ToJSON);
     finally
-      Message.Free;
+      mMessage.Free;
     end;
   finally
-    Id.Free;
+    mId.Free;
   end;
 end;
 
 procedure TJsonRpcMessagesTests.ErrorWithoutIdSendsNull;
 var
-  Message: TJSONObject;
+  mMessage: TJSONObject;
 begin
-  Message := TJsonRpcMessages.Error(nil, -32700, 'Parse error');
+  mMessage := TJsonRpcMessages.Error(nil, -32700, 'Parse error');
   try
-    Assert.IsTrue(Message.GetValue('id') is TJSONNull);
-    Assert.AreEqual(-32700, ((Message.GetValue('error') as TJSONObject).GetValue('code') as TJSONNumber).AsInt);
+    Assert.IsTrue(mMessage.GetValue('id') is TJSONNull);
+    Assert.AreEqual(-32700, ((mMessage.GetValue('error') as TJSONObject).GetValue('code') as TJSONNumber).AsInt);
   finally
-    Message.Free;
+    mMessage.Free;
   end;
 end;
 
 procedure TJsonRpcMessagesTests.NotificationWithParams;
 var
-  Params: TJSONObject;
-  Message: TJSONObject;
+  mParams: TJSONObject;
+  mMessage: TJSONObject;
 begin
-  Params := TJSONObject.Create;
-  Params.AddPair('uri', 'file:///c:/p/a.pas');
-  Message := TJsonRpcMessages.Notification('textDocument/didOpen', Params);
+  mParams := TJSONObject.Create;
+  mParams.AddPair('uri', 'file:///c:/p/a.pas');
+  mMessage := TJsonRpcMessages.Notification('textDocument/didOpen', mParams);
   try
     Assert.AreEqual('{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"uri":"file:///c:/p/a.pas"}}',
-      Message.ToJSON);
+      mMessage.ToJSON);
     // Die Parameter gehen in die Nachricht über.
-    Assert.AreSame(Params, Message.GetValue('params'));
+    Assert.AreSame(mParams, mMessage.GetValue('params'));
   finally
-    Message.Free;
+    mMessage.Free;
   end;
 end;
 
 procedure TJsonRpcMessagesTests.NotificationWithoutParams;
 var
-  Message: TJSONObject;
+  mMessage: TJSONObject;
 begin
-  Message := TJsonRpcMessages.Notification('exit', nil);
+  mMessage := TJsonRpcMessages.Notification('exit', nil);
   try
-    Assert.AreEqual('{"jsonrpc":"2.0","method":"exit"}', Message.ToJSON);
-    Assert.IsNull(Message.GetValue('id'));
+    Assert.AreEqual('{"jsonrpc":"2.0","method":"exit"}', mMessage.ToJSON);
+    Assert.IsNull(mMessage.GetValue('id'));
   finally
-    Message.Free;
+    mMessage.Free;
   end;
 end;
 

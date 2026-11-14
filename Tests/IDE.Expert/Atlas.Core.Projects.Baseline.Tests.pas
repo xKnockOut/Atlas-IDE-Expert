@@ -57,8 +57,8 @@ uses
   Atlas.Core.Projects.Baseline;
 
 const
-  Folder = 'C:\Projekte\Kasse';
-  Baseline =
+  cFolder = 'C:\Projekte\Kasse';
+  cBaseline =
     '{"version": 1, "findings": [' +
     '{"path": "Source/Main.pas", "rule": "a", "fingerprint": "1", "count": 2, "routine": "TMain.Run"},' +
     '{"path": "Alt/Weg.pas", "rule": "a", "fingerprint": "2", "count": 3},' +
@@ -73,13 +73,13 @@ var
 
 procedure Reset(const AFiles: array of string);
 var
-  Name: string;
+  mName: string;
 begin
   Disk.Clear;
   Asked := 0;
-  for Name in AFiles do
+  for mName in AFiles do
   begin
-    Disk.AddOrSetValue(UpperCase(Name), Baseline);
+    Disk.AddOrSetValue(UpperCase(mName), cBaseline);
   end;
 end;
 
@@ -103,75 +103,75 @@ end;
 
 procedure TAtlasProjectBaselinesTests.FileInPrefersNewName;
 begin
-  Reset([Folder + '\atlas-baseline.json', Folder + '\delphi-lsp-baseline.json']);
-  Assert.AreEqual(Folder + '\atlas-baseline.json', TAtlasProjectBaselines.FileIn(Folder, Exists));
-  Reset([Folder + '\delphi-lsp-baseline.json']);
-  Assert.AreEqual(Folder + '\delphi-lsp-baseline.json', TAtlasProjectBaselines.FileIn(Folder + '\', Exists));
+  Reset([cFolder + '\atlas-baseline.json', cFolder + '\delphi-lsp-baseline.json']);
+  Assert.AreEqual(cFolder + '\atlas-baseline.json', TAtlasProjectBaselines.FileIn(cFolder, Exists));
+  Reset([cFolder + '\delphi-lsp-baseline.json']);
+  Assert.AreEqual(cFolder + '\delphi-lsp-baseline.json', TAtlasProjectBaselines.FileIn(cFolder + '\', Exists));
   Reset([]);
-  Assert.AreEqual('', TAtlasProjectBaselines.FileIn(Folder, Exists));
+  Assert.AreEqual('', TAtlasProjectBaselines.FileIn(cFolder, Exists));
   Assert.AreEqual('', TAtlasProjectBaselines.FileIn('', Exists));
 end;
 
 procedure TAtlasProjectBaselinesTests.StateWithoutFile;
 var
-  State: TAtlasBaselineState;
+  mState: TAtlasBaselineState;
 begin
   Reset([]);
-  State := TAtlasProjectBaselines.StateOf(Folder, Exists, ReadText);
-  Assert.IsFalse(State.Exists);
-  Assert.IsFalse(State.Valid);
-  Assert.AreEqual('', State.FileName);
-  Assert.AreEqual(0, State.Entries);
+  mState := TAtlasProjectBaselines.StateOf(cFolder, Exists, ReadText);
+  Assert.IsFalse(mState.Exists);
+  Assert.IsFalse(mState.Valid);
+  Assert.AreEqual('', mState.FileName);
+  Assert.AreEqual(0, mState.Entries);
 end;
 
 procedure TAtlasProjectBaselinesTests.StateCountsEntriesAndHits;
 var
-  State: TAtlasBaselineState;
+  mState: TAtlasBaselineState;
 begin
-  Reset([Folder + '\atlas-baseline.json', Folder + '\Source\Main.pas', Folder + '\Alt\Weg.pas',
-    Folder + '\Weg2.pas']);
-  State := TAtlasProjectBaselines.StateOf(Folder, Exists, ReadText);
-  Assert.IsTrue(State.Exists);
-  Assert.IsTrue(State.Valid);
-  Assert.AreEqual(Folder + '\atlas-baseline.json', State.FileName);
-  Assert.AreEqual(5, State.Entries);
+  Reset([cFolder + '\atlas-baseline.json', cFolder + '\Source\Main.pas', cFolder + '\Alt\Weg.pas',
+    cFolder + '\Weg2.pas']);
+  mState := TAtlasProjectBaselines.StateOf(cFolder, Exists, ReadText);
+  Assert.IsTrue(mState.Exists);
+  Assert.IsTrue(mState.Valid);
+  Assert.AreEqual(cFolder + '\atlas-baseline.json', mState.FileName);
+  Assert.AreEqual(5, mState.Entries);
   // Ohne "count" zählt ein Eintrag als ein Treffer.
-  Assert.AreEqual(11, State.Hits);
-  Assert.AreEqual(0, Integer(Length(State.Orphans)));
-  Assert.AreEqual(0, State.OrphanCount);
+  Assert.AreEqual(11, mState.Hits);
+  Assert.AreEqual(0, Integer(Length(mState.Orphans)));
+  Assert.AreEqual(0, mState.OrphanCount);
 end;
 
 procedure TAtlasProjectBaselinesTests.StateListsOrphansOncePerPath;
 var
-  State: TAtlasBaselineState;
+  mState: TAtlasBaselineState;
 begin
   // Alt/Weg.pas wurde umbenannt, Weg2.pas gelöscht.
-  Reset([Folder + '\atlas-baseline.json', Folder + '\Source\Main.pas']);
-  State := TAtlasProjectBaselines.StateOf(Folder, Exists, ReadText);
-  Assert.AreEqual(2, Integer(Length(State.Orphans)));
-  Assert.AreEqual('Alt/Weg.pas', State.Orphans[0].Path);
-  Assert.AreEqual(4, Integer(State.Orphans[0].Count), 'gleicher Pfad in anderer Schreibweise zählt mit');
-  Assert.AreEqual('Weg2.pas', State.Orphans[1].Path);
-  Assert.AreEqual(4, Integer(State.Orphans[1].Count));
-  Assert.AreEqual(8, State.OrphanCount);
+  Reset([cFolder + '\atlas-baseline.json', cFolder + '\Source\Main.pas']);
+  mState := TAtlasProjectBaselines.StateOf(cFolder, Exists, ReadText);
+  Assert.AreEqual(2, Integer(Length(mState.Orphans)));
+  Assert.AreEqual('Alt/Weg.pas', mState.Orphans[0].Path);
+  Assert.AreEqual(4, Integer(mState.Orphans[0].Count), 'gleicher Pfad in anderer Schreibweise zählt mit');
+  Assert.AreEqual('Weg2.pas', mState.Orphans[1].Path);
+  Assert.AreEqual(4, Integer(mState.Orphans[1].Count));
+  Assert.AreEqual(8, mState.OrphanCount);
   // Je Pfad eine Abfrage (plus die nach der Baseline selbst).
   Assert.AreEqual(4, Asked);
 end;
 
 procedure TAtlasProjectBaselinesTests.StateOfInvalidFile;
 var
-  State: TAtlasBaselineState;
+  mState: TAtlasBaselineState;
 begin
-  State := TAtlasProjectBaselines.StateOfText(Folder, '{"version": 1}', nil);
-  Assert.IsTrue(State.Exists);
-  Assert.IsFalse(State.Valid);
-  State := TAtlasProjectBaselines.StateOfText(Folder, 'kein JSON', nil);
-  Assert.IsTrue(State.Exists);
-  Assert.IsFalse(State.Valid);
+  mState := TAtlasProjectBaselines.StateOfText(cFolder, '{"version": 1}', nil);
+  Assert.IsTrue(mState.Exists);
+  Assert.IsFalse(mState.Valid);
+  mState := TAtlasProjectBaselines.StateOfText(cFolder, 'kein JSON', nil);
+  Assert.IsTrue(mState.Exists);
+  Assert.IsFalse(mState.Valid);
   // Ohne Prüffunktion keine Einträge ohne Datei.
-  State := TAtlasProjectBaselines.StateOfText(Folder, Baseline, nil);
-  Assert.IsTrue(State.Valid);
-  Assert.AreEqual(0, State.OrphanCount);
+  mState := TAtlasProjectBaselines.StateOfText(cFolder, cBaseline, nil);
+  Assert.IsTrue(mState.Valid);
+  Assert.AreEqual(0, mState.OrphanCount);
 end;
 
 procedure TAtlasProjectBaselinesTests.StateOnDiskReadsFolder;
@@ -188,7 +188,7 @@ begin
     Assert.AreEqual('', mState.FileName);
     {$IFDEF MSWINDOWS}
     // Die Pfade setzt StateOf mit „\“ an den Ordner: nur unter Windows eine echte Datei.
-    TFile.WriteAllText(mFolder + '\atlas-baseline.json', Baseline, TEncoding.UTF8);
+    TFile.WriteAllText(mFolder + '\atlas-baseline.json', cBaseline, TEncoding.UTF8);
     mState := TAtlasProjectBaselines.StateOnDisk(mFolder);
     Assert.IsTrue(mState.Valid);
     Assert.AreEqual(5, mState.Entries);
@@ -208,105 +208,105 @@ end;
 
 procedure TAtlasProjectBaselinesTests.ParsesServerAnswer;
 const
-  Answer = '{"format": 1, "file": "C:\\Projekte\\Kasse\\atlas-baseline.json", "previous": "valid", ' +
+  cAnswer = '{"format": 1, "file": "C:\\Projekte\\Kasse\\atlas-baseline.json", "previous": "valid", ' +
     '"skipped": 1, "total": 120, "files": 40, "added": 3, "removed": 5, "unchanged": 117, "completed": 7, ' +
     '"orphaned": {"count": 3, "entries": [{"path": "Alt/U.pas", "count": 2}, {"path": "X.pas", "count": 1}]}}';
 var
-  Update: TAtlasBaselineUpdate;
+  mUpdate: TAtlasBaselineUpdate;
 begin
-  Assert.IsTrue(TAtlasProjectBaselines.FromServer(Answer, Update));
-  Assert.AreEqual('C:\Projekte\Kasse\atlas-baseline.json', Update.FileName);
-  Assert.AreEqual('valid', Update.Previous);
-  Assert.AreEqual(1, Update.Skipped);
-  Assert.AreEqual(120, Update.Total);
-  Assert.AreEqual(40, Update.Files);
-  Assert.AreEqual(3, Update.Added);
-  Assert.AreEqual(5, Update.Removed);
-  Assert.AreEqual(117, Update.Unchanged);
-  Assert.AreEqual(7, Update.Completed);
-  Assert.AreEqual(3, Update.OrphanCount);
-  Assert.AreEqual(2, Integer(Length(Update.Orphans)));
-  Assert.AreEqual('Alt/U.pas', Update.Orphans[0].Path);
-  Assert.AreEqual(2, Integer(Update.Orphans[0].Count));
+  Assert.IsTrue(TAtlasProjectBaselines.FromServer(cAnswer, mUpdate));
+  Assert.AreEqual('C:\Projekte\Kasse\atlas-baseline.json', mUpdate.FileName);
+  Assert.AreEqual('valid', mUpdate.Previous);
+  Assert.AreEqual(1, mUpdate.Skipped);
+  Assert.AreEqual(120, mUpdate.Total);
+  Assert.AreEqual(40, mUpdate.Files);
+  Assert.AreEqual(3, mUpdate.Added);
+  Assert.AreEqual(5, mUpdate.Removed);
+  Assert.AreEqual(117, mUpdate.Unchanged);
+  Assert.AreEqual(7, mUpdate.Completed);
+  Assert.AreEqual(3, mUpdate.OrphanCount);
+  Assert.AreEqual(2, Integer(Length(mUpdate.Orphans)));
+  Assert.AreEqual('Alt/U.pas', mUpdate.Orphans[0].Path);
+  Assert.AreEqual(2, Integer(mUpdate.Orphans[0].Count));
   // Ohne "orphaned" (ältere Server-Fassung): keine Einträge ohne Datei.
-  Assert.IsTrue(TAtlasProjectBaselines.FromServer('{"file": "C:\\B.json", "total": 0}', Update));
-  Assert.AreEqual(0, Update.OrphanCount);
-  Assert.AreEqual(0, Integer(Length(Update.Orphans)));
+  Assert.IsTrue(TAtlasProjectBaselines.FromServer('{"file": "C:\\B.json", "total": 0}', mUpdate));
+  Assert.AreEqual(0, mUpdate.OrphanCount);
+  Assert.AreEqual(0, Integer(Length(mUpdate.Orphans)));
 end;
 
 procedure TAtlasProjectBaselinesTests.RejectsInvalidAnswer;
 var
-  Update: TAtlasBaselineUpdate;
+  mUpdate: TAtlasBaselineUpdate;
 begin
   // Leer: Fehler, Zeitlimit oder geschlossene Verbindung.
-  Assert.IsFalse(TAtlasProjectBaselines.FromServer('', Update));
-  Assert.IsFalse(TAtlasProjectBaselines.FromServer('null', Update));
-  Assert.IsFalse(TAtlasProjectBaselines.FromServer('{"total": 3}', Update));
-  Assert.IsFalse(TAtlasProjectBaselines.FromServer('{"file": "C:\\B.json"}', Update));
+  Assert.IsFalse(TAtlasProjectBaselines.FromServer('', mUpdate));
+  Assert.IsFalse(TAtlasProjectBaselines.FromServer('null', mUpdate));
+  Assert.IsFalse(TAtlasProjectBaselines.FromServer('{"total": 3}', mUpdate));
+  Assert.IsFalse(TAtlasProjectBaselines.FromServer('{"file": "C:\\B.json"}', mUpdate));
 end;
 
 procedure TAtlasProjectBaselinesTests.SectionAfterBuildKeepsLastUpdate;
 var
-  Section: TAtlasProjectBaseline;
-  State: TAtlasBaselineState;
+  mSection: TAtlasProjectBaseline;
+  mState: TAtlasBaselineState;
 begin
-  Section := TAtlasProjectBaseline.Empty;
-  Section.Updated := 1;
-  Section.Added := 3;
-  Section.Removed := 5;
-  Reset([Folder + '\atlas-baseline.json', Folder + '\Source\Main.pas']);
-  State := TAtlasProjectBaselines.StateOf(Folder, Exists, ReadText);
-  TAtlasProjectBaselines.Measured(Section, State, 2);
-  Assert.IsTrue(Section.Known);
-  Assert.AreEqual<TDateTime>(2, Section.At);
-  Assert.IsTrue(Section.Exists);
-  Assert.IsTrue(Section.Valid);
-  Assert.AreEqual(5, Section.Entries);
-  Assert.AreEqual(11, Section.Hits);
-  Assert.AreEqual(8, Section.Orphaned);
-  Assert.AreEqual<TDateTime>(1, Section.Updated, 'ein Build ändert das letzte Aktualisieren nicht');
-  Assert.AreEqual(3, Section.Added);
+  mSection := TAtlasProjectBaseline.Empty;
+  mSection.Updated := 1;
+  mSection.Added := 3;
+  mSection.Removed := 5;
+  Reset([cFolder + '\atlas-baseline.json', cFolder + '\Source\Main.pas']);
+  mState := TAtlasProjectBaselines.StateOf(cFolder, Exists, ReadText);
+  TAtlasProjectBaselines.Measured(mSection, mState, 2);
+  Assert.IsTrue(mSection.Known);
+  Assert.AreEqual<TDateTime>(2, mSection.At);
+  Assert.IsTrue(mSection.Exists);
+  Assert.IsTrue(mSection.Valid);
+  Assert.AreEqual(5, mSection.Entries);
+  Assert.AreEqual(11, mSection.Hits);
+  Assert.AreEqual(8, mSection.Orphaned);
+  Assert.AreEqual<TDateTime>(1, mSection.Updated, 'ein Build ändert das letzte Aktualisieren nicht');
+  Assert.AreEqual(3, mSection.Added);
   // Baseline gelöscht: bekannt, aber nicht vorhanden.
   Reset([]);
-  TAtlasProjectBaselines.Measured(Section, TAtlasProjectBaselines.StateOf(Folder, Exists, ReadText), 3);
-  Assert.IsTrue(Section.Known);
-  Assert.IsFalse(Section.Exists);
-  Assert.AreEqual(0, Section.Hits);
+  TAtlasProjectBaselines.Measured(mSection, TAtlasProjectBaselines.StateOf(cFolder, Exists, ReadText), 3);
+  Assert.IsTrue(mSection.Known);
+  Assert.IsFalse(mSection.Exists);
+  Assert.AreEqual(0, mSection.Hits);
 end;
 
 procedure TAtlasProjectBaselinesTests.SectionAfterUpdate;
 var
-  Section: TAtlasProjectBaseline;
-  Update: TAtlasBaselineUpdate;
-  State: TAtlasBaselineState;
+  mSection: TAtlasProjectBaseline;
+  mUpdate: TAtlasBaselineUpdate;
+  mState: TAtlasBaselineState;
 begin
-  Section := TAtlasProjectBaseline.Empty;
-  Update := Default(TAtlasBaselineUpdate);
-  Update.Added := 2;
-  Update.Removed := 9;
-  Reset([Folder + '\atlas-baseline.json', Folder + '\Source\Main.pas', Folder + '\Alt\Weg.pas',
-    Folder + '\Weg2.pas']);
-  State := TAtlasProjectBaselines.StateOf(Folder, Exists, ReadText);
-  TAtlasProjectBaselines.Updated(Section, Update, State, 4);
-  Assert.IsTrue(Section.Known);
-  Assert.IsTrue(Section.Exists);
-  Assert.AreEqual<TDateTime>(4, Section.At);
-  Assert.AreEqual<TDateTime>(4, Section.Updated);
-  Assert.AreEqual(2, Section.Added);
-  Assert.AreEqual(9, Section.Removed);
-  Assert.AreEqual(0, Section.Orphaned);
+  mSection := TAtlasProjectBaseline.Empty;
+  mUpdate := Default(TAtlasBaselineUpdate);
+  mUpdate.Added := 2;
+  mUpdate.Removed := 9;
+  Reset([cFolder + '\atlas-baseline.json', cFolder + '\Source\Main.pas', cFolder + '\Alt\Weg.pas',
+    cFolder + '\Weg2.pas']);
+  mState := TAtlasProjectBaselines.StateOf(cFolder, Exists, ReadText);
+  TAtlasProjectBaselines.Updated(mSection, mUpdate, mState, 4);
+  Assert.IsTrue(mSection.Known);
+  Assert.IsTrue(mSection.Exists);
+  Assert.AreEqual<TDateTime>(4, mSection.At);
+  Assert.AreEqual<TDateTime>(4, mSection.Updated);
+  Assert.AreEqual(2, mSection.Added);
+  Assert.AreEqual(9, mSection.Removed);
+  Assert.AreEqual(0, mSection.Orphaned);
 end;
 
 procedure TAtlasProjectBaselinesTests.WrittenElsewhereComparesFolders;
 begin
-  Assert.IsFalse(TAtlasProjectBaselines.WrittenElsewhere(Folder + '\Kasse.dproj', Folder + '\atlas-baseline.json'));
+  Assert.IsFalse(TAtlasProjectBaselines.WrittenElsewhere(cFolder + '\Kasse.dproj', cFolder + '\atlas-baseline.json'));
   Assert.IsFalse(TAtlasProjectBaselines.WrittenElsewhere('c:\projekte\kasse\Kasse.dproj',
     'C:/Projekte/Kasse/delphi-lsp-baseline.json'), 'Schreibweise egal');
-  Assert.IsTrue(TAtlasProjectBaselines.WrittenElsewhere(Folder + '\Kasse.dproj', 'C:\Projekte\atlas-baseline.json'),
+  Assert.IsTrue(TAtlasProjectBaselines.WrittenElsewhere(cFolder + '\Kasse.dproj', 'C:\Projekte\atlas-baseline.json'),
     'übergeordneter Arbeitsbereich');
-  Assert.IsTrue(TAtlasProjectBaselines.WrittenElsewhere(Folder + '\Kasse.dproj',
-    Folder + '\Sub\atlas-baseline.json'), 'Unterordner');
-  Assert.IsFalse(TAtlasProjectBaselines.WrittenElsewhere(Folder + '\Kasse.dproj', ''), 'ohne Angabe');
+  Assert.IsTrue(TAtlasProjectBaselines.WrittenElsewhere(cFolder + '\Kasse.dproj',
+    cFolder + '\Sub\atlas-baseline.json'), 'Unterordner');
+  Assert.IsFalse(TAtlasProjectBaselines.WrittenElsewhere(cFolder + '\Kasse.dproj', ''), 'ohne Angabe');
   Assert.IsFalse(TAtlasProjectBaselines.WrittenElsewhere('', 'C:\B\atlas-baseline.json'));
 end;
 

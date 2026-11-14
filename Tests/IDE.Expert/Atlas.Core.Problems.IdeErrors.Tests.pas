@@ -59,7 +59,7 @@ const
   cText = 'unit Kunde;'#10'a'#10'b'#10'c'#10'd'#10'e';
 
 function Finding(ALine, AFrom, ATo: Integer; const ACode: string;
-  ASeverity: TAtlasProblemSeverity = TAtlasProblemSeverity.Error): TAtlasProblem;
+  ASeverity: TAtlasProblemSeverity): TAtlasProblem; overload;
 begin
   Result := Default(TAtlasProblem);
   Result.StartLine := ALine;
@@ -72,8 +72,13 @@ begin
   Result.Severity := ASeverity;
 end;
 
+function Finding(ALine, AFrom, ATo: Integer; const ACode: string): TAtlasProblem; overload;
+begin
+  Result := Finding(ALine, AFrom, ATo, ACode, TAtlasProblemSeverity.Error);
+end;
+
 function IdeError(ALine, AFrom, ATo: Integer;
-  ASeverity: TAtlasProblemSeverity = TAtlasProblemSeverity.Error): TAtlasProblem;
+  ASeverity: TAtlasProblemSeverity): TAtlasProblem; overload;
 begin
   Result := Default(TAtlasProblem);
   Result.StartLine := ALine;
@@ -83,6 +88,11 @@ begin
   Result.Source := TAtlasProblem.cIdeSource;
   Result.Message := 'Undeklarierter Bezeichner';
   Result.Severity := ASeverity;
+end;
+
+function IdeError(ALine, AFrom, ATo: Integer): TAtlasProblem; overload;
+begin
+  Result := IdeError(ALine, AFrom, ATo, TAtlasProblemSeverity.Error);
 end;
 
 function RawError(ALine, AFrom, AStopLine, ATo, ASeverity: Integer): TAtlasIdeError;

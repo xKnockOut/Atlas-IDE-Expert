@@ -149,20 +149,20 @@ uses
 
 function Positions(const AValues: TArray<Integer>): string;
 var
-  Value: Integer;
+  mValue: Integer;
 begin
   Result := '';
-  for Value in AValues do
+  for mValue in AValues do
   begin
     if Result <> '' then
     begin
       Result := Result + ',';
     end;
-    Result := Result + Value.ToString;
+    Result := Result + mValue.ToString;
   end;
 end;
 
-function Item(const AName: string; AKind: TAtlasItemKind; const ASignature: string = ''): TAtlasCompletionItem;
+function Item(const AName: string; AKind: TAtlasItemKind; const ASignature: string): TAtlasCompletionItem; overload;
 begin
   Result := Default(TAtlasCompletionItem);
   Result.Name := AName;
@@ -171,19 +171,24 @@ begin
   Result.UnitUsed := True;
 end;
 
+function Item(const AName: string; AKind: TAtlasItemKind): TAtlasCompletionItem; overload;
+begin
+  Result := Item(AName, AKind, '');
+end;
+
 { TAtlasColorTests }
 
 procedure TAtlasColorTests.HexRoundTrip;
 var
-  Color: TAtlasColor;
+  mColor: TAtlasColor;
 begin
-  Color := TAtlasColorMath.FromHex('#0D5EAF');
-  Assert.AreEqual(Integer($0D), Integer(TAtlasColorMath.Red(Color)));
-  Assert.AreEqual(Integer($5E), Integer(TAtlasColorMath.Green(Color)));
-  Assert.AreEqual(Integer($AF), Integer(TAtlasColorMath.Blue(Color)));
+  mColor := TAtlasColorMath.FromHex('#0D5EAF');
+  Assert.AreEqual(Integer($0D), Integer(TAtlasColorMath.Red(mColor)));
+  Assert.AreEqual(Integer($5E), Integer(TAtlasColorMath.Green(mColor)));
+  Assert.AreEqual(Integer($AF), Integer(TAtlasColorMath.Blue(mColor)));
   // Format von TColor: $00BBGGRR.
-  Assert.AreEqual(Cardinal($00AF5E0D), Cardinal(Color));
-  Assert.AreEqual('#0D5EAF', TAtlasColorMath.ToHex(Color));
+  Assert.AreEqual(Cardinal($00AF5E0D), Cardinal(mColor));
+  Assert.AreEqual('#0D5EAF', TAtlasColorMath.ToHex(mColor));
 end;
 
 procedure TAtlasColorTests.RejectsInvalidHex;
@@ -202,11 +207,11 @@ end;
 
 procedure TAtlasColorTests.MixesLikeTranslucentLayer;
 var
-  Mixed: TAtlasColor;
+  mMixed: TAtlasColor;
 begin
   // rgba(13,94,175,.12) über Weiß wie im Entwurf.
-  Mixed := TAtlasColorMath.Mix(TAtlasColorMath.FromHex('#0D5EAF'), TAtlasColorMath.FromHex('#FFFFFF'), 0.12);
-  Assert.AreEqual('#E2ECF5', TAtlasColorMath.ToHex(Mixed));
+  mMixed := TAtlasColorMath.Mix(TAtlasColorMath.FromHex('#0D5EAF'), TAtlasColorMath.FromHex('#FFFFFF'), 0.12);
+  Assert.AreEqual('#E2ECF5', TAtlasColorMath.ToHex(mMixed));
   Assert.AreEqual('#FFFFFF', TAtlasColorMath.ToHex(TAtlasColorMath.Mix(0, TAtlasColorMath.FromHex('#FFFFFF'), 0)));
   Assert.AreEqual('#000000', TAtlasColorMath.ToHex(TAtlasColorMath.Mix(0, TAtlasColorMath.FromHex('#FFFFFF'), 1)));
 end;
@@ -224,15 +229,15 @@ end;
 
 procedure TAtlasColorTests.HslRoundTripAndLighten;
 var
-  Hex: string;
-  HSL: TAtlasHSL;
+  mHex: string;
+  mHSL: TAtlasHSL;
 begin
-  for Hex in ['#0D5EAF', '#1B2230', '#FCEBDD', '#000000', '#FFFFFF', '#24634B'] do
+  for mHex in ['#0D5EAF', '#1B2230', '#FCEBDD', '#000000', '#FFFFFF', '#24634B'] do
   begin
-    Assert.AreEqual(Hex, TAtlasColorMath.ToHex(TAtlasHSL.FromColor(TAtlasColorMath.FromHex(Hex)).ToColor), Hex);
+    Assert.AreEqual(mHex, TAtlasColorMath.ToHex(TAtlasHSL.FromColor(TAtlasColorMath.FromHex(mHex)).ToColor), mHex);
   end;
-  HSL := TAtlasHSL.FromColor(TAtlasColorMath.FromHex('#0D5EAF'));
-  Assert.AreEqual(210.0, HSL.H, 1.0);
+  mHSL := TAtlasHSL.FromColor(TAtlasColorMath.FromHex('#0D5EAF'));
+  Assert.AreEqual(210.0, mHSL.H, 1.0);
   Assert.IsTrue(TAtlasColorMath.Luminance(TAtlasColorMath.Lighten(TAtlasColorMath.FromHex('#0D5EAF'), 0.2)) >
     TAtlasColorMath.Luminance(TAtlasColorMath.FromHex('#0D5EAF')));
   Assert.IsTrue(TAtlasColorMath.Luminance(TAtlasColorMath.Darken(TAtlasColorMath.FromHex('#0D5EAF'), 0.2)) <
@@ -268,36 +273,36 @@ end;
 procedure TAtlasPaletteTests.CheckPairs(const AColors: TAtlasColors; const AMode: string; const ABackgrounds,
   ATexts: array of string);
 var
-  Index: Integer;
-  Pair, Other: TAtlasColor;
-  Hex: string;
-  Name: string;
+  mIndex: Integer;
+  mPair, mOther: TAtlasColor;
+  mHex: string;
+  mName: string;
 
   procedure CheckText(AText: TAtlasColor);
   begin
-    Assert.IsTrue((TAtlasColorMath.Contrast(Pair, AText) >= 1.8) or
-      (TAtlasColorMath.DeltaE2000(Pair, AText) >= 30), Name + ' gegen Text ' + TAtlasColorMath.ToHex(AText));
+    Assert.IsTrue((TAtlasColorMath.Contrast(mPair, AText) >= 1.8) or
+      (TAtlasColorMath.DeltaE2000(mPair, AText) >= 30), mName + ' gegen Text ' + TAtlasColorMath.ToHex(AText));
   end;
 
 begin
   // Regeln aus #653: lesbar auf dem Hintergrund, vom normalen Text und von der Nachbartiefe verschieden.
-  for Index := 0 to High(AColors.Pairs) do
+  for mIndex := 0 to High(AColors.Pairs) do
   begin
-    Pair := AColors.Pairs[Index];
-    Name := Format('%s Paar %d (%s)', [AMode, Index, TAtlasColorMath.ToHex(Pair)]);
-    for Hex in ABackgrounds do
+    mPair := AColors.Pairs[mIndex];
+    mName := Format('%s Paar %d (%s)', [AMode, mIndex, TAtlasColorMath.ToHex(mPair)]);
+    for mHex in ABackgrounds do
     begin
-      Assert.IsTrue(TAtlasColorMath.Contrast(Pair, TAtlasColorMath.FromHex(Hex)) >= 4.5,
-        Name + ' auf ' + Hex);
+      Assert.IsTrue(TAtlasColorMath.Contrast(mPair, TAtlasColorMath.FromHex(mHex)) >= 4.5,
+        mName + ' auf ' + mHex);
     end;
-    Assert.IsTrue(TAtlasColorMath.Contrast(Pair, AColors.Surface) >= 4.5, Name + ' auf Surface');
-    for Hex in ATexts do
+    Assert.IsTrue(TAtlasColorMath.Contrast(mPair, AColors.Surface) >= 4.5, mName + ' auf Surface');
+    for mHex in ATexts do
     begin
-      CheckText(TAtlasColorMath.FromHex(Hex));
+      CheckText(TAtlasColorMath.FromHex(mHex));
     end;
     CheckText(AColors.Text);
-    Other := AColors.Pairs[(Index + 1) mod Length(AColors.Pairs)];
-    Assert.IsTrue(TAtlasColorMath.DeltaE2000(Pair, Other) >= 20, Name + ' gegen die nächste Tiefe');
+    mOther := AColors.Pairs[(mIndex + 1) mod Length(AColors.Pairs)];
+    Assert.IsTrue(TAtlasColorMath.DeltaE2000(mPair, mOther) >= 20, mName + ' gegen die nächste Tiefe');
     // Unpaarige erkennt man am roten Grund, nicht an der Schriftfarbe: Paarfarben dürfen rot sein.
   end;
 end;
@@ -318,16 +323,16 @@ procedure TAtlasPaletteTests.PlaceholderColorsDiffer;
 
   procedure Check(const AColors: TAtlasColors; const AMode: string);
   var
-    Index, Other: Integer;
+    mIndex, mOther: Integer;
   begin
-    for Index := 0 to High(AColors.Placeholders) do
+    for mIndex := 0 to High(AColors.Placeholders) do
     begin
-      Assert.IsTrue(TAtlasColorMath.DeltaE2000(AColors.Placeholders[Index], AColors.Error) >= 20,
-        Format('%s Platzhalter %d gegen Fehler', [AMode, Index]));
-      for Other := Index + 1 to High(AColors.Placeholders) do
+      Assert.IsTrue(TAtlasColorMath.DeltaE2000(AColors.Placeholders[mIndex], AColors.Error) >= 20,
+        Format('%s Platzhalter %d gegen Fehler', [AMode, mIndex]));
+      for mOther := mIndex + 1 to High(AColors.Placeholders) do
       begin
-        Assert.IsTrue(TAtlasColorMath.DeltaE2000(AColors.Placeholders[Index], AColors.Placeholders[Other]) >= 15,
-          Format('%s Platzhalter %d gegen %d', [AMode, Index, Other]));
+        Assert.IsTrue(TAtlasColorMath.DeltaE2000(AColors.Placeholders[mIndex], AColors.Placeholders[mOther]) >= 15,
+          Format('%s Platzhalter %d gegen %d', [AMode, mIndex, mOther]));
       end;
     end;
   end;
@@ -341,16 +346,16 @@ procedure TAtlasPaletteTests.CheckContrast(const AColors: TAtlasColors; const AM
 
   procedure Pair(const AName: string; AFront, ABack: TAtlasColor);
   var
-    Ratio: Double;
+    mRatio: Double;
   begin
-    Ratio := TAtlasColorMath.Contrast(AFront, ABack);
-    Assert.IsTrue(Ratio >= 4.5, Format('%s %s: %s auf %s nur %.2f : 1', [AMode, AName,
-      TAtlasColorMath.ToHex(AFront), TAtlasColorMath.ToHex(ABack), Ratio]));
+    mRatio := TAtlasColorMath.Contrast(AFront, ABack);
+    Assert.IsTrue(mRatio >= 4.5, Format('%s %s: %s auf %s nur %.2f : 1', [AMode, AName,
+      TAtlasColorMath.ToHex(AFront), TAtlasColorMath.ToHex(ABack), mRatio]));
   end;
 
 var
-  Kind: TAtlasBadgeKind;
-  Index: Integer;
+  mKind: TAtlasBadgeKind;
+  mIndex: Integer;
 begin
   Pair('Text', AColors.Text, AColors.Surface);
   Pair('Text auf Auswahl', AColors.Text, AColors.Selection);
@@ -371,15 +376,15 @@ begin
   Pair('Warnung auf Warnfläche', AColors.Warn, AColors.WarnSoft);
   Pair('Fehler', AColors.Error, AColors.Surface);
   // Klammer- und Blockpaare (#514): jede Tiefe lesbar.
-  for Index := 0 to High(AColors.Pairs) do
+  for mIndex := 0 to High(AColors.Pairs) do
   begin
-    Pair('Paar ' + IntToStr(Index), AColors.Pairs[Index], AColors.Surface);
+    Pair('Paar ' + IntToStr(mIndex), AColors.Pairs[mIndex], AColors.Surface);
   end;
   Pair('Fehler auf Fehlerfläche', AColors.Error, AColors.ErrorSoft);
   Pair('Fehler auf Gutter', AColors.Error, AColors.Gutter);
-  for Kind := Low(TAtlasBadgeKind) to High(TAtlasBadgeKind) do
+  for mKind := Low(TAtlasBadgeKind) to High(TAtlasBadgeKind) do
   begin
-    Pair('Badge ' + Ord(Kind).ToString, AColors.Badges[Kind].Text, AColors.Badges[Kind].Background);
+    Pair('Badge ' + Ord(mKind).ToString, AColors.Badges[mKind].Text, AColors.Badges[mKind].Background);
   end;
 end;
 
@@ -467,14 +472,14 @@ end;
 
 function Describe(const AText: string): string;
 var
-  Token: TAtlasToken;
+  mToken: TAtlasToken;
 const
-  Names: array[TAtlasTokenKind] of string = ('p', 'k', 's', 'c', 'n');
+  cNames: array[TAtlasTokenKind] of string = ('p', 'k', 's', 'c', 'n');
 begin
   Result := '';
-  for Token in TAtlasSyntax.Tokens(AText) do
+  for mToken in TAtlasSyntax.Tokens(AText) do
   begin
-    Result := Result + Names[Token.Kind] + ':' + Copy(AText, Token.Start + 1, Token.Stop - Token.Start) + '|';
+    Result := Result + cNames[mToken.Kind] + ':' + Copy(AText, mToken.Start + 1, mToken.Stop - mToken.Start) + '|';
   end;
 end;
 
@@ -490,24 +495,24 @@ end;
 
 procedure TAtlasSyntaxTests.TokensCoverWholeText;
 var
-  Text: string;
-  Tokens: TAtlasTokens;
-  Index: Integer;
+  mText: string;
+  mTokens: TAtlasTokens;
+  mIndex: Integer;
 begin
-  for Text in ['', 'x', 'function F(''unclosed', '{ offen', 'a // Rest', 'const Ä: Byte = $FF;'] do
+  for mText in ['', 'x', 'function F(''unclosed', '{ offen', 'a // Rest', 'const Ä: Byte = $FF;'] do
   begin
-    Tokens := TAtlasSyntax.Tokens(Text);
-    if Text = '' then
+    mTokens := TAtlasSyntax.Tokens(mText);
+    if mText = '' then
     begin
-      Assert.AreEqual(0, Integer(Length(Tokens)));
+      Assert.AreEqual(0, Integer(Length(mTokens)));
       Continue;
     end;
-    Assert.AreEqual(0, Tokens[0].Start, Text);
-    for Index := 1 to High(Tokens) do
+    Assert.AreEqual(0, mTokens[0].Start, mText);
+    for mIndex := 1 to High(mTokens) do
     begin
-      Assert.AreEqual(Tokens[Index - 1].Stop, Tokens[Index].Start, Text);
+      Assert.AreEqual(mTokens[mIndex - 1].Stop, mTokens[mIndex].Start, mText);
     end;
-    Assert.AreEqual(Integer(Length(Text)), Tokens[High(Tokens)].Stop, Text);
+    Assert.AreEqual(Integer(Length(mText)), mTokens[High(mTokens)].Stop, mText);
   end;
 end;
 
@@ -520,12 +525,12 @@ end;
 
 function Defaults(const ASignature: string): string;
 var
-  Range: TPoint;
+  mRange: TPoint;
 begin
   Result := '';
-  for Range in TAtlasSyntax.DefaultRanges(ASignature) do
+  for mRange in TAtlasSyntax.DefaultRanges(ASignature) do
   begin
-    Result := Result + '[' + Copy(ASignature, Range.X + 1, Range.Y - Range.X) + ']';
+    Result := Result + '[' + Copy(ASignature, mRange.X + 1, mRange.Y - mRange.X) + ']';
   end;
 end;
 
@@ -546,19 +551,20 @@ end;
 
 function DescribeLines(const ALines: TArray<string>): string;
 var
-  Lines: TArray<TAtlasTokens>;
-  Line: Integer;
-  Token: TAtlasToken;
+  mLines: TArray<TAtlasTokens>;
+  mLine: Integer;
+  mToken: TAtlasToken;
 const
-  Names: array[TAtlasTokenKind] of string = ('p', 'k', 's', 'c', 'n');
+  cNames: array[TAtlasTokenKind] of string = ('p', 'k', 's', 'c', 'n');
 begin
   Result := '';
-  Lines := TAtlasSyntax.LineTokens(ALines);
-  for Line := 0 to High(Lines) do
+  mLines := TAtlasSyntax.LineTokens(ALines);
+  for mLine := 0 to High(mLines) do
   begin
-    for Token in Lines[Line] do
+    for mToken in mLines[mLine] do
     begin
-      Result := Result + Names[Token.Kind] + ':' + Copy(ALines[Line], Token.Start + 1, Token.Stop - Token.Start) + '|';
+      Result := Result + cNames[mToken.Kind] + ':' + Copy(ALines[mLine], mToken.Start + 1, mToken.Stop - mToken.Start) +
+        '|';
     end;
     Result := Result + '/';
   end;
@@ -610,100 +616,100 @@ end;
 
 procedure TAtlasPresentationTests.AttributeBadge;
 var
-  Entry: TAtlasCompletionItem;
+  mEntry: TAtlasCompletionItem;
 begin
   // Attribut nach "[" (#465): "at" statt "ty", auch bei Compiler-Attributen (Art Schlüsselwort).
-  Entry := Item('TestCase', TAtlasItemKind.Class_);
-  Entry.Attribute := True;
-  Assert.AreEqual('at', TAtlasItemPresentation.Badge(Entry).Code);
-  Entry := Item('weak', TAtlasItemKind.Keyword);
-  Entry.Attribute := True;
-  Assert.AreEqual('at', TAtlasItemPresentation.Badge(Entry).Code);
+  mEntry := Item('TestCase', TAtlasItemKind.Class_);
+  mEntry.Attribute := True;
+  Assert.AreEqual('at', TAtlasItemPresentation.Badge(mEntry).Code);
+  mEntry := Item('weak', TAtlasItemKind.Keyword);
+  mEntry.Attribute := True;
+  Assert.AreEqual('at', TAtlasItemPresentation.Badge(mEntry).Code);
   Assert.AreEqual('ty', TAtlasItemPresentation.Badge(Item('TKunde', TAtlasItemKind.Class_)).Code);
 end;
 
 procedure TAtlasPresentationTests.MethodRefTag;
 var
-  Entry: TAtlasCompletionItem;
+  mEntry: TAtlasCompletionItem;
 begin
   // Gerüst einer anonymen Methode (#468): Badge "sn" der Vorlage, Tag mit dem erwarteten Typ.
-  Entry := Item('function(const Value: TCustomer): Boolean', TAtlasItemKind.Snippet);
-  Entry.MethodRef := 'TPredicate<TCustomer>';
-  Assert.AreEqual('sn', TAtlasItemPresentation.Badge(Entry).Code);
-  Assert.AreEqual('TPredicate<TCustomer>', TAtlasItemPresentation.TagText(Entry));
+  mEntry := Item('function(const Value: TCustomer): Boolean', TAtlasItemKind.Snippet);
+  mEntry.MethodRef := 'TPredicate<TCustomer>';
+  Assert.AreEqual('sn', TAtlasItemPresentation.Badge(mEntry).Code);
+  Assert.AreEqual('TPredicate<TCustomer>', TAtlasItemPresentation.TagText(mEntry));
   Assert.AreEqual('', TAtlasItemPresentation.TagText(Item('procedure', TAtlasItemKind.Snippet)));
 end;
 
 procedure TAtlasPresentationTests.WithOriginAndShadowTags;
 var
-  Entry: TAtlasCompletionItem;
-  Tags: TAtlasTags;
+  mEntry: TAtlasCompletionItem;
+  mTags: TAtlasTags;
 begin
   // with-Objekt (#481): „aus …“, dann je verdecktem Namen eine Warnmarke mit Fläche.
-  Entry := Item('Name', TAtlasItemKind.Field);
-  Entry.Scope := 6;
-  Entry.WithOrigin := 'qryOrders';
-  Entry.WithShadows := ['Self.Name', 'lokale Variable Name'];
-  Tags := TAtlasItemPresentation.Tags(Entry);
+  mEntry := Item('Name', TAtlasItemKind.Field);
+  mEntry.Scope := 6;
+  mEntry.WithOrigin := 'qryOrders';
+  mEntry.WithShadows := ['Self.Name', 'lokale Variable Name'];
+  mTags := TAtlasItemPresentation.Tags(mEntry);
   Assert.AreEqual('aus qryOrders, verdeckt Self.Name, verdeckt lokale Variable Name',
-    TAtlasItemPresentation.TagText(Entry));
-  Assert.AreEqual(Ord(TAtlasTagKind.Accent), Ord(Tags[0].Kind));
-  Assert.IsFalse(Tags[0].Filled);
-  Assert.AreEqual(Ord(TAtlasTagKind.Warn), Ord(Tags[1].Kind));
-  Assert.IsTrue(Tags[1].Filled);
+    TAtlasItemPresentation.TagText(mEntry));
+  Assert.AreEqual(Ord(TAtlasTagKind.Accent), Ord(mTags[0].Kind));
+  Assert.IsFalse(mTags[0].Filled);
+  Assert.AreEqual(Ord(TAtlasTagKind.Warn), Ord(mTags[1].Kind));
+  Assert.IsTrue(mTags[1].Filled);
   // Ohne Verdeckung nur die Herkunft.
-  Entry.WithShadows := nil;
-  Assert.AreEqual('aus qryOrders', TAtlasItemPresentation.TagText(Entry));
+  mEntry.WithShadows := nil;
+  Assert.AreEqual('aus qryOrders', TAtlasItemPresentation.TagText(mEntry));
 end;
 
 procedure TAtlasPresentationTests.UnreachableExceptionTag;
 var
-  Entry: TAtlasCompletionItem;
-  Tags: TAtlasTags;
+  mEntry: TAtlasCompletionItem;
+  mTags: TAtlasTags;
 begin
   // Exception-Klassen (#483): Ein früherer Zweig fängt die Klasse schon.
-  Entry := Item('EConvertError', TAtlasItemKind.Class_);
-  Entry.Unreachable := 'Exception';
-  Tags := TAtlasItemPresentation.Tags(Entry);
-  Assert.AreEqual('nie erreicht: Exception davor', TAtlasItemPresentation.TagText(Entry));
-  Assert.AreEqual(Ord(TAtlasTagKind.Warn), Ord(Tags[0].Kind));
-  Assert.IsTrue(Tags[0].Filled);
-  Entry.Unreachable := '';
-  Assert.AreEqual('', TAtlasItemPresentation.TagText(Entry));
+  mEntry := Item('EConvertError', TAtlasItemKind.Class_);
+  mEntry.Unreachable := 'Exception';
+  mTags := TAtlasItemPresentation.Tags(mEntry);
+  Assert.AreEqual('nie erreicht: Exception davor', TAtlasItemPresentation.TagText(mEntry));
+  Assert.AreEqual(Ord(TAtlasTagKind.Warn), Ord(mTags[0].Kind));
+  Assert.IsTrue(mTags[0].Filled);
+  mEntry.Unreachable := '';
+  Assert.AreEqual('', TAtlasItemPresentation.TagText(mEntry));
 end;
 
 procedure TAtlasPresentationTests.MissingUnitBecomesTag;
 var
-  Entry: TAtlasCompletionItem;
-  Edit: TAtlasTextEdit;
-  Tags: TAtlasTags;
+  mEntry: TAtlasCompletionItem;
+  mEdit: TAtlasTextEdit;
+  mTags: TAtlasTags;
 begin
-  Entry := Item('TStringList', TAtlasItemKind.Class_, 'System.Classes (uses ergänzen)');
-  Entry.UnitUsed := False;
-  Assert.AreEqual('System.Classes', TAtlasItemPresentation.MissingUnit(Entry));
-  Assert.AreEqual('', TAtlasItemPresentation.Detail(Entry));
-  Tags := TAtlasItemPresentation.Tags(Entry);
-  Assert.AreEqual(1, Integer(Length(Tags)));
-  Assert.AreEqual('+ System.Classes', Tags[0].Text);
-  Assert.AreEqual<TAtlasTagKind>(TAtlasTagKind.Add, Tags[0].Kind);
+  mEntry := Item('TStringList', TAtlasItemKind.Class_, 'System.Classes (uses ergänzen)');
+  mEntry.UnitUsed := False;
+  Assert.AreEqual('System.Classes', TAtlasItemPresentation.MissingUnit(mEntry));
+  Assert.AreEqual('', TAtlasItemPresentation.Detail(mEntry));
+  mTags := TAtlasItemPresentation.Tags(mEntry);
+  Assert.AreEqual(1, Integer(Length(mTags)));
+  Assert.AreEqual('+ System.Classes', mTags[0].Text);
+  Assert.AreEqual<TAtlasTagKind>(TAtlasTagKind.Add, mTags[0].Kind);
   // Englische Servertexte (#1458).
-  Entry := Item('TStringList', TAtlasItemKind.Class_, 'System.Classes (add to uses)');
-  Entry.UnitUsed := False;
-  Assert.AreEqual('System.Classes', TAtlasItemPresentation.MissingUnit(Entry));
+  mEntry := Item('TStringList', TAtlasItemKind.Class_, 'System.Classes (add to uses)');
+  mEntry.UnitUsed := False;
+  Assert.AreEqual('System.Classes', TAtlasItemPresentation.MissingUnit(mEntry));
   // Ohne Hinweis im Detail: aus der uses-Ergänzung.
-  Entry := Item('TStringList', TAtlasItemKind.Class_, 'TStringList');
-  Entry.UnitUsed := False;
-  Edit := Default(TAtlasTextEdit);
-  Edit.NewText := ', System.Classes';
-  Entry.AdditionalEdits := [Edit];
-  Assert.AreEqual('System.Classes', TAtlasItemPresentation.MissingUnit(Entry));
-  Edit.NewText := sLineBreak + 'uses' + sLineBreak + '  System.Classes;';
-  Entry.AdditionalEdits := [Edit];
-  Assert.AreEqual('System.Classes', TAtlasItemPresentation.MissingUnit(Entry));
+  mEntry := Item('TStringList', TAtlasItemKind.Class_, 'TStringList');
+  mEntry.UnitUsed := False;
+  mEdit := Default(TAtlasTextEdit);
+  mEdit.NewText := ', System.Classes';
+  mEntry.AdditionalEdits := [mEdit];
+  Assert.AreEqual('System.Classes', TAtlasItemPresentation.MissingUnit(mEntry));
+  mEdit.NewText := sLineBreak + 'uses' + sLineBreak + '  System.Classes;';
+  mEntry.AdditionalEdits := [mEdit];
+  Assert.AreEqual('System.Classes', TAtlasItemPresentation.MissingUnit(mEntry));
   // Eingebunden: keine Marke.
-  Entry.UnitUsed := True;
-  Assert.AreEqual('', TAtlasItemPresentation.MissingUnit(Entry));
-  Assert.AreEqual(0, Integer(Length(TAtlasItemPresentation.Tags(Entry))));
+  mEntry.UnitUsed := True;
+  Assert.AreEqual('', TAtlasItemPresentation.MissingUnit(mEntry));
+  Assert.AreEqual(0, Integer(Length(TAtlasItemPresentation.Tags(mEntry))));
 end;
 
 procedure TAtlasPresentationTests.UnitDetailIsFileName;
@@ -715,37 +721,47 @@ end;
 
 procedure TAtlasPresentationTests.DeprecatedAndConstructorTags;
 var
-  Entry: TAtlasCompletionItem;
-  Tags: TAtlasTags;
+  mEntry: TAtlasCompletionItem;
+  mTags: TAtlasTags;
 begin
-  Entry := Item('Create', TAtlasItemKind.Constructor_);
-  Entry.Directives := ['overload', 'deprecated'];
-  Tags := TAtlasItemPresentation.Tags(Entry);
-  Assert.AreEqual(2, Integer(Length(Tags)));
-  Assert.AreEqual('constructor', Tags[0].Text);
-  Assert.AreEqual('deprecated', Tags[1].Text);
-  Assert.AreEqual<TAtlasTagKind>(TAtlasTagKind.Warn, Tags[1].Kind);
+  mEntry := Item('Create', TAtlasItemKind.Constructor_);
+  mEntry.Directives := ['overload', 'deprecated'];
+  mTags := TAtlasItemPresentation.Tags(mEntry);
+  Assert.AreEqual(2, Integer(Length(mTags)));
+  Assert.AreEqual('constructor', mTags[0].Text);
+  Assert.AreEqual('deprecated', mTags[1].Text);
+  Assert.AreEqual<TAtlasTagKind>(TAtlasTagKind.Warn, mTags[1].Kind);
 end;
 
 procedure TAtlasPresentationTests.ScopeTagsNameOrigin;
 
-  function TagOf(const AName: string; AKind: TAtlasItemKind; AScope: Integer; const AClass: string = '';
-    const AUnit: string = ''): string;
+  function TagOf(const AName: string; AKind: TAtlasItemKind; AScope: Integer; const AClass: string;
+    const AUnit: string): string; overload;
   var
-    Entry: TAtlasCompletionItem;
-    Tags: TAtlasTags;
+    mEntry: TAtlasCompletionItem;
+    mTags: TAtlasTags;
   begin
-    Entry := Item(AName, AKind);
-    Entry.Scope := AScope;
-    Entry.DeclaringClass := AClass;
-    Entry.DeclaringUnit := AUnit;
-    Tags := TAtlasItemPresentation.Tags(Entry);
-    if Length(Tags) = 0 then
+    mEntry := Item(AName, AKind);
+    mEntry.Scope := AScope;
+    mEntry.DeclaringClass := AClass;
+    mEntry.DeclaringUnit := AUnit;
+    mTags := TAtlasItemPresentation.Tags(mEntry);
+    if Length(mTags) = 0 then
     begin
       Exit('');
     end;
-    Result := Tags[0].Text;
+    Result := mTags[0].Text;
   end;
+
+function TagOf(const AName: string; AKind: TAtlasItemKind; AScope: Integer): string; overload;
+begin
+  Result := TagOf(AName, AKind, AScope, '', '');
+end;
+
+function TagOf(const AName: string; AKind: TAtlasItemKind; AScope: Integer; const AClass: string): string; overload;
+begin
+  Result := TagOf(AName, AKind, AScope, AClass, '');
+end;
 
 begin
   // #488: woher ein Name ohne Punkt davor stammt.
@@ -779,128 +795,128 @@ end;
 
 procedure TAtlasPaletteTests.InlayHintColorsMixFromBackground;
 var
-  Back: TAtlasColor;
-  Colors: TAtlasColors;
-  Hint: TAtlasHintColors;
+  mBack: TAtlasColor;
+  mColors: TAtlasColors;
+  mHint: TAtlasHintColors;
 begin
   // Hell: Rollen der hellen Palette, gemischt mit den bisherigen Anteilen 0,8 / 0,45 / 0,2.
-  Back := TAtlasColorMath.FromHex('#FFFFFF');
-  Colors := TAtlasColors.Light;
-  Hint := TAtlasColors.InlayHint(Back);
-  Assert.AreEqual(TAtlasColorMath.Mix(Colors.Text, Back, 0.8), Hint.Text);
-  Assert.AreEqual(TAtlasColorMath.Mix(Colors.Accent, Back, 0.45), Hint.Pen);
-  Assert.AreEqual(TAtlasColorMath.Mix(Colors.Accent, Back, 0.2), Hint.Fill);
+  mBack := TAtlasColorMath.FromHex('#FFFFFF');
+  mColors := TAtlasColors.Light;
+  mHint := TAtlasColors.InlayHint(mBack);
+  Assert.AreEqual(TAtlasColorMath.Mix(mColors.Text, mBack, 0.8), mHint.Text);
+  Assert.AreEqual(TAtlasColorMath.Mix(mColors.Accent, mBack, 0.45), mHint.Pen);
+  Assert.AreEqual(TAtlasColorMath.Mix(mColors.Accent, mBack, 0.2), mHint.Fill);
   // Dunkel: Rollen der dunklen Palette.
-  Back := TAtlasColorMath.FromHex('#1E1E1E');
-  Colors := TAtlasColors.Dark;
-  Hint := TAtlasColors.InlayHint(Back);
-  Assert.AreEqual(TAtlasColorMath.Mix(Colors.Text, Back, 0.8), Hint.Text);
-  Assert.AreEqual(TAtlasColorMath.Mix(Colors.Accent, Back, 0.2), Hint.Fill);
+  mBack := TAtlasColorMath.FromHex('#1E1E1E');
+  mColors := TAtlasColors.Dark;
+  mHint := TAtlasColors.InlayHint(mBack);
+  Assert.AreEqual(TAtlasColorMath.Mix(mColors.Text, mBack, 0.8), mHint.Text);
+  Assert.AreEqual(TAtlasColorMath.Mix(mColors.Accent, mBack, 0.2), mHint.Fill);
 end;
 
 procedure TAtlasPaletteTests.ChromeColorsFollowTheIdeToolbar;
 var
-  Face, Text: TAtlasColor;
-  Colors: TAtlasColors;
+  mFace, mText: TAtlasColor;
+  mColors: TAtlasColors;
 begin
   // Dunkles IDE-Thema: Fläche der Werkzeugleiste statt des fast schwarzen Gutter der Palette.
-  Face := TAtlasColorMath.FromHex('#2D2D30');
-  Text := TAtlasColorMath.FromHex('#F1F1F1');
-  Colors := TAtlasColors.ForChrome(Face, Text);
-  Assert.IsTrue(Colors.IsDark);
-  Assert.AreEqual(Face, Colors.Gutter);
-  Assert.AreEqual(Face, Colors.Surface);
-  Assert.AreEqual(Text, Colors.Text);
-  Assert.AreEqual(TAtlasColorMath.Mix(Text, Face, 0.7), Colors.Muted);
-  Assert.AreEqual(TAtlasColorMath.Mix(Text, Face, 0.18), Colors.Line);
+  mFace := TAtlasColorMath.FromHex('#2D2D30');
+  mText := TAtlasColorMath.FromHex('#F1F1F1');
+  mColors := TAtlasColors.ForChrome(mFace, mText);
+  Assert.IsTrue(mColors.IsDark);
+  Assert.AreEqual(mFace, mColors.Gutter);
+  Assert.AreEqual(mFace, mColors.Surface);
+  Assert.AreEqual(mText, mColors.Text);
+  Assert.AreEqual(TAtlasColorMath.Mix(mText, mFace, 0.7), mColors.Muted);
+  Assert.AreEqual(TAtlasColorMath.Mix(mText, mFace, 0.18), mColors.Line);
   Assert.AreEqual(TAtlasColors.Dark.Badges[TAtlasBadgeKind.Type_].Background,
-    Colors.Badges[TAtlasBadgeKind.Type_].Background, 'Badges aus der dunklen Palette');
-  Assert.IsTrue(TAtlasColorMath.Contrast(Colors.Muted, Face) >= 4.5, 'gedämpfter Text lesbar');
+    mColors.Badges[TAtlasBadgeKind.Type_].Background, 'Badges aus der dunklen Palette');
+  Assert.IsTrue(TAtlasColorMath.Contrast(mColors.Muted, mFace) >= 4.5, 'gedämpfter Text lesbar');
   // Helles Thema.
-  Face := TAtlasColorMath.FromHex('#F0F0F0');
-  Text := TAtlasColorMath.FromHex('#000000');
-  Colors := TAtlasColors.ForChrome(Face, Text);
-  Assert.IsFalse(Colors.IsDark);
-  Assert.AreEqual(Face, Colors.Gutter);
-  Assert.IsTrue(TAtlasColorMath.Contrast(Colors.Muted, Face) >= 4.5, 'gedämpfter Text lesbar (hell)');
-  Assert.AreNotEqual(Face, Colors.Selection, 'Auswahl abgesetzt');
+  mFace := TAtlasColorMath.FromHex('#F0F0F0');
+  mText := TAtlasColorMath.FromHex('#000000');
+  mColors := TAtlasColors.ForChrome(mFace, mText);
+  Assert.IsFalse(mColors.IsDark);
+  Assert.AreEqual(mFace, mColors.Gutter);
+  Assert.IsTrue(TAtlasColorMath.Contrast(mColors.Muted, mFace) >= 4.5, 'gedämpfter Text lesbar (hell)');
+  Assert.AreNotEqual(mFace, mColors.Selection, 'Auswahl abgesetzt');
   // Fenster mit Inhalt: Fläche aus dem Thema, Gutter leicht abgesetzt.
-  Face := TAtlasColorMath.FromHex('#36414A');
-  Text := TAtlasColorMath.FromHex('#E3E7ED');
-  Colors := TAtlasColors.ForWindow(Face, Text);
-  Assert.IsTrue(Colors.IsDark);
-  Assert.AreEqual(Face, Colors.Surface, 'Fläche des Themas statt der festen Palette');
-  Assert.AreEqual(Text, Colors.Text);
-  Assert.AreEqual(TAtlasColorMath.Mix(Text, Face, cAtlasMixWindowGutter), Colors.Gutter);
-  Assert.AreNotEqual(Face, Colors.Gutter, 'Gutter abgesetzt');
-  Assert.IsTrue(TAtlasColorMath.Contrast(Colors.Muted, Face) >= 4.5, 'gedämpfter Text lesbar (Fenster)');
+  mFace := TAtlasColorMath.FromHex('#36414A');
+  mText := TAtlasColorMath.FromHex('#E3E7ED');
+  mColors := TAtlasColors.ForWindow(mFace, mText);
+  Assert.IsTrue(mColors.IsDark);
+  Assert.AreEqual(mFace, mColors.Surface, 'Fläche des Themas statt der festen Palette');
+  Assert.AreEqual(mText, mColors.Text);
+  Assert.AreEqual(TAtlasColorMath.Mix(mText, mFace, cAtlasMixWindowGutter), mColors.Gutter);
+  Assert.AreNotEqual(mFace, mColors.Gutter, 'Gutter abgesetzt');
+  Assert.IsTrue(TAtlasColorMath.Contrast(mColors.Muted, mFace) >= 4.5, 'gedämpfter Text lesbar (Fenster)');
 end;
 
 { TAtlasWrapTests }
 
 function TAtlasWrapTests.Cum(const AText: string): TArray<Integer>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // Jedes Zeichen 10 Pixel breit.
   Result := nil;
   SetLength(Result, Length(AText) + 1);
-  for Index := 0 to Length(AText) do
+  for mIndex := 0 to Length(AText) do
   begin
-    Result[Index] := 10 * Index;
+    Result[mIndex] := 10 * mIndex;
   end;
 end;
 
 procedure TAtlasWrapTests.WrapFitsOneLine;
 var
-  Lines: TArray<TPoint>;
+  mLines: TArray<TPoint>;
 begin
-  Lines := TAtlasWrap.AtSpaces('a bc d', Cum('a bc d'), 100, 0);
-  Assert.AreEqual(1, Integer(Length(Lines)));
-  Assert.AreEqual(0, Lines[0].X);
-  Assert.AreEqual(6, Lines[0].Y);
+  mLines := TAtlasWrap.AtSpaces('a bc d', Cum('a bc d'), 100, 0);
+  Assert.AreEqual(1, Integer(Length(mLines)));
+  Assert.AreEqual(0, mLines[0].X);
+  Assert.AreEqual(6, mLines[0].Y);
 end;
 
 procedure TAtlasWrapTests.WrapBreaksAtSpace;
 var
-  Lines: TArray<TPoint>;
+  mLines: TArray<TPoint>;
 begin
   // „procedure Foo(A: Integer)“: 25 Zeichen, Breite 150 = 15 Zeichen.
-  Lines := TAtlasWrap.AtSpaces('procedure Foo(A: Integer)', Cum('procedure Foo(A: Integer)'), 150, 0);
-  Assert.AreEqual(2, Integer(Length(Lines)));
-  Assert.AreEqual(0, Lines[0].X);
-  Assert.AreEqual(10, Lines[0].Y);
-  Assert.AreEqual(10, Lines[1].X);
-  Assert.AreEqual(25, Lines[1].Y);
+  mLines := TAtlasWrap.AtSpaces('procedure Foo(A: Integer)', Cum('procedure Foo(A: Integer)'), 150, 0);
+  Assert.AreEqual(2, Integer(Length(mLines)));
+  Assert.AreEqual(0, mLines[0].X);
+  Assert.AreEqual(10, mLines[0].Y);
+  Assert.AreEqual(10, mLines[1].X);
+  Assert.AreEqual(25, mLines[1].Y);
 end;
 
 procedure TAtlasWrapTests.WrapIndentNarrowsFollowLines;
 var
-  Lines: TArray<TPoint>;
+  mLines: TArray<TPoint>;
 begin
   // Erste Zeile 8 Zeichen, Folgezeilen um 3 Zeichen schmaler (5).
-  Lines := TAtlasWrap.AtSpaces('aa bb cc dd ee', Cum('aa bb cc dd ee'), 80, 30);
-  Assert.AreEqual(3, Integer(Length(Lines)));
-  Assert.AreEqual(0, Lines[0].X);
-  Assert.AreEqual(6, Lines[0].Y);
-  Assert.AreEqual(6, Lines[1].X);
-  Assert.AreEqual(9, Lines[1].Y);
-  Assert.AreEqual(9, Lines[2].X);
-  Assert.AreEqual(14, Lines[2].Y);
+  mLines := TAtlasWrap.AtSpaces('aa bb cc dd ee', Cum('aa bb cc dd ee'), 80, 30);
+  Assert.AreEqual(3, Integer(Length(mLines)));
+  Assert.AreEqual(0, mLines[0].X);
+  Assert.AreEqual(6, mLines[0].Y);
+  Assert.AreEqual(6, mLines[1].X);
+  Assert.AreEqual(9, mLines[1].Y);
+  Assert.AreEqual(9, mLines[2].X);
+  Assert.AreEqual(14, mLines[2].Y);
 end;
 
 procedure TAtlasWrapTests.WrapLongWordStandsAlone;
 var
-  Lines: TArray<TPoint>;
+  mLines: TArray<TPoint>;
 begin
-  Lines := TAtlasWrap.AtSpaces('a Sehrlangeswort b', Cum('a Sehrlangeswort b'), 50, 0);
-  Assert.AreEqual(3, Integer(Length(Lines)));
-  Assert.AreEqual(0, Lines[0].X);
-  Assert.AreEqual(2, Lines[0].Y);
-  Assert.AreEqual(2, Lines[1].X);
-  Assert.AreEqual(17, Lines[1].Y);
-  Assert.AreEqual(17, Lines[2].X);
-  Assert.AreEqual(18, Lines[2].Y);
+  mLines := TAtlasWrap.AtSpaces('a Sehrlangeswort b', Cum('a Sehrlangeswort b'), 50, 0);
+  Assert.AreEqual(3, Integer(Length(mLines)));
+  Assert.AreEqual(0, mLines[0].X);
+  Assert.AreEqual(2, mLines[0].Y);
+  Assert.AreEqual(2, mLines[1].X);
+  Assert.AreEqual(17, mLines[1].Y);
+  Assert.AreEqual(17, mLines[2].X);
+  Assert.AreEqual(18, mLines[2].Y);
 end;
 
 procedure TAtlasWrapTests.WrapEmptyText;

@@ -44,21 +44,21 @@ uses
   Atlas.Common.Lsp.MoveClass;
 
 const
-  BasisFile = 'C:\P\Basis.pas';
-  HelferFile = 'C:\P\Helfer.pas';
-  LagerFile = 'C:\P\Lager.pas';
-  KasseFile = 'C:\P\Kasse.pas';
-  ProgramFile = 'C:\P\Projekt.dpr';
-  ProjectFile = 'C:\P\Projekt.dproj';
+  cBasisFile = 'C:\P\Basis.pas';
+  cHelferFile = 'C:\P\Helfer.pas';
+  cLagerFile = 'C:\P\Lager.pas';
+  cKasseFile = 'C:\P\Kasse.pas';
+  cProgramFile = 'C:\P\Projekt.dpr';
+  cProjectFile = 'C:\P\Projekt.dproj';
 
-  UnitBasis =
+  cUnitBasis =
     'unit Basis;'#10'interface'#10'type'#10'  TItems = class'#10'  end;'#10 +
     'function Fmt(A: Integer): string;'#10'implementation'#10 +
     'function Fmt(A: Integer): string;'#10'begin'#10'  Result := '''';'#10'end;'#10'end.'#10;
-  UnitHelfer =
+  cUnitHelfer =
     'unit Helfer;'#10'interface'#10'procedure Log;'#10'implementation'#10'procedure Log;'#10'begin'#10'end;'#10 +
     'end.'#10;
-  UnitLager =
+  cUnitLager =
     'unit Lager;'#10 +                     // 0
     ''#10 +                                // 1
     'interface'#10 +                       // 2
@@ -84,41 +84,41 @@ const
     'end;'#10 +                            // 22
     ''#10 +                                // 23
     'end.'#10;
-  UnitKasse =
+  cUnitKasse =
     'unit Kasse;'#10'interface'#10'uses Lager;'#10'implementation'#10'procedure Run;'#10'var'#10 +
     '  S: TStock;'#10'begin'#10'  S := Lager.TStock.Create;'#10'end;'#10'end.'#10;
-  TextProgram =
+  cTextProgram =
     'program Projekt;'#10'uses'#10'  Lager in ''Lager.pas'','#10'  Kasse in ''Kasse.pas'';'#10'begin'#10'end.'#10;
-  TextProject =
+  cTextProject =
     '<Project>'#10'  <ItemGroup>'#10'    <DelphiCompile Include="Projekt.dpr"/>'#10 +
     '    <DCCReference Include="Lager.pas"/>'#10'    <DCCReference Include="Kasse.pas"/>'#10'  </ItemGroup>'#10 +
     '</Project>'#10;
 
 function TextOf(const AFileName: string): string;
 begin
-  if SameText(AFileName, BasisFile) then
+  if SameText(AFileName, cBasisFile) then
   begin
-    Result := UnitBasis;
+    Result := cUnitBasis;
   end
-  else if SameText(AFileName, HelferFile) then
+  else if SameText(AFileName, cHelferFile) then
   begin
-    Result := UnitHelfer;
+    Result := cUnitHelfer;
   end
-  else if SameText(AFileName, LagerFile) then
+  else if SameText(AFileName, cLagerFile) then
   begin
-    Result := UnitLager;
+    Result := cUnitLager;
   end
-  else if SameText(AFileName, KasseFile) then
+  else if SameText(AFileName, cKasseFile) then
   begin
-    Result := UnitKasse;
+    Result := cUnitKasse;
   end
-  else if SameText(AFileName, ProgramFile) then
+  else if SameText(AFileName, cProgramFile) then
   begin
-    Result := TextProgram;
+    Result := cTextProgram;
   end
-  else if SameText(AFileName, ProjectFile) then
+  else if SameText(AFileName, cProjectFile) then
   begin
-    Result := TextProject;
+    Result := cTextProject;
   end
   else
   begin
@@ -130,9 +130,9 @@ function Context: TMoveClassContext;
 begin
   Result := Default(TMoveClassContext);
   Result.HasProject := True;
-  Result.Project.FileName := ProjectFile;
-  Result.Project.MainSource := ProgramFile;
-  Result.Files := [BasisFile, HelferFile, LagerFile, KasseFile, ProgramFile];
+  Result.Project.FileName := cProjectFile;
+  Result.Project.MainSource := cProgramFile;
+  Result.Files := [cBasisFile, cHelferFile, cLagerFile, cKasseFile, cProgramFile];
   Result.ReadText :=
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -149,27 +149,27 @@ end;
 /// <summary>Wendet die Edits aus einem documentChanges-Eintrag auf AText an.</summary>
 function Apply(const AText: string; ADocument: TJSONObject): string;
 var
-  Item: TJSONValue;
-  Edits: TArray<TTextEdit>;
-  Range: TJSONObject;
+  mItem: TJSONValue;
+  mEdits: TArray<TTextEdit>;
+  mRange: TJSONObject;
 begin
-  Edits := nil;
-  for Item in ADocument.GetValue('edits') as TJSONArray do
+  mEdits := nil;
+  for mItem in ADocument.GetValue('edits') as TJSONArray do
   begin
-    Range := TJSONObject(Item).GetValue('range') as TJSONObject;
-    Edits := Edits + [TTextEdit.Create(TTextRange.Create(TLspPositions.ReadPosition(Range.GetValue('start')),
-      TLspPositions.ReadPosition(Range.GetValue('end'))), TJSONObject(Item).GetValue('newText').Value)];
+    mRange := TJSONObject(mItem).GetValue('range') as TJSONObject;
+    mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(TLspPositions.ReadPosition(mRange.GetValue('start')),
+      TLspPositions.ReadPosition(mRange.GetValue('end'))), TJSONObject(mItem).GetValue('newText').Value)];
   end;
-  Result := TChangeSignature.ApplyEdits(AText, Edits);
+  Result := TChangeSignature.ApplyEdits(AText, mEdits);
 end;
 
 procedure TLspMoveClassTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, BasisFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitHelfer, HelferFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitLager, LagerFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitKasse, KasseFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHelfer, cHelferFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitLager, cLagerFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitKasse, cKasseFile, nil));
 end;
 
 procedure TLspMoveClassTests.TearDown;
@@ -187,114 +187,114 @@ begin
       '  Helfer;'#10#10'function TStock.Text: string;'#10'begin'#10'  Log;'#10'  Result := Fmt(1);'#10'end;'#10#10 +
       'end.'#10, Apply('', ADocument));
   end
-  else if AUri = TDocumentUris.FromPath(LagerFile) then
+  else if AUri = TDocumentUris.FromPath(cLagerFile) then
   begin
     Assert.AreEqual('unit Lager;'#10#10'interface'#10#10'uses'#10'  Basis;'#10#10'implementation'#10#10'uses'#10 +
-      '  Helfer;'#10#10'end.'#10, Apply(UnitLager, ADocument));
+      '  Helfer;'#10#10'end.'#10, Apply(cUnitLager, ADocument));
   end
-  else if AUri = TDocumentUris.FromPath(KasseFile) then
+  else if AUri = TDocumentUris.FromPath(cKasseFile) then
   begin
-    Assert.AreEqual(StringReplace(StringReplace(UnitKasse, 'uses Lager;', 'uses Lager, Stock;', []),
-      'Lager.TStock', 'Stock.TStock', []), Apply(UnitKasse, ADocument));
+    Assert.AreEqual(StringReplace(StringReplace(cUnitKasse, 'uses Lager;', 'uses Lager, Stock;', []),
+      'Lager.TStock', 'Stock.TStock', []), Apply(cUnitKasse, ADocument));
   end
-  else if AUri = TDocumentUris.FromPath(ProgramFile) then
+  else if AUri = TDocumentUris.FromPath(cProgramFile) then
   begin
-    Assert.Contains(Apply(TextProgram, ADocument), 'Stock in ''Stock.pas''');
+    Assert.Contains(Apply(cTextProgram, ADocument), 'Stock in ''Stock.pas''');
   end
-  else if AUri = TDocumentUris.FromPath(ProjectFile) then
+  else if AUri = TDocumentUris.FromPath(cProjectFile) then
   begin
-    Assert.Contains(Apply(TextProject, ADocument), '<DCCReference Include="Stock.pas"/>');
+    Assert.Contains(Apply(cTextProject, ADocument), '<DCCReference Include="Stock.pas"/>');
   end;
 end;
 
 procedure TLspMoveClassTests.MovesOverTheProject;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Answer: TJSONObject;
-  Changes: TJSONArray;
-  Item: TJSONValue;
-  Document: TJSONObject;
-  Uri, Results: string;
-  Moved: TMoveClassContext;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mAnswer: TJSONObject;
+  mChanges: TJSONArray;
+  mItem: TJSONValue;
+  mDocument: TJSONObject;
+  mUri, mResults: string;
+  mMoved: TMoveClassContext;
 begin
-  Tree := TPascalParser.Parse(UnitLager);
-  Resolver := TNameResolver.Create(FIndex, nil);
-  Answer := nil;
+  mTree := TPascalParser.Parse(cUnitLager);
+  mResolver := TNameResolver.Create(FIndex, nil);
+  mAnswer := nil;
   try
-    Moved := Context;
-    Moved.Index := FIndex;
-    Moved.UnitName := 'Stock';
-    Answer := TLspMoveClass.Execute(Resolver, Tree, LagerFile, UnitLager, TTextPosition.Create(8, 4), Moved);
-    Assert.AreEqual(0, Integer((Answer.GetValue('warnings') as TJSONArray).Count), Answer.ToJSON);
-    Assert.AreEqual(TDocumentUris.FromPath('C:\P\Stock.pas'), Answer.GetValue('file').Value);
-    Changes := (Answer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray;
-    Assert.AreEqual('create', (Changes.Items[0] as TJSONObject).GetValue('kind').Value);
-    Results := '';
-    for Item in Changes do
+    mMoved := Context;
+    mMoved.Index := FIndex;
+    mMoved.UnitName := 'Stock';
+    mAnswer := TLspMoveClass.Execute(mResolver, mTree, cLagerFile, cUnitLager, TTextPosition.Create(8, 4), mMoved);
+    Assert.AreEqual(0, Integer((mAnswer.GetValue('warnings') as TJSONArray).Count), mAnswer.ToJSON);
+    Assert.AreEqual(TDocumentUris.FromPath('C:\P\Stock.pas'), mAnswer.GetValue('file').Value);
+    mChanges := (mAnswer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray;
+    Assert.AreEqual('create', (mChanges.Items[0] as TJSONObject).GetValue('kind').Value);
+    mResults := '';
+    for mItem in mChanges do
     begin
-      Document := TJSONObject(Item);
-      if Document.GetValue('textDocument') = nil then
+      mDocument := TJSONObject(mItem);
+      if mDocument.GetValue('textDocument') = nil then
       begin
         Continue;
       end;
-      Uri := (Document.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
-      Results := Results + ExtractFileName(TDocumentUris.ToPath(Uri)) + '|';
-      AssertMovedDocument(Uri, Document);
+      mUri := (mDocument.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
+      mResults := mResults + ExtractFileName(TDocumentUris.ToPath(mUri)) + '|';
+      AssertMovedDocument(mUri, mDocument);
     end;
-    Assert.AreEqual('Stock.pas|Lager.pas|Kasse.pas|Projekt.dpr|Projekt.dproj|', Results);
+    Assert.AreEqual('Stock.pas|Lager.pas|Kasse.pas|Projekt.dpr|Projekt.dproj|', mResults);
     // Gibt es die Datei schon, bricht der Befehl ab.
-    Moved.UnitName := 'Kasse';
+    mMoved.UnitName := 'Kasse';
     Assert.WillRaise(
       procedure
       begin
-        TLspMoveClass.Execute(Resolver, Tree, LagerFile, UnitLager, TTextPosition.Create(8, 4), Moved).Free;
+        TLspMoveClass.Execute(mResolver, mTree, cLagerFile, cUnitLager, TTextPosition.Create(8, 4), mMoved).Free;
       end);
   finally
-    Answer.Free;
-    Resolver.Free;
-    Tree.Free;
+    mAnswer.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspMoveClassTests.OffersOnlyMovableClasses;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Actions: TArray<TJSONObject>;
-  Action: TJSONObject;
-  Text: string;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mActions: TArray<TJSONObject>;
+  mAction: TJSONObject;
+  mText: string;
 begin
-  Resolver := TNameResolver.Create(FIndex, nil);
-  Tree := TPascalParser.Parse(UnitLager);
+  mResolver := TNameResolver.Create(FIndex, nil);
+  mTree := TPascalParser.Parse(cUnitLager);
   try
-    Assert.AreEqual(0, Integer(Length(TLspMoveClass.Actions(Resolver, Tree, LagerFile, UnitLager, 'u',
+    Assert.AreEqual(0, Integer(Length(TLspMoveClass.Actions(mResolver, mTree, cLagerFile, cUnitLager, 'u',
       TTextPosition.Create(9, 4)))));
-    Actions := TLspMoveClass.Actions(Resolver, Tree, LagerFile, UnitLager, 'u', TTextPosition.Create(8, 4));
+    mActions := TLspMoveClass.Actions(mResolver, mTree, cLagerFile, cUnitLager, 'u', TTextPosition.Create(8, 4));
     try
-      Assert.AreEqual(1, Integer(Length(Actions)));
-      Assert.AreEqual('Klasse TStock in eigene Unit verschieben …', Actions[0].GetValue('title').Value);
+      Assert.AreEqual(1, Integer(Length(mActions)));
+      Assert.AreEqual('Klasse TStock in eigene Unit verschieben …', mActions[0].GetValue('title').Value);
       Assert.AreEqual('["u",{"line":8,"character":4},"Stock"]',
-        ((Actions[0].GetValue('command') as TJSONObject).GetValue('arguments') as TJSONArray).ToJSON);
+        ((mActions[0].GetValue('command') as TJSONObject).GetValue('arguments') as TJSONArray).ToJSON);
     finally
-      for Action in Actions do
+      for mAction in mActions do
       begin
-        Action.Free;
+        mAction.Free;
       end;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   // Zugriff auf eine Variable aus dem implementation-Teil: kein Angebot.
-  Text := StringReplace(StringReplace(UnitLager, '  Log;', '  Inc(Zaehler);', []), 'uses'#10'  Helfer;',
+  mText := StringReplace(StringReplace(cUnitLager, '  Log;', '  Inc(Zaehler);', []), 'uses'#10'  Helfer;',
     'var'#10'  Zaehler: Integer;', []);
-  Tree := TPascalParser.Parse(Text);
+  mTree := TPascalParser.Parse(mText);
   try
-    Assert.AreEqual(0, Integer(Length(TLspMoveClass.Actions(Resolver, Tree, LagerFile, Text, 'u',
+    Assert.AreEqual(0, Integer(Length(TLspMoveClass.Actions(mResolver, mTree, cLagerFile, mText, 'u',
       TTextPosition.Create(8, 4)))));
   finally
-    Tree.Free;
-    Resolver.Free;
+    mTree.Free;
+    mResolver.Free;
   end;
 end;
 

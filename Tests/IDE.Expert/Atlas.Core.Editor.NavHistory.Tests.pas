@@ -54,192 +54,192 @@ end;
 
 procedure TAtlasNavHistoryTests.BackTwiceReturnsToFirstUnit;
 var
-  History: TAtlasNavHistory;
-  Target, Next: TAtlasNavPlace;
+  mHistory: TAtlasNavHistory;
+  mTarget, mNext: TAtlasNavPlace;
 begin
-  History := TAtlasNavHistory.Create;
+  mHistory := TAtlasNavHistory.Create;
   try
     // Strg+Klick von A (Zeile 12) nach B (40), dann nach C (7).
-    History.Jumped(At('A.pas', 12), At('B.pas', 40));
-    History.Jumped(At('B.pas', 40), At('C.pas', 7));
-    Assert.IsTrue(History.StepBack(At('C.pas', 7), Target));
-    Assert.AreEqual('B.pas', Target.FileName);
-    Assert.IsTrue(History.StepBack(Target, Next));
-    Assert.AreEqual('A.pas', Next.FileName);
-    Assert.AreEqual(12, Next.Line);
-    Assert.IsFalse(History.StepBack(Next, Target));
+    mHistory.Jumped(At('A.pas', 12), At('B.pas', 40));
+    mHistory.Jumped(At('B.pas', 40), At('C.pas', 7));
+    Assert.IsTrue(mHistory.StepBack(At('C.pas', 7), mTarget));
+    Assert.AreEqual('B.pas', mTarget.FileName);
+    Assert.IsTrue(mHistory.StepBack(mTarget, mNext));
+    Assert.AreEqual('A.pas', mNext.FileName);
+    Assert.AreEqual(12, mNext.Line);
+    Assert.IsFalse(mHistory.StepBack(mNext, mTarget));
     // Und wieder vor: B, dann C.
-    Assert.IsTrue(History.StepForward(At('A.pas', 12), Target));
-    Assert.AreEqual('B.pas', Target.FileName);
-    Assert.IsTrue(History.StepForward(Target, Next));
-    Assert.AreEqual('C.pas', Next.FileName);
-    Assert.IsFalse(History.StepForward(Next, Target));
+    Assert.IsTrue(mHistory.StepForward(At('A.pas', 12), mTarget));
+    Assert.AreEqual('B.pas', mTarget.FileName);
+    Assert.IsTrue(mHistory.StepForward(mTarget, mNext));
+    Assert.AreEqual('C.pas', mNext.FileName);
+    Assert.IsFalse(mHistory.StepForward(mNext, mTarget));
   finally
-    History.Free;
+    mHistory.Free;
   end;
 end;
 
 procedure TAtlasNavHistoryTests.NewJumpClearsForward;
 var
-  History: TAtlasNavHistory;
-  Target: TAtlasNavPlace;
+  mHistory: TAtlasNavHistory;
+  mTarget: TAtlasNavPlace;
 begin
-  History := TAtlasNavHistory.Create;
+  mHistory := TAtlasNavHistory.Create;
   try
-    History.Jumped(At('A.pas', 1), At('B.pas', 1));
-    Assert.IsTrue(History.StepBack(At('B.pas', 1), Target));
-    Assert.AreEqual(1, History.ForwardCount);
-    History.Jumped(At('A.pas', 1), At('D.pas', 1));
-    Assert.AreEqual(0, History.ForwardCount);
-    Assert.AreEqual(1, History.BackCount);
+    mHistory.Jumped(At('A.pas', 1), At('B.pas', 1));
+    Assert.IsTrue(mHistory.StepBack(At('B.pas', 1), mTarget));
+    Assert.AreEqual(1, mHistory.ForwardCount);
+    mHistory.Jumped(At('A.pas', 1), At('D.pas', 1));
+    Assert.AreEqual(0, mHistory.ForwardCount);
+    Assert.AreEqual(1, mHistory.BackCount);
     // Kein Sprung: nichts gemerkt.
-    History.Jumped(At('D.pas', 1), At('D.pas', 5));
-    Assert.AreEqual(1, History.BackCount);
+    mHistory.Jumped(At('D.pas', 1), At('D.pas', 5));
+    Assert.AreEqual(1, mHistory.BackCount);
     // Dieselbe Stelle zweimal: ein Eintrag.
-    History.Jumped(At('D.pas', 1), At('E.pas', 1));
-    History.Jumped(At('D.pas', 1), At('F.pas', 1));
-    Assert.AreEqual(2, History.BackCount);
+    mHistory.Jumped(At('D.pas', 1), At('E.pas', 1));
+    mHistory.Jumped(At('D.pas', 1), At('F.pas', 1));
+    Assert.AreEqual(2, mHistory.BackCount);
   finally
-    History.Free;
+    mHistory.Free;
   end;
 end;
 
 procedure TAtlasNavHistoryTests.EntriesFollowInsertedAndDeletedLines;
 var
-  History: TAtlasNavHistory;
-  Target: TAtlasNavPlace;
+  mHistory: TAtlasNavHistory;
+  mTarget: TAtlasNavPlace;
 begin
-  History := TAtlasNavHistory.Create;
+  mHistory := TAtlasNavHistory.Create;
   try
-    History.Jumped(At('A.pas', 50), At('B.pas', 1));
-    History.Edited(At('A.pas', 60));
+    mHistory.Jumped(At('A.pas', 50), At('B.pas', 1));
+    mHistory.Edited(At('A.pas', 60));
     // 5 Zeilen oberhalb eingefügt: dieselbe Codezeile ist jetzt 55.
-    History.LinesChanged('a.pas', 10, 5);
+    mHistory.LinesChanged('a.pas', 10, 5);
     // Unterhalb geändert: bleibt.
-    History.LinesChanged('A.pas', 70, 3);
+    mHistory.LinesChanged('A.pas', 70, 3);
     // Andere Datei: bleibt.
-    History.LinesChanged('B.pas', 1, 100);
-    Assert.IsTrue(History.StepBack(At('B.pas', 1), Target));
-    Assert.AreEqual(55, Target.Line);
-    Assert.IsTrue(History.LastEdit(At('B.pas', 1), Target));
-    Assert.AreEqual(65, Target.Line);
+    mHistory.LinesChanged('B.pas', 1, 100);
+    Assert.IsTrue(mHistory.StepBack(At('B.pas', 1), mTarget));
+    Assert.AreEqual(55, mTarget.Line);
+    Assert.IsTrue(mHistory.LastEdit(At('B.pas', 1), mTarget));
+    Assert.AreEqual(65, mTarget.Line);
     // Zeilen 60 bis 69 gelöscht (Anker 59, 10 Zeilen): der Eintrag in 65 rückt an die Stelle.
-    History.LinesChanged('A.pas', 59, -10);
-    Assert.IsTrue(History.LastEdit(At('B.pas', 1), Target));
-    Assert.AreEqual(59, Target.Line);
+    mHistory.LinesChanged('A.pas', 59, -10);
+    Assert.IsTrue(mHistory.LastEdit(At('B.pas', 1), mTarget));
+    Assert.AreEqual(59, mTarget.Line);
   finally
-    History.Free;
+    mHistory.Free;
   end;
 end;
 
 procedure TAtlasNavHistoryTests.LastEditGoesBackThroughEdits;
 var
-  History: TAtlasNavHistory;
-  Target, Next: TAtlasNavPlace;
+  mHistory: TAtlasNavHistory;
+  mTarget, mNext: TAtlasNavPlace;
 begin
-  History := TAtlasNavHistory.Create;
+  mHistory := TAtlasNavHistory.Create;
   try
-    Assert.IsFalse(History.LastEdit(At('A.pas', 1), Target));
-    History.Edited(At('A.pas', 10));
-    History.Edited(At('B.pas', 20));
-    History.Edited(At('C.pas', 30));
+    Assert.IsFalse(mHistory.LastEdit(At('A.pas', 1), mTarget));
+    mHistory.Edited(At('A.pas', 10));
+    mHistory.Edited(At('B.pas', 20));
+    mHistory.Edited(At('C.pas', 30));
     // Steht schon an der jüngsten: die davor.
-    Assert.IsTrue(History.LastEdit(At('C.pas', 30), Target));
-    Assert.AreEqual('B.pas', Target.FileName);
-    Assert.IsTrue(History.LastEdit(Target, Next));
-    Assert.AreEqual('A.pas', Next.FileName);
+    Assert.IsTrue(mHistory.LastEdit(At('C.pas', 30), mTarget));
+    Assert.AreEqual('B.pas', mTarget.FileName);
+    Assert.IsTrue(mHistory.LastEdit(mTarget, mNext));
+    Assert.AreEqual('A.pas', mNext.FileName);
     // Am Anfang bleibt es bei der ältesten.
-    Assert.IsTrue(History.LastEdit(Next, Target));
-    Assert.AreEqual('A.pas', Target.FileName);
+    Assert.IsTrue(mHistory.LastEdit(mNext, mTarget));
+    Assert.AreEqual('A.pas', mTarget.FileName);
     // Neue Änderung: wieder vorn.
-    History.Edited(At('D.pas', 1));
-    Assert.IsTrue(History.LastEdit(At('A.pas', 10), Target));
-    Assert.AreEqual('D.pas', Target.FileName);
+    mHistory.Edited(At('D.pas', 1));
+    Assert.IsTrue(mHistory.LastEdit(At('A.pas', 10), mTarget));
+    Assert.AreEqual('D.pas', mTarget.FileName);
   finally
-    History.Free;
+    mHistory.Free;
   end;
 end;
 
 procedure TAtlasNavHistoryTests.NeighbouringEditsMerge;
 var
-  History: TAtlasNavHistory;
+  mHistory: TAtlasNavHistory;
 begin
-  History := TAtlasNavHistory.Create;
+  mHistory := TAtlasNavHistory.Create;
   try
-    History.Edited(At('A.pas', 10));
-    History.Edited(At('A.pas', 11));
-    History.Edited(At('A.pas', 13));
-    Assert.AreEqual(1, History.EditCount);
-    History.Edited(At('A.pas', 20));
-    History.Edited(At('B.pas', 20));
-    Assert.AreEqual(3, History.EditCount);
+    mHistory.Edited(At('A.pas', 10));
+    mHistory.Edited(At('A.pas', 11));
+    mHistory.Edited(At('A.pas', 13));
+    Assert.AreEqual(1, mHistory.EditCount);
+    mHistory.Edited(At('A.pas', 20));
+    mHistory.Edited(At('B.pas', 20));
+    Assert.AreEqual(3, mHistory.EditCount);
   finally
-    History.Free;
+    mHistory.Free;
   end;
 end;
 
 procedure TAtlasNavHistoryTests.KeepsAtMostHundredEntries;
 var
-  History: TAtlasNavHistory;
-  Index: Integer;
-  Target, Next: TAtlasNavPlace;
+  mHistory: TAtlasNavHistory;
+  mIndex: Integer;
+  mTarget, mNext: TAtlasNavPlace;
 begin
-  History := TAtlasNavHistory.Create;
+  mHistory := TAtlasNavHistory.Create;
   try
-    for Index := 1 to 150 do
+    for mIndex := 1 to 150 do
     begin
-      History.Jumped(At(Format('U%d.pas', [Index]), 1), At(Format('U%d.pas', [Index + 1]), 1));
-      History.Edited(At(Format('U%d.pas', [Index]), 1));
+      mHistory.Jumped(At(Format('U%d.pas', [mIndex]), 1), At(Format('U%d.pas', [mIndex + 1]), 1));
+      mHistory.Edited(At(Format('U%d.pas', [mIndex]), 1));
     end;
-    Assert.AreEqual(TAtlasNavHistory.cMaxEntries, History.BackCount);
-    Assert.AreEqual(TAtlasNavHistory.cMaxEntries, History.EditCount);
+    Assert.AreEqual(TAtlasNavHistory.cMaxEntries, mHistory.BackCount);
+    Assert.AreEqual(TAtlasNavHistory.cMaxEntries, mHistory.EditCount);
     // Der älteste verbliebene Eintrag ist U51.
-    Target := At('U151.pas', 1);
-    while History.StepBack(Target, Next) do
+    mTarget := At('U151.pas', 1);
+    while mHistory.StepBack(mTarget, mNext) do
     begin
-      Target := Next;
+      mTarget := mNext;
     end;
-    Assert.AreEqual('U51.pas', Target.FileName);
+    Assert.AreEqual('U51.pas', mTarget.FileName);
   finally
-    History.Free;
+    mHistory.Free;
   end;
 end;
 
 procedure TAtlasNavHistoryTests.ListAndJumpToEntry;
 var
-  History: TAtlasNavHistory;
-  Entries: TArray<TAtlasNavListEntry>;
-  Target, Next: TAtlasNavPlace;
+  mHistory: TAtlasNavHistory;
+  mEntries: TArray<TAtlasNavListEntry>;
+  mTarget, mNext: TAtlasNavPlace;
 begin
-  History := TAtlasNavHistory.Create;
+  mHistory := TAtlasNavHistory.Create;
   try
-    History.Jumped(At('A.pas', 1), At('B.pas', 1));
-    History.Jumped(At('B.pas', 1), At('C.pas', 1));
-    History.Jumped(At('C.pas', 1), At('D.pas', 1));
-    Assert.IsTrue(History.StepBack(At('D.pas', 1), Target));
-    History.Edited(At('X.pas', 5));
-    Entries := History.Entries;
+    mHistory.Jumped(At('A.pas', 1), At('B.pas', 1));
+    mHistory.Jumped(At('B.pas', 1), At('C.pas', 1));
+    mHistory.Jumped(At('C.pas', 1), At('D.pas', 1));
+    Assert.IsTrue(mHistory.StepBack(At('D.pas', 1), mTarget));
+    mHistory.Edited(At('X.pas', 5));
+    mEntries := mHistory.Entries;
     // Vor (D), Zurück jüngster zuerst (B, A), Änderung (X).
-    Assert.AreEqual(4, Integer(Length(Entries)));
-    Assert.AreEqual('D.pas', Entries[0].Place.FileName);
-    Assert.AreEqual(Ord(TAtlasNavKind.Ahead), Ord(Entries[0].Kind));
-    Assert.AreEqual('B.pas', Entries[1].Place.FileName);
-    Assert.AreEqual('A.pas', Entries[2].Place.FileName);
-    Assert.AreEqual(Ord(TAtlasNavKind.Edit), Ord(Entries[3].Kind));
+    Assert.AreEqual(4, Integer(Length(mEntries)));
+    Assert.AreEqual('D.pas', mEntries[0].Place.FileName);
+    Assert.AreEqual(Ord(TAtlasNavKind.Ahead), Ord(mEntries[0].Kind));
+    Assert.AreEqual('B.pas', mEntries[1].Place.FileName);
+    Assert.AreEqual('A.pas', mEntries[2].Place.FileName);
+    Assert.AreEqual(Ord(TAtlasNavKind.Edit), Ord(mEntries[3].Kind));
     // Direkt zu A: C und B wandern auf den Vor-Stapel.
-    Assert.IsTrue(History.Jump(Entries[2], At('C.pas', 1), Target));
-    Assert.AreEqual('A.pas', Target.FileName);
-    Assert.AreEqual(0, History.BackCount);
-    Assert.AreEqual(3, History.ForwardCount);
-    Assert.IsTrue(History.StepForward(Target, Next));
-    Assert.AreEqual('B.pas', Next.FileName);
+    Assert.IsTrue(mHistory.Jump(mEntries[2], At('C.pas', 1), mTarget));
+    Assert.AreEqual('A.pas', mTarget.FileName);
+    Assert.AreEqual(0, mHistory.BackCount);
+    Assert.AreEqual(3, mHistory.ForwardCount);
+    Assert.IsTrue(mHistory.StepForward(mTarget, mNext));
+    Assert.AreEqual('B.pas', mNext.FileName);
     // Zur Änderung: zählt als neuer Sprung.
-    Entries := History.Entries;
-    Assert.IsTrue(History.Jump(Entries[High(Entries)], At('B.pas', 1), Target));
-    Assert.AreEqual('X.pas', Target.FileName);
-    Assert.AreEqual(0, History.ForwardCount);
+    mEntries := mHistory.Entries;
+    Assert.IsTrue(mHistory.Jump(mEntries[High(mEntries)], At('B.pas', 1), mTarget));
+    Assert.AreEqual('X.pas', mTarget.FileName);
+    Assert.AreEqual(0, mHistory.ForwardCount);
   finally
-    History.Free;
+    mHistory.Free;
   end;
 end;
 

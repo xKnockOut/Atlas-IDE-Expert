@@ -98,17 +98,17 @@ end;
 /// <summary>Wendet AEdits (nicht überlappend) auf AText an.</summary>
 function Apply(const AText: string; AEdits: TArray<TRuleEdit>): string;
 var
-  Lines: TArray<string>;
-  Edit: TRuleEdit;
-  Offsets: TArray<Integer>;
-  Index, Start, Stop: Integer;
+  mLines: TArray<string>;
+  mEdit: TRuleEdit;
+  mOffsets: TArray<Integer>;
+  mIndex, mStart, mStop: Integer;
 begin
-  Lines := AText.Split([#10]);
-  SetLength(Offsets, Length(Lines) + 1);
-  Offsets[0] := 0;
-  for Index := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  SetLength(mOffsets, Length(mLines) + 1);
+  mOffsets[0] := 0;
+  for mIndex := 0 to High(mLines) do
   begin
-    Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
   end;
   TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
@@ -117,45 +117,45 @@ begin
         ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
     end));
   Result := AText;
-  for Edit in AEdits do
+  for mEdit in AEdits do
   begin
-    Start := Offsets[Edit.Range.StartPos.Line] + Edit.Range.StartPos.Character;
-    Stop := Offsets[Edit.Range.EndPos.Line] + Edit.Range.EndPos.Character;
-    Result := Copy(Result, 1, Start) + Edit.NewText + Copy(Result, Stop + 1, MaxInt);
+    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
+    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
+    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
   end;
 end;
 
 function Expand(const AText: string; ALine: Integer): string;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Assert.IsTrue(Run(AText, ALine, Edits), AText);
-  Result := Apply(AText, Edits);
+  Assert.IsTrue(Run(AText, ALine, mEdits), AText);
+  Result := Apply(AText, mEdits);
 end;
 
 function ProblemOf(const AText: string): string;
 var
-  Problems: TArray<TSlashProblem>;
+  mProblems: TArray<TSlashProblem>;
 begin
-  Problems := TSlashCommandRegistry.Shared.Problems(AText, nil);
-  Assert.AreEqual(1, Integer(Length(Problems)));
-  Result := Problems[0].Message;
+  mProblems := TSlashCommandRegistry.Shared.Problems(AText, nil);
+  Assert.AreEqual(1, Integer(Length(mProblems)));
+  Result := mProblems[0].Message;
 end;
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 const
-  ClassUnit =
+  cClassUnit =
     'unit U;'#10 +                                  // 0
     'interface'#10 +                                // 1
     'uses'#10 +                                     // 2
@@ -174,267 +174,267 @@ const
     #10 +                                           // 15
     'end.';
 
-  TypeUnit =
+  cTypeUnit =
     'unit U;'#10'interface'#10'type'#10'  TA = Integer;'#10'  %s'#10'  TB = Byte;'#10'implementation'#10'end.';
 
 function InClass(const ACommand: string): string;
 begin
-  Result := Expand(Format(ClassUnit, [ACommand]), 12);
+  Result := Expand(Format(cClassUnit, [ACommand]), 12);
 end;
 
 procedure TTypeCommandsTests.EnumWithPrefixInTypeSection;
 begin
   Assert.AreEqual('ks', EnumPrefix('TKundenStatus'));
-  Assert.AreEqual(Format(TypeUnit, ['TFarbe = (fRot, fGruen, fBlau);']),
-    Expand(Format(TypeUnit, ['/enum TFarbe rot, gruen, blau']), 4));
-  Assert.AreEqual(Format(TypeUnit, ['TFarbe = (rot, gruen);']), Expand(Format(TypeUnit, ['/enum! TFarbe rot, gruen']),
+  Assert.AreEqual(Format(cTypeUnit, ['TFarbe = (fRot, fGruen, fBlau);']),
+    Expand(Format(cTypeUnit, ['/enum TFarbe rot, gruen, blau']), 4));
+  Assert.AreEqual(Format(cTypeUnit, ['TFarbe = (rot, gruen);']), Expand(Format(cTypeUnit, ['/enum! TFarbe rot, gruen']),
     4));
 end;
 
 procedure TTypeCommandsTests.EnumWithoutTypeSection;
 const
-  Text = 'unit U;'#10'interface'#10'/enum TFarbe rot'#10'implementation'#10'end.';
+  cText = 'unit U;'#10'interface'#10'/enum TFarbe rot'#10'implementation'#10'end.';
 begin
   Assert.AreEqual('unit U;'#10'interface'#10'type'#10'  TFarbe = (fRot);'#10'implementation'#10'end.',
-    Expand(Text, 2));
+    Expand(cText, 2));
 end;
 
 procedure TTypeCommandsTests.EnumWithNamesReopensType;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(Format(TypeUnit, ['/enum TFarbe rot, gruen names']), 4);
+  mText := Expand(Format(cTypeUnit, ['/enum TFarbe rot, gruen names']), 4);
   Assert.AreEqual('unit U;'#10'interface'#10'type'#10'  TA = Integer;'#10'  TFarbe = (fRot, fGruen);'#10'const'#10 +
     '  FarbeNamen: array[TFarbe] of string = (''rot'', ''gruen'');'#10'type'#10'  TB = Byte;'#10'implementation'#10 +
-    'end.', Text);
-  Assert.IsTrue(Parses(Text));
+    'end.', mText);
+  Assert.IsTrue(Parses(mText));
 end;
 
 procedure TTypeCommandsTests.EnumInRoutineFails;
 const
-  Text = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  /enum TA x'#10'end;'#10'end.';
+  cText = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  /enum TA x'#10'end;'#10'end.';
 begin
-  Assert.AreEqual('/enum gilt nur auf Unit-Ebene', ProblemOf(Text));
+  Assert.AreEqual('/enum gilt nur auf Unit-Ebene', ProblemOf(cText));
 end;
 
 procedure TTypeCommandsTests.HelperForRecordAndClass;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(Format(TypeUnit, ['/helper TA']), 4);
-  Assert.IsTrue(Pos('  TAHelper = record helper for TA'#10'  public'#10'  end;'#10, Text) > 0, Text);
-  Text := Expand(Format(TypeUnit, ['/helper TStrings']), 4);
-  Assert.IsTrue(Pos('  TStringsHelper = class helper for TStrings'#10, Text) > 0, Text);
+  mText := Expand(Format(cTypeUnit, ['/helper TA']), 4);
+  Assert.IsTrue(Pos('  TAHelper = record helper for TA'#10'  public'#10'  end;'#10, mText) > 0, mText);
+  mText := Expand(Format(cTypeUnit, ['/helper TStrings']), 4);
+  Assert.IsTrue(Pos('  TStringsHelper = class helper for TStrings'#10, mText) > 0, mText);
 end;
 
 const
-  EnumUnit =
+  cEnumUnit =
     'unit U;'#10'interface'#10'type'#10'  TFarbe = (Rot, Gruen, Blau);'#10'  %s'#10'implementation'#10'end.';
 
 procedure TTypeCommandsTests.HelperForEnumAddsNamesAndConversion;
 var
-  Text: string;
+  mText: string;
 begin
   // #875: Namenstabelle, ToString und FromString; System.SysUtils kommt ins uses.
-  Text := Expand(Format(EnumUnit, ['/helper TFarbe']), 4);
+  mText := Expand(Format(cEnumUnit, ['/helper TFarbe']), 4);
   Assert.IsTrue(Pos('  TFarbeHelper = record helper for TFarbe'#10'  private const'#10 +
     '    cNames: array[TFarbe] of string = (''Rot'', ''Gruen'', ''Blau'');'#10'  public'#10 +
     '    function ToString: string;'#10'    class function FromString(const AValue: string): TFarbe; static;'#10 +
-    '  end;', Text) > 0, Text);
+    '  end;', mText) > 0, mText);
   Assert.IsTrue(Pos('function TFarbeHelper.ToString: string;'#10'begin'#10'  Result := cNames[Self];'#10'end;',
-    Text) > 0, Text);
+    mText) > 0, mText);
   Assert.IsTrue(Pos('class function TFarbeHelper.FromString(const AValue: string): TFarbe;'#10'var'#10 +
     '  Value: TFarbe;'#10'begin'#10'  for Value := Low(TFarbe) to High(TFarbe) do'#10 +
-    '    if SameText(cNames[Value], AValue) then'#10'      Exit(Value);'#10, Text) > 0, Text);
-  Assert.IsTrue(Pos('uses'#10'  System.SysUtils;', Text) > 0, Text);
-  Assert.IsTrue(Parses(Text), Text);
+    '    if SameText(cNames[Value], AValue) then'#10'      Exit(Value);'#10, mText) > 0, mText);
+  Assert.IsTrue(Pos('uses'#10'  System.SysUtils;', mText) > 0, mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TTypeCommandsTests.HelperForEnumSwitchedOff;
 var
-  Host: TRecordingSlashHost;
-  Keep: ISlashHost;
-  Edits: TArray<TRuleEdit>;
-  Text: string;
+  mHost: TRecordingSlashHost;
+  mKeep: ISlashHost;
+  mEdits: TArray<TRuleEdit>;
+  mText: string;
 begin
-  Host := TRecordingSlashHost.Create;
-  Keep := Host;
-  Host.Settings := [TSlashSettings.cEnumHelper + '=false'];
-  Text := Format(EnumUnit, ['/helper TFarbe']);
-  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(5, 0),
-    TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', Keep), Edits));
-  Text := Apply(Text, Edits);
-  Assert.IsTrue(Pos('  TFarbeHelper = record helper for TFarbe'#10'  public'#10'  end;', Text) > 0, Text);
-  Assert.AreEqual(0, Pos('cNames', Text), Text);
+  mHost := TRecordingSlashHost.Create;
+  mKeep := mHost;
+  mHost.Settings := [TSlashSettings.cEnumHelper + '=false'];
+  mText := Format(cEnumUnit, ['/helper TFarbe']);
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(mText, TTextPosition.Create(5, 0),
+    TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', mKeep), mEdits));
+  mText := Apply(mText, mEdits);
+  Assert.IsTrue(Pos('  TFarbeHelper = record helper for TFarbe'#10'  public'#10'  end;', mText) > 0, mText);
+  Assert.AreEqual(0, Pos('cNames', mText), mText);
 end;
 
 const
-  SetUnit =
+  cSetUnit =
     'unit U;'#10'interface'#10'type'#10'  TFarbe = (Rot, Gruen, Blau);'#10'  TFarben = set of TFarbe;'#10 +
     '  %s'#10'implementation'#10'end.';
 
 procedure TTypeCommandsTests.HelperForSetAddsMethods;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(Format(SetUnit, ['/helper TFarben']), 5);
+  mText := Expand(Format(cSetUnit, ['/helper TFarben']), 5);
   Assert.IsTrue(Pos('  TFarbenHelper = record helper for TFarben'#10'  private const'#10 +
     '    cNames: array[TFarbe] of string = (''Rot'', ''Gruen'', ''Blau'');'#10'  public'#10 +
     '    function Contains(AValue: TFarbe): Boolean;'#10'    function ToText: string;'#10 +
-    '    procedure Toggle(AValue: TFarbe);'#10'    class function All: TFarben; static;'#10'  end;', Text) > 0, Text);
+    '    procedure Toggle(AValue: TFarbe);'#10'    class function All: TFarben; static;'#10'  end;', mText) > 0, mText);
   Assert.IsTrue(Pos('function TFarbenHelper.Contains(AValue: TFarbe): Boolean;'#10'begin'#10 +
-    '  Result := AValue in Self;'#10'end;', Text) > 0, Text);
+    '  Result := AValue in Self;'#10'end;', mText) > 0, mText);
   Assert.IsTrue(Pos('  for Value in Self do'#10'  begin'#10'    if Result <> '''' then'#10 +
     '      Result := Result + '', '';'#10'    Result := Result + cNames[Value];'#10'  end;'#10 +
-    '  Result := ''['' + Result + '']'';', Text) > 0, Text);
+    '  Result := ''['' + Result + '']'';', mText) > 0, mText);
   Assert.IsTrue(Pos('procedure TFarbenHelper.Toggle(AValue: TFarbe);'#10'begin'#10'  if AValue in Self then'#10 +
-    '    Exclude(Self, AValue)'#10'  else'#10'    Include(Self, AValue);'#10'end;', Text) > 0, Text);
+    '    Exclude(Self, AValue)'#10'  else'#10'    Include(Self, AValue);'#10'end;', mText) > 0, mText);
   Assert.IsTrue(Pos('class function TFarbenHelper.All: TFarben;'#10'begin'#10 +
-    '  Result := [Low(TFarbe)..High(TFarbe)];'#10'end;', Text) > 0, Text);
-  Assert.AreEqual(0, Pos('System.TypInfo', Text), Text);
-  Assert.IsTrue(Parses(Text), Text);
+    '  Result := [Low(TFarbe)..High(TFarbe)];'#10'end;', mText) > 0, mText);
+  Assert.AreEqual(0, Pos('System.TypInfo', mText), mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TTypeCommandsTests.HelperForSetWithoutKnownValuesUsesRtti;
 var
-  Text: string;
+  mText: string;
 begin
   // Aufzählung aus einer anderen Unit ohne Index: Namen über die RTTI.
-  Text := Expand('unit U;'#10'interface'#10'type'#10'  TStile = set of TFontStyle;'#10'  /helper TStile'#10 +
+  mText := Expand('unit U;'#10'interface'#10'type'#10'  TStile = set of TFontStyle;'#10'  /helper TStile'#10 +
     'implementation'#10'end.', 4);
-  Assert.IsTrue(Pos('    Result := Result + GetEnumName(TypeInfo(TFontStyle), Ord(Value));', Text) > 0, Text);
-  Assert.IsTrue(Pos('System.TypInfo', Text) > 0, Text);
-  Assert.AreEqual(0, Pos('cNames', Text), Text);
-  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(Pos('    Result := Result + GetEnumName(TypeInfo(TFontStyle), Ord(Value));', mText) > 0, mText);
+  Assert.IsTrue(Pos('System.TypInfo', mText) > 0, mText);
+  Assert.AreEqual(0, Pos('cNames', mText), mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TTypeCommandsTests.HelperForSetSwitchedOff;
 var
-  Host: TRecordingSlashHost;
-  Keep: ISlashHost;
-  Edits: TArray<TRuleEdit>;
-  Text: string;
+  mHost: TRecordingSlashHost;
+  mKeep: ISlashHost;
+  mEdits: TArray<TRuleEdit>;
+  mText: string;
 begin
-  Host := TRecordingSlashHost.Create;
-  Keep := Host;
-  Host.Settings := [TSlashSettings.cSetHelper + '=false'];
-  Text := Format(SetUnit, ['/helper TFarben']);
-  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(6, 0),
-    TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', Keep), Edits));
-  Text := Apply(Text, Edits);
-  Assert.IsTrue(Pos('  TFarbenHelper = record helper for TFarben'#10'  public'#10'  end;', Text) > 0, Text);
-  Assert.AreEqual(0, Pos('Contains', Text), Text);
-  Host.Settings := nil;
+  mHost := TRecordingSlashHost.Create;
+  mKeep := mHost;
+  mHost.Settings := [TSlashSettings.cSetHelper + '=false'];
+  mText := Format(cSetUnit, ['/helper TFarben']);
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(mText, TTextPosition.Create(6, 0),
+    TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', mKeep), mEdits));
+  mText := Apply(mText, mEdits);
+  Assert.IsTrue(Pos('  TFarbenHelper = record helper for TFarben'#10'  public'#10'  end;', mText) > 0, mText);
+  Assert.AreEqual(0, Pos('Contains', mText), mText);
+  mHost.Settings := nil;
 end;
 
 procedure TTypeCommandsTests.SingletonAddsInstance;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := InClass('/singleton');
+  mText := InClass('/singleton');
   Assert.IsTrue(Pos('  private'#10'    class var FInstance: TKunde;'#10'  public'#10'    class destructor Destroy;'#10 +
-    '    class function Instance: TKunde;'#10'  end;', Text) > 0, Text);
+    '    class function Instance: TKunde;'#10'  end;', mText) > 0, mText);
   Assert.IsTrue(Pos('class function TKunde.Instance: TKunde;'#10'begin'#10'  if FInstance = nil then'#10 +
-    '    FInstance := TKunde.Create;'#10'  Result := FInstance;'#10'end;', Text) > 0, Text);
-  Assert.IsTrue(Pos('  FreeAndNil(FInstance);', Text) > 0, Text);
+    '    FInstance := TKunde.Create;'#10'  Result := FInstance;'#10'end;', mText) > 0, mText);
+  Assert.IsTrue(Pos('  FreeAndNil(FInstance);', mText) > 0, mText);
 end;
 
 procedure TTypeCommandsTests.SingletonNamesExistingConstructor;
 var
-  Host: TRecordingSlashHost;
-  Keep: ISlashHost;
-  Edits: TArray<TRuleEdit>;
+  mHost: TRecordingSlashHost;
+  mKeep: ISlashHost;
+  mEdits: TArray<TRuleEdit>;
 begin
   // #298: Der vorhandene Konstruktor bleibt; ein Hinweis nennt ihn.
-  Host := TRecordingSlashHost.Create;
-  Keep := Host;
-  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(ClassUnit,
+  mHost := TRecordingSlashHost.Create;
+  mKeep := mHost;
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(cClassUnit,
     ['constructor Create(AName: string);'#10'    /singleton']), TTextPosition.Create(14, 0),
-    TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', Keep), Edits));
-  Assert.AreEqual(1, Integer(Length(Host.Notes)));
-  Assert.Contains(Host.Notes[0], 'Konstruktor Create bleibt unverändert');
+    TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', mKeep), mEdits));
+  Assert.AreEqual(1, Integer(Length(mHost.Notes)));
+  Assert.Contains(mHost.Notes[0], 'Konstruktor Create bleibt unverändert');
   // Ohne Konstruktor kein Hinweis.
-  Host.Notes := nil;
-  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(ClassUnit, ['/singleton']),
-    TTextPosition.Create(13, 0), TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', Keep), Edits));
-  Assert.AreEqual(0, Integer(Length(Host.Notes)));
+  mHost.Notes := nil;
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(cClassUnit, ['/singleton']),
+    TTextPosition.Create(13, 0), TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', mKeep), mEdits));
+  Assert.AreEqual(0, Integer(Length(mHost.Notes)));
 end;
 
 procedure TTypeCommandsTests.SingletonOutsideClassFails;
 begin
   Assert.AreEqual('/singleton gilt nur in einer Klasse oder einer ihrer Methoden',
-    ProblemOf(Format(TypeUnit, ['/singleton'])));
+    ProblemOf(Format(cTypeUnit, ['/singleton'])));
 end;
 
 procedure TTypeCommandsTests.EncapsulateMakesProperty;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := InClass('/encapsulate FName');
-  Assert.AreEqual(0, Pos('  public'#10'    FName: string;', Text), Text);
+  mText := InClass('/encapsulate FName');
+  Assert.AreEqual(0, Pos('  public'#10'    FName: string;', mText), mText);
   Assert.IsTrue(Pos('  private'#10'    FName: string;'#10'    procedure SetName(const Value: string);'#10 +
-    '  public'#10'    property Name: string read FName write SetName;'#10'  end;', Text) > 0, Text);
+    '  public'#10'    property Name: string read FName write SetName;'#10'  end;', mText) > 0, mText);
   // Derselbe Setter wie /prop und die Code-Vorlage (#51); ohne Changed in TKunde nur die Prüfung.
   Assert.IsTrue(Pos('procedure TKunde.SetName(const Value: string);'#10'begin'#10'  if FName <> Value then'#10 +
-    '    FName := Value;'#10'end;', Text) > 0, Text);
+    '    FName := Value;'#10'end;', mText) > 0, mText);
 end;
 
 procedure TTypeCommandsTests.EncapsulatePrivateFieldFails;
 begin
-  Assert.AreEqual('FListe ist schon private', ProblemOf(Format(ClassUnit, ['/encapsulate FListe'])));
-  Assert.AreEqual('Kein Feld FOrt in TKunde', ProblemOf(Format(ClassUnit, ['/encapsulate FOrt'])));
+  Assert.AreEqual('FListe ist schon private', ProblemOf(Format(cClassUnit, ['/encapsulate FListe'])));
+  Assert.AreEqual('Kein Feld FOrt in TKunde', ProblemOf(Format(cClassUnit, ['/encapsulate FOrt'])));
 end;
 
 procedure TTypeCommandsTests.AssignCopiesFields;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := InClass('/assign');
-  Assert.IsTrue(Pos('    procedure Assign(Source: TPersistent); override;'#10'  end;', Text) > 0, Text);
+  mText := InClass('/assign');
+  Assert.IsTrue(Pos('    procedure Assign(Source: TPersistent); override;'#10'  end;', mText) > 0, mText);
   Assert.IsTrue(Pos('procedure TKunde.Assign(Source: TPersistent);'#10'begin'#10'  if Source is TKunde then'#10 +
     '  begin'#10'    FListe.Assign(TKunde(Source).FListe);'#10'    FName := TKunde(Source).FName;'#10 +
     '    FAlter := TKunde(Source).FAlter;'#10'    FAktiv := TKunde(Source).FAktiv;'#10'  end'#10'  else'#10 +
-    '    inherited Assign(Source);'#10'end;', Text) > 0, Text);
+    '    inherited Assign(Source);'#10'end;', mText) > 0, mText);
 end;
 
 procedure TTypeCommandsTests.AssignOutsideClassFails;
 begin
   Assert.AreEqual('/assign gilt nur in einer Klasse oder einer ihrer Methoden',
-    ProblemOf(Format(TypeUnit, ['/assign'])));
+    ProblemOf(Format(cTypeUnit, ['/assign'])));
 end;
 
 procedure TTypeCommandsTests.JsonForSimpleFields;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := InClass('/json');
-  Assert.IsTrue(Pos('  System.Classes, System.JSON;', Text) + Pos('  System.Classes,'#10'  System.JSON;', Text) > 0,
-    Text);
+  mText := InClass('/json');
+  Assert.IsTrue(Pos('  System.Classes, System.JSON;', mText) + Pos('  System.Classes,'#10'  System.JSON;', mText) > 0,
+    mText);
   Assert.IsTrue(Pos('    function ToJson: TJSONObject;'#10 +
-    '    class function FromJson(AJson: TJSONObject): TKunde; static;', Text) > 0, Text);
+    '    class function FromJson(AJson: TJSONObject): TKunde; static;', mText) > 0, mText);
   Assert.IsTrue(Pos('  Result.AddPair(''Name'', FName);'#10'  Result.AddPair(''Alter'', TJSONNumber.Create(FAlter));'#10 +
-    '  Result.AddPair(''Aktiv'', TJSONBool.Create(FAktiv));', Text) > 0, Text);
-  Assert.IsTrue(Pos('  // TODO FListe: TStrings', Text) > 0, Text);
-  Assert.IsTrue(Pos('  Result := TKunde.Create;'#10, Text) > 0, Text);
-  Assert.IsTrue(Pos('  Result.FAlter := AJson.GetValue<Integer>(''Alter'');', Text) > 0, Text);
+    '  Result.AddPair(''Aktiv'', TJSONBool.Create(FAktiv));', mText) > 0, mText);
+  Assert.IsTrue(Pos('  // TODO FListe: TStrings', mText) > 0, mText);
+  Assert.IsTrue(Pos('  Result := TKunde.Create;'#10, mText) > 0, mText);
+  Assert.IsTrue(Pos('  Result.FAlter := AJson.GetValue<Integer>(''Alter'');', mText) > 0, mText);
 end;
 
 procedure TTypeCommandsTests.JsonOutsideTypeFails;
 begin
-  Assert.AreEqual('/json gilt nur in einer Klasse oder einer ihrer Methoden', ProblemOf(Format(TypeUnit, ['/json'])));
+  Assert.AreEqual('/json gilt nur in einer Klasse oder einer ihrer Methoden', ProblemOf(Format(cTypeUnit, ['/json'])));
 end;
 
 procedure TTypeCommandsTests.HelperInRoutineFails;
 const
-  Text = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  /helper TA'#10'end;'#10'end.';
+  cText = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  /helper TA'#10'end;'#10'end.';
 begin
-  Assert.AreEqual('/helper gilt nur auf Unit-Ebene', ProblemOf(Text));
-  Assert.AreEqual('/helper gilt nur auf Unit-Ebene', ProblemOf(Format(ClassUnit, ['/helper TA'])));
+  Assert.AreEqual('/helper gilt nur auf Unit-Ebene', ProblemOf(cText));
+  Assert.AreEqual('/helper gilt nur auf Unit-Ebene', ProblemOf(Format(cClassUnit, ['/helper TA'])));
 end;
 
 procedure TTypeCommandsTests.EncapsulateKeepsUsesOutsideClass;
 const
-  Text =
+  cText =
     'unit U;'#10 +                                  // 0
     'interface'#10 +                                // 1
     'type'#10 +                                     // 2
@@ -455,24 +455,24 @@ const
     'end;'#10 +                                     // 17
     'end.';
 var
-  Result_: string;
+  mResult_: string;
 begin
-  Result_ := Expand(Text, 7);
-  Assert.IsTrue(Parses(Result_), Result_);
+  mResult_ := Expand(cText, 7);
+  Assert.IsTrue(Parses(mResult_), mResult_);
   Assert.IsTrue(Pos('  private'#10'    FName: string;'#10'    procedure SetName(const Value: string);'#10 +
-    '  public'#10'    property Name: string read FName write SetName;'#10'  end;', Result_) > 0, Result_);
+    '  public'#10'    property Name: string read FName write SetName;'#10'  end;', mResult_) > 0, mResult_);
   // In den eigenen Methoden das Feld, außerhalb der Klasse bleibt die Stelle wie sie war.
-  Assert.IsTrue(Pos('  FName := FName + Self.FName;', Result_) > 0, Result_);
-  Assert.IsTrue(Pos('procedure Setze(K: TKunde);'#10'begin'#10'  K.Name := ''x'';'#10'end;', Result_) > 0, Result_);
+  Assert.IsTrue(Pos('  FName := FName + Self.FName;', mResult_) > 0, mResult_);
+  Assert.IsTrue(Pos('procedure Setze(K: TKunde);'#10'begin'#10'  K.Name := ''x'';'#10'end;', mResult_) > 0, mResult_);
   // Mit F-Präfix bleibt jede Verwendung unverändert.
-  Result_ := Expand(StringReplace(StringReplace(Text, 'Name: string', 'FName: string', []), '/encapsulate Name',
+  mResult_ := Expand(StringReplace(StringReplace(cText, 'Name: string', 'FName: string', []), '/encapsulate Name',
     '/encapsulate FName', []), 7);
-  Assert.IsTrue(Pos('  Name := Name + Self.Name;', Result_) > 0, Result_);
-  Assert.IsTrue(Pos('  K.Name := ''x'';', Result_) > 0, Result_);
+  Assert.IsTrue(Pos('  Name := Name + Self.Name;', mResult_) > 0, mResult_);
+  Assert.IsTrue(Pos('  K.Name := ''x'';', mResult_) > 0, mResult_);
 end;
 
 const
-  JsonBefore =
+  cJsonBefore =
     'unit Atlas.Common.Editing.TypeCommands.JsonGolden;'#13#10 +
     #13#10 +
     '// Golden-Datei für /json (#298): genau das, was /json aus der Klasse ohne'#13#10 +
@@ -503,25 +503,25 @@ const
 /// <summary>Datei unter Tests/ ab dem Programmordner bzw. dem aktuellen Ordner aufwärts; '' ohne.</summary>
 function TestsFile(const ARelative: string): string;
 var
-  Starts: TArray<string>;
-  Start, Directory: string;
+  mStarts: TArray<string>;
+  mStart, mDirectory: string;
 begin
-  Starts := [ExtractFileDir(ParamStr(0)), GetCurrentDir];
-  for Start in Starts do
+  mStarts := [ExtractFileDir(ParamStr(0)), GetCurrentDir];
+  for mStart in mStarts do
   begin
-    Directory := Start;
-    while Directory <> '' do
+    mDirectory := mStart;
+    while mDirectory <> '' do
     begin
-      Result := TPath.Combine(Directory, TPath.Combine('Tests', ARelative));
+      Result := TPath.Combine(mDirectory, TPath.Combine('Tests', ARelative));
       if TFile.Exists(Result) then
       begin
         Exit;
       end;
-      if ExtractFileDir(Directory) = Directory then
+      if ExtractFileDir(mDirectory) = mDirectory then
       begin
         Break;
       end;
-      Directory := ExtractFileDir(Directory);
+      mDirectory := ExtractFileDir(mDirectory);
     end;
   end;
   Result := '';
@@ -529,92 +529,92 @@ end;
 
 procedure TTypeCommandsTests.JsonMatchesGoldenFile;
 var
-  FileName, Golden: string;
+  mFileName, mGolden: string;
 begin
-  FileName := TestsFile(TPath.Combine('Common', TPath.Combine('Editing',
+  mFileName := TestsFile(TPath.Combine('Common', TPath.Combine('Editing',
     'Atlas.Common.Editing.TypeCommands.JsonGolden.pas')));
-  Assert.AreNotEqual('', FileName, 'Golden-Datei nicht gefunden');
-  Golden := TFile.ReadAllText(FileName, TEncoding.UTF8);
-  if (Golden <> '') and (Golden[1] = #$FEFF) then
+  Assert.AreNotEqual('', mFileName, 'Golden-Datei nicht gefunden');
+  mGolden := TFile.ReadAllText(mFileName, TEncoding.UTF8);
+  if (mGolden <> '') and (mGolden[1] = #$FEFF) then
   begin
-    Delete(Golden, 1, 1);
+    Delete(mGolden, 1, 1);
   end;
-  Assert.AreEqual(Golden, Expand(JsonBefore, 20));
+  Assert.AreEqual(mGolden, Expand(cJsonBefore, 20));
 end;
 
 procedure TTypeCommandsTests.JsonRoundTripKeepsValues;
 var
-  Original, Copied: TJsonKunde;
-  Json: TJSONObject;
+  mOriginal, mCopied: TJsonKunde;
+  mJson: TJSONObject;
 begin
-  Copied := nil;
-  Json := nil;
-  Original := TJsonKunde.Create;
+  mCopied := nil;
+  mJson := nil;
+  mOriginal := TJsonKunde.Create;
   try
-    Original.FName := 'Müller';
-    Original.FAlter := 42;
-    Original.FUmsatz := 1234.5;
-    Original.FAktiv := True;
-    Json := Original.ToJson;
-    Copied := TJsonKunde.FromJson(Json);
-    Assert.AreEqual(Original.FName, Copied.FName);
-    Assert.AreEqual(Original.FAlter, Copied.FAlter);
-    Assert.AreEqual(Original.FUmsatz, Copied.FUmsatz, 0.0001);
-    Assert.IsTrue(Copied.FAktiv);
+    mOriginal.FName := 'Müller';
+    mOriginal.FAlter := 42;
+    mOriginal.FUmsatz := 1234.5;
+    mOriginal.FAktiv := True;
+    mJson := mOriginal.ToJson;
+    mCopied := TJsonKunde.FromJson(mJson);
+    Assert.AreEqual(mOriginal.FName, mCopied.FName);
+    Assert.AreEqual(mOriginal.FAlter, mCopied.FAlter);
+    Assert.AreEqual(mOriginal.FUmsatz, mCopied.FUmsatz, 0.0001);
+    Assert.IsTrue(mCopied.FAktiv);
   finally
-    Copied.Free;
-    Json.Free;
-    Original.Free;
+    mCopied.Free;
+    mJson.Free;
+    mOriginal.Free;
   end;
 end;
 
 procedure TTypeCommandsTests.ThreadWithoutTypeSection;
 const
-  Text = 'unit U;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils;'#10'/thread TWorker'#10#10'end.';
+  cText = 'unit U;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils;'#10'/thread TWorker'#10#10'end.';
 var
-  Result_: string;
+  mResult_: string;
 begin
-  Result_ := Expand(Text, 5);
+  mResult_ := Expand(cText, 5);
   Assert.IsTrue(Pos('type'#10'  TWorker = class(TThread)'#10'  protected'#10'    procedure Execute; override;'#10 +
-    '  end;'#10, Result_) > 0, Result_);
-  Assert.IsTrue(Pos('procedure TWorker.Execute;'#10'begin'#10, Result_) > 0, Result_);
-  Assert.IsTrue(Pos('  while not Terminated do'#10, Result_) > 0, Result_);
-  Assert.IsTrue(Pos('System.Classes', Result_) > 0, Result_);
-  Assert.IsTrue(Parses(Result_), Result_);
+    '  end;'#10, mResult_) > 0, mResult_);
+  Assert.IsTrue(Pos('procedure TWorker.Execute;'#10'begin'#10, mResult_) > 0, mResult_);
+  Assert.IsTrue(Pos('  while not Terminated do'#10, mResult_) > 0, mResult_);
+  Assert.IsTrue(Pos('System.Classes', mResult_) > 0, mResult_);
+  Assert.IsTrue(Parses(mResult_), mResult_);
 end;
 
 procedure TTypeCommandsTests.ThreadInClassFails;
 begin
-  Assert.AreEqual('/thread gilt nur auf Unit-Ebene', ProblemOf(Format(ClassUnit, ['/thread TWorker'])));
+  Assert.AreEqual('/thread gilt nur auf Unit-Ebene', ProblemOf(Format(cClassUnit, ['/thread TWorker'])));
 end;
 
 procedure TTypeCommandsTests.ExceptionWithAndWithoutAncestor;
 begin
-  Assert.AreEqual(Format(TypeUnit, ['EImportFehler = class(Exception);']),
-    Expand(Format(TypeUnit, ['/exception EImportFehler']), 4));
-  Assert.AreEqual(Format(TypeUnit, ['EImportFehler = class(EBasis);']),
-    Expand(Format(TypeUnit, ['/exception EImportFehler : EBasis']), 4));
+  Assert.AreEqual(Format(cTypeUnit, ['EImportFehler = class(Exception);']),
+    Expand(Format(cTypeUnit, ['/exception EImportFehler']), 4));
+  Assert.AreEqual(Format(cTypeUnit, ['EImportFehler = class(EBasis);']),
+    Expand(Format(cTypeUnit, ['/exception EImportFehler : EBasis']), 4));
 end;
 
 procedure TTypeCommandsTests.ExceptionInRoutineFails;
 const
-  Text = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  /exception EX'#10'end;'#10'end.';
+  cText = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  /exception EX'#10'end;'#10'end.';
 begin
-  Assert.AreEqual('/exception gilt nur auf Unit-Ebene', ProblemOf(Text));
+  Assert.AreEqual('/exception gilt nur auf Unit-Ebene', ProblemOf(cText));
 end;
 
 procedure TTypeCommandsTests.ResultsParseWithoutErrors;
 const
-  Commands: array[0..4] of string = ('/singleton', '/encapsulate FName', '/assign', '/json', '/encapsulate FAlter');
+  cCommands: array[0..4] of string = ('/singleton', '/encapsulate FName', '/assign', '/json', '/encapsulate FAlter');
 var
-  Command, Text: string;
+  mCommand, mText: string;
 begin
-  for Command in Commands do
+  for mCommand in cCommands do
   begin
-    Text := InClass(Command);
-    Assert.IsTrue(Parses(Text), Command + ': ' + Text);
+    mText := InClass(mCommand);
+    Assert.IsTrue(Parses(mText), mCommand + ': ' + mText);
   end;
-  Assert.IsTrue(Parses(Expand(Format(TypeUnit, ['/helper TA']), 4)));
+  Assert.IsTrue(Parses(Expand(Format(cTypeUnit, ['/helper TA']), 4)));
 end;
 
 initialization

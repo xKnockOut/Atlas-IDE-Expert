@@ -64,12 +64,12 @@ uses
   Atlas.Common.Lsp.Impact;
 
 const
-  BasisFile = 'C:\P\Basis.pas';
-  AndereFile = 'C:\P\Andere.pas';
-  BasisTestFile = 'C:\P\Basis.Tests.pas';
-  ProgramFile = 'C:\P\Tests.dpr';
+  cBasisFile = 'C:\P\Basis.pas';
+  cAndereFile = 'C:\P\Andere.pas';
+  cBasisTestFile = 'C:\P\Basis.Tests.pas';
+  cProgramFile = 'C:\P\Tests.dpr';
 
-  UnitBasis =
+  cUnitBasis =
     'unit Basis;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -122,7 +122,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitAndere =
+  cUnitAndere =
     'unit Andere;'#10 +
     'interface'#10 +
     'procedure Leer;'#10 +
@@ -132,7 +132,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitBasisTests =
+  cUnitBasisTests =
     'unit Basis.Tests;'#10 +
     'interface'#10 +
     'uses DUnitX.TestFramework, Basis;'#10 +
@@ -162,7 +162,7 @@ const
     'end;'#10 +
     'end.';
 
-  ProgramTests =
+  cProgramTests =
     'program Tests;'#10 +
     'uses'#10 +
     '  DUnitX.TestFramework,'#10 +
@@ -172,21 +172,21 @@ const
 
 function TextOf(const AFileName: string): string;
 begin
-  if SameText(AFileName, BasisFile) then
+  if SameText(AFileName, cBasisFile) then
   begin
-    Result := UnitBasis;
+    Result := cUnitBasis;
   end
-  else if SameText(AFileName, AndereFile) then
+  else if SameText(AFileName, cAndereFile) then
   begin
-    Result := UnitAndere;
+    Result := cUnitAndere;
   end
-  else if SameText(AFileName, BasisTestFile) then
+  else if SameText(AFileName, cBasisTestFile) then
   begin
-    Result := UnitBasisTests;
+    Result := cUnitBasisTests;
   end
-  else if SameText(AFileName, ProgramFile) then
+  else if SameText(AFileName, cProgramFile) then
   begin
-    Result := ProgramTests;
+    Result := cProgramTests;
   end
   else
   begin
@@ -252,9 +252,9 @@ end;
 procedure TCoveredByTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, BasisFile, nil, nil, True));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitAndere, AndereFile, nil, nil, True));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasisTests, BasisTestFile, nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAndere, cAndereFile, nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasisTests, cBasisTestFile, nil, nil, True));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -267,7 +267,7 @@ end;
 function TCoveredByTests.RequestOf(ADepth: Integer; AIncludePrivate: Boolean): TCoveredRequest;
 begin
   Result := Default(TCoveredRequest);
-  Result.Files := TArray<string>.Create(BasisFile, AndereFile, BasisTestFile);
+  Result.Files := TArray<string>.Create(cBasisFile, cAndereFile, cBasisTestFile);
   Result.ReadText :=
     function(const AName: string; out AContent: string): Boolean
     begin
@@ -275,7 +275,7 @@ begin
     end;
   Result.Options := TImpactOptions.Default;
   Result.Options.Depth := ADepth;
-  Result.Options.Tests := TImpactTestScope.FromProgram('{unit}.Tests', ProgramTests);
+  Result.Options.Tests := TImpactTestScope.FromProgram('{unit}.Tests', cProgramTests);
   Result.IncludePrivate := AIncludePrivate;
 end;
 
@@ -294,14 +294,14 @@ procedure TCoveredByTests.PublicMethodsAndInterfaceRoutines;
 begin
   // Destruktor (ruft Free), private Methode, lokale Routine und Routine nur im implementation-Teil fehlen.
   Assert.AreEqual('TBaseline.Create TBaseline.Match TBaseline.Count Pruefe',
-    Names(TCoveredBy.Methods(BasisFile, UnitBasis, False)));
+    Names(TCoveredBy.Methods(cBasisFile, cUnitBasis, False)));
 end;
 
 procedure TCoveredByTests.PrivateOnlyOnRequest;
 var
   mMethods: TArray<TCoveredMethod>;
 begin
-  mMethods := TCoveredBy.Methods(BasisFile, UnitBasis, True);
+  mMethods := TCoveredBy.Methods(cBasisFile, cUnitBasis, True);
   Assert.AreEqual('Intern TBaseline.Create TBaseline.Normalize TBaseline.Match TBaseline.Count Pruefe',
     Names(mMethods));
   Assert.IsFalse(mMethods[0].IsPublic, 'Intern steht nur im implementation-Teil');
@@ -314,8 +314,8 @@ procedure TCoveredByTests.MarkStandsAtNameInBody;
 var
   mMethods: TArray<TCoveredMethod>;
 begin
-  mMethods := TCoveredBy.Methods(BasisFile, UnitBasis, False);
-  Assert.AreEqual(LineOf(UnitBasis, 'function TBaseline.Match'), mMethods[1].Line);
+  mMethods := TCoveredBy.Methods(cBasisFile, cUnitBasis, False);
+  Assert.AreEqual(LineOf(cUnitBasis, 'function TBaseline.Match'), mMethods[1].Line);
   Assert.AreEqual(Integer(Length('function TBaseline.')), mMethods[1].Character);
   Assert.AreEqual('Basis', mMethods[1].Item.UnitName);
 end;
@@ -325,7 +325,7 @@ var
   mFound: TCoveredResult;
   mMatch: TCoveredMethod;
 begin
-  mFound := Determine(BasisFile, UnitBasis, 1, False);
+  mFound := Determine(cBasisFile, cUnitBasis, 1, False);
   Assert.IsFalse(mFound.IsTestUnit);
   Assert.AreEqual(1, mFound.Depth);
   mMatch := MethodNamed(mFound, 'TBaseline.Match');
@@ -334,8 +334,8 @@ begin
   Assert.AreEqual('Basis.Tests.TBaselineTests.LeerFindetNicht', mMatch.Tests[0].Name);
   Assert.AreEqual('Basis.Tests.TBaselineTests.MatchFindet', mMatch.Tests[1].Name);
   Assert.AreEqual(1, mMatch.Tests[0].Level);
-  Assert.AreEqual(BasisTestFile, mMatch.Tests[0].FileName);
-  Assert.AreEqual(LineOf(UnitBasisTests, 'procedure TBaselineTests.LeerFindetNicht'), mMatch.Tests[0].Line);
+  Assert.AreEqual(cBasisTestFile, mMatch.Tests[0].FileName);
+  Assert.AreEqual(LineOf(cUnitBasisTests, 'procedure TBaselineTests.LeerFindetNicht'), mMatch.Tests[0].Line);
   Assert.AreEqual('Basis.Tests.TBaselineTests.LeerFindetNicht', mMatch.Tests[0].RunNames[0]);
   Assert.AreEqual(1, Integer(Length(MethodNamed(mFound, 'TBaseline.Create').Tests)));
 end;
@@ -343,9 +343,9 @@ end;
 procedure TCoveredByTests.DeeperCallersNeedDepth;
 begin
   // Normalize ruft nur Match; die Tests erreichen sie erst über zwei Ebenen.
-  Assert.AreEqual(0, Integer(Length(MethodNamed(Determine(BasisFile, UnitBasis, 1, True),
+  Assert.AreEqual(0, Integer(Length(MethodNamed(Determine(cBasisFile, cUnitBasis, 1, True),
     'TBaseline.Normalize').Tests)));
-  Assert.AreEqual(2, Integer(Length(MethodNamed(Determine(BasisFile, UnitBasis, 2, True),
+  Assert.AreEqual(2, Integer(Length(MethodNamed(Determine(cBasisFile, cUnitBasis, 2, True),
     'TBaseline.Normalize').Tests)));
 end;
 
@@ -353,7 +353,7 @@ procedure TCoveredByTests.MethodWithoutTestHasNone;
 var
   mFound: TCoveredResult;
 begin
-  mFound := Determine(BasisFile, UnitBasis, 1, False);
+  mFound := Determine(cBasisFile, cUnitBasis, 1, False);
   Assert.AreEqual(0, Integer(Length(MethodNamed(mFound, 'TBaseline.Count').Tests)));
   Assert.AreEqual(0, Integer(Length(MethodNamed(mFound, 'Pruefe').Tests)));
   Assert.AreEqual(2, mFound.Tested, 'Create und Match');
@@ -364,15 +364,15 @@ procedure TCoveredByTests.TestUnitHasNoMethods;
 var
   mFound: TCoveredResult;
 begin
-  mFound := Determine(BasisTestFile, UnitBasisTests, 1, True);
+  mFound := Determine(cBasisTestFile, cUnitBasisTests, 1, True);
   Assert.IsTrue(mFound.IsTestUnit);
   Assert.AreEqual(0, Integer(Length(mFound.Methods)));
 end;
 
 procedure TCoveredByTests.UsedByTestUnit;
 begin
-  Assert.IsTrue(Determine(BasisFile, UnitBasis, 1, False).HasTestUnit, 'Basis.Tests verwendet Basis');
-  Assert.IsFalse(Determine(AndereFile, UnitAndere, 1, False).HasTestUnit, 'keine Testunit verwendet Andere');
+  Assert.IsTrue(Determine(cBasisFile, cUnitBasis, 1, False).HasTestUnit, 'Basis.Tests verwendet Basis');
+  Assert.IsFalse(Determine(cAndereFile, cUnitAndere, 1, False).HasTestUnit, 'keine Testunit verwendet Andere');
 end;
 
 procedure TCoveredByTests.JsonCarriesCountsAndTests;
@@ -381,7 +381,7 @@ var
   mMethods, mTests: TJSONArray;
   mMethod: TJSONObject;
 begin
-  mJson := TCoveredBy.ToJson(Determine(BasisFile, UnitBasis, 1, False));
+  mJson := TCoveredBy.ToJson(Determine(cBasisFile, cUnitBasis, 1, False));
   try
     Assert.AreEqual('Basis', mJson.GetValue<string>('unit'));
     Assert.AreEqual(2, mJson.GetValue<Integer>('tested'));
@@ -391,7 +391,7 @@ begin
     mMethods := mJson.GetValue<TJSONArray>('methods');
     mMethod := mMethods.Items[1] as TJSONObject;
     Assert.AreEqual('TBaseline.Match', mMethod.GetValue<string>('name'));
-    Assert.AreEqual(LineOf(UnitBasis, 'function TBaseline.Match'), mMethod.GetValue<Integer>('line'));
+    Assert.AreEqual(LineOf(cUnitBasis, 'function TBaseline.Match'), mMethod.GetValue<Integer>('line'));
     Assert.AreEqual('public', mMethod.GetValue<string>('visibility'));
     mTests := mMethod.GetValue<TJSONArray>('tests');
     Assert.AreEqual(2, mTests.Count);
@@ -437,8 +437,8 @@ procedure TCoveredByTests.UntestedOfKeepsOrder;
 var
   mUnit: TUntestedUnit;
 begin
-  mUnit := TCoveredBy.UntestedOf(Determine(BasisFile, UnitBasis, 2, True), BasisFile);
-  Assert.AreEqual(BasisFile, mUnit.FileName);
+  mUnit := TCoveredBy.UntestedOf(Determine(cBasisFile, cUnitBasis, 2, True), cBasisFile);
+  Assert.AreEqual(cBasisFile, mUnit.FileName);
   Assert.AreEqual(6, mUnit.Total);
   Assert.AreEqual('Intern TBaseline.Count Pruefe', Names(mUnit.Untested));
 end;
@@ -459,7 +459,7 @@ begin
     Assert.AreEqual(4, mUnit.GetValue<Integer>('total'));
     mMethod := mUnit.GetValue<TJSONArray>('untested').Items[0] as TJSONObject;
     Assert.AreEqual('TBaseline.Count', mMethod.GetValue<string>('name'));
-    Assert.AreEqual(LineOf(UnitBasis, 'function TBaseline.Count'), mMethod.GetValue<Integer>('line'));
+    Assert.AreEqual(LineOf(cUnitBasis, 'function TBaseline.Count'), mMethod.GetValue<Integer>('line'));
     Assert.AreEqual(Integer(Length('function TBaseline.')), mMethod.GetValue<Integer>('character'));
     Assert.AreEqual(0, mJson.GetValue<Integer>('skipped'));
     Assert.AreEqual(0, mJson.GetValue<TJSONArray>('limits').Count);

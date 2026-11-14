@@ -26,7 +26,7 @@ uses
   Atlas.Common.Dfm.ComponentRename;
 
 const
-  Form =
+  cForm =
     'object Maske: TMaske'#10 +
     '  OnCreate = MaskeCreate'#10 +
     '  object Button1: TButton'#10 +
@@ -44,47 +44,47 @@ const
 
 procedure TDfmComponentRenameTests.RenamesDerivedHandlers;
 var
-  Renames: TArray<THandlerRename>;
+  mRenames: TArray<THandlerRename>;
 begin
-  Renames := TDfmComponentRename.Handlers(Form, 'Button1', 'btnSpeichern');
-  Assert.AreEqual(2, Integer(Length(Renames)));
-  Assert.AreEqual('Button1Click', Renames[0].OldName);
-  Assert.AreEqual('btnSpeichernClick', Renames[0].NewName);
-  Assert.AreEqual('btnSpeichernDrawItem', Renames[1].NewName);
+  mRenames := TDfmComponentRename.Handlers(cForm, 'Button1', 'btnSpeichern');
+  Assert.AreEqual(2, Integer(Length(mRenames)));
+  Assert.AreEqual('Button1Click', mRenames[0].OldName);
+  Assert.AreEqual('btnSpeichernClick', mRenames[0].NewName);
+  Assert.AreEqual('btnSpeichernDrawItem', mRenames[1].NewName);
 end;
 
 procedure TDfmComponentRenameTests.KeepsOwnHandlerNames;
 var
-  Rename: THandlerRename;
+  mRename: THandlerRename;
 begin
-  for Rename in TDfmComponentRename.Handlers(Form, 'Button1', 'btnSpeichern') do
+  for mRename in TDfmComponentRename.Handlers(cForm, 'Button1', 'btnSpeichern') do
   begin
-    Assert.AreNotEqual('SpeichernAusfuehren', Rename.OldName);
-    Assert.AreNotEqual('Button1', Rename.OldName);
+    Assert.AreNotEqual('SpeichernAusfuehren', mRename.OldName);
+    Assert.AreNotEqual('Button1', mRename.OldName);
   end;
 end;
 
 procedure TDfmComponentRenameTests.ListsSharedHandlerOnce;
 var
-  Rename: THandlerRename;
-  Count: Integer;
+  mRename: THandlerRename;
+  mCount: Integer;
 begin
-  Count := 0;
-  for Rename in TDfmComponentRename.Handlers(Form, 'button1', 'btnSpeichern') do
+  mCount := 0;
+  for mRename in TDfmComponentRename.Handlers(cForm, 'button1', 'btnSpeichern') do
   begin
-    if Rename.OldName = 'Button1Click' then
+    if mRename.OldName = 'Button1Click' then
     begin
-      Inc(Count);
+      Inc(mCount);
     end;
   end;
-  Assert.AreEqual(1, Count);
+  Assert.AreEqual(1, mCount);
 end;
 
 procedure TDfmComponentRenameTests.NothingForUnknownComponentOrForm;
 begin
-  Assert.AreEqual(0, Integer(Length(TDfmComponentRename.Handlers(Form, 'Edit1', 'edtName'))));
-  Assert.AreEqual(0, Integer(Length(TDfmComponentRename.Handlers(Form, 'Maske', 'Haupt'))));
-  Assert.AreEqual(0, Integer(Length(TDfmComponentRename.Handlers(Form, 'Button1', 'Button1'))));
+  Assert.AreEqual(0, Integer(Length(TDfmComponentRename.Handlers(cForm, 'Edit1', 'edtName'))));
+  Assert.AreEqual(0, Integer(Length(TDfmComponentRename.Handlers(cForm, 'Maske', 'Haupt'))));
+  Assert.AreEqual(0, Integer(Length(TDfmComponentRename.Handlers(cForm, 'Button1', 'Button1'))));
 end;
 
 initialization

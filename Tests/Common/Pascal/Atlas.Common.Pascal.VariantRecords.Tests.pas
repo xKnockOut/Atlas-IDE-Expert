@@ -49,12 +49,12 @@ uses
   Atlas.Common.Lsp.DocumentSymbols;
 
 const
-  UnitRect =
+  cUnitRect =
     'unit U6;'#10'interface'#10'type'#10'  TPoint = record'#10'    X, Y: Integer;'#10'  end;'#10 +
     '  TRect2 = record'#10'    function Width: Integer;'#10'    case Integer of'#10 +
     '      0: (Left, Top, Right, Bottom: Integer);'#10'      1: (TopLeft, BottomRight: TPoint);'#10'  end;'#10 +
     'implementation'#10'function TRect2.Width: Integer;'#10'begin'#10'  Result := Right - Left;'#10'end;'#10'end.';
-  UnitMessage =
+  cUnitMessage =
     'unit Nachrichten;'#10'interface'#10'type'#10'  TKind = (mkA, mkB, mkC, mkD);'#10 +
     '  TMessage = record'#10'    Msg: Cardinal;'#10'    case Integer of'#10 +
     '      0: (WParam, LParam, Result: NativeInt);'#10 +
@@ -63,22 +63,22 @@ const
     '  TMsg = record'#10'    case Kind: TKind of'#10'      mkA, mkB: (Value: Integer);'#10 +
     '      mkC: (Text: string[20]);'#10'      mkD: ();'#10'  end;'#10 +
     'implementation'#10'end.';
-  MainFile = 'C:\P\Haupt.pas';
-  UnitMain =
+  cMainFile = 'C:\P\Haupt.pas';
+  cUnitMain =
     'unit Haupt;'#10'interface'#10'uses U6;'#10'implementation'#10'procedure Zeige;'#10'var'#10 +
     '  R: TRect2;'#10'begin'#10'  R.'#10'end;'#10'end.';
 
 function FindNode(ANode: TSyntaxNode; AKind: TSyntaxKind): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if ANode.Kind = AKind then
   begin
     Exit(ANode);
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    Result := FindNode(ANode[Index], AKind);
+    Result := FindNode(ANode[mIndex], AKind);
     if Result <> nil then
     begin
       Exit;
@@ -90,14 +90,14 @@ end;
 /// <summary>Felder eines Typs im Index als "Name=Zweig;" in Reihenfolge.</summary>
 function Branches(const AUnit: TUnitIndex; const AContainer: string): string;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := '';
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if (Symbol.Container = AContainer) and (Symbol.Kind = TIndexSymbolKind.Field) then
+    if (mSymbol.Container = AContainer) and (mSymbol.Kind = TIndexSymbolKind.Field) then
     begin
-      Result := Result + Symbol.Name + '=' + Symbol.VariantBranch + ';';
+      Result := Result + mSymbol.Name + '=' + mSymbol.VariantBranch + ';';
     end;
   end;
 end;
@@ -105,28 +105,28 @@ end;
 /// <summary>Namen der Kinder eines Gliederungssymbols, eine Gruppe als "[Name: Kinder]".</summary>
 function Names(const AChildren: TJSONValue): string;
 var
-  Item: TJSONValue;
-  Entry: TJSONObject;
+  mItem: TJSONValue;
+  mEntry: TJSONObject;
 begin
   Result := '';
   if not (AChildren is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(AChildren) do
+  for mItem in TJSONArray(AChildren) do
   begin
-    Entry := TJSONObject(Item);
+    mEntry := TJSONObject(mItem);
     if Result <> '' then
     begin
       Result := Result + ' ';
     end;
-    if Entry.GetValue<Integer>('kind', 0) = TLspSymbolKind.cNamespace then
+    if mEntry.GetValue<Integer>('kind', 0) = TLspSymbolKind.cNamespace then
     begin
-      Result := Result + '[' + Entry.GetValue<string>('name', '') + ': ' + Names(Entry.GetValue('children')) + ']';
+      Result := Result + '[' + mEntry.GetValue<string>('name', '') + ': ' + Names(mEntry.GetValue('children')) + ']';
     end
     else
     begin
-      Result := Result + Entry.GetValue<string>('name', '');
+      Result := Result + mEntry.GetValue<string>('name', '');
     end;
   end;
 end;
@@ -155,17 +155,17 @@ end;
 /// <summary>Kinder des Typs ATypeName in der Gliederung (unter interface).</summary>
 function TypeChildren(ASymbols: TJSONArray; const ATypeName: string): string;
 var
-  Root, Section: TJSONValue;
-  Entry: TJSONObject;
+  mRoot, mSection: TJSONValue;
+  mEntry: TJSONObject;
 begin
   Result := '';
-  for Root in ASymbols do
+  for mRoot in ASymbols do
   begin
-    for Section in TJSONArray(TJSONObject(Root).GetValue('children')) do
+    for mSection in TJSONArray(TJSONObject(mRoot).GetValue('children')) do
     begin
-      if FindTypeEntry(Section, ATypeName, Entry) then
+      if FindTypeEntry(mSection, ATypeName, mEntry) then
       begin
-        Exit(Names(Entry.GetValue('children')));
+        Exit(Names(mEntry.GetValue('children')));
       end;
     end;
   end;
@@ -175,47 +175,47 @@ end;
 
 procedure TVariantRecordsTests.TreeHoldsBranchesAndFields;
 var
-  Tree: TSyntaxTree;
-  Part, Item: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mPart, mItem: TSyntaxNode;
 begin
-  Tree := TPascalParser.Parse(UnitMessage);
+  mTree := TPascalParser.Parse(cUnitMessage);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
-    Part := FindNode(Tree.Root, TSyntaxKind.VariantPart);
-    Assert.IsNotNull(Part);
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
+    mPart := FindNode(mTree.Root, TSyntaxKind.VariantPart);
+    Assert.IsNotNull(mPart);
     // case Integer of: Selektortyp, dann je Zweig ein CaseItem mit den Marken als Namen.
-    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.TypeReference, Part[0].Kind);
-    Assert.AreEqual(3, Part.ChildCount);
-    Assert.AreEqual('0', Part[1].Name);
-    Assert.AreEqual('WParam,LParam,Result', Part[1][0].Name);
-    Item := Part[2];
-    Assert.AreEqual('1', Item.Name);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.TypeReference, mPart[0].Kind);
+    Assert.AreEqual(3, mPart.ChildCount);
+    Assert.AreEqual('0', mPart[1].Name);
+    Assert.AreEqual('WParam,LParam,Result', mPart[1][0].Name);
+    mItem := mPart[2];
+    Assert.AreEqual('1', mItem.Name);
     // Zweig 1 enthält zwei Felder und einen verschachtelten varianten Teil.
-    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.Field, Item[0].Kind);
-    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.VariantPart, Item[1].Kind);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.Field, mItem[0].Kind);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.VariantPart, mItem[1].Kind);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TVariantRecordsTests.IndexListsRectFields;
 var
   U: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Found: Boolean;
+  mSymbol: TIndexSymbol;
+  mFound: Boolean;
 begin
-  U := TIndexExtractor.ExtractText(UnitRect, 'C:\P\U6.pas', nil);
+  U := TIndexExtractor.ExtractText(cUnitRect, 'C:\P\U6.pas', nil);
   Assert.AreEqual('Left=0;Top=0;Right=0;Bottom=0;TopLeft=1;BottomRight=1;', Branches(U, 'TRect2'));
-  Found := False;
-  for Symbol in U.Symbols do
+  mFound := False;
+  for mSymbol in U.Symbols do
   begin
-    if (Symbol.Container = 'TRect2') and (Symbol.Name = 'TopLeft') then
+    if (mSymbol.Container = 'TRect2') and (mSymbol.Name = 'TopLeft') then
     begin
-      Found := True;
-      Assert.AreEqual('TPoint', Symbol.TypeName);
+      mFound := True;
+      Assert.AreEqual('TPoint', mSymbol.TypeName);
     end;
   end;
-  Assert.IsTrue(Found);
+  Assert.IsTrue(mFound);
   // Gewöhnliche Felder haben keinen Zweig.
   Assert.AreEqual('X=;Y=;', Branches(U, 'TPoint'));
 end;
@@ -224,7 +224,7 @@ procedure TVariantRecordsTests.SelectorAndNestedVariants;
 var
   U: TUnitIndex;
 begin
-  U := TIndexExtractor.ExtractText(UnitMessage, 'C:\P\Nachrichten.pas', nil);
+  U := TIndexExtractor.ExtractText(cUnitMessage, 'C:\P\Nachrichten.pas', nil);
   Assert.AreEqual('Msg=;WParam=0;LParam=0;Result=0;WParamLo=1;WParamHi=1;Low=1 › 0;High=1 › 1;',
     Branches(U, 'TMessage'));
   // Das benannte Selektorfeld ist ein gewöhnliches Feld; der leere Zweig mkD stört nicht.
@@ -233,92 +233,92 @@ end;
 
 procedure TVariantRecordsTests.CacheKeepsBranch;
 var
-  Loaded: TArray<TUnitIndex>;
+  mLoaded: TArray<TUnitIndex>;
 begin
-  Loaded := TIndexCache.Deserialize(TIndexCache.Serialize([TIndexExtractor.ExtractText(UnitMessage,
+  mLoaded := TIndexCache.Deserialize(TIndexCache.Serialize([TIndexExtractor.ExtractText(cUnitMessage,
     'C:\P\Nachrichten.pas', nil)]));
-  Assert.AreEqual(1, Integer(Length(Loaded)));
+  Assert.AreEqual(1, Integer(Length(mLoaded)));
   Assert.AreEqual('Msg=;WParam=0;LParam=0;Result=0;WParamLo=1;WParamHi=1;Low=1 › 0;High=1 › 1;',
-    Branches(Loaded[0], 'TMessage'));
+    Branches(mLoaded[0], 'TMessage'));
 end;
 
 procedure TVariantRecordsTests.OutlineGroupsBranches;
 var
-  Tree: TSyntaxTree;
-  Symbols: TJSONArray;
+  mTree: TSyntaxTree;
+  mSymbols: TJSONArray;
 begin
-  Tree := TPascalParser.Parse(UnitMessage);
-  Symbols := TLspDocumentSymbols.BuildSymbols(Tree);
+  mTree := TPascalParser.Parse(cUnitMessage);
+  mSymbols := TLspDocumentSymbols.BuildSymbols(mTree);
   try
     Assert.AreEqual('Msg [case Integer of: WParam LParam Result WParamLo WParamHi [case Byte of: Low High]]',
-      TypeChildren(Symbols, 'TMessage'));
-    Assert.AreEqual('Kind [case Kind: TKind of: Value Text]', TypeChildren(Symbols, 'TMsg'));
+      TypeChildren(mSymbols, 'TMessage'));
+    Assert.AreEqual('Kind [case Kind: TKind of: Value Text]', TypeChildren(mSymbols, 'TMsg'));
   finally
-    Symbols.Free;
-    Tree.Free;
+    mSymbols.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TVariantRecordsTests.CompletionAfterDotShowsLeft;
 var
-  Index: ISymbolIndex;
-  Resolver: TNameResolver;
-  Request: TCompletionRequest;
-  Tree: TSyntaxTree;
-  Items: TCompletionItems;
-  Item: TCompletionItem;
-  Json: TJSONArray;
-  Data: TJSONObject;
-  Listed: string;
-  Position: Integer;
+  mIndex: ISymbolIndex;
+  mResolver: TNameResolver;
+  mRequest: TCompletionRequest;
+  mTree: TSyntaxTree;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
+  mJson: TJSONArray;
+  mData: TJSONObject;
+  mListed: string;
+  mPosition: Integer;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(UnitRect, 'C:\P\U6.pas', nil));
-  Tree := TPascalParser.Parse(UnitMain);
-  Resolver := TNameResolver.Create(Index);
-  Request := TCompletionRequest.Create(UnitMain, MainFile, TTextPosition.Create(8, 4));
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cUnitRect, 'C:\P\U6.pas', nil));
+  mTree := TPascalParser.Parse(cUnitMain);
+  mResolver := TNameResolver.Create(mIndex);
+  mRequest := TCompletionRequest.Create(cUnitMain, cMainFile, TTextPosition.Create(8, 4));
   try
-    Request.Tree := Tree;
-    Request.Resolver := Resolver;
-    Request.Index := Index;
-    Request.Matching := TCompletionMatching.Prefix;
-    Request.Settings := TCompletionSettings.Default;
-    Items := TCompletionLists.Collect(Request, TPostfixOptions.Default, nil);
+    mRequest.Tree := mTree;
+    mRequest.Resolver := mResolver;
+    mRequest.Index := mIndex;
+    mRequest.Matching := TCompletionMatching.Prefix;
+    mRequest.Settings := TCompletionSettings.Default;
+    mItems := TCompletionLists.Collect(mRequest, TPostfixOptions.Default, nil);
   finally
-    Request.Free;
-    Resolver.Free;
-    Tree.Free;
+    mRequest.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
-  Listed := '';
-  Position := -1;
-  for Item in Items.Items do
+  mListed := '';
+  mPosition := -1;
+  for mItem in mItems.Items do
   begin
-    Listed := Listed + Item.Name + ' ';
-    if Item.Name = 'Left' then
+    mListed := mListed + mItem.Name + ' ';
+    if mItem.Name = 'Left' then
     begin
-      Position := Length(Listed);
+      mPosition := Length(mListed);
     end;
   end;
-  Assert.IsTrue(Position > 0, Listed);
-  Assert.Contains(Listed, 'BottomRight ');
-  Assert.Contains(Listed, 'Width ');
+  Assert.IsTrue(mPosition > 0, mListed);
+  Assert.Contains(mListed, 'BottomRight ');
+  Assert.Contains(mListed, 'Width ');
   // Der Zweig geht als data.variant ans Plugin („Zweig 0“).
-  Json := CompletionItemsToJson(Items.Items, 0);
+  mJson := CompletionItemsToJson(mItems.Items, 0);
   try
-    Data := nil;
-    for Position := 0 to Json.Count - 1 do
+    mData := nil;
+    for mPosition := 0 to mJson.Count - 1 do
     begin
-      if TJSONObject(Json.Items[Position]).GetValue<string>('label', '') = 'TopLeft' then
+      if TJSONObject(mJson.Items[mPosition]).GetValue<string>('label', '') = 'TopLeft' then
       begin
-        Data := TJSONObject(TJSONObject(Json.Items[Position]).GetValue('data'));
+        mData := TJSONObject(TJSONObject(mJson.Items[mPosition]).GetValue('data'));
       end;
     end;
-    Assert.IsNotNull(Data);
-    Assert.AreEqual('1', Data.GetValue<string>('variant', ''));
+    Assert.IsNotNull(mData);
+    Assert.AreEqual('1', mData.GetValue<string>('variant', ''));
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Index := nil;
+  mIndex := nil;
 end;
 
 end.

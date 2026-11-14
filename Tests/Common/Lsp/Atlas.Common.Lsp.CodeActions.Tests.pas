@@ -62,24 +62,24 @@ uses
   Atlas.Common.Editing.CodeActions;
 
 const
-  LB = #13#10;
-  FileName = 'C:\P\Haupt.pas';
-  Text =
-    'unit Haupt;' + LB +
-    'interface' + LB +
-    'type' + LB +
-    '  TKunde = class' + LB +
-    '  public' + LB +
-    '    property Name: string;' + LB +           // 5
-    '  end;' + LB +
-    'implementation' + LB +
-    'procedure P;' + LB +
-    'var' + LB +
-    '  L: TList;' + LB +
-    'begin' + LB +
-    '  L := TList.Create;' + LB +                 // 12
-    '  L.Add(nil);' + LB +
-    'end;' + LB +
+  cLB = #13#10;
+  cFileName = 'C:\P\Haupt.pas';
+  cText =
+    'unit Haupt;' + cLB +
+    'interface' + cLB +
+    'type' + cLB +
+    '  TKunde = class' + cLB +
+    '  public' + cLB +
+    '    property Name: string;' + cLB +           // 5
+    '  end;' + cLB +
+    'implementation' + cLB +
+    'procedure P;' + cLB +
+    'var' + cLB +
+    '  L: TList;' + cLB +
+    'begin' + cLB +
+    '  L := TList.Create;' + cLB +                 // 12
+    '  L.Add(nil);' + cLB +
+    'end;' + cLB +
     'end.';
 
 procedure TLspCodeActionsTests.WarmUpFirstUse;
@@ -116,64 +116,64 @@ end;
 
 function TLspCodeActionsTests.Titles(const AText: string; ALine: Integer): string;
 var
-  Uri: string;
-  Request, Response: TJSONObject;
-  Item: TJSONValue;
+  mUri: string;
+  mRequest, mResponse: TJSONObject;
+  mItem: TJSONValue;
 begin
-  Uri := TDocumentUris.FromPath(FileName);
-  FStore.Close(Uri);
-  FStore.Open(Uri, 'delphi', 1, AText);
+  mUri := TDocumentUris.FromPath(cFileName);
+  FStore.Close(mUri);
+  FStore.Open(mUri, 'delphi', 1, AText);
   Inc(FId);
-  Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":' + IntToStr(FId) +
-    ',"method":"textDocument/codeAction","params":{"textDocument":{"uri":"' + Uri.Replace('\', '\\') +
+  mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":' + IntToStr(FId) +
+    ',"method":"textDocument/codeAction","params":{"textDocument":{"uri":"' + mUri.Replace('\', '\\') +
     '"},"range":{"start":{"line":' + IntToStr(ALine) + ',"character":0},"end":{"line":' + IntToStr(ALine) +
     ',"character":0}},"context":{"diagnostics":[]}}}') as TJSONObject;
   try
-    Response := FDispatcher.DispatchMessage(Request);
+    mResponse := FDispatcher.DispatchMessage(mRequest);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
-  Assert.IsNotNull(Response);
+  Assert.IsNotNull(mResponse);
   try
-    Assert.IsTrue(Response.GetValue('result') is TJSONArray, Response.ToJSON);
+    Assert.IsTrue(mResponse.GetValue('result') is TJSONArray, mResponse.ToJSON);
     Result := '';
-    for Item in TJSONArray(Response.GetValue('result')) do
+    for mItem in TJSONArray(mResponse.GetValue('result')) do
     begin
-      Result := Result + TJSONObject(Item).GetValue<string>('title') + '|';
+      Result := Result + TJSONObject(mItem).GetValue<string>('title') + '|';
     end;
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
 procedure TLspCodeActionsTests.OffersTryFinallyAndClassActions;
 var
-  Found: string;
+  mFound: string;
 begin
-  Found := Titles(Text, 12);
-  Assert.IsTrue(Pos('try/finally mit L.Free ergänzen|', Found) > 0, Found);
-  Found := Titles(Text, 5);
-  Assert.IsTrue(Pos('Getter, Setter und Feld für Name erzeugen|', Found) > 0, Found);
+  mFound := Titles(cText, 12);
+  Assert.IsTrue(Pos('try/finally mit L.Free ergänzen|', mFound) > 0, mFound);
+  mFound := Titles(cText, 5);
+  Assert.IsTrue(Pos('Getter, Setter und Feld für Name erzeugen|', mFound) > 0, mFound);
 end;
 
 procedure TLspCodeActionsTests.SettingsSwitchThemOff;
 var
-  Found: string;
+  mFound: string;
 begin
   FSettings.TryFinally := False;
   FSettings.ClassActions := False;
-  Found := Titles(Text, 12);
-  Assert.AreEqual(0, Pos('try/finally', Found), Found);
-  Found := Titles(Text, 5);
-  Assert.AreEqual(0, Pos('Getter, Setter', Found), Found);
+  mFound := Titles(cText, 12);
+  Assert.AreEqual(0, Pos('try/finally', mFound), mFound);
+  mFound := Titles(cText, 5);
+  Assert.AreEqual(0, Pos('Getter, Setter', mFound), mFound);
 end;
 
 procedure TLspCodeActionsTests.TryFinallyFollowsFormatStyle;
 var
-  Uri, NewText: string;
-  Request, Response: TJSONObject;
-  Item: TJSONValue;
-  Edits: TJSONArray;
+  mUri, mNewText: string;
+  mRequest, mResponse: TJSONObject;
+  mItem: TJSONValue;
+  mEdits: TJSONArray;
 begin
   FActions.FormatStyleFor :=
     function(const AUri: string): TFormatStyle
@@ -181,58 +181,58 @@ begin
       Result := TFormatStyle.Default;
       Result.UseTabs := True;
     end;
-  Uri := TDocumentUris.FromPath(FileName);
-  FStore.Open(Uri, 'delphi', 1, Text);
-  Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":99,"method":"textDocument/codeAction","params":' +
-    '{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},"range":{"start":{"line":12,"character":0},' +
+  mUri := TDocumentUris.FromPath(cFileName);
+  FStore.Open(mUri, 'delphi', 1, cText);
+  mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":99,"method":"textDocument/codeAction","params":' +
+    '{"textDocument":{"uri":"' + mUri.Replace('\', '\\') + '"},"range":{"start":{"line":12,"character":0},' +
     '"end":{"line":12,"character":0}},"context":{"diagnostics":[]}}}') as TJSONObject;
   try
-    Response := FDispatcher.DispatchMessage(Request);
+    mResponse := FDispatcher.DispatchMessage(mRequest);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
   try
-    NewText := '';
-    for Item in Response.GetValue<TJSONArray>('result') do
+    mNewText := '';
+    for mItem in mResponse.GetValue<TJSONArray>('result') do
     begin
-      if StartsText('try/finally', TJSONObject(Item).GetValue<string>('title')) then
+      if StartsText('try/finally', TJSONObject(mItem).GetValue<string>('title')) then
         // Der Schlüssel ist die URI mit Punkten; deshalb über das erste Paar statt über einen Pfad.
       begin
-        Edits := TJSONObject(Item).GetValue<TJSONObject>('edit.changes').Pairs[0].JsonValue as TJSONArray;
-        NewText := TJSONObject(Edits.Items[0]).GetValue<string>('newText');
+        mEdits := TJSONObject(mItem).GetValue<TJSONObject>('edit.changes').Pairs[0].JsonValue as TJSONArray;
+        mNewText := TJSONObject(mEdits.Items[0]).GetValue<string>('newText');
       end;
     end;
-    Assert.IsTrue(Pos('try' + LB + #9'  L.Add(nil);', NewText) > 0, NewText);
+    Assert.IsTrue(Pos('try' + cLB + #9'  L.Add(nil);', mNewText) > 0, mNewText);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
 procedure TLspCodeActionsTests.ActionJsonCarriesPreviewAndDisabled;
 var
-  Action: TCodeAction;
-  Json: TJSONObject;
+  mAction: TCodeAction;
+  mJson: TJSONObject;
 begin
-  Action := Default(TCodeAction);
-  Action.Title := 'Umwandeln';
-  Action.Kind := cRewriteKind;
-  Action.Preview := 'Neue Signatur: procedure A;';
-  Json := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(FileName), Action);
+  mAction := Default(TCodeAction);
+  mAction.Title := 'Umwandeln';
+  mAction.Kind := cRewriteKind;
+  mAction.Preview := 'Neue Signatur: procedure A;';
+  mJson := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(cFileName), mAction);
   try
-    Assert.AreEqual('Neue Signatur: procedure A;', Json.GetValue<string>('data.preview'));
-    Assert.IsNull(Json.GetValue('disabled'));
-    Assert.IsNull(TJSONObject(Json.GetValue('data')).GetValue('tag'));
+    Assert.AreEqual('Neue Signatur: procedure A;', mJson.GetValue<string>('data.preview'));
+    Assert.IsNull(mJson.GetValue('disabled'));
+    Assert.IsNull(TJSONObject(mJson.GetValue('data')).GetValue('tag'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Action.Preview := '';
-  Action.Disabled := 'erst die andere umwandeln';
-  Json := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(FileName), Action);
+  mAction.Preview := '';
+  mAction.Disabled := 'erst die andere umwandeln';
+  mJson := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(cFileName), mAction);
   try
-    Assert.AreEqual('erst die andere umwandeln', Json.GetValue<string>('disabled.reason'));
-    Assert.IsNull(Json.GetValue('data'));
+    Assert.AreEqual('erst die andere umwandeln', mJson.GetValue<string>('disabled.reason'));
+    Assert.IsNull(mJson.GetValue('data'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
@@ -250,7 +250,7 @@ begin
   mAction.Choices := [TCodeActionChoice.Create('Zeile 4 in TFoo.Bar', TTextRange.Create(3, 2, 4, 0))];
   SetLength(mAction.EditChoices, 2);
   mAction.EditChoices[1] := [0];
-  mJson := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(FileName), mAction);
+  mJson := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(cFileName), mAction);
   try
     mChoices := mJson.GetValue<TJSONArray>('data.choices');
     Assert.AreEqual(1, mChoices.Count);
@@ -267,12 +267,12 @@ end;
 
 procedure TLspCodeActionsTests.UsesEntryActionsCarryTag;
 const
-  UsesText = 'unit Haupt;' + LB + 'interface' + LB + 'uses' + LB + '  Vcl.Grids, Vcl.Menus, {$IFDEF X}Vcl.Forms, {$ENDIF}Vcl.Dialogs;' +
-    LB + 'implementation' + LB + 'end.';
+  cUsesText = 'unit Haupt;' + cLB + 'interface' + cLB + 'uses' + cLB + '  Vcl.Grids, Vcl.Menus, {$IFDEF X}Vcl.Forms, {$ENDIF}Vcl.Dialogs;' +
+    cLB + 'implementation' + cLB + 'end.';
 var
-  Uri, Tags: string;
-  Request, Response: TJSONObject;
-  Item, Data: TJSONValue;
+  mUri, mTags: string;
+  mRequest, mResponse: TJSONObject;
+  mItem, mData: TJSONValue;
 begin
   FActions.UsesContextFor :=
     function(const AUri: string; out AContext: TUsesContext): Boolean
@@ -294,31 +294,31 @@ begin
       ADefines := ['DEBUG'];
       Result := True;
     end;
-  Uri := TDocumentUris.FromPath(FileName);
-  FStore.Open(Uri, 'delphi', 1, UsesText);
-  Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":7,"method":"textDocument/codeAction","params":' +
-    '{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},"range":{"start":{"line":3,"character":4},' +
+  mUri := TDocumentUris.FromPath(cFileName);
+  FStore.Open(mUri, 'delphi', 1, cUsesText);
+  mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":7,"method":"textDocument/codeAction","params":' +
+    '{"textDocument":{"uri":"' + mUri.Replace('\', '\\') + '"},"range":{"start":{"line":3,"character":4},' +
     '"end":{"line":3,"character":4}},"context":{"diagnostics":[]}}}') as TJSONObject;
   try
-    Response := FDispatcher.DispatchMessage(Request);
+    mResponse := FDispatcher.DispatchMessage(mRequest);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
   try
-    Tags := '';
-    for Item in Response.GetValue<TJSONArray>('result') do
+    mTags := '';
+    for mItem in mResponse.GetValue<TJSONArray>('result') do
     begin
-      Data := TJSONObject(Item).GetValue('data');
-      if Data is TJSONObject then
+      mData := TJSONObject(mItem).GetValue('data');
+      if mData is TJSONObject then
       begin
-        Tags := Tags + TJSONObject(Item).GetValue<string>('title') + '=' + TJSONObject(Data).GetValue<string>('tag') +
+        mTags := mTags + TJSONObject(mItem).GetValue<string>('title') + '=' + TJSONObject(mData).GetValue<string>('tag') +
           '|';
       end;
     end;
     // X fehlt: Vcl.Forms zählt nicht, also zwei ungenutzte (Vcl.Grids, Vcl.Menus).
-    Assert.AreEqual('Vcl.Grids entfernen=uses.remove|Alle ungenutzten uses entfernen (2)=uses.removeAll|', Tags);
+    Assert.AreEqual('Vcl.Grids entfernen=uses.remove|Alle ungenutzten uses entfernen (2)=uses.removeAll|', mTags);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 

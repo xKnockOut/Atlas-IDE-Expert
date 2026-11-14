@@ -55,25 +55,25 @@ uses
   System.SysUtils;
 
 const
-  Basis = '{"name":"Lauf","container":"TBasis","kind":"function","resultType":"Boolean",' +
+  cBasis = '{"name":"Lauf","container":"TBasis","kind":"function","resultType":"Boolean",' +
     '"parameters":[{"name":"A","type":"Integer","modifier":"","default":""},' +
     '{"name":"S","type":"string","modifier":"const","default":"''x''"}],' +
     '"members":3,"interfaceMethod":false,"boundEvent":"","eventFixed":false,"overloadPossible":true,' +
     '"newParameter":"overload","virtualOverload":false,"warnings":["Methodenzeiger in Haupt.pas"]}';
-  Event = '{"name":"Button1Click","container":"TForm1","kind":"procedure","resultType":"",' +
+  cEvent = '{"name":"Button1Click","container":"TForm1","kind":"procedure","resultType":"",' +
     '"parameters":[{"name":"Sender","type":"TObject","modifier":"","default":""}],"members":1,' +
     '"interfaceMethod":false,"boundEvent":"TNotifyEvent","eventFixed":true,"overloadPossible":false,' +
     '"newParameter":"overload","virtualOverload":false,"warnings":[]}';
 
 function TSignatureModelTests.Prepared(const AJson: string): TAtlasSignatureModel;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    FModel := TAtlasSignatureModel.Create(Value as TJSONObject);
+    FModel := TAtlasSignatureModel.Create(mValue as TJSONObject);
   finally
-    Value.Free;
+    mValue.Free;
   end;
   Result := FModel;
 end;
@@ -85,193 +85,193 @@ end;
 
 procedure TSignatureModelTests.LoadsParametersAndSettings;
 var
-  Model: TAtlasSignatureModel;
+  mModel: TAtlasSignatureModel;
 begin
-  Model := Prepared(Basis);
-  Assert.AreEqual(2, Integer(Model.Count));
-  Assert.AreEqual('S', Model[1].Name);
-  Assert.AreEqual('const', Model[1].Modifier);
-  Assert.AreEqual('''x''', Model[1].DefaultValue);
-  Assert.AreEqual(1, Model[1].Origin);
-  Assert.IsTrue(Model.UseOverload);
-  Assert.IsTrue(Model.OverloadPossible);
-  Assert.AreEqual(3, Model.Members);
-  Assert.AreEqual(1, Integer(Length(Model.Warnings)));
+  mModel := Prepared(cBasis);
+  Assert.AreEqual(2, Integer(mModel.Count));
+  Assert.AreEqual('S', mModel[1].Name);
+  Assert.AreEqual('const', mModel[1].Modifier);
+  Assert.AreEqual('''x''', mModel[1].DefaultValue);
+  Assert.AreEqual(1, mModel[1].Origin);
+  Assert.IsTrue(mModel.UseOverload);
+  Assert.IsTrue(mModel.OverloadPossible);
+  Assert.AreEqual(3, mModel.Members);
+  Assert.AreEqual(1, Integer(Length(mModel.Warnings)));
 end;
 
 procedure TSignatureModelTests.UnchangedIsNotChanged;
 begin
-  Assert.IsFalse(Prepared(Basis).Changed);
+  Assert.IsFalse(Prepared(cBasis).Changed);
   Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.None, FModel.Validate);
 end;
 
 procedure TSignatureModelTests.AddInsertsAfterSelection;
 var
-  Model: TAtlasSignatureModel;
+  mModel: TAtlasSignatureModel;
 begin
-  Model := Prepared(Basis);
-  Assert.AreEqual(1, Model.Add(0, 'B', 'Integer', '', '0'));
-  Assert.AreEqual(3, Integer(Model.Count));
-  Assert.AreEqual('B', Model[1].Name);
-  Assert.IsTrue(Model[1].IsNew);
-  Assert.AreEqual(0, Model.Add(-1, 'C', 'Integer', '', '1'));
-  Assert.AreEqual('C', Model[0].Name);
-  Assert.IsTrue(Model.Changed);
-  Assert.IsTrue(Model.AddsParameters);
+  mModel := Prepared(cBasis);
+  Assert.AreEqual(1, mModel.Add(0, 'B', 'Integer', '', '0'));
+  Assert.AreEqual(3, Integer(mModel.Count));
+  Assert.AreEqual('B', mModel[1].Name);
+  Assert.IsTrue(mModel[1].IsNew);
+  Assert.AreEqual(0, mModel.Add(-1, 'C', 'Integer', '', '1'));
+  Assert.AreEqual('C', mModel[0].Name);
+  Assert.IsTrue(mModel.Changed);
+  Assert.IsTrue(mModel.AddsParameters);
 end;
 
 procedure TSignatureModelTests.AddedParameterNeedsTypeAndValue;
 var
-  Model: TAtlasSignatureModel;
-  Subject: string;
+  mModel: TAtlasSignatureModel;
+  mSubject: string;
 begin
-  Model := Prepared(Basis);
-  Model.Add(0, 'B', '', '', '0');
-  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.MissingType, Model.Validate(Subject));
-  Assert.AreEqual('B', Subject);
-  Model.Change(1, 'Integer', '', '');
-  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.MissingValue, Model.Validate);
-  Model.Change(1, 'Integer', '', '42');
-  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.None, Model.Validate);
+  mModel := Prepared(cBasis);
+  mModel.Add(0, 'B', '', '', '0');
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.MissingType, mModel.Validate(mSubject));
+  Assert.AreEqual('B', mSubject);
+  mModel.Change(1, 'Integer', '', '');
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.MissingValue, mModel.Validate);
+  mModel.Change(1, 'Integer', '', '42');
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.None, mModel.Validate);
 end;
 
 procedure TSignatureModelTests.RejectsReservedAndDuplicateNames;
 var
-  Model: TAtlasSignatureModel;
-  Subject: string;
+  mModel: TAtlasSignatureModel;
+  mSubject: string;
 begin
-  Model := Prepared(Basis);
-  Model.Rename(0, 'begin');
-  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.BadName, Model.Validate(Subject));
-  Assert.AreEqual('begin', Subject);
-  Model.Rename(0, '1A');
-  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.BadName, Model.Validate);
-  Model.Rename(0, 's');
-  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.Duplicate, Model.Validate);
-  Model.Rename(0, 'Anzahl');
-  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.None, Model.Validate);
+  mModel := Prepared(cBasis);
+  mModel.Rename(0, 'begin');
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.BadName, mModel.Validate(mSubject));
+  Assert.AreEqual('begin', mSubject);
+  mModel.Rename(0, '1A');
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.BadName, mModel.Validate);
+  mModel.Rename(0, 's');
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.Duplicate, mModel.Validate);
+  mModel.Rename(0, 'Anzahl');
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.None, mModel.Validate);
 end;
 
 procedure TSignatureModelTests.RejectsNewParameterAfterDefault;
 var
-  Model: TAtlasSignatureModel;
+  mModel: TAtlasSignatureModel;
 begin
   // Hinter einem Standardwert darf kein Parameter ohne stehen; Atlas erzeugt selbst keinen.
-  Model := Prepared(Basis);
-  Model.Add(1, 'B', 'Integer', '', '0');
-  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.AfterDefault, Model.Validate);
-  Assert.IsTrue(Model.MoveRow(2, -1));
-  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.None, Model.Validate);
+  mModel := Prepared(cBasis);
+  mModel.Add(1, 'B', 'Integer', '', '0');
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.AfterDefault, mModel.Validate);
+  Assert.IsTrue(mModel.MoveRow(2, -1));
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.None, mModel.Validate);
 end;
 
 procedure TSignatureModelTests.MoveRowSwapsAndStopsAtEdge;
 var
-  Model: TAtlasSignatureModel;
+  mModel: TAtlasSignatureModel;
 begin
-  Model := Prepared(Basis);
-  Assert.IsFalse(Model.MoveRow(0, -1));
-  Assert.IsFalse(Model.MoveRow(1, 1));
-  Assert.IsTrue(Model.MoveRow(0, 1));
-  Assert.AreEqual('S', Model[0].Name);
-  Assert.AreEqual(1, Model[0].Origin);
-  Assert.IsTrue(Model.Changed);
+  mModel := Prepared(cBasis);
+  Assert.IsFalse(mModel.MoveRow(0, -1));
+  Assert.IsFalse(mModel.MoveRow(1, 1));
+  Assert.IsTrue(mModel.MoveRow(0, 1));
+  Assert.AreEqual('S', mModel[0].Name);
+  Assert.AreEqual(1, mModel[0].Origin);
+  Assert.IsTrue(mModel.Changed);
 end;
 
 procedure TSignatureModelTests.RenameKeepsTypeOfExisting;
 var
-  Model: TAtlasSignatureModel;
+  mModel: TAtlasSignatureModel;
 begin
-  Model := Prepared(Basis);
-  Model.Rename(0, ' Anzahl ');
-  Assert.AreEqual('Anzahl', Model[0].Name);
-  Assert.AreEqual('Integer', Model[0].TypeName);
-  Assert.IsTrue(Model.Changed);
+  mModel := Prepared(cBasis);
+  mModel.Rename(0, ' Anzahl ');
+  Assert.AreEqual('Anzahl', mModel[0].Name);
+  Assert.AreEqual('Integer', mModel[0].TypeName);
+  Assert.IsTrue(mModel.Changed);
 end;
 
 procedure TSignatureModelTests.ChangeOnlyForNewParameters;
 var
-  Model: TAtlasSignatureModel;
+  mModel: TAtlasSignatureModel;
 begin
-  Model := Prepared(Basis);
-  Model.Change(0, 'Int64', 'var', '1');
-  Assert.AreEqual('Integer', Model[0].TypeName);
-  Assert.AreEqual('', Model[0].Modifier);
-  Model.Add(0, 'B', 'Integer', '', '0');
-  Model.Change(1, 'Int64', 'CONST', '7');
-  Assert.AreEqual('Int64', Model[1].TypeName);
-  Assert.AreEqual('const', Model[1].Modifier);
-  Assert.AreEqual('7', Model[1].Value);
+  mModel := Prepared(cBasis);
+  mModel.Change(0, 'Int64', 'var', '1');
+  Assert.AreEqual('Integer', mModel[0].TypeName);
+  Assert.AreEqual('', mModel[0].Modifier);
+  mModel.Add(0, 'B', 'Integer', '', '0');
+  mModel.Change(1, 'Int64', 'CONST', '7');
+  Assert.AreEqual('Int64', mModel[1].TypeName);
+  Assert.AreEqual('const', mModel[1].Modifier);
+  Assert.AreEqual('7', mModel[1].Value);
 end;
 
 procedure TSignatureModelTests.PreviewShowsNewSignature;
 var
-  Model: TAtlasSignatureModel;
+  mModel: TAtlasSignatureModel;
 begin
-  Model := Prepared(Basis);
-  Model.Add(0, 'B', 'Int64', 'const', '0');
+  mModel := Prepared(cBasis);
+  mModel.Add(0, 'B', 'Int64', 'const', '0');
   Assert.AreEqual('function TBasis.Lauf(A: Integer; const B: Int64; const S: string = ''x''): Boolean',
-    Model.Preview);
-  Model.Remove(0);
-  Model.Remove(0);
-  Model.Remove(0);
-  Assert.AreEqual('function TBasis.Lauf: Boolean', Model.Preview);
+    mModel.Preview);
+  mModel.Remove(0);
+  mModel.Remove(0);
+  mModel.Remove(0);
+  Assert.AreEqual('function TBasis.Lauf: Boolean', mModel.Preview);
 end;
 
 procedure TSignatureModelTests.InterfaceMethodForcesUpdateCallers;
 var
-  Model: TAtlasSignatureModel;
-  Request: TJSONObject;
+  mModel: TAtlasSignatureModel;
+  mRequest: TJSONObject;
 begin
-  Model := Prepared(StringReplace(Basis, '"overloadPossible":true', '"overloadPossible":false', []));
-  Assert.IsFalse(Model.OverloadPossible);
-  Assert.IsFalse(Model.UseOverload);
-  Model.UseOverload := True;
-  Request := Model.RequestJson;
+  mModel := Prepared(StringReplace(cBasis, '"overloadPossible":true', '"overloadPossible":false', []));
+  Assert.IsFalse(mModel.OverloadPossible);
+  Assert.IsFalse(mModel.UseOverload);
+  mModel.UseOverload := True;
+  mRequest := mModel.RequestJson;
   try
-    Assert.AreEqual('updateCallers', Request.GetValue<string>('newParameter'));
+    Assert.AreEqual('updateCallers', mRequest.GetValue<string>('newParameter'));
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
 procedure TSignatureModelTests.FixedEventAllowsOnlyRename;
 var
-  Model: TAtlasSignatureModel;
-  Subject: string;
+  mModel: TAtlasSignatureModel;
+  mSubject: string;
 begin
-  Model := Prepared(Event);
-  Assert.IsTrue(Model.EventFixed);
-  Assert.AreEqual('TNotifyEvent', Model.BoundEvent);
-  Model.Rename(0, 'AOrigin');
-  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.None, Model.Validate);
-  Model.Add(0, 'B', 'Integer', '', '0');
-  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.TypesFixed, Model.Validate(Subject));
-  Assert.AreEqual('TNotifyEvent', Subject);
+  mModel := Prepared(cEvent);
+  Assert.IsTrue(mModel.EventFixed);
+  Assert.AreEqual('TNotifyEvent', mModel.BoundEvent);
+  mModel.Rename(0, 'AOrigin');
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.None, mModel.Validate);
+  mModel.Add(0, 'B', 'Integer', '', '0');
+  Assert.AreEqual<TAtlasSignatureProblem>(TAtlasSignatureProblem.TypesFixed, mModel.Validate(mSubject));
+  Assert.AreEqual('TNotifyEvent', mSubject);
 end;
 
 procedure TSignatureModelTests.RequestJsonCarriesOriginsAndMode;
 var
-  Model: TAtlasSignatureModel;
-  Request: TJSONObject;
-  Items: TJSONArray;
+  mModel: TAtlasSignatureModel;
+  mRequest: TJSONObject;
+  mItems: TJSONArray;
 begin
-  Model := Prepared(Basis);
-  Model.MoveRow(0, 1);
-  Model.Add(1, 'B', 'Integer', 'var', 'Wert');
-  Model.VirtualOverload := True;
-  Request := Model.RequestJson;
+  mModel := Prepared(cBasis);
+  mModel.MoveRow(0, 1);
+  mModel.Add(1, 'B', 'Integer', 'var', 'Wert');
+  mModel.VirtualOverload := True;
+  mRequest := mModel.RequestJson;
   try
-    Items := Request.GetValue('parameters') as TJSONArray;
-    Assert.AreEqual(3, Integer(Items.Count));
-    Assert.AreEqual(1, (Items.Items[0] as TJSONObject).GetValue<Integer>('origin'));
-    Assert.AreEqual('-1', (Items.Items[2] as TJSONObject).GetValue('origin').ToJSON);
-    Assert.AreEqual('var', (Items.Items[2] as TJSONObject).GetValue<string>('modifier'));
-    Assert.AreEqual('Wert', (Items.Items[2] as TJSONObject).GetValue<string>('value'));
-    Assert.IsNull((Items.Items[0] as TJSONObject).GetValue('type'));
-    Assert.AreEqual('overload', Request.GetValue<string>('newParameter'));
-    Assert.IsTrue(Request.GetValue<Boolean>('virtualOverload'));
+    mItems := mRequest.GetValue('parameters') as TJSONArray;
+    Assert.AreEqual(3, Integer(mItems.Count));
+    Assert.AreEqual(1, (mItems.Items[0] as TJSONObject).GetValue<Integer>('origin'));
+    Assert.AreEqual('-1', (mItems.Items[2] as TJSONObject).GetValue('origin').ToJSON);
+    Assert.AreEqual('var', (mItems.Items[2] as TJSONObject).GetValue<string>('modifier'));
+    Assert.AreEqual('Wert', (mItems.Items[2] as TJSONObject).GetValue<string>('value'));
+    Assert.IsNull((mItems.Items[0] as TJSONObject).GetValue('type'));
+    Assert.AreEqual('overload', mRequest.GetValue<string>('newParameter'));
+    Assert.IsTrue(mRequest.GetValue<Boolean>('virtualOverload'));
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 

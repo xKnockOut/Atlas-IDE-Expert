@@ -69,10 +69,10 @@ uses
   Atlas.Common.Lsp.Documentation;
 
 const
-  BaseFile = 'C:\P\Basis.pas';
-  MainFile = 'C:\P\Haupt.pas';
+  cBaseFile = 'C:\P\Basis.pas';
+  cMainFile = 'C:\P\Haupt.pas';
 
-  UnitBase =
+  cUnitBase =
     'unit Basis;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -96,7 +96,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitMain =
+  cUnitMain =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -140,13 +140,13 @@ begin
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := True;
-      if SameText(AFileName, BaseFile) then
+      if SameText(AFileName, cBaseFile) then
       begin
-        AText := UnitBase;
+        AText := cUnitBase;
       end
-      else if SameText(AFileName, MainFile) then
+      else if SameText(AFileName, cMainFile) then
       begin
-        AText := UnitMain;
+        AText := cUnitMain;
       end
       else
       begin
@@ -165,8 +165,8 @@ end;
 procedure TLspDocumentationTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBase, BaseFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitMain, MainFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBase, cBaseFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -183,251 +183,251 @@ end;
 
 function TLspDocumentationTests.Member(const AType, AName: string): TResolvedSymbol;
 var
-  Owner: TResolvedSymbol;
+  mOwner: TResolvedSymbol;
 begin
-  Assert.IsTrue(FResolver.ResolveTypeFrom(MainUnit, AType, Owner), AType);
-  Assert.IsTrue(FResolver.DeclaredMember(Owner, AName, Result), AType + '.' + AName);
+  Assert.IsTrue(FResolver.ResolveTypeFrom(MainUnit, AType, mOwner), AType);
+  Assert.IsTrue(FResolver.DeclaredMember(mOwner, AName, Result), AType + '.' + AName);
 end;
 
 procedure TLspDocumentationTests.LoadsCommentWithoutInheritDoc;
 var
-  Doc: TXmlDoc;
-  Lines: TArray<string>;
+  mDoc: TXmlDoc;
+  mLines: TArray<string>;
 begin
-  Lines := TLspDocumentation.SplitLines(UnitBase);
+  mLines := TLspDocumentation.SplitLines(cUnitBase);
   // Zeile 14: procedure Paint im TBasis.
-  Doc := TLspDocumentation.Load(nil, Default(TResolvedSymbol), Lines, 14, nil);
-  Assert.AreEqual('Zeichnet die Form.', Doc.Summary);
-  Assert.AreEqual(1, Integer(Length(Doc.Params)));
-  Assert.AreEqual('AFarbe', Doc.Params[0].Name);
-  Assert.IsFalse(Doc.InheritDoc);
+  mDoc := TLspDocumentation.Load(nil, Default(TResolvedSymbol), mLines, 14, nil);
+  Assert.AreEqual('Zeichnet die Form.', mDoc.Summary);
+  Assert.AreEqual(1, Integer(Length(mDoc.Params)));
+  Assert.AreEqual('AFarbe', mDoc.Params[0].Name);
+  Assert.IsFalse(mDoc.InheritDoc);
 end;
 
 procedure TLspDocumentationTests.InheritsFromAncestorMember;
 var
-  Symbol: TResolvedSymbol;
-  Doc: TXmlDoc;
+  mSymbol: TResolvedSymbol;
+  mDoc: TXmlDoc;
 begin
-  Symbol := Member('TKreis', 'Paint');
-  Doc := TLspDocumentation.Load(FResolver, Symbol, TLspDocumentation.SplitLines(UnitMain), SymbolLine(Symbol),
+  mSymbol := Member('TKreis', 'Paint');
+  mDoc := TLspDocumentation.Load(FResolver, mSymbol, TLspDocumentation.SplitLines(cUnitMain), SymbolLine(mSymbol),
     ReadFiles());
-  Assert.AreEqual('Zeichnet die Form.', Doc.Summary);
-  Assert.AreEqual(1, Integer(Length(Doc.Params)));
-  Assert.IsTrue(Pos('Breite', Doc.Remarks) > 0, Doc.Remarks);
+  Assert.AreEqual('Zeichnet die Form.', mDoc.Summary);
+  Assert.AreEqual(1, Integer(Length(mDoc.Params)));
+  Assert.IsTrue(Pos('Breite', mDoc.Remarks) > 0, mDoc.Remarks);
 end;
 
 procedure TLspDocumentationTests.OwnSectionsWinMissingComeFromAncestor;
 var
-  Symbol: TResolvedSymbol;
-  Doc: TXmlDoc;
+  mSymbol: TResolvedSymbol;
+  mDoc: TXmlDoc;
 begin
-  Symbol := Member('TQuadrat', 'Paint');
-  Doc := TLspDocumentation.Load(FResolver, Symbol, TLspDocumentation.SplitLines(UnitMain), SymbolLine(Symbol),
+  mSymbol := Member('TQuadrat', 'Paint');
+  mDoc := TLspDocumentation.Load(FResolver, mSymbol, TLspDocumentation.SplitLines(cUnitMain), SymbolLine(mSymbol),
     ReadFiles());
-  Assert.AreEqual('Zeichnet vier Ecken.', Doc.Summary);
-  Assert.AreEqual(1, Integer(Length(Doc.Params)), 'Parameter vom Vorfahren');
-  Assert.AreEqual('Füllfarbe', Doc.Params[0].Text);
+  Assert.AreEqual('Zeichnet vier Ecken.', mDoc.Summary);
+  Assert.AreEqual(1, Integer(Length(mDoc.Params)), 'Parameter vom Vorfahren');
+  Assert.AreEqual('Füllfarbe', mDoc.Params[0].Text);
 end;
 
 procedure TLspDocumentationTests.InheritsFromInterface;
 var
-  Symbol: TResolvedSymbol;
-  Doc: TXmlDoc;
+  mSymbol: TResolvedSymbol;
+  mDoc: TXmlDoc;
 begin
-  Symbol := Member('TLaeufer', 'Lauf');
-  Doc := TLspDocumentation.Load(FResolver, Symbol, TLspDocumentation.SplitLines(UnitMain), SymbolLine(Symbol),
+  mSymbol := Member('TLaeufer', 'Lauf');
+  mDoc := TLspDocumentation.Load(FResolver, mSymbol, TLspDocumentation.SplitLines(cUnitMain), SymbolLine(mSymbol),
     ReadFiles());
-  Assert.AreEqual('Läuft los.', Doc.Summary);
+  Assert.AreEqual('Läuft los.', mDoc.Summary);
 end;
 
 procedure TLspDocumentationTests.InheritsTypeDocFromAncestorType;
 var
-  Symbol: TResolvedSymbol;
-  Doc: TXmlDoc;
+  mSymbol: TResolvedSymbol;
+  mDoc: TXmlDoc;
 begin
-  Assert.IsTrue(FResolver.ResolveTypeFrom(MainUnit, 'TKreis', Symbol));
-  Doc := TLspDocumentation.Load(FResolver, Symbol, TLspDocumentation.SplitLines(UnitMain), SymbolLine(Symbol),
+  Assert.IsTrue(FResolver.ResolveTypeFrom(MainUnit, 'TKreis', mSymbol));
+  mDoc := TLspDocumentation.Load(FResolver, mSymbol, TLspDocumentation.SplitLines(cUnitMain), SymbolLine(mSymbol),
     ReadFiles());
-  Assert.AreEqual('Die Basis aller Formen.', Doc.Summary);
+  Assert.AreEqual('Die Basis aller Formen.', mDoc.Summary);
 end;
 
 procedure TLspDocumentationTests.InheritsFromCref;
 var
-  Symbol: TResolvedSymbol;
-  Doc: TXmlDoc;
+  mSymbol: TResolvedSymbol;
+  mDoc: TXmlDoc;
 begin
-  Assert.IsTrue(FResolver.ResolveNameFrom(MainUnit, 'Male', Symbol));
-  Doc := TLspDocumentation.Load(FResolver, Symbol, TLspDocumentation.SplitLines(UnitMain), SymbolLine(Symbol),
+  Assert.IsTrue(FResolver.ResolveNameFrom(MainUnit, 'Male', mSymbol));
+  mDoc := TLspDocumentation.Load(FResolver, mSymbol, TLspDocumentation.SplitLines(cUnitMain), SymbolLine(mSymbol),
     ReadFiles());
-  Assert.AreEqual('Zeichnet die Form.', Doc.Summary);
+  Assert.AreEqual('Zeichnet die Form.', mDoc.Summary);
 end;
 
 procedure TLspDocumentationTests.WithoutSymbolKeepsOwnDoc;
 var
-  Symbol: TResolvedSymbol;
-  Doc: TXmlDoc;
+  mSymbol: TResolvedSymbol;
+  mDoc: TXmlDoc;
 begin
-  Symbol := Member('TKreis', 'Paint');
+  mSymbol := Member('TKreis', 'Paint');
   // Ohne Resolver bzw. ohne Lesefunktion bleibt nur der eigene (leere) Kommentar.
-  Doc := TLspDocumentation.Load(nil, Symbol, TLspDocumentation.SplitLines(UnitMain), SymbolLine(Symbol), nil);
-  Assert.IsTrue(Doc.InheritDoc);
-  Assert.AreEqual('', Doc.Summary);
-  Doc := TLspDocumentation.Load(FResolver, Symbol, TLspDocumentation.SplitLines(UnitMain), SymbolLine(Symbol),
+  mDoc := TLspDocumentation.Load(nil, mSymbol, TLspDocumentation.SplitLines(cUnitMain), SymbolLine(mSymbol), nil);
+  Assert.IsTrue(mDoc.InheritDoc);
+  Assert.AreEqual('', mDoc.Summary);
+  mDoc := TLspDocumentation.Load(FResolver, mSymbol, TLspDocumentation.SplitLines(cUnitMain), SymbolLine(mSymbol),
     nil);
-  Assert.AreEqual('', Doc.Summary, 'Basis.pas nicht lesbar');
+  Assert.AreEqual('', mDoc.Summary, 'Basis.pas nicht lesbar');
 end;
 
 procedure TLspDocumentationTests.LocatesTypesMembersAndGlobals;
 var
-  Found: TResolvedSymbol;
+  mFound: TResolvedSymbol;
 begin
-  Assert.IsTrue(FResolver.LocateCref(MainUnit, '', 'TBasis', Found));
-  Assert.AreEqual('TBasis', Found.Name);
-  Assert.IsTrue(FResolver.LocateCref(MainUnit, '', 'TBasis.Paint(System.Int32)', Found));
-  Assert.AreEqual('Paint', Found.Name);
-  Assert.AreEqual(BaseFile, Found.FileName);
-  Assert.IsTrue(FResolver.LocateCref(MainUnit, 'TBasis', 'Breite', Found), 'Eigenes Mitglied');
-  Assert.AreEqual('Breite', Found.Name);
-  Assert.IsTrue(FResolver.LocateCref(MainUnit, '', 'Zaehler', Found), 'Globale Variable');
-  Assert.AreEqual(MainFile, Found.FileName);
-  Assert.IsFalse(FResolver.LocateCref(MainUnit, '', 'Unbekannt', Found));
-  Assert.IsFalse(FResolver.LocateCref(MainUnit, '', '  ', Found));
-  Assert.IsFalse(FResolver.LocateCref(MainUnit, '', 'Integer', Found), 'Eingebaute Typen nicht');
+  Assert.IsTrue(FResolver.LocateCref(MainUnit, '', 'TBasis', mFound));
+  Assert.AreEqual('TBasis', mFound.Name);
+  Assert.IsTrue(FResolver.LocateCref(MainUnit, '', 'TBasis.Paint(System.Int32)', mFound));
+  Assert.AreEqual('Paint', mFound.Name);
+  Assert.AreEqual(cBaseFile, mFound.FileName);
+  Assert.IsTrue(FResolver.LocateCref(MainUnit, 'TBasis', 'Breite', mFound), 'Eigenes Mitglied');
+  Assert.AreEqual('Breite', mFound.Name);
+  Assert.IsTrue(FResolver.LocateCref(MainUnit, '', 'Zaehler', mFound), 'Globale Variable');
+  Assert.AreEqual(cMainFile, mFound.FileName);
+  Assert.IsFalse(FResolver.LocateCref(MainUnit, '', 'Unbekannt', mFound));
+  Assert.IsFalse(FResolver.LocateCref(MainUnit, '', '  ', mFound));
+  Assert.IsFalse(FResolver.LocateCref(MainUnit, '', 'Integer', mFound), 'Eingebaute Typen nicht');
 end;
 
 procedure TLspDocumentationTests.TargetsResolveRefsAndExceptions;
 var
-  Doc: TXmlDoc;
-  Targets: TArray<TDocTarget>;
+  mDoc: TXmlDoc;
+  mTargets: TArray<TDocTarget>;
 begin
-  Doc := TXmlDoc.Parse('<summary>Siehe <see cref="TBasis"/> und <see cref="TBasis"/>, nicht ' +
+  mDoc := TXmlDoc.Parse('<summary>Siehe <see cref="TBasis"/> und <see cref="TBasis"/>, nicht ' +
     '<see cref="Gibtsnicht"/>.</summary><exception cref="ELaufFehler">bei Fehler</exception>');
-  Targets := TLspDocumentation.Targets(FResolver, MainUnit, '', Doc);
-  Assert.AreEqual(2, Integer(Length(Targets)), 'Doppelte einmal, unbekannte fehlen');
-  Assert.AreEqual('TBasis', Targets[0].Cref);
-  Assert.AreEqual(BaseFile, Targets[0].FileName);
-  Assert.AreEqual('Basis', Targets[0].UnitName);
-  Assert.AreEqual(10, Targets[0].Line);
-  Assert.AreEqual(2, Targets[0].Character);
-  Assert.AreEqual('ELaufFehler', Targets[1].Name);
-  Assert.AreEqual(0, Integer(Length(TLspDocumentation.Targets(nil, MainUnit, '', Doc))));
-  Targets := nil;
+  mTargets := TLspDocumentation.Targets(FResolver, MainUnit, '', mDoc);
+  Assert.AreEqual(2, Integer(Length(mTargets)), 'Doppelte einmal, unbekannte fehlen');
+  Assert.AreEqual('TBasis', mTargets[0].Cref);
+  Assert.AreEqual(cBaseFile, mTargets[0].FileName);
+  Assert.AreEqual('Basis', mTargets[0].UnitName);
+  Assert.AreEqual(10, mTargets[0].Line);
+  Assert.AreEqual(2, mTargets[0].Character);
+  Assert.AreEqual('ELaufFehler', mTargets[1].Name);
+  Assert.AreEqual(0, Integer(Length(TLspDocumentation.Targets(nil, MainUnit, '', mDoc))));
+  mTargets := nil;
 end;
 
 procedure TLspDocumentationTests.ToJsonOmitsLocationsInIdeUnits;
 var
-  Doc: TXmlDoc;
-  Target: TDocTarget;
-  Json: TJSONObject;
-  Text: string;
+  mDoc: TXmlDoc;
+  mTarget: TDocTarget;
+  mJson: TJSONObject;
+  mText: string;
 begin
-  Doc := TXmlDoc.Parse('<summary>Wie <see cref="TForm"/></summary><exception cref="EFormFehler">x</exception>');
-  Target := Default(TDocTarget);
-  Target.Cref := 'TForm';
-  Target.Name := 'TForm';
-  Target.UnitName := 'Vcl.Forms';
-  Target.FileName := 'atlas-ide:Vcl.Forms.pas';
-  Target.Line := 3;
-  Target.Character := 2;
-  Json := TLspDocumentation.ToJson(Doc, [Target]);
+  mDoc := TXmlDoc.Parse('<summary>Wie <see cref="TForm"/></summary><exception cref="EFormFehler">x</exception>');
+  mTarget := Default(TDocTarget);
+  mTarget.Cref := 'TForm';
+  mTarget.Name := 'TForm';
+  mTarget.UnitName := 'Vcl.Forms';
+  mTarget.FileName := 'atlas-ide:Vcl.Forms.pas';
+  mTarget.Line := 3;
+  mTarget.Character := 2;
+  mJson := TLspDocumentation.ToJson(mDoc, [mTarget]);
   try
-    Text := Json.ToJSON;
+    mText := mJson.ToJSON;
     // Name und Unit bleiben, ein Fundort (und damit ein Sprungziel) fehlt.
-    Assert.Contains(Text, '"target":"TForm","name":"TForm","unit":"Vcl.Forms"');
-    Assert.IsFalse(Pos('atlas-ide:', Text) > 0, Text);
-    Assert.IsFalse(Pos('"file"', Text) > 0, Text);
+    Assert.Contains(mText, '"target":"TForm","name":"TForm","unit":"Vcl.Forms"');
+    Assert.IsFalse(Pos('atlas-ide:', mText) > 0, mText);
+    Assert.IsFalse(Pos('"file"', mText) > 0, mText);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TLspDocumentationTests.ToJsonCarriesSectionsRunsAndLocations;
 var
-  Doc: TXmlDoc;
-  Target: TDocTarget;
-  Json: TJSONObject;
-  Text: string;
+  mDoc: TXmlDoc;
+  mTarget: TDocTarget;
+  mJson: TJSONObject;
+  mText: string;
 begin
-  Doc := TXmlDoc.Parse('<summary><b>Fett</b> und <see cref="TBasis"/></summary>' +
+  mDoc := TXmlDoc.Parse('<summary><b>Fett</b> und <see cref="TBasis"/></summary>' +
     '<param name="A">Wert</param><exception cref="ELaufFehler">kaputt</exception>');
-  Target := Default(TDocTarget);
-  Target.Cref := 'TBasis';
-  Target.Name := 'TBasis';
-  Target.UnitName := 'Basis';
-  Target.FileName := BaseFile;
-  Target.Line := 10;
-  Target.Character := 2;
-  Json := TLspDocumentation.ToJson(Doc, [Target]);
+  mTarget := Default(TDocTarget);
+  mTarget.Cref := 'TBasis';
+  mTarget.Name := 'TBasis';
+  mTarget.UnitName := 'Basis';
+  mTarget.FileName := cBaseFile;
+  mTarget.Line := 10;
+  mTarget.Character := 2;
+  mJson := TLspDocumentation.ToJson(mDoc, [mTarget]);
   try
-    Text := Json.ToJSON;
-    Assert.AreEqual(3, (Json.GetValue('sections') as TJSONArray).Count);
-    Assert.Contains(Text, '"kind":"summary"');
-    Assert.Contains(Text, '"bold":true');
-    Assert.Contains(Text, '"target":"TBasis","name":"TBasis","unit":"Basis"');
-    Assert.Contains(Text, '"line":10,"character":2');
-    Assert.Contains(Text, '"kind":"param","name":"A"');
+    mText := mJson.ToJSON;
+    Assert.AreEqual(3, (mJson.GetValue('sections') as TJSONArray).Count);
+    Assert.Contains(mText, '"kind":"summary"');
+    Assert.Contains(mText, '"bold":true');
+    Assert.Contains(mText, '"target":"TBasis","name":"TBasis","unit":"Basis"');
+    Assert.Contains(mText, '"line":10,"character":2');
+    Assert.Contains(mText, '"kind":"param","name":"A"');
     // Exception ohne Fundort: kein "ref".
-    Assert.IsFalse(Pos('"ref":{', Text) > 0, Text);
+    Assert.IsFalse(Pos('"ref":{', mText) > 0, mText);
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Json := TLspDocumentation.ToJson(Default(TXmlDoc), nil);
+  mJson := TLspDocumentation.ToJson(Default(TXmlDoc), nil);
   try
-    Assert.AreEqual('{"sections":[]}', Json.ToJSON);
+    Assert.AreEqual('{"sections":[]}', mJson.ToJSON);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TLspDocumentationTests.HintsJsonPassesSettings;
 var
-  Hints: THintSettings;
-  Json: TJSONObject;
+  mHints: THintSettings;
+  mJson: TJSONObject;
 begin
-  Hints := THintSettings.Default;
-  Hints.XmlDocExpand := THintSettings.cExpandExpanded;
-  Hints.XmlDocMaxLines := 12;
-  Json := TLspDocumentation.HintsJson(Hints);
+  mHints := THintSettings.Default;
+  mHints.XmlDocExpand := THintSettings.cExpandExpanded;
+  mHints.XmlDocMaxLines := 12;
+  mJson := TLspDocumentation.HintsJson(mHints);
   try
-    Assert.AreEqual('{"expand":"expanded","maxLines":12}', Json.ToJSON);
+    Assert.AreEqual('{"expand":"expanded","maxLines":12}', mJson.ToJSON);
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Hints.XmlDocExpand := THintSettings.cExpandCollapsed;
-  Hints.XmlDocMaxLines := 0;
-  Json := TLspDocumentation.HintsJson(Hints);
+  mHints.XmlDocExpand := THintSettings.cExpandCollapsed;
+  mHints.XmlDocMaxLines := 0;
+  mJson := TLspDocumentation.HintsJson(mHints);
   try
-    Assert.AreEqual('{"expand":"collapsed","maxLines":0}', Json.ToJSON);
+    Assert.AreEqual('{"expand":"collapsed","maxLines":0}', mJson.ToJSON);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TLspDocumentationTests.ReaderPrefersOwnText;
 var
-  Reader: TDocReadText;
-  Text: string;
+  mReader: TDocReadText;
+  mText: string;
 begin
-  Reader := TLspDocumentation.Reader(MainFile, 'ungespeichert', ReadFiles());
-  Assert.IsTrue(Reader('c:\p\haupt.pas', Text));
-  Assert.AreEqual('ungespeichert', Text, 'Editorinhalt vor der Datei');
-  Assert.IsTrue(Reader(BaseFile, Text));
-  Assert.AreEqual(UnitBase, Text);
-  Assert.IsFalse(Reader('C:\P\Fehlt.pas', Text));
-  Reader := TLspDocumentation.Reader(MainFile, 'x', nil);
-  Assert.IsFalse(Reader(BaseFile, Text), 'Ohne Lesefunktion nur die eigene Datei');
-  Reader := nil;
+  mReader := TLspDocumentation.Reader(cMainFile, 'ungespeichert', ReadFiles());
+  Assert.IsTrue(mReader('c:\p\haupt.pas', mText));
+  Assert.AreEqual('ungespeichert', mText, 'Editorinhalt vor der Datei');
+  Assert.IsTrue(mReader(cBaseFile, mText));
+  Assert.AreEqual(cUnitBase, mText);
+  Assert.IsFalse(mReader('C:\P\Fehlt.pas', mText));
+  mReader := TLspDocumentation.Reader(cMainFile, 'x', nil);
+  Assert.IsFalse(mReader(cBaseFile, mText), 'Ohne Lesefunktion nur die eigene Datei');
+  mReader := nil;
 end;
 
 procedure TLspDocumentationTests.SplitLinesHandlesAllLineBreaks;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := TLspDocumentation.SplitLines('a'#13#10'b'#10'c'#13'd');
-  Assert.AreEqual(4, Integer(Length(Lines)));
-  Assert.AreEqual('a', Lines[0]);
-  Assert.AreEqual('d', Lines[3]);
-  Lines := nil;
+  mLines := TLspDocumentation.SplitLines('a'#13#10'b'#10'c'#13'd');
+  Assert.AreEqual(4, Integer(Length(mLines)));
+  Assert.AreEqual('a', mLines[0]);
+  Assert.AreEqual('d', mLines[3]);
+  mLines := nil;
 end;
 
 initialization

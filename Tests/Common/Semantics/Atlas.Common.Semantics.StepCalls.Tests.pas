@@ -51,7 +51,7 @@ uses
   Atlas.Common.Pascal.Parser;
 
 const
-  Body =
+  cBody =
     'unit U;'#10 +                                              // 0
     'interface'#10 +                                            // 1
     'implementation'#10 +                                       // 2
@@ -65,7 +65,7 @@ end;
 
 function TSemanticsStepCallsTests.NameOf(const ASite: TStepCallSite): string;
 var
-  Position: TTextPosition;
+  mPosition: TTextPosition;
 begin
   case ASite.Node.Kind of
     TSyntaxKind.IndexAccess:
@@ -83,7 +83,7 @@ begin
   begin
     Result := Result + ':=';
   end;
-  if not TStepCalls.NamePosition(ASite.Callee, Position) then
+  if not TStepCalls.NamePosition(ASite.Callee, mPosition) then
   begin
     Result := Result + '?';
   end;
@@ -91,152 +91,152 @@ end;
 
 function TSemanticsStepCallsTests.SitesAt(const AText: string; ALine: Integer; out AStatement: TStepStatement): string;
 var
-  Site: TStepCallSite;
-  Names: TArray<string>;
+  mSite: TStepCallSite;
+  mNames: TArray<string>;
 begin
   FreeAndNil(FTree);
   FTree := TPascalParser.Parse(AText, nil);
   Assert.IsTrue(TStepCalls.Find(FTree, ALine, AStatement), 'keine Anweisung');
-  Names := nil;
-  for Site in AStatement.Sites do
+  mNames := nil;
+  for mSite in AStatement.Sites do
   begin
-    Names := Names + [NameOf(Site)];
+    mNames := mNames + [NameOf(mSite)];
   end;
-  Result := string.Join(' ', Names);
+  Result := string.Join(' ', mNames);
 end;
 
 procedure TSemanticsStepCallsTests.NestedCallsArgumentsFirst;
 var
-  Statement: TStepStatement;
+  mStatement: TStepStatement;
 begin
   Assert.AreEqual('Kunde Name N Format() Wert Pruefe() Speichere()',
-    SitesAt(Body +
+    SitesAt(cBody +
     '  Speichere(Kunde.Name, Format(''%d'', [N]), Pruefe(Wert));'#10 +   // 5
     'end;'#10 +
-    'end.', 5, Statement));
-  Assert.AreEqual(5, Statement.Node.StartPos.Line);
+    'end.', 5, mStatement));
+  Assert.AreEqual(5, mStatement.Node.StartPos.Line);
   // Empfänger vor dem Aufruf, Kette von links.
   Assert.AreEqual('A GetB() C() X D()',
-    SitesAt(Body + '  A.GetB().C().D(X);'#10 + 'end;'#10 + 'end.', 5, Statement));
+    SitesAt(cBody + '  A.GetB().C().D(X);'#10 + 'end;'#10 + 'end.', 5, mStatement));
 end;
 
 procedure TSemanticsStepCallsTests.AssignmentRightSideThenSetter;
 var
-  Statement: TStepStatement;
+  mStatement: TStepStatement;
 begin
   Assert.AreEqual('Quelle Wert Ziel Name:=',
-    SitesAt(Body + '  Ziel.Name := Quelle.Wert;'#10 + 'end;'#10 + 'end.', 5, Statement));
-  Assert.IsNotNull(Statement.Sites[3].Receiver);
-  Assert.AreEqual('Ziel', Statement.Sites[3].Receiver.Name);
-  Assert.AreEqual('I Liste[]:=', SitesAt(Body + '  Liste[I] := 0;'#10 + 'end;'#10 + 'end.', 5, Statement));
+    SitesAt(cBody + '  Ziel.Name := Quelle.Wert;'#10 + 'end;'#10 + 'end.', 5, mStatement));
+  Assert.IsNotNull(mStatement.Sites[3].Receiver);
+  Assert.AreEqual('Ziel', mStatement.Sites[3].Receiver.Name);
+  Assert.AreEqual('I Liste[]:=', SitesAt(cBody + '  Liste[I] := 0;'#10 + 'end;'#10 + 'end.', 5, mStatement));
 end;
 
 procedure TSemanticsStepCallsTests.MultiLineStatement;
 var
-  Statement: TStepStatement;
+  mStatement: TStepStatement;
 begin
   // Ausführungspunkt in der Folgezeile einer mehrzeiligen Anweisung: die ganze Anweisung.
   Assert.AreEqual('A() B() C()',
-    SitesAt(Body + '  C(A(),'#10 + '    B());'#10 + 'end;'#10 + 'end.', 6, Statement));
-  Assert.AreEqual(5, Statement.Node.StartPos.Line);
+    SitesAt(cBody + '  C(A(),'#10 + '    B());'#10 + 'end;'#10 + 'end.', 6, mStatement));
+  Assert.AreEqual(5, mStatement.Node.StartPos.Line);
 end;
 
 procedure TSemanticsStepCallsTests.IfOnOneLineIncludesBranch;
 var
-  Statement: TStepStatement;
+  mStatement: TStepStatement;
 begin
   Assert.AreEqual('Bereit() Tu() Lass()',
-    SitesAt(Body + '  if Bereit() then Tu() else Lass();'#10 + 'end;'#10 + 'end.', 5, Statement));
-  Assert.AreEqual(Ord(TSyntaxKind.IfStatement), Ord(Statement.Node.Kind));
+    SitesAt(cBody + '  if Bereit() then Tu() else Lass();'#10 + 'end;'#10 + 'end.', 5, mStatement));
+  Assert.AreEqual(Ord(TSyntaxKind.IfStatement), Ord(mStatement.Node.Kind));
 end;
 
 procedure TSemanticsStepCallsTests.IfBranchOnOwnLineIsSeparate;
 var
-  Statement: TStepStatement;
+  mStatement: TStepStatement;
 begin
   Assert.AreEqual('Bereit()',
-    SitesAt(Body + '  if Bereit() then'#10 + '    Tu();'#10 + 'end;'#10 + 'end.', 5, Statement));
+    SitesAt(cBody + '  if Bereit() then'#10 + '    Tu();'#10 + 'end;'#10 + 'end.', 5, mStatement));
   Assert.AreEqual('Tu()',
-    SitesAt(Body + '  if Bereit() then'#10 + '    Tu();'#10 + 'end;'#10 + 'end.', 6, Statement));
+    SitesAt(cBody + '  if Bereit() then'#10 + '    Tu();'#10 + 'end;'#10 + 'end.', 6, mStatement));
 end;
 
 procedure TSemanticsStepCallsTests.UntilLineOnlyCondition;
 var
-  Statement: TStepStatement;
+  mStatement: TStepStatement;
 begin
   Assert.AreEqual('Fertig()',
-    SitesAt(Body + '  repeat'#10 + '    Tu();'#10 + '  until Fertig();'#10 + 'end;'#10 + 'end.', 7, Statement));
-  Assert.AreEqual(Ord(TSyntaxKind.RepeatStatement), Ord(Statement.Node.Kind));
+    SitesAt(cBody + '  repeat'#10 + '    Tu();'#10 + '  until Fertig();'#10 + 'end;'#10 + 'end.', 7, mStatement));
+  Assert.AreEqual(Ord(TSyntaxKind.RepeatStatement), Ord(mStatement.Node.Kind));
 end;
 
 procedure TSemanticsStepCallsTests.WithExpressionAndIndexAccess;
 var
-  Statement: TStepStatement;
+  mStatement: TStepStatement;
 begin
   Assert.AreEqual('TKunde Create',
-    SitesAt(Body + '  with TKunde.Create do'#10 + '    Free;'#10 + 'end;'#10 + 'end.', 5, Statement));
+    SitesAt(cBody + '  with TKunde.Create do'#10 + '    Free;'#10 + 'end;'#10 + 'end.', 5, mStatement));
   Assert.AreEqual('Free',
-    SitesAt(Body + '  with TKunde.Create do'#10 + '    Free;'#10 + 'end;'#10 + 'end.', 6, Statement));
+    SitesAt(cBody + '  with TKunde.Create do'#10 + '    Free;'#10 + 'end;'#10 + 'end.', 6, mStatement));
   Assert.AreEqual('Liste I Items[] Name Zeige()',
-    SitesAt(Body + '  Zeige(Liste.Items[I].Name);'#10 + 'end;'#10 + 'end.', 5, Statement));
+    SitesAt(cBody + '  Zeige(Liste.Items[I].Name);'#10 + 'end;'#10 + 'end.', 5, mStatement));
 end;
 
 procedure TSemanticsStepCallsTests.AddressOfAndAnonymousMethodSkipped;
 var
-  Statement: TStepStatement;
+  mStatement: TStepStatement;
 begin
   Assert.AreEqual('Starte()',
-    SitesAt(Body + '  Starte(@Rueckruf, procedure begin Tu(); end);'#10 + 'end;'#10 + 'end.', 5, Statement));
+    SitesAt(cBody + '  Starte(@Rueckruf, procedure begin Tu(); end);'#10 + 'end;'#10 + 'end.', 5, mStatement));
   Assert.AreEqual('inherited Create',
-    SitesAt(Body + '  inherited Create;'#10 + 'end;'#10 + 'end.', 5, Statement));
+    SitesAt(cBody + '  inherited Create;'#10 + 'end;'#10 + 'end.', 5, mStatement));
 end;
 
 procedure TSemanticsStepCallsTests.FollowLineNextStatement;
 var
-  Statement: TStepStatement;
+  mStatement: TStepStatement;
 begin
-  SitesAt(Body + '  if A then B;'#10 + '  C;'#10 + 'end;'#10 + 'end.', 5, Statement);
-  Assert.AreEqual(6, Statement.FollowLine);
+  SitesAt(cBody + '  if A then B;'#10 + '  C;'#10 + 'end;'#10 + 'end.', 5, mStatement);
+  Assert.AreEqual(6, mStatement.FollowLine);
   // Letzte Anweisung eines then-Blocks: die Anweisung nach dem if.
-  SitesAt(Body + '  if A then'#10 + '  begin'#10 + '    B;'#10 + '  end;'#10 + '  C;'#10 + 'end;'#10 + 'end.', 7,
-    Statement);
-  Assert.AreEqual(9, Statement.FollowLine);
+  SitesAt(cBody + '  if A then'#10 + '  begin'#10 + '    B;'#10 + '  end;'#10 + '  C;'#10 + 'end;'#10 + 'end.', 7,
+    mStatement);
+  Assert.AreEqual(9, mStatement.FollowLine);
 end;
 
 procedure TSemanticsStepCallsTests.FollowLineLoopAndRoutineEnd;
 var
-  Statement: TStepStatement;
+  mStatement: TStepStatement;
 begin
-  SitesAt(Body + '  while A do'#10 + '  begin'#10 + '    B;'#10 + '  end;'#10 + 'end;'#10 + 'end.', 7, Statement);
-  Assert.AreEqual(5, Statement.FollowLine);
-  SitesAt(Body + '  repeat'#10 + '    B;'#10 + '  until C;'#10 + 'end;'#10 + 'end.', 6, Statement);
-  Assert.AreEqual(7, Statement.FollowLine);
+  SitesAt(cBody + '  while A do'#10 + '  begin'#10 + '    B;'#10 + '  end;'#10 + 'end;'#10 + 'end.', 7, mStatement);
+  Assert.AreEqual(5, mStatement.FollowLine);
+  SitesAt(cBody + '  repeat'#10 + '    B;'#10 + '  until C;'#10 + 'end;'#10 + 'end.', 6, mStatement);
+  Assert.AreEqual(7, mStatement.FollowLine);
   // Letzte Anweisung der Routine: ihr end.
-  SitesAt(Body + '  B;'#10 + 'end;'#10 + 'end.', 5, Statement);
-  Assert.AreEqual(6, Statement.FollowLine);
+  SitesAt(cBody + '  B;'#10 + 'end;'#10 + 'end.', 5, mStatement);
+  Assert.AreEqual(6, mStatement.FollowLine);
 end;
 
 procedure TSemanticsStepCallsTests.FollowLineFinally;
 var
-  Statement: TStepStatement;
+  mStatement: TStepStatement;
 begin
-  SitesAt(Body + '  try'#10 + '    B;'#10 + '  finally'#10 + '    C;'#10 + '  end;'#10 + '  D;'#10 + 'end;'#10 +
-    'end.', 6, Statement);
-  Assert.AreEqual(8, Statement.FollowLine);
-  SitesAt(Body + '  try'#10 + '    B;'#10 + '  finally'#10 + '    C;'#10 + '  end;'#10 + '  D;'#10 + 'end;'#10 +
-    'end.', 8, Statement);
-  Assert.AreEqual(10, Statement.FollowLine);
+  SitesAt(cBody + '  try'#10 + '    B;'#10 + '  finally'#10 + '    C;'#10 + '  end;'#10 + '  D;'#10 + 'end;'#10 +
+    'end.', 6, mStatement);
+  Assert.AreEqual(8, mStatement.FollowLine);
+  SitesAt(cBody + '  try'#10 + '    B;'#10 + '  finally'#10 + '    C;'#10 + '  end;'#10 + '  D;'#10 + 'end;'#10 +
+    'end.', 8, mStatement);
+  Assert.AreEqual(10, mStatement.FollowLine);
 end;
 
 procedure TSemanticsStepCallsTests.NamePositionOfMember;
 var
-  Statement: TStepStatement;
-  Position: TTextPosition;
+  mStatement: TStepStatement;
+  mPosition: TTextPosition;
 begin
-  SitesAt(Body + '  Kunde.Speichere(1);'#10 + 'end;'#10 + 'end.', 5, Statement);
-  Assert.IsTrue(TStepCalls.NamePosition(Statement.Sites[1].Callee, Position));
-  Assert.AreEqual(5, Position.Line);
-  Assert.AreEqual(8, Position.Character);
+  SitesAt(cBody + '  Kunde.Speichere(1);'#10 + 'end;'#10 + 'end.', 5, mStatement);
+  Assert.IsTrue(TStepCalls.NamePosition(mStatement.Sites[1].Callee, mPosition));
+  Assert.AreEqual(5, mPosition.Line);
+  Assert.AreEqual(8, mPosition.Character);
 end;
 
 initialization

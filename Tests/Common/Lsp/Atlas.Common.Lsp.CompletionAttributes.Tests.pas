@@ -65,11 +65,11 @@ uses
   Atlas.Common.Lsp.SignatureHelp;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
-  AttributesFile = 'C:\P\DUnitX.Attributes.pas';
-  FrameworkFile = 'C:\P\DUnitX.TestFramework.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
+  cAttributesFile = 'C:\P\DUnitX.Attributes.pas';
+  cFrameworkFile = 'C:\P\DUnitX.TestFramework.pas';
 
-  UnitAttributes =
+  cUnitAttributes =
     'unit DUnitX.Attributes;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -98,7 +98,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitFramework =
+  cUnitFramework =
     'unit DUnitX.TestFramework;'#10 +
     'interface'#10 +
     'uses DUnitX.Attributes;'#10 +
@@ -109,7 +109,7 @@ const
     'implementation'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     '{ Uses }'#10 +
@@ -140,23 +140,23 @@ const
 /// <summary>Text ohne "|" und die Position des "|".</summary>
 function Split(const AMarked: string; out APosition: TTextPosition): string;
 var
-  Index, Line, Character: Integer;
+  mIndex, mLine, mCharacter: Integer;
 begin
-  Line := 0;
-  Character := 0;
-  for Index := 1 to Pos('|', AMarked) - 1 do
+  mLine := 0;
+  mCharacter := 0;
+  for mIndex := 1 to Pos('|', AMarked) - 1 do
   begin
-    if AMarked[Index] = #10 then
+    if AMarked[mIndex] = #10 then
     begin
-      Inc(Line);
-      Character := 0;
+      Inc(mLine);
+      mCharacter := 0;
     end
     else
     begin
-      Inc(Character);
+      Inc(mCharacter);
     end;
   end;
-  APosition := TTextPosition.Create(Line, Character);
+  APosition := TTextPosition.Create(mLine, mCharacter);
   Result := StringReplace(AMarked, '|', '', []);
 end;
 
@@ -164,35 +164,35 @@ end;
 /// dazu).</summary>
 function Source(const AMarked: string): string;
 var
-  Text, Marked: string;
+  mText, mMarked: string;
 begin
-  Text := UnitHaupt;
-  Marked := AMarked;
-  if Marked.StartsWith('U:') then
+  mText := cUnitHaupt;
+  mMarked := AMarked;
+  if mMarked.StartsWith('U:') then
   begin
-    Text := StringReplace(Text, '{ Uses }', 'uses DUnitX.TestFramework;', []);
-    Marked := Copy(Marked, 3, MaxInt);
+    mText := StringReplace(mText, '{ Uses }', 'uses DUnitX.TestFramework;', []);
+    mMarked := Copy(mMarked, 3, MaxInt);
   end;
-  if Marked.StartsWith('C:') then
+  if mMarked.StartsWith('C:') then
   begin
-    Result := StringReplace(Text, '{ Code }', Copy(Marked, 3, MaxInt), []);
+    Result := StringReplace(mText, '{ Code }', Copy(mMarked, 3, MaxInt), []);
   end
   else
   begin
-    Result := StringReplace(Text, '{ Attr }', Marked, []);
+    Result := StringReplace(mText, '{ Attr }', mMarked, []);
   end;
 end;
 
 function ReadText(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
-  if SameText(AFileName, AttributesFile) then
+  if SameText(AFileName, cAttributesFile) then
   begin
-    AText := UnitAttributes;
+    AText := cUnitAttributes;
   end
-  else if SameText(AFileName, FrameworkFile) then
+  else if SameText(AFileName, cFrameworkFile) then
   begin
-    AText := UnitFramework;
+    AText := cUnitFramework;
   end
   else
   begin
@@ -205,8 +205,8 @@ end;
 procedure TCompletionAttributesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitAttributes, AttributesFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitFramework, FrameworkFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAttributes, cAttributesFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitFramework, cFrameworkFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -219,25 +219,25 @@ end;
 function TCompletionAttributesTests.ItemsAt(const AMarked: string;
   const ASettings: TCompletionSettings): TCompletionItems;
 var
-  Text: string;
-  Position: TTextPosition;
-  Tree: TSyntaxTree;
-  Request: TCompletionRequest;
+  mText: string;
+  mPosition: TTextPosition;
+  mTree: TSyntaxTree;
+  mRequest: TCompletionRequest;
 begin
-  Text := Split(Source(AMarked), Position);
-  Tree := TPascalParser.Parse(Text);
-  Request := TCompletionRequest.Create(Text, HauptFile, Position);
+  mText := Split(Source(AMarked), mPosition);
+  mTree := TPascalParser.Parse(mText);
+  mRequest := TCompletionRequest.Create(mText, cHauptFile, mPosition);
   try
-    Request.Tree := Tree;
-    Request.Resolver := FResolver;
-    Request.Index := FIndex;
-    Request.Matching := TCompletionMatching.Prefix;
-    Request.Settings := ASettings;
-    Request.ReadText := ReadText;
-    Result := TCompletionLists.Collect(Request, Default(TPostfixOptions), nil);
+    mRequest.Tree := mTree;
+    mRequest.Resolver := FResolver;
+    mRequest.Index := FIndex;
+    mRequest.Matching := TCompletionMatching.Prefix;
+    mRequest.Settings := ASettings;
+    mRequest.ReadText := ReadText;
+    Result := TCompletionLists.Collect(mRequest, Default(TPostfixOptions), nil);
   finally
-    Request.Free;
-    Tree.Free;
+    mRequest.Free;
+    mTree.Free;
   end;
 end;
 
@@ -248,12 +248,12 @@ end;
 
 function TCompletionAttributesTests.Names(const AItems: TCompletionItems): string;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
   Result := '';
-  for Item in AItems.Items do
+  for mItem in AItems.Items do
   begin
-    Result := Result + Item.Name + ' ';
+    Result := Result + mItem.Name + ' ';
   end;
   Result := TrimRight(Result);
 end;
@@ -261,13 +261,13 @@ end;
 function TCompletionAttributesTests.Find(const AItems: TCompletionItems; const AName: string;
   out AItem: TCompletionItem): Boolean;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
-  for Item in AItems.Items do
+  for mItem in AItems.Items do
   begin
-    if Item.Name = AName then
+    if mItem.Name = AName then
     begin
-      AItem := Item;
+      AItem := mItem;
       Exit(True);
     end;
   end;
@@ -279,21 +279,21 @@ procedure TCompletionAttributesTests.FindsAttributeBrackets;
 
   function InBracket(const AMarked: string): Boolean;
   var
-    Position: TTextPosition;
-    Tokens: TArray<TPascalToken>;
-    Index, Last: Integer;
+    mPosition: TTextPosition;
+    mTokens: TArray<TPascalToken>;
+    mIndex, mLast: Integer;
   begin
-    Tokens := TPascalLexer.Tokenize(Split(AMarked, Position));
-    Last := -1;
-    for Index := 0 to High(Tokens) do
+    mTokens := TPascalLexer.Tokenize(Split(AMarked, mPosition));
+    mLast := -1;
+    for mIndex := 0 to High(mTokens) do
     begin
-      if (Tokens[Index].StartPos.Line < Position.Line) or (Tokens[Index].StartPos.Line = Position.Line) and
-        (Tokens[Index].EndPos.Character <= Position.Character) then
+      if (mTokens[mIndex].StartPos.Line < mPosition.Line) or (mTokens[mIndex].StartPos.Line = mPosition.Line) and
+        (mTokens[mIndex].EndPos.Character <= mPosition.Character) then
       begin
-        Last := Index;
+        mLast := mIndex;
       end;
     end;
-    Result := TCompletionAttributes.SiteAt(Tokens, Last);
+    Result := TCompletionAttributes.SiteAt(mTokens, mLast);
   end;
 
 begin
@@ -320,24 +320,24 @@ end;
 
 procedure TCompletionAttributesTests.ShortNamesFromFacade;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
-  Count: Integer;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
+  mCount: Integer;
 begin
-  Items := ItemsAt('[Te|');
-  Assert.AreEqual('Test TestCase TearDown', Names(Items));
-  Assert.IsTrue(Find(Items, 'Test', Item));
-  Assert.IsTrue(Item.Attribute);
-  Assert.AreEqual('Test', Item.InsertText);
+  mItems := ItemsAt('[Te|');
+  Assert.AreEqual('Test TestCase TearDown', Names(mItems));
+  Assert.IsTrue(Find(mItems, 'Test', mItem));
+  Assert.IsTrue(mItem.Attribute);
+  Assert.AreEqual('Test', mItem.InsertText);
   // Der Alias der Fassade geht dem Original vor.
-  Count := Length(Item.AdditionalEdits);
-  Assert.AreEqual(1, Count);
-  Assert.IsTrue(Item.AdditionalEdits[0].NewText.Contains('DUnitX.TestFramework'), Item.AdditionalEdits[0].NewText);
+  mCount := Length(mItem.AdditionalEdits);
+  Assert.AreEqual(1, mCount);
+  Assert.IsTrue(mItem.AdditionalEdits[0].NewText.Contains('DUnitX.TestFramework'), mItem.AdditionalEdits[0].NewText);
   // Eingebunden: ohne uses-Eintrag.
-  Items := ItemsAt('U:[Te|');
-  Assert.AreEqual('Test TestCase TearDown', Names(Items));
-  Assert.IsTrue(Find(Items, 'TestCase', Item));
-  Assert.AreEqual(0, Integer(Length(Item.AdditionalEdits)));
+  mItems := ItemsAt('U:[Te|');
+  Assert.AreEqual('Test TestCase TearDown', Names(mItems));
+  Assert.IsTrue(Find(mItems, 'TestCase', mItem));
+  Assert.AreEqual(0, Integer(Length(mItem.AdditionalEdits)));
 end;
 
 procedure TCompletionAttributesTests.KnownFirstWithoutPrefix;
@@ -348,19 +348,19 @@ end;
 
 procedure TCompletionAttributesTests.DetailShowsConstructor;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Items := ItemsAt('U:[|');
-  Assert.IsTrue(Find(Items, 'TestCase', Item));
-  Assert.AreEqual('(const ACaseName: string; const AValues: string)', Item.Detail);
-  Assert.IsTrue(Find(Items, 'TearDown', Item));
-  Assert.AreEqual('DUnitX.Attributes', Item.Detail, 'ohne Konstruktor die Unit');
-  Assert.IsTrue(Find(Items, 'Marke', Item));
-  Assert.AreEqual('(const AText: string)', Item.Detail);
-  Assert.IsTrue(Find(Items, 'weak', Item));
-  Assert.AreEqual('Compiler', Item.Detail);
-  Assert.IsTrue(Item.Attribute);
+  mItems := ItemsAt('U:[|');
+  Assert.IsTrue(Find(mItems, 'TestCase', mItem));
+  Assert.AreEqual('(const ACaseName: string; const AValues: string)', mItem.Detail);
+  Assert.IsTrue(Find(mItems, 'TearDown', mItem));
+  Assert.AreEqual('DUnitX.Attributes', mItem.Detail, 'ohne Konstruktor die Unit');
+  Assert.IsTrue(Find(mItems, 'Marke', mItem));
+  Assert.AreEqual('(const AText: string)', mItem.Detail);
+  Assert.IsTrue(Find(mItems, 'weak', mItem));
+  Assert.AreEqual('Compiler', mItem.Detail);
+  Assert.IsTrue(mItem.Attribute);
 end;
 
 procedure TCompletionAttributesTests.AfterCommaAndInParameters;
@@ -371,28 +371,28 @@ end;
 
 procedure TCompletionAttributesTests.SetsAndIndexesStayNormal;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Items := ItemsAt('C:A := [A|');
-  Assert.IsTrue(Find(Items, 'A', Item), Names(Items));
-  Assert.IsFalse(Item.Attribute);
-  Items := ItemsAt('C:A[Le|');
-  Assert.IsFalse(Find(Items, 'Test', Item));
+  mItems := ItemsAt('C:A := [A|');
+  Assert.IsTrue(Find(mItems, 'A', mItem), Names(mItems));
+  Assert.IsFalse(mItem.Attribute);
+  mItems := ItemsAt('C:A[Le|');
+  Assert.IsFalse(Find(mItems, 'Test', mItem));
 end;
 
 procedure TCompletionAttributesTests.SwitchOff;
 var
-  Settings: TCompletionSettings;
-  Items: TCompletionItems;
-  Item: TCompletionItem;
+  mSettings: TCompletionSettings;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
 begin
-  Settings := TCompletionSettings.Default;
-  Settings.Attributes := False;
-  Items := ItemsAt('[Ma|', Settings);
-  Assert.IsTrue(Find(Items, 'MarkeAttribute', Item), Names(Items));
-  Assert.IsFalse(Item.Attribute);
-  Assert.IsFalse(Find(Items, 'Marke', Item));
+  mSettings := TCompletionSettings.Default;
+  mSettings.Attributes := False;
+  mItems := ItemsAt('[Ma|', mSettings);
+  Assert.IsTrue(Find(mItems, 'MarkeAttribute', mItem), Names(mItems));
+  Assert.IsFalse(mItem.Attribute);
+  Assert.IsFalse(Find(mItems, 'Marke', mItem));
 end;
 
 procedure TCompletionAttributesTests.ParameterText;
@@ -407,32 +407,32 @@ procedure TCompletionAttributesTests.SignatureShowsConstructor;
 
   function HelpAt(const AMarked: string): TSignatureHelp;
   var
-    Text: string;
-    Position: TTextPosition;
-    Tree: TSyntaxTree;
+    mText: string;
+    mPosition: TTextPosition;
+    mTree: TSyntaxTree;
   begin
-    Text := Split(Source(AMarked), Position);
-    Tree := TPascalParser.Parse(Text);
+    mText := Split(Source(AMarked), mPosition);
+    mTree := TPascalParser.Parse(mText);
     try
-      Result := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile,
-        ReadText), Position);
+      Result := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, mTree, mText, cHauptFile,
+        ReadText), mPosition);
     finally
-      Tree.Free;
+      mTree.Free;
     end;
   end;
 
 var
-  Help: TSignatureHelp;
+  mHelp: TSignatureHelp;
 begin
-  Help := HelpAt('[Marke(|');
-  Assert.AreEqual(1, Integer(Length(Help.Signatures)));
-  Assert.IsTrue(Help.Signatures[0].Text.Contains('const AText: string'), Help.Signatures[0].Text);
-  Help := HelpAt('U:[TestCase(''Name'', |');
-  Assert.AreEqual(1, Integer(Length(Help.Signatures)));
-  Assert.IsTrue(Help.Signatures[0].Text.Contains('ACaseName'), Help.Signatures[0].Text);
-  Assert.AreEqual(1, Help.ActiveParameter);
-  Help := HelpAt('U:[Test(|');
-  Assert.AreEqual(2, Integer(Length(Help.Signatures)), 'beide Konstruktoren');
+  mHelp := HelpAt('[Marke(|');
+  Assert.AreEqual(1, Integer(Length(mHelp.Signatures)));
+  Assert.IsTrue(mHelp.Signatures[0].Text.Contains('const AText: string'), mHelp.Signatures[0].Text);
+  mHelp := HelpAt('U:[TestCase(''Name'', |');
+  Assert.AreEqual(1, Integer(Length(mHelp.Signatures)));
+  Assert.IsTrue(mHelp.Signatures[0].Text.Contains('ACaseName'), mHelp.Signatures[0].Text);
+  Assert.AreEqual(1, mHelp.ActiveParameter);
+  mHelp := HelpAt('U:[Test(|');
+  Assert.AreEqual(2, Integer(Length(mHelp.Signatures)), 'beide Konstruktoren');
 end;
 
 end.

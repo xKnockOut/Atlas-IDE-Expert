@@ -74,23 +74,23 @@ uses
 /// <summary>"Text@Tiefe" je Token, Besitzer mit "*", unpaarige mit "!". AOwners: Besitzer mit ausgeben.</summary>
 function DescribeTokens(const AText: string; AOwners: Boolean): string;
 var
-  Lines: TArray<string>;
-  Token: TAtlasPairToken;
+  mLines: TArray<string>;
+  mToken: TAtlasPairToken;
 begin
-  Lines := AText.Split([#10]);
+  mLines := AText.Split([#10]);
   Result := '';
-  for Token in TAtlasPairs.Analyze(AText) do
+  for mToken in TAtlasPairs.Analyze(AText) do
   begin
-    if Token.Owner and not AOwners then
+    if mToken.Owner and not AOwners then
     begin
       Continue;
     end;
-    Result := Result + Copy(Lines[Token.Line], Token.Character + 1, Token.Length) + '@' + IntToStr(Token.Depth);
-    if Token.Owner then
+    Result := Result + Copy(mLines[mToken.Line], mToken.Character + 1, mToken.Length) + '@' + IntToStr(mToken.Depth);
+    if mToken.Owner then
     begin
       Result := Result + '*';
     end;
-    if Token.Unpaired then
+    if mToken.Unpaired then
     begin
       Result := Result + '!';
     end;
@@ -102,16 +102,16 @@ end;
 /// <summary>"Text@Tiefe/Routine" je Token samt Besitzern (#1788), Besitzer mit "*".</summary>
 function Nesting(const AText: string): string;
 var
-  Lines: TArray<string>;
-  Token: TAtlasPairToken;
+  mLines: TArray<string>;
+  mToken: TAtlasPairToken;
 begin
-  Lines := AText.Split([#10]);
+  mLines := AText.Split([#10]);
   Result := '';
-  for Token in TAtlasPairs.Analyze(AText) do
+  for mToken in TAtlasPairs.Analyze(AText) do
   begin
-    Result := Result + Copy(Lines[Token.Line], Token.Character + 1, Token.Length) + '@' + IntToStr(Token.Depth) +
-      '/' + IntToStr(Token.Routine);
-    if Token.Owner then
+    Result := Result + Copy(mLines[mToken.Line], mToken.Character + 1, mToken.Length) + '@' + IntToStr(mToken.Depth) +
+      '/' + IntToStr(mToken.Routine);
+    if mToken.Owner then
     begin
       Result := Result + '*';
     end;
@@ -185,19 +185,19 @@ end;
 
 procedure TAtlasPairsTests.DisplayLineExpandsTabsAndRunsMatchOnlyAtTheirColumn;
 var
-  Line: string;
+  mLine: string;
 begin
   Assert.AreEqual('a   b', TAtlasPairs.DisplayLine('a'#9'b'#13, 4));
   Assert.AreEqual('    x', TAtlasPairs.DisplayLine(#9'x', 4));
   Assert.AreEqual(#9'x', TAtlasPairs.DisplayLine(#9'x', 0));
-  Line := TAtlasPairs.DisplayLine('  if (A) then', 2);
-  Assert.IsTrue(TAtlasPairs.RunMatches(Line, '(', 6));
-  Assert.IsTrue(TAtlasPairs.RunMatches(Line, 'if', 3));
+  mLine := TAtlasPairs.DisplayLine('  if (A) then', 2);
+  Assert.IsTrue(TAtlasPairs.RunMatches(mLine, '(', 6));
+  Assert.IsTrue(TAtlasPairs.RunMatches(mLine, 'if', 3));
   // Lauf einer anderen Zeile bzw. an anderer Spalte: nicht einfärben.
-  Assert.IsFalse(TAtlasPairs.RunMatches(Line, 'begin', 3));
-  Assert.IsFalse(TAtlasPairs.RunMatches(Line, '(', 5));
-  Assert.IsFalse(TAtlasPairs.RunMatches(Line, 'then', 12));
-  Assert.IsFalse(TAtlasPairs.RunMatches(Line, '', 1));
+  Assert.IsFalse(TAtlasPairs.RunMatches(mLine, 'begin', 3));
+  Assert.IsFalse(TAtlasPairs.RunMatches(mLine, '(', 5));
+  Assert.IsFalse(TAtlasPairs.RunMatches(mLine, 'then', 12));
+  Assert.IsFalse(TAtlasPairs.RunMatches(mLine, '', 1));
   // Zeichenindex als Editorspalte (#615).
   Assert.AreEqual(1, TAtlasPairs.ColumnOf('abc', 0, 4));
   Assert.AreEqual(3, TAtlasPairs.ColumnOf('abc', 2, 4));
@@ -209,12 +209,12 @@ end;
 /// <summary>"Erste-Letzte@Spalte:Tiefe" je Linie.</summary>
 function DescribeGuides(const AText: string; ATabWidth: Integer): string;
 var
-  Guide: TAtlasGuide;
+  mGuide: TAtlasGuide;
 begin
   Result := '';
-  for Guide in TAtlasGuides.Compute(AText, ATabWidth) do
+  for mGuide in TAtlasGuides.Compute(AText, ATabWidth) do
   begin
-    Result := Result + Format('%d-%d@%d:%d ', [Guide.FirstLine, Guide.LastLine, Guide.Column, Guide.Depth]);
+    Result := Result + Format('%d-%d@%d:%d ', [mGuide.FirstLine, mGuide.LastLine, mGuide.Column, mGuide.Depth]);
   end;
   Result := Trim(Result);
 end;
@@ -239,24 +239,24 @@ end;
 
 procedure TAtlasPairsTests.SwitchTurnsIdeStructureOffAndOnlyRestoresOwnChange;
 var
-  State, Next: TAtlasIdeStructure;
+  mState, mNext: TAtlasIdeStructure;
 begin
-  State.Enabled := True;
-  State.DisabledByAtlas := False;
-  Next := TAtlasGuides.Switch(State, True);
-  Assert.IsFalse(Next.Enabled, 'eigene Linien: IDE aus');
-  Assert.IsTrue(Next.DisabledByAtlas);
-  Next := TAtlasGuides.Switch(Next, False);
-  Assert.IsTrue(Next.Enabled, 'eigene Linien aus: IDE wieder an');
-  Assert.IsFalse(Next.DisabledByAtlas);
+  mState.Enabled := True;
+  mState.DisabledByAtlas := False;
+  mNext := TAtlasGuides.Switch(mState, True);
+  Assert.IsFalse(mNext.Enabled, 'eigene Linien: IDE aus');
+  Assert.IsTrue(mNext.DisabledByAtlas);
+  mNext := TAtlasGuides.Switch(mNext, False);
+  Assert.IsTrue(mNext.Enabled, 'eigene Linien aus: IDE wieder an');
+  Assert.IsFalse(mNext.DisabledByAtlas);
   // Vom User selbst abgeschaltet: Atlas fasst es nicht an.
-  State.Enabled := False;
-  State.DisabledByAtlas := False;
-  Next := TAtlasGuides.Switch(State, False);
-  Assert.IsFalse(Next.Enabled);
-  Next := TAtlasGuides.Switch(State, True);
-  Assert.IsFalse(Next.Enabled);
-  Assert.IsFalse(Next.DisabledByAtlas);
+  mState.Enabled := False;
+  mState.DisabledByAtlas := False;
+  mNext := TAtlasGuides.Switch(mState, False);
+  Assert.IsFalse(mNext.Enabled);
+  mNext := TAtlasGuides.Switch(mState, True);
+  Assert.IsFalse(mNext.Enabled);
+  Assert.IsFalse(mNext.DisabledByAtlas);
 end;
 
 procedure TAtlasPairsTests.IfThenAndElseTakeTheColorOfTheirBlock;
@@ -298,7 +298,7 @@ end;
 
 procedure TAtlasPairsTests.RoutineHeadTakesTheColorOfItsBody;
 var
-  Blocks: TArray<TAtlasPairBlock>;
+  mBlocks: TArray<TAtlasPairBlock>;
 begin
   // Abnahme #653: auch mit var-Block zwischen Kopf und Rumpf.
   Assert.AreEqual('procedure@0* begin@0 end@0',
@@ -310,11 +310,11 @@ begin
   Assert.AreEqual('constructor@0* begin@0 end@0 destructor@0* begin@0 end@0',
     Owners('constructor TFoo.Create;'#10'begin'#10'end;'#10'destructor TFoo.Destroy;'#10'begin'#10'end;'));
   // Lokale Routine: ihr Kopf gehört zum ersten Rumpf, der äußere Kopf zum zweiten.
-  TAtlasPairs.Analyze('procedure A;'#10'  procedure B;'#10'  begin'#10'  end;'#10'begin'#10'end;', Blocks);
-  Assert.AreEqual(2, Integer(Length(Blocks)));
-  Assert.AreEqual(1, Blocks[0].OwnerLine);
-  Assert.AreEqual(2, Blocks[0].OwnerCharacter);
-  Assert.AreEqual(0, Blocks[1].OwnerLine);
+  TAtlasPairs.Analyze('procedure A;'#10'  procedure B;'#10'  begin'#10'  end;'#10'begin'#10'end;', mBlocks);
+  Assert.AreEqual(2, Integer(Length(mBlocks)));
+  Assert.AreEqual(1, mBlocks[0].OwnerLine);
+  Assert.AreEqual(2, mBlocks[0].OwnerCharacter);
+  Assert.AreEqual(0, mBlocks[1].OwnerLine);
 end;
 
 procedure TAtlasPairsTests.RoutineHeadsWithoutBodyStayPlain;
@@ -350,26 +350,26 @@ end;
 /// <summary>Wie DescribeGuides, mit Besitzern.</summary>
 function DescribeOwnerGuides(const AText: string; ATabWidth: Integer): string;
 var
-  Blocks: TArray<TAtlasPairBlock>;
-  Guide: TAtlasGuide;
+  mBlocks: TArray<TAtlasPairBlock>;
+  mGuide: TAtlasGuide;
 begin
-  TAtlasPairs.Analyze(AText, Blocks);
+  TAtlasPairs.Analyze(AText, mBlocks);
   Result := '';
-  for Guide in TAtlasGuides.FromBlocks(AText.Split([#10]), Blocks, ATabWidth, True) do
+  for mGuide in TAtlasGuides.FromBlocks(AText.Split([#10]), mBlocks, ATabWidth, True) do
   begin
-    Result := Result + Format('%d-%d@%d:%d ', [Guide.FirstLine, Guide.LastLine, Guide.Column, Guide.Depth]);
+    Result := Result + Format('%d-%d@%d:%d ', [mGuide.FirstLine, mGuide.LastLine, mGuide.Column, mGuide.Depth]);
   end;
   Result := Trim(Result);
 end;
 
 procedure TAtlasPairsTests.GuideStartsAtTheStatement;
 const
-  Code = 'procedure X;'#10'begin'#10'  if A then'#10'  begin'#10'    B;'#10'  end;'#10'end;';
+  cCode = 'procedure X;'#10'begin'#10'  if A then'#10'  begin'#10'    B;'#10'  end;'#10'end;';
 begin
   // Abnahme #653: Die Linie des begin unter "if … then" beginnt an der if-Zeile.
-  Assert.AreEqual('2-5@3:1 0-6@1:0', DescribeOwnerGuides(Code, 2));
+  Assert.AreEqual('2-5@3:1 0-6@1:0', DescribeOwnerGuides(cCode, 2));
   // Ohne Besitzer wie bisher am begin.
-  Assert.AreEqual('3-5@3:1 1-6@1:0', DescribeGuides(Code, 2));
+  Assert.AreEqual('3-5@3:1 1-6@1:0', DescribeGuides(cCode, 2));
   // begin hinter then in derselben Zeile: unverändert.
   Assert.AreEqual('0-2@1:0', DescribeOwnerGuides('if A then begin'#10'  B;'#10'end;', 2));
 end;
@@ -403,18 +403,18 @@ end;
 
 procedure TAtlasPairsTests.LocalRoutineBlocksAreMarked;
 var
-  Blocks: TArray<TAtlasPairBlock>;
+  mBlocks: TArray<TAtlasPairBlock>;
 begin
-  TAtlasPairs.Analyze(cLocal, Blocks);
+  TAtlasPairs.Analyze(cLocal, mBlocks);
   // In der Reihenfolge ihres Endes: if-Block, Rumpf von B, Rumpf von A.
-  Assert.AreEqual(3, Integer(Length(Blocks)));
-  Assert.IsFalse(Blocks[0].IsRoutine);
-  Assert.AreEqual(1, Blocks[0].Routine);
-  Assert.IsTrue(Blocks[1].IsRoutine);
-  Assert.AreEqual(1, Blocks[1].Routine);
-  Assert.AreEqual(1, Blocks[1].OwnerLine);
-  Assert.IsTrue(Blocks[2].IsRoutine);
-  Assert.AreEqual(0, Blocks[2].Routine);
+  Assert.AreEqual(3, Integer(Length(mBlocks)));
+  Assert.IsFalse(mBlocks[0].IsRoutine);
+  Assert.AreEqual(1, mBlocks[0].Routine);
+  Assert.IsTrue(mBlocks[1].IsRoutine);
+  Assert.AreEqual(1, mBlocks[1].Routine);
+  Assert.AreEqual(1, mBlocks[1].OwnerLine);
+  Assert.IsTrue(mBlocks[2].IsRoutine);
+  Assert.AreEqual(0, mBlocks[2].Routine);
 end;
 
 procedure TAtlasPairsTests.InterfaceHeadsDoNotNest;
@@ -436,31 +436,31 @@ end;
 
 procedure TAtlasPairsTests.SpansAndGuidesCarryTheNesting;
 var
-  Blocks: TArray<TAtlasPairBlock>;
-  Tokens, LineTokens: TArray<TAtlasPairToken>;
-  Token: TAtlasPairToken;
-  Spans: TArray<TAtlasPairSpan>;
-  Guides: TArray<TAtlasGuide>;
-  Lines: TArray<string>;
+  mBlocks: TArray<TAtlasPairBlock>;
+  mTokens, mLineTokens: TArray<TAtlasPairToken>;
+  mToken: TAtlasPairToken;
+  mSpans: TArray<TAtlasPairSpan>;
+  mGuides: TArray<TAtlasGuide>;
+  mLines: TArray<string>;
 begin
-  Lines := cLocal.Split([#10]);
-  Tokens := TAtlasPairs.Analyze(cLocal, Blocks);
-  LineTokens := nil;
-  for Token in Tokens do
+  mLines := cLocal.Split([#10]);
+  mTokens := TAtlasPairs.Analyze(cLocal, mBlocks);
+  mLineTokens := nil;
+  for mToken in mTokens do
   begin
-    if Token.Line = 1 then
+    if mToken.Line = 1 then
     begin
-      LineTokens := LineTokens + [Token];
+      mLineTokens := mLineTokens + [mToken];
     end;
   end;
-  Spans := TAtlasPairs.Spans(TrimLeft(Lines[1]), Lines[1], LineTokens, True);
-  Assert.AreEqual(1, Integer(Length(Spans)));
-  Assert.AreEqual(1, Spans[0].Routine, 'Kopf der lokalen Funktion im mitlaufenden Kopf');
-  Guides := TAtlasGuides.FromBlocks(Lines, Blocks, 2, True);
-  Assert.AreEqual(3, Integer(Length(Guides)));
-  Assert.AreEqual(1, Guides[1].Routine);
-  Assert.AreEqual(1, Guides[1].FirstLine, 'Linie ab dem Kopf');
-  Assert.AreEqual(0, Guides[2].Routine);
+  mSpans := TAtlasPairs.Spans(TrimLeft(mLines[1]), mLines[1], mLineTokens, True);
+  Assert.AreEqual(1, Integer(Length(mSpans)));
+  Assert.AreEqual(1, mSpans[0].Routine, 'Kopf der lokalen Funktion im mitlaufenden Kopf');
+  mGuides := TAtlasGuides.FromBlocks(mLines, mBlocks, 2, True);
+  Assert.AreEqual(3, Integer(Length(mGuides)));
+  Assert.AreEqual(1, mGuides[1].Routine);
+  Assert.AreEqual(1, mGuides[1].FirstLine, 'Linie ab dem Kopf');
+  Assert.AreEqual(0, mGuides[2].Routine);
 end;
 
 initialization

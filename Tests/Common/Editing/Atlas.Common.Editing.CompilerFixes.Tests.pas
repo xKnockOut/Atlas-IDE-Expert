@@ -55,7 +55,7 @@ uses
   Atlas.Common.Editing.CompilerFixes;
 
 const
-  LB = #13#10;
+  cLB = #13#10;
 
 function Context: TCompilerFixContext;
 begin
@@ -78,44 +78,44 @@ end;
 
 function Fixed(const AText: string; const AMessage: TFixMessage; out ATitles: string): string;
 var
-  Tree: TSyntaxTree;
-  Fixes: TArray<TCompilerFix>;
-  Item: TCompilerFix;
+  mTree: TSyntaxTree;
+  mFixes: TArray<TCompilerFix>;
+  mItem: TCompilerFix;
 begin
   Result := '';
   ATitles := '';
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Fixes := TCompilerFixes.Fixes(AText, Tree, AMessage, Context);
-    for Item in Fixes do
+    mFixes := TCompilerFixes.Fixes(AText, mTree, AMessage, Context);
+    for mItem in mFixes do
     begin
-      ATitles := ATitles + Item.Title;
-      if Item.Preferred then
+      ATitles := ATitles + mItem.Title;
+      if mItem.Preferred then
       begin
         ATitles := ATitles + ' *';
       end;
       ATitles := ATitles + '|';
     end;
-    if Length(Fixes) > 0 then
+    if Length(mFixes) > 0 then
     begin
-      Result := TChangeSignature.ApplyEdits(AText, Fixes[0].Edits);
+      Result := TChangeSignature.ApplyEdits(AText, mFixes[0].Edits);
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Fixed1(const AText: string; const AMessage: TFixMessage): string;
 var
-  Titles: string;
+  mTitles: string;
 begin
-  Result := Fixed(AText, AMessage, Titles);
+  Result := Fixed(AText, AMessage, mTitles);
 end;
 
 function Routine(const ABody: string): string;
 begin
-  Result := 'unit A;' + LB + 'interface' + LB + 'implementation' + LB + 'uses' + LB + '  System.SysUtils;' + LB +
-    ABody + LB + 'end.';
+  Result := 'unit A;' + cLB + 'interface' + cLB + 'implementation' + cLB + 'uses' + cLB + '  System.SysUtils;' + cLB +
+    ABody + cLB + 'end.';
 end;
 
 procedure TCompilerFixesTests.QuotedNamesFromMessages;
@@ -130,246 +130,246 @@ end;
 
 procedure TCompilerFixesTests.H2443AddsUnit;
 const
-  Body = 'function Anzahl(A: TJSONArray): Integer;' + LB + 'begin' + LB + '  Result := A.Count;' + LB + 'end;';
+  cBody = 'function Anzahl(A: TJSONArray): Integer;' + cLB + 'begin' + cLB + '  Result := A.Count;' + cLB + 'end;';
 var
-  Titles: string;
+  mTitles: string;
 begin
-  Assert.AreEqual(StringReplace(Routine(Body), 'System.SysUtils;', 'System.SysUtils,' + LB +
-    '  System.Generics.Collections;', []), Fixed(Routine(Body), TFixMessage.Create('H2443', 7, -1, 'Inline-Funktion ''TJSONArray.GetCount'' wurde ' +
-    'nicht expandiert, weil Unit ''System.Generics.Collections'' nicht in der USES-Liste angegeben ist'), Titles));
-  Assert.AreEqual('uses System.Generics.Collections ergänzen (H2443) *|', Titles);
+  Assert.AreEqual(StringReplace(Routine(cBody), 'System.SysUtils;', 'System.SysUtils,' + cLB +
+    '  System.Generics.Collections;', []), Fixed(Routine(cBody), TFixMessage.Create('H2443', 7, -1, 'Inline-Funktion ''TJSONArray.GetCount'' wurde ' +
+    'nicht expandiert, weil Unit ''System.Generics.Collections'' nicht in der USES-Liste angegeben ist'), mTitles));
+  Assert.AreEqual('uses System.Generics.Collections ergänzen (H2443) *|', mTitles);
   // Schon eingebunden: nichts.
-  Assert.AreEqual('', Fixed1(StringReplace(Routine(Body), 'System.SysUtils;', 'System.SysUtils, ' +
+  Assert.AreEqual('', Fixed1(StringReplace(Routine(cBody), 'System.SysUtils;', 'System.SysUtils, ' +
     'System.Generics.Collections;', []), TFixMessage.Create('H2443', 7, -1, 'x ''A'' y ''System.Generics.Collections''')));
 end;
 
 procedure TCompilerFixesTests.E2003OffersLibraryUnitFirst;
 const
-  Body = 'procedure Fuelle;' + LB + 'var' + LB + '  L: TStringList;' + LB + 'begin' + LB + 'end;';
+  cBody = 'procedure Fuelle;' + cLB + 'var' + cLB + '  L: TStringList;' + cLB + 'begin' + cLB + 'end;';
 var
-  Titles: string;
+  mTitles: string;
 begin
-  Assert.AreEqual(StringReplace(Routine(Body), 'System.SysUtils;', 'System.SysUtils,' + LB + '  System.Classes;',
-    []), Fixed(Routine(Body), TFixMessage.Create('E2003', 7, -1, 'Undeclared identifier: ''TStringList'''), Titles));
+  Assert.AreEqual(StringReplace(Routine(cBody), 'System.SysUtils;', 'System.SysUtils,' + cLB + '  System.Classes;',
+    []), Fixed(Routine(cBody), TFixMessage.Create('E2003', 7, -1, 'Undeclared identifier: ''TStringList'''), mTitles));
   Assert.AreEqual('uses System.Classes ergänzen (E2003: TStringList) *|' +
-    'uses Vcl.Klassen.Alt ergänzen (E2003: TStringList)|uses Meine.Listen ergänzen (E2003: TStringList)|', Titles);
+    'uses Vcl.Klassen.Alt ergänzen (E2003: TStringList)|uses Meine.Listen ergänzen (E2003: TStringList)|', mTitles);
 end;
 
 procedure TCompilerFixesTests.E2003NothingWhenAlreadyUsed;
 const
-  Body = 'procedure Fuelle;' + LB + 'var' + LB + '  L: TStringList;' + LB + 'begin' + LB + 'end;';
+  cBody = 'procedure Fuelle;' + cLB + 'var' + cLB + '  L: TStringList;' + cLB + 'begin' + cLB + 'end;';
 begin
-  Assert.AreEqual('', Fixed1(StringReplace(Routine(Body), 'System.SysUtils;', 'System.SysUtils, Classes;', []),
+  Assert.AreEqual('', Fixed1(StringReplace(Routine(cBody), 'System.SysUtils;', 'System.SysUtils, Classes;', []),
     TFixMessage.Create('E2003', 7, -1, 'Undeklarierter Bezeichner: ''TStringList''')), 'über den Namespace');
-  Assert.AreEqual('', Fixed1(Routine(Body), TFixMessage.Create('E2003', 7, -1, 'Undeclared identifier: ''Gibts''')));
+  Assert.AreEqual('', Fixed1(Routine(cBody), TFixMessage.Create('E2003', 7, -1, 'Undeclared identifier: ''Gibts''')));
 end;
 
 procedure TCompilerFixesTests.H2077RemovesPureAssignment;
 const
-  Body = 'function F(A: Integer): Integer;' + LB + 'var' + LB + '  X: Integer;' + LB + 'begin' + LB +
-    '  X := A * 2 + 1;' + LB + '  X := 3;' + LB + '  Result := X;' + LB + 'end;';
+  cBody = 'function F(A: Integer): Integer;' + cLB + 'var' + cLB + '  X: Integer;' + cLB + 'begin' + cLB +
+    '  X := A * 2 + 1;' + cLB + '  X := 3;' + cLB + '  Result := X;' + cLB + 'end;';
 var
-  Titles: string;
+  mTitles: string;
 begin
-  Assert.AreEqual(StringReplace(Routine(Body), '  X := A * 2 + 1;' + LB, '', []), Fixed(Routine(Body),
-    TFixMessage.Create('H2077', 9, -1, 'Value assigned to ''X'' never used'), Titles));
-  Assert.AreEqual('Wirkungslose Zuweisung an X entfernen (H2077) *|', Titles);
+  Assert.AreEqual(StringReplace(Routine(cBody), '  X := A * 2 + 1;' + cLB, '', []), Fixed(Routine(cBody),
+    TFixMessage.Create('H2077', 9, -1, 'Value assigned to ''X'' never used'), mTitles));
+  Assert.AreEqual('Wirkungslose Zuweisung an X entfernen (H2077) *|', mTitles);
   // Im Zweig ohne begin bleibt eine leere Anweisung.
-  Assert.AreEqual(StringReplace(Routine(StringReplace(Body, '  X := A * 2 + 1;', '  if A > 0 then X := 1;', [])),
-    'then X := 1;', 'then ;', []), Fixed1(Routine(StringReplace(Body, '  X := A * 2 + 1;', '  if A > 0 then X := 1;',
+  Assert.AreEqual(StringReplace(Routine(StringReplace(cBody, '  X := A * 2 + 1;', '  if A > 0 then X := 1;', [])),
+    'then X := 1;', 'then ;', []), Fixed1(Routine(StringReplace(cBody, '  X := A * 2 + 1;', '  if A > 0 then X := 1;',
     [])), TFixMessage.Create('H2077', 9, -1, 'Auf ''X'' zugewiesener Wert wird niemals benutzt')));
 end;
 
 procedure TCompilerFixesTests.H2077KeepsCall;
 const
-  Body = 'procedure P;' + LB + 'var' + LB + '  X: Integer;' + LB + 'begin' + LB + '  X := Foo();' + LB +
-    '  X := Obj.Lies(1, 2);' + LB + 'end;';
+  cBody = 'procedure P;' + cLB + 'var' + cLB + '  X: Integer;' + cLB + 'begin' + cLB + '  X := Foo();' + cLB +
+    '  X := Obj.Lies(1, 2);' + cLB + 'end;';
 var
-  Titles: string;
+  mTitles: string;
 begin
-  Assert.AreEqual(StringReplace(Routine(Body), '  X := Foo();', '  Foo();', []), Fixed(Routine(Body),
-    TFixMessage.Create('H2077', 9, -1, 'Value assigned to ''X'' never used'), Titles));
-  Assert.AreEqual('Zuweisung an X entfernen, nur Foo aufrufen (H2077) *|', Titles);
-  Assert.AreEqual(StringReplace(Routine(Body), '  X := Obj.Lies(1, 2);', '  Obj.Lies(1, 2);', []), Fixed1(
-    Routine(Body), TFixMessage.Create('H2077', 10, -1, 'Value assigned to ''X'' never used')));
+  Assert.AreEqual(StringReplace(Routine(cBody), '  X := Foo();', '  Foo();', []), Fixed(Routine(cBody),
+    TFixMessage.Create('H2077', 9, -1, 'Value assigned to ''X'' never used'), mTitles));
+  Assert.AreEqual('Zuweisung an X entfernen, nur Foo aufrufen (H2077) *|', mTitles);
+  Assert.AreEqual(StringReplace(Routine(cBody), '  X := Obj.Lies(1, 2);', '  Obj.Lies(1, 2);', []), Fixed1(
+    Routine(cBody), TFixMessage.Create('H2077', 10, -1, 'Value assigned to ''X'' never used')));
 end;
 
 procedure TCompilerFixesTests.H2077NothingForPossibleCall;
 const
-  Body = 'procedure P;' + LB + 'var' + LB + '  X: Integer;' + LB + 'begin' + LB + '  X := Zaehler;' + LB +
-    '  X := Obj.Wert + 1;' + LB + 'end;';
+  cBody = 'procedure P;' + cLB + 'var' + cLB + '  X: Integer;' + cLB + 'begin' + cLB + '  X := Zaehler;' + cLB +
+    '  X := Obj.Wert + 1;' + cLB + 'end;';
 begin
-  Assert.AreEqual('', Fixed1(Routine(Body), TFixMessage.Create('H2077', 9, -1, 'Value assigned to ''X'' never used')),
+  Assert.AreEqual('', Fixed1(Routine(cBody), TFixMessage.Create('H2077', 9, -1, 'Value assigned to ''X'' never used')),
     'Zaehler kann eine Funktion sein');
-  Assert.AreEqual('', Fixed1(Routine(Body), TFixMessage.Create('H2077', 10, -1,
+  Assert.AreEqual('', Fixed1(Routine(cBody), TFixMessage.Create('H2077', 10, -1,
     'Value assigned to ''X'' never used')));
-  Assert.AreEqual('', Fixed1(Routine(Body), TFixMessage.Create('H2077', 9, -1, 'Value assigned to ''Y'' never used')),
+  Assert.AreEqual('', Fixed1(Routine(cBody), TFixMessage.Create('H2077', 9, -1, 'Value assigned to ''Y'' never used')),
     'anderer Name');
 end;
 
 procedure TCompilerFixesTests.W1035InsertsDefault;
 const
-  Body = 'function F(A: Integer): Integer;' + LB + 'begin' + LB + '    if A > 0 then' + LB + '      Result := A;' +
-    LB + 'end;';
-  Generic = 'function G: TArray<string>;' + LB + 'begin' + LB + 'end;';
+  cBody = 'function F(A: Integer): Integer;' + cLB + 'begin' + cLB + '    if A > 0 then' + cLB + '      Result := A;' +
+    cLB + 'end;';
+  cGeneric = 'function G: TArray<string>;' + cLB + 'begin' + cLB + 'end;';
 var
-  Titles: string;
+  mTitles: string;
 begin
-  Assert.AreEqual(StringReplace(Routine(Body), 'begin' + LB, 'begin' + LB + '    Result := Default(Integer);' + LB,
-    []), Fixed(Routine(Body), TFixMessage.Create('W1035', 9, -1,
-    'Return value of function ''F'' might be undefined'), Titles));
-  Assert.AreEqual('Result := Default(Integer); am Anfang einfügen (W1035) *|', Titles);
-  Assert.AreEqual(StringReplace(Routine(Generic), 'begin' + LB, 'begin' + LB + '  Result := Default(TArray<string>);' +
-    LB, []), Fixed1(Routine(Generic), TFixMessage.Create('W1035', 7, -1, 'x')));
-  Assert.AreEqual('', Fixed1(Routine('procedure P;' + LB + 'begin' + LB + 'end;'), TFixMessage.Create('W1035', 7, -1,
+  Assert.AreEqual(StringReplace(Routine(cBody), 'begin' + cLB, 'begin' + cLB + '    Result := Default(Integer);' + cLB,
+    []), Fixed(Routine(cBody), TFixMessage.Create('W1035', 9, -1,
+    'Return value of function ''F'' might be undefined'), mTitles));
+  Assert.AreEqual('Result := Default(Integer); am Anfang einfügen (W1035) *|', mTitles);
+  Assert.AreEqual(StringReplace(Routine(cGeneric), 'begin' + cLB, 'begin' + cLB + '  Result := Default(TArray<string>);' +
+    cLB, []), Fixed1(Routine(cGeneric), TFixMessage.Create('W1035', 7, -1, 'x')));
+  Assert.AreEqual('', Fixed1(Routine('procedure P;' + cLB + 'begin' + cLB + 'end;'), TFixMessage.Create('W1035', 7, -1,
     'x')), 'ohne Ergebnistyp');
 end;
 
 procedure TCompilerFixesTests.W1057CastsRightSide;
 const
-  Body = 'procedure P(const A: AnsiString);' + LB + 'var' + LB + '  S: string;' + LB + 'begin' + LB + '  S := A;' +
-    LB + 'end;';
+  cBody = 'procedure P(const A: AnsiString);' + cLB + 'var' + cLB + '  S: string;' + cLB + 'begin' + cLB + '  S := A;' +
+    cLB + 'end;';
 var
-  Titles: string;
+  mTitles: string;
 begin
-  Assert.AreEqual(StringReplace(Routine(Body), 'S := A;', 'S := string(A);', []), Fixed(Routine(Body),
-    TFixMessage.Create('W1057', 9, -1, 'Implicit string cast from ''AnsiString'' to ''string'''), Titles));
-  Assert.AreEqual('Explizit umwandeln: string(…) (W1057) *|', Titles);
+  Assert.AreEqual(StringReplace(Routine(cBody), 'S := A;', 'S := string(A);', []), Fixed(Routine(cBody),
+    TFixMessage.Create('W1057', 9, -1, 'Implicit string cast from ''AnsiString'' to ''string'''), mTitles));
+  Assert.AreEqual('Explizit umwandeln: string(…) (W1057) *|', mTitles);
 end;
 
 procedure TCompilerFixesTests.W1058UsesColumn;
 const
-  Body = 'procedure P(const S: string);' + LB + 'begin' + LB + '  Schreibe(1, S);' + LB + 'end;';
+  cBody = 'procedure P(const S: string);' + cLB + 'begin' + cLB + '  Schreibe(1, S);' + cLB + 'end;';
 begin
-  Assert.AreEqual(StringReplace(Routine(Body), 'Schreibe(1, S)', 'Schreibe(1, AnsiString(S))', []), Fixed1(
-    Routine(Body), TFixMessage.Create('W1058', 7, 14, 'Implicit string cast with potential data loss from ' +
+  Assert.AreEqual(StringReplace(Routine(cBody), 'Schreibe(1, S)', 'Schreibe(1, AnsiString(S))', []), Fixed1(
+    Routine(cBody), TFixMessage.Create('W1058', 7, 14, 'Implicit string cast with potential data loss from ' +
     '''string'' to ''AnsiString''')));
-  Assert.AreEqual('', Fixed1(Routine(Body), TFixMessage.Create('W1058', 7, -1, 'x ''string'' y ''AnsiString''')),
+  Assert.AreEqual('', Fixed1(Routine(cBody), TFixMessage.Create('W1058', 7, -1, 'x ''string'' y ''AnsiString''')),
     'ohne Spalte nur bei genau einer Zuweisung');
 end;
 
 procedure TCompilerFixesTests.FixAllCombinesMessages;
 const
-  Body = 'procedure P(const A: AnsiString);' + LB + 'var' + LB + '  S, T: string;' + LB + 'begin' + LB +
-    '  S := A;' + LB + '  T := A;' + LB + '  Zeige(S + T);' + LB + 'end;';
+  cBody = 'procedure P(const A: AnsiString);' + cLB + 'var' + cLB + '  S, T: string;' + cLB + 'begin' + cLB +
+    '  S := A;' + cLB + '  T := A;' + cLB + '  Zeige(S + T);' + cLB + 'end;';
 var
-  Tree: TSyntaxTree;
-  Fix: TCompilerFix;
-  Text: string;
+  mTree: TSyntaxTree;
+  mFix: TCompilerFix;
+  mText: string;
 begin
-  Text := Routine(Body);
-  Tree := TPascalParser.Parse(Text);
+  mText := Routine(cBody);
+  mTree := TPascalParser.Parse(mText);
   try
-    Assert.IsTrue(TCompilerFixes.FixAll(Text, Tree, [TFixMessage.Create('W1057', 9, -1, 'x ''AnsiString'' y ''string'''),
+    Assert.IsTrue(TCompilerFixes.FixAll(mText, mTree, [TFixMessage.Create('W1057', 9, -1, 'x ''AnsiString'' y ''string'''),
       TFixMessage.Create('w1057', 10, -1, 'x ''AnsiString'' y ''string'''), TFixMessage.Create('H2077', 9, -1,
-      '''S''')], 'W1057', Context, Fix));
-    Assert.AreEqual('Alle W1057 in der Datei beheben (2)', Fix.Title);
-    Assert.AreEqual(StringReplace(StringReplace(Text, 'S := A;', 'S := string(A);', []), 'T := A;', 'T := string(A);',
-      []), TChangeSignature.ApplyEdits(Text, Fix.Edits));
-    Assert.IsFalse(TCompilerFixes.FixAll(Text, Tree, [TFixMessage.Create('W1057', 9, -1, 'x ''A'' y ''string''')],
-      'W1057', Context, Fix), 'eine Meldung reicht nicht');
-    Assert.IsFalse(TCompilerFixes.FixAll(Text, Tree, nil, 'E2003', Context, Fix), 'E2003 hat eine Auswahl');
+      '''S''')], 'W1057', Context, mFix));
+    Assert.AreEqual('Alle W1057 in der Datei beheben (2)', mFix.Title);
+    Assert.AreEqual(StringReplace(StringReplace(mText, 'S := A;', 'S := string(A);', []), 'T := A;', 'T := string(A);',
+      []), TChangeSignature.ApplyEdits(mText, mFix.Edits));
+    Assert.IsFalse(TCompilerFixes.FixAll(mText, mTree, [TFixMessage.Create('W1057', 9, -1, 'x ''A'' y ''string''')],
+      'W1057', Context, mFix), 'eine Meldung reicht nicht');
+    Assert.IsFalse(TCompilerFixes.FixAll(mText, mTree, nil, 'E2003', Context, mFix), 'E2003 hat eine Auswahl');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 const
-  GoldenBefore =
-    'unit Atlas.Common.Editing.CompilerFixesGolden;' + LB +
-    '' + LB +
-    '// Golden-Datei für die Schnellkorrekturen an Compilermeldungen, Teil 2' + LB +
-    '// (#549): genau das, was die Korrekturen aus dem Vorher-Text in' + LB +
-    '// Atlas.Common.Editing.CompilerFixes.Tests erzeugen. Der Delphi-Testlauf' + LB +
-    '// zeigt, dass das Ergebnis ohne Warnung und Hinweis übersetzt. Nicht von' + LB +
-    '// Hand ändern, sondern neu erzeugen.' + LB +
-    '' + LB +
-    'interface' + LB +
-    '' + LB +
-    'uses' + LB +
-    '  System.JSON;' + LB +
-    '' + LB +
-    'function Anzahl(AListe: TJSONArray): Integer;' + LB +
-    'function Zeilen(const AText: string): Integer;' + LB +
-    'function Erster(const AText: string): Integer;' + LB +
-    'function Doppelt(const AText: string): Integer;' + LB +
-    'function Breit(const AText: AnsiString): string;' + LB +
-    'function Schmal(const AText: string): AnsiString;' + LB +
-    '' + LB +
-    'implementation' + LB +
-    '' + LB +
-    'uses' + LB +
-    '  System.SysUtils;' + LB +
-    '' + LB +
-    'function Anzahl(AListe: TJSONArray): Integer;' + LB +            // 26
-    'begin' + LB +
-    '  Result := AListe.Count;' + LB +                                 // 28: H2443
-    'end;' + LB +
-    '' + LB +
-    'function Zeilen(const AText: string): Integer;' + LB +           // 31
-    'var' + LB +
-    '  Liste: TStringList;' + LB +                                     // 33: E2003
-    'begin' + LB +
-    '  Liste := TStringList.Create;' + LB +
-    '  try' + LB +
-    '    Liste.Text := AText;' + LB +
-    '    Result := Liste.Count;' + LB +
-    '  finally' + LB +
-    '    Liste.Free;' + LB +
-    '  end;' + LB +
-    'end;' + LB +
-    '' + LB +
-    'function Erster(const AText: string): Integer;' + LB +            // 44
-    'begin' + LB +
-    '  if AText <> '''' then' + LB +
-    '  begin' + LB +
-    '    Result := Ord(AText[1]);' + LB +
-    '  end;' + LB +
-    'end;' + LB +                                                       // 50: W1035
-    '' + LB +
-    'function Doppelt(const AText: string): Integer;' + LB +           // 52
-    'var' + LB +
-    '  Wert: Integer;' + LB +
-    'begin' + LB +
-    '  Wert := 0;' + LB +                                               // 56: H2077 rein
-    '  Wert := Zeilen(AText);' + LB +                                   // 57: H2077 Aufruf
-    '  Wert := 2;' + LB +
-    '  Result := Wert * 2;' + LB +
-    'end;' + LB +
-    '' + LB +
-    'function Breit(const AText: AnsiString): string;' + LB +          // 62
-    'begin' + LB +
-    '  Result := AText;' + LB +                                         // 64: W1057
-    'end;' + LB +
-    '' + LB +
-    'function Schmal(const AText: string): AnsiString;' + LB +
-    'begin' + LB +
-    '  Result := AText;' + LB +                                         // 69: W1058
-    'end;' + LB +
-    '' + LB +
-    'end.' + LB;
+  cGoldenBefore =
+    'unit Atlas.Common.Editing.CompilerFixesGolden;' + cLB +
+    '' + cLB +
+    '// Golden-Datei für die Schnellkorrekturen an Compilermeldungen, Teil 2' + cLB +
+    '// (#549): genau das, was die Korrekturen aus dem Vorher-Text in' + cLB +
+    '// Atlas.Common.Editing.CompilerFixes.Tests erzeugen. Der Delphi-Testlauf' + cLB +
+    '// zeigt, dass das Ergebnis ohne Warnung und Hinweis übersetzt. Nicht von' + cLB +
+    '// Hand ändern, sondern neu erzeugen.' + cLB +
+    '' + cLB +
+    'interface' + cLB +
+    '' + cLB +
+    'uses' + cLB +
+    '  System.JSON;' + cLB +
+    '' + cLB +
+    'function Anzahl(AListe: TJSONArray): Integer;' + cLB +
+    'function Zeilen(const AText: string): Integer;' + cLB +
+    'function Erster(const AText: string): Integer;' + cLB +
+    'function Doppelt(const AText: string): Integer;' + cLB +
+    'function Breit(const AText: AnsiString): string;' + cLB +
+    'function Schmal(const AText: string): AnsiString;' + cLB +
+    '' + cLB +
+    'implementation' + cLB +
+    '' + cLB +
+    'uses' + cLB +
+    '  System.SysUtils;' + cLB +
+    '' + cLB +
+    'function Anzahl(AListe: TJSONArray): Integer;' + cLB +            // 26
+    'begin' + cLB +
+    '  Result := AListe.Count;' + cLB +                                 // 28: H2443
+    'end;' + cLB +
+    '' + cLB +
+    'function Zeilen(const AText: string): Integer;' + cLB +           // 31
+    'var' + cLB +
+    '  Liste: TStringList;' + cLB +                                     // 33: E2003
+    'begin' + cLB +
+    '  Liste := TStringList.Create;' + cLB +
+    '  try' + cLB +
+    '    Liste.Text := AText;' + cLB +
+    '    Result := Liste.Count;' + cLB +
+    '  finally' + cLB +
+    '    Liste.Free;' + cLB +
+    '  end;' + cLB +
+    'end;' + cLB +
+    '' + cLB +
+    'function Erster(const AText: string): Integer;' + cLB +            // 44
+    'begin' + cLB +
+    '  if AText <> '''' then' + cLB +
+    '  begin' + cLB +
+    '    Result := Ord(AText[1]);' + cLB +
+    '  end;' + cLB +
+    'end;' + cLB +                                                       // 50: W1035
+    '' + cLB +
+    'function Doppelt(const AText: string): Integer;' + cLB +           // 52
+    'var' + cLB +
+    '  Wert: Integer;' + cLB +
+    'begin' + cLB +
+    '  Wert := 0;' + cLB +                                               // 56: H2077 rein
+    '  Wert := Zeilen(AText);' + cLB +                                   // 57: H2077 Aufruf
+    '  Wert := 2;' + cLB +
+    '  Result := Wert * 2;' + cLB +
+    'end;' + cLB +
+    '' + cLB +
+    'function Breit(const AText: AnsiString): string;' + cLB +          // 62
+    'begin' + cLB +
+    '  Result := AText;' + cLB +                                         // 64: W1057
+    'end;' + cLB +
+    '' + cLB +
+    'function Schmal(const AText: string): AnsiString;' + cLB +
+    'begin' + cLB +
+    '  Result := AText;' + cLB +                                         // 69: W1058
+    'end;' + cLB +
+    '' + cLB +
+    'end.' + cLB;
 
 function TestsFile(const ARelative: string): string;
 var
-  Starts: TArray<string>;
-  Start, Directory: string;
+  mStarts: TArray<string>;
+  mStart, mDirectory: string;
 begin
-  Starts := [ExtractFileDir(ParamStr(0)), GetCurrentDir];
-  for Start in Starts do
+  mStarts := [ExtractFileDir(ParamStr(0)), GetCurrentDir];
+  for mStart in mStarts do
   begin
-    Directory := Start;
-    while Directory <> '' do
+    mDirectory := mStart;
+    while mDirectory <> '' do
     begin
-      Result := TPath.Combine(Directory, TPath.Combine('Tests', ARelative));
+      Result := TPath.Combine(mDirectory, TPath.Combine('Tests', ARelative));
       if TFile.Exists(Result) then
       begin
         Exit;
       end;
-      if ExtractFileDir(Directory) = Directory then
+      if ExtractFileDir(mDirectory) = mDirectory then
       begin
         Break;
       end;
-      Directory := ExtractFileDir(Directory);
+      mDirectory := ExtractFileDir(mDirectory);
     end;
   end;
   Result := '';
@@ -378,30 +378,30 @@ end;
 procedure TCompilerFixesTests.MatchesGoldenFile;
 const
   // Von unten nach oben, damit die Zeilen darüber gelten; die uses-Korrekturen zuletzt.
-  Codes: array[0..6] of string = ('W1058', 'W1057', 'H2077', 'H2077', 'W1035', 'E2003', 'H2443');
-  Lines: array[0..6] of Integer = (68, 63, 56, 55, 49, 32, 27);
-  Texts: array[0..6] of string = ('x ''string'' y ''AnsiString''', 'x ''AnsiString'' y ''string''', '''Wert''',
+  cCodes: array[0..6] of string = ('W1058', 'W1057', 'H2077', 'H2077', 'W1035', 'E2003', 'H2443');
+  cLines: array[0..6] of Integer = (68, 63, 56, 55, 49, 32, 27);
+  cTexts: array[0..6] of string = ('x ''string'' y ''AnsiString''', 'x ''AnsiString'' y ''string''', '''Wert''',
     '''Wert''', '''Erster''', 'Undeclared identifier: ''TStringList''',
     'x ''TJSONArray.GetCount'' y ''System.Generics.Collections''');
 var
-  FileName, Golden, Text: string;
-  Index: Integer;
+  mFileName, mGolden, mText: string;
+  mIndex: Integer;
 begin
-  Text := GoldenBefore;
-  for Index := 0 to High(Codes) do
+  mText := cGoldenBefore;
+  for mIndex := 0 to High(cCodes) do
   begin
-    Text := Fixed1(Text, TFixMessage.Create(Codes[Index], Lines[Index], -1, Texts[Index]));
-    Assert.AreNotEqual('', Text, Codes[Index]);
+    mText := Fixed1(mText, TFixMessage.Create(cCodes[mIndex], cLines[mIndex], -1, cTexts[mIndex]));
+    Assert.AreNotEqual('', mText, cCodes[mIndex]);
   end;
-  FileName := TestsFile(TPath.Combine('Common', TPath.Combine('Editing',
+  mFileName := TestsFile(TPath.Combine('Common', TPath.Combine('Editing',
     'Atlas.Common.Editing.CompilerFixesGolden.pas')));
-  Assert.AreNotEqual('', FileName, 'Golden-Datei nicht gefunden');
-  Golden := TFile.ReadAllText(FileName, TEncoding.UTF8);
-  if (Golden <> '') and (Golden[1] = #$FEFF) then
+  Assert.AreNotEqual('', mFileName, 'Golden-Datei nicht gefunden');
+  mGolden := TFile.ReadAllText(mFileName, TEncoding.UTF8);
+  if (mGolden <> '') and (mGolden[1] = #$FEFF) then
   begin
-    Delete(Golden, 1, 1);
+    Delete(mGolden, 1, 1);
   end;
-  Assert.AreEqual(Golden, Text);
+  Assert.AreEqual(mGolden, mText);
 end;
 
 initialization

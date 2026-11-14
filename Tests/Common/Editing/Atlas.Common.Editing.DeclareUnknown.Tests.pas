@@ -35,52 +35,52 @@ uses
 /// <summary>Tokens ohne "|" und die Position des "|".</summary>
 function Split(const AMarked: string; out APosition: TTextPosition): TArray<TPascalToken>;
 var
-  Index, Line, Character: Integer;
+  mIndex, mLine, mCharacter: Integer;
 begin
-  Line := 0;
-  Character := 0;
-  for Index := 1 to Pos('|', AMarked) - 1 do
+  mLine := 0;
+  mCharacter := 0;
+  for mIndex := 1 to Pos('|', AMarked) - 1 do
   begin
-    if AMarked[Index] = #10 then
+    if AMarked[mIndex] = #10 then
     begin
-      Inc(Line);
-      Character := 0;
+      Inc(mLine);
+      mCharacter := 0;
     end
     else
     begin
-      Inc(Character);
+      Inc(mCharacter);
     end;
   end;
-  APosition := TTextPosition.Create(Line, Character);
+  APosition := TTextPosition.Create(mLine, mCharacter);
   Result := TPascalLexer.Tokenize(StringReplace(AMarked, '|', '', []));
 end;
 
 function SlotAt(const AMarked: string; out ATokens: TArray<TPascalToken>; out ASlot: TUnknownSlot): Boolean;
 var
-  Position: TTextPosition;
+  mPosition: TTextPosition;
 begin
-  ATokens := Split(AMarked, Position);
-  Result := TDeclareUnknown.Slot(ATokens, Position, ASlot);
+  ATokens := Split(AMarked, mPosition);
+  Result := TDeclareUnknown.Slot(ATokens, mPosition, ASlot);
 end;
 
 /// <summary>Typ aus der Form der rechten Seite; bei einem Operanden dessen Text in eckigen Klammern.</summary>
 function ShapeOf(const AMarked: string): string;
 var
-  Tokens: TArray<TPascalToken>;
-  Slot: TUnknownSlot;
-  First, Last, Index: Integer;
+  mTokens: TArray<TPascalToken>;
+  mSlot: TUnknownSlot;
+  mFirst, mLast, mIndex: Integer;
 begin
-  if not SlotAt(AMarked, Tokens, Slot) then
+  if not SlotAt(AMarked, mTokens, mSlot) then
   begin
     Exit('-');
   end;
-  Result := TDeclareUnknown.Shape(Tokens, Slot.ValueFirst, Slot.ValueLast, First, Last);
-  if (Result = '') and (First >= 0) then
+  Result := TDeclareUnknown.Shape(mTokens, mSlot.ValueFirst, mSlot.ValueLast, mFirst, mLast);
+  if (Result = '') and (mFirst >= 0) then
   begin
     Result := '[';
-    for Index := First to Last do
+    for mIndex := mFirst to mLast do
     begin
-      Result := Result + Tokens[Index].Text;
+      Result := Result + mTokens[mIndex].Text;
     end;
     Result := Result + ']';
   end;
@@ -90,39 +90,39 @@ end;
 
 procedure TDeclareUnknownTests.FindsAssignmentTargetsAndValues;
 var
-  Tokens: TArray<TPascalToken>;
-  Slot: TUnknownSlot;
+  mTokens: TArray<TPascalToken>;
+  mSlot: TUnknownSlot;
 begin
-  Assert.IsTrue(SlotAt('begin'#10'  TotalCount| := Lines.Count + Extra.Count;'#10'end;', Tokens, Slot));
-  Assert.AreEqual('TotalCount', Slot.Name);
-  Assert.IsTrue(Slot.AssignTarget);
-  Assert.IsTrue(Slot.InlineAllowed);
-  Assert.AreEqual(10, Slot.CursorOffset);
-  Assert.AreEqual('Lines', Tokens[Slot.ValueFirst].Text);
-  Assert.AreEqual('Count', Tokens[Slot.ValueLast].Text);
+  Assert.IsTrue(SlotAt('begin'#10'  TotalCount| := Lines.Count + Extra.Count;'#10'end;', mTokens, mSlot));
+  Assert.AreEqual('TotalCount', mSlot.Name);
+  Assert.IsTrue(mSlot.AssignTarget);
+  Assert.IsTrue(mSlot.InlineAllowed);
+  Assert.AreEqual(10, mSlot.CursorOffset);
+  Assert.AreEqual('Lines', mTokens[mSlot.ValueFirst].Text);
+  Assert.AreEqual('Count', mTokens[mSlot.ValueLast].Text);
   // Cursor mitten im Namen.
-  Assert.IsTrue(SlotAt('begin'#10'  Total|Count := 1;'#10'end;', Tokens, Slot));
-  Assert.AreEqual(5, Slot.CursorOffset);
+  Assert.IsTrue(SlotAt('begin'#10'  Total|Count := 1;'#10'end;', mTokens, mSlot));
+  Assert.AreEqual(5, mSlot.CursorOffset);
   // Als Wert: kein Ziel, keine Inline-Variable.
-  Assert.IsTrue(SlotAt('begin'#10'  Zeige(Anzahl|);'#10'end;', Tokens, Slot));
-  Assert.IsFalse(Slot.AssignTarget);
-  Assert.IsFalse(Slot.InlineAllowed);
+  Assert.IsTrue(SlotAt('begin'#10'  Zeige(Anzahl|);'#10'end;', mTokens, mSlot));
+  Assert.IsFalse(mSlot.AssignTarget);
+  Assert.IsFalse(mSlot.InlineAllowed);
   // Im then-Zweig ohne begin ist "var" nicht erlaubt.
-  Assert.IsTrue(SlotAt('begin'#10'  if A then Summe| := 1;'#10'end;', Tokens, Slot));
-  Assert.IsFalse(Slot.InlineAllowed);
+  Assert.IsTrue(SlotAt('begin'#10'  if A then Summe| := 1;'#10'end;', mTokens, mSlot));
+  Assert.IsFalse(mSlot.InlineAllowed);
 end;
 
 procedure TDeclareUnknownTests.IgnoresMembersCallsAndDeclarations;
 var
-  Tokens: TArray<TPascalToken>;
-  Slot: TUnknownSlot;
+  mTokens: TArray<TPascalToken>;
+  mSlot: TUnknownSlot;
 begin
-  Assert.IsFalse(SlotAt('begin'#10'  Liste.Anzahl| := 1;'#10'end;', Tokens, Slot), 'Mitglied');
-  Assert.IsFalse(SlotAt('begin'#10'  Rechne|(1);'#10'end;', Tokens, Slot), 'Aufruf (#472)');
-  Assert.IsFalse(SlotAt('begin'#10'  Objekt|.Free;'#10'end;', Tokens, Slot), 'Kette');
-  Assert.IsFalse(SlotAt('begin'#10'  var Neu| := 1;'#10'end;', Tokens, Slot), 'Inline-Deklaration');
-  Assert.IsFalse(SlotAt('begin'#10'  var I: TLis|;'#10'end;', Tokens, Slot), 'Typ einer Inline-Deklaration');
-  Assert.IsFalse(SlotAt('begin'#10'  X := 1 |'#10'end;', Tokens, Slot), 'kein Name am Cursor');
+  Assert.IsFalse(SlotAt('begin'#10'  Liste.Anzahl| := 1;'#10'end;', mTokens, mSlot), 'Mitglied');
+  Assert.IsFalse(SlotAt('begin'#10'  Rechne|(1);'#10'end;', mTokens, mSlot), 'Aufruf (#472)');
+  Assert.IsFalse(SlotAt('begin'#10'  Objekt|.Free;'#10'end;', mTokens, mSlot), 'Kette');
+  Assert.IsFalse(SlotAt('begin'#10'  var Neu| := 1;'#10'end;', mTokens, mSlot), 'Inline-Deklaration');
+  Assert.IsFalse(SlotAt('begin'#10'  var I: TLis|;'#10'end;', mTokens, mSlot), 'Typ einer Inline-Deklaration');
+  Assert.IsFalse(SlotAt('begin'#10'  X := 1 |'#10'end;', mTokens, mSlot), 'kein Name am Cursor');
 end;
 
 procedure TDeclareUnknownTests.DerivesTypeFromShape;
@@ -142,20 +142,20 @@ end;
 
 procedure TDeclareUnknownTests.FindsTermName;
 var
-  Tokens: TArray<TPascalToken>;
+  mTokens: TArray<TPascalToken>;
 begin
-  Tokens := TPascalLexer.Tokenize('Liste.Items(1).Name');
-  Assert.AreEqual('Name', Tokens[TDeclareUnknown.TermName(Tokens, 0, High(Tokens))].Text);
-  Tokens := TPascalLexer.Tokenize('TFoo.Create(A, B)');
-  Assert.AreEqual('Create', Tokens[TDeclareUnknown.TermName(Tokens, 0, High(Tokens))].Text);
-  Tokens := TPascalLexer.Tokenize('Liste[0]');
-  Assert.AreEqual(-1, TDeclareUnknown.TermName(Tokens, 0, High(Tokens)), 'Index: Elementtyp unbekannt');
-  Tokens := TPascalLexer.Tokenize('42');
-  Assert.AreEqual('Integer', TDeclareUnknown.LiteralType(Tokens[0]));
-  Tokens := TPascalLexer.Tokenize('1.5');
-  Assert.AreEqual('Extended', TDeclareUnknown.LiteralType(Tokens[0]));
-  Tokens := TPascalLexer.Tokenize('True');
-  Assert.AreEqual('Boolean', TDeclareUnknown.LiteralType(Tokens[0]));
+  mTokens := TPascalLexer.Tokenize('Liste.Items(1).Name');
+  Assert.AreEqual('Name', mTokens[TDeclareUnknown.TermName(mTokens, 0, High(mTokens))].Text);
+  mTokens := TPascalLexer.Tokenize('TFoo.Create(A, B)');
+  Assert.AreEqual('Create', mTokens[TDeclareUnknown.TermName(mTokens, 0, High(mTokens))].Text);
+  mTokens := TPascalLexer.Tokenize('Liste[0]');
+  Assert.AreEqual(-1, TDeclareUnknown.TermName(mTokens, 0, High(mTokens)), 'Index: Elementtyp unbekannt');
+  mTokens := TPascalLexer.Tokenize('42');
+  Assert.AreEqual('Integer', TDeclareUnknown.LiteralType(mTokens[0]));
+  mTokens := TPascalLexer.Tokenize('1.5');
+  Assert.AreEqual('Extended', TDeclareUnknown.LiteralType(mTokens[0]));
+  mTokens := TPascalLexer.Tokenize('True');
+  Assert.AreEqual('Boolean', TDeclareUnknown.LiteralType(mTokens[0]));
 end;
 
 procedure TDeclareUnknownTests.NamesFieldsAndValues;

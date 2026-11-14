@@ -93,22 +93,22 @@ end;
 
 procedure TWarningCodesTests.TableIsConsistent;
 var
-  Seen: TDictionary<string, Boolean>;
-  Code, Name: string;
+  mSeen: TDictionary<string, Boolean>;
+  mCode, mName: string;
 begin
-  Seen := TDictionary<string, Boolean>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    for Code in TWarningCodes.Codes do
+    for mCode in TWarningCodes.Codes do
     begin
-      Assert.IsFalse(Seen.ContainsKey(Code), 'doppelt: ' + Code);
-      Seen.Add(Code, True);
-      Assert.AreEqual<TWarningCodeKind>(TWarningCodeKind.Warning, TWarningCodes.KindOf(Code), Code);
-      Name := TWarningCodes.Identifier(Code, '');
-      Assert.IsTrue(TDirectiveNames.IsWarning(Name), Code + ' → ' + Name);
+      Assert.IsFalse(mSeen.ContainsKey(mCode), 'doppelt: ' + mCode);
+      mSeen.Add(mCode, True);
+      Assert.AreEqual<TWarningCodeKind>(TWarningCodeKind.Warning, TWarningCodes.KindOf(mCode), mCode);
+      mName := TWarningCodes.Identifier(mCode, '');
+      Assert.IsTrue(TDirectiveNames.IsWarning(mName), mCode + ' → ' + mName);
     end;
-    Assert.IsTrue(Seen.Count >= 70);
+    Assert.IsTrue(mSeen.Count >= 70);
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
 end;
 

@@ -415,8 +415,8 @@ const
     'end.';                                                  // 48
 
 /// <summary>Letztes Glied des Pfads an ALine/ACharacter von cMarks als „Marke Text (Sichtbarkeit@Zeile)“.</summary>
-function LastMarked(ALine: Integer; ACharacter: Integer = 0;
-  AParts: TAtlasCrumbParts = [TAtlasCrumbPart.VisibilityMark]): string;
+function LastMarked(ALine: Integer; ACharacter: Integer;
+  AParts: TAtlasCrumbParts): string; overload;
 var
   mCrumbs: TAtlasCrumbs;
   mLast: TAtlasCrumb;
@@ -437,6 +437,16 @@ begin
   begin
     Assert.AreEqual(-1, mLast.MarkLine, 'ohne Marke keine Zeile');
   end;
+end;
+
+function LastMarked(ALine: Integer): string; overload;
+begin
+  Result := LastMarked(ALine, 0, [TAtlasCrumbPart.VisibilityMark]);
+end;
+
+function LastMarked(ALine: Integer; ACharacter: Integer): string; overload;
+begin
+  Result := LastMarked(ALine, ACharacter, [TAtlasCrumbPart.VisibilityMark]);
 end;
 
 procedure TAtlasVisibilitySectionsTests.MarkOnMethodBodies;

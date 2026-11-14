@@ -56,10 +56,10 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Editing.Contract;
 
-function MakeUnit(const AName, AFile: string; const AUses: TArray<string>; const AClass: string = '';
-  const AAncestor: string = ''): TUnitIndex;
+function MakeUnit(const AName, AFile: string; const AUses: TArray<string>; const AClass: string;
+  const AAncestor: string): TUnitIndex; overload;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := Default(TUnitIndex);
   Result.UnitName := AName;
@@ -67,13 +67,23 @@ begin
   Result.InterfaceUses := AUses;
   if AClass <> '' then
   begin
-    Symbol := Default(TIndexSymbol);
-    Symbol.Name := AClass;
-    Symbol.Kind := TIndexSymbolKind.ClassType;
-    Symbol.InInterface := True;
-    Symbol.Ancestors := [AAncestor];
-    Result.Symbols := [Symbol];
+    mSymbol := Default(TIndexSymbol);
+    mSymbol.Name := AClass;
+    mSymbol.Kind := TIndexSymbolKind.ClassType;
+    mSymbol.InInterface := True;
+    mSymbol.Ancestors := [AAncestor];
+    Result.Symbols := [mSymbol];
   end;
+end;
+
+function MakeUnit(const AName, AFile: string; const AUses: TArray<string>): TUnitIndex; overload;
+begin
+  Result := MakeUnit(AName, AFile, AUses, '', '');
+end;
+
+function MakeUnit(const AName, AFile: string; const AUses: TArray<string>; const AClass: string): TUnitIndex; overload;
+begin
+  Result := MakeUnit(AName, AFile, AUses, AClass, '');
 end;
 
 function Chain(const AType: string): TArray<string>;
@@ -90,7 +100,7 @@ begin
 end;
 
 const
-  FormText =
+  cFormText =
     'object Haupt: THaupt'#13#10 +
     '  Caption = ''Kunden'''#13#10 +
     '  ClientWidth = 400'#13#10 +
@@ -132,17 +142,17 @@ end;
 
 function TUnitSearchTests.Context: TUnitSearchContext;
 var
-  Kunden, Haupt, KundenTests, Hilfe, Sys: TUnitIndex;
+  mKunden, mHaupt, mKundenTests, mHilfe, mSys: TUnitIndex;
 begin
-  Kunden := MakeUnit('Kunden', 'C:\P\Kunden.pas', ['System.SysUtils']);
-  Kunden.Includes := ['C:\P\Optionen.inc'];
-  Haupt := MakeUnit('Haupt', 'C:\P\Haupt.pas', ['Kunden'], 'THaupt', 'TBasisForm');
-  KundenTests := MakeUnit('Kunden.Tests', 'C:\P\Tests\Kunden.Tests.pas', ['DUnitX.TestFramework', 'Kunden']);
-  Hilfe := MakeUnit('Hilfe', 'C:\Lib\Hilfe.pas', nil);
-  Sys := MakeUnit('System.SysUtils', 'C:\BDS\SysUtils.pas', nil);
-  Sys.Library_ := True;
+  mKunden := MakeUnit('Kunden', 'C:\P\Kunden.pas', ['System.SysUtils']);
+  mKunden.Includes := ['C:\P\Optionen.inc'];
+  mHaupt := MakeUnit('Haupt', 'C:\P\Haupt.pas', ['Kunden'], 'THaupt', 'TBasisForm');
+  mKundenTests := MakeUnit('Kunden.Tests', 'C:\P\Tests\Kunden.Tests.pas', ['DUnitX.TestFramework', 'Kunden']);
+  mHilfe := MakeUnit('Hilfe', 'C:\Lib\Hilfe.pas', nil);
+  mSys := MakeUnit('System.SysUtils', 'C:\BDS\SysUtils.pas', nil);
+  mSys.Library_ := True;
   Result := Default(TUnitSearchContext);
-  Result.Units := [Kunden, Haupt, KundenTests, Hilfe, Sys];
+  Result.Units := [mKunden, mHaupt, mKundenTests, mHilfe, mSys];
   Result.Projects := UnitSearchProjects;
   Result.AncestorsOf :=
     function(AType: string): TArray<string>
@@ -159,7 +169,7 @@ begin
     begin
       if SameText(AFile, 'C:\P\Haupt.dfm') then
       begin
-        Result := FormText;
+        Result := cFormText;
       end
       else if SameText(AFile, 'C:\P\Haupt.pas') then
       begin
@@ -184,18 +194,18 @@ end;
 
 procedure TUnitSearchTests.KindFollowsAncestorChain;
 var
-  Ancestors: TFunc<string, TArray<string>>;
+  mAncestors: TFunc<string, TArray<string>>;
 begin
-  Ancestors :=
+  mAncestors :=
     function(AType: string): TArray<string>
     begin
       Result := Chain(AType);
     end;
-  Assert.AreEqual('form', TUnitSearch.KindOf(MakeUnit('A', 'a.pas', nil, 'TA', 'TBasisForm'), Ancestors, False, False));
-  Assert.AreEqual('frame', TUnitSearch.KindOf(MakeUnit('A', 'a.pas', nil, 'TA', 'TFrame'), Ancestors, True, False));
-  Assert.AreEqual('dm', TUnitSearch.KindOf(MakeUnit('A', 'a.pas', nil, 'TA', 'TDataModule'), Ancestors, True, False));
+  Assert.AreEqual('form', TUnitSearch.KindOf(MakeUnit('A', 'a.pas', nil, 'TA', 'TBasisForm'), mAncestors, False, False));
+  Assert.AreEqual('frame', TUnitSearch.KindOf(MakeUnit('A', 'a.pas', nil, 'TA', 'TFrame'), mAncestors, True, False));
+  Assert.AreEqual('dm', TUnitSearch.KindOf(MakeUnit('A', 'a.pas', nil, 'TA', 'TDataModule'), mAncestors, True, False));
   // Zyklus in der Kette bricht ab.
-  Assert.AreEqual('unit', TUnitSearch.KindOf(MakeUnit('A', 'a.pas', nil, 'TA', 'TKreis'), Ancestors, False, False));
+  Assert.AreEqual('unit', TUnitSearch.KindOf(MakeUnit('A', 'a.pas', nil, 'TA', 'TKreis'), mAncestors, False, False));
 end;
 
 procedure TUnitSearchTests.KindOfTestsAndFallbacks;
@@ -238,49 +248,49 @@ end;
 
 procedure TUnitSearchTests.SketchHandlesAlignAndNesting;
 var
-  Sketch: TUnitSketch;
+  mSketch: TUnitSketch;
 begin
-  Sketch := TUnitSearch.Sketch(FormText);
-  Assert.AreEqual('THaupt', Sketch.FormClass);
-  Assert.AreEqual('Kunden', Sketch.Caption);
-  Assert.AreEqual(400, Sketch.Width);
-  Assert.AreEqual(300, Sketch.Height);
+  mSketch := TUnitSearch.Sketch(cFormText);
+  Assert.AreEqual('THaupt', mSketch.FormClass);
+  Assert.AreEqual('Kunden', mSketch.Caption);
+  Assert.AreEqual(400, mSketch.Width);
+  Assert.AreEqual(300, mSketch.Height);
   // Panel oben, Label darin, Liste im Rest; der Timer ist unsichtbar.
-  Assert.AreEqual(3, Integer(Length(Sketch.Items)));
-  Assert.AreEqual('Kopf', Sketch.Items[0].Name);
-  Assert.AreEqual(0, Sketch.Items[0].Top);
-  Assert.AreEqual(400, Sketch.Items[0].Width);
-  Assert.AreEqual(40, Sketch.Items[0].Height);
-  Assert.AreEqual('Titel', Sketch.Items[1].Caption);
-  Assert.AreEqual(8, Sketch.Items[1].Left);
-  Assert.AreEqual(2, Sketch.Items[1].Depth);
-  Assert.AreEqual('Liste', Sketch.Items[2].Name);
-  Assert.AreEqual(40, Sketch.Items[2].Top);
-  Assert.AreEqual(260, Sketch.Items[2].Height);
+  Assert.AreEqual(3, Integer(Length(mSketch.Items)));
+  Assert.AreEqual('Kopf', mSketch.Items[0].Name);
+  Assert.AreEqual(0, mSketch.Items[0].Top);
+  Assert.AreEqual(400, mSketch.Items[0].Width);
+  Assert.AreEqual(40, mSketch.Items[0].Height);
+  Assert.AreEqual('Titel', mSketch.Items[1].Caption);
+  Assert.AreEqual(8, mSketch.Items[1].Left);
+  Assert.AreEqual(2, mSketch.Items[1].Depth);
+  Assert.AreEqual('Liste', mSketch.Items[2].Name);
+  Assert.AreEqual(40, mSketch.Items[2].Top);
+  Assert.AreEqual(260, mSketch.Items[2].Height);
   Assert.AreEqual('', TUnitSearch.Sketch('').FormClass);
 end;
 
 procedure TUnitSearchTests.UsedByListsProjectUnits;
 var
-  Names: TArray<string>;
+  mNames: TArray<string>;
 begin
-  Names := TUnitSearch.UsedBy(Context.Units, 'Kunden');
-  Assert.AreEqual(2, Integer(Length(Names)));
-  Assert.AreEqual('Haupt', Names[0]);
-  Assert.AreEqual('Kunden.Tests', Names[1]);
+  mNames := TUnitSearch.UsedBy(Context.Units, 'Kunden');
+  Assert.AreEqual(2, Integer(Length(mNames)));
+  Assert.AreEqual('Haupt', mNames[0]);
+  Assert.AreEqual('Kunden.Tests', mNames[1]);
   // Bibliotheks-Units zählen nicht.
   Assert.AreEqual(0, Integer(Length(TUnitSearch.UsedBy(Context.Units, 'Hilfe'))));
 end;
 
 function Find(AUnits: TJSONArray; const AName: string): TJSONObject;
 var
-  Item: TJSONValue;
+  mItem: TJSONValue;
 begin
-  for Item in AUnits do
+  for mItem in AUnits do
   begin
-    if TJSONObject(Item).GetValue<string>('name') = AName then
+    if TJSONObject(mItem).GetValue<string>('name') = AName then
     begin
-      Exit(TJSONObject(Item));
+      Exit(TJSONObject(mItem));
     end;
   end;
   Result := nil;
@@ -288,39 +298,39 @@ end;
 
 procedure TUnitSearchTests.UnitsCarryOriginKindAndProjects;
 var
-  Answer: TJSONObject;
-  Units: TJSONArray;
-  Item: TJSONObject;
+  mAnswer: TJSONObject;
+  mUnits: TJSONArray;
+  mItem: TJSONObject;
 begin
-  Answer := TUnitSearch.UnitsJson(Context);
+  mAnswer := TUnitSearch.UnitsJson(Context);
   try
-    Units := Answer.GetValue<TJSONArray>('units');
-    Assert.AreEqual(7, Integer(Units.Count), Answer.ToJSON);
-    Item := Find(Units, 'Kunden');
-    Assert.AreEqual('project', Item.GetValue<string>('origin'));
-    Assert.AreEqual('unit', Item.GetValue<string>('kind'), 'auch im Testprojekt, aber nicht nur dort');
-    Assert.AreEqual(2, Integer(Item.GetValue<TJSONArray>('projects').Count));
-    Assert.IsTrue(TDocumentUris.SameFile(TDocumentUris.FromPath('C:\P\Kunden.pas'), Item.GetValue<string>('uri')));
-    Assert.AreEqual('form', Find(Units, 'Haupt').GetValue<string>('kind'));
-    Item := Find(Units, 'Kunden.Tests');
-    Assert.AreEqual('test', Item.GetValue<string>('kind'));
-    Assert.AreEqual('Tests', Item.GetValue<TJSONArray>('projects').Items[0].Value);
-    Assert.AreEqual('searchPath', Find(Units, 'Hilfe').GetValue<string>('origin'));
-    Assert.AreEqual('library', Find(Units, 'System.SysUtils').GetValue<string>('origin'));
-    Assert.AreEqual('inc', Find(Units, 'Optionen.inc').GetValue<string>('kind'));
+    mUnits := mAnswer.GetValue<TJSONArray>('units');
+    Assert.AreEqual(7, Integer(mUnits.Count), mAnswer.ToJSON);
+    mItem := Find(mUnits, 'Kunden');
+    Assert.AreEqual('project', mItem.GetValue<string>('origin'));
+    Assert.AreEqual('unit', mItem.GetValue<string>('kind'), 'auch im Testprojekt, aber nicht nur dort');
+    Assert.AreEqual(2, Integer(mItem.GetValue<TJSONArray>('projects').Count));
+    Assert.IsTrue(TDocumentUris.SameFile(TDocumentUris.FromPath('C:\P\Kunden.pas'), mItem.GetValue<string>('uri')));
+    Assert.AreEqual('form', Find(mUnits, 'Haupt').GetValue<string>('kind'));
+    mItem := Find(mUnits, 'Kunden.Tests');
+    Assert.AreEqual('test', mItem.GetValue<string>('kind'));
+    Assert.AreEqual('Tests', mItem.GetValue<TJSONArray>('projects').Items[0].Value);
+    Assert.AreEqual('searchPath', Find(mUnits, 'Hilfe').GetValue<string>('origin'));
+    Assert.AreEqual('library', Find(mUnits, 'System.SysUtils').GetValue<string>('origin'));
+    Assert.AreEqual('inc', Find(mUnits, 'Optionen.inc').GetValue<string>('kind'));
     // Projektdatei ohne Indexeintrag, aber nicht die .dpr.
-    Assert.AreEqual('project', Find(Units, 'Neu').GetValue<string>('origin'));
-    Assert.IsNull(Find(Units, 'App'));
-    Assert.AreEqual(2, Integer(Answer.GetValue<TJSONArray>('projects').Count));
-    Assert.IsTrue(TJSONObject(Answer.GetValue<TJSONArray>('projects').Items[1]).GetValue<Boolean>('isTest'));
+    Assert.AreEqual('project', Find(mUnits, 'Neu').GetValue<string>('origin'));
+    Assert.IsNull(Find(mUnits, 'App'));
+    Assert.AreEqual(2, Integer(mAnswer.GetValue<TJSONArray>('projects').Count));
+    Assert.IsTrue(TJSONObject(mAnswer.GetValue<TJSONArray>('projects').Items[1]).GetValue<Boolean>('isTest'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TUnitSearchTests.FormCaptionReadsRootOnly;
 begin
-  Assert.AreEqual('Kunden', TUnitSearch.FormCaption(FormText));
+  Assert.AreEqual('Kunden', TUnitSearch.FormCaption(cFormText));
   Assert.AreEqual('Kunden'#$E4'nderung', TUnitSearch.FormCaption(
     'inherited Pflege: TPflege'#13#10'  Caption = ''Kunden''#228''nderung'''#13#10'end'));
   // Lange Werte in Folgezeilen.
@@ -338,82 +348,82 @@ end;
 
 procedure TUnitSearchTests.UnitsCarryFormCaptionsOnRequest;
 var
-  Search: TUnitSearch;
-  Shared: TUnitSearchContext;
-  Arguments: TJSONArray;
-  Answer: TJSONValue;
-  Units: TJSONArray;
-  Pass: Integer;
+  mSearch: TUnitSearch;
+  mShared: TUnitSearchContext;
+  mArguments: TJSONArray;
+  mAnswer: TJSONValue;
+  mUnits: TJSONArray;
+  mPass: Integer;
 begin
-  Shared := Context;
-  Search := TUnitSearch.Create(
+  mShared := Context;
+  mSearch := TUnitSearch.Create(
     function(out AContext: TUnitSearchContext): Boolean
     begin
-      AContext := Shared;
+      AContext := mShared;
       Result := True;
     end);
-  Arguments := TJSONArray.Create;
+  mArguments := TJSONArray.Create;
   try
-    Answer := Search.ExecuteUnits(nil);
+    mAnswer := mSearch.ExecuteUnits(nil);
     try
-      Units := TJSONObject(Answer).GetValue<TJSONArray>('units');
-      Assert.IsNull(Find(Units, 'Haupt').GetValue('caption'), 'ohne Wunsch keine Caption');
+      mUnits := TJSONObject(mAnswer).GetValue<TJSONArray>('units');
+      Assert.IsNull(Find(mUnits, 'Haupt').GetValue('caption'), 'ohne Wunsch keine Caption');
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
-    Arguments.Add(TJSONObject.Create(TJSONPair.Create('captions', TJSONBool.Create(True))));
+    mArguments.Add(TJSONObject.Create(TJSONPair.Create('captions', TJSONBool.Create(True))));
     // Zweiter Lauf aus dem Zwischenspeicher.
-    for Pass := 1 to 2 do
+    for mPass := 1 to 2 do
     begin
-      Answer := Search.ExecuteUnits(Arguments);
+      mAnswer := mSearch.ExecuteUnits(mArguments);
       try
-        Units := TJSONObject(Answer).GetValue<TJSONArray>('units');
-        Assert.AreEqual('Kunden', Find(Units, 'Haupt').GetValue<string>('caption'));
-        Assert.IsNull(Find(Units, 'Kunden').GetValue('caption'), 'keine Formular-Unit');
+        mUnits := TJSONObject(mAnswer).GetValue<TJSONArray>('units');
+        Assert.AreEqual('Kunden', Find(mUnits, 'Haupt').GetValue<string>('caption'));
+        Assert.IsNull(Find(mUnits, 'Kunden').GetValue('caption'), 'keine Formular-Unit');
       finally
-        Answer.Free;
+        mAnswer.Free;
       end;
     end;
   finally
-    Arguments.Free;
-    Search.Free;
+    mArguments.Free;
+    mSearch.Free;
   end;
 end;
 
 procedure TUnitSearchTests.PreviewWithoutOpening;
 var
-  Answer, Form: TJSONObject;
+  mAnswer, mForm: TJSONObject;
 begin
-  Answer := TUnitSearch.PreviewJson(Context, 'C:\P\Haupt.pas', True, True);
+  mAnswer := TUnitSearch.PreviewJson(Context, 'C:\P\Haupt.pas', True, True);
   try
-    Assert.AreEqual('Hauptfenster'#10'der Anwendung', Answer.GetValue<string>('header'));
-    Assert.AreEqual(5, Answer.GetValue<Integer>('lines'));
-    Assert.AreEqual('modified', Answer.GetValue<string>('git'));
-    Assert.IsTrue(Answer.GetValue<string>('modified').StartsWith('2026-10-15'));
-    Assert.AreEqual('THaupt', TJSONObject(Answer.GetValue<TJSONArray>('types').Items[0]).GetValue<string>('name'));
-    Assert.AreEqual(1, Answer.GetValue<Integer>('typeCount'));
-    Assert.AreEqual(1, Integer(Answer.GetValue<TJSONArray>('uses').Count));
-    Assert.AreEqual('Kunden', Answer.GetValue<TJSONArray>('uses').Items[0].Value);
-    Assert.AreEqual(0, Answer.GetValue<Integer>('usedBy'));
-    Form := Answer.GetValue<TJSONObject>('form');
-    Assert.AreEqual(400, Form.GetValue<Integer>('width'));
-    Assert.AreEqual(3, Integer(Form.GetValue<TJSONArray>('items').Count));
+    Assert.AreEqual('Hauptfenster'#10'der Anwendung', mAnswer.GetValue<string>('header'));
+    Assert.AreEqual(5, mAnswer.GetValue<Integer>('lines'));
+    Assert.AreEqual('modified', mAnswer.GetValue<string>('git'));
+    Assert.IsTrue(mAnswer.GetValue<string>('modified').StartsWith('2026-10-15'));
+    Assert.AreEqual('THaupt', TJSONObject(mAnswer.GetValue<TJSONArray>('types').Items[0]).GetValue<string>('name'));
+    Assert.AreEqual(1, mAnswer.GetValue<Integer>('typeCount'));
+    Assert.AreEqual(1, Integer(mAnswer.GetValue<TJSONArray>('uses').Count));
+    Assert.AreEqual('Kunden', mAnswer.GetValue<TJSONArray>('uses').Items[0].Value);
+    Assert.AreEqual(0, mAnswer.GetValue<Integer>('usedBy'));
+    mForm := mAnswer.GetValue<TJSONObject>('form');
+    Assert.AreEqual(400, mForm.GetValue<Integer>('width'));
+    Assert.AreEqual(3, Integer(mForm.GetValue<TJSONArray>('items').Count));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  Answer := TUnitSearch.PreviewJson(Context, 'C:\P\Kunden.pas', False, True);
+  mAnswer := TUnitSearch.PreviewJson(Context, 'C:\P\Kunden.pas', False, True);
   try
-    Assert.AreEqual(2, Answer.GetValue<Integer>('usedBy'));
-    Assert.IsNull(Answer.GetValue('form'));
+    Assert.AreEqual(2, mAnswer.GetValue<Integer>('usedBy'));
+    Assert.IsNull(mAnswer.GetValue('form'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  Answer := TUnitSearch.PreviewJson(Context, 'C:\P\Haupt.pas', False, False);
+  mAnswer := TUnitSearch.PreviewJson(Context, 'C:\P\Haupt.pas', False, False);
   try
-    Assert.IsNull(Answer.GetValue('form'));
-    Assert.IsNull(Answer.GetValue('usedBy'));
+    Assert.IsNull(mAnswer.GetValue('form'));
+    Assert.IsNull(mAnswer.GetValue('usedBy'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
@@ -428,56 +438,56 @@ end;
 
 procedure TUnitSearchTests.AddUsesBuildsWorkspaceEdit;
 var
-  Answer, Changes: TJSONObject;
-  Edits: TJSONArray;
-  UsesContext: TUsesContext;
+  mAnswer, mChanges: TJSONObject;
+  mEdits: TJSONArray;
+  mUsesContext: TUsesContext;
 begin
-  UsesContext := Default(TUsesContext);
-  UsesContext.Declaring := DeclaringKunde;
-  Answer := TUnitSearch.AddUsesJson('file:///C:/P/Haupt.pas',
+  mUsesContext := Default(TUsesContext);
+  mUsesContext.Declaring := DeclaringKunde;
+  mAnswer := TUnitSearch.AddUsesJson('file:///C:/P/Haupt.pas',
     'unit Haupt;'#13#10'interface'#13#10'uses'#13#10'  Basis;'#13#10'var K: TKunde;'#13#10 +
-    'implementation'#13#10'end.', ['Kunden', 'Basis', 'Werkzeug'], UsesContext);
+    'implementation'#13#10'end.', ['Kunden', 'Basis', 'Werkzeug'], mUsesContext);
   try
-    Assert.AreEqual('["Kunden","Werkzeug"]', Answer.GetValue<TJSONArray>('added').ToJSON);
-    Changes := Answer.GetValue<TJSONObject>('edit.changes');
-    Edits := Changes.Values['file:///C:/P/Haupt.pas'] as TJSONArray;
-    Assert.AreEqual(2, Integer(Edits.Count));
-    Assert.Contains(TJSONObject(Edits.Items[0]).GetValue<string>('newText') +
-      TJSONObject(Edits.Items[1]).GetValue<string>('newText'), #13#10);
+    Assert.AreEqual('["Kunden","Werkzeug"]', mAnswer.GetValue<TJSONArray>('added').ToJSON);
+    mChanges := mAnswer.GetValue<TJSONObject>('edit.changes');
+    mEdits := mChanges.Values['file:///C:/P/Haupt.pas'] as TJSONArray;
+    Assert.AreEqual(2, Integer(mEdits.Count));
+    Assert.Contains(TJSONObject(mEdits.Items[0]).GetValue<string>('newText') +
+      TJSONObject(mEdits.Items[1]).GetValue<string>('newText'), #13#10);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
   // Alles schon da: kein Edit.
-  Answer := TUnitSearch.AddUsesJson('file:///C:/P/Haupt.pas', 'unit Haupt;'#10'interface'#10'uses Basis;'#10 +
-    'implementation'#10'end.', ['Basis'], UsesContext);
+  mAnswer := TUnitSearch.AddUsesJson('file:///C:/P/Haupt.pas', 'unit Haupt;'#10'interface'#10'uses Basis;'#10 +
+    'implementation'#10'end.', ['Basis'], mUsesContext);
   try
-    Assert.IsTrue(Answer.GetValue('edit') is TJSONNull);
-    Assert.AreEqual(0, Integer(Answer.GetValue<TJSONArray>('added').Count));
+    Assert.IsTrue(mAnswer.GetValue('edit') is TJSONNull);
+    Assert.AreEqual(0, Integer(mAnswer.GetValue<TJSONArray>('added').Count));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 function NewText(const AEdits: TJSONArray): string;
 var
-  Item: TJSONValue;
+  mItem: TJSONValue;
 begin
   Result := '';
-  for Item in AEdits do
+  for mItem in AEdits do
   begin
-    Result := Result + (Item as TJSONObject).GetValue<string>('newText');
+    Result := Result + (mItem as TJSONObject).GetValue<string>('newText');
   end;
 end;
 
 procedure TUnitSearchTests.AddUsesTakesSection;
 var
-  Search: TUnitSearch;
-  Args, Names: TJSONArray;
-  Section: TJSONObject;
-  Answer: TJSONValue;
-  Edits: TJSONArray;
+  mSearch: TUnitSearch;
+  mArgs, mNames: TJSONArray;
+  mSection: TJSONObject;
+  mAnswer: TJSONValue;
+  mEdits: TJSONArray;
 begin
-  Search := TUnitSearch.Create(
+  mSearch := TUnitSearch.Create(
     function(out AContext: TUnitSearchContext): Boolean
     begin
       AContext := Default(TUnitSearchContext);
@@ -490,41 +500,41 @@ begin
     end);
   try
     // Ohne Abschnitt käme Werkzeug ins implementation-uses (der interface-Teil nennt nichts daraus).
-    Args := TJSONArray.Create;
+    mArgs := TJSONArray.Create;
     try
-      Args.Add('file:///C:/P/Haupt.pas');
-      Names := TJSONArray.Create;
-      Names.Add('Werkzeug');
-      Args.AddElement(Names);
-      Section := TJSONObject.Create;
-      Section.AddPair('section', 'interface');
-      Args.AddElement(Section);
-      Answer := Search.ExecuteAddUses(Args);
+      mArgs.Add('file:///C:/P/Haupt.pas');
+      mNames := TJSONArray.Create;
+      mNames.Add('Werkzeug');
+      mArgs.AddElement(mNames);
+      mSection := TJSONObject.Create;
+      mSection.AddPair('section', 'interface');
+      mArgs.AddElement(mSection);
+      mAnswer := mSearch.ExecuteAddUses(mArgs);
       try
-        Edits := (Answer as TJSONObject).GetValue<TJSONObject>('edit.changes').Pairs[0].JsonValue as TJSONArray;
-        Assert.AreEqual(1, Integer(Edits.Count));
+        mEdits := (mAnswer as TJSONObject).GetValue<TJSONObject>('edit.changes').Pairs[0].JsonValue as TJSONArray;
+        Assert.AreEqual(1, Integer(mEdits.Count));
         // Angehängt an die interface-Liste: Komma hinter Basis, kein neues uses.
-        Assert.IsFalse(NewText(Edits).Contains('uses'), NewText(Edits));
-        Assert.AreEqual('["Werkzeug"]', (Answer as TJSONObject).GetValue<TJSONArray>('added').ToJSON);
+        Assert.IsFalse(NewText(mEdits).Contains('uses'), NewText(mEdits));
+        Assert.AreEqual('["Werkzeug"]', (mAnswer as TJSONObject).GetValue<TJSONArray>('added').ToJSON);
       finally
-        Answer.Free;
+        mAnswer.Free;
       end;
-      Args.Remove(2).Free;
-      Section := TJSONObject.Create;
-      Section.AddPair('section', 'implementation');
-      Args.AddElement(Section);
-      Answer := Search.ExecuteAddUses(Args);
+      mArgs.Remove(2).Free;
+      mSection := TJSONObject.Create;
+      mSection.AddPair('section', 'implementation');
+      mArgs.AddElement(mSection);
+      mAnswer := mSearch.ExecuteAddUses(mArgs);
       try
-        Edits := (Answer as TJSONObject).GetValue<TJSONObject>('edit.changes').Pairs[0].JsonValue as TJSONArray;
-        Assert.IsTrue(NewText(Edits).Contains('uses'), 'neues implementation-uses');
+        mEdits := (mAnswer as TJSONObject).GetValue<TJSONObject>('edit.changes').Pairs[0].JsonValue as TJSONArray;
+        Assert.IsTrue(NewText(mEdits).Contains('uses'), 'neues implementation-uses');
       finally
-        Answer.Free;
+        mAnswer.Free;
       end;
     finally
-      Args.Free;
+      mArgs.Free;
     end;
   finally
-    Search.Free;
+    mSearch.Free;
   end;
 end;
 

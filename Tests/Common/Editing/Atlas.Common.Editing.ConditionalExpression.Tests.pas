@@ -72,31 +72,31 @@ end;
 /// <summary>Typ nach dem Namen: X, I, N und F ganzzahlig, S Text, Ready logisch, P und Q TFoo, R TBar.</summary>
 function NameType(ANode: TSyntaxNode): TValueType;
 var
-  Name: string;
+  mName: string;
 begin
   Result := TValueType.Create(TValueKind.Unknown, '');
-  Name := ANode.Name;
+  mName := ANode.Name;
   if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) then
   begin
-    Name := ANode[0].Name;
+    mName := ANode[0].Name;
   end;
-  if MatchText(Name, ['X', 'I', 'N', 'F', 'G']) then
+  if MatchText(mName, ['X', 'I', 'N', 'F', 'G']) then
   begin
     Result := TValueType.Create(TValueKind.Whole, '');
   end
-  else if SameText(Name, 'S') then
+  else if SameText(mName, 'S') then
   begin
     Result := TValueType.Create(TValueKind.Text, '');
   end
-  else if SameText(Name, 'Ready') then
+  else if SameText(mName, 'Ready') then
   begin
     Result := TValueType.Create(TValueKind.Logical, '');
   end
-  else if MatchText(Name, ['P', 'Q']) then
+  else if MatchText(mName, ['P', 'Q']) then
   begin
     Result := TValueType.Create(TValueKind.Named, 'TFoo');
   end
-  else if SameText(Name, 'R') then
+  else if SameText(mName, 'R') then
   begin
     Result := TValueType.Create(TValueKind.Named, 'TBar');
   end;
@@ -117,13 +117,13 @@ end;
 
 function ApplyEdit(const AText: string; const AEdit: TTextEdit): string;
 var
-  Lines: TLineTable;
-  Start, Stop: Integer;
+  mLines: TLineTable;
+  mStart, mStop: Integer;
 begin
-  Lines := TLineTable.Build(AText);
-  Start := Lines.OffsetAt(AEdit.Range.StartPos);
-  Stop := Lines.OffsetAt(AEdit.Range.EndPos);
-  Result := Copy(AText, 1, Start) + AEdit.NewText + Copy(AText, Stop + 1, MaxInt);
+  mLines := TLineTable.Build(AText);
+  mStart := mLines.OffsetAt(AEdit.Range.StartPos);
+  mStop := mLines.OffsetAt(AEdit.Range.EndPos);
+  Result := Copy(AText, 1, mStart) + AEdit.NewText + Copy(AText, mStop + 1, MaxInt);
 end;
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
@@ -135,35 +135,35 @@ end;
 function Convert(const AText, AMarker: string; AKind: TConversionKind; const ALookup: TConditionalLookup;
   out AResult: string): Boolean;
 var
-  Tree, Check: TSyntaxTree;
-  Done: TStatementRewrite;
-  Position: TTextPosition;
+  mTree, mCheck: TSyntaxTree;
+  mDone: TStatementRewrite;
+  mPosition: TTextPosition;
 begin
   AResult := '';
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Position := PositionOf(AText, AMarker);
+    mPosition := PositionOf(AText, AMarker);
     case AKind of
       ckToExpression:
-        Result := TConditionalExpression.ToExpression(AText, Tree, Position, ALookup, Done);
+        Result := TConditionalExpression.ToExpression(AText, mTree, mPosition, ALookup, mDone);
       ckToStatement:
-        Result := TConditionalExpression.ToStatement(AText, Tree, Position, TStatementLayout.Create('', '  ', #10),
-          Done);
+        Result := TConditionalExpression.ToStatement(AText, mTree, mPosition, TStatementLayout.Create('', '  ', #10),
+          mDone);
     else
-      Result := TConditionalExpression.ReplaceIfThen(AText, Tree, Position, ALookup, Done);
+      Result := TConditionalExpression.ReplaceIfThen(AText, mTree, mPosition, ALookup, mDone);
     end;
     if Result then
     begin
-      AResult := ApplyEdit(AText, Done.Edit);
-      Check := TPascalParser.Parse(AResult);
+      AResult := ApplyEdit(AText, mDone.Edit);
+      mCheck := TPascalParser.Parse(AResult);
       try
-        Assert.AreEqual(0, Integer(Length(Check.Diagnostics)), AResult);
+        Assert.AreEqual(0, Integer(Length(mCheck.Diagnostics)), AResult);
       finally
-        Check.Free;
+        mCheck.Free;
       end;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -174,9 +174,9 @@ end;
 
 function Offered(const AText, AMarker: string; AKind: TConversionKind): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
-  Result := Convert(AText, AMarker, AKind, Lookup, Text);
+  Result := Convert(AText, AMarker, AKind, Lookup, mText);
 end;
 
 procedure TConditionalExpressionTests.AssignmentBecomesExpression;
@@ -235,7 +235,7 @@ end;
 
 procedure TConditionalExpressionTests.TypesMustBeKnownAndCompatible;
 var
-  Text: string;
+  mText: string;
 begin
   Assert.IsFalse(Offered(Source('  if Ready then'#10'    Log(''a'')'#10'  else'#10'    Log(1);'#10), 'if',
     ckToExpression));
@@ -251,8 +251,8 @@ begin
   // Unbekannter Typ: keine Aktion.
   Assert.IsFalse(Offered(Source('  if Ready then'#10'    Use(Unknown1)'#10'  else'#10'    Use(Unknown2);'#10), 'if',
     ckToExpression));
-  Text := Source('  if Ready then'#10'    X := I'#10'  else'#10'    X := N;'#10);
-  Assert.IsFalse(Convert(Text, 'if', ckToExpression, Default(TConditionalLookup), Text));
+  mText := Source('  if Ready then'#10'    X := I'#10'  else'#10'    X := N;'#10);
+  Assert.IsFalse(Convert(mText, 'if', ckToExpression, Default(TConditionalLookup), mText));
 end;
 
 procedure TConditionalExpressionTests.SideEffectsOnlyInExit;
@@ -346,11 +346,11 @@ end;
 
 procedure TConditionalExpressionTests.RoundTrip;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source('  if I = 1 then'#10'    X := 10'#10'  else if I = 2 then'#10'    X := 20'#10'  else'#10 +
+  mText := Source('  if I = 1 then'#10'    X := 10'#10'  else if I = 2 then'#10'    X := 20'#10'  else'#10 +
     '    X := 30;'#10);
-  Assert.AreEqual(Text, Converted(Converted(Text, 'if I = 1', ckToExpression), 'if', ckToStatement));
+  Assert.AreEqual(mText, Converted(Converted(mText, 'if I = 1', ckToExpression), 'if', ckToStatement));
 end;
 
 procedure TConditionalExpressionTests.CompatibleKinds;

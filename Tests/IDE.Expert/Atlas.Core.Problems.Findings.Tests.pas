@@ -158,12 +158,12 @@ end;
 
 function Locations(AView: TAtlasFindingsView): string;
 var
-  Item: TAtlasFinding;
+  mItem: TAtlasFinding;
 begin
   Result := '';
-  for Item in AView.Visible do
+  for mItem in AView.Visible do
   begin
-    Result := Result + Item.Location + ' ';
+    Result := Result + mItem.Location + ' ';
   end;
   Result := Result.Trim;
 end;
@@ -178,84 +178,84 @@ end;
 
 procedure TAtlasFindingsTests.CategoryFromCatalogAndCompiler;
 var
-  Item: TAtlasProblem;
+  mItem: TAtlasProblem;
 begin
-  Item := Problem(0, 'x', 'm', TAtlasProblemSeverity.Error);
-  Item.Category := 'bug';
-  Assert.AreEqual<TAtlasFindingCategory>(TAtlasFindingCategory.Bug, TAtlasFindings.CategoryOf(Item));
-  Item.Category := 'security-hotspot';
-  Assert.AreEqual<TAtlasFindingCategory>(TAtlasFindingCategory.SecurityHotspot, TAtlasFindings.CategoryOf(Item));
-  Item.Category := '';
-  Assert.AreEqual<TAtlasFindingCategory>(TAtlasFindingCategory.Other, TAtlasFindings.CategoryOf(Item));
-  Item.Source := TAtlasProblem.cCompilerSource;
-  Item.Category := 'bug';
-  Assert.AreEqual<TAtlasFindingCategory>(TAtlasFindingCategory.Compiler, TAtlasFindings.CategoryOf(Item));
+  mItem := Problem(0, 'x', 'm', TAtlasProblemSeverity.Error);
+  mItem.Category := 'bug';
+  Assert.AreEqual<TAtlasFindingCategory>(TAtlasFindingCategory.Bug, TAtlasFindings.CategoryOf(mItem));
+  mItem.Category := 'security-hotspot';
+  Assert.AreEqual<TAtlasFindingCategory>(TAtlasFindingCategory.SecurityHotspot, TAtlasFindings.CategoryOf(mItem));
+  mItem.Category := '';
+  Assert.AreEqual<TAtlasFindingCategory>(TAtlasFindingCategory.Other, TAtlasFindings.CategoryOf(mItem));
+  mItem.Source := TAtlasProblem.cCompilerSource;
+  mItem.Category := 'bug';
+  Assert.AreEqual<TAtlasFindingCategory>(TAtlasFindingCategory.Compiler, TAtlasFindings.CategoryOf(mItem));
 end;
 
 procedure TAtlasFindingsTests.StoreGivesFindingsWithLineTextWithoutInactiveUsesAndTests;
 var
-  Store: TAtlasProblemStore;
-  Inactive, UsesHint: TAtlasProblem;
-  Items: TArray<TAtlasFinding>;
+  mStore: TAtlasProblemStore;
+  mInactive, mUsesHint: TAtlasProblem;
+  mItems: TArray<TAtlasFinding>;
 begin
-  Store := TAtlasProblemStore.Create;
+  mStore := TAtlasProblemStore.Create;
   try
-    Inactive := Problem(0, '', 'inaktiv', TAtlasProblemSeverity.Hint);
-    Inactive.Unnecessary := True;
-    UsesHint := Problem(0, 'unused-uses', 'ungenutzt', TAtlasProblemSeverity.Hint);
-    UsesHint.UsesUnit := 'System.Math';
-    UsesHint.UsesState := TAtlasProblem.cUsesUnused;
-    Store.Update('C:\P\A.pas', 'unit A;' + #10 + '    x := 1;   ' + #10, True,
-      [Problem(1, 'r', 'Treffer', TAtlasProblemSeverity.Warning), Inactive, UsesHint], '', True);
-    Items := TAtlasFindings.FromStore(Store, nil, nil);
-    Assert.AreEqual(1, Integer(Length(Items)));
-    Assert.AreEqual('x := 1;', Items[0].LineText);
-    Assert.AreEqual('C:\P\A.pas', Items[0].FileName);
-    Assert.AreEqual<TAtlasFindingKind>(TAtlasFindingKind.Warning, Items[0].Kind);
-    Assert.IsFalse(TAtlasFindings.IsFinding(Inactive));
-    Assert.IsFalse(TAtlasFindings.IsFinding(UsesHint));
-    Inactive := Problem(0, '', 'Test', TAtlasProblemSeverity.Error);
-    Inactive.Source := TAtlasProblemStore.cTestSource;
-    Assert.IsFalse(TAtlasFindings.IsFinding(Inactive));
+    mInactive := Problem(0, '', 'inaktiv', TAtlasProblemSeverity.Hint);
+    mInactive.Unnecessary := True;
+    mUsesHint := Problem(0, 'unused-uses', 'ungenutzt', TAtlasProblemSeverity.Hint);
+    mUsesHint.UsesUnit := 'System.Math';
+    mUsesHint.UsesState := TAtlasProblem.cUsesUnused;
+    mStore.Update('C:\P\A.pas', 'unit A;' + #10 + '    x := 1;   ' + #10, True,
+      [Problem(1, 'r', 'Treffer', TAtlasProblemSeverity.Warning), mInactive, mUsesHint], '', True);
+    mItems := TAtlasFindings.FromStore(mStore, nil, nil);
+    Assert.AreEqual(1, Integer(Length(mItems)));
+    Assert.AreEqual('x := 1;', mItems[0].LineText);
+    Assert.AreEqual('C:\P\A.pas', mItems[0].FileName);
+    Assert.AreEqual<TAtlasFindingKind>(TAtlasFindingKind.Warning, mItems[0].Kind);
+    Assert.IsFalse(TAtlasFindings.IsFinding(mInactive));
+    Assert.IsFalse(TAtlasFindings.IsFinding(mUsesHint));
+    mInactive := Problem(0, '', 'Test', TAtlasProblemSeverity.Error);
+    mInactive.Source := TAtlasProblemStore.cTestSource;
+    Assert.IsFalse(TAtlasFindings.IsFinding(mInactive));
   finally
-    Store.Free;
+    mStore.Free;
   end;
 end;
 
 procedure TAtlasFindingsTests.ReadLineFillsTextOfUnopenedFiles;
 var
-  Store: TAtlasProblemStore;
-  Items: TArray<TAtlasFinding>;
-  ReadLines: TFunc<string, TArray<string>>;
+  mStore: TAtlasProblemStore;
+  mItems: TArray<TAtlasFinding>;
+  mReadLines: TFunc<string, TArray<string>>;
 begin
-  Store := TAtlasProblemStore.Create;
+  mStore := TAtlasProblemStore.Create;
   try
-    Store.Update('C:\P\Zu.pas', '', False, [Problem(4, 'r', 'Treffer', TAtlasProblemSeverity.Error)], '', True);
-    ReadLines :=
+    mStore.Update('C:\P\Zu.pas', '', False, [Problem(4, 'r', 'Treffer', TAtlasProblemSeverity.Error)], '', True);
+    mReadLines :=
       function(AFileName: string): TArray<string>
       begin
         Result := TArray<string>.Create('', '', '', '', Format('  %s:%d', [ExtractFileName(AFileName), 4]));
       end;
-    Items := TAtlasFindings.FromStore(Store, ['C:\P\Zu.pas'], ReadLines);
-    Assert.AreEqual('Zu.pas:4', Items[0].LineText);
-    Items := TAtlasFindings.FromStore(Store, nil, nil);
-    Assert.AreEqual('', Items[0].LineText);
+    mItems := TAtlasFindings.FromStore(mStore, ['C:\P\Zu.pas'], mReadLines);
+    Assert.AreEqual('Zu.pas:4', mItems[0].LineText);
+    mItems := TAtlasFindings.FromStore(mStore, nil, nil);
+    Assert.AreEqual('', mItems[0].LineText);
   finally
-    Store.Free;
+    mStore.Free;
   end;
 end;
 
 procedure TAtlasFindingsTests.KeysDoNotDependOnTheLine;
 var
-  First, Moved: TArray<TAtlasFinding>;
+  mFirst, mMoved: TArray<TAtlasFinding>;
 begin
-  First := TAtlasFindings.FromProblems('C:\P\A.pas', [Problem(3, 'r', 'm', TAtlasProblemSeverity.Error),
+  mFirst := TAtlasFindings.FromProblems('C:\P\A.pas', [Problem(3, 'r', 'm', TAtlasProblemSeverity.Error),
     Problem(5, 'r', 'm', TAtlasProblemSeverity.Error)], nil);
-  Moved := TAtlasFindings.FromProblems('C:\P\A.pas', [Problem(13, 'r', 'm', TAtlasProblemSeverity.Error),
+  mMoved := TAtlasFindings.FromProblems('C:\P\A.pas', [Problem(13, 'r', 'm', TAtlasProblemSeverity.Error),
     Problem(15, 'r', 'm', TAtlasProblemSeverity.Error)], nil);
-  Assert.AreEqual(First[0].Key, Moved[0].Key);
-  Assert.AreEqual(First[1].Key, Moved[1].Key);
-  Assert.AreNotEqual(First[0].Key, First[1].Key);
+  Assert.AreEqual(mFirst[0].Key, mMoved[0].Key);
+  Assert.AreEqual(mFirst[1].Key, mMoved[1].Key);
+  Assert.AreNotEqual(mFirst[0].Key, mFirst[1].Key);
 end;
 
 procedure TAtlasFindingsTests.ShortensLongLines;
@@ -273,370 +273,370 @@ end;
 
 procedure TAtlasFindingsTests.DefaultSortIsKindFileLine;
 var
-  View: TAtlasFindingsView;
+  mView: TAtlasFindingsView;
 begin
-  View := TAtlasFindingsView.Create;
+  mView := TAtlasFindingsView.Create;
   try
-    View.Grouping := TAtlasFindingGrouping.None;
-    View.SetFindings(Sample);
-    Assert.AreEqual('B.pas:4:3 A.pas:8:3 B.pas:10:3 A.pas:2:3', Locations(View));
+    mView.Grouping := TAtlasFindingGrouping.None;
+    mView.SetFindings(Sample);
+    Assert.AreEqual('B.pas:4:3 A.pas:8:3 B.pas:10:3 A.pas:2:3', Locations(mView));
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTests.ColumnClickSortsAndSecondClickReverses;
 var
-  View: TAtlasFindingsView;
+  mView: TAtlasFindingsView;
 begin
-  View := TAtlasFindingsView.Create;
+  mView := TAtlasFindingsView.Create;
   try
-    View.Grouping := TAtlasFindingGrouping.None;
-    View.SetFindings(Sample);
-    View.SortBy(TAtlasFindingColumn.Location);
-    Assert.AreEqual('A.pas:2:3 A.pas:8:3 B.pas:4:3 B.pas:10:3', Locations(View));
-    View.SortBy(TAtlasFindingColumn.Location);
-    Assert.IsTrue(View.SortDescending);
-    Assert.AreEqual('B.pas:10:3 B.pas:4:3 A.pas:8:3 A.pas:2:3', Locations(View));
-    View.SortBy(TAtlasFindingColumn.Rule);
-    Assert.IsFalse(View.SortDescending);
-    Assert.AreEqual('A.pas:8:3 B.pas:10:3 B.pas:4:3 A.pas:2:3', Locations(View));
-    View.ResetSort;
-    Assert.AreEqual('B.pas:4:3 A.pas:8:3 B.pas:10:3 A.pas:2:3', Locations(View));
+    mView.Grouping := TAtlasFindingGrouping.None;
+    mView.SetFindings(Sample);
+    mView.SortBy(TAtlasFindingColumn.Location);
+    Assert.AreEqual('A.pas:2:3 A.pas:8:3 B.pas:4:3 B.pas:10:3', Locations(mView));
+    mView.SortBy(TAtlasFindingColumn.Location);
+    Assert.IsTrue(mView.SortDescending);
+    Assert.AreEqual('B.pas:10:3 B.pas:4:3 A.pas:8:3 A.pas:2:3', Locations(mView));
+    mView.SortBy(TAtlasFindingColumn.Rule);
+    Assert.IsFalse(mView.SortDescending);
+    Assert.AreEqual('A.pas:8:3 B.pas:10:3 B.pas:4:3 A.pas:2:3', Locations(mView));
+    mView.ResetSort;
+    Assert.AreEqual('B.pas:4:3 A.pas:8:3 B.pas:10:3 A.pas:2:3', Locations(mView));
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTests.CompilerColumnText;
 var
-  Item: TAtlasFinding;
+  mItem: TAtlasFinding;
 begin
-  Item := Default(TAtlasFinding);
-  Item.Problem := Problem(1, 'argument-count-mismatch', 'X erwartet 1 Argumente (wie E2035).',
+  mItem := Default(TAtlasFinding);
+  mItem.Problem := Problem(1, 'argument-count-mismatch', 'X erwartet 1 Argumente (wie E2035).',
     TAtlasProblemSeverity.Error);
-  Assert.AreEqual('', Item.CompilerText);
-  Item.Problem.CompilerCodes := ['E2034', 'E2035'];
-  Assert.AreEqual('E2034, E2035', Item.CompilerText);
-  Item.Problem.Confirmed := True;
-  Item.Problem.ConfirmedCode := 'E2035';
-  Assert.AreEqual('E2035 ' + #$00B7 + ' Atlas + dcc', Item.CompilerText);
-  Assert.AreEqual('X erwartet 1 Argumente (wie E2035).', Item.MessageText(True));
-  Assert.AreEqual('X erwartet 1 Argumente.', Item.MessageText(False));
-  Item.Problem := Problem(1, 'W1036', 'Variable nicht initialisiert', TAtlasProblemSeverity.Warning);
-  Item.Problem.Source := TAtlasProblem.cCompilerSource;
-  Assert.AreEqual('W1036', Item.CompilerText);
+  Assert.AreEqual('', mItem.CompilerText);
+  mItem.Problem.CompilerCodes := ['E2034', 'E2035'];
+  Assert.AreEqual('E2034, E2035', mItem.CompilerText);
+  mItem.Problem.Confirmed := True;
+  mItem.Problem.ConfirmedCode := 'E2035';
+  Assert.AreEqual('E2035 ' + #$00B7 + ' Atlas + dcc', mItem.CompilerText);
+  Assert.AreEqual('X erwartet 1 Argumente (wie E2035).', mItem.MessageText(True));
+  Assert.AreEqual('X erwartet 1 Argumente.', mItem.MessageText(False));
+  mItem.Problem := Problem(1, 'W1036', 'Variable nicht initialisiert', TAtlasProblemSeverity.Warning);
+  mItem.Problem.Source := TAtlasProblem.cCompilerSource;
+  Assert.AreEqual('W1036', mItem.CompilerText);
 end;
 
 procedure TAtlasFindingsTests.FiltersByKindCategoryTextAndCompiler;
 var
-  View: TAtlasFindingsView;
-  Filter: TAtlasFindingFilter;
-  Items: TArray<TAtlasFinding>;
-  Compiler: TAtlasProblem;
+  mView: TAtlasFindingsView;
+  mFilter: TAtlasFindingFilter;
+  mItems: TArray<TAtlasFinding>;
+  mCompiler: TAtlasProblem;
 begin
-  Compiler := Problem(2, 'W1036', 'Variable nicht initialisiert', TAtlasProblemSeverity.Warning);
-  Compiler.Source := TAtlasProblem.cCompilerSource;
-  Items := Sample + TAtlasFindings.FromProblems('C:\P\C.pas', [Compiler], nil);
-  Items[1].Category := TAtlasFindingCategory.Bug;
-  View := TAtlasFindingsView.Create;
+  mCompiler := Problem(2, 'W1036', 'Variable nicht initialisiert', TAtlasProblemSeverity.Warning);
+  mCompiler.Source := TAtlasProblem.cCompilerSource;
+  mItems := Sample + TAtlasFindings.FromProblems('C:\P\C.pas', [mCompiler], nil);
+  mItems[1].Category := TAtlasFindingCategory.Bug;
+  mView := TAtlasFindingsView.Create;
   try
-    View.Grouping := TAtlasFindingGrouping.None;
-    View.SetFindings(Items);
-    Assert.AreEqual(4, Integer(Length(View.Visible)));
-    Filter := View.Filter;
-    Filter.Compiler := True;
-    View.Filter := Filter;
-    Assert.AreEqual(5, Integer(Length(View.Visible)));
-    Filter.Kinds := [TAtlasFindingKind.Warning];
-    View.Filter := Filter;
-    Assert.AreEqual('A.pas:8:3 B.pas:10:3 C.pas:3:3', Locations(View));
-    Filter.Kinds := [TAtlasFindingKind.Error, TAtlasFindingKind.Warning, TAtlasFindingKind.Info];
-    Filter.OneCategory := True;
-    Filter.Category := TAtlasFindingCategory.Bug;
-    View.Filter := Filter;
-    Assert.AreEqual('B.pas:4:3', Locations(View));
-    Filter.OneCategory := False;
-    Filter.Text := 'TODO';
-    View.Filter := Filter;
-    Assert.AreEqual('A.pas:2:3', Locations(View));
-    Filter.Text := 'b.pas';
-    View.Filter := Filter;
-    Assert.AreEqual(2, Integer(Length(View.Visible)));
-    Filter.Text := 'EMPTY-except';
-    View.Filter := Filter;
-    Assert.AreEqual(2, Integer(Length(View.Visible)));
+    mView.Grouping := TAtlasFindingGrouping.None;
+    mView.SetFindings(mItems);
+    Assert.AreEqual(4, Integer(Length(mView.Visible)));
+    mFilter := mView.Filter;
+    mFilter.Compiler := True;
+    mView.Filter := mFilter;
+    Assert.AreEqual(5, Integer(Length(mView.Visible)));
+    mFilter.Kinds := [TAtlasFindingKind.Warning];
+    mView.Filter := mFilter;
+    Assert.AreEqual('A.pas:8:3 B.pas:10:3 C.pas:3:3', Locations(mView));
+    mFilter.Kinds := [TAtlasFindingKind.Error, TAtlasFindingKind.Warning, TAtlasFindingKind.Info];
+    mFilter.OneCategory := True;
+    mFilter.Category := TAtlasFindingCategory.Bug;
+    mView.Filter := mFilter;
+    Assert.AreEqual('B.pas:4:3', Locations(mView));
+    mFilter.OneCategory := False;
+    mFilter.Text := 'TODO';
+    mView.Filter := mFilter;
+    Assert.AreEqual('A.pas:2:3', Locations(mView));
+    mFilter.Text := 'b.pas';
+    mView.Filter := mFilter;
+    Assert.AreEqual(2, Integer(Length(mView.Visible)));
+    mFilter.Text := 'EMPTY-except';
+    mView.Filter := mFilter;
+    Assert.AreEqual(2, Integer(Length(mView.Visible)));
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTests.ScopeLimitsFiles;
 var
-  View: TAtlasFindingsView;
-  Filter: TAtlasFindingFilter;
+  mView: TAtlasFindingsView;
+  mFilter: TAtlasFindingFilter;
 begin
-  View := TAtlasFindingsView.Create;
+  mView := TAtlasFindingsView.Create;
   try
-    View.Grouping := TAtlasFindingGrouping.None;
-    View.SetFindings(Sample);
-    Filter := View.Filter;
-    Filter.Scope := TAtlasFindingScope.CurrentFile;
-    Filter.CurrentFile := 'c:\p\a.pas';
-    View.Filter := Filter;
-    Assert.AreEqual('A.pas:8:3 A.pas:2:3', Locations(View));
-    Filter.Scope := TAtlasFindingScope.Project;
-    Filter.Files := ['C:\P\B.pas'];
-    View.Filter := Filter;
-    Assert.AreEqual('B.pas:4:3 B.pas:10:3', Locations(View));
-    Filter.Scope := TAtlasFindingScope.Group;
-    Filter.Files := nil;
-    View.Filter := Filter;
-    Assert.AreEqual(4, Integer(Length(View.Visible)));
+    mView.Grouping := TAtlasFindingGrouping.None;
+    mView.SetFindings(Sample);
+    mFilter := mView.Filter;
+    mFilter.Scope := TAtlasFindingScope.CurrentFile;
+    mFilter.CurrentFile := 'c:\p\a.pas';
+    mView.Filter := mFilter;
+    Assert.AreEqual('A.pas:8:3 A.pas:2:3', Locations(mView));
+    mFilter.Scope := TAtlasFindingScope.Project;
+    mFilter.Files := ['C:\P\B.pas'];
+    mView.Filter := mFilter;
+    Assert.AreEqual('B.pas:4:3 B.pas:10:3', Locations(mView));
+    mFilter.Scope := TAtlasFindingScope.Group;
+    mFilter.Files := nil;
+    mView.Filter := mFilter;
+    Assert.AreEqual(4, Integer(Length(mView.Visible)));
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTests.CountsIgnoreKindToggles;
 var
-  View: TAtlasFindingsView;
-  Filter: TAtlasFindingFilter;
-  Counts: TAtlasFindingCounts;
+  mView: TAtlasFindingsView;
+  mFilter: TAtlasFindingFilter;
+  mCounts: TAtlasFindingCounts;
 begin
-  View := TAtlasFindingsView.Create;
+  mView := TAtlasFindingsView.Create;
   try
-    View.SetFindings(Sample);
-    Filter := View.Filter;
-    Filter.Kinds := [TAtlasFindingKind.Error];
-    View.Filter := Filter;
-    Counts := View.Counts;
-    Assert.AreEqual(1, Counts.Errors);
-    Assert.AreEqual(2, Counts.Warnings);
-    Assert.AreEqual(1, Counts.Infos);
-    Assert.AreEqual(4, Counts.Total);
-    Assert.AreEqual(2, Counts.OfKind(TAtlasFindingKind.Warning));
+    mView.SetFindings(Sample);
+    mFilter := mView.Filter;
+    mFilter.Kinds := [TAtlasFindingKind.Error];
+    mView.Filter := mFilter;
+    mCounts := mView.Counts;
+    Assert.AreEqual(1, mCounts.Errors);
+    Assert.AreEqual(2, mCounts.Warnings);
+    Assert.AreEqual(1, mCounts.Infos);
+    Assert.AreEqual(4, mCounts.Total);
+    Assert.AreEqual(2, mCounts.OfKind(TAtlasFindingKind.Warning));
     // Dateien zählen nur, was sichtbar ist: der eine Fehler steht in B.pas.
-    Assert.AreEqual(1, Counts.Files);
+    Assert.AreEqual(1, mCounts.Files);
     // Gemerkte Zähler folgen jeder Änderung.
-    Filter.Kinds := [TAtlasFindingKind.Error, TAtlasFindingKind.Warning];
-    View.Filter := Filter;
-    Assert.AreEqual(4, View.Counts.Total);
-    Assert.AreEqual(2, View.Counts.Files);
-    View.SetFindings(nil);
-    Assert.AreEqual(0, View.Counts.Total);
+    mFilter.Kinds := [TAtlasFindingKind.Error, TAtlasFindingKind.Warning];
+    mView.Filter := mFilter;
+    Assert.AreEqual(4, mView.Counts.Total);
+    Assert.AreEqual(2, mView.Counts.Files);
+    mView.SetFindings(nil);
+    Assert.AreEqual(0, mView.Counts.Total);
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTests.GroupsByFileRuleAndCategory;
 var
-  View: TAtlasFindingsView;
-  Rows: TArray<TAtlasFindingRow>;
+  mView: TAtlasFindingsView;
+  mRows: TArray<TAtlasFindingRow>;
 begin
-  View := TAtlasFindingsView.Create;
+  mView := TAtlasFindingsView.Create;
   try
-    View.SetFindings(Sample);
-    Rows := View.Rows;
-    Assert.AreEqual(6, Integer(Length(Rows)));
-    Assert.IsTrue(Rows[0].IsGroup);
-    Assert.AreEqual('A.pas', Rows[0].Caption);
-    Assert.AreEqual(2, Rows[0].Count);
-    Assert.IsTrue(Rows[0].Expanded);
-    Assert.AreEqual('A.pas:8:3', View.Finding(Rows[1].Finding).Location);
-    Assert.AreEqual('B.pas', Rows[3].Caption);
-    View.Grouping := TAtlasFindingGrouping.ByRule;
-    Rows := View.Rows;
-    Assert.AreEqual('empty-except', Rows[0].Caption);
-    Assert.AreEqual(2, Rows[0].Count);
-    Assert.AreEqual('syntax', Rows[3].Caption);
-    Assert.AreEqual('todo-comment', Rows[5].Caption);
-    View.Grouping := TAtlasFindingGrouping.ByCategory;
-    Rows := View.Rows;
-    Assert.AreEqual(5, Integer(Length(Rows)));
-    Assert.AreEqual('code-smell', Rows[0].Caption);
-    Assert.AreEqual<TAtlasFindingCategory>(TAtlasFindingCategory.CodeSmell, Rows[0].Category);
+    mView.SetFindings(Sample);
+    mRows := mView.Rows;
+    Assert.AreEqual(6, Integer(Length(mRows)));
+    Assert.IsTrue(mRows[0].IsGroup);
+    Assert.AreEqual('A.pas', mRows[0].Caption);
+    Assert.AreEqual(2, mRows[0].Count);
+    Assert.IsTrue(mRows[0].Expanded);
+    Assert.AreEqual('A.pas:8:3', mView.Finding(mRows[1].Finding).Location);
+    Assert.AreEqual('B.pas', mRows[3].Caption);
+    mView.Grouping := TAtlasFindingGrouping.ByRule;
+    mRows := mView.Rows;
+    Assert.AreEqual('empty-except', mRows[0].Caption);
+    Assert.AreEqual(2, mRows[0].Count);
+    Assert.AreEqual('syntax', mRows[3].Caption);
+    Assert.AreEqual('todo-comment', mRows[5].Caption);
+    mView.Grouping := TAtlasFindingGrouping.ByCategory;
+    mRows := mView.Rows;
+    Assert.AreEqual(5, Integer(Length(mRows)));
+    Assert.AreEqual('code-smell', mRows[0].Caption);
+    Assert.AreEqual<TAtlasFindingCategory>(TAtlasFindingCategory.CodeSmell, mRows[0].Category);
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTests.CollapsedGroupStaysCollapsedAfterUpdate;
 var
-  View: TAtlasFindingsView;
+  mView: TAtlasFindingsView;
 begin
-  View := TAtlasFindingsView.Create;
+  mView := TAtlasFindingsView.Create;
   try
-    View.SetFindings(Sample);
-    View.Toggle(0);
-    Assert.AreEqual(4, Integer(Length(View.Rows)));
-    Assert.IsFalse(View.Rows[0].Expanded);
-    View.SetFindings(Sample);
-    Assert.IsFalse(View.Rows[0].Expanded);
-    Assert.AreEqual(4, Integer(Length(View.Rows)));
+    mView.SetFindings(Sample);
+    mView.Toggle(0);
+    Assert.AreEqual(4, Integer(Length(mView.Rows)));
+    Assert.IsFalse(mView.Rows[0].Expanded);
+    mView.SetFindings(Sample);
+    Assert.IsFalse(mView.Rows[0].Expanded);
+    Assert.AreEqual(4, Integer(Length(mView.Rows)));
     // Auch eine Weile ohne Befunde: Die Gruppe bleibt zugeklappt.
-    View.SetFindings(nil);
-    View.SetFindings(Sample);
-    Assert.IsFalse(View.Rows[0].Expanded);
-    View.Toggle(0);
-    Assert.AreEqual(6, Integer(Length(View.Rows)));
+    mView.SetFindings(nil);
+    mView.SetFindings(Sample);
+    Assert.IsFalse(mView.Rows[0].Expanded);
+    mView.Toggle(0);
+    Assert.AreEqual(6, Integer(Length(mView.Rows)));
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTests.SelectionSurvivesUpdateAndShiftedLines;
 var
-  View: TAtlasFindingsView;
-  Store: TAtlasProblemStore;
-  Selected: TAtlasFinding;
+  mView: TAtlasFindingsView;
+  mStore: TAtlasProblemStore;
+  mSelected: TAtlasFinding;
 begin
-  Store := TAtlasProblemStore.Create;
-  View := TAtlasFindingsView.Create;
+  mStore := TAtlasProblemStore.Create;
+  mView := TAtlasFindingsView.Create;
   try
-    Store.Update('C:\P\A.pas', 'a' + #10 + 'b' + #10 + 'c' + #10, True,
+    mStore.Update('C:\P\A.pas', 'a' + #10 + 'b' + #10 + 'c' + #10, True,
       [Problem(1, 'r1', 'eins', TAtlasProblemSeverity.Warning), Problem(2, 'r2', 'zwei', TAtlasProblemSeverity.Warning)],
       '', True);
-    View.SetFindings(TAtlasFindings.FromStore(Store, nil, nil));
-    View.Select(1);
-    Assert.IsTrue(View.SelectedFinding(Selected));
-    Assert.AreEqual('r1', Selected.Rule);
+    mView.SetFindings(TAtlasFindings.FromStore(mStore, nil, nil));
+    mView.Select(1);
+    Assert.IsTrue(mView.SelectedFinding(mSelected));
+    Assert.AreEqual('r1', mSelected.Rule);
     // Zwei Zeilen oben eingefügt: Die Befunde wandern mit, die Auswahl bleibt am selben Befund.
-    Store.Edit('C:\P\A.pas', 'neu' + #10 + 'neu' + #10 + 'a' + #10 + 'b' + #10 + 'c' + #10);
-    View.SetFindings(TAtlasFindings.FromStore(Store, nil, nil));
-    Assert.AreEqual(1, View.SelectedRow);
-    Assert.IsTrue(View.SelectedFinding(Selected));
-    Assert.AreEqual('r1', Selected.Rule);
-    Assert.AreEqual(3, Selected.Problem.StartLine);
-    View.SetFindings(nil);
-    Assert.AreEqual(-1, View.SelectedRow);
+    mStore.Edit('C:\P\A.pas', 'neu' + #10 + 'neu' + #10 + 'a' + #10 + 'b' + #10 + 'c' + #10);
+    mView.SetFindings(TAtlasFindings.FromStore(mStore, nil, nil));
+    Assert.AreEqual(1, mView.SelectedRow);
+    Assert.IsTrue(mView.SelectedFinding(mSelected));
+    Assert.AreEqual('r1', mSelected.Rule);
+    Assert.AreEqual(3, mSelected.Problem.StartLine);
+    mView.SetFindings(nil);
+    Assert.AreEqual(-1, mView.SelectedRow);
   finally
-    View.Free;
-    Store.Free;
+    mView.Free;
+    mStore.Free;
   end;
 end;
 
 procedure TAtlasFindingsTests.NewFindingsAreMarkedOnlyAfterFirstFill;
 var
-  View: TAtlasFindingsView;
-  Row: TAtlasFindingRow;
-  NewCount: Integer;
+  mView: TAtlasFindingsView;
+  mRow: TAtlasFindingRow;
+  mNewCount: Integer;
 begin
-  View := TAtlasFindingsView.Create;
+  mView := TAtlasFindingsView.Create;
   try
-    View.Grouping := TAtlasFindingGrouping.None;
-    View.SetFindings(Copy(Sample, 0, 2));
-    for Row in View.Rows do
+    mView.Grouping := TAtlasFindingGrouping.None;
+    mView.SetFindings(Copy(Sample, 0, 2));
+    for mRow in mView.Rows do
     begin
-      Assert.IsFalse(Row.IsNew);
+      Assert.IsFalse(mRow.IsNew);
     end;
-    View.SetFindings(Sample);
-    NewCount := 0;
-    for Row in View.Rows do
+    mView.SetFindings(Sample);
+    mNewCount := 0;
+    for mRow in mView.Rows do
     begin
-      if Row.IsNew then
+      if mRow.IsNew then
       begin
-        Inc(NewCount);
+        Inc(mNewCount);
       end;
     end;
-    Assert.AreEqual(2, NewCount);
-    View.ClearNew;
-    for Row in View.Rows do
+    Assert.AreEqual(2, mNewCount);
+    mView.ClearNew;
+    for mRow in mView.Rows do
     begin
-      Assert.IsFalse(Row.IsNew);
+      Assert.IsFalse(mRow.IsNew);
     end;
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTests.StepWrapsAndExpandsGroup;
 var
-  View: TAtlasFindingsView;
-  Target: TAtlasFinding;
+  mView: TAtlasFindingsView;
+  mTarget: TAtlasFinding;
 begin
-  View := TAtlasFindingsView.Create;
+  mView := TAtlasFindingsView.Create;
   try
-    View.SetFindings(Sample);
+    mView.SetFindings(Sample);
     // B.pas zuklappen: Der Schritt dorthin klappt sie wieder auf.
-    View.Toggle(3);
-    Assert.IsTrue(View.Step(True, Target));
-    Assert.AreEqual('A.pas:8:3', Target.Location);
-    Assert.IsTrue(View.Step(True, Target));
-    Assert.AreEqual('A.pas:2:3', Target.Location);
-    Assert.IsTrue(View.Step(True, Target));
-    Assert.AreEqual('B.pas:4:3', Target.Location);
-    Assert.IsTrue(View.Rows[3].Expanded);
-    Assert.AreEqual(4, View.SelectedRow);
-    Assert.IsTrue(View.Step(True, Target));
-    Assert.IsTrue(View.Step(True, Target));
-    Assert.AreEqual('A.pas:8:3', Target.Location);
-    Assert.IsTrue(View.Step(False, Target));
-    Assert.AreEqual('B.pas:10:3', Target.Location);
-    View.SetFindings(nil);
-    Assert.IsFalse(View.Step(True, Target));
+    mView.Toggle(3);
+    Assert.IsTrue(mView.Step(True, mTarget));
+    Assert.AreEqual('A.pas:8:3', mTarget.Location);
+    Assert.IsTrue(mView.Step(True, mTarget));
+    Assert.AreEqual('A.pas:2:3', mTarget.Location);
+    Assert.IsTrue(mView.Step(True, mTarget));
+    Assert.AreEqual('B.pas:4:3', mTarget.Location);
+    Assert.IsTrue(mView.Rows[3].Expanded);
+    Assert.AreEqual(4, mView.SelectedRow);
+    Assert.IsTrue(mView.Step(True, mTarget));
+    Assert.IsTrue(mView.Step(True, mTarget));
+    Assert.AreEqual('A.pas:8:3', mTarget.Location);
+    Assert.IsTrue(mView.Step(False, mTarget));
+    Assert.AreEqual('B.pas:10:3', mTarget.Location);
+    mView.SetFindings(nil);
+    Assert.IsFalse(mView.Step(True, mTarget));
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTests.SelectAtFollowsCursor;
 var
-  View: TAtlasFindingsView;
-  Selected: TAtlasFinding;
+  mView: TAtlasFindingsView;
+  mSelected: TAtlasFinding;
 begin
-  View := TAtlasFindingsView.Create;
+  mView := TAtlasFindingsView.Create;
   try
-    View.SetFindings(Sample);
-    View.Toggle(0);
-    Assert.IsTrue(View.SelectAt('c:\p\a.pas', 7));
-    Assert.IsTrue(View.Rows[0].Expanded);
-    Assert.IsTrue(View.SelectedFinding(Selected));
-    Assert.AreEqual('A.pas:8:3', Selected.Location);
-    Assert.IsFalse(View.SelectAt('C:\P\A.pas', 5));
-    Assert.IsTrue(View.SelectedFinding(Selected));
-    Assert.AreEqual('A.pas:8:3', Selected.Location);
+    mView.SetFindings(Sample);
+    mView.Toggle(0);
+    Assert.IsTrue(mView.SelectAt('c:\p\a.pas', 7));
+    Assert.IsTrue(mView.Rows[0].Expanded);
+    Assert.IsTrue(mView.SelectedFinding(mSelected));
+    Assert.AreEqual('A.pas:8:3', mSelected.Location);
+    Assert.IsFalse(mView.SelectAt('C:\P\A.pas', 5));
+    Assert.IsTrue(mView.SelectedFinding(mSelected));
+    Assert.AreEqual('A.pas:8:3', mSelected.Location);
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTests.FindingsOfRowsTakesGroupMembersOnce;
 var
-  View: TAtlasFindingsView;
-  Items: TArray<TAtlasFinding>;
+  mView: TAtlasFindingsView;
+  mItems: TArray<TAtlasFinding>;
 begin
-  View := TAtlasFindingsView.Create;
+  mView := TAtlasFindingsView.Create;
   try
-    View.SetFindings(Sample);
-    Items := View.FindingsOfRows([0, 1, 4]);
-    Assert.AreEqual(3, Integer(Length(Items)));
-    Assert.AreEqual('A.pas:8:3', Items[0].Location);
-    Assert.AreEqual('A.pas:2:3', Items[1].Location);
-    Assert.AreEqual('B.pas:4:3', Items[2].Location);
-    Assert.AreEqual(0, Integer(Length(View.FindingsOfRows([99]))));
+    mView.SetFindings(Sample);
+    mItems := mView.FindingsOfRows([0, 1, 4]);
+    Assert.AreEqual(3, Integer(Length(mItems)));
+    Assert.AreEqual('A.pas:8:3', mItems[0].Location);
+    Assert.AreEqual('A.pas:2:3', mItems[1].Location);
+    Assert.AreEqual('B.pas:4:3', mItems[2].Location);
+    Assert.AreEqual(0, Integer(Length(mView.FindingsOfRows([99]))));
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTests.ColumnsRoundTripAndKeepMandatoryVisible;
 var
-  Columns: TArray<TAtlasFindingColumnState>;
+  mColumns: TArray<TAtlasFindingColumnState>;
 begin
-  Columns := TAtlasFindings.ParseColumns('');
-  Assert.AreEqual(9, Integer(Length(Columns)));
+  mColumns := TAtlasFindings.ParseColumns('');
+  Assert.AreEqual(9, Integer(Length(mColumns)));
   Assert.AreEqual('icon,kind,category,message,line,location,rule,compiler,source',
-    TAtlasFindings.FormatColumns(Columns));
-  Columns := TAtlasFindings.ParseColumns('rule:120, -message, -kind, unbekannt, location:80, rule');
-  Assert.AreEqual<TAtlasFindingColumn>(TAtlasFindingColumn.Rule, Columns[0].Column);
-  Assert.AreEqual(120, Columns[0].Width);
-  Assert.IsFalse(Columns[1].Visible);
+    TAtlasFindings.FormatColumns(mColumns));
+  mColumns := TAtlasFindings.ParseColumns('rule:120, -message, -kind, unbekannt, location:80, rule');
+  Assert.AreEqual<TAtlasFindingColumn>(TAtlasFindingColumn.Rule, mColumns[0].Column);
+  Assert.AreEqual(120, mColumns[0].Width);
+  Assert.IsFalse(mColumns[1].Visible);
   // Art ist Pflicht: bleibt sichtbar.
-  Assert.IsTrue(Columns[2].Visible);
+  Assert.IsTrue(mColumns[2].Visible);
   Assert.AreEqual('rule:120,-message,kind,location:80,icon,category,line,compiler,source',
-    TAtlasFindings.FormatColumns(Columns));
+    TAtlasFindings.FormatColumns(mColumns));
   Assert.IsTrue(TAtlasFindings.IsMandatory(TAtlasFindingColumn.Location));
   Assert.IsFalse(TAtlasFindings.IsMandatory(TAtlasFindingColumn.Message));
   Assert.IsFalse(TAtlasFindings.IsMandatory(TAtlasFindingColumn.Compiler), 'Spalte Compiler abwählbar (#1024)');
@@ -647,53 +647,53 @@ end;
 
 procedure TAtlasFindingsTests.ScopeAndGroupingNames;
 var
-  Scope: TAtlasFindingScope;
-  Grouping: TAtlasFindingGrouping;
+  mScope: TAtlasFindingScope;
+  mGrouping: TAtlasFindingGrouping;
 begin
-  Assert.IsTrue(TAtlasFindings.TryParseScope('project', Scope));
-  Assert.AreEqual<TAtlasFindingScope>(TAtlasFindingScope.Project, Scope);
-  Assert.IsFalse(TAtlasFindings.TryParseScope('x', Scope));
-  Assert.AreEqual<TAtlasFindingScope>(TAtlasFindingScope.Group, Scope);
-  Assert.IsTrue(TAtlasFindings.TryParseGrouping('Rule', Grouping));
-  Assert.AreEqual<TAtlasFindingGrouping>(TAtlasFindingGrouping.ByRule, Grouping);
-  Assert.IsFalse(TAtlasFindings.TryParseGrouping('', Grouping));
-  Assert.AreEqual<TAtlasFindingGrouping>(TAtlasFindingGrouping.ByFile, Grouping);
+  Assert.IsTrue(TAtlasFindings.TryParseScope('project', mScope));
+  Assert.AreEqual<TAtlasFindingScope>(TAtlasFindingScope.Project, mScope);
+  Assert.IsFalse(TAtlasFindings.TryParseScope('x', mScope));
+  Assert.AreEqual<TAtlasFindingScope>(TAtlasFindingScope.Group, mScope);
+  Assert.IsTrue(TAtlasFindings.TryParseGrouping('Rule', mGrouping));
+  Assert.AreEqual<TAtlasFindingGrouping>(TAtlasFindingGrouping.ByRule, mGrouping);
+  Assert.IsFalse(TAtlasFindings.TryParseGrouping('', mGrouping));
+  Assert.AreEqual<TAtlasFindingGrouping>(TAtlasFindingGrouping.ByFile, mGrouping);
 end;
 
 procedure TAtlasFindingsTests.CheckedCountCountsDeliveredFiles;
 var
-  Store: TAtlasProblemStore;
+  mStore: TAtlasProblemStore;
 begin
-  Store := TAtlasProblemStore.Create;
+  mStore := TAtlasProblemStore.Create;
   try
-    Store.Update('C:\P\A.pas', '', False, nil, '', True);
-    Store.Update('C:\P\B.pas', '', False, [Problem(0, 'r', 'm', TAtlasProblemSeverity.Error)], '', True);
-    Assert.AreEqual(2, TAtlasFindings.CheckedCount(Store, ['C:\P\A.pas', 'C:\P\B.pas', 'C:\P\C.pas']));
+    mStore.Update('C:\P\A.pas', '', False, nil, '', True);
+    mStore.Update('C:\P\B.pas', '', False, [Problem(0, 'r', 'm', TAtlasProblemSeverity.Error)], '', True);
+    Assert.AreEqual(2, TAtlasFindings.CheckedCount(mStore, ['C:\P\A.pas', 'C:\P\B.pas', 'C:\P\C.pas']));
   finally
-    Store.Free;
+    mStore.Free;
   end;
 end;
 
 procedure TAtlasFindingsTests.CopyTextUsesCompilerFormat;
 var
-  Items: TArray<TAtlasFinding>;
+  mItems: TArray<TAtlasFinding>;
 begin
-  Items := TAtlasFindings.FromProblems('C:\P\B.pas', [Problem(9, 'empty-except', 'Leer', TAtlasProblemSeverity.Warning),
+  mItems := TAtlasFindings.FromProblems('C:\P\B.pas', [Problem(9, 'empty-except', 'Leer', TAtlasProblemSeverity.Warning),
     Problem(3, 'syntax', 'Fehlt', TAtlasProblemSeverity.Error)], ['', '', '', '  X := 1;']);
   Assert.AreEqual('B.pas:10:3: warning [empty-except] Leer'#13#10 +
-    'B.pas:4:3: error [syntax] Fehlt'#13#10'    X := 1;'#13#10, TAtlasFindings.AsText(Items));
+    'B.pas:4:3: error [syntax] Fehlt'#13#10'    X := 1;'#13#10, TAtlasFindings.AsText(mItems));
   Assert.AreEqual('', TAtlasFindings.AsText(nil));
 end;
 
 /// <summary>Z aktiv, A und B geöffnet, C und D nicht geöffnet; je Datei zwei Befunde (Fehler, Warnung).</summary>
 function TierSample: TArray<TAtlasFinding>;
 var
-  Name: string;
+  mName: string;
 begin
   Result := nil;
-  for Name in ['C', 'Z', 'B', 'D', 'A'] do
+  for mName in ['C', 'Z', 'B', 'D', 'A'] do
   begin
-    Result := Result + TAtlasFindings.FromProblems('C:\P\' + Name + '.pas',
+    Result := Result + TAtlasFindings.FromProblems('C:\P\' + mName + '.pas',
       [Problem(5, 'empty-except', 'Leer', TAtlasProblemSeverity.Warning),
       Problem(2, 'syntax', 'Fehlt', TAtlasProblemSeverity.Error)], nil);
   end;
@@ -711,394 +711,394 @@ end;
 /// ~ = ausgegraut.</summary>
 function RowsText(AView: TAtlasFindingsView): string;
 var
-  Row: TAtlasFindingRow;
-  Part: string;
+  mRow: TAtlasFindingRow;
+  mPart: string;
 begin
   Result := '';
-  for Row in AView.Rows do
+  for mRow in AView.Rows do
   begin
-    if Row.IsSection then
+    if mRow.IsSection then
     begin
-      Part := 'S' + IntToStr(Ord(Row.Tier)) + ':' + Row.Caption + ':' + IntToStr(Row.Units) + '/' +
-        IntToStr(Row.Count);
-      if Row.IsCleanActive then
+      mPart := 'S' + IntToStr(Ord(mRow.Tier)) + ':' + mRow.Caption + ':' + IntToStr(mRow.Units) + '/' +
+        IntToStr(mRow.Count);
+      if mRow.IsCleanActive then
       begin
-        Part := Part + ':clean';
+        mPart := mPart + ':clean';
       end;
     end
-    else if Row.IsGroup then
+    else if mRow.IsGroup then
     begin
-      Part := 'G:' + Row.Caption;
+      mPart := 'G:' + mRow.Caption;
     end
     else
     begin
-      Part := 'F:' + AView.Finding(Row.Finding).Location;
+      mPart := 'F:' + AView.Finding(mRow.Finding).Location;
     end;
-    if Row.Pinned then
+    if mRow.Pinned then
     begin
-      Part := Part + '*';
+      mPart := mPart + '*';
     end;
-    if Row.Dimmed then
+    if mRow.Dimmed then
     begin
-      Part := Part + '~';
+      mPart := mPart + '~';
     end;
-    Result := Result + Part + ' ';
+    Result := Result + mPart + ' ';
   end;
   Result := Result.Trim;
 end;
 
 procedure TAtlasFindingsTierTests.TiersOrderFileGroups;
 var
-  View: TAtlasFindingsView;
+  mView: TAtlasFindingsView;
 begin
-  View := TierView;
+  mView := TierView;
   try
     Assert.AreEqual('G:Z.pas* F:Z.pas:3:3* F:Z.pas:6:3* ' +
       'S1::2/4 G:A.pas F:A.pas:3:3 F:A.pas:6:3 G:B.pas F:B.pas:3:3 F:B.pas:6:3 ' +
-      'S2::2/4~ G:C.pas~ F:C.pas:3:3~ F:C.pas:6:3~ G:D.pas~ F:D.pas:3:3~ F:D.pas:6:3~', RowsText(View));
-    Assert.AreEqual<TAtlasFindingTier>(TAtlasFindingTier.Active, View.Rows[0].Tier);
-    Assert.AreEqual<TAtlasFindingTier>(TAtlasFindingTier.Active, View.Finding(View.Rows[1].Finding).Tier);
-    Assert.AreEqual<TAtlasFindingTier>(TAtlasFindingTier.Open, View.Finding(View.Rows[5].Finding).Tier);
-    Assert.AreEqual<TAtlasFindingTier>(TAtlasFindingTier.Closed, View.Rows[11].Tier);
-    Assert.AreEqual<TAtlasFindingTier>(TAtlasFindingTier.Closed, View.Finding(View.Rows[12].Finding).Tier);
+      'S2::2/4~ G:C.pas~ F:C.pas:3:3~ F:C.pas:6:3~ G:D.pas~ F:D.pas:3:3~ F:D.pas:6:3~', RowsText(mView));
+    Assert.AreEqual<TAtlasFindingTier>(TAtlasFindingTier.Active, mView.Rows[0].Tier);
+    Assert.AreEqual<TAtlasFindingTier>(TAtlasFindingTier.Active, mView.Finding(mView.Rows[1].Finding).Tier);
+    Assert.AreEqual<TAtlasFindingTier>(TAtlasFindingTier.Open, mView.Finding(mView.Rows[5].Finding).Tier);
+    Assert.AreEqual<TAtlasFindingTier>(TAtlasFindingTier.Closed, mView.Rows[11].Tier);
+    Assert.AreEqual<TAtlasFindingTier>(TAtlasFindingTier.Closed, mView.Finding(mView.Rows[12].Finding).Tier);
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTierTests.TiersWithoutGroupingAreSections;
 var
-  View: TAtlasFindingsView;
-  Items: TArray<TAtlasFinding>;
+  mView: TAtlasFindingsView;
+  mItems: TArray<TAtlasFinding>;
 begin
-  View := TierView;
+  mView := TierView;
   try
-    View.Grouping := TAtlasFindingGrouping.None;
+    mView.Grouping := TAtlasFindingGrouping.None;
     // Innerhalb der Stufe die Vorgabe Art, Datei, Zeile.
     Assert.AreEqual('S0:Z.pas:1/2* F:Z.pas:3:3* F:Z.pas:6:3* ' +
       'S1::2/4 F:A.pas:3:3 F:B.pas:3:3 F:A.pas:6:3 F:B.pas:6:3 ' +
-      'S2::2/4~ F:C.pas:3:3~ F:D.pas:3:3~ F:C.pas:6:3~ F:D.pas:6:3~', RowsText(View));
-    Items := View.Visible;
-    Assert.AreEqual(10, Integer(Length(Items)));
-    Assert.AreEqual('Z.pas:3:3', Items[0].Location);
-    Assert.IsFalse(TAtlasFindings.AsText(Items).Contains('Geöffnet'));
+      'S2::2/4~ F:C.pas:3:3~ F:D.pas:3:3~ F:C.pas:6:3~ F:D.pas:6:3~', RowsText(mView));
+    mItems := mView.Visible;
+    Assert.AreEqual(10, Integer(Length(mItems)));
+    Assert.AreEqual('Z.pas:3:3', mItems[0].Location);
+    Assert.IsFalse(TAtlasFindings.AsText(mItems).Contains('Geöffnet'));
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTierTests.TiersInsideRuleAndCategoryGroups;
 var
-  View: TAtlasFindingsView;
+  mView: TAtlasFindingsView;
 begin
-  View := TierView;
+  mView := TierView;
   try
-    View.Grouping := TAtlasFindingGrouping.ByRule;
+    mView.Grouping := TAtlasFindingGrouping.ByRule;
     Assert.AreEqual('G:empty-except F:Z.pas:6:3* F:A.pas:6:3 F:B.pas:6:3 F:C.pas:6:3~ F:D.pas:6:3~ ' +
-      'G:syntax F:Z.pas:3:3* F:A.pas:3:3 F:B.pas:3:3 F:C.pas:3:3~ F:D.pas:3:3~', RowsText(View));
-    View.Grouping := TAtlasFindingGrouping.ByCategory;
+      'G:syntax F:Z.pas:3:3* F:A.pas:3:3 F:B.pas:3:3 F:C.pas:3:3~ F:D.pas:3:3~', RowsText(mView));
+    mView.Grouping := TAtlasFindingGrouping.ByCategory;
     Assert.AreEqual('G:code-smell F:Z.pas:3:3* F:Z.pas:6:3* F:A.pas:3:3 F:B.pas:3:3 F:A.pas:6:3 F:B.pas:6:3 ' +
-      'F:C.pas:3:3~ F:D.pas:3:3~ F:C.pas:6:3~ F:D.pas:6:3~', RowsText(View));
+      'F:C.pas:3:3~ F:D.pas:3:3~ F:C.pas:6:3~ F:D.pas:6:3~', RowsText(mView));
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTierTests.ColumnSortWorksInsideTiers;
 var
-  View: TAtlasFindingsView;
+  mView: TAtlasFindingsView;
 begin
-  View := TierView;
+  mView := TierView;
   try
-    View.Grouping := TAtlasFindingGrouping.None;
-    View.SortBy(TAtlasFindingColumn.Location);
-    View.SortBy(TAtlasFindingColumn.Location);
-    Assert.IsTrue(View.SortDescending);
+    mView.Grouping := TAtlasFindingGrouping.None;
+    mView.SortBy(TAtlasFindingColumn.Location);
+    mView.SortBy(TAtlasFindingColumn.Location);
+    Assert.IsTrue(mView.SortDescending);
     Assert.AreEqual('S0:Z.pas:1/2* F:Z.pas:6:3* F:Z.pas:3:3* ' +
       'S1::2/4 F:B.pas:6:3 F:B.pas:3:3 F:A.pas:6:3 F:A.pas:3:3 ' +
-      'S2::2/4~ F:D.pas:6:3~ F:D.pas:3:3~ F:C.pas:6:3~ F:C.pas:3:3~', RowsText(View));
-    View.ResetSort;
-    Assert.AreEqual('Z.pas:3:3', View.Visible[0].Location);
-    Assert.AreEqual('A.pas:3:3', View.Visible[2].Location);
+      'S2::2/4~ F:D.pas:6:3~ F:D.pas:3:3~ F:C.pas:6:3~ F:C.pas:3:3~', RowsText(mView));
+    mView.ResetSort;
+    Assert.AreEqual('Z.pas:3:3', mView.Visible[0].Location);
+    Assert.AreEqual('A.pas:3:3', mView.Visible[2].Location);
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTierTests.SwitchingEditorMovesOnlyPinnedGroup;
 var
-  View: TAtlasFindingsView;
+  mView: TAtlasFindingsView;
 begin
-  View := TierView;
+  mView := TierView;
   try
-    View.SetOpenFiles('C:\P\B.pas', ['C:\P\Z.pas', 'C:\P\B.pas', 'C:\P\A.pas'], True);
+    mView.SetOpenFiles('C:\P\B.pas', ['C:\P\Z.pas', 'C:\P\B.pas', 'C:\P\A.pas'], True);
     // B steht oben, Z rückt alphabetisch unter A; A bleibt, wo es war.
     Assert.AreEqual('G:B.pas* F:B.pas:3:3* F:B.pas:6:3* ' +
       'S1::2/4 G:A.pas F:A.pas:3:3 F:A.pas:6:3 G:Z.pas F:Z.pas:3:3 F:Z.pas:6:3 ' +
-      'S2::2/4~ G:C.pas~ F:C.pas:3:3~ F:C.pas:6:3~ G:D.pas~ F:D.pas:3:3~ F:D.pas:6:3~', RowsText(View));
+      'S2::2/4~ G:C.pas~ F:C.pas:3:3~ F:C.pas:6:3~ G:D.pas~ F:D.pas:3:3~ F:D.pas:6:3~', RowsText(mView));
     // Unit schließen: rutscht nach „Nicht geöffnet“.
-    View.SetOpenFiles('C:\P\B.pas', ['C:\P\B.pas', 'C:\P\A.pas'], True);
+    mView.SetOpenFiles('C:\P\B.pas', ['C:\P\B.pas', 'C:\P\A.pas'], True);
     Assert.AreEqual('G:B.pas* F:B.pas:3:3* F:B.pas:6:3* S1::1/2 G:A.pas F:A.pas:3:3 F:A.pas:6:3 ' +
       'S2::3/6~ G:C.pas~ F:C.pas:3:3~ F:C.pas:6:3~ G:D.pas~ F:D.pas:3:3~ F:D.pas:6:3~ ' +
-      'G:Z.pas~ F:Z.pas:3:3~ F:Z.pas:6:3~', RowsText(View));
+      'G:Z.pas~ F:Z.pas:3:3~ F:Z.pas:6:3~', RowsText(mView));
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTierTests.SectionsAreSkippedBySelectionStepAndCopy;
 var
-  View: TAtlasFindingsView;
-  Item: TAtlasFinding;
-  Rows: TArray<TAtlasFindingRow>;
+  mView: TAtlasFindingsView;
+  mItem: TAtlasFinding;
+  mRows: TArray<TAtlasFindingRow>;
 begin
-  View := TierView;
+  mView := TierView;
   try
-    View.Grouping := TAtlasFindingGrouping.None;
-    Rows := View.Rows;
-    Assert.IsTrue(Rows[3].IsSection);
-    Assert.IsFalse(Rows[3].IsGroup);
-    View.Select(2);
-    View.Select(3);
+    mView.Grouping := TAtlasFindingGrouping.None;
+    mRows := mView.Rows;
+    Assert.IsTrue(mRows[3].IsSection);
+    Assert.IsFalse(mRows[3].IsGroup);
+    mView.Select(2);
+    mView.Select(3);
     // Die Trennzeile ist nicht wählbar: Die Auswahl bleibt auf dem Befund davor.
-    Assert.AreEqual(2, View.SelectedRow);
-    View.Toggle(3);
-    Assert.AreEqual(Integer(Length(Rows)), Integer(Length(View.Rows)));
-    Assert.IsTrue(View.Step(True, Item));
-    Assert.AreEqual('A.pas:3:3', Item.Location);
-    Assert.AreEqual(4, View.SelectedRow);
-    Assert.AreEqual(0, Integer(Length(View.FindingsOfRows([0, 3, 8]))));
-    Assert.AreEqual(1, Integer(Length(View.FindingsOfRows([0, 3, 4]))));
-    Assert.IsTrue(View.SelectAt('C:\P\C.pas', 2));
-    Assert.AreEqual(9, View.SelectedRow);
+    Assert.AreEqual(2, mView.SelectedRow);
+    mView.Toggle(3);
+    Assert.AreEqual(Integer(Length(mRows)), Integer(Length(mView.Rows)));
+    Assert.IsTrue(mView.Step(True, mItem));
+    Assert.AreEqual('A.pas:3:3', mItem.Location);
+    Assert.AreEqual(4, mView.SelectedRow);
+    Assert.AreEqual(0, Integer(Length(mView.FindingsOfRows([0, 3, 8]))));
+    Assert.AreEqual(1, Integer(Length(mView.FindingsOfRows([0, 3, 4]))));
+    Assert.IsTrue(mView.SelectAt('C:\P\C.pas', 2));
+    Assert.AreEqual(9, mView.SelectedRow);
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTierTests.ClosedUnitsDimmedNormalHidden;
 var
-  View: TAtlasFindingsView;
-  Counts: TAtlasFindingCounts;
+  mView: TAtlasFindingsView;
+  mCounts: TAtlasFindingCounts;
 begin
-  View := TierView;
+  mView := TierView;
   try
-    Counts := View.Counts;
-    Assert.AreEqual(10, Counts.Total);
-    Assert.AreEqual(3, Counts.OpenUnits);
-    Assert.AreEqual(6, Counts.OpenFindings);
-    Assert.AreEqual(2, Counts.ClosedUnits);
-    Assert.AreEqual(4, Counts.ClosedFindings);
-    Assert.AreEqual(0, Counts.HiddenUnits);
-    View.ClosedUnits := TAtlasClosedUnits.Normal;
+    mCounts := mView.Counts;
+    Assert.AreEqual(10, mCounts.Total);
+    Assert.AreEqual(3, mCounts.OpenUnits);
+    Assert.AreEqual(6, mCounts.OpenFindings);
+    Assert.AreEqual(2, mCounts.ClosedUnits);
+    Assert.AreEqual(4, mCounts.ClosedFindings);
+    Assert.AreEqual(0, mCounts.HiddenUnits);
+    mView.ClosedUnits := TAtlasClosedUnits.Normal;
     Assert.AreEqual('S2::2/4 G:C.pas F:C.pas:3:3 F:C.pas:6:3 G:D.pas F:D.pas:3:3 F:D.pas:6:3',
-      RowsText(View).Substring(RowsText(View).IndexOf('S2')));
-    View.ClosedUnits := TAtlasClosedUnits.Hidden;
+      RowsText(mView).Substring(RowsText(mView).IndexOf('S2')));
+    mView.ClosedUnits := TAtlasClosedUnits.Hidden;
     Assert.AreEqual('G:Z.pas* F:Z.pas:3:3* F:Z.pas:6:3* ' +
-      'S1::2/4 G:A.pas F:A.pas:3:3 F:A.pas:6:3 G:B.pas F:B.pas:3:3 F:B.pas:6:3', RowsText(View));
-    Counts := View.Counts;
+      'S1::2/4 G:A.pas F:A.pas:3:3 F:A.pas:6:3 G:B.pas F:B.pas:3:3 F:B.pas:6:3', RowsText(mView));
+    mCounts := mView.Counts;
     // Ausgeblendet zählt nicht mit, auch nicht auf den Umschaltern.
-    Assert.AreEqual(6, Counts.Total);
-    Assert.AreEqual(3, Counts.Warnings);
-    Assert.AreEqual(0, Counts.ClosedUnits);
-    Assert.AreEqual(2, Counts.HiddenUnits);
-    Assert.AreEqual(3, Counts.Files);
-    Assert.AreEqual(6, Integer(Length(View.Visible)));
+    Assert.AreEqual(6, mCounts.Total);
+    Assert.AreEqual(3, mCounts.Warnings);
+    Assert.AreEqual(0, mCounts.ClosedUnits);
+    Assert.AreEqual(2, mCounts.HiddenUnits);
+    Assert.AreEqual(3, mCounts.Files);
+    Assert.AreEqual(6, Integer(Length(mView.Visible)));
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTierTests.CleanActiveUnitShowsWithoutFindings;
 var
-  View: TAtlasFindingsView;
-  Counts: TAtlasFindingCounts;
+  mView: TAtlasFindingsView;
+  mCounts: TAtlasFindingCounts;
 begin
-  View := TierView;
+  mView := TierView;
   try
-    View.SetOpenFiles('C:\P\Sauber.pas', ['C:\P\Sauber.pas', 'C:\P\A.pas'], False);
-    Assert.IsTrue(RowsText(View).StartsWith('S0:Sauber.pas:0/0:clean* S1::1/2 G:A.pas '), RowsText(View));
-    Assert.IsTrue(View.Rows[0].Checking);
-    View.SetOpenFiles('C:\P\Sauber.pas', ['C:\P\Sauber.pas', 'C:\P\A.pas'], True);
-    Assert.IsFalse(View.Rows[0].Checking);
-    Assert.IsTrue(View.Rows[0].IsCleanActive);
-    Counts := View.Counts;
-    Assert.AreEqual(10, Counts.Total);
-    Assert.AreEqual(5, Counts.Files);
-    View.Grouping := TAtlasFindingGrouping.None;
-    Assert.IsTrue(RowsText(View).StartsWith('S0:Sauber.pas:0/0:clean* S1::1/2 F:A.pas:3:3 '), RowsText(View));
-    View.Grouping := TAtlasFindingGrouping.ByRule;
-    Assert.IsTrue(RowsText(View).StartsWith('G:empty-except '), RowsText(View));
-    View.Grouping := TAtlasFindingGrouping.ByFile;
-    View.ShowCleanActive := False;
-    Assert.IsTrue(RowsText(View).StartsWith('S1::1/2 G:A.pas '), RowsText(View));
+    mView.SetOpenFiles('C:\P\Sauber.pas', ['C:\P\Sauber.pas', 'C:\P\A.pas'], False);
+    Assert.IsTrue(RowsText(mView).StartsWith('S0:Sauber.pas:0/0:clean* S1::1/2 G:A.pas '), RowsText(mView));
+    Assert.IsTrue(mView.Rows[0].Checking);
+    mView.SetOpenFiles('C:\P\Sauber.pas', ['C:\P\Sauber.pas', 'C:\P\A.pas'], True);
+    Assert.IsFalse(mView.Rows[0].Checking);
+    Assert.IsTrue(mView.Rows[0].IsCleanActive);
+    mCounts := mView.Counts;
+    Assert.AreEqual(10, mCounts.Total);
+    Assert.AreEqual(5, mCounts.Files);
+    mView.Grouping := TAtlasFindingGrouping.None;
+    Assert.IsTrue(RowsText(mView).StartsWith('S0:Sauber.pas:0/0:clean* S1::1/2 F:A.pas:3:3 '), RowsText(mView));
+    mView.Grouping := TAtlasFindingGrouping.ByRule;
+    Assert.IsTrue(RowsText(mView).StartsWith('G:empty-except '), RowsText(mView));
+    mView.Grouping := TAtlasFindingGrouping.ByFile;
+    mView.ShowCleanActive := False;
+    Assert.IsTrue(RowsText(mView).StartsWith('S1::1/2 G:A.pas '), RowsText(mView));
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTierTests.SelectionAndCollapseSurviveResort;
 var
-  View: TAtlasFindingsView;
-  Item: TAtlasFinding;
-  Key: string;
+  mView: TAtlasFindingsView;
+  mItem: TAtlasFinding;
+  mKey: string;
 begin
-  View := TierView;
+  mView := TierView;
   try
-    View.SetExpanded('file:c:\p\c.pas', False);
-    View.Select(5);
-    Assert.IsTrue(View.SelectedFinding(Item));
-    Key := Item.Key;
-    Assert.AreEqual('A.pas:3:3', Item.Location);
-    View.SetFindings(TierSample);
-    View.SetOpenFiles('C:\P\A.pas', ['C:\P\A.pas', 'C:\P\C.pas'], True);
-    Assert.IsTrue(View.SelectedFinding(Item));
-    Assert.AreEqual(Key, Item.Key);
-    Assert.AreEqual(1, View.SelectedRow);
+    mView.SetExpanded('file:c:\p\c.pas', False);
+    mView.Select(5);
+    Assert.IsTrue(mView.SelectedFinding(mItem));
+    mKey := mItem.Key;
+    Assert.AreEqual('A.pas:3:3', mItem.Location);
+    mView.SetFindings(TierSample);
+    mView.SetOpenFiles('C:\P\A.pas', ['C:\P\A.pas', 'C:\P\C.pas'], True);
+    Assert.IsTrue(mView.SelectedFinding(mItem));
+    Assert.AreEqual(mKey, mItem.Key);
+    Assert.AreEqual(1, mView.SelectedRow);
     // C ist jetzt geöffnet und bleibt zugeklappt.
-    Assert.IsTrue(RowsText(View).Contains('S1::1/2 G:C.pas S2'), RowsText(View));
+    Assert.IsTrue(RowsText(mView).Contains('S1::1/2 G:C.pas S2'), RowsText(mView));
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTierTests.FormFilePinsItsUnitIgnoringCase;
 var
-  View: TAtlasFindingsView;
+  mView: TAtlasFindingsView;
 begin
-  View := TierView;
+  mView := TierView;
   try
-    View.SetOpenFiles('c:\p\b.DFM', ['C:\P\b.dfm', 'C:\P\A.PAS'], True);
-    Assert.IsTrue(RowsText(View).StartsWith('G:B.pas* F:B.pas:3:3* F:B.pas:6:3* S1::1/2 G:A.pas '),
-      RowsText(View));
-    Assert.AreEqual('c:\p\b.pas', View.ActiveFile);
+    mView.SetOpenFiles('c:\p\b.DFM', ['C:\P\b.dfm', 'C:\P\A.PAS'], True);
+    Assert.IsTrue(RowsText(mView).StartsWith('G:B.pas* F:B.pas:3:3* F:B.pas:6:3* S1::1/2 G:A.pas '),
+      RowsText(mView));
+    Assert.AreEqual('c:\p\b.pas', mView.ActiveFile);
     Assert.AreEqual('c:\p\b.pas', TAtlasFindings.UnitKey('C:\P\B.dfm'));
     Assert.AreEqual('c:\p\b.pas', TAtlasFindings.UnitKey('C:\P\B.FMX'));
     Assert.AreEqual('c:\p\b.inc', TAtlasFindings.UnitKey('C:\P\B.inc'));
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTierTests.OpenFirstOffKeepsOrderOf909;
 var
-  View, Plain: TAtlasFindingsView;
-  Grouping: TAtlasFindingGrouping;
+  mView, mPlain: TAtlasFindingsView;
+  mGrouping: TAtlasFindingGrouping;
 begin
-  View := TierView;
-  Plain := TAtlasFindingsView.Create;
+  mView := TierView;
+  mPlain := TAtlasFindingsView.Create;
   try
-    View.OpenFirst := False;
-    Plain.SetFindings(TierSample);
-    for Grouping := Low(TAtlasFindingGrouping) to High(TAtlasFindingGrouping) do
+    mView.OpenFirst := False;
+    mPlain.SetFindings(TierSample);
+    for mGrouping := Low(TAtlasFindingGrouping) to High(TAtlasFindingGrouping) do
     begin
-      View.Grouping := Grouping;
-      Plain.Grouping := Grouping;
-      Assert.AreEqual(RowsText(Plain), RowsText(View));
+      mView.Grouping := mGrouping;
+      mPlain.Grouping := mGrouping;
+      Assert.AreEqual(RowsText(mPlain), RowsText(mView));
     end;
-    Assert.IsFalse(RowsText(View).Contains('*'));
-    Assert.AreEqual(0, View.Counts.OpenUnits);
+    Assert.IsFalse(RowsText(mView).Contains('*'));
+    Assert.AreEqual(0, mView.Counts.OpenUnits);
   finally
-    Plain.Free;
-    View.Free;
+    mPlain.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTierTests.CurrentFileScopeHasNoSections;
 var
-  View: TAtlasFindingsView;
-  Filter: TAtlasFindingFilter;
+  mView: TAtlasFindingsView;
+  mFilter: TAtlasFindingFilter;
 begin
-  View := TierView;
+  mView := TierView;
   try
-    Filter := View.Filter;
-    Filter.Scope := TAtlasFindingScope.CurrentFile;
-    Filter.CurrentFile := 'C:\P\Z.pas';
-    View.Filter := Filter;
-    Assert.IsFalse(View.TiersActive);
-    Assert.AreEqual('G:Z.pas F:Z.pas:3:3 F:Z.pas:6:3', RowsText(View));
+    mFilter := mView.Filter;
+    mFilter.Scope := TAtlasFindingScope.CurrentFile;
+    mFilter.CurrentFile := 'C:\P\Z.pas';
+    mView.Filter := mFilter;
+    Assert.IsFalse(mView.TiersActive);
+    Assert.AreEqual('G:Z.pas F:Z.pas:3:3 F:Z.pas:6:3', RowsText(mView));
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTierTests.ProjectScopeLimitsClosedUnits;
 var
-  View: TAtlasFindingsView;
-  Filter: TAtlasFindingFilter;
+  mView: TAtlasFindingsView;
+  mFilter: TAtlasFindingFilter;
 begin
-  View := TierView;
+  mView := TierView;
   try
-    Filter := View.Filter;
-    Filter.Scope := TAtlasFindingScope.Project;
-    Filter.Files := ['C:\P\Z.pas', 'C:\P\A.pas', 'C:\P\C.pas'];
-    View.Filter := Filter;
+    mFilter := mView.Filter;
+    mFilter.Scope := TAtlasFindingScope.Project;
+    mFilter.Files := ['C:\P\Z.pas', 'C:\P\A.pas', 'C:\P\C.pas'];
+    mView.Filter := mFilter;
     Assert.AreEqual('G:Z.pas* F:Z.pas:3:3* F:Z.pas:6:3* S1::1/2 G:A.pas F:A.pas:3:3 F:A.pas:6:3 ' +
-      'S2::1/2~ G:C.pas~ F:C.pas:3:3~ F:C.pas:6:3~', RowsText(View));
+      'S2::1/2~ G:C.pas~ F:C.pas:3:3~ F:C.pas:6:3~', RowsText(mView));
     // Aktive Unit außerhalb des Projekts: keine Zeile „Keine Befunde“.
-    View.SetOpenFiles('C:\Fremd\X.pas', ['C:\Fremd\X.pas'], True);
-    Assert.IsTrue(RowsText(View).StartsWith('S2::'), RowsText(View));
+    mView.SetOpenFiles('C:\Fremd\X.pas', ['C:\Fremd\X.pas'], True);
+    Assert.IsTrue(RowsText(mView).StartsWith('S2::'), RowsText(mView));
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
 procedure TAtlasFindingsTierTests.ClosedUnitsNames;
 var
-  Value: TAtlasClosedUnits;
+  mValue: TAtlasClosedUnits;
 begin
-  Assert.IsTrue(TAtlasFindings.TryParseClosedUnits('hidden', Value));
-  Assert.AreEqual<TAtlasClosedUnits>(TAtlasClosedUnits.Hidden, Value);
-  Assert.IsTrue(TAtlasFindings.TryParseClosedUnits('Normal', Value));
-  Assert.AreEqual<TAtlasClosedUnits>(TAtlasClosedUnits.Normal, Value);
-  Assert.IsFalse(TAtlasFindings.TryParseClosedUnits('grau', Value));
-  Assert.AreEqual<TAtlasClosedUnits>(TAtlasClosedUnits.Dimmed, Value);
+  Assert.IsTrue(TAtlasFindings.TryParseClosedUnits('hidden', mValue));
+  Assert.AreEqual<TAtlasClosedUnits>(TAtlasClosedUnits.Hidden, mValue);
+  Assert.IsTrue(TAtlasFindings.TryParseClosedUnits('Normal', mValue));
+  Assert.AreEqual<TAtlasClosedUnits>(TAtlasClosedUnits.Normal, mValue);
+  Assert.IsFalse(TAtlasFindings.TryParseClosedUnits('grau', mValue));
+  Assert.AreEqual<TAtlasClosedUnits>(TAtlasClosedUnits.Dimmed, mValue);
   Assert.AreEqual('dimmed', TAtlasFindings.cClosedUnitsNames[TAtlasClosedUnits.Dimmed]);
 end;
 
 procedure TAtlasFindingsTierTests.DimmedColorsStayReadable;
 var
-  Back, Text, Dimmed: TAtlasColor;
-  Backs: array[0..3] of TAtlasColor;
-  Texts: array[0..3] of TAtlasColor;
-  Index: Integer;
-  Error, Warn: TAtlasColor;
+  mBack, mText, mDimmed: TAtlasColor;
+  mBacks: array[0..3] of TAtlasColor;
+  mTexts: array[0..3] of TAtlasColor;
+  mIndex: Integer;
+  mError, mWarn: TAtlasColor;
 begin
-  Backs[0] := TAtlasColorMath.FromHex('#FFFFFF');
-  Texts[0] := TAtlasColorMath.FromHex('#1F2328');
-  Backs[1] := TAtlasColorMath.FromHex('#1A1E25');
-  Texts[1] := TAtlasColorMath.FromHex('#E6E8EB');
-  Backs[2] := TAtlasColorMath.FromHex('#2B2B2B');
-  Texts[2] := TAtlasColorMath.FromHex('#C8C8C8');
-  Backs[3] := TAtlasColorMath.FromHex('#F0F0F0');
-  Texts[3] := TAtlasColorMath.FromHex('#707070');
-  for Index := 0 to High(Backs) do
+  mBacks[0] := TAtlasColorMath.FromHex('#FFFFFF');
+  mTexts[0] := TAtlasColorMath.FromHex('#1F2328');
+  mBacks[1] := TAtlasColorMath.FromHex('#1A1E25');
+  mTexts[1] := TAtlasColorMath.FromHex('#E6E8EB');
+  mBacks[2] := TAtlasColorMath.FromHex('#2B2B2B');
+  mTexts[2] := TAtlasColorMath.FromHex('#C8C8C8');
+  mBacks[3] := TAtlasColorMath.FromHex('#F0F0F0');
+  mTexts[3] := TAtlasColorMath.FromHex('#707070');
+  for mIndex := 0 to High(mBacks) do
   begin
-    Back := Backs[Index];
-    Text := Texts[Index];
-    Dimmed := DimmedTextColor(Text, Back);
-    Assert.IsTrue(TAtlasColorMath.Contrast(Dimmed, Back) >= cAtlasDimmedMinContrast - 0.01,
-      TAtlasColorMath.ToHex(Dimmed));
+    mBack := mBacks[mIndex];
+    mText := mTexts[mIndex];
+    mDimmed := DimmedTextColor(mText, mBack);
+    Assert.IsTrue(TAtlasColorMath.Contrast(mDimmed, mBack) >= cAtlasDimmedMinContrast - 0.01,
+      TAtlasColorMath.ToHex(mDimmed));
     // Ausgegraut heißt: weniger Kontrast als der Text, solange das Maß es erlaubt; zu blasser Text wird kräftiger.
-    if TAtlasColorMath.Contrast(Text, Back) >= cAtlasDimmedMinContrast then
+    if TAtlasColorMath.Contrast(mText, mBack) >= cAtlasDimmedMinContrast then
     begin
-      Assert.IsTrue(TAtlasColorMath.Contrast(Dimmed, Back) <= TAtlasColorMath.Contrast(Text, Back) + 0.01);
+      Assert.IsTrue(TAtlasColorMath.Contrast(mDimmed, mBack) <= TAtlasColorMath.Contrast(mText, mBack) + 0.01);
     end;
   end;
-  Assert.AreNotEqual(TAtlasColorMath.ToHex(Texts[0]), TAtlasColorMath.ToHex(DimmedTextColor(Texts[0], Backs[0])));
+  Assert.AreNotEqual(TAtlasColorMath.ToHex(mTexts[0]), TAtlasColorMath.ToHex(DimmedTextColor(mTexts[0], mBacks[0])));
   // Symbole bleiben unterscheidbar.
-  Error := DimmedIconColor($003C3CD8, Backs[0]);
-  Warn := DimmedIconColor($0020A8F0, Backs[0]);
-  Assert.IsTrue(TAtlasColorMath.DeltaE2000(Error, Warn) > 10);
-  Assert.AreNotEqual(TAtlasColorMath.ToHex($003C3CD8), TAtlasColorMath.ToHex(Error));
+  mError := DimmedIconColor($003C3CD8, mBacks[0]);
+  mWarn := DimmedIconColor($0020A8F0, mBacks[0]);
+  Assert.IsTrue(TAtlasColorMath.DeltaE2000(mError, mWarn) > 10);
+  Assert.AreNotEqual(TAtlasColorMath.ToHex($003C3CD8), TAtlasColorMath.ToHex(mError));
   // Angepinnt: hell etwa #EEF4FB.
-  Assert.IsTrue(TAtlasColorMath.DeltaE2000(PinnedBackColor(Backs[0]), TAtlasColorMath.FromHex('#EEF4FB')) < 3,
-    TAtlasColorMath.ToHex(PinnedBackColor(Backs[0])));
-  Assert.IsTrue(TAtlasColorMath.IsDark(PinnedBackColor(Backs[1])));
+  Assert.IsTrue(TAtlasColorMath.DeltaE2000(PinnedBackColor(mBacks[0]), TAtlasColorMath.FromHex('#EEF4FB')) < 3,
+    TAtlasColorMath.ToHex(PinnedBackColor(mBacks[0])));
+  Assert.IsTrue(TAtlasColorMath.IsDark(PinnedBackColor(mBacks[1])));
   // Neu dazugekommen: hell bleibt hell, dunkel bleibt dunkel (lesbar mit der Schrift des Themas).
-  Assert.IsFalse(TAtlasColorMath.IsDark(NewBackColor(Backs[0])));
-  Assert.IsTrue(TAtlasColorMath.IsDark(NewBackColor(Backs[1])));
-  Assert.AreNotEqual(TAtlasColorMath.ToHex(Backs[1]), TAtlasColorMath.ToHex(NewBackColor(Backs[1])));
+  Assert.IsFalse(TAtlasColorMath.IsDark(NewBackColor(mBacks[0])));
+  Assert.IsTrue(TAtlasColorMath.IsDark(NewBackColor(mBacks[1])));
+  Assert.AreNotEqual(TAtlasColorMath.ToHex(mBacks[1]), TAtlasColorMath.ToHex(NewBackColor(mBacks[1])));
 end;
 
 type
@@ -1127,196 +1127,196 @@ end;
 
 function ManyProblems(ACount: Integer): TArray<TAtlasProblem>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   SetLength(Result, ACount);
-  for Index := 0 to ACount - 1 do
+  for mIndex := 0 to ACount - 1 do
   begin
-    Result[Index] := Problem(Index, 'r' + IntToStr(Index mod 7), 'Treffer ' + IntToStr(Index),
+    Result[mIndex] := Problem(mIndex, 'r' + IntToStr(mIndex mod 7), 'Treffer ' + IntToStr(mIndex),
       TAtlasProblemSeverity.Warning);
   end;
 end;
 
 procedure TAtlasFindingsTierTests.ReadLinesOncePerFile;
 var
-  Store: TAtlasProblemStore;
-  Counter: TReadCounter;
-  Items: TArray<TAtlasFinding>;
+  mStore: TAtlasProblemStore;
+  mCounter: TReadCounter;
+  mItems: TArray<TAtlasFinding>;
 begin
-  Store := TAtlasProblemStore.Create;
-  Counter := TReadCounter.Create;
+  mStore := TAtlasProblemStore.Create;
+  mCounter := TReadCounter.Create;
   try
-    Store.Update('C:\P\Zu.pas', '', False, ManyProblems(30), '', True);
-    Items := TAtlasFindings.FromStore(Store, nil, Counter.Reader());
-    Assert.AreEqual(30, Integer(Length(Items)));
-    Assert.AreEqual(1, Counter.Count);
-    Assert.AreEqual('Zu.pas 29', Items[29].LineText);
+    mStore.Update('C:\P\Zu.pas', '', False, ManyProblems(30), '', True);
+    mItems := TAtlasFindings.FromStore(mStore, nil, mCounter.Reader());
+    Assert.AreEqual(30, Integer(Length(mItems)));
+    Assert.AreEqual(1, mCounter.Count);
+    Assert.AreEqual('Zu.pas 29', mItems[29].LineText);
   finally
-    Counter.Free;
-    Store.Free;
+    mCounter.Free;
+    mStore.Free;
   end;
 end;
 
 procedure TAtlasFindingsTierTests.StampChangesOnlyForTheChangedFile;
 var
-  Store: TAtlasProblemStore;
+  mStore: TAtlasProblemStore;
   A, B: Integer;
 begin
-  Store := TAtlasProblemStore.Create;
+  mStore := TAtlasProblemStore.Create;
   try
-    Assert.AreEqual(0, Store.Stamp('C:\P\A.pas'));
-    Store.Update('C:\P\A.pas', 'a' + #10 + 'b' + #10, True, ManyProblems(2), '', True);
-    Store.Update('C:\P\B.pas', '', False, ManyProblems(1), '', True);
-    A := Store.Stamp('c:\p\a.pas');
-    B := Store.Stamp('C:\P\B.pas');
+    Assert.AreEqual(0, mStore.Stamp('C:\P\A.pas'));
+    mStore.Update('C:\P\A.pas', 'a' + #10 + 'b' + #10, True, ManyProblems(2), '', True);
+    mStore.Update('C:\P\B.pas', '', False, ManyProblems(1), '', True);
+    A := mStore.Stamp('c:\p\a.pas');
+    B := mStore.Stamp('C:\P\B.pas');
     Assert.IsTrue(A > 0);
-    Store.Update('C:\P\A.pas', 'a' + #10 + 'b' + #10, True, ManyProblems(1), '', True);
-    Assert.AreNotEqual(A, Store.Stamp('C:\P\A.pas'));
-    Assert.AreEqual(B, Store.Stamp('C:\P\B.pas'));
+    mStore.Update('C:\P\A.pas', 'a' + #10 + 'b' + #10, True, ManyProblems(1), '', True);
+    Assert.AreNotEqual(A, mStore.Stamp('C:\P\A.pas'));
+    Assert.AreEqual(B, mStore.Stamp('C:\P\B.pas'));
     // Text statt Platte: andere Zeilentexte, auch ohne neue Version.
-    A := Store.Stamp('C:\P\A.pas');
-    Store.Edit('C:\P\B.pas', 'x' + #10);
-    Assert.AreNotEqual(B, Store.Stamp('C:\P\B.pas'));
-    B := Store.Stamp('C:\P\B.pas');
-    Store.Edit('C:\P\A.pas', 'neu' + #10 + 'a' + #10 + 'b' + #10);
-    Assert.AreNotEqual(A, Store.Stamp('C:\P\A.pas'));
-    Assert.AreEqual(B, Store.Stamp('C:\P\B.pas'));
+    A := mStore.Stamp('C:\P\A.pas');
+    mStore.Edit('C:\P\B.pas', 'x' + #10);
+    Assert.AreNotEqual(B, mStore.Stamp('C:\P\B.pas'));
+    B := mStore.Stamp('C:\P\B.pas');
+    mStore.Edit('C:\P\A.pas', 'neu' + #10 + 'a' + #10 + 'b' + #10);
+    Assert.AreNotEqual(A, mStore.Stamp('C:\P\A.pas'));
+    Assert.AreEqual(B, mStore.Stamp('C:\P\B.pas'));
     // Ausblenden einer Aufgabe ändert ForFile aller Dateien.
-    A := Store.Stamp('C:\P\A.pas');
-    Store.SetTaskHidden('Aufgabe', True);
-    Assert.AreNotEqual(A, Store.Stamp('C:\P\A.pas'));
-    Assert.AreNotEqual(B, Store.Stamp('C:\P\B.pas'));
-    Store.Remove('C:\P\A.pas');
-    Assert.AreEqual(0, Store.Stamp('C:\P\A.pas'));
+    A := mStore.Stamp('C:\P\A.pas');
+    mStore.SetTaskHidden('Aufgabe', True);
+    Assert.AreNotEqual(A, mStore.Stamp('C:\P\A.pas'));
+    Assert.AreNotEqual(B, mStore.Stamp('C:\P\B.pas'));
+    mStore.Remove('C:\P\A.pas');
+    Assert.AreEqual(0, mStore.Stamp('C:\P\A.pas'));
   finally
-    Store.Free;
+    mStore.Free;
   end;
 end;
 
 procedure TAtlasFindingsTierTests.CacheRebuildsOnlyChangedFiles;
 var
-  Store: TAtlasProblemStore;
-  Cache: TAtlasFindingsCache;
-  Counter: TReadCounter;
-  Items: TArray<TAtlasFinding>;
-  Changed: Boolean;
+  mStore: TAtlasProblemStore;
+  mCache: TAtlasFindingsCache;
+  mCounter: TReadCounter;
+  mItems: TArray<TAtlasFinding>;
+  mChanged: Boolean;
 begin
-  Store := TAtlasProblemStore.Create;
-  Cache := TAtlasFindingsCache.Create;
-  Counter := TReadCounter.Create;
+  mStore := TAtlasProblemStore.Create;
+  mCache := TAtlasFindingsCache.Create;
+  mCounter := TReadCounter.Create;
   try
-    Store.Update('C:\P\A.pas', '', False, ManyProblems(3), '', True);
-    Store.Update('C:\P\B.pas', '', False, ManyProblems(2), '', True);
-    Items := Cache.Build(Store, nil, Counter.Reader(), Changed);
-    Assert.IsTrue(Changed);
-    Assert.AreEqual(5, Integer(Length(Items)));
-    Assert.AreEqual(2, Counter.Count);
+    mStore.Update('C:\P\A.pas', '', False, ManyProblems(3), '', True);
+    mStore.Update('C:\P\B.pas', '', False, ManyProblems(2), '', True);
+    mItems := mCache.Build(mStore, nil, mCounter.Reader(), mChanged);
+    Assert.IsTrue(mChanged);
+    Assert.AreEqual(5, Integer(Length(mItems)));
+    Assert.AreEqual(2, mCounter.Count);
     // Nichts geändert: keine Platte, keine Änderung.
-    Items := Cache.Build(Store, nil, Counter.Reader(), Changed);
-    Assert.IsFalse(Changed);
-    Assert.AreEqual(5, Integer(Length(Items)));
-    Assert.AreEqual(2, Counter.Count);
+    mItems := mCache.Build(mStore, nil, mCounter.Reader(), mChanged);
+    Assert.IsFalse(mChanged);
+    Assert.AreEqual(5, Integer(Length(mItems)));
+    Assert.AreEqual(2, mCounter.Count);
     // Eine Datei neu: nur sie wird gelesen.
-    Store.Update('C:\P\B.pas', '', False, ManyProblems(4), '', True);
-    Items := Cache.Build(Store, nil, Counter.Reader(), Changed);
-    Assert.IsTrue(Changed);
-    Assert.AreEqual(7, Integer(Length(Items)));
-    Assert.AreEqual(3, Counter.Count);
+    mStore.Update('C:\P\B.pas', '', False, ManyProblems(4), '', True);
+    mItems := mCache.Build(mStore, nil, mCounter.Reader(), mChanged);
+    Assert.IsTrue(mChanged);
+    Assert.AreEqual(7, Integer(Length(mItems)));
+    Assert.AreEqual(3, mCounter.Count);
     // Eine Datei außerhalb der Auswahl ändert die Auswahl nicht.
-    Items := Cache.Build(Store, ['C:\P\A.pas'], Counter.Reader(), Changed);
-    Assert.IsTrue(Changed);
-    Assert.AreEqual(3, Integer(Length(Items)));
-    Store.Update('C:\P\B.pas', '', False, ManyProblems(1), '', True);
-    Items := Cache.Build(Store, ['C:\P\A.pas'], Counter.Reader(), Changed);
-    Assert.IsFalse(Changed);
-    Assert.AreEqual(3, Integer(Length(Items)));
-    Assert.AreEqual(3, Counter.Count);
+    mItems := mCache.Build(mStore, ['C:\P\A.pas'], mCounter.Reader(), mChanged);
+    Assert.IsTrue(mChanged);
+    Assert.AreEqual(3, Integer(Length(mItems)));
+    mStore.Update('C:\P\B.pas', '', False, ManyProblems(1), '', True);
+    mItems := mCache.Build(mStore, ['C:\P\A.pas'], mCounter.Reader(), mChanged);
+    Assert.IsFalse(mChanged);
+    Assert.AreEqual(3, Integer(Length(mItems)));
+    Assert.AreEqual(3, mCounter.Count);
     // Clear baut alles neu.
-    Cache.Clear;
-    Items := Cache.Build(Store, ['C:\P\A.pas'], Counter.Reader(), Changed);
-    Assert.IsTrue(Changed);
-    Assert.AreEqual(3, Integer(Length(Items)));
-    Assert.AreEqual(4, Counter.Count);
+    mCache.Clear;
+    mItems := mCache.Build(mStore, ['C:\P\A.pas'], mCounter.Reader(), mChanged);
+    Assert.IsTrue(mChanged);
+    Assert.AreEqual(3, Integer(Length(mItems)));
+    Assert.AreEqual(4, mCounter.Count);
   finally
-    Counter.Free;
-    Cache.Free;
-    Store.Free;
+    mCounter.Free;
+    mCache.Free;
+    mStore.Free;
   end;
 end;
 
 procedure TAtlasFindingsTierTests.CacheSurvivesNewStore;
 var
-  First, Second: TAtlasProblemStore;
-  Cache: TAtlasFindingsCache;
-  Items: TArray<TAtlasFinding>;
-  Changed: Boolean;
+  mFirst, mSecond: TAtlasProblemStore;
+  mCache: TAtlasFindingsCache;
+  mItems: TArray<TAtlasFinding>;
+  mChanged: Boolean;
 begin
-  Cache := TAtlasFindingsCache.Create;
-  First := TAtlasProblemStore.Create;
-  Second := TAtlasProblemStore.Create;
+  mCache := TAtlasFindingsCache.Create;
+  mFirst := TAtlasProblemStore.Create;
+  mSecond := TAtlasProblemStore.Create;
   try
-    First.Update('C:\P\A.pas', '', False, ManyProblems(3), '', True);
-    Items := Cache.Build(First, nil, nil, Changed);
-    Assert.AreEqual(3, Integer(Length(Items)));
+    mFirst.Update('C:\P\A.pas', '', False, ManyProblems(3), '', True);
+    mItems := mCache.Build(mFirst, nil, nil, mChanged);
+    Assert.AreEqual(3, Integer(Length(mItems)));
     // Neuer Speicher (Neustart des Servers) mit denselben Dateien: neuer Stand, kein alter Befund.
-    Second.Update('C:\P\A.pas', '', False, ManyProblems(1), '', True);
-    Items := Cache.Build(Second, nil, nil, Changed);
-    Assert.IsTrue(Changed);
-    Assert.AreEqual(1, Integer(Length(Items)));
+    mSecond.Update('C:\P\A.pas', '', False, ManyProblems(1), '', True);
+    mItems := mCache.Build(mSecond, nil, nil, mChanged);
+    Assert.IsTrue(mChanged);
+    Assert.AreEqual(1, Integer(Length(mItems)));
   finally
-    Second.Free;
-    First.Free;
-    Cache.Free;
+    mSecond.Free;
+    mFirst.Free;
+    mCache.Free;
   end;
 end;
 
 procedure TAtlasFindingsTierTests.CacheWithManyFindingsIsFast;
 const
-  Files = 2000;
-  PerFile = 28;
+  cFiles = 2000;
+  cPerFile = 28;
 var
-  Store: TAtlasProblemStore;
-  Cache: TAtlasFindingsCache;
-  Counter: TReadCounter;
-  Items: TArray<TAtlasFinding>;
-  Changed: Boolean;
-  Index: Integer;
-  Watch: TStopwatch;
-  FirstMs, SameMs, OneMs: Int64;
+  mStore: TAtlasProblemStore;
+  mCache: TAtlasFindingsCache;
+  mCounter: TReadCounter;
+  mItems: TArray<TAtlasFinding>;
+  mChanged: Boolean;
+  mIndex: Integer;
+  mWatch: TStopwatch;
+  mFirstMs, mSameMs, mOneMs: Int64;
 begin
   // Großes Projekt mit Prüfung über alle Units: 56000 Befunde, der Server liefert Datei für Datei.
-  Store := TAtlasProblemStore.Create;
-  Cache := TAtlasFindingsCache.Create;
-  Counter := TReadCounter.Create;
+  mStore := TAtlasProblemStore.Create;
+  mCache := TAtlasFindingsCache.Create;
+  mCounter := TReadCounter.Create;
   try
-    for Index := 0 to Files - 1 do
+    for mIndex := 0 to cFiles - 1 do
     begin
-      Store.Update(Format('C:\P\Unit%d.pas', [Index]), '', False, ManyProblems(PerFile), '', True);
+      mStore.Update(Format('C:\P\Unit%d.pas', [mIndex]), '', False, ManyProblems(cPerFile), '', True);
     end;
-    Watch := TStopwatch.StartNew;
-    Items := Cache.Build(Store, nil, Counter.Reader(), Changed);
-    FirstMs := Watch.ElapsedMilliseconds;
-    Assert.AreEqual(Files * PerFile, Integer(Length(Items)));
-    Watch := TStopwatch.StartNew;
-    Items := Cache.Build(Store, nil, Counter.Reader(), Changed);
-    SameMs := Watch.ElapsedMilliseconds;
-    Assert.IsFalse(Changed);
-    Assert.AreEqual(Files * PerFile, Integer(Length(Items)));
-    Store.Update('C:\P\Unit7.pas', '', False, ManyProblems(PerFile - 1), '', True);
-    Watch := TStopwatch.StartNew;
-    Items := Cache.Build(Store, nil, Counter.Reader(), Changed);
-    OneMs := Watch.ElapsedMilliseconds;
-    Assert.IsTrue(Changed);
-    Assert.AreEqual(Files * PerFile - 1, Integer(Length(Items)));
-    Assert.AreEqual(Files + 1, Counter.Count);
+    mWatch := TStopwatch.StartNew;
+    mItems := mCache.Build(mStore, nil, mCounter.Reader(), mChanged);
+    mFirstMs := mWatch.ElapsedMilliseconds;
+    Assert.AreEqual(cFiles * cPerFile, Integer(Length(mItems)));
+    mWatch := TStopwatch.StartNew;
+    mItems := mCache.Build(mStore, nil, mCounter.Reader(), mChanged);
+    mSameMs := mWatch.ElapsedMilliseconds;
+    Assert.IsFalse(mChanged);
+    Assert.AreEqual(cFiles * cPerFile, Integer(Length(mItems)));
+    mStore.Update('C:\P\Unit7.pas', '', False, ManyProblems(cPerFile - 1), '', True);
+    mWatch := TStopwatch.StartNew;
+    mItems := mCache.Build(mStore, nil, mCounter.Reader(), mChanged);
+    mOneMs := mWatch.ElapsedMilliseconds;
+    Assert.IsTrue(mChanged);
+    Assert.AreEqual(cFiles * cPerFile - 1, Integer(Length(mItems)));
+    Assert.AreEqual(cFiles + 1, mCounter.Count);
     // Viertelsekunden-Takt des Fensters: Ein Takt muss deutlich darunter bleiben.
-    Assert.IsTrue(OneMs < 100, Format('erster Aufbau %d ms, unverändert %d ms, eine Datei neu %d ms',
-      [FirstMs, SameMs, OneMs]));
+    Assert.IsTrue(mOneMs < 100, Format('erster Aufbau %d ms, unverändert %d ms, eine Datei neu %d ms',
+      [mFirstMs, mSameMs, mOneMs]));
   finally
-    Items := nil;
-    Counter.Free;
-    Cache.Free;
-    Store.Free;
+    mItems := nil;
+    mCounter.Free;
+    mCache.Free;
+    mStore.Free;
   end;
 end;
 

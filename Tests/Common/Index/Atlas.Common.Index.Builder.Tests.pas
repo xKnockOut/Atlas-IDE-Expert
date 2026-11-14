@@ -147,7 +147,7 @@ uses
 procedure PutBuilderFiles(AFiles: TMemoryIndexFileSystem);
 begin
   AFiles.Put('C:\P\P.dpr', 'program P;'#10'uses A in ''A.pas'';'#10'begin end.', 1);
-  AFiles.Put('C:\P\A.pas', UnitA, 1);
+  AFiles.Put('C:\P\A.pas', cUnitA, 1);
   AFiles.Put('C:\Lib\B.pas', 'unit B;'#10'interface'#10'uses D;'#10'type TB = class end;'#10'implementation'#10'uses E;'#10'end.', 1);
   AFiles.Put('C:\Lib\C.pas', 'unit C;'#10'interface'#10'implementation'#10'end.', 1);
   AFiles.Put('C:\Lib\D.pas', 'unit D;'#10'interface'#10'implementation'#10'end.', 1);
@@ -201,19 +201,19 @@ end;
 
 procedure TIndexBuilderTests.IndexesProjectAndReferencedUnits;
 var
-  Builder: TIndexBuilder;
-  BuildResult: TIndexBuildResult;
+  mBuilder: TIndexBuilder;
+  mBuildResult: TIndexBuildResult;
   U: TUnitIndex;
 begin
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
   try
-    BuildResult := Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], nil, nil);
+    mBuildResult := mBuilder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
   // P, A aus dem Projekt; B und C aus den uses von A; D aus dem interface von B.
   // E steht nur im implementation-Teil von B und bleibt draußen, F wird nie referenziert.
-  Assert.AreEqual(5, BuildResult.Parsed);
+  Assert.AreEqual(5, mBuildResult.Parsed);
   Assert.IsTrue(FIndex.FindUnit('B', U));
   Assert.IsTrue(FIndex.FindUnit('C', U));
   Assert.IsTrue(FIndex.FindUnit('D', U));
@@ -223,19 +223,19 @@ end;
 
 procedure TIndexBuilderTests.IndexesSearchAndLibraryStages;
 var
-  Builder: TIndexBuilder;
-  BuildResult: TIndexBuildResult;
+  mBuilder: TIndexBuilder;
+  mBuildResult: TIndexBuildResult;
   U: TUnitIndex;
 begin
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
   try
     // F nur über den Suchpfad, E nur über den Bibliothekspfad; B kam schon über uses und wird nicht neu gelesen.
-    BuildResult := Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], ['C:\Lib\F.pas'], ['C:\Lib\E.pas', 'C:\Lib\B.pas'],
+    mBuildResult := mBuilder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], ['C:\Lib\F.pas'], ['C:\Lib\E.pas', 'C:\Lib\B.pas'],
       nil, nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Assert.AreEqual(7, BuildResult.Parsed);
+  Assert.AreEqual(7, mBuildResult.Parsed);
   Assert.IsTrue(FIndex.FindUnit('F', U));
   Assert.IsFalse(U.Library_, 'Suchpfad-Units gehören zum Projekt');
   Assert.IsTrue(FIndex.FindUnit('E', U));
@@ -244,41 +244,41 @@ end;
 
 procedure TIndexBuilderTests.ReportsProjectStageBeforeSearchPaths;
 var
-  Builder: TIndexBuilder;
-  StageParsed: Integer;
-  HadSearchUnit: Boolean;
+  mBuilder: TIndexBuilder;
+  mStageParsed: Integer;
+  mHadSearchUnit: Boolean;
   U: TUnitIndex;
 begin
-  StageParsed := -1;
-  HadSearchUnit := True;
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  mStageParsed := -1;
+  mHadSearchUnit := True;
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
   try
-    Builder.OnProjectDone :=
+    mBuilder.OnProjectDone :=
       procedure(const APartial: TIndexBuildResult)
       begin
-        StageParsed := APartial.Parsed;
-        HadSearchUnit := FIndex.FindUnit('F', U);
+        mStageParsed := APartial.Parsed;
+        mHadSearchUnit := FIndex.FindUnit('F', U);
       end;
-    Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], ['C:\Lib\F.pas'], ['C:\Lib\E.pas'], nil, nil, nil);
+    mBuilder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], ['C:\Lib\F.pas'], ['C:\Lib\E.pas'], nil, nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
   // P, A, B, C, D: Projektdateien und über uses erreichbare Units (#647).
-  Assert.AreEqual(5, StageParsed);
-  Assert.IsFalse(HadSearchUnit, 'Suchpfade kommen erst nach der Projektstufe');
+  Assert.AreEqual(5, mStageParsed);
+  Assert.IsFalse(mHadSearchUnit, 'Suchpfade kommen erst nach der Projektstufe');
 end;
 
 procedure TIndexBuilderTests.SkipsUnitIndexedUnderOtherName;
 var
-  Builder: TIndexBuilder;
-  BuildResult: TIndexBuildResult;
-  ResolveScoped: TUnitFileResolver;
+  mBuilder: TIndexBuilder;
+  mBuildResult: TIndexBuildResult;
+  mResolveScoped: TUnitFileResolver;
 begin
   // "uses Forms" findet Vcl.Forms; im Index steht sie unter "Vcl.Forms" (#647).
   FFiles.Put('C:\Lib\Vcl.Forms.pas', 'unit Vcl.Forms;'#10'interface'#10'implementation'#10'end.', 1);
   FFiles.Put('C:\Q\Q1.pas', 'unit Q1;'#10'interface'#10'uses Forms;'#10'implementation'#10'end.', 1);
   FFiles.Put('C:\Q\Q2.pas', 'unit Q2;'#10'interface'#10'uses Forms;'#10'implementation'#10'end.', 1);
-  ResolveScoped :=
+  mResolveScoped :=
     function(const AUnitName: string): string
     begin
       if SameText(AUnitName, 'Forms') then
@@ -290,35 +290,35 @@ begin
         Result := '';
       end;
     end;
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, ResolveScoped);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, mResolveScoped);
   try
-    BuildResult := Builder.Build(['C:\Q\Q1.pas'], nil, nil);
+    mBuildResult := mBuilder.Build(['C:\Q\Q1.pas'], nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Assert.AreEqual(2, BuildResult.Parsed);
+  Assert.AreEqual(2, mBuildResult.Parsed);
   // Zweites Projekt mit demselben Index: Vcl.Forms ist schon da.
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, ResolveScoped);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, mResolveScoped);
   try
-    BuildResult := Builder.Build(['C:\Q\Q2.pas'], nil, nil);
+    mBuildResult := mBuilder.Build(['C:\Q\Q2.pas'], nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Assert.AreEqual(1, BuildResult.Parsed, 'nur Q2');
+  Assert.AreEqual(1, mBuildResult.Parsed, 'nur Q2');
 end;
 
 procedure TIndexBuilderTests.ReadsInstallationUnitsWithoutProjectDefines;
 const
-  Source = 'interface'#10'{$IFDEF APP}procedure NurApp;{$ENDIF}'#10'implementation'#10'end.';
+  cSource = 'interface'#10'{$IFDEF APP}procedure NurApp;{$ENDIF}'#10'implementation'#10'end.';
 var
-  Builder: TIndexBuilder;
-  ResolveScoped: TUnitFileResolver;
+  mBuilder: TIndexBuilder;
+  mResolveScoped: TUnitFileResolver;
 begin
   // RTL/VCL/FMX kommen als fertige DCUs: Projekt-Defines wirken dort nicht (#647).
-  FFiles.Put('C:\BDS\source\rtl\RtlUnit.pas', 'unit RtlUnit;'#10 + Source, 1);
-  FFiles.Put('C:\Firma\FirmaUnit.pas', 'unit FirmaUnit;'#10 + Source, 1);
+  FFiles.Put('C:\BDS\source\rtl\RtlUnit.pas', 'unit RtlUnit;'#10 + cSource, 1);
+  FFiles.Put('C:\Firma\FirmaUnit.pas', 'unit FirmaUnit;'#10 + cSource, 1);
   FFiles.Put('C:\P\Haupt.pas', 'unit Haupt;'#10'interface'#10'uses RtlUnit, FirmaUnit;'#10'implementation'#10'end.', 1);
-  ResolveScoped :=
+  mResolveScoped :=
     function(const AUnitName: string): string
     begin
       if SameText(AUnitName, 'RtlUnit') then
@@ -334,13 +334,13 @@ begin
         Result := '';
       end;
     end;
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, ['APP', 'MSWINDOWS'], ResolveScoped);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, ['APP', 'MSWINDOWS'], mResolveScoped);
   try
-    Builder.LibraryRoots := ['C:\BDS'];
-    Builder.LibraryDefines := ['MSWINDOWS'];
-    Builder.Build(['C:\P\Haupt.pas'], nil, nil);
+    mBuilder.LibraryRoots := ['C:\BDS'];
+    mBuilder.LibraryDefines := ['MSWINDOWS'];
+    mBuilder.Build(['C:\P\Haupt.pas'], nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
   Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('NurApp')), 'nur FirmaUnit');
   Assert.AreEqual('FirmaUnit', FIndex.FindSymbols('NurApp')[0].UnitName);
@@ -350,15 +350,15 @@ end;
 
 procedure TIndexBuilderTests.ServiceWritesCacheAfterProjectStage;
 var
-  Service: TIndexService;
-  Request: TIndexRequest;
-  StageUnits: NativeInt;
-  Data: TBytes;
+  mService: TIndexService;
+  mRequest: TIndexRequest;
+  mStageUnits: NativeInt;
+  mData: TBytes;
 begin
-  StageUnits := -1;
-  Service := TIndexService.Create(FIndex, FFileSystem);
+  mStageUnits := -1;
+  mService := TIndexService.Create(FIndex, FFileSystem);
   try
-    Service.OnProjectReady :=
+    mService.OnProjectReady :=
       procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
       var
         StageData: TBytes;
@@ -366,168 +366,168 @@ begin
         // In einer Projektgruppe endet der ganze Aufbau erst spät; der Cache muss vorher stehen (#647).
         if FFileSystem.ReadBytes('C:\Cache\index.json', StageData) then
         begin
-          StageUnits := Length(TIndexCache.Deserialize(StageData));
+          mStageUnits := Length(TIndexCache.Deserialize(StageData));
         end;
       end;
-    Request := Default(TIndexRequest);
-    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
-    Request.SearchFiles := ['C:\Lib\F.pas'];
-    Request.ResolveUnit := Resolve;
-    Request.CacheFile := 'C:\Cache\index.json';
-    Service.Start(Request);
-    Service.WaitFor;
+    mRequest := Default(TIndexRequest);
+    mRequest.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    mRequest.SearchFiles := ['C:\Lib\F.pas'];
+    mRequest.ResolveUnit := Resolve;
+    mRequest.CacheFile := 'C:\Cache\index.json';
+    mService.Start(mRequest);
+    mService.WaitFor;
   finally
-    Service.Free;
+    mService.Free;
   end;
-  Assert.AreEqual<NativeInt>(5, StageUnits);
-  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\index.json', Data));
-  Assert.AreEqual<NativeInt>(6, Length(TIndexCache.Deserialize(Data)), 'am Ende mit Suchpfad-Unit');
+  Assert.AreEqual<NativeInt>(5, mStageUnits);
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\index.json', mData));
+  Assert.AreEqual<NativeInt>(6, Length(TIndexCache.Deserialize(mData)), 'am Ende mit Suchpfad-Unit');
 end;
 
 procedure TIndexBuilderTests.ReusesCacheWithoutReading;
 var
-  Builder: TIndexBuilder;
-  Cache: TArray<TUnitIndex>;
-  BuildResult: TIndexBuildResult;
+  mBuilder: TIndexBuilder;
+  mCache: TArray<TUnitIndex>;
+  mBuildResult: TIndexBuildResult;
 begin
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
   try
-    Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], nil, nil);
+    mBuilder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Cache := TIndexCache.Deserialize(TIndexCache.Serialize(FIndex.Units));
+  mCache := TIndexCache.Deserialize(TIndexCache.Serialize(FIndex.Units));
   FIndex := TSymbolIndex.Create;
   FFiles.Reads := 0;
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
   try
-    Builder.UseCache(Cache);
-    BuildResult := Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], nil, nil);
+    mBuilder.UseCache(mCache);
+    mBuildResult := mBuilder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Assert.AreEqual(0, BuildResult.Parsed);
-  Assert.AreEqual(5, BuildResult.FromCache);
+  Assert.AreEqual(0, mBuildResult.Parsed);
+  Assert.AreEqual(5, mBuildResult.FromCache);
   Assert.AreEqual(0, FFiles.Reads);
   Assert.AreEqual(5, FIndex.UnitCount);
 end;
 
 procedure TIndexBuilderTests.ReparsesChangedFiles;
 var
-  Builder: TIndexBuilder;
-  Cache: TArray<TUnitIndex>;
-  BuildResult: TIndexBuildResult;
-  Found: TArray<TSymbolLocation>;
+  mBuilder: TIndexBuilder;
+  mCache: TArray<TUnitIndex>;
+  mBuildResult: TIndexBuildResult;
+  mFound: TArray<TSymbolLocation>;
 begin
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
   try
-    Builder.Build(['C:\Lib\C.pas', 'C:\Lib\D.pas'], nil, nil);
+    mBuilder.Build(['C:\Lib\C.pas', 'C:\Lib\D.pas'], nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Cache := FIndex.Units;
+  mCache := FIndex.Units;
   // C: neuer Zeitstempel, gleicher Inhalt → aus dem Cache. D: neuer Inhalt → neu einlesen.
   FFiles.Put('C:\Lib\C.pas', 'unit C;'#10'interface'#10'implementation'#10'end.', 2);
   FFiles.Put('C:\Lib\D.pas', 'unit D;'#10'interface'#10'type TNeu = class end;'#10'implementation'#10'end.', 2);
   FIndex := TSymbolIndex.Create;
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
   try
-    Builder.UseCache(Cache);
-    BuildResult := Builder.Build(['C:\Lib\C.pas', 'C:\Lib\D.pas', 'C:\Lib\Fehlt.pas'], nil, nil);
+    mBuilder.UseCache(mCache);
+    mBuildResult := mBuilder.Build(['C:\Lib\C.pas', 'C:\Lib\D.pas', 'C:\Lib\Fehlt.pas'], nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Assert.AreEqual(1, BuildResult.Parsed);
-  Assert.AreEqual(1, BuildResult.FromCache);
-  Assert.AreEqual(1, BuildResult.Missing);
-  Found := FIndex.FindSymbols('TNeu');
-  Assert.AreEqual<NativeInt>(1, Length(Found));
+  Assert.AreEqual(1, mBuildResult.Parsed);
+  Assert.AreEqual(1, mBuildResult.FromCache);
+  Assert.AreEqual(1, mBuildResult.Missing);
+  mFound := FIndex.FindSymbols('TNeu');
+  Assert.AreEqual<NativeInt>(1, Length(mFound));
 end;
 
 procedure TIndexBuilderTests.ReportsProgressAndCancels;
 var
-  Builder: TIndexBuilder;
-  Events: TList<TIndexProgressKind>;
-  BuildResult: TIndexBuildResult;
+  mBuilder: TIndexBuilder;
+  mEvents: TList<TIndexProgressKind>;
+  mBuildResult: TIndexBuildResult;
 begin
-  Events := TList<TIndexProgressKind>.Create;
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  mEvents := TList<TIndexProgressKind>.Create;
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
   try
-    BuildResult := Builder.Build(['C:\P\A.pas', 'C:\Lib\C.pas'],
+    mBuildResult := mBuilder.Build(['C:\P\A.pas', 'C:\Lib\C.pas'],
       procedure(AKind: TIndexProgressKind; const AMessage: string; APercent: Integer)
       begin
-        Events.Add(AKind);
+        mEvents.Add(AKind);
       end,
       function: Boolean
       begin
         // Nach der ersten Datei abbrechen.
         Result := FIndex.UnitCount >= 1;
       end);
-    Assert.IsTrue(BuildResult.Cancelled);
+    Assert.IsTrue(mBuildResult.Cancelled);
     Assert.AreEqual(1, FIndex.UnitCount);
-    Assert.AreEqual<TIndexProgressKind>(TIndexProgressKind.Started, Events.First);
-    Assert.AreEqual<TIndexProgressKind>(TIndexProgressKind.Finished, Events.Last);
+    Assert.AreEqual<TIndexProgressKind>(TIndexProgressKind.Started, mEvents.First);
+    Assert.AreEqual<TIndexProgressKind>(TIndexProgressKind.Finished, mEvents.Last);
   finally
-    Builder.Free;
-    Events.Free;
+    mBuilder.Free;
+    mEvents.Free;
   end;
 end;
 
 procedure TIndexBuilderTests.EnsureUnitIndexesOnDemand;
 var
-  Builder: TIndexBuilder;
+  mBuilder: TIndexBuilder;
   U: TUnitIndex;
 begin
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
   try
-    Assert.IsTrue(Builder.EnsureUnit('F'));
+    Assert.IsTrue(mBuilder.EnsureUnit('F'));
     Assert.IsTrue(FIndex.FindUnit('F', U));
-    Assert.IsFalse(Builder.EnsureUnit('GibtEsNicht'));
-    Assert.IsFalse(Builder.EnsureUnit('System.SysUtils'));
+    Assert.IsFalse(mBuilder.EnsureUnit('GibtEsNicht'));
+    Assert.IsFalse(mBuilder.EnsureUnit('System.SysUtils'));
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 procedure TIndexBuilderTests.AppliesUnsavedTextOfKnownUnits;
 var
-  Builder: TIndexBuilder;
+  mBuilder: TIndexBuilder;
   U: TUnitIndex;
 begin
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
   try
-    Builder.Build(['C:\Lib\D.pas'], nil, nil);
+    mBuilder.Build(['C:\Lib\D.pas'], nil, nil);
     // Getippt, nicht gespeichert: neue Klasse sofort im Index, Datei unverändert.
-    Assert.IsTrue(Builder.ApplyText('C:\Lib\D.pas',
+    Assert.IsTrue(mBuilder.ApplyText('C:\Lib\D.pas',
       'unit D;'#10'interface'#10'type TGetippt = class end;'#10'implementation'#10'end.'));
     Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('TGetippt')));
     Assert.IsTrue(FIndex.FindUnit('D', U));
     // Gleicher Text: nichts zu tun; unbekannte Datei: nichts.
-    Assert.IsFalse(Builder.ApplyText('C:\Lib\D.pas',
+    Assert.IsFalse(mBuilder.ApplyText('C:\Lib\D.pas',
       'unit D;'#10'interface'#10'type TGetippt = class end;'#10'implementation'#10'end.'));
-    Assert.IsFalse(Builder.ApplyText('C:\Lib\Neu.pas', 'unit Neu;'#10'interface'#10'implementation'#10'end.'));
+    Assert.IsFalse(mBuilder.ApplyText('C:\Lib\Neu.pas', 'unit Neu;'#10'interface'#10'implementation'#10'end.'));
     // Schließen ohne Speichern: der Stand der Platte gilt wieder.
-    Builder.ApplyChanges([TFileChange.Create('C:\Lib\D.pas', TFileChangeKind.Changed)]);
+    mBuilder.ApplyChanges([TFileChange.Create('C:\Lib\D.pas', TFileChangeKind.Changed)]);
     Assert.AreEqual<NativeInt>(0, Length(FIndex.FindSymbols('TGetippt')));
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 procedure TIndexBuilderTests.AppliesExternalChanges;
 var
-  Builder: TIndexBuilder;
+  mBuilder: TIndexBuilder;
   U: TUnitIndex;
 begin
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
   try
-    Builder.Build(['C:\Lib\C.pas', 'C:\Lib\D.pas'], nil, nil);
-    Assert.IsFalse(Builder.EnsureUnit('G'));
+    mBuilder.Build(['C:\Lib\C.pas', 'C:\Lib\D.pas'], nil, nil);
+    Assert.IsFalse(mBuilder.EnsureUnit('G'));
     // D geändert, C gelöscht, G neu angelegt, F unbekannt und unverändert.
     FFiles.Put('C:\Lib\D.pas', 'unit D;'#10'interface'#10'type TNeu = class end;'#10'implementation'#10'end.', 2);
     FFiles.Delete('C:\Lib\C.pas');
     FFiles.Put('C:\Lib\G.pas', 'unit G;'#10'interface'#10'implementation'#10'end.', 2);
-    Assert.AreEqual(2, Builder.ApplyChanges([TFileChange.Create('C:\Lib\D.pas', TFileChangeKind.Changed),
+    Assert.AreEqual(2, mBuilder.ApplyChanges([TFileChange.Create('C:\Lib\D.pas', TFileChangeKind.Changed),
       TFileChange.Create('C:\Lib\C.pas', TFileChangeKind.Deleted),
       TFileChange.Create('C:\Lib\G.pas', TFileChangeKind.Created),
       TFileChange.Create('C:\Lib\F.pas', TFileChangeKind.Changed)]));
@@ -536,197 +536,197 @@ begin
     Assert.IsFalse(FIndex.FindUnit('F', U));
     // Neue Dateien kommen erst bei Bedarf in den Index, auch wenn die Unit vorher fehlte.
     Assert.IsFalse(FIndex.FindUnit('G', U));
-    Assert.IsTrue(Builder.EnsureUnit('G'));
+    Assert.IsTrue(mBuilder.EnsureUnit('G'));
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 procedure TIndexBuilderTests.ChangedIncludeReindexesUnit;
 const
-  UnitText = 'unit H;'#10'interface'#10'{$I C:\Inc\Schalter.inc}'#10 +
+  cUnitText = 'unit H;'#10'interface'#10'{$I C:\Inc\Schalter.inc}'#10 +
     '{$IFDEF NEU}type TMitNeu = class end;{$ELSE}type TOhneNeu = class end;{$ENDIF}'#10'implementation'#10'end.';
 var
-  Builder: TIndexBuilder;
+  mBuilder: TIndexBuilder;
   U: TUnitIndex;
 begin
   // #264: $DEFINE aus der .inc wirkt; Änderung an der .inc liest H neu ein.
   FFiles.Put('C:\Inc\Schalter.inc', '{$DEFINE NEU}', 1);
-  FFiles.Put('C:\Lib\H.pas', UnitText, 1);
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  FFiles.Put('C:\Lib\H.pas', cUnitText, 1);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
   try
-    Builder.Build(['C:\Lib\H.pas'], nil, nil);
+    mBuilder.Build(['C:\Lib\H.pas'], nil, nil);
     Assert.IsTrue(FIndex.FindUnit('H', U));
     Assert.AreEqual<NativeInt>(1, Length(U.Includes));
     Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('TMitNeu')));
     FFiles.Put('C:\Inc\Schalter.inc', '', 2);
-    Assert.AreEqual(1, Builder.ApplyChanges([TFileChange.Create('C:\Inc\Schalter.inc', TFileChangeKind.Changed)]));
+    Assert.AreEqual(1, mBuilder.ApplyChanges([TFileChange.Create('C:\Inc\Schalter.inc', TFileChangeKind.Changed)]));
     Assert.AreEqual<NativeInt>(0, Length(FIndex.FindSymbols('TMitNeu')));
     Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('TOhneNeu')));
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 procedure TIndexBuilderTests.CachedIncludeUnitReusedUntilIncludeChanges;
 const
-  UnitText = 'unit H;'#10'interface'#10'{$I C:\Inc\Schalter.inc}'#10 +
+  cUnitText = 'unit H;'#10'interface'#10'{$I C:\Inc\Schalter.inc}'#10 +
     '{$IFDEF NEU}type TMitNeu = class end;{$ENDIF}'#10'implementation'#10'end.';
 var
-  Builder: TIndexBuilder;
-  Cache: TArray<TUnitIndex>;
-  BuildResult: TIndexBuildResult;
+  mBuilder: TIndexBuilder;
+  mCache: TArray<TUnitIndex>;
+  mBuildResult: TIndexBuildResult;
 begin
   // #617: Units mit Includes kommen aus dem Cache, solange keine Include-Datei sich ändert.
   FFiles.Put('C:\Inc\Schalter.inc', '{$DEFINE NEU}', 1);
-  FFiles.Put('C:\Lib\H.pas', UnitText, 1);
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  FFiles.Put('C:\Lib\H.pas', cUnitText, 1);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
   try
-    Builder.Build(['C:\Lib\H.pas'], nil, nil);
+    mBuilder.Build(['C:\Lib\H.pas'], nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Cache := TIndexCache.Deserialize(TIndexCache.Serialize(FIndex.Units));
+  mCache := TIndexCache.Deserialize(TIndexCache.Serialize(FIndex.Units));
   FIndex := TSymbolIndex.Create;
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
   try
-    Builder.UseCache(Cache);
-    BuildResult := Builder.Build(['C:\Lib\H.pas'], nil, nil);
+    mBuilder.UseCache(mCache);
+    mBuildResult := mBuilder.Build(['C:\Lib\H.pas'], nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Assert.AreEqual(0, BuildResult.Parsed);
-  Assert.AreEqual(1, BuildResult.FromCache);
+  Assert.AreEqual(0, mBuildResult.Parsed);
+  Assert.AreEqual(1, mBuildResult.FromCache);
   FFiles.Put('C:\Inc\Schalter.inc', '', 2);
   FIndex := TSymbolIndex.Create;
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
   try
-    Builder.UseCache(Cache);
-    BuildResult := Builder.Build(['C:\Lib\H.pas'], nil, nil);
+    mBuilder.UseCache(mCache);
+    mBuildResult := mBuilder.Build(['C:\Lib\H.pas'], nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Assert.AreEqual(1, BuildResult.Parsed);
+  Assert.AreEqual(1, mBuildResult.Parsed);
   Assert.AreEqual<NativeInt>(0, Length(FIndex.FindSymbols('TMitNeu')));
 end;
 
 procedure TIndexBuilderTests.CompactLibraryCacheReusedUnderBudget;
 const
-  UnitText = 'unit K;'#10'interface'#10'type TK = class end;'#10'implementation'#10 +
+  cUnitText = 'unit K;'#10'interface'#10'type TK = class end;'#10'implementation'#10 +
     'procedure Versteckt; begin end;'#10'end.';
 var
-  Builder: TIndexBuilder;
-  Cache: TArray<TUnitIndex>;
-  BuildResult: TIndexBuildResult;
+  mBuilder: TIndexBuilder;
+  mCache: TArray<TUnitIndex>;
+  mBuildResult: TIndexBuildResult;
 begin
   // Diagnoselog 15.10.2026: Bei knappem Budget stehen Bibliotheken kompakt im Cache. Sie werden
   // wiederverwendet, solange ein Budget gilt; ohne Budget braucht es alle Symbole.
-  FFiles.Put('C:\Lib\K.pas', UnitText, 1);
+  FFiles.Put('C:\Lib\K.pas', cUnitText, 1);
   FIndex.SetBudget(1);
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
   try
-    Builder.Build(nil, nil, ['C:\Lib\K.pas'], nil, nil, nil);
+    mBuilder.Build(nil, nil, ['C:\Lib\K.pas'], nil, nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
   Assert.AreEqual(1, FIndex.CompactCount);
-  Cache := TIndexCache.Deserialize(TIndexCache.Serialize(FIndex.Units));
-  Assert.IsTrue(Cache[0].Compact);
+  mCache := TIndexCache.Deserialize(TIndexCache.Serialize(FIndex.Units));
+  Assert.IsTrue(mCache[0].Compact);
   FIndex := TSymbolIndex.Create;
   FIndex.SetBudget(1);
   FFiles.Reads := 0;
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
   try
-    Builder.UseCache(Cache);
-    BuildResult := Builder.Build(nil, nil, ['C:\Lib\K.pas'], nil, nil, nil);
+    mBuilder.UseCache(mCache);
+    mBuildResult := mBuilder.Build(nil, nil, ['C:\Lib\K.pas'], nil, nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Assert.AreEqual(0, BuildResult.Parsed);
-  Assert.AreEqual(1, BuildResult.FromCache);
+  Assert.AreEqual(0, mBuildResult.Parsed);
+  Assert.AreEqual(1, mBuildResult.FromCache);
   Assert.AreEqual(0, FFiles.Reads);
   FIndex := TSymbolIndex.Create;
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
   try
-    Builder.UseCache(Cache);
-    BuildResult := Builder.Build(nil, nil, ['C:\Lib\K.pas'], nil, nil, nil);
+    mBuilder.UseCache(mCache);
+    mBuildResult := mBuilder.Build(nil, nil, ['C:\Lib\K.pas'], nil, nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Assert.AreEqual(1, BuildResult.Parsed, 'ohne Budget neu einlesen');
+  Assert.AreEqual(1, mBuildResult.Parsed, 'ohne Budget neu einlesen');
   Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('Versteckt')));
 end;
 
 procedure TIndexBuilderTests.ReleaseCacheDropsEntries;
 var
-  Builder: TIndexBuilder;
-  Cache: TArray<TUnitIndex>;
+  mBuilder: TIndexBuilder;
+  mCache: TArray<TUnitIndex>;
 begin
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
   try
-    Builder.Build(['C:\Lib\C.pas', 'C:\Lib\D.pas'], nil, nil);
+    mBuilder.Build(['C:\Lib\C.pas', 'C:\Lib\D.pas'], nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Cache := FIndex.Units;
+  mCache := FIndex.Units;
   FIndex := TSymbolIndex.Create;
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
   try
-    Builder.UseCache(Cache);
-    Assert.AreEqual(2, Builder.CachedCount);
-    Builder.Build(['C:\Lib\C.pas', 'C:\Lib\D.pas'], nil, nil);
-    Builder.ReleaseCache;
-    Assert.AreEqual(0, Builder.CachedCount);
+    mBuilder.UseCache(mCache);
+    Assert.AreEqual(2, mBuilder.CachedCount);
+    mBuilder.Build(['C:\Lib\C.pas', 'C:\Lib\D.pas'], nil, nil);
+    mBuilder.ReleaseCache;
+    Assert.AreEqual(0, mBuilder.CachedCount);
     // Später nachgeladene Units liest der Builder aus der Datei.
-    Assert.IsTrue(Builder.EnsureUnit('C'));
+    Assert.IsTrue(mBuilder.EnsureUnit('C'));
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 procedure TIndexBuilderTests.DecodesOnlyUsedCacheEntries;
 var
-  Builder: TIndexBuilder;
-  Data: TBytes;
-  Entries: TArray<TIndexCacheEntry>;
-  Entry: TIndexCacheEntry;
-  BuildResult: TIndexBuildResult;
+  mBuilder: TIndexBuilder;
+  mData: TBytes;
+  mEntries: TArray<TIndexCacheEntry>;
+  mEntry: TIndexCacheEntry;
+  mBuildResult: TIndexBuildResult;
 begin
   // #617: Der Builder liest nur die Köpfe und dekodiert die Symbole der Units, die er übernimmt.
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
   try
-    Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], nil, nil);
-    Assert.IsTrue(Builder.EnsureUnit('F'));
+    mBuilder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], nil, nil);
+    Assert.IsTrue(mBuilder.EnsureUnit('F'));
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Data := TIndexCache.Serialize(FIndex.Units);
-  Entries := TIndexCache.ReadEntries(Data);
-  Assert.AreEqual<NativeInt>(6, Length(Entries));
+  mData := TIndexCache.Serialize(FIndex.Units);
+  mEntries := TIndexCache.ReadEntries(mData);
+  Assert.AreEqual<NativeInt>(6, Length(mEntries));
   // Den Symbolblock von F nach dem Lesen der Köpfe beschädigen (in der Datei fiele das schon an der
   // Prüfsumme auf, #492); die Einträge teilen sich die Daten.
-  for Entry in Entries do
+  for mEntry in mEntries do
   begin
-    if SameText(Entry.Header.UnitName, 'F') then
+    if SameText(mEntry.Header.UnitName, 'F') then
     begin
-      Entry.Data[Entry.SymbolOffset] := $FF;
-      Entry.Data[Entry.SymbolOffset + 1] := $7F;
+      mEntry.Data[mEntry.SymbolOffset] := $FF;
+      mEntry.Data[mEntry.SymbolOffset + 1] := $7F;
     end;
   end;
   FIndex := TSymbolIndex.Create;
   FFiles.Reads := 0;
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
   try
-    Builder.UseCache(Entries);
-    BuildResult := Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], nil, nil);
-    Assert.AreEqual(0, BuildResult.Parsed);
-    Assert.AreEqual(5, BuildResult.FromCache);
+    mBuilder.UseCache(mEntries);
+    mBuildResult := mBuilder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], nil, nil);
+    Assert.AreEqual(0, mBuildResult.Parsed);
+    Assert.AreEqual(5, mBuildResult.FromCache);
     Assert.AreEqual(0, FFiles.Reads);
     Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('TB')));
     // F wurde nie gebraucht; erst EnsureUnit stößt auf den beschädigten Block und liest die Datei.
-    Assert.IsTrue(Builder.EnsureUnit('F'));
+    Assert.IsTrue(mBuilder.EnsureUnit('F'));
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
   Assert.AreEqual(1, FFiles.Reads);
   Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('TF')));
@@ -734,54 +734,54 @@ end;
 
 procedure TIndexBuilderTests.EnsureUnitDoesNotWaitForOtherRequests;
 var
-  Service: TIndexService;
-  Request: TIndexRequest;
-  Entered, Release: TEvent;
-  Other: TThread;
-  Watch: TStopwatch;
+  mService: TIndexService;
+  mRequest: TIndexRequest;
+  mEntered, mRelease: TEvent;
+  mOther: TThread;
+  mWatch: TStopwatch;
 begin
   // #617: Eine Anfrage, die gerade eine Unit sucht und parst, hält die anderen nicht auf.
-  Entered := TEvent.Create(nil, True, False, '');
-  Release := TEvent.Create(nil, True, False, '');
-  Service := TIndexService.Create(FIndex, FFileSystem);
+  mEntered := TEvent.Create(nil, True, False, '');
+  mRelease := TEvent.Create(nil, True, False, '');
+  mService := TIndexService.Create(FIndex, FFileSystem);
   try
-    Request := Default(TIndexRequest);
-    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
-    Request.ResolveUnit :=
+    mRequest := Default(TIndexRequest);
+    mRequest.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    mRequest.ResolveUnit :=
       function(const AUnitName: string): string
       begin
         if SameText(AUnitName, 'Langsam') then
         begin
-          Entered.SetEvent;
-          Release.WaitFor(5000);
+          mEntered.SetEvent;
+          mRelease.WaitFor(5000);
           Exit('');
         end;
         Result := Resolve(AUnitName);
       end;
-    Service.Start(Request);
-    Service.WaitFor;
-    Other := TThread.CreateAnonymousThread(
+    mService.Start(mRequest);
+    mService.WaitFor;
+    mOther := TThread.CreateAnonymousThread(
       procedure
       begin
-        Service.EnsureUnit('Langsam');
+        mService.EnsureUnit('Langsam');
       end);
-    Other.FreeOnTerminate := False;
-    Other.Start;
+    mOther.FreeOnTerminate := False;
+    mOther.Start;
     try
-      Assert.AreEqual(TWaitResult.wrSignaled, Entered.WaitFor(5000));
-      Watch := TStopwatch.StartNew;
-      Assert.IsTrue(Service.EnsureUnit('F'));
+      Assert.AreEqual(TWaitResult.wrSignaled, mEntered.WaitFor(5000));
+      mWatch := TStopwatch.StartNew;
+      Assert.IsTrue(mService.EnsureUnit('F'));
       // Mit der alten globalen Sperre hätte F bis zur Freigabe (5 s) gewartet.
-      Assert.IsTrue(Watch.ElapsedMilliseconds < 2000, 'F wartete auf Langsam');
+      Assert.IsTrue(mWatch.ElapsedMilliseconds < 2000, 'F wartete auf Langsam');
     finally
-      Release.SetEvent;
-      Other.WaitFor;
-      Other.Free;
+      mRelease.SetEvent;
+      mOther.WaitFor;
+      mOther.Free;
     end;
   finally
-    Service.Free;
-    Release.Free;
-    Entered.Free;
+    mService.Free;
+    mRelease.Free;
+    mEntered.Free;
   end;
 end;
 
@@ -789,315 +789,315 @@ procedure TIndexBuilderTests.ConcurrentEnsureUnitParsesOnce;
 const
   cThreads = 4;
 var
-  Builder: TIndexBuilder;
-  Threads: array[0..cThreads - 1] of TThread;
-  Index: Integer;
-  ReadsOfF, Found: Integer;
+  mBuilder: TIndexBuilder;
+  mThreads: array[0..cThreads - 1] of TThread;
+  mIndex: Integer;
+  mReadsOfF, mFound: Integer;
   U: TUnitIndex;
 begin
-  ReadsOfF := 0;
-  Found := 0;
+  mReadsOfF := 0;
+  mFound := 0;
   FFiles.BeforeReadText :=
     procedure(AFileName: string)
     begin
       if SameText(ExtractFileName(AFileName), 'F.pas') then
       begin
-        TInterlocked.Increment(ReadsOfF);
+        TInterlocked.Increment(mReadsOfF);
         // Lange genug, dass die übrigen Threads währenddessen ankommen.
         Sleep(200);
       end;
     end;
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
   try
-    for Index := 0 to cThreads - 1 do
+    for mIndex := 0 to cThreads - 1 do
     begin
-      Threads[Index] := TThread.CreateAnonymousThread(
+      mThreads[mIndex] := TThread.CreateAnonymousThread(
         procedure
         begin
-          if Builder.EnsureUnit('F') then
+          if mBuilder.EnsureUnit('F') then
           begin
-            TInterlocked.Increment(Found);
+            TInterlocked.Increment(mFound);
           end;
         end);
-      Threads[Index].FreeOnTerminate := False;
+      mThreads[mIndex].FreeOnTerminate := False;
     end;
-    for Index := 0 to cThreads - 1 do
+    for mIndex := 0 to cThreads - 1 do
     begin
-      Threads[Index].Start;
+      mThreads[mIndex].Start;
     end;
-    for Index := 0 to cThreads - 1 do
+    for mIndex := 0 to cThreads - 1 do
     begin
-      Threads[Index].WaitFor;
-      Threads[Index].Free;
+      mThreads[mIndex].WaitFor;
+      mThreads[mIndex].Free;
     end;
   finally
-    Builder.Free;
+    mBuilder.Free;
     FFiles.BeforeReadText := nil;
   end;
-  Assert.AreEqual(1, ReadsOfF, 'F nur einmal gelesen');
-  Assert.AreEqual(cThreads, Found, 'alle finden F');
+  Assert.AreEqual(1, mReadsOfF, 'F nur einmal gelesen');
+  Assert.AreEqual(cThreads, mFound, 'alle finden F');
   Assert.IsTrue(FIndex.FindUnit('F', U));
 end;
 
 procedure TIndexBuilderTests.RestartDoesNotWaitForRunningBuild;
 var
-  Service: TIndexService;
-  First, Second: TIndexRequest;
-  Entered, Release: TEvent;
-  Order: TThreadList<string>;
-  Watch: TStopwatch;
-  Seen: TList<string>;
-  Steps: string;
+  mService: TIndexService;
+  mFirst, mSecond: TIndexRequest;
+  mEntered, mRelease: TEvent;
+  mOrder: TThreadList<string>;
+  mWatch: TStopwatch;
+  mSeen: TList<string>;
+  mSteps: string;
 begin
-  Entered := TEvent.Create(nil, True, False, '');
-  Release := TEvent.Create(nil, True, False, '');
-  Order := TThreadList<string>.Create;
-  Service := TIndexService.Create(FIndex, FFileSystem);
+  mEntered := TEvent.Create(nil, True, False, '');
+  mRelease := TEvent.Create(nil, True, False, '');
+  mOrder := TThreadList<string>.Create;
+  mService := TIndexService.Create(FIndex, FFileSystem);
   try
-    First := Default(TIndexRequest);
-    First.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
-    First.ResolveUnit := Resolve;
-    First.Prepare :=
+    mFirst := Default(TIndexRequest);
+    mFirst.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    mFirst.ResolveUnit := Resolve;
+    mFirst.Prepare :=
       procedure
       begin
-        Entered.SetEvent;
+        mEntered.SetEvent;
         // Ein langer Aufbau, z. B. ein großes Projekt beim ersten Start.
-        Release.WaitFor(5000);
-        Order.Add('erster');
+        mRelease.WaitFor(5000);
+        mOrder.Add('erster');
       end;
-    Second := First;
-    Second.Prepare :=
+    mSecond := mFirst;
+    mSecond.Prepare :=
       procedure
       begin
-        Order.Add('zweiter');
+        mOrder.Add('zweiter');
       end;
-    Service.Start(First);
-    Assert.AreEqual<TWaitResult>(TWaitResult.wrSignaled, Entered.WaitFor(5000), 'der erste Aufbau läuft');
-    Watch := TStopwatch.StartNew;
-    Service.Start(Second);
-    Assert.IsTrue(Watch.ElapsedMilliseconds < 2000, 'Start wartet nicht auf den laufenden Aufbau');
-    Seen := Order.LockList;
+    mService.Start(mFirst);
+    Assert.AreEqual<TWaitResult>(TWaitResult.wrSignaled, mEntered.WaitFor(5000), 'der erste Aufbau läuft');
+    mWatch := TStopwatch.StartNew;
+    mService.Start(mSecond);
+    Assert.IsTrue(mWatch.ElapsedMilliseconds < 2000, 'Start wartet nicht auf den laufenden Aufbau');
+    mSeen := mOrder.LockList;
     try
-      Assert.AreEqual(0, Integer(Seen.Count), 'der neue Aufbau beginnt nicht neben dem alten');
+      Assert.AreEqual(0, Integer(mSeen.Count), 'der neue Aufbau beginnt nicht neben dem alten');
     finally
-      Order.UnlockList;
+      mOrder.UnlockList;
     end;
-    Release.SetEvent;
-    Service.WaitFor;
-    Seen := Order.LockList;
+    mRelease.SetEvent;
+    mService.WaitFor;
+    mSeen := mOrder.LockList;
     try
-      Steps := string.Join(',', Seen.ToArray);
+      mSteps := string.Join(',', mSeen.ToArray);
     finally
-      Order.UnlockList;
+      mOrder.UnlockList;
     end;
-    Assert.AreEqual('erster,zweiter', Steps);
-    Assert.AreEqual(5, Service.Index.UnitCount, 'der zweite Aufbau läuft vollständig');
+    Assert.AreEqual('erster,zweiter', mSteps);
+    Assert.AreEqual(5, mService.Index.UnitCount, 'der zweite Aufbau läuft vollständig');
   finally
-    Service.Free;
-    Order.Free;
-    Release.Free;
-    Entered.Free;
+    mService.Free;
+    mOrder.Free;
+    mRelease.Free;
+    mEntered.Free;
   end;
 end;
 
 procedure TIndexBuilderTests.ServiceBuildsInBackgroundAndWritesCache;
 var
-  Service: TIndexService;
-  Request: TIndexRequest;
-  Finished: Boolean;
-  Data: TBytes;
+  mService: TIndexService;
+  mRequest: TIndexRequest;
+  mFinished: Boolean;
+  mData: TBytes;
 begin
-  Finished := False;
-  Service := TIndexService.Create(FIndex, FFileSystem);
+  mFinished := False;
+  mService := TIndexService.Create(FIndex, FFileSystem);
   try
-    Service.OnFinished :=
+    mService.OnFinished :=
       procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
       begin
-        Finished := True;
+        mFinished := True;
       end;
-    Request := Default(TIndexRequest);
-    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
-    Request.ResolveUnit := Resolve;
-    Request.CacheFile := 'C:\Cache\index.json';
-    Service.Start(Request);
-    Service.WaitFor;
-    Assert.IsTrue(Finished);
-    Assert.AreEqual(5, Service.Index.UnitCount);
-    Assert.IsTrue(Service.EnsureUnit('F'));
+    mRequest := Default(TIndexRequest);
+    mRequest.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    mRequest.ResolveUnit := Resolve;
+    mRequest.CacheFile := 'C:\Cache\index.json';
+    mService.Start(mRequest);
+    mService.WaitFor;
+    Assert.IsTrue(mFinished);
+    Assert.AreEqual(5, mService.Index.UnitCount);
+    Assert.IsTrue(mService.EnsureUnit('F'));
   finally
-    Service.Free;
+    mService.Free;
   end;
-  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\index.json', Data));
-  Assert.AreEqual<NativeInt>(5, Length(TIndexCache.Deserialize(Data)));
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\index.json', mData));
+  Assert.AreEqual<NativeInt>(5, Length(TIndexCache.Deserialize(mData)));
 end;
 
 procedure TIndexBuilderTests.ServiceReportsCacheWriteFailureOnce;
 var
-  Service: TIndexService;
-  Request: TIndexRequest;
-  Errors, Finished: Integer;
+  mService: TIndexService;
+  mRequest: TIndexRequest;
+  mErrors, mFinished: Integer;
 begin
-  Errors := 0;
-  Finished := 0;
+  mErrors := 0;
+  mFinished := 0;
   FFiles.FailWrites := True;
-  Service := TIndexService.Create(FIndex, FFileSystem);
+  mService := TIndexService.Create(FIndex, FFileSystem);
   try
-    Service.OnFinished :=
+    mService.OnFinished :=
       procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
       begin
-        Inc(Finished);
+        Inc(mFinished);
       end;
-    Service.OnError :=
+    mService.OnError :=
       procedure(const AError: Exception)
       begin
-        Inc(Errors);
+        Inc(mErrors);
       end;
-    Request := Default(TIndexRequest);
-    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
-    Request.ResolveUnit := Resolve;
-    Request.CacheFile := 'C:\Cache\index.json';
-    Service.Start(Request);
-    Service.WaitFor;
-    Assert.AreEqual(1, Errors);
-    Assert.AreEqual(0, Finished);
+    mRequest := Default(TIndexRequest);
+    mRequest.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    mRequest.ResolveUnit := Resolve;
+    mRequest.CacheFile := 'C:\Cache\index.json';
+    mService.Start(mRequest);
+    mService.WaitFor;
+    Assert.AreEqual(1, mErrors);
+    Assert.AreEqual(0, mFinished);
   finally
-    Service.Free;
+    mService.Free;
   end;
 end;
 
 procedure TIndexBuilderTests.ServiceReportsCacheReadFailure;
 var
-  Service: TIndexService;
-  Request: TIndexRequest;
-  Errors: Integer;
-  ErrorClass: string;
+  mService: TIndexService;
+  mRequest: TIndexRequest;
+  mErrors: Integer;
+  mErrorClass: string;
 begin
-  Errors := 0;
-  ErrorClass := '';
+  mErrors := 0;
+  mErrorClass := '';
   FFiles.FailReads := True;
-  Service := TIndexService.Create(FIndex, FFileSystem);
+  mService := TIndexService.Create(FIndex, FFileSystem);
   try
-    Service.OnError :=
+    mService.OnError :=
       procedure(const AError: Exception)
       begin
-        Inc(Errors);
-        ErrorClass := AError.ClassName;
+        Inc(mErrors);
+        mErrorClass := AError.ClassName;
       end;
-    Request := Default(TIndexRequest);
-    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
-    Request.ResolveUnit := Resolve;
-    Request.CacheFile := 'C:\Cache\index.json';
-    Service.Start(Request);
-    Service.WaitFor;
-    Assert.AreEqual(1, Errors);
-    Assert.AreEqual('EInOutError', ErrorClass);
+    mRequest := Default(TIndexRequest);
+    mRequest.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    mRequest.ResolveUnit := Resolve;
+    mRequest.CacheFile := 'C:\Cache\index.json';
+    mService.Start(mRequest);
+    mService.WaitFor;
+    Assert.AreEqual(1, mErrors);
+    Assert.AreEqual('EInOutError', mErrorClass);
     // Der Builder wurde nie veröffentlicht (und nicht geleakt): EnsureUnit findet nichts.
-    Assert.IsFalse(Service.EnsureUnit('X'));
+    Assert.IsFalse(mService.EnsureUnit('X'));
   finally
-    Service.Free;
+    mService.Free;
   end;
 end;
 
 procedure TIndexBuilderTests.ServiceSurvivesFailingErrorHandler;
 var
-  Service: TIndexService;
-  Request: TIndexRequest;
-  Finished: Boolean;
+  mService: TIndexService;
+  mRequest: TIndexRequest;
+  mFinished: Boolean;
 begin
-  Finished := False;
+  mFinished := False;
   FFiles.FailWrites := True;
-  Service := TIndexService.Create(FIndex, FFileSystem);
+  mService := TIndexService.Create(FIndex, FFileSystem);
   try
-    Service.OnError :=
+    mService.OnError :=
       procedure(const AError: Exception)
       begin
         raise EInvalidOpException.Create('Meldung scheitert');
       end;
-    Service.OnFinished :=
+    mService.OnFinished :=
       procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
       begin
-        Finished := True;
+        mFinished := True;
       end;
-    Request := Default(TIndexRequest);
-    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
-    Request.ResolveUnit := Resolve;
-    Request.CacheFile := 'C:\Cache\index.json';
-    Service.Start(Request);
-    Service.WaitFor;
-    Assert.IsFalse(Finished);
+    mRequest := Default(TIndexRequest);
+    mRequest.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    mRequest.ResolveUnit := Resolve;
+    mRequest.CacheFile := 'C:\Cache\index.json';
+    mService.Start(mRequest);
+    mService.WaitFor;
+    Assert.IsFalse(mFinished);
     // Der Thread endete geordnet; ein neuer Lauf ohne Fehler läuft durch.
     FFiles.FailWrites := False;
-    Service.Start(Request);
-    Service.WaitFor;
-    Assert.IsTrue(Finished);
+    mService.Start(mRequest);
+    mService.WaitFor;
+    Assert.IsTrue(mFinished);
   finally
-    Service.Free;
+    mService.Free;
   end;
 end;
 
 procedure TIndexBuilderTests.ServiceSharesLibraryCache;
 var
-  Service: TIndexService;
-  Request: TIndexRequest;
-  Data: TBytes;
-  FromCache: Integer;
-  UnitIndex: TUnitIndex;
+  mService: TIndexService;
+  mRequest: TIndexRequest;
+  mData: TBytes;
+  mFromCache: Integer;
+  mUnitIndex: TUnitIndex;
 begin
   // Erstes Projekt: Projekt-Units und Bibliothek getrennt (#492).
-  Service := TIndexService.Create(FIndex, FFileSystem);
+  mService := TIndexService.Create(FIndex, FFileSystem);
   try
-    Request := Default(TIndexRequest);
-    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
-    Request.ResolveUnit := Resolve;
-    Request.CacheFile := 'C:\Cache\projekt1.json';
-    Request.LibraryCacheFile := 'C:\Cache\bibliothek.json';
-    Service.Start(Request);
-    Service.WaitFor;
+    mRequest := Default(TIndexRequest);
+    mRequest.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    mRequest.ResolveUnit := Resolve;
+    mRequest.CacheFile := 'C:\Cache\projekt1.json';
+    mRequest.LibraryCacheFile := 'C:\Cache\bibliothek.json';
+    mService.Start(mRequest);
+    mService.WaitFor;
   finally
-    Service.Free;
+    mService.Free;
   end;
-  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\projekt1.json', Data));
-  for UnitIndex in TIndexCache.Deserialize(Data) do
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\projekt1.json', mData));
+  for mUnitIndex in TIndexCache.Deserialize(mData) do
   begin
-    Assert.IsFalse(UnitIndex.Library_, 'keine Bibliothek im Projekt-Cache: ' + UnitIndex.FileName);
+    Assert.IsFalse(mUnitIndex.Library_, 'keine Bibliothek im Projekt-Cache: ' + mUnitIndex.FileName);
   end;
-  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\bibliothek.json', Data));
-  Assert.AreEqual<NativeInt>(3, Length(TIndexCache.Deserialize(Data)));
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\bibliothek.json', mData));
+  Assert.AreEqual<NativeInt>(3, Length(TIndexCache.Deserialize(mData)));
   // Zweites Projekt mit eigenem Cache: die Bibliothek kommt aus dem gemeinsamen.
   FIndex := TSymbolIndex.Create;
-  FromCache := -1;
-  Service := TIndexService.Create(FIndex, FFileSystem);
+  mFromCache := -1;
+  mService := TIndexService.Create(FIndex, FFileSystem);
   try
-    Service.OnFinished :=
+    mService.OnFinished :=
       procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
       begin
-        FromCache := AResult.FromCache;
+        mFromCache := AResult.FromCache;
       end;
-    Request.CacheFile := 'C:\Cache\projekt2.json';
-    Service.Start(Request);
-    Service.WaitFor;
+    mRequest.CacheFile := 'C:\Cache\projekt2.json';
+    mService.Start(mRequest);
+    mService.WaitFor;
   finally
-    Service.Free;
+    mService.Free;
   end;
-  Assert.AreEqual(3, FromCache, 'nur die Projekt-Units neu eingelesen');
+  Assert.AreEqual(3, mFromCache, 'nur die Projekt-Units neu eingelesen');
 end;
 
 /// <summary>Namen der Units im Cache AData, groß geschrieben und sortiert, mit Komma getrennt.</summary>
 function CachedNames(const AData: TBytes): string;
 var
-  Names: TStringList;
-  UnitIndex: TUnitIndex;
+  mNames: TStringList;
+  mUnitIndex: TUnitIndex;
 begin
-  Names := TStringList.Create;
+  mNames := TStringList.Create;
   try
-    for UnitIndex in TIndexCache.Deserialize(AData) do
+    for mUnitIndex in TIndexCache.Deserialize(AData) do
     begin
-      Names.Add(UpperCase(ExtractFileName(UnitIndex.FileName)));
+      mNames.Add(UpperCase(ExtractFileName(mUnitIndex.FileName)));
     end;
-    Names.Sort;
-    Result := Names.CommaText;
+    mNames.Sort;
+    Result := mNames.CommaText;
   finally
-    Names.Free;
+    mNames.Free;
   end;
 end;
 
@@ -1126,48 +1126,48 @@ end;
 
 procedure TIndexGroupCacheTests.ServiceSharesSearchPathCache;
 var
-  Service: TIndexService;
-  Request: TIndexRequest;
-  Data: TBytes;
-  FromCache: Integer;
+  mService: TIndexService;
+  mRequest: TIndexRequest;
+  mData: TBytes;
+  mFromCache: Integer;
 begin
-  Service := TIndexService.Create(FIndex, FFileSystem);
+  mService := TIndexService.Create(FIndex, FFileSystem);
   try
-    Request := Default(TIndexRequest);
-    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
-    Request.SearchFiles := ['C:\Lib\F.pas'];
-    Request.ResolveUnit := Resolve;
-    Request.CacheFile := 'C:\Cache\projekt1.json';
-    Request.LibraryCacheFile := 'C:\Cache\bibliothek.json';
-    Request.SearchCacheFile := 'C:\Cache\suchpfade.json';
-    Service.Start(Request);
-    Service.WaitFor;
+    mRequest := Default(TIndexRequest);
+    mRequest.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    mRequest.SearchFiles := ['C:\Lib\F.pas'];
+    mRequest.ResolveUnit := Resolve;
+    mRequest.CacheFile := 'C:\Cache\projekt1.json';
+    mRequest.LibraryCacheFile := 'C:\Cache\bibliothek.json';
+    mRequest.SearchCacheFile := 'C:\Cache\suchpfade.json';
+    mService.Start(mRequest);
+    mService.WaitFor;
   finally
-    Service.Free;
+    mService.Free;
   end;
-  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\projekt1.json', Data));
-  Assert.AreEqual('A.PAS,P.DPR', CachedNames(Data), 'Suchpfad-Unit nicht im Projekt-Cache');
-  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\suchpfade.json', Data));
-  Assert.AreEqual('F.PAS', CachedNames(Data));
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\projekt1.json', mData));
+  Assert.AreEqual('A.PAS,P.DPR', CachedNames(mData), 'Suchpfad-Unit nicht im Projekt-Cache');
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\suchpfade.json', mData));
+  Assert.AreEqual('F.PAS', CachedNames(mData));
   // Zweites Projekt mit denselben Suchpfaden: F kommt aus dem gemeinsamen Cache.
   FIndex := TSymbolIndex.Create;
-  FromCache := -1;
-  Service := TIndexService.Create(FIndex, FFileSystem);
+  mFromCache := -1;
+  mService := TIndexService.Create(FIndex, FFileSystem);
   try
-    Service.OnFinished :=
+    mService.OnFinished :=
       procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
       begin
-        FromCache := AResult.FromCache;
+        mFromCache := AResult.FromCache;
       end;
-    Request.CacheFile := 'C:\Cache\projekt2.json';
-    Service.Start(Request);
-    Service.WaitFor;
+    mRequest.CacheFile := 'C:\Cache\projekt2.json';
+    mService.Start(mRequest);
+    mService.WaitFor;
   finally
-    Service.Free;
+    mService.Free;
   end;
-  Assert.AreEqual(4, FromCache, 'Bibliothek und Suchpfad-Unit aus den gemeinsamen Caches');
-  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\projekt2.json', Data));
-  Assert.AreEqual('A.PAS,P.DPR', CachedNames(Data));
+  Assert.AreEqual(4, mFromCache, 'Bibliothek und Suchpfad-Unit aus den gemeinsamen Caches');
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\projekt2.json', mData));
+  Assert.AreEqual('A.PAS,P.DPR', CachedNames(mData));
 end;
 
 function TIndexGroupCacheTests.Parsed(const ADefines: TArray<string>): Integer;
@@ -1195,142 +1195,142 @@ end;
 
 procedure TIndexBuilderTests.ServiceKeepsLibraryUnitsOfOtherWriters;
 const
-  LibraryCache = 'C:\Cache\bibliothek.json';
+  cLibraryCache = 'C:\Cache\bibliothek.json';
 var
-  Other: ISymbolIndex;
-  Builder: TIndexBuilder;
-  Foreign, Data: TBytes;
-  Service: TIndexService;
-  Request: TIndexRequest;
+  mOther: ISymbolIndex;
+  mBuilder: TIndexBuilder;
+  mForeign, mData: TBytes;
+  mService: TIndexService;
+  mRequest: TIndexRequest;
 begin
   // Was ein anderer Prozess schreibt: F aus der Bibliothek, die dieses Projekt nicht braucht.
-  Other := TSymbolIndex.Create;
-  Builder := TIndexBuilder.Create(Other, FFileSystem, nil, Resolve);
+  mOther := TSymbolIndex.Create;
+  mBuilder := TIndexBuilder.Create(mOther, FFileSystem, nil, Resolve);
   try
-    Builder.Build(nil, nil, ['C:\Lib\F.pas'], nil, nil, nil);
+    mBuilder.Build(nil, nil, ['C:\Lib\F.pas'], nil, nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Foreign := TIndexCache.Serialize(Other.Units);
-  Other := nil;
+  mForeign := TIndexCache.Serialize(mOther.Units);
+  mOther := nil;
   // Gleich nachdem dieser Aufbau den Cache (noch leer) gelesen hat, schreibt der andere.
   FFiles.AfterRead :=
     procedure(AFileName: string)
     begin
-      if SameText(AFileName, LibraryCache) then
+      if SameText(AFileName, cLibraryCache) then
       begin
         FFiles.AfterRead := nil;
-        FFiles.WriteBytes(LibraryCache, Foreign);
+        FFiles.WriteBytes(cLibraryCache, mForeign);
       end;
     end;
-  Service := TIndexService.Create(FIndex, FFileSystem);
+  mService := TIndexService.Create(FIndex, FFileSystem);
   try
-    Request := Default(TIndexRequest);
-    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
-    Request.ResolveUnit := Resolve;
-    Request.CacheFile := 'C:\Cache\projekt.json';
-    Request.LibraryCacheFile := LibraryCache;
-    Service.Start(Request);
-    Service.WaitFor;
+    mRequest := Default(TIndexRequest);
+    mRequest.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    mRequest.ResolveUnit := Resolve;
+    mRequest.CacheFile := 'C:\Cache\projekt.json';
+    mRequest.LibraryCacheFile := cLibraryCache;
+    mService.Start(mRequest);
+    mService.WaitFor;
   finally
-    Service.Free;
+    mService.Free;
   end;
   FFiles.AfterRead := nil;
-  Assert.IsTrue(FFileSystem.ReadBytes(LibraryCache, Data));
+  Assert.IsTrue(FFileSystem.ReadBytes(cLibraryCache, mData));
   // Vorher überschrieb der Aufbau den Stand des anderen: nur B, C, D.
-  Assert.AreEqual('B.PAS,C.PAS,D.PAS,F.PAS', CachedNames(Data));
+  Assert.AreEqual('B.PAS,C.PAS,D.PAS,F.PAS', CachedNames(mData));
 end;
 
 procedure TIndexBuilderTests.ServiceWaitsForLibraryWriteLock;
 const
-  LibraryCache = 'C:\Cache\bibliothek.json';
+  cLibraryCache = 'C:\Cache\bibliothek.json';
 var
-  Locked: TEvent;
-  Releaser: TThread;
-  Service: TIndexService;
-  Request: TIndexRequest;
-  Data: TBytes;
-  NotWritten: string;
-  Files: IIndexFileSystem;
+  mLocked: TEvent;
+  mReleaser: TThread;
+  mService: TIndexService;
+  mRequest: TIndexRequest;
+  mData: TBytes;
+  mNotWritten: string;
+  mFiles: IIndexFileSystem;
 begin
   // Ein anderer schreibt gerade und gibt die Sperre nach kurzer Zeit frei. Die Sperre gehört allein dem Thread:
   // Delphi hält das Interface-Ergebnis von TryLockWrite sonst in einem Zwischenwert bis zum Ende der Methode.
-  Files := FFileSystem;
-  Locked := TEvent.Create;
-  Releaser := TThread.CreateAnonymousThread(
+  mFiles := FFileSystem;
+  mLocked := TEvent.Create;
+  mReleaser := TThread.CreateAnonymousThread(
     procedure
     var
       Held: IInterface;
     begin
-      Held := Files.TryLockWrite(LibraryCache);
-      Locked.SetEvent;
+      Held := mFiles.TryLockWrite(cLibraryCache);
+      mLocked.SetEvent;
       TThread.Sleep(300);
       Held := nil;
     end);
-  Releaser.FreeOnTerminate := False;
-  Releaser.Start;
-  Assert.AreEqual<TWaitResult>(wrSignaled, Locked.WaitFor(5000), 'Sperre genommen');
-  Assert.IsNull(FFileSystem.TryLockWrite(LibraryCache), 'nur ein Schreiber');
-  NotWritten := '';
-  Service := TIndexService.Create(FIndex, FFileSystem);
+  mReleaser.FreeOnTerminate := False;
+  mReleaser.Start;
+  Assert.AreEqual<TWaitResult>(wrSignaled, mLocked.WaitFor(5000), 'Sperre genommen');
+  Assert.IsNull(FFileSystem.TryLockWrite(cLibraryCache), 'nur ein Schreiber');
+  mNotWritten := '';
+  mService := TIndexService.Create(FIndex, FFileSystem);
   try
-    Service.OnCacheNotWritten :=
+    mService.OnCacheNotWritten :=
       procedure(const AFileName, AReason: string)
       begin
-        NotWritten := AReason;
+        mNotWritten := AReason;
       end;
-    Request := Default(TIndexRequest);
-    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
-    Request.ResolveUnit := Resolve;
-    Request.CacheFile := 'C:\Cache\projekt.json';
-    Request.LibraryCacheFile := LibraryCache;
-    Service.Start(Request);
-    Service.WaitFor;
+    mRequest := Default(TIndexRequest);
+    mRequest.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    mRequest.ResolveUnit := Resolve;
+    mRequest.CacheFile := 'C:\Cache\projekt.json';
+    mRequest.LibraryCacheFile := cLibraryCache;
+    mService.Start(mRequest);
+    mService.WaitFor;
   finally
-    Service.Free;
-    Releaser.WaitFor;
-    Releaser.Free;
-    Locked.Free;
+    mService.Free;
+    mReleaser.WaitFor;
+    mReleaser.Free;
+    mLocked.Free;
   end;
-  Assert.AreEqual('', NotWritten);
-  Assert.IsTrue(FFileSystem.ReadBytes(LibraryCache, Data));
-  Assert.AreEqual('B.PAS,C.PAS,D.PAS', CachedNames(Data));
+  Assert.AreEqual('', mNotWritten);
+  Assert.IsTrue(FFileSystem.ReadBytes(cLibraryCache, mData));
+  Assert.AreEqual('B.PAS,C.PAS,D.PAS', CachedNames(mData));
 end;
 
 procedure TIndexBuilderTests.ServiceReportsUnwrittenCache;
 var
-  Service: TIndexService;
-  Request: TIndexRequest;
-  Reported: TStringList;
+  mService: TIndexService;
+  mRequest: TIndexRequest;
+  mReported: TStringList;
 begin
   FFiles.RefuseWrites := True;
-  Reported := TStringList.Create;
+  mReported := TStringList.Create;
   try
-    Service := TIndexService.Create(FIndex, FFileSystem);
+    mService := TIndexService.Create(FIndex, FFileSystem);
     try
-      Service.OnCacheNotWritten :=
+      mService.OnCacheNotWritten :=
         procedure(const AFileName, AReason: string)
         begin
-          TMonitor.Enter(Reported);
+          TMonitor.Enter(mReported);
           try
-            Reported.Add(AFileName + '=' + AReason);
+            mReported.Add(AFileName + '=' + AReason);
           finally
-            TMonitor.Exit(Reported);
+            TMonitor.Exit(mReported);
           end;
         end;
-      Request := Default(TIndexRequest);
-      Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
-      Request.ResolveUnit := Resolve;
-      Request.CacheFile := 'C:\Cache\index.json';
-      Service.Start(Request);
-      Service.WaitFor;
+      mRequest := Default(TIndexRequest);
+      mRequest.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+      mRequest.ResolveUnit := Resolve;
+      mRequest.CacheFile := 'C:\Cache\index.json';
+      mService.Start(mRequest);
+      mService.WaitFor;
     finally
-      Service.Free;
+      mService.Free;
     end;
-    Assert.IsTrue(Reported.Count > 0, 'gemeldet');
-    Assert.AreEqual('C:\Cache\index.json=simuliert', Reported[0]);
+    Assert.IsTrue(mReported.Count > 0, 'gemeldet');
+    Assert.AreEqual('C:\Cache\index.json=simuliert', mReported[0]);
   finally
-    Reported.Free;
+    mReported.Free;
   end;
 end;
 
@@ -1365,180 +1365,180 @@ end;
 
 procedure TIndexBuilderTests.ConcurrentServicesWriteLibraryCacheOnce;
 var
-  First, Second: TIndexService;
-  Gate: TEvent;
-  Waiting, LibraryWrites: Integer;
-  Counted: TIndexCacheWrittenEvent;
+  mFirst, mSecond: TIndexService;
+  mGate: TEvent;
+  mWaiting, mLibraryWrites: Integer;
+  mCounted: TIndexCacheWrittenEvent;
 begin
   // Beide nutzen nur F: Nach dem ersten Schreiben gibt es nichts Neues mehr.
   FFiles.Put('C:\P\R.dpr', 'program R;'#10'uses F;'#10'begin end.', 1);
   FFiles.Put('C:\Q\Q.dpr', 'program Q;'#10'uses F;'#10'begin end.', 1);
-  Waiting := 0;
-  LibraryWrites := 0;
-  Gate := TEvent.Create(nil, True, False, '');
+  mWaiting := 0;
+  mLibraryWrites := 0;
+  mGate := TEvent.Create(nil, True, False, '');
   try
     // Das erste Schreiben wird aufgehalten, bis beide Aufbauten ihren Startstand gelesen haben.
     FFiles.BeforeWrite :=
       procedure
       begin
-        TInterlocked.Increment(Waiting);
-        Gate.WaitFor(10000);
+        TInterlocked.Increment(mWaiting);
+        mGate.WaitFor(10000);
       end;
-    Counted :=
+    mCounted :=
       procedure(ALibrary: Boolean; AUnits: Integer; ABytes, AElapsedMs: Int64)
       begin
         if ALibrary then
         begin
-          TInterlocked.Increment(LibraryWrites);
+          TInterlocked.Increment(mLibraryWrites);
         end;
       end;
-    First := TIndexService.Create(FIndex, FFileSystem);
-    Second := TIndexService.Create(FIndex, FFileSystem);
+    mFirst := TIndexService.Create(FIndex, FFileSystem);
+    mSecond := TIndexService.Create(FIndex, FFileSystem);
     try
-      First.OnCacheWritten := Counted;
-      Second.OnCacheWritten := Counted;
-      StartTwoProjects(First, Second, Resolve);
-      WaitWhileZero(Waiting, 5000);
+      mFirst.OnCacheWritten := mCounted;
+      mSecond.OnCacheWritten := mCounted;
+      StartTwoProjects(mFirst, mSecond, Resolve);
+      WaitWhileZero(mWaiting, 5000);
       // Der zweite Aufbau hat dann längst gelesen und wartet auf das Schreiben.
       TThread.Sleep(300);
-      Gate.SetEvent;
-      First.WaitFor;
-      Second.WaitFor;
+      mGate.SetEvent;
+      mFirst.WaitFor;
+      mSecond.WaitFor;
     finally
-      Second.Free;
-      First.Free;
+      mSecond.Free;
+      mFirst.Free;
     end;
   finally
     FFiles.BeforeWrite := nil;
-    Gate.Free;
+    mGate.Free;
   end;
-  Assert.AreEqual(1, LibraryWrites, 'Bibliotheks-Cache nur einmal geschrieben');
+  Assert.AreEqual(1, mLibraryWrites, 'Bibliotheks-Cache nur einmal geschrieben');
 end;
 
 procedure TIndexBuilderTests.CountsWhyUnitsWereParsed;
 var
-  Builder: TIndexBuilder;
-  Cache: TArray<TUnitIndex>;
-  BuildResult: TIndexBuildResult;
-  Position: Integer;
+  mBuilder: TIndexBuilder;
+  mCache: TArray<TUnitIndex>;
+  mBuildResult: TIndexBuildResult;
+  mPosition: Integer;
 begin
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
   try
-    BuildResult := Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas', 'C:\Lib\F.pas'], nil, nil);
+    mBuildResult := mBuilder.Build(['C:\P\P.dpr', 'C:\P\A.pas', 'C:\Lib\F.pas'], nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Assert.AreEqual(3, BuildResult.Misses[TIndexCacheMiss.NoEntry]);
-  Cache := Copy(FIndex.Units);
+  Assert.AreEqual(3, mBuildResult.Misses[TIndexCacheMiss.NoEntry]);
+  mCache := Copy(FIndex.Units);
   // Kompakte Projekt-Unit taugt nicht; geänderte Datei wird neu gelesen; F kommt aus dem Cache.
-  for Position := 0 to High(Cache) do
+  for mPosition := 0 to High(mCache) do
   begin
-    if SameText(Cache[Position].UnitName, 'P') then
+    if SameText(mCache[mPosition].UnitName, 'P') then
     begin
-      Cache[Position] := TIndexMemory.Compacted(Cache[Position]);
+      mCache[mPosition] := TIndexMemory.Compacted(mCache[mPosition]);
     end;
   end;
-  FFiles.Put('C:\P\A.pas', UnitA + ' ', 2);
+  FFiles.Put('C:\P\A.pas', cUnitA + ' ', 2);
   FIndex := TSymbolIndex.Create;
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
   try
-    Builder.UseCache(Cache);
-    BuildResult := Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas', 'C:\Lib\F.pas'], nil, nil);
+    mBuilder.UseCache(mCache);
+    mBuildResult := mBuilder.Build(['C:\P\P.dpr', 'C:\P\A.pas', 'C:\Lib\F.pas'], nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Assert.AreEqual(2, BuildResult.Parsed);
-  Assert.AreEqual(1, BuildResult.FromCache);
-  Assert.AreEqual(1, BuildResult.Misses[TIndexCacheMiss.Compact]);
-  Assert.AreEqual(1, BuildResult.Misses[TIndexCacheMiss.Changed]);
-  Assert.AreEqual(0, BuildResult.Misses[TIndexCacheMiss.NoEntry]);
-  Cache := nil;
+  Assert.AreEqual(2, mBuildResult.Parsed);
+  Assert.AreEqual(1, mBuildResult.FromCache);
+  Assert.AreEqual(1, mBuildResult.Misses[TIndexCacheMiss.Compact]);
+  Assert.AreEqual(1, mBuildResult.Misses[TIndexCacheMiss.Changed]);
+  Assert.AreEqual(0, mBuildResult.Misses[TIndexCacheMiss.NoEntry]);
+  mCache := nil;
 end;
 
 procedure TIndexBuilderTests.ReadOnlyServiceWaitsForOtherWriter;
 const
-  CacheFile = 'C:\Cache\index.json';
+  cCacheFile = 'C:\Cache\index.json';
 var
-  Service: TIndexService;
-  Request: TIndexRequest;
-  Builder: TIndexBuilder;
-  CacheData: TBytes;
-  Busy: Boolean;
-  Writer: TThread;
+  mService: TIndexService;
+  mRequest: TIndexRequest;
+  mBuilder: TIndexBuilder;
+  mCacheData: TBytes;
+  mBusy: Boolean;
+  mWriter: TThread;
 begin
   // Stand der anderen Instanz vorbereiten, aber noch nicht schreiben.
-  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
   try
-    Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], nil, nil);
+    mBuilder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], nil, nil);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  CacheData := TIndexCache.Serialize(FIndex.Units);
+  mCacheData := TIndexCache.Serialize(FIndex.Units);
   FIndex := TSymbolIndex.Create;
-  Busy := True;
+  mBusy := True;
   // Die andere Instanz schreibt nach kurzer Zeit ihren Cache und gibt die Sperre frei.
-  Writer := TThread.CreateAnonymousThread(
+  mWriter := TThread.CreateAnonymousThread(
     procedure
     begin
       TThread.Sleep(300);
-      FFiles.WriteBytes(CacheFile, CacheData);
-      Busy := False;
+      FFiles.WriteBytes(cCacheFile, mCacheData);
+      mBusy := False;
     end);
-  Writer.FreeOnTerminate := False;
-  Service := TIndexService.Create(FIndex, FFileSystem);
+  mWriter.FreeOnTerminate := False;
+  mService := TIndexService.Create(FIndex, FFileSystem);
   try
-    Request := Default(TIndexRequest);
-    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
-    Request.ResolveUnit := Resolve;
-    Request.CacheFile := CacheFile;
-    Request.ReadOnlyCache := True;
-    Request.CacheBusy :=
+    mRequest := Default(TIndexRequest);
+    mRequest.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    mRequest.ResolveUnit := Resolve;
+    mRequest.CacheFile := cCacheFile;
+    mRequest.ReadOnlyCache := True;
+    mRequest.CacheBusy :=
       function: Boolean
       begin
-        Result := Busy;
+        Result := mBusy;
       end;
-    Request.CacheWaitMs := 10000;
+    mRequest.CacheWaitMs := 10000;
     FFiles.Reads := 0;
-    Writer.Start;
-    Service.Start(Request);
-    Service.WaitFor;
+    mWriter.Start;
+    mService.Start(mRequest);
+    mService.WaitFor;
     // Nur der Cache wurde gelesen, keine Quelldatei.
     Assert.AreEqual(1, FFiles.Reads);
-    Assert.AreEqual(5, Service.Index.UnitCount);
+    Assert.AreEqual(5, mService.Index.UnitCount);
   finally
-    Service.Free;
-    Writer.WaitFor;
-    Writer.Free;
+    mService.Free;
+    mWriter.WaitFor;
+    mWriter.Free;
   end;
 end;
 
 procedure TIndexBuilderTests.ReadOnlyServiceStopsWaitingAfterLimit;
 var
-  Service: TIndexService;
-  Request: TIndexRequest;
-  Data: TBytes;
+  mService: TIndexService;
+  mRequest: TIndexRequest;
+  mData: TBytes;
 begin
-  Service := TIndexService.Create(FIndex, FFileSystem);
+  mService := TIndexService.Create(FIndex, FFileSystem);
   try
-    Request := Default(TIndexRequest);
-    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
-    Request.ResolveUnit := Resolve;
-    Request.CacheFile := 'C:\Cache\index.json';
-    Request.ReadOnlyCache := True;
-    Request.CacheBusy :=
+    mRequest := Default(TIndexRequest);
+    mRequest.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    mRequest.ResolveUnit := Resolve;
+    mRequest.CacheFile := 'C:\Cache\index.json';
+    mRequest.ReadOnlyCache := True;
+    mRequest.CacheBusy :=
       function: Boolean
       begin
         Result := True;
       end;
-    Request.CacheWaitMs := 300;
-    Service.Start(Request);
-    Service.WaitFor;
-    Assert.AreEqual(5, Service.Index.UnitCount);
+    mRequest.CacheWaitMs := 300;
+    mService.Start(mRequest);
+    mService.WaitFor;
+    Assert.AreEqual(5, mService.Index.UnitCount);
   finally
-    Service.Free;
+    mService.Free;
   end;
   // Nur lesend: kein Cache geschrieben.
-  Assert.IsFalse(FFileSystem.ReadBytes('C:\Cache\index.json', Data));
+  Assert.IsFalse(FFileSystem.ReadBytes('C:\Cache\index.json', mData));
 end;
 
 initialization

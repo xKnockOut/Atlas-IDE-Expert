@@ -52,18 +52,18 @@ end;
 /// <summary>Wie das Plugin: Auftrag übernehmen, lesen und mit AAnswer beantworten.</summary>
 function Plugin(const AInbox, AAnswer: string; out ARequest: string): Boolean;
 var
-  Request: string;
+  mRequest: string;
 begin
   Result := False;
-  for Request in TDirectory.GetFiles(AInbox, '*.json') do
+  for mRequest in TDirectory.GetFiles(AInbox, '*.json') do
   begin
-    if not Request.EndsWith('.result.json') then
+    if not mRequest.EndsWith('.result.json') then
     begin
-      RenameFile(Request, ChangeFileExt(Request, '.taken'));
-      ARequest := TFile.ReadAllText(ChangeFileExt(Request, '.taken'), TEncoding.UTF8);
+      RenameFile(mRequest, ChangeFileExt(mRequest, '.taken'));
+      ARequest := TFile.ReadAllText(ChangeFileExt(mRequest, '.taken'), TEncoding.UTF8);
       if AAnswer <> '' then
       begin
-        TFile.WriteAllText(ChangeFileExt(Request, '') + '.result.json', AAnswer, TEncoding.UTF8);
+        TFile.WriteAllText(ChangeFileExt(mRequest, '') + '.result.json', AAnswer, TEncoding.UTF8);
       end;
       Exit(True);
     end;
@@ -87,83 +87,83 @@ end;
 
 procedure TMcpIdeEditsTests.WritesItselfWhenNobodyTakesTheRequest;
 var
-  Reason: string;
+  mReason: string;
 begin
   Assert.AreEqual<TMcpIdeEditOutcome>(TMcpIdeEditOutcome.WriteYourself,
     TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
     procedure
     begin
       Inc(Now_, 100);
-    end, Clock, Reason));
+    end, Clock, mReason));
   Assert.AreEqual(0, Integer(Length(TDirectory.GetFiles(FInbox))), 'Auftrag zurückgezogen');
 end;
 
 procedure TMcpIdeEditsTests.ReportsAppliedChange;
 var
-  Reason, Seen: string;
-  Json: TJSONValue;
+  mReason, mSeen: string;
+  mJson: TJSONValue;
 begin
   Assert.AreEqual<TMcpIdeEditOutcome>(TMcpIdeEditOutcome.Applied,
     TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
     procedure
     begin
       Inc(Now_, 100);
-      Plugin(FInbox, '{"applied":true}', Seen);
-    end, Clock, Reason));
-  Json := TJSONObject.ParseJSONValue(Seen);
+      Plugin(FInbox, '{"applied":true}', mSeen);
+    end, Clock, mReason));
+  mJson := TJSONObject.ParseJSONValue(mSeen);
   try
-    Assert.AreEqual('C:\P\A.pas', Json.GetValue<string>('file'));
-    Assert.AreEqual('alt', Json.GetValue<string>('expected'));
-    Assert.AreEqual('neu', Json.GetValue<string>('text'));
+    Assert.AreEqual('C:\P\A.pas', mJson.GetValue<string>('file'));
+    Assert.AreEqual('alt', mJson.GetValue<string>('expected'));
+    Assert.AreEqual('neu', mJson.GetValue<string>('text'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
   Assert.AreEqual(0, Integer(Length(TDirectory.GetFiles(FInbox, '*.result.json'))), 'Antwort gelesen und gelöscht');
 end;
 
 procedure TMcpIdeEditsTests.WritesItselfWhenTheFileIsNoLongerOpen;
 var
-  Reason, Seen: string;
+  mReason, mSeen: string;
 begin
   Assert.AreEqual<TMcpIdeEditOutcome>(TMcpIdeEditOutcome.WriteYourself,
     TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
     procedure
     begin
       Inc(Now_, 100);
-      Plugin(FInbox, '{"applied":false,"notOpen":true,"reason":"nicht offen"}', Seen);
-    end, Clock, Reason));
+      Plugin(FInbox, '{"applied":false,"notOpen":true,"reason":"nicht offen"}', mSeen);
+    end, Clock, mReason));
   Assert.AreEqual<TMcpIdeEditOutcome>(TMcpIdeEditOutcome.Failed,
     TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
     procedure
     begin
       Inc(Now_, 100);
-      Plugin(FInbox, '{"applied":false,"reason":"gesperrt"}', Seen);
-    end, Clock, Reason));
-  Assert.AreEqual('gesperrt', Reason);
+      Plugin(FInbox, '{"applied":false,"reason":"gesperrt"}', mSeen);
+    end, Clock, mReason));
+  Assert.AreEqual('gesperrt', mReason);
 end;
 
 procedure TMcpIdeEditsTests.FailsWhenTakenButNeverAnswered;
 var
-  Reason, Seen: string;
+  mReason, mSeen: string;
 begin
   Assert.AreEqual<TMcpIdeEditOutcome>(TMcpIdeEditOutcome.Failed,
     TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
     procedure
     begin
       Inc(Now_, 1000);
-      Plugin(FInbox, '', Seen);
-    end, Clock, Reason));
-  Assert.IsNotEmpty(Reason);
+      Plugin(FInbox, '', mSeen);
+    end, Clock, mReason));
+  Assert.IsNotEmpty(mReason);
 end;
 
 procedure TMcpIdeEditsTests.PollIntervalStaysWithinBounds;
 var
-  Ms: Integer;
+  mMs: Integer;
 begin
   // Über eine Variable: Ein Vergleich zweier Konstanten wäre ein konstanter Ausdruck.
-  Ms := TMcpIdeEdits.cPollMs;
-  Assert.IsTrue(Ms >= 50, IntToStr(Ms));
-  Assert.IsTrue(Ms <= 100, IntToStr(Ms));
+  mMs := TMcpIdeEdits.cPollMs;
+  Assert.IsTrue(mMs >= 50, IntToStr(mMs));
+  Assert.IsTrue(mMs <= 100, IntToStr(mMs));
 end;
 
 initialization

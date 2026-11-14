@@ -49,9 +49,9 @@ end;
 
 procedure Unknown(const AText: string);
 var
-  Value: Int64;
+  mValue: Int64;
 begin
-  Assert.IsFalse(TOrdinalConstants.Evaluate(AText, nil, Value), AText);
+  Assert.IsFalse(TOrdinalConstants.Evaluate(AText, nil, mValue), AText);
 end;
 
 { TOrdinalConstantsTests }
@@ -112,29 +112,29 @@ end;
 
 procedure TOrdinalConstantsTests.NamesThroughLookup;
 var
-  Tokens: TArray<TPascalToken>;
-  Value: Int64;
-  Seen: string;
-  Lookup: TOrdinalNameLookup;
+  mTokens: TArray<TPascalToken>;
+  mValue: Int64;
+  mSeen: string;
+  mLookup: TOrdinalNameLookup;
 begin
-  Seen := '';
-  Lookup :=
+  mSeen := '';
+  mLookup :=
     function(const ANames: TArray<string>; ATokenIndex: Integer; out AValue: Int64): Boolean
     begin
-      Seen := Seen + string.Join('.', ANames) + '@' + IntToStr(ATokenIndex) + ' ';
+      mSeen := mSeen + string.Join('.', ANames) + '@' + IntToStr(ATokenIndex) + ' ';
       AValue := 10;
       Result := ANames[High(ANames)] = 'Max';
     end;
-  Tokens := TPascalLexer.Tokenize('Max + TGrenzen.Max');
-  Assert.IsTrue(TOrdinalConstants.Evaluate(Tokens, 0, High(Tokens), Lookup, Value));
-  Assert.AreEqual(Int64(20), Value);
-  Assert.AreEqual('Max@0 TGrenzen.Max@2 ', Seen);
-  Assert.IsFalse(TOrdinalConstants.Evaluate('Min + 1', Lookup, Value));
+  mTokens := TPascalLexer.Tokenize('Max + TGrenzen.Max');
+  Assert.IsTrue(TOrdinalConstants.Evaluate(mTokens, 0, High(mTokens), mLookup, mValue));
+  Assert.AreEqual(Int64(20), mValue);
+  Assert.AreEqual('Max@0 TGrenzen.Max@2 ', mSeen);
+  Assert.IsFalse(TOrdinalConstants.Evaluate('Min + 1', mLookup, mValue));
   // Nur die Token AFirst..ALast zählen.
-  Tokens := TPascalLexer.Tokenize('1, 2..5');
-  Assert.IsTrue(TOrdinalConstants.Evaluate(Tokens, 2, 2, nil, Value));
-  Assert.AreEqual(Int64(2), Value);
-  Seen := '';
+  mTokens := TPascalLexer.Tokenize('1, 2..5');
+  Assert.IsTrue(TOrdinalConstants.Evaluate(mTokens, 2, 2, nil, mValue));
+  Assert.AreEqual(Int64(2), mValue);
+  mSeen := '';
 end;
 
 procedure TOrdinalConstantsTests.NotEvaluable;
@@ -170,24 +170,24 @@ end;
 
 procedure TOrdinalConstantsTests.CheckGivesReason;
 var
-  Value: Int64;
+  mValue: Int64;
   mLookup: TOrdinalNameLookup;
 begin
-  Assert.AreEqual(Ord(TOrdinalStatus.Value), Ord(TOrdinalConstants.Check('6 div 2', nil, Value)));
-  Assert.AreEqual(Int64(3), Value);
-  Assert.AreEqual(Ord(TOrdinalStatus.DivisionByZero), Ord(TOrdinalConstants.Check('100 div 0', nil, Value)));
-  Assert.AreEqual(Ord(TOrdinalStatus.DivisionByZero), Ord(TOrdinalConstants.Check('100 mod (2 - 2)', nil, Value)));
+  Assert.AreEqual(Ord(TOrdinalStatus.Value), Ord(TOrdinalConstants.Check('6 div 2', nil, mValue)));
+  Assert.AreEqual(Int64(3), mValue);
+  Assert.AreEqual(Ord(TOrdinalStatus.DivisionByZero), Ord(TOrdinalConstants.Check('100 div 0', nil, mValue)));
+  Assert.AreEqual(Ord(TOrdinalStatus.DivisionByZero), Ord(TOrdinalConstants.Check('100 mod (2 - 2)', nil, mValue)));
   Assert.AreEqual(Ord(TOrdinalStatus.Overflow), Ord(TOrdinalConstants.Check('1000000 * 1000000 * 1000000 * 1000',
-    nil, Value)));
-  Assert.AreEqual(Ord(TOrdinalStatus.Overflow), Ord(TOrdinalConstants.Check('Low(Int64) - 10', nil, Value)));
+    nil, mValue)));
+  Assert.AreEqual(Ord(TOrdinalStatus.Overflow), Ord(TOrdinalConstants.Check('Low(Int64) - 10', nil, mValue)));
   // Lauter Operanden mit Vorzeichen: dcc rechnet in Int64 und meldet E2099 (Fall Cm.E2099, #1372).
-  Assert.AreEqual(Ord(TOrdinalStatus.Overflow), Ord(TOrdinalConstants.Check('High(Int64) + 1', nil, Value)));
-  Assert.AreEqual(Ord(TOrdinalStatus.Overflow), Ord(TOrdinalConstants.Check('$7FFFFFFFFFFFFFFF * 2', nil, Value)));
+  Assert.AreEqual(Ord(TOrdinalStatus.Overflow), Ord(TOrdinalConstants.Check('High(Int64) + 1', nil, mValue)));
+  Assert.AreEqual(Ord(TOrdinalStatus.Overflow), Ord(TOrdinalConstants.Check('$7FFFFFFFFFFFFFFF * 2', nil, mValue)));
   // Mit einem möglichen UInt64-Operanden rechnet Delphi vorzeichenlos weiter: nicht sicher.
   Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('UInt64(High(Int64)) + 1', nil,
-    Value)));
+    mValue)));
   Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('Low(UInt64) + High(Int64) + 1', nil,
-    Value)));
+    mValue)));
   // Der Typ einer Konstanten ist unbekannt.
   mLookup :=
     function(const ANames: TArray<string>; ATokenIndex: Integer; out AValue: Int64): Boolean
@@ -195,10 +195,10 @@ begin
       AValue := High(Int64);
       Result := True;
     end;
-  Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('Grenze + 1', mLookup, Value)));
+  Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('Grenze + 1', mLookup, mValue)));
   // Unbekannter linker Teil: kein Grund.
-  Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('Foo div 0', nil, Value)));
-  Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('1.5', nil, Value)));
+  Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('Foo div 0', nil, mValue)));
+  Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('1.5', nil, mValue)));
 end;
 
 procedure TOrdinalConstantsTests.CastsTruncateLikeDelphi;

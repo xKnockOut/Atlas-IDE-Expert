@@ -66,10 +66,10 @@ uses
 /// <summary>Wartet ohne TThread.WaitFor (das arbeitet im Hauptthread die Warteschlange ab).</summary>
 procedure WaitFinished(AThread: TThread);
 var
-  Watch: TStopwatch;
+  mWatch: TStopwatch;
 begin
-  Watch := TStopwatch.StartNew;
-  while not AThread.Finished and (Watch.ElapsedMilliseconds < 5000) do
+  mWatch := TStopwatch.StartNew;
+  while not AThread.Finished and (mWatch.ElapsedMilliseconds < 5000) do
   begin
     Sleep(1);
   end;
@@ -104,98 +104,98 @@ end;
 
 procedure TAtlasMainThreadTests.QueueRunsAtOnceInMainThread;
 var
-  Ran: Boolean;
+  mRan: Boolean;
 begin
-  Ran := False;
+  mRan := False;
   TAtlasMainThread.Queue(TAtlasFeature.Completion,
     procedure
     begin
-      Ran := True;
+      mRan := True;
     end);
-  Assert.IsTrue(Ran, 'Queue im Hauptthread läuft sofort');
+  Assert.IsTrue(mRan, 'Queue im Hauptthread läuft sofort');
 end;
 
 procedure TAtlasMainThreadTests.ForceQueueWaitsForCheckSynchronize;
 var
-  Count: Integer;
+  mCount: Integer;
 begin
-  Count := 0;
+  mCount := 0;
   TAtlasMainThread.ForceQueue(TAtlasFeature.Completion,
     procedure
     begin
-      Inc(Count);
+      Inc(mCount);
     end);
-  Assert.AreEqual(0, Count, 'ForceQueue wartet auf CheckSynchronize');
+  Assert.AreEqual(0, mCount, 'ForceQueue wartet auf CheckSynchronize');
   CheckSynchronize;
-  Assert.AreEqual(1, Count);
+  Assert.AreEqual(1, mCount);
   CheckSynchronize;
-  Assert.AreEqual(1, Count, 'genau einmal');
+  Assert.AreEqual(1, mCount, 'genau einmal');
 end;
 
 procedure TAtlasMainThreadTests.EntryOfFreedWorkerStillRuns;
 var
-  Worker: TThread;
-  Ran: Boolean;
+  mWorker: TThread;
+  mRan: Boolean;
 begin
-  Ran := False;
-  Worker := TThread.CreateAnonymousThread(
+  mRan := False;
+  mWorker := TThread.CreateAnonymousThread(
     procedure
     begin
       TAtlasMainThread.Queue(TAtlasFeature.Completion,
         procedure
         begin
-          Ran := True;
+          mRan := True;
         end);
     end);
-  Worker.FreeOnTerminate := False;
-  Worker.Start;
-  WaitFinished(Worker);
+  mWorker.FreeOnTerminate := False;
+  mWorker.Start;
+  WaitFinished(mWorker);
   // Wie ReapWorkers: Der Arbeiter ist frei, bevor CheckSynchronize läuft.
-  Worker.Free;
-  Assert.IsFalse(Ran, 'noch nicht ausgeführt');
+  mWorker.Free;
+  Assert.IsFalse(mRan, 'noch nicht ausgeführt');
   CheckSynchronize;
-  Assert.IsTrue(Ran, 'Eintrag überlebt das Freigeben des Arbeiters');
+  Assert.IsTrue(mRan, 'Eintrag überlebt das Freigeben des Arbeiters');
 end;
 
 procedure TAtlasMainThreadTests.StopDropsWaitingAndLaterEntries;
 var
-  Count: Integer;
-  Increment: TThreadProcedure;
+  mCount: Integer;
+  mIncrement: TThreadProcedure;
 begin
-  Count := 0;
-  Increment :=
+  mCount := 0;
+  mIncrement :=
     procedure
     begin
-      Inc(Count);
+      Inc(mCount);
     end;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, Increment);
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, mIncrement);
   TAtlasMainThread.Stop;
   try
-    TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, Increment);
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, mIncrement);
     CheckSynchronize;
-    Assert.AreEqual(0, Count, 'wartende und spätere Einträge verworfen');
-    TAtlasMainThread.Queue(TAtlasFeature.Completion, Increment);
-    Assert.AreEqual(1, Count, 'Queue im Hauptthread läuft auch nach Stop sofort');
+    Assert.AreEqual(0, mCount, 'wartende und spätere Einträge verworfen');
+    TAtlasMainThread.Queue(TAtlasFeature.Completion, mIncrement);
+    Assert.AreEqual(1, mCount, 'Queue im Hauptthread läuft auch nach Stop sofort');
   finally
     TAtlasMainThread.Start;
   end;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, Increment);
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, mIncrement);
   CheckSynchronize;
-  Assert.AreEqual(2, Count, 'nach Start wieder angenommen');
+  Assert.AreEqual(2, mCount, 'nach Start wieder angenommen');
 end;
 
 procedure TAtlasMainThreadTests.ExceptionCountsForFeature;
 var
-  Failures: Integer;
-  Feature: TAtlasFeature;
+  mFailures: Integer;
+  mFeature: TAtlasFeature;
 begin
-  Failures := 0;
-  Feature := TAtlasFeature.Completion;
+  mFailures := 0;
+  mFeature := TAtlasFeature.Completion;
   TAtlasGuard.OnFailure :=
     procedure(AFeature: TAtlasFeature)
     begin
-      Inc(Failures);
-      Feature := AFeature;
+      Inc(mFailures);
+      mFeature := AFeature;
     end;
   TAtlasMainThread.ForceQueue(TAtlasFeature.Hover,
     procedure
@@ -207,31 +207,31 @@ begin
     begin
       CheckSynchronize;
     end);
-  Assert.AreEqual(1, Failures);
-  Assert.AreEqual<TAtlasFeature>(TAtlasFeature.Hover, Feature, 'zählt für das angegebene Feature');
+  Assert.AreEqual(1, mFailures);
+  Assert.AreEqual<TAtlasFeature>(TAtlasFeature.Hover, mFeature, 'zählt für das angegebene Feature');
 end;
 
 procedure TAtlasMainThreadTests.QueueFromWorkerRunsInMainThread;
 var
-  Worker: TThread;
-  RanIn: TThreadID;
+  mWorker: TThread;
+  mRanIn: TThreadID;
 begin
-  RanIn := 0;
-  Worker := TThread.CreateAnonymousThread(
+  mRanIn := 0;
+  mWorker := TThread.CreateAnonymousThread(
     procedure
     begin
       TAtlasMainThread.Queue(TAtlasFeature.Signature,
         procedure
         begin
-          RanIn := TThread.CurrentThread.ThreadID;
+          mRanIn := TThread.CurrentThread.ThreadID;
         end);
     end);
-  Worker.FreeOnTerminate := False;
-  Worker.Start;
-  WaitFinished(Worker);
-  Worker.Free;
+  mWorker.FreeOnTerminate := False;
+  mWorker.Start;
+  WaitFinished(mWorker);
+  mWorker.Free;
   CheckSynchronize;
-  Assert.AreEqual<TThreadID>(MainThreadID, RanIn, 'Eintrag läuft im Hauptthread');
+  Assert.AreEqual<TThreadID>(MainThreadID, mRanIn, 'Eintrag läuft im Hauptthread');
 end;
 
 /// <summary>Zählt jeden Aufruf in ACount; eigene Routine, damit keine andere anonyme Methode den Rahmen teilt.

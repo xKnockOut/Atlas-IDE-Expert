@@ -95,7 +95,7 @@ uses
   Atlas.Tests.RuleAssert;
 
 const
-  Kopf = 'unit Post;'#10'interface'#10'type'#10'  TKunde = class'#10'    Mail: string;'#10 +
+  cKopf = 'unit Post;'#10'interface'#10'type'#10'  TKunde = class'#10'    Mail: string;'#10 +
     '    procedure Senden(A: Integer; B: Integer = 0);'#10'    function Name: string;'#10'  end;'#10 +
     'procedure Versenden(const An, Betreff, Text: string);'#10'implementation'#10 +
     'procedure Versenden(const An, Betreff, Text: string);'#10'begin'#10'end;'#10 +
@@ -104,13 +104,13 @@ const
 /// <summary>Unit Post mit Versenden und TKunde; ABody ist der Rumpf von Test(Kunde: TKunde) ab Zeile 21.</summary>
 function Post(const ABody: string): string; overload;
 begin
-  Result := Kopf + 'procedure Test(Kunde: TKunde);'#10'begin'#10 + ABody + #10'end;'#10'end.';
+  Result := cKopf + 'procedure Test(Kunde: TKunde);'#10'begin'#10 + ABody + #10'end;'#10'end.';
 end;
 
 /// <summary>Wie oben, mit zusätzlichen Deklarationen vor Test.</summary>
 function Post(const ADeclarations, ABody: string): string; overload;
 begin
-  Result := Kopf + ADeclarations + 'procedure Test(Kunde: TKunde);'#10'begin'#10 + ABody + #10'end;'#10'end.';
+  Result := cKopf + ADeclarations + 'procedure Test(Kunde: TKunde);'#10'begin'#10 + ABody + #10'end;'#10'end.';
 end;
 
 function Findings(const ASource: string): TArray<TRuleFinding>; overload;
@@ -125,11 +125,11 @@ end;
 
 function OnlyMessage(const ASource: string): string;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(ASource);
-  Assert.AreEqual(1, Integer(Length(Found)), ASource);
-  Result := Found[0].Message;
+  mFound := Findings(ASource);
+  Assert.AreEqual(1, Integer(Length(mFound)), ASource);
+  Result := mFound[0].Message;
 end;
 
 procedure Silent(const ASource: string);
@@ -141,25 +141,25 @@ end;
 
 procedure TCallRulesTests.IssueExample;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(Post('  Versenden(Kunde.Mail, ''Rechnung'');'));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(cArgumentCountMismatchRuleId, Found[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Found[0].Confidence));
-  Assert.AreEqual('Versenden erwartet 3 Argumente, übergeben sind 2; Text fehlt (wie E2035).', Found[0].Message);
-  Assert.AreEqual(21, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(35, Found[0].Range.EndPos.Character);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('Signaturhilfe öffnen', Found[0].Fixes[0].Title);
-  Assert.IsTrue(Found[0].Fixes[0].HasJump);
-  Assert.IsTrue(Found[0].Fixes[0].OpensSignature);
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes[0].Edits)));
+  mFound := Findings(Post('  Versenden(Kunde.Mail, ''Rechnung'');'));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(cArgumentCountMismatchRuleId, mFound[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFound[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[0].Confidence));
+  Assert.AreEqual('Versenden erwartet 3 Argumente, übergeben sind 2; Text fehlt (wie E2035).', mFound[0].Message);
+  Assert.AreEqual(21, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(35, mFound[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('Signaturhilfe öffnen', mFound[0].Fixes[0].Title);
+  Assert.IsTrue(mFound[0].Fixes[0].HasJump);
+  Assert.IsTrue(mFound[0].Fixes[0].OpensSignature);
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes[0].Edits)));
   // Vor die schließende Klammer: dort zeigt der Parameter-Hint den fehlenden Parameter.
-  Assert.AreEqual(21, Found[0].Fixes[0].JumpTo.Line);
-  Assert.AreEqual(34, Found[0].Fixes[0].JumpTo.Character);
+  Assert.AreEqual(21, mFound[0].Fixes[0].JumpTo.Line);
+  Assert.AreEqual(34, mFound[0].Fixes[0].JumpTo.Character);
   // Korrigiert und ein naheliegender Negativfall.
   Silent(Post('  Versenden(Kunde.Mail, ''Rechnung'', ''Text'');'));
   Silent(Post('  Kunde.Senden(1);'#10'  Kunde.Senden(1, 2);'));
@@ -171,15 +171,15 @@ end;
 
 procedure TCallRulesTests.TooManyArguments;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(Post('  Kunde.Senden(1, 2, 3);'));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Senden erwartet höchstens 2 Argumente, übergeben sind 3 (wie E2034).', Found[0].Message);
+  mFound := Findings(Post('  Kunde.Senden(1, 2, 3);'));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Senden erwartet höchstens 2 Argumente, übergeben sind 3 (wie E2034).', mFound[0].Message);
   // Markiert wird das überzählige Argument.
-  Assert.AreEqual(21, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(21, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(22, Found[0].Range.EndPos.Character);
+  Assert.AreEqual(21, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(21, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(22, mFound[0].Range.EndPos.Character);
   Assert.AreEqual('Versenden erwartet 3 Argumente, übergeben sind 4 (wie E2034).',
     OnlyMessage(Post('  Versenden(''a'', ''b'', ''c'', ''d'');')));
   Assert.AreEqual('Name erwartet keine Argumente, übergeben ist 1 (wie E2034).',
@@ -188,22 +188,22 @@ end;
 
 procedure TCallRulesTests.StatementWithoutParentheses;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Post('  Versenden;');
-  Found := Findings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
+  mSource := Post('  Versenden;');
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Versenden erwartet 3 Argumente, übergeben ist keins; An, Betreff und Text fehlen (wie E2035).',
-    Found[0].Message);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes[0].Edits)));
-  Assert.AreEqual('()', Found[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual(21, Found[0].Fixes[0].Edits[0].Range.StartPos.Line);
-  Assert.AreEqual(11, Found[0].Fixes[0].Edits[0].Range.StartPos.Character);
+    mFound[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes[0].Edits)));
+  Assert.AreEqual('()', mFound[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(21, mFound[0].Fixes[0].Edits[0].Range.StartPos.Line);
+  Assert.AreEqual(11, mFound[0].Fixes[0].Edits[0].Range.StartPos.Character);
   // Nach dem Einfügen steht die Schreibmarke zwischen den Klammern.
-  Assert.AreEqual(12, Found[0].Fixes[0].JumpTo.Character);
-  Fixed := StringReplace(Source, '  Versenden;', '  Versenden();', []);
-  Assert.AreEqual(1, Integer(Length(Findings(Fixed))));
+  Assert.AreEqual(12, mFound[0].Fixes[0].JumpTo.Character);
+  mFixed := StringReplace(mSource, '  Versenden;', '  Versenden();', []);
+  Assert.AreEqual(1, Integer(Length(Findings(mFixed))));
   // Ohne Pflichtparameter darf die Klammer fehlen.
   Silent(Post('  Kunde.Senden(1);'#10'  Kunde.Name;'));
   Assert.AreEqual('Senden erwartet mindestens 1 Argument, übergeben ist keins; A fehlt (wie E2035).',
@@ -225,25 +225,25 @@ end;
 
 procedure TCallRulesTests.RoutineFromIndex;
 var
-  Index: ISymbolIndex;
-  Found: TArray<TRuleFinding>;
-  Source: string;
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
+  mSource: string;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText('unit Mailer;'#10'interface'#10 +
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Mailer;'#10'interface'#10 +
     'procedure Versenden(const An, Betreff: string; const Text: string = '''');'#10 +
     'function Format(const F: string; const Args: array of const): string; overload;'#10 +
     'function Format(const F: string): string; overload;'#10 +
     'function Summe(A: Integer): Integer; cdecl; varargs;'#10 +
     'implementation'#10'end.', 'C:\Projekt\Mailer.pas', nil));
-  Source := 'unit Kunden;'#10'interface'#10'implementation'#10'uses'#10'  Mailer;'#10'procedure Test;'#10 +
+  mSource := 'unit Kunden;'#10'interface'#10'implementation'#10'uses'#10'  Mailer;'#10'procedure Test;'#10 +
     'begin'#10'  Versenden(''a'');'#10'  Versenden(''a'', ''b'');'#10'  Mailer.Versenden(''a'', ''b'', ''c'', ''d'');'#10 +
     '  Format(''x'', [1], 2);'#10'  Summe(1, 2, 3);'#10'end;'#10'end.';
-  Found := TRuleAssert.IndexFindings(TArgumentCountMismatchRule.Create, Source, Index, '', '');
-  Assert.AreEqual(2, Integer(Length(Found)));
+  mFound := TRuleAssert.IndexFindings(TArgumentCountMismatchRule.Create, mSource, mIndex, '', '');
+  Assert.AreEqual(2, Integer(Length(mFound)));
   Assert.AreEqual('Versenden erwartet mindestens 2 Argumente, übergeben ist 1; Betreff fehlt (wie E2035).',
-    Found[0].Message);
-  Assert.AreEqual('Versenden erwartet höchstens 3 Argumente, übergeben sind 4 (wie E2034).', Found[1].Message);
+    mFound[0].Message);
+  Assert.AreEqual('Versenden erwartet höchstens 3 Argumente, übergeben sind 4 (wie E2034).', mFound[1].Message);
 end;
 
 procedure TCallRulesTests.AncestorOverloads;
@@ -372,41 +372,41 @@ end;
 
 procedure TCallRulesTests.SignatureHelpAction;
 var
-  Source: string;
-  Found: TArray<TRuleFinding>;
-  Actions: TArray<TCodeAction>;
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
+  mActions: TArray<TCodeAction>;
 begin
-  Source := Post('  Versenden(Kunde.Mail, ''Rechnung'');');
-  Found := Findings(Source);
-  Actions := TRuleCodeActions.ForFindings(Found, Source, Found[0].Range);
-  Assert.AreEqual('Signaturhilfe öffnen', Actions[0].Title);
-  Assert.AreEqual(cShowSignatureHelpCommand, Actions[0].Command);
-  Assert.AreEqual(2, Integer(Length(Actions[0].CommandArguments)));
-  Assert.AreEqual('21', Actions[0].CommandArguments[0]);
-  Assert.AreEqual('34', Actions[0].CommandArguments[1]);
-  Assert.AreEqual(cRuleFixTag, Actions[0].Tag);
+  mSource := Post('  Versenden(Kunde.Mail, ''Rechnung'');');
+  mFound := Findings(mSource);
+  mActions := TRuleCodeActions.ForFindings(mFound, mSource, mFound[0].Range);
+  Assert.AreEqual('Signaturhilfe öffnen', mActions[0].Title);
+  Assert.AreEqual(cShowSignatureHelpCommand, mActions[0].Command);
+  Assert.AreEqual(2, Integer(Length(mActions[0].CommandArguments)));
+  Assert.AreEqual('21', mActions[0].CommandArguments[0]);
+  Assert.AreEqual('34', mActions[0].CommandArguments[1]);
+  Assert.AreEqual(cRuleFixTag, mActions[0].Tag);
   // Ein gewöhnlicher Sprung bleibt atlas.goToPosition.
-  Found[0].Fixes[0].OpensSignature := False;
-  Actions := TRuleCodeActions.ForFindings(Found, Source, Found[0].Range);
-  Assert.AreEqual(cGoToPositionCommand, Actions[0].Command);
+  mFound[0].Fixes[0].OpensSignature := False;
+  mActions := TRuleCodeActions.ForFindings(mFound, mSource, mFound[0].Range);
+  Assert.AreEqual(cGoToPositionCommand, mActions[0].Command);
 end;
 
 procedure TCallRulesTests.HeaderParts;
 var
-  Parameters, Tail: string;
+  mParameters, mTail: string;
 begin
   Assert.IsTrue(TArgumentCountMismatchRule.SplitHeader('procedure Versenden(const An, Betreff: string)',
-    Parameters, Tail));
-  Assert.AreEqual('const An, Betreff: string', Parameters);
-  Assert.AreEqual('', Tail);
+    mParameters, mTail));
+  Assert.AreEqual('const An, Betreff: string', mParameters);
+  Assert.AreEqual('', mTail);
   Assert.IsTrue(TArgumentCountMismatchRule.SplitHeader('function Liste<T: class>(A: TArray<T>; B: Integer = ' +
-    'Ord(''('')): T; overload', Parameters, Tail));
-  Assert.AreEqual('A: TArray<T>; B: Integer = Ord(''('')', Parameters);
-  Assert.AreEqual(': T; overload', Tail);
-  Assert.IsTrue(TArgumentCountMismatchRule.SplitHeader('function Zahl: Integer; deprecated ''(alt)''', Parameters,
-    Tail));
-  Assert.AreEqual('', Parameters);
-  Assert.AreEqual(': Integer; deprecated ''(alt)''', Tail);
+    'Ord(''('')): T; overload', mParameters, mTail));
+  Assert.AreEqual('A: TArray<T>; B: Integer = Ord(''('')', mParameters);
+  Assert.AreEqual(': T; overload', mTail);
+  Assert.IsTrue(TArgumentCountMismatchRule.SplitHeader('function Zahl: Integer; deprecated ''(alt)''', mParameters,
+    mTail));
+  Assert.AreEqual('', mParameters);
+  Assert.AreEqual(': Integer; deprecated ''(alt)''', mTail);
   Assert.AreEqual('', TArgumentCountMismatchRule.MissingText(nil));
   Assert.AreEqual('Text fehlt', TArgumentCountMismatchRule.MissingText(['Text']));
   Assert.AreEqual('A, B und C fehlen', TArgumentCountMismatchRule.MissingText(['A', 'B', 'C']));
@@ -414,16 +414,16 @@ end;
 
 procedure TCallRulesTests.Options;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Post('  Versenden(Kunde.Mail);');
-  Assert.AreEqual(1, Integer(Length(Findings(Source, '', 'Source/Post.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"argument-count-mismatch": "off"}}',
+  mSource := Post('  Versenden(Kunde.Mail);');
+  Assert.AreEqual(1, Integer(Length(Findings(mSource, '', 'Source/Post.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"argument-count-mismatch": "off"}}',
     'Source/Post.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"group:compiler": "off"}}', 'Source/Post.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source,
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"group:compiler": "off"}}', 'Source/Post.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource,
     '{"rules": {"argument-count-mismatch": {"exclude": ["Source/*.pas"]}}}', 'Source/Post.pas'))));
-  Assert.AreEqual(1, Integer(Length(Findings(Source,
+  Assert.AreEqual(1, Integer(Length(Findings(mSource,
     '{"rules": {"argument-count-mismatch": {"exclude": ["Alt/*.pas"]}}}', 'Source/Post.pas'))));
 end;
 

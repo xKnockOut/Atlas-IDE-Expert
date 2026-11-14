@@ -683,6 +683,56 @@ begin
     '{"name": "GitHub", "provider": "github", "url": "https://github.com"}]'));
 end;
 
+/// <summary>Klappliste der Projekte: Einträge, Auswahl und die erst nach dem Menüereignis ausgeführten
+/// Aufrufe.</summary>
+procedure CheckProjectMenu(AFake: TFakeIssues; AFrame: TAtlasTrackerIssuesView);
+begin
+  // Automatisch (mit Projekt), zwei Tracker-Projekte, Alle, Linie, bearbeiten.
+  AFrame.Queries.Projects.Fill;
+  Assert.AreEqual(6, AFrame.Queries.Projects.Menu.Items.Count);
+  Assert.AreEqual('Automatisch – nach dem Delphi-Projekt (Kasse)', AFrame.Queries.Projects.Menu.Items[0].Caption);
+  Assert.IsTrue(AFrame.Queries.Projects.Menu.Items[0].Checked);
+  Assert.AreEqual('Firma · KASSE', AFrame.Queries.Projects.Menu.Items[1].Caption);
+  Assert.AreEqual('Alle Tracker-Projekte', AFrame.Queries.Projects.Menu.Items[3].Caption);
+  AFake.Calls := nil;
+  AFrame.Queries.Projects.Menu.Items[1].Click;
+  AFrame.Queries.Projects.Menu.Items[3].Click;
+  AFrame.Queries.Projects.Menu.Items[5].Click;
+  Assert.AreEqual(0, Integer(Length(AFake.Calls)), 'nicht im Menüereignis');
+  CheckSynchronize;
+  Assert.AreEqual(3, Integer(Length(AFake.Calls)));
+  Assert.AreEqual('project:KASSE@Firma', AFake.Calls[0]);
+  Assert.AreEqual('project:*', AFake.Calls[1]);
+  Assert.AreEqual('editProjects', AFake.Calls[2]);
+end;
+
+/// <summary>„Alle“ (#1928): Kopf je Gruppe, die Zeilen rücken darunter.</summary>
+procedure CheckGroupHeads(AFake: TFakeIssues; AFrame: TAtlasTrackerIssuesView);
+var
+  mView, mGroup: TAtlasIssuesView;
+  mTop: Integer;
+begin
+  mView := ChoicesView;
+  mView.Items := nil;
+  mGroup := SampleView;
+  TAtlasMyIssues.AddGroup(mView, 'Firma · KASSE', 'C:\Kasse', mGroup, 1);
+  mGroup.Status := TAtlasIssuesStatus.Failed;
+  mGroup.Error := TAtlasCiFetchError.NoCredentials;
+  mGroup.Items := nil;
+  TAtlasMyIssues.AddGroup(mView, 'GitHub · owner/repo', 'C:\Atlas', mGroup, 1);
+  Assert.AreEqual(Format('Firma · KASSE (%d)', [Length(SampleView.Items)]),
+    TAtlasTrackerIssuesText.GroupCaption(mView.Groups[0]));
+  Assert.AreEqual(Format('+ %d weitere', [Length(SampleView.Items) - 1]),
+    TAtlasTrackerIssuesText.GroupNote(mView.Groups[0]));
+  Assert.AreEqual('Kein Zugang hinterlegt', TAtlasTrackerIssuesText.GroupNote(mView.Groups[1]));
+  AFake.FView := mView;
+  AFrame.UpdateContent;
+  mTop := AFrame.Painter.ListTop;
+  Assert.AreEqual(mTop + AFrame.ScaleValue(TAtlasTrackerIssuesView.cStatusHeight), AFrame.Painter.RowTop(0));
+  Assert.AreEqual(mTop + 2 * AFrame.ScaleValue(TAtlasTrackerIssuesView.cStatusHeight) +
+    AFrame.Painter.RowHeight(0), AFrame.Painter.FooterTop, 'Kopf der leeren Gruppe vor der Fußzeile');
+end;
+
 procedure TAtlasTrackerIssuesViewTests.ProjectPickerAndGroups;
 var
   mSaved: TAtlasLanguage;
@@ -690,8 +740,7 @@ var
   mFake: TFakeIssues;
   mSource: IAtlasIssuesSource;
   mFrame: TAtlasTrackerIssuesView;
-  mView, mGroup: TAtlasIssuesView;
-  mTop: Integer;
+  mView: TAtlasIssuesView;
 begin
   mSaved := TAtlasStrings.Language;
   mFake := TFakeIssues.Create;
@@ -710,23 +759,7 @@ begin
     mFrame.Source := mSource;
     Assert.IsTrue(mFrame.Queries.Projects.Visible);
     Assert.IsTrue(mFrame.Queries.Bar.Visible);
-    // Automatisch (mit Projekt), zwei Tracker-Projekte, Alle, Linie, bearbeiten.
-    mFrame.Queries.Projects.Fill;
-    Assert.AreEqual(6, mFrame.Queries.Projects.Menu.Items.Count);
-    Assert.AreEqual('Automatisch – nach dem Delphi-Projekt (Kasse)', mFrame.Queries.Projects.Menu.Items[0].Caption);
-    Assert.IsTrue(mFrame.Queries.Projects.Menu.Items[0].Checked);
-    Assert.AreEqual('Firma · KASSE', mFrame.Queries.Projects.Menu.Items[1].Caption);
-    Assert.AreEqual('Alle Tracker-Projekte', mFrame.Queries.Projects.Menu.Items[3].Caption);
-    mFake.Calls := nil;
-    mFrame.Queries.Projects.Menu.Items[1].Click;
-    mFrame.Queries.Projects.Menu.Items[3].Click;
-    mFrame.Queries.Projects.Menu.Items[5].Click;
-    Assert.AreEqual(0, Integer(Length(mFake.Calls)), 'nicht im Menüereignis');
-    CheckSynchronize;
-    Assert.AreEqual(3, Integer(Length(mFake.Calls)));
-    Assert.AreEqual('project:KASSE@Firma', mFake.Calls[0]);
-    Assert.AreEqual('project:*', mFake.Calls[1]);
-    Assert.AreEqual('editProjects', mFake.Calls[2]);
+    CheckProjectMenu(mFake, mFrame);
     // Gewählt: Beschriftung mit dem Tracker-Projekt; ohne issues.allProjects kein „Alle“.
     mView.ProjectKey := 'owner/repo@GitHub';
     mView.AllProjects := False;
@@ -741,26 +774,7 @@ begin
     mFake.FView := mView;
     mFrame.UpdateContent;
     Assert.IsFalse(mFrame.Queries.Projects.Visible);
-    // „Alle“ (#1928): Kopf je Gruppe, die Zeilen rücken darunter.
-    mView := ChoicesView;
-    mView.Items := nil;
-    mGroup := SampleView;
-    TAtlasMyIssues.AddGroup(mView, 'Firma · KASSE', 'C:\Kasse', mGroup, 1);
-    mGroup.Status := TAtlasIssuesStatus.Failed;
-    mGroup.Error := TAtlasCiFetchError.NoCredentials;
-    mGroup.Items := nil;
-    TAtlasMyIssues.AddGroup(mView, 'GitHub · owner/repo', 'C:\Atlas', mGroup, 1);
-    Assert.AreEqual(Format('Firma · KASSE (%d)', [Length(SampleView.Items)]),
-      TAtlasTrackerIssuesText.GroupCaption(mView.Groups[0]));
-    Assert.AreEqual(Format('+ %d weitere', [Length(SampleView.Items) - 1]),
-      TAtlasTrackerIssuesText.GroupNote(mView.Groups[0]));
-    Assert.AreEqual('Kein Zugang hinterlegt', TAtlasTrackerIssuesText.GroupNote(mView.Groups[1]));
-    mFake.FView := mView;
-    mFrame.UpdateContent;
-    mTop := mFrame.Painter.ListTop;
-    Assert.AreEqual(mTop + mFrame.ScaleValue(TAtlasTrackerIssuesView.cStatusHeight), mFrame.Painter.RowTop(0));
-    Assert.AreEqual(mTop + 2 * mFrame.ScaleValue(TAtlasTrackerIssuesView.cStatusHeight) +
-      mFrame.Painter.RowHeight(0), mFrame.Painter.FooterTop, 'Kopf der leeren Gruppe vor der Fußzeile');
+    CheckGroupHeads(mFake, mFrame);
     TAtlasStrings.Language := TAtlasLanguage.English;
     Assert.AreEqual('Project: Automatic', TAtlasTrackerProjectPicker.CaptionOf(ChoicesView));
   finally
@@ -769,6 +783,34 @@ begin
     mFake.Calls := nil;
     mFake.FView := Default(TAtlasIssuesView);
   end;
+end;
+
+/// <summary>Wieder geöffnetes Issue #612 mit Zweig und Kommentar von vor 20 Minuten.</summary>
+function SampleReopen: TAtlasTrackerReopen;
+begin
+  Result := Default(TAtlasTrackerReopen);
+  Result.Key := '#612';
+  Result.Branch := 'issue/612';
+  Result.State := 'open';
+  Result.Previous := 'closed';
+  Result.CommentBy := 'jana';
+  Result.CommentAt := NowUtc0 - 20 / MinsPerDay;
+  Result.Comment := 'Lesezeichen fehlen.';
+end;
+
+/// <summary>Grund- und Knopftexte zu AReopen, deutsch und englisch; danach wieder deutsch.</summary>
+procedure CheckReopenTexts(AReopen: TAtlasTrackerReopen);
+begin
+  Assert.AreEqual('jana, vor 20 Min.: „Lesezeichen fehlen.“',
+    TAtlasTrackerIssuesText.ReasonText(AReopen, NowUtc0));
+  Assert.AreEqual('Weiterarbeiten auf issue/612', TAtlasTrackerIssuesText.ContinueText(AReopen));
+  AReopen.Comment := '';
+  Assert.AreEqual('closed → open, kein neuer Kommentar', TAtlasTrackerIssuesText.ReasonText(AReopen, NowUtc0));
+  AReopen.Branch := '';
+  Assert.AreEqual('Weiterarbeiten', TAtlasTrackerIssuesText.ContinueText(AReopen));
+  TAtlasStrings.Language := TAtlasLanguage.English;
+  Assert.AreEqual('Continue', TAtlasTrackerIssuesText.ContinueText(AReopen));
+  TAtlasStrings.Language := TAtlasLanguage.German;
 end;
 
 procedure TAtlasTrackerIssuesViewTests.ReopenedRow;
@@ -793,30 +835,14 @@ begin
     mFrame.Width := 600;
     mFrame.Source := mSource;
     mPlain := mFrame.Painter.RowHeight(1);
-    mReopen := Default(TAtlasTrackerReopen);
-    mReopen.Key := '#612';
-    mReopen.Branch := 'issue/612';
-    mReopen.State := 'open';
-    mReopen.Previous := 'closed';
-    mReopen.CommentBy := 'jana';
-    mReopen.CommentAt := NowUtc0 - 20 / MinsPerDay;
-    mReopen.Comment := 'Lesezeichen fehlen.';
+    mReopen := SampleReopen;
     mFake.FView.Reopened := [mReopen];
     mFrame.UpdateContent;
     // Zeile ohne Chips: Chip-Zeile, Grund und Knöpfe kommen dazu.
     Assert.AreEqual(mPlain + mFrame.ScaleValue(TAtlasTrackerIssuesView.cChipLineHeight) +
       mFrame.ScaleValue(TAtlasTrackerIssuesView.cLineHeight) +
       mFrame.ScaleValue(TAtlasTrackerIssuesView.cActionLineHeight), mFrame.Painter.RowHeight(1));
-    Assert.AreEqual('jana, vor 20 Min.: „Lesezeichen fehlen.“',
-      TAtlasTrackerIssuesText.ReasonText(mReopen, NowUtc0));
-    Assert.AreEqual('Weiterarbeiten auf issue/612', TAtlasTrackerIssuesText.ContinueText(mReopen));
-    mReopen.Comment := '';
-    Assert.AreEqual('closed → open, kein neuer Kommentar', TAtlasTrackerIssuesText.ReasonText(mReopen, NowUtc0));
-    mReopen.Branch := '';
-    Assert.AreEqual('Weiterarbeiten', TAtlasTrackerIssuesText.ContinueText(mReopen));
-    TAtlasStrings.Language := TAtlasLanguage.English;
-    Assert.AreEqual('Continue', TAtlasTrackerIssuesText.ContinueText(mReopen));
-    TAtlasStrings.Language := TAtlasLanguage.German;
+    CheckReopenTexts(mReopen);
     mFake.Calls := nil;
     mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Continue, 1));
     mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Reason, 1));

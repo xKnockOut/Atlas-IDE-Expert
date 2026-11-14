@@ -63,7 +63,7 @@ uses
   Atlas.Common.Semantics.NameResolver;
 
 const
-  UnitText =
+  cUnitText =
     'unit Kunden;'#10 +                                          // 0
     'interface'#10 +                                             // 1
     'type'#10 +                                                  // 2
@@ -115,7 +115,7 @@ const
     'end;'#10 +                                                  // 48
     'end.';
 
-  FileName = 'C:\P\Kunden.pas';
+  cFileName = 'C:\P\Kunden.pas';
 
 { TLspAccessChainsTests }
 
@@ -139,12 +139,12 @@ var
   mSource: TAccessChainSource;
 begin
   mSource := Default(TAccessChainSource);
-  mSource.Tree := TPascalParser.Parse(UnitText);
+  mSource.Tree := TPascalParser.Parse(cUnitText);
   mSource.Resolver := TNameResolver.Create(FIndex);
   try
     mSource.Index := FIndex;
-    mSource.Text := UnitText;
-    mSource.FileName := FileName;
+    mSource.Text := cUnitText;
+    mSource.FileName := cFileName;
     mSource.PointerSize := APointerSize;
     Result := TLspAccessChains.Collect(mSource, ALine);
   finally
@@ -193,18 +193,18 @@ end;
 
 function TLspAccessChainsTests.Describe(ALine: Integer): string;
 var
-  Found: TAccessChainsResult;
-  Chain: TAccessChain;
+  mFound: TAccessChainsResult;
+  mChain: TAccessChain;
 begin
   Result := '';
-  Found := Chains(ALine);
-  for Chain in Found.Chains do
+  mFound := Chains(ALine);
+  for mChain in mFound.Chains do
   begin
     if Result <> '' then
     begin
       Result := Result + ' | ';
     end;
-    Result := Result + ChainText(Chain);
+    Result := Result + ChainText(mChain);
   end;
 end;
 
@@ -236,19 +236,19 @@ end;
 
 procedure TLspAccessChainsTests.SeveralStatementsInOneLine;
 var
-  Found: TAccessChainsResult;
+  mFound: TAccessChainsResult;
 begin
-  Found := Chains(41);
-  Assert.AreEqual(2, Found.Statements);
+  mFound := Chains(41);
+  Assert.AreEqual(2, mFound.Statements);
   Assert.AreEqual('Auftrag:class:TAuftrag', Describe(41));
 end;
 
 procedure TLspAccessChainsTests.ConditionOfIfStatement;
 var
-  Found: TAccessChainsResult;
+  mFound: TAccessChainsResult;
 begin
-  Found := Chains(42);
-  Assert.AreEqual(1, Found.Statements);
+  mFound := Chains(42);
+  Assert.AreEqual(1, mFound.Statements);
   Assert.AreEqual('Auftrag:class:TAuftrag Auftrag.Kunde:class:TKunde', Describe(42));
   // Die Zuweisung im then-Zweig steht in der nächsten Zeile.
   Assert.AreEqual(1, Chains(43).Statements);
@@ -276,74 +276,74 @@ end;
 
 procedure TLspAccessChainsTests.FieldOffsetsWin32AndWin64;
 var
-  Found: TAccessChainsResult;
-  Fields: TArray<TAccessField>;
+  mFound: TAccessChainsResult;
+  mFields: TArray<TAccessField>;
 begin
-  Found := Chains(37, 4);
-  Fields := Found.Chains[0].Links[1].Fields;
-  Assert.AreEqual(3, Integer(Length(Fields)));
-  Assert.AreEqual('FName', Fields[0].Name);
-  Assert.AreEqual(4, Fields[0].Offset);
-  Assert.AreEqual(8, Fields[1].Offset);
-  Assert.AreEqual('FAdresse', Fields[2].Name);
-  Assert.AreEqual($C, Fields[2].Offset);
-  Found := Chains(37, 8);
-  Fields := Found.Chains[0].Links[1].Fields;
-  Assert.AreEqual(8, Fields[0].Offset);
-  Assert.AreEqual(16, Fields[1].Offset);
-  Assert.AreEqual(24, Fields[2].Offset);
+  mFound := Chains(37, 4);
+  mFields := mFound.Chains[0].Links[1].Fields;
+  Assert.AreEqual(3, Integer(Length(mFields)));
+  Assert.AreEqual('FName', mFields[0].Name);
+  Assert.AreEqual(4, mFields[0].Offset);
+  Assert.AreEqual(8, mFields[1].Offset);
+  Assert.AreEqual('FAdresse', mFields[2].Name);
+  Assert.AreEqual($C, mFields[2].Offset);
+  mFound := Chains(37, 8);
+  mFields := mFound.Chains[0].Links[1].Fields;
+  Assert.AreEqual(8, mFields[0].Offset);
+  Assert.AreEqual(16, mFields[1].Offset);
+  Assert.AreEqual(24, mFields[2].Offset);
   // Record-Feld mit unbekannter Größe: dahinter keine Schätzung mehr.
-  Fields := Chains(38, 4).Chains[0].Links[0].Fields;
-  Assert.AreEqual(4, Integer(Length(Fields)));
-  Assert.AreEqual(8, Fields[1].Offset);
-  Assert.AreEqual(12, Fields[2].Offset);
-  Assert.AreEqual(-1, Fields[3].Offset);
-  Fields := nil;
+  mFields := Chains(38, 4).Chains[0].Links[0].Fields;
+  Assert.AreEqual(4, Integer(Length(mFields)));
+  Assert.AreEqual(8, mFields[1].Offset);
+  Assert.AreEqual(12, mFields[2].Offset);
+  Assert.AreEqual(-1, mFields[3].Offset);
+  mFields := nil;
 end;
 
 procedure TLspAccessChainsTests.NamePositionAndRange;
 var
-  Link: TAccessLink;
+  mLink: TAccessLink;
 begin
-  Link := Chains(37).Chains[0].Links[1];
-  Assert.AreEqual('Kunde', Link.Name);
-  Assert.AreEqual('Adresse', Link.Member);
-  Assert.AreEqual(37, Link.NamePosition.Line);
-  Assert.AreEqual(10, Link.NamePosition.Character);
-  Assert.AreEqual(2, Link.Range.StartPos.Character);
-  Assert.AreEqual(15, Link.Range.EndPos.Character);
+  mLink := Chains(37).Chains[0].Links[1];
+  Assert.AreEqual('Kunde', mLink.Name);
+  Assert.AreEqual('Adresse', mLink.Member);
+  Assert.AreEqual(37, mLink.NamePosition.Line);
+  Assert.AreEqual(10, mLink.NamePosition.Character);
+  Assert.AreEqual(2, mLink.Range.StartPos.Character);
+  Assert.AreEqual(15, mLink.Range.EndPos.Character);
   // Implizites Self: Bereich und Name des Felds.
-  Link := Chains(38).Chains[0].Links[0];
-  Assert.AreEqual('FKunde', Link.Member);
-  Assert.AreEqual(2, Link.Range.StartPos.Character);
-  Assert.AreEqual(8, Link.Range.EndPos.Character);
+  mLink := Chains(38).Chains[0].Links[0];
+  Assert.AreEqual('FKunde', mLink.Member);
+  Assert.AreEqual(2, mLink.Range.StartPos.Character);
+  Assert.AreEqual(8, mLink.Range.EndPos.Character);
 end;
 
 procedure TLspAccessChainsTests.JsonAnswer;
 var
-  Json: TJSONObject;
-  Chains_, Links: TJSONArray;
-  Link: TJSONObject;
+  mJson: TJSONObject;
+  mChains_, mLinks: TJSONArray;
+  mLink: TJSONObject;
 begin
-  Json := TLspAccessChains.ToJson(Chains(39));
+  mJson := TLspAccessChains.ToJson(Chains(39));
   try
-    Assert.AreEqual(1, Json.GetValue<Integer>('statements'));
-    Chains_ := Json.GetValue('chains') as TJSONArray;
-    Assert.AreEqual(1, Integer(Chains_.Count));
-    Assert.AreEqual('FPositionen[I].FName', (Chains_.Items[0] as TJSONObject).GetValue<string>('text'));
-    Links := (Chains_.Items[0] as TJSONObject).GetValue('links') as TJSONArray;
-    Assert.AreEqual(3, Integer(Links.Count));
-    Link := Links.Items[1] as TJSONObject;
-    Assert.AreEqual('FPositionen', Link.GetValue<string>('expression'));
-    Assert.AreEqual('dynArray', Link.GetValue<string>('kind'));
-    Assert.AreEqual('I', Link.GetValue<string>('index'));
-    Assert.IsTrue(Link.GetValue<Boolean>('indexPlain'));
-    Assert.IsFalse(Link.GetValue<Boolean>('call'));
-    Link := Links.Items[0] as TJSONObject;
-    Assert.IsTrue(Link.GetValue<Boolean>('implicitSelf'));
-    Assert.AreEqual(4, Integer((Link.GetValue('fields') as TJSONArray).Count));
+    Assert.AreEqual(1, mJson.GetValue<Integer>('statements'));
+    mChains_ := mJson.GetValue('chains') as TJSONArray;
+    Assert.AreEqual(1, Integer(mChains_.Count));
+    Assert.AreEqual('FPositionen[I].FName', (mChains_.Items[0] as TJSONObject).GetValue<string>('text'));
+    mLinks := (mChains_.Items[0] as TJSONObject).GetValue('links') as TJSONArray;
+    Assert.AreEqual(3, Integer(mLinks.Count));
+    mLink := mLinks.Items[1] as TJSONObject;
+    Assert.AreEqual('FPositionen', mLink.GetValue<string>('expression'));
+    Assert.AreEqual('dynArray', mLink.GetValue<string>('kind'));
+    Assert.AreEqual('I', mLink.GetValue<string>('index'));
+    Assert.IsTrue(mLink.GetValue<Boolean>('indexPlain'));
+    Assert.IsFalse(mLink.GetValue<Boolean>('call'));
+    mLink := mLinks.Items[0] as TJSONObject;
+    Assert.IsTrue(mLink.GetValue<Boolean>('implicitSelf'));
+    Assert.AreEqual(4, Integer((mLink.GetValue('fields') as TJSONArray).Count));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 

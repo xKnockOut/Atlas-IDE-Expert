@@ -45,7 +45,7 @@ uses
   Atlas.Tests.RuleAssert;
 
 const
-  Kunden =
+  cKunden =
     'unit Kunden;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -80,50 +80,50 @@ end;
 
 procedure TDebugDisplayRuleTests.KnownMembersSilent;
 begin
-  Assert.AreEqual(0, Integer(Length(Findings(Kunden))));
+  Assert.AreEqual(0, Integer(Length(Findings(cKunden))));
 end;
 
 procedure TDebugDisplayRuleTests.UnknownPlaceholderReported;
 var
-  Found: TArray<TRuleFinding>;
-  Source: string;
+  mFound: TArray<TRuleFinding>;
+  mSource: string;
 begin
-  Source := StringReplace(Kunden, '{Ort}', '{Stadt.Name}', []);
-  Found := Findings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(cDebugDisplayPlaceholderRuleId, Found[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));
-  Assert.AreEqual(3, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(Pos('Stadt', '  // atlas-debug: ''{Name}, {Stadt.Name}') - 1, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(Found[0].Range.StartPos.Character + 5, Found[0].Range.EndPos.Character);
+  mSource := StringReplace(cKunden, '{Ort}', '{Stadt.Name}', []);
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(cDebugDisplayPlaceholderRuleId, mFound[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
+  Assert.AreEqual(3, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(Pos('Stadt', '  // atlas-debug: ''{Name}, {Stadt.Name}') - 1, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(mFound[0].Range.StartPos.Character + 5, mFound[0].Range.EndPos.Character);
   Assert.AreEqual('TKunde hat kein Mitglied „Stadt“; der Platzhalter {Stadt.Name} bleibt beim Debuggen leer.',
-    Found[0].Message);
+    mFound[0].Message);
 end;
 
 procedure TDebugDisplayRuleTests.UnknownChildReported;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(StringReplace(Kunden, 'children: Name, Nr', 'children: Name, Saldo', []));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(4, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(Pos('Saldo', '  // atlas-debug-children: Name, Saldo') - 1, Found[0].Range.StartPos.Character);
-  Assert.AreEqual('TKunde hat kein Mitglied „Saldo“ für die Unterelemente.', Found[0].Message);
+  mFound := Findings(StringReplace(cKunden, 'children: Name, Nr', 'children: Name, Saldo', []));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(4, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(Pos('Saldo', '  // atlas-debug-children: Name, Saldo') - 1, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual('TKunde hat kein Mitglied „Saldo“ für die Unterelemente.', mFound[0].Message);
 end;
 
 procedure TDebugDisplayRuleTests.InvalidTemplateReported;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(StringReplace(Kunden, '{Ort}', '{}', []));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(3, Found[0].Range.StartPos.Line);
-  Assert.IsTrue(Found[0].Message.StartsWith('Ungültige Wertdarstellung: '), Found[0].Message);
+  mFound := Findings(StringReplace(cKunden, '{Ort}', '{}', []));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(3, mFound[0].Range.StartPos.Line);
+  Assert.IsTrue(mFound[0].Message.StartsWith('Ungültige Wertdarstellung: '), mFound[0].Message);
 end;
 
 procedure TDebugDisplayRuleTests.InheritedMembersFromIndex;
 const
-  Source =
+  cSource =
     'unit Kunden;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -135,16 +135,16 @@ const
     'implementation'#10 +
     'end.';
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := TRuleAssert.IndexFindings(TDebugDisplayPlaceholderRule.Create, Source, BasisIndex, '', 'Kunden.pas');
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.Contains(Found[0].Message, '„Fehlt“');
+  mFound := TRuleAssert.IndexFindings(TDebugDisplayPlaceholderRule.Create, cSource, BasisIndex, '', 'Kunden.pas');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.Contains(mFound[0].Message, '„Fehlt“');
 end;
 
 procedure TDebugDisplayRuleTests.UnknownAncestorSilent;
 const
-  Source =
+  cSource =
     'unit Kunden;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -154,14 +154,14 @@ const
     'implementation'#10 +
     'end.';
 begin
-  Assert.AreEqual(0, Integer(Length(Findings(Source))));
+  Assert.AreEqual(0, Integer(Length(Findings(cSource))));
   // Eine ungültige Vorlage meldet die Regel trotzdem.
-  Assert.AreEqual(1, Integer(Length(Findings(StringReplace(Source, '{Fehlt}', '{Fehlt', [])))));
+  Assert.AreEqual(1, Integer(Length(Findings(StringReplace(cSource, '{Fehlt}', '{Fehlt', [])))));
 end;
 
 procedure TDebugDisplayRuleTests.AttributeRuleChecked;
 const
-  Source =
+  cSource =
     'unit Punkte;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -173,30 +173,30 @@ const
     'implementation'#10 +
     'end.';
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(Source);
-  Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual(3, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(Pos('Z}', '  [AtlasDebugDisplay(''({X}, {Z})'')]') - 1, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(4, Found[1].Range.StartPos.Line);
-  Assert.AreEqual(Pos('W''', '  [AtlasDebugChildren(''X, Y, W'')]') - 1, Found[1].Range.StartPos.Character);
+  mFound := Findings(cSource);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual(3, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(Pos('Z}', '  [AtlasDebugDisplay(''({X}, {Z})'')]') - 1, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(4, mFound[1].Range.StartPos.Line);
+  Assert.AreEqual(Pos('W''', '  [AtlasDebugChildren(''X, Y, W'')]') - 1, mFound[1].Range.StartPos.Character);
 end;
 
 procedure TDebugDisplayRuleTests.RuleIsRegistered;
 var
-  Rule: IRule;
-  Found: Boolean;
+  mRule: IRule;
+  mFound: Boolean;
 begin
-  Found := False;
-  for Rule in BuiltinRules do
+  mFound := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = cDebugDisplayPlaceholderRuleId then
+    if mRule.Descriptor.Id = cDebugDisplayPlaceholderRuleId then
     begin
-      Found := True;
+      mFound := True;
     end;
   end;
-  Assert.IsTrue(Found);
+  Assert.IsTrue(mFound);
 end;
 
 initialization

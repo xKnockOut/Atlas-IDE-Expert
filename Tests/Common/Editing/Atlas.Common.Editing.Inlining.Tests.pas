@@ -65,48 +65,48 @@ uses
 
 const
   /// <summary>Routine mit const-Parameter: Die Datenflussanalyse weiß, dass Log ihr Argument nicht ändert.</summary>
-  LogDecl = 'procedure Log(const A: Integer);'#10'begin'#10'end;'#10;
+  cLogDecl = 'procedure Log(const A: Integer);'#10'begin'#10'end;'#10;
 
 function Join(const ALines: array of string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(ALines) do
+  for mIndex := 0 to High(ALines) do
   begin
-    Result := Result + ALines[Index] + #10;
+    Result := Result + ALines[mIndex] + #10;
   end;
 end;
 
 function PositionOf(const AText: string; AIndex: Integer): TTextPosition;
 var
-  Index, Line, Character: Integer;
+  mIndex, mLine, mCharacter: Integer;
 begin
-  Line := 0;
-  Character := 0;
-  for Index := 1 to AIndex - 1 do
+  mLine := 0;
+  mCharacter := 0;
+  for mIndex := 1 to AIndex - 1 do
   begin
-    if AText[Index] = #10 then
+    if AText[mIndex] = #10 then
     begin
-      Inc(Line);
-      Character := 0;
+      Inc(mLine);
+      mCharacter := 0;
     end
     else
     begin
-      Inc(Character);
+      Inc(mCharacter);
     end;
   end;
-  Result := TTextPosition.Create(Line, Character);
+  Result := TTextPosition.Create(mLine, mCharacter);
 end;
 
 /// <summary>Text ohne "|" und die Stelle der Marke.</summary>
 function Unmark(const AMarked: string; out APosition: TTextPosition): string;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
-  Start := Pos('|', AMarked);
+  mStart := Pos('|', AMarked);
   Result := StringReplace(AMarked, '|', '', []);
-  APosition := PositionOf(Result, Start);
+  APosition := PositionOf(Result, mStart);
 end;
 
 function Unit_(const ABody: array of string): string;
@@ -156,13 +156,13 @@ end;
 /// <summary>Vorher und Nachher müssen fehlerfrei parsen (Abnahme von #103).</summary>
 procedure CheckParses(const AText: string);
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), AText);
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), AText);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -176,79 +176,79 @@ end;
 /// <summary>„Variable einbetten“ an der Marke; '-' ohne Angebot (Grund in AReason).</summary>
 function Variable(const AMarked: string; out AReason: string): string; overload;
 var
-  Text: string;
-  Position: TTextPosition;
-  Tree: TSyntaxTree;
-  Action: TCodeAction;
+  mText: string;
+  mPosition: TTextPosition;
+  mTree: TSyntaxTree;
+  mAction: TCodeAction;
 begin
-  Text := Unmark(AMarked, Position);
-  CheckParses(Text);
-  Tree := TPascalParser.Parse(Text);
+  mText := Unmark(AMarked, mPosition);
+  CheckParses(mText);
+  mTree := TPascalParser.Parse(mText);
   try
-    if not TInlineRefactoring.InlineVariable(TInlineSource.Create('u.pas', Text, Tree), Position, Options(True),
-      Action, AReason) then
+    if not TInlineRefactoring.InlineVariable(TInlineSource.Create('u.pas', mText, mTree), mPosition, Options(True),
+      mAction, AReason) then
     begin
       Exit('-');
     end;
-    Result := TChangeSignature.ApplyEdits(Text, Action.Edits);
+    Result := TChangeSignature.ApplyEdits(mText, mAction.Edits);
     CheckParses(Result);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Variable(const AMarked: string): string; overload;
 var
-  Reason: string;
+  mReason: string;
 begin
-  Result := Variable(AMarked, Reason);
+  Result := Variable(AMarked, mReason);
 end;
 
 /// <summary>„Methode einbetten“ an der Marke mit dem Rumpf aus derselben Datei; '-' ohne Angebot.</summary>
 function Method(const AMarked: string; AInline: Boolean; out ATitle, AReason: string): string; overload;
 var
-  Text: string;
-  Position: TTextPosition;
-  Tree: TSyntaxTree;
-  Action: TCodeAction;
-  Call: TInlineCall;
-  Routines: TArray<TSyntaxNode>;
-  Source: TInlineSource;
+  mText: string;
+  mPosition: TTextPosition;
+  mTree: TSyntaxTree;
+  mAction: TCodeAction;
+  mCall: TInlineCall;
+  mRoutines: TArray<TSyntaxNode>;
+  mSource: TInlineSource;
 begin
   ATitle := '';
   AReason := '';
-  Text := Unmark(AMarked, Position);
-  CheckParses(Text);
-  Tree := TPascalParser.Parse(Text);
+  mText := Unmark(AMarked, mPosition);
+  CheckParses(mText);
+  mTree := TPascalParser.Parse(mText);
   try
-    Source := TInlineSource.Create('u.pas', Text, Tree);
-    if not TInlineRefactoring.CallAt(Tree, Text, Position, Call) then
+    mSource := TInlineSource.Create('u.pas', mText, mTree);
+    if not TInlineRefactoring.CallAt(mTree, mText, mPosition, mCall) then
     begin
       Exit('-');
     end;
-    Routines := TInlineRefactoring.FindRoutines(Tree, Call.Name);
-    if Length(Routines) <> 1 then
+    mRoutines := TInlineRefactoring.FindRoutines(mTree, mCall.Name);
+    if Length(mRoutines) <> 1 then
     begin
       Exit('-');
     end;
-    if not TInlineRefactoring.InlineMethod(Source, Position, TInlineCallee.Create(Source, Routines[0]),
-      Options(AInline), Action, AReason) then
+    if not TInlineRefactoring.InlineMethod(mSource, mPosition, TInlineCallee.Create(mSource, mRoutines[0]),
+      Options(AInline), mAction, AReason) then
     begin
       Exit('-');
     end;
-    ATitle := Action.Title;
-    Result := TChangeSignature.ApplyEdits(Text, Action.Edits);
+    ATitle := mAction.Title;
+    Result := TChangeSignature.ApplyEdits(mText, mAction.Edits);
     CheckParses(Result);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Method(const AMarked: string; AInline: Boolean): string; overload;
 var
-  Title, Reason: string;
+  mTitle, mReason: string;
 begin
-  Result := Method(AMarked, AInline, Title, Reason);
+  Result := Method(AMarked, AInline, mTitle, mReason);
 end;
 
 { Variable einbetten }
@@ -288,74 +288,74 @@ end;
 
 procedure TInlineTests.InlineVariableRejectsChangedValues;
 var
-  Reason: string;
+  mReason: string;
 begin
   // Zwei Zuweisungen.
   Assert.AreEqual('-', Variable(Unit_(['procedure P;', 'var', '  X: Integer;', 'begin', '  X := 1;',
-    '  X := 2;', '  Writeln(|X);', 'end;']), Reason));
-  Assert.Contains(Reason, 'mehrfach');
+    '  X := 2;', '  Writeln(|X);', 'end;']), mReason));
+  Assert.Contains(mReason, 'mehrfach');
   // Lokaler Name des Ausdrucks ändert sich dazwischen.
   Assert.AreEqual('-', Variable(Unit_(['procedure P(A: Integer);', 'var', '  X: Integer;', 'begin',
-    '  X := A;', '  A := 5;', '  Writeln(|X);', 'end;']), Reason));
-  Assert.Contains(Reason, 'A ändert sich');
+    '  X := A;', '  A := 5;', '  Writeln(|X);', 'end;']), mReason));
+  Assert.Contains(mReason, 'A ändert sich');
   // Feld und Aufruf dazwischen.
   Assert.AreEqual('-', Variable(Unit_(['procedure TFoo.P;', 'var', '  X: Integer;', 'begin', '  X := FCount;',
-    '  Inc(FCount);', '  Writeln(|X);', 'end;']), Reason));
+    '  Inc(FCount);', '  Writeln(|X);', 'end;']), mReason));
   // Nicht auf jedem Weg zugewiesen.
   Assert.AreEqual('-', Variable(Unit_(['procedure P(A: Boolean);', 'var', '  X: Integer;', 'begin',
-    '  if A then', '    X := 1;', '  Writeln(|X);', 'end;']), Reason));
+    '  if A then', '    X := 1;', '  Writeln(|X);', 'end;']), mReason));
   // Feld in einer Schleife ohne die Zuweisung.
   Assert.AreEqual('-', Variable(Unit_(['procedure TFoo.P;', 'var', '  X, I: Integer;', 'begin',
-    '  X := FCount;', '  for I := 1 to 3 do', '    FTotal := FTotal + |X;', 'end;']), Reason));
+    '  X := FCount;', '  for I := 1 to 3 do', '    FTotal := FTotal + |X;', 'end;']), mReason));
 end;
 
 procedure TInlineTests.InlineVariableChecksSideEffects;
 var
-  Reason: string;
+  mReason: string;
 begin
   Assert.AreEqual(Unit_(['procedure P;', 'var', '  Y: Integer;', 'begin', '  Y := Next();', 'end;']),
     Variable(Unit_(['procedure P;', 'var', '  X, Y: Integer;', 'begin', '  X := Next();', '  Y := |X;',
     'end;'])));
   // Zweimal gelesen.
   Assert.AreEqual('-', Variable(Unit_(['procedure P;', 'var', '  X: Integer;', 'begin', '  X := Next();',
-    '  Writeln(X + |X);', 'end;']), Reason));
-  Assert.Contains(Reason, 'mehrfach gelesen');
+    '  Writeln(X + |X);', 'end;']), mReason));
+  Assert.Contains(mReason, 'mehrfach gelesen');
   // Davor wird etwas gelesen: die Reihenfolge änderte sich.
   Assert.AreEqual('-', Variable(Unit_(['procedure P(A: Integer);', 'var', '  X, Y: Integer;', 'begin',
-    '  X := Next();', '  Y := A + |X;', 'end;']), Reason));
-  Assert.Contains(Reason, 'Reihenfolge');
+    '  X := Next();', '  Y := A + |X;', 'end;']), mReason));
+  Assert.Contains(mReason, 'Reihenfolge');
   // Routine ohne Klammern laut Namensauflösung.
   Assert.AreEqual('-', Variable(Unit_(['procedure P;', 'var', '  X: Integer;', 'begin', '  X := Next;',
-    '  Writeln(|X, X);', 'end;']), Reason));
+    '  Writeln(|X, X);', 'end;']), mReason));
 end;
 
 procedure TInlineTests.InlineVariableRejectsOtherLocals;
 var
-  Reason: string;
+  mReason: string;
 begin
-  Assert.AreEqual('-', Variable(Unit_(['procedure P(A: Integer);', 'begin', '  Writeln(|A);', 'end;']), Reason));
+  Assert.AreEqual('-', Variable(Unit_(['procedure P(A: Integer);', 'begin', '  Writeln(|A);', 'end;']), mReason));
   Assert.AreEqual('-', Variable(Unit_(['procedure P;', 'var', '  I: Integer;', 'begin', '  for I := 1 to 2 do',
-    '    Writeln(|I);', 'end;']), Reason));
-  Assert.Contains(Reason, 'Laufvariable');
+    '    Writeln(|I);', 'end;']), mReason));
+  Assert.Contains(mReason, 'Laufvariable');
   Assert.AreEqual('-', Variable(Unit_(['procedure P;', 'var', '  X: Integer;', 'begin', '  X := 1;',
-    '  Run(procedure begin Writeln(|X) end);', 'end;']), Reason));
-  Assert.Contains(Reason, 'anonymen Methode');
+    '  Run(procedure begin Writeln(|X) end);', 'end;']), mReason));
+  Assert.Contains(mReason, 'anonymen Methode');
   Assert.AreEqual('-', Variable(Unit_(['procedure P;', 'var', '  X: Integer;', 'begin', '  X := 1;',
-    '  Inc(|X);', 'end;']), Reason));
-  Assert.Contains(Reason, 'verändert');
+    '  Inc(|X);', 'end;']), mReason));
+  Assert.Contains(mReason, 'verändert');
 end;
 
 { Methode einbetten }
 
 procedure TInlineTests.InlineSimpleFunction;
 var
-  Title, Reason: string;
+  mTitle, mReason: string;
 begin
   Assert.AreEqual(Unit_(['function Twice(A: Integer): Integer;', 'begin', '  Result := A * 2;', 'end;', '',
     'procedure P;', 'var', '  Y: Integer;', 'begin', '  Y := ((Y + 1) * 2) + 1;', 'end;']),
     Method(Unit_(['function Twice(A: Integer): Integer;', 'begin', '  Result := A * 2;', 'end;', '',
-    'procedure P;', 'var', '  Y: Integer;', 'begin', '  Y := |Twice(Y + 1) + 1;', 'end;']), True, Title, Reason));
-  Assert.AreEqual('Routine Twice einbetten', Title);
+    'procedure P;', 'var', '  Y: Integer;', 'begin', '  Y := |Twice(Y + 1) + 1;', 'end;']), True, mTitle, mReason));
+  Assert.AreEqual('Routine Twice einbetten', mTitle);
 end;
 
 procedure TInlineTests.InlineFunctionWithDefaultParameter;
@@ -406,114 +406,114 @@ end;
 procedure TInlineTests.InlineIntoBranchAddsBlock;
 begin
   // Log ist hier deklariert: Sein Parameter ist const, A wird also nicht geändert.
-  Assert.AreEqual(Unit_([LogDecl, 'procedure Log2(A: Integer);', 'begin', '  Log(A);', '  Log(A);', 'end;', '',
+  Assert.AreEqual(Unit_([cLogDecl, 'procedure Log2(A: Integer);', 'begin', '  Log(A);', '  Log(A);', 'end;', '',
     'procedure P(X: Integer);', 'begin', '  if X > 0 then', '  begin', '    Log(X);', '    Log(X);', '  end;',
     'end;']),
-    Method(Unit_([LogDecl, 'procedure Log2(A: Integer);', 'begin', '  Log(A);', '  Log(A);', 'end;', '',
+    Method(Unit_([cLogDecl, 'procedure Log2(A: Integer);', 'begin', '  Log(A);', '  Log(A);', 'end;', '',
     'procedure P(X: Integer);', 'begin', '  if X > 0 then', '  |Log2(X);', 'end;']), True));
 end;
 
 procedure TInlineTests.InlineMethodWithReceiverAndGuard;
 const
-  Head: array[0..18] of string = ('type', '  TCounter = class', '  private', '    FCount: Integer;', '  public',
+  cHead: array[0..18] of string = ('type', '  TCounter = class', '  private', '    FCount: Integer;', '  public',
     '    function Add(AValue: Integer): Integer;', '    procedure Run(C: TCounter);', '  end;', '',
     'function TCounter.Add(AValue: Integer): Integer;', 'begin', '  if AValue < 0 then', '    Exit(0);',
     '  FCount := FCount + AValue;', '  Result := FCount;', 'end;', '', 'procedure TCounter.Run(C: TCounter);', 'var');
 var
-  Title, Reason: string;
+  mTitle, mReason: string;
 begin
-  Assert.AreEqual(Join(['unit U;', '', 'interface', '', 'implementation', '']) + Join(Head) +
+  Assert.AreEqual(Join(['unit U;', '', 'interface', '', 'implementation', '']) + Join(cHead) +
     Join(['  Y: Integer;', 'begin', '  var AddResult: Integer;', '  if 5 < 0 then', '    AddResult := 0', '  else',
     '  begin', '    C.FCount := C.FCount + 5;', '    AddResult := C.FCount;', '  end;', '  Y := AddResult;', 'end;',
     '', 'end.']),
-    Method(Join(['unit U;', '', 'interface', '', 'implementation', '']) + Join(Head) +
-    Join(['  Y: Integer;', 'begin', '  Y := C.|Add(5);', 'end;', '', 'end.']), True, Title, Reason));
-  Assert.AreEqual('Methode Add einbetten', Title);
+    Method(Join(['unit U;', '', 'interface', '', 'implementation', '']) + Join(cHead) +
+    Join(['  Y: Integer;', 'begin', '  Y := C.|Add(5);', 'end;', '', 'end.']), True, mTitle, mReason));
+  Assert.AreEqual('Methode Add einbetten', mTitle);
   // Außerhalb der Klasse ist das private Feld nicht zugänglich.
   Assert.AreEqual('-', Method(Join(['unit U;', '', 'interface', '', 'implementation', '']) +
-    Join(Slice(Head, 17)) + Join(['procedure P(C: TCounter);', 'var', '  Y: Integer;', 'begin',
-    '  Y := C.|Add(5);', 'end;', '', 'end.']), True, Title, Reason));
-  Assert.Contains(Reason, 'nicht sichtbar');
+    Join(Slice(cHead, 17)) + Join(['procedure P(C: TCounter);', 'var', '  Y: Integer;', 'begin',
+    '  Y := C.|Add(5);', 'end;', '', 'end.']), True, mTitle, mReason));
+  Assert.Contains(mReason, 'nicht sichtbar');
 end;
 
 procedure TInlineTests.InlineProcedureGuardNegates;
 begin
-  Assert.AreEqual(Unit_([LogDecl, 'procedure Check(A: Integer);', 'begin', '  if A > 5 then', '    Exit;',
+  Assert.AreEqual(Unit_([cLogDecl, 'procedure Check(A: Integer);', 'begin', '  if A > 5 then', '    Exit;',
     '  Log(A);', 'end;', '', 'procedure P(X: Integer);', 'begin', '  if not (X > 5) then', '  begin', '    Log(X);',
     '  end;', 'end;']),
-    Method(Unit_([LogDecl, 'procedure Check(A: Integer);', 'begin', '  if A > 5 then', '    Exit;', '  Log(A);',
+    Method(Unit_([cLogDecl, 'procedure Check(A: Integer);', 'begin', '  if A > 5 then', '    Exit;', '  Log(A);',
     'end;', '', 'procedure P(X: Integer);', 'begin', '  |Check(X);', 'end;']), True));
 end;
 
 procedure TInlineTests.InlineMethodRejects;
 var
-  Title, Reason: string;
+  mTitle, mReason: string;
 begin
   // Rekursion.
   Assert.AreEqual('-', Method(Unit_(['procedure R(A: Integer);', 'begin', '  if A > 0 then', '    R(A - 1);',
-    'end;', '', 'procedure P;', 'begin', '  |R(3);', 'end;']), True, Title, Reason));
-  Assert.Contains(Reason, 'rekursiv');
+    'end;', '', 'procedure P;', 'begin', '  |R(3);', 'end;']), True, mTitle, mReason));
+  Assert.Contains(mReason, 'rekursiv');
   // Zwei Exit.
   Assert.AreEqual('-', Method(Unit_(['function F(A: Integer): Integer;', 'begin', '  if A > 0 then', '    Exit(1);',
-    '  Exit(2);', 'end;', '', 'procedure P;', 'begin', '  Writeln(|F(3));', 'end;']), True, Title, Reason));
-  Assert.Contains(Reason, 'mehrere Exit');
+    '  Exit(2);', 'end;', '', 'procedure P;', 'begin', '  Writeln(|F(3));', 'end;']), True, mTitle, mReason));
+  Assert.Contains(mReason, 'mehrere Exit');
   // Exit in einer Schleife.
   Assert.AreEqual('-', Method(Unit_(['procedure Q(A: Integer);', 'var', '  I: Integer;', 'begin',
     '  for I := 1 to A do', '    if I > 2 then', '      Exit;', 'end;', '', 'procedure P;', 'begin', '  |Q(3);',
-    'end;']), True, Title, Reason));
-  Assert.Contains(Reason, 'Exit');
+    'end;']), True, mTitle, mReason));
+  Assert.Contains(mReason, 'Exit');
   // Konstruktor.
   Assert.AreEqual('-', Method(Unit_(['constructor TFoo.Create;', 'begin', '  FCount := 1;', 'end;', '',
-    'procedure P;', 'var', '  F: TFoo;', 'begin', '  F := TFoo.|Create;', 'end;']), True, Title, Reason));
+    'procedure P;', 'var', '  F: TFoo;', 'begin', '  F := TFoo.|Create;', 'end;']), True, mTitle, mReason));
   // Result gelesen, bevor es gesetzt ist.
   Assert.AreEqual('-', Method(Unit_(['function G: string;', 'begin', '  Result := Result + ''a'';', 'end;', '',
-    'procedure P;', 'begin', '  Writeln(|G());', 'end;']), True, Title, Reason));
-  Assert.Contains(Reason, 'Result');
+    'procedure P;', 'begin', '  Writeln(|G());', 'end;']), True, mTitle, mReason));
+  Assert.Contains(mReason, 'Result');
   // Result in einer Schleife gesetzt.
   Assert.AreEqual('-', Method(Unit_(['function S(A: Integer): Integer;', 'var', '  I: Integer;', 'begin',
     '  Result := 0;', '  for I := 1 to A do', '    Result := Result + I;', 'end;', '', 'procedure P;', 'begin',
-    '  Writeln(|S(3));', 'end;']), True, Title, Reason));
-  Assert.Contains(Reason, 'Schleife');
+    '  Writeln(|S(3));', 'end;']), True, mTitle, mReason));
+  Assert.Contains(mReason, 'Schleife');
   // Aufruf davor in derselben Anweisung.
   Assert.AreEqual('-', Method(Unit_(['function H(A: Integer): Integer;', 'begin', '  Log(A);', '  Result := A;',
-    'end;', '', 'procedure P;', 'begin', '  Writeln(Next() + |H(1));', 'end;']), True, Title, Reason));
-  Assert.Contains(Reason, 'Reihenfolge');
+    'end;', '', 'procedure P;', 'begin', '  Writeln(Next() + |H(1));', 'end;']), True, mTitle, mReason));
+  Assert.Contains(mReason, 'Reihenfolge');
   // strict private außerhalb der Klasse.
   Assert.AreEqual('-', Method(Unit_(['function TCounter.Get: Integer;', 'begin', '  Result := FSecret;', 'end;',
-    '', 'procedure P(C: TCounter);', 'begin', '  Writeln(C.|Get + 1);', 'end;']), True, Title, Reason));
-  Assert.Contains(Reason, 'nicht sichtbar');
+    '', 'procedure P(C: TCounter);', 'begin', '  Writeln(C.|Get + 1);', 'end;']), True, mTitle, mReason));
+  Assert.Contains(mReason, 'nicht sichtbar');
 end;
 
 procedure TInlineTests.InlineMethodChecksMeaningAtCall;
 var
-  CallerText, CalleeText, Reason: string;
-  Position: TTextPosition;
-  Caller, Callee: TSyntaxTree;
-  Options: TInlineOptions;
-  Action: TCodeAction;
+  mCallerText, mCalleeText, mReason: string;
+  mPosition: TTextPosition;
+  mCaller, mCallee: TSyntaxTree;
+  mOptions: TInlineOptions;
+  mAction: TCodeAction;
 begin
-  CalleeText := Unit_(['function Clamp(A: Integer): Integer;', 'begin', '  Result := Min(A, Limit);', 'end;']);
-  CallerText := Unmark(Unit_(['procedure P(Y: Integer);', 'begin', '  Y := |Clamp(Y);', 'end;']), Position);
-  Callee := TPascalParser.Parse(CalleeText);
-  Caller := TPascalParser.Parse(CallerText);
+  mCalleeText := Unit_(['function Clamp(A: Integer): Integer;', 'begin', '  Result := Min(A, Limit);', 'end;']);
+  mCallerText := Unmark(Unit_(['procedure P(Y: Integer);', 'begin', '  Y := |Clamp(Y);', 'end;']), mPosition);
+  mCallee := TPascalParser.Parse(mCalleeText);
+  mCaller := TPascalParser.Parse(mCallerText);
   try
-    Options := TInlineOptions.Default;
+    mOptions := TInlineOptions.Default;
     // Gleiche Bedeutung: aus der anderen Datei eingesetzt.
-    Options.Lookup := FakeLookup(nil);
-    Assert.IsTrue(TInlineRefactoring.InlineMethod(TInlineSource.Create('p.pas', CallerText, Caller), Position,
-      TInlineCallee.Create(TInlineSource.Create('c.pas', CalleeText, Callee),
-      TInlineRefactoring.FindRoutines(Callee, 'Clamp')[0]), Options, Action, Reason), Reason);
+    mOptions.Lookup := FakeLookup(nil);
+    Assert.IsTrue(TInlineRefactoring.InlineMethod(TInlineSource.Create('p.pas', mCallerText, mCaller), mPosition,
+      TInlineCallee.Create(TInlineSource.Create('c.pas', mCalleeText, mCallee),
+      TInlineRefactoring.FindRoutines(mCallee, 'Clamp')[0]), mOptions, mAction, mReason), mReason);
     Assert.AreEqual(Unit_(['procedure P(Y: Integer);', 'begin', '  Y := Min(Y, Limit);', 'end;']),
-      TChangeSignature.ApplyEdits(CallerText, Action.Edits));
+      TChangeSignature.ApplyEdits(mCallerText, mAction.Edits));
     // Limit bedeutet am Aufruf etwas anderes.
-    Options.Lookup := FakeLookup(Caller);
-    Assert.IsFalse(TInlineRefactoring.InlineMethod(TInlineSource.Create('p.pas', CallerText, Caller), Position,
-      TInlineCallee.Create(TInlineSource.Create('c.pas', CalleeText, Callee),
-      TInlineRefactoring.FindRoutines(Callee, 'Clamp')[0]), Options, Action, Reason));
-    Assert.Contains(Reason, 'Limit');
+    mOptions.Lookup := FakeLookup(mCaller);
+    Assert.IsFalse(TInlineRefactoring.InlineMethod(TInlineSource.Create('p.pas', mCallerText, mCaller), mPosition,
+      TInlineCallee.Create(TInlineSource.Create('c.pas', mCalleeText, mCallee),
+      TInlineRefactoring.FindRoutines(mCallee, 'Clamp')[0]), mOptions, mAction, mReason));
+    Assert.Contains(mReason, 'Limit');
   finally
-    Caller.Free;
-    Callee.Free;
+    mCaller.Free;
+    mCallee.Free;
   end;
 end;
 

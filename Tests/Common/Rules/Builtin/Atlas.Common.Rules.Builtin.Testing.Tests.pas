@@ -118,17 +118,17 @@ end;
 
 procedure TTestingRulesTests.IssueExampleReported;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TDUnitXTestWithoutAssertRule.Create,
+  mFindings := TRuleAssert.Findings(TDUnitXTestWithoutAssertRule.Create,
     TestUnit('  FImport.Laden(''leer.csv'');'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('dunitx-test-without-assert', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Der Test prüft nichts; er ist immer grün.', Findings[0].Message);
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(14, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('dunitx-test-without-assert', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Der Test prüft nichts; er ist immer grün.', mFindings[0].Message);
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(14, mFindings[0].Range.StartPos.Character);
   // Korrigierte Form.
   TRuleAssert.Silent(TDUnitXTestWithoutAssertRule.Create, TestUnit('  FImport.Laden(''leer.csv'');'#10 +
     '  Assert.AreEqual(0, FImport.Anzahl);'#10));
@@ -136,17 +136,17 @@ end;
 
 procedure TTestingRulesTests.FixesInsertPassAndJump;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TDUnitXTestWithoutAssertRule.Create,
+  mFindings := TRuleAssert.Findings(TDUnitXTestWithoutAssertRule.Create,
     TestUnit('  FImport.Laden(''leer.csv'');'#10));
-  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Assert.Pass; als Platzhalter einfügen', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(13, Findings[0].Fixes[0].Edits[0].Range.StartPos.Line);
-  Assert.AreEqual('  Assert.Pass;'#10, Findings[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual('Zur Methode springen', Findings[0].Fixes[1].Title);
-  Assert.IsTrue(Findings[0].Fixes[1].HasJump);
-  Assert.AreEqual(10, Findings[0].Fixes[1].JumpTo.Line);
+  Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Assert.Pass; als Platzhalter einfügen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(13, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Line);
+  Assert.AreEqual('  Assert.Pass;'#10, mFindings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual('Zur Methode springen', mFindings[0].Fixes[1].Title);
+  Assert.IsTrue(mFindings[0].Fixes[1].HasJump);
+  Assert.AreEqual(10, mFindings[0].Fixes[1].JumpTo.Line);
 end;
 
 procedure TTestingRulesTests.AssertsAreFound;
@@ -165,7 +165,7 @@ end;
 
 procedure TTestingRulesTests.HelperMethodsAreFollowed;
 const
-  Source =
+  cSource =
     'unit ImportTests;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -201,9 +201,9 @@ const
     'end;'#10 +
     'end.';
 begin
-  TRuleAssert.Silent(TDUnitXTestWithoutAssertRule.Create, Source);
+  TRuleAssert.Silent(TDUnitXTestWithoutAssertRule.Create, cSource);
   // Ohne Prüfung im Helfer meldet die Regel den TestCase.
-  TRuleAssert.Reports(TDUnitXTestWithoutAssertRule.Create, StringReplace(Source, '  Assert.AreEqual(1, 1);'#10,
+  TRuleAssert.Reports(TDUnitXTestWithoutAssertRule.Create, StringReplace(cSource, '  Assert.AreEqual(1, 1);'#10,
     '  Laden;'#10, []));
 end;
 
@@ -243,28 +243,28 @@ end;
 
 procedure TTestingRulesTests.AssertPatternsOption;
 var
-  Source: string;
-  Issues: TArray<TConfigurationIssue>;
+  mSource: string;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Source := TestUnit('  Expect(Laden).ToBe(1);'#10);
-  TRuleAssert.Reports(TDUnitXTestWithoutAssertRule.Create, Source);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDUnitXTestWithoutAssertRule.Create, Source,
+  mSource := TestUnit('  Expect(Laden).ToBe(1);'#10);
+  TRuleAssert.Reports(TDUnitXTestWithoutAssertRule.Create, mSource);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDUnitXTestWithoutAssertRule.Create, mSource,
     '{"rules": {"dunitx-test-without-assert": {"assertPatterns": ["Expect"]}}}'))));
   // Eigene Muster ersetzen die Vorgabe.
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDUnitXTestWithoutAssertRule.Create,
     TestUnit('  CheckEquals(1, 1);'#10), '{"rules": {"dunitx-test-without-assert": {"assertPatterns": ["Expect"]}}}'))));
-  TConfigurationParser.Parse('{"rules": {"dunitx-test-without-assert": {"assertPatterns": "Expect"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"dunitx-test-without-assert": {"assertPatterns": "Expect"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
 
 procedure TTestingRulesTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := TestUnit('  Laden;'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDUnitXTestWithoutAssertRule.Create, Source,
+  mSource := TestUnit('  Laden;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDUnitXTestWithoutAssertRule.Create, mSource,
     '{"rules": {"dunitx-test-without-assert": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDUnitXTestWithoutAssertRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDUnitXTestWithoutAssertRule.Create, mSource,
     '{"rules": {"dunitx-test-without-assert": {"exclude": ["Tests/*.pas"]}}}', 'Tests/ImportTests.pas'))));
 end;
 

@@ -60,9 +60,9 @@ uses
   Atlas.Common.Lsp.InlayHints;
 
 const
-  MainFile = 'C:\P\U.pas';
+  cMainFile = 'C:\P\U.pas';
   // Ohne FOO ist der {$IFNDEF FOO}-Zweig aktiv; dort steht ein zweites uses.
-  Accepted =
+  cAccepted =
     'unit U;'#10 +                                          // 0
     'interface'#10 +                                        // 1
     '{$I defs.inc}'#10 +                                    // 2
@@ -88,13 +88,13 @@ end;
 
 function DiagnosticCount(const AText: string; const AOptions: TPreprocessorOptions): Integer;
 var
-  Diagnostics: TArray<TSyntaxDiagnostic>;
+  mDiagnostics: TArray<TSyntaxDiagnostic>;
 begin
-  if not TPascalParser.ActiveDiagnostics(AText, AOptions, Diagnostics) then
+  if not TPascalParser.ActiveDiagnostics(AText, AOptions, mDiagnostics) then
   begin
     Exit(-1);
   end;
-  Result := Length(Diagnostics);
+  Result := Length(mDiagnostics);
 end;
 
 procedure TIncludeDefinesTests.TearDown;
@@ -126,81 +126,81 @@ procedure TIncludeDefinesTests.ActiveDiagnosticsReadIncludeDefines;
 begin
   DefsText := '{$DEFINE FOO}';
   // Ohne Resolver gilt FOO nicht: das zweite uses ist ein Fehler.
-  Assert.IsTrue(DiagnosticCount(Accepted, TPascalPreprocessor.EditorOptions(nil)) > 0, 'ohne Resolver');
-  Assert.AreEqual(0, DiagnosticCount(Accepted, TPascalPreprocessor.EditorOptions(nil, MainFile, Resolver())),
+  Assert.IsTrue(DiagnosticCount(cAccepted, TPascalPreprocessor.EditorOptions(nil)) > 0, 'ohne Resolver');
+  Assert.AreEqual(0, DiagnosticCount(cAccepted, TPascalPreprocessor.EditorOptions(nil, cMainFile, Resolver())),
     'mit defs.inc');
   // Der Fall aus dem Issue: beide Zweige gültig, keine Diagnose.
   Assert.AreEqual(0, DiagnosticCount('unit U;'#10'interface'#10'{$I defs.inc}'#10 +
     '{$IFDEF FOO} uses A; {$ENDIF} {$IFNDEF FOO} uses B; {$ENDIF}'#10'implementation'#10'end.',
-    TPascalPreprocessor.EditorOptions(nil, MainFile, Resolver())));
+    TPascalPreprocessor.EditorOptions(nil, cMainFile, Resolver())));
 end;
 
 procedure TIncludeDefinesTests.SharedTreeReadsIncludesAndRefreshes;
 var
-  Document: ITextDocument;
-  Shared: ISharedSyntaxTree;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
 begin
   DefsText := '{$DEFINE FOO}';
-  Document := TTextDocument.Create('file:///c:/p/u.pas', 'objectpascal', 1, Accepted);
-  Shared := TSyntaxTreeCache.Get(Document);
-  Assert.IsTrue(Length(Shared.Tree.Diagnostics) > 0, 'ohne IncludeProvider');
-  Assert.IsFalse(Shared.IncludesResolved);
+  mDocument := TTextDocument.Create('file:///c:/p/u.pas', 'objectpascal', 1, cAccepted);
+  mShared := TSyntaxTreeCache.Get(mDocument);
+  Assert.IsTrue(Length(mShared.Tree.Diagnostics) > 0, 'ohne IncludeProvider');
+  Assert.IsFalse(mShared.IncludesResolved);
   TSyntaxTreeCache.SetIncludeProvider(
     function(const AUri: string): TIncludeResolver
     begin
       Result := Resolver();
     end);
-  Shared := TSyntaxTreeCache.Get(Document);
-  Assert.AreEqual(0, Integer(Length(Shared.Tree.Diagnostics)), 'mit defs.inc');
-  Assert.IsTrue(Shared.IncludesResolved);
-  Assert.AreEqual(1, Integer(Length(Shared.Processed.DefineSites)));
-  Assert.AreEqual('FOO', Shared.Processed.DefineSites[0].Name);
+  mShared := TSyntaxTreeCache.Get(mDocument);
+  Assert.AreEqual(0, Integer(Length(mShared.Tree.Diagnostics)), 'mit defs.inc');
+  Assert.IsTrue(mShared.IncludesResolved);
+  Assert.AreEqual(1, Integer(Length(mShared.Processed.DefineSites)));
+  Assert.AreEqual('FOO', mShared.Processed.DefineSites[0].Name);
   // Dieselbe Momentaufnahme: kein neuer Lauf, bis sich eine Include-Datei ändert.
   DefsText := '';
-  Assert.AreEqual(0, Integer(Length(TSyntaxTreeCache.Get(Document).Tree.Diagnostics)), 'noch der alte Stand');
+  Assert.AreEqual(0, Integer(Length(TSyntaxTreeCache.Get(mDocument).Tree.Diagnostics)), 'noch der alte Stand');
   TSyntaxTreeCache.IncludesChanged;
-  Assert.IsTrue(Length(TSyntaxTreeCache.Get(Document).Tree.Diagnostics) > 0, 'neu gelesen');
+  Assert.IsTrue(Length(TSyntaxTreeCache.Get(mDocument).Tree.Diagnostics) > 0, 'neu gelesen');
 end;
 
 procedure TIncludeDefinesTests.InactiveRegionsFromSharedRun;
 var
-  Tree: TSyntaxTree;
-  Processed: TPreprocessorResult;
-  Regions: TArray<TLspInactiveRegion>;
-  Issues: TArray<TPreprocessorIssue>;
+  mTree: TSyntaxTree;
+  mProcessed: TPreprocessorResult;
+  mRegions: TArray<TLspInactiveRegion>;
+  mIssues: TArray<TPreprocessorIssue>;
 begin
   DefsText := '{$DEFINE FOO}';
-  Tree := TPascalParser.ParseActive(Accepted + #10'{$I fehlt.inc}', TPascalPreprocessor.EditorOptions(nil,
-    MainFile, Resolver()), nil, Processed);
+  mTree := TPascalParser.ParseActive(cAccepted + #10'{$I fehlt.inc}', TPascalPreprocessor.EditorOptions(nil,
+    cMainFile, Resolver()), nil, mProcessed);
   try
-    Regions := TLspInactiveRegions.Regions(Processed, True, Issues);
-    Assert.AreEqual(1, Integer(Length(Regions)));
-    Assert.AreEqual(4, Regions[0].Range.StartPos.Line);
-    Assert.AreEqual('not FOO', Regions[0].Condition);
-    Assert.AreEqual(1, Integer(Length(Issues)), 'fehlt.inc');
-    Assert.AreEqual(7, Issues[0].Range.StartPos.Line);
+    mRegions := TLspInactiveRegions.Regions(mProcessed, True, mIssues);
+    Assert.AreEqual(1, Integer(Length(mRegions)));
+    Assert.AreEqual(4, mRegions[0].Range.StartPos.Line);
+    Assert.AreEqual('not FOO', mRegions[0].Condition);
+    Assert.AreEqual(1, Integer(Length(mIssues)), 'fehlt.inc');
+    Assert.AreEqual(7, mIssues[0].Range.StartPos.Line);
     // Ohne Resolver im Lauf keine Include-Befunde.
-    Regions := TLspInactiveRegions.Regions(Processed, False, Issues);
-    Assert.AreEqual(0, Integer(Length(Issues)));
+    mRegions := TLspInactiveRegions.Regions(mProcessed, False, mIssues);
+    Assert.AreEqual(0, Integer(Length(mIssues)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TIncludeDefinesTests.CheckerUsesProjectAndIncludeDefines;
 const
-  Win64Unit =
+  cWin64Unit =
     'unit Ziel;'#10'interface'#10'implementation'#10'procedure X;'#10'begin'#10 +
     '{$IFDEF WIN64}'#10'  X;'#10'{$ELSE}'#10'  if then'#10'{$ENDIF}'#10'end;'#10'end.';
 
   function SyntaxFindings(const AText: string; const ASource: TCheckSource): Integer;
   var
-    Finding: TRuleFinding;
+    mFinding: TRuleFinding;
   begin
     Result := 0;
-    for Finding in TFileChecker.CheckText(nil, TServerSettings.Default, 'Ziel.pas', AText, ASource) do
+    for mFinding in TFileChecker.CheckText(nil, TServerSettings.Default, 'Ziel.pas', AText, ASource) do
     begin
-      if Finding.RuleId = cSyntaxRuleId then
+      if mFinding.RuleId = cSyntaxRuleId then
       begin
         Inc(Result);
       end;
@@ -209,17 +209,17 @@ const
 
 begin
   // Vorgabe Win32: der {$ELSE}-Zweig ist aktiv und kaputt.
-  Assert.IsTrue(Length(TFileChecker.CheckText(nil, TServerSettings.Default, 'Ziel.pas', Win64Unit)) > 0, 'Win32');
-  Assert.AreEqual(0, SyntaxFindings(Win64Unit, TCheckSource.Create(MainFile,
+  Assert.IsTrue(Length(TFileChecker.CheckText(nil, TServerSettings.Default, 'Ziel.pas', cWin64Unit)) > 0, 'Win32');
+  Assert.AreEqual(0, SyntaxFindings(cWin64Unit, TCheckSource.Create(cMainFile,
     TPascalPreprocessor.PredefinedSymbols('Win64', 37), nil)), 'Win64');
   DefsText := '{$DEFINE FOO}';
-  Assert.IsTrue(SyntaxFindings(Accepted, TCheckSource.Default) > 0, 'ohne Include-Dateien');
-  Assert.AreEqual(0, SyntaxFindings(Accepted, TCheckSource.Create(MainFile, nil, Resolver())), 'mit defs.inc');
+  Assert.IsTrue(SyntaxFindings(cAccepted, TCheckSource.Default) > 0, 'ohne Include-Dateien');
+  Assert.AreEqual(0, SyntaxFindings(cAccepted, TCheckSource.Create(cMainFile, nil, Resolver())), 'mit defs.inc');
 end;
 
 procedure TIncludeDefinesTests.InlayHintNamesUsedIncludeSymbols;
 const
-  Source =
+  cSource =
     'unit U;'#10 +                                          // 0
     'interface'#10 +                                        // 1
     '{$I defs.inc}'#10 +                                    // 2
@@ -228,43 +228,43 @@ const
     'implementation'#10 +                                   // 5
     'end.';
 var
-  Tree: TSyntaxTree;
-  Processed: TPreprocessorResult;
-  Settings: TInlayHintSettings;
-  Hints: TArray<TInlayHint>;
-  Json: TJSONArray;
+  mTree: TSyntaxTree;
+  mProcessed: TPreprocessorResult;
+  mSettings: TInlayHintSettings;
+  mHints: TArray<TInlayHint>;
+  mJson: TJSONArray;
 begin
   // UNUSED prüft die Unit nicht, GONE hebt die Include-Datei wieder auf.
   DefsText := '{$DEFINE FOO}'#10'{$DEFINE UNUSED}'#10'{$DEFINE GONE}'#10'{$DEFINE BAR}'#10'{$UNDEF GONE}';
-  Tree := TPascalParser.ParseActive(Source, TPascalPreprocessor.EditorOptions(nil, MainFile, Resolver()), nil,
-    Processed);
+  mTree := TPascalParser.ParseActive(cSource, TPascalPreprocessor.EditorOptions(nil, cMainFile, Resolver()), nil,
+    mProcessed);
   try
-    Settings := TInlayHintSettings.Default;
-    Settings.ParameterNames := False;
-    Settings.InferredTypes := False;
-    Settings.EndMarkers := False;
-    Hints := TLspInlayHints.Collect(TInlayHintSource.Create(nil, nil, Tree, Source, MainFile, nil),
-      TTextRange.Create(0, 0, 7, 0), Settings, Processed);
-    Assert.AreEqual(1, Integer(Length(Hints)));
-    Assert.AreEqual('definiert FOO, BAR', Hints[0].Text);
-    Assert.AreEqual(2, Hints[0].Position.Line);
-    Assert.AreEqual(13, Hints[0].Position.Character, 'hinter der Direktive');
-    Json := TLspInlayHints.ToJson(Hints);
+    mSettings := TInlayHintSettings.Default;
+    mSettings.ParameterNames := False;
+    mSettings.InferredTypes := False;
+    mSettings.EndMarkers := False;
+    mHints := TLspInlayHints.Collect(TInlayHintSource.Create(nil, nil, mTree, cSource, cMainFile, nil),
+      TTextRange.Create(0, 0, 7, 0), mSettings, mProcessed);
+    Assert.AreEqual(1, Integer(Length(mHints)));
+    Assert.AreEqual('definiert FOO, BAR', mHints[0].Text);
+    Assert.AreEqual(2, mHints[0].Position.Line);
+    Assert.AreEqual(13, mHints[0].Position.Character, 'hinter der Direktive');
+    mJson := TLspInlayHints.ToJson(mHints);
     try
-      Assert.AreEqual('defs.inc', Json.Items[0].GetValue<string>('data.includeDefines.file'));
-      Assert.AreEqual(2, Integer(Json.Items[0].GetValue<TJSONArray>('data.includeDefines.names').Count));
-      Assert.IsNull((Json.Items[0] as TJSONObject).GetValue('kind'), 'ohne kind wie Endmarken');
+      Assert.AreEqual('defs.inc', mJson.Items[0].GetValue<string>('data.includeDefines.file'));
+      Assert.AreEqual(2, Integer(mJson.Items[0].GetValue<TJSONArray>('data.includeDefines.names').Count));
+      Assert.IsNull((mJson.Items[0] as TJSONObject).GetValue('kind'), 'ohne kind wie Endmarken');
     finally
-      Json.Free;
+      mJson.Free;
     end;
     // Außerhalb des Bereichs und abgeschaltet: nichts.
-    Assert.AreEqual(0, Integer(Length(TLspInlayHints.IncludeDefines(Tree, Processed,
+    Assert.AreEqual(0, Integer(Length(TLspInlayHints.IncludeDefines(mTree, mProcessed,
       TTextRange.Create(3, 0, 7, 0)))));
-    Settings.IncludeDefines := False;
-    Assert.AreEqual(0, Integer(Length(TLspInlayHints.Collect(TInlayHintSource.Create(nil, nil, Tree,
-      Source, MainFile, nil), TTextRange.Create(0, 0, 7, 0), Settings, Processed))));
+    mSettings.IncludeDefines := False;
+    Assert.AreEqual(0, Integer(Length(TLspInlayHints.Collect(TInlayHintSource.Create(nil, nil, mTree,
+      cSource, cMainFile, nil), TTextRange.Create(0, 0, 7, 0), mSettings, mProcessed))));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

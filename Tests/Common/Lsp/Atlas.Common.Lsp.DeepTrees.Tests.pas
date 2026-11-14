@@ -33,71 +33,71 @@ uses
   Atlas.Tests.SmallStack;
 
 const
-  ChainLength = 5000;
-  StackKb = 128;
+  cChainLength = 5000;
+  cStackKb = 128;
   /// <summary>Zeile (0-basiert) mit der Kette.</summary>
-  ChainLine = 7;
+  cChainLine = 7;
 
 function DeepText: string;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.Append('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'var'#10'  X: Integer;'#10 +
+    mBuilder.Append('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'var'#10'  X: Integer;'#10 +
       'begin'#10'  X := 1');
-    for Index := 2 to ChainLength do
+    for mIndex := 2 to cChainLength do
     begin
-      Builder.Append(' - 1');
+      mBuilder.Append(' - 1');
     end;
-    Builder.Append(';'#10'  var Y := 2;'#10'  X := Y;'#10'end;'#10'end.'#10);
-    Result := Builder.ToString;
+    mBuilder.Append(';'#10'  var Y := 2;'#10'  X := Y;'#10'end;'#10'end.'#10);
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 procedure TLspDeepTreeTests.WalkersHandleDeepTrees;
 var
-  Text, Failure, Running, LocalType: string;
-  Tree: TSyntaxTree;
-  Features, Markers: Integer;
-  IsLocal: Boolean;
+  mText, mFailure, mRunning, mLocalType: string;
+  mTree: TSyntaxTree;
+  mFeatures, mMarkers: Integer;
+  mIsLocal: Boolean;
 begin
-  Text := DeepText;
-  Tree := TPascalParser.Parse(Text);
+  mText := DeepText;
+  mTree := TPascalParser.Parse(mText);
   try
-    Assert.IsTrue(Tree.Depth > ChainLength, 'Kette bleibt linkslastig, Tiefe ' + IntToStr(Tree.Depth));
-    Running := '';
-    Features := -1;
-    Markers := -1;
-    IsLocal := False;
-    LocalType := '';
-    Failure := TSmallStack.Run(StackKb,
+    Assert.IsTrue(mTree.Depth > cChainLength, 'Kette bleibt linkslastig, Tiefe ' + IntToStr(mTree.Depth));
+    mRunning := '';
+    mFeatures := -1;
+    mMarkers := -1;
+    mIsLocal := False;
+    mLocalType := '';
+    mFailure := TSmallStack.Run(cStackKb,
       procedure
       begin
-        Running := 'TLanguageFeatures.Check';
-        Features := Length(TLanguageFeatures.Check(Tree, '19.0'));
-        Running := 'TLspInlayHints.EndMarkers';
-        Markers := Length(TLspInlayHints.EndMarkers(Tree, TTextRange.Create(0, 0, 100, 0), 1));
-        Running := 'TGuardFree.LocalVariableType';
-        IsLocal := TGuardFree.LocalVariableType(Tree, Text, 'X', ChainLine, LocalType);
-        Running := '';
+        mRunning := 'TLanguageFeatures.Check';
+        mFeatures := Length(TLanguageFeatures.Check(mTree, '19.0'));
+        mRunning := 'TLspInlayHints.EndMarkers';
+        mMarkers := Length(TLspInlayHints.EndMarkers(mTree, TTextRange.Create(0, 0, 100, 0), 1));
+        mRunning := 'TGuardFree.LocalVariableType';
+        mIsLocal := TGuardFree.LocalVariableType(mTree, mText, 'X', cChainLine, mLocalType);
+        mRunning := '';
       end);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.AreEqual('', Failure, Running);
+  Assert.AreEqual('', mFailure, mRunning);
   // Delphi 10.2 kennt keine Inline-Variable: var Y meldet sich.
-  Assert.AreEqual(1, Features, 'Sprachmerkmale');
-  Assert.IsTrue(Markers >= 0, 'Endmarken');
-  Assert.IsTrue(IsLocal, 'X ist lokal');
-  Assert.AreEqual('Integer', LocalType);
-  Text := '';
-  Failure := '';
-  Running := '';
-  LocalType := '';
+  Assert.AreEqual(1, mFeatures, 'Sprachmerkmale');
+  Assert.IsTrue(mMarkers >= 0, 'Endmarken');
+  Assert.IsTrue(mIsLocal, 'X ist lokal');
+  Assert.AreEqual('Integer', mLocalType);
+  mText := '';
+  mFailure := '';
+  mRunning := '';
+  mLocalType := '';
 end;
 
 initialization

@@ -37,7 +37,7 @@ uses
 
 const
   // Ausschnitt einer detaillierten Map (DCC_MapFile=3): Codesegment ab Modulbasis + $1000.
-  SampleMap =
+  cSampleMap =
     ' Start         Length     Name                   Class'#13#10 +
     ' 0001:00401000 0000A000H .text                   CODE'#13#10 +
     ''#13#10 +
@@ -54,156 +54,156 @@ const
 function Entry(AThread: Cardinal; AAddress: NativeUInt; const AParams: array of NativeUInt;
   const AFrames: array of NativeUInt): TAtlasStackRecord;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Default(TAtlasStackRecord);
   Result.ThreadId := AThread;
   Result.Address := AAddress;
-  for Index := 0 to High(AParams) do
+  for mIndex := 0 to High(AParams) do
   begin
-    Result.Params[Index] := AParams[Index];
+    Result.Params[mIndex] := AParams[mIndex];
   end;
   Result.ParamCount := Length(AParams);
-  for Index := 0 to High(AFrames) do
+  for mIndex := 0 to High(AFrames) do
   begin
-    Result.Frames[Index] := AFrames[Index];
+    Result.Frames[mIndex] := AFrames[mIndex];
   end;
   Result.Count := Length(AFrames);
 end;
 
 procedure TAtlasStackRingTests.FindsNewestEntryOfSameThread;
 var
-  Ring: TAtlasStackRing;
-  Found: TAtlasStackRecord;
+  mRing: TAtlasStackRing;
+  mFound: TAtlasStackRecord;
 begin
-  Ring := TAtlasStackRing.Create;
+  mRing := TAtlasStackRing.Create;
   try
     // Erneutes raise derselben Ausnahme: der jüngere Mitschnitt gilt.
-    Ring.Add(Entry(7, $100, [$500, $AAAA], [$1]));
-    Ring.Add(Entry(7, $200, [$600, $AAAA], [$2]));
-    Assert.IsTrue(Ring.Find(7, [$AAAA], Found));
-    Assert.AreEqual<UInt64>($2, Found.Frames[0]);
+    mRing.Add(Entry(7, $100, [$500, $AAAA], [$1]));
+    mRing.Add(Entry(7, $200, [$600, $AAAA], [$2]));
+    Assert.IsTrue(mRing.Find(7, [$AAAA], mFound));
+    Assert.AreEqual<UInt64>($2, mFound.Frames[0]);
   finally
-    Ring.Free;
+    mRing.Free;
   end;
 end;
 
 procedure TAtlasStackRingTests.MatchesObjectOrFaultAddress;
 var
-  Ring: TAtlasStackRing;
-  Found: TAtlasStackRecord;
+  mRing: TAtlasStackRing;
+  mFound: TAtlasStackRecord;
 begin
-  Ring := TAtlasStackRing.Create;
+  mRing := TAtlasStackRing.Create;
   try
     // Delphi-Ausnahme: Objekt in den Parametern; Zugriffsverletzung: Fehleradresse im Record.
-    Ring.Add(Entry(3, $7000, [$123, $BEEF], [$1]));
-    Ring.Add(Entry(3, $9000, [0, $4321], [$2]));
-    Assert.IsTrue(Ring.Find(3, [$BEEF, $1], Found));
-    Assert.AreEqual<UInt64>($7000, Found.Address);
-    Assert.IsTrue(Ring.Find(3, [$5, $9000], Found));
-    Assert.AreEqual<UInt64>($2, Found.Frames[0]);
-    Assert.IsFalse(Ring.Find(3, [$5, $6], Found));
+    mRing.Add(Entry(3, $7000, [$123, $BEEF], [$1]));
+    mRing.Add(Entry(3, $9000, [0, $4321], [$2]));
+    Assert.IsTrue(mRing.Find(3, [$BEEF, $1], mFound));
+    Assert.AreEqual<UInt64>($7000, mFound.Address);
+    Assert.IsTrue(mRing.Find(3, [$5, $9000], mFound));
+    Assert.AreEqual<UInt64>($2, mFound.Frames[0]);
+    Assert.IsFalse(mRing.Find(3, [$5, $6], mFound));
   finally
-    Ring.Free;
+    mRing.Free;
   end;
 end;
 
 procedure TAtlasStackRingTests.IgnoresOtherThreadsAndZeroKeys;
 var
-  Ring: TAtlasStackRing;
-  Found: TAtlasStackRecord;
+  mRing: TAtlasStackRing;
+  mFound: TAtlasStackRecord;
 begin
-  Ring := TAtlasStackRing.Create;
+  mRing := TAtlasStackRing.Create;
   try
-    Ring.Add(Entry(1, $100, [0, $AAAA], [$1]));
-    Assert.IsFalse(Ring.Find(2, [$AAAA], Found), 'anderer Thread');
-    Assert.IsFalse(Ring.Find(1, [0], Found), '0 passt nie, auch nicht zu leeren Parametern');
-    Ring.Clear;
-    Assert.IsFalse(Ring.Find(1, [$AAAA], Found), 'nach Clear leer');
+    mRing.Add(Entry(1, $100, [0, $AAAA], [$1]));
+    Assert.IsFalse(mRing.Find(2, [$AAAA], mFound), 'anderer Thread');
+    Assert.IsFalse(mRing.Find(1, [0], mFound), '0 passt nie, auch nicht zu leeren Parametern');
+    mRing.Clear;
+    Assert.IsFalse(mRing.Find(1, [$AAAA], mFound), 'nach Clear leer');
   finally
-    Ring.Free;
+    mRing.Free;
   end;
 end;
 
 procedure TAtlasStackRingTests.OverwritesOldestEntries;
 var
-  Ring: TAtlasStackRing;
-  Found: TAtlasStackRecord;
-  Index: Integer;
+  mRing: TAtlasStackRing;
+  mFound: TAtlasStackRecord;
+  mIndex: Integer;
 begin
-  Ring := TAtlasStackRing.Create;
+  mRing := TAtlasStackRing.Create;
   try
-    for Index := 1 to TAtlasStackRing.cSlotCount + 8 do
+    for mIndex := 1 to TAtlasStackRing.cSlotCount + 8 do
     begin
-      Ring.Add(Entry(1, NativeUInt(Index), [], []));
+      mRing.Add(Entry(1, NativeUInt(mIndex), [], []));
     end;
-    Assert.IsFalse(Ring.Find(1, [1], Found), 'älteste überschrieben');
-    Assert.IsFalse(Ring.Find(1, [8], Found));
-    Assert.IsTrue(Ring.Find(1, [9], Found));
-    Assert.IsTrue(Ring.Find(1, [NativeUInt(TAtlasStackRing.cSlotCount + 8)], Found));
+    Assert.IsFalse(mRing.Find(1, [1], mFound), 'älteste überschrieben');
+    Assert.IsFalse(mRing.Find(1, [8], mFound));
+    Assert.IsTrue(mRing.Find(1, [9], mFound));
+    Assert.IsTrue(mRing.Find(1, [NativeUInt(TAtlasStackRing.cSlotCount + 8)], mFound));
   finally
-    Ring.Free;
+    mRing.Free;
   end;
 end;
 
 procedure TAtlasStackRingTests.AddressesStartWithFaultAddress;
 var
-  Addresses: TArray<UInt64>;
+  mAddresses: TArray<UInt64>;
 begin
-  Addresses := Entry(1, $500, [], [$10, 0, $20]).Addresses;
-  Assert.AreEqual(3, Integer(Length(Addresses)), 'Fehleradresse vorn, leere Rahmen ausgelassen');
-  Assert.AreEqual<UInt64>($500, Addresses[0]);
-  Assert.AreEqual<UInt64>($20, Addresses[2]);
+  mAddresses := Entry(1, $500, [], [$10, 0, $20]).Addresses;
+  Assert.AreEqual(3, Integer(Length(mAddresses)), 'Fehleradresse vorn, leere Rahmen ausgelassen');
+  Assert.AreEqual<UInt64>($500, mAddresses[0]);
+  Assert.AreEqual<UInt64>($20, mAddresses[2]);
 end;
 
 procedure TAtlasStackRingTests.DescribeNamesModulesAndResolvesAtlasFrames;
 var
-  Map: TMapFile;
-  Modules: TArray<TAtlasModuleRange>;
-  Atlas, Rtl: TAtlasModuleRange;
-  Text: string;
-  Lines: TArray<string>;
+  mMap: TMapFile;
+  mModules: TArray<TAtlasModuleRange>;
+  mAtlas, mRtl: TAtlasModuleRange;
+  mText: string;
+  mLines: TArray<string>;
 begin
-  Atlas.Name := 'Atlas.IDE.Expert370.bpl';
-  Atlas.Base := $10000000;
-  Atlas.Size := $100000;
-  Rtl.Name := 'rtl370.bpl';
-  Rtl.Base := $20000000;
-  Rtl.Size := $100000;
-  Modules := [Atlas, Rtl];
-  Map := TMapFile.Create(SampleMap);
+  mAtlas.Name := 'Atlas.IDE.Expert370.bpl';
+  mAtlas.Base := $10000000;
+  mAtlas.Size := $100000;
+  mRtl.Name := 'rtl370.bpl';
+  mRtl.Base := $20000000;
+  mRtl.Size := $100000;
+  mModules := [mAtlas, mRtl];
+  mMap := TMapFile.Create(cSampleMap);
   try
-    Text := TAtlasStackFrames.Describe([$10001124, $20000010, $30000000, $10001184], Modules, Map,
+    mText := TAtlasStackFrames.Describe([$10001124, $20000010, $30000000, $10001184], mModules, mMap,
       'Atlas.IDE.Expert370.bpl', 3);
-    Lines := Text.Split([sLineBreak]);
-    Assert.AreEqual(3, Integer(Length(Lines)), 'höchstens AMax Zeilen');
+    mLines := mText.Split([sLineBreak]);
+    Assert.AreEqual(3, Integer(Length(mLines)), 'höchstens AMax Zeilen');
     Assert.AreEqual('Atlas.IDE.Expert370.bpl+$1124 Atlas.IDE.Editor.Minimap.TAtlasMinimap.PaintLine ' +
-      '(Atlas.IDE.Editor.Minimap.pas:612)', Lines[0]);
-    Assert.AreEqual('rtl370.bpl+$10', Lines[1]);
-    Assert.AreEqual('$30000000', Lines[2], 'ohne Modul nur die Adresse');
+      '(Atlas.IDE.Editor.Minimap.pas:612)', mLines[0]);
+    Assert.AreEqual('rtl370.bpl+$10', mLines[1]);
+    Assert.AreEqual('$30000000', mLines[2], 'ohne Modul nur die Adresse');
   finally
-    Map.Free;
+    mMap.Free;
   end;
 end;
 
 procedure TAtlasStackRingTests.SymbolizeAcceptsHangFrames;
 var
-  Map: TMapFile;
+  mMap: TMapFile;
 begin
-  Map := TMapFile.Create(SampleMap);
+  mMap := TMapFile.Create(cSampleMap);
   try
     // Der Einfrier-Wächter schreibt „Modul+Offset“ ohne $.
     Assert.AreEqual('Atlas.IDE.Expert370.bpl+1184 Atlas.IDE.Editor.Minimap.TAtlasMinimap.Paint ' +
-      '(Atlas.IDE.Editor.Minimap.pas:640)', TAtlasStackFrames.Symbolize('Atlas.IDE.Expert370.bpl+1184', Map,
+      '(Atlas.IDE.Editor.Minimap.pas:640)', TAtlasStackFrames.Symbolize('Atlas.IDE.Expert370.bpl+1184', mMap,
       'Atlas.IDE.Expert370.bpl'));
-    Assert.AreEqual('rtl370.bpl+1184', TAtlasStackFrames.Symbolize('rtl370.bpl+1184', Map,
+    Assert.AreEqual('rtl370.bpl+1184', TAtlasStackFrames.Symbolize('rtl370.bpl+1184', mMap,
       'Atlas.IDE.Expert370.bpl'));
-    Assert.AreEqual('Atlas.IDE.Expert370.bpl+zz', TAtlasStackFrames.Symbolize('Atlas.IDE.Expert370.bpl+zz', Map,
+    Assert.AreEqual('Atlas.IDE.Expert370.bpl+zz', TAtlasStackFrames.Symbolize('Atlas.IDE.Expert370.bpl+zz', mMap,
       'Atlas.IDE.Expert370.bpl'));
     Assert.AreEqual('Atlas.IDE.Expert370.bpl+1184', TAtlasStackFrames.Symbolize('Atlas.IDE.Expert370.bpl+1184', nil,
       'Atlas.IDE.Expert370.bpl'));
   finally
-    Map.Free;
+    mMap.Free;
   end;
 end;
 

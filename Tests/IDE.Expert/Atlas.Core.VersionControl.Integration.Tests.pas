@@ -61,15 +61,15 @@ uses
 function Exec(const ARunner: IAtlasVcsRunner; const AExecutable: string; const AArguments: TArray<string>;
   const AWorkingDir: string): string;
 var
-  Answer: TAtlasVcsRunResult;
+  mAnswer: TAtlasVcsRunResult;
 begin
-  Answer := ARunner.Run(AExecutable, AArguments, AWorkingDir, 30000);
-  if (Answer.Outcome <> TAtlasVcsOutcome.Ok) or (Answer.ExitCode <> 0) then
+  mAnswer := ARunner.Run(AExecutable, AArguments, AWorkingDir, 30000);
+  if (mAnswer.Outcome <> TAtlasVcsOutcome.Ok) or (mAnswer.ExitCode <> 0) then
   begin
     raise Exception.CreateFmt('%s %s: Exit-Code %d, %s', [ExtractFileName(AExecutable),
-      string.Join(' ', AArguments), Answer.ExitCode, Answer.ErrorText]);
+      string.Join(' ', AArguments), mAnswer.ExitCode, mAnswer.ErrorText]);
   end;
-  Result := Trim(TEncoding.UTF8.GetString(Answer.Output));
+  Result := Trim(TEncoding.UTF8.GetString(mAnswer.Output));
 end;
 
 function NewFolder(const AName: string): string;
@@ -80,17 +80,17 @@ end;
 
 procedure RemoveFolder(const AFolder: string);
 var
-  FileName: string;
+  mFileName: string;
 begin
   if not TDirectory.Exists(AFolder) then
   begin
     Exit;
   end;
   // git legt schreibgeschützte Objektdateien an.
-  for FileName in TDirectory.GetFiles(AFolder, '*', TSearchOption.soAllDirectories) do
+  for mFileName in TDirectory.GetFiles(AFolder, '*', TSearchOption.soAllDirectories) do
   begin
     {$WARN SYMBOL_PLATFORM OFF}
-    TFile.SetAttributes(FileName, [TFileAttribute.faNormal]);
+    TFile.SetAttributes(mFileName, [TFileAttribute.faNormal]);
     {$WARN SYMBOL_PLATFORM ON}
   end;
   try
@@ -105,13 +105,13 @@ end;
 
 function Find(const AChanges: TArray<TAtlasVcsChange>; const APath: string; out AChange: TAtlasVcsChange): Boolean;
 var
-  Item: TAtlasVcsChange;
+  mItem: TAtlasVcsChange;
 begin
-  for Item in AChanges do
+  for mItem in AChanges do
   begin
-    if SameText(Item.Path, APath) then
+    if SameText(mItem.Path, APath) then
     begin
-      AChange := Item;
+      AChange := mItem;
       Exit(True);
     end;
   end;
@@ -214,46 +214,46 @@ end;
 
 procedure TAtlasVcsIntegrationTests.GitWorkingCopyReportsBranchRevisionAndChanges;
 var
-  GitExe, Folder, Commit: string;
-  Runner: IAtlasVcsRunner;
-  Vcs: IAtlasVersionControl;
-  Head: TAtlasVcsHead;
-  Changes: TArray<TAtlasVcsChange>;
-  First: TAtlasVcsBlameLine;
+  mGitExe, mFolder, mCommit: string;
+  mRunner: IAtlasVcsRunner;
+  mVcs: IAtlasVersionControl;
+  mHead: TAtlasVcsHead;
+  mChanges: TArray<TAtlasVcsChange>;
+  mFirst: TAtlasVcsBlameLine;
 begin
-  GitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
-  if GitExe = '' then
+  mGitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
+  if mGitExe = '' then
   begin
     Assert.Pass('git nicht installiert; Prüfung übersprungen');
   end;
   // Im Test erlaubt: Der Hauptthread des Testprogramms ist keine IDE.
-  Runner := TAtlasVcsProcessRunner.Create(True, nil);
-  Folder := NewFolder('git');
+  mRunner := TAtlasVcsProcessRunner.Create(True, nil);
+  mFolder := NewFolder('git');
   try
-    InitGitRepository(Runner, GitExe, Folder);
-    WriteUnitsAB(Folder);
-    Exec(Runner, GitExe, ['add', '.'], Folder);
-    Exec(Runner, GitExe, ['commit', '-q', '-m', 'Erster Stand'], Folder);
-    Commit := Exec(Runner, GitExe, ['rev-parse', 'HEAD'], Folder);
-    TDirectory.CreateDirectory(TPath.Combine(Folder, 'src'));
+    InitGitRepository(mRunner, mGitExe, mFolder);
+    WriteUnitsAB(mFolder);
+    Exec(mRunner, mGitExe, ['add', '.'], mFolder);
+    Exec(mRunner, mGitExe, ['commit', '-q', '-m', 'Erster Stand'], mFolder);
+    mCommit := Exec(mRunner, mGitExe, ['rev-parse', 'HEAD'], mFolder);
+    TDirectory.CreateDirectory(TPath.Combine(mFolder, 'src'));
 
-    Vcs := TAtlasVersionControl.Open(TPath.Combine(Folder, 'src'), TAtlasVcsProvider.Auto, Runner);
-    Assert.AreEqual<TAtlasVcsKind>(TAtlasVcsKind.Git, Vcs.Kind);
-    Assert.AreEqual(ExcludeTrailingPathDelimiter(Folder), Vcs.WorkingCopy.Root);
-    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, Vcs.Head(Head));
-    Assert.AreEqual('main', Head.Branch);
-    Assert.AreEqual(Commit, Head.Revision);
-    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, Vcs.Changes(Changes));
-    Assert.AreEqual(0, Integer(Length(Changes)), 'frisch übernommen');
+    mVcs := TAtlasVersionControl.Open(TPath.Combine(mFolder, 'src'), TAtlasVcsProvider.Auto, mRunner);
+    Assert.AreEqual<TAtlasVcsKind>(TAtlasVcsKind.Git, mVcs.Kind);
+    Assert.AreEqual(ExcludeTrailingPathDelimiter(mFolder), mVcs.WorkingCopy.Root);
+    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, mVcs.Head(mHead));
+    Assert.AreEqual('main', mHead.Branch);
+    Assert.AreEqual(mCommit, mHead.Revision);
+    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, mVcs.Changes(mChanges));
+    Assert.AreEqual(0, Integer(Length(mChanges)), 'frisch übernommen');
 
-    AssertGitChanges(Vcs, Folder);
-    AssertBaseAndBlame(Vcs, Folder, Commit, 'Stand im Repository', First);
-    Assert.AreEqual('Atlas Test', First.Author);
-    Assert.AreEqual('Erster Stand', First.Summary);
-    AssertGitWatch(Vcs, Runner, GitExe, Folder);
+    AssertGitChanges(mVcs, mFolder);
+    AssertBaseAndBlame(mVcs, mFolder, mCommit, 'Stand im Repository', mFirst);
+    Assert.AreEqual('Atlas Test', mFirst.Author);
+    Assert.AreEqual('Erster Stand', mFirst.Summary);
+    AssertGitWatch(mVcs, mRunner, mGitExe, mFolder);
   finally
-    Vcs := nil;
-    RemoveFolder(Folder);
+    mVcs := nil;
+    RemoveFolder(mFolder);
   end;
 end;
 
@@ -327,37 +327,37 @@ end;
 
 procedure TAtlasVcsIntegrationTests.SvnWorkingCopyReportsBranchRevisionAndChanges;
 var
-  SvnExe, SvnAdmin, Folder, Url, WorkingCopy: string;
-  Runner: IAtlasVcsRunner;
-  Vcs: IAtlasVersionControl;
-  Head: TAtlasVcsHead;
-  First: TAtlasVcsBlameLine;
+  mSvnExe, mSvnAdmin, mFolder, mUrl, mWorkingCopy: string;
+  mRunner: IAtlasVcsRunner;
+  mVcs: IAtlasVersionControl;
+  mHead: TAtlasVcsHead;
+  mFirst: TAtlasVcsBlameLine;
 begin
   // Ohne svn bzw. svnadmin übersprungen. Exit statt Assert.Pass: DUnitX behält die Meldung
   // im Ergebnis, und der Leckmonitor zählte sie als Leck.
-  if not SvnTools(SvnExe, SvnAdmin) then
+  if not SvnTools(mSvnExe, mSvnAdmin) then
   begin
     Exit;
   end;
-  Runner := TAtlasVcsProcessRunner.Create(True, nil);
-  Folder := NewFolder('svn');
+  mRunner := TAtlasVcsProcessRunner.Create(True, nil);
+  mFolder := NewFolder('svn');
   try
-    WorkingCopy := TPath.Combine(Folder, 'wc');
-    Url := CreateSvnCheckout(Runner, SvnExe, SvnAdmin, Folder, WorkingCopy);
+    mWorkingCopy := TPath.Combine(mFolder, 'wc');
+    mUrl := CreateSvnCheckout(mRunner, mSvnExe, mSvnAdmin, mFolder, mWorkingCopy);
 
-    Vcs := TAtlasVersionControl.Open(WorkingCopy, TAtlasVcsProvider.Auto, Runner);
-    Assert.AreEqual<TAtlasVcsKind>(TAtlasVcsKind.Svn, Vcs.Kind);
-    Assert.IsTrue(SameText(ExcludeTrailingPathDelimiter(WorkingCopy), Vcs.WorkingCopy.Root));
-    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, Vcs.Head(Head));
-    Assert.AreEqual('trunk', Head.Branch);
-    Assert.AreEqual('2', Head.Revision, 'Ablage = r1, erster Stand = r2');
+    mVcs := TAtlasVersionControl.Open(mWorkingCopy, TAtlasVcsProvider.Auto, mRunner);
+    Assert.AreEqual<TAtlasVcsKind>(TAtlasVcsKind.Svn, mVcs.Kind);
+    Assert.IsTrue(SameText(ExcludeTrailingPathDelimiter(mWorkingCopy), mVcs.WorkingCopy.Root));
+    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, mVcs.Head(mHead));
+    Assert.AreEqual('trunk', mHead.Branch);
+    Assert.AreEqual('2', mHead.Revision, 'Ablage = r1, erster Stand = r2');
 
-    AssertSvnChanges(Vcs, WorkingCopy);
-    AssertBaseAndBlame(Vcs, WorkingCopy, '2', 'BASE', First);
-    AssertSvnSwitch(Vcs, Runner, SvnExe, WorkingCopy, Url);
+    AssertSvnChanges(mVcs, mWorkingCopy);
+    AssertBaseAndBlame(mVcs, mWorkingCopy, '2', 'BASE', mFirst);
+    AssertSvnSwitch(mVcs, mRunner, mSvnExe, mWorkingCopy, mUrl);
   finally
-    Vcs := nil;
-    RemoveFolder(Folder);
+    mVcs := nil;
+    RemoveFolder(mFolder);
   end;
 end;
 
@@ -495,54 +495,54 @@ end;
 
 procedure TAtlasVcsIntegrationTests.GitLocalWorkReportsUnsavedAndPushes;
 var
-  GitExe, Folder, Remote: string;
-  Runner: IAtlasVcsRunner;
-  Vcs: IAtlasVersionControl;
-  Local: IAtlasVcsLocalWork;
-  Commits: TArray<TAtlasVcsCommit>;
-  State: TAtlasUnsavedState;
-  Item: TAtlasUnsavedItem;
-  NowUtc: TDateTime;
+  mGitExe, mFolder, mRemote: string;
+  mRunner: IAtlasVcsRunner;
+  mVcs: IAtlasVersionControl;
+  mLocal: IAtlasVcsLocalWork;
+  mCommits: TArray<TAtlasVcsCommit>;
+  mState: TAtlasUnsavedState;
+  mItem: TAtlasUnsavedItem;
+  mNowUtc: TDateTime;
 begin
-  GitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
-  if GitExe = '' then
+  mGitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
+  if mGitExe = '' then
   begin
     Assert.Pass('git nicht installiert; Prüfung übersprungen');
   end;
-  Runner := TAtlasVcsProcessRunner.Create(True, nil);
-  Remote := NewFolder('git-remote');
-  Folder := NewFolder('git-local');
+  mRunner := TAtlasVcsProcessRunner.Create(True, nil);
+  mRemote := NewFolder('git-remote');
+  mFolder := NewFolder('git-local');
   try
-    PrepareLocalWork(Runner, GitExe, Folder, Remote);
-    Vcs := TAtlasVersionControl.Open(Folder, TAtlasVcsProvider.Auto, Runner);
-    Assert.IsTrue(Supports(Vcs, IAtlasVcsLocalWork, Local), 'Git kann lokale Arbeit');
-    AssertBranchesAndOutgoing(Local);
-    AssertStash(Local, Folder);
-    NowUtc := TTimeZone.Local.ToUniversalTime(Now);
-    Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(Vcs, Folder, NowUtc, nil, nil, State));
-    AssertUnsavedState(State, Folder, NowUtc);
+    PrepareLocalWork(mRunner, mGitExe, mFolder, mRemote);
+    mVcs := TAtlasVersionControl.Open(mFolder, TAtlasVcsProvider.Auto, mRunner);
+    Assert.IsTrue(Supports(mVcs, IAtlasVcsLocalWork, mLocal), 'Git kann lokale Arbeit');
+    AssertBranchesAndOutgoing(mLocal);
+    AssertStash(mLocal, mFolder);
+    mNowUtc := TTimeZone.Local.ToUniversalTime(Now);
+    Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(mVcs, mFolder, mNowUtc, nil, nil, mState));
+    AssertUnsavedState(mState, mFolder, mNowUtc);
 
     // Branch ohne Upstream mit einem Commit, der auf keinem Remote liegt.
-    Exec(Runner, GitExe, ['checkout', '-q', '-b', 'feature/lokal'], Folder);
-    Exec(Runner, GitExe, ['commit', '-q', '--allow-empty', '-m', 'Nur lokal'], Folder);
-    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, Local.Outgoing('feature/lokal', '', 10, Commits));
-    Assert.AreEqual(4, Integer(Length(Commits)), 'drei von main und einer eigener, keiner auf origin');
-    Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(Vcs, Folder, NowUtc, nil, nil, State));
-    Assert.IsTrue(State.Find(TAtlasUnsavedKind.NoUpstream, Item));
-    Assert.AreEqual(1, Integer(Item.Count));
-    Assert.AreEqual('feature/lokal', Item.Branches[0]);
+    Exec(mRunner, mGitExe, ['checkout', '-q', '-b', 'feature/lokal'], mFolder);
+    Exec(mRunner, mGitExe, ['commit', '-q', '--allow-empty', '-m', 'Nur lokal'], mFolder);
+    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, mLocal.Outgoing('feature/lokal', '', 10, mCommits));
+    Assert.AreEqual(4, Integer(Length(mCommits)), 'drei von main und einer eigener, keiner auf origin');
+    Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(mVcs, mFolder, mNowUtc, nil, nil, mState));
+    Assert.IsTrue(mState.Find(TAtlasUnsavedKind.NoUpstream, mItem));
+    Assert.AreEqual(1, Integer(mItem.Count));
+    Assert.AreEqual('feature/lokal', mItem.Branches[0]);
 
     // Push erst nach Plan: main auf seinen Upstream, der neue Branch mit --set-upstream.
-    PushPlanned(Local, State, TAtlasUnsavedKind.Commits, 'origin/main');
-    PushPlanned(Local, State, TAtlasUnsavedKind.NoUpstream, 'origin/feature/lokal');
-    AssertAllPushed(Local);
-    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, Local.Push('-x', 'origin', 'refs/heads/main', False),
+    PushPlanned(mLocal, mState, TAtlasUnsavedKind.Commits, 'origin/main');
+    PushPlanned(mLocal, mState, TAtlasUnsavedKind.NoUpstream, 'origin/feature/lokal');
+    AssertAllPushed(mLocal);
+    Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, mLocal.Push('-x', 'origin', 'refs/heads/main', False),
       'keine Optionen als Branch');
   finally
-    Vcs := nil;
-    Local := nil;
-    RemoveFolder(Folder);
-    RemoveFolder(Remote);
+    mVcs := nil;
+    mLocal := nil;
+    RemoveFolder(mFolder);
+    RemoveFolder(mRemote);
   end;
 end;
 
@@ -589,80 +589,80 @@ end;
 
 procedure TAtlasVcsIntegrationTests.GitIncomingCommitsOnEditedFiles;
 var
-  GitExe, Remote, Folder, Other: string;
-  Runner: IAtlasVcsRunner;
-  Vcs: IAtlasVersionControl;
-  State: TAtlasWorkState;
-  Found: TAtlasContinueIncoming;
-  NowUtc: TDateTime;
+  mGitExe, mRemote, mFolder, mOther: string;
+  mRunner: IAtlasVcsRunner;
+  mVcs: IAtlasVersionControl;
+  mState: TAtlasWorkState;
+  mFound: TAtlasContinueIncoming;
+  mNowUtc: TDateTime;
 begin
-  GitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
-  if GitExe = '' then
+  mGitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
+  if mGitExe = '' then
   begin
     Assert.Pass('git nicht installiert; Prüfung übersprungen');
   end;
-  Runner := TAtlasVcsProcessRunner.Create(True, nil);
-  Remote := NewFolder('git-in-remote');
-  Folder := NewFolder('git-in-local');
-  Other := NewFolder('git-in-other');
+  mRunner := TAtlasVcsProcessRunner.Create(True, nil);
+  mRemote := NewFolder('git-in-remote');
+  mFolder := NewFolder('git-in-local');
+  mOther := NewFolder('git-in-other');
   try
-    InitGitWithCustomerUnits(Runner, GitExe, Remote, Folder);
-    Vcs := TAtlasVersionControl.Open(Folder, TAtlasVcsProvider.Auto, Runner);
+    InitGitWithCustomerUnits(mRunner, mGitExe, mRemote, mFolder);
+    mVcs := TAtlasVersionControl.Open(mFolder, TAtlasVcsProvider.Auto, mRunner);
     // Beim Schließen: Kunde.pas offen, HEAD und origin/main gemerkt.
-    State := TAtlasWorkState.Empty;
-    State.Tabs := [TAtlasWorkTab.Create(TPath.Combine(Folder, 'Kunde.pas'), 1, 1)];
-    Assert.IsTrue(TAtlasWelcomeContinue.ProbeHead(Vcs, State));
-    Assert.AreEqual('git', State.VcsKind);
-    Assert.AreEqual('origin/main', State.Upstream);
-    Assert.AreEqual(40, Integer(Length(State.Head)));
-    Assert.AreEqual(State.Head, State.UpstreamRevision);
+    mState := TAtlasWorkState.Empty;
+    mState.Tabs := [TAtlasWorkTab.Create(TPath.Combine(mFolder, 'Kunde.pas'), 1, 1)];
+    Assert.IsTrue(TAtlasWelcomeContinue.ProbeHead(mVcs, mState));
+    Assert.AreEqual('git', mState.VcsKind);
+    Assert.AreEqual('origin/main', mState.Upstream);
+    Assert.AreEqual(40, Integer(Length(mState.Head)));
+    Assert.AreEqual(mState.Head, mState.UpstreamRevision);
     // Ein Kollege pusht je einen Commit zu Kunde.pas und zu Fremd.pas.
-    PushColleagueCommits(Runner, GitExe, Remote, Other);
-    NowUtc := TTimeZone.Local.ToUniversalTime(Now);
+    PushColleagueCommits(mRunner, mGitExe, mRemote, mOther);
+    mNowUtc := TTimeZone.Local.ToUniversalTime(Now);
     // Ohne fetch: Grundlage ist der lokale Stand der Remote-Branches, dort ist noch nichts Neues.
-    Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, TPath.Combine(Folder, 'Atlas.dproj'), State, NowUtc,
-      Found));
-    Assert.IsTrue(Found.Available);
-    Assert.AreEqual(0, Integer(Length(Found.Commits)));
+    Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(mVcs, nil, TPath.Combine(mFolder, 'Atlas.dproj'), mState, mNowUtc,
+      mFound));
+    Assert.IsTrue(mFound.Available);
+    Assert.AreEqual(0, Integer(Length(mFound.Commits)));
     // Mit fetch: nur der Commit zur offenen Datei.
-    Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, Vcs, TPath.Combine(Folder, 'Atlas.dproj'), State, NowUtc,
-      Found));
-    Assert.IsFalse(Found.FetchFailed);
-    Assert.AreEqual('origin/main', Found.Upstream);
-    Assert.AreEqual(1, Integer(Length(Found.Commits)), 'Commit zu einer anderen Datei erscheint nicht');
-    Assert.AreEqual('Kunde: Prüfung', Found.Commits[0].Commit.Summary);
-    Assert.AreEqual('Eva Kollegin', Found.Commits[0].Commit.Author);
-    Assert.AreEqual(TPath.Combine(Folder, 'Kunde.pas'), Found.Commits[0].Files[0]);
-    Assert.AreEqual(7, Integer(Length(Found.Commits[0].Commit.ShortHash)));
+    Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(mVcs, mVcs, TPath.Combine(mFolder, 'Atlas.dproj'), mState, mNowUtc,
+      mFound));
+    Assert.IsFalse(mFound.FetchFailed);
+    Assert.AreEqual('origin/main', mFound.Upstream);
+    Assert.AreEqual(1, Integer(Length(mFound.Commits)), 'Commit zu einer anderen Datei erscheint nicht');
+    Assert.AreEqual('Kunde: Prüfung', mFound.Commits[0].Commit.Summary);
+    Assert.AreEqual('Eva Kollegin', mFound.Commits[0].Commit.Author);
+    Assert.AreEqual(TPath.Combine(mFolder, 'Kunde.pas'), mFound.Commits[0].Files[0]);
+    Assert.AreEqual(7, Integer(Length(mFound.Commits[0].Commit.ShortHash)));
   finally
-    Vcs := nil;
-    RemoveFolder(Folder);
-    RemoveFolder(Other);
-    RemoveFolder(Remote);
+    mVcs := nil;
+    RemoveFolder(mFolder);
+    RemoveFolder(mOther);
+    RemoveFolder(mRemote);
   end;
 end;
 
 procedure TAtlasVcsIntegrationTests.RunnerRefusesMainThreadAndHonoursTimeout;
 var
-  Runner: IAtlasVcsRunner;
-  Ping: string;
-  Answer: TAtlasVcsRunResult;
-  Started: UInt64;
+  mRunner: IAtlasVcsRunner;
+  mPing: string;
+  mAnswer: TAtlasVcsRunResult;
+  mStarted: UInt64;
 begin
-  Ping := TPath.Combine(GetEnvironmentVariable('SystemRoot'), 'System32\PING.EXE');
-  Runner := TAtlasVcsProcessRunner.Create;
-  Answer := Runner.Run(Ping, ['-n', '1', '127.0.0.1'], '', 5000);
-  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.MainThread, Answer.Outcome, 'Hauptthread abgelehnt');
-  Runner := TAtlasVcsProcessRunner.Create(True, nil);
-  Answer := Runner.Run(TPath.Combine(TPath.GetTempPath, 'gibt-es-nicht.exe'), [], '', 5000);
-  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.ToolMissing, Answer.Outcome);
-  Started := TThread.GetTickCount64;
-  Answer := Runner.Run(Ping, ['-n', '30', '127.0.0.1'], '', 300);
-  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.TimedOut, Answer.Outcome, 'Zeitlimit');
-  Assert.IsTrue(TThread.GetTickCount64 - Started < 5000, 'Prozess beendet, nicht abgewartet');
-  Answer := Runner.Run(Ping, ['-n', '1', '127.0.0.1'], '', 10000);
-  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, Answer.Outcome);
-  Assert.IsTrue(Length(Answer.Output) > 0, 'stdout gelesen');
+  mPing := TPath.Combine(GetEnvironmentVariable('SystemRoot'), 'System32\PING.EXE');
+  mRunner := TAtlasVcsProcessRunner.Create;
+  mAnswer := mRunner.Run(mPing, ['-n', '1', '127.0.0.1'], '', 5000);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.MainThread, mAnswer.Outcome, 'Hauptthread abgelehnt');
+  mRunner := TAtlasVcsProcessRunner.Create(True, nil);
+  mAnswer := mRunner.Run(TPath.Combine(TPath.GetTempPath, 'gibt-es-nicht.exe'), [], '', 5000);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.ToolMissing, mAnswer.Outcome);
+  mStarted := TThread.GetTickCount64;
+  mAnswer := mRunner.Run(mPing, ['-n', '30', '127.0.0.1'], '', 300);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.TimedOut, mAnswer.Outcome, 'Zeitlimit');
+  Assert.IsTrue(TThread.GetTickCount64 - mStarted < 5000, 'Prozess beendet, nicht abgewartet');
+  mAnswer := mRunner.Run(mPing, ['-n', '1', '127.0.0.1'], '', 10000);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, mAnswer.Outcome);
+  Assert.IsTrue(Length(mAnswer.Output) > 0, 'stdout gelesen');
   Assert.AreEqual('"a b"', TAtlasVcsProcessRunner.QuoteArgument('a b'));
   Assert.AreEqual('"x\"y"', TAtlasVcsProcessRunner.QuoteArgument('x"y'));
   Assert.AreEqual('"C:\a b\\"', TAtlasVcsProcessRunner.QuoteArgument('C:\a b\'));
@@ -695,60 +695,60 @@ end;
 
 procedure TAtlasVcsIntegrationTests.WorkerRunsInBackgroundAndDeliversInMainThread;
 var
-  Worker: TAtlasVcsWorker;
-  Vcs: IAtlasVersionControl;
-  Outcome: TAtlasVcsOutcome;
-  Head: TAtlasVcsHead;
-  Done, InMain: Boolean;
-  Deadline: UInt64;
-  GitExe: string;
+  mWorker: TAtlasVcsWorker;
+  mVcs: IAtlasVersionControl;
+  mOutcome: TAtlasVcsOutcome;
+  mHead: TAtlasVcsHead;
+  mDone, mInMain: Boolean;
+  mDeadline: UInt64;
+  mGitExe: string;
 begin
-  GitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
-  if GitExe = '' then
+  mGitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
+  if mGitExe = '' then
   begin
     Assert.Pass('git nicht installiert; Prüfung übersprungen');
   end;
-  Vcs := RepositoryVcs(GitExe);
-  Done := False;
-  InMain := False;
-  Outcome := TAtlasVcsOutcome.Failed;
-  Worker := TAtlasVcsWorker.Create;
+  mVcs := RepositoryVcs(mGitExe);
+  mDone := False;
+  mInMain := False;
+  mOutcome := TAtlasVcsOutcome.Failed;
+  mWorker := TAtlasVcsWorker.Create;
   try
-    Assert.IsTrue(Worker.Run(
+    Assert.IsTrue(mWorker.Run(
       procedure
       begin
-        Outcome := Vcs.Head(Head);
+        mOutcome := mVcs.Head(mHead);
       end,
       procedure
       begin
-        InMain := TThread.CurrentThread.ThreadID = MainThreadID;
-        Done := True;
+        mInMain := TThread.CurrentThread.ThreadID = MainThreadID;
+        mDone := True;
       end), 'gestartet');
-    Deadline := TThread.GetTickCount64 + 20000;
-    while not Done and (TThread.GetTickCount64 < Deadline) do
+    mDeadline := TThread.GetTickCount64 + 20000;
+    while not mDone and (TThread.GetTickCount64 < mDeadline) do
     begin
       CheckSynchronize(10);
     end;
-    Assert.IsTrue(Done, 'Ergebnis zugestellt');
-    Assert.IsTrue(InMain, 'im Hauptthread');
-    Assert.AreNotEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.MainThread, Outcome, 'im Hintergrund gelaufen');
-    AssertRepositoryHead(Vcs, Outcome, Head);
-    Assert.AreEqual(0, Worker.Pending);
+    Assert.IsTrue(mDone, 'Ergebnis zugestellt');
+    Assert.IsTrue(mInMain, 'im Hauptthread');
+    Assert.AreNotEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.MainThread, mOutcome, 'im Hintergrund gelaufen');
+    AssertRepositoryHead(mVcs, mOutcome, mHead);
+    Assert.AreEqual(0, mWorker.Pending);
     // Nach Stop kommt nichts mehr an.
-    Done := False;
-    Worker.Stop(1000);
-    Assert.IsFalse(Worker.Run(
+    mDone := False;
+    mWorker.Stop(1000);
+    Assert.IsFalse(mWorker.Run(
       procedure
       begin
       end,
       procedure
       begin
-        Done := True;
+        mDone := True;
       end), 'nach Stop nicht gestartet');
     CheckSynchronize(50);
-    Assert.IsFalse(Done);
+    Assert.IsFalse(mDone);
   finally
-    Worker.Free;
+    mWorker.Free;
   end;
 end;
 

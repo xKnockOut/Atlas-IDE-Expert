@@ -91,13 +91,13 @@ uses
   Atlas.Common.Mcp.CodeTools;
 
 const
-  WerkzeugFile = 'C:\P\Werkzeug.pas';
-  HauptFile = 'C:\P\Haupt.pas';
-  HauptForm = 'C:\P\Haupt.dfm';
-  TestFile = 'C:\P\Werkzeug.Tests.pas';
-  AbseitsFile = 'C:\P\Abseits.pas';
+  cWerkzeugFile = 'C:\P\Werkzeug.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
+  cHauptForm = 'C:\P\Haupt.dfm';
+  cTestFile = 'C:\P\Werkzeug.Tests.pas';
+  cAbseitsFile = 'C:\P\Abseits.pas';
 
-  UnitWerkzeug =
+  cUnitWerkzeug =
     'unit Werkzeug;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -148,7 +148,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Werkzeug;'#10 +
@@ -166,14 +166,14 @@ const
     '  Hilfe;'#10 +
     'end.';
 
-  FormHaupt =
+  cFormHaupt =
     'object Form1: TForm1'#10 +
     '  object Button1: TButton'#10 +
     '    OnClick = Button1Click'#10 +
     '  end'#10 +
     'end';
 
-  UnitTests =
+  cUnitTests =
     'unit Werkzeug.Tests;'#10 +
     'interface'#10 +
     'uses DUnitX.TestFramework, Werkzeug;'#10 +
@@ -191,7 +191,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitAbseits =
+  cUnitAbseits =
     'unit Abseits;'#10 +
     'interface'#10 +
     'procedure Fern;'#10 +
@@ -203,25 +203,25 @@ const
 
 function TextOf(const AFileName: string): string;
 begin
-  if SameText(AFileName, WerkzeugFile) then
+  if SameText(AFileName, cWerkzeugFile) then
   begin
-    Result := UnitWerkzeug;
+    Result := cUnitWerkzeug;
   end
-  else if SameText(AFileName, HauptFile) then
+  else if SameText(AFileName, cHauptFile) then
   begin
-    Result := UnitHaupt;
+    Result := cUnitHaupt;
   end
-  else if SameText(AFileName, HauptForm) then
+  else if SameText(AFileName, cHauptForm) then
   begin
-    Result := FormHaupt;
+    Result := cFormHaupt;
   end
-  else if SameText(AFileName, TestFile) then
+  else if SameText(AFileName, cTestFile) then
   begin
-    Result := UnitTests;
+    Result := cUnitTests;
   end
-  else if SameText(AFileName, AbseitsFile) then
+  else if SameText(AFileName, cAbseitsFile) then
   begin
-    Result := UnitAbseits;
+    Result := cUnitAbseits;
   end
   else
   begin
@@ -237,42 +237,42 @@ end;
 
 function ProjectFiles: TArray<string>;
 begin
-  Result := TArray<string>.Create(WerkzeugFile, HauptFile, TestFile, AbseitsFile);
+  Result := TArray<string>.Create(cWerkzeugFile, cHauptFile, cTestFile, cAbseitsFile);
 end;
 
 function PositionOf(const AText, AMarker, AName: string): TTextPosition;
 var
-  Index, Line, LineStart, Scan: Integer;
+  mIndex, mLine, mLineStart, mScan: Integer;
 begin
-  Index := Pos(AMarker, AText);
-  if Index = 0 then
+  mIndex := Pos(AMarker, AText);
+  if mIndex = 0 then
   begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
   end;
-  Index := Index + Pos(AName, AMarker) - 1;
-  Line := 0;
-  LineStart := 1;
-  for Scan := 1 to Index - 1 do
+  mIndex := mIndex + Pos(AName, AMarker) - 1;
+  mLine := 0;
+  mLineStart := 1;
+  for mScan := 1 to mIndex - 1 do
   begin
-    if AText[Scan] = #10 then
+    if AText[mScan] = #10 then
     begin
-      Inc(Line);
-      LineStart := Scan + 1;
+      Inc(mLine);
+      mLineStart := mScan + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 function Describe(const AResult: TImpactResult): string;
 var
-  Place: TImpactPlace;
+  mPlace: TImpactPlace;
 begin
   Result := '';
-  for Place in AResult.Places do
+  for mPlace in AResult.Places do
   begin
-    Result := Result + Format('%s.%s@%d:%d(L%d c%d) ', [Place.Item.Container, Place.Item.Name,
-      Place.Item.SelectionRange.StartPos.Line, Place.Item.SelectionRange.StartPos.Character, Place.Level,
-      Place.Cause]);
+    Result := Result + Format('%s.%s@%d:%d(L%d c%d) ', [mPlace.Item.Container, mPlace.Item.Name,
+      mPlace.Item.SelectionRange.StartPos.Line, mPlace.Item.SelectionRange.StartPos.Character, mPlace.Level,
+      mPlace.Cause]);
   end;
 end;
 
@@ -288,10 +288,10 @@ end;
 procedure TImpactAnalysisTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitWerkzeug, WerkzeugFile, nil, nil, True));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitHaupt, HauptFile, nil, nil, True));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitTests, TestFile, nil, nil, True));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitAbseits, AbseitsFile, nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitTests, cTestFile, nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAbseits, cAbseitsFile, nil, nil, True));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -303,14 +303,14 @@ end;
 
 function TImpactAnalysisTests.ItemAt(const AFileName, AMarker, AName: string): THierarchyItem;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TSyntaxTreeCache.Parse(TextOf(AFileName));
+  mTree := TSyntaxTreeCache.Parse(TextOf(AFileName));
   try
-    Assert.IsTrue(TLspHierarchies.SymbolItemAt(FResolver, Tree, AFileName,
+    Assert.IsTrue(TLspHierarchies.SymbolItemAt(FResolver, mTree, AFileName,
       PositionOf(TextOf(AFileName), AMarker, AName), Result), AMarker);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -330,13 +330,13 @@ end;
 
 function TImpactAnalysisTests.PlaceNamed(const AResult: TImpactResult; const AName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(AResult.Places) do
+  for mIndex := 0 to High(AResult.Places) do
   begin
-    if SameText(AResult.Places[Index].Item.Name, AName) then
+    if SameText(AResult.Places[mIndex].Item.Name, AName) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -344,194 +344,194 @@ end;
 
 procedure TImpactAnalysisTests.DirectCallerOnLevelOne;
 var
-  Found: TImpactResult;
-  Hilfe: Integer;
+  mFound: TImpactResult;
+  mHilfe: Integer;
 begin
-  Found := Analyze(ItemAt(WerkzeugFile, 'procedure Ziel;', 'Ziel'), 1);
-  Assert.AreEqual('Ziel', Found.Symbol.Name);
-  Assert.AreEqual(1, Integer(Length(Found.Places)));
-  Hilfe := PlaceNamed(Found, 'Hilfe');
-  Assert.AreEqual(0, Hilfe);
-  Assert.AreEqual(1, Found.Places[Hilfe].Level);
-  Assert.AreEqual(-1, Found.Places[Hilfe].Cause);
-  Assert.AreEqual<TImpactEdge>(TImpactEdge.Call, Found.Places[Hilfe].Edge);
+  mFound := Analyze(ItemAt(cWerkzeugFile, 'procedure Ziel;', 'Ziel'), 1);
+  Assert.AreEqual('Ziel', mFound.Symbol.Name);
+  Assert.AreEqual(1, Integer(Length(mFound.Places)));
+  mHilfe := PlaceNamed(mFound, 'Hilfe');
+  Assert.AreEqual(0, mHilfe);
+  Assert.AreEqual(1, mFound.Places[mHilfe].Level);
+  Assert.AreEqual(-1, mFound.Places[mHilfe].Cause);
+  Assert.AreEqual<TImpactEdge>(TImpactEdge.Call, mFound.Places[mHilfe].Edge);
   // Beide Aufrufe in Hilfe gehören zur selben Stelle.
-  Assert.AreEqual(2, Integer(Length(Found.Places[Hilfe].Ranges)));
-  Assert.IsTrue(Found.Places[Hilfe].Confidence.IsSure);
+  Assert.AreEqual(2, Integer(Length(mFound.Places[mHilfe].Ranges)));
+  Assert.IsTrue(mFound.Places[mHilfe].Confidence.IsSure);
 end;
 
 procedure TImpactAnalysisTests.IndirectCallersNamedWithTheirCause;
 var
-  Found: TImpactResult;
-  Hilfe, Oben, Handler: Integer;
+  mFound: TImpactResult;
+  mHilfe, mOben, mHandler: Integer;
 begin
-  Found := Analyze(ItemAt(WerkzeugFile, 'procedure Ziel;', 'Ziel'), 3);
-  Hilfe := PlaceNamed(Found, 'Hilfe');
-  Oben := PlaceNamed(Found, 'Oben');
-  Handler := PlaceNamed(Found, 'Button1Click');
-  Assert.IsTrue(Oben >= 0, Describe(Found));
-  Assert.AreEqual(2, Found.Places[Oben].Level);
-  Assert.AreEqual(Hilfe, Found.Places[Oben].Cause);
-  Assert.IsTrue(Handler >= 0);
-  Assert.AreEqual(3, Found.Places[Handler].Level);
-  Assert.AreEqual(Oben, Found.Places[Handler].Cause);
-  Assert.AreEqual(1, Found.LevelCount(1));
+  mFound := Analyze(ItemAt(cWerkzeugFile, 'procedure Ziel;', 'Ziel'), 3);
+  mHilfe := PlaceNamed(mFound, 'Hilfe');
+  mOben := PlaceNamed(mFound, 'Oben');
+  mHandler := PlaceNamed(mFound, 'Button1Click');
+  Assert.IsTrue(mOben >= 0, Describe(mFound));
+  Assert.AreEqual(2, mFound.Places[mOben].Level);
+  Assert.AreEqual(mHilfe, mFound.Places[mOben].Cause);
+  Assert.IsTrue(mHandler >= 0);
+  Assert.AreEqual(3, mFound.Places[mHandler].Level);
+  Assert.AreEqual(mOben, mFound.Places[mHandler].Cause);
+  Assert.AreEqual(1, mFound.LevelCount(1));
 end;
 
 procedure TImpactAnalysisTests.FormHandlerOnLastLevelKeepsBinding;
 var
-  Found: TImpactResult;
-  Handler: Integer;
+  mFound: TImpactResult;
+  mHandler: Integer;
 begin
   // Der Handler steht auf der letzten Ebene; seine Bindung im Formular kostet keine eigene.
-  Found := Analyze(ItemAt(WerkzeugFile, 'procedure Oben;', 'Oben'), 1);
-  Handler := PlaceNamed(Found, 'Button1Click');
-  Assert.IsTrue(Handler >= 0);
-  Assert.AreEqual(1, Integer(Length(Found.Places[Handler].Forms)));
-  Assert.AreEqual(HauptForm, Found.Places[Handler].Forms[0].FileName);
-  Assert.AreEqual('OnClick = Button1Click', Found.Places[Handler].Forms[0].Text);
-  Assert.AreEqual(2, Found.Places[Handler].Forms[0].Range.StartPos.Line);
+  mFound := Analyze(ItemAt(cWerkzeugFile, 'procedure Oben;', 'Oben'), 1);
+  mHandler := PlaceNamed(mFound, 'Button1Click');
+  Assert.IsTrue(mHandler >= 0);
+  Assert.AreEqual(1, Integer(Length(mFound.Places[mHandler].Forms)));
+  Assert.AreEqual(cHauptForm, mFound.Places[mHandler].Forms[0].FileName);
+  Assert.AreEqual('OnClick = Button1Click', mFound.Places[mHandler].Forms[0].Text);
+  Assert.AreEqual(2, mFound.Places[mHandler].Forms[0].Range.StartPos.Line);
 end;
 
 procedure TImpactAnalysisTests.UnitLevelUseIsTerminal;
 var
-  Found: TImpactResult;
-  Index: Integer;
-  Terminal: Boolean;
+  mFound: TImpactResult;
+  mIndex: Integer;
+  mTerminal: Boolean;
 begin
-  Found := Analyze(ItemAt(WerkzeugFile, 'procedure Hilfe;', 'Hilfe'), 2);
-  Terminal := False;
-  for Index := 0 to High(Found.Places) do
+  mFound := Analyze(ItemAt(cWerkzeugFile, 'procedure Hilfe;', 'Hilfe'), 2);
+  mTerminal := False;
+  for mIndex := 0 to High(mFound.Places) do
   begin
-    if Found.Places[Index].Terminal then
+    if mFound.Places[mIndex].Terminal then
     begin
-      Terminal := True;
-      Assert.AreEqual('Haupt', Found.Places[Index].Item.Name);
-      Assert.AreEqual(1, Found.Places[Index].Level);
+      mTerminal := True;
+      Assert.AreEqual('Haupt', mFound.Places[mIndex].Item.Name);
+      Assert.AreEqual(1, mFound.Places[mIndex].Level);
     end;
   end;
-  Assert.IsTrue(Terminal);
+  Assert.IsTrue(mTerminal);
   // Die Unit selbst wird nicht weiter verfolgt: Keine Stelle nennt sie als Ursache.
-  for Index := 0 to High(Found.Places) do
+  for mIndex := 0 to High(mFound.Places) do
   begin
-    if Found.Places[Index].Cause >= 0 then
+    if mFound.Places[mIndex].Cause >= 0 then
     begin
-      Assert.IsFalse(Found.Places[Found.Places[Index].Cause].Terminal);
+      Assert.IsFalse(mFound.Places[mFound.Places[mIndex].Cause].Terminal);
     end;
   end;
 end;
 
 procedure TImpactAnalysisTests.AffectedTestsWithRunNames;
 var
-  Found: TImpactResult;
-  Test: Integer;
+  mFound: TImpactResult;
+  mTest: Integer;
 begin
-  Found := Analyze(ItemAt(WerkzeugFile, 'procedure Ziel;', 'Ziel'), 2);
-  Assert.AreEqual(1, Integer(Length(Found.Tests)));
-  Assert.AreEqual('Werkzeug.Tests.TWerkzeugTests.PrueftHilfe', Found.Tests[0].Name);
-  Assert.AreEqual(2, Found.Tests[0].Level);
-  Assert.AreEqual(TestFile, Found.Tests[0].FileName);
-  Assert.AreEqual(1, Integer(Length(Found.RunNames)));
-  Assert.AreEqual('Werkzeug.Tests.TWerkzeugTests.PrueftHilfe', Found.RunNames[0]);
-  Test := PlaceNamed(Found, 'PrueftHilfe');
-  Assert.IsTrue(Test >= 0);
-  Assert.AreEqual(0, Found.Places[Test].Test);
+  mFound := Analyze(ItemAt(cWerkzeugFile, 'procedure Ziel;', 'Ziel'), 2);
+  Assert.AreEqual(1, Integer(Length(mFound.Tests)));
+  Assert.AreEqual('Werkzeug.Tests.TWerkzeugTests.PrueftHilfe', mFound.Tests[0].Name);
+  Assert.AreEqual(2, mFound.Tests[0].Level);
+  Assert.AreEqual(cTestFile, mFound.Tests[0].FileName);
+  Assert.AreEqual(1, Integer(Length(mFound.RunNames)));
+  Assert.AreEqual('Werkzeug.Tests.TWerkzeugTests.PrueftHilfe', mFound.RunNames[0]);
+  mTest := PlaceNamed(mFound, 'PrueftHilfe');
+  Assert.IsTrue(mTest >= 0);
+  Assert.AreEqual(0, mFound.Places[mTest].Test);
 end;
 
 procedure TImpactAnalysisTests.DepthLimitCountsUnexpanded;
 var
-  Found: TImpactResult;
+  mFound: TImpactResult;
 begin
-  Found := Analyze(ItemAt(WerkzeugFile, 'procedure Ziel;', 'Ziel'), 1);
-  Assert.IsTrue(TImpactLimit.Depth in Found.Limits);
-  Assert.AreEqual(1, Found.Unexpanded);
-  Assert.IsFalse(TImpactLimit.Count in Found.Limits);
+  mFound := Analyze(ItemAt(cWerkzeugFile, 'procedure Ziel;', 'Ziel'), 1);
+  Assert.IsTrue(TImpactLimit.Depth in mFound.Limits);
+  Assert.AreEqual(1, mFound.Unexpanded);
+  Assert.IsFalse(TImpactLimit.Count in mFound.Limits);
 end;
 
 procedure TImpactAnalysisTests.CycleEndsAtStart;
 var
-  Found: TImpactResult;
+  mFound: TImpactResult;
 begin
   // Hin ruft Her, Her ruft Hin: Hin ist das Symbol und erscheint nicht noch einmal.
-  Found := Analyze(ItemAt(WerkzeugFile, 'procedure Hin;', 'Hin'), 5);
-  Assert.AreEqual(1, Integer(Length(Found.Places)));
-  Assert.AreEqual('Her', Found.Places[0].Item.Name);
-  Assert.IsFalse(TImpactLimit.Depth in Found.Limits);
+  mFound := Analyze(ItemAt(cWerkzeugFile, 'procedure Hin;', 'Hin'), 5);
+  Assert.AreEqual(1, Integer(Length(mFound.Places)));
+  Assert.AreEqual('Her', mFound.Places[0].Item.Name);
+  Assert.IsFalse(TImpactLimit.Depth in mFound.Limits);
 end;
 
 procedure TImpactAnalysisTests.CountLimitStopsAndReports;
 var
-  Settings: TImpactOptions;
-  Found: TImpactResult;
+  mSettings: TImpactOptions;
+  mFound: TImpactResult;
 begin
-  Settings := Options(3);
-  Settings.MaxPlaces := 2;
-  Found := Analyze(ItemAt(WerkzeugFile, 'procedure Ziel;', 'Ziel'), Settings);
-  Assert.AreEqual(2, Integer(Length(Found.Places)));
-  Assert.IsTrue(TImpactLimit.Count in Found.Limits);
-  Assert.AreEqual(2, Found.MaxPlaces);
+  mSettings := Options(3);
+  mSettings.MaxPlaces := 2;
+  mFound := Analyze(ItemAt(cWerkzeugFile, 'procedure Ziel;', 'Ziel'), mSettings);
+  Assert.AreEqual(2, Integer(Length(mFound.Places)));
+  Assert.IsTrue(TImpactLimit.Count in mFound.Limits);
+  Assert.AreEqual(2, mFound.MaxPlaces);
 end;
 
 procedure TImpactAnalysisTests.TimeLimitReported;
 var
-  Settings: TImpactOptions;
-  Found: TImpactResult;
+  mSettings: TImpactOptions;
+  mFound: TImpactResult;
 begin
   // 1 ms: Spätestens die zweite Ebene liegt hinter der Grenze; das Ergebnis bis dahin bleibt.
-  Settings := Options(5);
-  Settings.TimeoutMs := 1;
+  mSettings := Options(5);
+  mSettings.TimeoutMs := 1;
   Sleep(5);
-  Found := Analyze(ItemAt(WerkzeugFile, 'procedure Ziel;', 'Ziel'), Settings);
-  Assert.AreEqual(1, Found.TimeoutMs);
-  Assert.IsTrue((TImpactLimit.Time in Found.Limits) or (Length(Found.Places) > 0));
+  mFound := Analyze(ItemAt(cWerkzeugFile, 'procedure Ziel;', 'Ziel'), mSettings);
+  Assert.AreEqual(1, mFound.TimeoutMs);
+  Assert.IsTrue((TImpactLimit.Time in mFound.Limits) or (Length(mFound.Places) > 0));
 end;
 
 procedure TImpactAnalysisTests.OverrideFoundFromBase;
 var
-  Found: TImpactResult;
-  Index: Integer;
+  mFound: TImpactResult;
+  mIndex: Integer;
 begin
-  Found := Analyze(ItemAt(WerkzeugFile, 'procedure Arbeite; virtual', 'Arbeite'), 1);
-  Index := PlaceNamed(Found, 'Arbeite');
-  Assert.IsTrue(Index >= 0);
-  Assert.AreEqual('TKind', Found.Places[Index].Item.Container);
-  Assert.AreEqual<TImpactEdge>(TImpactEdge.Override_, Found.Places[Index].Edge);
+  mFound := Analyze(ItemAt(cWerkzeugFile, 'procedure Arbeite; virtual', 'Arbeite'), 1);
+  mIndex := PlaceNamed(mFound, 'Arbeite');
+  Assert.IsTrue(mIndex >= 0);
+  Assert.AreEqual('TKind', mFound.Places[mIndex].Item.Container);
+  Assert.AreEqual<TImpactEdge>(TImpactEdge.Override_, mFound.Places[mIndex].Edge);
 end;
 
 procedure TImpactAnalysisTests.BaseMethodFoundFromOverride;
 var
-  Found: TImpactResult;
-  Index: Integer;
+  mFound: TImpactResult;
+  mIndex: Integer;
 begin
-  Found := Analyze(ItemAt(WerkzeugFile, 'procedure Arbeite; override', 'Arbeite'), 1);
-  Index := PlaceNamed(Found, 'Arbeite');
-  Assert.IsTrue(Index >= 0);
-  Assert.AreEqual('TBasis', Found.Places[Index].Item.Container);
-  Assert.AreEqual<TImpactEdge>(TImpactEdge.BaseMethod, Found.Places[Index].Edge);
+  mFound := Analyze(ItemAt(cWerkzeugFile, 'procedure Arbeite; override', 'Arbeite'), 1);
+  mIndex := PlaceNamed(mFound, 'Arbeite');
+  Assert.IsTrue(mIndex >= 0);
+  Assert.AreEqual('TBasis', mFound.Places[mIndex].Item.Container);
+  Assert.AreEqual<TImpactEdge>(TImpactEdge.BaseMethod, mFound.Places[mIndex].Edge);
 end;
 
 procedure TImpactAnalysisTests.ImplementationFoundFromInterface;
 var
-  Found: TImpactResult;
-  Index: Integer;
+  mFound: TImpactResult;
+  mIndex: Integer;
 begin
-  Found := Analyze(ItemAt(WerkzeugFile, '    procedure Rechne;'#10'  end;'#10'  TBasis', 'Rechne'), 1);
-  Index := PlaceNamed(Found, 'Rechne');
-  Assert.IsTrue(Index >= 0);
-  Assert.AreEqual('TKind', Found.Places[Index].Item.Container);
-  Assert.AreEqual<TImpactEdge>(TImpactEdge.Implementation_, Found.Places[Index].Edge);
+  mFound := Analyze(ItemAt(cWerkzeugFile, '    procedure Rechne;'#10'  end;'#10'  TBasis', 'Rechne'), 1);
+  mIndex := PlaceNamed(mFound, 'Rechne');
+  Assert.IsTrue(mIndex >= 0);
+  Assert.AreEqual('TKind', mFound.Places[mIndex].Item.Container);
+  Assert.AreEqual<TImpactEdge>(TImpactEdge.Implementation_, mFound.Places[mIndex].Edge);
 end;
 
 procedure TImpactAnalysisTests.InterfaceMethodFoundFromImplementation;
 var
-  Found: TImpactResult;
-  Index: Integer;
+  mFound: TImpactResult;
+  mIndex: Integer;
 begin
-  Found := Analyze(ItemAt(WerkzeugFile, 'procedure TKind.Rechne;', 'Rechne'), 1);
-  Index := PlaceNamed(Found, 'Rechne');
-  Assert.IsTrue(Index >= 0);
-  Assert.AreEqual('IRechner', Found.Places[Index].Item.Container);
-  Assert.AreEqual<TImpactEdge>(TImpactEdge.InterfaceMethod, Found.Places[Index].Edge);
+  mFound := Analyze(ItemAt(cWerkzeugFile, 'procedure TKind.Rechne;', 'Rechne'), 1);
+  mIndex := PlaceNamed(mFound, 'Rechne');
+  Assert.IsTrue(mIndex >= 0);
+  Assert.AreEqual('IRechner', mFound.Places[mIndex].Item.Container);
+  Assert.AreEqual<TImpactEdge>(TImpactEdge.InterfaceMethod, mFound.Places[mIndex].Edge);
 end;
 
 procedure TImpactAnalysisTests.DepthClamped;
@@ -539,74 +539,74 @@ begin
   Assert.AreEqual(1, TImpactAnalysis.ClampDepth(0));
   Assert.AreEqual(3, TImpactAnalysis.ClampDepth(3));
   Assert.AreEqual(5, TImpactAnalysis.ClampDepth(9));
-  Assert.AreEqual(2, Analyze(ItemAt(WerkzeugFile, 'procedure Hin;', 'Hin'), 2).Depth);
+  Assert.AreEqual(2, Analyze(ItemAt(cWerkzeugFile, 'procedure Hin;', 'Hin'), 2).Depth);
 end;
 
 procedure TImpactAnalysisTests.CandidateFilesSkipFilesWithoutName;
 var
-  Files: TArray<string>;
+  mFiles: TArray<string>;
 begin
-  Files := TImpactAnalysis.CandidateFiles(FIndex, TArray<string>.Create(WerkzeugFile, HauptFile, AbseitsFile,
+  mFiles := TImpactAnalysis.CandidateFiles(FIndex, TArray<string>.Create(cWerkzeugFile, cHauptFile, cAbseitsFile,
     'C:\P\Fremd.pas'), 'Hilfe');
   // Abseits kennt Hilfe laut Index nicht; Fremd steht nicht im Index und bleibt.
-  Assert.AreEqual(3, Integer(Length(Files)));
-  Assert.AreEqual(WerkzeugFile, Files[0]);
-  Assert.AreEqual(HauptFile, Files[1]);
-  Assert.AreEqual('C:\P\Fremd.pas', Files[2]);
+  Assert.AreEqual(3, Integer(Length(mFiles)));
+  Assert.AreEqual(cWerkzeugFile, mFiles[0]);
+  Assert.AreEqual(cHauptFile, mFiles[1]);
+  Assert.AreEqual('C:\P\Fremd.pas', mFiles[2]);
 end;
 
 procedure TImpactAnalysisTests.TestScopeFromProgram;
 var
-  Scope: TImpactTestScope;
+  mScope: TImpactTestScope;
 begin
-  Scope := TImpactTestScope.FromProgram('Test.{unit}',
+  mScope := TImpactTestScope.FromProgram('Test.{unit}',
     'program Tests;'#10'uses'#10'  DUnitX.TestFramework,'#10'  Kunden.Pruefung in ''Kunden.Pruefung.pas'';'#10 +
     'begin'#10'end.');
-  Assert.IsTrue(Scope.Contains('Kunden.Pruefung'));
-  Assert.IsTrue(Scope.Contains('Test.Kunden'));
-  Assert.IsFalse(Scope.Contains('Kunden'));
-  Assert.IsFalse(Scope.Contains(''));
-  Scope := TImpactTestScope.FromProgram('{unit}.Tests', '');
-  Assert.AreEqual(0, Integer(Length(Scope.Units)));
+  Assert.IsTrue(mScope.Contains('Kunden.Pruefung'));
+  Assert.IsTrue(mScope.Contains('Test.Kunden'));
+  Assert.IsFalse(mScope.Contains('Kunden'));
+  Assert.IsFalse(mScope.Contains(''));
+  mScope := TImpactTestScope.FromProgram('{unit}.Tests', '');
+  Assert.AreEqual(0, Integer(Length(mScope.Units)));
 end;
 
 procedure TImpactAnalysisTests.JsonCarriesLevelsEdgesAndLimits;
 var
-  Json: TJSONObject;
-  Places, Tests: TJSONArray;
-  Place: TJSONObject;
+  mJson: TJSONObject;
+  mPlaces, mTests: TJSONArray;
+  mPlace: TJSONObject;
 begin
-  Json := TImpactAnalysis.ToJson(Analyze(ItemAt(WerkzeugFile, 'procedure Ziel;', 'Ziel'), 2));
+  mJson := TImpactAnalysis.ToJson(Analyze(ItemAt(cWerkzeugFile, 'procedure Ziel;', 'Ziel'), 2));
   try
-    Assert.AreEqual(2, Json.GetValue<Integer>('depth'));
-    Places := Json.GetValue('places') as TJSONArray;
-    Assert.IsTrue(Places.Count >= 3);
-    Place := Places.Items[0] as TJSONObject;
-    Assert.AreEqual(1, Place.GetValue<Integer>('level'));
-    Assert.AreEqual('call', Place.GetValue<string>('edge'));
-    Assert.AreEqual(-1, (Place.GetValue('cause') as TJSONNumber).AsInt);
-    Assert.AreEqual('Hilfe', Place.GetValue<string>('item.name'));
-    Tests := Json.GetValue('tests') as TJSONArray;
-    Assert.AreEqual(1, Tests.Count);
-    Assert.IsTrue(Json.GetValue<Boolean>('limits.depth'));
-    Assert.IsFalse(Json.GetValue<Boolean>('limits.count'));
-    Assert.IsFalse(Json.GetValue<Boolean>('limits.time'));
+    Assert.AreEqual(2, mJson.GetValue<Integer>('depth'));
+    mPlaces := mJson.GetValue('places') as TJSONArray;
+    Assert.IsTrue(mPlaces.Count >= 3);
+    mPlace := mPlaces.Items[0] as TJSONObject;
+    Assert.AreEqual(1, mPlace.GetValue<Integer>('level'));
+    Assert.AreEqual('call', mPlace.GetValue<string>('edge'));
+    Assert.AreEqual(-1, (mPlace.GetValue('cause') as TJSONNumber).AsInt);
+    Assert.AreEqual('Hilfe', mPlace.GetValue<string>('item.name'));
+    mTests := mJson.GetValue('tests') as TJSONArray;
+    Assert.AreEqual(1, mTests.Count);
+    Assert.IsTrue(mJson.GetValue<Boolean>('limits.depth'));
+    Assert.IsFalse(mJson.GetValue<Boolean>('limits.count'));
+    Assert.IsFalse(mJson.GetValue<Boolean>('limits.time'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TImpactAnalysisTests.HandlerAnswersAtlasImpact;
 var
-  Store: IDocumentStore;
-  Analysis: TImpactAnalysis;
-  Dispatcher: TJsonRpcDispatcher;
-  Message, Response: TJSONObject;
-  Position: TTextPosition;
+  mStore: IDocumentStore;
+  mAnalysis: TImpactAnalysis;
+  mDispatcher: TJsonRpcDispatcher;
+  mMessage, mResponse: TJSONObject;
+  mPosition: TTextPosition;
 begin
-  Store := TDocumentStore.Create;
-  Store.Open(TDocumentUris.FromPath(WerkzeugFile), 'delphi', 1, UnitWerkzeug);
-  Analysis := TImpactAnalysis.Create(Store, FIndex,
+  mStore := TDocumentStore.Create;
+  mStore.Open(TDocumentUris.FromPath(cWerkzeugFile), 'delphi', 1, cUnitWerkzeug);
+  mAnalysis := TImpactAnalysis.Create(mStore, FIndex,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := ReadFile(AFileName, AText);
@@ -615,28 +615,28 @@ begin
     begin
       Result := ProjectFiles;
     end);
-  Dispatcher := TJsonRpcDispatcher.Create;
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Analysis.Attach(Dispatcher);
-    Position := PositionOf(UnitWerkzeug, 'procedure Ziel;', 'Ziel');
-    Message := TJSONObject.ParseJSONValue(Format('{"jsonrpc":"2.0","id":1,"method":"%s","params":{' +
+    mAnalysis.Attach(mDispatcher);
+    mPosition := PositionOf(cUnitWerkzeug, 'procedure Ziel;', 'Ziel');
+    mMessage := TJSONObject.ParseJSONValue(Format('{"jsonrpc":"2.0","id":1,"method":"%s","params":{' +
       '"textDocument":{"uri":"%s"},"position":{"line":%d,"character":%d},"depth":1}}', [TImpactAnalysis.cMethod,
-      TDocumentUris.FromPath(WerkzeugFile), Position.Line, Position.Character])) as TJSONObject;
+      TDocumentUris.FromPath(cWerkzeugFile), mPosition.Line, mPosition.Character])) as TJSONObject;
     try
-      Response := Dispatcher.DispatchMessage(Message);
+      mResponse := mDispatcher.DispatchMessage(mMessage);
       try
-        Assert.IsTrue(Response.GetValue('result') is TJSONObject, Response.ToJSON);
-        Assert.AreEqual(1, Response.GetValue<Integer>('result.depth'));
-        Assert.AreEqual(1, Response.GetValue<TJSONArray>('result.places').Count);
+        Assert.IsTrue(mResponse.GetValue('result') is TJSONObject, mResponse.ToJSON);
+        Assert.AreEqual(1, mResponse.GetValue<Integer>('result.depth'));
+        Assert.AreEqual(1, mResponse.GetValue<TJSONArray>('result.places').Count);
       finally
-        Response.Free;
+        mResponse.Free;
       end;
     finally
-      Message.Free;
+      mMessage.Free;
     end;
   finally
-    Dispatcher.Free;
-    Analysis.Free;
+    mDispatcher.Free;
+    mAnalysis.Free;
   end;
 end;
 
@@ -655,52 +655,52 @@ end;
 
 procedure TImpactAnalysisTests.McpTextShowsTreeTestsAndLimits;
 var
-  Tools: TMcpCodeTools;
-  Text: string;
+  mTools: TMcpCodeTools;
+  mText: string;
 begin
-  Tools := NewTools(FIndex);
+  mTools := NewTools(FIndex);
   try
-    Text := Tools.Impact('Ziel', 2, False);
-    Assert.AreEqual(1, Pos('Auswirkungen von Ziel', Text), Text);
-    Assert.IsTrue(Pos('Tiefe 2', Text) > 0, Text);
-    Assert.IsTrue(Pos(' Hilfe – Unit Werkzeug', Text) > 0, Text);
+    mText := mTools.Impact('Ziel', 2, False);
+    Assert.AreEqual(1, Pos('Auswirkungen von Ziel', mText), mText);
+    Assert.IsTrue(Pos('Tiefe 2', mText) > 0, mText);
+    Assert.IsTrue(Pos(' Hilfe – Unit Werkzeug', mText) > 0, mText);
     // Ebene 2 eine Stufe tiefer eingerückt unter ihrer Ursache.
-    Assert.IsTrue(Pos(#10'    ', Text) > Pos(' Hilfe – Unit', Text), Text);
-    Assert.IsTrue(Pos(' Oben – Unit Werkzeug', Text) > Pos(' Hilfe – Unit', Text), Text);
-    Assert.IsTrue(Pos('(Aufruf, 2×)', Text) > 0, Text);
-    Assert.IsTrue(Pos('Unit-Ebene', Text) > 0, Text);
-    Assert.IsTrue(Pos('run_tests tests: Werkzeug.Tests.TWerkzeugTests.PrueftHilfe', Text) > 0, Text);
-    Assert.IsTrue(Pos('Tiefe 2 erreicht', Text) > 0, Text);
-    Assert.IsTrue(Pos('Kein Symbol "Fehlt"', Tools.Impact('Fehlt', False)) > 0);
+    Assert.IsTrue(Pos(#10'    ', mText) > Pos(' Hilfe – Unit', mText), mText);
+    Assert.IsTrue(Pos(' Oben – Unit Werkzeug', mText) > Pos(' Hilfe – Unit', mText), mText);
+    Assert.IsTrue(Pos('(Aufruf, 2×)', mText) > 0, mText);
+    Assert.IsTrue(Pos('Unit-Ebene', mText) > 0, mText);
+    Assert.IsTrue(Pos('run_tests tests: Werkzeug.Tests.TWerkzeugTests.PrueftHilfe', mText) > 0, mText);
+    Assert.IsTrue(Pos('Tiefe 2 erreicht', mText) > 0, mText);
+    Assert.IsTrue(Pos('Kein Symbol "Fehlt"', mTools.Impact('Fehlt', False)) > 0);
   finally
-    Tools.Free;
+    mTools.Free;
   end;
 end;
 
 procedure TImpactAnalysisTests.McpJsonLikeAtlasImpact;
 var
-  Tools: TMcpCodeTools;
-  Json: TJSONValue;
+  mTools: TMcpCodeTools;
+  mJson: TJSONValue;
 begin
-  Tools := NewTools(FIndex);
+  mTools := NewTools(FIndex);
   try
     // Ohne Tiefe: navigation.impactDepth über ImpactOptionsFor.
-    Tools.ImpactOptionsFor :=
+    mTools.ImpactOptionsFor :=
       function(const AUri: string): TImpactOptions
       begin
         Result := Options(1);
       end;
-    Json := TJSONObject.ParseJSONValue(Tools.Impact('Ziel', True));
+    mJson := TJSONObject.ParseJSONValue(mTools.Impact('Ziel', True));
     try
-      Assert.IsTrue(Json is TJSONObject);
-      Assert.AreEqual(1, TJSONObject(Json).GetValue<Integer>('depth'));
-      Assert.AreEqual('Ziel', TJSONObject(Json).GetValue<string>('symbol.name'));
-      Assert.AreEqual(1, TJSONObject(Json).GetValue<TJSONArray>('places').Count);
+      Assert.IsTrue(mJson is TJSONObject);
+      Assert.AreEqual(1, TJSONObject(mJson).GetValue<Integer>('depth'));
+      Assert.AreEqual('Ziel', TJSONObject(mJson).GetValue<string>('symbol.name'));
+      Assert.AreEqual(1, TJSONObject(mJson).GetValue<TJSONArray>('places').Count);
     finally
-      Json.Free;
+      mJson.Free;
     end;
   finally
-    Tools.Free;
+    mTools.Free;
   end;
 end;
 
@@ -711,8 +711,8 @@ var
   mIndex: Integer;
 begin
   // #1353: mehrere Startpunkte mit gemeinsamen Bäumen und Units, je Ergebnis wie eine eigene Analyse.
-  mStarts := TArray<THierarchyItem>.Create(ItemAt(WerkzeugFile, 'procedure Ziel;', 'Ziel'),
-    ItemAt(WerkzeugFile, 'procedure Oben;', 'Oben'));
+  mStarts := TArray<THierarchyItem>.Create(ItemAt(cWerkzeugFile, 'procedure Ziel;', 'Ziel'),
+    ItemAt(cWerkzeugFile, 'procedure Oben;', 'Oben'));
   mEach := TImpactAnalysis.AnalyzeEach(FResolver, FIndex, mStarts, TImpactSources.Create(ProjectFiles,
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -769,48 +769,49 @@ const
 
 procedure TImpactAnalysisTests.LongChainStaysFast;
 var
-  Texts: TArray<string>;
-  Files: TArray<string>;
-  Index: Integer;
-  Big: ISymbolIndex;
-  Resolver: TNameResolver;
-  Tree: TSyntaxTree;
-  Start: THierarchyItem;
-  Watch: TStopwatch;
-  Found: TImpactResult;
-  Settings: TImpactOptions;
+  mTexts: TArray<string>;
+  mFiles: TArray<string>;
+  mIndex: Integer;
+  mBig: ISymbolIndex;
+  mResolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mStart: THierarchyItem;
+  mWatch: TStopwatch;
+  mFound: TImpactResult;
+  mSettings: TImpactOptions;
 begin
   // Kette Stufe1 ← Stufe2 ← … über Count Units: Tiefe 5 geht fünf Units weit.
-  SetLength(Texts, cLongChainCount);
-  SetLength(Files, cLongChainCount);
-  Big := TSymbolIndex.Create;
-  for Index := 0 to cLongChainCount - 1 do
+  SetLength(mTexts, cLongChainCount);
+  SetLength(mFiles, cLongChainCount);
+  mBig := TSymbolIndex.Create;
+  for mIndex := 0 to cLongChainCount - 1 do
   begin
-    Files[Index] := Format('C:\B\Stufe%d.pas', [Index]);
-    Texts[Index] := ChainText(Index);
-    Big.AddUnit(TIndexExtractor.ExtractText(Texts[Index], Files[Index], nil, nil, True));
+    mFiles[mIndex] := Format('C:\B\Stufe%d.pas', [mIndex]);
+    mTexts[mIndex] := ChainText(mIndex);
+    mBig.AddUnit(TIndexExtractor.ExtractText(mTexts[mIndex], mFiles[mIndex], nil, nil, True));
   end;
-  Resolver := TNameResolver.Create(Big);
+  mResolver := TNameResolver.Create(mBig);
   try
-    Tree := TSyntaxTreeCache.Parse(Texts[0]);
+    mTree := TSyntaxTreeCache.Parse(mTexts[0]);
     try
-      Assert.IsTrue(TLspHierarchies.SymbolItemAt(Resolver, Tree, Files[0], PositionOf(Texts[0], 'procedure Lauf0;',
-        'Lauf0'), Start));
+      Assert.IsTrue(TLspHierarchies.SymbolItemAt(mResolver, mTree, mFiles[0], PositionOf(mTexts[0], 'procedure Lauf0;',
+        'Lauf0'), mStart));
     finally
-      Tree.Free;
+      mTree.Free;
     end;
-    Settings := Options(5);
-    Watch := TStopwatch.StartNew;
-    Found := TImpactAnalysis.Analyze(Resolver, Big, Start, TImpactSources.Create(Files, TextsReader(Files, Texts)),
-      Settings, nil);
-    Watch.Stop;
+    mSettings := Options(5);
+    mWatch := TStopwatch.StartNew;
+    mFound := TImpactAnalysis.Analyze(mResolver, mBig, mStart,
+      TImpactSources.Create(mFiles, TextsReader(mFiles, mTexts)),
+      mSettings, nil);
+    mWatch.Stop;
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
-  Assert.AreEqual(5, Integer(Length(Found.Places)));
-  Assert.AreEqual(5, Found.Places[4].Level);
+  Assert.AreEqual(5, Integer(Length(mFound.Places)));
+  Assert.AreEqual(5, mFound.Places[4].Level);
   // Der Vorfilter über den Index liest je Ebene nur die eine Unit, die den Namen verwendet.
-  Assert.IsTrue(Watch.ElapsedMilliseconds < 5000, Format('%d ms', [Watch.ElapsedMilliseconds]));
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < 5000, Format('%d ms', [mWatch.ElapsedMilliseconds]));
 end;
 
 initialization

@@ -78,20 +78,20 @@ end;
 
 function TFixture.ValueNode(const AName: string): TSyntaxNode;
 var
-  Found: TSyntaxNode;
+  mFound: TSyntaxNode;
 begin
-  Found := nil;
+  mFound := nil;
   FTree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if (ANode.Kind = TSyntaxKind.ConstDecl) and SameText(ANode.Name, AName) then
       begin
-        Found := ANode[ANode.ChildCount - 1];
+        mFound := ANode[ANode.ChildCount - 1];
       end;
       Result := True;
     end);
-  Assert.IsNotNull(Found, AName);
-  Result := Found;
+  Assert.IsNotNull(mFound, AName);
+  Result := mFound;
 end;
 
 function TFixture.Status(const AName: string; out AValue: Int64): TOrdinalStatus;
@@ -115,23 +115,23 @@ end;
 /// <summary>Wert der ersten Konstanten AName unter ARoot; nil ohne.</summary>
 function FindDecl(ARoot: TSyntaxNode; const AName: string): TSyntaxNode;
 var
-  Found: TSyntaxNode;
+  mFound: TSyntaxNode;
 begin
-  Found := nil;
+  mFound := nil;
   ARoot.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
-      if (Found = nil) and (ANode.Kind = TSyntaxKind.ConstDecl) and SameText(ANode.Name, AName) then
+      if (mFound = nil) and (ANode.Kind = TSyntaxKind.ConstDecl) and SameText(ANode.Name, AName) then
       begin
-        Found := ANode[ANode.ChildCount - 1];
+        mFound := ANode[ANode.ChildCount - 1];
       end;
-      Result := Found = nil;
+      Result := mFound = nil;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 const
-  Source = 'unit Probe;'#10'interface'#10'uses'#10'  Farben;'#10'implementation'#10'const'#10 +
+  cSource = 'unit Probe;'#10'interface'#10'uses'#10'  Farben;'#10'implementation'#10'const'#10 +
     '  Eigen = 3;'#10'  A = Grenze - Eigen;'#10'  B = Ord(fBlau) + 1;'#10'  C = Ord(cB);'#10'  D = Unbekannt + 1;'#10 +
     'end.';
 
@@ -139,159 +139,159 @@ const
 
 procedure TConstantValuesTests.ConstantsAndEnumsOfOwnUnit;
 var
-  Fixture: TFixture;
-  Value: Int64;
+  mFixture: TFixture;
+  mValue: Int64;
 begin
-  Fixture := TFixture.Create(Werte('type'#10'  TFarbe = (Rot, Gruen, Blau);'#10'const'#10'  Basis = 10;'#10 +
+  mFixture := TFixture.Create(Werte('type'#10'  TFarbe = (Rot, Gruen, Blau);'#10'const'#10'  Basis = 10;'#10 +
     '  Doppelt = Basis * 2;'#10'  Letzte = Ord(Blau) + Doppelt;'#10'  Text = ''abc'';'#10), nil);
   try
-    Assert.AreEqual(Ord(TOrdinalStatus.Value), Ord(Fixture.Status('Doppelt', Value)));
-    Assert.AreEqual(Int64(20), Value);
-    Assert.AreEqual(Ord(TOrdinalStatus.Value), Ord(Fixture.Status('Letzte', Value)));
-    Assert.AreEqual(Int64(22), Value);
-    Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(Fixture.Status('Text', Value)));
+    Assert.AreEqual(Ord(TOrdinalStatus.Value), Ord(mFixture.Status('Doppelt', mValue)));
+    Assert.AreEqual(Int64(20), mValue);
+    Assert.AreEqual(Ord(TOrdinalStatus.Value), Ord(mFixture.Status('Letzte', mValue)));
+    Assert.AreEqual(Int64(22), mValue);
+    Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(mFixture.Status('Text', mValue)));
   finally
-    Fixture.Free;
+    mFixture.Free;
   end;
 end;
 
 procedure TConstantValuesTests.ConstantsFromIndex;
 var
-  Index: ISymbolIndex;
-  Fixture: TFixture;
-  Value: Int64;
+  mIndex: ISymbolIndex;
+  mFixture: TFixture;
+  mValue: Int64;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText('unit Grenzen;'#10'interface'#10'const'#10'  Basis = 4;'#10 +
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Grenzen;'#10'interface'#10'const'#10'  Basis = 4;'#10 +
     '  Grenze = Basis * 25;'#10'implementation'#10'end.', 'C:\Projekt\Grenzen.pas', nil));
-  Fixture := TFixture.Create('unit Werte;'#10'interface'#10'uses'#10'  Grenzen;'#10'const'#10 +
-    '  Halb = Grenze div 2;'#10'implementation'#10'end.', Index);
+  mFixture := TFixture.Create('unit Werte;'#10'interface'#10'uses'#10'  Grenzen;'#10'const'#10 +
+    '  Halb = Grenze div 2;'#10'implementation'#10'end.', mIndex);
   try
-    Assert.AreEqual(Ord(TOrdinalStatus.Value), Ord(Fixture.Status('Halb', Value)));
-    Assert.AreEqual(Int64(50), Value);
+    Assert.AreEqual(Ord(TOrdinalStatus.Value), Ord(mFixture.Status('Halb', mValue)));
+    Assert.AreEqual(Int64(50), mValue);
   finally
-    Fixture.Free;
+    mFixture.Free;
   end;
 end;
 
 procedure TConstantValuesTests.CheckGivesReason;
 var
-  Fixture: TFixture;
-  Value: Int64;
-  First, Last: Integer;
+  mFixture: TFixture;
+  mValue: Int64;
+  mFirst, mLast: Integer;
 begin
-  Fixture := TFixture.Create(Werte('const'#10'  Null = 0;'#10'  Teilt = 5 div Null;'#10 +
+  mFixture := TFixture.Create(Werte('const'#10'  Null = 0;'#10'  Teilt = 5 div Null;'#10 +
     '  Riesig = 1000000 * 1000000 * 1000000 * 1000;'#10), nil);
   try
-    Assert.AreEqual(Ord(TOrdinalStatus.DivisionByZero), Ord(Fixture.Status('Teilt', Value)));
-    Assert.AreEqual(Ord(TOrdinalStatus.Overflow), Ord(Fixture.Status('Riesig', Value)));
-    Assert.IsTrue(Fixture.FValues.TokenRange(Fixture.ValueNode('Teilt'), First, Last));
-    Assert.AreEqual('5', Fixture.FTree.Tokens[First].Text);
-    Assert.AreEqual('Null', Fixture.FTree.Tokens[Last].Text);
+    Assert.AreEqual(Ord(TOrdinalStatus.DivisionByZero), Ord(mFixture.Status('Teilt', mValue)));
+    Assert.AreEqual(Ord(TOrdinalStatus.Overflow), Ord(mFixture.Status('Riesig', mValue)));
+    Assert.IsTrue(mFixture.FValues.TokenRange(mFixture.ValueNode('Teilt'), mFirst, mLast));
+    Assert.AreEqual('5', mFixture.FTree.Tokens[mFirst].Text);
+    Assert.AreEqual('Null', mFixture.FTree.Tokens[mLast].Text);
   finally
-    Fixture.Free;
+    mFixture.Free;
   end;
 end;
 
 procedure TConstantValuesTests.ConditionalConstantsNeedSameBranch;
 var
-  Fixture: TFixture;
-  Value: Int64;
+  mFixture: TFixture;
+  mValue: Int64;
 begin
-  Fixture := TFixture.Create(Werte('const'#10'{$IFDEF KLEIN}'#10'  Seiten = 0;'#10'  Innen = 10 div Seiten;'#10 +
+  mFixture := TFixture.Create(Werte('const'#10'{$IFDEF KLEIN}'#10'  Seiten = 0;'#10'  Innen = 10 div Seiten;'#10 +
     '{$ELSE}'#10'  Seiten = 5;'#10'{$ENDIF}'#10'  Aussen = 10 div Seiten;'#10), nil);
   try
-    Assert.AreEqual(Ord(TOrdinalStatus.DivisionByZero), Ord(Fixture.Status('Innen', Value)));
-    Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(Fixture.Status('Aussen', Value)));
+    Assert.AreEqual(Ord(TOrdinalStatus.DivisionByZero), Ord(mFixture.Status('Innen', mValue)));
+    Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(mFixture.Status('Aussen', mValue)));
   finally
-    Fixture.Free;
+    mFixture.Free;
   end;
 end;
 
 procedure TConstantValuesTests.ConstantsAndEnumValues;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Values: TConstantValues;
-  Value: Int64;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mValues: TConstantValues;
+  mValue: Int64;
 begin
-  Tree := TPascalParser.Parse(Source);
-  Resolver := TNameResolver.Create(FarbenIndex);
+  mTree := TPascalParser.Parse(cSource);
+  mResolver := TNameResolver.Create(FarbenIndex);
   try
-    Resolver.PinTree(Tree, 'Probe.pas');
-    Values := TConstantValues.Create(Tree, 'Probe.pas', FarbenIndex, Resolver);
+    mResolver.PinTree(mTree, 'Probe.pas');
+    mValues := TConstantValues.Create(mTree, 'Probe.pas', FarbenIndex, mResolver);
     try
-      Assert.IsTrue(Values.EvaluateNode(FindDecl(Tree.Root, 'A'), Value));
-      Assert.AreEqual(Int64(18), Value);
-      Assert.IsTrue(Values.EvaluateNode(FindDecl(Tree.Root, 'B'), Value));
-      Assert.AreEqual(Int64(3), Value);
+      Assert.IsTrue(mValues.EvaluateNode(FindDecl(mTree.Root, 'A'), mValue));
+      Assert.AreEqual(Int64(18), mValue);
+      Assert.IsTrue(mValues.EvaluateNode(FindDecl(mTree.Root, 'B'), mValue));
+      Assert.AreEqual(Int64(3), mValue);
       // Eigene Werte (cB = 5): Position nicht sicher.
-      Assert.IsFalse(Values.EvaluateNode(FindDecl(Tree.Root, 'C'), Value));
-      Assert.IsFalse(Values.EvaluateNode(FindDecl(Tree.Root, 'D'), Value));
-      Assert.IsFalse(Values.EvaluateNode(nil, Value));
+      Assert.IsFalse(mValues.EvaluateNode(FindDecl(mTree.Root, 'C'), mValue));
+      Assert.IsFalse(mValues.EvaluateNode(FindDecl(mTree.Root, 'D'), mValue));
+      Assert.IsFalse(mValues.EvaluateNode(nil, mValue));
     finally
-      Values.Free;
-      Resolver.UnpinTree;
+      mValues.Free;
+      mResolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TConstantValuesTests.EnumMembersInOrder;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Values: TConstantValues;
-  Index: ISymbolIndex;
-  Farbe, Code: TResolvedSymbol;
-  Names: TArray<string>;
-  Units: TUnitIndex;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mValues: TConstantValues;
+  mIndex: ISymbolIndex;
+  mFarbe, mCode: TResolvedSymbol;
+  mNames: TArray<string>;
+  mUnits: TUnitIndex;
 begin
-  Index := FarbenIndex;
-  Tree := TPascalParser.Parse(Source);
-  Resolver := TNameResolver.Create(Index);
+  mIndex := FarbenIndex;
+  mTree := TPascalParser.Parse(cSource);
+  mResolver := TNameResolver.Create(mIndex);
   try
-    Resolver.PinTree(Tree, 'Probe.pas');
-    Values := TConstantValues.Create(Tree, 'Probe.pas', Index, Resolver);
+    mResolver.PinTree(mTree, 'Probe.pas');
+    mValues := TConstantValues.Create(mTree, 'Probe.pas', mIndex, mResolver);
     try
-      Assert.IsTrue(Index.FindUnit('Farben', Units));
-      Assert.IsTrue(Resolver.ResolveTypeFrom(Units, 'TFarbe', Farbe));
-      Assert.IsTrue(Values.EnumMembers(Farbe, Names));
-      Assert.AreEqual('fRot,fGruen,fBlau', string.Join(',', Names));
-      Assert.IsTrue(Resolver.ResolveTypeFrom(Units, 'TCode', Code));
-      Assert.IsFalse(Values.EnumMembers(Code, Names));
+      Assert.IsTrue(mIndex.FindUnit('Farben', mUnits));
+      Assert.IsTrue(mResolver.ResolveTypeFrom(mUnits, 'TFarbe', mFarbe));
+      Assert.IsTrue(mValues.EnumMembers(mFarbe, mNames));
+      Assert.AreEqual('fRot,fGruen,fBlau', string.Join(',', mNames));
+      Assert.IsTrue(mResolver.ResolveTypeFrom(mUnits, 'TCode', mCode));
+      Assert.IsFalse(mValues.EnumMembers(mCode, mNames));
     finally
-      Values.Free;
-      Resolver.UnpinTree;
+      mValues.Free;
+      mResolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TConstantValuesTests.IntegerRanges;
 var
-  LowValue, HighValue: Int64;
+  mLowValue, mHighValue: Int64;
 begin
-  Assert.IsTrue(TConstantValues.IntegerRange('Byte', LowValue, HighValue));
-  Assert.AreEqual(Int64(0), LowValue);
-  Assert.AreEqual(Int64(255), HighValue);
-  Assert.IsTrue(TConstantValues.IntegerRange('smallint', LowValue, HighValue));
-  Assert.AreEqual(Int64(-32768), LowValue);
-  Assert.IsTrue(TConstantValues.IntegerRange('Cardinal', LowValue, HighValue));
-  Assert.AreEqual(Int64(4294967295), HighValue);
-  Assert.IsTrue(TConstantValues.IntegerRange('Integer', LowValue, HighValue));
-  Assert.AreEqual(Int64(-2147483648), LowValue);
+  Assert.IsTrue(TConstantValues.IntegerRange('Byte', mLowValue, mHighValue));
+  Assert.AreEqual(Int64(0), mLowValue);
+  Assert.AreEqual(Int64(255), mHighValue);
+  Assert.IsTrue(TConstantValues.IntegerRange('smallint', mLowValue, mHighValue));
+  Assert.AreEqual(Int64(-32768), mLowValue);
+  Assert.IsTrue(TConstantValues.IntegerRange('Cardinal', mLowValue, mHighValue));
+  Assert.AreEqual(Int64(4294967295), mHighValue);
+  Assert.IsTrue(TConstantValues.IntegerRange('Integer', mLowValue, mHighValue));
+  Assert.AreEqual(Int64(-2147483648), mLowValue);
   // Plattformabhängig: weitester Bereich.
-  Assert.IsTrue(TConstantValues.IntegerRange('LongInt', LowValue, HighValue));
-  Assert.AreEqual(Int64(High(Int64)), HighValue);
-  Assert.IsTrue(TConstantValues.IntegerRange('NativeUInt', LowValue, HighValue));
-  Assert.AreEqual(Int64(0), LowValue);
-  Assert.IsFalse(TConstantValues.IntegerRange('Double', LowValue, HighValue));
-  Assert.IsFalse(TConstantValues.IntegerRange('Char', LowValue, HighValue));
+  Assert.IsTrue(TConstantValues.IntegerRange('LongInt', mLowValue, mHighValue));
+  Assert.AreEqual(Int64(High(Int64)), mHighValue);
+  Assert.IsTrue(TConstantValues.IntegerRange('NativeUInt', mLowValue, mHighValue));
+  Assert.AreEqual(Int64(0), mLowValue);
+  Assert.IsFalse(TConstantValues.IntegerRange('Double', mLowValue, mHighValue));
+  Assert.IsFalse(TConstantValues.IntegerRange('Char', mLowValue, mHighValue));
 end;
 
 initialization

@@ -45,9 +45,9 @@ end;
 
 function ConditionOf(ATree: TSyntaxTree): TSyntaxNode;
 var
-  IfNode: TSyntaxNode;
+  mIfNode: TSyntaxNode;
 begin
-  IfNode := ATree.Root.Search(
+  mIfNode := ATree.Root.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
       Result := TSyntaxSearchStep.Descend;
@@ -56,20 +56,20 @@ begin
         Result := TSyntaxSearchStep.Found;
       end;
     end);
-  Result := IfNode[0];
+  Result := mIfNode[0];
 end;
 
 function Negated(const ACondition: string): string;
 var
-  Text: string;
-  Tree: TSyntaxTree;
+  mText: string;
+  mTree: TSyntaxTree;
 begin
-  Text := Program_(ACondition);
-  Tree := TPascalParser.Parse(Text);
+  mText := Program_(ACondition);
+  mTree := TPascalParser.Parse(mText);
   try
-    Result := TExpressionText.Negate(Text, ConditionOf(Tree)).Text;
+    Result := TExpressionText.Negate(mText, ConditionOf(mTree)).Text;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -111,36 +111,36 @@ end;
 
 procedure TExpressionTextTests.CombineSetsParenthesesByPrecedence;
 var
-  Rel, Atom, Sum: TExpressionPart;
+  mRel, mAtom, mSum: TExpressionPart;
 begin
-  Rel := TExpressionPart.Create('X = 1', cPrecedenceRelational);
-  Atom := TExpressionPart.Create('Ready', cPrecedenceOperand);
-  Sum := TExpressionPart.Create('A + B', cPrecedenceAdditive);
-  Assert.AreEqual('(X = 1) and Ready', TExpressionText.Combine('and', Rel, Atom).Text);
-  Assert.AreEqual('Ready or (X = 1)', TExpressionText.Combine('or', Atom, Rel).Text);
-  Assert.AreEqual('A + B = Ready', TExpressionText.Combine('=', Sum, Atom).Text);
-  Assert.AreEqual('A + B - (A + B)', TExpressionText.Combine('-', Sum, Sum).Text);
-  Assert.AreEqual(cPrecedenceMultiplicative, TExpressionText.Combine('and', Rel, Atom).Precedence);
-  Assert.AreEqual('(X = 1)', Rel.AtLeast(cPrecedenceAdditive));
-  Assert.AreEqual('X = 1', Rel.AtLeast(cPrecedenceRelational));
+  mRel := TExpressionPart.Create('X = 1', cPrecedenceRelational);
+  mAtom := TExpressionPart.Create('Ready', cPrecedenceOperand);
+  mSum := TExpressionPart.Create('A + B', cPrecedenceAdditive);
+  Assert.AreEqual('(X = 1) and Ready', TExpressionText.Combine('and', mRel, mAtom).Text);
+  Assert.AreEqual('Ready or (X = 1)', TExpressionText.Combine('or', mAtom, mRel).Text);
+  Assert.AreEqual('A + B = Ready', TExpressionText.Combine('=', mSum, mAtom).Text);
+  Assert.AreEqual('A + B - (A + B)', TExpressionText.Combine('-', mSum, mSum).Text);
+  Assert.AreEqual(cPrecedenceMultiplicative, TExpressionText.Combine('and', mRel, mAtom).Precedence);
+  Assert.AreEqual('(X = 1)', mRel.AtLeast(cPrecedenceAdditive));
+  Assert.AreEqual('X = 1', mRel.AtLeast(cPrecedenceRelational));
 end;
 
 procedure TExpressionTextTests.SameIgnoresLayoutAndCase;
 var
-  Text: string;
-  Tree: TSyntaxTree;
-  Condition: TSyntaxNode;
+  mText: string;
+  mTree: TSyntaxTree;
+  mCondition: TSyntaxNode;
 begin
-  Text := Program_('(Edit1.Text = edit1 . text) and (A[1] = (a[ 1 ])) and (B = C)');
-  Tree := TPascalParser.Parse(Text);
+  mText := Program_('(Edit1.Text = edit1 . text) and (A[1] = (a[ 1 ])) and (B = C)');
+  mTree := TPascalParser.Parse(mText);
   try
-    Condition := ConditionOf(Tree);
+    mCondition := ConditionOf(mTree);
     // (P1 and P2) and P3; je Klammer ein Vergleich mit zwei Seiten.
-    Assert.IsTrue(TExpressionText.Same(Tree, Condition[0][0][0][0], Condition[0][0][0][1]));
-    Assert.IsTrue(TExpressionText.Same(Tree, Condition[0][1][0][0], Condition[0][1][0][1]));
-    Assert.IsFalse(TExpressionText.Same(Tree, Condition[1][0][0], Condition[1][0][1]));
+    Assert.IsTrue(TExpressionText.Same(mTree, mCondition[0][0][0][0], mCondition[0][0][0][1]));
+    Assert.IsTrue(TExpressionText.Same(mTree, mCondition[0][1][0][0], mCondition[0][1][0][1]));
+    Assert.IsFalse(TExpressionText.Same(mTree, mCondition[1][0][0], mCondition[1][0][1]));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -148,15 +148,15 @@ procedure TExpressionTextTests.SideEffects;
 
   function Pure(const ACondition: string): Boolean;
   var
-    Text: string;
-    Tree: TSyntaxTree;
+    mText: string;
+    mTree: TSyntaxTree;
   begin
-    Text := Program_(ACondition);
-    Tree := TPascalParser.Parse(Text);
+    mText := Program_(ACondition);
+    mTree := TPascalParser.Parse(mText);
     try
-      Result := TExpressionText.IsSideEffectFree(ConditionOf(Tree));
+      Result := TExpressionText.IsSideEffectFree(ConditionOf(mTree));
     finally
-      Tree.Free;
+      mTree.Free;
     end;
   end;
 
@@ -169,40 +169,40 @@ end;
 
 procedure TExpressionTextTests.ContextPrecedenceFollowsParent;
 var
-  Text: string;
-  Tree: TSyntaxTree;
-  Condition: TSyntaxNode;
+  mText: string;
+  mTree: TSyntaxTree;
+  mCondition: TSyntaxNode;
 begin
-  Text := Program_('(A = B) and not C or F(X)');
-  Tree := TPascalParser.Parse(Text);
+  mText := Program_('(A = B) and not C or F(X)');
+  mTree := TPascalParser.Parse(mText);
   try
     // ((A = B) and not C) or F(X)
-    Condition := ConditionOf(Tree);
-    Assert.AreEqual(cPrecedenceIfExpr, TExpressionText.ContextPrecedence(Condition));
-    Assert.AreEqual(cPrecedenceAdditive, TExpressionText.ContextPrecedence(Condition[0]));
-    Assert.AreEqual(cPrecedenceMultiplicative, TExpressionText.ContextPrecedence(Condition[0][0]));
-    Assert.AreEqual(cPrecedenceMultiplicative + 1, TExpressionText.ContextPrecedence(Condition[0][1]));
-    Assert.AreEqual(cPrecedenceUnary, TExpressionText.ContextPrecedence(Condition[0][1][0]));
+    mCondition := ConditionOf(mTree);
+    Assert.AreEqual(cPrecedenceIfExpr, TExpressionText.ContextPrecedence(mCondition));
+    Assert.AreEqual(cPrecedenceAdditive, TExpressionText.ContextPrecedence(mCondition[0]));
+    Assert.AreEqual(cPrecedenceMultiplicative, TExpressionText.ContextPrecedence(mCondition[0][0]));
+    Assert.AreEqual(cPrecedenceMultiplicative + 1, TExpressionText.ContextPrecedence(mCondition[0][1]));
+    Assert.AreEqual(cPrecedenceUnary, TExpressionText.ContextPrecedence(mCondition[0][1][0]));
     // Empfänger eines Aufrufs braucht einen Operanden, ein Argument nichts.
-    Assert.AreEqual(cPrecedenceOperand, TExpressionText.ContextPrecedence(Condition[1][0]));
-    Assert.AreEqual(cPrecedenceIfExpr, TExpressionText.ContextPrecedence(Condition[1][1]));
+    Assert.AreEqual(cPrecedenceOperand, TExpressionText.ContextPrecedence(mCondition[1][0]));
+    Assert.AreEqual(cPrecedenceIfExpr, TExpressionText.ContextPrecedence(mCondition[1][1]));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   // Bedingungsausdruck: Bedingung und Wert vor else brauchen Klammern, der Wert nach else nicht.
-  Text := Program_('(if A then B else C)');
-  Tree := TPascalParser.Parse(Text);
+  mText := Program_('(if A then B else C)');
+  mTree := TPascalParser.Parse(mText);
   try
-    Condition := ConditionOf(Tree);
-    while Condition.Kind <> TSyntaxKind.IfExpr do
+    mCondition := ConditionOf(mTree);
+    while mCondition.Kind <> TSyntaxKind.IfExpr do
     begin
-      Condition := Condition[0];
+      mCondition := mCondition[0];
     end;
-    Assert.AreEqual(cPrecedenceIfExpr + 1, TExpressionText.ContextPrecedence(Condition[0]));
-    Assert.AreEqual(cPrecedenceIfExpr + 1, TExpressionText.ContextPrecedence(Condition[1]));
-    Assert.AreEqual(cPrecedenceIfExpr, TExpressionText.ContextPrecedence(Condition[2]));
+    Assert.AreEqual(cPrecedenceIfExpr + 1, TExpressionText.ContextPrecedence(mCondition[0]));
+    Assert.AreEqual(cPrecedenceIfExpr + 1, TExpressionText.ContextPrecedence(mCondition[1]));
+    Assert.AreEqual(cPrecedenceIfExpr, TExpressionText.ContextPrecedence(mCondition[2]));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

@@ -33,15 +33,15 @@ end;
 
 procedure TProductVersionTests.VersionHasMajorMinorPatch;
 var
-  Version: string;
-  Part: string;
+  mVersion: string;
+  mPart: string;
 begin
   // SemVer: Vorabkennung wie -beta.1 steht hinter den drei Zahlen.
-  Version := TProductVersion.cVersion.Split(['-'])[0];
-  Assert.AreEqual<NativeInt>(3, Length(Version.Split(['.'])), 'Version muss aus Major.Minor.Patch bestehen');
-  for Part in Version.Split(['.']) do
+  mVersion := TProductVersion.cVersion.Split(['-'])[0];
+  Assert.AreEqual<NativeInt>(3, Length(mVersion.Split(['.'])), 'Version muss aus Major.Minor.Patch bestehen');
+  for mPart in mVersion.Split(['.']) do
   begin
-    Assert.IsTrue(StrToIntDef(Part, -1) >= 0, Format('"%s" ist keine Zahl', [Part]));
+    Assert.IsTrue(StrToIntDef(mPart, -1) >= 0, Format('"%s" ist keine Zahl', [mPart]));
   end;
 end;
 

@@ -42,10 +42,10 @@ uses
 
 procedure WriteText(AStream: TStream; const AText: string);
 var
-  Bytes: TBytes;
+  mBytes: TBytes;
 begin
-  Bytes := TEncoding.UTF8.GetBytes(AText);
-  AStream.WriteBuffer(Bytes[0], Length(Bytes));
+  mBytes := TEncoding.UTF8.GetBytes(AText);
+  AStream.WriteBuffer(mBytes[0], Length(mBytes));
 end;
 
 function ReadText(const AFileName: string): string;
@@ -57,38 +57,38 @@ end;
 
 procedure TRotatingFileStreamTests.DeleteFiles;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in [FFileName, FFileName + '.1', TRotatingFileStream.FallbackName(FFileName, '42')] do
+  for mName in [FFileName, FFileName + '.1', TRotatingFileStream.FallbackName(FFileName, '42')] do
   begin
-    if TFile.Exists(Name) then
+    if TFile.Exists(mName) then
     begin
-      TFile.Delete(Name);
+      TFile.Delete(mName);
     end;
   end;
 end;
 
 procedure TRotatingFileStreamTests.SetupFixture;
 var
-  FileName: string;
-  First: TStream;
+  mFileName: string;
+  mFirst: TStream;
 begin
   // Die RTL legt beim ersten EFOpenError Daten an, die bis Programmende bleiben (vgl.
   // EFCreateError in den Cache-Tests). Einmal vorab auslösen, damit der Leck-Monitor in
   // den Tests nur deren eigenen Speicher sieht.
-  FileName := TPath.Combine(TPath.GetTempPath, 'Atlas.Tests.' + TGUID.NewGuid.ToString + '.log');
-  First := TFileStream.Create(FileName, fmCreate or fmShareExclusive);
+  mFileName := TPath.Combine(TPath.GetTempPath, 'Atlas.Tests.' + TGUID.NewGuid.ToString + '.log');
+  mFirst := TFileStream.Create(mFileName, fmCreate or fmShareExclusive);
   try
     try
-      TFileStream.Create(FileName, fmOpenWrite or fmShareDenyWrite).Free;
+      TFileStream.Create(mFileName, fmOpenWrite or fmShareDenyWrite).Free;
     except
       on EFOpenError do
         ;
     end;
   finally
-    First.Free;
+    mFirst.Free;
   end;
-  TFile.Delete(FileName);
+  TFile.Delete(mFileName);
 end;
 
 procedure TRotatingFileStreamTests.Setup;
@@ -105,42 +105,42 @@ end;
 
 procedure TRotatingFileStreamTests.AppendsToExistingFile;
 var
-  Stream: TStream;
+  mStream: TStream;
 begin
   TFile.WriteAllText(FFileName, 'alt', TEncoding.ASCII);
-  Stream := TRotatingFileStream.Create(FFileName, True, '');
+  mStream := TRotatingFileStream.Create(FFileName, True, '');
   try
-    WriteText(Stream, 'neu');
+    WriteText(mStream, 'neu');
   finally
-    Stream.Free;
+    mStream.Free;
   end;
   Assert.AreEqual('altneu', ReadText(FFileName));
 end;
 
 procedure TRotatingFileStreamTests.StartsNewFileWithoutAppend;
 var
-  Stream: TStream;
+  mStream: TStream;
 begin
   TFile.WriteAllText(FFileName, 'alt', TEncoding.ASCII);
-  Stream := TRotatingFileStream.Create(FFileName, False, '');
+  mStream := TRotatingFileStream.Create(FFileName, False, '');
   try
-    WriteText(Stream, 'neu');
+    WriteText(mStream, 'neu');
   finally
-    Stream.Free;
+    mStream.Free;
   end;
   Assert.AreEqual('neu', ReadText(FFileName));
 end;
 
 procedure TRotatingFileStreamTests.RotatesWhenLimitIsExceeded;
 var
-  Stream: TStream;
+  mStream: TStream;
 begin
-  Stream := TRotatingFileStream.Create(FFileName, False, '', 10);
+  mStream := TRotatingFileStream.Create(FFileName, False, '', 10);
   try
-    WriteText(Stream, 'erste-');
-    WriteText(Stream, 'zweite');
+    WriteText(mStream, 'erste-');
+    WriteText(mStream, 'zweite');
   finally
-    Stream.Free;
+    mStream.Free;
   end;
   Assert.AreEqual('erste-', ReadText(FFileName + '.1'));
   Assert.AreEqual('zweite', ReadText(FFileName));
@@ -148,20 +148,20 @@ end;
 
 procedure TRotatingFileStreamTests.FallsBackWhenFileIsLocked;
 var
-  First, Second: TRotatingFileStream;
+  mFirst, mSecond: TRotatingFileStream;
 begin
-  First := TRotatingFileStream.Create(FFileName, False, '41');
+  mFirst := TRotatingFileStream.Create(FFileName, False, '41');
   try
-    Second := TRotatingFileStream.Create(FFileName, True, '42');
+    mSecond := TRotatingFileStream.Create(FFileName, True, '42');
     try
-      Assert.AreEqual(TRotatingFileStream.FallbackName(FFileName, '42'), Second.FileName);
-      WriteText(Second, 'zweiter');
+      Assert.AreEqual(TRotatingFileStream.FallbackName(FFileName, '42'), mSecond.FileName);
+      WriteText(mSecond, 'zweiter');
     finally
-      Second.Free;
+      mSecond.Free;
     end;
-    WriteText(First, 'erster');
+    WriteText(mFirst, 'erster');
   finally
-    First.Free;
+    mFirst.Free;
   end;
   Assert.AreEqual('erster', ReadText(FFileName));
   Assert.AreEqual('zweiter', ReadText(TRotatingFileStream.FallbackName(FFileName, '42')));
@@ -169,9 +169,9 @@ end;
 
 procedure TRotatingFileStreamTests.RaisesWhenLockedWithoutFallback;
 var
-  First: TStream;
+  mFirst: TStream;
 begin
-  First := TRotatingFileStream.Create(FFileName, False, '');
+  mFirst := TRotatingFileStream.Create(FFileName, False, '');
   try
     // Belegt meldet die RTL EFOpenError bzw. EFCreateError, beides Unterklassen von EStreamError.
     Assert.WillRaiseDescendant(
@@ -180,7 +180,7 @@ begin
         TRotatingFileStream.Create(FFileName, True, '').Free;
       end, EStreamError);
   finally
-    First.Free;
+    mFirst.Free;
   end;
 end;
 

@@ -25,38 +25,38 @@ uses
 
 procedure TTypeConversionsTests.TypeFitsFamiliesAndDescent;
 var
-  CheckDescent: Boolean;
+  mCheckDescent: Boolean;
 begin
-  Assert.IsTrue(TypeFits('Integer', 'Double', CheckDescent));
-  Assert.IsTrue(TypeFits('Char', 'string', CheckDescent));
-  Assert.IsTrue(TypeFits('System.Classes.TStrings', 'TStrings', CheckDescent));
-  Assert.IsFalse(TypeFits('Double', 'Integer', CheckDescent));
-  Assert.IsFalse(CheckDescent);
-  Assert.IsFalse(TypeFits('TButton', 'TControl', CheckDescent));
-  Assert.IsTrue(CheckDescent, 'Klassen klärt die Namensauflösung');
+  Assert.IsTrue(TypeFits('Integer', 'Double', mCheckDescent));
+  Assert.IsTrue(TypeFits('Char', 'string', mCheckDescent));
+  Assert.IsTrue(TypeFits('System.Classes.TStrings', 'TStrings', mCheckDescent));
+  Assert.IsFalse(TypeFits('Double', 'Integer', mCheckDescent));
+  Assert.IsFalse(mCheckDescent);
+  Assert.IsFalse(TypeFits('TButton', 'TControl', mCheckDescent));
+  Assert.IsTrue(mCheckDescent, 'Klassen klärt die Namensauflösung');
 end;
 
 function Converted(const AActual, AExpected: string; AHelper: Boolean): string;
 var
-  Conversion: TTypeConversion;
+  mConversion: TTypeConversion;
 begin
   Result := '-';
-  if TypeConversion(AActual, AExpected, '', 'X', AHelper, Conversion) then
+  if TypeConversion(AActual, AExpected, '', 'X', AHelper, mConversion) then
   begin
-    if Conversion.Lossy then
+    if mConversion.Lossy then
     begin
       Result := 'lossy';
     end
     else
     begin
-      Result := Conversion.Text + ' | ' + string.Join(',', Conversion.Units);
+      Result := mConversion.Text + ' | ' + string.Join(',', mConversion.Units);
     end;
   end;
 end;
 
 procedure TTypeConversionsTests.TypeConversionPairs;
 var
-  Conversion: TTypeConversion;
+  mConversion: TTypeConversion;
 begin
   // Tabelle aus #490, Funktions- und Helper-Stil.
   Assert.AreEqual('IntToStr(X) | System.SysUtils', Converted('Integer', 'string', False));
@@ -72,9 +72,9 @@ begin
   Assert.AreEqual('X.ToString(TUseBoolStrs.True) | System.SysUtils', Converted('Boolean', 'string', True));
   // TDateTime und Aufzählung haben keinen Helper: immer die Funktion.
   Assert.AreEqual('DateTimeToStr(X) | System.SysUtils', Converted('TDateTime', 'string', True));
-  Assert.IsTrue(TypeConversion('', 'string', 'TFarbe', 'X', True, Conversion));
-  Assert.AreEqual('GetEnumName(TypeInfo(TFarbe), Ord(X))', Conversion.Text);
-  Assert.AreEqual('System.TypInfo', string.Join(',', Conversion.Units));
+  Assert.IsTrue(TypeConversion('', 'string', 'TFarbe', 'X', True, mConversion));
+  Assert.AreEqual('GetEnumName(TypeInfo(TFarbe), Ord(X))', mConversion.Text);
+  Assert.AreEqual('System.TypInfo', string.Join(',', mConversion.Units));
   // Verlustbehaftet nur als Hinweis; Passendes und Unbekanntes ohne Umwandlung.
   Assert.AreEqual('lossy', Converted('Double', 'Integer', True));
   Assert.AreEqual('-', Converted('Integer', 'Double', True));

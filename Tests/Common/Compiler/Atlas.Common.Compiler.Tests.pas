@@ -75,83 +75,83 @@ end;
 
 procedure TCompilerOutputParserTests.ReadsDccLines;
 var
-  Item: TCompilerMessage;
+  mItem: TCompilerMessage;
 begin
-  Item := Parsed('C:\P\Unit1.pas(12) Error: E2003 Undeclared identifier: ''X''');
-  Assert.AreEqual('C:\P\Unit1.pas', Item.FileName);
-  Assert.AreEqual(11, Item.Line);
-  Assert.AreEqual(-1, Item.Column);
-  Assert.AreEqual(Ord(TCompilerSeverity.Error), Ord(Item.Severity));
-  Assert.AreEqual('E2003', Item.Code);
-  Assert.AreEqual('Undeclared identifier: ''X''', Item.Text);
+  mItem := Parsed('C:\P\Unit1.pas(12) Error: E2003 Undeclared identifier: ''X''');
+  Assert.AreEqual('C:\P\Unit1.pas', mItem.FileName);
+  Assert.AreEqual(11, mItem.Line);
+  Assert.AreEqual(-1, mItem.Column);
+  Assert.AreEqual(Ord(TCompilerSeverity.Error), Ord(mItem.Severity));
+  Assert.AreEqual('E2003', mItem.Code);
+  Assert.AreEqual('Undeclared identifier: ''X''', mItem.Text);
   // Relativer Pfad, Hinweis.
-  Item := Parsed('Sub\Unit2.pas(30) Hint: H2164 Variable ''Y'' is declared but never used in ''Foo''');
-  Assert.AreEqual('C:\P\Sub\Unit2.pas', Item.FileName);
-  Assert.AreEqual(Ord(TCompilerSeverity.Hint), Ord(Item.Severity));
+  mItem := Parsed('Sub\Unit2.pas(30) Hint: H2164 Variable ''Y'' is declared but never used in ''Foo''');
+  Assert.AreEqual('C:\P\Sub\Unit2.pas', mItem.FileName);
+  Assert.AreEqual(Ord(TCompilerSeverity.Hint), Ord(mItem.Severity));
   Assert.AreEqual(Ord(TCompilerSeverity.Warning),
     Ord(Parsed('Unit1.pas(5) Warning: W1036 Variable ''Z'' might not have been initialized').Severity));
   // X-Codes (z. B. X1008 Integer und HRESULT vertauscht) sind Warnungen (#1040).
-  Item := Parsed('Unit1.pas(7) Warning: X1008 Integer and HRESULT interchanged');
-  Assert.AreEqual('X1008', Item.Code);
-  Assert.AreEqual(Ord(TCompilerSeverity.Warning), Ord(Item.Severity));
-  Assert.AreEqual('Integer and HRESULT interchanged', Item.Text);
+  mItem := Parsed('Unit1.pas(7) Warning: X1008 Integer and HRESULT interchanged');
+  Assert.AreEqual('X1008', mItem.Code);
+  Assert.AreEqual(Ord(TCompilerSeverity.Warning), Ord(mItem.Severity));
+  Assert.AreEqual('Integer and HRESULT interchanged', mItem.Text);
 end;
 
 procedure TCompilerOutputParserTests.ReadsColumns;
 var
-  Item: TCompilerMessage;
+  mItem: TCompilerMessage;
 begin
-  Item := Parsed('C:\P\Unit1.pas(12,5) Error: E2003 Undeclared identifier: ''X''');
-  Assert.AreEqual(11, Item.Line);
-  Assert.AreEqual(4, Item.Column);
+  mItem := Parsed('C:\P\Unit1.pas(12,5) Error: E2003 Undeclared identifier: ''X''');
+  Assert.AreEqual(11, mItem.Line);
+  Assert.AreEqual(4, mItem.Column);
 end;
 
 procedure TCompilerOutputParserTests.ReadsMsBuildLinesInAnyLanguage;
 var
-  Item: TCompilerMessage;
+  mItem: TCompilerMessage;
 begin
-  Item := Parsed('[dcc32 Fehler] Unit1.pas(12): E2003 Undeklarierter Bezeichner: ''X''');
-  Assert.AreEqual('C:\P\Unit1.pas', Item.FileName);
-  Assert.AreEqual(11, Item.Line);
-  Assert.AreEqual(Ord(TCompilerSeverity.Error), Ord(Item.Severity));
-  Assert.AreEqual('Undeklarierter Bezeichner: ''X''', Item.Text);
-  Item := Parsed('[dcc64 Fatal Error] Projekt.dpr(5): F2613 Unit ''Foo'' not found.');
-  Assert.AreEqual(Ord(TCompilerSeverity.Fatal), Ord(Item.Severity));
-  Assert.AreEqual('C:\P\Projekt.dpr', Item.FileName);
+  mItem := Parsed('[dcc32 Fehler] Unit1.pas(12): E2003 Undeklarierter Bezeichner: ''X''');
+  Assert.AreEqual('C:\P\Unit1.pas', mItem.FileName);
+  Assert.AreEqual(11, mItem.Line);
+  Assert.AreEqual(Ord(TCompilerSeverity.Error), Ord(mItem.Severity));
+  Assert.AreEqual('Undeklarierter Bezeichner: ''X''', mItem.Text);
+  mItem := Parsed('[dcc64 Fatal Error] Projekt.dpr(5): F2613 Unit ''Foo'' not found.');
+  Assert.AreEqual(Ord(TCompilerSeverity.Fatal), Ord(mItem.Severity));
+  Assert.AreEqual('C:\P\Projekt.dpr', mItem.FileName);
 end;
 
 procedure TCompilerOutputParserTests.ReadsMessagesWithoutFile;
 var
-  Item: TCompilerMessage;
+  mItem: TCompilerMessage;
 begin
-  Item := Parsed('Fatal: F1026 File not found: ''Neu(1).dpr''');
-  Assert.AreEqual('', Item.FileName);
-  Assert.AreEqual(-1, Item.Line);
-  Assert.AreEqual('F1026', Item.Code);
-  Assert.AreEqual('File not found: ''Neu(1).dpr''', Item.Text);
+  mItem := Parsed('Fatal: F1026 File not found: ''Neu(1).dpr''');
+  Assert.AreEqual('', mItem.FileName);
+  Assert.AreEqual(-1, mItem.Line);
+  Assert.AreEqual('F1026', mItem.Code);
+  Assert.AreEqual('File not found: ''Neu(1).dpr''', mItem.Text);
 end;
 
 procedure TCompilerOutputParserTests.SkipsProgressLines;
 var
-  Item: TCompilerMessage;
+  mItem: TCompilerMessage;
 begin
-  Assert.IsFalse(TCompilerOutputParser.ParseLine('Embarcadero Delphi for Win64 compiler version 36.0', 'C:\P', Item));
-  Assert.IsFalse(TCompilerOutputParser.ParseLine('Unit1.pas(120)', 'C:\P', Item));
-  Assert.IsFalse(TCompilerOutputParser.ParseLine('1234 lines, 0.50 seconds, 100 bytes code.', 'C:\P', Item));
-  Assert.IsFalse(TCompilerOutputParser.ParseLine('', 'C:\P', Item));
+  Assert.IsFalse(TCompilerOutputParser.ParseLine('Embarcadero Delphi for Win64 compiler version 36.0', 'C:\P', mItem));
+  Assert.IsFalse(TCompilerOutputParser.ParseLine('Unit1.pas(120)', 'C:\P', mItem));
+  Assert.IsFalse(TCompilerOutputParser.ParseLine('1234 lines, 0.50 seconds, 100 bytes code.', 'C:\P', mItem));
+  Assert.IsFalse(TCompilerOutputParser.ParseLine('', 'C:\P', mItem));
 end;
 
 procedure TCompilerOutputParserTests.RemovesDuplicates;
 var
-  Found: TArray<TCompilerMessage>;
+  mFound: TArray<TCompilerMessage>;
 begin
-  Found := TCompilerOutputParser.Parse([
+  mFound := TCompilerOutputParser.Parse([
     'Unit1.pas(1) Error: E2003 X',
     'Fortschritt',
     'Unit1.pas(1) Error: E2003 X',
     'Unit1.pas(2) Error: E2003 X'], 'C:\P');
-  Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual(1, Found[1].Line);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual(1, mFound[1].Line);
 end;
 
 { TCompilerCommandLineTests }
@@ -169,33 +169,33 @@ end;
 
 procedure TCompilerCommandLineTests.BuildsArguments;
 var
-  Project: TProjectInfo;
-  Request: TCompilerRequest;
-  Joined: string;
+  mProject: TProjectInfo;
+  mRequest: TCompilerRequest;
+  mJoined: string;
 begin
-  Project := Default(TProjectInfo);
-  Project.FileName := 'C:\P\Demo.dproj';
-  Project.MainSource := 'C:\P\Demo.dpr';
-  Project.Platform := 'Win64';
-  Project.Defines := ['DEBUG', 'FOO'];
-  Project.SearchPaths := ['C:\P\Lib'];
-  Project.Namespaces := ['System', 'Vcl'];
-  Request := TCompilerCommandLine.Build(Project, ['C:\Delphi\lib\win64\release'], 'C:\Delphi', 'C:\Temp\Out');
-  Assert.AreEqual('C:\Delphi\bin\dcc64.exe', Request.Executable);
-  Assert.AreEqual('C:\P', Request.WorkingDir);
-  Joined := string.Join(' ', Request.Arguments);
-  Assert.Contains(Joined, '-NUC:\Temp\Out -EC:\Temp\Out');
+  mProject := Default(TProjectInfo);
+  mProject.FileName := 'C:\P\Demo.dproj';
+  mProject.MainSource := 'C:\P\Demo.dpr';
+  mProject.Platform := 'Win64';
+  mProject.Defines := ['DEBUG', 'FOO'];
+  mProject.SearchPaths := ['C:\P\Lib'];
+  mProject.Namespaces := ['System', 'Vcl'];
+  mRequest := TCompilerCommandLine.Build(mProject, ['C:\Delphi\lib\win64\release'], 'C:\Delphi', 'C:\Temp\Out');
+  Assert.AreEqual('C:\Delphi\bin\dcc64.exe', mRequest.Executable);
+  Assert.AreEqual('C:\P', mRequest.WorkingDir);
+  mJoined := string.Join(' ', mRequest.Arguments);
+  Assert.Contains(mJoined, '-NUC:\Temp\Out -EC:\Temp\Out');
   // BPL und DCP eines Packages dürfen nicht in den gemeinsamen Bpl-Ordner.
-  Assert.Contains(Joined, '-LEC:\Temp\Out -LNC:\Temp\Out');
-  Assert.Contains(Joined, '-UC:\P\Lib;C:\Delphi\lib\win64\release');
-  Assert.Contains(Joined, '-DDEBUG;FOO');
-  Assert.Contains(Joined, '-NSSystem;Vcl');
-  Assert.AreEqual('C:\P\Demo.dpr', Request.Arguments[High(Request.Arguments)]);
-  Project.MainSource := '';
+  Assert.Contains(mJoined, '-LEC:\Temp\Out -LNC:\Temp\Out');
+  Assert.Contains(mJoined, '-UC:\P\Lib;C:\Delphi\lib\win64\release');
+  Assert.Contains(mJoined, '-DDEBUG;FOO');
+  Assert.Contains(mJoined, '-NSSystem;Vcl');
+  Assert.AreEqual('C:\P\Demo.dpr', mRequest.Arguments[High(mRequest.Arguments)]);
+  mProject.MainSource := '';
   Assert.WillRaise(
     procedure
     begin
-      TCompilerCommandLine.Build(Project, nil, 'C:\Delphi', 'C:\Temp\Out');
+      TCompilerCommandLine.Build(mProject, nil, 'C:\Delphi', 'C:\Temp\Out');
     end, ECompilerError);
 end;
 
@@ -211,37 +211,37 @@ end;
 
 procedure TCompilerResultsTests.GroupsByFile;
 var
-  Results: TCompilerResults;
-  General: TCompilerMessage;
+  mResults: TCompilerResults;
+  mGeneral: TCompilerMessage;
 begin
-  Results := TCompilerResults.Create;
+  mResults := TCompilerResults.Create;
   try
-    General := MessageAt('', -1, 'F1026');
-    Results.Replace([MessageAt('C:\P\A.pas', 1, 'E2003'), MessageAt('C:\P\B.pas', 2, 'W1036'),
-      MessageAt('C:\P\A.pas', 5, 'H2164'), General]);
-    Assert.AreEqual(2, Integer(Length(Results.MessagesFor('c:\p\a.pas'))));
-    Assert.AreEqual(1, Integer(Length(Results.MessagesFor('C:\P\B.pas'))));
-    Assert.AreEqual(0, Integer(Length(Results.MessagesFor('C:\P\C.pas'))));
-    Assert.AreEqual(1, Integer(Length(Results.General)));
+    mGeneral := MessageAt('', -1, 'F1026');
+    mResults.Replace([MessageAt('C:\P\A.pas', 1, 'E2003'), MessageAt('C:\P\B.pas', 2, 'W1036'),
+      MessageAt('C:\P\A.pas', 5, 'H2164'), mGeneral]);
+    Assert.AreEqual(2, Integer(Length(mResults.MessagesFor('c:\p\a.pas'))));
+    Assert.AreEqual(1, Integer(Length(mResults.MessagesFor('C:\P\B.pas'))));
+    Assert.AreEqual(0, Integer(Length(mResults.MessagesFor('C:\P\C.pas'))));
+    Assert.AreEqual(1, Integer(Length(mResults.General)));
   finally
-    Results.Free;
+    mResults.Free;
   end;
 end;
 
 procedure TCompilerResultsTests.ReplaceReportsOldAndNewFiles;
 var
-  Results: TCompilerResults;
-  Files: TArray<string>;
+  mResults: TCompilerResults;
+  mFiles: TArray<string>;
 begin
-  Results := TCompilerResults.Create;
+  mResults := TCompilerResults.Create;
   try
-    Results.Replace([MessageAt('C:\P\A.pas', 1, 'E2003')]);
-    Files := Results.Replace([MessageAt('C:\P\B.pas', 1, 'E2003')]);
+    mResults.Replace([MessageAt('C:\P\A.pas', 1, 'E2003')]);
+    mFiles := mResults.Replace([MessageAt('C:\P\B.pas', 1, 'E2003')]);
     // A.pas muss geleert werden, B.pas bekommt die neue Meldung.
-    Assert.AreEqual(2, Integer(Length(Files)));
-    Assert.AreEqual(0, Integer(Length(Results.MessagesFor('C:\P\A.pas'))));
+    Assert.AreEqual(2, Integer(Length(mFiles)));
+    Assert.AreEqual(0, Integer(Length(mResults.MessagesFor('C:\P\A.pas'))));
   finally
-    Results.Free;
+    mResults.Free;
   end;
 end;
 

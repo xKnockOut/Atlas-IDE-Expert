@@ -53,8 +53,8 @@ uses
   Atlas.Common.Editing.ExtractInterface;
 
 const
-  Guid = '{11111111-2222-3333-4444-555555555555}';
-  Repository =
+  cGuid = '{11111111-2222-3333-4444-555555555555}';
+  cRepository =
     'unit U;'#10 +                                                           // 0
     'interface'#10 +                                                         // 1
     'type'#10 +                                                              // 2
@@ -126,13 +126,13 @@ const
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -148,31 +148,32 @@ end;
 
 function Info(const AText: string; ALine: Integer): TExtractInterfaceInfo;
 var
-  Tree: TSyntaxTree;
-  Reason: string;
+  mTree: TSyntaxTree;
+  mReason: string;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Assert.IsTrue(TExtractInterface.Prepare(TClassSource.Create(Tree, AText, ALine),
-      TExtractInterfaceLookups.Create(NoLookup(), nil, nil), Result, Reason), Reason);
+    Assert.IsTrue(TExtractInterface.Prepare(TClassSource.Create(mTree, AText, ALine),
+      TExtractInterfaceLookups.Create(NoLookup(), nil, nil), Result, mReason), mReason);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Ids(const AInfo: TExtractInterfaceInfo; const ANames: array of string): TArray<Integer>;
 var
-  Item: TExtractCandidate;
-  Name: string;
+  mItem: TExtractCandidate;
+  mName: string;
 begin
   Result := nil;
-  for Name in ANames do
+  for mName in ANames do
   begin
-    for Item in AInfo.Candidates do
+    for mItem in AInfo.Candidates do
     begin
-      if SameText(Item.Name, Name) and ((Item.Kind = TExtractCandidateKind.Method) or not ContainsText(Name, '(')) then
+      if SameText(mItem.Name, mName) and ((mItem.Kind = TExtractCandidateKind.Method) or not ContainsText(mName,
+        '(')) then
       begin
-        Result := Result + [Item.Id];
+        Result := Result + [mItem.Id];
       end;
     end;
   end;
@@ -180,14 +181,14 @@ end;
 
 function DefaultIds(const AInfo: TExtractInterfaceInfo): TArray<Integer>;
 var
-  Item: TExtractCandidate;
+  mItem: TExtractCandidate;
 begin
   Result := nil;
-  for Item in AInfo.Candidates do
+  for mItem in AInfo.Candidates do
   begin
-    if Item.Checked then
+    if mItem.Checked then
     begin
-      Result := Result + [Item.Id];
+      Result := Result + [mItem.Id];
     end;
   end;
 end;
@@ -198,25 +199,25 @@ begin
   Result := Default(TExtractInterfaceRequest);
   Result.Name := AName;
   Result.Members := AMembers;
-  Result.Guid := Guid;
+  Result.Guid := cGuid;
   Result.SameUnit := ASameUnit;
 end;
 
 function TryPlan(const AText: string; ALine: Integer; const ARequest: TExtractInterfaceRequest;
   const ALookup: TClassAncestorsLookup; out APlan: TExtractInterfacePlan; out AReason: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := TExtractInterface.Plan(TClassSource.Create(Tree, AText, ALine), ARequest,
+    Result := TExtractInterface.Plan(TClassSource.Create(mTree, AText, ALine), ARequest,
       TExtractInterfaceLookups.Create(ALookup,
       function(const AName: string): Boolean
       begin
         Result := SameText(AName, 'IVergeben');
       end, nil), APlan, AReason);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -224,34 +225,34 @@ end;
 function Extract(const AText: string; ALine: Integer; const AMembers: TArray<Integer>;
   const ALookup: TClassAncestorsLookup; out APlan: TExtractInterfacePlan): string; overload;
 var
-  Reason, Method: string;
-  Tree: TSyntaxTree;
-  Layout: TClassLayout;
+  mReason, mMethod: string;
+  mTree: TSyntaxTree;
+  mLayout: TClassLayout;
 begin
-  Assert.IsTrue(TryPlan(AText, ALine, Wanted(AMembers, 'ICustomerRepository', True), ALookup, APlan, Reason), Reason);
+  Assert.IsTrue(TryPlan(AText, ALine, Wanted(AMembers, 'ICustomerRepository', True), ALookup, APlan, mReason), mReason);
   Result := TTextChanges.Apply(AText, APlan.Edits);
   Assert.IsTrue(Parses(Result), Result);
-  Tree := TPascalParser.Parse(Result);
+  mTree := TPascalParser.Parse(Result);
   try
-    Layout := TClassLayout.Read(Tree, Result, TClassLayout.DeclNamed(Tree, APlan.ClassName));
+    mLayout := TClassLayout.Read(mTree, Result, TClassLayout.DeclNamed(mTree, APlan.ClassName));
     try
-      for Method in APlan.Methods do
+      for mMethod in APlan.Methods do
       begin
-        Assert.AreNotEqual(0, Integer(Length(Layout.Find(Method))), Method + ' fehlt: ' + Result);
+        Assert.AreNotEqual(0, Integer(Length(mLayout.Find(mMethod))), mMethod + ' fehlt: ' + Result);
       end;
     finally
-      Layout.Free;
+      mLayout.Free;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Extract(const AText: string; ALine: Integer; const AMembers: TArray<Integer>): string; overload;
 var
-  Plan: TExtractInterfacePlan;
+  mPlan: TExtractInterfacePlan;
 begin
-  Result := Extract(AText, ALine, AMembers, NoLookup(), Plan);
+  Result := Extract(AText, ALine, AMembers, NoLookup(), mPlan);
 end;
 
 { TExtractInterfaceTests }
@@ -265,102 +266,102 @@ end;
 
 procedure TExtractInterfaceTests.Candidates;
 var
-  Data: TExtractInterfaceInfo;
-  Item: TExtractCandidate;
-  Checked, Disabled: string;
+  mData: TExtractInterfaceInfo;
+  mItem: TExtractCandidate;
+  mChecked, mDisabled: string;
 begin
-  Data := Info(Repository, 3);
-  Assert.AreEqual('ICustomerRepository', Data.SuggestedName);
-  Checked := '';
-  Disabled := '';
-  for Item in Data.Candidates do
+  mData := Info(cRepository, 3);
+  Assert.AreEqual('ICustomerRepository', mData.SuggestedName);
+  mChecked := '';
+  mDisabled := '';
+  for mItem in mData.Candidates do
   begin
-    if Item.Checked then
+    if mItem.Checked then
     begin
-      Checked := Checked + Item.Name + ' ';
+      mChecked := mChecked + mItem.Name + ' ';
     end;
-    if not Item.Enabled then
+    if not mItem.Enabled then
     begin
-      Disabled := Disabled + Item.Name + ' ';
+      mDisabled := mDisabled + mItem.Name + ' ';
     end;
   end;
   // Vorgabe: public-Methoden; Properties wählbar, aber nicht gewählt; private Mitglieder nicht in der Liste.
-  Assert.AreEqual('Find Find Save ', Checked);
-  Assert.AreEqual('Create Destroy Default_ Convert ', Disabled);
-  for Item in Data.Candidates do
+  Assert.AreEqual('Find Find Save ', mChecked);
+  Assert.AreEqual('Create Destroy Default_ Convert ', mDisabled);
+  for mItem in mData.Candidates do
   begin
-    Assert.IsFalse(SameText(Item.Name, 'GetItem'), 'private');
+    Assert.IsFalse(SameText(mItem.Name, 'GetItem'), 'private');
   end;
-  Assert.AreEqual(0, Integer(Length(Data.Notes)), 'ohne Vorfahr kein Hinweis');
+  Assert.AreEqual(0, Integer(Length(mData.Notes)), 'ohne Vorfahr kein Hinweis');
 end;
 
 procedure TExtractInterfaceTests.SameUnit;
 var
-  Data: TExtractInterfaceInfo;
-  Text: string;
+  mData: TExtractInterfaceInfo;
+  mText: string;
 begin
-  Data := Info(Repository, 3);
-  Text := Extract(Repository, 3, DefaultIds(Data));
-  Assert.IsTrue(Text.Contains(
+  mData := Info(cRepository, 3);
+  mText := Extract(cRepository, 3, DefaultIds(mData));
+  Assert.IsTrue(mText.Contains(
     '  ICustomerRepository = interface'#10 +
-    '    [''' + Guid + ''']'#10 +
+    '    [''' + cGuid + ''']'#10 +
     '    /// Sucht einen Kunden.'#10 +
     '    function Find(const AId: Integer; ALimit: Integer = 10): string; overload;'#10 +
     '    function Find(const AName: string): string; overload;'#10 +
     '    procedure Save(var AData: TBytes); stdcall;'#10 +
     '  end;'#10 +
     #10 +
-    '  TCustomerRepository = class(TInterfacedObject, ICustomerRepository)'#10), Text);
-  Assert.IsFalse(Text.Contains('string; overload; virtual;'#10'    function Find(const AName: string): string; overload;'#10 +
+    '  TCustomerRepository = class(TInterfacedObject, ICustomerRepository)'#10), mText);
+  Assert.IsFalse(mText.Contains('string; overload; virtual;'#10'    function Find(const AName: string): string; overload;'#10 +
     '    procedure Save(var AData: TBytes); stdcall;'#10'  end;'), 'virtual entfällt nur im Interface');
 end;
 
 procedure TExtractInterfaceTests.PropertyOnFieldGetsAccessors;
 var
-  Data: TExtractInterfaceInfo;
-  Text: string;
+  mData: TExtractInterfaceInfo;
+  mText: string;
 begin
-  Data := Info(Repository, 3);
-  Text := Extract(Repository, 3, Ids(Data, ['Name', 'Count']));
-  Assert.IsTrue(Text.Contains('    function GetName: string;'#10'    procedure SetName(const Value: string);'#10 +
+  mData := Info(cRepository, 3);
+  mText := Extract(cRepository, 3, Ids(mData, ['Name', 'Count']));
+  Assert.IsTrue(mText.Contains('    function GetName: string;'#10'    procedure SetName(const Value: string);'#10 +
     '    function GetCount: Integer;'#10'    property Name: string read GetName write SetName;'#10 +
-    '    property Count: Integer read GetCount;'#10'  end;'), Text);
+    '    property Count: Integer read GetCount;'#10'  end;'), mText);
   // Die Klasse liest und schreibt das Feld über die neuen Methoden.
-  Assert.IsTrue(Text.Contains('    property Name: string read GetName write SetName;'#10'    property Items'), Text);
-  Assert.IsTrue(Text.Contains('    property Count: Integer read GetCount stored False;'), Text);
-  Assert.IsTrue(Text.Contains('function TCustomerRepository.GetName: string;'#10'begin'#10'  Result := FName;'#10 +
-    'end;'), Text);
-  Assert.IsTrue(Text.Contains('procedure TCustomerRepository.SetName(const Value: string);'#10'begin'#10 +
-    '  FName := Value;'#10'end;'), Text);
-  Assert.IsFalse(Text.Contains('stored False;'#10'  end;'#10#10'  TCustomer'), 'stored nicht im Interface');
+  Assert.IsTrue(mText.Contains('    property Name: string read GetName write SetName;'#10'    property Items'), mText);
+  Assert.IsTrue(mText.Contains('    property Count: Integer read GetCount stored False;'), mText);
+  Assert.IsTrue(mText.Contains('function TCustomerRepository.GetName: string;'#10'begin'#10'  Result := FName;'#10 +
+    'end;'), mText);
+  Assert.IsTrue(mText.Contains('procedure TCustomerRepository.SetName(const Value: string);'#10'begin'#10 +
+    '  FName := Value;'#10'end;'), mText);
+  Assert.IsFalse(mText.Contains('stored False;'#10'  end;'#10#10'  TCustomer'), 'stored nicht im Interface');
 end;
 
 procedure TExtractInterfaceTests.PropertyOnAccessorsTakesMethods;
 var
-  Data: TExtractInterfaceInfo;
-  Text: string;
-  Plan: TExtractInterfacePlan;
+  mData: TExtractInterfaceInfo;
+  mText: string;
+  mPlan: TExtractInterfacePlan;
 begin
-  Data := Info(Repository, 3);
-  Text := Extract(Repository, 3, Ids(Data, ['Items']), NoLookup(), Plan);
-  Assert.IsTrue(Text.Contains(
+  mData := Info(cRepository, 3);
+  mText := Extract(cRepository, 3, Ids(mData, ['Items']), NoLookup(), mPlan);
+  Assert.IsTrue(mText.Contains(
     '    function GetItem(AIndex: Integer): string;'#10 +
     '    procedure SetItem(AIndex: Integer; const AValue: string);'#10 +
     '    property Items[AIndex: Integer]: string read GetItem write SetItem; default;'#10 +
-    '  end;'), Text);
-  Assert.AreEqual(2, Integer(Length(Plan.Warnings)), 'private Zugriffsmethoden kommen mit');
+    '  end;'), mText);
+  Assert.AreEqual(2, Integer(Length(mPlan.Warnings)), 'private Zugriffsmethoden kommen mit');
 end;
 
 function Chain(const ANames: array of string): TClassAncestorsLookup;
 var
-  Pairs: TArray<string>;
-  Index: Integer;
+  mPairs: TArray<string>;
+  mIndex: Integer;
 begin
   // Paare Klasse, Vorfahr.
-  Pairs := nil;
-  for Index := 0 to High(ANames) do
+  mPairs := nil;
+  for mIndex := 0 to High(ANames) do
   begin
-    Pairs := Pairs + [ANames[Index]];
+    mPairs := mPairs + [ANames[mIndex]];
   end;
   Result :=
     function(const AClassName: string; out AAncestors: TArray<string>): Boolean
@@ -368,11 +369,11 @@ begin
       Position: Integer;
     begin
       Position := 0;
-      while Position < High(Pairs) do
+      while Position < High(mPairs) do
       begin
-        if SameText(Pairs[Position], AClassName) then
+        if SameText(mPairs[Position], AClassName) then
         begin
-          AAncestors := [Pairs[Position + 1]];
+          AAncestors := [mPairs[Position + 1]];
           Exit(True);
         end;
         Inc(Position, 2);
@@ -384,115 +385,115 @@ end;
 
 procedure TExtractInterfaceTests.AncestorTObject;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := StringReplace(Repository, '= class'#10, '= class(TObject)'#10, []);
-  Text := Extract(Text, 3, Ids(Info(Text, 3), ['Save']));
-  Assert.IsTrue(Text.Contains('TCustomerRepository = class(TInterfacedObject, ICustomerRepository)'), Text);
+  mText := StringReplace(cRepository, '= class'#10, '= class(TObject)'#10, []);
+  mText := Extract(mText, 3, Ids(Info(mText, 3), ['Save']));
+  Assert.IsTrue(mText.Contains('TCustomerRepository = class(TInterfacedObject, ICustomerRepository)'), mText);
 end;
 
 procedure TExtractInterfaceTests.AncestorInterfaced;
 var
-  Text: string;
-  Plan: TExtractInterfacePlan;
+  mText: string;
+  mPlan: TExtractInterfacePlan;
 begin
-  Text := StringReplace(Repository, '= class'#10, '= class(TInterfacedObject)'#10, []);
-  Text := Extract(Text, 3, Ids(Info(Text, 3), ['Save']), NoLookup(), Plan);
-  Assert.IsTrue(Text.Contains('= class(TInterfacedObject, ICustomerRepository)'), Text);
-  Assert.AreEqual(0, Integer(Length(Plan.Warnings)));
+  mText := StringReplace(cRepository, '= class'#10, '= class(TInterfacedObject)'#10, []);
+  mText := Extract(mText, 3, Ids(Info(mText, 3), ['Save']), NoLookup(), mPlan);
+  Assert.IsTrue(mText.Contains('= class(TInterfacedObject, ICustomerRepository)'), mText);
+  Assert.AreEqual(0, Integer(Length(mPlan.Warnings)));
   // TMyControl → TCustomControl → TWinControl → TControl → TComponent: implementiert IInterface.
-  Text := StringReplace(Repository, '= class'#10, '= class(TMyControl)'#10, []);
-  Text := Extract(Text, 3, Ids(Info(Text, 3), ['Save']), Chain(['TMyControl', 'TCustomControl', 'TCustomControl',
-    'TWinControl', 'TWinControl', 'TControl', 'TControl', 'TComponent']), Plan);
-  Assert.IsTrue(Text.Contains('= class(TMyControl, ICustomerRepository)'), Text);
-  Assert.AreEqual(0, Integer(Length(Plan.Warnings)));
+  mText := StringReplace(cRepository, '= class'#10, '= class(TMyControl)'#10, []);
+  mText := Extract(mText, 3, Ids(Info(mText, 3), ['Save']), Chain(['TMyControl', 'TCustomControl', 'TCustomControl',
+    'TWinControl', 'TWinControl', 'TControl', 'TControl', 'TComponent']), mPlan);
+  Assert.IsTrue(mText.Contains('= class(TMyControl, ICustomerRepository)'), mText);
+  Assert.AreEqual(0, Integer(Length(mPlan.Warnings)));
   // Schon mit Interface: kein Hinweis.
-  Text := StringReplace(Repository, '= class'#10, '= class(TBase, IOther)'#10, []);
-  Text := Extract(Text, 3, Ids(Info(Text, 3), ['Save']), NoLookup(), Plan);
-  Assert.IsTrue(Text.Contains('= class(TBase, IOther, ICustomerRepository)'), Text);
-  Assert.AreEqual(0, Integer(Length(Plan.Warnings)));
+  mText := StringReplace(cRepository, '= class'#10, '= class(TBase, IOther)'#10, []);
+  mText := Extract(mText, 3, Ids(Info(mText, 3), ['Save']), NoLookup(), mPlan);
+  Assert.IsTrue(mText.Contains('= class(TBase, IOther, ICustomerRepository)'), mText);
+  Assert.AreEqual(0, Integer(Length(mPlan.Warnings)));
 end;
 
 procedure TExtractInterfaceTests.AncestorWithoutInterface;
 var
-  Text: string;
-  Plan: TExtractInterfacePlan;
-  Data: TExtractInterfaceInfo;
+  mText: string;
+  mPlan: TExtractInterfacePlan;
+  mData: TExtractInterfaceInfo;
 begin
-  Text := StringReplace(Repository, '= class'#10, '= class(TPersistent)'#10, []);
-  Text := Extract(Text, 3, Ids(Info(Text, 3), ['Save']), Chain(['TPersistent', 'TObject']), Plan);
-  Assert.IsTrue(Text.Contains('= class(TPersistent, ICustomerRepository)'), Text);
-  Assert.AreEqual(1, Integer(Length(Plan.Warnings)));
-  Assert.IsTrue(Plan.Warnings[0].Contains('_AddRef'), Plan.Warnings[0]);
+  mText := StringReplace(cRepository, '= class'#10, '= class(TPersistent)'#10, []);
+  mText := Extract(mText, 3, Ids(Info(mText, 3), ['Save']), Chain(['TPersistent', 'TObject']), mPlan);
+  Assert.IsTrue(mText.Contains('= class(TPersistent, ICustomerRepository)'), mText);
+  Assert.AreEqual(1, Integer(Length(mPlan.Warnings)));
+  Assert.IsTrue(mPlan.Warnings[0].Contains('_AddRef'), mPlan.Warnings[0]);
   // Unbekannter Vorfahr: Hinweis schon vorab.
-  Text := StringReplace(Repository, '= class'#10, '= class(TUnbekannt)'#10, []);
-  Data := Info(Text, 3);
-  Assert.AreEqual(1, Integer(Length(Data.Notes)));
-  Assert.IsTrue(Data.Notes[0].Contains('nicht bekannt'), Data.Notes[0]);
+  mText := StringReplace(cRepository, '= class'#10, '= class(TUnbekannt)'#10, []);
+  mData := Info(mText, 3);
+  Assert.AreEqual(1, Integer(Length(mData.Notes)));
+  Assert.IsTrue(mData.Notes[0].Contains('nicht bekannt'), mData.Notes[0]);
 end;
 
 procedure TExtractInterfaceTests.RejectsBadInput;
 var
-  Plan: TExtractInterfacePlan;
-  Reason: string;
-  Data: TExtractInterfaceInfo;
+  mPlan: TExtractInterfacePlan;
+  mReason: string;
+  mData: TExtractInterfaceInfo;
 begin
-  Data := Info(Repository, 3);
-  Assert.IsFalse(TryPlan(Repository, 3, Wanted(DefaultIds(Data), '1Falsch', True), NoLookup(), Plan, Reason));
-  Assert.IsFalse(TryPlan(Repository, 3, Wanted(DefaultIds(Data), 'IVergeben', True), NoLookup(), Plan, Reason));
-  Assert.IsTrue(Reason.Contains('vergeben'), Reason);
-  Assert.IsFalse(TryPlan(Repository, 3, Wanted(DefaultIds(Data), 'TCustomerRepository', True), NoLookup(), Plan,
-    Reason));
-  Assert.IsFalse(TryPlan(Repository, 3, Wanted(nil, 'IFoo', True), NoLookup(), Plan, Reason));
-  Assert.IsFalse(TryPlan(Repository, 3, Wanted(Ids(Data, ['Convert']), 'IFoo', True), NoLookup(), Plan, Reason));
-  Assert.IsTrue(Reason.Contains('generisch'), Reason);
-  Assert.IsFalse(TryPlan(Repository, 4, Wanted(DefaultIds(Data), 'IFoo', True), NoLookup(), Plan, Reason),
+  mData := Info(cRepository, 3);
+  Assert.IsFalse(TryPlan(cRepository, 3, Wanted(DefaultIds(mData), '1Falsch', True), NoLookup(), mPlan, mReason));
+  Assert.IsFalse(TryPlan(cRepository, 3, Wanted(DefaultIds(mData), 'IVergeben', True), NoLookup(), mPlan, mReason));
+  Assert.IsTrue(mReason.Contains('vergeben'), mReason);
+  Assert.IsFalse(TryPlan(cRepository, 3, Wanted(DefaultIds(mData), 'TCustomerRepository', True), NoLookup(), mPlan,
+    mReason));
+  Assert.IsFalse(TryPlan(cRepository, 3, Wanted(nil, 'IFoo', True), NoLookup(), mPlan, mReason));
+  Assert.IsFalse(TryPlan(cRepository, 3, Wanted(Ids(mData, ['Convert']), 'IFoo', True), NoLookup(), mPlan, mReason));
+  Assert.IsTrue(mReason.Contains('generisch'), mReason);
+  Assert.IsFalse(TryPlan(cRepository, 4, Wanted(DefaultIds(mData), 'IFoo', True), NoLookup(), mPlan, mReason),
     'keine Kopfzeile');
 end;
 
 procedure TExtractInterfaceTests.OtherUnit;
 const
-  Target = 'unit Ziel;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'implementation'#10'end.';
+  cTarget = 'unit Ziel;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'implementation'#10'end.';
 var
-  Data: TExtractInterfaceInfo;
-  Plan: TExtractInterfacePlan;
-  Reason, Text, Origin: string;
-  Tree: TSyntaxTree;
-  Edit: TTextEdit;
+  mData: TExtractInterfaceInfo;
+  mPlan: TExtractInterfacePlan;
+  mReason, mText, mOrigin: string;
+  mTree: TSyntaxTree;
+  mEdit: TTextEdit;
 begin
-  Data := Info(Repository, 3);
-  Assert.IsTrue(TryPlan(Repository, 3, Wanted(DefaultIds(Data), 'ICustomerRepository', False), NoLookup(), Plan,
-    Reason), Reason);
-  Origin := TTextChanges.Apply(Repository, Plan.Edits);
-  Assert.IsFalse(Origin.Contains('= interface'), 'nicht in der Unit der Klasse');
-  Assert.IsTrue(Origin.Contains('class(TInterfacedObject, ICustomerRepository)'), Origin);
-  Assert.IsTrue(Plan.InInterface);
-  Assert.AreEqual(3, Integer(Length(Plan.TypeNames)), string.Join(',', Plan.TypeNames));
-  Assert.AreEqual('Integer', Plan.TypeNames[0]);
-  Tree := TPascalParser.Parse(Target);
+  mData := Info(cRepository, 3);
+  Assert.IsTrue(TryPlan(cRepository, 3, Wanted(DefaultIds(mData), 'ICustomerRepository', False), NoLookup(), mPlan,
+    mReason), mReason);
+  mOrigin := TTextChanges.Apply(cRepository, mPlan.Edits);
+  Assert.IsFalse(mOrigin.Contains('= interface'), 'nicht in der Unit der Klasse');
+  Assert.IsTrue(mOrigin.Contains('class(TInterfacedObject, ICustomerRepository)'), mOrigin);
+  Assert.IsTrue(mPlan.InInterface);
+  Assert.AreEqual(3, Integer(Length(mPlan.TypeNames)), string.Join(',', mPlan.TypeNames));
+  Assert.AreEqual('Integer', mPlan.TypeNames[0]);
+  mTree := TPascalParser.Parse(cTarget);
   try
-    Assert.IsTrue(TExtractInterface.InsertIntoUnit(Tree, Target, Plan.Declaration, Edit));
+    Assert.IsTrue(TExtractInterface.InsertIntoUnit(mTree, cTarget, mPlan.Declaration, mEdit));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Text := TTextChanges.Apply(Target, [Edit]);
-  Assert.IsTrue(Parses(Text), Text);
-  Assert.IsTrue(Text.Contains('type'#10'  ICustomerRepository = interface'#10), Text);
+  mText := TTextChanges.Apply(cTarget, [mEdit]);
+  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(mText.Contains('type'#10'  ICustomerRepository = interface'#10), mText);
 end;
 
 procedure TExtractInterfaceTests.NewUnit;
 var
-  Data: TExtractInterfaceInfo;
-  Plan: TExtractInterfacePlan;
-  Reason, Text: string;
+  mData: TExtractInterfaceInfo;
+  mPlan: TExtractInterfacePlan;
+  mReason, mText: string;
 begin
-  Data := Info(Repository, 3);
-  Assert.IsTrue(TryPlan(Repository, 3, Wanted(DefaultIds(Data), 'ICustomerRepository', False), NoLookup(), Plan,
-    Reason), Reason);
-  Text := TExtractInterface.NewUnitText('CustomerRepositoryIntf', Plan.Declaration, ['System.SysUtils'], #13#10);
-  Assert.IsTrue(Parses(Text), Text);
-  Assert.IsTrue(Text.StartsWith('unit CustomerRepositoryIntf;'#13#10#13#10'interface'#13#10#13#10'uses'#13#10 +
-    '  System.SysUtils;'#13#10#13#10'type'#13#10'  ICustomerRepository = interface'#13#10), Text);
+  mData := Info(cRepository, 3);
+  Assert.IsTrue(TryPlan(cRepository, 3, Wanted(DefaultIds(mData), 'ICustomerRepository', False), NoLookup(), mPlan,
+    mReason), mReason);
+  mText := TExtractInterface.NewUnitText('CustomerRepositoryIntf', mPlan.Declaration, ['System.SysUtils'], #13#10);
+  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(mText.StartsWith('unit CustomerRepositoryIntf;'#13#10#13#10'interface'#13#10#13#10'uses'#13#10 +
+    '  System.SysUtils;'#13#10#13#10'type'#13#10'  ICustomerRepository = interface'#13#10), mText);
 end;
 
 initialization

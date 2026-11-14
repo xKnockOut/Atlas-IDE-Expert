@@ -29,72 +29,72 @@ uses
 
 procedure TTeardownTests.RunsAllStepsAfterFailure;
 var
-  Teardown: TAtlasTeardown;
-  Log: string;
+  mTeardown: TAtlasTeardown;
+  mLog: string;
 begin
-  Log := '';
-  Teardown := TAtlasTeardown.Create;
-  Teardown.Step('A',
+  mLog := '';
+  mTeardown := TAtlasTeardown.Create;
+  mTeardown.Step('A',
     procedure
     begin
-      Log := Log + 'A';
+      mLog := mLog + 'A';
     end);
-  Teardown.Step('B',
+  mTeardown.Step('B',
     procedure
     begin
       raise EArgumentException.Create('kaputt');
     end);
-  Teardown.Step('C',
+  mTeardown.Step('C',
     procedure
     begin
-      Log := Log + 'C';
+      mLog := mLog + 'C';
     end);
-  Assert.AreEqual('AC', Log);
-  Assert.AreEqual(1, Integer(Length(Teardown.Failures)));
-  Assert.AreEqual('B: EArgumentException', Teardown.Summary);
+  Assert.AreEqual('AC', mLog);
+  Assert.AreEqual(1, Integer(Length(mTeardown.Failures)));
+  Assert.AreEqual('B: EArgumentException', mTeardown.Summary);
 end;
 
 procedure TTeardownTests.SummaryWithoutFailures;
 var
-  Teardown: TAtlasTeardown;
+  mTeardown: TAtlasTeardown;
 begin
-  Teardown := TAtlasTeardown.Create;
-  Teardown.Step('A', nil);
-  Assert.AreEqual('keine', Teardown.Summary);
-  Assert.AreEqual(0, Integer(Length(Teardown.Failures)));
+  mTeardown := TAtlasTeardown.Create;
+  mTeardown.Step('A', nil);
+  Assert.AreEqual('keine', mTeardown.Summary);
+  Assert.AreEqual(0, Integer(Length(mTeardown.Failures)));
 end;
 
 procedure TTeardownTests.KeepsOnlyClassNotMessage;
 var
-  Teardown: TAtlasTeardown;
+  mTeardown: TAtlasTeardown;
 begin
   // Anonymes Protokoll: Der Meldungstext kann Pfade enthalten.
-  Teardown := TAtlasTeardown.Create;
-  Teardown.Step('Datei',
+  mTeardown := TAtlasTeardown.Create;
+  mTeardown.Step('Datei',
     procedure
     begin
       raise EFileNotFoundException.Create('C:\Users\Name\geheim.pas');
     end);
-  Assert.AreEqual('Datei: EFileNotFoundException', Teardown.Summary);
-  Assert.IsFalse(Teardown.Summary.Contains('geheim'));
+  Assert.AreEqual('Datei: EFileNotFoundException', mTeardown.Summary);
+  Assert.IsFalse(mTeardown.Summary.Contains('geheim'));
 end;
 
 procedure TTeardownTests.AddsForeignFailures;
 var
-  Teardown: TAtlasTeardown;
-  Foreign: TArray<string>;
+  mTeardown: TAtlasTeardown;
+  mForeign: TArray<string>;
 begin
-  Teardown := TAtlasTeardown.Create;
-  Foreign := nil;
-  SetLength(Foreign, 1);
-  Foreign[0] := 'Feature: EAccessViolation';
-  Teardown.AddFailures(Foreign);
-  Teardown.Step('B',
+  mTeardown := TAtlasTeardown.Create;
+  mForeign := nil;
+  SetLength(mForeign, 1);
+  mForeign[0] := 'Feature: EAccessViolation';
+  mTeardown.AddFailures(mForeign);
+  mTeardown.Step('B',
     procedure
     begin
       raise EAbort.Create('');
     end);
-  Assert.AreEqual('Feature: EAccessViolation, B: EAbort', Teardown.Summary);
+  Assert.AreEqual('Feature: EAccessViolation, B: EAbort', mTeardown.Summary);
 end;
 
 initialization

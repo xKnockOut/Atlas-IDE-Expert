@@ -74,7 +74,7 @@ uses
 // Gliederung eines Knotens, z. B. "UnitFile:U(InterfaceSection,ImplementationSection)".
 function Outline(ANode: TSyntaxNode): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := SyntaxKindName(ANode.Kind);
   if ANode.Name <> '' then
@@ -84,13 +84,13 @@ begin
   if ANode.ChildCount > 0 then
   begin
     Result := Result + '(';
-    for Index := 0 to ANode.ChildCount - 1 do
+    for mIndex := 0 to ANode.ChildCount - 1 do
     begin
-      if Index > 0 then
+      if mIndex > 0 then
       begin
         Result := Result + ',';
       end;
-      Result := Result + Outline(ANode[Index]);
+      Result := Result + Outline(ANode[mIndex]);
     end;
     Result := Result + ')';
   end;
@@ -99,15 +99,15 @@ end;
 // Erster Knoten der Art in Tiefensuche, sonst nil.
 function FindFirst(ANode: TSyntaxNode; AKind: TSyntaxKind): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if ANode.Kind = AKind then
   begin
     Exit(ANode);
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    Result := FindFirst(ANode[Index], AKind);
+    Result := FindFirst(ANode[mIndex], AKind);
     if Result <> nil then
     begin
       Exit;
@@ -119,12 +119,12 @@ end;
 // Anzahl der Knoten der Art im ganzen Baum.
 function CountKind(ANode: TSyntaxNode; AKind: TSyntaxKind): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Ord(ANode.Kind = AKind);
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    Inc(Result, CountKind(ANode[Index], AKind));
+    Inc(Result, CountKind(ANode[mIndex], AKind));
   end;
 end;
 
@@ -160,76 +160,76 @@ end;
 
 procedure TPascalParserTests.ParsesEmptyUnit;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'implementation', 'end.']));
+  mTree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'implementation', 'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    Assert.AreEqual('UnitFile:U(InterfaceSection,ImplementationSection)', Outline(Tree.Root));
+    AssertNoDiagnostics(mTree);
+    Assert.AreEqual('UnitFile:U(InterfaceSection,ImplementationSection)', Outline(mTree.Root));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.ParsesProgramWithUsesAndBlock;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Lines(['program P;', 'uses A in ''a.pas'', B.C;', 'var X: Integer;',
+  mTree := TPascalParser.Parse(Lines(['program P;', 'uses A in ''a.pas'', B.C;', 'var X: Integer;',
     'begin', '  X := 1;', 'end.']));
   try
-    AssertNoDiagnostics(Tree);
+    AssertNoDiagnostics(mTree);
     Assert.AreEqual('ProgramFile:P(UsesClause(UsedUnit:A,UsedUnit:B.C),' +
       'VarSection:var(VarDecl:X(TypeReference:Integer)),' +
-      'Block(AssignStatement:X(Identifier:X,Literal:1)))', Outline(Tree.Root));
+      'Block(AssignStatement:X(Identifier:X,Literal:1)))', Outline(mTree.Root));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.ParsesPackageWithRequiresAndContains;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Lines(['package P;', 'requires', '  rtl;', 'contains',
+  mTree := TPascalParser.Parse(Lines(['package P;', 'requires', '  rtl;', 'contains',
     '  A in ''A.pas'';', 'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.PackageFile, Tree.Root.Kind);
-    Assert.AreEqual(2, CountKind(Tree.Root, TSyntaxKind.UsesClause));
+    AssertNoDiagnostics(mTree);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.PackageFile, mTree.Root.Kind);
+    Assert.AreEqual(2, CountKind(mTree.Root, TSyntaxKind.UsesClause));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.ParsesExportsWithParameterLists;
 var
-  Tree: TSyntaxTree;
-  Exports_: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mExports_: TSyntaxNode;
 begin
   // Überladene Routinen stehen mit Parameterliste in exports, darin ";" (#973).
-  Tree := TPascalParser.Parse(Lines(['library L;', 'procedure Setze(const A: string; var B: Integer); overload;',
+  mTree := TPascalParser.Parse(Lines(['library L;', 'procedure Setze(const A: string; var B: Integer); overload;',
     'begin', 'end;', 'exports', '  Setze(const A: string; var B: Integer) name ''SetzeA'' index 3,', '  Lies;',
     'begin', 'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    Assert.AreEqual(Ord(TSyntaxKind.LibraryFile), Ord(Tree.Root.Kind));
-    Exports_ := FindFirst(Tree.Root, TSyntaxKind.ExportsClause);
-    Assert.IsNotNull(Exports_);
-    Assert.AreEqual(4, Exports_.StartPos.Line);
-    Assert.AreEqual(6, Exports_.EndPos.Line);
-    Assert.AreEqual(0, CountKind(Tree.Root, TSyntaxKind.VarSection));
+    AssertNoDiagnostics(mTree);
+    Assert.AreEqual(Ord(TSyntaxKind.LibraryFile), Ord(mTree.Root.Kind));
+    mExports_ := FindFirst(mTree.Root, TSyntaxKind.ExportsClause);
+    Assert.IsNotNull(mExports_);
+    Assert.AreEqual(4, mExports_.StartPos.Line);
+    Assert.AreEqual(6, mExports_.EndPos.Line);
+    Assert.AreEqual(0, CountKind(mTree.Root, TSyntaxKind.VarSection));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.ParsesClassWithMembers;
 var
-  Tree: TSyntaxTree;
-  ClassNode: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mClassNode: TSyntaxNode;
 begin
-  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
+  mTree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
     '  TFoo = class(TInterfacedObject, IFoo)',
     '  strict private',
     '    FValue: Integer;',
@@ -240,23 +240,23 @@ begin
     '  end;',
     'implementation', 'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    ClassNode := FindFirst(Tree.Root, TSyntaxKind.ClassType);
-    Assert.IsNotNull(ClassNode);
-    Assert.AreEqual('TFoo', ClassNode.Parent.Name);
-    Assert.AreEqual('strict private', FindFirst(ClassNode, TSyntaxKind.Visibility).Name);
-    Assert.AreEqual(2, CountKind(ClassNode, TSyntaxKind.RoutineHeader));
-    Assert.AreEqual('Value', FindFirst(ClassNode, TSyntaxKind.PropertyDecl).Name);
+    AssertNoDiagnostics(mTree);
+    mClassNode := FindFirst(mTree.Root, TSyntaxKind.ClassType);
+    Assert.IsNotNull(mClassNode);
+    Assert.AreEqual('TFoo', mClassNode.Parent.Name);
+    Assert.AreEqual('strict private', FindFirst(mClassNode, TSyntaxKind.Visibility).Name);
+    Assert.AreEqual(2, CountKind(mClassNode, TSyntaxKind.RoutineHeader));
+    Assert.AreEqual('Value', FindFirst(mClassNode, TSyntaxKind.PropertyDecl).Name);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.EndsVarSectionAtVisibility;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
+  mTree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
     '  TFoo = class',
     '  private',
     '    class var FCount: Integer;',
@@ -267,19 +267,19 @@ begin
     '  end;',
     'implementation', 'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    Assert.AreEqual(3, CountKind(Tree.Root, TSyntaxKind.Visibility));
+    AssertNoDiagnostics(mTree);
+    Assert.AreEqual(3, CountKind(mTree.Root, TSyntaxKind.Visibility));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.ParsesGenericsAndAttributes;
 var
-  Tree: TSyntaxTree;
-  Params: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mParams: TSyntaxNode;
 begin
-  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
+  mTree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
     '  [Attr(''x''), Other]',
     '  TList<T: class, constructor> = class(TEnumerable<T>)',
     '    function Map<R>(const F: TFunc<T, R>): TList<R>;',
@@ -294,31 +294,31 @@ begin
     'end;',
     'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    Assert.AreEqual(1, CountKind(Tree.Root, TSyntaxKind.Attribute));
-    Assert.IsTrue(CountKind(Tree.Root, TSyntaxKind.GenericParams) >= 2);
-    Assert.IsTrue(CountKind(Tree.Root, TSyntaxKind.GenericArgs) >= 1);
-    Assert.AreEqual('<', FindFirst(Tree.Root, TSyntaxKind.BinaryExpr).Name);
+    AssertNoDiagnostics(mTree);
+    Assert.AreEqual(1, CountKind(mTree.Root, TSyntaxKind.Attribute));
+    Assert.IsTrue(CountKind(mTree.Root, TSyntaxKind.GenericParams) >= 2);
+    Assert.IsTrue(CountKind(mTree.Root, TSyntaxKind.GenericArgs) >= 1);
+    Assert.AreEqual('<', FindFirst(mTree.Root, TSyntaxKind.BinaryExpr).Name);
     // Typen aus Einschränkungen sind keine Typparameter (#1029).
-    Params := FindFirst(Tree.Root, TSyntaxKind.GenericParams);
-    Assert.AreEqual(1, Params.ChildCount);
-    Assert.AreEqual('T', Params[0].Name);
-    Params := FindFirst(FindFirst(Tree.Root, TSyntaxKind.TypeSection)[2], TSyntaxKind.GenericParams);
-    Assert.AreEqual(2, Params.ChildCount);
-    Assert.AreEqual('K', Params[0].Name);
-    Assert.AreEqual('V', Params[1].Name);
+    mParams := FindFirst(mTree.Root, TSyntaxKind.GenericParams);
+    Assert.AreEqual(1, mParams.ChildCount);
+    Assert.AreEqual('T', mParams[0].Name);
+    mParams := FindFirst(FindFirst(mTree.Root, TSyntaxKind.TypeSection)[2], TSyntaxKind.GenericParams);
+    Assert.AreEqual(2, mParams.ChildCount);
+    Assert.AreEqual('K', mParams[0].Name);
+    Assert.AreEqual('V', mParams[1].Name);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.ParsesHelperWithAncestor;
 var
-  Tree: TSyntaxTree;
-  Helper: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mHelper: TSyntaxNode;
 begin
   // class helper (TBasis) for T und record helper (…) for T sind Helfer, keine Klassen (#848, #994).
-  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
+  mTree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
     '  TListeHelfer = class helper (TBasisHelfer) for TListe',
     '    procedure Leeren;',
     '  end;',
@@ -326,45 +326,45 @@ begin
     '  end;',
     'implementation', 'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    Assert.AreEqual(2, CountKind(Tree.Root, TSyntaxKind.HelperType));
-    Assert.AreEqual(0, CountKind(Tree.Root, TSyntaxKind.ClassType));
-    Helper := FindFirst(Tree.Root, TSyntaxKind.HelperType);
-    Assert.AreEqual('TBasisHelfer', Helper[0].Name);
-    Assert.AreEqual('TListe', Helper[1].Name);
-    Assert.AreEqual('Leeren', Helper[2].Name);
+    AssertNoDiagnostics(mTree);
+    Assert.AreEqual(2, CountKind(mTree.Root, TSyntaxKind.HelperType));
+    Assert.AreEqual(0, CountKind(mTree.Root, TSyntaxKind.ClassType));
+    mHelper := FindFirst(mTree.Root, TSyntaxKind.HelperType);
+    Assert.AreEqual('TBasisHelfer', mHelper[0].Name);
+    Assert.AreEqual('TListe', mHelper[1].Name);
+    Assert.AreEqual('Leeren', mHelper[2].Name);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.ParsesFileKeywordInExpression;
 var
-  Tree: TSyntaxTree;
-  Call: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mCall: TSyntaxNode;
 begin
   // file steht wie string als Typname im Ausdruck: Default(File), SizeOf(file) (#1084).
-  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'implementation', 'procedure P;', 'begin',
+  mTree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'implementation', 'procedure P;', 'begin',
     '  X := Default(File);', '  Y := SizeOf(string);', 'end;', 'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    Call := FindFirst(Tree.Root, TSyntaxKind.Call);
-    Assert.AreEqual('Default', Call.Name);
-    Assert.AreEqual(2, Integer(Call.ChildCount));
-    Assert.AreEqual('File', Call[1].Name);
-    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.Identifier, Call[1].Kind);
+    AssertNoDiagnostics(mTree);
+    mCall := FindFirst(mTree.Root, TSyntaxKind.Call);
+    Assert.AreEqual('Default', mCall.Name);
+    Assert.AreEqual(2, Integer(mCall.ChildCount));
+    Assert.AreEqual('File', mCall[1].Name);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.Identifier, mCall[1].Kind);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.ParsesTypeArgsBeforeIdentifier;
 var
-  Tree: TSyntaxTree;
-  Prop, TypeRef: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mProp, mTypeRef: TSyntaxNode;
 begin
   // Im Typverweis folgt den Typargumenten auch ein Bezeichner (read, write, deprecated) (#1004).
-  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
+  mTree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
     '  TKarte = class',
     '    property Liste: TList<Integer> read FListe write FListe;',
     '    property Tabelle: TDictionary<string, TList<Integer>> read FTabelle;',
@@ -372,23 +372,23 @@ begin
     'implementation',
     'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    Prop := FindFirst(Tree.Root, TSyntaxKind.PropertyDecl);
-    TypeRef := Prop.FindChild(TSyntaxKind.TypeReference);
-    Assert.AreEqual('TList', TypeRef.Name);
-    Assert.IsNotNull(TypeRef.FindChild(TSyntaxKind.GenericArgs));
-    Assert.AreEqual(2, CountKind(Tree.Root, TSyntaxKind.PropertyDecl));
-    Assert.AreEqual(3, CountKind(Tree.Root, TSyntaxKind.GenericArgs));
+    AssertNoDiagnostics(mTree);
+    mProp := FindFirst(mTree.Root, TSyntaxKind.PropertyDecl);
+    mTypeRef := mProp.FindChild(TSyntaxKind.TypeReference);
+    Assert.AreEqual('TList', mTypeRef.Name);
+    Assert.IsNotNull(mTypeRef.FindChild(TSyntaxKind.GenericArgs));
+    Assert.AreEqual(2, CountKind(mTree.Root, TSyntaxKind.PropertyDecl));
+    Assert.AreEqual(3, CountKind(mTree.Root, TSyntaxKind.GenericArgs));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.ParsesRecordWithVariantPart;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
+  mTree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
     '  TRec = packed record',
     '    Tag: Byte;',
     '    case Integer of',
@@ -397,19 +397,19 @@ begin
     '  end;',
     'implementation', 'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.RecordType));
-    Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.VariantPart));
+    AssertNoDiagnostics(mTree);
+    Assert.IsNotNull(FindFirst(mTree.Root, TSyntaxKind.RecordType));
+    Assert.IsNotNull(FindFirst(mTree.Root, TSyntaxKind.VariantPart));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.ParsesProcedureTypesWithCallingConvention;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
+  mTree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
     '  TCallback = procedure(A: Integer); stdcall;',
     '  TEvent = procedure(Sender: TObject) of object;',
     '  TFunc = reference to function: Integer;',
@@ -417,70 +417,70 @@ begin
     '  Hook: function(P: Pointer): Integer; cdecl;',
     'implementation', 'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    Assert.AreEqual(4, CountKind(Tree.Root, TSyntaxKind.ProcedureType));
+    AssertNoDiagnostics(mTree);
+    Assert.AreEqual(4, CountKind(mTree.Root, TSyntaxKind.ProcedureType));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.ParsesConstArrayWithSubrange;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'const',
+  mTree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'const',
     '  Names: array[0..1] of string = (''a'', ''b'');',
     '  Mask = 1 shl 3;',
     'implementation', 'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    Assert.AreEqual(2, CountKind(Tree.Root, TSyntaxKind.ConstDecl));
-    Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.ArrayType));
+    AssertNoDiagnostics(mTree);
+    Assert.AreEqual(2, CountKind(mTree.Root, TSyntaxKind.ConstDecl));
+    Assert.IsNotNull(FindFirst(mTree.Root, TSyntaxKind.ArrayType));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.RespectsOperatorPrecedence;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Lines(['program P;', 'begin', '  X := 1 + 2 * 3;', 'end.']));
+  mTree := TPascalParser.Parse(Lines(['program P;', 'begin', '  X := 1 + 2 * 3;', 'end.']));
   try
-    AssertNoDiagnostics(Tree);
+    AssertNoDiagnostics(mTree);
     Assert.AreEqual('BinaryExpr:+(Literal:1,BinaryExpr:*(Literal:2,Literal:3))',
-      Outline(FindFirst(Tree.Root, TSyntaxKind.BinaryExpr)));
+      Outline(FindFirst(mTree.Root, TSyntaxKind.BinaryExpr)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.KeepsEmptyThenBeforeElse;
 var
-  Tree: TSyntaxTree;
-  Node: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mNode: TSyntaxNode;
 begin
   // if A then else B: Der then-Zweig ist leer, B gehört ins else (#656).
-  Tree := TPascalParser.Parse(Lines(['program P;', 'begin', '  if A then else B;', '  if C then ;', 'end.']));
+  mTree := TPascalParser.Parse(Lines(['program P;', 'begin', '  if A then else B;', '  if C then ;', 'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    Node := FindFirst(Tree.Root, TSyntaxKind.IfStatement);
-    Assert.AreEqual(3, Node.ChildCount);
-    Assert.AreEqual(Ord(TSyntaxKind.EmptyStatement), Ord(Node[1].Kind));
-    Assert.AreEqual(Ord(TSyntaxKind.CallStatement), Ord(Node[2].Kind));
+    AssertNoDiagnostics(mTree);
+    mNode := FindFirst(mTree.Root, TSyntaxKind.IfStatement);
+    Assert.AreEqual(3, mNode.ChildCount);
+    Assert.AreEqual(Ord(TSyntaxKind.EmptyStatement), Ord(mNode[1].Kind));
+    Assert.AreEqual(Ord(TSyntaxKind.CallStatement), Ord(mNode[2].Kind));
     // Ohne else bleibt es bei Bedingung allein.
-    Assert.AreEqual(1, Node.Parent[1].ChildCount);
+    Assert.AreEqual(1, mNode.Parent[1].ChildCount);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.ParsesStatements;
 var
-  Tree: TSyntaxTree;
-  Item: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mItem: TSyntaxNode;
 begin
-  Tree := TPascalParser.Parse(Lines(['program P;', 'begin',
+  mTree := TPascalParser.Parse(Lines(['program P;', 'begin',
     '  if (A >= B) and not C then X := Y.Z(1)[2]^ else begin end;',
     '  case I of 1..2, 3: ; else Exit; end;',
     '  try raise E.Create(''x'') except on E: Exception do ; end;',
@@ -492,205 +492,205 @@ begin
     '  inherited Create;',
     'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.IfStatement));
-    Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.CaseStatement));
-    Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.ExceptionHandler));
-    Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.FinallyBlock));
-    Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.RepeatStatement));
-    Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.WithStatement));
-    Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.AsmBlock));
-    Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.SetConstructor));
-    Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.Dereference));
-    Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.InheritedExpr));
+    AssertNoDiagnostics(mTree);
+    Assert.IsNotNull(FindFirst(mTree.Root, TSyntaxKind.IfStatement));
+    Assert.IsNotNull(FindFirst(mTree.Root, TSyntaxKind.CaseStatement));
+    Assert.IsNotNull(FindFirst(mTree.Root, TSyntaxKind.ExceptionHandler));
+    Assert.IsNotNull(FindFirst(mTree.Root, TSyntaxKind.FinallyBlock));
+    Assert.IsNotNull(FindFirst(mTree.Root, TSyntaxKind.RepeatStatement));
+    Assert.IsNotNull(FindFirst(mTree.Root, TSyntaxKind.WithStatement));
+    Assert.IsNotNull(FindFirst(mTree.Root, TSyntaxKind.AsmBlock));
+    Assert.IsNotNull(FindFirst(mTree.Root, TSyntaxKind.SetConstructor));
+    Assert.IsNotNull(FindFirst(mTree.Root, TSyntaxKind.Dereference));
+    Assert.IsNotNull(FindFirst(mTree.Root, TSyntaxKind.InheritedExpr));
     // Marke 1..2 ist ein Bereich wie in Mengen (#983), danach die Marke 3.
-    Item := FindFirst(Tree.Root, TSyntaxKind.CaseItem);
-    Assert.AreEqual(2, Item.ChildCount);
-    Assert.AreEqual(Ord(TSyntaxKind.RangeExpr), Ord(Item[0].Kind));
-    Assert.AreEqual(2, Item[0].ChildCount);
-    Assert.AreEqual(Ord(TSyntaxKind.Literal), Ord(Item[1].Kind));
+    mItem := FindFirst(mTree.Root, TSyntaxKind.CaseItem);
+    Assert.AreEqual(2, mItem.ChildCount);
+    Assert.AreEqual(Ord(TSyntaxKind.RangeExpr), Ord(mItem[0].Kind));
+    Assert.AreEqual(2, mItem[0].ChildCount);
+    Assert.AreEqual(Ord(TSyntaxKind.Literal), Ord(mItem[1].Kind));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.ParsesInlineVarAndAnonymousMethod;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Lines(['program P;', 'begin',
+  mTree := TPascalParser.Parse(Lines(['program P;', 'begin',
     '  var X: Integer := 1;',
     '  for var S in List do ;',
     '  P := procedure(A: Integer) begin Writeln(A) end;',
     'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.InlineVar));
-    Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.ForInStatement));
-    Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.AnonymousMethod));
+    AssertNoDiagnostics(mTree);
+    Assert.IsNotNull(FindFirst(mTree.Root, TSyntaxKind.InlineVar));
+    Assert.IsNotNull(FindFirst(mTree.Root, TSyntaxKind.ForInStatement));
+    Assert.IsNotNull(FindFirst(mTree.Root, TSyntaxKind.AnonymousMethod));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.ReportsRangesInUtf16;
 var
-  Tree: TSyntaxTree;
-  Node: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mNode: TSyntaxNode;
 begin
-  Tree := TPascalParser.Parse(Lines(['program P;', 'begin', '  S := ''' + #$D83D#$DE00 + ''';', 'end.']));
+  mTree := TPascalParser.Parse(Lines(['program P;', 'begin', '  S := ''' + #$D83D#$DE00 + ''';', 'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    Node := FindFirst(Tree.Root, TSyntaxKind.AssignStatement);
-    Assert.AreEqual(2, Node.StartPos.Line);
-    Assert.AreEqual(2, Node.StartPos.Character);
-    Assert.AreEqual(2, Node.EndPos.Line);
-    Assert.AreEqual(11, Node.EndPos.Character);
+    AssertNoDiagnostics(mTree);
+    mNode := FindFirst(mTree.Root, TSyntaxKind.AssignStatement);
+    Assert.AreEqual(2, mNode.StartPos.Line);
+    Assert.AreEqual(2, mNode.StartPos.Character);
+    Assert.AreEqual(2, mNode.EndPos.Line);
+    Assert.AreEqual(11, mNode.EndPos.Character);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.RecoversFromMissingSemicolon;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Lines(['program P;', 'begin', '  A := 1', '  B := 2;', 'end.']));
+  mTree := TPascalParser.Parse(Lines(['program P;', 'begin', '  A := 1', '  B := 2;', 'end.']));
   try
-    Assert.AreEqual<NativeInt>(1, Length(Tree.Diagnostics));
+    Assert.AreEqual<NativeInt>(1, Length(mTree.Diagnostics));
     // Gemeldet am Ende der Zeile, in der das Semikolon fehlt.
-    Assert.AreEqual(2, Tree.Diagnostics[0].StartPos.Line);
-    Assert.AreEqual(8, Tree.Diagnostics[0].StartPos.Character);
-    Assert.AreEqual(2, Tree.Diagnostics[0].EndPos.Line);
-    Assert.AreEqual(8, Tree.Diagnostics[0].EndPos.Character);
-    Assert.AreEqual(''';'' fehlt (wie E2066).', Tree.Diagnostics[0].Message);
-    Assert.AreEqual(2, CountKind(Tree.Root, TSyntaxKind.AssignStatement));
+    Assert.AreEqual(2, mTree.Diagnostics[0].StartPos.Line);
+    Assert.AreEqual(8, mTree.Diagnostics[0].StartPos.Character);
+    Assert.AreEqual(2, mTree.Diagnostics[0].EndPos.Line);
+    Assert.AreEqual(8, mTree.Diagnostics[0].EndPos.Character);
+    Assert.AreEqual(''';'' fehlt (wie E2066).', mTree.Diagnostics[0].Message);
+    Assert.AreEqual(2, CountKind(mTree.Root, TSyntaxKind.AssignStatement));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.RecoversFromMissingExpression;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Lines(['program P;', 'begin', '  A := ;', '  if then B;', '  C;', 'end.']));
+  mTree := TPascalParser.Parse(Lines(['program P;', 'begin', '  A := ;', '  if then B;', '  C;', 'end.']));
   try
-    Assert.AreEqual<NativeInt>(2, Length(Tree.Diagnostics));
-    Assert.AreEqual(2, CountKind(Tree.Root, TSyntaxKind.Error));
-    Assert.AreEqual(2, CountKind(Tree.Root, TSyntaxKind.CallStatement));
+    Assert.AreEqual<NativeInt>(2, Length(mTree.Diagnostics));
+    Assert.AreEqual(2, CountKind(mTree.Root, TSyntaxKind.Error));
+    Assert.AreEqual(2, CountKind(mTree.Root, TSyntaxKind.CallStatement));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.RecoversFromMissingClassEnd;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type', '  T = class', '    procedure A;',
+  mTree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type', '  T = class', '    procedure A;',
     'implementation', 'procedure B;', 'begin', 'end;', 'end.']));
   try
-    Assert.AreEqual<NativeInt>(1, Length(Tree.Diagnostics));
-    Assert.AreEqual(5, Tree.Diagnostics[0].StartPos.Line);
-    Assert.AreEqual(0, Tree.Diagnostics[0].StartPos.Character);
-    Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.RoutineDecl));
+    Assert.AreEqual<NativeInt>(1, Length(mTree.Diagnostics));
+    Assert.AreEqual(5, mTree.Diagnostics[0].StartPos.Line);
+    Assert.AreEqual(0, mTree.Diagnostics[0].StartPos.Character);
+    Assert.IsNotNull(FindFirst(mTree.Root, TSyntaxKind.RoutineDecl));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.KeepsTokensIncludingComments;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse('program P; { Kommentar } begin end.');
+  mTree := TPascalParser.Parse('program P; { Kommentar } begin end.');
   try
-    AssertNoDiagnostics(Tree);
-    Assert.AreEqual<NativeInt>(7, Length(Tree.Tokens));
-    Assert.AreEqual<TPascalTokenKind>(TPascalTokenKind.Comment, Tree.Tokens[3].Kind);
+    AssertNoDiagnostics(mTree);
+    Assert.AreEqual<NativeInt>(7, Length(mTree.Tokens));
+    Assert.AreEqual<TPascalTokenKind>(TPascalTokenKind.Comment, mTree.Tokens[3].Kind);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.StopsEarlyWhenCancelled;
 var
-  Text: TStringBuilder;
-  Index: Integer;
-  Cancellation: TCountingCancellation;
-  Token: IPascalCancellation;
-  Tree: TSyntaxTree;
+  mText: TStringBuilder;
+  mIndex: Integer;
+  mCancellation: TCountingCancellation;
+  mToken: IPascalCancellation;
+  mTree: TSyntaxTree;
 begin
-  Text := TStringBuilder.Create;
+  mText := TStringBuilder.Create;
   try
-    Text.Append('unit U;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10);
-    for Index := 1 to 5000 do
+    mText.Append('unit U;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10);
+    for mIndex := 1 to 5000 do
     begin
-      Text.Append('  X := X + 1;'#13#10);
+      mText.Append('  X := X + 1;'#13#10);
     end;
-    Text.Append('end;'#13#10'end.');
-    Cancellation := TCountingCancellation.Create;
-    Token := Cancellation;
-    Tree := TPascalParser.Parse(Text.ToString, Token);
+    mText.Append('end;'#13#10'end.');
+    mCancellation := TCountingCancellation.Create;
+    mToken := mCancellation;
+    mTree := TPascalParser.Parse(mText.ToString, mToken);
     try
       // Nach der ersten Prüfung springt der Parser ans Ende und endet ohne Ausnahme.
-      Assert.AreEqual(1, Cancellation.FCalls);
-      Assert.IsNotNull(Tree.Root);
+      Assert.AreEqual(1, mCancellation.FCalls);
+      Assert.IsNotNull(mTree.Root);
     finally
-      Tree.Free;
+      mTree.Free;
     end;
   finally
-    Text.Free;
+    mText.Free;
   end;
 end;
 
 procedure TPascalParserTests.KeepsUnknownDirectiveAsDirective;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
   // overide; ist ein Tippfehler an der Stelle einer Direktive (#1068): kein Feld, kein Folgefehler.
-  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type', '  TFoo = class',
+  mTree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type', '  TFoo = class',
     '    procedure Paint; overide;', '    procedure Q;', '  end;', 'implementation', 'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    Assert.AreEqual('overide', FindFirst(Tree.Root, TSyntaxKind.Directive).Name);
-    Assert.AreEqual(0, CountKind(Tree.Root, TSyntaxKind.Field));
+    AssertNoDiagnostics(mTree);
+    Assert.AreEqual('overide', FindFirst(mTree.Root, TSyntaxKind.Directive).Name);
+    Assert.AreEqual(0, CountKind(mTree.Root, TSyntaxKind.Field));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.KeepsLocalExportsClause;
 var
-  Tree: TSyntaxTree;
-  Clause: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mClause: TSyntaxNode;
 begin
   // exports in lokalen Deklarationen (E2191 des Compilers) ist kein Syntaxfehler.
-  Tree := TPascalParser.Parse(Lines(['library L;', 'procedure A;', 'exports A;', 'begin', 'end;', 'begin', 'end.']));
+  mTree := TPascalParser.Parse(Lines(['library L;', 'procedure A;', 'exports A;', 'begin', 'end;', 'begin', 'end.']));
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
-    Clause := FindFirst(Tree.Root, TSyntaxKind.ExportsClause);
-    Assert.IsNotNull(Clause);
-    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.RoutineDecl, Clause.Parent.Kind);
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
+    mClause := FindFirst(mTree.Root, TSyntaxKind.ExportsClause);
+    Assert.IsNotNull(mClause);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.RoutineDecl, mClause.Parent.Kind);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPascalParserTests.FieldNamedOperator;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
   // Operator: string ist ein Feld, kein FPC-Operator; sonst meldete field-after-method (E2169) die Felder danach.
-  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type', '  TRun = record', '    Operator: string;',
+  mTree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type', '  TRun = record', '    Operator: string;',
     '    Operator2, Count: Integer;', '    Count2: Integer;', '  end;', 'implementation', 'end.']));
   try
-    AssertNoDiagnostics(Tree);
-    Assert.AreEqual(0, CountKind(Tree.Root, TSyntaxKind.RoutineDecl));
-    Assert.AreEqual(3, CountKind(Tree.Root, TSyntaxKind.Field));
+    AssertNoDiagnostics(mTree);
+    Assert.AreEqual(0, CountKind(mTree.Root, TSyntaxKind.RoutineDecl));
+    Assert.AreEqual(3, CountKind(mTree.Root, TSyntaxKind.Field));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

@@ -51,7 +51,7 @@ begin
   Result := TTokenCursor.Create(TPascalLexer.Tokenize(AText));
 end;
 
-function IndexOfText(const ACursor: TTokenCursor; const AText: string; ASkip: Integer = 0): Integer;
+function IndexOfText(const ACursor: TTokenCursor; const AText: string; ASkip: Integer): Integer; overload;
 var
   mIndex, mSeen: Integer;
 begin
@@ -68,6 +68,11 @@ begin
     end;
   end;
   Result := -1;
+end;
+
+function IndexOfText(const ACursor: TTokenCursor; const AText: string): Integer; overload;
+begin
+  Result := IndexOfText(ACursor, AText, 0);
 end;
 
 procedure TTokenCursorTests.AtOutsideGivesEmptyToken;

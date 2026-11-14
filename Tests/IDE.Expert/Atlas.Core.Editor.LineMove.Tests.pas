@@ -52,7 +52,7 @@ uses
   Atlas.Core.Editor.LineMove;
 
 const
-  Loop =
+  cLoop =
     'procedure P;'#10 +
     'begin'#10 +
     '  A;'#10 +
@@ -62,7 +62,7 @@ const
     '  end;'#10 +
     'end;';
 
-  Methods =
+  cMethods =
     'implementation'#10 +
     #10 +
     '{ TFoo }'#10 +
@@ -91,12 +91,12 @@ end;
 /// <summary>Text nach dem Verschieben bzw. Duplizieren; '-', wenn nichts geht.</summary>
 function Moved(const AText: string; AFirst, ALast, AMethodLine: Integer; AKind: TAtlasLineMoveKind): string;
 var
-  Move: TAtlasLineMove;
+  mMove: TAtlasLineMove;
 begin
   Result := '-';
-  if TAtlasLineMover.Compute(AText, TAtlasLineSelection.Create(AFirst, ALast, AMethodLine), AKind, 2, Move) then
+  if TAtlasLineMover.Compute(AText, TAtlasLineSelection.Create(AFirst, ALast, AMethodLine), AKind, 2, mMove) then
   begin
-    Result := Joined(TAtlasLineMover.Apply(AText.Split([#10]), Move));
+    Result := Joined(TAtlasLineMover.Apply(AText.Split([#10]), mMove));
   end;
 end;
 
@@ -110,16 +110,16 @@ end;
 
 procedure TAtlasLineMoveTests.IndentFollowsBlockDepth;
 var
-  Text: string;
+  mText: string;
 begin
   // "A;" wandert abwärts: über "while" ohne Änderung, über "begin" eine Ebene tiefer, über "end;" zurück.
-  Text := Moved(Loop, 2, 2, 2, TAtlasLineMoveKind.MoveDown);
-  Assert.AreEqual('  A;', Text.Split([#10])[3]);
-  Text := Moved(Text, 3, 3, 3, TAtlasLineMoveKind.MoveDown);
-  Assert.AreEqual('    A;', Text.Split([#10])[4]);
-  Text := Moved(Text, 4, 4, 4, TAtlasLineMoveKind.MoveDown);
-  Assert.AreEqual('    A;', Text.Split([#10])[5]);
-  Text := Moved(Text, 5, 5, 5, TAtlasLineMoveKind.MoveDown);
+  mText := Moved(cLoop, 2, 2, 2, TAtlasLineMoveKind.MoveDown);
+  Assert.AreEqual('  A;', mText.Split([#10])[3]);
+  mText := Moved(mText, 3, 3, 3, TAtlasLineMoveKind.MoveDown);
+  Assert.AreEqual('    A;', mText.Split([#10])[4]);
+  mText := Moved(mText, 4, 4, 4, TAtlasLineMoveKind.MoveDown);
+  Assert.AreEqual('    A;', mText.Split([#10])[5]);
+  mText := Moved(mText, 5, 5, 5, TAtlasLineMoveKind.MoveDown);
   Assert.AreEqual(
     'procedure P;'#10 +
     'begin'#10 +
@@ -128,30 +128,30 @@ begin
     '    B;'#10 +
     '  end;'#10 +
     '  A;'#10 +
-    'end;', Text);
+    'end;', mText);
 end;
 
 procedure TAtlasLineMoveTests.MovingUpLeavesBlock;
 var
-  Text: string;
+  mText: string;
 begin
   // "B;" aufwärts über "begin" eine Ebene höher; wieder abwärts eine tiefer.
-  Text := Moved(Loop, 5, 5, 5, TAtlasLineMoveKind.MoveUp);
-  Assert.AreEqual('  B;', Text.Split([#10])[4]);
-  Assert.AreEqual(Loop, Moved(Text, 4, 4, 4, TAtlasLineMoveKind.MoveDown));
+  mText := Moved(cLoop, 5, 5, 5, TAtlasLineMoveKind.MoveUp);
+  Assert.AreEqual('  B;', mText.Split([#10])[4]);
+  Assert.AreEqual(cLoop, Moved(mText, 4, 4, 4, TAtlasLineMoveKind.MoveDown));
   // Ohne Blockgrenze bleibt der Einzug, auch für "end;" selbst.
-  Text := Moved(Loop, 6, 6, 6, TAtlasLineMoveKind.MoveUp);
-  Assert.AreEqual('  end;', Text.Split([#10])[5]);
+  mText := Moved(cLoop, 6, 6, 6, TAtlasLineMoveKind.MoveUp);
+  Assert.AreEqual('  end;', mText.Split([#10])[5]);
   // Aufwärts über "end;" in den Block hinein.
-  Text := Moved(Loop + #10'C;', 8, 8, 8, TAtlasLineMoveKind.MoveUp);
-  Assert.AreEqual('  C;', Text.Split([#10])[7], 'über "end;" der Routine');
-  Text := Moved(Text, 7, 7, 7, TAtlasLineMoveKind.MoveUp);
-  Assert.AreEqual('    C;', Text.Split([#10])[6], 'über "end;" der Schleife');
+  mText := Moved(cLoop + #10'C;', 8, 8, 8, TAtlasLineMoveKind.MoveUp);
+  Assert.AreEqual('  C;', mText.Split([#10])[7], 'über "end;" der Routine');
+  mText := Moved(mText, 7, 7, 7, TAtlasLineMoveKind.MoveUp);
+  Assert.AreEqual('    C;', mText.Split([#10])[6], 'über "end;" der Schleife');
 end;
 
 procedure TAtlasLineMoveTests.FinallyAndElseKeepIndent;
 const
-  TryText =
+  cTryText =
     'begin'#10 +
     '  try'#10 +
     '    A;'#10 +
@@ -166,14 +166,14 @@ const
     '  end;'#10 +
     'end;';
 begin
-  Assert.AreEqual('    A;', Moved(TryText, 2, 2, 2, TAtlasLineMoveKind.MoveDown).Split([#10])[3]);
-  Assert.AreEqual('    D;', Moved(TryText, 10, 10, 10, TAtlasLineMoveKind.MoveUp).Split([#10])[9]);
-  Assert.AreEqual('    C;', Moved(TryText, 8, 8, 8, TAtlasLineMoveKind.MoveDown).Split([#10])[9]);
+  Assert.AreEqual('    A;', Moved(cTryText, 2, 2, 2, TAtlasLineMoveKind.MoveDown).Split([#10])[3]);
+  Assert.AreEqual('    D;', Moved(cTryText, 10, 10, 10, TAtlasLineMoveKind.MoveUp).Split([#10])[9]);
+  Assert.AreEqual('    C;', Moved(cTryText, 8, 8, 8, TAtlasLineMoveKind.MoveDown).Split([#10])[9]);
 end;
 
 procedure TAtlasLineMoveTests.MovesSelectionAndKeepsEmptyLines;
 const
-  Text =
+  cText =
     'begin'#10 +
     '  A;'#10 +
     ''#10 +
@@ -183,10 +183,10 @@ const
     '  end;'#10 +
     'end;';
 var
-  Move: TAtlasLineMove;
+  mMove: TAtlasLineMove;
 begin
-  Assert.IsTrue(TAtlasLineMover.Compute(Moved(Text, 1, 3, -1, TAtlasLineMoveKind.MoveDown),
-    TAtlasLineSelection.Create(2, 4, -1), TAtlasLineMoveKind.MoveDown, 2, Move));
+  Assert.IsTrue(TAtlasLineMover.Compute(Moved(cText, 1, 3, -1, TAtlasLineMoveKind.MoveDown),
+    TAtlasLineSelection.Create(2, 4, -1), TAtlasLineMoveKind.MoveDown, 2, mMove));
   Assert.AreEqual(
     'begin'#10 +
     '  with X do'#10 +
@@ -195,11 +195,11 @@ begin
     ''#10 +
     '    B;'#10 +
     '  end;'#10 +
-    'end;', Joined(TAtlasLineMover.Apply(Moved(Text, 1, 3, -1, TAtlasLineMoveKind.MoveDown).Split([#10]), Move)));
-  Assert.AreEqual(3, Move.FirstLine);
-  Assert.AreEqual(5, Move.LastLine);
-  Assert.AreEqual(2, Move.IndentShift[0]);
-  Assert.AreEqual(0, Move.IndentShift[1], 'leere Zeile bleibt leer');
+    'end;', Joined(TAtlasLineMover.Apply(Moved(cText, 1, 3, -1, TAtlasLineMoveKind.MoveDown).Split([#10]), mMove)));
+  Assert.AreEqual(3, mMove.FirstLine);
+  Assert.AreEqual(5, mMove.LastLine);
+  Assert.AreEqual(2, mMove.IndentShift[0]);
+  Assert.AreEqual(0, mMove.IndentShift[1], 'leere Zeile bleibt leer');
 end;
 
 procedure TAtlasLineMoveTests.TabIndentedLinesGetTabs;
@@ -221,8 +221,8 @@ end;
 
 procedure TAtlasLineMoveTests.DuplicatesAboveAndBelow;
 var
-  Move: TAtlasLineMove;
-  Line, Character: Integer;
+  mMove: TAtlasLineMove;
+  mLine, mCharacter: Integer;
 begin
   Assert.AreEqual('a'#10'b'#10'c'#10'b'#10'c', Moved('a'#10'b'#10'c', 1, 2, -1, TAtlasLineMoveKind.DuplicateDown));
   Assert.AreEqual('a'#10'b'#10'b'#10'c', Moved('a'#10'b'#10'c', 1, 1, 1, TAtlasLineMoveKind.DuplicateUp));
@@ -230,47 +230,47 @@ begin
   Assert.AreEqual('a'#10'b'#10'b', Moved('a'#10'b', 1, 1, 1, TAtlasLineMoveKind.DuplicateDown));
   // Der Cursor wandert mit der Kopie.
   Assert.IsTrue(TAtlasLineMover.Compute('a'#10'b'#10'c', TAtlasLineSelection.Create(1, 2, -1),
-    TAtlasLineMoveKind.DuplicateDown, 2, Move));
-  Line := 2;
-  Character := 1;
-  TAtlasLineMover.MapPosition(Move, Line, Character);
-  Assert.AreEqual(4, Line);
-  Assert.AreEqual(1, Character);
+    TAtlasLineMoveKind.DuplicateDown, 2, mMove));
+  mLine := 2;
+  mCharacter := 1;
+  TAtlasLineMover.MapPosition(mMove, mLine, mCharacter);
+  Assert.AreEqual(4, mLine);
+  Assert.AreEqual(1, mCharacter);
   Assert.IsTrue(TAtlasLineMover.Compute('a'#10'b'#10'c', TAtlasLineSelection.Create(1, 2, -1),
-    TAtlasLineMoveKind.DuplicateUp, 2, Move));
-  Line := 1;
-  TAtlasLineMover.MapPosition(Move, Line, Character);
-  Assert.AreEqual(1, Line);
+    TAtlasLineMoveKind.DuplicateUp, 2, mMove));
+  mLine := 1;
+  TAtlasLineMover.MapPosition(mMove, mLine, mCharacter);
+  Assert.AreEqual(1, mLine);
 end;
 
 procedure TAtlasLineMoveTests.MapsCursorWithIndent;
 var
-  Move: TAtlasLineMove;
-  Line, Character: Integer;
+  mMove: TAtlasLineMove;
+  mLine, mCharacter: Integer;
 begin
-  Assert.IsTrue(TAtlasLineMover.Compute(Loop, TAtlasLineSelection.Create(5, 5, 5), TAtlasLineMoveKind.MoveUp, 2,
-    Move));
-  Line := 5;
-  Character := 6;
-  TAtlasLineMover.MapPosition(Move, Line, Character);
-  Assert.AreEqual(4, Line);
-  Assert.AreEqual(4, Character);
+  Assert.IsTrue(TAtlasLineMover.Compute(cLoop, TAtlasLineSelection.Create(5, 5, 5), TAtlasLineMoveKind.MoveUp, 2,
+    mMove));
+  mLine := 5;
+  mCharacter := 6;
+  TAtlasLineMover.MapPosition(mMove, mLine, mCharacter);
+  Assert.AreEqual(4, mLine);
+  Assert.AreEqual(4, mCharacter);
   // Zeilen außerhalb des Blocks bleiben.
-  Line := 1;
-  Character := 3;
-  TAtlasLineMover.MapPosition(Move, Line, Character);
-  Assert.AreEqual(1, Line);
-  Assert.AreEqual(3, Character);
+  mLine := 1;
+  mCharacter := 3;
+  TAtlasLineMover.MapPosition(mMove, mLine, mCharacter);
+  Assert.AreEqual(1, mLine);
+  Assert.AreEqual(3, mCharacter);
 end;
 
 procedure TAtlasLineMoveTests.MovesMethodWithCommentsDown;
 var
-  Move: TAtlasLineMove;
+  mMove: TAtlasLineMove;
 begin
   // Cursor auf dem Kopf von A, ohne Markierung: A samt Kommentar wandert hinter B samt Kommentaren.
-  Assert.IsTrue(TAtlasLineMover.Compute(Methods, TAtlasLineSelection.Create(5, 5, 5),
-    TAtlasLineMoveKind.MoveDown, 2, Move));
-  Assert.IsTrue(Move.Method);
+  Assert.IsTrue(TAtlasLineMover.Compute(cMethods, TAtlasLineSelection.Create(5, 5, 5),
+    TAtlasLineMoveKind.MoveDown, 2, mMove));
+  Assert.IsTrue(mMove.Method);
   Assert.AreEqual(
     'implementation'#10 +
     #10 +
@@ -290,33 +290,33 @@ begin
     '  X;'#10 +
     'end;'#10 +
     #10 +
-    'end.', Joined(TAtlasLineMover.Apply(Methods.Split([#10]), Move)));
-  Assert.AreEqual(4, Move.OldFirstLine);
-  Assert.AreEqual(12, Move.FirstLine);
-  Assert.AreEqual(16, Move.LastLine);
-  Assert.AreEqual(8, Move.LineShift);
+    'end.', Joined(TAtlasLineMover.Apply(cMethods.Split([#10]), mMove)));
+  Assert.AreEqual(4, mMove.OldFirstLine);
+  Assert.AreEqual(12, mMove.FirstLine);
+  Assert.AreEqual(16, mMove.LastLine);
+  Assert.AreEqual(8, mMove.LineShift);
   // Hinter B gibt es keine Methode mehr.
-  Assert.AreEqual('-', Moved(Methods, 13, 13, 13, TAtlasLineMoveKind.MoveDown));
+  Assert.AreEqual('-', Moved(cMethods, 13, 13, 13, TAtlasLineMoveKind.MoveDown));
 end;
 
 procedure TAtlasLineMoveTests.MovesMethodUp;
 var
-  Move: TAtlasLineMove;
+  mMove: TAtlasLineMove;
 begin
-  Assert.IsTrue(TAtlasLineMover.Compute(Methods, TAtlasLineSelection.Create(13, 13, 13),
-    TAtlasLineMoveKind.MoveUp, 2, Move));
-  Assert.AreEqual(Moved(Methods, 5, 5, 5, TAtlasLineMoveKind.MoveDown),
-    Joined(TAtlasLineMover.Apply(Methods.Split([#10]), Move)));
-  Assert.AreEqual(4, Move.FirstLine);
-  Assert.AreEqual(-6, Move.LineShift);
-  Assert.IsFalse(TAtlasLineMover.Compute(Methods, TAtlasLineSelection.Create(5, 5, 5),
-    TAtlasLineMoveKind.MoveUp, 2, Move), 'vor A keine Methode');
-  Assert.IsTrue(Move.Method, 'Grund für die Meldung');
+  Assert.IsTrue(TAtlasLineMover.Compute(cMethods, TAtlasLineSelection.Create(13, 13, 13),
+    TAtlasLineMoveKind.MoveUp, 2, mMove));
+  Assert.AreEqual(Moved(cMethods, 5, 5, 5, TAtlasLineMoveKind.MoveDown),
+    Joined(TAtlasLineMover.Apply(cMethods.Split([#10]), mMove)));
+  Assert.AreEqual(4, mMove.FirstLine);
+  Assert.AreEqual(-6, mMove.LineShift);
+  Assert.IsFalse(TAtlasLineMover.Compute(cMethods, TAtlasLineSelection.Create(5, 5, 5),
+    TAtlasLineMoveKind.MoveUp, 2, mMove), 'vor A keine Methode');
+  Assert.IsTrue(mMove.Method, 'Grund für die Meldung');
 end;
 
 procedure TAtlasLineMoveTests.MethodNeedsNeighbourWithoutCodeBetween;
 const
-  WithVar =
+  cWithVar =
     'implementation'#10 +
     'procedure A;'#10 +
     'begin'#10 +
@@ -327,7 +327,7 @@ const
     'begin'#10 +
     'end;'#10 +
     'end.';
-  WithDirective =
+  cWithDirective =
     'implementation'#10 +
     'procedure A;'#10 +
     'begin'#10 +
@@ -339,47 +339,47 @@ const
     '{$ENDIF}'#10 +
     'end.';
 begin
-  Assert.AreEqual('-', Moved(WithVar, 1, 1, 1, TAtlasLineMoveKind.MoveDown));
-  Assert.AreEqual('-', Moved(WithDirective, 1, 1, 1, TAtlasLineMoveKind.MoveDown));
+  Assert.AreEqual('-', Moved(cWithVar, 1, 1, 1, TAtlasLineMoveKind.MoveDown));
+  Assert.AreEqual('-', Moved(cWithDirective, 1, 1, 1, TAtlasLineMoveKind.MoveDown));
   // Mit Markierung gilt die Zeile, nicht die Methode.
-  Assert.AreEqual('implementation'#10'begin'#10'  procedure A;', Copy(Moved(WithVar, 1, 1, -1,
+  Assert.AreEqual('implementation'#10'begin'#10'  procedure A;', Copy(Moved(cWithVar, 1, 1, -1,
     TAtlasLineMoveKind.MoveDown), 1, 35));
 end;
 
 procedure TAtlasLineMoveTests.CursorInBodyMovesLineOnly;
 var
-  Move: TAtlasLineMove;
+  mMove: TAtlasLineMove;
 begin
-  Assert.IsTrue(TAtlasLineMover.Compute(Methods, TAtlasLineSelection.Create(7, 7, 7),
-    TAtlasLineMoveKind.MoveDown, 2, Move));
-  Assert.IsFalse(Move.Method);
-  Assert.AreEqual(2, Move.OldCount);
+  Assert.IsTrue(TAtlasLineMover.Compute(cMethods, TAtlasLineSelection.Create(7, 7, 7),
+    TAtlasLineMoveKind.MoveDown, 2, mMove));
+  Assert.IsFalse(mMove.Method);
+  Assert.AreEqual(2, mMove.OldCount);
   Assert.IsFalse(TAtlasLineMover.Compute('a', TAtlasLineSelection.Create(0, 0, 0),
-    TAtlasLineMoveKind.MoveDown, 2, Move));
-  Assert.IsFalse(Move.Method);
+    TAtlasLineMoveKind.MoveDown, 2, mMove));
+  Assert.IsFalse(mMove.Method);
 end;
 
 procedure TAtlasLineMoveTests.DifferenceReplacesWholeLines;
 var
-  Start, OldLength: Integer;
-  Insert: string;
+  mStart, mOldLength: Integer;
+  mInsert: string;
 begin
-  Assert.IsTrue(TAtlasLineMover.Difference('a'#13#10'b1'#13#10'c'#13#10'd', 'a'#13#10'c'#13#10'b1'#13#10'd', Start,
-    OldLength, Insert));
-  Assert.AreEqual(3, Start);
-  Assert.AreEqual(7, OldLength);
-  Assert.AreEqual('c'#13#10'b1'#13#10, Insert);
+  Assert.IsTrue(TAtlasLineMover.Difference('a'#13#10'b1'#13#10'c'#13#10'd', 'a'#13#10'c'#13#10'b1'#13#10'd', mStart,
+    mOldLength, mInsert));
+  Assert.AreEqual(3, mStart);
+  Assert.AreEqual(7, mOldLength);
+  Assert.AreEqual('c'#13#10'b1'#13#10, mInsert);
   // Gleicher Anfang mitten in der Zeile: ab dem Zeilenanfang.
-  Assert.IsTrue(TAtlasLineMover.Difference('ab'#10'x', 'ac'#10'x', Start, OldLength, Insert));
-  Assert.AreEqual(0, Start);
-  Assert.AreEqual(3, OldLength);
-  Assert.AreEqual('ac'#10, Insert);
+  Assert.IsTrue(TAtlasLineMover.Difference('ab'#10'x', 'ac'#10'x', mStart, mOldLength, mInsert));
+  Assert.AreEqual(0, mStart);
+  Assert.AreEqual(3, mOldLength);
+  Assert.AreEqual('ac'#10, mInsert);
   // Neue Zeile am Ende ohne Zeilenumbruch.
-  Assert.IsTrue(TAtlasLineMover.Difference('a'#10'b', 'a'#10'b'#10'b', Start, OldLength, Insert));
-  Assert.AreEqual(2, Start);
-  Assert.AreEqual(0, OldLength);
-  Assert.AreEqual('b'#10, Insert);
-  Assert.IsFalse(TAtlasLineMover.Difference('a', 'a', Start, OldLength, Insert));
+  Assert.IsTrue(TAtlasLineMover.Difference('a'#10'b', 'a'#10'b'#10'b', mStart, mOldLength, mInsert));
+  Assert.AreEqual(2, mStart);
+  Assert.AreEqual(0, mOldLength);
+  Assert.AreEqual('b'#10, mInsert);
+  Assert.IsFalse(TAtlasLineMover.Difference('a', 'a', mStart, mOldLength, mInsert));
 end;
 
 procedure TAtlasLineMoveTests.CommentOnlyTextWithoutDirectives;

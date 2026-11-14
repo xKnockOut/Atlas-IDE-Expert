@@ -43,7 +43,7 @@ uses
   Atlas.Common.Rules.ConsideredUsed;
 
 const
-  LibraryText = 'unit System;'#10'interface'#10'type'#10'  TObject = class'#10'  end;'#10 +
+  cLibraryText = 'unit System;'#10'interface'#10'type'#10'  TObject = class'#10'  end;'#10 +
     '  IInterface = interface'#10'    function _AddRef: Integer;'#10'  end;'#10 +
     '  TInterfacedObject = class(TObject, IInterface)'#10'  public'#10'    function _AddRef: Integer;'#10'  end;'#10 +
     '  TPersistent = class(TObject)'#10'  end;'#10'  TComponent = class(TPersistent)'#10'  end;'#10 +
@@ -53,44 +53,44 @@ const
 function ReasonOf(const AUnitText, AContainer, AName: string; const AKeepAttributes,
   AKeepPatterns: TArray<string>): TConsideredUsedReason; overload;
 var
-  Index: ISymbolIndex;
-  Local: TUnitIndex;
-  Tree: TSyntaxTree;
-  Tokens: TArray<TPascalToken>;
-  Token: TPascalToken;
-  Service: TConsideredUsed;
-  Symbol: TIndexSymbol;
+  mIndex: ISymbolIndex;
+  mLocal: TUnitIndex;
+  mTree: TSyntaxTree;
+  mTokens: TArray<TPascalToken>;
+  mToken: TPascalToken;
+  mService: TConsideredUsed;
+  mSymbol: TIndexSymbol;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(LibraryText, 'C:\BDS\source\System.pas', nil));
-  Local := TIndexExtractor.ExtractText(AUnitText, 'C:\P\Probe.pas', nil);
-  Index.AddUnit(Local);
-  Tree := TSyntaxTreeCache.Parse(AUnitText);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cLibraryText, 'C:\BDS\source\System.pas', nil));
+  mLocal := TIndexExtractor.ExtractText(AUnitText, 'C:\P\Probe.pas', nil);
+  mIndex.AddUnit(mLocal);
+  mTree := TSyntaxTreeCache.Parse(AUnitText);
   try
-    Tokens := nil;
-    for Token in Tree.Tokens do
+    mTokens := nil;
+    for mToken in mTree.Tokens do
     begin
-      if not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+      if not (mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
       begin
-        Tokens := Tokens + [Token];
+        mTokens := mTokens + [mToken];
       end;
     end;
-    Service := TConsideredUsed.Create(Index, Local, Tokens, AKeepAttributes, AKeepPatterns);
+    mService := TConsideredUsed.Create(mIndex, mLocal, mTokens, AKeepAttributes, AKeepPatterns);
     try
-      for Symbol in Local.Symbols do
+      for mSymbol in mLocal.Symbols do
       begin
-        if SameText(Symbol.Name, AName) and SameText(Symbol.Container, AContainer) then
+        if SameText(mSymbol.Name, AName) and SameText(mSymbol.Container, AContainer) then
         begin
-          Exit(Service.Reason(Symbol));
+          Exit(mService.Reason(mSymbol));
         end;
       end;
       Assert.Fail('Mitglied fehlt: ' + AName);
       Result := TConsideredUsedReason.None;
     finally
-      Service.Free;
+      mService.Free;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -102,14 +102,14 @@ end;
 /// <summary>Unit Probe mit dem Typ TProbe (Vorfahr AAncestor, '' = keiner) und den Mitgliedern AMembers.</summary>
 function Probe(const AAncestor, AMembers: string): string;
 var
-  Head: string;
+  mHead: string;
 begin
-  Head := 'class';
+  mHead := 'class';
   if AAncestor <> '' then
   begin
-    Head := 'class(' + AAncestor + ')';
+    mHead := 'class(' + AAncestor + ')';
   end;
-  Result := 'unit Probe;'#10'interface'#10'type'#10'  TProbe = ' + Head + #10 + AMembers + '  end;'#10 +
+  Result := 'unit Probe;'#10'interface'#10'type'#10'  TProbe = ' + mHead + #10 + AMembers + '  end;'#10 +
     'implementation'#10'end.';
 end;
 
@@ -156,15 +156,15 @@ end;
 
 procedure TConsideredUsedTests.InterfaceMethods;
 const
-  Unit_ = 'unit Probe;'#10'interface'#10'type'#10'  IZaehler = interface'#10'    procedure Zaehle;'#10 +
+  cUnit_ = 'unit Probe;'#10'interface'#10'type'#10'  IZaehler = interface'#10'    procedure Zaehle;'#10 +
     '  end;'#10'  TProbe = class(TInterfacedObject, IZaehler)'#10'  public'#10'    procedure Zaehle;'#10 +
     '    procedure Anders;'#10'    procedure IZaehler.Zaehle = Anders2;'#10'    procedure Anders2;'#10'  end;'#10 +
     'implementation'#10'end.';
 begin
-  Assert.AreEqual<TConsideredUsedReason>(TConsideredUsedReason.InterfaceMethod, ReasonOf(Unit_, 'TProbe', 'Zaehle'));
-  Assert.AreEqual<TConsideredUsedReason>(TConsideredUsedReason.InterfaceMethod, ReasonOf(Unit_, 'TProbe', 'Anders2'));
-  Assert.AreEqual<TConsideredUsedReason>(TConsideredUsedReason.None, ReasonOf(Unit_, 'TProbe', 'Anders'));
-  Assert.AreEqual<TConsideredUsedReason>(TConsideredUsedReason.InterfaceMember, ReasonOf(Unit_, 'IZaehler', 'Zaehle'));
+  Assert.AreEqual<TConsideredUsedReason>(TConsideredUsedReason.InterfaceMethod, ReasonOf(cUnit_, 'TProbe', 'Zaehle'));
+  Assert.AreEqual<TConsideredUsedReason>(TConsideredUsedReason.InterfaceMethod, ReasonOf(cUnit_, 'TProbe', 'Anders2'));
+  Assert.AreEqual<TConsideredUsedReason>(TConsideredUsedReason.None, ReasonOf(cUnit_, 'TProbe', 'Anders'));
+  Assert.AreEqual<TConsideredUsedReason>(TConsideredUsedReason.InterfaceMember, ReasonOf(cUnit_, 'IZaehler', 'Zaehle'));
 end;
 
 procedure TConsideredUsedTests.StreamingAndTestCases;

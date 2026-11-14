@@ -48,7 +48,7 @@ uses
   Atlas.Common.Rules.Derived;
 
 const
-  Source =
+  cSource =
     'unit U;'#10 +
     'interface'#10 +
     'procedure A;'#10 +
@@ -94,230 +94,230 @@ end;
 
 procedure TRuleDerivedTests.UnitIndexIsExtractedOncePerCache;
 var
-  Tree: TSyntaxTree;
-  Context: TRuleContext;
-  Cache: IRuleDerivedCache;
-  First, Second: TUnitIndex;
-  Stored, StoredAgain: TObject;
+  mTree: TSyntaxTree;
+  mContext: TRuleContext;
+  mCache: IRuleDerivedCache;
+  mFirst, mSecond: TUnitIndex;
+  mStored, mStoredAgain: TObject;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Context := ContextOf(Tree, Source);
-    Cache := TRuleDerivedCache.Create;
-    First := TRuleDerived.UnitIndex(Cache, Context);
-    Assert.IsTrue(Cache.TryGet('rules.unitIndex', Stored), 'abgelegt');
-    Second := TRuleDerived.UnitIndex(Cache, Context);
-    Assert.IsTrue(Cache.TryGet('rules.unitIndex', StoredAgain));
-    Assert.AreSame(Stored, StoredAgain, 'nicht neu berechnet');
-    Assert.IsTrue(Length(First.Symbols) > 0, 'Symbole gefunden');
-    Assert.AreEqual(Integer(Length(First.Symbols)), Integer(Length(Second.Symbols)));
-    Assert.AreEqual('U', First.UnitName);
-    Cache := nil;
+    mContext := ContextOf(mTree, cSource);
+    mCache := TRuleDerivedCache.Create;
+    mFirst := TRuleDerived.UnitIndex(mCache, mContext);
+    Assert.IsTrue(mCache.TryGet('rules.unitIndex', mStored), 'abgelegt');
+    mSecond := TRuleDerived.UnitIndex(mCache, mContext);
+    Assert.IsTrue(mCache.TryGet('rules.unitIndex', mStoredAgain));
+    Assert.AreSame(mStored, mStoredAgain, 'nicht neu berechnet');
+    Assert.IsTrue(Length(mFirst.Symbols) > 0, 'Symbole gefunden');
+    Assert.AreEqual(Integer(Length(mFirst.Symbols)), Integer(Length(mSecond.Symbols)));
+    Assert.AreEqual('U', mFirst.UnitName);
+    mCache := nil;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TRuleDerivedTests.OpenWithoutEngineReturnsFreshCache;
 var
-  Context: TRuleContext;
-  First, Second, Shared: IRuleDerivedCache;
+  mContext: TRuleContext;
+  mFirst, mSecond, mShared: IRuleDerivedCache;
 begin
-  Context := Default(TRuleContext);
-  First := TRuleDerived.Open(Context);
-  Second := TRuleDerived.Open(Context);
-  Assert.IsNotNull(First);
-  Assert.AreNotSame(First, Second, 'ohne Engine je Aufruf ein eigener Cache');
-  Shared := TRuleDerivedCache.Create;
-  Context.Derived := Shared;
-  Assert.AreSame(Shared, TRuleDerived.Open(Context), 'Cache des Laufs');
-  Context.Derived := nil;
+  mContext := Default(TRuleContext);
+  mFirst := TRuleDerived.Open(mContext);
+  mSecond := TRuleDerived.Open(mContext);
+  Assert.IsNotNull(mFirst);
+  Assert.AreNotSame(mFirst, mSecond, 'ohne Engine je Aufruf ein eigener Cache');
+  mShared := TRuleDerivedCache.Create;
+  mContext.Derived := mShared;
+  Assert.AreSame(mShared, TRuleDerived.Open(mContext), 'Cache des Laufs');
+  mContext.Derived := nil;
 end;
 
 procedure TRuleDerivedTests.RoutinesIncludeNestedWithBody;
 var
-  Tree: TSyntaxTree;
-  Cache: IRuleDerivedCache;
-  Routines: TArray<TSyntaxNode>;
-  Names: string;
-  Routine: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mCache: IRuleDerivedCache;
+  mRoutines: TArray<TSyntaxNode>;
+  mNames: string;
+  mRoutine: TSyntaxNode;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Cache := TRuleDerivedCache.Create;
-    Routines := TRuleDerived.Routines(Cache, ContextOf(Tree, Source));
-    Names := '';
-    for Routine in Routines do
+    mCache := TRuleDerivedCache.Create;
+    mRoutines := TRuleDerived.Routines(mCache, ContextOf(mTree, cSource));
+    mNames := '';
+    for mRoutine in mRoutines do
     begin
-      Names := Names + Routine.Name + ' ';
+      mNames := mNames + mRoutine.Name + ' ';
     end;
     // forward-Deklaration und Deklaration im interface ohne Rumpf fehlen; Inner nach A (Baumreihenfolge).
-    Assert.AreEqual('A Inner Later ', Names);
-    Cache := nil;
+    Assert.AreEqual('A Inner Later ', mNames);
+    mCache := nil;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TRuleDerivedTests.CodeTokensSkipCommentsAndDirectives;
 var
-  Tree: TSyntaxTree;
-  Cache: IRuleDerivedCache;
-  Tokens: TArray<TPascalToken>;
-  Token: TPascalToken;
-  Expected: Integer;
+  mTree: TSyntaxTree;
+  mCache: IRuleDerivedCache;
+  mTokens: TArray<TPascalToken>;
+  mToken: TPascalToken;
+  mExpected: Integer;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Cache := TRuleDerivedCache.Create;
-    Tokens := TRuleDerived.CodeTokens(Cache, ContextOf(Tree, Source));
-    Expected := 0;
-    for Token in Tree.Tokens do
+    mCache := TRuleDerivedCache.Create;
+    mTokens := TRuleDerived.CodeTokens(mCache, ContextOf(mTree, cSource));
+    mExpected := 0;
+    for mToken in mTree.Tokens do
     begin
-      if not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+      if not (mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
       begin
-        Inc(Expected);
+        Inc(mExpected);
       end;
     end;
-    Assert.IsTrue(Expected < Length(Tree.Tokens), 'Quelltext enthält Kommentare und Direktiven');
-    Assert.AreEqual(Expected, Integer(Length(Tokens)));
-    for Token in Tokens do
+    Assert.IsTrue(mExpected < Length(mTree.Tokens), 'Quelltext enthält Kommentare und Direktiven');
+    Assert.AreEqual(mExpected, Integer(Length(mTokens)));
+    for mToken in mTokens do
     begin
-      Assert.IsFalse(Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive], Token.Text);
+      Assert.IsFalse(mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive], mToken.Text);
     end;
-    Cache := nil;
+    mCache := nil;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TRuleDerivedTests.GraphIsSharedPerRoutine;
 var
-  Tree: TSyntaxTree;
-  Context: TRuleContext;
-  Cache: IRuleDerivedCache;
-  Routines: TArray<TSyntaxNode>;
-  First, Again, Other: TControlFlowGraph;
+  mTree: TSyntaxTree;
+  mContext: TRuleContext;
+  mCache: IRuleDerivedCache;
+  mRoutines: TArray<TSyntaxNode>;
+  mFirst, mAgain, mOther: TControlFlowGraph;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Context := ContextOf(Tree, Source);
-    Cache := TRuleDerivedCache.Create;
-    Routines := TRuleDerived.Routines(Cache, Context);
-    First := TRuleDerived.Graph(Cache, Context, Routines[0]);
-    Again := TRuleDerived.Graph(Cache, Context, Routines[0]);
-    Other := TRuleDerived.Graph(Cache, Context, Routines[1]);
-    Assert.IsNotNull(First);
-    Assert.AreSame(Again, First, 'derselbe Graph');
-    Assert.AreNotSame(First, Other, 'je Routine ein Graph');
-    Assert.IsTrue(First.Complete);
-    Cache := nil;
+    mContext := ContextOf(mTree, cSource);
+    mCache := TRuleDerivedCache.Create;
+    mRoutines := TRuleDerived.Routines(mCache, mContext);
+    mFirst := TRuleDerived.Graph(mCache, mContext, mRoutines[0]);
+    mAgain := TRuleDerived.Graph(mCache, mContext, mRoutines[0]);
+    mOther := TRuleDerived.Graph(mCache, mContext, mRoutines[1]);
+    Assert.IsNotNull(mFirst);
+    Assert.AreSame(mAgain, mFirst, 'derselbe Graph');
+    Assert.AreNotSame(mFirst, mOther, 'je Routine ein Graph');
+    Assert.IsTrue(mFirst.Complete);
+    mCache := nil;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TRuleDerivedTests.PositionAtMatchesOldBehaviourForCrLfAndLf;
 const
-  Lf = 'ab'#10'cde'#10'f';
-  CrLf = 'ab'#13#10'cde'#13#10'f';
+  cLf = 'ab'#10'cde'#10'f';
+  cCrLf = 'ab'#13#10'cde'#13#10'f';
 var
-  Cache: IRuleDerivedCache;
-  Position: TTextPosition;
-  Range: TTextRange;
+  mCache: IRuleDerivedCache;
+  mPosition: TTextPosition;
+  mRange: TTextRange;
 begin
-  Cache := TRuleDerivedCache.Create;
-  Position := TRuleDerived.PositionAt(Cache, ContextOf(nil, Lf), 0);
-  Assert.AreEqual(0, Position.Line);
-  Assert.AreEqual(0, Position.Character);
-  Position := TRuleDerived.PositionAt(Cache, ContextOf(nil, Lf), 4);
-  Assert.AreEqual(1, Position.Line);
-  Assert.AreEqual(1, Position.Character);
-  Position := TRuleDerived.PositionAt(Cache, ContextOf(nil, Lf), 7);
-  Assert.AreEqual(2, Position.Line);
-  Assert.AreEqual(0, Position.Character);
-  Cache := TRuleDerivedCache.Create;
+  mCache := TRuleDerivedCache.Create;
+  mPosition := TRuleDerived.PositionAt(mCache, ContextOf(nil, cLf), 0);
+  Assert.AreEqual(0, mPosition.Line);
+  Assert.AreEqual(0, mPosition.Character);
+  mPosition := TRuleDerived.PositionAt(mCache, ContextOf(nil, cLf), 4);
+  Assert.AreEqual(1, mPosition.Line);
+  Assert.AreEqual(1, mPosition.Character);
+  mPosition := TRuleDerived.PositionAt(mCache, ContextOf(nil, cLf), 7);
+  Assert.AreEqual(2, mPosition.Line);
+  Assert.AreEqual(0, mPosition.Character);
+  mCache := TRuleDerivedCache.Create;
   // Zeilenanfang und Zeichen mitten in der Zeile wie bisher.
-  Position := TRuleDerived.PositionAt(Cache, ContextOf(nil, CrLf), 4);
-  Assert.AreEqual(1, Position.Line);
-  Assert.AreEqual(0, Position.Character);
-  Position := TRuleDerived.PositionAt(Cache, ContextOf(nil, CrLf), 6);
-  Assert.AreEqual(1, Position.Line);
-  Assert.AreEqual(2, Position.Character);
+  mPosition := TRuleDerived.PositionAt(mCache, ContextOf(nil, cCrLf), 4);
+  Assert.AreEqual(1, mPosition.Line);
+  Assert.AreEqual(0, mPosition.Character);
+  mPosition := TRuleDerived.PositionAt(mCache, ContextOf(nil, cCrLf), 6);
+  Assert.AreEqual(1, mPosition.Line);
+  Assert.AreEqual(2, mPosition.Character);
   // Auf dem CR: Zeilenende der Zeile.
-  Position := TRuleDerived.PositionAt(Cache, ContextOf(nil, CrLf), 7);
-  Assert.AreEqual(1, Position.Line);
-  Assert.AreEqual(3, Position.Character);
-  Range := TRuleDerived.OffsetRange(Cache, ContextOf(nil, CrLf), 4, 9);
-  Assert.AreEqual(1, Range.StartPos.Line);
-  Assert.AreEqual(0, Range.StartPos.Character);
-  Assert.AreEqual(2, Range.EndPos.Line);
-  Assert.AreEqual(0, Range.EndPos.Character);
+  mPosition := TRuleDerived.PositionAt(mCache, ContextOf(nil, cCrLf), 7);
+  Assert.AreEqual(1, mPosition.Line);
+  Assert.AreEqual(3, mPosition.Character);
+  mRange := TRuleDerived.OffsetRange(mCache, ContextOf(nil, cCrLf), 4, 9);
+  Assert.AreEqual(1, mRange.StartPos.Line);
+  Assert.AreEqual(0, mRange.StartPos.Character);
+  Assert.AreEqual(2, mRange.EndPos.Line);
+  Assert.AreEqual(0, mRange.EndPos.Character);
 end;
 
 procedure TRuleDerivedTests.PositionAtTreatsLoneCrAsLineBreak;
 var
-  Cache: IRuleDerivedCache;
-  Position: TTextPosition;
+  mCache: IRuleDerivedCache;
+  mPosition: TTextPosition;
 begin
-  Cache := TRuleDerivedCache.Create;
-  Position := TRuleDerived.PositionAt(Cache, ContextOf(nil, 'ab'#13'cd'), 4);
-  Assert.AreEqual(1, Position.Line);
-  Assert.AreEqual(1, Position.Character);
+  mCache := TRuleDerivedCache.Create;
+  mPosition := TRuleDerived.PositionAt(mCache, ContextOf(nil, 'ab'#13'cd'), 4);
+  Assert.AreEqual(1, mPosition.Line);
+  Assert.AreEqual(1, mPosition.Character);
 end;
 
 procedure TRuleDerivedTests.GetCallsFactoryOnce;
 var
-  Cache: IRuleDerivedCache;
-  Calls: Integer;
-  First, Second: TCounted;
-  Factory: TFunc<TCounted>;
+  mCache: IRuleDerivedCache;
+  mCalls: Integer;
+  mFirst, mSecond: TCounted;
+  mFactory: TFunc<TCounted>;
 begin
   CountedFreed := 0;
-  Calls := 0;
-  Factory :=
+  mCalls := 0;
+  mFactory :=
     function: TCounted
     begin
-      Inc(Calls);
+      Inc(mCalls);
       Result := TCounted.Create;
     end;
-  Cache := TRuleDerivedCache.Create;
-  First := TRuleDerived.Get<TCounted>(Cache, 'test.counted', Factory);
-  Second := TRuleDerived.Get<TCounted>(Cache, 'test.counted', Factory);
-  Assert.AreEqual(1, Calls);
-  Assert.AreSame(Second, First);
-  Cache := nil;
+  mCache := TRuleDerivedCache.Create;
+  mFirst := TRuleDerived.Get<TCounted>(mCache, 'test.counted', mFactory);
+  mSecond := TRuleDerived.Get<TCounted>(mCache, 'test.counted', mFactory);
+  Assert.AreEqual(1, mCalls);
+  Assert.AreSame(mSecond, mFirst);
+  mCache := nil;
   Assert.AreEqual(1, CountedFreed, 'mit dem Cache freigegeben');
 end;
 
 procedure TRuleDerivedTests.ClearFreesValues;
 var
-  Cache: IRuleDerivedCache;
-  Value: TObject;
+  mCache: IRuleDerivedCache;
+  mValue: TObject;
 begin
   CountedFreed := 0;
-  Cache := TRuleDerivedCache.Create;
-  Cache.Put('a', TCounted.Create);
-  Cache.Put('b', TCounted.Create);
+  mCache := TRuleDerivedCache.Create;
+  mCache.Put('a', TCounted.Create);
+  mCache.Put('b', TCounted.Create);
   // Ersetzen gibt den alten Wert frei.
-  Cache.Put('b', TCounted.Create);
+  mCache.Put('b', TCounted.Create);
   Assert.AreEqual(1, CountedFreed);
-  Cache.Clear;
+  mCache.Clear;
   Assert.AreEqual(3, CountedFreed);
-  Assert.IsFalse(Cache.TryGet('a', Value));
+  Assert.IsFalse(mCache.TryGet('a', mValue));
 end;
 
 procedure TRuleDerivedTests.WithoutTreeEverythingIsEmpty;
 var
-  Cache: IRuleDerivedCache;
-  Context: TRuleContext;
+  mCache: IRuleDerivedCache;
+  mContext: TRuleContext;
 begin
-  Cache := TRuleDerivedCache.Create;
-  Context := ContextOf(nil, '');
-  Assert.AreEqual(0, Integer(Length(TRuleDerived.Routines(Cache, Context))));
-  Assert.AreEqual(0, Integer(Length(TRuleDerived.CodeTokens(Cache, Context))));
-  Assert.AreEqual(0, Integer(Length(TRuleDerived.UnitIndex(Cache, Context).Symbols)));
-  Assert.IsFalse(Assigned(TRuleDerived.FlowSignatures(Cache, Context)));
+  mCache := TRuleDerivedCache.Create;
+  mContext := ContextOf(nil, '');
+  Assert.AreEqual(0, Integer(Length(TRuleDerived.Routines(mCache, mContext))));
+  Assert.AreEqual(0, Integer(Length(TRuleDerived.CodeTokens(mCache, mContext))));
+  Assert.AreEqual(0, Integer(Length(TRuleDerived.UnitIndex(mCache, mContext).Symbols)));
+  Assert.IsFalse(Assigned(TRuleDerived.FlowSignatures(mCache, mContext)));
 end;
 
 initialization

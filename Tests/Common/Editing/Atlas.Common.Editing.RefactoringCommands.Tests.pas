@@ -57,7 +57,7 @@ uses
   Atlas.Tests.SlashHost;
 
 const
-  RoutineUnit =
+  cRoutineUnit =
     'unit U;'#10 +                                  // 0
     'interface'#10 +                                // 1
     'uses'#10 +                                     // 2
@@ -82,17 +82,17 @@ end;
 /// <summary>Wendet AEdits (nicht überlappend) auf AText an.</summary>
 function Apply(const AText: string; AEdits: TArray<TRuleEdit>): string;
 var
-  Lines: TArray<string>;
-  Edit: TRuleEdit;
-  Offsets: TArray<Integer>;
-  Index, Start, Stop: Integer;
+  mLines: TArray<string>;
+  mEdit: TRuleEdit;
+  mOffsets: TArray<Integer>;
+  mIndex, mStart, mStop: Integer;
 begin
-  Lines := AText.Split([#10]);
-  SetLength(Offsets, Length(Lines) + 1);
-  Offsets[0] := 0;
-  for Index := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  SetLength(mOffsets, Length(mLines) + 1);
+  mOffsets[0] := 0;
+  for mIndex := 0 to High(mLines) do
   begin
-    Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
   end;
   TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
@@ -101,79 +101,79 @@ begin
         ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
     end));
   Result := AText;
-  for Edit in AEdits do
+  for mEdit in AEdits do
   begin
-    Start := Offsets[Edit.Range.StartPos.Line] + Edit.Range.StartPos.Character;
-    Stop := Offsets[Edit.Range.EndPos.Line] + Edit.Range.EndPos.Character;
-    Result := Copy(Result, 1, Start) + Edit.NewText + Copy(Result, Stop + 1, MaxInt);
+    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
+    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
+    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
   end;
 end;
 
 function Expand(const ACommand: string): string;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Assert.IsTrue(Run(Format(RoutineUnit, [ACommand]), 10, Edits), ACommand);
-  Result := Apply(Format(RoutineUnit, [ACommand]), Edits);
+  Assert.IsTrue(Run(Format(cRoutineUnit, [ACommand]), 10, mEdits), ACommand);
+  Result := Apply(Format(cRoutineUnit, [ACommand]), mEdits);
 end;
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TRefactoringCommandsTests.FmtFormatsRoutine;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand('/fmt');
-  Assert.IsTrue(Pos('begin'#10'  Liste := TStringList.Create;'#10'  Liste.Free;'#10'end;', Text) > 0, Text);
-  Assert.AreEqual(0, Pos('/fmt', Text), Text);
+  mText := Expand('/fmt');
+  Assert.IsTrue(Pos('begin'#10'  Liste := TStringList.Create;'#10'  Liste.Free;'#10'end;', mText) > 0, mText);
+  Assert.AreEqual(0, Pos('/fmt', mText), mText);
 end;
 
 procedure TRefactoringCommandsTests.FmtOutsideRoutineFails;
 var
-  Edits: TArray<TRuleEdit>;
-  Text: string;
+  mEdits: TArray<TRuleEdit>;
+  mText: string;
 begin
-  Text := StringReplace(Format(RoutineUnit, ['']), 'procedure Run;'#10'implementation',
+  mText := StringReplace(Format(cRoutineUnit, ['']), 'procedure Run;'#10'implementation',
     '/fmt'#10'implementation', []);
-  Assert.IsFalse(Run(Text, 4, Edits));
-  Assert.AreEqual(1, Integer(Length(TSlashCommandRegistry.Shared.Problems(Text, nil))));
+  Assert.IsFalse(Run(mText, 4, mEdits));
+  Assert.AreEqual(1, Integer(Length(TSlashCommandRegistry.Shared.Problems(mText, nil))));
 end;
 
 procedure TRefactoringCommandsTests.MeasureWrapsAndAddsUses;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand('/measure');
+  mText := Expand('/measure');
   Assert.IsTrue(Pos('begin'#10'  var SW := TStopwatch.StartNew;'#10'  try'#10 +
     '    Liste  :=TStringList.Create;   '#10'    Liste.Free;'#10'  finally'#10 +
     '    OutputDebugString(PChar(Format(''%s: %d ms'', [''U.Run'', SW.ElapsedMilliseconds])));'#10 +
-    '  end;'#10'end;', Text) > 0, Text);
-  Assert.IsTrue(Pos('System.Diagnostics', Text) > 0, Text);
-  Assert.IsTrue(Parses(Text), Text);
+    '  end;'#10'end;', mText) > 0, mText);
+  Assert.IsTrue(Pos('System.Diagnostics', mText) > 0, mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TRefactoringCommandsTests.MeasureOutsideRoutineFails;
 var
-  Edits: TArray<TRuleEdit>;
-  Text: string;
+  mEdits: TArray<TRuleEdit>;
+  mText: string;
 begin
-  Text := StringReplace(Format(RoutineUnit, ['']), 'procedure Run;'#10'implementation',
+  mText := StringReplace(Format(cRoutineUnit, ['']), 'procedure Run;'#10'implementation',
     '/measure'#10'implementation', []);
-  Assert.IsFalse(Run(Text, 4, Edits));
+  Assert.IsFalse(Run(mText, 4, mEdits));
 end;
 
 const
-  ExtractUnit =
+  cExtractUnit =
     'unit U;'#10 +                                  // 0
     'interface'#10 +                                // 1
     'procedure Run(AValue: Integer);'#10 +          // 2
@@ -191,7 +191,7 @@ const
     'end;'#10 +                                     // 14
     'end.';
 
-  InlineUnit =
+  cInlineUnit =
     'unit U;'#10 +                                  // 0
     'interface'#10 +                                // 1
     'implementation'#10 +                           // 2
@@ -210,12 +210,12 @@ const
     'end;'#10 +                                     // 15
     'end.';
 
-  FixUri = 'file:///U.pas';
+  cFixUri = 'file:///U.pas';
 
 function RunWith(const AText: string; ALine: Integer; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>;
   out AReason: string): Boolean;
 begin
-  Result := TSlashCommandRegistry.Shared.Run(AText, ALine, 0, TSlashEnvironment.Create(nil, nil, nil, '', FixUri,
+  Result := TSlashCommandRegistry.Shared.Run(AText, ALine, 0, TSlashEnvironment.Create(nil, nil, nil, '', cFixUri,
     AHost), AEdits, AReason);
 end;
 
@@ -233,157 +233,157 @@ end;
 
 procedure TRefactoringCommandsTests.ExtractMakesValueAndVarParameters;
 var
-  Edits: TArray<TRuleEdit>;
-  Text: string;
+  mEdits: TArray<TRuleEdit>;
+  mText: string;
 begin
   // Abnahme: AValue wird nur gelesen (Wertparameter), Total geschrieben und danach gelesen (var).
-  Assert.IsTrue(Run(Format(ExtractUnit, ['/extract Verdopple']), 9, Edits));
-  Text := Apply(Format(ExtractUnit, ['/extract Verdopple']), Edits);
-  Assert.IsTrue(Pos('procedure Verdopple(const AValue: Integer; var Total: Integer);', Text) > 0, Text);
-  Assert.IsTrue(Pos('  Verdopple(AValue, Total);'#10#10'  Total := Total + 1;', Text) > 0, Text);
-  Assert.AreEqual(0, Pos('ExtractedMethod', Text), Text);
-  Assert.AreEqual(0, Pos('/extract', Text), Text);
-  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(Run(Format(cExtractUnit, ['/extract Verdopple']), 9, mEdits));
+  mText := Apply(Format(cExtractUnit, ['/extract Verdopple']), mEdits);
+  Assert.IsTrue(Pos('procedure Verdopple(const AValue: Integer; var Total: Integer);', mText) > 0, mText);
+  Assert.IsTrue(Pos('  Verdopple(AValue, Total);'#10#10'  Total := Total + 1;', mText) > 0, mText);
+  Assert.AreEqual(0, Pos('ExtractedMethod', mText), mText);
+  Assert.AreEqual(0, Pos('/extract', mText), mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TRefactoringCommandsTests.ExtractOutsideRoutineFails;
 var
-  Edits: TArray<TRuleEdit>;
-  Text, Reason: string;
+  mEdits: TArray<TRuleEdit>;
+  mText, mReason: string;
 begin
-  Text := StringReplace(Format(ExtractUnit, ['']), 'procedure Run(AValue: Integer);'#10'implementation',
+  mText := StringReplace(Format(cExtractUnit, ['']), 'procedure Run(AValue: Integer);'#10'implementation',
     '/extract Neu'#10'implementation', []);
-  Assert.IsFalse(RunWith(Text, 2, nil, Edits, Reason));
-  Assert.IsTrue(Pos('Rumpf einer Routine', Reason) > 0, Reason);
+  Assert.IsFalse(RunWith(mText, 2, nil, mEdits, mReason));
+  Assert.IsTrue(Pos('Rumpf einer Routine', mReason) > 0, mReason);
   // Ohne Namen.
-  Assert.IsFalse(RunWith(Format(ExtractUnit, ['/extract']), 9, nil, Edits, Reason));
-  Assert.IsTrue(Pos('/extract Name', Reason) > 0, Reason);
+  Assert.IsFalse(RunWith(Format(cExtractUnit, ['/extract']), 9, nil, mEdits, mReason));
+  Assert.IsTrue(Pos('/extract Name', mReason) > 0, mReason);
 end;
 
 procedure TRefactoringCommandsTests.InlineEmbedsCall;
 var
-  Edits: TArray<TRuleEdit>;
-  Text: string;
+  mEdits: TArray<TRuleEdit>;
+  mText: string;
 begin
-  Text := Format(InlineUnit, ['/inline', 'Y := Twice(X) + 1;']);
-  Assert.IsTrue(Run(Text, 13, Edits));
-  Text := Apply(Text, Edits);
-  Assert.IsTrue(Pos('  X := 5;'#10'  Y := (X * 2) + 1;'#10'end;', Text) > 0, Text);
-  Assert.IsTrue(Parses(Text), Text);
+  mText := Format(cInlineUnit, ['/inline', 'Y := Twice(X) + 1;']);
+  Assert.IsTrue(Run(mText, 13, mEdits));
+  mText := Apply(mText, mEdits);
+  Assert.IsTrue(Pos('  X := 5;'#10'  Y := (X * 2) + 1;'#10'end;', mText) > 0, mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TRefactoringCommandsTests.InlineEmbedsVariable;
 var
-  Edits: TArray<TRuleEdit>;
-  Text: string;
+  mEdits: TArray<TRuleEdit>;
+  mText: string;
 begin
-  Text := Format(InlineUnit, ['/inline', 'Y := X + 1;']);
-  Assert.IsTrue(Run(Text, 13, Edits));
-  Text := Apply(Text, Edits);
-  Assert.IsTrue(Pos('begin'#10'  Y := 5 + 1;'#10'end;', Text) > 0, Text);
-  Assert.IsTrue(Parses(Text), Text);
+  mText := Format(cInlineUnit, ['/inline', 'Y := X + 1;']);
+  Assert.IsTrue(Run(mText, 13, mEdits));
+  mText := Apply(mText, mEdits);
+  Assert.IsTrue(Pos('begin'#10'  Y := 5 + 1;'#10'end;', mText) > 0, mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TRefactoringCommandsTests.InlineOutsideRoutineFails;
 var
-  Edits: TArray<TRuleEdit>;
-  Text, Reason: string;
+  mEdits: TArray<TRuleEdit>;
+  mText, mReason: string;
 begin
-  Text := StringReplace(Format(InlineUnit, ['', '']), 'implementation'#10, 'implementation'#10'/inline'#10, []);
-  Assert.IsFalse(RunWith(Text, 3, nil, Edits, Reason));
-  Assert.IsTrue(Pos('Rumpf einer Routine', Reason) > 0, Reason);
+  mText := StringReplace(Format(cInlineUnit, ['', '']), 'implementation'#10, 'implementation'#10'/inline'#10, []);
+  Assert.IsFalse(RunWith(mText, 3, nil, mEdits, mReason));
+  Assert.IsTrue(Pos('Rumpf einer Routine', mReason) > 0, mReason);
 end;
 
 procedure TRefactoringCommandsTests.FixAppliesSafeFix;
 var
-  Host: TRecordingSlashHost;
-  Keep: ISlashHost;
-  Edits: TArray<TRuleEdit>;
-  Reason: string;
+  mHost: TRecordingSlashHost;
+  mKeep: ISlashHost;
+  mEdits: TArray<TRuleEdit>;
+  mReason: string;
 begin
-  Host := TRecordingSlashHost.Create;
-  Keep := Host;
-  Host.HasFindings := True;
-  Host.Findings := [Finding('a', 'unsicher', False), Finding('b', 'sicher', True)];
-  Assert.IsTrue(RunWith(Format(RoutineUnit, ['/fix']), 10, Keep, Edits, Reason), Reason);
-  Assert.AreEqual(2, Integer(Length(Edits)));
-  Assert.AreEqual('Liste', Edits[0].NewText);
-  Assert.AreEqual(11, Host.RuleLine);
-  Host.Findings := nil;
+  mHost := TRecordingSlashHost.Create;
+  mKeep := mHost;
+  mHost.HasFindings := True;
+  mHost.Findings := [Finding('a', 'unsicher', False), Finding('b', 'sicher', True)];
+  Assert.IsTrue(RunWith(Format(cRoutineUnit, ['/fix']), 10, mKeep, mEdits, mReason), mReason);
+  Assert.AreEqual(2, Integer(Length(mEdits)));
+  Assert.AreEqual('Liste', mEdits[0].NewText);
+  Assert.AreEqual(11, mHost.RuleLine);
+  mHost.Findings := nil;
 end;
 
 procedure TRefactoringCommandsTests.FixSkipsUnsafeFix;
 var
-  Host: TRecordingSlashHost;
-  Keep: ISlashHost;
-  Edits: TArray<TRuleEdit>;
-  Reason: string;
+  mHost: TRecordingSlashHost;
+  mKeep: ISlashHost;
+  mEdits: TArray<TRuleEdit>;
+  mReason: string;
 begin
   // Abnahme: Ein Treffer ohne sichere Korrektur ändert nichts.
-  Host := TRecordingSlashHost.Create;
-  Keep := Host;
-  Host.HasFindings := True;
-  Host.Findings := [Finding('a', 'unsicher', False)];
-  Assert.IsFalse(RunWith(Format(RoutineUnit, ['/fix']), 10, Keep, Edits, Reason));
-  Assert.AreEqual(NoSafeFixHint, Reason);
-  Assert.AreEqual(0, Integer(Length(Edits)));
-  Host.Findings := nil;
+  mHost := TRecordingSlashHost.Create;
+  mKeep := mHost;
+  mHost.HasFindings := True;
+  mHost.Findings := [Finding('a', 'unsicher', False)];
+  Assert.IsFalse(RunWith(Format(cRoutineUnit, ['/fix']), 10, mKeep, mEdits, mReason));
+  Assert.AreEqual(NoSafeFixHint, mReason);
+  Assert.AreEqual(0, Integer(Length(mEdits)));
+  mHost.Findings := nil;
 end;
 
 procedure TRefactoringCommandsTests.FixWithoutFindingFails;
 var
-  Host: TRecordingSlashHost;
-  Keep: ISlashHost;
-  Edits: TArray<TRuleEdit>;
-  Reason: string;
+  mHost: TRecordingSlashHost;
+  mKeep: ISlashHost;
+  mEdits: TArray<TRuleEdit>;
+  mReason: string;
 begin
-  Host := TRecordingSlashHost.Create;
-  Keep := Host;
-  Host.HasFindings := True;
-  Assert.IsFalse(RunWith(Format(RoutineUnit, ['/fix']), 10, Keep, Edits, Reason));
-  Assert.AreEqual(NoFindingBelowHint, Reason);
+  mHost := TRecordingSlashHost.Create;
+  mKeep := mHost;
+  mHost.HasFindings := True;
+  Assert.IsFalse(RunWith(Format(cRoutineUnit, ['/fix']), 10, mKeep, mEdits, mReason));
+  Assert.AreEqual(NoFindingBelowHint, mReason);
   // Ohne Editor (Prüfung stehen gebliebener Zeilen) bleibt die Zeile mit Grund.
-  Assert.IsFalse(RunWith(Format(RoutineUnit, ['/fix']), 10, nil, Edits, Reason));
-  Assert.IsTrue(Pos('braucht den Editor', Reason) > 0, Reason);
-  Assert.AreEqual(1, Integer(Length(TSlashCommandRegistry.Shared.Problems(Format(RoutineUnit, ['/fix']), nil))));
+  Assert.IsFalse(RunWith(Format(cRoutineUnit, ['/fix']), 10, nil, mEdits, mReason));
+  Assert.IsTrue(Pos('braucht den Editor', mReason) > 0, mReason);
+  Assert.AreEqual(1, Integer(Length(TSlashCommandRegistry.Shared.Problems(Format(cRoutineUnit, ['/fix']), nil))));
 end;
 
 procedure TRefactoringCommandsTests.ExplainNotifiesFinding;
 var
-  Host: TRecordingSlashHost;
-  Keep: ISlashHost;
-  Edits: TArray<TRuleEdit>;
-  Text: string;
+  mHost: TRecordingSlashHost;
+  mKeep: ISlashHost;
+  mEdits: TArray<TRuleEdit>;
+  mText: string;
 begin
-  Host := TRecordingSlashHost.Create;
-  Keep := Host;
-  Host.HasFindings := True;
-  Host.Findings := [Finding('free-without-try', 'Free ohne try', False)];
-  Text := Format(RoutineUnit, ['/explain']);
-  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(11, 0),
-    TSlashEnvironment.Create(nil, nil, nil, '', FixUri, Keep), Edits));
+  mHost := TRecordingSlashHost.Create;
+  mKeep := mHost;
+  mHost.HasFindings := True;
+  mHost.Findings := [Finding('free-without-try', 'Free ohne try', False)];
+  mText := Format(cRoutineUnit, ['/explain']);
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(mText, TTextPosition.Create(11, 0),
+    TSlashEnvironment.Create(nil, nil, nil, '', cFixUri, mKeep), mEdits));
   // Nur die Befehlszeile geht.
-  Assert.AreEqual(1, Integer(Length(Edits)));
-  Assert.AreEqual(StringReplace(Format(RoutineUnit, ['']), '  '#10'  Liste  :=', '  Liste  :=', []), Apply(Text, Edits));
-  Assert.AreEqual(1, Integer(Length(Host.Notes)));
-  Assert.AreEqual('Free ohne try'#10'free-without-try: Erklärung', Host.Notes[0]);
-  Host.Findings := nil;
+  Assert.AreEqual(1, Integer(Length(mEdits)));
+  Assert.AreEqual(StringReplace(Format(cRoutineUnit, ['']), '  '#10'  Liste  :=', '  Liste  :=', []), Apply(mText, mEdits));
+  Assert.AreEqual(1, Integer(Length(mHost.Notes)));
+  Assert.AreEqual('Free ohne try'#10'free-without-try: Erklärung', mHost.Notes[0]);
+  mHost.Findings := nil;
 end;
 
 procedure TRefactoringCommandsTests.ExplainWithoutFindingHints;
 var
-  Host: TRecordingSlashHost;
-  Keep: ISlashHost;
-  Edits: TArray<TRuleEdit>;
-  Reason: string;
+  mHost: TRecordingSlashHost;
+  mKeep: ISlashHost;
+  mEdits: TArray<TRuleEdit>;
+  mReason: string;
 begin
   // Abnahme: Ohne Treffer ein Hinweis; die Zeile bleibt.
-  Host := TRecordingSlashHost.Create;
-  Keep := Host;
-  Host.HasFindings := True;
-  Assert.IsFalse(RunWith(Format(RoutineUnit, ['/explain']), 10, Keep, Edits, Reason));
-  Assert.AreEqual(NoFindingBelowHint, Reason);
-  Assert.AreEqual(0, Integer(Length(Host.Notes)));
+  mHost := TRecordingSlashHost.Create;
+  mKeep := mHost;
+  mHost.HasFindings := True;
+  Assert.IsFalse(RunWith(Format(cRoutineUnit, ['/explain']), 10, mKeep, mEdits, mReason));
+  Assert.AreEqual(NoFindingBelowHint, mReason);
+  Assert.AreEqual(0, Integer(Length(mHost.Notes)));
 end;
 
 initialization

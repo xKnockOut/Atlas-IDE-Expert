@@ -45,7 +45,7 @@ uses
 
 const
   /// <summary>Die Regel ist ohne Eintrag in atlas.json aus.</summary>
-  Enabled = '{"rules": {"override-case-mismatch": "hint"}}';
+  cEnabled = '{"rules": {"override-case-mismatch": "hint"}}';
 
 /// <summary>Unit mit TBasis (ABase) und TKunde = class(TBasis) (AOwn) im interface-Teil; ABodies danach.</summary>
 function Kunden(const ABase, AOwn, ABodies: string): string;
@@ -56,7 +56,7 @@ end;
 
 function Findings(const ASource: string): TArray<TRuleFinding>; overload;
 begin
-  Result := TRuleAssert.Findings(TOverrideCaseMismatchRule.Create, ASource, Enabled, '');
+  Result := TRuleAssert.Findings(TOverrideCaseMismatchRule.Create, ASource, cEnabled, '');
 end;
 
 function Findings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
@@ -66,88 +66,88 @@ end;
 
 function Join(const AFound: TArray<TRuleFinding>): string;
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
   Result := '';
-  for Finding in AFound do
+  for mFinding in AFound do
   begin
-    Result := Result + ' | ' + Finding.Message;
+    Result := Result + ' | ' + mFinding.Message;
   end;
 end;
 
 function OnlyMessage(const ASource: string): string;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(ASource);
-  Assert.AreEqual(1, Integer(Length(Found)), ASource + Join(Found));
-  Result := Found[0].Message;
+  mFound := Findings(ASource);
+  Assert.AreEqual(1, Integer(Length(mFound)), ASource + Join(mFound));
+  Result := mFound[0].Message;
 end;
 
 procedure Silent(const ASource: string);
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(ASource);
-  Assert.AreEqual(0, Integer(Length(Found)), ASource + Join(Found));
+  mFound := Findings(ASource);
+  Assert.AreEqual(0, Integer(Length(mFound)), ASource + Join(mFound));
 end;
 
 /// <summary>Wendet Edits an, die jeweils innerhalb einer Zeile liegen (Zeilen aus #10), von hinten nach vorn.</summary>
 function ApplyFix(const AText: string; const AFix: TRuleFix): string;
 var
-  Lines: TArray<string>;
-  Index, Later: Integer;
-  Edit: TRuleEdit;
-  Edits: TArray<TRuleEdit>;
+  mLines: TArray<string>;
+  mIndex, mLater: Integer;
+  mEdit: TRuleEdit;
+  mEdits: TArray<TRuleEdit>;
 begin
   // Nach Position absteigend, damit frühere Edits die Spalten späterer nicht verschieben.
-  Edits := Copy(AFix.Edits);
-  for Index := 0 to High(Edits) do
+  mEdits := Copy(AFix.Edits);
+  for mIndex := 0 to High(mEdits) do
   begin
-    for Later := Index + 1 to High(Edits) do
+    for mLater := mIndex + 1 to High(mEdits) do
     begin
-      if (Edits[Later].Range.StartPos.Line > Edits[Index].Range.StartPos.Line) or
-        ((Edits[Later].Range.StartPos.Line = Edits[Index].Range.StartPos.Line) and
-        (Edits[Later].Range.StartPos.Character > Edits[Index].Range.StartPos.Character)) then
+      if (mEdits[mLater].Range.StartPos.Line > mEdits[mIndex].Range.StartPos.Line) or
+        ((mEdits[mLater].Range.StartPos.Line = mEdits[mIndex].Range.StartPos.Line) and
+        (mEdits[mLater].Range.StartPos.Character > mEdits[mIndex].Range.StartPos.Character)) then
       begin
-        Edit := Edits[Index];
-        Edits[Index] := Edits[Later];
-        Edits[Later] := Edit;
+        mEdit := mEdits[mIndex];
+        mEdits[mIndex] := mEdits[mLater];
+        mEdits[mLater] := mEdit;
       end;
     end;
   end;
-  Lines := AText.Split([#10]);
-  for Edit in Edits do
+  mLines := AText.Split([#10]);
+  for mEdit in mEdits do
   begin
-    Lines[Edit.Range.StartPos.Line] := Copy(Lines[Edit.Range.StartPos.Line], 1, Edit.Range.StartPos.Character) +
-      Edit.NewText + Copy(Lines[Edit.Range.StartPos.Line], Edit.Range.EndPos.Character + 1, MaxInt);
+    mLines[mEdit.Range.StartPos.Line] := Copy(mLines[mEdit.Range.StartPos.Line], 1, mEdit.Range.StartPos.Character) +
+      mEdit.NewText + Copy(mLines[mEdit.Range.StartPos.Line], mEdit.Range.EndPos.Character + 1, MaxInt);
   end;
-  Result := string.Join(#10, Lines);
+  Result := string.Join(#10, mLines);
 end;
 
 { TOverrideCaseRulesTests }
 
 procedure TOverrideCaseRulesTests.IssueExample;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := 'unit Kunden;'#10'interface'#10'type'#10'  TKunde = class'#10'  public'#10 +
+  mSource := 'unit Kunden;'#10'interface'#10'type'#10'  TKunde = class'#10'  public'#10 +
     '    destructor destroy; override;'#10'  end;'#10'implementation'#10'destructor TKunde.destroy;'#10'begin'#10 +
     '  inherited;'#10'end;'#10'end.';
-  Found := Findings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)), Join(Found));
-  Assert.AreEqual('Schreibweise weicht von TObject.Destroy ab (wie H2365).', Found[0].Message);
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Found[0].Confidence));
-  Assert.AreEqual(5, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(15, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('Schreibweise vom Vorfahr übernehmen', Found[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual('Schreibweise weicht von TObject.Destroy ab (wie H2365).', mFound[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[0].Confidence));
+  Assert.AreEqual(5, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(15, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('Schreibweise vom Vorfahr übernehmen', mFound[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.AreEqual('unit Kunden;'#10'interface'#10'type'#10'  TKunde = class'#10'  public'#10 +
     '    destructor Destroy; override;'#10'  end;'#10'implementation'#10'destructor TKunde.Destroy;'#10'begin'#10 +
-    '  inherited;'#10'end;'#10'end.', Fixed);
-  Silent(Fixed);
+    '  inherited;'#10'end;'#10'end.', mFixed);
+  Silent(mFixed);
 end;
 
 procedure TOverrideCaseRulesTests.CaseOfLocalAncestor;
@@ -187,26 +187,26 @@ end;
 
 procedure TOverrideCaseRulesTests.AccessorCase;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Kunden('', '  private'#10'    function getName: string;'#10'    procedure SETNAME(const AWert: string);'#10 +
+  mSource := Kunden('', '  private'#10'    function getName: string;'#10'    procedure SETNAME(const AWert: string);'#10 +
     '  public'#10'    property Name: string read getName write SETNAME;'#10,
     'function TKunde.getName: string;'#10'begin'#10'  Result := '''';'#10'end;'#10 +
     'procedure TKunde.SETNAME(const AWert: string);'#10'begin'#10'end;'#10);
-  Found := Findings(Source);
-  Assert.AreEqual(2, Integer(Length(Found)), Join(Found));
+  mFound := Findings(mSource);
+  Assert.AreEqual(2, Integer(Length(mFound)), Join(mFound));
   Assert.AreEqual('Die Zugriffsmethode TKunde.getName sollte TKunde.GetName geschrieben werden.',
-    Found[0].Message);
+    mFound[0].Message);
   Assert.AreEqual('Die Zugriffsmethode TKunde.SETNAME sollte TKunde.SetName geschrieben werden.',
-    Found[1].Message);
-  Assert.AreEqual('In GetName umbenennen', Found[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
+    mFound[1].Message);
+  Assert.AreEqual('In GetName umbenennen', mFound[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.AreEqual(Kunden('', '  private'#10'    function GetName: string;'#10 +
     '    procedure SETNAME(const AWert: string);'#10'  public'#10 +
     '    property Name: string read GetName write SETNAME;'#10,
     'function TKunde.GetName: string;'#10'begin'#10'  Result := '''';'#10'end;'#10 +
-    'procedure TKunde.SETNAME(const AWert: string);'#10'begin'#10'end;'#10), Fixed);
+    'procedure TKunde.SETNAME(const AWert: string);'#10'begin'#10'end;'#10), mFixed);
   // Felder, richtige Schreibweise und andere Namen bleiben still.
   Silent(Kunden('', '  private'#10'    fName: string;'#10'    function GetWert: Integer;'#10 +
     '    function LiesText: string;'#10'  public'#10'    property Name: string read fName;'#10 +
@@ -215,21 +215,21 @@ end;
 
 procedure TOverrideCaseRulesTests.InlineAccessesLowerVisibility;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings('unit Zaehler;'#10'interface'#10'type'#10'  TZaehler = class'#10'  private'#10 +
+  mFound := Findings('unit Zaehler;'#10'interface'#10'type'#10'  TZaehler = class'#10'  private'#10 +
     '    FAnzahl: Integer;'#10'    function Intern: Integer;'#10'  public'#10 +
     '    function Anzahl: Integer; inline;'#10'  end;'#10'implementation'#10 +
     'function TZaehler.Intern: Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10 +
     'function TZaehler.Anzahl: Integer;'#10'begin'#10'  Result := FAnzahl + Intern + Self.FAnzahl;'#10'end;'#10 +
     'end.');
-  Assert.AreEqual(2, Integer(Length(Found)), Join(Found));
+  Assert.AreEqual(2, Integer(Length(mFound)), Join(mFound));
   Assert.AreEqual('Die inline-Methode TZaehler.Anzahl ist public, greift aber auf FAnzahl (private) zu.',
-    Found[0].Message);
-  Assert.AreEqual(17, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(12, Found[0].Range.StartPos.Character);
+    mFound[0].Message);
+  Assert.AreEqual(17, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(12, mFound[0].Range.StartPos.Character);
   Assert.AreEqual('Die inline-Methode TZaehler.Anzahl ist public, greift aber auf Intern (private) zu.',
-    Found[1].Message);
+    mFound[1].Message);
   // Auch in Records und für geerbte protected-Mitglieder.
   Assert.AreEqual('Die inline-Methode TPunkt.Summe ist public, greift aber auf FX (private) zu.',
     OnlyMessage('unit Punkte;'#10'interface'#10'type'#10 +
@@ -261,18 +261,18 @@ end;
 
 procedure TOverrideCaseRulesTests.Options;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := 'unit Kunden;'#10'interface'#10'type'#10'  TKunde = class'#10'  public'#10 +
+  mSource := 'unit Kunden;'#10'interface'#10'type'#10'  TKunde = class'#10'  public'#10 +
     '    destructor destroy; override;'#10'  end;'#10'implementation'#10'end.';
   // Standard aus (#1021).
   Assert.IsTrue(TRuleProfiles.IsExperimental((TOverrideCaseMismatchRule.Create as IRule).Descriptor.Id));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '', 'Source/Kunden.pas'))));
-  Assert.AreEqual(1, Integer(Length(Findings(Source, Enabled, 'Source/Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source,
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '', 'Source/Kunden.pas'))));
+  Assert.AreEqual(1, Integer(Length(Findings(mSource, cEnabled, 'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource,
     '{"rules": {"override-case-mismatch": {"severity": "hint", "exclude": ["Source/*.pas"]}}}',
     'Source/Kunden.pas'))));
-  Assert.AreEqual(1, Integer(Length(Findings(Source,
+  Assert.AreEqual(1, Integer(Length(Findings(mSource,
     '{"rules": {"override-case-mismatch": {"severity": "hint", "exclude": ["Alt/*.pas"]}}}',
     'Source/Kunden.pas'))));
 end;

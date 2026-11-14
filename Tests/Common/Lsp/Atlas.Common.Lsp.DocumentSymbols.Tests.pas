@@ -48,7 +48,7 @@ uses
   Atlas.Common.Lsp.DocumentSymbols;
 
 const
-  UnitCode =
+  cUnitCode =
     'unit U;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -78,23 +78,23 @@ const
 // Gliederung als Text, z. B. "U(interface(TFoo(...)))"; Kinder in Klammern.
 function Outline(const ASymbols: TJSONArray): string;
 var
-  Index: Integer;
-  Symbol: TJSONObject;
-  Children: TJSONArray;
+  mIndex: Integer;
+  mSymbol: TJSONObject;
+  mChildren: TJSONArray;
 begin
   Result := '';
-  for Index := 0 to ASymbols.Count - 1 do
+  for mIndex := 0 to ASymbols.Count - 1 do
   begin
-    Symbol := ASymbols.Items[Index] as TJSONObject;
+    mSymbol := ASymbols.Items[mIndex] as TJSONObject;
     if Result <> '' then
     begin
       Result := Result + ',';
     end;
-    Result := Result + Symbol.GetValue<string>('name') + ':' + IntToStr(Symbol.GetValue<Integer>('kind'));
-    Children := Symbol.GetValue('children') as TJSONArray;
-    if Children <> nil then
+    Result := Result + mSymbol.GetValue<string>('name') + ':' + IntToStr(mSymbol.GetValue<Integer>('kind'));
+    mChildren := mSymbol.GetValue('children') as TJSONArray;
+    if mChildren <> nil then
     begin
-      Result := Result + '(' + Outline(Children) + ')';
+      Result := Result + '(' + Outline(mChildren) + ')';
     end;
   end;
 end;
@@ -102,43 +102,43 @@ end;
 // Symbol über Namenspfad, z. B. ['U', 'interface', 'TFoo'].
 function FindSymbol(const ASymbols: TJSONArray; const APath: array of string): TJSONObject;
 var
-  Current: TJSONArray;
-  Name: string;
-  Index: Integer;
+  mCurrent: TJSONArray;
+  mName: string;
+  mIndex: Integer;
 begin
   Result := nil;
-  Current := ASymbols;
-  for Name in APath do
+  mCurrent := ASymbols;
+  for mName in APath do
   begin
-    if Current = nil then
+    if mCurrent = nil then
     begin
       Exit(nil);
     end;
     Result := nil;
-    for Index := 0 to Current.Count - 1 do
+    for mIndex := 0 to mCurrent.Count - 1 do
     begin
-      if (Current.Items[Index] as TJSONObject).GetValue<string>('name') = Name then
+      if (mCurrent.Items[mIndex] as TJSONObject).GetValue<string>('name') = mName then
       begin
-        Result := Current.Items[Index] as TJSONObject;
+        Result := mCurrent.Items[mIndex] as TJSONObject;
       end;
     end;
     if Result = nil then
     begin
       Exit;
     end;
-    Current := Result.GetValue('children') as TJSONArray;
+    mCurrent := Result.GetValue('children') as TJSONArray;
   end;
 end;
 
 function SymbolsOf(const AText: string): TJSONArray;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := TLspDocumentSymbols.BuildSymbols(Tree);
+    Result := TLspDocumentSymbols.BuildSymbols(mTree);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -146,186 +146,186 @@ end;
 
 procedure TLspDocumentSymbolsTests.BuildsUnitOutline;
 var
-  Symbols: TJSONArray;
+  mSymbols: TJSONArray;
 begin
-  Symbols := SymbolsOf(UnitCode);
+  mSymbols := SymbolsOf(cUnitCode);
   try
-    Assert.AreEqual(1, Integer(Symbols.Count));
+    Assert.AreEqual(1, Integer(mSymbols.Count));
     Assert.AreEqual(
       'U:2(interface:3(TColor:10(Red:22,Green:22),TPoint:23(X:8,Y:8),' +
       'TFoo:5(FValue:8,Create:9,Make:6,Value:7),IBar:11(Run:6),Limit:14,Global:13,Run:12),' +
       'implementation:3(TFoo.Create:9,TFoo.Make:6(Helper:12),Run:12))',
-      Outline(Symbols));
+      Outline(mSymbols));
   finally
-    Symbols.Free;
+    mSymbols.Free;
   end;
 end;
 
 procedure TLspDocumentSymbolsTests.ListsClassMembers;
 var
-  Symbols: TJSONArray;
-  Foo: TJSONObject;
+  mSymbols: TJSONArray;
+  mFoo: TJSONObject;
 begin
-  Symbols := SymbolsOf(UnitCode);
+  mSymbols := SymbolsOf(cUnitCode);
   try
-    Foo := FindSymbol(Symbols, ['U', 'interface', 'TFoo']);
-    Assert.IsNotNull(Foo);
-    Assert.AreEqual('class', Foo.GetValue<string>('detail'));
-    Assert.AreEqual(TLspSymbolKind.cConstructor_, FindSymbol(Symbols, ['U', 'interface', 'TFoo', 'Create']).GetValue<Integer>('kind'));
-    Assert.AreEqual(TLspSymbolKind.cProperty_, FindSymbol(Symbols, ['U', 'interface', 'TFoo', 'Value']).GetValue<Integer>('kind'));
+    mFoo := FindSymbol(mSymbols, ['U', 'interface', 'TFoo']);
+    Assert.IsNotNull(mFoo);
+    Assert.AreEqual('class', mFoo.GetValue<string>('detail'));
+    Assert.AreEqual(TLspSymbolKind.cConstructor_, FindSymbol(mSymbols, ['U', 'interface', 'TFoo', 'Create']).GetValue<Integer>('kind'));
+    Assert.AreEqual(TLspSymbolKind.cProperty_, FindSymbol(mSymbols, ['U', 'interface', 'TFoo', 'Value']).GetValue<Integer>('kind'));
   finally
-    Symbols.Free;
+    mSymbols.Free;
   end;
 end;
 
 procedure TLspDocumentSymbolsTests.ListsEnumMembersAndRecordFields;
 var
-  Symbols: TJSONArray;
+  mSymbols: TJSONArray;
 begin
-  Symbols := SymbolsOf(UnitCode);
+  mSymbols := SymbolsOf(cUnitCode);
   try
-    Assert.IsNotNull(FindSymbol(Symbols, ['U', 'interface', 'TColor', 'Green']));
-    Assert.AreEqual('record', FindSymbol(Symbols, ['U', 'interface', 'TPoint']).GetValue<string>('detail'));
-    Assert.IsNotNull(FindSymbol(Symbols, ['U', 'interface', 'TPoint', 'Y']));
+    Assert.IsNotNull(FindSymbol(mSymbols, ['U', 'interface', 'TColor', 'Green']));
+    Assert.AreEqual('record', FindSymbol(mSymbols, ['U', 'interface', 'TPoint']).GetValue<string>('detail'));
+    Assert.IsNotNull(FindSymbol(mSymbols, ['U', 'interface', 'TPoint', 'Y']));
   finally
-    Symbols.Free;
+    mSymbols.Free;
   end;
 end;
 
 procedure TLspDocumentSymbolsTests.ListsImplementationRoutinesWithLocals;
 var
-  Symbols: TJSONArray;
+  mSymbols: TJSONArray;
 begin
-  Symbols := SymbolsOf(UnitCode);
+  mSymbols := SymbolsOf(cUnitCode);
   try
-    Assert.IsNotNull(FindSymbol(Symbols, ['U', 'implementation', 'TFoo.Make', 'Helper']));
+    Assert.IsNotNull(FindSymbol(mSymbols, ['U', 'implementation', 'TFoo.Make', 'Helper']));
   finally
-    Symbols.Free;
+    mSymbols.Free;
   end;
 end;
 
 procedure TLspDocumentSymbolsTests.SelectionRangePointsAtName;
 var
-  Symbols: TJSONArray;
-  Make: TJSONObject;
+  mSymbols: TJSONArray;
+  mMake: TJSONObject;
 begin
-  Symbols := SymbolsOf(UnitCode);
+  mSymbols := SymbolsOf(cUnitCode);
   try
     // Zeile 20: "class function TFoo.Make: TFoo;" – Auswahl auf "Make".
-    Make := FindSymbol(Symbols, ['U', 'implementation', 'TFoo.Make']);
-    Assert.AreEqual(20, Make.GetValue<Integer>('range.start.line'));
-    Assert.AreEqual(0, Make.GetValue<Integer>('range.start.character'));
-    Assert.AreEqual(20, Make.GetValue<Integer>('selectionRange.start.line'));
-    Assert.AreEqual(20, Make.GetValue<Integer>('selectionRange.start.character'));
-    Assert.AreEqual(24, Make.GetValue<Integer>('selectionRange.end.character'));
+    mMake := FindSymbol(mSymbols, ['U', 'implementation', 'TFoo.Make']);
+    Assert.AreEqual(20, mMake.GetValue<Integer>('range.start.line'));
+    Assert.AreEqual(0, mMake.GetValue<Integer>('range.start.character'));
+    Assert.AreEqual(20, mMake.GetValue<Integer>('selectionRange.start.line'));
+    Assert.AreEqual(20, mMake.GetValue<Integer>('selectionRange.start.character'));
+    Assert.AreEqual(24, mMake.GetValue<Integer>('selectionRange.end.character'));
   finally
-    Symbols.Free;
+    mSymbols.Free;
   end;
 end;
 
 procedure TLspDocumentSymbolsTests.ProgramDeclarationsUnderRoot;
 var
-  Symbols: TJSONArray;
+  mSymbols: TJSONArray;
 begin
-  Symbols := SymbolsOf('program P;'#13#10'const A = 1;'#13#10'procedure X; begin end;'#13#10'begin end.');
+  mSymbols := SymbolsOf('program P;'#13#10'const A = 1;'#13#10'procedure X; begin end;'#13#10'begin end.');
   try
-    Assert.AreEqual('P:2(A:14,X:12)', Outline(Symbols));
+    Assert.AreEqual('P:2(A:14,X:12)', Outline(mSymbols));
   finally
-    Symbols.Free;
+    mSymbols.Free;
   end;
 end;
 
 procedure TLspDocumentSymbolsTests.BrokenCodeStillHasOutline;
 var
-  Symbols: TJSONArray;
+  mSymbols: TJSONArray;
 begin
-  Symbols := SymbolsOf('unit U;'#13#10'interface'#13#10'type'#13#10'  T = class'#13#10'    procedure A(;'#13#10 +
+  mSymbols := SymbolsOf('unit U;'#13#10'interface'#13#10'type'#13#10'  T = class'#13#10'    procedure A(;'#13#10 +
     'implementation'#13#10'procedure B;'#13#10'begin'#13#10'  X := ;'#13#10'end;'#13#10'end.');
   try
-    Assert.IsNotNull(FindSymbol(Symbols, ['U', 'interface', 'T', 'A']));
-    Assert.IsNotNull(FindSymbol(Symbols, ['U', 'implementation', 'B']));
+    Assert.IsNotNull(FindSymbol(mSymbols, ['U', 'interface', 'T', 'A']));
+    Assert.IsNotNull(FindSymbol(mSymbols, ['U', 'implementation', 'B']));
   finally
-    Symbols.Free;
+    mSymbols.Free;
   end;
 end;
 
 procedure TLspDocumentSymbolsTests.HandlesRequestThroughDispatcher;
 var
-  Store: IDocumentStore;
-  Feature: TLspDocumentSymbols;
-  Dispatcher: TJsonRpcDispatcher;
-  Request: TJSONObject;
-  Response: TJSONObject;
+  mStore: IDocumentStore;
+  mFeature: TLspDocumentSymbols;
+  mDispatcher: TJsonRpcDispatcher;
+  mRequest: TJSONObject;
+  mResponse: TJSONObject;
 begin
-  Store := TDocumentStore.Create;
-  Store.Open('file:///u.pas', 'objectpascal', 1, UnitCode);
-  Dispatcher := TJsonRpcDispatcher.Create;
-  Feature := TLspDocumentSymbols.Create(Store);
+  mStore := TDocumentStore.Create;
+  mStore.Open('file:///u.pas', 'objectpascal', 1, cUnitCode);
+  mDispatcher := TJsonRpcDispatcher.Create;
+  mFeature := TLspDocumentSymbols.Create(mStore);
   try
-    Feature.Attach(Dispatcher);
-    Request := TJSONObject.ParseJSONValue(
+    mFeature.Attach(mDispatcher);
+    mRequest := TJSONObject.ParseJSONValue(
       '{"jsonrpc":"2.0","id":1,"method":"textDocument/documentSymbol",' +
       '"params":{"textDocument":{"uri":"file:///u.pas"}}}') as TJSONObject;
     try
-      Response := Dispatcher.DispatchMessage(Request);
+      mResponse := mDispatcher.DispatchMessage(mRequest);
       try
-        Assert.IsNotNull(Response);
-        Assert.AreEqual('U', Response.GetValue<string>('result[0].name'));
+        Assert.IsNotNull(mResponse);
+        Assert.AreEqual('U', mResponse.GetValue<string>('result[0].name'));
       finally
-        Response.Free;
+        mResponse.Free;
       end;
     finally
-      Request.Free;
+      mRequest.Free;
     end;
   finally
-    Feature.Free;
-    Dispatcher.Free;
+    mFeature.Free;
+    mDispatcher.Free;
   end;
 end;
 
 procedure TLspDocumentSymbolsTests.ActiveBranchesWithCondition;
 const
-  Code =
+  cCode =
     'unit U;'#10'interface'#10'type'#10'  TLog = class'#10'  {$IFDEF MSWINDOWS}'#10'    FHandle: THandle;'#10 +
     '    FFile: Integer;'#10'  {$ENDIF}'#10'  {$IFDEF DEBUG}'#10'    FTrace: Integer;'#10'  {$ENDIF}'#10 +
     '  end;'#10'function Foo: Integer;'#10'procedure Bar;'#10'implementation'#10'function Foo: Integer;'#10 +
     '{$IFDEF MSWINDOWS}'#10'begin'#10'  Result := 1;'#10'end;'#10'{$ELSE}'#10'begin'#10'  Result := 2;'#10 +
     'end;'#10'{$ENDIF}'#10'procedure Bar;'#10'begin'#10'end;'#10'end.';
 var
-  Store: IDocumentStore;
-  Feature: TLspDocumentSymbols;
-  Dispatcher: TJsonRpcDispatcher;
-  Request: TJSONObject;
-  Response: TJSONObject;
-  Symbols: TJSONArray;
+  mStore: IDocumentStore;
+  mFeature: TLspDocumentSymbols;
+  mDispatcher: TJsonRpcDispatcher;
+  mRequest: TJSONObject;
+  mResponse: TJSONObject;
+  mSymbols: TJSONArray;
 
   function ConditionAt(const APath: array of string): string;
   var
-    Symbol: TJSONObject;
+    mSymbol: TJSONObject;
   begin
-    Symbol := FindSymbol(Symbols, APath);
-    Assert.IsNotNull(Symbol);
-    Result := Symbol.GetValue<string>('atlas.condition', '');
+    mSymbol := FindSymbol(mSymbols, APath);
+    Assert.IsNotNull(mSymbol);
+    Result := mSymbol.GetValue<string>('atlas.condition', '');
   end;
 
 begin
   // #845: Ohne Projekt gelten die Vordefinitionen (Win32, MSWINDOWS); DEBUG ist nicht gesetzt.
-  Store := TDocumentStore.Create;
-  Store.Open('file:///u.pas', 'objectpascal', 1, Code);
-  Dispatcher := TJsonRpcDispatcher.Create;
-  Feature := TLspDocumentSymbols.Create(Store);
+  mStore := TDocumentStore.Create;
+  mStore.Open('file:///u.pas', 'objectpascal', 1, cCode);
+  mDispatcher := TJsonRpcDispatcher.Create;
+  mFeature := TLspDocumentSymbols.Create(mStore);
   try
-    Feature.Attach(Dispatcher);
-    Request := TJSONObject.ParseJSONValue(
+    mFeature.Attach(mDispatcher);
+    mRequest := TJSONObject.ParseJSONValue(
       '{"jsonrpc":"2.0","id":1,"method":"textDocument/documentSymbol",' +
       '"params":{"textDocument":{"uri":"file:///u.pas"}}}') as TJSONObject;
     try
-      Response := Dispatcher.DispatchMessage(Request);
+      mResponse := mDispatcher.DispatchMessage(mRequest);
       try
-        Symbols := Response.GetValue('result') as TJSONArray;
+        mSymbols := mResponse.GetValue('result') as TJSONArray;
         // Bar steht im Baum, FTrace (DEBUG) nicht.
         Assert.AreEqual('U:2(interface:3(TLog:5(FHandle:8,FFile:8),Foo:12,Bar:12),' +
-          'implementation:3(Foo:12,Bar:12))', Outline(Symbols));
+          'implementation:3(Foo:12,Bar:12))', Outline(mSymbols));
         // Nur das erste Symbol im Zweig trägt die Bedingung, die Klasse nicht.
         Assert.AreEqual('MSWINDOWS', ConditionAt(['U', 'interface', 'TLog', 'FHandle']));
         Assert.AreEqual('', ConditionAt(['U', 'interface', 'TLog']));
@@ -333,51 +333,51 @@ begin
         Assert.AreEqual('MSWINDOWS', ConditionAt(['U', 'implementation', 'Foo']));
         Assert.AreEqual('', ConditionAt(['U', 'implementation', 'Bar']));
       finally
-        Response.Free;
+        mResponse.Free;
       end;
     finally
-      Request.Free;
+      mRequest.Free;
     end;
   finally
-    Feature.Free;
-    Dispatcher.Free;
+    mFeature.Free;
+    mDispatcher.Free;
   end;
 end;
 
 procedure TLspDocumentSymbolsTests.ReturnsNullForUnknownDocument;
 var
-  Store: IDocumentStore;
-  Feature: TLspDocumentSymbols;
-  Dispatcher: TJsonRpcDispatcher;
-  Request: TJSONObject;
-  Response: TJSONObject;
+  mStore: IDocumentStore;
+  mFeature: TLspDocumentSymbols;
+  mDispatcher: TJsonRpcDispatcher;
+  mRequest: TJSONObject;
+  mResponse: TJSONObject;
 begin
-  Store := TDocumentStore.Create;
-  Dispatcher := TJsonRpcDispatcher.Create;
-  Feature := TLspDocumentSymbols.Create(Store);
+  mStore := TDocumentStore.Create;
+  mDispatcher := TJsonRpcDispatcher.Create;
+  mFeature := TLspDocumentSymbols.Create(mStore);
   try
-    Feature.Attach(Dispatcher);
-    Request := TJSONObject.ParseJSONValue(
+    mFeature.Attach(mDispatcher);
+    mRequest := TJSONObject.ParseJSONValue(
       '{"jsonrpc":"2.0","id":1,"method":"textDocument/documentSymbol",' +
       '"params":{"textDocument":{"uri":"file:///fehlt.pas"}}}') as TJSONObject;
     try
-      Response := Dispatcher.DispatchMessage(Request);
+      mResponse := mDispatcher.DispatchMessage(mRequest);
       try
-        Assert.IsTrue(Response.GetValue('result') is TJSONNull);
+        Assert.IsTrue(mResponse.GetValue('result') is TJSONNull);
       finally
-        Response.Free;
+        mResponse.Free;
       end;
     finally
-      Request.Free;
+      mRequest.Free;
     end;
   finally
-    Feature.Free;
-    Dispatcher.Free;
+    mFeature.Free;
+    mDispatcher.Free;
   end;
 end;
 
 const
-  FormCode =
+  cFormCode =
     'unit F;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -405,58 +405,58 @@ const
 
 function Extra(const ASymbols: TJSONArray; const APath: array of string; const AKey: string): string;
 var
-  Symbol, Extras: TJSONObject;
-  Value: TJSONValue;
+  mSymbol, mExtras: TJSONObject;
+  mValue: TJSONValue;
 begin
   Result := '';
-  Symbol := FindSymbol(ASymbols, APath);
-  Assert.IsNotNull(Symbol, APath[High(APath)]);
-  Extras := Symbol.GetValue('atlas') as TJSONObject;
-  if Extras = nil then
+  mSymbol := FindSymbol(ASymbols, APath);
+  Assert.IsNotNull(mSymbol, APath[High(APath)]);
+  mExtras := mSymbol.GetValue('atlas') as TJSONObject;
+  if mExtras = nil then
   begin
     Exit;
   end;
-  Value := Extras.GetValue(AKey);
-  if Value <> nil then
+  mValue := mExtras.GetValue(AKey);
+  if mValue <> nil then
   begin
-    Result := Value.Value;
+    Result := mValue.Value;
   end;
 end;
 
 procedure TLspDocumentSymbolsTests.MarksVisibilityAndMethodFlags;
 var
-  Tree: TSyntaxTree;
-  Symbols: TJSONArray;
+  mTree: TSyntaxTree;
+  mSymbols: TJSONArray;
 begin
-  Tree := TPascalParser.Parse(FormCode);
+  mTree := TPascalParser.Parse(cFormCode);
   try
-    Symbols := TLspDocumentSymbols.BuildSymbols(Tree, FormCode);
+    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, cFormCode);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   try
     // Ohne Angabe bei Klassen mit Vorfahr: published (Formularfelder und Ereignis-Handler).
-    Assert.AreEqual('published', Extra(Symbols, ['F', 'interface', 'TForm1', 'Button1'], 'visibility'));
-    Assert.AreEqual('published', Extra(Symbols, ['F', 'interface', 'TForm1', 'Button1Click'], 'visibility'));
-    Assert.AreEqual('private', Extra(Symbols, ['F', 'interface', 'TForm1', 'FCount'], 'visibility'));
-    Assert.AreEqual('true', Extra(Symbols, ['F', 'interface', 'TForm1', 'Missing'], 'unimplemented'));
-    Assert.AreEqual('', Extra(Symbols, ['F', 'interface', 'TForm1', 'Paint'], 'unimplemented'));
-    Assert.AreEqual('strict protected', Extra(Symbols, ['F', 'interface', 'TForm1', 'Paint'], 'visibility'));
-    Assert.AreEqual('true', Extra(Symbols, ['F', 'interface', 'TForm1', 'Paint'], 'override'));
-    Assert.AreEqual('true', Extra(Symbols, ['F', 'interface', 'TForm1', 'Draw'], 'virtual'));
-    Assert.AreEqual('true', Extra(Symbols, ['F', 'interface', 'TForm1', 'Draw'], 'abstract'));
+    Assert.AreEqual('published', Extra(mSymbols, ['F', 'interface', 'TForm1', 'Button1'], 'visibility'));
+    Assert.AreEqual('published', Extra(mSymbols, ['F', 'interface', 'TForm1', 'Button1Click'], 'visibility'));
+    Assert.AreEqual('private', Extra(mSymbols, ['F', 'interface', 'TForm1', 'FCount'], 'visibility'));
+    Assert.AreEqual('true', Extra(mSymbols, ['F', 'interface', 'TForm1', 'Missing'], 'unimplemented'));
+    Assert.AreEqual('', Extra(mSymbols, ['F', 'interface', 'TForm1', 'Paint'], 'unimplemented'));
+    Assert.AreEqual('strict protected', Extra(mSymbols, ['F', 'interface', 'TForm1', 'Paint'], 'visibility'));
+    Assert.AreEqual('true', Extra(mSymbols, ['F', 'interface', 'TForm1', 'Paint'], 'override'));
+    Assert.AreEqual('true', Extra(mSymbols, ['F', 'interface', 'TForm1', 'Draw'], 'virtual'));
+    Assert.AreEqual('true', Extra(mSymbols, ['F', 'interface', 'TForm1', 'Draw'], 'abstract'));
     // Abstrakte Methoden brauchen keinen Rumpf.
-    Assert.AreEqual('', Extra(Symbols, ['F', 'interface', 'TForm1', 'Draw'], 'unimplemented'));
-    Assert.AreEqual('true', Extra(Symbols, ['F', 'interface', 'TForm1', 'Make'], 'classMember'));
-    Assert.AreEqual('public', Extra(Symbols, ['F', 'interface', 'TForm1', 'Make'], 'visibility'));
-    Assert.AreEqual('true', Extra(Symbols, ['F', 'interface', 'TForm1', 'Count'], 'classMember'));
-    Assert.AreEqual('', Extra(Symbols, ['F', 'interface', 'TForm1', 'Button1Click'], 'classMember'));
+    Assert.AreEqual('', Extra(mSymbols, ['F', 'interface', 'TForm1', 'Draw'], 'unimplemented'));
+    Assert.AreEqual('true', Extra(mSymbols, ['F', 'interface', 'TForm1', 'Make'], 'classMember'));
+    Assert.AreEqual('public', Extra(mSymbols, ['F', 'interface', 'TForm1', 'Make'], 'visibility'));
+    Assert.AreEqual('true', Extra(mSymbols, ['F', 'interface', 'TForm1', 'Count'], 'classMember'));
+    Assert.AreEqual('', Extra(mSymbols, ['F', 'interface', 'TForm1', 'Button1Click'], 'classMember'));
     // Ohne Vorfahr: public.
-    Assert.AreEqual('public', Extra(Symbols, ['F', 'interface', 'TPlain', 'X'], 'visibility'));
+    Assert.AreEqual('public', Extra(mSymbols, ['F', 'interface', 'TPlain', 'X'], 'visibility'));
     // Rümpfe im implementation-Abschnitt tragen nichts.
-    Assert.IsNull(FindSymbol(Symbols, ['F', 'implementation', 'TForm1.Paint']).GetValue('atlas'));
+    Assert.IsNull(FindSymbol(mSymbols, ['F', 'implementation', 'TForm1.Paint']).GetValue('atlas'));
   finally
-    Symbols.Free;
+    mSymbols.Free;
   end;
 end;
 

@@ -37,36 +37,36 @@ uses
 /// <summary>Text ohne "|" und die Position des "|".</summary>
 function Split(const AMarked: string; out APosition: TTextPosition): TArray<TPascalToken>;
 var
-  Index, Line, Character: Integer;
+  mIndex, mLine, mCharacter: Integer;
 begin
-  Line := 0;
-  Character := 0;
-  for Index := 1 to Pos('|', AMarked) - 1 do
+  mLine := 0;
+  mCharacter := 0;
+  for mIndex := 1 to Pos('|', AMarked) - 1 do
   begin
-    if AMarked[Index] = #10 then
+    if AMarked[mIndex] = #10 then
     begin
-      Inc(Line);
-      Character := 0;
+      Inc(mLine);
+      mCharacter := 0;
     end
     else
     begin
-      Inc(Character);
+      Inc(mCharacter);
     end;
   end;
-  APosition := TTextPosition.Create(Line, Character);
+  APosition := TTextPosition.Create(mLine, mCharacter);
   Result := TPascalLexer.Tokenize(StringReplace(AMarked, '|', '', []));
 end;
 
 function ValueNames(const AMarked: string): string;
 var
-  Position: TTextPosition;
-  Tokens: TArray<TPascalToken>;
-  Slot: TEnumValueSlot;
+  mPosition: TTextPosition;
+  mTokens: TArray<TPascalToken>;
+  mSlot: TEnumValueSlot;
 begin
-  Tokens := Split(AMarked, Position);
-  if TCompletionEnums.ValueSlot(Tokens, Position, Slot) then
+  mTokens := Split(AMarked, mPosition);
+  if TCompletionEnums.ValueSlot(mTokens, mPosition, mSlot) then
   begin
-    Result := string.Join('.', Slot.Names);
+    Result := string.Join('.', mSlot.Names);
   end
   else
   begin
@@ -76,11 +76,11 @@ end;
 
 function SetText(const AMarked: string; out ASlot: TEnumSetSlot): Boolean;
 var
-  Position: TTextPosition;
-  Tokens: TArray<TPascalToken>;
+  mPosition: TTextPosition;
+  mTokens: TArray<TPascalToken>;
 begin
-  Tokens := Split(AMarked, Position);
-  Result := TCompletionEnums.SetSlot(Tokens, Position, ASlot);
+  mTokens := Split(AMarked, mPosition);
+  Result := TCompletionEnums.SetSlot(mTokens, mPosition, ASlot);
 end;
 
 { TCompletionEnumsTests }
@@ -109,44 +109,44 @@ end;
 
 procedure TCompletionEnumsTests.FindsSetConstructors;
 var
-  Slot: TEnumSetSlot;
+  mSlot: TEnumSetSlot;
 begin
-  Assert.IsTrue(SetText('Anchors := [akLeft, |]', Slot));
-  Assert.AreEqual(0, Integer(Length(Slot.ElementOf)));
-  Assert.AreEqual('akLeft', string.Join(',', Slot.Present));
-  Assert.AreEqual(11, Slot.EditRange.StartPos.Character);
-  Assert.AreEqual(21, Slot.EditRange.EndPos.Character, 'bis hinter "]"');
+  Assert.IsTrue(SetText('Anchors := [akLeft, |]', mSlot));
+  Assert.AreEqual(0, Integer(Length(mSlot.ElementOf)));
+  Assert.AreEqual('akLeft', string.Join(',', mSlot.Present));
+  Assert.AreEqual(11, mSlot.EditRange.StartPos.Character);
+  Assert.AreEqual(21, mSlot.EditRange.EndPos.Character, 'bis hinter "]"');
   // Das Wort am Cursor zählt nicht als enthalten; was danach in der Klammer steht, schon.
-  Assert.IsTrue(SetText('Anchors := [akLeft, ak|, akTop];', Slot));
-  Assert.AreEqual('akLeft,akTop', string.Join(',', Slot.Present));
+  Assert.IsTrue(SetText('Anchors := [akLeft, ak|, akTop];', mSlot));
+  Assert.AreEqual('akLeft,akTop', string.Join(',', mSlot.Present));
   // Offene Klammer: nur bis zum Cursor; die nächste Zeile gehört nicht dazu.
-  Assert.IsTrue(SetText('Anchors := [akLeft, |'#10'  Foo;', Slot));
-  Assert.AreEqual('akLeft', string.Join(',', Slot.Present));
-  Assert.AreEqual(0, Slot.EditRange.EndPos.Line);
-  Assert.AreEqual(20, Slot.EditRange.EndPos.Character);
+  Assert.IsTrue(SetText('Anchors := [akLeft, |'#10'  Foo;', mSlot));
+  Assert.AreEqual('akLeft', string.Join(',', mSlot.Present));
+  Assert.AreEqual(0, mSlot.EditRange.EndPos.Line);
+  Assert.AreEqual(20, mSlot.EditRange.EndPos.Character);
   // "in": Elementtyp aus der Kette links; Bereiche und qualifizierte Werte bleiben stehen.
-  Assert.IsTrue(SetText('if Shape.Kind in [skCircle..skRect, TShapeKind.skLine, |]', Slot));
-  Assert.AreEqual('Shape.Kind', string.Join('.', Slot.ElementOf));
-  Assert.AreEqual('skCircle..skRect|TShapeKind.skLine', string.Join('|', Slot.Present));
+  Assert.IsTrue(SetText('if Shape.Kind in [skCircle..skRect, TShapeKind.skLine, |]', mSlot));
+  Assert.AreEqual('Shape.Kind', string.Join('.', mSlot.ElementOf));
+  Assert.AreEqual('skCircle..skRect|TShapeKind.skLine', string.Join('|', mSlot.Present));
 end;
 
 procedure TCompletionEnumsTests.IgnoresIndexes;
 var
-  Slot: TEnumSetSlot;
+  mSlot: TEnumSetSlot;
 begin
-  Assert.IsFalse(SetText('X := List[|', Slot));
-  Assert.IsFalse(SetText('X := F(x)[|', Slot));
-  Assert.IsFalse(SetText('X := P^[|', Slot));
-  Assert.IsFalse(SetText('X := (|', Slot));
-  Assert.IsFalse(SetText('X := [A + |', Slot), 'Ausdruck statt Werteliste');
+  Assert.IsFalse(SetText('X := List[|', mSlot));
+  Assert.IsFalse(SetText('X := F(x)[|', mSlot));
+  Assert.IsFalse(SetText('X := P^[|', mSlot));
+  Assert.IsFalse(SetText('X := (|', mSlot));
+  Assert.IsFalse(SetText('X := [A + |', mSlot), 'Ausdruck statt Werteliste');
 end;
 
 procedure TCompletionEnumsTests.ReadsDeclarations;
 var
-  Values: TArray<string>;
+  mValues: TArray<string>;
 begin
-  Values := TCompletionEnums.EnumValues('TAlign = (alNone, alTop = 2, {x} alBottom, // y'#10'  alLeft);');
-  Assert.AreEqual('alNone,alTop,alBottom,alLeft', string.Join(',', Values));
+  mValues := TCompletionEnums.EnumValues('TAlign = (alNone, alTop = 2, {x} alBottom, // y'#10'  alLeft);');
+  Assert.AreEqual('alNone,alTop,alBottom,alLeft', string.Join(',', mValues));
   Assert.AreEqual(0, Integer(Length(TCompletionEnums.EnumValues('TFoo = class(TObject)'))));
   Assert.AreEqual('TAnchorKind', TCompletionEnums.SetElement('TAnchors = set of TAnchorKind;'));
   Assert.AreEqual('System.UITypes.TX', TCompletionEnums.SetElement('TS = set of System.UITypes.TX;'));
@@ -159,15 +159,15 @@ end;
 
 procedure TCompletionEnumsTests.MarksPresentValues;
 var
-  Checked: TArray<Boolean>;
+  mChecked: TArray<Boolean>;
 begin
-  Assert.IsTrue(TCompletionEnums.Checked(['a', 'b', 'c', 'd'], ['b..c', 'T.a'], Checked));
-  Assert.IsTrue(Checked[0]);
-  Assert.IsTrue(Checked[1]);
-  Assert.IsTrue(Checked[2]);
-  Assert.IsFalse(Checked[3]);
+  Assert.IsTrue(TCompletionEnums.Checked(['a', 'b', 'c', 'd'], ['b..c', 'T.a'], mChecked));
+  Assert.IsTrue(mChecked[0]);
+  Assert.IsTrue(mChecked[1]);
+  Assert.IsTrue(mChecked[2]);
+  Assert.IsFalse(mChecked[3]);
   // Unbekannte Namen (Variablen, Konstanten): die Klammer lässt sich nicht neu schreiben.
-  Assert.IsFalse(TCompletionEnums.Checked(['a', 'b'], ['Standard'], Checked));
+  Assert.IsFalse(TCompletionEnums.Checked(['a', 'b'], ['Standard'], mChecked));
 end;
 
 initialization

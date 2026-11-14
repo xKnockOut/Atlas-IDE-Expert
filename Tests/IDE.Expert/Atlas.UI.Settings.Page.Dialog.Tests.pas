@@ -45,24 +45,24 @@ begin
 end;
 procedure TAtlasSettingsPageDialogTests.DialogShowsOriginAndResetsToGlobal;
 var
-  Model: TAtlasSettingsModel;
-  Dialog: TAtlasProjectSettingsDialog;
+  mModel: TAtlasSettingsModel;
+  mDialog: TAtlasProjectSettingsDialog;
 begin
-  Model := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), '{"language": "en"}',
+  mModel := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), '{"language": "en"}',
     '{"language": "de", "encoding": "windows-1252"}', False);
   try
-    Dialog := TAtlasProjectSettingsDialog.CreateDialog(nil, Model, 'C:\P\atlas.json');
+    mDialog := TAtlasProjectSettingsDialog.CreateDialog(nil, mModel, 'C:\P\atlas.json');
     try
-      Assert.IsTrue(Dialog.SelectPage('Allgemein'));
-      Assert.IsTrue(Pos('Projekt', Dialog.StateText('language')) > 0);
-      Assert.IsTrue(Pos('windows-1252', Dialog.StateText('encoding')) > 0, 'global geerbt');
-      Model.Reset(Model.IndexOf('language'));
-      Assert.AreEqual('{}', Model.ResultText);
+      Assert.IsTrue(mDialog.SelectPage('Allgemein'));
+      Assert.IsTrue(Pos('Projekt', mDialog.StateText('language')) > 0);
+      Assert.IsTrue(Pos('windows-1252', mDialog.StateText('encoding')) > 0, 'global geerbt');
+      mModel.Reset(mModel.IndexOf('language'));
+      Assert.AreEqual('{}', mModel.ResultText);
     finally
-      Dialog.Free;
+      mDialog.Free;
     end;
   finally
-    Model.Free;
+    mModel.Free;
   end;
 end;
 /// <summary>Ein TMemo unter AParent, dessen Text ATerm enthält.</summary>
@@ -87,61 +87,61 @@ begin
 end;
 procedure TAtlasSettingsPageDialogTests.DialogWithoutRulesModuleShowsJson;
 var
-  Model: TAtlasSettingsModel;
-  Dialog: TAtlasProjectSettingsDialog;
+  mModel: TAtlasSettingsModel;
+  mDialog: TAtlasProjectSettingsDialog;
 begin
-  Model := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson),
+  mModel := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson),
     '{"rules": {"no-with": "error"}}', '', False);
   try
-    Dialog := TAtlasProjectSettingsDialog.CreateDialog(nil, Model, 'C:\P\atlas.json');
+    mDialog := TAtlasProjectSettingsDialog.CreateDialog(nil, mModel, 'C:\P\atlas.json');
     try
-      Dialog.HandleNeeded;
-      Assert.IsNull(Dialog.GroupNode('threads'), 'ohne Modul keine Knoten je Gruppe');
-      Assert.IsTrue(Dialog.SelectPage(Model.Fields[Model.IndexOf('rules')].Page));
-      Assert.IsTrue(HasMemoWith(Dialog, 'no-with'), '"rules" als JSON-Text');
-      Assert.IsFalse(Dialog.SelectRule('no-with'));
+      mDialog.HandleNeeded;
+      Assert.IsNull(mDialog.GroupNode('threads'), 'ohne Modul keine Knoten je Gruppe');
+      Assert.IsTrue(mDialog.SelectPage(mModel.Fields[mModel.IndexOf('rules')].Page));
+      Assert.IsTrue(HasMemoWith(mDialog, 'no-with'), '"rules" als JSON-Text');
+      Assert.IsFalse(mDialog.SelectRule('no-with'));
     finally
-      Dialog.Free;
+      mDialog.Free;
     end;
   finally
-    Model.Free;
+    mModel.Free;
   end;
 end;
 procedure TAtlasSettingsPageDialogTests.DialogValidatesBeforeSaving;
 var
-  Model: TAtlasSettingsModel;
-  Dialog: TAtlasProjectSettingsDialog;
-  Checked: Integer;
+  mModel: TAtlasSettingsModel;
+  mDialog: TAtlasProjectSettingsDialog;
+  mChecked: Integer;
 begin
-  Model := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), '{}', '', True);
+  mModel := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), '{}', '', True);
   try
-    Dialog := TAtlasProjectSettingsDialog.CreateDialog(nil, Model, 'C:\Users\X\settings.json');
+    mDialog := TAtlasProjectSettingsDialog.CreateDialog(nil, mModel, 'C:\Users\X\settings.json');
     try
-      Checked := 0;
-      Dialog.OnValidate :=
+      mChecked := 0;
+      mDialog.OnValidate :=
         function(const AText: string; out AChecked: Boolean): TArray<TAtlasSettingIssue>
         begin
-          Inc(Checked);
+          Inc(mChecked);
           AChecked := True;
           Result := nil;
         end;
       // Unverändert: nichts zu prüfen.
-      Assert.IsTrue(Dialog.Validate);
-      Assert.AreEqual(0, Checked);
-      Model.SetValue(Model.IndexOf('memoryBudgetMb'), '256');
-      Assert.IsTrue(Dialog.Validate);
-      Assert.AreEqual(1, Checked);
-      Dialog.ServerChecks := False;
-      Assert.IsTrue(Dialog.HintLabel.Visible, 'Hinweis: nur Syntax');
+      Assert.IsTrue(mDialog.Validate);
+      Assert.AreEqual(0, mChecked);
+      mModel.SetValue(mModel.IndexOf('memoryBudgetMb'), '256');
+      Assert.IsTrue(mDialog.Validate);
+      Assert.AreEqual(1, mChecked);
+      mDialog.ServerChecks := False;
+      Assert.IsTrue(mDialog.HintLabel.Visible, 'Hinweis: nur Syntax');
       // Eine Zeile Hinweis: Nach dem Anpassen an die Breite bleibt kein hoher leerer Streifen.
-      Dialog.HandleNeeded;
-      Dialog.Width := Dialog.Width + 10;
-      Assert.IsTrue(Dialog.HintLabel.Height < 60, 'Hinweis ohne leeren Streifen');
+      mDialog.HandleNeeded;
+      mDialog.Width := mDialog.Width + 10;
+      Assert.IsTrue(mDialog.HintLabel.Height < 60, 'Hinweis ohne leeren Streifen');
     finally
-      Dialog.Free;
+      mDialog.Free;
     end;
   finally
-    Model.Free;
+    mModel.Free;
   end;
 end;
 

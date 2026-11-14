@@ -49,24 +49,24 @@ uses
 
 function Join(const ALines: array of string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(ALines) do
+  for mIndex := 0 to High(ALines) do
   begin
-    Result := Result + ALines[Index] + #10;
+    Result := Result + ALines[mIndex] + #10;
   end;
 end;
 
 procedure CheckParses(const AText: string);
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), AText);
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), AText);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -118,51 +118,51 @@ end;
 function Relocate(const AText, AMarker: string; const ATarget: TMoveTarget; out ANewText, AOrigin,
   AReason: string): Boolean; overload;
 var
-  Tree: TSyntaxTree;
-  Plan: TMoveClassPlan;
-  Line, Index: Integer;
+  mTree: TSyntaxTree;
+  mPlan: TMoveClassPlan;
+  mLine, mIndex: Integer;
 begin
   ANewText := '';
   AOrigin := '';
   CheckParses(AText);
-  Line := 0;
-  for Index := 1 to Pos(AMarker, AText) - 1 do
+  mLine := 0;
+  for mIndex := 1 to Pos(AMarker, AText) - 1 do
   begin
-    if AText[Index] = #10 then
+    if AText[mIndex] = #10 then
     begin
-      Inc(Line);
+      Inc(mLine);
     end;
   end;
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := TMoveClass.Plan(TMoveClassSource.Create('lager.pas', AText, Tree), TTextPosition.Create(Line, 4),
-      ATarget.NewUnit, ATarget.Lookup, Plan, AReason);
+    Result := TMoveClass.Plan(TMoveClassSource.Create('lager.pas', AText, mTree), TTextPosition.Create(mLine, 4),
+      ATarget.NewUnit, ATarget.Lookup, mPlan, AReason);
     if not Result then
     begin
       Exit;
     end;
-    ANewText := Plan.Text;
-    AOrigin := TChangeSignature.ApplyEdits(AText, Plan.OriginEdits);
+    ANewText := mPlan.Text;
+    AOrigin := TChangeSignature.ApplyEdits(AText, mPlan.OriginEdits);
     CheckParses(ANewText);
     CheckParses(AOrigin);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Relocate(const AText, AMarker: string; out ANewText, AOrigin: string): Boolean; overload;
 var
-  Reason: string;
+  mReason: string;
 begin
-  Result := Relocate(AText, AMarker, Into('Stock', FakeLookup()), ANewText, AOrigin, Reason);
-  Assert.IsTrue(Result, Reason);
+  Result := Relocate(AText, AMarker, Into('Stock', FakeLookup()), ANewText, AOrigin, mReason);
+  Assert.IsTrue(Result, mReason);
 end;
 
 function Rejected(const AText, AMarker: string): string;
 var
-  NewText, Origin: string;
+  mNewText, mOrigin: string;
 begin
-  Assert.IsFalse(Relocate(AText, AMarker, Into('Stock', FakeLookup()), NewText, Origin, Result));
+  Assert.IsFalse(Relocate(AText, AMarker, Into('Stock', FakeLookup()), mNewText, mOrigin, Result));
 end;
 
 procedure TMoveClassTests.DefaultUnitNameDropsT;
@@ -174,7 +174,7 @@ end;
 
 procedure TMoveClassTests.MovesClassWithMethods;
 var
-  NewText, Origin: string;
+  mNewText, mOrigin: string;
 begin
   Assert.IsTrue(Relocate(Join(['unit Lager;', '', 'interface', '', 'uses', '  System.SysUtils, System.Classes;', '',
     'type', '  TBase = class', '  end;', '', '  /// <summary>Bestand.</summary>', '  TStock = class', '  private',
@@ -182,76 +182,76 @@ begin
     '  end;', '', 'implementation', '', 'function TStock.Count: Integer;', 'begin', '  Result := FItems.Count;',
     'end;', '', 'procedure TStock.Add(const AName: string);', 'var', '  N: Integer;', 'begin', '  N := 1;',
     '  FItems.Add(Format(''%s %d'', [AName, N]));', 'end;', '', 'procedure Run;', 'begin', '  TStock.Create.Free;',
-    'end;', '', 'end.']), 'TStock = class', NewText, Origin));
+    'end;', '', 'end.']), 'TStock = class', mNewText, mOrigin));
   Assert.AreEqual(Join(['unit Stock;', '', 'interface', '', 'uses', '  System.Classes;', '', 'type',
     '  /// <summary>Bestand.</summary>', '  TStock = class', '  private', '    FItems: TStrings;', '  public',
     '    function Count: Integer;', '    procedure Add(const AName: string);', '  end;', '', 'implementation', '',
     'uses', '  System.SysUtils;', '', 'function TStock.Count: Integer;', 'begin', '  Result := FItems.Count;',
     'end;', '', 'procedure TStock.Add(const AName: string);', 'var', '  N: Integer;', 'begin', '  N := 1;',
-    '  FItems.Add(Format(''%s %d'', [AName, N]));', 'end;', '', 'end.']), NewText);
+    '  FItems.Add(Format(''%s %d'', [AName, N]));', 'end;', '', 'end.']), mNewText);
   Assert.AreEqual(Join(['unit Lager;', '', 'interface', '', 'uses', '  System.SysUtils, System.Classes;', '',
     'type', '  TBase = class', '  end;', '', 'implementation', '', 'uses', '  Stock;', '', 'procedure Run;',
-    'begin', '  TStock.Create.Free;', 'end;', '', 'end.']), Origin);
+    'begin', '  TStock.Create.Free;', 'end;', '', 'end.']), mOrigin);
 end;
 
 procedure TMoveClassTests.MovesTypeComment;
 var
-  NewText, Origin: string;
+  mNewText, mOrigin: string;
 begin
   Assert.IsTrue(Relocate(Join(['unit Lager;', '', 'interface', '', 'type', '  TBase = class', '    procedure Go;',
     '  end;', '', '  TStock = class', '    function Count: Integer;', '  end;', '', 'implementation', '',
     '{ TBase }', '', 'procedure TBase.Go;', 'begin', 'end;', '', '{ TStock }', '', 'function TStock.Count: Integer;',
-    'begin', '  Result := 0;', 'end;', '', 'end.']), 'TStock = class', NewText, Origin));
+    'begin', '  Result := 0;', 'end;', '', 'end.']), 'TStock = class', mNewText, mOrigin));
   Assert.AreEqual(Join(['unit Stock;', '', 'interface', '', 'type', '  TStock = class',
     '    function Count: Integer;', '  end;', '', 'implementation', '', '{ TStock }', '',
-    'function TStock.Count: Integer;', 'begin', '  Result := 0;', 'end;', '', 'end.']), NewText,
+    'function TStock.Count: Integer;', 'begin', '  Result := 0;', 'end;', '', 'end.']), mNewText,
     'Kommentar steht in der neuen Unit vor den Rümpfen (#1838)');
   Assert.AreEqual(Join(['unit Lager;', '', 'interface', '', 'type', '  TBase = class', '    procedure Go;',
     '  end;', '', 'implementation', '', '{ TBase }', '', 'procedure TBase.Go;', 'begin', 'end;', '', 'end.']),
-    Origin, 'kein { TStock } bleibt zurück');
+    mOrigin, 'kein { TStock } bleibt zurück');
 end;
 
 procedure TMoveClassTests.UsesOriginInterface;
 var
-  NewText, Origin: string;
+  mNewText, mOrigin: string;
 begin
   // TBase und Max aus dem interface: Die neue Unit bindet Lager ein, Lager die neue Unit im implementation.
   Assert.IsTrue(Relocate(Join(['unit Lager;', '', 'interface', '', 'type', '  TBase = class', '  end;', '',
     '  TStock = class(TBase)', '    function Count: Integer;', '  end;', '', 'const', '  Max = 10;', '',
     'implementation', '', 'uses', '  Helpers;', '', 'function TStock.Count: Integer;', 'begin', '  Result := Max;',
-    'end;', '', 'initialization', '  TStock.Create.Free;', 'end.']), 'TStock = class', NewText, Origin));
+    'end;', '', 'initialization', '  TStock.Create.Free;', 'end.']), 'TStock = class', mNewText, mOrigin));
   Assert.AreEqual(Join(['unit Stock;', '', 'interface', '', 'uses', '  Lager;', '', 'type',
     '  TStock = class(TBase)', '    function Count: Integer;', '  end;', '', 'implementation', '',
-    'function TStock.Count: Integer;', 'begin', '  Result := Max;', 'end;', '', 'end.']), NewText);
+    'function TStock.Count: Integer;', 'begin', '  Result := Max;', 'end;', '', 'end.']), mNewText);
   Assert.AreEqual(Join(['unit Lager;', '', 'interface', '', 'type', '  TBase = class', '  end;', '', 'const',
     '  Max = 10;', '', 'implementation', '', 'uses', '  Helpers,', '  Stock;', '', 'initialization',
-    '  TStock.Create.Free;', 'end.']), Origin);
+    '  TStock.Create.Free;', 'end.']), mOrigin);
 end;
 
 procedure TMoveClassTests.RemovesTypeSectionForwardAndAttributes;
 var
-  NewText, Origin: string;
+  mNewText, mOrigin: string;
 begin
   // Nur noch die Vorwärtsdeklaration und die Klasse im Typabschnitt: Er entfällt ganz.
   Assert.IsTrue(Relocate(Join(['unit Lager;', '', 'interface', '', 'type', '  TStock = class;', '',
     '  // Lagerbestand', '  [Serializable]', '  TStock = class', '  end;', '', 'implementation', '', 'end.']),
-    'TStock = class' + #10, NewText, Origin));
+    'TStock = class' + #10, mNewText, mOrigin));
   Assert.AreEqual(Join(['unit Stock;', '', 'interface', '', 'type', '  // Lagerbestand', '  [Serializable]',
-    '  TStock = class', '  end;', '', 'implementation', '', 'end.']), NewText);
-  Assert.AreEqual(Join(['unit Lager;', '', 'interface', '', 'implementation', '', 'end.']), Origin);
+    '  TStock = class', '  end;', '', 'implementation', '', 'end.']), mNewText);
+  Assert.AreEqual(Join(['unit Lager;', '', 'interface', '', 'implementation', '', 'end.']), mOrigin);
 end;
 
 procedure TMoveClassTests.WithoutLookupCopiesUses;
 var
-  NewText, Origin, Reason: string;
+  mNewText, mOrigin, mReason: string;
 begin
   Assert.IsTrue(Relocate(Join(['unit Lager;', '', 'interface', '', 'uses', '  Classes;', '', 'type',
     '  TStock = class', '    FItems: TStrings;', '    procedure Add;', '  end;', '', 'implementation', '', 'uses',
     '  SysUtils;', '', 'procedure TStock.Add;', 'begin', '  FItems.Add(IntToStr(1));', 'end;', '', 'end.']),
-    'TStock = class', Into('Lager.Stock', nil), NewText, Origin, Reason), Reason);
+    'TStock = class', Into('Lager.Stock', nil), mNewText, mOrigin, mReason), mReason);
   Assert.AreEqual(Join(['unit Lager.Stock;', '', 'interface', '', 'uses', '  Classes;', '', 'type',
     '  TStock = class', '    FItems: TStrings;', '    procedure Add;', '  end;', '', 'implementation', '', 'uses',
-    '  SysUtils;', '', 'procedure TStock.Add;', 'begin', '  FItems.Add(IntToStr(1));', 'end;', '', 'end.']), NewText);
+    '  SysUtils;', '', 'procedure TStock.Add;', 'begin', '  FItems.Add(IntToStr(1));', 'end;', '', 'end.']), mNewText);
 end;
 
 procedure TMoveClassTests.RejectsImplementationLocals;
@@ -273,7 +273,7 @@ end;
 
 procedure TMoveClassTests.RejectsOtherCases;
 var
-  NewText, Origin, Reason: string;
+  mNewText, mOrigin, mReason: string;
 begin
   // Formularklasse.
   Assert.Contains(Rejected(Join(['unit Lager;', '', 'interface', '', 'type', '  TStock = class(TForm)', '  end;',
@@ -284,32 +284,32 @@ begin
     'end;', '{$ENDIF}', '', 'end.']), 'TStock = class'), 'bedingt');
   // Kein Klassentyp an der Stelle, ungültiger Name.
   Assert.IsFalse(Relocate(Join(['unit Lager;', '', 'interface', '', 'type', '  TKind = (kA, kB);', '',
-    'implementation', '', 'end.']), 'TKind', Into('Stock', FakeLookup()), NewText, Origin, Reason));
+    'implementation', '', 'end.']), 'TKind', Into('Stock', FakeLookup()), mNewText, mOrigin, mReason));
   Assert.IsFalse(Relocate(Join(['unit Lager;', '', 'interface', '', 'type', '  TStock = class', '  end;', '',
-    'implementation', '', 'end.']), 'TStock', Into('Neue Unit', FakeLookup()), NewText, Origin, Reason));
-  Assert.Contains(Reason, 'gültig');
+    'implementation', '', 'end.']), 'TStock', Into('Neue Unit', FakeLookup()), mNewText, mOrigin, mReason));
+  Assert.Contains(mReason, 'gültig');
 end;
 
 procedure TMoveClassTests.UpdatesUsingUnits;
 var
-  Text: string;
-  Tree: TSyntaxTree;
-  Edits: TArray<TTextEdit>;
+  mText: string;
+  mTree: TSyntaxTree;
+  mEdits: TArray<TTextEdit>;
 begin
-  Text := Join(['unit Kasse;', '', 'interface', '', 'uses', '  System.Classes,', '  Lager;', '', 'implementation',
+  mText := Join(['unit Kasse;', '', 'interface', '', 'uses', '  System.Classes,', '  Lager;', '', 'implementation',
     '', 'procedure Run;', 'var', '  S: Lager.TStock;', 'begin', '  S := TStock.Create;', 'end;', '', 'end.']);
-  Tree := TPascalParser.Parse(Text);
+  mTree := TPascalParser.Parse(mText);
   try
-    Assert.IsTrue(TMoveClass.UpdateUser(Text, Tree, TMoveClassNames.Create('Lager', 'Stock', 'TStock'), nil, True,
-      Edits));
+    Assert.IsTrue(TMoveClass.UpdateUser(mText, mTree, TMoveClassNames.Create('Lager', 'Stock', 'TStock'), nil, True,
+      mEdits));
     Assert.AreEqual(Join(['unit Kasse;', '', 'interface', '', 'uses', '  System.Classes,', '  Lager,', '  Stock;',
       '', 'implementation', '', 'procedure Run;', 'var', '  S: Stock.TStock;', 'begin', '  S := TStock.Create;',
-      'end;', '', 'end.']), TChangeSignature.ApplyEdits(Text, Edits));
+      'end;', '', 'end.']), TChangeSignature.ApplyEdits(mText, mEdits));
     // Ohne Vorkommen keine Änderung.
-    Assert.IsFalse(TMoveClass.UpdateUser(Text, Tree, TMoveClassNames.Create('Lager', 'Stock', 'TOther'), nil, True,
-      Edits));
+    Assert.IsFalse(TMoveClass.UpdateUser(mText, mTree, TMoveClassNames.Create('Lager', 'Stock', 'TOther'), nil, True,
+      mEdits));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

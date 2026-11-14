@@ -40,242 +40,242 @@ uses
   Atlas.Common.Editing.SuggestConst;
 
 const
-  LF = #10;
+  cLF = #10;
 
 function Wrap(const ABody: string): string;
 begin
-  Result := 'unit U;' + LF + 'interface' + LF + 'implementation' + LF + ABody + LF + 'end.';
+  Result := 'unit U;' + cLF + 'interface' + cLF + 'implementation' + cLF + ABody + cLF + 'end.';
 end;
 
 /// <summary>Wendet die Edits (nicht überlappend, Zeilen mit #10) von hinten nach vorn an.</summary>
 function Apply(const AText: string; const AEdits: TArray<TTextEdit>): string;
 var
-  Lines: TArray<string>;
-  Offsets, Order: TArray<Integer>;
-  Index, Inner, Swap, Start, Stop: Integer;
+  mLines: TArray<string>;
+  mOffsets, mOrder: TArray<Integer>;
+  mIndex, mInner, mSwap, mStart, mStop: Integer;
 
   function OffsetOf(const APos: TTextPosition): Integer;
   begin
-    Result := Offsets[APos.Line] + APos.Character;
+    Result := mOffsets[APos.Line] + APos.Character;
   end;
 
 begin
-  Lines := AText.Split([LF]);
-  SetLength(Offsets, Length(Lines) + 1);
-  Offsets[0] := 0;
-  for Index := 0 to High(Lines) do
+  mLines := AText.Split([cLF]);
+  SetLength(mOffsets, Length(mLines) + 1);
+  mOffsets[0] := 0;
+  for mIndex := 0 to High(mLines) do
   begin
-    Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
   end;
-  SetLength(Order, Length(AEdits));
-  for Index := 0 to High(Order) do
+  SetLength(mOrder, Length(AEdits));
+  for mIndex := 0 to High(mOrder) do
   begin
-    Order[Index] := Index;
+    mOrder[mIndex] := mIndex;
   end;
-  for Index := 0 to High(Order) do
+  for mIndex := 0 to High(mOrder) do
   begin
-    for Inner := Index + 1 to High(Order) do
+    for mInner := mIndex + 1 to High(mOrder) do
     begin
-      if OffsetOf(AEdits[Order[Index]].Range.StartPos) < OffsetOf(AEdits[Order[Inner]].Range.StartPos) then
+      if OffsetOf(AEdits[mOrder[mIndex]].Range.StartPos) < OffsetOf(AEdits[mOrder[mInner]].Range.StartPos) then
       begin
-        Swap := Order[Index];
-        Order[Index] := Order[Inner];
-        Order[Inner] := Swap;
+        mSwap := mOrder[mIndex];
+        mOrder[mIndex] := mOrder[mInner];
+        mOrder[mInner] := mSwap;
       end;
     end;
   end;
   Result := AText;
-  for Index in Order do
+  for mIndex in mOrder do
   begin
-    Start := OffsetOf(AEdits[Index].Range.StartPos);
-    Stop := OffsetOf(AEdits[Index].Range.EndPos);
-    Result := Copy(Result, 1, Start) + AEdits[Index].NewText + Copy(Result, Stop + 1, MaxInt);
+    mStart := OffsetOf(AEdits[mIndex].Range.StartPos);
+    mStop := OffsetOf(AEdits[mIndex].Range.EndPos);
+    Result := Copy(Result, 1, mStart) + AEdits[mIndex].NewText + Copy(Result, mStop + 1, MaxInt);
   end;
 end;
 
 /// <summary>Text nach der Aktion am Namen in Zeile ALine, Zeichen ACharacter; '' ohne Vorschlag.</summary>
 function Suggest(const AText: string; ALine, ACharacter: Integer; out ATitle: string): string;
 var
-  Tree: TSyntaxTree;
-  Action: TCodeAction;
+  mTree: TSyntaxTree;
+  mAction: TCodeAction;
 begin
   Result := '';
   ATitle := '';
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    if TSuggestConst.Action(AText, Tree, TTextPosition.Create(ALine, ACharacter), nil, Action) then
+    if TSuggestConst.Action(AText, mTree, TTextPosition.Create(ALine, ACharacter), nil, mAction) then
     begin
-      ATitle := Action.Title;
-      Result := Apply(AText, Action.Edits);
+      ATitle := mAction.Title;
+      Result := Apply(AText, mAction.Edits);
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TSuggestConstTests.InlineVariableBecomesConst;
 var
-  Title, Changed: string;
+  mTitle, mChanged: string;
 begin
-  Changed := Suggest(Wrap(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  var Count := Liste.Count + 1;' + LF +
-    '  Writeln(Count);' + LF +
-    'end;'), 6, 11, Title);
-  Assert.AreEqual('Als Konstante deklarieren (const Count)', Title);
+  mChanged := Suggest(Wrap(
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  var Count := Liste.Count + 1;' + cLF +
+    '  Writeln(Count);' + cLF +
+    'end;'), 6, 11, mTitle);
+  Assert.AreEqual('Als Konstante deklarieren (const Count)', mTitle);
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  const Count = Liste.Count + 1;' + LF +
-    '  Writeln(Count);' + LF +
-    'end;'), Changed);
-  Assert.IsTrue(Parses(Changed));
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  const Count = Liste.Count + 1;' + cLF +
+    '  Writeln(Count);' + cLF +
+    'end;'), mChanged);
+  Assert.IsTrue(Parses(mChanged));
 end;
 
 procedure TSuggestConstTests.TypedInlineVariableKeepsType;
 var
-  Title: string;
+  mTitle: string;
 begin
   // Auch an einer Verwendung.
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  const Rate: Double = 1;' + LF +
-    '  Writeln(Rate);' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  const Rate: Double = 1;' + cLF +
+    '  Writeln(Rate);' + cLF +
     'end;'), Suggest(Wrap(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  var Rate: Double := 1;' + LF +
-    '  Writeln(Rate);' + LF +
-    'end;'), 6, 11, Title));
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  var Rate: Double := 1;' + cLF +
+    '  Writeln(Rate);' + cLF +
+    'end;'), 6, 11, mTitle));
 end;
 
 procedure TSuggestConstTests.SectionVariableMovesToAssignment;
 var
-  Title, Changed: string;
+  mTitle, mChanged: string;
 begin
-  Changed := Suggest(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  Name: string;' + LF +
-    'begin' + LF +
-    '  Writeln(1);' + LF +
-    '  Name := Trim(Eingabe);' + LF +
-    '  Writeln(Name);' + LF +
-    'end;'), 5, 3, Title);
+  mChanged := Suggest(Wrap(
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  Name: string;' + cLF +
+    'begin' + cLF +
+    '  Writeln(1);' + cLF +
+    '  Name := Trim(Eingabe);' + cLF +
+    '  Writeln(Name);' + cLF +
+    'end;'), 5, 3, mTitle);
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  Writeln(1);' + LF +
-    '  const Name: string = Trim(Eingabe);' + LF +
-    '  Writeln(Name);' + LF +
-    'end;'), Changed);
-  Assert.IsTrue(Parses(Changed));
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  Writeln(1);' + cLF +
+    '  const Name: string = Trim(Eingabe);' + cLF +
+    '  Writeln(Name);' + cLF +
+    'end;'), mChanged);
+  Assert.IsTrue(Parses(mChanged));
 end;
 
 procedure TSuggestConstTests.SectionVariableKeepsOtherNames;
 var
-  Title: string;
+  mTitle: string;
 begin
   Assert.AreEqual(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  A, B: Integer;' + LF +
-    'begin' + LF +
-    '  A := 1;' + LF +
-    '  B := 1;' + LF +
-    '  B := B + 1;' + LF +
-    '  const C: Integer = A + B;' + LF +
-    '  Writeln(C);' + LF +
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  A, B: Integer;' + cLF +
+    'begin' + cLF +
+    '  A := 1;' + cLF +
+    '  B := 1;' + cLF +
+    '  B := B + 1;' + cLF +
+    '  const C: Integer = A + B;' + cLF +
+    '  Writeln(C);' + cLF +
     'end;'), Suggest(Wrap(
-    'procedure P;' + LF +
-    'var' + LF +
-    '  A, B, C: Integer;' + LF +
-    'begin' + LF +
-    '  A := 1;' + LF +
-    '  B := 1;' + LF +
-    '  B := B + 1;' + LF +
-    '  C := A + B;' + LF +
-    '  Writeln(C);' + LF +
-    'end;'), 10, 3, Title));
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  A, B, C: Integer;' + cLF +
+    'begin' + cLF +
+    '  A := 1;' + cLF +
+    '  B := 1;' + cLF +
+    '  B := B + 1;' + cLF +
+    '  C := A + B;' + cLF +
+    '  Writeln(C);' + cLF +
+    'end;'), 10, 3, mTitle));
 end;
 
 procedure TSuggestConstTests.NoSuggestionForChangedOrUnclearNames;
 const
-  Source =
-    'procedure P(A: Integer);' + LF +
-    'var' + LF +
-    '  B, C, D: Integer;' + LF +
-    'begin' + LF +
-    '  B := 1;' + LF +
-    '  B := 2;' + LF +
-    '  C := 1;' + LF +
-    '  Unbekannt(C);' + LF +
-    '  for D := 1 to 2 do' + LF +
-    '    Writeln(A, B, C, D);' + LF +
+  cSource =
+    'procedure P(A: Integer);' + cLF +
+    'var' + cLF +
+    '  B, C, D: Integer;' + cLF +
+    'begin' + cLF +
+    '  B := 1;' + cLF +
+    '  B := 2;' + cLF +
+    '  C := 1;' + cLF +
+    '  Unbekannt(C);' + cLF +
+    '  for D := 1 to 2 do' + cLF +
+    '    Writeln(A, B, C, D);' + cLF +
     'end;';
 var
-  Title: string;
+  mTitle: string;
 begin
   // Zweimal geschrieben, womöglich geändert, Schleifenzähler, Parameter.
-  Assert.AreEqual('', Suggest(Wrap(Source), 7, 3, Title));
-  Assert.AreEqual('', Suggest(Wrap(Source), 9, 3, Title));
-  Assert.AreEqual('', Suggest(Wrap(Source), 11, 7, Title));
-  Assert.AreEqual('', Suggest(Wrap(Source), 3, 12, Title));
-  Assert.AreEqual('', Title);
+  Assert.AreEqual('', Suggest(Wrap(cSource), 7, 3, mTitle));
+  Assert.AreEqual('', Suggest(Wrap(cSource), 9, 3, mTitle));
+  Assert.AreEqual('', Suggest(Wrap(cSource), 11, 7, mTitle));
+  Assert.AreEqual('', Suggest(Wrap(cSource), 3, 12, mTitle));
+  Assert.AreEqual('', mTitle);
 end;
 
 procedure TSuggestConstTests.NoSuggestionInsideBranchOrWithEarlyRead;
 const
-  Source =
-    'procedure P(F: Boolean);' + LF +
-    'var' + LF +
-    '  A, B: Integer;' + LF +
-    'begin' + LF +
-    '  if F then' + LF +
-    '    A := 1;' + LF +
-    '  Writeln(B);' + LF +
-    '  B := 2;' + LF +
-    '  Writeln(A, B);' + LF +
+  cSource =
+    'procedure P(F: Boolean);' + cLF +
+    'var' + cLF +
+    '  A, B: Integer;' + cLF +
+    'begin' + cLF +
+    '  if F then' + cLF +
+    '    A := 1;' + cLF +
+    '  Writeln(B);' + cLF +
+    '  B := 2;' + cLF +
+    '  Writeln(A, B);' + cLF +
     'end;';
 var
-  Title: string;
+  mTitle: string;
 begin
-  Assert.AreEqual('', Suggest(Wrap(Source), 8, 4, Title), 'Zuweisung in einer Verzweigung');
-  Assert.AreEqual('', Suggest(Wrap(Source), 10, 2, Title), 'Lesen vor der Zuweisung');
+  Assert.AreEqual('', Suggest(Wrap(cSource), 8, 4, mTitle), 'Zuweisung in einer Verzweigung');
+  Assert.AreEqual('', Suggest(Wrap(cSource), 10, 2, mTitle), 'Lesen vor der Zuweisung');
 end;
 
 procedure TSuggestConstTests.NoSuggestionWhenNestedRoutineUsesIt;
 const
-  Source =
-    'procedure P;' + LF +
-    'var' + LF +
-    '  A: Integer;' + LF +
-    '  procedure Show;' + LF +
-    '  begin' + LF +
-    '    Writeln(A);' + LF +
-    '  end;' + LF +
-    'begin' + LF +
-    '  A := 1;' + LF +
-    '  Show;' + LF +
+  cSource =
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  A: Integer;' + cLF +
+    '  procedure Show;' + cLF +
+    '  begin' + cLF +
+    '    Writeln(A);' + cLF +
+    '  end;' + cLF +
+    'begin' + cLF +
+    '  A := 1;' + cLF +
+    '  Show;' + cLF +
     'end;';
 var
-  Title: string;
+  mTitle: string;
 begin
-  Assert.AreEqual('', Suggest(Wrap(Source), 11, 2, Title));
+  Assert.AreEqual('', Suggest(Wrap(cSource), 11, 2, mTitle));
 end;
 
 initialization

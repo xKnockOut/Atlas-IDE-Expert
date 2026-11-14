@@ -71,13 +71,13 @@ end;
 
 function ApplyEdit(const AText: string; const AEdit: TTextEdit): string;
 var
-  Lines: TLineTable;
-  Start, Stop: Integer;
+  mLines: TLineTable;
+  mStart, mStop: Integer;
 begin
-  Lines := TLineTable.Build(AText);
-  Start := Lines.OffsetAt(AEdit.Range.StartPos);
-  Stop := Lines.OffsetAt(AEdit.Range.EndPos);
-  Result := Copy(AText, 1, Start) + AEdit.NewText + Copy(AText, Stop + 1, MaxInt);
+  mLines := TLineTable.Build(AText);
+  mStart := mLines.OffsetAt(AEdit.Range.StartPos);
+  mStop := mLines.OffsetAt(AEdit.Range.EndPos);
+  Result := Copy(AText, 1, mStart) + AEdit.NewText + Copy(AText, mStop + 1, MaxInt);
 end;
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
@@ -89,75 +89,75 @@ end;
 function Rewrite(const AText, AMarker: string; AKind: TConditionKind; out AResult: string;
   out ATitle: string): Boolean;
 var
-  Tree, Check: TSyntaxTree;
-  Done: TStatementRewrite;
-  Layout: TStatementLayout;
-  Position: TTextPosition;
+  mTree, mCheck: TSyntaxTree;
+  mDone: TStatementRewrite;
+  mLayout: TStatementLayout;
+  mPosition: TTextPosition;
 begin
   AResult := '';
   ATitle := '';
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Layout := TStatementLayout.Create('', '  ', #10);
-    Position := PositionOf(AText, AMarker);
+    mLayout := TStatementLayout.Create('', '  ', #10);
+    mPosition := PositionOf(AText, AMarker);
     case AKind of
       ckInvert:
-        Result := TConditions.Invert(AText, Tree, Position, Layout, Done);
+        Result := TConditions.Invert(AText, mTree, mPosition, mLayout, mDone);
       ckEarlyExit:
-        Result := TConditions.EarlyExit(AText, Tree, Position, Layout, Done);
+        Result := TConditions.EarlyExit(AText, mTree, mPosition, mLayout, mDone);
       ckMerge:
-        Result := TConditions.MergeNested(AText, Tree, Position, Layout, Done);
+        Result := TConditions.MergeNested(AText, mTree, mPosition, mLayout, mDone);
     else
-      Result := TConditions.RemoveDoubleNegation(AText, Tree, Position, Done);
+      Result := TConditions.RemoveDoubleNegation(AText, mTree, mPosition, mDone);
     end;
     if Result then
     begin
-      AResult := ApplyEdit(AText, Done.Edit);
-      ATitle := Done.Title;
-      Check := TPascalParser.Parse(AResult);
+      AResult := ApplyEdit(AText, mDone.Edit);
+      ATitle := mDone.Title;
+      mCheck := TPascalParser.Parse(AResult);
       try
-        Assert.AreEqual(0, Integer(Length(Check.Diagnostics)), AResult);
+        Assert.AreEqual(0, Integer(Length(mCheck.Diagnostics)), AResult);
       finally
-        Check.Free;
+        mCheck.Free;
       end;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Rewritten(const AText, AMarker: string; AKind: TConditionKind): string;
 var
-  Title: string;
+  mTitle: string;
 begin
-  Assert.IsTrue(Rewrite(AText, AMarker, AKind, Result, Title), 'Aktion fehlt');
+  Assert.IsTrue(Rewrite(AText, AMarker, AKind, Result, mTitle), 'Aktion fehlt');
 end;
 
 function Offered(const AText, AMarker: string; AKind: TConditionKind): Boolean;
 var
-  Text, Title: string;
+  mText, mTitle: string;
 begin
-  Result := Rewrite(AText, AMarker, AKind, Text, Title);
+  Result := Rewrite(AText, AMarker, AKind, mText, mTitle);
 end;
 
 procedure TConditionsTests.InvertSwapsBranches;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source('  if I = 1 then'#10'    A'#10'  else'#10'  begin'#10'    B;'#10'    C;'#10'  end;'#10);
+  mText := Source('  if I = 1 then'#10'    A'#10'  else'#10'  begin'#10'    B;'#10'    C;'#10'  end;'#10);
   Assert.AreEqual(Source('  if I <> 1 then'#10'  begin'#10'    B;'#10'    C;'#10'  end'#10'  else'#10'    A;'#10),
-    Rewritten(Text, 'if I', ckInvert));
+    Rewritten(mText, 'if I', ckInvert));
 end;
 
 procedure TConditionsTests.InvertNegatesReadably;
 
   function Inverted(const ACondition: string): string;
   var
-    Text, Line: string;
+    mText, mLine: string;
   begin
-    Text := Source('  if ' + ACondition + ' then'#10'    A'#10'  else'#10'    B;'#10);
-    Line := Rewritten(Text, 'if ', ckInvert);
-    Result := Copy(Line, Pos('  if ', Line) + 5, MaxInt);
+    mText := Source('  if ' + ACondition + ' then'#10'    A'#10'  else'#10'    B;'#10);
+    mLine := Rewritten(mText, 'if ', ckInvert);
+    Result := Copy(mLine, Pos('  if ', mLine) + 5, MaxInt);
     Result := Copy(Result, 1, Pos(' then', Result) - 1);
   end;
 
@@ -177,15 +177,15 @@ end;
 
 procedure TConditionsTests.InvertWithElseIfChain;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source('  if I = 1 then'#10'    A'#10'  else if I = 2 then'#10'    B'#10'  else'#10'    C;'#10);
+  mText := Source('  if I = 1 then'#10'    A'#10'  else if I = 2 then'#10'    B'#10'  else'#10'    C;'#10);
   // Das innere if steht vor dem neuen else und bekommt begin … end.
   Assert.AreEqual(Source('  if I <> 1 then'#10'  begin'#10'    if I = 2 then'#10'      B'#10'    else'#10 +
-    '      C;'#10'  end'#10'  else'#10'    A;'#10), Rewritten(Text, 'if I = 1', ckInvert));
+    '      C;'#10'  end'#10'  else'#10'    A;'#10), Rewritten(mText, 'if I = 1', ckInvert));
   // Auf dem zweiten Glied: nur dieses wird umgekehrt.
   Assert.AreEqual(Source('  if I = 1 then'#10'    A'#10'  else if I <> 2 then'#10'    C'#10'  else'#10'    B;'#10),
-    Rewritten(Text, 'if I = 2', ckInvert));
+    Rewritten(mText, 'if I = 2', ckInvert));
 end;
 
 procedure TConditionsTests.InvertWithEmptyThenDropsElse;
@@ -203,13 +203,13 @@ end;
 
 procedure TConditionsTests.EarlyExitInRoutine;
 var
-  Title, Text, Done: string;
+  mTitle, mText, mDone: string;
 begin
-  Text := Source('  A;'#10'  if Assigned(P) and Ready then'#10'  begin'#10'    B;'#10'    C;'#10'  end;'#10);
-  Assert.IsTrue(Rewrite(Text, 'if', ckEarlyExit, Done, Title));
-  Text := Done;
-  Assert.AreEqual(TConditions.EarlyExitTitle, Title);
-  Assert.AreEqual(Source('  A;'#10'  if not Assigned(P) or not Ready then Exit;'#10'  B;'#10'  C;'#10), Text);
+  mText := Source('  A;'#10'  if Assigned(P) and Ready then'#10'  begin'#10'    B;'#10'    C;'#10'  end;'#10);
+  Assert.IsTrue(Rewrite(mText, 'if', ckEarlyExit, mDone, mTitle));
+  mText := mDone;
+  Assert.AreEqual(TConditions.EarlyExitTitle, mTitle);
+  Assert.AreEqual(Source('  A;'#10'  if not Assigned(P) or not Ready then Exit;'#10'  B;'#10'  C;'#10), mText);
   // Ein einzelner Zweig ohne begin … end, auch ohne Semikolon vor end.
   Assert.AreEqual(Source('  if I >= 3 then Exit;'#10'  B;'#10), Rewritten(Source('  if I < 3 then'#10'    B'#10),
     'if', ckEarlyExit));
@@ -217,15 +217,15 @@ end;
 
 procedure TConditionsTests.EarlyExitInLoops;
 var
-  Title, Text, Done: string;
+  mTitle, mText, mDone: string;
 begin
-  Text := Source('  while I < 10 do'#10'  begin'#10'    Inc(I);'#10'    if I mod 2 = 0 then'#10'    begin'#10 +
+  mText := Source('  while I < 10 do'#10'  begin'#10'    Inc(I);'#10'    if I mod 2 = 0 then'#10'    begin'#10 +
     '      A;'#10'      B;'#10'    end;'#10'  end;'#10);
-  Assert.IsTrue(Rewrite(Text, 'if', ckEarlyExit, Done, Title));
-  Text := Done;
-  Assert.AreEqual(TConditions.EarlyContinueTitle, Title);
+  Assert.IsTrue(Rewrite(mText, 'if', ckEarlyExit, mDone, mTitle));
+  mText := mDone;
+  Assert.AreEqual(TConditions.EarlyContinueTitle, mTitle);
   Assert.AreEqual(Source('  while I < 10 do'#10'  begin'#10'    Inc(I);'#10'    if I mod 2 <> 0 then Continue;'#10 +
-    '    A;'#10'    B;'#10'  end;'#10), Text);
+    '    A;'#10'    B;'#10'  end;'#10), mText);
   Assert.AreEqual(Source('  repeat'#10'    Inc(I);'#10'    if not Done then Continue;'#10'    A;'#10 +
     '  until I > 3;'#10), Rewritten(Source('  repeat'#10'    Inc(I);'#10'    if Done then'#10'      A;'#10 +
     '  until I > 3;'#10), 'if', ckEarlyExit));
@@ -260,13 +260,13 @@ end;
 
 procedure TConditionsTests.MergeNestedIfs;
 var
-  Expected: string;
+  mExpected: string;
 begin
-  Expected := Source('  if Assigned(P) and Ready then'#10'    A;'#10);
-  Assert.AreEqual(Expected, Rewritten(Source('  if Assigned(P) then'#10'    if Ready then'#10'      A;'#10), 'if',
+  mExpected := Source('  if Assigned(P) and Ready then'#10'    A;'#10);
+  Assert.AreEqual(mExpected, Rewritten(Source('  if Assigned(P) then'#10'    if Ready then'#10'      A;'#10), 'if',
     ckMerge));
   // Auch mit begin … end um das innere if und auf dem inneren Kopf.
-  Assert.AreEqual(Expected, Rewritten(Source('  if Assigned(P) then'#10'  begin'#10'    if Ready then'#10 +
+  Assert.AreEqual(mExpected, Rewritten(Source('  if Assigned(P) then'#10'  begin'#10'    if Ready then'#10 +
     '      A;'#10'  end;'#10), 'if Ready', ckMerge));
   Assert.AreEqual(Source('  if Q and Ready then'#10'  begin'#10'    A;'#10'    B;'#10'  end;'#10),
     Rewritten(Source('  if Q then'#10'    if Ready then'#10'    begin'#10'      A;'#10'      B;'#10'    end;'#10),

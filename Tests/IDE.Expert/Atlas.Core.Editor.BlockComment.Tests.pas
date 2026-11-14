@@ -77,7 +77,7 @@ end;
 
 function TAtlasBlockCommentTests.Selected(const AResult: TAtlasBlockCommentResult): string;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
   Result := '';
   if AResult.SelectionStart.Line = AResult.SelectionEnd.Line then
@@ -86,9 +86,9 @@ begin
       AResult.SelectionEnd.Character - AResult.SelectionStart.Character));
   end;
   Result := Copy(AResult.Lines[AResult.SelectionStart.Line], AResult.SelectionStart.Character + 1, MaxInt);
-  for Line := AResult.SelectionStart.Line + 1 to AResult.SelectionEnd.Line - 1 do
+  for mLine := AResult.SelectionStart.Line + 1 to AResult.SelectionEnd.Line - 1 do
   begin
-    Result := Result + '|' + AResult.Lines[Line];
+    Result := Result + '|' + AResult.Lines[mLine];
   end;
   Result := Result + '|' + Copy(AResult.Lines[AResult.SelectionEnd.Line], 1, AResult.SelectionEnd.Character);
 end;
@@ -101,7 +101,7 @@ end;
 
 procedure TAtlasBlockCommentTests.PartialSelectionInlineAndBack;
 var
-  Back: TAtlasBlockCommentResult;
+  mBack: TAtlasBlockCommentResult;
 begin
   FLines := ['  Foo(A, B, C);'];
   // "B, " markiert: Leerraum am Rand bleibt draußen.
@@ -110,11 +110,11 @@ begin
   Assert.AreEqual('  Foo(A, { B, } C);', Joined(FResult.Lines));
   Assert.AreEqual('B, } ', Selected(FResult), 'Markierung bleibt auf dem Text');
   FLines := FResult.Lines;
-  Back := Toggle(FResult.SelectionStart.Line, FResult.SelectionStart.Character, FResult.SelectionEnd.Line,
+  mBack := Toggle(FResult.SelectionStart.Line, FResult.SelectionStart.Character, FResult.SelectionEnd.Line,
     FResult.SelectionEnd.Character);
-  Assert.AreEqual(Ord(TAtlasBlockCommentKind.Removed), Ord(Back.Kind));
-  Assert.AreEqual('  Foo(A, B, C);', Joined(Back.Lines), 'hin und zurück');
-  Assert.AreEqual('B, ', Selected(Back));
+  Assert.AreEqual(Ord(TAtlasBlockCommentKind.Removed), Ord(mBack.Kind));
+  Assert.AreEqual('  Foo(A, B, C);', Joined(mBack.Lines), 'hin und zurück');
+  Assert.AreEqual('B, ', Selected(mBack));
 end;
 
 procedure TAtlasBlockCommentTests.ChoosesFormByContent;
@@ -130,29 +130,29 @@ end;
 
 procedure TAtlasBlockCommentTests.PreferredParens;
 var
-  Options: TAtlasBlockCommentOptions;
+  mOptions: TAtlasBlockCommentOptions;
 begin
-  Options := TAtlasBlockCommentOptions.Defaults;
-  Options.Style := TAtlasBlockCommentStyle.Parens;
+  mOptions := TAtlasBlockCommentOptions.Defaults;
+  mOptions.Style := TAtlasBlockCommentStyle.Parens;
   FLines := ['Inc(I);'];
-  FResult := Toggle(0, 0, 0, 7, Options);
+  FResult := Toggle(0, 0, 0, 7, mOptions);
   Assert.AreEqual('(* Inc(I); *)', Joined(FResult.Lines));
   FLines := ['Inc(I); (* x *)'];
-  Assert.AreEqual('{ Inc(I); (* x *) }', Joined(Toggle(0, 0, 0, 15, Options).Lines), '*) erzwingt {}');
+  Assert.AreEqual('{ Inc(I); (* x *) }', Joined(Toggle(0, 0, 0, 15, mOptions).Lines), '*) erzwingt {}');
 end;
 
 procedure TAtlasBlockCommentTests.BothEndsFallBackOrRefuse;
 var
-  Options: TAtlasBlockCommentOptions;
+  mOptions: TAtlasBlockCommentOptions;
 begin
   FLines := ['  A := 1; { a }', '  B := 2; (* b *)'];
   FResult := Toggle(0, 2, 1, 17);
   Assert.AreEqual(Ord(TAtlasBlockCommentKind.LineComments), Ord(FResult.Kind));
   Assert.AreEqual('  // A := 1; { a }|  // B := 2; (* b *)', Joined(FResult.Lines));
   Assert.AreEqual('A := 1; { a }|  // B := 2; (* b *)', Selected(FResult));
-  Options := TAtlasBlockCommentOptions.Defaults;
-  Options.Fallback := TAtlasBlockCommentFallback.Refuse;
-  FResult := Toggle(0, 2, 1, 17, Options);
+  mOptions := TAtlasBlockCommentOptions.Defaults;
+  mOptions.Fallback := TAtlasBlockCommentFallback.Refuse;
+  FResult := Toggle(0, 2, 1, 17, mOptions);
   Assert.AreEqual(Ord(TAtlasBlockCommentKind.Refused), Ord(FResult.Kind));
   Assert.AreEqual(Joined(FLines), Joined(FResult.Lines), 'nichts geändert');
 end;
@@ -182,7 +182,7 @@ end;
 
 procedure TAtlasBlockCommentTests.MultiLineAtEnds;
 var
-  Back: TAtlasBlockCommentResult;
+  mBack: TAtlasBlockCommentResult;
 begin
   FLines := ['begin', '  A := 1;', '  B := 2;', 'end;'];
   // Ganze Zeilen 1–2 markiert (bis zum Anfang von Zeile 3).
@@ -190,32 +190,32 @@ begin
   Assert.AreEqual('begin|  { A := 1;|  B := 2; }|end;', Joined(FResult.Lines));
   Assert.AreEqual('  { A := 1;|  B := 2; }|', Selected(FResult));
   FLines := FResult.Lines;
-  Back := Toggle(FResult.SelectionStart.Line, FResult.SelectionStart.Character, FResult.SelectionEnd.Line,
+  mBack := Toggle(FResult.SelectionStart.Line, FResult.SelectionStart.Character, FResult.SelectionEnd.Line,
     FResult.SelectionEnd.Character);
-  Assert.AreEqual('begin|  A := 1;|  B := 2;|end;', Joined(Back.Lines), 'hin und zurück');
-  Assert.AreEqual('  A := 1;|  B := 2;|', Selected(Back));
+  Assert.AreEqual('begin|  A := 1;|  B := 2;|end;', Joined(mBack.Lines), 'hin und zurück');
+  Assert.AreEqual('  A := 1;|  B := 2;|', Selected(mBack));
 end;
 
 procedure TAtlasBlockCommentTests.MultiLineOwnLines;
 var
-  Options: TAtlasBlockCommentOptions;
-  Back: TAtlasBlockCommentResult;
+  mOptions: TAtlasBlockCommentOptions;
+  mBack: TAtlasBlockCommentResult;
 begin
-  Options := TAtlasBlockCommentOptions.Defaults;
-  Options.OwnLines := True;
+  mOptions := TAtlasBlockCommentOptions.Defaults;
+  mOptions.OwnLines := True;
   FLines := ['begin', '  A := 1;', '  B := 2;', 'end;'];
-  FResult := Toggle(1, 0, 3, 0, Options);
+  FResult := Toggle(1, 0, 3, 0, mOptions);
   Assert.AreEqual('begin|  {|  A := 1;|  B := 2;|  }|end;', Joined(FResult.Lines));
   Assert.AreEqual('  A := 1;|  B := 2;|', Selected(FResult), 'Markierung auf den Zeilen dazwischen');
   FLines := FResult.Lines;
-  Back := Toggle(FResult.SelectionStart.Line, FResult.SelectionStart.Character, FResult.SelectionEnd.Line,
-    FResult.SelectionEnd.Character, Options);
-  Assert.AreEqual(Ord(TAtlasBlockCommentKind.Removed), Ord(Back.Kind));
-  Assert.AreEqual('begin|  A := 1;|  B := 2;|end;', Joined(Back.Lines), 'hin und zurück');
-  Assert.AreEqual('  A := 1;|  B := 2;|', Selected(Back));
+  mBack := Toggle(FResult.SelectionStart.Line, FResult.SelectionStart.Character, FResult.SelectionEnd.Line,
+    FResult.SelectionEnd.Character, mOptions);
+  Assert.AreEqual(Ord(TAtlasBlockCommentKind.Removed), Ord(mBack.Kind));
+  Assert.AreEqual('begin|  A := 1;|  B := 2;|end;', Joined(mBack.Lines), 'hin und zurück');
+  Assert.AreEqual('  A := 1;|  B := 2;|', Selected(mBack));
   // Einzeilig bleibt es inline.
   FLines := ['  A := 1;'];
-  Assert.AreEqual('  { A := 1; }', Joined(Toggle(0, 2, 0, 9, Options).Lines));
+  Assert.AreEqual('  { A := 1; }', Joined(Toggle(0, 2, 0, 9, mOptions).Lines));
 end;
 
 procedure TAtlasBlockCommentTests.RemovesSurroundingComment;
@@ -239,7 +239,7 @@ end;
 
 procedure TAtlasBlockCommentTests.WithoutSelectionStatement;
 var
-  Back: TAtlasBlockCommentResult;
+  mBack: TAtlasBlockCommentResult;
 begin
   FLines := ['begin', '  ShowMessage(''a;'' +', '    Name);', '  Exit;', 'end;'];
   FResult := Toggle(2, 6, 2, 6);
@@ -249,8 +249,8 @@ begin
   Assert.AreEqual(6, FResult.SelectionStart.Character, 'Cursor in der zweiten Zeile bleibt');
   Assert.AreEqual(FResult.SelectionStart.Character, FResult.SelectionEnd.Character, 'ohne Markierung');
   FLines := FResult.Lines;
-  Back := Toggle(2, 6, 2, 6);
-  Assert.AreEqual('begin|  ShowMessage(''a;'' +|    Name);|  Exit;|end;', Joined(Back.Lines), 'zurück');
+  mBack := Toggle(2, 6, 2, 6);
+  Assert.AreEqual('begin|  ShowMessage(''a;'' +|    Name);|  Exit;|end;', Joined(mBack.Lines), 'zurück');
   // Hinter dem Semikolon: die Anweisung davor.
   FLines := ['  Exit;'];
   Assert.AreEqual('  { Exit; }', Joined(Toggle(0, 7, 0, 7).Lines));
@@ -261,62 +261,62 @@ end;
 
 procedure TAtlasBlockCommentTests.WithoutSelectionLine;
 var
-  Options: TAtlasBlockCommentOptions;
+  mOptions: TAtlasBlockCommentOptions;
 begin
-  Options := TAtlasBlockCommentOptions.Defaults;
-  Options.Scope := TAtlasBlockCommentScope.Line;
+  mOptions := TAtlasBlockCommentOptions.Defaults;
+  mOptions.Scope := TAtlasBlockCommentScope.Line;
   FLines := ['  ShowMessage(''a'' +', '    Name);'];
-  Assert.AreEqual('  { ShowMessage(''a'' + }|    Name);', Joined(Toggle(0, 4, 0, 4, Options).Lines));
+  Assert.AreEqual('  { ShowMessage(''a'' + }|    Name);', Joined(Toggle(0, 4, 0, 4, mOptions).Lines));
 end;
 
 procedure TAtlasBlockCommentTests.StatementRangeSpansBlocks;
 var
-  StartPos, EndPos: TLspTextPosition;
+  mStartPos, mEndPos: TLspTextPosition;
 begin
   FLines := ['  if A then', '  begin', '    B;', '  end', '  else', '    C;', '  D;'];
-  Assert.IsTrue(TAtlasBlockComment.StatementRange(FLines, TLspTextPosition.Create(0, 3), StartPos, EndPos));
-  Assert.AreEqual(0, StartPos.Line);
-  Assert.AreEqual(2, StartPos.Character);
-  Assert.AreEqual(5, EndPos.Line, 'if … else C; als eine Anweisung');
-  Assert.AreEqual(6, EndPos.Character);
+  Assert.IsTrue(TAtlasBlockComment.StatementRange(FLines, TLspTextPosition.Create(0, 3), mStartPos, mEndPos));
+  Assert.AreEqual(0, mStartPos.Line);
+  Assert.AreEqual(2, mStartPos.Character);
+  Assert.AreEqual(5, mEndPos.Line, 'if … else C; als eine Anweisung');
+  Assert.AreEqual(6, mEndPos.Character);
   // In begin … end: nur die Anweisung dort.
-  Assert.IsTrue(TAtlasBlockComment.StatementRange(FLines, TLspTextPosition.Create(2, 4), StartPos, EndPos));
-  Assert.AreEqual(2, StartPos.Line);
-  Assert.AreEqual(4, StartPos.Character);
-  Assert.AreEqual(2, EndPos.Line);
-  Assert.AreEqual(6, EndPos.Character);
+  Assert.IsTrue(TAtlasBlockComment.StatementRange(FLines, TLspTextPosition.Create(2, 4), mStartPos, mEndPos));
+  Assert.AreEqual(2, mStartPos.Line);
+  Assert.AreEqual(4, mStartPos.Character);
+  Assert.AreEqual(2, mEndPos.Line);
+  Assert.AreEqual(6, mEndPos.Character);
   // Nach else: nur der Zweig.
-  Assert.IsTrue(TAtlasBlockComment.StatementRange(FLines, TLspTextPosition.Create(5, 4), StartPos, EndPos));
-  Assert.AreEqual(5, StartPos.Line);
-  Assert.AreEqual(4, StartPos.Character);
+  Assert.IsTrue(TAtlasBlockComment.StatementRange(FLines, TLspTextPosition.Create(5, 4), mStartPos, mEndPos));
+  Assert.AreEqual(5, mStartPos.Line);
+  Assert.AreEqual(4, mStartPos.Character);
   // Deklaration mit array of: ganz.
   FLines := ['var', '  A: array of Integer;'];
-  Assert.IsTrue(TAtlasBlockComment.StatementRange(FLines, TLspTextPosition.Create(1, 18), StartPos, EndPos));
-  Assert.AreEqual(2, StartPos.Character);
-  Assert.AreEqual(22, EndPos.Character);
+  Assert.IsTrue(TAtlasBlockComment.StatementRange(FLines, TLspTextPosition.Create(1, 18), mStartPos, mEndPos));
+  Assert.AreEqual(2, mStartPos.Character);
+  Assert.AreEqual(22, mEndPos.Character);
   // Letzte Anweisung vor end ohne Semikolon.
   FLines := ['begin', '  X := 1', 'end;'];
-  Assert.IsTrue(TAtlasBlockComment.StatementRange(FLines, TLspTextPosition.Create(1, 2), StartPos, EndPos));
-  Assert.AreEqual(1, EndPos.Line);
-  Assert.AreEqual(8, EndPos.Character);
+  Assert.IsTrue(TAtlasBlockComment.StatementRange(FLines, TLspTextPosition.Create(1, 2), mStartPos, mEndPos));
+  Assert.AreEqual(1, mEndPos.Line);
+  Assert.AreEqual(8, mEndPos.Character);
 end;
 
 procedure TAtlasBlockCommentTests.IgnoresStringsWhenLexing;
 var
-  Spans: TArray<TAtlasCommentSpan>;
+  mSpans: TArray<TAtlasCommentSpan>;
 begin
   FLines := ['S := ''{ kein Kommentar }'' + ''it''''s''; // Rest', '{ a', 'b } (* c *) {$X}'];
-  Spans := TAtlasBlockComment.Spans(FLines);
-  Assert.AreEqual(6, Integer(Length(Spans)));
-  Assert.AreEqual(Ord(TAtlasCommentSpanKind.StringLiteral), Ord(Spans[0].Kind));
-  Assert.AreEqual(Ord(TAtlasCommentSpanKind.StringLiteral), Ord(Spans[1].Kind));
-  Assert.AreEqual(35, Spans[1].EndPos.Character, 'doppeltes Hochkomma im String');
-  Assert.AreEqual(Ord(TAtlasCommentSpanKind.LineComment), Ord(Spans[2].Kind));
-  Assert.AreEqual(Ord(TAtlasCommentSpanKind.BraceComment), Ord(Spans[3].Kind));
-  Assert.AreEqual(2, Spans[3].EndPos.Line);
-  Assert.AreEqual(3, Spans[3].EndPos.Character);
-  Assert.AreEqual(Ord(TAtlasCommentSpanKind.ParenComment), Ord(Spans[4].Kind));
-  Assert.AreEqual(Ord(TAtlasCommentSpanKind.Directive), Ord(Spans[5].Kind));
+  mSpans := TAtlasBlockComment.Spans(FLines);
+  Assert.AreEqual(6, Integer(Length(mSpans)));
+  Assert.AreEqual(Ord(TAtlasCommentSpanKind.StringLiteral), Ord(mSpans[0].Kind));
+  Assert.AreEqual(Ord(TAtlasCommentSpanKind.StringLiteral), Ord(mSpans[1].Kind));
+  Assert.AreEqual(35, mSpans[1].EndPos.Character, 'doppeltes Hochkomma im String');
+  Assert.AreEqual(Ord(TAtlasCommentSpanKind.LineComment), Ord(mSpans[2].Kind));
+  Assert.AreEqual(Ord(TAtlasCommentSpanKind.BraceComment), Ord(mSpans[3].Kind));
+  Assert.AreEqual(2, mSpans[3].EndPos.Line);
+  Assert.AreEqual(3, mSpans[3].EndPos.Character);
+  Assert.AreEqual(Ord(TAtlasCommentSpanKind.ParenComment), Ord(mSpans[4].Kind));
+  Assert.AreEqual(Ord(TAtlasCommentSpanKind.Directive), Ord(mSpans[5].Kind));
 end;
 
 procedure TAtlasBlockCommentTests.SettingValues;

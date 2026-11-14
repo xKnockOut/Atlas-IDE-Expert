@@ -63,123 +63,123 @@ end;
 
 function Call(AServer: TMcpServer; const AJson: string): TJSONObject;
 var
-  Params: TJSONValue;
+  mParams: TJSONValue;
 begin
-  Params := TJSONObject.ParseJSONValue(AJson);
+  mParams := TJSONObject.ParseJSONValue(AJson);
   try
-    Result := AServer.CallTool(Params);
+    Result := AServer.CallTool(mParams);
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 
 procedure TMcpServerTests.InitializeEchoesVersionAndOffersTools;
 var
-  Server: TMcpServer;
-  Params: TJSONValue;
-  Result_: TJSONObject;
+  mServer: TMcpServer;
+  mParams: TJSONValue;
+  mResult_: TJSONObject;
 begin
-  Server := NewServer;
-  Params := TJSONObject.ParseJSONValue('{"protocolVersion":"2024-11-05","capabilities":{}}');
+  mServer := NewServer;
+  mParams := TJSONObject.ParseJSONValue('{"protocolVersion":"2024-11-05","capabilities":{}}');
   try
-    Result_ := Server.Initialize(Params);
+    mResult_ := mServer.Initialize(mParams);
     try
-      Assert.AreEqual('2024-11-05', Result_.GetValue<string>('protocolVersion'));
-      Assert.IsNotNull(Result_.FindValue('capabilities.tools'));
-      Assert.AreEqual('Atlas', Result_.GetValue<string>('serverInfo.name'));
+      Assert.AreEqual('2024-11-05', mResult_.GetValue<string>('protocolVersion'));
+      Assert.IsNotNull(mResult_.FindValue('capabilities.tools'));
+      Assert.AreEqual('Atlas', mResult_.GetValue<string>('serverInfo.name'));
     finally
-      Result_.Free;
+      mResult_.Free;
     end;
-    Result_ := Server.Initialize(nil);
+    mResult_ := mServer.Initialize(nil);
     try
-      Assert.AreEqual(TMcpServer.cDefaultProtocolVersion, Result_.GetValue<string>('protocolVersion'));
+      Assert.AreEqual(TMcpServer.cDefaultProtocolVersion, mResult_.GetValue<string>('protocolVersion'));
     finally
-      Result_.Free;
+      mResult_.Free;
     end;
   finally
-    Params.Free;
-    Server.Free;
+    mParams.Free;
+    mServer.Free;
   end;
 end;
 
 procedure TMcpServerTests.ListsToolsWithSchema;
 var
-  Server: TMcpServer;
-  Result_: TJSONObject;
-  Tools: TJSONArray;
+  mServer: TMcpServer;
+  mResult_: TJSONObject;
+  mTools: TJSONArray;
 begin
-  Server := NewServer;
+  mServer := NewServer;
   try
-    Result_ := Server.ListTools;
+    mResult_ := mServer.ListTools;
     try
-      Tools := Result_.GetValue<TJSONArray>('tools');
-      Assert.AreEqual(1, Integer(Tools.Count));
-      Assert.AreEqual('echo', Tools.Items[0].GetValue<string>('name'));
-      Assert.AreEqual('object', Tools.Items[0].GetValue<string>('inputSchema.type'));
-      Assert.AreEqual('text', Tools.Items[0].GetValue<TJSONArray>('inputSchema.required').Items[0].Value);
+      mTools := mResult_.GetValue<TJSONArray>('tools');
+      Assert.AreEqual(1, Integer(mTools.Count));
+      Assert.AreEqual('echo', mTools.Items[0].GetValue<string>('name'));
+      Assert.AreEqual('object', mTools.Items[0].GetValue<string>('inputSchema.type'));
+      Assert.AreEqual('text', mTools.Items[0].GetValue<TJSONArray>('inputSchema.required').Items[0].Value);
     finally
-      Result_.Free;
+      mResult_.Free;
     end;
   finally
-    Server.Free;
+    mServer.Free;
   end;
 end;
 
 procedure TMcpServerTests.CallsToolWithArguments;
 var
-  Server: TMcpServer;
-  Result_: TJSONObject;
+  mServer: TMcpServer;
+  mResult_: TJSONObject;
 begin
-  Server := NewServer;
+  mServer := NewServer;
   try
-    Result_ := Call(Server, '{"name":"echo","arguments":{"text":"Hallo"}}');
+    mResult_ := Call(mServer, '{"name":"echo","arguments":{"text":"Hallo"}}');
     try
-      Assert.AreEqual('Echo: Hallo', Result_.GetValue<TJSONArray>('content').Items[0].GetValue<string>('text'));
-      Assert.IsFalse(Result_.GetValue<Boolean>('isError'));
+      Assert.AreEqual('Echo: Hallo', mResult_.GetValue<TJSONArray>('content').Items[0].GetValue<string>('text'));
+      Assert.IsFalse(mResult_.GetValue<Boolean>('isError'));
     finally
-      Result_.Free;
+      mResult_.Free;
     end;
   finally
-    Server.Free;
+    mServer.Free;
   end;
 end;
 
 procedure TMcpServerTests.ToolErrorBecomesIsError;
 var
-  Server: TMcpServer;
-  Result_: TJSONObject;
+  mServer: TMcpServer;
+  mResult_: TJSONObject;
 begin
-  Server := NewServer;
+  mServer := NewServer;
   try
-    Result_ := Call(Server, '{"name":"echo"}');
+    mResult_ := Call(mServer, '{"name":"echo"}');
     try
-      Assert.IsTrue(Result_.GetValue<Boolean>('isError'));
-      Assert.Contains(Result_.GetValue<TJSONArray>('content').Items[0].GetValue<string>('text'), 'text');
+      Assert.IsTrue(mResult_.GetValue<Boolean>('isError'));
+      Assert.Contains(mResult_.GetValue<TJSONArray>('content').Items[0].GetValue<string>('text'), 'text');
     finally
-      Result_.Free;
+      mResult_.Free;
     end;
   finally
-    Server.Free;
+    mServer.Free;
   end;
 end;
 
 procedure TMcpServerTests.UnknownToolIsInvalidParams;
 var
-  Server: TMcpServer;
-  Code: Integer;
+  mServer: TMcpServer;
+  mCode: Integer;
 begin
-  Server := NewServer;
+  mServer := NewServer;
   try
-    Code := 0;
+    mCode := 0;
     try
-      Call(Server, '{"name":"gibtsnicht"}').Free;
+      Call(mServer, '{"name":"gibtsnicht"}').Free;
     except
       on E: EJsonRpcError do
-        Code := E.Code;
+        mCode := E.Code;
     end;
-    Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, Code);
+    Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode);
   finally
-    Server.Free;
+    mServer.Free;
   end;
 end;
 
@@ -192,19 +192,19 @@ end;
 
 procedure TMcpServerTests.ResourceTemplatesAreEmptyList;
 var
-  Server: TMcpServer;
-  Result_: TJSONObject;
+  mServer: TMcpServer;
+  mResult_: TJSONObject;
 begin
-  Server := NewServer;
+  mServer := NewServer;
   try
-    Result_ := Server.ListResourceTemplates;
+    mResult_ := mServer.ListResourceTemplates;
     try
-      Assert.AreEqual(0, Integer(Result_.GetValue<TJSONArray>('resourceTemplates').Count));
+      Assert.AreEqual(0, Integer(mResult_.GetValue<TJSONArray>('resourceTemplates').Count));
     finally
-      Result_.Free;
+      mResult_.Free;
     end;
   finally
-    Server.Free;
+    mServer.Free;
   end;
 end;
 

@@ -41,10 +41,10 @@ uses
 
 const
   /// <summary>Glieder je Kette.</summary>
-  ChainLength = 5000;
-  StackKb = 128;
+  cChainLength = 5000;
+  cStackKb = 128;
   // § steht für die Kette.
-  RichUnit = 'unit U;'#10 +
+  cRichUnit = 'unit U;'#10 +
     'interface'#10 +
     'uses System.Classes, System.SysUtils, System.SyncObjs, Vcl.Forms, Vcl.Dialogs;'#10 +
     'const'#10 +
@@ -190,19 +190,19 @@ end;
 /// <summary>Linkslastige Kette aus ACount Gliedern; AOperators wechseln reihum.</summary>
 function Chain(ACount: Integer; const AOperators: array of string): string;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.Append('1');
-    for Index := 1 to ACount do
+    mBuilder.Append('1');
+    for mIndex := 1 to ACount do
     begin
-      Builder.Append(' ').Append(AOperators[Index mod Length(AOperators)]).Append(' 1');
+      mBuilder.Append(' ').Append(AOperators[mIndex mod Length(AOperators)]).Append(' 1');
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -212,92 +212,92 @@ function DeepUnit(AShape: Integer): string;
 begin
   if AShape = 0 then
   begin
-    Result := StringReplace(RichUnit, '§', Chain(ChainLength, ['-']), [rfReplaceAll]);
+    Result := StringReplace(cRichUnit, '§', Chain(cChainLength, ['-']), [rfReplaceAll]);
   end
   else
   begin
-    Result := StringReplace(RichUnit, '§', Chain(ChainLength, ['+', '-']), [rfReplaceAll]);
+    Result := StringReplace(cRichUnit, '§', Chain(cChainLength, ['+', '-']), [rfReplaceAll]);
   end;
 end;
 
 procedure TBuiltinRulesTests.AllRulesHandleDeepTrees;
 var
-  Rules: TArray<IRule>;
-  Shape: Integer;
-  Text, Failure, Running: string;
-  Tree: TSyntaxTree;
-  Context: TRuleContext;
-  Counter: TCountingReport;
-  Report: IRuleReport;
+  mRules: TArray<IRule>;
+  mShape: Integer;
+  mText, mFailure, mRunning: string;
+  mTree: TSyntaxTree;
+  mContext: TRuleContext;
+  mCounter: TCountingReport;
+  mReport: IRuleReport;
 begin
-  Rules := BuiltinRules;
-  for Shape := 0 to 1 do
+  mRules := BuiltinRules;
+  for mShape := 0 to 1 do
   begin
-    Text := DeepUnit(Shape);
-    Tree := TPascalParser.Parse(Text);
+    mText := DeepUnit(mShape);
+    mTree := TPascalParser.Parse(mText);
     try
-      Assert.IsTrue(Tree.Depth > ChainLength, 'Kette bleibt linkslastig, Tiefe ' + IntToStr(Tree.Depth));
-      Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Unit fehlerfrei gelesen');
-      Context := Default(TRuleContext);
-      Context.Text := Text;
-      Context.Tree := Tree;
-      Context.Derived := TRuleDerivedCache.Create;
-      Counter := TCountingReport.Create;
-      Report := Counter;
-      Running := '';
+      Assert.IsTrue(mTree.Depth > cChainLength, 'Kette bleibt linkslastig, Tiefe ' + IntToStr(mTree.Depth));
+      Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), 'Unit fehlerfrei gelesen');
+      mContext := Default(TRuleContext);
+      mContext.Text := mText;
+      mContext.Tree := mTree;
+      mContext.Derived := TRuleDerivedCache.Create;
+      mCounter := TCountingReport.Create;
+      mReport := mCounter;
+      mRunning := '';
       // Alle Regeln in einem Thread; Running nennt bei einem Überlauf die Regel.
-      Failure := TSmallStack.Run(StackKb,
+      mFailure := TSmallStack.Run(cStackKb,
         procedure
         var
           Rule: IRule;
         begin
-          for Rule in Rules do
+          for Rule in mRules do
           begin
-            Running := Rule.Descriptor.Id;
-            Rule.Check(Context, Report);
+            mRunning := Rule.Descriptor.Id;
+            Rule.Check(mContext, mReport);
           end;
-          Running := '';
+          mRunning := '';
         end);
       // Der Ableitungscache hält Verweise in den Baum: vor ihm leeren.
-      Context.Derived := nil;
+      mContext.Derived := nil;
     finally
-      Tree.Free;
+      mTree.Free;
     end;
-    Assert.AreEqual('', Failure, Format('Form %d, Regel %s', [Shape, Running]));
-    Assert.IsTrue(Counter.Count > 0, 'Regeln melden Treffer');
-    Report := nil;
+    Assert.AreEqual('', mFailure, Format('Form %d, Regel %s', [mShape, mRunning]));
+    Assert.IsTrue(mCounter.Count > 0, 'Regeln melden Treffer');
+    mReport := nil;
   end;
-  Rules := nil;
+  mRules := nil;
 end;
 
 procedure TBuiltinRulesTests.EngineChecksDeepUnit;
 var
-  Text: string;
-  Tree: TSyntaxTree;
-  Context: TRuleContext;
-  Findings: TArray<TRuleFinding>;
-  Finding: TRuleFinding;
-  Ids: string;
+  mText: string;
+  mTree: TSyntaxTree;
+  mContext: TRuleContext;
+  mFindings: TArray<TRuleFinding>;
+  mFinding: TRuleFinding;
+  mIds: string;
 begin
-  Text := DeepUnit(0);
-  Tree := TPascalParser.Parse(Text);
+  mText := DeepUnit(0);
+  mTree := TPascalParser.Parse(mText);
   try
-    Context := Default(TRuleContext);
-    Context.Text := Text;
-    Context.Tree := Tree;
-    Findings := TRuleEngine.Run(BuiltinRules, TServerSettings.Default, Context);
+    mContext := Default(TRuleContext);
+    mContext.Text := mText;
+    mContext.Tree := mTree;
+    mFindings := TRuleEngine.Run(BuiltinRules, TServerSettings.Default, mContext);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Ids := ' ';
-  for Finding in Findings do
+  mIds := ' ';
+  for mFinding in mFindings do
   begin
-    Ids := Ids + Finding.RuleId + ' ';
+    mIds := mIds + mFinding.RuleId + ' ';
   end;
-  Assert.IsFalse(Pos(' ' + cUnitTooDeepRuleId + ' ', Ids) > 0, 'nicht übersprungen');
-  Assert.IsTrue(Pos(' thread-resume-suspend ', Ids) > 0, Ids);
-  Assert.IsTrue(Pos(' thread-vcl-access ', Ids) > 0, Ids);
-  Findings := nil;
+  Assert.IsFalse(Pos(' ' + cUnitTooDeepRuleId + ' ', mIds) > 0, 'nicht übersprungen');
+  Assert.IsTrue(Pos(' thread-resume-suspend ', mIds) > 0, mIds);
+  Assert.IsTrue(Pos(' thread-vcl-access ', mIds) > 0, mIds);
+  mFindings := nil;
 end;
 
 initialization

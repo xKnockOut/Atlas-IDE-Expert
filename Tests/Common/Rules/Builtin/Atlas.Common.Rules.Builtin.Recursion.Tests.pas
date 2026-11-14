@@ -70,7 +70,7 @@ uses
   Atlas.Tests.RuleAssert;
 
 const
-  Header =
+  cHeader =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -86,7 +86,7 @@ const
     'implementation'#10;
 
   // Beispiel aus #910: das Feld steht in read der Property.
-  Kunde =
+  cKunde =
     'unit Kunden;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -105,7 +105,7 @@ const
     'end;'#10 +
     'end.';
 
-  KundeFixed =
+  cKundeFixed =
     'unit Kunden;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -128,26 +128,26 @@ const
 
 procedure TRecursionRulesTests.SetterExampleIsErrorWithFieldFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TSetterRecursionRule.Create, Kunde);
+  mFindings := TRuleAssert.Findings(TSetterRecursionRule.Create, cKunde);
   // Das Lesen von Name ruft den Getter (hier ein Feld) nicht rekursiv auf, nur die Zuweisung.
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cSetterRecursionRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Zuweisung an die Property Name im eigenen Setter: Endlosrekursion.', Findings[0].Message);
-  Assert.AreEqual(14, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(4, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Feld FKundenName verwenden', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  Assert.AreEqual('FKundenName', Findings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cSetterRecursionRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Zuweisung an die Property Name im eigenen Setter: Endlosrekursion.', mFindings[0].Message);
+  Assert.AreEqual(14, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(4, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Feld FKundenName verwenden', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  Assert.AreEqual('FKundenName', mFindings[0].Fixes[0].Edits[0].NewText);
 end;
 
 procedure TRecursionRulesTests.ClampedSetterHasLowConfidence;
 const
-  Source =
+  cSource =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -171,43 +171,43 @@ var
   mFindings: TArray<TRuleFinding>;
 begin
   // FP-Prüfung 28.10.2026: Der Setter klemmt den Wert; der zweite Aufruf nimmt den else-Zweig.
-  mFindings := TRuleAssert.Findings(TSetterRecursionRule.Create, Source, '{"minConfidence": "low"}', 'U.pas');
+  mFindings := TRuleAssert.Findings(TSetterRecursionRule.Create, cSource, '{"minConfidence": "low"}', 'U.pas');
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(mFindings[0].Confidence));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSetterRecursionRule.Create, Source))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSetterRecursionRule.Create, cSource))));
   mFindings := nil;
 end;
 
 procedure TRecursionRulesTests.GetterUsesFieldOfDeclaration;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TSetterRecursionRule.Create, Header +
+  mFindings := TRuleAssert.Findings(TSetterRecursionRule.Create, cHeader +
     'function TFoo.GetName: string;'#10'begin'#10'  Result := Name;'#10'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Lesen der Property Name im eigenen Getter: Endlosrekursion.', Findings[0].Message);
-  Assert.AreEqual(15, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(12, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Lesen der Property Name im eigenen Getter: Endlosrekursion.', mFindings[0].Message);
+  Assert.AreEqual(15, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(12, mFindings[0].Range.StartPos.Character);
   // Ohne Feld in der Deklaration: F<Name> der Klasse.
-  Assert.AreEqual('Feld FName verwenden', Findings[0].Fixes[0].Title);
-  Assert.AreEqual('FName', Findings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual('Feld FName verwenden', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual('FName', mFindings[0].Fixes[0].Edits[0].NewText);
 end;
 
 procedure TRecursionRulesTests.SetterWithoutFieldHasNoFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TSetterRecursionRule.Create, Header +
+  mFindings := TRuleAssert.Findings(TSetterRecursionRule.Create, cHeader +
     'procedure TFoo.SetTitle(const AValue: string);'#10'begin'#10'  Self.Title := AValue;'#10'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Zuweisung an die Property Title im eigenen Setter: Endlosrekursion.', Findings[0].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)), 'kein Feld FTitle');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Zuweisung an die Property Title im eigenen Setter: Endlosrekursion.', mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)), 'kein Feld FTitle');
 end;
 
 procedure TRecursionRulesTests.FieldAccessIsSilent;
 begin
-  TRuleAssert.Silent(TSetterRecursionRule.Create, KundeFixed);
-  TRuleAssert.Silent(TSetterRecursionRule.Create, Header +
+  TRuleAssert.Silent(TSetterRecursionRule.Create, cKundeFixed);
+  TRuleAssert.Silent(TSetterRecursionRule.Create, cHeader +
     'function TFoo.GetName: string;'#10'begin'#10'  Result := FName;'#10'end;'#10 +
     'procedure TFoo.SetTitle(const AValue: string);'#10'begin'#10'  FName := AValue + Name;'#10'end;'#10'end.');
 end;
@@ -215,45 +215,45 @@ end;
 procedure TRecursionRulesTests.OtherPropertyIsSilent;
 begin
   // Ein Setter, der eine andere Property schreibt, ist keine Rekursion.
-  TRuleAssert.Silent(TSetterRecursionRule.Create, Header +
+  TRuleAssert.Silent(TSetterRecursionRule.Create, cHeader +
     'procedure TFoo.SetTitle(const AValue: string);'#10'begin'#10'  if Name = '''' then'#10 +
     '    FName := AValue;'#10'end;'#10'end.');
 end;
 
 procedure TRecursionRulesTests.SuppressedByComment;
 begin
-  TRuleAssert.Silent(TSetterRecursionRule.Create, Header +
+  TRuleAssert.Silent(TSetterRecursionRule.Create, cHeader +
     'function TFoo.GetName: string;'#10'begin'#10'  // lsp-ignore: setter-recursion'#10 +
     '  Result := Name;'#10'end;'#10'end.');
 end;
 
 procedure TRecursionRulesTests.FormerIdStillSuppresses;
 begin
-  TRuleAssert.Silent(TSetterRecursionRule.Create, Header +
+  TRuleAssert.Silent(TSetterRecursionRule.Create, cHeader +
     'function TFoo.GetName: string;'#10'begin'#10'  // lsp-ignore: recursive-property-accessor'#10 +
     '  Result := Name;'#10'end;'#10'end.');
 end;
 
 procedure TRecursionRulesTests.OffAndExcludeSilence;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSetterRecursionRule.Create, Kunde,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSetterRecursionRule.Create, cKunde,
     '{"rules": {"setter-recursion": "off"}}', 'Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSetterRecursionRule.Create, Kunde,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSetterRecursionRule.Create, cKunde,
     '{"rules": {"setter-recursion": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Kunden.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TSetterRecursionRule.Create, Kunde,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TSetterRecursionRule.Create, cKunde,
     '{"rules": {"setter-recursion": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Kunden.pas'))));
 end;
 
 procedure TRecursionRulesTests.FormerIdInSettingsApplies;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSetterRecursionRule.Create, Kunde,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSetterRecursionRule.Create, cKunde,
     '{"rules": {"recursive-property-accessor": "off"}}', 'Kunden.pas'))));
-  Findings := TRuleAssert.Findings(TSetterRecursionRule.Create, Kunde,
+  mFindings := TRuleAssert.Findings(TSetterRecursionRule.Create, cKunde,
     '{"rules": {"recursive-property-accessor": "warning"}}', 'Kunden.pas');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
 end;
 
 procedure TRecursionRulesTests.AliasesMapFormerIds;
@@ -265,26 +265,36 @@ end;
 
 procedure TRecursionRulesTests.RuleIsRegistered;
 var
-  Rule: IRule;
-  Found: Boolean;
+  mRule: IRule;
+  mFound: Boolean;
 begin
-  Found := False;
-  for Rule in BuiltinRules do
+  mFound := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = cSetterRecursionRuleId then
+    if mRule.Descriptor.Id = cSetterRecursionRuleId then
     begin
-      Found := True;
+      mFound := True;
     end;
   end;
-  Assert.IsTrue(Found);
+  Assert.IsTrue(mFound);
 end;
 
 { TUnconditionalRecursionTests }
 
-function RecursionFindings(const ASource: string; const AConfig: string = ''; const APath: string = ''):
-  TArray<TRuleFinding>;
+function RecursionFindings(const ASource: string; const AConfig: string; const APath: string):
+  TArray<TRuleFinding>; overload;
 begin
   Result := TRuleAssert.Findings(TUnconditionalRecursionRule.Create, ASource, AConfig, APath);
+end;
+
+function RecursionFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := RecursionFindings(ASource, '', '');
+end;
+
+function RecursionFindings(const ASource: string; const AConfig: string): TArray<TRuleFinding>; overload;
+begin
+  Result := RecursionFindings(ASource, AConfig, '');
 end;
 
 function Baum(const ABody: string): string;
@@ -300,32 +310,32 @@ end;
 
 procedure TUnconditionalRecursionTests.IssueExample;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := RecursionFindings(Baum('  Result := 1 + Max(Tiefe(K.Links), Tiefe(K.Rechts));'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(cUnconditionalRecursionRuleId, Found[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
+  mFound := RecursionFindings(Baum('  Result := 1 + Max(Tiefe(K.Links), Tiefe(K.Rechts));'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(cUnconditionalRecursionRuleId, mFound[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFound[0].Severity));
   Assert.AreEqual('Tiefe ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch (z. B. K = nil).',
-    Found[0].Message);
-  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(15, Found[0].Range.StartPos.Character);
+    mFound[0].Message);
+  Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(15, mFound[0].Range.StartPos.Character);
 end;
 
 procedure TUnconditionalRecursionTests.HintsAndPaths;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := RecursionFindings(Routine('function Fakultaet(N: Integer): Int64;', '  Result := N * Fakultaet(N - 1);'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
+  mFound := RecursionFindings(Routine('function Fakultaet(N: Integer): Int64;', '  Result := N * Fakultaet(N - 1);'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Fakultaet ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch (z. B. N <= 0).',
-    Found[0].Message);
-  Found := RecursionFindings(Routine('function Summe(const W: TArray<Integer>): Integer;', '  Result := Summe(W);'#10));
+    mFound[0].Message);
+  mFound := RecursionFindings(Routine('function Summe(const W: TArray<Integer>): Integer;', '  Result := Summe(W);'#10));
   Assert.AreEqual('Summe ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch (z. B. Length(W) = 0).',
-    Found[0].Message);
-  Found := RecursionFindings(Routine('procedure Warten;', '  Sleep(10);'#10'  Warten;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Warten ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch.', Found[0].Message);
+    mFound[0].Message);
+  mFound := RecursionFindings(Routine('procedure Warten;', '  Sleep(10);'#10'  Warten;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Warten ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch.', mFound[0].Message);
   // Aufruf in beiden Zweigen, in repeat, in try und im Vergleich einer while-Bedingung.
   Assert.AreEqual(1, Integer(Length(RecursionFindings(Routine('procedure Laufen(A: Boolean);',
     '  if A then'#10'    Laufen(False)'#10'  else'#10'    Laufen(True);'#10)))), 'if mit else');
@@ -337,7 +347,7 @@ end;
 
 procedure TUnconditionalRecursionTests.StopsAreSilent;
 const
-  Bodies: array[0..7] of string = (
+  cBodies: array[0..7] of string = (
     '  if K = nil then'#10'    Exit(0);'#10'  Result := 1 + Max(Tiefe(K.Links), Tiefe(K.Rechts));'#10,
     '  if K <> nil then'#10'    Result := 1 + Tiefe(K.Links)'#10'  else'#10'    Result := 0;'#10,
     '  Result := 0;'#10'  if (K <> nil) and (Tiefe(K.Links) > 0) then'#10'    Result := 1;'#10,
@@ -347,11 +357,11 @@ const
     '  Result := 0;'#10'  for var I := 0 to K.Anzahl - 1 do'#10'    Result := Tiefe(K.Kind(I));'#10,
     '  Result := 0;'#10'  TThread.Queue(nil, procedure begin Tiefe(K); end);'#10);
 var
-  Body: string;
+  mBody: string;
 begin
-  for Body in Bodies do
+  for mBody in cBodies do
   begin
-    Assert.AreEqual(0, Integer(Length(RecursionFindings(Baum(Body)))), Body);
+    Assert.AreEqual(0, Integer(Length(RecursionFindings(Baum(mBody)))), mBody);
   end;
 end;
 
@@ -361,21 +371,21 @@ begin
     'procedure Log(const S: string); overload;'#10'begin'#10'  Writeln(S);'#10'end;'#10 +
     'procedure Log(I: Integer); overload;'#10'begin'#10'  Log(IntToStr(I));'#10'end;'#10'end.'))));
   // Getter der eigenen Property meldet setter-recursion.
-  Assert.AreEqual(0, Integer(Length(RecursionFindings(Header + 'function TFoo.GetName: string;'#10'begin'#10 +
+  Assert.AreEqual(0, Integer(Length(RecursionFindings(cHeader + 'function TFoo.GetName: string;'#10'begin'#10 +
     '  Result := Name;'#10'end;'#10'end.'))));
 end;
 
 procedure TUnconditionalRecursionTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Baum('  Result := Tiefe(K.Links);'#10);
-  Assert.AreEqual(1, Integer(Length(RecursionFindings(Source, '', 'Source/Baeume.pas'))));
-  Assert.AreEqual(0, Integer(Length(RecursionFindings(Source, '{"rules": {"unconditional-recursion": "off"}}',
+  mSource := Baum('  Result := Tiefe(K.Links);'#10);
+  Assert.AreEqual(1, Integer(Length(RecursionFindings(mSource, '', 'Source/Baeume.pas'))));
+  Assert.AreEqual(0, Integer(Length(RecursionFindings(mSource, '{"rules": {"unconditional-recursion": "off"}}',
     'Source/Baeume.pas'))));
-  Assert.AreEqual(0, Integer(Length(RecursionFindings(Source, '{"rules": {"group:find-bugs": "off"}}',
+  Assert.AreEqual(0, Integer(Length(RecursionFindings(mSource, '{"rules": {"group:find-bugs": "off"}}',
     'Source/Baeume.pas'))));
-  Assert.AreEqual(0, Integer(Length(RecursionFindings(Source,
+  Assert.AreEqual(0, Integer(Length(RecursionFindings(mSource,
     '{"rules": {"unconditional-recursion": {"exclude": ["Source/*.pas"]}}}', 'Source/Baeume.pas'))));
 end;
 

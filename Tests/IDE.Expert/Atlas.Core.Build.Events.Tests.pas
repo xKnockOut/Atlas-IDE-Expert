@@ -142,26 +142,26 @@ end;
 
 procedure TAtlasCompileEventsTests.ProjectOnceWithDurationAndNotifications;
 var
-  Events: TAtlasCompileEvents;
-  Recorder: TRecorder;
+  mEvents: TAtlasCompileEvents;
+  mRecorder: TRecorder;
 begin
-  Events := MakeEvents;
+  mEvents := MakeEvents;
   try
-    Recorder := TRecorder.Create;
-    Events.Add(Recorder);
+    mRecorder := TRecorder.Create;
+    mEvents.Add(mRecorder);
     // Zwei Notifier der IDE melden denselben Beginn.
-    Events.ProjectStarted(Project('C:\P\App.dproj'));
-    Events.ProjectStarted(Project('C:\P\App.dproj'));
+    mEvents.ProjectStarted(Project('C:\P\App.dproj'));
+    mEvents.ProjectStarted(Project('C:\P\App.dproj'));
     Clock := 1250;
-    Events.ProjectFinished('C:\P\App.dproj', True);
-    Events.ProjectFinished('C:\P\App.dproj', True);
-    Assert.AreEqual('P+App.dproj P-App.dproj/True/250 ', Recorder.Trace);
+    mEvents.ProjectFinished('C:\P\App.dproj', True);
+    mEvents.ProjectFinished('C:\P\App.dproj', True);
+    Assert.AreEqual('P+App.dproj P-App.dproj/True/250 ', mRecorder.Trace);
     Assert.AreEqual(
       'atlas/compileStarted{"project":"C:\\P\\App.dproj","kind":"build","configuration":"Debug","platform":"Win64"}'#10 +
       'atlas/compileFinished{"project":"C:\\P\\App.dproj","kind":"build","configuration":"Debug","platform":"Win64",' +
       '"success":true,"durationMs":250}'#10, Sent);
   finally
-    Events.Free;
+    mEvents.Free;
     // Globaler Text darf den Leck-Monitor nicht über Testgrenzen täuschen.
     Sent := '';
   end;
@@ -169,23 +169,23 @@ end;
 
 procedure TAtlasCompileEventsTests.GroupRunAroundProjects;
 var
-  Events: TAtlasCompileEvents;
-  Recorder: TRecorder;
+  mEvents: TAtlasCompileEvents;
+  mRecorder: TRecorder;
 begin
-  Events := MakeEvents;
+  mEvents := MakeEvents;
   try
-    Recorder := TRecorder.Create;
-    Events.Add(Recorder);
-    Events.GroupStarted(TAtlasCompileKind.Build);
-    Events.ProjectStarted(Project('C:\P\A.dproj'));
-    Events.ProjectFinished('C:\P\A.dproj', True);
-    Events.ProjectStarted(Project('C:\P\B.dproj'));
+    mRecorder := TRecorder.Create;
+    mEvents.Add(mRecorder);
+    mEvents.GroupStarted(TAtlasCompileKind.Build);
+    mEvents.ProjectStarted(Project('C:\P\A.dproj'));
+    mEvents.ProjectFinished('C:\P\A.dproj', True);
+    mEvents.ProjectStarted(Project('C:\P\B.dproj'));
     Clock := 1100;
-    Events.ProjectFinished('C:\P\B.dproj', False);
-    Events.GroupFinished(False);
-    Assert.AreEqual('G+build P+A.dproj P-A.dproj/True/0 P+B.dproj P-B.dproj/False/100 G-False/100 ', Recorder.Trace);
+    mEvents.ProjectFinished('C:\P\B.dproj', False);
+    mEvents.GroupFinished(False);
+    Assert.AreEqual('G+build P+A.dproj P-A.dproj/True/0 P+B.dproj P-B.dproj/False/100 G-False/100 ', mRecorder.Trace);
   finally
-    Events.Free;
+    mEvents.Free;
     // Globaler Text darf den Leck-Monitor nicht über Testgrenzen täuschen.
     Sent := '';
   end;
@@ -193,46 +193,46 @@ end;
 
 procedure TAtlasCompileEventsTests.CompilingIgnoresBackgroundChecks;
 var
-  Events: TAtlasCompileEvents;
+  mEvents: TAtlasCompileEvents;
 begin
-  Events := MakeEvents;
+  mEvents := MakeEvents;
   try
-    Assert.IsFalse(Events.Compiling, 'vor dem Lauf');
-    Events.Background := True;
-    Events.ProjectStarted(Project('C:\P\A.dproj'));
-    Assert.IsFalse(Events.Compiling, 'Hintergrundprüfung zählt nicht');
-    Events.ProjectFinished('C:\P\A.dproj', True);
-    Events.Background := False;
-    Events.ProjectStarted(Project('C:\P\B.dproj'));
-    Assert.IsTrue(Events.Compiling, 'Build des Benutzers');
-    Events.ProjectFinished('C:\P\B.dproj', True);
-    Assert.IsFalse(Events.Compiling, 'nach dem Lauf');
+    Assert.IsFalse(mEvents.Compiling, 'vor dem Lauf');
+    mEvents.Background := True;
+    mEvents.ProjectStarted(Project('C:\P\A.dproj'));
+    Assert.IsFalse(mEvents.Compiling, 'Hintergrundprüfung zählt nicht');
+    mEvents.ProjectFinished('C:\P\A.dproj', True);
+    mEvents.Background := False;
+    mEvents.ProjectStarted(Project('C:\P\B.dproj'));
+    Assert.IsTrue(mEvents.Compiling, 'Build des Benutzers');
+    mEvents.ProjectFinished('C:\P\B.dproj', True);
+    Assert.IsFalse(mEvents.Compiling, 'nach dem Lauf');
   finally
-    Events.Free;
+    mEvents.Free;
     Sent := '';
   end;
 end;
 
 procedure TAtlasCompileEventsTests.CodeInsightOnlyCounted;
 var
-  Events: TAtlasCompileEvents;
-  Recorder: TRecorder;
-  Reason: string;
+  mEvents: TAtlasCompileEvents;
+  mRecorder: TRecorder;
+  mReason: string;
 begin
-  Events := MakeEvents;
+  mEvents := MakeEvents;
   try
-    Recorder := TRecorder.Create;
-    Recorder.Cancel := True;
-    Events.Add(Recorder);
-    Assert.IsFalse(Events.BeforeCompile(Project('C:\P\App.dproj'), True, Reason));
+    mRecorder := TRecorder.Create;
+    mRecorder.Cancel := True;
+    mEvents.Add(mRecorder);
+    Assert.IsFalse(mEvents.BeforeCompile(Project('C:\P\App.dproj'), True, mReason));
     Clock := 1040;
-    Events.CodeInsightFinished;
-    Assert.AreEqual('', Recorder.Trace);
+    mEvents.CodeInsightFinished;
+    Assert.AreEqual('', mRecorder.Trace);
     Assert.AreEqual('', Sent);
-    Assert.AreEqual(1, Events.CodeInsightCount);
-    Assert.AreEqual(Int64(40), Events.CodeInsightMs);
+    Assert.AreEqual(1, mEvents.CodeInsightCount);
+    Assert.AreEqual(Int64(40), mEvents.CodeInsightMs);
   finally
-    Events.Free;
+    mEvents.Free;
     // Globaler Text darf den Leck-Monitor nicht über Testgrenzen täuschen.
     Sent := '';
   end;
@@ -240,20 +240,20 @@ end;
 
 procedure TAtlasCompileEventsTests.ParticipantCancelsWithReason;
 var
-  Events: TAtlasCompileEvents;
-  Recorder: TRecorder;
-  Reason: string;
+  mEvents: TAtlasCompileEvents;
+  mRecorder: TRecorder;
+  mReason: string;
 begin
-  Events := MakeEvents;
+  mEvents := MakeEvents;
   try
-    Recorder := TRecorder.Create;
-    Events.Add(Recorder);
-    Assert.IsFalse(Events.BeforeCompile(Project('C:\P\App.dproj'), False, Reason));
-    Recorder.Cancel := True;
-    Assert.IsTrue(Events.BeforeCompile(Project('C:\P\App.dproj'), False, Reason));
-    Assert.AreEqual('App.dproj: Hinweise vorhanden', Reason);
+    mRecorder := TRecorder.Create;
+    mEvents.Add(mRecorder);
+    Assert.IsFalse(mEvents.BeforeCompile(Project('C:\P\App.dproj'), False, mReason));
+    mRecorder.Cancel := True;
+    Assert.IsTrue(mEvents.BeforeCompile(Project('C:\P\App.dproj'), False, mReason));
+    Assert.AreEqual('App.dproj: Hinweise vorhanden', mReason);
   finally
-    Events.Free;
+    mEvents.Free;
     // Globaler Text darf den Leck-Monitor nicht über Testgrenzen täuschen.
     Sent := '';
   end;
@@ -261,29 +261,29 @@ end;
 
 procedure TAtlasCompileEventsTests.ExceptionIsLoggedAndOthersRun;
 var
-  Events: TAtlasCompileEvents;
-  Failing, Second: TRecorder;
-  Logged, Reason: string;
+  mEvents: TAtlasCompileEvents;
+  mFailing, mSecond: TRecorder;
+  mLogged, mReason: string;
 begin
-  Events := MakeEvents;
+  mEvents := MakeEvents;
   try
-    Logged := '';
-    Events.OnLog :=
+    mLogged := '';
+    mEvents.OnLog :=
       procedure(const AText: string)
       begin
-        Logged := Logged + AText;
+        mLogged := mLogged + AText;
       end;
-    Failing := TRecorder.Create;
-    Failing.Fail := True;
-    Second := TRecorder.Create;
-    Events.Add(Failing);
-    Events.Add(Second);
-    Events.ProjectStarted(Project('C:\P\App.dproj'));
-    Assert.IsFalse(Events.BeforeCompile(Project('C:\P\App.dproj'), False, Reason));
-    Assert.AreEqual('P+App.dproj C ', Second.Trace);
-    Assert.Contains(Logged, 'kaputt');
+    mFailing := TRecorder.Create;
+    mFailing.Fail := True;
+    mSecond := TRecorder.Create;
+    mEvents.Add(mFailing);
+    mEvents.Add(mSecond);
+    mEvents.ProjectStarted(Project('C:\P\App.dproj'));
+    Assert.IsFalse(mEvents.BeforeCompile(Project('C:\P\App.dproj'), False, mReason));
+    Assert.AreEqual('P+App.dproj C ', mSecond.Trace);
+    Assert.Contains(mLogged, 'kaputt');
   finally
-    Events.Free;
+    mEvents.Free;
     // Globaler Text darf den Leck-Monitor nicht über Testgrenzen täuschen.
     Sent := '';
   end;
@@ -291,16 +291,16 @@ end;
 
 procedure TAtlasCompileEventsTests.RequestedByMarksOwnBuilds;
 var
-  Events: TAtlasCompileEvents;
+  mEvents: TAtlasCompileEvents;
 begin
-  Events := MakeEvents;
+  mEvents := MakeEvents;
   try
-    Events.RequestedBy := 'mcp';
-    Events.ProjectStarted(Project('C:\P\App.dproj'));
-    Events.RequestedBy := '';
-    Events.ProjectFinished('C:\P\App.dproj', False);
-    Events.ProjectStarted(Project('C:\P\App.dproj'));
-    Events.ProjectFinished('C:\P\App.dproj', True);
+    mEvents.RequestedBy := 'mcp';
+    mEvents.ProjectStarted(Project('C:\P\App.dproj'));
+    mEvents.RequestedBy := '';
+    mEvents.ProjectFinished('C:\P\App.dproj', False);
+    mEvents.ProjectStarted(Project('C:\P\App.dproj'));
+    mEvents.ProjectFinished('C:\P\App.dproj', True);
     Assert.AreEqual(
       'atlas/compileStarted{"project":"C:\\P\\App.dproj","kind":"build","configuration":"Debug","platform":"Win64",' +
       '"requestedBy":"mcp"}'#10 +
@@ -310,39 +310,39 @@ begin
       'atlas/compileFinished{"project":"C:\\P\\App.dproj","kind":"build","configuration":"Debug","platform":"Win64",' +
       '"success":true,"durationMs":0}'#10, Sent);
   finally
-    Events.Free;
+    mEvents.Free;
     Sent := '';
   end;
 end;
 
 procedure TAtlasCompileEventsTests.CancelSeesRunAndIsAnnounced;
 var
-  Events: TAtlasCompileEvents;
-  First, Second: TRecorder;
-  Reason: string;
+  mEvents: TAtlasCompileEvents;
+  mFirst, mSecond: TRecorder;
+  mReason: string;
 begin
-  Events := MakeEvents;
+  mEvents := MakeEvents;
   try
-    First := TRecorder.Create;
-    Second := TRecorder.Create;
-    Events.Add(First);
-    Events.Add(Second);
-    Events.RequestedBy := 'welcome';
-    Assert.IsFalse(Events.BeforeCompile(Project('C:\P\App.dproj'), False, Reason));
-    Events.RequestedBy := '';
-    Events.Background := True;
-    Assert.IsFalse(Events.BeforeCompile(Project('C:\P\App.dproj'), False, Reason));
-    Events.Background := False;
-    Assert.AreEqual('C[welcome] Cb ', First.Trace);
-    First.Trace := '';
-    Second.Trace := '';
-    First.Cancel := True;
-    Assert.IsTrue(Events.BeforeCompile(Project('C:\P\App.dproj'), False, Reason));
+    mFirst := TRecorder.Create;
+    mSecond := TRecorder.Create;
+    mEvents.Add(mFirst);
+    mEvents.Add(mSecond);
+    mEvents.RequestedBy := 'welcome';
+    Assert.IsFalse(mEvents.BeforeCompile(Project('C:\P\App.dproj'), False, mReason));
+    mEvents.RequestedBy := '';
+    mEvents.Background := True;
+    Assert.IsFalse(mEvents.BeforeCompile(Project('C:\P\App.dproj'), False, mReason));
+    mEvents.Background := False;
+    Assert.AreEqual('C[welcome] Cb ', mFirst.Trace);
+    mFirst.Trace := '';
+    mSecond.Trace := '';
+    mFirst.Cancel := True;
+    Assert.IsTrue(mEvents.BeforeCompile(Project('C:\P\App.dproj'), False, mReason));
     // Der zweite wird nach dem Abbruch nicht mehr gefragt, erfährt ihn aber.
-    Assert.AreEqual('C X(App.dproj: Hinweise vorhanden) ', First.Trace);
-    Assert.AreEqual('X(App.dproj: Hinweise vorhanden) ', Second.Trace);
+    Assert.AreEqual('C X(App.dproj: Hinweise vorhanden) ', mFirst.Trace);
+    Assert.AreEqual('X(App.dproj: Hinweise vorhanden) ', mSecond.Trace);
   finally
-    Events.Free;
+    mEvents.Free;
     Sent := '';
   end;
 end;
@@ -379,58 +379,58 @@ end;
 
 procedure TAtlasCompileEventsTests.RemovedParticipantHearsNothing;
 var
-  Events: TAtlasCompileEvents;
-  Kept: TRecorder;
-  Gone: TFreeRecorder;
-  WasFreed: Boolean;
+  mEvents: TAtlasCompileEvents;
+  mKept: TRecorder;
+  mGone: TFreeRecorder;
+  mWasFreed: Boolean;
 begin
-  Events := MakeEvents;
+  mEvents := MakeEvents;
   try
-    Kept := TRecorder.Create;
-    Gone := TFreeRecorder.Create;
-    WasFreed := False;
-    Gone.Freed := @WasFreed;
-    Events.Add(Kept);
-    Events.Add(Gone);
-    Events.Remove(Gone);
-    Assert.IsTrue(WasFreed, 'sofort frei');
-    Events.Remove(Gone);
-    Events.GroupStarted(TAtlasCompileKind.Make);
-    Assert.AreEqual('G+make ', Kept.Trace);
+    mKept := TRecorder.Create;
+    mGone := TFreeRecorder.Create;
+    mWasFreed := False;
+    mGone.Freed := @mWasFreed;
+    mEvents.Add(mKept);
+    mEvents.Add(mGone);
+    mEvents.Remove(mGone);
+    Assert.IsTrue(mWasFreed, 'sofort frei');
+    mEvents.Remove(mGone);
+    mEvents.GroupStarted(TAtlasCompileKind.Make);
+    Assert.AreEqual('G+make ', mKept.Trace);
   finally
-    Events.Free;
+    mEvents.Free;
     Sent := '';
   end;
 end;
 
 procedure TAtlasCompileEventsTests.RemoveDuringDispatch;
 var
-  Events: TAtlasCompileEvents;
-  Remover: TRemover;
-  Victim: TFreeRecorder;
-  Last: TRecorder;
-  WasFreed: Boolean;
+  mEvents: TAtlasCompileEvents;
+  mRemover: TRemover;
+  mVictim: TFreeRecorder;
+  mLast: TRecorder;
+  mWasFreed: Boolean;
 begin
-  Events := MakeEvents;
+  mEvents := MakeEvents;
   try
-    Remover := TRemover.Create;
-    Victim := TFreeRecorder.Create;
-    Last := TRecorder.Create;
-    WasFreed := False;
-    Victim.Freed := @WasFreed;
-    Remover.Events := Events;
-    Remover.Victim := Victim;
-    Events.Add(Remover);
-    Events.Add(Victim);
-    Events.Add(Last);
-    Events.GroupStarted(TAtlasCompileKind.Build);
-    Assert.IsTrue(WasFreed, 'nach der Verteilung frei');
-    Assert.AreEqual('G+build ', Last.Trace, 'die übrigen laufen weiter');
-    Remover.Victim := nil;
-    Events.GroupStarted(TAtlasCompileKind.Make);
-    Assert.AreEqual('G+build G+make ', Last.Trace);
+    mRemover := TRemover.Create;
+    mVictim := TFreeRecorder.Create;
+    mLast := TRecorder.Create;
+    mWasFreed := False;
+    mVictim.Freed := @mWasFreed;
+    mRemover.Events := mEvents;
+    mRemover.Victim := mVictim;
+    mEvents.Add(mRemover);
+    mEvents.Add(mVictim);
+    mEvents.Add(mLast);
+    mEvents.GroupStarted(TAtlasCompileKind.Build);
+    Assert.IsTrue(mWasFreed, 'nach der Verteilung frei');
+    Assert.AreEqual('G+build ', mLast.Trace, 'die übrigen laufen weiter');
+    mRemover.Victim := nil;
+    mEvents.GroupStarted(TAtlasCompileKind.Make);
+    Assert.AreEqual('G+build G+make ', mLast.Trace);
   finally
-    Events.Free;
+    mEvents.Free;
     Sent := '';
   end;
 end;

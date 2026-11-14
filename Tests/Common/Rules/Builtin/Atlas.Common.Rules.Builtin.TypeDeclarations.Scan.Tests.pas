@@ -27,26 +27,26 @@ uses
   Atlas.Common.Rules.Builtin.TypeDeclarations.Scan;
 
 const
-  LB = #13#10;
+  cLB = #13#10;
   cUnit =
-    'unit A;' + LB +
-    'interface' + LB +
-    'type' + LB +
-    '  TKunde = class' + LB +
-    '    procedure Laden;' + LB +
-    '    procedure Zeigen(A: Integer); overload;' + LB +
-    '    procedure Zeigen(const S: string); overload;' + LB +
-    '  end;' + LB +
-    'implementation' + LB +
-    'procedure TKunde.Laden;' + LB +
-    'begin' + LB +
-    'end;' + LB +
-    'procedure TKunde.Zeigen(A: Integer);' + LB +
-    'begin' + LB +
-    'end;' + LB +
-    'procedure TKunde.Zeigen(const S: string);' + LB +
-    'begin' + LB +
-    'end;' + LB +
+    'unit A;' + cLB +
+    'interface' + cLB +
+    'type' + cLB +
+    '  TKunde = class' + cLB +
+    '    procedure Laden;' + cLB +
+    '    procedure Zeigen(A: Integer); overload;' + cLB +
+    '    procedure Zeigen(const S: string); overload;' + cLB +
+    '  end;' + cLB +
+    'implementation' + cLB +
+    'procedure TKunde.Laden;' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
+    'procedure TKunde.Zeigen(A: Integer);' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
+    'procedure TKunde.Zeigen(const S: string);' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
     'end.';
 
 function ClassNode(ANode: TSyntaxNode): TSyntaxNode;

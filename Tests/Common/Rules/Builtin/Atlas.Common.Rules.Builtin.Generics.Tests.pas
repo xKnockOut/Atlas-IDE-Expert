@@ -75,10 +75,10 @@ end;
 /// <summary>Offset (ab 1) der Position APosition in AText mit #10 als Zeilenende.</summary>
 function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
   Result := 1;
-  for Line := 1 to APosition.Line do
+  for mLine := 1 to APosition.Line do
   begin
     Result := Pos(#10, AText, Result) + 1;
   end;
@@ -87,11 +87,11 @@ end;
 
 function ApplyFix(const AText: string; const AFix: TRuleFix): string;
 var
-  Edit: TRuleEdit;
+  mEdit: TRuleEdit;
 begin
-  Edit := AFix.Edits[0];
-  Result := Copy(AText, 1, OffsetOf(AText, Edit.Range.StartPos) - 1) + Edit.NewText +
-    Copy(AText, OffsetOf(AText, Edit.Range.EndPos), MaxInt);
+  mEdit := AFix.Edits[0];
+  Result := Copy(AText, 1, OffsetOf(AText, mEdit.Range.StartPos) - 1) + mEdit.NewText +
+    Copy(AText, OffsetOf(AText, mEdit.Range.EndPos), MaxInt);
 end;
 
 /// <summary>TFabrik mit Einschränkung AConstraint ('' ohne), Neu legt ein T an.</summary>
@@ -104,30 +104,30 @@ end;
 
 procedure TGenericConstraintViolatedTests.IssueExampleWithFix;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Fabrik(': class');
-  Found := Findings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
+  mSource := Fabrik(': class');
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('T hat keine constructor-Einschränkung; T.Create ist nicht erlaubt (wie E2568).',
-    Found[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
-  Assert.AreEqual(9, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('Einschränkung ergänzen', Found[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
-  Assert.AreEqual(Fabrik(': class, constructor'), Fixed);
-  Assert.AreEqual(0, Integer(Length(Findings(Fixed))), Fixed);
+    mFound[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFound[0].Severity));
+  Assert.AreEqual(9, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('Einschränkung ergänzen', mFound[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  Assert.AreEqual(Fabrik(': class, constructor'), mFixed);
+  Assert.AreEqual(0, Integer(Length(Findings(mFixed))), mFixed);
   // Ohne jede Einschränkung: class und constructor ergänzen.
-  Found := Findings(Fabrik(''));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(Fabrik(': class, constructor'), ApplyFix(Fabrik(''), Found[0].Fixes[0]));
+  mFound := Findings(Fabrik(''));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(Fabrik(': class, constructor'), ApplyFix(Fabrik(''), mFound[0].Fixes[0]));
 end;
 
 procedure TGenericConstraintViolatedTests.ArgumentsAgainstConstraints;
 const
-  Source = 'unit Zoo;'#10'interface'#10'type'#10 +
+  cSource = 'unit Zoo;'#10'interface'#10'type'#10 +
     '  IVergleich = interface'#10'    function Vergleiche: Integer;'#10'  end;'#10 +
     '  TBasisObjekt = class'#10'  end;'#10 +
     '  TVergleicher = class(TBasisObjekt, IVergleich)'#10'    function Vergleiche: Integer;'#10'  end;'#10 +
@@ -150,42 +150,42 @@ const
     'implementation'#10'function TVergleicher.Vergleiche: Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10 +
     'procedure P;'#10'begin'#10'  TListe<TPunkt>.Create.Free;'#10'end;'#10'end.';
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(Source);
-  Assert.AreEqual(7, Integer(Length(Found)));
-  Assert.AreEqual('Integer ist kein Klassentyp; T von TListe verlangt class (wie E2511).', Found[0].Message);
-  Assert.AreEqual(31, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(12, Found[0].Range.StartPos.Character);
-  Assert.AreEqual('TAuto ist kein Werttyp; T von TPuffer verlangt record (wie E2512).', Found[1].Message);
+  mFound := Findings(cSource);
+  Assert.AreEqual(7, Integer(Length(mFound)));
+  Assert.AreEqual('Integer ist kein Klassentyp; T von TListe verlangt class (wie E2511).', mFound[0].Message);
+  Assert.AreEqual(31, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(12, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual('TAuto ist kein Werttyp; T von TPuffer verlangt record (wie E2512).', mFound[1].Message);
   Assert.AreEqual('TPunkt hat keinen parameterlosen Konstruktor; T von TErzeuger verlangt constructor (wie E2513).',
-    Found[2].Message);
+    mFound[2].Message);
   Assert.AreEqual('TAuto unterstützt IVergleich nicht; T von TSortierer verlangt IVergleich (wie E2514).',
-    Found[3].Message);
-  Assert.AreEqual('TAuto ist nicht mit TTier kompatibel; T von TZoo verlangt TTier (wie E2515).', Found[4].Message);
-  Assert.AreEqual('string ist kein Werttyp; T von TPuffer verlangt record (wie E2512).', Found[5].Message);
-  Assert.AreEqual('TPunkt ist kein Klassentyp; T von TListe verlangt class (wie E2511).', Found[6].Message);
-  Assert.AreEqual(0, Integer(Length(Found[6].Fixes)));
+    mFound[3].Message);
+  Assert.AreEqual('TAuto ist nicht mit TTier kompatibel; T von TZoo verlangt TTier (wie E2515).', mFound[4].Message);
+  Assert.AreEqual('string ist kein Werttyp; T von TPuffer verlangt record (wie E2512).', mFound[5].Message);
+  Assert.AreEqual('TPunkt ist kein Klassentyp; T von TListe verlangt class (wie E2511).', mFound[6].Message);
+  Assert.AreEqual(0, Integer(Length(mFound[6].Fixes)));
 end;
 
 procedure TGenericConstraintViolatedTests.MethodOnUnconstrainedValue;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := 'unit Boxen;'#10'interface'#10'type'#10'  TBox<T> = class'#10'    procedure Zeige(V: T);'#10 +
+  mSource := 'unit Boxen;'#10'interface'#10'type'#10'  TBox<T> = class'#10'    procedure Zeige(V: T);'#10 +
     '  end;'#10'implementation'#10'procedure TBox<T>.Zeige(V: T);'#10'begin'#10'  V.Free;'#10'end;'#10'end.';
-  Found := Findings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('T hat keine class- oder Interface-Einschränkung; V.Free ist nicht erlaubt (wie E2571).',
-    Found[0].Message);
-  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
-  Assert.IsTrue(Pos('TBox<T: class> = class', Fixed) > 0, Fixed);
-  Assert.AreEqual(0, Integer(Length(Findings(Fixed))), Fixed);
+    mFound[0].Message);
+  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('TBox<T: class> = class', mFixed) > 0, mFixed);
+  Assert.AreEqual(0, Integer(Length(Findings(mFixed))), mFixed);
   // Mehrere Namen in einer Gruppe: gemeldet, aber ohne Korrektur.
-  Found := Findings(StringReplace(Source, 'TBox<T>', 'TBox<K, T>', [rfReplaceAll]));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  mFound := Findings(StringReplace(mSource, 'TBox<T>', 'TBox<K, T>', [rfReplaceAll]));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
 end;
 
 procedure TGenericConstraintViolatedTests.SilentCases;
@@ -206,47 +206,47 @@ end;
 
 procedure TGenericConstraintViolatedTests.GenericFromIndex;
 var
-  Index: ISymbolIndex;
-  Found: TArray<TRuleFinding>;
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText('unit Listen;'#10'interface'#10'type'#10 +
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Listen;'#10'interface'#10'type'#10 +
     '  TObjektListe<T: class> = class'#10'  end;'#10'implementation'#10'end.', 'C:\Quellen\Listen.pas', nil));
-  Found := TRuleAssert.IndexFindings(TGenericConstraintViolatedRule.Create, 'unit U;'#10'interface'#10 +
+  mFound := TRuleAssert.IndexFindings(TGenericConstraintViolatedRule.Create, 'unit U;'#10'interface'#10 +
     'uses Listen;'#10'type'#10'  TKunden = class(TObjektListe<Double>)'#10'  end;'#10'implementation'#10'end.',
-    Index, '', 'U.pas');
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Double ist kein Klassentyp; T von TObjektListe verlangt class (wie E2511).', Found[0].Message);
+    mIndex, '', 'U.pas');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Double ist kein Klassentyp; T von TObjektListe verlangt class (wie E2511).', mFound[0].Message);
 end;
 
 procedure TGenericConstraintViolatedTests.ParseParams;
 var
-  Params: TArray<TGenericParam>;
+  mParams: TArray<TGenericParam>;
 begin
-  Params := TGenericConstraintViolatedRule.ParseParams('TMap<K, V: class, constructor; C: IComparer<K, V>> = class');
-  Assert.AreEqual(3, Integer(Length(Params)));
-  Assert.AreEqual('K', Params[0].Name);
-  Assert.IsFalse(Params[0].Single);
-  Assert.IsTrue(Params[1].Has('class'));
-  Assert.IsTrue(Params[1].Has('constructor'));
-  Assert.AreEqual('C', Params[2].Name);
-  Assert.IsTrue(Params[2].Single);
-  Assert.AreEqual(1, Integer(Length(Params[2].TypeConstraints)));
-  Assert.AreEqual('IComparer<K, V>', Params[2].TypeConstraints[0]);
+  mParams := TGenericConstraintViolatedRule.ParseParams('TMap<K, V: class, constructor; C: IComparer<K, V>> = class');
+  Assert.AreEqual(3, Integer(Length(mParams)));
+  Assert.AreEqual('K', mParams[0].Name);
+  Assert.IsFalse(mParams[0].Single);
+  Assert.IsTrue(mParams[1].Has('class'));
+  Assert.IsTrue(mParams[1].Has('constructor'));
+  Assert.AreEqual('C', mParams[2].Name);
+  Assert.IsTrue(mParams[2].Single);
+  Assert.AreEqual(1, Integer(Length(mParams[2].TypeConstraints)));
+  Assert.AreEqual('IComparer<K, V>', mParams[2].TypeConstraints[0]);
   Assert.AreEqual(0, Integer(Length(TGenericConstraintViolatedRule.ParseParams('TKunde = class'))));
 end;
 
 procedure TGenericConstraintViolatedTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Fabrik(': class');
-  Assert.AreEqual(1, Integer(Length(Findings(Source, '', 'Source/Fabriken.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"generic-constraint-violated": "off"}}',
+  mSource := Fabrik(': class');
+  Assert.AreEqual(1, Integer(Length(Findings(mSource, '', 'Source/Fabriken.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"generic-constraint-violated": "off"}}',
     'Source/Fabriken.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/Fabriken.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source,
+  Assert.AreEqual(0, Integer(Length(Findings(mSource,
     '{"rules": {"generic-constraint-violated": {"exclude": ["Source/*.pas"]}}}', 'Source/Fabriken.pas'))));
 end;
 

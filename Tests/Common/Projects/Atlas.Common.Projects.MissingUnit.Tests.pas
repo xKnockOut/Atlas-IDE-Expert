@@ -53,26 +53,26 @@ var
 
 procedure AddFile(const AFileName: string);
 var
-  Folder: string;
-  Items: TArray<string>;
+  mFolder: string;
+  mItems: TArray<string>;
 begin
-  Folder := Copy(AFileName, 1, LastDelimiter('\', AFileName) - 1);
-  if not Files.TryGetValue(LowerCase(Folder), Items) then
+  mFolder := Copy(AFileName, 1, LastDelimiter('\', AFileName) - 1);
+  if not Files.TryGetValue(LowerCase(mFolder), mItems) then
   begin
-    Items := nil;
+    mItems := nil;
   end;
-  Files.AddOrSetValue(LowerCase(Folder), Items + [AFileName]);
+  Files.AddOrSetValue(LowerCase(mFolder), mItems + [AFileName]);
 end;
 
 procedure AddFolder(const AParent, AChild: string);
 var
-  Items: TArray<string>;
+  mItems: TArray<string>;
 begin
-  if not Folders.TryGetValue(LowerCase(AParent), Items) then
+  if not Folders.TryGetValue(LowerCase(AParent), mItems) then
   begin
-    Items := nil;
+    mItems := nil;
   end;
-  Folders.AddOrSetValue(LowerCase(AParent), Items + [AParent + '\' + AChild]);
+  Folders.AddOrSetValue(LowerCase(AParent), mItems + [AParent + '\' + AChild]);
 end;
 
 function BaseSetup(const AUnit: string): TMissingUnitSetup;
@@ -102,12 +102,12 @@ end;
 
 function Places(const AHits: TArray<TMissingUnitHit>): string;
 var
-  Hit: TMissingUnitHit;
+  mHit: TMissingUnitHit;
 begin
   Result := '';
-  for Hit in AHits do
+  for mHit in AHits do
   begin
-    Result := Result + Format('%d %s (%s)|', [Ord(Hit.Place), Hit.FileName, Hit.Detail]);
+    Result := Result + Format('%d %s (%s)|', [Ord(mHit.Place), mHit.FileName, mHit.Detail]);
   end;
 end;
 
@@ -142,78 +142,78 @@ end;
 
 procedure TMissingUnitTests.FindsSubfolderOfProject;
 var
-  Searched: TArray<string>;
+  mSearched: TArray<string>;
 begin
   Assert.AreEqual('0 C:\Projekt\Source\Common\Werkzeug.pas (Kasse.dproj)|',
-    Places(TMissingUnitSearch.Search(BaseSetup('werkzeug'), Searched)));
+    Places(TMissingUnitSearch.Search(BaseSetup('werkzeug'), mSearched)));
   Assert.AreEqual('0 C:\Projekt\Lib\Alt.dcu (Kasse.dproj)|', Places(TMissingUnitSearch.Search(BaseSetup('Alt'),
-    Searched)), 'auch eine .dcu');
+    mSearched)), 'auch eine .dcu');
 end;
 
 procedure TMissingUnitTests.SkipsFoldersTheCompilerSearched;
 var
-  Setup: TMissingUnitSetup;
-  Searched: TArray<string>;
+  mSetup: TMissingUnitSetup;
+  mSearched: TArray<string>;
 begin
-  Setup := BaseSetup('Werkzeug');
-  Setup.Project.SearchPaths := ['C:\Projekt\Source\Common\'];
-  Assert.AreEqual('', Places(TMissingUnitSearch.Search(Setup, Searched)));
+  mSetup := BaseSetup('Werkzeug');
+  mSetup.Project.SearchPaths := ['C:\Projekt\Source\Common\'];
+  Assert.AreEqual('', Places(TMissingUnitSearch.Search(mSetup, mSearched)));
   // Der Projektordner selbst zählt nie: Dort sucht der Compiler immer.
   AddFile('C:\Projekt\Wurzel.pas');
-  Assert.AreEqual('', Places(TMissingUnitSearch.Search(BaseSetup('Wurzel'), Searched)));
+  Assert.AreEqual('', Places(TMissingUnitSearch.Search(BaseSetup('Wurzel'), mSearched)));
 end;
 
 procedure TMissingUnitTests.FindsSearchPathOfOtherConfiguration;
 var
-  Setup: TMissingUnitSetup;
-  Target: TMissingUnitTarget;
-  Searched: TArray<string>;
+  mSetup: TMissingUnitSetup;
+  mTarget: TMissingUnitTarget;
+  mSearched: TArray<string>;
 begin
   AddFile('D:\Fremd\Helfer.pas');
-  Setup := BaseSetup('Helfer');
-  Target.Config := 'Debug';
-  Target.Platform := 'Win32';
-  Target.SearchPaths := ['D:\Fremd'];
-  Setup.Targets := [Target];
-  Target.Config := 'Release';
-  Target.SearchPaths := ['D:\Nicht'];
-  Setup.Targets := Setup.Targets + [Target];
-  Assert.AreEqual('2 D:\Fremd\Helfer.pas (Debug, Win32)|', Places(TMissingUnitSearch.Search(Setup, Searched)));
-  Assert.AreEqual('Projektordner C:\Projekt und Unterordner|Suchpfade von Debug, Win32', string.Join('|', Searched),
+  mSetup := BaseSetup('Helfer');
+  mTarget.Config := 'Debug';
+  mTarget.Platform := 'Win32';
+  mTarget.SearchPaths := ['D:\Fremd'];
+  mSetup.Targets := [mTarget];
+  mTarget.Config := 'Release';
+  mTarget.SearchPaths := ['D:\Nicht'];
+  mSetup.Targets := mSetup.Targets + [mTarget];
+  Assert.AreEqual('2 D:\Fremd\Helfer.pas (Debug, Win32)|', Places(TMissingUnitSearch.Search(mSetup, mSearched)));
+  Assert.AreEqual('Projektordner C:\Projekt und Unterordner|Suchpfade von Debug, Win32', string.Join('|', mSearched),
     'die aktive Konfiguration zählt nicht');
 end;
 
 procedure TMissingUnitTests.FindsGroupProjectAndIndex;
 var
-  Setup: TMissingUnitSetup;
-  Project: TMissingUnitProject;
-  Searched: TArray<string>;
+  mSetup: TMissingUnitSetup;
+  mProject: TMissingUnitProject;
+  mSearched: TArray<string>;
 begin
   AddFile('C:\Server\Protokoll.pas');
   AddFile('C:\Index\Protokoll.pas');
-  Setup := BaseSetup('Protokoll');
-  Project.FileName := 'C:\Server\Server.dproj';
-  Project.SearchPaths := nil;
-  Setup.GroupProjects := [Project];
-  Setup.IndexFile :=
+  mSetup := BaseSetup('Protokoll');
+  mProject.FileName := 'C:\Server\Server.dproj';
+  mProject.SearchPaths := nil;
+  mSetup.GroupProjects := [mProject];
+  mSetup.IndexFile :=
     function(AName: string): string
     begin
       Result := 'C:\Index\Protokoll.pas';
     end;
   Assert.AreEqual('1 C:\Server\Protokoll.pas (Server.dproj)|4 C:\Index\Protokoll.pas (Index)|',
-    Places(TMissingUnitSearch.Search(Setup, Searched)));
+    Places(TMissingUnitSearch.Search(mSetup, mSearched)));
 end;
 
 procedure TMissingUnitTests.OtherPlatformLibraryOnly;
 var
-  Setup: TMissingUnitSetup;
-  Searched: TArray<string>;
+  mSetup: TMissingUnitSetup;
+  mSearched: TArray<string>;
 begin
   AddFile('C:\BDS\lib\win32\release\Winapi.Windows.dcu');
-  Setup := BaseSetup('Winapi.Windows');
-  Setup.Project.Platform := 'Linux64';
-  Setup.Platforms := ['Linux64', 'Win32'];
-  Setup.LibraryPaths :=
+  mSetup := BaseSetup('Winapi.Windows');
+  mSetup.Project.Platform := 'Linux64';
+  mSetup.Platforms := ['Linux64', 'Win32'];
+  mSetup.LibraryPaths :=
     function(APlatform: string): TArray<string>
     begin
       Result := nil;
@@ -223,40 +223,40 @@ begin
       end;
     end;
   Assert.AreEqual('3 C:\BDS\lib\win32\release\Winapi.Windows.dcu (Win32)|',
-    Places(TMissingUnitSearch.Search(Setup, Searched)));
+    Places(TMissingUnitSearch.Search(mSetup, mSearched)));
 end;
 
 procedure TMissingUnitTests.NothingFoundListsPlaces;
 var
-  Setup: TMissingUnitSetup;
-  Searched: TArray<string>;
+  mSetup: TMissingUnitSetup;
+  mSearched: TArray<string>;
 begin
-  Setup := BaseSetup('Gibts');
-  Setup.Platforms := ['Win64'];
-  Setup.LibraryPaths :=
+  mSetup := BaseSetup('Gibts');
+  mSetup.Platforms := ['Win64'];
+  mSetup.LibraryPaths :=
     function(APlatform: string): TArray<string>
     begin
       Result := nil;
     end;
-  Setup.IndexFile :=
+  mSetup.IndexFile :=
     function(AName: string): string
     begin
       Result := '';
     end;
-  Assert.AreEqual('', Places(TMissingUnitSearch.Search(Setup, Searched)));
-  Assert.AreEqual('Projektordner C:\Projekt und Unterordner|Bibliothek Win64|Index', string.Join('|', Searched));
+  Assert.AreEqual('', Places(TMissingUnitSearch.Search(mSetup, mSearched)));
+  Assert.AreEqual('Projektordner C:\Projekt und Unterordner|Bibliothek Win64|Index', string.Join('|', mSearched));
 end;
 
 procedure TMissingUnitTests.NamespacePrefixCounts;
 var
-  Setup: TMissingUnitSetup;
-  Searched: TArray<string>;
+  mSetup: TMissingUnitSetup;
+  mSearched: TArray<string>;
 begin
   AddFile('C:\Projekt\Lib\Firma.Werkzeuge.pas');
-  Setup := BaseSetup('Werkzeuge');
-  Setup.Namespaces := ['Firma'];
-  Assert.AreEqual('0 C:\Projekt\Lib\Firma.Werkzeuge.pas (Kasse.dproj)|', Places(TMissingUnitSearch.Search(Setup,
-    Searched)));
+  mSetup := BaseSetup('Werkzeuge');
+  mSetup.Namespaces := ['Firma'];
+  Assert.AreEqual('0 C:\Projekt\Lib\Firma.Werkzeuge.pas (Kasse.dproj)|', Places(TMissingUnitSearch.Search(mSetup,
+    mSearched)));
 end;
 
 procedure TMissingUnitTests.RelativePaths;

@@ -44,7 +44,8 @@ type
     procedure BeginUpdateMenuSilent;
     [Test]
     procedure BeginUpdateMenuInFieldSilent;
-    /// <summary>Menü in einem verschachtelten Record der Klasse und Items als TObjectList&lt;T&gt; (Atlas.UI.Notifications.Window,
+    /// <summary>Menü in einem verschachtelten Record der Klasse und Items als TObjectList&lt;T&gt;
+    /// (Atlas.UI.Notifications.Window,
     /// Atlas.Common.Query.Language): kein BeginUpdate.</summary>
     [Test]
     procedure BeginUpdateNestedMenuAndPlainListSilent;
@@ -109,7 +110,7 @@ uses
 
 const
   // Niedrige Konfidenz wird erst ab minConfidence "low" gemeldet.
-  AllOn = '{ "minConfidence": "low", "rules": { "string-concat-in-loop": "hint", "loop-invariant-call": "hint", ' +
+  cAllOn = '{ "minConfidence": "low", "rules": { "string-concat-in-loop": "hint", "loop-invariant-call": "hint", ' +
     '"missing-begin-update": "hint" } }';
 
 function InRoutine(const AVars, ABody: string): string;
@@ -120,28 +121,28 @@ end;
 
 function Count(const ARule: IRule; const ASource: string): Integer;
 begin
-  Result := Length(TRuleAssert.Findings(ARule, ASource, AllOn));
+  Result := Length(TRuleAssert.Findings(ARule, ASource, cAllOn));
 end;
 
 procedure TPerformanceRulesTests.RulesOffByDefault;
 var
-  Rule: IRule;
+  mRule: IRule;
 begin
-  for Rule in TArray<IRule>.Create(TStringConcatInLoopRule.Create, TLoopInvariantCallRule.Create,
+  for mRule in TArray<IRule>.Create(TStringConcatInLoopRule.Create, TLoopInvariantCallRule.Create,
     TMissingBeginUpdateRule.Create) do
   begin
-    Assert.IsTrue(TRuleProfiles.IsExperimental(Rule.Descriptor.Id), Rule.Descriptor.Id);
+    Assert.IsTrue(TRuleProfiles.IsExperimental(mRule.Descriptor.Id), mRule.Descriptor.Id);
   end;
 end;
 
 procedure TPerformanceRulesTests.StringConcatInLoopReported;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TStringConcatInLoopRule.Create, InRoutine('  S: string;'#10'  I: Integer;',
-    '  for I := 1 to 10 do'#10'    S := S + IntToStr(I);'), AllOn);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(TStringConcatInLoopRule.Create, InRoutine('  S: string;'#10'  I: Integer;',
+    '  for I := 1 to 10 do'#10'    S := S + IntToStr(I);'), cAllOn);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(mFindings[0].Confidence));
   Assert.AreEqual(1, Count(TStringConcatInLoopRule.Create, InRoutine('  S: string;',
     '  repeat'#10'    S := S + ''x'';'#10'  until Length(S) > 5;')));
 end;
@@ -180,12 +181,12 @@ end;
 
 procedure TPerformanceRulesTests.LoopInvariantCallReported;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TLoopInvariantCallRule.Create, InRoutine('  I: Integer;',
-    '  while I < Length(Trim(Memo.Lines.Text)) do'#10'    Inc(I);'), AllOn);
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(TLoopInvariantCallRule.Create, InRoutine('  I: Integer;',
+    '  while I < Length(Trim(Memo.Lines.Text)) do'#10'    Inc(I);'), cAllOn);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual(1, Count(TLoopInvariantCallRule.Create, InRoutine('  I: Integer;',
     '  repeat'#10'    Inc(I);'#10'  until UpperCase(Name) = ''X'';')));
 end;
@@ -209,7 +210,7 @@ end;
 /// die Variable der Bedingung (Slashed in Atlas.Core.VersionControl.WorkingCopies).</summary>
 procedure TPerformanceRulesTests.FieldTextAndDeleteInLoopSilent;
 const
-  Source = 'unit U;'#10'interface'#10'type'#10'  TSpan = record'#10'    Text: string;'#10'  end;'#10 +
+  cSource = 'unit U;'#10'interface'#10'type'#10'  TSpan = record'#10'    Text: string;'#10'  end;'#10 +
     '  TScanner = record'#10'    Text: string;'#10'  end;'#10'  TW = class'#10'    Scanner: TScanner;'#10 +
     '    function Count(const ASpan: TSpan): Integer;'#10'  end;'#10'implementation'#10 +
     'function TW.Count(const ASpan: TSpan): Integer;'#10'begin'#10'  Result := 0;'#10 +
@@ -217,7 +218,7 @@ const
     '  while (Result > 1) and (Scanner.Text[Result - 1] = '' '') do'#10'    Dec(Result);'#10 +
     '  while Result < Length(Memo.Lines.Text) do'#10'    Inc(Result);'#10'end;'#10'end.';
 begin
-  Assert.AreEqual(1, Count(TLoopInvariantCallRule.Create, Source));
+  Assert.AreEqual(1, Count(TLoopInvariantCallRule.Create, cSource));
   Assert.AreEqual(0, Count(TLoopInvariantCallRule.Create, InRoutine('  S: string;',
     '  while Copy(S, 1, 2) = ''./'' do'#10'    Delete(S, 1, 2);')));
 end;
@@ -242,7 +243,7 @@ begin
   mSource := 'unit U;'#10'interface'#10'uses'#10'  Woerter;'#10'function P(const AToken: TToken): Integer;'#10 +
     'implementation'#10'function P(const AToken: TToken): Integer;'#10'begin'#10'  Result := 0;'#10 +
     '  while Result < Length(AToken.Text) do'#10'    Inc(Result);'#10'end;'#10'end.';
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TLoopInvariantCallRule.Create, mSource, mIndex, AllOn,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TLoopInvariantCallRule.Create, mSource, mIndex, cAllOn,
     ''))));
   // TArt.Text ist ein Aufzählungswert (Selbstlauf, TXmlNodeKind.Text), keine Property.
   mIndex.AddUnit(TIndexExtractor.ExtractText('unit Arten;'#10'interface'#10'{$SCOPEDENUMS ON}'#10'type'#10 +
@@ -250,19 +251,19 @@ begin
   mSource := 'unit U;'#10'interface'#10'uses'#10'  Arten;'#10'function P(AArt: TArt): Integer;'#10 +
     'implementation'#10'function P(AArt: TArt): Integer;'#10'begin'#10'  Result := 0;'#10 +
     '  while AArt = TArt.Text do'#10'    Inc(Result);'#10'end;'#10'end.';
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TLoopInvariantCallRule.Create, mSource, mIndex, AllOn,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TLoopInvariantCallRule.Create, mSource, mIndex, cAllOn,
     ''))));
 end;
 
 procedure TPerformanceRulesTests.MissingBeginUpdateReported;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TMissingBeginUpdateRule.Create, InRoutine('  I: Integer;',
+  mFindings := TRuleAssert.Findings(TMissingBeginUpdateRule.Create, InRoutine('  I: Integer;',
     '  for I := 1 to 100 do'#10'  begin'#10'    ListBox1.Items.Add(IntToStr(I));'#10 +
-    '    ListBox1.Items.Add(''x'');'#10'  end;'), AllOn);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.Contains(Findings[0].Message, 'ListBox1.Items.BeginUpdate');
+    '    ListBox1.Items.Add(''x'');'#10'  end;'), cAllOn);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.Contains(mFindings[0].Message, 'ListBox1.Items.BeginUpdate');
 end;
 
 procedure TPerformanceRulesTests.BeginUpdatePresentSilent;
@@ -275,7 +276,7 @@ end;
 
 procedure TPerformanceRulesTests.BeginUpdateMenuSilent;
 const
-  Source = 'unit U;'#10'interface'#10'uses Vcl.Menus;'#10'type'#10'  TF = class'#10'    FMenu: TPopupMenu;'#10 +
+  cSource = 'unit U;'#10'interface'#10'uses Vcl.Menus;'#10'type'#10'  TF = class'#10'    FMenu: TPopupMenu;'#10 +
     '    FList: TListBox;'#10'    procedure Fill(const ANames: TArray<string>);'#10'  end;'#10'implementation'#10 +
     'procedure TF.Fill(const ANames: TArray<string>);'#10'var'#10'  Name: string;'#10'  Main: TMainMenu;'#10 +
     'begin'#10'  for Name in ANames do'#10'  begin'#10 +
@@ -283,12 +284,12 @@ const
     '    Self.FMenu.Items.Add(NewLine);'#10'    Main.Items.Add(NewLine);'#10'    FList.Items.Add(Name);'#10 +
     '  end;'#10'end;'#10'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // TMenuItem kennt kein BeginUpdate: nur die Liste wird gemeldet.
-  Findings := TRuleAssert.Findings(TMissingBeginUpdateRule.Create, Source, AllOn);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.Contains(Findings[0].Message, 'FList.Items.BeginUpdate');
+  mFindings := TRuleAssert.Findings(TMissingBeginUpdateRule.Create, cSource, cAllOn);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.Contains(mFindings[0].Message, 'FList.Items.BeginUpdate');
 end;
 
 procedure TPerformanceRulesTests.BeginUpdateNestedMenuAndPlainListSilent;
@@ -308,23 +309,23 @@ end;
 /// <summary>Das Menü steckt in einem Record-Feld (FParts.Menu in Atlas.UI.Notifications.Window).</summary>
 procedure TPerformanceRulesTests.BeginUpdateMenuInFieldSilent;
 const
-  Source = 'unit U;'#10'interface'#10'uses Vcl.Menus;'#10'type'#10'  TParts = record'#10 +
+  cSource = 'unit U;'#10'interface'#10'uses Vcl.Menus;'#10'type'#10'  TParts = record'#10 +
     '    Menu: TPopupMenu;'#10'    List: TListBox;'#10'  end;'#10'  TF = class'#10'    FParts: TParts;'#10 +
     '    procedure Fill(const ANames: TArray<string>);'#10'  end;'#10'implementation'#10 +
     'procedure TF.Fill(const ANames: TArray<string>);'#10'var'#10'  Name: string;'#10'begin'#10 +
     '  for Name in ANames do'#10'  begin'#10'    FParts.Menu.Items.Add(NewLine);'#10 +
     '    FParts.List.Items.Add(Name);'#10'  end;'#10'end;'#10'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TMissingBeginUpdateRule.Create, Source, AllOn);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.Contains(Findings[0].Message, 'FParts.List.Items.BeginUpdate');
+  mFindings := TRuleAssert.Findings(TMissingBeginUpdateRule.Create, cSource, cAllOn);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.Contains(mFindings[0].Message, 'FParts.List.Items.BeginUpdate');
 end;
 
 procedure TPerformanceRulesTests.BeginUpdateFewIterationsSilent;
 const
-  Values = '  Dummy: Integer;'#10'const'#10 +
+  cValues = '  Dummy: Integer;'#10'const'#10 +
     '  Values: array[0..5] of string = (''a'', ''b'', ''c'', ''d'', ''e'', ''f'');'#10'var'#10;
 begin
   // Feste Grenzen bzw. statisches Array der Datei mit höchstens zehn Durchläufen.
@@ -332,14 +333,14 @@ begin
     '  for I := 1 to 10 do'#10'    ListBox1.Items.Add(IntToStr(I));')));
   Assert.AreEqual(0, Count(TMissingBeginUpdateRule.Create, InRoutine('  I: Integer;',
     '  for I := 3 downto -2 do'#10'    ListBox1.Items.Add(IntToStr(I));')));
-  Assert.AreEqual(0, Count(TMissingBeginUpdateRule.Create, InRoutine(Values + '  Value: string;',
+  Assert.AreEqual(0, Count(TMissingBeginUpdateRule.Create, InRoutine(cValues + '  Value: string;',
     '  for Value in Values do'#10'    ComboBox1.Items.Add(Value);')));
-  Assert.AreEqual(0, Count(TMissingBeginUpdateRule.Create, InRoutine(Values + '  I: Integer;',
+  Assert.AreEqual(0, Count(TMissingBeginUpdateRule.Create, InRoutine(cValues + '  I: Integer;',
     '  for I := Low(Values) to High(Values) do'#10'    ComboBox1.Items.Add(Values[I]);')));
   // Mehr Durchläufe, verschachtelt mehr als zehn oder Grenze erst zur Laufzeit: gemeldet.
   Assert.AreEqual(1, Count(TMissingBeginUpdateRule.Create, InRoutine('  I: Integer;',
     '  for I := 0 to 10 do'#10'    ListBox1.Items.Add(IntToStr(I));')));
-  Assert.AreEqual(1, Count(TMissingBeginUpdateRule.Create, InRoutine(Values + '  I, J: Integer;',
+  Assert.AreEqual(1, Count(TMissingBeginUpdateRule.Create, InRoutine(cValues + '  I, J: Integer;',
     '  for I := 1 to 2 do'#10'    for J := 0 to High(Values) do'#10'      ComboBox1.Items.Add(Values[J]);')));
   Assert.AreEqual(1, Count(TMissingBeginUpdateRule.Create, InRoutine('  I: Integer;',
     '  for I := 0 to High(Werte) do'#10'    ComboBox1.Items.Add(Werte[I]);')));
@@ -359,7 +360,7 @@ begin
 end;
 
 const
-  IssueBody = '  for I := 0 to Liste.Count - 1 do'#10'  begin'#10'    SetLength(Namen, Length(Namen) + 1);'#10 +
+  cIssueBody = '  for I := 0 to Liste.Count - 1 do'#10'  begin'#10'    SetLength(Namen, Length(Namen) + 1);'#10 +
     '    Namen[High(Namen)] := Liste[I].Name;'#10'  end;';
 
 function SetLengthFindings(const AVars, ABody: string): TArray<TRuleFinding>;
@@ -370,98 +371,98 @@ end;
 /// <summary>Wendet die einzige Korrektur an und prüft, dass das Ergebnis fehlerfrei parst.</summary>
 function Fixed(const ASource: string; const AFinding: TRuleFinding): string;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
   Assert.AreEqual(1, Integer(Length(AFinding.Fixes)));
   Result := TChangeSignature.ApplyEdits(ASource, AFinding.Fixes[0].Edits);
-  Tree := TPascalParser.Parse(Result);
+  mTree := TPascalParser.Parse(Result);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), Result);
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), Result);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TPerformanceRulesTests.SetLengthInLoopReportedWithCount;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   Assert.IsFalse(TRuleProfiles.IsExperimental((TSetLengthInLoopRule.Create as IRule).Descriptor.Id), 'Standard an');
-  Findings := SetLengthFindings('  Namen: TArray<string>;'#10'  I: Integer;', IssueBody);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := SetLengthFindings('  Namen: TArray<string>;'#10'  I: Integer;', cIssueBody);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('SetLength in der Schleife kopiert Namen bei jedem Durchlauf; die Anzahl Liste.Count ist ' +
-    'vorher bekannt.', Findings[0].Message);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
+    'vorher bekannt.', mFindings[0].Message);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Line);
   // Andere Grenzen: 1 bis N und A bis B.
-  Findings := SetLengthFindings('  Werte: array of Integer;'#10'  I: Integer;',
+  mFindings := SetLengthFindings('  Werte: array of Integer;'#10'  I: Integer;',
     '  for I := 1 to N do'#10'  begin'#10'    SetLength(Werte, Length(Werte) + 1);'#10'    Werte[High(Werte)] := I;' +
     #10'  end;');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.EndsWith('die Anzahl N ist vorher bekannt.', Findings[0].Message);
-  Findings := SetLengthFindings('  Werte: TBytes;'#10'  I: Integer;',
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.EndsWith('die Anzahl N ist vorher bekannt.', mFindings[0].Message);
+  mFindings := SetLengthFindings('  Werte: TBytes;'#10'  I: Integer;',
     '  for I := A to B do'#10'    SetLength(Werte, 1 + Length(Werte));');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.EndsWith('die Anzahl B - A + 1 ist vorher bekannt.', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.EndsWith('die Anzahl B - A + 1 ist vorher bekannt.', mFindings[0].Message);
 end;
 
 procedure TPerformanceRulesTests.SetLengthInLoopFixSetsLengthBefore;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := InRoutine('  Namen: TArray<string>;'#10'  I: Integer;', IssueBody);
-  Findings := TRuleAssert.Findings(TSetLengthInLoopRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mSource := InRoutine('  Namen: TArray<string>;'#10'  I: Integer;', cIssueBody);
+  mFindings := TRuleAssert.Findings(TSetLengthInLoopRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(InRoutine('  Namen: TArray<string>;'#10'  I: Integer;',
     '  SetLength(Namen, Liste.Count);'#10'  for I := 0 to Liste.Count - 1 do'#10 +
-    '    Namen[I] := Liste[I].Name;'), Fixed(Source, Findings[0]));
+    '    Namen[I] := Liste[I].Name;'), Fixed(mSource, mFindings[0]));
   // Start bei 1: Index I - 1, Anzahl N.
-  Source := InRoutine('  Werte: array of Integer;'#10'  I: Integer;',
+  mSource := InRoutine('  Werte: array of Integer;'#10'  I: Integer;',
     '  for I := 1 to N do'#10'  begin'#10'    SetLength(Werte, Length(Werte) + 1);'#10 +
     '    Werte[Length(Werte) - 1] := I * I;'#10'  end;');
-  Findings := TRuleAssert.Findings(TSetLengthInLoopRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TSetLengthInLoopRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(InRoutine('  Werte: array of Integer;'#10'  I: Integer;',
-    '  SetLength(Werte, N);'#10'  for I := 1 to N do'#10'    Werte[I - 1] := I * I;'), Fixed(Source, Findings[0]));
+    '  SetLength(Werte, N);'#10'  for I := 1 to N do'#10'    Werte[I - 1] := I * I;'), Fixed(mSource, mFindings[0]));
 end;
 
 procedure TPerformanceRulesTests.SetLengthInLoopFixKeepsOtherStatements;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := InRoutine('  Namen: TArray<string>;'#10'  I: Integer;',
+  mSource := InRoutine('  Namen: TArray<string>;'#10'  I: Integer;',
     '  for I := 0 to High(Liste) do'#10'  begin'#10'    Log(I);'#10'    SetLength(Namen, Length(Namen) + 1);'#10 +
     '    Namen[High(Namen)] := Liste[I];'#10'  end;');
-  Findings := TRuleAssert.Findings(TSetLengthInLoopRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.EndsWith('die Anzahl High(Liste) + 1 ist vorher bekannt.', Findings[0].Message);
+  mFindings := TRuleAssert.Findings(TSetLengthInLoopRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.EndsWith('die Anzahl High(Liste) + 1 ist vorher bekannt.', mFindings[0].Message);
   Assert.AreEqual(InRoutine('  Namen: TArray<string>;'#10'  I: Integer;',
     '  SetLength(Namen, High(Liste) + 1);'#10'  for I := 0 to High(Liste) do'#10'  begin'#10'    Log(I);'#10 +
-    '    Namen[I] := Liste[I];'#10'  end;'), Fixed(Source, Findings[0]));
+    '    Namen[I] := Liste[I];'#10'  end;'), Fixed(mSource, mFindings[0]));
 end;
 
 procedure TPerformanceRulesTests.SetLengthInLoopWithoutCount;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // while, repeat, for-in, bedingtes SetLength und downto: Anzahl unbekannt, keine Korrektur.
-  Findings := SetLengthFindings('  Zeilen: TStringDynArray;',
+  mFindings := SetLengthFindings('  Zeilen: TStringDynArray;',
     '  while not Eof(F) do'#10'  begin'#10'    SetLength(Zeilen, Length(Zeilen) + 1);'#10 +
     '    Readln(F, Zeilen[High(Zeilen)]);'#10'  end;');
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('SetLength in der Schleife kopiert Zeilen bei jedem Durchlauf; die Länge vor der Schleife setzen ' +
-    'oder die Werte in einer TList<T> sammeln.', Findings[0].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+    'oder die Werte in einer TList<T> sammeln.', mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual(1, Integer(Length(SetLengthFindings('  A: TArray<Integer>;',
     '  repeat'#10'    SetLength(A, Succ(Length(A)));'#10'  until Fertig;'))));
   Assert.AreEqual(1, Integer(Length(SetLengthFindings('  A: TArray<Integer>;'#10'  X: Integer;',
     '  for X in Quelle do'#10'    if X > 0 then'#10'    begin'#10'      SetLength(A, Length(A) + 1);'#10 +
     '      A[High(A)] := X;'#10'    end;'))));
-  Findings := SetLengthFindings('  A: TArray<Integer>;'#10'  I: Integer;',
+  mFindings := SetLengthFindings('  A: TArray<Integer>;'#10'  I: Integer;',
     '  for I := 10 downto 1 do'#10'    SetLength(A, Length(A) + 1);');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TPerformanceRulesTests.SetLengthInLoopSilentCases;
@@ -480,57 +481,58 @@ end;
 
 procedure TPerformanceRulesTests.SetLengthInLoopNoFixWhenArrayInUse;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Array vorher schon befüllt, im Rumpf anders benutzt oder mit Break verlassen: Meldung ohne Korrektur.
-  Findings := SetLengthFindings('  Namen: TArray<string>;'#10'  I: Integer;', '  Namen := Vorgabe;'#10 + IssueBody);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
-  Findings := SetLengthFindings('  Namen: TArray<string>;'#10'  I: Integer;',
+  mFindings := SetLengthFindings('  Namen: TArray<string>;'#10'  I: Integer;', '  Namen := Vorgabe;'#10 + cIssueBody);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+  mFindings := SetLengthFindings('  Namen: TArray<string>;'#10'  I: Integer;',
     '  for I := 0 to N - 1 do'#10'  begin'#10'    SetLength(Namen, Length(Namen) + 1);'#10 +
     '    Namen[High(Namen)] := Namen[0];'#10'  end;');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
-  Findings := SetLengthFindings('  Namen: TArray<string>;'#10'  I: Integer;',
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+  mFindings := SetLengthFindings('  Namen: TArray<string>;'#10'  I: Integer;',
     '  for I := 0 to N - 1 do'#10'  begin'#10'    if Stop then'#10'      Break;'#10 +
     '    SetLength(Namen, Length(Namen) + 1);'#10'    Namen[High(Namen)] := '''';'#10'  end;');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));  // Result einer Funktion: Typ aus dem Kopf, nie leer vorbelegt, also keine Korrektur.
-  Findings := TRuleAssert.Findings(TSetLengthInLoopRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+    // Result einer Funktion: Typ aus dem Kopf, nie leer vorbelegt, also keine Korrektur.
+  mFindings := TRuleAssert.Findings(TSetLengthInLoopRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
     'function F(N: Integer): TArray<Integer>;'#10'var'#10'  I: Integer;'#10'begin'#10'  for I := 0 to N - 1 do'#10 +
     '  begin'#10'    SetLength(Result, Length(Result) + 1);'#10'    Result[High(Result)] := I;'#10'  end;'#10 +
     'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TPerformanceRulesTests.SetLengthInLoopSwitchedOff;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := InRoutine('  Namen: TArray<string>;'#10'  I: Integer;', IssueBody);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSetLengthInLoopRule.Create, Source,
+  mSource := InRoutine('  Namen: TArray<string>;'#10'  I: Integer;', cIssueBody);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSetLengthInLoopRule.Create, mSource,
     '{"rules": {"setlength-in-loop": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSetLengthInLoopRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSetLengthInLoopRule.Create, mSource,
     '{"rules": {"setlength-in-loop": {"exclude": ["Alt/**"]}}}', 'Alt/U.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TSetLengthInLoopRule.Create, Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TSetLengthInLoopRule.Create, mSource,
     '{"rules": {"setlength-in-loop": {"exclude": ["Alt/**"]}}}', 'Neu/U.pas'))));
 end;
 
 const
-  ManagedOn = '{"rules": {"managed-param-without-const": "hint"}}';
-  KundenDaten = 'type'#10'  TKundenDaten = record'#10'    Name: string;'#10'    Nummer: Int64;'#10'  end;'#10;
+  cManagedOn = '{"rules": {"managed-param-without-const": "hint"}}';
+  cKundenDaten = 'type'#10'  TKundenDaten = record'#10'    Name: string;'#10'    Nummer: Int64;'#10'  end;'#10;
 
 /// <summary>Unit mit TKundenDaten, der Deklaration AHeader im interface und dem Rumpf ABody dazu.</summary>
 function ManagedUnit(const AHeader, ABody: string): string;
 begin
-  Result := 'unit U;'#10'interface'#10 + KundenDaten + AHeader + ';'#10'implementation'#10 + AHeader + ';'#10 +
+  Result := 'unit U;'#10'interface'#10 + cKundenDaten + AHeader + ';'#10'implementation'#10 + AHeader + ';'#10 +
     'begin'#10 + ABody + #10'end;'#10'end.';
 end;
 
 function ManagedFindings(const ASource: string): TArray<TRuleFinding>; overload;
 begin
-  Result := TRuleAssert.Findings(TManagedParamWithoutConstRule.Create, ASource, ManagedOn);
+  Result := TRuleAssert.Findings(TManagedParamWithoutConstRule.Create, ASource, cManagedOn);
 end;
 
 function ManagedFindings(const ASource, AConfigJson: string): TArray<TRuleFinding>; overload;
@@ -540,52 +542,52 @@ end;
 
 procedure TPerformanceRulesTests.ManagedParamReportedWithFix;
 const
-  Header = 'function Formatieren(Text: string; Kunde: TKundenDaten): string';
-  Body = '  Result := Text + Kunde.Name;';
+  cHeader = 'function Formatieren(Text: string; Kunde: TKundenDaten): string';
+  cBody = '  Result := Text + Kunde.Name;';
 var
-  Source, Expected: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mExpected: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   Assert.IsTrue(TRuleProfiles.IsExperimental((TManagedParamWithoutConstRule.Create as IRule).Descriptor.Id), 'Standard aus');
-  Source := ManagedUnit(Header, Body);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TManagedParamWithoutConstRule.Create, Source))));
-  Findings := ManagedFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mSource := ManagedUnit(cHeader, cBody);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TManagedParamWithoutConstRule.Create, mSource))));
+  mFindings := ManagedFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Text und Kunde werden nicht verändert; mit const entfallen Referenzzählung und Kopie.',
-    Findings[0].Message);
-  Expected := ManagedUnit('function Formatieren(const Text: string; const Kunde: TKundenDaten): string', Body);
-  Assert.AreEqual(Expected, Fixed(Source, Findings[0]));
+    mFindings[0].Message);
+  mExpected := ManagedUnit('function Formatieren(const Text: string; const Kunde: TKundenDaten): string', cBody);
+  Assert.AreEqual(mExpected, Fixed(mSource, mFindings[0]));
   // Die korrigierte Form wird nicht mehr gemeldet.
-  Assert.AreEqual(0, Integer(Length(ManagedFindings(Expected))));
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(mExpected))));
 end;
 
 procedure TPerformanceRulesTests.ManagedParamPartlyChanged;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Text wird verändert, Kunde nicht.
-  Findings := ManagedFindings(ManagedUnit('function F(Text: string; Kunde: TKundenDaten): string',
+  mFindings := ManagedFindings(ManagedUnit('function F(Text: string; Kunde: TKundenDaten): string',
     '  Text := Trim(Text);'#10'  Result := Text + Kunde.Name;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Kunde wird nicht verändert; mit const entfällt die Kopie.', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Kunde wird nicht verändert; mit const entfällt die Kopie.', mFindings[0].Message);
   // Gruppe: nur A bekommt const, die Gruppe wird geteilt.
-  Source := ManagedUnit('procedure P(A, B: string)', '  B := A;');
-  Findings := ManagedFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('A wird nicht verändert; mit const entfällt die Referenzzählung.', Findings[0].Message);
-  Assert.AreEqual(ManagedUnit('procedure P(const A: string; B: string)', '  B := A;'), Fixed(Source, Findings[0]));
+  mSource := ManagedUnit('procedure P(A, B: string)', '  B := A;');
+  mFindings := ManagedFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('A wird nicht verändert; mit const entfällt die Referenzzählung.', mFindings[0].Message);
+  Assert.AreEqual(ManagedUnit('procedure P(const A: string; B: string)', '  B := A;'), Fixed(mSource, mFindings[0]));
   // Lokale Routine ohne eigene Deklaration: nur der Kopf des Rumpfs ändert sich.
-  Source := 'unit U;'#10'interface'#10'implementation'#10'procedure P(S: string);'#10'begin'#10 +
+  mSource := 'unit U;'#10'interface'#10'implementation'#10'procedure P(S: string);'#10'begin'#10 +
     '  Writeln(S);'#10'end;'#10'end.';
-  Findings := ManagedFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(StringReplace(Source, '(S:', '(const S:', []), Fixed(Source, Findings[0]));
+  mFindings := ManagedFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(StringReplace(mSource, '(S:', '(const S:', []), Fixed(mSource, mFindings[0]));
 end;
 
 procedure TPerformanceRulesTests.ManagedParamChangesSilent;
 const
-  Changes: array[0..12] of string = (
+  cChanges: array[0..12] of string = (
     '  Kunde.Name := Text;'#10'  Text := '''';',
     '  Text[1] := ''x'';'#10'  Kunde.Nummer := 0;',
     '  Delete(Text, 1, 1);'#10'  Kunde := Default(TKundenDaten);',
@@ -600,102 +602,102 @@ const
     '  begin'#10'    var Text := 1;'#10'    var Kunde := 2;'#10'  end;',
     '  asm'#10'  end;');
 var
-  Change: string;
-  Source: string;
+  mChange: string;
+  mSource: string;
 begin
-  for Change in Changes do
+  for mChange in cChanges do
   begin
-    Source := ManagedUnit('procedure P(Text: string; Kunde: TKundenDaten)', Change) +
+    mSource := ManagedUnit('procedure P(Text: string; Kunde: TKundenDaten)', mChange) +
       #10'procedure Aendern(var S: string; var K: TKundenDaten); begin end;';
-    Source := StringReplace(Source, 'end.'#10'procedure Aendern', 'procedure Aendern', []) + #10'end.';
-    Assert.AreEqual(0, Integer(Length(ManagedFindings(Source))), Change);
+    mSource := StringReplace(mSource, 'end.'#10'procedure Aendern', 'procedure Aendern', []) + #10'end.';
+    Assert.AreEqual(0, Integer(Length(ManagedFindings(mSource))), mChange);
   end;
 end;
 
 procedure TPerformanceRulesTests.ManagedParamKinds;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Dynamische Arrays: lesen wird gemeldet; Elemente schreiben und SetLength verändern.
-  Findings := ManagedFindings(ManagedUnit('procedure P(A: TArray<Integer>)', '  Writeln(A[0]);'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := ManagedFindings(ManagedUnit('procedure P(A: TArray<Integer>)', '  Writeln(A[0]);'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(0, Integer(Length(ManagedFindings(ManagedUnit('procedure P(A: TArray<Integer>)',
     '  A[0] := 1;')))));
   Assert.AreEqual(0, Integer(Length(ManagedFindings(ManagedUnit('procedure P(A: TBytes)',
     '  SetLength(A, 2);')))));
   // Offene Arrays werden kopiert, Elemente gehören zum Wert.
-  Findings := ManagedFindings(ManagedUnit('procedure P(A: array of string)', '  Writeln(A[0]);'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('A wird nicht verändert; mit const entfällt die Kopie.', Findings[0].Message);
+  mFindings := ManagedFindings(ManagedUnit('procedure P(A: array of string)', '  Writeln(A[0]);'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('A wird nicht verändert; mit const entfällt die Kopie.', mFindings[0].Message);
   Assert.AreEqual(0, Integer(Length(ManagedFindings(ManagedUnit('procedure P(A: array of string)',
     '  A[0] := '''';')))));
   Assert.AreEqual(0, Integer(Length(ManagedFindings(ManagedUnit('procedure P(A: array of const)', '')))));
   // Interfaces: Methoden aufrufen ändert die Referenz nicht.
-  Findings := ManagedFindings(ManagedUnit('procedure P(Wert: IInterface)', '  Wert._AddRef;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Wert wird nicht verändert; mit const entfällt die Referenzzählung.', Findings[0].Message);
+  mFindings := ManagedFindings(ManagedUnit('procedure P(Wert: IInterface)', '  Wert._AddRef;'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Wert wird nicht verändert; mit const entfällt die Referenzzählung.', mFindings[0].Message);
   // Kleine Records, einfache Typen und Klassen kosten nichts.
-  Source := 'unit U;'#10'interface'#10'type'#10'  TPunkt = record X, Y: Integer; end;'#10 +
+  mSource := 'unit U;'#10'interface'#10'type'#10'  TPunkt = record X, Y: Integer; end;'#10 +
     'procedure P(Punkt: TPunkt; Zahl: Integer; Liste: TObject);'#10'implementation'#10 +
     'procedure P(Punkt: TPunkt; Zahl: Integer; Liste: TObject);'#10'begin'#10'end;'#10'end.';
-  Assert.AreEqual(0, Integer(Length(ManagedFindings(Source))));
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(mSource))));
 end;
 
 procedure TPerformanceRulesTests.ManagedParamFixedSignatureSilent;
 const
-  Members: array[0..4] of string = (
+  cMembers: array[0..4] of string = (
     'TBasis = class'#10'  public'#10'    procedure M(S: string); virtual;',
     'TBasis = class(TObject)'#10'  public'#10'    procedure M(S: string); override;',
     'TBasis = class(TInterfacedObject, IInterface)'#10'  public'#10'    procedure M(S: string);',
     'TBasis = class(TComponent)'#10'  published'#10'    procedure M(S: string);',
     'TBasis = class(TComponent)'#10'    procedure M(S: string);');
 var
-  Member, Source: string;
+  mMember, mSource: string;
 begin
-  for Member in Members do
+  for mMember in cMembers do
   begin
-    Source := 'unit U;'#10'interface'#10'type'#10'  ' + Member + #10'  end;'#10'implementation'#10 +
+    mSource := 'unit U;'#10'interface'#10'type'#10'  ' + mMember + #10'  end;'#10'implementation'#10 +
       'procedure TBasis.M(S: string);'#10'begin'#10'end;'#10'end.';
-    Assert.AreEqual(0, Integer(Length(ManagedFindings(Source))), Member);
+    Assert.AreEqual(0, Integer(Length(ManagedFindings(mSource))), mMember);
   end;
   // Methode als Ereignis zugewiesen bzw. in der Formulardatei.
-  Source := 'unit U;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10 +
+  mSource := 'unit U;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10 +
     '    procedure M(S: string);'#10'    procedure N;'#10'  end;'#10'implementation'#10 +
     'procedure TBasis.M(S: string);'#10'begin'#10'end;'#10'procedure TBasis.N;'#10'begin'#10 +
     '  OnText := M;'#10'end;'#10'end.';
-  Assert.AreEqual(0, Integer(Length(ManagedFindings(Source))));
-  Source := StringReplace(Source, '  OnText := M;'#10, '', []);
-  Assert.AreEqual(1, Integer(Length(ManagedFindings(Source))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(TManagedParamWithoutConstRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(mSource))));
+  mSource := StringReplace(mSource, '  OnText := M;'#10, '', []);
+  Assert.AreEqual(1, Integer(Length(ManagedFindings(mSource))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(TManagedParamWithoutConstRule.Create, mSource,
     'object Basis: TBasis'#10'  OnText = M'#10'end'))));
   // Methode ohne Parameterliste im Rumpf: Korrektur nur in der Klasse.
-  Source := StringReplace(Source, 'procedure TBasis.M(S: string);'#10'begin', 'procedure TBasis.M;'#10'begin', []);
-  Assert.AreEqual(StringReplace(Source, 'M(S:', 'M(const S:', []), Fixed(Source, ManagedFindings(Source)[0]));
+  mSource := StringReplace(mSource, 'procedure TBasis.M(S: string);'#10'begin', 'procedure TBasis.M;'#10'begin', []);
+  Assert.AreEqual(StringReplace(mSource, 'M(S:', 'M(const S:', []), Fixed(mSource, ManagedFindings(mSource)[0]));
 end;
 
 procedure TPerformanceRulesTests.ManagedParamOptions;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := ManagedUnit('procedure P(Kunde: TKundenDaten)', '  Writeln(Kunde.Name);');
-  Assert.AreEqual(1, Integer(Length(ManagedFindings(Source))));
-  Assert.AreEqual(0, Integer(Length(ManagedFindings(Source,
+  mSource := ManagedUnit('procedure P(Kunde: TKundenDaten)', '  Writeln(Kunde.Name);');
+  Assert.AreEqual(1, Integer(Length(ManagedFindings(mSource))));
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(mSource,
     '{"rules": {"managed-param-without-const": {"severity": "hint", "minRecordSize": 17}}}'))));
-  Assert.AreEqual(1, Integer(Length(ManagedFindings(Source,
+  Assert.AreEqual(1, Integer(Length(ManagedFindings(mSource,
     '{"rules": {"managed-param-without-const": {"severity": "hint", "minRecordSize": 8}}}'))));
   // ignoreOverrides: false meldet Overrides, aber ohne Korrektur (die Signatur gibt der Vorfahr vor).
-  Source := 'unit U;'#10'interface'#10'type'#10'  TBasis = class(TObject)'#10'  public'#10 +
+  mSource := 'unit U;'#10'interface'#10'type'#10'  TBasis = class(TObject)'#10'  public'#10 +
     '    procedure M(S: string); override;'#10'  end;'#10'implementation'#10 +
     'procedure TBasis.M(S: string);'#10'begin'#10'end;'#10'end.';
-  Assert.AreEqual(0, Integer(Length(ManagedFindings(Source))));
-  Findings := ManagedFindings(Source,
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(mSource))));
+  mFindings := ManagedFindings(mSource,
     '{"rules": {"managed-param-without-const": {"severity": "hint", "ignoreOverrides": false}}}');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('S wird nicht verändert; mit const entfällt die Referenzzählung (override: die Signatur des ' +
-    'Vorfahren mit ändern).', Findings[0].Message);
+    'Vorfahren mit ändern).', mFindings[0].Message);
 end;
 
 procedure TPerformanceRulesTests.ManagedParamUsedAsValueElsewhere;
@@ -746,7 +748,7 @@ const
       begin
         Result := True;
       end);
-    Result := Length(TRuleAssert.ContextFindings(TManagedParamWithoutConstRule.Create, mContext, ManagedOn));
+    Result := Length(TRuleAssert.ContextFindings(TManagedParamWithoutConstRule.Create, mContext, cManagedOn));
   end;
 
 begin
@@ -763,34 +765,34 @@ end;
 
 procedure TPerformanceRulesTests.ManagedParamCallsFromIndex;
 var
-  Index: ISymbolIndex;
-  Source: string;
+  mIndex: ISymbolIndex;
+  mSource: string;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText('unit Hilfe;'#10'interface'#10 +
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Hilfe;'#10'interface'#10 +
     'procedure Lesen(const S: string);'#10'procedure Schreiben(var S: string);'#10'implementation'#10 +
     'procedure Lesen(const S: string); begin end;'#10'procedure Schreiben(var S: string); begin end;'#10'end.',
     'C:\Projekt\Hilfe.pas', nil));
-  Source := 'unit U;'#10'interface'#10'uses'#10'  Hilfe;'#10'procedure P(Text: string);'#10'implementation'#10 +
+  mSource := 'unit U;'#10'interface'#10'uses'#10'  Hilfe;'#10'procedure P(Text: string);'#10'implementation'#10 +
     'procedure P(Text: string);'#10'begin'#10'  Lesen(Text);'#10'end;'#10'end.';
   // Ohne Index ist die Übergabeart unbekannt: keine Meldung.
-  Assert.AreEqual(0, Integer(Length(ManagedFindings(Source))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TManagedParamWithoutConstRule.Create, Source, Index,
-    ManagedOn, ''))));
-  Source := StringReplace(Source, '  Lesen(Text);', '  Schreiben(Text);', []);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TManagedParamWithoutConstRule.Create, Source, Index,
-    ManagedOn, ''))));
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(mSource))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TManagedParamWithoutConstRule.Create, mSource, mIndex,
+    cManagedOn, ''))));
+  mSource := StringReplace(mSource, '  Lesen(Text);', '  Schreiben(Text);', []);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TManagedParamWithoutConstRule.Create, mSource, mIndex,
+    cManagedOn, ''))));
 end;
 
 procedure TPerformanceRulesTests.ManagedParamSwitchedOff;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := ManagedUnit('procedure P(Text: string)', '  Writeln(Text);');
-  Assert.AreEqual(0, Integer(Length(ManagedFindings(Source, '{"rules": {"managed-param-without-const": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TManagedParamWithoutConstRule.Create, Source,
+  mSource := ManagedUnit('procedure P(Text: string)', '  Writeln(Text);');
+  Assert.AreEqual(0, Integer(Length(ManagedFindings(mSource, '{"rules": {"managed-param-without-const": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TManagedParamWithoutConstRule.Create, mSource,
     '{"rules": {"managed-param-without-const": {"severity": "hint", "exclude": ["Alt/**"]}}}', 'Alt/U.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TManagedParamWithoutConstRule.Create, Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TManagedParamWithoutConstRule.Create, mSource,
     '{"rules": {"managed-param-without-const": {"severity": "hint", "exclude": ["Alt/**"]}}}', 'Neu/U.pas'))));
 end;
 

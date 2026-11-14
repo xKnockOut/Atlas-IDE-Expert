@@ -32,27 +32,27 @@ uses
 
 procedure TInterfaceStubsTests.MakesDeclarationAndBody;
 var
-  Stub: TInterfaceStub;
+  mStub: TInterfaceStub;
 begin
   Assert.IsTrue(TInterfaceStubs.Make('IExporter', 'TJsonExporter',
-    'procedure Export(const AFileName: string; ACount: Integer = 1);', #10, Stub));
-  Assert.AreEqual('IExporter', Stub.InterfaceName);
-  Assert.AreEqual('Export', Stub.Name);
-  Assert.AreEqual('procedure Export(const AFileName: string; ACount: Integer = 1);', Stub.Declaration);
+    'procedure Export(const AFileName: string; ACount: Integer = 1);', #10, mStub));
+  Assert.AreEqual('IExporter', mStub.InterfaceName);
+  Assert.AreEqual('Export', mStub.Name);
+  Assert.AreEqual('procedure Export(const AFileName: string; ACount: Integer = 1);', mStub.Declaration);
   // Standardwerte nur in der Deklaration; Prozeduren mit leerer Zeile, ohne inherited.
   Assert.AreEqual('procedure TJsonExporter.Export(const AFileName: string; ACount: Integer);'#10'begin'#10#10'end;',
-    Stub.Body);
+    mStub.Body);
   // Aufrufkonvention und overload bleiben, andere Direktiven nicht.
   Assert.IsTrue(TInterfaceStubs.Make('IExporter', 'TJsonExporter', 'function GetName: string; stdcall; overload;',
-    #10, Stub));
-  Assert.AreEqual('GetName', Stub.Name);
-  Assert.AreEqual('function GetName: string; overload; stdcall;', Stub.Declaration);
+    #10, mStub));
+  Assert.AreEqual('GetName', mStub.Name);
+  Assert.AreEqual('function GetName: string; overload; stdcall;', mStub.Declaration);
   Assert.AreEqual('function TJsonExporter.GetName: string;'#10'begin'#10'  Result := Default(string);'#10'end;',
-    Stub.Body);
-  Assert.IsTrue(TInterfaceStubs.Make('IListe', 'TListe', 'function Find<T>(const AName: string): T;', #10, Stub));
-  Assert.AreEqual('Find', Stub.Name);
+    mStub.Body);
+  Assert.IsTrue(TInterfaceStubs.Make('IListe', 'TListe', 'function Find<T>(const AName: string): T;', #10, mStub));
+  Assert.AreEqual('Find', mStub.Name);
   Assert.IsFalse(TInterfaceStubs.Make('IExporter', 'TJsonExporter', 'property Name: string read GetName;', #10,
-    Stub));
+    mStub));
 end;
 
 procedure TInterfaceStubsTests.FindsReturnType;
@@ -65,7 +65,7 @@ end;
 
 procedure TInterfaceStubsTests.FindsLastSection;
 const
-  Source =
+  cSource =
     'type'#10 +
     '  TJsonExporter = class(TInterfacedObject, IExporter)'#10 +
     '  strict private'#10 +
@@ -74,37 +74,37 @@ const
     '    constructor Create;'#10 +
     '  end;'#10;
 begin
-  Assert.AreEqual('public', TInterfaceStubs.LastSection(TPascalLexer.Tokenize(Source), 1, 6));
-  Assert.AreEqual('strict private', TInterfaceStubs.LastSection(TPascalLexer.Tokenize(Source), 1, 4));
-  Assert.AreEqual('', TInterfaceStubs.LastSection(TPascalLexer.Tokenize(Source), 1, 2));
+  Assert.AreEqual('public', TInterfaceStubs.LastSection(TPascalLexer.Tokenize(cSource), 1, 6));
+  Assert.AreEqual('strict private', TInterfaceStubs.LastSection(TPascalLexer.Tokenize(cSource), 1, 4));
+  Assert.AreEqual('', TInterfaceStubs.LastSection(TPascalLexer.Tokenize(cSource), 1, 2));
 end;
 
 procedure TInterfaceStubsTests.MergesInsertions;
 var
-  Export_, Name, Flush: TInterfaceStub;
-  Edits, Merged: TArray<TRuleEdit>;
+  mExport_, mName, mFlush: TInterfaceStub;
+  mEdits, mMerged: TArray<TRuleEdit>;
 begin
-  TInterfaceStubs.Make('IExporter', 'TJsonExporter', 'procedure Export;', #10, Export_);
-  TInterfaceStubs.Make('IExporter', 'TJsonExporter', 'function GetName: string;', #10, Name);
-  TInterfaceStubs.Make('IFlush', 'TJsonExporter', 'procedure Flush;', #10, Flush);
-  Edits := TInterfaceStubs.ClassEdits(Export_, 6, '  ', 'public', True, #10);
-  Assert.AreEqual(3, Integer(Length(Edits)));
-  Edits := Edits + TInterfaceStubs.ClassEdits(Name, 6, '  ', 'public', True, #10);
-  Edits := Edits + [TRuleEdit.Create(TTextRange.Create(9, 0, 9, 0), 'Rumpf')];
-  Edits := Edits + TInterfaceStubs.ClassEdits(Flush, 6, '  ', 'public', True, #10);
-  Merged := TInterfaceStubs.Merge(Edits);
-  Assert.AreEqual(2, Integer(Length(Merged)));
+  TInterfaceStubs.Make('IExporter', 'TJsonExporter', 'procedure Export;', #10, mExport_);
+  TInterfaceStubs.Make('IExporter', 'TJsonExporter', 'function GetName: string;', #10, mName);
+  TInterfaceStubs.Make('IFlush', 'TJsonExporter', 'procedure Flush;', #10, mFlush);
+  mEdits := TInterfaceStubs.ClassEdits(mExport_, 6, '  ', 'public', True, #10);
+  Assert.AreEqual(3, Integer(Length(mEdits)));
+  mEdits := mEdits + TInterfaceStubs.ClassEdits(mName, 6, '  ', 'public', True, #10);
+  mEdits := mEdits + [TRuleEdit.Create(TTextRange.Create(9, 0, 9, 0), 'Rumpf')];
+  mEdits := mEdits + TInterfaceStubs.ClassEdits(mFlush, 6, '  ', 'public', True, #10);
+  mMerged := TInterfaceStubs.Merge(mEdits);
+  Assert.AreEqual(2, Integer(Length(mMerged)));
   Assert.AreEqual(
     '  public'#10 +
     '    { IExporter }'#10 +
     '    procedure Export;'#10 +
     '    function GetName: string;'#10 +
     '    { IFlush }'#10 +
-    '    procedure Flush;'#10, Merged[0].NewText);
-  Assert.AreEqual(6, Merged[0].Range.StartPos.Line);
-  Assert.AreEqual('Rumpf', Merged[1].NewText);
+    '    procedure Flush;'#10, mMerged[0].NewText);
+  Assert.AreEqual(6, mMerged[0].Range.StartPos.Line);
+  Assert.AreEqual('Rumpf', mMerged[1].NewText);
   // Ohne Abschnitt, wenn der letzte schon passt.
-  Assert.AreEqual(2, Integer(Length(TInterfaceStubs.ClassEdits(Flush, 6, '  ', 'public', False, #10))));
+  Assert.AreEqual(2, Integer(Length(TInterfaceStubs.ClassEdits(mFlush, 6, '  ', 'public', False, #10))));
 end;
 
 end.

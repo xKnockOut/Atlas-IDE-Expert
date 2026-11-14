@@ -55,7 +55,7 @@ uses
   Atlas.Common.Lsp.FormFiles;
 
 const
-  Form =
+  cForm =
     'object Form1: TForm1'#10 +                     // 0
     '  Left = 0'#10 +                               // 1
     '  Caption = ''Hallo'''#10 +                    // 2
@@ -76,7 +76,7 @@ const
     '  end'#10 +                                    // 17
     'end';                                          // 18
 
-  FormUnit =
+  cFormUnit =
     'unit Unit1;'#10 +                              // 0
     'interface'#10 +                                // 1
     'type'#10 +                                     // 2
@@ -101,12 +101,12 @@ begin
   Result := SameText(ExtractFileName(AFileName), 'Unit1.pas');
   if Result then
   begin
-    AText := FormUnit;
+    AText := cFormUnit;
   end;
 end;
 
 const
-  InheritedForm =
+  cInheritedForm =
     'inherited Form2: TForm2'#10 +                  // 0
     '  inherited Button1: TButton'#10 +             // 1
     '    OnClick = Button1Click'#10 +               // 2
@@ -115,7 +115,7 @@ const
     '    OnClick = Button2Click'#10 +               // 5
     '  end'#10 +                                    // 6
     'end'#10;
-  InheritedUnit =
+  cInheritedUnit =
     'unit Unit2;'#10 +                              // 0
     'interface'#10 +                                // 1
     'uses Unit1;'#10 +                              // 2
@@ -141,7 +141,7 @@ begin
   Result := SameText(ExtractFileName(AFileName), 'Unit2.pas');
   if Result then
   begin
-    AText := InheritedUnit;
+    AText := cInheritedUnit;
   end;
 end;
 
@@ -155,56 +155,56 @@ end;
 
 procedure TDfmTests.ParsesObjectTree;
 var
-  Document: TDfmDocument;
+  mDocument: TDfmDocument;
 begin
-  Document := TDfmParser.Parse(Form);
+  mDocument := TDfmParser.Parse(cForm);
   try
-    Assert.IsNotNull(Document.Root);
-    Assert.AreEqual('Form1', Document.Root.Name);
-    Assert.AreEqual('TForm1', Document.Root.TypeName);
-    Assert.AreEqual(2, Integer(Document.Root.Children.Count));
-    Assert.AreEqual('Button1', Document.Root.Children[0].Name);
-    Assert.AreEqual('TStringGrid', Document.Root.Children[1].TypeName);
-    Assert.AreEqual(6, Document.Root.Children[0].Range.StartPos.Line);
-    Assert.AreEqual(9, Document.Root.Children[0].Range.EndPos.Line);
-    Assert.AreEqual(0, Integer(Length(Document.Errors)));
+    Assert.IsNotNull(mDocument.Root);
+    Assert.AreEqual('Form1', mDocument.Root.Name);
+    Assert.AreEqual('TForm1', mDocument.Root.TypeName);
+    Assert.AreEqual(2, Integer(mDocument.Root.Children.Count));
+    Assert.AreEqual('Button1', mDocument.Root.Children[0].Name);
+    Assert.AreEqual('TStringGrid', mDocument.Root.Children[1].TypeName);
+    Assert.AreEqual(6, mDocument.Root.Children[0].Range.StartPos.Line);
+    Assert.AreEqual(9, mDocument.Root.Children[0].Range.EndPos.Line);
+    Assert.AreEqual(0, Integer(Length(mDocument.Errors)));
   finally
-    Document.Free;
+    mDocument.Free;
   end;
 end;
 
 procedure TDfmTests.ParsesValuesOfAllKinds;
 var
-  Document: TDfmDocument;
-  Item: TDfmProperty;
-  Names: string;
+  mDocument: TDfmDocument;
+  mItem: TDfmProperty;
+  mNames: string;
 begin
-  Document := TDfmParser.Parse(Form);
+  mDocument := TDfmParser.Parse(cForm);
   try
-    Names := '';
-    for Item in Document.Root.Properties do
+    mNames := '';
+    for mItem in mDocument.Root.Properties do
     begin
-      Names := Names + Item.Name + ';';
+      mNames := mNames + mItem.Name + ';';
     end;
-    Assert.AreEqual('Left;Caption;Font.Name;Anchors;OnCreate;', Names);
-    Assert.AreEqual('0', Document.Root.Properties[0].Value);
-    Assert.AreEqual('[akLeft, akTop]', Document.Root.Properties[3].Value);
-    Names := '';
-    for Item in Document.Root.Children[1].Properties do
+    Assert.AreEqual('Left;Caption;Font.Name;Anchors;OnCreate;', mNames);
+    Assert.AreEqual('0', mDocument.Root.Properties[0].Value);
+    Assert.AreEqual('[akLeft, akTop]', mDocument.Root.Properties[3].Value);
+    mNames := '';
+    for mItem in mDocument.Root.Children[1].Properties do
     begin
-      Names := Names + Item.Name + ';';
+      mNames := mNames + mItem.Name + ';';
     end;
-    Assert.AreEqual('Columns;Data;', Names);
+    Assert.AreEqual('Columns;Data;', mNames);
   finally
-    Document.Free;
+    mDocument.Free;
   end;
 end;
 
 procedure TDfmTests.ReadsValueOnNextLine;
 var
-  Document: TDfmDocument;
+  mDocument: TDfmDocument;
 begin
-  Document := TDfmParser.Parse(
+  mDocument := TDfmParser.Parse(
     'object Form1: TForm1'#13#10 +
     '  Hint = '#13#10 +
     '    ''Bla''#123''Bla'' +'#13#10 +
@@ -213,25 +213,25 @@ begin
     '  Left = 0'#13#10 +
     'end'#13#10);
   try
-    Assert.AreEqual(0, Integer(Length(Document.Errors)), 'kein „Property oder end erwartet“');
-    Assert.AreEqual(3, Integer(Length(Document.Root.Properties)));
-    Assert.AreEqual('''Bla''#123''Bla'' +'#13#10'    ''weiter''', Document.Root.Properties[0].Value);
-    Assert.AreEqual(2, Document.Root.Properties[0].ValueRange.StartPos.Line, 'Wert beginnt in der nächsten Zeile');
-    Assert.AreEqual('''Bla''#123''Bla''', Document.Root.Properties[1].Value);
-    Assert.AreEqual('Left', Document.Root.Properties[2].Name);
+    Assert.AreEqual(0, Integer(Length(mDocument.Errors)), 'kein „Property oder end erwartet“');
+    Assert.AreEqual(3, Integer(Length(mDocument.Root.Properties)));
+    Assert.AreEqual('''Bla''#123''Bla'' +'#13#10'    ''weiter''', mDocument.Root.Properties[0].Value);
+    Assert.AreEqual(2, mDocument.Root.Properties[0].ValueRange.StartPos.Line, 'Wert beginnt in der nächsten Zeile');
+    Assert.AreEqual('''Bla''#123''Bla''', mDocument.Root.Properties[1].Value);
+    Assert.AreEqual('Left', mDocument.Root.Properties[2].Name);
   finally
-    Document.Free;
+    mDocument.Free;
   end;
 end;
 
 procedure TDfmTests.MarksEvents;
 var
-  Document: TDfmDocument;
+  mDocument: TDfmDocument;
 begin
-  Document := TDfmParser.Parse(Form);
+  mDocument := TDfmParser.Parse(cForm);
   try
-    Assert.IsTrue(Document.Root.Properties[4].IsEvent);
-    Assert.IsFalse(Document.Root.Properties[1].IsEvent);
+    Assert.IsTrue(mDocument.Root.Properties[4].IsEvent);
+    Assert.IsFalse(mDocument.Root.Properties[1].IsEvent);
     // Ereignisse von Datenmengen ohne On (#856); Wörter wie Online oder Afterglow zählen nicht.
     Assert.IsTrue(TDfmProperty.IsEventName('BeforePost'));
     Assert.IsTrue(TDfmProperty.IsEventName('AfterScroll'));
@@ -239,29 +239,29 @@ begin
     Assert.IsFalse(TDfmProperty.IsEventName('Online'));
     Assert.IsFalse(TDfmProperty.IsEventName('Afterglow'));
     Assert.IsFalse(TDfmProperty.IsEventName('Before'));
-    Assert.AreEqual('Button1Click', Document.Root.Children[0].Properties[1].Value);
-    Assert.AreEqual(8, Document.Root.Children[0].Properties[1].ValueRange.StartPos.Line);
+    Assert.AreEqual('Button1Click', mDocument.Root.Children[0].Properties[1].Value);
+    Assert.AreEqual(8, mDocument.Root.Children[0].Properties[1].ValueRange.StartPos.Line);
   finally
-    Document.Free;
+    mDocument.Free;
   end;
 end;
 
 procedure TDfmTests.ReportsErrorsAndContinues;
 var
-  Document: TDfmDocument;
+  mDocument: TDfmDocument;
 begin
-  Document := TDfmParser.Parse(
+  mDocument := TDfmParser.Parse(
     'object Form1: TForm1'#10 +
     '  ??? kaputt'#10 +
     '  object Button1: TButton'#10 +
     '  end'#10 +
     'end');
   try
-    Assert.IsTrue(Length(Document.Errors) > 0);
-    Assert.AreEqual(1, Document.Errors[0].Position.Line);
-    Assert.AreEqual(1, Integer(Document.Root.Children.Count));
+    Assert.IsTrue(Length(mDocument.Errors) > 0);
+    Assert.AreEqual(1, mDocument.Errors[0].Position.Line);
+    Assert.AreEqual(1, Integer(mDocument.Root.Children.Count));
   finally
-    Document.Free;
+    mDocument.Free;
   end;
 end;
 
@@ -274,107 +274,107 @@ end;
 
 procedure TDfmTests.FindsInnermostObject;
 var
-  Document: TDfmDocument;
+  mDocument: TDfmDocument;
 begin
-  Document := TDfmParser.Parse(Form);
+  mDocument := TDfmParser.Parse(cForm);
   try
-    Assert.AreEqual('Button1', TDfmNavigation.ObjectAt(Document, Position(7, 6)).Name);
-    Assert.AreEqual('Form1', TDfmNavigation.ObjectAt(Document, Position(2, 4)).Name);
+    Assert.AreEqual('Button1', TDfmNavigation.ObjectAt(mDocument, Position(7, 6)).Name);
+    Assert.AreEqual('Form1', TDfmNavigation.ObjectAt(mDocument, Position(2, 4)).Name);
   finally
-    Document.Free;
+    mDocument.Free;
   end;
 end;
 
 procedure TDfmTests.JumpsFromEventToImplementation;
 var
-  Targets: TArray<TDfmTarget>;
+  mTargets: TArray<TDfmTarget>;
 begin
-  Targets := TDfmNavigation.Targets(Form, 'C:\P\Unit1.dfm', Position(8, 16), ReadUnit);
-  Assert.AreEqual(1, Integer(Length(Targets)));
-  Assert.AreEqual('C:\P\Unit1.pas', Targets[0].FileName);
-  Assert.AreEqual(8, Targets[0].SelectionRange.StartPos.Line);
+  mTargets := TDfmNavigation.Targets(cForm, 'C:\P\Unit1.dfm', Position(8, 16), ReadUnit);
+  Assert.AreEqual(1, Integer(Length(mTargets)));
+  Assert.AreEqual('C:\P\Unit1.pas', mTargets[0].FileName);
+  Assert.AreEqual(8, mTargets[0].SelectionRange.StartPos.Line);
 end;
 
 procedure TDfmTests.JumpsFromPlatformViewToUnit;
 var
-  Targets: TArray<TDfmTarget>;
+  mTargets: TArray<TDfmTarget>;
 begin
   // Abnahme #87: F12 auf einen Handler in Unit1.Windows.fmx springt in Unit1.pas, nicht Unit1.Windows.pas.
-  Targets := TDfmNavigation.Targets(Form, 'C:\P\Unit1.Windows.fmx', Position(8, 16), ReadUnit);
-  Assert.AreEqual(1, Integer(Length(Targets)));
-  Assert.AreEqual('C:\P\Unit1.pas', Targets[0].FileName);
-  Assert.AreEqual(8, Targets[0].SelectionRange.StartPos.Line);
-  Targets := TDfmNavigation.Targets(Form, 'C:\P\Unit1.Android.fmx', Position(8, 16), ReadUnit);
-  Assert.AreEqual(1, Integer(Length(Targets)));
-  Assert.AreEqual('C:\P\Unit1.pas', Targets[0].FileName);
+  mTargets := TDfmNavigation.Targets(cForm, 'C:\P\Unit1.Windows.fmx', Position(8, 16), ReadUnit);
+  Assert.AreEqual(1, Integer(Length(mTargets)));
+  Assert.AreEqual('C:\P\Unit1.pas', mTargets[0].FileName);
+  Assert.AreEqual(8, mTargets[0].SelectionRange.StartPos.Line);
+  mTargets := TDfmNavigation.Targets(cForm, 'C:\P\Unit1.Android.fmx', Position(8, 16), ReadUnit);
+  Assert.AreEqual(1, Integer(Length(mTargets)));
+  Assert.AreEqual('C:\P\Unit1.pas', mTargets[0].FileName);
 end;
 
 procedure TDfmTests.JumpsFromComponentToField;
 var
-  Targets: TArray<TDfmTarget>;
+  mTargets: TArray<TDfmTarget>;
 begin
-  Targets := TDfmNavigation.Targets(Form, 'C:\P\Unit1.dfm', Position(6, 10), ReadUnit);
-  Assert.AreEqual(1, Integer(Length(Targets)));
-  Assert.AreEqual(4, Targets[0].SelectionRange.StartPos.Line);
+  mTargets := TDfmNavigation.Targets(cForm, 'C:\P\Unit1.dfm', Position(6, 10), ReadUnit);
+  Assert.AreEqual(1, Integer(Length(mTargets)));
+  Assert.AreEqual(4, mTargets[0].SelectionRange.StartPos.Line);
 end;
 
 procedure TDfmTests.JumpsFromFormToClass;
 var
-  Targets: TArray<TDfmTarget>;
+  mTargets: TArray<TDfmTarget>;
 begin
-  Targets := TDfmNavigation.Targets(Form, 'C:\P\Unit1.dfm', Position(0, 8), ReadUnit);
-  Assert.AreEqual(1, Integer(Length(Targets)));
-  Assert.AreEqual(3, Targets[0].SelectionRange.StartPos.Line);
+  mTargets := TDfmNavigation.Targets(cForm, 'C:\P\Unit1.dfm', Position(0, 8), ReadUnit);
+  Assert.AreEqual(1, Integer(Length(mTargets)));
+  Assert.AreEqual(3, mTargets[0].SelectionRange.StartPos.Line);
 end;
 
 procedure TDfmTests.NoJumpWithoutUnit;
 begin
-  Assert.AreEqual(0, Integer(Length(TDfmNavigation.Targets(Form, 'C:\P\Unit1.dfm', Position(8, 16), NoUnit))));
+  Assert.AreEqual(0, Integer(Length(TDfmNavigation.Targets(cForm, 'C:\P\Unit1.dfm', Position(8, 16), NoUnit))));
   // Auf einem gewöhnlichen Wert gibt es kein Ziel.
-  Assert.AreEqual(0, Integer(Length(TDfmNavigation.Targets(Form, 'C:\P\Unit1.dfm', Position(1, 9), ReadUnit))));
+  Assert.AreEqual(0, Integer(Length(TDfmNavigation.Targets(cForm, 'C:\P\Unit1.dfm', Position(1, 9), ReadUnit))));
 end;
 
 procedure TDfmTests.InheritedHandlerHasNoWrongTarget;
 var
-  Targets: TArray<TDfmTarget>;
+  mTargets: TArray<TDfmTarget>;
 begin
   // Button1Click gehört zu TForm1 (Vorfahr, andere Unit); THelfer.Button1Click ist nicht gemeint.
-  Targets := TDfmNavigation.Targets(InheritedForm, 'C:\P\Unit2.dfm', Position(2, 16), ReadInheritedUnit);
-  Assert.AreEqual(0, Integer(Length(Targets)));
+  mTargets := TDfmNavigation.Targets(cInheritedForm, 'C:\P\Unit2.dfm', Position(2, 16), ReadInheritedUnit);
+  Assert.AreEqual(0, Integer(Length(mTargets)));
   // Der eigene Handler der abgeleiteten Klasse wird gefunden, die Implementierung gewinnt.
-  Targets := TDfmNavigation.Targets(InheritedForm, 'C:\P\Unit2.dfm', Position(5, 16), ReadInheritedUnit);
-  Assert.AreEqual(1, Integer(Length(Targets)));
-  Assert.AreEqual('C:\P\Unit2.pas', Targets[0].FileName);
-  Assert.AreEqual(12, Targets[0].SelectionRange.StartPos.Line);
+  mTargets := TDfmNavigation.Targets(cInheritedForm, 'C:\P\Unit2.dfm', Position(5, 16), ReadInheritedUnit);
+  Assert.AreEqual(1, Integer(Length(mTargets)));
+  Assert.AreEqual('C:\P\Unit2.pas', mTargets[0].FileName);
+  Assert.AreEqual(12, mTargets[0].SelectionRange.StartPos.Line);
 end;
 
 procedure TDfmTests.BuildsSymbolsAndFolding;
 var
-  Document: TDfmDocument;
-  Symbols, Folding: TJSONArray;
-  Name: string;
+  mDocument: TDfmDocument;
+  mSymbols, mFolding: TJSONArray;
+  mName: string;
 begin
-  Document := TDfmParser.Parse(Form);
+  mDocument := TDfmParser.Parse(cForm);
   try
-    Symbols := TLspFormFiles.BuildSymbols(Document);
+    mSymbols := TLspFormFiles.BuildSymbols(mDocument);
     try
-      Assert.AreEqual(1, Integer(Symbols.Count));
+      Assert.AreEqual(1, Integer(mSymbols.Count));
       // Gliederung zeigt Name und Typ, wie der Objektinspektor.
-      Name := (Symbols.Items[0] as TJSONObject).GetValue<string>('name');
-      Assert.AreEqual('Form1: TForm1', Name);
-      Assert.IsTrue(Pos('Button1', Symbols.ToJSON) > 0);
-      Assert.IsTrue(Pos('Button1Click', Symbols.ToJSON) > 0);
+      mName := (mSymbols.Items[0] as TJSONObject).GetValue<string>('name');
+      Assert.AreEqual('Form1: TForm1', mName);
+      Assert.IsTrue(Pos('Button1', mSymbols.ToJSON) > 0);
+      Assert.IsTrue(Pos('Button1Click', mSymbols.ToJSON) > 0);
     finally
-      Symbols.Free;
+      mSymbols.Free;
     end;
-    Folding := TLspFormFiles.BuildFoldingRanges(Document);
+    mFolding := TLspFormFiles.BuildFoldingRanges(mDocument);
     try
-      Assert.IsTrue(Folding.Count >= 3);
+      Assert.IsTrue(mFolding.Count >= 3);
     finally
-      Folding.Free;
+      mFolding.Free;
     end;
   finally
-    Document.Free;
+    mDocument.Free;
   end;
 end;
 

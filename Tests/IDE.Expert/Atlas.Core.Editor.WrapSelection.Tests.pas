@@ -69,23 +69,23 @@ end;
 
 function TAtlasWrapSelectionTests.Selection(AIndex: Integer): string;
 var
-  Range: TLspRange;
+  mRange: TLspRange;
 begin
-  Range := FResult.Selections[AIndex];
-  Result := Format('%d:%d-%d:%d', [Range.StartPos.Line, Range.StartPos.Character, Range.EndPos.Line,
-    Range.EndPos.Character]);
+  mRange := FResult.Selections[AIndex];
+  Result := Format('%d:%d-%d:%d', [mRange.StartPos.Line, mRange.StartPos.Character, mRange.EndPos.Line,
+    mRange.EndPos.Character]);
 end;
 
 procedure TAtlasWrapSelectionTests.WrapsWithBracketsAndKeepsSelection;
 var
-  First: TAtlasWrapResult;
+  mFirst: TAtlasWrapResult;
 begin
   Assert.IsTrue(Wrap(['X := A + B;'], 0, 5, 10, '('));
   Assert.AreEqual('X := (A + B);', FResult.Lines[0]);
   Assert.AreEqual('0:6-0:11', Selection(0), 'Markierung auf dem alten Text');
   // Zweites Zeichen umschließt weiter (out leert FResult: eigene Kopie übergeben).
-  First := FResult;
-  Assert.IsTrue(TAtlasWrapSelection.Wrap(First.Lines, First.Selections[0], '(',
+  mFirst := FResult;
+  Assert.IsTrue(TAtlasWrapSelection.Wrap(mFirst.Lines, mFirst.Selections[0], '(',
     TAtlasWrapSelection.cDefaultChars, FResult));
   Assert.AreEqual('X := ((A + B));', FResult.Lines[0]);
   Assert.IsTrue(Wrap(['Werte'], 0, 0, 5, '['));
@@ -127,16 +127,16 @@ end;
 
 procedure TAtlasWrapSelectionTests.BraceOnWholeLines;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := ['begin', '    Foo;', '    Bar;', 'end;'];
+  mLines := ['begin', '    Foo;', '    Bar;', 'end;'];
   // Bis zum Ende der letzten Zeile.
-  Assert.IsTrue(TAtlasWrapSelection.Wrap(Lines, TLspRange.Create(1, 0, 2, 8), '{',
+  Assert.IsTrue(TAtlasWrapSelection.Wrap(mLines, TLspRange.Create(1, 0, 2, 8), '{',
     TAtlasWrapSelection.cDefaultChars, FResult));
   Assert.AreEqual('begin|    {|    Foo;|    Bar;|    }|end;', string.Join('|', FResult.Lines));
   Assert.AreEqual('2:0-3:8', Selection(0));
   // Bis zum Anfang der nächsten Zeile, Anfang im Einzug.
-  Assert.IsTrue(TAtlasWrapSelection.Wrap(Lines, TLspRange.Create(1, 4, 3, 0), '{',
+  Assert.IsTrue(TAtlasWrapSelection.Wrap(mLines, TLspRange.Create(1, 4, 3, 0), '{',
     TAtlasWrapSelection.cDefaultChars, FResult));
   Assert.AreEqual('begin|    {|    Foo;|    Bar;|    }|end;', string.Join('|', FResult.Lines));
   Assert.AreEqual('2:4-4:0', Selection(0));
@@ -176,28 +176,28 @@ end;
 
 procedure TAtlasWrapSelectionTests.SeveralRanges;
 var
-  Ranges: TArray<TLspRange>;
+  mRanges: TArray<TLspRange>;
 begin
   // Zwei Marken in einer Zeile, eine ohne Markierung.
-  Ranges := [TLspRange.Create(0, 4, 0, 5), TLspRange.Create(0, 0, 0, 1), TLspRange.Create(1, 2, 1, 2)];
-  Assert.IsTrue(TAtlasWrapSelection.Wrap(['A + B', 'C D'], Ranges, '(', TAtlasWrapSelection.cDefaultChars, FResult));
+  mRanges := [TLspRange.Create(0, 4, 0, 5), TLspRange.Create(0, 0, 0, 1), TLspRange.Create(1, 2, 1, 2)];
+  Assert.IsTrue(TAtlasWrapSelection.Wrap(['A + B', 'C D'], mRanges, '(', TAtlasWrapSelection.cDefaultChars, FResult));
   Assert.AreEqual('(A) + (B)|C (D', string.Join('|', FResult.Lines));
   Assert.AreEqual('0:7-0:8', Selection(0));
   Assert.AreEqual('0:1-0:2', Selection(1));
   Assert.AreEqual('1:3-1:3', Selection(2));
   // Spaltenblock: je Zeile einzeln, Hochkommas je Zeile verdoppelt.
-  Ranges := [TLspRange.Create(0, 2, 0, 5), TLspRange.Create(1, 2, 1, 5)];
-  Assert.IsTrue(TAtlasWrapSelection.Wrap(['A abc', 'B d''e'], Ranges, '''', TAtlasWrapSelection.cDefaultChars,
+  mRanges := [TLspRange.Create(0, 2, 0, 5), TLspRange.Create(1, 2, 1, 5)];
+  Assert.IsTrue(TAtlasWrapSelection.Wrap(['A abc', 'B d''e'], mRanges, '''', TAtlasWrapSelection.cDefaultChars,
     FResult));
   Assert.AreEqual('A ''abc''|B ''d''''e''', string.Join('|', FResult.Lines));
   Assert.AreEqual('1:3-1:7', Selection(1));
   // Ein Bereich lässt sich nicht umschließen: nichts.
-  Ranges := [TLspRange.Create(0, 0, 0, 1), TLspRange.Create(1, 7, 1, 8)];
-  Assert.IsFalse(TAtlasWrapSelection.Wrap(['A', 'S := ''abc'';'], Ranges, '''', TAtlasWrapSelection.cDefaultChars,
+  mRanges := [TLspRange.Create(0, 0, 0, 1), TLspRange.Create(1, 7, 1, 8)];
+  Assert.IsFalse(TAtlasWrapSelection.Wrap(['A', 'S := ''abc'';'], mRanges, '''', TAtlasWrapSelection.cDefaultChars,
     FResult));
   // Überlappend: nichts.
-  Ranges := [TLspRange.Create(0, 0, 0, 3), TLspRange.Create(0, 2, 0, 5)];
-  Assert.IsFalse(TAtlasWrapSelection.Wrap(['A + B'], Ranges, '(', TAtlasWrapSelection.cDefaultChars, FResult));
+  mRanges := [TLspRange.Create(0, 0, 0, 3), TLspRange.Create(0, 2, 0, 5)];
+  Assert.IsFalse(TAtlasWrapSelection.Wrap(['A + B'], mRanges, '(', TAtlasWrapSelection.cDefaultChars, FResult));
 end;
 
 procedure TAtlasWrapSelectionTests.NormalizeChars;

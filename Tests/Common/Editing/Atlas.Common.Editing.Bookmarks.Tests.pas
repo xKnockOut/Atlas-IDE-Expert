@@ -27,7 +27,7 @@ uses
   Atlas.Common.Lsp.WorkspaceSymbols;
 
 const
-  Source = 'unit U;'#10 +
+  cSource = 'unit U;'#10 +
     'implementation'#10 +
     '// @bookmark Abrechnung'#10 +
     'procedure Run;'#10 +
@@ -41,59 +41,59 @@ const
 
 procedure TBookmarksTests.FindsMarkedComments;
 var
-  Found: TArray<TBookmark>;
+  mFound: TArray<TBookmark>;
 begin
-  Found := TBookmarks.Find(Source);
-  Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual('Abrechnung', Found[0].Name);
-  Assert.AreEqual(2, Found[0].Range.StartPos.Line);
-  Assert.AreEqual('Monatsende prüfen', Found[1].Name);
-  Assert.AreEqual(2, Found[1].Range.StartPos.Character);
+  mFound := TBookmarks.Find(cSource);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('Abrechnung', mFound[0].Name);
+  Assert.AreEqual(2, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual('Monatsende prüfen', mFound[1].Name);
+  Assert.AreEqual(2, mFound[1].Range.StartPos.Character);
 end;
 
 procedure TBookmarksTests.StoreReadsOnlyChangedFiles;
 var
-  Store: TBookmarkStore;
-  Reads: Integer;
-  Reader: TBookmarkReadText;
+  mStore: TBookmarkStore;
+  mReads: Integer;
+  mReader: TBookmarkReadText;
 begin
-  Reads := 0;
-  Reader :=
+  mReads := 0;
+  mReader :=
     function(const AFileName: string; out AText: string): Boolean
     begin
-      Inc(Reads);
-      AText := Source;
+      Inc(mReads);
+      AText := cSource;
       Result := True;
     end;
-  Store := TBookmarkStore.Create;
+  mStore := TBookmarkStore.Create;
   try
-    Store.Update('C:\P\A.pas', 1, Reader);
-    Store.Update('C:\P\A.pas', 1, Reader);
-    Store.Update('C:\P\B.pas', 1, Reader);
-    Assert.AreEqual(2, Reads);
-    Assert.AreEqual(4, Integer(Length(Store.All)));
-    Store.Update('C:\P\A.pas', 2, Reader);
-    Assert.AreEqual(3, Reads);
-    Store.Retain(['C:\P\B.pas']);
-    Assert.AreEqual(2, Integer(Length(Store.All)));
-    Assert.AreEqual('C:\P\B.pas', Store.All[0].FileName);
+    mStore.Update('C:\P\A.pas', 1, mReader);
+    mStore.Update('C:\P\A.pas', 1, mReader);
+    mStore.Update('C:\P\B.pas', 1, mReader);
+    Assert.AreEqual(2, mReads);
+    Assert.AreEqual(4, Integer(Length(mStore.All)));
+    mStore.Update('C:\P\A.pas', 2, mReader);
+    Assert.AreEqual(3, mReads);
+    mStore.Retain(['C:\P\B.pas']);
+    Assert.AreEqual(2, Integer(Length(mStore.All)));
+    Assert.AreEqual('C:\P\B.pas', mStore.All[0].FileName);
   finally
-    Store.Free;
+    mStore.Free;
   end;
 end;
 
 procedure TBookmarksTests.WorkspaceSymbolFindsBookmark;
 var
-  Hit: TBookmarkHit;
-  Found: TArray<TWorkspaceSymbol>;
+  mHit: TBookmarkHit;
+  mFound: TArray<TWorkspaceSymbol>;
 begin
-  Hit.FileName := 'C:\P\Kasse.pas';
-  Hit.Bookmark := TBookmarks.Find(Source)[0];
-  Found := TLspWorkspaceSymbols.SearchBookmarks([Hit], 'Abrechnung');
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.IsTrue(Found[0].Bookmark);
-  Assert.AreEqual('Kasse', Found[0].UnitName);
-  Assert.AreEqual(0, Integer(Length(TLspWorkspaceSymbols.SearchBookmarks([Hit], 'Lieferung'))));
+  mHit.FileName := 'C:\P\Kasse.pas';
+  mHit.Bookmark := TBookmarks.Find(cSource)[0];
+  mFound := TLspWorkspaceSymbols.SearchBookmarks([mHit], 'Abrechnung');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.IsTrue(mFound[0].Bookmark);
+  Assert.AreEqual('Kasse', mFound[0].UnitName);
+  Assert.AreEqual(0, Integer(Length(TLspWorkspaceSymbols.SearchBookmarks([mHit], 'Lieferung'))));
 end;
 
 initialization

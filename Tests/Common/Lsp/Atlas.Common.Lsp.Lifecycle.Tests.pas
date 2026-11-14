@@ -91,13 +91,13 @@ end;
 
 function TLspLifecycleTests.Send(const AJson: string): TJSONObject;
 var
-  Message: TJSONObject;
+  mMessage: TJSONObject;
 begin
-  Message := TJsonRpcTestSupport.Parse(AJson);
+  mMessage := TJsonRpcTestSupport.Parse(AJson);
   try
-    Result := FDispatcher.DispatchMessage(Message);
+    Result := FDispatcher.DispatchMessage(mMessage);
   finally
-    Message.Free;
+    mMessage.Free;
   end;
 end;
 
@@ -109,18 +109,18 @@ end;
 
 procedure TLspLifecycleTests.InitializeReturnsCapabilitiesAndServerInfo;
 var
-  Response: TJSONObject;
+  mResponse: TJSONObject;
 begin
-  Response := Send('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{}}}');
+  mResponse := Send('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{}}}');
   try
-    Assert.AreEqual(1, Response.GetValue<Integer>('id'));
+    Assert.AreEqual(1, mResponse.GetValue<Integer>('id'));
     Assert.AreEqual(TLspTextDocumentSyncKind.cIncremental,
-      Response.GetValue<Integer>('result.capabilities.textDocumentSync'));
-    Assert.AreEqual('TestServer', Response.GetValue<string>('result.serverInfo.name'));
-    Assert.AreEqual('1.2.3', Response.GetValue<string>('result.serverInfo.version'));
+      mResponse.GetValue<Integer>('result.capabilities.textDocumentSync'));
+    Assert.AreEqual('TestServer', mResponse.GetValue<string>('result.serverInfo.name'));
+    Assert.AreEqual('1.2.3', mResponse.GetValue<string>('result.serverInfo.version'));
     Assert.AreEqual<TLspServerState>(TLspServerState.Running, FLifecycle.State);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
@@ -133,13 +133,13 @@ end;
 
 procedure TLspLifecycleTests.RejectsRequestBeforeInitialize;
 var
-  Response: TJSONObject;
+  mResponse: TJSONObject;
 begin
-  Response := Send('{"jsonrpc":"2.0","id":2,"method":"test/request"}');
+  mResponse := Send('{"jsonrpc":"2.0","id":2,"method":"test/request"}');
   try
-    Assert.AreEqual(TLspErrorCode.cServerNotInitialized, Response.GetValue<Integer>('error.code'));
+    Assert.AreEqual(TLspErrorCode.cServerNotInitialized, mResponse.GetValue<Integer>('error.code'));
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
@@ -151,14 +151,14 @@ end;
 
 procedure TLspLifecycleTests.AcceptsRequestsAfterInitialize;
 var
-  Response: TJSONObject;
+  mResponse: TJSONObject;
 begin
   InitializeServer;
-  Response := Send('{"jsonrpc":"2.0","id":2,"method":"test/request"}');
+  mResponse := Send('{"jsonrpc":"2.0","id":2,"method":"test/request"}');
   try
-    Assert.IsTrue(Response.GetValue<Boolean>('result'));
+    Assert.IsTrue(mResponse.GetValue<Boolean>('result'));
   finally
-    Response.Free;
+    mResponse.Free;
   end;
   Send('{"jsonrpc":"2.0","method":"test/notification"}').Free;
   Assert.IsTrue(FNotificationReceived);
@@ -166,35 +166,35 @@ end;
 
 procedure TLspLifecycleTests.RejectsSecondInitialize;
 var
-  Response: TJSONObject;
+  mResponse: TJSONObject;
 begin
   InitializeServer;
-  Response := Send('{"jsonrpc":"2.0","id":2,"method":"initialize","params":{}}');
+  mResponse := Send('{"jsonrpc":"2.0","id":2,"method":"initialize","params":{}}');
   try
-    Assert.AreEqual(TJsonRpcErrorCode.cInvalidRequest, Response.GetValue<Integer>('error.code'));
+    Assert.AreEqual(TJsonRpcErrorCode.cInvalidRequest, mResponse.GetValue<Integer>('error.code'));
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
 procedure TLspLifecycleTests.ShutdownReturnsNullAndRejectsFurtherRequests;
 var
-  Response: TJSONObject;
+  mResponse: TJSONObject;
 begin
   InitializeServer;
-  Response := Send('{"jsonrpc":"2.0","id":2,"method":"shutdown"}');
+  mResponse := Send('{"jsonrpc":"2.0","id":2,"method":"shutdown"}');
   try
-    Assert.IsTrue(Response.GetValue('result') is TJSONNull);
+    Assert.IsTrue(mResponse.GetValue('result') is TJSONNull);
     Assert.AreEqual<TLspServerState>(TLspServerState.ShuttingDown, FLifecycle.State);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 
-  Response := Send('{"jsonrpc":"2.0","id":3,"method":"test/request"}');
+  mResponse := Send('{"jsonrpc":"2.0","id":3,"method":"test/request"}');
   try
-    Assert.AreEqual(TJsonRpcErrorCode.cInvalidRequest, Response.GetValue<Integer>('error.code'));
+    Assert.AreEqual(TJsonRpcErrorCode.cInvalidRequest, mResponse.GetValue<Integer>('error.code'));
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 

@@ -36,69 +36,69 @@ uses
 
 procedure TLspWatchedFilesTests.ParsesChanges;
 var
-  Params: TJSONValue;
-  Changes: TArray<TFileChange>;
+  mParams: TJSONValue;
+  mChanges: TArray<TFileChange>;
 begin
-  Params := TJSONObject.ParseJSONValue(
+  mParams := TJSONObject.ParseJSONValue(
     '{"changes":[{"uri":"file:///c%3A/P/A.pas","type":1},{"uri":"file:///c%3A/P/B.pas","type":2},' +
     '{"uri":"file:///c%3A/P/C.pas","type":3}]}');
   try
-    Changes := TLspWatchedFiles.ParseChanges(Params);
+    mChanges := TLspWatchedFiles.ParseChanges(mParams);
   finally
-    Params.Free;
+    mParams.Free;
   end;
-  Assert.AreEqual(3, Integer(Length(Changes)));
-  Assert.IsTrue(SameText('C:\P\A.pas', Changes[0].FileName), Changes[0].FileName);
-  Assert.AreEqual<TFileChangeKind>(TFileChangeKind.Created, Changes[0].Kind);
-  Assert.AreEqual<TFileChangeKind>(TFileChangeKind.Changed, Changes[1].Kind);
-  Assert.AreEqual<TFileChangeKind>(TFileChangeKind.Deleted, Changes[2].Kind);
+  Assert.AreEqual(3, Integer(Length(mChanges)));
+  Assert.IsTrue(SameText('C:\P\A.pas', mChanges[0].FileName), mChanges[0].FileName);
+  Assert.AreEqual<TFileChangeKind>(TFileChangeKind.Created, mChanges[0].Kind);
+  Assert.AreEqual<TFileChangeKind>(TFileChangeKind.Changed, mChanges[1].Kind);
+  Assert.AreEqual<TFileChangeKind>(TFileChangeKind.Deleted, mChanges[2].Kind);
 end;
 
 procedure TLspWatchedFilesTests.IgnoresInvalidEntries;
 var
-  Params: TJSONValue;
+  mParams: TJSONValue;
 begin
-  Params := TJSONObject.ParseJSONValue(
+  mParams := TJSONObject.ParseJSONValue(
     '{"changes":[{"uri":"file:///c%3A/P/A.pas","type":9},{"type":1},{"uri":"untitled:1","type":1}]}');
   try
-    Assert.AreEqual(0, Integer(Length(TLspWatchedFiles.ParseChanges(Params))));
+    Assert.AreEqual(0, Integer(Length(TLspWatchedFiles.ParseChanges(mParams))));
   finally
-    Params.Free;
+    mParams.Free;
   end;
   Assert.AreEqual(0, Integer(Length(TLspWatchedFiles.ParseChanges(nil))));
 end;
 
 procedure TLspWatchedFilesTests.DetectsDynamicRegistration;
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
-  Params := TJSONObject.ParseJSONValue(
+  mParams := TJSONObject.ParseJSONValue(
     '{"capabilities":{"workspace":{"didChangeWatchedFiles":{"dynamicRegistration":true}}}}') as TJSONObject;
   try
-    Assert.IsTrue(TLspWatchedFiles.SupportsDynamicRegistration(Params));
+    Assert.IsTrue(TLspWatchedFiles.SupportsDynamicRegistration(mParams));
   finally
-    Params.Free;
+    mParams.Free;
   end;
-  Params := TJSONObject.ParseJSONValue('{"capabilities":{}}') as TJSONObject;
+  mParams := TJSONObject.ParseJSONValue('{"capabilities":{}}') as TJSONObject;
   try
-    Assert.IsFalse(TLspWatchedFiles.SupportsDynamicRegistration(Params));
+    Assert.IsFalse(TLspWatchedFiles.SupportsDynamicRegistration(mParams));
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 
 procedure TLspWatchedFilesTests.BuildsRegistration;
 var
-  Request: TJSONObject;
+  mRequest: TJSONObject;
 begin
-  Request := TLspWatchedFiles.BuildRegistration;
+  mRequest := TLspWatchedFiles.BuildRegistration;
   try
-    Assert.AreEqual('client/registerCapability', Request.GetValue<string>('method'));
-    Assert.AreEqual('workspace/didChangeWatchedFiles', Request.GetValue<string>('params.registrations[0].method'));
+    Assert.AreEqual('client/registerCapability', mRequest.GetValue<string>('method'));
+    Assert.AreEqual('workspace/didChangeWatchedFiles', mRequest.GetValue<string>('params.registrations[0].method'));
     Assert.AreEqual(TLspWatchedFiles.cGlobPattern,
-      Request.GetValue<string>('params.registrations[0].registerOptions.watchers[0].globPattern'));
+      mRequest.GetValue<string>('params.registrations[0].registerOptions.watchers[0].globPattern'));
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
@@ -112,21 +112,21 @@ end;
 
 procedure TLspWatchedFilesTests.BuildsNotificationForOwnWatcher;
 var
-  Message: TJSONObject;
-  Changes: TArray<TFileChange>;
+  mMessage: TJSONObject;
+  mChanges: TArray<TFileChange>;
 begin
   // Eigener Beobachter des Servers (#227): dieselbe Notification wie vom Client.
-  Message := TLspWatchedFiles.Notification(['c:\Projekt\atlas.json', 'c:\Benutzer\settings.json']);
+  mMessage := TLspWatchedFiles.Notification(['c:\Projekt\atlas.json', 'c:\Benutzer\settings.json']);
   try
-    Assert.AreEqual(TLspWatchedFiles.cMethod, Message.GetValue<string>('method'));
-    Assert.IsNull(Message.GetValue('id'));
-    Changes := TLspWatchedFiles.ParseChanges(Message.GetValue('params'));
+    Assert.AreEqual(TLspWatchedFiles.cMethod, mMessage.GetValue<string>('method'));
+    Assert.IsNull(mMessage.GetValue('id'));
+    mChanges := TLspWatchedFiles.ParseChanges(mMessage.GetValue('params'));
   finally
-    Message.Free;
+    mMessage.Free;
   end;
-  Assert.AreEqual(2, Integer(Length(Changes)));
-  Assert.IsTrue(SameText('c:\Projekt\atlas.json', Changes[0].FileName), Changes[0].FileName);
-  Assert.AreEqual<TFileChangeKind>(TFileChangeKind.Changed, Changes[1].Kind);
+  Assert.AreEqual(2, Integer(Length(mChanges)));
+  Assert.IsTrue(SameText('c:\Projekt\atlas.json', mChanges[0].FileName), mChanges[0].FileName);
+  Assert.AreEqual<TFileChangeKind>(TFileChangeKind.Changed, mChanges[1].Kind);
 end;
 
 initialization

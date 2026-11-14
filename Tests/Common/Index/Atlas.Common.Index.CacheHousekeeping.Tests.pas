@@ -116,13 +116,18 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Index.Adapters.DiskFileSystem;
 
-function Info(const AName: string; ASize: Int64; AAgeDays: Integer; ALocked: Boolean = False): TCacheFileInfo;
+function Info(const AName: string; ASize: Int64; AAgeDays: Integer; ALocked: Boolean): TCacheFileInfo; overload;
 begin
   Result.FileName := AName;
   Result.Size := ASize;
   Result.LastWrite := EncodeDate(2026, 1, 1) - AAgeDays;
   Result.Locked := ALocked;
   Result.Origins := nil;
+end;
+
+function Info(const AName: string; ASize: Int64; AAgeDays: Integer): TCacheFileInfo; overload;
+begin
+  Result := Info(AName, ASize, AAgeDays, False);
 end;
 
 function WithOrigins(const AInfo: TCacheFileInfo; const AOrigins: TArray<string>): TCacheFileInfo;
@@ -168,15 +173,15 @@ end;
 /// <summary>Zwei Schreiber ersetzen AFile gleichzeitig ARounds-mal ('a…' gegen 'b…').</summary>
 procedure WriteConcurrently(const AFile: string; ARounds: Integer);
 var
-  Writers: array[0..1] of TThread;
-  Index: Integer;
+  mWriters: array[0..1] of TThread;
+  mIndex: Integer;
 begin
-  Writers[0] := StartWriter(AFile, StringOfChar('a', 100000), ARounds);
-  Writers[1] := StartWriter(AFile, StringOfChar('b', 100000), ARounds);
-  for Index := 0 to High(Writers) do
+  mWriters[0] := StartWriter(AFile, StringOfChar('a', 100000), ARounds);
+  mWriters[1] := StartWriter(AFile, StringOfChar('b', 100000), ARounds);
+  for mIndex := 0 to High(mWriters) do
   begin
-    Writers[Index].WaitFor;
-    Writers[Index].Free;
+    mWriters[mIndex].WaitFor;
+    mWriters[mIndex].Free;
   end;
 end;
 
@@ -190,54 +195,54 @@ end;
 
 procedure TIndexCacheHousekeepingTests.RemovesOldestFirstUntilBelowLimit;
 var
-  Removed: TArray<string>;
+  mRemoved: TArray<string>;
 begin
-  Removed := TIndexCacheHousekeeping.SelectForRemoval(
+  mRemoved := TIndexCacheHousekeeping.SelectForRemoval(
     [Info('neu', 10, 1), Info('alt', 10, 9), Info('mittel', 10, 5)], 15, '');
-  Assert.AreEqual<NativeInt>(2, Length(Removed));
-  Assert.AreEqual('alt', Removed[0]);
-  Assert.AreEqual('mittel', Removed[1]);
+  Assert.AreEqual<NativeInt>(2, Length(mRemoved));
+  Assert.AreEqual('alt', mRemoved[0]);
+  Assert.AreEqual('mittel', mRemoved[1]);
 end;
 
 procedure TIndexCacheHousekeepingTests.NeverRemovesOwnCache;
 var
-  Removed: TArray<string>;
+  mRemoved: TArray<string>;
 begin
-  Removed := TIndexCacheHousekeeping.SelectForRemoval([Info('Eigen', 10, 9), Info('b', 10, 1)], 10, 'eigen');
-  Assert.AreEqual<NativeInt>(1, Length(Removed));
-  Assert.AreEqual('b', Removed[0]);
+  mRemoved := TIndexCacheHousekeeping.SelectForRemoval([Info('Eigen', 10, 9), Info('b', 10, 1)], 10, 'eigen');
+  Assert.AreEqual<NativeInt>(1, Length(mRemoved));
+  Assert.AreEqual('b', mRemoved[0]);
 end;
 
 procedure TIndexCacheHousekeepingTests.NeverRemovesLockedCache;
 var
-  Removed: TArray<string>;
+  mRemoved: TArray<string>;
 begin
-  Removed := TIndexCacheHousekeeping.SelectForRemoval([Info('a', 10, 9, True), Info('b', 10, 1, True)], 0, '');
-  Assert.AreEqual<NativeInt>(0, Length(Removed));
+  mRemoved := TIndexCacheHousekeeping.SelectForRemoval([Info('a', 10, 9, True), Info('b', 10, 1, True)], 0, '');
+  Assert.AreEqual<NativeInt>(0, Length(mRemoved));
 end;
 
 procedure TIndexCacheHousekeepingTests.KeepsProjectAndLibraryCache;
 var
-  Removed: TArray<string>;
+  mRemoved: TArray<string>;
 begin
   // Der gemeinsame Bibliotheks-Cache ist nicht gesperrt und älter als der Projekt-Cache; er wurde sonst bei
   // jedem Start gelöscht (#616).
-  Removed := TIndexCacheHousekeeping.SelectForRemoval([Info('bibliothek', 300, 1), Info('projekt', 10, 9),
+  mRemoved := TIndexCacheHousekeeping.SelectForRemoval([Info('bibliothek', 300, 1), Info('projekt', 10, 9),
     Info('fremd', 10, 5)], 100, TArray<string>.Create('Projekt', 'Bibliothek'));
-  Assert.AreEqual<NativeInt>(1, Length(Removed));
-  Assert.AreEqual('fremd', Removed[0]);
+  Assert.AreEqual<NativeInt>(1, Length(mRemoved));
+  Assert.AreEqual('fremd', mRemoved[0]);
 end;
 
 procedure TIndexCacheHousekeepingTests.OrphanWhenNoOriginExists;
 var
-  Removed: TArray<string>;
+  mRemoved: TArray<string>;
 begin
   // Ein Cache lebt, solange irgendeine seiner Herkunftsdateien existiert.
-  Removed := TIndexCacheHousekeeping.SelectOrphans([WithOrigins(Info('weg', 10, 1), ['fehlt.dproj']),
+  mRemoved := TIndexCacheHousekeeping.SelectOrphans([WithOrigins(Info('weg', 10, 1), ['fehlt.dproj']),
     WithOrigins(Info('teils', 10, 1), ['fehlt.pas', 'da.pas']), WithOrigins(Info('ganz', 10, 1), ['da.dproj'])],
     nil, ExistsWhenNamedDa());
-  Assert.AreEqual<NativeInt>(1, Length(Removed));
-  Assert.AreEqual('weg', Removed[0]);
+  Assert.AreEqual<NativeInt>(1, Length(mRemoved));
+  Assert.AreEqual('weg', mRemoved[0]);
 end;
 
 procedure TIndexCacheHousekeepingTests.OrphanNeedsKnownOrigin;
@@ -256,14 +261,14 @@ end;
 
 procedure TIndexCacheHousekeepingTests.UnusedOlderThanMaxAge;
 var
-  Removed: TArray<string>;
+  mRemoved: TArray<string>;
 begin
   // Info: LastWrite = 1.1.2026 minus Alter in Tagen.
-  Removed := TIndexCacheHousekeeping.SelectUnused([Info('alt', 10, 20), Info('neu', 10, 3),
+  mRemoved := TIndexCacheHousekeeping.SelectUnused([Info('alt', 10, 20), Info('neu', 10, 3),
     Info('alt-gesperrt', 10, 30, True), Info('alt-eigen', 10, 30)], TArray<string>.Create('alt-eigen'),
     EncodeDate(2026, 1, 1), 14);
-  Assert.AreEqual<NativeInt>(1, Length(Removed));
-  Assert.AreEqual('alt', Removed[0]);
+  Assert.AreEqual<NativeInt>(1, Length(mRemoved));
+  Assert.AreEqual('alt', mRemoved[0]);
 end;
 
 procedure TIndexCacheHousekeepingTests.UnusedOffWithZeroDays;
@@ -336,39 +341,39 @@ end;
 
 procedure WarmUpFailures(const ARoot: string);
 var
-  Target: string;
-  Lock, BackupLock: TFileStream;
-  Disk: IIndexFileSystem;
-  CacheLock: TStream;
+  mTarget: string;
+  mLock, mBackupLock: TFileStream;
+  mDisk: IIndexFileSystem;
+  mCacheLock: TStream;
 begin
-  Disk := TDiskIndexFileSystem.Create;
-  Target := TPath.Combine(ARoot, 'index-00000001.json');
-  Disk.WriteText(Target, 'x');
+  mDisk := TDiskIndexFileSystem.Create;
+  mTarget := TPath.Combine(ARoot, 'index-00000001.json');
+  mDisk.WriteText(mTarget, 'x');
   // Die RTL legt bei der ersten gescheiterten Sperre (EFCreateError) Daten an, die bis Programmende bleiben:
   // hier statt [IgnoreMemoryLeaks] an SecondLockFails.
-  CacheLock := TIndexCacheDirectory.TryLock(Target);
+  mCacheLock := TIndexCacheDirectory.TryLock(mTarget);
   try
-    TIndexCacheDirectory.TryLock(Target).Free;
+    TIndexCacheDirectory.TryLock(mTarget).Free;
   finally
-    CacheLock.Free;
+    mCacheLock.Free;
   end;
-  Lock := TFileStream.Create(Target, fmOpenRead or fmShareExclusive);
+  mLock := TFileStream.Create(mTarget, fmOpenRead or fmShareExclusive);
   try
-    Disk.WriteText(Target, 'y');
+    mDisk.WriteText(mTarget, 'y');
   finally
-    Lock.Free;
+    mLock.Free;
   end;
-  Disk.WriteText(Target, 'z');
-  BackupLock := TFileStream.Create(Format('%s.%d.bak', [Target, TThread.CurrentThread.ThreadID]), fmCreate or
+  mDisk.WriteText(mTarget, 'z');
+  mBackupLock := TFileStream.Create(Format('%s.%d.bak', [mTarget, TThread.CurrentThread.ThreadID]), fmCreate or
     fmShareExclusive);
   try
-    Disk.WriteText(Target, 'w');
+    mDisk.WriteText(mTarget, 'w');
   finally
-    BackupLock.Free;
+    mBackupLock.Free;
   end;
-  WarmUpReplaceFailures(ARoot, Target);
+  WarmUpReplaceFailures(ARoot, mTarget);
   // Dasselbe in einem anderen Thread: Thread-lokale Daten der RTL legt jeder Thread selbst an.
-  WarmUpLockInOtherThread(Disk, Target);
+  WarmUpLockInOtherThread(mDisk, mTarget);
 end;
 
 procedure TIndexCacheDirectoryTests.WarmUpFirstUse;
@@ -412,44 +417,44 @@ end;
 
 procedure TIndexCacheDirectoryTests.DiskFileSystemOverwritesExistingFile;
 var
-  FileSystem: TDiskIndexFileSystem;
-  Cache, Text: string;
+  mFileSystem: TDiskIndexFileSystem;
+  mCache, mText: string;
 begin
   // Der zweite Start schreibt über einen vorhandenen Cache (TFile.Replace); das scheiterte
   // an der leeren Sicherungsdatei ("Pfad ist leer").
-  Cache := CreateCache('index-00000002.json');
-  FileSystem := TDiskIndexFileSystem.Create;
+  mCache := CreateCache('index-00000002.json');
+  mFileSystem := TDiskIndexFileSystem.Create;
   try
-    Assert.IsTrue(FileSystem.WriteText(Cache, '{"version":2}'));
-    Assert.IsTrue(FileSystem.ReadText(Cache, Text));
-    Assert.AreEqual('{"version":2}', Text);
+    Assert.IsTrue(mFileSystem.WriteText(mCache, '{"version":2}'));
+    Assert.IsTrue(mFileSystem.ReadText(mCache, mText));
+    Assert.AreEqual('{"version":2}', mText);
     Assert.AreEqual(1, Integer(Length(TDirectory.GetFiles(FRoot))), 'keine .tmp- oder .bak-Reste');
   finally
-    FileSystem.Free;
+    mFileSystem.Free;
   end;
 end;
 
 procedure TIndexCacheDirectoryTests.DiskFileSystemRoundTripsBytes;
 var
-  FileSystem: TDiskIndexFileSystem;
-  Cache, Error: string;
-  Data: TBytes;
+  mFileSystem: TDiskIndexFileSystem;
+  mCache, mError: string;
+  mData: TBytes;
 begin
   // Binärer Cache (#617): Bytes kommen unverändert zurück, auch Nullbytes; fehlende Datei = False.
-  Cache := CreateCache('index-00000003.json');
-  FileSystem := TDiskIndexFileSystem.Create;
+  mCache := CreateCache('index-00000003.json');
+  mFileSystem := TDiskIndexFileSystem.Create;
   try
-    Assert.IsTrue(FileSystem.WriteBytes(Cache, TBytes.Create(0, 1, 255, 0, 13, 10), Error));
-    Assert.AreEqual('', Error);
-    Assert.IsTrue(FileSystem.ReadBytes(Cache, Data));
-    Assert.AreEqual<NativeInt>(6, Length(Data));
-    Assert.AreEqual<Byte>(255, Data[2]);
-    Assert.AreEqual<Byte>(0, Data[3]);
-    Assert.IsFalse(FileSystem.ReadBytes(TPath.Combine(FRoot, 'fehlt.json'), Data));
-    Assert.AreEqual<NativeInt>(0, Length(Data));
+    Assert.IsTrue(mFileSystem.WriteBytes(mCache, TBytes.Create(0, 1, 255, 0, 13, 10), mError));
+    Assert.AreEqual('', mError);
+    Assert.IsTrue(mFileSystem.ReadBytes(mCache, mData));
+    Assert.AreEqual<NativeInt>(6, Length(mData));
+    Assert.AreEqual<Byte>(255, mData[2]);
+    Assert.AreEqual<Byte>(0, mData[3]);
+    Assert.IsFalse(mFileSystem.ReadBytes(TPath.Combine(FRoot, 'fehlt.json'), mData));
+    Assert.AreEqual<NativeInt>(0, Length(mData));
     Assert.AreEqual(1, Integer(Length(TDirectory.GetFiles(FRoot))), 'keine .tmp- oder .bak-Reste');
   finally
-    FileSystem.Free;
+    mFileSystem.Free;
   end;
 end;
 
@@ -461,30 +466,30 @@ end;
 
 function TIndexCacheDirectoryTests.CreateFile(const AFileName: string; ASize: Integer): string;
 var
-  Data: TBytes;
+  mData: TBytes;
 begin
   Result := AFileName;
   ForceDirectories(ExtractFileDir(Result));
-  SetLength(Data, ASize);
-  TFile.WriteAllBytes(Result, Data);
+  SetLength(mData, ASize);
+  TFile.WriteAllBytes(Result, mData);
 end;
 
 procedure TIndexCacheDirectoryTests.SecondLockFails;
 var
-  First, Second: TStream;
-  Cache: string;
+  mFirst, mSecond: TStream;
+  mCache: string;
 begin
-  Cache := CreateCache('index-00000001.json');
-  First := TIndexCacheDirectory.TryLock(Cache);
+  mCache := CreateCache('index-00000001.json');
+  mFirst := TIndexCacheDirectory.TryLock(mCache);
   try
-    Assert.IsNotNull(First);
-    Second := TIndexCacheDirectory.TryLock(Cache);
-    Assert.IsNull(Second);
-    Assert.IsTrue(TIndexCacheDirectory.IsLocked(Cache));
+    Assert.IsNotNull(mFirst);
+    mSecond := TIndexCacheDirectory.TryLock(mCache);
+    Assert.IsNull(mSecond);
+    Assert.IsTrue(TIndexCacheDirectory.IsLocked(mCache));
   finally
-    First.Free;
+    mFirst.Free;
   end;
-  Assert.IsFalse(TIndexCacheDirectory.IsLocked(Cache));
+  Assert.IsFalse(TIndexCacheDirectory.IsLocked(mCache));
 end;
 
 procedure TIndexCacheDirectoryTests.OwnLockKnownInProcess;
@@ -516,30 +521,30 @@ end;
 
 procedure TIndexCacheDirectoryTests.ClearSkipsLockedCaches;
 var
-  Lock: TStream;
-  Locked: string;
+  mLock: TStream;
+  mLocked: string;
 begin
   CreateCache('index-00000001.json');
-  Locked := CreateCache('index-00000002.json');
+  mLocked := CreateCache('index-00000002.json');
   CreateCache('anderes.json');
-  Lock := TIndexCacheDirectory.TryLock(Locked);
+  mLock := TIndexCacheDirectory.TryLock(mLocked);
   try
     Assert.AreEqual(1, TIndexCacheDirectory.Clear(FRoot));
-    Assert.IsTrue(FileExists(Locked));
+    Assert.IsTrue(FileExists(mLocked));
     Assert.IsTrue(FileExists(TPath.Combine(FRoot, 'anderes.json')));
   finally
-    Lock.Free;
+    mLock.Free;
   end;
 end;
 
 procedure TIndexCacheDirectoryTests.CleanupKeepsOwnCache;
 var
-  Own: string;
+  mOwn: string;
 begin
-  Own := CreateCache('index-00000001.json');
+  mOwn := CreateCache('index-00000001.json');
   CreateCache('index-00000002.json');
-  Assert.AreEqual(1, TIndexCacheDirectory.Cleanup(FRoot, 0, Own));
-  Assert.IsTrue(FileExists(Own));
+  Assert.AreEqual(1, TIndexCacheDirectory.Cleanup(FRoot, 0, mOwn));
+  Assert.IsTrue(FileExists(mOwn));
 end;
 
 procedure TIndexCacheDirectoryTests.FileNameDependsOnlyOnSignature;
@@ -554,13 +559,13 @@ end;
 
 procedure TIndexCacheDirectoryTests.ProjectAndLibraryLiveUnderIdeVersion;
 var
-  Version: string;
+  mVersion: string;
 begin
   // Je IDE-Version ein Ordner, darin je Projekt einer; die Bibliothek getrennt (#492).
-  Version := TPath.Combine(TPath.Combine(FRoot, 'Index'), '37.0');
-  Assert.AreEqual(TPath.Combine(TPath.Combine(Version, TIndexCacheDirectory.KeyHash('Projekt')),
+  mVersion := TPath.Combine(TPath.Combine(FRoot, 'Index'), '37.0');
+  Assert.AreEqual(TPath.Combine(TPath.Combine(mVersion, TIndexCacheDirectory.KeyHash('Projekt')),
     TIndexCacheDirectory.CacheFileName), TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'));
-  Assert.AreEqual(TPath.Combine(TPath.Combine(TPath.Combine(Version, 'Bibliothek'),
+  Assert.AreEqual(TPath.Combine(TPath.Combine(TPath.Combine(mVersion, 'Bibliothek'),
     TIndexCacheDirectory.KeyHash('Win64')), TIndexCacheDirectory.CacheFileName),
     TIndexCacheDirectory.LibraryFileFor(FRoot, '37.0', 'Win64'));
   Assert.AreNotEqual(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'),
@@ -571,19 +576,19 @@ end;
 
 procedure TIndexCacheDirectoryTests.ClearRemovesNewLayoutAndEmptyFolders;
 var
-  Project, Library_, Legacy: string;
+  mProject, mLibrary_, mLegacy: string;
 begin
-  Project := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'), 100);
-  Library_ := CreateFile(TIndexCacheDirectory.LibraryFileFor(FRoot, '37.0', 'Win64'), 200);
-  Legacy := CreateCache('index-00000001.json');
+  mProject := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'), 100);
+  mLibrary_ := CreateFile(TIndexCacheDirectory.LibraryFileFor(FRoot, '37.0', 'Win64'), 200);
+  mLegacy := CreateCache('index-00000001.json');
   CreateCache('anderes.json');
   Assert.AreEqual<Int64>(300 + 2, TIndexCacheDirectory.TotalSize(FRoot));
   Assert.AreEqual(3, TIndexCacheDirectory.Clear(FRoot));
-  Assert.IsFalse(FileExists(Project));
-  Assert.IsFalse(FileExists(Library_));
-  Assert.IsFalse(FileExists(Legacy));
+  Assert.IsFalse(FileExists(mProject));
+  Assert.IsFalse(FileExists(mLibrary_));
+  Assert.IsFalse(FileExists(mLegacy));
   // Leere Projektordner gehen mit, fremde Dateien bleiben.
-  Assert.IsFalse(TDirectory.Exists(ExtractFileDir(Project)));
+  Assert.IsFalse(TDirectory.Exists(ExtractFileDir(mProject)));
   Assert.IsTrue(FileExists(TPath.Combine(FRoot, 'anderes.json')));
   Assert.AreEqual<Int64>(0, TIndexCacheDirectory.TotalSize(FRoot));
 end;
@@ -601,200 +606,200 @@ end;
 
 procedure TIndexCacheDirectoryTests.RemoveKeepsOriginOfOtherFormat;
 var
-  Current, Older, Folder: string;
+  mCurrent, mOlder, mFolder: string;
 begin
   // Ein Cache älteren Formats im selben Projektordner behält Herkunft und Benutzungsmarke.
-  Current := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'), 10);
-  Folder := ExtractFileDir(Current);
-  Older := CreateFile(TPath.Combine(Folder, 'index.atlasidx'), 10);
-  TIndexCacheDirectory.WriteOrigin(Current, 'C:\Projekte\App.dproj');
-  TIndexCacheDirectory.TouchUse(Current);
-  Assert.AreEqual(1, TIndexCacheDirectory.Remove([Current]));
-  Assert.IsTrue(FileExists(TPath.Combine(Folder, TIndexCacheDirectory.cOriginFileName)));
-  Assert.IsTrue(FileExists(TPath.Combine(Folder, TIndexCacheDirectory.cUseMarkerFileName)));
-  Assert.AreEqual(1, TIndexCacheDirectory.Remove([Older]));
-  Assert.IsFalse(TDirectory.Exists(Folder));
+  mCurrent := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'), 10);
+  mFolder := ExtractFileDir(mCurrent);
+  mOlder := CreateFile(TPath.Combine(mFolder, 'index.atlasidx'), 10);
+  TIndexCacheDirectory.WriteOrigin(mCurrent, 'C:\Projekte\App.dproj');
+  TIndexCacheDirectory.TouchUse(mCurrent);
+  Assert.AreEqual(1, TIndexCacheDirectory.Remove([mCurrent]));
+  Assert.IsTrue(FileExists(TPath.Combine(mFolder, TIndexCacheDirectory.cOriginFileName)));
+  Assert.IsTrue(FileExists(TPath.Combine(mFolder, TIndexCacheDirectory.cUseMarkerFileName)));
+  Assert.AreEqual(1, TIndexCacheDirectory.Remove([mOlder]));
+  Assert.IsFalse(TDirectory.Exists(mFolder));
 end;
 
 procedure TIndexCacheDirectoryTests.RemoveAndSizeOfNamedCaches;
 var
-  First, Second: string;
-  Lock: TStream;
+  mFirst, mSecond: string;
+  mLock: TStream;
 begin
-  First := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Eins'), 10);
-  Second := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Zwei'), 20);
-  Assert.AreEqual<Int64>(30, TIndexCacheDirectory.SizeOf([First, Second, '', First + '.fehlt']));
-  Lock := TIndexCacheDirectory.TryLock(Second);
+  mFirst := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Eins'), 10);
+  mSecond := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Zwei'), 20);
+  Assert.AreEqual<Int64>(30, TIndexCacheDirectory.SizeOf([mFirst, mSecond, '', mFirst + '.fehlt']));
+  mLock := TIndexCacheDirectory.TryLock(mSecond);
   try
     // Die gesperrte Datei hält eine andere Instanz: bleibt.
-    Assert.AreEqual(1, TIndexCacheDirectory.Remove([First, Second, '']));
+    Assert.AreEqual(1, TIndexCacheDirectory.Remove([mFirst, mSecond, '']));
   finally
-    Lock.Free;
+    mLock.Free;
   end;
-  Assert.IsFalse(FileExists(First));
-  Assert.IsTrue(FileExists(Second));
+  Assert.IsFalse(FileExists(mFirst));
+  Assert.IsTrue(FileExists(mSecond));
 end;
 
 procedure TIndexCacheDirectoryTests.ConcurrentWritersLeaveReadableCache;
 var
-  Cache: string;
-  Text: string;
-  FileSystem: IIndexFileSystem;
+  mCache: string;
+  mText: string;
+  mFileSystem: IIndexFileSystem;
 begin
   // Zwei Schreiber, die gleichzeitig ersetzen (#62): Am Ende steht einer der beiden
   // Stände vollständig in der Datei, nie ein halber.
-  Cache := TPath.Combine(FRoot, 'index-00000003.json');
-  WriteConcurrently(Cache, 50);
-  FileSystem := TDiskIndexFileSystem.Create;
-  Assert.IsTrue(FileSystem.ReadText(Cache, Text));
-  Assert.IsTrue((Text = StringOfChar('a', 100000)) or (Text = StringOfChar('b', 100000)));
+  mCache := TPath.Combine(FRoot, 'index-00000003.json');
+  WriteConcurrently(mCache, 50);
+  mFileSystem := TDiskIndexFileSystem.Create;
+  Assert.IsTrue(mFileSystem.ReadText(mCache, mText));
+  Assert.IsTrue((mText = StringOfChar('a', 100000)) or (mText = StringOfChar('b', 100000)));
   // Keine temporären Dateien zurückgelassen.
   Assert.AreEqual<NativeInt>(1, Length(TDirectory.GetFiles(FRoot)));
 end;
 
 procedure TIndexCacheDirectoryTests.DiskWriteLockIsExclusive;
 var
-  Cache: string;
-  FileSystem: IIndexFileSystem;
-  First, Second: IInterface;
+  mCache: string;
+  mFileSystem: IIndexFileSystem;
+  mFirst, mSecond: IInterface;
 begin
-  Cache := CreateCache('index-00000005.json');
-  FileSystem := TDiskIndexFileSystem.Create;
-  First := FileSystem.TryLockWrite(Cache);
-  Assert.IsNotNull(First);
-  Second := FileSystem.TryLockWrite(Cache);
-  Assert.IsNull(Second, 'nur ein Schreiber');
-  Assert.IsTrue(TIndexCacheDirectory.IsLocked(Cache));
-  First := nil;
-  Assert.IsFalse(TIndexCacheDirectory.IsLocked(Cache));
-  Second := FileSystem.TryLockWrite(Cache);
-  Assert.IsNotNull(Second, 'nach dem Freigeben wieder frei');
-  Second := nil;
+  mCache := CreateCache('index-00000005.json');
+  mFileSystem := TDiskIndexFileSystem.Create;
+  mFirst := mFileSystem.TryLockWrite(mCache);
+  Assert.IsNotNull(mFirst);
+  mSecond := mFileSystem.TryLockWrite(mCache);
+  Assert.IsNull(mSecond, 'nur ein Schreiber');
+  Assert.IsTrue(TIndexCacheDirectory.IsLocked(mCache));
+  mFirst := nil;
+  Assert.IsFalse(TIndexCacheDirectory.IsLocked(mCache));
+  mSecond := mFileSystem.TryLockWrite(mCache);
+  Assert.IsNotNull(mSecond, 'nach dem Freigeben wieder frei');
+  mSecond := nil;
 end;
 
 procedure TIndexCacheDirectoryTests.FailedReplaceLeavesNoRemains;
 var
-  Cache, Text, Error: string;
-  Lock: TFileStream;
-  FileSystem: IIndexFileSystem;
+  mCache, mText, mError: string;
+  mLock: TFileStream;
+  mFileSystem: IIndexFileSystem;
 begin
   // Der Fehlerpfad aus ConcurrentWritersLeaveReadableCache, aber deterministisch: Ist das Ziel
   // gesperrt, scheitert ReplaceFile, ohne dass TFile.Replace eine Ausnahme wirft. Früher meldete
   // WriteText dann Erfolg und ließ die temporäre Datei liegen.
-  Cache := CreateCache('index-00000004.json');
-  FileSystem := TDiskIndexFileSystem.Create;
-  Lock := TFileStream.Create(Cache, fmOpenRead or fmShareExclusive);
+  mCache := CreateCache('index-00000004.json');
+  mFileSystem := TDiskIndexFileSystem.Create;
+  mLock := TFileStream.Create(mCache, fmOpenRead or fmShareExclusive);
   try
-    Assert.IsFalse(FileSystem.WriteText(Cache, '{"version":2}'));
+    Assert.IsFalse(mFileSystem.WriteText(mCache, '{"version":2}'));
     // Der Grund kommt mit, ohne Pfad (anonymes Log).
-    Assert.IsFalse(FileSystem.WriteBytes(Cache, TEncoding.UTF8.GetBytes('{"version":2}'), Error));
-    Assert.AreNotEqual('', Error);
-    Assert.IsFalse(Error.Contains(FRoot), Error);
+    Assert.IsFalse(mFileSystem.WriteBytes(mCache, TEncoding.UTF8.GetBytes('{"version":2}'), mError));
+    Assert.AreNotEqual('', mError);
+    Assert.IsFalse(mError.Contains(FRoot), mError);
   finally
-    Lock.Free;
+    mLock.Free;
   end;
-  Assert.IsTrue(FileSystem.ReadText(Cache, Text));
-  Assert.AreEqual('{}', Text, 'alter Stand vollständig erhalten');
+  Assert.IsTrue(mFileSystem.ReadText(mCache, mText));
+  Assert.AreEqual('{}', mText, 'alter Stand vollständig erhalten');
   Assert.AreEqual<NativeInt>(1, Length(TDirectory.GetFiles(FRoot)), 'keine .tmp- oder .bak-Reste');
 end;
 
 procedure TIndexCacheDirectoryTests.RemoveOrphansDeletesCacheOfDeletedProject;
 var
-  Alive, Gone, AliveProject, GoneProject: string;
+  mAlive, mGone, mAliveProject, mGoneProject: string;
 begin
-  AliveProject := CreateFile(TPath.Combine(TPath.Combine(FRoot, 'main'), 'App.dproj'), 1);
-  GoneProject := CreateFile(TPath.Combine(TPath.Combine(FRoot, 'feature'), 'App.dproj'), 1);
-  Alive := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', AliveProject), 10);
-  Gone := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', GoneProject), 10);
-  TIndexCacheDirectory.WriteOrigin(Alive, AliveProject);
-  TIndexCacheDirectory.WriteOrigin(Gone, GoneProject);
-  Assert.AreEqual(GoneProject, TIndexCacheDirectory.ReadOrigin(Gone));
+  mAliveProject := CreateFile(TPath.Combine(TPath.Combine(FRoot, 'main'), 'App.dproj'), 1);
+  mGoneProject := CreateFile(TPath.Combine(TPath.Combine(FRoot, 'feature'), 'App.dproj'), 1);
+  mAlive := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', mAliveProject), 10);
+  mGone := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', mGoneProject), 10);
+  TIndexCacheDirectory.WriteOrigin(mAlive, mAliveProject);
+  TIndexCacheDirectory.WriteOrigin(mGone, mGoneProject);
+  Assert.AreEqual(mGoneProject, TIndexCacheDirectory.ReadOrigin(mGone));
   // Der Branch-Ordner wird gelöscht.
-  TDirectory.Delete(ExtractFileDir(GoneProject), True);
+  TDirectory.Delete(ExtractFileDir(mGoneProject), True);
   Assert.AreEqual(1, TIndexCacheDirectory.RemoveOrphans(FRoot, nil));
-  Assert.IsTrue(FileExists(Alive));
-  Assert.IsFalse(FileExists(Gone));
+  Assert.IsTrue(FileExists(mAlive));
+  Assert.IsFalse(FileExists(mGone));
   // Samt projekt.txt und leerem Ordner.
-  Assert.IsFalse(TDirectory.Exists(ExtractFileDir(Gone)));
+  Assert.IsFalse(TDirectory.Exists(ExtractFileDir(mGone)));
   Assert.AreEqual(0, TIndexCacheDirectory.RemoveOrphans(FRoot, nil));
 end;
 
 procedure TIndexCacheDirectoryTests.RemoveOrphansKeepsOwnLockedAndLibrary;
 var
-  Own, Locked, Library_, Missing: string;
-  Lock: TStream;
+  mOwn, mLocked, mLibrary_, mMissing: string;
+  mLock: TStream;
 begin
-  Missing := TPath.Combine(FRoot, 'fehlt.dproj');
-  Own := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Eigen'), 10);
-  Locked := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Gesperrt'), 10);
-  Library_ := CreateFile(TIndexCacheDirectory.LibraryFileFor(FRoot, '37.0', 'Win64'), 10);
-  TIndexCacheDirectory.WriteOrigin(Own, Missing);
-  TIndexCacheDirectory.WriteOrigin(Locked, Missing);
-  Lock := TIndexCacheDirectory.TryLock(Locked);
+  mMissing := TPath.Combine(FRoot, 'fehlt.dproj');
+  mOwn := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Eigen'), 10);
+  mLocked := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Gesperrt'), 10);
+  mLibrary_ := CreateFile(TIndexCacheDirectory.LibraryFileFor(FRoot, '37.0', 'Win64'), 10);
+  TIndexCacheDirectory.WriteOrigin(mOwn, mMissing);
+  TIndexCacheDirectory.WriteOrigin(mLocked, mMissing);
+  mLock := TIndexCacheDirectory.TryLock(mLocked);
   try
-    Assert.AreEqual(0, TIndexCacheDirectory.RemoveOrphans(FRoot, TArray<string>.Create(Own)));
+    Assert.AreEqual(0, TIndexCacheDirectory.RemoveOrphans(FRoot, TArray<string>.Create(mOwn)));
   finally
-    Lock.Free;
+    mLock.Free;
   end;
-  Assert.IsTrue(FileExists(Own) and FileExists(Locked) and FileExists(Library_));
+  Assert.IsTrue(FileExists(mOwn) and FileExists(mLocked) and FileExists(mLibrary_));
 end;
 
 procedure TIndexCacheDirectoryTests.RemoveOrphansReadsUnitsOfOldCaches;
 var
-  Alive, Gone, AliveUnit: string;
-  UnitIndex: TUnitIndex;
+  mAlive, mGone, mAliveUnit: string;
+  mUnitIndex: TUnitIndex;
 begin
   // Caches von vor #905 haben keine projekt.txt: Die Projekt-Units im Cache entscheiden.
-  AliveUnit := CreateFile(TPath.Combine(TPath.Combine(FRoot, 'Quelle'), 'Haupt.pas'), 1);
-  UnitIndex := Default(TUnitIndex);
-  UnitIndex.UnitName := 'Haupt';
-  UnitIndex.FileName := AliveUnit;
-  Alive := TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Lebt');
-  ForceDirectories(ExtractFileDir(Alive));
-  TFile.WriteAllBytes(Alive, TIndexCache.Serialize([UnitIndex]));
-  UnitIndex.FileName := TPath.Combine(TPath.Combine(FRoot, 'Geloescht'), 'Haupt.pas');
-  Gone := TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Weg');
-  ForceDirectories(ExtractFileDir(Gone));
-  TFile.WriteAllBytes(Gone, TIndexCache.Serialize([UnitIndex]));
+  mAliveUnit := CreateFile(TPath.Combine(TPath.Combine(FRoot, 'Quelle'), 'Haupt.pas'), 1);
+  mUnitIndex := Default(TUnitIndex);
+  mUnitIndex.UnitName := 'Haupt';
+  mUnitIndex.FileName := mAliveUnit;
+  mAlive := TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Lebt');
+  ForceDirectories(ExtractFileDir(mAlive));
+  TFile.WriteAllBytes(mAlive, TIndexCache.Serialize([mUnitIndex]));
+  mUnitIndex.FileName := TPath.Combine(TPath.Combine(FRoot, 'Geloescht'), 'Haupt.pas');
+  mGone := TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Weg');
+  ForceDirectories(ExtractFileDir(mGone));
+  TFile.WriteAllBytes(mGone, TIndexCache.Serialize([mUnitIndex]));
   Assert.AreEqual(1, TIndexCacheDirectory.RemoveOrphans(FRoot, nil));
-  Assert.IsTrue(FileExists(Alive));
-  Assert.IsFalse(FileExists(Gone));
+  Assert.IsTrue(FileExists(mAlive));
+  Assert.IsFalse(FileExists(mGone));
   // Die gefundene Unit steht jetzt als Herkunft da; der Cache wird nicht wieder gelesen.
-  Assert.AreEqual(AliveUnit, TIndexCacheDirectory.ReadOrigin(Alive));
-  UnitIndex := Default(TUnitIndex);
+  Assert.AreEqual(mAliveUnit, TIndexCacheDirectory.ReadOrigin(mAlive));
+  mUnitIndex := Default(TUnitIndex);
 end;
 
 procedure TIndexCacheDirectoryTests.RemoveOrphansDeletesLegacyAndBuildFiles;
 var
-  Legacy, BuildGone, BuildAlive, Project, Other: string;
+  mLegacy, mBuildGone, mBuildAlive, mProject, mOther: string;
 begin
-  Legacy := CreateCache('index-00000001.json');
-  Other := CreateCache('anderes.json');
-  Project := CreateFile(TPath.Combine(TPath.Combine(FRoot, 'main'), 'App.dproj'), 1);
-  BuildAlive := TPath.Combine(FRoot, 'build-00000001.json');
-  TFile.WriteAllText(BuildAlive, BuildFileText(Project), TEncoding.UTF8);
-  BuildGone := TPath.Combine(FRoot, 'build-00000002.json');
-  TFile.WriteAllText(BuildGone, BuildFileText(TPath.Combine(FRoot, 'fehlt.dproj')), TEncoding.UTF8);
+  mLegacy := CreateCache('index-00000001.json');
+  mOther := CreateCache('anderes.json');
+  mProject := CreateFile(TPath.Combine(TPath.Combine(FRoot, 'main'), 'App.dproj'), 1);
+  mBuildAlive := TPath.Combine(FRoot, 'build-00000001.json');
+  TFile.WriteAllText(mBuildAlive, BuildFileText(mProject), TEncoding.UTF8);
+  mBuildGone := TPath.Combine(FRoot, 'build-00000002.json');
+  TFile.WriteAllText(mBuildGone, BuildFileText(TPath.Combine(FRoot, 'fehlt.dproj')), TEncoding.UTF8);
   Assert.AreEqual(2, TIndexCacheDirectory.RemoveOrphans(FRoot, nil));
-  Assert.IsFalse(FileExists(Legacy));
-  Assert.IsFalse(FileExists(BuildGone));
-  Assert.IsTrue(FileExists(BuildAlive));
-  Assert.IsTrue(FileExists(Other));
+  Assert.IsFalse(FileExists(mLegacy));
+  Assert.IsFalse(FileExists(mBuildGone));
+  Assert.IsTrue(FileExists(mBuildAlive));
+  Assert.IsTrue(FileExists(mOther));
 end;
 
 procedure TIndexCacheDirectoryTests.OriginExistsWithMissingDrive;
 var
-  Drive: Char;
+  mDrive: Char;
 begin
   Assert.IsTrue(TIndexCacheDirectory.OriginExists(FRoot));
   Assert.IsFalse(TIndexCacheDirectory.OriginExists(TPath.Combine(FRoot, 'fehlt.dproj')));
   {$IFDEF MSWINDOWS}
   // Laufwerk nicht verbunden (USB, Netz): nicht als gelöscht werten.
-  for Drive := 'Z' downto 'D' do
+  for mDrive := 'Z' downto 'D' do
   begin
-    if not DirectoryExists(Drive + ':\') then
+    if not DirectoryExists(mDrive + ':\') then
     begin
-      Assert.IsTrue(TIndexCacheDirectory.OriginExists(Drive + ':\Projekte\App.dproj'));
+      Assert.IsTrue(TIndexCacheDirectory.OriginExists(mDrive + ':\Projekte\App.dproj'));
       Break;
     end;
   end;
@@ -803,15 +808,15 @@ end;
 
 procedure TIndexCacheDirectoryTests.TouchUseRenewsLastUse;
 var
-  Cache: string;
+  mCache: string;
 begin
-  Cache := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'), 10);
-  TFile.SetLastWriteTime(Cache, Now - 100);
-  Assert.IsTrue(TIndexCacheDirectory.LastUse(Cache) < Now - 99);
+  mCache := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'), 10);
+  TFile.SetLastWriteTime(mCache, Now - 100);
+  Assert.IsTrue(TIndexCacheDirectory.LastUse(mCache) < Now - 99);
   // Laden ohne Änderung schreibt den Cache nicht, zählt aber als Benutzung.
-  TIndexCacheDirectory.TouchUse(Cache);
-  Assert.IsTrue(TIndexCacheDirectory.LastUse(Cache) > Now - 1);
-  Assert.IsTrue(TFile.GetLastWriteTime(Cache) < Now - 99, 'der Cache selbst bleibt unverändert');
+  TIndexCacheDirectory.TouchUse(mCache);
+  Assert.IsTrue(TIndexCacheDirectory.LastUse(mCache) > Now - 1);
+  Assert.IsTrue(TFile.GetLastWriteTime(mCache) < Now - 99, 'der Cache selbst bleibt unverändert');
 end;
 
 procedure TIndexCacheDirectoryTests.TouchUseIgnoresEmptyName;
@@ -830,25 +835,25 @@ end;
 
 procedure TIndexCacheDirectoryTests.RemoveUnusedDeletesOldCaches;
 var
-  Old, Used, Own, Library_: string;
+  mOld, mUsed, mOwn, mLibrary_: string;
 begin
-  Old := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Alt'), 10);
-  Used := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Benutzt'), 10);
-  Own := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Eigen'), 10);
-  Library_ := CreateFile(TIndexCacheDirectory.LibraryFileFor(FRoot, '23.0', 'Win32'), 10);
-  TFile.SetLastWriteTime(Old, Now - 30);
-  TFile.SetLastWriteTime(Used, Now - 30);
-  TFile.SetLastWriteTime(Own, Now - 30);
-  TFile.SetLastWriteTime(Library_, Now - 30);
-  TIndexCacheDirectory.TouchUse(Used);
+  mOld := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Alt'), 10);
+  mUsed := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Benutzt'), 10);
+  mOwn := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Eigen'), 10);
+  mLibrary_ := CreateFile(TIndexCacheDirectory.LibraryFileFor(FRoot, '23.0', 'Win32'), 10);
+  TFile.SetLastWriteTime(mOld, Now - 30);
+  TFile.SetLastWriteTime(mUsed, Now - 30);
+  TFile.SetLastWriteTime(mOwn, Now - 30);
+  TFile.SetLastWriteTime(mLibrary_, Now - 30);
+  TIndexCacheDirectory.TouchUse(mUsed);
   Assert.AreEqual(0, TIndexCacheDirectory.RemoveUnused(FRoot, 0, nil), '0 = aus');
   // Auch der Bibliotheks-Cache einer nicht mehr benutzten Delphi-Version geht.
-  Assert.AreEqual(2, TIndexCacheDirectory.RemoveUnused(FRoot, 14, TArray<string>.Create(Own)));
-  Assert.IsFalse(FileExists(Old));
-  Assert.IsFalse(FileExists(Library_));
-  Assert.IsTrue(FileExists(Used) and FileExists(Own));
+  Assert.AreEqual(2, TIndexCacheDirectory.RemoveUnused(FRoot, 14, TArray<string>.Create(mOwn)));
+  Assert.IsFalse(FileExists(mOld));
+  Assert.IsFalse(FileExists(mLibrary_));
+  Assert.IsTrue(FileExists(mUsed) and FileExists(mOwn));
   // Samt Marke und leerem Ordner.
-  Assert.IsFalse(TDirectory.Exists(ExtractFileDir(Old)));
+  Assert.IsFalse(TDirectory.Exists(ExtractFileDir(mOld)));
 end;
 
 initialization

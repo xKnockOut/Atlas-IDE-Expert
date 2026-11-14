@@ -51,8 +51,8 @@ uses
   Atlas.Common.Semantics.TypeInfoClasses;
 
 const
-  BaseFile = 'C:\P\Basis.pas';
-  BaseCode =
+  cBaseFile = 'C:\P\Basis.pas';
+  cBaseCode =
     'unit Basis;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -77,17 +77,17 @@ const
 
 function ReadSource(const AFileName: string; out AText: string): Boolean;
 begin
-  Result := SameText(AFileName, BaseFile);
+  Result := SameText(AFileName, cBaseFile);
   if Result then
   begin
-    AText := BaseCode;
+    AText := cBaseCode;
   end;
 end;
 
 procedure TTypeInfoClassesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(BaseCode, BaseFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cBaseCode, cBaseFile, nil));
 end;
 
 procedure TTypeInfoClassesTests.TearDown;
@@ -97,23 +97,23 @@ end;
 
 procedure TTypeInfoClassesTests.ReadsSwitchDirectives;
 var
-  Value: Boolean;
+  mValue: Boolean;
 begin
-  Assert.IsTrue(TTypeInfoClasses.ReadSwitch('{$M+}', Value) and Value);
-  Assert.IsTrue(TTypeInfoClasses.ReadSwitch('{$M-}', Value) and not Value);
-  Assert.IsTrue(TTypeInfoClasses.ReadSwitch('{$TYPEINFO ON}', Value) and Value);
-  Assert.IsTrue(TTypeInfoClasses.ReadSwitch('{$typeinfo off}', Value) and not Value);
-  Assert.IsTrue(TTypeInfoClasses.ReadSwitch('{$R-,M+,H+}', Value) and Value);
-  Assert.IsTrue(TTypeInfoClasses.ReadSwitch('(*$M+*)', Value) and Value);
+  Assert.IsTrue(TTypeInfoClasses.ReadSwitch('{$M+}', mValue) and mValue);
+  Assert.IsTrue(TTypeInfoClasses.ReadSwitch('{$M-}', mValue) and not mValue);
+  Assert.IsTrue(TTypeInfoClasses.ReadSwitch('{$TYPEINFO ON}', mValue) and mValue);
+  Assert.IsTrue(TTypeInfoClasses.ReadSwitch('{$typeinfo off}', mValue) and not mValue);
+  Assert.IsTrue(TTypeInfoClasses.ReadSwitch('{$R-,M+,H+}', mValue) and mValue);
+  Assert.IsTrue(TTypeInfoClasses.ReadSwitch('(*$M+*)', mValue) and mValue);
   // Stapelgröße und andere Schalter setzen nichts.
-  Assert.IsFalse(TTypeInfoClasses.ReadSwitch('{$M 16384,1048576}', Value));
-  Assert.IsFalse(TTypeInfoClasses.ReadSwitch('{$R+}', Value));
-  Assert.IsFalse(TTypeInfoClasses.ReadSwitch('{ M+ }', Value));
+  Assert.IsFalse(TTypeInfoClasses.ReadSwitch('{$M 16384,1048576}', mValue));
+  Assert.IsFalse(TTypeInfoClasses.ReadSwitch('{$R+}', mValue));
+  Assert.IsFalse(TTypeInfoClasses.ReadSwitch('{ M+ }', mValue));
 end;
 
 procedure TTypeInfoClassesTests.SwitchFollowsPositionAndConditionals;
 const
-  Code =
+  cCode =
     'unit U;'#10 +
     '{$M+}'#10 +
     'type TA = class end;'#10 +
@@ -125,16 +125,16 @@ const
     'type TD = class end;'#10 +
     'end.';
 begin
-  Assert.IsFalse(TTypeInfoClasses.SwitchAt(Code, TTextPosition.Create(0, 0)));
-  Assert.IsTrue(TTypeInfoClasses.SwitchAt(Code, TTextPosition.Create(2, 5)));
-  Assert.IsFalse(TTypeInfoClasses.SwitchAt(Code, TTextPosition.Create(4, 5)));
-  Assert.IsFalse(TTypeInfoClasses.SwitchAt(Code, TTextPosition.Create(6, 5)), 'inaktiver Zweig');
-  Assert.IsTrue(TTypeInfoClasses.SwitchAt(Code, TTextPosition.Create(8, 5)), 'aktiver Zweig');
+  Assert.IsFalse(TTypeInfoClasses.SwitchAt(cCode, TTextPosition.Create(0, 0)));
+  Assert.IsTrue(TTypeInfoClasses.SwitchAt(cCode, TTextPosition.Create(2, 5)));
+  Assert.IsFalse(TTypeInfoClasses.SwitchAt(cCode, TTextPosition.Create(4, 5)));
+  Assert.IsFalse(TTypeInfoClasses.SwitchAt(cCode, TTextPosition.Create(6, 5)), 'inaktiver Zweig');
+  Assert.IsTrue(TTypeInfoClasses.SwitchAt(cCode, TTextPosition.Create(8, 5)), 'aktiver Zweig');
 end;
 
 procedure TTypeInfoClassesTests.SwitchFollowsPushAndPopOpt;
 const
-  Code =
+  cCode =
     'unit U;'#10 +           // 0
     '{$M+}'#10 +             // 1
     '{$PUSHOPT}'#10 +        // 2
@@ -146,36 +146,36 @@ const
     'type TC = class end;'#10 + // 8
     'end.';
 begin
-  Assert.IsFalse(TTypeInfoClasses.SwitchAt(Code, TTextPosition.Create(4, 5)));
-  Assert.IsTrue(TTypeInfoClasses.SwitchAt(Code, TTextPosition.Create(6, 5)));
+  Assert.IsFalse(TTypeInfoClasses.SwitchAt(cCode, TTextPosition.Create(4, 5)));
+  Assert.IsTrue(TTypeInfoClasses.SwitchAt(cCode, TTextPosition.Create(6, 5)));
   // {$POPOPT} ohne {$PUSHOPT} ändert nichts.
-  Assert.IsTrue(TTypeInfoClasses.SwitchAt(Code, TTextPosition.Create(8, 5)));
+  Assert.IsTrue(TTypeInfoClasses.SwitchAt(cCode, TTextPosition.Create(8, 5)));
 end;
 
 procedure TTypeInfoClassesTests.FollowsAncestorsThroughIndex;
 var
-  Classes: TTypeInfoClasses;
+  mClasses: TTypeInfoClasses;
 begin
-  Classes := TTypeInfoClasses.Create(FIndex, ReadSource);
+  mClasses := TTypeInfoClasses.Create(FIndex, ReadSource);
   try
-    Assert.IsFalse(Classes.HasTypeInfo('TSchlicht'));
-    Assert.IsTrue(Classes.HasTypeInfo('TMitRtti'), '{$M+} bei der Deklaration');
-    Assert.IsTrue(Classes.HasTypeInfo('TErbe'), 'Vorfahr mit {$M+}');
-    Assert.IsTrue(Classes.HasTypeInfo('Basis.TEnkel'), 'über zwei Stufen, qualifiziert');
-    Assert.IsFalse(Classes.HasTypeInfo('TOhne'));
-    Assert.IsFalse(Classes.HasTypeInfo('TZyklusA'), 'Zyklus bricht ab');
-    Assert.IsFalse(Classes.HasTypeInfo('TObject'));
-    Assert.IsFalse(Classes.HasTypeInfo('TUnbekannt'));
+    Assert.IsFalse(mClasses.HasTypeInfo('TSchlicht'));
+    Assert.IsTrue(mClasses.HasTypeInfo('TMitRtti'), '{$M+} bei der Deklaration');
+    Assert.IsTrue(mClasses.HasTypeInfo('TErbe'), 'Vorfahr mit {$M+}');
+    Assert.IsTrue(mClasses.HasTypeInfo('Basis.TEnkel'), 'über zwei Stufen, qualifiziert');
+    Assert.IsFalse(mClasses.HasTypeInfo('TOhne'));
+    Assert.IsFalse(mClasses.HasTypeInfo('TZyklusA'), 'Zyklus bricht ab');
+    Assert.IsFalse(mClasses.HasTypeInfo('TObject'));
+    Assert.IsFalse(mClasses.HasTypeInfo('TUnbekannt'));
     // Nicht im Index, aber bekannt.
-    Assert.IsTrue(Classes.HasTypeInfo('Vcl.Forms.TForm'));
+    Assert.IsTrue(mClasses.HasTypeInfo('Vcl.Forms.TForm'));
   finally
-    Classes.Free;
+    mClasses.Free;
   end;
 end;
 
 procedure TTypeInfoClassesTests.KnownClassesWithoutIndex;
 var
-  Classes: TTypeInfoClasses;
+  mClasses: TTypeInfoClasses;
 begin
   Assert.IsTrue(TTypeInfoClasses.KnownTypeInfoClass('TPersistent'));
   Assert.IsTrue(TTypeInfoClasses.KnownTypeInfoClass('TFrame'));
@@ -183,33 +183,33 @@ begin
   Assert.IsFalse(TTypeInfoClasses.KnownTypeInfoClass('TInterfacedObject'));
   Assert.IsFalse(TTypeInfoClasses.KnownTypeInfoClass('Exception'));
   Assert.IsFalse(TTypeInfoClasses.KnownTypeInfoClass('TList'));
-  Classes := TTypeInfoClasses.Create(nil, nil);
+  mClasses := TTypeInfoClasses.Create(nil, nil);
   try
-    Assert.IsTrue(Classes.HasTypeInfo('TDataModule'));
-    Assert.IsFalse(Classes.HasTypeInfo('TMitRtti'), 'ohne Index unbekannt');
+    Assert.IsTrue(mClasses.HasTypeInfo('TDataModule'));
+    Assert.IsFalse(mClasses.HasTypeInfo('TMitRtti'), 'ohne Index unbekannt');
   finally
-    Classes.Free;
+    mClasses.Free;
   end;
 end;
 
 function VisibilityOf(const ASymbols: TJSONArray; const AName: string): string;
 var
-  Item: TJSONValue;
-  Entry: TJSONObject;
-  Children: TJSONValue;
+  mItem: TJSONValue;
+  mEntry: TJSONObject;
+  mChildren: TJSONValue;
 begin
   Result := '';
-  for Item in ASymbols do
+  for mItem in ASymbols do
   begin
-    Entry := Item as TJSONObject;
-    if (Entry.GetValue<string>('name', '') = AName) and (Entry.GetValue('atlas') is TJSONObject) then
+    mEntry := mItem as TJSONObject;
+    if (mEntry.GetValue<string>('name', '') = AName) and (mEntry.GetValue('atlas') is TJSONObject) then
     begin
-      Exit(TJSONObject(Entry.GetValue('atlas')).GetValue<string>('visibility', ''));
+      Exit(TJSONObject(mEntry.GetValue('atlas')).GetValue<string>('visibility', ''));
     end;
-    Children := Entry.GetValue('children');
-    if Children is TJSONArray then
+    mChildren := mEntry.GetValue('children');
+    if mChildren is TJSONArray then
     begin
-      Result := VisibilityOf(TJSONArray(Children), AName);
+      Result := VisibilityOf(TJSONArray(mChildren), AName);
       if Result <> '' then
       begin
         Exit;
@@ -220,7 +220,7 @@ end;
 
 procedure TTypeInfoClassesTests.OutlineUsesTypeInfoForDefaultVisibility;
 const
-  Code =
+  cCode =
     'unit U;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -248,33 +248,33 @@ const
     'implementation'#10 +
     'end.';
 var
-  Tree: TSyntaxTree;
-  Symbols: TJSONArray;
+  mTree: TSyntaxTree;
+  mSymbols: TJSONArray;
 begin
-  Tree := TPascalParser.Parse(Code);
+  mTree := TPascalParser.Parse(cCode);
   try
-    Symbols := TLspDocumentSymbols.BuildSymbols(Tree, Code, FIndex, ReadSource);
+    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, cCode, FIndex, ReadSource);
     try
-      Assert.AreEqual('published', VisibilityOf(Symbols, 'A'), 'Vorfahr im Index mit {$M+}');
-      Assert.AreEqual('public', VisibilityOf(Symbols, 'B'), 'Vorfahr im Index ohne');
-      Assert.AreEqual('published', VisibilityOf(Symbols, 'C'), '{$M+} in der Datei');
-      Assert.AreEqual('published', VisibilityOf(Symbols, 'D'), 'Vorfahr in derselben Datei');
-      Assert.AreEqual('published', VisibilityOf(Symbols, 'E'), 'bekannte VCL-Klasse');
-      Assert.AreEqual('public', VisibilityOf(Symbols, 'F'));
+      Assert.AreEqual('published', VisibilityOf(mSymbols, 'A'), 'Vorfahr im Index mit {$M+}');
+      Assert.AreEqual('public', VisibilityOf(mSymbols, 'B'), 'Vorfahr im Index ohne');
+      Assert.AreEqual('published', VisibilityOf(mSymbols, 'C'), '{$M+} in der Datei');
+      Assert.AreEqual('published', VisibilityOf(mSymbols, 'D'), 'Vorfahr in derselben Datei');
+      Assert.AreEqual('published', VisibilityOf(mSymbols, 'E'), 'bekannte VCL-Klasse');
+      Assert.AreEqual('public', VisibilityOf(mSymbols, 'F'));
     finally
-      Symbols.Free;
+      mSymbols.Free;
     end;
     // Ohne Index: nur Datei und bekannte Klassen.
-    Symbols := TLspDocumentSymbols.BuildSymbols(Tree, Code);
+    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, cCode);
     try
-      Assert.AreEqual('public', VisibilityOf(Symbols, 'A'));
-      Assert.AreEqual('published', VisibilityOf(Symbols, 'D'));
-      Assert.AreEqual('published', VisibilityOf(Symbols, 'E'));
+      Assert.AreEqual('public', VisibilityOf(mSymbols, 'A'));
+      Assert.AreEqual('published', VisibilityOf(mSymbols, 'D'));
+      Assert.AreEqual('published', VisibilityOf(mSymbols, 'E'));
     finally
-      Symbols.Free;
+      mSymbols.Free;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

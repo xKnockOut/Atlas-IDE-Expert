@@ -61,29 +61,29 @@ uses
 function TAtlasStatementCompletionTests.Completed(const AText: string;
   const AOptions: TAtlasStatementOptions): string;
 var
-  Lines, NewLines: TArray<string>;
-  Line, Index: Integer;
-  Edit: TAtlasStatementEdit;
+  mLines, mNewLines: TArray<string>;
+  mLine, mIndex: Integer;
+  mEdit: TAtlasStatementEdit;
 begin
   Result := '-';
-  Lines := AText.Split([#10]);
-  Line := -1;
-  for Index := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  mLine := -1;
+  for mIndex := 0 to High(mLines) do
   begin
-    if Pos('|', Lines[Index]) > 0 then
+    if Pos('|', mLines[mIndex]) > 0 then
     begin
-      Line := Index;
-      Lines[Index] := StringReplace(Lines[Index], '|', '', []);
+      mLine := mIndex;
+      mLines[mIndex] := StringReplace(mLines[mIndex], '|', '', []);
     end;
   end;
-  if not TAtlasStatementCompleter.Complete(string.Join(#10, Lines), Line, AOptions, Edit) then
+  if not TAtlasStatementCompleter.Complete(string.Join(#10, mLines), mLine, AOptions, mEdit) then
   begin
     Exit;
   end;
-  NewLines := TAtlasStatementCompleter.Apply(Lines, Edit);
-  NewLines[Edit.CursorLine] := Copy(NewLines[Edit.CursorLine], 1, Edit.CursorCharacter) + '|' +
-    Copy(NewLines[Edit.CursorLine], Edit.CursorCharacter + 1, MaxInt);
-  Result := string.Join(#10, NewLines);
+  mNewLines := TAtlasStatementCompleter.Apply(mLines, mEdit);
+  mNewLines[mEdit.CursorLine] := Copy(mNewLines[mEdit.CursorLine], 1, mEdit.CursorCharacter) + '|' +
+    Copy(mNewLines[mEdit.CursorLine], mEdit.CursorCharacter + 1, MaxInt);
+  Result := string.Join(#10, mNewLines);
 end;
 
 function TAtlasStatementCompletionTests.Completed(const AText: string): string;
@@ -93,11 +93,11 @@ end;
 
 function TAtlasStatementCompletionTests.Completed(const AText: string; AMode: TAtlasBeginEndMode): string;
 var
-  Options: TAtlasStatementOptions;
+  mOptions: TAtlasStatementOptions;
 begin
-  Options := TAtlasStatementOptions.Defaults;
-  Options.BeginEnd := AMode;
-  Result := Completed(AText, Options);
+  mOptions := TAtlasStatementOptions.Defaults;
+  mOptions.BeginEnd := AMode;
+  Result := Completed(AText, mOptions);
 end;
 
 { TAtlasStatementCompletionTests }
@@ -131,19 +131,19 @@ end;
 
 procedure TAtlasStatementCompletionTests.BeginEndModes;
 const
-  Two = 'if A|'#10'  B;'#10'  C;'#10'D;';
-  One = 'if A|'#10'  B;'#10'D;';
+  cTwo = 'if A|'#10'  B;'#10'  C;'#10'D;';
+  cOne = 'if A|'#10'  B;'#10'D;';
 begin
   // Always: immer, auch ohne Rumpf.
   Assert.AreEqual('if A then'#10'begin'#10'  |'#10'end;', Completed('if A|', TAtlasBeginEndMode.Always));
-  Assert.AreEqual('if A then'#10'begin'#10'  B;|'#10'end;'#10'D;', Completed(One, TAtlasBeginEndMode.Always));
+  Assert.AreEqual('if A then'#10'begin'#10'  B;|'#10'end;'#10'D;', Completed(cOne, TAtlasBeginEndMode.Always));
   // MultiLine: erst ab zwei Anweisungen.
   Assert.AreEqual('if A then'#10'begin'#10'  B;'#10'  C;|'#10'end;'#10'D;',
-    Completed(Two, TAtlasBeginEndMode.MultiLine));
-  Assert.AreEqual('if A then'#10'  B;|'#10'D;', Completed(One, TAtlasBeginEndMode.MultiLine));
+    Completed(cTwo, TAtlasBeginEndMode.MultiLine));
+  Assert.AreEqual('if A then'#10'  B;|'#10'D;', Completed(cOne, TAtlasBeginEndMode.MultiLine));
   Assert.AreEqual('if A then'#10'  |', Completed('if A|', TAtlasBeginEndMode.MultiLine));
   // Never: nie.
-  Assert.AreEqual('if A then'#10'  B;'#10'  C;|'#10'D;', Completed(Two, TAtlasBeginEndMode.Never));
+  Assert.AreEqual('if A then'#10'  B;'#10'  C;|'#10'D;', Completed(cTwo, TAtlasBeginEndMode.Never));
   // Mehrzeiliger Aufruf ist eine Anweisung.
   Assert.AreEqual('if A then'#10'  B(1,'#10'    2);|'#10'D;',
     Completed('if A|'#10'  B(1,'#10'    2);'#10'D;', TAtlasBeginEndMode.MultiLine));
@@ -186,27 +186,27 @@ end;
 
 procedure TAtlasStatementCompletionTests.CaseGetsOfAndEnd;
 var
-  Edit: TAtlasStatementEdit;
+  mEdit: TAtlasStatementEdit;
 begin
   Assert.AreEqual('  case Kind of'#10'    |'#10'  end;', Completed('  case Kind|'));
   Assert.AreEqual('  case Kind of'#10'    skA: ;|'#10'  end;'#10'X;',
     Completed('  case Kind of|'#10'    skA: ;'#10'X;'));
   Assert.AreEqual('  case Kind of'#10'    |'#10'  end;', Completed('  case Kind of|'#10'  end;'));
-  Assert.IsTrue(TAtlasStatementCompleter.Complete('  case Kind', 0, TAtlasStatementOptions.Defaults, Edit));
-  Assert.AreEqual(Ord(TAtlasStatementFollowUp.CaseBranches), Ord(Edit.FollowUp));
-  Assert.AreEqual(0, Edit.FollowLine);
-  Assert.AreEqual(2, Edit.FollowCharacter);
+  Assert.IsTrue(TAtlasStatementCompleter.Complete('  case Kind', 0, TAtlasStatementOptions.Defaults, mEdit));
+  Assert.AreEqual(Ord(TAtlasStatementFollowUp.CaseBranches), Ord(mEdit.FollowUp));
+  Assert.AreEqual(0, mEdit.FollowLine);
+  Assert.AreEqual(2, mEdit.FollowCharacter);
 end;
 
 procedure TAtlasStatementCompletionTests.TryGetsFinallyOrExcept;
 var
-  Options: TAtlasStatementOptions;
+  mOptions: TAtlasStatementOptions;
 begin
   Assert.AreEqual('  try'#10'    |'#10'  finally'#10#10'  end;', Completed('  try|'));
   Assert.AreEqual('  try'#10'    A;'#10'  finally'#10'    |'#10'  end;', Completed('  try|'#10'    A;'));
-  Options := TAtlasStatementOptions.Defaults;
-  Options.TryKind := TAtlasTryKind.TryExcept;
-  Assert.AreEqual('  try'#10'    |'#10'  except'#10#10'  end;', Completed('  try|', Options));
+  mOptions := TAtlasStatementOptions.Defaults;
+  mOptions.TryKind := TAtlasTryKind.TryExcept;
+  Assert.AreEqual('  try'#10'    |'#10'  except'#10#10'  end;', Completed('  try|', mOptions));
   // Schon vollständig: nur in den Block.
   Assert.AreEqual('  try'#10'    |'#10'  finally'#10'  end;', Completed('  try|'#10'  finally'#10'  end;'));
   Assert.IsTrue(TAtlasStatementCompleter.NeedsTryKind('  try', 0));
@@ -230,7 +230,7 @@ end;
 
 procedure TAtlasStatementCompletionTests.MethodDeclarationAsksForBody;
 const
-  Unit_ =
+  cUnit_ =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -241,20 +241,20 @@ const
     'implementation'#10 +
     'end.';
 var
-  Edit: TAtlasStatementEdit;
-  Options: TAtlasStatementOptions;
+  mEdit: TAtlasStatementEdit;
+  mOptions: TAtlasStatementOptions;
 begin
-  Assert.AreEqual(StringReplace(Unit_, 'Integer|', 'Integer);|', []), Completed(Unit_));
-  Assert.IsTrue(TAtlasStatementCompleter.Complete(StringReplace(Unit_, '|', '', []), 5,
-    TAtlasStatementOptions.Defaults, Edit));
-  Assert.AreEqual(Ord(TAtlasStatementFollowUp.MethodBody), Ord(Edit.FollowUp));
-  Assert.AreEqual(5, Edit.FollowLine);
+  Assert.AreEqual(StringReplace(cUnit_, 'Integer|', 'Integer);|', []), Completed(cUnit_));
+  Assert.IsTrue(TAtlasStatementCompleter.Complete(StringReplace(cUnit_, '|', '', []), 5,
+    TAtlasStatementOptions.Defaults, mEdit));
+  Assert.AreEqual(Ord(TAtlasStatementFollowUp.MethodBody), Ord(mEdit.FollowUp));
+  Assert.AreEqual(5, mEdit.FollowLine);
   // Im Namen "Lauf".
-  Assert.AreEqual(15, Edit.FollowCharacter);
-  Options := TAtlasStatementOptions.Defaults;
-  Options.MethodBody := False;
-  Assert.IsTrue(TAtlasStatementCompleter.Complete(StringReplace(Unit_, '|', '', []), 5, Options, Edit));
-  Assert.AreEqual(Ord(TAtlasStatementFollowUp.None), Ord(Edit.FollowUp));
+  Assert.AreEqual(15, mEdit.FollowCharacter);
+  mOptions := TAtlasStatementOptions.Defaults;
+  mOptions.MethodBody := False;
+  Assert.IsTrue(TAtlasStatementCompleter.Complete(StringReplace(cUnit_, '|', '', []), 5, mOptions, mEdit));
+  Assert.AreEqual(Ord(TAtlasStatementFollowUp.None), Ord(mEdit.FollowUp));
   // Im interface-Teil ohne Typ: nur das Semikolon.
   Assert.AreEqual('interface'#10'procedure Frei;|'#10'implementation',
     Completed('interface'#10'procedure Frei|'#10'implementation'));
@@ -284,20 +284,20 @@ end;
 
 procedure TAtlasStatementCompletionTests.CaseBranchesReplaceCursorLine;
 var
-  Lines: TArray<string>;
-  Line, Character: Integer;
+  mLines: TArray<string>;
+  mLine, mCharacter: Integer;
 begin
-  Lines := ['  case Kind of', '    ', '    skA: ;', '    skB: ;', '  end;'];
-  Line := 1;
-  Character := 4;
-  Assert.IsTrue(TAtlasStatementCompleter.AfterCaseBranches(Lines, Line, Character));
-  Assert.AreEqual(4, Integer(Length(Lines)));
-  Assert.AreEqual('    skA: ;', Lines[1]);
-  Assert.AreEqual(1, Line);
-  Assert.AreEqual(9, Character);
-  Lines := ['  case Kind of', '    ', '  end;'];
-  Assert.IsFalse(TAtlasStatementCompleter.AfterCaseBranches(Lines, Line, Character));
-  Lines := nil;
+  mLines := ['  case Kind of', '    ', '    skA: ;', '    skB: ;', '  end;'];
+  mLine := 1;
+  mCharacter := 4;
+  Assert.IsTrue(TAtlasStatementCompleter.AfterCaseBranches(mLines, mLine, mCharacter));
+  Assert.AreEqual(4, Integer(Length(mLines)));
+  Assert.AreEqual('    skA: ;', mLines[1]);
+  Assert.AreEqual(1, mLine);
+  Assert.AreEqual(9, mCharacter);
+  mLines := ['  case Kind of', '    ', '  end;'];
+  Assert.IsFalse(TAtlasStatementCompleter.AfterCaseBranches(mLines, mLine, mCharacter));
+  mLines := nil;
 end;
 
 initialization

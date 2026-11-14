@@ -102,11 +102,11 @@ end;
 
 procedure TEncodingAgreementTests.SameEncodingForSamples;
 var
-  Samples: TArray<TBytes>;
-  Sample: TBytes;
-  Index: Integer;
+  mSamples: TArray<TBytes>;
+  mSample: TBytes;
+  mIndex: Integer;
 begin
-  Samples := [
+  mSamples := [
     TBytes.Create(Ord('a'), Ord('b')),
     TBytes.Create($EF, $BB, $BF, Ord('a')),
     TBytes.Create($FF, $FE, Ord('a'), 0),
@@ -119,40 +119,40 @@ begin
     TBytes.Create($F4, $90, $80, $80),
     TBytes.Create(Ord('a'), $C3),
     TBytes.Create(Ord('a'), $E4, Ord('b'))];
-  for Index := 0 to High(Samples) do
+  for mIndex := 0 to High(mSamples) do
   begin
-    Sample := Samples[Index];
-    Assert.AreEqual(ServerName(TFileEncoding.DetectEncoding(Sample)),
-      PluginName(TAtlasTextFile.Decode(Sample).Encoding), 'TextFile, Probe ' + IntToStr(Index));
-    Assert.AreEqual(ServerName(TFileEncoding.DetectEncoding(Sample)),
-      FormatName(TAtlasFileFormats.Detect(Sample).Encoding), 'Format, Probe ' + IntToStr(Index));
+    mSample := mSamples[mIndex];
+    Assert.AreEqual(ServerName(TFileEncoding.DetectEncoding(mSample)),
+      PluginName(TAtlasTextFile.Decode(mSample).Encoding), 'TextFile, Probe ' + IntToStr(mIndex));
+    Assert.AreEqual(ServerName(TFileEncoding.DetectEncoding(mSample)),
+      FormatName(TAtlasFileFormats.Detect(mSample).Encoding), 'Format, Probe ' + IntToStr(mIndex));
   end;
 end;
 
 procedure TEncodingAgreementTests.SameCodePages;
 var
-  Text: string;
-  ServerCodePage, PluginCodePage: Integer;
-  ServerOk, PluginOk: Boolean;
+  mText: string;
+  mServerCodePage, mPluginCodePage: Integer;
+  mServerOk, mPluginOk: Boolean;
 begin
-  for Text in TArray<string>.Create('utf-8', 'UTF8', '65001', '1250', 'cp1252', 'windows-1251', ' 28591 ', '932',
+  for mText in TArray<string>.Create('utf-8', 'UTF8', '65001', '1250', 'cp1252', 'windows-1251', ' 28591 ', '932',
     'shift_jis', '', 'cp', '1200') do
   begin
-    ServerOk := TFileEncoding.ParseCodePage(Text, ServerCodePage);
-    PluginOk := TAtlasTextFile.ParseCodePage(Text, PluginCodePage);
-    Assert.AreEqual(ServerOk, PluginOk, Text);
-    Assert.AreEqual(ServerCodePage, PluginCodePage, Text);
+    mServerOk := TFileEncoding.ParseCodePage(mText, mServerCodePage);
+    mPluginOk := TAtlasTextFile.ParseCodePage(mText, mPluginCodePage);
+    Assert.AreEqual(mServerOk, mPluginOk, mText);
+    Assert.AreEqual(mServerCodePage, mPluginCodePage, mText);
   end;
 end;
 
 procedure TEncodingAgreementTests.SameBinaryForms;
 var
-  Sample: TBytes;
+  mSample: TBytes;
 begin
-  for Sample in TArray<TBytes>.Create(TBytes.Create(Ord('T'), Ord('P'), Ord('F'), Ord('0')),
+  for mSample in TArray<TBytes>.Create(TBytes.Create(Ord('T'), Ord('P'), Ord('F'), Ord('0')),
     TBytes.Create($FF, $0A, $00, 1), TBytes.Create(Ord('o'), Ord('b'), Ord('j')), nil) do
   begin
-    Assert.AreEqual(TFileEncoding.IsBinaryForm(Sample), TAtlasTextFile.IsBinaryForm(Sample));
+    Assert.AreEqual(TFileEncoding.IsBinaryForm(mSample), TAtlasTextFile.IsBinaryForm(mSample));
   end;
 end;
 
@@ -160,21 +160,21 @@ end;
 
 procedure TFuzzyCompletionAgreementTests.SameMatches;
 const
-  Pairs: array[0..15, 0..1] of string = (
+  cPairs: array[0..15, 0..1] of string = (
     ('stl', 'TStringList'), ('TBB', 'TBButton'), ('gth', 'GetTypeHierarchy'), ('mln', 'my_long_name'),
     ('liste', 'TListe'), ('liste', 'ListeLeeren'), ('zlr', 'Zaehler'), ('myLis', 'ERROR_TOO_MANY_LINKS'),
     ('stlcr', 'TStringList.Create'), ('b2s', 'Base2String'), ('xyz', 'TStringList'), ('gr', 'TStringList'),
     ('ehl', 'Zaehler'), ('ic', 'IntToStr'), ('its', 'IntToStr'), ('i2s', 'Int2Str'));
 var
-  Index: Integer;
-  ServerMatches, PluginMatches: Boolean;
+  mIndex: Integer;
+  mServerMatches, mPluginMatches: Boolean;
 begin
-  for Index := Low(Pairs) to High(Pairs) do
+  for mIndex := Low(cPairs) to High(cPairs) do
   begin
-    ServerMatches := TFuzzyMatch.CompletionScore(Pairs[Index, 1], Pairs[Index, 0]) <> TFuzzyMatch.cNoMatch;
-    PluginMatches := TAtlasCompletionMatcher.Score(Pairs[Index, 0], Pairs[Index, 1]) <>
+    mServerMatches := TFuzzyMatch.CompletionScore(cPairs[mIndex, 1], cPairs[mIndex, 0]) <> TFuzzyMatch.cNoMatch;
+    mPluginMatches := TAtlasCompletionMatcher.Score(cPairs[mIndex, 0], cPairs[mIndex, 1]) <>
       TAtlasCompletionMatcher.cNoMatch;
-    Assert.AreEqual(ServerMatches, PluginMatches, Pairs[Index, 0] + ' / ' + Pairs[Index, 1]);
+    Assert.AreEqual(mServerMatches, mPluginMatches, cPairs[mIndex, 0] + ' / ' + cPairs[mIndex, 1]);
   end;
 end;
 
@@ -182,17 +182,17 @@ end;
 
 procedure TBugReportAgreementTests.SameAnonymizedLines;
 var
-  Line: string;
-  Roots, Identity: TArray<string>;
+  mLine: string;
+  mRoots, mIdentity: TArray<string>;
 begin
-  Roots := ['C:\Projekte\Atlas'];
-  Identity := ['marco', 'WERKBANK'];
-  for Line in TArray<string>.Create('Öffne C:\Projekte\Atlas\Src\A.pas',
+  mRoots := ['C:\Projekte\Atlas'];
+  mIdentity := ['marco', 'WERKBANK'];
+  for mLine in TArray<string>.Create('Öffne C:\Projekte\Atlas\Src\A.pas',
     'URI file:///c%3A/Projekte/Atlas/B.pas geladen', 'Fehler in D:\Fremd\X.pas: "Wert" fehlt',
     'Benutzer marco auf WERKBANK', 'don''t touch \\server\share\c.pas', 'ohne alles') do
   begin
-    Assert.AreEqual(TBugReport.AnonymizeLogLine(Line, Roots, Identity),
-      TAtlasBugReport.AnonymizeLogLine(Line, Roots, Identity), Line);
+    Assert.AreEqual(TBugReport.AnonymizeLogLine(mLine, mRoots, mIdentity),
+      TAtlasBugReport.AnonymizeLogLine(mLine, mRoots, mIdentity), mLine);
   end;
 end;
 

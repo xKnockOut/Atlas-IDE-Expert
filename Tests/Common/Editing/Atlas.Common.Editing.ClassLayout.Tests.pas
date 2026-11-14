@@ -50,7 +50,7 @@ uses
   Atlas.Common.Editing.ClassLayout;
 
 const
-  Source =
+  cSource =
     'unit U;'#10 +                                                  // 0
     'interface'#10 +                                                // 1
     'type'#10 +                                                     // 2
@@ -93,13 +93,13 @@ const
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -108,19 +108,19 @@ type
 
 procedure WithLayout(const AText: string; const AProc: TLayoutProc);
 var
-  Tree: TSyntaxTree;
-  Layout: TClassLayout;
+  mTree: TSyntaxTree;
+  mLayout: TClassLayout;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Layout := TClassLayout.Read(Tree, AText, TClassLayout.DeclNamed(Tree, 'TKunde'));
+    mLayout := TClassLayout.Read(mTree, AText, TClassLayout.DeclNamed(mTree, 'TKunde'));
     try
-      AProc(Layout);
+      AProc(mLayout);
     finally
-      Layout.Free;
+      mLayout.Free;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -128,7 +128,7 @@ end;
 
 procedure TClassLayoutTests.ReadsHeader;
 begin
-  WithLayout(Source,
+  WithLayout(cSource,
     procedure(ALayout: TClassLayout)
     begin
       Assert.AreEqual('TKunde', ALayout.Name);
@@ -147,7 +147,7 @@ end;
 
 procedure TClassLayoutTests.ReadsMembers;
 begin
-  WithLayout(Source,
+  WithLayout(cSource,
     procedure(ALayout: TClassLayout)
     var
       Name: TClassMember;
@@ -179,7 +179,7 @@ end;
 
 procedure TClassLayoutTests.FindsBodiesOfOverloads;
 begin
-  WithLayout(Source,
+  WithLayout(cSource,
     procedure(ALayout: TClassLayout)
     begin
       Assert.AreEqual(18, ALayout.Members[2].BodyFirstLine);
@@ -191,7 +191,7 @@ end;
 
 procedure TClassLayoutTests.KnowsUses;
 begin
-  WithLayout(Source,
+  WithLayout(cSource,
     procedure(ALayout: TClassLayout)
     var
       Used: TArray<Integer>;
@@ -218,123 +218,123 @@ end;
 
 procedure TClassLayoutTests.DeletesMemberWithBody;
 var
-  Result_: string;
+  mResult_: string;
 begin
-  WithLayout(Source,
+  WithLayout(cSource,
     procedure(ALayout: TClassLayout)
     begin
-      Result_ := TTextChanges.Apply(ALayout.Text, TClassEdits.DeleteMember(ALayout, 5, True));
+      mResult_ := TTextChanges.Apply(ALayout.Text, TClassEdits.DeleteMember(ALayout, 5, True));
     end);
-  Assert.IsFalse(Result_.Contains('Make'), Result_);
-  Assert.IsTrue(Parses(Result_), Result_);
-  Assert.IsFalse(Result_.Contains(#10#10#10), 'keine doppelten Leerzeilen: ' + Result_);
+  Assert.IsFalse(mResult_.Contains('Make'), mResult_);
+  Assert.IsTrue(Parses(mResult_), mResult_);
+  Assert.IsFalse(mResult_.Contains(#10#10#10), 'keine doppelten Leerzeilen: ' + mResult_);
 end;
 
 procedure TClassLayoutTests.DeletesNameOfFieldGroup;
 var
-  Result_: string;
+  mResult_: string;
 begin
-  WithLayout(Source,
+  WithLayout(cSource,
     procedure(ALayout: TClassLayout)
     begin
-      Result_ := TTextChanges.Apply(ALayout.Text, TClassEdits.DeleteMembers(ALayout, [0], False));
+      mResult_ := TTextChanges.Apply(ALayout.Text, TClassEdits.DeleteMembers(ALayout, [0], False));
     end);
-  Assert.IsTrue(Result_.Contains('    FB: Integer;'#10), Result_);
-  WithLayout(Source,
+  Assert.IsTrue(mResult_.Contains('    FB: Integer;'#10), mResult_);
+  WithLayout(cSource,
     procedure(ALayout: TClassLayout)
     begin
-      Result_ := TTextChanges.Apply(ALayout.Text, TClassEdits.DeleteMembers(ALayout, [0, 1], False));
+      mResult_ := TTextChanges.Apply(ALayout.Text, TClassEdits.DeleteMembers(ALayout, [0, 1], False));
     end);
-  Assert.IsFalse(Result_.Contains('FA, FB'), Result_);
-  Assert.IsTrue(Result_.Contains('  private'#10'    function GetName'), Result_);
+  Assert.IsFalse(mResult_.Contains('FA, FB'), mResult_);
+  Assert.IsTrue(mResult_.Contains('  private'#10'    function GetName'), mResult_);
 end;
 
 procedure TClassLayoutTests.InsertsFieldsBeforeMethods;
 var
-  Result_: string;
+  mResult_: string;
 begin
-  WithLayout(Source,
+  WithLayout(cSource,
     procedure(ALayout: TClassLayout)
     begin
-      Result_ := TTextChanges.Apply(ALayout.Text, [TClassEdits.InsertMembers(ALayout, TClassVisibility.Private_,
+      mResult_ := TTextChanges.Apply(ALayout.Text, [TClassEdits.InsertMembers(ALayout, TClassVisibility.Private_,
         True, ['FC: string;'])]);
     end);
-  Assert.IsTrue(Result_.Contains('    FA, FB: Integer;'#10'    FC: string;'#10'    function GetName'), Result_);
-  WithLayout(Source,
+  Assert.IsTrue(mResult_.Contains('    FA, FB: Integer;'#10'    FC: string;'#10'    function GetName'), mResult_);
+  WithLayout(cSource,
     procedure(ALayout: TClassLayout)
     begin
-      Result_ := TTextChanges.Apply(ALayout.Text, [TClassEdits.InsertMembers(ALayout, TClassVisibility.Public_,
+      mResult_ := TTextChanges.Apply(ALayout.Text, [TClassEdits.InsertMembers(ALayout, TClassVisibility.Public_,
         False, ['procedure Save;'])]);
     end);
-  Assert.IsTrue(Result_.Contains('write FB;'#10'    procedure Save;'#10'  end;'), Result_);
-  Assert.IsTrue(Parses(Result_), Result_);
+  Assert.IsTrue(mResult_.Contains('write FB;'#10'    procedure Save;'#10'  end;'), mResult_);
+  Assert.IsTrue(Parses(mResult_), mResult_);
 end;
 
 procedure TClassLayoutTests.InsertsNewSection;
 var
-  Result_: string;
+  mResult_: string;
 begin
-  WithLayout(Source,
+  WithLayout(cSource,
     procedure(ALayout: TClassLayout)
     begin
-      Result_ := TTextChanges.Apply(ALayout.Text, [TClassEdits.InsertMembers(ALayout,
+      mResult_ := TTextChanges.Apply(ALayout.Text, [TClassEdits.InsertMembers(ALayout,
         TClassVisibility.StrictProtected, False, ['procedure DoIt; virtual;'])]);
     end);
   // Zwischen private und public, nach Sichtbarkeit geordnet.
-  Assert.IsTrue(Result_.Contains('function GetName: string;'#10'  strict protected'#10'    procedure DoIt; virtual;'#10 +
-    '  public'), Result_);
-  Assert.IsTrue(Parses(Result_), Result_);
+  Assert.IsTrue(mResult_.Contains('function GetName: string;'#10'  strict protected'#10'    procedure DoIt; virtual;'#10 +
+    '  public'), mResult_);
+  Assert.IsTrue(Parses(mResult_), mResult_);
 end;
 
 procedure TClassLayoutTests.SetsAncestors;
 var
-  Result_: string;
+  mResult_: string;
 begin
-  WithLayout(Source,
+  WithLayout(cSource,
     procedure(ALayout: TClassLayout)
     begin
-      Result_ := TTextChanges.Apply(ALayout.Text, [TClassEdits.SetAncestors(ALayout, ['TNeu', 'IFoo', 'IBar'])]);
+      mResult_ := TTextChanges.Apply(ALayout.Text, [TClassEdits.SetAncestors(ALayout, ['TNeu', 'IFoo', 'IBar'])]);
     end);
-  Assert.IsTrue(Result_.Contains('TKunde = class abstract(TNeu, IFoo, IBar)'), Result_);
-  WithLayout(StringReplace(Source, 'class abstract(TBasis, IFoo)', 'class', []),
+  Assert.IsTrue(mResult_.Contains('TKunde = class abstract(TNeu, IFoo, IBar)'), mResult_);
+  WithLayout(StringReplace(cSource, 'class abstract(TBasis, IFoo)', 'class', []),
     procedure(ALayout: TClassLayout)
     begin
-      Result_ := TTextChanges.Apply(ALayout.Text, [TClassEdits.SetAncestors(ALayout, ['TInterfacedObject', 'IKunde'])]);
+      mResult_ := TTextChanges.Apply(ALayout.Text, [TClassEdits.SetAncestors(ALayout, ['TInterfacedObject', 'IKunde'])]);
     end);
-  Assert.IsTrue(Result_.Contains('TKunde = class(TInterfacedObject, IKunde)'), Result_);
+  Assert.IsTrue(mResult_.Contains('TKunde = class(TInterfacedObject, IKunde)'), mResult_);
 end;
 
 procedure TClassLayoutTests.CopiesBodyWithOtherClass;
 var
-  Body: string;
+  mBody: string;
 begin
-  WithLayout(Source,
+  WithLayout(cSource,
     procedure(ALayout: TClassLayout)
     begin
-      Body := TClassEdits.BodyText(ALayout, 5, 'TBasis');
+      mBody := TClassEdits.BodyText(ALayout, 5, 'TBasis');
     end);
-  Assert.AreEqual('class function TBasis.Make: TKunde;'#10'begin'#10'  Result := TKunde.Create;'#10'end;', Body);
+  Assert.AreEqual('class function TBasis.Make: TKunde;'#10'begin'#10'  Result := TKunde.Create;'#10'end;', mBody);
 end;
 
 procedure TClassLayoutTests.DiffGivesLineEdits;
 var
-  Old, New_: string;
-  Edits: TArray<TTextEdit>;
+  mOld, mNew_: string;
+  mEdits: TArray<TTextEdit>;
 begin
-  Old := 'a'#10'b'#10'c'#10'd'#10'e';
-  New_ := 'a'#10'B'#10'c'#10'd'#10'e'#10'f';
-  Edits := TTextChanges.Diff(Old, New_);
-  Assert.AreEqual(2, Integer(Length(Edits)));
-  Assert.AreEqual(New_, TTextChanges.Apply(Old, Edits));
-  Assert.AreEqual(1, Edits[0].Range.StartPos.Line);
-  New_ := 'x'#10'a'#10'c'#10'e';
-  Assert.AreEqual(New_, TTextChanges.Apply(Old, TTextChanges.Diff(Old, New_)));
-  New_ := 'a'#10'b';
-  Assert.AreEqual(New_, TTextChanges.Apply(Old, TTextChanges.Diff(Old, New_)));
-  Old := 'a'#13#10'b'#13#10;
-  New_ := 'a'#13#10'x'#13#10'b'#13#10;
-  Assert.AreEqual(New_, TTextChanges.Apply(Old, TTextChanges.Diff(Old, New_)));
-  Assert.AreEqual(0, Integer(Length(TTextChanges.Diff(Old, Old))));
+  mOld := 'a'#10'b'#10'c'#10'd'#10'e';
+  mNew_ := 'a'#10'B'#10'c'#10'd'#10'e'#10'f';
+  mEdits := TTextChanges.Diff(mOld, mNew_);
+  Assert.AreEqual(2, Integer(Length(mEdits)));
+  Assert.AreEqual(mNew_, TTextChanges.Apply(mOld, mEdits));
+  Assert.AreEqual(1, mEdits[0].Range.StartPos.Line);
+  mNew_ := 'x'#10'a'#10'c'#10'e';
+  Assert.AreEqual(mNew_, TTextChanges.Apply(mOld, TTextChanges.Diff(mOld, mNew_)));
+  mNew_ := 'a'#10'b';
+  Assert.AreEqual(mNew_, TTextChanges.Apply(mOld, TTextChanges.Diff(mOld, mNew_)));
+  mOld := 'a'#13#10'b'#13#10;
+  mNew_ := 'a'#13#10'x'#13#10'b'#13#10;
+  Assert.AreEqual(mNew_, TTextChanges.Apply(mOld, TTextChanges.Diff(mOld, mNew_)));
+  Assert.AreEqual(0, Integer(Length(TTextChanges.Diff(mOld, mOld))));
 end;
 
 initialization

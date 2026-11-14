@@ -57,7 +57,7 @@ var
 
 function Input: TAtlasSetupInput;
 var
-  Workspace: TAtlasSetupWorkspace;
+  mWorkspace: TAtlasSetupWorkspace;
 begin
   Result := Default(TAtlasSetupInput);
   Result.ServerFound := True;
@@ -69,11 +69,11 @@ begin
   Result.Projects := ['Kunden', 'Export'];
   Result.Status.Known := True;
   Result.Status.Units := 1569;
-  Workspace := Default(TAtlasSetupWorkspace);
-  Workspace.Name := 'Kunden';
-  Workspace.Done := True;
-  Workspace.LibraryCacheBytes := 0;
-  Result.Status.Workspaces := [Workspace];
+  mWorkspace := Default(TAtlasSetupWorkspace);
+  mWorkspace.Name := 'Kunden';
+  mWorkspace.Done := True;
+  mWorkspace.LibraryCacheBytes := 0;
+  Result.Status.Workspaces := [mWorkspace];
   Result.ErrorInsight := True;
   Result.AtlasProblems := True;
 end;
@@ -101,18 +101,18 @@ end;
 
 procedure TAtlasSetupWindowTests.TextsFollowFindings;
 var
-  Results: TArray<TAtlasSetupResult>;
+  mResults: TArray<TAtlasSetupResult>;
 begin
-  Results := TAtlasSetupChecklist.Evaluate(Input);
-  Assert.AreEqual('Server gefunden, gestartet, Version passt', TAtlasSetupTexts.ResultText(Results[0]));
-  Assert.AreEqual('AtlasServer 0.1.0', TAtlasSetupTexts.DetailText(Results[0]));
-  Assert.AreEqual('Delphi 13 (37.0) erkannt', TAtlasSetupTexts.ResultText(Results[1]));
-  Assert.AreEqual('Plattform Win64', TAtlasSetupTexts.DetailText(Results[1]));
+  mResults := TAtlasSetupChecklist.Evaluate(Input);
+  Assert.AreEqual('Server gefunden, gestartet, Version passt', TAtlasSetupTexts.ResultText(mResults[0]));
+  Assert.AreEqual('AtlasServer 0.1.0', TAtlasSetupTexts.DetailText(mResults[0]));
+  Assert.AreEqual('Delphi 13 (37.0) erkannt', TAtlasSetupTexts.ResultText(mResults[1]));
+  Assert.AreEqual('Plattform Win64', TAtlasSetupTexts.DetailText(mResults[1]));
   Assert.AreEqual('Projektgruppe: 1 von 2 Projekten nicht im Index (Export)',
-    TAtlasSetupTexts.ResultText(Results[2]));
-  Assert.AreEqual('Bibliotheks-Cache fehlt, erster Start dauert länger', TAtlasSetupTexts.ResultText(Results[3]));
-  Assert.AreEqual('Error Insight der IDE ist noch an (doppelte Meldungen)', TAtlasSetupTexts.ResultText(Results[4]));
-  Assert.AreEqual('Tastenkürzel ohne Konflikt', TAtlasSetupTexts.ResultText(Results[5]));
+    TAtlasSetupTexts.ResultText(mResults[2]));
+  Assert.AreEqual('Bibliotheks-Cache fehlt, erster Start dauert länger', TAtlasSetupTexts.ResultText(mResults[3]));
+  Assert.AreEqual('Error Insight der IDE ist noch an (doppelte Meldungen)', TAtlasSetupTexts.ResultText(mResults[4]));
+  Assert.AreEqual('Tastenkürzel ohne Konflikt', TAtlasSetupTexts.ResultText(mResults[5]));
   Assert.AreEqual('Server-Pfad wählen…', TAtlasSetupTexts.FixCaption(TAtlasSetupFix.ChooseServerPath));
   Assert.AreEqual('Index neu aufbauen', TAtlasSetupTexts.FixCaption(TAtlasSetupFix.RebuildIndex));
   Assert.AreEqual('Error Insight abschalten', TAtlasSetupTexts.FixCaption(TAtlasSetupFix.DisableErrorInsight));
@@ -121,138 +121,138 @@ end;
 
 procedure TAtlasSetupWindowTests.ButtonOnlyForNonGreenPoints;
 var
-  Window: TAtlasSetupWindow;
-  Results: TArray<TAtlasSetupResult>;
-  Index: Integer;
+  mWindow: TAtlasSetupWindow;
+  mResults: TArray<TAtlasSetupResult>;
+  mIndex: Integer;
 begin
-  Results := TAtlasSetupChecklist.Evaluate(Input);
-  Window := TAtlasSetupWindow.CreateSetup(nil, TAtlasColors.Light);
+  mResults := TAtlasSetupChecklist.Evaluate(Input);
+  mWindow := TAtlasSetupWindow.CreateSetup(nil, TAtlasColors.Light);
   try
-    Window.SetResults(Results);
-    for Index := 0 to High(Results) do
+    mWindow.SetResults(mResults);
+    for mIndex := 0 to High(mResults) do
     begin
-      Assert.AreEqual<Boolean>(Results[Index].State <> TAtlasStatusState.Green, Window.FixButtons[Index].Visible,
-        'Knopf genau bei gelb oder rot: ' + IntToStr(Index));
+      Assert.AreEqual<Boolean>(mResults[mIndex].State <> TAtlasStatusState.Green, mWindow.FixButtons[mIndex].Visible,
+        'Knopf genau bei gelb oder rot: ' + IntToStr(mIndex));
     end;
-    Assert.AreEqual('Jetzt aufbauen', Window.FixButtons[3].Caption);
-    Assert.AreEqual(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupCopy), Window.CopyButton.Caption);
-    Assert.AreEqual(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupRecheck), Window.RecheckButton.Caption);
+    Assert.AreEqual('Jetzt aufbauen', mWindow.FixButtons[3].Caption);
+    Assert.AreEqual(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupCopy), mWindow.CopyButton.Caption);
+    Assert.AreEqual(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupRecheck), mWindow.RecheckButton.Caption);
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasSetupWindowTests.FixButtonCallsOnFix;
 var
-  Window: TAtlasSetupWindow;
-  Fixed: TAtlasSetupFix;
-  Copied, Rechecked: Integer;
+  mWindow: TAtlasSetupWindow;
+  mFixed: TAtlasSetupFix;
+  mCopied, mRechecked: Integer;
 begin
-  Fixed := TAtlasSetupFix.None;
-  Copied := 0;
-  Rechecked := 0;
-  Window := TAtlasSetupWindow.CreateSetup(nil, TAtlasColors.Dark);
+  mFixed := TAtlasSetupFix.None;
+  mCopied := 0;
+  mRechecked := 0;
+  mWindow := TAtlasSetupWindow.CreateSetup(nil, TAtlasColors.Dark);
   try
-    Window.SetResults(TAtlasSetupChecklist.Evaluate(Input));
-    Window.OnFix :=
+    mWindow.SetResults(TAtlasSetupChecklist.Evaluate(Input));
+    mWindow.OnFix :=
       procedure(AResult: TAtlasSetupResult)
       begin
-        Fixed := AResult.Fix;
+        mFixed := AResult.Fix;
       end;
-    Window.OnCopy :=
+    mWindow.OnCopy :=
       procedure
       begin
-        Inc(Copied);
+        Inc(mCopied);
       end;
-    Window.OnRecheck :=
+    mWindow.OnRecheck :=
       procedure
       begin
-        Inc(Rechecked);
+        Inc(mRechecked);
       end;
-    Window.FixButtons[4].Click;
-    Assert.AreEqual(Ord(TAtlasSetupFix.DisableErrorInsight), Ord(Fixed));
-    Window.CopyButton.Click;
-    Window.RecheckButton.Click;
-    Assert.AreEqual(1, Copied);
-    Assert.AreEqual(1, Rechecked);
+    mWindow.FixButtons[4].Click;
+    Assert.AreEqual(Ord(TAtlasSetupFix.DisableErrorInsight), Ord(mFixed));
+    mWindow.CopyButton.Click;
+    mWindow.RecheckButton.Click;
+    Assert.AreEqual(1, mCopied);
+    Assert.AreEqual(1, mRechecked);
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasSetupWindowTests.WhyExplainsInTheWindow;
 var
-  Window: TAtlasSetupWindow;
-  Data: TAtlasSetupInput;
-  Called: Boolean;
-  Height_: Integer;
+  mWindow: TAtlasSetupWindow;
+  mData: TAtlasSetupInput;
+  mCalled: Boolean;
+  mHeight_: Integer;
 begin
-  Data := Input;
-  Data.Platform := '';
-  Called := False;
-  Window := TAtlasSetupWindow.CreateSetup(nil, TAtlasColors.Light);
+  mData := Input;
+  mData.Platform := '';
+  mCalled := False;
+  mWindow := TAtlasSetupWindow.CreateSetup(nil, TAtlasColors.Light);
   try
-    Window.SetResults(TAtlasSetupChecklist.Evaluate(Data));
-    Window.OnFix :=
+    mWindow.SetResults(TAtlasSetupChecklist.Evaluate(mData));
+    mWindow.OnFix :=
       procedure(AResult: TAtlasSetupResult)
       begin
-        Called := True;
+        mCalled := True;
       end;
-    Height_ := Window.ClientHeight;
-    Assert.AreEqual('Warum?', Window.FixButtons[1].Caption);
-    Window.FixButtons[1].Click;
-    Assert.IsFalse(Called, '„Warum?“ erklärt nur');
-    Assert.AreEqual(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupWhyDelphiNoProject), Window.Note);
-    Assert.IsTrue(Window.ClientHeight > Height_, 'Platz für die Erklärung');
+    mHeight_ := mWindow.ClientHeight;
+    Assert.AreEqual('Warum?', mWindow.FixButtons[1].Caption);
+    mWindow.FixButtons[1].Click;
+    Assert.IsFalse(mCalled, '„Warum?“ erklärt nur');
+    Assert.AreEqual(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupWhyDelphiNoProject), mWindow.Note);
+    Assert.IsTrue(mWindow.ClientHeight > mHeight_, 'Platz für die Erklärung');
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasSetupWindowTests.ProjectsBecomeSubLines;
 var
-  Window: TAtlasSetupWindow;
-  Data: TAtlasSetupInput;
-  Height1: Integer;
+  mWindow: TAtlasSetupWindow;
+  mData: TAtlasSetupInput;
+  mHeight1: Integer;
 begin
-  Data := Input;
-  Data.Projects := nil;
-  Window := TAtlasSetupWindow.CreateSetup(nil, TAtlasColors.Light);
+  mData := Input;
+  mData.Projects := nil;
+  mWindow := TAtlasSetupWindow.CreateSetup(nil, TAtlasColors.Light);
   try
-    Data.Status.Workspaces := nil;
-    Window.SetResults(TAtlasSetupChecklist.Evaluate(Data));
-    Height1 := Window.ClientHeight;
-    Window.SetResults(TAtlasSetupChecklist.Evaluate(Input));
-    Assert.IsTrue(Window.ClientHeight > Height1, 'zwei Projektzeilen unter dem Index');
-    Assert.AreEqual('Kunden: fertig', TAtlasSetupTexts.ProjectText(Window.Results[2].Projects[0]));
-    Assert.AreEqual('Export: fehlt im Index', TAtlasSetupTexts.ProjectText(Window.Results[2].Projects[1]));
+    mData.Status.Workspaces := nil;
+    mWindow.SetResults(TAtlasSetupChecklist.Evaluate(mData));
+    mHeight1 := mWindow.ClientHeight;
+    mWindow.SetResults(TAtlasSetupChecklist.Evaluate(Input));
+    Assert.IsTrue(mWindow.ClientHeight > mHeight1, 'zwei Projektzeilen unter dem Index');
+    Assert.AreEqual('Kunden: fertig', TAtlasSetupTexts.ProjectText(mWindow.Results[2].Projects[0]));
+    Assert.AreEqual('Export: fehlt im Index', TAtlasSetupTexts.ProjectText(mWindow.Results[2].Projects[1]));
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasSetupWindowTests.ProjectStatusShowsPercentAndStage;
 var
-  Project: TAtlasSetupProject;
+  mProject: TAtlasSetupProject;
 begin
-  Project := TAtlasSetupProject.Create('Lager', TAtlasSetupProjectState.Building);
-  Assert.AreEqual('wird aufgebaut', TAtlasSetupTexts.ProjectStatus(Project), 'älterer Server');
-  Assert.AreEqual(0, TAtlasSetupTexts.ProjectBar(Project), 'leere Spur');
-  Project.Indexing.Active := True;
-  Project.Indexing.Percent := 62;
-  Project.Indexing.Stage := TAtlasSetupIndexStage.SearchPaths;
-  Assert.AreEqual('62 % · Suchpfade', TAtlasSetupTexts.ProjectStatus(Project));
-  Assert.AreEqual('Lager: 62 % · Suchpfade', TAtlasSetupTexts.ProjectText(Project));
-  Assert.AreEqual(62, TAtlasSetupTexts.ProjectBar(Project));
-  Project.Indexing.Waiting := True;
-  Project.Indexing.Percent := 18;
-  Assert.AreEqual('18 % · wartet', TAtlasSetupTexts.ProjectStatus(Project));
-  Project.Indexing.Waiting := False;
-  Project.Indexing.Percent := -1;
-  Project.Indexing.Stage := TAtlasSetupIndexStage.Library_;
-  Assert.AreEqual('Bibliothek', TAtlasSetupTexts.ProjectStatus(Project));
+  mProject := TAtlasSetupProject.Create('Lager', TAtlasSetupProjectState.Building);
+  Assert.AreEqual('wird aufgebaut', TAtlasSetupTexts.ProjectStatus(mProject), 'älterer Server');
+  Assert.AreEqual(0, TAtlasSetupTexts.ProjectBar(mProject), 'leere Spur');
+  mProject.Indexing.Active := True;
+  mProject.Indexing.Percent := 62;
+  mProject.Indexing.Stage := TAtlasSetupIndexStage.SearchPaths;
+  Assert.AreEqual('62 % · Suchpfade', TAtlasSetupTexts.ProjectStatus(mProject));
+  Assert.AreEqual('Lager: 62 % · Suchpfade', TAtlasSetupTexts.ProjectText(mProject));
+  Assert.AreEqual(62, TAtlasSetupTexts.ProjectBar(mProject));
+  mProject.Indexing.Waiting := True;
+  mProject.Indexing.Percent := 18;
+  Assert.AreEqual('18 % · wartet', TAtlasSetupTexts.ProjectStatus(mProject));
+  mProject.Indexing.Waiting := False;
+  mProject.Indexing.Percent := -1;
+  mProject.Indexing.Stage := TAtlasSetupIndexStage.Library_;
+  Assert.AreEqual('Bibliothek', TAtlasSetupTexts.ProjectStatus(mProject));
   TAtlasStrings.Language := TAtlasLanguage.English;
-  Assert.AreEqual('library', TAtlasSetupTexts.ProjectStatus(Project));
+  Assert.AreEqual('library', TAtlasSetupTexts.ProjectStatus(mProject));
   TAtlasStrings.Language := TAtlasLanguage.German;
   Assert.AreEqual(100, TAtlasSetupTexts.ProjectBar(TAtlasSetupProject.Create('Kunden',
     TAtlasSetupProjectState.Done)));
@@ -262,45 +262,45 @@ end;
 
 procedure TAtlasSetupWindowTests.ReportLinesAndProgress;
 var
-  Results: TArray<TAtlasSetupResult>;
-  Lines: TArray<TAtlasSetupReportLine>;
+  mResults: TArray<TAtlasSetupResult>;
+  mLines: TArray<TAtlasSetupReportLine>;
 begin
-  Results := TAtlasSetupChecklist.Evaluate(Input);
-  Assert.AreEqual('3 von 6 erledigt', TAtlasSetupTexts.ProgressText(Results));
-  Lines := TAtlasSetupTexts.ReportLines(Results);
+  mResults := TAtlasSetupChecklist.Evaluate(Input);
+  Assert.AreEqual('3 von 6 erledigt', TAtlasSetupTexts.ProgressText(mResults));
+  mLines := TAtlasSetupTexts.ReportLines(mResults);
   // Sechs Prüfungen und zwei Projekte.
-  Assert.AreEqual(8, Integer(Length(Lines)));
-  Assert.AreEqual('Server gefunden, gestartet, Version passt (AtlasServer 0.1.0)', Lines[0].Text);
-  Assert.IsTrue(Lines[3].Indent);
-  Assert.AreEqual('Kunden: fertig', Lines[3].Text);
+  Assert.AreEqual(8, Integer(Length(mLines)));
+  Assert.AreEqual('Server gefunden, gestartet, Version passt (AtlasServer 0.1.0)', mLines[0].Text);
+  Assert.IsTrue(mLines[3].Indent);
+  Assert.AreEqual('Kunden: fertig', mLines[3].Text);
 end;
 
 procedure TAtlasSetupWindowTests.ShowAtStartWithoutEcho;
 var
-  Window: TAtlasSetupWindow;
-  Calls: Integer;
-  Last: Boolean;
+  mWindow: TAtlasSetupWindow;
+  mCalls: Integer;
+  mLast: Boolean;
 begin
-  Calls := 0;
-  Last := True;
-  Window := TAtlasSetupWindow.CreateSetup(nil, TAtlasColors.Light);
+  mCalls := 0;
+  mLast := True;
+  mWindow := TAtlasSetupWindow.CreateSetup(nil, TAtlasColors.Light);
   try
-    Window.OnShowAtStart :=
+    mWindow.OnShowAtStart :=
       procedure(AValue: Boolean)
       begin
-        Inc(Calls);
-        Last := AValue;
+        Inc(mCalls);
+        mLast := AValue;
       end;
-    Window.SetShowAtStart(False);
-    Assert.AreEqual(0, Calls, 'Setzen aus der IDE-Schicht meldet nichts zurück');
-    Assert.IsFalse(Window.ShowAtStartBox.Checked);
-    Window.ShowAtStartBox.Checked := True;
-    Assert.AreEqual(1, Calls);
-    Assert.IsTrue(Last);
-    Window.SetTryKey('Strg+J');
-    Assert.AreEqual('Strg+J', Window.TryKey);
+    mWindow.SetShowAtStart(False);
+    Assert.AreEqual(0, mCalls, 'Setzen aus der IDE-Schicht meldet nichts zurück');
+    Assert.IsFalse(mWindow.ShowAtStartBox.Checked);
+    mWindow.ShowAtStartBox.Checked := True;
+    Assert.AreEqual(1, mCalls);
+    Assert.IsTrue(mLast);
+    mWindow.SetTryKey('Strg+J');
+    Assert.AreEqual('Strg+J', mWindow.TryKey);
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 

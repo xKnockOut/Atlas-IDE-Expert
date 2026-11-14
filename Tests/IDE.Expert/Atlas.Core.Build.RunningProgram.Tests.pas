@@ -54,12 +54,17 @@ const
   cExe = 'C:\Projekte\Demo\Win32\Debug\AtlasDemo.exe';
   cOwnPid = 4;
 
-function Project(const AOutput: string; AKind: TAtlasCompileKind = TAtlasCompileKind.Make): TAtlasCompileProject;
+function Project(const AOutput: string; AKind: TAtlasCompileKind): TAtlasCompileProject; overload;
 begin
   Result := Default(TAtlasCompileProject);
   Result.FileName := 'C:\Projekte\Demo\AtlasDemo.dproj';
   Result.OutputFile := AOutput;
   Result.Kind := AKind;
+end;
+
+function Project(const AOutput: string): TAtlasCompileProject; overload;
+begin
+  Result := Project(AOutput, TAtlasCompileKind.Make);
 end;
 
 function Running: TArray<TAtlasRunningProcess>;

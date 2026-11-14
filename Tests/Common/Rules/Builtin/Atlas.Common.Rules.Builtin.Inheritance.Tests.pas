@@ -156,71 +156,76 @@ uses
 
 const
   // Ausschnitte aus RTL und VCL, wie sie der Index aus den Quellen liest.
-  ClassesSource =
+  cClassesSource =
     'unit System.Classes;'#10'interface'#10'type'#10 +
     '  TPersistent = class(TObject)'#10'  end;'#10 +
     '  TComponent = class(TPersistent)'#10'  public'#10 +
     '    constructor Create(AOwner: TComponent); virtual;'#10'  end;'#10 +
     'implementation'#10'end.';
-  ControlsSource =
+  cControlsSource =
     'unit Vcl.Controls;'#10'interface'#10'type'#10 +
     '  TControl = class(TComponent)'#10'  end;'#10 +
     '  TCustomControl = class(TControl)'#10'  end;'#10 +
     'implementation'#10'end.';
 
-function ClassUnit(const AMembers: string; const AHead: string = 'TFoo = class(TBasis)'): string;
+function ClassUnit(const AMembers: string; const AHead: string): string; overload;
 begin
   Result := 'unit U;'#10'interface'#10'type'#10 +
     '  TBasis = class'#10'  public'#10'    procedure Lauf(A: Integer); virtual;'#10'  end;'#10 +
     '  ' + AHead + #10'  public'#10 + AMembers + #10'  end;'#10'implementation'#10'end.';
 end;
 
+function ClassUnit(const AMembers: string): string; overload;
+begin
+  Result := ClassUnit(AMembers, 'TFoo = class(TBasis)');
+end;
+
 function IndexWith(const ASources: array of string): ISymbolIndex;
 var
-  Index: Integer;
-  Tree: TSyntaxTree;
+  mIndex: Integer;
+  mTree: TSyntaxTree;
 begin
   Result := TSymbolIndex.Create;
-  for Index := 0 to High(ASources) do
+  for mIndex := 0 to High(ASources) do
   begin
-    Tree := TPascalParser.Parse(ASources[Index]);
+    mTree := TPascalParser.Parse(ASources[mIndex]);
     try
-      Result.AddUnit(TIndexExtractor.Extract(Tree, Format('C:\Quellen\Unit%d.pas', [Index])));
+      Result.AddUnit(TIndexExtractor.Extract(mTree, Format('C:\Quellen\Unit%d.pas', [mIndex])));
     finally
-      Tree.Free;
+      mTree.Free;
     end;
   end;
 end;
 
 function Run(const ARule: IRule; const ASource: string; const AIndex: ISymbolIndex): TArray<TRuleFinding>;
 var
-  Context: TRuleContext;
-  Tree: TSyntaxTree;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(ASource);
+  mTree := TPascalParser.Parse(ASource);
   try
-    Context := Default(TRuleContext);
-    Context.Text := ASource;
-    Context.Tree := Tree;
-    Context.Index := AIndex;
-    Result := TRuleEngine.Run([ARule], TServerSettings.Default, Context);
+    mContext := Default(TRuleContext);
+    mContext.Text := ASource;
+    mContext.Tree := mTree;
+    mContext.Index := AIndex;
+    Result := TRuleEngine.Run([ARule], TServerSettings.Default, mContext);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TInheritanceRulesTests.DestroyWithoutOverrideReportsPreferredFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TDestroyWithoutOverrideRule.Create, ClassUnit('    destructor Destroy;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.IsFalse(Findings[0].Fixes[0].Alternative);
-  Assert.AreEqual(' override;', Findings[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual(9, Findings[0].Fixes[0].Edits[0].Range.StartPos.Line);
-  Assert.AreEqual(23, Findings[0].Fixes[0].Edits[0].Range.StartPos.Character);
+  mFindings := TRuleAssert.Findings(TDestroyWithoutOverrideRule.Create, ClassUnit('    destructor Destroy;'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.IsFalse(mFindings[0].Fixes[0].Alternative);
+  Assert.AreEqual(' override;', mFindings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(9, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Line);
+  Assert.AreEqual(23, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Character);
 end;
 
 procedure TInheritanceRulesTests.DestroyWithOverrideIsSilent;
@@ -230,23 +235,23 @@ end;
 
 procedure TInheritanceRulesTests.ComponentCreateResolvedFromIndexReports;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := Run(TComponentCreateWithoutOverrideRule.Create,
+  mFindings := Run(TComponentCreateWithoutOverrideRule.Create,
     ClassUnit('    constructor Create(AOwner: TComponent);', 'TFoo = class(TCustomControl)'),
-    IndexWith([ClassesSource, ControlsSource]));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(' override;', Findings[0].Fixes[0].Edits[0].NewText);
+    IndexWith([cClassesSource, cControlsSource]));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(' override;', mFindings[0].Fixes[0].Edits[0].NewText);
   // Ohne override verdeckt der Konstruktor TComponent.Create, das meldet aber nur diese Regel.
   Assert.AreEqual(0, Integer(Length(Run(THidesVirtualRule.Create,
     ClassUnit('    constructor Create(AOwner: TComponent);', 'TFoo = class(TCustomControl)'),
-    IndexWith([ClassesSource, ControlsSource])))));
+    IndexWith([cClassesSource, cControlsSource])))));
 end;
 
 procedure TInheritanceRulesTests.CreateOutsideComponentIsSilent;
 begin
   Assert.AreEqual(0, Integer(Length(Run(TComponentCreateWithoutOverrideRule.Create,
-    ClassUnit('    constructor Create(AOwner: TComponent);'), IndexWith([ClassesSource])))));
+    ClassUnit('    constructor Create(AOwner: TComponent);'), IndexWith([cClassesSource])))));
 end;
 
 procedure TInheritanceRulesTests.UnresolvableAncestorIsSilent;
@@ -254,45 +259,45 @@ begin
   // TCustomControl fehlt im Index: keine Aussage.
   Assert.AreEqual(0, Integer(Length(Run(TComponentCreateWithoutOverrideRule.Create,
     ClassUnit('    constructor Create(AOwner: TComponent);', 'TFoo = class(TCustomControl)'),
-    IndexWith([ClassesSource])))));
+    IndexWith([cClassesSource])))));
   Assert.AreEqual(0, Integer(Length(Run(THidesVirtualRule.Create,
     ClassUnit('    procedure Lauf(A: Integer);', 'TFoo = class(TUnbekannt)'), nil))));
 end;
 
 procedure TInheritanceRulesTests.HidesVirtualOffersTwoAlternatives;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(THidesVirtualRule.Create, ClassUnit('    procedure Lauf(A: Integer);'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
-  Assert.IsTrue(Findings[0].Fixes[0].Alternative);
-  Assert.IsTrue(Findings[0].Fixes[1].Alternative);
-  Assert.AreEqual(' override;', Findings[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual(' reintroduce;', Findings[0].Fixes[1].Edits[0].NewText);
+  mFindings := TRuleAssert.Findings(THidesVirtualRule.Create, ClassUnit('    procedure Lauf(A: Integer);'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes)));
+  Assert.IsTrue(mFindings[0].Fixes[0].Alternative);
+  Assert.IsTrue(mFindings[0].Fixes[1].Alternative);
+  Assert.AreEqual(' override;', mFindings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(' reintroduce;', mFindings[0].Fixes[1].Edits[0].NewText);
 end;
 
 procedure TInheritanceRulesTests.HidesVirtualWithOtherSignatureIsMedium;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(THidesVirtualRule.Create, ClassUnit('    procedure Lauf(const S: string);'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(THidesVirtualRule.Create, ClassUnit('    procedure Lauf(const S: string);'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   // override passt nicht zur Signatur; nur reintroduce.
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TInheritanceRulesTests.ReintroduceSilencesAllRules;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := ClassUnit('    procedure Lauf(A: Integer); reintroduce;'#10'    destructor Destroy; reintroduce;');
-  TRuleAssert.Silent(THidesVirtualRule.Create, Source);
-  TRuleAssert.Silent(TDestroyWithoutOverrideRule.Create, Source);
-  TRuleAssert.Silent(TVirtualInsteadOfOverrideRule.Create, Source);
-  TRuleAssert.Silent(TComponentCreateWithoutOverrideRule.Create, Source);
+  mSource := ClassUnit('    procedure Lauf(A: Integer); reintroduce;'#10'    destructor Destroy; reintroduce;');
+  TRuleAssert.Silent(THidesVirtualRule.Create, mSource);
+  TRuleAssert.Silent(TDestroyWithoutOverrideRule.Create, mSource);
+  TRuleAssert.Silent(TVirtualInsteadOfOverrideRule.Create, mSource);
+  TRuleAssert.Silent(TComponentCreateWithoutOverrideRule.Create, mSource);
 end;
 
 procedure TInheritanceRulesTests.OverloadWithOtherSignatureIsSilent;
@@ -302,39 +307,39 @@ end;
 
 procedure TInheritanceRulesTests.VirtualInsteadOfOverrideReplacesDirective;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TVirtualInsteadOfOverrideRule.Create,
+  mFindings := TRuleAssert.Findings(TVirtualInsteadOfOverrideRule.Create,
     ClassUnit('    procedure Lauf(A: Integer); virtual;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('"Lauf" ist im Vorfahren TBasis schon virtuell; override statt virtual verwenden',
-    Findings[0].Message);
-  Assert.AreEqual('override', Findings[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual(9, Findings[0].Fixes[0].Edits[0].Range.StartPos.Line);
-  Assert.AreEqual(32, Findings[0].Fixes[0].Edits[0].Range.StartPos.Character);
+    mFindings[0].Message);
+  Assert.AreEqual('override', mFindings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(9, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Line);
+  Assert.AreEqual(32, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Character);
   TRuleAssert.Silent(THidesVirtualRule.Create, ClassUnit('    procedure Lauf(A: Integer); virtual;'));
 end;
 
 procedure TInheritanceRulesTests.VirtualInsteadOfOverrideNamesAncestor;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TVirtualInsteadOfOverrideRule.Create,
+  mFindings := TRuleAssert.Findings(TVirtualInsteadOfOverrideRule.Create,
     ClassUnit('    procedure Lauf(A: Integer); dynamic;', 'TMitte = class(TBasis)'#10'  end;'#10 +
     '  TFoo = class(TMitte)'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('"Lauf" ist im Vorfahren TBasis schon virtuell; override statt dynamic verwenden',
-    Findings[0].Message);
+    mFindings[0].Message);
 end;
 
 procedure TInheritanceRulesTests.VirtualInsteadOfOverrideDestroyNamesTObject;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TVirtualInsteadOfOverrideRule.Create, ClassUnit('    destructor Destroy; virtual;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TVirtualInsteadOfOverrideRule.Create, ClassUnit('    destructor Destroy; virtual;'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('"Destroy" ist im Vorfahren TObject schon virtuell; override statt virtual verwenden',
-    Findings[0].Message);
+    mFindings[0].Message);
 end;
 
 procedure TInheritanceRulesTests.NewVirtualMethodIsSilent;
@@ -394,61 +399,61 @@ end;
 
 procedure TInheritanceRulesTests.DeepExpressionDoesNotOverflowStack;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
-  Text, Failure: string;
-  Tree: TSyntaxTree;
-  Context: TRuleContext;
-  Rules: TArray<IRule>;
-  Counter: TCountingReport;
-  Report: IRuleReport;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
+  mText, mFailure: string;
+  mTree: TSyntaxTree;
+  mContext: TRuleContext;
+  mRules: TArray<IRule>;
+  mCounter: TCountingReport;
+  mReport: IRuleReport;
 begin
   // Subtraktion bleibt im Parser linkslastig: 3000 Glieder ergeben gut 3000 Ebenen.
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.Append('unit U;'#10'interface'#10'type'#10 +
+    mBuilder.Append('unit U;'#10'interface'#10'type'#10 +
       '  TBasis = class'#10'  public'#10'    procedure Lauf(A: Integer); virtual;'#10'  end;'#10 +
       '  TFoo = class(TBasis)'#10'  public'#10'    destructor Destroy;'#10 +
       '    procedure Lauf(A: Integer); virtual;'#10'  end;'#10 +
       'implementation'#10'procedure Rechne;'#10'begin'#10'  X := 1');
-    for Index := 1 to 3000 do
+    for mIndex := 1 to 3000 do
     begin
-      Builder.Append(' - 1');
+      mBuilder.Append(' - 1');
     end;
-    Builder.Append(';'#10'end;'#10'end.');
-    Text := Builder.ToString;
+    mBuilder.Append(';'#10'end;'#10'end.');
+    mText := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Rules := [TDestroyWithoutOverrideRule.Create, TComponentCreateWithoutOverrideRule.Create,
+  mRules := [TDestroyWithoutOverrideRule.Create, TComponentCreateWithoutOverrideRule.Create,
     THidesVirtualRule.Create, TVirtualInsteadOfOverrideRule.Create];
-  Counter := TCountingReport.Create;
-  Report := Counter;
-  Tree := TPascalParser.Parse(Text);
+  mCounter := TCountingReport.Create;
+  mReport := mCounter;
+  mTree := TPascalParser.Parse(mText);
   try
-    Context := Default(TRuleContext);
-    Context.Text := Text;
-    Context.Tree := Tree;
-    Context.Derived := TRuleDerivedCache.Create;
-    Failure := TSmallStack.Run(256,
+    mContext := Default(TRuleContext);
+    mContext.Text := mText;
+    mContext.Tree := mTree;
+    mContext.Derived := TRuleDerivedCache.Create;
+    mFailure := TSmallStack.Run(256,
       procedure
       var
         Rule: IRule;
       begin
-        for Rule in Rules do
+        for Rule in mRules do
         begin
-          Rule.Check(Context, Report);
+          Rule.Check(mContext, mReport);
         end;
       end);
     // Der Ableitungscache hält Verweise in den Baum: vor ihm leeren.
-    Context.Derived := nil;
+    mContext.Derived := nil;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.AreEqual('', Failure, 'kein Stapelüberlauf');
+  Assert.AreEqual('', mFailure, 'kein Stapelüberlauf');
   // destroy-without-override und virtual-instead-of-override.
-  Assert.AreEqual(2, Counter.Count);
-  Rules := nil;
+  Assert.AreEqual(2, mCounter.Count);
+  mRules := nil;
 end;
 
 function Kunde(const AParam, ABody: string): string;
@@ -460,56 +465,56 @@ end;
 
 procedure TInheritanceRulesTests.ShadowedNameIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Kunde('Caption', '  Caption := Caption + '' (geladen)'';');
-  Findings := TRuleAssert.Findings(TShadowedNameRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mSource := Kunde('Caption', '  Caption := Caption + '' (geladen)'';');
+  mFindings := TRuleAssert.Findings(TShadowedNameRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Parameter Caption verdeckt die Property TfrmKunde.Caption; die Zuweisung ändert nur den ' +
-    'Parameter.', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual('In ACaption umbenennen', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
-  Assert.AreEqual(Kunde('ACaption', '  ACaption := ACaption + '' (geladen)'';'), Fixed);
-  TRuleAssert.Silent(TShadowedNameRule.Create, Fixed);
+    'Parameter.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual('In ACaption umbenennen', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  Assert.AreEqual(Kunde('ACaption', '  ACaption := ACaption + '' (geladen)'';'), mFixed);
+  TRuleAssert.Silent(TShadowedNameRule.Create, mFixed);
 end;
 
 procedure TInheritanceRulesTests.ShadowedNameFieldsLocalsAndGlobals;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TShadowedNameRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+  mFindings := TRuleAssert.Findings(TShadowedNameRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  TBasis = class'#10'  private'#10'    FWert: Integer;'#10'  protected'#10'    property Wert: Integer read FWert;'#10 +
     '  end;'#10'  TKonto = class(TBasis)'#10'  private'#10'    FStand: Integer;'#10'  public'#10 +
     '    procedure Buchen(Betrag: Integer);'#10'  end;'#10'var'#10'  Protokoll: TStringList;'#10 +
     'implementation'#10'procedure TKonto.Buchen(Betrag: Integer);'#10'var'#10'  FStand, Wert: Integer;'#10 +
     'begin'#10'  var Protokoll := 1;'#10'  FStand := Betrag;'#10'end;'#10'end.');
-  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual(3, Integer(Length(mFindings)));
   Assert.AreEqual('Lokale Variable FStand verdeckt das Feld TKonto.FStand; die Zuweisung ändert nur die lokale ' +
-    'Variable.', Findings[0].Message);
-  Assert.AreEqual('In LFStand umbenennen', Findings[0].Fixes[0].Title);
-  Assert.AreEqual('Lokale Variable Wert verdeckt die Property TKonto.Wert.', Findings[1].Message);
-  Assert.AreEqual('Lokale Variable Protokoll verdeckt die globale Variable Protokoll.', Findings[2].Message);
+    'Variable.', mFindings[0].Message);
+  Assert.AreEqual('In LFStand umbenennen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual('Lokale Variable Wert verdeckt die Property TKonto.Wert.', mFindings[1].Message);
+  Assert.AreEqual('Lokale Variable Protokoll verdeckt die globale Variable Protokoll.', mFindings[2].Message);
 end;
 
 procedure TInheritanceRulesTests.ShadowedNameFromIndexAndVisibility;
 const
-  BaseSource = 'unit Basis;'#10'interface'#10'type'#10'  TFremd = class'#10'  private'#10 +
+  cBaseSource = 'unit Basis;'#10'interface'#10'type'#10'  TFremd = class'#10'  private'#10 +
     '    FGeheim: Integer;'#10'  protected'#10'    FSichtbar: Integer;'#10'  public'#10 +
     '    property Name: string read FName;'#10'  end;'#10'implementation'#10'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := Run(TShadowedNameRule.Create, 'unit U;'#10'interface'#10'type'#10'  TMeins = class(TFremd)'#10 +
+  mFindings := Run(TShadowedNameRule.Create, 'unit U;'#10'interface'#10'type'#10'  TMeins = class(TFremd)'#10 +
     '    procedure Tun(Name: string; FGeheim, FSichtbar: Integer);'#10'  end;'#10'implementation'#10 +
     'procedure TMeins.Tun(Name: string; FGeheim, FSichtbar: Integer);'#10'begin'#10'end;'#10'end.',
-    IndexWith([BaseSource]));
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual('Parameter Name verdeckt die Property TMeins.Name.', Findings[0].Message);
-  Assert.AreEqual('Parameter FSichtbar verdeckt das Feld TMeins.FSichtbar.', Findings[1].Message);
+    IndexWith([cBaseSource]));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('Parameter Name verdeckt die Property TMeins.Name.', mFindings[0].Message);
+  Assert.AreEqual('Parameter FSichtbar verdeckt das Feld TMeins.FSichtbar.', mFindings[1].Message);
 end;
 
 procedure TInheritanceRulesTests.ShadowedNameSilentCases;
@@ -525,27 +530,27 @@ end;
 
 procedure TInheritanceRulesTests.ShadowedNameOptions;
 var
-  Source: string;
-  Issues: TArray<TConfigurationIssue>;
+  mSource: string;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Source := Kunde('Caption', '  Caption := Caption + '' (geladen)'';');
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, Source,
+  mSource := Kunde('Caption', '  Caption := Caption + '' (geladen)'';');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, mSource,
     '{"rules": {"shadowed-name": {"ignore": ["Cap*"]}}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, mSource,
     '{"rules": {"shadowed-name": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, mSource,
     '{"rules": {"shadowed-name": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
   // Ohne Vorgabe "Value" wird der Setter-Parameter gemeldet.
-  Source := 'unit U;'#10'interface'#10'type'#10'  TA = class'#10'    FValue: Integer;'#10 +
+  mSource := 'unit U;'#10'interface'#10'type'#10'  TA = class'#10'    FValue: Integer;'#10 +
     '    procedure SetX(Value: Integer);'#10'  end;'#10'implementation'#10 +
     'procedure TA.SetX(Value: Integer);'#10'begin'#10'end;'#10'end.';
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, Source))));
-  Source := StringReplace(Source, 'FValue', 'Value', []);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, Source))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, mSource))));
+  mSource := StringReplace(mSource, 'FValue', 'Value', []);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, mSource))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, mSource,
     '{"rules": {"shadowed-name": {"ignore": []}}}', 'U.pas'))));
-  TConfigurationParser.Parse('{"rules": {"shadowed-name": {"ignore": "Value"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"shadowed-name": {"ignore": "Value"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
 
 function Formular(const AVars, ABody: string): string;
@@ -557,29 +562,29 @@ end;
 
 procedure TInheritanceRulesTests.ShadowedNameFrameworkMembers;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Hilfsvariablen, die gelesen und zugewiesen werden oder als Argument dienen, bleiben still.
-  Source := Formular('  Left, Top: Integer;'#10'  Text: string;',
+  mSource := Formular('  Left, Top: Integer;'#10'  Text: string;',
     '  Left := 1;'#10'  Top := Left + 2;'#10'  Text := IntToStr(Top);'#10'  Canvas.TextOut(Left, Top, Text);');
-  TRuleAssert.Silent(TShadowedNameRule.Create, Source);
-  Source := Formular('  Width: Integer;'#10'  Rect: TRect;'#10'  Name: string;',
+  TRuleAssert.Silent(TShadowedNameRule.Create, mSource);
+  mSource := Formular('  Width: Integer;'#10'  Rect: TRect;'#10'  Name: string;',
     '  Rect.Left := 0;'#10'  Lesen(Name);'#10'  Name := Name + ''x'';');
-  TRuleAssert.Silent(TShadowedNameRule.Create, Source);
+  TRuleAssert.Silent(TShadowedNameRule.Create, mSource);
   // Nur zugewiesen: gemeint war wohl die Property.
-  Findings := TRuleAssert.Findings(TShadowedNameRule.Create, Formular('  Caption: string;',
+  mFindings := TRuleAssert.Findings(TShadowedNameRule.Create, Formular('  Caption: string;',
     '  Caption := ''Kunde'';'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Lokale Variable Caption verdeckt die Property TForm1.Caption; die Zuweisung ändert nur die ' +
-    'lokale Variable.', Findings[0].Message);
+    'lokale Variable.', mFindings[0].Message);
   // Nur gelesen, nie zugewiesen: ebenso.
-  Findings := TRuleAssert.Findings(TShadowedNameRule.Create, Formular('  Width, Mitte: Integer;',
+  mFindings := TRuleAssert.Findings(TShadowedNameRule.Create, Formular('  Width, Mitte: Integer;',
     '  Mitte := Width div 2;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Lokale Variable Width verdeckt die Property TForm1.Width; gelesen wird die lokale Variable, der ' +
-    'nichts zugewiesen wird.', Findings[0].Message);
-  Assert.AreEqual('In LWidth umbenennen', Findings[0].Fixes[0].Title);
+    'nichts zugewiesen wird.', mFindings[0].Message);
+  Assert.AreEqual('In LWidth umbenennen', mFindings[0].Fixes[0].Title);
   // Schleifenvariable einer for-in-Schleife: zugewiesen und gelesen.
   TRuleAssert.Silent(TShadowedNameRule.Create, Formular('  Left, Summe: Integer;',
     '  Summe := 0;'#10'  for Left in Werte do'#10'    Summe := Summe + Left;'));
@@ -587,45 +592,45 @@ begin
   TRuleAssert.Silent(TShadowedNameRule.Create, Formular('  Mitte: Integer;',
     '  var Top := 5;'#10'  Mitte := Top;'));
   // Parameter: var/out und nur gelesene still, zugewiesene Werteparameter gemeldet.
-  Source := 'unit U;'#10'interface'#10'type'#10'  TForm1 = class(TForm)'#10'  public'#10 +
+  mSource := 'unit U;'#10'interface'#10'type'#10'  TForm1 = class(TForm)'#10'  public'#10 +
     '    procedure Holen(var Text: string; out Tag: Integer; Left: Integer);'#10'  end;'#10'implementation'#10 +
     'procedure TForm1.Holen(var Text: string; out Tag: Integer; Left: Integer);'#10'begin'#10 +
     '  Text := IntToStr(Left);'#10'  Tag := 0;'#10'end;'#10'end.';
-  TRuleAssert.Silent(TShadowedNameRule.Create, Source);
+  TRuleAssert.Silent(TShadowedNameRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create,
-    StringReplace(Source, '  Tag := 0;', '  Left := 0;', [])))));
+    StringReplace(mSource, '  Tag := 0;', '  Left := 0;', [])))));
   // frameworkMembers: true meldet wie bisher jeden Namen.
-  Source := Formular('  Left, Top: Integer;'#10'  Text: string;',
+  mSource := Formular('  Left, Top: Integer;'#10'  Text: string;',
     '  Left := 1;'#10'  Top := Left + 2;'#10'  Text := IntToStr(Top);'#10'  Canvas.TextOut(Left, Top, Text);');
-  Assert.AreEqual(3, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, Source,
+  Assert.AreEqual(3, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, mSource,
     '{"rules": {"shadowed-name": {"frameworkMembers": true}}}', 'U.pas'))));
 end;
 
 procedure TInheritanceRulesTests.ShadowedNameFrameworkMembersFromIndex;
 const
-  VclSource = 'unit Vcl.Forms;'#10'interface'#10'type'#10'  TCustomForm = class'#10'  public'#10 +
+  cVclSource = 'unit Vcl.Forms;'#10'interface'#10'type'#10'  TCustomForm = class'#10'  public'#10 +
     '    property Position: Integer read FPosition;'#10'  end;'#10'implementation'#10'end.';
-  OwnSource = 'unit Basis;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10 +
+  cOwnSource = 'unit Basis;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10 +
     '    property Position: Integer read FPosition;'#10'  end;'#10'implementation'#10'end.';
-  Body = 'implementation'#10'procedure TFenster.Suchen;'#10'var'#10'  Position: Integer;'#10'begin'#10 +
+  cBody = 'implementation'#10'procedure TFenster.Suchen;'#10'var'#10'  Position: Integer;'#10'begin'#10 +
     '  Position := 1;'#10'  Inc(Position);'#10'end;'#10'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Aus einer Bibliotheks-Unit geerbt: die Hilfsvariable Position bleibt still.
   Assert.AreEqual(0, Integer(Length(Run(TShadowedNameRule.Create, 'unit U;'#10'interface'#10'type'#10 +
-    '  TFenster = class(TCustomForm)'#10'    procedure Suchen;'#10'  end;'#10 + Body, IndexWith([VclSource])))));
+    '  TFenster = class(TCustomForm)'#10'    procedure Suchen;'#10'  end;'#10 + cBody, IndexWith([cVclSource])))));
   // Aus einer eigenen Unit geerbt: gemeldet wie bisher.
-  Findings := Run(TShadowedNameRule.Create, 'unit U;'#10'interface'#10'type'#10 +
-    '  TFenster = class(TBasis)'#10'    procedure Suchen;'#10'  end;'#10 + Body, IndexWith([OwnSource]));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := Run(TShadowedNameRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TFenster = class(TBasis)'#10'    procedure Suchen;'#10'  end;'#10 + cBody, IndexWith([cOwnSource]));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Lokale Variable Position verdeckt die Property TFenster.Position; die Zuweisung ändert nur die ' +
-    'lokale Variable.', Findings[0].Message);
+    'lokale Variable.', mFindings[0].Message);
 end;
 
 procedure TInheritanceRulesTests.ShadowedNameOverrideParameters;
 const
-  Source = 'unit U;'#10'interface'#10'type'#10'  TBasis = class'#10'  protected'#10'    FAction: Integer;'#10 +
+  cSource = 'unit U;'#10'interface'#10'type'#10'  TBasis = class'#10'  protected'#10'    FAction: Integer;'#10 +
     '    property Action: Integer read FAction;'#10'    procedure Schliessen(var Action: Integer); virtual;'#10 +
     '    procedure Melden(var Action: Integer); message 1024;'#10'  end;'#10'  TKind = class(TBasis)'#10 +
     '  protected'#10'    procedure Schliessen(var Action: Integer); override;'#10'  end;'#10'implementation'#10 +
@@ -633,29 +638,29 @@ const
     'procedure TBasis.Melden(var Action: Integer);'#10'begin'#10'end;'#10 +
     'procedure TKind.Schliessen(var Action: Integer);'#10'begin'#10'  Action := 0;'#10'end;'#10'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Gemeldet wird nur die virtuelle Methode, die die Signatur selbst festlegt.
-  Findings := TRuleAssert.Findings(TShadowedNameRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(15, Findings[0].Range.StartPos.Line);
+  mFindings := TRuleAssert.Findings(TShadowedNameRule.Create, cSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(15, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TInheritanceRulesTests.ShadowedNameClassMethods;
 const
-  Source = 'unit U;'#10'interface'#10'type'#10'  TLayout = class'#10'  public'#10'    Decl: Integer;'#10 +
+  cSource = 'unit U;'#10'interface'#10'type'#10'  TLayout = class'#10'  public'#10'    Decl: Integer;'#10 +
     '    class var Zaehler: Integer;'#10'    class function Suchen: Integer; static;'#10'  end;'#10 +
     '  TForm1 = class(TForm)'#10'    class procedure Zeigen;'#10'  end;'#10'implementation'#10 +
     'class function TLayout.Suchen: Integer;'#10'var'#10'  Decl, Zaehler: Integer;'#10'begin'#10 +
     '  Decl := 1;'#10'  Zaehler := Decl;'#10'  Result := Zaehler;'#10'end;'#10 +
     'class procedure TForm1.Zeigen;'#10'var'#10'  Caption: string;'#10'begin'#10'  Caption := ''x'';'#10'end;'#10'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TShadowedNameRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TShadowedNameRule.Create, cSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Lokale Variable Zaehler verdeckt das Feld TLayout.Zaehler; die Zuweisung ändert nur die lokale ' +
-    'Variable.', Findings[0].Message);
+    'Variable.', mFindings[0].Message);
 end;
 
 function Dienste(const ABase, AMembers, AImplementation: string): string;
@@ -671,105 +676,105 @@ end;
 /// <summary>Wendet alle Edits einer Korrektur an (jedes Edit in einer Zeile, von hinten nach vorn).</summary>
 function ApplyEdits(const AText: string; const AFix: TRuleFix): string;
 var
-  Lines: TArray<string>;
-  Edit: TRuleEdit;
-  Line: string;
-  Index: Integer;
+  mLines: TArray<string>;
+  mEdit: TRuleEdit;
+  mLine: string;
+  mIndex: Integer;
 begin
-  Lines := AText.Split([#10]);
-  for Index := High(AFix.Edits) downto 0 do
+  mLines := AText.Split([#10]);
+  for mIndex := High(AFix.Edits) downto 0 do
   begin
-    Edit := AFix.Edits[Index];
-    Line := Lines[Edit.Range.StartPos.Line];
-    Lines[Edit.Range.StartPos.Line] := Copy(Line, 1, Edit.Range.StartPos.Character) + Edit.NewText +
-      Copy(Line, Edit.Range.EndPos.Character + 1, MaxInt);
+    mEdit := AFix.Edits[mIndex];
+    mLine := mLines[mEdit.Range.StartPos.Line];
+    mLines[mEdit.Range.StartPos.Line] := Copy(mLine, 1, mEdit.Range.StartPos.Character) + mEdit.NewText +
+      Copy(mLine, mEdit.Range.EndPos.Character + 1, MaxInt);
   end;
-  Result := string.Join(#10, Lines);
+  Result := string.Join(#10, mLines);
 end;
 
 procedure TInheritanceRulesTests.OverrideTargetIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Dienste('', '    procedure Ausfuehren(Modus: Integer); override;',
+  mSource := Dienste('', '    procedure Ausfuehren(Modus: Integer); override;',
     'procedure TImportDienst.Ausfuehren(Modus: Integer);'#10'begin'#10'end;'#10);
-  Findings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('TDienst hat kein virtuelles Ausfuehren(Integer); dort heißt es Ausfuehren(const Modus: TModus) ' +
-    '(wie E2137).', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Signatur von TDienst.Ausfuehren übernehmen', Findings[0].Fixes[0].Title);
-  Fixed := ApplyEdits(Source, Findings[0].Fixes[0]);
+    '(wie E2137).', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Signatur von TDienst.Ausfuehren übernehmen', mFindings[0].Fixes[0].Title);
+  mFixed := ApplyEdits(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Dienste('', '    procedure Ausfuehren(const Modus: TModus); override;',
-    'procedure TImportDienst.Ausfuehren(const Modus: TModus);'#10'begin'#10'end;'#10), Fixed);
-  TRuleAssert.Silent(TOverrideTargetMissingRule.Create, Fixed);
+    'procedure TImportDienst.Ausfuehren(const Modus: TModus);'#10'begin'#10'end;'#10), mFixed);
+  TRuleAssert.Silent(TOverrideTargetMissingRule.Create, mFixed);
   // Anderer Aufbau (Zahl der Parameter, Funktion statt Prozedur): ebenfalls E2137.
-  Findings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Dienste('',
+  mFindings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Dienste('',
     '    procedure Ausfuehren(const Modus: TModus; Stufe: Integer); override;', ''));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('TDienst hat kein virtuelles Ausfuehren(TModus, Integer); dort heißt es ' +
-    'Ausfuehren(const Modus: TModus) (wie E2137).', Findings[0].Message);
+    'Ausfuehren(const Modus: TModus) (wie E2137).', mFindings[0].Message);
   // Ein unbekannter Typ könnte ein Alias sein: mittlere Konfidenz.
-  Findings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Dienste('',
+  mFindings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Dienste('',
     '    procedure Ausfuehren(const Modus: TUnbekannt); override;', ''));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
 end;
 
 procedure TInheritanceRulesTests.OverrideTargetStaticFinalSealed;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := 'unit U;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10 +
+  mSource := 'unit U;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10 +
     '    procedure Statisch;'#10'    procedure Fest; virtual;'#10'  end;'#10 +
     '  TMitte = class(TBasis)'#10'  public'#10'    procedure Fest; override; final;'#10'  end;'#10 +
     '  TEnde = class(TMitte)'#10'  public'#10'    procedure Statisch; override;'#10 +
     '    procedure Fest; override;'#10'  end;'#10'implementation'#10'end.';
-  Findings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Source);
-  Assert.AreEqual(2, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, mSource);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
   Assert.AreEqual('TBasis.Statisch ist nicht virtuell; override braucht virtual oder dynamic im Vorfahren ' +
-    '(wie E2170).', Findings[0].Message);
-  Assert.AreEqual('TMitte.Fest ist final und lässt sich nicht überschreiben (wie E2352).', Findings[1].Message);
-  Source := 'unit U;'#10'interface'#10'type'#10'  TBasis = class sealed'#10'  end;'#10 +
+    '(wie E2170).', mFindings[0].Message);
+  Assert.AreEqual('TMitte.Fest ist final und lässt sich nicht überschreiben (wie E2352).', mFindings[1].Message);
+  mSource := 'unit U;'#10'interface'#10'type'#10'  TBasis = class sealed'#10'  end;'#10 +
     '  TAbgeleitet = class(TBasis)'#10'  end;'#10'  TFrei = class abstract'#10'  end;'#10 +
     '  TAuchFrei = class(TFrei)'#10'  end;'#10'implementation'#10'end.';
-  Findings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('TBasis ist sealed; davon lässt sich nicht ableiten (wie E2353).', Findings[0].Message);
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+  mFindings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('TBasis ist sealed; davon lässt sich nicht ableiten (wie E2353).', mFindings[0].Message);
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TInheritanceRulesTests.OverrideTargetTypoAndMissing;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Ohne System im Index: Destroy von TObject als Vorschlag.
-  Source := 'unit U;'#10'interface'#10'type'#10'  TListe = class'#10'  public'#10 +
+  mSource := 'unit U;'#10'interface'#10'type'#10'  TListe = class'#10'  public'#10 +
     '    destructor Destory; override;'#10'  end;'#10'implementation'#10 +
     'destructor TListe.Destory;'#10'begin'#10'  inherited;'#10'end;'#10'end.';
-  Findings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Kein Vorfahr von TListe hat ein virtuelles Destory; gemeint ist wohl Destroy (wie E2137).',
-    Findings[0].Message);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Fixed := ApplyEdits(Source, Findings[0].Fixes[0]);
-  Assert.AreEqual(StringReplace(Source, 'Destory', 'Destroy', [rfReplaceAll]), Fixed);
-  TRuleAssert.Silent(TOverrideTargetMissingRule.Create, Fixed);
+    mFindings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  mFixed := ApplyEdits(mSource, mFindings[0].Fixes[0]);
+  Assert.AreEqual(StringReplace(mSource, 'Destory', 'Destroy', [rfReplaceAll]), mFixed);
+  TRuleAssert.Silent(TOverrideTargetMissingRule.Create, mFixed);
   // Tippfehler in einer Methode des Vorfahren der Datei.
-  Findings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Dienste('',
+  mFindings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Dienste('',
     '    procedure Ausfueren(const Modus: TModus); override;', ''));
   Assert.AreEqual('Kein Vorfahr von TImportDienst hat ein virtuelles Ausfueren; gemeint ist wohl Ausfuehren ' +
-    '(wie E2137).', Findings[0].Message);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+    '(wie E2137).', mFindings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   // Nichts Ähnliches: ohne Korrektur.
-  Findings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Dienste('',
+  mFindings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Dienste('',
     '    procedure Speichern; override;', ''));
-  Assert.AreEqual('Kein Vorfahr von TImportDienst hat ein virtuelles Speichern (wie E2137).', Findings[0].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Kein Vorfahr von TImportDienst hat ein virtuelles Speichern (wie E2137).', mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TInheritanceRulesTests.OverrideTargetSilentCases;
@@ -804,30 +809,30 @@ end;
 
 procedure TInheritanceRulesTests.OverrideTargetFromIndex;
 const
-  BasisSource = 'unit Basis;'#10'interface'#10'type'#10'  TBasis = class'#10'  private'#10 +
+  cBasisSource = 'unit Basis;'#10'interface'#10'type'#10'  TBasis = class'#10'  private'#10 +
     '    procedure Geheim; virtual;'#10'  protected'#10'    procedure Laden(const Datei: string); virtual;'#10 +
     '  end;'#10'  TFest = class sealed(TBasis)'#10'  end;'#10'implementation'#10'end.';
 var
-  Index: ISymbolIndex;
-  Findings: TArray<TRuleFinding>;
+  mIndex: ISymbolIndex;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Index := IndexWith([BasisSource]);
-  Findings := Run(TOverrideTargetMissingRule.Create, 'unit U;'#10'interface'#10'uses Basis;'#10'type'#10 +
+  mIndex := IndexWith([cBasisSource]);
+  mFindings := Run(TOverrideTargetMissingRule.Create, 'unit U;'#10'interface'#10'uses Basis;'#10'type'#10 +
     '  TA = class(TBasis)'#10'  protected'#10'    procedure Laden(const Datei: string); override;'#10 +
     '    procedure Geheim; override;'#10'  end;'#10'  TB = class(TFest)'#10'  end;'#10'implementation'#10'end.',
-    Index);
-  Assert.AreEqual(2, Integer(Length(Findings)));
+    mIndex);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
   // private aus einer anderen Unit sieht der Nachfahre nicht.
-  Assert.AreEqual('Kein Vorfahr von TA hat ein virtuelles Geheim (wie E2137).', Findings[0].Message);
-  Assert.AreEqual('TFest ist sealed; davon lässt sich nicht ableiten (wie E2353).', Findings[1].Message);
+  Assert.AreEqual('Kein Vorfahr von TA hat ein virtuelles Geheim (wie E2137).', mFindings[0].Message);
+  Assert.AreEqual('TFest ist sealed; davon lässt sich nicht ableiten (wie E2353).', mFindings[1].Message);
   // Ein gleichnamiger Typ aus dem implementation-Teil einer anderen Unit ist nicht der Vorfahr: Der echte TFrame
   // (Vcl.Forms) fehlt im Index, also keine Aussage.
-  Index := IndexWith(['unit Fremd;'#10'interface'#10'implementation'#10'type'#10'  TFrame = class'#10'  end;'#10 +
+  mIndex := IndexWith(['unit Fremd;'#10'interface'#10'implementation'#10'type'#10'  TFrame = class'#10'  end;'#10 +
     'end.']);
-  Findings := Run(TOverrideTargetMissingRule.Create, 'unit U;'#10'interface'#10'uses Vcl.Forms;'#10'type'#10 +
+  mFindings := Run(TOverrideTargetMissingRule.Create, 'unit U;'#10'interface'#10'uses Vcl.Forms;'#10'type'#10 +
     '  TMeinFrame = class(TFrame)'#10'  protected'#10'    procedure CreateWnd; override;'#10'  end;'#10 +
-    'implementation'#10'end.', Index);
-  Assert.AreEqual(0, Integer(Length(Findings)));
+    'implementation'#10'end.', mIndex);
+  Assert.AreEqual(0, Integer(Length(mFindings)));
 end;
 
 procedure TInheritanceRulesTests.OverrideTargetGenericAndPlainNamesakes;
@@ -862,15 +867,15 @@ end;
 
 procedure TInheritanceRulesTests.OverrideTargetOptions;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Dienste('', '    procedure Speichern; override;', '');
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Source, '', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Source,
+  mSource := Dienste('', '    procedure Speichern; override;', '');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TOverrideTargetMissingRule.Create, mSource, '', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverrideTargetMissingRule.Create, mSource,
     '{"rules": {"override-target-missing": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverrideTargetMissingRule.Create, mSource,
     '{"rules": {"group:compiler": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverrideTargetMissingRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverrideTargetMissingRule.Create, mSource,
     '{"rules": {"override-target-missing": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
@@ -885,17 +890,17 @@ end;
 
 procedure TInheritanceAbstractRulesTests.AbstractInstantiatedIssueExample;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, Formen('',
+  mFindings := TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, Formen('',
     '  Form := TForm.Create;'#10'  Gesamt := Gesamt + Form.Flaeche;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('TForm hat die abstrakte Methode Flaeche; der Aufruf löst EAbstractError aus (wie W1020).',
-    Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(21, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(22, Findings[0].Range.EndPos.Character);
+    mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(21, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(22, mFindings[0].Range.EndPos.Character);
   // Die korrigierte Form: eine konkrete Unterklasse.
   TRuleAssert.Silent(TAbstractClassInstantiatedRule.Create, Formen(
     '    function Flaeche: Double; override;'#10, '  Form := TKreis.Create;'#10));
@@ -903,53 +908,53 @@ end;
 
 procedure TInheritanceAbstractRulesTests.AbstractInstantiatedInheritedWithFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, Formen(
+  mFindings := TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, Formen(
     '    function Name: string; override;'#10, '  Form := TKreis.Create;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('TKreis hat die abstrakte Methode TForm.Flaeche; der Aufruf löst EAbstractError aus (wie W1020).',
-    Findings[0].Message);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Flaeche in TKreis überschreiben', Findings[0].Fixes[0].Title);
-  Assert.IsTrue(Pos('function Flaeche: Double; override;', Findings[0].Fixes[0].Edits[0].NewText) > 0,
-    Findings[0].Fixes[0].Edits[0].NewText);
+    mFindings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Flaeche in TKreis überschreiben', mFindings[0].Fixes[0].Title);
+  Assert.IsTrue(Pos('function Flaeche: Double; override;', mFindings[0].Fixes[0].Edits[0].NewText) > 0,
+    mFindings[0].Fixes[0].Edits[0].NewText);
   // Mehrere offene Methoden in einer Meldung.
-  Findings := TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+  mFindings := TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  TA = class'#10'  public'#10'    procedure Eins; virtual; abstract;'#10 +
     '    procedure Zwei(X: Integer); virtual; abstract;'#10'  end;'#10'implementation'#10 +
     'procedure P;'#10'begin'#10'  TA.Create.Free;'#10'end;'#10'end.');
   Assert.AreEqual('TA hat die abstrakten Methoden Eins, Zwei; ihr Aufruf löst EAbstractError aus (wie W1020).',
-    Findings[0].Message);
+    mFindings[0].Message);
 end;
 
 procedure TInheritanceAbstractRulesTests.AbstractInstantiatedAbstractClassAndIndex;
 const
-  ListenSource = 'unit Listen;'#10'interface'#10'type'#10'  TListe = class'#10'  protected'#10 +
+  cListenSource = 'unit Listen;'#10'interface'#10'type'#10'  TListe = class'#10'  protected'#10 +
     '    function Get(Index: Integer): string; virtual; abstract;'#10'  end;'#10 +
     '  TFeste = class(TListe)'#10'  protected'#10'    function Get(Index: Integer): string; override;'#10 +
     '  end;'#10'implementation'#10'function TFeste.Get(Index: Integer): string;'#10'begin'#10'end;'#10'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // "class abstract" ohne abstrakte Methoden übersetzt dcc still (#1383, Cm.E2402); mit offener Methode W1020.
   TRuleAssert.Silent(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  TBasis = class abstract'#10'  end;'#10'implementation'#10'procedure P;'#10'begin'#10 +
     '  TBasis.Create.Free;'#10'end;'#10'end.');
-  Findings := TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+  mFindings := TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  TBasis = class abstract'#10'  public'#10'    procedure Eins; virtual; abstract;'#10'  end;'#10 +
     'implementation'#10'procedure P;'#10'begin'#10'  TBasis.Create.Free;'#10'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('TBasis hat die abstrakte Methode Eins; der Aufruf löst EAbstractError aus (wie W1020).',
-    Findings[0].Message);
+    mFindings[0].Message);
   // Klassen aus dem Index; geerbte Methoden fremder Units ohne Korrektur.
-  Findings := Run(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'uses Listen;'#10 +
+  mFindings := Run(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'uses Listen;'#10 +
     'implementation'#10'procedure P;'#10'begin'#10'  TListe.Create.Free;'#10'  TFeste.Create.Free;'#10'end;'#10 +
-    'end.', IndexWith([ListenSource]));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+    'end.', IndexWith([cListenSource]));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('TListe hat die abstrakte Methode Get; der Aufruf löst EAbstractError aus (wie W1020).',
-    Findings[0].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+    mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TInheritanceAbstractRulesTests.AbstractInstantiatedSilentCases;
@@ -975,16 +980,16 @@ end;
 
 procedure TInheritanceAbstractRulesTests.AbstractInstantiatedOptions;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Formen('', '  Form := TForm.Create;'#10);
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, Source, '',
+  mSource := Formen('', '  Form := TForm.Create;'#10);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, mSource, '',
     'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, mSource,
     '{"rules": {"abstract-class-instantiated": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, mSource,
     '{"rules": {"group:compiler": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, mSource,
     '{"rules": {"abstract-class-instantiated": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
@@ -1004,10 +1009,10 @@ end;
 /// <summary>Offset (ab 1) der Position APosition in AText mit #10 als Zeilenende.</summary>
 function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
   Result := 1;
-  for Line := 1 to APosition.Line do
+  for mLine := 1 to APosition.Line do
   begin
     Result := Pos(#10, AText, Result) + 1;
   end;
@@ -1016,27 +1021,27 @@ end;
 
 procedure TInheritanceAbstractRulesTests.InheritedAbstractIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
-  Edit: TRuleEdit;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+  mEdit: TRuleEdit;
 begin
-  Source := Kreise('  inherited Zeichnen(C);'#10'  Inc(C);'#10);
-  Findings := TRuleAssert.Findings(TInheritedAbstractCallRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mSource := Kreise('  inherited Zeichnen(C);'#10'  Inc(C);'#10);
+  mFindings := TRuleAssert.Findings(TInheritedAbstractCallRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('TForm.Zeichnen ist abstrakt; der Aufruf über inherited löst zur Laufzeit EAbstractError aus.',
-    Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(20, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Aufruf entfernen', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)));
-  Edit := Findings[0].Fixes[0].Edits[0];
-  Fixed := Copy(Source, 1, OffsetOf(Source, Edit.Range.StartPos) - 1) + Edit.NewText +
-    Copy(Source, OffsetOf(Source, Edit.Range.EndPos), MaxInt);
-  Assert.AreEqual(Kreise('  Inc(C);'#10), Fixed);
-  TRuleAssert.Silent(TInheritedAbstractCallRule.Create, Fixed);
+    mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(20, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Aufruf entfernen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)));
+  mEdit := mFindings[0].Fixes[0].Edits[0];
+  mFixed := Copy(mSource, 1, OffsetOf(mSource, mEdit.Range.StartPos) - 1) + mEdit.NewText +
+    Copy(mSource, OffsetOf(mSource, mEdit.Range.EndPos), MaxInt);
+  Assert.AreEqual(Kreise('  Inc(C);'#10), mFixed);
+  TRuleAssert.Silent(TInheritedAbstractCallRule.Create, mFixed);
   // Ohne Klammern ebenso.
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TInheritedAbstractCallRule.Create,
     Kreise('  inherited Zeichnen;'#10)))));
@@ -1044,26 +1049,26 @@ end;
 
 procedure TInheritanceAbstractRulesTests.InheritedAbstractExpressionAndIndex;
 const
-  BasisSource = 'unit Basis;'#10'interface'#10'type'#10'  TRechner = class'#10'  protected'#10 +
+  cBasisSource = 'unit Basis;'#10'interface'#10'type'#10'  TRechner = class'#10'  protected'#10 +
     '    function Berechnen(X: Integer): Integer; virtual; abstract;'#10'  end;'#10'implementation'#10'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Als Ausdruck und aus dem Index: gemeldet, aber ohne Korrektur.
-  Findings := TRuleAssert.IndexFindings(TInheritedAbstractCallRule.Create, 'unit U;'#10'interface'#10 +
+  mFindings := TRuleAssert.IndexFindings(TInheritedAbstractCallRule.Create, 'unit U;'#10'interface'#10 +
     'uses Basis;'#10'type'#10'  TSumme = class(TRechner)'#10'  protected'#10 +
     '    function Berechnen(X: Integer): Integer; override;'#10'  end;'#10'implementation'#10 +
     'function TSumme.Berechnen(X: Integer): Integer;'#10'begin'#10'  Result := inherited Berechnen(X) + 1;'#10 +
-    'end;'#10'end.', IndexWith([BasisSource]), '', 'U.pas');
-  Assert.AreEqual(1, Integer(Length(Findings)));
+    'end;'#10'end.', IndexWith([cBasisSource]), '', 'U.pas');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('TRechner.Berechnen ist abstrakt; der Aufruf über inherited löst zur Laufzeit EAbstractError aus.',
-    Findings[0].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+    mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // Im Zweig einer if-Anweisung: Entfernen ließe ein leeres then zurück, also keine Korrektur.
-  Findings := TRuleAssert.Findings(TInheritedAbstractCallRule.Create,
+  mFindings := TRuleAssert.Findings(TInheritedAbstractCallRule.Create,
     Kreise('  if C > 0 then'#10'    inherited Zeichnen(C);'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TInheritanceAbstractRulesTests.InheritedAbstractSilentCases;
@@ -1091,16 +1096,16 @@ end;
 
 procedure TInheritanceAbstractRulesTests.InheritedAbstractOptions;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Kreise('  inherited Zeichnen(C);'#10);
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TInheritedAbstractCallRule.Create, Source, '',
+  mSource := Kreise('  inherited Zeichnen(C);'#10);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TInheritedAbstractCallRule.Create, mSource, '',
     'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedAbstractCallRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedAbstractCallRule.Create, mSource,
     '{"rules": {"inherited-abstract-call": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedAbstractCallRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedAbstractCallRule.Create, mSource,
     '{"rules": {"group:compiler": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedAbstractCallRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedAbstractCallRule.Create, mSource,
     '{"rules": {"inherited-abstract-call": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
@@ -1119,85 +1124,85 @@ end;
 /// <summary>AText mit allen Änderungen von AFix, hinterste zuerst.</summary>
 function Applied(const AText: string; const AFix: TRuleFix): string;
 var
-  Index, Later: Integer;
-  Edits: TArray<TRuleEdit>;
-  Edit: TRuleEdit;
+  mIndex, mLater: Integer;
+  mEdits: TArray<TRuleEdit>;
+  mEdit: TRuleEdit;
 begin
-  Edits := Copy(AFix.Edits);
-  for Index := 0 to High(Edits) - 1 do
+  mEdits := Copy(AFix.Edits);
+  for mIndex := 0 to High(mEdits) - 1 do
   begin
-    for Later := Index + 1 to High(Edits) do
+    for mLater := mIndex + 1 to High(mEdits) do
     begin
-      if OffsetOf(AText, Edits[Later].Range.StartPos) > OffsetOf(AText, Edits[Index].Range.StartPos) then
+      if OffsetOf(AText, mEdits[mLater].Range.StartPos) > OffsetOf(AText, mEdits[mIndex].Range.StartPos) then
       begin
-        Edit := Edits[Index];
-        Edits[Index] := Edits[Later];
-        Edits[Later] := Edit;
+        mEdit := mEdits[mIndex];
+        mEdits[mIndex] := mEdits[mLater];
+        mEdits[mLater] := mEdit;
       end;
     end;
   end;
   Result := AText;
-  for Edit in Edits do
+  for mEdit in mEdits do
   begin
-    Result := Copy(Result, 1, OffsetOf(Result, Edit.Range.StartPos) - 1) + Edit.NewText +
-      Copy(Result, OffsetOf(Result, Edit.Range.EndPos), MaxInt);
+    Result := Copy(Result, 1, OffsetOf(Result, mEdit.Range.StartPos) - 1) + mEdit.NewText +
+      Copy(Result, OffsetOf(Result, mEdit.Range.EndPos), MaxInt);
   end;
 end;
 
 procedure TInheritanceAbstractRulesTests.ClassRefConstructorIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Plugins('', '', '  Result := Klasse.Create;'#10);
-  Findings := TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mSource := Plugins('', '', '  Result := Klasse.Create;'#10);
+  mFindings := TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('TPlugin.Create ist nicht virtuell; über die Klassenreferenz läuft immer TPlugin.Create ' +
-    '(wie E2391).', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(22, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(12, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(22, Findings[0].Range.EndPos.Line);
-  Assert.AreEqual(25, Findings[0].Range.EndPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('virtual an TPlugin.Create, override in den Nachfahren', Findings[0].Fixes[0].Title);
-  Fixed := Applied(Source, Findings[0].Fixes[0]);
-  Assert.AreEqual(Plugins(' virtual;', ' override;', '  Result := Klasse.Create;'#10), Fixed);
-  TRuleAssert.Silent(TClassReferenceNonvirtualConstructorRule.Create, Fixed);
+    '(wie E2391).', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(22, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(12, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(22, mFindings[0].Range.EndPos.Line);
+  Assert.AreEqual(25, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('virtual an TPlugin.Create, override in den Nachfahren', mFindings[0].Fixes[0].Title);
+  mFixed := Applied(mSource, mFindings[0].Fixes[0]);
+  Assert.AreEqual(Plugins(' virtual;', ' override;', '  Result := Klasse.Create;'#10), mFixed);
+  TRuleAssert.Silent(TClassReferenceNonvirtualConstructorRule.Create, mFixed);
   // Mit Argumenten, über ein Feld und als Anweisung ebenso.
-  Findings := TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, 'unit U;'#10'interface'#10 +
+  mFindings := TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, 'unit U;'#10'interface'#10 +
     'type'#10'  TTeil = class'#10'  public'#10'    constructor Create(ANummer: Integer);'#10'  end;'#10 +
     '  TTeilKlasse = class of TTeil;'#10'  TFabrik = class'#10'  private'#10'    FKlasse: TTeilKlasse;'#10 +
     '  public'#10'    procedure Baue;'#10'  end;'#10'implementation'#10 +
     'constructor TTeil.Create(ANummer: Integer);'#10'begin'#10'end;'#10'procedure TFabrik.Baue;'#10'begin'#10 +
     '  FKlasse.Create(1).Free;'#10'  Self.FKlasse.Create(2);'#10'end;'#10'end.');
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual('virtual an TTeil.Create', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('virtual an TTeil.Create', mFindings[0].Fixes[0].Title);
 end;
 
 procedure TInheritanceAbstractRulesTests.ClassRefConstructorFromIndex;
 const
-  BasisSource = 'unit Basis;'#10'interface'#10'type'#10'  TDienst = class'#10'  public'#10 +
+  cBasisSource = 'unit Basis;'#10'interface'#10'type'#10'  TDienst = class'#10'  public'#10 +
     '    constructor Create;'#10'  end;'#10'  TDienstKlasse = class of TDienst;'#10 +
     '  TBauteil = class'#10'  public'#10'    constructor Create(AOwner: TObject); virtual;'#10'  end;'#10 +
     '  TBauteilKlasse = class of TBauteil;'#10'function Klasse: TDienstKlasse;'#10'implementation'#10 +
     'constructor TDienst.Create;'#10'begin'#10'end;'#10'constructor TBauteil.Create(AOwner: TObject);'#10 +
     'begin'#10'end;'#10'function Klasse: TDienstKlasse;'#10'begin'#10'  Result := TDienst;'#10'end;'#10'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Klassenreferenz und Konstruktor aus einer anderen Unit: gemeldet, ohne Korrektur; auch über eine Funktion.
-  Findings := TRuleAssert.IndexFindings(TClassReferenceNonvirtualConstructorRule.Create, 'unit U;'#10 +
+  mFindings := TRuleAssert.IndexFindings(TClassReferenceNonvirtualConstructorRule.Create, 'unit U;'#10 +
     'interface'#10'uses Basis;'#10'procedure Lauf(K: TDienstKlasse; B: TBauteilKlasse);'#10'implementation'#10 +
     'procedure Lauf(K: TDienstKlasse; B: TBauteilKlasse);'#10'begin'#10'  K.Create.Free;'#10 +
-    '  B.Create(nil).Free;'#10'  Klasse.Create.Free;'#10'end;'#10'end.', IndexWith([BasisSource]), '', 'U.pas');
-  Assert.AreEqual(2, Integer(Length(Findings)));
+    '  B.Create(nil).Free;'#10'  Klasse.Create.Free;'#10'end;'#10'end.', IndexWith([cBasisSource]), '', 'U.pas');
+  Assert.AreEqual(2, Integer(Length(mFindings)));
   Assert.AreEqual('TDienst.Create ist nicht virtuell; über die Klassenreferenz läuft immer TDienst.Create ' +
-    '(wie E2391).', Findings[0].Message);
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual(9, Findings[1].Range.StartPos.Line);
+    '(wie E2391).', mFindings[0].Message);
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual(9, mFindings[1].Range.StartPos.Line);
 end;
 
 procedure TInheritanceAbstractRulesTests.ClassRefConstructorSilentCases;
@@ -1227,16 +1232,16 @@ end;
 
 procedure TInheritanceAbstractRulesTests.ClassRefConstructorOptions;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Plugins('', '', '  Result := Klasse.Create;'#10);
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, Source,
+  mSource := Plugins('', '', '  Result := Klasse.Create;'#10);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, mSource,
     '', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, mSource,
     '{"rules": {"class-reference-nonvirtual-constructor": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, mSource,
     '{"rules": {"group:compiler": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, mSource,
     '{"rules": {"class-reference-nonvirtual-constructor": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
@@ -1253,12 +1258,12 @@ begin
 end;
 
 const
-  LaufDecl = '    procedure Lauf(A, B: Integer); override;'#10;
-  WertDecl = '    function Wert(X: Integer): Integer; override;'#10;
+  cLaufDecl = '    procedure Lauf(A, B: Integer); override;'#10;
+  cWertDecl = '    function Wert(X: Integer): Integer; override;'#10;
 
 procedure TInheritanceAbstractRulesTests.OverrideOnlyInheritedIssueExample;
 const
-  FormsSource = 'unit Vcl.Forms;'#10'interface'#10'type'#10'  TForm = class'#10'  protected'#10 +
+  cFormsSource = 'unit Vcl.Forms;'#10'interface'#10'type'#10'  TForm = class'#10'  protected'#10 +
     '    procedure Loaded; virtual;'#10'  end;'#10'implementation'#10'end.';
 
   function Kunden(const AMembers, AImplementation: string): string;
@@ -1273,7 +1278,7 @@ var
   mFindings: TArray<TRuleFinding>;
   mIndex: ISymbolIndex;
 begin
-  mIndex := IndexWith([FormsSource]);
+  mIndex := IndexWith([cFormsSource]);
   mSource := Kunden('    /// <summary>Liest nach.</summary>'#10'    procedure Loaded; override;'#10,
     '/// <summary>Liest nach.</summary>'#10'procedure TKundenForm.Loaded;'#10'begin'#10'  inherited Loaded;'#10'end;'#10#10);
   mFindings := TRuleAssert.IndexFindings(TOverrideOnlyInheritedRule.Create, mSource, mIndex, '', 'Kunden.pas');
@@ -1301,21 +1306,21 @@ var
   mFindings: TArray<TRuleFinding>;
 begin
   // inherited Name(A, B) mit unveränderten Parametern und bloßes inherited.
-  mSource := Erben(LaufDecl, 'procedure TFoo.Lauf(A, B: Integer);'#10'begin'#10'  inherited Lauf(A, B);'#10'end;'#10);
+  mSource := Erben(cLaufDecl, 'procedure TFoo.Lauf(A, B: Integer);'#10'begin'#10'  inherited Lauf(A, B);'#10'end;'#10);
   mFindings := TRuleAssert.Findings(TOverrideOnlyInheritedRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('TFoo.Lauf ruft nur inherited auf und kann entfallen.', mFindings[0].Message);
   Assert.AreEqual(Erben('', ''), Applied(mSource, mFindings[0].Fixes[0]));
   TRuleAssert.Reports(TOverrideOnlyInheritedRule.Create,
-    Erben(LaufDecl, 'procedure TFoo.Lauf(A, B: Integer);'#10'begin'#10'  inherited;'#10'end;'#10));
+    Erben(cLaufDecl, 'procedure TFoo.Lauf(A, B: Integer);'#10'begin'#10'  inherited;'#10'end;'#10));
   TRuleAssert.Reports(TOverrideOnlyInheritedRule.Create,
-    Erben(LaufDecl, 'procedure TFoo.Lauf(A, B: Integer);'#10'begin'#10'  inherited Lauf(A, B)'#10'end;'#10));
+    Erben(cLaufDecl, 'procedure TFoo.Lauf(A, B: Integer);'#10'begin'#10'  inherited Lauf(A, B)'#10'end;'#10));
   // Funktion: nur Result := inherited Name(…).
   TRuleAssert.Reports(TOverrideOnlyInheritedRule.Create,
-    Erben(WertDecl, 'function TFoo.Wert(X: Integer): Integer;'#10'begin'#10'  Result := inherited Wert(X);'#10 +
+    Erben(cWertDecl, 'function TFoo.Wert(X: Integer): Integer;'#10'begin'#10'  Result := inherited Wert(X);'#10 +
     'end;'#10));
   // Beide in einer Unit, andere Schreibweise des Namens.
-  TRuleAssert.Reports(TOverrideOnlyInheritedRule.Create, Erben(LaufDecl + WertDecl,
+  TRuleAssert.Reports(TOverrideOnlyInheritedRule.Create, Erben(cLaufDecl + cWertDecl,
     'procedure TFoo.Lauf(A, B: Integer);'#10'begin'#10'  inherited lauf(a, b);'#10'end;'#10#10 +
     'function TFoo.Wert(X: Integer): Integer;'#10'begin'#10'  Result := inherited Wert(X);'#10'end;'#10), 2);
 end;
@@ -1330,24 +1335,24 @@ procedure TInheritanceAbstractRulesTests.OverrideOnlyInheritedSilentCases;
 
 begin
   // Geänderte oder vertauschte Parameter, weitere Anweisungen, lokale Variable, Kommentar im Rumpf.
-  Lauf(LaufDecl, 'begin'#10'  inherited Lauf(B, A);'#10);
-  Lauf(LaufDecl, 'begin'#10'  inherited Lauf(A, 1);'#10);
-  Lauf(LaufDecl, 'begin'#10'  inherited;'#10'  Inc(A);'#10);
-  Lauf(LaufDecl, 'var'#10'  C: Integer;'#10'begin'#10'  inherited;'#10);
-  Lauf(LaufDecl, 'begin'#10'  // Absicht: Haken für später'#10'  inherited;'#10);
-  Lauf(LaufDecl, 'begin'#10'  inherited; {$IFDEF X} Inc(A); {$ENDIF}'#10);
-  Lauf(LaufDecl, 'begin'#10'end;'#10'procedure TFoo.Weiter;'#10'begin'#10);
+  Lauf(cLaufDecl, 'begin'#10'  inherited Lauf(B, A);'#10);
+  Lauf(cLaufDecl, 'begin'#10'  inherited Lauf(A, 1);'#10);
+  Lauf(cLaufDecl, 'begin'#10'  inherited;'#10'  Inc(A);'#10);
+  Lauf(cLaufDecl, 'var'#10'  C: Integer;'#10'begin'#10'  inherited;'#10);
+  Lauf(cLaufDecl, 'begin'#10'  // Absicht: Haken für später'#10'  inherited;'#10);
+  Lauf(cLaufDecl, 'begin'#10'  inherited; {$IFDEF X} Inc(A); {$ENDIF}'#10);
+  Lauf(cLaufDecl, 'begin'#10'end;'#10'procedure TFoo.Weiter;'#10'begin'#10);
   // Sichtbarkeit geändert (protected -> public), Attribut, final, deprecated.
-  Lauf('  public'#10 + LaufDecl, 'begin'#10'  inherited;'#10);
-  Lauf('    [Weak]'#10 + LaufDecl, 'begin'#10'  inherited;'#10);
+  Lauf('  public'#10 + cLaufDecl, 'begin'#10'  inherited;'#10);
+  Lauf('    [Weak]'#10 + cLaufDecl, 'begin'#10'  inherited;'#10);
   Lauf('    procedure Lauf(A, B: Integer); override; final;'#10, 'begin'#10'  inherited;'#10);
   Lauf('    procedure Lauf(A, B: Integer); override; deprecated;'#10, 'begin'#10'  inherited;'#10);
   // Ohne override (verdeckt) und neue virtuelle Methode.
   Lauf('    procedure Lauf(A, B: Integer); reintroduce;'#10, 'begin'#10'  inherited;'#10);
   // Funktion mit bloßem inherited oder ohne Ergebnis: Das Ergebnis bleibt undefiniert, das ist kein Fall hier.
-  TRuleAssert.Silent(TOverrideOnlyInheritedRule.Create, Erben(WertDecl,
+  TRuleAssert.Silent(TOverrideOnlyInheritedRule.Create, Erben(cWertDecl,
     'function TFoo.Wert(X: Integer): Integer;'#10'begin'#10'  inherited;'#10'end;'#10));
-  TRuleAssert.Silent(TOverrideOnlyInheritedRule.Create, Erben(WertDecl,
+  TRuleAssert.Silent(TOverrideOnlyInheritedRule.Create, Erben(cWertDecl,
     'function TFoo.Wert(X: Integer): Integer;'#10'begin'#10'  Result := inherited Wert(X) + 1;'#10'end;'#10));
   // Unbekannter Vorfahr: Sichtbarkeit nicht prüfbar.
   TRuleAssert.Silent(TOverrideOnlyInheritedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
@@ -1363,7 +1368,7 @@ end;
 
 procedure TInheritanceAbstractRulesTests.OverrideOnlyInheritedObjectMethods;
 const
-  Source = 'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'  public'#10 +
+  cSource = 'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'  public'#10 +
     '    destructor Destroy; override;'#10'    procedure AfterConstruction; override;'#10 +
     '  protected'#10'    function ToString: string; override;'#10'  end;'#10'implementation'#10 +
     'destructor TFoo.Destroy;'#10'begin'#10'  inherited;'#10'end;'#10 +
@@ -1373,7 +1378,7 @@ var
   mFindings: TArray<TRuleFinding>;
 begin
   // TObject steht nicht im Index: Seine virtuellen Methoden sind öffentlich. ToString wird protected, bleibt stumm.
-  mFindings := TRuleAssert.Findings(TOverrideOnlyInheritedRule.Create, Source);
+  mFindings := TRuleAssert.Findings(TOverrideOnlyInheritedRule.Create, cSource);
   Assert.AreEqual(2, Integer(Length(mFindings)));
   Assert.AreEqual('TFoo.Destroy ruft nur inherited auf und kann entfallen.', mFindings[0].Message);
   Assert.AreEqual('TFoo.AfterConstruction ruft nur inherited auf und kann entfallen.', mFindings[1].Message);
@@ -1383,7 +1388,7 @@ procedure TInheritanceAbstractRulesTests.OverrideOnlyInheritedOptions;
 var
   mSource: string;
 begin
-  mSource := Erben(LaufDecl, 'procedure TFoo.Lauf(A, B: Integer);'#10'begin'#10'  inherited;'#10'end;'#10);
+  mSource := Erben(cLaufDecl, 'procedure TFoo.Lauf(A, B: Integer);'#10'begin'#10'  inherited;'#10'end;'#10);
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TOverrideOnlyInheritedRule.Create, mSource, '',
     'U.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverrideOnlyInheritedRule.Create, mSource,
@@ -1461,18 +1466,18 @@ end;
 
 procedure TInheritanceAbstractRulesTests.InheritedWithoutAncestorFromIndex;
 const
-  MitSource = 'unit Basis;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10 +
+  cMitSource = 'unit Basis;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10 +
     '    procedure Vorbereiten;'#10'  end;'#10'implementation'#10'end.';
-  OhneSource = 'unit Basis;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10 +
+  cOhneSource = 'unit Basis;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10 +
     '    procedure Lauf;'#10'  end;'#10'implementation'#10'end.';
-  Source = 'unit U;'#10'interface'#10'uses Basis;'#10'type'#10'  TImport = class(TBasis)'#10'  public'#10 +
+  cSource = 'unit U;'#10'interface'#10'uses Basis;'#10'type'#10'  TImport = class(TBasis)'#10'  public'#10 +
     '    procedure Vorbereiten;'#10'  end;'#10'implementation'#10'procedure TImport.Vorbereiten;'#10'begin'#10 +
     '  inherited;'#10'end;'#10'end.';
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TInheritedWithoutAncestorRule.Create, Source,
-    IndexWith([MitSource]), '', 'U.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TInheritedWithoutAncestorRule.Create, Source,
-    IndexWith([OhneSource]), '', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TInheritedWithoutAncestorRule.Create, cSource,
+    IndexWith([cMitSource]), '', 'U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TInheritedWithoutAncestorRule.Create, cSource,
+    IndexWith([cOhneSource]), '', 'U.pas'))));
 end;
 
 procedure TInheritanceAbstractRulesTests.InheritedWithoutAncestorOptions;

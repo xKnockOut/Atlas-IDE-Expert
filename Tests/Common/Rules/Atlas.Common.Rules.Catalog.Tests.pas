@@ -95,71 +95,71 @@ uses
   Atlas.Common.Rules.Catalog.Data;
 
 const
-  Base = '{"rules":[{"id":"a-rule","name":"A rule","category":"code-smell","severity":"warning",' +
+  cBase = '{"rules":[{"id":"a-rule","name":"A rule","category":"code-smell","severity":"warning",' +
     '"description":"Text","bad":"X;","good":"Y;"}]}';
 
 procedure ExpectCatalogError(const AJson: string);
 var
-  Raised: Boolean;
+  mRaised: Boolean;
 begin
-  Raised := False;
+  mRaised := False;
   try
     TRuleCatalog.Create(AJson).Free;
   except
     on ERuleCatalog do
-      Raised := True;
+      mRaised := True;
   end;
-  Assert.IsTrue(Raised, AJson);
+  Assert.IsTrue(mRaised, AJson);
 end;
 
 { TRuleCatalogTests }
 
 procedure TRuleCatalogTests.ReadsBaseEntry;
 var
-  Catalog: TRuleCatalog;
-  Entry: TRuleCatalogEntry;
+  mCatalog: TRuleCatalog;
+  mEntry: TRuleCatalogEntry;
 begin
-  Catalog := TRuleCatalog.Create(Base);
+  mCatalog := TRuleCatalog.Create(cBase);
   try
-    Assert.IsTrue(Catalog.TryFind('A-RULE', Entry));
-    Assert.AreEqual('A rule', Entry.Name);
-    Assert.AreEqual(Ord(TRuleCategory.CodeSmell), Ord(Entry.Category));
-    Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Entry.DefaultSeverity));
-    Assert.AreEqual('Text', Entry.Description);
-    Assert.AreEqual('X;', Entry.Bad);
-    Assert.AreEqual('Y;', Entry.Good);
-    Assert.IsFalse(Catalog.TryFind('other', Entry));
+    Assert.IsTrue(mCatalog.TryFind('A-RULE', mEntry));
+    Assert.AreEqual('A rule', mEntry.Name);
+    Assert.AreEqual(Ord(TRuleCategory.CodeSmell), Ord(mEntry.Category));
+    Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mEntry.DefaultSeverity));
+    Assert.AreEqual('Text', mEntry.Description);
+    Assert.AreEqual('X;', mEntry.Bad);
+    Assert.AreEqual('Y;', mEntry.Good);
+    Assert.IsFalse(mCatalog.TryFind('other', mEntry));
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TRuleCatalogTests.OverlayReplacesNameAndDescriptionOnly;
 var
-  Catalog: TRuleCatalog;
-  Entry: TRuleCatalogEntry;
+  mCatalog: TRuleCatalog;
+  mEntry: TRuleCatalogEntry;
 begin
-  Catalog := TRuleCatalog.Create(Base, '{"rules":[{"id":"a-rule","name":"Eine Regel","description":"Beschreibung"}]}');
+  mCatalog := TRuleCatalog.Create(cBase, '{"rules":[{"id":"a-rule","name":"Eine Regel","description":"Beschreibung"}]}');
   try
-    Assert.IsTrue(Catalog.TryFind('a-rule', Entry));
-    Assert.AreEqual('Eine Regel', Entry.Name);
-    Assert.AreEqual('Beschreibung', Entry.Description);
-    Assert.AreEqual(Ord(TRuleCategory.CodeSmell), Ord(Entry.Category));
-    Assert.AreEqual('X;', Entry.Bad);
+    Assert.IsTrue(mCatalog.TryFind('a-rule', mEntry));
+    Assert.AreEqual('Eine Regel', mEntry.Name);
+    Assert.AreEqual('Beschreibung', mEntry.Description);
+    Assert.AreEqual(Ord(TRuleCategory.CodeSmell), Ord(mEntry.Category));
+    Assert.AreEqual('X;', mEntry.Bad);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TRuleCatalogTests.OverlayIgnoresUnknownRules;
 var
-  Catalog: TRuleCatalog;
+  mCatalog: TRuleCatalog;
 begin
-  Catalog := TRuleCatalog.Create(Base, '{"rules":[{"id":"missing","name":"Fehlt"}]}');
+  mCatalog := TRuleCatalog.Create(cBase, '{"rules":[{"id":"missing","name":"Fehlt"}]}');
   try
-    Assert.AreEqual<NativeInt>(1, Length(Catalog.Entries));
+    Assert.AreEqual<NativeInt>(1, Length(mCatalog.Entries));
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
@@ -191,42 +191,42 @@ end;
 
 procedure TRuleCatalogTests.BuiltinRulesAreInCatalogWithSameSeverity;
 var
-  Catalog: TRuleCatalog;
-  Entry: TRuleCatalogEntry;
-  Rule: IRule;
+  mCatalog: TRuleCatalog;
+  mEntry: TRuleCatalogEntry;
+  mRule: IRule;
 begin
-  Catalog := TRuleCatalog.Create(RuleCatalogBaseJson);
+  mCatalog := TRuleCatalog.Create(RuleCatalogBaseJson);
   try
-    for Rule in BuiltinRules do
+    for mRule in BuiltinRules do
     begin
-      Assert.IsTrue(Catalog.TryFind(Rule.Descriptor.Id, Entry), Rule.Descriptor.Id);
-      Assert.AreEqual(Ord(Rule.Descriptor.DefaultSeverity), Ord(Entry.DefaultSeverity), Rule.Descriptor.Id);
+      Assert.IsTrue(mCatalog.TryFind(mRule.Descriptor.Id, mEntry), mRule.Descriptor.Id);
+      Assert.AreEqual(Ord(mRule.Descriptor.DefaultSeverity), Ord(mEntry.DefaultSeverity), mRule.Descriptor.Id);
     end;
-    Assert.IsTrue(Catalog.TryFind(TFileChecker.SyntaxDescriptor.Id, Entry));
-    Assert.IsTrue(Catalog.TryFind(cUnusedSuppressionRuleId, Entry));
+    Assert.IsTrue(mCatalog.TryFind(TFileChecker.SyntaxDescriptor.Id, mEntry));
+    Assert.IsTrue(mCatalog.TryFind(cUnusedSuppressionRuleId, mEntry));
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TRuleCatalogTests.EmbeddedCatalogIsCompleteInGerman;
 var
-  English, German: TRuleCatalog;
-  Entry, Translated: TRuleCatalogEntry;
+  mEnglish, mGerman: TRuleCatalog;
+  mEntry, mTranslated: TRuleCatalogEntry;
 begin
-  English := TRuleCatalog.Create(RuleCatalogBaseJson);
-  German := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson('de'));
+  mEnglish := TRuleCatalog.Create(RuleCatalogBaseJson);
+  mGerman := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson('de'));
   try
-    for Entry in English.Entries do
+    for mEntry in mEnglish.Entries do
     begin
-      Assert.IsTrue(German.TryFind(Entry.Id, Translated));
-      Assert.AreNotEqual(Entry.Description, Translated.Description, Entry.Id);
-      Assert.AreNotEqual('', Entry.Bad, Entry.Id);
-      Assert.AreNotEqual('', Entry.Good, Entry.Id);
+      Assert.IsTrue(mGerman.TryFind(mEntry.Id, mTranslated));
+      Assert.AreNotEqual(mEntry.Description, mTranslated.Description, mEntry.Id);
+      Assert.AreNotEqual('', mEntry.Bad, mEntry.Id);
+      Assert.AreNotEqual('', mEntry.Good, mEntry.Id);
     end;
   finally
-    German.Free;
-    English.Free;
+    mGerman.Free;
+    mEnglish.Free;
   end;
 end;
 
@@ -237,21 +237,21 @@ end;
 
 procedure TRuleCatalogTests.ExplanationHasExamplesAndLink;
 var
-  Catalog: TRuleCatalog;
-  Entry: TRuleCatalogEntry;
+  mCatalog: TRuleCatalog;
+  mEntry: TRuleCatalogEntry;
 begin
   // #300: /explain zeigt Beschreibung, falsch/richtig und den Link.
-  Catalog := TRuleCatalog.Create(Base);
+  mCatalog := TRuleCatalog.Create(cBase);
   try
-    Assert.IsTrue(Catalog.TryFind('a-rule', Entry));
+    Assert.IsTrue(mCatalog.TryFind('a-rule', mEntry));
     Assert.AreEqual('a-rule: A rule'#10'Text'#10#10'Falsch:'#10'X;'#10#10'Richtig:'#10'Y;'#10#10'Mehr: ' +
-      TRuleCatalog.HelpUri('a-rule'), TRuleCatalog.Explanation(Entry, #10));
-    Entry.Bad := '';
-    Entry.Good := '';
+      TRuleCatalog.HelpUri('a-rule'), TRuleCatalog.Explanation(mEntry, #10));
+    mEntry.Bad := '';
+    mEntry.Good := '';
     Assert.AreEqual('a-rule: A rule'#10'Text'#10#10'Mehr: ' + TRuleCatalog.HelpUri('a-rule'),
-      TRuleCatalog.Explanation(Entry, #10));
+      TRuleCatalog.Explanation(mEntry, #10));
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
@@ -262,7 +262,7 @@ var
   mSaved: TTextLanguage;
 begin
   mSaved := TAtlasLocale.Language;
-  mCatalog := TRuleCatalog.Create(Base);
+  mCatalog := TRuleCatalog.Create(cBase);
   try
     Assert.IsTrue(mCatalog.TryFind('a-rule', mEntry));
     mEntry.CompilerCodes := ['W1036'];
@@ -313,63 +313,63 @@ end;
 
 procedure TRuleCatalogTests.ReadsGroupAndOptions;
 var
-  Catalog: TRuleCatalog;
-  Entry: TRuleCatalogEntry;
+  mCatalog: TRuleCatalog;
+  mEntry: TRuleCatalogEntry;
 begin
-  Catalog := TRuleCatalog.Create('{"rules":[{"id":"m","name":"M","category":"code-smell","severity":"hint",' +
+  mCatalog := TRuleCatalog.Create('{"rules":[{"id":"m","name":"M","category":"code-smell","severity":"hint",' +
     '"group":"style","description":"D","bad":"B","good":"G","options":[{"name":"max","type":"integer",' +
     '"default":40,"description":"Limit"},{"name":"names","type":"string-list","default":["Count"],' +
     '"description":"Names"},{"name":"flag","type":"boolean","description":"No default"}]}]}');
   try
-    Assert.IsTrue(Catalog.TryFind('m', Entry));
-    Assert.AreEqual(Ord(TRuleGroup.Style), Ord(Entry.Group));
-    Assert.AreEqual(3, Integer(Length(Entry.Options)));
-    Assert.AreEqual('max', Entry.Options[0].Name);
-    Assert.AreEqual('integer', Entry.Options[0].Kind);
-    Assert.AreEqual('40', Entry.Options[0].DefaultJson);
-    Assert.AreEqual('Limit', Entry.Options[0].Description);
-    Assert.AreEqual('["Count"]', Entry.Options[1].DefaultJson);
-    Assert.AreEqual('', Entry.Options[2].DefaultJson);
-    Assert.AreEqual(0, Integer(Length(Entry.Options[0].Columns)));
+    Assert.IsTrue(mCatalog.TryFind('m', mEntry));
+    Assert.AreEqual(Ord(TRuleGroup.Style), Ord(mEntry.Group));
+    Assert.AreEqual(3, Integer(Length(mEntry.Options)));
+    Assert.AreEqual('max', mEntry.Options[0].Name);
+    Assert.AreEqual('integer', mEntry.Options[0].Kind);
+    Assert.AreEqual('40', mEntry.Options[0].DefaultJson);
+    Assert.AreEqual('Limit', mEntry.Options[0].Description);
+    Assert.AreEqual('["Count"]', mEntry.Options[1].DefaultJson);
+    Assert.AreEqual('', mEntry.Options[2].DefaultJson);
+    Assert.AreEqual(0, Integer(Length(mEntry.Options[0].Columns)));
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
   // Tabelle (#1133): Spalten mit Listen.
-  Catalog := TRuleCatalog.Create('{"rules":[{"id":"t","category":"code-smell","severity":"warning","options":[' +
+  mCatalog := TRuleCatalog.Create('{"rules":[{"id":"t","category":"code-smell","severity":"warning","options":[' +
     '{"name":"symbols","type":"object-list","columns":[{"name":"name"},{"name":"units","list":true}],' +
     '"default":[],"description":"Table"}]}]}');
   try
-    Assert.IsTrue(Catalog.TryFind('t', Entry));
-    Assert.AreEqual('object-list', Entry.Options[0].Kind);
-    Assert.AreEqual(2, Integer(Length(Entry.Options[0].Columns)));
-    Assert.AreEqual('units', Entry.Options[0].Columns[1].Name);
-    Assert.IsFalse(Entry.Options[0].Columns[0].List);
-    Assert.IsTrue(Entry.Options[0].Columns[1].List);
+    Assert.IsTrue(mCatalog.TryFind('t', mEntry));
+    Assert.AreEqual('object-list', mEntry.Options[0].Kind);
+    Assert.AreEqual(2, Integer(Length(mEntry.Options[0].Columns)));
+    Assert.AreEqual('units', mEntry.Options[0].Columns[1].Name);
+    Assert.IsFalse(mEntry.Options[0].Columns[0].List);
+    Assert.IsTrue(mEntry.Options[0].Columns[1].List);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TRuleCatalogTests.GroupFollowsCategoryWithoutField;
 var
-  Catalog: TRuleCatalog;
-  Entry: TRuleCatalogEntry;
+  mCatalog: TRuleCatalog;
+  mEntry: TRuleCatalogEntry;
 begin
-  Catalog := TRuleCatalog.Create('{"rules":[{"id":"a","category":"bug","severity":"error"},' +
+  mCatalog := TRuleCatalog.Create('{"rules":[{"id":"a","category":"bug","severity":"error"},' +
     '{"id":"b","category":"vulnerability","severity":"error"},{"id":"c","category":"security-hotspot",' +
     '"severity":"hint"},{"id":"d","category":"code-smell","severity":"hint"}]}');
   try
-    Assert.IsTrue(Catalog.TryFind('a', Entry));
-    Assert.AreEqual(Ord(TRuleGroup.FindBugs), Ord(Entry.Group));
-    Assert.IsTrue(Catalog.TryFind('b', Entry));
-    Assert.AreEqual(Ord(TRuleGroup.Security), Ord(Entry.Group));
-    Assert.IsTrue(Catalog.TryFind('c', Entry));
-    Assert.AreEqual(Ord(TRuleGroup.Security), Ord(Entry.Group));
-    Assert.IsTrue(Catalog.TryFind('d', Entry));
-    Assert.AreEqual(Ord(TRuleGroup.Style), Ord(Entry.Group));
-    Assert.AreEqual(0, Integer(Length(Entry.Options)));
+    Assert.IsTrue(mCatalog.TryFind('a', mEntry));
+    Assert.AreEqual(Ord(TRuleGroup.FindBugs), Ord(mEntry.Group));
+    Assert.IsTrue(mCatalog.TryFind('b', mEntry));
+    Assert.AreEqual(Ord(TRuleGroup.Security), Ord(mEntry.Group));
+    Assert.IsTrue(mCatalog.TryFind('c', mEntry));
+    Assert.AreEqual(Ord(TRuleGroup.Security), Ord(mEntry.Group));
+    Assert.IsTrue(mCatalog.TryFind('d', mEntry));
+    Assert.AreEqual(Ord(TRuleGroup.Style), Ord(mEntry.Group));
+    Assert.AreEqual(0, Integer(Length(mEntry.Options)));
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
@@ -380,77 +380,77 @@ end;
 
 procedure TRuleCatalogTests.ReadsCompilerCodes;
 var
-  Catalog: TRuleCatalog;
-  Entry: TRuleCatalogEntry;
+  mCatalog: TRuleCatalog;
+  mEntry: TRuleCatalogEntry;
 begin
-  Catalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"code-smell","severity":"hint",' +
+  mCatalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"code-smell","severity":"hint",' +
     '"compilerCodes":["F2069","W1036"]},{"id":"y","category":"bug","severity":"error"}]}');
   try
-    Assert.IsTrue(Catalog.TryFind('x', Entry));
-    Assert.AreEqual('F2069,W1036', string.Join(',', Entry.CompilerCodes));
-    Assert.IsTrue(Pos('Entspricht der Compilermeldung F2069, W1036.', TRuleCatalog.Explanation(Entry, #10)) > 0);
-    Assert.IsTrue(Catalog.TryFind('y', Entry));
-    Assert.AreEqual(0, Integer(Length(Entry.CompilerCodes)));
-    Assert.IsFalse(Pos('Compilermeldung', TRuleCatalog.Explanation(Entry, #10)) > 0);
+    Assert.IsTrue(mCatalog.TryFind('x', mEntry));
+    Assert.AreEqual('F2069,W1036', string.Join(',', mEntry.CompilerCodes));
+    Assert.IsTrue(Pos('Entspricht der Compilermeldung F2069, W1036.', TRuleCatalog.Explanation(mEntry, #10)) > 0);
+    Assert.IsTrue(mCatalog.TryFind('y', mEntry));
+    Assert.AreEqual(0, Integer(Length(mEntry.CompilerCodes)));
+    Assert.IsFalse(Pos('Compilermeldung', TRuleCatalog.Explanation(mEntry, #10)) > 0);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
   // Eingebauter Katalog: line-length entspricht F2069 (#938).
-  Assert.IsTrue(TRuleCatalog.Shared.TryFind('line-length', Entry));
-  Assert.AreEqual('F2069', string.Join(',', Entry.CompilerCodes));
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('line-length', mEntry));
+  Assert.AreEqual('F2069', string.Join(',', mEntry.CompilerCodes));
   // Delphi 13 meldet W1008, die Delphi-Hilfe nennt X1008 (#1382).
-  Assert.IsTrue(TRuleCatalog.Shared.TryFind('hresult-integer-mix', Entry));
-  Assert.AreEqual('W1008', string.Join(',', Entry.CompilerCodes));
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('hresult-integer-mix', mEntry));
+  Assert.AreEqual('W1008', string.Join(',', mEntry.CompilerCodes));
   // X-Codes (Vorab-Prüfungen des Compilers, #1040) sind gültig.
-  Catalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"bug","severity":"warning",' +
+  mCatalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"bug","severity":"warning",' +
     '"compilerCodes":["X1008"]}]}');
   try
-    Assert.IsTrue(Catalog.TryFind('x', Entry));
-    Assert.AreEqual('X1008', string.Join(',', Entry.CompilerCodes));
+    Assert.IsTrue(mCatalog.TryFind('x', mEntry));
+    Assert.AreEqual('X1008', string.Join(',', mEntry.CompilerCodes));
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":"F2069"}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":["Y2069"]}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":["F206"]}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":[2069]}]}');
   // Stufe der Compilerregeln (#1024).
-  Catalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"bug","severity":"error","level":"T"},' +
+  mCatalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"bug","severity":"error","level":"T"},' +
     '{"id":"y","category":"bug","severity":"error"}]}');
   try
-    Assert.IsTrue(Catalog.TryFind('x', Entry));
-    Assert.AreEqual('T', Entry.Level);
-    Assert.IsTrue(Catalog.TryFind('y', Entry));
-    Assert.AreEqual('', Entry.Level);
+    Assert.IsTrue(mCatalog.TryFind('x', mEntry));
+    Assert.AreEqual('T', mEntry.Level);
+    Assert.IsTrue(mCatalog.TryFind('y', mEntry));
+    Assert.AreEqual('', mEntry.Level);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","level":"C"}]}');
-  Assert.IsTrue(TRuleCatalog.Shared.TryFind('argument-count-mismatch', Entry));
-  Assert.AreEqual('T', Entry.Level);
-  Assert.IsTrue(TRuleCatalog.Shared.TryFind('duplicate-case-label', Entry));
-  Assert.AreEqual('B', Entry.Level);
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('argument-count-mismatch', mEntry));
+  Assert.AreEqual('T', mEntry.Level);
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('duplicate-case-label', mEntry));
+  Assert.AreEqual('B', mEntry.Level);
 end;
 
 procedure TRuleCatalogTests.ReadsOverriddenBy;
 var
-  Catalog: TRuleCatalog;
-  Entry: TRuleCatalogEntry;
+  mCatalog: TRuleCatalog;
+  mEntry: TRuleCatalogEntry;
 begin
-  Catalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"code-smell","severity":"hint",' +
+  mCatalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"code-smell","severity":"hint",' +
     '"overriddenBy":["y"]},{"id":"y","category":"code-smell","severity":"hint"}]}');
   try
-    Assert.IsTrue(Catalog.TryFind('x', Entry));
-    Assert.AreEqual('y', string.Join(',', Entry.OverriddenBy));
-    Assert.IsTrue(Pos('Schweigt, solange y an ist.', TRuleCatalog.Explanation(Entry, #10)) > 0);
-    Assert.IsTrue(Catalog.TryFind('y', Entry));
-    Assert.AreEqual(0, Integer(Length(Entry.OverriddenBy)));
+    Assert.IsTrue(mCatalog.TryFind('x', mEntry));
+    Assert.AreEqual('y', string.Join(',', mEntry.OverriddenBy));
+    Assert.IsTrue(Pos('Schweigt, solange y an ist.', TRuleCatalog.Explanation(mEntry, #10)) > 0);
+    Assert.IsTrue(mCatalog.TryFind('y', mEntry));
+    Assert.AreEqual(0, Integer(Length(mEntry.OverriddenBy)));
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
   // Eingebauter Katalog: redundant-begin-end schweigt bei missing-begin-end (#1025).
-  Assert.IsTrue(TRuleCatalog.Shared.TryFind('redundant-begin-end', Entry));
-  Assert.AreEqual('missing-begin-end', string.Join(',', Entry.OverriddenBy));
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('redundant-begin-end', mEntry));
+  Assert.AreEqual('missing-begin-end', string.Join(',', mEntry.OverriddenBy));
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","overriddenBy":"y"}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","overriddenBy":[1]}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","overriddenBy":[""]}]}');
@@ -458,77 +458,77 @@ end;
 
 procedure TRuleCatalogTests.ReadsSafeFix;
 var
-  Catalog: TRuleCatalog;
-  Entry: TRuleCatalogEntry;
+  mCatalog: TRuleCatalog;
+  mEntry: TRuleCatalogEntry;
 begin
-  Catalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"code-smell","severity":"hint","safeFix":true},' +
+  mCatalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"code-smell","severity":"hint","safeFix":true},' +
     '{"id":"y","category":"code-smell","severity":"hint"}]}');
   try
-    Assert.IsTrue(Catalog.TryFind('x', Entry));
-    Assert.IsTrue(Entry.SafeFix);
-    Assert.IsTrue(Catalog.TryFind('y', Entry));
-    Assert.IsFalse(Entry.SafeFix);
+    Assert.IsTrue(mCatalog.TryFind('x', mEntry));
+    Assert.IsTrue(mEntry.SafeFix);
+    Assert.IsTrue(mCatalog.TryFind('y', mEntry));
+    Assert.IsFalse(mEntry.SafeFix);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
   // Eingebauter Katalog: Umwandlung entfernen ist sicher, leeres except nicht.
-  Assert.IsTrue(TRuleCatalog.Shared.TryFind('redundant-cast', Entry));
-  Assert.IsTrue(Entry.SafeFix);
-  Assert.IsTrue(TRuleCatalog.Shared.TryFind('empty-except', Entry));
-  Assert.IsFalse(Entry.SafeFix);
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('redundant-cast', mEntry));
+  Assert.IsTrue(mEntry.SafeFix);
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('empty-except', mEntry));
+  Assert.IsFalse(mEntry.SafeFix);
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","safeFix":"ja"}]}');
 end;
 
 procedure TRuleCatalogTests.EveryEmbeddedRuleNamesCategoryAndSafeFix;
 var
-  Root, Item: TJSONValue;
-  Category: TRuleCategory;
-  Id: string;
+  mRoot, mItem: TJSONValue;
+  mCategory: TRuleCategory;
+  mId: string;
 begin
-  Root := TJSONObject.ParseJSONValue(RuleCatalogBaseJson);
+  mRoot := TJSONObject.ParseJSONValue(RuleCatalogBaseJson);
   try
-    for Item in TJSONArray(TJSONObject(Root).GetValue('rules')) do
+    for mItem in TJSONArray(TJSONObject(mRoot).GetValue('rules')) do
     begin
-      Id := TJSONObject(Item).GetValue<string>('id');
-      Assert.IsTrue(TRuleCatalog.TryParseCategory(TJSONObject(Item).GetValue<string>('category', ''), Category), Id);
-      Assert.IsTrue(TJSONObject(Item).GetValue('safeFix') is TJSONBool, Id);
+      mId := TJSONObject(mItem).GetValue<string>('id');
+      Assert.IsTrue(TRuleCatalog.TryParseCategory(TJSONObject(mItem).GetValue<string>('category', ''), mCategory), mId);
+      Assert.IsTrue(TJSONObject(mItem).GetValue('safeFix') is TJSONBool, mId);
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 procedure TRuleCatalogTests.ReadsProfiles;
 var
-  Catalog: TRuleCatalog;
-  Entry: TRuleCatalogEntry;
+  mCatalog: TRuleCatalog;
+  mEntry: TRuleCatalogEntry;
 begin
-  Catalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"code-smell","severity":"hint",' +
+  mCatalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"code-smell","severity":"hint",' +
     '"profiles":["strict"]},{"id":"y","category":"code-smell","severity":"hint"},' +
     '{"id":"z","category":"bug","severity":"error","profiles":["Standard","strict"]}]}');
   try
-    Assert.IsTrue(Catalog.TryFind('x', Entry));
-    Assert.AreEqual('strict', string.Join(',', Entry.Profiles));
-    Assert.IsTrue(Entry.Experimental);
-    Assert.IsTrue(Entry.InProfile('strict'));
-    Assert.IsFalse(Entry.InProfile('standard'));
-    Assert.IsTrue(Catalog.TryFind('y', Entry));
-    Assert.AreEqual(0, Integer(Length(Entry.Profiles)));
-    Assert.IsFalse(Entry.Experimental);
-    Assert.IsTrue(Entry.InProfile('standard'));
-    Assert.IsTrue(Entry.InProfile('STRICT'));
+    Assert.IsTrue(mCatalog.TryFind('x', mEntry));
+    Assert.AreEqual('strict', string.Join(',', mEntry.Profiles));
+    Assert.IsTrue(mEntry.Experimental);
+    Assert.IsTrue(mEntry.InProfile('strict'));
+    Assert.IsFalse(mEntry.InProfile('standard'));
+    Assert.IsTrue(mCatalog.TryFind('y', mEntry));
+    Assert.AreEqual(0, Integer(Length(mEntry.Profiles)));
+    Assert.IsFalse(mEntry.Experimental);
+    Assert.IsTrue(mEntry.InProfile('standard'));
+    Assert.IsTrue(mEntry.InProfile('STRICT'));
     // Kategorie-Profile stehen nicht in "profiles".
-    Assert.IsFalse(Entry.InProfile('fast'));
-    Assert.IsTrue(Catalog.TryFind('z', Entry));
-    Assert.IsFalse(Entry.Experimental);
+    Assert.IsFalse(mEntry.InProfile('fast'));
+    Assert.IsTrue(mCatalog.TryFind('z', mEntry));
+    Assert.IsFalse(mEntry.Experimental);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
   // Eingebauter Katalog: magic-number läuft nur unter strict, empty-except überall.
-  Assert.IsTrue(TRuleCatalog.Shared.TryFind('magic-number', Entry));
-  Assert.IsTrue(Entry.Experimental);
-  Assert.IsTrue(TRuleCatalog.Shared.TryFind('empty-except', Entry));
-  Assert.IsFalse(Entry.Experimental);
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('magic-number', mEntry));
+  Assert.IsTrue(mEntry.Experimental);
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('empty-except', mEntry));
+  Assert.IsFalse(mEntry.Experimental);
 end;
 
 procedure TRuleCatalogTests.RejectsInvalidProfiles;
@@ -555,69 +555,69 @@ end;
 
 procedure TRuleCatalogTests.OverlayTranslatesOptionDescriptions;
 var
-  Catalog: TRuleCatalog;
-  Entry: TRuleCatalogEntry;
+  mCatalog: TRuleCatalog;
+  mEntry: TRuleCatalogEntry;
 begin
-  Catalog := TRuleCatalog.Create('{"rules":[{"id":"m","category":"code-smell","severity":"hint","options":' +
+  mCatalog := TRuleCatalog.Create('{"rules":[{"id":"m","category":"code-smell","severity":"hint","options":' +
     '[{"name":"max","type":"integer","default":4,"description":"Limit"},{"name":"min","type":"integer",' +
     '"description":"Lower"}]}]}', '{"rules":[{"id":"m","options":[{"name":"MAX","description":"Grenze"},' +
     '{"name":"unknown","description":"Fehlt"}]}]}');
   try
-    Assert.IsTrue(Catalog.TryFind('m', Entry));
-    Assert.AreEqual('Grenze', Entry.Options[0].Description);
-    Assert.AreEqual('Lower', Entry.Options[1].Description);
-    Assert.AreEqual('4', Entry.Options[0].DefaultJson);
+    Assert.IsTrue(mCatalog.TryFind('m', mEntry));
+    Assert.AreEqual('Grenze', mEntry.Options[0].Description);
+    Assert.AreEqual('Lower', mEntry.Options[1].Description);
+    Assert.AreEqual('4', mEntry.Options[0].DefaultJson);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TRuleCatalogTests.EveryEmbeddedRuleHasExactlyOneGroup;
 var
-  Root, Item: TJSONValue;
-  Group: TRuleGroup;
-  Seen: TArray<string>;
-  Id: string;
+  mRoot, mItem: TJSONValue;
+  mGroup: TRuleGroup;
+  mSeen: TArray<string>;
+  mId: string;
 begin
   // Jede Regel nennt ihre Gruppe ausdrücklich (nicht über die Kategorie) und steht nur einmal im Katalog.
-  Root := TJSONObject.ParseJSONValue(RuleCatalogBaseJson);
+  mRoot := TJSONObject.ParseJSONValue(RuleCatalogBaseJson);
   try
-    Seen := nil;
-    for Item in TJSONArray(TJSONObject(Root).GetValue('rules')) do
+    mSeen := nil;
+    for mItem in TJSONArray(TJSONObject(mRoot).GetValue('rules')) do
     begin
-      Id := TJSONObject(Item).GetValue<string>('id');
-      Assert.IsNotNull(TJSONObject(Item).GetValue('group'), Id);
-      Assert.IsTrue(TRuleCatalog.TryParseGroup(TJSONObject(Item).GetValue<string>('group'), Group), Id);
-      Assert.IsFalse(MatchText(Id, Seen), Id);
-      Seen := Seen + [Id];
+      mId := TJSONObject(mItem).GetValue<string>('id');
+      Assert.IsNotNull(TJSONObject(mItem).GetValue('group'), mId);
+      Assert.IsTrue(TRuleCatalog.TryParseGroup(TJSONObject(mItem).GetValue<string>('group'), mGroup), mId);
+      Assert.IsFalse(MatchText(mId, mSeen), mId);
+      mSeen := mSeen + [mId];
     end;
-    Assert.IsTrue(Length(Seen) > 0);
+    Assert.IsTrue(Length(mSeen) > 0);
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 procedure TRuleCatalogTests.GroupNamesRoundTrip;
 var
-  Group, Parsed: TRuleGroup;
+  mGroup, mParsed: TRuleGroup;
 begin
-  for Group := Low(TRuleGroup) to High(TRuleGroup) do
+  for mGroup := Low(TRuleGroup) to High(TRuleGroup) do
   begin
-    Assert.IsTrue(TRuleCatalog.TryParseGroup(TRuleCatalog.GroupName(Group), Parsed));
-    Assert.AreEqual(Ord(Group), Ord(Parsed));
+    Assert.IsTrue(TRuleCatalog.TryParseGroup(TRuleCatalog.GroupName(mGroup), mParsed));
+    Assert.AreEqual(Ord(mGroup), Ord(mParsed));
   end;
   Assert.AreEqual('find-bugs', TRuleCatalog.GroupName(TRuleGroup.FindBugs));
   Assert.AreEqual('migration', TRuleCatalog.GroupName(TRuleGroup.Migration));
-  Assert.IsFalse(TRuleCatalog.TryParseGroup('', Parsed));
+  Assert.IsFalse(TRuleCatalog.TryParseGroup('', mParsed));
 end;
 
 procedure TRuleCatalogTests.SharedCatalogIsReadOnce;
 var
-  Entry: TRuleCatalogEntry;
+  mEntry: TRuleCatalogEntry;
 begin
   Assert.AreSame(TRuleCatalog.Shared, TRuleCatalog.Shared);
-  Assert.IsTrue(TRuleCatalog.Shared.TryFind('empty-except', Entry));
-  Assert.AreEqual(Ord(TRuleGroup.Exceptions), Ord(Entry.Group));
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('empty-except', mEntry));
+  Assert.AreEqual(Ord(TRuleGroup.Exceptions), Ord(mEntry.Group));
 end;
 
 initialization

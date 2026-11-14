@@ -72,30 +72,30 @@ end;
 
 procedure TDocumentUrisTests.SameKeyForAllSpellings;
 var
-  Key: string;
+  mKey: string;
 begin
   // Abnahme aus #176: kodiertes ":" und kodierter Umlaut gegen Klartext.
-  Key := TDocumentUris.Key('file:///c%3A/Projekt/' + #$00C4 + '.pas');
-  Assert.AreEqual(Key, TDocumentUris.Key('file:///C:/Projekt/%C3%84.pas'));
-  Assert.AreEqual(Key, TDocumentUris.Key('file:///c:/projekt/%C3%A4.pas'));
-  Assert.AreEqual(Key, TDocumentUris.Key('file:///C:/Projekt/Sub/../%C3%84.pas'));
-  Assert.AreNotEqual(Key, TDocumentUris.Key('file:///C:/Projekt/B.pas'));
+  mKey := TDocumentUris.Key('file:///c%3A/Projekt/' + #$00C4 + '.pas');
+  Assert.AreEqual(mKey, TDocumentUris.Key('file:///C:/Projekt/%C3%84.pas'));
+  Assert.AreEqual(mKey, TDocumentUris.Key('file:///c:/projekt/%C3%A4.pas'));
+  Assert.AreEqual(mKey, TDocumentUris.Key('file:///C:/Projekt/Sub/../%C3%84.pas'));
+  Assert.AreNotEqual(mKey, TDocumentUris.Key('file:///C:/Projekt/B.pas'));
   Assert.AreEqual(TDocumentUris.Key('file://server/share/A.pas'), TDocumentUris.Key('file://SERVER/Share/a.pas'));
   Assert.AreEqual('untitled:Untitled-1', TDocumentUris.Key('untitled:Untitled-1'));
 end;
 
 procedure TDocumentUrisTests.KeyUsesCanonicalizer;
 var
-  Canonicalize: TPathCanonicalizer;
+  mCanonicalize: TPathCanonicalizer;
 begin
   // Junction C:\Link zeigt auf D:\Ziel.
-  Canonicalize :=
+  mCanonicalize :=
     function(const APath: string): string
     begin
       Result := StringReplace(APath, 'C:\Link', 'D:\Ziel', [rfIgnoreCase]);
     end;
-  Assert.AreEqual(TDocumentUris.Key('file:///d%3A/Ziel/A.pas', Canonicalize),
-    TDocumentUris.Key('file:///c%3A/Link/A.pas', Canonicalize));
+  Assert.AreEqual(TDocumentUris.Key('file:///d%3A/Ziel/A.pas', mCanonicalize),
+    TDocumentUris.Key('file:///c%3A/Link/A.pas', mCanonicalize));
   Assert.AreNotEqual(TDocumentUris.Key('file:///d%3A/Ziel/A.pas'), TDocumentUris.Key('file:///c%3A/Link/A.pas'));
 end;
 

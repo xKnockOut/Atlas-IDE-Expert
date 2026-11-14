@@ -43,26 +43,26 @@ end;
 // Bereiche als Text, z. B. "0-3,2-3:imports".
 function Describe(const AText: string): string;
 var
-  Tree: TSyntaxTree;
-  Range: TFoldingRange;
+  mTree: TSyntaxTree;
+  mRange: TFoldingRange;
 begin
   Result := '';
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    for Range in TLspFoldingRanges.Collect(Tree) do
+    for mRange in TLspFoldingRanges.Collect(mTree) do
     begin
       if Result <> '' then
       begin
         Result := Result + ',';
       end;
-      Result := Result + Format('%d-%d', [Range.StartLine, Range.EndLine]);
-      if Range.Kind <> '' then
+      Result := Result + Format('%d-%d', [mRange.StartLine, mRange.EndLine]);
+      if mRange.Kind <> '' then
       begin
-        Result := Result + ':' + Range.Kind;
+        Result := Result + ':' + mRange.Kind;
       end;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -119,13 +119,13 @@ end;
 
 procedure TLspFoldingRangesTests.WritesLspJson;
 var
-  Json: TJSONArray;
+  mJson: TJSONArray;
 begin
-  Json := TLspFoldingRanges.ToJson([TFoldingRange.Create(1, 3, 'imports'), TFoldingRange.Create(4, 9, '')]);
+  mJson := TLspFoldingRanges.ToJson([TFoldingRange.Create(1, 3, 'imports'), TFoldingRange.Create(4, 9, '')]);
   try
-    Assert.AreEqual('[{"startLine":1,"endLine":3,"kind":"imports"},{"startLine":4,"endLine":9}]', Json.ToJSON);
+    Assert.AreEqual('[{"startLine":1,"endLine":3,"kind":"imports"},{"startLine":4,"endLine":9}]', mJson.ToJSON);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 

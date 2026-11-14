@@ -94,16 +94,16 @@ uses
   Atlas.Common.Lsp.Impact;
 
 const
-  BasisFile = 'C:\P\Basis.pas';
-  AndereFile = 'C:\P\Andere.pas';
-  FormularFile = 'C:\P\Formular.pas';
-  FormularForm = 'C:\P\Formular.dfm';
-  FormularInclude = 'C:\P\Formular.inc';
-  BasisTestFile = 'C:\P\Basis.Tests.pas';
-  FormularTestFile = 'C:\P\Formular.Tests.pas';
-  ProgramFile = 'C:\P\Tests.dpr';
+  cBasisFile = 'C:\P\Basis.pas';
+  cAndereFile = 'C:\P\Andere.pas';
+  cFormularFile = 'C:\P\Formular.pas';
+  cFormularForm = 'C:\P\Formular.dfm';
+  cFormularInclude = 'C:\P\Formular.inc';
+  cBasisTestFile = 'C:\P\Basis.Tests.pas';
+  cFormularTestFile = 'C:\P\Formular.Tests.pas';
+  cProgramFile = 'C:\P\Tests.dpr';
 
-  UnitBasis =
+  cUnitBasis =
     'unit Basis;'#10 +
     'interface'#10 +
     'uses System.SysUtils;'#10 +
@@ -133,7 +133,7 @@ const
     '  TBaseline.ClassName;'#10 +
     'end.';
 
-  UnitAndere =
+  cUnitAndere =
     'unit Andere;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -148,7 +148,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitFormular =
+  cUnitFormular =
     'unit Formular;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -168,16 +168,16 @@ const
     'end;'#10 +
     'end.';
 
-  FormFormular =
+  cFormFormular =
     'object Form1: TForm1'#10 +
     '  Caption = ''Formular'''#10 +
     'end';
 
-  IncludeFormular =
+  cIncludeFormular =
     'const'#10 +
     '  cIncluded = 1;';
 
-  UnitBasisTests =
+  cUnitBasisTests =
     'unit Basis.Tests;'#10 +
     'interface'#10 +
     'uses DUnitX.TestFramework, Basis;'#10 +
@@ -222,7 +222,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitFormularTests =
+  cUnitFormularTests =
     'unit Formular.Tests;'#10 +
     'interface'#10 +
     'uses DUnitX.TestFramework, Formular;'#10 +
@@ -243,7 +243,7 @@ const
     'end;'#10 +
     'end.';
 
-  ProgramTests =
+  cProgramTests =
     'program Tests;'#10 +
     'uses'#10 +
     '  DUnitX.TestFramework,'#10 +
@@ -254,37 +254,37 @@ const
 
 function TextOf(const AFileName: string): string;
 begin
-  if SameText(AFileName, BasisFile) then
+  if SameText(AFileName, cBasisFile) then
   begin
-    Result := UnitBasis;
+    Result := cUnitBasis;
   end
-  else if SameText(AFileName, AndereFile) then
+  else if SameText(AFileName, cAndereFile) then
   begin
-    Result := UnitAndere;
+    Result := cUnitAndere;
   end
-  else if SameText(AFileName, FormularFile) then
+  else if SameText(AFileName, cFormularFile) then
   begin
-    Result := UnitFormular;
+    Result := cUnitFormular;
   end
-  else if SameText(AFileName, FormularForm) then
+  else if SameText(AFileName, cFormularForm) then
   begin
-    Result := FormFormular;
+    Result := cFormFormular;
   end
-  else if SameText(AFileName, FormularInclude) then
+  else if SameText(AFileName, cFormularInclude) then
   begin
-    Result := IncludeFormular;
+    Result := cIncludeFormular;
   end
-  else if SameText(AFileName, BasisTestFile) then
+  else if SameText(AFileName, cBasisTestFile) then
   begin
-    Result := UnitBasisTests;
+    Result := cUnitBasisTests;
   end
-  else if SameText(AFileName, FormularTestFile) then
+  else if SameText(AFileName, cFormularTestFile) then
   begin
-    Result := UnitFormularTests;
+    Result := cUnitFormularTests;
   end
-  else if SameText(AFileName, ProgramFile) then
+  else if SameText(AFileName, cProgramFile) then
   begin
-    Result := ProgramTests;
+    Result := cProgramTests;
   end
   else
   begin
@@ -300,7 +300,7 @@ end;
 
 function ProjectFiles: TArray<string>;
 begin
-  Result := TArray<string>.Create(BasisFile, AndereFile, FormularFile, BasisTestFile, FormularTestFile);
+  Result := TArray<string>.Create(cBasisFile, cAndereFile, cFormularFile, cBasisTestFile, cFormularTestFile);
 end;
 
 /// <summary>0-basierte Zeile, in der AMarker zuerst vorkommt.</summary>
@@ -404,14 +404,14 @@ var
   mFormular: TUnitIndex;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, BasisFile, nil, nil, True));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitAndere, AndereFile, nil, nil, True));
-  mFormular := TIndexExtractor.ExtractText(UnitFormular, FormularFile, nil, nil, True);
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAndere, cAndereFile, nil, nil, True));
+  mFormular := TIndexExtractor.ExtractText(cUnitFormular, cFormularFile, nil, nil, True);
   // Ohne Include-Auflösung im Test: Die eingebundene Datei wie der Index sie nennt.
-  mFormular.Includes := TArray<string>.Create(FormularInclude);
+  mFormular.Includes := TArray<string>.Create(cFormularInclude);
   FIndex.AddUnit(mFormular);
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasisTests, BasisTestFile, nil, nil, True));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitFormularTests, FormularTestFile, nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasisTests, cBasisTestFile, nil, nil, True));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitFormularTests, cFormularTestFile, nil, nil, True));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -423,7 +423,7 @@ end;
 
 function TAffectedTestsTests.Determine(const AInputs: TArray<TAffectedInput>): TAffectedResult;
 begin
-  Result := Determine(AInputs, TArray<string>.Create(ProgramFile));
+  Result := Determine(AInputs, TArray<string>.Create(cProgramFile));
 end;
 
 function TAffectedTestsTests.Determine(const AInputs: TArray<TAffectedInput>;
@@ -436,7 +436,7 @@ begin
   mRequest.TestPrograms := APrograms;
   mRequest.Options := TImpactOptions.Default;
   mRequest.Options.Depth := TAffectedTests.cDefaultDepth;
-  mRequest.Options.Tests := TImpactTestScope.FromProgram('{unit}.Tests', ProgramTests);
+  mRequest.Options.Tests := TImpactTestScope.FromProgram('{unit}.Tests', cProgramTests);
   mRequest.Base := 'main';
   Result := TAffectedTests.Determine(FResolver, FIndex, AInputs, mRequest,
     function(const AFileName: string; out AText: string): Boolean
@@ -449,12 +449,12 @@ procedure TAffectedTestsTests.ImplementationLineMapsToRoutine;
 var
   mChanges: TArray<TAffectedChange>;
 begin
-  mChanges := TAffectedTests.MapPascal(BasisFile, UnitBasis, LinesAt(UnitBasis, 'Result := Normalize'));
+  mChanges := TAffectedTests.MapPascal(cBasisFile, cUnitBasis, LinesAt(cUnitBasis, 'Result := Normalize'));
   Assert.AreEqual(1, Integer(Length(mChanges)));
   Assert.AreEqual<TAffectedChangeKind>(TAffectedChangeKind.Symbol, mChanges[0].Kind);
   Assert.AreEqual('TBaseline.Match', mChanges[0].Text);
   Assert.AreEqual('implementation', mChanges[0].Place);
-  Assert.AreEqual(BasisFile, mChanges[0].Source);
+  Assert.AreEqual(cBasisFile, mChanges[0].Source);
 end;
 
 procedure TAffectedTestsTests.InterfaceDeclarationMapsToMethod;
@@ -462,7 +462,7 @@ var
   mChanges: TArray<TAffectedChange>;
 begin
   // Eine geänderte Signatur im interface zählt für die Methode, nicht für die ganze Klasse.
-  mChanges := TAffectedTests.MapPascal(BasisFile, UnitBasis, LinesAt(UnitBasis, '    function Match('));
+  mChanges := TAffectedTests.MapPascal(cBasisFile, cUnitBasis, LinesAt(cUnitBasis, '    function Match('));
   Assert.AreEqual(1, Integer(Length(mChanges)));
   Assert.AreEqual<TAffectedChangeKind>(TAffectedChangeKind.Symbol, mChanges[0].Kind);
   Assert.AreEqual('TBaseline.Match', mChanges[0].Text);
@@ -473,7 +473,7 @@ procedure TAffectedTestsTests.ConstantMapsToConstant;
 var
   mChanges: TArray<TAffectedChange>;
 begin
-  mChanges := TAffectedTests.MapPascal(BasisFile, UnitBasis, LinesAt(UnitBasis, 'cLimit = 3'));
+  mChanges := TAffectedTests.MapPascal(cBasisFile, cUnitBasis, LinesAt(cUnitBasis, 'cLimit = 3'));
   Assert.AreEqual(1, Integer(Length(mChanges)));
   Assert.AreEqual<TAffectedChangeKind>(TAffectedChangeKind.Symbol, mChanges[0].Kind);
   Assert.AreEqual('cLimit', mChanges[0].Item.Name);
@@ -483,7 +483,7 @@ procedure TAffectedTestsTests.InitializationIsWholeUnit;
 var
   mChanges: TArray<TAffectedChange>;
 begin
-  mChanges := TAffectedTests.MapPascal(BasisFile, UnitBasis, LinesAt(UnitBasis, 'TBaseline.ClassName'));
+  mChanges := TAffectedTests.MapPascal(cBasisFile, cUnitBasis, LinesAt(cUnitBasis, 'TBaseline.ClassName'));
   Assert.AreEqual(1, Integer(Length(mChanges)));
   Assert.AreEqual<TAffectedChangeKind>(TAffectedChangeKind.WholeUnit, mChanges[0].Kind);
   Assert.AreEqual('Unit Basis', mChanges[0].Text);
@@ -494,7 +494,7 @@ procedure TAffectedTestsTests.UsesIsWholeUnit;
 var
   mChanges: TArray<TAffectedChange>;
 begin
-  mChanges := TAffectedTests.MapPascal(BasisFile, UnitBasis, LinesAt(UnitBasis, 'uses System.SysUtils'));
+  mChanges := TAffectedTests.MapPascal(cBasisFile, cUnitBasis, LinesAt(cUnitBasis, 'uses System.SysUtils'));
   Assert.AreEqual(1, Integer(Length(mChanges)));
   Assert.AreEqual<TAffectedChangeKind>(TAffectedChangeKind.WholeUnit, mChanges[0].Kind);
   Assert.AreEqual('interface', mChanges[0].Place);
@@ -505,10 +505,10 @@ var
   mLines: TChangedLines;
 begin
   // Leerzeile vor der Routine und der Kommentar in ihrem Rumpf.
-  mLines := Span(LineOf(UnitBasis, 'function TBaseline.Normalize') - 1, LineOf(UnitBasis, 'function TBaseline.Normalize')
+  mLines := Span(LineOf(cUnitBasis, 'function TBaseline.Normalize') - 1, LineOf(cUnitBasis, 'function TBaseline.Normalize')
     - 1);
-  mLines.Spans := mLines.Spans + LinesAt(UnitBasis, '// nur ein Kommentar').Spans;
-  Assert.AreEqual(0, Integer(Length(TAffectedTests.MapPascal(BasisFile, UnitBasis, mLines))));
+  mLines.Spans := mLines.Spans + LinesAt(cUnitBasis, '// nur ein Kommentar').Spans;
+  Assert.AreEqual(0, Integer(Length(TAffectedTests.MapPascal(cBasisFile, cUnitBasis, mLines))));
 end;
 
 procedure TAffectedTestsTests.GapInsideRoutineMapsToRoutine;
@@ -516,7 +516,7 @@ var
   mChanges: TArray<TAffectedChange>;
 begin
   // Zeilen vor "Result := AText" entfernt: davor und danach steht Normalize.
-  mChanges := TAffectedTests.MapPascal(BasisFile, UnitBasis, Gap(LineOf(UnitBasis, 'Result := AText')));
+  mChanges := TAffectedTests.MapPascal(cBasisFile, cUnitBasis, Gap(LineOf(cUnitBasis, 'Result := AText')));
   Assert.AreEqual(1, Integer(Length(mChanges)));
   Assert.AreEqual('TBaseline.Normalize', mChanges[0].Text);
 end;
@@ -526,7 +526,7 @@ var
   mChanges: TArray<TAffectedChange>;
 begin
   // Vor "function TBaseline.Match" entfernt (etwa eine ganze Routine): davor Normalize, danach Match.
-  mChanges := TAffectedTests.MapPascal(BasisFile, UnitBasis, Gap(LineOf(UnitBasis, 'function TBaseline.Match')));
+  mChanges := TAffectedTests.MapPascal(cBasisFile, cUnitBasis, Gap(LineOf(cUnitBasis, 'function TBaseline.Match')));
   Assert.AreEqual(1, Integer(Length(mChanges)));
   Assert.AreEqual<TAffectedChangeKind>(TAffectedChangeKind.WholeUnit, mChanges[0].Kind);
   Assert.AreEqual('implementation', mChanges[0].Place);
@@ -534,7 +534,7 @@ end;
 
 procedure TAffectedTestsTests.FormClassFromFirstLine;
 begin
-  Assert.AreEqual('TForm1', TAffectedTests.FormClass(FormFormular));
+  Assert.AreEqual('TForm1', TAffectedTests.FormClass(cFormFormular));
   Assert.AreEqual('TForm2', TAffectedTests.FormClass(#10'inherited Form2: TForm2'#10'end'));
   Assert.AreEqual('TFrame1', TAffectedTests.FormClass('inline Frame1: TFrame1 [0]'#10'end'));
   Assert.AreEqual('', TAffectedTests.FormClass('kein Formular'));
@@ -544,12 +544,12 @@ procedure TAffectedTestsTests.IncludeLinesFindDirective;
 var
   mLines: TArray<Integer>;
 begin
-  mLines := TAffectedTests.IncludeLines(UnitFormular, FormularInclude);
+  mLines := TAffectedTests.IncludeLines(cUnitFormular, cFormularInclude);
   Assert.AreEqual(1, Integer(Length(mLines)));
-  Assert.AreEqual(LineOf(UnitFormular, '{$I Formular.inc}'), mLines[0]);
+  Assert.AreEqual(LineOf(cUnitFormular, '{$I Formular.inc}'), mLines[0]);
   // Ohne Endung gilt .inc.
-  Assert.AreEqual(1, Integer(Length(TAffectedTests.IncludeLines('{$INCLUDE Formular}', FormularInclude))));
-  Assert.AreEqual(0, Integer(Length(TAffectedTests.IncludeLines(UnitFormular, 'C:\P\Andere.inc'))));
+  Assert.AreEqual(1, Integer(Length(TAffectedTests.IncludeLines('{$INCLUDE Formular}', cFormularInclude))));
+  Assert.AreEqual(0, Integer(Length(TAffectedTests.IncludeLines(cUnitFormular, 'C:\P\Andere.inc'))));
 end;
 
 procedure TAffectedTestsTests.MatchChangeReachesItsTests;
@@ -557,12 +557,12 @@ var
   mFound: TAffectedResult;
   mTest: TAffectedTest;
 begin
-  mFound := Determine([Input(BasisFile, LinesAt(UnitBasis, 'Result := Normalize'))]);
+  mFound := Determine([Input(cBasisFile, LinesAt(cUnitBasis, 'Result := Normalize'))]);
   Assert.IsFalse(mFound.All, mFound.AllReason);
   Assert.IsTrue(TestNamed(mFound, 'Basis.Tests.TBaselineTests.MatchFindet', mTest), Names(mFound));
   Assert.AreEqual('TBaselineTests', mTest.Fixture);
   Assert.AreEqual('MatchFindet', mTest.Method);
-  Assert.AreEqual(BasisTestFile, mTest.FileName);
+  Assert.AreEqual(cBasisTestFile, mTest.FileName);
   Assert.AreEqual('TBaseline.Match → TBaselineTests.MatchFindet', mTest.Reasons[0].Text);
   Assert.IsTrue(TestNamed(mFound, 'Basis.Tests.TBaselineTests.LeerFindetNicht', mTest), Names(mFound));
   // Über den Klick-Handler eine Ebene weiter.
@@ -579,7 +579,7 @@ var
   mTest: TAffectedTest;
 begin
   // Normalize ist privat und steht nur im implementation-Teil geändert; Tests rufen es nie direkt.
-  mFound := Determine([Input(BasisFile, LinesAt(UnitBasis, 'Result := AText'))]);
+  mFound := Determine([Input(cBasisFile, LinesAt(cUnitBasis, 'Result := AText'))]);
   Assert.IsFalse(mFound.All, mFound.AllReason);
   Assert.AreEqual(1, Integer(Length(mFound.Changes)));
   Assert.AreEqual('TBaseline.Normalize', mFound.Changes[0].Text);
@@ -593,7 +593,7 @@ var
   mFound: TAffectedResult;
   mTest: TAffectedTest;
 begin
-  mFound := Determine([Input(BasisFile, LinesAt(UnitBasis, 'TBaseline.ClassName'))]);
+  mFound := Determine([Input(cBasisFile, LinesAt(cUnitBasis, 'TBaseline.ClassName'))]);
   Assert.IsFalse(mFound.All, mFound.AllReason);
   // Alle Tests der Units, die Basis verwenden, als ganze Fixtures.
   Assert.IsTrue(TestNamed(mFound, 'Basis.Tests.TBaselineTests', mTest), Names(mFound));
@@ -608,12 +608,12 @@ var
   mFound: TAffectedResult;
   mTest: TAffectedTest;
 begin
-  mFound := Determine([WholeFile(FormularForm)]);
+  mFound := Determine([WholeFile(cFormularForm)]);
   Assert.IsFalse(mFound.All, mFound.AllReason);
   Assert.AreEqual(1, Integer(Length(mFound.Changes)));
   Assert.AreEqual('TForm1', mFound.Changes[0].Text);
   Assert.AreEqual('Formular', mFound.Changes[0].Place);
-  Assert.AreEqual(FormularForm, mFound.Changes[0].Source);
+  Assert.AreEqual(cFormularForm, mFound.Changes[0].Source);
   Assert.IsTrue(TestNamed(mFound, 'Formular.Tests.TFormularTests.Klick', mTest), Names(mFound));
   Assert.IsFalse(TestNamed(mFound, 'Basis.Tests.TBaselineTests.MatchFindet', mTest), Names(mFound));
 end;
@@ -623,11 +623,11 @@ var
   mFound: TAffectedResult;
   mTest: TAffectedTest;
 begin
-  mFound := Determine([WholeFile(FormularInclude)]);
+  mFound := Determine([WholeFile(cFormularInclude)]);
   Assert.IsFalse(mFound.All, mFound.AllReason);
   Assert.AreEqual(1, Integer(Length(mFound.Changes)));
   Assert.AreEqual('Include', mFound.Changes[0].Place);
-  Assert.AreEqual(FormularInclude, mFound.Changes[0].Source);
+  Assert.AreEqual(cFormularInclude, mFound.Changes[0].Source);
   // Das {$I} steht außerhalb jeder Routine: die ganze Unit Formular.
   Assert.AreEqual<TAffectedChangeKind>(TAffectedChangeKind.WholeUnit, mFound.Changes[0].Kind);
   Assert.IsTrue(TestNamed(mFound, 'Formular.Tests.TFormularTests', mTest), Names(mFound));
@@ -638,7 +638,7 @@ procedure TAffectedTestsTests.CommentOnlyChangeIsSkipped;
 var
   mFound: TAffectedResult;
 begin
-  mFound := Determine([Input(BasisFile, LinesAt(UnitBasis, '// nur ein Kommentar'))]);
+  mFound := Determine([Input(cBasisFile, LinesAt(cUnitBasis, '// nur ein Kommentar'))]);
   Assert.IsFalse(mFound.All);
   Assert.AreEqual(0, Integer(Length(mFound.Tests)));
   Assert.AreEqual(1, Integer(Length(mFound.Skipped)));
@@ -752,7 +752,7 @@ var
   mDepth, mRunCount: Integer;
   mAll: Boolean;
 begin
-  mFound := Determine([Input(BasisFile, LinesAt(UnitBasis, 'Result := AText'))]);
+  mFound := Determine([Input(cBasisFile, LinesAt(cUnitBasis, 'Result := AText'))]);
   mJson := TAffectedReport.ToJson(mFound);
   try
     // GetValue<T> erst in Variablen, nicht direkt als Argument von Assert.
@@ -777,7 +777,7 @@ procedure TAffectedTestsTests.TextNamesTestsAndReasons;
 var
   mText: string;
 begin
-  mText := TAffectedReport.Render(Determine([Input(BasisFile, LinesAt(UnitBasis, 'Result := Normalize'))]),
+  mText := TAffectedReport.Render(Determine([Input(cBasisFile, LinesAt(cUnitBasis, 'Result := Normalize'))]),
     TAffectedFormat.Text);
   Assert.IsTrue(Pos('Basis.Tests.TBaselineTests.MatchFindet', mText) > 0, mText);
   Assert.IsTrue(Pos('← TBaseline.Match → TBaselineTests.MatchFindet', mText) > 0, mText);

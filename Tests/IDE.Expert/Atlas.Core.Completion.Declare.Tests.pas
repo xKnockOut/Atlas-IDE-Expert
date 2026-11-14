@@ -90,22 +90,22 @@ end;
 
 function Names(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index in AOrder do
+  for mIndex in AOrder do
   begin
-    if Index = TAtlasRanking.cUnknownHeader then
+    if mIndex = TAtlasRanking.cUnknownHeader then
     begin
       Result := Result + '? ';
     end
-    else if TAtlasRanking.IsHeader(Index) then
+    else if TAtlasRanking.IsHeader(mIndex) then
     begin
       Result := Result + '# ';
     end
     else
     begin
-      Result := Result + AItems[Index].Name + ' ';
+      Result := Result + AItems[mIndex].Name + ' ';
     end;
   end;
   Result := Result.Trim;
@@ -113,7 +113,7 @@ end;
 
 const
   // resourcestring auslagern (#473) mit Platzhalter im Literal und in der Deklaration.
-  ResourceItem =
+  cResourceItem =
     '{"label":"Als resourcestring auslagern","kind":21,"insertTextFormat":2,"textEdit":{"range":{"start":' +
     '{"line":9,"character":14},"end":{"line":9,"character":21}},"newText":"${1:SFrage}"},' +
     '"additionalTextEdits":[{"range":{"start":{"line":3,"character":0},"end":{"line":3,"character":0}},' +
@@ -123,28 +123,28 @@ const
 
 function ResourceFromLsp(const AJson: string): TAtlasCompletionItem;
 var
-  Json: TJSONObject;
+  mJson: TJSONObject;
 begin
-  Json := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
+  mJson := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
   try
-    Result := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
+    Result := TAtlasServerCompletionProvider.ItemFromLsp(mJson, 0);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 function WaitFor(const ACondition: TFunc<Boolean>): Boolean;
 var
-  Start: UInt64;
+  mStart: UInt64;
 begin
-  Start := TThread.GetTickCount64;
+  mStart := TThread.GetTickCount64;
   repeat
     CheckSynchronize(5);
     if ACondition() then
     begin
       Exit(True);
     end;
-  until TThread.GetTickCount64 - Start > 3000;
+  until TThread.GetTickCount64 - mStart > 3000;
   Result := False;
 end;
 
@@ -152,127 +152,127 @@ end;
 
 procedure TAtlasCompletionDeclareTests.UnknownGroupComesLast;
 var
-  Items: TAtlasCompletionItems;
-  Regular: TAtlasCompletionItem;
+  mItems: TAtlasCompletionItems;
+  mRegular: TAtlasCompletionItem;
 begin
-  Regular := Default(TAtlasCompletionItem);
-  Regular.Name := 'TotalItems';
-  Regular.Kind := TAtlasItemKind.Variable;
-  Items := Declarations + [Regular];
+  mRegular := Default(TAtlasCompletionItem);
+  mRegular.Name := 'TotalItems';
+  mRegular.Kind := TAtlasItemKind.Variable;
+  mItems := Declarations + [mRegular];
   Assert.AreEqual('TotalItems ? Lokale Variable anlegen Feld FTotalCount anlegen',
-    Names(Items, TAtlasRanking.Order(Items, 'Tot', TAtlasRankOptions.Defaults)));
+    Names(mItems, TAtlasRanking.Order(mItems, 'Tot', TAtlasRankOptions.Defaults)));
   // Ohne andere Einträge bleibt die Gruppe mit ihrer Überschrift.
-  Items := Declarations;
+  mItems := Declarations;
   Assert.AreEqual('? Lokale Variable anlegen Feld FTotalCount anlegen',
-    Names(Items, TAtlasRanking.Order(Items, 'TotalCount', TAtlasRankOptions.Defaults)));
+    Names(mItems, TAtlasRanking.Order(mItems, 'TotalCount', TAtlasRankOptions.Defaults)));
 end;
 
 procedure TAtlasCompletionDeclareTests.ReadsDeclareFieldsFromServer;
 var
-  Json: TJSONObject;
-  Item: TAtlasCompletionItem;
+  mJson: TJSONObject;
+  mItem: TAtlasCompletionItem;
 begin
-  Json := TJSONObject.ParseJSONValue('{"label":"Lokale Variable anlegen","kind":6,"textEdit":{"range":{"start":' +
+  mJson := TJSONObject.ParseJSONValue('{"label":"Lokale Variable anlegen","kind":6,"textEdit":{"range":{"start":' +
     '{"line":9,"character":2},"end":{"line":9,"character":12}},"newText":"TotalCount$0"},"additionalTextEdits":' +
     '[{"range":{"start":{"line":8,"character":0},"end":{"line":8,"character":0}},"newText":"var"}],' +
     '"data":{"action":"declare","unknown":"TotalCount"}}') as TJSONObject;
   try
-    Item := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
+    mItem := TAtlasServerCompletionProvider.ItemFromLsp(mJson, 0);
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Assert.IsTrue(Item.IsAction);
-  Assert.AreEqual('TotalCount', Item.Unknown);
-  Assert.IsTrue(Item.UnitUsed, 'die Zusatzänderung ist keine uses-Ergänzung');
-  Assert.AreEqual('TotalCount$0', Item.TextEdit.NewText);
+  Assert.IsTrue(mItem.IsAction);
+  Assert.AreEqual('TotalCount', mItem.Unknown);
+  Assert.IsTrue(mItem.UnitUsed, 'die Zusatzänderung ist keine uses-Ergänzung');
+  Assert.AreEqual('TotalCount$0', mItem.TextEdit.NewText);
 end;
 
 procedure TAtlasCompletionDeclareTests.ReadsLinkedEditsAndCommand;
 var
-  Item: TAtlasCompletionItem;
+  mItem: TAtlasCompletionItem;
 begin
-  Item := ResourceFromLsp(ResourceItem);
-  Assert.IsTrue(Item.IsAction);
-  Assert.IsTrue(Item.LinkedEdits);
-  Assert.AreEqual(TAtlasSnippets.FromLsp('${1:SFrage}'), Item.Snippet);
-  Assert.AreEqual(1, Integer(Length(Item.AdditionalEdits)));
-  Assert.AreEqual(TAtlasSnippets.FromLsp('  ${1:SFrage} = ''Frage?'';'#10), Item.AdditionalEdits[0].NewText);
-  Assert.AreEqual('atlas.server.addResourceString', Item.Command);
-  Assert.AreEqual('["C:\\P\\Texte.pas","SFrage","''Frage?''"]', Item.CommandArguments);
+  mItem := ResourceFromLsp(cResourceItem);
+  Assert.IsTrue(mItem.IsAction);
+  Assert.IsTrue(mItem.LinkedEdits);
+  Assert.AreEqual(TAtlasSnippets.FromLsp('${1:SFrage}'), mItem.Snippet);
+  Assert.AreEqual(1, Integer(Length(mItem.AdditionalEdits)));
+  Assert.AreEqual(TAtlasSnippets.FromLsp('  ${1:SFrage} = ''Frage?'';'#10), mItem.AdditionalEdits[0].NewText);
+  Assert.AreEqual('atlas.server.addResourceString', mItem.Command);
+  Assert.AreEqual('["C:\\P\\Texte.pas","SFrage","''Frage?''"]', mItem.CommandArguments);
   // Ohne Vorlage keine verknüpften Änderungen, ohne Argumente eine leere Liste.
-  Item := ResourceFromLsp(StringReplace(StringReplace(ResourceItem, '"insertTextFormat":2,', '', []),
+  mItem := ResourceFromLsp(StringReplace(StringReplace(cResourceItem, '"insertTextFormat":2,', '', []),
     ',"arguments":["C:\\P\\Texte.pas","SFrage","''Frage?''"]', '', []));
-  Assert.IsFalse(Item.LinkedEdits);
-  Assert.AreEqual('  ${1:SFrage} = ''Frage?'';'#10, Item.AdditionalEdits[0].NewText);
-  Assert.AreEqual('[]', Item.CommandArguments);
+  Assert.IsFalse(mItem.LinkedEdits);
+  Assert.AreEqual('  ${1:SFrage} = ''Frage?'';'#10, mItem.AdditionalEdits[0].NewText);
+  Assert.AreEqual('[]', mItem.CommandArguments);
 end;
 
 procedure TAtlasCompletionDeclareTests.PlainDropsPlaceholdersForActions;
 var
-  Items: TAtlasCompletionItems;
-  Snippet: TAtlasCompletionItem;
+  mItems: TAtlasCompletionItems;
+  mSnippet: TAtlasCompletionItem;
 begin
-  Snippet := Default(TAtlasCompletionItem);
-  Snippet.Name := 'forin';
-  Snippet.Snippet := TAtlasSnippets.FromLsp('for ${1:Item} in ${2:List} do');
-  Items := TAtlasServerCompletionProvider.WithoutSnippets([ResourceFromLsp(ResourceItem), Snippet]);
+  mSnippet := Default(TAtlasCompletionItem);
+  mSnippet.Name := 'forin';
+  mSnippet.Snippet := TAtlasSnippets.FromLsp('for ${1:Item} in ${2:List} do');
+  mItems := TAtlasServerCompletionProvider.WithoutSnippets([ResourceFromLsp(cResourceItem), mSnippet]);
   // Die Vorlage fällt weg, der Eintrag, der Code erzeugt, bleibt mit dem Text der Vorgaben.
-  Assert.AreEqual(1, Integer(Length(Items)));
-  Assert.AreEqual('', Items[0].Snippet);
-  Assert.IsFalse(Items[0].LinkedEdits);
-  Assert.AreEqual('SFrage', Items[0].TextEdit.NewText);
-  Assert.AreEqual('  SFrage = ''Frage?'';'#10, Items[0].AdditionalEdits[0].NewText);
-  Assert.AreEqual('atlas.server.addResourceString', Items[0].Command);
+  Assert.AreEqual(1, Integer(Length(mItems)));
+  Assert.AreEqual('', mItems[0].Snippet);
+  Assert.IsFalse(mItems[0].LinkedEdits);
+  Assert.AreEqual('SFrage', mItems[0].TextEdit.NewText);
+  Assert.AreEqual('  SFrage = ''Frage?'';'#10, mItems[0].AdditionalEdits[0].NewText);
+  Assert.AreEqual('atlas.server.addResourceString', mItems[0].Command);
 end;
 
 procedure TAtlasCompletionDeclareTests.EnterPassesThroughWithoutSelection;
 var
-  View: TDeclareView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Committed: string;
-  Context: TAtlasContext;
+  mView: TDeclareView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mCommitted: string;
+  mContext: TAtlasContext;
 begin
-  View := TDeclareView.Create;
-  ViewRef := View;
-  Controller := TAtlasCompletionController.Create(
-    TAtlasFixedCompletionProvider.Create(Declarations) as IAtlasCompletionProvider, ViewRef);
+  mView := TDeclareView.Create;
+  mViewRef := mView;
+  mController := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create(Declarations) as IAtlasCompletionProvider, mViewRef);
   try
-    Committed := '';
-    Controller.OnCommit :=
+    mCommitted := '';
+    mController.OnCommit :=
       procedure(const AItem: TAtlasCompletionItem)
       begin
-        Committed := AItem.Name;
+        mCommitted := AItem.Name;
       end;
-    Context := Default(TAtlasContext);
-    Context.FileName := 'C:\P\A.pas';
-    Context.Prefix := 'TotalCount';
-    Controller.Start(Context);
+    mContext := Default(TAtlasContext);
+    mContext.FileName := 'C:\P\A.pas';
+    mContext.Prefix := 'TotalCount';
+    mController.Start(mContext);
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
     // Nur Deklarationen: sichtbar, nichts gewählt; Enter gehört dem Editor und schließt die Liste.
-    Assert.IsTrue(Controller.Passive);
-    Assert.AreEqual(-1, View.Selected);
-    Assert.IsFalse(Controller.HandleKey(TAtlasNavigationKey.Accept));
-    Assert.AreEqual('', Committed);
-    Assert.IsFalse(Controller.Active);
+    Assert.IsTrue(mController.Passive);
+    Assert.AreEqual(-1, mView.Selected);
+    Assert.IsFalse(mController.HandleKey(TAtlasNavigationKey.Accept));
+    Assert.AreEqual('', mCommitted);
+    Assert.IsFalse(mController.Active);
     // Pfeiltaste wählt die erste Deklaration, Enter übernimmt sie.
-    Controller.Start(Context);
+    mController.Start(mContext);
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Loading;
+        Result := not mController.Loading;
       end));
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Down));
-    Assert.IsFalse(Controller.Passive);
-    Assert.IsTrue(View.Selected >= 0);
-    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Accept));
-    Assert.AreEqual('Lokale Variable anlegen', Committed);
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Down));
+    Assert.IsFalse(mController.Passive);
+    Assert.IsTrue(mView.Selected >= 0);
+    Assert.IsTrue(mController.HandleKey(TAtlasNavigationKey.Accept));
+    Assert.AreEqual('Lokale Variable anlegen', mCommitted);
   finally
-    Controller.Free;
+    mController.Free;
   end;
 end;
 

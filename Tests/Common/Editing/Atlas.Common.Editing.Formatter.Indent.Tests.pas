@@ -56,7 +56,7 @@ uses
   Atlas.Common.Editing.Formatter.Indent;
 
 const
-  LF = #10;
+  cLF = #10;
 
 { TBlockIndenterTests }
 
@@ -73,161 +73,161 @@ end;
 procedure TBlockIndenterTests.IndentsRoutineBlocks;
 begin
   Assert.AreEqual(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  if A then' + LF +
-    '  begin' + LF +
-    '    B;' + LF +
-    '    while C do' + LF +
-    '    begin' + LF +
-    '      D;' + LF +
-    '    end;' + LF +
-    '  end;' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  if A then' + cLF +
+    '  begin' + cLF +
+    '    B;' + cLF +
+    '    while C do' + cLF +
+    '    begin' + cLF +
+    '      D;' + cLF +
+    '    end;' + cLF +
+    '  end;' + cLF +
     'end;',
     Formatted(
-    'procedure P;' + LF +
-    '    begin' + LF +
-    'if A then' + LF +
-    'begin' + LF +
-    '        B;' + LF +
-    ' while C do' + LF +
-    ' begin' + LF +
-    'D;' + LF +
-    '      end;' + LF +
-    'end;' + LF +
+    'procedure P;' + cLF +
+    '    begin' + cLF +
+    'if A then' + cLF +
+    'begin' + cLF +
+    '        B;' + cLF +
+    ' while C do' + cLF +
+    ' begin' + cLF +
+    'D;' + cLF +
+    '      end;' + cLF +
+    'end;' + cLF +
     '  end;'));
 end;
 
 procedure TBlockIndenterTests.IndentsSingleStatements;
 begin
   Assert.AreEqual(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  if A then' + LF +
-    '    B' + LF +
-    '  else if C then' + LF +
-    '    D' + LF +
-    '  else' + LF +
-    '    E;' + LF +
-    '  for I := 0 to 9 do' + LF +
-    '    F(I);' + LF +
-    '  G;' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  if A then' + cLF +
+    '    B' + cLF +
+    '  else if C then' + cLF +
+    '    D' + cLF +
+    '  else' + cLF +
+    '    E;' + cLF +
+    '  for I := 0 to 9 do' + cLF +
+    '    F(I);' + cLF +
+    '  G;' + cLF +
     'end;',
     Formatted(
-    'procedure P;' + LF +
-    'begin' + LF +
-    'if A then' + LF +
-    'B' + LF +
-    'else if C then' + LF +
-    'D' + LF +
-    'else' + LF +
-    'E;' + LF +
-    'for I := 0 to 9 do' + LF +
-    'F(I);' + LF +
-    'G;' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    'if A then' + cLF +
+    'B' + cLF +
+    'else if C then' + cLF +
+    'D' + cLF +
+    'else' + cLF +
+    'E;' + cLF +
+    'for I := 0 to 9 do' + cLF +
+    'F(I);' + cLF +
+    'G;' + cLF +
     'end;'));
 end;
 
 procedure TBlockIndenterTests.IndentsTryCaseAndRepeat;
 begin
   Assert.AreEqual(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  try' + LF +
-    '    case A of' + LF +
-    '      1:' + LF +
-    '        B;' + LF +
-    '      2, 3: C;' + LF +
-    '    else' + LF +
-    '      D;' + LF +
-    '    end;' + LF +
-    '  finally' + LF +
-    '    repeat' + LF +
-    '      E;' + LF +
-    '    until F;' + LF +
-    '  end;' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  try' + cLF +
+    '    case A of' + cLF +
+    '      1:' + cLF +
+    '        B;' + cLF +
+    '      2, 3: C;' + cLF +
+    '    else' + cLF +
+    '      D;' + cLF +
+    '    end;' + cLF +
+    '  finally' + cLF +
+    '    repeat' + cLF +
+    '      E;' + cLF +
+    '    until F;' + cLF +
+    '  end;' + cLF +
     'end;',
     Formatted(
-    'procedure P;' + LF +
-    'begin' + LF +
-    'try' + LF +
-    'case A of' + LF +
-    '1:' + LF +
-    'B;' + LF +
-    '2, 3: C;' + LF +
-    'else' + LF +
-    'D;' + LF +
-    'end;' + LF +
-    'finally' + LF +
-    'repeat' + LF +
-    'E;' + LF +
-    'until F;' + LF +
-    'end;' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    'try' + cLF +
+    'case A of' + cLF +
+    '1:' + cLF +
+    'B;' + cLF +
+    '2, 3: C;' + cLF +
+    'else' + cLF +
+    'D;' + cLF +
+    'end;' + cLF +
+    'finally' + cLF +
+    'repeat' + cLF +
+    'E;' + cLF +
+    'until F;' + cLF +
+    'end;' + cLF +
     'end;'));
 end;
 
 const
   /// <summary>Eingabe ohne Einrückung der Abschnitte und des Klassenrumpfs.</summary>
   cSectionsUnindented =
-    'unit U;' + LF +
-    LF +
-    'interface' + LF +
-    LF +
-    'uses' + LF +
-    'A, B;' + LF +
-    LF +
-    'type' + LF +
-    'TX = class' + LF +
-    '    private' + LF +
-    'FA: Integer;' + LF +
-    'public' + LF +
-    'procedure P;' + LF +
-    'end;' + LF +
-    LF +
-    'const' + LF +
-    '    C = 1;' + LF +
-    LF +
-    'implementation' + LF +
-    LF +
-    'procedure TX.P;' + LF +
-    'var' + LF +
-    'I: Integer;' + LF +
-    'begin' + LF +
-    'I := C;' + LF +
-    'end;' + LF +
-    LF +
+    'unit U;' + cLF +
+    cLF +
+    'interface' + cLF +
+    cLF +
+    'uses' + cLF +
+    'A, B;' + cLF +
+    cLF +
+    'type' + cLF +
+    'TX = class' + cLF +
+    '    private' + cLF +
+    'FA: Integer;' + cLF +
+    'public' + cLF +
+    'procedure P;' + cLF +
+    'end;' + cLF +
+    cLF +
+    'const' + cLF +
+    '    C = 1;' + cLF +
+    cLF +
+    'implementation' + cLF +
+    cLF +
+    'procedure TX.P;' + cLF +
+    'var' + cLF +
+    'I: Integer;' + cLF +
+    'begin' + cLF +
+    'I := C;' + cLF +
+    'end;' + cLF +
+    cLF +
     'end.';
 
 procedure TBlockIndenterTests.IndentsSectionsAndClassBody;
 begin
   Assert.AreEqual(
-    'unit U;' + LF +
-    LF +
-    'interface' + LF +
-    LF +
-    'uses' + LF +
-    '  A, B;' + LF +
-    LF +
-    'type' + LF +
-    '  TX = class' + LF +
-    '  private' + LF +
-    '    FA: Integer;' + LF +
-    '  public' + LF +
-    '    procedure P;' + LF +
-    '  end;' + LF +
-    LF +
-    'const' + LF +
-    '  C = 1;' + LF +
-    LF +
-    'implementation' + LF +
-    LF +
-    'procedure TX.P;' + LF +
-    'var' + LF +
-    '  I: Integer;' + LF +
-    'begin' + LF +
-    '  I := C;' + LF +
-    'end;' + LF +
-    LF +
+    'unit U;' + cLF +
+    cLF +
+    'interface' + cLF +
+    cLF +
+    'uses' + cLF +
+    '  A, B;' + cLF +
+    cLF +
+    'type' + cLF +
+    '  TX = class' + cLF +
+    '  private' + cLF +
+    '    FA: Integer;' + cLF +
+    '  public' + cLF +
+    '    procedure P;' + cLF +
+    '  end;' + cLF +
+    cLF +
+    'const' + cLF +
+    '  C = 1;' + cLF +
+    cLF +
+    'implementation' + cLF +
+    cLF +
+    'procedure TX.P;' + cLF +
+    'var' + cLF +
+    '  I: Integer;' + cLF +
+    'begin' + cLF +
+    '  I := C;' + cLF +
+    'end;' + cLF +
+    cLF +
     'end.',
     Formatted(cSectionsUnindented));
 end;
@@ -236,16 +236,16 @@ procedure TBlockIndenterTests.KeepsContinuationOffset;
 begin
   // Folgezeilen behalten ihren Abstand zur ersten Zeile der Anweisung.
   Assert.AreEqual(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  A := F(1,' + LF +
-    '      2);' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  A := F(1,' + cLF +
+    '      2);' + cLF +
     'end;',
     Formatted(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '      A := F(1,' + LF +
-    '          2);' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '      A := F(1,' + cLF +
+    '          2);' + cLF +
     'end;'));
 end;
 
@@ -253,135 +253,135 @@ procedure TBlockIndenterTests.CommentFollowsNextLine;
 begin
   // Kommentarzeilen behalten ihren Abstand zur folgenden Codezeile.
   Assert.AreEqual(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  // Hinweis' + LF +
-    '    // tiefer' + LF +
-    '  A;' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  // Hinweis' + cLF +
+    '    // tiefer' + cLF +
+    '  A;' + cLF +
     'end;',
     Formatted(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '      // Hinweis' + LF +
-    '        // tiefer' + LF +
-    '      A;' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '      // Hinweis' + cLF +
+    '        // tiefer' + cLF +
+    '      A;' + cLF +
     'end;'));
 end;
 
 procedure TBlockIndenterTests.KeepsDirectivesAsmAndElseBranch;
 const
-  Text =
-    'procedure P;' + LF +
-    'begin' + LF +
-    '{$IFDEF X}' + LF +
-    '  A;' + LF +
-    '{$ELSE}' + LF +
-    '      B;' + LF +
-    '{$ENDIF}' + LF +
-    'end;' + LF +
-    'procedure Q;' + LF +
-    'asm' + LF +
-    '        MOV EAX, 1' + LF +
+  cText =
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '{$IFDEF X}' + cLF +
+    '  A;' + cLF +
+    '{$ELSE}' + cLF +
+    '      B;' + cLF +
+    '{$ENDIF}' + cLF +
+    'end;' + cLF +
+    'procedure Q;' + cLF +
+    'asm' + cLF +
+    '        MOV EAX, 1' + cLF +
     'end;';
 begin
-  Assert.AreEqual(Text, Formatted(Text));
+  Assert.AreEqual(cText, Formatted(cText));
 end;
 
 procedure TBlockIndenterTests.IndentsAnonymousMethods;
 begin
   Assert.AreEqual(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  Run(' + LF +
-    '    procedure' + LF +
-    '    begin' + LF +
-    '      A;' + LF +
-    '    end);' + LF +
-    '  B;' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  Run(' + cLF +
+    '    procedure' + cLF +
+    '    begin' + cLF +
+    '      A;' + cLF +
+    '    end);' + cLF +
+    '  B;' + cLF +
     'end;',
     Formatted(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  Run(' + LF +
-    '    procedure' + LF +
-    '    begin' + LF +
-    '  A;' + LF +
-    '    end);' + LF +
-    '      B;' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  Run(' + cLF +
+    '    procedure' + cLF +
+    '    begin' + cLF +
+    '  A;' + cLF +
+    '    end);' + cLF +
+    '      B;' + cLF +
     'end;'));
 end;
 
 procedure TBlockIndenterTests.KeepsLinesInMultilineTokens;
 var
-  Text: string;
-  Tokens: TArray<TPascalToken>;
-  Columns: TArray<Integer>;
+  mText: string;
+  mTokens: TArray<TPascalToken>;
+  mColumns: TArray<Integer>;
 begin
-  Text := 'procedure P;' + LF + 'begin' + LF + '{ eins' + LF + '      zwei }' + LF + 'A;' + LF + 'end;';
-  Tokens := TPascalLexer.Tokenize(Text);
-  Columns := TBlockIndenter.Columns(Tokens, [0, 0, 0, 6, 0, 0], 2);
-  Assert.AreEqual(TBlockIndenter.cKeep, Columns[3]);
-  Assert.AreEqual(2, Columns[4]);
-  Assert.AreEqual(0, Columns[5]);
+  mText := 'procedure P;' + cLF + 'begin' + cLF + '{ eins' + cLF + '      zwei }' + cLF + 'A;' + cLF + 'end;';
+  mTokens := TPascalLexer.Tokenize(mText);
+  mColumns := TBlockIndenter.Columns(mTokens, [0, 0, 0, 6, 0, 0], 2);
+  Assert.AreEqual(TBlockIndenter.cKeep, mColumns[3]);
+  Assert.AreEqual(2, mColumns[4]);
+  Assert.AreEqual(0, mColumns[5]);
 end;
 
 procedure TBlockIndenterTests.UsesTabsAndIndentSize;
 var
-  Settings: TFormatStyle;
+  mSettings: TFormatStyle;
 begin
-  Settings := TFormatStyle.Default;
-  Settings.IndentSize := 4;
-  Assert.AreEqual('procedure P;' + LF + 'begin' + LF + '    A;' + LF + 'end;',
-    Formatted('procedure P;' + LF + 'begin' + LF + 'A;' + LF + 'end;', Settings));
-  Settings.UseTabs := True;
-  Assert.AreEqual('procedure P;' + LF + 'begin' + LF + #9'A;' + LF + 'end;',
-    Formatted('procedure P;' + LF + 'begin' + LF + 'A;' + LF + 'end;', Settings));
+  mSettings := TFormatStyle.Default;
+  mSettings.IndentSize := 4;
+  Assert.AreEqual('procedure P;' + cLF + 'begin' + cLF + '    A;' + cLF + 'end;',
+    Formatted('procedure P;' + cLF + 'begin' + cLF + 'A;' + cLF + 'end;', mSettings));
+  mSettings.UseTabs := True;
+  Assert.AreEqual('procedure P;' + cLF + 'begin' + cLF + #9'A;' + cLF + 'end;',
+    Formatted('procedure P;' + cLF + 'begin' + cLF + 'A;' + cLF + 'end;', mSettings));
 end;
 
 procedure TBlockIndenterTests.IsIdempotent;
 const
-  Text =
-    'unit U;' + LF +
-    'interface' + LF +
-    'type' + LF +
-    'TX = class' + LF +
-    'procedure P(A,' + LF +
-    'B: Integer); virtual;' + LF +
-    'end;' + LF +
-    'implementation' + LF +
-    'procedure TX.P(A, B: Integer);' + LF +
-    'begin' + LF +
-    'if A > B then begin' + LF +
-    'case A of 1: B := 2; end;' + LF +
-    'end else' + LF +
-    'try A := B; except on E: Exception do raise; end;' + LF +
-    'end;' + LF +
+  cText =
+    'unit U;' + cLF +
+    'interface' + cLF +
+    'type' + cLF +
+    'TX = class' + cLF +
+    'procedure P(A,' + cLF +
+    'B: Integer); virtual;' + cLF +
+    'end;' + cLF +
+    'implementation' + cLF +
+    'procedure TX.P(A, B: Integer);' + cLF +
+    'begin' + cLF +
+    'if A > B then begin' + cLF +
+    'case A of 1: B := 2; end;' + cLF +
+    'end else' + cLF +
+    'try A := B; except on E: Exception do raise; end;' + cLF +
+    'end;' + cLF +
     'end.';
 var
-  Once: string;
+  mOnce: string;
 begin
-  Once := Formatted(Text);
-  Assert.AreEqual(Once, Formatted(Once));
+  mOnce := Formatted(cText);
+  Assert.AreEqual(mOnce, Formatted(mOnce));
 end;
 
 procedure TBlockIndenterTests.KeepsTokens;
 const
-  Text =
-    'procedure P;' + LF +
-    'begin' + LF +
-    'if A then begin { c } B := ''x  y'';' + LF +
-    'end else C;' + LF +
+  cText =
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    'if A then begin { c } B := ''x  y'';' + cLF +
+    'end else C;' + cLF +
     'end;';
 var
-  Before, After: TArray<TPascalToken>;
-  Index: Integer;
+  mBefore, mAfter: TArray<TPascalToken>;
+  mIndex: Integer;
 begin
-  Before := TPascalLexer.Tokenize(Text);
-  After := TPascalLexer.Tokenize(Formatted(Text));
-  Assert.AreEqual(Integer(Length(Before)), Integer(Length(After)));
-  for Index := 0 to High(Before) do
+  mBefore := TPascalLexer.Tokenize(cText);
+  mAfter := TPascalLexer.Tokenize(Formatted(cText));
+  Assert.AreEqual(Integer(Length(mBefore)), Integer(Length(mAfter)));
+  for mIndex := 0 to High(mBefore) do
   begin
-    Assert.AreEqual(Before[Index].Text, After[Index].Text);
+    Assert.AreEqual(mBefore[mIndex].Text, mAfter[mIndex].Text);
   end;
 end;
 
@@ -390,7 +390,7 @@ var
   mInfo: TArray<TIndentLineInfo>;
 begin
   // Zeilen: 0 begin, 1 X := A +, 2 B;, 3 Y := 1;, 4 end;
-  mInfo := TBlockIndenter.Lines(TPascalLexer.Tokenize('begin' + LF + 'X := A +' + LF + 'B;' + LF + 'Y := 1;' + LF +
+  mInfo := TBlockIndenter.Lines(TPascalLexer.Tokenize('begin' + cLF + 'X := A +' + cLF + 'B;' + cLF + 'Y := 1;' + cLF +
     'end;'), [0, 0, 0, 0, 0], 2);
   Assert.AreEqual(5, Integer(Length(mInfo)));
   Assert.IsTrue(mInfo[1].Placed);
@@ -418,13 +418,13 @@ end;
 
 procedure TBlockIndenterTests.IsSwitchable;
 var
-  Settings: TFormatStyle;
-  Text: string;
+  mSettings: TFormatStyle;
+  mText: string;
 begin
-  Settings := TFormatStyle.Default;
-  Settings.Reindent := False;
-  Text := 'procedure P;' + LF + 'begin' + LF + '      A;' + LF + 'end;';
-  Assert.AreEqual(Text, Formatted(Text, Settings));
+  mSettings := TFormatStyle.Default;
+  mSettings.Reindent := False;
+  mText := 'procedure P;' + cLF + 'begin' + cLF + '      A;' + cLF + 'end;';
+  Assert.AreEqual(mText, Formatted(mText, mSettings));
 end;
 
 initialization

@@ -46,9 +46,9 @@ uses
   Atlas.Common.Lsp.DebugDisplay;
 
 const
-  KundenFile = 'C:\P\Kunden.pas';
-  FirmenFile = 'C:\P\Firmen.pas';
-  KundenText =
+  cKundenFile = 'C:\P\Kunden.pas';
+  cFirmenFile = 'C:\P\Firmen.pas';
+  cKundenText =
     'unit Kunden;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -65,7 +65,7 @@ const
     '  end;'#10 +
     'implementation'#10 +
     'end.';
-  FirmenText =
+  cFirmenText =
     'unit Firmen;'#10 +
     'interface'#10 +
     'uses Kunden;'#10 +
@@ -82,8 +82,8 @@ const
 function NewIndex: ISymbolIndex;
 begin
   Result := TSymbolIndex.Create;
-  Result.AddUnit(TIndexExtractor.ExtractText(KundenText, KundenFile, nil));
-  Result.AddUnit(TIndexExtractor.ExtractText(FirmenText, FirmenFile, nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cKundenText, cKundenFile, nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cFirmenText, cFirmenFile, nil));
 end;
 
 function NewDisplay: TLspDebugDisplay;
@@ -93,19 +93,19 @@ begin
     begin
       ASource := Default(TLspMetricsSource);
       ASource.Root := 'C:\P';
-      ASource.Files := [KundenFile, FirmenFile, 'C:\P\Main.dfm'];
+      ASource.Files := [cKundenFile, cFirmenFile, 'C:\P\Main.dfm'];
       Result := True;
     end,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := True;
-      if SameText(AFileName, KundenFile) then
+      if SameText(AFileName, cKundenFile) then
       begin
-        AText := KundenText;
+        AText := cKundenText;
       end
-      else if SameText(AFileName, FirmenFile) then
+      else if SameText(AFileName, cFirmenFile) then
       begin
-        AText := FirmenText;
+        AText := cFirmenText;
       end
       else
       begin
@@ -117,14 +117,14 @@ end;
 
 function FindInherit(const AInherits: TArray<TLspDebugDisplayInherit>; const AName: string): string;
 var
-  Inherit: TLspDebugDisplayInherit;
+  mInherit: TLspDebugDisplayInherit;
 begin
   Result := '';
-  for Inherit in AInherits do
+  for mInherit in AInherits do
   begin
-    if Inherit.Name = AName then
+    if mInherit.Name = AName then
     begin
-      Exit(Inherit.From);
+      Exit(mInherit.From);
     end;
   end;
 end;
@@ -133,134 +133,134 @@ end;
 
 procedure TLspDebugDisplayTests.RulesOfUnit;
 var
-  UnitIndex: TUnitIndex;
-  Rules: TArray<TLspDebugDisplayRule>;
+  mUnitIndex: TUnitIndex;
+  mRules: TArray<TLspDebugDisplayRule>;
 begin
-  UnitIndex := TIndexExtractor.ExtractText(KundenText, KundenFile, nil);
-  Rules := TLspDebugDisplay.RulesOfUnit(UnitIndex, KundenText);
-  Assert.AreEqual(2, Integer(Length(Rules)));
-  Assert.AreEqual('Kunden.TKunde', Rules[0].TypeName);
-  Assert.AreEqual('TKunde', Rules[0].Name);
-  Assert.AreEqual(KundenFile, Rules[0].FileName);
-  Assert.AreEqual('{Name}, {Ort}', Rules[0].Source.Template);
-  Assert.AreEqual(3, Rules[0].Source.TemplateLine);
-  Assert.AreEqual('Name|Ort', string.Join('|', Rules[0].Source.Children));
-  Assert.AreEqual(Ord(TDebugDisplayOrigin.Comment), Ord(Rules[0].Source.Origin));
-  Assert.AreEqual('Kunden.TPunkt', Rules[1].TypeName);
-  Assert.AreEqual('({X}, {Y})', Rules[1].Source.Template);
-  Assert.AreEqual(Ord(TDebugDisplayOrigin.Attribute), Ord(Rules[1].Source.Origin));
+  mUnitIndex := TIndexExtractor.ExtractText(cKundenText, cKundenFile, nil);
+  mRules := TLspDebugDisplay.RulesOfUnit(mUnitIndex, cKundenText);
+  Assert.AreEqual(2, Integer(Length(mRules)));
+  Assert.AreEqual('Kunden.TKunde', mRules[0].TypeName);
+  Assert.AreEqual('TKunde', mRules[0].Name);
+  Assert.AreEqual(cKundenFile, mRules[0].FileName);
+  Assert.AreEqual('{Name}, {Ort}', mRules[0].Source.Template);
+  Assert.AreEqual(3, mRules[0].Source.TemplateLine);
+  Assert.AreEqual('Name|Ort', string.Join('|', mRules[0].Source.Children));
+  Assert.AreEqual(Ord(TDebugDisplayOrigin.Comment), Ord(mRules[0].Source.Origin));
+  Assert.AreEqual('Kunden.TPunkt', mRules[1].TypeName);
+  Assert.AreEqual('({X}, {Y})', mRules[1].Source.Template);
+  Assert.AreEqual(Ord(TDebugDisplayOrigin.Attribute), Ord(mRules[1].Source.Origin));
 end;
 
 procedure TLspDebugDisplayTests.TextWithoutMarkerIsSkipped;
 var
-  UnitIndex: TUnitIndex;
+  mUnitIndex: TUnitIndex;
 begin
-  UnitIndex := TIndexExtractor.ExtractText(FirmenText, FirmenFile, nil);
-  Assert.IsFalse(TLspDebugDisplay.MayContainRules(FirmenText));
-  Assert.AreEqual(0, Integer(Length(TLspDebugDisplay.RulesOfUnit(UnitIndex, FirmenText))));
+  mUnitIndex := TIndexExtractor.ExtractText(cFirmenText, cFirmenFile, nil);
+  Assert.IsFalse(TLspDebugDisplay.MayContainRules(cFirmenText));
+  Assert.AreEqual(0, Integer(Length(TLspDebugDisplay.RulesOfUnit(mUnitIndex, cFirmenText))));
 end;
 
 procedure TLspDebugDisplayTests.InheritsOverUnits;
 var
-  Display: TLspDebugDisplay;
-  Rules: TArray<TLspDebugDisplayRule>;
-  Inherits: TArray<TLspDebugDisplayInherit>;
+  mDisplay: TLspDebugDisplay;
+  mRules: TArray<TLspDebugDisplayRule>;
+  mInherits: TArray<TLspDebugDisplayInherit>;
 begin
-  Display := NewDisplay;
+  mDisplay := NewDisplay;
   try
-    Rules := Display.Collect(nil, nil, Inherits);
-    Assert.AreEqual(2, Integer(Length(Rules)));
-    Assert.AreEqual('Kunden.TKunde', FindInherit(Inherits, 'TFirma'));
+    mRules := mDisplay.Collect(nil, nil, mInherits);
+    Assert.AreEqual(2, Integer(Length(mRules)));
+    Assert.AreEqual('Kunden.TKunde', FindInherit(mInherits, 'TFirma'));
     // Über zwei Stufen: TKonzern → TFirma → TKunde.
-    Assert.AreEqual('Kunden.TKunde', FindInherit(Inherits, 'TKonzern'));
-    Assert.AreEqual('', FindInherit(Inherits, 'TOhne'));
-    Assert.AreEqual('', FindInherit(Inherits, 'TVerbindung'));
+    Assert.AreEqual('Kunden.TKunde', FindInherit(mInherits, 'TKonzern'));
+    Assert.AreEqual('', FindInherit(mInherits, 'TOhne'));
+    Assert.AreEqual('', FindInherit(mInherits, 'TVerbindung'));
   finally
-    Display.Free;
+    mDisplay.Free;
   end;
 end;
 
 procedure TLspDebugDisplayTests.InheritsFromExternalName;
 var
-  Display: TLspDebugDisplay;
-  Inherits: TArray<TLspDebugDisplayInherit>;
+  mDisplay: TLspDebugDisplay;
+  mInherits: TArray<TLspDebugDisplayInherit>;
 begin
-  Display := NewDisplay;
+  mDisplay := NewDisplay;
   try
-    Display.Collect(nil, ['FireDAC.Comp.Client.TFDConnection'], Inherits);
-    Assert.AreEqual('FireDAC.Comp.Client.TFDConnection', FindInherit(Inherits, 'TVerbindung'));
+    mDisplay.Collect(nil, ['FireDAC.Comp.Client.TFDConnection'], mInherits);
+    Assert.AreEqual('FireDAC.Comp.Client.TFDConnection', FindInherit(mInherits, 'TVerbindung'));
   finally
-    Display.Free;
+    mDisplay.Free;
   end;
 end;
 
 procedure TLspDebugDisplayTests.OwnRuleWinsOverInheritance;
 var
-  Display: TLspDebugDisplay;
-  Inherits: TArray<TLspDebugDisplayInherit>;
+  mDisplay: TLspDebugDisplay;
+  mInherits: TArray<TLspDebugDisplayInherit>;
 begin
-  Display := NewDisplay;
+  mDisplay := NewDisplay;
   try
     // TKunde hat eine eigene Regel; der Name aus der Projektdatei ändert das Erbe nicht.
-    Display.Collect(nil, ['TKunde'], Inherits);
-    Assert.AreEqual('Kunden.TKunde', FindInherit(Inherits, 'TFirma'));
-    Assert.AreEqual('', FindInherit(Inherits, 'TKunde'));
+    mDisplay.Collect(nil, ['TKunde'], mInherits);
+    Assert.AreEqual('Kunden.TKunde', FindInherit(mInherits, 'TFirma'));
+    Assert.AreEqual('', FindInherit(mInherits, 'TKunde'));
   finally
-    Display.Free;
+    mDisplay.Free;
   end;
 end;
 
 procedure TLspDebugDisplayTests.ExecuteReturnsJson;
 var
-  Display: TLspDebugDisplay;
-  Args: TJSONArray;
-  Answer: TJSONValue;
-  Rules, Inherits: TJSONArray;
-  Rule: TJSONObject;
+  mDisplay: TLspDebugDisplay;
+  mArgs: TJSONArray;
+  mAnswer: TJSONValue;
+  mRules, mInherits: TJSONArray;
+  mRule: TJSONObject;
 begin
-  Display := NewDisplay;
-  Args := TJSONArray.Create;
+  mDisplay := NewDisplay;
+  mArgs := TJSONArray.Create;
   try
-    Args.Add(TDocumentUris.FromPath('C:\P\Demo.dproj'));
-    Args.AddElement(TJSONArray.Create(TJSONString.Create('TFDConnection')));
-    Answer := Display.Execute(Args);
+    mArgs.Add(TDocumentUris.FromPath('C:\P\Demo.dproj'));
+    mArgs.AddElement(TJSONArray.Create(TJSONString.Create('TFDConnection')));
+    mAnswer := mDisplay.Execute(mArgs);
     try
-      Assert.IsTrue(Answer is TJSONObject);
-      Assert.AreEqual(1, TJSONObject(Answer).GetValue<Integer>('format'));
-      Rules := TJSONObject(Answer).GetValue('rules') as TJSONArray;
-      Assert.AreEqual(2, Rules.Count);
-      Rule := Rules.Items[0] as TJSONObject;
-      Assert.AreEqual('Kunden.TKunde', Rule.GetValue<string>('type'));
-      Assert.AreEqual('TKunde', Rule.GetValue<string>('name'));
-      Assert.AreEqual('{Name}, {Ort}', Rule.GetValue<string>('template'));
-      Assert.AreEqual(2, (Rule.GetValue('children') as TJSONArray).Count);
-      Assert.AreEqual('comment', Rule.GetValue<string>('origin'));
-      Assert.AreEqual(3, Rule.GetValue<Integer>('line'));
-      Assert.AreEqual('attribute', (Rules.Items[1] as TJSONObject).GetValue<string>('origin'));
-      Assert.IsNull((Rules.Items[1] as TJSONObject).GetValue('children'));
-      Inherits := TJSONObject(Answer).GetValue('inherits') as TJSONArray;
-      Assert.AreEqual(3, Inherits.Count);
+      Assert.IsTrue(mAnswer is TJSONObject);
+      Assert.AreEqual(1, TJSONObject(mAnswer).GetValue<Integer>('format'));
+      mRules := TJSONObject(mAnswer).GetValue('rules') as TJSONArray;
+      Assert.AreEqual(2, mRules.Count);
+      mRule := mRules.Items[0] as TJSONObject;
+      Assert.AreEqual('Kunden.TKunde', mRule.GetValue<string>('type'));
+      Assert.AreEqual('TKunde', mRule.GetValue<string>('name'));
+      Assert.AreEqual('{Name}, {Ort}', mRule.GetValue<string>('template'));
+      Assert.AreEqual(2, (mRule.GetValue('children') as TJSONArray).Count);
+      Assert.AreEqual('comment', mRule.GetValue<string>('origin'));
+      Assert.AreEqual(3, mRule.GetValue<Integer>('line'));
+      Assert.AreEqual('attribute', (mRules.Items[1] as TJSONObject).GetValue<string>('origin'));
+      Assert.IsNull((mRules.Items[1] as TJSONObject).GetValue('children'));
+      mInherits := TJSONObject(mAnswer).GetValue('inherits') as TJSONArray;
+      Assert.AreEqual(3, mInherits.Count);
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Args.Free;
-    Display.Free;
+    mArgs.Free;
+    mDisplay.Free;
   end;
 end;
 
 procedure TLspDebugDisplayTests.WithoutIndexNoRules;
 var
-  Display: TLspDebugDisplay;
-  Inherits: TArray<TLspDebugDisplayInherit>;
+  mDisplay: TLspDebugDisplay;
+  mInherits: TArray<TLspDebugDisplayInherit>;
 begin
-  Display := NewDisplay;
+  mDisplay := NewDisplay;
   try
-    Display.Index := nil;
-    Assert.AreEqual(0, Integer(Length(Display.Collect(nil, nil, Inherits))));
-    Assert.AreEqual(0, Integer(Length(Inherits)));
+    mDisplay.Index := nil;
+    Assert.AreEqual(0, Integer(Length(mDisplay.Collect(nil, nil, mInherits))));
+    Assert.AreEqual(0, Integer(Length(mInherits)));
   finally
-    Display.Free;
+    mDisplay.Free;
   end;
 end;
 

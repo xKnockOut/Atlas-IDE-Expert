@@ -70,59 +70,64 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
-function Routine(const ABody: string; const AVars: string = ''): string;
+function Routine(const ABody: string; const AVars: string): string; overload;
 begin
   Result := 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10 + AVars + 'begin'#10 + ABody +
     #10'end;'#10'end.';
 end;
 
+function Routine(const ABody: string): string; overload;
+begin
+  Result := Routine(ABody, '');
+end;
+
 const
-  QueueLoop = '  for S in Liste do'#10'    TThread.Queue(nil, procedure begin Memo1.Lines.Add(S); end);';
-  StringVar = 'var'#10'  S: string;'#10;
+  cQueueLoop = '  for S in Liste do'#10'    TThread.Queue(nil, procedure begin Memo1.Lines.Add(S); end);';
+  cStringVar = 'var'#10'  S: string;'#10;
 
 /// <summary>Wendet alle Änderungen der ersten Korrektur an, von hinten nach vorn (Zeilen mit #10).</summary>
 function ApplyFix(const AText: string; const AFix: TRuleFix): string;
 var
-  Index: Integer;
-  Edit: TRuleEdit;
+  mIndex: Integer;
+  mEdit: TRuleEdit;
 
   function OffsetOf(const APosition: TTextPosition): Integer;
   var
-    Line, Position: Integer;
+    mLine, mPosition: Integer;
   begin
-    Position := 0;
-    for Line := 1 to APosition.Line do
+    mPosition := 0;
+    for mLine := 1 to APosition.Line do
     begin
-      Position := Pos(#10, AText, Position + 1);
+      mPosition := Pos(#10, AText, mPosition + 1);
     end;
-    Result := Position + APosition.Character;
+    Result := mPosition + APosition.Character;
   end;
 
 begin
   Result := AText;
-  for Index := High(AFix.Edits) downto 0 do
+  for mIndex := High(AFix.Edits) downto 0 do
   begin
-    Edit := AFix.Edits[Index];
-    Result := Copy(Result, 1, OffsetOf(Edit.Range.StartPos)) + Edit.NewText +
-      Copy(Result, OffsetOf(Edit.Range.EndPos) + 1, MaxInt);
+    mEdit := AFix.Edits[mIndex];
+    Result := Copy(Result, 1, OffsetOf(mEdit.Range.StartPos)) + mEdit.NewText +
+      Copy(Result, OffsetOf(mEdit.Range.EndPos) + 1, MaxInt);
   end;
 end;
 
 procedure TCaptureRuleTests.ForInVariableInQueueReports;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TCapturedLoopVariableRule.Create, Routine(QueueLoop, StringVar));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
+  mFindings := TRuleAssert.Findings(TCapturedLoopVariableRule.Create, Routine(cQueueLoop, cStringVar));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TCaptureRuleTests.SynchronizeIsSilent;
 begin
   TRuleAssert.Silent(TCapturedLoopVariableRule.Create,
-    Routine(StringReplace(QueueLoop, 'Queue', 'Synchronize', []), StringVar));
+    Routine(StringReplace(cQueueLoop, 'Queue', 'Synchronize', []), cStringVar));
 end;
 
 procedure TCaptureRuleTests.VariableChangedInWhileLoopReports;
@@ -152,12 +157,12 @@ end;
 
 procedure TCaptureRuleTests.EventPropertyIsMedium;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TCapturedLoopVariableRule.Create,
-    Routine('  for S in Liste do'#10'    F.OnDone := procedure begin Log(S); end;', StringVar));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(TCapturedLoopVariableRule.Create,
+    Routine('  for S in Liste do'#10'    F.OnDone := procedure begin Log(S); end;', cStringVar));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
 end;
 
 procedure TCaptureRuleTests.EventWritingTheVariableIsSilent;
@@ -165,61 +170,61 @@ begin
   // Das Ereignis sammelt in der Variablen (Testprotokoll, Zähler); dass sie sich danach ändert, ist gewollt.
   TRuleAssert.Silent(TCapturedLoopVariableRule.Create,
     Routine('  S := '''';'#10'  F.OnDone := procedure begin S := S + ''x''; end;'#10'  F.Run;'#10 +
-      '  S := '''';', StringVar));
+      '  S := '''';', cStringVar));
   TRuleAssert.Silent(TCapturedLoopVariableRule.Create,
     Routine('  I := 0;'#10'  F.OnDone := procedure begin Inc(I); end;'#10'  F.Run;'#10'  I := 0;',
       'var'#10'  I: Integer;'#10));
   // Liest das Ereignis nur, bleibt die Meldung.
   TRuleAssert.Reports(TCapturedLoopVariableRule.Create,
-    Routine('  S := ''a'';'#10'  F.OnDone := procedure begin Log(S); end;'#10'  S := ''b'';', StringVar));
+    Routine('  S := ''a'';'#10'  F.OnDone := procedure begin Log(S); end;'#10'  S := ''b'';', cStringVar));
 end;
 
 procedure TCaptureRuleTests.CustomDeferredApiFromOptions;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Routine('  for S in Liste do'#10'    Pool.Post(procedure begin Log(S); end);', StringVar);
-  TRuleAssert.Silent(TCapturedLoopVariableRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TCapturedLoopVariableRule.Create, Source,
+  mSource := Routine('  for S in Liste do'#10'    Pool.Post(procedure begin Log(S); end);', cStringVar);
+  TRuleAssert.Silent(TCapturedLoopVariableRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TCapturedLoopVariableRule.Create, mSource,
     '{"rules": {"captured-loop-variable": {"deferredApis": ["Pool.Post"]}}}'))));
 end;
 
 procedure TCaptureRuleTests.FixCopiesValuePerIteration;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
-  Tree: TSyntaxTree;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+  mTree: TSyntaxTree;
 begin
-  Source := Routine(QueueLoop, StringVar);
-  Findings := TRuleAssert.Findings(TCapturedLoopVariableRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  mSource := Routine(cQueueLoop, cStringVar);
+  mFindings := TRuleAssert.Findings(TCapturedLoopVariableRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Routine('  for S in Liste do'#10'    TThread.Queue(nil, CaptureS(S));',
-    StringVar + '  function CaptureS(const AValue: string): TProc;'#10'  begin'#10 +
-    '    Result := procedure begin Memo1.Lines.Add(AValue); end;'#10'  end;'#10#10), Fixed);
-  Tree := TPascalParser.Parse(Fixed);
+    cStringVar + '  function CaptureS(const AValue: string): TProc;'#10'  begin'#10 +
+    '    Result := procedure begin Memo1.Lines.Add(AValue); end;'#10'  end;'#10#10), mFixed);
+  mTree := TPascalParser.Parse(mFixed);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  TRuleAssert.Silent(TCapturedLoopVariableRule.Create, Fixed);
+  TRuleAssert.Silent(TCapturedLoopVariableRule.Create, mFixed);
 end;
 
 procedure TCaptureRuleTests.CopyPerIterationFixPositionsInCrLfFile;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := StringReplace(Routine(QueueLoop, StringVar), #10, #13#10, [rfReplaceAll]);
-  Findings := TRuleAssert.Findings(TCapturedLoopVariableRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  mSource := StringReplace(Routine(cQueueLoop, cStringVar), #10, #13#10, [rfReplaceAll]);
+  mFindings := TRuleAssert.Findings(TCapturedLoopVariableRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(StringReplace(Routine('  for S in Liste do'#10'    TThread.Queue(nil, CaptureS(S));',
-    StringVar + '  function CaptureS(const AValue: string): TProc;'#10'  begin'#10 +
+    cStringVar + '  function CaptureS(const AValue: string): TProc;'#10'  begin'#10 +
     '    Result := procedure begin Memo1.Lines.Add(AValue); end;'#10'  end;'#10#10), #10, #13#10, [rfReplaceAll]),
-    Fixed);
+    mFixed);
 end;
 
 { TAnonymousCaptureInvalidTests }
@@ -241,89 +246,89 @@ end;
 
 procedure TAnonymousCaptureInvalidTests.IssueExampleWithFix;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Laden('procedure Laden(var Anzahl: Integer);', '  TTask.Run(procedure begin Inc(Anzahl); end);'#10);
-  Found := CaptureFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Der var-Parameter Anzahl kann nicht erfasst werden (wie E2555).', Found[0].Message);
-  Assert.AreEqual(5, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(32, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('Wert in die lokale Variable AnzahlKopie kopieren', Found[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
+  mSource := Laden('procedure Laden(var Anzahl: Integer);', '  TTask.Run(procedure begin Inc(Anzahl); end);'#10);
+  mFound := CaptureFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Der var-Parameter Anzahl kann nicht erfasst werden (wie E2555).', mFound[0].Message);
+  Assert.AreEqual(5, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(32, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('Wert in die lokale Variable AnzahlKopie kopieren', mFound[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Laden('procedure Laden(var Anzahl: Integer);'#10'var'#10'  AnzahlKopie: Integer;',
     '  AnzahlKopie := Anzahl;'#10'  TTask.Run(procedure begin Inc(AnzahlKopie); end);'#10 +
-    '  Anzahl := AnzahlKopie;'#10), Fixed);
-  Assert.AreEqual(0, Integer(Length(CaptureFindings(Fixed))), Fixed);
+    '  Anzahl := AnzahlKopie;'#10), mFixed);
+  Assert.AreEqual(0, Integer(Length(CaptureFindings(mFixed))), mFixed);
   // Mit var-Abschnitt; ein Argument unbekannter Signatur kann schreiben: zurückschreiben.
-  Source := Laden('procedure Zeigen(var Text: string);'#10'var'#10'  I: Integer;',
+  mSource := Laden('procedure Zeigen(var Text: string);'#10'var'#10'  I: Integer;',
     '  I := 0;'#10'  TThread.Queue(nil, procedure begin Memo.Lines.Add(Text); end);'#10);
-  Found := CaptureFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
+  mFound := CaptureFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Laden('procedure Zeigen(var Text: string);'#10'var'#10'  I: Integer;'#10'  TextKopie: string;',
     '  I := 0;'#10'  TextKopie := Text;'#10'  TThread.Queue(nil, procedure begin Memo.Lines.Add(TextKopie); end);'#10 +
-    '  Text := TextKopie;'#10), Fixed);
+    '  Text := TextKopie;'#10), mFixed);
   // Nur lesend: kein Zurückschreiben.
-  Source := Laden('function Zeigen(var Text: string): Boolean;', '  F := function: Boolean begin Result := Text = ''''; end;'#10);
-  Found := CaptureFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
+  mSource := Laden('function Zeigen(var Text: string): Boolean;', '  F := function: Boolean begin Result := Text = ''''; end;'#10);
+  mFound := CaptureFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Laden('function Zeigen(var Text: string): Boolean;'#10'var'#10'  TextKopie: string;',
-    '  TextKopie := Text;'#10'  F := function: Boolean begin Result := TextKopie = ''''; end;'#10), Fixed);
+    '  TextKopie := Text;'#10'  F := function: Boolean begin Result := TextKopie = ''''; end;'#10), mFixed);
 end;
 
 procedure TAnonymousCaptureInvalidTests.OutUntypedAndResult;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := CaptureFindings(Laden('procedure Holen(out Wert: Integer);',
+  mFound := CaptureFindings(Laden('procedure Holen(out Wert: Integer);',
     '  TThread.Synchronize(nil, procedure begin Wert := 1; end);'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Der out-Parameter Wert kann nicht erfasst werden (wie E2555).', Found[0].Message);
-  Found := CaptureFindings(Laden('procedure Puffer(const Daten; var Ziel);',
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Der out-Parameter Wert kann nicht erfasst werden (wie E2555).', mFound[0].Message);
+  mFound := CaptureFindings(Laden('procedure Puffer(const Daten; var Ziel);',
     '  Ausfuehren(procedure begin Move(Daten, Ziel, 4); end);'#10));
-  Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual('Der untypisierte Parameter Daten kann nicht erfasst werden (wie E2555).', Found[0].Message);
-  Assert.AreEqual('Der untypisierte Parameter Ziel kann nicht erfasst werden (wie E2555).', Found[1].Message);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('Der untypisierte Parameter Daten kann nicht erfasst werden (wie E2555).', mFound[0].Message);
+  Assert.AreEqual('Der untypisierte Parameter Ziel kann nicht erfasst werden (wie E2555).', mFound[1].Message);
   // Untypisiert: keine Kopie möglich.
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
-  Source := Laden('function Lesen: string;', '  TThread.Synchronize(nil, procedure begin Result := Edit1.Text; end);'#10);
-  Found := CaptureFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Result der umgebenden Funktion kann nicht erfasst werden (wie E2555).', Found[0].Message);
-  Assert.AreEqual('Wert in die lokale Variable Ergebnis kopieren', Found[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
+  mSource := Laden('function Lesen: string;', '  TThread.Synchronize(nil, procedure begin Result := Edit1.Text; end);'#10);
+  mFound := CaptureFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Result der umgebenden Funktion kann nicht erfasst werden (wie E2555).', mFound[0].Message);
+  Assert.AreEqual('Wert in die lokale Variable Ergebnis kopieren', mFound[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Laden('function Lesen: string;'#10'var'#10'  Ergebnis: string;',
-    '  TThread.Synchronize(nil, procedure begin Ergebnis := Edit1.Text; end);'#10'  Result := Ergebnis;'#10), Fixed);
-  Assert.AreEqual(0, Integer(Length(CaptureFindings(Fixed))), Fixed);
+    '  TThread.Synchronize(nil, procedure begin Ergebnis := Edit1.Text; end);'#10'  Result := Ergebnis;'#10), mFixed);
+  Assert.AreEqual(0, Integer(Length(CaptureFindings(mFixed))), mFixed);
   // Jede Stelle derselben Deklaration in einer anonymen Methode nur einmal.
-  Found := CaptureFindings(Laden('procedure Laden(var Anzahl: Integer);',
+  mFound := CaptureFindings(Laden('procedure Laden(var Anzahl: Integer);',
     '  TTask.Run(procedure begin Inc(Anzahl); Anzahl := Anzahl * 2; end);'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(1, Integer(Length(mFound)));
 end;
 
 procedure TAnonymousCaptureInvalidTests.ResultOfAnonymousFunction;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
   // Result in einer anonymen Funktion ist ihr eigenes.
   Assert.AreEqual(0, Integer(Length(CaptureFindings(Laden('function Erzeugen: TFunc<Integer>;',
     '  Result := function: Integer begin Result := 42; end;'#10)))));
   // Result der anonymen Funktion in einer inneren anonymen Prozedur.
-  Found := CaptureFindings(Laden('procedure Starten;',
+  mFound := CaptureFindings(Laden('procedure Starten;',
     '  F := function: Integer begin TThread.Synchronize(nil, procedure begin Result := 1; end); end;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Result der umgebenden Funktion kann nicht erfasst werden (wie E2555).', Found[0].Message);
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Result der umgebenden Funktion kann nicht erfasst werden (wie E2555).', mFound[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
   // var-Parameter einer anonymen Methode in einer inneren.
-  Found := CaptureFindings(Laden('procedure Starten;',
+  mFound := CaptureFindings(Laden('procedure Starten;',
     '  P := procedure(var N: Integer) begin TTask.Run(procedure begin Inc(N); end); end;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Der var-Parameter N kann nicht erfasst werden (wie E2555).', Found[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Der var-Parameter N kann nicht erfasst werden (wie E2555).', mFound[0].Message);
   // In einer Prozedur ohne Ergebnis ist Result kein Name der Routine.
   Assert.AreEqual(0, Integer(Length(CaptureFindings(Laden('procedure Starten;',
     '  TTask.Run(procedure begin Result := 1; end);'#10)))));
@@ -331,12 +336,12 @@ end;
 
 procedure TAnonymousCaptureInvalidTests.NestedScopesAndShadowing;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
   // Lokale Routine: der var-Parameter der äußeren Routine.
-  Found := CaptureFindings(Laden('procedure Laden(var Anzahl: Integer);'#10#10'  procedure Melden;'#10'  begin'#10 +
+  mFound := CaptureFindings(Laden('procedure Laden(var Anzahl: Integer);'#10#10'  procedure Melden;'#10'  begin'#10 +
     '    TTask.Run(procedure begin Inc(Anzahl); end);'#10'  end;'#10, '  Melden;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(1, Integer(Length(mFound)));
   // Ohne anonyme Methode greift die lokale Routine erlaubt zu.
   Assert.AreEqual(0, Integer(Length(CaptureFindings(Laden('procedure Laden(var Anzahl: Integer);'#10#10 +
     '  procedure Melden;'#10'  begin'#10'    Inc(Anzahl);'#10'  end;'#10, '  Melden;'#10)))));
@@ -375,15 +380,15 @@ end;
 
 procedure TAnonymousCaptureInvalidTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Laden('procedure Laden(var Anzahl: Integer);', '  TTask.Run(procedure begin Inc(Anzahl); end);'#10);
-  Assert.AreEqual(1, Integer(Length(CaptureFindings(Source, '', 'Source/Lader.pas'))));
-  Assert.AreEqual(0, Integer(Length(CaptureFindings(Source, '{"rules": {"anonymous-capture-invalid": "off"}}',
+  mSource := Laden('procedure Laden(var Anzahl: Integer);', '  TTask.Run(procedure begin Inc(Anzahl); end);'#10);
+  Assert.AreEqual(1, Integer(Length(CaptureFindings(mSource, '', 'Source/Lader.pas'))));
+  Assert.AreEqual(0, Integer(Length(CaptureFindings(mSource, '{"rules": {"anonymous-capture-invalid": "off"}}',
     'Source/Lader.pas'))));
-  Assert.AreEqual(0, Integer(Length(CaptureFindings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(CaptureFindings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/Lader.pas'))));
-  Assert.AreEqual(0, Integer(Length(CaptureFindings(Source,
+  Assert.AreEqual(0, Integer(Length(CaptureFindings(mSource,
     '{"rules": {"anonymous-capture-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Lader.pas'))));
 end;
 

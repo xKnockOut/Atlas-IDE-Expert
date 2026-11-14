@@ -30,8 +30,8 @@ uses
   Atlas.Common.Metrics.Collector;
 
 const
-  OneRoutine = 'unit A;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'end;'#10'end.';
-  TwoRoutines = 'unit A;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'end;'#10 +
+  cOneRoutine = 'unit A;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'end;'#10'end.';
+  cTwoRoutines = 'unit A;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'end;'#10 +
     'procedure Q;'#10'begin'#10'  if X then Y;'#10'end;'#10'end.';
 
 { TMetricsCollectorTests }
@@ -46,41 +46,41 @@ end;
 
 procedure TMetricsCollectorTests.CollectsSourcesOnceAndSkipsMissing;
 var
-  Collector: TMetricsCollector;
-  Files: TArray<TFileMetrics>;
+  mCollector: TMetricsCollector;
+  mFiles: TArray<TFileMetrics>;
 begin
-  Collector := TMetricsCollector.Create;
+  mCollector := TMetricsCollector.Create;
   try
-    Files := Collector.Collect(['C:\P\A.pas', 'C:\P\a.PAS', 'C:\P\Form.dfm', 'C:\P\Fehlt.pas', 'C:\P\App.dpr'],
+    mFiles := mCollector.Collect(['C:\P\A.pas', 'C:\P\a.PAS', 'C:\P\Form.dfm', 'C:\P\Fehlt.pas', 'C:\P\App.dpr'],
       'C:\P',
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := not AFileName.EndsWith('Fehlt.pas');
-        AText := OneRoutine;
+        AText := cOneRoutine;
       end);
-    Assert.AreEqual(2, Integer(Length(Files)));
-    Assert.AreEqual('A.pas', Files[0].Path);
-    Assert.AreEqual(1, Integer(Length(Files[0].Routines)));
-    Assert.AreEqual('App.dpr', Files[1].Path);
+    Assert.AreEqual(2, Integer(Length(mFiles)));
+    Assert.AreEqual('A.pas', mFiles[0].Path);
+    Assert.AreEqual(1, Integer(Length(mFiles[0].Routines)));
+    Assert.AreEqual('App.dpr', mFiles[1].Path);
   finally
-    Collector.Free;
+    mCollector.Free;
   end;
 end;
 
 procedure TMetricsCollectorTests.CacheFollowsText;
 var
-  Collector: TMetricsCollector;
+  mCollector: TMetricsCollector;
 begin
-  Collector := TMetricsCollector.Create;
+  mCollector := TMetricsCollector.Create;
   try
-    Assert.AreEqual(1, Integer(Length(Collector.FileRoutines('C:\P\A.pas', OneRoutine))));
-    Assert.AreEqual(1, Collector.CachedCount);
-    Assert.AreEqual(1, Integer(Length(Collector.FileRoutines('c:\p\a.pas', OneRoutine))), 'aus dem Speicher');
-    Assert.AreEqual(1, Collector.CachedCount);
-    Assert.AreEqual(2, Integer(Length(Collector.FileRoutines('C:\P\A.pas', TwoRoutines))), 'Text geändert');
-    Assert.AreEqual(2, Collector.FileRoutines('C:\P\A.pas', TwoRoutines)[1].Values[TMetricKind.Cyclomatic]);
+    Assert.AreEqual(1, Integer(Length(mCollector.FileRoutines('C:\P\A.pas', cOneRoutine))));
+    Assert.AreEqual(1, mCollector.CachedCount);
+    Assert.AreEqual(1, Integer(Length(mCollector.FileRoutines('c:\p\a.pas', cOneRoutine))), 'aus dem Speicher');
+    Assert.AreEqual(1, mCollector.CachedCount);
+    Assert.AreEqual(2, Integer(Length(mCollector.FileRoutines('C:\P\A.pas', cTwoRoutines))), 'Text geändert');
+    Assert.AreEqual(2, mCollector.FileRoutines('C:\P\A.pas', cTwoRoutines)[1].Values[TMetricKind.Cyclomatic]);
   finally
-    Collector.Free;
+    mCollector.Free;
   end;
 end;
 

@@ -49,7 +49,7 @@ uses
   Atlas.Common.Semantics.Attributes;
 
 const
-  UnitAttribute =
+  cUnitAttribute =
     'unit DUnitX.Attributes;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -73,7 +73,7 @@ const
     'implementation'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses DUnitX.Attributes;'#10 +
@@ -94,30 +94,30 @@ const
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
-  Index, Line, LineStart, Run: Integer;
+  mIndex, mLine, mLineStart, mRun: Integer;
 begin
-  Index := Pos(AMarker, AText);
-  if Index = 0 then
+  mIndex := Pos(AMarker, AText);
+  if mIndex = 0 then
   begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
   end;
-  Line := 0;
-  LineStart := 1;
-  for Run := 1 to Index - 1 do
+  mLine := 0;
+  mLineStart := 1;
+  for mRun := 1 to mIndex - 1 do
   begin
-    if AText[Run] = #10 then
+    if AText[mRun] = #10 then
     begin
-      Inc(Line);
-      LineStart := Run + 1;
+      Inc(mLine);
+      mLineStart := mRun + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 procedure TAttributesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitAttribute, 'C:\P\DUnitX.Attributes.pas', nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAttribute, 'C:\P\DUnitX.Attributes.pas', nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -129,47 +129,47 @@ end;
 
 function TAttributesTests.ResolvedAt(const AMarker: string): TResolvedSymbol;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Result := FResolver.Resolve(Tree, 'C:\P\Haupt.pas', PositionOf(UnitHaupt, AMarker));
+    Result := FResolver.Resolve(mTree, 'C:\P\Haupt.pas', PositionOf(cUnitHaupt, AMarker));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TAttributesTests.UseAtPosition;
 var
-  Tree: TSyntaxTree;
-  Use: TAttributeUse;
+  mTree: TSyntaxTree;
+  mUse: TAttributeUse;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Assert.IsTrue(TAttributes.At(Tree, PositionOf(UnitHaupt, 'TestCase('), Use));
-    Assert.AreEqual('TestCase', Use.Name);
-    Assert.AreEqual(2, Use.ArgCount);
-    Assert.IsTrue(TAttributes.At(Tree, PositionOf(UnitHaupt, 'Attributes.TestFixture('), Use));
-    Assert.AreEqual('DUnitX.Attributes.TestFixture', Use.Name);
-    Assert.AreEqual(1, Use.ArgCount);
-    Assert.IsTrue(TAttributes.At(Tree, PositionOf(UnitHaupt, 'Bar]'), Use));
-    Assert.AreEqual('Bar', Use.Name);
-    Assert.AreEqual(0, Use.ArgCount);
+    Assert.IsTrue(TAttributes.At(mTree, PositionOf(cUnitHaupt, 'TestCase('), mUse));
+    Assert.AreEqual('TestCase', mUse.Name);
+    Assert.AreEqual(2, mUse.ArgCount);
+    Assert.IsTrue(TAttributes.At(mTree, PositionOf(cUnitHaupt, 'Attributes.TestFixture('), mUse));
+    Assert.AreEqual('DUnitX.Attributes.TestFixture', mUse.Name);
+    Assert.AreEqual(1, mUse.ArgCount);
+    Assert.IsTrue(TAttributes.At(mTree, PositionOf(cUnitHaupt, 'Bar]'), mUse));
+    Assert.AreEqual('Bar', mUse.Name);
+    Assert.AreEqual(0, mUse.ArgCount);
     // In den Argumenten und außerhalb der Klammern kein Attributname.
-    Assert.IsFalse(TAttributes.At(Tree, PositionOf(UnitHaupt, '''1,2'''), Use));
-    Assert.IsFalse(TAttributes.At(Tree, PositionOf(UnitHaupt, 'TTest = '), Use));
+    Assert.IsFalse(TAttributes.At(mTree, PositionOf(cUnitHaupt, '''1,2'''), mUse));
+    Assert.IsFalse(TAttributes.At(mTree, PositionOf(cUnitHaupt, 'TTest = '), mUse));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TAttributesTests.SuffixFirst;
 var
-  Resolved: TResolvedSymbol;
+  mResolved: TResolvedSymbol;
 begin
-  Resolved := ResolvedAt('TestFixture]');
-  Assert.AreEqual('TestFixtureAttribute', Resolved.Name);
-  Assert.AreEqual(5, Resolved.SelectionRange.StartPos.Line);
+  mResolved := ResolvedAt('TestFixture]');
+  Assert.AreEqual('TestFixtureAttribute', mResolved.Name);
+  Assert.AreEqual(5, mResolved.SelectionRange.StartPos.Line);
   Assert.AreEqual('TestCaseAttribute', ResolvedAt('TestCase(').Name);
 end;
 
@@ -198,27 +198,27 @@ end;
 
 procedure TAttributesTests.NamesOfAttributeNode;
 var
-  Tree: TSyntaxTree;
-  Found: TArray<string>;
+  mTree: TSyntaxTree;
+  mFound: TArray<string>;
 begin
-  Tree := TPascalParser.Parse('unit U;'#10'interface'#10'type'#10'  TA = class'#10'  public'#10 +
+  mTree := TPascalParser.Parse('unit U;'#10'interface'#10'type'#10'  TA = class'#10'  public'#10 +
     '    [Test, DUnitX.Attributes.TestCaseAttribute(''a'', ''1'')]'#10'    procedure P;'#10'  end;'#10 +
     'implementation'#10'end.');
   try
-    Found := nil;
-    Tree.Root.Walk(
+    mFound := nil;
+    mTree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         Result := True;
         if ANode.Kind = TSyntaxKind.Attribute then
         begin
-          Found := Found + TAttributes.Names(ANode);
+          mFound := mFound + TAttributes.Names(ANode);
         end;
       end);
-    Assert.AreEqual('Test,TestCase', string.Join(',', Found));
+    Assert.AreEqual('Test,TestCase', string.Join(',', mFound));
     Assert.AreEqual(0, Integer(Length(TAttributes.Names(nil))));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

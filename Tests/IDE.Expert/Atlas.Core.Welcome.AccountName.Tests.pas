@@ -32,8 +32,8 @@ uses
   System.SyncObjs,
   Atlas.Core.Welcome.AccountName;
 
-/// <summary>Arbeitet eingereihte Aufrufe ab, bis ACondition gilt oder die Zeit um ist.</summary>
-function WaitUntil(const ACondition: TFunc<Boolean>; ATimeoutMs: Cardinal = 3000): Boolean;
+/// <summary>Arbeitet eingereihte Aufrufe ab, bis ACondition gilt oder ATimeoutMs um sind.</summary>
+function WaitWithin(const ACondition: TFunc<Boolean>; ATimeoutMs: Cardinal): Boolean;
 var
   mStart: UInt64;
 begin
@@ -46,6 +46,14 @@ begin
     end;
   until TThread.GetTickCount64 - mStart > ATimeoutMs;
   Result := False;
+end;
+
+/// <summary>Wie WaitWithin mit der üblichen Wartezeit von drei Sekunden.</summary>
+function WaitUntil(const ACondition: TFunc<Boolean>): Boolean;
+const
+  cTimeoutMs = 3000;
+begin
+  Result := WaitWithin(ACondition, cTimeoutMs);
 end;
 
 type
@@ -154,7 +162,7 @@ begin
         Assert.AreEqual('Erika Muster', mName.Name);
       end;
       // Etwas Zeit für eine zweite Abfrage, die es nicht geben darf.
-      WaitUntil(
+      WaitWithin(
         function: Boolean
         begin
           Result := mProbe.Lookups > 1;
@@ -183,7 +191,7 @@ begin
       Assert.AreEqual('', mName.Name);
       Assert.IsTrue(WaitUntil(Looked(mProbe)));
       // Abschluss abarbeiten lassen: Er darf nichts melden.
-      WaitUntil(Reported(mProbe), 200);
+      WaitWithin(Reported(mProbe), 200);
       Assert.AreEqual(0, mProbe.Reports);
       Assert.AreEqual('', mName.Name);
       Assert.AreEqual(1, mProbe.Lookups, 'auch ein leerer Name wird nicht erneut erfragt');
@@ -219,7 +227,7 @@ begin
       mName.Free;
     end;
     Assert.AreEqual(1, mProbe.Lookups, 'Freigabe wartet die Abfrage ab');
-    WaitUntil(Reported(mProbe), 200);
+    WaitWithin(Reported(mProbe), 200);
     Assert.AreEqual(0, mProbe.Reports);
   finally
     mProbe.Gate.Free;

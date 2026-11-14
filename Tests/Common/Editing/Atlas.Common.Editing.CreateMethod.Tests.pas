@@ -41,72 +41,72 @@ uses
 
 function Join(const ALines: array of string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(ALines) do
+  for mIndex := 0 to High(ALines) do
   begin
-    Result := Result + ALines[Index] + #10;
+    Result := Result + ALines[mIndex] + #10;
   end;
 end;
 
 /// <summary>Aufrufstelle am "|" in AMarked.</summary>
 function SiteOf(const AMarked: string; out ASite: TCreateCallSite; out ATree: TSyntaxTree): Boolean;
 var
-  Index, Line, Character: Integer;
+  mIndex, mLine, mCharacter: Integer;
 begin
-  Line := 0;
-  Character := 0;
-  for Index := 1 to Pos('|', AMarked) - 1 do
+  mLine := 0;
+  mCharacter := 0;
+  for mIndex := 1 to Pos('|', AMarked) - 1 do
   begin
-    if AMarked[Index] = #10 then
+    if AMarked[mIndex] = #10 then
     begin
-      Inc(Line);
-      Character := 0;
+      Inc(mLine);
+      mCharacter := 0;
     end
     else
     begin
-      Inc(Character);
+      Inc(mCharacter);
     end;
   end;
   ATree := TPascalParser.Parse(StringReplace(AMarked, '|', '', []));
-  Result := TCreateMethod.Site(ATree.Tokens, TTextPosition.Create(Line, Character), ASite);
+  Result := TCreateMethod.Site(ATree.Tokens, TTextPosition.Create(mLine, mCharacter), ASite);
 end;
 
 function Describe(const AMarked: string): string;
 var
-  Site: TCreateCallSite;
-  Tree: TSyntaxTree;
-  Argument: TCallArgument;
+  mSite: TCreateCallSite;
+  mTree: TSyntaxTree;
+  mArgument: TCallArgument;
 begin
-  Tree := nil;
+  mTree := nil;
   try
-    if not SiteOf(AMarked, Site, Tree) then
+    if not SiteOf(AMarked, mSite, mTree) then
     begin
       Exit('-');
     end;
-    Result := Site.Name;
-    if Site.Qualifier <> '' then
+    Result := mSite.Name;
+    if mSite.Qualifier <> '' then
     begin
-      Result := Site.Qualifier + '.' + Result;
+      Result := mSite.Qualifier + '.' + Result;
     end;
     Result := Result + '(';
-    for Argument in Site.Arguments do
+    for mArgument in mSite.Arguments do
     begin
-      Result := Result + Argument.Text + '|';
+      Result := Result + mArgument.Text + '|';
     end;
-    Result := Result + ') ' + IntToStr(Ord(Site.Context));
-    if Site.Target <> '' then
+    Result := Result + ') ' + IntToStr(Ord(mSite.Context));
+    if mSite.Target <> '' then
     begin
-      Result := Result + ' ' + Site.Target;
+      Result := Result + ' ' + mSite.Target;
     end;
-    if Site.CloseIndex < 0 then
+    if mSite.CloseIndex < 0 then
     begin
       Result := Result + ' offen';
     end;
-    Result := Result + ' @' + Tree.Tokens[Site.StatementStart].Text;
+    Result := Result + ' @' + mTree.Tokens[mSite.StatementStart].Text;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -138,30 +138,30 @@ end;
 
 procedure TCreateMethodTests.NamesFromArguments;
 var
-  Site: TCreateCallSite;
-  Tree: TSyntaxTree;
-  Names: string;
-  Argument: TCallArgument;
-  Unique: TArray<string>;
+  mSite: TCreateCallSite;
+  mTree: TSyntaxTree;
+  mNames: string;
+  mArgument: TCallArgument;
+  mUnique: TArray<string>;
 begin
-  Tree := nil;
+  mTree := nil;
   try
     Assert.IsTrue(SiteOf('begin'#10'  Nimm|(FKunde, ARate, LZiel, 0.1, 2.5, 42, ''x'', True, GetName, Liste.Count, ' +
-      'TKunde(Obj), Hole(1), @Puffer, Self, nil, -0.5);'#10'end.', Site, Tree));
-    Names := '';
-    for Argument in Site.Arguments do
+      'TKunde(Obj), Hole(1), @Puffer, Self, nil, -0.5);'#10'end.', mSite, mTree));
+    mNames := '';
+    for mArgument in mSite.Arguments do
     begin
-      Names := Names + TCreateMethod.ArgumentName(Tree.Tokens, Argument) + ',';
+      mNames := mNames + TCreateMethod.ArgumentName(mTree.Tokens, mArgument) + ',';
     end;
-    Assert.AreEqual('Kunde,Rate,Ziel,Rate,Value,Value,Text,Flag,Name,Count,Kunde,Hole,Puffer,,,Value,', Names);
-    Assert.AreEqual('Double', TCreateMethod.LiteralType(Tree.Tokens, Site.Arguments[3]));
-    Assert.AreEqual('Integer', TCreateMethod.LiteralType(Tree.Tokens, Site.Arguments[5]));
-    Assert.AreEqual('string', TCreateMethod.LiteralType(Tree.Tokens, Site.Arguments[6]));
-    Assert.AreEqual('Boolean', TCreateMethod.LiteralType(Tree.Tokens, Site.Arguments[7]));
-    Assert.AreEqual('Double', TCreateMethod.LiteralType(Tree.Tokens, Site.Arguments[15]));
-    Assert.AreEqual('', TCreateMethod.LiteralType(Tree.Tokens, Site.Arguments[0]));
+    Assert.AreEqual('Kunde,Rate,Ziel,Rate,Value,Value,Text,Flag,Name,Count,Kunde,Hole,Puffer,,,Value,', mNames);
+    Assert.AreEqual('Double', TCreateMethod.LiteralType(mTree.Tokens, mSite.Arguments[3]));
+    Assert.AreEqual('Integer', TCreateMethod.LiteralType(mTree.Tokens, mSite.Arguments[5]));
+    Assert.AreEqual('string', TCreateMethod.LiteralType(mTree.Tokens, mSite.Arguments[6]));
+    Assert.AreEqual('Boolean', TCreateMethod.LiteralType(mTree.Tokens, mSite.Arguments[7]));
+    Assert.AreEqual('Double', TCreateMethod.LiteralType(mTree.Tokens, mSite.Arguments[15]));
+    Assert.AreEqual('', TCreateMethod.LiteralType(mTree.Tokens, mSite.Arguments[0]));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   Assert.AreEqual('Customer', TCreateMethod.NameFromType('TCustomer'));
   Assert.AreEqual('Exporter', TCreateMethod.NameFromType('IExporter'));
@@ -169,35 +169,35 @@ begin
   Assert.AreEqual('Text', TCreateMethod.NameFromType('string'));
   Assert.AreEqual('Value', TCreateMethod.NameFromType('Integer'));
   Assert.AreEqual('Value', TCreateMethod.NameFromType(TCreateMethod.cTypePlaceholder));
-  Unique := TCreateMethod.UniqueNames(['Value', 'Value', 'Rate', 'value']);
-  Assert.AreEqual('Value,Value2,Rate,value3', Unique[0] + ',' + Unique[1] + ',' + Unique[2] + ',' + Unique[3]);
+  mUnique := TCreateMethod.UniqueNames(['Value', 'Value', 'Rate', 'value']);
+  Assert.AreEqual('Value,Value2,Rate,value3', mUnique[0] + ',' + mUnique[1] + ',' + mUnique[2] + ',' + mUnique[3]);
 end;
 
 procedure TCreateMethodTests.HeaderWithConstAndResult;
 var
-  Plan: TCreateMethodPlan;
-  Parameter: TCreateParameter;
+  mPlan: TCreateMethodPlan;
+  mParameter: TCreateParameter;
 begin
-  Plan := Default(TCreateMethodPlan);
-  Plan.Name := 'CalcDiscount';
-  Parameter.Name := 'Customer';
-  Parameter.TypeName := 'TCustomer';
-  Parameter.IsConst := TCreateMethod.WantsConst('TCustomer', False, False);
-  Plan.Parameters := [Parameter];
-  Parameter.Name := 'Rate';
-  Parameter.TypeName := 'Double';
-  Parameter.IsConst := False;
-  Plan.Parameters := Plan.Parameters + [Parameter];
-  Plan.ResultType := 'Currency';
+  mPlan := Default(TCreateMethodPlan);
+  mPlan.Name := 'CalcDiscount';
+  mParameter.Name := 'Customer';
+  mParameter.TypeName := 'TCustomer';
+  mParameter.IsConst := TCreateMethod.WantsConst('TCustomer', False, False);
+  mPlan.Parameters := [mParameter];
+  mParameter.Name := 'Rate';
+  mParameter.TypeName := 'Double';
+  mParameter.IsConst := False;
+  mPlan.Parameters := mPlan.Parameters + [mParameter];
+  mPlan.ResultType := 'Currency';
   Assert.AreEqual('function CalcDiscount(Customer: TCustomer; Rate: Double): Currency',
-    TCreateMethod.Header(Plan, False));
-  Plan.TypeName := 'TRechner';
-  Plan.IsClassMethod := True;
-  Plan.ResultType := '';
-  Plan.Parameters[0].TypeName := 'string';
-  Plan.Parameters[0].IsConst := TCreateMethod.WantsConst('string', False, False);
+    TCreateMethod.Header(mPlan, False));
+  mPlan.TypeName := 'TRechner';
+  mPlan.IsClassMethod := True;
+  mPlan.ResultType := '';
+  mPlan.Parameters[0].TypeName := 'string';
+  mPlan.Parameters[0].IsConst := TCreateMethod.WantsConst('string', False, False);
   Assert.AreEqual('class procedure TRechner.CalcDiscount(const Customer: string; Rate: Double)',
-    TCreateMethod.Header(Plan, True));
+    TCreateMethod.Header(mPlan, True));
   Assert.IsTrue(TCreateMethod.WantsConst('TPunkt', True, False));
   Assert.IsTrue(TCreateMethod.WantsConst('IExporter', False, True));
   Assert.IsFalse(TCreateMethod.WantsConst('Integer', False, False));
@@ -224,21 +224,21 @@ end;
 
 procedure TCreateMethodTests.MethodGoesIntoSectionAndBody;
 var
-  Text: string;
-  Tree: TSyntaxTree;
-  Plan: TCreateMethodPlan;
-  Edits: TArray<TTextEdit>;
+  mText: string;
+  mTree: TSyntaxTree;
+  mPlan: TCreateMethodPlan;
+  mEdits: TArray<TTextEdit>;
 begin
-  Text := RechnerCallsPruefe;
-  Plan := Default(TCreateMethodPlan);
-  Plan.Name := 'Pruefe';
-  Plan.TypeName := 'TRechner';
-  Plan.Section := 'private';
-  Plan.CaretInBody := True;
-  Plan.Style := TFormatStyle.Default;
-  Tree := TPascalParser.Parse(Text);
+  mText := RechnerCallsPruefe;
+  mPlan := Default(TCreateMethodPlan);
+  mPlan.Name := 'Pruefe';
+  mPlan.TypeName := 'TRechner';
+  mPlan.Section := 'private';
+  mPlan.CaretInBody := True;
+  mPlan.Style := TFormatStyle.Default;
+  mTree := TPascalParser.Parse(mText);
   try
-    Assert.IsTrue(TCreateMethod.MethodEdits(Text, Tree, Plan, Edits));
+    Assert.IsTrue(TCreateMethod.MethodEdits(mText, mTree, mPlan, mEdits));
     Assert.AreEqual(Join([
       'unit U;',
       'interface',
@@ -259,28 +259,28 @@ begin
       'begin',
       '  $0',
       'end;',
-      'end.']), TChangeSignature.ApplyEdits(Text, Edits));
+      'end.']), TChangeSignature.ApplyEdits(mText, mEdits));
     // public vorhanden: dort am Ende.
-    Plan.Section := 'public';
-    Plan.CaretInBody := False;
-    Assert.IsTrue(TCreateMethod.MethodEdits(Text, Tree, Plan, Edits));
-    Assert.IsTrue(TChangeSignature.ApplyEdits(Text, Edits).Contains(
-      '    procedure Rechne;'#10'    procedure Pruefe;'#10'  end;'), TChangeSignature.ApplyEdits(Text, Edits));
+    mPlan.Section := 'public';
+    mPlan.CaretInBody := False;
+    Assert.IsTrue(TCreateMethod.MethodEdits(mText, mTree, mPlan, mEdits));
+    Assert.IsTrue(TChangeSignature.ApplyEdits(mText, mEdits).Contains(
+      '    procedure Rechne;'#10'    procedure Pruefe;'#10'  end;'), TChangeSignature.ApplyEdits(mText, mEdits));
     // Unbekannte Klasse: nichts.
-    Plan.TypeName := 'TFremd';
-    Assert.IsFalse(TCreateMethod.MethodEdits(Text, Tree, Plan, Edits));
+    mPlan.TypeName := 'TFremd';
+    Assert.IsFalse(TCreateMethod.MethodEdits(mText, mTree, mPlan, mEdits));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TCreateMethodTests.RoutineGoesBeforeCurrentRoutine;
 var
-  Text: string;
-  Tree: TSyntaxTree;
-  Plan: TCreateMethodPlan;
+  mText: string;
+  mTree: TSyntaxTree;
+  mPlan: TCreateMethodPlan;
 begin
-  Text := Join([
+  mText := Join([
     'program P;',
     '',
     '// Hauptarbeit',
@@ -290,11 +290,11 @@ begin
     'end;',
     'begin',
     'end.']);
-  Plan := Default(TCreateMethodPlan);
-  Plan.Name := 'Hole';
-  Plan.ResultType := 'Integer';
-  Plan.Style := TFormatStyle.Default;
-  Tree := TPascalParser.Parse(Text);
+  mPlan := Default(TCreateMethodPlan);
+  mPlan.Name := 'Hole';
+  mPlan.ResultType := 'Integer';
+  mPlan.Style := TFormatStyle.Default;
+  mTree := TPascalParser.Parse(mText);
   try
     Assert.AreEqual(Join([
       'program P;',
@@ -310,10 +310,10 @@ begin
       '  X := Hole(1);',
       'end;',
       'begin',
-      'end.']), TChangeSignature.ApplyEdits(Text, [TCreateMethod.RoutineEdit(Text,
-      TRoutineBody.RoutineAt(Tree, Pos('Hole', Text) - 1), Plan)]));
+      'end.']), TChangeSignature.ApplyEdits(mText, [TCreateMethod.RoutineEdit(mText,
+      TRoutineBody.RoutineAt(mTree, Pos('Hole', mText) - 1), mPlan)]));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

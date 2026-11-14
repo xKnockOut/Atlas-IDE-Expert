@@ -33,8 +33,8 @@ uses
   Atlas.Common.Index.Usages;
 
 const
-  FileName = 'C:\P\Kunden.pas';
-  Text =
+  cFileName = 'C:\P\Kunden.pas';
+  cText =
     'unit Kunden;'#10 +
     'interface'#10 +
     'procedure Speichern;'#10 +
@@ -48,22 +48,22 @@ const
 
 function Extracted: TUnitIndex;
 begin
-  Result := TIndexExtractor.ExtractText(Text, FileName, nil, nil, True);
+  Result := TIndexExtractor.ExtractText(cText, cFileName, nil, nil, True);
 end;
 
 { TIndexUsagesTests }
 
 procedure TIndexUsagesTests.HasFindsNamesIgnoringCase;
 var
-  Usages: TArray<TIndexUsage>;
+  mUsages: TArray<TIndexUsage>;
 begin
-  Usages := Extracted.Usages;
-  Assert.IsTrue(TIndexUsages.Has(Usages, 'Rechne'));
-  Assert.IsTrue(TIndexUsages.Has(Usages, 'WERT'));
-  Assert.IsTrue(TIndexUsages.Has(Usages, 'werkzeug'));
+  mUsages := Extracted.Usages;
+  Assert.IsTrue(TIndexUsages.Has(mUsages, 'Rechne'));
+  Assert.IsTrue(TIndexUsages.Has(mUsages, 'WERT'));
+  Assert.IsTrue(TIndexUsages.Has(mUsages, 'werkzeug'));
   // Deklarationen zählen nicht als Verwendung.
-  Assert.IsFalse(TIndexUsages.Has(Usages, 'Speichern'));
-  Assert.IsFalse(TIndexUsages.Has(Usages, 'Fehlt'));
+  Assert.IsFalse(TIndexUsages.Has(mUsages, 'Speichern'));
+  Assert.IsFalse(TIndexUsages.Has(mUsages, 'Fehlt'));
   Assert.IsFalse(TIndexUsages.Has(nil, 'Rechne'));
 end;
 
@@ -77,46 +77,46 @@ end;
 
 procedure TIndexUsagesTests.LookupPresentAndAbsent;
 var
-  Indexed: TUnitIndex;
+  mIndexed: TUnitIndex;
 begin
-  Indexed := Extracted;
-  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Present, TIndexUsages.Lookup(Indexed, 'Rechne'));
-  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Absent, TIndexUsages.Lookup(Indexed, 'Fehlt'));
+  mIndexed := Extracted;
+  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Present, TIndexUsages.Lookup(mIndexed, 'Rechne'));
+  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Absent, TIndexUsages.Lookup(mIndexed, 'Fehlt'));
   // Ein Wort, das der Index nicht zählt, kann er nicht beantworten.
-  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Unknown, TIndexUsages.Lookup(Indexed, 'Self'));
+  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Unknown, TIndexUsages.Lookup(mIndexed, 'Self'));
 end;
 
 procedure TIndexUsagesTests.LookupUnknownWithoutUsages;
 var
-  Indexed: TUnitIndex;
+  mIndexed: TUnitIndex;
 begin
-  Indexed := TIndexExtractor.ExtractText(Text, FileName, nil);
-  Assert.IsFalse(Indexed.UsagesIndexed);
-  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Unknown, TIndexUsages.Lookup(Indexed, 'Fehlt'));
-  Indexed := Extracted;
-  Indexed.UsagesOffloaded := True;
-  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Unknown, TIndexUsages.Lookup(Indexed, 'Fehlt'));
+  mIndexed := TIndexExtractor.ExtractText(cText, cFileName, nil);
+  Assert.IsFalse(mIndexed.UsagesIndexed);
+  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Unknown, TIndexUsages.Lookup(mIndexed, 'Fehlt'));
+  mIndexed := Extracted;
+  mIndexed.UsagesOffloaded := True;
+  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Unknown, TIndexUsages.Lookup(mIndexed, 'Fehlt'));
 end;
 
 procedure TIndexUsagesTests.LookupUnknownWithIncludes;
 var
-  Indexed: TUnitIndex;
+  mIndexed: TUnitIndex;
 begin
   // Bezeichner aus Include-Dateien stehen nicht in den Verwendungen der Unit.
-  Indexed := Extracted;
-  Indexed.Includes := TArray<string>.Create('C:\P\Teil.inc');
-  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Unknown, TIndexUsages.Lookup(Indexed, 'Fehlt'));
+  mIndexed := Extracted;
+  mIndexed.Includes := TArray<string>.Create('C:\P\Teil.inc');
+  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Unknown, TIndexUsages.Lookup(mIndexed, 'Fehlt'));
 end;
 
 procedure TIndexUsagesTests.LookupUnknownOutsideIndex;
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(Extracted);
-  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Absent, TIndexUsages.Lookup(Index, FileName, 'Fehlt'));
-  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Unknown, TIndexUsages.Lookup(Index, 'C:\P\Andere.pas', 'Fehlt'));
-  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Unknown, TIndexUsages.Lookup(nil, FileName, 'Fehlt'));
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(Extracted);
+  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Absent, TIndexUsages.Lookup(mIndex, cFileName, 'Fehlt'));
+  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Unknown, TIndexUsages.Lookup(mIndex, 'C:\P\Andere.pas', 'Fehlt'));
+  Assert.AreEqual<TIndexUsageAnswer>(TIndexUsageAnswer.Unknown, TIndexUsages.Lookup(nil, cFileName, 'Fehlt'));
 end;
 
 initialization

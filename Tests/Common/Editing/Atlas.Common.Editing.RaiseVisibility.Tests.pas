@@ -58,7 +58,7 @@ uses
   Atlas.Common.Editing.RaiseVisibility;
 
 const
-  Source =
+  cSource =
     'unit U;'#10 +                                      // 0
     'interface'#10 +                                    // 1
     'type'#10 +                                         // 2
@@ -93,7 +93,7 @@ const
     'procedure TForm1.Helper;'#10'begin'#10'end;'#10#10 +
     'end.'#10;
 
-  Small =
+  cSmall =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -160,7 +160,7 @@ var
   mLayout: TClassLayout;
   mTargets: TArray<TClassVisibility>;
 begin
-  mLayout := LayoutOf(Source, 'TFoo', mTree);
+  mLayout := LayoutOf(cSource, 'TFoo', mTree);
   try
     mTargets := TRaiseVisibility.Targets(mLayout, mLayout.Find('FHidden')[0]);
     Assert.AreEqual(2, Integer(Length(mTargets)), 'strict private');
@@ -175,7 +175,7 @@ begin
     mLayout.Free;
     mTree.Free;
   end;
-  mLayout := LayoutOf(Source, 'TForm1', mTree);
+  mLayout := LayoutOf(cSource, 'TForm1', mTree);
   try
     Assert.AreEqual(0, Integer(Length(TRaiseVisibility.Targets(mLayout, mLayout.Find('Button1')[0]))),
       'Formularfeld');
@@ -188,13 +188,13 @@ end;
 
 procedure TRaiseVisibilityTests.MovesFieldWithDocIntoNewSection;
 begin
-  FText := Applied(Source, 8, '', 'auf public');
+  FText := Applied(cSource, 8, '', 'auf public');
   Assert.IsTrue(Parses(FText), FText);
   // Der Doku-Kommentar wandert mit, public bekommt das Feld vor seinen Methoden.
   Assert.IsTrue(ContainsStr(FText, '  public'#10'    /// <summary>Anzahl der Werte.</summary>'#10 +
     '    FCount: Integer;'#10'    procedure Run;'#10), FText);
   Assert.IsFalse(ContainsStr(FText, '  private'#10'    /// <summary>'), FText);
-  FText := Applied(Source, 5, '', 'auf protected');
+  FText := Applied(cSource, 5, '', 'auf protected');
   // strict private fällt weg, FHidden steht als Feld vor den Methoden von protected.
   Assert.IsFalse(ContainsStr(FText, 'strict private'), FText);
   Assert.IsTrue(ContainsStr(FText, '  protected'#10'    FHidden: Integer;'#10'    procedure Step; virtual;'#10), FText);
@@ -202,25 +202,25 @@ end;
 
 procedure TRaiseVisibilityTests.RemovesEmptiedSection;
 begin
-  FText := Applied(Small, 5, '', 'auf public');
+  FText := Applied(cSmall, 5, '', 'auf public');
   Assert.IsTrue(Parses(FText), FText);
   Assert.IsTrue(ContainsStr(FText, '  TBar = class'#10'  public'#10'    procedure Run;'#10'    procedure Step;'#10 +
     '  end;'), FText);
-  FText := Applied(Small, 5, '', 'auf protected');
+  FText := Applied(cSmall, 5, '', 'auf protected');
   // Neuer Abschnitt protected vor public.
   Assert.IsTrue(ContainsStr(FText, '  TBar = class'#10'  protected'#10'    procedure Step;'#10'  public'#10), FText);
 end;
 
 procedure TRaiseVisibilityTests.KeepsImplementation;
 begin
-  FText := Applied(Source, 10, '', 'auf protected');
-  Assert.AreEqual(Copy(Source, Pos('implementation', Source), MaxInt), Copy(FText, Pos('implementation', FText),
+  FText := Applied(cSource, 10, '', 'auf protected');
+  Assert.AreEqual(Copy(cSource, Pos('implementation', cSource), MaxInt), Copy(FText, Pos('implementation', FText),
     MaxInt));
 end;
 
 procedure TRaiseVisibilityTests.MovesOneNameOfFieldGroup;
 begin
-  FText := Applied(Source, 9, 'FB', 'auf protected');
+  FText := Applied(cSource, 9, 'FB', 'auf protected');
   Assert.IsTrue(Parses(FText), FText);
   Assert.IsTrue(ContainsStr(FText, '    FA: string;'#10), FText);
   Assert.IsTrue(ContainsStr(FText, '  protected'#10'    FB: string;'#10), FText);
@@ -228,7 +228,7 @@ end;
 
 procedure TRaiseVisibilityTests.MovesOnlyChosenOverload;
 begin
-  FText := Applied(Source, 11, '', 'auf public');
+  FText := Applied(cSource, 11, '', 'auf public');
   Assert.IsTrue(Parses(FText), FText);
   Assert.IsTrue(ContainsStr(FText, '  private'#10'    /// <summary>Anzahl der Werte.</summary>'#10 +
     '    FCount: Integer;'#10'    FA, FB: string;'#10'    procedure Add(AValue: Integer); overload;'#10 +
@@ -242,7 +242,7 @@ var
   mTree: TSyntaxTree;
   mLayout: TClassLayout;
 begin
-  mLayout := LayoutOf(Source, 'TFoo', mTree);
+  mLayout := LayoutOf(cSource, 'TFoo', mTree);
   try
     Assert.AreEqual('Hidden', TRaiseVisibility.PropertyName(mLayout, mLayout.Find('FHidden')[0]));
     Assert.AreEqual('', TRaiseVisibility.PropertyName(mLayout, mLayout.Find('FCount')[0]), 'Count gibt es schon');
@@ -252,7 +252,7 @@ begin
     mLayout.Free;
     mTree.Free;
   end;
-  mLayout := LayoutOf(Source, 'TForm1', mTree);
+  mLayout := LayoutOf(cSource, 'TForm1', mTree);
   try
     Assert.AreEqual('', TRaiseVisibility.PropertyName(mLayout, mLayout.Find('Button1')[0]), 'ohne F-Präfix');
   finally
@@ -263,12 +263,12 @@ end;
 
 procedure TRaiseVisibilityTests.CreatesReadOnlyAndWritableProperty;
 begin
-  FText := Applied(Source, 5, '', '(nur lesen)');
+  FText := Applied(cSource, 5, '', '(nur lesen)');
   Assert.IsTrue(Parses(FText), FText);
   Assert.IsTrue(ContainsStr(FText, '    procedure Run;'#10'    property Hidden: Integer read FHidden;'#10'  published'),
     FText);
   Assert.IsTrue(ContainsStr(FText, '  strict private'#10'    FHidden: Integer;'#10), 'Feld bleibt: ' + FText);
-  FText := Applied(Source, 5, '', '(lesen und schreiben)');
+  FText := Applied(cSource, 5, '', '(lesen und schreiben)');
   Assert.IsTrue(ContainsStr(FText, '    property Hidden: Integer read FHidden write FHidden;'#10), FText);
 end;
 
@@ -277,9 +277,9 @@ var
   mTree: TSyntaxTree;
   mActions: TArray<TCodeAction>;
 begin
-  mTree := TSyntaxTreeCache.Parse(Source);
+  mTree := TSyntaxTreeCache.Parse(cSource);
   FTree := mTree;
-  mActions := TRaiseVisibility.Actions(Source, mTree, TTextPosition.Create(5, 6), '', True);
+  mActions := TRaiseVisibility.Actions(cSource, mTree, TTextPosition.Create(5, 6), '', True);
   Assert.AreEqual(4, Integer(Length(mActions)));
   Assert.AreEqual('Eigenschaft Hidden in TFoo anlegen (nur lesen)', mActions[0].Title);
   Assert.AreEqual(cCreatePropertyTag, mActions[1].Tag);
@@ -287,10 +287,10 @@ begin
   Assert.AreEqual(cRaiseVisibilityTag, mActions[3].Tag);
   Assert.AreEqual(cRewriteKind, mActions[3].Kind);
   // Ohne Properties nur das Anheben; Wort an der Cursorstelle wählt in der Feldgruppe.
-  mActions := TRaiseVisibility.Actions(Source, mTree, TTextPosition.Create(9, 9), '', False);
+  mActions := TRaiseVisibility.Actions(cSource, mTree, TTextPosition.Create(9, 9), '', False);
   Assert.AreEqual(2, Integer(Length(mActions)));
   Assert.AreEqual('Sichtbarkeit von FB auf protected anheben', mActions[0].Title);
-  Assert.AreEqual(0, Integer(Length(TRaiseVisibility.Actions(Source, mTree, TTextPosition.Create(17, 6), '',
+  Assert.AreEqual(0, Integer(Length(TRaiseVisibility.Actions(cSource, mTree, TTextPosition.Create(17, 6), '',
     True))), 'published');
   mActions := nil;
 end;
@@ -299,12 +299,12 @@ procedure TRaiseVisibilityTests.NoActionsOutsideClass;
 var
   mTree: TSyntaxTree;
 begin
-  mTree := TSyntaxTreeCache.Parse(Source);
+  mTree := TSyntaxTreeCache.Parse(cSource);
   FTree := mTree;
-  Assert.AreEqual(0, Integer(Length(TRaiseVisibility.Actions(Source, mTree, TTextPosition.Create(0, 2), '', True))));
-  Assert.AreEqual(0, Integer(Length(TRaiseVisibility.Actions(Source, mTree, TTextPosition.Create(28, 2), '',
+  Assert.AreEqual(0, Integer(Length(TRaiseVisibility.Actions(cSource, mTree, TTextPosition.Create(0, 2), '', True))));
+  Assert.AreEqual(0, Integer(Length(TRaiseVisibility.Actions(cSource, mTree, TTextPosition.Create(28, 2), '',
     True))), 'Rumpf');
-  Assert.AreEqual(0, Integer(Length(TRaiseVisibility.Actions(Source, mTree, TTextPosition.Create(5, 6), 'FNone',
+  Assert.AreEqual(0, Integer(Length(TRaiseVisibility.Actions(cSource, mTree, TTextPosition.Create(5, 6), 'FNone',
     True))), 'unbekannter Name');
 end;
 

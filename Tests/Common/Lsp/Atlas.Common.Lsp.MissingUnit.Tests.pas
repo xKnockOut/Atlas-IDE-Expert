@@ -52,26 +52,26 @@ var
 
 procedure AddFile(const AFileName: string);
 var
-  Folder: string;
-  Items: TArray<string>;
+  mFolder: string;
+  mItems: TArray<string>;
 begin
-  Folder := Copy(AFileName, 1, LastDelimiter('\', AFileName) - 1);
-  if not Files.TryGetValue(LowerCase(Folder), Items) then
+  mFolder := Copy(AFileName, 1, LastDelimiter('\', AFileName) - 1);
+  if not Files.TryGetValue(LowerCase(mFolder), mItems) then
   begin
-    Items := nil;
+    mItems := nil;
   end;
-  Files.AddOrSetValue(LowerCase(Folder), Items + [AFileName]);
+  Files.AddOrSetValue(LowerCase(mFolder), mItems + [AFileName]);
 end;
 
 procedure AddFolder(const AParent, AChild: string);
 var
-  Items: TArray<string>;
+  mItems: TArray<string>;
 begin
-  if not Folders.TryGetValue(LowerCase(AParent), Items) then
+  if not Folders.TryGetValue(LowerCase(AParent), mItems) then
   begin
-    Items := nil;
+    mItems := nil;
   end;
-  Folders.AddOrSetValue(LowerCase(AParent), Items + [AParent + '\' + AChild]);
+  Folders.AddOrSetValue(LowerCase(AParent), mItems + [AParent + '\' + AChild]);
 end;
 
 function BaseSetup: TMissingUnitSetup;
@@ -100,14 +100,14 @@ end;
 
 function Resolver(const ASetup: TMissingUnitSetup): TMissingUnitResolve;
 var
-  Prepared: TMissingUnitSetup;
+  mPrepared: TMissingUnitSetup;
 begin
-  Prepared := ASetup;
+  mPrepared := ASetup;
   Result :=
     function(const AUnitName: string; out AResolved: TMissingUnitSetup): Boolean
     begin
       Inc(Resolved);
-      AResolved := Prepared;
+      AResolved := mPrepared;
       Result := True;
     end;
 end;
@@ -126,34 +126,34 @@ end;
 /// <summary>Titel und Argumente je Aktion: „Titel => Befehl [a|b|c]“; gibt die Aktionen frei.</summary>
 function Describe(const AActions: TArray<TJSONObject>): TArray<string>;
 var
-  Action: TJSONObject;
-  Command: TJSONObject;
-  Values: TJSONArray;
-  Text: string;
-  Index: Integer;
+  mAction: TJSONObject;
+  mCommand: TJSONObject;
+  mValues: TJSONArray;
+  mText: string;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Action in AActions do
+  for mAction in AActions do
     try
-      Command := Action.GetValue('command') as TJSONObject;
-      Values := Command.GetValue('arguments') as TJSONArray;
-      Text := '';
-      for Index := 0 to Values.Count - 1 do
+      mCommand := mAction.GetValue('command') as TJSONObject;
+      mValues := mCommand.GetValue('arguments') as TJSONArray;
+      mText := '';
+      for mIndex := 0 to mValues.Count - 1 do
       begin
-        if Index > 0 then
+        if mIndex > 0 then
         begin
-          Text := Text + '|';
+          mText := mText + '|';
         end;
-        Text := Text + Values.Items[Index].Value;
+        mText := mText + mValues.Items[mIndex].Value;
       end;
-      if Action.GetValue('isPreferred') <> nil then
+      if mAction.GetValue('isPreferred') <> nil then
       begin
-        Text := Text + ' *';
+        mText := mText + ' *';
       end;
-      Result := Result + [Action.GetValue<string>('title', '') + ' => ' + Command.GetValue<string>('command', '') +
-        ' [' + Text + ']'];
+      Result := Result + [mAction.GetValue<string>('title', '') + ' => ' + mCommand.GetValue<string>('command', '') +
+        ' [' + mText + ']'];
     finally
-      Action.Free;
+      mAction.Free;
     end;
 end;
 
@@ -176,79 +176,79 @@ end;
 
 procedure TLspMissingUnitTests.OffersSubfolderRelative;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := Describe(TLspMissingUnit.Actions(True, 3, 3, [Msg(3, 'F2613', 'Unit ''Werkzeug'' not found.')],
+  mLines := Describe(TLspMissingUnit.Actions(True, 3, 3, [Msg(3, 'F2613', 'Unit ''Werkzeug'' not found.')],
     Resolver(BaseSetup)));
-  Assert.AreEqual(3, Integer(Length(Lines)), string.Join(sLineBreak, Lines));
+  Assert.AreEqual(3, Integer(Length(mLines)), string.Join(sLineBreak, mLines));
   Assert.AreEqual('Ordner Source\Common in den Suchpfad von Release aufnehmen => atlas.addSearchPath ' +
-    '[C:\Projekt\Kasse.dproj|Source\Common|Release *]', Lines[0]);
+    '[C:\Projekt\Kasse.dproj|Source\Common|Release *]', mLines[0]);
   Assert.AreEqual('Ordner Source\Common in den Suchpfad aller Konfigurationen aufnehmen => atlas.addSearchPath ' +
-    '[C:\Projekt\Kasse.dproj|Source\Common|]', Lines[1]);
+    '[C:\Projekt\Kasse.dproj|Source\Common|]', mLines[1]);
   Assert.AreEqual('Werkzeug.pas ins Projekt aufnehmen => atlas.addUnitToProject ' +
-    '[C:\Projekt\Kasse.dproj|C:\Projekt\Source\Common\Werkzeug.pas]', Lines[2]);
+    '[C:\Projekt\Kasse.dproj|C:\Projekt\Source\Common\Werkzeug.pas]', mLines[2]);
 end;
 
 procedure TLspMissingUnitTests.OffersSearchPathOfOtherConfiguration;
 var
-  Setup: TMissingUnitSetup;
-  Target: TMissingUnitTarget;
-  Lines: TArray<string>;
+  mSetup: TMissingUnitSetup;
+  mTarget: TMissingUnitTarget;
+  mLines: TArray<string>;
 begin
   AddFile('C:\Gemeinsam\Debug\Protokoll.dcu');
-  Setup := BaseSetup;
-  Target.Config := 'Debug';
-  Target.Platform := 'Win64';
-  Target.SearchPaths := ['C:\Gemeinsam\Debug'];
-  Setup.Targets := [Target];
-  Lines := Describe(TLspMissingUnit.Actions(True, 0, 10, [Msg(3, 'F1026',
-    'File not found: ''Protokoll.dcu''')], Resolver(Setup)));
-  Assert.AreEqual(2, Integer(Length(Lines)), string.Join(sLineBreak, Lines));
+  mSetup := BaseSetup;
+  mTarget.Config := 'Debug';
+  mTarget.Platform := 'Win64';
+  mTarget.SearchPaths := ['C:\Gemeinsam\Debug'];
+  mSetup.Targets := [mTarget];
+  mLines := Describe(TLspMissingUnit.Actions(True, 0, 10, [Msg(3, 'F1026',
+    'File not found: ''Protokoll.dcu''')], Resolver(mSetup)));
+  Assert.AreEqual(2, Integer(Length(mLines)), string.Join(sLineBreak, mLines));
   Assert.AreEqual('Ordner ..\Gemeinsam\Debug in den Suchpfad von Release aufnehmen (steht in Debug, Win64) => ' +
-    'atlas.addSearchPath [C:\Projekt\Kasse.dproj|..\Gemeinsam\Debug|Release *]', Lines[0]);
+    'atlas.addSearchPath [C:\Projekt\Kasse.dproj|..\Gemeinsam\Debug|Release *]', mLines[0]);
 end;
 
 procedure TLspMissingUnitTests.OtherPlatformOnlyGivesHint;
 var
-  Setup: TMissingUnitSetup;
-  Lines: TArray<string>;
+  mSetup: TMissingUnitSetup;
+  mLines: TArray<string>;
 begin
   AddFile('C:\Delphi\lib\win32\release\Winapi.Windows.dcu');
   AddFile('C:\Delphi\lib\win64\release\Winapi.Windows.dcu');
-  Setup := BaseSetup;
-  Setup.Project.Platform := 'Linux64';
-  Setup.Platforms := ['Win32', 'Win64', 'Linux64'];
-  Setup.LibraryPaths :=
+  mSetup := BaseSetup;
+  mSetup.Project.Platform := 'Linux64';
+  mSetup.Platforms := ['Win32', 'Win64', 'Linux64'];
+  mSetup.LibraryPaths :=
     function(APlatform: string): TArray<string>
     begin
       Result := ['C:\Delphi\lib\' + LowerCase(APlatform) + '\release'];
     end;
-  Lines := Describe(TLspMissingUnit.Actions(True, 3, 3, [Msg(3, 'F2613', 'Unit ''Winapi.Windows'' not found.')],
-    Resolver(Setup)));
-  Assert.AreEqual(1, Integer(Length(Lines)), string.Join(sLineBreak, Lines));
+  mLines := Describe(TLspMissingUnit.Actions(True, 3, 3, [Msg(3, 'F2613', 'Unit ''Winapi.Windows'' not found.')],
+    Resolver(mSetup)));
+  Assert.AreEqual(1, Integer(Length(mLines)), string.Join(sLineBreak, mLines));
   Assert.AreEqual('Winapi.Windows gibt es für Linux64 nicht (nur Win32, Win64) => atlas.showInfo ' +
-    '[Winapi.Windows gibt es für Linux64 nicht (nur Win32, Win64)]', Lines[0]);
+    '[Winapi.Windows gibt es für Linux64 nicht (nur Win32, Win64)]', mLines[0]);
 end;
 
 procedure TLspMissingUnitTests.NothingFoundListsPlaces;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := Describe(TLspMissingUnit.Actions(True, 3, 3, [Msg(3, 'F2613', 'Unit ''Fehlt'' not found.')],
+  mLines := Describe(TLspMissingUnit.Actions(True, 3, 3, [Msg(3, 'F2613', 'Unit ''Fehlt'' not found.')],
     Resolver(BaseSetup)));
-  Assert.AreEqual(1, Integer(Length(Lines)));
+  Assert.AreEqual(1, Integer(Length(mLines)));
   Assert.AreEqual('Fehlt nicht gefunden: durchsuchte Orte anzeigen => atlas.showInfo ' +
-    '[Fehlt nicht gefunden. Durchsucht: Projektordner C:\Projekt und Unterordner]', Lines[0]);
+    '[Fehlt nicht gefunden. Durchsucht: Projektordner C:\Projekt und Unterordner]', mLines[0]);
 end;
 
 procedure TLspMissingUnitTests.OnlyOnSelectedLinesAndOncePerUnit;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := Describe(TLspMissingUnit.Actions(True, 3, 3, [Msg(3, 'F2613', 'Unit ''Werkzeug'' not found.'),
+  mLines := Describe(TLspMissingUnit.Actions(True, 3, 3, [Msg(3, 'F2613', 'Unit ''Werkzeug'' not found.'),
     Msg(3, 'F1026', 'File not found: ''Werkzeug.dcu'''), Msg(5, 'F2613', 'Unit ''Anderes'' not found.'),
     Msg(3, 'E2003', 'Undeclared identifier: ''Foo''')], Resolver(BaseSetup)));
-  Assert.AreEqual(3, Integer(Length(Lines)), string.Join(sLineBreak, Lines));
+  Assert.AreEqual(3, Integer(Length(mLines)), string.Join(sLineBreak, mLines));
   Assert.AreEqual(1, Resolved, 'eine Suche je Unit');
 end;
 
@@ -261,12 +261,12 @@ end;
 
 procedure TLspMissingUnitTests.DcuIsNotAddedToProject;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
   AddFile('C:\Projekt\Source\Common\Fertig.dcu');
-  Lines := Describe(TLspMissingUnit.Actions(True, 3, 3, [Msg(3, 'F2613', 'Unit ''Fertig'' not found.')],
+  mLines := Describe(TLspMissingUnit.Actions(True, 3, 3, [Msg(3, 'F2613', 'Unit ''Fertig'' not found.')],
     Resolver(BaseSetup)));
-  Assert.AreEqual(2, Integer(Length(Lines)), 'nur die Suchpfade, eine .dcu kommt nicht ins Projekt');
+  Assert.AreEqual(2, Integer(Length(mLines)), 'nur die Suchpfade, eine .dcu kommt nicht ins Projekt');
 end;
 
 initialization

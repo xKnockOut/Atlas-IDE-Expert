@@ -42,21 +42,21 @@ uses
 
 function Join(const ALines: array of string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(ALines) do
+  for mIndex := 0 to High(ALines) do
   begin
-    Result := Result + ALines[Index] + #10;
+    Result := Result + ALines[mIndex] + #10;
   end;
 end;
 
 /// <summary>Herkunft aus AOwners ("Name=0,Ort=1"); fehlende Namen sind Other, "?" ist Unknown.</summary>
 function Lookup(const AOwners: string): TWithOwnerLookup;
 var
-  Owners: string;
+  mOwners: string;
 begin
-  Owners := ',' + AOwners + ',';
+  mOwners := ',' + AOwners + ',';
   Result :=
     function(AWith, AIdentifier: TSyntaxNode; out AElement: Integer): TWithOwner
     var
@@ -65,12 +65,12 @@ begin
     begin
       AElement := -1;
       Result := TWithOwner.Other;
-      At := Pos(',' + LowerCase(AIdentifier.Name) + '=', LowerCase(Owners));
+      At := Pos(',' + LowerCase(AIdentifier.Name) + '=', LowerCase(mOwners));
       if At = 0 then
       begin
         Exit;
       end;
-      Value := Copy(Owners, At + Length(AIdentifier.Name) + 2, MaxInt);
+      Value := Copy(mOwners, At + Length(AIdentifier.Name) + 2, MaxInt);
       Value := Copy(Value, 1, Pos(',', Value) - 1);
       if Value = '?' then
       begin
@@ -83,57 +83,57 @@ end;
 
 function Probe(const AName: string; AReference: Boolean): TTypeProbe;
 var
-  Name: string;
-  Reference: Boolean;
+  mName: string;
+  mReference: Boolean;
 begin
-  Name := AName;
-  Reference := AReference;
+  mName := AName;
+  mReference := AReference;
   Result :=
     function(const AText: string; const ANamePos: TTextPosition): TProbedType
     begin
       Result := Default(TProbedType);
-      Result.Name := Name;
-      Result.IsReference := Reference;
-      Result.IsValue := not Reference;
+      Result.Name := mName;
+      Result.IsReference := mReference;
+      Result.IsValue := not mReference;
     end;
 end;
 
 /// <summary>Ergebnis von „with auflösen“ am "|" in AMarked; '-' ohne Angebot.</summary>
 function Resolve(const AMarked, AOwners: string; const AOptions: TExtractOptions): string;
 var
-  Text: string;
-  Line, Character, Index: Integer;
-  Tree: TSyntaxTree;
-  WithNode: TSyntaxNode;
-  Resolved: TWithResolved;
+  mText: string;
+  mLine, mCharacter, mIndex: Integer;
+  mTree: TSyntaxTree;
+  mWithNode: TSyntaxNode;
+  mResolved: TWithResolved;
 begin
-  Line := 0;
-  Character := 0;
-  for Index := 1 to Pos('|', AMarked) - 1 do
+  mLine := 0;
+  mCharacter := 0;
+  for mIndex := 1 to Pos('|', AMarked) - 1 do
   begin
-    if AMarked[Index] = #10 then
+    if AMarked[mIndex] = #10 then
     begin
-      Inc(Line);
-      Character := 0;
+      Inc(mLine);
+      mCharacter := 0;
     end
     else
     begin
-      Inc(Character);
+      Inc(mCharacter);
     end;
   end;
-  Text := StringReplace(AMarked, '|', '', []);
-  Tree := TPascalParser.Parse(Text);
+  mText := StringReplace(AMarked, '|', '', []);
+  mTree := TPascalParser.Parse(mText);
   try
-    WithNode := TWithResolution.WithAt(Tree, TTextPosition.Create(Line, Character));
-    if (WithNode = nil) or not TWithResolution.Resolve(Text, Tree, WithNode, Lookup(AOwners), AOptions,
-      Resolved) then
+    mWithNode := TWithResolution.WithAt(mTree, TTextPosition.Create(mLine, mCharacter));
+    if (mWithNode = nil) or not TWithResolution.Resolve(mText, mTree, mWithNode, Lookup(AOwners), AOptions,
+      mResolved) then
     begin
       Exit('-');
     end;
-    Assert.AreEqual('with auflösen', Resolved.Action.Title);
-    Result := TChangeSignature.ApplyEdits(Text, Resolved.Action.Edits);
+    Assert.AreEqual('with auflösen', mResolved.Action.Title);
+    Result := TChangeSignature.ApplyEdits(mText, mResolved.Action.Edits);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -212,10 +212,10 @@ end;
 
 procedure TWithResolutionTests.ComplexClassExpressionGoesIntoVariable;
 var
-  Options: TExtractOptions;
+  mOptions: TExtractOptions;
 begin
-  Options := Plain;
-  Options.Probe := Probe('TKunde', True);
+  mOptions := Plain;
+  mOptions.Probe := Probe('TKunde', True);
   Assert.AreEqual(Join([
     'procedure Zeige;',
     'begin',
@@ -226,16 +226,16 @@ begin
     'begin',
     '  |with HoleKunde(1) do',
     '    Name := ''x'';',
-    'end;']), 'Name=0', Options));
+    'end;']), 'Name=0', mOptions));
 end;
 
 procedure TWithResolutionTests.ComplexExpressionWithVarSection;
 var
-  Options: TExtractOptions;
+  mOptions: TExtractOptions;
 begin
-  Options := Plain;
-  Options.InlineVar := False;
-  Options.Probe := Probe('TKunde', True);
+  mOptions := Plain;
+  mOptions.InlineVar := False;
+  mOptions.Probe := Probe('TKunde', True);
   Assert.AreEqual(Join([
     'procedure Zeige;',
     'var',
@@ -248,21 +248,21 @@ begin
     'begin',
     '  |with HoleKunde(1) do',
     '    Name := ''x'';',
-    'end;']), 'Name=0', Options));
+    'end;']), 'Name=0', mOptions));
 end;
 
 procedure TWithResolutionTests.RejectsComplexRecordExpression;
 var
-  Options: TExtractOptions;
+  mOptions: TExtractOptions;
 begin
-  Options := Plain;
-  Options.Probe := Probe('TPunkt', False);
+  mOptions := Plain;
+  mOptions.Probe := Probe('TPunkt', False);
   Assert.AreEqual('-', Resolve(Join([
     'procedure Zeige;',
     'begin',
     '  |with HolePunkt(1) do',
     '    X := 2;',
-    'end;']), 'X=0', Options));
+    'end;']), 'X=0', mOptions));
 end;
 
 initialization

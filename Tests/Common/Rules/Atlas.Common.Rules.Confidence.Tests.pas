@@ -55,11 +55,23 @@ type
     FSeverity: TRuleSeverity;
     FId: string;
   public
-    constructor Create(AConfidence: TRuleConfidence; ASeverity: TRuleSeverity = TRuleSeverity.Error;
-      const AId: string = 'fixed');
+    constructor Create(AConfidence: TRuleConfidence); overload;
+    constructor Create(AConfidence: TRuleConfidence; ASeverity: TRuleSeverity); overload;
+    constructor Create(AConfidence: TRuleConfidence; ASeverity: TRuleSeverity;
+      const AId: string); overload;
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
+
+constructor TFixedRule.Create(AConfidence: TRuleConfidence);
+begin
+  Create(AConfidence, TRuleSeverity.Error, 'fixed');
+end;
+
+constructor TFixedRule.Create(AConfidence: TRuleConfidence; ASeverity: TRuleSeverity);
+begin
+  Create(AConfidence, ASeverity, 'fixed');
+end;
 
 constructor TFixedRule.Create(AConfidence: TRuleConfidence; ASeverity: TRuleSeverity; const AId: string);
 begin
@@ -80,46 +92,46 @@ begin
 end;
 
 const
-  Source = 'unit U; interface implementation end.';
+  cSource = 'unit U; interface implementation end.';
 
 { TRuleConfidenceTests }
 
 procedure TRuleConfidenceTests.HighConfidenceKeepsError;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TFixedRule.Create(TRuleConfidence.High), Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(TFixedRule.Create(TRuleConfidence.High), cSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
 end;
 
 procedure TRuleConfidenceTests.MediumConfidenceCapsErrorToWarning;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TFixedRule.Create(TRuleConfidence.Medium), Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  mFindings := TRuleAssert.Findings(TFixedRule.Create(TRuleConfidence.Medium), cSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
 end;
 
 procedure TRuleConfidenceTests.LowConfidenceHiddenByDefault;
 begin
-  TRuleAssert.Silent(TFixedRule.Create(TRuleConfidence.Low), Source);
+  TRuleAssert.Silent(TFixedRule.Create(TRuleConfidence.Low), cSource);
 end;
 
 procedure TRuleConfidenceTests.LowConfidenceShownAsHintWhenThresholdLow;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TFixedRule.Create(TRuleConfidence.Low), Source, '{ "minConfidence": "low" }');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  mFindings := TRuleAssert.Findings(TFixedRule.Create(TRuleConfidence.Low), cSource, '{ "minConfidence": "low" }');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
 end;
 
 procedure TRuleConfidenceTests.HighThresholdHidesMedium;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFixedRule.Create(TRuleConfidence.Medium), Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFixedRule.Create(TRuleConfidence.Medium), cSource,
     '{ "minConfidence": "high" }'))));
 end;
 
@@ -134,15 +146,15 @@ end;
 procedure TRuleConfidenceTests.ExperimentalRuleNeedsExplicitConfiguration;
 begin
   // magic-number ist laut Katalog nur im Profil strict aktiv ("profiles": ["strict"]).
-  TRuleAssert.Silent(TFixedRule.Create(TRuleConfidence.High, TRuleSeverity.Warning, 'magic-number'), Source);
+  TRuleAssert.Silent(TFixedRule.Create(TRuleConfidence.High, TRuleSeverity.Warning, 'magic-number'), cSource);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(
-    TFixedRule.Create(TRuleConfidence.High, TRuleSeverity.Warning, 'magic-number'), Source,
+    TFixedRule.Create(TRuleConfidence.High, TRuleSeverity.Warning, 'magic-number'), cSource,
     '{ "rules": { "magic-number": "off" } }'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(
-    TFixedRule.Create(TRuleConfidence.High, TRuleSeverity.Warning, 'magic-number'), Source,
+    TFixedRule.Create(TRuleConfidence.High, TRuleSeverity.Warning, 'magic-number'), cSource,
     '{ "rules": { "magic-number": "warning" } }'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(
-    TFixedRule.Create(TRuleConfidence.High, TRuleSeverity.Warning, 'magic-number'), Source,
+    TFixedRule.Create(TRuleConfidence.High, TRuleSeverity.Warning, 'magic-number'), cSource,
     '{ "profile": "strict" }'))));
 end;
 
@@ -157,35 +169,35 @@ end;
 
 procedure TRuleConfidenceTests.UserSeverityErrorStillCappedByConfidence;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Der Deckel gilt auch, wenn der Benutzer "error" einstellt.
-  Findings := TRuleAssert.Findings(TFixedRule.Create(TRuleConfidence.Medium, TRuleSeverity.Hint), Source,
+  mFindings := TRuleAssert.Findings(TFixedRule.Create(TRuleConfidence.Medium, TRuleSeverity.Hint), cSource,
     '{ "rules": { "fixed": "error" } }');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Findings := TRuleAssert.Findings(TFixedRule.Create(TRuleConfidence.Low, TRuleSeverity.Hint), Source,
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  mFindings := TRuleAssert.Findings(TFixedRule.Create(TRuleConfidence.Low, TRuleSeverity.Hint), cSource,
     '{ "minConfidence": "low", "rules": { "fixed": { "severity": "error" } } }');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
 end;
 
 procedure TRuleConfidenceTests.ParsesMinConfidence;
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(TServerSettings.Default.MinConfidence));
   Assert.AreEqual(Ord(TRuleConfidence.Low),
-    Ord(TConfigurationParser.Parse('{ "minConfidence": "low" }', Issues).MinConfidence));
-  Assert.AreEqual(0, Integer(Length(Issues)));
+    Ord(TConfigurationParser.Parse('{ "minConfidence": "low" }', mIssues).MinConfidence));
+  Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
 procedure TRuleConfidenceTests.RejectsUnknownMinConfidence;
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  TConfigurationParser.Parse('{ "minConfidence": "sicher" }', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{ "minConfidence": "sicher" }', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
 
 initialization

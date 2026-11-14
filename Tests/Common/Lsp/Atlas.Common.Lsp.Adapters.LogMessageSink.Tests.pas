@@ -31,28 +31,28 @@ uses
 
 procedure TLspLogMessageSinkTests.SendsWindowLogMessage;
 var
-  Output: TBytesStream;
-  Sink: ILogSink;
-  Messages: TObjectList<TJSONObject>;
+  mOutput: TBytesStream;
+  mSink: ILogSink;
+  mMessages: TObjectList<TJSONObject>;
 begin
-  Output := TBytesStream.Create;
+  mOutput := TBytesStream.Create;
   try
-    Sink := TLspLogMessageSink.Create(TJsonRpcStreamTransport.Create(nil, Output, False));
-    Sink.Write(TLogEntry.Create(Now, TLogLevel.Warning, 'Achtung'));
-    Sink := nil;
+    mSink := TLspLogMessageSink.Create(TJsonRpcStreamTransport.Create(nil, mOutput, False));
+    mSink.Write(TLogEntry.Create(Now, TLogLevel.Warning, 'Achtung'));
+    mSink := nil;
 
-    Messages := TJsonRpcTestSupport.ReadMessages(Output);
+    mMessages := TJsonRpcTestSupport.ReadMessages(mOutput);
     try
-      Assert.AreEqual<NativeInt>(1, Messages.Count);
-      Assert.AreEqual('window/logMessage', Messages[0].GetValue<string>('method'));
-      Assert.IsNull(Messages[0].GetValue('id'));
-      Assert.AreEqual(2, Messages[0].GetValue<Integer>('params.type'));
-      Assert.AreEqual('Achtung', Messages[0].GetValue<string>('params.message'));
+      Assert.AreEqual<NativeInt>(1, mMessages.Count);
+      Assert.AreEqual('window/logMessage', mMessages[0].GetValue<string>('method'));
+      Assert.IsNull(mMessages[0].GetValue('id'));
+      Assert.AreEqual(2, mMessages[0].GetValue<Integer>('params.type'));
+      Assert.AreEqual('Achtung', mMessages[0].GetValue<string>('params.message'));
     finally
-      Messages.Free;
+      mMessages.Free;
     end;
   finally
-    Output.Free;
+    mOutput.Free;
   end;
 end;
 

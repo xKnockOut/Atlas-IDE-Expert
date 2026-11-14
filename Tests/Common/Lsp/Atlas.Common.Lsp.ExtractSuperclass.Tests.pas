@@ -54,15 +54,15 @@ uses
   Atlas.Common.Lsp.ExtractSuperclass;
 
 const
-  BasisFile = 'C:\P\Basis.pas';
-  AusgabeFile = 'C:\P\Ausgabe.pas';
-  NewFile = 'C:\P\ExportBase.pas';
-  ProgramFile = 'C:\P\Projekt.dpr';
-  ProjectFile = 'C:\P\Projekt.dproj';
+  cBasisFile = 'C:\P\Basis.pas';
+  cAusgabeFile = 'C:\P\Ausgabe.pas';
+  cNewFile = 'C:\P\ExportBase.pas';
+  cProgramFile = 'C:\P\Projekt.dpr';
+  cProjectFile = 'C:\P\Projekt.dproj';
 
-  UnitBasis =
+  cUnitBasis =
     'unit Basis;'#10'interface'#10'type'#10'  TItems = class'#10'  end;'#10'implementation'#10'end.'#10;
-  UnitAusgabe =
+  cUnitAusgabe =
     'unit Ausgabe;'#10 +                                      // 0
     'interface'#10 +                                          // 1
     'uses'#10 +                                               // 2
@@ -83,31 +83,31 @@ const
     'end;'#10 +
     #10 +
     'end.'#10;
-  TextProgram =
+  cTextProgram =
     'program Projekt;'#10'uses'#10'  Basis in ''Basis.pas'','#10'  Ausgabe in ''Ausgabe.pas'';'#10'begin'#10 +
     'end.'#10;
-  TextProject =
+  cTextProject =
     '<Project>'#10'  <ItemGroup>'#10'    <DelphiCompile Include="Projekt.dpr"/>'#10 +
     '    <DCCReference Include="Basis.pas"/>'#10'    <DCCReference Include="Ausgabe.pas"/>'#10 +
     '  </ItemGroup>'#10'</Project>'#10;
 
 function TextOf(const AFileName: string): string;
 begin
-  if SameText(AFileName, BasisFile) then
+  if SameText(AFileName, cBasisFile) then
   begin
-    Result := UnitBasis;
+    Result := cUnitBasis;
   end
-  else if SameText(AFileName, AusgabeFile) then
+  else if SameText(AFileName, cAusgabeFile) then
   begin
-    Result := UnitAusgabe;
+    Result := cUnitAusgabe;
   end
-  else if SameText(AFileName, ProgramFile) then
+  else if SameText(AFileName, cProgramFile) then
   begin
-    Result := TextProgram;
+    Result := cTextProgram;
   end
-  else if SameText(AFileName, ProjectFile) then
+  else if SameText(AFileName, cProjectFile) then
   begin
-    Result := TextProject;
+    Result := cTextProject;
   end
   else
   begin
@@ -126,9 +126,9 @@ begin
   Result := Default(TExtractSuperclassContext);
   Result.Index := AIndex;
   Result.HasProject := True;
-  Result.Project.FileName := ProjectFile;
-  Result.Project.MainSource := ProgramFile;
-  Result.Project.Units := [ProjectUnit('Basis', BasisFile), ProjectUnit('Ausgabe', AusgabeFile)];
+  Result.Project.FileName := cProjectFile;
+  Result.Project.MainSource := cProgramFile;
+  Result.Project.Units := [ProjectUnit('Basis', cBasisFile), ProjectUnit('Ausgabe', cAusgabeFile)];
   Result.ReadText :=
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -148,50 +148,50 @@ end;
 
 function Request(const AName, AUnit: string; const AMembers: array of Integer): TJSONObject;
 var
-  Members: TJSONArray;
-  Id: Integer;
+  mMembers: TJSONArray;
+  mId: Integer;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('name', AName);
   Result.AddPair('unit', AUnit);
-  Members := TJSONArray.Create;
-  for Id in AMembers do
+  mMembers := TJSONArray.Create;
+  for mId in AMembers do
   begin
-    Members.AddElement(TJSONNumber.Create(Id));
+    mMembers.AddElement(TJSONNumber.Create(mId));
   end;
-  Result.AddPair('members', Members);
+  Result.AddPair('members', mMembers);
   Result.AddPair('abstract', TJSONArray.Create);
 end;
 
 /// <summary>Text von AFileName nach dem WorkspaceEdit in AAnswer; neue Dateien aus ihrem Inhalt.</summary>
 function After(AAnswer: TJSONObject; const AFileName: string): string;
 var
-  Item, Edit: TJSONValue;
-  Document, Range: TJSONObject;
-  Edits: TArray<TTextEdit>;
-  Uri: string;
+  mItem, mEdit: TJSONValue;
+  mDocument, mRange: TJSONObject;
+  mEdits: TArray<TTextEdit>;
+  mUri: string;
 begin
   Result := TextOf(AFileName);
-  for Item in (AAnswer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray do
+  for mItem in (AAnswer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray do
   begin
-    Document := TJSONObject(Item);
-    if Document.GetValue('textDocument') = nil then
+    mDocument := TJSONObject(mItem);
+    if mDocument.GetValue('textDocument') = nil then
     begin
       Continue;
     end;
-    Uri := (Document.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
-    if not SameText(TDocumentUris.ToPath(Uri), AFileName) then
+    mUri := (mDocument.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
+    if not SameText(TDocumentUris.ToPath(mUri), AFileName) then
     begin
       Continue;
     end;
-    Edits := nil;
-    for Edit in Document.GetValue('edits') as TJSONArray do
+    mEdits := nil;
+    for mEdit in mDocument.GetValue('edits') as TJSONArray do
     begin
-      Range := TJSONObject(Edit).GetValue('range') as TJSONObject;
-      Edits := Edits + [TTextEdit.Create(TTextRange.Create(TLspPositions.ReadPosition(Range.GetValue('start')),
-        TLspPositions.ReadPosition(Range.GetValue('end'))), TJSONObject(Edit).GetValue('newText').Value)];
+      mRange := TJSONObject(mEdit).GetValue('range') as TJSONObject;
+      mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(TLspPositions.ReadPosition(mRange.GetValue('start')),
+        TLspPositions.ReadPosition(mRange.GetValue('end'))), TJSONObject(mEdit).GetValue('newText').Value)];
     end;
-    Result := TTextChanges.Apply(Result, Edits);
+    Result := TTextChanges.Apply(Result, mEdits);
   end;
 end;
 
@@ -206,17 +206,17 @@ end;
 function Run(const AIndex: ISymbolIndex; const AText: string; ARequest: TJSONObject;
   const AContext: TExtractSuperclassContext): TJSONObject;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
 begin
-  Tree := TPascalParser.Parse(AText);
-  Resolver := TNameResolver.Create(AIndex, nil);
+  mTree := TPascalParser.Parse(AText);
+  mResolver := TNameResolver.Create(AIndex, nil);
   try
-    Result := TLspExtractSuperclass.Execute(Tree, AusgabeFile, AText, TTextPosition.Create(5, 2), ARequest,
-      WithResolver(AContext, Resolver));
+    Result := TLspExtractSuperclass.Execute(mTree, cAusgabeFile, AText, TTextPosition.Create(5, 2), ARequest,
+      WithResolver(AContext, mResolver));
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
     ARequest.Free;
   end;
 end;
@@ -224,8 +224,8 @@ end;
 procedure TLspExtractSuperclassTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, BasisFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitAusgabe, AusgabeFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAusgabe, cAusgabeFile, nil));
 end;
 
 procedure TLspExtractSuperclassTests.TearDown;
@@ -235,137 +235,137 @@ end;
 
 procedure FreeAll(const AItems: TArray<TJSONObject>);
 var
-  Item: TJSONObject;
+  mItem: TJSONObject;
 begin
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    Item.Free;
+    mItem.Free;
   end;
 end;
 
 procedure TLspExtractSuperclassTests.OffersOnClassHeader;
 var
-  Tree: TSyntaxTree;
-  Actions: TArray<TJSONObject>;
+  mTree: TSyntaxTree;
+  mActions: TArray<TJSONObject>;
 begin
-  Tree := TPascalParser.Parse(UnitAusgabe);
+  mTree := TPascalParser.Parse(cUnitAusgabe);
   try
-    Actions := TLspExtractSuperclass.Actions(True, Tree, UnitAusgabe, 'file:///C:/P/Ausgabe.pas',
+    mActions := TLspExtractSuperclass.Actions(True, mTree, cUnitAusgabe, 'file:///C:/P/Ausgabe.pas',
       TTextPosition.Create(5, 4));
     try
-      Assert.AreEqual(1, Integer(Length(Actions)));
-      Assert.AreEqual('Basisklasse aus TPdfExport herauslösen …', Actions[0].GetValue('title').Value);
+      Assert.AreEqual(1, Integer(Length(mActions)));
+      Assert.AreEqual('Basisklasse aus TPdfExport herauslösen …', mActions[0].GetValue('title').Value);
       Assert.AreEqual(TLspExtractSuperclass.cClientCommand,
-        (Actions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
+        (mActions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
     finally
-      FreeAll(Actions);
+      FreeAll(mActions);
     end;
-    Assert.AreEqual(0, Integer(Length(TLspExtractSuperclass.Actions(False, Tree, UnitAusgabe, 'u',
+    Assert.AreEqual(0, Integer(Length(TLspExtractSuperclass.Actions(False, mTree, cUnitAusgabe, 'u',
       TTextPosition.Create(5, 4)))), 'abgeschaltet');
-    Assert.AreEqual(0, Integer(Length(TLspExtractSuperclass.Actions(True, Tree, UnitAusgabe, 'u',
+    Assert.AreEqual(0, Integer(Length(TLspExtractSuperclass.Actions(True, mTree, cUnitAusgabe, 'u',
       TTextPosition.Create(7, 4)))), 'nicht auf einem Mitglied');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspExtractSuperclassTests.PrepareUsesSettings;
 var
-  Tree: TSyntaxTree;
-  Answer: TJSONObject;
-  Candidates: TJSONArray;
-  Settings: TExtractSuperclassContext;
+  mTree: TSyntaxTree;
+  mAnswer: TJSONObject;
+  mCandidates: TJSONArray;
+  mSettings: TExtractSuperclassContext;
 begin
-  Tree := TPascalParser.Parse(UnitAusgabe);
-  Answer := nil;
+  mTree := TPascalParser.Parse(cUnitAusgabe);
+  mAnswer := nil;
   try
-    Answer := TLspExtractSuperclass.Prepare(Tree, UnitAusgabe, TTextPosition.Create(5, 2), Context(FIndex));
-    Assert.AreEqual('TExportBase', Answer.GetValue('name').Value);
-    Assert.AreEqual('Ausgabe', Answer.GetValue('ownUnit').Value);
-    Assert.AreEqual('', Answer.GetValue('unit').Value);
-    Assert.AreEqual('ExportBase', (Answer.GetValue('units') as TJSONArray).Items[0].Value);
-    Candidates := Answer.GetValue('candidates') as TJSONArray;
-    Assert.AreEqual(3, Integer(Candidates.Count));
-    Assert.AreEqual('field', (Candidates.Items[0] as TJSONObject).GetValue('kind').Value);
-    Assert.AreEqual('method', (Candidates.Items[2] as TJSONObject).GetValue('kind').Value);
-    Assert.IsTrue(((Candidates.Items[2] as TJSONObject).GetValue('canAbstract') as TJSONBool).AsBoolean);
-    Assert.IsFalse(((Candidates.Items[2] as TJSONObject).GetValue('abstract') as TJSONBool).AsBoolean);
-    Assert.AreEqual(1, Integer(((Candidates.Items[2] as TJSONObject).GetValue('needs') as TJSONArray).Count));
-    FreeAndNil(Answer);
-    Settings := Context(FIndex);
-    Settings.Target := 'newUnit';
-    Settings.MethodMode := 'abstract';
-    Settings.NameSuffix := 'Custom';
-    Answer := TLspExtractSuperclass.Prepare(Tree, UnitAusgabe, TTextPosition.Create(5, 2), Settings);
-    Assert.AreEqual('TCustomExport', Answer.GetValue('name').Value);
-    Assert.AreEqual('CustomExport', Answer.GetValue('unit').Value);
-    Candidates := Answer.GetValue('candidates') as TJSONArray;
-    Assert.IsTrue(((Candidates.Items[2] as TJSONObject).GetValue('abstract') as TJSONBool).AsBoolean);
+    mAnswer := TLspExtractSuperclass.Prepare(mTree, cUnitAusgabe, TTextPosition.Create(5, 2), Context(FIndex));
+    Assert.AreEqual('TExportBase', mAnswer.GetValue('name').Value);
+    Assert.AreEqual('Ausgabe', mAnswer.GetValue('ownUnit').Value);
+    Assert.AreEqual('', mAnswer.GetValue('unit').Value);
+    Assert.AreEqual('ExportBase', (mAnswer.GetValue('units') as TJSONArray).Items[0].Value);
+    mCandidates := mAnswer.GetValue('candidates') as TJSONArray;
+    Assert.AreEqual(3, Integer(mCandidates.Count));
+    Assert.AreEqual('field', (mCandidates.Items[0] as TJSONObject).GetValue('kind').Value);
+    Assert.AreEqual('method', (mCandidates.Items[2] as TJSONObject).GetValue('kind').Value);
+    Assert.IsTrue(((mCandidates.Items[2] as TJSONObject).GetValue('canAbstract') as TJSONBool).AsBoolean);
+    Assert.IsFalse(((mCandidates.Items[2] as TJSONObject).GetValue('abstract') as TJSONBool).AsBoolean);
+    Assert.AreEqual(1, Integer(((mCandidates.Items[2] as TJSONObject).GetValue('needs') as TJSONArray).Count));
+    FreeAndNil(mAnswer);
+    mSettings := Context(FIndex);
+    mSettings.Target := 'newUnit';
+    mSettings.MethodMode := 'abstract';
+    mSettings.NameSuffix := 'Custom';
+    mAnswer := TLspExtractSuperclass.Prepare(mTree, cUnitAusgabe, TTextPosition.Create(5, 2), mSettings);
+    Assert.AreEqual('TCustomExport', mAnswer.GetValue('name').Value);
+    Assert.AreEqual('CustomExport', mAnswer.GetValue('unit').Value);
+    mCandidates := mAnswer.GetValue('candidates') as TJSONArray;
+    Assert.IsTrue(((mCandidates.Items[2] as TJSONObject).GetValue('abstract') as TJSONBool).AsBoolean);
   finally
-    Answer.Free;
-    Tree.Free;
+    mAnswer.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspExtractSuperclassTests.SameUnit;
 var
-  Answer: TJSONObject;
-  Text: string;
+  mAnswer: TJSONObject;
+  mText: string;
 begin
   // FTitle (1) und Run (2) wandern.
-  Answer := Run(FIndex, UnitAusgabe, Request('TExportBase', '', [1, 2]), Context(FIndex));
+  mAnswer := Run(FIndex, cUnitAusgabe, Request('TExportBase', '', [1, 2]), Context(FIndex));
   try
-    Text := After(Answer, AusgabeFile);
-    Assert.IsTrue(ContainsStr(Text, '  TExportBase = class'#10'  private'#10'    FTitle: string;'#10 +
-      '  public'#10'    procedure Run;'#10'  end;'), Text);
-    Assert.IsTrue(ContainsStr(Text, 'TPdfExport = class(TExportBase)'), Text);
-    Assert.IsTrue(ContainsStr(Text, 'procedure TExportBase.Run;'), Text);
-    Assert.IsTrue(SameText(AusgabeFile, TDocumentUris.ToPath(Answer.GetValue('file').Value)));
-    Assert.AreEqual(2, (Answer.GetValue('moved') as TJSONNumber).AsInt);
-    Assert.IsTrue(ContainsStr(((Answer.GetValue('edit') as TJSONObject).GetValue('changeAnnotations') as
+    mText := After(mAnswer, cAusgabeFile);
+    Assert.IsTrue(ContainsStr(mText, '  TExportBase = class'#10'  private'#10'    FTitle: string;'#10 +
+      '  public'#10'    procedure Run;'#10'  end;'), mText);
+    Assert.IsTrue(ContainsStr(mText, 'TPdfExport = class(TExportBase)'), mText);
+    Assert.IsTrue(ContainsStr(mText, 'procedure TExportBase.Run;'), mText);
+    Assert.IsTrue(SameText(cAusgabeFile, TDocumentUris.ToPath(mAnswer.GetValue('file').Value)));
+    Assert.AreEqual(2, (mAnswer.GetValue('moved') as TJSONNumber).AsInt);
+    Assert.IsTrue(ContainsStr(((mAnswer.GetValue('edit') as TJSONObject).GetValue('changeAnnotations') as
       TJSONObject).ToJSON, 'needsConfirmation'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspExtractSuperclassTests.NewUnitJoinsProject;
 var
-  Answer: TJSONObject;
-  Created, Text: string;
+  mAnswer: TJSONObject;
+  mCreated, mText: string;
 begin
-  Answer := Run(FIndex, UnitAusgabe, Request('TExportBase', 'ExportBase', [0, 1, 2]), Context(FIndex));
+  mAnswer := Run(FIndex, cUnitAusgabe, Request('TExportBase', 'ExportBase', [0, 1, 2]), Context(FIndex));
   try
-    Assert.IsTrue(SameText(NewFile, TDocumentUris.ToPath(Answer.GetValue('file').Value)));
-    Created := After(Answer, NewFile);
-    Assert.IsTrue(ContainsStr(Created, 'unit ExportBase;'), Created);
-    Assert.IsTrue(ContainsStr(Created, 'TExportBase = class'), Created);
-    Assert.IsTrue(ContainsStr(Created, 'Basis'), Created);
-    Assert.IsTrue(ContainsStr(Created, 'procedure TExportBase.Run;'), Created);
-    Text := After(Answer, AusgabeFile);
-    Assert.IsFalse(ContainsStr(Text, 'TExportBase = class'), Text);
-    Assert.IsTrue(ContainsStr(Text, 'ExportBase'), Text);
-    Assert.IsTrue(ContainsStr(Text, 'TPdfExport = class(TExportBase)'), Text);
+    Assert.IsTrue(SameText(cNewFile, TDocumentUris.ToPath(mAnswer.GetValue('file').Value)));
+    mCreated := After(mAnswer, cNewFile);
+    Assert.IsTrue(ContainsStr(mCreated, 'unit ExportBase;'), mCreated);
+    Assert.IsTrue(ContainsStr(mCreated, 'TExportBase = class'), mCreated);
+    Assert.IsTrue(ContainsStr(mCreated, 'Basis'), mCreated);
+    Assert.IsTrue(ContainsStr(mCreated, 'procedure TExportBase.Run;'), mCreated);
+    mText := After(mAnswer, cAusgabeFile);
+    Assert.IsFalse(ContainsStr(mText, 'TExportBase = class'), mText);
+    Assert.IsTrue(ContainsStr(mText, 'ExportBase'), mText);
+    Assert.IsTrue(ContainsStr(mText, 'TPdfExport = class(TExportBase)'), mText);
     // Private Felder, die die Klasse unten weiter braucht, gibt es nicht mehr: nichts gehoben.
-    Assert.IsTrue(ContainsStr(After(Answer, ProgramFile), 'ExportBase in ''ExportBase.pas'''));
-    Assert.IsTrue(ContainsStr(After(Answer, ProjectFile), '<DCCReference Include="ExportBase.pas"/>'));
+    Assert.IsTrue(ContainsStr(After(mAnswer, cProgramFile), 'ExportBase in ''ExportBase.pas'''));
+    Assert.IsTrue(ContainsStr(After(mAnswer, cProjectFile), '<DCCReference Include="ExportBase.pas"/>'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspExtractSuperclassTests.RefusesCircularReference;
 var
-  Text: string;
-  Index: ISymbolIndex;
+  mText: string;
+  mIndex: ISymbolIndex;
 begin
   // Das Feld hat einen Typ aus der Unit der Klasse selbst.
-  Text := StringReplace(UnitAusgabe, 'type'#10, 'type'#10'  TMode = (mA, mB);'#10, []);
-  Text := StringReplace(Text, '    FTitle: string;', '    FTitle: TMode;', []);
-  Text := StringReplace(Text, '  FTitle := ''x'';', '  FTitle := mA;', []);
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(UnitBasis, BasisFile, nil));
-  Index.AddUnit(TIndexExtractor.ExtractText(Text, AusgabeFile, nil));
+  mText := StringReplace(cUnitAusgabe, 'type'#10, 'type'#10'  TMode = (mA, mB);'#10, []);
+  mText := StringReplace(mText, '    FTitle: string;', '    FTitle: TMode;', []);
+  mText := StringReplace(mText, '  FTitle := ''x'';', '  FTitle := mA;', []);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(mText, cAusgabeFile, nil));
   Assert.WillRaise(
     procedure
     var
@@ -373,12 +373,12 @@ begin
       Resolver: TNameResolver;
       Body: TJSONObject;
     begin
-      Tree := TPascalParser.Parse(Text);
-      Resolver := TNameResolver.Create(Index, nil);
+      Tree := TPascalParser.Parse(mText);
+      Resolver := TNameResolver.Create(mIndex, nil);
       Body := Request('TExportBase', 'ExportBase', [1]);
       try
-        TLspExtractSuperclass.Execute(Tree, AusgabeFile, Text, TTextPosition.Create(6, 2), Body,
-          WithResolver(Context(Index), Resolver)).Free;
+        TLspExtractSuperclass.Execute(Tree, cAusgabeFile, mText, TTextPosition.Create(6, 2), Body,
+          WithResolver(Context(mIndex), Resolver)).Free;
       finally
         Body.Free;
         Resolver.Free;

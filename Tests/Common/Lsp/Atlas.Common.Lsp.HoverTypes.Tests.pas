@@ -61,11 +61,11 @@ uses
   Atlas.Common.Lsp.HoverTypes;
 
 const
-  SystemFile = 'C:\P\System.pas';
-  BasisFile = 'C:\P\Basis.pas';
-  HauptFile = 'C:\P\Haupt.pas';
+  cSystemFile = 'C:\P\System.pas';
+  cBasisFile = 'C:\P\Basis.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
 
-  UnitSystem =
+  cUnitSystem =
     'unit System;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -76,7 +76,7 @@ const
     'implementation'#10 +
     'end.';
 
-  UnitBasis =
+  cUnitBasis =
     'unit Basis;'#10 +                         // 0
     'interface'#10 +                           // 1
     'type'#10 +                                // 2
@@ -93,7 +93,7 @@ const
     'implementation'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -112,40 +112,40 @@ const
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
-  Index, Run, Line, LineStart: Integer;
+  mIndex, mRun, mLine, mLineStart: Integer;
 begin
-  Index := Pos(AMarker, AText);
-  if Index = 0 then
+  mIndex := Pos(AMarker, AText);
+  if mIndex = 0 then
   begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
   end;
-  Line := 0;
-  LineStart := 1;
-  for Run := 1 to Index - 1 do
+  mLine := 0;
+  mLineStart := 1;
+  for mRun := 1 to mIndex - 1 do
   begin
-    if AText[Run] = #10 then
+    if AText[mRun] = #10 then
     begin
-      Inc(Line);
-      LineStart := Run + 1;
+      Inc(mLine);
+      mLineStart := mRun + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 function ReadText(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
-  if SameText(AFileName, BasisFile) then
+  if SameText(AFileName, cBasisFile) then
   begin
-    AText := UnitBasis;
+    AText := cUnitBasis;
   end
-  else if SameText(AFileName, SystemFile) then
+  else if SameText(AFileName, cSystemFile) then
   begin
-    AText := UnitSystem;
+    AText := cUnitSystem;
   end
-  else if SameText(AFileName, HauptFile) then
+  else if SameText(AFileName, cHauptFile) then
   begin
-    AText := UnitHaupt;
+    AText := cUnitHaupt;
   end
   else
   begin
@@ -175,8 +175,8 @@ end;
 procedure TLspHoverTypesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitSystem, SystemFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, BasisFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitSystem, cSystemFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -188,89 +188,89 @@ end;
 
 function TLspHoverTypesTests.InfoAt(const AMarker: string): THoverInfo;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TSyntaxTreeCache.Parse(UnitHaupt);
+  mTree := TSyntaxTreeCache.Parse(cUnitHaupt);
   try
-    Result := TLspHover.InfoAt(THoverSource.Create(FResolver, FIndex, ReadText), Tree, UnitHaupt, HauptFile,
-      PositionOf(UnitHaupt, AMarker));
+    Result := TLspHover.InfoAt(THoverSource.Create(FResolver, FIndex, ReadText), mTree, cUnitHaupt, cHauptFile,
+      PositionOf(cUnitHaupt, AMarker));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspHoverTypesTests.ClassShowsKindLocationAndChain;
 var
-  Info: THoverInfo;
+  mInfo: THoverInfo;
 begin
-  Info := InfoAt('TBlatt;');
-  Assert.AreEqual('TBlatt = class(TMitte)', Info.Declaration);
-  Assert.AreEqual('class', Info.Kind);
-  Assert.AreEqual('', Info.Origin, 'eigene Unit');
-  Assert.AreEqual(BasisFile, Info.FileName);
-  Assert.AreEqual(7, Info.Line);
-  Assert.AreEqual(2, Info.Character);
-  Assert.AreEqual('TBlatt', Info.ChainOf);
-  Assert.AreEqual(4, Integer(Length(Info.Ancestors)));
-  Assert.AreEqual('TBlatt', Info.Ancestors[0].Name);
-  Assert.AreEqual('TMitte', Info.Ancestors[1].Name);
-  Assert.AreEqual(5, Info.Ancestors[1].Line);
-  Assert.AreEqual('TBasis', Info.Ancestors[2].Name);
-  Assert.AreEqual('TObject', Info.Ancestors[3].Name);
-  Assert.AreEqual(SystemFile, Info.Ancestors[3].FileName);
+  mInfo := InfoAt('TBlatt;');
+  Assert.AreEqual('TBlatt = class(TMitte)', mInfo.Declaration);
+  Assert.AreEqual('class', mInfo.Kind);
+  Assert.AreEqual('', mInfo.Origin, 'eigene Unit');
+  Assert.AreEqual(cBasisFile, mInfo.FileName);
+  Assert.AreEqual(7, mInfo.Line);
+  Assert.AreEqual(2, mInfo.Character);
+  Assert.AreEqual('TBlatt', mInfo.ChainOf);
+  Assert.AreEqual(4, Integer(Length(mInfo.Ancestors)));
+  Assert.AreEqual('TBlatt', mInfo.Ancestors[0].Name);
+  Assert.AreEqual('TMitte', mInfo.Ancestors[1].Name);
+  Assert.AreEqual(5, mInfo.Ancestors[1].Line);
+  Assert.AreEqual('TBasis', mInfo.Ancestors[2].Name);
+  Assert.AreEqual('TObject', mInfo.Ancestors[3].Name);
+  Assert.AreEqual(cSystemFile, mInfo.Ancestors[3].FileName);
 end;
 
 procedure TLspHoverTypesTests.DeclarationLinksTypes;
 var
-  Info: THoverInfo;
+  mInfo: THoverInfo;
 begin
-  Info := InfoAt('TBlatt;');
+  mInfo := InfoAt('TBlatt;');
   // Der eigene Name ist kein Link, der Vorfahr schon.
-  Assert.AreEqual(1, Integer(Length(Info.Links)));
-  Assert.AreEqual(Pos('TMitte', Info.Declaration) - 1, Info.Links[0].Start);
-  Assert.AreEqual(6, Info.Links[0].Length);
-  Assert.AreEqual('TMitte', Info.Links[0].Target.Name);
-  Assert.AreEqual(BasisFile, Info.Links[0].Target.FileName);
-  Assert.AreEqual(5, Info.Links[0].Target.Line);
-  Assert.AreEqual(2, Info.Links[0].Target.Character);
+  Assert.AreEqual(1, Integer(Length(mInfo.Links)));
+  Assert.AreEqual(Pos('TMitte', mInfo.Declaration) - 1, mInfo.Links[0].Start);
+  Assert.AreEqual(6, mInfo.Links[0].Length);
+  Assert.AreEqual('TMitte', mInfo.Links[0].Target.Name);
+  Assert.AreEqual(cBasisFile, mInfo.Links[0].Target.FileName);
+  Assert.AreEqual(5, mInfo.Links[0].Target.Line);
+  Assert.AreEqual(2, mInfo.Links[0].Target.Character);
 end;
 
 procedure TLspHoverTypesTests.ClassReferenceShowsTargetChain;
 var
-  Info: THoverInfo;
+  mInfo: THoverInfo;
 begin
-  Info := InfoAt('TBlattKlasse;');
-  Assert.AreEqual('TBlattKlasse = class of TBlatt;', Info.Declaration);
-  Assert.AreEqual(TLspHoverTypes.cKindClassRef, Info.Kind);
-  Assert.AreEqual('TBlatt', Info.ChainOf);
-  Assert.AreEqual('TBlatt', Info.Ancestors[0].Name);
-  Assert.AreEqual('TObject', Info.Ancestors[High(Info.Ancestors)].Name);
-  Assert.AreEqual(1, Integer(Length(Info.Links)));
-  Assert.AreEqual('TBlatt', Info.Links[0].Target.Name);
+  mInfo := InfoAt('TBlattKlasse;');
+  Assert.AreEqual('TBlattKlasse = class of TBlatt;', mInfo.Declaration);
+  Assert.AreEqual(TLspHoverTypes.cKindClassRef, mInfo.Kind);
+  Assert.AreEqual('TBlatt', mInfo.ChainOf);
+  Assert.AreEqual('TBlatt', mInfo.Ancestors[0].Name);
+  Assert.AreEqual('TObject', mInfo.Ancestors[High(mInfo.Ancestors)].Name);
+  Assert.AreEqual(1, Integer(Length(mInfo.Links)));
+  Assert.AreEqual('TBlatt', mInfo.Links[0].Target.Name);
 end;
 
 procedure TLspHoverTypesTests.InterfaceChainEndsAtIInterface;
 var
-  Info: THoverInfo;
+  mInfo: THoverInfo;
 begin
-  Info := InfoAt('IFoo;');
-  Assert.AreEqual('interface', Info.Kind);
-  Assert.AreEqual(2, Integer(Length(Info.Ancestors)));
-  Assert.AreEqual('IInterface', Info.Ancestors[1].Name);
+  mInfo := InfoAt('IFoo;');
+  Assert.AreEqual('interface', mInfo.Kind);
+  Assert.AreEqual(2, Integer(Length(mInfo.Ancestors)));
+  Assert.AreEqual('IInterface', mInfo.Ancestors[1].Name);
 end;
 
 procedure TLspHoverTypesTests.LocalVariableLinksItsType;
 var
-  Info: THoverInfo;
+  mInfo: THoverInfo;
 begin
   // Haupt steht nicht im Index: Fundort und Links trotzdem aus dem Baum der eigenen Datei.
-  Info := InfoAt('B :=');
-  Assert.AreEqual('B: TBlatt;', Info.Declaration);
-  Assert.AreEqual(HauptFile, Info.FileName);
-  Assert.AreEqual(1, Integer(Length(Info.Links)));
-  Assert.AreEqual(3, Info.Links[0].Start);
-  Assert.AreEqual('TBlatt', Info.Links[0].Target.Name);
-  Assert.AreEqual(0, Integer(Length(Info.Ancestors)), 'Variablen haben keine Kette');
+  mInfo := InfoAt('B :=');
+  Assert.AreEqual('B: TBlatt;', mInfo.Declaration);
+  Assert.AreEqual(cHauptFile, mInfo.FileName);
+  Assert.AreEqual(1, Integer(Length(mInfo.Links)));
+  Assert.AreEqual(3, mInfo.Links[0].Start);
+  Assert.AreEqual('TBlatt', mInfo.Links[0].Target.Name);
+  Assert.AreEqual(0, Integer(Length(mInfo.Ancestors)), 'Variablen haben keine Kette');
 end;
 
 procedure TLspHoverTypesTests.OriginOfLibraryUnits;
@@ -286,72 +286,72 @@ end;
 
 procedure TLspHoverTypesTests.AtlasJsonCarriesLinksAndChain;
 var
-  Json: TJSONObject;
-  Links, Ancestors: TJSONArray;
+  mJson: TJSONObject;
+  mLinks, mAncestors: TJSONArray;
 begin
-  Json := TLspHover.AtlasJson(InfoAt('TBlatt;'));
+  mJson := TLspHover.AtlasJson(InfoAt('TBlatt;'));
   try
-    Assert.AreEqual('class', Json.GetValue<string>('kind'));
-    Assert.AreEqual(BasisFile, Json.GetValue<string>('file'));
-    Assert.AreEqual(7, Json.GetValue<Integer>('line'));
-    Assert.AreEqual(2, Json.GetValue<Integer>('character'));
-    Assert.IsNull(Json.GetValue('origin'), 'leer entfällt');
-    Links := Json.GetValue<TJSONArray>('links');
-    Assert.AreEqual(1, Integer(Links.Count));
-    Assert.AreEqual('TMitte', Links.Items[0].GetValue<string>('name'));
-    Assert.AreEqual(Pos('TMitte', 'TBlatt = class(TMitte)') - 1, Links.Items[0].GetValue<Integer>('start'));
-    Assert.AreEqual(6, Links.Items[0].GetValue<Integer>('length'));
-    Assert.AreEqual(5, Links.Items[0].GetValue<Integer>('line'));
-    Assert.AreEqual('TBlatt', Json.GetValue<string>('chainOf'));
-    Ancestors := Json.GetValue<TJSONArray>('ancestors');
-    Assert.AreEqual(4, Integer(Ancestors.Count));
-    Assert.AreEqual('TObject', Ancestors.Items[3].GetValue<string>('name'));
-    Assert.AreEqual('System', Ancestors.Items[3].GetValue<string>('unit'));
+    Assert.AreEqual('class', mJson.GetValue<string>('kind'));
+    Assert.AreEqual(cBasisFile, mJson.GetValue<string>('file'));
+    Assert.AreEqual(7, mJson.GetValue<Integer>('line'));
+    Assert.AreEqual(2, mJson.GetValue<Integer>('character'));
+    Assert.IsNull(mJson.GetValue('origin'), 'leer entfällt');
+    mLinks := mJson.GetValue<TJSONArray>('links');
+    Assert.AreEqual(1, Integer(mLinks.Count));
+    Assert.AreEqual('TMitte', mLinks.Items[0].GetValue<string>('name'));
+    Assert.AreEqual(Pos('TMitte', 'TBlatt = class(TMitte)') - 1, mLinks.Items[0].GetValue<Integer>('start'));
+    Assert.AreEqual(6, mLinks.Items[0].GetValue<Integer>('length'));
+    Assert.AreEqual(5, mLinks.Items[0].GetValue<Integer>('line'));
+    Assert.AreEqual('TBlatt', mJson.GetValue<string>('chainOf'));
+    mAncestors := mJson.GetValue<TJSONArray>('ancestors');
+    Assert.AreEqual(4, Integer(mAncestors.Count));
+    Assert.AreEqual('TObject', mAncestors.Items[3].GetValue<string>('name'));
+    Assert.AreEqual('System', mAncestors.Items[3].GetValue<string>('unit'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TLspHoverTypesTests.HoverReadsFilesThatAreNotOpen;
 var
-  Hover: TLspHover;
-  Store: IDocumentStore;
-  Dispatcher: TJsonRpcDispatcher;
-  Message, Response: TJSONObject;
-  Request: string;
+  mHover: TLspHover;
+  mStore: IDocumentStore;
+  mDispatcher: TJsonRpcDispatcher;
+  mMessage, mResponse: TJSONObject;
+  mRequest: string;
 begin
-  Store := TDocumentStore.Create;
-  Hover := TLspHover.Create(Store, FIndex,
+  mStore := TDocumentStore.Create;
+  mHover := TLspHover.Create(mStore, FIndex,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := ReadText(AFileName, AText);
     end);
   try
-    Dispatcher := TJsonRpcDispatcher.Create;
+    mDispatcher := TJsonRpcDispatcher.Create;
     try
-      Hover.Attach(Dispatcher);
+      mHover.Attach(mDispatcher);
       // TMitte in Basis.pas (Zeile 5, Spalte 2), ohne didOpen: so fragt das Plugin einen angeklickten Typ ab.
-      Request := '{"jsonrpc": "2.0", "id": 1, "method": "textDocument/hover", "params": {"textDocument": ' +
-        '{"uri": "' + TDocumentUris.FromPath(BasisFile) + '"}, "position": {"line": 5, "character": 2}}}';
-      Message := TJSONObject.ParseJSONValue(Request) as TJSONObject;
+      mRequest := '{"jsonrpc": "2.0", "id": 1, "method": "textDocument/hover", "params": {"textDocument": ' +
+        '{"uri": "' + TDocumentUris.FromPath(cBasisFile) + '"}, "position": {"line": 5, "character": 2}}}';
+      mMessage := TJSONObject.ParseJSONValue(mRequest) as TJSONObject;
       try
-        Response := Dispatcher.DispatchMessage(Message);
+        mResponse := mDispatcher.DispatchMessage(mMessage);
         try
-          Assert.IsNotNull(Response);
-          Assert.AreEqual('TMitte = class(TBasis)', Response.GetValue<string>('result.atlas.declaration'));
-          Assert.AreEqual('TMitte', Response.GetValue<string>('result.atlas.chainOf'));
-          Assert.AreEqual(3, Response.GetValue<TJSONArray>('result.atlas.ancestors').Count);
+          Assert.IsNotNull(mResponse);
+          Assert.AreEqual('TMitte = class(TBasis)', mResponse.GetValue<string>('result.atlas.declaration'));
+          Assert.AreEqual('TMitte', mResponse.GetValue<string>('result.atlas.chainOf'));
+          Assert.AreEqual(3, mResponse.GetValue<TJSONArray>('result.atlas.ancestors').Count);
         finally
-          Response.Free;
+          mResponse.Free;
         end;
       finally
-        Message.Free;
+        mMessage.Free;
       end;
     finally
-      Dispatcher.Free;
+      mDispatcher.Free;
     end;
   finally
-    Hover.Free;
+    mHover.Free;
   end;
 end;
 

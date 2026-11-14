@@ -67,11 +67,11 @@ end;
 
 function OnlyMessage(const ASource: string): string;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(ASource);
-  Assert.AreEqual(1, Integer(Length(Found)), ASource);
-  Result := Found[0].Message;
+  mFound := Findings(ASource);
+  Assert.AreEqual(1, Integer(Length(mFound)), ASource);
+  Result := mFound[0].Message;
 end;
 
 procedure Silent(const ASource: string);
@@ -94,32 +94,32 @@ end;
 /// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
 function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
 var
-  Line, Index: Integer;
+  mLine, mIndex: Integer;
 begin
-  Line := 0;
-  Index := 1;
-  while (Line < APosition.Line) and (Index <= Length(AText)) do
+  mLine := 0;
+  mIndex := 1;
+  while (mLine < APosition.Line) and (mIndex <= Length(AText)) do
   begin
-    if AText[Index] = #10 then
+    if AText[mIndex] = #10 then
     begin
-      Inc(Line);
+      Inc(mLine);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Index + APosition.Character;
+  Result := mIndex + APosition.Character;
 end;
 
 /// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an, auch über Zeilen.</summary>
 function ApplyFix(const AText: string; const AFix: TRuleFix): string;
 var
-  Index, Start, Stop: Integer;
+  mIndex, mStart, mStop: Integer;
 begin
   Result := AText;
-  for Index := High(AFix.Edits) downto 0 do
+  for mIndex := High(AFix.Edits) downto 0 do
   begin
-    Start := OffsetOf(Result, AFix.Edits[Index].Range.StartPos);
-    Stop := OffsetOf(Result, AFix.Edits[Index].Range.EndPos);
-    Result := Copy(Result, 1, Start - 1) + AFix.Edits[Index].NewText + Copy(Result, Stop, MaxInt);
+    mStart := OffsetOf(Result, AFix.Edits[mIndex].Range.StartPos);
+    mStop := OffsetOf(Result, AFix.Edits[mIndex].Range.EndPos);
+    Result := Copy(Result, 1, mStart - 1) + AFix.Edits[mIndex].NewText + Copy(Result, mStop, MaxInt);
   end;
 end;
 
@@ -127,21 +127,21 @@ end;
 
 procedure TMethodDirectiveRulesTests.AbstractIssueExample;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Formen('    function Flaeche: Double; abstract;'#10, '');
-  Found := Findings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('abstract nur zusammen mit virtual oder dynamic (wie E2167).', Found[0].Message);
-  Assert.AreEqual(4, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(30, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(38, Found[0].Range.EndPos.Character);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('"virtual;" vor abstract einfügen', Found[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
-  Assert.IsTrue(Pos('    function Flaeche: Double; virtual; abstract;'#10, Fixed) > 0, Fixed);
-  Silent(Fixed);
+  mSource := Formen('    function Flaeche: Double; abstract;'#10, '');
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('abstract nur zusammen mit virtual oder dynamic (wie E2167).', mFound[0].Message);
+  Assert.AreEqual(4, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(30, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(38, mFound[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('"virtual;" vor abstract einfügen', mFound[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('    function Flaeche: Double; virtual; abstract;'#10, mFixed) > 0, mFixed);
+  Silent(mFixed);
 end;
 
 procedure TMethodDirectiveRulesTests.ValidDirectivesAreSilent;
@@ -161,23 +161,23 @@ end;
 
 procedure TMethodDirectiveRulesTests.AbstractWithBody;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Formen('    function Flaeche: Double; virtual; abstract;'#10'    procedure Zeichnen;'#10,
+  mSource := Formen('    function Flaeche: Double; virtual; abstract;'#10'    procedure Zeichnen;'#10,
     'function TForm.Flaeche: Double;'#10'begin'#10'  Result := 0;'#10'end;'#10#10 +
     'procedure TForm.Zeichnen;'#10'begin'#10'end;'#10#10);
-  Found := Findings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('TForm.Flaeche ist abstract und darf keinen Rumpf haben (wie E2136).', Found[0].Message);
-  Assert.AreEqual(10, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(15, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('Rumpf entfernen', Found[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('TForm.Flaeche ist abstract und darf keinen Rumpf haben (wie E2136).', mFound[0].Message);
+  Assert.AreEqual(10, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(15, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('Rumpf entfernen', mFound[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.AreEqual(Formen('    function Flaeche: Double; virtual; abstract;'#10'    procedure Zeichnen;'#10,
-    'procedure TForm.Zeichnen;'#10'begin'#10'end;'#10#10), Fixed);
-  Silent(Fixed);
+    'procedure TForm.Zeichnen;'#10'begin'#10'end;'#10#10), mFixed);
+  Silent(mFixed);
   // Generische Klasse: der Rumpf heißt TListe<T>.Leeren.
   Assert.AreEqual('TListe.Leeren ist abstract und darf keinen Rumpf haben (wie E2136).',
     OnlyMessage('unit Formen;'#10'interface'#10'type'#10'  TListe<T> = class'#10 +
@@ -210,22 +210,22 @@ end;
 
 procedure TMethodDirectiveRulesTests.AbstractSealedClass;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
   // dcc meldet dazu E2540 an der Klasse (Cm.E2383).
-  Found := Findings('unit Formen;'#10'interface'#10'type'#10'  TForm = class abstract sealed'#10'  end;'#10 +
+  mFound := Findings('unit Formen;'#10'interface'#10'type'#10'  TForm = class abstract sealed'#10'  end;'#10 +
     'implementation'#10'end.');
-  Assert.AreEqual(2, Integer(Length(Found)), Listed(Found));
-  Assert.AreEqual('TForm ist abstract und kann deshalb nicht sealed sein (wie E2540).', Found[0].Message);
-  Assert.AreEqual(3, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Found[0].Range.StartPos.Character);
-  Assert.AreEqual('Eine Klasse ist entweder abstract oder sealed, nicht beides (wie E2383).', Found[1].Message);
-  Assert.AreEqual(3, Found[1].Range.StartPos.Line);
-  Assert.AreEqual(25, Found[1].Range.StartPos.Character);
-  Found := Findings('unit Formen;'#10'interface'#10'type'#10'  TForm = class sealed abstract(TObject)'#10 +
+  Assert.AreEqual(2, Integer(Length(mFound)), Listed(mFound));
+  Assert.AreEqual('TForm ist abstract und kann deshalb nicht sealed sein (wie E2540).', mFound[0].Message);
+  Assert.AreEqual(3, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual('Eine Klasse ist entweder abstract oder sealed, nicht beides (wie E2383).', mFound[1].Message);
+  Assert.AreEqual(3, mFound[1].Range.StartPos.Line);
+  Assert.AreEqual(25, mFound[1].Range.StartPos.Character);
+  mFound := Findings('unit Formen;'#10'interface'#10'type'#10'  TForm = class sealed abstract(TObject)'#10 +
     '  end;'#10'implementation'#10'end.');
   Assert.AreEqual('3: TForm ist abstract und kann deshalb nicht sealed sein (wie E2540).'#10 +
-    '3: Eine Klasse ist entweder abstract oder sealed, nicht beides (wie E2383).'#10, Listed(Found));
+    '3: Eine Klasse ist entweder abstract oder sealed, nicht beides (wie E2383).'#10, Listed(mFound));
 end;
 
 procedure TMethodDirectiveRulesTests.SealedWithOwnAbstractMethod;
@@ -272,16 +272,16 @@ end;
 
 procedure TMethodDirectiveRulesTests.Options;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Formen('    function Flaeche: Double; abstract;'#10, '');
-  Assert.AreEqual(1, Integer(Length(Findings(Source, '', 'Source/Formen.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"abstract-declaration-invalid": "off"}}',
+  mSource := Formen('    function Flaeche: Double; abstract;'#10, '');
+  Assert.AreEqual(1, Integer(Length(Findings(mSource, '', 'Source/Formen.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"abstract-declaration-invalid": "off"}}',
     'Source/Formen.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"group:compiler": "off"}}', 'Source/Formen.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source,
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"group:compiler": "off"}}', 'Source/Formen.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource,
     '{"rules": {"abstract-declaration-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Formen.pas'))));
-  Assert.AreEqual(1, Integer(Length(Findings(Source,
+  Assert.AreEqual(1, Integer(Length(Findings(mSource,
     '{"rules": {"abstract-declaration-invalid": {"exclude": ["Alt/*.pas"]}}}', 'Source/Formen.pas'))));
 end;
 

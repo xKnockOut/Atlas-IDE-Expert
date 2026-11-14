@@ -62,8 +62,8 @@ uses
   Atlas.Common.Index.SymbolIndex;
 
 const
-  FileName = 'C:\P\Kunden.pas';
-  UnitText =
+  cFileName = 'C:\P\Kunden.pas';
+  cUnitText =
     'unit Kunden;'#13#10 +                                  // 0
     'interface'#13#10 +                                     // 1
     'type'#13#10 +                                          // 2
@@ -99,7 +99,7 @@ procedure TLspExpressionCompletionTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FStore := TDocumentStore.Create;
-  FStore.Open(TDocumentUris.FromPath(FileName), 'delphi', 1, UnitText);
+  FStore.Open(TDocumentUris.FromPath(cFileName), 'delphi', 1, cUnitText);
   FCompletion := TLspCompletion.Create(FStore, FIndex);
   FExpressions := TLspExpressionCompletion.Create(FStore, FCompletion);
   FId := 0;
@@ -118,55 +118,55 @@ end;
 
 function TLspExpressionCompletionTests.Ask(ALine: Integer; const AExpression: string): TJSONObject;
 var
-  Request, Response: TJSONObject;
+  mRequest, mResponse: TJSONObject;
 begin
   // Über den Dispatcher: Er liefert das Abbruchsignal, das Complete braucht.
   Inc(FId);
-  Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":' + IntToStr(FId) + ',"method":"' +
+  mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":' + IntToStr(FId) + ',"method":"' +
     TLspExpressionCompletion.cMethod + '","params":{"textDocument":{"uri":"' +
-    TDocumentUris.FromPath(FileName).Replace('\', '\\') + '"},"position":{"line":' + IntToStr(ALine) +
+    TDocumentUris.FromPath(cFileName).Replace('\', '\\') + '"},"position":{"line":' + IntToStr(ALine) +
     ',"character":0},"expression":"' + AExpression + '","character":' + IntToStr(Length(AExpression)) +
     '}}') as TJSONObject;
   try
-    Response := FDispatcher.DispatchMessage(Request);
+    mResponse := FDispatcher.DispatchMessage(mRequest);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
   try
-    Assert.IsNotNull(Response);
-    Result := Response.GetValue('result').Clone as TJSONObject;
+    Assert.IsNotNull(mResponse);
+    Result := mResponse.GetValue('result').Clone as TJSONObject;
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
 class function TLspExpressionCompletionTests.Labels(AAnswer: TJSONObject): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := ',';
-  for Value in AAnswer.GetValue('items') as TJSONArray do
+  for mValue in AAnswer.GetValue('items') as TJSONArray do
   begin
-    Result := Result + (Value as TJSONObject).GetValue('label').Value + ',';
+    Result := Result + (mValue as TJSONObject).GetValue('label').Value + ',';
   end;
 end;
 
 procedure TLspExpressionCompletionTests.PlacesBeforeStatementAndAfterBegin;
 var
-  Document: ITextDocument;
-  Placement: TExpressionPlacement;
+  mDocument: ITextDocument;
+  mPlacement: TExpressionPlacement;
 begin
-  Assert.IsTrue(FStore.TryGet(TDocumentUris.FromPath(FileName), Document));
-  Placement := TLspExpressionCompletion.Place(Document, 15, 'Kunde.Name');
-  Assert.AreEqual(15, Placement.Line, 'vor der Anweisung');
-  Assert.AreEqual(2, Placement.Column);
-  Assert.AreEqual('  Kunde.Name;'#13#10, Placement.Text);
-  Placement := TLspExpressionCompletion.Place(Document, 13, 'Kunde');
-  Assert.AreEqual(14, Placement.Line, 'hinter begin, sonst stünde der Ausdruck im var-Abschnitt');
-  Placement := TLspExpressionCompletion.Place(Document, 99, 'Kunde');
-  Assert.AreEqual(Document.LineCount - 1, Placement.Line, 'hinter dem Dokument begrenzt');
-  Placement := TLspExpressionCompletion.Place(Document, 15, 'A'#13#10'+ B');
-  Assert.AreEqual('  A  + B;'#13#10, Placement.Text, 'eine Zeile');
+  Assert.IsTrue(FStore.TryGet(TDocumentUris.FromPath(cFileName), mDocument));
+  mPlacement := TLspExpressionCompletion.Place(mDocument, 15, 'Kunde.Name');
+  Assert.AreEqual(15, mPlacement.Line, 'vor der Anweisung');
+  Assert.AreEqual(2, mPlacement.Column);
+  Assert.AreEqual('  Kunde.Name;'#13#10, mPlacement.Text);
+  mPlacement := TLspExpressionCompletion.Place(mDocument, 13, 'Kunde');
+  Assert.AreEqual(14, mPlacement.Line, 'hinter begin, sonst stünde der Ausdruck im var-Abschnitt');
+  mPlacement := TLspExpressionCompletion.Place(mDocument, 99, 'Kunde');
+  Assert.AreEqual(mDocument.LineCount - 1, mPlacement.Line, 'hinter dem Dokument begrenzt');
+  mPlacement := TLspExpressionCompletion.Place(mDocument, 15, 'A'#13#10'+ B');
+  Assert.AreEqual('  A  + B;'#13#10, mPlacement.Text, 'eine Zeile');
 end;
 
 procedure TLspExpressionCompletionTests.PrefixBeforeCaret;
@@ -180,85 +180,85 @@ end;
 
 procedure TLspExpressionCompletionTests.OffersLocalsAndParameters;
 var
-  Answer: TJSONObject;
-  Found: string;
+  mAnswer: TJSONObject;
+  mFound: string;
 begin
-  Answer := Ask(15, 'Ku');
+  mAnswer := Ask(15, 'Ku');
   try
-    Assert.AreEqual('Ku', Answer.GetValue('prefix').Value);
-    Found := Labels(Answer);
-    Assert.IsTrue(Pos(',Kunde,', Found) > 0, Found);
+    Assert.AreEqual('Ku', mAnswer.GetValue('prefix').Value);
+    mFound := Labels(mAnswer);
+    Assert.IsTrue(Pos(',Kunde,', mFound) > 0, mFound);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  Answer := Ask(14, 'An');
+  mAnswer := Ask(14, 'An');
   try
-    Found := Labels(Answer);
-    Assert.IsTrue(Pos(',Anzahl,', Found) > 0, 'Parameter: ' + Found);
+    mFound := Labels(mAnswer);
+    Assert.IsTrue(Pos(',Anzahl,', mFound) > 0, 'Parameter: ' + mFound);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspExpressionCompletionTests.OffersMembersAfterDot;
 var
-  Answer: TJSONObject;
-  Found: string;
+  mAnswer: TJSONObject;
+  mFound: string;
 begin
-  Answer := Ask(15, 'Kunde.');
+  mAnswer := Ask(15, 'Kunde.');
   try
-    Found := Labels(Answer);
-    Assert.IsTrue(Pos(',Name,', Found) > 0, Found);
-    Assert.IsTrue(Pos(',Umsatz,', Found) > 0, Found);
-    Assert.AreEqual(0, Pos(',Summe,', Found), 'nach dem Punkt keine lokalen Namen: ' + Found);
+    mFound := Labels(mAnswer);
+    Assert.IsTrue(Pos(',Name,', mFound) > 0, mFound);
+    Assert.IsTrue(Pos(',Umsatz,', mFound) > 0, mFound);
+    Assert.AreEqual(0, Pos(',Summe,', mFound), 'nach dem Punkt keine lokalen Namen: ' + mFound);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspExpressionCompletionTests.DropsKeywordsAndSnippets;
 var
-  Answer: TJSONObject;
-  Value: TJSONValue;
-  Kind: Integer;
+  mAnswer: TJSONObject;
+  mValue: TJSONValue;
+  mKind: Integer;
 begin
-  Answer := Ask(15, 'b');
+  mAnswer := Ask(15, 'b');
   try
-    for Value in Answer.GetValue('items') as TJSONArray do
+    for mValue in mAnswer.GetValue('items') as TJSONArray do
     begin
-      Kind := (Value as TJSONObject).GetValue<Integer>('kind');
-      Assert.IsTrue((Kind <> 14) and (Kind <> 15), Value.ToJSON);
+      mKind := (mValue as TJSONObject).GetValue<Integer>('kind');
+      Assert.IsTrue((mKind <> 14) and (mKind <> 15), mValue.ToJSON);
     end;
-    Assert.AreEqual(0, Pos(',begin,', LowerCase(Labels(Answer))));
+    Assert.AreEqual(0, Pos(',begin,', LowerCase(Labels(mAnswer))));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspExpressionCompletionTests.HandlerKeepsStoreUnchanged;
 var
-  Request, Response: TJSONObject;
-  Document: ITextDocument;
-  Uri: string;
+  mRequest, mResponse: TJSONObject;
+  mDocument: ITextDocument;
+  mUri: string;
 begin
-  Uri := TDocumentUris.FromPath(FileName);
-  Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspExpressionCompletion.cMethod +
-    '","params":{"textDocument":{"uri":"' + Uri.Replace('\', '\\') +
+  mUri := TDocumentUris.FromPath(cFileName);
+  mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspExpressionCompletion.cMethod +
+    '","params":{"textDocument":{"uri":"' + mUri.Replace('\', '\\') +
     '"},"position":{"line":15,"character":0},"expression":"Kunde.Na","character":8}}') as TJSONObject;
   try
-    Response := FDispatcher.DispatchMessage(Request);
+    mResponse := FDispatcher.DispatchMessage(mRequest);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
   try
-    Assert.IsNotNull(Response);
-    Assert.AreEqual('Na', Response.GetValue<string>('result.prefix'));
-    Assert.IsTrue(Pos(',Name,', Labels(Response.GetValue('result') as TJSONObject)) > 0, Response.ToJSON);
+    Assert.IsNotNull(mResponse);
+    Assert.AreEqual('Na', mResponse.GetValue<string>('result.prefix'));
+    Assert.IsTrue(Pos(',Name,', Labels(mResponse.GetValue('result') as TJSONObject)) > 0, mResponse.ToJSON);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
-  Assert.IsTrue(FStore.TryGet(Uri, Document));
-  Assert.AreEqual(UnitText, Document.Text, 'Dokumentspeicher unverändert');
+  Assert.IsTrue(FStore.TryGet(mUri, mDocument));
+  Assert.AreEqual(cUnitText, mDocument.Text, 'Dokumentspeicher unverändert');
 end;
 
 end.

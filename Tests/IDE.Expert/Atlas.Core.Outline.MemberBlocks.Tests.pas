@@ -169,7 +169,8 @@ end;
 function PathAt(ALine, ACharacter: Integer): string;
 begin
   Result := Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
-    TAtlasCrumbRequest.Create(ALine, ACharacter, '', False, [TAtlasCrumbPart.Visibility, TAtlasCrumbPart.MemberBlocks])));
+    TAtlasCrumbRequest.Create(ALine, ACharacter, '', False,
+      [TAtlasCrumbPart.Visibility, TAtlasCrumbPart.MemberBlocks])));
 end;
 
 procedure TAtlasMemberBlocksTests.BlocksInSourceOrder;

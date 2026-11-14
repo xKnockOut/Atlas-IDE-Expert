@@ -94,11 +94,11 @@ uses
   Atlas.Tests.RuleAssert;
 
 const
-  Config =
+  cLayerConfig =
     '{ "rules": { "forbidden-uses": { "layers": [' +
     '{ "from": "*.Common.*", "deny": ["Vcl.*", "Winapi.*"], "allow": ["Winapi.Windows"] },' +
     '{ "from": "Source/Windows/**", "deny": ["Vcl.*"] } ] } } }';
-  Source =
+  cLayerSource =
     'unit App.Common.Model;'#10 +
     'interface'#10 +
     'uses System.Classes, Vcl.Forms, Winapi.Windows;'#10 +
@@ -108,71 +108,71 @@ const
 
 procedure TForbiddenUsesRuleTests.ReportsDeniedUnitByUnitName;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TForbiddenUsesRule.Create, Source, Config, 'Source/App.Common.Model.pas');
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(21, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(30, Findings[0].Range.EndPos.Character);
-  Assert.IsTrue(Pos('Vcl.Forms', Findings[0].Message) > 0);
-  Assert.AreEqual(4, Findings[1].Range.StartPos.Line);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  mFindings := TRuleAssert.Findings(TForbiddenUsesRule.Create, cLayerSource, cLayerConfig, 'Source/App.Common.Model.pas');
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(21, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(30, mFindings[0].Range.EndPos.Character);
+  Assert.IsTrue(Pos('Vcl.Forms', mFindings[0].Message) > 0);
+  Assert.AreEqual(4, mFindings[1].Range.StartPos.Line);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
 end;
 
 procedure TForbiddenUsesRuleTests.AllowOverridesDeny;
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
-  for Finding in TRuleAssert.Findings(TForbiddenUsesRule.Create, Source, Config, 'Source/App.Common.Model.pas') do
+  for mFinding in TRuleAssert.Findings(TForbiddenUsesRule.Create, cLayerSource, cLayerConfig, 'Source/App.Common.Model.pas') do
   begin
-    Assert.AreEqual(0, Pos('Winapi.Windows', Finding.Message));
+    Assert.AreEqual(0, Pos('Winapi.Windows', mFinding.Message));
   end;
 end;
 
 procedure TForbiddenUsesRuleTests.MatchesLayerByPath;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TForbiddenUsesRule.Create,
-    'unit Fenster;'#10'interface'#10'uses Vcl.Controls, Winapi.Windows;'#10'implementation'#10'end.', Config,
+  mFindings := TRuleAssert.Findings(TForbiddenUsesRule.Create,
+    'unit Fenster;'#10'interface'#10'uses Vcl.Controls, Winapi.Windows;'#10'implementation'#10'end.', cLayerConfig,
     'Source/Windows/Fenster.pas');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Character);
 end;
 
 procedure TForbiddenUsesRuleTests.SilentWithoutLayers;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TForbiddenUsesRule.Create, Source, '',
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TForbiddenUsesRule.Create, cLayerSource, '',
     'Source/App.Common.Model.pas'))));
 end;
 
 procedure TForbiddenUsesRuleTests.IgnoresInvalidLayers;
 var
-  Layers: TArray<TArchitectureLayer>;
+  mLayers: TArray<TArchitectureLayer>;
 begin
-  Layers := TForbiddenUsesRule.ParseLayers('{ "layers": [ { "deny": ["X"] }, { "from": "A", "deny": [] }, ' +
+  mLayers := TForbiddenUsesRule.ParseLayers('{ "layers": [ { "deny": ["X"] }, { "from": "A", "deny": [] }, ' +
     '{ "from": "B", "deny": ["Y", 3] } ] }');
-  Assert.AreEqual(1, Integer(Length(Layers)));
-  Assert.AreEqual('B', Layers[0].From);
-  Assert.AreEqual(1, Integer(Length(Layers[0].Deny)));
+  Assert.AreEqual(1, Integer(Length(mLayers)));
+  Assert.AreEqual('B', mLayers[0].From);
+  Assert.AreEqual(1, Integer(Length(mLayers[0].Deny)));
   Assert.AreEqual(0, Integer(Length(TForbiddenUsesRule.ParseLayers('kein json'))));
 end;
 
 { TArchitectureMatrixTests }
 
 const
-  Prefixes: array[0..5] of string = ('Atlas.Text', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core', 'Atlas.UI',
+  cPrefixes: array[0..5] of string = ('Atlas.Text', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core', 'Atlas.UI',
     'Atlas.IDE');
 
 function PrefixList: TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  SetLength(Result, Length(Prefixes));
-  for Index := 0 to High(Prefixes) do
+  SetLength(Result, Length(cPrefixes));
+  for mIndex := 0 to High(cPrefixes) do
   begin
-    Result[Index] := Prefixes[Index];
+    Result[mIndex] := cPrefixes[mIndex];
   end;
 end;
 
@@ -226,69 +226,69 @@ end;
 
 function RoleImportsFile: string;
 var
-  Directory: string;
+  mDirectory: string;
 begin
-  Directory := ExtractFileDir(ParamStr(0));
-  while Directory <> '' do
+  mDirectory := ExtractFileDir(ParamStr(0));
+  while mDirectory <> '' do
   begin
-    Result := TPath.Combine(Directory, TPath.Combine('Tests', TPath.Combine('Data',
+    Result := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
       TPath.Combine('Architecture', 'role-imports.json'))));
     if TFile.Exists(Result) then
     begin
       Exit;
     end;
-    if ExtractFileDir(Directory) = Directory then
+    if ExtractFileDir(mDirectory) = mDirectory then
     begin
       Break;
     end;
-    Directory := ExtractFileDir(Directory);
+    mDirectory := ExtractFileDir(mDirectory);
   end;
   Result := '';
 end;
 
 function JsonStrings(const AObject: TJSONObject; const AName: string): TArray<string>;
 var
-  Item: TJSONValue;
+  mItem: TJSONValue;
 begin
   Result := nil;
-  for Item in AObject.GetValue<TJSONArray>(AName) do
+  for mItem in AObject.GetValue<TJSONArray>(AName) do
   begin
-    Result := Result + [Item.Value];
+    Result := Result + [mItem.Value];
   end;
 end;
 
 procedure TArchitectureMatrixTests.MatrixCasesFromFile;
 var
-  FileName: string;
-  Root: TJSONValue;
-  Data: TJSONObject;
-  Item: TJSONValue;
-  Case_: TJSONObject;
-  CasePrefixes, CaseHosts: TArray<string>;
-  Source, Target: TArchitectureUnit;
-  Count: Integer;
+  mFileName: string;
+  mRoot: TJSONValue;
+  mData: TJSONObject;
+  mItem: TJSONValue;
+  mCase_: TJSONObject;
+  mCasePrefixes, mCaseHosts: TArray<string>;
+  mSource, mTarget: TArchitectureUnit;
+  mCount: Integer;
 begin
-  FileName := RoleImportsFile;
-  Assert.AreNotEqual('', FileName, 'Tests\Data\Architecture\role-imports.json nicht gefunden');
-  Root := TJSONObject.ParseJSONValue(TFile.ReadAllText(FileName, TEncoding.UTF8));
+  mFileName := RoleImportsFile;
+  Assert.AreNotEqual('', mFileName, 'Tests\Data\Architecture\role-imports.json nicht gefunden');
+  mRoot := TJSONObject.ParseJSONValue(TFile.ReadAllText(mFileName, TEncoding.UTF8));
   try
-    Assert.IsTrue(Root is TJSONObject);
-    Data := TJSONObject(Root);
-    CasePrefixes := JsonStrings(Data, 'prefixes');
-    CaseHosts := JsonStrings(Data, 'hostRoles');
-    Count := 0;
-    for Item in Data.GetValue<TJSONArray>('cases') do
+    Assert.IsTrue(mRoot is TJSONObject);
+    mData := TJSONObject(mRoot);
+    mCasePrefixes := JsonStrings(mData, 'prefixes');
+    mCaseHosts := JsonStrings(mData, 'hostRoles');
+    mCount := 0;
+    for mItem in mData.GetValue<TJSONArray>('cases') do
     begin
-      Case_ := Item as TJSONObject;
-      Source := TArchitectureMatrix.Classify(Case_.GetValue<string>('from'), CasePrefixes, CaseHosts);
-      Target := TArchitectureMatrix.Classify(Case_.GetValue<string>('to'), CasePrefixes, CaseHosts);
-      Assert.AreEqual(Case_.GetValue<Boolean>('allowed'), TArchitectureMatrix.Allowed(Source, Target),
-        Case_.GetValue<string>('from') + ' -> ' + Case_.GetValue<string>('to'));
-      Inc(Count);
+      mCase_ := mItem as TJSONObject;
+      mSource := TArchitectureMatrix.Classify(mCase_.GetValue<string>('from'), mCasePrefixes, mCaseHosts);
+      mTarget := TArchitectureMatrix.Classify(mCase_.GetValue<string>('to'), mCasePrefixes, mCaseHosts);
+      Assert.AreEqual(mCase_.GetValue<Boolean>('allowed'), TArchitectureMatrix.Allowed(mSource, mTarget),
+        mCase_.GetValue<string>('from') + ' -> ' + mCase_.GetValue<string>('to'));
+      Inc(mCount);
     end;
-    Assert.IsTrue(Count > 100, 'Fallliste unvollständig');
+    Assert.IsTrue(mCount > 100, 'Fallliste unvollständig');
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
@@ -303,8 +303,8 @@ end;
 { TRoleImportRuleTests }
 
 const
-  RoleConfig = '{ "rules": { "architecture-role-import": { "severity": "warning", "prefixes": ["Atlas.Common"] } } }';
-  RoleSource =
+  cRoleConfig = '{ "rules": { "architecture-role-import": { "severity": "warning", "prefixes": ["Atlas.Common"] } } }';
+  cRoleSource =
     'unit Atlas.Common.Logging.Contract;'#10 +
     'interface'#10 +
     'uses System.SysUtils, Atlas.Common.Logging.Providers.Logger;'#10 +
@@ -313,15 +313,15 @@ const
 
 procedure TRoleImportRuleTests.ReportsForbiddenImportAtUsesEntry;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TRoleImportRule.Create, RoleSource, RoleConfig,
+  mFindings := TRuleAssert.Findings(TRoleImportRule.Create, cRoleSource, cRoleConfig,
     'Source/Atlas.Common.Logging.Contract.pas');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(22, Findings[0].Range.StartPos.Character);
-  Assert.IsTrue(Pos('eigene Providers aus Contract', Findings[0].Message) > 0, Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(22, mFindings[0].Range.StartPos.Character);
+  Assert.IsTrue(Pos('eigene Providers aus Contract', mFindings[0].Message) > 0, mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
 end;
 
 procedure TRoleImportRuleTests.AllowsOwnContractAndForeignRoot;
@@ -329,14 +329,14 @@ begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create,
     'unit Atlas.Common.Logging.Providers.Logger;'#10'interface'#10 +
     'uses Atlas.Common.Logging.Contract, Atlas.Common.Index.Files, Atlas.Common.Index.Contract;'#10 +
-    'implementation'#10'end.', RoleConfig, 'Source/x.pas'))));
+    'implementation'#10'end.', cRoleConfig, 'Source/x.pas'))));
 end;
 
 procedure TRoleImportRuleTests.SilentWithoutPrefixes;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create, RoleSource,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create, cRoleSource,
     '{ "rules": { "architecture-role-import": "warning" } }', 'Source/x.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create, RoleSource, '', 'Source/x.pas'))),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create, cRoleSource, '', 'Source/x.pas'))),
     'experimentell: ohne Konfiguration aus');
 end;
 
@@ -345,18 +345,18 @@ begin
   // Die Testunit trägt den Namen der getesteten Contract-Unit, gehört aber zu keiner Rolle.
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create,
     'unit Atlas.Common.Logging.Contract.Tests;'#10'interface'#10'uses DUnitX.TestFramework;'#10 +
-    'implementation'#10'uses Atlas.Common.Logging.Providers.Logger;'#10'end.', RoleConfig, 'Tests/x.pas'))));
+    'implementation'#10'uses Atlas.Common.Logging.Providers.Logger;'#10'end.', cRoleConfig, 'Tests/x.pas'))));
 end;
 
 procedure TRoleImportRuleTests.ApprovedExceptionIsSilent;
 const
-  Config = '{ "rules": { "architecture-role-import": { "severity": "warning", "prefixes": ["Atlas.Common"], ' +
+  cConfig = '{ "rules": { "architecture-role-import": { "severity": "warning", "prefixes": ["Atlas.Common"], ' +
     '"allow": ["Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree"] } } }';
-  Source = 'unit Atlas.Common.Rules.Contract;'#10'interface'#10'uses Atlas.Common.Pascal.SyntaxTree;'#10 +
+  cSource = 'unit Atlas.Common.Rules.Contract;'#10'interface'#10'uses Atlas.Common.Pascal.SyntaxTree;'#10 +
     'implementation'#10'end.';
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create, Source, Config, 'Source/x.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create, Source, RoleConfig,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create, cSource, cConfig, 'Source/x.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create, cSource, cRoleConfig,
     'Source/x.pas'))));
   Assert.IsTrue(TRoleImportRule.Approved(['Atlas.IDE.* -> Atlas.Core.*'], 'Atlas.IDE.Undo.Changes',
     'Atlas.Core.Undo.Adapters.FileStore'));
@@ -367,14 +367,14 @@ end;
 
 procedure TRoleImportRuleTests.ChecksImplementationUses;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TRoleImportRule.Create,
+  mFindings := TRuleAssert.Findings(TRoleImportRule.Create,
     'unit Atlas.Common.Lsp.Hover;'#10'interface'#10'implementation'#10 +
-    'uses Atlas.Common.Index.Internals.Table;'#10'end.', RoleConfig, 'Source/x.pas');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
-  Assert.IsTrue(Pos('fremde Internals aus Root', Findings[0].Message) > 0, Findings[0].Message);
+    'uses Atlas.Common.Index.Internals.Table;'#10'end.', cRoleConfig, 'Source/x.pas');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(3, mFindings[0].Range.StartPos.Line);
+  Assert.IsTrue(Pos('fremde Internals aus Root', mFindings[0].Message) > 0, mFindings[0].Message);
 end;
 
 procedure TRoleImportRuleTests.PackageContainsIsNoImport;
@@ -382,34 +382,39 @@ begin
   // contains nimmt Units ins Package auf (#1109); dieselbe Unit im uses eines Programms wäre ein Import.
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create,
     'package Atlas.Common.Lsp;'#10'requires rtl;'#10'contains'#10 +
-    '  Atlas.Common.Index.Internals.Table in ''Table.pas'';'#10'end.', RoleConfig, 'Atlas.Common.Lsp.dpk'))));
+    '  Atlas.Common.Index.Internals.Table in ''Table.pas'';'#10'end.', cRoleConfig, 'Atlas.Common.Lsp.dpk'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create,
     'program Atlas.Common.Lsp;'#10'uses'#10'  Atlas.Common.Index.Internals.Table in ''Table.pas'';'#10 +
-    'begin'#10'end.', RoleConfig, 'Atlas.Common.Lsp.dpr'))));
+    'begin'#10'end.', cRoleConfig, 'Atlas.Common.Lsp.dpr'))));
 end;
 
 procedure TRoleImportRuleTests.ParsesOptions;
 var
-  Options: TRoleImportOptions;
+  mOptions: TRoleImportOptions;
 begin
-  Options := TRoleImportRule.ParseOptions('{ "prefixes": ["A"], "allow": ["x -> y"], "other": 1 }');
-  Assert.AreEqual(1, Integer(Length(Options.Prefixes)));
-  Assert.AreEqual(1, Integer(Length(Options.Allow)));
-  Assert.AreEqual(5, Integer(Length(Options.HostRoles)), 'Vorgabe der Host-Rollen');
-  Options := TRoleImportRule.ParseOptions('{ "hostRoles": ["App"] }');
-  Assert.AreEqual(1, Integer(Length(Options.HostRoles)));
+  mOptions := TRoleImportRule.ParseOptions('{ "prefixes": ["A"], "allow": ["x -> y"], "other": 1 }');
+  Assert.AreEqual(1, Integer(Length(mOptions.Prefixes)));
+  Assert.AreEqual(1, Integer(Length(mOptions.Allow)));
+  Assert.AreEqual(5, Integer(Length(mOptions.HostRoles)), 'Vorgabe der Host-Rollen');
+  mOptions := TRoleImportRule.ParseOptions('{ "hostRoles": ["App"] }');
+  Assert.AreEqual(1, Integer(Length(mOptions.HostRoles)));
   Assert.AreEqual(0, Integer(Length(TRoleImportRule.ParseOptions('kein json').Prefixes)));
 end;
 
 { TContractContentRuleTests }
 
 const
-  ContractConfig =
+  cContractConfig =
     '{ "rules": { "architecture-contract-content": { "severity": "warning", "prefixes": ["App"] } } }';
 
-function ContractFindings(const ASource: string; const AConfig: string = ContractConfig): TArray<TRuleFinding>;
+function ContractFindings(const ASource: string; const AConfig: string): TArray<TRuleFinding>; overload;
 begin
   Result := TRuleAssert.Findings(TContractContentRule.Create, ASource, AConfig, 'Source/x.pas');
+end;
+
+function ContractFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := ContractFindings(ASource, cContractConfig);
 end;
 
 procedure TContractContentRuleTests.IgnoresTestUnitOfContract;
@@ -421,15 +426,15 @@ end;
 
 procedure TContractContentRuleTests.ReportsClassInContract;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := ContractFindings('unit App.Orders.Contract;'#10'interface'#10'type'#10 +
+  mFindings := ContractFindings('unit App.Orders.Contract;'#10'interface'#10'type'#10 +
     '  TOrderList = class'#10'  end;'#10'implementation'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(12, Findings[0].Range.EndPos.Character);
-  Assert.IsTrue(Pos('TOrderList', Findings[0].Message) > 0);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(3, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(12, mFindings[0].Range.EndPos.Character);
+  Assert.IsTrue(Pos('TOrderList', mFindings[0].Message) > 0);
 end;
 
 procedure TContractContentRuleTests.AllowsExceptionsAndInterfaces;
@@ -468,11 +473,11 @@ end;
 
 procedure TContractContentRuleTests.ApprovedTypeIsSilent;
 const
-  Config = '{ "rules": { "architecture-contract-content": { "severity": "warning", "prefixes": ["App"], ' +
+  cConfig = '{ "rules": { "architecture-contract-content": { "severity": "warning", "prefixes": ["App"], ' +
     '"allow": ["App.Orders.Contract.TOrder*"] } } }';
 begin
   Assert.AreEqual(0, Integer(Length(ContractFindings('unit App.Orders.Contract;'#10'interface'#10'type'#10 +
-    '  TOrderList = class'#10'  end;'#10'implementation'#10'end.', Config))));
+    '  TOrderList = class'#10'  end;'#10'implementation'#10'end.', cConfig))));
 end;
 
 initialization

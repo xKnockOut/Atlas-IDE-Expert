@@ -39,12 +39,12 @@ uses
 
 function B(const AValues: array of Byte): TBytes;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   SetLength(Result, Length(AValues));
-  for Index := 0 to High(AValues) do
+  for mIndex := 0 to High(AValues) do
   begin
-    Result[Index] := AValues[Index];
+    Result[mIndex] := AValues[mIndex];
   end;
 end;
 
@@ -121,34 +121,34 @@ end;
 
 procedure TDfmBinaryTests.WritesSpecialCharactersAsCodes;
 var
-  Bytes: TBytes;
+  mBytes: TBytes;
 begin
   // vaWString: Anzahl UTF-16-Zeichen, dann die Zeichen.
-  Bytes := Header + S('TForm1') + S('Form1') +
+  mBytes := Header + S('TForm1') + S('Form1') +
     S('Caption') + B([18, 7, 0, 0, 0]) + TEncoding.Unicode.GetBytes('Kai''s ä') +
     B([0, 0]);
-  Assert.AreEqual('object Form1: TForm1'#13#10'  Caption = ''Kai''#39''s ''#228'#13#10'end'#13#10, Convert(Bytes));
+  Assert.AreEqual('object Form1: TForm1'#13#10'  Caption = ''Kai''#39''s ''#228'#13#10'end'#13#10, Convert(mBytes));
 end;
 
 procedure TDfmBinaryTests.SplitsLongStrings;
 var
-  Bytes: TBytes;
-  Text: string;
+  mBytes: TBytes;
+  mText: string;
 begin
-  Text := StringOfChar('a', 70);
-  Bytes := Header + S('TForm1') + S('Form1') + S('Hint') + Str(Text) + B([0, 0]);
+  mText := StringOfChar('a', 70);
+  mBytes := Header + S('TForm1') + S('Form1') + S('Hint') + Str(mText) + B([0, 0]);
   Assert.AreEqual('object Form1: TForm1'#13#10 +
     '  Hint = '#13#10 +
     '    ''' + StringOfChar('a', 64) + ''' +'#13#10 +
     '    ''' + StringOfChar('a', 6) + ''''#13#10 +
-    'end'#13#10, Convert(Bytes));
+    'end'#13#10, Convert(mBytes));
 end;
 
 procedure TDfmBinaryTests.ConvertsCollectionsListsAndBinaryData;
 var
-  Bytes: TBytes;
+  mBytes: TBytes;
 begin
-  Bytes := Header + S('TForm1') + S('Form1') +
+  mBytes := Header + S('TForm1') + S('Form1') +
     S('Columns') + B([14]) +
       B([1]) + S('Caption') + Str('A') + B([0]) +
       B([2, 5, 1]) + S('Width') + B([2, 40]) + B([0]) +
@@ -169,14 +169,14 @@ begin
     '    ''y'')'#13#10 +
     '  Data = {'#13#10 +
     '    01ABFF}'#13#10 +
-    'end'#13#10, Convert(Bytes));
+    'end'#13#10, Convert(mBytes));
 end;
 
 procedure TDfmBinaryTests.ConvertsInheritedWithPosition;
 var
-  Bytes: TBytes;
+  mBytes: TBytes;
 begin
-  Bytes := Header + B([$F1]) + S('TForm2') + S('Form2') + B([0]) +
+  mBytes := Header + B([$F1]) + S('TForm2') + S('Form2') + B([0]) +
     B([$F3, 2, 1]) + S('TButton') + S('Ok') + B([0, 0]) +
     B([$F4]) + S('TRahmen') + S('Rahmen1') + B([0, 0]) +
     B([0]);
@@ -185,50 +185,50 @@ begin
     '  end'#13#10 +
     '  inline Rahmen1: TRahmen'#13#10 +
     '  end'#13#10 +
-    'end'#13#10, Convert(Bytes));
+    'end'#13#10, Convert(mBytes));
 end;
 
 procedure TDfmBinaryTests.SkipsResourceHeader;
 var
-  Bytes: TBytes;
+  mBytes: TBytes;
 begin
-  Bytes := B([$FF, $0A, $00]) + TEncoding.ASCII.GetBytes('TFORM1') + B([0, $30, $10, 20, 0, 0, 0]) +
+  mBytes := B([$FF, $0A, $00]) + TEncoding.ASCII.GetBytes('TFORM1') + B([0, $30, $10, 20, 0, 0, 0]) +
     Header + S('TForm1') + S('Form1') + B([0, 0]);
-  Assert.IsTrue(TDfmBinary.IsBinary(Bytes));
-  Assert.AreEqual('object Form1: TForm1'#13#10'end'#13#10, Convert(Bytes));
+  Assert.IsTrue(TDfmBinary.IsBinary(mBytes));
+  Assert.AreEqual('object Form1: TForm1'#13#10'end'#13#10, Convert(mBytes));
 end;
 
 procedure TDfmBinaryTests.RejectsDamagedData;
 var
-  Text: string;
+  mText: string;
 begin
-  Assert.IsFalse(TDfmBinary.ToText(Header + S('TForm1') + S('Form1') + S('Left'), Text));
-  Assert.IsFalse(TDfmBinary.ToText(TEncoding.ASCII.GetBytes('object Form1: TForm1'), Text));
+  Assert.IsFalse(TDfmBinary.ToText(Header + S('TForm1') + S('Form1') + S('Left'), mText));
+  Assert.IsFalse(TDfmBinary.ToText(TEncoding.ASCII.GetBytes('object Form1: TForm1'), mText));
 end;
 
 procedure TDfmBinaryTests.ParserReadsDecodedBinaryText;
 var
-  Bytes: TBytes;
-  Decoded: string;
-  Index: Integer;
-  Document: TDfmDocument;
+  mBytes: TBytes;
+  mDecoded: string;
+  mIndex: Integer;
+  mDocument: TDfmDocument;
 begin
   // So kommt der Inhalt aus TFileEncoding (Windows-1252, ein Zeichen je Byte).
-  Bytes := Header + S('TForm1') + S('Form1') + S('Width') + B([3, $2C, $01]) + B([0]) +
+  mBytes := Header + S('TForm1') + S('Form1') + S('Width') + B([3, $2C, $01]) + B([0]) +
     S('TButton') + S('Button1') + S('OnClick') + Ident('Button1Click') + B([0, 0]) + B([0]);
-  Decoded := '';
-  for Index := 0 to High(Bytes) do
+  mDecoded := '';
+  for mIndex := 0 to High(mBytes) do
   begin
-    Decoded := Decoded + Char(Bytes[Index]);
+    mDecoded := mDecoded + Char(mBytes[mIndex]);
   end;
-  Document := TDfmParser.Parse(Decoded);
+  mDocument := TDfmParser.Parse(mDecoded);
   try
-    Assert.AreEqual(0, Integer(Length(Document.Errors)));
-    Assert.AreEqual('TForm1', Document.Root.TypeName);
-    Assert.AreEqual('Button1', Document.Root.Children[0].Name);
-    Assert.AreEqual('Button1Click', Document.Root.Children[0].Properties[0].Value);
+    Assert.AreEqual(0, Integer(Length(mDocument.Errors)));
+    Assert.AreEqual('TForm1', mDocument.Root.TypeName);
+    Assert.AreEqual('Button1', mDocument.Root.Children[0].Name);
+    Assert.AreEqual('Button1Click', mDocument.Root.Children[0].Properties[0].Value);
   finally
-    Document.Free;
+    mDocument.Free;
   end;
 end;
 

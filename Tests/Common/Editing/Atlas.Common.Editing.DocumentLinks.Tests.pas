@@ -46,25 +46,25 @@ uses
   Atlas.Common.Lsp.DocumentLinks;
 
 const
-  Dir = 'C:\Proj\';
-  UnitFile = Dir + 'Main.pas';
+  cDir = 'C:\Proj\';
+  cUnitFile = cDir + 'Main.pas';
 
 function Exists(const AFiles: array of string): TFileExistsFunc;
 var
-  List: TArray<string>;
+  mList: TArray<string>;
   I: Integer;
 begin
-  SetLength(List, Length(AFiles));
+  SetLength(mList, Length(AFiles));
   for I := 0 to High(AFiles) do
   begin
-    List[I] := AFiles[I];
+    mList[I] := AFiles[I];
   end;
   Result :=
     function(const AFileName: string): Boolean
     var
       Name: string;
     begin
-      for Name in List do
+      for Name in mList do
       begin
         if SameText(Name, AFileName) then
         begin
@@ -76,9 +76,14 @@ begin
 end;
 
 function Links(const AText: string; const AFiles: array of string;
-  const ASearchPaths: TArray<string> = nil): TArray<TDocumentLink>;
+  const ASearchPaths: TArray<string>): TArray<TDocumentLink>; overload;
 begin
-  Result := TDocumentLinks.Find(AText, UnitFile, ASearchPaths, Exists(AFiles));
+  Result := TDocumentLinks.Find(AText, cUnitFile, ASearchPaths, Exists(AFiles));
+end;
+
+function Links(const AText: string; const AFiles: array of string): TArray<TDocumentLink>; overload;
+begin
+  Result := Links(AText, AFiles, nil);
 end;
 
 procedure AssertRange(const ALink: TDocumentLink; ALine, AStart, AEnd: Integer);
@@ -92,44 +97,44 @@ end;
 
 procedure TDocumentLinksTests.IncludeDirective;
 var
-  Found: TArray<TDocumentLink>;
+  mFound: TArray<TDocumentLink>;
 begin
-  Found := Links('unit Main;' + sLineBreak + '{$I Defs.inc}', [Dir + 'Defs.inc']);
-  Assert.AreEqual<NativeInt>(1, Length(Found));
-  Assert.AreEqual(Dir + 'Defs.inc', Found[0].Target);
-  Assert.IsFalse(Found[0].IsUrl);
-  AssertRange(Found[0], 1, 4, 12);
+  mFound := Links('unit Main;' + sLineBreak + '{$I Defs.inc}', [cDir + 'Defs.inc']);
+  Assert.AreEqual<NativeInt>(1, Length(mFound));
+  Assert.AreEqual(cDir + 'Defs.inc', mFound[0].Target);
+  Assert.IsFalse(mFound[0].IsUrl);
+  AssertRange(mFound[0], 1, 4, 12);
 end;
 
 procedure TDocumentLinksTests.IncludeWithQuotesAndLongForm;
 var
-  Found: TArray<TDocumentLink>;
+  mFound: TArray<TDocumentLink>;
 begin
-  Found := Links('{$INCLUDE ''Sub Dir\A.inc''} (*$I B.inc*)', [Dir + 'Sub Dir\A.inc', Dir + 'B.inc']);
-  Assert.AreEqual<NativeInt>(2, Length(Found));
-  Assert.AreEqual(Dir + 'Sub Dir\A.inc', Found[0].Target);
-  AssertRange(Found[0], 0, 11, 24);
-  Assert.AreEqual(Dir + 'B.inc', Found[1].Target);
-  AssertRange(Found[1], 0, 32, 37);
+  mFound := Links('{$INCLUDE ''Sub Dir\A.inc''} (*$I B.inc*)', [cDir + 'Sub Dir\A.inc', cDir + 'B.inc']);
+  Assert.AreEqual<NativeInt>(2, Length(mFound));
+  Assert.AreEqual(cDir + 'Sub Dir\A.inc', mFound[0].Target);
+  AssertRange(mFound[0], 0, 11, 24);
+  Assert.AreEqual(cDir + 'B.inc', mFound[1].Target);
+  AssertRange(mFound[1], 0, 32, 37);
 end;
 
 procedure TDocumentLinksTests.IncludeFromSearchPath;
 var
-  Found: TArray<TDocumentLink>;
+  mFound: TArray<TDocumentLink>;
 begin
-  Found := Links('{$I Shared.inc}', ['D:\Lib\Shared.inc'], ['D:\Lib']);
-  Assert.AreEqual<NativeInt>(1, Length(Found));
-  Assert.AreEqual('D:\Lib\Shared.inc', Found[0].Target);
+  mFound := Links('{$I Shared.inc}', ['D:\Lib\Shared.inc'], ['D:\Lib']);
+  Assert.AreEqual<NativeInt>(1, Length(mFound));
+  Assert.AreEqual('D:\Lib\Shared.inc', mFound[0].Target);
 end;
 
 procedure TDocumentLinksTests.ResourceWithStarUsesUnitName;
 var
-  Found: TArray<TDocumentLink>;
+  mFound: TArray<TDocumentLink>;
 begin
-  Found := Links('{$R *.dfm}', [Dir + 'Main.dfm']);
-  Assert.AreEqual<NativeInt>(1, Length(Found));
-  Assert.AreEqual(Dir + 'Main.dfm', Found[0].Target);
-  AssertRange(Found[0], 0, 4, 9);
+  mFound := Links('{$R *.dfm}', [cDir + 'Main.dfm']);
+  Assert.AreEqual<NativeInt>(1, Length(mFound));
+  Assert.AreEqual(cDir + 'Main.dfm', mFound[0].Target);
+  AssertRange(mFound[0], 0, 4, 9);
 end;
 
 procedure TDocumentLinksTests.SwitchesAreNoLinks;
@@ -144,60 +149,60 @@ end;
 
 procedure TDocumentLinksTests.UrlInComment;
 var
-  Found: TArray<TDocumentLink>;
+  mFound: TArray<TDocumentLink>;
 begin
-  Found := Links('// siehe https://example.com/a?b=1.', []);
-  Assert.AreEqual<NativeInt>(1, Length(Found));
-  Assert.IsTrue(Found[0].IsUrl);
-  Assert.AreEqual('https://example.com/a?b=1', Found[0].Target);
-  AssertRange(Found[0], 0, 9, 34);
+  mFound := Links('// siehe https://example.com/a?b=1.', []);
+  Assert.AreEqual<NativeInt>(1, Length(mFound));
+  Assert.IsTrue(mFound[0].IsUrl);
+  Assert.AreEqual('https://example.com/a?b=1', mFound[0].Target);
+  AssertRange(mFound[0], 0, 9, 34);
 end;
 
 procedure TDocumentLinksTests.UrlInMultilineComment;
 var
-  Found: TArray<TDocumentLink>;
+  mFound: TArray<TDocumentLink>;
 begin
-  Found := Links('{ Doku:' + #10 + '  http://x.de/y }', []);
-  Assert.AreEqual<NativeInt>(1, Length(Found));
-  AssertRange(Found[0], 1, 2, 15);
+  mFound := Links('{ Doku:' + #10 + '  http://x.de/y }', []);
+  Assert.AreEqual<NativeInt>(1, Length(mFound));
+  AssertRange(mFound[0], 1, 2, 15);
 end;
 
 procedure TDocumentLinksTests.UrlAndFileInString;
 var
-  Found: TArray<TDocumentLink>;
+  mFound: TArray<TDocumentLink>;
 begin
-  Found := Links('S := ''https://x.de''; T := ''Daten\Liste.txt'';', [Dir + 'Daten\Liste.txt']);
-  Assert.AreEqual<NativeInt>(2, Length(Found));
-  Assert.AreEqual('https://x.de', Found[0].Target);
-  Assert.AreEqual(Dir + 'Daten\Liste.txt', Found[1].Target);
-  AssertRange(Found[1], 0, 27, 42);
+  mFound := Links('S := ''https://x.de''; T := ''Daten\Liste.txt'';', [cDir + 'Daten\Liste.txt']);
+  Assert.AreEqual<NativeInt>(2, Length(mFound));
+  Assert.AreEqual('https://x.de', mFound[0].Target);
+  Assert.AreEqual(cDir + 'Daten\Liste.txt', mFound[1].Target);
+  AssertRange(mFound[1], 0, 27, 42);
 end;
 
 procedure TDocumentLinksTests.SentenceInStringIsNoLink;
 begin
   Assert.AreEqual<NativeInt>(0, Length(Links('S := ''Fehler in Datei.txt''; T := ''%s.txt'';',
-    [Dir + 'Fehler in Datei.txt', Dir + '%s.txt'])));
+    [cDir + 'Fehler in Datei.txt', cDir + '%s.txt'])));
 end;
 
 procedure TDocumentLinksTests.LspLinkUsesFileUriOrUrl;
 var
-  Link: TDocumentLink;
-  Item: TJSONObject;
+  mLink: TDocumentLink;
+  mItem: TJSONObject;
 begin
-  Link := Links('{$I Defs.inc} // http://x.de', [Dir + 'Defs.inc'])[0];
-  Item := TLspDocumentLinks.LinkToJson(Link);
+  mLink := Links('{$I Defs.inc} // http://x.de', [cDir + 'Defs.inc'])[0];
+  mItem := TLspDocumentLinks.LinkToJson(mLink);
   try
-    Assert.AreEqual(TDocumentUris.FromPath(Dir + 'Defs.inc'), Item.GetValue<string>('target'));
-    Assert.AreEqual(4, Item.GetValue<Integer>('range.start.character'));
+    Assert.AreEqual(TDocumentUris.FromPath(cDir + 'Defs.inc'), mItem.GetValue<string>('target'));
+    Assert.AreEqual(4, mItem.GetValue<Integer>('range.start.character'));
   finally
-    Item.Free;
+    mItem.Free;
   end;
-  Link := Links('{$I Defs.inc} // http://x.de', [Dir + 'Defs.inc'])[1];
-  Item := TLspDocumentLinks.LinkToJson(Link);
+  mLink := Links('{$I Defs.inc} // http://x.de', [cDir + 'Defs.inc'])[1];
+  mItem := TLspDocumentLinks.LinkToJson(mLink);
   try
-    Assert.AreEqual('http://x.de', Item.GetValue<string>('target'));
+    Assert.AreEqual('http://x.de', mItem.GetValue<string>('target'));
   finally
-    Item.Free;
+    mItem.Free;
   end;
 end;
 

@@ -31,7 +31,7 @@ uses
 
 procedure TAtlasToolbarIconsTests.IconsOfKnownCommands;
 var
-  Id: string;
+  mId: string;
 begin
   Assert.AreEqual<TAtlasToolbarIcon>(TAtlasToolbarIcon.InterfacePart,
     TAtlasToolbarIcons.IconOf(TAtlasToolbarItems.cGotoInterface));
@@ -40,38 +40,38 @@ begin
     TAtlasToolbarIcons.IconOf('atlas.navback'), 'ohne Groß-/Kleinschreibung');
   Assert.AreEqual<TAtlasToolbarIcon>(TAtlasToolbarIcon.Letter, TAtlasToolbarIcons.IconOf('Atlas.Rename'), 'unbekannt');
   // Jeder Knopf der Vorgabe hat ein eigenes Symbol.
-  for Id in TAtlasToolbarItems.Default do
+  for mId in TAtlasToolbarItems.Default do
   begin
-    if not TAtlasToolbarItems.IsSeparator(Id) then
+    if not TAtlasToolbarItems.IsSeparator(mId) then
     begin
-      Assert.AreNotEqual<TAtlasToolbarIcon>(TAtlasToolbarIcon.Letter, TAtlasToolbarIcons.IconOf(Id), Id);
+      Assert.AreNotEqual<TAtlasToolbarIcon>(TAtlasToolbarIcon.Letter, TAtlasToolbarIcons.IconOf(mId), mId);
     end;
   end;
 end;
 
 procedure TAtlasToolbarIconsTests.GlyphsStayInTheBox;
 var
-  Icon: TAtlasToolbarIcon;
-  Shapes: TArray<TAtlasGlyphShape>;
-  Shape: TAtlasGlyphShape;
-  Point: TAtlasGlyphPoint;
+  mIcon: TAtlasToolbarIcon;
+  mShapes: TArray<TAtlasGlyphShape>;
+  mShape: TAtlasGlyphShape;
+  mPoint: TAtlasGlyphPoint;
 begin
   Assert.AreEqual(0, Integer(Length(TAtlasGlyphs.Shapes(TAtlasToolbarIcon.Letter))));
-  for Icon := Succ(Low(TAtlasToolbarIcon)) to High(TAtlasToolbarIcon) do
+  for mIcon := Succ(Low(TAtlasToolbarIcon)) to High(TAtlasToolbarIcon) do
   begin
-    Shapes := TAtlasGlyphs.Shapes(Icon);
-    Assert.IsTrue(Length(Shapes) > 0, 'Symbol ' + IntToStr(Ord(Icon)));
-    for Shape in Shapes do
+    mShapes := TAtlasGlyphs.Shapes(mIcon);
+    Assert.IsTrue(Length(mShapes) > 0, 'Symbol ' + IntToStr(Ord(mIcon)));
+    for mShape in mShapes do
     begin
-      Assert.IsTrue(Length(Shape.Points) >= 2, 'mindestens eine Strecke');
-      if Shape.Filled then
+      Assert.IsTrue(Length(mShape.Points) >= 2, 'mindestens eine Strecke');
+      if mShape.Filled then
       begin
-        Assert.IsTrue(Shape.Closed, 'Flächen sind geschlossen');
+        Assert.IsTrue(mShape.Closed, 'Flächen sind geschlossen');
       end;
-      for Point in Shape.Points do
+      for mPoint in mShape.Points do
       begin
-        Assert.IsTrue((Point.X >= 0) and (Point.X <= TAtlasGlyphs.cSize), 'X im Feld');
-        Assert.IsTrue((Point.Y >= 0) and (Point.Y <= TAtlasGlyphs.cSize), 'Y im Feld');
+        Assert.IsTrue((mPoint.X >= 0) and (mPoint.X <= TAtlasGlyphs.cSize), 'X im Feld');
+        Assert.IsTrue((mPoint.Y >= 0) and (mPoint.Y <= TAtlasGlyphs.cSize), 'Y im Feld');
       end;
     end;
   end;
@@ -79,38 +79,38 @@ end;
 
 procedure TAtlasToolbarIconsTests.GearHasTeethNotRays;
 var
-  Shapes: TArray<TAtlasGlyphShape>;
-  Shape: TAtlasGlyphShape;
-  Point: TAtlasGlyphPoint;
-  Radius: Double;
-  Outer, Inner: Integer;
+  mShapes: TArray<TAtlasGlyphShape>;
+  mShape: TAtlasGlyphShape;
+  mPoint: TAtlasGlyphPoint;
+  mRadius: Double;
+  mOuter, mInner: Integer;
 begin
-  Shapes := TAtlasGlyphs.Shapes(TAtlasToolbarIcon.Gear);
-  Assert.AreEqual(2, Integer(Length(Shapes)), 'Zahnkranz und Loch');
-  for Shape in Shapes do
+  mShapes := TAtlasGlyphs.Shapes(TAtlasToolbarIcon.Gear);
+  Assert.AreEqual(2, Integer(Length(mShapes)), 'Zahnkranz und Loch');
+  for mShape in mShapes do
   begin
-    Assert.IsTrue(Shape.Closed, 'nur geschlossene Umrisse, keine Strahlen');
+    Assert.IsTrue(mShape.Closed, 'nur geschlossene Umrisse, keine Strahlen');
   end;
-  Outer := 0;
-  Inner := 0;
-  for Point in Shapes[0].Points do
+  mOuter := 0;
+  mInner := 0;
+  for mPoint in mShapes[0].Points do
   begin
-    Radius := Sqrt(Sqr(Point.X - 8) + Sqr(Point.Y - 8));
-    if Abs(Radius - 6.8) < 0.01 then
+    mRadius := Sqrt(Sqr(mPoint.X - 8) + Sqr(mPoint.Y - 8));
+    if Abs(mRadius - 6.8) < 0.01 then
     begin
-      Inc(Outer);
+      Inc(mOuter);
     end
-    else if Abs(Radius - 5) < 0.01 then
+    else if Abs(mRadius - 5) < 0.01 then
     begin
-      Inc(Inner);
+      Inc(mInner);
     end
     else
     begin
-      Assert.Fail(Format('Punkt %.2f/%.2f weder Kopf noch Fuß', [Point.X, Point.Y]));
+      Assert.Fail(Format('Punkt %.2f/%.2f weder Kopf noch Fuß', [mPoint.X, mPoint.Y]));
     end;
   end;
-  Assert.AreEqual(16, Outer, 'acht Zähne mit je zwei Kopfpunkten');
-  Assert.AreEqual(16, Inner, 'acht Lücken mit je zwei Fußpunkten');
+  Assert.AreEqual(16, mOuter, 'acht Zähne mit je zwei Kopfpunkten');
+  Assert.AreEqual(16, mInner, 'acht Lücken mit je zwei Fußpunkten');
 end;
 
 initialization

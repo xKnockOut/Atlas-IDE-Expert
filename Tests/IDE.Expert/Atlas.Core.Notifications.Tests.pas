@@ -95,8 +95,8 @@ uses
   Atlas.Core.Notifications.Build;
 
 const
-  Server = TAtlasNotificationSources.cServer;
-  Tips = TAtlasNotificationSources.cShortcutTips;
+  cServerSource = TAtlasNotificationSources.cServer;
+  cTips = TAtlasNotificationSources.cShortcutTips;
 
 { TAtlasNotificationCenterTests }
 
@@ -117,330 +117,330 @@ end;
 
 procedure TAtlasNotificationCenterTests.NotifyThroughInterfaceAddsUnreadEntry;
 var
-  Center: IAtlasNotificationCenter;
-  Entry: IAtlasNotification;
-  Mode: TAtlasNotificationMode;
+  mCenter: IAtlasNotificationCenter;
+  mEntry: IAtlasNotification;
+  mMode: TAtlasNotificationMode;
 begin
   // Akzeptanzkriterium: melden ohne Änderung an der Oberfläche, nur über die Schnittstelle.
-  Center := NewCenter;
-  Mode := Center.Notify('ci', TAtlasNotificationSeverity.Error, 'Server rot', 'Jenkins #482');
-  Assert.AreEqual(Ord(TAtlasNotificationMode.Show), Ord(Mode), 'unbekannte Quelle zeigt');
-  Assert.AreEqual(1, Integer(Length(Center.Items())));
-  Entry := Center.Items()[0];
-  Assert.AreEqual(1, Entry.Id);
-  Assert.AreEqual('ci', Entry.Source);
-  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Error), Ord(Entry.Severity));
-  Assert.AreEqual('Server rot', Entry.Title);
-  Assert.AreEqual('Server rot', Entry.Caption);
-  Assert.AreEqual('Jenkins #482', Entry.Text);
-  Assert.AreEqual(1, Integer(Entry.Count));
-  Assert.IsFalse(Entry.Read);
-  Assert.AreEqual<TDateTime>(FNow, Entry.Time, 'Zeit der Meldung');
-  Assert.AreEqual(1, Center.UnreadCount);
-  Assert.IsNotNull(Center.Find(1));
-  Assert.IsNull(Center.Find(2));
+  mCenter := NewCenter;
+  mMode := mCenter.Notify('ci', TAtlasNotificationSeverity.Error, 'Server rot', 'Jenkins #482');
+  Assert.AreEqual(Ord(TAtlasNotificationMode.Show), Ord(mMode), 'unbekannte Quelle zeigt');
+  Assert.AreEqual(1, Integer(Length(mCenter.Items())));
+  mEntry := mCenter.Items()[0];
+  Assert.AreEqual(1, mEntry.Id);
+  Assert.AreEqual('ci', mEntry.Source);
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Error), Ord(mEntry.Severity));
+  Assert.AreEqual('Server rot', mEntry.Title);
+  Assert.AreEqual('Server rot', mEntry.Caption);
+  Assert.AreEqual('Jenkins #482', mEntry.Text);
+  Assert.AreEqual(1, Integer(mEntry.Count));
+  Assert.IsFalse(mEntry.Read);
+  Assert.AreEqual<TDateTime>(FNow, mEntry.Time, 'Zeit der Meldung');
+  Assert.AreEqual(1, mCenter.UnreadCount);
+  Assert.IsNotNull(mCenter.Find(1));
+  Assert.IsNull(mCenter.Find(2));
 end;
 
 procedure TAtlasNotificationCenterTests.NewestComesFirst;
 var
-  Center: IAtlasNotificationCenter;
+  mCenter: IAtlasNotificationCenter;
 begin
-  Center := NewCenter;
-  Center.Notify(TAtlasNotificationSources.cBuild, TAtlasNotificationSeverity.Info, 'Build fertig: erfolgreich', '');
+  mCenter := NewCenter;
+  mCenter.Notify(TAtlasNotificationSources.cBuild, TAtlasNotificationSeverity.Info, 'Build fertig: erfolgreich', '');
   FNow := FNow + Seconds(1);
-  Center.Notify(TAtlasNotificationSources.cReload, TAtlasNotificationSeverity.Info, 'Dateien neu geladen: 2', '');
-  Assert.AreEqual(2, Integer(Length(Center.Items())));
-  Assert.AreEqual('Dateien neu geladen: 2', Center.Items()[0].Title);
-  Assert.AreEqual('Build fertig: erfolgreich', Center.Items()[1].Title);
-  Assert.AreEqual(2, Center.Items()[0].Id);
+  mCenter.Notify(TAtlasNotificationSources.cReload, TAtlasNotificationSeverity.Info, 'Dateien neu geladen: 2', '');
+  Assert.AreEqual(2, Integer(Length(mCenter.Items())));
+  Assert.AreEqual('Dateien neu geladen: 2', mCenter.Items()[0].Title);
+  Assert.AreEqual('Build fertig: erfolgreich', mCenter.Items()[1].Title);
+  Assert.AreEqual(2, mCenter.Items()[0].Id);
 end;
 
 procedure TAtlasNotificationCenterTests.ThreeRestartsWithinTenSecondsMerge;
 var
-  Center: IAtlasNotificationCenter;
-  Entry: IAtlasNotification;
+  mCenter: IAtlasNotificationCenter;
+  mEntry: IAtlasNotification;
 begin
   // Akzeptanzkriterium: drei Neustarts innerhalb von 10 s ergeben einen Eintrag „3 × Server neu gestartet“.
-  Center := NewCenter;
-  Center.Notify(Server, TAtlasNotificationSeverity.Info, 'Server neu gestartet', 'erster');
-  Center.MarkRead(1);
+  mCenter := NewCenter;
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'Server neu gestartet', 'erster');
+  mCenter.MarkRead(1);
   FNow := FNow + Seconds(4);
-  Center.Notify(Server, TAtlasNotificationSeverity.Info, 'Server neu gestartet', 'zweiter');
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'Server neu gestartet', 'zweiter');
   FNow := FNow + Seconds(9);
-  Center.Notify(Server, TAtlasNotificationSeverity.Info, 'Server neu gestartet', 'dritter');
-  Assert.AreEqual(1, Integer(Length(Center.Items())), 'ein Eintrag');
-  Entry := Center.Items()[0];
-  Assert.AreEqual('3 × Server neu gestartet', Entry.Caption);
-  Assert.AreEqual('Server neu gestartet', Entry.Title);
-  Assert.AreEqual(3, Integer(Entry.Count));
-  Assert.AreEqual(1, Entry.Id, 'Kennung bleibt');
-  Assert.AreEqual('dritter', Entry.Text, 'neuester Text');
-  Assert.AreEqual<TDateTime>(FNow, Entry.Time, 'Zeit der letzten Meldung');
-  Assert.IsFalse(Entry.Read, 'wieder ungelesen');
-  Assert.AreEqual(1, Center.UnreadCount);
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'Server neu gestartet', 'dritter');
+  Assert.AreEqual(1, Integer(Length(mCenter.Items())), 'ein Eintrag');
+  mEntry := mCenter.Items()[0];
+  Assert.AreEqual('3 × Server neu gestartet', mEntry.Caption);
+  Assert.AreEqual('Server neu gestartet', mEntry.Title);
+  Assert.AreEqual(3, Integer(mEntry.Count));
+  Assert.AreEqual(1, mEntry.Id, 'Kennung bleibt');
+  Assert.AreEqual('dritter', mEntry.Text, 'neuester Text');
+  Assert.AreEqual<TDateTime>(FNow, mEntry.Time, 'Zeit der letzten Meldung');
+  Assert.IsFalse(mEntry.Read, 'wieder ungelesen');
+  Assert.AreEqual(1, mCenter.UnreadCount);
 end;
 
 procedure TAtlasNotificationCenterTests.NoMergeAfterTenSecondsOrOtherTitle;
 var
-  Center: IAtlasNotificationCenter;
+  mCenter: IAtlasNotificationCenter;
 begin
-  Center := NewCenter;
-  Center.Notify(Server, TAtlasNotificationSeverity.Info, 'Server neu gestartet', '');
+  mCenter := NewCenter;
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'Server neu gestartet', '');
   FNow := FNow + Seconds(11);
-  Center.Notify(Server, TAtlasNotificationSeverity.Info, 'Server neu gestartet', '');
-  Assert.AreEqual(2, Integer(Length(Center.Items())), 'nach mehr als 10 s ein neuer Eintrag');
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'Server neu gestartet', '');
+  Assert.AreEqual(2, Integer(Length(mCenter.Items())), 'nach mehr als 10 s ein neuer Eintrag');
   FNow := FNow + Seconds(1);
-  Center.Notify(Server, TAtlasNotificationSeverity.Info, 'Server: Fehler', '');
-  Center.Notify(TAtlasNotificationSources.cBuild, TAtlasNotificationSeverity.Info, 'Server neu gestartet', '');
-  Assert.AreEqual(4, Integer(Length(Center.Items())), 'anderer Titel bzw. andere Quelle');
-  Assert.AreEqual(1, Center.Items()[3].Count);
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'Server: Fehler', '');
+  mCenter.Notify(TAtlasNotificationSources.cBuild, TAtlasNotificationSeverity.Info, 'Server neu gestartet', '');
+  Assert.AreEqual(4, Integer(Length(mCenter.Items())), 'anderer Titel bzw. andere Quelle');
+  Assert.AreEqual(1, mCenter.Items()[3].Count);
 end;
 
 procedure TAtlasNotificationCenterTests.MergeKeepsWorseSeverityAndMovesUp;
 var
-  Center: IAtlasNotificationCenter;
-  Actions: TArray<TAtlasNotificationAction>;
+  mCenter: IAtlasNotificationCenter;
+  mActions: TArray<TAtlasNotificationAction>;
 begin
-  Center := NewCenter;
-  Center.Notify(Server, TAtlasNotificationSeverity.Error, 'Meldung des Servers', 'a');
+  mCenter := NewCenter;
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Error, 'Meldung des Servers', 'a');
   FNow := FNow + Seconds(1);
-  Center.Notify(TAtlasNotificationSources.cBuild, TAtlasNotificationSeverity.Info, 'Build fertig: erfolgreich', '');
+  mCenter.Notify(TAtlasNotificationSources.cBuild, TAtlasNotificationSeverity.Info, 'Build fertig: erfolgreich', '');
   FNow := FNow + Seconds(1);
-  Actions := [TAtlasNotificationCenter.Action('Protokoll öffnen', nil)];
-  Center.Notify(Server, TAtlasNotificationSeverity.Warning, 'Meldung des Servers', 'b', Actions);
-  Assert.AreEqual(2, Integer(Length(Center.Items())));
-  Assert.AreEqual('2 × Meldung des Servers', Center.Items()[0].Caption, 'nach oben gerückt');
-  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Error), Ord(Center.Items()[0].Severity), 'schwerere bleibt');
-  Assert.AreEqual(1, Integer(Length(Center.Items()[0].Actions)), 'Aktionen der neuesten Meldung');
-  Assert.AreEqual('Protokoll öffnen', Center.Items()[0].Actions[0].Caption);
+  mActions := [TAtlasNotificationCenter.Action('Protokoll öffnen', nil)];
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Warning, 'Meldung des Servers', 'b', mActions);
+  Assert.AreEqual(2, Integer(Length(mCenter.Items())));
+  Assert.AreEqual('2 × Meldung des Servers', mCenter.Items()[0].Caption, 'nach oben gerückt');
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Error), Ord(mCenter.Items()[0].Severity), 'schwerere bleibt');
+  Assert.AreEqual(1, Integer(Length(mCenter.Items()[0].Actions)), 'Aktionen der neuesten Meldung');
+  Assert.AreEqual('Protokoll öffnen', mCenter.Items()[0].Actions[0].Caption);
 end;
 
 procedure TAtlasNotificationCenterTests.ListKeepsAtMostMaxEntries;
 var
-  Center: TAtlasNotificationCenter;
-  Keep: IAtlasNotificationCenter;
-  Index: Integer;
+  mCenter: TAtlasNotificationCenter;
+  mKeep: IAtlasNotificationCenter;
+  mIndex: Integer;
 begin
-  Center := NewCenter;
-  Keep := Center;
-  Assert.AreEqual(200, Center.MaxEntries, 'Vorgabe 200');
-  Center.SetMaxEntries(10);
-  for Index := 1 to 12 do
+  mCenter := NewCenter;
+  mKeep := mCenter;
+  Assert.AreEqual(200, mCenter.MaxEntries, 'Vorgabe 200');
+  mCenter.SetMaxEntries(10);
+  for mIndex := 1 to 12 do
   begin
     FNow := FNow + Seconds(20);
-    Center.Notify(Server, TAtlasNotificationSeverity.Info, 'Eintrag ' + IntToStr(Index), '');
+    mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'Eintrag ' + IntToStr(mIndex), '');
   end;
-  Assert.AreEqual(10, Integer(Length(Center.Items())));
-  Assert.AreEqual('Eintrag 12', Center.Items()[0].Title, 'neuester bleibt');
-  Assert.AreEqual('Eintrag 3', Center.Items()[9].Title, 'die ältesten fallen weg');
-  Assert.IsNull(Center.Find(1));
-  Assert.AreEqual(10, Center.UnreadCount);
+  Assert.AreEqual(10, Integer(Length(mCenter.Items())));
+  Assert.AreEqual('Eintrag 12', mCenter.Items()[0].Title, 'neuester bleibt');
+  Assert.AreEqual('Eintrag 3', mCenter.Items()[9].Title, 'die ältesten fallen weg');
+  Assert.IsNull(mCenter.Find(1));
+  Assert.AreEqual(10, mCenter.UnreadCount);
 end;
 
 procedure TAtlasNotificationCenterTests.MaxEntriesIsClampedAndShrinks;
 var
-  Center: TAtlasNotificationCenter;
-  Keep: IAtlasNotificationCenter;
-  Index: Integer;
+  mCenter: TAtlasNotificationCenter;
+  mKeep: IAtlasNotificationCenter;
+  mIndex: Integer;
 begin
-  Center := NewCenter;
-  Keep := Center;
-  Center.SetMaxEntries(3);
-  Assert.AreEqual(TAtlasNotificationCenter.cMinEntries, Center.MaxEntries, 'nach unten begrenzt');
-  Center.SetMaxEntries(5000);
-  Assert.AreEqual(TAtlasNotificationCenter.cMaxMaxEntries, Center.MaxEntries, 'nach oben begrenzt');
-  for Index := 1 to 15 do
+  mCenter := NewCenter;
+  mKeep := mCenter;
+  mCenter.SetMaxEntries(3);
+  Assert.AreEqual(TAtlasNotificationCenter.cMinEntries, mCenter.MaxEntries, 'nach unten begrenzt');
+  mCenter.SetMaxEntries(5000);
+  Assert.AreEqual(TAtlasNotificationCenter.cMaxMaxEntries, mCenter.MaxEntries, 'nach oben begrenzt');
+  for mIndex := 1 to 15 do
   begin
-    Center.Notify(Server, TAtlasNotificationSeverity.Info, 'Eintrag ' + IntToStr(Index), '');
+    mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'Eintrag ' + IntToStr(mIndex), '');
   end;
-  Center.SetMaxEntries(10);
-  Assert.AreEqual(10, Integer(Length(Center.Items())), 'Verkleinern kürzt die Liste');
-  Assert.AreEqual('Eintrag 15', Center.Items()[0].Title);
+  mCenter.SetMaxEntries(10);
+  Assert.AreEqual(10, Integer(Length(mCenter.Items())), 'Verkleinern kürzt die Liste');
+  Assert.AreEqual('Eintrag 15', mCenter.Items()[0].Title);
 end;
 
 procedure TAtlasNotificationCenterTests.ReadStateAndWorstUnread;
 var
-  Center: IAtlasNotificationCenter;
-  Severity: TAtlasNotificationSeverity;
+  mCenter: IAtlasNotificationCenter;
+  mSeverity: TAtlasNotificationSeverity;
 begin
-  Center := NewCenter;
-  Assert.IsFalse(Center.WorstUnread(Severity), 'leer');
-  Center.Notify(Server, TAtlasNotificationSeverity.Info, 'a', '');
-  Center.Notify(Server, TAtlasNotificationSeverity.Error, 'b', '');
-  Center.Notify(Server, TAtlasNotificationSeverity.Warning, 'c', '');
-  Assert.AreEqual(3, Center.UnreadCount);
-  Assert.IsTrue(Center.WorstUnread(Severity));
-  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Error), Ord(Severity));
-  Center.MarkRead(2);
-  Assert.IsTrue(Center.Find(2).Read);
-  Assert.AreEqual(2, Center.UnreadCount);
-  Assert.IsTrue(Center.WorstUnread(Severity));
-  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Warning), Ord(Severity), 'gelesene zählen nicht');
-  Center.MarkAllRead;
-  Assert.AreEqual(0, Center.UnreadCount);
-  Assert.IsFalse(Center.WorstUnread(Severity));
-  Assert.AreEqual(3, Integer(Length(Center.Items())), 'gelesene bleiben in der Liste');
+  mCenter := NewCenter;
+  Assert.IsFalse(mCenter.WorstUnread(mSeverity), 'leer');
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'a', '');
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Error, 'b', '');
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Warning, 'c', '');
+  Assert.AreEqual(3, mCenter.UnreadCount);
+  Assert.IsTrue(mCenter.WorstUnread(mSeverity));
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Error), Ord(mSeverity));
+  mCenter.MarkRead(2);
+  Assert.IsTrue(mCenter.Find(2).Read);
+  Assert.AreEqual(2, mCenter.UnreadCount);
+  Assert.IsTrue(mCenter.WorstUnread(mSeverity));
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Warning), Ord(mSeverity), 'gelesene zählen nicht');
+  mCenter.MarkAllRead;
+  Assert.AreEqual(0, mCenter.UnreadCount);
+  Assert.IsFalse(mCenter.WorstUnread(mSeverity));
+  Assert.AreEqual(3, Integer(Length(mCenter.Items())), 'gelesene bleiben in der Liste');
 end;
 
 procedure TAtlasNotificationCenterTests.ActionMarksReadAndRuns;
 var
-  Center: IAtlasNotificationCenter;
-  Jumped: Integer;
-  ReadWhenRun: Boolean;
+  mCenter: IAtlasNotificationCenter;
+  mJumped: Integer;
+  mReadWhenRun: Boolean;
 begin
   // Akzeptanzkriterium: „Zum Fehler“ springt und markiert den Eintrag als gelesen.
-  Center := NewCenter;
-  Jumped := 0;
-  ReadWhenRun := False;
-  Center.Notify(TAtlasNotificationSources.cBuild, TAtlasNotificationSeverity.Error, 'Build fertig: 2 Fehler', '',
+  mCenter := NewCenter;
+  mJumped := 0;
+  mReadWhenRun := False;
+  mCenter.Notify(TAtlasNotificationSources.cBuild, TAtlasNotificationSeverity.Error, 'Build fertig: 2 Fehler', '',
     [TAtlasNotificationCenter.Action('Zum Fehler',
     procedure
     begin
-      Inc(Jumped);
-      ReadWhenRun := Center.Find(1).Read;
+      Inc(mJumped);
+      mReadWhenRun := mCenter.Find(1).Read;
     end)]);
-  Assert.AreEqual(1, Center.UnreadCount, 'Zähler zeigt 1');
-  Assert.IsTrue(Center.RunAction(1, 0));
-  Assert.AreEqual(1, Jumped);
-  Assert.IsTrue(ReadWhenRun, 'vor der Aktion gelesen');
-  Assert.AreEqual(0, Center.UnreadCount);
-  Assert.IsFalse(Center.RunAction(1, 1), 'keine zweite Aktion');
-  Assert.IsFalse(Center.RunAction(7, 0), 'kein Eintrag');
-  Assert.AreEqual(1, Jumped);
+  Assert.AreEqual(1, mCenter.UnreadCount, 'Zähler zeigt 1');
+  Assert.IsTrue(mCenter.RunAction(1, 0));
+  Assert.AreEqual(1, mJumped);
+  Assert.IsTrue(mReadWhenRun, 'vor der Aktion gelesen');
+  Assert.AreEqual(0, mCenter.UnreadCount);
+  Assert.IsFalse(mCenter.RunAction(1, 1), 'keine zweite Aktion');
+  Assert.IsFalse(mCenter.RunAction(7, 0), 'kein Eintrag');
+  Assert.AreEqual(1, mJumped);
   // Kein Kreis über die Referenz der Aktion auf die Zentrale.
-  Center.Clear;
+  mCenter.Clear;
 end;
 
 procedure TAtlasNotificationCenterTests.CollectOnlyKeepsEntryButNoPopup;
 var
-  Center: IAtlasNotificationCenter;
+  mCenter: IAtlasNotificationCenter;
 begin
   // Akzeptanzkriterium: Tastenkürzel-Tipps auf „nur sammeln“: keine Einblendung, aber der Eintrag.
-  Center := NewCenter;
-  Center.SetMode(Tips, TAtlasNotificationMode.Collect);
-  Assert.AreEqual(Ord(TAtlasNotificationMode.Collect), Ord(Center.ModeOf('SHORTCUTTIPS')),
+  mCenter := NewCenter;
+  mCenter.SetMode(cTips, TAtlasNotificationMode.Collect);
+  Assert.AreEqual(Ord(TAtlasNotificationMode.Collect), Ord(mCenter.ModeOf('SHORTCUTTIPS')),
     'Quelle ohne Groß-/Kleinschreibung');
   Assert.AreEqual(Ord(TAtlasNotificationMode.Collect),
-    Ord(Center.Notify(Tips, TAtlasNotificationSeverity.Info, 'Tastenkürzel: Strg+Umschalt+P', 'Befehlspalette')),
+    Ord(mCenter.Notify(cTips, TAtlasNotificationSeverity.Info, 'Tastenkürzel: Strg+Umschalt+P', 'Befehlspalette')),
     'die Quelle zeigt nichts');
-  Assert.AreEqual(1, Integer(Length(Center.Items())), 'der Tipp steht in der Liste');
-  Assert.AreEqual(Ord(TAtlasNotificationMode.Show), Ord(Center.ModeOf(Server)), 'andere Quellen zeigen');
-  Center.SetMode(Tips, TAtlasNotificationMode.Show);
-  Assert.AreEqual(Ord(TAtlasNotificationMode.Show), Ord(Center.ModeOf(Tips)));
+  Assert.AreEqual(1, Integer(Length(mCenter.Items())), 'der Tipp steht in der Liste');
+  Assert.AreEqual(Ord(TAtlasNotificationMode.Show), Ord(mCenter.ModeOf(cServerSource)), 'andere Quellen zeigen');
+  mCenter.SetMode(cTips, TAtlasNotificationMode.Show);
+  Assert.AreEqual(Ord(TAtlasNotificationMode.Show), Ord(mCenter.ModeOf(cTips)));
 end;
 
 procedure TAtlasNotificationCenterTests.OffCollectsNothing;
 var
-  Center: IAtlasNotificationCenter;
+  mCenter: IAtlasNotificationCenter;
 begin
-  Center := NewCenter;
-  Center.SetMode(Server, TAtlasNotificationMode.Off);
+  mCenter := NewCenter;
+  mCenter.SetMode(cServerSource, TAtlasNotificationMode.Off);
   Assert.AreEqual(Ord(TAtlasNotificationMode.Off),
-    Ord(Center.Notify(Server, TAtlasNotificationSeverity.Error, 'Server: Fehler', '')));
-  Assert.AreEqual(0, Integer(Length(Center.Items())), 'aus: weder Einblendung noch Eintrag');
-  Assert.AreEqual(0, Center.UnreadCount);
+    Ord(mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Error, 'Server: Fehler', '')));
+  Assert.AreEqual(0, Integer(Length(mCenter.Items())), 'aus: weder Einblendung noch Eintrag');
+  Assert.AreEqual(0, mCenter.UnreadCount);
 end;
 
 procedure TAtlasNotificationCenterTests.ApplyModesReplacesAllModes;
 var
-  Center: TAtlasNotificationCenter;
-  Keep: IAtlasNotificationCenter;
+  mCenter: TAtlasNotificationCenter;
+  mKeep: IAtlasNotificationCenter;
 begin
-  Center := NewCenter;
-  Keep := Center;
-  Center.SetMode(TAtlasNotificationSources.cBuild, TAtlasNotificationMode.Off);
-  Center.ApplyModes('shortcutTips=collect; server = OFF, kaputt, check=irgendwas');
-  Assert.AreEqual(Ord(TAtlasNotificationMode.Collect), Ord(Center.ModeOf(Tips)));
-  Assert.AreEqual(Ord(TAtlasNotificationMode.Off), Ord(Center.ModeOf(Server)));
-  Assert.AreEqual(Ord(TAtlasNotificationMode.Show), Ord(Center.ModeOf(TAtlasNotificationSources.cBuild)),
+  mCenter := NewCenter;
+  mKeep := mCenter;
+  mCenter.SetMode(TAtlasNotificationSources.cBuild, TAtlasNotificationMode.Off);
+  mCenter.ApplyModes('shortcutTips=collect; server = OFF, kaputt, check=irgendwas');
+  Assert.AreEqual(Ord(TAtlasNotificationMode.Collect), Ord(mCenter.ModeOf(cTips)));
+  Assert.AreEqual(Ord(TAtlasNotificationMode.Off), Ord(mCenter.ModeOf(cServerSource)));
+  Assert.AreEqual(Ord(TAtlasNotificationMode.Show), Ord(mCenter.ModeOf(TAtlasNotificationSources.cBuild)),
     'nicht genannte Quellen zeigen wieder');
-  Assert.AreEqual(Ord(TAtlasNotificationMode.Show), Ord(Center.ModeOf(TAtlasNotificationSources.cCheck)),
+  Assert.AreEqual(Ord(TAtlasNotificationMode.Show), Ord(mCenter.ModeOf(TAtlasNotificationSources.cCheck)),
     'unbekanntes Verhalten');
 end;
 
 procedure TAtlasNotificationCenterTests.DisabledCenterBehavesLikeBefore;
 var
-  Center: TAtlasNotificationCenter;
-  Keep: IAtlasNotificationCenter;
+  mCenter: TAtlasNotificationCenter;
+  mKeep: IAtlasNotificationCenter;
 begin
-  Center := NewCenter;
-  Keep := Center;
-  Center.ApplyModes('shortcutTips=collect');
-  Center.Notify(Server, TAtlasNotificationSeverity.Info, 'a', '');
-  Center.Enabled := False;
-  Assert.AreEqual(0, Integer(Length(Center.Items())), 'Ausschalten leert die Liste');
-  Assert.AreEqual(Ord(TAtlasNotificationMode.Show), Ord(Center.ModeOf(Tips)), 'aus: alle Quellen zeigen');
+  mCenter := NewCenter;
+  mKeep := mCenter;
+  mCenter.ApplyModes('shortcutTips=collect');
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'a', '');
+  mCenter.Enabled := False;
+  Assert.AreEqual(0, Integer(Length(mCenter.Items())), 'Ausschalten leert die Liste');
+  Assert.AreEqual(Ord(TAtlasNotificationMode.Show), Ord(mCenter.ModeOf(cTips)), 'aus: alle Quellen zeigen');
   Assert.AreEqual(Ord(TAtlasNotificationMode.Show),
-    Ord(Center.Notify(Tips, TAtlasNotificationSeverity.Info, 'b', '')));
-  Assert.AreEqual(0, Integer(Length(Center.Items())), 'aus: nichts gesammelt');
-  Center.Enabled := True;
-  Assert.AreEqual(Ord(TAtlasNotificationMode.Collect), Ord(Center.ModeOf(Tips)), 'Verhalten bleiben gemerkt');
+    Ord(mCenter.Notify(cTips, TAtlasNotificationSeverity.Info, 'b', '')));
+  Assert.AreEqual(0, Integer(Length(mCenter.Items())), 'aus: nichts gesammelt');
+  mCenter.Enabled := True;
+  Assert.AreEqual(Ord(TAtlasNotificationMode.Collect), Ord(mCenter.ModeOf(cTips)), 'Verhalten bleiben gemerkt');
 end;
 
 procedure TAtlasNotificationCenterTests.ListenersSeeEveryChange;
 var
-  Center: IAtlasNotificationCenter;
-  Calls, Handle, Before: Integer;
+  mCenter: IAtlasNotificationCenter;
+  mCalls, mHandle, mBefore: Integer;
 begin
-  Center := NewCenter;
-  Calls := 0;
-  Handle := Center.AddListener(
+  mCenter := NewCenter;
+  mCalls := 0;
+  mHandle := mCenter.AddListener(
     procedure
     begin
-      Inc(Calls);
+      Inc(mCalls);
     end);
-  Before := Center.Version;
-  Center.Notify(Server, TAtlasNotificationSeverity.Info, 'a', '');
-  Center.MarkRead(1);
-  Center.MarkRead(1);
-  Center.MarkAllRead;
-  Center.Clear;
-  Assert.AreEqual(3, Calls, 'Melden, Gelesen, Leeren; ohne Änderung kein Ereignis');
-  Assert.AreEqual(Before + 3, Center.Version);
-  Center.RemoveListener(Handle);
-  Center.Notify(Server, TAtlasNotificationSeverity.Info, 'b', '');
-  Assert.AreEqual(3, Calls, 'abgemeldet');
+  mBefore := mCenter.Version;
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'a', '');
+  mCenter.MarkRead(1);
+  mCenter.MarkRead(1);
+  mCenter.MarkAllRead;
+  mCenter.Clear;
+  Assert.AreEqual(3, mCalls, 'Melden, Gelesen, Leeren; ohne Änderung kein Ereignis');
+  Assert.AreEqual(mBefore + 3, mCenter.Version);
+  mCenter.RemoveListener(mHandle);
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'b', '');
+  Assert.AreEqual(3, mCalls, 'abgemeldet');
 end;
 
 procedure TAtlasNotificationCenterTests.FilterBySourceAndClear;
 var
-  Center: IAtlasNotificationCenter;
-  Sources: TArray<string>;
+  mCenter: IAtlasNotificationCenter;
+  mSources: TArray<string>;
 begin
-  Center := NewCenter;
-  Center.Notify(Server, TAtlasNotificationSeverity.Info, 'a', '');
-  Center.Notify(TAtlasNotificationSources.cBuild, TAtlasNotificationSeverity.Info, 'b', '');
-  Center.Notify(Server, TAtlasNotificationSeverity.Info, 'c', '');
-  Assert.AreEqual(2, Integer(Length(Center.Items('SERVER'))));
-  Assert.AreEqual('c', Center.Items(Server)[0].Title);
-  Assert.AreEqual(3, Integer(Length(Center.Items(''))), 'leer = alle');
-  Sources := Center.Sources;
-  Assert.AreEqual(2, Integer(Length(Sources)));
-  Assert.AreEqual(Server, Sources[0], 'Reihenfolge der Liste');
-  Assert.AreEqual(TAtlasNotificationSources.cBuild, Sources[1]);
-  Center.Clear;
-  Assert.AreEqual(0, Integer(Length(Center.Items())));
-  Assert.AreEqual(0, Integer(Length(Center.Sources)));
-  Center.Notify(Server, TAtlasNotificationSeverity.Info, 'd', '');
-  Assert.AreEqual(4, Center.Items()[0].Id, 'Kennungen laufen weiter');
+  mCenter := NewCenter;
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'a', '');
+  mCenter.Notify(TAtlasNotificationSources.cBuild, TAtlasNotificationSeverity.Info, 'b', '');
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'c', '');
+  Assert.AreEqual(2, Integer(Length(mCenter.Items('SERVER'))));
+  Assert.AreEqual('c', mCenter.Items(cServerSource)[0].Title);
+  Assert.AreEqual(3, Integer(Length(mCenter.Items(''))), 'leer = alle');
+  mSources := mCenter.Sources;
+  Assert.AreEqual(2, Integer(Length(mSources)));
+  Assert.AreEqual(cServerSource, mSources[0], 'Reihenfolge der Liste');
+  Assert.AreEqual(TAtlasNotificationSources.cBuild, mSources[1]);
+  mCenter.Clear;
+  Assert.AreEqual(0, Integer(Length(mCenter.Items())));
+  Assert.AreEqual(0, Integer(Length(mCenter.Sources)));
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'd', '');
+  Assert.AreEqual(4, mCenter.Items()[0].Id, 'Kennungen laufen weiter');
 end;
 
 procedure TAtlasNotificationCenterTests.DefaultStaysOffUntilEnabled;
 var
-  Center: IAtlasNotificationCenter;
+  mCenter: IAtlasNotificationCenter;
 begin
   TAtlasNotificationCenter.ReleaseDefault;
   try
-    Center := TAtlasNotificationCenter.Default;
-    Assert.AreSame(TAtlasNotificationCenter.Default, Center, 'eine Zentrale');
+    mCenter := TAtlasNotificationCenter.Default;
+    Assert.AreSame(TAtlasNotificationCenter.Default, mCenter, 'eine Zentrale');
     Assert.AreEqual(Ord(TAtlasNotificationMode.Show),
-      Ord(Center.Notify(Tips, TAtlasNotificationSeverity.Info, 'a', '')));
-    Assert.AreEqual(0, Integer(Length(Center.Items())), 'ohne Plugin-Einstellung wie vor #601');
+      Ord(mCenter.Notify(cTips, TAtlasNotificationSeverity.Info, 'a', '')));
+    Assert.AreEqual(0, Integer(Length(mCenter.Items())), 'ohne Plugin-Einstellung wie vor #601');
     TAtlasNotificationCenter.DefaultCenter.Enabled := True;
-    Center.Notify(Tips, TAtlasNotificationSeverity.Info, 'a', '');
-    Assert.AreEqual(1, Integer(Length(Center.Items())));
+    mCenter.Notify(cTips, TAtlasNotificationSeverity.Info, 'a', '');
+    Assert.AreEqual(1, Integer(Length(mCenter.Items())));
   finally
-    Center := nil;
+    mCenter := nil;
     TAtlasNotificationCenter.ReleaseDefault;
   end;
 end;
@@ -449,17 +449,17 @@ end;
 
 procedure TAtlasNotificationSourcesTests.ParseSkipsBrokenEntries;
 var
-  Modes: TArray<TAtlasNotificationSourceMode>;
+  mModes: TArray<TAtlasNotificationSourceMode>;
 begin
-  Modes := TAtlasNotificationSources.Parse(' shortcutTips = collect ;server=OFF,' + #13#10 +
+  mModes := TAtlasNotificationSources.Parse(' shortcutTips = collect ;server=OFF,' + #13#10 +
     'x=laut, =off, ohneGleich, build=show, server=collect');
-  Assert.AreEqual(3, Integer(Length(Modes)));
-  Assert.AreEqual('shortcutTips', Modes[0].Source);
-  Assert.AreEqual(Ord(TAtlasNotificationMode.Collect), Ord(Modes[0].Mode));
-  Assert.AreEqual('server', Modes[1].Source);
-  Assert.AreEqual(Ord(TAtlasNotificationMode.Collect), Ord(Modes[1].Mode), 'spätere Angabe gewinnt');
-  Assert.AreEqual('build', Modes[2].Source);
-  Assert.AreEqual(Ord(TAtlasNotificationMode.Show), Ord(Modes[2].Mode));
+  Assert.AreEqual(3, Integer(Length(mModes)));
+  Assert.AreEqual('shortcutTips', mModes[0].Source);
+  Assert.AreEqual(Ord(TAtlasNotificationMode.Collect), Ord(mModes[0].Mode));
+  Assert.AreEqual('server', mModes[1].Source);
+  Assert.AreEqual(Ord(TAtlasNotificationMode.Collect), Ord(mModes[1].Mode), 'spätere Angabe gewinnt');
+  Assert.AreEqual('build', mModes[2].Source);
+  Assert.AreEqual(Ord(TAtlasNotificationMode.Show), Ord(mModes[2].Mode));
   Assert.AreEqual(0, Integer(Length(TAtlasNotificationSources.Parse(''))));
 end;
 
@@ -475,21 +475,21 @@ end;
 
 procedure TAtlasNotificationSourcesTests.WithModeChangesOneSource;
 var
-  Spec: string;
+  mSpec: string;
 begin
-  Spec := TAtlasNotificationSources.WithMode('', 'shortcutTips', TAtlasNotificationMode.Collect);
-  Assert.AreEqual('shortcutTips=collect', Spec);
+  mSpec := TAtlasNotificationSources.WithMode('', 'shortcutTips', TAtlasNotificationMode.Collect);
+  Assert.AreEqual('shortcutTips=collect', mSpec);
   // Unbekannte Quellen (künftige Hinweise wie #763) bleiben erhalten.
-  Spec := TAtlasNotificationSources.WithMode('ci=off, ' + Spec, 'server', TAtlasNotificationMode.Off);
-  Assert.AreEqual('ci=off, shortcutTips=collect, server=off', Spec);
-  Spec := TAtlasNotificationSources.WithMode(Spec, 'SHORTCUTTIPS', TAtlasNotificationMode.Show);
-  Assert.AreEqual('ci=off, server=off', Spec, 'Show ist die Vorgabe und fällt weg');
-  Assert.AreEqual('ci=off, server=off', TAtlasNotificationSources.WithMode(Spec, ' ', TAtlasNotificationMode.Off));
+  mSpec := TAtlasNotificationSources.WithMode('ci=off, ' + mSpec, 'server', TAtlasNotificationMode.Off);
+  Assert.AreEqual('ci=off, shortcutTips=collect, server=off', mSpec);
+  mSpec := TAtlasNotificationSources.WithMode(mSpec, 'SHORTCUTTIPS', TAtlasNotificationMode.Show);
+  Assert.AreEqual('ci=off, server=off', mSpec, 'Show ist die Vorgabe und fällt weg');
+  Assert.AreEqual('ci=off, server=off', TAtlasNotificationSources.WithMode(mSpec, ' ', TAtlasNotificationMode.Off));
 end;
 
 procedure TAtlasNotificationSourcesTests.KnownSourcesAndModeNames;
 var
-  Mode: TAtlasNotificationMode;
+  mMode: TAtlasNotificationMode;
 begin
   Assert.AreEqual(10, Integer(Length(TAtlasNotificationSources.Known)));
   Assert.AreEqual('build', TAtlasNotificationSources.Known[0]);
@@ -502,10 +502,10 @@ begin
   Assert.AreEqual('show', TAtlasNotificationSources.ModeName(TAtlasNotificationMode.Show));
   Assert.AreEqual('collect', TAtlasNotificationSources.ModeName(TAtlasNotificationMode.Collect));
   Assert.AreEqual('off', TAtlasNotificationSources.ModeName(TAtlasNotificationMode.Off));
-  Assert.IsTrue(TAtlasNotificationSources.TryMode(' Collect ', Mode));
-  Assert.AreEqual(Ord(TAtlasNotificationMode.Collect), Ord(Mode));
-  Assert.IsFalse(TAtlasNotificationSources.TryMode('laut', Mode));
-  Assert.AreEqual(Ord(TAtlasNotificationMode.Show), Ord(Mode));
+  Assert.IsTrue(TAtlasNotificationSources.TryMode(' Collect ', mMode));
+  Assert.AreEqual(Ord(TAtlasNotificationMode.Collect), Ord(mMode));
+  Assert.IsFalse(TAtlasNotificationSources.TryMode('laut', mMode));
+  Assert.AreEqual(Ord(TAtlasNotificationMode.Show), Ord(mMode));
 end;
 
 { TAtlasBuildNoticeTests }
@@ -524,87 +524,87 @@ end;
 
 procedure TAtlasBuildNoticeTests.BuildWithErrorsTargetsFirstErrorWithFile;
 var
-  Notice: TAtlasBuildNotice;
+  mNotice: TAtlasBuildNotice;
 begin
   // Akzeptanzkriterium: Build mit 2 Fehlern ergibt „Build fertig: 2 Fehler“ mit Sprung zur ersten Meldung.
-  Notice := TAtlasBuildNotices.FromRun([Msg(TAtlasCompilerSeverity.Hint, 'C:\P\A.pas', 1),
+  mNotice := TAtlasBuildNotices.FromRun([Msg(TAtlasCompilerSeverity.Hint, 'C:\P\A.pas', 1),
     Msg(TAtlasCompilerSeverity.Fatal, '', 0), Msg(TAtlasCompilerSeverity.Error, 'C:\P\Main.pas', 12),
     Msg(TAtlasCompilerSeverity.Warning, 'C:\P\B.pas', 7)], False, True, False, -1);
-  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Errors), Ord(Notice.Kind));
-  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Error), Ord(Notice.Severity));
-  Assert.AreEqual(2, Notice.Errors);
-  Assert.AreEqual(1, Notice.Warnings);
-  Assert.AreEqual(1, Notice.Hints);
-  Assert.IsTrue(Notice.HasTarget);
-  Assert.AreEqual('C:\P\Main.pas', Notice.Target.FileName, 'erste Fehlermeldung mit Datei');
-  Assert.AreEqual(12, Notice.Target.Line);
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Errors), Ord(mNotice.Kind));
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Error), Ord(mNotice.Severity));
+  Assert.AreEqual(2, mNotice.Errors);
+  Assert.AreEqual(1, mNotice.Warnings);
+  Assert.AreEqual(1, mNotice.Hints);
+  Assert.IsTrue(mNotice.HasTarget);
+  Assert.AreEqual('C:\P\Main.pas', mNotice.Target.FileName, 'erste Fehlermeldung mit Datei');
+  Assert.AreEqual(12, mNotice.Target.Line);
   Assert.AreEqual(TAtlasNotificationSources.cBuild, TAtlasBuildNotices.SourceOf(False));
 end;
 
 procedure TAtlasBuildNoticeTests.VerdictRejectsAndSkipsBaseline;
 var
-  Messages: TArray<TAtlasCompilerMessage>;
-  Notice: TAtlasBuildNotice;
+  mMessages: TArray<TAtlasCompilerMessage>;
+  mNotice: TAtlasBuildNotice;
 begin
-  Messages := [Msg(TAtlasCompilerSeverity.Warning, 'C:\P\B.pas', 7),
+  mMessages := [Msg(TAtlasCompilerSeverity.Warning, 'C:\P\B.pas', 7),
     Msg(TAtlasCompilerSeverity.Hint, 'C:\P\A.pas', 3)];
-  Messages[0].Code := 'W1035';
-  Messages[1].Code := 'H2164';
-  Notice := TAtlasBuildNotices.FromVerdict(Messages, TAtlasBuildVerdicts.Evaluate(Messages, nil, True,
+  mMessages[0].Code := 'W1035';
+  mMessages[1].Code := 'H2164';
+  mNotice := TAtlasBuildNotices.FromVerdict(mMessages, TAtlasBuildVerdicts.Evaluate(mMessages, nil, True,
     TAtlasBuildVerdictSettings.Create(True, '')));
-  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Rejected), Ord(Notice.Kind));
-  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Error), Ord(Notice.Severity));
-  Assert.IsTrue(Notice.HasTarget, 'Zur Meldung');
-  Assert.AreEqual(7, Notice.Target.Line);
-  Notice := TAtlasBuildNotices.FromVerdict(Messages, TAtlasBuildVerdicts.Evaluate(Messages, nil, True,
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Rejected), Ord(mNotice.Kind));
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Error), Ord(mNotice.Severity));
+  Assert.IsTrue(mNotice.HasTarget, 'Zur Meldung');
+  Assert.AreEqual(7, mNotice.Target.Line);
+  mNotice := TAtlasBuildNotices.FromVerdict(mMessages, TAtlasBuildVerdicts.Evaluate(mMessages, nil, True,
     TAtlasBuildVerdictSettings.Create(False, 'H2164')));
-  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Rejected), Ord(Notice.Kind));
-  Assert.AreEqual('H2164', Notice.PromotedCode);
-  Assert.AreEqual(3, Notice.Target.Line, 'Ziel ist die Meldung aus warningsAsErrors');
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Rejected), Ord(mNotice.Kind));
+  Assert.AreEqual('H2164', mNotice.PromotedCode);
+  Assert.AreEqual(3, mNotice.Target.Line, 'Ziel ist die Meldung aus warningsAsErrors');
   // Warnung in der Basislinie: nur der Hinweis zählt, der Build ist ohne Schranke erfolgreich.
-  Notice := TAtlasBuildNotices.FromVerdict(Messages, TAtlasBuildVerdicts.Evaluate(Messages,
+  mNotice := TAtlasBuildNotices.FromVerdict(mMessages, TAtlasBuildVerdicts.Evaluate(mMessages,
     TArray<Boolean>.Create(True, False), True, TAtlasBuildVerdictSettings.Create(False, '')));
-  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Succeeded), Ord(Notice.Kind));
-  Assert.AreEqual(0, Notice.Warnings);
-  Assert.AreEqual(1, Notice.Hints);
-  Assert.AreEqual(1, Notice.Baselined);
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Succeeded), Ord(mNotice.Kind));
+  Assert.AreEqual(0, mNotice.Warnings);
+  Assert.AreEqual(1, mNotice.Hints);
+  Assert.AreEqual(1, mNotice.Baselined);
 end;
 
 procedure TAtlasBuildNoticeTests.BuildWithWarningsSucceededOrFailed;
 var
-  Notice: TAtlasBuildNotice;
+  mNotice: TAtlasBuildNotice;
 begin
-  Notice := TAtlasBuildNotices.FromRun([Msg(TAtlasCompilerSeverity.Warning, 'C:\P\B.pas', 7)], True, True, False,
+  mNotice := TAtlasBuildNotices.FromRun([Msg(TAtlasCompilerSeverity.Warning, 'C:\P\B.pas', 7)], True, True, False,
     -1);
-  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Warnings), Ord(Notice.Kind));
-  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Warning), Ord(Notice.Severity));
-  Assert.IsFalse(Notice.HasTarget, 'Warnungen sind kein Fehler');
-  Notice := TAtlasBuildNotices.FromRun(nil, True, True, False, -1);
-  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Succeeded), Ord(Notice.Kind));
-  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Info), Ord(Notice.Severity));
-  Notice := TAtlasBuildNotices.FromRun(nil, False, False, False, -1);
-  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Failed), Ord(Notice.Kind), 'ohne lesbare Meldungen');
-  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Error), Ord(Notice.Severity));
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Warnings), Ord(mNotice.Kind));
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Warning), Ord(mNotice.Severity));
+  Assert.IsFalse(mNotice.HasTarget, 'Warnungen sind kein Fehler');
+  mNotice := TAtlasBuildNotices.FromRun(nil, True, True, False, -1);
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Succeeded), Ord(mNotice.Kind));
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Info), Ord(mNotice.Severity));
+  mNotice := TAtlasBuildNotices.FromRun(nil, False, False, False, -1);
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Failed), Ord(mNotice.Kind), 'ohne lesbare Meldungen');
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Error), Ord(mNotice.Severity));
 end;
 
 procedure TAtlasBuildNoticeTests.BackgroundCheckOnlyOnErrorsAndRecovery;
 var
-  Notice: TAtlasBuildNotice;
+  mNotice: TAtlasBuildNotice;
 begin
   Assert.AreEqual(TAtlasNotificationSources.cCheck, TAtlasBuildNotices.SourceOf(True));
-  Notice := TAtlasBuildNotices.FromRun([Msg(TAtlasCompilerSeverity.Error, 'C:\P\Main.pas', 4)], False, True, True, 0);
-  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.CheckErrors), Ord(Notice.Kind));
-  Assert.AreEqual(1, Notice.Errors);
-  Assert.IsTrue(Notice.HasTarget);
-  Notice := TAtlasBuildNotices.FromRun([Msg(TAtlasCompilerSeverity.Warning, 'C:\P\B.pas', 7)], True, True, True, 2);
-  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.CheckClean), Ord(Notice.Kind), 'wieder fehlerfrei');
-  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Info), Ord(Notice.Severity));
-  Notice := TAtlasBuildNotices.FromRun(nil, True, True, True, 0);
-  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.None), Ord(Notice.Kind), 'fehlerfrei wie vorher: nichts');
-  Notice := TAtlasBuildNotices.FromRun(nil, True, True, True, -1);
-  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.None), Ord(Notice.Kind), 'erste Prüfung ohne Fehler: nichts');
-  Notice := TAtlasBuildNotices.FromRun(nil, False, False, True, 3);
-  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.None), Ord(Notice.Kind), 'nicht lesbar: keine Entwarnung');
+  mNotice := TAtlasBuildNotices.FromRun([Msg(TAtlasCompilerSeverity.Error, 'C:\P\Main.pas', 4)], False, True, True, 0);
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.CheckErrors), Ord(mNotice.Kind));
+  Assert.AreEqual(1, mNotice.Errors);
+  Assert.IsTrue(mNotice.HasTarget);
+  mNotice := TAtlasBuildNotices.FromRun([Msg(TAtlasCompilerSeverity.Warning, 'C:\P\B.pas', 7)], True, True, True, 2);
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.CheckClean), Ord(mNotice.Kind), 'wieder fehlerfrei');
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Info), Ord(mNotice.Severity));
+  mNotice := TAtlasBuildNotices.FromRun(nil, True, True, True, 0);
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.None), Ord(mNotice.Kind), 'fehlerfrei wie vorher: nichts');
+  mNotice := TAtlasBuildNotices.FromRun(nil, True, True, True, -1);
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.None), Ord(mNotice.Kind), 'erste Prüfung ohne Fehler: nichts');
+  mNotice := TAtlasBuildNotices.FromRun(nil, False, False, True, 3);
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.None), Ord(mNotice.Kind), 'nicht lesbar: keine Entwarnung');
 end;
 
 initialization

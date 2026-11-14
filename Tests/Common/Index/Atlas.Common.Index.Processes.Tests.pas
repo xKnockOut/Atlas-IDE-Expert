@@ -40,65 +40,65 @@ end;
 
 procedure TIndexProcessInfoTests.EventsAreMergedByTime;
 var
-  Lsp, Mcp: TIndexProcessInfo;
-  Event: TIndexProcessEvent;
-  Events: TArray<TIndexProcessEvent>;
-  Base: TDateTime;
+  mLsp, mMcp: TIndexProcessInfo;
+  mEvent: TIndexProcessEvent;
+  mEvents: TArray<TIndexProcessEvent>;
+  mBase: TDateTime;
 begin
-  Base := EncodeDateTime(2026, 10, 21, 10, 41, 0, 0);
-  Lsp := Info(1, TIndexProcessInfo.cKindLsp);
-  Event.Time := Base;
-  Event.Text := 'Cache-Sperre erhalten';
-  Lsp.Events := [Event];
-  Event.Time := IncSecond(Base, 19);
-  Event.Text := 'Index gespeichert';
-  Lsp.Events := Lsp.Events + [Event];
-  Mcp := Info(2, TIndexProcessInfo.cKindMcp);
-  Event.Time := IncSecond(Base, 5);
-  Event.Text := 'Sperre belegt';
-  Mcp.Events := [Event];
-  Event.Time := IncSecond(Base, 19);
-  Event.Text := 'neuen Stand übernommen';
-  Mcp.Events := Mcp.Events + [Event];
-  Events := TIndexProcessLog.Events([Lsp, Mcp]);
-  Assert.AreEqual(4, Integer(Length(Events)));
-  Assert.AreEqual('LSP: Cache-Sperre erhalten', Events[0].Text);
-  Assert.AreEqual('MCP: Sperre belegt', Events[1].Text);
-  Assert.AreEqual('LSP: Index gespeichert', Events[2].Text);
-  Assert.AreEqual('MCP: neuen Stand übernommen', Events[3].Text);
+  mBase := EncodeDateTime(2026, 10, 21, 10, 41, 0, 0);
+  mLsp := Info(1, TIndexProcessInfo.cKindLsp);
+  mEvent.Time := mBase;
+  mEvent.Text := 'Cache-Sperre erhalten';
+  mLsp.Events := [mEvent];
+  mEvent.Time := IncSecond(mBase, 19);
+  mEvent.Text := 'Index gespeichert';
+  mLsp.Events := mLsp.Events + [mEvent];
+  mMcp := Info(2, TIndexProcessInfo.cKindMcp);
+  mEvent.Time := IncSecond(mBase, 5);
+  mEvent.Text := 'Sperre belegt';
+  mMcp.Events := [mEvent];
+  mEvent.Time := IncSecond(mBase, 19);
+  mEvent.Text := 'neuen Stand übernommen';
+  mMcp.Events := mMcp.Events + [mEvent];
+  mEvents := TIndexProcessLog.Events([mLsp, mMcp]);
+  Assert.AreEqual(4, Integer(Length(mEvents)));
+  Assert.AreEqual('LSP: Cache-Sperre erhalten', mEvents[0].Text);
+  Assert.AreEqual('MCP: Sperre belegt', mEvents[1].Text);
+  Assert.AreEqual('LSP: Index gespeichert', mEvents[2].Text);
+  Assert.AreEqual('MCP: neuen Stand übernommen', mEvents[3].Text);
   // Zwei LSP-Prozesse: mit Prozessnummer.
-  Events := TIndexProcessLog.Events([Lsp, Info(3, TIndexProcessInfo.cKindLsp), Mcp]);
-  Assert.AreEqual('LSP 1: Cache-Sperre erhalten', Events[0].Text);
+  mEvents := TIndexProcessLog.Events([mLsp, Info(3, TIndexProcessInfo.cKindLsp), mMcp]);
+  Assert.AreEqual('LSP 1: Cache-Sperre erhalten', mEvents[0].Text);
 end;
 
 procedure TIndexProcessInfoTests.JsonRoundTrip;
 var
-  Source, Copy: TIndexProcessInfo;
-  Json: string;
-  Event: TIndexProcessEvent;
-  Value: TJSONObject;
+  mSource, mCopy: TIndexProcessInfo;
+  mJson: string;
+  mEvent: TIndexProcessEvent;
+  mValue: TJSONObject;
 begin
-  Source := Info(42, TIndexProcessInfo.cKindMcp);
-  Source.State := TIndexProcessInfo.cStateReady;
-  Source.Writer := True;
-  Source.Started := EncodeDateTime(2026, 10, 21, 9, 0, 0, 0);
-  Event.Time := Source.Started;
-  Event.Text := 'bereit';
-  Source.Events := [Event];
-  Value := Source.ToJson;
+  mSource := Info(42, TIndexProcessInfo.cKindMcp);
+  mSource.State := TIndexProcessInfo.cStateReady;
+  mSource.Writer := True;
+  mSource.Started := EncodeDateTime(2026, 10, 21, 9, 0, 0, 0);
+  mEvent.Time := mSource.Started;
+  mEvent.Text := 'bereit';
+  mSource.Events := [mEvent];
+  mValue := mSource.ToJson;
   try
-    Json := Value.ToJSON;
+    mJson := mValue.ToJSON;
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Assert.IsTrue(TIndexProcessInfo.FromJson(Json, Copy));
-  Assert.AreEqual(Cardinal(42), Copy.Pid);
-  Assert.IsTrue(Copy.Writer);
-  Assert.AreEqual('Claude Code', Copy.Client);
-  Assert.AreEqual(Source.Started, Copy.Started, 1 / SecsPerDay);
-  Assert.AreEqual('bereit', Copy.Events[0].Text);
-  Assert.IsFalse(TIndexProcessInfo.FromJson('{"pid":', Copy));
-  Assert.IsFalse(TIndexProcessInfo.FromJson('{"kind":"LSP"}', Copy));
+  Assert.IsTrue(TIndexProcessInfo.FromJson(mJson, mCopy));
+  Assert.AreEqual(Cardinal(42), mCopy.Pid);
+  Assert.IsTrue(mCopy.Writer);
+  Assert.AreEqual('Claude Code', mCopy.Client);
+  Assert.AreEqual(mSource.Started, mCopy.Started, 1 / SecsPerDay);
+  Assert.AreEqual('bereit', mCopy.Events[0].Text);
+  Assert.IsFalse(TIndexProcessInfo.FromJson('{"pid":', mCopy));
+  Assert.IsFalse(TIndexProcessInfo.FromJson('{"kind":"LSP"}', mCopy));
 end;
 
 initialization

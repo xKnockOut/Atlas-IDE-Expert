@@ -71,7 +71,7 @@ uses
 
 const
   // Treffer niedriger Konfidenz erscheinen erst mit minConfidence "low".
-  AllConfidences = '{ "minConfidence": "low" }';
+  cAllConfidences = '{ "minConfidence": "low" }';
 
 function InRoutine(const ABody: string): string;
 begin
@@ -85,13 +85,13 @@ end;
 
 procedure TGeneralRulesTests.EmptyExceptReportedWithRaiseFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TEmptyExceptRule.Create, InRoutine('  try'#10'    Save;'#10'  except'#10'  end;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(#10'    raise;', Findings[0].Fixes[0].Edits[0].NewText);
+  mFindings := TRuleAssert.Findings(TEmptyExceptRule.Create, InRoutine('  try'#10'    Save;'#10'  except'#10'  end;'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(#10'    raise;', mFindings[0].Fixes[0].Edits[0].NewText);
   TRuleAssert.Reports(TEmptyExceptRule.Create, InRoutine('  try Save; except end;'));
 end;
 
@@ -106,71 +106,71 @@ end;
 
 procedure TGeneralRulesTests.InterfaceWithoutGuidReported;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TInterfaceGuidRule.Create, InType('  ISaver = interface(IInterface)'#10 +
-    '    procedure Save;'#10'  end;'), AllConfidences);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  mFindings := TRuleAssert.Findings(TInterfaceGuidRule.Create, InType('  ISaver = interface(IInterface)'#10 +
+    '    procedure Save;'#10'  end;'), cAllConfidences);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(3, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
   // Eingefügt hinter der Klammer der Vorfahren.
-  Assert.AreEqual(32, Findings[0].Fixes[0].Edits[0].Range.StartPos.Character);
-  Assert.IsTrue(Findings[0].Fixes[0].Edits[0].NewText.StartsWith(#10'    [''{'));
+  Assert.AreEqual(32, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Character);
+  Assert.IsTrue(mFindings[0].Fixes[0].Edits[0].NewText.StartsWith(#10'    [''{'));
 end;
 
 procedure TGeneralRulesTests.InterfaceGuidConfidenceDependsOnQueries;
 const
-  Types = '  ISaver = interface'#10'  end;';
+  cTypes = '  ISaver = interface'#10'  end;';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  TRuleAssert.Silent(TInterfaceGuidRule.Create, InType(Types));
-  Findings := TRuleAssert.Findings(TInterfaceGuidRule.Create, InType(Types), AllConfidences);
-  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(Findings[0].Confidence));
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  TRuleAssert.Silent(TInterfaceGuidRule.Create, InType(cTypes));
+  mFindings := TRuleAssert.Findings(TInterfaceGuidRule.Create, InType(cTypes), cAllConfidences);
+  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
   // Ohne Abfrage meldet dcc nichts: kein Code in der Meldung (#1382).
   Assert.AreEqual('Interface ISaver hat keine GUID; Supports, as und QueryInterface brauchen eine',
-    Findings[0].Message);
-  Findings := TRuleAssert.Findings(TInterfaceGuidRule.Create, 'unit U;'#10'interface'#10'type'#10 + Types +
+    mFindings[0].Message);
+  mFindings := TRuleAssert.Findings(TInterfaceGuidRule.Create, 'unit U;'#10'interface'#10'type'#10 + cTypes +
     #10'implementation'#10'procedure P(X: IInterface);'#10'var S: ISaver;'#10'begin'#10 +
     '  if Supports(X, ISaver, S) then S := nil;'#10'end;'#10'end.');
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   // Mit Abfrage meldet Delphi 13 E2232 (Fall Cm.E2232, #1382).
   Assert.AreEqual('Interface ISaver hat keine GUID; Supports, as und QueryInterface brauchen eine (wie E2232).',
-    Findings[0].Message);
-  Findings := TRuleAssert.Findings(TInterfaceGuidRule.Create, 'unit U;'#10'interface'#10'type'#10 + Types +
+    mFindings[0].Message);
+  mFindings := TRuleAssert.Findings(TInterfaceGuidRule.Create, 'unit U;'#10'interface'#10'type'#10 + cTypes +
     #10'implementation'#10'procedure P(X: IInterface);'#10'begin'#10'  (X as ISaver)._AddRef;'#10'end;'#10'end.');
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
 end;
 
 procedure TGeneralRulesTests.InterfaceWithGuidOrForwardSilent;
 begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceGuidRule.Create, InType('  ISaver = interface'#10 +
-    '    [''{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}'']'#10'  end;'), AllConfidences))));
+    '    [''{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}'']'#10'  end;'), cAllConfidences))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceGuidRule.Create, InType('  ISaver = interface;'#10 +
-    '  ILoader = interface'#10'    [SID_Loader]'#10'  end;'), AllConfidences))));
+    '  ILoader = interface'#10'    [SID_Loader]'#10'  end;'), cAllConfidences))));
   // Ein dispinterface ohne GUID übersetzt nicht: Das meldet dispinterface-invalid als Fehler (#1374).
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceGuidRule.Create, InType('  DSaver = dispinterface'#10 +
-    '    procedure Save; dispid 1;'#10'  end;'), AllConfidences))));
+    '    procedure Save; dispid 1;'#10'  end;'), cAllConfidences))));
   // Das Schlüsselwort interface des Unit-Abschnitts ist keine Deklaration.
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceGuidRule.Create,
-    'unit U;'#10'interface'#10'implementation'#10'end.', AllConfidences))));
+    'unit U;'#10'interface'#10'implementation'#10'end.', cAllConfidences))));
 end;
 
 procedure TGeneralRulesTests.DuplicateGuidReportedAtBothPlaces;
 const
-  Guid = '    [''{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}'']';
+  cGuid = '    [''{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}'']';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TDuplicateInterfaceGuidRule.Create, InType('  ILoader = interface'#10 + Guid +
-    #10'  end;'#10'  ISaver = interface'#10 + LowerCase(Guid) + #10'  end;'));
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual(4, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(7, Findings[1].Range.StartPos.Line);
-  Assert.Contains(Findings[0].Message, 'ISaver');
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.IsTrue(Findings[0].Fixes[0].Edits[0].NewText.StartsWith('''{'));
+  mFindings := TRuleAssert.Findings(TDuplicateInterfaceGuidRule.Create, InType('  ILoader = interface'#10 + cGuid +
+    #10'  end;'#10'  ISaver = interface'#10 + LowerCase(cGuid) + #10'  end;'));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(4, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(7, mFindings[1].Range.StartPos.Line);
+  Assert.Contains(mFindings[0].Message, 'ISaver');
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.IsTrue(mFindings[0].Fixes[0].Edits[0].NewText.StartsWith('''{'));
 end;
 
 procedure TGeneralRulesTests.DistinctGuidsSilent;
@@ -182,59 +182,59 @@ end;
 
 procedure TGeneralRulesTests.DispinterfaceSharesGuidSilent;
 const
-  Guid = '    [''{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}'']';
+  cGuid = '    [''{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}'']';
 begin
   // Typbibliotheken (*_TLB.pas) deklarieren interface und dispinterface absichtlich mit derselben GUID.
-  TRuleAssert.Silent(TDuplicateInterfaceGuidRule.Create, InType('  ILoader = interface(IDispatch)'#10 + Guid +
-    #10'  end;'#10'  ILoaderDisp = dispinterface'#10 + Guid + #10'  end;'));
+  TRuleAssert.Silent(TDuplicateInterfaceGuidRule.Create, InType('  ILoader = interface(IDispatch)'#10 + cGuid +
+    #10'  end;'#10'  ILoaderDisp = dispinterface'#10 + cGuid + #10'  end;'));
 end;
 
 procedure TGeneralRulesTests.FileHeaderNeedsTemplate;
 const
-  Config = '{ "rules": { "file-header": { "severity": "hint" } } }';
+  cConfig = '{ "rules": { "file-header": { "severity": "hint" } } }';
 begin
   // Standard aus; eingeschaltet ohne Vorlage gibt es nichts zu vergleichen.
   TRuleAssert.Silent(TFileHeaderRule.Create, 'unit U;');
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFileHeaderRule.Create, 'unit U;', Config))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFileHeaderRule.Create, 'unit U;', cConfig))));
   Assert.AreEqual('', TFileHeaderRule.Template(''));
   Assert.AreEqual('// Kopf', TFileHeaderRule.Template('{ "template": "// Kopf" }'));
 end;
 
 procedure TGeneralRulesTests.FileHeaderReportedWithFix;
 const
-  Config = '{ "rules": { "file-header": { "severity": "hint", "template": "// (c) Beispiel\n// Lizenz: MIT" } } }';
+  cConfig = '{ "rules": { "file-header": { "severity": "hint", "template": "// (c) Beispiel\n// Lizenz: MIT" } } }';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TFileHeaderRule.Create, 'unit U;'#13#10'end.', Config);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('// (c) Beispiel'#13#10'// Lizenz: MIT'#13#10, Findings[0].Fixes[0].Edits[0].NewText);
+  mFindings := TRuleAssert.Findings(TFileHeaderRule.Create, 'unit U;'#13#10'end.', cConfig);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('// (c) Beispiel'#13#10'// Lizenz: MIT'#13#10, mFindings[0].Fixes[0].Edits[0].NewText);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFileHeaderRule.Create,
-    '// (c) Beispiel'#10'// Lizenz: MIT'#10'unit U;', Config))));
+    '// (c) Beispiel'#10'// Lizenz: MIT'#10'unit U;', cConfig))));
 end;
 
 procedure TGeneralRulesTests.HardcodedStringInStatements;
 const
-  Config = '{ "minConfidence": "low", "rules": { "hardcoded-string": "hint" } }';
+  cConfig = '{ "minConfidence": "low", "rules": { "hardcoded-string": "hint" } }';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   TRuleAssert.Silent(THardcodedStringRule.Create, InRoutine('  ShowMessage(''Datei nicht gefunden'');'));
-  Findings := TRuleAssert.Findings(THardcodedStringRule.Create, InRoutine('  ShowMessage(''Datei nicht gefunden'');' +
-    #10'  X := ''abc'';'#10'  Y := ''%s: %d'';'), Config);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(THardcodedStringRule.Create, InRoutine('  ShowMessage(''Datei nicht gefunden'');' +
+    #10'  X := ''abc'';'#10'  Y := ''%s: %d'';'), cConfig);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(mFindings[0].Confidence));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THardcodedStringRule.Create, 'unit U;'#10'interface'#10 +
-    'resourcestring'#10'  SFehlt = ''Datei nicht gefunden'';'#10'implementation'#10'end.', Config))));
+    'resourcestring'#10'  SFehlt = ''Datei nicht gefunden'';'#10'implementation'#10'end.', cConfig))));
 end;
 
 procedure TGeneralRulesTests.HardcodedStringMachineTextSilent;
 const
-  Config = '{ "minConfidence": "low", "rules": { "hardcoded-string": "hint" } }';
-  ConfigPick = '{ "minConfidence": "low", "rules": { "hardcoded-string": { "severity": "hint", ' +
+  cConfig = '{ "minConfidence": "low", "rules": { "hardcoded-string": "hint" } }';
+  cConfigPick = '{ "minConfidence": "low", "rules": { "hardcoded-string": { "severity": "hint", ' +
     '"ignoreCalls": ["Pick"] } } }';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Protokoll, Prüfungen, Vergleiche, Registry, Masken, Markup und Schriftnamen liest kein Benutzer
   // (Marcos Lauf 06.11.2026).
@@ -246,78 +246,78 @@ begin
     '  Farbe := Registry.ReadString(''Background Color New'');'#10 +
     '  Zeit := FormatDateTime(''dd.mm. hh":"nn'', Jetzt);'#10'  B.Append(''<tr class="conflict">'');'#10 +
     '  B.Append(''"summary": {"units": '');'#10'  B.Append(''## Versionen'');'#10 +
-    '  Font.Name := ''Segoe UI'';'), Config))));
+    '  Font.Name := ''Segoe UI'';'), cConfig))));
   // Eigene Routinen über ignoreCalls.
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(THardcodedStringRule.Create, InRoutine(
-    '  B.Append(Pick(Englisch, ''## Versions'', ''Die Versionen''));'), Config))));
+    '  B.Append(Pick(Englisch, ''## Versions'', ''Die Versionen''));'), cConfig))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THardcodedStringRule.Create, InRoutine(
-    '  B.Append(Pick(Englisch, ''## Versions'', ''Die Versionen''));'), ConfigPick))));
+    '  B.Append(Pick(Englisch, ''## Versions'', ''Die Versionen''));'), cConfigPick))));
   // Text vor einer Maske und ein Text, der mit einem Zitat beginnt, sieht der Benutzer.
-  Findings := TRuleAssert.Findings(THardcodedStringRule.Create, InRoutine(
+  mFindings := TRuleAssert.Findings(THardcodedStringRule.Create, InRoutine(
     '  S := ''Erstellt am '' + FormatDateTime(''dd.mm.yyyy'', Jetzt);'#10 +
-    '  raise EFehler.CreateFmt(''"%s" ist keine Formulardatei'', [Name]);'), Config);
-  Assert.AreEqual(2, Integer(Length(Findings)));
+    '  raise EFehler.CreateFmt(''"%s" ist keine Formulardatei'', [Name]);'), cConfig);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
 end;
 
 procedure TGeneralRulesTests.GuidLineFormat;
 var
-  Line: string;
+  mLine: string;
 begin
-  Line := GuidLine;
-  Assert.AreEqual(42, Integer(Length(Line)));
-  Assert.IsTrue(Line.StartsWith('[''{') and Line.EndsWith('}'']'), Line);
-  Assert.AreNotEqual(Line, GuidLine);
+  mLine := GuidLine;
+  Assert.AreEqual(42, Integer(Length(mLine)));
+  Assert.IsTrue(mLine.StartsWith('[''{') and mLine.EndsWith('}'']'), mLine);
+  Assert.AreNotEqual(mLine, GuidLine);
 end;
 
 procedure TGeneralRulesTests.EmptyFinallyIssueExample;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := InRoutine('  Liste := TStringList.Create;'#10'  try'#10'    Liste.LoadFromFile(Pfad);'#10'  finally'#10 +
+  mSource := InRoutine('  Liste := TStringList.Create;'#10'  try'#10'    Liste.LoadFromFile(Pfad);'#10'  finally'#10 +
     '  end;'#10'  Weiter;');
-  Findings := TRuleAssert.Findings(TEmptyFinallyRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('empty-finally', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Leerer finally-Block; fehlt hier Liste.Free?', Findings[0].Message);
-  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('try … finally end entfernen (Rumpf bleibt)', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  mFindings := TRuleAssert.Findings(TEmptyFinallyRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('empty-finally', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Leerer finally-Block; fehlt hier Liste.Free?', mFindings[0].Message);
+  Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('try … finally end entfernen (Rumpf bleibt)', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
   Assert.AreEqual(InRoutine('  Liste := TStringList.Create;'#10'  Liste.LoadFromFile(Pfad);'#10'  Weiter;'),
-    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
 end;
 
 procedure TGeneralRulesTests.EmptyFinallyFixVariants;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Ohne Create davor allgemeine Meldung; fehlendes Semikolon wandert an den Rumpf.
-  Source := InRoutine('  try'#10'    Lesen;'#10#10'    Schreiben'#10'  finally'#10'  end;'#10'  Weiter;');
-  Findings := TRuleAssert.Findings(TEmptyFinallyRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Leerer finally-Block; die Freigabe fehlt oder try … finally ist überflüssig.', Findings[0].Message);
+  mSource := InRoutine('  try'#10'    Lesen;'#10#10'    Schreiben'#10'  finally'#10'  end;'#10'  Weiter;');
+  mFindings := TRuleAssert.Findings(TEmptyFinallyRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Leerer finally-Block; die Freigabe fehlt oder try … finally ist überflüssig.', mFindings[0].Message);
   Assert.AreEqual(InRoutine('  Lesen;'#10#10'  Schreiben;'#10'  Weiter;'),
-    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
   // Einzige Anweisung eines if mit zwei Anweisungen im Rumpf: begin … end.
-  Source := InRoutine('  if Bereit then'#10'    try'#10'      Lesen;'#10'      Schreiben;'#10'    finally'#10 +
+  mSource := InRoutine('  if Bereit then'#10'    try'#10'      Lesen;'#10'      Schreiben;'#10'    finally'#10 +
     '    end;');
-  Findings := TRuleAssert.Findings(TEmptyFinallyRule.Create, Source);
-  Assert.AreEqual('try … finally end durch begin … end ersetzen', Findings[0].Fixes[0].Title);
+  mFindings := TRuleAssert.Findings(TEmptyFinallyRule.Create, mSource);
+  Assert.AreEqual('try … finally end durch begin … end ersetzen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(InRoutine('  if Bereit then'#10'    begin'#10'      Lesen;'#10'      Schreiben;'#10'    end;'),
-    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
   // Mit einer Anweisung reicht das Ausrücken.
-  Source := InRoutine('  if Bereit then'#10'    try'#10'      Lesen;'#10'    finally'#10'    end;');
-  Findings := TRuleAssert.Findings(TEmptyFinallyRule.Create, Source);
-  Assert.AreEqual(InRoutine('  if Bereit then'#10'    Lesen;'), TChangeSignature.ApplyEdits(Source,
-    Findings[0].Fixes[0].Edits));
+  mSource := InRoutine('  if Bereit then'#10'    try'#10'      Lesen;'#10'    finally'#10'    end;');
+  mFindings := TRuleAssert.Findings(TEmptyFinallyRule.Create, mSource);
+  Assert.AreEqual(InRoutine('  if Bereit then'#10'    Lesen;'), TChangeSignature.ApplyEdits(mSource,
+    mFindings[0].Fixes[0].Edits));
   // Alles in einer Zeile: Meldung ohne Korrektur.
-  Findings := TRuleAssert.Findings(TEmptyFinallyRule.Create, InRoutine('  try Lesen; finally end;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  mFindings := TRuleAssert.Findings(TEmptyFinallyRule.Create, InRoutine('  try Lesen; finally end;'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TGeneralRulesTests.EmptyFinallySilentCases;
@@ -336,14 +336,14 @@ end;
 
 procedure TGeneralRulesTests.EmptyFinallyOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := InRoutine('  try'#10'    Lesen;'#10'  finally'#10'  end;');
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyFinallyRule.Create, Source,
+  mSource := InRoutine('  try'#10'    Lesen;'#10'  finally'#10'  end;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyFinallyRule.Create, mSource,
     '{"rules": {"empty-finally": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyFinallyRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyFinallyRule.Create, mSource,
     '{"rules": {"group:style": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyFinallyRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyFinallyRule.Create, mSource,
     '{"rules": {"empty-finally": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
@@ -355,24 +355,24 @@ end;
 
 procedure TGeneralRulesTests.GuidSyntaxIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Logger('{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6}');
-  Findings := TRuleAssert.Findings(TGuidSyntaxInvalidRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('guid-syntax-invalid', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Der letzte Block der GUID hat 11 statt 12 Zeichen (wie E2204).', Findings[0].Message);
-  Assert.AreEqual(4, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(44, Findings[0].Range.EndPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Neue GUID erzeugen', Findings[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
-  Assert.AreNotEqual(Source, Fixed);
-  TRuleAssert.Silent(TGuidSyntaxInvalidRule.Create, Fixed);
+  mSource := Logger('{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6}');
+  mFindings := TRuleAssert.Findings(TGuidSyntaxInvalidRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('guid-syntax-invalid', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Der letzte Block der GUID hat 11 statt 12 Zeichen (wie E2204).', mFindings[0].Message);
+  Assert.AreEqual(4, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(44, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Neue GUID erzeugen', mFindings[0].Fixes[0].Title);
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  Assert.AreNotEqual(mSource, mFixed);
+  TRuleAssert.Silent(TGuidSyntaxInvalidRule.Create, mFixed);
   TRuleAssert.Silent(TGuidSyntaxInvalidRule.Create, Logger('{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C}'));
 end;
 
@@ -399,23 +399,23 @@ end;
 
 procedure TGeneralRulesTests.GuidSyntaxBracesAndConstants;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Nur die Klammern fehlen: sichere Korrektur zuerst; Vorfahr in Klammern; typisierte Konstante.
-  Source := 'unit U;'#10'interface'#10'type'#10'  ILogger = interface(IInterface)'#10 +
+  mSource := 'unit U;'#10'interface'#10'type'#10'  ILogger = interface(IInterface)'#10 +
     '    [''6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C'']'#10'  end;'#10'const'#10 +
     '  IID_Logger: TGUID = ''{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6X}'';'#10'implementation'#10'end.';
-  Findings := TRuleAssert.Findings(TGuidSyntaxInvalidRule.Create, Source);
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual('Der GUID fehlen die geschweiften Klammern (wie E2204).', Findings[0].Message);
-  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Geschweifte Klammern ergänzen', Findings[0].Fixes[0].Title);
-  Assert.IsTrue(Findings[0].Fixes[0].Safe);
-  Assert.IsTrue(TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits).Contains(
+  mFindings := TRuleAssert.Findings(TGuidSyntaxInvalidRule.Create, mSource);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('Der GUID fehlen die geschweiften Klammern (wie E2204).', mFindings[0].Message);
+  Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Geschweifte Klammern ergänzen', mFindings[0].Fixes[0].Title);
+  Assert.IsTrue(mFindings[0].Fixes[0].Safe);
+  Assert.IsTrue(TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits).Contains(
     '[''{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C}'']'));
-  Assert.AreEqual('Die GUID enthält „X“, das ist keine Hexadezimalziffer (wie E2204).', Findings[1].Message);
-  Assert.AreEqual(7, Findings[1].Range.StartPos.Line);
+  Assert.AreEqual('Die GUID enthält „X“, das ist keine Hexadezimalziffer (wie E2204).', mFindings[1].Message);
+  Assert.AreEqual(7, mFindings[1].Range.StartPos.Line);
 end;
 
 procedure TGeneralRulesTests.GuidSyntaxSilentCases;
@@ -431,12 +431,12 @@ end;
 
 procedure TGeneralRulesTests.GuidSyntaxOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Logger('{6A1F3B2C}');
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGuidSyntaxInvalidRule.Create, Source,
+  mSource := Logger('{6A1F3B2C}');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGuidSyntaxInvalidRule.Create, mSource,
     '{"rules": {"guid-syntax-invalid": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGuidSyntaxInvalidRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGuidSyntaxInvalidRule.Create, mSource,
     '{"rules": {"guid-syntax-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 

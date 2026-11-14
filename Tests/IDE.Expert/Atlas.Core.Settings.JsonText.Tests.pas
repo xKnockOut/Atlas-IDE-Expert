@@ -46,63 +46,63 @@ uses
   Atlas.Core.Settings.SchemaData;
 
 const
-  LB = #13#10;
-  Sample =
-    '{' + LB +
-    '  "$schema": "./atlas.schema.json",' + LB +
-    '  // Sprache der Meldungen' + LB +
-    '  "language": "de",' + LB +
-    '  "compiler": { "onSave": true }, /* bleibt */' + LB +
-    '  "custom": 1' + LB +
-    '}' + LB;
+  cLB = #13#10;
+  cSample =
+    '{' + cLB +
+    '  "$schema": "./atlas.schema.json",' + cLB +
+    '  // Sprache der Meldungen' + cLB +
+    '  "language": "de",' + cLB +
+    '  "compiler": { "onSave": true }, /* bleibt */' + cLB +
+    '  "custom": 1' + cLB +
+    '}' + cLB;
 
 procedure TAtlasJsonTextTests.ReplacesValueAndKeepsComments;
 begin
-  Assert.AreEqual(Sample.Replace('"de"', '"en"'), TAtlasJsonText.SetValue(Sample, 'language', '"en"'));
-  Assert.AreEqual(Sample.Replace('"onSave": true', '"onSave": false'),
-    TAtlasJsonText.SetValue(Sample, 'compiler.onSave', 'false'));
+  Assert.AreEqual(cSample.Replace('"de"', '"en"'), TAtlasJsonText.SetValue(cSample, 'language', '"en"'));
+  Assert.AreEqual(cSample.Replace('"onSave": true', '"onSave": false'),
+    TAtlasJsonText.SetValue(cSample, 'compiler.onSave', 'false'));
 end;
 
 procedure TAtlasJsonTextTests.AddsMissingKeyWithSiblingIndent;
 begin
-  Assert.AreEqual(Sample.Replace('"custom": 1', '"custom": 1,' + LB + '  "logLevel": "debug"'),
-    TAtlasJsonText.SetValue(Sample, 'logLevel', '"debug"'));
+  Assert.AreEqual(cSample.Replace('"custom": 1', '"custom": 1,' + cLB + '  "logLevel": "debug"'),
+    TAtlasJsonText.SetValue(cSample, 'logLevel', '"debug"'));
 end;
 
 procedure TAtlasJsonTextTests.CreatesNestedObjects;
 begin
-  Assert.AreEqual(Sample.Replace('"custom": 1', '"custom": 1,' + LB + '  "format": {' + LB + '    "indentSize": 4' +
-    LB + '  }'), TAtlasJsonText.SetValue(Sample, 'format.indentSize', '4'));
+  Assert.AreEqual(cSample.Replace('"custom": 1', '"custom": 1,' + cLB + '  "format": {' + cLB + '    "indentSize": 4' +
+    cLB + '  }'), TAtlasJsonText.SetValue(cSample, 'format.indentSize', '4'));
   // Im vorhandenen Objekt auf einer Zeile: dahinter anhängen.
-  Assert.Contains(TAtlasJsonText.SetValue(Sample, 'compiler.extra', '1'), '"onSave": true,');
+  Assert.Contains(TAtlasJsonText.SetValue(cSample, 'compiler.extra', '1'), '"onSave": true,');
 end;
 
 procedure TAtlasJsonTextTests.FillsEmptyAndMissingFile;
 var
-  Root: TJSONObject;
+  mRoot: TJSONObject;
 begin
-  Assert.AreEqual('{' + LB + '  "language": "en"' + LB + '}' + LB, TAtlasJsonText.SetValue('{' + LB + '}' + LB,
+  Assert.AreEqual('{' + cLB + '  "language": "en"' + cLB + '}' + cLB, TAtlasJsonText.SetValue('{' + cLB + '}' + cLB,
     'language', '"en"'));
-  Root := TAtlasJsonText.Parse(TAtlasJsonText.SetValue('', 'format.useTabs', 'true'));
+  mRoot := TAtlasJsonText.Parse(TAtlasJsonText.SetValue('', 'format.useTabs', 'true'));
   try
-    Assert.AreEqual('true', TAtlasJsonText.ValueAt(Root, 'format.useTabs'));
+    Assert.AreEqual('true', TAtlasJsonText.ValueAt(mRoot, 'format.useTabs'));
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 procedure TAtlasJsonTextTests.AddsAfterTrailingComma;
 begin
-  Assert.AreEqual('{' + LB + '  "a": 1,' + LB + '  "b": 2' + LB + '}',
-    TAtlasJsonText.SetValue('{' + LB + '  "a": 1,' + LB + '}', 'b', '2'));
+  Assert.AreEqual('{' + cLB + '  "a": 1,' + cLB + '  "b": 2' + cLB + '}',
+    TAtlasJsonText.SetValue('{' + cLB + '  "a": 1,' + cLB + '}', 'b', '2'));
 end;
 
 procedure TAtlasJsonTextTests.RemovesKeyWithItsComma;
 begin
-  Assert.AreEqual(Sample.Replace('}, /* bleibt */' + LB + '  "custom": 1', '} /* bleibt */'),
-    TAtlasJsonText.Remove(Sample, 'custom'));
-  Assert.AreEqual(Sample.Replace('{ "onSave": true }', '{}'), TAtlasJsonText.Remove(Sample, 'compiler.onSave'));
-  Assert.AreEqual(Sample, TAtlasJsonText.Remove(Sample, 'fehlt.ganz'));
+  Assert.AreEqual(cSample.Replace('}, /* bleibt */' + cLB + '  "custom": 1', '} /* bleibt */'),
+    TAtlasJsonText.Remove(cSample, 'custom'));
+  Assert.AreEqual(cSample.Replace('{ "onSave": true }', '{}'), TAtlasJsonText.Remove(cSample, 'compiler.onSave'));
+  Assert.AreEqual(cSample, TAtlasJsonText.Remove(cSample, 'fehlt.ganz'));
 end;
 
 procedure TAtlasJsonTextTests.RemovesFirstAndOnlyKey;
@@ -113,94 +113,94 @@ end;
 
 procedure TAtlasJsonTextTests.ReadsValuesThroughComments;
 var
-  Root: TJSONObject;
+  mRoot: TJSONObject;
 begin
-  Root := TAtlasJsonText.Parse(Sample + '// Ende');
+  mRoot := TAtlasJsonText.Parse(cSample + '// Ende');
   try
-    Assert.IsNotNull(Root);
-    Assert.AreEqual('"de"', TAtlasJsonText.ValueAt(Root, 'language'));
-    Assert.AreEqual('true', TAtlasJsonText.ValueAt(Root, 'compiler.onSave'));
-    Assert.AreEqual('', TAtlasJsonText.ValueAt(Root, 'format.indentSize'));
+    Assert.IsNotNull(mRoot);
+    Assert.AreEqual('"de"', TAtlasJsonText.ValueAt(mRoot, 'language'));
+    Assert.AreEqual('true', TAtlasJsonText.ValueAt(mRoot, 'compiler.onSave'));
+    Assert.AreEqual('', TAtlasJsonText.ValueAt(mRoot, 'format.indentSize'));
   finally
-    Root.Free;
+    mRoot.Free;
   end;
   Assert.IsNull(TAtlasJsonText.Parse('{ "a": '));
-  Root := TAtlasJsonText.Parse('{ "a": [1, 2,], }');
+  mRoot := TAtlasJsonText.Parse('{ "a": [1, 2,], }');
   try
-    Assert.IsNotNull(Root, 'Schlusskommas wie in VS Code erlaubt');
+    Assert.IsNotNull(mRoot, 'Schlusskommas wie in VS Code erlaubt');
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 procedure TAtlasJsonTextTests.SchemaListsSimpleFieldsAndComplexOnes;
 var
-  Fields: TArray<TAtlasSettingField>;
-  Field: TAtlasSettingField;
-  Found: TDictionary<string, TAtlasSettingField>;
-  Key: string;
+  mFields: TArray<TAtlasSettingField>;
+  mField: TAtlasSettingField;
+  mFound: TDictionary<string, TAtlasSettingField>;
+  mKey: string;
 begin
-  Fields := TAtlasSettingsSchema.Fields(AtlasSchemaJson);
-  Found := TDictionary<string, TAtlasSettingField>.Create;
+  mFields := TAtlasSettingsSchema.Fields(AtlasSchemaJson);
+  mFound := TDictionary<string, TAtlasSettingField>.Create;
   try
-    for Field in Fields do
+    for mField in mFields do
     begin
-      Found.AddOrSetValue(Field.Path, Field);
+      mFound.AddOrSetValue(mField.Path, mField);
     end;
-    for Key in TArray<string>.Create('compiler.onSave', 'language', 'format.indentSize', 'exclude', 'rules', 'overrides',
+    for mKey in TArray<string>.Create('compiler.onSave', 'language', 'format.indentSize', 'exclude', 'rules', 'overrides',
       'sortUses', 'profile', 'mcp.globalSettings', 'mcp.disabledTools') do
     begin
-      Assert.IsTrue(Found.ContainsKey(Key), Format('%s fehlt (%d Felder)', [Key, Length(Fields)]));
+      Assert.IsTrue(mFound.ContainsKey(mKey), Format('%s fehlt (%d Felder)', [mKey, Length(mFields)]));
     end;
-    Assert.IsFalse(Found.ContainsKey('$schema'));
-    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Boolean_, Found['compiler.onSave'].Kind);
-    Assert.AreEqual('Compiler', Found['compiler.onSave'].Page);
-    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Choice, Found['language'].Kind);
+    Assert.IsFalse(mFound.ContainsKey('$schema'));
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Boolean_, mFound['compiler.onSave'].Kind);
+    Assert.AreEqual('Compiler', mFound['compiler.onSave'].Page);
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Choice, mFound['language'].Kind);
     // Vorgabe "" = wie der Client bzw. die IDE (#1458).
-    Assert.AreEqual('""', Found['language'].DefaultJson);
-    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Integer_, Found['format.indentSize'].Kind);
-    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.List, Found['exclude'].Kind);
-    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Complex, Found['rules'].Kind);
-    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Complex, Found['overrides'].Kind);
-    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Choice, Found['sortUses'].Kind);
-    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Text, Found['profile'].Kind);
-    Assert.AreEqual('Allgemein', TAtlasSettingsSchema.Pages(Fields)[0]);
+    Assert.AreEqual('""', mFound['language'].DefaultJson);
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Integer_, mFound['format.indentSize'].Kind);
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.List, mFound['exclude'].Kind);
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Complex, mFound['rules'].Kind);
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Complex, mFound['overrides'].Kind);
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Choice, mFound['sortUses'].Kind);
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Text, mFound['profile'].Kind);
+    Assert.AreEqual('Allgemein', TAtlasSettingsSchema.Pages(mFields)[0]);
     // Schalter für die globale Datei im MCP-Modus, als Kontrollkästchen der Projekt-Einstellungen.
-    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Boolean_, Found['mcp.globalSettings'].Kind);
-    Assert.AreEqual('MCP', Found['mcp.globalSettings'].Page);
-    Assert.IsFalse(Found['mcp.globalSettings'].Global, 'gehört nach atlas.json');
-    Assert.AreEqual('true', Found['mcp.globalSettings'].DefaultJson);
-    Assert.IsTrue(Found['mcp.disabledTools'].Global);
+    Assert.AreEqual<TAtlasSettingKind>(TAtlasSettingKind.Boolean_, mFound['mcp.globalSettings'].Kind);
+    Assert.AreEqual('MCP', mFound['mcp.globalSettings'].Page);
+    Assert.IsFalse(mFound['mcp.globalSettings'].Global, 'gehört nach atlas.json');
+    Assert.AreEqual('true', mFound['mcp.globalSettings'].DefaultJson);
+    Assert.IsTrue(mFound['mcp.disabledTools'].Global);
   finally
-    Found.Free;
+    mFound.Free;
   end;
 end;
 
 procedure TAtlasJsonTextTests.FieldAcceptsOnlyMatchingValues;
 var
-  Field: TAtlasSettingField;
+  mField: TAtlasSettingField;
 begin
-  Field := Default(TAtlasSettingField);
-  Field.Kind := TAtlasSettingKind.Text;
-  Assert.IsTrue(Field.Accepts('"standard"'));
-  Assert.IsFalse(Field.Accepts('{"editor": "x"}'), 'Profil als Objekt bleibt unangetastet');
-  Assert.IsTrue(Field.Accepts(''));
-  Field.Kind := TAtlasSettingKind.List;
-  Assert.IsTrue(Field.Accepts('["a","b"]'));
-  Assert.IsFalse(Field.Accepts('[1]'));
+  mField := Default(TAtlasSettingField);
+  mField.Kind := TAtlasSettingKind.Text;
+  Assert.IsTrue(mField.Accepts('"standard"'));
+  Assert.IsFalse(mField.Accepts('{"editor": "x"}'), 'Profil als Objekt bleibt unangetastet');
+  Assert.IsTrue(mField.Accepts(''));
+  mField.Kind := TAtlasSettingKind.List;
+  Assert.IsTrue(mField.Accepts('["a","b"]'));
+  Assert.IsFalse(mField.Accepts('[1]'));
   Assert.AreEqual('de', TAtlasSettingsSchema.Display('"de"'));
 end;
 
 procedure TAtlasJsonTextTests.LineCommentEndsAtCr;
 var
-  Root: TJSONObject;
+  mRoot: TJSONObject;
 begin
-  Root := TAtlasJsonText.Parse('{ // Kommentar'#13'"a": 1 }');
+  mRoot := TAtlasJsonText.Parse('{ // Kommentar'#13'"a": 1 }');
   try
-    Assert.IsNotNull(Root);
-    Assert.AreEqual('1', TAtlasJsonText.ValueAt(Root, 'a'));
+    Assert.IsNotNull(mRoot);
+    Assert.AreEqual('1', TAtlasJsonText.ValueAt(mRoot, 'a'));
   finally
-    Root.Free;
+    mRoot.Free;
   end;
   Assert.AreEqual('{ "a": 2 }', TAtlasJsonText.SetValue('{ "a": 1 }', 'a', '2'));
 end;

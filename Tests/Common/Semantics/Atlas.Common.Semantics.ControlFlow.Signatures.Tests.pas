@@ -33,48 +33,48 @@ uses
   Atlas.Common.Semantics.ControlFlow.Signatures;
 
 const
-  LB = #13#10;
-  ModeNames: array[TFlowArgumentMode] of string = ('value', 'ref', 'out', '?');
+  cLB = #13#10;
+  cModeNames: array[TFlowArgumentMode] of string = ('value', 'ref', 'out', '?');
 
-  UnitCalls =
-    'unit Haupt;' + LB +
-    'interface' + LB +
-    'implementation' + LB +
-    'procedure Take(var A: Integer; out B: Integer; C, D: Integer);' + LB +
-    'begin' + LB +
-    'end;' + LB +
-    'procedure Twice(A: Integer); overload;' + LB +
-    'begin' + LB +
-    'end;' + LB +
-    'procedure Twice(var A: string); overload;' + LB +
-    'begin' + LB +
-    'end;' + LB +
-    'procedure Run(AList: TObject);' + LB +
-    'var X, Y: Integer; S: string;' + LB +
-    'begin' + LB +
-    '  Take(X, Y, 1, 2);' + LB +
-    '  Twice(S);' + LB +
-    '  AList.Take(X);' + LB +
-    '  SetLength(S, 3);' + LB +
-    '  Fremd(X);' + LB +
-    'end;' + LB +
+  cUnitCalls =
+    'unit Haupt;' + cLB +
+    'interface' + cLB +
+    'implementation' + cLB +
+    'procedure Take(var A: Integer; out B: Integer; C, D: Integer);' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
+    'procedure Twice(A: Integer); overload;' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
+    'procedure Twice(var A: string); overload;' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
+    'procedure Run(AList: TObject);' + cLB +
+    'var X, Y: Integer; S: string;' + cLB +
+    'begin' + cLB +
+    '  Take(X, Y, 1, 2);' + cLB +
+    '  Twice(S);' + cLB +
+    '  AList.Take(X);' + cLB +
+    '  SetLength(S, 3);' + cLB +
+    '  Fremd(X);' + cLB +
+    'end;' + cLB +
     'end.';
 
-  UnitNoReturn =
-    'unit Ende;' + LB +
-    'interface' + LB +
-    'type' + LB +
-    '  TStopper = class' + LB +
-    '    procedure Halt2; noreturn;' + LB +
-    '  end;' + LB +
-    'procedure Fail(const AText: string); noreturn;' + LB +
-    'implementation' + LB +
-    'procedure Fail(const AText: string);' + LB +
-    'begin' + LB +
-    'end;' + LB +
-    'procedure TStopper.Halt2;' + LB +
-    'begin' + LB +
-    'end;' + LB +
+  cUnitNoReturn =
+    'unit Ende;' + cLB +
+    'interface' + cLB +
+    'type' + cLB +
+    '  TStopper = class' + cLB +
+    '    procedure Halt2; noreturn;' + cLB +
+    '  end;' + cLB +
+    'procedure Fail(const AText: string); noreturn;' + cLB +
+    'implementation' + cLB +
+    'procedure Fail(const AText: string);' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
+    'procedure TStopper.Halt2;' + cLB +
+    'begin' + cLB +
+    'end;' + cLB +
     'end.';
 
 function ModeOf(const AName: string; AArgument: Integer): string;
@@ -83,7 +83,7 @@ var
 begin
   if TFlowSignatures.TryBuiltin(AName, AArgument, mMode) then
   begin
-    Result := ModeNames[mMode];
+    Result := cModeNames[mMode];
   end
   else
   begin
@@ -122,7 +122,7 @@ begin
         begin
           mItem := mItem + ',';
         end;
-        mItem := mItem + ModeNames[mLookup(mCall, mArgument)];
+        mItem := mItem + cModeNames[mLookup(mCall, mArgument)];
       end;
       if Result <> '' then
       begin
@@ -153,14 +153,14 @@ var
   mMode: TFlowArgumentMode;
 begin
   Assert.IsFalse(TFlowSignatures.TryBuiltin('Fremd', 0, mMode));
-  Assert.AreEqual('?', ModeNames[mMode]);
+  Assert.AreEqual('?', cModeNames[mMode]);
 end;
 
 procedure TFlowSignaturesTests.TreeRoutinesGiveModesPerArgument;
 var
   mTree: TSyntaxTree;
 begin
-  mTree := TPascalParser.Parse(UnitCalls);
+  mTree := TPascalParser.Parse(cUnitCalls);
   try
     // Take aus der Datei (C, D in einer Gruppe), Twice mit verschiedenen Überladungen unbekannt, Methode über
     // ein Objekt unbekannt, SetLength aus der Tabelle, Fremd ohne Kopf unbekannt.
@@ -177,7 +177,7 @@ var
   mItems: TArray<string>;
 begin
   mItems := nil;
-  mTree := TPascalParser.Parse(UnitNoReturn);
+  mTree := TPascalParser.Parse(cUnitNoReturn);
   try
     for mVerdict in TFlowSignatures.NoReturnVerdicts(mTree.Root) do
     begin

@@ -31,7 +31,7 @@ uses
   Atlas.Common.Lsp.SmartPaste;
 
 const
-  Target =
+  cTarget =
     'unit Ziel;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'type'#10'  TFoo = class'#10 +
     '    FData: TJSONObject;'#10'    FList: TList;'#10'  end;'#10'implementation'#10'end.'#10;
 
@@ -56,36 +56,36 @@ end;
 
 function Run(const AArguments: string): string;
 var
-  Arguments: TJSONValue;
-  Tree: TSyntaxTree;
-  Answer: TJSONObject;
+  mArguments: TJSONValue;
+  mTree: TSyntaxTree;
+  mAnswer: TJSONObject;
 begin
-  Arguments := TJSONObject.ParseJSONValue(AArguments);
-  Tree := TPascalParser.Parse(Target);
+  mArguments := TJSONObject.ParseJSONValue(AArguments);
+  mTree := TPascalParser.Parse(cTarget);
   try
-    Answer := TLspSmartPaste.Execute(TJSONArray(Arguments), 'file:///c%3A/p/Ziel.pas', Target, Tree, Context, nil);
+    mAnswer := TLspSmartPaste.Execute(TJSONArray(mArguments), 'file:///c%3A/p/Ziel.pas', cTarget, mTree, Context, nil);
     try
-      Result := Answer.ToJSON;
+      Result := mAnswer.ToJSON;
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Tree.Free;
-    Arguments.Free;
+    mTree.Free;
+    mArguments.Free;
   end;
 end;
 
 procedure TLspSmartPasteTests.AnalyzesAndEdits;
 const
-  Range = '{"start":{"line":6,"character":0},"end":{"line":8,"character":0}}';
+  cRange = '{"start":{"line":6,"character":0},"end":{"line":8,"character":0}}';
 begin
   Assert.AreEqual('{"units":["System.JSON"],"choices":[{"name":"TList","units":["System.Classes",' +
-    '"System.Generics.Collections"]}],"interface":true}', Run('["u",' + Range + ']'));
+    '"System.Generics.Collections"]}],"interface":true}', Run('["u",' + cRange + ']'));
   Assert.AreEqual('{"edit":{"changes":{"file:///c%3A/p/Ziel.pas":[{"range":{"start":{"line":3,"character":17},' +
     '"end":{"line":3,"character":17}},"newText":",\n  System.JSON, System.Classes"}]}},' +
     '"added":["System.JSON","System.Classes"],"toImplementation":[]}',
-    Run('["u",' + Range + ',["System.JSON","System.Classes"]]'));
-  Assert.AreEqual('{"edit":null,"added":[],"toImplementation":[]}', Run('["u",' + Range + ',["System.SysUtils"]]'));
+    Run('["u",' + cRange + ',["System.JSON","System.Classes"]]'));
+  Assert.AreEqual('{"edit":null,"added":[],"toImplementation":[]}', Run('["u",' + cRange + ',["System.SysUtils"]]'));
 end;
 
 procedure TLspSmartPasteTests.RejectsMissingRange;

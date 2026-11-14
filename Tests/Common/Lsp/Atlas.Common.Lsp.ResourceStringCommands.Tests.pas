@@ -37,7 +37,7 @@ uses
   Atlas.Common.Lsp.ResourceStringCommands;
 
 const
-  Texte =
+  cTexte =
     'unit Texte;'#10 +
     'interface'#10 +
     'resourcestring'#10 +
@@ -47,12 +47,12 @@ const
 
 function Added(const AText, AName, AValue: string): string;
 var
-  Edit: TTextEdit;
+  mEdit: TTextEdit;
 begin
   Result := '-';
-  if TResourceStringCommands.AddEdit(AText, AName, AValue, Edit) then
+  if TResourceStringCommands.AddEdit(AText, AName, AValue, mEdit) then
   begin
-    Result := TResourceStringCommands.Applied(AText, Edit);
+    Result := TResourceStringCommands.Applied(AText, mEdit);
   end;
 end;
 
@@ -67,7 +67,7 @@ begin
     '  SOk = ''OK'';'#10 +
     '  SFrage = ''Wirklich?'';'#10 +
     'implementation'#10 +
-    'end.'#10, Added(Texte, 'SFrage', '''Wirklich?'''));
+    'end.'#10, Added(cTexte, 'SFrage', '''Wirklich?'''));
 end;
 
 procedure TResourceStringCommandsTests.CreatesSectionWithCrLf;
@@ -85,7 +85,7 @@ end;
 
 procedure TResourceStringCommandsTests.KeepsSameEntry;
 begin
-  Assert.AreEqual('-', Added(Texte, 'SOk', '''OK'''));
+  Assert.AreEqual('-', Added(cTexte, 'SOk', '''OK'''));
 end;
 
 procedure TResourceStringCommandsTests.RejectsNameWithOtherText;
@@ -93,47 +93,47 @@ begin
   Assert.WillRaise(
     procedure
     begin
-      Added(Texte, 'sok', '''Okay''');
+      Added(cTexte, 'sok', '''Okay''');
     end, EJsonRpcError);
 end;
 
 procedure TResourceStringCommandsTests.ExecuteReadsAndWrites;
 var
-  Arguments: TJSONArray;
-  Answer: TJSONValue;
-  Written, WrittenFile: string;
-  WrittenEdit: TTextEdit;
+  mArguments: TJSONArray;
+  mAnswer: TJSONValue;
+  mWritten, mWrittenFile: string;
+  mWrittenEdit: TTextEdit;
 begin
-  Written := '';
-  Arguments := TJSONArray.Create;
+  mWritten := '';
+  mArguments := TJSONArray.Create;
   try
-    Arguments.Add('C:\P\Texte.pas');
-    Arguments.Add('SFrage');
-    Arguments.Add('''Wirklich?''');
-    Answer := TResourceStringCommands.ExecuteAdd(
+    mArguments.Add('C:\P\Texte.pas');
+    mArguments.Add('SFrage');
+    mArguments.Add('''Wirklich?''');
+    mAnswer := TResourceStringCommands.ExecuteAdd(
       function(const AFileName: string; out AText: string): Boolean
       begin
-        AText := Texte;
+        AText := cTexte;
         Result := AFileName = 'C:\P\Texte.pas';
       end,
       procedure(const AFileName, ANewText: string; const AEdit: TTextEdit)
       begin
-        WrittenFile := AFileName;
-        Written := ANewText;
-        WrittenEdit := AEdit;
-      end, Arguments);
+        mWrittenFile := AFileName;
+        mWritten := ANewText;
+        mWrittenEdit := AEdit;
+      end, mArguments);
     try
-      Assert.IsTrue((Answer as TJSONBool).AsBoolean);
+      Assert.IsTrue((mAnswer as TJSONBool).AsBoolean);
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
-    Assert.AreEqual('C:\P\Texte.pas', WrittenFile);
-    Assert.Contains(Written, '  SFrage = ''Wirklich?'';'#10'implementation');
-    Assert.AreEqual(3, WrittenEdit.Range.StartPos.Line);
+    Assert.AreEqual('C:\P\Texte.pas', mWrittenFile);
+    Assert.Contains(mWritten, '  SFrage = ''Wirklich?'';'#10'implementation');
+    Assert.AreEqual(3, mWrittenEdit.Range.StartPos.Line);
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
-  WrittenFile := '';
+  mWrittenFile := '';
 end;
 
 procedure TResourceStringCommandsTests.ExecuteRejectsBadArguments;
@@ -151,7 +151,7 @@ begin
         TResourceStringCommands.ExecuteAdd(
           function(const AFileName: string; out AText: string): Boolean
           begin
-            AText := Texte;
+            AText := cTexte;
             Result := True;
           end,
           procedure(const AFileName, ANewText: string; const AEdit: TTextEdit)

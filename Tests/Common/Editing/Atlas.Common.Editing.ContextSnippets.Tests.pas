@@ -58,7 +58,7 @@ uses
   Atlas.Common.Lsp.Completion;
 
 const
-  Anzeige =
+  cAnzeige =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -73,7 +73,7 @@ const
     'implementation'#10 +
     'end.';
 
-  Setter =
+  cSetter =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -91,7 +91,7 @@ const
     'end;'#10 +
     'end.';
 
-  Kunden =
+  cKunden =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -123,49 +123,49 @@ const
 /// <summary>Kontext für den Cursor hinter "|" in AText; AText ohne "|".</summary>
 function ContextAt(var AText: string; out ACharacter: Integer): TSlashContext;
 var
-  Lines: TArray<string>;
-  Index, Bar: Integer;
+  mLines: TArray<string>;
+  mIndex, mBar: Integer;
 begin
   Result := Default(TSlashContext);
-  Lines := AText.Split([#10]);
-  for Index := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  for mIndex := 0 to High(mLines) do
   begin
-    Bar := Pos('|', Lines[Index]);
-    if Bar > 0 then
+    mBar := Pos('|', mLines[mIndex]);
+    if mBar > 0 then
     begin
-      Delete(Lines[Index], Bar, 1);
-      Result.Line := Index;
-      Result.LineText := Lines[Index];
-      ACharacter := Bar - 1;
+      Delete(mLines[mIndex], mBar, 1);
+      Result.Line := mIndex;
+      Result.LineText := mLines[mIndex];
+      ACharacter := mBar - 1;
     end;
   end;
-  AText := string.Join(#10, Lines);
+  AText := string.Join(#10, mLines);
   Result.Text := AText;
 end;
 
 function SnippetsAt(const ACode: string): TArray<TContextSnippet>;
 var
-  Text: string;
-  Character: Integer;
+  mText: string;
+  mCharacter: Integer;
 begin
-  Text := ACode;
-  Result := TContextSnippets.At(ContextAt(Text, Character), Character);
+  mText := ACode;
+  Result := TContextSnippets.At(ContextAt(mText, mCharacter), mCharacter);
 end;
 
 /// <summary>Wendet AEdits (nicht überlappend) auf AText an.</summary>
 function Apply(const AText: string; AEdits: TArray<TRuleEdit>): string;
 var
-  Lines: TArray<string>;
-  Edit: TRuleEdit;
-  Offsets: TArray<Integer>;
-  Index, Start, Stop: Integer;
+  mLines: TArray<string>;
+  mEdit: TRuleEdit;
+  mOffsets: TArray<Integer>;
+  mIndex, mStart, mStop: Integer;
 begin
-  Lines := AText.Split([#10]);
-  SetLength(Offsets, Length(Lines) + 1);
-  Offsets[0] := 0;
-  for Index := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  SetLength(mOffsets, Length(mLines) + 1);
+  mOffsets[0] := 0;
+  for mIndex := 0 to High(mLines) do
   begin
-    Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
   end;
   TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
@@ -174,23 +174,23 @@ begin
         ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
     end));
   Result := AText;
-  for Edit in AEdits do
+  for mEdit in AEdits do
   begin
-    Start := Offsets[Edit.Range.StartPos.Line] + Edit.Range.StartPos.Character;
-    Stop := Offsets[Edit.Range.EndPos.Line] + Edit.Range.EndPos.Character;
-    Result := Copy(Result, 1, Start) + Edit.NewText + Copy(Result, Stop + 1, MaxInt);
+    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
+    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
+    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
   end;
 end;
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -198,89 +198,89 @@ end;
 
 procedure TContextSnippetsTests.PropForFieldsWithoutProperty;
 var
-  Snippets: TArray<TContextSnippet>;
-  Text, Code: string;
-  Character: Integer;
-  Context: TSlashContext;
-  Edits: TArray<TRuleEdit>;
+  mSnippets: TArray<TContextSnippet>;
+  mText, mCode: string;
+  mCharacter: Integer;
+  mContext: TSlashContext;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Snippets := SnippetsAt(Format(Anzeige, ['pro|']));
+  mSnippets := SnippetsAt(Format(cAnzeige, ['pro|']));
   // FRand hat schon eine Property.
-  Assert.AreEqual(1, Integer(Length(Snippets)));
-  Assert.AreEqual('prop', Snippets[0].Prefix);
-  Assert.AreEqual('prop Farbe', Snippets[0].Name);
-  Assert.AreEqual('property ${1:Farbe}: TColor read FFarbe write SetFarbe;$0', Snippets[0].Text);
+  Assert.AreEqual(1, Integer(Length(mSnippets)));
+  Assert.AreEqual('prop', mSnippets[0].Prefix);
+  Assert.AreEqual('prop Farbe', mSnippets[0].Name);
+  Assert.AreEqual('property ${1:Farbe}: TColor read FFarbe write SetFarbe;$0', mSnippets[0].Text);
   // Eingesetzt mit den Vorgaben: Deklaration im private-Abschnitt, Rumpf mit Prüfung und Invalidate.
-  Code := Format(Anzeige, ['pro|']);
-  Context := ContextAt(Code, Character);
-  Edits := Snippets[0].AdditionalEdits + [TRuleEdit.Create(TTextRange.Create(Context.Line, 4, Context.Line,
-    Character), TContextSnippets.ToPlain(Snippets[0].Text))];
-  Text := Apply(Code, Edits);
-  Assert.Contains(Text, '    property Farbe: TColor read FFarbe write SetFarbe;'#10'  private'#10 +
+  mCode := Format(cAnzeige, ['pro|']);
+  mContext := ContextAt(mCode, mCharacter);
+  mEdits := mSnippets[0].AdditionalEdits + [TRuleEdit.Create(TTextRange.Create(mContext.Line, 4, mContext.Line,
+    mCharacter), TContextSnippets.ToPlain(mSnippets[0].Text))];
+  mText := Apply(mCode, mEdits);
+  Assert.Contains(mText, '    property Farbe: TColor read FFarbe write SetFarbe;'#10'  private'#10 +
     '    procedure SetFarbe(const Value: TColor);'#10'  end;');
-  Assert.Contains(Text, 'procedure TAnzeige.SetFarbe(const Value: TColor);'#10'begin'#10 +
+  Assert.Contains(mText, 'procedure TAnzeige.SetFarbe(const Value: TColor);'#10'begin'#10 +
     '  if FFarbe <> Value then'#10'  begin'#10'    FFarbe := Value;'#10'    Invalidate;'#10'  end;'#10'end;');
-  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(Parses(mText), mText);
   // Ohne Feld ohne Property nichts.
-  Assert.AreEqual(0, Integer(Length(SnippetsAt(StringReplace(Format(Anzeige, ['|']), '    FFarbe: TColor;'#10, '',
+  Assert.AreEqual(0, Integer(Length(SnippetsAt(StringReplace(Format(cAnzeige, ['|']), '    FFarbe: TColor;'#10, '',
     [])))));
 end;
 
 procedure TContextSnippetsTests.ChangedInEmptySetter;
 var
-  Snippets: TArray<TContextSnippet>;
+  mSnippets: TArray<TContextSnippet>;
 begin
-  Snippets := SnippetsAt(Format(Setter, ['ch|']));
-  Assert.AreEqual(1, Integer(Length(Snippets)));
-  Assert.AreEqual('changed', Snippets[0].Prefix);
+  mSnippets := SnippetsAt(Format(cSetter, ['ch|']));
+  Assert.AreEqual(1, Integer(Length(mSnippets)));
+  Assert.AreEqual('changed', mSnippets[0].Prefix);
   Assert.AreEqual('if FFarbe <> AFarbe then'#10'begin'#10'  FFarbe := AFarbe;'#10'  ${1:Invalidate};'#10'end;$0',
-    Snippets[0].Text);
-  Assert.AreEqual(0, Integer(Length(Snippets[0].AdditionalEdits)));
+    mSnippets[0].Text);
+  Assert.AreEqual(0, Integer(Length(mSnippets[0].AdditionalEdits)));
   // Weist der Rumpf das Feld schon zu, gibt es nichts mehr.
-  Assert.AreEqual(0, Integer(Length(SnippetsAt(StringReplace(Format(Setter, ['|']), 'begin'#10,
+  Assert.AreEqual(0, Integer(Length(SnippetsAt(StringReplace(Format(cSetter, ['|']), 'begin'#10,
     'begin'#10'  FFarbe := AFarbe;'#10, [])))));
 end;
 
 procedure TContextSnippetsTests.CreateObjectFieldsInConstructor;
 var
-  Snippets: TArray<TContextSnippet>;
+  mSnippets: TArray<TContextSnippet>;
 begin
-  Snippets := SnippetsAt(Format(Kunden, ['cr|', '']));
-  Assert.AreEqual(1, Integer(Length(Snippets)));
-  Assert.AreEqual('create', Snippets[0].Prefix);
+  mSnippets := SnippetsAt(Format(cKunden, ['cr|', '']));
+  Assert.AreEqual(1, Integer(Length(mSnippets)));
+  Assert.AreEqual('create', mSnippets[0].Prefix);
   // FName ist kein Objekt; TTimer ist eine Komponente und bekommt Self als Owner.
   Assert.AreEqual('inherited;'#10'FListe := ${1:TListe}.Create;'#10'FTimer := ${2:TTimer}.Create(Self);$0',
-    Snippets[0].Text);
+    mSnippets[0].Text);
   // Schon erzeugte Felder fehlen, inherited steht schon da.
-  Snippets := SnippetsAt(StringReplace(Format(Kunden, ['|', '']), 'begin'#10'  |',
+  mSnippets := SnippetsAt(StringReplace(Format(cKunden, ['|', '']), 'begin'#10'  |',
     'begin'#10'  inherited;'#10'  FListe := TListe.Create;'#10'  |', []));
-  Assert.AreEqual(1, Integer(Length(Snippets)));
-  Assert.AreEqual('FTimer := ${1:TTimer}.Create(Self);$0', Snippets[0].Text);
+  Assert.AreEqual(1, Integer(Length(mSnippets)));
+  Assert.AreEqual('FTimer := ${1:TTimer}.Create(Self);$0', mSnippets[0].Text);
 end;
 
 procedure TContextSnippetsTests.FreeCreatedFieldsInDestructor;
 var
-  Snippets: TArray<TContextSnippet>;
-  Code: string;
+  mSnippets: TArray<TContextSnippet>;
+  mCode: string;
 begin
-  Code := Format(Kunden, ['inherited;'#10'  FListe := TListe.Create;'#10'  FTimer := TTimer.Create(Self);', 'fr|']);
-  Snippets := SnippetsAt(Code);
-  Assert.AreEqual(1, Integer(Length(Snippets)));
-  Assert.AreEqual('free', Snippets[0].Prefix);
+  mCode := Format(cKunden, ['inherited;'#10'  FListe := TListe.Create;'#10'  FTimer := TTimer.Create(Self);', 'fr|']);
+  mSnippets := SnippetsAt(mCode);
+  Assert.AreEqual(1, Integer(Length(mSnippets)));
+  Assert.AreEqual('free', mSnippets[0].Prefix);
   // Umgekehrte Reihenfolge wie /dtor; inherited steht schon im Rumpf.
-  Assert.AreEqual('FreeAndNil(FTimer);'#10'FreeAndNil(FListe);$0', Snippets[0].Text);
+  Assert.AreEqual('FreeAndNil(FTimer);'#10'FreeAndNil(FListe);$0', mSnippets[0].Text);
   // Ohne inherited kommt es dazu; schon freigegebene Felder fehlen.
-  Code := StringReplace(Code, '  inherited;'#10'end;'#10'end.', '  FTimer.Free;'#10'end;'#10'end.', []);
-  Snippets := SnippetsAt(Code);
-  Assert.AreEqual(1, Integer(Length(Snippets)));
-  Assert.AreEqual('FreeAndNil(FListe);$0'#10'inherited;', Snippets[0].Text);
+  mCode := StringReplace(mCode, '  inherited;'#10'end;'#10'end.', '  FTimer.Free;'#10'end;'#10'end.', []);
+  mSnippets := SnippetsAt(mCode);
+  Assert.AreEqual(1, Integer(Length(mSnippets)));
+  Assert.AreEqual('FreeAndNil(FListe);$0'#10'inherited;', mSnippets[0].Text);
 end;
 
 procedure TContextSnippetsTests.NothingBesideOtherCode;
 begin
   // Weiterer Code vor oder hinter dem Cursor.
-  Assert.AreEqual(0, Integer(Length(SnippetsAt(Format(Setter, ['X := ch|'])))));
-  Assert.AreEqual(0, Integer(Length(SnippetsAt(Format(Setter, ['ch| X;'])))));
+  Assert.AreEqual(0, Integer(Length(SnippetsAt(Format(cSetter, ['X := ch|'])))));
+  Assert.AreEqual(0, Integer(Length(SnippetsAt(Format(cSetter, ['ch| X;'])))));
   // Außerhalb einer Klasse.
   Assert.AreEqual(0, Integer(Length(SnippetsAt('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10 +
     'begin'#10'  fr|'#10'end;'#10'end.'))));
@@ -298,82 +298,82 @@ end;
 
 procedure TContextSnippetsTests.PropCommandWritesSameSetter;
 var
-  Code, Text: string;
-  Edits: TArray<TRuleEdit>;
+  mCode, mText: string;
+  mEdits: TArray<TRuleEdit>;
 begin
   // /prop und die Vorlage nutzen denselben Erzeuger (#51 „Abgrenzung zu Code-Aktionen“).
-  Code := Format(Anzeige, ['/prop Breite: Integer']);
-  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Code, TTextPosition.Create(10, 0), nil, nil, Edits));
-  Text := Apply(Code, Edits);
-  Assert.Contains(Text, 'procedure TAnzeige.SetBreite(const Value: Integer);'#10 +
+  mCode := Format(cAnzeige, ['/prop Breite: Integer']);
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(mCode, TTextPosition.Create(10, 0), nil, nil, mEdits));
+  mText := Apply(mCode, mEdits);
+  Assert.Contains(mText, 'procedure TAnzeige.SetBreite(const Value: Integer);'#10 +
     TSetterGenerator.Body('FBreite', 'Value', 'Invalidate', #10));
-  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 { TContextSnippetCompletionTests }
 
 procedure TContextSnippetCompletionTests.SnippetOnlyWithClientSupport;
 var
-  Code: string;
-  Character: Integer;
-  Context: TSlashContext;
-  Items: TArray<TCompletionItem>;
-  Json: TJSONArray;
+  mCode: string;
+  mCharacter: Integer;
+  mContext: TSlashContext;
+  mItems: TArray<TCompletionItem>;
+  mJson: TJSONArray;
 begin
-  Code := Format(Setter, ['ch|']);
-  Context := ContextAt(Code, Character);
+  mCode := Format(cSetter, ['ch|']);
+  mContext := ContextAt(mCode, mCharacter);
   // Ohne snippetSupport: Klartext ohne "${", kein insertTextFormat.
-  Items := TCompletionLists.ContextItems(nil, nil, Code, TTextPosition.Create(Context.Line, Character),
+  mItems := TCompletionLists.ContextItems(nil, nil, mCode, TTextPosition.Create(mContext.Line, mCharacter),
     TCompletionMatching.Fuzzy, False);
-  Assert.AreEqual(1, Integer(Length(Items)));
-  Assert.IsFalse(Items[0].Snippet);
-  Assert.AreEqual(0, Pos('${', Items[0].TextEdit.NewText));
+  Assert.AreEqual(1, Integer(Length(mItems)));
+  Assert.IsFalse(mItems[0].Snippet);
+  Assert.AreEqual(0, Pos('${', mItems[0].TextEdit.NewText));
   Assert.AreEqual('if FFarbe <> AFarbe then'#10'begin'#10'  FFarbe := AFarbe;'#10'  Invalidate;'#10'end;',
-    Items[0].TextEdit.NewText);
-  Assert.AreEqual(2, Items[0].TextEdit.Range.StartPos.Character);
-  Assert.AreEqual('snippet', Items[0].Action);
-  Json := TLspCompletion.ToJson(Items, 0);
+    mItems[0].TextEdit.NewText);
+  Assert.AreEqual(2, mItems[0].TextEdit.Range.StartPos.Character);
+  Assert.AreEqual('snippet', mItems[0].Action);
+  mJson := TLspCompletion.ToJson(mItems, 0);
   try
-    Assert.IsNull(TJSONObject(Json.Items[0]).GetValue('insertTextFormat'));
-    Assert.AreEqual(0, Pos('${', Json.ToJSON));
+    Assert.IsNull(TJSONObject(mJson.Items[0]).GetValue('insertTextFormat'));
+    Assert.AreEqual(0, Pos('${', mJson.ToJSON));
   finally
-    Json.Free;
+    mJson.Free;
   end;
   // Mit snippetSupport: Snippet mit Platzhalter.
-  Items := TCompletionLists.ContextItems(nil, nil, Code, TTextPosition.Create(Context.Line, Character),
+  mItems := TCompletionLists.ContextItems(nil, nil, mCode, TTextPosition.Create(mContext.Line, mCharacter),
     TCompletionMatching.Fuzzy, True);
-  Assert.AreEqual(1, Integer(Length(Items)));
-  Assert.IsTrue(Items[0].Snippet);
-  Assert.Contains(Items[0].TextEdit.NewText, '${1:Invalidate}');
-  Json := TLspCompletion.ToJson(Items, 0);
+  Assert.AreEqual(1, Integer(Length(mItems)));
+  Assert.IsTrue(mItems[0].Snippet);
+  Assert.Contains(mItems[0].TextEdit.NewText, '${1:Invalidate}');
+  mJson := TLspCompletion.ToJson(mItems, 0);
   try
-    Assert.AreEqual(2, TJSONObject(Json.Items[0]).GetValue<Integer>('insertTextFormat'));
+    Assert.AreEqual(2, TJSONObject(mJson.Items[0]).GetValue<Integer>('insertTextFormat'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
   // Passt das Wort nicht, kommt nichts.
-  Code := Format(Setter, ['xyz|']);
-  Context := ContextAt(Code, Character);
-  Assert.AreEqual(0, Integer(Length(TCompletionLists.ContextItems(nil, nil, Code, TTextPosition.Create(Context.Line,
-    Character), TCompletionMatching.Prefix, True))));
+  mCode := Format(cSetter, ['xyz|']);
+  mContext := ContextAt(mCode, mCharacter);
+  Assert.AreEqual(0, Integer(Length(TCompletionLists.ContextItems(nil, nil, mCode, TTextPosition.Create(mContext.Line,
+    mCharacter), TCompletionMatching.Prefix, True))));
 end;
 
 procedure TContextSnippetCompletionTests.ReadsSnippetSupport;
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
-  Params := TJSONObject.ParseJSONValue(
+  mParams := TJSONObject.ParseJSONValue(
     '{"capabilities":{"textDocument":{"completion":{"completionItem":{"snippetSupport":true}}}}}') as TJSONObject;
   try
-    Assert.IsTrue(TLspCompletion.ClientSupportsSnippets(Params));
+    Assert.IsTrue(TLspCompletion.ClientSupportsSnippets(mParams));
   finally
-    Params.Free;
+    mParams.Free;
   end;
-  Params := TJSONObject.ParseJSONValue('{"capabilities":{}}') as TJSONObject;
+  mParams := TJSONObject.ParseJSONValue('{"capabilities":{}}') as TJSONObject;
   try
-    Assert.IsFalse(TLspCompletion.ClientSupportsSnippets(Params));
+    Assert.IsFalse(TLspCompletion.ClientSupportsSnippets(mParams));
   finally
-    Params.Free;
+    mParams.Free;
   end;
   Assert.IsFalse(TLspCompletion.ClientSupportsSnippets(nil));
 end;

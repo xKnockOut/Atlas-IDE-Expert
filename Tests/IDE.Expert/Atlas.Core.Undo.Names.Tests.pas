@@ -28,22 +28,22 @@ uses
 
 procedure TAtlasUndoNamesTests.ConflictModeRoundTrip;
 var
-  Mode: TAtlasUndoConflictMode;
+  mMode: TAtlasUndoConflictMode;
 begin
-  for Mode := Low(TAtlasUndoConflictMode) to High(TAtlasUndoConflictMode) do
+  for mMode := Low(TAtlasUndoConflictMode) to High(TAtlasUndoConflictMode) do
   begin
-    Assert.AreEqual(Ord(Mode), Ord(TAtlasUndoNames.ParseConflictMode(TAtlasUndoNames.ConflictModeName(Mode))));
+    Assert.AreEqual(Ord(mMode), Ord(TAtlasUndoNames.ParseConflictMode(TAtlasUndoNames.ConflictModeName(mMode))));
   end;
   Assert.AreEqual('abort', TAtlasUndoNames.ConflictModeName(TAtlasUndoConflictMode.Abort));
 end;
 
 procedure TAtlasUndoNamesTests.NewFilesRoundTrip;
 var
-  Mode: TAtlasNewFilesMode;
+  mMode: TAtlasNewFilesMode;
 begin
-  for Mode := Low(TAtlasNewFilesMode) to High(TAtlasNewFilesMode) do
+  for mMode := Low(TAtlasNewFilesMode) to High(TAtlasNewFilesMode) do
   begin
-    Assert.AreEqual(Ord(Mode), Ord(TAtlasUndoNames.ParseNewFiles(TAtlasUndoNames.NewFilesName(Mode))));
+    Assert.AreEqual(Ord(mMode), Ord(TAtlasUndoNames.ParseNewFiles(TAtlasUndoNames.NewFilesName(mMode))));
   end;
   Assert.AreEqual('recycleBin', TAtlasUndoNames.NewFilesName(TAtlasNewFilesMode.RecycleBin));
 end;

@@ -58,7 +58,7 @@ uses
   Atlas.Common.Pascal.TreeCache;
 
 const
-  Source =
+  cSource =
     'unit Kasse;'#10 +                                                // 0
     'interface'#10 +                                                  // 1
     'type'#10 +                                                       // 2
@@ -94,7 +94,7 @@ const
 
 procedure TLspDebugVariablesTests.Setup;
 begin
-  FTree := TSyntaxTreeCache.Parse(Source);
+  FTree := TSyntaxTreeCache.Parse(cSource);
   FCalls := nil;
   FNoValue := '';
 end;
@@ -110,8 +110,8 @@ function TLspDebugVariablesTests.NewVariables: TLspDebugVariables;
 var
   mLines: TArray<string>;
 begin
-  mLines := Source.Split([#10]);
-  Result := TLspDebugVariables.Create(FTree, Source,
+  mLines := cSource.Split([#10]);
+  Result := TLspDebugVariables.Create(FTree, cSource,
     function(ALine: Integer): TArray<TTextPosition>
     begin
       Result := FCalls;
@@ -153,7 +153,7 @@ end;
 function TLspDebugVariablesTests.PositionOf(ALine: Integer; const AText: string): TTextPosition;
 begin
   Result.Line := ALine;
-  Result.Character := Pos(AText, Source.Split([#10])[ALine]) - 1;
+  Result.Character := Pos(AText, cSource.Split([#10])[ALine]) - 1;
 end;
 
 procedure TLspDebugVariablesTests.AssignmentWithCallShowsVariablesOnly;

@@ -157,31 +157,31 @@ end;
 
 function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
 var
-  Line, Index: Integer;
+  mLine, mIndex: Integer;
 begin
-  Index := 1;
-  for Line := 1 to APosition.Line do
+  mIndex := 1;
+  for mLine := 1 to APosition.Line do
   begin
-    while (Index <= Length(AText)) and (AText[Index] <> #10) do
+    while (mIndex <= Length(AText)) and (AText[mIndex] <> #10) do
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Index + APosition.Character;
+  Result := mIndex + APosition.Character;
 end;
 
 /// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an.</summary>
 function ApplyFix(const AText: string; const AFix: TRuleFix): string;
 var
-  Index, Start, Stop: Integer;
+  mIndex, mStart, mStop: Integer;
 begin
   Result := AText;
-  for Index := High(AFix.Edits) downto 0 do
+  for mIndex := High(AFix.Edits) downto 0 do
   begin
-    Start := OffsetOf(Result, AFix.Edits[Index].Range.StartPos);
-    Stop := OffsetOf(Result, AFix.Edits[Index].Range.EndPos);
-    Result := Copy(Result, 1, Start - 1) + AFix.Edits[Index].NewText + Copy(Result, Stop, MaxInt);
+    mStart := OffsetOf(Result, AFix.Edits[mIndex].Range.StartPos);
+    mStop := OffsetOf(Result, AFix.Edits[mIndex].Range.EndPos);
+    Result := Copy(Result, 1, mStart - 1) + AFix.Edits[mIndex].NewText + Copy(Result, mStop, MaxInt);
   end;
 end;
 
@@ -189,17 +189,17 @@ end;
 
 procedure TMessageMethodInvalidTests.IssueExampleDuplicateNumber;
 var
-  Found: TArray<TRuleFinding>;
-  Line: string;
+  mFound: TArray<TRuleFinding>;
+  mLine: string;
 begin
-  Line := '    procedure WMGroesse(var Msg: TWMSize); message WM_SIZE;';
-  Found := Findings(Fenster('    procedure WMSize(var Msg: TWMSize); message WM_SIZE;'#10 + Line + #10, ''));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('WM_SIZE wird schon von WMSize behandelt (wie E2140).', Found[0].Message);
-  Assert.AreEqual(Integer(Ord(TRuleSeverity.Error)), Integer(Ord(Found[0].Severity)));
-  Assert.AreEqual(8, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(Pos('WM_SIZE', Line) - 1, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(Pos('WM_SIZE', Line) + 6, Found[0].Range.EndPos.Character);
+  mLine := '    procedure WMGroesse(var Msg: TWMSize); message WM_SIZE;';
+  mFound := Findings(Fenster('    procedure WMSize(var Msg: TWMSize); message WM_SIZE;'#10 + mLine + #10, ''));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('WM_SIZE wird schon von WMSize behandelt (wie E2140).', mFound[0].Message);
+  Assert.AreEqual(Integer(Ord(TRuleSeverity.Error)), Integer(Ord(mFound[0].Severity)));
+  Assert.AreEqual(8, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(Pos('WM_SIZE', mLine) - 1, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(Pos('WM_SIZE', mLine) + 6, mFound[0].Range.EndPos.Character);
   // Korrigierte Form: eigene Nummer.
   Assert.AreEqual(0, Integer(Length(Findings(Fenster('    procedure WMSize(var Msg: TWMSize); message WM_SIZE;'#10 +
     '    procedure WMMove(var Msg: TMessage); message WM_MOVE;'#10, '')))));
@@ -207,18 +207,18 @@ end;
 
 procedure TMessageMethodInvalidTests.DuplicatesByValueAndText;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
   // Gleicher Wert über eine Zahl, gleicher Ausdruck mit unbekanntem Namen.
-  Found := Findings(Fenster('    procedure A(var M: TMessage); message WM_SIZE;'#10 +
+  mFound := Findings(Fenster('    procedure A(var M: TMessage); message WM_SIZE;'#10 +
     '    procedure B(var M: TMessage); message $0005;'#10 +
     '    procedure C(var M: TMessage); message CM_BASE + 1;'#10 +
     '    procedure D(var M: TMessage); message CM_BASE+1;'#10 +
     '    procedure E(var M: TMessage); message WM_USER + 1;'#10 +
     '    procedure F(var M: TMessage); message CM_BASE + 2;'#10, ''));
-  Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual('$0005 wird schon von A behandelt (wie E2140).', Found[0].Message);
-  Assert.AreEqual('CM_BASE+1 wird schon von C behandelt (wie E2140).', Found[1].Message);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('$0005 wird schon von A behandelt (wie E2140).', mFound[0].Message);
+  Assert.AreEqual('CM_BASE+1 wird schon von C behandelt (wie E2140).', mFound[1].Message);
   // Dieselbe Nummer in zwei Klassen ist erlaubt; ebenso wie im Vorfahren (Überschreiben).
   Assert.AreEqual(0, Integer(Length(Findings(Fenster('    procedure A(var M: TMessage); message WM_SIZE;'#10 +
     '  end;'#10'  TKind = class(TFenster)'#10'    procedure A(var M: TMessage); message WM_SIZE;'#10, '')))));
@@ -230,64 +230,64 @@ end;
 
 procedure TMessageMethodInvalidTests.ExclusiveBranchesAreSilent;
 var
-  Members: string;
+  mMembers: string;
 begin
-  Members := '  {$IFDEF ALT}'#10'    procedure A(var M: TMessage); message WM_SIZE;'#10'  {$ELSE}'#10 +
+  mMembers := '  {$IFDEF ALT}'#10'    procedure A(var M: TMessage); message WM_SIZE;'#10'  {$ELSE}'#10 +
     '    procedure B(var M: TMessage); message WM_SIZE;'#10'  {$ENDIF}'#10;
-  Assert.AreEqual(0, Integer(Length(Findings(Fenster(Members, '')))));
+  Assert.AreEqual(0, Integer(Length(Findings(Fenster(mMembers, '')))));
   // Außerhalb der Bedingung wird die zweite immer mit übersetzt.
-  Assert.AreEqual(1, Integer(Length(Findings(Fenster(Members +
+  Assert.AreEqual(1, Integer(Length(Findings(Fenster(mMembers +
     '    procedure C(var M: TMessage); message WM_SIZE;'#10, '')))));
 end;
 
 procedure TMessageMethodInvalidTests.ParameterListWithFixes;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Fenster('    procedure WMA(Msg: TMessage); message 10;'#10 +
+  mSource := Fenster('    procedure WMA(Msg: TMessage); message 10;'#10 +
     '    procedure WMB(var A, B: Integer); message 11;'#10'    procedure WMC; message 12;'#10 +
     '    procedure WMD(const Msg: TMessage); message 13;'#10'    procedure WME(var Msg); message 14;'#10 +
     '    function WMF(var Msg: TMessage): Integer; message 15;'#10'    procedure WMG(var Msg: TMessage); message 16;'#10,
     'procedure TFenster.WMA(Msg: TMessage);'#10'begin'#10'end;'#10#10 +
     'procedure TFenster.WMB(var A, B: Integer);'#10'begin'#10'end;'#10#10 +
     'procedure TFenster.WMC;'#10'begin'#10'end;'#10#10);
-  Found := Findings(Source);
-  Assert.AreEqual(4, Integer(Length(Found)));
-  Assert.AreEqual('Die message-Methode WMA braucht genau einen var-Parameter (wie E2138).', Found[0].Message);
-  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(14, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(17, Found[0].Range.EndPos.Character);
-  Assert.AreEqual('Parameter Msg als var übergeben', Found[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
-  Assert.IsTrue(Pos('procedure WMA(var Msg: TMessage); message 10;', Fixed) > 0, Fixed);
-  Assert.IsTrue(Pos('procedure TFenster.WMA(var Msg: TMessage);', Fixed) > 0, Fixed);
-  Assert.AreEqual('Die message-Methode WMB braucht genau einen var-Parameter (wie E2138).', Found[1].Message);
-  Assert.AreEqual('Signatur (var Msg: TMessage) einsetzen', Found[1].Fixes[0].Title);
-  Fixed := ApplyFix(Fixed, Findings(Fixed)[0].Fixes[0]);
-  Assert.IsTrue(Pos('procedure WMB(var Msg: TMessage); message 11;', Fixed) > 0, Fixed);
-  Assert.IsTrue(Pos('procedure TFenster.WMB(var Msg: TMessage);', Fixed) > 0, Fixed);
-  Fixed := ApplyFix(Fixed, Findings(Fixed)[0].Fixes[0]);
+  mFound := Findings(mSource);
+  Assert.AreEqual(4, Integer(Length(mFound)));
+  Assert.AreEqual('Die message-Methode WMA braucht genau einen var-Parameter (wie E2138).', mFound[0].Message);
+  Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(14, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(17, mFound[0].Range.EndPos.Character);
+  Assert.AreEqual('Parameter Msg als var übergeben', mFound[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('procedure WMA(var Msg: TMessage); message 10;', mFixed) > 0, mFixed);
+  Assert.IsTrue(Pos('procedure TFenster.WMA(var Msg: TMessage);', mFixed) > 0, mFixed);
+  Assert.AreEqual('Die message-Methode WMB braucht genau einen var-Parameter (wie E2138).', mFound[1].Message);
+  Assert.AreEqual('Signatur (var Msg: TMessage) einsetzen', mFound[1].Fixes[0].Title);
+  mFixed := ApplyFix(mFixed, Findings(mFixed)[0].Fixes[0]);
+  Assert.IsTrue(Pos('procedure WMB(var Msg: TMessage); message 11;', mFixed) > 0, mFixed);
+  Assert.IsTrue(Pos('procedure TFenster.WMB(var Msg: TMessage);', mFixed) > 0, mFixed);
+  mFixed := ApplyFix(mFixed, Findings(mFixed)[0].Fixes[0]);
   // Der Rumpf ohne Parameterliste bleibt.
-  Assert.IsTrue(Pos('procedure WMC(var Msg: TMessage); message 12;', Fixed) > 0, Fixed);
-  Assert.IsTrue(Pos('procedure TFenster.WMC;', Fixed) > 0, Fixed);
-  Fixed := ApplyFix(Fixed, Findings(Fixed)[0].Fixes[0]);
-  Assert.IsTrue(Pos('procedure WMD(var Msg: TMessage); message 13;', Fixed) > 0, Fixed);
-  Assert.AreEqual(0, Integer(Length(Findings(Fixed))), Fixed);
+  Assert.IsTrue(Pos('procedure WMC(var Msg: TMessage); message 12;', mFixed) > 0, mFixed);
+  Assert.IsTrue(Pos('procedure TFenster.WMC;', mFixed) > 0, mFixed);
+  mFixed := ApplyFix(mFixed, Findings(mFixed)[0].Fixes[0]);
+  Assert.IsTrue(Pos('procedure WMD(var Msg: TMessage); message 13;', mFixed) > 0, mFixed);
+  Assert.AreEqual(0, Integer(Length(Findings(mFixed))), mFixed);
 end;
 
 procedure TMessageMethodInvalidTests.NumberBelowOne;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(Fenster('    procedure A(var M: TMessage); message 0;'#10 +
+  mFound := Findings(Fenster('    procedure A(var M: TMessage); message 0;'#10 +
     '    procedure B(var M: TMessage); message -151;'#10'    procedure C(var M: TMessage); message WM_NULL;'#10 +
     '    procedure D(var M: TMessage); message 151;'#10'    procedure E(var M: TMessage); message WM_USER - 1;'#10,
     ''));
-  Assert.AreEqual(3, Integer(Length(Found)));
-  Assert.AreEqual('Die Nachrichtennummer 0 von A muss mindestens 1 sein (wie E2139).', Found[0].Message);
-  Assert.AreEqual('Die Nachrichtennummer -151 von B muss mindestens 1 sein (wie E2139).', Found[1].Message);
-  Assert.AreEqual('Die Nachrichtennummer WM_NULL von C muss mindestens 1 sein (wie E2139).', Found[2].Message);
+  Assert.AreEqual(3, Integer(Length(mFound)));
+  Assert.AreEqual('Die Nachrichtennummer 0 von A muss mindestens 1 sein (wie E2139).', mFound[0].Message);
+  Assert.AreEqual('Die Nachrichtennummer -151 von B muss mindestens 1 sein (wie E2139).', mFound[1].Message);
+  Assert.AreEqual('Die Nachrichtennummer WM_NULL von C muss mindestens 1 sein (wie E2139).', mFound[2].Message);
 end;
 
 procedure TMessageMethodInvalidTests.DescriptionFromTextUnit;
@@ -299,15 +299,15 @@ end;
 
 procedure TMessageMethodInvalidTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Fenster('    procedure A(var M: TMessage); message WM_SIZE;'#10 +
+  mSource := Fenster('    procedure A(var M: TMessage); message WM_SIZE;'#10 +
     '    procedure B(var M: TMessage); message WM_SIZE;'#10, '');
-  Assert.AreEqual(1, Integer(Length(Findings(Source, '', 'Source/Fenster.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"message-method-invalid": "off"}}',
+  Assert.AreEqual(1, Integer(Length(Findings(mSource, '', 'Source/Fenster.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"message-method-invalid": "off"}}',
     'Source/Fenster.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"group:compiler": "off"}}', 'Source/Fenster.pas'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source,
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"group:compiler": "off"}}', 'Source/Fenster.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource,
     '{"rules": {"message-method-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Fenster.pas'))));
 end;
 
@@ -346,57 +346,57 @@ end;
 
 procedure TInterfaceDeclarationInvalidTests.IssueExampleField;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := InterfaceFindings(Kunden('  IKunde = interface'#10'    FName: string;'#10'    function GetName: string;'#10 +
+  mFound := InterfaceFindings(Kunden('  IKunde = interface'#10'    FName: string;'#10'    function GetName: string;'#10 +
     '  end;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Interfaces dürfen keine Felder haben (wie E2209).', Found[0].Message);
-  Assert.AreEqual(Integer(Ord(TRuleSeverity.Error)), Integer(Ord(Found[0].Severity)));
-  Assert.AreEqual(6, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(4, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(9, Found[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Interfaces dürfen keine Felder haben (wie E2209).', mFound[0].Message);
+  Assert.AreEqual(Integer(Ord(TRuleSeverity.Error)), Integer(Ord(mFound[0].Severity)));
+  Assert.AreEqual(6, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(4, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(9, mFound[0].Range.EndPos.Character);
   // Korrigierte Form und Felder einer Klasse.
   Assert.AreEqual(0, Integer(Length(InterfaceFindings(Kunden('  IKunde = interface'#10 +
     '    function GetName: string;'#10'  end;'#10'  TKunde = class'#10'    FName: string;'#10'  end;'#10)))));
-  Found := InterfaceFindings(Kunden('  IKunde = interface'#10'    class var Zaehler: Integer;'#10'  end;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(6, Found[0].Range.StartPos.Line);
+  mFound := InterfaceFindings(Kunden('  IKunde = interface'#10'    class var Zaehler: Integer;'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(6, mFound[0].Range.StartPos.Line);
 end;
 
 procedure TInterfaceDeclarationInvalidTests.VisibilityAndDirectives;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := InterfaceFindings(Kunden('  IKunde = interface'#10'  private'#10'    procedure A; virtual;'#10 +
+  mFound := InterfaceFindings(Kunden('  IKunde = interface'#10'  private'#10'    procedure A; virtual;'#10 +
     '    procedure B; stdcall;'#10'    function C: Integer; safecall;'#10'    procedure D; overload;'#10 +
     '    procedure D(X: Integer); overload; abstract;'#10'  end;'#10));
-  Assert.AreEqual(3, Integer(Length(Found)));
-  Assert.AreEqual('Die Direktive private ist in Interfaces nicht erlaubt (wie E2210).', Found[0].Message);
-  Assert.AreEqual(6, Found[0].Range.StartPos.Line);
-  Assert.AreEqual('Die Direktive virtual ist in Interfaces nicht erlaubt (wie E2210).', Found[1].Message);
-  Assert.AreEqual(7, Found[1].Range.StartPos.Line);
-  Assert.AreEqual(17, Found[1].Range.StartPos.Character);
-  Assert.AreEqual(24, Found[1].Range.EndPos.Character);
-  Assert.AreEqual('Die Direktive abstract ist in Interfaces nicht erlaubt (wie E2210).', Found[2].Message);
+  Assert.AreEqual(3, Integer(Length(mFound)));
+  Assert.AreEqual('Die Direktive private ist in Interfaces nicht erlaubt (wie E2210).', mFound[0].Message);
+  Assert.AreEqual(6, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual('Die Direktive virtual ist in Interfaces nicht erlaubt (wie E2210).', mFound[1].Message);
+  Assert.AreEqual(7, mFound[1].Range.StartPos.Line);
+  Assert.AreEqual(17, mFound[1].Range.StartPos.Character);
+  Assert.AreEqual(24, mFound[1].Range.EndPos.Character);
+  Assert.AreEqual('Die Direktive abstract ist in Interfaces nicht erlaubt (wie E2210).', mFound[2].Message);
 end;
 
 procedure TInterfaceDeclarationInvalidTests.PropertyClauses;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := InterfaceFindings(Kunden('  IKunde = interface'#10'    function GetX: Integer;'#10 +
+  mFound := InterfaceFindings(Kunden('  IKunde = interface'#10'    function GetX: Integer;'#10 +
     '    procedure SetX(V: Integer);'#10'    function GetItem(I: Integer): Integer;'#10 +
     '    property X: Integer read GetX write SetX stored False;'#10'    property Y: Integer read GetX default 0;'#10 +
     '    property Z: Integer read GetX nodefault;'#10 +
     '    property Items[I: Integer]: Integer read GetItem; default;'#10 +
     '    property Default: Integer read GetX;'#10'    property Stored: Integer read GetX;'#10'  end;'#10));
-  Assert.AreEqual(3, Integer(Length(Found)));
-  Assert.AreEqual('Die Klausel stored ist in Interfaces nicht erlaubt (wie E2207).', Found[0].Message);
-  Assert.AreEqual(9, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(45, Found[0].Range.StartPos.Character);
-  Assert.AreEqual('Die Klausel default ist in Interfaces nicht erlaubt (wie E2207).', Found[1].Message);
-  Assert.AreEqual('Die Klausel nodefault ist in Interfaces nicht erlaubt (wie E2207).', Found[2].Message);
+  Assert.AreEqual(3, Integer(Length(mFound)));
+  Assert.AreEqual('Die Klausel stored ist in Interfaces nicht erlaubt (wie E2207).', mFound[0].Message);
+  Assert.AreEqual(9, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(45, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual('Die Klausel default ist in Interfaces nicht erlaubt (wie E2207).', mFound[1].Message);
+  Assert.AreEqual('Die Klausel nodefault ist in Interfaces nicht erlaubt (wie E2207).', mFound[2].Message);
   // In einer Klasse sind die Klauseln erlaubt.
   Assert.AreEqual(0, Integer(Length(InterfaceFindings(Kunden('  TKunde = class'#10'    function GetX: Integer;'#10 +
     '  published'#10'    property X: Integer read GetX stored False default 0;'#10'  end;'#10)))));
@@ -404,16 +404,16 @@ end;
 
 procedure TInterfaceDeclarationInvalidTests.InheritedPropertiesAndAccessors;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := InterfaceFindings(Kunden('  IKunde = interface(IBasis)'#10'    property Name;'#10 +
+  mFound := InterfaceFindings(Kunden('  IKunde = interface(IBasis)'#10'    property Name;'#10 +
     '    property Titel: string read GetName;'#10'  end;'#10));
   // Titel mit dem geerbten Getter GetName übersetzt dcc (ID3, #1328).
-  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Die Property Name ist schon in IBasis deklariert; Interfaces dürfen Properties nicht ' +
-    'ohne Typ neu aufführen (wie E2206).', Found[0].Message);
-  Assert.AreEqual(6, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(13, Found[0].Range.StartPos.Character);
+    'ohne Typ neu aufführen (wie E2206).', mFound[0].Message);
+  Assert.AreEqual(6, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(13, mFound[0].Range.StartPos.Character);
   // Eigener Accessor und neuer Name: still.
   Assert.AreEqual(0, Integer(Length(InterfaceFindings(Kunden('  IKunde = interface(IBasis)'#10 +
     '    function GetTitel: string;'#10'    property Titel: string read GetTitel;'#10'  end;'#10)))));
@@ -430,27 +430,27 @@ begin
     '  IVoll<T> = interface(IListe<T>)'#10'    procedure SetAnzahl(AWert: Integer);'#10 +
     '    property Anzahl: Integer read GetAnzahl write SetAnzahl;'#10'  end;'#10)))));
   // Ohne Typ über zwei Stufen in derselben Unit.
-  Found := InterfaceFindings(Kunden('  IMitte = interface(IBasis)'#10'  end;'#10 +
+  mFound := InterfaceFindings(Kunden('  IMitte = interface(IBasis)'#10'  end;'#10 +
     '  IKunde = interface(IMitte)'#10'    property Name;'#10'  end;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Die Property Name ist schon in IBasis deklariert; Interfaces dürfen Properties nicht ' +
-    'ohne Typ neu aufführen (wie E2206).', Found[0].Message);
+    'ohne Typ neu aufführen (wie E2206).', mFound[0].Message);
 end;
 
 procedure TInterfaceDeclarationInvalidTests.ClassesAsInterfacesAndDuplicates;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := InterfaceFindings(Kunden('  IFalsch = interface(TKlasse)'#10'  end;'#10 +
+  mFound := InterfaceFindings(Kunden('  IFalsch = interface(TKlasse)'#10'  end;'#10 +
     '  TDienst = class(TInterfacedObject, TPunkt, IBasis, TFarbe, Basis.IBasis)'#10'  end;'#10));
-  Assert.AreEqual(4, Integer(Length(Found)));
-  Assert.AreEqual('TKlasse ist eine Klasse und kein Interface (wie E2205).', Found[0].Message);
-  Assert.AreEqual(5, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(22, Found[0].Range.StartPos.Character);
-  Assert.AreEqual('TPunkt ist ein Record und kein Interface (wie E2205).', Found[1].Message);
-  Assert.AreEqual('TFarbe ist eine Aufzählung und kein Interface (wie E2205).', Found[2].Message);
-  Assert.AreEqual('Basis.IBasis steht schon in der Liste der Interfaces (wie E2208).', Found[3].Message);
-  Assert.AreEqual(7, Found[3].Range.StartPos.Line);
+  Assert.AreEqual(4, Integer(Length(mFound)));
+  Assert.AreEqual('TKlasse ist eine Klasse und kein Interface (wie E2205).', mFound[0].Message);
+  Assert.AreEqual(5, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(22, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual('TPunkt ist ein Record und kein Interface (wie E2205).', mFound[1].Message);
+  Assert.AreEqual('TFarbe ist eine Aufzählung und kein Interface (wie E2205).', mFound[2].Message);
+  Assert.AreEqual('Basis.IBasis steht schon in der Liste der Interfaces (wie E2208).', mFound[3].Message);
+  Assert.AreEqual(7, mFound[3].Range.StartPos.Line);
 end;
 
 procedure TInterfaceDeclarationInvalidTests.SilentCases;
@@ -465,15 +465,15 @@ end;
 
 procedure TInterfaceDeclarationInvalidTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Kunden('  IKunde = interface'#10'    FName: string;'#10'  end;'#10);
-  Assert.AreEqual(1, Integer(Length(InterfaceFindings(Source, '', 'Source/Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(InterfaceFindings(Source, '{"rules": {"interface-declaration-invalid": "off"}}',
+  mSource := Kunden('  IKunde = interface'#10'    FName: string;'#10'  end;'#10);
+  Assert.AreEqual(1, Integer(Length(InterfaceFindings(mSource, '', 'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(InterfaceFindings(mSource, '{"rules": {"interface-declaration-invalid": "off"}}',
     'Source/Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(InterfaceFindings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(InterfaceFindings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(InterfaceFindings(Source,
+  Assert.AreEqual(0, Integer(Length(InterfaceFindings(mSource,
     '{"rules": {"interface-declaration-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
 end;
 
@@ -482,12 +482,12 @@ end;
 /// <summary>Meldungen der Treffer, eine je Zeile (für Fehlermeldungen der Tests).</summary>
 function Messages(const AFound: TArray<TRuleFinding>): string;
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
   Result := '';
-  for Finding in AFound do
+  for mFinding in AFound do
   begin
-    Result := Result + Finding.Message + #10;
+    Result := Result + mFinding.Message + #10;
   end;
 end;
 
@@ -510,17 +510,17 @@ end;
 
 procedure TImplementsClauseInvalidTests.IssueExampleWithoutRead;
 var
-  Found: TArray<TRuleFinding>;
-  Line: string;
+  mFound: TArray<TRuleFinding>;
+  mLine: string;
 begin
-  Line := '    property Basis: IBasis write FBasis implements IBasis;';
-  Found := ImplementsFindings(Kunden('  TDienst = class(TInterfacedObject, IBasis)'#10'    FBasis: IBasis;'#10 +
-    Line + #10'  end;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('implements braucht eine lesbare Property (wie E2261).', Found[0].Message);
-  Assert.AreEqual(Integer(Ord(TRuleSeverity.Error)), Integer(Ord(Found[0].Severity)));
-  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(Pos('implements', Line) - 1, Found[0].Range.StartPos.Character);
+  mLine := '    property Basis: IBasis write FBasis implements IBasis;';
+  mFound := ImplementsFindings(Kunden('  TDienst = class(TInterfacedObject, IBasis)'#10'    FBasis: IBasis;'#10 +
+    mLine + #10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('implements braucht eine lesbare Property (wie E2261).', mFound[0].Message);
+  Assert.AreEqual(Integer(Ord(TRuleSeverity.Error)), Integer(Ord(mFound[0].Severity)));
+  Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(Pos('implements', mLine) - 1, mFound[0].Range.StartPos.Character);
   // Korrigierte Form.
   Assert.AreEqual(0, Integer(Length(ImplementsFindings(Kunden('  TDienst = class(TInterfacedObject, IBasis)'#10 +
     '    FBasis: IBasis;'#10'    property Basis: IBasis read FBasis write FBasis implements IBasis;'#10 +
@@ -529,58 +529,58 @@ end;
 
 procedure TImplementsClauseInvalidTests.TypeIndexAndGetter;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := ImplementsFindings(Dienst('IA, IB, IC, ID', '    FZahl: Integer;'#10'    FPunkt: TPunkt;'#10 +
+  mFound := ImplementsFindings(Dienst('IA, IB, IC, ID', '    FZahl: Integer;'#10'    FPunkt: TPunkt;'#10 +
     '    function GetB: IB; cdecl;'#10'    function GetC(I: Integer): IC;'#10'    function GetD: ID; dynamic;'#10 +
     '    property Zahl: Integer read FZahl implements IA;'#10'    property B: IB read GetB implements IB;'#10 +
     '    property C: IC index 1 read GetC implements IC;'#10'    property D: ID read GetD implements ID;'#10 +
     '    property Punkt: TPunkt read FPunkt implements IBasis;'#10));
-  Assert.AreEqual(5, Integer(Length(Found)), Messages(Found));
+  Assert.AreEqual(5, Integer(Length(mFound)), Messages(mFound));
   Assert.AreEqual('implements ist nur an Properties mit Klassen- oder Interface-Typ erlaubt, Integer ist keiner ' +
-    '(wie E2259).', Found[0].Message);
-  Assert.AreEqual(19, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(19, Found[0].Range.StartPos.Character);
+    '(wie E2259).', mFound[0].Message);
+  Assert.AreEqual(19, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(19, mFound[0].Range.StartPos.Character);
   Assert.AreEqual('Der Getter GetB einer implements-Property darf nicht cdecl sein, nur register (wie E2262).',
-    Found[1].Message);
-  Assert.AreEqual(20, Found[1].Range.StartPos.Line);
-  Assert.AreEqual('implements ist nicht zusammen mit index erlaubt (wie E2260).', Found[2].Message);
-  Assert.AreEqual('Der Getter GetD einer implements-Property darf nicht dynamic sein (wie E2263 und E2148).', Found[3].Message);
+    mFound[1].Message);
+  Assert.AreEqual(20, mFound[1].Range.StartPos.Line);
+  Assert.AreEqual('implements ist nicht zusammen mit index erlaubt (wie E2260).', mFound[2].Message);
+  Assert.AreEqual('Der Getter GetD einer implements-Property darf nicht dynamic sein (wie E2263 und E2148).', mFound[3].Message);
   // Record als Typ.
   Assert.AreEqual('implements ist nur an Properties mit Klassen- oder Interface-Typ erlaubt, TPunkt ist keiner ' +
-    '(wie E2259).', Found[4].Message);
+    '(wie E2259).', mFound[4].Message);
 end;
 
 procedure TImplementsClauseInvalidTests.DuplicatesAndMethodResolutions;
 var
-  Found: TArray<TRuleFinding>;
-  Line: string;
+  mFound: TArray<TRuleFinding>;
+  mLine: string;
 begin
-  Line := '    property A2: IA read FA implements IA, IB;';
-  Found := ImplementsFindings(Dienst('IA, IB, IC', '    FA: IA;'#10'    procedure Tun;'#10 +
-    '    property A1: IA read FA implements IA;'#10 + Line + #10'    procedure IB.Machen = Tun;'#10 +
+  mLine := '    property A2: IA read FA implements IA, IB;';
+  mFound := ImplementsFindings(Dienst('IA, IB, IC', '    FA: IA;'#10'    procedure Tun;'#10 +
+    '    property A1: IA read FA implements IA;'#10 + mLine + #10'    procedure IB.Machen = Tun;'#10 +
     '    procedure IC.Machen = Tun;'#10));
-  Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual('IA wird schon von A1 per implements umgesetzt (wie E2257).', Found[0].Message);
-  Assert.AreEqual(17, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(Pos('IA, IB', Line) - 1, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('IA wird schon von A1 per implements umgesetzt (wie E2257).', mFound[0].Message);
+  Assert.AreEqual(17, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(Pos('IA, IB', mLine) - 1, mFound[0].Range.StartPos.Character);
   Assert.AreEqual('Für IB gibt es die implements-Property A2; Methodenzuordnungen sind dann nicht erlaubt ' +
-    '(wie E2264).', Found[1].Message);
-  Assert.AreEqual(18, Found[1].Range.StartPos.Line);
-  Assert.AreEqual(14, Found[1].Range.StartPos.Character);
+    '(wie E2264).', mFound[1].Message);
+  Assert.AreEqual(18, mFound[1].Range.StartPos.Line);
+  Assert.AreEqual(14, mFound[1].Range.StartPos.Character);
 end;
 
 procedure TImplementsClauseInvalidTests.OutsideOfClasses;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := ImplementsFindings(Kunden('  IA = interface'#10'    function GetA: IA;'#10 +
+  mFound := ImplementsFindings(Kunden('  IA = interface'#10'    function GetA: IA;'#10 +
     '    property A: IA read GetA implements IA;'#10'  end;'#10'  TWert = record'#10'    FA: IA;'#10 +
     '    property A: IA read FA implements IA;'#10'  end;'#10));
-  Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual('implements ist nur in Klassen erlaubt (wie E2258).', Found[0].Message);
-  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(11, Found[1].Range.StartPos.Line);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('implements ist nur in Klassen erlaubt (wie E2258).', mFound[0].Message);
+  Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(11, mFound[1].Range.StartPos.Line);
 end;
 
 procedure TImplementsClauseInvalidTests.SilentCases;
@@ -596,16 +596,16 @@ end;
 
 procedure TImplementsClauseInvalidTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Kunden('  TDienst = class(TInterfacedObject, IBasis)'#10'    FBasis: IBasis;'#10 +
+  mSource := Kunden('  TDienst = class(TInterfacedObject, IBasis)'#10'    FBasis: IBasis;'#10 +
     '    property Basis: IBasis write FBasis implements IBasis;'#10'  end;'#10);
-  Assert.AreEqual(1, Integer(Length(ImplementsFindings(Source, '', 'Source/Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(ImplementsFindings(Source, '{"rules": {"implements-clause-invalid": "off"}}',
+  Assert.AreEqual(1, Integer(Length(ImplementsFindings(mSource, '', 'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(ImplementsFindings(mSource, '{"rules": {"implements-clause-invalid": "off"}}',
     'Source/Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(ImplementsFindings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(ImplementsFindings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/Kunden.pas'))));
-  Assert.AreEqual(0, Integer(Length(ImplementsFindings(Source,
+  Assert.AreEqual(0, Integer(Length(ImplementsFindings(mSource,
     '{"rules": {"implements-clause-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
 end;
 
@@ -629,25 +629,25 @@ end;
 
 procedure TCallingConventionRequiredTests.IssueExampleVarargsWithFix;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Druck('function Formatieren(Muster: PAnsiChar): Integer; stdcall; varargs; external ''msvcrt.dll'';'#10 +
+  mSource := Druck('function Formatieren(Muster: PAnsiChar): Integer; stdcall; varargs; external ''msvcrt.dll'';'#10 +
     'function Zwei(Muster: PAnsiChar): Integer; varargs; external ''msvcrt.dll'';'#10 +
     'function Drei(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';'#10, '');
-  Found := ConventionFindings(Source);
-  Assert.AreEqual(2, Integer(Length(Found)), Messages(Found));
-  Assert.AreEqual('varargs ist nur mit cdecl erlaubt (wie E2277).', Found[0].Message);
-  Assert.AreEqual(2, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(59, Found[0].Range.StartPos.Character);
-  Assert.AreEqual('cdecl setzen', Found[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
+  mFound := ConventionFindings(mSource);
+  Assert.AreEqual(2, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual('varargs ist nur mit cdecl erlaubt (wie E2277).', mFound[0].Message);
+  Assert.AreEqual(2, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(59, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual('cdecl setzen', mFound[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('function Formatieren(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';',
-    Fixed) > 0, Fixed);
-  Fixed := ApplyFix(Fixed, Found[1].Fixes[0]);
-  Assert.IsTrue(Pos('function Zwei(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';', Fixed) > 0,
-    Fixed);
-  Assert.AreEqual(0, Integer(Length(ConventionFindings(Fixed))), Fixed);
+    mFixed) > 0, mFixed);
+  mFixed := ApplyFix(mFixed, mFound[1].Fixes[0]);
+  Assert.IsTrue(Pos('function Zwei(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';', mFixed) > 0,
+    mFixed);
+  Assert.AreEqual(0, Integer(Length(ConventionFindings(mFixed))), mFixed);
 end;
 
 procedure TCallingConventionRequiredTests.VarargsWithoutExternalOnWin32;
@@ -676,64 +676,64 @@ end;
 
 procedure TCallingConventionRequiredTests.ConstructorsAndDestructors;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Druck('type'#10'  TBasis = class'#10'    constructor Create; pascal;'#10 +
+  mSource := Druck('type'#10'  TBasis = class'#10'    constructor Create; pascal;'#10 +
     '    destructor Destroy; override; stdcall;'#10'    constructor Neu; register;'#10 +
     '    class constructor Init;'#10'    procedure Machen; stdcall;'#10'  end;'#10,
     'constructor TBasis.Create; pascal;'#10'begin'#10'end;'#10#10'destructor TBasis.Destroy;'#10'begin'#10'end;'#10);
-  Found := ConventionFindings(Source);
-  Assert.AreEqual(2, Integer(Length(Found)), Messages(Found));
-  Assert.AreEqual('Konstruktoren und Destruktoren brauchen register, nicht pascal (wie E2236).', Found[0].Message);
-  Assert.AreEqual(4, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(24, Found[0].Range.StartPos.Character);
-  Assert.AreEqual('pascal entfernen', Found[0].Fixes[0].Title);
-  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
-  Assert.IsTrue(Pos('    constructor Create;'#10, Fixed) > 0, Fixed);
-  Assert.IsTrue(Pos('constructor TBasis.Create;'#10, Fixed) > 0, Fixed);
-  Assert.AreEqual('Konstruktoren und Destruktoren brauchen register, nicht stdcall (wie E2236).', Found[1].Message);
-  Fixed := ApplyFix(Fixed, ConventionFindings(Fixed)[0].Fixes[0]);
-  Assert.IsTrue(Pos('    destructor Destroy; override;'#10, Fixed) > 0, Fixed);
-  Assert.AreEqual(0, Integer(Length(ConventionFindings(Fixed))), Fixed);
+  mFound := ConventionFindings(mSource);
+  Assert.AreEqual(2, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual('Konstruktoren und Destruktoren brauchen register, nicht pascal (wie E2236).', mFound[0].Message);
+  Assert.AreEqual(4, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(24, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual('pascal entfernen', mFound[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('    constructor Create;'#10, mFixed) > 0, mFixed);
+  Assert.IsTrue(Pos('constructor TBasis.Create;'#10, mFixed) > 0, mFixed);
+  Assert.AreEqual('Konstruktoren und Destruktoren brauchen register, nicht stdcall (wie E2236).', mFound[1].Message);
+  mFixed := ApplyFix(mFixed, ConventionFindings(mFixed)[0].Fixes[0]);
+  Assert.IsTrue(Pos('    destructor Destroy; override;'#10, mFixed) > 0, mFixed);
+  Assert.AreEqual(0, Integer(Length(ConventionFindings(mFixed))), mFixed);
 end;
 
 procedure TCallingConventionRequiredTests.PublishedAccessors;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Druck('type'#10'  TBasis = class'#10'  private'#10'    function GetWert: Integer; cdecl;'#10 +
+  mSource := Druck('type'#10'  TBasis = class'#10'  private'#10'    function GetWert: Integer; cdecl;'#10 +
     '    procedure SetWert(V: Integer); stdcall;'#10'    function GetAnders: Integer; cdecl;'#10'  public'#10 +
     '    property Anders: Integer read GetAnders;'#10'  published'#10 +
     '    property Wert: Integer read GetWert write SetWert;'#10'    property Feld: Integer read FFeld;'#10'  end;'#10,
     'function TBasis.GetWert: Integer; cdecl;'#10'begin'#10'  Result := 0;'#10'end;'#10);
-  Found := ConventionFindings(Source);
-  Assert.AreEqual(2, Integer(Length(Found)), Messages(Found));
+  mFound := ConventionFindings(mSource);
+  Assert.AreEqual(2, Integer(Length(mFound)), Messages(mFound));
   Assert.AreEqual('Der Getter GetWert der published-Property Wert braucht register, nicht cdecl (wie E2270).',
-    Found[0].Message);
-  Assert.AreEqual(11, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(32, Found[0].Range.StartPos.Character);
+    mFound[0].Message);
+  Assert.AreEqual(11, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(32, mFound[0].Range.StartPos.Character);
   Assert.AreEqual('Der Setter SetWert der published-Property Wert braucht register, nicht stdcall (wie E2270).',
-    Found[1].Message);
-  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
-  Assert.IsTrue(Pos('    function GetWert: Integer;'#10, Fixed) > 0, Fixed);
-  Assert.IsTrue(Pos('function TBasis.GetWert: Integer;'#10, Fixed) > 0, Fixed);
-  Assert.AreEqual(1, Integer(Length(ConventionFindings(Fixed))), Fixed);
+    mFound[1].Message);
+  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('    function GetWert: Integer;'#10, mFixed) > 0, mFixed);
+  Assert.IsTrue(Pos('function TBasis.GetWert: Integer;'#10, mFixed) > 0, mFixed);
+  Assert.AreEqual(1, Integer(Length(ConventionFindings(mFixed))), mFixed);
 end;
 
 procedure TCallingConventionRequiredTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Druck('function Formatieren(Muster: PAnsiChar): Integer; stdcall; varargs; external ''msvcrt.dll'';'#10,
+  mSource := Druck('function Formatieren(Muster: PAnsiChar): Integer; stdcall; varargs; external ''msvcrt.dll'';'#10,
     '');
-  Assert.AreEqual(1, Integer(Length(ConventionFindings(Source, '', 'Source/Druck.pas'))));
-  Assert.AreEqual(0, Integer(Length(ConventionFindings(Source, '{"rules": {"calling-convention-required": "off"}}',
+  Assert.AreEqual(1, Integer(Length(ConventionFindings(mSource, '', 'Source/Druck.pas'))));
+  Assert.AreEqual(0, Integer(Length(ConventionFindings(mSource, '{"rules": {"calling-convention-required": "off"}}',
     'Source/Druck.pas'))));
-  Assert.AreEqual(0, Integer(Length(ConventionFindings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(ConventionFindings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/Druck.pas'))));
-  Assert.AreEqual(0, Integer(Length(ConventionFindings(Source,
+  Assert.AreEqual(0, Integer(Length(ConventionFindings(mSource,
     '{"rules": {"calling-convention-required": {"exclude": ["Source/*.pas"]}}}', 'Source/Druck.pas'))));
 end;
 

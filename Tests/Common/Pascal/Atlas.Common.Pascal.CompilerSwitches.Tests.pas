@@ -51,27 +51,27 @@ uses
   Atlas.Common.Pascal.Preprocessor;
 
 const
-  ProjectDefines: array[0..5] of string = ('DEBUG', '$R+', '$Q+', '$O-', '$C+', '$I+*');
+  cProjectDefines: array[0..5] of string = ('DEBUG', '$R+', '$Q+', '$O-', '$C+', '$I+*');
 
 function Lines(const ALines: array of string): string;
 var
-  Line: string;
+  mLine: string;
 begin
   Result := '';
-  for Line in ALines do
+  for mLine in ALines do
   begin
-    Result := Result + Line + #10;
+    Result := Result + mLine + #10;
   end;
 end;
 
 function Defines: TArray<string>;
 var
-  Define: string;
+  mDefine: string;
 begin
   Result := nil;
-  for Define in ProjectDefines do
+  for mDefine in cProjectDefines do
   begin
-    Result := Result + [Define];
+    Result := Result + [mDefine];
   end;
 end;
 
@@ -85,36 +85,36 @@ end;
 function TCompilerSwitchesTests.StateAt(const AText: string; ALine: Integer; const ADefines: TArray<string>;
   const AProperties: TArray<TPair<string, string>>): TCompilerSwitchState;
 var
-  Options: TPreprocessorOptions;
-  Input: TCompilerSwitchInput;
+  mOptions: TPreprocessorOptions;
+  mInput: TCompilerSwitchInput;
 begin
-  Options := TPreprocessorOptions.Default;
-  Options.Defines := ADefines;
-  Options.FileName := 'C:\P\Main.pas';
-  Options.ResolveInclude :=
+  mOptions := TPreprocessorOptions.Default;
+  mOptions.Defines := ADefines;
+  mOptions.FileName := 'C:\P\Main.pas';
+  mOptions.ResolveInclude :=
     function(const AName, AFromFile: string; out AFileName, AText: string): Boolean
     begin
       Result := SameText(AName, 'Schalter.inc');
       AFileName := 'C:\P\Schalter.inc';
       AText := '// Schalter'#10'{$Q-}'#10'{$WARN SYMBOL_PLATFORM OFF}'#10;
     end;
-  Input := Default(TCompilerSwitchInput);
-  Input.Defines := ADefines;
-  Input.Properties := AProperties;
-  Input.DefineOrigins := [TSwitchDefineOrigin.Create('DEBUG',
+  mInput := Default(TCompilerSwitchInput);
+  mInput.Defines := ADefines;
+  mInput.Properties := AProperties;
+  mInput.DefineOrigins := [TSwitchDefineOrigin.Create('DEBUG',
     TSwitchOrigin.Make(TSwitchOriginKind.Project, 'Konfiguration Debug (.dproj)'))];
-  Result := TCompilerSwitches.At(TPascalPreprocessor.Process(AText, Options), TTextPosition.Create(ALine, 0), Input);
+  Result := TCompilerSwitches.At(TPascalPreprocessor.Process(AText, mOptions), TTextPosition.Create(ALine, 0), mInput);
 end;
 
 function TCompilerSwitchesTests.Find(const AState: TCompilerSwitchState; const AName: string): TSwitchEntry;
 var
-  Entry: TSwitchEntry;
+  mEntry: TSwitchEntry;
 begin
-  for Entry in AState.Switches + AState.Warns + AState.Defines do
+  for mEntry in AState.Switches + AState.Warns + AState.Defines do
   begin
-    if SameText(Entry.Name, AName) then
+    if SameText(mEntry.Name, AName) then
     begin
-      Exit(Entry);
+      Exit(mEntry);
     end;
   end;
   Result := Default(TSwitchEntry);
@@ -122,201 +122,201 @@ end;
 
 procedure TCompilerSwitchesTests.LocalDirectiveWithLine;
 var
-  Text: string;
-  State: TCompilerSwitchState;
-  Range: TSwitchEntry;
-  Index: Integer;
+  mText: string;
+  mState: TCompilerSwitchState;
+  mRange: TSwitchEntry;
+  mIndex: Integer;
 begin
-  Text := '';
-  for Index := 0 to 24 do
+  mText := '';
+  for mIndex := 0 to 24 do
   begin
-    if Index = 9 then
+    if mIndex = 9 then
     begin
-      Text := Text + '{$R-}'#10;
+      mText := mText + '{$R-}'#10;
     end
     else
     begin
-      Text := Text + '// Zeile'#10;
+      mText := mText + '// Zeile'#10;
     end;
   end;
-  State := StateAt(Text, 19, Defines, NoProperties);
-  Range := Find(State, 'R');
-  Assert.AreEqual('-', Range.Value);
-  Assert.AreEqual('+', Range.ProjectValue);
-  Assert.IsTrue(Range.Deviates);
-  Assert.AreEqual(Ord(TSwitchOriginKind.Directive), Ord(Range.Origin.Kind));
-  Assert.AreEqual(9, Range.Origin.Line, 'gesetzt in Zeile 10');
-  Assert.AreEqual('C:\P\Main.pas', Range.Origin.FileName);
-  Assert.AreEqual('{$R-}', Range.Origin.Text);
-  State := StateAt(Text, 5, Defines, NoProperties);
-  Assert.AreEqual('+', Find(State, 'R').Value, 'vor der Direktive');
+  mState := StateAt(mText, 19, Defines, NoProperties);
+  mRange := Find(mState, 'R');
+  Assert.AreEqual('-', mRange.Value);
+  Assert.AreEqual('+', mRange.ProjectValue);
+  Assert.IsTrue(mRange.Deviates);
+  Assert.AreEqual(Ord(TSwitchOriginKind.Directive), Ord(mRange.Origin.Kind));
+  Assert.AreEqual(9, mRange.Origin.Line, 'gesetzt in Zeile 10');
+  Assert.AreEqual('C:\P\Main.pas', mRange.Origin.FileName);
+  Assert.AreEqual('{$R-}', mRange.Origin.Text);
+  mState := StateAt(mText, 5, Defines, NoProperties);
+  Assert.AreEqual('+', Find(mState, 'R').Value, 'vor der Direktive');
 end;
 
 procedure TCompilerSwitchesTests.IncludeFileNamed;
 var
-  State: TCompilerSwitchState;
-  Overflow: TSwitchEntry;
+  mState: TCompilerSwitchState;
+  mOverflow: TSwitchEntry;
 begin
-  State := StateAt(Lines(['unit Main;', '{$I Schalter.inc}', 'interface', 'implementation', 'end.']), 3, Defines,
+  mState := StateAt(Lines(['unit Main;', '{$I Schalter.inc}', 'interface', 'implementation', 'end.']), 3, Defines,
     NoProperties);
-  Overflow := Find(State, 'Q');
-  Assert.AreEqual('-', Overflow.Value);
-  Assert.AreEqual(Ord(TSwitchOriginKind.Include), Ord(Overflow.Origin.Kind));
-  Assert.AreEqual('C:\P\Schalter.inc', Overflow.Origin.FileName);
-  Assert.AreEqual(1, Overflow.Origin.Line, 'Zeile in der Include-Datei');
-  Assert.AreEqual('OFF', Find(State, 'SYMBOL_PLATFORM').Value);
-  State := StateAt(Lines(['unit Main;', '{$I Schalter.inc}', 'interface']), 1, Defines, NoProperties);
-  Assert.AreEqual('+', Find(State, 'Q').Value, 'vor der $I-Direktive');
+  mOverflow := Find(mState, 'Q');
+  Assert.AreEqual('-', mOverflow.Value);
+  Assert.AreEqual(Ord(TSwitchOriginKind.Include), Ord(mOverflow.Origin.Kind));
+  Assert.AreEqual('C:\P\Schalter.inc', mOverflow.Origin.FileName);
+  Assert.AreEqual(1, mOverflow.Origin.Line, 'Zeile in der Include-Datei');
+  Assert.AreEqual('OFF', Find(mState, 'SYMBOL_PLATFORM').Value);
+  mState := StateAt(Lines(['unit Main;', '{$I Schalter.inc}', 'interface']), 1, Defines, NoProperties);
+  Assert.AreEqual('+', Find(mState, 'Q').Value, 'vor der $I-Direktive');
 end;
 
 procedure TCompilerSwitchesTests.ProjectValuesWithoutDirectives;
 var
-  State: TCompilerSwitchState;
-  Entry: TSwitchEntry;
+  mState: TCompilerSwitchState;
+  mEntry: TSwitchEntry;
 begin
-  State := StateAt(Lines(['unit Main;', 'interface', 'implementation', 'end.']), 2, Defines,
+  mState := StateAt(Lines(['unit Main;', 'interface', 'implementation', 'end.']), 2, Defines,
     [TPair<string, string>.Create('DCC_Alignment', '4'), TPair<string, string>.Create('DCC_Hints', 'false'),
     TPair<string, string>.Create('DCC_SYMBOL_DEPRECATED', 'false')]);
-  Assert.AreEqual('RQOCIA', Find(State, 'R').Name + State.Switches[1].Name + State.Switches[2].Name +
-    State.Switches[3].Name + State.Switches[4].Name + State.Switches[5].Name, 'Reihenfolge');
-  for Entry in State.Switches do
+  Assert.AreEqual('RQOCIA', Find(mState, 'R').Name + mState.Switches[1].Name + mState.Switches[2].Name +
+    mState.Switches[3].Name + mState.Switches[4].Name + mState.Switches[5].Name, 'Reihenfolge');
+  for mEntry in mState.Switches do
   begin
-    Assert.IsFalse(Entry.Deviates, Entry.Name);
+    Assert.IsFalse(mEntry.Deviates, mEntry.Name);
   end;
-  Assert.AreEqual('+', Find(State, 'R').Value);
-  Assert.AreEqual(Ord(TSwitchOriginKind.Project), Ord(Find(State, 'R').Origin.Kind));
-  Assert.AreEqual('DCC_RangeChecking', Find(State, 'R').Origin.Text);
-  Assert.AreEqual('-', Find(State, 'O').Value);
-  Assert.AreEqual(Ord(TSwitchOriginKind.Default), Ord(Find(State, 'I').Origin.Kind), '"*" = Vorgabe');
-  Assert.AreEqual('4', Find(State, 'A').Value);
-  Assert.AreEqual('DCC_Alignment', Find(State, 'A').Origin.Text);
-  Assert.AreEqual('OFF', State.Hints.Value);
-  Assert.IsFalse(State.Hints.Deviates);
-  Assert.AreEqual('ON', State.Warnings.Value);
-  Assert.AreEqual(Ord(TSwitchOriginKind.Default), Ord(State.Warnings.Origin.Kind));
-  Assert.AreEqual('OFF', Find(State, 'SYMBOL_DEPRECATED').Value, 'in der .dproj abgeschaltet');
-  Assert.IsFalse(Find(State, 'SYMBOL_DEPRECATED').Deviates);
-  Assert.AreEqual('', State.Summary);
+  Assert.AreEqual('+', Find(mState, 'R').Value);
+  Assert.AreEqual(Ord(TSwitchOriginKind.Project), Ord(Find(mState, 'R').Origin.Kind));
+  Assert.AreEqual('DCC_RangeChecking', Find(mState, 'R').Origin.Text);
+  Assert.AreEqual('-', Find(mState, 'O').Value);
+  Assert.AreEqual(Ord(TSwitchOriginKind.Default), Ord(Find(mState, 'I').Origin.Kind), '"*" = Vorgabe');
+  Assert.AreEqual('4', Find(mState, 'A').Value);
+  Assert.AreEqual('DCC_Alignment', Find(mState, 'A').Origin.Text);
+  Assert.AreEqual('OFF', mState.Hints.Value);
+  Assert.IsFalse(mState.Hints.Deviates);
+  Assert.AreEqual('ON', mState.Warnings.Value);
+  Assert.AreEqual(Ord(TSwitchOriginKind.Default), Ord(mState.Warnings.Origin.Kind));
+  Assert.AreEqual('OFF', Find(mState, 'SYMBOL_DEPRECATED').Value, 'in der .dproj abgeschaltet');
+  Assert.IsFalse(Find(mState, 'SYMBOL_DEPRECATED').Deviates);
+  Assert.AreEqual('', mState.Summary);
   // Ohne Projekt: Vorgaben des Compilers.
-  State := StateAt(Lines(['unit Main;']), 1, nil, NoProperties);
-  Assert.AreEqual('-', Find(State, 'R').Value);
-  Assert.AreEqual('+', Find(State, 'O').Value);
-  Assert.AreEqual('8', Find(State, 'A').Value);
+  mState := StateAt(Lines(['unit Main;']), 1, nil, NoProperties);
+  Assert.AreEqual('-', Find(mState, 'R').Value);
+  Assert.AreEqual('+', Find(mState, 'O').Value);
+  Assert.AreEqual('8', Find(mState, 'A').Value);
 end;
 
 procedure TCompilerSwitchesTests.WarnOffAndOn;
 var
-  Text: string;
-  State: TCompilerSwitchState;
+  mText: string;
+  mState: TCompilerSwitchState;
 begin
-  Text := Lines(['unit Main;', '{$WARN SYMBOL_DEPRECATED OFF}', 'interface', '{$WARN SYMBOL_DEPRECATED ON}',
+  mText := Lines(['unit Main;', '{$WARN SYMBOL_DEPRECATED OFF}', 'interface', '{$WARN SYMBOL_DEPRECATED ON}',
     'implementation', '{$WARN UNIT_PLATFORM ERROR}', 'end.']);
-  State := StateAt(Text, 2, Defines, NoProperties);
-  Assert.AreEqual('OFF', Find(State, 'SYMBOL_DEPRECATED').Value);
-  Assert.IsTrue(Find(State, 'SYMBOL_DEPRECATED').Deviates);
-  Assert.AreEqual(1, Find(State, 'SYMBOL_DEPRECATED').Origin.Line);
-  State := StateAt(Text, 4, Defines, NoProperties);
-  Assert.AreEqual('', Find(State, 'SYMBOL_DEPRECATED').Name, 'nach ON nicht mehr abgeschaltet');
-  State := StateAt(Text, 6, Defines, NoProperties);
-  Assert.AreEqual('ERROR', Find(State, 'UNIT_PLATFORM').Value);
+  mState := StateAt(mText, 2, Defines, NoProperties);
+  Assert.AreEqual('OFF', Find(mState, 'SYMBOL_DEPRECATED').Value);
+  Assert.IsTrue(Find(mState, 'SYMBOL_DEPRECATED').Deviates);
+  Assert.AreEqual(1, Find(mState, 'SYMBOL_DEPRECATED').Origin.Line);
+  mState := StateAt(mText, 4, Defines, NoProperties);
+  Assert.AreEqual('', Find(mState, 'SYMBOL_DEPRECATED').Name, 'nach ON nicht mehr abgeschaltet');
+  mState := StateAt(mText, 6, Defines, NoProperties);
+  Assert.AreEqual('ERROR', Find(mState, 'UNIT_PLATFORM').Value);
   // DEFAULT: zurück zum Projekt.
-  State := StateAt(Lines(['{$WARN SYMBOL_DEPRECATED ON}', '{$WARN SYMBOL_DEPRECATED DEFAULT}', 'x']), 2, Defines,
+  mState := StateAt(Lines(['{$WARN SYMBOL_DEPRECATED ON}', '{$WARN SYMBOL_DEPRECATED DEFAULT}', 'x']), 2, Defines,
     [TPair<string, string>.Create('DCC_SYMBOL_DEPRECATED', 'false')]);
-  Assert.AreEqual('OFF', Find(State, 'SYMBOL_DEPRECATED').Value);
-  Assert.AreEqual(Ord(TSwitchOriginKind.Project), Ord(Find(State, 'SYMBOL_DEPRECATED').Origin.Kind));
+  Assert.AreEqual('OFF', Find(mState, 'SYMBOL_DEPRECATED').Value);
+  Assert.AreEqual(Ord(TSwitchOriginKind.Project), Ord(Find(mState, 'SYMBOL_DEPRECATED').Origin.Kind));
 end;
 
 procedure TCompilerSwitchesTests.PushAndPopRestore;
 var
-  Text: string;
-  State: TCompilerSwitchState;
+  mText: string;
+  mState: TCompilerSwitchState;
 begin
-  Text := Lines(['{$PUSHOPT}', '{$R-}{$WARN SYMBOL_DEPRECATED OFF}{$HINTS OFF}', 'x', '{$POPOPT}', 'y']);
-  State := StateAt(Text, 2, Defines, NoProperties);
-  Assert.AreEqual('-', Find(State, 'R').Value);
-  Assert.AreEqual('OFF', State.Hints.Value);
-  State := StateAt(Text, 4, Defines, NoProperties);
-  Assert.AreEqual('+', Find(State, 'R').Value, 'nach POPOPT');
-  Assert.AreEqual(Ord(TSwitchOriginKind.Project), Ord(Find(State, 'R').Origin.Kind));
-  Assert.AreEqual('ON', State.Hints.Value);
-  Assert.AreEqual('', Find(State, 'SYMBOL_DEPRECATED').Name);
+  mText := Lines(['{$PUSHOPT}', '{$R-}{$WARN SYMBOL_DEPRECATED OFF}{$HINTS OFF}', 'x', '{$POPOPT}', 'y']);
+  mState := StateAt(mText, 2, Defines, NoProperties);
+  Assert.AreEqual('-', Find(mState, 'R').Value);
+  Assert.AreEqual('OFF', mState.Hints.Value);
+  mState := StateAt(mText, 4, Defines, NoProperties);
+  Assert.AreEqual('+', Find(mState, 'R').Value, 'nach POPOPT');
+  Assert.AreEqual(Ord(TSwitchOriginKind.Project), Ord(Find(mState, 'R').Origin.Kind));
+  Assert.AreEqual('ON', mState.Hints.Value);
+  Assert.AreEqual('', Find(mState, 'SYMBOL_DEPRECATED').Name);
 end;
 
 procedure TCompilerSwitchesTests.LongNamesAndAlignment;
 var
-  State: TCompilerSwitchState;
+  mState: TCompilerSwitchState;
 begin
-  State := StateAt(Lines(['{$RANGECHECKS OFF}', '{$Q-,C-}', '{$ALIGN 4}', '{$OPTIMIZATION ON}', '{$R Datei.res}',
+  mState := StateAt(Lines(['{$RANGECHECKS OFF}', '{$Q-,C-}', '{$ALIGN 4}', '{$OPTIMIZATION ON}', '{$R Datei.res}',
     '{$I-}', 'x']), 6, Defines, NoProperties);
-  Assert.AreEqual('-', Find(State, 'R').Value, '{$R Datei.res} ist kein Schalter');
-  Assert.AreEqual('-', Find(State, 'Q').Value);
-  Assert.AreEqual('-', Find(State, 'C').Value);
-  Assert.AreEqual('4', Find(State, 'A').Value);
-  Assert.AreEqual('+', Find(State, 'O').Value);
-  Assert.AreEqual('-', Find(State, 'I').Value);
-  State := StateAt(Lines(['{$A-}', 'x', '{$A16}', 'y']), 1, Defines, NoProperties);
-  Assert.AreEqual('1', Find(State, 'A').Value);
-  State := StateAt(Lines(['{$A-}', 'x', '{$A16}', 'y']), 3, Defines, NoProperties);
-  Assert.AreEqual('16', Find(State, 'A').Value);
+  Assert.AreEqual('-', Find(mState, 'R').Value, '{$R Datei.res} ist kein Schalter');
+  Assert.AreEqual('-', Find(mState, 'Q').Value);
+  Assert.AreEqual('-', Find(mState, 'C').Value);
+  Assert.AreEqual('4', Find(mState, 'A').Value);
+  Assert.AreEqual('+', Find(mState, 'O').Value);
+  Assert.AreEqual('-', Find(mState, 'I').Value);
+  mState := StateAt(Lines(['{$A-}', 'x', '{$A16}', 'y']), 1, Defines, NoProperties);
+  Assert.AreEqual('1', Find(mState, 'A').Value);
+  mState := StateAt(Lines(['{$A-}', 'x', '{$A16}', 'y']), 3, Defines, NoProperties);
+  Assert.AreEqual('16', Find(mState, 'A').Value);
 end;
 
 procedure TCompilerSwitchesTests.InactiveBranchesDoNotCount;
 var
-  State: TCompilerSwitchState;
+  mState: TCompilerSwitchState;
 begin
-  State := StateAt(Lines(['{$IFDEF RELEASE}', '{$R-}', '{$ELSE}', '{$Q-}', '{$ENDIF}', 'x']), 5, Defines,
+  mState := StateAt(Lines(['{$IFDEF RELEASE}', '{$R-}', '{$ELSE}', '{$Q-}', '{$ENDIF}', 'x']), 5, Defines,
     NoProperties);
-  Assert.AreEqual('+', Find(State, 'R').Value, 'RELEASE nicht definiert');
-  Assert.AreEqual('-', Find(State, 'Q').Value);
+  Assert.AreEqual('+', Find(mState, 'R').Value, 'RELEASE nicht definiert');
+  Assert.AreEqual('-', Find(mState, 'Q').Value);
 end;
 
 procedure TCompilerSwitchesTests.DefinesWithOrigin;
 var
-  State: TCompilerSwitchState;
-  Names: string;
-  Entry: TSwitchEntry;
+  mState: TCompilerSwitchState;
+  mNames: string;
+  mEntry: TSwitchEntry;
 begin
-  State := StateAt(Lines(['{$DEFINE EIGEN}', '{$UNDEF DEBUG}', 'x', '{$DEFINE SPAETER}']), 2, Defines, NoProperties);
-  Names := '';
-  for Entry in State.Defines do
+  mState := StateAt(Lines(['{$DEFINE EIGEN}', '{$UNDEF DEBUG}', 'x', '{$DEFINE SPAETER}']), 2, Defines, NoProperties);
+  mNames := '';
+  for mEntry in mState.Defines do
   begin
-    Names := Names + Entry.Name + ' ';
+    mNames := mNames + mEntry.Name + ' ';
   end;
-  Assert.AreEqual('EIGEN ', Names, 'DEBUG aufgehoben, SPAETER erst danach, keine Schaltereinträge');
-  Assert.AreEqual(0, Find(State, 'EIGEN').Origin.Line);
-  State := StateAt(Lines(['x']), 1, Defines, NoProperties);
-  Assert.AreEqual('Konfiguration Debug (.dproj)', Find(State, 'DEBUG').Origin.Text);
+  Assert.AreEqual('EIGEN ', mNames, 'DEBUG aufgehoben, SPAETER erst danach, keine Schaltereinträge');
+  Assert.AreEqual(0, Find(mState, 'EIGEN').Origin.Line);
+  mState := StateAt(Lines(['x']), 1, Defines, NoProperties);
+  Assert.AreEqual('Konfiguration Debug (.dproj)', Find(mState, 'DEBUG').Origin.Text);
 end;
 
 procedure TCompilerSwitchesTests.SummaryNamesOnlyDeviations;
 var
-  State: TCompilerSwitchState;
+  mState: TCompilerSwitchState;
 begin
-  State := StateAt(Lines(['{$R-,Q-}', '{$HINTS OFF}', '{$R-}', 'x']), 3, Defines, NoProperties);
-  Assert.AreEqual('R'#$2212' Q'#$2212' HINTS OFF', State.Summary);
-  State := StateAt(Lines(['{$A4}{$WARN SYMBOL_DEPRECATED OFF}{$WARN UNIT_PLATFORM OFF}', 'x']), 1, Defines,
+  mState := StateAt(Lines(['{$R-,Q-}', '{$HINTS OFF}', '{$R-}', 'x']), 3, Defines, NoProperties);
+  Assert.AreEqual('R'#$2212' Q'#$2212' HINTS OFF', mState.Summary);
+  mState := StateAt(Lines(['{$A4}{$WARN SYMBOL_DEPRECATED OFF}{$WARN UNIT_PLATFORM OFF}', 'x']), 1, Defines,
     NoProperties);
-  Assert.AreEqual('A4 WARN 2×', State.Summary);
-  State := StateAt(Lines(['{$WARN SYMBOL_DEPRECATED OFF}', 'x']), 1, Defines, NoProperties);
-  Assert.AreEqual('WARN SYMBOL_DEPRECATED OFF', State.Summary);
+  Assert.AreEqual('A4 WARN 2×', mState.Summary);
+  mState := StateAt(Lines(['{$WARN SYMBOL_DEPRECATED OFF}', 'x']), 1, Defines, NoProperties);
+  Assert.AreEqual('WARN SYMBOL_DEPRECATED OFF', mState.Summary);
 end;
 
 procedure TCompilerSwitchesTests.DebugInfoAndLocalSymbols;
 var
-  State: TCompilerSwitchState;
+  mState: TCompilerSwitchState;
 begin
   // D und L für die Erklärung „kein Zugriff“ (#840): Projekt "$D+", "$L+", Direktiven in der Unit.
-  State := StateAt(Lines(['unit Main;', '{$D-}', '{$LOCALSYMBOLS OFF}', 'implementation', 'end.']), 3,
+  mState := StateAt(Lines(['unit Main;', '{$D-}', '{$LOCALSYMBOLS OFF}', 'implementation', 'end.']), 3,
     TArray<string>.Create('$D+', '$L+'), NoProperties);
-  Assert.AreEqual('-', Find(State, 'D').Value);
-  Assert.AreEqual('+', Find(State, 'D').ProjectValue);
-  Assert.AreEqual('DEBUGINFO', Find(State, 'D').LongName);
-  Assert.AreEqual(1, Find(State, 'D').Origin.Line);
-  Assert.AreEqual('-', Find(State, 'L').Value);
-  Assert.AreEqual(2, Find(State, 'L').Origin.Line);
-  State := StateAt(Lines(['unit Main;', 'implementation', 'end.']), 1, TArray<string>.Create('$D-'), NoProperties);
-  Assert.AreEqual('-', Find(State, 'D').Value, 'aus dem Projekt');
-  Assert.AreEqual<TSwitchOriginKind>(TSwitchOriginKind.Project, Find(State, 'D').Origin.Kind);
+  Assert.AreEqual('-', Find(mState, 'D').Value);
+  Assert.AreEqual('+', Find(mState, 'D').ProjectValue);
+  Assert.AreEqual('DEBUGINFO', Find(mState, 'D').LongName);
+  Assert.AreEqual(1, Find(mState, 'D').Origin.Line);
+  Assert.AreEqual('-', Find(mState, 'L').Value);
+  Assert.AreEqual(2, Find(mState, 'L').Origin.Line);
+  mState := StateAt(Lines(['unit Main;', 'implementation', 'end.']), 1, TArray<string>.Create('$D-'), NoProperties);
+  Assert.AreEqual('-', Find(mState, 'D').Value, 'aus dem Projekt');
+  Assert.AreEqual<TSwitchOriginKind>(TSwitchOriginKind.Project, Find(mState, 'D').Origin.Kind);
 end;
 
 end.

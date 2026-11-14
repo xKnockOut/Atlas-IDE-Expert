@@ -16,7 +16,8 @@ type
   TAtlasNeighboursTests = class
   private
     FItems: TArray<TAtlasNeighbourItem>;
-    function Go(const AFrom: string; ADirection: TAtlasNeighbourDirection; ACross: Boolean = True): string;
+    function Go(const AFrom: string; ADirection: TAtlasNeighbourDirection): string; overload;
+    function Go(const AFrom: string; ADirection: TAtlasNeighbourDirection; ACross: Boolean): string; overload;
   public
     [Setup]
     procedure Setup;
@@ -68,6 +69,11 @@ end;
 procedure TAtlasNeighboursTests.TearDown;
 begin
   FItems := nil;
+end;
+
+function TAtlasNeighboursTests.Go(const AFrom: string; ADirection: TAtlasNeighbourDirection): string;
+begin
+  Result := Go(AFrom, ADirection, True);
 end;
 
 function TAtlasNeighboursTests.Go(const AFrom: string; ADirection: TAtlasNeighbourDirection;

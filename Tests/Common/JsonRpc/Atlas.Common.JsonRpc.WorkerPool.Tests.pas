@@ -24,7 +24,8 @@ type
     /// <summary>Close lässt angenommene Aufträge zu Ende laufen und lehnt neue ab.</summary>
     [Test]
     procedure CloseFinishesAcceptedWorkAndRefusesNew;
-    /// <summary>Läuft ein Auftrag länger als das Warten in Close, meldet Close False; der Thread endet später.</summary>
+    /// <summary>Läuft ein Auftrag länger als das Warten in Close, meldet Close False; der Thread endet
+    /// später.</summary>
     [Test]
     procedure CloseReportsWorkStillRunning;
     /// <summary>Nach einem Close mit False zählt ThreadCount den laufenden Thread, ein zweites Close wartet

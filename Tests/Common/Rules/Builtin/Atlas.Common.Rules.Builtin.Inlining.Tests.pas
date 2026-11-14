@@ -89,7 +89,7 @@ uses
   Atlas.Tests.RuleAssert;
 
 const
-  UnitListen =
+  cUnitListen =
     'unit Werk.Listen;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -102,7 +102,7 @@ const
     'implementation'#10 +
     'end.';
 
-  UnitMathe =
+  cUnitMathe =
     'unit Werk.Mathe;'#10 +
     'interface'#10 +
     'function Mal2(A: Integer): Integer;'#10 +
@@ -118,7 +118,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitJson =
+  cUnitJson =
     'unit Werk.Json;'#10 +
     'interface'#10 +
     'uses Werk.Listen;'#10 +
@@ -206,7 +206,7 @@ const
     'end.';
 
   // Zyklus: Werk.Kreis verwendet Haupt, Werk.Ring über Werk.Kreis ebenso.
-  UnitKreis =
+  cUnitKreis =
     'unit Werk.Kreis;'#10 +
     'interface'#10 +
     'function Eins: Integer; inline;'#10 +
@@ -218,7 +218,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitRing =
+  cUnitRing =
     'unit Werk.Ring;'#10 +
     'interface'#10 +
     'function Zwei: Integer; inline;'#10 +
@@ -233,11 +233,11 @@ const
 function NewIndex: ISymbolIndex;
 begin
   Result := TSymbolIndex.Create;
-  Result.AddUnit(TIndexExtractor.ExtractText(UnitListen, 'C:\P\Werk.Listen.pas', nil));
-  Result.AddUnit(TIndexExtractor.ExtractText(UnitMathe, 'C:\P\Werk.Mathe.pas', nil));
-  Result.AddUnit(TIndexExtractor.ExtractText(UnitJson, 'C:\P\Werk.Json.pas', nil));
-  Result.AddUnit(TIndexExtractor.ExtractText(UnitKreis, 'C:\P\Werk.Kreis.pas', nil));
-  Result.AddUnit(TIndexExtractor.ExtractText(UnitRing, 'C:\P\Werk.Ring.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cUnitListen, 'C:\P\Werk.Listen.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cUnitMathe, 'C:\P\Werk.Mathe.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cUnitJson, 'C:\P\Werk.Json.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cUnitKreis, 'C:\P\Werk.Kreis.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cUnitRing, 'C:\P\Werk.Ring.pas', nil));
 end;
 
 function Haupt(const AUses, ABody: string): string;
@@ -246,20 +246,25 @@ begin
     'procedure Lauf(F: TJsonFeld);'#10'var'#10'  X: Integer;'#10'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
-function Findings(const ASource: string; const AConfig: string = ''): TArray<TRuleFinding>;
+function Findings(const ASource: string; const AConfig: string): TArray<TRuleFinding>; overload;
 begin
   Result := TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, ASource, NewIndex, AConfig, 'Haupt.pas');
 end;
 
+function Findings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := Findings(ASource, '');
+end;
+
 function Messages(const AFindings: TArray<TRuleFinding>): string;
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
   Result := '';
-  for Finding in AFindings do
+  for mFinding in AFindings do
   begin
-    Result := Result + Format('%d:%d %s|', [Finding.Range.StartPos.Line, Finding.Range.StartPos.Character,
-      Finding.Message]);
+    Result := Result + Format('%d:%d %s|', [mFinding.Range.StartPos.Line, mFinding.Range.StartPos.Character,
+      mFinding.Message]);
   end;
 end;
 
@@ -267,28 +272,28 @@ end;
 
 procedure TInliningRulesTests.UnknownCallKeepsSuppression;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
   // RenameFile kennt der Index nicht (RTL fehlt): Die Regel kann die Zeile nicht entscheiden, ihr lsp-ignore ist
   // keine unused-suppression. In einer Zeile mit nur bekannten Namen schon.
-  Found := Findings(Haupt('Werk.Json', '  RenameFile(''a'', ''b''); // lsp-ignore: inline-not-expanded'#10));
-  Assert.AreEqual(0, Integer(Length(Found)), Messages(Found));
-  Found := Findings(Haupt('Werk.Json', '  X := 1; // lsp-ignore: inline-not-expanded'#10));
-  Assert.AreEqual(1, Integer(Length(Found)), Messages(Found));
-  Assert.AreEqual('unused-suppression', Found[0].RuleId);
+  mFound := Findings(Haupt('Werk.Json', '  RenameFile(''a'', ''b''); // lsp-ignore: inline-not-expanded'#10));
+  Assert.AreEqual(0, Integer(Length(mFound)), Messages(mFound));
+  mFound := Findings(Haupt('Werk.Json', '  X := 1; // lsp-ignore: inline-not-expanded'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual('unused-suppression', mFound[0].RuleId);
 end;
 
 procedure TInliningRulesTests.MissingUnitIsReported;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(Haupt('Werk.Json', '  X := F.Anzahl;'#10'  X := Doppelt(X);'#10));
+  mFound := Findings(Haupt('Werk.Json', '  X := F.Anzahl;'#10'  X := Doppelt(X);'#10));
   Assert.AreEqual('8:9 Inline-Funktion TJsonFeld.Anzahl wird nicht eingebettet: Werk.Listen fehlt in uses ' +
     '(wie H2443).|9:7 Inline-Funktion Doppelt wird nicht eingebettet: Werk.Mathe fehlt in uses (wie H2443).|',
-    Messages(Found));
-  Assert.AreEqual(cInlineNotExpandedRuleId, Found[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Found[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Found[0].Confidence));
+    Messages(mFound));
+  Assert.AreEqual(cInlineNotExpandedRuleId, mFound[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFound[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[0].Confidence));
 end;
 
 procedure TInliningRulesTests.CorrectedUsesAreSilent;
@@ -325,15 +330,15 @@ end;
 
 procedure TInliningRulesTests.QuickFixAddsUnit;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := Findings(Haupt('Werk.Json', '  X := F.Anzahl;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)), Messages(Found));
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('uses Werk.Listen ergänzen', Found[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes[0].Edits)));
-  Assert.AreEqual(#10#10'uses'#10'  Werk.Listen;', Found[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual(3, Found[0].Fixes[0].Edits[0].Range.StartPos.Line);
+  mFound := Findings(Haupt('Werk.Json', '  X := F.Anzahl;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('uses Werk.Listen ergänzen', mFound[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes[0].Edits)));
+  Assert.AreEqual(#10#10'uses'#10'  Werk.Listen;', mFound[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(3, mFound[0].Fixes[0].Edits[0].Range.StartPos.Line);
 end;
 
 procedure TInliningRulesTests.StrictPrivateMember;
@@ -345,7 +350,7 @@ end;
 
 procedure TInliningRulesTests.StrictPrivateInSameUnit;
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -373,15 +378,15 @@ const
     'end.';
 begin
   // In derselben Unit ebenso still (#1383), mit und ohne Projektindex.
-  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, Source, nil, '',
+  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, nil, '',
     'Haupt.pas')));
-  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, Source,
+  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource,
     TSymbolIndex.Create, '', 'Haupt.pas')));
 end;
 
 procedure TInliningRulesTests.InlineCallerWithImplementationUses;
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'function Vier: Integer; inline;'#10 +
@@ -399,12 +404,12 @@ const
 begin
   Assert.AreEqual('7:12 Inline-Funktion Doppelt wird nicht eingebettet: Werk.Json steht nur im uses des ' +
     'implementation-Teils, und die aufrufende Routine ist selbst inline (wie H2445).|',
-    Messages(Findings(Source)));
+    Messages(Findings(cSource)));
 end;
 
 procedure TInliningRulesTests.InlineCallerWithoutBodyReferences;
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'function Vier: Integer; inline;'#10 +
@@ -422,8 +427,8 @@ const
 begin
   Assert.AreEqual('7:12 Inline-Funktion Halb wird nicht eingebettet: Werk.Mathe steht nur im uses des ' +
     'implementation-Teils, und die aufrufende Routine ist selbst inline (wie H2445).|',
-    Messages(Findings(Source)));
-  Assert.AreEqual('', Messages(Findings(ReplaceStr(ReplaceStr(Source, 'uses Werk.Mathe;'#10, ''),
+    Messages(Findings(cSource)));
+  Assert.AreEqual('', Messages(Findings(ReplaceStr(ReplaceStr(cSource, 'uses Werk.Mathe;'#10, ''),
     'interface'#10, 'interface'#10'uses Werk.Mathe;'#10))));
 end;
 
@@ -558,7 +563,7 @@ end;
 
 procedure TInliningRulesTests.CircularUnits;
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Werk.Kreis, Werk.Ring, Werk.Mathe;'#10 +
@@ -573,73 +578,73 @@ const
 begin
   Assert.AreEqual('8:7 Inline-Funktion Eins wird nicht eingebettet: Werk.Kreis verwendet die übersetzte Unit ' +
     'Haupt (wie H2456).|8:14 Inline-Funktion Zwei wird nicht eingebettet: Werk.Ring verwendet die übersetzte ' +
-    'Unit Haupt indirekt über Werk.Kreis (wie H2457).|', Messages(Findings(Source)));
+    'Unit Haupt indirekt über Werk.Kreis (wie H2457).|', Messages(Findings(cSource)));
 end;
 
 procedure TInliningRulesTests.SwitchableAndInlineOff;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Haupt('Werk.Json', '  X := F.Anzahl;'#10);
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"inline-not-expanded": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"group:compiler": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(Findings(Source,
+  mSource := Haupt('Werk.Json', '  X := F.Anzahl;'#10);
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"inline-not-expanded": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"group:compiler": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource,
     '{"rules": {"inline-not-expanded": {"severity": "hint", "exclude": ["Haupt.pas"]}}}'))));
-  Assert.AreEqual(0, Integer(Length(Findings(ReplaceStr(Source, 'implementation'#10,
+  Assert.AreEqual(0, Integer(Length(Findings(ReplaceStr(mSource, 'implementation'#10,
     'implementation'#10'{$INLINE OFF}'#10)))));
   // Ohne Index kennt die Regel Werk.Json nicht und schweigt.
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, Source, nil, '',
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, mSource, nil, '',
     'Haupt.pas'))));
 end;
 
 procedure TInliningRulesTests.IndexKeepsBodyReferences;
 var
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Refs: string;
+  mUnitIndex: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mRefs: string;
 begin
-  UnitIndex := TIndexExtractor.ExtractText(UnitJson, 'C:\P\Werk.Json.pas', nil);
-  Refs := '';
-  for Symbol in UnitIndex.Symbols do
+  mUnitIndex := TIndexExtractor.ExtractText(cUnitJson, 'C:\P\Werk.Json.pas', nil);
+  mRefs := '';
+  for mSymbol in mUnitIndex.Symbols do
   begin
-    if Symbol.InInterface and (Symbol.InlineRefs <> nil) then
+    if mSymbol.InInterface and (mSymbol.InlineRefs <> nil) then
     begin
-      Refs := Refs + Symbol.QualifiedName + '=' + String.Join(',', Symbol.InlineRefs) + '|';
+      mRefs := mRefs + mSymbol.QualifiedName + '=' + String.Join(',', mSymbol.InlineRefs) + '|';
     end;
   end;
   // Lokale Namen, Result, eigene Typen und Mitglieder ohne weiteren Zugriff fehlen; Normal und Nochmal sind
   // nicht inline. Eingebaute Typen (Integer) löst erst die Regel auf.
   Assert.AreEqual('TJsonFeld.GetZahl=:TListe<Integer>|TJsonFeld.Anzahl=:Integer,:TListe<Integer>|' +
     'TJsonFeld.Geheim=!FGeheim|TJsonFeld.GetEnumerator=:TListe<Integer>|' +
-    'TJsonFeld.GetWert=:TListe<Integer>|TJsonFeld.GetStil=:TListe<Integer>,Include,Fett|Doppelt=Mal2|', Refs);
+    'TJsonFeld.GetWert=:TListe<Integer>|TJsonFeld.GetStil=:TListe<Integer>,Include,Fett|Doppelt=Mal2|', mRefs);
   // Ohne Verweise bleibt die inline-Routine erkennbar (#1381); Mal2 ist nicht inline.
-  UnitIndex := TIndexExtractor.ExtractText(UnitMathe, 'C:\P\Werk.Mathe.pas', nil);
-  Refs := '';
-  for Symbol in UnitIndex.Symbols do
+  mUnitIndex := TIndexExtractor.ExtractText(cUnitMathe, 'C:\P\Werk.Mathe.pas', nil);
+  mRefs := '';
+  for mSymbol in mUnitIndex.Symbols do
   begin
-    if Symbol.InInterface and (Symbol.InlineRefs <> nil) then
+    if mSymbol.InInterface and (mSymbol.InlineRefs <> nil) then
     begin
-      Refs := Refs + Symbol.QualifiedName + '=' + IntToStr(Length(Symbol.InlineRefs)) + ':' +
-        String.Join(',', Symbol.InlineRefs) + '|';
+      mRefs := mRefs + mSymbol.QualifiedName + '=' + IntToStr(Length(mSymbol.InlineRefs)) + ':' +
+        String.Join(',', mSymbol.InlineRefs) + '|';
     end;
   end;
-  Assert.AreEqual('Halb=1:|', Refs);
+  Assert.AreEqual('Halb=1:|', mRefs);
 end;
 
 procedure TInliningRulesTests.RuleIsRegistered;
 var
-  Rule: IRule;
-  Found: Boolean;
+  mRule: IRule;
+  mFound: Boolean;
 begin
-  Found := False;
-  for Rule in BuiltinRules do
+  mFound := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = cInlineNotExpandedRuleId then
+    if mRule.Descriptor.Id = cInlineNotExpandedRuleId then
     begin
-      Found := True;
+      mFound := True;
     end;
   end;
-  Assert.IsTrue(Found);
+  Assert.IsTrue(mFound);
 end;
 
 procedure TInliningRulesTests.ManyCallsWithLongUsesChainStayFast;
@@ -655,7 +660,8 @@ var
   mWatch: TStopwatch;
   mFound: TArray<TRuleFinding>;
 begin
-  // cRoutines Routinen mit je cCallsPerRoutine Aufrufen. Werk.Basis.Wert ist inline und braucht Werk.Typen; Werk.Basis verwendet Kette1, die Kette läuft über
+  // cRoutines Routinen mit je cCallsPerRoutine Aufrufen. Werk.Basis.Wert ist inline und braucht Werk.Typen; Werk.Basis
+  // verwendet Kette1, die Kette läuft über
   // cChainLength Units und kommt nie bei Haupt an. Haupt hat alles in uses: Jeder Aufruf durchläuft also alle
   // Prüfungen ohne Meldung, früher jedes Mal mit der vollen Breitensuche über die Kette.
   mIndex := TSymbolIndex.Create;

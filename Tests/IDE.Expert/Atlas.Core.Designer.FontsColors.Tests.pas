@@ -58,7 +58,7 @@ begin
 end;
 
 function Use(const AName, AParent: string; const AFont: TAtlasFontKey; AParentFont: Boolean;
-  const AColor: string = 'clBtnFace'; AParentColor: Boolean = True): TAtlasFontUse;
+  const AColor: string; AParentColor: Boolean): TAtlasFontUse; overload;
 begin
   Result.Component := AName;
   Result.ParentName := AParent;
@@ -67,6 +67,17 @@ begin
   Result.Color := AColor;
   Result.ParentColor := AParentColor;
   Result.HasColor := True;
+end;
+
+function Use(const AName, AParent: string; const AFont: TAtlasFontKey; AParentFont: Boolean): TAtlasFontUse; overload;
+begin
+  Result := Use(AName, AParent, AFont, AParentFont, 'clBtnFace', True);
+end;
+
+function Use(const AName, AParent: string; const AFont: TAtlasFontKey; AParentFont: Boolean;
+  const AColor: string): TAtlasFontUse; overload;
+begin
+  Result := Use(AName, AParent, AFont, AParentFont, AColor, True);
 end;
 
 /// <summary>Formular in Segoe UI 9, 14 Edits in Tahoma 8, zwei erbende Labels.</summary>

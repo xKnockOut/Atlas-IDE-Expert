@@ -14,7 +14,8 @@ type
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
     procedure AddUnit(const AFileName, AText: string);
-    function ResolveAt(const AText, AMarker: string; AOccurrence: Integer = 1): TResolvedSymbol;
+    function ResolveAt(const AText, AMarker: string): TResolvedSymbol; overload;
+    function ResolveAt(const AText, AMarker: string; AOccurrence: Integer): TResolvedSymbol; overload;
   public
     [Setup]
     procedure Setup;
@@ -102,7 +103,7 @@ uses
   Atlas.Common.Index.Extractor;
 
 const
-  UnitBasis =
+  cUnitBasis =
     'unit Basis;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -119,7 +120,7 @@ const
     'procedure TBasis.Melde; begin end;'#10 +
     'end.';
 
-  UnitZweit =
+  cUnitZweit =
     'unit Zweit;'#10 +
     'interface'#10 +
     'function Wert: Integer;'#10 +
@@ -127,7 +128,7 @@ const
     'function Wert: Integer; begin Result := 2; end;'#10 +
     'end.';
 
-  UnitSystem =
+  cUnitSystem =
     'unit System;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -138,7 +139,7 @@ const
     'implementation'#10 +
     'end.';
 
-  UnitDotted =
+  cUnitDotted =
     'unit Firma.Werkzeuge;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -150,29 +151,29 @@ const
 
 function PositionOf(const AText, AMarker: string; AOccurrence: Integer): TTextPosition;
 var
-  Index, Found, Line, LineStart: Integer;
+  mIndex, mFound, mLine, mLineStart: Integer;
 begin
-  Found := 0;
-  Index := 0;
+  mFound := 0;
+  mIndex := 0;
   repeat
-    Index := Pos(AMarker, AText, Index + 1);
-    if Index = 0 then
+    mIndex := Pos(AMarker, AText, mIndex + 1);
+    if mIndex = 0 then
     begin
       raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
     end;
-    Inc(Found);
-  until Found = AOccurrence;
-  Line := 0;
-  LineStart := 1;
-  for Found := 1 to Index - 1 do
+    Inc(mFound);
+  until mFound = AOccurrence;
+  mLine := 0;
+  mLineStart := 1;
+  for mFound := 1 to mIndex - 1 do
   begin
-    if AText[Found] = #10 then
+    if AText[mFound] = #10 then
     begin
-      Inc(Line);
-      LineStart := Found + 1;
+      Inc(mLine);
+      mLineStart := mFound + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 { TNameResolverTests }
@@ -180,10 +181,10 @@ end;
 procedure TNameResolverTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  AddUnit('C:\Lib\System.pas', UnitSystem);
-  AddUnit('C:\P\Basis.pas', UnitBasis);
-  AddUnit('C:\P\Zweit.pas', UnitZweit);
-  AddUnit('C:\P\Firma.Werkzeuge.pas', UnitDotted);
+  AddUnit('C:\Lib\System.pas', cUnitSystem);
+  AddUnit('C:\P\Basis.pas', cUnitBasis);
+  AddUnit('C:\P\Zweit.pas', cUnitZweit);
+  AddUnit('C:\P\Firma.Werkzeuge.pas', cUnitDotted);
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -198,21 +199,26 @@ begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(AText, AFileName, nil));
 end;
 
+function TNameResolverTests.ResolveAt(const AText, AMarker: string): TResolvedSymbol;
+begin
+  Result := ResolveAt(AText, AMarker, 1);
+end;
+
 function TNameResolverTests.ResolveAt(const AText, AMarker: string; AOccurrence: Integer): TResolvedSymbol;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := FResolver.Resolve(Tree, 'C:\P\Haupt.pas', PositionOf(AText, AMarker, AOccurrence));
+    Result := FResolver.Resolve(mTree, 'C:\P\Haupt.pas', PositionOf(AText, AMarker, AOccurrence));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TNameResolverTests.ResolvesLocalsParametersAndResult;
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -228,17 +234,17 @@ const
 var
   R: TResolvedSymbol;
 begin
-  R := ResolveAt(Source, 'Zwischen :=');
+  R := ResolveAt(cSource, 'Zwischen :=');
   Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
   Assert.AreEqual('Double', R.TypeName);
   Assert.AreEqual(6, R.SelectionRange.StartPos.Line);
-  R := ResolveAt(Source, 'B;');
+  R := ResolveAt(cSource, 'B;');
   Assert.IsTrue(R.IsParameter);
   Assert.AreEqual('Integer', R.TypeName);
-  R := ResolveAt(Source, 'Result :=');
+  R := ResolveAt(cSource, 'Result :=');
   Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
   Assert.AreEqual('Integer', R.TypeName);
-  R := ResolveAt(Source, 'Zaehler;');
+  R := ResolveAt(cSource, 'Zaehler;');
   Assert.AreEqual<TResolvedKind>(TResolvedKind.Symbol, R.Kind);
   Assert.AreEqual('Haupt', R.UnitName);
   Assert.AreEqual(3, R.SelectionRange.StartPos.Line);
@@ -248,7 +254,7 @@ procedure TNameResolverTests.DuplicateLocalsAndResultLikeDcc;
 const
   // #1369: Wie dcc gilt von zwei lokalen Deklarationen die letzte (E2004), und Result hat den Typ aus dem
   // interface-Teil, auch wenn der Kopf der Implementierung abweicht (E2037).
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'function Liefere: Integer;'#10 +
@@ -269,19 +275,19 @@ const
 var
   R: TResolvedSymbol;
 begin
-  R := ResolveAt(Source, 'Wert :=');
+  R := ResolveAt(cSource, 'Wert :=');
   Assert.AreEqual('string', R.TypeName);
   Assert.AreEqual(7, R.SelectionRange.StartPos.Line);
-  R := ResolveAt(Source, 'Result :=');
+  R := ResolveAt(cSource, 'Result :=');
   Assert.AreEqual('Integer', R.TypeName);
   // Ohne Deklaration im interface-Teil gilt der eigene Kopf.
-  R := ResolveAt(Source, 'Result :=', 2);
+  R := ResolveAt(cSource, 'Result :=', 2);
   Assert.AreEqual('string', R.TypeName);
 end;
 
 procedure TNameResolverTests.ResolvesStrictMembersInNestedTypeMethods;
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -316,18 +322,18 @@ var
 begin
   // Bisher: Der Kopf TAussen.TInnen wurde mit der Sichtbarkeit des Rumpfs aufgelöst, die nach der Klasse
   // der Methode fragt, die gerade ermittelt wurde (Rekursion bis zum Stapelüberlauf).
-  R := ResolveAt(Source, 'FWert := 1');
+  R := ResolveAt(cSource, 'FWert := 1');
   Assert.IsTrue(R.Found, 'strict private Feld im eigenen Rumpf');
   Assert.AreEqual('Integer', R.TypeName);
   Assert.AreEqual(8, R.SelectionRange.StartPos.Line);
-  R := ResolveAt(Source, 'FZahl := 2');
+  R := ResolveAt(cSource, 'FZahl := 2');
   Assert.IsTrue(R.Found, 'strict protected Feld im eigenen Rumpf');
   Assert.AreEqual(15, R.SelectionRange.StartPos.Line);
 end;
 
 procedure TNameResolverTests.ResolvesInlineVarsOnlyAfterDeclaration;
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -342,16 +348,16 @@ const
 var
   R: TResolvedSymbol;
 begin
-  R := ResolveAt(Source, 'X := 1');
+  R := ResolveAt(cSource, 'X := 1');
   Assert.AreEqual<TResolvedKind>(TResolvedKind.Symbol, R.Kind, 'vor der Inline-Variablen gilt die globale');
-  R := ResolveAt(Source, 'X := ''a''');
+  R := ResolveAt(cSource, 'X := ''a''');
   Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
   Assert.AreEqual('string', R.TypeName);
 end;
 
 procedure TNameResolverTests.ResolvesMembersInMethodsAndSelf;
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -370,24 +376,24 @@ const
 var
   R: TResolvedSymbol;
 begin
-  R := ResolveAt(Source, 'FWert := 1');
+  R := ResolveAt(cSource, 'FWert := 1');
   Assert.AreEqual<TResolvedKind>(TResolvedKind.Symbol, R.Kind);
   Assert.AreEqual('TFoo.FWert', R.QualifiedName);
   Assert.AreEqual(5, R.SelectionRange.StartPos.Line);
-  R := ResolveAt(Source, 'FWert := 2');
+  R := ResolveAt(cSource, 'FWert := 2');
   Assert.AreEqual('TFoo.FWert', R.QualifiedName);
-  R := ResolveAt(Source, 'Self');
+  R := ResolveAt(cSource, 'Self');
   Assert.IsTrue(R.IsType);
   Assert.AreEqual('TFoo', R.Name);
   // Methodenkopf in implementation führt zur Deklaration in der Klasse.
-  R := ResolveAt(Source, 'Run;', 2);
+  R := ResolveAt(cSource, 'Run;', 2);
   Assert.AreEqual('TFoo.Run', R.QualifiedName);
   Assert.AreEqual(6, R.SelectionRange.StartPos.Line);
 end;
 
 procedure TNameResolverTests.ResolvesPropertyAccessors;
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -407,21 +413,21 @@ var
   R: TResolvedSymbol;
 begin
   // read und write stehen im Bereich der Klasse, auch für strict private (#690).
-  R := ResolveAt(Source, 'FWert write');
+  R := ResolveAt(cSource, 'FWert write');
   Assert.AreEqual<TResolvedKind>(TResolvedKind.Symbol, R.Kind);
   Assert.AreEqual('TFoo.FWert', R.QualifiedName);
   Assert.AreEqual(5, R.SelectionRange.StartPos.Line);
-  R := ResolveAt(Source, 'SetWert;');
+  R := ResolveAt(cSource, 'SetWert;');
   Assert.AreEqual('TFoo.SetWert', R.QualifiedName);
   Assert.AreEqual(6, R.SelectionRange.StartPos.Line);
   // Der Typ der Property bleibt ein Typ.
-  R := ResolveAt(Source, 'Integer read');
+  R := ResolveAt(cSource, 'Integer read');
   Assert.AreNotEqual('TFoo', R.Container, 'Integer ist kein Mitglied');
 end;
 
 const
   // Parameter, lokale Variablen und Felder mit gleichem Namen; ohne Self gewinnt wie in Delphi der lokale Name.
-  SourceVerdeckt =
+  cSourceVerdeckt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -469,16 +475,16 @@ procedure TNameResolverTests.LocalsHideFieldsOfTheSameName;
 var
   R: TResolvedSymbol;
 begin
-  R := ResolveAt(SourceVerdeckt, 'Name := Name; {M1}');
+  R := ResolveAt(cSourceVerdeckt, 'Name := Name; {M1}');
   Assert.AreEqual<TResolvedKind>(TResolvedKind.Symbol, R.Kind, 'Self.Name ist das Feld');
   Assert.AreEqual('TKunde.Name', R.QualifiedName);
-  R := ResolveAt(SourceVerdeckt, 'Name; {M1}');
+  R := ResolveAt(cSourceVerdeckt, 'Name; {M1}');
   Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
   Assert.IsTrue(R.IsParameter);
-  R := ResolveAt(SourceVerdeckt, 'Anzahl := Wert; {M2}');
+  R := ResolveAt(cSourceVerdeckt, 'Anzahl := Wert; {M2}');
   Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
   Assert.AreEqual(19, R.SelectionRange.StartPos.Line);
-  R := ResolveAt(SourceVerdeckt, 'Wert; {M2}');
+  R := ResolveAt(cSourceVerdeckt, 'Wert; {M2}');
   Assert.AreEqual('TKunde.Wert', R.QualifiedName);
 end;
 
@@ -487,58 +493,58 @@ var
   R: TResolvedSymbol;
 begin
   // Parameter der anonymen Methode verdeckt das Feld Wert; Anzahl bleibt das Feld.
-  R := ResolveAt(SourceVerdeckt, 'Wert; {M3}');
+  R := ResolveAt(cSourceVerdeckt, 'Wert; {M3}');
   Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
   Assert.IsTrue(R.IsParameter);
   Assert.AreEqual(28, R.SelectionRange.StartPos.Line);
-  R := ResolveAt(SourceVerdeckt, 'Anzahl := Wert; {M3}');
+  R := ResolveAt(cSourceVerdeckt, 'Anzahl := Wert; {M3}');
   Assert.AreEqual('TKunde.Anzahl', R.QualifiedName);
   // var-Abschnitt der anonymen Methode; Wert ist dort wieder das Feld.
-  R := ResolveAt(SourceVerdeckt, 'Anzahl := Wert; {M4}');
+  R := ResolveAt(cSourceVerdeckt, 'Anzahl := Wert; {M4}');
   Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
   Assert.AreEqual(34, R.SelectionRange.StartPos.Line);
-  R := ResolveAt(SourceVerdeckt, 'Wert; {M4}');
+  R := ResolveAt(cSourceVerdeckt, 'Wert; {M4}');
   Assert.AreEqual('TKunde.Wert', R.QualifiedName);
-  R := ResolveAt(SourceVerdeckt, 'Result := Anzahl');
+  R := ResolveAt(cSourceVerdeckt, 'Result := Anzahl');
   Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
   // Außerhalb der anonymen Methoden gilt wieder das Feld.
-  R := ResolveAt(SourceVerdeckt, 'Wert := 1; {M5}');
+  R := ResolveAt(cSourceVerdeckt, 'Wert := 1; {M5}');
   Assert.AreEqual('TKunde.Wert', R.QualifiedName);
 end;
 
 procedure TNameResolverTests.CandidatesInAnonymousMethodHideFields;
 var
-  Tree: TSyntaxTree;
-  Candidates: TArray<TResolvedSymbol>;
-  Candidate: TResolvedSymbol;
-  Found: Integer;
+  mTree: TSyntaxTree;
+  mCandidates: TArray<TResolvedSymbol>;
+  mCandidate: TResolvedSymbol;
+  mFound: Integer;
 begin
-  Tree := TPascalParser.Parse(SourceVerdeckt);
+  mTree := TPascalParser.Parse(cSourceVerdeckt);
   try
-    Candidates := FResolver.Candidates.OwnScopeCandidates(Tree, 'C:\P\Haupt.pas', Pos('Anzahl := Wert; {M3}',
-      SourceVerdeckt) - 1);
+    mCandidates := FResolver.Candidates.OwnScopeCandidates(mTree, 'C:\P\Haupt.pas', Pos('Anzahl := Wert; {M3}',
+      cSourceVerdeckt) - 1);
     FResolver.Candidates.UsedScopeCandidates;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Found := 0;
-  for Candidate in Candidates do
+  mFound := 0;
+  for mCandidate in mCandidates do
   begin
-    if SameText(Candidate.Name, 'Wert') then
+    if SameText(mCandidate.Name, 'Wert') then
     begin
-      Inc(Found);
-      Assert.IsTrue(Candidate.IsParameter);
-      Assert.AreEqual(1, Integer(Length(Candidate.Hides)));
-      Assert.AreEqual('Feld TKunde.Wert', Candidate.Hides[0]);
+      Inc(mFound);
+      Assert.IsTrue(mCandidate.IsParameter);
+      Assert.AreEqual(1, Integer(Length(mCandidate.Hides)));
+      Assert.AreEqual('Feld TKunde.Wert', mCandidate.Hides[0]);
     end;
   end;
-  Assert.AreEqual(1, Found);
+  Assert.AreEqual(1, mFound);
 end;
 
 procedure TNameResolverTests.ResolvesInheritedMembersAcrossUnits;
 
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -557,14 +563,14 @@ const
 var
   R: TResolvedSymbol;
 begin
-  R := ResolveAt(Source, 'Melde');
+  R := ResolveAt(cSource, 'Melde');
   Assert.AreEqual('TBasis.Melde', R.QualifiedName);
   Assert.AreEqual('Basis', R.UnitName);
   Assert.AreEqual('C:\P\Basis.pas', R.FileName);
-  R := ResolveAt(Source, 'FName');
+  R := ResolveAt(cSource, 'FName');
   Assert.AreEqual('TBasis.FName', R.QualifiedName);
   // TBasis ohne Vorfahr erbt von System.TObject.
-  R := ResolveAt(Source, 'Free');
+  R := ResolveAt(cSource, 'Free');
   Assert.AreEqual('TObject.Free', R.QualifiedName);
   Assert.AreEqual('System', R.UnitName);
 end;
@@ -584,7 +590,7 @@ end;
 
 procedure TNameResolverTests.ResolvesMemberChainsThroughDeclaredTypes;
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -606,18 +612,18 @@ const
 var
   R: TResolvedSymbol;
 begin
-  R := ResolveAt(Source, 'Melde');
+  R := ResolveAt(cSource, 'Melde');
   Assert.AreEqual('TBasis.Melde', R.QualifiedName);
-  R := ResolveAt(Source, 'FName');
+  R := ResolveAt(cSource, 'FName');
   Assert.AreEqual('TBasis.FName', R.QualifiedName);
-  R := ResolveAt(Source, 'Create');
+  R := ResolveAt(cSource, 'Create');
   Assert.AreEqual('TBasis.Create', R.QualifiedName);
   Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Constructor_, R.SymbolKind);
 end;
 
 procedure TNameResolverTests.ResolvesQualifiedNames;
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Basis, Zweit, Firma.Werkzeuge;'#10 +
@@ -632,22 +638,22 @@ const
 var
   R: TResolvedSymbol;
 begin
-  R := ResolveAt(Source, 'Wert');
+  R := ResolveAt(cSource, 'Wert');
   Assert.AreEqual('Basis', R.UnitName, 'Basis.Wert trotz Zweit dahinter');
-  R := ResolveAt(Source, 'Basis', 2);
+  R := ResolveAt(cSource, 'Basis', 2);
   Assert.AreEqual<TResolvedKind>(TResolvedKind.UnitName, R.Kind);
-  R := ResolveAt(Source, 'Create');
+  R := ResolveAt(cSource, 'Create');
   Assert.AreEqual('TBasis.Create', R.QualifiedName);
-  R := ResolveAt(Source, 'TWerkzeug');
+  R := ResolveAt(cSource, 'TWerkzeug');
   Assert.AreEqual('Firma.Werkzeuge', R.UnitName);
   // Create gibt es in TWerkzeug nicht, aber im Vorfahren TObject? Nein: nur Free.
-  R := ResolveAt(Source, 'Create', 2);
+  R := ResolveAt(cSource, 'Create', 2);
   Assert.IsFalse(R.Found);
 end;
 
 procedure TNameResolverTests.InterfaceDoesNotSeeImplementation;
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'const A = B;'#10 +
@@ -658,16 +664,16 @@ const
 var
   R: TResolvedSymbol;
 begin
-  R := ResolveAt(Source, 'B;');
+  R := ResolveAt(cSource, 'B;');
   Assert.IsFalse(R.Found);
-  R := ResolveAt(Source, 'B;', 2);
+  R := ResolveAt(cSource, 'B;', 2);
   Assert.IsTrue(R.Found);
   Assert.AreEqual(4, R.SelectionRange.StartPos.Line);
 end;
 
 procedure TNameResolverTests.ResolvesInherited;
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -684,7 +690,7 @@ const
 var
   R: TResolvedSymbol;
 begin
-  R := ResolveAt(Source, 'Create;', 3);
+  R := ResolveAt(cSource, 'Create;', 3);
   Assert.AreEqual('TBasis.Create', R.QualifiedName);
   Assert.AreEqual('Basis', R.UnitName);
 end;
@@ -720,39 +726,39 @@ end;
 
 procedure TNameResolverTests.LoadsOnlyUnitsMissingFromIndex;
 const
-  Source = 'unit Haupt; interface uses Werkzeuge, Fehlt; implementation procedure P; begin TWerkzeug.Create; ' +
+  cSource = 'unit Haupt; interface uses Werkzeuge, Fehlt; implementation procedure P; begin TWerkzeug.Create; ' +
     'Unbekannt; end; end.';
 var
-  Calls: TArray<string>;
-  Resolver: TNameResolver;
-  Tree: TSyntaxTree;
+  mCalls: TArray<string>;
+  mResolver: TNameResolver;
+  mTree: TSyntaxTree;
   R: TResolvedSymbol;
 begin
   // Nachladen durchsucht die Suchpfade aller Projekte (#647): nicht für Units, die der Index mit
   // Namespace schon kennt, und eine fehlende Unit je Resolver nur einmal. Die Namespaces probiert
   // der Unit-Resolver selbst; Firma.Fehlt wird nicht noch einmal gesucht.
-  Calls := nil;
-  Resolver := TNameResolver.Create(FIndex,
+  mCalls := nil;
+  mResolver := TNameResolver.Create(FIndex,
     function(const AUnitName: string): Boolean
     begin
-      Calls := Calls + [AUnitName];
+      mCalls := mCalls + [AUnitName];
       Result := False;
     end);
   try
-    Resolver.Namespaces := ['Firma'];
-    Tree := TPascalParser.Parse(Source);
+    mResolver.Namespaces := ['Firma'];
+    mTree := TPascalParser.Parse(cSource);
     try
-      R := Resolver.Resolve(Tree, 'C:\P\Haupt.pas', PositionOf(Source, 'TWerkzeug', 1));
+      R := mResolver.Resolve(mTree, 'C:\P\Haupt.pas', PositionOf(cSource, 'TWerkzeug', 1));
       Assert.AreEqual('Firma.Werkzeuge', R.UnitName);
-      R := Resolver.Resolve(Tree, 'C:\P\Haupt.pas', PositionOf(Source, 'Unbekannt', 1));
+      R := mResolver.Resolve(mTree, 'C:\P\Haupt.pas', PositionOf(cSource, 'Unbekannt', 1));
       Assert.IsFalse(R.Found);
     finally
-      Tree.Free;
+      mTree.Free;
     end;
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
-  Assert.AreEqual('Fehlt', string.Join(',', Calls));
+  Assert.AreEqual('Fehlt', string.Join(',', mCalls));
 end;
 
 procedure TNameResolverTests.GivesUpOnExpressions;
@@ -774,7 +780,7 @@ begin
 end;
 
 const
-  PinSource =
+  cPinSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -791,7 +797,7 @@ const
     '  Zahl := 1;'#10 +
     'end;'#10 +
     'end.';
-  PinOther =
+  cPinOther =
     'unit Andere;'#10 +
     'interface'#10 +
     'uses Zweit;'#10 +
@@ -804,112 +810,112 @@ const
 
 procedure TNameResolverTests.PinTreeNestedSameTreeKeepsPin;
 var
-  Tree: TSyntaxTree;
-  First, Second: TUnitIndex;
+  mTree: TSyntaxTree;
+  mFirst, mSecond: TUnitIndex;
 begin
-  Tree := TPascalParser.Parse(PinSource);
+  mTree := TPascalParser.Parse(cPinSource);
   try
-    FResolver.PinTree(Tree, 'C:\P\Haupt.pas');
-    FResolver.PinTree(Tree, 'C:\P\Haupt.pas');
+    FResolver.PinTree(mTree, 'C:\P\Haupt.pas');
+    FResolver.PinTree(mTree, 'C:\P\Haupt.pas');
     // Gepinnt: dieselbe Auswertung, kein neues Extrakt (gleiches Symbol-Array).
-    First := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
-    Second := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
-    Assert.AreEqual<Pointer>(Pointer(Second.Symbols), Pointer(First.Symbols));
-    Assert.AreEqual('TBasis.Melde', FResolver.Resolve(Tree, 'C:\P\Haupt.pas',
-      PositionOf(PinSource, 'Melde;', 1)).QualifiedName);
+    mFirst := FResolver.ExtractedUnit(mTree, 'C:\P\Haupt.pas');
+    mSecond := FResolver.ExtractedUnit(mTree, 'C:\P\Haupt.pas');
+    Assert.AreEqual<Pointer>(Pointer(mSecond.Symbols), Pointer(mFirst.Symbols));
+    Assert.AreEqual('TBasis.Melde', FResolver.Resolve(mTree, 'C:\P\Haupt.pas',
+      PositionOf(cPinSource, 'Melde;', 1)).QualifiedName);
     FResolver.UnpinTree;
     // Das innere UnpinTree löst den Baum noch nicht.
-    Second := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
-    Assert.AreEqual<Pointer>(Pointer(Second.Symbols), Pointer(First.Symbols));
-    Assert.AreEqual('TBasis.Melde', FResolver.Resolve(Tree, 'C:\P\Haupt.pas',
-      PositionOf(PinSource, 'Melde;', 1)).QualifiedName);
+    mSecond := FResolver.ExtractedUnit(mTree, 'C:\P\Haupt.pas');
+    Assert.AreEqual<Pointer>(Pointer(mSecond.Symbols), Pointer(mFirst.Symbols));
+    Assert.AreEqual('TBasis.Melde', FResolver.Resolve(mTree, 'C:\P\Haupt.pas',
+      PositionOf(cPinSource, 'Melde;', 1)).QualifiedName);
     FResolver.UnpinTree;
     // Ungepinnt teilt der Aufruf das am Baum hinterlegte Extrakt (kein neues Extrahieren je Anbieter).
-    Second := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
-    Assert.AreEqual<Pointer>(Pointer(Second.Symbols), Pointer(First.Symbols));
-    Assert.AreEqual(Integer(Length(First.Symbols)), Integer(Length(Second.Symbols)));
-    Assert.AreEqual('TBasis.Melde', FResolver.Resolve(Tree, 'C:\P\Haupt.pas',
-      PositionOf(PinSource, 'Melde;', 1)).QualifiedName);
+    mSecond := FResolver.ExtractedUnit(mTree, 'C:\P\Haupt.pas');
+    Assert.AreEqual<Pointer>(Pointer(mSecond.Symbols), Pointer(mFirst.Symbols));
+    Assert.AreEqual(Integer(Length(mFirst.Symbols)), Integer(Length(mSecond.Symbols)));
+    Assert.AreEqual('TBasis.Melde', FResolver.Resolve(mTree, 'C:\P\Haupt.pas',
+      PositionOf(cPinSource, 'Melde;', 1)).QualifiedName);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TNameResolverTests.PinTreeNestedOtherTreeRestoresOuter;
 var
-  Outer, Inner: TSyntaxTree;
-  Pinned: TUnitIndex;
+  mOuter, mInner: TSyntaxTree;
+  mPinned: TUnitIndex;
   R: TResolvedSymbol;
 begin
-  Outer := TPascalParser.Parse(PinSource);
+  mOuter := TPascalParser.Parse(cPinSource);
   try
-    FResolver.PinTree(Outer, 'C:\P\Haupt.pas');
+    FResolver.PinTree(mOuter, 'C:\P\Haupt.pas');
     try
-      Pinned := FResolver.ExtractedUnit(Outer, 'C:\P\Haupt.pas');
-      Inner := TPascalParser.Parse(PinOther);
+      mPinned := FResolver.ExtractedUnit(mOuter, 'C:\P\Haupt.pas');
+      mInner := TPascalParser.Parse(cPinOther);
       try
-        FResolver.PinTree(Inner, 'C:\P\Andere.pas');
+        FResolver.PinTree(mInner, 'C:\P\Andere.pas');
         try
-          Assert.AreEqual('Zweit', FResolver.Resolve(Inner, 'C:\P\Andere.pas',
-            PositionOf(PinOther, 'Wert;', 1)).UnitName);
+          Assert.AreEqual('Zweit', FResolver.Resolve(mInner, 'C:\P\Andere.pas',
+            PositionOf(cPinOther, 'Wert;', 1)).UnitName);
           // Der äußere Baum bleibt gepinnt, auch während der innere es ist.
-          Assert.AreEqual<Pointer>(Pointer(FResolver.ExtractedUnit(Outer, 'C:\P\Haupt.pas').Symbols),
-            Pointer(Pinned.Symbols));
+          Assert.AreEqual<Pointer>(Pointer(FResolver.ExtractedUnit(mOuter, 'C:\P\Haupt.pas').Symbols),
+            Pointer(mPinned.Symbols));
         finally
           FResolver.UnpinTree;
         end;
       finally
-        Inner.Free;
+        mInner.Free;
       end;
-      Assert.AreEqual<Pointer>(Pointer(FResolver.ExtractedUnit(Outer, 'C:\P\Haupt.pas').Symbols),
-        Pointer(Pinned.Symbols));
-      R := FResolver.Resolve(Outer, 'C:\P\Haupt.pas', PositionOf(PinSource, 'Zahl :=', 1));
+      Assert.AreEqual<Pointer>(Pointer(FResolver.ExtractedUnit(mOuter, 'C:\P\Haupt.pas').Symbols),
+        Pointer(mPinned.Symbols));
+      R := FResolver.Resolve(mOuter, 'C:\P\Haupt.pas', PositionOf(cPinSource, 'Zahl :=', 1));
       Assert.IsTrue(R.Found);
       Assert.AreEqual('Zahl', R.Name);
       Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, R.Kind);
-      Assert.AreEqual('TBasis.Melde', FResolver.Resolve(Outer, 'C:\P\Haupt.pas',
-        PositionOf(PinSource, 'Melde;', 1)).QualifiedName);
+      Assert.AreEqual('TBasis.Melde', FResolver.Resolve(mOuter, 'C:\P\Haupt.pas',
+        PositionOf(cPinSource, 'Melde;', 1)).QualifiedName);
     finally
       FResolver.UnpinTree;
     end;
   finally
-    Outer.Free;
+    mOuter.Free;
   end;
 end;
 
 procedure TNameResolverTests.ExtractedUnitEqualsExtract;
 var
-  Tree: TSyntaxTree;
-  Expected, Actual: TUnitIndex;
+  mTree: TSyntaxTree;
+  mExpected, mActual: TUnitIndex;
 
   procedure Check;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
-    Assert.AreEqual(Expected.UnitName, Actual.UnitName);
-    Assert.AreEqual(Integer(Length(Expected.Symbols)), Integer(Length(Actual.Symbols)));
-    for Index := 0 to High(Expected.Symbols) do
+    Assert.AreEqual(mExpected.UnitName, mActual.UnitName);
+    Assert.AreEqual(Integer(Length(mExpected.Symbols)), Integer(Length(mActual.Symbols)));
+    for mIndex := 0 to High(mExpected.Symbols) do
     begin
-      Assert.AreEqual(Expected.Symbols[Index].QualifiedName, Actual.Symbols[Index].QualifiedName);
-      Assert.AreEqual(Expected.Symbols[Index].Range.StartPos.Line, Actual.Symbols[Index].Range.StartPos.Line);
+      Assert.AreEqual(mExpected.Symbols[mIndex].QualifiedName, mActual.Symbols[mIndex].QualifiedName);
+      Assert.AreEqual(mExpected.Symbols[mIndex].Range.StartPos.Line, mActual.Symbols[mIndex].Range.StartPos.Line);
     end;
   end;
 
 begin
-  Tree := TPascalParser.Parse(PinSource);
+  mTree := TPascalParser.Parse(cPinSource);
   try
-    Expected := TIndexExtractor.Extract(Tree, 'C:\P\Haupt.pas');
-    Actual := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
+    mExpected := TIndexExtractor.Extract(mTree, 'C:\P\Haupt.pas');
+    mActual := FResolver.ExtractedUnit(mTree, 'C:\P\Haupt.pas');
     Check;
-    FResolver.PinTree(Tree, 'C:\P\Haupt.pas');
+    FResolver.PinTree(mTree, 'C:\P\Haupt.pas');
     try
-      Actual := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
+      mActual := FResolver.ExtractedUnit(mTree, 'C:\P\Haupt.pas');
       Check;
     finally
       FResolver.UnpinTree;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -917,11 +923,11 @@ procedure TNameResolverTests.UnpinTreeWithoutPinIsNoop;
 begin
   FResolver.UnpinTree;
   FResolver.UnpinTree;
-  Assert.AreEqual('TBasis.Melde', ResolveAt(PinSource, 'Melde;').QualifiedName);
+  Assert.AreEqual('TBasis.Melde', ResolveAt(cPinSource, 'Melde;').QualifiedName);
 end;
 
 const
-  UnitHelfer =
+  cUnitHelfer =
     'unit Helfer;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -932,7 +938,7 @@ const
     'implementation'#10 +
     'function TBasisHelfer.Anrede: string; begin Result := ''''; end;'#10 +
     'end.';
-  HelferSource =
+  cHelferSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -948,77 +954,77 @@ const
 
 procedure TNameResolverTests.ResolveTypeFromKeepsHelperCache;
 var
-  Tree: TSyntaxTree;
-  BasisUnit: TUnitIndex;
-  Found: TResolvedSymbol;
+  mTree: TSyntaxTree;
+  mBasisUnit: TUnitIndex;
+  mFound: TResolvedSymbol;
 begin
-  AddUnit('C:\P\Helfer.pas', UnitHelfer);
-  Assert.IsTrue(FIndex.FindUnit('Basis', BasisUnit));
-  Tree := TPascalParser.Parse(HelferSource);
+  AddUnit('C:\P\Helfer.pas', cUnitHelfer);
+  Assert.IsTrue(FIndex.FindUnit('Basis', mBasisUnit));
+  mTree := TPascalParser.Parse(cHelferSource);
   try
-    FResolver.PinTree(Tree, 'C:\P\Haupt.pas');
+    FResolver.PinTree(mTree, 'C:\P\Haupt.pas');
     try
-      Assert.AreEqual('TBasisHelfer', FResolver.Resolve(Tree, 'C:\P\Haupt.pas',
-        PositionOf(HelferSource, 'Anrede', 1)).Container);
+      Assert.AreEqual('TBasisHelfer', FResolver.Resolve(mTree, 'C:\P\Haupt.pas',
+        PositionOf(cHelferSource, 'Anrede', 1)).Container);
       // Dazwischen aus einer anderen Unit auflösen (wie TypeAt und TypeChain der Vervollständigung).
-      Assert.IsTrue(FResolver.ResolveTypeFrom(BasisUnit, 'TBasis', Found));
-      Assert.AreEqual('TBasisHelfer', FResolver.Resolve(Tree, 'C:\P\Haupt.pas',
-        PositionOf(HelferSource, 'Anrede', 1)).Container);
+      Assert.IsTrue(FResolver.ResolveTypeFrom(mBasisUnit, 'TBasis', mFound));
+      Assert.AreEqual('TBasisHelfer', FResolver.Resolve(mTree, 'C:\P\Haupt.pas',
+        PositionOf(cHelferSource, 'Anrede', 1)).Container);
     finally
       FResolver.UnpinTree;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TNameResolverTests.ResolveTypeTextFromPicksArity;
 var
-  Listen: TUnitIndex;
-  Found: TResolvedSymbol;
+  mListen: TUnitIndex;
+  mFound: TResolvedSymbol;
 begin
   AddUnit('C:\P\Listen.pas', 'unit Listen;'#10'interface'#10'type'#10'  TListe = class'#10'  end;'#10 +
     '  TListe<T: class> = class'#10'  end;'#10'implementation'#10'end.');
-  Assert.IsTrue(FIndex.FindUnit('Listen', Listen));
-  Assert.IsTrue(FResolver.ResolveTypeTextFrom(Listen, 'TListe<TObject>', Found));
-  Assert.AreEqual('T', Found.TypeParams);
-  Assert.IsTrue(Pos('T: class', Found.Signature) > 0, Found.Signature);
-  Assert.AreEqual(1, Integer(Length(Found.Bindings)));
-  Assert.IsTrue(FResolver.ResolveTypeTextFrom(Listen, 'TListe', Found));
-  Assert.AreEqual('', Found.TypeParams);
+  Assert.IsTrue(FIndex.FindUnit('Listen', mListen));
+  Assert.IsTrue(FResolver.ResolveTypeTextFrom(mListen, 'TListe<TObject>', mFound));
+  Assert.AreEqual('T', mFound.TypeParams);
+  Assert.IsTrue(Pos('T: class', mFound.Signature) > 0, mFound.Signature);
+  Assert.AreEqual(1, Integer(Length(mFound.Bindings)));
+  Assert.IsTrue(FResolver.ResolveTypeTextFrom(mListen, 'TListe', mFound));
+  Assert.AreEqual('', mFound.TypeParams);
   // Eingebaute Typen ohne Deklaration.
-  Assert.IsTrue(FResolver.ResolveTypeTextFrom(Listen, 'Integer', Found));
-  Assert.IsTrue(Found.Builtin);
-  Assert.IsFalse(FResolver.ResolveTypeTextFrom(Listen, 'TUnbekannt', Found));
+  Assert.IsTrue(FResolver.ResolveTypeTextFrom(mListen, 'Integer', mFound));
+  Assert.IsTrue(mFound.Builtin);
+  Assert.IsFalse(FResolver.ResolveTypeTextFrom(mListen, 'TUnbekannt', mFound));
 end;
 
 procedure TNameResolverTests.HelperVisibilityDependsOnSection;
 var
-  Tree: TSyntaxTree;
-  InImplementation, InInterface: Integer;
+  mTree: TSyntaxTree;
+  mInImplementation, mInInterface: Integer;
 begin
-  AddUnit('C:\P\Helfer.pas', UnitHelfer);
-  Tree := TPascalParser.Parse(HelferSource);
+  AddUnit('C:\P\Helfer.pas', cUnitHelfer);
+  mTree := TPascalParser.Parse(cHelferSource);
   try
     // Offsets ab 0.
-    InImplementation := Pos('S.Anrede', HelferSource) - 1;
-    InInterface := Pos('S: TBasis', HelferSource) - 1;
-    FResolver.PinTree(Tree, 'C:\P\Haupt.pas');
+    mInImplementation := Pos('S.Anrede', cHelferSource) - 1;
+    mInInterface := Pos('S: TBasis', cHelferSource) - 1;
+    FResolver.PinTree(mTree, 'C:\P\Haupt.pas');
     try
-      Assert.IsTrue(FResolver.ResolveChain(Tree, 'C:\P\Haupt.pas', ['S', 'Anrede'], InImplementation).Found);
-      Assert.IsFalse(FResolver.ResolveChain(Tree, 'C:\P\Haupt.pas', ['S', 'Anrede'], InInterface).Found);
-      Assert.IsTrue(FResolver.ResolveChain(Tree, 'C:\P\Haupt.pas', ['S', 'Anrede'], InImplementation).Found);
+      Assert.IsTrue(FResolver.ResolveChain(mTree, 'C:\P\Haupt.pas', ['S', 'Anrede'], mInImplementation).Found);
+      Assert.IsFalse(FResolver.ResolveChain(mTree, 'C:\P\Haupt.pas', ['S', 'Anrede'], mInInterface).Found);
+      Assert.IsTrue(FResolver.ResolveChain(mTree, 'C:\P\Haupt.pas', ['S', 'Anrede'], mInImplementation).Found);
     finally
       FResolver.UnpinTree;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TNameResolverTests.DeclaredMemberFindsInherited;
 const
-  UnitKinder =
+  cUnitKinder =
     'unit Kinder;'#10 +
     'interface'#10 +
     'uses Basis;'#10 +
@@ -1030,69 +1036,69 @@ const
     'procedure TKind.Eigen; begin end;'#10 +
     'end.';
 var
-  KinderUnit, BasisUnit: TUnitIndex;
-  Kind, Member, Ancestor, Other: TResolvedSymbol;
+  mKinderUnit, mBasisUnit: TUnitIndex;
+  mKind, mMember, mAncestor, mOther: TResolvedSymbol;
 begin
-  AddUnit('C:\P\Kinder.pas', UnitKinder);
-  Assert.IsTrue(FIndex.FindUnit('Kinder', KinderUnit));
-  Assert.IsTrue(FIndex.FindUnit('Basis', BasisUnit));
-  Assert.IsTrue(FResolver.ResolveTypeFrom(KinderUnit, 'TKind', Kind));
-  Assert.IsTrue(FResolver.DeclaredMember(Kind, 'Eigen', Member));
-  Assert.AreEqual('TKind.Eigen', Member.QualifiedName);
-  Assert.IsTrue(FResolver.DeclaredMember(Kind, 'melde', Member));
-  Assert.AreEqual('TBasis.Melde', Member.QualifiedName);
-  Assert.IsFalse(FResolver.DeclaredMember(Kind, 'Fehlt', Member));
-  Assert.IsTrue(FResolver.AncestorOf(Kind, Ancestor));
-  Assert.AreEqual('TBasis', Ancestor.Name);
+  AddUnit('C:\P\Kinder.pas', cUnitKinder);
+  Assert.IsTrue(FIndex.FindUnit('Kinder', mKinderUnit));
+  Assert.IsTrue(FIndex.FindUnit('Basis', mBasisUnit));
+  Assert.IsTrue(FResolver.ResolveTypeFrom(mKinderUnit, 'TKind', mKind));
+  Assert.IsTrue(FResolver.DeclaredMember(mKind, 'Eigen', mMember));
+  Assert.AreEqual('TKind.Eigen', mMember.QualifiedName);
+  Assert.IsTrue(FResolver.DeclaredMember(mKind, 'melde', mMember));
+  Assert.AreEqual('TBasis.Melde', mMember.QualifiedName);
+  Assert.IsFalse(FResolver.DeclaredMember(mKind, 'Fehlt', mMember));
+  Assert.IsTrue(FResolver.AncestorOf(mKind, mAncestor));
+  Assert.AreEqual('TBasis', mAncestor.Name);
   // Vorfahren-Cache über ResolveTypeFrom aus einer anderen Unit hinweg: gleiches Ergebnis.
-  Assert.IsTrue(FResolver.ResolveTypeFrom(BasisUnit, 'TBasis', Other));
-  Assert.IsTrue(FResolver.AncestorOf(Kind, Ancestor));
-  Assert.AreEqual('TBasis', Ancestor.Name);
-  Assert.IsTrue(FResolver.DeclaredMember(Kind, 'Melde', Member));
-  Assert.AreEqual('TBasis.Melde', Member.QualifiedName);
+  Assert.IsTrue(FResolver.ResolveTypeFrom(mBasisUnit, 'TBasis', mOther));
+  Assert.IsTrue(FResolver.AncestorOf(mKind, mAncestor));
+  Assert.AreEqual('TBasis', mAncestor.Name);
+  Assert.IsTrue(FResolver.DeclaredMember(mKind, 'Melde', mMember));
+  Assert.AreEqual('TBasis.Melde', mMember.QualifiedName);
 end;
 
 procedure TNameResolverTests.NodeTypeAndPropertyReadsField;
 const
-  Text = 'unit Haupt;'#10'interface'#10'type'#10'  TPunkt = record'#10'    X: Integer;'#10'  end;'#10 +
+  cText = 'unit Haupt;'#10'interface'#10'type'#10'  TPunkt = record'#10'    X: Integer;'#10'  end;'#10 +
     '  TFigur = class'#10'  private'#10'    FPos: TPunkt;'#10'    function GetMitte: TPunkt;'#10'  public'#10 +
     '    property Pos: TPunkt read FPos;'#10'    property Mitte: TPunkt read GetMitte;'#10'  end;'#10 +
     'implementation'#10'function TFigur.GetMitte: TPunkt;'#10'begin'#10'end;'#10 +
     'procedure P(F: TFigur);'#10'begin'#10'  F.Pos.X := 1;'#10'  F.Mitte.X := 2;'#10'end;'#10'end.';
 var
-  Tree: TSyntaxTree;
-  Receivers: TArray<TSyntaxNode>;
-  Symbol, TypeInfo: TResolvedSymbol;
-  TypeFound, ReadsField: Boolean;
+  mTree: TSyntaxTree;
+  mReceivers: TArray<TSyntaxNode>;
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound, mReadsField: Boolean;
 begin
-  Tree := TPascalParser.Parse(Text);
+  mTree := TPascalParser.Parse(cText);
   try
-    Receivers := nil;
-    Tree.Root.Walk(
+    mReceivers := nil;
+    mTree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         if (ANode.Kind = TSyntaxKind.MemberAccess) and MatchText(ANode.Name, ['Pos', 'Mitte']) then
         begin
-          Receivers := Receivers + [ANode];
+          mReceivers := mReceivers + [ANode];
         end;
         Result := True;
       end);
-    Assert.AreEqual(2, Integer(Length(Receivers)));
+    Assert.AreEqual(2, Integer(Length(mReceivers)));
     // #1005: Deklaration und Typ eines Teilausdrucks, und ob die Property ein Feld liest.
-    Assert.IsTrue(FResolver.NodeType(Tree, 'C:\P\Haupt.pas', Receivers[0], Symbol, TypeInfo, TypeFound));
-    Assert.AreEqual('Pos', Symbol.Name);
-    Assert.IsTrue(TypeFound);
-    Assert.AreEqual('TPunkt', TypeInfo.Name);
-    Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.RecordType, TypeInfo.SymbolKind);
-    Assert.IsTrue(FResolver.PropertyReadsField(Symbol, ReadsField));
-    Assert.IsTrue(ReadsField);
-    Assert.IsTrue(FResolver.NodeType(Tree, 'C:\P\Haupt.pas', Receivers[1], Symbol, TypeInfo, TypeFound));
-    Assert.AreEqual('Mitte', Symbol.Name);
-    Assert.IsTrue(FResolver.PropertyReadsField(Symbol, ReadsField));
-    Assert.IsFalse(ReadsField);
-    Assert.IsFalse(FResolver.PropertyReadsField(TypeInfo, ReadsField));
+    Assert.IsTrue(FResolver.NodeType(mTree, 'C:\P\Haupt.pas', mReceivers[0], mSymbol, mTypeInfo, mTypeFound));
+    Assert.AreEqual('Pos', mSymbol.Name);
+    Assert.IsTrue(mTypeFound);
+    Assert.AreEqual('TPunkt', mTypeInfo.Name);
+    Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.RecordType, mTypeInfo.SymbolKind);
+    Assert.IsTrue(FResolver.PropertyReadsField(mSymbol, mReadsField));
+    Assert.IsTrue(mReadsField);
+    Assert.IsTrue(FResolver.NodeType(mTree, 'C:\P\Haupt.pas', mReceivers[1], mSymbol, mTypeInfo, mTypeFound));
+    Assert.AreEqual('Mitte', mSymbol.Name);
+    Assert.IsTrue(FResolver.PropertyReadsField(mSymbol, mReadsField));
+    Assert.IsFalse(mReadsField);
+    Assert.IsFalse(FResolver.PropertyReadsField(mTypeInfo, mReadsField));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

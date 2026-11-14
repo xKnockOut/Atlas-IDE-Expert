@@ -152,24 +152,34 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Tests.RuleAssert;
 
-function Routine(const ABody: string; const AHeader: string = 'function F: Integer;';
-  const AVars: string = ''): string;
+function Routine(const ABody: string; const AHeader: string;
+  const AVars: string): string; overload;
 begin
   Result := 'unit U;'#10'interface'#10'implementation'#10 + AHeader + #10 + AVars + 'begin'#10 + ABody +
     #10'end;'#10'end.';
 end;
 
+function Routine(const ABody: string): string; overload;
+begin
+  Result := Routine(ABody, 'function F: Integer;', '');
+end;
+
+function Routine(const ABody: string; const AHeader: string): string; overload;
+begin
+  Result := Routine(ABody, AHeader, '');
+end;
+
 function FirstOfKind(ANode: TSyntaxNode; AKind: TSyntaxKind): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if ANode.Kind = AKind then
   begin
     Exit(ANode);
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    Result := FirstOfKind(ANode[Index], AKind);
+    Result := FirstOfKind(ANode[mIndex], AKind);
     if Result <> nil then
     begin
       Exit;
@@ -180,11 +190,11 @@ end;
 
 procedure TFlowRulesTests.ResultSetOnlyInBranchReports;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TResultNotSetRule.Create, Routine('  if A then'#10'    Result := 1;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  mFindings := TRuleAssert.Findings(TResultNotSetRule.Create, Routine('  if A then'#10'    Result := 1;'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
 end;
 
 procedure TFlowRulesTests.ResultSetOnAllPathsIsSilent;
@@ -249,38 +259,38 @@ end;
 
 procedure TFlowRulesTests.UninitializedFlagsNestedAndRecords;
 const
-  Vars = 'var'#10'  I, J: Integer;'#10'  Gefunden: Boolean;'#10;
+  cVars = 'var'#10'  I, J: Integer;'#10'  Gefunden: Boolean;'#10;
 begin
   // Merker (#1109): I bekommt seinen Wert zusammen mit Gefunden := True.
   TRuleAssert.Silent(TPossiblyUninitializedRule.Create, Routine('  Gefunden := False;'#10'  for K in L do'#10 +
     '    if K > 0 then'#10'    begin'#10'      I := K;'#10'      Gefunden := True;'#10'    end;'#10 +
-    '  if not Gefunden then'#10'    Exit;'#10'  J := I;', 'procedure P;', Vars));
+    '  if not Gefunden then'#10'    Exit;'#10'  J := I;', 'procedure P;', cVars));
   TRuleAssert.Silent(TPossiblyUninitializedRule.Create, Routine('  Gefunden := False;'#10'  if A then'#10 +
     '  begin'#10'    I := 1;'#10'    Gefunden := True;'#10'  end;'#10'  if Gefunden and B then'#10'    J := I;',
-    'procedure P;', Vars));
+    'procedure P;', cVars));
   // Prüfung des Merkers in try … finally.
   TRuleAssert.Silent(TPossiblyUninitializedRule.Create, Routine('  try'#10'    Gefunden := False;'#10 +
     '    for K in L do'#10'      if K > 0 then'#10'      begin'#10'        I := K;'#10'        Gefunden := True;'#10 +
     '      end;'#10'    if not Gefunden then'#10'      Exit;'#10'    J := I;'#10'  finally'#10'    Aufraeumen;'#10 +
-    '  end;', 'procedure P;', Vars));
+    '  end;', 'procedure P;', cVars));
   // Merker aus einem Ausdruck, direkt danach "if Gefunden then begin I := …; Break; end".
   TRuleAssert.Silent(TPossiblyUninitializedRule.Create, Routine('  Gefunden := False;'#10'  for K in L do'#10 +
     '  begin'#10'    Gefunden := K > 0;'#10'    if Gefunden then'#10'    begin'#10'      I := K;'#10'      Break;'#10 +
-    '    end;'#10'  end;'#10'  if Gefunden then'#10'    J := I;', 'procedure P;', Vars));
+    '    end;'#10'  end;'#10'  if Gefunden then'#10'    J := I;', 'procedure P;', cVars));
   TRuleAssert.Reports(TPossiblyUninitializedRule.Create, Routine('  Gefunden := False;'#10'  for K in L do'#10 +
     '  begin'#10'    Gefunden := K > 0;'#10'    if Gefunden and (K > 5) then'#10'    begin'#10'      I := K;'#10 +
     '      Break;'#10'    end;'#10'  end;'#10 +
-    '  if Gefunden then'#10'    J := I;', 'procedure P;', Vars));
+    '  if Gefunden then'#10'    J := I;', 'procedure P;', cVars));
   // Gefunden wird auch ohne I gesetzt: kein Merker.
   TRuleAssert.Reports(TPossiblyUninitializedRule.Create, Routine('  Gefunden := C;'#10'  if A then'#10 +
     '  begin'#10'    I := 1;'#10'    Gefunden := True;'#10'  end;'#10'  if Gefunden then'#10'    J := I;',
-    'procedure P;', Vars));
+    'procedure P;', cVars));
   // Ohne Prüfung des Merkers bleibt der Befund.
   TRuleAssert.Reports(TPossiblyUninitializedRule.Create, Routine('  Gefunden := False;'#10'  if A then'#10 +
-    '  begin'#10'    I := 1;'#10'    Gefunden := True;'#10'  end;'#10'  J := I;', 'procedure P;', Vars));
+    '  begin'#10'    I := 1;'#10'    Gefunden := True;'#10'  end;'#10'  J := I;', 'procedure P;', cVars));
   // Eine lokale Routine setzt I.
   TRuleAssert.Silent(TPossiblyUninitializedRule.Create, Routine('  Setzen;'#10'  J := I;', 'procedure P;',
-    Vars + '  procedure Setzen;'#10'  begin'#10'    I := 1;'#10'  end;'#10));
+    cVars + '  procedure Setzen;'#10'  begin'#10'    I := 1;'#10'  end;'#10));
   // Methode eines Records der Unit legt ihn an (Scanner.Init).
   TRuleAssert.Silent(TPossiblyUninitializedRule.Create, 'unit U;'#10'interface'#10'implementation'#10'type'#10 +
     '  TLeser = record'#10'    Pos: Integer;'#10'    procedure Init;'#10'  end;'#10'procedure TLeser.Init;'#10 +
@@ -299,46 +309,46 @@ end;
 
 procedure TFlowRulesTests.OpaqueUseHelper;
 var
-  Tree: TSyntaxTree;
-  Block: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mBlock: TSyntaxNode;
 begin
-  Tree := TPascalParser.Parse(Routine('  P := @X;', 'procedure P;'));
+  mTree := TPascalParser.Parse(Routine('  P := @X;', 'procedure P;'));
   try
     // Lokale Routinen überspringt die Prüfung, daher der Rumpf selbst.
-    Block := FirstOfKind(Tree.Root, TSyntaxKind.Block);
-    Assert.IsTrue(HasOpaqueUse(Block, 'X'));
-    Assert.IsFalse(HasOpaqueUse(Block, 'Y'));
+    mBlock := FirstOfKind(mTree.Root, TSyntaxKind.Block);
+    Assert.IsTrue(HasOpaqueUse(mBlock, 'X'));
+    Assert.IsFalse(HasOpaqueUse(mBlock, 'Y'));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TFlowRulesTests.UnreachableAfterExitReportsFirstStatement;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Zeile 5 ist Exit; gemeldet wird nur A in Zeile 6, nicht auch B.
-  Findings := TRuleAssert.Findings(TUnreachableCodeRule.Create,
+  mFindings := TRuleAssert.Findings(TUnreachableCodeRule.Create,
     Routine('  Exit;'#10'  A;'#10'  if X then'#10'    B;', 'procedure P;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(6, Findings[0].Range.EndPos.Line, 'Nur die erste Zeile markieren');
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(6, mFindings[0].Range.EndPos.Line, 'Nur die erste Zeile markieren');
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
 end;
 
 procedure TFlowRulesTests.UnreachableInBranchAndTry;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TUnreachableCodeRule.Create,
+  mFindings := TRuleAssert.Findings(TUnreachableCodeRule.Create,
     Routine('  if X then'#10'  begin'#10'    raise E;'#10'    A;'#10'  end;'#10'  B;', 'procedure P;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
   // Ein ganzer try-Block hinter Exit zählt als ein Abschnitt.
-  Findings := TRuleAssert.Findings(TUnreachableCodeRule.Create,
+  mFindings := TRuleAssert.Findings(TUnreachableCodeRule.Create,
     Routine('  Exit;'#10'  try'#10'    A;'#10'  finally'#10'    B;'#10'  end;', 'procedure P;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TFlowRulesTests.ReachableCodeIsSilent;
@@ -356,7 +366,7 @@ end;
 
 procedure TFlowRulesTests.FlowRulesFindSameWithSharedGraphs;
 const
-  Source =
+  cSource =
     'unit U;'#10'interface'#10'implementation'#10 +
     'function F(A: Boolean; Unbenutzt: Integer): Integer;'#10 +
     'begin'#10'  if A then'#10'    Result := 1;'#10'end;'#10 +
@@ -366,100 +376,100 @@ const
     '  for S in Liste do'#10'    TThread.Queue(nil, procedure begin Memo1.Lines.Add(S); end);'#10 +
     '  Exit;'#10'  Bar;'#10'end;'#10'end.';
 var
-  Count: Integer;
+  mCount: Integer;
 begin
-  Count := TRuleAssert.SameAsSeparateRuns([TResultNotSetRule.Create, TPossiblyUninitializedRule.Create,
+  mCount := TRuleAssert.SameAsSeparateRuns([TResultNotSetRule.Create, TPossiblyUninitializedRule.Create,
     TUnreachableCodeRule.Create, TCapturedLoopVariableRule.Create, TUnusedLocalRule.Create,
-    TUnusedParameterRule.Create, TUnusedAssignmentRule.Create], Source, '{"minConfidence": "low"}');
-  Assert.IsTrue(Count >= 5, 'Treffer mehrerer Regeln: ' + IntToStr(Count));
+    TUnusedParameterRule.Create, TUnusedAssignmentRule.Create], cSource, '{"minConfidence": "low"}');
+  Assert.IsTrue(mCount >= 5, 'Treffer mehrerer Regeln: ' + IntToStr(mCount));
 end;
 
 const
-  FreeHeader = 'procedure P(A: Boolean; Bericht: TBericht; Protokoll: TStrings; Zeiger: PDaten);';
+  cFreeHeader = 'procedure P(A: Boolean; Bericht: TBericht; Protokoll: TStrings; Zeiger: PDaten);';
 
 procedure TFlowRulesTests.UseAfterFreeReportsWithJump;
 var
-  Findings: TArray<TRuleFinding>;
-  Actions: TArray<TCodeAction>;
-  Source: string;
-  Rule: IRule;
-  Found: Boolean;
+  mFindings: TArray<TRuleFinding>;
+  mActions: TArray<TCodeAction>;
+  mSource: string;
+  mRule: IRule;
+  mFound: Boolean;
 begin
-  Source := Routine('  Bericht.Free;'#10'  Protokoll.Add(''Seiten: '' + IntToStr(Bericht.Seiten));', FreeHeader);
-  Findings := TRuleAssert.Findings(TUseAfterFreeRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cUseAfterFreeRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Bericht wurde in Zeile 6 freigegeben und wird hier wieder gelesen.', Findings[0].Message);
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(38, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(45, Findings[0].Range.EndPos.Character);
+  mSource := Routine('  Bericht.Free;'#10'  Protokoll.Add(''Seiten: '' + IntToStr(Bericht.Seiten));', cFreeHeader);
+  mFindings := TRuleAssert.Findings(TUseAfterFreeRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cUseAfterFreeRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Bericht wurde in Zeile 6 freigegeben und wird hier wieder gelesen.', mFindings[0].Message);
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(38, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(45, mFindings[0].Range.EndPos.Character);
   // Keine automatische Korrektur, nur der Sprung zur Freigabe.
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Zur Freigabe in Zeile 6 springen', Findings[0].Fixes[0].Title);
-  Assert.IsTrue(Findings[0].Fixes[0].HasJump);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes[0].Edits)));
-  Assert.AreEqual(5, Findings[0].Fixes[0].JumpTo.Line);
-  Assert.AreEqual(2, Findings[0].Fixes[0].JumpTo.Character);
-  Actions := TRuleCodeActions.ForFindings(Findings, Source, Findings[0].Range);
-  Assert.AreEqual('Zur Freigabe in Zeile 6 springen', Actions[0].Title);
-  Assert.AreEqual(cGoToPositionCommand, Actions[0].Command);
-  Assert.AreEqual(2, Integer(Length(Actions[0].CommandArguments)));
-  Assert.AreEqual('5', Actions[0].CommandArguments[0]);
-  Assert.AreEqual('2', Actions[0].CommandArguments[1]);
-  Assert.AreEqual(cRuleFixTag, Actions[0].Tag);
-  Assert.AreEqual(0, Integer(Length(Actions[0].Edits)));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Zur Freigabe in Zeile 6 springen', mFindings[0].Fixes[0].Title);
+  Assert.IsTrue(mFindings[0].Fixes[0].HasJump);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes[0].Edits)));
+  Assert.AreEqual(5, mFindings[0].Fixes[0].JumpTo.Line);
+  Assert.AreEqual(2, mFindings[0].Fixes[0].JumpTo.Character);
+  mActions := TRuleCodeActions.ForFindings(mFindings, mSource, mFindings[0].Range);
+  Assert.AreEqual('Zur Freigabe in Zeile 6 springen', mActions[0].Title);
+  Assert.AreEqual(cGoToPositionCommand, mActions[0].Command);
+  Assert.AreEqual(2, Integer(Length(mActions[0].CommandArguments)));
+  Assert.AreEqual('5', mActions[0].CommandArguments[0]);
+  Assert.AreEqual('2', mActions[0].CommandArguments[1]);
+  Assert.AreEqual(cRuleFixTag, mActions[0].Tag);
+  Assert.AreEqual(0, Integer(Length(mActions[0].Edits)));
   // Gewöhnliche Korrekturen behalten keinen Befehl.
-  Assert.AreEqual('', Actions[1].Command);
-  Found := False;
-  for Rule in BuiltinRules do
+  Assert.AreEqual('', mActions[1].Command);
+  mFound := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = cUseAfterFreeRuleId then
+    if mRule.Descriptor.Id = cUseAfterFreeRuleId then
     begin
-      Found := True;
+      mFound := True;
     end;
   end;
-  Assert.IsTrue(Found, cUseAfterFreeRuleId);
+  Assert.IsTrue(mFound, cUseAfterFreeRuleId);
 end;
 
 procedure TFlowRulesTests.UseAfterFreeAndNilAndConfidence;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TUseAfterFreeRule.Create,
-    Routine('  FreeAndNil(Bericht);'#10'  Bericht.Drucken;'#10'  Bericht.Free;', FreeHeader));
-  Assert.AreEqual(1, Integer(Length(Findings)), 'Free nach FreeAndNil ist harmlos');
-  Assert.AreEqual('Bericht wurde in Zeile 6 mit FreeAndNil freigegeben und ist hier nil.', Findings[0].Message);
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
+  mFindings := TRuleAssert.Findings(TUseAfterFreeRule.Create,
+    Routine('  FreeAndNil(Bericht);'#10'  Bericht.Drucken;'#10'  Bericht.Free;', cFreeHeader));
+  Assert.AreEqual(1, Integer(Length(mFindings)), 'Free nach FreeAndNil ist harmlos');
+  Assert.AreEqual('Bericht wurde in Zeile 6 mit FreeAndNil freigegeben und ist hier nil.', mFindings[0].Message);
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Line);
   // Freigabe nur in einem Zweig: mittlere Konfidenz.
-  Findings := TRuleAssert.Findings(TUseAfterFreeRule.Create,
-    Routine('  if A then'#10'    Bericht.Free;'#10'  Bericht.Drucken;', FreeHeader), '{"minConfidence": "low"}',
+  mFindings := TRuleAssert.Findings(TUseAfterFreeRule.Create,
+    Routine('  if A then'#10'    Bericht.Free;'#10'  Bericht.Drucken;', cFreeHeader), '{"minConfidence": "low"}',
     'U.pas');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
   // Self.FFeld zählt wie FFeld.
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create,
-    Routine('  Self.Bericht.Free;'#10'  Bericht.Drucken;', FreeHeader)))));
+    Routine('  Self.Bericht.Free;'#10'  Bericht.Drucken;', cFreeHeader)))));
 end;
 
 procedure TFlowRulesTests.DoubleFreeAndDispose;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TUseAfterFreeRule.Create,
-    Routine('  Bericht.Free;'#10'  if Assigned(Bericht) then'#10'    Bericht.Free;', FreeHeader));
-  Assert.AreEqual(2, Integer(Length(Findings)), 'Assigned nach Free ist immer True, das zweite Free gibt doppelt frei');
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(7, Findings[1].Range.StartPos.Line);
-  Findings := TRuleAssert.Findings(TUseAfterFreeRule.Create,
-    Routine('  Dispose(Zeiger);'#10'  Zeiger^.Wert := 1;', FreeHeader));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Zeiger wurde in Zeile 6 freigegeben und wird hier wieder gelesen.', Findings[0].Message);
+  mFindings := TRuleAssert.Findings(TUseAfterFreeRule.Create,
+    Routine('  Bericht.Free;'#10'  if Assigned(Bericht) then'#10'    Bericht.Free;', cFreeHeader));
+  Assert.AreEqual(2, Integer(Length(mFindings)), 'Assigned nach Free ist immer True, das zweite Free gibt doppelt frei');
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(7, mFindings[1].Range.StartPos.Line);
+  mFindings := TRuleAssert.Findings(TUseAfterFreeRule.Create,
+    Routine('  Dispose(Zeiger);'#10'  Zeiger^.Wert := 1;', cFreeHeader));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Zeiger wurde in Zeile 6 freigegeben und wird hier wieder gelesen.', mFindings[0].Message);
   // Freigabe in der Schleife ohne neue Zuweisung: der zweite Durchlauf gibt doppelt frei.
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create,
-    Routine('  while A do'#10'    Bericht.Free;', FreeHeader), '{"minConfidence": "low"}', 'U.pas'))));
+    Routine('  while A do'#10'    Bericht.Free;', cFreeHeader), '{"minConfidence": "low"}', 'U.pas'))));
 end;
 
 procedure TFlowRulesTests.SafeUsesAfterFreeAreSilent;
@@ -467,111 +477,111 @@ begin
   TRuleAssert.Silent(TUseAfterFreeRule.Create, Routine(
     // Neue Zuweisung.
     '  Bericht.Free;'#10'  Bericht := TBericht.Create;'#10'  Bericht.Drucken;'#10 +
-    '  Bericht.Free;'#10'  Bericht := nil;'#10'  if Bericht = nil then'#10'    Exit;'#10, FreeHeader));
+    '  Bericht.Free;'#10'  Bericht := nil;'#10'  if Bericht = nil then'#10'    Exit;'#10, cFreeHeader));
   TRuleAssert.Silent(TUseAfterFreeRule.Create, Routine(
     // Nach FreeAndNil abgefragt.
     '  FreeAndNil(Bericht);'#10'  if Assigned(Bericht) then'#10'    Bericht.Drucken;'#10 +
-    '  if Bericht <> nil then'#10'    Bericht.Drucken;', FreeHeader));
+    '  if Bericht <> nil then'#10'    Bericht.Drucken;', cFreeHeader));
   TRuleAssert.Silent(TUseAfterFreeRule.Create, Routine(
     // Übergabe: nur der Zeigerwert (Liste.Remove) oder neu gesetzt (var-Parameter).
-    '  Bericht.Free;'#10'  Liste.Remove(Bericht);'#10'  Bericht.Drucken;', FreeHeader));
+    '  Bericht.Free;'#10'  Liste.Remove(Bericht);'#10'  Bericht.Drucken;', cFreeHeader));
   TRuleAssert.Silent(TUseAfterFreeRule.Create, Routine(
     // try/finally und Schleife mit neuer Zuweisung je Durchlauf.
     '  while A do'#10'  begin'#10'    Bericht := TBericht.Create;'#10'    try'#10'      Bericht.Drucken;'#10 +
     '    finally'#10'      Bericht.Free;'#10'    end;'#10'  end;'#10 +
     '  Protokoll.Free;'#10'  Bericht := nil;'#10'  Protokoll := TStringList.Create;'#10'  Protokoll.Clear;',
-    FreeHeader));
+    cFreeHeader));
   TRuleAssert.Silent(TUseAfterFreeRule.Create, Routine(
     // Im try neu gesetzt; der Weg über eine Ausnahme dazwischen bleibt aus.
     '  Bericht := TBericht.Create;'#10'  try'#10'    Bericht.Free;'#10'    Bericht := TBericht.Create;'#10 +
-    '    Bericht.Drucken;'#10'  finally'#10'    Bericht.Free;'#10'  end;', FreeHeader));
+    '    Bericht.Drucken;'#10'  finally'#10'    Bericht.Free;'#10'  end;', cFreeHeader));
   TRuleAssert.Silent(TUseAfterFreeRule.Create, Routine(
     // Freigabe nur auf einem Weg, der nicht zum Zugriff führt.
-    '  if A then'#10'  begin'#10'    Bericht.Free;'#10'    Exit;'#10'  end;'#10'  Bericht.Drucken;', FreeHeader));
+    '  if A then'#10'  begin'#10'    Bericht.Free;'#10'    Exit;'#10'  end;'#10'  Bericht.Drucken;', cFreeHeader));
 end;
 
 procedure TFlowRulesTests.UseAfterFreeOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Routine('  Bericht.Free;'#10'  Bericht.Drucken;', FreeHeader);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create, Source,
+  mSource := Routine('  Bericht.Free;'#10'  Bericht.Drucken;', cFreeHeader);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create, mSource,
     '{"rules": {"use-after-free": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create, mSource,
     '{"rules": {"use-after-free": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create, Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create, mSource,
     '{"rules": {"use-after-free": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
 end;
 
 const
-  CheckHeader = 'procedure P(Kunde, Knoten: TKunde);';
-  CheckVars = 'var'#10'  Titel: string;'#10;
+  cCheckHeader = 'procedure P(Kunde, Knoten: TKunde);';
+  cCheckVars = 'var'#10'  Titel: string;'#10;
 
 procedure TFlowRulesTests.DerefBeforeNilCheckReportsWithFix;
 const
-  Body = '  Titel := Kunde.Name;'#10'  if Assigned(Kunde) then'#10'    Anzeigen(Kunde);';
-  Fixed = '  if Assigned(Kunde) then'#10'  begin'#10'    Titel := Kunde.Name;'#10'    Anzeigen(Kunde);'#10'  end;';
+  cBody = '  Titel := Kunde.Name;'#10'  if Assigned(Kunde) then'#10'    Anzeigen(Kunde);';
+  cFixed = '  if Assigned(Kunde) then'#10'  begin'#10'    Titel := Kunde.Name;'#10'    Anzeigen(Kunde);'#10'  end;';
 var
-  Findings: TArray<TRuleFinding>;
-  Text: string;
-  Tree: TSyntaxTree;
-  Rule: IRule;
-  Found: Boolean;
+  mFindings: TArray<TRuleFinding>;
+  mText: string;
+  mTree: TSyntaxTree;
+  mRule: IRule;
+  mFound: Boolean;
 begin
-  Findings := TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine(Body, CheckHeader, CheckVars));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cDerefBeforeNilCheckRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Kunde wird hier benutzt, aber erst in Zeile 9 auf nil geprüft.', Findings[0].Message);
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(11, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Prüfung vor den Zugriff ziehen', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  Text := TChangeSignature.ApplyEdits(Routine(Body, CheckHeader, CheckVars), Findings[0].Fixes[0].Edits);
-  Assert.AreEqual(Routine(Fixed, CheckHeader, CheckVars), Text);
-  Tree := TPascalParser.Parse(Text);
+  mFindings := TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine(cBody, cCheckHeader, cCheckVars));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cDerefBeforeNilCheckRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Kunde wird hier benutzt, aber erst in Zeile 9 auf nil geprüft.', mFindings[0].Message);
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(11, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Prüfung vor den Zugriff ziehen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  mText := TChangeSignature.ApplyEdits(Routine(cBody, cCheckHeader, cCheckVars), mFindings[0].Fixes[0].Edits);
+  Assert.AreEqual(Routine(cFixed, cCheckHeader, cCheckVars), mText);
+  mTree := TPascalParser.Parse(mText);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Ergebnis parst fehlerfrei');
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), 'Ergebnis parst fehlerfrei');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Text);
-  Found := False;
-  for Rule in BuiltinRules do
+  TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, mText);
+  mFound := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = cDerefBeforeNilCheckRuleId then
+    if mRule.Descriptor.Id = cDerefBeforeNilCheckRuleId then
     begin
-      Found := True;
+      mFound := True;
     end;
   end;
-  Assert.IsTrue(Found, cDerefBeforeNilCheckRuleId);
+  Assert.IsTrue(mFound, cDerefBeforeNilCheckRuleId);
 end;
 
 procedure TFlowRulesTests.DerefBeforeNilCheckBlockAndElse;
 const
-  Body = '  Kunde.Laden;'#10'  if Kunde <> nil then'#10'  begin'#10'    Anzeigen(Kunde);'#10'    Titel := '''';'#10 +
+  cBody = '  Kunde.Laden;'#10'  if Kunde <> nil then'#10'  begin'#10'    Anzeigen(Kunde);'#10'    Titel := '''';'#10 +
     '  end;';
-  Fixed = '  if Kunde <> nil then'#10'  begin'#10'    Kunde.Laden;'#10'    Anzeigen(Kunde);'#10'    Titel := '''';'#10 +
+  cFixed = '  if Kunde <> nil then'#10'  begin'#10'    Kunde.Laden;'#10'    Anzeigen(Kunde);'#10'    Titel := '''';'#10 +
     '  end;';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine(Body, CheckHeader, CheckVars));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Routine(Fixed, CheckHeader, CheckVars),
-    TChangeSignature.ApplyEdits(Routine(Body, CheckHeader, CheckVars), Findings[0].Fixes[0].Edits));
+  mFindings := TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine(cBody, cCheckHeader, cCheckVars));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Routine(cFixed, cCheckHeader, cCheckVars),
+    TChangeSignature.ApplyEdits(Routine(cBody, cCheckHeader, cCheckVars), mFindings[0].Fixes[0].Edits));
   // Mit else oder nicht direkt danach: Meldung ohne Korrektur.
-  Findings := TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine('  Titel := Kunde.Name;'#10 +
-    '  if Kunde = nil then'#10'    Titel := '''''#10'  else'#10'    Anzeigen(Kunde);', CheckHeader, CheckVars));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
-  Findings := TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine('  Titel := Kunde.Name;'#10 +
-    '  Anzeigen(Titel);'#10'  if Assigned(Kunde) then'#10'    Anzeigen(Kunde);', CheckHeader, CheckVars));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Kunde wird hier benutzt, aber erst in Zeile 10 auf nil geprüft.', Findings[0].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  mFindings := TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine('  Titel := Kunde.Name;'#10 +
+    '  if Kunde = nil then'#10'    Titel := '''''#10'  else'#10'    Anzeigen(Kunde);', cCheckHeader, cCheckVars));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+  mFindings := TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine('  Titel := Kunde.Name;'#10 +
+    '  Anzeigen(Titel);'#10'  if Assigned(Kunde) then'#10'    Anzeigen(Kunde);', cCheckHeader, cCheckVars));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Kunde wird hier benutzt, aber erst in Zeile 10 auf nil geprüft.', mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TFlowRulesTests.DerefBeforeNilCheckSilentCases;
@@ -579,59 +589,59 @@ begin
   TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
     // Schon vorher geprüft.
     '  if Kunde = nil then'#10'    Exit;'#10'  Titel := Kunde.Name;'#10'  if Assigned(Kunde) then'#10 +
-    '    Anzeigen(Kunde);', CheckHeader, CheckVars));
+    '    Anzeigen(Kunde);', cCheckHeader, cCheckVars));
   TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
     // Dazwischen neu gesetzt bzw. X := X.Next.
     '  Titel := Kunde.Name;'#10'  Kunde := Suchen(Titel);'#10'  if Assigned(Kunde) then'#10'    Anzeigen(Kunde);'#10 +
-    '  Knoten := Knoten.Weiter;'#10'  if Knoten <> nil then'#10'    Anzeigen(Knoten);', CheckHeader, CheckVars));
+    '  Knoten := Knoten.Weiter;'#10'  if Knoten <> nil then'#10'    Anzeigen(Knoten);', cCheckHeader, cCheckVars));
   TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
     // Prüfung im selben Ausdruck vor dem Zugriff, Schleife über eine Kette.
     '  if Assigned(Kunde) and Kunde.Aktiv then'#10'    Anzeigen(Kunde);'#10 +
     '  while Knoten <> nil do'#10'  begin'#10'    Knoten.Pruefen;'#10'    Knoten := Knoten.Weiter;'#10'  end;',
-    CheckHeader, CheckVars));
+    cCheckHeader, cCheckVars));
   TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
     // X is T im selben Ausdruck schützt wie Assigned; der else-Zweig prüft danach auf nil.
     '  if (Kunde is TKunde) and Kunde.Aktiv then'#10'    Anzeigen(Kunde)'#10'  else if Kunde <> nil then'#10 +
-    '    Melden;', CheckHeader, CheckVars));
+    '    Melden;', cCheckHeader, cCheckVars));
   TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
     // Übergabe dazwischen: die Routine kann den Wert ändern.
     '  Titel := Kunde.Name;'#10'  Ersetzen(Kunde);'#10'  if Assigned(Kunde) then'#10'    Anzeigen(Kunde);',
-    CheckHeader, CheckVars));
+    cCheckHeader, cCheckVars));
   TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
     // Supports setzt Kunde im selben Ausdruck; Zugriff nur in einem Zweig, die Prüfung gilt dem anderen.
     '  if Supports(Quelle, IKunde, Kunde) and Kunde.Aktiv then'#10'    Titel := '''';'#10 +
     '  if A then'#10'  begin'#10'    Kunde := TKunde.Create;'#10'    Kunde.Laden;'#10'  end;'#10 +
-    '  if Kunde <> nil then'#10'    Anzeigen(Kunde);', 'procedure P(A: Boolean; Kunde: TKunde);', CheckVars));
+    '  if Kunde <> nil then'#10'    Anzeigen(Kunde);', 'procedure P(A: Boolean; Kunde: TKunde);', cCheckVars));
   TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
     // while als Prüfung späterer Durchläufe.
-    '  Titel := Knoten.Name;'#10'  while Knoten <> nil do'#10'    Knoten := Knoten.Parent;', CheckHeader, CheckVars));
+    '  Titel := Knoten.Name;'#10'  while Knoten <> nil do'#10'    Knoten := Knoten.Parent;', cCheckHeader, cCheckVars));
   TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
     // Ein Zweig setzt Knoten neu (FindChild kann nil liefern); die Prüfung gilt diesem Wert (#1109).
     '  if Knoten.Kind = 1 then'#10'    Knoten := Knoten.FindChild(2);'#10'  if Knoten = nil then'#10'    Exit;',
-    CheckHeader, CheckVars));
+    cCheckHeader, cCheckVars));
   TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
     // FreeAndNil im except-Zweig setzt Kunde auf nil; die Prüfung danach gilt diesem Weg (TWICImage laden).
     '  try'#10'    Kunde.Laden;'#10'  except'#10'    on Exception do'#10'      FreeAndNil(Kunde);'#10'  end;'#10 +
-    '  if Kunde <> nil then'#10'    Anzeigen(Kunde);', CheckHeader, CheckVars));
+    '  if Kunde <> nil then'#10'    Anzeigen(Kunde);', cCheckHeader, cCheckVars));
 end;
 
 procedure TFlowRulesTests.DerefBeforeNilCheckFieldsAndOff;
 var
-  Source: string;
+  mSource: string;
 begin
   // Feld ohne Aufruf dazwischen: gemeldet; mit Aufruf (kann das Feld ändern): still.
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine(
-    '  Titel := FKunde.Name;'#10'  if Assigned(FKunde) then'#10'    Titel := '''';', CheckHeader, CheckVars)))));
+    '  Titel := FKunde.Name;'#10'  if Assigned(FKunde) then'#10'    Titel := '''';', cCheckHeader, cCheckVars)))));
   TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
-    '  Titel := FKunde.Name;'#10'  Laden;'#10'  if Assigned(FKunde) then'#10'    Titel := '''';', CheckHeader,
-    CheckVars));
-  Source := Routine('  Titel := Kunde.Name;'#10'  if Assigned(Kunde) then'#10'    Anzeigen(Kunde);', CheckHeader,
-    CheckVars);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Source,
+    '  Titel := FKunde.Name;'#10'  Laden;'#10'  if Assigned(FKunde) then'#10'    Titel := '''';', cCheckHeader,
+    cCheckVars));
+  mSource := Routine('  Titel := Kunde.Name;'#10'  if Assigned(Kunde) then'#10'    Anzeigen(Kunde);', cCheckHeader,
+    cCheckVars);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, mSource,
     '{"rules": {"deref-before-nil-check": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, mSource,
     '{"rules": {"deref-before-nil-check": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Source,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, mSource,
     '{"rules": {"deref-before-nil-check": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
 end;
 
@@ -644,35 +654,35 @@ end;
 
 procedure TFlowRulesTests.FieldFreeWithoutNilReportsWithFix;
 const
-  Body = 'procedure TImport.Zuruecksetzen;'#10'begin'#10'  FCache.Free;'#10'end;'#10;
-  Fixed = 'procedure TImport.Zuruecksetzen;'#10'begin'#10'  FreeAndNil(FCache);'#10'end;'#10;
+  cBody = 'procedure TImport.Zuruecksetzen;'#10'begin'#10'  FCache.Free;'#10'end;'#10;
+  cFixed = 'procedure TImport.Zuruecksetzen;'#10'begin'#10'  FreeAndNil(FCache);'#10'end;'#10;
 var
-  Findings: TArray<TRuleFinding>;
-  Text: string;
-  Tree: TSyntaxTree;
-  Rule: IRule;
-  Found: Boolean;
+  mFindings: TArray<TRuleFinding>;
+  mText: string;
+  mTree: TSyntaxTree;
+  mRule: IRule;
+  mFound: Boolean;
 begin
-  Findings := TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(Body));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cFieldFreeWithoutNilRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(cBody));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cFieldFreeWithoutNilRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual('FCache bleibt nach Free gesetzt; ein späterer Zugriff trifft freigegebenen Speicher.',
-    Findings[0].Message);
-  Assert.AreEqual(15, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('FreeAndNil(FCache)', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  Text := TChangeSignature.ApplyEdits(ClassUnit(Body), Findings[0].Fixes[0].Edits);
-  Assert.AreEqual(ClassUnit(Fixed), Text);
-  Tree := TPascalParser.Parse(Text);
+    mFindings[0].Message);
+  Assert.AreEqual(15, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('FreeAndNil(FCache)', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  mText := TChangeSignature.ApplyEdits(ClassUnit(cBody), mFindings[0].Fixes[0].Edits);
+  Assert.AreEqual(ClassUnit(cFixed), mText);
+  mTree := TPascalParser.Parse(mText);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Ergebnis parst fehlerfrei');
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), 'Ergebnis parst fehlerfrei');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  TRuleAssert.Silent(TFieldFreeWithoutNilRule.Create, Text);
+  TRuleAssert.Silent(TFieldFreeWithoutNilRule.Create, mText);
   // Nur in einem Zweig, Self.FFeld und Free().
   Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(
     'procedure TImport.Zuruecksetzen;'#10'begin'#10'  if FListe = nil then'#10'    Self.FCache.Free'#10 +
@@ -682,15 +692,15 @@ begin
     'unit U;'#10'interface'#10'type'#10'  TStapel<T> = class'#10'  private'#10'    FElemente: TList<T>;'#10 +
     '    procedure Leeren;'#10'  end;'#10'implementation'#10 +
     'procedure TStapel<T>.Leeren;'#10'begin'#10'  FElemente.Free;'#10'end;'#10'end.'))));
-  Found := False;
-  for Rule in BuiltinRules do
+  mFound := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = cFieldFreeWithoutNilRuleId then
+    if mRule.Descriptor.Id = cFieldFreeWithoutNilRuleId then
     begin
-      Found := True;
+      mFound := True;
     end;
   end;
-  Assert.IsTrue(Found, cFieldFreeWithoutNilRuleId);
+  Assert.IsTrue(mFound, cFieldFreeWithoutNilRuleId);
 end;
 
 procedure TFlowRulesTests.FieldFreeWithoutNilSilentCases;
@@ -727,74 +737,74 @@ end;
 
 procedure TFlowRulesTests.FieldFreeIgnoreMethodsAndOff;
 const
-  Body = 'procedure TImport.BeforeDestruction;'#10'begin'#10'  FCache.Free;'#10'end;'#10 +
+  cBody = 'procedure TImport.BeforeDestruction;'#10'begin'#10'  FCache.Free;'#10'end;'#10 +
     'procedure TImport.Zuruecksetzen;'#10'begin'#10'  FListe.Free;'#10'end;'#10;
 var
-  Findings: TArray<TRuleFinding>;
-  Issues: TArray<TConfigurationIssue>;
+  mFindings: TArray<TRuleFinding>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Findings := TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(Body));
-  Assert.AreEqual(1, Integer(Length(Findings)), 'Vorgabe: BeforeDestruction ausgenommen');
+  mFindings := TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(cBody));
+  Assert.AreEqual(1, Integer(Length(mFindings)), 'Vorgabe: BeforeDestruction ausgenommen');
   Assert.AreEqual('FListe bleibt nach Free gesetzt; ein späterer Zugriff trifft freigegebenen Speicher.',
-    Findings[0].Message);
-  Findings := TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(Body),
+    mFindings[0].Message);
+  mFindings := TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(cBody),
     '{"rules": {"field-free-without-nil": {"ignoreMethods": ["Zuruecksetzen"]}}}', 'U.pas');
-  Assert.AreEqual(1, Integer(Length(Findings)), 'Option ersetzt die Vorgabe');
+  Assert.AreEqual(1, Integer(Length(mFindings)), 'Option ersetzt die Vorgabe');
   Assert.AreEqual('FCache bleibt nach Free gesetzt; ein späterer Zugriff trifft freigegebenen Speicher.',
-    Findings[0].Message);
+    mFindings[0].Message);
   Assert.AreEqual(2, Integer(Length(TFieldFreeWithoutNilRule.DefaultIgnoreMethods)));
-  TConfigurationParser.Parse('{"rules": {"field-free-without-nil": {"ignoreMethods": "Destroy"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual('"ignoreMethods" muss eine Liste von Texten sein', Issues[0].Message);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(Body),
+  TConfigurationParser.Parse('{"rules": {"field-free-without-nil": {"ignoreMethods": "Destroy"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"ignoreMethods" muss eine Liste von Texten sein', mIssues[0].Message);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(cBody),
     '{"rules": {"field-free-without-nil": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(Body),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(cBody),
     '{"rules": {"field-free-without-nil": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(Body),
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(cBody),
     '{"rules": {"field-free-without-nil": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
 end;
 
 const
-  Anhaengen = 'unit U;'#10'interface'#10'procedure Anhaengen(out Text: string);'#10'implementation'#10 +
+  cAnhaengen = 'unit U;'#10'interface'#10'procedure Anhaengen(out Text: string);'#10'implementation'#10 +
     'procedure Anhaengen(out Text: string);'#10'begin'#10'  Text := Text + sLineBreak + ''Ende'';'#10'end;'#10'end.';
 
 procedure TFlowRulesTests.OutParamReadIssueExample;
 var
-  Findings: TArray<TRuleFinding>;
-  Fixed: string;
+  mFindings: TArray<TRuleFinding>;
+  mFixed: string;
 begin
-  Findings := TRuleAssert.Findings(TOutParamReadRule.Create, Anhaengen);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TOutParamReadRule.Create, cAnhaengen);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('out-Parameter Text wird gelesen, bevor er gesetzt ist; bei string ist er hier immer leer.',
-    Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('out durch var ersetzen', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes[0].Edits)), 'Deklaration und Implementierung');
-  Fixed := TChangeSignature.ApplyEdits(Anhaengen, Findings[0].Fixes[0].Edits);
-  Assert.AreEqual(StringReplace(Anhaengen, '(out Text', '(var Text', [rfReplaceAll]), Fixed);
-  TRuleAssert.Silent(TOutParamReadRule.Create, Fixed);
+    mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('out durch var ersetzen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes[0].Edits)), 'Deklaration und Implementierung');
+  mFixed := TChangeSignature.ApplyEdits(cAnhaengen, mFindings[0].Fixes[0].Edits);
+  Assert.AreEqual(StringReplace(cAnhaengen, '(out Text', '(var Text', [rfReplaceAll]), mFixed);
+  TRuleAssert.Silent(TOutParamReadRule.Create, mFixed);
 end;
 
 procedure TFlowRulesTests.OutParamReadMethodAndInteger;
 const
-  Source = 'unit U;'#10'interface'#10'type'#10'  TZaehler = class'#10'    procedure Weiter(out N: Integer);'#10 +
+  cSource = 'unit U;'#10'interface'#10'type'#10'  TZaehler = class'#10'    procedure Weiter(out N: Integer);'#10 +
     '  end;'#10'  TAnderer = class'#10'    procedure Weiter(out N: Integer);'#10'  end;'#10'implementation'#10 +
     'procedure TZaehler.Weiter(out N: Integer);'#10'begin'#10'  if N > 0 then'#10'    N := 0;'#10'end;'#10 +
     'procedure TAnderer.Weiter(out N: Integer);'#10'begin'#10'  N := 1;'#10'end;'#10'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TOutParamReadRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TOutParamReadRule.Create, cSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('out-Parameter N wird gelesen, bevor er gesetzt ist; sein Wert ist hier undefiniert.',
-    Findings[0].Message);
+    mFindings[0].Message);
   // Nur die Deklaration in TZaehler, nicht die gleichnamige in TAnderer.
-  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes[0].Edits)));
-  Assert.AreEqual(4, Findings[0].Fixes[0].Edits[0].Range.StartPos.Line);
-  Assert.AreEqual(10, Findings[0].Fixes[0].Edits[1].Range.StartPos.Line);
+  Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes[0].Edits)));
+  Assert.AreEqual(4, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Line);
+  Assert.AreEqual(10, mFindings[0].Fixes[0].Edits[1].Range.StartPos.Line);
 end;
 
 procedure TFlowRulesTests.OutParamReadSilentAndOff;
@@ -806,11 +816,11 @@ begin
     'procedure C(out R: TPunkt);'#10'begin'#10'  R.X := 1;'#10'  R.Y := R.X;'#10'end;'#10 +
     'procedure D(var S: string);'#10'begin'#10'  S := S + ''x'';'#10'end;'#10 +
     'function E(out P: TPunkt): Boolean;'#10'begin'#10'  Result := Lesen(P.X) and (P.X > 0);'#10'end;'#10'end.');
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOutParamReadRule.Create, Anhaengen,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOutParamReadRule.Create, cAnhaengen,
     '{"rules": {"out-param-read": "off"}}', 'U.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOutParamReadRule.Create, Anhaengen,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOutParamReadRule.Create, cAnhaengen,
     '{"rules": {"out-param-read": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TOutParamReadRule.Create, Anhaengen,
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TOutParamReadRule.Create, cAnhaengen,
     '{"rules": {"out-param-read": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
 end;
 
@@ -829,117 +839,117 @@ begin
 end;
 
 const
-  ImportCreate = '  inherited Create;'#10'  FStrom := TFileStream.Create(Datei, fmOpenRead);'#10 +
+  cImportCreate = '  inherited Create;'#10'  FStrom := TFileStream.Create(Datei, fmOpenRead);'#10 +
     '  FZeilen := TStringList.Create;';
 
 procedure TFlowRulesTests.DestructorNotNilSafeIssueExample;
 const
-  Destroy = '  FZeilen.Clear;'#10'  FZeilen.Free;'#10'  FStrom.Free;'#10'  inherited;';
-  Fixed = '  if Assigned(FZeilen) then'#10'    FZeilen.Clear;'#10'  FZeilen.Free;'#10'  FStrom.Free;'#10'  inherited;';
+  cDestroy = '  FZeilen.Clear;'#10'  FZeilen.Free;'#10'  FStrom.Free;'#10'  inherited;';
+  cFixed = '  if Assigned(FZeilen) then'#10'    FZeilen.Clear;'#10'  FZeilen.Free;'#10'  FStrom.Free;'#10'  inherited;';
 var
-  Findings: TArray<TRuleFinding>;
-  Text: string;
-  Tree: TSyntaxTree;
-  Rule: IRule;
-  Found: Boolean;
+  mFindings: TArray<TRuleFinding>;
+  mText: string;
+  mTree: TSyntaxTree;
+  mRule: IRule;
+  mFound: Boolean;
 begin
-  Findings := TRuleAssert.Findings(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate, Destroy));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cDestructorNotNilSafeRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(TDestructorNotNilSafeRule.Create, ImportUnit(cImportCreate, cDestroy));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cDestructorNotNilSafeRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Wirft TFileStream.Create, ist FZeilen beim Destruktor noch nil; FZeilen.Clear stürzt ab und ' +
-    'verdeckt die eigentliche Exception.', Findings[0].Message);
-  Assert.AreEqual(21, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('In if Assigned(FZeilen) then einschließen', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  Text := TChangeSignature.ApplyEdits(ImportUnit(ImportCreate, Destroy), Findings[0].Fixes[0].Edits);
-  Assert.AreEqual(ImportUnit(ImportCreate, Fixed), Text);
-  Tree := TPascalParser.Parse(Text);
+    'verdeckt die eigentliche Exception.', mFindings[0].Message);
+  Assert.AreEqual(21, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('In if Assigned(FZeilen) then einschließen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  mText := TChangeSignature.ApplyEdits(ImportUnit(cImportCreate, cDestroy), mFindings[0].Fixes[0].Edits);
+  Assert.AreEqual(ImportUnit(cImportCreate, cFixed), mText);
+  mTree := TPascalParser.Parse(mText);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Ergebnis parst fehlerfrei');
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), 'Ergebnis parst fehlerfrei');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, Text);
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, mText);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDestructorNotNilSafeRule.Create,
-    ImportUnit(ImportCreate, Destroy), '{"rules": {"destructor-not-nil-safe": "off"}}', 'U.pas'))));
+    ImportUnit(cImportCreate, cDestroy), '{"rules": {"destructor-not-nil-safe": "off"}}', 'U.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDestructorNotNilSafeRule.Create,
-    ImportUnit(ImportCreate, Destroy), '{"rules": {"destructor-not-nil-safe": {"exclude": ["Alt/*.pas"]}}}',
+    ImportUnit(cImportCreate, cDestroy), '{"rules": {"destructor-not-nil-safe": {"exclude": ["Alt/*.pas"]}}}',
     'Alt/U.pas'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDestructorNotNilSafeRule.Create,
-    ImportUnit(ImportCreate, Destroy), '{"rules": {"destructor-not-nil-safe": {"exclude": ["Alt/*.pas"]}}}',
+    ImportUnit(cImportCreate, cDestroy), '{"rules": {"destructor-not-nil-safe": {"exclude": ["Alt/*.pas"]}}}',
     'Neu/U.pas'))));
-  Found := False;
-  for Rule in BuiltinRules do
+  mFound := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = cDestructorNotNilSafeRuleId then
+    if mRule.Descriptor.Id = cDestructorNotNilSafeRuleId then
     begin
-      Found := True;
+      mFound := True;
     end;
   end;
-  Assert.IsTrue(Found, cDestructorNotNilSafeRuleId);
+  Assert.IsTrue(mFound, cDestructorNotNilSafeRuleId);
 end;
 
 procedure TFlowRulesTests.DestructorNotNilSafeVariants;
 var
-  Findings: TArray<TRuleFinding>;
-  Issues: TArray<TConfigurationIssue>;
+  mFindings: TArray<TRuleFinding>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
   // Nur bedingt angelegt: auch ohne Aufruf davor; Zugriff über Self, Property und Index.
-  Findings := TRuleAssert.Findings(TDestructorNotNilSafeRule.Create, ImportUnit(
+  mFindings := TRuleAssert.Findings(TDestructorNotNilSafeRule.Create, ImportUnit(
     '  inherited Create;'#10'  if Datei <> '''' then'#10'    FZeilen := TStringList.Create;',
     '  if Self.FZeilen.Count > 0 then'#10'    Speichern;'#10'  FZeilen.Free;'#10'  inherited;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('FZeilen wird im Konstruktor nur bedingt angelegt und kann beim Destruktor nil sein; ' +
-    'Self.FZeilen.Count stürzt dann ab.', Findings[0].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)), 'if über mehrere Zeilen: keine Korrektur');
+    'Self.FZeilen.Count stürzt dann ab.', mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)), 'if über mehrere Zeilen: keine Korrektur');
   // Ein Aufruf ohne Klammern vor dem Anlegen; Zugriff in einer Hilfsmethode, die nur der Destruktor aufruft.
-  Findings := TRuleAssert.Findings(TDestructorNotNilSafeRule.Create, ImportUnit(
+  mFindings := TRuleAssert.Findings(TDestructorNotNilSafeRule.Create, ImportUnit(
     '  inherited Create;'#10'  Pruefen;'#10'  FZeilen := TStringList.Create;',
     '  Leeren;'#10'  FZeilen.Free;'#10'  inherited;',
     'procedure TImport.Leeren;'#10'begin'#10'  FZeilen[0] := '''';'#10'end;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Wirft Pruefen, ist FZeilen beim Destruktor noch nil; FZeilen[0] stürzt ab und verdeckt die ' +
-    'eigentliche Exception.', Findings[0].Message);
-  Assert.AreEqual(27, Findings[0].Range.StartPos.Line);
+    'eigentliche Exception.', mFindings[0].Message);
+  Assert.AreEqual(27, mFindings[0].Range.StartPos.Line);
   // onlyAfterRaisingCode aus: auch das erste angelegte Feld.
-  Findings := TRuleAssert.Findings(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+  mFindings := TRuleAssert.Findings(TDestructorNotNilSafeRule.Create, ImportUnit(cImportCreate,
     '  FStrom.Position := 0;'#10'  FStrom.Free;'#10'  inherited;'),
     '{"rules": {"destructor-not-nil-safe": {"onlyAfterRaisingCode": false}}}', 'U.pas');
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Wirft TFileStream.Create, ist FStrom beim Destruktor noch nil; FStrom.Position stürzt ab und ' +
-    'verdeckt die eigentliche Exception.', Findings[0].Message);
-  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+    'verdeckt die eigentliche Exception.', mFindings[0].Message);
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(cImportCreate,
     '  FStrom.Position := 0;'#10'  FStrom.Free;'#10'  inherited;'));
   // Der Parser prüft die Option als Wahrheitswert.
-  TConfigurationParser.Parse('{"rules": {"destructor-not-nil-safe": {"onlyAfterRaisingCode": "ja"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  TConfigurationParser.Parse('{"rules": {"destructor-not-nil-safe": {"onlyAfterRaisingCode": false}}}', Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"destructor-not-nil-safe": {"onlyAfterRaisingCode": "ja"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  TConfigurationParser.Parse('{"rules": {"destructor-not-nil-safe": {"onlyAfterRaisingCode": false}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
   // Je Anweisung ein Befund, damit jede Korrektur ihre Anweisung schützt.
-  TRuleAssert.Reports(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+  TRuleAssert.Reports(TDestructorNotNilSafeRule.Create, ImportUnit(cImportCreate,
     '  FZeilen.Clear;'#10'  FZeilen.Sorted := False;'#10'  FZeilen.Free;'#10'  inherited;'), 2);
   // TObjectList<T>.Create(True) wirft höchstens EOutOfMemory; ein Konstruktor mit Datei davor schon.
   TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(
     '  FStrom := TObjectList<TObject>.Create(True);'#10'  FZeilen := TStringList.Create;',
     '  FZeilen.Clear;'#10'  inherited;'));
   // Destroy ist nicht nil-sicher; DisposeOf schon.
-  TRuleAssert.Reports(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+  TRuleAssert.Reports(TDestructorNotNilSafeRule.Create, ImportUnit(cImportCreate,
     '  FZeilen.Destroy;'#10'  FStrom.DisposeOf;'#10'  inherited;'));
 end;
 
 procedure TFlowRulesTests.DestructorNotNilSafeSilentCases;
 begin
   // Free, FreeAndNil, Assigned, <> nil, = nil mit Exit.
-  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(cImportCreate,
     '  FreeAndNil(FZeilen);'#10'  FStrom.Free;'#10'  inherited;'));
-  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(cImportCreate,
     '  if Assigned(FZeilen) and (FZeilen.Count > 0) then'#10'    FZeilen.Clear;'#10'  FZeilen.Free;'#10 +
     '  inherited;'));
-  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(cImportCreate,
     '  if FZeilen <> nil then'#10'    FZeilen.Clear;'#10'  inherited;'));
   // Kein werfender Aufruf vor dem Anlegen: inherited Create zählt nicht.
   TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(
@@ -951,13 +961,13 @@ begin
     '    FZeilen := THashedStringList.Create;',
     '  FZeilen.Clear;'#10'  inherited;'));
   // BeforeDestruction läuft nach einer Exception im Konstruktor nicht; Leeren wird auch anderswo aufgerufen.
-  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(cImportCreate,
     '  Leeren;'#10'  inherited;',
     'procedure TImport.BeforeDestruction;'#10'begin'#10'  FZeilen.SaveToFile(''x'');'#10'end;'#10 +
     'procedure TImport.Leeren;'#10'begin'#10'  FZeilen.Clear;'#10'end;'#10 +
     'procedure TImport.Neu;'#10'begin'#10'  Leeren;'#10'end;'#10));
   // Im Destruktor neu gesetzt; Feld nicht im Konstruktor angelegt; Klasse ohne Konstruktor.
-  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(cImportCreate,
     '  FZeilen := nil;'#10'  FZeilen.Free;'#10'  inherited;'));
   TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit('  inherited Create;'#10'  Pruefen;',
     '  FZeilen.Clear;'#10'  inherited;'));
@@ -1047,84 +1057,84 @@ end;
 
 procedure TFlowRulesTests.HandleLeakIssueExample;
 const
-  Body = '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'#10 +
+  cBody = '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'#10 +
     '  WaitForSingleObject(PI.hProcess, INFINITE);';
-  Fixed = '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'#10'  try'#10 +
+  cFixed = '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'#10'  try'#10 +
     '    WaitForSingleObject(PI.hProcess, INFINITE);'#10'  finally'#10'    CloseHandle(PI.hThread);'#10 +
     '    CloseHandle(PI.hProcess);'#10'  end;';
 var
-  Findings: TArray<TRuleFinding>;
-  Text: string;
-  Tree: TSyntaxTree;
-  Rule: IRule;
-  Found: Boolean;
+  mFindings: TArray<TRuleFinding>;
+  mText: string;
+  mTree: TSyntaxTree;
+  mRule: IRule;
+  mFound: Boolean;
 begin
-  Findings := TRuleAssert.Findings(THandleLeakRule.Create, Prozess(Body));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cHandleLeakRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(THandleLeakRule.Create, Prozess(cBody));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cHandleLeakRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual('PI.hProcess und PI.hThread werden nie mit CloseHandle geschlossen (Handle-Leck).',
-    Findings[0].Message);
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('In try … finally CloseHandle einschließen', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  Text := TChangeSignature.ApplyEdits(Prozess(Body), Findings[0].Fixes[0].Edits);
-  Assert.AreEqual(Prozess(Fixed), Text);
-  Tree := TPascalParser.Parse(Text);
+    mFindings[0].Message);
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('In try … finally CloseHandle einschließen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  mText := TChangeSignature.ApplyEdits(Prozess(cBody), mFindings[0].Fixes[0].Edits);
+  Assert.AreEqual(Prozess(cFixed), mText);
+  mTree := TPascalParser.Parse(mText);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Ergebnis parst fehlerfrei');
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), 'Ergebnis parst fehlerfrei');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  TRuleAssert.Silent(THandleLeakRule.Create, Text);
-  Found := False;
-  for Rule in BuiltinRules do
+  TRuleAssert.Silent(THandleLeakRule.Create, mText);
+  mFound := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = cHandleLeakRuleId then
+    if mRule.Descriptor.Id = cHandleLeakRuleId then
     begin
-      Found := True;
+      mFound := True;
     end;
   end;
-  Assert.IsTrue(Found, cHandleLeakRuleId);
+  Assert.IsTrue(mFound, cHandleLeakRuleId);
 end;
 
 procedure TFlowRulesTests.HandleLeakVariants;
 var
-  Findings: TArray<TRuleFinding>;
-  Text: string;
+  mFindings: TArray<TRuleFinding>;
+  mText: string;
 begin
   // Nach der Prüfung auf INVALID_HANDLE_VALUE, auf einem Weg mit Exit nicht geschlossen.
-  Findings := TRuleAssert.Findings(THandleLeakRule.Create, Datei('  H: THandle;'#10,
+  mFindings := TRuleAssert.Findings(THandleLeakRule.Create, Datei('  H: THandle;'#10,
     '  H := CreateFileW(''a.txt'', GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);'#10 +
     '  if H = INVALID_HANDLE_VALUE then'#10'    RaiseLastOSError;'#10'  if Fehler then'#10'    Exit;'#10 +
     '  CloseHandle(H);'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('H wird nicht auf jedem Weg mit CloseHandle geschlossen (Handle-Leck).', Findings[0].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)), 'nur ohne jedes Schließen eine Korrektur');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('H wird nicht auf jedem Weg mit CloseHandle geschlossen (Handle-Leck).', mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)), 'nur ohne jedes Schließen eine Korrektur');
   // out-Argument von RegOpenKeyEx im Zweig "gelungen".
-  Findings := TRuleAssert.Findings(THandleLeakRule.Create, Datei('  Key: HKEY;'#10,
+  mFindings := TRuleAssert.Findings(THandleLeakRule.Create, Datei('  Key: HKEY;'#10,
     '  if RegOpenKeyEx(HKEY_CURRENT_USER, ''Software\Atlas'', 0, KEY_READ, Key) = ERROR_SUCCESS then'#10 +
     '    RegQueryValueEx(Key, ''Pfad'', nil, nil, nil, nil);'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Key wird nie mit RegCloseKey geschlossen (Handle-Leck).', Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Key wird nie mit RegCloseKey geschlossen (Handle-Leck).', mFindings[0].Message);
   // GetDC: das Gegenstück bekommt das Fenster; letzte Anweisung im Block: nur anhängen.
-  Findings := TRuleAssert.Findings(THandleLeakRule.Create, Datei('  DC: HDC;'#10,
+  mFindings := TRuleAssert.Findings(THandleLeakRule.Create, Datei('  DC: HDC;'#10,
     '  DC := GetDC(Wnd);'#10'  TextOut(DC, 0, 0, ''x'', 1);'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Text := TChangeSignature.ApplyEdits(Datei('  DC: HDC;'#10, '  DC := GetDC(Wnd);'#10'  TextOut(DC, 0, 0, ''x'', 1);'),
-    Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  mText := TChangeSignature.ApplyEdits(Datei('  DC: HDC;'#10, '  DC := GetDC(Wnd);'#10'  TextOut(DC, 0, 0, ''x'', 1);'),
+    mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Datei('  DC: HDC;'#10, '  DC := GetDC(Wnd);'#10'  try'#10'    TextOut(DC, 0, 0, ''x'', 1);'#10 +
-    '  finally'#10'    ReleaseDC(Wnd, DC);'#10'  end;'), Text);
-  Findings := TRuleAssert.Findings(THandleLeakRule.Create, Datei('  Lib: HMODULE;'#10,
+    '  finally'#10'    ReleaseDC(Wnd, DC);'#10'  end;'), mText);
+  mFindings := TRuleAssert.Findings(THandleLeakRule.Create, Datei('  Lib: HMODULE;'#10,
     '  Lib := LoadLibrary(''x.dll'');'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('FreeLibrary ergänzen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('FreeLibrary ergänzen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(Datei('  Lib: HMODULE;'#10, '  Lib := LoadLibrary(''x.dll'');'#10'  FreeLibrary(Lib);'),
     TChangeSignature.ApplyEdits(Datei('  Lib: HMODULE;'#10, '  Lib := LoadLibrary(''x.dll'');'),
-    Findings[0].Fixes[0].Edits));
+    mFindings[0].Fixes[0].Edits));
   // Inline-Variable und GDI-Objekt; if mit Fehlerwert 0 im else-Zweig.
   TRuleAssert.Reports(THandleLeakRule.Create, Datei('  X: Integer;'#10,
     '  var Stift := CreatePen(PS_SOLID, 1, 0);'#10'  SelectObject(0, Stift);'));
@@ -1177,20 +1187,20 @@ end;
 
 procedure TFlowRulesTests.HandleLeakPairsAndOff;
 const
-  Body = '  H := MeinOeffnen(1);'#10'  Benutzen;';
+  cBody = '  H := MeinOeffnen(1);'#10'  Benutzen;';
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create, Datei('  H: THandle;'#10, Body),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create, Datei('  H: THandle;'#10, cBody),
     '{}', 'U.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create, Datei('  H: THandle;'#10, Body),
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create, Datei('  H: THandle;'#10, cBody),
     '{"rules": {"handle-leak": {"pairs": ["MeinOeffnen>MeinSchliessen"]}}}', 'U.pas'))));
   Assert.AreEqual('H wird nie mit MeinSchliessen geschlossen (Handle-Leck).', TRuleAssert.Findings(
-    THandleLeakRule.Create, Datei('  H: THandle;'#10, Body),
+    THandleLeakRule.Create, Datei('  H: THandle;'#10, cBody),
     '{"rules": {"handle-leak": {"pairs": [{"open": "MeinOeffnen", "close": "MeinSchliessen"}]}}}',
     'U.pas')[0].Message);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create, Datei('  H: THandle;'#10,
-    Body + #10'  MeinSchliessen(H);'), '{"rules": {"handle-leak": {"pairs": ["MeinOeffnen>MeinSchliessen"]}}}',
+    cBody + #10'  MeinSchliessen(H);'), '{"rules": {"handle-leak": {"pairs": ["MeinOeffnen>MeinSchliessen"]}}}',
     'U.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create, Prozess(
     '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'), '{"rules": {"handle-leak": "off"}}',
@@ -1199,12 +1209,12 @@ begin
     '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'),
     '{"rules": {"handle-leak": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
   // Der Parser nimmt Texte "Öffnen>Schließen" und Objekte an, aber keine Zahlen.
-  TConfigurationParser.Parse('{"rules": {"handle-leak": {"pairs": ["A>B", {"open": "C", "close": "D"}]}}}', Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
-  TConfigurationParser.Parse('{"rules": {"handle-leak": {"pairs": [1]}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  TConfigurationParser.Parse('{"rules": {"handle-leak": {"pairs": ["OhnePfeil"]}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"handle-leak": {"pairs": ["A>B", {"open": "C", "close": "D"}]}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  TConfigurationParser.Parse('{"rules": {"handle-leak": {"pairs": [1]}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  TConfigurationParser.Parse('{"rules": {"handle-leak": {"pairs": ["OhnePfeil"]}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
 
 { TNoreturnReturnsTests }
@@ -1218,10 +1228,20 @@ begin
     'procedure Fehler(const AText: string);'#10'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
-function NoreturnFindings(const ASource: string; const AConfig: string = ''; const APath: string = ''):
-  TArray<TRuleFinding>;
+function NoreturnFindings(const ASource: string; const AConfig: string; const APath: string):
+  TArray<TRuleFinding>; overload;
 begin
   Result := TRuleAssert.Findings(TNoreturnReturnsRule.Create, ASource, AConfig, APath);
+end;
+
+function NoreturnFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := NoreturnFindings(ASource, '', '');
+end;
+
+function NoreturnFindings(const ASource: string; const AConfig: string): TArray<TRuleFinding>; overload;
+begin
+  Result := NoreturnFindings(ASource, AConfig, '');
 end;
 
 function IndexWith(const ASource: string): ISymbolIndex;

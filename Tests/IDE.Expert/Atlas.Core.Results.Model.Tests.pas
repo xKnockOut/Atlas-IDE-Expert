@@ -35,40 +35,40 @@ uses
 
 procedure TAtlasResultsTests.GroupsByFileAndSortsByPosition;
 var
-  Groups: TArray<TAtlasResultGroup>;
+  mGroups: TArray<TAtlasResultGroup>;
 begin
-  Groups := TAtlasResults.Group([TAtlasResultEntry.Create('C:\P\Zahl.pas', 9, 1),
+  mGroups := TAtlasResults.Group([TAtlasResultEntry.Create('C:\P\Zahl.pas', 9, 1),
     TAtlasResultEntry.Create('C:\P\Kunde.pas', 5, 8), TAtlasResultEntry.Create('C:\P\Zahl.pas', 2, 4),
     TAtlasResultEntry.Create('c:\p\kunde.pas', 5, 2), TAtlasResultEntry.Create('C:\P\Kunde.dfm', 30, 6)]);
-  Assert.AreEqual(3, Integer(Length(Groups)));
+  Assert.AreEqual(3, Integer(Length(mGroups)));
   // Nach Dateiname: Formular vor Unit, Groß-/Kleinschreibung egal.
-  Assert.AreEqual('Kunde.dfm (1)', Groups[0].Caption);
-  Assert.AreEqual('Kunde.pas (2)', Groups[1].Caption);
-  Assert.AreEqual(2, Groups[1].Entries[0].Character);
-  Assert.AreEqual(8, Groups[1].Entries[1].Character);
-  Assert.AreEqual(2, Groups[2].Entries[0].Line);
-  Assert.AreEqual(9, Groups[2].Entries[1].Line);
+  Assert.AreEqual('Kunde.dfm (1)', mGroups[0].Caption);
+  Assert.AreEqual('Kunde.pas (2)', mGroups[1].Caption);
+  Assert.AreEqual(2, mGroups[1].Entries[0].Character);
+  Assert.AreEqual(8, mGroups[1].Entries[1].Character);
+  Assert.AreEqual(2, mGroups[2].Entries[0].Line);
+  Assert.AreEqual(9, mGroups[2].Entries[1].Line);
   Assert.AreEqual(0, Integer(Length(TAtlasResults.Group(nil))));
 end;
 
 procedure TAtlasResultsTests.FillsLineTextReadingEachFileOnce;
 var
-  Entries: TArray<TAtlasResultEntry>;
-  Reads: Integer;
+  mEntries: TArray<TAtlasResultEntry>;
+  mReads: Integer;
 begin
-  Reads := 0;
-  Entries := [TAtlasResultEntry.Create('A.pas', 1, 2), TAtlasResultEntry.Create('A.pas', 2, 0),
+  mReads := 0;
+  mEntries := [TAtlasResultEntry.Create('A.pas', 1, 2), TAtlasResultEntry.Create('A.pas', 2, 0),
     TAtlasResultEntry.Create('A.pas', 7, 0)];
-  TAtlasResults.FillText(Entries,
+  TAtlasResults.FillText(mEntries,
     function(const AFileName: string): string
     begin
-      Inc(Reads);
+      Inc(mReads);
       Result := 'unit A;'#13#10'  Kunde.Laden;'#10#9'Kunde.Free;';
     end);
-  Assert.AreEqual(1, Reads);
-  Assert.AreEqual('Kunde.Laden;', Entries[0].Text);
-  Assert.AreEqual('Kunde.Free;', Entries[1].Text);
-  Assert.AreEqual('', Entries[2].Text, 'Zeile außerhalb der Datei');
+  Assert.AreEqual(1, mReads);
+  Assert.AreEqual('Kunde.Laden;', mEntries[0].Text);
+  Assert.AreEqual('Kunde.Free;', mEntries[1].Text);
+  Assert.AreEqual('', mEntries[2].Text, 'Zeile außerhalb der Datei');
 end;
 
 function TextEdit(ALine, AStart, AEnd: Integer; const ANewText: string): TLspTextEdit;
@@ -83,96 +83,96 @@ end;
 
 procedure TAtlasResultsTests.PreviewsRenamedLines;
 var
-  Edit: TLspWorkspaceEdit;
-  Entries: TArray<TAtlasResultEntry>;
+  mEdit: TLspWorkspaceEdit;
+  mEntries: TArray<TAtlasResultEntry>;
 begin
-  Edit := Default(TLspWorkspaceEdit);
-  Edit.Files := [Default(TLspFileEdits)];
-  Edit.Files[0].FileName := 'A.pas';
+  mEdit := Default(TLspWorkspaceEdit);
+  mEdit.Files := [Default(TLspFileEdits)];
+  mEdit.Files[0].FileName := 'A.pas';
   // Zwei Stellen in derselben Zeile, eine weitere davor.
-  Edit.Files[0].Edits := [TextEdit(2, 11, 16, 'Kunde'), TextEdit(2, 2, 7, 'Kunde'), TextEdit(1, 4, 9, 'Kunde')];
-  Entries := TAtlasResults.RenamePreview(Edit,
+  mEdit.Files[0].Edits := [TextEdit(2, 11, 16, 'Kunde'), TextEdit(2, 2, 7, 'Kunde'), TextEdit(1, 4, 9, 'Kunde')];
+  mEntries := TAtlasResults.RenamePreview(mEdit,
     function(const AFileName: string): string
     begin
       Result := 'var'#13#10'    Leser: TLeser;'#13#10'  Leser := Leser.Next;';
     end);
-  Assert.AreEqual(2, Integer(Length(Entries)), 'eine Zeile je geänderter Zeile');
-  Assert.AreEqual(1, Entries[0].Line);
-  Assert.AreEqual('Leser: TLeser;', Entries[0].Text);
-  Assert.AreEqual('Kunde: TLeser;', Entries[0].Detail);
-  Assert.AreEqual(2, Entries[1].Line);
-  Assert.AreEqual(2, Entries[1].Character);
-  Assert.AreEqual('Kunde := Kunde.Next;', Entries[1].Detail);
+  Assert.AreEqual(2, Integer(Length(mEntries)), 'eine Zeile je geänderter Zeile');
+  Assert.AreEqual(1, mEntries[0].Line);
+  Assert.AreEqual('Leser: TLeser;', mEntries[0].Text);
+  Assert.AreEqual('Kunde: TLeser;', mEntries[0].Detail);
+  Assert.AreEqual(2, mEntries[1].Line);
+  Assert.AreEqual(2, mEntries[1].Character);
+  Assert.AreEqual('Kunde := Kunde.Next;', mEntries[1].Detail);
 end;
 
 procedure TAtlasResultsTests.RatesEntriesAndPreviewsUnchanged;
 var
-  Edit: TLspWorkspaceEdit;
-  Entries: TArray<TAtlasResultEntry>;
+  mEdit: TLspWorkspaceEdit;
+  mEntries: TArray<TAtlasResultEntry>;
 begin
-  Entries := TArray<TAtlasResultEntry>.Create(TAtlasResultEntry.Create('A.pas', 1, 0),
+  mEntries := TArray<TAtlasResultEntry>.Create(TAtlasResultEntry.Create('A.pas', 1, 0),
     TAtlasResultEntry.Create('A.pas', 2, 0));
-  Entries[1].Confidence.Inferred := True;
-  Assert.AreEqual(1, TAtlasResults.InferredCount(Entries));
-  Assert.AreEqual(1, Integer(Length(TAtlasResults.SureOnly(Entries))));
-  Assert.AreEqual(1, TAtlasResults.SureOnly(Entries)[0].Line);
-  Edit := Default(TLspWorkspaceEdit);
-  Edit.Files := [Default(TLspFileEdits)];
-  Edit.Files[0].FileName := 'A.pas';
-  Edit.Files[0].Edits := [TextEdit(1, 4, 9, 'Kunde')];
-  Edit.Unchanged := [Default(TLspUnchangedPlace)];
-  Edit.Unchanged[0].FileName := 'A.pas';
-  Edit.Unchanged[0].Line := 2;
-  Edit.Unchanged[0].Character := 2;
-  Edit.Unchanged[0].Confidence.Inferred := True;
-  Edit.Unchanged[0].Confidence.Reason := 'interface';
-  Entries := TAtlasResults.RenamePreview(Edit,
+  mEntries[1].Confidence.Inferred := True;
+  Assert.AreEqual(1, TAtlasResults.InferredCount(mEntries));
+  Assert.AreEqual(1, Integer(Length(TAtlasResults.SureOnly(mEntries))));
+  Assert.AreEqual(1, TAtlasResults.SureOnly(mEntries)[0].Line);
+  mEdit := Default(TLspWorkspaceEdit);
+  mEdit.Files := [Default(TLspFileEdits)];
+  mEdit.Files[0].FileName := 'A.pas';
+  mEdit.Files[0].Edits := [TextEdit(1, 4, 9, 'Kunde')];
+  mEdit.Unchanged := [Default(TLspUnchangedPlace)];
+  mEdit.Unchanged[0].FileName := 'A.pas';
+  mEdit.Unchanged[0].Line := 2;
+  mEdit.Unchanged[0].Character := 2;
+  mEdit.Unchanged[0].Confidence.Inferred := True;
+  mEdit.Unchanged[0].Confidence.Reason := 'interface';
+  mEntries := TAtlasResults.RenamePreview(mEdit,
     function(const AFileName: string): string
     begin
       Result := 'var'#13#10'    Leser: TLeser;'#13#10'  I.Leser;';
     end);
-  Assert.AreEqual(2, Integer(Length(Entries)));
-  Assert.IsFalse(Entries[0].Confidence.Inferred);
-  Assert.AreEqual('Kunde: TLeser;', Entries[0].Detail);
+  Assert.AreEqual(2, Integer(Length(mEntries)));
+  Assert.IsFalse(mEntries[0].Confidence.Inferred);
+  Assert.AreEqual('Kunde: TLeser;', mEntries[0].Detail);
   // Nicht geändert: ohne Vorschau, mit Zeilentext und Grund.
-  Assert.IsTrue(Entries[1].Confidence.Inferred);
-  Assert.AreEqual('interface', Entries[1].Confidence.Reason);
-  Assert.AreEqual('I.Leser;', Entries[1].Text);
-  Assert.AreEqual('', Entries[1].Detail);
+  Assert.IsTrue(mEntries[1].Confidence.Inferred);
+  Assert.AreEqual('interface', mEntries[1].Confidence.Reason);
+  Assert.AreEqual('I.Leser;', mEntries[1].Text);
+  Assert.AreEqual('', mEntries[1].Detail);
 end;
 
 procedure TAtlasResultsTests.PreviewsFileOperationsFirst;
 var
-  Edit: TLspWorkspaceEdit;
-  Entries: TArray<TAtlasResultEntry>;
+  mEdit: TLspWorkspaceEdit;
+  mEntries: TArray<TAtlasResultEntry>;
 begin
   // #721: Umbenennen, Anlegen und Löschen einer Datei stehen vor den Zeilen.
-  Edit := Default(TLspWorkspaceEdit);
-  Edit.Operations := [Default(TLspFileOperation), Default(TLspFileOperation), Default(TLspFileOperation)];
-  Edit.Operations[0].Kind := TLspFileOperationKind.Rename;
-  Edit.Operations[0].FileName := 'C:\P\Alt.pas';
-  Edit.Operations[0].NewFileName := 'C:\P\Neu.pas';
-  Edit.Operations[1].Kind := TLspFileOperationKind.Create;
-  Edit.Operations[1].FileName := 'C:\P\Mehr.pas';
-  Edit.Operations[2].Kind := TLspFileOperationKind.Delete;
-  Edit.Operations[2].FileName := 'C:\P\Weg.pas';
-  Edit.Files := [Default(TLspFileEdits)];
-  Edit.Files[0].FileName := 'C:\P\Neu.pas';
-  Edit.Files[0].Edits := [TextEdit(0, 5, 8, 'Neu')];
-  Entries := TAtlasResults.RenamePreview(Edit,
+  mEdit := Default(TLspWorkspaceEdit);
+  mEdit.Operations := [Default(TLspFileOperation), Default(TLspFileOperation), Default(TLspFileOperation)];
+  mEdit.Operations[0].Kind := TLspFileOperationKind.Rename;
+  mEdit.Operations[0].FileName := 'C:\P\Alt.pas';
+  mEdit.Operations[0].NewFileName := 'C:\P\Neu.pas';
+  mEdit.Operations[1].Kind := TLspFileOperationKind.Create;
+  mEdit.Operations[1].FileName := 'C:\P\Mehr.pas';
+  mEdit.Operations[2].Kind := TLspFileOperationKind.Delete;
+  mEdit.Operations[2].FileName := 'C:\P\Weg.pas';
+  mEdit.Files := [Default(TLspFileEdits)];
+  mEdit.Files[0].FileName := 'C:\P\Neu.pas';
+  mEdit.Files[0].Edits := [TextEdit(0, 5, 8, 'Neu')];
+  mEntries := TAtlasResults.RenamePreview(mEdit,
     function(const AFileName: string): string
     begin
       Result := 'unit Alt;';
     end);
-  Assert.AreEqual(4, Integer(Length(Entries)));
-  Assert.AreEqual('C:\P\Alt.pas', Entries[0].FileName);
-  Assert.AreEqual('Alt.pas', Entries[0].Text);
-  Assert.AreEqual('Neu.pas', Entries[0].Detail);
-  Assert.AreEqual('', Entries[1].Text);
-  Assert.AreEqual('Mehr.pas', Entries[1].Detail);
-  Assert.AreEqual('Weg.pas', Entries[2].Text);
-  Assert.AreEqual('', Entries[2].Detail);
-  Assert.AreEqual('unit Neu;', Entries[3].Detail);
+  Assert.AreEqual(4, Integer(Length(mEntries)));
+  Assert.AreEqual('C:\P\Alt.pas', mEntries[0].FileName);
+  Assert.AreEqual('Alt.pas', mEntries[0].Text);
+  Assert.AreEqual('Neu.pas', mEntries[0].Detail);
+  Assert.AreEqual('', mEntries[1].Text);
+  Assert.AreEqual('Mehr.pas', mEntries[1].Detail);
+  Assert.AreEqual('Weg.pas', mEntries[2].Text);
+  Assert.AreEqual('', mEntries[2].Detail);
+  Assert.AreEqual('unit Neu;', mEntries[3].Detail);
 end;
 
 procedure TAtlasResultsTests.MapsSymbolKindsToBadges;

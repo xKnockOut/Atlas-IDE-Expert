@@ -40,8 +40,8 @@ uses
 
 const
   // Flächen der Leisten: clBtnFace hell und dunkel, Fensterfläche, Abgesetztes.
-  LightBars: array[0..2] of string = ('#F0F0F0', '#FFFFFF', '#F3F5F8');
-  DarkBars: array[0..3] of string = ('#2B2B2B', '#1E1E1E', '#15181D', '#1A1E25');
+  cLightBars: array[0..2] of string = ('#F0F0F0', '#FFFFFF', '#F3F5F8');
+  cDarkBars: array[0..3] of string = ('#2B2B2B', '#1E1E1E', '#15181D', '#1A1E25');
 
 function Name(AKind: TAtlasSignalKind): string;
 begin
@@ -57,7 +57,7 @@ begin
   mSignals := TAtlasSignals.Light;
   for mKind := Low(TAtlasSignalKind) to High(TAtlasSignalKind) do
   begin
-    for mBar in LightBars do
+    for mBar in cLightBars do
     begin
       Assert.IsTrue(TAtlasColorMath.Contrast(mSignals.Get(mKind).Ring, TAtlasColorMath.FromHex(mBar)) >= 4.0,
         Name(mKind) + ' auf ' + mBar);
@@ -74,7 +74,7 @@ begin
   mSignals := TAtlasSignals.Dark;
   for mKind := Low(TAtlasSignalKind) to High(TAtlasSignalKind) do
   begin
-    for mBar in DarkBars do
+    for mBar in cDarkBars do
     begin
       Assert.IsTrue(TAtlasColorMath.Contrast(mSignals.Get(mKind).Fill, TAtlasColorMath.FromHex(mBar)) >= 4.0,
         Name(mKind) + ' auf ' + mBar);
@@ -84,12 +84,12 @@ end;
 
 procedure TAtlasSignalTests.MarksReadableOnFill;
 const
-  Kinds: array[0..2] of TAtlasSignalKind = (TAtlasSignalKind.Error, TAtlasSignalKind.Warn, TAtlasSignalKind.Info);
+  cKinds: array[0..2] of TAtlasSignalKind = (TAtlasSignalKind.Error, TAtlasSignalKind.Warn, TAtlasSignalKind.Info);
 var
   mKind: TAtlasSignalKind;
 begin
   // Kreuz, Ausrufezeichen und „i“ der Befundsymbole; vorher Weiß bzw. Schwarz fest.
-  for mKind in Kinds do
+  for mKind in cKinds do
   begin
     Assert.IsTrue(TAtlasColorMath.Contrast(TAtlasSignals.Light.Get(mKind).Mark,
       TAtlasSignals.Light.Get(mKind).Fill) >= 3.5, 'hell ' + Name(mKind));
@@ -113,19 +113,19 @@ end;
 
 procedure TAtlasSignalTests.OkWarnErrorDistinct;
 const
-  Kinds: array[0..2] of TAtlasSignalKind = (TAtlasSignalKind.Ok, TAtlasSignalKind.Warn, TAtlasSignalKind.Error);
+  cKinds: array[0..2] of TAtlasSignalKind = (TAtlasSignalKind.Ok, TAtlasSignalKind.Warn, TAtlasSignalKind.Error);
 var
   mLeft, mRight: Integer;
 begin
   // Der eigentliche Fehler (#1255): Die Punkte waren im hellen Design kaum zu unterscheiden.
-  for mLeft := 0 to High(Kinds) do
+  for mLeft := 0 to High(cKinds) do
   begin
-    for mRight := mLeft + 1 to High(Kinds) do
+    for mRight := mLeft + 1 to High(cKinds) do
     begin
-      Assert.IsTrue(TAtlasColorMath.DeltaE2000(TAtlasSignals.Light.Get(Kinds[mLeft]).Fill,
-        TAtlasSignals.Light.Get(Kinds[mRight]).Fill) >= 20, 'hell');
-      Assert.IsTrue(TAtlasColorMath.DeltaE2000(TAtlasSignals.Dark.Get(Kinds[mLeft]).Fill,
-        TAtlasSignals.Dark.Get(Kinds[mRight]).Fill) >= 20, 'dunkel');
+      Assert.IsTrue(TAtlasColorMath.DeltaE2000(TAtlasSignals.Light.Get(cKinds[mLeft]).Fill,
+        TAtlasSignals.Light.Get(cKinds[mRight]).Fill) >= 20, 'hell');
+      Assert.IsTrue(TAtlasColorMath.DeltaE2000(TAtlasSignals.Dark.Get(cKinds[mLeft]).Fill,
+        TAtlasSignals.Dark.Get(cKinds[mRight]).Fill) >= 20, 'dunkel');
     end;
   end;
 end;

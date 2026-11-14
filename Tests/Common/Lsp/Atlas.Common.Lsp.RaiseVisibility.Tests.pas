@@ -33,7 +33,7 @@ uses
 
 const
   cUri = 'file:///C:/P/Zaehler.pas';
-  Source =
+  cSource =
     'unit Zaehler;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -65,9 +65,9 @@ var
   mActions: TArray<TJSONObject>;
   mItem: TJSONObject;
 begin
-  mTree := TSyntaxTreeCache.Parse(Source);
+  mTree := TSyntaxTreeCache.Parse(cSource);
   try
-    mActions := TLspRaiseVisibility.Actions(cUri, Source, mTree, TTextRange.Create(TTextPosition.Create(5, 6),
+    mActions := TLspRaiseVisibility.Actions(cUri, cSource, mTree, TTextRange.Create(TTextPosition.Create(5, 6),
       TTextPosition.Create(5, 6)));
     try
       Assert.AreEqual(2, Integer(Length(mActions)));
@@ -90,7 +90,7 @@ var
   mAnswer: TJSONArray;
   mChanges: TJSONObject;
 begin
-  mAnswer := TLspRaiseVisibility.Execute(cUri, Source, TTextPosition.Create(5, 4), 'FEintraege');
+  mAnswer := TLspRaiseVisibility.Execute(cUri, cSource, TTextPosition.Create(5, 4), 'FEintraege');
   try
     Assert.AreEqual('Eigenschaft Eintraege in TZaehler anlegen (nur lesen)|' +
       'Eigenschaft Eintraege in TZaehler anlegen (lesen und schreiben)|' +
@@ -108,7 +108,7 @@ procedure TLspRaiseVisibilityTests.CommandWithoutMemberIsEmpty;
 var
   mAnswer: TJSONArray;
 begin
-  mAnswer := TLspRaiseVisibility.Execute(cUri, Source, TTextPosition.Create(7, 4), 'Run');
+  mAnswer := TLspRaiseVisibility.Execute(cUri, cSource, TTextPosition.Create(7, 4), 'Run');
   try
     Assert.AreEqual(0, mAnswer.Count, 'public');
   finally

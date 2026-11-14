@@ -30,63 +30,63 @@ uses
 
 function CountEdges(const AService: TUsesGraphService): Integer;
 var
-  Count: Integer;
+  mCount: Integer;
 begin
-  Count := 0;
+  mCount := 0;
   AService.Read(
     procedure(const AGraph: TUsesGraph)
     begin
-      Count := AGraph.EdgeCount;
+      mCount := AGraph.EdgeCount;
     end);
-  Result := Count;
+  Result := mCount;
 end;
 
 { TUsesServiceTests }
 
 procedure TUsesServiceTests.FollowsIndexGeneration;
 var
-  Index: ISymbolIndex;
-  Service: TUsesGraphService;
+  mIndex: ISymbolIndex;
+  mService: TUsesGraphService;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(UsesUnit('A', ['B'], nil));
-  Service := TUsesGraphService.Create(Index, TUsesGraphOptions.Default);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(UsesUnit('A', ['B'], nil));
+  mService := TUsesGraphService.Create(mIndex, TUsesGraphOptions.Default);
   try
-    Assert.AreEqual(-1, Integer(Service.Generation));
-    Assert.AreEqual(0, CountEdges(Service), 'B fehlt');
-    Assert.AreEqual(1, Service.Rebuilds);
-    Assert.AreEqual(0, CountEdges(Service));
-    Assert.AreEqual(0, Service.Updates, 'Index unverändert: kein Abgleich');
-    Index.AddUnit(UsesUnit('B', nil, nil));
-    Assert.AreEqual(1, CountEdges(Service));
-    Assert.AreEqual(1, Service.Rebuilds);
-    Assert.AreEqual(1, Service.Updates);
-    Assert.AreEqual(Integer(Index.Generation), Integer(Service.Generation));
+    Assert.AreEqual(-1, Integer(mService.Generation));
+    Assert.AreEqual(0, CountEdges(mService), 'B fehlt');
+    Assert.AreEqual(1, mService.Rebuilds);
+    Assert.AreEqual(0, CountEdges(mService));
+    Assert.AreEqual(0, mService.Updates, 'Index unverändert: kein Abgleich');
+    mIndex.AddUnit(UsesUnit('B', nil, nil));
+    Assert.AreEqual(1, CountEdges(mService));
+    Assert.AreEqual(1, mService.Rebuilds);
+    Assert.AreEqual(1, mService.Updates);
+    Assert.AreEqual(Integer(mIndex.Generation), Integer(mService.Generation));
   finally
-    Service.Free;
+    mService.Free;
   end;
 end;
 
 procedure TUsesServiceTests.NewOptionsRebuild;
 var
-  Index: ISymbolIndex;
-  Service: TUsesGraphService;
-  Options: TUsesGraphOptions;
+  mIndex: ISymbolIndex;
+  mService: TUsesGraphService;
+  mOptions: TUsesGraphOptions;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(UsesUnit('A', ['B'], nil));
-  Index.AddUnit(UsesUnit('B', nil, nil));
-  Service := TUsesGraphService.Create(Index, TUsesGraphOptions.Default);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(UsesUnit('A', ['B'], nil));
+  mIndex.AddUnit(UsesUnit('B', nil, nil));
+  mService := TUsesGraphService.Create(mIndex, TUsesGraphOptions.Default);
   try
-    Assert.AreEqual(1, CountEdges(Service));
-    Options := TUsesGraphOptions.Default;
-    Options.Exclude := ['B'];
-    Service.SetOptions(Options);
-    Assert.AreEqual(0, CountEdges(Service));
-    Assert.AreEqual(2, Service.Rebuilds);
-    Assert.AreEqual(1, Integer(Length(Service.Options.Exclude)));
+    Assert.AreEqual(1, CountEdges(mService));
+    mOptions := TUsesGraphOptions.Default;
+    mOptions.Exclude := ['B'];
+    mService.SetOptions(mOptions);
+    Assert.AreEqual(0, CountEdges(mService));
+    Assert.AreEqual(2, mService.Rebuilds);
+    Assert.AreEqual(1, Integer(Length(mService.Options.Exclude)));
   finally
-    Service.Free;
+    mService.Free;
   end;
 end;
 

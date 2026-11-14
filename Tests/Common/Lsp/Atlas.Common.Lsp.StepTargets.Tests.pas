@@ -58,10 +58,10 @@ uses
   Atlas.Common.Index.Extractor;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
-  BasisFile = 'C:\P\Basis.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
+  cBasisFile = 'C:\P\Basis.pas';
 
-  UnitBasis =
+  cUnitBasis =
     'unit Basis;'#10 +                                           // 0
     'interface'#10 +                                             // 1
     'type'#10 +                                                  // 2
@@ -76,7 +76,7 @@ const
     'end;'#10 +                                                  // 11
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +                                           // 0
     'interface'#10 +                                             // 1
     'uses Basis;'#10 +                                           // 2
@@ -156,10 +156,10 @@ const
 procedure TLspStepTargetsTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, BasisFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitHaupt, HauptFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
   FResolver := TNameResolver.Create(FIndex);
-  FTree := TPascalParser.Parse(UnitHaupt, nil);
+  FTree := TPascalParser.Parse(cUnitHaupt, nil);
 end;
 
 procedure TLspStepTargetsTests.TearDown;
@@ -185,169 +185,169 @@ end;
 
 function TLspStepTargetsTests.AnswerAt(const AMarker: string; out AAnswer: TLspStepAnswer): string;
 var
-  Lines: TArray<string>;
-  Line: Integer;
-  Targets: TLspStepTargets;
-  Call: TLspStepCall;
-  Names: TArray<string>;
+  mLines: TArray<string>;
+  mLine: Integer;
+  mTargets: TLspStepTargets;
+  mCall: TLspStepCall;
+  mNames: TArray<string>;
 begin
-  Lines := UnitHaupt.Split([#10]);
-  Line := 0;
-  while (Line <= High(Lines)) and (Pos(AMarker, Lines[Line]) = 0) do
+  mLines := cUnitHaupt.Split([#10]);
+  mLine := 0;
+  while (mLine <= High(mLines)) and (Pos(AMarker, mLines[mLine]) = 0) do
   begin
-    Inc(Line);
+    Inc(mLine);
   end;
-  Assert.IsTrue(Line <= High(Lines), AMarker + ' nicht gefunden');
-  Targets := TLspStepTargets.Create(FResolver, FIndex, FTree, UnitHaupt, HauptFile,
+  Assert.IsTrue(mLine <= High(mLines), AMarker + ' nicht gefunden');
+  mTargets := TLspStepTargets.Create(FResolver, FIndex, FTree, cUnitHaupt, cHauptFile,
     function(const AFileName: string; out AText: string): Boolean
     begin
-      Result := SameText(AFileName, BasisFile);
+      Result := SameText(AFileName, cBasisFile);
       if Result then
       begin
-        AText := UnitBasis;
+        AText := cUnitBasis;
       end;
     end);
   try
-    Assert.IsTrue(Targets.Answer(Line, AAnswer));
+    Assert.IsTrue(mTargets.Answer(mLine, AAnswer));
   finally
-    Targets.Free;
+    mTargets.Free;
   end;
-  Names := nil;
-  for Call in AAnswer.Calls do
+  mNames := nil;
+  for mCall in AAnswer.Calls do
   begin
-    Names := Names + [Describe(Call)];
+    mNames := mNames + [Describe(mCall)];
   end;
-  Result := string.Join(' ', Names);
+  Result := string.Join(' ', mNames);
 end;
 
 procedure TLspStepTargetsTests.AcceptanceOrderWithGetterAndUnknownFormat;
 var
-  Answer: TLspStepAnswer;
+  mAnswer: TLspStepAnswer;
 begin
   // Getter vor Format (ohne RTL im Index: ausgegraut), dann Pruefe.
   Assert.AreEqual('TKunde.GetName:getter Format:call! Pruefe:call',
-    AnswerAt('Pruefe(Kunde.Name', Answer));
-  Assert.AreEqual('Kunde.Name', Answer.Calls[0].Text);
-  Assert.AreEqual('Kunde', Answer.Calls[0].Receiver);
-  Assert.AreEqual(63, Answer.FollowLine);
+    AnswerAt('Pruefe(Kunde.Name', mAnswer));
+  Assert.AreEqual('Kunde.Name', mAnswer.Calls[0].Text);
+  Assert.AreEqual('Kunde', mAnswer.Calls[0].Receiver);
+  Assert.AreEqual(63, mAnswer.FollowLine);
 end;
 
 procedure TLspStepTargetsTests.TargetsPointAtBegin;
 var
-  Answer: TLspStepAnswer;
+  mAnswer: TLspStepAnswer;
 begin
-  AnswerAt('Pruefe(Kunde.Name', Answer);
-  Assert.AreEqual(1, Integer(Length(Answer.Calls[0].Targets)));
-  Assert.AreEqual(27, Answer.Calls[0].Targets[0].Line);
-  Assert.AreEqual(HauptFile, Answer.Calls[0].Targets[0].FileName);
-  Assert.AreEqual(51, Answer.Calls[2].Targets[0].Line);
-  Assert.AreEqual(10, Answer.Calls[0].DeclLine);
+  AnswerAt('Pruefe(Kunde.Name', mAnswer);
+  Assert.AreEqual(1, Integer(Length(mAnswer.Calls[0].Targets)));
+  Assert.AreEqual(27, mAnswer.Calls[0].Targets[0].Line);
+  Assert.AreEqual(cHauptFile, mAnswer.Calls[0].Targets[0].FileName);
+  Assert.AreEqual(51, mAnswer.Calls[2].Targets[0].Line);
+  Assert.AreEqual(10, mAnswer.Calls[0].DeclLine);
 end;
 
 procedure TLspStepTargetsTests.VirtualCallListsOverrides;
 var
-  Answer: TLspStepAnswer;
+  mAnswer: TLspStepAnswer;
 begin
-  Assert.AreEqual('TKunde.Speichere:call', AnswerAt('  Kunde.Speichere;', Answer));
-  Assert.IsTrue(Answer.Calls[0].IsVirtual);
-  Assert.AreEqual(2, Integer(Length(Answer.Calls[0].Targets)));
-  Assert.AreEqual('TKunde', Answer.Calls[0].Targets[0].Container);
-  Assert.AreEqual(38, Answer.Calls[0].Targets[0].Line);
-  Assert.AreEqual('TStammkunde', Answer.Calls[0].Targets[1].Container);
-  Assert.AreEqual(47, Answer.Calls[0].Targets[1].Line);
+  Assert.AreEqual('TKunde.Speichere:call', AnswerAt('  Kunde.Speichere;', mAnswer));
+  Assert.IsTrue(mAnswer.Calls[0].IsVirtual);
+  Assert.AreEqual(2, Integer(Length(mAnswer.Calls[0].Targets)));
+  Assert.AreEqual('TKunde', mAnswer.Calls[0].Targets[0].Container);
+  Assert.AreEqual(38, mAnswer.Calls[0].Targets[0].Line);
+  Assert.AreEqual('TStammkunde', mAnswer.Calls[0].Targets[1].Container);
+  Assert.AreEqual(47, mAnswer.Calls[0].Targets[1].Line);
 end;
 
 procedure TLspStepTargetsTests.InterfaceCallListsImplementations;
 var
-  Answer: TLspStepAnswer;
+  mAnswer: TLspStepAnswer;
 begin
-  Assert.AreEqual('IDrucker.Drucke:call', AnswerAt('  D.Drucke;', Answer));
-  Assert.IsTrue(Answer.Calls[0].IsVirtual);
-  Assert.IsTrue(Answer.Calls[0].ReceiverInterface);
-  Assert.AreEqual(1, Integer(Length(Answer.Calls[0].Targets)));
-  Assert.AreEqual('TKunde', Answer.Calls[0].Targets[0].Container);
-  Assert.AreEqual(41, Answer.Calls[0].Targets[0].Line);
+  Assert.AreEqual('IDrucker.Drucke:call', AnswerAt('  D.Drucke;', mAnswer));
+  Assert.IsTrue(mAnswer.Calls[0].IsVirtual);
+  Assert.IsTrue(mAnswer.Calls[0].ReceiverInterface);
+  Assert.AreEqual(1, Integer(Length(mAnswer.Calls[0].Targets)));
+  Assert.AreEqual('TKunde', mAnswer.Calls[0].Targets[0].Container);
+  Assert.AreEqual(41, mAnswer.Calls[0].Targets[0].Line);
 end;
 
 procedure TLspStepTargetsTests.SetterAndFieldAccess;
 var
-  Answer: TLspStepAnswer;
+  mAnswer: TLspStepAnswer;
 begin
   // Ort liest und schreibt ein Feld: kein Aufruf.
-  Assert.AreEqual('TKunde.SetName:setter', AnswerAt('  Kunde.Name := Kunde.Ort;', Answer));
-  Assert.AreEqual(31, Answer.Calls[0].Targets[0].Line);
-  Assert.AreEqual('', AnswerAt('  Kunde.Ort := ''x'';', Answer));
+  Assert.AreEqual('TKunde.SetName:setter', AnswerAt('  Kunde.Name := Kunde.Ort;', mAnswer));
+  Assert.AreEqual(31, mAnswer.Calls[0].Targets[0].Line);
+  Assert.AreEqual('', AnswerAt('  Kunde.Ort := ''x'';', mAnswer));
 end;
 
 procedure TLspStepTargetsTests.MethodPointerIntrinsicAndCastSkipped;
 var
-  Answer: TLspStepAnswer;
+  mAnswer: TLspStepAnswer;
 begin
   // OnClick := Kunde.Klick ist ein Methodenzeiger, Length ein Intrinsic, TButton(T) eine Typumwandlung.
-  Assert.AreEqual('', AnswerAt('  TButton(T).OnClick', Answer));
-  Assert.AreEqual('TKunde.Speichere:call', AnswerAt('  TKunde(T).Speichere;', Answer));
+  Assert.AreEqual('', AnswerAt('  TButton(T).OnClick', mAnswer));
+  Assert.AreEqual('TKunde.Speichere:call', AnswerAt('  TKunde(T).Speichere;', mAnswer));
 end;
 
 procedure TLspStepTargetsTests.ConstructorNestedRoutineAndInherited;
 var
-  Answer: TLspStepAnswer;
+  mAnswer: TLspStepAnswer;
 begin
-  Assert.AreEqual('TKunde.Create:constructor Innen:call', AnswerAt('  Kunde := TKunde.Create; Innen;', Answer));
-  Assert.AreEqual(34, Answer.Calls[0].Targets[0].Line);
-  Assert.AreEqual(56, Answer.Calls[1].Targets[0].Line);
-  Assert.AreEqual('TKunde.Speichere:inherited', AnswerAt('  inherited Speichere;', Answer));
-  Assert.AreEqual(38, Answer.Calls[0].Targets[0].Line);
+  Assert.AreEqual('TKunde.Create:constructor Innen:call', AnswerAt('  Kunde := TKunde.Create; Innen;', mAnswer));
+  Assert.AreEqual(34, mAnswer.Calls[0].Targets[0].Line);
+  Assert.AreEqual(56, mAnswer.Calls[1].Targets[0].Line);
+  Assert.AreEqual('TKunde.Speichere:inherited', AnswerAt('  inherited Speichere;', mAnswer));
+  Assert.AreEqual(38, mAnswer.Calls[0].Targets[0].Line);
 end;
 
 procedure TLspStepTargetsTests.ReceiverSimpleOnlyWithoutCalls;
 var
-  Answer: TLspStepAnswer;
+  mAnswer: TLspStepAnswer;
 begin
-  AnswerAt('  Kunde.Speichere;', Answer);
-  Assert.IsTrue(Answer.Calls[0].ReceiverSimple);
-  AnswerAt('  TKunde(T).Speichere;', Answer);
-  Assert.IsFalse(Answer.Calls[0].ReceiverSimple);
+  AnswerAt('  Kunde.Speichere;', mAnswer);
+  Assert.IsTrue(mAnswer.Calls[0].ReceiverSimple);
+  AnswerAt('  TKunde(T).Speichere;', mAnswer);
+  Assert.IsFalse(mAnswer.Calls[0].ReceiverSimple);
   // Innen ohne Empfänger in einer Routine ohne Klasse: kein Self.
-  AnswerAt('  Kunde := TKunde.Create; Innen;', Answer);
-  Assert.AreEqual('', Answer.Calls[1].Receiver);
+  AnswerAt('  Kunde := TKunde.Create; Innen;', mAnswer);
+  Assert.AreEqual('', mAnswer.Calls[1].Receiver);
 end;
 
 procedure TLspStepTargetsTests.OtherUnitReadThroughReadText;
 var
-  Answer: TLspStepAnswer;
+  mAnswer: TLspStepAnswer;
 begin
-  Assert.AreEqual('TAblage.Lege:call', AnswerAt('  Ablage.Lege(N);', Answer));
-  Assert.AreEqual(BasisFile, Answer.Calls[0].Targets[0].FileName);
-  Assert.AreEqual(10, Answer.Calls[0].Targets[0].Line);
+  Assert.AreEqual('TAblage.Lege:call', AnswerAt('  Ablage.Lege(N);', mAnswer));
+  Assert.AreEqual(cBasisFile, mAnswer.Calls[0].Targets[0].FileName);
+  Assert.AreEqual(10, mAnswer.Calls[0].Targets[0].Line);
 end;
 
 procedure TLspStepTargetsTests.JsonShape;
 var
-  Json: TJSONObject;
-  Calls: TJSONArray;
-  Call: TJSONObject;
-  Targets: TLspStepTargets;
+  mJson: TJSONObject;
+  mCalls: TJSONArray;
+  mCall: TJSONObject;
+  mTargets: TLspStepTargets;
 begin
-  Targets := TLspStepTargets.Create(FResolver, FIndex, FTree, UnitHaupt, HauptFile, nil);
+  mTargets := TLspStepTargets.Create(FResolver, FIndex, FTree, cUnitHaupt, cHauptFile, nil);
   try
-    Json := Targets.Execute(63);
+    mJson := mTargets.Execute(63);
   finally
-    Targets.Free;
+    mTargets.Free;
   end;
   try
-    Assert.AreEqual(1, Json.GetValue<Integer>('format'));
-    Assert.AreEqual(63, Json.GetValue<Integer>('line'));
-    Assert.AreEqual(64, Json.GetValue<Integer>('followLine'));
-    Calls := Json.GetValue<TJSONArray>('calls');
-    Assert.AreEqual(1, Calls.Count);
-    Call := Calls.Items[0] as TJSONObject;
-    Assert.AreEqual('Speichere', Call.GetValue<string>('name'));
-    Assert.AreEqual('TKunde', Call.GetValue<string>('container'));
-    Assert.IsTrue(Call.GetValue<Boolean>('virtual'));
-    Assert.AreEqual(2, Call.GetValue<TJSONArray>('targets').Count);
-    Assert.AreEqual(38, (Call.GetValue<TJSONArray>('targets').Items[0] as TJSONObject).GetValue<Integer>('line'));
+    Assert.AreEqual(1, mJson.GetValue<Integer>('format'));
+    Assert.AreEqual(63, mJson.GetValue<Integer>('line'));
+    Assert.AreEqual(64, mJson.GetValue<Integer>('followLine'));
+    mCalls := mJson.GetValue<TJSONArray>('calls');
+    Assert.AreEqual(1, mCalls.Count);
+    mCall := mCalls.Items[0] as TJSONObject;
+    Assert.AreEqual('Speichere', mCall.GetValue<string>('name'));
+    Assert.AreEqual('TKunde', mCall.GetValue<string>('container'));
+    Assert.IsTrue(mCall.GetValue<Boolean>('virtual'));
+    Assert.AreEqual(2, mCall.GetValue<TJSONArray>('targets').Count);
+    Assert.AreEqual(38, (mCall.GetValue<TJSONArray>('targets').Items[0] as TJSONObject).GetValue<Integer>('line'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 

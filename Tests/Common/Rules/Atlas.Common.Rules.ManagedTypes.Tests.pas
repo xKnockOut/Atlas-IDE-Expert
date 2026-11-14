@@ -35,7 +35,7 @@ uses
   Atlas.Common.Rules.ManagedTypes;
 
 const
-  Source = 'unit U;'#10'interface'#10'type'#10'  TName = record'#10'    S: string;'#10'  end;'#10 +
+  cSource = 'unit U;'#10'interface'#10'type'#10'  TName = record'#10'    S: string;'#10'  end;'#10 +
     '  TAlias = TName;'#10'  TLeer = record'#10'    N: Integer;'#10'  end;'#10'  TZaehler = record'#10 +
     '    class operator Initialize(out ADest: TZaehler);'#10'  end;'#10'  THuelle = record'#10 +
     '    Z: array[0..1] of TZaehler;'#10'  end;'#10'  TLeser = reference to function(const A: string): Boolean;'#10 +
@@ -43,16 +43,16 @@ const
 
 procedure Check(const AIndex: ISymbolIndex; const AProc: TProc<TManagedTypes>);
 var
-  Tree: TSyntaxTree;
-  Types: TManagedTypes;
+  mTree: TSyntaxTree;
+  mTypes: TManagedTypes;
 begin
-  Tree := TPascalParser.Parse(Source);
-  Types := TManagedTypes.Create(Tree, Source, AIndex);
+  mTree := TPascalParser.Parse(cSource);
+  mTypes := TManagedTypes.Create(mTree, cSource, AIndex);
   try
-    AProc(Types);
+    AProc(mTypes);
   finally
-    Types.Free;
-    Tree.Free;
+    mTypes.Free;
+    mTree.Free;
   end;
 end;
 
@@ -103,15 +103,15 @@ end;
 
 procedure TManagedTypesTests.TypesFromIndex;
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText('unit Fremd;'#10'interface'#10'type'#10'  TFremd = record'#10 +
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Fremd;'#10'interface'#10'type'#10'  TFremd = record'#10 +
     '    Liste: TArray<Integer>;'#10'  end;'#10'  TFremdAlias = TFremd;'#10'  TFremdZaehler = record'#10 +
     '    class operator Finalize(var ADest: TFremdZaehler);'#10'  end;'#10'  IFremd = interface'#10'  end;'#10 +
     '  TFremdRueckruf = reference to procedure(A: Integer);'#10'  TFremdZeiger = procedure(A: Integer);'#10 +
     'implementation'#10'end.', 'C:\P\Fremd.pas', nil));
-  Check(Index,
+  Check(mIndex,
     procedure(ATypes: TManagedTypes)
     begin
       Assert.AreEqual('dynamische Arrays', ATypes.Managed('TFremd', 0));

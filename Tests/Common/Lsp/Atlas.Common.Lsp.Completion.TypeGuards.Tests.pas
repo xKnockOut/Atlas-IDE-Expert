@@ -94,9 +94,9 @@ uses
   Atlas.Common.Index.Extractor;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
 
-  UnitTypen =
+  cUnitTypen =
     'unit Typen;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -145,11 +145,11 @@ const
   /// <summary>Eintrag mit dem Label ALabel; nil ohne.</summary>
   function ItemNamed(AResult: TJSONObject; const ALabel: string): TJSONObject;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
-    for Index := 0 to ItemsOf(AResult).Count - 1 do
+    for mIndex := 0 to ItemsOf(AResult).Count - 1 do
     begin
-      Result := ItemsOf(AResult).Items[Index] as TJSONObject;
+      Result := ItemsOf(AResult).Items[mIndex] as TJSONObject;
       if Result.GetValue<string>('label') = ALabel then
       begin
         Exit;
@@ -161,13 +161,13 @@ const
   /// <summary>Wert unter data.APath des Eintrags ALabel; '' ohne.</summary>
   function DataOf(AResult: TJSONObject; const ALabel, APath: string): string;
   var
-    Item: TJSONObject;
+    mItem: TJSONObject;
   begin
     Result := '';
-    Item := ItemNamed(AResult, ALabel);
-    if (Item <> nil) and (Item.FindValue('data.' + APath) <> nil) then
+    mItem := ItemNamed(AResult, ALabel);
+    if (mItem <> nil) and (mItem.FindValue('data.' + APath) <> nil) then
     begin
-      Result := Item.FindValue('data.' + APath).Value;
+      Result := mItem.FindValue('data.' + APath).Value;
     end;
   end;
 
@@ -187,7 +187,7 @@ begin
     end;
   FDispatcher := TJsonRpcDispatcher.Create;
   FCompletion.Attach(FDispatcher);
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitTypen, 'C:\P\Typen.pas', nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitTypen, 'C:\P\Typen.pas', nil));
 end;
 
 procedure TCompletionTypeGuardsTests.TearDown;
@@ -200,178 +200,178 @@ end;
 
 function TCompletionTypeGuardsTests.Complete(const AText: string): TJSONObject;
 var
-  Marker, Index, Line, LineStart: Integer;
-  Text, Uri: string;
-  Request, Response: TJSONObject;
+  mMarker, mIndex, mLine, mLineStart: Integer;
+  mText, mUri: string;
+  mRequest, mResponse: TJSONObject;
 begin
-  Marker := Pos('|', AText);
-  Line := 0;
-  LineStart := 1;
-  for Index := 1 to Marker - 1 do
+  mMarker := Pos('|', AText);
+  mLine := 0;
+  mLineStart := 1;
+  for mIndex := 1 to mMarker - 1 do
   begin
-    if AText[Index] = #10 then
+    if AText[mIndex] = #10 then
     begin
-      Inc(Line);
-      LineStart := Index + 1;
+      Inc(mLine);
+      mLineStart := mIndex + 1;
     end;
   end;
-  Text := Copy(AText, 1, Marker - 1) + Copy(AText, Marker + 1, MaxInt);
-  Uri := TDocumentUris.FromPath(HauptFile);
-  FStore.Close(Uri);
-  FStore.Open(Uri, 'delphi', 1, Text);
+  mText := Copy(AText, 1, mMarker - 1) + Copy(AText, mMarker + 1, MaxInt);
+  mUri := TDocumentUris.FromPath(cHauptFile);
+  FStore.Close(mUri);
+  FStore.Open(mUri, 'delphi', 1, mText);
   Inc(FId);
-  Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":' + IntToStr(FId) +
-    ',"method":"textDocument/completion","params":{"textDocument":{"uri":"' + Uri.Replace('\', '\\') +
-    '"},"position":{"line":' + IntToStr(Line) + ',"character":' + IntToStr(Marker - LineStart) + '}}}') as
+  mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":' + IntToStr(FId) +
+    ',"method":"textDocument/completion","params":{"textDocument":{"uri":"' + mUri.Replace('\', '\\') +
+    '"},"position":{"line":' + IntToStr(mLine) + ',"character":' + IntToStr(mMarker - mLineStart) + '}}}') as
     TJSONObject;
   try
-    Response := FDispatcher.DispatchMessage(Request);
+    mResponse := FDispatcher.DispatchMessage(mRequest);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
   try
-    Assert.IsTrue(Response.GetValue('result') is TJSONObject, Response.ToJSON);
-    Result := Response.GetValue('result').Clone as TJSONObject;
+    Assert.IsTrue(mResponse.GetValue('result') is TJSONObject, mResponse.ToJSON);
+    Result := mResponse.GetValue('result').Clone as TJSONObject;
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
 function TCompletionTypeGuardsTests.GuardOf(const ABody: string; AStrict: Boolean;
   const AByRef: TTypeGuardArgumentFunc; out AGuard: TTypeGuard): Boolean;
 var
-  Text: string;
-  Marker: Integer;
-  Tree: TSyntaxTree;
+  mText: string;
+  mMarker: Integer;
+  mTree: TSyntaxTree;
 begin
-  Text := HauptWith(ABody);
-  Marker := Pos('|', Text);
-  Text := Copy(Text, 1, Marker - 1) + Copy(Text, Marker + 1, MaxInt);
-  Tree := TSyntaxTreeCache.Parse(Text);
+  mText := HauptWith(ABody);
+  mMarker := Pos('|', mText);
+  mText := Copy(mText, 1, mMarker - 1) + Copy(mText, mMarker + 1, MaxInt);
+  mTree := TSyntaxTreeCache.Parse(mText);
   try
-    Result := TCompletionTypeGuards.Find(Tree.Tokens, TokenFrom(Tree.Tokens, Marker - 1), AStrict, AByRef, AGuard);
+    Result := TCompletionTypeGuards.Find(mTree.Tokens, TokenFrom(mTree.Tokens, mMarker - 1), AStrict, AByRef, AGuard);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TCompletionTypeGuardsTests.ThenBranchNarrows;
 var
-  Guard: TTypeGuard;
+  mGuard: TTypeGuard;
 begin
   Assert.IsTrue(GuardOf(
     '  if AWert is TObjekt then'#13#10 +
     '  begin'#13#10 +
     '    Lies(nil);'#13#10 +
     '    |AWert.Text;'#13#10 +
-    '  end;', False, nil, Guard));
-  Assert.AreEqual('TObjekt', Guard.TypeName);
-  Assert.AreEqual(6, Guard.Line);
-  Assert.IsTrue(GuardOf('  if AWert is Typen.TObjekt then |AWert.Text;', False, nil, Guard));
-  Assert.AreEqual('Typen.TObjekt', Guard.TypeName);
+    '  end;', False, nil, mGuard));
+  Assert.AreEqual('TObjekt', mGuard.TypeName);
+  Assert.AreEqual(6, mGuard.Line);
+  Assert.IsTrue(GuardOf('  if AWert is Typen.TObjekt then |AWert.Text;', False, nil, mGuard));
+  Assert.AreEqual('Typen.TObjekt', mGuard.TypeName);
 end;
 
 procedure TCompletionTypeGuardsTests.AndChainNarrows;
 var
-  Guard: TTypeGuard;
+  mGuard: TTypeGuard;
 begin
-  Assert.IsTrue(GuardOf('  if Assigned(AWert) and (AWert is TObjekt) then |AWert.Text;', False, nil, Guard));
+  Assert.IsTrue(GuardOf('  if Assigned(AWert) and (AWert is TObjekt) then |AWert.Text;', False, nil, mGuard));
   Assert.IsTrue(GuardOf('  if (AWert is TObjekt) and not (AWert is TListe) then |AWert.Text;', False, nil,
-    Guard));
-  Assert.AreEqual('TObjekt', Guard.TypeName);
+    mGuard));
+  Assert.AreEqual('TObjekt', mGuard.TypeName);
 end;
 
 procedure TCompletionTypeGuardsTests.WhileConditionNarrows;
 var
-  Guard: TTypeGuard;
+  mGuard: TTypeGuard;
 begin
-  Assert.IsTrue(GuardOf('  while AWert is TObjekt do |AWert.Text;', False, nil, Guard));
+  Assert.IsTrue(GuardOf('  while AWert is TObjekt do |AWert.Text;', False, nil, mGuard));
 end;
 
 procedure TCompletionTypeGuardsTests.NegatedExitNarrowsToBlockEnd;
 var
-  Guard: TTypeGuard;
+  mGuard: TTypeGuard;
 begin
   Assert.IsTrue(GuardOf(
     '  if not (AWert is TObjekt) then'#13#10 +
     '    Exit;'#13#10 +
     '  Lies(nil);'#13#10 +
-    '  |AWert.Text;', False, nil, Guard));
+    '  |AWert.Text;', False, nil, mGuard));
   Assert.IsTrue(GuardOf(
     '  if (AWert = nil) or not (AWert is TObjekt) then'#13#10 +
     '    raise Exception.Create(''x'');'#13#10 +
-    '  |AWert.Text;', False, nil, Guard));
+    '  |AWert.Text;', False, nil, mGuard));
   Assert.IsTrue(GuardOf(
     '  if not (AWert is TObjekt) then begin Exit(False); end;'#13#10 +
-    '  |AWert.Text;', False, nil, Guard));
+    '  |AWert.Text;', False, nil, mGuard));
 end;
 
 procedure TCompletionTypeGuardsTests.NegatedWithoutJumpDoesNotNarrow;
 var
-  Guard: TTypeGuard;
+  mGuard: TTypeGuard;
 begin
   Assert.IsFalse(GuardOf(
     '  if not (AWert is TObjekt) then'#13#10 +
     '    Lies(nil);'#13#10 +
-    '  |AWert.Text;', False, nil, Guard));
-  Assert.IsFalse(GuardOf('  if not (AWert is TObjekt) then |AWert.Text;', False, nil, Guard));
+    '  |AWert.Text;', False, nil, mGuard));
+  Assert.IsFalse(GuardOf('  if not (AWert is TObjekt) then |AWert.Text;', False, nil, mGuard));
   // Das not umfasst mehr als die Prüfung.
-  Assert.IsFalse(GuardOf('  if not ((AWert is TObjekt) and Assigned(AWert)) then |AWert.Text;', False, nil, Guard));
+  Assert.IsFalse(GuardOf('  if not ((AWert is TObjekt) and Assigned(AWert)) then |AWert.Text;', False, nil, mGuard));
 end;
 
 procedure TCompletionTypeGuardsTests.OrChainDoesNotNarrow;
 var
-  Guard: TTypeGuard;
+  mGuard: TTypeGuard;
 begin
-  Assert.IsFalse(GuardOf('  if (AWert is TObjekt) or (AWert = nil) then |AWert.Text;', False, nil, Guard));
+  Assert.IsFalse(GuardOf('  if (AWert is TObjekt) or (AWert = nil) then |AWert.Text;', False, nil, mGuard));
 end;
 
 procedure TCompletionTypeGuardsTests.ElseBranchDoesNotNarrow;
 var
-  Guard: TTypeGuard;
+  mGuard: TTypeGuard;
 begin
   Assert.IsFalse(GuardOf(
     '  if AWert is TObjekt then'#13#10 +
     '    Lies(nil)'#13#10 +
     '  else'#13#10 +
-    '    |AWert.Text;', False, nil, Guard));
+    '    |AWert.Text;', False, nil, mGuard));
 end;
 
 procedure TCompletionTypeGuardsTests.OutsideBlockDoesNotNarrow;
 var
-  Guard: TTypeGuard;
+  mGuard: TTypeGuard;
 begin
   Assert.IsFalse(GuardOf(
     '  if AWert is TObjekt then'#13#10 +
     '  begin'#13#10 +
     '    Lies(nil);'#13#10 +
     '  end;'#13#10 +
-    '  |AWert.Text;', False, nil, Guard));
+    '  |AWert.Text;', False, nil, mGuard));
   Assert.IsFalse(GuardOf(
     '  begin'#13#10 +
     '    if not (AWert is TObjekt) then Exit;'#13#10 +
     '  end;'#13#10 +
-    '  |AWert.Text;', False, nil, Guard));
+    '  |AWert.Text;', False, nil, mGuard));
 end;
 
 procedure TCompletionTypeGuardsTests.AssignmentStopsNarrowing;
 var
-  Guard: TTypeGuard;
+  mGuard: TTypeGuard;
 begin
   Assert.IsFalse(GuardOf(
     '  if AWert is TObjekt then'#13#10 +
     '  begin'#13#10 +
     '    AWert := nil;'#13#10 +
     '    |AWert.Text;'#13#10 +
-    '  end;', False, nil, Guard));
+    '  end;', False, nil, mGuard));
 end;
 
 procedure TCompletionTypeGuardsTests.VarArgumentStopsNarrowing;
 var
-  Guard: TTypeGuard;
-  Calls: Integer;
+  mGuard: TTypeGuard;
+  mCalls: Integer;
 begin
-  Calls := 0;
+  mCalls := 0;
   Assert.IsFalse(GuardOf(
     '  if AWert is TObjekt then'#13#10 +
     '  begin'#13#10 +
@@ -380,22 +380,22 @@ begin
     '  end;', False,
     function(ACallOpen, AArgument: Integer): Boolean
     begin
-      Inc(Calls);
+      Inc(mCalls);
       Assert.AreEqual(0, AArgument);
       Result := True;
-    end, Guard));
-  Assert.AreEqual(1, Calls);
+    end, mGuard));
+  Assert.AreEqual(1, mCalls);
   // Ohne Auskunft gilt jedes Argument als var.
   Assert.IsFalse(GuardOf('  if AWert is TObjekt then begin Lies(nil, AWert); |AWert.Text; end;', False, nil,
-    Guard));
+    mGuard));
 end;
 
 procedure TCompletionTypeGuardsTests.PlainArgumentKeepsNarrowing;
 var
-  Guard: TTypeGuard;
-  Arguments: string;
+  mGuard: TTypeGuard;
+  mArguments: string;
 begin
-  Arguments := '';
+  mArguments := '';
   Assert.IsTrue(GuardOf(
     '  if AWert is TObjekt then'#13#10 +
     '  begin'#13#10 +
@@ -405,16 +405,16 @@ begin
     '  end;', False,
     function(ACallOpen, AArgument: Integer): Boolean
     begin
-      Arguments := Arguments + IntToStr(AArgument);
+      mArguments := mArguments + IntToStr(AArgument);
       Result := False;
-    end, Guard));
+    end, mGuard));
   // Lies(1, AWert) und die Umwandlung TObjekt(AWert).
-  Assert.AreEqual('10', Arguments);
+  Assert.AreEqual('10', mArguments);
 end;
 
 procedure TCompletionTypeGuardsTests.AssignmentLaterInLoopStopsNarrowing;
 var
-  Guard: TTypeGuard;
+  mGuard: TTypeGuard;
 begin
   Assert.IsFalse(GuardOf(
     '  if AWert is TObjekt then'#13#10 +
@@ -422,43 +422,43 @@ begin
     '    begin'#13#10 +
     '      |AWert.Text;'#13#10 +
     '      AWert := nil;'#13#10 +
-    '    end;', False, nil, Guard));
+    '    end;', False, nil, mGuard));
   // Ohne Schleife zählt die spätere Zuweisung nicht.
   Assert.IsTrue(GuardOf(
     '  if AWert is TObjekt then'#13#10 +
     '  begin'#13#10 +
     '    |AWert.Text;'#13#10 +
     '    AWert := nil;'#13#10 +
-    '  end;', False, nil, Guard));
+    '  end;', False, nil, mGuard));
 end;
 
 procedure TCompletionTypeGuardsTests.FieldOnlyInFirstStatement;
 var
-  Guard: TTypeGuard;
+  mGuard: TTypeGuard;
 begin
-  Assert.IsTrue(GuardOf('  if AWert is TObjekt then begin |AWert.Text;', True, nil, Guard));
-  Assert.IsTrue(GuardOf('  if not (AWert is TObjekt) then Exit;'#13#10'  |AWert.Text;', True, nil, Guard));
-  Assert.IsFalse(GuardOf('  if AWert is TObjekt then begin Lies(nil); |AWert.Text; end;', True, nil, Guard));
+  Assert.IsTrue(GuardOf('  if AWert is TObjekt then begin |AWert.Text;', True, nil, mGuard));
+  Assert.IsTrue(GuardOf('  if not (AWert is TObjekt) then Exit;'#13#10'  |AWert.Text;', True, nil, mGuard));
+  Assert.IsFalse(GuardOf('  if AWert is TObjekt then begin Lies(nil); |AWert.Text; end;', True, nil, mGuard));
 end;
 
 procedure TCompletionTypeGuardsTests.AnonymousMethodDoesNotNarrow;
 var
-  Guard: TTypeGuard;
+  mGuard: TTypeGuard;
 begin
   Assert.IsFalse(GuardOf(
     '  if AWert is TObjekt then'#13#10 +
-    '    Lauf(procedure begin |AWert.Text; end);', False, nil, Guard));
-  Assert.IsFalse(GuardOf('  if AWert is TObjekt then with AWert do |AWert.Text;', False, nil, Guard));
+    '    Lauf(procedure begin |AWert.Text; end);', False, nil, mGuard));
+  Assert.IsFalse(GuardOf('  if AWert is TObjekt then with AWert do |AWert.Text;', False, nil, mGuard));
 end;
 
 procedure TCompletionTypeGuardsTests.ClosestGuardWins;
 var
-  Guard: TTypeGuard;
+  mGuard: TTypeGuard;
 begin
-  Assert.IsTrue(GuardOf('  if AWert is TWert then if AWert is TObjekt then |AWert.Text;', False, nil, Guard));
-  Assert.AreEqual('TObjekt', Guard.TypeName);
+  Assert.IsTrue(GuardOf('  if AWert is TWert then if AWert is TObjekt then |AWert.Text;', False, nil, mGuard));
+  Assert.AreEqual('TObjekt', mGuard.TypeName);
   // Andere Namen zählen nicht.
-  Assert.IsFalse(GuardOf('  if Sender is TObjekt then |AWert.Text;', False, nil, Guard));
+  Assert.IsFalse(GuardOf('  if Sender is TObjekt then |AWert.Text;', False, nil, mGuard));
 end;
 
 procedure TCompletionTypeGuardsTests.ParamByRefReadsSignature;
@@ -474,99 +474,99 @@ end;
 
 procedure TCompletionTypeGuardsTests.MembersOfGuardedTypeComeWithCast;
 var
-  Answer: TJSONObject;
-  Item: TJSONObject;
+  mAnswer: TJSONObject;
+  mItem: TJSONObject;
 begin
-  Answer := Complete(HauptWith(
+  mAnswer := Complete(HauptWith(
     '  if AWert is TObjekt then'#13#10 +
     '    AWert.|'));
   try
-    Assert.AreEqual('TObjekt', DataOf(Answer, 'Anzahl', 'narrowed'));
-    Assert.AreEqual('AWert', DataOf(Answer, 'Anzahl', 'narrowedName'));
-    Assert.AreEqual('7', DataOf(Answer, 'Anzahl', 'narrowedLine'));
-    Assert.AreEqual('TObjekt', DataOf(Answer, 'Wert', 'narrowed'));
-    Item := ItemNamed(Answer, 'Anzahl');
-    Assert.AreEqual('(AWert as TObjekt).Anzahl', Item.GetValue<string>('textEdit.newText'));
-    Assert.AreEqual(4, Item.GetValue<Integer>('textEdit.range.start.character'));
+    Assert.AreEqual('TObjekt', DataOf(mAnswer, 'Anzahl', 'narrowed'));
+    Assert.AreEqual('AWert', DataOf(mAnswer, 'Anzahl', 'narrowedName'));
+    Assert.AreEqual('7', DataOf(mAnswer, 'Anzahl', 'narrowedLine'));
+    Assert.AreEqual('TObjekt', DataOf(mAnswer, 'Wert', 'narrowed'));
+    mItem := ItemNamed(mAnswer, 'Anzahl');
+    Assert.AreEqual('(AWert as TObjekt).Anzahl', mItem.GetValue<string>('textEdit.newText'));
+    Assert.AreEqual(4, mItem.GetValue<Integer>('textEdit.range.start.character'));
     // Mitglieder des deklarierten Typs ohne Umwandlung und nur einmal.
-    Assert.AreEqual('', DataOf(Answer, 'Text', 'narrowed'));
-    Assert.IsNull(ItemNamed(Answer, 'Text').FindValue('textEdit'));
+    Assert.AreEqual('', DataOf(mAnswer, 'Text', 'narrowed'));
+    Assert.IsNull(ItemNamed(mAnswer, 'Text').FindValue('textEdit'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TCompletionTypeGuardsTests.HardCastFollowsSenderCast;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
   FSettings.SenderCast := TCompletionSenderCast.HardCast;
-  Answer := Complete(HauptWith(
+  mAnswer := Complete(HauptWith(
     '  if not (AWert is TObjekt) then Exit;'#13#10 +
     '  AWert.Anz|'));
   try
-    Assert.AreEqual('TObjekt(AWert).Anzahl', ItemNamed(Answer, 'Anzahl').GetValue<string>('textEdit.newText'));
+    Assert.AreEqual('TObjekt(AWert).Anzahl', ItemNamed(mAnswer, 'Anzahl').GetValue<string>('textEdit.newText'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TCompletionTypeGuardsTests.SwitchedOffOffersDeclaredMembersOnly;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
   FSettings.TypeGuards := False;
-  Answer := Complete(HauptWith(
+  mAnswer := Complete(HauptWith(
     '  if AWert is TObjekt then'#13#10 +
     '    AWert.|'));
   try
-    Assert.IsNull(ItemNamed(Answer, 'Anzahl'));
-    Assert.IsNotNull(ItemNamed(Answer, 'Text'));
+    Assert.IsNull(ItemNamed(mAnswer, 'Anzahl'));
+    Assert.IsNotNull(ItemNamed(mAnswer, 'Text'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TCompletionTypeGuardsTests.VarCallInBetweenOffersDeclaredMembersOnly;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
-  Answer := Complete(HauptWith(
+  mAnswer := Complete(HauptWith(
     '  if AWert is TObjekt then'#13#10 +
     '  begin'#13#10 +
     '    Aendere(AWert);'#13#10 +
     '    AWert.|'#13#10 +
     '  end;'));
   try
-    Assert.IsNull(ItemNamed(Answer, 'Anzahl'));
+    Assert.IsNull(ItemNamed(mAnswer, 'Anzahl'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  Answer := Complete(HauptWith(
+  mAnswer := Complete(HauptWith(
     '  if AWert is TObjekt then'#13#10 +
     '  begin'#13#10 +
     '    Lies(AWert);'#13#10 +
     '    AWert.|'#13#10 +
     '  end;'));
   try
-    Assert.AreEqual('TObjekt', DataOf(Answer, 'Anzahl', 'narrowed'));
+    Assert.AreEqual('TObjekt', DataOf(mAnswer, 'Anzahl', 'narrowed'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TCompletionTypeGuardsTests.DescendantsAfterIsAreMarked;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
-  Answer := Complete(HauptWith('  if AWert is T|'));
+  mAnswer := Complete(HauptWith('  if AWert is T|'));
   try
-    Assert.AreEqual('TWert', DataOf(Answer, 'TObjekt', 'descendantOf'));
-    Assert.AreEqual('TWert', DataOf(Answer, 'TListe', 'descendantOf'));
-    Assert.AreEqual('', DataOf(Answer, 'TFremd', 'descendantOf'));
-    Assert.AreEqual('', DataOf(Answer, 'TWert', 'descendantOf'));
+    Assert.AreEqual('TWert', DataOf(mAnswer, 'TObjekt', 'descendantOf'));
+    Assert.AreEqual('TWert', DataOf(mAnswer, 'TListe', 'descendantOf'));
+    Assert.AreEqual('', DataOf(mAnswer, 'TFremd', 'descendantOf'));
+    Assert.AreEqual('', DataOf(mAnswer, 'TWert', 'descendantOf'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 

@@ -37,31 +37,31 @@ uses
   Atlas.Common.Lsp.DfmPropertyRules;
 
 const
-  UnitA = 'C:\P\A.pas';
-  UnitB = 'C:\P\B.pas';
-  UnitC = 'C:\P\C.pas';
+  cUnitA = 'C:\P\A.pas';
+  cUnitB = 'C:\P\B.pas';
+  cUnitC = 'C:\P\C.pas';
 
 function Finding(const ARuleId, AFileName: string; ALine: Integer; const ANewText: string): TRuleFinding;
 var
-  Fix: TRuleFix;
+  mFix: TRuleFix;
 begin
   Result := Default(TRuleFinding);
   Result.RuleId := ARuleId;
   Result.Range := TTextRange.Create(ALine, 0, ALine, 4);
-  Fix := TRuleFix.Create('Korrektur', [TRuleEdit.Create(TTextRange.Create(ALine, 4, ALine, 9), ANewText)]);
-  Fix.FileName := AFileName;
-  Result.Fixes := [Fix];
+  mFix := TRuleFix.Create('Korrektur', [TRuleEdit.Create(TTextRange.Create(ALine, 4, ALine, 9), ANewText)]);
+  mFix.FileName := AFileName;
+  Result.Fixes := [mFix];
 end;
 
 function Check(const AFileName: string; out AFindings: TArray<TRuleFinding>): Boolean;
 begin
   AFindings := nil;
-  Result := not SameText(AFileName, UnitC);
-  if SameText(AFileName, UnitA) then
+  Result := not SameText(AFileName, cUnitC);
+  if SameText(AFileName, cUnitA) then
   begin
     AFindings := [Finding('dfm-property', 'C:\P\A.dfm', 3, 'True'), Finding('dfm-property', 'C:\P\A.dfm', 5, '[a]')];
   end
-  else if SameText(AFileName, UnitB) then
+  else if SameText(AFileName, cUnitB) then
   begin
     AFindings := [Finding('dfm-property', 'C:\P\B.dfm', 1, '0')];
   end;
@@ -69,60 +69,60 @@ end;
 
 procedure TLspDfmPropertyRulesTests.CollectsFormEditsOfAllUnits;
 var
-  Edit: TJSONObject;
-  Changes: TJSONArray;
-  Files, Edits: Integer;
-  Uri: string;
-  First: TJSONObject;
+  mEdit: TJSONObject;
+  mChanges: TJSONArray;
+  mFiles, mEdits: Integer;
+  mUri: string;
+  mFirst: TJSONObject;
 begin
   // C hat kein Formular, A kommt doppelt: zwei Dateien, drei Änderungen.
-  Edit := TLspDfmPropertyRules.BuildEdit([UnitA, UnitB, UnitC, UnitA], Check, Files, Edits);
+  mEdit := TLspDfmPropertyRules.BuildEdit([cUnitA, cUnitB, cUnitC, cUnitA], Check, mFiles, mEdits);
   try
-    Assert.AreEqual(2, Files);
-    Assert.AreEqual(3, Edits);
-    Changes := Edit.GetValue('documentChanges') as TJSONArray;
-    Assert.AreEqual(2, Integer(Changes.Count));
-    Uri := Changes.Items[0].GetValue<string>('textDocument.uri');
-    Assert.AreEqual(TDocumentUris.FromPath('C:\P\A.dfm'), Uri);
-    Assert.AreEqual(2, (Changes.Items[0].GetValue<TJSONArray>('edits')).Count);
-    First := (Changes.Items[0].GetValue<TJSONArray>('edits')).Items[0] as TJSONObject;
-    Assert.AreEqual('dfmPropertyRules', First.GetValue<string>('annotationId'));
-    Assert.AreEqual('True', First.GetValue<string>('newText'));
+    Assert.AreEqual(2, mFiles);
+    Assert.AreEqual(3, mEdits);
+    mChanges := mEdit.GetValue('documentChanges') as TJSONArray;
+    Assert.AreEqual(2, Integer(mChanges.Count));
+    mUri := mChanges.Items[0].GetValue<string>('textDocument.uri');
+    Assert.AreEqual(TDocumentUris.FromPath('C:\P\A.dfm'), mUri);
+    Assert.AreEqual(2, (mChanges.Items[0].GetValue<TJSONArray>('edits')).Count);
+    mFirst := (mChanges.Items[0].GetValue<TJSONArray>('edits')).Items[0] as TJSONObject;
+    Assert.AreEqual('dfmPropertyRules', mFirst.GetValue<string>('annotationId'));
+    Assert.AreEqual('True', mFirst.GetValue<string>('newText'));
     // Bestätigung durch den Benutzer (Änderungsanmerkung).
-    Assert.IsTrue(Edit.GetValue<Boolean>('changeAnnotations.dfmPropertyRules.needsConfirmation'));
+    Assert.IsTrue(mEdit.GetValue<Boolean>('changeAnnotations.dfmPropertyRules.needsConfirmation'));
     Assert.AreEqual('3 Änderungen in 2 Formulardateien',
-      Edit.GetValue<string>('changeAnnotations.dfmPropertyRules.description'));
+      mEdit.GetValue<string>('changeAnnotations.dfmPropertyRules.description'));
   finally
-    Edit.Free;
+    mEdit.Free;
   end;
 end;
 
 function CheckOverlap(const AFileName: string; out AFindings: TArray<TRuleFinding>): Boolean;
 var
-  UnitFix: TRuleFinding;
+  mUnitFix: TRuleFinding;
 begin
   // Zwei Regeln auf denselben Wert und eine Korrektur in der Unit selbst.
-  UnitFix := Finding('dfm-property', '', 2, 'x');
+  mUnitFix := Finding('dfm-property', '', 2, 'x');
   AFindings := [Finding('dfm-property', 'C:\P\A.dfm', 3, 'True'), Finding('dfm-property', 'C:\P\A.dfm', 3, 'False'),
-    UnitFix, Finding('other-rule', 'C:\P\A.dfm', 7, 'y')];
+    mUnitFix, Finding('other-rule', 'C:\P\A.dfm', 7, 'y')];
   Result := True;
 end;
 
 procedure TLspDfmPropertyRulesTests.SkipsOverlappingAndUnitEdits;
 var
-  Edit, Document: TJSONObject;
-  Items: TJSONArray;
-  Files, Edits: Integer;
+  mEdit, mDocument: TJSONObject;
+  mItems: TJSONArray;
+  mFiles, mEdits: Integer;
 begin
-  Edit := TLspDfmPropertyRules.BuildEdit([UnitA], CheckOverlap, Files, Edits);
+  mEdit := TLspDfmPropertyRules.BuildEdit([cUnitA], CheckOverlap, mFiles, mEdits);
   try
-    Assert.AreEqual(1, Files);
-    Assert.AreEqual(1, Edits, 'die erste Korrektur gilt, die überlappende entfällt');
-    Document := (Edit.GetValue('documentChanges') as TJSONArray).Items[0] as TJSONObject;
-    Items := Document.GetValue('edits') as TJSONArray;
-    Assert.AreEqual('True', (Items.Items[0] as TJSONObject).GetValue<string>('newText'));
+    Assert.AreEqual(1, mFiles);
+    Assert.AreEqual(1, mEdits, 'die erste Korrektur gilt, die überlappende entfällt');
+    mDocument := (mEdit.GetValue('documentChanges') as TJSONArray).Items[0] as TJSONObject;
+    mItems := mDocument.GetValue('edits') as TJSONArray;
+    Assert.AreEqual('True', (mItems.Items[0] as TJSONObject).GetValue<string>('newText'));
   finally
-    Edit.Free;
+    mEdit.Free;
   end;
 end;
 
@@ -135,22 +135,22 @@ end;
 
 procedure TLspDfmPropertyRulesTests.ActionWithFormEditsLeavesDocument;
 var
-  Actions: TArray<TCodeAction>;
-  Json: TJSONObject;
-  Changes: TJSONObject;
+  mActions: TArray<TCodeAction>;
+  mJson: TJSONObject;
+  mChanges: TJSONObject;
 begin
-  Actions := TRuleCodeActions.ForFindings([Finding('dfm-property', 'C:\P\A.dfm', 3, 'True')], 'unit A;',
+  mActions := TRuleCodeActions.ForFindings([Finding('dfm-property', 'C:\P\A.dfm', 3, 'True')], 'unit A;',
     TTextRange.Create(3, 0, 3, 0));
-  Assert.IsTrue(Length(Actions) > 0);
-  Assert.AreEqual(0, Integer(Length(Actions[0].Edits)));
-  Assert.AreEqual('C:\P\A.dfm', Actions[0].FileEdits[0].FileName);
-  Json := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(UnitA), Actions[0]);
+  Assert.IsTrue(Length(mActions) > 0);
+  Assert.AreEqual(0, Integer(Length(mActions[0].Edits)));
+  Assert.AreEqual('C:\P\A.dfm', mActions[0].FileEdits[0].FileName);
+  mJson := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(cUnitA), mActions[0]);
   try
-    Changes := Json.GetValue<TJSONObject>('edit.changes');
-    Assert.AreEqual(1, Integer(Changes.Count), 'nur die Formulardatei');
-    Assert.AreEqual(TDocumentUris.FromPath('C:\P\A.dfm'), Changes.Pairs[0].JsonString.Value);
+    mChanges := mJson.GetValue<TJSONObject>('edit.changes');
+    Assert.AreEqual(1, Integer(mChanges.Count), 'nur die Formulardatei');
+    Assert.AreEqual(TDocumentUris.FromPath('C:\P\A.dfm'), mChanges.Pairs[0].JsonString.Value);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 

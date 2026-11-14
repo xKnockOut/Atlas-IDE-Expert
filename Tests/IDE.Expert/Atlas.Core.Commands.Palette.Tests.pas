@@ -56,7 +56,7 @@ uses
   Atlas.Core.Files.DataFile,
   Atlas.Core.Commands.Palette;
 
-function Command(const AId, ACaption: string; const APath: string = ''): TAtlasCommand;
+function Command(const AId, ACaption: string; const APath: string): TAtlasCommand;
 begin
   Result := Default(TAtlasCommand);
   Result.Id := AId;
@@ -66,19 +66,19 @@ end;
 
 function Captions(const ACommands: TArray<TAtlasCommand>; const AOrder: TArray<Integer>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index in AOrder do
+  for mIndex in AOrder do
   begin
-    Result := Result + ACommands[Index].Caption + '|';
+    Result := Result + ACommands[mIndex].Caption + '|';
   end;
 end;
 
 function Sample: TArray<TAtlasCommand>;
 begin
   Result := [Command('ProjectBuild', 'Build Project', 'Project'), Command('ProjectCompile', 'Compile Project', 'Project'),
-    Command('FileOpen', 'Open', 'File'), Command('Atlas.Options', 'Atlas: Optionen')];
+    Command('FileOpen', 'Open', 'File'), Command('Atlas.Options', 'Atlas: Optionen', '')];
 end;
 
 type
@@ -131,39 +131,39 @@ end;
 
 procedure TAtlasCommandPaletteTests.FuzzyFindsBuildProject;
 var
-  Commands: TArray<TAtlasCommand>;
+  mCommands: TArray<TAtlasCommand>;
 begin
-  Commands := Sample;
-  Assert.AreEqual('Build Project|', Captions(Commands, TAtlasCommandPalette.Order(Commands, 'bpj', nil)));
+  mCommands := Sample;
+  Assert.AreEqual('Build Project|', Captions(mCommands, TAtlasCommandPalette.Order(mCommands, 'bpj', nil)));
 end;
 
 procedure TAtlasCommandPaletteTests.LastExecutedFirst;
 var
-  Commands: TArray<TAtlasCommand>;
-  History: TAtlasCommandHistory;
+  mCommands: TArray<TAtlasCommand>;
+  mHistory: TAtlasCommandHistory;
 begin
-  Commands := Sample;
-  History := TAtlasCommandHistory.Create;
+  mCommands := Sample;
+  mHistory := TAtlasCommandHistory.Create;
   try
     // Ohne Eingabe alphabetisch, der eben ausgeführte Befehl oben.
     Assert.AreEqual('Atlas: Optionen|Build Project|Compile Project|Open|',
-      Captions(Commands, TAtlasCommandPalette.Order(Commands, '', History)));
-    History.Executed('FileOpen');
+      Captions(mCommands, TAtlasCommandPalette.Order(mCommands, '', mHistory)));
+    mHistory.Executed('FileOpen');
     Assert.AreEqual('Open|Atlas: Optionen|Build Project|Compile Project|',
-      Captions(Commands, TAtlasCommandPalette.Order(Commands, '', History)));
-    History.Executed('ProjectCompile');
-    Assert.AreEqual('Compile Project|Open|', Copy(Captions(Commands, TAtlasCommandPalette.Order(Commands, '', History)), 1, 21));
+      Captions(mCommands, TAtlasCommandPalette.Order(mCommands, '', mHistory)));
+    mHistory.Executed('ProjectCompile');
+    Assert.AreEqual('Compile Project|Open|', Copy(Captions(mCommands, TAtlasCommandPalette.Order(mCommands, '', mHistory)), 1, 21));
   finally
-    History.Free;
+    mHistory.Free;
   end;
 end;
 
 procedure TAtlasCommandPaletteTests.PathHelpsWhenCaptionDoesNot;
 var
-  Commands: TArray<TAtlasCommand>;
+  mCommands: TArray<TAtlasCommand>;
 begin
-  Commands := Sample;
-  Assert.AreEqual('Open|', Captions(Commands, TAtlasCommandPalette.Order(Commands, 'file open', nil)));
+  mCommands := Sample;
+  Assert.AreEqual('Open|', Captions(mCommands, TAtlasCommandPalette.Order(mCommands, 'file open', nil)));
 end;
 
 procedure TAtlasCommandPaletteTests.CleansCaptions;
@@ -174,82 +174,82 @@ end;
 
 procedure TAtlasCommandPaletteTests.HistoryRoundTrip;
 var
-  History, Loaded: TAtlasCommandHistory;
-  FileName: string;
+  mHistory, mLoaded: TAtlasCommandHistory;
+  mFileName: string;
 begin
-  FileName := TPath.Combine(TPath.GetTempPath, 'atlas-palette-test.json');
-  History := TAtlasCommandHistory.Create;
-  Loaded := TAtlasCommandHistory.Create;
+  mFileName := TPath.Combine(TPath.GetTempPath, 'atlas-palette-test.json');
+  mHistory := TAtlasCommandHistory.Create;
+  mLoaded := TAtlasCommandHistory.Create;
   try
-    History.Executed('A');
-    History.Executed('B');
-    History.SaveToFile(FileName);
-    Loaded.LoadFromFile(FileName);
-    Assert.AreEqual(History.Boost('A'), Loaded.Boost('A'));
-    Assert.AreEqual(History.Boost('B'), Loaded.Boost('B'));
-    Assert.IsTrue(Loaded.Boost('B') > Loaded.Boost('A'));
+    mHistory.Executed('A');
+    mHistory.Executed('B');
+    mHistory.SaveToFile(mFileName);
+    mLoaded.LoadFromFile(mFileName);
+    Assert.AreEqual(mHistory.Boost('A'), mLoaded.Boost('A'));
+    Assert.AreEqual(mHistory.Boost('B'), mLoaded.Boost('B'));
+    Assert.IsTrue(mLoaded.Boost('B') > mLoaded.Boost('A'));
   finally
-    Loaded.Free;
-    History.Free;
-    TFile.Delete(FileName);
+    mLoaded.Free;
+    mHistory.Free;
+    TFile.Delete(mFileName);
   end;
 end;
 
 procedure TAtlasCommandPaletteTests.KeepsListOrderForCodeActions;
 var
-  Commands: TArray<TAtlasCommand>;
+  mCommands: TArray<TAtlasCommand>;
 begin
   // Code-Aktionen (#399): bevorzugte zuerst, so wie der Server sie liefert.
-  Commands := [Command('0', 'try/finally ergänzen'), Command('1', 'Befund kopieren'), Command('2', 'Als Konstante')];
+  mCommands := [Command('0', 'try/finally ergänzen', ''), Command('1', 'Befund kopieren', ''), Command('2', 'Als Konstante', '')];
   Assert.AreEqual('try/finally ergänzen|Befund kopieren|Als Konstante|',
-    Captions(Commands, TAtlasCommandPalette.Order(Commands, '', nil, True)));
+    Captions(mCommands, TAtlasCommandPalette.Order(mCommands, '', nil, True)));
   Assert.AreEqual('Als Konstante|Befund kopieren|try/finally ergänzen|',
-    Captions(Commands, TAtlasCommandPalette.Order(Commands, '', nil)), 'ohne KeepOrder alphabetisch');
-  Assert.AreEqual('Befund kopieren|', Captions(Commands, TAtlasCommandPalette.Order(Commands, 'befund', nil, True)));
+    Captions(mCommands, TAtlasCommandPalette.Order(mCommands, '', nil)), 'ohne KeepOrder alphabetisch');
+  Assert.AreEqual('Befund kopieren|', Captions(mCommands, TAtlasCommandPalette.Order(mCommands, 'befund', nil, True)));
 end;
 
 procedure TAtlasCommandPaletteTests.RegistryInterfaceIsUsableWithoutVcl;
 var
-  Fake: TFakeRegistry;
-  Registry: IAtlasCommandRegistry;
+  mFake: TFakeRegistry;
+  mRegistry: IAtlasCommandRegistry;
 begin
-  Fake := TFakeRegistry.Create;
-  Registry := Fake;
-  RegisterSample(Registry);
-  Assert.AreEqual(2, Integer(Length(Fake.Ids)));
-  Assert.AreEqual('Atlas.Zwei', Fake.Ids[1]);
-  Assert.AreEqual(1, Fake.Conditional);
+  mFake := TFakeRegistry.Create;
+  mRegistry := mFake;
+  RegisterSample(mRegistry);
+  Assert.AreEqual(2, Integer(Length(mFake.Ids)));
+  Assert.AreEqual('Atlas.Zwei', mFake.Ids[1]);
+  Assert.AreEqual(1, mFake.Conditional);
 end;
 
 procedure TAtlasCommandPaletteTests.BrokenFileSetAsideLockedFileKept;
 var
-  History: TAtlasCommandHistory;
-  FileName: string;
-  Lock: TFileStream;
+  mHistory: TAtlasCommandHistory;
+  mFileName: string;
+  mLock: TFileStream;
 begin
-  FileName := TPath.Combine(TPath.GetTempPath, 'atlas-palette-' + IntToStr(Random(MaxInt)) + '.json');
-  History := TAtlasCommandHistory.Create;
+  mFileName := TPath.Combine(TPath.GetTempPath, 'atlas-palette-' + IntToStr(Random(MaxInt)) + '.json');
+  mHistory := TAtlasCommandHistory.Create;
   try
-    TFile.WriteAllText(FileName, '[1, 2]');
-    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed, History.LoadFromFile(FileName));
-    Assert.IsTrue(TFile.Exists(FileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
-    History.Executed('A');
-    Assert.IsTrue(History.SaveToFile(FileName));
-    Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
+    TFile.WriteAllText(mFileName, '[1, 2]');
+    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed, mHistory.LoadFromFile(mFileName));
+    Assert.IsTrue(TFile.Exists(mFileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
+    mHistory.Executed('A');
+    Assert.IsTrue(mHistory.SaveToFile(mFileName));
+    mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
     try
-      Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept, History.LoadFromFile(FileName));
+      Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept, mHistory.LoadFromFile(mFileName));
     finally
-      Lock.Free;
+      mLock.Free;
     end;
-    Assert.AreEqual(0, History.Boost('A'));
-    History.Executed('B');
-    Assert.IsFalse(History.SaveToFile(FileName), 'beim Lesen gesperrt: nicht überschreiben');
-    Assert.Contains(TFile.ReadAllText(FileName, TEncoding.UTF8), '"A"');
-    Assert.DoesNotContain(TFile.ReadAllText(FileName, TEncoding.UTF8), '"B"');
+    Assert.AreEqual(0, mHistory.Boost('A'));
+    mHistory.Executed('B');
+    Assert.IsFalse(mHistory.SaveToFile(mFileName), 'beim Lesen gesperrt: nicht überschreiben');
+    Assert.Contains(TFile.ReadAllText(mFileName, TEncoding.UTF8), '"A"');
+    Assert.DoesNotContain(TFile.ReadAllText(mFileName, TEncoding.UTF8), '"B"');
   finally
-    History.Free;
-    System.SysUtils.DeleteFile(FileName);
-    System.SysUtils.DeleteFile(FileName + TAtlasDataFile.cDefectExtension);
+    mHistory.Free;
+    System.SysUtils.DeleteFile(mFileName);
+    System.SysUtils.DeleteFile(mFileName + TAtlasDataFile.cDefectExtension);
   end;
   // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
   TAtlasDataFile.ForgetReports;
@@ -264,7 +264,7 @@ begin
   SetLength(mItems, ACount);
   for mIndex := 0 to ACount - 1 do
   begin
-    mItems[mIndex] := Command('ATL-' + IntToStr(mIndex + 1), 'Eintrag ' + IntToStr(mIndex + 1));
+    mItems[mIndex] := Command('ATL-' + IntToStr(mIndex + 1), 'Eintrag ' + IntToStr(mIndex + 1), '');
   end;
   Result := TAtlasPaletteGroup.Create('Issues', AStatus, '', mItems);
 end;
@@ -280,7 +280,7 @@ begin
   Assert.AreEqual(2, mIndex);
   Assert.AreEqual(0, mRows.First);
   // Einträge ohne Titel: keine Gruppe.
-  mRows := TAtlasPaletteRows.Create(0, TAtlasPaletteGroup.Create('', 'Status', '', [Command('a', 'A')]));
+  mRows := TAtlasPaletteRows.Create(0, TAtlasPaletteGroup.Create('', 'Status', '', [Command('a', 'A', '')]));
   Assert.AreEqual(0, mRows.Count);
   Assert.AreEqual(-1, mRows.First);
   Assert.IsFalse(mRows.Selectable(0));

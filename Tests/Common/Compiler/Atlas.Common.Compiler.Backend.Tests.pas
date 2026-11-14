@@ -57,22 +57,22 @@ uses
 /// <summary>Datei aus Tests\Data\Compiler, gesucht ab dem Ordner des Testprogramms aufwärts.</summary>
 function DataLines(const AName: string): TArray<string>;
 var
-  Directory, FileName: string;
+  mDirectory, mFileName: string;
 begin
-  Directory := ExtractFileDir(ParamStr(0));
-  while Directory <> '' do
+  mDirectory := ExtractFileDir(ParamStr(0));
+  while mDirectory <> '' do
   begin
-    FileName := TPath.Combine(Directory, TPath.Combine('Tests', TPath.Combine('Data',
+    mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
       TPath.Combine('Compiler', AName))));
-    if TFile.Exists(FileName) then
+    if TFile.Exists(mFileName) then
     begin
-      Exit(TFile.ReadAllLines(FileName, TEncoding.UTF8));
+      Exit(TFile.ReadAllLines(mFileName, TEncoding.UTF8));
     end;
-    if ExtractFileDir(Directory) = Directory then
+    if ExtractFileDir(mDirectory) = mDirectory then
     begin
       Break;
     end;
-    Directory := ExtractFileDir(Directory);
+    mDirectory := ExtractFileDir(mDirectory);
   end;
   raise Exception.Create('Tests\Data\Compiler\' + AName + ' nicht gefunden');
 end;
@@ -81,23 +81,23 @@ end;
 
 procedure TCompilerEditionTests.DetectsStarterFromRecordedOutput;
 var
-  Output: TArray<string>;
+  mOutput: TArray<string>;
 begin
-  Output := DataLines('dcc32-starter.txt');
-  Assert.IsTrue(TCompilerEditions.HasLicenseText(Output));
-  Assert.AreEqual(Ord(TCompilerEdition.NoCommandLine), Ord(TCompilerEditions.Detect(True, Output)));
+  mOutput := DataLines('dcc32-starter.txt');
+  Assert.IsTrue(TCompilerEditions.HasLicenseText(mOutput));
+  Assert.AreEqual(Ord(TCompilerEdition.NoCommandLine), Ord(TCompilerEditions.Detect(True, mOutput)));
   Assert.IsTrue(Pos('Starter Edition', TCompilerEditions.Describe(TCompilerEdition.NoCommandLine)) > 0);
 end;
 
 procedure TCompilerEditionTests.DetectsCommandLineCompiler;
 var
-  Output: TArray<string>;
+  mOutput: TArray<string>;
 begin
   // Kopf ohne die Zeile mit dem Urheberrecht (siehe Check-NoEmbarcaderoSources).
-  Output := TArray<string>.Create('Embarcadero Delphi for Win32 compiler version 37.0', '',
+  mOutput := TArray<string>.Create('Embarcadero Delphi for Win32 compiler version 37.0', '',
     'Syntax: dcc32 [options] filename [options]', '  -A<unit>=<alias> = Set unit alias');
-  Assert.IsFalse(TCompilerEditions.HasLicenseText(Output));
-  Assert.AreEqual(Ord(TCompilerEdition.CommandLine), Ord(TCompilerEditions.Detect(True, Output)));
+  Assert.IsFalse(TCompilerEditions.HasLicenseText(mOutput));
+  Assert.AreEqual(Ord(TCompilerEdition.CommandLine), Ord(TCompilerEditions.Detect(True, mOutput)));
 end;
 
 procedure TCompilerEditionTests.DetectsMissingAndUnknown;
@@ -131,55 +131,55 @@ end;
 
 procedure TCompilerEditionTests.CacheRoundTripPerRootAndVersion;
 var
-  Cache, Loaded: TCompilerEditionCache;
+  mCache, mLoaded: TCompilerEditionCache;
 begin
-  Cache := TCompilerEditionCache.Create;
-  Loaded := TCompilerEditionCache.Create;
+  mCache := TCompilerEditionCache.Create;
+  mLoaded := TCompilerEditionCache.Create;
   try
-    Cache.Store(Entry('C:\Delphi\23.0', '23.0', '100-a', TCompilerEdition.NoCommandLine));
-    Cache.Store(Entry('C:\Delphi\37.0', '37.0', '200-b', TCompilerEdition.CommandLine));
+    mCache.Store(Entry('C:\Delphi\23.0', '23.0', '100-a', TCompilerEdition.NoCommandLine));
+    mCache.Store(Entry('C:\Delphi\37.0', '37.0', '200-b', TCompilerEdition.CommandLine));
     // Gleiche Installation ersetzt den Eintrag.
-    Cache.Store(Entry('c:\delphi\37.0', '37.0', '200-b', TCompilerEdition.Missing));
-    Assert.AreEqual(2, Integer(Cache.Count));
-    Loaded.Load(Cache.ToJson);
-    Assert.AreEqual(2, Integer(Loaded.Count));
-    Assert.AreEqual(Ord(TCompilerEdition.NoCommandLine), Ord(Loaded.Find('C:\Delphi\23.0', '23.0', '100-a')));
-    Assert.AreEqual(Ord(TCompilerEdition.Missing), Ord(Loaded.Find('C:\Delphi\37.0', '37.0', '200-b')));
-    Assert.AreEqual(Ord(TCompilerEdition.Unknown), Ord(Loaded.Find('C:\Delphi\12.0', '12.0', '1-x')));
+    mCache.Store(Entry('c:\delphi\37.0', '37.0', '200-b', TCompilerEdition.Missing));
+    Assert.AreEqual(2, Integer(mCache.Count));
+    mLoaded.Load(mCache.ToJson);
+    Assert.AreEqual(2, Integer(mLoaded.Count));
+    Assert.AreEqual(Ord(TCompilerEdition.NoCommandLine), Ord(mLoaded.Find('C:\Delphi\23.0', '23.0', '100-a')));
+    Assert.AreEqual(Ord(TCompilerEdition.Missing), Ord(mLoaded.Find('C:\Delphi\37.0', '37.0', '200-b')));
+    Assert.AreEqual(Ord(TCompilerEdition.Unknown), Ord(mLoaded.Find('C:\Delphi\12.0', '12.0', '1-x')));
   finally
-    Loaded.Free;
-    Cache.Free;
+    mLoaded.Free;
+    mCache.Free;
   end;
 end;
 
 procedure TCompilerEditionTests.CacheIgnoresChangedCompiler;
 var
-  Cache: TCompilerEditionCache;
+  mCache: TCompilerEditionCache;
 begin
-  Cache := TCompilerEditionCache.Create;
+  mCache := TCompilerEditionCache.Create;
   try
-    Cache.Store(Entry('C:\Delphi\23.0', '23.0', '100-a', TCompilerEdition.NoCommandLine));
+    mCache.Store(Entry('C:\Delphi\23.0', '23.0', '100-a', TCompilerEdition.NoCommandLine));
     // Neu installiert (z. B. Professional statt Starter): dcc hat einen anderen Fingerabdruck.
-    Assert.AreEqual(Ord(TCompilerEdition.Unknown), Ord(Cache.Find('C:\Delphi\23.0', '23.0', '999-z')));
+    Assert.AreEqual(Ord(TCompilerEdition.Unknown), Ord(mCache.Find('C:\Delphi\23.0', '23.0', '999-z')));
   finally
-    Cache.Free;
+    mCache.Free;
   end;
 end;
 
 procedure TCompilerEditionTests.CacheSurvivesBrokenText;
 var
-  Cache: TCompilerEditionCache;
+  mCache: TCompilerEditionCache;
 begin
-  Cache := TCompilerEditionCache.Create;
+  mCache := TCompilerEditionCache.Create;
   try
-    Cache.Load('kein JSON');
-    Assert.AreEqual(0, Integer(Cache.Count));
+    mCache.Load('kein JSON');
+    Assert.AreEqual(0, Integer(mCache.Count));
     // Ohne Wurzel, ohne bekannte Ausgabe oder kein Objekt: übergangen.
-    Cache.Load('{"format": 1, "entries": [{"root": "", "edition": "missing"}, ' +
+    mCache.Load('{"format": 1, "entries": [{"root": "", "edition": "missing"}, ' +
       '{"root": "C:\\D", "version": "23.0", "edition": "anders"}, 5]}');
-    Assert.AreEqual(0, Integer(Cache.Count));
+    Assert.AreEqual(0, Integer(mCache.Count));
   finally
-    Cache.Free;
+    mCache.Free;
   end;
 end;
 
@@ -187,57 +187,57 @@ end;
 
 procedure TCompilerBackendTests.AutoTakesDccWhenUsable;
 var
-  Choice: TCompilerBackendChoice;
+  mChoice: TCompilerBackendChoice;
 begin
-  Choice := TCompilerBackends.Choose(TCompilerBackendSetting.Auto, TCompilerEdition.CommandLine);
-  Assert.AreEqual(Ord(TCompilerBackend.Dcc), Ord(Choice.Backend));
-  Assert.AreEqual('Compiler: dcc (Kommandozeile)', Choice.StatusText);
-  Assert.AreEqual('', Choice.MessageText);
+  mChoice := TCompilerBackends.Choose(TCompilerBackendSetting.Auto, TCompilerEdition.CommandLine);
+  Assert.AreEqual(Ord(TCompilerBackend.Dcc), Ord(mChoice.Backend));
+  Assert.AreEqual('Compiler: dcc (Kommandozeile)', mChoice.StatusText);
+  Assert.AreEqual('', mChoice.MessageText);
   // Noch nicht geprüft: dcc versuchen; zeigt dcc den Lizenztext, merkt sich das der Server.
-  Choice := TCompilerBackends.Choose(TCompilerBackendSetting.Auto, TCompilerEdition.Unknown);
-  Assert.AreEqual(Ord(TCompilerBackend.Dcc), Ord(Choice.Backend));
+  mChoice := TCompilerBackends.Choose(TCompilerBackendSetting.Auto, TCompilerEdition.Unknown);
+  Assert.AreEqual(Ord(TCompilerBackend.Dcc), Ord(mChoice.Backend));
 end;
 
 procedure TCompilerBackendTests.AutoWithoutDccNamesReasonAndRemedy;
 var
-  Choice: TCompilerBackendChoice;
+  mChoice: TCompilerBackendChoice;
 begin
-  Choice := TCompilerBackends.Choose(TCompilerBackendSetting.Auto, TCompilerEdition.NoCommandLine);
-  Assert.IsFalse(Choice.Usable);
-  Assert.AreEqual(Ord(TCompilerBackend.Off), Ord(Choice.Backend));
-  Assert.AreEqual('Compiler: nicht verfügbar (Starter Edition)', Choice.StatusText);
-  Assert.IsTrue(Choice.MessageText.StartsWith('Atlas kann nicht kompilieren: '), Choice.MessageText);
-  Assert.IsTrue(Pos('Starter Edition', Choice.MessageText) > 0, Choice.MessageText);
+  mChoice := TCompilerBackends.Choose(TCompilerBackendSetting.Auto, TCompilerEdition.NoCommandLine);
+  Assert.IsFalse(mChoice.Usable);
+  Assert.AreEqual(Ord(TCompilerBackend.Off), Ord(mChoice.Backend));
+  Assert.AreEqual('Compiler: nicht verfügbar (Starter Edition)', mChoice.StatusText);
+  Assert.IsTrue(mChoice.MessageText.StartsWith('Atlas kann nicht kompilieren: '), mChoice.MessageText);
+  Assert.IsTrue(Pos('Starter Edition', mChoice.MessageText) > 0, mChoice.MessageText);
   // Ausweg: laufende RAD Studio mit Atlas (build_project) oder ein Kommandozeilen-Compiler (#1904).
-  Assert.IsTrue(Pos('build_project', Choice.Remedy) > 0, 'Ausweg fehlt: ' + Choice.Remedy);
-  Assert.IsTrue(Pos('Kommandozeilen-Compiler', Choice.Remedy) > 0, Choice.Remedy);
-  Choice := TCompilerBackends.Choose(TCompilerBackendSetting.Auto, TCompilerEdition.Missing);
-  Assert.IsFalse(Choice.Usable);
-  Assert.AreEqual('Compiler: nicht verfügbar (Starter Edition)', Choice.StatusText);
+  Assert.IsTrue(Pos('build_project', mChoice.Remedy) > 0, 'Ausweg fehlt: ' + mChoice.Remedy);
+  Assert.IsTrue(Pos('Kommandozeilen-Compiler', mChoice.Remedy) > 0, mChoice.Remedy);
+  mChoice := TCompilerBackends.Choose(TCompilerBackendSetting.Auto, TCompilerEdition.Missing);
+  Assert.IsFalse(mChoice.Usable);
+  Assert.AreEqual('Compiler: nicht verfügbar (Starter Edition)', mChoice.StatusText);
 end;
 
 procedure TCompilerBackendTests.DccSettingOnStarterIsUnavailable;
 var
-  Choice: TCompilerBackendChoice;
+  mChoice: TCompilerBackendChoice;
 begin
-  Choice := TCompilerBackends.Choose(TCompilerBackendSetting.Dcc, TCompilerEdition.NoCommandLine);
-  Assert.AreEqual(Ord(TCompilerBackend.Off), Ord(Choice.Backend), 'dcc heißt nur dcc');
-  Assert.AreEqual('Compiler: nicht verfügbar (Starter Edition)', Choice.StatusText);
-  Choice := TCompilerBackends.Choose(TCompilerBackendSetting.Dcc, TCompilerEdition.CommandLine);
-  Assert.AreEqual(Ord(TCompilerBackend.Dcc), Ord(Choice.Backend));
+  mChoice := TCompilerBackends.Choose(TCompilerBackendSetting.Dcc, TCompilerEdition.NoCommandLine);
+  Assert.AreEqual(Ord(TCompilerBackend.Off), Ord(mChoice.Backend), 'dcc heißt nur dcc');
+  Assert.AreEqual('Compiler: nicht verfügbar (Starter Edition)', mChoice.StatusText);
+  mChoice := TCompilerBackends.Choose(TCompilerBackendSetting.Dcc, TCompilerEdition.CommandLine);
+  Assert.AreEqual(Ord(TCompilerBackend.Dcc), Ord(mChoice.Backend));
 end;
 
 procedure TCompilerBackendTests.OffSettingIsUnavailable;
 var
-  Choice: TCompilerBackendChoice;
+  mChoice: TCompilerBackendChoice;
 begin
-  Choice := TCompilerBackends.Choose(TCompilerBackendSetting.Off, TCompilerEdition.CommandLine);
-  Assert.IsFalse(Choice.Usable);
-  Assert.AreEqual('Compiler: nicht verfügbar (abgeschaltet)', Choice.StatusText);
-  Assert.AreEqual('off', TCompilerBackends.BackendText(Choice.Backend));
+  mChoice := TCompilerBackends.Choose(TCompilerBackendSetting.Off, TCompilerEdition.CommandLine);
+  Assert.IsFalse(mChoice.Usable);
+  Assert.AreEqual('Compiler: nicht verfügbar (abgeschaltet)', mChoice.StatusText);
+  Assert.AreEqual('off', TCompilerBackends.BackendText(mChoice.Backend));
   Assert.AreEqual('auto', TCompilerBackends.SettingText(TCompilerBackendSetting.Auto));
-  Choice := TCompilerBackendChoice.Unavailable('Kein Projekt geladen', '');
-  Assert.AreEqual('Atlas kann nicht kompilieren: Kein Projekt geladen.', Choice.MessageText);
+  mChoice := TCompilerBackendChoice.Unavailable('Kein Projekt geladen', '');
+  Assert.AreEqual('Atlas kann nicht kompilieren: Kein Projekt geladen.', mChoice.MessageText);
 end;
 
 procedure TCompilerBackendTests.OnlyDccRunsOnSave;

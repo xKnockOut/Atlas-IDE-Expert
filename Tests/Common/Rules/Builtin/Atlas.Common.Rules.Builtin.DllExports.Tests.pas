@@ -57,34 +57,34 @@ end;
 
 const
   // Beispiel aus #973
-  KundeName = 'function KundeName(Id: Integer): string;'#10'begin'#10'  Result := '''';'#10'end;'#10;
+  cKundeName = 'function KundeName(Id: Integer): string;'#10'begin'#10'  Result := '''';'#10'end;'#10;
 
 procedure TExportRulesTests.IssueExampleWithFix;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Library_('', KundeName, 'KundeName');
-  Findings := Found(Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mSource := Library_('', cKundeName, 'KundeName');
+  mFindings := Found(mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Exportierte Funktion gibt string zurück und hat keine Aufrufkonvention; Aufrufer ohne ShareMem ' +
-    'stürzen ab. Besser PChar mit Puffer und Länge übergeben.', Findings[0].Message);
+    'stürzen ab. Besser PChar mit Puffer und Länge übergeben.', mFindings[0].Message);
   // Am Eintrag in exports
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Aufrufkonvention stdcall ergänzen', Findings[0].Fixes[0].Title);
-  Assert.IsFalse(Findings[0].Fixes[0].Safe);
-  Assert.AreEqual(StringReplace(Source, 'string;'#10, 'string; stdcall;'#10, []),
-    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Aufrufkonvention stdcall ergänzen', mFindings[0].Fixes[0].Title);
+  Assert.IsFalse(mFindings[0].Fixes[0].Safe);
+  Assert.AreEqual(StringReplace(mSource, 'string;'#10, 'string; stdcall;'#10, []),
+    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
   // Mit Konvention bleibt der string gemeldet, ohne Korrektur.
-  Findings := Found(TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := Found(TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Exportierte Funktion gibt string zurück; Aufrufer ohne ShareMem stürzen ab. Besser PChar mit ' +
-    'Puffer und Länge übergeben.', Findings[0].Message);
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+    'Puffer und Länge übergeben.', mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TExportRulesTests.CorrectedFormIsSilent;
@@ -100,87 +100,87 @@ end;
 
 procedure TExportRulesTests.UnsafeTypes;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := Found(Library_('', 'type'#10'  ILog = interface'#10'    procedure Schreibe;'#10'  end;'#10 +
+  mFindings := Found(Library_('', 'type'#10'  ILog = interface'#10'    procedure Schreibe;'#10'  end;'#10 +
     '  IGut = interface'#10'    [''{5CCE4184-2A0F-49C4-9B27-84C08CAC8109}'']'#10'  end;'#10 +
     '  TZahlen = array of Integer;'#10'  TFest = array[0..3] of Integer;'#10'  TKunde = class'#10'  end;'#10 +
     'procedure Setze(B: TBytes; Z: TZahlen; F: TFest; L: ILog; G: IGut; K: TKunde; S: TStringList); stdcall;'#10 +
     'begin'#10'end;'#10, 'Setze'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Exportierte Prozedur hat den Parameter B: TBytes (dynamisches Array), hat den Parameter Z: ' +
     'TZahlen (dynamisches Array), hat den Parameter L: ILog (Interface ohne GUID), hat den Parameter K: TKunde ' +
     '(Objekt) und hat den Parameter S: TStringList (Objekt); Aufrufer ohne ShareMem stürzen ab. Besser PChar mit ' +
-    'Puffer und Länge übergeben.', Findings[0].Message);
+    'Puffer und Länge übergeben.', mFindings[0].Message);
   // Nur Objekte und Interfaces: andere Begründung
-  Findings := Found(Library_('', 'function Liste: TStringList; stdcall;'#10'begin'#10'  Result := nil;'#10'end;'#10,
+  mFindings := Found(Library_('', 'function Liste: TStringList; stdcall;'#10'begin'#10'  Result := nil;'#10'end;'#10,
     'Liste'));
   Assert.AreEqual('Exportierte Funktion gibt TStringList (Objekt) zurück; Aufrufer aus anderen Sprachen oder ' +
-    'Delphi-Versionen stürzen ab.', Findings[0].Message);
+    'Delphi-Versionen stürzen ab.', mFindings[0].Message);
 end;
 
 procedure TExportRulesTests.ShareMemAndOption;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Library_('uses'#10'  ShareMem, System.SysUtils;'#10, StringReplace(KundeName, 'string;', 'string; stdcall;',
+  mSource := Library_('uses'#10'  ShareMem, System.SysUtils;'#10, StringReplace(cKundeName, 'string;', 'string; stdcall;',
     []), 'KundeName');
   // Mit ShareMem sind Strings erlaubt.
-  Assert.AreEqual(0, Integer(Length(Found(Source))));
-  Assert.AreEqual(1, Integer(Length(Found(Source, '{"rules": {"dll-export-unsafe": {"allowShareMem": false}}}'))));
+  Assert.AreEqual(0, Integer(Length(Found(mSource))));
+  Assert.AreEqual(1, Integer(Length(Found(mSource, '{"rules": {"dll-export-unsafe": {"allowShareMem": false}}}'))));
   // Ohne Aufrufkonvention bleibt die Meldung.
   Assert.AreEqual('Exportierte Funktion hat keine Aufrufkonvention; Aufrufer aus anderen Sprachen oder ' +
-    'Delphi-Versionen stürzen ab.', Found(StringReplace(Source, ' stdcall;', '', []))[0].Message);
+    'Delphi-Versionen stürzen ab.', Found(StringReplace(mSource, ' stdcall;', '', []))[0].Message);
 end;
 
 procedure TExportRulesTests.OverloadsAndOtherUnits;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Library_('', 'procedure Setze(const A: string); overload; stdcall;'#10'begin'#10'end;'#10 +
+  mSource := Library_('', 'procedure Setze(const A: string); overload; stdcall;'#10'begin'#10'end;'#10 +
     'procedure Setze(A: Integer); overload;'#10'begin'#10'end;'#10,
     'Setze(const A: string) name ''SetzeText'','#10'  Setze(A: Integer) name ''SetzeZahl''');
-  Findings := Found(Source);
-  Assert.AreEqual(2, Integer(Length(Findings)));
+  mFindings := Found(mSource);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
   Assert.AreEqual('Exportierte Prozedur hat den Parameter A: string; Aufrufer ohne ShareMem stürzen ab. Besser ' +
-    'PChar mit Puffer und Länge übergeben.', Findings[0].Message);
+    'PChar mit Puffer und Länge übergeben.', mFindings[0].Message);
   Assert.AreEqual('Exportierte Prozedur hat keine Aufrufkonvention; Aufrufer aus anderen Sprachen oder ' +
-    'Delphi-Versionen stürzen ab.', Findings[1].Message);
-  Assert.AreEqual(StringReplace(Source, 'Integer); overload;', 'Integer); overload; stdcall;', []),
-    TChangeSignature.ApplyEdits(Source, Findings[1].Fixes[0].Edits));
+    'Delphi-Versionen stürzen ab.', mFindings[1].Message);
+  Assert.AreEqual(StringReplace(mSource, 'Integer); overload;', 'Integer); overload; stdcall;', []),
+    TChangeSignature.ApplyEdits(mSource, mFindings[1].Fixes[0].Edits));
 end;
 
 procedure TExportRulesTests.UnitWithInterfaceDeclaration;
 const
-  Source = 'unit Dienst;'#10'interface'#10'function Version: Integer;'#10'implementation'#10 +
+  cSource = 'unit Dienst;'#10'interface'#10'function Version: Integer;'#10'implementation'#10 +
     'function Version: Integer;'#10'begin'#10'  Result := 1;'#10'end;'#10'exports'#10'  Version;'#10'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := Found(Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := Found(cSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   // Beide Köpfe bekommen die Konvention.
-  Assert.AreEqual(StringReplace(Source, 'Integer;', 'Integer; stdcall;', [rfReplaceAll]),
-    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+  Assert.AreEqual(StringReplace(cSource, 'Integer;', 'Integer; stdcall;', [rfReplaceAll]),
+    TChangeSignature.ApplyEdits(cSource, mFindings[0].Fixes[0].Edits));
   // Konvention nur im interface genügt.
-  Assert.AreEqual(0, Integer(Length(Found(StringReplace(Source, 'interface'#10'function Version: Integer;',
+  Assert.AreEqual(0, Integer(Length(Found(StringReplace(cSource, 'interface'#10'function Version: Integer;',
     'interface'#10'function Version: Integer; stdcall;', [])))));
 end;
 
 procedure TExportRulesTests.OffAndExclude;
 var
-  Source: string;
-  Issues: TArray<TConfigurationIssue>;
+  mSource: string;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Source := Library_('', KundeName, 'KundeName');
-  Assert.AreEqual(0, Integer(Length(Found(Source, '{"rules": {"dll-export-unsafe": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(Found(Source, '{"rules": {"group:robustness": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDllExportUnsafeRule.Create, Source,
+  mSource := Library_('', cKundeName, 'KundeName');
+  Assert.AreEqual(0, Integer(Length(Found(mSource, '{"rules": {"dll-export-unsafe": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(Found(mSource, '{"rules": {"group:robustness": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDllExportUnsafeRule.Create, mSource,
     '{"rules": {"dll-export-unsafe": {"exclude": ["Alt/*.dpr"]}}}', 'Alt/Kunden.dpr'))));
-  TConfigurationParser.Parse('{"rules": {"dll-export-unsafe": {"allowShareMem": "ja"}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual('"allowShareMem" muss true oder false sein', Issues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"dll-export-unsafe": {"allowShareMem": "ja"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"allowShareMem" muss true oder false sein', mIssues[0].Message);
 end;
 
 initialization

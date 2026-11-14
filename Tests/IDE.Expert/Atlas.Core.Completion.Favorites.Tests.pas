@@ -80,22 +80,22 @@ type
 
 function OrderNames(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index in AOrder do
+  for mIndex in AOrder do
   begin
     if Result <> '' then
     begin
       Result := Result + ',';
     end;
-    if TAtlasRanking.IsHeader(Index) then
+    if TAtlasRanking.IsHeader(mIndex) then
     begin
       Result := Result + '#';
     end
     else
     begin
-      Result := Result + AItems[Index].Name;
+      Result := Result + AItems[mIndex].Name;
     end;
   end;
 end;
@@ -156,16 +156,16 @@ end;
 
 function Wait(const ACondition: TFunc<Boolean>): Boolean;
 var
-  Start: UInt64;
+  mStart: UInt64;
 begin
-  Start := TThread.GetTickCount64;
+  mStart := TThread.GetTickCount64;
   repeat
     CheckSynchronize(5);
     if ACondition() then
     begin
       Exit(True);
     end;
-  until TThread.GetTickCount64 - Start > 3000;
+  until TThread.GetTickCount64 - mStart > 3000;
   Result := False;
 end;
 
@@ -177,28 +177,28 @@ end;
 function Ordered(const AItems: TAtlasCompletionItems; AFavorites: TAtlasFavorites; const APattern: string;
   const AOptions: TAtlasRankOptions): string;
 var
-  Items: TAtlasCompletionItems;
-  Index: Integer;
+  mItems: TAtlasCompletionItems;
+  mIndex: Integer;
 begin
-  Items := Copy(AItems);
-  for Index := 0 to High(Items) do
+  mItems := Copy(AItems);
+  for mIndex := 0 to High(mItems) do
   begin
-    Items[Index].Favorite := AFavorites.IsFavorite(Items[Index]);
+    mItems[mIndex].Favorite := AFavorites.IsFavorite(mItems[mIndex]);
   end;
-  Result := OrderNames(Items, TAtlasRanking.Order(Items, APattern, AOptions));
+  Result := OrderNames(mItems, TAtlasRanking.Order(mItems, APattern, AOptions));
 end;
 
 /// <summary>Position des Eintrags AName in der aktuellen Anzeige des Controllers; -1 ohne.</summary>
 function PositionOf(AController: TAtlasCompletionController; const AName: string): Integer;
 var
-  Position: Integer;
+  mPosition: Integer;
 begin
-  for Position := 0 to High(AController.Order) do
+  for mPosition := 0 to High(AController.Order) do
   begin
-    if not TAtlasRanking.IsHeader(AController.Order[Position]) and
-      (AController.Items[AController.Order[Position]].Name = AName) then
+    if not TAtlasRanking.IsHeader(AController.Order[mPosition]) and
+      (AController.Items[AController.Order[mPosition]].Name = AName) then
     begin
-      Exit(Position);
+      Exit(mPosition);
     end;
   end;
   Result := -1;
@@ -218,203 +218,203 @@ end;
 
 procedure TAtlasFavoritesTests.TogglesPerTypeAndMember;
 var
-  Favorites: TAtlasFavorites;
-  Open, OtherCase, OtherType: TAtlasCompletionItem;
-  Items: TArray<TAtlasFavorite>;
+  mFavorites: TAtlasFavorites;
+  mOpen, mOtherCase, mOtherType: TAtlasCompletionItem;
+  mItems: TArray<TAtlasFavorite>;
 begin
-  Favorites := TAtlasFavorites.Create;
+  mFavorites := TAtlasFavorites.Create;
   try
-    Open := Member('Open', 'TDataSet', 1, 0);
-    Assert.IsFalse(Favorites.IsFavorite(Open));
-    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added, Favorites.Toggle(Open));
-    Assert.IsTrue(Favorites.Changed);
+    mOpen := Member('Open', 'TDataSet', 1, 0);
+    Assert.IsFalse(mFavorites.IsFavorite(mOpen));
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added, mFavorites.Toggle(mOpen));
+    Assert.IsTrue(mFavorites.Changed);
     // Schlüssel wie #418: Paar (Typ, Member), Groß-/Kleinschreibung egal.
-    OtherCase := Member('OPEN', 'tdataset', 0, 0);
-    Assert.IsTrue(Favorites.IsFavorite(OtherCase));
-    Assert.IsTrue(Favorites.Contains('TDataSet|Open'));
-    OtherType := Member('Open', 'TStream', 0, 0);
-    Assert.IsFalse(Favorites.IsFavorite(OtherType), 'anderer Typ, anderer Favorit');
+    mOtherCase := Member('OPEN', 'tdataset', 0, 0);
+    Assert.IsTrue(mFavorites.IsFavorite(mOtherCase));
+    Assert.IsTrue(mFavorites.Contains('TDataSet|Open'));
+    mOtherType := Member('Open', 'TStream', 0, 0);
+    Assert.IsFalse(mFavorites.IsFavorite(mOtherType), 'anderer Typ, anderer Favorit');
     // Auf Unit-Ebene zählt die Unit als Typ.
-    OtherType := Member('ShowMessage', '', 0, 0);
-    OtherType.DeclaringUnit := 'Vcl.Dialogs';
-    Assert.AreEqual('Vcl.Dialogs', TAtlasFavorites.TypeNameOf(OtherType));
-    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added, Favorites.Toggle(OtherType));
-    Assert.AreEqual(1, Favorites.CountOf('VCL.DIALOGS'));
-    Items := Favorites.Items;
-    Assert.AreEqual('Vcl.Dialogs.ShowMessage', Items[1].DisplayName);
+    mOtherType := Member('ShowMessage', '', 0, 0);
+    mOtherType.DeclaringUnit := 'Vcl.Dialogs';
+    Assert.AreEqual('Vcl.Dialogs', TAtlasFavorites.TypeNameOf(mOtherType));
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added, mFavorites.Toggle(mOtherType));
+    Assert.AreEqual(1, mFavorites.CountOf('VCL.DIALOGS'));
+    mItems := mFavorites.Items;
+    Assert.AreEqual('Vcl.Dialogs.ShowMessage', mItems[1].DisplayName);
     // Erneut: lösen.
-    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Removed, Favorites.Toggle(OtherCase));
-    Assert.IsFalse(Favorites.IsFavorite(Open));
-    Assert.AreEqual(1, Integer(Favorites.Count));
-    Assert.IsTrue(Favorites.Remove('vcl.dialogs|showmessage'));
-    Assert.IsFalse(Favorites.Remove('vcl.dialogs|showmessage'), 'schon gelöst');
-    Assert.AreEqual(0, Integer(Favorites.Count));
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Removed, mFavorites.Toggle(mOtherCase));
+    Assert.IsFalse(mFavorites.IsFavorite(mOpen));
+    Assert.AreEqual(1, Integer(mFavorites.Count));
+    Assert.IsTrue(mFavorites.Remove('vcl.dialogs|showmessage'));
+    Assert.IsFalse(mFavorites.Remove('vcl.dialogs|showmessage'), 'schon gelöst');
+    Assert.AreEqual(0, Integer(mFavorites.Count));
   finally
-    Favorites.Free;
+    mFavorites.Free;
   end;
 end;
 
 procedure TAtlasFavoritesTests.AtMostFivePerType;
 var
-  Favorites: TAtlasFavorites;
-  Index: Integer;
+  mFavorites: TAtlasFavorites;
+  mIndex: Integer;
 begin
-  Favorites := TAtlasFavorites.Create;
+  mFavorites := TAtlasFavorites.Create;
   try
-    for Index := 1 to TAtlasFavorites.cMaxPerType do
+    for mIndex := 1 to TAtlasFavorites.cMaxPerType do
     begin
       Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added,
-        Favorites.Toggle(Member('M' + IntToStr(Index), 'TDataSet', 0, 0)));
+        mFavorites.Toggle(Member('M' + IntToStr(mIndex), 'TDataSet', 0, 0)));
     end;
     // Ein sechster ersetzt nichts.
-    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Full, Favorites.Toggle(Member('M6', 'TDataSet', 0, 0)));
-    Assert.AreEqual(5, Favorites.CountOf('TDataSet'));
-    Assert.IsFalse(Favorites.IsFavorite(Member('M6', 'TDataSet', 0, 0)));
-    Assert.IsTrue(Favorites.IsFavorite(Member('M1', 'TDataSet', 0, 0)), 'der erste bleibt');
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Full, mFavorites.Toggle(Member('M6', 'TDataSet', 0, 0)));
+    Assert.AreEqual(5, mFavorites.CountOf('TDataSet'));
+    Assert.IsFalse(mFavorites.IsFavorite(Member('M6', 'TDataSet', 0, 0)));
+    Assert.IsTrue(mFavorites.IsFavorite(Member('M1', 'TDataSet', 0, 0)), 'der erste bleibt');
     // Andere Typen haben ihr eigenes Kontingent.
-    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added, Favorites.Toggle(Member('M6', 'TFDQuery', 0, 0)));
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added, mFavorites.Toggle(Member('M6', 'TFDQuery', 0, 0)));
     // Nach dem Lösen ist wieder Platz.
     Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Removed,
-      Favorites.Toggle(Member('M3', 'TDataSet', 0, 0)));
-    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added, Favorites.Toggle(Member('M6', 'TDataSet', 0, 0)));
-    Assert.AreEqual(6, Integer(Favorites.Count));
+      mFavorites.Toggle(Member('M3', 'TDataSet', 0, 0)));
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added, mFavorites.Toggle(Member('M6', 'TDataSet', 0, 0)));
+    Assert.AreEqual(6, Integer(mFavorites.Count));
   finally
-    Favorites.Free;
+    mFavorites.Free;
   end;
 end;
 
 procedure TAtlasFavoritesTests.RejectsActionsAndHints;
 var
-  Favorites: TAtlasFavorites;
-  Item: TAtlasCompletionItem;
+  mFavorites: TAtlasFavorites;
+  mItem: TAtlasCompletionItem;
 begin
-  Favorites := TAtlasFavorites.Create;
+  mFavorites := TAtlasFavorites.Create;
   try
-    Item := Member('Neue Methode btnSaveClick …', '', 0, 0);
-    Item.IsAction := True;
-    Assert.IsFalse(TAtlasFavorites.CanPin(Item));
-    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.NotAllowed, Favorites.Toggle(Item));
-    Item := Member('3 Methoden von IExporter fehlen', '', 0, 0);
-    Item.Hint := True;
-    Assert.IsFalse(TAtlasFavorites.CanPin(Item));
-    Item := Member('Alle Werte einfügen', '', 0, 0);
-    Item.Pinned := True;
-    Assert.IsFalse(TAtlasFavorites.CanPin(Item));
-    Item := Member('TotalCount deklarieren', '', 0, 0);
-    Item.Unknown := 'TotalCount';
-    Assert.IsFalse(TAtlasFavorites.CanPin(Item));
-    Item := Member('Mit try…finally absichern', '', 0, 0);
-    Item.Guard := True;
-    Assert.IsFalse(TAtlasFavorites.CanPin(Item));
+    mItem := Member('Neue Methode btnSaveClick …', '', 0, 0);
+    mItem.IsAction := True;
+    Assert.IsFalse(TAtlasFavorites.CanPin(mItem));
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.NotAllowed, mFavorites.Toggle(mItem));
+    mItem := Member('3 Methoden von IExporter fehlen', '', 0, 0);
+    mItem.Hint := True;
+    Assert.IsFalse(TAtlasFavorites.CanPin(mItem));
+    mItem := Member('Alle Werte einfügen', '', 0, 0);
+    mItem.Pinned := True;
+    Assert.IsFalse(TAtlasFavorites.CanPin(mItem));
+    mItem := Member('TotalCount deklarieren', '', 0, 0);
+    mItem.Unknown := 'TotalCount';
+    Assert.IsFalse(TAtlasFavorites.CanPin(mItem));
+    mItem := Member('Mit try…finally absichern', '', 0, 0);
+    mItem.Guard := True;
+    Assert.IsFalse(TAtlasFavorites.CanPin(mItem));
     Assert.IsFalse(TAtlasFavorites.CanPin(Member('  ', 'TDataSet', 0, 0)));
     Assert.IsTrue(TAtlasFavorites.CanPin(Member('Open', 'TDataSet', 0, 0)));
-    Assert.AreEqual(0, Integer(Favorites.Count));
+    Assert.AreEqual(0, Integer(mFavorites.Count));
   finally
-    Favorites.Free;
+    mFavorites.Free;
   end;
 end;
 
 procedure TAtlasFavoritesTests.JsonKeepsOrderAndFields;
 var
-  Favorites, Loaded: TAtlasFavorites;
-  Items: TArray<TAtlasFavorite>;
-  Query: TAtlasCompletionItems;
-  Stamp: TDateTime;
+  mFavorites, mLoaded: TAtlasFavorites;
+  mItems: TArray<TAtlasFavorite>;
+  mQuery: TAtlasCompletionItems;
+  mStamp: TDateTime;
 begin
-  Favorites := TAtlasFavorites.Create;
-  Loaded := TAtlasFavorites.Create;
+  mFavorites := TAtlasFavorites.Create;
+  mLoaded := TAtlasFavorites.Create;
   try
-    Stamp := EncodeDate(2026, 10, 15) + EncodeTime(9, 30, 5, 0);
-    Query := QueryItems;
-    Favorites.Toggle(Query[5], Stamp);
-    Favorites.Toggle(Query[1], Stamp + 1);
-    Loaded.Parse(Favorites.ToJson);
-    Assert.IsFalse(Loaded.Changed);
-    Items := Loaded.Items;
-    Assert.AreEqual(2, Integer(Length(Items)));
-    Assert.AreEqual('TDataSet', Items[0].TypeName, 'Reihenfolge des Anheftens');
-    Assert.AreEqual('Open', Items[0].Member);
-    Assert.AreEqual<TAtlasItemKind>(TAtlasItemKind.Method, Items[0].Kind);
-    Assert.AreEqual('Data.DB', Items[0].UnitName);
-    Assert.AreEqual('procedure Open', Items[0].Signature);
-    Assert.AreEqual(FormatDateTime('yyyy-mm-dd hh:nn:ss', Stamp), FormatDateTime('yyyy-mm-dd hh:nn:ss', Items[0].Added));
-    Assert.AreEqual('TFDQuery', Items[1].TypeName);
-    Assert.AreEqual('ParamByName', Items[1].Member);
-    Assert.AreEqual('tfdquery|parambyname', Items[1].Key);
+    mStamp := EncodeDate(2026, 10, 15) + EncodeTime(9, 30, 5, 0);
+    mQuery := QueryItems;
+    mFavorites.Toggle(mQuery[5], mStamp);
+    mFavorites.Toggle(mQuery[1], mStamp + 1);
+    mLoaded.Parse(mFavorites.ToJson);
+    Assert.IsFalse(mLoaded.Changed);
+    mItems := mLoaded.Items;
+    Assert.AreEqual(2, Integer(Length(mItems)));
+    Assert.AreEqual('TDataSet', mItems[0].TypeName, 'Reihenfolge des Anheftens');
+    Assert.AreEqual('Open', mItems[0].Member);
+    Assert.AreEqual<TAtlasItemKind>(TAtlasItemKind.Method, mItems[0].Kind);
+    Assert.AreEqual('Data.DB', mItems[0].UnitName);
+    Assert.AreEqual('procedure Open', mItems[0].Signature);
+    Assert.AreEqual(FormatDateTime('yyyy-mm-dd hh:nn:ss', mStamp), FormatDateTime('yyyy-mm-dd hh:nn:ss', mItems[0].Added));
+    Assert.AreEqual('TFDQuery', mItems[1].TypeName);
+    Assert.AreEqual('ParamByName', mItems[1].Member);
+    Assert.AreEqual('tfdquery|parambyname', mItems[1].Key);
     // Format der Ablage, das auch die Willkommensseite (#755) liest.
-    Assert.IsTrue(Pos('"version":1', Favorites.ToJson) > 0);
-    Assert.IsTrue(Pos('"added":"2026-10-15T09:30:05"', Favorites.ToJson) > 0);
-    Assert.IsTrue(Pos('"kind":"method"', Favorites.ToJson) > 0);
+    Assert.IsTrue(Pos('"version":1', mFavorites.ToJson) > 0);
+    Assert.IsTrue(Pos('"added":"2026-10-15T09:30:05"', mFavorites.ToJson) > 0);
+    Assert.IsTrue(Pos('"kind":"method"', mFavorites.ToJson) > 0);
     Assert.AreEqual<TAtlasItemKind>(TAtlasItemKind.EnumMember, TAtlasFavorites.KindFromName('enumMember'));
     Assert.AreEqual<TAtlasItemKind>(TAtlasItemKind.Unknown, TAtlasFavorites.KindFromName('unbekannt'));
   finally
-    Loaded.Free;
-    Favorites.Free;
+    mLoaded.Free;
+    mFavorites.Free;
   end;
 end;
 
 procedure TAtlasFavoritesTests.ParseDropsInvalidEntries;
 var
-  Favorites: TAtlasFavorites;
-  Json: string;
-  Index: Integer;
-  Items: TArray<TAtlasFavorite>;
+  mFavorites: TAtlasFavorites;
+  mJson: string;
+  mIndex: Integer;
+  mItems: TArray<TAtlasFavorite>;
 begin
-  Favorites := TAtlasFavorites.Create;
+  mFavorites := TAtlasFavorites.Create;
   try
-    Favorites.Parse('{kaputt');
-    Assert.AreEqual(0, Integer(Favorites.Count));
-    Favorites.Parse('[1, 2]');
-    Assert.AreEqual(0, Integer(Favorites.Count));
-    Json := '{"version":1,"favorites":[{"type":"TDataSet","member":"Open"},{"type":"tdataset","member":"OPEN"},' +
+    mFavorites.Parse('{kaputt');
+    Assert.AreEqual(0, Integer(mFavorites.Count));
+    mFavorites.Parse('[1, 2]');
+    Assert.AreEqual(0, Integer(mFavorites.Count));
+    mJson := '{"version":1,"favorites":[{"type":"TDataSet","member":"Open"},{"type":"tdataset","member":"OPEN"},' +
       '{"type":"TDataSet","member":""},7,{"member":"ohneTyp","added":"gestern"}';
-    for Index := 1 to 6 do
+    for mIndex := 1 to 6 do
     begin
-      Json := Json + ',{"type":"TStrings","member":"S' + IntToStr(Index) + '"}';
+      mJson := mJson + ',{"type":"TStrings","member":"S' + IntToStr(mIndex) + '"}';
     end;
-    Favorites.Parse(Json + ']}');
-    Assert.AreEqual(1, Favorites.CountOf('TDataSet'), 'doppelt und leer fallen weg');
-    Assert.AreEqual(5, Favorites.CountOf('TStrings'), 'höchstens fünf je Typ');
-    Assert.IsTrue(Favorites.Contains('|ohnetyp'));
-    Items := Favorites.Items;
-    Assert.AreEqual('ohneTyp', Items[1].Member);
-    Assert.AreEqual<TDateTime>(0, Items[1].Added, 'unlesbares Datum: 0');
-    Assert.AreEqual(7, Integer(Favorites.Count));
+    mFavorites.Parse(mJson + ']}');
+    Assert.AreEqual(1, mFavorites.CountOf('TDataSet'), 'doppelt und leer fallen weg');
+    Assert.AreEqual(5, mFavorites.CountOf('TStrings'), 'höchstens fünf je Typ');
+    Assert.IsTrue(mFavorites.Contains('|ohnetyp'));
+    mItems := mFavorites.Items;
+    Assert.AreEqual('ohneTyp', mItems[1].Member);
+    Assert.AreEqual<TDateTime>(0, mItems[1].Added, 'unlesbares Datum: 0');
+    Assert.AreEqual(7, Integer(mFavorites.Count));
   finally
-    Favorites.Free;
+    mFavorites.Free;
   end;
 end;
 
 procedure TAtlasFavoritesTests.SurvivesRestartViaFile;
 var
-  Favorites, Loaded: TAtlasFavorites;
-  FileName: string;
+  mFavorites, mLoaded: TAtlasFavorites;
+  mFileName: string;
 begin
   // Akzeptanz #458: Favoriten bleiben nach einem Neustart erhalten.
-  FileName := TPath.Combine(TPath.Combine(TempFile + '.d', 'Atlas'), 'favorites.json');
-  Favorites := TAtlasFavorites.Create;
-  Loaded := TAtlasFavorites.Create;
+  mFileName := TPath.Combine(TPath.Combine(TempFile + '.d', 'Atlas'), 'favorites.json');
+  mFavorites := TAtlasFavorites.Create;
+  mLoaded := TAtlasFavorites.Create;
   try
-    Favorites.Toggle(Member('Open', 'TDataSet', 1, 0));
-    Favorites.Toggle(Member('ParamByName', 'TFDQuery', 0, 0));
-    Favorites.SaveToFile(FileName);
-    Assert.IsFalse(Favorites.Changed);
-    Loaded.LoadFromFile(FileName);
-    Assert.AreEqual(2, Integer(Loaded.Count));
-    Assert.IsTrue(Loaded.IsFavorite(Member('Open', 'TDataSet', 1, 0)));
-    Assert.IsTrue(Loaded.IsFavorite(Member('ParamByName', 'TFDQuery', 0, 0)));
+    mFavorites.Toggle(Member('Open', 'TDataSet', 1, 0));
+    mFavorites.Toggle(Member('ParamByName', 'TFDQuery', 0, 0));
+    mFavorites.SaveToFile(mFileName);
+    Assert.IsFalse(mFavorites.Changed);
+    mLoaded.LoadFromFile(mFileName);
+    Assert.AreEqual(2, Integer(mLoaded.Count));
+    Assert.IsTrue(mLoaded.IsFavorite(Member('Open', 'TDataSet', 1, 0)));
+    Assert.IsTrue(mLoaded.IsFavorite(Member('ParamByName', 'TFDQuery', 0, 0)));
     // Fehlende Datei: leer, kein Fehler.
-    Loaded.LoadFromFile(FileName + '.fehlt');
-    Assert.AreEqual(0, Integer(Loaded.Count));
-    Loaded.Toggle(Member('Close', 'TDataSet', 1, 0));
-    Loaded.Clear;
-    Assert.IsTrue(Loaded.Changed);
+    mLoaded.LoadFromFile(mFileName + '.fehlt');
+    Assert.AreEqual(0, Integer(mLoaded.Count));
+    mLoaded.Toggle(Member('Close', 'TDataSet', 1, 0));
+    mLoaded.Clear;
+    Assert.IsTrue(mLoaded.Changed);
   finally
-    Loaded.Free;
-    Favorites.Free;
-    if TFile.Exists(FileName) then
+    mLoaded.Free;
+    mFavorites.Free;
+    if TFile.Exists(mFileName) then
     begin
-      TFile.Delete(FileName);
+      TFile.Delete(mFileName);
     end;
   end;
 end;
@@ -423,44 +423,44 @@ end;
 
 procedure TAtlasFavoritesRankingTests.MatchingFavoritesComeFirst;
 var
-  Favorites: TAtlasFavorites;
-  Options: TAtlasRankOptions;
-  Query: TAtlasCompletionItems;
+  mFavorites: TAtlasFavorites;
+  mOptions: TAtlasRankOptions;
+  mQuery: TAtlasCompletionItems;
 begin
-  Favorites := TAtlasFavorites.Create;
+  mFavorites := TAtlasFavorites.Create;
   try
-    Query := QueryItems;
-    Favorites.Toggle(Query[5]);
-    Favorites.Toggle(Query[1]);
-    Options := TAtlasRankOptions.Defaults;
-    Assert.AreEqual('ParamByName,Open,ExecSQL,Active,Close,FieldByName', Ordered(QueryItems, Favorites, '', Options));
-    Assert.AreEqual('Open', Ordered(QueryItems, Favorites, 'Op', Options));
-    Assert.AreEqual('ParamByName,FieldByName', Ordered(QueryItems, Favorites, 'ByName', Options),
+    mQuery := QueryItems;
+    mFavorites.Toggle(mQuery[5]);
+    mFavorites.Toggle(mQuery[1]);
+    mOptions := TAtlasRankOptions.Defaults;
+    Assert.AreEqual('ParamByName,Open,ExecSQL,Active,Close,FieldByName', Ordered(QueryItems, mFavorites, '', mOptions));
+    Assert.AreEqual('Open', Ordered(QueryItems, mFavorites, 'Op', mOptions));
+    Assert.AreEqual('ParamByName,FieldByName', Ordered(QueryItems, mFavorites, 'ByName', mOptions),
       'Favorit vor dem gleich guten Treffer');
     // Passt ein Favorit nicht zum Präfix, steht er nicht in der Liste.
-    Assert.AreEqual('Close', Ordered(QueryItems, Favorites, 'Clo', Options));
+    Assert.AreEqual('Close', Ordered(QueryItems, mFavorites, 'Clo', mOptions));
     // Gruppen geerbter Member (#419): Favoriten ohne Überschrift davor, die Gruppen danach wie gewohnt.
-    Options.GroupInherited := True;
-    Assert.AreEqual('ParamByName,Open,ExecSQL,#,Active,Close,FieldByName', Ordered(QueryItems, Favorites, '',
-      Options));
+    mOptions.GroupInherited := True;
+    Assert.AreEqual('ParamByName,Open,ExecSQL,#,Active,Close,FieldByName', Ordered(QueryItems, mFavorites, '',
+      mOptions));
   finally
-    Favorites.Free;
+    mFavorites.Free;
   end;
 end;
 
 procedure TAtlasFavoritesRankingTests.FavoritesBeatLearningAndBetterMatch;
 var
-  Favorites: TAtlasFavorites;
-  Options: TAtlasRankOptions;
-  Items: TAtlasCompletionItems;
+  mFavorites: TAtlasFavorites;
+  mOptions: TAtlasRankOptions;
+  mItems: TAtlasCompletionItems;
 begin
-  Favorites := TAtlasFavorites.Create;
+  mFavorites := TAtlasFavorites.Create;
   try
-    Items := [Member('O', 'TFDQuery', 0, 0), Member('OnError', 'TFDQuery', 0, 1), Member('Open', 'TDataSet', 1, 2)];
-    Favorites.Toggle(Items[2]);
-    Options := TAtlasRankOptions.Defaults;
+    mItems := [Member('O', 'TFDQuery', 0, 0), Member('OnError', 'TFDQuery', 0, 1), Member('Open', 'TDataSet', 1, 2)];
+    mFavorites.Toggle(mItems[2]);
+    mOptions := TAtlasRankOptions.Defaults;
     // Lernzuschlag für die anderen Einträge: Der Favorit bleibt trotzdem oben.
-    Options.Boost :=
+    mOptions.Boost :=
       function(AIndex: Integer): Integer
       begin
         if AIndex = 2 then
@@ -472,40 +472,40 @@ begin
           Result := 99;
         end;
       end;
-    Assert.AreEqual('Open,O,OnError', Ordered(Items, Favorites, 'O', Options), 'vor dem genauen Treffer "O"');
-    Assert.AreEqual('Open,O,OnError', Ordered(Items, Favorites, '', Options), 'auch ohne Präfix');
+    Assert.AreEqual('Open,O,OnError', Ordered(mItems, mFavorites, 'O', mOptions), 'vor dem genauen Treffer "O"');
+    Assert.AreEqual('Open,O,OnError', Ordered(mItems, mFavorites, '', mOptions), 'auch ohne Präfix');
   finally
-    Favorites.Free;
+    mFavorites.Free;
   end;
 end;
 
 procedure TAtlasFavoritesRankingTests.FavoritesPrecedeAllGroups;
 var
-  Favorites: TAtlasFavorites;
-  Items: TAtlasCompletionItems;
-  Options: TAtlasRankOptions;
+  mFavorites: TAtlasFavorites;
+  mItems: TAtlasCompletionItems;
+  mOptions: TAtlasRankOptions;
 begin
-  Favorites := TAtlasFavorites.Create;
+  mFavorites := TAtlasFavorites.Create;
   try
     // Formularkomponenten (#455) und erwarteter Typ (#417) bilden Gruppen mit Überschrift; der Favorit steht
     // davor und ohne eigene Überschrift.
-    Items := [Member('btnSave', 'TForm1', 0, 0), Member('Caption', 'TForm1', 0, 1), Member('Color', 'TForm1', 0, 2),
+    mItems := [Member('btnSave', 'TForm1', 0, 0), Member('Caption', 'TForm1', 0, 1), Member('Color', 'TForm1', 0, 2),
       Member('Close', 'TForm1', 0, 3)];
-    Items[0].Form := 'frmMain';
-    Items[1].ExpectedType := 'string';
-    Items[1].Fits := True;
-    Items[2].ExpectedType := 'string';
-    Items[3].ExpectedType := 'string';
-    Favorites.Toggle(Items[3]);
-    Options := TAtlasRankOptions.Defaults;
-    Assert.AreEqual('Close,#,btnSave,#,Caption,#,Color', Ordered(Items, Favorites, '', Options));
+    mItems[0].Form := 'frmMain';
+    mItems[1].ExpectedType := 'string';
+    mItems[1].Fits := True;
+    mItems[2].ExpectedType := 'string';
+    mItems[3].ExpectedType := 'string';
+    mFavorites.Toggle(mItems[3]);
+    mOptions := TAtlasRankOptions.Defaults;
+    Assert.AreEqual('Close,#,btnSave,#,Caption,#,Color', Ordered(mItems, mFavorites, '', mOptions));
     // Hinweis „n Methoden fehlen“ (#466) steht sonst ganz oben – der Favorit davor.
-    Items := [Member('2 Methoden von IExporter fehlen', '', 0, 0), Member('Open', 'TDataSet', 0, 1)];
-    Items[0].Hint := True;
-    Favorites.Toggle(Items[1]);
-    Assert.AreEqual('Open,2 Methoden von IExporter fehlen', Ordered(Items, Favorites, 'Op', Options));
+    mItems := [Member('2 Methoden von IExporter fehlen', '', 0, 0), Member('Open', 'TDataSet', 0, 1)];
+    mItems[0].Hint := True;
+    mFavorites.Toggle(mItems[1]);
+    Assert.AreEqual('Open,2 Methoden von IExporter fehlen', Ordered(mItems, mFavorites, 'Op', mOptions));
   finally
-    Favorites.Free;
+    mFavorites.Free;
   end;
 end;
 
@@ -513,172 +513,172 @@ end;
 
 procedure TAtlasFavoritesControllerTests.PinnedEntriesStayOnTopForEveryQuery;
 var
-  View: TFavoritesView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Favorites, Restarted: TAtlasFavorites;
-  Item: TAtlasCompletionItem;
-  FileName: string;
+  mView: TFavoritesView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mFavorites, mRestarted: TAtlasFavorites;
+  mItem: TAtlasCompletionItem;
+  mFileName: string;
 begin
   // Akzeptanz #458: Nach Anheften von Open und ParamByName stehen beide bei jeder Query oben, auch nach einem
   // Neustart (neu geladen aus der Ablage).
-  View := TFavoritesView.Create;
-  ViewRef := View;
-  FileName := TempFile;
-  Favorites := TAtlasFavorites.Create;
-  Restarted := TAtlasFavorites.Create;
-  Controller := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create(QueryItems) as
-    IAtlasCompletionProvider, ViewRef);
+  mView := TFavoritesView.Create;
+  mViewRef := mView;
+  mFileName := TempFile;
+  mFavorites := TAtlasFavorites.Create;
+  mRestarted := TAtlasFavorites.Create;
+  mController := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create(QueryItems) as
+    IAtlasCompletionProvider, mViewRef);
   try
-    Controller.Favorites := Favorites;
-    Controller.GroupInherited := True;
-    StartAndWait(Controller, '');
-    Assert.AreEqual('ExecSQL,ParamByName,#,Active,Close,FieldByName,Open', View.Names);
+    mController.Favorites := mFavorites;
+    mController.GroupInherited := True;
+    StartAndWait(mController, '');
+    Assert.AreEqual('ExecSQL,ParamByName,#,Active,Close,FieldByName,Open', mView.Names);
     Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added,
-      Controller.ToggleFavorite(PositionOf(Controller, 'Open'), Item));
-    Assert.AreEqual('Open', Item.Name);
-    Assert.IsTrue(Item.Favorite);
+      mController.ToggleFavorite(PositionOf(mController, 'Open'), mItem));
+    Assert.AreEqual('Open', mItem.Name);
+    Assert.IsTrue(mItem.Favorite);
     Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added,
-      Controller.ToggleFavorite(PositionOf(Controller, 'ParamByName'), Item));
-    Assert.AreEqual('ParamByName,Open,ExecSQL,#,Active,Close,FieldByName', View.Names, 'sofort neu sortiert');
-    Assert.IsTrue(Controller.Items[Controller.Order[0]].Favorite);
+      mController.ToggleFavorite(PositionOf(mController, 'ParamByName'), mItem));
+    Assert.AreEqual('ParamByName,Open,ExecSQL,#,Active,Close,FieldByName', mView.Names, 'sofort neu sortiert');
+    Assert.IsTrue(mController.Items[mController.Order[0]].Favorite);
     // Nächste Abfrage (andere Query, dieselben Typen): beide oben.
-    StartAndWait(Controller, '');
-    Assert.AreEqual('ParamByName,Open,ExecSQL,#,Active,Close,FieldByName', View.Names);
-    Controller.UpdatePrefix('e');
-    Assert.AreEqual('ParamByName,Open', Copy(View.Names, 1, Length('ParamByName,Open')));
-    Favorites.SaveToFile(FileName);
+    StartAndWait(mController, '');
+    Assert.AreEqual('ParamByName,Open,ExecSQL,#,Active,Close,FieldByName', mView.Names);
+    mController.UpdatePrefix('e');
+    Assert.AreEqual('ParamByName,Open', Copy(mView.Names, 1, Length('ParamByName,Open')));
+    mFavorites.SaveToFile(mFileName);
     // „Neustart“: neue Instanz aus der Datei.
-    Restarted.LoadFromFile(FileName);
-    Controller.Favorites := Restarted;
-    StartAndWait(Controller, '');
-    Assert.AreEqual('ParamByName,Open,ExecSQL,#,Active,Close,FieldByName', View.Names);
+    mRestarted.LoadFromFile(mFileName);
+    mController.Favorites := mRestarted;
+    StartAndWait(mController, '');
+    Assert.AreEqual('ParamByName,Open,ExecSQL,#,Active,Close,FieldByName', mView.Names);
     // Abgeschaltet (Favorites = nil): keine Sonderstellung.
-    Controller.Favorites := nil;
-    StartAndWait(Controller, '');
-    Assert.AreEqual('ExecSQL,ParamByName,#,Active,Close,FieldByName,Open', View.Names);
-    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.NotAllowed, Controller.ToggleSelectedFavorite(Item));
+    mController.Favorites := nil;
+    StartAndWait(mController, '');
+    Assert.AreEqual('ExecSQL,ParamByName,#,Active,Close,FieldByName,Open', mView.Names);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.NotAllowed, mController.ToggleSelectedFavorite(mItem));
   finally
-    Controller.Free;
-    Restarted.Free;
-    Favorites.Free;
-    if TFile.Exists(FileName) then
+    mController.Free;
+    mRestarted.Free;
+    mFavorites.Free;
+    if TFile.Exists(mFileName) then
     begin
-      TFile.Delete(FileName);
+      TFile.Delete(mFileName);
     end;
   end;
 end;
 
 procedure TAtlasFavoritesControllerTests.SixthFavoriteChangesNothing;
 var
-  View: TFavoritesView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Favorites: TAtlasFavorites;
-  Item: TAtlasCompletionItem;
-  Index: Integer;
-  Before: string;
+  mView: TFavoritesView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mFavorites: TAtlasFavorites;
+  mItem: TAtlasCompletionItem;
+  mIndex: Integer;
+  mBefore: string;
 begin
-  View := TFavoritesView.Create;
-  ViewRef := View;
-  Favorites := TAtlasFavorites.Create;
-  Controller := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create(QueryItems) as
-    IAtlasCompletionProvider, ViewRef);
+  mView := TFavoritesView.Create;
+  mViewRef := mView;
+  mFavorites := TAtlasFavorites.Create;
+  mController := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create(QueryItems) as
+    IAtlasCompletionProvider, mViewRef);
   try
-    for Index := 1 to TAtlasFavorites.cMaxPerType do
+    for mIndex := 1 to TAtlasFavorites.cMaxPerType do
     begin
-      Favorites.Toggle(Member('Weitere' + IntToStr(Index), 'TDataSet', 1, 0));
+      mFavorites.Toggle(Member('Weitere' + IntToStr(mIndex), 'TDataSet', 1, 0));
     end;
-    Controller.Favorites := Favorites;
-    StartAndWait(Controller, '');
-    Before := View.Names;
+    mController.Favorites := mFavorites;
+    StartAndWait(mController, '');
+    mBefore := mView.Names;
     Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Full,
-      Controller.ToggleFavorite(PositionOf(Controller, 'Open'), Item));
-    Assert.AreEqual('TDataSet', TAtlasFavorites.TypeNameOf(Item), 'für den Hinweis in der Fußzeile');
-    Assert.AreEqual(Before, View.Names, 'nichts geändert');
-    Assert.IsFalse(Favorites.IsFavorite(Item));
+      mController.ToggleFavorite(PositionOf(mController, 'Open'), mItem));
+    Assert.AreEqual('TDataSet', TAtlasFavorites.TypeNameOf(mItem), 'für den Hinweis in der Fußzeile');
+    Assert.AreEqual(mBefore, mView.Names, 'nichts geändert');
+    Assert.IsFalse(mFavorites.IsFavorite(mItem));
     // Überschriften lassen sich nicht anheften.
-    Controller.GroupInherited := True;
-    StartAndWait(Controller, '');
+    mController.GroupInherited := True;
+    StartAndWait(mController, '');
     Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.NotAllowed,
-      Controller.ToggleFavorite(2, Item), 'Überschrift');
-    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.NotAllowed, Controller.ToggleFavorite(99, Item));
+      mController.ToggleFavorite(2, mItem), 'Überschrift');
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.NotAllowed, mController.ToggleFavorite(99, mItem));
   finally
-    Controller.Free;
-    Favorites.Free;
+    mController.Free;
+    mFavorites.Free;
   end;
 end;
 
 procedure TAtlasFavoritesControllerTests.SelectionFollowsTheToggledEntry;
 var
-  View: TFavoritesView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Favorites: TAtlasFavorites;
-  Item: TAtlasCompletionItem;
+  mView: TFavoritesView;
+  mViewRef: IAtlasCompletionView;
+  mController: TAtlasCompletionController;
+  mFavorites: TAtlasFavorites;
+  mItem: TAtlasCompletionItem;
 begin
-  View := TFavoritesView.Create;
-  ViewRef := View;
-  Favorites := TAtlasFavorites.Create;
-  Controller := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create(QueryItems) as
-    IAtlasCompletionProvider, ViewRef);
+  mView := TFavoritesView.Create;
+  mViewRef := mView;
+  mFavorites := TAtlasFavorites.Create;
+  mController := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create(QueryItems) as
+    IAtlasCompletionProvider, mViewRef);
   try
-    Controller.Favorites := Favorites;
-    StartAndWait(Controller, '');
-    Assert.AreEqual('ExecSQL,ParamByName,Active,Close,FieldByName,Open', View.Names);
-    Controller.HandleKey(TAtlasNavigationKey.Last);
+    mController.Favorites := mFavorites;
+    StartAndWait(mController, '');
+    Assert.AreEqual('ExecSQL,ParamByName,Active,Close,FieldByName,Open', mView.Names);
+    mController.HandleKey(TAtlasNavigationKey.Last);
     // Strg+D: der gewählte Eintrag wandert nach oben, die Auswahl geht mit.
-    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added, Controller.ToggleSelectedFavorite(Item));
-    Assert.AreEqual('Open,ExecSQL,ParamByName,Active,Close,FieldByName', View.Names);
-    Assert.AreEqual(0, View.Selected);
-    Assert.IsTrue(Controller.SelectedItem(Item));
-    Assert.AreEqual('Open', Item.Name);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added, mController.ToggleSelectedFavorite(mItem));
+    Assert.AreEqual('Open,ExecSQL,ParamByName,Active,Close,FieldByName', mView.Names);
+    Assert.AreEqual(0, mView.Selected);
+    Assert.IsTrue(mController.SelectedItem(mItem));
+    Assert.AreEqual('Open', mItem.Name);
     // Stern einer anderen Zeile: Die Auswahl bleibt auf Open.
     Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Added,
-      Controller.ToggleFavorite(PositionOf(Controller, 'Close'), Item));
-    Assert.AreEqual('Close,Open,ExecSQL,ParamByName,Active,FieldByName', View.Names);
-    Assert.AreEqual(1, View.Selected);
+      mController.ToggleFavorite(PositionOf(mController, 'Close'), mItem));
+    Assert.AreEqual('Close,Open,ExecSQL,ParamByName,Active,FieldByName', mView.Names);
+    Assert.AreEqual(1, mView.Selected);
     // Lösen: zurück an den gewohnten Platz.
-    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Removed, Controller.ToggleSelectedFavorite(Item));
-    Assert.IsFalse(Item.Favorite);
-    Assert.AreEqual('Close,ExecSQL,ParamByName,Active,FieldByName,Open', View.Names);
-    Assert.AreEqual(5, View.Selected);
+    Assert.AreEqual<TAtlasFavoriteToggle>(TAtlasFavoriteToggle.Removed, mController.ToggleSelectedFavorite(mItem));
+    Assert.IsFalse(mItem.Favorite);
+    Assert.AreEqual('Close,ExecSQL,ParamByName,Active,FieldByName,Open', mView.Names);
+    Assert.AreEqual(5, mView.Selected);
   finally
-    Controller.Free;
-    Favorites.Free;
+    mController.Free;
+    mFavorites.Free;
   end;
 end;
 
 procedure TAtlasFavoritesTests.BrokenFileSetAsideLockedFileKept;
 var
-  Favorites: TAtlasFavorites;
-  Folder, FileName: string;
-  Lock: TFileStream;
+  mFavorites: TAtlasFavorites;
+  mFolder, mFileName: string;
+  mLock: TFileStream;
 begin
-  Folder := TempFile + '.d';
-  FileName := TPath.Combine(Folder, 'favorites.json');
-  TDirectory.CreateDirectory(Folder);
-  Favorites := TAtlasFavorites.Create;
+  mFolder := TempFile + '.d';
+  mFileName := TPath.Combine(mFolder, 'favorites.json');
+  TDirectory.CreateDirectory(mFolder);
+  mFavorites := TAtlasFavorites.Create;
   try
-    TFile.WriteAllText(FileName, '{kaputt');
-    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed, Favorites.LoadFromFile(FileName));
-    Assert.AreEqual('{kaputt', TFile.ReadAllText(FileName + TAtlasDataFile.cDefectExtension, TEncoding.UTF8));
-    Favorites.Toggle(Member('Open', 'TDataSet', 1, 0));
-    Assert.IsTrue(Favorites.SaveToFile(FileName));
-    Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
+    TFile.WriteAllText(mFileName, '{kaputt');
+    Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Renewed, mFavorites.LoadFromFile(mFileName));
+    Assert.AreEqual('{kaputt', TFile.ReadAllText(mFileName + TAtlasDataFile.cDefectExtension, TEncoding.UTF8));
+    mFavorites.Toggle(Member('Open', 'TDataSet', 1, 0));
+    Assert.IsTrue(mFavorites.SaveToFile(mFileName));
+    mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
     try
-      Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept, Favorites.LoadFromFile(FileName));
+      Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Kept, mFavorites.LoadFromFile(mFileName));
     finally
-      Lock.Free;
+      mLock.Free;
     end;
-    Assert.AreEqual(0, Integer(Favorites.Count));
-    Favorites.Toggle(Member('Close', 'TDataSet', 1, 0));
-    Assert.IsFalse(Favorites.SaveToFile(FileName), 'beim Lesen gesperrt: nicht überschreiben');
-    Assert.Contains(TFile.ReadAllText(FileName, TEncoding.UTF8), '"Open"');
-    Assert.DoesNotContain(TFile.ReadAllText(FileName, TEncoding.UTF8), '"Close"');
+    Assert.AreEqual(0, Integer(mFavorites.Count));
+    mFavorites.Toggle(Member('Close', 'TDataSet', 1, 0));
+    Assert.IsFalse(mFavorites.SaveToFile(mFileName), 'beim Lesen gesperrt: nicht überschreiben');
+    Assert.Contains(TFile.ReadAllText(mFileName, TEncoding.UTF8), '"Open"');
+    Assert.DoesNotContain(TFile.ReadAllText(mFileName, TEncoding.UTF8), '"Close"');
   finally
-    Favorites.Free;
-    TDirectory.Delete(Folder, True);
+    mFavorites.Free;
+    TDirectory.Delete(mFolder, True);
   end;
   // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
   TAtlasDataFile.ForgetReports;

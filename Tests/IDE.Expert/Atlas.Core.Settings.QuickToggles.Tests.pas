@@ -45,7 +45,7 @@ uses
   Atlas.Core.Settings.QuickToggles;
 
 const
-  Catalog =
+  cCatalog =
     '{"properties":{' +
     '"PairColors":{"type":"boolean","x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Klammerfarben","x-captionEn":"Bracket colors"},' +
@@ -55,7 +55,7 @@ const
     '"PairGuides":{"type":"boolean","x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"description":"Blocklinien","x-description-en":"Block guides"}' +
     '}}';
-  Project =
+  cProject =
     '{"properties":{' +
     '"hints":{"type":"object","x-page":"Hints","properties":{' +
       '"slash":{"type":"boolean","x-quickToggle":true,"x-plugin":"SlashCommands","x-caption":"Schnellbefehle"},' +
@@ -68,37 +68,37 @@ const
 
 procedure TAtlasQuickTogglesTests.BuildsListFromCatalog;
 var
-  Toggles: TArray<TAtlasQuickToggle>;
-  Groups: TArray<TAtlasQuickToggleGroup>;
+  mToggles: TArray<TAtlasQuickToggle>;
+  mGroups: TArray<TAtlasQuickToggleGroup>;
 begin
-  Toggles := TAtlasQuickToggles.Build(Catalog, Project);
+  mToggles := TAtlasQuickToggles.Build(cCatalog, cProject);
   // Nur boolesche Einstellungen mit x-quickToggle; ohne x-plugin kein globaler Wert (blockPairs).
-  Assert.AreEqual(4, Integer(Length(Toggles)));
+  Assert.AreEqual(4, Integer(Length(mToggles)));
   // Nach Seiten gruppiert, Seiten in der Reihenfolge ihres ersten Schalters.
-  Assert.AreEqual('PairColors', Toggles[0].Key);
-  Assert.AreEqual('PairGuides', Toggles[1].Key);
-  Assert.AreEqual('HoverTooltip', Toggles[2].Key);
-  Assert.AreEqual('SlashCommands', Toggles[3].Key);
-  Assert.AreEqual('Klammerfarben', Toggles[0].Caption);
-  Assert.AreEqual('Blocklinien', Toggles[1].Caption, 'ohne x-caption die Beschreibung');
-  Assert.IsTrue(Toggles[0].Drawing);
-  Assert.IsFalse(Toggles[2].Drawing);
+  Assert.AreEqual('PairColors', mToggles[0].Key);
+  Assert.AreEqual('PairGuides', mToggles[1].Key);
+  Assert.AreEqual('HoverTooltip', mToggles[2].Key);
+  Assert.AreEqual('SlashCommands', mToggles[3].Key);
+  Assert.AreEqual('Klammerfarben', mToggles[0].Caption);
+  Assert.AreEqual('Blocklinien', mToggles[1].Caption, 'ohne x-caption die Beschreibung');
+  Assert.IsTrue(mToggles[0].Drawing);
+  Assert.IsFalse(mToggles[2].Drawing);
   // Eintrag aus atlas.schema.json: Pfad im Projekt; schon im Plugin-Katalog: nur der Pfad kommt dazu.
-  Assert.AreEqual('hints.slash', Toggles[3].ProjectPath);
-  Assert.AreEqual('Hints', Toggles[3].Page);
-  Assert.AreEqual('colors.pairs', Toggles[0].ProjectPath);
-  Assert.AreEqual('', Toggles[2].ProjectPath);
-  Groups := TAtlasQuickToggles.Groups(Toggles);
-  Assert.AreEqual(2, Integer(Length(Groups)));
-  Assert.AreEqual('Editor', Groups[0].Page);
-  Assert.AreEqual(2, Integer(Length(Groups[0].Toggles)));
-  Assert.AreEqual('Hints', Groups[1].Page);
+  Assert.AreEqual('hints.slash', mToggles[3].ProjectPath);
+  Assert.AreEqual('Hints', mToggles[3].Page);
+  Assert.AreEqual('colors.pairs', mToggles[0].ProjectPath);
+  Assert.AreEqual('', mToggles[2].ProjectPath);
+  mGroups := TAtlasQuickToggles.Groups(mToggles);
+  Assert.AreEqual(2, Integer(Length(mGroups)));
+  Assert.AreEqual('Editor', mGroups[0].Page);
+  Assert.AreEqual(2, Integer(Length(mGroups[0].Toggles)));
+  Assert.AreEqual('Hints', mGroups[1].Page);
   // Englische Beschriftung, wo es eine gibt.
-  Toggles := TAtlasQuickToggles.Build(Catalog, '', True);
-  Assert.AreEqual('Bracket colors', Toggles[0].Caption);
-  Assert.AreEqual('Hover', Toggles[2].Caption);
+  mToggles := TAtlasQuickToggles.Build(cCatalog, '', True);
+  Assert.AreEqual('Bracket colors', mToggles[0].Caption);
+  Assert.AreEqual('Hover', mToggles[2].Caption);
   // Ohne x-captionEn die englische Beschreibung (#1458).
-  Assert.AreEqual('Block guides', Toggles[1].Caption);
+  Assert.AreEqual('Block guides', mToggles[1].Caption);
   Assert.AreEqual(0, Integer(Length(TAtlasQuickToggles.Build('kein JSON', ''))));
 end;
 
@@ -212,204 +212,204 @@ end;
 
 procedure TAtlasQuickTogglesTests.RealCatalogsContainAcceptanceSwitches;
 var
-  Toggles: TArray<TAtlasQuickToggle>;
-  Toggle: TAtlasQuickToggle;
+  mToggles: TArray<TAtlasQuickToggle>;
+  mToggle: TAtlasQuickToggle;
 begin
-  Toggles := TAtlasQuickToggles.Build(TAtlasQuickToggles.PluginCatalog, AtlasSchemaJson);
+  mToggles := TAtlasQuickToggles.Build(TAtlasQuickToggles.PluginCatalog, AtlasSchemaJson);
   // Abnahme: mindestens Klammerfarben (#514) und Blocklinien.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'PairColors', Toggle));
-  Assert.IsTrue(Toggle.Drawing);
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'PairGuides', Toggle));
-  Assert.IsTrue(Toggle.Drawing);
+  Assert.IsTrue(TAtlasQuickToggles.Find(mToggles, 'PairColors', mToggle));
+  Assert.IsTrue(mToggle.Drawing);
+  Assert.IsTrue(TAtlasQuickToggles.Find(mToggles, 'PairGuides', mToggle));
+  Assert.IsTrue(mToggle.Drawing);
   // hints ist global (x-scope, #227): Ein Schalter schreibt nur die Plugin-Einstellung, nie atlas.json.
   // hints.xmlDocExpand (#770) ist eine Auswahl und hat keinen Schalter.
-  Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'XmlDocExpand', Toggle));
-  Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'XmlDocFull', Toggle));
-  for Toggle in Toggles do
+  Assert.IsFalse(TAtlasQuickToggles.Find(mToggles, 'XmlDocExpand', mToggle));
+  Assert.IsFalse(TAtlasQuickToggles.Find(mToggles, 'XmlDocFull', mToggle));
+  for mToggle in mToggles do
   begin
-    Assert.IsFalse(Toggle.ProjectPath.StartsWith('hints.') or Toggle.ProjectPath.StartsWith('index.'), Toggle.Key);
+    Assert.IsFalse(mToggle.ProjectPath.StartsWith('hints.') or mToggle.ProjectPath.StartsWith('index.'), mToggle.Key);
   end;
-  Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'StatusFieldSummary', Toggle), 'ohne x-quickToggle');
+  Assert.IsFalse(TAtlasQuickToggles.Find(mToggles, 'StatusFieldSummary', mToggle), 'ohne x-quickToggle');
   // Diagnosemodus (#479): Schalter auf der Seite Allgemein, keine Zeichnung.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'DiagnosticMode', Toggle));
-  Assert.AreEqual('Allgemein', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
+  Assert.IsTrue(TAtlasQuickToggles.Find(mToggles, 'DiagnosticMode', mToggle));
+  Assert.AreEqual('Allgemein', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
   // Tastenkürzel-Tipps (#600): Schalter auf der Seite Allgemein, keine Zeichnung.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'ShortcutTips', Toggle));
-  Assert.AreEqual('Allgemein', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
+  Assert.IsTrue(TAtlasQuickToggles.Find(mToggles, 'ShortcutTips', mToggle));
+  Assert.AreEqual('Allgemein', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
   // Benachrichtigungszentrale (#601): Schalter auf der Seite Allgemein, keine Zeichnung.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'Notifications', Toggle));
-  Assert.AreEqual('Allgemein', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
-  Assert.AreEqual('Notifications', Toggle.Feature);
+  Assert.IsTrue(TAtlasQuickToggles.Find(mToggles, 'Notifications', mToggle));
+  Assert.AreEqual('Allgemein', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
+  Assert.AreEqual('Notifications', mToggle.Feature);
   // Persönliche Notizen (#545): Schalter auf der Seite Editor, Symbol in der Rinne.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'Notes', Toggle));
-  Assert.AreEqual('Editor', Toggle.Page);
-  Assert.IsTrue(Toggle.Drawing);
-  Assert.AreEqual('Notes', Toggle.Feature);
+  Assert.IsTrue(TAtlasQuickToggles.Find(mToggles, 'Notes', mToggle));
+  Assert.AreEqual('Editor', mToggle.Page);
+  Assert.IsTrue(mToggle.Drawing);
+  Assert.AreEqual('Notes', mToggle.Feature);
   // Benannte Lesezeichen (#622): Schalter auf der Seite Editor, Symbol in der Rinne.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'BookmarksNamed', Toggle));
-  Assert.AreEqual('Editor', Toggle.Page);
-  Assert.IsTrue(Toggle.Drawing);
-  Assert.AreEqual('Bookmarks', Toggle.Feature);
+  Assert.IsTrue(TAtlasQuickToggles.Find(mToggles, 'BookmarksNamed', mToggle));
+  Assert.AreEqual('Editor', mToggle.Page);
+  Assert.IsTrue(mToggle.Drawing);
+  Assert.AreEqual('Bookmarks', mToggle.Feature);
   // Erzeugen-Menü (#719): Befehl, keine Zeichnung; „Alles aus“ lässt ihn stehen.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'GenerateMenu', Toggle));
-  Assert.AreEqual('Befehle', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
-  Assert.AreEqual('Generate', Toggle.Feature);
+  Assert.IsTrue(TAtlasQuickToggles.Find(mToggles, 'GenerateMenu', mToggle));
+  Assert.AreEqual('Befehle', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
+  Assert.AreEqual('Generate', mToggle.Feature);
   // Code Lens mit Code-Metriken (#66): Zeichnung im Editor, „Alles aus“ schaltet sie ab.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'CodeLensMetrics', Toggle));
-  Assert.AreEqual('Editor', Toggle.Page);
-  Assert.IsTrue(Toggle.Drawing);
-  Assert.AreEqual('CodeLens', Toggle.Feature);
+  Assert.IsTrue(TAtlasQuickToggles.Find(mToggles, 'CodeLensMetrics', mToggle));
+  Assert.AreEqual('Editor', mToggle.Page);
+  Assert.IsTrue(mToggle.Drawing);
+  Assert.AreEqual('CodeLens', mToggle.Feature);
   // Befehl (#66): Schalter auf der Seite Editor; keine Zeichnung, „Alles aus“ lässt ihn stehen.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'MetricsReport', Toggle));
-  Assert.AreEqual('Editor', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
-  Assert.AreEqual('Palette', Toggle.Feature);
-  AssertTeamFileAndGenerateToggles(Toggles);
-  AssertSetupAndLoginToggles(Toggles);
+  Assert.IsTrue(TAtlasQuickToggles.Find(mToggles, 'MetricsReport', mToggle));
+  Assert.AreEqual('Editor', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
+  Assert.AreEqual('Palette', mToggle.Feature);
+  AssertTeamFileAndGenerateToggles(mToggles);
+  AssertSetupAndLoginToggles(mToggles);
 end;
 
 procedure TAtlasQuickTogglesTests.FlagsByName;
 var
-  Settings: TAtlasPluginSettings;
-  Value: Boolean;
+  mSettings: TAtlasPluginSettings;
+  mValue: Boolean;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(TAtlasQuickToggles.SetFlag(Settings, 'PairColors', False));
-  Assert.IsFalse(Settings.PairColors);
-  Assert.IsTrue(Settings.PairGuides, 'andere Werte bleiben');
-  Assert.AreEqual(TAtlasPluginSettings.Defaults.VisibleRows, Settings.VisibleRows);
-  Assert.IsTrue(TAtlasQuickToggles.GetFlag(Settings, 'PairColors', Value));
-  Assert.IsFalse(Value);
-  Assert.IsTrue(TAtlasQuickToggles.SetFlag(Settings, 'Preview', True));
-  Assert.IsTrue(Settings.Preview);
-  Assert.IsFalse(TAtlasQuickToggles.SetFlag(Settings, 'GibtEsNicht', True));
-  Assert.IsFalse(TAtlasQuickToggles.GetFlag(Settings, 'GibtEsNicht', Value));
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(TAtlasQuickToggles.SetFlag(mSettings, 'PairColors', False));
+  Assert.IsFalse(mSettings.PairColors);
+  Assert.IsTrue(mSettings.PairGuides, 'andere Werte bleiben');
+  Assert.AreEqual(TAtlasPluginSettings.Defaults.VisibleRows, mSettings.VisibleRows);
+  Assert.IsTrue(TAtlasQuickToggles.GetFlag(mSettings, 'PairColors', mValue));
+  Assert.IsFalse(mValue);
+  Assert.IsTrue(TAtlasQuickToggles.SetFlag(mSettings, 'Preview', True));
+  Assert.IsTrue(mSettings.Preview);
+  Assert.IsFalse(TAtlasQuickToggles.SetFlag(mSettings, 'GibtEsNicht', True));
+  Assert.IsFalse(TAtlasQuickToggles.GetFlag(mSettings, 'GibtEsNicht', mValue));
 end;
 
 procedure TAtlasQuickTogglesTests.SessionAndAllOffKeepStoredValues;
 var
-  Toggles: TArray<TAtlasQuickToggle>;
-  Stored, Effective: TAtlasPluginSettings;
-  Session: TAtlasToggleSession;
-  Value: Boolean;
+  mToggles: TArray<TAtlasQuickToggle>;
+  mStored, mEffective: TAtlasPluginSettings;
+  mSession: TAtlasToggleSession;
+  mValue: Boolean;
 begin
-  Toggles := TAtlasQuickToggles.Build(Catalog, Project);
-  Stored := TAtlasPluginSettings.Defaults;
-  Session := Default(TAtlasToggleSession);
-  Session.Put('HoverTooltip', False);
-  Session.Put('hovertooltip', False);
-  Assert.AreEqual(1, Integer(Length(Session.Overrides)), 'ein Wert je Name');
-  Effective := Session.Apply(Stored, Toggles);
-  Assert.IsFalse(Effective.HoverTooltip);
-  Assert.IsTrue(Effective.PairColors);
+  mToggles := TAtlasQuickToggles.Build(cCatalog, cProject);
+  mStored := TAtlasPluginSettings.Defaults;
+  mSession := Default(TAtlasToggleSession);
+  mSession.Put('HoverTooltip', False);
+  mSession.Put('hovertooltip', False);
+  Assert.AreEqual(1, Integer(Length(mSession.Overrides)), 'ein Wert je Name');
+  mEffective := mSession.Apply(mStored, mToggles);
+  Assert.IsFalse(mEffective.HoverTooltip);
+  Assert.IsTrue(mEffective.PairColors);
   // Alles aus: nur Zeichnungen, gespeicherte Werte unverändert.
-  Session.AllOff := True;
-  Effective := Session.Apply(Stored, Toggles);
-  Assert.IsFalse(Effective.PairColors);
-  Assert.IsFalse(Effective.PairGuides);
-  Assert.AreEqual<Boolean>(Stored.Preview, Effective.Preview);
-  Assert.IsTrue(Effective.GenerateMenu, 'Befehl (#719) ist keine Zeichnung');
-  Assert.IsTrue(Effective.TodoList, 'Befehl (#68) ist keine Zeichnung');
-  Assert.IsTrue(Effective.MetricsReport, 'Befehl (#66) ist keine Zeichnung');
-  Assert.IsTrue(Effective.TeamFile, 'Projektdatei (#486) ist keine Zeichnung');
-  Assert.IsTrue(Effective.StartProfiles, 'Startprofile (#575) sind keine Zeichnung');
-  Assert.IsTrue(Effective.TestDebug, 'Test debuggen (#585) ist keine Zeichnung');
-  Assert.IsTrue(Effective.BaselineUpdate, 'Befehl (#97) ist keine Zeichnung');
-  Assert.IsTrue(Effective.ReleaseGuard, 'Release-Wächter (#533) ist keine Zeichnung');
-  Assert.IsTrue(Stored.PairColors);
-  Assert.IsTrue(Stored.PairGuides);
-  Assert.IsTrue(Stored.HoverTooltip);
+  mSession.AllOff := True;
+  mEffective := mSession.Apply(mStored, mToggles);
+  Assert.IsFalse(mEffective.PairColors);
+  Assert.IsFalse(mEffective.PairGuides);
+  Assert.AreEqual<Boolean>(mStored.Preview, mEffective.Preview);
+  Assert.IsTrue(mEffective.GenerateMenu, 'Befehl (#719) ist keine Zeichnung');
+  Assert.IsTrue(mEffective.TodoList, 'Befehl (#68) ist keine Zeichnung');
+  Assert.IsTrue(mEffective.MetricsReport, 'Befehl (#66) ist keine Zeichnung');
+  Assert.IsTrue(mEffective.TeamFile, 'Projektdatei (#486) ist keine Zeichnung');
+  Assert.IsTrue(mEffective.StartProfiles, 'Startprofile (#575) sind keine Zeichnung');
+  Assert.IsTrue(mEffective.TestDebug, 'Test debuggen (#585) ist keine Zeichnung');
+  Assert.IsTrue(mEffective.BaselineUpdate, 'Befehl (#97) ist keine Zeichnung');
+  Assert.IsTrue(mEffective.ReleaseGuard, 'Release-Wächter (#533) ist keine Zeichnung');
+  Assert.IsTrue(mStored.PairColors);
+  Assert.IsTrue(mStored.PairGuides);
+  Assert.IsTrue(mStored.HoverTooltip);
   // Nächster Klick: alles wieder wie gespeichert.
-  Session.AllOff := False;
-  Session.Drop('HoverTooltip');
-  Assert.IsFalse(Session.TryGet('HoverTooltip', Value));
-  Effective := Session.Apply(Stored, Toggles);
-  Assert.IsTrue(Effective.PairColors);
-  Assert.IsTrue(Effective.HoverTooltip);
+  mSession.AllOff := False;
+  mSession.Drop('HoverTooltip');
+  Assert.IsFalse(mSession.TryGet('HoverTooltip', mValue));
+  mEffective := mSession.Apply(mStored, mToggles);
+  Assert.IsTrue(mEffective.PairColors);
+  Assert.IsTrue(mEffective.HoverTooltip);
 end;
 
 procedure TAtlasQuickTogglesTests.ItemsShowProjectAndSession;
 var
-  Toggles: TArray<TAtlasQuickToggle>;
-  Items: TArray<TAtlasQuickToggleItem>;
-  Stored: TAtlasPluginSettings;
-  Session: TAtlasToggleSession;
-  Root: TJSONObject;
+  mToggles: TArray<TAtlasQuickToggle>;
+  mItems: TArray<TAtlasQuickToggleItem>;
+  mStored: TAtlasPluginSettings;
+  mSession: TAtlasToggleSession;
+  mRoot: TJSONObject;
 begin
-  Toggles := TAtlasQuickToggles.Build(Catalog, Project);
-  Stored := TAtlasPluginSettings.Defaults;
-  Stored.HoverTooltip := False;
-  Session := Default(TAtlasToggleSession);
-  Root := TJSONObject.ParseJSONValue('{"hints":{"slash":false},"colors":{"pairs":"kein Wahrheitswert"}}')
+  mToggles := TAtlasQuickToggles.Build(cCatalog, cProject);
+  mStored := TAtlasPluginSettings.Defaults;
+  mStored.HoverTooltip := False;
+  mSession := Default(TAtlasToggleSession);
+  mRoot := TJSONObject.ParseJSONValue('{"hints":{"slash":false},"colors":{"pairs":"kein Wahrheitswert"}}')
     as TJSONObject;
   try
-    Items := TAtlasQuickToggles.Items(Toggles, Stored, Session, Root);
-    Assert.AreEqual(4, Integer(Length(Items)));
+    mItems := TAtlasQuickToggles.Items(mToggles, mStored, mSession, mRoot);
+    Assert.AreEqual(4, Integer(Length(mItems)));
     // PairColors: Wert im Projekt ist kein Wahrheitswert, also keine Markierung.
-    Assert.IsFalse(Items[0].Project);
-    Assert.IsTrue(Items[0].Checked);
-    Assert.IsFalse(Items[2].Checked, 'gespeicherter Wert');
-    Assert.IsFalse(Items[2].Project);
+    Assert.IsFalse(mItems[0].Project);
+    Assert.IsTrue(mItems[0].Checked);
+    Assert.IsFalse(mItems[2].Checked, 'gespeicherter Wert');
+    Assert.IsFalse(mItems[2].Project);
     // SlashCommands: atlas.json setzt false, gespeichert ist true.
-    Assert.IsTrue(Items[3].Project, 'Projekt-Markierung');
-    Assert.IsFalse(Items[3].Checked);
-    Session.Put('SlashCommands', True);
-    Items := TAtlasQuickToggles.Items(Toggles, Stored, Session, Root);
-    Assert.IsTrue(Items[3].Session);
-    Assert.IsTrue(Items[3].Checked, 'Sitzungswert über dem Projekt');
+    Assert.IsTrue(mItems[3].Project, 'Projekt-Markierung');
+    Assert.IsFalse(mItems[3].Checked);
+    mSession.Put('SlashCommands', True);
+    mItems := TAtlasQuickToggles.Items(mToggles, mStored, mSession, mRoot);
+    Assert.IsTrue(mItems[3].Session);
+    Assert.IsTrue(mItems[3].Checked, 'Sitzungswert über dem Projekt');
     // Ohne Projekt keine Markierung.
-    Items := TAtlasQuickToggles.Items(Toggles, Stored, Default(TAtlasToggleSession), nil);
-    Assert.IsFalse(Items[3].Project);
-    Assert.IsTrue(Items[3].Checked);
+    mItems := TAtlasQuickToggles.Items(mToggles, mStored, Default(TAtlasToggleSession), nil);
+    Assert.IsFalse(mItems[3].Project);
+    Assert.IsTrue(mItems[3].Checked);
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 procedure TAtlasQuickTogglesTests.ToggleTargets;
 var
-  Toggles: TArray<TAtlasQuickToggle>;
-  Items: TArray<TAtlasQuickToggleItem>;
-  Stored: TAtlasPluginSettings;
-  Session: TAtlasToggleSession;
-  Value: Boolean;
+  mToggles: TArray<TAtlasQuickToggle>;
+  mItems: TArray<TAtlasQuickToggleItem>;
+  mStored: TAtlasPluginSettings;
+  mSession: TAtlasToggleSession;
+  mValue: Boolean;
 begin
-  Toggles := TAtlasQuickToggles.Build(Catalog, Project);
-  Stored := TAtlasPluginSettings.Defaults;
-  Session := Default(TAtlasToggleSession);
-  Session.Put('PairColors', True);
-  Items := TAtlasQuickToggles.Items(Toggles, Stored, Session, nil);
+  mToggles := TAtlasQuickToggles.Build(cCatalog, cProject);
+  mStored := TAtlasPluginSettings.Defaults;
+  mSession := Default(TAtlasToggleSession);
+  mSession.Put('PairColors', True);
+  mItems := TAtlasQuickToggles.Items(mToggles, mStored, mSession, nil);
   // Global: gespeicherter Wert, der Sitzungswert fällt weg.
-  Assert.AreEqual('', TAtlasQuickToggles.Toggle(Items[0], TAtlasToggleTarget.Global, Stored, Session));
-  Assert.IsFalse(Stored.PairColors);
-  Assert.IsFalse(Session.TryGet('PairColors', Value));
+  Assert.AreEqual('', TAtlasQuickToggles.Toggle(mItems[0], TAtlasToggleTarget.Global, mStored, mSession));
+  Assert.IsFalse(mStored.PairColors);
+  Assert.IsFalse(mSession.TryGet('PairColors', mValue));
   // Sitzung: gespeicherter Wert bleibt.
-  Assert.AreEqual('', TAtlasQuickToggles.Toggle(Items[2], TAtlasToggleTarget.Session, Stored, Session));
-  Assert.IsTrue(Stored.HoverTooltip);
-  Assert.IsTrue(Session.TryGet('HoverTooltip', Value));
-  Assert.IsFalse(Value);
+  Assert.AreEqual('', TAtlasQuickToggles.Toggle(mItems[2], TAtlasToggleTarget.Session, mStored, mSession));
+  Assert.IsTrue(mStored.HoverTooltip);
+  Assert.IsTrue(mSession.TryGet('HoverTooltip', mValue));
+  Assert.IsFalse(mValue);
   // Projekt: neuer Wert für atlas.json, sonst nichts.
-  Assert.AreEqual('false', TAtlasQuickToggles.Toggle(Items[3], TAtlasToggleTarget.Project, Stored, Session));
-  Assert.IsTrue(Stored.SlashCommands);
-  Assert.IsFalse(Session.TryGet('SlashCommands', Value));
+  Assert.AreEqual('false', TAtlasQuickToggles.Toggle(mItems[3], TAtlasToggleTarget.Project, mStored, mSession));
+  Assert.IsTrue(mStored.SlashCommands);
+  Assert.IsFalse(mSession.TryGet('SlashCommands', mValue));
 end;
 
 procedure TAtlasQuickTogglesTests.FeaturesNameGuardFeatures;
 var
-  Toggle: TAtlasQuickToggle;
-  Ordinal: Integer;
+  mToggle: TAtlasQuickToggle;
+  mOrdinal: Integer;
 begin
-  for Toggle in TAtlasQuickToggles.Build(TAtlasQuickToggles.PluginCatalog, AtlasSchemaJson) do
+  for mToggle in TAtlasQuickToggles.Build(TAtlasQuickToggles.PluginCatalog, AtlasSchemaJson) do
   begin
-    if Toggle.Feature <> '' then
+    if mToggle.Feature <> '' then
     begin
-      Ordinal := GetEnumValue(TypeInfo(TAtlasFeature), Toggle.Feature);
-      Assert.IsTrue(Ordinal >= 0, Toggle.Key + ': ' + Toggle.Feature);
-      Assert.AreEqual(Toggle.Feature, GetEnumName(TypeInfo(TAtlasFeature), Ordinal), Toggle.Key);
+      mOrdinal := GetEnumValue(TypeInfo(TAtlasFeature), mToggle.Feature);
+      Assert.IsTrue(mOrdinal >= 0, mToggle.Key + ': ' + mToggle.Feature);
+      Assert.AreEqual(mToggle.Feature, GetEnumName(TypeInfo(TAtlasFeature), mOrdinal), mToggle.Key);
     end;
   end;
 end;

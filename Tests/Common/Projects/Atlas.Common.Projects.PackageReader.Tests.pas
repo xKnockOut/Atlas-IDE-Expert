@@ -31,9 +31,9 @@ uses
 
 procedure TPackageReaderTests.ReadsRequiresAndContains;
 var
-  Source: TPackageSource;
+  mSource: TPackageSource;
 begin
-  Source := TPackageReader.Read(
+  mSource := TPackageReader.Read(
     'package Kasse.Core;'#10 +
     '{$R *.res}'#10 +
     'requires'#10 +
@@ -43,57 +43,57 @@ begin
     '  uBeleg in ''Quellen\uBeleg.pas'','#10 +
     '  Kasse.Steuer;'#10 +
     'end.');
-  Assert.IsTrue(Source.IsPackage);
-  Assert.AreEqual('Kasse.Core', Source.Name);
-  Assert.AreEqual(2, Integer(Length(Source.Requires)));
-  Assert.AreEqual('vcl', Source.Requires[1].Name);
-  Assert.IsTrue(Source.RequiresPackage('VCL'));
-  Assert.AreEqual(2, Integer(Length(Source.Contains)));
-  Assert.AreEqual('uBeleg', Source.Contains[0].Name);
-  Assert.AreEqual('Quellen\uBeleg.pas', Source.Contains[0].Path);
-  Assert.AreEqual(6, Source.Contains[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Source.Contains[0].Range.StartPos.Character);
-  Assert.AreEqual(8, Source.Contains[0].Range.EndPos.Character);
-  Assert.AreEqual('Kasse.Steuer', Source.Contains[1].Name);
-  Assert.AreEqual('', Source.Contains[1].Path);
-  Assert.AreEqual(1, Source.ContainsIndex('kasse.steuer'));
-  Assert.AreEqual(-1, Source.ContainsIndex('uRunden'));
-  Assert.IsTrue(Source.HasContains);
-  Assert.AreEqual(7, Source.ContainsEnd.Line);
-  Assert.AreEqual(14, Source.ContainsEnd.Character);
+  Assert.IsTrue(mSource.IsPackage);
+  Assert.AreEqual('Kasse.Core', mSource.Name);
+  Assert.AreEqual(2, Integer(Length(mSource.Requires)));
+  Assert.AreEqual('vcl', mSource.Requires[1].Name);
+  Assert.IsTrue(mSource.RequiresPackage('VCL'));
+  Assert.AreEqual(2, Integer(Length(mSource.Contains)));
+  Assert.AreEqual('uBeleg', mSource.Contains[0].Name);
+  Assert.AreEqual('Quellen\uBeleg.pas', mSource.Contains[0].Path);
+  Assert.AreEqual(6, mSource.Contains[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mSource.Contains[0].Range.StartPos.Character);
+  Assert.AreEqual(8, mSource.Contains[0].Range.EndPos.Character);
+  Assert.AreEqual('Kasse.Steuer', mSource.Contains[1].Name);
+  Assert.AreEqual('', mSource.Contains[1].Path);
+  Assert.AreEqual(1, mSource.ContainsIndex('kasse.steuer'));
+  Assert.AreEqual(-1, mSource.ContainsIndex('uRunden'));
+  Assert.IsTrue(mSource.HasContains);
+  Assert.AreEqual(7, mSource.ContainsEnd.Line);
+  Assert.AreEqual(14, mSource.ContainsEnd.Character);
 end;
 
 procedure TPackageReaderTests.SkipsCommentsAndDirectives;
 var
-  Source: TPackageSource;
+  mSource: TPackageSource;
 begin
-  Source := TPackageReader.Read(
+  mSource := TPackageReader.Read(
     '// Kopf'#10 +
     'package P;'#10 +
     'requires rtl { Laufzeit }, (* VCL *) vcl;'#10 +
     'contains A, {$IFDEF X} B, {$ENDIF} C;'#10 +
     'end.');
-  Assert.AreEqual(2, Integer(Length(Source.Requires)));
-  Assert.AreEqual('A,B,C', Source.Contains[0].Name + ',' + Source.Contains[1].Name + ',' + Source.Contains[2].Name);
+  Assert.AreEqual(2, Integer(Length(mSource.Requires)));
+  Assert.AreEqual('A,B,C', mSource.Contains[0].Name + ',' + mSource.Contains[1].Name + ',' + mSource.Contains[2].Name);
 end;
 
 procedure TPackageReaderTests.UnitIsNoPackage;
 var
-  Source: TPackageSource;
+  mSource: TPackageSource;
 begin
-  Source := TPackageReader.Read('unit A;'#10'interface'#10'uses B;'#10'implementation'#10'end.');
-  Assert.IsFalse(Source.IsPackage);
-  Assert.AreEqual(0, Integer(Length(Source.Contains)));
+  mSource := TPackageReader.Read('unit A;'#10'interface'#10'uses B;'#10'implementation'#10'end.');
+  Assert.IsFalse(mSource.IsPackage);
+  Assert.AreEqual(0, Integer(Length(mSource.Contains)));
 end;
 
 procedure TPackageReaderTests.PackageWithoutContains;
 var
-  Source: TPackageSource;
+  mSource: TPackageSource;
 begin
-  Source := TPackageReader.Read('package Leer;'#10'requires rtl;'#10'end.');
-  Assert.IsTrue(Source.IsPackage);
-  Assert.IsFalse(Source.HasContains);
-  Assert.AreEqual(1, Integer(Length(Source.Requires)));
+  mSource := TPackageReader.Read('package Leer;'#10'requires rtl;'#10'end.');
+  Assert.IsTrue(mSource.IsPackage);
+  Assert.IsFalse(mSource.HasContains);
+  Assert.AreEqual(1, Integer(Length(mSource.Requires)));
 end;
 
 procedure TPackageReaderTests.InsertionFollowsLineBreak;

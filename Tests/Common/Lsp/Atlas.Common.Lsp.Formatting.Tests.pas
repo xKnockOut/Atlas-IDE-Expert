@@ -42,26 +42,26 @@ uses
   Atlas.Common.Lsp.Formatting;
 
 const
-  CancelUri = 'file:///C:/P/Unit1.pas';
+  cCancelUri = 'file:///C:/P/Unit1.pas';
 
 /// <summary>Schickt AJson (Anfrage mit id 1) durch einen eigenen Dispatcher; liefert error.code oder 0.</summary>
 function ErrorCodeOf(ADispatcher: TJsonRpcDispatcher; const AJson: string): Integer;
 var
-  Request, Response: TJSONObject;
+  mRequest, mResponse: TJSONObject;
 begin
-  Request := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
+  mRequest := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
   try
-    Response := ADispatcher.DispatchMessage(Request);
+    mResponse := ADispatcher.DispatchMessage(mRequest);
     try
-      if not Response.TryGetValue<Integer>('error.code', Result) then
+      if not mResponse.TryGetValue<Integer>('error.code', Result) then
       begin
         Result := 0;
       end;
     finally
-      Response.Free;
+      mResponse.Free;
     end;
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
@@ -83,26 +83,26 @@ end;
 /// <summary>Anzahl der Bearbeitungen in der Antwort auf AJson (Anfrage mit id 1); -1 ohne result.</summary>
 function EditCountOf(ADispatcher: TJsonRpcDispatcher; const AJson: string): Integer;
 var
-  Request, Response: TJSONObject;
-  Edits: TJSONArray;
+  mRequest, mResponse: TJSONObject;
+  mEdits: TJSONArray;
 begin
-  Request := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
+  mRequest := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
   try
-    Response := ADispatcher.DispatchMessage(Request);
+    mResponse := ADispatcher.DispatchMessage(mRequest);
     try
-      if Response.TryGetValue<TJSONArray>('result', Edits) then
+      if mResponse.TryGetValue<TJSONArray>('result', mEdits) then
       begin
-        Result := Edits.Count;
+        Result := mEdits.Count;
       end
       else
       begin
         Result := -1;
       end;
     finally
-      Response.Free;
+      mResponse.Free;
     end;
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
@@ -110,215 +110,215 @@ end;
 
 procedure TLspFormattingTests.DocCommentAfterSlashIsSwitchable;
 const
-  Request = '{"jsonrpc":"2.0","id":1,"method":"textDocument/onTypeFormatting","params":{"textDocument":{"uri":"' +
-    CancelUri + '"},"position":{"line":3,"character":5},"ch":"/"}}';
+  cRequest = '{"jsonrpc":"2.0","id":1,"method":"textDocument/onTypeFormatting","params":{"textDocument":{"uri":"' +
+    cCancelUri + '"},"position":{"line":3,"character":5},"ch":"/"}}';
 var
-  Store: IDocumentStore;
-  Formatting: TLspFormatting;
-  Dispatcher: TJsonRpcDispatcher;
-  Enabled: Boolean;
+  mStore: IDocumentStore;
+  mFormatting: TLspFormatting;
+  mDispatcher: TJsonRpcDispatcher;
+  mEnabled: Boolean;
 begin
-  Store := TDocumentStore.Create;
-  Store.Open(CancelUri, 'objectpascal', 1, 'unit Unit1;'#10'interface'#10#10'  ///'#10 +
+  mStore := TDocumentStore.Create;
+  mStore.Open(cCancelUri, 'objectpascal', 1, 'unit Unit1;'#10'interface'#10#10'  ///'#10 +
     'procedure Foo(A: Integer);'#10'implementation'#10'procedure Foo(A: Integer);'#10'begin'#10'end;'#10'end.');
-  Dispatcher := TJsonRpcDispatcher.Create;
-  Formatting := TLspFormatting.Create(Store, nil, nil);
+  mDispatcher := TJsonRpcDispatcher.Create;
+  mFormatting := TLspFormatting.Create(mStore, nil, nil);
   try
-    Enabled := True;
-    Formatting.DocCommentsFor :=
+    mEnabled := True;
+    mFormatting.DocCommentsFor :=
       function(const AUri: string): Boolean
       begin
-        Result := Enabled;
+        Result := mEnabled;
       end;
-    Formatting.Attach(Dispatcher);
-    Assert.AreEqual(1, EditCountOf(Dispatcher, Request), 'Gerüst eingeschaltet');
+    mFormatting.Attach(mDispatcher);
+    Assert.AreEqual(1, EditCountOf(mDispatcher, cRequest), 'Gerüst eingeschaltet');
     // completeBlocks.docComment = false: "///" bleibt, wie getippt.
-    Enabled := False;
-    Assert.AreEqual(0, EditCountOf(Dispatcher, Request), 'Gerüst abgeschaltet');
+    mEnabled := False;
+    Assert.AreEqual(0, EditCountOf(mDispatcher, cRequest), 'Gerüst abgeschaltet');
   finally
-    Formatting.Free;
-    Dispatcher.Free;
+    mFormatting.Free;
+    mDispatcher.Free;
   end;
 end;
 
 procedure TLspFormattingTests.SlashCommandFollowsEditorOptions;
 const
-  Request = '{"jsonrpc":"2.0","id":1,"method":"textDocument/onTypeFormatting","params":{"textDocument":{"uri":"' +
-    CancelUri + '"},"position":{"line":9,"character":1},"ch":"\n",' +
+  cRequest = '{"jsonrpc":"2.0","id":1,"method":"textDocument/onTypeFormatting","params":{"textDocument":{"uri":"' +
+    cCancelUri + '"},"position":{"line":9,"character":1},"ch":"\n",' +
     '"options":{"tabSize":4,"insertSpaces":false}}}';
 var
-  Store: IDocumentStore;
-  Formatting: TLspFormatting;
-  Dispatcher: TJsonRpcDispatcher;
-  Message_, Response: TJSONObject;
+  mStore: IDocumentStore;
+  mFormatting: TLspFormatting;
+  mDispatcher: TJsonRpcDispatcher;
+  mMessage_, mResponse: TJSONObject;
 begin
-  Store := TDocumentStore.Create;
-  Store.Open(CancelUri, 'objectpascal', 1, 'unit Unit1;'#10'interface'#10'implementation'#10'procedure P;'#10 +
+  mStore := TDocumentStore.Create;
+  mStore.Open(cCancelUri, 'objectpascal', 1, 'unit Unit1;'#10'interface'#10'implementation'#10'procedure P;'#10 +
     'var'#10#9'Liste: TStringList;'#10'begin'#10#9'Liste := TStringList.Create;'#10#9'/try'#10#9#10 +
     #9'Liste.Sort;'#10'end;'#10'end.');
-  Dispatcher := TJsonRpcDispatcher.Create;
-  Formatting := TLspFormatting.Create(Store, nil, nil);
+  mDispatcher := TJsonRpcDispatcher.Create;
+  mFormatting := TLspFormatting.Create(mStore, nil, nil);
   try
-    Formatting.Attach(Dispatcher);
-    Message_ := TJSONObject.ParseJSONValue(Request) as TJSONObject;
+    mFormatting.Attach(mDispatcher);
+    mMessage_ := TJSONObject.ParseJSONValue(cRequest) as TJSONObject;
     try
-      Response := Dispatcher.DispatchMessage(Message_);
+      mResponse := mDispatcher.DispatchMessage(mMessage_);
       try
-        Assert.IsTrue(Pos('\t\tListe.Sort', Response.ToJSON) > 0, Response.ToJSON);
-        Assert.AreEqual(0, Pos('  \tListe.Sort', Response.ToJSON), Response.ToJSON);
+        Assert.IsTrue(Pos('\t\tListe.Sort', mResponse.ToJSON) > 0, mResponse.ToJSON);
+        Assert.AreEqual(0, Pos('  \tListe.Sort', mResponse.ToJSON), mResponse.ToJSON);
       finally
-        Response.Free;
+        mResponse.Free;
       end;
     finally
-      Message_.Free;
+      mMessage_.Free;
     end;
   finally
-    Formatting.Free;
-    Dispatcher.Free;
+    mFormatting.Free;
+    mDispatcher.Free;
   end;
 end;
 
 procedure TLspFormattingTests.EditorOptionsAreTheBase;
 var
-  Json: TJSONObject;
-  Style: TFormatStyle;
+  mJson: TJSONObject;
+  mStyle: TFormatStyle;
 begin
-  Json := Options;
+  mJson := Options;
   try
-    Style := TLspFormatting.Resolve(Json, 'C:\P\Unit1.pas', TFormatStyle.Default, nil);
-    Assert.AreEqual(4, Style.IndentSize);
-    Assert.IsTrue(Style.UseTabs);
-    Assert.IsTrue(Style.InsertFinalNewline);
+    mStyle := TLspFormatting.Resolve(mJson, 'C:\P\Unit1.pas', TFormatStyle.Default, nil);
+    Assert.AreEqual(4, mStyle.IndentSize);
+    Assert.IsTrue(mStyle.UseTabs);
+    Assert.IsTrue(mStyle.InsertFinalNewline);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TLspFormattingTests.EditorConfigOverridesEditor;
 var
-  Json: TJSONObject;
-  Style: TFormatStyle;
+  mJson: TJSONObject;
+  mStyle: TFormatStyle;
 begin
-  Json := Options;
+  mJson := Options;
   try
-    Style := TLspFormatting.Resolve(Json, 'C:\P\Unit1.pas', TFormatStyle.Default, ReadTabsConfig());
-    Assert.AreEqual(3, Style.IndentSize);
-    Assert.IsFalse(Style.UseTabs);
+    mStyle := TLspFormatting.Resolve(mJson, 'C:\P\Unit1.pas', TFormatStyle.Default, ReadTabsConfig());
+    Assert.AreEqual(3, mStyle.IndentSize);
+    Assert.IsFalse(mStyle.UseTabs);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TLspFormattingTests.ConfiguredKeysOverrideEditorConfig;
 var
-  Json: TJSONObject;
-  Configured, Style: TFormatStyle;
+  mJson: TJSONObject;
+  mConfigured, mStyle: TFormatStyle;
 begin
-  Configured := TFormatStyle.Default;
-  Configured.IndentSize := 8;
-  Configured.KeywordCase := TKeywordCase.Upper;
-  Configured.Given := [TFormatKey.IndentSize];
-  Json := Options;
+  mConfigured := TFormatStyle.Default;
+  mConfigured.IndentSize := 8;
+  mConfigured.KeywordCase := TKeywordCase.Upper;
+  mConfigured.Given := [TFormatKey.IndentSize];
+  mJson := Options;
   try
-    Style := TLspFormatting.Resolve(Json, 'C:\P\Unit1.pas', Configured, ReadTabsConfig());
-    Assert.AreEqual(8, Style.IndentSize);
+    mStyle := TLspFormatting.Resolve(mJson, 'C:\P\Unit1.pas', mConfigured, ReadTabsConfig());
+    Assert.AreEqual(8, mStyle.IndentSize);
     // Nicht ausdrücklich gesetzt: bleibt beim Wert aus .editorconfig bzw. der Vorgabe.
-    Assert.IsFalse(Style.UseTabs);
-    Assert.AreEqual<TKeywordCase>(TKeywordCase.Preserve, Style.KeywordCase);
+    Assert.IsFalse(mStyle.UseTabs);
+    Assert.AreEqual<TKeywordCase>(TKeywordCase.Preserve, mStyle.KeywordCase);
   finally
-    Json.Free;
+    mJson.Free;
   end;
   // Schalter ohne Gegenstück im Editor gelten immer; maxLineLength nur gesetzt vor .editorconfig (#43).
-  Configured := TFormatStyle.Default;
-  Configured.Reindent := False;
-  Configured.BeginPlacement := TBlockPlacement.NewLine;
-  Configured.AlignComments := True;
-  Configured.MaxLineLength := 90;
-  Style := TLspFormatting.Resolve(nil, 'C:\P\Unit1.pas', Configured, nil);
-  Assert.IsFalse(Style.Reindent);
-  Assert.AreEqual<TBlockPlacement>(TBlockPlacement.NewLine, Style.BeginPlacement);
-  Assert.IsTrue(Style.AlignComments);
-  Assert.AreEqual(0, Style.MaxLineLength);
-  Configured.Given := [TFormatKey.MaxLineLength];
-  Style := TLspFormatting.Resolve(nil, 'C:\P\Unit1.pas', Configured, nil);
-  Assert.AreEqual(90, Style.MaxLineLength);
+  mConfigured := TFormatStyle.Default;
+  mConfigured.Reindent := False;
+  mConfigured.BeginPlacement := TBlockPlacement.NewLine;
+  mConfigured.AlignComments := True;
+  mConfigured.MaxLineLength := 90;
+  mStyle := TLspFormatting.Resolve(nil, 'C:\P\Unit1.pas', mConfigured, nil);
+  Assert.IsFalse(mStyle.Reindent);
+  Assert.AreEqual<TBlockPlacement>(TBlockPlacement.NewLine, mStyle.BeginPlacement);
+  Assert.IsTrue(mStyle.AlignComments);
+  Assert.AreEqual(0, mStyle.MaxLineLength);
+  mConfigured.Given := [TFormatKey.MaxLineLength];
+  mStyle := TLspFormatting.Resolve(nil, 'C:\P\Unit1.pas', mConfigured, nil);
+  Assert.AreEqual(90, mStyle.MaxLineLength);
 end;
 
 procedure TLspFormattingTests.OnTypeStopsBeforeSlashCommandsWhenCancelled;
 var
-  Store: IDocumentStore;
-  Formatting: TLspFormatting;
-  Dispatcher: TJsonRpcDispatcher;
-  SlashAsked: Boolean;
+  mStore: IDocumentStore;
+  mFormatting: TLspFormatting;
+  mDispatcher: TJsonRpcDispatcher;
+  mSlashAsked: Boolean;
 begin
-  SlashAsked := False;
-  Store := TDocumentStore.Create;
-  Store.Open(CancelUri, 'objectpascal', 1, 'unit Unit1;'#10'/define TEST'#10'interface'#10'implementation'#10'end.');
-  Dispatcher := TJsonRpcDispatcher.Create;
-  Formatting := TLspFormatting.Create(Store, nil, nil);
+  mSlashAsked := False;
+  mStore := TDocumentStore.Create;
+  mStore.Open(cCancelUri, 'objectpascal', 1, 'unit Unit1;'#10'/define TEST'#10'interface'#10'implementation'#10'end.');
+  mDispatcher := TJsonRpcDispatcher.Create;
+  mFormatting := TLspFormatting.Create(mStore, nil, nil);
   try
     // Ohne Scheduler läuft die Anfrage in DispatchMessage; abgebrochen wird mitten im Handler.
-    Formatting.DelphiVersionFor :=
+    mFormatting.DelphiVersionFor :=
       function(const AUri: string): string
       var
         Id: TJSONValue;
       begin
         Id := TJSONNumber.Create(1);
         try
-          Dispatcher.PendingRequests.Cancel(Id);
+          mDispatcher.PendingRequests.Cancel(Id);
         finally
           Id.Free;
         end;
         Result := '';
       end;
-    Formatting.SlashCommandsFor :=
+    mFormatting.SlashCommandsFor :=
       function(const AUri: string; out ADisabled: TArray<string>): Boolean
       begin
-        SlashAsked := True;
+        mSlashAsked := True;
         ADisabled := nil;
         Result := True;
       end;
-    Formatting.Attach(Dispatcher);
-    Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, ErrorCodeOf(Dispatcher,
+    mFormatting.Attach(mDispatcher);
+    Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, ErrorCodeOf(mDispatcher,
       '{"jsonrpc":"2.0","id":1,"method":"textDocument/onTypeFormatting","params":{"textDocument":{"uri":"' +
-      CancelUri + '"},"position":{"line":2,"character":0},"ch":"\n"}}'));
-    Assert.IsFalse(SlashAsked, 'Schnellbefehle trotz Abbruch');
+      cCancelUri + '"},"position":{"line":2,"character":0},"ch":"\n"}}'));
+    Assert.IsFalse(mSlashAsked, 'Schnellbefehle trotz Abbruch');
   finally
-    Formatting.Free;
-    Dispatcher.Free;
+    mFormatting.Free;
+    mDispatcher.Free;
   end;
 end;
 
 procedure TLspFormattingTests.FormattingStopsWhenCancelled;
 var
-  Store: IDocumentStore;
-  Formatting: TLspFormatting;
-  Dispatcher: TJsonRpcDispatcher;
+  mStore: IDocumentStore;
+  mFormatting: TLspFormatting;
+  mDispatcher: TJsonRpcDispatcher;
 begin
-  Store := TDocumentStore.Create;
-  Store.Open(CancelUri, 'objectpascal', 1, 'unit Unit1;'#10'interface'#10'implementation'#10'end.');
-  Dispatcher := TJsonRpcDispatcher.Create;
-  Formatting := TLspFormatting.Create(Store,
+  mStore := TDocumentStore.Create;
+  mStore.Open(cCancelUri, 'objectpascal', 1, 'unit Unit1;'#10'interface'#10'implementation'#10'end.');
+  mDispatcher := TJsonRpcDispatcher.Create;
+  mFormatting := TLspFormatting.Create(mStore,
     function(const AUri: string): TFormatStyle
     var
       Id: TJSONValue;
     begin
       Id := TJSONNumber.Create(1);
       try
-        Dispatcher.PendingRequests.Cancel(Id);
+        mDispatcher.PendingRequests.Cancel(Id);
       finally
         Id.Free;
       end;
       Result := TFormatStyle.Default;
     end, nil);
   try
-    Formatting.Attach(Dispatcher);
-    Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, ErrorCodeOf(Dispatcher,
+    mFormatting.Attach(mDispatcher);
+    Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, ErrorCodeOf(mDispatcher,
       '{"jsonrpc":"2.0","id":1,"method":"textDocument/formatting","params":{"textDocument":{"uri":"' +
-      CancelUri + '"},"options":{"tabSize":2,"insertSpaces":true}}}'));
+      cCancelUri + '"},"options":{"tabSize":2,"insertSpaces":true}}}'));
   finally
-    Formatting.Free;
-    Dispatcher.Free;
+    mFormatting.Free;
+    mDispatcher.Free;
   end;
 end;
 

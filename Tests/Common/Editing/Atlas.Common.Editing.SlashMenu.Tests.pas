@@ -73,7 +73,7 @@ uses
   Atlas.Common.Editing.SlashMenu;
 
 const
-  ClassUnit =
+  cClassUnit =
     'unit U;'#10 +                                  // 0
     'interface'#10 +                                // 1
     'type'#10 +                                     // 2
@@ -125,61 +125,61 @@ end;
 /// <summary>Wendet AEdits (nicht überlappend) auf AText an.</summary>
 function Apply(const AText: string; AEdits: TArray<TRuleEdit>): string;
 var
-  Lines: TArray<string>;
-  Edit: TRuleEdit;
-  Offsets: TArray<Integer>;
-  Index, Start, Stop: Integer;
+  mLines: TArray<string>;
+  mEdit: TRuleEdit;
+  mOffsets: TArray<Integer>;
+  mIndex, mStart, mStop: Integer;
 begin
-  Lines := AText.Split([#10]);
-  SetLength(Offsets, Length(Lines) + 1);
-  Offsets[0] := 0;
-  for Index := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  SetLength(mOffsets, Length(mLines) + 1);
+  mOffsets[0] := 0;
+  for mIndex := 0 to High(mLines) do
   begin
-    Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
   end;
   // Von hinten nach vorn anwenden, damit frühere Stellen gültig bleiben.
-  for Index := 1 to High(AEdits) do
+  for mIndex := 1 to High(AEdits) do
   begin
-    Start := Index;
-    while (Start > 0) and (Key(AEdits[Start - 1]) < Key(AEdits[Start])) do
+    mStart := mIndex;
+    while (mStart > 0) and (Key(AEdits[mStart - 1]) < Key(AEdits[mStart])) do
     begin
-      Edit := AEdits[Start - 1];
-      AEdits[Start - 1] := AEdits[Start];
-      AEdits[Start] := Edit;
-      Dec(Start);
+      mEdit := AEdits[mStart - 1];
+      AEdits[mStart - 1] := AEdits[mStart];
+      AEdits[mStart] := mEdit;
+      Dec(mStart);
     end;
   end;
   Result := AText;
-  for Edit in AEdits do
+  for mEdit in AEdits do
   begin
-    Start := Offsets[Edit.Range.StartPos.Line] + Edit.Range.StartPos.Character;
-    Stop := Offsets[Edit.Range.EndPos.Line] + Edit.Range.EndPos.Character;
-    Result := Copy(Result, 1, Start) + Edit.NewText + Copy(Result, Stop + 1, MaxInt);
+    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
+    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
+    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
   end;
 end;
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function RunAt(const AText: string; const ASpot: TSlashSpot; const AName, AArguments: string;
   out AReason: string): string;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
   Result := '';
   if TSlashMenu.Run(TSlashCommandRegistry.Shared, AText, ASpot, TSlashMenuCall.Create(AName, AArguments,
-    TSlashEnvironment.Create(nil, nil)), Edits, AReason) then
+    TSlashEnvironment.Create(nil, nil)), mEdits, AReason) then
   begin
-    Result := Apply(AText, Edits);
+    Result := Apply(AText, mEdits);
   end;
 end;
 
@@ -190,45 +190,45 @@ end;
 
 procedure TSlashMenuTests.PlacesInClassDeclaration;
 var
-  Places: TSlashPlaces;
+  mPlaces: TSlashPlaces;
 begin
   // Cursor hinter "TFoo = class(TBasis)": die gedachte Zeile kommt dahinter, also in die Klasse.
-  Places := TSlashMenu.PlacesAt(ClassUnit, Spot(8));
-  Assert.IsTrue(HasPlace(Places, TSlashPlace.ClassBody), 'Kopf der Klasse');
-  Assert.IsFalse(HasPlace(Places, TSlashPlace.Routine));
-  Assert.IsTrue(HasPlace(TSlashMenu.PlacesAt(ClassUnit, Spot(11)), TSlashPlace.ClassBody), 'Feld');
-  Assert.AreEqual('class', string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(ClassUnit, Spot(14)))));
+  mPlaces := TSlashMenu.PlacesAt(cClassUnit, Spot(8));
+  Assert.IsTrue(HasPlace(mPlaces, TSlashPlace.ClassBody), 'Kopf der Klasse');
+  Assert.IsFalse(HasPlace(mPlaces, TSlashPlace.Routine));
+  Assert.IsTrue(HasPlace(TSlashMenu.PlacesAt(cClassUnit, Spot(11)), TSlashPlace.ClassBody), 'Feld');
+  Assert.AreEqual('class', string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(cClassUnit, Spot(14)))));
 end;
 
 procedure TSlashMenuTests.PlacesInMethodAndRoutine;
 var
-  Places: TSlashPlaces;
+  mPlaces: TSlashPlaces;
 begin
   // In einer Methode: Routine und Klasse.
-  Places := TSlashMenu.PlacesAt(ClassUnit, Spot(21));
-  Assert.IsTrue(HasPlace(Places, TSlashPlace.Routine));
-  Assert.IsTrue(HasPlace(Places, TSlashPlace.ClassBody));
+  mPlaces := TSlashMenu.PlacesAt(cClassUnit, Spot(21));
+  Assert.IsTrue(HasPlace(mPlaces, TSlashPlace.Routine));
+  Assert.IsTrue(HasPlace(mPlaces, TSlashPlace.ClassBody));
   // In einer freien Routine nur die Routine.
-  Places := TSlashMenu.PlacesAt(ClassUnit, Spot(26));
-  Assert.IsTrue(HasPlace(Places, TSlashPlace.Routine));
-  Assert.IsFalse(HasPlace(Places, TSlashPlace.ClassBody));
-  Assert.AreEqual('routine', string.Join(',', TSlashMenu.PlaceNames(Places)));
+  mPlaces := TSlashMenu.PlacesAt(cClassUnit, Spot(26));
+  Assert.IsTrue(HasPlace(mPlaces, TSlashPlace.Routine));
+  Assert.IsFalse(HasPlace(mPlaces, TSlashPlace.ClassBody));
+  Assert.AreEqual('routine', string.Join(',', TSlashMenu.PlaceNames(mPlaces)));
 end;
 
 procedure TSlashMenuTests.PlacesOnUnitLevel;
 begin
-  Assert.AreEqual('interface', string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(ClassUnit, Spot(2)))),
+  Assert.AreEqual('interface', string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(cClassUnit, Spot(2)))),
     'type-Abschnitt im interface');
   Assert.AreEqual('implementation',
-    string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(ClassUnit, Spot(23)))), 'zwischen Routinen');
+    string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(cClassUnit, Spot(23)))), 'zwischen Routinen');
   // Leere Zeile: die gedachte Zeile steht an ihrer Stelle.
   Assert.AreEqual('implementation',
-    string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(ClassUnit, Spot(18)))));
+    string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(cClassUnit, Spot(18)))));
 end;
 
 procedure TSlashMenuTests.PlacesInRecordAndInterface;
 const
-  Text =
+  cText =
     'unit U;'#10'interface'#10'type'#10 +
     '  TPunkt = record'#10 +        // 3
     '    X, Y: Integer;'#10 +       // 4
@@ -238,196 +238,196 @@ const
     '  end;'#10 +
     'implementation'#10'end.';
 begin
-  Assert.AreEqual('record', string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(Text, Spot(4)))));
-  Assert.AreEqual('interfaceType', string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(Text, Spot(6)))));
+  Assert.AreEqual('record', string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(cText, Spot(4)))));
+  Assert.AreEqual('interfaceType', string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(cText, Spot(6)))));
 end;
 
 procedure TSlashMenuTests.PlacesInProgramAndComment;
 const
-  ProgramText = 'library L;'#10#10'procedure P; stdcall;'#10'begin'#10'end;'#10#10'begin'#10'end.';
-  CommentText = 'unit U;'#10'interface'#10'{ Kommentar'#10#10'  weiter }'#10'implementation'#10'end.';
+  cProgramText = 'library L;'#10#10'procedure P; stdcall;'#10'begin'#10'end;'#10#10'begin'#10'end.';
+  cCommentText = 'unit U;'#10'interface'#10'{ Kommentar'#10#10'  weiter }'#10'implementation'#10'end.';
 begin
-  Assert.AreEqual('program', string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(ProgramText, Spot(5)))));
-  Assert.AreEqual('routine', string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(ProgramText, Spot(3)))));
+  Assert.AreEqual('program', string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(cProgramText, Spot(5)))));
+  Assert.AreEqual('routine', string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(cProgramText, Spot(3)))));
   // Im Kommentar passt kein Befehl.
-  Assert.AreEqual('', string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(CommentText, Spot(3)))));
+  Assert.AreEqual('', string.Join(',', TSlashMenu.PlaceNames(TSlashMenu.PlacesAt(cCommentText, Spot(3)))));
 end;
 
 procedure TSlashMenuTests.FitsByPlaceAndSelection;
 var
-  Ctor, Try_, Todo: TSlashMenuEntry;
+  mCtor, mTry_, mTodo: TSlashMenuEntry;
 begin
-  Assert.IsTrue(TSlashMenu.Find('ctor', Ctor));
-  Assert.IsTrue(TSlashMenu.Find('try', Try_));
-  Assert.IsTrue(TSlashMenu.Find('TODO', Todo), 'ohne Groß/Klein');
-  Assert.IsTrue(TSlashMenu.Fits(Ctor, [TSlashPlace.ClassBody], False));
-  Assert.IsTrue(TSlashMenu.Fits(Ctor, [TSlashPlace.Routine, TSlashPlace.ClassBody], True));
-  Assert.IsFalse(TSlashMenu.Fits(Ctor, [TSlashPlace.Routine], False));
+  Assert.IsTrue(TSlashMenu.Find('ctor', mCtor));
+  Assert.IsTrue(TSlashMenu.Find('try', mTry_));
+  Assert.IsTrue(TSlashMenu.Find('TODO', mTodo), 'ohne Groß/Klein');
+  Assert.IsTrue(TSlashMenu.Fits(mCtor, [TSlashPlace.ClassBody], False));
+  Assert.IsTrue(TSlashMenu.Fits(mCtor, [TSlashPlace.Routine, TSlashPlace.ClassBody], True));
+  Assert.IsFalse(TSlashMenu.Fits(mCtor, [TSlashPlace.Routine], False));
   // Umschließen nur mit Markierung in einer Routine.
-  Assert.IsFalse(TSlashMenu.Fits(Try_, [TSlashPlace.Routine], False));
-  Assert.IsTrue(TSlashMenu.Fits(Try_, [TSlashPlace.Routine], True));
-  Assert.IsFalse(TSlashMenu.Fits(Try_, [TSlashPlace.ClassBody], True));
-  Assert.IsTrue(TSlashMenu.Fits(Todo, [TSlashPlace.UnitInterface], False));
-  Assert.AreEqual('surround', TSlashMenu.GroupName(Try_.Group));
-  Assert.AreEqual('optional', TSlashMenu.ArgumentName(Ctor.Argument));
-  Assert.IsTrue(Ctor.Multi and Ctor.HasChoices);
-  Assert.AreEqual(', ', Ctor.Separator);
-  Assert.IsFalse(TSlashMenu.Find('format', Ctor), 'Umbauten stehen nicht im Menü');
+  Assert.IsFalse(TSlashMenu.Fits(mTry_, [TSlashPlace.Routine], False));
+  Assert.IsTrue(TSlashMenu.Fits(mTry_, [TSlashPlace.Routine], True));
+  Assert.IsFalse(TSlashMenu.Fits(mTry_, [TSlashPlace.ClassBody], True));
+  Assert.IsTrue(TSlashMenu.Fits(mTodo, [TSlashPlace.UnitInterface], False));
+  Assert.AreEqual('surround', TSlashMenu.GroupName(mTry_.Group));
+  Assert.AreEqual('optional', TSlashMenu.ArgumentName(mCtor.Argument));
+  Assert.IsTrue(mCtor.Multi and mCtor.HasChoices);
+  Assert.AreEqual(', ', mCtor.Separator);
+  Assert.IsFalse(TSlashMenu.Find('format', mCtor), 'Umbauten stehen nicht im Menü');
 end;
 
 procedure TSlashMenuTests.CatalogCommandsAreRegistered;
 var
-  Item: TSlashMenuEntry;
-  Command: TSlashCommand;
-  Names: string;
+  mItem: TSlashMenuEntry;
+  mCommand: TSlashCommand;
+  mNames: string;
 begin
-  Names := '';
-  for Item in TSlashMenu.Catalog do
+  mNames := '';
+  for mItem in TSlashMenu.Catalog do
   begin
-    Assert.IsTrue(TSlashCommandRegistry.Shared.Find(Item.Name, Command), Item.Name);
-    Assert.AreNotEqual<TSlashPlaces>([], Item.Places, 'Ortsregel: ' + Item.Name);
-    Assert.AreEqual(0, Pos(',' + Item.Name + ',', Names), 'doppelt: ' + Item.Name);
-    Names := Names + ',' + Item.Name + ',';
+    Assert.IsTrue(TSlashCommandRegistry.Shared.Find(mItem.Name, mCommand), mItem.Name);
+    Assert.AreNotEqual<TSlashPlaces>([], mItem.Places, 'Ortsregel: ' + mItem.Name);
+    Assert.AreEqual(0, Pos(',' + mItem.Name + ',', mNames), 'doppelt: ' + mItem.Name);
+    mNames := mNames + ',' + mItem.Name + ',';
   end;
   Assert.AreEqual('ctor', TSlashMenu.Catalog[0].Name, 'Konstruktor zuerst wie im Mockup');
 end;
 
 procedure TSlashMenuTests.CatalogOrderInClass;
 var
-  Entry: TSlashMenuEntry;
-  Names: TArray<string>;
+  mEntry: TSlashMenuEntry;
+  mNames: TArray<string>;
 begin
-  Names := nil;
-  for Entry in TSlashMenu.Catalog do
+  mNames := nil;
+  for mEntry in TSlashMenu.Catalog do
   begin
-    if TSlashMenu.Fits(Entry, [TSlashPlace.ClassBody], False) and (Length(Names) < 6) then
+    if TSlashMenu.Fits(mEntry, [TSlashPlace.ClassBody], False) and (Length(mNames) < 6) then
     begin
-      Names := Names + [Entry.Name];
+      mNames := mNames + [mEntry.Name];
     end;
   end;
-  Assert.AreEqual('ctor,dtor,prop,override,equals,impl', string.Join(',', Names));
+  Assert.AreEqual('ctor,dtor,prop,override,equals,impl', string.Join(',', mNames));
 end;
 
 procedure TSlashMenuTests.RunCtorWithoutTyping;
 var
-  Text, Reason: string;
+  mText, mReason: string;
 begin
-  Text := RunAt(ClassUnit, Spot(8), 'ctor', '', Reason);
-  Assert.AreEqual('', Reason);
-  Assert.IsTrue(Pos('constructor Create(const AListe: TStringList; const AName: string);', Text) > 0, Text);
-  Assert.IsTrue(Pos('constructor TFoo.Create(const AListe: TStringList; const AName: string);', Text) > 0, Text);
-  Assert.AreEqual(0, Pos('/ctor', Text), 'keine Befehlszeile');
+  mText := RunAt(cClassUnit, Spot(8), 'ctor', '', mReason);
+  Assert.AreEqual('', mReason);
+  Assert.IsTrue(Pos('constructor Create(const AListe: TStringList; const AName: string);', mText) > 0, mText);
+  Assert.IsTrue(Pos('constructor TFoo.Create(const AListe: TStringList; const AName: string);', mText) > 0, mText);
+  Assert.AreEqual(0, Pos('/ctor', mText), 'keine Befehlszeile');
   // Die Zeilen der Klasse bleiben unverändert und in der Reihenfolge.
-  Assert.IsTrue(Pos('  TFoo = class(TBasis)'#10'  private'#10'    FListe: TStringList;', Text) > 0, Text);
-  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(Pos('  TFoo = class(TBasis)'#10'  private'#10'    FListe: TStringList;', mText) > 0, mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TSlashMenuTests.RunCtorWithChosenFields;
 var
-  Text, Reason: string;
+  mText, mReason: string;
 begin
-  Text := RunAt(ClassUnit, Spot(11), 'ctor', 'FName', Reason);
-  Assert.IsTrue(Pos('constructor Create(const AName: string);', Text) > 0, Text);
-  Assert.AreEqual(0, Pos('AListe', Text), Text);
+  mText := RunAt(cClassUnit, Spot(11), 'ctor', 'FName', mReason);
+  Assert.IsTrue(Pos('constructor Create(const AName: string);', mText) > 0, mText);
+  Assert.AreEqual(0, Pos('AListe', mText), mText);
   // Ohne F geht auch, mehrere mit Komma.
-  Text := RunAt(ClassUnit, Spot(11), 'ctor', 'Name, Liste', Reason);
-  Assert.IsTrue(Pos('constructor Create(const AListe: TStringList; const AName: string);', Text) > 0, Text);
-  Assert.AreEqual('', RunAt(ClassUnit, Spot(11), 'ctor', 'FGibts', Reason));
-  Assert.IsTrue(Pos('kein Feld FGibts in TFoo', Reason) > 0, Reason);
+  mText := RunAt(cClassUnit, Spot(11), 'ctor', 'Name, Liste', mReason);
+  Assert.IsTrue(Pos('constructor Create(const AListe: TStringList; const AName: string);', mText) > 0, mText);
+  Assert.AreEqual('', RunAt(cClassUnit, Spot(11), 'ctor', 'FGibts', mReason));
+  Assert.IsTrue(Pos('kein Feld FGibts in TFoo', mReason) > 0, mReason);
 end;
 
 procedure TSlashMenuTests.RunStatementAfterCursorLine;
 var
-  Text, Reason: string;
+  mText, mReason: string;
 begin
   // Cursor in "Schritt1;": /raise kommt dahinter, eingerückt wie die Anweisungen.
-  Text := RunAt(ClassUnit, Spot(26), 'raise', 'EFehler Kaputt', Reason);
-  Assert.AreEqual('', Reason);
-  Assert.IsTrue(Pos('  Schritt1;'#10'  raise EFehler.Create(', Text) > 0, Text);
-  Assert.IsTrue(Pos('Kaputt', Text) > 0, Text);
-  Assert.IsTrue(Pos(#10'  Schritt2;', Text) > 0, Text);
-  Assert.IsTrue(Parses(Text), Text);
+  mText := RunAt(cClassUnit, Spot(26), 'raise', 'EFehler Kaputt', mReason);
+  Assert.AreEqual('', mReason);
+  Assert.IsTrue(Pos('  Schritt1;'#10'  raise EFehler.Create(', mText) > 0, mText);
+  Assert.IsTrue(Pos('Kaputt', mText) > 0, mText);
+  Assert.IsTrue(Pos(#10'  Schritt2;', mText) > 0, mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TSlashMenuTests.RunSurroundsOnlySelection;
 var
-  Text, Reason: string;
+  mText, mReason: string;
 begin
   // Markierung über Schritt1 und Schritt2: Schritt3 bleibt außerhalb.
-  Text := RunAt(ClassUnit, Spot(26, 27), 'ifdef', 'DEBUG', Reason);
-  Assert.AreEqual('', Reason);
+  mText := RunAt(cClassUnit, Spot(26, 27), 'ifdef', 'DEBUG', mReason);
+  Assert.AreEqual('', mReason);
   Assert.IsTrue(Pos('begin'#10'  {$IFDEF DEBUG}'#10'  Schritt1;'#10'  Schritt2;'#10'  {$ENDIF}'#10'  Schritt3;'#10'end;',
-    Text) > 0, Text);
-  Text := RunAt(ClassUnit, Spot(27, 27), 'except', '', Reason);
-  Assert.IsTrue(Pos('  Schritt1;'#10'  try'#10'    Schritt2;'#10'  except', Text) > 0, Text);
-  Assert.IsTrue(Pos('  end;'#10'  Schritt3;'#10'end;', Text) > 0, Text);
-  Assert.IsTrue(Parses(Text), Text);
+    mText) > 0, mText);
+  mText := RunAt(cClassUnit, Spot(27, 27), 'except', '', mReason);
+  Assert.IsTrue(Pos('  Schritt1;'#10'  try'#10'    Schritt2;'#10'  except', mText) > 0, mText);
+  Assert.IsTrue(Pos('  end;'#10'  Schritt3;'#10'end;', mText) > 0, mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TSlashMenuTests.RunSelectionBeyondBlockFails;
 var
-  Reason: string;
+  mReason: string;
 begin
   // Von Schritt3 bis in die nächste Zeile nach "end;": nicht im selben Block.
-  Assert.AreEqual('', RunAt(ClassUnit, Spot(28, 30), 'ifdef', 'DEBUG', Reason));
-  Assert.IsTrue(Pos('Markierung', Reason) > 0, Reason);
+  Assert.AreEqual('', RunAt(cClassUnit, Spot(28, 30), 'ifdef', 'DEBUG', mReason));
+  Assert.IsTrue(Pos('Markierung', mReason) > 0, mReason);
 end;
 
 procedure TSlashMenuTests.RunReportsReason;
 var
-  Reason: string;
-  Edits: TArray<TRuleEdit>;
+  mReason: string;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Assert.AreEqual('', RunAt(ClassUnit, Spot(26), 'ctor', '', Reason));
-  Assert.AreEqual('/ctor gilt nur in einer Klasse oder einer ihrer Methoden', Reason);
-  Assert.IsFalse(TSlashMenu.Run(TSlashCommandRegistry.Shared, ClassUnit, Spot(8), TSlashMenuCall.Create('ctor', '',
-    TSlashEnvironment.Create(nil, ['ctor'], nil, '', '', nil)), Edits, Reason));
-  Assert.IsTrue(Pos('abgeschaltet', Reason) > 0, Reason);
-  Assert.IsFalse(TSlashMenu.Run(TSlashCommandRegistry.Shared, ClassUnit, Spot(8), TSlashMenuCall.Create('gibtsnicht',
-    '', TSlashEnvironment.Create(nil, nil)), Edits, Reason));
-  Assert.AreEqual('Unbekannter Schnellbefehl /gibtsnicht', Reason);
+  Assert.AreEqual('', RunAt(cClassUnit, Spot(26), 'ctor', '', mReason));
+  Assert.AreEqual('/ctor gilt nur in einer Klasse oder einer ihrer Methoden', mReason);
+  Assert.IsFalse(TSlashMenu.Run(TSlashCommandRegistry.Shared, cClassUnit, Spot(8), TSlashMenuCall.Create('ctor', '',
+    TSlashEnvironment.Create(nil, ['ctor'], nil, '', '', nil)), mEdits, mReason));
+  Assert.IsTrue(Pos('abgeschaltet', mReason) > 0, mReason);
+  Assert.IsFalse(TSlashMenu.Run(TSlashCommandRegistry.Shared, cClassUnit, Spot(8), TSlashMenuCall.Create('gibtsnicht',
+    '', TSlashEnvironment.Create(nil, nil)), mEdits, mReason));
+  Assert.AreEqual('Unbekannter Schnellbefehl /gibtsnicht', mReason);
 end;
 
 procedure TSlashMenuTests.ChoicesForClass;
 begin
-  Assert.AreEqual('FListe,FName', string.Join(',', TSlashMenu.Choices(ClassUnit, Spot(11), 'ctor', nil)));
+  Assert.AreEqual('FListe,FName', string.Join(',', TSlashMenu.Choices(cClassUnit, Spot(11), 'ctor', nil)));
   // Lauf überschreibt TFoo schon; Malen bleibt.
-  Assert.AreEqual('Malen', string.Join(',', TSlashMenu.Choices(ClassUnit, Spot(11), 'override', nil)));
+  Assert.AreEqual('Malen', string.Join(',', TSlashMenu.Choices(cClassUnit, Spot(11), 'override', nil)));
   // FName hat schon die Property Name.
-  Assert.AreEqual('FListe', string.Join(',', TSlashMenu.Choices(ClassUnit, Spot(11), 'encapsulate', nil)));
-  Assert.AreEqual('FListe,FName', string.Join(',', TSlashMenu.Choices(ClassUnit, Spot(11), 'equals', nil)));
+  Assert.AreEqual('FListe', string.Join(',', TSlashMenu.Choices(cClassUnit, Spot(11), 'encapsulate', nil)));
+  Assert.AreEqual('FListe,FName', string.Join(',', TSlashMenu.Choices(cClassUnit, Spot(11), 'equals', nil)));
   // Außerhalb der Klasse keine Felder.
-  Assert.AreEqual(0, Integer(Length(TSlashMenu.Choices(ClassUnit, Spot(26), 'ctor', nil))));
+  Assert.AreEqual(0, Integer(Length(TSlashMenu.Choices(cClassUnit, Spot(26), 'ctor', nil))));
 end;
 
 procedure TSlashMenuTests.ChoicesStatic;
 begin
-  Assert.IsTrue(MatchText('WM_SIZE', TSlashMenu.Choices(ClassUnit, Spot(11), 'msg', nil)));
-  Assert.IsTrue(MatchText('Implicit', TSlashMenu.Choices(ClassUnit, Spot(11), 'operator', nil)));
-  Assert.IsTrue(MatchText('<>', TSlashMenu.Choices(ClassUnit, Spot(11), 'operator', nil)));
-  Assert.AreEqual('DEBUG', TSlashMenu.Choices(ClassUnit, Spot(26), 'ifdef', nil)[0]);
-  Assert.AreEqual(0, Integer(Length(TSlashMenu.Choices(ClassUnit, Spot(11), 'prop', nil))), 'freie Eingabe');
+  Assert.IsTrue(MatchText('WM_SIZE', TSlashMenu.Choices(cClassUnit, Spot(11), 'msg', nil)));
+  Assert.IsTrue(MatchText('Implicit', TSlashMenu.Choices(cClassUnit, Spot(11), 'operator', nil)));
+  Assert.IsTrue(MatchText('<>', TSlashMenu.Choices(cClassUnit, Spot(11), 'operator', nil)));
+  Assert.AreEqual('DEBUG', TSlashMenu.Choices(cClassUnit, Spot(26), 'ifdef', nil)[0]);
+  Assert.AreEqual(0, Integer(Length(TSlashMenu.Choices(cClassUnit, Spot(11), 'prop', nil))), 'freie Eingabe');
 end;
 
 procedure TSlashMenuTests.ArgumentChoicesForSortAndFilter;
 const
-  Text =
+  cText =
     'unit U;'#10'interface'#10'type'#10'  TKunde = class'#10'  public'#10'    Name: string;'#10 +
     '    property Umsatz: Double read FUmsatz;'#10'  end;'#10'implementation'#10 +
     'procedure P;'#10'var'#10'  Kunden: TObjectList<TKunde>;'#10'begin'#10'  %s'#10'end;'#10'end.';
 begin
   // Menü: ohne Argument die Sammlungen; beim Tippen nach dem Leerzeichen die Mitglieder des Elementtyps.
-  Assert.AreEqual('Kunden', string.Join(',', TSlashMenu.Choices(Format(Text, ['']), Spot(13), 'sort', nil)));
-  Assert.AreEqual('Kunden', string.Join(',', TSlashMenu.ArgumentChoices(Format(Text, ['/filter Ku']), 13, 'filter',
+  Assert.AreEqual('Kunden', string.Join(',', TSlashMenu.Choices(Format(cText, ['']), Spot(13), 'sort', nil)));
+  Assert.AreEqual('Kunden', string.Join(',', TSlashMenu.ArgumentChoices(Format(cText, ['/filter Ku']), 13, 'filter',
     'Ku', nil)));
-  Assert.AreEqual('Name,Umsatz', string.Join(',', TSlashMenu.ArgumentChoices(Format(Text, ['/sort Kunden -']), 13,
+  Assert.AreEqual('Name,Umsatz', string.Join(',', TSlashMenu.ArgumentChoices(Format(cText, ['/sort Kunden -']), 13,
     'sort', 'Kunden -', nil)));
-  Assert.AreEqual(0, Integer(Length(TSlashMenu.ArgumentChoices(Format(Text, ['/list ']), 13, 'list', '', nil))));
+  Assert.AreEqual(0, Integer(Length(TSlashMenu.ArgumentChoices(Format(cText, ['/list ']), 13, 'list', '', nil))));
 end;
 
 procedure TSlashMenuTests.ArgumentChoicesFromIndexAndCatalog;
 const
-  Library_ =
+  cLibrary_ =
     'unit Kunden.Daten;'#10'interface'#10'type'#10 +
     '  TKunde = class'#10'    procedure Laden;'#10'  end;'#10 +
     '  TKundenArt = (kaNeu, kaAlt);'#10 +
@@ -435,21 +435,21 @@ const
     '  EImportFehler = class(Exception)'#10'  end;'#10 +
     'implementation'#10'end.';
 var
-  Index: ISymbolIndex;
-  Tree: TSyntaxTree;
+  mIndex: ISymbolIndex;
+  mTree: TSyntaxTree;
 
   function Choices(const AName, AArguments: string): string;
   begin
-    Result := string.Join(',', TSlashMenu.ArgumentChoices(ClassUnit, 11, AName, AArguments, Index));
+    Result := string.Join(',', TSlashMenu.ArgumentChoices(cClassUnit, 11, AName, AArguments, mIndex));
   end;
 
 begin
-  Index := TSymbolIndex.Create;
-  Tree := TPascalParser.Parse(Library_);
+  mIndex := TSymbolIndex.Create;
+  mTree := TPascalParser.Parse(cLibrary_);
   try
-    Index.AddUnit(TIndexExtractor.Extract(Tree, 'C:\P\Kunden.Daten.pas'));
+    mIndex.AddUnit(TIndexExtractor.Extract(mTree, 'C:\P\Kunden.Daten.pas'));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   Assert.AreEqual('Kunden.Daten', Choices('uses', 'Ku'));
   Assert.AreEqual('Kunden.Daten', Choices('open', ''));
@@ -464,10 +464,10 @@ begin
   Assert.AreEqual('EImportFehler', Choices('raise', ''));
   Assert.AreEqual('', Choices('raise', 'EImportFehler Dat'), 'die Meldung ist frei');
   // Methoden zum Überschreiben (ohne Index aus der Datei) und Regeln aus dem Katalog.
-  Assert.AreEqual('Malen', string.Join(',', TSlashMenu.ArgumentChoices(ClassUnit, 11, 'override', 'Ma', nil)));
-  Assert.AreEqual('unused-local,unused-parameter', string.Join(',', TSlashMenu.ArgumentChoices(ClassUnit, 11,
+  Assert.AreEqual('Malen', string.Join(',', TSlashMenu.ArgumentChoices(cClassUnit, 11, 'override', 'Ma', nil)));
+  Assert.AreEqual('unused-local,unused-parameter', string.Join(',', TSlashMenu.ArgumentChoices(cClassUnit, 11,
     'ignore', 'unused-', nil, ['with-statement', 'unused-parameter', 'unused-local'])));
-  Assert.AreEqual(0, Integer(Length(TSlashMenu.ArgumentChoices(ClassUnit, 11, 'ignore', 'unused-local Gr', nil,
+  Assert.AreEqual(0, Integer(Length(TSlashMenu.ArgumentChoices(cClassUnit, 11, 'ignore', 'unused-local Gr', nil,
     ['unused-local']))));
   Assert.AreEqual<TSlashArgumentKind>(TSlashArgumentKind.Types, TSlashMenu.ArgumentKind('var', 'X: T'));
   Assert.AreEqual('TK', TSlashMenu.CurrentWord('FKunde:TK'));
@@ -475,27 +475,27 @@ end;
 
 procedure TSlashMenuTests.MapEditsKeepsIndentAndLineBreak;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
   // Gedachter Text: Zeile 1 = "  /x". Ersetzt wird nur "/x": Einrückung und Zeilenende bleiben stehen.
-  Edits := TSlashMenu.MapEdits([TRuleEdit.Create(TTextRange.Create(1, 2, 1, 4), 'Neu;')], 1, '  /x', #10);
-  Assert.AreEqual(1, Integer(Length(Edits)));
-  Assert.AreEqual(1, Edits[0].Range.StartPos.Line);
-  Assert.AreEqual(0, Edits[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Edits[0].Range.EndPos.Line);
-  Assert.AreEqual(0, Edits[0].Range.EndPos.Character);
-  Assert.AreEqual('  Neu;'#10, Edits[0].NewText);
+  mEdits := TSlashMenu.MapEdits([TRuleEdit.Create(TTextRange.Create(1, 2, 1, 4), 'Neu;')], 1, '  /x', #10);
+  Assert.AreEqual(1, Integer(Length(mEdits)));
+  Assert.AreEqual(1, mEdits[0].Range.StartPos.Line);
+  Assert.AreEqual(0, mEdits[0].Range.StartPos.Character);
+  Assert.AreEqual(1, mEdits[0].Range.EndPos.Line);
+  Assert.AreEqual(0, mEdits[0].Range.EndPos.Character);
+  Assert.AreEqual('  Neu;'#10, mEdits[0].NewText);
   // Zeile samt Zeilenende entfernt: entfällt; spätere Zeilen rücken eine Zeile nach oben.
-  Edits := TSlashMenu.MapEdits([TRuleEdit.Create(TTextRange.Create(1, 0, 2, 0), ''),
+  mEdits := TSlashMenu.MapEdits([TRuleEdit.Create(TTextRange.Create(1, 0, 2, 0), ''),
     TRuleEdit.Create(TTextRange.Create(5, 3, 5, 3), 'X')], 1, '  /x', #10);
-  Assert.AreEqual(1, Integer(Length(Edits)));
-  Assert.AreEqual(4, Edits[0].Range.StartPos.Line);
-  Assert.AreEqual(3, Edits[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mEdits)));
+  Assert.AreEqual(4, mEdits[0].Range.StartPos.Line);
+  Assert.AreEqual(3, mEdits[0].Range.StartPos.Character);
   // Davor bleibt alles, wie es ist.
-  Edits := TSlashMenu.MapEdits([TRuleEdit.Create(TTextRange.Create(0, 1, 0, 2), 'Y')], 1, '  /x', #10);
-  Assert.AreEqual(0, Edits[0].Range.StartPos.Line);
-  Assert.AreEqual(1, Edits[0].Range.StartPos.Character);
-  Assert.AreEqual('Y', Edits[0].NewText);
+  mEdits := TSlashMenu.MapEdits([TRuleEdit.Create(TTextRange.Create(0, 1, 0, 2), 'Y')], 1, '  /x', #10);
+  Assert.AreEqual(0, mEdits[0].Range.StartPos.Line);
+  Assert.AreEqual(1, mEdits[0].Range.StartPos.Character);
+  Assert.AreEqual('Y', mEdits[0].NewText);
 end;
 
 initialization

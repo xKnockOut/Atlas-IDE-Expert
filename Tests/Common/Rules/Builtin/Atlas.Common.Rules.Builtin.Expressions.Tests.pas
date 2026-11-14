@@ -94,7 +94,7 @@ uses
   Atlas.Tests.RuleAssert;
 
 const
-  Header =
+  cHeader =
     'unit Ablauf;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -111,7 +111,7 @@ const
 
 function Body(const AStatements: string): string;
 begin
-  Result := Header + 'procedure TVorgang.Pruefen(AWert: Variant);'#10'var'#10'  Zustand: TZustand;'#10 +
+  Result := cHeader + 'procedure TVorgang.Pruefen(AWert: Variant);'#10'var'#10'  Zustand: TZustand;'#10 +
     'begin'#10'  Zustand := FZustand;'#10 + AStatements + 'end;'#10'procedure TVorgang.Bearbeiten;'#10 +
     'begin'#10'end;'#10'end.';
 end;
@@ -120,47 +120,47 @@ end;
 
 procedure TExpressionRulesTests.NotBeforeInIsReportedWithFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TOperatorPrecedenceRule.Create,
+  mFindings := TRuleAssert.Findings(TOperatorPrecedenceRule.Create,
     Body('  if not Zustand in [zsOffen, zsGesperrt] then'#10'    Bearbeiten;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cOperatorPrecedenceRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cOperatorPrecedenceRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('„not“ gilt nur für Zustand, nicht für den in-Ausdruck. ' +
-    'Gemeint ist vermutlich not (Zustand in […]).', Findings[0].Message);
-  Assert.AreEqual(18, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Klammern setzen: not (Zustand in […])', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  Assert.AreEqual('(Zustand in [zsOffen, zsGesperrt])', Findings[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual(9, Findings[0].Fixes[0].Edits[0].Range.StartPos.Character);
-  Assert.AreEqual(41, Findings[0].Fixes[0].Edits[0].Range.EndPos.Character);
+    'Gemeint ist vermutlich not (Zustand in […]).', mFindings[0].Message);
+  Assert.AreEqual(18, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Klammern setzen: not (Zustand in […])', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  Assert.AreEqual('(Zustand in [zsOffen, zsGesperrt])', mFindings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(9, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Character);
+  Assert.AreEqual(41, mFindings[0].Fixes[0].Edits[0].Range.EndPos.Character);
 end;
 
 procedure TExpressionRulesTests.NotOnIntegerComparisonIsBitwise;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TOperatorPrecedenceRule.Create,
+  mFindings := TRuleAssert.Findings(TOperatorPrecedenceRule.Create,
     Body('  if not FAnzahl = 0 then'#10'    Bearbeiten;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('„not“ kehrt die Ganzzahl FAnzahl bitweise um, nicht den Vergleich. ' +
-    'Gemeint ist vermutlich not (FAnzahl = 0).', Findings[0].Message);
-  Assert.AreEqual('(FAnzahl = 0)', Findings[0].Fixes[0].Edits[0].NewText);
+    'Gemeint ist vermutlich not (FAnzahl = 0).', mFindings[0].Message);
+  Assert.AreEqual('(FAnzahl = 0)', mFindings[0].Fixes[0].Edits[0].NewText);
 end;
 
 procedure TExpressionRulesTests.NotOnEnumComparison;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TOperatorPrecedenceRule.Create,
+  mFindings := TRuleAssert.Findings(TOperatorPrecedenceRule.Create,
     Body('  while not FZustand <> zsNeu do'#10'    Bearbeiten;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('„not“ gilt nur für FZustand, nicht für den Vergleich. ' +
-    'Gemeint ist vermutlich not (FZustand <> zsNeu).', Findings[0].Message);
+    'Gemeint ist vermutlich not (FZustand <> zsNeu).', mFindings[0].Message);
 end;
 
 procedure TExpressionRulesTests.ParenthesizedFormIsSilent;
@@ -182,40 +182,40 @@ end;
 
 procedure TExpressionRulesTests.RightOperandEndsAtAnd;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TOperatorPrecedenceRule.Create,
+  mFindings := TRuleAssert.Findings(TOperatorPrecedenceRule.Create,
     Body('  if not FAnzahl > 10 and FFertig then'#10'    Bearbeiten;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('(FAnzahl > 10)', Findings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('(FAnzahl > 10)', mFindings[0].Fixes[0].Edits[0].NewText);
 end;
 
 procedure TExpressionRulesTests.OffAndExcludeSilence;
 const
-  Source = '  if not Zustand in [zsOffen] then'#10'    Bearbeiten;'#10;
+  cSource = '  if not Zustand in [zsOffen] then'#10'    Bearbeiten;'#10;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOperatorPrecedenceRule.Create, Body(Source),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOperatorPrecedenceRule.Create, Body(cSource),
     '{"rules": {"operator-precedence": "off"}}', 'Ablauf.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOperatorPrecedenceRule.Create, Body(Source),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOperatorPrecedenceRule.Create, Body(cSource),
     '{"rules": {"operator-precedence": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Ablauf.pas'))));
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TOperatorPrecedenceRule.Create, Body(Source),
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TOperatorPrecedenceRule.Create, Body(cSource),
     '{"rules": {"operator-precedence": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Ablauf.pas'))));
 end;
 
 procedure TExpressionRulesTests.RuleIsRegistered;
 var
-  Rule: IRule;
-  Found: Boolean;
+  mRule: IRule;
+  mFound: Boolean;
 begin
-  Found := False;
-  for Rule in BuiltinRules do
+  mFound := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = cOperatorPrecedenceRuleId then
+    if mRule.Descriptor.Id = cOperatorPrecedenceRuleId then
     begin
-      Found := True;
+      mFound := True;
     end;
   end;
-  Assert.IsTrue(Found);
+  Assert.IsTrue(mFound);
 end;
 
 function Stufen(const ABody: string): string;
@@ -227,18 +227,18 @@ end;
 
 procedure TExpressionRulesTests.DuplicateConditionIssueExample;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TDuplicateConditionRule.Create, Stufen('  if Betrag > 1000 then'#10 +
+  mFindings := TRuleAssert.Findings(TDuplicateConditionRule.Create, Stufen('  if Betrag > 1000 then'#10 +
     '    Stufe := 3'#10'  else if Betrag > 500 then'#10'    Stufe := 2'#10'  else if Betrag  >  1000 then'#10 +
     '    Stufe := 1;'));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Gleiche Bedingung wie in Zeile 8; dieser Zweig wird nie erreicht.', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual(11, Findings[0].Range.StartPos.Line);
-  Assert.IsTrue(Findings[0].Fixes[0].HasJump);
-  Assert.AreEqual(7, Findings[0].Fixes[0].JumpTo.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Gleiche Bedingung wie in Zeile 8; dieser Zweig wird nie erreicht.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(11, mFindings[0].Range.StartPos.Line);
+  Assert.IsTrue(mFindings[0].Fixes[0].HasJump);
+  Assert.AreEqual(7, mFindings[0].Fixes[0].JumpTo.Line);
   TRuleAssert.Silent(TDuplicateConditionRule.Create, Stufen('  if Betrag > 1000 then'#10'    Stufe := 3'#10 +
     '  else if Betrag > 500 then'#10'    Stufe := 2'#10'  else if Betrag > 100 then'#10'    Stufe := 1;'));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateConditionRule.Create,
@@ -250,17 +250,17 @@ end;
 
 procedure TExpressionRulesTests.DuplicateConditionVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Gleiche Zweige, A and B and a, X = X.
-  Findings := TRuleAssert.Findings(TDuplicateConditionRule.Create, Stufen('  if A then'#10'    Stufe := 1'#10 +
+  mFindings := TRuleAssert.Findings(TDuplicateConditionRule.Create, Stufen('  if A then'#10'    Stufe := 1'#10 +
     '  else'#10'    Stufe := 1;'#10'  if A and (B and a) then'#10'    Exit;'#10'  if Betrag = Betrag then'#10 +
     '    Exit;'#10'  if Betrag < (Betrag) then'#10'    Exit;'));
-  Assert.AreEqual(4, Integer(Length(Findings)));
-  Assert.AreEqual('then- und else-Zweig sind gleich; die Bedingung hat keine Wirkung.', Findings[0].Message);
-  Assert.AreEqual('a steht zweimal in derselben and-Verknüpfung; vermutlich ein Kopierfehler.', Findings[1].Message);
-  Assert.AreEqual('Betrag wird mit sich selbst verglichen; das Ergebnis ist immer True.', Findings[2].Message);
-  Assert.AreEqual('Betrag wird mit sich selbst verglichen; das Ergebnis ist immer False.', Findings[3].Message);
+  Assert.AreEqual(4, Integer(Length(mFindings)));
+  Assert.AreEqual('then- und else-Zweig sind gleich; die Bedingung hat keine Wirkung.', mFindings[0].Message);
+  Assert.AreEqual('a steht zweimal in derselben and-Verknüpfung; vermutlich ein Kopierfehler.', mFindings[1].Message);
+  Assert.AreEqual('Betrag wird mit sich selbst verglichen; das Ergebnis ist immer True.', mFindings[2].Message);
+  Assert.AreEqual('Betrag wird mit sich selbst verglichen; das Ergebnis ist immer False.', mFindings[3].Message);
 end;
 
 procedure TExpressionRulesTests.DuplicateConditionSilentCases;
@@ -288,74 +288,74 @@ end;
 /// <summary>Wendet alle Änderungen der Korrektur an, von hinten nach vorn (Zeilen mit #10).</summary>
 function ApplyFixes(const AText: string; const AFindings: TArray<TRuleFinding>): string;
 var
-  Index: Integer;
-  Edit: TRuleEdit;
+  mIndex: Integer;
+  mEdit: TRuleEdit;
 
   function OffsetOf(const APosition: TTextPosition): Integer;
   var
-    Line, Position: Integer;
+    mLine, mPosition: Integer;
   begin
-    Position := 0;
-    for Line := 1 to APosition.Line do
+    mPosition := 0;
+    for mLine := 1 to APosition.Line do
     begin
-      Position := Pos(#10, AText, Position + 1);
+      mPosition := Pos(#10, AText, mPosition + 1);
     end;
-    Result := Position + APosition.Character;
+    Result := mPosition + APosition.Character;
   end;
 
 begin
   Result := AText;
-  for Index := High(AFindings) downto 0 do
+  for mIndex := High(AFindings) downto 0 do
   begin
-    Edit := AFindings[Index].Fixes[0].Edits[0];
-    Result := Copy(Result, 1, OffsetOf(Edit.Range.StartPos)) + Edit.NewText +
-      Copy(Result, OffsetOf(Edit.Range.EndPos) + 1, MaxInt);
+    mEdit := AFindings[mIndex].Fixes[0].Edits[0];
+    Result := Copy(Result, 1, OffsetOf(mEdit.Range.StartPos)) + mEdit.NewText +
+      Copy(Result, OffsetOf(mEdit.Range.EndPos) + 1, MaxInt);
   end;
 end;
 
 procedure TExpressionRulesTests.StringIndexBaseIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Zeilen('  if Pos('';'', Zeile) > -1 then'#10'    Felder := Copy(Zeile, 0, Pos('';'', Zeile) - 1);'#10);
-  Findings := TRuleAssert.Findings(TStringIndexBaseRule.Create, Source);
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual('string-index-base', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual('Pos liefert 0 bei keinem Treffer; der Vergleich > -1 ist immer wahr.', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Vergleich auf "> 0" korrigieren', Findings[0].Fixes[0].Title);
-  Assert.AreEqual('Copy zählt Zeichen ab 1; der Startwert 0 wirkt nur zufällig wie 1.', Findings[1].Message);
-  Assert.AreEqual('Startwert 1', Findings[1].Fixes[0].Title);
-  Fixed := ApplyFixes(Source, Findings);
+  mSource := Zeilen('  if Pos('';'', Zeile) > -1 then'#10'    Felder := Copy(Zeile, 0, Pos('';'', Zeile) - 1);'#10);
+  mFindings := TRuleAssert.Findings(TStringIndexBaseRule.Create, mSource);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('string-index-base', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual('Pos liefert 0 bei keinem Treffer; der Vergleich > -1 ist immer wahr.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Vergleich auf "> 0" korrigieren', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual('Copy zählt Zeichen ab 1; der Startwert 0 wirkt nur zufällig wie 1.', mFindings[1].Message);
+  Assert.AreEqual('Startwert 1', mFindings[1].Fixes[0].Title);
+  mFixed := ApplyFixes(mSource, mFindings);
   Assert.AreEqual(Zeilen('  if Pos('';'', Zeile) > 0 then'#10'    Felder := Copy(Zeile, 1, Pos('';'', Zeile) - 1);'#10),
-    Fixed);
-  TRuleAssert.Silent(TStringIndexBaseRule.Create, Fixed);
+    mFixed);
+  TRuleAssert.Silent(TStringIndexBaseRule.Create, mFixed);
 end;
 
 procedure TExpressionRulesTests.StringIndexBaseVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TStringIndexBaseRule.Create, Zeilen('  Delete(Felder, 0, 1);'#10));
-  Assert.AreEqual('Delete zählt Zeichen ab 1; mit dem Startwert 0 löscht es nichts.', Findings[0].Message);
+  mFindings := TRuleAssert.Findings(TStringIndexBaseRule.Create, Zeilen('  Delete(Felder, 0, 1);'#10));
+  Assert.AreEqual('Delete zählt Zeichen ab 1; mit dem Startwert 0 löscht es nichts.', mFindings[0].Message);
   TRuleAssert.Reports(TStringIndexBaseRule.Create, Zeilen('  Insert(''x'', Felder, 0);'#10));
   TRuleAssert.Reports(TStringIndexBaseRule.Create, Zeilen('  Delete(Puffer, 0, 1);'#10));
   TRuleAssert.Reports(TStringIndexBaseRule.Create, Zeilen('  Felder := Copy(Edit1.Text, 0, 2);'#10));
-  Findings := TRuleAssert.Findings(TStringIndexBaseRule.Create, Zeilen('  if Pos(''a'', Zeile) >= 0 then Exit;'#10));
-  Assert.AreEqual('Pos liefert 0 bei keinem Treffer; der Vergleich >= 0 ist immer wahr.', Findings[0].Message);
-  Findings := TRuleAssert.Findings(TStringIndexBaseRule.Create,
+  mFindings := TRuleAssert.Findings(TStringIndexBaseRule.Create, Zeilen('  if Pos(''a'', Zeile) >= 0 then Exit;'#10));
+  Assert.AreEqual('Pos liefert 0 bei keinem Treffer; der Vergleich >= 0 ist immer wahr.', mFindings[0].Message);
+  mFindings := TRuleAssert.Findings(TStringIndexBaseRule.Create,
     Zeilen('  if System.StrUtils.PosEx(''a'', Zeile, 2) = -1 then Exit;'#10));
-  Assert.AreEqual('PosEx liefert 0 bei keinem Treffer; der Vergleich = -1 ist nie wahr.', Findings[0].Message);
-  Assert.AreEqual('Vergleich auf "= 0" korrigieren', Findings[0].Fixes[0].Title);
+  Assert.AreEqual('PosEx liefert 0 bei keinem Treffer; der Vergleich = -1 ist nie wahr.', mFindings[0].Message);
+  Assert.AreEqual('Vergleich auf "= 0" korrigieren', mFindings[0].Fixes[0].Title);
   TRuleAssert.Reports(TStringIndexBaseRule.Create, Zeilen('  if Pos(''a'', Zeile) <> -1 then Exit;'#10));
   // String-Helper: nullbasiert.
-  Findings := TRuleAssert.Findings(TStringIndexBaseRule.Create, Zeilen('  if Zeile.IndexOf(''a'') > 0 then Exit;'#10));
+  mFindings := TRuleAssert.Findings(TStringIndexBaseRule.Create, Zeilen('  if Zeile.IndexOf(''a'') > 0 then Exit;'#10));
   Assert.AreEqual('IndexOf zählt ab 0 und liefert -1 bei keinem Treffer; der Vergleich > 0 übersieht den Treffer ' +
-    'am Anfang.', Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Vergleich auf ">= 0" korrigieren', Findings[0].Fixes[0].Title);
+    'am Anfang.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Vergleich auf ">= 0" korrigieren', mFindings[0].Fixes[0].Title);
   TRuleAssert.Reports(TStringIndexBaseRule.Create, Zeilen('  if Zeile.IndexOf(''a'') < 1 then Exit;'#10));
 end;
 
@@ -377,12 +377,12 @@ end;
 
 procedure TExpressionRulesTests.StringIndexBaseOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Zeilen('  Delete(Felder, 0, 1);'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringIndexBaseRule.Create, Source,
+  mSource := Zeilen('  Delete(Felder, 0, 1);'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringIndexBaseRule.Create, mSource,
     '{"rules": {"string-index-base": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringIndexBaseRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringIndexBaseRule.Create, mSource,
     '{"rules": {"string-index-base": {"exclude": ["Source/*.pas"]}}}', 'Source/Zeilen.pas'))));
   Assert.IsTrue(TStringIndexBaseRule.IsStringType('String[20]'));
   Assert.IsTrue(TStringIndexBaseRule.IsStringType('AnsiString'));
@@ -398,43 +398,43 @@ end;
 
 procedure TExpressionRulesTests.NullCompareIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Kunden('  if qryKunde.FieldByName(''Geburtstag'').Value = Null then'#10'    Alter := 0;'#10);
-  Findings := TRuleAssert.Findings(TNullCompareRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('null-compare', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mSource := Kunden('  if qryKunde.FieldByName(''Geburtstag'').Value = Null then'#10'    Alter := 0;'#10);
+  mFindings := TRuleAssert.Findings(TNullCompareRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('null-compare', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Der Vergleich mit Null hängt von NullEqualityRule ab (ncrStrict: nie wahr, ncrError: ' +
-    'Exception); IsNull prüft das Feld unabhängig davon.', Findings[0].Message);
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('Durch "qryKunde.FieldByName(''Geburtstag'').IsNull" ersetzen', Findings[0].Fixes[0].Title);
-  Fixed := ApplyFixes(Source, Findings);
-  Assert.AreEqual(Kunden('  if qryKunde.FieldByName(''Geburtstag'').IsNull then'#10'    Alter := 0;'#10), Fixed);
-  TRuleAssert.Silent(TNullCompareRule.Create, Fixed);
+    'Exception); IsNull prüft das Feld unabhängig davon.', mFindings[0].Message);
+  Assert.AreEqual(6, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('Durch "qryKunde.FieldByName(''Geburtstag'').IsNull" ersetzen', mFindings[0].Fixes[0].Title);
+  mFixed := ApplyFixes(mSource, mFindings);
+  Assert.AreEqual(Kunden('  if qryKunde.FieldByName(''Geburtstag'').IsNull then'#10'    Alter := 0;'#10), mFixed);
+  TRuleAssert.Silent(TNullCompareRule.Create, mFixed);
 end;
 
 procedure TExpressionRulesTests.NullCompareVariants;
 var
-  Source: string;
-  Findings: TArray<TRuleFinding>;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Variant: VarIsNull; <> mit not; Null links.
-  Source := Kunden('  if Wert <> Null then Exit;'#10'  if (Null = Feld.Value) and (Alter > 0) then Exit;'#10 +
+  mSource := Kunden('  if Wert <> Null then Exit;'#10'  if (Null = Feld.Value) and (Alter > 0) then Exit;'#10 +
     '  Alter := Ord(qryKunde.Fields[0].Value = Null);'#10);
-  Findings := TRuleAssert.Findings(TNullCompareRule.Create, Source);
-  Assert.AreEqual(3, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TNullCompareRule.Create, mSource);
+  Assert.AreEqual(3, Integer(Length(mFindings)));
   Assert.AreEqual('Der Vergleich mit Null hängt von NullEqualityRule ab (ncrStrict: nie wahr, ncrError: ' +
-    'Exception); VarIsNull prüft den Wert unabhängig davon.', Findings[0].Message);
+    'Exception); VarIsNull prüft den Wert unabhängig davon.', mFindings[0].Message);
   Assert.AreEqual(Kunden('  if not VarIsNull(Wert) then Exit;'#10'  if (Feld.IsNull) and (Alter > 0) then Exit;'#10 +
-    '  Alter := Ord(qryKunde.Fields[0].IsNull);'#10), ApplyFixes(Source, Findings));
+    '  Alter := Ord(qryKunde.Fields[0].IsNull);'#10), ApplyFixes(mSource, mFindings));
   // "not X = Null" bindet als "(not X) = Null": Meldung ohne Korrektur.
-  Findings := TRuleAssert.Findings(TNullCompareRule.Create, Kunden('  if not Wert = Null then Exit;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  mFindings := TRuleAssert.Findings(TNullCompareRule.Create, Kunden('  if not Wert = Null then Exit;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TExpressionRulesTests.NullCompareSilentCases;
@@ -452,12 +452,12 @@ end;
 
 procedure TExpressionRulesTests.NullCompareOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Kunden('  if Wert = Null then Exit;'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TNullCompareRule.Create, Source,
+  mSource := Kunden('  if Wert = Null then Exit;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TNullCompareRule.Create, mSource,
     '{"rules": {"null-compare": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TNullCompareRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TNullCompareRule.Create, mSource,
     '{"rules": {"null-compare": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
 end;
 
@@ -470,45 +470,45 @@ end;
 
 procedure TExpressionRulesTests.PosArgumentsSwappedIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Suche('  if Pos(Zeile, '';'') > 0 then'#10'    Treffer := 1;'#10);
-  Findings := TRuleAssert.Findings(TPosArgumentsSwappedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('pos-arguments-swapped', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual('Pos(Teil, Text): vermutlich vertauscht, gesucht wird '';'' in Zeile.', Findings[0].Message);
-  Assert.AreEqual(9, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(9, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('Argumente tauschen', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  Fixed := ApplyFixes(Source, Findings);
-  Assert.AreEqual(Suche('  if Pos('';'', Zeile) > 0 then'#10'    Treffer := 1;'#10), Fixed);
-  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Fixed);
+  mSource := Suche('  if Pos(Zeile, '';'') > 0 then'#10'    Treffer := 1;'#10);
+  mFindings := TRuleAssert.Findings(TPosArgumentsSwappedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('pos-arguments-swapped', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('Pos(Teil, Text): vermutlich vertauscht, gesucht wird '';'' in Zeile.', mFindings[0].Message);
+  Assert.AreEqual(9, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(9, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('Argumente tauschen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  mFixed := ApplyFixes(mSource, mFindings);
+  Assert.AreEqual(Suche('  if Pos('';'', Zeile) > 0 then'#10'    Treffer := 1;'#10), mFixed);
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, mFixed);
 end;
 
 procedure TExpressionRulesTests.PosArgumentsSwappedVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // ContainsText erwartet den Text zuerst.
-  Findings := TRuleAssert.Findings(TPosArgumentsSwappedRule.Create,
+  mFindings := TRuleAssert.Findings(TPosArgumentsSwappedRule.Create,
     Suche('  Gefunden := ContainsText('', '', Zeile);'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('ContainsText(Text, Teil): vermutlich vertauscht, gesucht wird '', '' in Zeile.',
-    Findings[0].Message);
-  Assert.AreEqual('Zeile, '', ''', Findings[0].Fixes[0].Edits[0].NewText);
+    mFindings[0].Message);
+  Assert.AreEqual('Zeile, '', ''', mFindings[0].Fixes[0].Edits[0].NewText);
   // PosEx mit drittem Argument, StartsText, Kommentar zwischen den Argumenten bleibt erhalten.
-  Findings := TRuleAssert.Findings(TPosArgumentsSwappedRule.Create,
+  mFindings := TRuleAssert.Findings(TPosArgumentsSwappedRule.Create,
     Suche('  Treffer := PosEx(Zeile, #9, 3);'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('#9, Zeile', Findings[0].Fixes[0].Edits[0].NewText);
-  Findings := TRuleAssert.Findings(TPosArgumentsSwappedRule.Create,
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('#9, Zeile', mFindings[0].Fixes[0].Edits[0].NewText);
+  mFindings := TRuleAssert.Findings(TPosArgumentsSwappedRule.Create,
     Suche('  Gefunden := System.StrUtils.StartsText(Trim(Zeile), {Kopf} ''//'');'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('''//'', {Kopf} Trim(Zeile)', Findings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('''//'', {Kopf} Trim(Zeile)', mFindings[0].Fixes[0].Edits[0].NewText);
   // .Text, Verkettung und '''' als ein Zeichen.
   TRuleAssert.Reports(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos(Feld.Text, ''.'');'#10));
   TRuleAssert.Reports(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos(Zeile + ''x'', '''''''');'#10));
@@ -534,23 +534,23 @@ end;
 
 procedure TExpressionRulesTests.PosArgumentsSwappedOptions;
 var
-  Source: string;
-  Issues: TArray<TConfigurationIssue>;
+  mSource: string;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Source := Suche('  Treffer := Pos(Zeile, ''END;'');'#10);
-  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TPosArgumentsSwappedRule.Create, Source,
+  mSource := Suche('  Treffer := Pos(Zeile, ''END;'');'#10);
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TPosArgumentsSwappedRule.Create, mSource,
     '{"rules": {"pos-arguments-swapped": {"maxLiteralLength": 4}}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPosArgumentsSwappedRule.Create,
     Suche('  Treffer := Pos(Zeile, ''//'');'#10), '{"rules": {"pos-arguments-swapped": {"maxLiteralLength": 1}}}'))));
-  Source := Suche('  Treffer := Pos(Zeile, '';'');'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPosArgumentsSwappedRule.Create, Source,
+  mSource := Suche('  Treffer := Pos(Zeile, '';'');'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPosArgumentsSwappedRule.Create, mSource,
     '{"rules": {"pos-arguments-swapped": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPosArgumentsSwappedRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPosArgumentsSwappedRule.Create, mSource,
     '{"rules": {"pos-arguments-swapped": {"exclude": ["Source/*.pas"]}}}', 'Source/Suche.pas'))));
-  TConfigurationParser.Parse('{"rules": {"pos-arguments-swapped": {"maxLiteralLength": 0}}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual('"maxLiteralLength" muss eine ganze Zahl ab 1 sein', Issues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"pos-arguments-swapped": {"maxLiteralLength": 0}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"maxLiteralLength" muss eine ganze Zahl ab 1 sein', mIssues[0].Message);
 end;
 
 function Statistik(const AStatements: string): string;
@@ -562,37 +562,37 @@ end;
 
 procedure TExpressionRulesTests.IntegerDivisionIssueExample;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Source := Statistik('  Schnitt := Summe div Anzahl;'#10);
-  Findings := TRuleAssert.Findings(TIntegerDivisionToFloatRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('integer-division-to-float', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mSource := Statistik('  Schnitt := Summe div Anzahl;'#10);
+  mFindings := TRuleAssert.Findings(TIntegerDivisionToFloatRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('integer-division-to-float', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('div rechnet ganzzahlig; Schnitt ist Double und verliert die Nachkommastellen.',
-    Findings[0].Message);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(13, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual('div durch / ersetzen', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  Fixed := ApplyFixes(Source, Findings);
-  Assert.AreEqual(Statistik('  Schnitt := Summe / Anzahl;'#10), Fixed);
-  TRuleAssert.Silent(TIntegerDivisionToFloatRule.Create, Fixed);
+    mFindings[0].Message);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(13, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual('div durch / ersetzen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  mFixed := ApplyFixes(mSource, mFindings);
+  Assert.AreEqual(Statistik('  Schnitt := Summe / Anzahl;'#10), mFixed);
+  TRuleAssert.Silent(TIntegerDivisionToFloatRule.Create, mFixed);
 end;
 
 procedure TExpressionRulesTests.IntegerDivisionVariants;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TIntegerDivisionToFloatRule.Create,
+  mFindings := TRuleAssert.Findings(TIntegerDivisionToFloatRule.Create,
     Statistik('  Prozent := Teil div Gesamt * 100;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('div rechnet ganzzahlig; Prozent ist Single und verliert die Nachkommastellen.',
-    Findings[0].Message);
+    mFindings[0].Message);
   Assert.AreEqual(Statistik('  Prozent := Teil / Gesamt * 100;'#10),
-    ApplyFixes(Statistik('  Prozent := Teil div Gesamt * 100;'#10), Findings));
+    ApplyFixes(Statistik('  Prozent := Teil div Gesamt * 100;'#10), mFindings));
   // Klammern, Vorzeichen, Summe, Inline-Variable und Result einer Funktion.
   TRuleAssert.Reports(TIntegerDivisionToFloatRule.Create, Statistik('  Schnitt := -(Summe div Anzahl) + 0.5;'#10));
   TRuleAssert.Reports(TIntegerDivisionToFloatRule.Create, Statistik('  var Mittel: Extended := Summe div 2;'#10));
@@ -624,14 +624,14 @@ end;
 
 procedure TExpressionRulesTests.IntegerDivisionOffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Statistik('  Schnitt := Summe div Anzahl;'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TIntegerDivisionToFloatRule.Create, Source,
+  mSource := Statistik('  Schnitt := Summe div Anzahl;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TIntegerDivisionToFloatRule.Create, mSource,
     '{"rules": {"integer-division-to-float": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TIntegerDivisionToFloatRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TIntegerDivisionToFloatRule.Create, mSource,
     '{"rules": {"group:find-bugs": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TIntegerDivisionToFloatRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TIntegerDivisionToFloatRule.Create, mSource,
     '{"rules": {"integer-division-to-float": {"exclude": ["Source/*.pas"]}}}', 'Source/Statistik.pas'))));
 end;
 
@@ -644,71 +644,71 @@ end;
 /// <summary>Treffer von conditional-expression-version auf ASource für die Delphi-Version AVersion.</summary>
 function VersionFindings(const ASource, AVersion, AConfigJson: string): TArray<TRuleFinding>;
 var
-  Context: TRuleContext;
+  mContext: TRuleContext;
 begin
-  Context := Default(TRuleContext);
-  Context.UnitName := 'Werte';
-  Context.Text := ASource;
-  Context.DelphiVersion := AVersion;
-  Result := TRuleAssert.ContextFindings(TConditionalExpressionVersionRule.Create, Context, AConfigJson);
+  mContext := Default(TRuleContext);
+  mContext.UnitName := 'Werte';
+  mContext.Text := ASource;
+  mContext.DelphiVersion := AVersion;
+  Result := TRuleAssert.ContextFindings(TConditionalExpressionVersionRule.Create, mContext, AConfigJson);
 end;
 
 procedure TExpressionRulesTests.ConditionalExpressionVersionReportsWithFix;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := VersionFindings(Werte('  Wert := if Fertig then 1 else 2;'#10), '23.0', '');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cConditionalExpressionVersionRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  mFindings := VersionFindings(Werte('  Wert := if Fertig then 1 else 2;'#10), '23.0', '');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cConditionalExpressionVersionRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
   Assert.AreEqual('Bedingungsausdrücke gibt es erst ab Delphi 13 Florence (eingestellt: Delphi 12 Athens)',
-    Findings[0].Message);
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(10, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('In if-Anweisung umwandeln', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+    mFindings[0].Message);
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(10, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('In if-Anweisung umwandeln', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
   Assert.AreEqual(Werte('  if Fertig then'#10'    Wert := 1'#10'  else'#10'    Wert := 2;'#10),
-    ApplyFixes(Werte('  Wert := if Fertig then 1 else 2;'#10), Findings));
+    ApplyFixes(Werte('  Wert := if Fertig then 1 else 2;'#10), mFindings));
   // Verschachtelt: nur der äußerste Ausdruck.
-  Findings := VersionFindings(Werte('  Wert := if Fertig then 1 else if Wert > 0 then 2 else 3;'#10), '23.0', '');
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := VersionFindings(Werte('  Wert := if Fertig then 1 else if Wert > 0 then 2 else 3;'#10), '23.0', '');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   // Ohne Umwandlung (Seiteneffekt im Rest) bleibt die Meldung ohne Korrektur.
-  Findings := VersionFindings(Werte('  Ausgeben(Lesen(1), if Fertig then 1 else 2);'#10), '22.0', '');
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  mFindings := VersionFindings(Werte('  Ausgeben(Lesen(1), if Fertig then 1 else 2);'#10), '22.0', '');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TExpressionRulesTests.ConditionalExpressionVersionFixAll;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
-  Tree: TSyntaxTree;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+  mTree: TSyntaxTree;
 begin
-  Source := Werte('  Wert := if Fertig then 1 else 2;'#10'  Exit(if Wert > 0 then Wert else 0);'#10);
-  Findings := VersionFindings(Source, '23.0', '');
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Fixed := ApplyFixes(Source, Findings);
+  mSource := Werte('  Wert := if Fertig then 1 else 2;'#10'  Exit(if Wert > 0 then Wert else 0);'#10);
+  mFindings := VersionFindings(mSource, '23.0', '');
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  mFixed := ApplyFixes(mSource, mFindings);
   Assert.AreEqual(Werte('  if Fertig then'#10'    Wert := 1'#10'  else'#10'    Wert := 2;'#10 +
-    '  if Wert > 0 then'#10'    Exit(Wert)'#10'  else'#10'    Exit(0);'#10), Fixed);
-  Tree := TPascalParser.Parse(Fixed);
+    '  if Wert > 0 then'#10'    Exit(Wert)'#10'  else'#10'    Exit(0);'#10), mFixed);
+  mTree := TPascalParser.Parse(mFixed);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.AreEqual(0, Integer(Length(VersionFindings(Fixed, '23.0', ''))));
+  Assert.AreEqual(0, Integer(Length(VersionFindings(mFixed, '23.0', ''))));
 end;
 
 procedure TExpressionRulesTests.ConditionalExpressionVersionSilentCases;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Werte('  Wert := if Fertig then 1 else 2;'#10);
+  mSource := Werte('  Wert := if Fertig then 1 else 2;'#10);
   // Ab Delphi 13 und ohne bekannte Version still.
-  Assert.AreEqual(0, Integer(Length(VersionFindings(Source, '37.0', ''))));
-  Assert.AreEqual(0, Integer(Length(VersionFindings(Source, '', ''))));
-  Assert.AreEqual(0, Integer(Length(VersionFindings(Source, '23.0',
+  Assert.AreEqual(0, Integer(Length(VersionFindings(mSource, '37.0', ''))));
+  Assert.AreEqual(0, Integer(Length(VersionFindings(mSource, '', ''))));
+  Assert.AreEqual(0, Integer(Length(VersionFindings(mSource, '23.0',
     '{"rules": {"conditional-expression-version": "off"}}'))));
   // Zweige, die nach der Version fragen, sind gewollt; andere Bedingungen nicht.
   Assert.AreEqual(0, Integer(Length(VersionFindings(Werte('  {$IF CompilerVersion >= 37}'#10 +

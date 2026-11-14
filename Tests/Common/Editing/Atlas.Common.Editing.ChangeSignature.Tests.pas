@@ -52,17 +52,17 @@ uses
 
 function TokenOf(const ATokens: TArray<TPascalToken>; const AText: string; AOccurrence: Integer): Integer;
 var
-  Index, Count: Integer;
+  mIndex, mCount: Integer;
 begin
-  Count := 0;
-  for Index := 0 to High(ATokens) do
+  mCount := 0;
+  for mIndex := 0 to High(ATokens) do
   begin
-    if ATokens[Index].Text = AText then
+    if ATokens[mIndex].Text = AText then
     begin
-      Inc(Count);
-      if Count = AOccurrence then
+      Inc(mCount);
+      if mCount = AOccurrence then
       begin
-        Exit(Index);
+        Exit(mIndex);
       end;
     end;
   end;
@@ -72,14 +72,14 @@ end;
 function CallText(const AText, AName: string; AOccurrence: Integer; const AOld: TArray<TSignatureParameter>;
   const AChanges: TArray<TParameterChange>): string;
 var
-  Tokens: TArray<TPascalToken>;
-  Edit: TTextEdit;
+  mTokens: TArray<TPascalToken>;
+  mEdit: TTextEdit;
 begin
-  Tokens := TPascalLexer.Tokenize(AText);
-  if TChangeSignature.CallEdit(AText, Tokens, TokenOf(Tokens, AName, AOccurrence),
-    TCallChange.Create(AOld, AChanges, nil), Edit) then
+  mTokens := TPascalLexer.Tokenize(AText);
+  if TChangeSignature.CallEdit(AText, mTokens, TokenOf(mTokens, AName, AOccurrence),
+    TCallChange.Create(AOld, AChanges, nil), mEdit) then
   begin
-    Result := TChangeSignature.ApplyEdits(AText, [Edit]);
+    Result := TChangeSignature.ApplyEdits(AText, [mEdit]);
   end
   else
   begin
@@ -89,141 +89,141 @@ end;
 
 procedure TChangeSignatureTests.ParsesParameters;
 var
-  Parameters: TArray<TSignatureParameter>;
+  mParameters: TArray<TSignatureParameter>;
 begin
-  Parameters := TChangeSignature.ParseParameters('const A, B: Integer; var Buffer; [ref] const C: TList<string>; ' +
+  mParameters := TChangeSignature.ParseParameters('const A, B: Integer; var Buffer; [ref] const C: TList<string>; ' +
     'D: string = ''x;y''; out E: array of Byte');
-  Assert.AreEqual(6, Integer(Length(Parameters)));
-  Assert.AreEqual('const', Parameters[0].Modifier);
-  Assert.AreEqual('B', Parameters[1].Name);
-  Assert.AreEqual('Integer', Parameters[1].TypeName);
-  Assert.AreEqual('var', Parameters[2].Modifier);
-  Assert.AreEqual('', Parameters[2].TypeName);
-  Assert.AreEqual('[ref] const', Parameters[3].Modifier);
-  Assert.AreEqual('TList<string>', Parameters[3].TypeName);
-  Assert.AreEqual('''x;y''', Parameters[4].DefaultValue);
-  Assert.AreEqual('array of Byte', Parameters[5].TypeName);
-  Assert.AreEqual('out', Parameters[5].Modifier);
+  Assert.AreEqual(6, Integer(Length(mParameters)));
+  Assert.AreEqual('const', mParameters[0].Modifier);
+  Assert.AreEqual('B', mParameters[1].Name);
+  Assert.AreEqual('Integer', mParameters[1].TypeName);
+  Assert.AreEqual('var', mParameters[2].Modifier);
+  Assert.AreEqual('', mParameters[2].TypeName);
+  Assert.AreEqual('[ref] const', mParameters[3].Modifier);
+  Assert.AreEqual('TList<string>', mParameters[3].TypeName);
+  Assert.AreEqual('''x;y''', mParameters[4].DefaultValue);
+  Assert.AreEqual('array of Byte', mParameters[5].TypeName);
+  Assert.AreEqual('out', mParameters[5].Modifier);
 end;
 
 procedure TChangeSignatureTests.ReadsDeclarationHeader;
 const
-  Text = '  class function Teile(A, B: Integer; const C: string = ''-''): Double; virtual; abstract;';
+  cText = '  class function Teile(A, B: Integer; const C: string = ''-''): Double; virtual; abstract;';
 var
-  Tokens: TArray<TPascalToken>;
-  Header: TSignatureHeader;
+  mTokens: TArray<TPascalToken>;
+  mHeader: TSignatureHeader;
 begin
-  Tokens := TPascalLexer.Tokenize(Text);
-  Assert.IsTrue(TChangeSignature.ReadHeader(Text, Tokens, TokenOf(Tokens, 'Teile', 1), Header));
-  Assert.IsTrue(Header.IsClass);
-  Assert.IsTrue(Header.IsFunction);
-  Assert.AreEqual('Double', Header.ResultType);
-  Assert.AreEqual(3, Integer(Length(Header.Parameters)));
-  Assert.AreEqual('''-''', Header.Parameters[2].DefaultValue);
-  Assert.AreEqual(2, Integer(Length(Header.Directives)));
-  Assert.IsTrue(Header.HasDirective('abstract'));
-  Assert.AreEqual('class', Tokens[Header.StartToken].Text);
-  Assert.AreEqual(';', Tokens[Header.EndToken].Text);
-  Assert.IsTrue(Header.LastToken > Header.EndToken);
+  mTokens := TPascalLexer.Tokenize(cText);
+  Assert.IsTrue(TChangeSignature.ReadHeader(cText, mTokens, TokenOf(mTokens, 'Teile', 1), mHeader));
+  Assert.IsTrue(mHeader.IsClass);
+  Assert.IsTrue(mHeader.IsFunction);
+  Assert.AreEqual('Double', mHeader.ResultType);
+  Assert.AreEqual(3, Integer(Length(mHeader.Parameters)));
+  Assert.AreEqual('''-''', mHeader.Parameters[2].DefaultValue);
+  Assert.AreEqual(2, Integer(Length(mHeader.Directives)));
+  Assert.IsTrue(mHeader.HasDirective('abstract'));
+  Assert.AreEqual('class', mTokens[mHeader.StartToken].Text);
+  Assert.AreEqual(';', mTokens[mHeader.EndToken].Text);
+  Assert.IsTrue(mHeader.LastToken > mHeader.EndToken);
   // Ein Aufruf ist kein Kopf.
   Assert.IsFalse(TChangeSignature.ReadHeader('X := Teile(1, 2);', TPascalLexer.Tokenize('X := Teile(1, 2);'), 2,
-    Header));
+    mHeader));
 end;
 
 procedure TChangeSignatureTests.ReadsBodyHeaderWithoutParameters;
 const
-  Text = 'procedure TAussen.TInnen.Lauf;'#10'begin'#10'end;';
+  cText = 'procedure TAussen.TInnen.Lauf;'#10'begin'#10'end;';
 var
-  Tokens: TArray<TPascalToken>;
-  Header: TSignatureHeader;
-  Tree: TSyntaxTree;
-  Source: string;
+  mTokens: TArray<TPascalToken>;
+  mHeader: TSignatureHeader;
+  mTree: TSyntaxTree;
+  mSource: string;
 begin
-  Source := 'unit U;'#10'interface'#10'implementation'#10 + Text + #10'end.';
-  Tree := TPascalParser.Parse(Source);
+  mSource := 'unit U;'#10'interface'#10'implementation'#10 + cText + #10'end.';
+  mTree := TPascalParser.Parse(mSource);
   try
-    Tokens := Tree.Tokens;
-    Assert.IsTrue(TChangeSignature.ReadHeader(Source, Tokens, TokenOf(Tokens, 'Lauf', 1), Header));
-    Assert.AreEqual('TAussen.TInnen.Lauf', Header.QualifiedName);
-    Assert.AreEqual(-1, Header.OpenToken);
-    Assert.AreEqual('end', Tokens[TChangeSignature.BodyEnd(Tree, Header) - 1].Text);
+    mTokens := mTree.Tokens;
+    Assert.IsTrue(TChangeSignature.ReadHeader(mSource, mTokens, TokenOf(mTokens, 'Lauf', 1), mHeader));
+    Assert.AreEqual('TAussen.TInnen.Lauf', mHeader.QualifiedName);
+    Assert.AreEqual(-1, mHeader.OpenToken);
+    Assert.AreEqual('end', mTokens[TChangeSignature.BodyEnd(mTree, mHeader) - 1].Text);
     // Ohne Klammern fügt HeaderEdit die Liste hinter dem Namen ein.
-    Assert.AreEqual(Tokens[Header.NameToken].EndPos.Character,
-      TChangeSignature.HeaderEdit(Tokens, Header, '(A: Integer)').Range.StartPos.Character);
+    Assert.AreEqual(mTokens[mHeader.NameToken].EndPos.Character,
+      TChangeSignature.HeaderEdit(mTokens, mHeader, '(A: Integer)').Range.StartPos.Character);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TChangeSignatureTests.ReadsProcedureType;
 const
-  Text = '  TWertEvent = procedure(Sender: TObject; Wert: Integer) of object;';
+  cText = '  TWertEvent = procedure(Sender: TObject; Wert: Integer) of object;';
 var
-  Tokens: TArray<TPascalToken>;
-  Header: TSignatureHeader;
+  mTokens: TArray<TPascalToken>;
+  mHeader: TSignatureHeader;
 begin
-  Tokens := TPascalLexer.Tokenize(Text);
-  Assert.IsTrue(TChangeSignature.ReadProcedureType(Text, Tokens, TokenOf(Tokens, 'TWertEvent', 1), Header));
-  Assert.AreEqual(2, Integer(Length(Header.Parameters)));
-  Assert.AreEqual('Wert', Header.Parameters[1].Name);
-  Assert.AreEqual(')', Tokens[Header.CloseToken].Text);
+  mTokens := TPascalLexer.Tokenize(cText);
+  Assert.IsTrue(TChangeSignature.ReadProcedureType(cText, mTokens, TokenOf(mTokens, 'TWertEvent', 1), mHeader));
+  Assert.AreEqual(2, Integer(Length(mHeader.Parameters)));
+  Assert.AreEqual('Wert', mHeader.Parameters[1].Name);
+  Assert.AreEqual(')', mTokens[mHeader.CloseToken].Text);
 end;
 
 procedure TChangeSignatureTests.BuildsParameterLists;
 var
-  Old: TArray<TSignatureParameter>;
-  Changes: TArray<TParameterChange>;
+  mOld: TArray<TSignatureParameter>;
+  mChanges: TArray<TParameterChange>;
 begin
-  Old := TChangeSignature.ParseParameters('A, B: Integer; const C: string = ''x''');
-  Changes := [TParameterChange.Kept(1, 'B'), TParameterChange.Kept(0, 'A'),
+  mOld := TChangeSignature.ParseParameters('A, B: Integer; const C: string = ''x''');
+  mChanges := [TParameterChange.Kept(1, 'B'), TParameterChange.Kept(0, 'A'),
     TParameterChange.Added('D', 'Boolean', 'const', 'False'), TParameterChange.Kept(2, 'C')];
   Assert.AreEqual('(B, A: Integer; const D: Boolean; const C: string = ''x'')',
-    TChangeSignature.ParameterList(TChangeSignature.NewParameters(Old, Changes, ['A', 'B', 'C'], True), True));
+    TChangeSignature.ParameterList(TChangeSignature.NewParameters(mOld, mChanges, ['A', 'B', 'C'], True), True));
   // Rumpf ohne Standardwerte; neue Parameter nie mit Standardwert.
   Assert.AreEqual('(B, A: Integer; const D: Boolean; const C: string)',
-    TChangeSignature.ParameterList(TChangeSignature.NewParameters(Old, Changes, ['A', 'B', 'C'], False), False));
+    TChangeSignature.ParameterList(TChangeSignature.NewParameters(mOld, mChanges, ['A', 'B', 'C'], False), False));
   Assert.AreEqual('', TChangeSignature.ParameterList(nil, True));
 end;
 
 procedure TChangeSignatureTests.RenamesOnlyChangedNames;
 var
-  Own: TArray<TSignatureParameter>;
-  Result_: TArray<TSignatureParameter>;
+  mOwn: TArray<TSignatureParameter>;
+  mResult_: TArray<TSignatureParameter>;
 begin
   // Die Überschreibung heißt den Parameter anders; ohne Umbenennung bleibt ihr Name.
-  Own := TChangeSignature.ParseParameters('AWert: Integer; ATeil: Integer');
-  Result_ := TChangeSignature.NewParameters(Own, [TParameterChange.Kept(0, 'Wert'), TParameterChange.Kept(1, 'Neu')],
+  mOwn := TChangeSignature.ParseParameters('AWert: Integer; ATeil: Integer');
+  mResult_ := TChangeSignature.NewParameters(mOwn, [TParameterChange.Kept(0, 'Wert'), TParameterChange.Kept(1, 'Neu')],
     ['Wert', 'Teil'], True);
-  Assert.AreEqual('AWert', Result_[0].Name);
-  Assert.AreEqual('Neu', Result_[1].Name);
+  Assert.AreEqual('AWert', mResult_[0].Name);
+  Assert.AreEqual('Neu', mResult_[1].Name);
 end;
 
 procedure TChangeSignatureTests.ValidatesChanges;
 var
-  Old: TArray<TSignatureParameter>;
+  mOld: TArray<TSignatureParameter>;
 begin
-  Old := TChangeSignature.ParseParameters('A: Integer; B: Integer = 0');
-  Assert.AreEqual('', TChangeSignature.Validate(Old, [TParameterChange.Added('N', 'Integer', '', '1'),
+  mOld := TChangeSignature.ParseParameters('A: Integer; B: Integer = 0');
+  Assert.AreEqual('', TChangeSignature.Validate(mOld, [TParameterChange.Added('N', 'Integer', '', '1'),
     TParameterChange.Kept(0, 'A'), TParameterChange.Kept(1, 'B')]));
-  Assert.Contains(TChangeSignature.Validate(Old, [TParameterChange.Kept(0, 'A'), TParameterChange.Kept(1, 'B'),
+  Assert.Contains(TChangeSignature.Validate(mOld, [TParameterChange.Kept(0, 'A'), TParameterChange.Kept(1, 'B'),
     TParameterChange.Added('N', 'Integer', '', '1')]), 'Standardwert');
-  Assert.Contains(TChangeSignature.Validate(Old, [TParameterChange.Added('N', 'Integer', '', '')]), 'Wert');
-  Assert.Contains(TChangeSignature.Validate(Old, [TParameterChange.Added('N', '', '', '1')]), 'Typ');
-  Assert.Contains(TChangeSignature.Validate(Old, [TParameterChange.Kept(0, 'A'), TParameterChange.Kept(0, 'X')]),
+  Assert.Contains(TChangeSignature.Validate(mOld, [TParameterChange.Added('N', 'Integer', '', '')]), 'Wert');
+  Assert.Contains(TChangeSignature.Validate(mOld, [TParameterChange.Added('N', '', '', '1')]), 'Typ');
+  Assert.Contains(TChangeSignature.Validate(mOld, [TParameterChange.Kept(0, 'A'), TParameterChange.Kept(0, 'X')]),
     'zweimal');
-  Assert.Contains(TChangeSignature.Validate(Old, [TParameterChange.Kept(0, 'begin')]), 'gültig');
+  Assert.Contains(TChangeSignature.Validate(mOld, [TParameterChange.Kept(0, 'begin')]), 'gültig');
 end;
 
 procedure TChangeSignatureTests.RewritesCalls;
 var
-  Old: TArray<TSignatureParameter>;
+  mOld: TArray<TSignatureParameter>;
 begin
-  Old := TChangeSignature.ParseParameters('A, B: Integer');
-  Assert.AreEqual('X := Teile(B1 + 2, Foo(1, 2));', CallText('X := Teile(Foo(1, 2), B1 + 2);', 'Teile', 1, Old,
+  mOld := TChangeSignature.ParseParameters('A, B: Integer');
+  Assert.AreEqual('X := Teile(B1 + 2, Foo(1, 2));', CallText('X := Teile(Foo(1, 2), B1 + 2);', 'Teile', 1, mOld,
     [TParameterChange.Kept(1, 'B'), TParameterChange.Kept(0, 'A')]));
-  Assert.AreEqual('Teile(1, 2, nil);', CallText('Teile(1, 2);', 'Teile', 1, Old,
+  Assert.AreEqual('Teile(1, 2, nil);', CallText('Teile(1, 2);', 'Teile', 1, mOld,
     [TParameterChange.Kept(0, 'A'), TParameterChange.Kept(1, 'B'), TParameterChange.Added('C', 'TObject', '', 'nil')]));
-  Assert.AreEqual('Teile(2);', CallText('Teile(1, 2);', 'Teile', 1, Old, [TParameterChange.Kept(1, 'B')]));
+  Assert.AreEqual('Teile(2);', CallText('Teile(1, 2);', 'Teile', 1, mOld, [TParameterChange.Kept(1, 'B')]));
   // Ohne Argumente verschwinden die Klammern; ohne Klammern kommen sie dazu.
   Assert.AreEqual('Lauf;', CallText('Lauf(1);', 'Lauf', 1, TChangeSignature.ParseParameters('A: Integer'), nil));
   Assert.AreEqual('Lauf(True);', CallText('Lauf;', 'Lauf', 1, nil, [TParameterChange.Added('X', 'Boolean', '',
@@ -232,55 +232,55 @@ end;
 
 procedure TChangeSignatureTests.KeepsOmittedDefaults;
 var
-  Old: TArray<TSignatureParameter>;
+  mOld: TArray<TSignatureParameter>;
 begin
-  Old := TChangeSignature.ParseParameters('A: Integer; B: Integer = 7; C: Integer = 8');
+  mOld := TChangeSignature.ParseParameters('A: Integer; B: Integer = 7; C: Integer = 8');
   // Ausgelassene Argumente am Ende bleiben weg; mitten in der Liste kommt der Standardwert.
-  Assert.AreEqual('Foo(1);', CallText('Foo(1);', 'Foo', 1, Old, [TParameterChange.Kept(0, 'A'),
+  Assert.AreEqual('Foo(1);', CallText('Foo(1);', 'Foo', 1, mOld, [TParameterChange.Kept(0, 'A'),
     TParameterChange.Kept(2, 'C'), TParameterChange.Kept(1, 'B')]));
-  Assert.AreEqual('Foo(1, 8, 2);', CallText('Foo(1, 2);', 'Foo', 1, Old, [TParameterChange.Kept(0, 'A'),
+  Assert.AreEqual('Foo(1, 8, 2);', CallText('Foo(1, 2);', 'Foo', 1, mOld, [TParameterChange.Kept(0, 'A'),
     TParameterChange.Kept(2, 'C'), TParameterChange.Kept(1, 'B')]));
 end;
 
 procedure TChangeSignatureTests.ClassifiesUses;
 var
-  Tokens: TArray<TPascalToken>;
+  mTokens: TArray<TPascalToken>;
 begin
-  Tokens := TPascalLexer.Tokenize('Liste.Teile(1); F := Teile; P := @Teile; property X: Integer read Teile; Teile;');
-  Assert.AreEqual(Ord(TSignatureUse.Call), Ord(TChangeSignature.UseOf(Tokens, TokenOf(Tokens, 'Teile', 1), True)));
-  Assert.AreEqual(Ord(TSignatureUse.Pointer_), Ord(TChangeSignature.UseOf(Tokens, TokenOf(Tokens, 'Teile', 2),
+  mTokens := TPascalLexer.Tokenize('Liste.Teile(1); F := Teile; P := @Teile; property X: Integer read Teile; Teile;');
+  Assert.AreEqual(Ord(TSignatureUse.Call), Ord(TChangeSignature.UseOf(mTokens, TokenOf(mTokens, 'Teile', 1), True)));
+  Assert.AreEqual(Ord(TSignatureUse.Pointer_), Ord(TChangeSignature.UseOf(mTokens, TokenOf(mTokens, 'Teile', 2),
     False)));
-  Assert.AreEqual(Ord(TSignatureUse.Pointer_), Ord(TChangeSignature.UseOf(Tokens, TokenOf(Tokens, 'Teile', 3),
+  Assert.AreEqual(Ord(TSignatureUse.Pointer_), Ord(TChangeSignature.UseOf(mTokens, TokenOf(mTokens, 'Teile', 3),
     False)));
-  Assert.AreEqual(Ord(TSignatureUse.Accessor), Ord(TChangeSignature.UseOf(Tokens, TokenOf(Tokens, 'Teile', 4),
+  Assert.AreEqual(Ord(TSignatureUse.Accessor), Ord(TChangeSignature.UseOf(mTokens, TokenOf(mTokens, 'Teile', 4),
     False)));
-  Assert.AreEqual(Ord(TSignatureUse.Call), Ord(TChangeSignature.UseOf(Tokens, TokenOf(Tokens, 'Teile', 5), False)));
-  Assert.AreEqual(Ord(TSignatureUse.Pointer_), Ord(TChangeSignature.UseOf(Tokens, TokenOf(Tokens, 'Teile', 5), True)));
+  Assert.AreEqual(Ord(TSignatureUse.Call), Ord(TChangeSignature.UseOf(mTokens, TokenOf(mTokens, 'Teile', 5), False)));
+  Assert.AreEqual(Ord(TSignatureUse.Pointer_), Ord(TChangeSignature.UseOf(mTokens, TokenOf(mTokens, 'Teile', 5), True)));
 end;
 
 procedure TChangeSignatureTests.FindsParameterUses;
 var
-  Tokens: TArray<TPascalToken>;
+  mTokens: TArray<TPascalToken>;
 begin
-  Tokens := TPascalLexer.Tokenize('begin Wert := Self.Wert + &Wert; end;');
-  Assert.AreEqual(2, Integer(Length(TChangeSignature.Uses_(Tokens, 0, High(Tokens), 'Wert'))));
+  mTokens := TPascalLexer.Tokenize('begin Wert := Self.Wert + &Wert; end;');
+  Assert.AreEqual(2, Integer(Length(TChangeSignature.Uses_(mTokens, 0, High(mTokens), 'Wert'))));
 end;
 
 procedure TChangeSignatureTests.BuildsForwardCallAndDirectives;
 const
-  Text = 'function TFoo.Teile(A, B: Integer): Integer; overload; virtual; stdcall;';
+  cText = 'function TFoo.Teile(A, B: Integer): Integer; overload; virtual; stdcall;';
 var
-  Tokens: TArray<TPascalToken>;
-  Header: TSignatureHeader;
+  mTokens: TArray<TPascalToken>;
+  mHeader: TSignatureHeader;
 begin
-  Tokens := TPascalLexer.Tokenize(Text);
-  Assert.IsTrue(TChangeSignature.ReadHeader(Text, Tokens, TokenOf(Tokens, 'Teile', 1), Header));
-  Assert.AreEqual('Result := Teile(B, A, 0);', TChangeSignature.ForwardCall(Header, Header.Parameters,
+  mTokens := TPascalLexer.Tokenize(cText);
+  Assert.IsTrue(TChangeSignature.ReadHeader(cText, mTokens, TokenOf(mTokens, 'Teile', 1), mHeader));
+  Assert.AreEqual('Result := Teile(B, A, 0);', TChangeSignature.ForwardCall(mHeader, mHeader.Parameters,
     [TParameterChange.Kept(1, 'B'), TParameterChange.Kept(0, 'A'), TParameterChange.Added('C', 'Integer', '', '0')]));
-  Assert.AreEqual(' overload; stdcall;', TChangeSignature.OverloadDirectives(Header, False));
-  Assert.AreEqual(' overload; stdcall; virtual;', TChangeSignature.OverloadDirectives(Header, True));
-  Assert.AreEqual('function TFoo.Teile(A, B: Integer): Integer;', TChangeSignature.HeaderText(Header, 'TFoo.Teile',
-    Header.Parameters, False));
+  Assert.AreEqual(' overload; stdcall;', TChangeSignature.OverloadDirectives(mHeader, False));
+  Assert.AreEqual(' overload; stdcall; virtual;', TChangeSignature.OverloadDirectives(mHeader, True));
+  Assert.AreEqual('function TFoo.Teile(A, B: Integer): Integer;', TChangeSignature.HeaderText(mHeader, 'TFoo.Teile',
+    mHeader.Parameters, False));
 end;
 
 procedure TChangeSignatureTests.AppliesEdits;

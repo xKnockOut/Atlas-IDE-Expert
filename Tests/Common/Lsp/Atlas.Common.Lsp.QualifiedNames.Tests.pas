@@ -15,7 +15,8 @@ type
   private
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
-    function NameAt(const AMarker: string; AOccurrence: Integer; AWithParameters: Boolean = False): string;
+    function NameAt(const AMarker: string; AOccurrence: Integer): string; overload;
+    function NameAt(const AMarker: string; AOccurrence: Integer; AWithParameters: Boolean): string; overload;
   public
     [Setup]
     procedure Setup;
@@ -51,10 +52,10 @@ uses
   Atlas.Common.Lsp.QualifiedNames;
 
 const
-  ControlsFile = 'C:\P\Vcl.Steuer.pas';
-  MainFile = 'C:\P\Haupt.pas';
+  cControlsFile = 'C:\P\Vcl.Steuer.pas';
+  cMainFile = 'C:\P\Haupt.pas';
 
-  UnitControls =
+  cUnitControls =
     'unit Vcl.Steuer;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -67,7 +68,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitMain =
+  cUnitMain =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Vcl.Steuer;'#10 +
@@ -112,29 +113,29 @@ const
 
 function PositionOf(const AText, AMarker: string; AOccurrence: Integer): TTextPosition;
 var
-  Index, Found, Line, LineStart: Integer;
+  mIndex, mFound, mLine, mLineStart: Integer;
 begin
-  Found := 0;
-  Index := 0;
+  mFound := 0;
+  mIndex := 0;
   repeat
-    Index := Pos(AMarker, AText, Index + 1);
-    if Index = 0 then
+    mIndex := Pos(AMarker, AText, mIndex + 1);
+    if mIndex = 0 then
     begin
       raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
     end;
-    Inc(Found);
-  until Found = AOccurrence;
-  Line := 0;
-  LineStart := 1;
-  for Found := 1 to Index - 1 do
+    Inc(mFound);
+  until mFound = AOccurrence;
+  mLine := 0;
+  mLineStart := 1;
+  for mFound := 1 to mIndex - 1 do
   begin
-    if AText[Found] = #10 then
+    if AText[mFound] = #10 then
     begin
-      Inc(Line);
-      LineStart := Found + 1;
+      Inc(mLine);
+      mLineStart := mFound + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 { TQualifiedNamesTests }
@@ -142,8 +143,8 @@ end;
 procedure TQualifiedNamesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitControls, ControlsFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitMain, MainFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitControls, cControlsFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -153,17 +154,22 @@ begin
   FIndex := nil;
 end;
 
+function TQualifiedNamesTests.NameAt(const AMarker: string; AOccurrence: Integer): string;
+begin
+  Result := NameAt(AMarker, AOccurrence, False);
+end;
+
 function TQualifiedNamesTests.NameAt(const AMarker: string; AOccurrence: Integer; AWithParameters: Boolean): string;
 var
-  Tree: TSyntaxTree;
-  Error: string;
+  mTree: TSyntaxTree;
+  mError: string;
 begin
-  Tree := TPascalParser.Parse(UnitMain);
+  mTree := TPascalParser.Parse(cUnitMain);
   try
-    Assert.IsTrue(TQualifiedNames.At(FResolver, FIndex, Tree, TQualifiedNameRequest.Create(MainFile,
-      PositionOf(UnitMain, AMarker, AOccurrence), AWithParameters), Result, Error), Error);
+    Assert.IsTrue(TQualifiedNames.At(FResolver, FIndex, mTree, TQualifiedNameRequest.Create(cMainFile,
+      PositionOf(cUnitMain, AMarker, AOccurrence), AWithParameters), Result, mError), mError);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -209,17 +215,17 @@ end;
 
 procedure TQualifiedNamesTests.NoSymbolGivesError;
 var
-  Tree: TSyntaxTree;
-  Name, Error: string;
+  mTree: TSyntaxTree;
+  mName, mError: string;
 begin
-  Tree := TPascalParser.Parse(UnitMain);
+  mTree := TPascalParser.Parse(cUnitMain);
   try
-    Assert.IsFalse(TQualifiedNames.At(FResolver, FIndex, Tree, TQualifiedNameRequest.Create(MainFile,
-      TTextPosition.Create(17, 0), False), Name, Error));
-    Assert.AreEqual('', Name);
-    Assert.AreEqual('An Zeile 18, Spalte 1 steht kein bekanntes Symbol', Error);
+    Assert.IsFalse(TQualifiedNames.At(FResolver, FIndex, mTree, TQualifiedNameRequest.Create(cMainFile,
+      TTextPosition.Create(17, 0), False), mName, mError));
+    Assert.AreEqual('', mName);
+    Assert.AreEqual('An Zeile 18, Spalte 1 steht kein bekanntes Symbol', mError);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

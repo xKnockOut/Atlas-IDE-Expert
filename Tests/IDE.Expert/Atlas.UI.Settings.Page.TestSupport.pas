@@ -77,8 +77,8 @@ end;
 
 procedure WarmUpSettingsPage;
 var
-  Host: TForm;
-  Page: TAtlasSettingsPage;
+  mHost: TForm;
+  mPage: TAtlasSettingsPage;
   mRegistrations: TArray<IAtlasRegistration>;
 begin
   // Erste Anmeldung legt die Listen der Registry an: nicht dem ersten Setup anrechnen.
@@ -86,13 +86,13 @@ begin
   RevokeAll(mRegistrations);
   TAtlasSettingsPage.Create(nil).Free;
   // Auch mit Fenster (Reiter, PageControl): einmalige VCL-Daten nicht dem ersten Test anrechnen.
-  Host := TForm.CreateNew(nil);
+  mHost := TForm.CreateNew(nil);
   try
-    Page := TAtlasSettingsPage.Create(Host);
-    Page.Parent := Host;
-    Page.HandleNeeded;
+    mPage := TAtlasSettingsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
   finally
-    Host.Free;
+    mHost.Free;
   end;
 end;
 
@@ -151,14 +151,14 @@ end;
 
 function TopLevelNodes(APage: TAtlasSettingsPage): TArray<TTreeNode>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to APage.Navigation.Items.Count - 1 do
+  for mIndex := 0 to APage.Navigation.Items.Count - 1 do
   begin
-    if APage.Navigation.Items[Index].Level = 0 then
+    if APage.Navigation.Items[mIndex].Level = 0 then
     begin
-      Result := Result + [APage.Navigation.Items[Index]];
+      Result := Result + [APage.Navigation.Items[mIndex]];
     end;
   end;
 end;

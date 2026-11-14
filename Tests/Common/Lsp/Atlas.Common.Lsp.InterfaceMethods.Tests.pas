@@ -47,11 +47,11 @@ uses
   Atlas.Common.Index.Extractor;
 
 const
-  ApiFile = 'C:\P\KundenApi.pas';
-  KundenFile = 'C:\P\Kunden.pas';
-  SohnFile = 'C:\P\Sohn.pas';
+  cApiFile = 'C:\P\KundenApi.pas';
+  cKundenFile = 'C:\P\Kunden.pas';
+  cSohnFile = 'C:\P\Sohn.pas';
 
-  UnitApi =
+  cUnitApi =
     'unit KundenApi;'#10 +                                        // 0
     'interface'#10 +                                              // 1
     'type'#10 +                                                   // 2
@@ -70,7 +70,7 @@ const
     'implementation'#10 +                                         // 15
     'end.';
 
-  UnitKunden =
+  cUnitKunden =
     'unit Kunden;'#10 +                                           // 0
     'interface'#10 +                                              // 1
     'uses KundenApi;'#10 +                                        // 2
@@ -109,7 +109,7 @@ const
     'end;'#10 +                                                   // 35
     'end.';
 
-  UnitSohn =
+  cUnitSohn =
     'unit Sohn;'#10 +                                             // 0
     'interface'#10 +                                              // 1
     'uses Kunden;'#10 +                                           // 2
@@ -132,9 +132,9 @@ const
 procedure TLspInterfaceMethodsTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitApi, ApiFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitKunden, KundenFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitSohn, SohnFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitApi, cApiFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitKunden, cKundenFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitSohn, cSohnFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -146,88 +146,88 @@ end;
 
 function TLspInterfaceMethodsTests.Describe(const AText, AFileName: string): string;
 var
-  Tree: TSyntaxTree;
-  Mark: TInterfaceMethodMark;
-  Target: TInterfaceMethodTarget;
+  mTree: TSyntaxTree;
+  mMark: TInterfaceMethodMark;
+  mTarget: TInterfaceMethodTarget;
 begin
   Result := '';
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    for Mark in TLspInterfaceMethods.Marks(FResolver, Tree, AFileName) do
+    for mMark in TLspInterfaceMethods.Marks(FResolver, mTree, AFileName) do
     begin
-      Result := Result + IntToStr(Mark.Line) + ' ' + Mark.Name;
-      for Target in Mark.Targets do
+      Result := Result + IntToStr(mMark.Line) + ' ' + mMark.Name;
+      for mTarget in mMark.Targets do
       begin
-        Result := Result + Format(' %s@%s:%d', [Target.Name, Target.UnitName, Target.Range.StartPos.Line]);
+        Result := Result + Format(' %s@%s:%d', [mTarget.Name, mTarget.UnitName, mTarget.Range.StartPos.Line]);
       end;
       Result := Result + '|';
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspInterfaceMethodsTests.MarksMethodsWithInheritedInterfaces;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Describe(UnitKunden, KundenFile);
+  mText := Describe(cUnitKunden, cKundenFile);
   // Pruefe kommt aus IBasis, dem Vorfahren von IKunde; nur Deklarationen, keine Rümpfe; Hilfe hat keins.
-  Assert.Contains(Text, '6 TKunde.Pruefe IBasis.Pruefe@KundenApi:4|');
-  Assert.Contains(Text, '9 TKunde.Name IKunde.Name@KundenApi:8|');
-  Assert.DoesNotContain(Text, 'Hilfe');
-  Assert.DoesNotContain(Text, '|15 ');
+  Assert.Contains(mText, '6 TKunde.Pruefe IBasis.Pruefe@KundenApi:4|');
+  Assert.Contains(mText, '9 TKunde.Name IKunde.Name@KundenApi:8|');
+  Assert.DoesNotContain(mText, 'Hilfe');
+  Assert.DoesNotContain(mText, '|15 ');
 end;
 
 procedure TLspInterfaceMethodsTests.HonoursResolutionClauses;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Describe(UnitKunden, KundenFile);
+  mText := Describe(cUnitKunden, cKundenFile);
   // IDruck.Speichern = Sichern: Speichern erfüllt nur IKunde, Sichern erfüllt IDruck.Speichern.
-  Assert.Contains(Text, '7 TKunde.Speichern IKunde.Speichern@KundenApi:7|');
-  Assert.Contains(Text, '8 TKunde.Sichern IDruck.Speichern@KundenApi:13|');
+  Assert.Contains(mText, '7 TKunde.Speichern IKunde.Speichern@KundenApi:7|');
+  Assert.Contains(mText, '8 TKunde.Sichern IDruck.Speichern@KundenApi:13|');
 end;
 
 procedure TLspInterfaceMethodsTests.PicksOverloadByParameters;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Describe(UnitKunden, KundenFile);
-  Assert.Contains(Text, '10 TKunde.Drucke IDruck.Drucke@KundenApi:12|');
-  Assert.Contains(Text, '11 TKunde.Drucke IDruck.Drucke@KundenApi:11|');
+  mText := Describe(cUnitKunden, cKundenFile);
+  Assert.Contains(mText, '10 TKunde.Drucke IDruck.Drucke@KundenApi:12|');
+  Assert.Contains(mText, '11 TKunde.Drucke IDruck.Drucke@KundenApi:11|');
 end;
 
 procedure TLspInterfaceMethodsTests.AncestorInterfacesOnlyWithOverride;
 begin
   // Speichern überschreibt und erfüllt so IKunde.Speichern weiter; Name verdeckt nur.
-  Assert.AreEqual('5 TSohn.Speichern IKunde.Speichern@KundenApi:7|', Describe(UnitSohn, SohnFile));
+  Assert.AreEqual('5 TSohn.Speichern IKunde.Speichern@KundenApi:7|', Describe(cUnitSohn, cSohnFile));
 end;
 
 procedure TLspInterfaceMethodsTests.WritesJson;
 var
-  Tree: TSyntaxTree;
-  Json: TJSONObject;
-  Method, Target: TJSONObject;
+  mTree: TSyntaxTree;
+  mJson: TJSONObject;
+  mMethod, mTarget: TJSONObject;
 begin
-  Tree := TPascalParser.Parse(UnitSohn);
+  mTree := TPascalParser.Parse(cUnitSohn);
   try
-    Json := TLspInterfaceMethods.Json(TLspInterfaceMethods.Marks(FResolver, Tree, SohnFile));
+    mJson := TLspInterfaceMethods.Json(TLspInterfaceMethods.Marks(FResolver, mTree, cSohnFile));
     try
-      Method := (Json.GetValue('methods') as TJSONArray).Items[0] as TJSONObject;
-      Assert.AreEqual(5, Method.GetValue<Integer>('line'));
-      Assert.AreEqual('TSohn.Speichern', Method.GetValue<string>('name'));
-      Target := (Method.GetValue('interfaces') as TJSONArray).Items[0] as TJSONObject;
-      Assert.AreEqual('IKunde.Speichern', Target.GetValue<string>('name'));
-      Assert.AreEqual('KundenApi', Target.GetValue<string>('unit'));
-      Assert.AreEqual(7, Target.GetValue<Integer>('line'));
-      Assert.AreEqual(14, Target.GetValue<Integer>('character'));
-      Assert.IsTrue(Target.GetValue<string>('uri').EndsWith('KundenApi.pas'));
+      mMethod := (mJson.GetValue('methods') as TJSONArray).Items[0] as TJSONObject;
+      Assert.AreEqual(5, mMethod.GetValue<Integer>('line'));
+      Assert.AreEqual('TSohn.Speichern', mMethod.GetValue<string>('name'));
+      mTarget := (mMethod.GetValue('interfaces') as TJSONArray).Items[0] as TJSONObject;
+      Assert.AreEqual('IKunde.Speichern', mTarget.GetValue<string>('name'));
+      Assert.AreEqual('KundenApi', mTarget.GetValue<string>('unit'));
+      Assert.AreEqual(7, mTarget.GetValue<Integer>('line'));
+      Assert.AreEqual(14, mTarget.GetValue<Integer>('character'));
+      Assert.IsTrue(mTarget.GetValue<string>('uri').EndsWith('KundenApi.pas'));
     finally
-      Json.Free;
+      mJson.Free;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

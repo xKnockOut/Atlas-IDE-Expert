@@ -168,7 +168,7 @@ type
 
 const
   /// <summary>Unit A der Tests (auch Atlas.Common.Index.Builder.Tests).</summary>
-  UnitA =
+  cUnitA =
     'unit A;'#10 +
     'interface'#10 +
     'uses System.SysUtils, B;'#10 +
@@ -212,20 +212,25 @@ uses
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Index.ProjectFiles;
 
-function Extract(const AText: string; const ADefines: TArray<string> = nil): TUnitIndex;
+function Extract(const AText: string; const ADefines: TArray<string>): TUnitIndex; overload;
 begin
   Result := TIndexExtractor.ExtractText(AText, 'C:\Projekt\A.pas', ADefines);
 end;
 
+function Extract(const AText: string): TUnitIndex; overload;
+begin
+  Result := Extract(AText, nil);
+end;
+
 function FindSymbol(const AUnit: TUnitIndex; const AQualifiedName: string; out ASymbol: TIndexSymbol): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if SameText(Symbol.QualifiedName, AQualifiedName) then
+    if SameText(mSymbol.QualifiedName, AQualifiedName) then
     begin
-      ASymbol := Symbol;
+      ASymbol := mSymbol;
       Exit(True);
     end;
   end;
@@ -234,12 +239,12 @@ end;
 
 function Count(const AUnit: TUnitIndex; const AQualifiedName: string): Integer;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := 0;
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if SameText(Symbol.QualifiedName, AQualifiedName) then
+    if SameText(mSymbol.QualifiedName, AQualifiedName) then
     begin
       Inc(Result);
     end;
@@ -247,7 +252,7 @@ begin
 end;
 
 function MakeUnit(const AName, AFileName: string; const ASymbols: array of string;
-  const AAncestor: string = ''): TUnitIndex;
+  const AAncestor: string): TUnitIndex; overload;
 var
   I: Integer;
 begin
@@ -265,6 +270,11 @@ begin
       Result.Symbols[I].Ancestors := [AAncestor];
     end;
   end;
+end;
+
+function MakeUnit(const AName, AFileName: string; const ASymbols: array of string): TUnitIndex; overload;
+begin
+  Result := MakeUnit(AName, AFileName, ASymbols, '');
 end;
 
 { TMemoryIndexFileSystem }
@@ -339,7 +349,7 @@ end;
 
 function TMemoryIndexFileSystem.ReadBytes(const AFileName: string; out ABytes: TBytes): Boolean;
 var
-  After: TProc<string>;
+  mAfter: TProc<string>;
 begin
   if FFailReads then
   begin
@@ -349,20 +359,20 @@ begin
   try
     Inc(FReads);
     Result := FBytes.TryGetValue(UpperCase(AFileName), ABytes);
-    After := FAfterRead;
+    mAfter := FAfterRead;
   finally
     TMonitor.Exit(Self);
   end;
-  if Assigned(After) then
+  if Assigned(mAfter) then
   begin
-    After(AFileName);
+    mAfter(AFileName);
   end;
 end;
 
 function TMemoryIndexFileSystem.WriteBytes(const AFileName: string; const ABytes: TBytes;
   out AError: string): Boolean;
 var
-  Stamp: Int64;
+  mStamp: Int64;
 begin
   AError := '';
   if Assigned(FBeforeWrite) then
@@ -383,11 +393,11 @@ begin
     FBytes.AddOrSetValue(UpperCase(AFileName), ABytes);
     // Jedes Schreiben ändert den Zeitstempel wie auf der Platte; TSharedCacheWrites erkennt daran fremde
     // Schreiber.
-    if not FStamps.TryGetValue(UpperCase(AFileName), Stamp) then
+    if not FStamps.TryGetValue(UpperCase(AFileName), mStamp) then
     begin
-      Stamp := 0;
+      mStamp := 0;
     end;
-    FStamps.AddOrSetValue(UpperCase(AFileName), Stamp + 1);
+    FStamps.AddOrSetValue(UpperCase(AFileName), mStamp + 1);
     Result := True;
   finally
     TMonitor.Exit(Self);
@@ -396,9 +406,9 @@ end;
 
 function TMemoryIndexFileSystem.WriteBytes(const AFileName: string; const ABytes: TBytes): Boolean;
 var
-  Error: string;
+  mError: string;
 begin
-  Result := WriteBytes(AFileName, ABytes, Error);
+  Result := WriteBytes(AFileName, ABytes, mError);
 end;
 
 type
@@ -457,7 +467,7 @@ var
   U: TUnitIndex;
   S: TIndexSymbol;
 begin
-  U := Extract(UnitA);
+  U := Extract(cUnitA);
   Assert.AreEqual('A', U.UnitName);
   Assert.IsTrue(FindSymbol(U, 'TFoo', S));
   Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.ClassType, S.Kind);
@@ -485,7 +495,7 @@ var
   U: TUnitIndex;
   S: TIndexSymbol;
 begin
-  U := Extract(UnitA);
+  U := Extract(cUnitA);
   Assert.IsTrue(FindSymbol(U, 'TFoo', S));
   Assert.AreEqual<NativeInt>(2, Length(S.Ancestors));
   Assert.AreEqual('TBase', S.Ancestors[0]);
@@ -496,17 +506,17 @@ end;
 
 procedure TIndexExtractorTests.ExtractsAncestorArgsOfEveryAncestor;
 const
-  Text = 'unit G;'#10'interface'#10'type'#10 +
+  cText = 'unit G;'#10'interface'#10'type'#10 +
     '  TVergleich = class(TInterfacedObject, IComparer<TKunde>, IMap<string, TArray<Integer>>)'#10'  end;'#10 +
     '  TListe = class(TObjectList<TKunde>)'#10'  end;'#10 +
     '  TEinfach = class(TObject, IInterface)'#10'  end;'#10 +
     'implementation'#10'end.';
 var
   U: TUnitIndex;
-  Loaded: TArray<TUnitIndex>;
+  mLoaded: TArray<TUnitIndex>;
   S: TIndexSymbol;
 begin
-  U := Extract(Text);
+  U := Extract(cText);
   Assert.IsTrue(FindSymbol(U, 'TVergleich', S));
   Assert.AreEqual<NativeInt>(3, Length(S.AncestorArgs));
   Assert.AreEqual('', S.AncestorArgs[0]);
@@ -518,8 +528,8 @@ begin
   // Ohne Typargumente bleibt die Liste leer.
   Assert.IsTrue(FindSymbol(U, 'TEinfach', S));
   Assert.AreEqual<NativeInt>(0, Length(S.AncestorArgs));
-  Loaded := TIndexCache.Deserialize(TIndexCache.Serialize([U]));
-  Assert.IsTrue(FindSymbol(Loaded[0], 'TVergleich', S));
+  mLoaded := TIndexCache.Deserialize(TIndexCache.Serialize([U]));
+  Assert.IsTrue(FindSymbol(mLoaded[0], 'TVergleich', S));
   Assert.AreEqual<NativeInt>(3, Length(S.AncestorArgs));
   Assert.AreEqual('TKunde', S.AncestorArgs[1]);
 end;
@@ -562,7 +572,7 @@ procedure TIndexExtractorTests.ExtractsUsesLists;
 var
   U: TUnitIndex;
 begin
-  U := Extract(UnitA);
+  U := Extract(cUnitA);
   Assert.AreEqual<NativeInt>(2, Length(U.InterfaceUses));
   Assert.AreEqual('System.SysUtils', U.InterfaceUses[0]);
   Assert.AreEqual('B', U.InterfaceUses[1]);
@@ -574,25 +584,25 @@ procedure TIndexExtractorTests.MarksInterfaceSymbols;
 var
   U: TUnitIndex;
   S: TIndexSymbol;
-  Seen: Boolean;
+  mSeen: Boolean;
 begin
-  U := Extract(UnitA);
+  U := Extract(cUnitA);
   Assert.IsTrue(FindSymbol(U, 'TFoo', S));
   Assert.IsTrue(S.InInterface);
-  Seen := False;
+  mSeen := False;
   for S in U.Symbols do
   begin
     if (S.QualifiedName = 'TFoo.Run') and not S.InInterface then
     begin
-      Seen := True;
+      mSeen := True;
     end;
   end;
-  Assert.IsTrue(Seen, 'Rumpf in implementation');
+  Assert.IsTrue(mSeen, 'Rumpf in implementation');
 end;
 
 procedure TIndexExtractorTests.SkipsInactiveBranches;
 const
-  Source =
+  cSource =
     'unit D;'#13#10 +
     'interface'#13#10 +
     '{$IFDEF MSWINDOWS}'#13#10 +
@@ -606,11 +616,11 @@ var
   U: TUnitIndex;
   S: TIndexSymbol;
 begin
-  U := Extract(Source, ['MSWINDOWS']);
+  U := Extract(cSource, ['MSWINDOWS']);
   Assert.IsTrue(FindSymbol(U, 'NurWindows', S));
   Assert.AreEqual(3, S.SelectionRange.StartPos.Line);
   Assert.IsFalse(FindSymbol(U, 'NurAndere', S));
-  U := Extract(Source, []);
+  U := Extract(cSource, []);
   Assert.IsFalse(FindSymbol(U, 'NurWindows', S));
   Assert.IsTrue(FindSymbol(U, 'NurAndere', S));
   Assert.AreEqual(5, S.SelectionRange.StartPos.Line);
@@ -618,7 +628,7 @@ end;
 
 procedure TIndexExtractorTests.RecordsConditionsAndUnavailableDeclarations;
 const
-  Source =
+  cSource =
     'unit Plattform;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -638,29 +648,29 @@ const
     'end.';
 var
   U: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Conditions, Missing: string;
+  mSymbol: TIndexSymbol;
+  mConditions, mMissing: string;
 begin
-  U := TIndexExtractor.ExtractText(Source, 'C:\P\Plattform.pas', ['WIN32', 'MSWINDOWS']);
-  Conditions := '';
-  for Symbol in U.Symbols do
+  U := TIndexExtractor.ExtractText(cSource, 'C:\P\Plattform.pas', ['WIN32', 'MSWINDOWS']);
+  mConditions := '';
+  for mSymbol in U.Symbols do
   begin
-    if Symbol.Container = '' then
+    if mSymbol.Container = '' then
     begin
-      Conditions := Conditions + Symbol.Name + '=' + Symbol.Condition + ';';
+      mConditions := mConditions + mSymbol.Name + '=' + mSymbol.Condition + ';';
     end;
   end;
-  Assert.Contains(Conditions, 'TNur32=not WIN64;');
-  Assert.Contains(Conditions, 'TImmer=;');
-  Assert.Contains(Conditions, 'NurWindows=MSWINDOWS;');
-  Assert.Contains(Conditions, 'Alt=platform;');
-  Assert.DoesNotContain(Conditions, 'TNur64');
-  Missing := '';
-  for Symbol in U.Unavailable do
+  Assert.Contains(mConditions, 'TNur32=not WIN64;');
+  Assert.Contains(mConditions, 'TImmer=;');
+  Assert.Contains(mConditions, 'NurWindows=MSWINDOWS;');
+  Assert.Contains(mConditions, 'Alt=platform;');
+  Assert.DoesNotContain(mConditions, 'TNur64');
+  mMissing := '';
+  for mSymbol in U.Unavailable do
   begin
-    Missing := Missing + Symbol.Name + '=' + Symbol.Condition + ';';
+    mMissing := mMissing + mSymbol.Name + '=' + mSymbol.Condition + ';';
   end;
-  Assert.AreEqual('TNur64=WIN64;', Missing);
+  Assert.AreEqual('TNur64=WIN64;', mMissing);
   Assert.IsTrue(U.Unavailable[0].InInterface);
   Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.ClassType, U.Unavailable[0].Kind);
 end;
@@ -668,28 +678,28 @@ end;
 procedure TIndexExtractorTests.KeepsShortStringLengthInSignature;
 var
   U: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Found: string;
+  mSymbol: TIndexSymbol;
+  mFound: string;
 begin
   U := TIndexExtractor.ExtractText('unit Satz;'#10'interface'#10'const'#10'  Laenge = 4;'#10'type'#10 +
     '  TSatz = record'#10'    Kennung: string[8];'#10'    Kurz: string[Laenge];'#10'    Name: string;'#10 +
     '    Liste: TList<string>;'#10'  end;'#10'var'#10'  Global: string [ 5 ];'#10'implementation'#10'end.',
     'Satz.pas', nil);
-  Found := '';
-  for Symbol in U.Symbols do
+  mFound := '';
+  for mSymbol in U.Symbols do
   begin
-    if Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Variable] then
+    if mSymbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Variable] then
     begin
-      Found := Found + Symbol.Signature + '|' + Symbol.TypeName + #10;
+      mFound := mFound + mSymbol.Signature + '|' + mSymbol.TypeName + #10;
     end;
   end;
   Assert.AreEqual('Kennung: string[8]|string'#10'Kurz: string[Laenge]|string'#10'Name: string|string'#10 +
-    'Liste: TList<string>|TList'#10'Global: string[5]|string'#10, Found);
+    'Liste: TList<string>|TList'#10'Global: string[5]|string'#10, mFound);
 end;
 
 procedure TIndexExtractorTests.RecordsConditionsOfMembers;
 const
-  Source =
+  cSource =
     'unit Mitglieder;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -711,28 +721,28 @@ const
     'end.';
 var
   U: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Conditions, Missing: string;
+  mSymbol: TIndexSymbol;
+  mConditions, mMissing: string;
 begin
-  U := TIndexExtractor.ExtractText(Source, 'C:\P\Mitglieder.pas', ['WIN32', 'MSWINDOWS']);
-  Conditions := '';
-  for Symbol in U.Symbols do
+  U := TIndexExtractor.ExtractText(cSource, 'C:\P\Mitglieder.pas', ['WIN32', 'MSWINDOWS']);
+  mConditions := '';
+  for mSymbol in U.Symbols do
   begin
-    if Symbol.Container = 'TGeraet' then
+    if mSymbol.Container = 'TGeraet' then
     begin
-      Conditions := Conditions + Symbol.Name + '=' + Symbol.Condition + ';';
+      mConditions := mConditions + mSymbol.Name + '=' + mSymbol.Condition + ';';
     end;
   end;
-  Assert.Contains(Conditions, 'FHandle32=not WIN64;');
-  Assert.Contains(Conditions, 'Nur32=not WIN64;');
-  Assert.Contains(Conditions, 'Immer=;');
-  Missing := '';
-  for Symbol in U.Unavailable do
+  Assert.Contains(mConditions, 'FHandle32=not WIN64;');
+  Assert.Contains(mConditions, 'Nur32=not WIN64;');
+  Assert.Contains(mConditions, 'Immer=;');
+  mMissing := '';
+  for mSymbol in U.Unavailable do
   begin
-    Missing := Missing + Symbol.Container + '.' + Symbol.Name + '=' + Symbol.Condition + ';';
+    mMissing := mMissing + mSymbol.Container + '.' + mSymbol.Name + '=' + mSymbol.Condition + ';';
   end;
   Assert.AreEqual('TGeraet.FHandle64=WIN64;TGeraet.FExtra=WIN64;TGeraet.Nur64=WIN64;TGeraet.Groesse64=WIN64;',
-    Missing);
+    mMissing);
   Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Field, U.Unavailable[0].Kind);
   Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Method, U.Unavailable[2].Kind);
   Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Property_, U.Unavailable[3].Kind);
@@ -741,7 +751,7 @@ end;
 
 procedure TIndexExtractorTests.RecordsUnavailableImplementationRoutines;
 const
-  Source =
+  cSource =
     'unit Start;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -759,16 +769,16 @@ const
     'end.';
 var
   U: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Missing: string;
+  mSymbol: TIndexSymbol;
+  mMissing: string;
 begin
-  U := TIndexExtractor.ExtractText(Source, 'C:\P\Start.pas', ['WIN32', 'MSWINDOWS']);
-  Missing := '';
-  for Symbol in U.Unavailable do
+  U := TIndexExtractor.ExtractText(cSource, 'C:\P\Start.pas', ['WIN32', 'MSWINDOWS']);
+  mMissing := '';
+  for mSymbol in U.Unavailable do
   begin
-    Missing := Missing + Symbol.Name + '=' + Symbol.Condition + ';';
+    mMissing := mMissing + mSymbol.Name + '=' + mSymbol.Condition + ';';
   end;
-  Assert.AreEqual('ApplyAppIcon=FPC;', Missing);
+  Assert.AreEqual('ApplyAppIcon=FPC;', mMissing);
   Assert.IsFalse(U.Unavailable[0].InInterface);
   Assert.AreEqual<TIndexSymbolKind>(TIndexSymbolKind.Routine, U.Unavailable[0].Kind);
 end;
@@ -790,84 +800,84 @@ end;
 
 procedure TSymbolIndexTests.FindsUnitsAndSymbols;
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
   U: TUnitIndex;
-  Found: TArray<TSymbolLocation>;
+  mFound: TArray<TSymbolLocation>;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['TFoo', 'TBar']));
-  Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['TFoo']));
-  Assert.IsTrue(Index.FindUnit('a', U));
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(MakeUnit('A', 'C:\A.pas', ['TFoo', 'TBar']));
+  mIndex.AddUnit(MakeUnit('B', 'C:\B.pas', ['TFoo']));
+  Assert.IsTrue(mIndex.FindUnit('a', U));
   Assert.AreEqual('C:\A.pas', U.FileName);
-  Assert.IsTrue(Index.FindFile('c:\b.PAS', U));
+  Assert.IsTrue(mIndex.FindFile('c:\b.PAS', U));
   Assert.AreEqual('B', U.UnitName);
-  Found := Index.FindSymbols('tfoo');
-  Assert.AreEqual<NativeInt>(2, Length(Found));
-  Assert.AreEqual(2, Index.UnitCount);
-  Assert.AreEqual(3, Index.SymbolCount);
-  Assert.IsFalse(Index.FindUnit('Z', U));
+  mFound := mIndex.FindSymbols('tfoo');
+  Assert.AreEqual<NativeInt>(2, Length(mFound));
+  Assert.AreEqual(2, mIndex.UnitCount);
+  Assert.AreEqual(3, mIndex.SymbolCount);
+  Assert.IsFalse(mIndex.FindUnit('Z', U));
 end;
 
 procedure TSymbolIndexTests.ReplacesUnitOfSameFile;
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
   U: TUnitIndex;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['TFoo', 'TBar']));
-  Index.AddUnit(MakeUnit('A', 'C:\a.pas', ['TNeu']));
-  Assert.AreEqual(1, Index.UnitCount);
-  Assert.AreEqual(1, Index.SymbolCount);
-  Assert.AreEqual<NativeInt>(0, Length(Index.FindSymbols('TFoo')));
-  Index.RemoveFile('C:\A.PAS');
-  Assert.AreEqual(0, Index.UnitCount);
-  Assert.IsFalse(Index.FindUnit('A', U));
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(MakeUnit('A', 'C:\A.pas', ['TFoo', 'TBar']));
+  mIndex.AddUnit(MakeUnit('A', 'C:\a.pas', ['TNeu']));
+  Assert.AreEqual(1, mIndex.UnitCount);
+  Assert.AreEqual(1, mIndex.SymbolCount);
+  Assert.AreEqual<NativeInt>(0, Length(mIndex.FindSymbols('TFoo')));
+  mIndex.RemoveFile('C:\A.PAS');
+  Assert.AreEqual(0, mIndex.UnitCount);
+  Assert.IsFalse(mIndex.FindUnit('A', U));
 end;
 
 procedure TSymbolIndexTests.FindsDescendants;
 var
-  Index: ISymbolIndex;
-  Found: TArray<TSymbolLocation>;
+  mIndex: ISymbolIndex;
+  mFound: TArray<TSymbolLocation>;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['TBase']));
-  Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['TKind'], 'A.TBase'));
-  Index.AddUnit(MakeUnit('C', 'C:\C.pas', ['TListe'], 'TList<TBase>'));
-  Found := Index.Descendants('TBase');
-  Assert.AreEqual<NativeInt>(1, Length(Found));
-  Assert.AreEqual('TKind', Found[0].Symbol.Name);
-  Assert.AreEqual<NativeInt>(1, Length(Index.Descendants('TList')));
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(MakeUnit('A', 'C:\A.pas', ['TBase']));
+  mIndex.AddUnit(MakeUnit('B', 'C:\B.pas', ['TKind'], 'A.TBase'));
+  mIndex.AddUnit(MakeUnit('C', 'C:\C.pas', ['TListe'], 'TList<TBase>'));
+  mFound := mIndex.Descendants('TBase');
+  Assert.AreEqual<NativeInt>(1, Length(mFound));
+  Assert.AreEqual('TKind', mFound[0].Symbol.Name);
+  Assert.AreEqual<NativeInt>(1, Length(mIndex.Descendants('TList')));
 end;
 
 procedure TSymbolIndexTests.FindSymbolsMatchesWholeNamesOnly;
 var
-  Index: ISymbolIndex;
-  Found: TArray<TSymbolLocation>;
+  mIndex: ISymbolIndex;
+  mFound: TArray<TSymbolLocation>;
 begin
   // Vorprüfung über die Länge (#647): gleich lange und längere Namen dürfen nicht treffen.
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['TFooBar', 'TFoo', 'TFo']));
-  Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['TBaz', 'TFOO']));
-  Found := Index.FindSymbols('tfoo');
-  Assert.AreEqual<NativeInt>(2, Length(Found));
-  Assert.IsTrue(SameText('TFoo', Found[0].Symbol.Name));
-  Assert.IsTrue(SameText('TFoo', Found[1].Symbol.Name));
-  Assert.AreEqual<NativeInt>(0, Length(Index.FindSymbols('TFooB')));
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(MakeUnit('A', 'C:\A.pas', ['TFooBar', 'TFoo', 'TFo']));
+  mIndex.AddUnit(MakeUnit('B', 'C:\B.pas', ['TBaz', 'TFOO']));
+  mFound := mIndex.FindSymbols('tfoo');
+  Assert.AreEqual<NativeInt>(2, Length(mFound));
+  Assert.IsTrue(SameText('TFoo', mFound[0].Symbol.Name));
+  Assert.IsTrue(SameText('TFoo', mFound[1].Symbol.Name));
+  Assert.AreEqual<NativeInt>(0, Length(mIndex.FindSymbols('TFooB')));
 end;
 
 procedure TSymbolIndexTests.HasSymbolStopsAtFirstMatch;
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
   mCalls: Integer;
   mUnits: string;
 begin
   // Ja/Nein-Fragen ohne Fundstellenliste (#1342): dieselben Symbole wie FindSymbols, Ende beim ersten Treffer.
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['TFooBar', 'TFoo']));
-  Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['TBaz', 'TFOO']));
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(MakeUnit('A', 'C:\A.pas', ['TFooBar', 'TFoo']));
+  mIndex.AddUnit(MakeUnit('B', 'C:\B.pas', ['TBaz', 'TFOO']));
   mCalls := 0;
   mUnits := '';
-  Assert.IsFalse(Index.HasSymbol('tfoo',
+  Assert.IsFalse(mIndex.HasSymbol('tfoo',
     function(const ASymbol: TIndexSymbol): Boolean
     begin
       Inc(mCalls);
@@ -877,7 +887,7 @@ begin
   Assert.AreEqual(2, mCalls, 'alle gleichnamigen Symbole');
   Assert.AreEqual('TFOO;TFOO;', UpperCase(mUnits));
   mCalls := 0;
-  Assert.IsTrue(Index.HasSymbol('TFoo',
+  Assert.IsTrue(mIndex.HasSymbol('TFoo',
     function(const ASymbol: TIndexSymbol): Boolean
     begin
       Inc(mCalls);
@@ -885,16 +895,16 @@ begin
     end));
   Assert.AreEqual(1, mCalls, 'Ende beim ersten Treffer');
   mCalls := 0;
-  Assert.IsFalse(Index.HasSymbol('TFooB',
+  Assert.IsFalse(mIndex.HasSymbol('TFooB',
     function(const ASymbol: TIndexSymbol): Boolean
     begin
       Inc(mCalls);
       Result := True;
     end));
   Assert.AreEqual(0, mCalls, 'unbekannter Name');
-  Index.RemoveFile('C:\A.pas');
+  mIndex.RemoveFile('C:\A.pas');
   mCalls := 0;
-  Assert.IsFalse(Index.HasSymbol('TFoo',
+  Assert.IsFalse(mIndex.HasSymbol('TFoo',
     function(const ASymbol: TIndexSymbol): Boolean
     begin
       Inc(mCalls);
@@ -906,184 +916,184 @@ end;
 
 procedure TSymbolIndexTests.LookupsStayCorrectAfterManyReplacements;
 var
-  Index: ISymbolIndex;
-  Found: TArray<TSymbolLocation>;
-  Round: Integer;
+  mIndex: ISymbolIndex;
+  mFound: TArray<TSymbolLocation>;
+  mRound: Integer;
 begin
   // Ersetzte Units lassen tote Verweise zurück; nach genug Runden werden die Tabellen neu gebaut
   // (Diagnoselog 15.10.2026). Weder vorher noch danach darf ein alter Stand auftauchen.
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['TFoo'], 'TBase'));
-  for Round := 1 to 3 * TSymbolIndex.cRebuildDeadRefs do
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(MakeUnit('B', 'C:\B.pas', ['TFoo'], 'TBase'));
+  for mRound := 1 to 3 * TSymbolIndex.cRebuildDeadRefs do
   begin
-    if Odd(Round) then
+    if Odd(mRound) then
     begin
-      Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['TFoo', 'TBar'], 'TBase'));
+      mIndex.AddUnit(MakeUnit('A', 'C:\A.pas', ['TFoo', 'TBar'], 'TBase'));
     end
     else
     begin
-      Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['TBar', 'TFoo', 'TBaz'], 'X.TBase'));
+      mIndex.AddUnit(MakeUnit('A', 'C:\A.pas', ['TBar', 'TFoo', 'TBaz'], 'X.TBase'));
     end;
   end;
-  Found := Index.FindSymbols('TFoo');
-  Assert.AreEqual<NativeInt>(2, Length(Found));
-  Assert.AreEqual<NativeInt>(1, Length(Index.FindSymbols('TBaz')));
-  Assert.AreEqual<NativeInt>(4, Length(Index.Descendants('TBase')));
-  Index.RemoveFile('C:\A.pas');
-  Found := Index.FindSymbols('TFoo');
-  Assert.AreEqual<NativeInt>(1, Length(Found));
-  Assert.AreEqual('B', Found[0].UnitName);
-  Assert.AreEqual<NativeInt>(0, Length(Index.FindSymbols('TBar')));
-  Assert.AreEqual<NativeInt>(1, Length(Index.Descendants('TBase')));
+  mFound := mIndex.FindSymbols('TFoo');
+  Assert.AreEqual<NativeInt>(2, Length(mFound));
+  Assert.AreEqual<NativeInt>(1, Length(mIndex.FindSymbols('TBaz')));
+  Assert.AreEqual<NativeInt>(4, Length(mIndex.Descendants('TBase')));
+  mIndex.RemoveFile('C:\A.pas');
+  mFound := mIndex.FindSymbols('TFoo');
+  Assert.AreEqual<NativeInt>(1, Length(mFound));
+  Assert.AreEqual('B', mFound[0].UnitName);
+  Assert.AreEqual<NativeInt>(0, Length(mIndex.FindSymbols('TBar')));
+  Assert.AreEqual<NativeInt>(1, Length(mIndex.Descendants('TBase')));
 end;
 
 procedure TSymbolIndexTests.LookupsFollowCompaction;
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
   U: TUnitIndex;
-  Found: TArray<TSymbolLocation>;
+  mFound: TArray<TSymbolLocation>;
 begin
   // Kompakt gehaltene Units verlieren Symbole; die Positionen verschieben sich.
   U := MakeUnit('A', 'C:\A.pas', ['TIntern', 'TOeffentlich']);
   U.Library_ := True;
   U.Symbols[1].InInterface := True;
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(U);
-  Index.SetBudget(1);
-  Assert.AreEqual(1, Index.CompactCount);
-  Assert.AreEqual<NativeInt>(0, Length(Index.FindSymbols('TIntern')));
-  Found := Index.FindSymbols('TOeffentlich');
-  Assert.AreEqual<NativeInt>(1, Length(Found));
-  Assert.AreEqual('TOeffentlich', Found[0].Symbol.Name);
-  Assert.AreEqual('C:\A.pas', Found[0].FileName);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(U);
+  mIndex.SetBudget(1);
+  Assert.AreEqual(1, mIndex.CompactCount);
+  Assert.AreEqual<NativeInt>(0, Length(mIndex.FindSymbols('TIntern')));
+  mFound := mIndex.FindSymbols('TOeffentlich');
+  Assert.AreEqual<NativeInt>(1, Length(mFound));
+  Assert.AreEqual('TOeffentlich', mFound[0].Symbol.Name);
+  Assert.AreEqual('C:\A.pas', mFound[0].FileName);
 end;
 
 procedure TSymbolIndexTests.DescendantsListSymbolOnce;
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
   U: TUnitIndex;
 begin
   U := MakeUnit('A', 'C:\A.pas', ['TKind']);
   U.Symbols[0].Ancestors := ['A.TBase', 'TBase<Integer>', 'IBase'];
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(U);
-  Assert.AreEqual<NativeInt>(1, Length(Index.Descendants('TBase')));
-  Assert.AreEqual<NativeInt>(1, Length(Index.Descendants('Unit.IBase')));
-  Assert.AreEqual<NativeInt>(0, Length(Index.Descendants('')));
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(U);
+  Assert.AreEqual<NativeInt>(1, Length(mIndex.Descendants('TBase')));
+  Assert.AreEqual<NativeInt>(1, Length(mIndex.Descendants('Unit.IBase')));
+  Assert.AreEqual<NativeInt>(0, Length(mIndex.Descendants('')));
 end;
 
 procedure TSymbolIndexTests.SymbolsNamedUsesTableOfStoredUnit;
 var
-  Index: ISymbolIndex;
-  U, Found: TUnitIndex;
-  Positions: TArray<Integer>;
+  mIndex: ISymbolIndex;
+  U, mFound: TUnitIndex;
+  mPositions: TArray<Integer>;
 begin
   // Diagnoselog 15.10.2026: Die Namensauflösung sucht über die Tabelle der abgelegten Unit.
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo', 'Bar', 'foo']));
-  Assert.IsTrue(Index.FindUnit('A', Found));
-  Assert.IsNotNull(Found.NameTable);
-  Positions := Found.SymbolsNamed('FOO');
-  Assert.AreEqual<NativeInt>(2, Length(Positions));
-  Assert.AreEqual(0, Positions[0]);
-  Assert.AreEqual(2, Positions[1]);
-  Assert.AreEqual<NativeInt>(0, Length(Found.SymbolsNamed('Fehlt')));
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo', 'Bar', 'foo']));
+  Assert.IsTrue(mIndex.FindUnit('A', mFound));
+  Assert.IsNotNull(mFound.NameTable);
+  mPositions := mFound.SymbolsNamed('FOO');
+  Assert.AreEqual<NativeInt>(2, Length(mPositions));
+  Assert.AreEqual(0, mPositions[0]);
+  Assert.AreEqual(2, mPositions[1]);
+  Assert.AreEqual<NativeInt>(0, Length(mFound.SymbolsNamed('Fehlt')));
   // Ersetzte Fassung: neue Tabelle, alte Positionen gelten nicht mehr.
   U := MakeUnit('A', 'C:\A.pas', ['Bar', 'Foo']);
-  Index.AddUnit(U);
-  Assert.IsTrue(Index.FindUnit('A', Found));
-  Positions := Found.SymbolsNamed('foo');
-  Assert.AreEqual<NativeInt>(1, Length(Positions));
-  Assert.AreEqual(1, Positions[0]);
+  mIndex.AddUnit(U);
+  Assert.IsTrue(mIndex.FindUnit('A', mFound));
+  mPositions := mFound.SymbolsNamed('foo');
+  Assert.AreEqual<NativeInt>(1, Length(mPositions));
+  Assert.AreEqual(1, mPositions[0]);
 end;
 
 procedure TSymbolIndexTests.SymbolsNamedFallsBackForChangedSymbols;
 var
-  Index: ISymbolIndex;
-  Found: TUnitIndex;
-  Positions: TArray<Integer>;
+  mIndex: ISymbolIndex;
+  mFound: TUnitIndex;
+  mPositions: TArray<Integer>;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo']));
-  Assert.IsTrue(Index.FindUnit('A', Found));
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo']));
+  Assert.IsTrue(mIndex.FindUnit('A', mFound));
   // Neues Array in der Kopie: die Tabelle passt nicht mehr, gesucht wird linear.
-  Found.Symbols := Copy(Found.Symbols) + MakeUnit('B', 'C:\B.pas', ['Neu', 'Foo']).Symbols;
-  Positions := Found.SymbolsNamed('Foo');
-  Assert.AreEqual<NativeInt>(2, Length(Positions));
-  Assert.AreEqual(2, Positions[1]);
-  Assert.AreEqual<NativeInt>(1, Length(Found.SymbolsNamed('neu')));
+  mFound.Symbols := Copy(mFound.Symbols) + MakeUnit('B', 'C:\B.pas', ['Neu', 'Foo']).Symbols;
+  mPositions := mFound.SymbolsNamed('Foo');
+  Assert.AreEqual<NativeInt>(2, Length(mPositions));
+  Assert.AreEqual(2, mPositions[1]);
+  Assert.AreEqual<NativeInt>(1, Length(mFound.SymbolsNamed('neu')));
   // Ohne Tabelle (Unit nie im Index) ebenso.
-  Found := MakeUnit('C', 'C:\C.pas', ['X', 'Y', 'x']);
-  Assert.IsNull(Found.NameTable);
-  Assert.AreEqual<NativeInt>(2, Length(Found.SymbolsNamed('X')));
+  mFound := MakeUnit('C', 'C:\C.pas', ['X', 'Y', 'x']);
+  Assert.IsNull(mFound.NameTable);
+  Assert.AreEqual<NativeInt>(2, Length(mFound.SymbolsNamed('X')));
 end;
 
 procedure TSymbolIndexTests.UnitsSnapshotReusedWithoutChange;
 var
-  Index: ISymbolIndex;
-  First, Second: TArray<TUnitIndex>;
-  Found: TUnitIndex;
+  mIndex: ISymbolIndex;
+  mFirst, mSecond: TArray<TUnitIndex>;
+  mFound: TUnitIndex;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo']));
-  Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['Bar']));
-  First := Index.Units;
-  Second := Index.Units;
-  Assert.AreEqual<NativeInt>(2, Length(First));
-  Assert.AreEqual<Pointer>(Pointer(Second), Pointer(First));
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo']));
+  mIndex.AddUnit(MakeUnit('B', 'C:\B.pas', ['Bar']));
+  mFirst := mIndex.Units;
+  mSecond := mIndex.Units;
+  Assert.AreEqual<NativeInt>(2, Length(mFirst));
+  Assert.AreEqual<Pointer>(Pointer(mSecond), Pointer(mFirst));
   // Lesende Zugriffe ändern den Stand nicht.
-  Assert.IsTrue(Index.FindUnit('A', Found));
-  Index.FindSymbols('Foo');
-  Assert.AreEqual<Pointer>(Pointer(Index.Units), Pointer(First));
+  Assert.IsTrue(mIndex.FindUnit('A', mFound));
+  mIndex.FindSymbols('Foo');
+  Assert.AreEqual<Pointer>(Pointer(mIndex.Units), Pointer(mFirst));
 end;
 
 procedure TSymbolIndexTests.UnitsSnapshotRenewedAfterChange;
 var
-  Index: ISymbolIndex;
-  First, Second: TArray<TUnitIndex>;
+  mIndex: ISymbolIndex;
+  mFirst, mSecond: TArray<TUnitIndex>;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo']));
-  First := Index.Units;
-  Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['Bar']));
-  Second := Index.Units;
-  Assert.AreNotEqual<Pointer>(Pointer(Second), Pointer(First));
-  Assert.AreEqual<NativeInt>(1, Length(First));
-  Assert.AreEqual<NativeInt>(2, Length(Second));
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo']));
+  mFirst := mIndex.Units;
+  mIndex.AddUnit(MakeUnit('B', 'C:\B.pas', ['Bar']));
+  mSecond := mIndex.Units;
+  Assert.AreNotEqual<Pointer>(Pointer(mSecond), Pointer(mFirst));
+  Assert.AreEqual<NativeInt>(1, Length(mFirst));
+  Assert.AreEqual<NativeInt>(2, Length(mSecond));
   // Ersetzen derselben Datei.
-  Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['Bar', 'Baz']));
-  First := Index.Units;
-  Assert.AreNotEqual<Pointer>(Pointer(Second), Pointer(First));
-  Assert.AreEqual<NativeInt>(2, Length(First));
-  Index.RemoveFile('C:\A.pas');
-  Second := Index.Units;
-  Assert.AreEqual<NativeInt>(1, Length(Second));
-  Assert.AreEqual('B', Second[0].UnitName);
-  Assert.AreEqual<NativeInt>(2, Length(Second[0].Symbols));
+  mIndex.AddUnit(MakeUnit('B', 'C:\B.pas', ['Bar', 'Baz']));
+  mFirst := mIndex.Units;
+  Assert.AreNotEqual<Pointer>(Pointer(mSecond), Pointer(mFirst));
+  Assert.AreEqual<NativeInt>(2, Length(mFirst));
+  mIndex.RemoveFile('C:\A.pas');
+  mSecond := mIndex.Units;
+  Assert.AreEqual<NativeInt>(1, Length(mSecond));
+  Assert.AreEqual('B', mSecond[0].UnitName);
+  Assert.AreEqual<NativeInt>(2, Length(mSecond[0].Symbols));
 end;
 
 procedure TSymbolIndexTests.UnavailableUnitsOnlyAffected;
 var
-  Index: ISymbolIndex;
-  WithBranch: TUnitIndex;
-  Found: TArray<TUnitIndex>;
+  mIndex: ISymbolIndex;
+  mWithBranch: TUnitIndex;
+  mFound: TArray<TUnitIndex>;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo']));
-  WithBranch := MakeUnit('B', 'C:\B.pas', ['Bar']);
-  WithBranch.Unavailable := MakeUnit('B', 'C:\B.pas', ['NurDebug']).Symbols;
-  Index.AddUnit(WithBranch);
-  Found := Index.UnavailableUnits;
-  Assert.AreEqual<NativeInt>(1, Length(Found));
-  Assert.AreEqual('B', Found[0].UnitName);
-  Assert.AreEqual('NurDebug', Found[0].Unavailable[0].Name);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo']));
+  mWithBranch := MakeUnit('B', 'C:\B.pas', ['Bar']);
+  mWithBranch.Unavailable := MakeUnit('B', 'C:\B.pas', ['NurDebug']).Symbols;
+  mIndex.AddUnit(mWithBranch);
+  mFound := mIndex.UnavailableUnits;
+  Assert.AreEqual<NativeInt>(1, Length(mFound));
+  Assert.AreEqual('B', mFound[0].UnitName);
+  Assert.AreEqual('NurDebug', mFound[0].Unavailable[0].Name);
   // Neue Fassung ohne nicht geltende Zweige: fällt heraus.
-  Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['Bar']));
-  Assert.AreEqual<NativeInt>(0, Length(Index.UnavailableUnits));
-  Index.AddUnit(WithBranch);
-  Assert.AreEqual<NativeInt>(1, Length(Index.UnavailableUnits));
-  Index.RemoveFile('C:\B.pas');
-  Assert.AreEqual<NativeInt>(0, Length(Index.UnavailableUnits));
+  mIndex.AddUnit(MakeUnit('B', 'C:\B.pas', ['Bar']));
+  Assert.AreEqual<NativeInt>(0, Length(mIndex.UnavailableUnits));
+  mIndex.AddUnit(mWithBranch);
+  Assert.AreEqual<NativeInt>(1, Length(mIndex.UnavailableUnits));
+  mIndex.RemoveFile('C:\B.pas');
+  Assert.AreEqual<NativeInt>(0, Length(mIndex.UnavailableUnits));
 end;
 
 /// <summary>Thread, der ACount Units mit dem gemeinsamen Symbol "Gemeinsam" in AIndex einträgt.</summary>
@@ -1105,62 +1115,62 @@ end;
 
 procedure TSymbolIndexTests.AddUnitConcurrentKeepsAllUnits;
 const
-  ThreadCount = 4;
-  PerThread = 100;
+  cThreadCount = 4;
+  cPerThread = 100;
 var
-  Index: ISymbolIndex;
-  Threads: array[0..ThreadCount - 1] of TThread;
-  Number: Integer;
-  First, Last: TUnitIndex;
+  mIndex: ISymbolIndex;
+  mThreads: array[0..cThreadCount - 1] of TThread;
+  mNumber: Integer;
+  mFirst, mLast: TUnitIndex;
 begin
-  Index := TSymbolIndex.Create;
-  for Number := 0 to ThreadCount - 1 do
+  mIndex := TSymbolIndex.Create;
+  for mNumber := 0 to cThreadCount - 1 do
   begin
-    Threads[Number] := AddUnitsThread(Index, Number, PerThread);
+    mThreads[mNumber] := AddUnitsThread(mIndex, mNumber, cPerThread);
   end;
   try
-    for Number := 0 to ThreadCount - 1 do
+    for mNumber := 0 to cThreadCount - 1 do
     begin
-      Threads[Number].Start;
+      mThreads[mNumber].Start;
     end;
-    for Number := 0 to ThreadCount - 1 do
+    for mNumber := 0 to cThreadCount - 1 do
     begin
-      Threads[Number].WaitFor;
+      mThreads[mNumber].WaitFor;
     end;
   finally
-    for Number := 0 to ThreadCount - 1 do
+    for mNumber := 0 to cThreadCount - 1 do
     begin
-      Threads[Number].Free;
+      mThreads[mNumber].Free;
     end;
   end;
-  Assert.AreEqual(ThreadCount * PerThread, Index.UnitCount);
-  Assert.AreEqual<NativeInt>(ThreadCount * PerThread, Length(Index.Units));
-  Assert.AreEqual<NativeInt>(ThreadCount * PerThread, Length(Index.FindSymbols('Gemeinsam')));
+  Assert.AreEqual(cThreadCount * cPerThread, mIndex.UnitCount);
+  Assert.AreEqual<NativeInt>(cThreadCount * cPerThread, Length(mIndex.Units));
+  Assert.AreEqual<NativeInt>(cThreadCount * cPerThread, Length(mIndex.FindSymbols('Gemeinsam')));
   // Der Pool teilt gleiche Zeichenketten auch zwischen den Threads.
-  Assert.IsTrue(Index.FindUnit('U0_1', First));
-  Assert.IsTrue(Index.FindUnit('U3_100', Last));
-  Assert.AreEqual<Pointer>(Pointer(Last.Symbols[0].Name), Pointer(First.Symbols[0].Name));
+  Assert.IsTrue(mIndex.FindUnit('U0_1', mFirst));
+  Assert.IsTrue(mIndex.FindUnit('U3_100', mLast));
+  Assert.AreEqual<Pointer>(Pointer(mLast.Symbols[0].Name), Pointer(mFirst.Symbols[0].Name));
 end;
 
 { TIndexCacheTests }
 
 procedure TIndexCacheTests.RoundTripsUnits;
 var
-  Original, U: TUnitIndex;
-  Loaded: TArray<TUnitIndex>;
+  mOriginal, U: TUnitIndex;
+  mLoaded: TArray<TUnitIndex>;
   S: TIndexSymbol;
 begin
-  Original := Extract(UnitA);
-  Original.Stamp := 1234567890123;
-  Original.Hash := TIndexCache.HashOf(UnitA);
-  Loaded := TIndexCache.Deserialize(TIndexCache.Serialize([Original]));
-  Assert.AreEqual<NativeInt>(1, Length(Loaded));
-  U := Loaded[0];
+  mOriginal := Extract(cUnitA);
+  mOriginal.Stamp := 1234567890123;
+  mOriginal.Hash := TIndexCache.HashOf(cUnitA);
+  mLoaded := TIndexCache.Deserialize(TIndexCache.Serialize([mOriginal]));
+  Assert.AreEqual<NativeInt>(1, Length(mLoaded));
+  U := mLoaded[0];
   Assert.AreEqual('A', U.UnitName);
-  Assert.AreEqual(Original.FileName, U.FileName);
+  Assert.AreEqual(mOriginal.FileName, U.FileName);
   Assert.AreEqual<Int64>(1234567890123, U.Stamp);
-  Assert.AreEqual(Original.Hash, U.Hash);
-  Assert.AreEqual<NativeInt>(Length(Original.Symbols), Length(U.Symbols));
+  Assert.AreEqual(mOriginal.Hash, U.Hash);
+  Assert.AreEqual<NativeInt>(Length(mOriginal.Symbols), Length(U.Symbols));
   Assert.AreEqual('C', U.ImplementationUses[0]);
   Assert.IsTrue(FindSymbol(U, 'TFoo', S));
   Assert.AreEqual('IInterface', S.Ancestors[1]);
@@ -1172,36 +1182,36 @@ end;
 
 procedure TIndexCacheTests.RoundTripsSpecialCharactersAndFlags;
 var
-  Original, U: TUnitIndex;
-  Loaded: TArray<TUnitIndex>;
-  Symbol: TIndexSymbol;
+  mOriginal, U: TUnitIndex;
+  mLoaded: TArray<TUnitIndex>;
+  mSymbol: TIndexSymbol;
 begin
   // #617: Zeilenformat mit Escapes für Tabulator, Zeilenende, "|" und "\".
-  Original := Default(TUnitIndex);
-  Original.UnitName := 'Sonder';
-  Original.FileName := 'C:\Pfad mit|Strich\Sonder.pas';
-  Original.Library_ := True;
-  Original.HasInitialization := True;
-  Original.Includes := ['C:\Inc\a.inc', 'C:\Inc\b|c.inc'];
-  Original.IncludeStamps := [11, 22];
-  Original.Naming[TNamingKind.Field].Total := 7;
-  Original.Naming[TNamingKind.Field].Prefixed := 5;
-  Original.Naming[TNamingKind.Local].Total := 300;
-  Original.Directives := ['deprecated', 'platform'];
-  Original.DeprecatedText := 'Nutze Neu';
-  Symbol := Default(TIndexSymbol);
-  Symbol.Name := 'TListe';
-  Symbol.TypeName := 'TDictionary<string,Integer>';
-  Symbol.Condition := 'defined(A)'#9'and'#13#10'B';
-  Symbol.ParamTypes := ['string', 'array of Integer'];
-  Symbol.Unavailable := True;
-  Original.Unavailable := [Symbol];
-  Symbol.Unavailable := False;
-  Original.Symbols := [Symbol];
-  Loaded := TIndexCache.Deserialize(TIndexCache.Serialize([Original]));
-  Assert.AreEqual<NativeInt>(1, Length(Loaded));
-  U := Loaded[0];
-  Assert.AreEqual(Original.FileName, U.FileName);
+  mOriginal := Default(TUnitIndex);
+  mOriginal.UnitName := 'Sonder';
+  mOriginal.FileName := 'C:\Pfad mit|Strich\Sonder.pas';
+  mOriginal.Library_ := True;
+  mOriginal.HasInitialization := True;
+  mOriginal.Includes := ['C:\Inc\a.inc', 'C:\Inc\b|c.inc'];
+  mOriginal.IncludeStamps := [11, 22];
+  mOriginal.Naming[TNamingKind.Field].Total := 7;
+  mOriginal.Naming[TNamingKind.Field].Prefixed := 5;
+  mOriginal.Naming[TNamingKind.Local].Total := 300;
+  mOriginal.Directives := ['deprecated', 'platform'];
+  mOriginal.DeprecatedText := 'Nutze Neu';
+  mSymbol := Default(TIndexSymbol);
+  mSymbol.Name := 'TListe';
+  mSymbol.TypeName := 'TDictionary<string,Integer>';
+  mSymbol.Condition := 'defined(A)'#9'and'#13#10'B';
+  mSymbol.ParamTypes := ['string', 'array of Integer'];
+  mSymbol.Unavailable := True;
+  mOriginal.Unavailable := [mSymbol];
+  mSymbol.Unavailable := False;
+  mOriginal.Symbols := [mSymbol];
+  mLoaded := TIndexCache.Deserialize(TIndexCache.Serialize([mOriginal]));
+  Assert.AreEqual<NativeInt>(1, Length(mLoaded));
+  U := mLoaded[0];
+  Assert.AreEqual(mOriginal.FileName, U.FileName);
   Assert.IsTrue(U.Library_);
   Assert.IsTrue(U.HasInitialization);
   Assert.IsFalse(U.Compact);
@@ -1215,7 +1225,7 @@ begin
   Assert.AreEqual('Nutze Neu', U.DeprecatedText);
   Assert.AreEqual<NativeInt>(1, Length(U.Symbols));
   Assert.AreEqual('TDictionary<string,Integer>', U.Symbols[0].TypeName);
-  Assert.AreEqual(Symbol.Condition, U.Symbols[0].Condition);
+  Assert.AreEqual(mSymbol.Condition, U.Symbols[0].Condition);
   Assert.AreEqual('array of Integer', U.Symbols[0].ParamTypes[1]);
   Assert.AreEqual<NativeInt>(1, Length(U.Unavailable));
   Assert.IsTrue(U.Unavailable[0].Unavailable);
@@ -1268,82 +1278,82 @@ end;
 
 procedure TIndexCacheTests.RejectsOtherVersionAndBrokenData;
 var
-  Data: TBytes;
+  mData: TBytes;
 begin
   // Frühere Formate (JSON, Zeilenformat 10), fremde und abgeschnittene Daten.
   Assert.AreEqual<NativeInt>(0, Length(TIndexCache.Deserialize(TEncoding.UTF8.GetBytes('{"version":999,"units":[]}'))));
   Assert.AreEqual<NativeInt>(0, Length(TIndexCache.Deserialize(TEncoding.UTF8.GetBytes('ATLAS-INDEX'#9'10'#10))));
   Assert.AreEqual<NativeInt>(0, Length(TIndexCache.Deserialize(nil)));
-  Data := TIndexCache.Serialize([Extract(UnitA)]);
-  Assert.AreEqual<NativeInt>(1, Length(TIndexCache.Deserialize(Data)));
+  mData := TIndexCache.Serialize([Extract(cUnitA)]);
+  Assert.AreEqual<NativeInt>(1, Length(TIndexCache.Deserialize(mData)));
   // Andere Version: das Byte nach der Kennung.
-  Data[8] := Data[8] + 1;
-  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.Deserialize(Data)));
-  Data := TIndexCache.Serialize([Extract(UnitA)]);
-  SetLength(Data, Length(Data) - 5);
-  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(Data)));
+  mData[8] := mData[8] + 1;
+  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.Deserialize(mData)));
+  mData := TIndexCache.Serialize([Extract(cUnitA)]);
+  SetLength(mData, Length(mData) - 5);
+  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(mData)));
   Assert.AreNotEqual(TIndexCache.HashOf('a'), TIndexCache.HashOf('b'));
 end;
 
 procedure TIndexCacheTests.ReadsHeadersAndExpandsSymbolsOnDemand;
 var
-  Original, U: TUnitIndex;
-  Entries: TArray<TIndexCacheEntry>;
+  mOriginal, U: TUnitIndex;
+  mEntries: TArray<TIndexCacheEntry>;
 begin
-  Original := Extract(UnitA);
-  Original.Stamp := 42;
-  Original.Includes := ['C:\Inc\a.inc'];
-  Original.IncludeStamps := [-1];
-  Entries := TIndexCache.ReadEntries(TIndexCache.Serialize([Original]));
-  Assert.AreEqual<NativeInt>(1, Length(Entries));
+  mOriginal := Extract(cUnitA);
+  mOriginal.Stamp := 42;
+  mOriginal.Includes := ['C:\Inc\a.inc'];
+  mOriginal.IncludeStamps := [-1];
+  mEntries := TIndexCache.ReadEntries(TIndexCache.Serialize([mOriginal]));
+  Assert.AreEqual<NativeInt>(1, Length(mEntries));
   // Kopf vollständig, Symbole noch nicht dekodiert.
-  Assert.AreEqual('A', Entries[0].Header.UnitName);
-  Assert.AreEqual<Int64>(42, Entries[0].Header.Stamp);
-  Assert.AreEqual('B', Entries[0].Header.InterfaceUses[1]);
-  Assert.AreEqual<Int64>(-1, Entries[0].Header.IncludeStamps[0]);
-  Assert.AreEqual<NativeInt>(0, Length(Entries[0].Header.Symbols));
-  Assert.IsFalse(Entries[0].Expanded);
-  Assert.IsTrue(TIndexCache.Expand(Entries[0], U));
-  Assert.AreEqual<NativeInt>(Length(Original.Symbols), Length(U.Symbols));
+  Assert.AreEqual('A', mEntries[0].Header.UnitName);
+  Assert.AreEqual<Int64>(42, mEntries[0].Header.Stamp);
+  Assert.AreEqual('B', mEntries[0].Header.InterfaceUses[1]);
+  Assert.AreEqual<Int64>(-1, mEntries[0].Header.IncludeStamps[0]);
+  Assert.AreEqual<NativeInt>(0, Length(mEntries[0].Header.Symbols));
+  Assert.IsFalse(mEntries[0].Expanded);
+  Assert.IsTrue(TIndexCache.Expand(mEntries[0], U));
+  Assert.AreEqual<NativeInt>(Length(mOriginal.Symbols), Length(U.Symbols));
   Assert.AreEqual('C', U.ImplementationUses[0]);
 end;
 
 procedure TIndexCacheTests.SharesEqualStringsAfterLoading;
 var
-  First, Second: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Loaded: TArray<TUnitIndex>;
+  mFirst, mSecond: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mLoaded: TArray<TUnitIndex>;
 begin
   // Gleiche Texte stehen einmal in der String-Tabelle und teilen sich nach dem Laden eine Instanz.
-  Symbol := Default(TIndexSymbol);
-  Symbol.Name := 'Wert';
-  Symbol.TypeName := 'TDictionary<string,Integer>';
-  First := Default(TUnitIndex);
-  First.UnitName := 'Erste';
-  First.FileName := 'C:\Erste.pas';
-  First.Symbols := [Symbol];
-  Second := First;
-  Second.UnitName := 'Zweite';
-  Second.FileName := 'C:\Zweite.pas';
-  Loaded := TIndexCache.Deserialize(TIndexCache.Serialize([First, Second]));
-  Assert.AreEqual<NativeInt>(2, Length(Loaded));
-  Assert.AreEqual(Symbol.TypeName, Loaded[1].Symbols[0].TypeName);
-  Assert.AreEqual<Pointer>(Pointer(Loaded[1].Symbols[0].TypeName), Pointer(Loaded[0].Symbols[0].TypeName));
+  mSymbol := Default(TIndexSymbol);
+  mSymbol.Name := 'Wert';
+  mSymbol.TypeName := 'TDictionary<string,Integer>';
+  mFirst := Default(TUnitIndex);
+  mFirst.UnitName := 'Erste';
+  mFirst.FileName := 'C:\Erste.pas';
+  mFirst.Symbols := [mSymbol];
+  mSecond := mFirst;
+  mSecond.UnitName := 'Zweite';
+  mSecond.FileName := 'C:\Zweite.pas';
+  mLoaded := TIndexCache.Deserialize(TIndexCache.Serialize([mFirst, mSecond]));
+  Assert.AreEqual<NativeInt>(2, Length(mLoaded));
+  Assert.AreEqual(mSymbol.TypeName, mLoaded[1].Symbols[0].TypeName);
+  Assert.AreEqual<Pointer>(Pointer(mLoaded[1].Symbols[0].TypeName), Pointer(mLoaded[0].Symbols[0].TypeName));
 end;
 
 procedure TIndexCacheTests.RejectsDamagedSymbolBlock;
 var
-  Data: TBytes;
-  Entries: TArray<TIndexCacheEntry>;
+  mData: TBytes;
+  mEntries: TArray<TIndexCacheEntry>;
   U: TUnitIndex;
 begin
-  Data := TIndexCache.Serialize([Extract(UnitA)]);
-  Entries := TIndexCache.ReadEntries(Data);
-  Assert.AreEqual<NativeInt>(1, Length(Entries));
+  mData := TIndexCache.Serialize([Extract(cUnitA)]);
+  mEntries := TIndexCache.ReadEntries(mData);
+  Assert.AreEqual<NativeInt>(1, Length(mEntries));
   // Verweis auf einen Text weit hinter der Tabelle.
-  Data[Entries[0].SymbolOffset] := $FF;
-  Data[Entries[0].SymbolOffset + 1] := $7F;
-  Assert.IsFalse(TIndexCache.Expand(Entries[0], U));
+  mData[mEntries[0].SymbolOffset] := $FF;
+  mData[mEntries[0].SymbolOffset + 1] := $7F;
+  Assert.IsFalse(TIndexCache.Expand(mEntries[0], U));
   Assert.AreEqual<NativeInt>(0, Length(U.Symbols));
 end;
 
@@ -1351,33 +1361,33 @@ end;
 
 procedure TIndexProjectFilesTests.ListsMainSourceAndUnitsOnce;
 var
-  Project: TProjectInfo;
-  Files: TArray<string>;
+  mProject: TProjectInfo;
+  mFiles: TArray<string>;
   A, B: TProjectUnit;
 begin
-  Project := Default(TProjectInfo);
-  Project.MainSource := 'C:\P\P.dpr';
+  mProject := Default(TProjectInfo);
+  mProject.MainSource := 'C:\P\P.dpr';
   A.Name := 'A';
   A.FileName := 'C:\P\A.pas';
   B.Name := 'B';
   B.FileName := 'c:\p\a.PAS';
-  Project.Units := [A, B];
-  Files := TIndexProjectFiles.Files(Project);
-  Assert.AreEqual<NativeInt>(2, Length(Files));
-  Assert.AreEqual('C:\P\P.dpr', Files[0]);
-  Assert.AreEqual('C:\P\A.pas', Files[1]);
+  mProject.Units := [A, B];
+  mFiles := TIndexProjectFiles.Files(mProject);
+  Assert.AreEqual<NativeInt>(2, Length(mFiles));
+  Assert.AreEqual('C:\P\P.dpr', mFiles[0]);
+  Assert.AreEqual('C:\P\A.pas', mFiles[1]);
 end;
 
 procedure TIndexProjectFilesTests.ListsPathUnitsOnceWithoutExcluded;
 var
-  Listed: string;
-  Files: TArray<string>;
+  mListed: string;
+  mFiles: TArray<string>;
 begin
-  Listed := '';
-  Files := TIndexProjectFiles.PathFiles(['C:\A', 'c:\a\', ' C:\B ', ''],
+  mListed := '';
+  mFiles := TIndexProjectFiles.PathFiles(['C:\A', 'c:\a\', ' C:\B ', ''],
     function(const AFolder: string): TArray<string>
     begin
-      Listed := Listed + AFolder + ';';
+      mListed := mListed + AFolder + ';';
       if SameText(AFolder, 'C:\A') then
       begin
         Result := ['C:\A\Z.pas', 'C:\A\Y.pas'];
@@ -1392,10 +1402,10 @@ begin
       Result := Pos('\DEMOS\', AnsiUpperCase(AFileName)) > 0;
     end, ['C:\A\Z.pas']);
   // Jeder Ordner einmal; Z steht schon im Projekt, X ist ausgeschlossen, Y doppelt.
-  Assert.AreEqual('C:\A;C:\B;', Listed);
-  Assert.AreEqual(2, Integer(Length(Files)));
-  Assert.AreEqual('C:\A\Y.pas', Files[0]);
-  Assert.AreEqual('C:\B\W.pas', Files[1]);
+  Assert.AreEqual('C:\A;C:\B;', mListed);
+  Assert.AreEqual(2, Integer(Length(mFiles)));
+  Assert.AreEqual('C:\A\Y.pas', mFiles[0]);
+  Assert.AreEqual('C:\B\W.pas', mFiles[1]);
 end;
 
 { TIndexSchedulerTests }
@@ -1421,38 +1431,38 @@ end;
 
 procedure TIndexSchedulerTests.OrdersByStageThenPriority;
 var
-  Scheduler: TIndexScheduler;
-  Active, Other: IIndexTurn;
-  Cancelled: TIndexCancelled;
+  mScheduler: TIndexScheduler;
+  mActive, mOther: IIndexTurn;
+  mCancelled: TIndexCancelled;
 begin
-  Cancelled :=
+  mCancelled :=
     function: Boolean
     begin
       Result := True;
     end;
-  Scheduler := TIndexScheduler.Create;
+  mScheduler := TIndexScheduler.Create;
   try
-    Other := Scheduler.Register(1);
-    Active := Scheduler.Register(0);
-    Assert.AreEqual(2, Integer(Scheduler.Count));
+    mOther := mScheduler.Register(1);
+    mActive := mScheduler.Register(0);
+    Assert.AreEqual(2, Integer(mScheduler.Count));
     // Das aktive Projekt (Priorität 0) kommt in derselben Stufe zuerst.
-    Assert.IsFalse(Other.Enter(TIndexStage.Project, Cancelled));
-    Assert.IsTrue(Active.Enter(TIndexStage.Project, Cancelled));
-    Assert.IsFalse(Other.Enter(TIndexStage.Project, Cancelled), 'Läuft ein Aufbau, warten die anderen');
-    Active.Leave;
+    Assert.IsFalse(mOther.Enter(TIndexStage.Project, mCancelled));
+    Assert.IsTrue(mActive.Enter(TIndexStage.Project, mCancelled));
+    Assert.IsFalse(mOther.Enter(TIndexStage.Project, mCancelled), 'Läuft ein Aufbau, warten die anderen');
+    mActive.Leave;
     // Die Projektdateien des anderen Projekts kommen vor den Suchpfaden des aktiven.
-    Assert.IsFalse(Active.Enter(TIndexStage.SearchPaths, Cancelled));
-    Assert.IsTrue(Other.Enter(TIndexStage.Project, Cancelled));
-    Other.Leave;
-    Assert.IsTrue(Active.Enter(TIndexStage.SearchPaths, Cancelled));
-    Active.Leave;
-    Active := nil;
-    Assert.AreEqual(1, Integer(Scheduler.Count), 'Freigabe meldet ab');
-    Assert.IsTrue(Other.Enter(TIndexStage.Library_, Cancelled));
-    Other.Leave;
-    Other := nil;
+    Assert.IsFalse(mActive.Enter(TIndexStage.SearchPaths, mCancelled));
+    Assert.IsTrue(mOther.Enter(TIndexStage.Project, mCancelled));
+    mOther.Leave;
+    Assert.IsTrue(mActive.Enter(TIndexStage.SearchPaths, mCancelled));
+    mActive.Leave;
+    mActive := nil;
+    Assert.AreEqual(1, Integer(mScheduler.Count), 'Freigabe meldet ab');
+    Assert.IsTrue(mOther.Enter(TIndexStage.Library_, mCancelled));
+    mOther.Leave;
+    mOther := nil;
   finally
-    Scheduler.Free;
+    mScheduler.Free;
   end;
 end;
 
@@ -1486,7 +1496,8 @@ begin
 end;
 
 type
-  /// <summary>Reihenfolge, die einmal den Abbruch fragt: wartet, bis er nein sagt (für StageWatchFollowsTurn).</summary>
+  /// <summary>Reihenfolge, die einmal den Abbruch fragt: wartet, bis er nein sagt (für
+  /// StageWatchFollowsTurn).</summary>
   TProbeTurn = class(TInterfacedObject, IIndexTurn)
   public
     function Enter(AStage: TIndexStage; const ACancelled: TIndexCancelled): Boolean;
@@ -1556,86 +1567,86 @@ end;
 
 procedure TIndexProjectFilesTests.SharesLibraryAcrossProjectDefines;
 var
-  Debug, Release: TProjectInfo;
-  Define: string;
-  HasWin64: Boolean;
+  mDebug, mRelease: TProjectInfo;
+  mDefine: string;
+  mHasWin64: Boolean;
 begin
   // Ein Bibliotheks-Cache für alle Projekte und Konfigurationen derselben Plattform (#647).
-  Debug := Default(TProjectInfo);
-  Debug.Platform := 'Win64';
-  Debug.Defines := ['DEBUG', 'APP'];
-  Release := Debug;
-  Release.Defines := ['RELEASE'];
-  Assert.AreEqual(TIndexProjectFiles.LibrarySignature(Debug, '37.0'),
-    TIndexProjectFiles.LibrarySignature(Release, '37.0'));
-  Release.Platform := 'Win32';
-  Assert.AreNotEqual(TIndexProjectFiles.LibrarySignature(Debug, '37.0'),
-    TIndexProjectFiles.LibrarySignature(Release, '37.0'));
-  HasWin64 := False;
-  for Define in TIndexProjectFiles.LibraryDefines(Debug, '37.0') do
+  mDebug := Default(TProjectInfo);
+  mDebug.Platform := 'Win64';
+  mDebug.Defines := ['DEBUG', 'APP'];
+  mRelease := mDebug;
+  mRelease.Defines := ['RELEASE'];
+  Assert.AreEqual(TIndexProjectFiles.LibrarySignature(mDebug, '37.0'),
+    TIndexProjectFiles.LibrarySignature(mRelease, '37.0'));
+  mRelease.Platform := 'Win32';
+  Assert.AreNotEqual(TIndexProjectFiles.LibrarySignature(mDebug, '37.0'),
+    TIndexProjectFiles.LibrarySignature(mRelease, '37.0'));
+  mHasWin64 := False;
+  for mDefine in TIndexProjectFiles.LibraryDefines(mDebug, '37.0') do
   begin
-    Assert.AreNotEqual('DEBUG', Define);
-    HasWin64 := HasWin64 or (Define = 'WIN64');
+    Assert.AreNotEqual('DEBUG', mDefine);
+    mHasWin64 := mHasWin64 or (mDefine = 'WIN64');
   end;
-  Assert.IsTrue(HasWin64);
+  Assert.IsTrue(mHasWin64);
 end;
 
 procedure TIndexProjectFilesTests.CombinesDefinesWithPlatformSymbols;
 var
-  Project: TProjectInfo;
-  Defines: TArray<string>;
-  Define: string;
-  HasDebug, HasWin64, HasVer: Boolean;
-  Signature: string;
+  mProject: TProjectInfo;
+  mDefines: TArray<string>;
+  mDefine: string;
+  mHasDebug, mHasWin64, mHasVer: Boolean;
+  mSignature: string;
 begin
-  Project := Default(TProjectInfo);
-  Project.Platform := 'Win64';
-  Project.Defines := ['DEBUG'];
-  Defines := TIndexProjectFiles.Defines(Project, '37.0');
-  HasDebug := False;
-  HasWin64 := False;
-  HasVer := False;
-  for Define in Defines do
+  mProject := Default(TProjectInfo);
+  mProject.Platform := 'Win64';
+  mProject.Defines := ['DEBUG'];
+  mDefines := TIndexProjectFiles.Defines(mProject, '37.0');
+  mHasDebug := False;
+  mHasWin64 := False;
+  mHasVer := False;
+  for mDefine in mDefines do
   begin
-    HasDebug := HasDebug or (Define = 'DEBUG');
-    HasWin64 := HasWin64 or (Define = 'WIN64');
-    HasVer := HasVer or (Define = 'VER370');
+    mHasDebug := mHasDebug or (mDefine = 'DEBUG');
+    mHasWin64 := mHasWin64 or (mDefine = 'WIN64');
+    mHasVer := mHasVer or (mDefine = 'VER370');
   end;
-  Assert.IsTrue(HasDebug);
-  Assert.IsTrue(HasWin64);
-  Assert.IsTrue(HasVer);
-  Assert.AreNotEqual(TIndexProjectFiles.Signature(Project, '37.0'), TIndexProjectFiles.Signature(Project, '36.0'));
+  Assert.IsTrue(mHasDebug);
+  Assert.IsTrue(mHasWin64);
+  Assert.IsTrue(mHasVer);
+  Assert.AreNotEqual(TIndexProjectFiles.Signature(mProject, '37.0'), TIndexProjectFiles.Signature(mProject, '36.0'));
   // Geänderte Symbole, Suchpfade oder Namespaces machen den Cache ungültig, die Reihenfolge der Symbole nicht.
-  Signature := TIndexProjectFiles.Signature(Project, '37.0');
-  Project.Defines := ['debug'];
-  Assert.AreEqual(Signature, TIndexProjectFiles.Signature(Project, '37.0'));
-  Project.Defines := ['DEBUG', 'TRACE'];
-  Assert.AreNotEqual(Signature, TIndexProjectFiles.Signature(Project, '37.0'));
-  Project.Defines := ['DEBUG'];
-  Project.SearchPaths := ['C:\Lib'];
-  Assert.AreNotEqual(Signature, TIndexProjectFiles.Signature(Project, '37.0'));
-  Project.SearchPaths := nil;
-  Project.Namespaces := ['Vcl'];
-  Assert.AreNotEqual(Signature, TIndexProjectFiles.Signature(Project, '37.0'));
-  Project.Namespaces := nil;
+  mSignature := TIndexProjectFiles.Signature(mProject, '37.0');
+  mProject.Defines := ['debug'];
+  Assert.AreEqual(mSignature, TIndexProjectFiles.Signature(mProject, '37.0'));
+  mProject.Defines := ['DEBUG', 'TRACE'];
+  Assert.AreNotEqual(mSignature, TIndexProjectFiles.Signature(mProject, '37.0'));
+  mProject.Defines := ['DEBUG'];
+  mProject.SearchPaths := ['C:\Lib'];
+  Assert.AreNotEqual(mSignature, TIndexProjectFiles.Signature(mProject, '37.0'));
+  mProject.SearchPaths := nil;
+  mProject.Namespaces := ['Vcl'];
+  Assert.AreNotEqual(mSignature, TIndexProjectFiles.Signature(mProject, '37.0'));
+  mProject.Namespaces := nil;
   // Schalter der .dproj für $IFOPT (#847) stehen in den Defines und im Schlüssel.
-  Project.Properties := [TPair<string, string>.Create('DCC_RangeChecking', 'true')];
-  Assert.AreNotEqual(Signature, TIndexProjectFiles.Signature(Project, '37.0'));
-  HasDebug := False;
-  for Define in TIndexProjectFiles.Defines(Project, '37.0') do
+  mProject.Properties := [TPair<string, string>.Create('DCC_RangeChecking', 'true')];
+  Assert.AreNotEqual(mSignature, TIndexProjectFiles.Signature(mProject, '37.0'));
+  mHasDebug := False;
+  for mDefine in TIndexProjectFiles.Defines(mProject, '37.0') do
   begin
-    HasDebug := HasDebug or (Define = '$R+');
+    mHasDebug := mHasDebug or (mDefine = '$R+');
   end;
-  Assert.IsTrue(HasDebug);
-  Project.Properties := nil;
+  Assert.IsTrue(mHasDebug);
+  mProject.Properties := nil;
   // Delphi 12: BDS 23.0 ergibt VER360, nicht VER230.
-  HasVer := False;
-  for Define in TIndexProjectFiles.Defines(Project, '23.0') do
+  mHasVer := False;
+  for mDefine in TIndexProjectFiles.Defines(mProject, '23.0') do
   begin
-    Assert.AreNotEqual('VER230', Define);
-    HasVer := HasVer or (Define = 'VER360');
+    Assert.AreNotEqual('VER230', mDefine);
+    mHasVer := mHasVer or (mDefine = 'VER360');
   end;
-  Assert.IsTrue(HasVer);
+  Assert.IsTrue(mHasVer);
 end;
 
 initialization

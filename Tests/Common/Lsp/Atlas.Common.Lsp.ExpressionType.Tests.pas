@@ -47,34 +47,34 @@ uses
   Atlas.Common.Lsp.ExpressionType;
 
 const
-  LB = #13#10;
-  MainFile = 'C:\P\Haupt.pas';
-  OtherFile = 'C:\P\Preise.pas';
+  cLB = #13#10;
+  cMainFile = 'C:\P\Haupt.pas';
+  cOtherFile = 'C:\P\Preise.pas';
 
-  UnitOther =
-    'unit Preise;' + LB +
-    'interface' + LB +
-    'type' + LB +
-    '  TPreis = Currency;' + LB +                      // 3
-    'implementation' + LB +
+  cUnitOther =
+    'unit Preise;' + cLB +
+    'interface' + cLB +
+    'type' + cLB +
+    '  TPreis = Currency;' + cLB +                      // 3
+    'implementation' + cLB +
     'end.';
 
-  UnitMain =
-    'unit Haupt;' + LB +
-    'interface' + LB +
-    'implementation' + LB +
-    'uses Preise;' + LB +
-    'procedure Probe;' + LB +
-    'const' + LB +
-    '  Zwei = 2;' + LB +
-    'var' + LB +
-    '  Price: TPreis;' + LB +
-    '  Count: Integer;' + LB +
-    'begin' + LB +
-    '  Price := Price * Count;' + LB +                  // 11
-    '  Count := Zwei * 21;' + LB +                      // 12
-    '  Count := Count + Nichts;' + LB +                 // 13
-    'end;' + LB +
+  cUnitMain =
+    'unit Haupt;' + cLB +
+    'interface' + cLB +
+    'implementation' + cLB +
+    'uses Preise;' + cLB +
+    'procedure Probe;' + cLB +
+    'const' + cLB +
+    '  Zwei = 2;' + cLB +
+    'var' + cLB +
+    '  Price: TPreis;' + cLB +
+    '  Count: Integer;' + cLB +
+    'begin' + cLB +
+    '  Price := Price * Count;' + cLB +                  // 11
+    '  Count := Zwei * 21;' + cLB +                      // 12
+    '  Count := Count + Nichts;' + cLB +                 // 13
+    'end;' + cLB +
     'end.';
 
 { TLspExpressionTypeTests }
@@ -83,8 +83,8 @@ procedure TLspExpressionTypeTests.Setup;
 begin
   FStore := TDocumentStore.Create;
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitOther, OtherFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitMain, MainFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitOther, cOtherFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
 end;
 
 procedure TLspExpressionTypeTests.TearDown;
@@ -95,130 +95,130 @@ end;
 
 function TLspExpressionTypeTests.Run(ALine, AStart, AEnd: Integer; const ASettings: string): TJSONObject;
 var
-  Uri: string;
-  Arguments: TJSONArray;
-  Reply: TJSONValue;
+  mUri: string;
+  mArguments: TJSONArray;
+  mReply: TJSONValue;
 begin
-  Uri := TDocumentUris.FromPath(MainFile);
-  FStore.Close(Uri);
-  FStore.Open(Uri, 'delphi', 1, UnitMain);
-  Arguments := TJSONArray.Create;
+  mUri := TDocumentUris.FromPath(cMainFile);
+  FStore.Close(mUri);
+  FStore.Open(mUri, 'delphi', 1, cUnitMain);
+  mArguments := TJSONArray.Create;
   try
-    Arguments.Add(Uri);
-    Arguments.AddElement(TJSONObject.ParseJSONValue(Format(
+    mArguments.Add(mUri);
+    mArguments.AddElement(TJSONObject.ParseJSONValue(Format(
       '{"start": {"line": %d, "character": %d}, "end": {"line": %d, "character": %d}}',
       [ALine, AStart, ALine, AEnd])));
     if ASettings <> '' then
     begin
-      Arguments.AddElement(TJSONObject.ParseJSONValue(ASettings));
+      mArguments.AddElement(TJSONObject.ParseJSONValue(ASettings));
     end;
-    Reply := TLspExpressionType.Execute(FStore, FIndex, nil, nil, Arguments);
+    mReply := TLspExpressionType.Execute(FStore, FIndex, nil, nil, mArguments);
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
-  Assert.IsTrue(Reply is TJSONObject);
-  Result := TJSONObject(Reply);
+  Assert.IsTrue(mReply is TJSONObject);
+  Result := TJSONObject(mReply);
 end;
 
 procedure TLspExpressionTypeTests.ReplyCarriesTypeConversionsAndLocation;
 var
-  Reply, Location, Conversion: TJSONObject;
+  mReply, mLocation, mConversion: TJSONObject;
 begin
   // Ganze rechte Seite "Price * Count" markiert.
-  Reply := Run(11, 11, 24, '');
+  mReply := Run(11, 11, 24, '');
   try
-    Assert.AreEqual('Price * Count', Reply.GetValue('expression').Value);
-    Assert.AreEqual('Currency', Reply.GetValue('type').Value, 'TPreis rechnet als Currency');
-    Assert.IsNull(Reply.GetValue('error'));
-    Assert.AreEqual('11', ((Reply.GetValue('range') as TJSONObject).GetValue('start') as TJSONObject).
+    Assert.AreEqual('Price * Count', mReply.GetValue('expression').Value);
+    Assert.AreEqual('Currency', mReply.GetValue('type').Value, 'TPreis rechnet als Currency');
+    Assert.IsNull(mReply.GetValue('error'));
+    Assert.AreEqual('11', ((mReply.GetValue('range') as TJSONObject).GetValue('start') as TJSONObject).
       GetValue('line').Value);
-    Conversion := (Reply.GetValue('conversions') as TJSONArray).Items[0] as TJSONObject;
-    Assert.AreEqual('Count', Conversion.GetValue('expression').Value);
-    Assert.AreEqual('Integer', Conversion.GetValue('from').Value);
-    Assert.AreEqual('widen', Conversion.GetValue('kind').Value);
+    mConversion := (mReply.GetValue('conversions') as TJSONArray).Items[0] as TJSONObject;
+    Assert.AreEqual('Count', mConversion.GetValue('expression').Value);
+    Assert.AreEqual('Integer', mConversion.GetValue('from').Value);
+    Assert.AreEqual('widen', mConversion.GetValue('kind').Value);
   finally
-    Reply.Free;
+    mReply.Free;
   end;
   // Cursor auf Price: der Name selbst, Alias mit Grundtyp und Fundort in der anderen Unit.
-  Reply := Run(11, 13, 13, '');
+  mReply := Run(11, 13, 13, '');
   try
-    Assert.AreEqual('Price', Reply.GetValue('expression').Value);
-    Assert.AreEqual('TPreis', Reply.GetValue('type').Value);
-    Assert.AreEqual('Currency', Reply.GetValue('base').Value);
-    Location := Reply.GetValue('location') as TJSONObject;
-    Assert.IsNotNull(Location);
-    Assert.AreEqual(OtherFile, Location.GetValue('file').Value);
-    Assert.AreEqual('3', Location.GetValue('line').Value);
+    Assert.AreEqual('Price', mReply.GetValue('expression').Value);
+    Assert.AreEqual('TPreis', mReply.GetValue('type').Value);
+    Assert.AreEqual('Currency', mReply.GetValue('base').Value);
+    mLocation := mReply.GetValue('location') as TJSONObject;
+    Assert.IsNotNull(mLocation);
+    Assert.AreEqual(cOtherFile, mLocation.GetValue('file').Value);
+    Assert.AreEqual('3', mLocation.GetValue('line').Value);
   finally
-    Reply.Free;
+    mReply.Free;
   end;
 end;
 
 procedure TLspExpressionTypeTests.ExpandAndSwitches;
 var
-  Reply: TJSONObject;
+  mReply: TJSONObject;
 begin
   // Von Count (Zeichen 19..24) eine Stufe hinaus.
-  Reply := Run(11, 19, 24, '{"expand": true, "conversions": false}');
+  mReply := Run(11, 19, 24, '{"expand": true, "conversions": false}');
   try
-    Assert.AreEqual('Price * Count', Reply.GetValue('expression').Value);
-    Assert.AreEqual(0, (Reply.GetValue('conversions') as TJSONArray).Count);
+    Assert.AreEqual('Price * Count', mReply.GetValue('expression').Value);
+    Assert.AreEqual(0, (mReply.GetValue('conversions') as TJSONArray).Count);
   finally
-    Reply.Free;
+    mReply.Free;
   end;
-  Reply := Run(12, 11, 20, '{"constValue": false}');
+  mReply := Run(12, 11, 20, '{"constValue": false}');
   try
-    Assert.IsNull(Reply.GetValue('value'));
+    Assert.IsNull(mReply.GetValue('value'));
   finally
-    Reply.Free;
+    mReply.Free;
   end;
 end;
 
 procedure TLspExpressionTypeTests.ValueAndErrors;
 var
-  Reply, Error: TJSONObject;
+  mReply, mError: TJSONObject;
 begin
-  Reply := Run(12, 11, 20, '');
+  mReply := Run(12, 11, 20, '');
   try
-    Assert.AreEqual('Zwei * 21', Reply.GetValue('expression').Value);
-    Assert.AreEqual('42', Reply.GetValue('value').Value);
+    Assert.AreEqual('Zwei * 21', mReply.GetValue('expression').Value);
+    Assert.AreEqual('42', mReply.GetValue('value').Value);
   finally
-    Reply.Free;
+    mReply.Free;
   end;
-  Reply := Run(13, 11, 25, '');
+  mReply := Run(13, 11, 25, '');
   try
-    Assert.AreEqual('', Reply.GetValue('type').Value);
-    Error := Reply.GetValue('error') as TJSONObject;
-    Assert.AreEqual('unknownName', Error.GetValue('kind').Value);
-    Assert.AreEqual('Nichts', Error.GetValue('detail').Value);
+    Assert.AreEqual('', mReply.GetValue('type').Value);
+    mError := mReply.GetValue('error') as TJSONObject;
+    Assert.AreEqual('unknownName', mError.GetValue('kind').Value);
+    Assert.AreEqual('Nichts', mError.GetValue('detail').Value);
   finally
-    Reply.Free;
+    mReply.Free;
   end;
   // Auf "begin": kein Ausdruck.
-  Reply := Run(10, 1, 1, '');
+  mReply := Run(10, 1, 1, '');
   try
-    Assert.AreEqual('noExpression', (Reply.GetValue('error') as TJSONObject).GetValue('kind').Value);
+    Assert.AreEqual('noExpression', (mReply.GetValue('error') as TJSONObject).GetValue('kind').Value);
   finally
-    Reply.Free;
+    mReply.Free;
   end;
 end;
 
 procedure TLspExpressionTypeTests.UnknownDocumentGivesError;
 var
-  Arguments: TJSONArray;
+  mArguments: TJSONArray;
 begin
-  Arguments := TJSONArray.Create;
+  mArguments := TJSONArray.Create;
   try
-    Arguments.Add('file:///C:/P/Fehlt.pas');
-    Arguments.AddElement(TJSONObject.ParseJSONValue('{"start": {"line": 0, "character": 0}, ' +
+    mArguments.Add('file:///C:/P/Fehlt.pas');
+    mArguments.AddElement(TJSONObject.ParseJSONValue('{"start": {"line": 0, "character": 0}, ' +
       '"end": {"line": 0, "character": 0}}'));
     Assert.WillRaise(
       procedure
       begin
-        TLspExpressionType.Execute(FStore, FIndex, nil, nil, Arguments).Free;
+        TLspExpressionType.Execute(FStore, FIndex, nil, nil, mArguments).Free;
       end, EJsonRpcError);
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
 end;
 

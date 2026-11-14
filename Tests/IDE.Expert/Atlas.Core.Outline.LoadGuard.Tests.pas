@@ -37,119 +37,119 @@ uses
 
 procedure TAtlasOutlineLoadGuardTests.WithoutLoadEverythingIsImmediate;
 var
-  Guard: TAtlasOutlineLoadGuard;
+  mGuard: TAtlasOutlineLoadGuard;
 begin
-  Guard := TAtlasOutlineLoadGuard.Create;
+  mGuard := TAtlasOutlineLoadGuard.Create;
   try
-    Assert.IsFalse(Guard.Busy);
-    Assert.IsTrue(Guard.Remove('a.pas'));
-    Assert.IsTrue(Guard.ClearAll);
+    Assert.IsFalse(mGuard.Busy);
+    Assert.IsTrue(mGuard.Remove('a.pas'));
+    Assert.IsTrue(mGuard.ClearAll);
   finally
-    Guard.Free;
+    mGuard.Free;
   end;
 end;
 
 procedure TAtlasOutlineLoadGuardTests.RemoveDuringLoadIsDeferred;
 var
-  Guard: TAtlasOutlineLoadGuard;
-  Clear: Boolean;
-  Keys: TArray<string>;
+  mGuard: TAtlasOutlineLoadGuard;
+  mClear: Boolean;
+  mKeys: TArray<string>;
 begin
-  Guard := TAtlasOutlineLoadGuard.Create;
+  mGuard := TAtlasOutlineLoadGuard.Create;
   try
-    Guard.Enter;
-    Assert.IsTrue(Guard.Busy);
-    Assert.IsFalse(Guard.Remove('a.pas'));
-    Assert.IsFalse(Guard.Remove('b.pas'));
-    Assert.IsFalse(Guard.Remove('a.pas'));
-    Assert.IsTrue(Guard.Leave(Clear, Keys));
-    Assert.IsFalse(Clear);
-    Assert.AreEqual(2, Integer(Length(Keys)));
-    Assert.AreEqual('a.pas', Keys[0]);
-    Assert.AreEqual('b.pas', Keys[1]);
-    Assert.IsFalse(Guard.Busy);
+    mGuard.Enter;
+    Assert.IsTrue(mGuard.Busy);
+    Assert.IsFalse(mGuard.Remove('a.pas'));
+    Assert.IsFalse(mGuard.Remove('b.pas'));
+    Assert.IsFalse(mGuard.Remove('a.pas'));
+    Assert.IsTrue(mGuard.Leave(mClear, mKeys));
+    Assert.IsFalse(mClear);
+    Assert.AreEqual(2, Integer(Length(mKeys)));
+    Assert.AreEqual('a.pas', mKeys[0]);
+    Assert.AreEqual('b.pas', mKeys[1]);
+    Assert.IsFalse(mGuard.Busy);
   finally
-    Guard.Free;
+    mGuard.Free;
   end;
 end;
 
 procedure TAtlasOutlineLoadGuardTests.ClearDuringLoadWinsOverKeys;
 var
-  Guard: TAtlasOutlineLoadGuard;
-  Clear: Boolean;
-  Keys: TArray<string>;
+  mGuard: TAtlasOutlineLoadGuard;
+  mClear: Boolean;
+  mKeys: TArray<string>;
 begin
-  Guard := TAtlasOutlineLoadGuard.Create;
+  mGuard := TAtlasOutlineLoadGuard.Create;
   try
-    Guard.Enter;
-    Guard.Remove('a.pas');
-    Assert.IsFalse(Guard.ClearAll);
-    Guard.Remove('b.pas');
-    Assert.IsTrue(Guard.Leave(Clear, Keys));
-    Assert.IsTrue(Clear);
-    Assert.AreEqual(0, Integer(Length(Keys)));
+    mGuard.Enter;
+    mGuard.Remove('a.pas');
+    Assert.IsFalse(mGuard.ClearAll);
+    mGuard.Remove('b.pas');
+    Assert.IsTrue(mGuard.Leave(mClear, mKeys));
+    Assert.IsTrue(mClear);
+    Assert.AreEqual(0, Integer(Length(mKeys)));
   finally
-    Guard.Free;
+    mGuard.Free;
   end;
 end;
 
 procedure TAtlasOutlineLoadGuardTests.NestedLoadReturnsOnlyAtTheOutermost;
 var
-  Guard: TAtlasOutlineLoadGuard;
-  Clear: Boolean;
-  Keys: TArray<string>;
+  mGuard: TAtlasOutlineLoadGuard;
+  mClear: Boolean;
+  mKeys: TArray<string>;
 begin
-  Guard := TAtlasOutlineLoadGuard.Create;
+  mGuard := TAtlasOutlineLoadGuard.Create;
   try
-    Guard.Enter;
-    Guard.Enter;
-    Guard.ClearAll;
-    Assert.IsFalse(Guard.Leave(Clear, Keys));
-    Assert.IsFalse(Clear);
-    Assert.IsTrue(Guard.Busy);
-    Assert.IsTrue(Guard.Leave(Clear, Keys));
-    Assert.IsTrue(Clear);
+    mGuard.Enter;
+    mGuard.Enter;
+    mGuard.ClearAll;
+    Assert.IsFalse(mGuard.Leave(mClear, mKeys));
+    Assert.IsFalse(mClear);
+    Assert.IsTrue(mGuard.Busy);
+    Assert.IsTrue(mGuard.Leave(mClear, mKeys));
+    Assert.IsTrue(mClear);
   finally
-    Guard.Free;
+    mGuard.Free;
   end;
 end;
 
 procedure TAtlasOutlineLoadGuardTests.LeaveWithoutPendingReturnsFalse;
 var
-  Guard: TAtlasOutlineLoadGuard;
-  Clear: Boolean;
-  Keys: TArray<string>;
+  mGuard: TAtlasOutlineLoadGuard;
+  mClear: Boolean;
+  mKeys: TArray<string>;
 begin
-  Guard := TAtlasOutlineLoadGuard.Create;
+  mGuard := TAtlasOutlineLoadGuard.Create;
   try
-    Guard.Enter;
-    Assert.IsFalse(Guard.Leave(Clear, Keys));
-    Assert.IsFalse(Clear);
-    Assert.AreEqual(0, Integer(Length(Keys)));
+    mGuard.Enter;
+    Assert.IsFalse(mGuard.Leave(mClear, mKeys));
+    Assert.IsFalse(mClear);
+    Assert.AreEqual(0, Integer(Length(mKeys)));
     // Überzähliges Leave bleibt ohne Wirkung.
-    Assert.IsFalse(Guard.Leave(Clear, Keys));
-    Assert.IsFalse(Guard.Busy);
+    Assert.IsFalse(mGuard.Leave(mClear, mKeys));
+    Assert.IsFalse(mGuard.Busy);
   finally
-    Guard.Free;
+    mGuard.Free;
   end;
 end;
 
 procedure TAtlasOutlineLoadGuardTests.PendingIsResetAfterLeave;
 var
-  Guard: TAtlasOutlineLoadGuard;
-  Clear: Boolean;
-  Keys: TArray<string>;
+  mGuard: TAtlasOutlineLoadGuard;
+  mClear: Boolean;
+  mKeys: TArray<string>;
 begin
-  Guard := TAtlasOutlineLoadGuard.Create;
+  mGuard := TAtlasOutlineLoadGuard.Create;
   try
-    Guard.Enter;
-    Guard.ClearAll;
-    Guard.Leave(Clear, Keys);
-    Guard.Enter;
-    Assert.IsFalse(Guard.Leave(Clear, Keys));
-    Assert.IsFalse(Clear);
+    mGuard.Enter;
+    mGuard.ClearAll;
+    mGuard.Leave(mClear, mKeys);
+    mGuard.Enter;
+    Assert.IsFalse(mGuard.Leave(mClear, mKeys));
+    Assert.IsFalse(mClear);
   finally
-    Guard.Free;
+    mGuard.Free;
   end;
 end;
 

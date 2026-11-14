@@ -76,7 +76,7 @@ uses
   Atlas.Common.Lsp.DiagnosticItems;
 
 const
-  UnitWerkzeug =
+  cUnitWerkzeug =
     'unit Werkzeug;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -125,7 +125,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitSysUtils =
+  cUnitSysUtils =
     'unit System.SysUtils;'#10 +
     'interface'#10 +
     'function IncludeTrailingBackslash(const S: string): string; platform;'#10 +
@@ -145,7 +145,7 @@ const
     'end.';
 
   // Wie die RTL: TDateTime ist ein eigener Typ über Double.
-  UnitSystem =
+  cUnitSystem =
     'unit System;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -153,19 +153,19 @@ const
     'implementation'#10 +
     'end.';
 
-  UnitAltlast =
+  cUnitAltlast =
     'unit Werk.Altlast deprecated ''Nutze Werkzeug'';'#10 +
     'interface'#10 +
     'implementation'#10 +
     'end.';
 
-  UnitWindows =
+  cUnitWindows =
     'unit Werk.Windows platform experimental;'#10 +
     'interface'#10 +
     'implementation'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Werkzeug;'#10 +
@@ -185,56 +185,56 @@ const
 function NewIndex: ISymbolIndex;
 begin
   Result := TSymbolIndex.Create;
-  Result.AddUnit(TIndexExtractor.ExtractText(UnitWerkzeug, 'C:\P\Werkzeug.pas', nil));
-  Result.AddUnit(TIndexExtractor.ExtractText(UnitSysUtils, 'C:\RTL\System.SysUtils.pas', nil));
-  Result.AddUnit(TIndexExtractor.ExtractText(UnitSystem, 'C:\RTL\System.pas', nil));
-  Result.AddUnit(TIndexExtractor.ExtractText(UnitAltlast, 'C:\P\Werk.Altlast.pas', nil));
-  Result.AddUnit(TIndexExtractor.ExtractText(UnitWindows, 'C:\P\Werk.Windows.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, 'C:\P\Werkzeug.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cUnitSysUtils, 'C:\RTL\System.SysUtils.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cUnitSystem, 'C:\RTL\System.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cUnitAltlast, 'C:\P\Werk.Altlast.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cUnitWindows, 'C:\P\Werk.Windows.pas', nil));
 end;
 
 function Run(const ASource, AConfigJson: string; AWithIndex: Boolean): TArray<TRuleFinding>;
 var
-  Context: TRuleContext;
-  Tree: TSyntaxTree;
-  Index: ISymbolIndex;
-  Settings: TServerSettings;
-  Issues: TArray<TConfigurationIssue>;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
+  mIndex: ISymbolIndex;
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Index := NewIndex;
+  mIndex := NewIndex;
   if AConfigJson = '' then
   begin
-    Settings := TServerSettings.Default;
+    mSettings := TServerSettings.Default;
   end
   else
   begin
-    Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+    mSettings := TConfigurationParser.Parse(AConfigJson, mIssues);
   end;
-  Tree := TPascalParser.Parse(ASource);
+  mTree := TPascalParser.Parse(ASource);
   try
-    Context := Default(TRuleContext);
-    Context.RelativePath := 'Haupt.pas';
-    Context.UnitName := 'Haupt';
-    Context.Text := ASource;
-    Context.Tree := Tree;
+    mContext := Default(TRuleContext);
+    mContext.RelativePath := 'Haupt.pas';
+    mContext.UnitName := 'Haupt';
+    mContext.Text := ASource;
+    mContext.Tree := mTree;
     if AWithIndex then
     begin
-      Context.Index := Index;
+      mContext.Index := mIndex;
     end;
-    Result := TRuleEngine.Run([IRule(TDeprecatedSymbolRule.Create)], Settings, Context);
+    Result := TRuleEngine.Run([IRule(TDeprecatedSymbolRule.Create)], mSettings, mContext);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Messages(const AFindings: TArray<TRuleFinding>): string;
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
   Result := '';
-  for Finding in AFindings do
+  for mFinding in AFindings do
   begin
-    Result := Result + Format('%d:%d %s|', [Finding.Range.StartPos.Line, Finding.Range.StartPos.Character,
-      Finding.Message]);
+    Result := Result + Format('%d:%d %s|', [mFinding.Range.StartPos.Line, mFinding.Range.StartPos.Character,
+      mFinding.Message]);
   end;
 end;
 
@@ -254,7 +254,7 @@ end;
 
 procedure TDeprecatedRulesTests.DeclarationsOfSameNameAreNoUse;
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Werkzeug;'#10 +
@@ -275,74 +275,74 @@ const
     'end.';
 begin
   // Vorher meldete die Regel das Feld (Zeile 5), den Aufzählungswert (7) und den Parameter (9).
-  Assert.AreEqual('15:11 Alt ist deprecated: Nutze Neu (wie W1000).|', Messages(Run(Source, '', True)));
+  Assert.AreEqual('15:11 Alt ist deprecated: Nutze Neu (wie W1000).|', Messages(Run(cSource, '', True)));
 end;
 
 procedure TDeprecatedRulesTests.CallReportsReason;
 var
-  Findings: TArray<TRuleFinding>;
-  Finding: TRuleFinding;
-  Text: string;
+  mFindings: TArray<TRuleFinding>;
+  mFinding: TRuleFinding;
+  mText: string;
 begin
   // Wie dcc ab Werk alle vier Arten (#1378).
-  Findings := Run(UnitHaupt, '', True);
-  Text := Messages(Findings);
+  mFindings := Run(cUnitHaupt, '', True);
+  mText := Messages(mFindings);
   Assert.AreEqual('6:5 TAlt ist experimental (wie W1003).|8:2 Alt ist deprecated: Nutze Neu (wie W1000).|' +
     '10:2 Ohne ist deprecated (wie W1000).|11:5 Grenze ist platform (wie W1002).|12:4 Bib ist library (wie W1001).|',
-    Text);
-  for Finding in Findings do
+    mText);
+  for mFinding in mFindings do
   begin
-    if Finding.Message.StartsWith('Alt ') then
+    if mFinding.Message.StartsWith('Alt ') then
     begin
-      Assert.AreEqual(cDeprecatedSymbolRuleId, Finding.RuleId);
-      Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Finding.Severity));
-      Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Finding.Confidence));
-      Assert.AreEqual(3, Finding.Range.EndPos.Character - Finding.Range.StartPos.Character);
+      Assert.AreEqual(cDeprecatedSymbolRuleId, mFinding.RuleId);
+      Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFinding.Severity));
+      Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFinding.Confidence));
+      Assert.AreEqual(3, mFinding.Range.EndPos.Character - mFinding.Range.StartPos.Character);
       // Der Grund nennt Neu, und Neu ist hier sichtbar.
-      Assert.AreEqual(1, Integer(Length(Finding.Fixes)));
-      Assert.AreEqual('Durch Neu ersetzen', Finding.Fixes[0].Title);
-      Assert.AreEqual('Neu', Finding.Fixes[0].Edits[0].NewText);
+      Assert.AreEqual(1, Integer(Length(mFinding.Fixes)));
+      Assert.AreEqual('Durch Neu ersetzen', mFinding.Fixes[0].Title);
+      Assert.AreEqual('Neu', mFinding.Fixes[0].Edits[0].NewText);
     end
     else
     begin
-      Assert.AreEqual(0, Integer(Length(Finding.Fixes)), Finding.Message);
+      Assert.AreEqual(0, Integer(Length(mFinding.Fixes)), mFinding.Message);
     end;
   end;
   // Methode: Ersatz im selben Typ.
-  Findings := Run(Haupt('Werkzeug', '  L.Anhaengen;'#10), '', True);
-  Assert.AreEqual('9:4 Anhaengen ist deprecated: Use Add (wie W1000).|', Messages(Findings));
-  Assert.AreEqual('Add', Findings[0].Fixes[0].Edits[0].NewText);
+  mFindings := Run(Haupt('Werkzeug', '  L.Anhaengen;'#10), '', True);
+  Assert.AreEqual('9:4 Anhaengen ist deprecated: Use Add (wie W1000).|', Messages(mFindings));
+  Assert.AreEqual('Add', mFindings[0].Fixes[0].Edits[0].NewText);
 end;
 
 procedure TDeprecatedRulesTests.KindsOption;
 begin
   Assert.AreEqual('11:5 Grenze ist platform (wie W1002).|',
-    Messages(Run(UnitHaupt, KindsConfig('"platform"'), True)));
-  Assert.AreEqual('12:4 Bib ist library (wie W1001).|', Messages(Run(UnitHaupt, KindsConfig('"library"'), True)));
+    Messages(Run(cUnitHaupt, KindsConfig('"platform"'), True)));
+  Assert.AreEqual('12:4 Bib ist library (wie W1001).|', Messages(Run(cUnitHaupt, KindsConfig('"library"'), True)));
   Assert.AreEqual('8:2 Alt ist deprecated: Nutze Neu (wie W1000).|10:2 Ohne ist deprecated (wie W1000).|',
-    Messages(Run(UnitHaupt, KindsConfig('"deprecated"'), True)));
-  Assert.AreEqual(0, Integer(Length(Run(UnitHaupt, KindsConfig(''), True))));
+    Messages(Run(cUnitHaupt, KindsConfig('"deprecated"'), True)));
+  Assert.AreEqual(0, Integer(Length(Run(cUnitHaupt, KindsConfig(''), True))));
 end;
 
 procedure TDeprecatedRulesTests.KindsOptionIsValidated;
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  TConfigurationParser.Parse(KindsConfig('"platfrom"'), Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
+  TConfigurationParser.Parse(KindsConfig('"platfrom"'), mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.AreEqual('"kinds" darf nur "deprecated", "experimental", "platform" und "library" enthalten',
-    Issues[0].Message);
-  TConfigurationParser.Parse(KindsConfig('"platform", "library"'), Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
-  Issues := nil;
+    mIssues[0].Message);
+  TConfigurationParser.Parse(KindsConfig('"platform", "library"'), mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  mIssues := nil;
 end;
 
 procedure TDeprecatedRulesTests.WarnSwitches;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Aus, wieder an, als Fehler, Standard; WARNINGS OFF schaltet alles ab.
-  Findings := Run(Haupt('Werkzeug',
+  mFindings := Run(Haupt('Werkzeug',
     '  {$WARN SYMBOL_DEPRECATED OFF}'#10 +
     '  Alt;'#10 +
     '  {$WARN SYMBOL_DEPRECATED ON}'#10 +
@@ -359,9 +359,9 @@ begin
     '  (*$WARN SYMBOL_DEPRECATED OFF*)'#10 +
     '  Ohne;'#10), '', True);
   Assert.AreEqual('12:2 Ohne ist deprecated (wie W1000).|14:2 Alt ist deprecated: Nutze Neu (wie W1000).|' +
-    '16:16 Grenze ist platform (wie W1002).|18:16 Grenze ist platform (wie W1002).|', Messages(Findings));
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[1].Severity));
+    '16:16 Grenze ist platform (wie W1002).|18:16 Grenze ist platform (wie W1002).|', Messages(mFindings));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[1].Severity));
 end;
 
 procedure TDeprecatedRulesTests.WarnSwitchesInConditionalBranches;
@@ -380,7 +380,7 @@ end;
 
 procedure TDeprecatedRulesTests.OnlyTheChosenOverload;
 const
-  Source =
+  cSource =
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'uses System.SysUtils;'#13#10 +
@@ -400,47 +400,47 @@ const
     'end.';
 begin
   // Nur die Überladung FileAge(string): LongInt ist deprecated; gemeldet wird nur der Aufruf, der sie wählt.
-  Assert.AreEqual('13:12 FileAge ist deprecated (wie W1000).|', Messages(Run(Source, '', True)));
+  Assert.AreEqual('13:12 FileAge ist deprecated (wie W1000).|', Messages(Run(cSource, '', True)));
 end;
 
 procedure TDeprecatedRulesTests.DeprecatedUnits;
 var
-  Source: string;
-  UnitIndex: TUnitIndex;
+  mSource: string;
+  mUnitIndex: TUnitIndex;
 begin
-  UnitIndex := TIndexExtractor.ExtractText(UnitAltlast, 'C:\P\Werk.Altlast.pas', nil);
-  Assert.AreEqual('deprecated', String.Join(',', UnitIndex.Directives));
-  Assert.AreEqual('Nutze Werkzeug', UnitIndex.DeprecatedText);
+  mUnitIndex := TIndexExtractor.ExtractText(cUnitAltlast, 'C:\P\Werk.Altlast.pas', nil);
+  Assert.AreEqual('deprecated', String.Join(',', mUnitIndex.Directives));
+  Assert.AreEqual('Nutze Werkzeug', mUnitIndex.DeprecatedText);
   // Der Unit-Name selbst ist kein Hinweis: Werk.Deprecated ist nicht deprecated.
-  UnitIndex := TIndexExtractor.ExtractText('unit Werk.Deprecated;'#10'interface'#10'implementation'#10'end.',
+  mUnitIndex := TIndexExtractor.ExtractText('unit Werk.Deprecated;'#10'interface'#10'implementation'#10'end.',
     'C:\P\Werk.Deprecated.pas', nil);
-  Assert.AreEqual('', String.Join(',', UnitIndex.Directives));
-  UnitIndex := TIndexExtractor.ExtractText('unit Werk.Experimental platform;'#10'interface'#10'implementation'#10'end.',
+  Assert.AreEqual('', String.Join(',', mUnitIndex.Directives));
+  mUnitIndex := TIndexExtractor.ExtractText('unit Werk.Experimental platform;'#10'interface'#10'implementation'#10'end.',
     'C:\P\Werk.Experimental.pas', nil);
-  Assert.AreEqual('platform', String.Join(',', UnitIndex.Directives));
-  Source := Haupt('Werkzeug, Werk.Altlast, Werk.Windows', '');
+  Assert.AreEqual('platform', String.Join(',', mUnitIndex.Directives));
+  mSource := Haupt('Werkzeug, Werk.Altlast, Werk.Windows', '');
   Assert.AreEqual('2:15 Unit Werk.Altlast ist deprecated: Nutze Werkzeug (wie W1006).|' +
     '2:29 Unit Werk.Windows ist experimental (wie W1007).|2:29 Unit Werk.Windows ist platform (wie W1005).|',
-    Messages(Run(Source, '', True)));
+    Messages(Run(mSource, '', True)));
   Assert.AreEqual('2:29 Unit Werk.Windows ist platform (wie W1005).|',
-    Messages(Run(Source, KindsConfig('"platform"'), True)));
-  Assert.AreEqual(0, Integer(Length(Run(ReplaceStr(Source, 'uses ', '{$WARN UNIT_DEPRECATED OFF}'#10 +
+    Messages(Run(mSource, KindsConfig('"platform"'), True)));
+  Assert.AreEqual(0, Integer(Length(Run(ReplaceStr(mSource, 'uses ', '{$WARN UNIT_DEPRECATED OFF}'#10 +
     '{$WARN UNIT_EXPERIMENTAL OFF}'#10'{$WARN UNIT_PLATFORM OFF}'#10'uses '), '', True))));
 end;
 
 procedure TDeprecatedRulesTests.ReplacementFromKnownRoutine;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Das Beispiel aus #1018: platform ohne Grund, Ersatz aus der Tabelle der RTL.
-  Findings := Run(Haupt('System.SysUtils', '  S := IncludeTrailingBackslash(S) + ''Name'';'#10), KindsConfig('"platform"'),
+  mFindings := Run(Haupt('System.SysUtils', '  S := IncludeTrailingBackslash(S) + ''Name'';'#10), KindsConfig('"platform"'),
     True);
   Assert.AreEqual('9:7 IncludeTrailingBackslash ist platform; besser IncludeTrailingPathDelimiter (wie W1002).|',
-    Messages(Findings));
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('IncludeTrailingPathDelimiter', Findings[0].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual(7, Findings[0].Fixes[0].Edits[0].Range.StartPos.Character);
-  Assert.AreEqual(31, Findings[0].Fixes[0].Edits[0].Range.EndPos.Character);
+    Messages(mFindings));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('IncludeTrailingPathDelimiter', mFindings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(7, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Character);
+  Assert.AreEqual(31, mFindings[0].Fixes[0].Edits[0].Range.EndPos.Character);
   // Die korrigierte Form ist still.
   Assert.AreEqual(0, Integer(Length(Run(Haupt('System.SysUtils',
     '  S := IncludeTrailingPathDelimiter(S) + ''Name'';'#10), KindsConfig('"platform"'), True))));
@@ -448,32 +448,32 @@ end;
 
 procedure TDeprecatedRulesTests.ReplacementMustBeUnique;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Zwei passende Namen im Grund bzw. ein Typ als Ersatz einer Routine: keine Korrektur.
-  Findings := Run(Haupt('Werkzeug', '  Zwei;'#10'  Typisch;'#10), '', True);
+  mFindings := Run(Haupt('Werkzeug', '  Zwei;'#10'  Typisch;'#10), '', True);
   Assert.AreEqual('9:2 Zwei ist deprecated: Neu oder Ohne (wie W1000).|' +
-    '10:2 Typisch ist deprecated: Use TAlt (wie W1000).|', Messages(Findings));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
+    '10:2 Typisch ist deprecated: Use TAlt (wie W1000).|', Messages(mFindings));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(mFindings[1].Fixes)));
   // Ersatz, der an der Stelle nicht sichtbar ist (System.SysUtils fehlt in uses): Meldung ohne Korrektur.
-  Findings := Run(Haupt('Werkzeug', '  Fern;'#10), '', True);
-  Assert.AreEqual('9:2 Fern ist deprecated: Use IncludeTrailingPathDelimiter (wie W1000).|', Messages(Findings));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  mFindings := Run(Haupt('Werkzeug', '  Fern;'#10), '', True);
+  Assert.AreEqual('9:2 Fern ist deprecated: Use IncludeTrailingPathDelimiter (wie W1000).|', Messages(mFindings));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TDeprecatedRulesTests.DeclarationAndImplementationAreSilent;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Die Unit selbst: weder die Deklaration noch der Kopf der Implementierung zählt.
-  Findings := Run(UnitWerkzeug, '', True);
-  Assert.AreEqual(0, Integer(Length(Findings)), Messages(Findings));
+  mFindings := Run(cUnitWerkzeug, '', True);
+  Assert.AreEqual(0, Integer(Length(mFindings)), Messages(mFindings));
 end;
 
 procedure TDeprecatedRulesTests.OwnUnitWithoutIndex;
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'procedure Alt; deprecated ''Nutze Neu'';'#10 +
@@ -488,12 +488,12 @@ const
     'end;'#10 +
     'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Wie der Compiler auch in derselben Unit; der Linter hat keinen Projektindex.
-  Findings := Run(Source, '', False);
-  Assert.AreEqual('10:2 Alt ist deprecated: Nutze Neu (wie W1000).|', Messages(Findings));
-  Assert.AreEqual('Neu', Findings[0].Fixes[0].Edits[0].NewText);
+  mFindings := Run(cSource, '', False);
+  Assert.AreEqual('10:2 Alt ist deprecated: Nutze Neu (wie W1000).|', Messages(mFindings));
+  Assert.AreEqual('Neu', mFindings[0].Fixes[0].Edits[0].NewText);
 end;
 
 procedure TDeprecatedRulesTests.AutomatedSection;
@@ -534,77 +534,77 @@ end;
 procedure TDeprecatedRulesTests.SilentWithoutIndex;
 begin
   // Werkzeug ist ohne Index unbekannt.
-  Assert.AreEqual(0, Integer(Length(Run(UnitHaupt, '', False))));
+  Assert.AreEqual(0, Integer(Length(Run(cUnitHaupt, '', False))));
 end;
 
 procedure TDeprecatedRulesTests.SwitchableViaRules;
 begin
-  Assert.AreEqual(0, Integer(Length(Run(UnitHaupt, '{"rules": {"deprecated-symbol": "off"}}', True))));
-  Assert.AreEqual(0, Integer(Length(Run(UnitHaupt, '{"rules": {"group:compiler": "off"}}', True))));
-  Assert.AreEqual(0, Integer(Length(Run(UnitHaupt,
+  Assert.AreEqual(0, Integer(Length(Run(cUnitHaupt, '{"rules": {"deprecated-symbol": "off"}}', True))));
+  Assert.AreEqual(0, Integer(Length(Run(cUnitHaupt, '{"rules": {"group:compiler": "off"}}', True))));
+  Assert.AreEqual(0, Integer(Length(Run(cUnitHaupt,
     '{"rules": {"deprecated-symbol": {"severity": "warning", "exclude": ["Haupt.pas"]}}}', True))));
 end;
 
 procedure TDeprecatedRulesTests.DiagnosticCarriesDeprecatedTag;
 var
-  Finding: TRuleFinding;
-  Item: TJSONObject;
+  mFinding: TRuleFinding;
+  mItem: TJSONObject;
 begin
-  Finding := Default(TRuleFinding);
-  Finding.RuleId := cDeprecatedSymbolRuleId;
-  Finding.Message := 'Alt ist deprecated: Nutze Neu (wie W1000).';
-  Item := TLspDiagnosticItems.FindingToJson(Finding);
+  mFinding := Default(TRuleFinding);
+  mFinding.RuleId := cDeprecatedSymbolRuleId;
+  mFinding.Message := 'Alt ist deprecated: Nutze Neu (wie W1000).';
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
   try
-    Assert.AreEqual('[2]', Item.GetValue('tags').ToJSON);
+    Assert.AreEqual('[2]', mItem.GetValue('tags').ToJSON);
   finally
-    Item.Free;
+    mItem.Free;
   end;
   // Englische Meldung (#1458): erkannt an der Compilernummer, nicht am Text.
-  Finding.Message := 'Alt is deprecated: use Neu (like W1000).';
-  Item := TLspDiagnosticItems.FindingToJson(Finding);
+  mFinding.Message := 'Alt is deprecated: use Neu (like W1000).';
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
   try
-    Assert.AreEqual('[2]', Item.GetValue('tags').ToJSON);
+    Assert.AreEqual('[2]', mItem.GetValue('tags').ToJSON);
   finally
-    Item.Free;
+    mItem.Free;
   end;
   // platform ist nicht veraltet und wird nicht durchgestrichen.
-  Finding.Message := 'Grenze ist platform (wie W1002).';
-  Item := TLspDiagnosticItems.FindingToJson(Finding);
+  mFinding.Message := 'Grenze ist platform (wie W1002).';
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
   try
-    Assert.IsNull(Item.GetValue('tags'));
+    Assert.IsNull(mItem.GetValue('tags'));
   finally
-    Item.Free;
+    mItem.Free;
   end;
-  Finding.Message := 'Grenze is platform (like W1002).';
-  Item := TLspDiagnosticItems.FindingToJson(Finding);
+  mFinding.Message := 'Grenze is platform (like W1002).';
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
   try
-    Assert.IsNull(Item.GetValue('tags'));
+    Assert.IsNull(mItem.GetValue('tags'));
   finally
-    Item.Free;
+    mItem.Free;
   end;
-  Finding.RuleId := 'unused-variable';
-  Item := TLspDiagnosticItems.FindingToJson(Finding);
+  mFinding.RuleId := 'unused-variable';
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
   try
-    Assert.IsNull(Item.GetValue('tags'));
+    Assert.IsNull(mItem.GetValue('tags'));
   finally
-    Item.Free;
+    mItem.Free;
   end;
 end;
 
 procedure TDeprecatedRulesTests.RuleIsRegistered;
 var
-  Rule: IRule;
-  Found: Boolean;
+  mRule: IRule;
+  mFound: Boolean;
 begin
-  Found := False;
-  for Rule in BuiltinRules do
+  mFound := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = cDeprecatedSymbolRuleId then
+    if mRule.Descriptor.Id = cDeprecatedSymbolRuleId then
     begin
-      Found := True;
+      mFound := True;
     end;
   end;
-  Assert.IsTrue(Found);
+  Assert.IsTrue(mFound);
 end;
 
 initialization

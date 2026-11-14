@@ -51,8 +51,8 @@ uses
   Atlas.Common.Lsp.Overloads;
 
 const
-  LogFile = 'C:\P\Log.pas';
-  LogSource =
+  cLogFile = 'C:\P\Log.pas';
+  cLogSource =
     'unit Log;'#10 +                                                         // 0
     'interface'#10 +                                                         // 1
     'type'#10 +                                                              // 2
@@ -79,7 +79,7 @@ const
 procedure TLspOverloadsTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(LogSource, LogFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cLogSource, cLogFile, nil));
 end;
 
 procedure TLspOverloadsTests.TearDown;
@@ -89,132 +89,133 @@ end;
 
 function ActionsAt(ALine, ACharacter: Integer): TArray<TJSONObject>;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(LogSource);
+  mTree := TPascalParser.Parse(cLogSource);
   try
-    Result := TLspOverloads.Actions(Tree, LogSource, TDocumentUris.FromPath(LogFile), TTextPosition.Create(ALine, ACharacter));
+    Result := TLspOverloads.Actions(mTree, cLogSource, TDocumentUris.FromPath(cLogFile),
+      TTextPosition.Create(ALine, ACharacter));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure FreeAll(const AActions: TArray<TJSONObject>);
 var
-  Action: TJSONObject;
+  mAction: TJSONObject;
 begin
-  for Action in AActions do
+  for mAction in AActions do
   begin
-    Action.Free;
+    mAction.Free;
   end;
 end;
 
 procedure TLspOverloadsTests.ActionsOnHeader;
 var
-  Actions: TArray<TJSONObject>;
-  Arguments: TJSONArray;
+  mActions: TArray<TJSONObject>;
+  mArguments: TJSONArray;
 begin
-  Actions := ActionsAt(7, 16);
+  mActions := ActionsAt(7, 16);
   try
-    Assert.AreEqual(2, Integer(Length(Actions)));
-    Assert.AreEqual(TOverloads.ForwardTitle, Actions[0].GetValue<string>('title'));
-    Assert.AreEqual(TOverloads.CopyTitle, Actions[1].GetValue<string>('title'));
-    Assert.AreEqual(TLspOverloads.cClientCommand, Actions[0].GetValue<string>('command.command'));
-    Arguments := Actions[0].GetValue<TJSONArray>('command.arguments');
-    Assert.AreEqual(3, Arguments.Count);
-    Assert.AreEqual(TDocumentUris.FromPath(LogFile), Arguments.Items[0].Value);
-    Assert.AreEqual(TLspOverloads.cForwardName, Arguments.Items[2].Value);
-    Assert.AreEqual(TLspOverloads.cCopyName, Actions[1].GetValue<TJSONArray>('command.arguments').Items[2].Value);
+    Assert.AreEqual(2, Integer(Length(mActions)));
+    Assert.AreEqual(TOverloads.ForwardTitle, mActions[0].GetValue<string>('title'));
+    Assert.AreEqual(TOverloads.CopyTitle, mActions[1].GetValue<string>('title'));
+    Assert.AreEqual(TLspOverloads.cClientCommand, mActions[0].GetValue<string>('command.command'));
+    mArguments := mActions[0].GetValue<TJSONArray>('command.arguments');
+    Assert.AreEqual(3, mArguments.Count);
+    Assert.AreEqual(TDocumentUris.FromPath(cLogFile), mArguments.Items[0].Value);
+    Assert.AreEqual(TLspOverloads.cForwardName, mArguments.Items[2].Value);
+    Assert.AreEqual(TLspOverloads.cCopyName, mActions[1].GetValue<TJSONArray>('command.arguments').Items[2].Value);
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
   // Nicht auf einem Kopf: keine Aktion.
-  Actions := ActionsAt(13, 2);
+  mActions := ActionsAt(13, 2);
   try
-    Assert.AreEqual(0, Integer(Length(Actions)));
+    Assert.AreEqual(0, Integer(Length(mActions)));
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
 end;
 
 procedure TLspOverloadsTests.DisabledActionCarriesReason;
 var
-  Actions: TArray<TJSONObject>;
+  mActions: TArray<TJSONObject>;
 begin
-  Actions := ActionsAt(18, 18);
+  mActions := ActionsAt(18, 18);
   try
-    Assert.AreEqual(2, Integer(Length(Actions)));
-    Assert.AreEqual(TOverloads.DestructorReason, Actions[0].GetValue<string>('disabled.reason'));
-    Assert.IsNull(Actions[0].FindValue('command'));
+    Assert.AreEqual(2, Integer(Length(mActions)));
+    Assert.AreEqual(TOverloads.DestructorReason, mActions[0].GetValue<string>('disabled.reason'));
+    Assert.IsNull(mActions[0].FindValue('command'));
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
 end;
 
 procedure TLspOverloadsTests.ExecuteAnswersWithPlaceholders;
 var
-  Tree: TSyntaxTree;
-  Answer: TJSONObject;
-  Placeholders: TJSONArray;
+  mTree: TSyntaxTree;
+  mAnswer: TJSONObject;
+  mPlaceholders: TJSONArray;
 begin
-  Tree := TPascalParser.Parse(LogSource);
+  mTree := TPascalParser.Parse(cLogSource);
   try
-    Answer := TLspOverloads.Execute(Tree, LogFile, LogSource, TTextPosition.Create(12, 18), 'copy', nil);
+    mAnswer := TLspOverloads.Execute(mTree, cLogFile, cLogSource, TTextPosition.Create(12, 18), 'copy', nil);
     try
-      Assert.IsTrue(Pos('procedure Write(const AText: string; ALevel: TLogLevel); overload;', Answer.ToJSON) > 0,
-        Answer.ToJSON);
-      Assert.AreEqual(TDocumentUris.FromPath(LogFile),
-        (Answer.GetValue<TJSONArray>('edit.documentChanges').Items[0] as TJSONObject).GetValue<string>(
+      Assert.IsTrue(Pos('procedure Write(const AText: string; ALevel: TLogLevel); overload;', mAnswer.ToJSON) > 0,
+        mAnswer.ToJSON);
+      Assert.AreEqual(TDocumentUris.FromPath(cLogFile),
+        (mAnswer.GetValue<TJSONArray>('edit.documentChanges').Items[0] as TJSONObject).GetValue<string>(
         'textDocument.uri'));
-      Placeholders := Answer.GetValue<TJSONArray>('placeholders');
-      Assert.AreEqual(4, Placeholders.Count);
-      Assert.AreEqual(1, Placeholders.Items[0].GetValue<Integer>('number'));
-      Assert.AreEqual(8, Placeholders.Items[0].GetValue<Integer>('range.start.line'));
-      Assert.AreEqual(0, Placeholders.Items[3].GetValue<Integer>('number'));
-      Assert.AreEqual(0, Answer.GetValue<TJSONArray>('warnings').Count);
+      mPlaceholders := mAnswer.GetValue<TJSONArray>('placeholders');
+      Assert.AreEqual(4, mPlaceholders.Count);
+      Assert.AreEqual(1, mPlaceholders.Items[0].GetValue<Integer>('number'));
+      Assert.AreEqual(8, mPlaceholders.Items[0].GetValue<Integer>('range.start.line'));
+      Assert.AreEqual(0, mPlaceholders.Items[3].GetValue<Integer>('number'));
+      Assert.AreEqual(0, mAnswer.GetValue<TJSONArray>('warnings').Count);
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function ForwardJson(const AIndex: ISymbolIndex; ALine, ACharacter: Integer): string;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Answer: TJSONObject;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mAnswer: TJSONObject;
 begin
-  Tree := TPascalParser.Parse(LogSource);
-  Resolver := TNameResolver.Create(AIndex);
+  mTree := TPascalParser.Parse(cLogSource);
+  mResolver := TNameResolver.Create(AIndex);
   try
-    Resolver.PinTree(Tree, LogFile);
+    mResolver.PinTree(mTree, cLogFile);
     try
-      Answer := TLspOverloads.Execute(Tree, LogFile, LogSource, TTextPosition.Create(ALine, ACharacter), 'forward',
-        TLspOverloads.DefaultFunc(Resolver, AIndex, Tree, LogFile, LogSource));
+      mAnswer := TLspOverloads.Execute(mTree, cLogFile, cLogSource, TTextPosition.Create(ALine, ACharacter), 'forward',
+        TLspOverloads.DefaultFunc(mResolver, AIndex, mTree, cLogFile, cLogSource));
       try
-        Result := Answer.ToJSON;
+        Result := mAnswer.ToJSON;
       finally
-        Answer.Free;
+        mAnswer.Free;
       end;
     finally
-      Resolver.UnpinTree;
+      mResolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspOverloadsTests.DefaultsFromResolver;
 var
-  Json: string;
+  mJson: string;
 begin
-  Json := ForwardJson(FIndex, 7, 16);
-  Assert.IsTrue(Pos('Write(AText, llInfo);', Json) > 0, Json);
-  Json := ForwardJson(FIndex, 15, 18);
-  Assert.IsTrue(Pos('Attach(AName, nil);', Json) > 0, Json);
+  mJson := ForwardJson(FIndex, 7, 16);
+  Assert.IsTrue(Pos('Write(AText, llInfo);', mJson) > 0, mJson);
+  mJson := ForwardJson(FIndex, 15, 18);
+  Assert.IsTrue(Pos('Attach(AName, nil);', mJson) > 0, mJson);
 end;
 
 procedure TLspOverloadsTests.ErrorsCarryReason;
@@ -224,9 +225,9 @@ begin
     var
       Tree: TSyntaxTree;
     begin
-      Tree := TPascalParser.Parse(LogSource);
+      Tree := TPascalParser.Parse(cLogSource);
       try
-        TLspOverloads.Execute(Tree, LogFile, LogSource, TTextPosition.Create(18, 18), 'copy', nil).Free;
+        TLspOverloads.Execute(Tree, cLogFile, cLogSource, TTextPosition.Create(18, 18), 'copy', nil).Free;
       finally
         Tree.Free;
       end;
@@ -236,9 +237,9 @@ begin
     var
       Tree: TSyntaxTree;
     begin
-      Tree := TPascalParser.Parse(LogSource);
+      Tree := TPascalParser.Parse(cLogSource);
       try
-        TLspOverloads.Execute(Tree, LogFile, LogSource, TTextPosition.Create(12, 18), 'merge', nil).Free;
+        TLspOverloads.Execute(Tree, cLogFile, cLogSource, TTextPosition.Create(12, 18), 'merge', nil).Free;
       finally
         Tree.Free;
       end;
@@ -248,9 +249,9 @@ begin
     var
       Tree: TSyntaxTree;
     begin
-      Tree := TPascalParser.Parse(LogSource);
+      Tree := TPascalParser.Parse(cLogSource);
       try
-        TLspOverloads.Execute(Tree, LogFile, LogSource, TTextPosition.Create(13, 2), 'copy', nil).Free;
+        TLspOverloads.Execute(Tree, cLogFile, cLogSource, TTextPosition.Create(13, 2), 'copy', nil).Free;
       finally
         Tree.Free;
       end;

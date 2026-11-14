@@ -587,6 +587,18 @@ begin
   Assert.AreEqual(1, ASection.Queries.View.Connection.Choice);
 end;
 
+/// <summary>Doppelter Name wird nicht übernommen, ein neuer erscheint in der Liste.</summary>
+procedure CheckQueryRename(ASection: TAtlasTrackerSettingsSection; AList: TListView);
+begin
+  // Doppelter Name wird nicht übernommen.
+  ASection.Queries.View.Name.Text := 'standard';
+  Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryNameTaken),
+    ASection.Queries.View.Note.Caption);
+  Assert.AreEqual('Sprint', ASection.Tables.Queries.Items[1].Name);
+  ASection.Queries.View.Name.Text := 'Aktueller Sprint';
+  Assert.AreEqual('Aktueller Sprint', AList.Items[1].Caption);
+end;
+
 procedure TTrackerSettingsSectionTests.TrackerQueriesTable;
 var
   mHost: TForm;
@@ -613,13 +625,7 @@ begin
     mPage.LoadFrom(mSettings);
     mList := FSection.Queries.View.List;
     AssertQueryRows(FSection, mList);
-    // Doppelter Name wird nicht übernommen.
-    FSection.Queries.View.Name.Text := 'standard';
-    Assert.AreEqual(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesQueryNameTaken),
-      FSection.Queries.View.Note.Caption);
-    Assert.AreEqual('Sprint', FSection.Tables.Queries.Items[1].Name);
-    FSection.Queries.View.Name.Text := 'Aktueller Sprint';
-    Assert.AreEqual('Aktueller Sprint', mList.Items[1].Caption);
+    CheckQueryRename(FSection, mList);
     // Neue Zeile: ohne Abfrage nicht gespeichert; Leerraum außen fällt weg.
     FSection.Queries.View.Add.Click;
     Assert.AreEqual(3, mList.Items.Count);

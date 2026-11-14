@@ -55,55 +55,60 @@ uses
 
 /// <summary>Führt den Befehl in Zeile ALine aus und wendet die Änderungen an; '' wenn er nicht passt.</summary>
 function Expand(const AText: string; ALine: Integer;
-  const AVersion: string = ''): string;
+  const AVersion: string): string; overload;
 var
-  Edits: TArray<TRuleEdit>;
-  Lines: TArray<string>;
-  Edit: TRuleEdit;
-  Offsets: TArray<Integer>;
-  Index, Start, Stop: Integer;
+  mEdits: TArray<TRuleEdit>;
+  mLines: TArray<string>;
+  mEdit: TRuleEdit;
+  mOffsets: TArray<Integer>;
+  mIndex, mStart, mStop: Integer;
 begin
   if not TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0),
-    TSlashEnvironment.Create(nil, nil, nil, AVersion, '', nil), Edits) then
+    TSlashEnvironment.Create(nil, nil, nil, AVersion, '', nil), mEdits) then
   begin
     Exit('');
   end;
-  Lines := AText.Split([#10]);
-  SetLength(Offsets, Length(Lines) + 1);
-  Offsets[0] := 0;
-  for Index := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  SetLength(mOffsets, Length(mLines) + 1);
+  mOffsets[0] := 0;
+  for mIndex := 0 to High(mLines) do
   begin
-    Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
   end;
-  TArray.Sort<TRuleEdit>(Edits, TComparer<TRuleEdit>.Construct(
+  TArray.Sort<TRuleEdit>(mEdits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
     begin
       Result := (ARight.Range.StartPos.Line - ALeft.Range.StartPos.Line) * 100000 +
         ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
     end));
   Result := AText;
-  for Edit in Edits do
+  for mEdit in mEdits do
   begin
-    Start := Offsets[Edit.Range.StartPos.Line] + Edit.Range.StartPos.Character;
-    Stop := Offsets[Edit.Range.EndPos.Line] + Edit.Range.EndPos.Character;
-    Result := Copy(Result, 1, Start) + Edit.NewText + Copy(Result, Stop + 1, MaxInt);
+    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
+    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
+    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
   end;
+end;
+
+function Expand(const AText: string; ALine: Integer): string; overload;
+begin
+  Result := Expand(AText, ALine, '');
 end;
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 const
-  Punkt =
+  cPunkt =
     'unit U;'#10 +                             // 0
     'interface'#10 +                           // 1
     'type'#10 +                                // 2
@@ -114,7 +119,7 @@ const
     'implementation'#10 +                      // 7
     'end.';
 
-  Kunde =
+  cKunde =
     'unit U;'#10 +                             // 0
     'interface'#10 +                           // 1
     'uses System.Classes;'#10 +                // 2
@@ -132,17 +137,17 @@ const
 /// <summary>Feldnamen in der Reihenfolge, in der sie in ALines nach AFrom bis AStop vorkommen.</summary>
 function FieldOrder(const AText, AFrom, AStop: string): string;
 var
-  Part: string;
-  Name: string;
+  mPart: string;
+  mName: string;
 begin
-  Part := Copy(AText, Pos(AFrom, AText), MaxInt);
-  Part := Copy(Part, 1, Pos(AStop, Part));
+  mPart := Copy(AText, Pos(AFrom, AText), MaxInt);
+  mPart := Copy(mPart, 1, Pos(AStop, mPart));
   Result := '';
-  for Name in ['FNr', 'FName', 'FAdresse'] do
+  for mName in ['FNr', 'FName', 'FAdresse'] do
   begin
-    if ContainsText(Part, Name) then
+    if ContainsText(mPart, mName) then
     begin
-      Result := Result + Name + ' ';
+      Result := Result + mName + ' ';
     end;
   end;
 end;
@@ -158,26 +163,26 @@ end;
 
 procedure TRecordCommandsTests.RecordWithConstructor;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand('unit U;'#10'interface'#10'type'#10'  /record TPunkt X, Y: Integer; Name: string'#10 +
+  mText := Expand('unit U;'#10'interface'#10'type'#10'  /record TPunkt X, Y: Integer; Name: string'#10 +
     'implementation'#10'end.', 3);
-  Assert.Contains(Text, '  TPunkt = record'#10'    X, Y: Integer;'#10'    Name: string;'#10 +
+  Assert.Contains(mText, '  TPunkt = record'#10'    X, Y: Integer;'#10'    Name: string;'#10 +
     '    constructor Create(AX, AY: Integer; AName: string);'#10'  end;');
-  Assert.Contains(Text, 'constructor TPunkt.Create(AX, AY: Integer; AName: string);'#10'begin'#10'  X := AX;'#10 +
+  Assert.Contains(mText, 'constructor TPunkt.Create(AX, AY: Integer; AName: string);'#10'begin'#10'  X := AX;'#10 +
     '  Y := AY;'#10'  Name := AName;'#10'end;');
-  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TRecordCommandsTests.RecordReadOnly;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand('unit U;'#10'interface'#10'/record TPunkt X, Y: Integer ro'#10'implementation'#10'end.', 2);
-  Assert.Contains(Text, 'type'#10'  TPunkt = record'#10'  private'#10'    FX, FY: Integer;'#10'  public'#10);
-  Assert.Contains(Text, '    property X: Integer read FX;'#10'    property Y: Integer read FY;');
-  Assert.Contains(Text, '  FX := AX;');
-  Assert.IsTrue(Parses(Text), Text);
+  mText := Expand('unit U;'#10'interface'#10'/record TPunkt X, Y: Integer ro'#10'implementation'#10'end.', 2);
+  Assert.Contains(mText, 'type'#10'  TPunkt = record'#10'  private'#10'    FX, FY: Integer;'#10'  public'#10);
+  Assert.Contains(mText, '    property X: Integer read FX;'#10'    property Y: Integer read FY;');
+  Assert.Contains(mText, '  FX := AX;');
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TRecordCommandsTests.RecordInRoutineFails;
@@ -189,84 +194,84 @@ end;
 
 procedure TRecordCommandsTests.OperatorEqualBringsNotEqual;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(Format(Punkt, ['/operator =']), 5);
-  Assert.Contains(Text, 'class operator Equal(const A, B: TPunkt): Boolean;');
-  Assert.Contains(Text, 'class operator NotEqual(const A, B: TPunkt): Boolean;');
-  Assert.Contains(Text, '  Result := (A.X = B.X) and (A.Y = B.Y);');
-  Assert.Contains(Text, '  Result := not (A = B);');
-  Assert.IsTrue(Parses(Text), Text);
+  mText := Expand(Format(cPunkt, ['/operator =']), 5);
+  Assert.Contains(mText, 'class operator Equal(const A, B: TPunkt): Boolean;');
+  Assert.Contains(mText, 'class operator NotEqual(const A, B: TPunkt): Boolean;');
+  Assert.Contains(mText, '  Result := (A.X = B.X) and (A.Y = B.Y);');
+  Assert.Contains(mText, '  Result := not (A = B);');
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TRecordCommandsTests.OperatorAddAndImplicit;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(Format(Punkt, ['/operator + Implicit']), 5);
-  Assert.Contains(Text, 'class operator TPunkt.Add(const A, B: TPunkt): TPunkt;'#10'begin'#10 +
+  mText := Expand(Format(cPunkt, ['/operator + Implicit']), 5);
+  Assert.Contains(mText, 'class operator TPunkt.Add(const A, B: TPunkt): TPunkt;'#10'begin'#10 +
     '  Result.X := A.X + B.X;'#10'  Result.Y := A.Y + B.Y;'#10'end;');
-  Assert.Contains(Text, 'class operator Implicit(const Value: TPunkt): string;');
-  Assert.AreEqual('', Expand(Format(Punkt, ['/operator ?']), 5));
+  Assert.Contains(mText, 'class operator Implicit(const Value: TPunkt): string;');
+  Assert.AreEqual('', Expand(Format(cPunkt, ['/operator ?']), 5));
 end;
 
 procedure TRecordCommandsTests.OperatorOutsideRecordFails;
 begin
-  Assert.AreEqual('', Expand(Format(Kunde, ['TObject', '/operator =']), 9));
+  Assert.AreEqual('', Expand(Format(cKunde, ['TObject', '/operator =']), 9));
 end;
 
 procedure TRecordCommandsTests.EqualsAndHashUseSameFields;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(Format(Kunde, ['TObject', '/equals FNr, FName']), 9);
-  Assert.Contains(Text, 'function Equals(Obj: TObject): Boolean; override;');
-  Assert.Contains(Text, 'THashBobJenkins.GetHashValue(FName, Result)');
-  Assert.Contains(Text, 'System.Hash');
+  mText := Expand(Format(cKunde, ['TObject', '/equals FNr, FName']), 9);
+  Assert.Contains(mText, 'function Equals(Obj: TObject): Boolean; override;');
+  Assert.Contains(mText, 'THashBobJenkins.GetHashValue(FName, Result)');
+  Assert.Contains(mText, 'System.Hash');
   // Gleiche Objekte haben gleiche Hashwerte: beide Methoden lesen dieselben Felder.
-  Assert.AreEqual('FNr FName ', FieldOrder(Text, 'TKunde.Equals', 'end;'));
-  Assert.AreEqual('FNr FName ', FieldOrder(Text, 'TKunde.GetHashCode', 'end;'));
-  Text := Expand(Format(Kunde, ['TObject', '/equals']), 9);
-  Assert.AreEqual(FieldOrder(Text, 'TKunde.Equals', 'end;'), FieldOrder(Text, 'TKunde.GetHashCode', 'end;'));
-  Assert.Contains(Text, 'FAdresse.Equals(TKunde(Obj).FAdresse)');
-  Assert.IsTrue(Parses(Text), Text);
+  Assert.AreEqual('FNr FName ', FieldOrder(mText, 'TKunde.Equals', 'end;'));
+  Assert.AreEqual('FNr FName ', FieldOrder(mText, 'TKunde.GetHashCode', 'end;'));
+  mText := Expand(Format(cKunde, ['TObject', '/equals']), 9);
+  Assert.AreEqual(FieldOrder(mText, 'TKunde.Equals', 'end;'), FieldOrder(mText, 'TKunde.GetHashCode', 'end;'));
+  Assert.Contains(mText, 'FAdresse.Equals(TKunde(Obj).FAdresse)');
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TRecordCommandsTests.EqualsOnRecordAddsOperators;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(Format(Punkt, ['/equals']), 5);
-  Assert.Contains(Text, 'class operator Equal(const A, B: TPunkt): Boolean;');
-  Assert.Contains(Text, 'class operator NotEqual(const A, B: TPunkt): Boolean;');
+  mText := Expand(Format(cPunkt, ['/equals']), 5);
+  Assert.Contains(mText, 'class operator Equal(const A, B: TPunkt): Boolean;');
+  Assert.Contains(mText, 'class operator NotEqual(const A, B: TPunkt): Boolean;');
 end;
 
 procedure TRecordCommandsTests.EqualsUnknownFieldFails;
 begin
-  Assert.AreEqual('', Expand(Format(Kunde, ['TObject', '/equals FGibtsNicht']), 9));
+  Assert.AreEqual('', Expand(Format(cKunde, ['TObject', '/equals FGibtsNicht']), 9));
   Assert.AreEqual('', Expand('unit U;'#10'interface'#10'/equals'#10'implementation'#10'end.', 2));
 end;
 
 procedure TRecordCommandsTests.CloneFreesResultOnError;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand(Format(Kunde, ['TObject', '/clone']), 9);
-  Assert.Contains(Text, 'function TKunde.Clone: TKunde;'#10'begin'#10'  Result := TKunde.Create;'#10'  try'#10 +
+  mText := Expand(Format(cKunde, ['TObject', '/clone']), 9);
+  Assert.Contains(mText, 'function TKunde.Clone: TKunde;'#10'begin'#10'  Result := TKunde.Create;'#10'  try'#10 +
     '    Result.FNr := FNr;'#10'    Result.FName := FName;'#10'    // TODO: Result.FAdresse aus FAdresse kopieren'#10 +
     '  except'#10'    Result.Free;'#10'    raise;'#10'  end;'#10'end;');
-  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TRecordCommandsTests.CloneUsesAssignForPersistent;
 begin
-  Assert.Contains(Expand(Format(Kunde, ['TPersistent', '/clone']), 9), '  try'#10'    Result.Assign(Self);'#10 +
+  Assert.Contains(Expand(Format(cKunde, ['TPersistent', '/clone']), 9), '  try'#10'    Result.Assign(Self);'#10 +
     '  except');
 end;
 
 procedure TRecordCommandsTests.CloneOutsideClassFails;
 begin
-  Assert.AreEqual('', Expand(Format(Punkt, ['/clone']), 5));
+  Assert.AreEqual('', Expand(Format(cPunkt, ['/clone']), 5));
 end;
 
 initialization

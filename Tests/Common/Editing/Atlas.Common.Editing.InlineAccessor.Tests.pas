@@ -48,7 +48,7 @@ uses
   Atlas.Common.Editing.InlineAccessor;
 
 const
-  Source =
+  cSource =
     'unit U;'#10 +                                                           // 0
     'interface'#10 +
     'type'#10 +
@@ -104,24 +104,24 @@ const
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Names(const AAccessors: TArray<TTrivialAccessor>): string;
 var
-  Item: TTrivialAccessor;
+  mItem: TTrivialAccessor;
 begin
   Result := '';
-  for Item in AAccessors do
+  for mItem in AAccessors do
   begin
-    Result := Result + Item.Name + '=' + Item.Field + ' ';
+    Result := Result + mItem.Name + '=' + mItem.Field + ' ';
   end;
   Result := Trim(Result);
 end;
@@ -136,60 +136,60 @@ end;
 function ReasonFor(const AText, AClass, AName: string; AEqualityCheck: Boolean;
   const AInterfaces: TInterfaceDeclares): string;
 var
-  Layout: TClassLayout;
-  Tree: TSyntaxTree;
-  Accessor: TTrivialAccessor;
+  mLayout: TClassLayout;
+  mTree: TSyntaxTree;
+  mAccessor: TTrivialAccessor;
 begin
-  Layout := TMemberTransfer.ParseLayout(AText, AClass, Tree);
+  mLayout := TMemberTransfer.ParseLayout(AText, AClass, mTree);
   try
-    if TInlineAccessor.Check(Layout, Layout.Find(AName)[0], Options(AEqualityCheck), AInterfaces, Accessor,
+    if TInlineAccessor.Check(mLayout, mLayout.Find(AName)[0], Options(AEqualityCheck), AInterfaces, mAccessor,
       Result) then
     begin
       Result := '';
     end;
   finally
-    Layout.Free;
-    Tree.Free;
+    mLayout.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TInlineAccessorTests.DetectsTrivialGetterAndSetter;
 var
-  Layout: TClassLayout;
-  Tree: TSyntaxTree;
-  Found: TArray<TTrivialAccessor>;
+  mLayout: TClassLayout;
+  mTree: TSyntaxTree;
+  mFound: TArray<TTrivialAccessor>;
 begin
-  Layout := TMemberTransfer.ParseLayout(Source, 'TFoo', Tree);
+  mLayout := TMemberTransfer.ParseLayout(cSource, 'TFoo', mTree);
   try
-    Found := TInlineAccessor.InClass(Layout, Options(True), nil);
-    Assert.AreEqual('GetName=FName SetName=FName GetCount=FCount SetCount=FCount', Names(Found));
-    Assert.IsTrue(Found[0].IsGetter);
-    Assert.IsFalse(Found[1].IsGetter);
-    Assert.AreEqual(9, Found[0].NamePos.Line);
-    Assert.AreEqual(13, Found[0].NamePos.Character);
-    Assert.AreEqual(1, Integer(Length(Found[0].Properties)));
+    mFound := TInlineAccessor.InClass(mLayout, Options(True), nil);
+    Assert.AreEqual('GetName=FName SetName=FName GetCount=FCount SetCount=FCount', Names(mFound));
+    Assert.IsTrue(mFound[0].IsGetter);
+    Assert.IsFalse(mFound[1].IsGetter);
+    Assert.AreEqual(9, mFound[0].NamePos.Line);
+    Assert.AreEqual(13, mFound[0].NamePos.Character);
+    Assert.AreEqual(1, Integer(Length(mFound[0].Properties)));
   finally
-    Layout.Free;
-    Tree.Free;
+    mLayout.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TInlineAccessorTests.EqualityCheckIsOptional;
 begin
-  Assert.AreEqual('', ReasonFor(Source, 'TFoo', 'SetCount', True, nil));
+  Assert.AreEqual('', ReasonFor(cSource, 'TFoo', 'SetCount', True, nil));
   Assert.AreEqual('SetCount tut mehr, als ein Feld zu lesen bzw. zu setzen.',
-    ReasonFor(Source, 'TFoo', 'SetCount', False, nil));
+    ReasonFor(cSource, 'TFoo', 'SetCount', False, nil));
 end;
 
 procedure TInlineAccessorTests.RejectsNotifyingSetter;
 begin
   Assert.AreEqual('SetColor tut mehr, als ein Feld zu lesen bzw. zu setzen.',
-    ReasonFor(Source, 'TFoo', 'SetColor', True, nil));
+    ReasonFor(cSource, 'TFoo', 'SetColor', True, nil));
 end;
 
 procedure TInlineAccessorTests.RejectsVirtualIndexAndInternalUse;
 const
-  Text =
+  cText =
     'unit U;'#10'interface'#10'type'#10 +
     '  TBar = class'#10 +
     '  private'#10 +
@@ -213,15 +213,15 @@ const
     'end.'#10;
 begin
   Assert.AreEqual('GetA ist virtuell (virtual, dynamic, override oder abstract).',
-    ReasonFor(Text, 'TBar', 'GetA', True, nil));
+    ReasonFor(cText, 'TBar', 'GetA', True, nil));
   Assert.AreEqual('Property B hat einen index; GetB braucht ihn als Parameter.',
-    ReasonFor(Text, 'TBar', 'GetB', True, nil));
-  Assert.AreEqual('GetC wird in der Klasse benutzt (Show).', ReasonFor(Text, 'TBar', 'GetC', True, nil));
+    ReasonFor(cText, 'TBar', 'GetB', True, nil));
+  Assert.AreEqual('GetC wird in der Klasse benutzt (Show).', ReasonFor(cText, 'TBar', 'GetC', True, nil));
 end;
 
 procedure TInlineAccessorTests.RejectsInterfaceMethods;
 const
-  Text =
+  cText =
     'unit U;'#10'interface'#10'type'#10 +
     '  INamed = interface'#10 +
     '    function GetName: string;'#10 +
@@ -237,112 +237,112 @@ const
     'function TBar.GetName: string;'#10'begin'#10'  Result := FName;'#10'end;'#10#10 +
     'end.'#10;
 var
-  Other: TInterfaceDeclares;
+  mOther: TInterfaceDeclares;
 begin
-  Assert.AreEqual('GetName implementiert eine Methode von INamed.', ReasonFor(Text, 'TBar', 'GetName', True, nil));
-  Other :=
+  Assert.AreEqual('GetName implementiert eine Methode von INamed.', ReasonFor(cText, 'TBar', 'GetName', True, nil));
+  mOther :=
     function(const AInterface, AMethod: string): TInterfaceAnswer
     begin
       Result := TInterfaceAnswer.No;
     end;
-  Assert.AreEqual('GetName implementiert eine Methode von INamed.', ReasonFor(Text, 'TBar', 'GetName', True, Other));
+  Assert.AreEqual('GetName implementiert eine Methode von INamed.', ReasonFor(cText, 'TBar', 'GetName', True, mOther));
   // Ohne INamed: IOther ist unbekannt, mit Auskunft „nein“ ist die Methode frei.
   Assert.AreEqual('Ob GetName eine Methode von IOther implementiert, ist unbekannt.',
-    ReasonFor(ReplaceStr(Text, 'INamed, ', ''), 'TBar', 'GetName', True, nil));
-  Assert.AreEqual('', ReasonFor(ReplaceStr(Text, 'INamed, ', ''), 'TBar', 'GetName', True, Other));
+    ReasonFor(ReplaceStr(cText, 'INamed, ', ''), 'TBar', 'GetName', True, nil));
+  Assert.AreEqual('', ReasonFor(ReplaceStr(cText, 'INamed, ', ''), 'TBar', 'GetName', True, mOther));
   Assert.AreEqual('GetName ist einer Interface-Methode zugeordnet.',
-    ReasonFor(ReplaceStr(ReplaceStr(Text, 'INamed, ', ''), '    FName: string;'#10,
-    '    FName: string;'#10'    function IOther.Title = GetName;'#10), 'TBar', 'GetName', True, Other));
+    ReasonFor(ReplaceStr(ReplaceStr(cText, 'INamed, ', ''), '    FName: string;'#10,
+    '    FName: string;'#10'    function IOther.Title = GetName;'#10), 'TBar', 'GetName', True, mOther));
 end;
 
 procedure TInlineAccessorTests.RejectsOtherTypes;
 begin
   Assert.AreEqual('FCount hat einen anderen Typ als die Property.',
-    ReasonFor(ReplaceStr(Source, 'FCount: Integer;', 'FCount: Int64;'), 'TFoo', 'GetCount', True, nil));
+    ReasonFor(ReplaceStr(cSource, 'FCount: Integer;', 'FCount: Int64;'), 'TFoo', 'GetCount', True, nil));
   Assert.AreEqual('FName ist kein Feld von TFoo.',
-    ReasonFor(ReplaceStr(Source, '    FName: string;'#10, ''), 'TFoo', 'GetName', True, nil));
+    ReasonFor(ReplaceStr(cSource, '    FName: string;'#10, ''), 'TFoo', 'GetName', True, nil));
 end;
 
 procedure TInlineAccessorTests.FindsAccessorsAtLine;
 var
-  Layout: TClassLayout;
-  Tree: TSyntaxTree;
-  Reason: string;
+  mLayout: TClassLayout;
+  mTree: TSyntaxTree;
+  mReason: string;
 begin
-  Layout := TMemberTransfer.ParseLayout(Source, 'TFoo', Tree);
+  mLayout := TMemberTransfer.ParseLayout(cSource, 'TFoo', mTree);
   try
-    Assert.AreEqual('GetName=FName SetName=FName', Names(TInlineAccessor.At(Layout, 15, Options(True), nil,
-      Reason)));
-    Assert.AreEqual('GetCount=FCount', Names(TInlineAccessor.At(Layout, 16, Options(False), nil, Reason)));
-    Assert.AreEqual('SetName=FName', Names(TInlineAccessor.At(Layout, 10, Options(True), nil, Reason)));
-    Assert.AreEqual('GetCount=FCount', Names(TInlineAccessor.At(Layout, 33, Options(True), nil, Reason)));
-    Assert.AreEqual(0, Integer(Length(TInlineAccessor.At(Layout, 17, Options(True), nil, Reason))));
-    Assert.AreEqual('SetColor tut mehr, als ein Feld zu lesen bzw. zu setzen.', Reason);
-    Assert.AreEqual(0, Integer(Length(TInlineAccessor.At(Layout, 5, Options(True), nil, Reason))));
-    Assert.AreEqual('', Reason);
+    Assert.AreEqual('GetName=FName SetName=FName', Names(TInlineAccessor.At(mLayout, 15, Options(True), nil,
+      mReason)));
+    Assert.AreEqual('GetCount=FCount', Names(TInlineAccessor.At(mLayout, 16, Options(False), nil, mReason)));
+    Assert.AreEqual('SetName=FName', Names(TInlineAccessor.At(mLayout, 10, Options(True), nil, mReason)));
+    Assert.AreEqual('GetCount=FCount', Names(TInlineAccessor.At(mLayout, 33, Options(True), nil, mReason)));
+    Assert.AreEqual(0, Integer(Length(TInlineAccessor.At(mLayout, 17, Options(True), nil, mReason))));
+    Assert.AreEqual('SetColor tut mehr, als ein Feld zu lesen bzw. zu setzen.', mReason);
+    Assert.AreEqual(0, Integer(Length(TInlineAccessor.At(mLayout, 5, Options(True), nil, mReason))));
+    Assert.AreEqual('', mReason);
     Assert.AreEqual('Zugriffsmethoden GetName und SetName durch Feld ersetzen',
-      TInlineAccessor.Title(TInlineAccessor.At(Layout, 15, Options(True), nil, Reason)));
+      TInlineAccessor.Title(TInlineAccessor.At(mLayout, 15, Options(True), nil, mReason)));
   finally
-    Layout.Free;
-    Tree.Free;
+    mLayout.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TInlineAccessorTests.ReplacesAndDeletes;
 var
-  Layout: TClassLayout;
-  Tree: TSyntaxTree;
-  Text: string;
+  mLayout: TClassLayout;
+  mTree: TSyntaxTree;
+  mText: string;
 begin
-  Layout := TMemberTransfer.ParseLayout(Source, 'TFoo', Tree);
+  mLayout := TMemberTransfer.ParseLayout(cSource, 'TFoo', mTree);
   try
-    Text := TTextChanges.Apply(Source, TInlineAccessor.Edits(Layout, TInlineAccessor.InClass(Layout, Options(True),
+    mText := TTextChanges.Apply(cSource, TInlineAccessor.Edits(mLayout, TInlineAccessor.InClass(mLayout, Options(True),
       nil)));
   finally
-    Layout.Free;
-    Tree.Free;
+    mLayout.Free;
+    mTree.Free;
   end;
-  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(Parses(mText), mText);
   // protected behält nur SetColor; Properties zeigen auf die Felder.
-  Assert.IsTrue(ContainsStr(Text, '  protected'#10'    procedure SetColor(const AValue: Integer);'#10'  public'#10 +
+  Assert.IsTrue(ContainsStr(mText, '  protected'#10'    procedure SetColor(const AValue: Integer);'#10'  public'#10 +
     '    property Name: string read FName write FName;'#10 +
-    '    property Count: Integer read FCount write FCount;'#10), Text);
-  Assert.IsFalse(ContainsStr(Text, 'GetName'), Text);
-  Assert.IsFalse(ContainsStr(Text, 'TFoo.SetCount'), Text);
-  Assert.IsTrue(ContainsStr(Text, 'implementation'#10#10'procedure TFoo.SetColor'), Text);
+    '    property Count: Integer read FCount write FCount;'#10), mText);
+  Assert.IsFalse(ContainsStr(mText, 'GetName'), mText);
+  Assert.IsFalse(ContainsStr(mText, 'TFoo.SetCount'), mText);
+  Assert.IsTrue(ContainsStr(mText, 'implementation'#10#10'procedure TFoo.SetColor'), mText);
   // Ohne SetColor fällt auch der leere Abschnitt weg.
-  Text := ReplaceStr(ReplaceStr(Source, '    procedure SetColor(const AValue: Integer);'#10, ''),
+  mText := ReplaceStr(ReplaceStr(cSource, '    procedure SetColor(const AValue: Integer);'#10, ''),
     'write SetColor;', 'write FColor;');
-  Text := Copy(Text, 1, Pos('procedure TFoo.SetColor', Text) - 1) + 'end.'#10;
-  Layout := TMemberTransfer.ParseLayout(Text, 'TFoo', Tree);
+  mText := Copy(mText, 1, Pos('procedure TFoo.SetColor', mText) - 1) + 'end.'#10;
+  mLayout := TMemberTransfer.ParseLayout(mText, 'TFoo', mTree);
   try
-    Text := TTextChanges.Apply(Text, TInlineAccessor.Edits(Layout, TInlineAccessor.InClass(Layout, Options(True),
+    mText := TTextChanges.Apply(mText, TInlineAccessor.Edits(mLayout, TInlineAccessor.InClass(mLayout, Options(True),
       nil)));
   finally
-    Layout.Free;
-    Tree.Free;
+    mLayout.Free;
+    mTree.Free;
   end;
-  Assert.IsTrue(Parses(Text), Text);
-  Assert.IsFalse(ContainsStr(Text, 'protected'), Text);
+  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsFalse(ContainsStr(mText, 'protected'), mText);
 end;
 
 procedure TInlineAccessorTests.KnowsOwnReferences;
 var
-  Layout: TClassLayout;
-  Tree: TSyntaxTree;
-  Found: TArray<TTrivialAccessor>;
+  mLayout: TClassLayout;
+  mTree: TSyntaxTree;
+  mFound: TArray<TTrivialAccessor>;
 begin
-  Layout := TMemberTransfer.ParseLayout(Source, 'TFoo', Tree);
+  mLayout := TMemberTransfer.ParseLayout(cSource, 'TFoo', mTree);
   try
-    Found := TInlineAccessor.InClass(Layout, Options(True), nil);
-    Assert.IsTrue(TInlineAccessor.IsOwnReference(Layout, Found[0], TTextPosition.Create(9, 13)));
-    Assert.IsTrue(TInlineAccessor.IsOwnReference(Layout, Found[0], TTextPosition.Create(15, 32)));
-    Assert.IsTrue(TInlineAccessor.IsOwnReference(Layout, Found[0], TTextPosition.Create(21, 14)));
-    Assert.IsFalse(TInlineAccessor.IsOwnReference(Layout, Found[0], TTextPosition.Create(16, 32)));
-    Assert.IsFalse(TInlineAccessor.IsOwnReference(Layout, Found[0], TTextPosition.Create(33, 2)));
+    mFound := TInlineAccessor.InClass(mLayout, Options(True), nil);
+    Assert.IsTrue(TInlineAccessor.IsOwnReference(mLayout, mFound[0], TTextPosition.Create(9, 13)));
+    Assert.IsTrue(TInlineAccessor.IsOwnReference(mLayout, mFound[0], TTextPosition.Create(15, 32)));
+    Assert.IsTrue(TInlineAccessor.IsOwnReference(mLayout, mFound[0], TTextPosition.Create(21, 14)));
+    Assert.IsFalse(TInlineAccessor.IsOwnReference(mLayout, mFound[0], TTextPosition.Create(16, 32)));
+    Assert.IsFalse(TInlineAccessor.IsOwnReference(mLayout, mFound[0], TTextPosition.Create(33, 2)));
   finally
-    Layout.Free;
-    Tree.Free;
+    mLayout.Free;
+    mTree.Free;
   end;
 end;
 

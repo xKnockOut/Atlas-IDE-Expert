@@ -37,7 +37,7 @@ uses
   Atlas.Common.Lsp.SelectionRanges;
 
 const
-  Code: array[0..11] of string = (
+  cCode: array[0..11] of string = (
     'unit U;',
     'interface',
     'type',
@@ -54,39 +54,39 @@ const
 // Bereiche an der Stelle von "|" im Text, z. B. "9:7-9:8 9:7-9:12".
 function Describe(const ALines: array of string): string;
 var
-  Text: string;
-  Offset: Integer;
-  Tree: TSyntaxTree;
-  Range: TTextRange;
+  mText: string;
+  mOffset: Integer;
+  mTree: TSyntaxTree;
+  mRange: TTextRange;
 begin
-  Text := string.Join(#13#10, ALines);
-  Offset := Text.IndexOf('|');
-  Text := Text.Remove(Offset, 1);
+  mText := string.Join(#13#10, ALines);
+  mOffset := mText.IndexOf('|');
+  mText := mText.Remove(mOffset, 1);
   Result := '';
-  Tree := TPascalParser.Parse(Text);
+  mTree := TPascalParser.Parse(mText);
   try
-    for Range in TLspSelectionRanges.RangesAt(Tree, Offset) do
+    for mRange in TLspSelectionRanges.RangesAt(mTree, mOffset) do
     begin
       if Result <> '' then
       begin
         Result := Result + ' ';
       end;
       Result := Result + Format('%d:%d-%d:%d',
-        [Range.StartPos.Line, Range.StartPos.Character, Range.EndPos.Line, Range.EndPos.Character]);
+        [mRange.StartPos.Line, mRange.StartPos.Character, mRange.EndPos.Line, mRange.EndPos.Character]);
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function WithMarker(ALine: Integer; const ANewText: string): TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  SetLength(Result, Length(Code));
-  for Index := 0 to High(Code) do
+  SetLength(Result, Length(cCode));
+  for mIndex := 0 to High(cCode) do
   begin
-    Result[Index] := Code[Index];
+    Result[mIndex] := cCode[mIndex];
   end;
   Result[ALine] := ANewText;
 end;
@@ -120,53 +120,53 @@ end;
 
 procedure TLspSelectionRangesTests.WritesParentChain;
 var
-  Json: TJSONObject;
+  mJson: TJSONObject;
 begin
-  Json := TLspSelectionRanges.ToJson([TTextRange.Create(0, 1, 0, 2), TTextRange.Create(0, 0, 1, 0)]);
+  mJson := TLspSelectionRanges.ToJson([TTextRange.Create(0, 1, 0, 2), TTextRange.Create(0, 0, 1, 0)]);
   try
-    Assert.AreEqual(1, Json.GetValue<Integer>('range.start.character'));
-    Assert.AreEqual(1, Json.GetValue<Integer>('parent.range.end.line'));
-    Assert.IsNull(Json.GetValue<TJSONObject>('parent').GetValue('parent'));
+    Assert.AreEqual(1, mJson.GetValue<Integer>('range.start.character'));
+    Assert.AreEqual(1, mJson.GetValue<Integer>('parent.range.end.line'));
+    Assert.IsNull(mJson.GetValue<TJSONObject>('parent').GetValue('parent'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TLspSelectionRangesTests.HandlesRequestThroughDispatcher;
 var
-  Store: IDocumentStore;
-  Feature: TLspSelectionRanges;
-  Dispatcher: TJsonRpcDispatcher;
-  Request: TJSONObject;
-  Response: TJSONObject;
+  mStore: IDocumentStore;
+  mFeature: TLspSelectionRanges;
+  mDispatcher: TJsonRpcDispatcher;
+  mRequest: TJSONObject;
+  mResponse: TJSONObject;
 begin
-  Store := TDocumentStore.Create;
-  Store.Open('file:///u.pas', 'objectpascal', 1, string.Join(#13#10, Code));
-  Dispatcher := TJsonRpcDispatcher.Create;
-  Feature := TLspSelectionRanges.Create(Store);
+  mStore := TDocumentStore.Create;
+  mStore.Open('file:///u.pas', 'objectpascal', 1, string.Join(#13#10, cCode));
+  mDispatcher := TJsonRpcDispatcher.Create;
+  mFeature := TLspSelectionRanges.Create(mStore);
   try
-    Feature.Attach(Dispatcher);
-    Request := TJSONObject.ParseJSONValue(
+    mFeature.Attach(mDispatcher);
+    mRequest := TJSONObject.ParseJSONValue(
       '{"jsonrpc":"2.0","id":1,"method":"textDocument/selectionRange","params":{' +
       '"textDocument":{"uri":"file:///u.pas"},' +
       '"positions":[{"line":9,"character":7},{"line":20,"character":0}]}}') as TJSONObject;
     try
-      Response := Dispatcher.DispatchMessage(Request);
+      mResponse := mDispatcher.DispatchMessage(mRequest);
       try
-        Assert.AreEqual(2, Response.GetValue<TJSONArray>('result').Count);
-        Assert.AreEqual(8, Response.GetValue<Integer>('result[0].range.end.character'));
-        Assert.AreEqual(12, Response.GetValue<Integer>('result[0].parent.range.end.character'));
+        Assert.AreEqual(2, mResponse.GetValue<TJSONArray>('result').Count);
+        Assert.AreEqual(8, mResponse.GetValue<Integer>('result[0].range.end.character'));
+        Assert.AreEqual(12, mResponse.GetValue<Integer>('result[0].parent.range.end.character'));
         // Hinter dem Dokumentende zählt das letzte Token.
-        Assert.AreEqual(11, Response.GetValue<Integer>('result[1].range.start.line'));
+        Assert.AreEqual(11, mResponse.GetValue<Integer>('result[1].range.start.line'));
       finally
-        Response.Free;
+        mResponse.Free;
       end;
     finally
-      Request.Free;
+      mRequest.Free;
     end;
   finally
-    Feature.Free;
-    Dispatcher.Free;
+    mFeature.Free;
+    mDispatcher.Free;
   end;
 end;
 

@@ -42,13 +42,13 @@ uses
 
 procedure TAtlasSymbolTests.SizesAscendFrom16To256;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Assert.AreEqual(16, TAtlasSymbol.Size(0));
   Assert.AreEqual(256, TAtlasSymbol.Size(TAtlasSymbol.cSizeCount - 1));
-  for Index := 1 to TAtlasSymbol.cSizeCount - 1 do
+  for mIndex := 1 to TAtlasSymbol.cSizeCount - 1 do
   begin
-    Assert.IsTrue(TAtlasSymbol.Size(Index) > TAtlasSymbol.Size(Index - 1));
+    Assert.IsTrue(TAtlasSymbol.Size(mIndex) > TAtlasSymbol.Size(mIndex - 1));
   end;
 end;
 

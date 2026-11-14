@@ -65,8 +65,8 @@ uses
   Atlas.Common.Rules.Profiles;
 
 const
-  Enabled = '{"rules": {"todo-comment": "hint"}}';
-  Source =
+  cEnabled = '{"rules": {"todo-comment": "hint"}}';
+  cSource =
     'unit U;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -79,7 +79,7 @@ const
     'end;'#10 +
     'end.';
 
-  CommentedCode =
+  cCommentedCode =
     '// Atlas'#10 +
     'unit U;'#10 +
     'interface'#10 +
@@ -104,51 +104,51 @@ end;
 
 procedure TTodoRulesTests.OffByDefault;
 var
-  Rule: IRule;
+  mRule: IRule;
 begin
-  TRuleAssert.Silent(TTodoRule.Create, Source);
-  Rule := TTodoRule.Create;
-  Assert.IsTrue(TRuleProfiles.IsExperimental(Rule.Descriptor.Id), 'nur eingeschaltet');
+  TRuleAssert.Silent(TTodoRule.Create, cSource);
+  mRule := TTodoRule.Create;
+  Assert.IsTrue(TRuleProfiles.IsExperimental(mRule.Descriptor.Id), 'nur eingeschaltet');
 end;
 
 procedure TTodoRulesTests.ReportsOpenEntriesAsHint;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TTodoRule.Create, Source, Enabled);
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual(cTodoCommentRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.AreEqual('TODO 1 [GUI, Marco]: Fokus setzen', Findings[0].Message);
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(41, Findings[0].Range.EndPos.Character);
-  Assert.AreEqual('FIXME: Rabatt', Findings[1].Message);
-  Findings := TRuleAssert.Findings(TTodoRule.Create, Source, '{"rules": {"todo-comment": "warning"}}');
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  mFindings := TRuleAssert.Findings(TTodoRule.Create, cSource, cEnabled);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(cTodoCommentRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual('TODO 1 [GUI, Marco]: Fokus setzen', mFindings[0].Message);
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(41, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual('FIXME: Rabatt', mFindings[1].Message);
+  mFindings := TRuleAssert.Findings(TTodoRule.Create, cSource, '{"rules": {"todo-comment": "warning"}}');
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
 end;
 
 procedure TTodoRulesTests.DoneIsNeverReported;
 begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTodoRule.Create,
-    'unit U;'#10'{ DONE 1 -oAnna : fertig }'#10'end.', Enabled))));
+    'unit U;'#10'{ DONE 1 -oAnna : fertig }'#10'end.', cEnabled))));
 end;
 
 procedure TTodoRulesTests.SuppressedByComment;
 begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TTodoRule.Create,
-    'unit U;'#10'// lsp-ignore: todo-comment'#10'x := 1; // TODO prüfen'#10'end.', Enabled))));
+    'unit U;'#10'// lsp-ignore: todo-comment'#10'x := 1; // TODO prüfen'#10'end.', cEnabled))));
 end;
 
 procedure TTodoRulesTests.KeywordsFromConfiguration;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TTodoRule.Create, Source,
+  mFindings := TRuleAssert.Findings(TTodoRule.Create, cSource,
     '{"rules": {"todo-comment": {"severity": "hint", "keywords": ["HACK", "TODO"]}}}');
-  Assert.AreEqual(2, Integer(Length(Findings)));
-  Assert.AreEqual('TODO 1 [GUI, Marco]: Fokus setzen', Findings[0].Message);
-  Assert.AreEqual('HACK: Umweg', Findings[1].Message);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('TODO 1 [GUI, Marco]: Fokus setzen', mFindings[0].Message);
+  Assert.AreEqual('HACK: Umweg', mFindings[1].Message);
 end;
 
 procedure TTodoRulesTests.KeywordsFromOptions;
@@ -166,64 +166,64 @@ end;
 
 procedure TTodoRulesTests.KeywordsFromSettings;
 var
-  Issues: TArray<TConfigurationIssue>;
-  Settings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+  mSettings: TServerSettings;
 begin
   Assert.AreEqual('TODO FIXME', string.Join(' ', TTodoRules.Keywords(TServerSettings.Default)));
   // Die Marken gelten auch bei abgeschalteter Regel (für get_todos und --todos).
-  Settings := TConfigurationParser.Parse('{"rules": {"todo-comment": {"severity": "off", "keywords": ["NOTE"]}}}',
-    Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
-  Assert.AreEqual('NOTE', string.Join(' ', TTodoRules.Keywords(Settings)));
+  mSettings := TConfigurationParser.Parse('{"rules": {"todo-comment": {"severity": "off", "keywords": ["NOTE"]}}}',
+    mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('NOTE', string.Join(' ', TTodoRules.Keywords(mSettings)));
 end;
 
 procedure TTodoRulesTests.RuleIsRegistered;
 var
-  Rule: IRule;
-  Found: Boolean;
+  mRule: IRule;
+  mFound: Boolean;
 begin
-  Found := False;
-  for Rule in BuiltinRules do
+  mFound := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = cTodoCommentRuleId then
+    if mRule.Descriptor.Id = cTodoCommentRuleId then
     begin
-      Found := True;
+      mFound := True;
     end;
   end;
-  Assert.IsTrue(Found);
+  Assert.IsTrue(mFound);
 end;
 
 procedure TTodoRulesTests.CommentedCodeReported;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TCommentedOutCodeRule.Create, CommentedCode);
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(cCommentedOutCodeRuleId, Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
-  Assert.AreEqual('3 Zeilen auskommentierter Code; die Versionsverwaltung bewahrt ihn auf.', Findings[0].Message);
-  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(9, Findings[0].Range.EndPos.Line);
+  mFindings := TRuleAssert.Findings(TCommentedOutCodeRule.Create, cCommentedCode);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cCommentedOutCodeRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('3 Zeilen auskommentierter Code; die Versionsverwaltung bewahrt ihn auf.', mFindings[0].Message);
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(9, mFindings[0].Range.EndPos.Line);
   Assert.IsFalse(TRuleProfiles.IsExperimental((TCommentedOutCodeRule.Create as IRule).Descriptor.Id), 'Standard an');
 end;
 
 procedure TTodoRulesTests.CommentedCodeFixRemovesLines;
 var
-  Findings: TArray<TRuleFinding>;
-  Edit: TRuleEdit;
+  mFindings: TArray<TRuleFinding>;
+  mEdit: TRuleEdit;
 begin
-  Findings := TRuleAssert.Findings(TCommentedOutCodeRule.Create, CommentedCode);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('Auskommentierten Code entfernen', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)));
-  Edit := Findings[0].Fixes[0].Edits[0];
-  Assert.AreEqual(7, Edit.Range.StartPos.Line);
-  Assert.AreEqual(0, Edit.Range.StartPos.Character);
-  Assert.AreEqual(10, Edit.Range.EndPos.Line);
-  Assert.AreEqual(0, Edit.Range.EndPos.Character);
-  Assert.AreEqual('', Edit.NewText);
+  mFindings := TRuleAssert.Findings(TCommentedOutCodeRule.Create, cCommentedCode);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('Auskommentierten Code entfernen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)));
+  mEdit := mFindings[0].Fixes[0].Edits[0];
+  Assert.AreEqual(7, mEdit.Range.StartPos.Line);
+  Assert.AreEqual(0, mEdit.Range.StartPos.Character);
+  Assert.AreEqual(10, mEdit.Range.EndPos.Line);
+  Assert.AreEqual(0, mEdit.Range.EndPos.Character);
+  Assert.AreEqual('', mEdit.NewText);
 end;
 
 procedure TTodoRulesTests.ProseCommentsSilent;
@@ -277,19 +277,19 @@ end;
 
 procedure TTodoRulesTests.CommentedBlockReported;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TCommentedOutCodeRule.Create, InRoutine(
+  mFindings := TRuleAssert.Findings(TCommentedOutCodeRule.Create, InRoutine(
     '  {'#10 +
     '  if Kunde.Aktiv then'#10 +
     '    Kunde.Speichern;'#10 +
     '  Log(''gespeichert'');'#10 +
     '  }'#10 +
     '  Speichern;'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(5, Findings[0].Fixes[0].Edits[0].Range.StartPos.Line);
-  Assert.AreEqual(10, Findings[0].Fixes[0].Edits[0].Range.EndPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(5, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Line);
+  Assert.AreEqual(10, mFindings[0].Fixes[0].Edits[0].Range.EndPos.Line);
   // Prosa im Blockkommentar bleibt still.
   TRuleAssert.Silent(TCommentedOutCodeRule.Create, InRoutine(
     '  {'#10 +
@@ -302,20 +302,20 @@ end;
 
 procedure TTodoRulesTests.CommentedCodeMinLines;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := InRoutine('  // Speichern;'#10'  // Fertig;'#10'  Laden;'#10);
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TCommentedOutCodeRule.Create, Source,
+  mSource := InRoutine('  // Speichern;'#10'  // Fertig;'#10'  Laden;'#10);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TCommentedOutCodeRule.Create, mSource,
     '{"rules": {"commented-out-code": {"severity": "hint", "minLines": 2}}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCommentedOutCodeRule.Create, CommentedCode,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCommentedOutCodeRule.Create, cCommentedCode,
     '{"rules": {"commented-out-code": {"severity": "hint", "minLines": 4}}}'))));
 end;
 
 procedure TTodoRulesTests.CommentedCodeOff;
 begin
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCommentedOutCodeRule.Create, CommentedCode,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCommentedOutCodeRule.Create, cCommentedCode,
     '{"rules": {"commented-out-code": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCommentedOutCodeRule.Create, CommentedCode,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCommentedOutCodeRule.Create, cCommentedCode,
     '{"rules": {"commented-out-code": {"severity": "hint", "exclude": ["*.pas"]}}}', 'U.pas'))));
 end;
 

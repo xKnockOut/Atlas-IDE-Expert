@@ -59,63 +59,63 @@ end;
 
 procedure TAtlasEditInboxTests.ListsOnlyWaitingRequests;
 var
-  Pending: TArray<string>;
+  mPending: TArray<string>;
 begin
   Put(FFolder, 'b.json', '{}');
   Put(FFolder, 'a.json', '{}');
   Put(FFolder, 'c.json.tmp', '{}');
   Put(FFolder, 'd.taken', '{}');
   Put(FFolder, 'e.result.json', '{}');
-  Pending := TAtlasEditInbox.Pending(FFolder);
-  Assert.AreEqual(2, Integer(Length(Pending)));
-  Assert.AreEqual('a.json', ExtractFileName(Pending[0]));
-  Assert.AreEqual('b.json', ExtractFileName(Pending[1]));
+  mPending := TAtlasEditInbox.Pending(FFolder);
+  Assert.AreEqual(2, Integer(Length(mPending)));
+  Assert.AreEqual('a.json', ExtractFileName(mPending[0]));
+  Assert.AreEqual('b.json', ExtractFileName(mPending[1]));
   Assert.AreEqual(0, Integer(Length(TAtlasEditInbox.Pending(TPath.Combine(FFolder, 'fehlt')))));
 end;
 
 procedure TAtlasEditInboxTests.TakesARequestOnlyOnce;
 var
-  Request: TAtlasEditRequest;
-  FileName: string;
+  mRequest: TAtlasEditRequest;
+  mFileName: string;
 begin
-  FileName := TPath.Combine(FFolder, 'r1.json');
+  mFileName := TPath.Combine(FFolder, 'r1.json');
   Put(FFolder, 'r1.json', '{"file":"C:\\P\\A.pas","expected":"alt","text":"neu"}');
-  Assert.IsTrue(TAtlasEditInbox.Take(FileName, Request));
-  Assert.AreEqual('r1', Request.Id);
-  Assert.AreEqual('C:\P\A.pas', Request.FileName);
-  Assert.AreEqual('alt', Request.Expected);
-  Assert.AreEqual('neu', Request.Text);
+  Assert.IsTrue(TAtlasEditInbox.Take(mFileName, mRequest));
+  Assert.AreEqual('r1', mRequest.Id);
+  Assert.AreEqual('C:\P\A.pas', mRequest.FileName);
+  Assert.AreEqual('alt', mRequest.Expected);
+  Assert.AreEqual('neu', mRequest.Text);
   Assert.IsTrue(FileExists(TPath.Combine(FFolder, 'r1.taken')));
   // Schon übernommen oder vom MCP-Server zurückgezogen.
-  Assert.IsFalse(TAtlasEditInbox.Take(FileName, Request));
+  Assert.IsFalse(TAtlasEditInbox.Take(mFileName, mRequest));
 end;
 
 procedure TAtlasEditInboxTests.AnswersAndRemovesTheTakenRequest;
 var
-  Request: TAtlasEditRequest;
-  Json: TJSONValue;
+  mRequest: TAtlasEditRequest;
+  mJson: TJSONValue;
 begin
   Put(FFolder, 'r2.json', '{"file":"A.pas","expected":"","text":"x"}');
-  Assert.IsTrue(TAtlasEditInbox.Take(TPath.Combine(FFolder, 'r2.json'), Request));
-  TAtlasEditInbox.Answer(FFolder, Request, False, True, 'nicht offen');
+  Assert.IsTrue(TAtlasEditInbox.Take(TPath.Combine(FFolder, 'r2.json'), mRequest));
+  TAtlasEditInbox.Answer(FFolder, mRequest, False, True, 'nicht offen');
   Assert.IsFalse(FileExists(TPath.Combine(FFolder, 'r2.taken')));
-  Json := TJSONObject.ParseJSONValue(TFile.ReadAllText(TPath.Combine(FFolder, 'r2.result.json'), TEncoding.UTF8));
+  mJson := TJSONObject.ParseJSONValue(TFile.ReadAllText(TPath.Combine(FFolder, 'r2.result.json'), TEncoding.UTF8));
   try
-    Assert.IsFalse(Json.GetValue<Boolean>('applied'));
-    Assert.IsTrue(Json.GetValue<Boolean>('notOpen'));
-    Assert.AreEqual('nicht offen', Json.GetValue<string>('reason'));
+    Assert.IsFalse(mJson.GetValue<Boolean>('applied'));
+    Assert.IsTrue(mJson.GetValue<Boolean>('notOpen'));
+    Assert.AreEqual('nicht offen', mJson.GetValue<string>('reason'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
   Assert.AreEqual(0, Integer(Length(TAtlasEditInbox.Pending(FFolder))), 'Antwort ist kein Auftrag');
 end;
 
 procedure TAtlasEditInboxTests.AnswersUnreadableRequests;
 var
-  Request: TAtlasEditRequest;
+  mRequest: TAtlasEditRequest;
 begin
   Put(FFolder, 'r3.json', 'kein JSON');
-  Assert.IsFalse(TAtlasEditInbox.Take(TPath.Combine(FFolder, 'r3.json'), Request));
+  Assert.IsFalse(TAtlasEditInbox.Take(TPath.Combine(FFolder, 'r3.json'), mRequest));
   Assert.IsTrue(FileExists(TPath.Combine(FFolder, 'r3.result.json')));
   Assert.IsFalse(FileExists(TPath.Combine(FFolder, 'r3.taken')));
 end;

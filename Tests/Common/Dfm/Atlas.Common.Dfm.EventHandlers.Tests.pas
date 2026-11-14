@@ -44,7 +44,7 @@ uses
   System.SysUtils;
 
 const
-  UnitText =
+  cUnitText =
     'unit Kunde;'#13#10 +                                         // 0
     'interface'#13#10 +                                           // 1
     'type'#13#10 +                                                // 2
@@ -84,7 +84,7 @@ const
     'end;'#13#10 +                                                // 36
     'end.'#13#10;
 
-  FormText =
+  cFormText =
     'object frmKunde: TfrmKunde'#13#10 +
     '  OnShow = FormShow'#13#10 +
     '  object btnSpeichern: TButton'#13#10 +
@@ -113,7 +113,7 @@ function Forms: TArray<TEventHandlerForm>;
 begin
   SetLength(Result, 1);
   Result[0].FileName := 'C:\P\Kunde.dfm';
-  Result[0].Text := FormText;
+  Result[0].Text := cFormText;
 end;
 
 procedure TEventHandlersTests.TearDown;
@@ -123,13 +123,13 @@ end;
 
 function TEventHandlersTests.Find(const AComponent, AEvent: string): TEventHandler;
 var
-  Item: TEventHandler;
+  mItem: TEventHandler;
 begin
-  for Item in FHandlers do
+  for mItem in FHandlers do
   begin
-    if SameText(Item.Component, AComponent) and SameText(Item.Event, AEvent) then
+    if SameText(mItem.Component, AComponent) and SameText(mItem.Event, AEvent) then
     begin
-      Exit(Item);
+      Exit(mItem);
     end;
   end;
   Assert.Fail('nicht gefunden: ' + AComponent + '.' + AEvent);
@@ -138,37 +138,37 @@ end;
 
 procedure TEventHandlersTests.FormEventsWithBodies;
 var
-  Handler: TEventHandler;
+  mHandler: TEventHandler;
 begin
-  FHandlers := TEventHandlers.Collect('C:\P\Kunde.pas', UnitText, Forms);
-  Handler := Find('btnSpeichern', 'OnClick');
-  Assert.AreEqual(Ord(TEventHandlerOrigin.Form), Ord(Handler.Origin));
-  Assert.AreEqual('TfrmKunde', Handler.FormClass);
-  Assert.AreEqual('TButton', Handler.ComponentClass);
-  Assert.AreEqual('btnSpeichernClick', Handler.Handler);
-  Assert.AreEqual('TfrmKunde', Handler.Container);
-  Assert.AreEqual('C:\P\Kunde.pas', Handler.FileName);
-  Assert.AreEqual(13, Handler.Line);
+  FHandlers := TEventHandlers.Collect('C:\P\Kunde.pas', cUnitText, Forms);
+  mHandler := Find('btnSpeichern', 'OnClick');
+  Assert.AreEqual(Ord(TEventHandlerOrigin.Form), Ord(mHandler.Origin));
+  Assert.AreEqual('TfrmKunde', mHandler.FormClass);
+  Assert.AreEqual('TButton', mHandler.ComponentClass);
+  Assert.AreEqual('btnSpeichernClick', mHandler.Handler);
+  Assert.AreEqual('TfrmKunde', mHandler.Container);
+  Assert.AreEqual('C:\P\Kunde.pas', mHandler.FileName);
+  Assert.AreEqual(13, mHandler.Line);
   // Leerer Rumpf: Halt am end.
-  Assert.AreEqual(14, Handler.BodyLine);
-  Assert.AreEqual('C:\P\Kunde.dfm', Handler.SourceFile);
-  Assert.AreEqual(3, Handler.SourceLine);
+  Assert.AreEqual(14, mHandler.BodyLine);
+  Assert.AreEqual('C:\P\Kunde.dfm', mHandler.SourceFile);
+  Assert.AreEqual(3, mHandler.SourceLine);
   // Das Formular selbst; begin hinter dem var-Abschnitt.
-  Handler := Find('frmKunde', 'OnShow');
-  Assert.AreEqual('TfrmKunde', Handler.ComponentClass);
-  Assert.AreEqual(18, Handler.Line);
+  mHandler := Find('frmKunde', 'OnShow');
+  Assert.AreEqual('TfrmKunde', mHandler.ComponentClass);
+  Assert.AreEqual(18, mHandler.Line);
 end;
 
 procedure TEventHandlersTests.SharedHandlerTwice;
 begin
-  FHandlers := TEventHandlers.Collect('C:\P\Kunde.pas', UnitText, Forms);
+  FHandlers := TEventHandlers.Collect('C:\P\Kunde.pas', cUnitText, Forms);
   Assert.AreEqual(13, Find('btnSpeichern', 'OnClick').Line);
   Assert.AreEqual(13, Find('btnOk', 'OnClick').Line);
 end;
 
 procedure TEventHandlersTests.DataSetAndActionEvents;
 begin
-  FHandlers := TEventHandlers.Collect('C:\P\Kunde.pas', UnitText, Forms);
+  FHandlers := TEventHandlers.Collect('C:\P\Kunde.pas', cUnitText, Forms);
   Assert.AreEqual(21, Find('Tabelle', 'BeforePost').Line);
   Assert.AreEqual('TAction', Find('actDrucken', 'OnExecute').ComponentClass);
   Assert.AreEqual(24, Find('actDrucken', 'OnExecute').Line);
@@ -176,54 +176,54 @@ end;
 
 procedure TEventHandlersTests.TimerInterval;
 begin
-  FHandlers := TEventHandlers.Collect('C:\P\Kunde.pas', UnitText, Forms);
+  FHandlers := TEventHandlers.Collect('C:\P\Kunde.pas', cUnitText, Forms);
   Assert.AreEqual(50, Find('Timer1', 'OnTimer').Interval);
   Assert.AreEqual(-1, Find('btnSpeichern', 'OnClick').Interval);
 end;
 
 procedure TEventHandlersTests.CodeAssignments;
 var
-  Handler: TEventHandler;
+  mHandler: TEventHandler;
 begin
-  FHandlers := TEventHandlers.Collect('C:\P\Kunde.pas', UnitText, nil);
+  FHandlers := TEventHandlers.Collect('C:\P\Kunde.pas', cUnitText, nil);
   Assert.AreEqual(2, Integer(Length(FHandlers)));
-  Handler := Find('FTimer', 'OnTimer');
-  Assert.AreEqual(Ord(TEventHandlerOrigin.Code), Ord(Handler.Origin));
-  Assert.AreEqual('TimerTick', Handler.Handler);
-  Assert.AreEqual('TfrmKunde', Handler.Container);
-  Assert.AreEqual('', Handler.ComponentClass);
-  Assert.AreEqual(27, Handler.Line);
-  Assert.AreEqual(31, Handler.SourceLine);
-  Assert.AreEqual(28, Handler.BodyLine);
+  mHandler := Find('FTimer', 'OnTimer');
+  Assert.AreEqual(Ord(TEventHandlerOrigin.Code), Ord(mHandler.Origin));
+  Assert.AreEqual('TimerTick', mHandler.Handler);
+  Assert.AreEqual('TfrmKunde', mHandler.Container);
+  Assert.AreEqual('', mHandler.ComponentClass);
+  Assert.AreEqual(27, mHandler.Line);
+  Assert.AreEqual(31, mHandler.SourceLine);
+  Assert.AreEqual(28, mHandler.BodyLine);
   // Am Formular selbst, Wert mit Self.
-  Handler := Find('', 'OnShow');
-  Assert.AreEqual('FormShow', Handler.Handler);
-  Assert.AreEqual(18, Handler.Line);
+  mHandler := Find('', 'OnShow');
+  Assert.AreEqual('FormShow', mHandler.Handler);
+  Assert.AreEqual(18, mHandler.Line);
 end;
 
 procedure TEventHandlersTests.IgnoresNilAnonymousAndForeign;
 var
-  Item: TEventHandler;
+  mItem: TEventHandler;
 begin
-  FHandlers := TEventHandlers.Collect('C:\P\Kunde.pas', UnitText, nil);
-  for Item in FHandlers do
+  FHandlers := TEventHandlers.Collect('C:\P\Kunde.pas', cUnitText, nil);
+  for mItem in FHandlers do
   begin
-    Assert.AreNotEqual('btnAbbrechen', Item.Component);
-    Assert.AreNotEqual('btnHilfe', Item.Component);
-    Assert.AreNotEqual('OnlineCount', Item.Event);
+    Assert.AreNotEqual('btnAbbrechen', mItem.Component);
+    Assert.AreNotEqual('btnHilfe', mItem.Component);
+    Assert.AreNotEqual('OnlineCount', mItem.Event);
   end;
 end;
 
 procedure TEventHandlersTests.MissingBodyStaysOpen;
 var
-  Handler: TEventHandler;
+  mHandler: TEventHandler;
 begin
   // AfterScroll ohne Rumpf in der Unit (etwa im Vorfahren): Zeile offen.
-  FHandlers := TEventHandlers.Collect('C:\P\Kunde.pas', UnitText, Forms);
-  Handler := Find('Tabelle', 'AfterScroll');
-  Assert.AreEqual(-1, Handler.Line);
-  Assert.AreEqual('', Handler.FileName);
-  Assert.AreEqual(-1, Handler.BodyLine);
+  FHandlers := TEventHandlers.Collect('C:\P\Kunde.pas', cUnitText, Forms);
+  mHandler := Find('Tabelle', 'AfterScroll');
+  Assert.AreEqual(-1, mHandler.Line);
+  Assert.AreEqual('', mHandler.FileName);
+  Assert.AreEqual(-1, mHandler.BodyLine);
 end;
 
 procedure TEventHandlersTests.PrefilterFindsAssignments;
@@ -238,17 +238,17 @@ end;
 
 procedure TEventHandlersTests.BodyLineIsFirstStatement;
 var
-  Forms: TArray<TEventHandlerForm>;
-  Handler: TEventHandler;
+  mForms: TArray<TEventHandlerForm>;
+  mHandler: TEventHandler;
 begin
   // FormCreate als Handler: erste Anweisung in Zeile 31.
-  SetLength(Forms, 1);
-  Forms[0].FileName := 'C:\P\Kunde.dfm';
-  Forms[0].Text := 'object frmKunde: TfrmKunde'#13#10'  OnCreate = FormCreate'#13#10'end'#13#10;
-  FHandlers := TEventHandlers.Collect('C:\P\Kunde.pas', UnitText, Forms);
-  Handler := Find('frmKunde', 'OnCreate');
-  Assert.AreEqual(30, Handler.Line);
-  Assert.AreEqual(31, Handler.BodyLine);
+  SetLength(mForms, 1);
+  mForms[0].FileName := 'C:\P\Kunde.dfm';
+  mForms[0].Text := 'object frmKunde: TfrmKunde'#13#10'  OnCreate = FormCreate'#13#10'end'#13#10;
+  FHandlers := TEventHandlers.Collect('C:\P\Kunde.pas', cUnitText, mForms);
+  mHandler := Find('frmKunde', 'OnCreate');
+  Assert.AreEqual(30, mHandler.Line);
+  Assert.AreEqual(31, mHandler.BodyLine);
 end;
 
 initialization

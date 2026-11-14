@@ -105,7 +105,7 @@ begin
 end;
 
 /// <summary>Titel aller Code-Aktionen in Zeile ALine von cText, mit "|" getrennt.</summary>
-function ActionTitles(const AMemo: IRuleFindingsMemo; ALine: Integer; const AOnly: string = ''): string;
+function ActionTitles(const AMemo: IRuleFindingsMemo; ALine: Integer; const AOnly: string): string; overload;
 var
   mStore: IDocumentStore;
   mActions: TLspCodeActions;
@@ -150,6 +150,11 @@ begin
     mDispatcher.Free;
     mActions.Free;
   end;
+end;
+
+function ActionTitles(const AMemo: IRuleFindingsMemo; ALine: Integer): string; overload;
+begin
+  Result := ActionTitles(AMemo, ALine, '');
 end;
 
 { TRuleFindingsMemoTests }

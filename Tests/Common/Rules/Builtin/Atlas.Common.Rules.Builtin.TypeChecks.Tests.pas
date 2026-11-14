@@ -181,41 +181,41 @@ end;
 
 procedure TDynamicArrayMisuseTests.IssueExampleDisposeWithFix;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Werte('  Dispose(Werte);'#10);
-  Found := ArrayFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(cDynamicArrayMisuseRuleId, Found[0].RuleId);
-  Assert.AreEqual('Dispose ist für dynamische Arrays nicht erlaubt und nicht nötig (wie E2008).', Found[0].Message);
-  Assert.AreEqual(17, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('Werte := nil', Found[0].Fixes[0].Title);
-  Fixed := Apply(Source, Found[0].Fixes[0]);
-  Assert.IsTrue(Pos('  Werte := nil;'#10, Fixed) > 0, Fixed);
-  Assert.AreEqual(0, Integer(Length(ArrayFindings(Fixed))), Fixed);
+  mSource := Werte('  Dispose(Werte);'#10);
+  mFound := ArrayFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(cDynamicArrayMisuseRuleId, mFound[0].RuleId);
+  Assert.AreEqual('Dispose ist für dynamische Arrays nicht erlaubt und nicht nötig (wie E2008).', mFound[0].Message);
+  Assert.AreEqual(17, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('Werte := nil', mFound[0].Fixes[0].Title);
+  mFixed := Apply(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('  Werte := nil;'#10, mFixed) > 0, mFixed);
+  Assert.AreEqual(0, Integer(Length(ArrayFindings(mFixed))), mFixed);
 end;
 
 procedure TDynamicArrayMisuseTests.NewAndSetLengthOnArrays;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Werte('  New(Liste);'#10);
-  Found := ArrayFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
+  mSource := Werte('  New(Liste);'#10);
+  mFound := ArrayFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('New ist für dynamische Arrays nicht erlaubt; die Länge setzt SetLength (wie E2255).',
-    Found[0].Message);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Fixed := Apply(Source, Found[0].Fixes[0]);
-  Assert.IsTrue(Pos('  SetLength(Liste, 1);'#10, Fixed) > 0, Fixed);
-  Assert.AreEqual(0, Integer(Length(ArrayFindings(Fixed))), Fixed);
-  Found := ArrayFindings(Werte('  SetLength(Werte);'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
+    mFound[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  mFixed := Apply(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('  SetLength(Liste, 1);'#10, mFixed) > 0, mFixed);
+  Assert.AreEqual(0, Integer(Length(ArrayFindings(mFixed))), mFixed);
+  mFound := ArrayFindings(Werte('  SetLength(Werte);'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('SetLength braucht für das dynamische Array Werte mindestens eine Länge (wie E2246).',
-    Found[0].Message);
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+    mFound[0].Message);
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
   // Richtige Formen.
   Assert.AreEqual(0, Integer(Length(ArrayFindings(Werte('  SetLength(Werte, 3);'#10'  Werte := nil;'#10 +
     '  SetLength(Liste, 2, 3);'#10)))));
@@ -223,34 +223,34 @@ end;
 
 procedure TDynamicArrayMisuseTests.NewWithTypeIdentifier;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := ArrayFindings(Werte('  Reihe := New(TWerte);'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('New für das dynamische Array TWerte braucht mindestens eine Länge (wie E2308).', Found[0].Message);
-  Found := ArrayFindings(Werte('  Reihe := New(TPunkt, 3);'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
+  mFound := ArrayFindings(Werte('  Reihe := New(TWerte);'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('New für das dynamische Array TWerte braucht mindestens eine Länge (wie E2308).', mFound[0].Message);
+  mFound := ArrayFindings(Werte('  Reihe := New(TPunkt, 3);'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('New mit Länge erwartet den Typ eines dynamischen Arrays; TPunkt ist keiner (wie E2008).',
-    Found[0].Message);
+    mFound[0].Message);
   // Eingebauter Typ ohne System im Index (#1369, Fall Cm.E2307).
-  Found := ArrayFindings(Werte('  Liste := New(Integer, 3);'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
+  mFound := ArrayFindings(Werte('  Liste := New(Integer, 3);'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('New mit Länge erwartet den Typ eines dynamischen Arrays; Integer ist keiner (wie E2008).',
-    Found[0].Message);
+    mFound[0].Message);
   Assert.AreEqual(0, Integer(Length(ArrayFindings(Werte('  Reihe := New(TWerte, 3);'#10)))));
 end;
 
 procedure TDynamicArrayMisuseTests.AliasesAndRtlArrays;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
   // TReihe = TWerte = array of Double.
-  Found := ArrayFindings(Werte('  Dispose(Reihe);'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
+  mFound := ArrayFindings(Werte('  Dispose(Reihe);'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
   // TBytes ohne System.SysUtils im Index.
-  Found := ArrayFindings('unit Puffer;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'implementation'#10 +
+  mFound := ArrayFindings('unit Puffer;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'implementation'#10 +
     'procedure Lesen;'#10'var'#10'  Daten: TBytes;'#10'begin'#10'  Dispose(Daten);'#10'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(1, Integer(Length(mFound)));
 end;
 
 procedure TDynamicArrayMisuseTests.PointersAndOpenArraysAreSilent;
@@ -267,15 +267,15 @@ end;
 
 procedure TDynamicArrayMisuseTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Werte('  Dispose(Werte);'#10);
-  Assert.AreEqual(1, Integer(Length(ArrayFindings(Source, '', 'Source/Werte.pas'))));
-  Assert.AreEqual(0, Integer(Length(ArrayFindings(Source, '{"rules": {"dynamic-array-misuse": "off"}}',
+  mSource := Werte('  Dispose(Werte);'#10);
+  Assert.AreEqual(1, Integer(Length(ArrayFindings(mSource, '', 'Source/Werte.pas'))));
+  Assert.AreEqual(0, Integer(Length(ArrayFindings(mSource, '{"rules": {"dynamic-array-misuse": "off"}}',
     'Source/Werte.pas'))));
-  Assert.AreEqual(0, Integer(Length(ArrayFindings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(ArrayFindings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/Werte.pas'))));
-  Assert.AreEqual(0, Integer(Length(ArrayFindings(Source,
+  Assert.AreEqual(0, Integer(Length(ArrayFindings(mSource,
     '{"rules": {"dynamic-array-misuse": {"exclude": ["Source/*.pas"]}}}', 'Source/Werte.pas'))));
 end;
 
@@ -306,16 +306,16 @@ end;
 
 { THresultIntegerMixTests }
 
-function MixFindings(const ASource: string; const AIndex: ISymbolIndex = nil): TArray<TRuleFinding>; overload;
+function MixFindings(const ASource: string; const AIndex: ISymbolIndex): TArray<TRuleFinding>; overload;
 var
-  Index: ISymbolIndex;
+  mIndex: ISymbolIndex;
 begin
-  Index := AIndex;
-  if Index = nil then
+  mIndex := AIndex;
+  if mIndex = nil then
   begin
-    Index := SystemIndex;
+    mIndex := SystemIndex;
   end;
-  Result := TRuleAssert.IndexFindings(THresultIntegerMixRule.Create, ASource, Index, '', 'Export.pas');
+  Result := TRuleAssert.IndexFindings(THresultIntegerMixRule.Create, ASource, mIndex, '', 'Export.pas');
 end;
 
 function MixFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
@@ -334,84 +334,84 @@ end;
 
 procedure THresultIntegerMixTests.IssueExampleWithFix;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Export('Integer');
-  Found := MixFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(cHresultIntegerMixRuleId, Found[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));
-  Assert.AreEqual('IExport.Schreiben liefert HRESULT, die Implementierung Integer (wie W1008).', Found[0].Message);
-  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('Ergebnistyp HRESULT wie im Interface', Found[0].Fixes[0].Title);
-  Fixed := Apply(Source, Found[0].Fixes[0]);
-  Assert.AreEqual(Export('HRESULT'), Fixed);
-  Assert.AreEqual(0, Integer(Length(MixFindings(Fixed))), Fixed);
+  mSource := Export('Integer');
+  mFound := MixFindings(mSource, nil);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(cHresultIntegerMixRuleId, mFound[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
+  Assert.AreEqual('IExport.Schreiben liefert HRESULT, die Implementierung Integer (wie W1008).', mFound[0].Message);
+  Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('Ergebnistyp HRESULT wie im Interface', mFound[0].Fixes[0].Title);
+  mFixed := Apply(mSource, mFound[0].Fixes[0]);
+  Assert.AreEqual(Export('HRESULT'), mFixed);
+  Assert.AreEqual(0, Integer(Length(MixFindings(mFixed, nil))), mFixed);
 end;
 
 procedure THresultIntegerMixTests.ReverseAndResolutionClause;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := MixFindings(Export('Integer').Replace('function Schreiben: HRESULT;', 'function Schreiben: Integer;')
-    .Replace(': Integer; stdcall;'#10'  end;'#10'implementation', ': HResult; stdcall;'#10'  end;'#10'implementation'));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('IExport.Schreiben liefert Integer, die Implementierung HResult (wie W1008).', Found[0].Message);
+  mFound := MixFindings(Export('Integer').Replace('function Schreiben: HRESULT;', 'function Schreiben: Integer;')
+    .Replace(': Integer; stdcall;'#10'  end;'#10'implementation', ': HResult; stdcall;'#10'  end;'#10'implementation'), nil);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('IExport.Schreiben liefert Integer, die Implementierung HResult (wie W1008).', mFound[0].Message);
   // Zuordnung: Schreiben implementiert SchreibenIntern.
-  Found := MixFindings('unit Export;'#10'interface'#10'type'#10'  IExport = interface'#10 +
+  mFound := MixFindings('unit Export;'#10'interface'#10'type'#10'  IExport = interface'#10 +
     '    function Schreiben: HRESULT; stdcall;'#10'  end;'#10'  TExport = class(TInterfacedObject, IExport)'#10 +
     '    function IExport.Schreiben = SchreibenIntern;'#10'    function Schreiben: HRESULT; stdcall;'#10 +
-    '    function SchreibenIntern: LongInt; stdcall;'#10'  end;'#10'implementation'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('IExport.Schreiben liefert HRESULT, die Implementierung LongInt (wie W1008).', Found[0].Message);
-  Assert.AreEqual(9, Found[0].Range.StartPos.Line);
+    '    function SchreibenIntern: LongInt; stdcall;'#10'  end;'#10'implementation'#10'end.', nil);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('IExport.Schreiben liefert HRESULT, die Implementierung LongInt (wie W1008).', mFound[0].Message);
+  Assert.AreEqual(9, mFound[0].Range.StartPos.Line);
 end;
 
 procedure THresultIntegerMixTests.InterfaceFromIndex;
 var
-  Index: ISymbolIndex;
-  Found: TArray<TRuleFinding>;
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
 begin
-  Index := SystemIndex;
-  Index.AddUnit(TIndexExtractor.ExtractText('unit Schnittstellen;'#10'interface'#10'type'#10 +
+  mIndex := SystemIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Schnittstellen;'#10'interface'#10'type'#10 +
     '  IBasis = interface'#10'    function Pruefen(const A: string): HRESULT; stdcall;'#10'  end;'#10 +
     '  IExport = interface(IBasis)'#10'    procedure Leeren;'#10'  end;'#10'implementation'#10'end.',
     'C:\Projekt\Schnittstellen.pas', nil));
-  Found := MixFindings('unit Export;'#10'interface'#10'uses'#10'  Schnittstellen;'#10'type'#10 +
+  mFound := MixFindings('unit Export;'#10'interface'#10'uses'#10'  Schnittstellen;'#10'type'#10 +
     '  TExport = class(TInterfacedObject, IExport)'#10'    function Pruefen(const A: string): Integer; stdcall;'#10 +
-    '    procedure Leeren;'#10'  end;'#10'implementation'#10'end.', Index);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('IBasis.Pruefen liefert HRESULT, die Implementierung Integer (wie W1008).', Found[0].Message);
+    '    procedure Leeren;'#10'  end;'#10'implementation'#10'end.', mIndex);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('IBasis.Pruefen liefert HRESULT, die Implementierung Integer (wie W1008).', mFound[0].Message);
 end;
 
 procedure THresultIntegerMixTests.MatchingAndConditionalVariantsAreSilent;
 begin
-  Assert.AreEqual(0, Integer(Length(MixFindings(Export('HRESULT')))));
-  Assert.AreEqual(0, Integer(Length(MixFindings(Export('HResult')))));
-  Assert.AreEqual(0, Integer(Length(MixFindings(Export('Cardinal')))));
+  Assert.AreEqual(0, Integer(Length(MixFindings(Export('HRESULT'), nil))));
+  Assert.AreEqual(0, Integer(Length(MixFindings(Export('HResult'), nil))));
+  Assert.AreEqual(0, Integer(Length(MixFindings(Export('Cardinal'), nil))));
   // Andere Parameter: implementiert etwas anderes.
   Assert.AreEqual(0, Integer(Length(MixFindings(Export('Integer').Replace('    function Schreiben: Integer; stdcall;',
     '    function Schreiben(A: Integer): Integer; stdcall;'#10'    function Schreiben: HRESULT; stdcall;')
-    .Replace('function TExport.Schreiben: Integer;', 'function TExport.Schreiben(A: Integer): Integer;')))));
+    .Replace('function TExport.Schreiben: Integer;', 'function TExport.Schreiben(A: Integer): Integer;'), nil))));
   // Varianten in bedingten Zweigen: eine passt.
   Assert.AreEqual(0, Integer(Length(MixFindings(Export('Integer').Replace('    function Schreiben: Integer; stdcall;',
     '{$IFDEF ALT}'#10'    function Schreiben: Integer; stdcall;'#10'{$ELSE}'#10'    function Schreiben: HRESULT; stdcall;' +
-    #10'{$ENDIF}')))));
+    #10'{$ENDIF}'), nil))));
 end;
 
 procedure THresultIntegerMixTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Export('Integer');
-  Assert.AreEqual(1, Integer(Length(MixFindings(Source, '', 'Source/Export.pas'))));
-  Assert.AreEqual(0, Integer(Length(MixFindings(Source, '{"rules": {"hresult-integer-mix": "off"}}',
+  mSource := Export('Integer');
+  Assert.AreEqual(1, Integer(Length(MixFindings(mSource, '', 'Source/Export.pas'))));
+  Assert.AreEqual(0, Integer(Length(MixFindings(mSource, '{"rules": {"hresult-integer-mix": "off"}}',
     'Source/Export.pas'))));
-  Assert.AreEqual(0, Integer(Length(MixFindings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(MixFindings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/Export.pas'))));
-  Assert.AreEqual(0, Integer(Length(MixFindings(Source,
+  Assert.AreEqual(0, Integer(Length(MixFindings(mSource,
     '{"rules": {"hresult-integer-mix": {"exclude": ["Source/*.pas"]}}}', 'Source/Export.pas'))));
 end;
 
@@ -442,36 +442,36 @@ begin
 end;
 
 const
-  Vergleich = '  function Vergleich(A, B: Pointer): Integer;'#10'  begin'#10'    Result := 0;'#10'  end;'#10;
+  cVergleich = '  function Vergleich(A, B: Pointer): Integer;'#10'  begin'#10'    Result := 0;'#10'  end;'#10;
 
 procedure TLocalRoutineAsCallbackTests.IssueExampleWithMoveFix;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Liste(Vergleich, '  Sort(Vergleich);'#10);
-  Found := CallbackFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(cLocalRoutineAsCallbackRuleId, Found[0].RuleId);
+  mSource := Liste(cVergleich, '  Sort(Vergleich);'#10);
+  mFound := CallbackFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(cLocalRoutineAsCallbackRuleId, mFound[0].RuleId);
   Assert.AreEqual('Die lokale Funktion Vergleich kann nicht als Prozedurvariable übergeben werden (wie E2094).',
-    Found[0].Message);
-  Assert.AreEqual(30, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('Vergleich als Routine der Unit auslagern', Found[0].Fixes[0].Title);
-  Fixed := Apply(Source, Found[0].Fixes[0]);
+    mFound[0].Message);
+  Assert.AreEqual(30, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('Vergleich als Routine der Unit auslagern', mFound[0].Fixes[0].Title);
+  mFixed := Apply(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('end;'#10'function Vergleich(A, B: Pointer): Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10#10 +
-    'procedure TListe.Sortieren;'#10'var'#10'  Aktion: TAktion;'#10'begin'#10'  Sort(Vergleich);', Fixed) > 0, Fixed);
-  Assert.AreEqual(0, Integer(Length(CallbackFindings(Fixed))), Fixed);
+    'procedure TListe.Sortieren;'#10'var'#10'  Aktion: TAktion;'#10'begin'#10'  Sort(Vergleich);', mFixed) > 0, mFixed);
+  Assert.AreEqual(0, Integer(Length(CallbackFindings(mFixed))), mFixed);
 end;
 
 procedure TLocalRoutineAsCallbackTests.AssignmentAndParameterlessRoutines;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := CallbackFindings(Liste('  procedure Melden;'#10'  begin'#10'  end;'#10, '  Aktion := Melden;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
+  mFound := CallbackFindings(Liste('  procedure Melden;'#10'  begin'#10'  end;'#10, '  Aktion := Melden;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Die lokale Prozedur Melden kann keiner Prozedurvariablen zugewiesen werden (wie E2094).',
-    Found[0].Message);
+    mFound[0].Message);
   // Parameterlose Funktion an einen Integer: ein Aufruf.
   Assert.AreEqual(0, Integer(Length(CallbackFindings(Liste('  function Null: Integer;'#10'  begin'#10 +
     '    Result := 0;'#10'  end;'#10, '  FAnzahl := Null;'#10)))));
@@ -479,28 +479,28 @@ end;
 
 procedure TLocalRoutineAsCallbackTests.NoMoveWhenOuterNamesAreUsed;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
   // FAnzahl gehört zur Klasse: Auf Unit-Ebene wäre es unbekannt.
-  Found := CallbackFindings(Liste('  function Vergleich(A, B: Pointer): Integer;'#10'  begin'#10 +
+  mFound := CallbackFindings(Liste('  function Vergleich(A, B: Pointer): Integer;'#10'  begin'#10 +
     '    Result := FAnzahl;'#10'  end;'#10, '  Sort(Vergleich);'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
   // Lokale Variable der äußeren Routine.
-  Found := CallbackFindings(Liste('  function Vergleich(A, B: Pointer): Integer;'#10'  begin'#10 +
+  mFound := CallbackFindings(Liste('  function Vergleich(A, B: Pointer): Integer;'#10'  begin'#10 +
     '    Aktion := nil;'#10'    Result := 0;'#10'  end;'#10, '  Sort(Vergleich);'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
 end;
 
 procedure TLocalRoutineAsCallbackTests.AddressInTypedConstant;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := CallbackFindings('unit Zeiger;'#10'interface'#10'implementation'#10'procedure Lesen;'#10'var'#10 +
+  mFound := CallbackFindings('unit Zeiger;'#10'interface'#10'implementation'#10'procedure Lesen;'#10'var'#10 +
     '  Wert: Integer;'#10'const'#10'  Adresse: Pointer = @Wert;'#10'begin'#10'end;'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Die Adresse des lokalen Symbols Wert ist keine Konstante (wie E2278).', Found[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Die Adresse des lokalen Symbols Wert ist keine Konstante (wie E2278).', mFound[0].Message);
   // Globale Variable: erlaubt.
   Assert.AreEqual(0, Integer(Length(CallbackFindings('unit Zeiger;'#10'interface'#10'implementation'#10'var'#10 +
     '  Wert: Integer;'#10'procedure Lesen;'#10'const'#10'  Adresse: Pointer = @Wert;'#10'begin'#10'end;'#10 +
@@ -510,27 +510,27 @@ end;
 procedure TLocalRoutineAsCallbackTests.CallsAndOtherTypesAreSilent;
 begin
   // Aufrufe, Adresse mit @ (untypisierter Zeiger), anonyme Methode.
-  Assert.AreEqual(0, Integer(Length(CallbackFindings(Liste(Vergleich, '  Vergleich(nil, nil);'#10 +
+  Assert.AreEqual(0, Integer(Length(CallbackFindings(Liste(cVergleich, '  Vergleich(nil, nil);'#10 +
     '  FAnzahl := Vergleich(nil, nil);'#10'  Sort(function(A, B: Pointer): Integer begin Result := 0; end);'#10)))));
   // Methodenzeiger und Methodenreferenz meldet der Compiler mit anderen Codes.
   Assert.AreEqual(0, Integer(Length(CallbackFindings(Liste('  procedure Melden;'#10'  begin'#10'  end;'#10,
     '  Ausfuehren(Melden, Melden);'#10)))));
   // Routine der Unit statt lokaler Routine.
   Assert.AreEqual(0, Integer(Length(CallbackFindings(Liste('', '  Sort(Vergleich);'#10).Replace(
-    'procedure TListe.Sortieren;'#10, Vergleich.Replace('  ', '') + 'procedure TListe.Sortieren;'#10)))));
+    'procedure TListe.Sortieren;'#10, cVergleich.Replace('  ', '') + 'procedure TListe.Sortieren;'#10)))));
 end;
 
 procedure TLocalRoutineAsCallbackTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Liste(Vergleich, '  Sort(Vergleich);'#10);
-  Assert.AreEqual(1, Integer(Length(CallbackFindings(Source, '', 'Source/Listen.pas'))));
-  Assert.AreEqual(0, Integer(Length(CallbackFindings(Source, '{"rules": {"local-routine-as-callback": "off"}}',
+  mSource := Liste(cVergleich, '  Sort(Vergleich);'#10);
+  Assert.AreEqual(1, Integer(Length(CallbackFindings(mSource, '', 'Source/Listen.pas'))));
+  Assert.AreEqual(0, Integer(Length(CallbackFindings(mSource, '{"rules": {"local-routine-as-callback": "off"}}',
     'Source/Listen.pas'))));
-  Assert.AreEqual(0, Integer(Length(CallbackFindings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(CallbackFindings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/Listen.pas'))));
-  Assert.AreEqual(0, Integer(Length(CallbackFindings(Source,
+  Assert.AreEqual(0, Integer(Length(CallbackFindings(mSource,
     '{"rules": {"local-routine-as-callback": {"exclude": ["Source/*.pas"]}}}', 'Source/Listen.pas'))));
 end;
 
@@ -564,72 +564,72 @@ end;
 
 procedure TInvalidVarArgumentTests.IssueExampleWithFix;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
   // Das Beispiel aus #1037 (S[1] an einen var-Zeichen-Parameter) übersetzt dcc still (#1383, Cm.E2354).
   Assert.AreEqual(0, Integer(Length(VarFindings(Zeilen('  Erhoehen(S[1]);'#10)))));
   // Korrektur über eine lokale Variable am Beispiel eines Funktionsergebnisses.
-  Source := Zeilen('  Zaehlen(Doppelt(2));'#10);
-  Found := VarFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(cInvalidVarArgumentRuleId, Found[0].RuleId);
-  Assert.AreEqual(43, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(10, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Fixed := Apply(Source, Found[0].Fixes[0]);
-  Assert.AreEqual(0, Integer(Length(VarFindings(Fixed))), Fixed);
+  mSource := Zeilen('  Zaehlen(Doppelt(2));'#10);
+  mFound := VarFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(cInvalidVarArgumentRuleId, mFound[0].RuleId);
+  Assert.AreEqual(43, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(10, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  mFixed := Apply(mSource, mFound[0].Fixes[0]);
+  Assert.AreEqual(0, Integer(Length(VarFindings(mFixed))), mFixed);
 end;
 
 procedure TInvalidVarArgumentTests.ConstantsPropertiesAndResults;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := VarFindings(Zeilen('  Zaehlen(Grenze);'#10'  Zaehlen(Start);'#10'  Zaehlen(Fest);'#10 +
+  mFound := VarFindings(Zeilen('  Zaehlen(Grenze);'#10'  Zaehlen(Start);'#10'  Zaehlen(Fest);'#10 +
     '  Zaehlen(Zeile.Anzahl);'#10'  Zaehlen(Doppelt(2));'#10'  Zaehlen(5);'#10));
-  Assert.AreEqual(6, Integer(Length(Found)));
+  Assert.AreEqual(6, Integer(Length(mFound)));
   Assert.AreEqual('Die Konstante Grenze ist keine Variable und kann nicht an einen var-Parameter übergeben ' +
-    'werden (wie E2197).', Found[0].Message);
+    'werden (wie E2197).', mFound[0].Message);
   Assert.AreEqual('Die typisierte Konstante Start ist keine Variable und kann nicht an einen var-Parameter ' +
-    'übergeben werden (wie E2197).', Found[1].Message);
+    'übergeben werden (wie E2197).', mFound[1].Message);
   Assert.AreEqual('Der const-Parameter Fest ist keine Variable und kann nicht an einen var-Parameter übergeben ' +
-    'werden (wie E2197).', Found[2].Message);
+    'werden (wie E2197).', mFound[2].Message);
   Assert.AreEqual('Die Eigenschaft Zeile.Anzahl ist keine Variable und kann nicht an einen var-Parameter ' +
-    'übergeben werden (wie E2197).', Found[3].Message);
+    'übergeben werden (wie E2197).', mFound[3].Message);
   Assert.AreEqual('Das Ergebnis von Doppelt ist keine Variable und kann nicht an einen var-Parameter übergeben ' +
-    'werden (wie E2197).', Found[4].Message);
+    'werden (wie E2197).', mFound[4].Message);
   Assert.AreEqual('Der Wert 5 ist keine Variable und kann nicht an einen var-Parameter übergeben werden ' +
-    '(wie E2197).', Found[5].Message);
+    '(wie E2197).', mFound[5].Message);
   // Ohne Rückschreiben: Die Korrektur übergibt eine Kopie.
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   // Mit {$J+} sind typisierte Konstanten beschreibbar.
   Assert.AreEqual(0, Integer(Length(VarFindings('{$J+}'#10 + Zeilen('  Zaehlen(Start);'#10)))));
 end;
 
 procedure TInvalidVarArgumentTests.OpenArraysSliceAndExpressions;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := VarFindings(Zeilen('  Fuellen(Grenze);'#10'  Fuellen([1, 2]);'#10'  Leeren(Slice(Feld, 2));'#10 +
+  mFound := VarFindings(Zeilen('  Fuellen(Grenze);'#10'  Fuellen([1, 2]);'#10'  Leeren(Slice(Feld, 2));'#10 +
     '  Zaehlen(Zahl + 1);'#10'  Lesen(-Zahl);'#10));
   // Slice an ein out-Open-Array übersetzt dcc (IV4, #1328) und bleibt still.
-  Assert.AreEqual(4, Integer(Length(Found)));
+  Assert.AreEqual(4, Integer(Length(mFound)));
   Assert.AreEqual('Eine Konstante kann nicht als offenes Array an einen var-Parameter übergeben werden (wie E2192).',
-    Found[0].Message);
-  Assert.AreEqual(Found[0].Message, Found[1].Message);
+    mFound[0].Message);
+  Assert.AreEqual(mFound[0].Message, mFound[1].Message);
   Assert.AreEqual('An einen var-Parameter muss eine Variable übergeben werden, kein Ausdruck (wie E2036).',
-    Found[2].Message);
+    mFound[2].Message);
   Assert.AreEqual('An einen out-Parameter muss eine Variable übergeben werden, kein Ausdruck (wie E2036).',
-    Found[3].Message);
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual(1, Integer(Length(Found[2].Fixes)));
+    mFound[3].Message);
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFound[2].Fixes)));
   // Ein konstanter Ausdruck ist für Delphi 13 ein konstantes Objekt (VG3 aus Tests/DccFaelle, #1382).
-  Found := VarFindings(Zeilen('  Zaehlen(Grenze + 1);'#10'  Zaehlen(-(Grenze * 2));'#10));
-  Assert.AreEqual(2, Integer(Length(Found)));
+  mFound := VarFindings(Zeilen('  Zaehlen(Grenze + 1);'#10'  Zaehlen(-(Grenze * 2));'#10));
+  Assert.AreEqual(2, Integer(Length(mFound)));
   Assert.AreEqual('Der konstante Ausdruck Grenze + 1 ist keine Variable und kann nicht an einen var-Parameter ' +
-    'übergeben werden (wie E2197).', Found[0].Message);
+    'übergeben werden (wie E2197).', mFound[0].Message);
   Assert.AreEqual('Der konstante Ausdruck -(Grenze * 2) ist keine Variable und kann nicht an einen var-Parameter ' +
-    'übergeben werden (wie E2197).', Found[1].Message);
+    'übergeben werden (wie E2197).', mFound[1].Message);
   // Slice an ein var-Open-Array übersetzt dcc (Spring4D, IV1-IV3, #1328).
   Assert.AreEqual(0, Integer(Length(VarFindings(Zeilen('  Fuellen(Slice(Feld, 2));'#10)))));
 end;
@@ -650,22 +650,22 @@ end;
 
 procedure TInvalidVarArgumentTests.PropertyFixWritesBack;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Zeilen('  Anhaengen(Zeile.Text);'#10);
-  Found := VarFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Fixed := Apply(Source, Found[0].Fixes[0]);
+  mSource := Zeilen('  Anhaengen(Zeile.Text);'#10);
+  mFound := VarFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  mFixed := Apply(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('  Wert: string;'#10'begin'#10'  Wert := Zeile.Text;'#10'  Anhaengen(Wert);'#10 +
-    '  Zeile.Text := Wert;'#10, Fixed) > 0, Fixed);
+    '  Zeile.Text := Wert;'#10, mFixed) > 0, mFixed);
   // out: ohne Zuweisung vorab; Anzahl hat kein write, also kein Rückschreiben.
-  Source := Zeilen('  Lesen(Zeile.Anzahl);'#10);
-  Found := VarFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Fixed := Apply(Source, Found[0].Fixes[0]);
-  Assert.IsTrue(Pos('  Wert: Integer;'#10'begin'#10'  Lesen(Wert);'#10'end;', Fixed) > 0, Fixed);
+  mSource := Zeilen('  Lesen(Zeile.Anzahl);'#10);
+  mFound := VarFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  mFixed := Apply(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('  Wert: Integer;'#10'begin'#10'  Lesen(Wert);'#10'end;', mFixed) > 0, mFixed);
 end;
 
 procedure TInvalidVarArgumentTests.VariablesAndUntypedParametersAreSilent;
@@ -677,33 +677,33 @@ end;
 
 procedure TInvalidVarArgumentTests.RoutinesFromIndex;
 var
-  Index: ISymbolIndex;
-  Found: TArray<TRuleFinding>;
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
 begin
-  Index := SystemIndex;
-  Index.AddUnit(TIndexExtractor.ExtractText('unit Fremd;'#10'interface'#10'type'#10'  TLeser = class'#10 +
+  mIndex := SystemIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Fremd;'#10'interface'#10'type'#10'  TLeser = class'#10 +
     '    class procedure Holen(out A: Integer); overload;'#10 +
     '    class procedure Holen(A: Integer; out B: Integer); overload;'#10'  end;'#10 +
     'procedure Setzen(var A: Integer; B: Integer = 0);'#10'implementation'#10'end.', 'C:\Projekt\Fremd.pas', nil));
   // Überladungen aus einer anderen Unit: Die Auswahl kennt Atlas nicht sicher, also still.
-  Found := TRuleAssert.IndexFindings(TInvalidVarArgumentRule.Create, 'unit Nutzer;'#10'interface'#10 +
+  mFound := TRuleAssert.IndexFindings(TInvalidVarArgumentRule.Create, 'unit Nutzer;'#10'interface'#10 +
     'implementation'#10'uses'#10'  Fremd;'#10'procedure Tun;'#10'var'#10'  Zahl: Integer;'#10'begin'#10 +
-    '  TLeser.Holen(5, Zahl);'#10'  Setzen(Zahl, 2);'#10'  Setzen(3);'#10'end;'#10'end.', Index, '', 'Nutzer.pas');
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(11, Found[0].Range.StartPos.Line);
+    '  TLeser.Holen(5, Zahl);'#10'  Setzen(Zahl, 2);'#10'  Setzen(3);'#10'end;'#10'end.', mIndex, '', 'Nutzer.pas');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(11, mFound[0].Range.StartPos.Line);
 end;
 
 procedure TInvalidVarArgumentTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Zeilen('  Zaehlen(Doppelt(2));'#10);
-  Assert.AreEqual(1, Integer(Length(VarFindings(Source, '', 'Source/Zeilen.pas'))));
-  Assert.AreEqual(0, Integer(Length(VarFindings(Source, '{"rules": {"invalid-var-argument": "off"}}',
+  mSource := Zeilen('  Zaehlen(Doppelt(2));'#10);
+  Assert.AreEqual(1, Integer(Length(VarFindings(mSource, '', 'Source/Zeilen.pas'))));
+  Assert.AreEqual(0, Integer(Length(VarFindings(mSource, '{"rules": {"invalid-var-argument": "off"}}',
     'Source/Zeilen.pas'))));
-  Assert.AreEqual(0, Integer(Length(VarFindings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(VarFindings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/Zeilen.pas'))));
-  Assert.AreEqual(0, Integer(Length(VarFindings(Source,
+  Assert.AreEqual(0, Integer(Length(VarFindings(mSource,
     '{"rules": {"invalid-var-argument": {"exclude": ["Source/*.pas"]}}}', 'Source/Zeilen.pas'))));
 end;
 
@@ -732,49 +732,49 @@ end;
 
 procedure TConditionNotBooleanTests.IssueExampleWithFix;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
 begin
-  Source := Bedingungen('  if Liste.Count then'#10'    Verarbeiten;'#10);
-  Found := ConditionFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(cConditionNotBooleanRuleId, Found[0].RuleId);
-  Assert.AreEqual('Die Bedingung ist Integer, nicht Boolean (wie E2012).', Found[0].Message);
-  Assert.AreEqual(24, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(5, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(2, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('Liste.Count <> 0', Found[0].Fixes[0].Title);
-  Assert.IsFalse(Found[0].Fixes[0].Alternative);
-  Assert.AreEqual('Liste.Count > 0', Found[0].Fixes[1].Title);
-  Assert.IsTrue(Found[0].Fixes[1].Alternative);
-  Fixed := Apply(Source, Found[0].Fixes[1]);
-  Assert.AreEqual(Bedingungen('  if Liste.Count > 0 then'#10'    Verarbeiten;'#10), Fixed);
-  Assert.AreEqual(0, Integer(Length(ConditionFindings(Fixed))), Fixed);
+  mSource := Bedingungen('  if Liste.Count then'#10'    Verarbeiten;'#10);
+  mFound := ConditionFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(cConditionNotBooleanRuleId, mFound[0].RuleId);
+  Assert.AreEqual('Die Bedingung ist Integer, nicht Boolean (wie E2012).', mFound[0].Message);
+  Assert.AreEqual(24, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(5, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(2, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('Liste.Count <> 0', mFound[0].Fixes[0].Title);
+  Assert.IsFalse(mFound[0].Fixes[0].Alternative);
+  Assert.AreEqual('Liste.Count > 0', mFound[0].Fixes[1].Title);
+  Assert.IsTrue(mFound[0].Fixes[1].Alternative);
+  mFixed := Apply(mSource, mFound[0].Fixes[1]);
+  Assert.AreEqual(Bedingungen('  if Liste.Count > 0 then'#10'    Verarbeiten;'#10), mFixed);
+  Assert.AreEqual(0, Integer(Length(ConditionFindings(mFixed))), mFixed);
 end;
 
 procedure TConditionNotBooleanTests.LoopsPointersStringsAndClasses;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := ConditionFindings(Bedingungen('  while Liste.Rest do'#10'    Verarbeiten;'#10'  repeat'#10 +
+  mFound := ConditionFindings(Bedingungen('  while Liste.Rest do'#10'    Verarbeiten;'#10'  repeat'#10 +
     '    Verarbeiten;'#10'  until Zeiger;'#10'  if P then'#10'    Verarbeiten;'#10'  if (S) then'#10 +
     '    Verarbeiten;'#10'  if D then'#10'    Verarbeiten;'#10'  if Liste then'#10'    Verarbeiten;'#10));
-  Assert.AreEqual(6, Integer(Length(Found)));
-  Assert.AreEqual('Die Bedingung ist Int64, nicht Boolean (wie E2012).', Found[0].Message);
-  Assert.AreEqual('Die Bedingung ist PZahl, nicht Boolean (wie E2012).', Found[1].Message);
-  Assert.AreEqual('Zeiger <> nil', Found[1].Fixes[0].Title);
-  Assert.AreEqual('Assigned(Zeiger)', Found[1].Fixes[1].Title);
-  Assert.AreEqual('Die Bedingung ist Pointer, nicht Boolean (wie E2012).', Found[2].Message);
-  Assert.AreEqual('Die Bedingung ist string, nicht Boolean (wie E2012).', Found[3].Message);
-  Assert.AreEqual('(S) <> ''''', Found[3].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Found[3].Fixes)));
-  Assert.AreEqual('Die Bedingung ist Double, nicht Boolean (wie E2012).', Found[4].Message);
-  Assert.AreEqual('Die Bedingung ist TListe, nicht Boolean (wie E2012).', Found[5].Message);
-  Assert.AreEqual('Assigned(Liste)', Found[5].Fixes[1].Title);
+  Assert.AreEqual(6, Integer(Length(mFound)));
+  Assert.AreEqual('Die Bedingung ist Int64, nicht Boolean (wie E2012).', mFound[0].Message);
+  Assert.AreEqual('Die Bedingung ist PZahl, nicht Boolean (wie E2012).', mFound[1].Message);
+  Assert.AreEqual('Zeiger <> nil', mFound[1].Fixes[0].Title);
+  Assert.AreEqual('Assigned(Zeiger)', mFound[1].Fixes[1].Title);
+  Assert.AreEqual('Die Bedingung ist Pointer, nicht Boolean (wie E2012).', mFound[2].Message);
+  Assert.AreEqual('Die Bedingung ist string, nicht Boolean (wie E2012).', mFound[3].Message);
+  Assert.AreEqual('(S) <> ''''', mFound[3].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFound[3].Fixes)));
+  Assert.AreEqual('Die Bedingung ist Double, nicht Boolean (wie E2012).', mFound[4].Message);
+  Assert.AreEqual('Die Bedingung ist TListe, nicht Boolean (wie E2012).', mFound[5].Message);
+  Assert.AreEqual('Assigned(Liste)', mFound[5].Fixes[1].Title);
   // Bedingter Ausdruck (ab Delphi 13).
-  Found := ConditionFindings(Bedingungen('  D := if Liste.Count then 1 else 0;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Die Bedingung ist Integer, nicht Boolean (wie E2012).', Found[0].Message);
+  mFound := ConditionFindings(Bedingungen('  D := if Liste.Count then 1 else 0;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Die Bedingung ist Integer, nicht Boolean (wie E2012).', mFound[0].Message);
 end;
 
 procedure TConditionNotBooleanTests.BooleansAndUnknownTypesAreSilent;
@@ -788,7 +788,7 @@ end;
 procedure TConditionNotBooleanTests.OverloadChosenByAliasArgument;
 const
   // Wie FileAge der RTL: Die erste Überladung liefert LongInt, die mit out-Parameter vom Alias-Typ Boolean.
-  Source =
+  cSource =
     'unit Bedingungen;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -816,25 +816,25 @@ const
     'end;'#10 +
     'end.';
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := ConditionFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Die Bedingung ist LongInt, nicht Boolean (wie E2012).', Found[0].Message);
-  Assert.AreEqual(22, Found[0].Range.StartPos.Line);
+  mFound := ConditionFindings(cSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Die Bedingung ist LongInt, nicht Boolean (wie E2012).', mFound[0].Message);
+  Assert.AreEqual(22, mFound[0].Range.StartPos.Line);
 end;
 
 procedure TConditionNotBooleanTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Bedingungen('  if Liste.Count then'#10'    Verarbeiten;'#10);
-  Assert.AreEqual(1, Integer(Length(ConditionFindings(Source, '', 'Source/Bedingungen.pas'))));
-  Assert.AreEqual(0, Integer(Length(ConditionFindings(Source, '{"rules": {"condition-not-boolean": "off"}}',
+  mSource := Bedingungen('  if Liste.Count then'#10'    Verarbeiten;'#10);
+  Assert.AreEqual(1, Integer(Length(ConditionFindings(mSource, '', 'Source/Bedingungen.pas'))));
+  Assert.AreEqual(0, Integer(Length(ConditionFindings(mSource, '{"rules": {"condition-not-boolean": "off"}}',
     'Source/Bedingungen.pas'))));
-  Assert.AreEqual(0, Integer(Length(ConditionFindings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(ConditionFindings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/Bedingungen.pas'))));
-  Assert.AreEqual(0, Integer(Length(ConditionFindings(Source,
+  Assert.AreEqual(0, Integer(Length(ConditionFindings(mSource,
     '{"rules": {"condition-not-boolean": {"exclude": ["Source/*.pas"]}}}', 'Source/Bedingungen.pas'))));
 end;
 
@@ -869,30 +869,30 @@ end;
 
 procedure TForInNotEnumerableTests.IssueExample;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := ForInFindings(Schleifen('  for O in Felder.Dataset do'#10'    O.Free;'#10));
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(cForInNotEnumerableRuleId, Found[0].RuleId);
-  Assert.AreEqual('TDataSet hat keinen Enumerator; for-in ist hier nicht möglich (wie E2430).', Found[0].Message);
-  Assert.AreEqual(45, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(11, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  mFound := ForInFindings(Schleifen('  for O in Felder.Dataset do'#10'    O.Free;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(cForInNotEnumerableRuleId, mFound[0].RuleId);
+  Assert.AreEqual('TDataSet hat keinen Enumerator; for-in ist hier nicht möglich (wie E2430).', mFound[0].Message);
+  Assert.AreEqual(45, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(11, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
 end;
 
 procedure TForInNotEnumerableTests.NumbersRecordsAndIncompleteEnumerators;
 var
-  Found: TArray<TRuleFinding>;
+  mFound: TArray<TRuleFinding>;
 begin
-  Found := ForInFindings(Schleifen('  for O in MitCount do'#10'    O.Free;'#10'  for I in N do'#10'    Inc(I);'#10 +
+  mFound := ForInFindings(Schleifen('  for O in MitCount do'#10'    O.Free;'#10'  for I in N do'#10'    Inc(I);'#10 +
     '  for O in Punkt do'#10'    O.Free;'#10'  for O in Halb do'#10'    O.Free;'#10));
-  Assert.AreEqual(4, Integer(Length(Found)));
+  Assert.AreEqual(4, Integer(Length(mFound)));
   Assert.AreEqual('TMitCount hat keinen Enumerator; for-in ist hier nicht möglich; stattdessen über Count mit ' +
-    'Index durchlaufen (wie E2430).', Found[0].Message);
-  Assert.AreEqual('Integer hat keinen Enumerator; for-in ist hier nicht möglich (wie E2430).', Found[1].Message);
-  Assert.AreEqual('TPunkt hat keinen Enumerator; for-in ist hier nicht möglich (wie E2430).', Found[2].Message);
+    'Index durchlaufen (wie E2430).', mFound[0].Message);
+  Assert.AreEqual('Integer hat keinen Enumerator; for-in ist hier nicht möglich (wie E2430).', mFound[1].Message);
+  Assert.AreEqual('TPunkt hat keinen Enumerator; for-in ist hier nicht möglich (wie E2430).', mFound[2].Message);
   Assert.AreEqual('Der Enumerator TOhneCurrent von THalb hat kein öffentliches Current; for-in ist hier nicht ' +
-    'möglich (wie E2431).', Found[3].Message);
+    'möglich (wie E2431).', mFound[3].Message);
 end;
 
 procedure TForInNotEnumerableTests.EnumerableAndUnknownTypesAreSilent;
@@ -904,15 +904,15 @@ end;
 
 procedure TForInNotEnumerableTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Schleifen('  for O in Felder.Dataset do'#10'    O.Free;'#10);
-  Assert.AreEqual(1, Integer(Length(ForInFindings(Source, '', 'Source/Schleifen.pas'))));
-  Assert.AreEqual(0, Integer(Length(ForInFindings(Source, '{"rules": {"for-in-not-enumerable": "off"}}',
+  mSource := Schleifen('  for O in Felder.Dataset do'#10'    O.Free;'#10);
+  Assert.AreEqual(1, Integer(Length(ForInFindings(mSource, '', 'Source/Schleifen.pas'))));
+  Assert.AreEqual(0, Integer(Length(ForInFindings(mSource, '{"rules": {"for-in-not-enumerable": "off"}}',
     'Source/Schleifen.pas'))));
-  Assert.AreEqual(0, Integer(Length(ForInFindings(Source, '{"rules": {"group:compiler": "off"}}',
+  Assert.AreEqual(0, Integer(Length(ForInFindings(mSource, '{"rules": {"group:compiler": "off"}}',
     'Source/Schleifen.pas'))));
-  Assert.AreEqual(0, Integer(Length(ForInFindings(Source,
+  Assert.AreEqual(0, Integer(Length(ForInFindings(mSource,
     '{"rules": {"for-in-not-enumerable": {"exclude": ["Source/*.pas"]}}}', 'Source/Schleifen.pas'))));
 end;
 

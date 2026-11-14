@@ -12,7 +12,8 @@ type
   TLspWorkspaceSymbolsTests = class
   private
     FIndex: ISymbolIndex;
-    function Names(const AQuery: string; AMax: Integer = 100): string;
+    function Names(const AQuery: string): string; overload;
+    function Names(const AQuery: string; AMax: Integer): string; overload;
   public
     [Setup]
     procedure Setup;
@@ -47,7 +48,7 @@ uses
   Atlas.Common.Index.Extractor;
 
 const
-  UnitKunden =
+  cUnitKunden =
     'unit Kunden;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -73,7 +74,7 @@ const
 procedure TLspWorkspaceSymbolsTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitKunden, 'C:\P\Kunden.pas', nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitKunden, 'C:\P\Kunden.pas', nil));
 end;
 
 procedure TLspWorkspaceSymbolsTests.TearDown;
@@ -81,18 +82,23 @@ begin
   FIndex := nil;
 end;
 
+function TLspWorkspaceSymbolsTests.Names(const AQuery: string): string;
+begin
+  Result := Names(AQuery, 100);
+end;
+
 function TLspWorkspaceSymbolsTests.Names(const AQuery: string; AMax: Integer): string;
 var
-  Item: TWorkspaceSymbol;
+  mItem: TWorkspaceSymbol;
 begin
   Result := '';
-  for Item in TLspWorkspaceSymbols.Search(FIndex, AQuery, AMax) do
+  for mItem in TLspWorkspaceSymbols.Search(FIndex, AQuery, AMax) do
   begin
     if Result <> '' then
     begin
       Result := Result + ' ';
     end;
-    Result := Result + Item.Symbol.Name;
+    Result := Result + mItem.Symbol.Name;
   end;
 end;
 
@@ -118,12 +124,12 @@ end;
 
 procedure TLspWorkspaceSymbolsTests.ListsRoutinesOnce;
 var
-  Found: TArray<TWorkspaceSymbol>;
+  mFound: TArray<TWorkspaceSymbol>;
 begin
-  Found := TLspWorkspaceSymbols.Search(FIndex, 'Speichere', 10);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('TKunde', Found[0].Symbol.Container);
-  Assert.AreEqual(5, Found[0].Symbol.SelectionRange.StartPos.Line);
+  mFound := TLspWorkspaceSymbols.Search(FIndex, 'Speichere', 10);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('TKunde', mFound[0].Symbol.Container);
+  Assert.AreEqual(5, mFound[0].Symbol.SelectionRange.StartPos.Line);
   Assert.AreEqual(1, Integer(Length(TLspWorkspaceSymbols.Search(FIndex, 'KundeLaden', 10))));
 end;
 
@@ -148,29 +154,29 @@ end;
 
 procedure TLspWorkspaceSymbolsTests.WritesSymbolInformation;
 var
-  Json: TJSONArray;
-  Symbol: TJSONValue;
-  Name, Container, Uri: string;
-  Kind, Line: Integer;
+  mJson: TJSONArray;
+  mSymbol: TJSONValue;
+  mName, mContainer, mUri: string;
+  mKind, mLine: Integer;
 begin
-  Json := TLspWorkspaceSymbols.ToJson(TLspWorkspaceSymbols.Search(FIndex, 'Speichere', 10));
+  mJson := TLspWorkspaceSymbols.ToJson(TLspWorkspaceSymbols.Search(FIndex, 'Speichere', 10));
   try
-    Assert.AreEqual(1, Integer(Json.Count));
+    Assert.AreEqual(1, Integer(mJson.Count));
     // Werte erst in typisierte Variablen lesen: Json.Items[0].GetValue<T>
     // direkt als Argument von Assert.AreEqual übersetzt dcc64 (Delphi 13) nicht.
-    Symbol := Json.Items[0];
-    Name := Symbol.GetValue<string>('name');
-    Kind := Symbol.GetValue<Integer>('kind');
-    Container := Symbol.GetValue<string>('containerName');
-    Uri := Symbol.GetValue<string>('location.uri');
-    Line := Symbol.GetValue<Integer>('location.range.start.line');
-    Assert.AreEqual('Speichere', Name);
-    Assert.AreEqual(6, Kind);
-    Assert.AreEqual('Kunden.TKunde', Container);
-    Assert.AreEqual(TDocumentUris.FromPath('C:\P\Kunden.pas'), Uri);
-    Assert.AreEqual(5, Line);
+    mSymbol := mJson.Items[0];
+    mName := mSymbol.GetValue<string>('name');
+    mKind := mSymbol.GetValue<Integer>('kind');
+    mContainer := mSymbol.GetValue<string>('containerName');
+    mUri := mSymbol.GetValue<string>('location.uri');
+    mLine := mSymbol.GetValue<Integer>('location.range.start.line');
+    Assert.AreEqual('Speichere', mName);
+    Assert.AreEqual(6, mKind);
+    Assert.AreEqual('Kunden.TKunde', mContainer);
+    Assert.AreEqual(TDocumentUris.FromPath('C:\P\Kunden.pas'), mUri);
+    Assert.AreEqual(5, mLine);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 

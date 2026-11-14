@@ -30,66 +30,66 @@ uses
 
 procedure TMcpPathGuardTests.RelativeAndAbsoluteInsideRoot;
 var
-  Guard: TMcpPathGuard;
+  mGuard: TMcpPathGuard;
 begin
-  Guard := TMcpPathGuard.Create('C:\Projekte\App\');
+  mGuard := TMcpPathGuard.Create('C:\Projekte\App\');
   try
-    Assert.AreEqual('C:\Projekte\App\Source\Main.pas', Guard.Resolve('Source\Main.pas'));
-    Assert.AreEqual('C:\Projekte\App\Main.pas', Guard.Resolve('c:/Projekte/App/Main.pas').Replace('c:', 'C:'));
-    Assert.AreEqual('C:\Projekte\App\Main.pas', Guard.Resolve('Source\..\Main.pas'));
+    Assert.AreEqual('C:\Projekte\App\Source\Main.pas', mGuard.Resolve('Source\Main.pas'));
+    Assert.AreEqual('C:\Projekte\App\Main.pas', mGuard.Resolve('c:/Projekte/App/Main.pas').Replace('c:', 'C:'));
+    Assert.AreEqual('C:\Projekte\App\Main.pas', mGuard.Resolve('Source\..\Main.pas'));
   finally
-    Guard.Free;
+    mGuard.Free;
   end;
 end;
 
 procedure TMcpPathGuardTests.RejectsOutsideAndDotDot;
 var
-  Guard: TMcpPathGuard;
+  mGuard: TMcpPathGuard;
 begin
-  Guard := TMcpPathGuard.Create('C:\Projekte\App');
+  mGuard := TMcpPathGuard.Create('C:\Projekte\App');
   try
-    Assert.WillRaise(procedure begin Guard.Resolve('C:\Windows\win.ini'); end, EMcpToolError);
-    Assert.WillRaise(procedure begin Guard.Resolve('..\Anderes\Geheim.pas'); end, EMcpToolError);
+    Assert.WillRaise(procedure begin mGuard.Resolve('C:\Windows\win.ini'); end, EMcpToolError);
+    Assert.WillRaise(procedure begin mGuard.Resolve('..\Anderes\Geheim.pas'); end, EMcpToolError);
     // Gleicher Anfang, anderer Ordner.
-    Assert.WillRaise(procedure begin Guard.Resolve('C:\Projekte\AppAlt\Main.pas'); end, EMcpToolError);
-    Assert.WillRaise(procedure begin Guard.Resolve(''); end, EMcpToolError);
+    Assert.WillRaise(procedure begin mGuard.Resolve('C:\Projekte\AppAlt\Main.pas'); end, EMcpToolError);
+    Assert.WillRaise(procedure begin mGuard.Resolve(''); end, EMcpToolError);
   finally
-    Guard.Free;
+    mGuard.Free;
   end;
 end;
 
 procedure TMcpPathGuardTests.AllowsLibraryPaths;
 var
-  Guard: TMcpPathGuard;
+  mGuard: TMcpPathGuard;
 begin
-  Guard := TMcpPathGuard.Create('C:\Projekte\App',
+  mGuard := TMcpPathGuard.Create('C:\Projekte\App',
     function: TArray<string>
     begin
       Result := ['C:\Lib\Komponenten\', ''];
     end);
   try
-    Assert.AreEqual('C:\Lib\Komponenten\Grid.pas', Guard.Resolve('C:\Lib\Komponenten\Grid.pas'));
-    Assert.WillRaise(procedure begin Guard.Resolve('C:\Lib\Anderes.pas'); end, EMcpToolError);
+    Assert.AreEqual('C:\Lib\Komponenten\Grid.pas', mGuard.Resolve('C:\Lib\Komponenten\Grid.pas'));
+    Assert.WillRaise(procedure begin mGuard.Resolve('C:\Lib\Anderes.pas'); end, EMcpToolError);
   finally
-    Guard.Free;
+    mGuard.Free;
   end;
 end;
 
 procedure TMcpPathGuardTests.UsesCanonicalizer;
 var
-  Guard: TMcpPathGuard;
+  mGuard: TMcpPathGuard;
 begin
   // Eine Junction C:\Projekte\App\Link zeigt nach C:\Fremd: nach dem Auflösen draußen.
-  Guard := TMcpPathGuard.Create('C:\Projekte\App', nil,
+  mGuard := TMcpPathGuard.Create('C:\Projekte\App', nil,
     function(APath: string): string
     begin
       Result := APath.Replace('C:\Projekte\App\Link', 'C:\Fremd');
     end);
   try
-    Assert.WillRaise(procedure begin Guard.Resolve('Link\Secret.pas'); end, EMcpToolError);
-    Assert.AreEqual('C:\Projekte\App\Main.pas', Guard.Resolve('Main.pas'));
+    Assert.WillRaise(procedure begin mGuard.Resolve('Link\Secret.pas'); end, EMcpToolError);
+    Assert.AreEqual('C:\Projekte\App\Main.pas', mGuard.Resolve('Main.pas'));
   finally
-    Guard.Free;
+    mGuard.Free;
   end;
 end;
 

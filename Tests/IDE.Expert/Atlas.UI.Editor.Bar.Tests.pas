@@ -127,9 +127,9 @@ begin
 end;
 
 /// <summary>Punkt als lParam einer Mausnachricht.</summary>
-function MousePoint(X, Y: Integer): LPARAM;
+function MousePoint(AX, AY: Integer): LPARAM;
 begin
-  Result := MakeLParam(Word(X), Word(Y));
+  Result := MakeLParam(Word(AX), Word(AY));
 end;
 
 function Probe(ABar: TAtlasEditorBar): TProbeBar;

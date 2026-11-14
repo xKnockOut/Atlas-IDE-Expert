@@ -41,7 +41,7 @@ uses
   Atlas.Core.Editor.Metrics;
 
 const
-  Answer = '{"enabled": false, "limits": {"length": 60, "nesting": 4, "cyclomatic": 15, "cognitive": 15, ' +
+  cAnswer = '{"enabled": false, "limits": {"length": 60, "nesting": 4, "cyclomatic": 15, "cognitive": 15, ' +
     '"parameters": 6, "operands": 5, "locals": 12, "exits": 4}, "file": "Main.pas", "methods": [' +
     '{"name": "TFoo.Run", "line": 12, "character": 15, "values": {"length": 7, "nesting": 1, "cyclomatic": 17, ' +
     '"cognitive": 3, "parameters": 2, "operands": 6, "locals": 3, "exits": 1}, "exceeded": ["cyclomatic"]}, ' +
@@ -50,13 +50,13 @@ const
 
 function Parse(const AJson: string): TAtlasFileMetrics;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    Result := TAtlasFileMetrics.FromJson(Value);
+    Result := TAtlasFileMetrics.FromJson(mValue);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -64,83 +64,83 @@ end;
 
 procedure TAtlasEditorMetricsTests.ReadsServerAnswer;
 var
-  Metrics: TAtlasFileMetrics;
+  mMetrics: TAtlasFileMetrics;
 begin
-  Metrics := Parse(Answer);
-  Assert.IsFalse(Metrics.Enabled);
-  Assert.AreEqual(15, Metrics.Limits[TAtlasMetric.Cyclomatic]);
-  Assert.AreEqual(6, Metrics.Limits[TAtlasMetric.Parameters]);
-  Assert.AreEqual(2, Integer(Length(Metrics.Methods)), 'ohne Zeile und Nicht-Objekte übergangen');
-  Assert.AreEqual('TFoo.Run', Metrics.Methods[0].Name);
-  Assert.AreEqual(11, Metrics.Methods[0].Line, 'Server zählt ab 1, Editor ab 0');
-  Assert.AreEqual(17, Metrics.Methods[0].Values[TAtlasMetric.Cyclomatic]);
-  Assert.AreEqual(2, Metrics.Methods[1].Values[TAtlasMetric.MethodLength]);
-  Assert.AreEqual(0, Metrics.Methods[1].Values[TAtlasMetric.Nesting], 'fehlende Werte sind 0');
-  Assert.AreEqual(1, Metrics.IndexAt(29));
-  Assert.AreEqual(0, Metrics.IndexAt(11));
-  Assert.AreEqual(-1, Metrics.IndexAt(12));
+  mMetrics := Parse(cAnswer);
+  Assert.IsFalse(mMetrics.Enabled);
+  Assert.AreEqual(15, mMetrics.Limits[TAtlasMetric.Cyclomatic]);
+  Assert.AreEqual(6, mMetrics.Limits[TAtlasMetric.Parameters]);
+  Assert.AreEqual(2, Integer(Length(mMetrics.Methods)), 'ohne Zeile und Nicht-Objekte übergangen');
+  Assert.AreEqual('TFoo.Run', mMetrics.Methods[0].Name);
+  Assert.AreEqual(11, mMetrics.Methods[0].Line, 'Server zählt ab 1, Editor ab 0');
+  Assert.AreEqual(17, mMetrics.Methods[0].Values[TAtlasMetric.Cyclomatic]);
+  Assert.AreEqual(2, mMetrics.Methods[1].Values[TAtlasMetric.MethodLength]);
+  Assert.AreEqual(0, mMetrics.Methods[1].Values[TAtlasMetric.Nesting], 'fehlende Werte sind 0');
+  Assert.AreEqual(1, mMetrics.IndexAt(29));
+  Assert.AreEqual(0, mMetrics.IndexAt(11));
+  Assert.AreEqual(-1, mMetrics.IndexAt(12));
 end;
 
 procedure TAtlasEditorMetricsTests.ReadsStructure;
 var
-  Metrics: TAtlasFileMetrics;
+  mMetrics: TAtlasFileMetrics;
 begin
-  Metrics := Parse('{"structure": [{"kind": "unitLength", "name": "Main", "line": 1, "value": 2140, ' +
+  mMetrics := Parse('{"structure": [{"kind": "unitLength", "name": "Main", "line": 1, "value": 2140, ' +
     '"limit": 2000}, {"kind": "usesCount", "name": "Main", "line": 3, "value": 12, "limit": 30}, ' +
     '{"kind": "classSize", "name": "TfrmHaupt", "line": 8, "value": 87}, {"kind": "anders", "line": 9, ' +
     '"value": 1}, {"kind": "classSize", "name": "Ohne Zeile", "value": 1}], "methods": []}');
-  Assert.AreEqual(3, Integer(Length(Metrics.Structures)), 'unbekannte Art und fehlende Zeile übergangen');
-  Assert.AreEqual(0, Metrics.StructureAt(0));
-  Assert.AreEqual(1, Metrics.StructureAt(2));
-  Assert.AreEqual(2, Metrics.StructureAt(7));
-  Assert.AreEqual(-1, Metrics.StructureAt(8));
-  Assert.AreEqual('TfrmHaupt', Metrics.Structures[2].Name);
-  Assert.AreEqual(MaxInt, Metrics.Structures[2].Limit, 'ohne Grenzwert nie überschritten');
-  Assert.AreEqual(2140, Metrics.Structures[0].Value);
-  Assert.AreEqual(2000, Metrics.Structures[0].Limit);
-  Assert.AreEqual(0, Integer(Length(Parse(Answer).Structures)), 'ältere Server ohne "structure"');
+  Assert.AreEqual(3, Integer(Length(mMetrics.Structures)), 'unbekannte Art und fehlende Zeile übergangen');
+  Assert.AreEqual(0, mMetrics.StructureAt(0));
+  Assert.AreEqual(1, mMetrics.StructureAt(2));
+  Assert.AreEqual(2, mMetrics.StructureAt(7));
+  Assert.AreEqual(-1, mMetrics.StructureAt(8));
+  Assert.AreEqual('TfrmHaupt', mMetrics.Structures[2].Name);
+  Assert.AreEqual(MaxInt, mMetrics.Structures[2].Limit, 'ohne Grenzwert nie überschritten');
+  Assert.AreEqual(2140, mMetrics.Structures[0].Value);
+  Assert.AreEqual(2000, mMetrics.Structures[0].Limit);
+  Assert.AreEqual(0, Integer(Length(Parse(cAnswer).Structures)), 'ältere Server ohne "structure"');
 end;
 
 procedure TAtlasEditorMetricsTests.InheritanceDepthBesideMembers;
 var
-  Metrics: TAtlasFileMetrics;
+  mMetrics: TAtlasFileMetrics;
 begin
-  Metrics := Parse('{"structure": [{"kind": "classSize", "name": "TfrmHaupt", "line": 8, "value": 87, ' +
+  mMetrics := Parse('{"structure": [{"kind": "classSize", "name": "TfrmHaupt", "line": 8, "value": 87, ' +
     '"limit": 40}, {"kind": "inheritanceDepth", "name": "TfrmHaupt", "line": 8, "value": 3, "limit": 5}, ' +
     '{"kind": "inheritanceDepth", "name": "TDialog", "line": 20, "value": 6, "limit": 5, "atLeast": true}], ' +
     '"methods": []}');
-  Assert.AreEqual(3, Integer(Length(Metrics.Structures)));
-  Assert.AreEqual(2, Integer(Length(Metrics.StructuresAt(7))), 'Member und Vererbungstiefe in einer Zeile');
-  Assert.IsFalse(Metrics.Structures[1].AtLeast);
-  Assert.IsTrue(Metrics.Structures[2].AtLeast);
-  Assert.AreEqual<TAtlasStructureMetric>(TAtlasStructureMetric.InheritanceDepth, Metrics.StructuresAt(7)[1].Kind);
-  Assert.AreEqual(0, Integer(Length(Metrics.StructuresAt(0))));
+  Assert.AreEqual(3, Integer(Length(mMetrics.Structures)));
+  Assert.AreEqual(2, Integer(Length(mMetrics.StructuresAt(7))), 'Member und Vererbungstiefe in einer Zeile');
+  Assert.IsFalse(mMetrics.Structures[1].AtLeast);
+  Assert.IsTrue(mMetrics.Structures[2].AtLeast);
+  Assert.AreEqual<TAtlasStructureMetric>(TAtlasStructureMetric.InheritanceDepth, mMetrics.StructuresAt(7)[1].Kind);
+  Assert.AreEqual(0, Integer(Length(mMetrics.StructuresAt(0))));
 end;
 
 procedure TAtlasEditorMetricsTests.InvalidAnswerIsOffAndEmpty;
 var
-  Metrics: TAtlasFileMetrics;
+  mMetrics: TAtlasFileMetrics;
 begin
-  Metrics := TAtlasFileMetrics.FromJson(nil);
-  Assert.IsFalse(Metrics.Enabled);
-  Assert.AreEqual(0, Integer(Length(Metrics.Methods)));
-  Metrics := Parse('[1, 2]');
-  Assert.IsFalse(Metrics.Enabled);
-  Metrics := Parse('{"methods": "keine"}');
-  Assert.IsTrue(Metrics.Enabled, 'ohne "enabled" an');
-  Assert.AreEqual(0, Integer(Length(Metrics.Methods)));
+  mMetrics := TAtlasFileMetrics.FromJson(nil);
+  Assert.IsFalse(mMetrics.Enabled);
+  Assert.AreEqual(0, Integer(Length(mMetrics.Methods)));
+  mMetrics := Parse('[1, 2]');
+  Assert.IsFalse(mMetrics.Enabled);
+  mMetrics := Parse('{"methods": "keine"}');
+  Assert.IsTrue(mMetrics.Enabled, 'ohne "enabled" an');
+  Assert.AreEqual(0, Integer(Length(mMetrics.Methods)));
 end;
 
 procedure TAtlasEditorMetricsTests.MissingLimitsNeverExceed;
 var
-  Metrics: TAtlasFileMetrics;
+  mMetrics: TAtlasFileMetrics;
 begin
-  Metrics := Parse('{"limits": {"nesting": 1}, "methods": [{"name": "A", "line": 1, ' +
+  mMetrics := Parse('{"limits": {"nesting": 1}, "methods": [{"name": "A", "line": 1, ' +
     '"values": {"length": 900, "nesting": 2}}]}');
-  Assert.AreEqual(MaxInt, Metrics.Limits[TAtlasMetric.MethodLength]);
-  Assert.AreEqual(1, Metrics.Limits[TAtlasMetric.Nesting]);
-  Metrics := Parse('{"methods": [{"name": "A", "line": 1, "values": {"length": 900}}]}');
-  Assert.AreEqual(MaxInt, Metrics.Limits[TAtlasMetric.Nesting], 'ohne "limits" unbegrenzt');
+  Assert.AreEqual(MaxInt, mMetrics.Limits[TAtlasMetric.MethodLength]);
+  Assert.AreEqual(1, mMetrics.Limits[TAtlasMetric.Nesting]);
+  mMetrics := Parse('{"methods": [{"name": "A", "line": 1, "values": {"length": 900}}]}');
+  Assert.AreEqual(MaxInt, mMetrics.Limits[TAtlasMetric.Nesting], 'ohne "limits" unbegrenzt');
 end;
 
 procedure TAtlasEditorMetricsTests.KeysOfTheServer;
@@ -162,15 +162,15 @@ end;
 
 procedure TAtlasEditorMetricsTests.ReportMarkdownFromAnswer;
 var
-  Text: string;
+  mText: string;
 begin
-  Assert.IsTrue(TAtlasMetricsReportFile.MarkdownFrom('"# Code-Metriken: Kasse\r\n\r\n| a | b |"', Text));
-  Assert.AreEqual('# Code-Metriken: Kasse'#13#10#13#10'| a | b |', Text);
-  Assert.IsFalse(TAtlasMetricsReportFile.MarkdownFrom('{"summary": {}}', Text), 'kein Markdown');
-  Assert.AreEqual('', Text);
-  Assert.IsFalse(TAtlasMetricsReportFile.MarkdownFrom('""', Text), 'leer');
-  Assert.IsFalse(TAtlasMetricsReportFile.MarkdownFrom('', Text), 'keine Antwort');
-  Assert.IsFalse(TAtlasMetricsReportFile.MarkdownFrom('kein JSON', Text));
+  Assert.IsTrue(TAtlasMetricsReportFile.MarkdownFrom('"# Code-Metriken: Kasse\r\n\r\n| a | b |"', mText));
+  Assert.AreEqual('# Code-Metriken: Kasse'#13#10#13#10'| a | b |', mText);
+  Assert.IsFalse(TAtlasMetricsReportFile.MarkdownFrom('{"summary": {}}', mText), 'kein Markdown');
+  Assert.AreEqual('', mText);
+  Assert.IsFalse(TAtlasMetricsReportFile.MarkdownFrom('""', mText), 'leer');
+  Assert.IsFalse(TAtlasMetricsReportFile.MarkdownFrom('', mText), 'keine Antwort');
+  Assert.IsFalse(TAtlasMetricsReportFile.MarkdownFrom('kein JSON', mText));
 end;
 
 initialization

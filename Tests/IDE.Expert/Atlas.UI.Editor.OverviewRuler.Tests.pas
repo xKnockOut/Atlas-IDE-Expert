@@ -78,25 +78,25 @@ end;
 
 procedure TAtlasOverviewRulerTests.KeepsWidth;
 var
-  Width_: Integer;
+  mWidth_: Integer;
 begin
-  Width_ := FRuler.Width;
-  Assert.AreEqual(TAtlasOverviewRuler.RulerWidth(FRuler.CurrentPPI), Width_);
-  FRuler.Width := Width_ * 4;
-  Assert.AreEqual(Width_, FRuler.Width, 'schmal, nie breiter');
+  mWidth_ := FRuler.Width;
+  Assert.AreEqual(TAtlasOverviewRuler.RulerWidth(FRuler.CurrentPPI), mWidth_);
+  FRuler.Width := mWidth_ * 4;
+  Assert.AreEqual(mWidth_, FRuler.Width, 'schmal, nie breiter');
   FRuler.SetMarks([TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Error, 3, 1)], 10, 0, 4);
   FRuler.Repaint;
 end;
 
 procedure TAtlasOverviewRulerTests.ClickJumpsToMarkOrLine;
 var
-  Jumped, Y: Integer;
+  mJumped, Y: Integer;
 begin
-  Jumped := -1;
+  mJumped := -1;
   FRuler.OnJump :=
     procedure(ALine: Integer)
     begin
-      Jumped := ALine;
+      mJumped := ALine;
     end;
   // Fehler in Zeile 900 von 1000: unten im Streifen (Akzeptanzkriterium).
   FRuler.SetMarks([TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Error, 899, 1, 'E2003')], 1000, 0, 50);
@@ -104,54 +104,54 @@ begin
   Assert.IsTrue(Y > FRuler.ClientHeight * 8 div 10, 'unten');
   Assert.AreEqual(0, FRuler.MarkAtY(Y + 1));
   TRulerAccess(FRuler).MouseDown(mbLeft, [], 2, Y + 1);
-  Assert.AreEqual(899, Jumped, 'zur Zeile der Marke');
+  Assert.AreEqual(899, mJumped, 'zur Zeile der Marke');
   TRulerAccess(FRuler).MouseDown(mbLeft, [], 2, 0);
-  Assert.AreEqual(0, Jumped, 'ohne Marke zur Zeile an der Stelle');
+  Assert.AreEqual(0, mJumped, 'ohne Marke zur Zeile an der Stelle');
   TRulerAccess(FRuler).MouseDown(mbRight, [], 2, Y);
-  Assert.AreEqual(0, Jumped, 'nur links');
+  Assert.AreEqual(0, mJumped, 'nur links');
 end;
 
 procedure TAtlasOverviewRulerTests.HoverReportsLineAndMark;
 var
-  Line, Mark, Ended: Integer;
+  mLine, mMark, mEnded: Integer;
   Y: Integer;
 begin
-  Line := -1;
-  Mark := -2;
-  Ended := 0;
+  mLine := -1;
+  mMark := -2;
+  mEnded := 0;
   FRuler.OnHover :=
     procedure(ALine, AMark: Integer; const APoint: TPoint)
     begin
-      Line := ALine;
-      Mark := AMark;
+      mLine := ALine;
+      mMark := AMark;
     end;
   FRuler.OnHoverEnd :=
     procedure
     begin
-      Inc(Ended);
+      Inc(mEnded);
     end;
   FRuler.SetMarks([TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Search, 50, 1, 'Treffer')], 100, 0, 10);
   Y := TAtlasOverview.PixelOf(50, 100, FRuler.ClientHeight);
   TRulerAccess(FRuler).MouseMove([], 2, Y);
-  Assert.AreEqual(50, Line);
-  Assert.AreEqual(0, Mark);
+  Assert.AreEqual(50, mLine);
+  Assert.AreEqual(0, mMark);
   TRulerAccess(FRuler).MouseMove([], 2, 0);
-  Assert.AreEqual(0, Line);
-  Assert.AreEqual(-1, Mark);
+  Assert.AreEqual(0, mLine);
+  Assert.AreEqual(-1, mMark);
   TRulerAccess(FRuler).Perform(CM_MOUSELEAVE, 0, 0);
-  Assert.AreEqual(1, Ended);
+  Assert.AreEqual(1, mEnded);
 end;
 
 procedure TAtlasOverviewRulerTests.ColorsDifferByKind;
 var
-  Colors: TAtlasColors;
+  mColors: TAtlasColors;
 begin
-  Colors := TAtlasColors.Dark;
-  Assert.AreNotEqual(Integer(TAtlasOverviewRuler.ColorOf(Colors, TAtlasOverviewMarkKind.Error)),
-    Integer(TAtlasOverviewRuler.ColorOf(Colors, TAtlasOverviewMarkKind.Warning)));
-  Assert.AreNotEqual(Integer(TAtlasOverviewRuler.ColorOf(Colors, TAtlasOverviewMarkKind.Added)),
-    Integer(TAtlasOverviewRuler.ColorOf(Colors, TAtlasOverviewMarkKind.Modified)));
-  Assert.AreEqual(Integer(Colors.Error), Integer(TAtlasOverviewRuler.ColorOf(Colors, TAtlasOverviewMarkKind.Error)));
+  mColors := TAtlasColors.Dark;
+  Assert.AreNotEqual(Integer(TAtlasOverviewRuler.ColorOf(mColors, TAtlasOverviewMarkKind.Error)),
+    Integer(TAtlasOverviewRuler.ColorOf(mColors, TAtlasOverviewMarkKind.Warning)));
+  Assert.AreNotEqual(Integer(TAtlasOverviewRuler.ColorOf(mColors, TAtlasOverviewMarkKind.Added)),
+    Integer(TAtlasOverviewRuler.ColorOf(mColors, TAtlasOverviewMarkKind.Modified)));
+  Assert.AreEqual(Integer(mColors.Error), Integer(TAtlasOverviewRuler.ColorOf(mColors, TAtlasOverviewMarkKind.Error)));
 end;
 
 initialization

@@ -61,9 +61,9 @@ uses
   Atlas.Common.Index.Extractor;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
 
-  UnitWerkzeug =
+  cUnitWerkzeug =
     'unit Werkzeug;'#10 +
     'interface'#10 +
     'procedure Rechne;'#10 +
@@ -73,7 +73,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Werkzeug;'#10 +
@@ -97,9 +97,9 @@ const
     'end;'#10 +
     'end.';
 
-  KonsoleFile = 'C:\P\Konsole.pas';
+  cKonsoleFile = 'C:\P\Konsole.pas';
 
-  UnitKonsole =
+  cUnitKonsole =
     'unit Konsole;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -118,29 +118,29 @@ const
 
 function PositionOf(const AText, AMarker: string; AOccurrence: Integer): TTextPosition;
 var
-  Index, Found, Line, LineStart: Integer;
+  mIndex, mFound, mLine, mLineStart: Integer;
 begin
-  Found := 0;
-  Index := 0;
+  mFound := 0;
+  mIndex := 0;
   repeat
-    Index := Pos(AMarker, AText, Index + 1);
-    if Index = 0 then
+    mIndex := Pos(AMarker, AText, mIndex + 1);
+    if mIndex = 0 then
     begin
       raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
     end;
-    Inc(Found);
-  until Found = AOccurrence;
-  Line := 0;
-  LineStart := 1;
-  for Found := 1 to Index - 1 do
+    Inc(mFound);
+  until mFound = AOccurrence;
+  mLine := 0;
+  mLineStart := 1;
+  for mFound := 1 to mIndex - 1 do
   begin
-    if AText[Found] = #10 then
+    if AText[mFound] = #10 then
     begin
-      Inc(Line);
-      LineStart := Found + 1;
+      Inc(mLine);
+      mLineStart := mFound + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 { TLspDefinitionTests }
@@ -148,7 +148,7 @@ end;
 procedure TLspDefinitionTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitWerkzeug, 'C:\P\Werkzeug.pas', nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, 'C:\P\Werkzeug.pas', nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -161,124 +161,124 @@ end;
 function TLspDefinitionTests.TargetsAt(const AMarker: string; AOccurrence: Integer;
   ADeclaration: Boolean): TArray<TDefinitionTarget>;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Result := TLspDefinition.Targets(FResolver, FIndex, Tree, HauptFile,
-      PositionOf(UnitHaupt, AMarker, AOccurrence), ADeclaration);
+    Result := TLspDefinition.Targets(FResolver, FIndex, mTree, cHauptFile,
+      PositionOf(cUnitHaupt, AMarker, AOccurrence), ADeclaration);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function TLspDefinitionTests.TargetsIn(const AText, AMarker: string; AOccurrence: Integer;
   ADeclaration: Boolean): TArray<TDefinitionTarget>;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := TLspDefinition.Targets(FResolver, FIndex, Tree, KonsoleFile, PositionOf(AText, AMarker, AOccurrence),
+    Result := TLspDefinition.Targets(FResolver, FIndex, mTree, cKonsoleFile, PositionOf(AText, AMarker, AOccurrence),
       ADeclaration);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspDefinitionTests.OverloadsPairByParameters;
 const
-  Zweite = 'Progress(const S: string; Force';
-  Erste = 'Progress(const S: string)';
+  cZweite = 'Progress(const S: string; Force';
+  cErste = 'Progress(const S: string)';
 var
-  Targets: TArray<TDefinitionTarget>;
+  mTargets: TArray<TDefinitionTarget>;
 begin
   // Hover und Strg+Umschalt+↑ auf der zweiten Überladung: ihre eigene Deklaration.
-  Targets := TargetsIn(UnitKonsole, Zweite, 1, True);
-  Assert.AreEqual(1, Integer(Length(Targets)));
-  Assert.AreEqual(5, Targets[0].SelectionRange.StartPos.Line, 'Deklaration der zweiten');
-  Assert.AreEqual(5, Targets[0].Range.StartPos.Line, 'Bereich der zweiten');
+  mTargets := TargetsIn(cUnitKonsole, cZweite, 1, True);
+  Assert.AreEqual(1, Integer(Length(mTargets)));
+  Assert.AreEqual(5, mTargets[0].SelectionRange.StartPos.Line, 'Deklaration der zweiten');
+  Assert.AreEqual(5, mTargets[0].Range.StartPos.Line, 'Bereich der zweiten');
   // F12 auf der Deklaration der zweiten: ihre Implementierung, und zurück.
-  Targets := TargetsIn(UnitKonsole, Zweite, 1, False);
-  Assert.AreEqual(11, Targets[0].SelectionRange.StartPos.Line, 'Implementierung der zweiten');
-  Targets := TargetsIn(UnitKonsole, Zweite, 2, False);
-  Assert.AreEqual(5, Targets[0].SelectionRange.StartPos.Line, 'zurück zur zweiten');
+  mTargets := TargetsIn(cUnitKonsole, cZweite, 1, False);
+  Assert.AreEqual(11, mTargets[0].SelectionRange.StartPos.Line, 'Implementierung der zweiten');
+  mTargets := TargetsIn(cUnitKonsole, cZweite, 2, False);
+  Assert.AreEqual(5, mTargets[0].SelectionRange.StartPos.Line, 'zurück zur zweiten');
   // Die erste bleibt bei sich.
-  Targets := TargetsIn(UnitKonsole, Erste, 1, False);
-  Assert.AreEqual(8, Targets[0].SelectionRange.StartPos.Line, 'Implementierung der ersten');
-  Targets := TargetsIn(UnitKonsole, Erste, 2, False);
-  Assert.AreEqual(4, Targets[0].SelectionRange.StartPos.Line, 'zurück zur ersten');
+  mTargets := TargetsIn(cUnitKonsole, cErste, 1, False);
+  Assert.AreEqual(8, mTargets[0].SelectionRange.StartPos.Line, 'Implementierung der ersten');
+  mTargets := TargetsIn(cUnitKonsole, cErste, 2, False);
+  Assert.AreEqual(4, mTargets[0].SelectionRange.StartPos.Line, 'zurück zur ersten');
 end;
 
 procedure TLspDefinitionTests.DefinitionOfMethodCallIsImplementation;
 var
-  Targets: TArray<TDefinitionTarget>;
+  mTargets: TArray<TDefinitionTarget>;
 begin
-  Targets := TargetsAt('Baz;', 2, False);
-  Assert.AreEqual(1, Integer(Length(Targets)));
-  Assert.AreEqual(HauptFile, Targets[0].FileName);
-  Assert.AreEqual(18, Targets[0].SelectionRange.StartPos.Line);
+  mTargets := TargetsAt('Baz;', 2, False);
+  Assert.AreEqual(1, Integer(Length(mTargets)));
+  Assert.AreEqual(cHauptFile, mTargets[0].FileName);
+  Assert.AreEqual(18, mTargets[0].SelectionRange.StartPos.Line);
 end;
 
 procedure TLspDefinitionTests.DeclarationOfMethodCallIsClassMember;
 var
-  Targets: TArray<TDefinitionTarget>;
+  mTargets: TArray<TDefinitionTarget>;
 begin
-  Targets := TargetsAt('Baz;', 2, True);
-  Assert.AreEqual(1, Integer(Length(Targets)));
-  Assert.AreEqual(6, Targets[0].SelectionRange.StartPos.Line);
+  mTargets := TargetsAt('Baz;', 2, True);
+  Assert.AreEqual(1, Integer(Length(mTargets)));
+  Assert.AreEqual(6, mTargets[0].SelectionRange.StartPos.Line);
 end;
 
 procedure TLspDefinitionTests.DefinitionOnImplementationJumpsBack;
 var
-  Targets: TArray<TDefinitionTarget>;
+  mTargets: TArray<TDefinitionTarget>;
 begin
   // Auf der Deklaration in der Klasse: zur Implementierung.
-  Targets := TargetsAt('Bar;', 1, False);
-  Assert.AreEqual(9, Targets[0].SelectionRange.StartPos.Line);
+  mTargets := TargetsAt('Bar;', 1, False);
+  Assert.AreEqual(9, mTargets[0].SelectionRange.StartPos.Line);
   // Auf dem Namen der Implementierung: zurück zur Deklaration.
-  Targets := TargetsAt('Bar;', 2, False);
-  Assert.AreEqual(5, Targets[0].SelectionRange.StartPos.Line);
+  mTargets := TargetsAt('Bar;', 2, False);
+  Assert.AreEqual(5, mTargets[0].SelectionRange.StartPos.Line);
 end;
 
 procedure TLspDefinitionTests.DefinitionCrossesUnits;
 var
-  Targets: TArray<TDefinitionTarget>;
+  mTargets: TArray<TDefinitionTarget>;
 begin
-  Targets := TargetsAt('Rechne;', 1, False);
-  Assert.AreEqual(1, Integer(Length(Targets)));
-  Assert.AreEqual('C:\P\Werkzeug.pas', Targets[0].FileName);
-  Assert.AreEqual(4, Targets[0].SelectionRange.StartPos.Line);
-  Targets := TargetsAt('Rechne;', 1, True);
-  Assert.AreEqual(2, Targets[0].SelectionRange.StartPos.Line);
+  mTargets := TargetsAt('Rechne;', 1, False);
+  Assert.AreEqual(1, Integer(Length(mTargets)));
+  Assert.AreEqual('C:\P\Werkzeug.pas', mTargets[0].FileName);
+  Assert.AreEqual(4, mTargets[0].SelectionRange.StartPos.Line);
+  mTargets := TargetsAt('Rechne;', 1, True);
+  Assert.AreEqual(2, mTargets[0].SelectionRange.StartPos.Line);
 end;
 
 procedure TLspDefinitionTests.UnitNameJumpsToFileStart;
 var
-  Targets: TArray<TDefinitionTarget>;
+  mTargets: TArray<TDefinitionTarget>;
 begin
-  Targets := TargetsAt('Werkzeug;', 1, False);
-  Assert.AreEqual(1, Integer(Length(Targets)));
-  Assert.AreEqual('C:\P\Werkzeug.pas', Targets[0].FileName);
-  Assert.AreEqual(0, Targets[0].SelectionRange.StartPos.Line);
-  Assert.AreEqual(0, Targets[0].SelectionRange.StartPos.Character);
+  mTargets := TargetsAt('Werkzeug;', 1, False);
+  Assert.AreEqual(1, Integer(Length(mTargets)));
+  Assert.AreEqual('C:\P\Werkzeug.pas', mTargets[0].FileName);
+  Assert.AreEqual(0, mTargets[0].SelectionRange.StartPos.Line);
+  Assert.AreEqual(0, mTargets[0].SelectionRange.StartPos.Character);
 end;
 
 procedure TLspDefinitionTests.LocalVariableAndUnknownName;
 var
-  Targets: TArray<TDefinitionTarget>;
+  mTargets: TArray<TDefinitionTarget>;
 begin
-  Targets := TargetsAt('Wert :=', 1, False);
-  Assert.AreEqual(1, Integer(Length(Targets)));
-  Assert.AreEqual(HauptFile, Targets[0].FileName);
-  Assert.AreEqual(11, Targets[0].SelectionRange.StartPos.Line);
-  Targets := TargetsAt('Unbekannt', 1, False);
-  Assert.AreEqual(0, Integer(Length(Targets)));
+  mTargets := TargetsAt('Wert :=', 1, False);
+  Assert.AreEqual(1, Integer(Length(mTargets)));
+  Assert.AreEqual(cHauptFile, mTargets[0].FileName);
+  Assert.AreEqual(11, mTargets[0].SelectionRange.StartPos.Line);
+  mTargets := TargetsAt('Unbekannt', 1, False);
+  Assert.AreEqual(0, Integer(Length(mTargets)));
 end;
 
 procedure TLspDefinitionTests.TypeDefinitionFollowsDeclaredTypes;
 const
-  Source =
+  cSource =
     'unit Typen;'#10 +                       // 0
     'interface'#10 +                         // 1
     'type'#10 +                              // 2
@@ -292,80 +292,80 @@ const
     'end;'#10 +                              // 10
     'end.';
 var
-  Tree: TSyntaxTree;
-  Targets: TArray<TDefinitionTarget>;
+  mTree: TSyntaxTree;
+  mTargets: TArray<TDefinitionTarget>;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
     // Variable mit Alias-Typ: zum Zieltyp des Alias.
-    Targets := TLspDefinition.TypeTargets(FResolver, Tree, 'C:\P\Typen.pas', PositionOf(Source, 'Global :=', 1));
-    Assert.AreEqual(1, Integer(Length(Targets)));
-    Assert.AreEqual(3, Targets[0].SelectionRange.StartPos.Line);
+    mTargets := TLspDefinition.TypeTargets(FResolver, mTree, 'C:\P\Typen.pas', PositionOf(cSource, 'Global :=', 1));
+    Assert.AreEqual(1, Integer(Length(mTargets)));
+    Assert.AreEqual(3, mTargets[0].SelectionRange.StartPos.Line);
     // Funktion: zum Ergebnistyp.
-    Targets := TLspDefinition.TypeTargets(FResolver, Tree, 'C:\P\Typen.pas', PositionOf(Source, 'Liefere(Zahl)', 1));
-    Assert.AreEqual(1, Integer(Length(Targets)));
-    Assert.AreEqual(3, Targets[0].SelectionRange.StartPos.Line);
+    mTargets := TLspDefinition.TypeTargets(FResolver, mTree, 'C:\P\Typen.pas', PositionOf(cSource, 'Liefere(Zahl)', 1));
+    Assert.AreEqual(1, Integer(Length(mTargets)));
+    Assert.AreEqual(3, mTargets[0].SelectionRange.StartPos.Line);
     // Integer steht nicht im Index: kein Ziel.
-    Targets := TLspDefinition.TypeTargets(FResolver, Tree, 'C:\P\Typen.pas', PositionOf(Source, 'Zahl);', 1));
-    Assert.AreEqual(0, Integer(Length(Targets)));
+    mTargets := TLspDefinition.TypeTargets(FResolver, mTree, 'C:\P\Typen.pas', PositionOf(cSource, 'Zahl);', 1));
+    Assert.AreEqual(0, Integer(Length(mTargets)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspDefinitionTests.WritesLocations;
 var
-  Target: TDefinitionTarget;
-  Json: TJSONArray;
-  Location: TJSONValue;
-  Uri: string;
-  Line, Character: Integer;
+  mTarget: TDefinitionTarget;
+  mJson: TJSONArray;
+  mLocation: TJSONValue;
+  mUri: string;
+  mLine, mCharacter: Integer;
 begin
-  Target.FileName := 'C:\P\Werkzeug.pas';
-  Target.Range := TTextRange.Create(TTextPosition.Create(4, 0), TTextPosition.Create(6, 4));
-  Target.SelectionRange := TTextRange.Create(TTextPosition.Create(4, 10), TTextPosition.Create(4, 16));
-  Json := TLspDefinition.ToJson([Target]);
+  mTarget.FileName := 'C:\P\Werkzeug.pas';
+  mTarget.Range := TTextRange.Create(TTextPosition.Create(4, 0), TTextPosition.Create(6, 4));
+  mTarget.SelectionRange := TTextRange.Create(TTextPosition.Create(4, 10), TTextPosition.Create(4, 16));
+  mJson := TLspDefinition.ToJson([mTarget]);
   try
-    Assert.AreEqual(1, Integer(Json.Count));
+    Assert.AreEqual(1, Integer(mJson.Count));
     // Werte erst in typisierte Variablen lesen: GetValue<T> direkt als
     // Argument von Assert.AreEqual übersetzt dcc64 (Delphi 13) nicht.
-    Location := Json.Items[0];
-    Uri := Location.GetValue<string>('uri');
-    Line := Location.GetValue<Integer>('range.start.line');
-    Character := Location.GetValue<Integer>('range.start.character');
-    Assert.AreEqual(TDocumentUris.FromPath('C:\P\Werkzeug.pas'), Uri);
-    Assert.AreEqual(4, Line);
-    Assert.AreEqual(10, Character);
+    mLocation := mJson.Items[0];
+    mUri := mLocation.GetValue<string>('uri');
+    mLine := mLocation.GetValue<Integer>('range.start.line');
+    mCharacter := mLocation.GetValue<Integer>('range.start.character');
+    Assert.AreEqual(TDocumentUris.FromPath('C:\P\Werkzeug.pas'), mUri);
+    Assert.AreEqual(4, mLine);
+    Assert.AreEqual(10, mCharacter);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TLspDefinitionTests.SkipsIdeUnits;
 var
-  Real, Ide: TDefinitionTarget;
-  Json: TJSONArray;
-  Uri: string;
+  mReal, mIde: TDefinitionTarget;
+  mJson: TJSONArray;
+  mUri: string;
 begin
-  Real.FileName := 'C:\P\Werkzeug.pas';
-  Real.Range := TTextRange.Create(TTextPosition.Create(4, 0), TTextPosition.Create(6, 4));
-  Real.SelectionRange := Real.Range;
-  Ide := Real;
-  Ide.FileName := 'atlas-ide:Vcl.Forms.pas';
-  Json := TLspDefinition.ToJson([Ide]);
+  mReal.FileName := 'C:\P\Werkzeug.pas';
+  mReal.Range := TTextRange.Create(TTextPosition.Create(4, 0), TTextPosition.Create(6, 4));
+  mReal.SelectionRange := mReal.Range;
+  mIde := mReal;
+  mIde.FileName := 'atlas-ide:Vcl.Forms.pas';
+  mJson := TLspDefinition.ToJson([mIde]);
   try
     // Ersatz-Unit der IDE allein: kein Sprungziel.
-    Assert.AreEqual(0, Integer(Json.Count));
+    Assert.AreEqual(0, Integer(mJson.Count));
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Json := TLspDefinition.ToJson([Ide, Real]);
+  mJson := TLspDefinition.ToJson([mIde, mReal]);
   try
-    Assert.AreEqual(1, Integer(Json.Count));
-    Uri := Json.Items[0].GetValue<string>('uri');
-    Assert.AreEqual(TDocumentUris.FromPath('C:\P\Werkzeug.pas'), Uri);
+    Assert.AreEqual(1, Integer(mJson.Count));
+    mUri := mJson.Items[0].GetValue<string>('uri');
+    Assert.AreEqual(TDocumentUris.FromPath('C:\P\Werkzeug.pas'), mUri);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 

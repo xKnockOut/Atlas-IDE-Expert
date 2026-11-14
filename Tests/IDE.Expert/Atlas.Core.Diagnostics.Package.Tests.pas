@@ -57,35 +57,35 @@ uses
   Atlas.Core.Welcome.Help;
 
 const
-  Root = 'C:\Projekte\Kunde';
-  User = 'marco';
-  Machine = 'WS-MARCO42';
-  Domain = 'BUERO';
+  cRoot = 'C:\Projekte\Kunde';
+  cUser = 'marco';
+  cMachine = 'WS-MARCO42';
+  cDomain = 'BUERO';
 
 function Joined(const AFiles: TAtlasPackageFiles): string;
 var
-  Item: TAtlasPackageFile;
+  mItem: TAtlasPackageFile;
 begin
   Result := '';
-  for Item in AFiles do
+  for mItem in AFiles do
   begin
     if Result <> '' then
     begin
       Result := Result + ',';
     end;
-    Result := Result + Item.Name;
+    Result := Result + mItem.Name;
   end;
 end;
 
 function Find(const AFiles: TAtlasPackageFiles; const AName: string; out AFile: TAtlasPackageFile): Boolean;
 var
-  Item: TAtlasPackageFile;
+  mItem: TAtlasPackageFile;
 begin
-  for Item in AFiles do
+  for mItem in AFiles do
   begin
-    if Item.Name = AName then
+    if mItem.Name = AName then
     begin
-      AFile := Item;
+      AFile := mItem;
       Exit(True);
     end;
   end;
@@ -101,13 +101,13 @@ begin
   ForceDirectories(FFolder);
   TFile.WriteAllText(TPath.Combine(FFolder, 'atlas.log'),
     '2026-10-15 09:00:00.000 Start' + sLineBreak +
-    '2026-10-15 09:00:01.000 Datei ' + Root + '\Main.pas geöffnet' + sLineBreak +
-    '2026-10-15 09:00:02.000 Fehler in "TKundeForm" bei C:\Users\' + User + '\AppData\Local\Atlas\cache' + sLineBreak +
-    '2026-10-15 09:00:03.000 Rechner ' + Machine + ', Domäne ' + Domain + sLineBreak, TEncoding.UTF8);
+    '2026-10-15 09:00:01.000 Datei ' + cRoot + '\Main.pas geöffnet' + sLineBreak +
+    '2026-10-15 09:00:02.000 Fehler in "TKundeForm" bei C:\Users\' + cUser + '\AppData\Local\Atlas\cache' + sLineBreak +
+    '2026-10-15 09:00:03.000 Rechner ' + cMachine + ', Domäne ' + cDomain + sLineBreak, TEncoding.UTF8);
   TFile.WriteAllText(TPath.Combine(FFolder, 'diag-20261015-4711.log'),
     '{"t":"2026-10-15T09:00:00","m":"hover","doc":"doc#4","ms":12}' + sLineBreak, TEncoding.UTF8);
   TFile.WriteAllText(TPath.Combine(FFolder, 'atlas-diagnosemodus.txt'),
-    '# Diagnosemodus' + sLineBreak + 'Einstellungen: {"ServerPath": "C:\\Users\\' + User + '\\Atlas.exe"}' +
+    '# Diagnosemodus' + sLineBreak + 'Einstellungen: {"ServerPath": "C:\\Users\\' + cUser + '\\Atlas.exe"}' +
     sLineBreak, TEncoding.UTF8);
 end;
 
@@ -131,140 +131,140 @@ begin
   Result.PluginLog := TPath.Combine(AFolder, 'atlas.log');
   Result.ServerLogs := [TPath.Combine(AFolder, 'diag-20261015-4711.log')];
   Result.SettingsJson := '{' + sLineBreak +
-    '  "ServerPath": "C:\\Users\\' + User + '\\Atlas\\AtlasServer.exe",' + sLineBreak +
+    '  "ServerPath": "C:\\Users\\' + cUser + '\\Atlas\\AtlasServer.exe",' + sLineBreak +
     '  "WelcomePageHelpReportFolder": "' + 'C:\\Projekte\\Kunde\\Ablage' + '",' + sLineBreak +
-    '  "WelcomePageHelpReportUrl": "https://example.org/' + User + '/issues/new",' + sLineBreak +
+    '  "WelcomePageHelpReportUrl": "https://example.org/' + cUser + '/issues/new",' + sLineBreak +
     '  "WelcomePageWhatsNew": "afterUpdate",' + sLineBreak +
     '  "VisibleRows": 10' + sLineBreak + '}';
   Result.LastDataFile := TPath.Combine(AFolder, 'atlas-diagnosemodus.txt');
-  Result.Roots := [Root];
-  Result.Identity := [User, Machine, Domain];
+  Result.Roots := [cRoot];
+  Result.Identity := [cUser, cMachine, cDomain];
   Result.Created := EncodeDate(2026, 10, 15) + EncodeTime(12, 30, 0, 0);
 end;
 
 procedure TAtlasDiagnosticPackageTests.BuildTakesOnlySelectedParts;
 var
-  Input: TAtlasPackageInput;
-  Files: TAtlasPackageFiles;
-  Item: TAtlasPackageFile;
+  mInput: TAtlasPackageInput;
+  mFiles: TAtlasPackageFiles;
+  mItem: TAtlasPackageFile;
 begin
-  Input := PackageInput(FFolder);
-  Assert.AreEqual('', Joined(TAtlasDiagnosticPackage.Build(Input, [])), 'nichts gewählt');
-  Assert.AreEqual('atlas-info.txt', Joined(TAtlasDiagnosticPackage.Build(Input, [TAtlasPackagePart.Versions])));
+  mInput := PackageInput(FFolder);
+  Assert.AreEqual('', Joined(TAtlasDiagnosticPackage.Build(mInput, [])), 'nichts gewählt');
+  Assert.AreEqual('atlas-info.txt', Joined(TAtlasDiagnosticPackage.Build(mInput, [TAtlasPackagePart.Versions])));
   Assert.AreEqual('einstellungen.json',
-    Joined(TAtlasDiagnosticPackage.Build(Input, [TAtlasPackagePart.Settings])));
+    Joined(TAtlasDiagnosticPackage.Build(mInput, [TAtlasPackagePart.Settings])));
   Assert.AreEqual('plugin/atlas.log,server/diag-20261015-4711.log',
-    Joined(TAtlasDiagnosticPackage.Build(Input, [TAtlasPackagePart.Logs])));
+    Joined(TAtlasDiagnosticPackage.Build(mInput, [TAtlasPackagePart.Logs])));
   Assert.AreEqual('atlas-diagnosemodus.txt',
-    Joined(TAtlasDiagnosticPackage.Build(Input, [TAtlasPackagePart.LastData])));
-  Files := TAtlasDiagnosticPackage.Build(Input, TAtlasDiagnosticPackage.cAllParts);
+    Joined(TAtlasDiagnosticPackage.Build(mInput, [TAtlasPackagePart.LastData])));
+  mFiles := TAtlasDiagnosticPackage.Build(mInput, TAtlasDiagnosticPackage.cAllParts);
   Assert.AreEqual('atlas-info.txt,einstellungen.json,plugin/atlas.log,server/diag-20261015-4711.log,' +
-    'atlas-diagnosemodus.txt', Joined(Files), 'feste Reihenfolge');
-  Assert.IsTrue(Find(Files, 'atlas-info.txt', Item));
-  Assert.Contains(Item.Text, 'Atlas 0.1.0');
-  Assert.Contains(Item.Text, 'RAD Studio Delphi 13 (37.0)');
-  Assert.Contains(Item.Text, 'Windows Windows 11');
-  Assert.Contains(Item.Text, 'Plattform Win32');
-  Assert.AreEqual(Integer(Length(TEncoding.UTF8.GetBytes(Item.Text))), Integer(Item.Size), 'Größe = Inhalt');
-  Assert.IsTrue(TAtlasDiagnosticPackage.TotalSize(Files) > Item.Size);
+    'atlas-diagnosemodus.txt', Joined(mFiles), 'feste Reihenfolge');
+  Assert.IsTrue(Find(mFiles, 'atlas-info.txt', mItem));
+  Assert.Contains(mItem.Text, 'Atlas 0.1.0');
+  Assert.Contains(mItem.Text, 'RAD Studio Delphi 13 (37.0)');
+  Assert.Contains(mItem.Text, 'Windows Windows 11');
+  Assert.Contains(mItem.Text, 'Plattform Win32');
+  Assert.AreEqual(Integer(Length(TEncoding.UTF8.GetBytes(mItem.Text))), Integer(mItem.Size), 'Größe = Inhalt');
+  Assert.IsTrue(TAtlasDiagnosticPackage.TotalSize(mFiles) > mItem.Size);
   // Versionen ohne Logs: keine Logdatei, auch wenn sie da ist.
-  Files := TAtlasDiagnosticPackage.Build(Input, [TAtlasPackagePart.Versions, TAtlasPackagePart.Settings]);
-  Assert.IsFalse(Find(Files, 'plugin/atlas.log', Item));
-  Assert.IsFalse(Find(Files, 'atlas-diagnosemodus.txt', Item));
+  mFiles := TAtlasDiagnosticPackage.Build(mInput, [TAtlasPackagePart.Versions, TAtlasPackagePart.Settings]);
+  Assert.IsFalse(Find(mFiles, 'plugin/atlas.log', mItem));
+  Assert.IsFalse(Find(mFiles, 'atlas-diagnosemodus.txt', mItem));
 end;
 
 procedure TAtlasDiagnosticPackageTests.BuildSkipsMissingFiles;
 var
-  Input: TAtlasPackageInput;
+  mInput: TAtlasPackageInput;
 begin
-  Input := PackageInput(FFolder);
-  Input.PluginLog := TPath.Combine(FFolder, 'fehlt.log');
-  Input.ServerLogs := [TPath.Combine(FFolder, 'diag-fehlt.log'), TPath.Combine(FFolder, 'diag-20261015-4711.log')];
-  Input.LastDataFile := '';
+  mInput := PackageInput(FFolder);
+  mInput.PluginLog := TPath.Combine(FFolder, 'fehlt.log');
+  mInput.ServerLogs := [TPath.Combine(FFolder, 'diag-fehlt.log'), TPath.Combine(FFolder, 'diag-20261015-4711.log')];
+  mInput.LastDataFile := '';
   Assert.AreEqual('server/diag-20261015-4711.log',
-    Joined(TAtlasDiagnosticPackage.Build(Input, TAtlasDiagnosticPackage.cAllParts - [TAtlasPackagePart.Versions,
+    Joined(TAtlasDiagnosticPackage.Build(mInput, TAtlasDiagnosticPackage.cAllParts - [TAtlasPackagePart.Versions,
     TAtlasPackagePart.Settings])), 'nur vorhandene Dateien');
 end;
 
 procedure TAtlasDiagnosticPackageTests.PackageHasNoUserMachineOrProjectPath;
 var
-  Input: TAtlasPackageInput;
-  Files: TAtlasPackageFiles;
-  Item: TAtlasPackageFile;
-  Text: string;
+  mInput: TAtlasPackageInput;
+  mFiles: TAtlasPackageFiles;
+  mItem: TAtlasPackageFile;
+  mText: string;
 begin
-  Input := PackageInput(FFolder);
-  Files := TAtlasDiagnosticPackage.Build(Input, TAtlasDiagnosticPackage.cAllParts);
-  Assert.AreEqual(0, Integer(Length(TAtlasDiagnosticPackage.Leaks(Files, Input.Roots, Input.Identity))),
+  mInput := PackageInput(FFolder);
+  mFiles := TAtlasDiagnosticPackage.Build(mInput, TAtlasDiagnosticPackage.cAllParts);
+  Assert.AreEqual(0, Integer(Length(TAtlasDiagnosticPackage.Leaks(mFiles, mInput.Roots, mInput.Identity))),
     'kein Projektpfad, Benutzer-, Rechner- oder Domänenname');
-  for Item in Files do
+  for mItem in mFiles do
   begin
-    Text := LowerCase(Item.Text);
-    Assert.IsFalse(Text.Contains(LowerCase(User)), Item.Name + ': Benutzername');
-    Assert.IsFalse(Text.Contains(LowerCase(Machine)), Item.Name + ': Rechnername');
-    Assert.IsFalse(Text.Contains(LowerCase(Root)), Item.Name + ': Projektpfad');
-    Assert.IsFalse(Text.Contains('c:\users'), Item.Name + ': Benutzerordner');
+    mText := LowerCase(mItem.Text);
+    Assert.IsFalse(mText.Contains(LowerCase(cUser)), mItem.Name + ': Benutzername');
+    Assert.IsFalse(mText.Contains(LowerCase(cMachine)), mItem.Name + ': Rechnername');
+    Assert.IsFalse(mText.Contains(LowerCase(cRoot)), mItem.Name + ': Projektpfad');
+    Assert.IsFalse(mText.Contains('c:\users'), mItem.Name + ': Benutzerordner');
   end;
-  Assert.IsTrue(Find(Files, 'plugin/atlas.log', Item));
-  Assert.Contains(Item.Text, '<ws>/<datei>.pas', 'Projektpfad gekürzt');
-  Assert.Contains(Item.Text, '<pfad>', 'anderer Pfad ersetzt');
-  Assert.Contains(Item.Text, '<benutzer>', 'Rechnername ersetzt');
-  Assert.Contains(Item.Text, '"<wert>"', 'Text in Anführungszeichen');
-  Assert.IsTrue(Find(Files, 'atlas-diagnosemodus.txt', Item));
-  Assert.Contains(Item.Text, '# Diagnosemodus');
-  Assert.IsTrue(Find(Files, 'server/diag-20261015-4711.log', Item));
-  Assert.Contains(Item.Text, '"doc":"doc#4"', 'Diagnoselog unverändert');
+  Assert.IsTrue(Find(mFiles, 'plugin/atlas.log', mItem));
+  Assert.Contains(mItem.Text, '<ws>/<datei>.pas', 'Projektpfad gekürzt');
+  Assert.Contains(mItem.Text, '<pfad>', 'anderer Pfad ersetzt');
+  Assert.Contains(mItem.Text, '<benutzer>', 'Rechnername ersetzt');
+  Assert.Contains(mItem.Text, '"<wert>"', 'Text in Anführungszeichen');
+  Assert.IsTrue(Find(mFiles, 'atlas-diagnosemodus.txt', mItem));
+  Assert.Contains(mItem.Text, '# Diagnosemodus');
+  Assert.IsTrue(Find(mFiles, 'server/diag-20261015-4711.log', mItem));
+  Assert.Contains(mItem.Text, '"doc":"doc#4"', 'Diagnoselog unverändert');
   // Gegenprobe: Ohne Anonymisierung würde Leaks anschlagen.
-  Files := [TAtlasPackageFile.Create('roh.txt', TAtlasPackagePart.Logs, 'C:\Projekte\Kunde\Main.pas')];
-  Assert.AreEqual('roh.txt', TAtlasDiagnosticPackage.Leaks(Files, Input.Roots, Input.Identity)[0]);
+  mFiles := [TAtlasPackageFile.Create('roh.txt', TAtlasPackagePart.Logs, 'C:\Projekte\Kunde\Main.pas')];
+  Assert.AreEqual('roh.txt', TAtlasDiagnosticPackage.Leaks(mFiles, mInput.Roots, mInput.Identity)[0]);
 end;
 
 procedure TAtlasDiagnosticPackageTests.PluginLogKeepsLastLines;
 var
-  Input: TAtlasPackageInput;
-  Builder: TStringBuilder;
-  Index: Integer;
-  Files: TAtlasPackageFiles;
-  Lines: TArray<string>;
+  mInput: TAtlasPackageInput;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
+  mFiles: TAtlasPackageFiles;
+  mLines: TArray<string>;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    for Index := 1 to TAtlasDiagnosticPackage.cPluginLogLines + 5 do
+    for mIndex := 1 to TAtlasDiagnosticPackage.cPluginLogLines + 5 do
     begin
-      Builder.Append('Zeile ').Append(Index).Append(sLineBreak);
+      mBuilder.Append('Zeile ').Append(mIndex).Append(sLineBreak);
     end;
-    TFile.WriteAllText(TPath.Combine(FFolder, 'atlas.log'), Builder.ToString, TEncoding.UTF8);
+    TFile.WriteAllText(TPath.Combine(FFolder, 'atlas.log'), mBuilder.ToString, TEncoding.UTF8);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Input := PackageInput(FFolder);
-  Input.ServerLogs := nil;
-  Files := TAtlasDiagnosticPackage.Build(Input, [TAtlasPackagePart.Logs]);
-  Assert.AreEqual(1, Integer(Length(Files)));
-  Lines := Files[0].Text.TrimRight.Split([sLineBreak]);
-  Assert.AreEqual(TAtlasDiagnosticPackage.cPluginLogLines, Integer(Length(Lines)));
-  Assert.AreEqual('Zeile 6', Lines[0], 'die letzten Zeilen');
-  Assert.AreEqual('Zeile ' + IntToStr(TAtlasDiagnosticPackage.cPluginLogLines + 5), Lines[High(Lines)]);
+  mInput := PackageInput(FFolder);
+  mInput.ServerLogs := nil;
+  mFiles := TAtlasDiagnosticPackage.Build(mInput, [TAtlasPackagePart.Logs]);
+  Assert.AreEqual(1, Integer(Length(mFiles)));
+  mLines := mFiles[0].Text.TrimRight.Split([sLineBreak]);
+  Assert.AreEqual(TAtlasDiagnosticPackage.cPluginLogLines, Integer(Length(mLines)));
+  Assert.AreEqual('Zeile 6', mLines[0], 'die letzten Zeilen');
+  Assert.AreEqual('Zeile ' + IntToStr(TAtlasDiagnosticPackage.cPluginLogLines + 5), mLines[High(mLines)]);
 end;
 
 procedure TAtlasDiagnosticPackageTests.SettingsLoseEveryPath;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := TAtlasDiagnosticPackage.SettingsWithoutPaths(PackageInput(FFolder).SettingsJson);
-  Assert.Contains(Text, '"ServerPath": "<pfad>"');
-  Assert.Contains(Text, '"WelcomePageHelpReportFolder": "<pfad>"');
-  Assert.Contains(Text, '"WelcomePageWhatsNew": "afterUpdate"', 'kein Pfad');
-  Assert.Contains(Text, '"VisibleRows": 10', 'Zahlen bleiben');
-  Assert.Contains(Text, '"WelcomePageHelpReportUrl": "https://example.org/', 'Webadresse ist kein Pfad');
-  Assert.IsFalse(Text.Contains('Users'), 'Benutzerordner');
+  mText := TAtlasDiagnosticPackage.SettingsWithoutPaths(PackageInput(FFolder).SettingsJson);
+  Assert.Contains(mText, '"ServerPath": "<pfad>"');
+  Assert.Contains(mText, '"WelcomePageHelpReportFolder": "<pfad>"');
+  Assert.Contains(mText, '"WelcomePageWhatsNew": "afterUpdate"', 'kein Pfad');
+  Assert.Contains(mText, '"VisibleRows": 10', 'Zahlen bleiben');
+  Assert.Contains(mText, '"WelcomePageHelpReportUrl": "https://example.org/', 'Webadresse ist kein Pfad');
+  Assert.IsFalse(mText.Contains('Users'), 'Benutzerordner');
   // Escapes, Schlüssel mit Pfadzeichen, UNC und Laufwerk mit Schrägstrich.
-  Text := TAtlasDiagnosticPackage.SettingsWithoutPaths(
+  mText := TAtlasDiagnosticPackage.SettingsWithoutPaths(
     '{"a\\b": "x", "Q": "sagt \"hallo\"", "U": "\\\\server\\share", "D": "D:/Ablage", "E": ""}');
-  Assert.AreEqual('{"a\\b": "x", "Q": "sagt \"hallo\"", "U": "<pfad>", "D": "<pfad>", "E": ""}', Text);
+  Assert.AreEqual('{"a\\b": "x", "Q": "sagt \"hallo\"", "U": "<pfad>", "D": "<pfad>", "E": ""}', mText);
   // Die Datei im Paket: auch Benutzername in einer Webadresse ersetzt.
-  Text := TAtlasDiagnosticPackage.Build(PackageInput(FFolder), [TAtlasPackagePart.Settings])[0].Text;
-  Assert.Contains(Text, '"WelcomePageHelpReportUrl": "<wert>"');
+  mText := TAtlasDiagnosticPackage.Build(PackageInput(FFolder), [TAtlasPackagePart.Settings])[0].Text;
+  Assert.Contains(mText, '"WelcomePageHelpReportUrl": "<wert>"');
 end;
 
 procedure TAtlasDiagnosticPackageTests.PathsAreRecognized;
@@ -284,24 +284,24 @@ end;
 
 procedure TAtlasDiagnosticPackageTests.ZipNameAndFreeTarget;
 var
-  Taken: TArray<string>;
-  Target: string;
+  mTaken: TArray<string>;
+  mTarget: string;
 begin
   Assert.AreEqual('Atlas-Diagnose-2026-10-15.zip', TAtlasDiagnosticPackage.ZipName(EncodeDate(2026, 10, 15)));
-  Taken := [IncludeTrailingPathDelimiter(FFolder) + 'Atlas-Diagnose-2026-10-15.zip',
+  mTaken := [IncludeTrailingPathDelimiter(FFolder) + 'Atlas-Diagnose-2026-10-15.zip',
     IncludeTrailingPathDelimiter(FFolder) + 'Atlas-Diagnose-2026-10-15-2.zip'];
-  Target := TAtlasDiagnosticPackage.ZipTarget(FFolder, EncodeDate(2026, 10, 15),
+  mTarget := TAtlasDiagnosticPackage.ZipTarget(FFolder, EncodeDate(2026, 10, 15),
     function(AFileName: string): Boolean
     var
       Name: string;
     begin
       Result := False;
-      for Name in Taken do
+      for Name in mTaken do
       begin
         Result := Result or SameText(Name, AFileName);
       end;
     end);
-  Assert.AreEqual(IncludeTrailingPathDelimiter(FFolder) + 'Atlas-Diagnose-2026-10-15-3.zip', Target,
+  Assert.AreEqual(IncludeTrailingPathDelimiter(FFolder) + 'Atlas-Diagnose-2026-10-15-3.zip', mTarget,
     'vorhandene ZIP wird nicht überschrieben');
   Assert.AreEqual(IncludeTrailingPathDelimiter(FFolder) + 'Atlas-Diagnose-2026-10-15.zip',
     TAtlasDiagnosticPackage.ZipTarget(FFolder, EncodeDate(2026, 10, 15), nil));
@@ -309,75 +309,75 @@ end;
 
 procedure TAtlasDiagnosticPackageTests.ZipHoldsExactlyThePreview;
 var
-  Files: TAtlasPackageFiles;
-  Target, Name: string;
-  Zip: TZipFile;
-  Bytes: TBytes;
-  Item: TAtlasPackageFile;
-  Names: TArray<string>;
+  mFiles: TAtlasPackageFiles;
+  mTarget, mName: string;
+  mZip: TZipFile;
+  mBytes: TBytes;
+  mItem: TAtlasPackageFile;
+  mNames: TArray<string>;
 begin
-  Files := TAtlasDiagnosticPackage.Build(PackageInput(FFolder), [TAtlasPackagePart.Versions,
+  mFiles := TAtlasDiagnosticPackage.Build(PackageInput(FFolder), [TAtlasPackagePart.Versions,
     TAtlasPackagePart.Logs]);
-  Target := TPath.Combine(FFolder, 'paket.zip');
-  TAtlasDiagnosticPackage.WriteZip(Files, Target);
-  Assert.IsTrue(FileExists(Target));
-  Zip := TZipFile.Create;
+  mTarget := TPath.Combine(FFolder, 'paket.zip');
+  TAtlasDiagnosticPackage.WriteZip(mFiles, mTarget);
+  Assert.IsTrue(FileExists(mTarget));
+  mZip := TZipFile.Create;
   try
-    Zip.Open(Target, TZipMode.zmRead);
-    Names := Zip.FileNames;
-    Assert.AreEqual(Integer(Length(Files)), Integer(Length(Names)), 'nur die gewählten Teile');
-    for Item in Files do
+    mZip.Open(mTarget, TZipMode.zmRead);
+    mNames := mZip.FileNames;
+    Assert.AreEqual(Integer(Length(mFiles)), Integer(Length(mNames)), 'nur die gewählten Teile');
+    for mItem in mFiles do
     begin
-      Zip.Read(Item.Name, Bytes);
-      Assert.AreEqual(Item.Text, TEncoding.UTF8.GetString(Bytes), Item.Name);
+      mZip.Read(mItem.Name, mBytes);
+      Assert.AreEqual(mItem.Text, TEncoding.UTF8.GetString(mBytes), mItem.Name);
     end;
-    for Name in Names do
+    for mName in mNames do
     begin
-      Assert.IsFalse(Name.Contains('einstellungen') or Name.Contains('diagnosemodus'), Name);
+      Assert.IsFalse(mName.Contains('einstellungen') or mName.Contains('diagnosemodus'), mName);
     end;
-    Zip.Close;
+    mZip.Close;
   finally
-    Zip.Free;
+    mZip.Free;
   end;
   // Eine vorhandene Datei wird ersetzt, nicht ergänzt.
-  TAtlasDiagnosticPackage.WriteZip([Files[0]], Target);
-  Zip := TZipFile.Create;
+  TAtlasDiagnosticPackage.WriteZip([mFiles[0]], mTarget);
+  mZip := TZipFile.Create;
   try
-    Zip.Open(Target, TZipMode.zmRead);
-    Assert.AreEqual(1, Integer(Length(Zip.FileNames)));
-    Zip.Close;
+    mZip.Open(mTarget, TZipMode.zmRead);
+    Assert.AreEqual(1, Integer(Length(mZip.FileNames)));
+    mZip.Close;
   finally
-    Zip.Free;
+    mZip.Free;
   end;
 end;
 
 procedure TAtlasDiagnosticPackageTests.IssueTemplateFollowsSelection;
 var
-  Input: TAtlasPackageInput;
-  Text: string;
+  mInput: TAtlasPackageInput;
+  mText: string;
 begin
-  Input := PackageInput(FFolder);
-  Text := TAtlasDiagnosticPackage.IssueTemplate('Vervollständigung hängt in ' + Root + '\Main.pas', Input,
+  mInput := PackageInput(FFolder);
+  mText := TAtlasDiagnosticPackage.IssueTemplate('Vervollständigung hängt in ' + cRoot + '\Main.pas', mInput,
     TAtlasDiagnosticPackage.cAllParts, TPath.Combine(FFolder, 'Atlas-Diagnose-2026-10-15.zip'), False);
-  Assert.Contains(Text, '## Beschreibung');
-  Assert.Contains(Text, 'Vervollständigung hängt in <ws>/<datei>.pas', 'Beschreibung ohne Projektpfad');
-  Assert.Contains(Text, '- Atlas: 0.1.0');
-  Assert.Contains(Text, '- RAD Studio: Delphi 13 (37.0), Win32');
-  Assert.Contains(Text, '- Windows: Windows 11');
-  Assert.Contains(Text, '`Atlas-Diagnose-2026-10-15.zip`', 'Hinweis auf das ZIP');
-  Assert.IsFalse(Text.Contains(FFolder), 'nur der Dateiname');
+  Assert.Contains(mText, '## Beschreibung');
+  Assert.Contains(mText, 'Vervollständigung hängt in <ws>/<datei>.pas', 'Beschreibung ohne Projektpfad');
+  Assert.Contains(mText, '- Atlas: 0.1.0');
+  Assert.Contains(mText, '- RAD Studio: Delphi 13 (37.0), Win32');
+  Assert.Contains(mText, '- Windows: Windows 11');
+  Assert.Contains(mText, '`Atlas-Diagnose-2026-10-15.zip`', 'Hinweis auf das ZIP');
+  Assert.IsFalse(mText.Contains(FFolder), 'nur der Dateiname');
   // Ohne Versionen und ohne ZIP.
-  Text := TAtlasDiagnosticPackage.IssueTemplate('', Input, [TAtlasPackagePart.Logs], '', False);
-  Assert.Contains(Text, '(nicht angegeben)');
-  Assert.IsFalse(Text.Contains('Delphi 13'), 'Versionen nur mit Häkchen');
-  Assert.Contains(Text, 'Kein Diagnosepaket angelegt.');
-  Assert.Contains(Text, '(Was ist passiert?', 'Platzhalter für die Beschreibung');
+  mText := TAtlasDiagnosticPackage.IssueTemplate('', mInput, [TAtlasPackagePart.Logs], '', False);
+  Assert.Contains(mText, '(nicht angegeben)');
+  Assert.IsFalse(mText.Contains('Delphi 13'), 'Versionen nur mit Häkchen');
+  Assert.Contains(mText, 'Kein Diagnosepaket angelegt.');
+  Assert.Contains(mText, '(Was ist passiert?', 'Platzhalter für die Beschreibung');
   // Englisch.
-  Text := TAtlasDiagnosticPackage.IssueTemplate('Hangs', Input, TAtlasDiagnosticPackage.cAllParts,
+  mText := TAtlasDiagnosticPackage.IssueTemplate('Hangs', mInput, TAtlasDiagnosticPackage.cAllParts,
     'Atlas-Diagnose-2026-10-15.zip', True);
-  Assert.Contains(Text, '## Description');
-  Assert.Contains(Text, '## Versions');
-  Assert.Contains(Text, 'please attach it to this issue');
+  Assert.Contains(mText, '## Description');
+  Assert.Contains(mText, '## Versions');
+  Assert.Contains(mText, 'please attach it to this issue');
 end;
 
 procedure TAtlasDiagnosticPackageTests.OnlyWebAddressesAreAccepted;
@@ -397,28 +397,28 @@ end;
 
 procedure TAtlasDiagnosticPackageTests.DocsPreferInstalledHtml;
 var
-  Install, Plugin, Local: string;
-  Exists: TFunc<string, Boolean>;
+  mInstall, mPlugin, mLocal: string;
+  mExists: TFunc<string, Boolean>;
 begin
-  Install := IncludeTrailingPathDelimiter(FFolder);
-  Plugin := Install + 'Win32' + PathDelim;
-  Local := Install + TAtlasHelp.cDocsFolder + PathDelim + TAtlasHelp.cDocsIndex;
-  Exists :=
+  mInstall := IncludeTrailingPathDelimiter(FFolder);
+  mPlugin := mInstall + 'Win32' + PathDelim;
+  mLocal := mInstall + TAtlasHelp.cDocsFolder + PathDelim + TAtlasHelp.cDocsIndex;
+  mExists :=
     function(AFileName: string): Boolean
     begin
-      Result := SameText(AFileName, Local);
+      Result := SameText(AFileName, mLocal);
     end;
   // BPL in Win32\, Doku eine Ebene darüber.
-  Assert.AreEqual(Local, TAtlasHelp.DocsTarget(Plugin, Exists));
+  Assert.AreEqual(mLocal, TAtlasHelp.DocsTarget(mPlugin, mExists));
   // BPL direkt im Installationsordner.
-  Assert.AreEqual(Local, TAtlasHelp.DocsTarget(Install, Exists));
+  Assert.AreEqual(mLocal, TAtlasHelp.DocsTarget(mInstall, mExists));
   // Ohne Installation: Doku-Seite des Repositorys.
-  Assert.AreEqual(TAtlasHelp.cDocsUrl, TAtlasHelp.DocsTarget(Plugin,
+  Assert.AreEqual(TAtlasHelp.cDocsUrl, TAtlasHelp.DocsTarget(mPlugin,
     function(AFileName: string): Boolean
     begin
       Result := False;
     end));
-  Assert.AreEqual(TAtlasHelp.cDocsUrl, TAtlasHelp.DocsTarget('', Exists));
+  Assert.AreEqual(TAtlasHelp.cDocsUrl, TAtlasHelp.DocsTarget('', mExists));
   Assert.IsTrue(TAtlasHelp.Enabled(TAtlasHelpButton.Docs, False));
   Assert.IsTrue(TAtlasHelp.Enabled(TAtlasHelpButton.Report, False));
   Assert.IsFalse(TAtlasHelp.Enabled(TAtlasHelpButton.Keys, False), 'ohne Übersicht (#520)');

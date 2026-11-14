@@ -96,7 +96,7 @@ type
     FHangMs: Cardinal;
   public
     Calls: Integer;
-    constructor Create(const AName: string; AHangMs: Cardinal = 0);
+    constructor Create(const AName: string; AHangMs: Cardinal);
     procedure Query(const AContext: TAtlasContext; const ASink: IAtlasCompletionSink);
     procedure Cancel;
     function ProviderName: string;
@@ -139,7 +139,8 @@ begin
 end;
 
 function TCancelInPrepareProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc;
+    out AState: TAtlasFetchState): TAtlasCompletionItems;
 begin
   AState := Default(TAtlasFetchState);
   TInterlocked.Increment(Fetches);
@@ -156,7 +157,8 @@ begin
 end;
 
 function TThreadRecordingProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc;
+    out AState: TAtlasFetchState): TAtlasCompletionItems;
 begin
   AState := Default(TAtlasFetchState);
   Result := nil;
@@ -182,13 +184,13 @@ end;
 
 procedure TSink.AddItems(const AItems: TAtlasCompletionItems);
 var
-  Item: TAtlasCompletionItem;
+  mItem: TAtlasCompletionItem;
 begin
   FLock.Enter;
   try
-    for Item in AItems do
+    for mItem in AItems do
     begin
-      FNames.Add(Item.Name);
+      FNames.Add(mItem.Name);
     end;
   finally
     FLock.Leave;
@@ -256,7 +258,8 @@ end;
 { TFailingFetchProvider }
 
 function TFailingFetchProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc;
+    out AState: TAtlasFetchState): TAtlasCompletionItems;
 begin
   AState := Default(TAtlasFetchState);
   raise EInvalidOpException.Create('Fetch kaputt');
@@ -302,50 +305,50 @@ end;
 
 procedure TAtlasTimeLimitTests.RunsAndReportsErrors;
 var
-  Error: string;
-  Ran: Boolean;
+  mError: string;
+  mRan: Boolean;
 begin
-  Ran := False;
+  mRan := False;
   Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.Done, TAtlasTimeLimit.Run(
     procedure
     begin
-      Ran := True;
-    end, Error));
-  Assert.IsTrue(Ran);
-  Assert.AreEqual('', Error);
+      mRan := True;
+    end, mError));
+  Assert.IsTrue(mRan);
+  Assert.AreEqual('', mError);
   Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.Failed, TAtlasTimeLimit.Run(
     procedure
     begin
       raise EInvalidOpException.Create('kaputt');
-    end, Error));
-  Assert.AreEqual('EInvalidOpException: kaputt', Error);
+    end, mError));
+  Assert.AreEqual('EInvalidOpException: kaputt', mError);
 end;
 
 procedure TAtlasTimeLimitTests.HangingCallReturnsAfterLimit;
 var
-  Watch: TStopwatch;
-  Error: string;
-  Release: TEvent;
+  mWatch: TStopwatch;
+  mError: string;
+  mRelease: TEvent;
 begin
-  Release := TEvent.Create(nil, True, False, '');
+  mRelease := TEvent.Create(nil, True, False, '');
   try
-    Watch := TStopwatch.StartNew;
+    mWatch := TStopwatch.StartNew;
     Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.TimedOut, TAtlasTimeLimit.Run(
       procedure
       begin
-        Release.WaitFor(5000);
-      end, Error, 200));
-    Assert.IsTrue(Watch.ElapsedMilliseconds < 450, Format('blockiert %d ms', [Watch.ElapsedMilliseconds]));
+        mRelease.WaitFor(5000);
+      end, mError, 200));
+    Assert.IsTrue(mWatch.ElapsedMilliseconds < 450, Format('blockiert %d ms', [mWatch.ElapsedMilliseconds]));
     // Der nächste Aufruf bekommt einen anderen Arbeiter und läuft sofort.
     Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.Done, TAtlasTimeLimit.Run(
       procedure
       begin
-      end, Error));
-    Release.SetEvent;
+      end, mError));
+    mRelease.SetEvent;
   finally
     // Erst freigeben, wenn der hängende Arbeiter zurück ist.
     Sleep(50);
-    Release.Free;
+    mRelease.Free;
   end;
 end;
 
@@ -375,136 +378,136 @@ end;
 
 procedure TAtlasTimeLimitTests.ShutdownEndsWaitsAndWorkers;
 var
-  Watch: TStopwatch;
-  Event: TEvent;
-  Error: string;
-  Signaller: TThread;
+  mWatch: TStopwatch;
+  mEvent: TEvent;
+  mError: string;
+  mSignaller: TThread;
 begin
-  Signaller := nil;
-  Event := TEvent.Create(nil, True, False, '');
+  mSignaller := nil;
+  mEvent := TEvent.Create(nil, True, False, '');
   try
-    Assert.AreEqual<TWaitResult>(wrTimeout, TAtlasShutdown.WaitFor(Event, 30));
-    Event.SetEvent;
-    Assert.AreEqual<TWaitResult>(wrSignaled, TAtlasShutdown.WaitFor(Event, 30));
-    Event.ResetEvent;
+    Assert.AreEqual<TWaitResult>(wrTimeout, TAtlasShutdown.WaitFor(mEvent, 30));
+    mEvent.SetEvent;
+    Assert.AreEqual<TWaitResult>(wrSignaled, TAtlasShutdown.WaitFor(mEvent, 30));
+    mEvent.ResetEvent;
     // Ein Arbeiter hängt in einer Quelle, die auf das Signal hört.
     Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.TimedOut, TAtlasTimeLimit.Run(
       procedure
       begin
         TAtlasShutdown.Wait(10000);
-      end, Error, 50));
-    Signaller := SignalShutdownSoon;
-    Watch := TStopwatch.StartNew;
-    Assert.AreEqual<TWaitResult>(wrAbandoned, TAtlasShutdown.WaitFor(Event, 10000));
-    Assert.IsTrue(Watch.ElapsedMilliseconds < 500);
-    Watch := TStopwatch.StartNew;
+      end, mError, 50));
+    mSignaller := SignalShutdownSoon;
+    mWatch := TStopwatch.StartNew;
+    Assert.AreEqual<TWaitResult>(wrAbandoned, TAtlasShutdown.WaitFor(mEvent, 10000));
+    Assert.IsTrue(mWatch.ElapsedMilliseconds < 500);
+    mWatch := TStopwatch.StartNew;
     Assert.IsTrue(TAtlasTimeLimit.StopAll(TAtlasShutdown.cStopMs), 'alle Arbeiter beendet');
-    Assert.IsTrue(Watch.ElapsedMilliseconds < TAtlasShutdown.cStopMs);
+    Assert.IsTrue(mWatch.ElapsedMilliseconds < TAtlasShutdown.cStopMs);
     Assert.AreEqual(0, TAtlasTimeLimit.BusyCount);
     Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.Failed, TAtlasTimeLimit.Run(
       procedure
       begin
-      end, Error), 'nach dem Signal startet nichts mehr');
+      end, mError), 'nach dem Signal startet nichts mehr');
   finally
-    JoinThread(Signaller);
-    Event.Free;
+    JoinThread(mSignaller);
+    mEvent.Free;
   end;
   TAtlasShutdown.Reset;
   Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.Done, TAtlasTimeLimit.Run(
     procedure
     begin
-    end, Error), 'nach Reset wieder bereit');
+    end, mError), 'nach Reset wieder bereit');
 end;
 
 procedure TAtlasTimeLimitTests.ClientRequestEndsOnShutdown;
 var
-  Client: TLspClient;
-  Watch: TStopwatch;
-  Signaller: TThread;
+  mClient: TLspClient;
+  mWatch: TStopwatch;
+  mSignaller: TThread;
 begin
-  Signaller := nil;
-  Client := TLspClient.Create(
+  mSignaller := nil;
+  mClient := TLspClient.Create(
     procedure(const ABytes: TBytes)
     begin
     end);
   try
-    Signaller := SignalShutdownSoon;
-    Watch := TStopwatch.StartNew;
+    mSignaller := SignalShutdownSoon;
+    mWatch := TStopwatch.StartNew;
     Assert.WillRaise(
       procedure
       begin
-        Client.Request('textDocument/hover', nil, 10000).Free;
+        mClient.Request('textDocument/hover', nil, 10000).Free;
       end, ELspClientError);
-    Assert.IsTrue(Watch.ElapsedMilliseconds < 500, Format('wartete %d ms', [Watch.ElapsedMilliseconds]));
+    Assert.IsTrue(mWatch.ElapsedMilliseconds < 500, Format('wartete %d ms', [mWatch.ElapsedMilliseconds]));
   finally
-    JoinThread(Signaller);
-    Client.Free;
+    JoinThread(mSignaller);
+    mClient.Free;
   end;
 end;
 
 procedure TAtlasTimeLimitTests.FailingProviderTripsOnlyItself;
 var
-  Providers: TAtlasCompletionProviders;
-  Provider: IAtlasCompletionProvider;
-  Broken: TBrokenProvider;
-  BrokenRef: IAtlasCompletionProvider;
-  Sink: TSink;
-  SinkRef: IAtlasCompletionSink;
-  Index: Integer;
-  Warning: string;
+  mProviders: TAtlasCompletionProviders;
+  mProvider: IAtlasCompletionProvider;
+  mBroken: TBrokenProvider;
+  mBrokenRef: IAtlasCompletionProvider;
+  mSink: TSink;
+  mSinkRef: IAtlasCompletionSink;
+  mIndex: Integer;
+  mWarning: string;
 begin
   TAtlasGuard.OnWarning :=
     procedure(const AText: string)
     begin
-      Warning := AText;
+      mWarning := AText;
     end;
-  Providers := TAtlasCompletionProviders.Create;
-  Provider := Providers;
-  Broken := TBrokenProvider.Create('SQL');
-  BrokenRef := Broken;
-  Providers.Add(BrokenRef);
-  Providers.Add(TAtlasFixedCompletionProvider.Create([Item('Alpha')]));
-  for Index := 1 to 3 do
+  mProviders := TAtlasCompletionProviders.Create;
+  mProvider := mProviders;
+  mBroken := TBrokenProvider.Create('SQL', 0);
+  mBrokenRef := mBroken;
+  mProviders.Add(mBrokenRef);
+  mProviders.Add(TAtlasFixedCompletionProvider.Create([Item('Alpha')]));
+  for mIndex := 1 to 3 do
   begin
-    Sink := TSink.Create;
-    SinkRef := Sink;
-    Provider.Query(Context, SinkRef);
-    Assert.IsTrue(Sink.WaitDone(3000), 'Complete trotz kaputter Quelle');
-    Assert.AreEqual('Alpha', Sink.Names, 'die übrigen Quellen liefern weiter');
+    mSink := TSink.Create;
+    mSinkRef := mSink;
+    mProvider.Query(Context, mSinkRef);
+    Assert.IsTrue(mSink.WaitDone(3000), 'Complete trotz kaputter Quelle');
+    Assert.AreEqual('Alpha', mSink.Names, 'die übrigen Quellen liefern weiter');
   end;
   Assert.IsTrue(TAtlasGuard.ProviderDisabled('SQL'), 'nach dem dritten Fehler abgeschaltet');
-  Assert.Contains(Warning, 'SQL');
+  Assert.Contains(mWarning, 'SQL');
   Assert.IsFalse(TAtlasGuard.ProviderDisabled('Vervollständigung (fest)'));
   Assert.IsFalse(TAtlasGuard.Disabled(TAtlasFeature.Completion), 'nur die Quelle, nicht die Vervollständigung');
-  Sink := TSink.Create;
-  SinkRef := Sink;
-  Provider.Query(Context, SinkRef);
-  Assert.IsTrue(Sink.WaitDone(3000));
-  Assert.AreEqual('Alpha', Sink.Names);
-  Assert.AreEqual(3, Broken.Calls, 'abgeschaltete Quelle wird nicht mehr gefragt');
+  mSink := TSink.Create;
+  mSinkRef := mSink;
+  mProvider.Query(Context, mSinkRef);
+  Assert.IsTrue(mSink.WaitDone(3000));
+  Assert.AreEqual('Alpha', mSink.Names);
+  Assert.AreEqual(3, mBroken.Calls, 'abgeschaltete Quelle wird nicht mehr gefragt');
   TAtlasGuard.EnableProvider('SQL');
   Assert.IsFalse(TAtlasGuard.ProviderDisabled('SQL'));
 end;
 
 procedure TAtlasTimeLimitTests.HangingProviderBlocksAtMostLimit;
 var
-  Providers: TAtlasCompletionProviders;
-  Provider: IAtlasCompletionProvider;
-  Sink: TSink;
-  SinkRef: IAtlasCompletionSink;
-  Watch: TStopwatch;
+  mProviders: TAtlasCompletionProviders;
+  mProvider: IAtlasCompletionProvider;
+  mSink: TSink;
+  mSinkRef: IAtlasCompletionSink;
+  mWatch: TStopwatch;
 begin
-  Providers := TAtlasCompletionProviders.Create;
-  Provider := Providers;
-  Providers.Add(TBrokenProvider.Create('Hängt', 5000));
-  Providers.Add(TAtlasFixedCompletionProvider.Create([Item('Beta')]));
-  Sink := TSink.Create;
-  SinkRef := Sink;
-  Watch := TStopwatch.StartNew;
-  Provider.Query(Context, SinkRef);
-  Assert.IsTrue(Watch.ElapsedMilliseconds < 450, Format('Query blockierte %d ms', [Watch.ElapsedMilliseconds]));
-  Assert.IsTrue(Sink.WaitDone(3000));
-  Assert.AreEqual('Beta', Sink.Names);
+  mProviders := TAtlasCompletionProviders.Create;
+  mProvider := mProviders;
+  mProviders.Add(TBrokenProvider.Create('Hängt', 5000));
+  mProviders.Add(TAtlasFixedCompletionProvider.Create([Item('Beta')]));
+  mSink := TSink.Create;
+  mSinkRef := mSink;
+  mWatch := TStopwatch.StartNew;
+  mProvider.Query(Context, mSinkRef);
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < 450, Format('Query blockierte %d ms', [mWatch.ElapsedMilliseconds]));
+  Assert.IsTrue(mSink.WaitDone(3000));
+  Assert.AreEqual('Beta', mSink.Names);
   Assert.Contains(TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8),
     'Quelle Hängt langsam: text#');
   // Hängenden Arbeiter freigeben.
@@ -514,184 +517,184 @@ end;
 
 procedure TAtlasTimeLimitTests.SlowProviderNeverTripsAndRunsOnce;
 var
-  Providers: TAtlasCompletionProviders;
-  Provider: IAtlasCompletionProvider;
-  Slow: TBrokenProvider;
-  SlowRef: IAtlasCompletionProvider;
-  Sink: TSink;
-  SinkRef: IAtlasCompletionSink;
-  Watch: TStopwatch;
-  Index: Integer;
-  Text: string;
+  mProviders: TAtlasCompletionProviders;
+  mProvider: IAtlasCompletionProvider;
+  mSlow: TBrokenProvider;
+  mSlowRef: IAtlasCompletionProvider;
+  mSink: TSink;
+  mSinkRef: IAtlasCompletionSink;
+  mWatch: TStopwatch;
+  mIndex: Integer;
+  mText: string;
 begin
-  Providers := TAtlasCompletionProviders.Create;
-  Provider := Providers;
-  Slow := TBrokenProvider.Create('Langsam', 5000);
-  SlowRef := Slow;
-  Providers.Add(SlowRef);
-  Providers.Add(TAtlasFixedCompletionProvider.Create([Item('Gamma')]));
-  for Index := 1 to 4 do
+  mProviders := TAtlasCompletionProviders.Create;
+  mProvider := mProviders;
+  mSlow := TBrokenProvider.Create('Langsam', 5000);
+  mSlowRef := mSlow;
+  mProviders.Add(mSlowRef);
+  mProviders.Add(TAtlasFixedCompletionProvider.Create([Item('Gamma')]));
+  for mIndex := 1 to 4 do
   begin
-    Sink := TSink.Create;
-    SinkRef := Sink;
-    Watch := TStopwatch.StartNew;
-    Provider.Query(Context, SinkRef);
-    Assert.IsTrue(Watch.ElapsedMilliseconds < 450, Format('Query blockierte %d ms', [Watch.ElapsedMilliseconds]));
-    Assert.IsTrue(Sink.WaitDone(3000));
-    Assert.AreEqual('Gamma', Sink.Names, 'die übrigen Quellen liefern weiter');
+    mSink := TSink.Create;
+    mSinkRef := mSink;
+    mWatch := TStopwatch.StartNew;
+    mProvider.Query(Context, mSinkRef);
+    Assert.IsTrue(mWatch.ElapsedMilliseconds < 450, Format('Query blockierte %d ms', [mWatch.ElapsedMilliseconds]));
+    Assert.IsTrue(mSink.WaitDone(3000));
+    Assert.AreEqual('Gamma', mSink.Names, 'die übrigen Quellen liefern weiter');
   end;
   Assert.IsFalse(TAtlasGuard.ProviderDisabled('Langsam'), 'langsam ist kein Fehler');
-  Assert.AreEqual(1, Slow.Calls, 'solange der erste Aufruf läuft, kein weiterer Arbeiter');
-  Text := TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8);
-  Assert.Contains(Text, 'Quelle Langsam langsam: text#');
-  Assert.AreEqual(1, Integer(Length(Text.Trim.Split([sLineBreak]))), 'eine Zeile je Quelle und Minute');
-  Assert.IsFalse(Text.Contains('Fehler in Quelle'), 'keine Fehlerzeile');
+  Assert.AreEqual(1, mSlow.Calls, 'solange der erste Aufruf läuft, kein weiterer Arbeiter');
+  mText := TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8);
+  Assert.Contains(mText, 'Quelle Langsam langsam: text#');
+  Assert.AreEqual(1, Integer(Length(mText.Trim.Split([sLineBreak]))), 'eine Zeile je Quelle und Minute');
+  Assert.IsFalse(mText.Contains('Fehler in Quelle'), 'keine Fehlerzeile');
   // Hängenden Arbeiter freigeben; danach fragt die Quelle wieder.
   TAtlasShutdown.Signal;
   TAtlasTimeLimit.WaitIdle(2000);
   TAtlasShutdown.Reset;
-  Sink := TSink.Create;
-  SinkRef := Sink;
-  Provider.Query(Context, SinkRef);
-  Assert.IsTrue(Sink.WaitDone(3000));
-  Assert.AreEqual(2, Slow.Calls, 'nach seiner Rückkehr läuft die Quelle wieder');
+  mSink := TSink.Create;
+  mSinkRef := mSink;
+  mProvider.Query(Context, mSinkRef);
+  Assert.IsTrue(mSink.WaitDone(3000));
+  Assert.AreEqual(2, mSlow.Calls, 'nach seiner Rückkehr läuft die Quelle wieder');
   TAtlasShutdown.Signal;
   TAtlasTimeLimit.StopAll;
 end;
 
 procedure TAtlasTimeLimitTests.FetchErrorsCountPerProvider;
 var
-  Failing: TFailingFetchProvider;
-  Provider: IAtlasCompletionProvider;
-  Sink: TSink;
-  SinkRef: IAtlasCompletionSink;
-  Index: Integer;
+  mFailing: TFailingFetchProvider;
+  mProvider: IAtlasCompletionProvider;
+  mSink: TSink;
+  mSinkRef: IAtlasCompletionSink;
+  mIndex: Integer;
 begin
-  Failing := TFailingFetchProvider.Create;
-  Failing.Name := 'Kaputt';
-  Provider := Failing;
-  for Index := 1 to 3 do
+  mFailing := TFailingFetchProvider.Create;
+  mFailing.Name := 'Kaputt';
+  mProvider := mFailing;
+  for mIndex := 1 to 3 do
   begin
-    Sink := TSink.Create;
-    SinkRef := Sink;
-    Provider.Query(Context, SinkRef);
-    Assert.IsTrue(Sink.WaitDone(3000), 'leeres Ergebnis statt Exception');
+    mSink := TSink.Create;
+    mSinkRef := mSink;
+    mProvider.Query(Context, mSinkRef);
+    Assert.IsTrue(mSink.WaitDone(3000), 'leeres Ergebnis statt Exception');
   end;
-  Failing.Shutdown;
+  mFailing.Shutdown;
   Assert.IsTrue(TAtlasGuard.ProviderDisabled('Kaputt'));
   Assert.IsTrue(TAtlasGuard.ProviderDisabled('kaputt'), 'Name ohne Groß-/Kleinschreibung');
 end;
 
 procedure TAtlasTimeLimitTests.WaitIdleWaitsForAbandonedWorker;
 var
-  Error: string;
-  Release: TEvent;
+  mError: string;
+  mRelease: TEvent;
 begin
-  Release := TEvent.Create(nil, True, False, '');
+  mRelease := TEvent.Create(nil, True, False, '');
   try
     Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.TimedOut, TAtlasTimeLimit.Run(
       procedure
       begin
-        Release.WaitFor(5000);
-      end, Error, 50));
+        mRelease.WaitFor(5000);
+      end, mError, 50));
     Assert.IsFalse(TAtlasTimeLimit.WaitIdle(30), 'der aufgegebene Arbeiter läuft noch');
-    Release.SetEvent;
+    mRelease.SetEvent;
     Assert.IsTrue(TAtlasTimeLimit.WaitIdle(2000), 'nach seiner Rückkehr frei');
     Assert.AreEqual(0, TAtlasTimeLimit.BusyCount);
   finally
-    Release.SetEvent;
+    mRelease.SetEvent;
     TAtlasTimeLimit.WaitIdle(2000);
-    Release.Free;
+    mRelease.Free;
   end;
 end;
 
 procedure TAtlasTimeLimitTests.StaleQueryAfterPrepareFetchesNothing;
 var
-  Stale: TCancelInPrepareProvider;
-  Provider: IAtlasCompletionProvider;
-  Sink: TSink;
-  SinkRef: IAtlasCompletionSink;
+  mStale: TCancelInPrepareProvider;
+  mProvider: IAtlasCompletionProvider;
+  mSink: TSink;
+  mSinkRef: IAtlasCompletionSink;
 begin
-  Stale := TCancelInPrepareProvider.Create;
-  Provider := Stale;
-  Sink := TSink.Create;
-  SinkRef := Sink;
-  Provider.Query(Context, SinkRef);
-  Assert.IsTrue(Sink.WaitDone(1000), 'die Senke schließt trotzdem ab');
-  Stale.Shutdown;
-  Assert.AreEqual(0, Stale.Fetches, 'eine nach Prepare überholte Anfrage fragt nicht mehr an');
+  mStale := TCancelInPrepareProvider.Create;
+  mProvider := mStale;
+  mSink := TSink.Create;
+  mSinkRef := mSink;
+  mProvider.Query(Context, mSinkRef);
+  Assert.IsTrue(mSink.WaitDone(1000), 'die Senke schließt trotzdem ab');
+  mStale.Shutdown;
+  Assert.AreEqual(0, mStale.Fetches, 'eine nach Prepare überholte Anfrage fragt nicht mehr an');
 end;
 
 procedure TAtlasTimeLimitTests.PrepareRunsInWorkerThread;
 var
-  Providers: TAtlasCompletionProviders;
-  Provider: IAtlasCompletionProvider;
-  Recording: TThreadRecordingProvider;
-  Sink: TSink;
-  SinkRef: IAtlasCompletionSink;
+  mProviders: TAtlasCompletionProviders;
+  mProvider: IAtlasCompletionProvider;
+  mRecording: TThreadRecordingProvider;
+  mSink: TSink;
+  mSinkRef: IAtlasCompletionSink;
 begin
-  Providers := TAtlasCompletionProviders.Create;
-  Provider := Providers;
-  Recording := TThreadRecordingProvider.Create;
-  Providers.Add(Recording);
-  Sink := TSink.Create;
-  SinkRef := Sink;
-  Provider.Query(Context, SinkRef);
-  Assert.IsTrue(Sink.WaitDone(3000));
-  Assert.AreNotEqual<TThreadID>(0, Recording.PrepareThread, 'Prepare lief');
-  Assert.AreNotEqual<TThreadID>(MainThreadID, Recording.PrepareThread,
+  mProviders := TAtlasCompletionProviders.Create;
+  mProvider := mProviders;
+  mRecording := TThreadRecordingProvider.Create;
+  mProviders.Add(mRecording);
+  mSink := TSink.Create;
+  mSinkRef := mSink;
+  mProvider.Query(Context, mSinkRef);
+  Assert.IsTrue(mSink.WaitDone(3000));
+  Assert.AreNotEqual<TThreadID>(0, mRecording.PrepareThread, 'Prepare lief');
+  Assert.AreNotEqual<TThreadID>(MainThreadID, mRecording.PrepareThread,
     'Prepare läuft im Zeitlimit-Arbeiter: weder VCL noch Open Tools API, kein Serverstart');
 end;
 
 procedure TAtlasTimeLimitTests.ServerSessionFuncRunsInWorker;
 var
-  Providers: TAtlasCompletionProviders;
-  Provider: IAtlasCompletionProvider;
-  Sink: TSink;
-  SinkRef: IAtlasCompletionSink;
-  SessionThread: TThreadID;
+  mProviders: TAtlasCompletionProviders;
+  mProvider: IAtlasCompletionProvider;
+  mSink: TSink;
+  mSinkRef: IAtlasCompletionSink;
+  mSessionThread: TThreadID;
 begin
-  SessionThread := 0;
-  Providers := TAtlasCompletionProviders.Create;
-  Provider := Providers;
-  Providers.Add(TAtlasServerCompletionProvider.Create(
+  mSessionThread := 0;
+  mProviders := TAtlasCompletionProviders.Create;
+  mProvider := mProviders;
+  mProviders.Add(TAtlasServerCompletionProvider.Create(
     function: TLspSession
     begin
-      SessionThread := TThread.CurrentThread.ThreadID;
+      mSessionThread := TThread.CurrentThread.ThreadID;
       Result := nil;
     end));
-  Sink := TSink.Create;
-  SinkRef := Sink;
-  Provider.Query(Context, SinkRef);
-  Assert.IsTrue(Sink.WaitDone(3000));
-  Assert.AreNotEqual<TThreadID>(0, SessionThread, 'Sitzungsfunktion gerufen');
-  Assert.AreNotEqual<TThreadID>(MainThreadID, SessionThread,
+  mSink := TSink.Create;
+  mSinkRef := mSink;
+  mProvider.Query(Context, mSinkRef);
+  Assert.IsTrue(mSink.WaitDone(3000));
+  Assert.AreNotEqual<TThreadID>(0, mSessionThread, 'Sitzungsfunktion gerufen');
+  Assert.AreNotEqual<TThreadID>(MainThreadID, mSessionThread,
     'Die Sitzungsfunktion läuft im Zeitlimit-Arbeiter und darf keinen Server starten');
 end;
 
 procedure TAtlasTimeLimitTests.SignatureSyncsInCallingThread;
 var
-  Signatures: TAtlasServerSignatureProvider;
-  SessionThread: TThreadID;
+  mSignatures: TAtlasServerSignatureProvider;
+  mSessionThread: TThreadID;
 begin
-  SessionThread := 0;
-  Signatures := TAtlasServerSignatureProvider.Create(
+  mSessionThread := 0;
+  mSignatures := TAtlasServerSignatureProvider.Create(
     function: TLspSession
     begin
-      SessionThread := TThread.CurrentThread.ThreadID;
+      mSessionThread := TThread.CurrentThread.ThreadID;
       Result := nil;
     end);
   try
-    Assert.IsFalse(Signatures.Query('C:\Projekt\Unit1.pas', 'unit Unit1;', 0, 0,
+    Assert.IsFalse(mSignatures.Query('C:\Projekt\Unit1.pas', 'unit Unit1;', 0, 0,
       procedure(const AHelp: TAtlasSignatureHelp)
       begin
       end), 'ohne Sitzung keine Anfrage');
-    Assert.AreEqual<TThreadID>(TThread.CurrentThread.ThreadID, SessionThread,
+    Assert.AreEqual<TThreadID>(TThread.CurrentThread.ThreadID, mSessionThread,
       'Sitzung und Abgleich im aufrufenden Thread: Sync wartet nicht auf den Server, kein Zeitlimit-Arbeiter');
     Assert.AreEqual(0, TAtlasTimeLimit.BusyCount);
-    Signatures.Shutdown;
+    mSignatures.Shutdown;
   finally
-    Signatures.Free;
+    mSignatures.Free;
   end;
 end;
 

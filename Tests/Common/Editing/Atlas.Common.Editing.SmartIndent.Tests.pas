@@ -51,7 +51,7 @@ uses
   Atlas.Common.Documents.Contract;
 
 const
-  LF = #10;
+  cLF = #10;
 
 /// <summary>Zeichenindex von APosition in ALines (Zeilen mit LF verbunden).</summary>
 function OffsetOf(const ALines: TArray<string>; const APosition: TTextPosition): Integer;
@@ -75,11 +75,11 @@ var
   mText: string;
   mIndex, mCursor, mStart, mEnd: Integer;
 begin
-  if not TSmartIndent.AfterEnter(string.Join(LF, ALines), ALine, AOptions, mResult) then
+  if not TSmartIndent.AfterEnter(string.Join(cLF, ALines), ALine, AOptions, mResult) then
   begin
     Exit('-');
   end;
-  mText := string.Join(LF, ALines);
+  mText := string.Join(cLF, ALines);
   mCursor := OffsetOf(ALines, mResult.Cursor);
   // Rückwärts anwenden, damit die vorderen Positionen gelten; die Schreibmarke zählt nach den Änderungen.
   for mIndex := High(mResult.Edits) downto 0 do
@@ -93,7 +93,7 @@ begin
     end;
   end;
   Insert('|', mText, mCursor + 1);
-  Result := mText.Replace(LF, '/');
+  Result := mText.Replace(cLF, '/');
 end;
 
 function TSmartIndentTests.Entered(const ALines: TArray<string>; ALine: Integer): string;
@@ -207,11 +207,11 @@ procedure TSmartIndentTests.GivesColumnForPaste;
 var
   mColumn: Integer;
 begin
-  Assert.IsTrue(TSmartIndent.ColumnAt(string.Join(LF, ['begin', '  if A then B;', 'X := 1;']), 2, 2, mColumn));
+  Assert.IsTrue(TSmartIndent.ColumnAt(string.Join(cLF, ['begin', '  if A then B;', 'X := 1;']), 2, 2, mColumn));
   Assert.AreEqual(2, mColumn);
-  Assert.IsTrue(TSmartIndent.ColumnAt(string.Join(LF, ['begin', '  case A of', '    1:', 'X := 1;']), 3, 2, mColumn));
+  Assert.IsTrue(TSmartIndent.ColumnAt(string.Join(cLF, ['begin', '  case A of', '    1:', 'X := 1;']), 3, 2, mColumn));
   Assert.AreEqual(6, mColumn);
-  Assert.IsFalse(TSmartIndent.ColumnAt(string.Join(LF, ['{', 'X := 1;', '}']), 1, 2, mColumn));
+  Assert.IsFalse(TSmartIndent.ColumnAt(string.Join(cLF, ['{', 'X := 1;', '}']), 1, 2, mColumn));
 end;
 
 initialization

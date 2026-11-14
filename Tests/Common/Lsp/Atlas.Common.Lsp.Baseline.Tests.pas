@@ -56,8 +56,8 @@ uses
   Atlas.Common.Lsp.Baseline;
 
 const
-  Root = 'C:\Projekt';
-  UnitA =
+  cRoot = 'C:\Projekt';
+  cUnitA =
     'unit A;' + #10 +
     'interface' + #10 +
     'implementation' + #10 +
@@ -78,7 +78,7 @@ var
 
 function FullPath(const ARelative: string): string;
 begin
-  Result := Root + PathDelim + ARelative;
+  Result := cRoot + PathDelim + ARelative;
 end;
 
 function Files: TLspBaselineFiles;
@@ -116,9 +116,9 @@ end;
 
 function CheckFile(const AFileName: string; out ACheck: TLspBaselineCheck): Boolean;
 var
-  Lines: TArray<Integer>;
-  Line: Integer;
-  Finding: TRuleFinding;
+  mLines: TArray<Integer>;
+  mLine: Integer;
+  mFinding: TRuleFinding;
 begin
   ACheck := Default(TLspBaselineCheck);
   Result := Disk.TryGetValue(AFileName, ACheck.Text);
@@ -126,31 +126,31 @@ begin
   begin
     Exit;
   end;
-  ACheck.RelativePath := Copy(AFileName, Length(Root) + 2, MaxInt);
-  if Hits.TryGetValue(AFileName, Lines) then
+  ACheck.RelativePath := Copy(AFileName, Length(cRoot) + 2, MaxInt);
+  if Hits.TryGetValue(AFileName, mLines) then
   begin
-    for Line in Lines do
+    for mLine in mLines do
     begin
-      Finding := Default(TRuleFinding);
-      Finding.RuleId := 'a';
-      Finding.Range := TTextRange.Create(TTextPosition.Create(Line, 2), TTextPosition.Create(Line, 8));
-      ACheck.Findings := ACheck.Findings + [Finding];
+      mFinding := Default(TRuleFinding);
+      mFinding.RuleId := 'a';
+      mFinding.Range := TTextRange.Create(TTextPosition.Create(mLine, 2), TTextPosition.Create(mLine, 8));
+      ACheck.Findings := ACheck.Findings + [mFinding];
     end;
   end;
 end;
 
 function MakeCommand(const AFiles: TArray<string>): TLspBaseline;
 var
-  ProjectFiles: TArray<string>;
+  mProjectFiles: TArray<string>;
 begin
-  ProjectFiles := AFiles;
+  mProjectFiles := AFiles;
   Result := TLspBaseline.Create(
     function(const AFileName: string; AProject: Boolean; out ASource: TLspMetricsSource): Boolean
     begin
       ASource := Default(TLspMetricsSource);
       ASource.Settings := TServerSettings.Default;
-      ASource.Root := Root;
-      ASource.Files := ProjectFiles;
+      ASource.Root := cRoot;
+      ASource.Files := mProjectFiles;
       Result := AProject;
     end,
     function(const AFileName: string; out ACheck: TLspBaselineCheck): Boolean
@@ -166,47 +166,47 @@ end;
 
 function Run(ACommand: TLspBaseline): TJSONObject;
 var
-  Arguments: TJSONArray;
-  Value: TJSONValue;
+  mArguments: TJSONArray;
+  mValue: TJSONValue;
 begin
-  Arguments := TJSONArray.Create;
+  mArguments := TJSONArray.Create;
   try
-    Arguments.Add('file:///C:/Projekt/Projekt.dproj');
-    Value := ACommand.Execute(Arguments);
+    mArguments.Add('file:///C:/Projekt/Projekt.dproj');
+    mValue := ACommand.Execute(mArguments);
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
-  Assert.IsTrue(Value is TJSONObject);
-  Result := TJSONObject(Value);
+  Assert.IsTrue(mValue is TJSONObject);
+  Result := TJSONObject(mValue);
 end;
 
 function NumberAt(AObject: TJSONObject; const APath: string): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := AObject.FindValue(APath);
-  Assert.IsTrue(Value is TJSONNumber, APath);
-  Result := TJSONNumber(Value).AsInt;
+  mValue := AObject.FindValue(APath);
+  Assert.IsTrue(mValue is TJSONNumber, APath);
+  Result := TJSONNumber(mValue).AsInt;
 end;
 
 function TextAt(AObject: TJSONObject; const APath: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := AObject.FindValue(APath);
-  Assert.IsTrue(Value is TJSONString, APath);
-  Result := TJSONString(Value).Value;
+  mValue := AObject.FindValue(APath);
+  Assert.IsTrue(mValue is TJSONString, APath);
+  Result := TJSONString(mValue).Value;
 end;
 
 /// <summary>Erster Eintrag von orphaned.entries.</summary>
 function FirstOrphan(AAnswer: TJSONObject): TJSONObject;
 var
-  Entries: TJSONValue;
+  mEntries: TJSONValue;
 begin
-  Entries := AAnswer.FindValue('orphaned.entries');
-  Assert.IsTrue((Entries is TJSONArray) and (TJSONArray(Entries).Count > 0));
-  Assert.IsTrue(TJSONArray(Entries).Items[0] is TJSONObject);
-  Result := TJSONObject(TJSONArray(Entries).Items[0]);
+  mEntries := AAnswer.FindValue('orphaned.entries');
+  Assert.IsTrue((mEntries is TJSONArray) and (TJSONArray(mEntries).Count > 0));
+  Assert.IsTrue(TJSONArray(mEntries).Items[0] is TJSONObject);
+  Result := TJSONObject(TJSONArray(mEntries).Items[0]);
 end;
 
 { TLspBaselineTests }
@@ -218,8 +218,8 @@ begin
   Hits.Clear;
   Written := '';
   Locked := False;
-  Disk.Add(FullPath('A.pas'), UnitA);
-  Disk.Add(FullPath('B.pas'), UnitA);
+  Disk.Add(FullPath('A.pas'), cUnitA);
+  Disk.Add(FullPath('B.pas'), cUnitA);
   Hits.Add(FullPath('A.pas'), [5]);
   Hits.Add(FullPath('B.pas'), [5]);
 end;
@@ -233,145 +233,145 @@ end;
 
 procedure TLspBaselineTests.WritesBaselineAndAnswersCounters;
 var
-  Command: TLspBaseline;
-  Answer: TJSONObject;
-  Baseline: IRuleBaseline;
+  mCommand: TLspBaseline;
+  mAnswer: TJSONObject;
+  mBaseline: IRuleBaseline;
 begin
   Reset;
-  Command := MakeCommand([FullPath('A.pas'), FullPath('B.pas')]);
+  mCommand := MakeCommand([FullPath('A.pas'), FullPath('B.pas')]);
   try
-    Answer := Run(Command);
+    mAnswer := Run(mCommand);
     try
-      Assert.AreEqual(TLspBaseline.cFormat, NumberAt(Answer, 'format'));
-      Assert.AreEqual(FullPath(cBaselineFileName), TextAt(Answer, 'file'));
-      Assert.AreEqual('none', TextAt(Answer, 'previous'));
-      Assert.AreEqual(2, NumberAt(Answer, 'total'));
-      Assert.AreEqual(2, NumberAt(Answer, 'files'));
-      Assert.AreEqual(2, NumberAt(Answer, 'added'));
-      Assert.AreEqual(0, NumberAt(Answer, 'removed'));
-      Assert.AreEqual(0, NumberAt(Answer, 'unchanged'));
-      Assert.AreEqual(0, NumberAt(Answer, 'orphaned.count'));
+      Assert.AreEqual(TLspBaseline.cFormat, NumberAt(mAnswer, 'format'));
+      Assert.AreEqual(FullPath(cBaselineFileName), TextAt(mAnswer, 'file'));
+      Assert.AreEqual('none', TextAt(mAnswer, 'previous'));
+      Assert.AreEqual(2, NumberAt(mAnswer, 'total'));
+      Assert.AreEqual(2, NumberAt(mAnswer, 'files'));
+      Assert.AreEqual(2, NumberAt(mAnswer, 'added'));
+      Assert.AreEqual(0, NumberAt(mAnswer, 'removed'));
+      Assert.AreEqual(0, NumberAt(mAnswer, 'unchanged'));
+      Assert.AreEqual(0, NumberAt(mAnswer, 'orphaned.count'));
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Command.Free;
+    mCommand.Free;
   end;
   Assert.AreEqual(FullPath(cBaselineFileName), Written);
-  Baseline := TRuleBaseline.FromJson(Disk[FullPath(cBaselineFileName)]);
-  Assert.AreEqual(2, Integer(Baseline.Count));
-  Assert.AreEqual(0, Baseline.LegacyCount);
+  mBaseline := TRuleBaseline.FromJson(Disk[FullPath(cBaselineFileName)]);
+  Assert.AreEqual(2, Integer(mBaseline.Count));
+  Assert.AreEqual(0, mBaseline.LegacyCount);
 end;
 
 procedure TLspBaselineTests.SecondRunCountsAgainstPreviousBaseline;
 var
-  Command: TLspBaseline;
-  Answer: TJSONObject;
+  mCommand: TLspBaseline;
+  mAnswer: TJSONObject;
 begin
   Reset;
-  Command := MakeCommand([FullPath('A.pas'), FullPath('B.pas')]);
+  mCommand := MakeCommand([FullPath('A.pas'), FullPath('B.pas')]);
   try
-    Run(Command).Free;
+    Run(mCommand).Free;
     // B.pas ist bereinigt, A.pas hat einen Treffer mehr.
-    Disk[FullPath('A.pas')] := StringReplace(UnitA, '  X.Free;', '  X.Free;' + #10 + '  Y.Free;', []);
+    Disk[FullPath('A.pas')] := StringReplace(cUnitA, '  X.Free;', '  X.Free;' + #10 + '  Y.Free;', []);
     Hits[FullPath('A.pas')] := [5, 6];
     Hits[FullPath('B.pas')] := nil;
-    Answer := Run(Command);
+    mAnswer := Run(mCommand);
     try
-      Assert.AreEqual('valid', TextAt(Answer, 'previous'));
-      Assert.AreEqual(2, NumberAt(Answer, 'total'));
-      Assert.AreEqual(1, NumberAt(Answer, 'added'));
-      Assert.AreEqual(1, NumberAt(Answer, 'removed'));
-      Assert.AreEqual(1, NumberAt(Answer, 'unchanged'));
+      Assert.AreEqual('valid', TextAt(mAnswer, 'previous'));
+      Assert.AreEqual(2, NumberAt(mAnswer, 'total'));
+      Assert.AreEqual(1, NumberAt(mAnswer, 'added'));
+      Assert.AreEqual(1, NumberAt(mAnswer, 'removed'));
+      Assert.AreEqual(1, NumberAt(mAnswer, 'unchanged'));
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Command.Free;
+    mCommand.Free;
   end;
 end;
 
 procedure TLspBaselineTests.ReportsOrphanedEntries;
 var
-  Command: TLspBaseline;
-  Answer: TJSONObject;
+  mCommand: TLspBaseline;
+  mAnswer: TJSONObject;
 begin
   Reset;
-  Command := MakeCommand([FullPath('A.pas'), FullPath('B.pas')]);
+  mCommand := MakeCommand([FullPath('A.pas'), FullPath('B.pas')]);
   try
-    Run(Command).Free;
+    Run(mCommand).Free;
   finally
-    Command.Free;
+    mCommand.Free;
   end;
   // B.pas umbenannt in C.pas.
   Disk.Remove(FullPath('B.pas'));
-  Disk.Add(FullPath('C.pas'), UnitA);
+  Disk.Add(FullPath('C.pas'), cUnitA);
   Hits.Add(FullPath('C.pas'), [5]);
-  Command := MakeCommand([FullPath('A.pas'), FullPath('C.pas')]);
+  mCommand := MakeCommand([FullPath('A.pas'), FullPath('C.pas')]);
   try
-    Answer := Run(Command);
+    mAnswer := Run(mCommand);
     try
-      Assert.AreEqual(1, NumberAt(Answer, 'orphaned.count'));
-      Assert.AreEqual('B.pas', TextAt(FirstOrphan(Answer), 'path'));
-      Assert.AreEqual(1, NumberAt(FirstOrphan(Answer), 'count'));
-      Assert.AreEqual(1, NumberAt(Answer, 'removed'));
-      Assert.AreEqual(1, NumberAt(Answer, 'added'));
-      Assert.AreEqual(1, NumberAt(Answer, 'unchanged'));
+      Assert.AreEqual(1, NumberAt(mAnswer, 'orphaned.count'));
+      Assert.AreEqual('B.pas', TextAt(FirstOrphan(mAnswer), 'path'));
+      Assert.AreEqual(1, NumberAt(FirstOrphan(mAnswer), 'count'));
+      Assert.AreEqual(1, NumberAt(mAnswer, 'removed'));
+      Assert.AreEqual(1, NumberAt(mAnswer, 'added'));
+      Assert.AreEqual(1, NumberAt(mAnswer, 'unchanged'));
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Command.Free;
+    mCommand.Free;
   end;
 end;
 
 procedure TLspBaselineTests.ReadsLegacyFileNameAndWritesNewName;
 var
-  Command: TLspBaseline;
-  Answer: TJSONObject;
-  Check: TLspBaselineCheck;
+  mCommand: TLspBaseline;
+  mAnswer: TJSONObject;
+  mCheck: TLspBaselineCheck;
 begin
   Reset;
-  CheckFile(FullPath('A.pas'), Check);
+  CheckFile(FullPath('A.pas'), mCheck);
   // Alte Datei unter dem früheren Namen und ohne Routine.
   Disk.Add(FullPath(cLegacyBaselineFileName), '{"version": 1, "findings": [{"path": "A.pas", "rule": "a", ' +
-    '"fingerprint": "' + TRuleBaseline.Fingerprint(UnitA, Check.Findings[0]) + '", "count": 1}]}');
-  Command := MakeCommand([FullPath('A.pas')]);
+    '"fingerprint": "' + TRuleBaseline.Fingerprint(cUnitA, mCheck.Findings[0]) + '", "count": 1}]}');
+  mCommand := MakeCommand([FullPath('A.pas')]);
   try
-    Answer := Run(Command);
+    mAnswer := Run(mCommand);
     try
-      Assert.AreEqual('valid', TextAt(Answer, 'previous'));
-      Assert.AreEqual(1, NumberAt(Answer, 'unchanged'));
-      Assert.AreEqual(1, NumberAt(Answer, 'completed'));
-      Assert.AreEqual(FullPath(cBaselineFileName), TextAt(Answer, 'file'));
+      Assert.AreEqual('valid', TextAt(mAnswer, 'previous'));
+      Assert.AreEqual(1, NumberAt(mAnswer, 'unchanged'));
+      Assert.AreEqual(1, NumberAt(mAnswer, 'completed'));
+      Assert.AreEqual(FullPath(cBaselineFileName), TextAt(mAnswer, 'file'));
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Command.Free;
+    mCommand.Free;
   end;
   Assert.IsTrue(Pos('"routine": "TFoo.Bar"', Disk[FullPath(cBaselineFileName)]) > 0);
 end;
 
 procedure TLspBaselineTests.RefusesWithoutProjectFiles;
 var
-  Command: TLspBaseline;
-  Raised: Boolean;
+  mCommand: TLspBaseline;
+  mRaised: Boolean;
 begin
   Reset;
   Disk.Add(FullPath(cBaselineFileName), '{"version": 1, "findings": []}');
-  Command := MakeCommand(nil);
+  mCommand := MakeCommand(nil);
   try
-    Raised := False;
+    mRaised := False;
     try
-      Run(Command).Free;
+      Run(mCommand).Free;
     except
       on EJsonRpcError do
-        Raised := True;
+        mRaised := True;
     end;
-    Assert.IsTrue(Raised);
+    Assert.IsTrue(mRaised);
   finally
-    Command.Free;
+    mCommand.Free;
   end;
   Assert.AreEqual('', Written);
   Assert.AreEqual('{"version": 1, "findings": []}', Disk[FullPath(cBaselineFileName)]);
@@ -379,11 +379,11 @@ end;
 
 procedure TLspBaselineTests.RefusesWithoutWorkspace;
 var
-  Command: TLspBaseline;
-  Raised: Boolean;
+  mCommand: TLspBaseline;
+  mRaised: Boolean;
 begin
   Reset;
-  Command := TLspBaseline.Create(
+  mCommand := TLspBaseline.Create(
     function(const AFileName: string; AProject: Boolean; out ASource: TLspMetricsSource): Boolean
     begin
       ASource := Default(TLspMetricsSource);
@@ -395,38 +395,38 @@ begin
       Result := False;
     end, Files);
   try
-    Raised := False;
+    mRaised := False;
     try
-      Run(Command).Free;
+      Run(mCommand).Free;
     except
       on EJsonRpcError do
-        Raised := True;
+        mRaised := True;
     end;
-    Assert.IsTrue(Raised);
+    Assert.IsTrue(mRaised);
   finally
-    Command.Free;
+    mCommand.Free;
   end;
 end;
 
 procedure TLspBaselineTests.InvalidPreviousBaselineIsSetAside;
 var
-  Command: TLspBaseline;
-  Answer: TJSONObject;
+  mCommand: TLspBaseline;
+  mAnswer: TJSONObject;
 begin
   Reset;
   Disk.Add(FullPath(cBaselineFileName), '{"version": 7}');
-  Command := MakeCommand([FullPath('A.pas')]);
+  mCommand := MakeCommand([FullPath('A.pas')]);
   try
-    Answer := Run(Command);
+    mAnswer := Run(mCommand);
     try
-      Assert.AreEqual('invalid', TextAt(Answer, 'previous'));
-      Assert.AreEqual(FullPath(cBaselineFileName) + '.defekt', TextAt(Answer, 'setAside'));
-      Assert.AreEqual(1, NumberAt(Answer, 'added'));
+      Assert.AreEqual('invalid', TextAt(mAnswer, 'previous'));
+      Assert.AreEqual(FullPath(cBaselineFileName) + '.defekt', TextAt(mAnswer, 'setAside'));
+      Assert.AreEqual(1, NumberAt(mAnswer, 'added'));
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Command.Free;
+    mCommand.Free;
   end;
   Assert.AreEqual('{"version": 7}', Disk[FullPath(cBaselineFileName) + '.defekt'], 'alter Inhalt bleibt erhalten');
   Assert.AreEqual(1, Integer(TRuleBaseline.FromJson(Disk[FullPath(cBaselineFileName)]).Count));
@@ -434,23 +434,23 @@ end;
 
 procedure TLspBaselineTests.InvalidPreviousBaselineIsReplacedWhenSetAsideFails;
 var
-  Command: TLspBaseline;
-  Answer: TJSONObject;
+  mCommand: TLspBaseline;
+  mAnswer: TJSONObject;
 begin
   Reset;
   Locked := True;
   Disk.Add(FullPath(cBaselineFileName), '{"version": 7}');
-  Command := MakeCommand([FullPath('A.pas')]);
+  mCommand := MakeCommand([FullPath('A.pas')]);
   try
-    Answer := Run(Command);
+    mAnswer := Run(mCommand);
     try
-      Assert.AreEqual('invalid', TextAt(Answer, 'previous'));
-      Assert.IsNull(Answer.FindValue('setAside'));
+      Assert.AreEqual('invalid', TextAt(mAnswer, 'previous'));
+      Assert.IsNull(mAnswer.FindValue('setAside'));
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Command.Free;
+    mCommand.Free;
   end;
   Assert.IsFalse(Disk.ContainsKey(FullPath(cBaselineFileName) + '.defekt'));
   Assert.AreEqual(1, Integer(TRuleBaseline.FromJson(Disk[FullPath(cBaselineFileName)]).Count));
@@ -458,21 +458,21 @@ end;
 
 procedure TLspBaselineTests.UnreadableFileIsSkipped;
 var
-  Command: TLspBaseline;
-  Answer: TJSONObject;
+  mCommand: TLspBaseline;
+  mAnswer: TJSONObject;
 begin
   Reset;
-  Command := MakeCommand([FullPath('A.pas'), FullPath('Fehlt.pas')]);
+  mCommand := MakeCommand([FullPath('A.pas'), FullPath('Fehlt.pas')]);
   try
-    Answer := Run(Command);
+    mAnswer := Run(mCommand);
     try
-      Assert.AreEqual(1, NumberAt(Answer, 'skipped'));
-      Assert.AreEqual(1, NumberAt(Answer, 'files'));
+      Assert.AreEqual(1, NumberAt(mAnswer, 'skipped'));
+      Assert.AreEqual(1, NumberAt(mAnswer, 'files'));
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Command.Free;
+    mCommand.Free;
   end;
 end;
 

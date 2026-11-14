@@ -36,23 +36,23 @@ uses
 
 class function TJsonRpcTestSupport.Frame(const AJson: string): TBytes;
 var
-  Body: TBytes;
+  mBody: TBytes;
 begin
-  Body := TEncoding.UTF8.GetBytes(AJson);
-  Result := TEncoding.ASCII.GetBytes(Format('Content-Length: %d'#13#10#13#10, [Length(Body)])) + Body;
+  mBody := TEncoding.UTF8.GetBytes(AJson);
+  Result := TEncoding.ASCII.GetBytes(Format('Content-Length: %d'#13#10#13#10, [Length(mBody)])) + mBody;
 end;
 
 class function TJsonRpcTestSupport.InputOf(const AJsonMessages: array of string): TBytesStream;
 var
-  Data: TBytes;
-  Json: string;
+  mData: TBytes;
+  mJson: string;
 begin
-  Data := nil;
-  for Json in AJsonMessages do
+  mData := nil;
+  for mJson in AJsonMessages do
   begin
-    Data := Data + Frame(Json);
+    mData := mData + Frame(mJson);
   end;
-  Result := TBytesStream.Create(Data);
+  Result := TBytesStream.Create(mData);
 end;
 
 class function TJsonRpcTestSupport.RawInput(const AText: string): TBytesStream;
@@ -62,25 +62,25 @@ end;
 
 class function TJsonRpcTestSupport.ReadMessages(AOutput: TBytesStream): TObjectList<TJSONObject>;
 var
-  Input: TBytesStream;
-  Transport: IJsonRpcTransport;
+  mInput: TBytesStream;
+  mTransport: IJsonRpcTransport;
 begin
   Result := TObjectList<TJSONObject>.Create(True);
-  Input := TBytesStream.Create(Copy(AOutput.Bytes, 0, Integer(AOutput.Size)));
+  mInput := TBytesStream.Create(Copy(AOutput.Bytes, 0, Integer(AOutput.Size)));
   try
-    Transport := TJsonRpcStreamTransport.Create(Input, nil, False);
+    mTransport := TJsonRpcStreamTransport.Create(mInput, nil, False);
     try
       while True do
       begin
-        Result.Add(Transport.ReadMessage);
+        Result.Add(mTransport.ReadMessage);
       end;
     except
       on EJsonRpcTransportClosed do
         ; // alle Nachrichten gelesen
     end;
-    Transport := nil;
+    mTransport := nil;
   finally
-    Input.Free;
+    mInput.Free;
   end;
 end;
 

@@ -39,11 +39,11 @@ uses
 
 function Line(const AId: string; AOrder: Integer; AState: TAtlasStatusState; const AText: string): IAtlasStatusItem;
 var
-  Item: TAtlasStatusLine;
+  mItem: TAtlasStatusLine;
 begin
-  Item := TAtlasStatusLine.Create(nil, AId, AOrder);
-  Result := Item;
-  Item.Update(AText, AState);
+  mItem := TAtlasStatusLine.Create(nil, AId, AOrder);
+  Result := mItem;
+  mItem.Update(AText, AState);
 end;
 
 procedure TAtlasStatusWindowTests.WarmUpFirstUse;
@@ -53,75 +53,75 @@ end;
 
 procedure TAtlasStatusWindowTests.ShowsEveryRegisteredLine;
 var
-  Registry: IAtlasStatusRegistry;
-  Window: TAtlasStatusWindow;
-  Height2: Integer;
+  mRegistry: IAtlasStatusRegistry;
+  mWindow: TAtlasStatusWindow;
+  mHeight2: Integer;
 begin
-  Registry := TAtlasStatusRegistry.Create;
-  Registry.Add(Line('atlas.server', 0, TAtlasStatusState.Green, 'Server: läuft'));
-  Registry.Add(Line('atlas.index', 10, TAtlasStatusState.Yellow, 'Index: wird aufgebaut'));
-  Window := TAtlasStatusWindow.CreateStatus(nil, TAtlasColors.Light);
+  mRegistry := TAtlasStatusRegistry.Create;
+  mRegistry.Add(Line('atlas.server', 0, TAtlasStatusState.Green, 'Server: läuft'));
+  mRegistry.Add(Line('atlas.index', 10, TAtlasStatusState.Yellow, 'Index: wird aufgebaut'));
+  mWindow := TAtlasStatusWindow.CreateStatus(nil, TAtlasColors.Light);
   try
-    Window.SetItems(Registry.Items);
-    Assert.AreEqual(2, Integer(Length(Window.Items)));
-    Height2 := Window.ClientHeight;
+    mWindow.SetItems(mRegistry.Items);
+    Assert.AreEqual(2, Integer(Length(mWindow.Items)));
+    mHeight2 := mWindow.ClientHeight;
     // Eine Testzeile eines anderen Issues erscheint ohne Änderung am Fenster.
-    Registry.Add(Line('test.zeile', 5, TAtlasStatusState.Red, 'Testzeile mit einem recht langen Text, der das ' +
+    mRegistry.Add(Line('test.zeile', 5, TAtlasStatusState.Red, 'Testzeile mit einem recht langen Text, der das ' +
       'Fenster breiter machen muss als die Vorgabe'));
-    Window.SetItems(Registry.Items);
-    Assert.AreEqual(3, Integer(Length(Window.Items)));
-    Assert.AreEqual('test.zeile', Window.Items[1].Id);
-    Assert.IsTrue(Window.ClientHeight > Height2, 'eine Zeile höher');
-    Assert.IsTrue(Window.ClientWidth > 280, 'breiter für den langen Text');
+    mWindow.SetItems(mRegistry.Items);
+    Assert.AreEqual(3, Integer(Length(mWindow.Items)));
+    Assert.AreEqual('test.zeile', mWindow.Items[1].Id);
+    Assert.IsTrue(mWindow.ClientHeight > mHeight2, 'eine Zeile höher');
+    Assert.IsTrue(mWindow.ClientWidth > 280, 'breiter für den langen Text');
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasStatusWindowTests.DotColorsFollowState;
 var
-  Colors: TAtlasColors;
+  mColors: TAtlasColors;
 begin
   // Signalfarben (#1255) statt der Textfarben Add/Warn/Error/Muted.
-  Colors := TAtlasColors.Dark;
-  Assert.AreEqual(Int64(Colors.Signals.Get(TAtlasSignalKind.Ok).Fill),
-    Int64(Colors.Signals.ForStatus(TAtlasStatusState.Green).Fill));
-  Assert.AreEqual(Int64(Colors.Signals.Get(TAtlasSignalKind.Warn).Fill),
-    Int64(Colors.Signals.ForStatus(TAtlasStatusState.Yellow).Fill));
-  Assert.AreEqual(Int64(Colors.Signals.Get(TAtlasSignalKind.Error).Fill),
-    Int64(Colors.Signals.ForStatus(TAtlasStatusState.Red).Fill));
-  Assert.AreEqual(Int64(Colors.Signals.Get(TAtlasSignalKind.Idle).Fill),
-    Int64(Colors.Signals.ForStatus(TAtlasStatusState.Neutral).Fill));
-  Assert.AreNotEqual<TAtlasColor>(Colors.Add, Colors.Signals.ForStatus(TAtlasStatusState.Green).Fill);
+  mColors := TAtlasColors.Dark;
+  Assert.AreEqual(Int64(mColors.Signals.Get(TAtlasSignalKind.Ok).Fill),
+    Int64(mColors.Signals.ForStatus(TAtlasStatusState.Green).Fill));
+  Assert.AreEqual(Int64(mColors.Signals.Get(TAtlasSignalKind.Warn).Fill),
+    Int64(mColors.Signals.ForStatus(TAtlasStatusState.Yellow).Fill));
+  Assert.AreEqual(Int64(mColors.Signals.Get(TAtlasSignalKind.Error).Fill),
+    Int64(mColors.Signals.ForStatus(TAtlasStatusState.Red).Fill));
+  Assert.AreEqual(Int64(mColors.Signals.Get(TAtlasSignalKind.Idle).Fill),
+    Int64(mColors.Signals.ForStatus(TAtlasStatusState.Neutral).Fill));
+  Assert.AreNotEqual<TAtlasColor>(mColors.Add, mColors.Signals.ForStatus(TAtlasStatusState.Green).Fill);
 end;
 
 procedure TAtlasStatusWindowTests.ButtonsRunAfterClosing;
 var
-  Window: TAtlasStatusWindow;
-  Restarted, Logged: Integer;
+  mWindow: TAtlasStatusWindow;
+  mRestarted, mLogged: Integer;
 begin
-  Restarted := 0;
-  Logged := 0;
-  Window := TAtlasStatusWindow.CreateStatus(nil, TAtlasColors.Light);
+  mRestarted := 0;
+  mLogged := 0;
+  mWindow := TAtlasStatusWindow.CreateStatus(nil, TAtlasColors.Light);
   try
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.StatusRestartServer), Window.RestartButton.Caption);
-    Window.OnRestart :=
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.StatusRestartServer), mWindow.RestartButton.Caption);
+    mWindow.OnRestart :=
       procedure
       begin
-        Inc(Restarted);
+        Inc(mRestarted);
       end;
-    Window.OnOpenLog :=
+    mWindow.OnOpenLog :=
       procedure
       begin
-        Inc(Logged);
+        Inc(mLogged);
       end;
-    Window.RestartButton.Click;
-    Window.LogButton.Click;
+    mWindow.RestartButton.Click;
+    mWindow.LogButton.Click;
     // Aktionen laufen erst nach dem Schließen; nur die erste zählt.
     Application.ProcessMessages;
     CheckSynchronize;
-    Assert.AreEqual(1, Restarted);
-    Assert.AreEqual(0, Logged);
+    Assert.AreEqual(1, mRestarted);
+    Assert.AreEqual(0, mLogged);
   finally
     Application.ProcessMessages;
   end;

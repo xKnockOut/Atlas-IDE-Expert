@@ -42,150 +42,150 @@ uses
 
 procedure TCompletionRequestTests.LineBeforeStopsAtCursor;
 var
-  Request: TCompletionRequest;
+  mRequest: TCompletionRequest;
 begin
-  Request := TCompletionRequest.Create('ab'#13#10'  Foo.Bar'#13#10'x', 'C:\P\U.pas', TTextPosition.Create(1, 5));
+  mRequest := TCompletionRequest.Create('ab'#13#10'  Foo.Bar'#13#10'x', 'C:\P\U.pas', TTextPosition.Create(1, 5));
   try
-    Assert.AreEqual('  Foo', Request.LineBefore);
+    Assert.AreEqual('  Foo', mRequest.LineBefore);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
   // Hinter dem Zeilenende: bis zum Umbruch, ohne #13.
-  Request := TCompletionRequest.Create('ab'#13#10'  Foo.Bar'#13#10'x', 'C:\P\U.pas', TTextPosition.Create(1, 99));
+  mRequest := TCompletionRequest.Create('ab'#13#10'  Foo.Bar'#13#10'x', 'C:\P\U.pas', TTextPosition.Create(1, 99));
   try
-    Assert.AreEqual('  Foo.Bar', Request.LineBefore);
+    Assert.AreEqual('  Foo.Bar', mRequest.LineBefore);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
   // Zeile hinter dem Text: leer.
-  Request := TCompletionRequest.Create('ab'#10'cd', 'C:\P\U.pas', TTextPosition.Create(5, 1));
+  mRequest := TCompletionRequest.Create('ab'#10'cd', 'C:\P\U.pas', TTextPosition.Create(5, 1));
   try
-    Assert.AreEqual('', Request.LineBefore);
+    Assert.AreEqual('', mRequest.LineBefore);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
 procedure TCompletionRequestTests.LineTextWithoutLineBreak;
 var
-  Request: TCompletionRequest;
+  mRequest: TCompletionRequest;
 begin
-  Request := TCompletionRequest.Create('ab'#13#10'  Foo.Bar'#13#10'x', '', TTextPosition.Create(0, 0));
+  mRequest := TCompletionRequest.Create('ab'#13#10'  Foo.Bar'#13#10'x', '', TTextPosition.Create(0, 0));
   try
-    Assert.AreEqual('ab', Request.LineText(0));
-    Assert.AreEqual('  Foo.Bar', Request.LineText(1));
-    Assert.AreEqual('x', Request.LineText(2));
-    Assert.AreEqual('', Request.LineText(3));
-    Assert.AreEqual('', Request.LineText(-1));
-    Assert.AreEqual(3, Integer(Length(Request.Lines)));
+    Assert.AreEqual('ab', mRequest.LineText(0));
+    Assert.AreEqual('  Foo.Bar', mRequest.LineText(1));
+    Assert.AreEqual('x', mRequest.LineText(2));
+    Assert.AreEqual('', mRequest.LineText(3));
+    Assert.AreEqual('', mRequest.LineText(-1));
+    Assert.AreEqual(3, Integer(Length(mRequest.Lines)));
   finally
-    Request.Free;
+    mRequest.Free;
   end;
-  Request := TCompletionRequest.Create('ab'#10'cd'#10, '', TTextPosition.Create(0, 0));
+  mRequest := TCompletionRequest.Create('ab'#10'cd'#10, '', TTextPosition.Create(0, 0));
   try
-    Assert.AreEqual('cd', Request.LineText(1));
-    Assert.AreEqual('', Request.LineText(2));
+    Assert.AreEqual('cd', mRequest.LineText(1));
+    Assert.AreEqual('', mRequest.LineText(2));
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
 procedure TCompletionRequestTests.LineBreakFollowsText;
 var
-  Request: TCompletionRequest;
+  mRequest: TCompletionRequest;
 begin
-  Request := TCompletionRequest.Create('a'#10'b'#13#10'c', '', TTextPosition.Create(0, 0));
+  mRequest := TCompletionRequest.Create('a'#10'b'#13#10'c', '', TTextPosition.Create(0, 0));
   try
-    Assert.AreEqual(#13#10, Request.LineBreak);
+    Assert.AreEqual(#13#10, mRequest.LineBreak);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
-  Request := TCompletionRequest.Create('a'#10'b', '', TTextPosition.Create(0, 0));
+  mRequest := TCompletionRequest.Create('a'#10'b', '', TTextPosition.Create(0, 0));
   try
-    Assert.AreEqual(#10, Request.LineBreak);
+    Assert.AreEqual(#10, mRequest.LineBreak);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
 procedure TCompletionRequestTests.OffsetMatchesDocument;
 const
-  Text = 'unit U;'#13#10'interface'#13#10'  Wert := 1;'#13#10'end.';
+  cText = 'unit U;'#13#10'interface'#13#10'  Wert := 1;'#13#10'end.';
 var
-  Store: IDocumentStore;
-  Document: ITextDocument;
-  FromText, FromDocument: TCompletionRequest;
-  Position: TTextPosition;
-  Line, Character: Integer;
+  mStore: IDocumentStore;
+  mDocument: ITextDocument;
+  mFromText, mFromDocument: TCompletionRequest;
+  mPosition: TTextPosition;
+  mLine, mCharacter: Integer;
 begin
-  Store := TDocumentStore.Create;
-  Document := Store.Open('file:///C:/P/U.pas', 'delphi', 1, Text);
-  FromText := TCompletionRequest.Create(Text, 'C:\P\U.pas', TTextPosition.Create(2, 4));
-  FromDocument := TCompletionRequest.Create(Document, 'C:\P\U.pas', TTextPosition.Create(2, 4));
+  mStore := TDocumentStore.Create;
+  mDocument := mStore.Open('file:///C:/P/U.pas', 'delphi', 1, cText);
+  mFromText := TCompletionRequest.Create(cText, 'C:\P\U.pas', TTextPosition.Create(2, 4));
+  mFromDocument := TCompletionRequest.Create(mDocument, 'C:\P\U.pas', TTextPosition.Create(2, 4));
   try
-    Assert.AreEqual('file:///C:/P/U.pas', FromDocument.Uri);
-    Assert.AreEqual(Text, FromDocument.Text);
-    for Line := 0 to 3 do
+    Assert.AreEqual('file:///C:/P/U.pas', mFromDocument.Uri);
+    Assert.AreEqual(cText, mFromDocument.Text);
+    for mLine := 0 to 3 do
     begin
-      for Character := 0 to Length(Document.LineText(Line)) do
+      for mCharacter := 0 to Length(mDocument.LineText(mLine)) do
       begin
-        Position := TTextPosition.Create(Line, Character);
-        Assert.AreEqual(Document.OffsetAt(Position), FromText.OffsetAt(Position), Format('%d:%d', [Line, Character]));
-        Assert.AreEqual(FromText.OffsetAt(Position), FromDocument.OffsetAt(Position));
+        mPosition := TTextPosition.Create(mLine, mCharacter);
+        Assert.AreEqual(mDocument.OffsetAt(mPosition), mFromText.OffsetAt(mPosition), Format('%d:%d', [mLine, mCharacter]));
+        Assert.AreEqual(mFromText.OffsetAt(mPosition), mFromDocument.OffsetAt(mPosition));
       end;
     end;
-    Assert.AreEqual(FromText.LineBefore, FromDocument.LineBefore);
+    Assert.AreEqual(mFromText.LineBefore, mFromDocument.LineBefore);
   finally
-    FromDocument.Free;
-    FromText.Free;
+    mFromDocument.Free;
+    mFromText.Free;
   end;
 end;
 
 procedure TCompletionRequestTests.UnitIndexIsExtractedOnce;
 const
-  Text = 'unit Haupt;'#13#10'interface'#13#10'type'#13#10'  TFoo = class'#13#10'  end;'#13#10'implementation'#13#10'end.';
+  cText = 'unit Haupt;'#13#10'interface'#13#10'type'#13#10'  TFoo = class'#13#10'  end;'#13#10'implementation'#13#10'end.';
 var
-  Index: ISymbolIndex;
-  Resolver: TNameResolver;
-  Tree, Other: TSyntaxTree;
-  Request: TCompletionRequest;
+  mIndex: ISymbolIndex;
+  mResolver: TNameResolver;
+  mTree, mOther: TSyntaxTree;
+  mRequest: TCompletionRequest;
 begin
-  Index := TSymbolIndex.Create;
-  Resolver := TNameResolver.Create(Index);
-  Tree := TPascalParser.Parse(Text);
-  Other := TPascalParser.Parse(StringReplace(Text, 'unit Haupt;', 'unit Neben;', []));
-  Request := TCompletionRequest.Create(Text, 'C:\P\Haupt.pas', TTextPosition.Create(3, 2));
+  mIndex := TSymbolIndex.Create;
+  mResolver := TNameResolver.Create(mIndex);
+  mTree := TPascalParser.Parse(cText);
+  mOther := TPascalParser.Parse(StringReplace(cText, 'unit Haupt;', 'unit Neben;', []));
+  mRequest := TCompletionRequest.Create(cText, 'C:\P\Haupt.pas', TTextPosition.Create(3, 2));
   try
-    Request.Resolver := Resolver;
-    Request.Tree := Tree;
-    Assert.AreEqual('Haupt', Request.UnitIndex.UnitName);
-    Assert.AreEqual('Haupt', Request.UnitIndex.UnitName);
-    Assert.AreEqual(Integer(Length(Resolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas').Symbols)),
-      Integer(Length(Request.UnitIndex.Symbols)));
+    mRequest.Resolver := mResolver;
+    mRequest.Tree := mTree;
+    Assert.AreEqual('Haupt', mRequest.UnitIndex.UnitName);
+    Assert.AreEqual('Haupt', mRequest.UnitIndex.UnitName);
+    Assert.AreEqual(Integer(Length(mResolver.ExtractedUnit(mTree, 'C:\P\Haupt.pas').Symbols)),
+      Integer(Length(mRequest.UnitIndex.Symbols)));
     // Neuer Baum: neu ausgewertet.
-    Request.Tree := Other;
-    Assert.AreEqual('Neben', Request.UnitIndex.UnitName);
+    mRequest.Tree := mOther;
+    Assert.AreEqual('Neben', mRequest.UnitIndex.UnitName);
   finally
-    Request.Free;
-    Other.Free;
-    Tree.Free;
-    Resolver.Free;
+    mRequest.Free;
+    mOther.Free;
+    mTree.Free;
+    mResolver.Free;
   end;
 end;
 
 procedure TCompletionRequestTests.DefaultsAreFuzzyAndStandardSettings;
 var
-  Request: TCompletionRequest;
+  mRequest: TCompletionRequest;
 begin
-  Request := TCompletionRequest.Create('', '', TTextPosition.Create(0, 0));
+  mRequest := TCompletionRequest.Create('', '', TTextPosition.Create(0, 0));
   try
-    Assert.AreEqual<TCompletionMatching>(TCompletionMatching.Fuzzy, Request.Matching);
-    Assert.IsTrue(Request.Settings.Keywords);
-    Assert.IsTrue(Request.Settings.OfferTryFinally);
-    Assert.AreEqual('', Request.Trigger);
-    Assert.IsNull(Request.Tree);
+    Assert.AreEqual<TCompletionMatching>(TCompletionMatching.Fuzzy, mRequest.Matching);
+    Assert.IsTrue(mRequest.Settings.Keywords);
+    Assert.IsTrue(mRequest.Settings.OfferTryFinally);
+    Assert.AreEqual('', mRequest.Trigger);
+    Assert.IsNull(mRequest.Tree);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 

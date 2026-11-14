@@ -32,64 +32,64 @@ uses
 
 procedure TAtlasTitledTipTests.MeasuresWrappedText;
 var
-  Tip: TAtlasTitledTip;
-  One, Two, Long: TSize;
+  mTip: TAtlasTitledTip;
+  mOne, mTwo, mLong: TSize;
 begin
-  Tip := TAtlasTitledTip.Create(nil);
+  mTip := TAtlasTitledTip.Create(nil);
   try
-    Tip.Colors := TAtlasColors.Light;
-    Tip.SetScaling(96, 1, 'Segoe UI', 9);
-    One := Tip.Measure('Notiz vom 15.10.2026', 'Eine Zeile');
-    Two := Tip.Measure('Notiz vom 15.10.2026', 'Eine Zeile' + #10 + 'Noch eine');
-    Assert.IsTrue(Two.cy > One.cy, 'zweite Zeile macht den Tooltip höher');
-    Assert.AreEqual('Eine Zeile' + #13#10 + 'Noch eine', Tip.Text);
-    Long := Tip.Measure('Notiz', StringOfChar('x', 20) + ' ' + StringOfChar('y', 400));
-    Assert.IsTrue(Long.cx <= TAtlasTitledTip.cMaxWidth + 2 * TAtlasTitledTip.cPadding, 'Breite begrenzt');
+    mTip.Colors := TAtlasColors.Light;
+    mTip.SetScaling(96, 1, 'Segoe UI', 9);
+    mOne := mTip.Measure('Notiz vom 15.10.2026', 'Eine Zeile');
+    mTwo := mTip.Measure('Notiz vom 15.10.2026', 'Eine Zeile' + #10 + 'Noch eine');
+    Assert.IsTrue(mTwo.cy > mOne.cy, 'zweite Zeile macht den Tooltip höher');
+    Assert.AreEqual('Eine Zeile' + #13#10 + 'Noch eine', mTip.Text);
+    mLong := mTip.Measure('Notiz', StringOfChar('x', 20) + ' ' + StringOfChar('y', 400));
+    Assert.IsTrue(mLong.cx <= TAtlasTitledTip.cMaxWidth + 2 * TAtlasTitledTip.cPadding, 'Breite begrenzt');
   finally
-    Tip.Free;
+    mTip.Free;
   end;
 end;
 
 procedure TAtlasTitledTipTests.LinksAddLines;
 var
-  Tip: TAtlasTitledTip;
-  Plain, Linked: TSize;
+  mTip: TAtlasTitledTip;
+  mPlain, mLinked: TSize;
 begin
-  Tip := TAtlasTitledTip.Create(nil);
+  mTip := TAtlasTitledTip.Create(nil);
   try
-    Tip.Colors := TAtlasColors.Light;
-    Tip.SetScaling(96, 1, 'Segoe UI', 9);
-    Plain := Tip.Measure('Rekursion über 2 Methoden', 'Speichern → Pruefen → Speichern');
-    Linked := Tip.Measure('Rekursion über 2 Methoden', 'Speichern → Pruefen → Speichern',
+    mTip.Colors := TAtlasColors.Light;
+    mTip.SetScaling(96, 1, 'Segoe UI', 9);
+    mPlain := mTip.Measure('Rekursion über 2 Methoden', 'Speichern → Pruefen → Speichern');
+    mLinked := mTip.Measure('Rekursion über 2 Methoden', 'Speichern → Pruefen → Speichern',
       ['TFoo.Speichern', 'TFoo.Pruefen']);
-    Assert.IsTrue(Linked.cy > Plain.cy, 'zwei Zeilen mehr');
-    Assert.AreEqual(2, Integer(Length(Tip.Links)));
-    Assert.AreEqual(-1, Tip.LinkAt(1, 1), 'noch nicht gezeichnet');
-    Tip.Measure('Notiz', 'Text');
-    Assert.AreEqual(0, Integer(Length(Tip.Links)), 'ohne Links wieder leer');
+    Assert.IsTrue(mLinked.cy > mPlain.cy, 'zwei Zeilen mehr');
+    Assert.AreEqual(2, Integer(Length(mTip.Links)));
+    Assert.AreEqual(-1, mTip.LinkAt(1, 1), 'noch nicht gezeichnet');
+    mTip.Measure('Notiz', 'Text');
+    Assert.AreEqual(0, Integer(Length(mTip.Links)), 'ohne Links wieder leer');
   finally
-    Tip.Free;
+    mTip.Free;
   end;
 end;
 
 procedure TAtlasTitledTipTests.BodyAreaHoldsMeasuredText;
 var
-  Tip: TAtlasTitledTip;
-  Size: TSize;
-  Ppi: Integer;
+  mTip: TAtlasTitledTip;
+  mSize: TSize;
+  mPpi: Integer;
 begin
-  Tip := TAtlasTitledTip.Create(nil);
+  mTip := TAtlasTitledTip.Create(nil);
   try
-    Tip.Colors := TAtlasColors.Light;
-    for Ppi in TArray<Integer>.Create(96, 144, 192) do
+    mTip.Colors := TAtlasColors.Light;
+    for mPpi in TArray<Integer>.Create(96, 144, 192) do
     begin
-      Tip.SetScaling(Ppi, 1, 'Segoe UI', 9);
-      Size := Tip.Measure('Lesezeichen 1', 'Klick setzt ein Lesezeichen' + #10 + 'Zweite Zeile mit Unterlängen gpy');
-      Assert.IsTrue(Tip.BodyArea(Size).Height >= Tip.BodyHeight, Format('Text passt bei %d dpi', [Ppi]));
-      Assert.IsTrue(Tip.BodyArea(Size).Width > 0, Format('Breite bei %d dpi', [Ppi]));
+      mTip.SetScaling(mPpi, 1, 'Segoe UI', 9);
+      mSize := mTip.Measure('Lesezeichen 1', 'Klick setzt ein Lesezeichen' + #10 + 'Zweite Zeile mit Unterlängen gpy');
+      Assert.IsTrue(mTip.BodyArea(mSize).Height >= mTip.BodyHeight, Format('Text passt bei %d dpi', [mPpi]));
+      Assert.IsTrue(mTip.BodyArea(mSize).Width > 0, Format('Breite bei %d dpi', [mPpi]));
     end;
   finally
-    Tip.Free;
+    mTip.Free;
   end;
 end;
 

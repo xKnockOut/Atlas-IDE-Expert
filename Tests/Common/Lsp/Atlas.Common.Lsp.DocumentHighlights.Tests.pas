@@ -14,7 +14,8 @@ type
   private
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
-    function Describe(const AMarker: string; AOccurrence: Integer = 1): string;
+    function Describe(const AMarker: string): string; overload;
+    function Describe(const AMarker: string; AOccurrence: Integer): string; overload;
   public
     [Setup]
     procedure Setup;
@@ -43,7 +44,7 @@ uses
   Atlas.Common.Index.SymbolIndex;
 
 const
-  Source =
+  cSource =
     'unit Haupt;'#10 +                  // 0
     'interface'#10 +                    // 1
     'type'#10 +                         // 2
@@ -70,29 +71,29 @@ const
 
 function PositionOf(const AText, AMarker: string; AOccurrence: Integer): TTextPosition;
 var
-  Index, Found, Line, LineStart: Integer;
+  mIndex, mFound, mLine, mLineStart: Integer;
 begin
-  Found := 0;
-  Index := 0;
+  mFound := 0;
+  mIndex := 0;
   repeat
-    Index := Pos(AMarker, AText, Index + 1);
-    if Index = 0 then
+    mIndex := Pos(AMarker, AText, mIndex + 1);
+    if mIndex = 0 then
     begin
       raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
     end;
-    Inc(Found);
-  until Found = AOccurrence;
-  Line := 0;
-  LineStart := 1;
-  for Found := 1 to Index - 1 do
+    Inc(mFound);
+  until mFound = AOccurrence;
+  mLine := 0;
+  mLineStart := 1;
+  for mFound := 1 to mIndex - 1 do
   begin
-    if AText[Found] = #10 then
+    if AText[mFound] = #10 then
     begin
-      Inc(Line);
-      LineStart := Found + 1;
+      Inc(mLine);
+      mLineStart := mFound + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 { TLspDocumentHighlightsTests }
@@ -110,28 +111,33 @@ begin
 end;
 
 // "Zeile:Spalte/Art" je Vorkommen, z. B. "7:4/T 12:10/R"; Art T, R oder W.
+function TLspDocumentHighlightsTests.Describe(const AMarker: string): string;
+begin
+  Result := Describe(AMarker, 1);
+end;
+
 function TLspDocumentHighlightsTests.Describe(const AMarker: string; AOccurrence: Integer): string;
 const
-  Kinds: array[THighlightKind] of string = ('T', 'R', 'W');
+  cKinds: array[THighlightKind] of string = ('T', 'R', 'W');
 var
-  Tree: TSyntaxTree;
-  Highlight: TDocumentHighlight;
+  mTree: TSyntaxTree;
+  mHighlight: TDocumentHighlight;
 begin
   Result := '';
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    for Highlight in TLspDocumentHighlights.Highlights(FResolver, FIndex, Tree, 'C:\P\Haupt.pas',
-      PositionOf(Source, AMarker, AOccurrence)) do
+    for mHighlight in TLspDocumentHighlights.Highlights(FResolver, FIndex, mTree, 'C:\P\Haupt.pas',
+      PositionOf(cSource, AMarker, AOccurrence)) do
     begin
       if Result <> '' then
       begin
         Result := Result + ' ';
       end;
-      Result := Result + Format('%d:%d/%s', [Highlight.Range.StartPos.Line, Highlight.Range.StartPos.Character,
-        Kinds[Highlight.Kind]]);
+      Result := Result + Format('%d:%d/%s', [mHighlight.Range.StartPos.Line, mHighlight.Range.StartPos.Character,
+        cKinds[mHighlight.Kind]]);
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -158,31 +164,31 @@ end;
 
 procedure TLspDocumentHighlightsTests.HighlightsWithPinnedResolver;
 var
-  Tree: TSyntaxTree;
-  Pinned: TUnitIndex;
-  Found: TArray<TDocumentHighlight>;
+  mTree: TSyntaxTree;
+  mPinned: TUnitIndex;
+  mFound: TArray<TDocumentHighlight>;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    FResolver.PinTree(Tree, 'C:\P\Haupt.pas');
+    FResolver.PinTree(mTree, 'C:\P\Haupt.pas');
     try
-      Pinned := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
-      Found := TLspDocumentHighlights.Highlights(FResolver, FIndex, Tree, 'C:\P\Haupt.pas',
-        PositionOf(Source, 'Wert;', 1));
-      Assert.AreEqual(3, Integer(Length(Found)));
-      Assert.AreEqual(7, Found[0].Range.StartPos.Line);
-      Assert.AreEqual<THighlightKind>(THighlightKind.Text, Found[0].Kind);
-      Assert.AreEqual(12, Found[1].Range.StartPos.Line);
-      Assert.AreEqual<THighlightKind>(THighlightKind.Read, Found[1].Kind);
-      Assert.AreEqual(13, Found[2].Range.StartPos.Line);
-      Assert.AreEqual<THighlightKind>(THighlightKind.Write, Found[2].Kind);
-      Assert.AreEqual<Pointer>(Pointer(FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas').Symbols),
-        Pointer(Pinned.Symbols));
+      mPinned := FResolver.ExtractedUnit(mTree, 'C:\P\Haupt.pas');
+      mFound := TLspDocumentHighlights.Highlights(FResolver, FIndex, mTree, 'C:\P\Haupt.pas',
+        PositionOf(cSource, 'Wert;', 1));
+      Assert.AreEqual(3, Integer(Length(mFound)));
+      Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
+      Assert.AreEqual<THighlightKind>(THighlightKind.Text, mFound[0].Kind);
+      Assert.AreEqual(12, mFound[1].Range.StartPos.Line);
+      Assert.AreEqual<THighlightKind>(THighlightKind.Read, mFound[1].Kind);
+      Assert.AreEqual(13, mFound[2].Range.StartPos.Line);
+      Assert.AreEqual<THighlightKind>(THighlightKind.Write, mFound[2].Kind);
+      Assert.AreEqual<Pointer>(Pointer(FResolver.ExtractedUnit(mTree, 'C:\P\Haupt.pas').Symbols),
+        Pointer(mPinned.Symbols));
     finally
       FResolver.UnpinTree;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   // Ohne äußeren Pin unverändert.
   Assert.AreEqual('7:4/T 12:10/R 13:2/W', Describe('Wert;'));

@@ -94,98 +94,98 @@ end;
 
 procedure TAtlasShortcutTipWindowTests.ShowsBottomRightWithTimer;
 var
-  Window: TAtlasShortcutTipWindow;
-  Area, Bounds: TRect;
+  mWindow: TAtlasShortcutTipWindow;
+  mArea, mBounds: TRect;
 begin
-  Area := Rect(100, 100, 900, 700);
-  Window := NewWindow;
+  mArea := Rect(100, 100, 900, 700);
+  mWindow := NewWindow;
   try
-    Window.ShowTip(TAtlasShortcutTipView.Create('Strg+Umschalt+C', 'Klasse beim Cursor vervollständigen', True), Area);
+    mWindow.ShowTip(TAtlasShortcutTipView.Create('Strg+Umschalt+C', 'Klasse beim Cursor vervollständigen', True), mArea);
     try
-      Assert.IsTrue(Window.IsShown);
-      Bounds := Window.BoundsRect;
-      Assert.AreEqual(Area.Right - TAtlasShortcutTipWindow.cMargin, Bounds.Right, 'rechts mit Abstand');
-      Assert.AreEqual(Area.Bottom - TAtlasShortcutTipWindow.cMargin, Bounds.Bottom, 'unten mit Abstand');
-      Assert.IsTrue(Bounds.Width > 0);
-      Assert.IsTrue(Window.Timer.Enabled);
-      Assert.AreEqual(Integer(TAtlasShortcutTips.cVisibleMs), Integer(Window.Timer.Interval), '4 s');
-      Assert.AreEqual(4000, Integer(Window.Timer.Interval));
+      Assert.IsTrue(mWindow.IsShown);
+      mBounds := mWindow.BoundsRect;
+      Assert.AreEqual(mArea.Right - TAtlasShortcutTipWindow.cMargin, mBounds.Right, 'rechts mit Abstand');
+      Assert.AreEqual(mArea.Bottom - TAtlasShortcutTipWindow.cMargin, mBounds.Bottom, 'unten mit Abstand');
+      Assert.IsTrue(mBounds.Width > 0);
+      Assert.IsTrue(mWindow.Timer.Enabled);
+      Assert.AreEqual(Integer(TAtlasShortcutTips.cVisibleMs), Integer(mWindow.Timer.Interval), '4 s');
+      Assert.AreEqual(4000, Integer(mWindow.Timer.Interval));
     finally
-      Window.Dismiss;
+      mWindow.Dismiss;
     end;
-    Assert.IsFalse(Window.IsShown);
-    Assert.IsFalse(Window.Timer.Enabled);
+    Assert.IsFalse(mWindow.IsShown);
+    Assert.IsFalse(mWindow.Timer.Enabled);
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasShortcutTipWindowTests.LinksRaiseEventsAndHide;
 var
-  Window: TAtlasShortcutTipWindow;
-  Counter: TLinkCounter;
-  Link: TRect;
+  mWindow: TAtlasShortcutTipWindow;
+  mCounter: TLinkCounter;
+  mLink: TRect;
 begin
-  Counter := TLinkCounter.Create;
-  Window := NewWindow;
+  mCounter := TLinkCounter.Create;
+  mWindow := NewWindow;
   try
-    Window.OnNever := Counter.NeverClick;
-    Window.OnAllKeys := Counter.AllKeysClick;
-    Window.ShowTip(TAtlasShortcutTipView.Create('Strg+Umschalt+C', 'Klasse vervollständigen', True),
+    mWindow.OnNever := mCounter.NeverClick;
+    mWindow.OnAllKeys := mCounter.AllKeysClick;
+    mWindow.ShowTip(TAtlasShortcutTipView.Create('Strg+Umschalt+C', 'Klasse vervollständigen', True),
       Rect(0, 0, 1200, 800));
-    Link := Window.LinkRect(TAtlasShortcutTipLink.Never);
-    Assert.IsFalse(Link.IsEmpty, '„Nicht mehr zeigen“ ist da');
+    mLink := mWindow.LinkRect(TAtlasShortcutTipLink.Never);
+    Assert.IsFalse(mLink.IsEmpty, '„Nicht mehr zeigen“ ist da');
     Assert.AreEqual<TAtlasShortcutTipLink>(TAtlasShortcutTipLink.Never,
-      Window.LinkAt(Link.CenterPoint.X, Link.CenterPoint.Y));
-    Assert.AreEqual<TAtlasShortcutTipLink>(TAtlasShortcutTipLink.None, Window.LinkAt(0, 0), 'Rand ist kein Link');
-    Window.ClickLink(TAtlasShortcutTipLink.Never);
-    Assert.AreEqual(1, Counter.Never);
-    Assert.AreEqual(0, Counter.AllKeys);
-    Assert.IsFalse(Window.IsShown, 'Klick blendet aus');
-    Window.ShowTip(TAtlasShortcutTipView.Create('Strg+Umschalt+C', 'Klasse vervollständigen', True),
+      mWindow.LinkAt(mLink.CenterPoint.X, mLink.CenterPoint.Y));
+    Assert.AreEqual<TAtlasShortcutTipLink>(TAtlasShortcutTipLink.None, mWindow.LinkAt(0, 0), 'Rand ist kein Link');
+    mWindow.ClickLink(TAtlasShortcutTipLink.Never);
+    Assert.AreEqual(1, mCounter.Never);
+    Assert.AreEqual(0, mCounter.AllKeys);
+    Assert.IsFalse(mWindow.IsShown, 'Klick blendet aus');
+    mWindow.ShowTip(TAtlasShortcutTipView.Create('Strg+Umschalt+C', 'Klasse vervollständigen', True),
       Rect(0, 0, 1200, 800));
-    Window.ClickLink(TAtlasShortcutTipLink.AllKeys);
-    Assert.AreEqual(1, Counter.AllKeys);
-    Assert.IsFalse(Window.IsShown);
+    mWindow.ClickLink(TAtlasShortcutTipLink.AllKeys);
+    Assert.AreEqual(1, mCounter.AllKeys);
+    Assert.IsFalse(mWindow.IsShown);
   finally
-    Window.Free;
-    Counter.Free;
+    mWindow.Free;
+    mCounter.Free;
   end;
 end;
 
 procedure TAtlasShortcutTipWindowTests.AllKeysOnlyWithOverview;
 var
-  Window: TAtlasShortcutTipWindow;
+  mWindow: TAtlasShortcutTipWindow;
 begin
-  Window := NewWindow;
+  mWindow := NewWindow;
   try
-    Window.ShowTip(TAtlasShortcutTipView.Create('F12', 'Formular/Unit umschalten', False), Rect(0, 0, 1200, 800));
+    mWindow.ShowTip(TAtlasShortcutTipView.Create('F12', 'Formular/Unit umschalten', False), Rect(0, 0, 1200, 800));
     try
-      Assert.IsFalse(Window.LinkRect(TAtlasShortcutTipLink.Never).IsEmpty);
-      Assert.IsTrue(Window.LinkRect(TAtlasShortcutTipLink.AllKeys).IsEmpty, 'ohne keys.overview kein Link');
+      Assert.IsFalse(mWindow.LinkRect(TAtlasShortcutTipLink.Never).IsEmpty);
+      Assert.IsTrue(mWindow.LinkRect(TAtlasShortcutTipLink.AllKeys).IsEmpty, 'ohne keys.overview kein Link');
     finally
-      Window.Dismiss;
+      mWindow.Dismiss;
     end;
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 
 procedure TAtlasShortcutTipWindowTests.SpeaksBothStepsOfTwoStepShortCut;
 var
-  Window: TAtlasShortcutTipWindow;
+  mWindow: TAtlasShortcutTipWindow;
 begin
-  Window := NewWindow;
+  mWindow := NewWindow;
   try
-    Window.ShowTip(TAtlasShortcutTipView.Create('Strg+K, Strg+D', 'Zeile duplizieren', True), Rect(0, 0, 1200, 800));
+    mWindow.ShowTip(TAtlasShortcutTipView.Create('Strg+K, Strg+D', 'Zeile duplizieren', True), Rect(0, 0, 1200, 800));
     try
-      Assert.AreEqual(2, Integer(Length(Window.View.Steps)));
-      Assert.AreEqual('Tipp: Strg+K, Strg+D für Zeile duplizieren', Window.SpokenText);
+      Assert.AreEqual(2, Integer(Length(mWindow.View.Steps)));
+      Assert.AreEqual('Tipp: Strg+K, Strg+D für Zeile duplizieren', mWindow.SpokenText);
     finally
-      Window.Dismiss;
+      mWindow.Dismiss;
     end;
   finally
-    Window.Free;
+    mWindow.Free;
   end;
 end;
 

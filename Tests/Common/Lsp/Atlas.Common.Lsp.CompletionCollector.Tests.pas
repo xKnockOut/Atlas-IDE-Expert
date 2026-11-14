@@ -57,209 +57,209 @@ end;
 
 function Joined(const AItems: TArray<TCompletionItem>): string;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
   Result := '';
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    Result := Result + ' ' + Item.Name;
+    Result := Result + ' ' + mItem.Name;
   end;
   Result := Result.Trim;
 end;
 
 procedure TCompletionCollectorTests.AddKeepsNoStateBetweenCalls;
 var
-  Request: TCompletionRequest;
-  Collector: TCompletionCollector;
-  Import: TResolvedSymbol;
-  Items: TArray<TCompletionItem>;
-  Incomplete: Boolean;
+  mRequest: TCompletionRequest;
+  mCollector: TCompletionCollector;
+  mImport: TResolvedSymbol;
+  mItems: TArray<TCompletionItem>;
+  mIncomplete: Boolean;
 begin
-  Request := TCompletionRequest.Create('', 'C:\P\Haupt.pas', TTextPosition.Create(0, 0));
-  Collector := TCompletionCollector.Create(Request, ScopeContext(''), '', nil);
+  mRequest := TCompletionRequest.Create('', 'C:\P\Haupt.pas', TTextPosition.Create(0, 0));
+  mCollector := TCompletionCollector.Create(mRequest, ScopeContext(''), '', nil);
   try
-    Import := Default(TResolvedSymbol);
-    Import.Name := 'ShowMessage';
-    Import.MaxArgs := 1;
-    Import.FileName := 'C:\Lib\Dialogs.pas';
-    Import.SelectionRange.StartPos := TTextPosition.Create(7, 2);
-    Assert.IsTrue(Collector.Add('ShowMessage', 'Dialogs (uses ergänzen)', cKindFunction, cPenaltyLibraryImport, Import,
+    mImport := Default(TResolvedSymbol);
+    mImport.Name := 'ShowMessage';
+    mImport.MaxArgs := 1;
+    mImport.FileName := 'C:\Lib\Dialogs.pas';
+    mImport.SelectionRange.StartPos := TTextPosition.Create(7, 2);
+    Assert.IsTrue(mCollector.Add('ShowMessage', 'Dialogs (uses ergänzen)', cKindFunction, cPenaltyLibraryImport, mImport,
       [TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(2, 0), TTextPosition.Create(2, 0)), 'Dialogs, ')]));
-    Assert.IsTrue(Collector.Add('begin', '', cKindKeyword, cPenaltyKeyword, Default(TResolvedSymbol)));
-    Items := Collector.Finish(Incomplete);
-    Assert.AreEqual('begin ShowMessage', Joined(Items));
+    Assert.IsTrue(mCollector.Add('begin', '', cKindKeyword, cPenaltyKeyword, Default(TResolvedSymbol)));
+    mItems := mCollector.Finish(mIncomplete);
+    Assert.AreEqual('begin ShowMessage', Joined(mItems));
     // Das Schlüsselwort erbt nichts vom Import davor.
-    Assert.AreEqual(0, Integer(Length(Items[0].AdditionalEdits)));
-    Assert.AreEqual('', Items[0].SourceFile);
-    Assert.IsFalse(Items[0].HasParameters);
-    Assert.AreEqual(0, Items[0].Scope);
-    Assert.AreEqual(1, Integer(Length(Items[1].AdditionalEdits)));
-    Assert.AreEqual('C:\Lib\Dialogs.pas', Items[1].SourceFile);
-    Assert.AreEqual(7, Items[1].SourcePosition.Line);
-    Assert.IsTrue(Items[1].HasParameters);
+    Assert.AreEqual(0, Integer(Length(mItems[0].AdditionalEdits)));
+    Assert.AreEqual('', mItems[0].SourceFile);
+    Assert.IsFalse(mItems[0].HasParameters);
+    Assert.AreEqual(0, mItems[0].Scope);
+    Assert.AreEqual(1, Integer(Length(mItems[1].AdditionalEdits)));
+    Assert.AreEqual('C:\Lib\Dialogs.pas', mItems[1].SourceFile);
+    Assert.AreEqual(7, mItems[1].SourcePosition.Line);
+    Assert.IsTrue(mItems[1].HasParameters);
   finally
-    Collector.Free;
-    Request.Free;
+    mCollector.Free;
+    mRequest.Free;
   end;
 end;
 
 procedure TCompletionCollectorTests.PenaltiesOrderGroups;
 var
-  Request: TCompletionRequest;
-  Collector: TCompletionCollector;
-  Incomplete: Boolean;
+  mRequest: TCompletionRequest;
+  mCollector: TCompletionCollector;
+  mIncomplete: Boolean;
 begin
   // Nur nach dem Anfang: alle Namen haben dieselbe Punktzahl, es entscheiden die Strafen.
-  Request := TCompletionRequest.Create('', 'C:\P\Haupt.pas', TTextPosition.Create(0, 0));
-  Request.Matching := TCompletionMatching.Prefix;
-  Collector := TCompletionCollector.Create(Request, ScopeContext('We'), '', nil);
+  mRequest := TCompletionRequest.Create('', 'C:\P\Haupt.pas', TTextPosition.Create(0, 0));
+  mRequest.Matching := TCompletionMatching.Prefix;
+  mCollector := TCompletionCollector.Create(mRequest, ScopeContext('We'), '', nil);
   try
-    Collector.Add('WertU', '', cKindVariable, cPenaltyUnavailable, Default(TResolvedSymbol));
-    Collector.Add('WertB', '', cKindVariable, cPenaltyLibraryImport, Default(TResolvedSymbol));
-    Collector.Add('WertP', '', cKindVariable, cPenaltyProjectImport, Default(TResolvedSymbol));
-    Collector.Add('WertK', '', cKindKeyword, cPenaltyKeyword, Default(TResolvedSymbol));
-    Collector.Add('WertE', '', cKindVariable, Default(TResolvedSymbol));
-    Assert.AreEqual('WertE WertK WertP WertB WertU', Joined(Collector.Finish(Incomplete)));
+    mCollector.Add('WertU', '', cKindVariable, cPenaltyUnavailable, Default(TResolvedSymbol));
+    mCollector.Add('WertB', '', cKindVariable, cPenaltyLibraryImport, Default(TResolvedSymbol));
+    mCollector.Add('WertP', '', cKindVariable, cPenaltyProjectImport, Default(TResolvedSymbol));
+    mCollector.Add('WertK', '', cKindKeyword, cPenaltyKeyword, Default(TResolvedSymbol));
+    mCollector.Add('WertE', '', cKindVariable, Default(TResolvedSymbol));
+    Assert.AreEqual('WertE WertK WertP WertB WertU', Joined(mCollector.Finish(mIncomplete)));
   finally
-    Collector.Free;
-    Request.Free;
+    mCollector.Free;
+    mRequest.Free;
   end;
 end;
 
 procedure TCompletionCollectorTests.AddRejectsWhatDoesNotMatch;
 var
-  Request: TCompletionRequest;
-  Collector: TCompletionCollector;
-  Incomplete: Boolean;
-  Items: TArray<TCompletionItem>;
+  mRequest: TCompletionRequest;
+  mCollector: TCompletionCollector;
+  mIncomplete: Boolean;
+  mItems: TArray<TCompletionItem>;
 begin
-  Request := TCompletionRequest.Create('', '', TTextPosition.Create(0, 0));
-  Collector := TCompletionCollector.Create(Request, ScopeContext('zae'), '', nil);
+  mRequest := TCompletionRequest.Create('', '', TTextPosition.Create(0, 0));
+  mCollector := TCompletionCollector.Create(mRequest, ScopeContext('zae'), '', nil);
   try
-    Assert.IsFalse(Collector.Add('Rechne', '', cKindFunction, Default(TResolvedSymbol)));
+    Assert.IsFalse(mCollector.Add('Rechne', '', cKindFunction, Default(TResolvedSymbol)));
     // Unscharf: Teilwort trifft, filterText ist das Getippte.
-    Assert.IsTrue(Collector.Add('Zaehler', '', cKindField, Default(TResolvedSymbol)));
-    Items := Collector.Finish(Incomplete);
-    Assert.AreEqual('Zaehler', Joined(Items));
-    Assert.AreEqual('', Items[0].FilterText, 'Anfang passt ohne Rücksicht auf Groß/klein');
+    Assert.IsTrue(mCollector.Add('Zaehler', '', cKindField, Default(TResolvedSymbol)));
+    mItems := mCollector.Finish(mIncomplete);
+    Assert.AreEqual('Zaehler', Joined(mItems));
+    Assert.AreEqual('', mItems[0].FilterText, 'Anfang passt ohne Rücksicht auf Groß/klein');
   finally
-    Collector.Free;
-    Request.Free;
+    mCollector.Free;
+    mRequest.Free;
   end;
 end;
 
 procedure TCompletionCollectorTests.SendStageHandsOverAndFinishKeepsRest;
 var
-  Request: TCompletionRequest;
-  Collector: TCompletionCollector;
-  Incomplete: Boolean;
-  Sent: TArray<TCompletionItem>;
+  mRequest: TCompletionRequest;
+  mCollector: TCompletionCollector;
+  mIncomplete: Boolean;
+  mSent: TArray<TCompletionItem>;
 begin
-  Sent := nil;
-  Request := TCompletionRequest.Create('', '', TTextPosition.Create(0, 0));
-  Collector := TCompletionCollector.Create(Request, ScopeContext(''), '',
+  mSent := nil;
+  mRequest := TCompletionRequest.Create('', '', TTextPosition.Create(0, 0));
+  mCollector := TCompletionCollector.Create(mRequest, ScopeContext(''), '',
     procedure(const AItems: TArray<TCompletionItem>)
     begin
-      Sent := Sent + AItems;
+      mSent := mSent + AItems;
     end);
   try
-    Collector.Add('Lokal', '', cKindVariable, Default(TResolvedSymbol));
-    Collector.Add('Feld', '', cKindField, Default(TResolvedSymbol));
-    Collector.SendStage;
-    Assert.AreEqual('Lokal Feld', Joined(Sent));
+    mCollector.Add('Lokal', '', cKindVariable, Default(TResolvedSymbol));
+    mCollector.Add('Feld', '', cKindField, Default(TResolvedSymbol));
+    mCollector.SendStage;
+    Assert.AreEqual('Lokal Feld', Joined(mSent));
     // Leere Stufe: nichts gesendet.
-    Collector.SendStage;
-    Assert.AreEqual(2, Integer(Length(Sent)));
-    Collector.Add('Global', '', cKindVariable, Default(TResolvedSymbol));
-    Assert.AreEqual('Global', Joined(Collector.Finish(Incomplete)));
+    mCollector.SendStage;
+    Assert.AreEqual(2, Integer(Length(mSent)));
+    mCollector.Add('Global', '', cKindVariable, Default(TResolvedSymbol));
+    Assert.AreEqual('Global', Joined(mCollector.Finish(mIncomplete)));
   finally
-    Collector.Free;
-    Request.Free;
+    mCollector.Free;
+    mRequest.Free;
   end;
 end;
 
 procedure TCompletionCollectorTests.FinishMarksShortScopePrefixIncomplete;
 var
-  Request: TCompletionRequest;
-  Collector: TCompletionCollector;
-  Context: TCompletionContext;
-  Incomplete: Boolean;
+  mRequest: TCompletionRequest;
+  mCollector: TCompletionCollector;
+  mContext: TCompletionContext;
+  mIncomplete: Boolean;
 begin
-  Request := TCompletionRequest.Create('', '', TTextPosition.Create(0, 0));
+  mRequest := TCompletionRequest.Create('', '', TTextPosition.Create(0, 0));
   try
     // Ein Zeichen im Gültigkeitsbereich: Importe fehlen noch.
-    Collector := TCompletionCollector.Create(Request, ScopeContext('W'), '', nil);
+    mCollector := TCompletionCollector.Create(mRequest, ScopeContext('W'), '', nil);
     try
-      Collector.Finish(Incomplete);
-      Assert.IsTrue(Incomplete);
+      mCollector.Finish(mIncomplete);
+      Assert.IsTrue(mIncomplete);
     finally
-      Collector.Free;
+      mCollector.Free;
     end;
-    Collector := TCompletionCollector.Create(Request, ScopeContext('We'), '', nil);
+    mCollector := TCompletionCollector.Create(mRequest, ScopeContext('We'), '', nil);
     try
-      Collector.Finish(Incomplete);
-      Assert.IsFalse(Incomplete);
+      mCollector.Finish(mIncomplete);
+      Assert.IsFalse(mIncomplete);
     finally
-      Collector.Free;
+      mCollector.Free;
     end;
     // Nach einem Punkt kommen keine Importe dazu.
-    Context := ScopeContext('');
-    Context.Kind := TCompletionContextKind.Member;
-    Collector := TCompletionCollector.Create(Request, Context, '', nil);
+    mContext := ScopeContext('');
+    mContext.Kind := TCompletionContextKind.Member;
+    mCollector := TCompletionCollector.Create(mRequest, mContext, '', nil);
     try
-      Collector.Finish(Incomplete);
-      Assert.IsFalse(Incomplete);
+      mCollector.Finish(mIncomplete);
+      Assert.IsFalse(mIncomplete);
     finally
-      Collector.Free;
+      mCollector.Free;
     end;
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
 procedure TCompletionCollectorTests.ScopeOnlyInScopeContext;
 var
-  Request: TCompletionRequest;
-  Collector: TCompletionCollector;
-  Context: TCompletionContext;
-  Symbol: TResolvedSymbol;
-  Items: TArray<TCompletionItem>;
-  Incomplete: Boolean;
+  mRequest: TCompletionRequest;
+  mCollector: TCompletionCollector;
+  mContext: TCompletionContext;
+  mSymbol: TResolvedSymbol;
+  mItems: TArray<TCompletionItem>;
+  mIncomplete: Boolean;
 begin
-  Symbol := Default(TResolvedSymbol);
-  Symbol.Name := 'Rechne';
-  Symbol.UnitName := 'Werkzeug';
-  Request := TCompletionRequest.Create('', '', TTextPosition.Create(0, 0));
+  mSymbol := Default(TResolvedSymbol);
+  mSymbol.Name := 'Rechne';
+  mSymbol.UnitName := 'Werkzeug';
+  mRequest := TCompletionRequest.Create('', '', TTextPosition.Create(0, 0));
   try
-    Collector := TCompletionCollector.Create(Request, ScopeContext(''), '', nil);
+    mCollector := TCompletionCollector.Create(mRequest, ScopeContext(''), '', nil);
     try
-      Collector.Add('Rechne', 'Werkzeug', cKindFunction, Symbol);
-      Items := Collector.Finish(Incomplete);
-      Assert.AreEqual(5, Items[0].Scope);
-      Assert.AreEqual('Werkzeug', Items[0].UnitName);
+      mCollector.Add('Rechne', 'Werkzeug', cKindFunction, mSymbol);
+      mItems := mCollector.Finish(mIncomplete);
+      Assert.AreEqual(5, mItems[0].Scope);
+      Assert.AreEqual('Werkzeug', mItems[0].UnitName);
     finally
-      Collector.Free;
+      mCollector.Free;
     end;
-    Context := ScopeContext('');
-    Context.Kind := TCompletionContextKind.Member;
-    Collector := TCompletionCollector.Create(Request, Context, '', nil);
+    mContext := ScopeContext('');
+    mContext.Kind := TCompletionContextKind.Member;
+    mCollector := TCompletionCollector.Create(mRequest, mContext, '', nil);
     try
-      Collector.Add('Rechne', 'Werkzeug', cKindFunction, Symbol);
-      Items := Collector.Finish(Incomplete);
-      Assert.AreEqual(0, Items[0].Scope);
-      Assert.AreEqual('', Items[0].UnitName);
+      mCollector.Add('Rechne', 'Werkzeug', cKindFunction, mSymbol);
+      mItems := mCollector.Finish(mIncomplete);
+      Assert.AreEqual(0, mItems[0].Scope);
+      Assert.AreEqual('', mItems[0].UnitName);
     finally
-      Collector.Free;
+      mCollector.Free;
     end;
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
 procedure TCompletionCollectorTests.ConversionStandsBeforeOriginal;
 const
-  FileName = 'C:\P\Haupt.pas';
-  Head =
+  cFileName = 'C:\P\Haupt.pas';
+  cHead =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses'#10 +
@@ -283,74 +283,74 @@ const
     '  I: Integer;'#10 +
     'begin'#10 +
     '  ';
-  Tail = #10'end;'#10'end.'#10;
+  cTail = #10'end;'#10'end.'#10;
 
   function Items(const ALine: string; AStyle: TCompletionTypeConversion): TArray<TCompletionItem>;
   var
-    Index: ISymbolIndex;
-    Text: string;
-    Tree: TSyntaxTree;
-    Resolver: TNameResolver;
-    Request: TCompletionRequest;
-    Settings: TCompletionSettings;
-    Postfix: TPostfixOptions;
+    mIndex: ISymbolIndex;
+    mText: string;
+    mTree: TSyntaxTree;
+    mResolver: TNameResolver;
+    mRequest: TCompletionRequest;
+    mSettings: TCompletionSettings;
+    mPostfix: TPostfixOptions;
   begin
-    Text := Head + ALine + Tail;
-    Index := TSymbolIndex.Create;
-    Index.AddUnit(TIndexExtractor.ExtractText(Text, FileName, nil));
-    Tree := TPascalParser.Parse(Text);
-    Resolver := TNameResolver.Create(Index);
-    Request := TCompletionRequest.Create(Text, FileName, TTextPosition.Create(22, 2 + Length(ALine)));
+    mText := cHead + ALine + cTail;
+    mIndex := TSymbolIndex.Create;
+    mIndex.AddUnit(TIndexExtractor.ExtractText(mText, cFileName, nil));
+    mTree := TPascalParser.Parse(mText);
+    mResolver := TNameResolver.Create(mIndex);
+    mRequest := TCompletionRequest.Create(mText, cFileName, TTextPosition.Create(22, 2 + Length(ALine)));
     try
-      Request.Tree := Tree;
-      Request.Resolver := Resolver;
-      Request.Index := Index;
-      Request.Matching := TCompletionMatching.Prefix;
-      Settings := TCompletionSettings.Default;
-      Settings.TypeConversion := AStyle;
-      Request.Settings := Settings;
-      Postfix := TPostfixOptions.Default;
-      Postfix.Enabled := False;
-      Result := TCompletionLists.Collect(Request, Postfix, nil).Items;
+      mRequest.Tree := mTree;
+      mRequest.Resolver := mResolver;
+      mRequest.Index := mIndex;
+      mRequest.Matching := TCompletionMatching.Prefix;
+      mSettings := TCompletionSettings.Default;
+      mSettings.TypeConversion := AStyle;
+      mRequest.Settings := mSettings;
+      mPostfix := TPostfixOptions.Default;
+      mPostfix.Enabled := False;
+      Result := TCompletionLists.Collect(mRequest, mPostfix, nil).Items;
     finally
-      Request.Free;
-      Resolver.Free;
-      Tree.Free;
+      mRequest.Free;
+      mResolver.Free;
+      mTree.Free;
     end;
   end;
 
 var
-  List: TArray<TCompletionItem>;
+  mList: TArray<TCompletionItem>;
 begin
   // Aus #490: "lblCount.Caption := Lines.Cou" zeigt Count.ToString mit "→ string" vor Count.
-  List := Items('lblCount.Caption := Lines.Cou', TCompletionTypeConversion.Helper);
-  Assert.AreEqual('Count.ToString Count', Joined(List));
-  Assert.AreEqual('TCaption', List[0].Conversion);
-  Assert.AreEqual('Count', List[0].ConvertFrom);
-  Assert.AreEqual('Count', List[0].FilterText);
-  Assert.IsTrue(List[0].HasTextEdit);
-  Assert.AreEqual('Lines.Count.ToString', List[0].TextEdit.NewText);
-  Assert.AreEqual(22, List[0].TextEdit.Range.StartPos.Line);
-  Assert.AreEqual(22, List[0].TextEdit.Range.StartPos.Character);
-  Assert.AreEqual(31, List[0].TextEdit.Range.EndPos.Character);
-  Assert.AreEqual(1, Integer(Length(List[0].AdditionalEdits)), 'System.SysUtils ins uses');
-  Assert.AreEqual('', List[1].Conversion);
-  Assert.IsFalse(List[1].HasTextEdit);
+  mList := Items('lblCount.Caption := Lines.Cou', TCompletionTypeConversion.Helper);
+  Assert.AreEqual('Count.ToString Count', Joined(mList));
+  Assert.AreEqual('TCaption', mList[0].Conversion);
+  Assert.AreEqual('Count', mList[0].ConvertFrom);
+  Assert.AreEqual('Count', mList[0].FilterText);
+  Assert.IsTrue(mList[0].HasTextEdit);
+  Assert.AreEqual('Lines.Count.ToString', mList[0].TextEdit.NewText);
+  Assert.AreEqual(22, mList[0].TextEdit.Range.StartPos.Line);
+  Assert.AreEqual(22, mList[0].TextEdit.Range.StartPos.Character);
+  Assert.AreEqual(31, mList[0].TextEdit.Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(mList[0].AdditionalEdits)), 'System.SysUtils ins uses');
+  Assert.AreEqual('', mList[1].Conversion);
+  Assert.IsFalse(mList[1].HasTextEdit);
   // Funktionsstil setzt die ganze Kette ein.
-  List := Items('lblCount.Caption := Lines.Cou', TCompletionTypeConversion.Function_);
-  Assert.AreEqual('IntToStr(Count) Count', Joined(List));
-  Assert.AreEqual('IntToStr(Lines.Count)', List[0].TextEdit.NewText);
+  mList := Items('lblCount.Caption := Lines.Cou', TCompletionTypeConversion.Function_);
+  Assert.AreEqual('IntToStr(Count) Count', Joined(mList));
+  Assert.AreEqual('IntToStr(Lines.Count)', mList[0].TextEdit.NewText);
   // Aufzählung nach string mit System.TypInfo.
-  List := Items('lblCount.Caption := Lines.Far', TCompletionTypeConversion.Helper);
-  Assert.AreEqual('GetEnumName(TypeInfo(TFarbe), Ord(Lines.Farbe))', List[0].TextEdit.NewText);
+  mList := Items('lblCount.Caption := Lines.Far', TCompletionTypeConversion.Helper);
+  Assert.AreEqual('GetEnumName(TypeInfo(TFarbe), Ord(Lines.Farbe))', mList[0].TextEdit.NewText);
   // Gleitkomma nach Ganzzahl: kein Eintrag, nur der Hinweis am Original.
-  List := Items('I := Lines.Pre', TCompletionTypeConversion.Helper);
-  Assert.AreEqual('Preis', Joined(List));
-  Assert.AreEqual('Double', List[0].Lossy);
+  mList := Items('I := Lines.Pre', TCompletionTypeConversion.Helper);
+  Assert.AreEqual('Preis', Joined(mList));
+  Assert.AreEqual('Double', mList[0].Lossy);
   // Aus: nichts dazu.
-  List := Items('lblCount.Caption := Lines.Cou', TCompletionTypeConversion.Off);
-  Assert.AreEqual('Count', Joined(List));
-  Assert.AreEqual('', List[0].Lossy);
+  mList := Items('lblCount.Caption := Lines.Cou', TCompletionTypeConversion.Off);
+  Assert.AreEqual('Count', Joined(mList));
+  Assert.AreEqual('', mList[0].Lossy);
 end;
 
 initialization

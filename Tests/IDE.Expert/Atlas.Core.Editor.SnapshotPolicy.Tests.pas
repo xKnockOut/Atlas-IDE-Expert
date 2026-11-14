@@ -44,20 +44,20 @@ end;
 
 procedure TSnapshotPolicyTests.UnknownMustRead;
 var
-  State: TAtlasSnapshotState;
+  mState: TAtlasSnapshotState;
 begin
-  State := Clean;
-  State.Known := False;
-  Assert.IsTrue(TAtlasSnapshotPolicy.MustRead(State, 120, True, 10001));
+  mState := Clean;
+  mState.Known := False;
+  Assert.IsTrue(TAtlasSnapshotPolicy.MustRead(mState, 120, True, 10001));
 end;
 
 procedure TSnapshotPolicyTests.DirtyMustRead;
 var
-  State: TAtlasSnapshotState;
+  mState: TAtlasSnapshotState;
 begin
-  State := Clean;
-  State.Dirty := True;
-  Assert.IsTrue(TAtlasSnapshotPolicy.MustRead(State, 120, True, 10001));
+  mState := Clean;
+  mState.Dirty := True;
+  Assert.IsTrue(TAtlasSnapshotPolicy.MustRead(mState, 120, True, 10001));
 end;
 
 procedure TSnapshotPolicyTests.CleanSameStateSkips;

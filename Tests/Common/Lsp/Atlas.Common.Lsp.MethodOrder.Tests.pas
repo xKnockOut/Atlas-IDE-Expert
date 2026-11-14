@@ -41,8 +41,8 @@ uses
   Atlas.Common.Lsp.MethodOrder;
 
 const
-  MainFile = 'C:\P\Reihe.pas';
-  Kopf =
+  cMainFile = 'C:\P\Reihe.pas';
+  cKopf =
     'unit Reihe;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -51,9 +51,9 @@ const
     '    procedure B;'#10 +
     '  end;'#10 +
     'implementation'#10;
-  RumpfA = #10'procedure TFoo.A;'#10'begin'#10'end;'#10;
-  RumpfB = #10'procedure TFoo.B;'#10'begin'#10'end;'#10;
-  Ende = #10'end.';
+  cRumpfA = #10'procedure TFoo.A;'#10'begin'#10'end;'#10;
+  cRumpfB = #10'procedure TFoo.B;'#10'begin'#10'end;'#10;
+  cEnde = #10'end.';
 
 procedure TLspMethodOrderTests.Setup;
 begin
@@ -67,104 +67,104 @@ end;
 
 function TLspMethodOrderTests.Run(const AText, AOptions: string): TJSONObject;
 var
-  Uri: string;
-  Arguments: TJSONArray;
-  Reply: TJSONValue;
+  mUri: string;
+  mArguments: TJSONArray;
+  mReply: TJSONValue;
 begin
-  Uri := TDocumentUris.FromPath(MainFile);
-  FStore.Close(Uri);
-  FStore.Open(Uri, 'delphi', 1, AText);
-  Arguments := TJSONArray.Create;
+  mUri := TDocumentUris.FromPath(cMainFile);
+  FStore.Close(mUri);
+  FStore.Open(mUri, 'delphi', 1, AText);
+  mArguments := TJSONArray.Create;
   try
-    Arguments.Add(Uri);
+    mArguments.Add(mUri);
     if AOptions <> '' then
     begin
-      Arguments.AddElement(TJSONObject.ParseJSONValue(AOptions));
+      mArguments.AddElement(TJSONObject.ParseJSONValue(AOptions));
     end;
-    Reply := TLspMethodOrder.Execute(FStore, Arguments);
+    mReply := TLspMethodOrder.Execute(FStore, mArguments);
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
-  Assert.IsTrue(Reply is TJSONObject);
-  Result := TJSONObject(Reply);
+  Assert.IsTrue(mReply is TJSONObject);
+  Result := TJSONObject(mReply);
 end;
 
 procedure TLspMethodOrderTests.ArrangesWholeUnit;
 var
-  Reply: TJSONObject;
-  Move: TJSONObject;
+  mReply: TJSONObject;
+  mMove: TJSONObject;
 begin
-  Reply := Run(Kopf + RumpfB + RumpfA + Ende, '');
+  mReply := Run(cKopf + cRumpfB + cRumpfA + cEnde, '');
   try
-    Assert.AreEqual(1, (Reply.GetValue('edits') as TJSONArray).Count);
-    Assert.AreEqual(2, (Reply.GetValue('moves') as TJSONArray).Count);
-    Move := (Reply.GetValue('moves') as TJSONArray).Items[0] as TJSONObject;
-    Assert.AreEqual('TFoo', Move.GetValue<string>('type'));
-    Assert.AreEqual('A', Move.GetValue<string>('name'));
-    Assert.AreEqual(13, (Move.GetValue('line') as TJSONNumber).AsInt);
-    Assert.AreEqual(-1, (Move.GetValue('delta') as TJSONNumber).AsInt);
-    Assert.IsFalse(Move.GetValue<Boolean>('fixed'));
-    Assert.AreEqual('', Move.GetValue<string>('reason'));
+    Assert.AreEqual(1, (mReply.GetValue('edits') as TJSONArray).Count);
+    Assert.AreEqual(2, (mReply.GetValue('moves') as TJSONArray).Count);
+    mMove := (mReply.GetValue('moves') as TJSONArray).Items[0] as TJSONObject;
+    Assert.AreEqual('TFoo', mMove.GetValue<string>('type'));
+    Assert.AreEqual('A', mMove.GetValue<string>('name'));
+    Assert.AreEqual(13, (mMove.GetValue('line') as TJSONNumber).AsInt);
+    Assert.AreEqual(-1, (mMove.GetValue('delta') as TJSONNumber).AsInt);
+    Assert.IsFalse(mMove.GetValue<Boolean>('fixed'));
+    Assert.AreEqual('', mMove.GetValue<string>('reason'));
   finally
-    Reply.Free;
+    mReply.Free;
   end;
 end;
 
 procedure TLspMethodOrderTests.PlacesNewBody;
 var
-  Reply, Options: TJSONObject;
+  mReply, mOptions: TJSONObject;
 begin
-  Options := TJSONObject.Create;
+  mOptions := TJSONObject.Create;
   try
-    Options.AddPair('mode', 'declaration');
-    Options.AddPair('scope', 'new');
-    Options.AddPair('before', Kopf + RumpfB + Ende);
-    Reply := Run(Kopf + RumpfB + RumpfA + Ende, Options.ToJSON);
+    mOptions.AddPair('mode', 'declaration');
+    mOptions.AddPair('scope', 'new');
+    mOptions.AddPair('before', cKopf + cRumpfB + cEnde);
+    mReply := Run(cKopf + cRumpfB + cRumpfA + cEnde, mOptions.ToJSON);
   finally
-    Options.Free;
+    mOptions.Free;
   end;
   try
-    Assert.AreEqual(1, (Reply.GetValue('edits') as TJSONArray).Count);
-    Assert.AreEqual(1, (Reply.GetValue('moves') as TJSONArray).Count);
+    Assert.AreEqual(1, (mReply.GetValue('edits') as TJSONArray).Count);
+    Assert.AreEqual(1, (mReply.GetValue('moves') as TJSONArray).Count);
   finally
-    Reply.Free;
+    mReply.Free;
   end;
   // Ohne Vorher-Text ist alles neu: Die Rümpfe ordnen sich untereinander (#1834).
-  Reply := Run(Kopf + RumpfB + RumpfA + Ende, '{"scope": "new", "before": ""}');
+  mReply := Run(cKopf + cRumpfB + cRumpfA + cEnde, '{"scope": "new", "before": ""}');
   try
-    Assert.AreEqual(1, (Reply.GetValue('edits') as TJSONArray).Count, 'leerer Vorher-Text');
+    Assert.AreEqual(1, (mReply.GetValue('edits') as TJSONArray).Count, 'leerer Vorher-Text');
   finally
-    Reply.Free;
+    mReply.Free;
   end;
 end;
 
 procedure TLspMethodOrderTests.OffGivesNothing;
 var
-  Reply: TJSONObject;
+  mReply: TJSONObject;
 begin
-  Reply := Run(Kopf + RumpfB + RumpfA + Ende, '{"mode": "off"}');
+  mReply := Run(cKopf + cRumpfB + cRumpfA + cEnde, '{"mode": "off"}');
   try
-    Assert.AreEqual(0, (Reply.GetValue('edits') as TJSONArray).Count);
-    Assert.AreEqual(0, (Reply.GetValue('moves') as TJSONArray).Count);
+    Assert.AreEqual(0, (mReply.GetValue('edits') as TJSONArray).Count);
+    Assert.AreEqual(0, (mReply.GetValue('moves') as TJSONArray).Count);
   finally
-    Reply.Free;
+    mReply.Free;
   end;
 end;
 
 procedure TLspMethodOrderTests.UnknownDocumentGivesError;
 var
-  Arguments: TJSONArray;
+  mArguments: TJSONArray;
 begin
-  Arguments := TJSONObject.ParseJSONValue('["file:///C:/P/Fehlt.pas"]') as TJSONArray;
+  mArguments := TJSONObject.ParseJSONValue('["file:///C:/P/Fehlt.pas"]') as TJSONArray;
   try
     Assert.WillRaise(
       procedure
       begin
-        TLspMethodOrder.Execute(FStore, Arguments).Free;
+        TLspMethodOrder.Execute(FStore, mArguments).Free;
       end,
       EJsonRpcError);
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
 end;
 

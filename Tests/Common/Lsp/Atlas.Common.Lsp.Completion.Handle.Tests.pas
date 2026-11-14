@@ -115,10 +115,10 @@ uses
   Atlas.Common.Index.Extractor;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
 
-  TypenFile = 'C:\P\Typen.pas';
-  UnitTypen =
+  cTypenFile = 'C:\P\Typen.pas';
+  cUnitTypen =
     'unit Typen;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -223,68 +223,68 @@ end;
 
 function TLspCompletionHandleTests.Complete(const AText, ATrigger, AToken: string): TJSONObject;
 var
-  Marker, Index, Line, LineStart: Integer;
-  Text, Uri, Params: string;
-  Request, Response: TJSONObject;
+  mMarker, mIndex, mLine, mLineStart: Integer;
+  mText, mUri, mParams: string;
+  mRequest, mResponse: TJSONObject;
 begin
-  Marker := Pos('|', AText);
-  if Marker = 0 then
+  mMarker := Pos('|', AText);
+  if mMarker = 0 then
   begin
     raise Exception.Create('Marker "|" fehlt');
   end;
-  Line := 0;
-  LineStart := 1;
-  for Index := 1 to Marker - 1 do
+  mLine := 0;
+  mLineStart := 1;
+  for mIndex := 1 to mMarker - 1 do
   begin
-    if AText[Index] = #10 then
+    if AText[mIndex] = #10 then
     begin
-      Inc(Line);
-      LineStart := Index + 1;
+      Inc(mLine);
+      mLineStart := mIndex + 1;
     end;
   end;
-  Text := Copy(AText, 1, Marker - 1) + Copy(AText, Marker + 1, MaxInt);
-  Uri := TDocumentUris.FromPath(HauptFile);
-  FStore.Close(Uri);
-  FStore.Open(Uri, 'delphi', 1, Text);
-  Params := '{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},"position":{"line":' + IntToStr(Line) +
-    ',"character":' + IntToStr(Marker - LineStart) + '}';
+  mText := Copy(AText, 1, mMarker - 1) + Copy(AText, mMarker + 1, MaxInt);
+  mUri := TDocumentUris.FromPath(cHauptFile);
+  FStore.Close(mUri);
+  FStore.Open(mUri, 'delphi', 1, mText);
+  mParams := '{"textDocument":{"uri":"' + mUri.Replace('\', '\\') + '"},"position":{"line":' + IntToStr(mLine) +
+    ',"character":' + IntToStr(mMarker - mLineStart) + '}';
   if ATrigger <> '' then
   begin
-    Params := Params + ',"context":{"triggerKind":2,"triggerCharacter":"' + ATrigger + '"}';
+    mParams := mParams + ',"context":{"triggerKind":2,"triggerCharacter":"' + ATrigger + '"}';
   end;
   if AToken <> '' then
   begin
-    Params := Params + ',"partialResultToken":"' + AToken + '"';
+    mParams := mParams + ',"partialResultToken":"' + AToken + '"';
   end;
-  Params := Params + '}';
+  mParams := mParams + '}';
   Inc(FId);
-  Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":' + IntToStr(FId) +
-    ',"method":"textDocument/completion","params":' + Params + '}') as TJSONObject;
+  mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":' + IntToStr(FId) +
+    ',"method":"textDocument/completion","params":' + mParams + '}') as TJSONObject;
   try
-    Response := FDispatcher.DispatchMessage(Request);
+    mResponse := FDispatcher.DispatchMessage(mRequest);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
-  Assert.IsNotNull(Response);
+  Assert.IsNotNull(mResponse);
   try
-    Assert.IsTrue(Response.GetValue('result') is TJSONObject, Response.ToJSON);
-    Result := Response.GetValue('result').Clone as TJSONObject;
+    Assert.IsTrue(mResponse.GetValue('result') is TJSONObject, mResponse.ToJSON);
+    Result := mResponse.GetValue('result').Clone as TJSONObject;
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
 /// <summary>Labels der Einträge, mit Leerzeichen getrennt.</summary>
 function Labels(AResult: TJSONObject): string;
 var
-  Items: TJSONArray;
-  Index: Integer;
+  mItems: TJSONArray;
+  mIndex: Integer;
 begin
   Result := '';
-  Items := AResult.GetValue('items') as TJSONArray;
-  for Index := 0 to Items.Count - 1 do
+  mItems := AResult.GetValue('items') as TJSONArray;
+  for mIndex := 0 to mItems.Count - 1 do
   begin
-    Result := Result + ' ' + (Items.Items[Index] as TJSONObject).GetValue<string>('label');
+    Result := Result + ' ' + (mItems.Items[mIndex] as TJSONObject).GetValue<string>('label');
   end;
   Result := Result.Trim;
 end;
@@ -301,23 +301,23 @@ end;
 
 function Occurrences(const AText, AWord: string): Integer;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
   Result := 0;
-  Start := Pos(AWord, AText);
-  while Start > 0 do
+  mStart := Pos(AWord, AText);
+  while mStart > 0 do
   begin
     Inc(Result);
-    Start := Pos(AWord, AText, Start + 1);
+    mStart := Pos(AWord, AText, mStart + 1);
   end;
 end;
 
 procedure TLspCompletionHandleTests.SlashCommandComesFirst;
 var
-  Answer: TJSONObject;
-  Index: Integer;
+  mAnswer: TJSONObject;
+  mIndex: Integer;
 begin
-  Answer := Complete(
+  mAnswer := Complete(
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'implementation'#13#10 +
@@ -330,25 +330,25 @@ begin
     'end.');
   try
     // Nur Schnellbefehle (Schlüsselwort mit Leerzeichen dahinter), keine Namen aus dem Gültigkeitsbereich.
-    Assert.IsTrue(ItemCount(Answer) > 0, Answer.ToJSON);
-    Assert.IsTrue(Pos('"insertText":"uses "', Answer.ToJSON) > 0, Answer.ToJSON);
-    for Index := 0 to ItemCount(Answer) - 1 do
+    Assert.IsTrue(ItemCount(mAnswer) > 0, mAnswer.ToJSON);
+    Assert.IsTrue(Pos('"insertText":"uses "', mAnswer.ToJSON) > 0, mAnswer.ToJSON);
+    for mIndex := 0 to ItemCount(mAnswer) - 1 do
     begin
-      Assert.AreEqual(14, ItemAt(Answer, Index).GetValue<Integer>('kind'));
+      Assert.AreEqual(14, ItemAt(mAnswer, mIndex).GetValue<Integer>('kind'));
     end;
-    Assert.IsFalse(Answer.ToJSON.Contains('"Wert"'), Answer.ToJSON);
+    Assert.IsFalse(mAnswer.ToJSON.Contains('"Wert"'), mAnswer.ToJSON);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.SlashTypeArgumentAddsUses;
 var
-  Answer: TJSONObject;
-  Item: TJSONObject;
+  mAnswer: TJSONObject;
+  mItem: TJSONObject;
 begin
-  AddUnit(TypenFile, UnitTypen);
-  Answer := Complete(
+  AddUnit(cTypenFile, cUnitTypen);
+  mAnswer := Complete(
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'implementation'#13#10 +
@@ -358,18 +358,18 @@ begin
     'end;'#13#10 +
     'end.');
   try
-    Assert.AreEqual('TControl', Labels(Answer));
-    Item := ItemAt(Answer, 0);
-    Assert.IsTrue(Item.GetValue('additionalTextEdits') is TJSONArray, Item.ToJSON);
-    Assert.IsTrue(Pos('Typen', Item.GetValue('additionalTextEdits').ToJSON) > 0, Item.ToJSON);
+    Assert.AreEqual('TControl', Labels(mAnswer));
+    mItem := ItemAt(mAnswer, 0);
+    Assert.IsTrue(mItem.GetValue('additionalTextEdits') is TJSONArray, mItem.ToJSON);
+    Assert.IsTrue(Pos('Typen', mItem.GetValue('additionalTextEdits').ToJSON) > 0, mItem.ToJSON);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.SlashIgnoreOffersRulesThatHit;
 const
-  Source =
+  cSource =
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'implementation'#13#10 +
@@ -380,41 +380,41 @@ const
     'end;'#13#10 +
     'end.';
 var
-  Answer: TJSONObject;
-  Line: Integer;
-  Blanked: Boolean;
+  mAnswer: TJSONObject;
+  mLine: Integer;
+  mBlanked: Boolean;
 begin
-  Line := -1;
-  Blanked := False;
+  mLine := -1;
+  mBlanked := False;
   FCompletion.Hooks.RuleIdsFor :=
     function(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean
     begin
-      Line := ALine;
-      Blanked := Pos('/ignore', AText) = 0;
+      mLine := ALine;
+      mBlanked := Pos('/ignore', AText) = 0;
       AIds := ['magic-number', 'unused-local'];
       Result := True;
     end;
-  Answer := Complete(Source);
+  mAnswer := Complete(cSource);
   try
-    Assert.AreEqual('magic-number unused-local', Labels(Answer));
-    Assert.AreEqual(6, Line);
-    Assert.IsTrue(Blanked, 'Befehlszeile nicht ausgeblendet');
+    Assert.AreEqual('magic-number unused-local', Labels(mAnswer));
+    Assert.AreEqual(6, mLine);
+    Assert.IsTrue(mBlanked, 'Befehlszeile nicht ausgeblendet');
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
   // Ohne Auskunft der ganze Katalog.
   FCompletion.Hooks.RuleIdsFor := nil;
-  Answer := Complete(Source);
+  mAnswer := Complete(cSource);
   try
-    Assert.IsTrue(ItemCount(Answer) > 2, Labels(Answer));
+    Assert.IsTrue(ItemCount(mAnswer) > 2, Labels(mAnswer));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.SlashSortOffersCollectionsThenMembers;
 const
-  Source =
+  cSource =
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -432,26 +432,26 @@ const
     'end;'#13#10 +
     'end.';
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
   // #319: nach /sort die Sammlungen, nach der Sammlung die Mitglieder des Elementtyps.
-  Answer := Complete(Format(Source, ['/sort ']));
+  mAnswer := Complete(Format(cSource, ['/sort ']));
   try
-    Assert.AreEqual('Kunden', Labels(Answer));
+    Assert.AreEqual('Kunden', Labels(mAnswer));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  Answer := Complete(Format(Source, ['/filter Kunden Ums']));
+  mAnswer := Complete(Format(cSource, ['/filter Kunden Ums']));
   try
-    Assert.AreEqual('Name Umsatz', Labels(Answer));
+    Assert.AreEqual('Name Umsatz', Labels(mAnswer));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.DataNameInStringIsExclusive;
 const
-  Form =
+  cForm =
     'object frmOrders: TfrmOrders'#13#10 +
     '  object qryOrders: TSQLQuery'#13#10 +
     '    SQL.Strings = ('#13#10 +
@@ -459,28 +459,28 @@ const
     '  end'#13#10 +
     'end'#13#10;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
-  FForm := Form;
-  Answer := Complete('unit Haupt;'#13#10'{$R *.dfm}'#13#10'  qryOrders.FieldByName(''cu|'').AsInteger;'#13#10);
+  FForm := cForm;
+  mAnswer := Complete('unit Haupt;'#13#10'{$R *.dfm}'#13#10'  qryOrders.FieldByName(''cu|'').AsInteger;'#13#10);
   try
-    Assert.AreEqual('CUSTOMER_ID CURRENCY TOTAL', Labels(Answer));
+    Assert.AreEqual('CUSTOMER_ID CURRENCY TOTAL', Labels(mAnswer));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
   // Zur Laufzeit erzeugte Datenmenge: im String nichts, auch keine Namen aus dem Gültigkeitsbereich.
-  Answer := Complete('unit Haupt;'#13#10'{$R *.dfm}'#13#10'  qryNeu.FieldByName(''cu|'')'#13#10);
+  mAnswer := Complete('unit Haupt;'#13#10'{$R *.dfm}'#13#10'  qryNeu.FieldByName(''cu|'')'#13#10);
   try
-    Assert.AreEqual(0, ItemCount(Answer));
-    Assert.IsFalse(Answer.GetValue<Boolean>('isIncomplete'));
+    Assert.AreEqual(0, ItemCount(mAnswer));
+    Assert.IsFalse(mAnswer.GetValue<Boolean>('isIncomplete'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.GuardTriggerOffersOnlyGuard;
 const
-  UnitTeile =
+  cUnitTeile =
     'unit Teile;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -497,73 +497,73 @@ const
   end;
 
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
-  AddUnit('C:\P\Teile.pas', UnitTeile);
-  Answer := Complete(Source('List := TStringList.Create;|'), ';', '');
+  AddUnit('C:\P\Teile.pas', cUnitTeile);
+  mAnswer := Complete(Source('List := TStringList.Create;|'), ';', '');
   try
-    Assert.AreEqual('Mit try…finally absichern', Labels(Answer));
+    Assert.AreEqual('Mit try…finally absichern', Labels(mAnswer));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
   // Anderer Text mit demselben Auslöser: gar nichts, auch nicht die übrige Liste.
-  Answer := Complete(Source('Laden;|'), ';', '');
+  mAnswer := Complete(Source('Laden;|'), ';', '');
   try
-    Assert.AreEqual(0, ItemCount(Answer), Answer.ToJSON);
+    Assert.AreEqual(0, ItemCount(mAnswer), mAnswer.ToJSON);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.SetModeReturnsOnlyEnumValues;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
-  AddUnit(TypenFile, UnitTypen);
-  Answer := Complete(EnumSource('  C.Anchors := [akLeft, |];'));
+  AddUnit(cTypenFile, cUnitTypen);
+  mAnswer := Complete(EnumSource('  C.Anchors := [akLeft, |];'));
   try
-    Assert.AreEqual('akLeft akTop akRight akBottom', Labels(Answer));
-    Assert.AreEqual('TAnchorKind', ItemAt(Answer, 0).GetValue<string>('data.setOf'));
+    Assert.AreEqual('akLeft akTop akRight akBottom', Labels(mAnswer));
+    Assert.AreEqual('TAnchorKind', ItemAt(mAnswer, 0).GetValue<string>('data.setOf'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.BracketWithoutSetIsEmpty;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
-  AddUnit(TypenFile, UnitTypen);
-  Answer := Complete(EnumSource('  List[0] := List[|];'), '[', '');
+  AddUnit(cTypenFile, cUnitTypen);
+  mAnswer := Complete(EnumSource('  List[0] := List[|];'), '[', '');
   try
-    Assert.AreEqual(0, ItemCount(Answer), Answer.ToJSON);
+    Assert.AreEqual(0, ItemCount(mAnswer), mAnswer.ToJSON);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.EnumValuesPrecedeCollected;
 var
-  Answer: TJSONObject;
-  Text: string;
+  mAnswer: TJSONObject;
+  mText: string;
 begin
-  AddUnit(TypenFile, UnitTypen);
-  Answer := Complete(EnumSource('  C.Align := |;'));
+  AddUnit(cTypenFile, cUnitTypen);
+  mAnswer := Complete(EnumSource('  C.Align := |;'));
   try
-    Text := Labels(Answer);
-    Assert.IsTrue(Text.StartsWith('alNone alTop alClient '), Text);
+    mText := Labels(mAnswer);
+    Assert.IsTrue(mText.StartsWith('alNone alTop alClient '), mText);
     // Aus der übrigen Liste nicht noch einmal.
-    Assert.AreEqual(1, Occurrences(' ' + Text + ' ', ' alNone '), Text);
-    Assert.AreEqual(1, Occurrences(' ' + Text + ' ', ' TControl '), Text);
-    Assert.AreEqual('00000', ItemAt(Answer, 0).GetValue<string>('sortText'));
+    Assert.AreEqual(1, Occurrences(' ' + mText + ' ', ' alNone '), mText);
+    Assert.AreEqual(1, Occurrences(' ' + mText + ' ', ' TControl '), mText);
+    Assert.AreEqual('00000', ItemAt(mAnswer, 0).GetValue<string>('sortText'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 const
-  BasisFile = 'C:\P\Basis.pas';
-  UnitBasis =
+  cBasisFile = 'C:\P\Basis.pas';
+  cUnitBasis =
     'unit Basis;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -600,43 +600,43 @@ end;
 
 procedure TLspCompletionHandleTests.InterfaceHintComesFirst;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
-  AddUnit(BasisFile, UnitBasis);
-  Answer := Complete(InterfaceSource('    Ex|'));
+  AddUnit(cBasisFile, cUnitBasis);
+  mAnswer := Complete(InterfaceSource('    Ex|'));
   try
-    Assert.IsTrue(ItemCount(Answer) > 1, Answer.ToJSON);
-    Assert.IsTrue(ItemAt(Answer, 0).GetValue<Boolean>('data.hint'), Answer.ToJSON);
-    Assert.AreEqual('IExporter', ItemAt(Answer, 0).GetValue<string>('data.container'));
+    Assert.IsTrue(ItemCount(mAnswer) > 1, mAnswer.ToJSON);
+    Assert.IsTrue(ItemAt(mAnswer, 0).GetValue<Boolean>('data.hint'), mAnswer.ToJSON);
+    Assert.AreEqual('IExporter', ItemAt(mAnswer, 0).GetValue<string>('data.container'));
     // Je Interface ein Hinweis, danach die übrige Liste.
-    Assert.AreEqual('IFlush', ItemAt(Answer, 1).GetValue<string>('data.container'));
-    Assert.IsTrue(ItemCount(Answer) > 2, Answer.ToJSON);
-    Assert.IsFalse(ItemAt(Answer, 2).ToJSON.Contains('"hint"'), Answer.ToJSON);
+    Assert.AreEqual('IFlush', ItemAt(mAnswer, 1).GetValue<string>('data.container'));
+    Assert.IsTrue(ItemCount(mAnswer) > 2, mAnswer.ToJSON);
+    Assert.IsFalse(ItemAt(mAnswer, 2).ToJSON.Contains('"hint"'), mAnswer.ToJSON);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.InterfaceBatchIsExclusive;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
-  AddUnit(BasisFile, UnitBasis);
-  Answer := Complete(InterfaceSource('    |'));
+  AddUnit(cBasisFile, cUnitBasis);
+  mAnswer := Complete(InterfaceSource('    |'));
   try
-    Assert.AreEqual('Export GetName Flush', Labels(Answer));
-    Assert.IsTrue(ItemAt(Answer, 0).GetValue<Boolean>('data.batch'));
+    Assert.AreEqual('Export GetName Flush', Labels(mAnswer));
+    Assert.IsTrue(ItemAt(mAnswer, 0).GetValue<Boolean>('data.batch'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.DeclareItemsLastAndIncomplete;
 var
-  Answer: TJSONObject;
-  Last: TJSONObject;
+  mAnswer: TJSONObject;
+  mLast: TJSONObject;
 begin
-  Answer := Complete(
+  mAnswer := Complete(
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'implementation'#13#10 +
@@ -648,19 +648,19 @@ begin
     'end;'#13#10 +
     'end.');
   try
-    Assert.IsTrue(ItemCount(Answer) > 0, Answer.ToJSON);
-    Last := ItemAt(Answer, ItemCount(Answer) - 1);
-    Assert.AreEqual('declare', Last.GetValue<string>('data.action'), Answer.ToJSON);
-    Assert.AreEqual('TotalCount', Last.GetValue<string>('data.unknown'));
-    Assert.IsTrue(Answer.GetValue<Boolean>('isIncomplete'));
+    Assert.IsTrue(ItemCount(mAnswer) > 0, mAnswer.ToJSON);
+    mLast := ItemAt(mAnswer, ItemCount(mAnswer) - 1);
+    Assert.AreEqual('declare', mLast.GetValue<string>('data.action'), mAnswer.ToJSON);
+    Assert.AreEqual('TotalCount', mLast.GetValue<string>('data.unknown'));
+    Assert.IsTrue(mAnswer.GetValue<Boolean>('isIncomplete'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.KeywordsCanBeSwitchedOff;
 const
-  Text =
+  cText =
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'implementation'#13#10 +
@@ -672,14 +672,14 @@ const
     'end;'#13#10 +
     'end.';
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
-  Answer := Complete(Text);
+  mAnswer := Complete(cText);
   try
-    Assert.IsTrue(Answer.ToJSON.Contains('"label":"begin","kind":14'), Answer.ToJSON);
-    Assert.IsTrue(Answer.ToJSON.Contains('"label":"Beginn"'), Answer.ToJSON);
+    Assert.IsTrue(mAnswer.ToJSON.Contains('"label":"begin","kind":14'), mAnswer.ToJSON);
+    Assert.IsTrue(mAnswer.ToJSON.Contains('"label":"Beginn"'), mAnswer.ToJSON);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
   FCompletion.Hooks.SettingsFor :=
     function(const AUri: string): TCompletionSettings
@@ -687,23 +687,23 @@ begin
       Result := TCompletionSettings.Default;
       Result.Keywords := False;
     end;
-  Answer := Complete(Text);
+  mAnswer := Complete(cText);
   try
-    Assert.IsFalse(Answer.ToJSON.Contains('"kind":14'), Answer.ToJSON);
-    Assert.IsTrue(Answer.ToJSON.Contains('"label":"Beginn"'), Answer.ToJSON);
+    Assert.IsFalse(mAnswer.ToJSON.Contains('"kind":14'), mAnswer.ToJSON);
+    Assert.IsTrue(mAnswer.ToJSON.Contains('"label":"Beginn"'), mAnswer.ToJSON);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.PartialSendsEnumsThenStages;
 var
-  Answer: TJSONObject;
-  Sent, Index: Integer;
-  Value: TJSONObject;
+  mAnswer: TJSONObject;
+  mSent, mIndex: Integer;
+  mValue: TJSONObject;
 begin
-  AddUnit(TypenFile, UnitTypen);
-  Answer := Complete(EnumSource('  C.Align := |;'), '', 'tok');
+  AddUnit(cTypenFile, cUnitTypen);
+  mAnswer := Complete(EnumSource('  C.Align := |;'), '', 'tok');
   try
     // Zuerst die Aufzählungswerte, dann der eigene Gültigkeitsbereich; die Antwort setzt sortText fort.
     Assert.IsTrue(Length(FProgress) >= 2, IntToStr(Length(FProgress)));
@@ -712,29 +712,29 @@ begin
     Assert.IsTrue(FProgress[0].Contains('"sortText":"00000"'), FProgress[0]);
     Assert.IsFalse(FProgress[1].Contains('"label":"alNone"'), FProgress[1]);
     Assert.IsTrue(FProgress[1].Contains('"sortText":"00003"'), FProgress[1]);
-    Assert.IsFalse(Answer.ToJSON.Contains('"label":"alNone"'), Answer.ToJSON);
-    Sent := 0;
-    for Index := 0 to High(FProgress) do
+    Assert.IsFalse(mAnswer.ToJSON.Contains('"label":"alNone"'), mAnswer.ToJSON);
+    mSent := 0;
+    for mIndex := 0 to High(FProgress) do
     begin
-      Value := TJSONObject.ParseJSONValue(FProgress[Index]) as TJSONObject;
+      mValue := TJSONObject.ParseJSONValue(FProgress[mIndex]) as TJSONObject;
       try
-        Inc(Sent, (Value.GetValue('value') as TJSONArray).Count);
+        Inc(mSent, (mValue.GetValue('value') as TJSONArray).Count);
       finally
-        Value.Free;
+        mValue.Free;
       end;
     end;
-    if ItemCount(Answer) > 0 then
+    if ItemCount(mAnswer) > 0 then
     begin
-      Assert.AreEqual(Format('%.5d', [Sent]), ItemAt(Answer, 0).GetValue<string>('sortText'));
+      Assert.AreEqual(Format('%.5d', [mSent]), ItemAt(mAnswer, 0).GetValue<string>('sortText'));
     end;
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.SenderCastIsExclusive;
 const
-  UnitSteuer =
+  cUnitSteuer =
     'unit Steuer;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -751,9 +751,9 @@ const
     'implementation'#13#10 +
     'end.';
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
-  AddUnit('C:\P\Steuer.pas', UnitSteuer);
+  AddUnit('C:\P\Steuer.pas', cUnitSteuer);
   FForm :=
     'object frmMain: TfrmMain'#13#10 +
     '  object btnSave: TButton'#13#10 +
@@ -763,7 +763,7 @@ begin
     '    OnClick = btnAnyClick'#13#10 +
     '  end'#13#10 +
     'end';
-  Answer := Complete(
+  mAnswer := Complete(
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'uses Steuer;'#13#10 +
@@ -781,38 +781,38 @@ begin
     'end;'#13#10 +
     'end.');
   try
-    Assert.AreEqual('Caption', Labels(Answer));
-    Assert.AreEqual('TButton', ItemAt(Answer, 0).GetValue<string>('data.sender'));
+    Assert.AreEqual('Caption', Labels(mAnswer));
+    Assert.AreEqual('TButton', ItemAt(mAnswer, 0).GetValue<string>('data.sender'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 const
-  KundenFile = 'C:\P\Kunden.pas';
+  cKundenFile = 'C:\P\Kunden.pas';
 
   /// <summary>Unit mit AFields Feldern, davon APrefixed mit F.</summary>
   function FieldUnit(AFields, APrefixed: Integer): string;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
     Result := 'unit Kunden;'#13#10'interface'#13#10'type'#13#10'  TKunde = class'#13#10;
-    for Index := 1 to AFields do
+    for mIndex := 1 to AFields do
     begin
-      if Index <= APrefixed then
+      if mIndex <= APrefixed then
       begin
-        Result := Result + '    FWert' + IntToStr(Index) + ': Integer;'#13#10;
+        Result := Result + '    FWert' + IntToStr(mIndex) + ': Integer;'#13#10;
       end
       else
       begin
-        Result := Result + '    Wert' + IntToStr(Index) + ': Integer;'#13#10;
+        Result := Result + '    Wert' + IntToStr(mIndex) + ': Integer;'#13#10;
       end;
     end;
     Result := Result + '  end;'#13#10'implementation'#13#10'end.';
   end;
 
 const
-  FieldSite =
+  cFieldSite =
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -825,34 +825,34 @@ const
 
 procedure TLspCompletionHandleTests.NameSuggestionsFollowProjectConvention;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
   // 3 von 5 Feldern mit F: genau 60 %.
-  AddUnit(KundenFile, FieldUnit(5, 3));
-  Answer := Complete(FieldSite);
+  AddUnit(cKundenFile, FieldUnit(5, 3));
+  mAnswer := Complete(cFieldSite);
   try
-    Assert.AreEqual('FCustomers FCustomerList FList', Labels(Answer), Answer.ToJSON);
-    Assert.AreEqual(5, ItemAt(Answer, 0).GetValue<Integer>('kind'));
-    Assert.AreEqual('TCustomerList', ItemAt(Answer, 0).GetValue<string>('detail'));
+    Assert.AreEqual('FCustomers FCustomerList FList', Labels(mAnswer), mAnswer.ToJSON);
+    Assert.AreEqual(5, ItemAt(mAnswer, 0).GetValue<Integer>('kind'));
+    Assert.AreEqual('TCustomerList', ItemAt(mAnswer, 0).GetValue<string>('detail'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.NameSuggestionsWithoutConvention;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
   // 2 von 5: unter 60 %.
-  AddUnit(KundenFile, FieldUnit(5, 2));
-  Answer := Complete(FieldSite);
+  AddUnit(cKundenFile, FieldUnit(5, 2));
+  mAnswer := Complete(cFieldSite);
   try
-    Assert.AreEqual('Customers CustomerList List', Labels(Answer), Answer.ToJSON);
+    Assert.AreEqual('Customers CustomerList List', Labels(mAnswer), mAnswer.ToJSON);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
   // Lokale Variable: vergebene Namen bekommen eine Ziffer, der Name an der Stelle selbst zählt nicht.
-  Answer := Complete(
+  mAnswer := Complete(
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'implementation'#13#10 +
@@ -864,18 +864,18 @@ begin
     'end;'#13#10 +
     'end.');
   try
-    Assert.AreEqual('Customers2 CustomerList List2', Labels(Answer), Answer.ToJSON);
-    Assert.AreEqual(6, ItemAt(Answer, 0).GetValue<Integer>('kind'));
+    Assert.AreEqual('Customers2 CustomerList List2', Labels(mAnswer), mAnswer.ToJSON);
+    Assert.AreEqual(6, ItemAt(mAnswer, 0).GetValue<Integer>('kind'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.NameSuggestionsForcedAndSwitchedOff;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
-  AddUnit(KundenFile, FieldUnit(5, 0));
+  AddUnit(cKundenFile, FieldUnit(5, 0));
   FCompletion.Hooks.NamingFor :=
     function(const AUri: string; AKind: TNamingKind): string
     begin
@@ -885,11 +885,11 @@ begin
         Result := 'F';
       end;
     end;
-  Answer := Complete(FieldSite);
+  mAnswer := Complete(cFieldSite);
   try
-    Assert.AreEqual('FCustomers FCustomerList FList', Labels(Answer), Answer.ToJSON);
+    Assert.AreEqual('FCustomers FCustomerList FList', Labels(mAnswer), mAnswer.ToJSON);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
   FCompletion.Hooks.SettingsFor :=
     function(const AUri: string): TCompletionSettings
@@ -897,16 +897,16 @@ begin
       Result := TCompletionSettings.Default;
       Result.NameSuggestions := False;
     end;
-  Answer := Complete(FieldSite);
+  mAnswer := Complete(cFieldSite);
   try
-    Assert.IsFalse(Labels(Answer).Contains('Customers'), Answer.ToJSON);
+    Assert.IsFalse(Labels(mAnswer).Contains('Customers'), mAnswer.ToJSON);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 const
-  FrageUnit =
+  cFrageUnit =
     'unit Haupt;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -919,8 +919,8 @@ const
     'end;'#10 +
     #10 +
     'end.';
-  TexteFile = 'C:\P\Texte.pas';
-  TexteUnit =
+  cTexteFile = 'C:\P\Texte.pas';
+  cTexteUnit =
     'unit Texte;'#10 +
     'interface'#10 +
     'resourcestring'#10 +
@@ -935,124 +935,124 @@ end;
 
 procedure TLspCompletionHandleTests.ResourceStringInOwnUnit;
 var
-  Answer, Item: TJSONObject;
-  Extra: TJSONArray;
+  mAnswer, mItem: TJSONObject;
+  mExtra: TJSONArray;
 begin
-  Answer := Complete(FrageUnit);
+  mAnswer := Complete(cFrageUnit);
   try
     // Abnahme: Das Literal wird zum Bezeichner, der Abschnitt hinter dem uses enthält den Text unverändert.
-    Assert.AreEqual('Als resourcestring auslagern', Labels(Answer), Answer.ToJSON);
-    Item := FirstItem(Answer);
-    Assert.AreEqual('SEintragWirklichLoeschen', Item.GetValue<string>('textEdit.newText'));
-    Assert.AreEqual(8, Item.GetValue<Integer>('textEdit.range.start.line'));
-    Assert.AreEqual(14, Item.GetValue<Integer>('textEdit.range.start.character'));
-    Assert.AreEqual(41, Item.GetValue<Integer>('textEdit.range.end.character'));
-    Extra := Item.GetValue('additionalTextEdits') as TJSONArray;
-    Assert.AreEqual(1, Integer(Extra.Count));
+    Assert.AreEqual('Als resourcestring auslagern', Labels(mAnswer), mAnswer.ToJSON);
+    mItem := FirstItem(mAnswer);
+    Assert.AreEqual('SEintragWirklichLoeschen', mItem.GetValue<string>('textEdit.newText'));
+    Assert.AreEqual(8, mItem.GetValue<Integer>('textEdit.range.start.line'));
+    Assert.AreEqual(14, mItem.GetValue<Integer>('textEdit.range.start.character'));
+    Assert.AreEqual(41, mItem.GetValue<Integer>('textEdit.range.end.character'));
+    mExtra := mItem.GetValue('additionalTextEdits') as TJSONArray;
+    Assert.AreEqual(1, Integer(mExtra.Count));
     Assert.AreEqual(#10#10'resourcestring'#10'  SEintragWirklichLoeschen = ''Eintrag wirklich löschen?'';',
-      Extra.Items[0].GetValue<string>('newText'));
-    Assert.AreEqual(4, Extra.Items[0].GetValue<Integer>('range.start.line'));
-    Assert.AreEqual('create', Item.GetValue<string>('data.action'));
-    Assert.IsNull(Item.GetValue('insertTextFormat'));
-    Assert.IsNull(Item.GetValue('command'));
+      mExtra.Items[0].GetValue<string>('newText'));
+    Assert.AreEqual(4, mExtra.Items[0].GetValue<Integer>('range.start.line'));
+    Assert.AreEqual('create', mItem.GetValue<string>('data.action'));
+    Assert.IsNull(mItem.GetValue('insertTextFormat'));
+    Assert.IsNull(mItem.GetValue('command'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.ResourceStringAsLinkedSnippet;
 var
-  Answer, Item: TJSONObject;
+  mAnswer, mItem: TJSONObject;
 begin
   FCompletion.Hooks.SnippetSupport := True;
-  Answer := Complete(StringReplace(FrageUnit, 'Eintrag wirklich', 'Preis in $ wirklich', []));
+  mAnswer := Complete(StringReplace(cFrageUnit, 'Eintrag wirklich', 'Preis in $ wirklich', []));
   try
     // Platzhalter-Modus (#51): derselbe Platzhalter an der Stelle und im Abschnitt, "$" maskiert.
-    Item := FirstItem(Answer);
-    Assert.AreEqual(2, Item.GetValue<Integer>('insertTextFormat'));
-    Assert.AreEqual('${1:SPreisInWirklichLoeschen}', Item.GetValue<string>('textEdit.newText'));
-    Assert.IsTrue(Item.GetValue<Boolean>('data.linkedEdits'), Item.ToJSON);
-    Assert.Contains((Item.GetValue('additionalTextEdits') as TJSONArray).Items[0].GetValue<string>('newText'),
+    mItem := FirstItem(mAnswer);
+    Assert.AreEqual(2, mItem.GetValue<Integer>('insertTextFormat'));
+    Assert.AreEqual('${1:SPreisInWirklichLoeschen}', mItem.GetValue<string>('textEdit.newText'));
+    Assert.IsTrue(mItem.GetValue<Boolean>('data.linkedEdits'), mItem.ToJSON);
+    Assert.Contains((mItem.GetValue('additionalTextEdits') as TJSONArray).Items[0].GetValue<string>('newText'),
       '  ${1:SPreisInWirklichLoeschen} = ''Preis in \$ wirklich löschen?'';');
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.ResourceStringReusesSameText;
 var
-  Answer: TJSONObject;
-  Items: TJSONArray;
+  mAnswer: TJSONObject;
+  mItems: TJSONArray;
 begin
-  Answer := Complete(StringReplace(FrageUnit, '  Dialogs;'#10, '  Dialogs;'#10#10'resourcestring'#10 +
+  mAnswer := Complete(StringReplace(cFrageUnit, '  Dialogs;'#10, '  Dialogs;'#10#10'resourcestring'#10 +
     '  SFrage = ''Eintrag wirklich löschen?'';'#10'  SEintragWirklichLoeschen = ''anders'';'#10, []));
   try
     // Abnahme: Bei gleichem Text steht der vorhandene Bezeichner vorn; der neue Name bekommt eine Ziffer.
-    Assert.AreEqual('Vorhandenen verwenden: SFrage Als resourcestring auslagern', Labels(Answer), Answer.ToJSON);
-    Assert.AreEqual('SFrage', FirstItem(Answer).GetValue<string>('textEdit.newText'));
-    Assert.IsNull(FirstItem(Answer).GetValue('additionalTextEdits'));
-    Items := Answer.GetValue('items') as TJSONArray;
-    Assert.AreEqual('SEintragWirklichLoeschen2', Items.Items[1].GetValue<string>('textEdit.newText'));
+    Assert.AreEqual('Vorhandenen verwenden: SFrage Als resourcestring auslagern', Labels(mAnswer), mAnswer.ToJSON);
+    Assert.AreEqual('SFrage', FirstItem(mAnswer).GetValue<string>('textEdit.newText'));
+    Assert.IsNull(FirstItem(mAnswer).GetValue('additionalTextEdits'));
+    mItems := mAnswer.GetValue('items') as TJSONArray;
+    Assert.AreEqual('SEintragWirklichLoeschen2', mItems.Items[1].GetValue<string>('textEdit.newText'));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.ResourceStringInConfiguredUnit;
 var
-  Answer, Item: TJSONObject;
-  Arguments: TJSONArray;
+  mAnswer, mItem: TJSONObject;
+  mArguments: TJSONArray;
 begin
-  AddUnit(TexteFile, TexteUnit);
+  AddUnit(cTexteFile, cTexteUnit);
   FCompletion.Hooks.SettingsFor :=
     function(const AUri: string): TCompletionSettings
     begin
       Result := TCompletionSettings.Default;
       Result.ResourceStringUnit := 'Texte';
     end;
-  Answer := Complete(FrageUnit);
+  mAnswer := Complete(cFrageUnit);
   try
-    Item := FirstItem(Answer);
-    Assert.AreEqual('SEintragWirklichLoeschen', Item.GetValue<string>('textEdit.newText'), Answer.ToJSON);
-    Assert.AreEqual('atlas.server.addResourceString', Item.GetValue<string>('command.command'));
-    Arguments := (Item.GetValue('command') as TJSONObject).GetValue('arguments') as TJSONArray;
-    Assert.AreEqual(3, Integer(Arguments.Count), Item.ToJSON);
-    Assert.AreEqual(TexteFile, Arguments.Items[0].Value);
-    Assert.AreEqual('SEintragWirklichLoeschen', Arguments.Items[1].Value);
-    Assert.AreEqual('''Eintrag wirklich löschen?''', Arguments.Items[2].Value);
+    mItem := FirstItem(mAnswer);
+    Assert.AreEqual('SEintragWirklichLoeschen', mItem.GetValue<string>('textEdit.newText'), mAnswer.ToJSON);
+    Assert.AreEqual('atlas.server.addResourceString', mItem.GetValue<string>('command.command'));
+    mArguments := (mItem.GetValue('command') as TJSONObject).GetValue('arguments') as TJSONArray;
+    Assert.AreEqual(3, Integer(mArguments.Count), mItem.ToJSON);
+    Assert.AreEqual(cTexteFile, mArguments.Items[0].Value);
+    Assert.AreEqual('SEintragWirklichLoeschen', mArguments.Items[1].Value);
+    Assert.AreEqual('''Eintrag wirklich löschen?''', mArguments.Items[2].Value);
     // Die Unit kommt ins uses der implementation.
-    Assert.Contains((Item.GetValue('additionalTextEdits') as TJSONArray).Items[0].GetValue<string>('newText'),
+    Assert.Contains((mItem.GetValue('additionalTextEdits') as TJSONArray).Items[0].GetValue<string>('newText'),
       'Texte');
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
   // Gleicher Text in der festgelegten Unit.
-  Answer := Complete(StringReplace(FrageUnit, 'Eintrag wirklich l|öschen?', 'O|K', []));
+  mAnswer := Complete(StringReplace(cFrageUnit, 'Eintrag wirklich l|öschen?', 'O|K', []));
   try
-    Assert.AreEqual('Vorhandenen verwenden: SOk Als resourcestring auslagern', Labels(Answer), Answer.ToJSON);
+    Assert.AreEqual('Vorhandenen verwenden: SOk Als resourcestring auslagern', Labels(mAnswer), mAnswer.ToJSON);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.ResourceStringOnlyInvokedAndSwitchable;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
   // Mit Auslösezeichen nicht, nur mit Strg+Leer.
-  Answer := Complete(FrageUnit, '.', '');
+  mAnswer := Complete(cFrageUnit, '.', '');
   try
-    Assert.IsFalse(Labels(Answer).Contains('resourcestring'), Answer.ToJSON);
+    Assert.IsFalse(Labels(mAnswer).Contains('resourcestring'), mAnswer.ToJSON);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
   // In einer Konstanten nicht.
-  Answer := Complete(StringReplace(FrageUnit, 'implementation'#10, 'implementation'#10'const'#10 +
+  mAnswer := Complete(StringReplace(cFrageUnit, 'implementation'#10, 'implementation'#10'const'#10 +
     '  CText = ''Kon|stante'';'#10, []).Replace('l|ö', 'lö'));
   try
-    Assert.IsFalse(Labels(Answer).Contains('resourcestring'), Answer.ToJSON);
+    Assert.IsFalse(Labels(mAnswer).Contains('resourcestring'), mAnswer.ToJSON);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
   FCompletion.Hooks.SettingsFor :=
     function(const AUri: string): TCompletionSettings
@@ -1060,93 +1060,93 @@ begin
       Result := TCompletionSettings.Default;
       Result.ResourceStrings := False;
     end;
-  Answer := Complete(FrageUnit);
+  mAnswer := Complete(cFrageUnit);
   try
-    Assert.IsFalse(Labels(Answer).Contains('resourcestring'), Answer.ToJSON);
+    Assert.IsFalse(Labels(mAnswer).Contains('resourcestring'), mAnswer.ToJSON);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.DocBlockOffersParameterAdjust;
 const
-  Source =
+  cSource =
     'unit Haupt;'#13#10'interface'#13#10'type'#13#10'  TRechner = class'#13#10 +
     '    /// <summary>Rabatt|</summary>'#13#10'    /// <param name="Customer">Kunde</param>'#13#10 +
     '    function CalcDiscount(Customer: TObject; Rate: Double): Currency;'#13#10 +
     '  end;'#13#10'implementation'#13#10'end.';
 var
-  Answer: TJSONObject;
-  Edits: TJSONArray;
-  Enabled: Boolean;
+  mAnswer: TJSONObject;
+  mEdits: TJSONArray;
+  mEnabled: Boolean;
 begin
-  Enabled := True;
+  mEnabled := True;
   FCompletion.Hooks.DocCommentsFor :=
     function(const AUri: string): Boolean
     begin
-      Result := Enabled;
+      Result := mEnabled;
     end;
-  Answer := Complete(Source);
+  mAnswer := Complete(cSource);
   try
-    Assert.AreEqual('Parameter abgleichen', Labels(Answer));
-    Edits := ((Answer.GetValue('items') as TJSONArray).Items[0] as TJSONObject).GetValue('additionalTextEdits')
+    Assert.AreEqual('Parameter abgleichen', Labels(mAnswer));
+    mEdits := ((mAnswer.GetValue('items') as TJSONArray).Items[0] as TJSONObject).GetValue('additionalTextEdits')
       as TJSONArray;
-    Assert.AreEqual(1, Integer(Edits.Count));
+    Assert.AreEqual(1, Integer(mEdits.Count));
     Assert.AreEqual('    /// <param name="Rate"></param>'#13#10,
-      (Edits.Items[0] as TJSONObject).GetValue<string>('newText'));
-    Assert.IsTrue(Answer.ToJSON.Contains('"action":"docParams"'), Answer.ToJSON);
+      (mEdits.Items[0] as TJSONObject).GetValue<string>('newText'));
+    Assert.IsTrue(mAnswer.ToJSON.Contains('"action":"docParams"'), mAnswer.ToJSON);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
   // Passt der Block, kommt das Angebot nicht.
-  Answer := Complete(StringReplace(Source, 'Kunde</param>', 'Kunde</param>'#13#10 +
+  mAnswer := Complete(StringReplace(cSource, 'Kunde</param>', 'Kunde</param>'#13#10 +
     '    /// <param name="Rate">Satz</param>', []));
   try
-    Assert.IsFalse(Labels(Answer).Contains('Parameter abgleichen'), Labels(Answer));
+    Assert.IsFalse(Labels(mAnswer).Contains('Parameter abgleichen'), Labels(mAnswer));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  Enabled := False;
-  Answer := Complete(Source);
+  mEnabled := False;
+  mAnswer := Complete(cSource);
   try
-    Assert.IsFalse(Labels(Answer).Contains('Parameter abgleichen'), Labels(Answer));
+    Assert.IsFalse(Labels(mAnswer).Contains('Parameter abgleichen'), Labels(mAnswer));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspCompletionHandleTests.DirectiveSymbolsWithOrigin;
 var
-  Answer: TJSONObject;
-  Enabled: Boolean;
+  mAnswer: TJSONObject;
+  mEnabled: Boolean;
 begin
-  Enabled := True;
+  mEnabled := True;
   FCompletion.Hooks.SymbolsFor :=
     function(const AUri: string): TConditionalContext
     begin
       Result := TConditionalContext.Default;
-      Result.CompletionEnabled := Enabled;
+      Result.CompletionEnabled := mEnabled;
       Result.HasDefines := True;
       Result.Defines := ['DEBUG', 'MSWINDOWS'];
       Result.Sources := TConditionalSymbols.SourcesOf(['DEBUG'],
         [TPair<string, string>.Create('DEBUG', 'Konfiguration Debug')], ['MSWINDOWS'], 'Win64');
     end;
-  Answer := Complete('unit Haupt;'#13#10'{$IFDEF |'#13#10'implementation'#13#10'end.');
+  mAnswer := Complete('unit Haupt;'#13#10'{$IFDEF |'#13#10'implementation'#13#10'end.');
   try
-    Assert.AreEqual('DEBUG', ItemAt(Answer, 0).GetValue<string>('label'));
-    Assert.AreEqual('Konfiguration Debug (.dproj)', ItemAt(Answer, 0).GetValue<string>('detail'));
-    Assert.IsTrue(Labels(Answer).Contains('MSWINDOWS'), Labels(Answer));
-    Assert.IsTrue(Labels(Answer).Contains('LINUX'), Labels(Answer));
-    Assert.IsFalse(Labels(Answer).Contains('ALIGN'), Labels(Answer));
+    Assert.AreEqual('DEBUG', ItemAt(mAnswer, 0).GetValue<string>('label'));
+    Assert.AreEqual('Konfiguration Debug (.dproj)', ItemAt(mAnswer, 0).GetValue<string>('detail'));
+    Assert.IsTrue(Labels(mAnswer).Contains('MSWINDOWS'), Labels(mAnswer));
+    Assert.IsTrue(Labels(mAnswer).Contains('LINUX'), Labels(mAnswer));
+    Assert.IsFalse(Labels(mAnswer).Contains('ALIGN'), Labels(mAnswer));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  Enabled := False;
-  Answer := Complete('unit Haupt;'#13#10'{$IFDEF |'#13#10'implementation'#13#10'end.');
+  mEnabled := False;
+  mAnswer := Complete('unit Haupt;'#13#10'{$IFDEF |'#13#10'implementation'#13#10'end.');
   try
-    Assert.AreEqual(0, ItemCount(Answer), Labels(Answer));
+    Assert.AreEqual(0, ItemCount(mAnswer), Labels(mAnswer));
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 

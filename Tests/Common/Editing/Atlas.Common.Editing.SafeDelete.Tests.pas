@@ -56,7 +56,7 @@ uses
   Atlas.Common.Editing.SafeDelete;
 
 const
-  Source =
+  cSource =
     'unit U;'#10 +                                                           // 0
     'interface'#10 +
     'const'#10 +
@@ -114,247 +114,247 @@ end;
 function FindIn(const AText: string; ALine, ACharacter: Integer; out ATarget: TSafeDeleteTarget;
   out AReason: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := TSafeDelete.Find(Tree, AText, Pos_(ALine, ACharacter), ATarget, AReason);
+    Result := TSafeDelete.Find(mTree, AText, Pos_(ALine, ACharacter), ATarget, AReason);
     ATarget.Node := nil;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function DeleteAt(const AText: string; ALine, ACharacter: Integer): string;
 var
-  Tree: TSyntaxTree;
-  Target: TSafeDeleteTarget;
-  Reason: string;
+  mTree: TSyntaxTree;
+  mTarget: TSafeDeleteTarget;
+  mReason: string;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    if not TSafeDelete.Find(Tree, AText, Pos_(ALine, ACharacter), Target, Reason) then
+    if not TSafeDelete.Find(mTree, AText, Pos_(ALine, ACharacter), mTarget, mReason) then
     begin
-      Exit('nicht gefunden: ' + Reason);
+      Exit('nicht gefunden: ' + mReason);
     end;
-    Result := TTextChanges.Apply(AText, TSafeDelete.Edits(Tree, AText, [Target]));
+    Result := TTextChanges.Apply(AText, TSafeDelete.Edits(mTree, AText, [mTarget]));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Tree.Diagnostics = nil;
+    Result := mTree.Diagnostics = nil;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TSafeDeleteTests.FindsSymbols;
 var
-  Target: TSafeDeleteTarget;
-  Reason: string;
+  mTarget: TSafeDeleteTarget;
+  mReason: string;
 begin
-  Assert.IsTrue(FindIn(Source, 0, 5, Target, Reason));
-  Assert.AreEqual(Ord(TSafeDeleteKind.Unit_), Ord(Target.Kind));
-  Assert.AreEqual('U', Target.Name);
-  Assert.IsTrue(FindIn(Source, 4, 3, Target, Reason));
-  Assert.AreEqual(Ord(TSafeDeleteKind.Constant), Ord(Target.Kind));
-  Assert.AreEqual('cSize', Target.Name);
-  Assert.AreEqual(4, Target.NameRange.StartPos.Line);
-  Assert.IsTrue(FindIn(Source, 7, 3, Target, Reason));
-  Assert.AreEqual(Ord(TSafeDeleteKind.Type_), Ord(Target.Kind));
-  Assert.AreEqual('TFoo', Target.Name);
-  Assert.IsTrue(FindIn(Source, 9, 9, Target, Reason));
-  Assert.AreEqual(Ord(TSafeDeleteKind.Field), Ord(Target.Kind));
-  Assert.AreEqual('FB', Target.Name);
-  Assert.AreEqual('TFoo', Target.ClassName);
-  Assert.IsTrue(FindIn(Source, 15, 14, Target, Reason));
-  Assert.AreEqual(Ord(TSafeDeleteKind.Property_), Ord(Target.Kind));
-  Assert.IsTrue(FindIn(Source, 31, 16, Target, Reason));
-  Assert.AreEqual(Ord(TSafeDeleteKind.Method), Ord(Target.Kind));
-  Assert.AreEqual('Run', Target.Name);
-  Assert.AreEqual(13, Target.NameRange.StartPos.Line, 'Rumpf zeigt auf die Deklaration');
-  Assert.IsTrue(FindIn(Source, 18, 6, Target, Reason));
-  Assert.AreEqual(Ord(TSafeDeleteKind.Variable), Ord(Target.Kind));
-  Assert.AreEqual('GB', Target.Name);
-  Assert.IsTrue(FindIn(Source, 19, 11, Target, Reason));
-  Assert.AreEqual(Ord(TSafeDeleteKind.Routine), Ord(Target.Kind));
-  Assert.AreEqual('Glob', Target.Name);
-  Assert.IsTrue(FindIn(Source, 37, 13, Target, Reason));
-  Assert.AreEqual(Ord(TSafeDeleteKind.LocalRoutine), Ord(Target.Kind));
-  Assert.AreEqual('Inner', Target.Name);
-  Assert.IsTrue(StartsText('lokale Routine', TSafeDelete.Title(Target)), TSafeDelete.Title(Target));
-  Assert.IsTrue(ContainsText(TSafeDelete.Title(Target), 'Inner'));
+  Assert.IsTrue(FindIn(cSource, 0, 5, mTarget, mReason));
+  Assert.AreEqual(Ord(TSafeDeleteKind.Unit_), Ord(mTarget.Kind));
+  Assert.AreEqual('U', mTarget.Name);
+  Assert.IsTrue(FindIn(cSource, 4, 3, mTarget, mReason));
+  Assert.AreEqual(Ord(TSafeDeleteKind.Constant), Ord(mTarget.Kind));
+  Assert.AreEqual('cSize', mTarget.Name);
+  Assert.AreEqual(4, mTarget.NameRange.StartPos.Line);
+  Assert.IsTrue(FindIn(cSource, 7, 3, mTarget, mReason));
+  Assert.AreEqual(Ord(TSafeDeleteKind.Type_), Ord(mTarget.Kind));
+  Assert.AreEqual('TFoo', mTarget.Name);
+  Assert.IsTrue(FindIn(cSource, 9, 9, mTarget, mReason));
+  Assert.AreEqual(Ord(TSafeDeleteKind.Field), Ord(mTarget.Kind));
+  Assert.AreEqual('FB', mTarget.Name);
+  Assert.AreEqual('TFoo', mTarget.ClassName);
+  Assert.IsTrue(FindIn(cSource, 15, 14, mTarget, mReason));
+  Assert.AreEqual(Ord(TSafeDeleteKind.Property_), Ord(mTarget.Kind));
+  Assert.IsTrue(FindIn(cSource, 31, 16, mTarget, mReason));
+  Assert.AreEqual(Ord(TSafeDeleteKind.Method), Ord(mTarget.Kind));
+  Assert.AreEqual('Run', mTarget.Name);
+  Assert.AreEqual(13, mTarget.NameRange.StartPos.Line, 'Rumpf zeigt auf die Deklaration');
+  Assert.IsTrue(FindIn(cSource, 18, 6, mTarget, mReason));
+  Assert.AreEqual(Ord(TSafeDeleteKind.Variable), Ord(mTarget.Kind));
+  Assert.AreEqual('GB', mTarget.Name);
+  Assert.IsTrue(FindIn(cSource, 19, 11, mTarget, mReason));
+  Assert.AreEqual(Ord(TSafeDeleteKind.Routine), Ord(mTarget.Kind));
+  Assert.AreEqual('Glob', mTarget.Name);
+  Assert.IsTrue(FindIn(cSource, 37, 13, mTarget, mReason));
+  Assert.AreEqual(Ord(TSafeDeleteKind.LocalRoutine), Ord(mTarget.Kind));
+  Assert.AreEqual('Inner', mTarget.Name);
+  Assert.IsTrue(StartsText('lokale Routine', TSafeDelete.Title(mTarget)), TSafeDelete.Title(mTarget));
+  Assert.IsTrue(ContainsText(TSafeDelete.Title(mTarget), 'Inner'));
 end;
 
 procedure TSafeDeleteTests.RefusesLocalVariable;
 var
-  Target: TSafeDeleteTarget;
-  Reason: string;
+  mTarget: TSafeDeleteTarget;
+  mReason: string;
 begin
-  Assert.IsFalse(FindIn(Source, 41, 3, Target, Reason));
-  Assert.IsTrue(ContainsText(Reason, 'unused-local'));
-  Assert.IsFalse(FindIn(Source, 21, 0, Target, Reason));
-  Assert.AreEqual('', Reason);
+  Assert.IsFalse(FindIn(cSource, 41, 3, mTarget, mReason));
+  Assert.IsTrue(ContainsText(mReason, 'unused-local'));
+  Assert.IsFalse(FindIn(cSource, 21, 0, mTarget, mReason));
+  Assert.AreEqual('', mReason);
 end;
 
 procedure TSafeDeleteTests.DeletesMethodWithBody;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := DeleteAt(Source, 10, 15);
-  Assert.IsFalse(ContainsText(Text, 'Helper;'#10'  protected'), Text);
-  Assert.IsFalse(ContainsText(Text, 'TFoo.Helper'), Text);
-  Assert.IsTrue(ContainsText(Text, '  Helper;'#10'end;'), 'Aufruf bleibt (prueft die Protokollschicht)');
-  Assert.IsTrue(Parses(Text), Text);
+  mText := DeleteAt(cSource, 10, 15);
+  Assert.IsFalse(ContainsText(mText, 'Helper;'#10'  protected'), mText);
+  Assert.IsFalse(ContainsText(mText, 'TFoo.Helper'), mText);
+  Assert.IsTrue(ContainsText(mText, '  Helper;'#10'end;'), 'Aufruf bleibt (prueft die Protokollschicht)');
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TSafeDeleteTests.DeletesOneOverload;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := DeleteAt(Source, 13, 15);
-  Assert.IsFalse(ContainsText(Text, 'Run(AValue: Integer)'), Text);
-  Assert.IsTrue(ContainsText(Text, '    procedure Run; overload;'), Text);
-  Assert.IsTrue(ContainsText(Text, 'procedure TFoo.Run;'), Text);
-  Assert.IsTrue(Parses(Text), Text);
+  mText := DeleteAt(cSource, 13, 15);
+  Assert.IsFalse(ContainsText(mText, 'Run(AValue: Integer)'), mText);
+  Assert.IsTrue(ContainsText(mText, '    procedure Run; overload;'), mText);
+  Assert.IsTrue(ContainsText(mText, 'procedure TFoo.Run;'), mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TSafeDeleteTests.DeletesFieldFromGroup;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := DeleteAt(Source, 9, 5);
-  Assert.IsTrue(ContainsText(Text, '    FB: Integer;'), Text);
-  Text := DeleteAt(Source, 9, 9);
-  Assert.IsTrue(ContainsText(Text, '    FA: Integer;'), Text);
+  mText := DeleteAt(cSource, 9, 5);
+  Assert.IsTrue(ContainsText(mText, '    FB: Integer;'), mText);
+  mText := DeleteAt(cSource, 9, 9);
+  Assert.IsTrue(ContainsText(mText, '    FA: Integer;'), mText);
 end;
 
 procedure TSafeDeleteTests.DeletesPropertyAndEmptySection;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := DeleteAt(Source, 15, 14);
-  Assert.IsFalse(ContainsText(Text, 'property A'), Text);
-  Assert.IsFalse(ContainsText(Text, 'public'), 'leerer Abschnitt faellt weg');
-  Assert.IsTrue(Parses(Text), Text);
+  mText := DeleteAt(cSource, 15, 14);
+  Assert.IsFalse(ContainsText(mText, 'property A'), mText);
+  Assert.IsFalse(ContainsText(mText, 'public'), 'leerer Abschnitt faellt weg');
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TSafeDeleteTests.DeletesClassWithBodies;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := DeleteAt(Source, 7, 3);
-  Assert.IsFalse(ContainsText(Text, 'TFoo'), Text);
-  Assert.IsFalse(ContainsText(Text, 'type'), 'leerer type-Abschnitt faellt weg');
-  Assert.IsTrue(ContainsText(Text, 'procedure Glob(AValue: Integer);'#10'  procedure Inner;'), Text);
-  Assert.IsTrue(Parses(Text), Text);
+  mText := DeleteAt(cSource, 7, 3);
+  Assert.IsFalse(ContainsText(mText, 'TFoo'), mText);
+  Assert.IsFalse(ContainsText(mText, 'type'), 'leerer type-Abschnitt faellt weg');
+  Assert.IsTrue(ContainsText(mText, 'procedure Glob(AValue: Integer);'#10'  procedure Inner;'), mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TSafeDeleteTests.DeletesConstantWithDocAndSection;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := DeleteAt(Source, 4, 3);
-  Assert.IsFalse(ContainsText(Text, 'Groesse'), 'Doku geht mit');
-  Assert.IsTrue(ContainsText(Text, 'const'#10'  cName'), Text);
-  Text := DeleteAt(Text, 3, 3);
-  Assert.IsFalse(ContainsText(Text, 'const'), 'leerer const-Abschnitt faellt weg');
-  Assert.IsTrue(ContainsText(Text, 'interface'#10'type'), Text);
-  Assert.IsTrue(Parses(Text), Text);
+  mText := DeleteAt(cSource, 4, 3);
+  Assert.IsFalse(ContainsText(mText, 'Groesse'), 'Doku geht mit');
+  Assert.IsTrue(ContainsText(mText, 'const'#10'  cName'), mText);
+  mText := DeleteAt(mText, 3, 3);
+  Assert.IsFalse(ContainsText(mText, 'const'), 'leerer const-Abschnitt faellt weg');
+  Assert.IsTrue(ContainsText(mText, 'interface'#10'type'), mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TSafeDeleteTests.DeletesVariableFromGroup;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := DeleteAt(Source, 18, 6);
-  Assert.IsTrue(ContainsText(Text, '  GA: Integer;'), Text);
-  Text := DeleteAt(Text, 18, 3);
-  Assert.IsFalse(ContainsText(Text, 'GA'), Text);
-  Assert.IsTrue(ContainsText(Text, '  end;'#10'procedure Glob'), Text);
-  Assert.IsTrue(Parses(Text), Text);
+  mText := DeleteAt(cSource, 18, 6);
+  Assert.IsTrue(ContainsText(mText, '  GA: Integer;'), mText);
+  mText := DeleteAt(mText, 18, 3);
+  Assert.IsFalse(ContainsText(mText, 'GA'), mText);
+  Assert.IsTrue(ContainsText(mText, '  end;'#10'procedure Glob'), mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TSafeDeleteTests.DeletesRoutineEverywhere;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := DeleteAt(Source, 36, 11);
-  Assert.IsFalse(ContainsText(Text, 'Glob'), Text);
-  Assert.IsFalse(ContainsText(Text, 'Inner'), Text);
-  Assert.IsTrue(Parses(Text), Text);
+  mText := DeleteAt(cSource, 36, 11);
+  Assert.IsFalse(ContainsText(mText, 'Glob'), mText);
+  Assert.IsFalse(ContainsText(mText, 'Inner'), mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TSafeDeleteTests.DeletesLocalRoutine;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := DeleteAt(Source, 37, 13);
-  Assert.IsFalse(ContainsText(Text, 'Inner'), Text);
-  Assert.IsTrue(ContainsText(Text, 'procedure Glob(AValue: Integer);'#10'var'), Text);
-  Assert.IsTrue(Parses(Text), Text);
+  mText := DeleteAt(cSource, 37, 13);
+  Assert.IsFalse(ContainsText(mText, 'Inner'), mText);
+  Assert.IsTrue(ContainsText(mText, 'procedure Glob(AValue: Integer);'#10'var'), mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TSafeDeleteTests.FindsFreedMembers;
 var
-  Tree: TSyntaxTree;
-  Layout: TClassLayout;
-  Freed: TArray<Integer>;
+  mTree: TSyntaxTree;
+  mLayout: TClassLayout;
+  mFreed: TArray<Integer>;
 begin
-  Layout := TMemberTransfer.ParseLayout(Source, 'TFoo', Tree);
+  mLayout := TMemberTransfer.ParseLayout(cSource, 'TFoo', mTree);
   try
     // Run ohne Parameter benutzt Helper, sonst niemand.
-    Freed := TSafeDelete.FreedMembers(Layout, [Layout.Find('Run')[0]]);
-    Assert.AreEqual(1, Integer(Length(Freed)));
-    Assert.AreEqual('Helper', Layout.Members[Freed[0]].Name);
+    mFreed := TSafeDelete.FreedMembers(mLayout, [mLayout.Find('Run')[0]]);
+    Assert.AreEqual(1, Integer(Length(mFreed)));
+    Assert.AreEqual('Helper', mLayout.Members[mFreed[0]].Name);
     // Beide Überladungen: Helper und FB.
-    Freed := TSafeDelete.FreedMembers(Layout, Layout.Find('Run'));
-    Assert.AreEqual(2, Integer(Length(Freed)));
+    mFreed := TSafeDelete.FreedMembers(mLayout, mLayout.Find('Run'));
+    Assert.AreEqual(2, Integer(Length(mFreed)));
     // FA bleibt wegen der Property, FB wird frei mit Run(AValue).
-    Freed := TSafeDelete.FreedMembers(Layout, [Layout.Find('Run')[1]]);
-    Assert.AreEqual(1, Integer(Length(Freed)));
-    Assert.AreEqual('FB', Layout.Members[Freed[0]].Name);
+    mFreed := TSafeDelete.FreedMembers(mLayout, [mLayout.Find('Run')[1]]);
+    Assert.AreEqual(1, Integer(Length(mFreed)));
+    Assert.AreEqual('FB', mLayout.Members[mFreed[0]].Name);
     // Mehrere Stufen: Property A weg, dann ist FA frei.
-    Freed := TSafeDelete.FreedMembers(Layout, Layout.Find('A'));
-    Assert.AreEqual(1, Integer(Length(Freed)));
-    Assert.AreEqual('FA', Layout.Members[Freed[0]].Name);
+    mFreed := TSafeDelete.FreedMembers(mLayout, mLayout.Find('A'));
+    Assert.AreEqual(1, Integer(Length(mFreed)));
+    Assert.AreEqual('FA', mLayout.Members[mFreed[0]].Name);
   finally
-    Layout.Free;
-    Tree.Free;
+    mLayout.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TSafeDeleteTests.ListsOwnLines;
 var
-  Tree: TSyntaxTree;
-  Target: TSafeDeleteTarget;
-  Reason: string;
-  Spans: TArray<TLineSpan>;
+  mTree: TSyntaxTree;
+  mTarget: TSafeDeleteTarget;
+  mReason: string;
+  mSpans: TArray<TLineSpan>;
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    Assert.IsTrue(TSafeDelete.Find(Tree, Source, Pos_(12, 15), Target, Reason));
-    Spans := TSafeDelete.OwnLines(Tree, Source, Target);
-    Assert.AreEqual(2, Integer(Length(Spans)));
-    Assert.IsTrue(Spans[0].Contains(12));
-    Assert.IsTrue(Spans[1].Contains(28));
-    Assert.IsFalse(Spans[1].Contains(31));
-    Assert.IsTrue(TSafeDelete.Find(Tree, Source, Pos_(19, 11), Target, Reason));
-    Spans := TSafeDelete.OwnLines(Tree, Source, Target);
-    Assert.AreEqual(2, Integer(Length(Spans)));
-    Assert.IsTrue(Spans[1].Contains(43));
-    Assert.IsTrue(TSafeDelete.Find(Tree, Source, Pos_(7, 3), Target, Reason));
-    Spans := TSafeDelete.OwnLines(Tree, Source, Target);
-    Assert.AreEqual(4, Integer(Length(Spans)));
+    Assert.IsTrue(TSafeDelete.Find(mTree, cSource, Pos_(12, 15), mTarget, mReason));
+    mSpans := TSafeDelete.OwnLines(mTree, cSource, mTarget);
+    Assert.AreEqual(2, Integer(Length(mSpans)));
+    Assert.IsTrue(mSpans[0].Contains(12));
+    Assert.IsTrue(mSpans[1].Contains(28));
+    Assert.IsFalse(mSpans[1].Contains(31));
+    Assert.IsTrue(TSafeDelete.Find(mTree, cSource, Pos_(19, 11), mTarget, mReason));
+    mSpans := TSafeDelete.OwnLines(mTree, cSource, mTarget);
+    Assert.AreEqual(2, Integer(Length(mSpans)));
+    Assert.IsTrue(mSpans[1].Contains(43));
+    Assert.IsTrue(TSafeDelete.Find(mTree, cSource, Pos_(7, 3), mTarget, mReason));
+    mSpans := TSafeDelete.OwnLines(mTree, cSource, mTarget);
+    Assert.AreEqual(4, Integer(Length(mSpans)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

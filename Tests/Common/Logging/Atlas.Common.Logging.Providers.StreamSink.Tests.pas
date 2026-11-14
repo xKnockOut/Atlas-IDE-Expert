@@ -31,75 +31,75 @@ uses
 
 procedure TStreamLogSinkTests.WritesOneUtf8LinePerEntry;
 var
-  Stream: TBytesStream;
-  Sink: ILogSink;
-  Lines: TArray<string>;
+  mStream: TBytesStream;
+  mSink: ILogSink;
+  mLines: TArray<string>;
 begin
-  Stream := TBytesStream.Create;
+  mStream := TBytesStream.Create;
   try
-    Sink := TStreamLogSink.Create(Stream, False);
-    Sink.Write(TLogEntry.Create(Now, TLogLevel.Info, 'Größe'));
-    Sink.Write(TLogEntry.Create(Now, TLogLevel.Error, 'zweite'));
-    Sink := nil;
+    mSink := TStreamLogSink.Create(mStream, False);
+    mSink.Write(TLogEntry.Create(Now, TLogLevel.Info, 'Größe'));
+    mSink.Write(TLogEntry.Create(Now, TLogLevel.Error, 'zweite'));
+    mSink := nil;
 
-    Lines := TEncoding.UTF8.GetString(Stream.Bytes, 0, Integer(Stream.Size)).Split([sLineBreak]);
-    Assert.AreEqual<NativeInt>(3, Length(Lines), 'zwei Zeilen und ein leerer Rest');
-    Assert.IsTrue(Lines[0].EndsWith('[INFO] Größe'), Lines[0]);
-    Assert.IsTrue(Lines[1].EndsWith('[ERROR] zweite'), Lines[1]);
-    Assert.AreEqual('', Lines[2]);
+    mLines := TEncoding.UTF8.GetString(mStream.Bytes, 0, Integer(mStream.Size)).Split([sLineBreak]);
+    Assert.AreEqual<NativeInt>(3, Length(mLines), 'zwei Zeilen und ein leerer Rest');
+    Assert.IsTrue(mLines[0].EndsWith('[INFO] Größe'), mLines[0]);
+    Assert.IsTrue(mLines[1].EndsWith('[ERROR] zweite'), mLines[1]);
+    Assert.AreEqual('', mLines[2]);
   finally
-    Stream.Free;
+    mStream.Free;
   end;
 end;
 
 procedure TStreamLogSinkTests.FileSinkAppendsToExistingFile;
 var
-  FileName: string;
-  Sink: ILogSink;
-  Content: string;
+  mFileName: string;
+  mSink: ILogSink;
+  mContent: string;
 begin
-  FileName := TPath.Combine(TPath.GetTempPath, 'Atlas.Tests.' + TGUID.NewGuid.ToString + '.log');
+  mFileName := TPath.Combine(TPath.GetTempPath, 'Atlas.Tests.' + TGUID.NewGuid.ToString + '.log');
   try
-    TFile.WriteAllText(FileName, 'alt' + sLineBreak, TEncoding.UTF8);
+    TFile.WriteAllText(mFileName, 'alt' + sLineBreak, TEncoding.UTF8);
 
-    Sink := TStreamLogSink.CreateForFile(FileName);
-    Sink.Write(TLogEntry.Create(Now, TLogLevel.Info, 'neu'));
-    Sink := nil;
+    mSink := TStreamLogSink.CreateForFile(mFileName);
+    mSink.Write(TLogEntry.Create(Now, TLogLevel.Info, 'neu'));
+    mSink := nil;
 
-    Content := TFile.ReadAllText(FileName, TEncoding.UTF8);
-    Assert.IsTrue(Content.Contains('alt'), Content);
-    Assert.IsTrue(Content.Contains('[INFO] neu'), Content);
-    Assert.IsTrue(Content.IndexOf('alt') < Content.IndexOf('neu'), Content);
+    mContent := TFile.ReadAllText(mFileName, TEncoding.UTF8);
+    Assert.IsTrue(mContent.Contains('alt'), mContent);
+    Assert.IsTrue(mContent.Contains('[INFO] neu'), mContent);
+    Assert.IsTrue(mContent.IndexOf('alt') < mContent.IndexOf('neu'), mContent);
   finally
-    if TFile.Exists(FileName) then
+    if TFile.Exists(mFileName) then
     begin
-      TFile.Delete(FileName);
+      TFile.Delete(mFileName);
     end;
   end;
 end;
 
 procedure TStreamLogSinkTests.TransformSinkRewritesText;
 var
-  Stream: TBytesStream;
-  Sink: ILogSink;
-  Text: string;
+  mStream: TBytesStream;
+  mSink: ILogSink;
+  mText: string;
 begin
-  Stream := TBytesStream.Create;
+  mStream := TBytesStream.Create;
   try
-    Sink := TTransformLogSink.Create(TStreamLogSink.Create(Stream, False),
+    mSink := TTransformLogSink.Create(TStreamLogSink.Create(mStream, False),
       function(const AText: string): string
       begin
         Result := StringReplace(AText, 'geheim', 'name#1', [rfReplaceAll]);
       end);
-    Sink.Write(TLogEntry.Create(Now, TLogLevel.Warning, 'Projekt geheim'));
-    Sink := nil;
-    Text := TEncoding.UTF8.GetString(Stream.Bytes, 0, Stream.Size);
+    mSink.Write(TLogEntry.Create(Now, TLogLevel.Warning, 'Projekt geheim'));
+    mSink := nil;
+    mText := TEncoding.UTF8.GetString(mStream.Bytes, 0, mStream.Size);
   finally
-    Stream.Free;
+    mStream.Free;
   end;
-  Assert.Contains(Text, 'Projekt name#1');
-  Assert.DoesNotContain(Text, 'geheim');
-  Assert.Contains(Text, '[WARN');
+  Assert.Contains(mText, 'Projekt name#1');
+  Assert.DoesNotContain(mText, 'geheim');
+  Assert.Contains(mText, '[WARN');
 end;
 
 initialization

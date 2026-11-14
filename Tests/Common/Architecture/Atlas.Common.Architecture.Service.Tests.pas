@@ -78,143 +78,143 @@ end;
 
 procedure TArchitectureServiceTests.CachesPerGenerationAndRequest;
 var
-  Index: ISymbolIndex;
-  Service: TArchitectureService;
-  Request: TArchitectureRequest;
-  Overview: TArchitectureOverview;
+  mIndex: ISymbolIndex;
+  mService: TArchitectureService;
+  mRequest: TArchitectureRequest;
+  mOverview: TArchitectureOverview;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(UsesUnit('A', ['B'], nil));
-  Index.AddUnit(UsesUnit('B', nil, nil));
-  Service := NewService(Index);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(UsesUnit('A', ['B'], nil));
+  mIndex.AddUnit(UsesUnit('B', nil, nil));
+  mService := NewService(mIndex);
   try
-    Request := Default(TArchitectureRequest);
-    Request.Title := 'Projekt';
-    Request.CentralUnits := 15;
-    Overview := Service.Overview(Request);
-    Assert.AreEqual(2, Integer(Length(Overview.Units)));
-    Assert.AreEqual('Projekt', Overview.Title);
-    Assert.AreEqual(Integer(Index.Generation), Integer(Overview.Generation));
-    Service.Overview(Request);
-    Assert.AreEqual(1, Service.Computations, 'gleicher Stand: aus dem Zwischenspeicher');
-    Request.Title := 'Anders';
-    Service.Overview(Request);
-    Assert.AreEqual(2, Service.Computations, 'andere Anfrage');
-    Request.Grouping.Resolution := 2;
-    Overview := Service.Overview(Request);
-    Assert.AreEqual(3, Service.Computations, 'andere Feinheit (#1366)');
-    Request.Grouping.MaxShare := 0.5;
-    Service.Overview(Request);
-    Assert.AreEqual(4, Service.Computations, 'andere Nachteilung (#1364)');
-    Assert.AreEqual(Double(2), Overview.Grouping.Resolution, 1E-9);
-    Index.AddUnit(UsesUnit('C', ['A'], nil));
-    Overview := Service.Overview(Request);
-    Assert.AreEqual(5, Service.Computations, 'neue Index-Generation');
-    Assert.AreEqual(3, Integer(Length(Overview.Units)));
+    mRequest := Default(TArchitectureRequest);
+    mRequest.Title := 'Projekt';
+    mRequest.CentralUnits := 15;
+    mOverview := mService.Overview(mRequest);
+    Assert.AreEqual(2, Integer(Length(mOverview.Units)));
+    Assert.AreEqual('Projekt', mOverview.Title);
+    Assert.AreEqual(Integer(mIndex.Generation), Integer(mOverview.Generation));
+    mService.Overview(mRequest);
+    Assert.AreEqual(1, mService.Computations, 'gleicher Stand: aus dem Zwischenspeicher');
+    mRequest.Title := 'Anders';
+    mService.Overview(mRequest);
+    Assert.AreEqual(2, mService.Computations, 'andere Anfrage');
+    mRequest.Grouping.Resolution := 2;
+    mOverview := mService.Overview(mRequest);
+    Assert.AreEqual(3, mService.Computations, 'andere Feinheit (#1366)');
+    mRequest.Grouping.MaxShare := 0.5;
+    mService.Overview(mRequest);
+    Assert.AreEqual(4, mService.Computations, 'andere Nachteilung (#1364)');
+    Assert.AreEqual(Double(2), mOverview.Grouping.Resolution, 1E-9);
+    mIndex.AddUnit(UsesUnit('C', ['A'], nil));
+    mOverview := mService.Overview(mRequest);
+    Assert.AreEqual(5, mService.Computations, 'neue Index-Generation');
+    Assert.AreEqual(3, Integer(Length(mOverview.Units)));
   finally
-    Service.Free;
+    mService.Free;
   end;
 end;
 
 procedure TArchitectureServiceTests.ScopeFilesAndLibrary;
 var
-  Index: ISymbolIndex;
-  Service: TArchitectureService;
-  Request: TArchitectureRequest;
-  Overview: TArchitectureOverview;
+  mIndex: ISymbolIndex;
+  mService: TArchitectureService;
+  mRequest: TArchitectureRequest;
+  mOverview: TArchitectureOverview;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(UsesUnit('App.Main', ['App.Data', 'System.SysUtils'], nil));
-  Index.AddUnit(UsesUnit('App.Data', nil, nil));
-  Index.AddUnit(UsesUnit('Other.Tool', ['App.Data'], nil));
-  Index.AddUnit(LibraryUnit('System.SysUtils'));
-  Service := NewService(Index);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(UsesUnit('App.Main', ['App.Data', 'System.SysUtils'], nil));
+  mIndex.AddUnit(UsesUnit('App.Data', nil, nil));
+  mIndex.AddUnit(UsesUnit('Other.Tool', ['App.Data'], nil));
+  mIndex.AddUnit(LibraryUnit('System.SysUtils'));
+  mService := NewService(mIndex);
   try
-    Request := Default(TArchitectureRequest);
-    Request.Files := [UsesUnit('App.Main', nil, nil).FileName, UsesUnit('App.Data', nil, nil).FileName];
-    Overview := Service.Overview(Request);
-    Assert.AreEqual(2, Integer(Length(Overview.Units)), 'nur Dateien des Projekts, keine Bibliothek');
-    Assert.AreEqual(-1, Overview.IndexOf('Other.Tool'));
-    Request.IncludeLibrary := True;
-    Overview := Service.Overview(Request);
-    Assert.AreEqual(3, Integer(Length(Overview.Units)));
-    Assert.IsTrue(Overview.Units[Overview.IndexOf('System.SysUtils')].Library_);
-    Request.Files := nil;
-    Request.IncludeLibrary := False;
-    Overview := Service.Overview(Request);
-    Assert.AreEqual(3, Integer(Length(Overview.Units)), 'ohne Dateiliste: alle Projekt-Units');
+    mRequest := Default(TArchitectureRequest);
+    mRequest.Files := [UsesUnit('App.Main', nil, nil).FileName, UsesUnit('App.Data', nil, nil).FileName];
+    mOverview := mService.Overview(mRequest);
+    Assert.AreEqual(2, Integer(Length(mOverview.Units)), 'nur Dateien des Projekts, keine Bibliothek');
+    Assert.AreEqual(-1, mOverview.IndexOf('Other.Tool'));
+    mRequest.IncludeLibrary := True;
+    mOverview := mService.Overview(mRequest);
+    Assert.AreEqual(3, Integer(Length(mOverview.Units)));
+    Assert.IsTrue(mOverview.Units[mOverview.IndexOf('System.SysUtils')].Library_);
+    mRequest.Files := nil;
+    mRequest.IncludeLibrary := False;
+    mOverview := mService.Overview(mRequest);
+    Assert.AreEqual(3, Integer(Length(mOverview.Units)), 'ohne Dateiliste: alle Projekt-Units');
   finally
-    Service.Free;
+    mService.Free;
   end;
 end;
 
 procedure TArchitectureServiceTests.ExcludesByPattern;
 var
-  Index: ISymbolIndex;
-  Service: TArchitectureService;
-  Request: TArchitectureRequest;
-  Overview: TArchitectureOverview;
+  mIndex: ISymbolIndex;
+  mService: TArchitectureService;
+  mRequest: TArchitectureRequest;
+  mOverview: TArchitectureOverview;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(UsesUnit('App.Main', ['App.Data'], nil));
-  Index.AddUnit(UsesUnit('App.Data', nil, nil));
-  Index.AddUnit(UsesUnit('App.Data.Tests', ['App.Data'], nil));
-  Service := NewService(Index);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(UsesUnit('App.Main', ['App.Data'], nil));
+  mIndex.AddUnit(UsesUnit('App.Data', nil, nil));
+  mIndex.AddUnit(UsesUnit('App.Data.Tests', ['App.Data'], nil));
+  mService := NewService(mIndex);
   try
-    Request := Default(TArchitectureRequest);
-    Request.Root := 'C:\Projekt';
-    Request.Exclude := ['*.Tests'];
-    Overview := Service.Overview(Request);
-    Assert.AreEqual(2, Integer(Length(Overview.Units)));
-    Assert.AreEqual(-1, Overview.IndexOf('App.Data.Tests'));
-    Assert.AreEqual('*.Tests', string.Join(',', Overview.Excludes));
+    mRequest := Default(TArchitectureRequest);
+    mRequest.Root := 'C:\Projekt';
+    mRequest.Exclude := ['*.Tests'];
+    mOverview := mService.Overview(mRequest);
+    Assert.AreEqual(2, Integer(Length(mOverview.Units)));
+    Assert.AreEqual(-1, mOverview.IndexOf('App.Data.Tests'));
+    Assert.AreEqual('*.Tests', string.Join(',', mOverview.Excludes));
   finally
-    Service.Free;
+    mService.Free;
   end;
 end;
 
 procedure TArchitectureServiceTests.RequestFromSettings;
 var
-  Settings: TServerSettings;
-  Request: TArchitectureRequest;
+  mSettings: TServerSettings;
+  mRequest: TArchitectureRequest;
 begin
-  Settings := TServerSettings.Default;
-  Settings.ArchitectureScope := 'project';
-  Settings.ArchitectureIncludeLibraryUnits := True;
-  Settings.ArchitectureCentralUnits := 20;
-  Settings.ArchitectureExclude := ['Tests/**'];
-  Settings.ArchitectureGroupingResolution := 1.5;
-  Settings.ArchitectureGroupingMaxShare := 0.4;
-  Settings.ArchitectureGroupingMinCohesion := 0;
-  Settings.ArchitectureGroupingFoundations := 'attach';
-  Request := TArchitectureRequest.FromSettings(Settings);
-  Assert.AreEqual<TArchitectureFoundations>(TArchitectureFoundations.Attach, Request.Grouping.Foundations);
+  mSettings := TServerSettings.Default;
+  mSettings.ArchitectureScope := 'project';
+  mSettings.ArchitectureIncludeLibraryUnits := True;
+  mSettings.ArchitectureCentralUnits := 20;
+  mSettings.ArchitectureExclude := ['Tests/**'];
+  mSettings.ArchitectureGroupingResolution := 1.5;
+  mSettings.ArchitectureGroupingMaxShare := 0.4;
+  mSettings.ArchitectureGroupingMinCohesion := 0;
+  mSettings.ArchitectureGroupingFoundations := 'attach';
+  mRequest := TArchitectureRequest.FromSettings(mSettings);
+  Assert.AreEqual<TArchitectureFoundations>(TArchitectureFoundations.Attach, mRequest.Grouping.Foundations);
   Assert.AreEqual<TArchitectureFoundations>(TArchitectureFoundations.Separate,
     TArchitectureRequest.FromSettings(TServerSettings.Default).Grouping.Foundations);
-  Assert.AreEqual(Double(1.5), Request.Grouping.Resolution, 1E-9);
-  Assert.AreEqual(Double(0.4), Request.Grouping.MaxShare, 1E-9);
-  Assert.AreEqual(Double(0), Request.Grouping.MinCohesion, 1E-9);
-  Assert.AreEqual('project', Request.Scope);
-  Assert.IsTrue(Request.IncludeLibrary);
-  Assert.AreEqual(20, Request.CentralUnits);
-  Assert.AreEqual('Tests/**', Request.Exclude[0]);
-  Assert.AreNotEqual(Request.Key, TArchitectureRequest.FromSettings(TServerSettings.Default).Key);
+  Assert.AreEqual(Double(1.5), mRequest.Grouping.Resolution, 1E-9);
+  Assert.AreEqual(Double(0.4), mRequest.Grouping.MaxShare, 1E-9);
+  Assert.AreEqual(Double(0), mRequest.Grouping.MinCohesion, 1E-9);
+  Assert.AreEqual('project', mRequest.Scope);
+  Assert.IsTrue(mRequest.IncludeLibrary);
+  Assert.AreEqual(20, mRequest.CentralUnits);
+  Assert.AreEqual('Tests/**', mRequest.Exclude[0]);
+  Assert.AreNotEqual(mRequest.Key, TArchitectureRequest.FromSettings(TServerSettings.Default).Key);
   // Zuordnung erklären (#1368): nur Ausgabe, nicht im Schlüssel.
   Assert.IsTrue(TArchitectureRequest.FromSettings(TServerSettings.Default).ExplainAssignment);
-  Settings := TServerSettings.Default;
-  Settings.ArchitectureExplainAssignment := False;
-  Request := TArchitectureRequest.FromSettings(Settings);
-  Assert.IsFalse(Request.ExplainAssignment);
-  Assert.AreEqual(TArchitectureRequest.FromSettings(TServerSettings.Default).Key, Request.Key);
+  mSettings := TServerSettings.Default;
+  mSettings.ArchitectureExplainAssignment := False;
+  mRequest := TArchitectureRequest.FromSettings(mSettings);
+  Assert.IsFalse(mRequest.ExplainAssignment);
+  Assert.AreEqual(TArchitectureRequest.FromSettings(TServerSettings.Default).Key, mRequest.Key);
   // Angleichung (#1367): an, Baseline aus den Einstellungen; im Schlüssel.
   Assert.IsTrue(TArchitectureRequest.FromSettings(TServerSettings.Default).KeepPrevious);
-  Settings := TServerSettings.Default;
-  Settings.ArchitectureGroupingKeepPrevious := False;
-  Settings.ArchitectureBaseline := 'docs/architektur.json';
-  Request := TArchitectureRequest.FromSettings(Settings);
-  Assert.IsFalse(Request.KeepPrevious);
-  Assert.AreEqual('docs/architektur.json', Request.Baseline);
-  Assert.AreNotEqual(TArchitectureRequest.FromSettings(TServerSettings.Default).Key, Request.Key);
+  mSettings := TServerSettings.Default;
+  mSettings.ArchitectureGroupingKeepPrevious := False;
+  mSettings.ArchitectureBaseline := 'docs/architektur.json';
+  mRequest := TArchitectureRequest.FromSettings(mSettings);
+  Assert.IsFalse(mRequest.KeepPrevious);
+  Assert.AreEqual('docs/architektur.json', mRequest.Baseline);
+  Assert.AreNotEqual(TArchitectureRequest.FromSettings(TServerSettings.Default).Key, mRequest.Key);
 end;
 
 /// <summary>Teilsystem mit der Unit AUnit.</summary>
@@ -224,7 +224,8 @@ begin
 end;
 
 /// <summary>Baseline vor dem letzten Stand; keepPrevious aus und ohne PreviousFile keine Datei.</summary>
-procedure AssertBaselineBeforeLastState(AService: TArchitectureService; var ARequest: TArchitectureRequest; const AFolder, APrevious: string);
+procedure AssertBaselineBeforeLastState(AService: TArchitectureService; var ARequest: TArchitectureRequest;
+  const AFolder, APrevious: string);
 var
   mOverview: TArchitectureOverview;
   mBaseline: TArchitectureSnapshot;
@@ -335,27 +336,27 @@ end;
 
 procedure TArchitectureServiceTests.SkipsPackagesKeepsPrograms;
 var
-  Index: ISymbolIndex;
-  Service: TArchitectureService;
-  Overview: TArchitectureOverview;
-  Package, Program_: TUnitIndex;
+  mIndex: ISymbolIndex;
+  mService: TArchitectureService;
+  mOverview: TArchitectureOverview;
+  mPackage, mProgram_: TUnitIndex;
 begin
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(UsesUnit('App.Data', nil, nil));
-  Program_ := UsesUnit('App', ['App.Data'], nil);
-  Program_.FileName := ChangeFileExt(Program_.FileName, '.dpr');
-  Index.AddUnit(Program_);
-  Package := UsesUnit('AppPackage', nil, nil);
-  Package.FileName := ChangeFileExt(Package.FileName, '.dpk');
-  Index.AddUnit(Package);
-  Service := NewService(Index);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(UsesUnit('App.Data', nil, nil));
+  mProgram_ := UsesUnit('App', ['App.Data'], nil);
+  mProgram_.FileName := ChangeFileExt(mProgram_.FileName, '.dpr');
+  mIndex.AddUnit(mProgram_);
+  mPackage := UsesUnit('AppPackage', nil, nil);
+  mPackage.FileName := ChangeFileExt(mPackage.FileName, '.dpk');
+  mIndex.AddUnit(mPackage);
+  mService := NewService(mIndex);
   try
-    Overview := Service.Overview(Default(TArchitectureRequest));
-    Assert.AreEqual(-1, Overview.IndexOf('AppPackage'), 'Package ohne uses');
-    Assert.IsTrue(Overview.IndexOf('App') >= 0, 'Programm mit uses');
-    Assert.AreEqual(2, Integer(Length(Overview.Units)));
+    mOverview := mService.Overview(Default(TArchitectureRequest));
+    Assert.AreEqual(-1, mOverview.IndexOf('AppPackage'), 'Package ohne uses');
+    Assert.IsTrue(mOverview.IndexOf('App') >= 0, 'Programm mit uses');
+    Assert.AreEqual(2, Integer(Length(mOverview.Units)));
   finally
-    Service.Free;
+    mService.Free;
   end;
 end;
 

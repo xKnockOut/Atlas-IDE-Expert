@@ -58,12 +58,12 @@ uses
   Atlas.Common.Index.Extractor;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
-  WerkzeugFile = 'C:\P\Werkzeug.pas';
-  ListenFile = 'C:\P\Listen.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
+  cWerkzeugFile = 'C:\P\Werkzeug.pas';
+  cListenFile = 'C:\P\Listen.pas';
 
   // Überladungen wie bei TStringList.Create (#498), eigene Beispiel-Unit.
-  UnitListen =
+  cUnitListen =
     'unit Listen;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -81,7 +81,7 @@ const
     'implementation'#10 +
     'end.';
 
-  UnitWerkzeug =
+  cUnitWerkzeug =
     'unit Werkzeug;'#10 +
     'interface'#10 +
     '/// <summary>Rechnet.</summary>'#10 +
@@ -98,7 +98,7 @@ const
     'end;'#10 +
     'end.';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'uses Werkzeug, Listen;'#10 +
@@ -115,39 +115,39 @@ const
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
-  Index, Line, LineStart, Scan: Integer;
+  mIndex, mLine, mLineStart, mScan: Integer;
 begin
   // Cursor hinter AMarker.
-  Index := Pos(AMarker, AText);
-  if Index = 0 then
+  mIndex := Pos(AMarker, AText);
+  if mIndex = 0 then
   begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
   end;
-  Inc(Index, Length(AMarker));
-  Line := 0;
-  LineStart := 1;
-  for Scan := 1 to Index - 1 do
+  Inc(mIndex, Length(AMarker));
+  mLine := 0;
+  mLineStart := 1;
+  for mScan := 1 to mIndex - 1 do
   begin
-    if AText[Scan] = #10 then
+    if AText[mScan] = #10 then
     begin
-      Inc(Line);
-      LineStart := Scan + 1;
+      Inc(mLine);
+      mLineStart := mScan + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 function ReadWerkzeug(const AFileName: string; out AText: string): Boolean;
 begin
-  if SameText(AFileName, ListenFile) then
+  if SameText(AFileName, cListenFile) then
   begin
-    AText := UnitListen;
+    AText := cUnitListen;
   end
   else
   begin
-    AText := UnitWerkzeug;
+    AText := cUnitWerkzeug;
   end;
-  Result := SameText(AFileName, WerkzeugFile) or SameText(AFileName, ListenFile);
+  Result := SameText(AFileName, cWerkzeugFile) or SameText(AFileName, cListenFile);
 end;
 
 { TLspSignatureHelpTests }
@@ -155,8 +155,8 @@ end;
 procedure TLspSignatureHelpTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitWerkzeug, WerkzeugFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitListen, ListenFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitListen, cListenFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -168,167 +168,167 @@ end;
 
 function TLspSignatureHelpTests.HelpAt(const ACode, AMarker: string): TSignatureHelp;
 var
-  Text: string;
-  Tree: TSyntaxTree;
+  mText: string;
+  mTree: TSyntaxTree;
 begin
-  Text := StringReplace(UnitHaupt, '  |', ACode, []);
-  Tree := TPascalParser.Parse(Text);
+  mText := StringReplace(cUnitHaupt, '  |', ACode, []);
+  mTree := TPascalParser.Parse(mText);
   try
-    Result := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile,
-      ReadWerkzeug), PositionOf(Text, AMarker));
+    Result := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, mTree, mText, cHauptFile,
+      ReadWerkzeug), PositionOf(mText, AMarker));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspSignatureHelpTests.FindsCallSiteAndActiveParameter;
 var
-  Tree: TSyntaxTree;
-  Site: TCallSite;
+  mTree: TSyntaxTree;
+  mSite: TCallSite;
 begin
-  Tree := TPascalParser.Parse('begin Rechne(1, 2, ');
+  mTree := TPascalParser.Parse('begin Rechne(1, 2, ');
   try
-    Site := TLspSignatureHelp.CallSiteAt(Tree, TTextPosition.Create(0, 19));
-    Assert.IsTrue(Site.Found);
-    Assert.AreEqual(6, Site.NamePosition.Character);
-    Assert.AreEqual(2, Site.ActiveParameter);
+    mSite := TLspSignatureHelp.CallSiteAt(mTree, TTextPosition.Create(0, 19));
+    Assert.IsTrue(mSite.Found);
+    Assert.AreEqual(6, mSite.NamePosition.Character);
+    Assert.AreEqual(2, mSite.ActiveParameter);
     // Hinter der schließenden Klammer und nach ; ist kein Aufruf mehr offen.
-    Assert.IsFalse(TLspSignatureHelp.CallSiteAt(Tree, TTextPosition.Create(0, 5)).Found);
+    Assert.IsFalse(TLspSignatureHelp.CallSiteAt(mTree, TTextPosition.Create(0, 5)).Found);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Tree := TPascalParser.Parse('begin Rechne(1); X');
+  mTree := TPascalParser.Parse('begin Rechne(1); X');
   try
-    Assert.IsFalse(TLspSignatureHelp.CallSiteAt(Tree, TTextPosition.Create(0, 18)).Found);
-    Assert.IsFalse(TLspSignatureHelp.CallSiteAt(Tree, TTextPosition.Create(0, 15)).Found);
+    Assert.IsFalse(TLspSignatureHelp.CallSiteAt(mTree, TTextPosition.Create(0, 18)).Found);
+    Assert.IsFalse(TLspSignatureHelp.CallSiteAt(mTree, TTextPosition.Create(0, 15)).Found);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspSignatureHelpTests.NestedCallsAndBracketsAreSkipped;
 var
-  Tree: TSyntaxTree;
-  Site: TCallSite;
+  mTree: TSyntaxTree;
+  mSite: TCallSite;
 begin
-  Tree := TPascalParser.Parse('begin Rechne(Liste[1, 2], (3 + 4), Max(5, 6), ');
+  mTree := TPascalParser.Parse('begin Rechne(Liste[1, 2], (3 + 4), Max(5, 6), ');
   try
-    Site := TLspSignatureHelp.CallSiteAt(Tree, TTextPosition.Create(0, 46));
-    Assert.IsTrue(Site.Found);
-    Assert.AreEqual(6, Site.NamePosition.Character);
-    Assert.AreEqual(3, Site.ActiveParameter);
-    Site := TLspSignatureHelp.CallSiteAt(Tree, TTextPosition.Create(0, 42));
-    Assert.AreEqual(35, Site.NamePosition.Character);
-    Assert.AreEqual(1, Site.ActiveParameter);
+    mSite := TLspSignatureHelp.CallSiteAt(mTree, TTextPosition.Create(0, 46));
+    Assert.IsTrue(mSite.Found);
+    Assert.AreEqual(6, mSite.NamePosition.Character);
+    Assert.AreEqual(3, mSite.ActiveParameter);
+    mSite := TLspSignatureHelp.CallSiteAt(mTree, TTextPosition.Create(0, 42));
+    Assert.AreEqual(35, mSite.NamePosition.Character);
+    Assert.AreEqual(1, mSite.ActiveParameter);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TLspSignatureHelpTests.ParsesSignatureOverSeveralLines;
 var
-  Signature: TSignature;
+  mSignature: TSignature;
 begin
-  Signature := TLspSignatureHelp.ParseSignature(['  function TFoo.Rechne(const A, B: Double;',
+  mSignature := TLspSignatureHelp.ParseSignature(['  function TFoo.Rechne(const A, B: Double;',
     '    Runden: Boolean = True): Double; overload;'], 0, 2);
-  Assert.AreEqual('function Rechne(const A, B: Double; Runden: Boolean = True): Double', Signature.Text);
-  Assert.IsTrue(Signature.Qualified);
-  Assert.AreEqual(3, Integer(Length(Signature.Parameters)));
-  Assert.AreEqual('A', Copy(Signature.Text, Signature.Parameters[0].StartIndex + 1,
-    Signature.Parameters[0].EndIndex - Signature.Parameters[0].StartIndex));
-  Assert.AreEqual('B', Copy(Signature.Text, Signature.Parameters[1].StartIndex + 1,
-    Signature.Parameters[1].EndIndex - Signature.Parameters[1].StartIndex));
-  Assert.AreEqual('Runden: Boolean = True', Copy(Signature.Text, Signature.Parameters[2].StartIndex + 1,
-    Signature.Parameters[2].EndIndex - Signature.Parameters[2].StartIndex));
+  Assert.AreEqual('function Rechne(const A, B: Double; Runden: Boolean = True): Double', mSignature.Text);
+  Assert.IsTrue(mSignature.Qualified);
+  Assert.AreEqual(3, Integer(Length(mSignature.Parameters)));
+  Assert.AreEqual('A', Copy(mSignature.Text, mSignature.Parameters[0].StartIndex + 1,
+    mSignature.Parameters[0].EndIndex - mSignature.Parameters[0].StartIndex));
+  Assert.AreEqual('B', Copy(mSignature.Text, mSignature.Parameters[1].StartIndex + 1,
+    mSignature.Parameters[1].EndIndex - mSignature.Parameters[1].StartIndex));
+  Assert.AreEqual('Runden: Boolean = True', Copy(mSignature.Text, mSignature.Parameters[2].StartIndex + 1,
+    mSignature.Parameters[2].EndIndex - mSignature.Parameters[2].StartIndex));
 end;
 
 procedure TLspSignatureHelpTests.ListsOverloadsWithDocumentation;
 var
-  Help: TSignatureHelp;
+  mHelp: TSignatureHelp;
 begin
-  Help := HelpAt('  Rechne(1.5, ', 'Rechne(1.5, ');
-  Assert.AreEqual(2, Integer(Length(Help.Signatures)));
-  Assert.AreEqual('function Rechne(Wert: Integer): Integer', Help.Signatures[0].Text);
-  Assert.AreEqual('Rechnet.', Help.Signatures[0].Documentation);
-  Assert.AreEqual('Eingabe', Help.Signatures[0].Parameters[0].Documentation);
-  Assert.AreEqual(1, Help.ActiveParameter);
+  mHelp := HelpAt('  Rechne(1.5, ', 'Rechne(1.5, ');
+  Assert.AreEqual(2, Integer(Length(mHelp.Signatures)));
+  Assert.AreEqual('function Rechne(Wert: Integer): Integer', mHelp.Signatures[0].Text);
+  Assert.AreEqual('Rechnet.', mHelp.Signatures[0].Documentation);
+  Assert.AreEqual('Eingabe', mHelp.Signatures[0].Parameters[0].Documentation);
+  Assert.AreEqual(1, mHelp.ActiveParameter);
   // Die erste Überladung hat nur einen Parameter.
-  Assert.AreEqual(1, Help.ActiveSignature);
+  Assert.AreEqual(1, mHelp.ActiveSignature);
 end;
 
 procedure TLspSignatureHelpTests.MethodShowsDeclarationOnly;
 var
-  Help: TSignatureHelp;
+  mHelp: TSignatureHelp;
 begin
-  Help := HelpAt('  Bar(', '  Bar(');
-  Assert.AreEqual(1, Integer(Length(Help.Signatures)));
-  Assert.AreEqual('procedure Bar(Anzahl: Integer; const Name: string)', Help.Signatures[0].Text);
-  Assert.AreEqual(0, Help.ActiveParameter);
+  mHelp := HelpAt('  Bar(', '  Bar(');
+  Assert.AreEqual(1, Integer(Length(mHelp.Signatures)));
+  Assert.AreEqual('procedure Bar(Anzahl: Integer; const Name: string)', mHelp.Signatures[0].Text);
+  Assert.AreEqual(0, mHelp.ActiveParameter);
   Assert.IsFalse(HelpAt('  Unbekannt(', 'Unbekannt(').Found);
 end;
 
 procedure TLspSignatureHelpTests.WritesSignatureHelp;
 var
-  Help: TSignatureHelp;
-  Json: TJSONValue;
+  mHelp: TSignatureHelp;
+  mJson: TJSONValue;
 begin
   // Ohne Default stünde in Format.Problem (Aufzählung, nicht verwaltet) ein zufälliger Wert.
-  Help := Default(TSignatureHelp);
-  SetLength(Help.Signatures, 1);
-  Help.Signatures[0].Text := 'procedure P(A: Integer)';
-  Help.Signatures[0].Documentation := '';
-  SetLength(Help.Signatures[0].Parameters, 1);
-  Help.Signatures[0].Parameters[0].StartIndex := 12;
-  Help.Signatures[0].Parameters[0].EndIndex := 22;
-  Help.Signatures[0].Parameters[0].Documentation := 'Wert';
-  Help.Signatures[0].Fits := False;
-  Help.Signatures[0].Mismatch := 0;
-  Help.ActiveSignature := 0;
-  Help.ActiveParameter := 0;
-  Json := TLspSignatureHelp.ToJson(Help);
+  mHelp := Default(TSignatureHelp);
+  SetLength(mHelp.Signatures, 1);
+  mHelp.Signatures[0].Text := 'procedure P(A: Integer)';
+  mHelp.Signatures[0].Documentation := '';
+  SetLength(mHelp.Signatures[0].Parameters, 1);
+  mHelp.Signatures[0].Parameters[0].StartIndex := 12;
+  mHelp.Signatures[0].Parameters[0].EndIndex := 22;
+  mHelp.Signatures[0].Parameters[0].Documentation := 'Wert';
+  mHelp.Signatures[0].Fits := False;
+  mHelp.Signatures[0].Mismatch := 0;
+  mHelp.ActiveSignature := 0;
+  mHelp.ActiveParameter := 0;
+  mJson := TLspSignatureHelp.ToJson(mHelp);
   try
     Assert.AreEqual('{"signatures":[{"label":"procedure P(A: Integer)","parameters":[{"label":[12,22],' +
       '"documentation":"Wert"}],"data":{"fits":false,"mismatch":0}}],"activeSignature":0,"activeParameter":0}',
-      Json.ToJSON);
+      mJson.ToJSON);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TLspSignatureHelpTests.TypesLiteralArguments;
 const
-  Code = 'begin P(''a'', ''ab'', 5, 1.5, -3, $FF, nil, [1, 2], True, #13, ''a''#13, ''it''''s'', X + 1, F(2), ';
+  cCode = 'begin P(''a'', ''ab'', 5, 1.5, -3, $FF, nil, [1, 2], True, #13, ''a''#13, ''it''''s'', X + 1, F(2), ';
 var
-  Tree: TSyntaxTree;
-  Site: TCallSite;
-  Types: string;
-  Index: Integer;
+  mTree: TSyntaxTree;
+  mSite: TCallSite;
+  mTypes: string;
+  mIndex: Integer;
 begin
-  Tree := TPascalParser.Parse(Code);
+  mTree := TPascalParser.Parse(cCode);
   try
-    Site := TLspSignatureHelp.CallSiteAt(Tree, TTextPosition.Create(0, Length(Code)));
-    Assert.IsTrue(Site.Found);
-    Assert.AreEqual(14, Site.ActiveParameter);
-    Assert.AreEqual(15, Integer(Length(Site.ArgumentFirst)));
-    Types := '';
-    for Index := 0 to High(Site.ArgumentFirst) do
+    mSite := TLspSignatureHelp.CallSiteAt(mTree, TTextPosition.Create(0, Length(cCode)));
+    Assert.IsTrue(mSite.Found);
+    Assert.AreEqual(14, mSite.ActiveParameter);
+    Assert.AreEqual(15, Integer(Length(mSite.ArgumentFirst)));
+    mTypes := '';
+    for mIndex := 0 to High(mSite.ArgumentFirst) do
     begin
-      Types := Types + TLspSignatureHelp.ArgumentType(nil, Tree, HauptFile, Site.ArgumentFirst[Index],
-        Site.ArgumentLast[Index]) + '|';
+      mTypes := mTypes + TLspSignatureHelp.ArgumentType(nil, mTree, cHauptFile, mSite.ArgumentFirst[mIndex],
+        mSite.ArgumentLast[mIndex]) + '|';
     end;
     // Ausdrücke, Aufrufe und das leere letzte Argument bleiben unbekannt.
-    Assert.AreEqual('Char|string|Integer|Double|Integer|Integer|nil|[]|Boolean|Char|string|string||||', Types);
+    Assert.AreEqual('Char|string|Integer|Double|Integer|Integer|nil|[]|Boolean|Char|string|string||||', mTypes);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   // Ein offenes String-Literal wird noch getippt.
-  Tree := TPascalParser.Parse('begin P(''a');
+  mTree := TPascalParser.Parse('begin P(''a');
   try
-    Site := TLspSignatureHelp.CallSiteAt(Tree, TTextPosition.Create(0, 10));
-    Assert.AreEqual('', TLspSignatureHelp.ArgumentType(nil, Tree, HauptFile, Site.ArgumentFirst[0],
-      Site.ArgumentLast[0]));
+    mSite := TLspSignatureHelp.CallSiteAt(mTree, TTextPosition.Create(0, 10));
+    Assert.AreEqual('', TLspSignatureHelp.ArgumentType(nil, mTree, cHauptFile, mSite.ArgumentFirst[0],
+      mSite.ArgumentLast[0]));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -359,71 +359,71 @@ end;
 
 procedure TLspSignatureHelpTests.CharArgumentsDimDuplicatesOverload;
 var
-  Help: TSignatureHelp;
+  mHelp: TSignatureHelp;
 begin
   // TListe.Create('"', ';', : die Variante mit TDoppelte passt nicht, vorgewählt die mit Optionen.
-  Help := HelpAt('  TListe.Create(''"'', '';'', ', 'TListe.Create(''"'', '';'', ');
-  Assert.AreEqual(5, Integer(Length(Help.Signatures)));
-  Assert.AreEqual(2, Help.ActiveParameter);
+  mHelp := HelpAt('  TListe.Create(''"'', '';'', ', 'TListe.Create(''"'', '';'', ');
+  Assert.AreEqual(5, Integer(Length(mHelp.Signatures)));
+  Assert.AreEqual(2, mHelp.ActiveParameter);
   Assert.AreEqual('constructor Create(Duplicates: TDoppelte; Sorted: Boolean; CaseSensitive: Boolean)',
-    Help.Signatures[4].Text);
-  Assert.IsFalse(Help.Signatures[4].Fits);
-  Assert.AreEqual(0, Help.Signatures[4].Mismatch);
-  Assert.IsFalse(Help.Signatures[1].Fits, 'Boolean');
-  Assert.IsTrue(Help.Signatures[2].Fits);
-  Assert.IsTrue(Help.Signatures[3].Fits);
-  Assert.AreEqual(3, Help.ActiveSignature);
-  Assert.AreEqual('TListenOptionen', Help.Signatures[3].Parameters[2].TypeName);
-  Assert.AreEqual('Char', Help.Signatures[3].Parameters[1].TypeName);
+    mHelp.Signatures[4].Text);
+  Assert.IsFalse(mHelp.Signatures[4].Fits);
+  Assert.AreEqual(0, mHelp.Signatures[4].Mismatch);
+  Assert.IsFalse(mHelp.Signatures[1].Fits, 'Boolean');
+  Assert.IsTrue(mHelp.Signatures[2].Fits);
+  Assert.IsTrue(mHelp.Signatures[3].Fits);
+  Assert.AreEqual(3, mHelp.ActiveSignature);
+  Assert.AreEqual('TListenOptionen', mHelp.Signatures[3].Parameters[2].TypeName);
+  Assert.AreEqual('Char', mHelp.Signatures[3].Parameters[1].TypeName);
 end;
 
 procedure TLspSignatureHelpTests.FirstCharLiteralSkipsBooleanOverload;
 var
-  Help: TSignatureHelp;
+  mHelp: TSignatureHelp;
 begin
   // Nicht die kürzeste mit genug Parametern (OwnsObjects), sondern die erste verträgliche.
-  Help := HelpAt('  TListe.Create(''"''', 'TListe.Create(''"''');
-  Assert.AreEqual(0, Help.ActiveParameter);
-  Assert.AreEqual(2, Help.ActiveSignature);
+  mHelp := HelpAt('  TListe.Create(''"''', 'TListe.Create(''"''');
+  Assert.AreEqual(0, mHelp.ActiveParameter);
+  Assert.AreEqual(2, mHelp.ActiveSignature);
 end;
 
 procedure TLspSignatureHelpTests.BooleanAndEnumArgumentsPickTheirOverload;
 var
-  Help: TSignatureHelp;
+  mHelp: TSignatureHelp;
 begin
-  Help := HelpAt('  TListe.Create(True', 'TListe.Create(True');
-  Assert.AreEqual(1, Help.ActiveSignature);
-  Assert.IsFalse(Help.Signatures[2].Fits);
-  Help := HelpAt('  TListe.Create(dupIgnorieren, ', 'TListe.Create(dupIgnorieren, ');
-  Assert.AreEqual(4, Help.ActiveSignature);
-  Assert.IsFalse(Help.Signatures[2].Fits);
-  Assert.IsTrue(Help.Signatures[4].Fits);
+  mHelp := HelpAt('  TListe.Create(True', 'TListe.Create(True');
+  Assert.AreEqual(1, mHelp.ActiveSignature);
+  Assert.IsFalse(mHelp.Signatures[2].Fits);
+  mHelp := HelpAt('  TListe.Create(dupIgnorieren, ', 'TListe.Create(dupIgnorieren, ');
+  Assert.AreEqual(4, mHelp.ActiveSignature);
+  Assert.IsFalse(mHelp.Signatures[2].Fits);
+  Assert.IsTrue(mHelp.Signatures[4].Fits);
   // Bezeichner über die Namensauflösung (Klammer schon geschlossen): Anzahl ist ein Integer-, Name ein
   // string-Parameter von TFoo.Bar.
-  Help := HelpAt('  Rechne(Anzahl);', 'Rechne(Anzahl');
-  Assert.IsTrue(Help.Signatures[0].Fits);
-  Assert.IsTrue(Help.Signatures[1].Fits, 'Ganzzahl an Double');
-  Help := HelpAt('  TListe.Create(Name);', 'TListe.Create(Name');
-  Assert.IsFalse(Help.Signatures[2].Fits, 'string an Char');
-  Assert.IsFalse(Help.Signatures[1].Fits, 'string an Boolean');
+  mHelp := HelpAt('  Rechne(Anzahl);', 'Rechne(Anzahl');
+  Assert.IsTrue(mHelp.Signatures[0].Fits);
+  Assert.IsTrue(mHelp.Signatures[1].Fits, 'Ganzzahl an Double');
+  mHelp := HelpAt('  TListe.Create(Name);', 'TListe.Create(Name');
+  Assert.IsFalse(mHelp.Signatures[2].Fits, 'string an Char');
+  Assert.IsFalse(mHelp.Signatures[1].Fits, 'string an Boolean');
 end;
 
 procedure TLspSignatureHelpTests.UnknownArgumentsFitAll;
 var
-  Help: TSignatureHelp;
-  Signature: TSignature;
+  mHelp: TSignatureHelp;
+  mSignature: TSignature;
 begin
   // Unbekannter Typ gilt als verträglich: lieber eine Variante zu viel.
-  Help := HelpAt('  TListe.Create(Gibts.Nicht, ', 'TListe.Create(Gibts.Nicht, ');
-  for Signature in Help.Signatures do
+  mHelp := HelpAt('  TListe.Create(Gibts.Nicht, ', 'TListe.Create(Gibts.Nicht, ');
+  for mSignature in mHelp.Signatures do
   begin
-    Assert.IsTrue(Signature.Fits);
+    Assert.IsTrue(mSignature.Fits);
   end;
-  Assert.AreEqual(2, Help.ActiveSignature);
+  Assert.AreEqual(2, mHelp.ActiveSignature);
   // Passt keine, bleibt die erste mit genug Parametern gewählt.
-  Help := HelpAt('  TListe.Create(1.5, ', 'TListe.Create(1.5, ');
-  Assert.AreEqual(2, Help.ActiveSignature);
-  Assert.IsFalse(Help.Signatures[2].Fits);
+  mHelp := HelpAt('  TListe.Create(1.5, ', 'TListe.Create(1.5, ');
+  Assert.AreEqual(2, mHelp.ActiveSignature);
+  Assert.IsFalse(mHelp.Signatures[2].Fits);
 end;
 
 initialization

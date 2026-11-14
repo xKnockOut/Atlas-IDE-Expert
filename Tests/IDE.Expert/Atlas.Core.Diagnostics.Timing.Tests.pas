@@ -53,14 +53,14 @@ end;
 function FindRow(const ARows: TArray<TAtlasTimingRow>; AKind: TAtlasTimingRowKind; AStep: TAtlasTimingStep;
   const AName: string; out ARow: TAtlasTimingRow): Boolean;
 var
-  Row: TAtlasTimingRow;
+  mRow: TAtlasTimingRow;
 begin
-  for Row in ARows do
+  for mRow in ARows do
   begin
-    if (Row.Kind = AKind) and ((AKind <> TAtlasTimingRowKind.Step) or (Row.Step = AStep)) and
-      ((AKind <> TAtlasTimingRowKind.Provider) or (Row.Name = AName)) then
+    if (mRow.Kind = AKind) and ((AKind <> TAtlasTimingRowKind.Step) or (mRow.Step = AStep)) and
+      ((AKind <> TAtlasTimingRowKind.Provider) or (mRow.Name = AName)) then
     begin
-      ARow := Row;
+      ARow := mRow;
       Exit(True);
     end;
   end;
@@ -109,176 +109,176 @@ end;
 
 procedure TAtlasTimingTests.KeepsLast50Queries;
 var
-  Timings: TAtlasQueryTimings;
-  Queries: TArray<TAtlasQueryTiming>;
-  Index: Integer;
+  mTimings: TAtlasQueryTimings;
+  mQueries: TArray<TAtlasQueryTiming>;
+  mIndex: Integer;
 begin
-  Timings := NewTimings;
+  mTimings := NewTimings;
   try
-    for Index := 1 to 60 do
+    for mIndex := 1 to 60 do
     begin
-      Timings.BeginQuery(0, 'Bezeichner', '');
+      mTimings.BeginQuery(0, 'Bezeichner', '');
     end;
-    Queries := Timings.Snapshot;
-    Assert.AreEqual(TAtlasQueryTimings.cCapacity, Integer(Length(Queries)));
-    Assert.AreEqual(11, Queries[0].Id, 'die ältesten fallen heraus');
-    Assert.AreEqual(60, Queries[High(Queries)].Id);
-    Assert.AreEqual(60, Timings.Current);
-    Assert.IsTrue(Queries[0].ContextMs < 0, 'ohne Zeitstempel kein Kontext');
-    Timings.Clear;
-    Assert.AreEqual(0, Integer(Length(Timings.Snapshot)));
-    Assert.AreEqual(0, Timings.Current);
+    mQueries := mTimings.Snapshot;
+    Assert.AreEqual(TAtlasQueryTimings.cCapacity, Integer(Length(mQueries)));
+    Assert.AreEqual(11, mQueries[0].Id, 'die ältesten fallen heraus');
+    Assert.AreEqual(60, mQueries[High(mQueries)].Id);
+    Assert.AreEqual(60, mTimings.Current);
+    Assert.IsTrue(mQueries[0].ContextMs < 0, 'ohne Zeitstempel kein Kontext');
+    mTimings.Clear;
+    Assert.AreEqual(0, Integer(Length(mTimings.Snapshot)));
+    Assert.AreEqual(0, mTimings.Current);
   finally
-    Timings.Free;
+    mTimings.Free;
   end;
 end;
 
 procedure TAtlasTimingTests.DelayedProviderRowIsWarned;
 var
-  Timings: TAtlasQueryTimings;
-  Id: Integer;
-  Queries: TArray<TAtlasQueryTiming>;
-  Rows: TArray<TAtlasTimingRow>;
-  Row: TAtlasTimingRow;
+  mTimings: TAtlasQueryTimings;
+  mId: Integer;
+  mQueries: TArray<TAtlasQueryTiming>;
+  mRows: TArray<TAtlasTimingRow>;
+  mRow: TAtlasTimingRow;
 begin
   // Abnahme: Bei einem künstlich verzögerten Provider erscheint dessen Zeit in Warnfarbe.
-  Timings := NewTimings;
+  mTimings := NewTimings;
   try
-    Id := Timings.BeginQuery(TAtlasQueryTimings.Stamp, 'Member, Strg+Leer', 'Unit1.pas');
-    Timings.ProviderDone(Id, 'Server', 500, 120);
-    Timings.ProviderDone(Id, 'Code-Vorlagen', 1.5, 4);
-    Timings.FilterSorted(2.5, 124, 12);
-    Timings.ListShown;
-    Timings.Drawn(3);
-    Queries := Timings.Snapshot;
-    Assert.AreEqual(1, Integer(Length(Queries)));
-    Assert.AreEqual(500.0, Queries[0].Value(TAtlasTimingStep.Provider), 0.001, 'langsamste Quelle');
-    Assert.IsTrue(Queries[0].Exceeded);
-    Rows := TAtlasTimingRows.Build(Queries);
-    Assert.IsTrue(FindRow(Rows, TAtlasTimingRowKind.Provider, TAtlasTimingStep.Provider, 'Server', Row));
-    Assert.AreEqual(500.0, Row.Last, 0.001);
-    Assert.IsTrue(Row.LastWarn, 'verzögerte Quelle in Warnfarbe');
-    Assert.IsTrue(Row.MaxWarn);
-    Assert.IsTrue(FindRow(Rows, TAtlasTimingRowKind.Provider, TAtlasTimingStep.Provider, 'Code-Vorlagen', Row));
-    Assert.IsFalse(Row.LastWarn, 'schnelle Quelle normal');
-    Assert.IsTrue(FindRow(Rows, TAtlasTimingRowKind.Step, TAtlasTimingStep.FilterSort, '', Row));
-    Assert.IsFalse(Row.LastWarn);
-    Assert.IsTrue(FindRow(Rows, TAtlasTimingRowKind.Entries, TAtlasTimingStep.Context, '', Row));
-    Assert.AreEqual(124.0, Row.Last, 0.001, 'Anzahl der Einträge');
+    mId := mTimings.BeginQuery(TAtlasQueryTimings.Stamp, 'Member, Strg+Leer', 'Unit1.pas');
+    mTimings.ProviderDone(mId, 'Server', 500, 120);
+    mTimings.ProviderDone(mId, 'Code-Vorlagen', 1.5, 4);
+    mTimings.FilterSorted(2.5, 124, 12);
+    mTimings.ListShown;
+    mTimings.Drawn(3);
+    mQueries := mTimings.Snapshot;
+    Assert.AreEqual(1, Integer(Length(mQueries)));
+    Assert.AreEqual(500.0, mQueries[0].Value(TAtlasTimingStep.Provider), 0.001, 'langsamste Quelle');
+    Assert.IsTrue(mQueries[0].Exceeded);
+    mRows := TAtlasTimingRows.Build(mQueries);
+    Assert.IsTrue(FindRow(mRows, TAtlasTimingRowKind.Provider, TAtlasTimingStep.Provider, 'Server', mRow));
+    Assert.AreEqual(500.0, mRow.Last, 0.001);
+    Assert.IsTrue(mRow.LastWarn, 'verzögerte Quelle in Warnfarbe');
+    Assert.IsTrue(mRow.MaxWarn);
+    Assert.IsTrue(FindRow(mRows, TAtlasTimingRowKind.Provider, TAtlasTimingStep.Provider, 'Code-Vorlagen', mRow));
+    Assert.IsFalse(mRow.LastWarn, 'schnelle Quelle normal');
+    Assert.IsTrue(FindRow(mRows, TAtlasTimingRowKind.Step, TAtlasTimingStep.FilterSort, '', mRow));
+    Assert.IsFalse(mRow.LastWarn);
+    Assert.IsTrue(FindRow(mRows, TAtlasTimingRowKind.Entries, TAtlasTimingStep.Context, '', mRow));
+    Assert.AreEqual(124.0, mRow.Last, 0.001, 'Anzahl der Einträge');
     // Reihenfolge: Kontext, Quellen, Filtern, Zeichnen, bis zur Liste, Einträge.
-    Assert.AreEqual(7, Integer(Length(Rows)));
-    Assert.AreEqual<TAtlasTimingStep>(TAtlasTimingStep.Context, Rows[0].Step);
-    Assert.AreEqual<TAtlasTimingRowKind>(TAtlasTimingRowKind.Provider, Rows[1].Kind);
-    Assert.AreEqual<TAtlasTimingRowKind>(TAtlasTimingRowKind.Entries, Rows[6].Kind);
+    Assert.AreEqual(7, Integer(Length(mRows)));
+    Assert.AreEqual<TAtlasTimingStep>(TAtlasTimingStep.Context, mRows[0].Step);
+    Assert.AreEqual<TAtlasTimingRowKind>(TAtlasTimingRowKind.Provider, mRows[1].Kind);
+    Assert.AreEqual<TAtlasTimingRowKind>(TAtlasTimingRowKind.Entries, mRows[6].Kind);
   finally
-    Timings.Free;
+    mTimings.Free;
   end;
 end;
 
 procedure TAtlasTimingTests.StepsKeepLongestAndFirstListOnce;
 var
-  Timings: TAtlasQueryTimings;
-  Query: TAtlasQueryTiming;
-  First: Double;
+  mTimings: TAtlasQueryTimings;
+  mQuery: TAtlasQueryTiming;
+  mFirst: Double;
 begin
-  Timings := NewTimings;
+  mTimings := NewTimings;
   try
-    Timings.BeginQuery(0, 'Bezeichner', '');
-    Timings.FilterSorted(3, 100, 40);
-    Timings.FilterSorted(14, 100, 5);
-    Timings.Drawn(4);
-    Timings.Drawn(2);
-    Timings.ListShown;
-    Query := Timings.Snapshot[0];
-    First := Query.FirstVisibleMs;
-    Assert.IsTrue(First >= 0);
-    Timings.ListShown;
-    Query := Timings.Snapshot[0];
-    Assert.AreEqual(First, Query.FirstVisibleMs, 0.0001, 'nur die erste Liste zählt');
-    Assert.AreEqual(14.0, Query.FilterSortMs, 0.001, 'längster Schritt');
-    Assert.AreEqual(2, Query.FilterSortSteps);
-    Assert.AreEqual(5, Query.Shown, 'sichtbar nach dem letzten Filtern');
-    Assert.AreEqual(4.0, Query.DrawMs, 0.001);
-    Assert.AreEqual(2, Query.DrawSteps);
-    Assert.IsTrue(TAtlasTimingBudget.Exceeded(TAtlasTimingStep.FilterSort, Query.FilterSortMs));
+    mTimings.BeginQuery(0, 'Bezeichner', '');
+    mTimings.FilterSorted(3, 100, 40);
+    mTimings.FilterSorted(14, 100, 5);
+    mTimings.Drawn(4);
+    mTimings.Drawn(2);
+    mTimings.ListShown;
+    mQuery := mTimings.Snapshot[0];
+    mFirst := mQuery.FirstVisibleMs;
+    Assert.IsTrue(mFirst >= 0);
+    mTimings.ListShown;
+    mQuery := mTimings.Snapshot[0];
+    Assert.AreEqual(mFirst, mQuery.FirstVisibleMs, 0.0001, 'nur die erste Liste zählt');
+    Assert.AreEqual(14.0, mQuery.FilterSortMs, 0.001, 'längster Schritt');
+    Assert.AreEqual(2, mQuery.FilterSortSteps);
+    Assert.AreEqual(5, mQuery.Shown, 'sichtbar nach dem letzten Filtern');
+    Assert.AreEqual(4.0, mQuery.DrawMs, 0.001);
+    Assert.AreEqual(2, mQuery.DrawSteps);
+    Assert.IsTrue(TAtlasTimingBudget.Exceeded(TAtlasTimingStep.FilterSort, mQuery.FilterSortMs));
   finally
-    Timings.Free;
+    mTimings.Free;
   end;
 end;
 
 procedure TAtlasTimingTests.StatsMeanAndMaximum;
 var
-  Timings: TAtlasQueryTimings;
-  Id: Integer;
-  Stats: TAtlasTimingStats;
-  Rows: TArray<TAtlasTimingRow>;
-  Row: TAtlasTimingRow;
+  mTimings: TAtlasQueryTimings;
+  mId: Integer;
+  mStats: TAtlasTimingStats;
+  mRows: TArray<TAtlasTimingRow>;
+  mRow: TAtlasTimingRow;
 begin
-  Timings := NewTimings;
+  mTimings := NewTimings;
   try
-    Id := Timings.BeginQuery(0, 'Bezeichner', '');
-    Timings.ProviderDone(Id, 'Server', 20, 1);
-    Timings.FilterSorted(2, 10, 10);
-    Id := Timings.BeginQuery(0, 'Bezeichner', '');
-    Timings.ProviderDone(Id, 'Server', 80, 1);
-    Timings.FilterSorted(6, 30, 10);
-    Stats := TAtlasTimingStats.From(Timings.Snapshot);
-    Assert.AreEqual(2, Stats.Queries);
-    Assert.AreEqual(4.0, Stats.Steps[TAtlasTimingStep.FilterSort].Mean, 0.001);
-    Assert.AreEqual(6.0, Stats.Steps[TAtlasTimingStep.FilterSort].Peak, 0.001);
-    Assert.AreEqual(50.0, Stats.Provider('Server').Mean, 0.001);
-    Assert.AreEqual(80.0, Stats.Provider('Server').Peak, 0.001);
-    Assert.AreEqual(20.0, Stats.Entries.Mean, 0.001);
-    Assert.AreEqual(-1.0, Stats.Steps[TAtlasTimingStep.Draw].Mean, 0.001, 'nie gezeichnet');
-    Rows := TAtlasTimingRows.Build(Timings.Snapshot);
-    Assert.IsTrue(FindRow(Rows, TAtlasTimingRowKind.Provider, TAtlasTimingStep.Provider, 'Server', Row));
-    Assert.IsTrue(Row.LastWarn);
-    Assert.IsFalse(Row.MeanWarn, 'Mittel genau im Budget');
-    Assert.IsTrue(Row.MaxWarn);
+    mId := mTimings.BeginQuery(0, 'Bezeichner', '');
+    mTimings.ProviderDone(mId, 'Server', 20, 1);
+    mTimings.FilterSorted(2, 10, 10);
+    mId := mTimings.BeginQuery(0, 'Bezeichner', '');
+    mTimings.ProviderDone(mId, 'Server', 80, 1);
+    mTimings.FilterSorted(6, 30, 10);
+    mStats := TAtlasTimingStats.From(mTimings.Snapshot);
+    Assert.AreEqual(2, mStats.Queries);
+    Assert.AreEqual(4.0, mStats.Steps[TAtlasTimingStep.FilterSort].Mean, 0.001);
+    Assert.AreEqual(6.0, mStats.Steps[TAtlasTimingStep.FilterSort].Peak, 0.001);
+    Assert.AreEqual(50.0, mStats.Provider('Server').Mean, 0.001);
+    Assert.AreEqual(80.0, mStats.Provider('Server').Peak, 0.001);
+    Assert.AreEqual(20.0, mStats.Entries.Mean, 0.001);
+    Assert.AreEqual(-1.0, mStats.Steps[TAtlasTimingStep.Draw].Mean, 0.001, 'nie gezeichnet');
+    mRows := TAtlasTimingRows.Build(mTimings.Snapshot);
+    Assert.IsTrue(FindRow(mRows, TAtlasTimingRowKind.Provider, TAtlasTimingStep.Provider, 'Server', mRow));
+    Assert.IsTrue(mRow.LastWarn);
+    Assert.IsFalse(mRow.MeanWarn, 'Mittel genau im Budget');
+    Assert.IsTrue(mRow.MaxWarn);
   finally
-    Timings.Free;
+    mTimings.Free;
   end;
 end;
 
 procedure TAtlasTimingTests.RequeryReplacesProviderTime;
 var
-  Timings: TAtlasQueryTimings;
-  Id: Integer;
-  Before: TArray<TAtlasQueryTiming>;
-  Query: TAtlasQueryTiming;
+  mTimings: TAtlasQueryTimings;
+  mId: Integer;
+  mBefore: TArray<TAtlasQueryTiming>;
+  mQuery: TAtlasQueryTiming;
 begin
-  Timings := NewTimings;
+  mTimings := NewTimings;
   try
-    Id := Timings.BeginQuery(0, 'Bezeichner', '');
-    Timings.ProviderDone(Id, 'Server', 90, 10);
-    Before := Timings.Snapshot;
+    mId := mTimings.BeginQuery(0, 'Bezeichner', '');
+    mTimings.ProviderDone(mId, 'Server', 90, 10);
+    mBefore := mTimings.Snapshot;
     // Gekürzte Liste (#431): Neu fragen ersetzt die Zeit derselben Quelle; alte Momentaufnahmen bleiben.
-    Timings.ProviderDone(Id, 'Server', 30, 12);
-    Query := Timings.Snapshot[0];
-    Assert.AreEqual(1, Integer(Length(Query.Providers)));
-    Assert.AreEqual(30.0, Query.Providers[0].Ms, 0.001);
-    Assert.AreEqual(12, Integer(Query.Providers[0].Count));
-    Assert.AreEqual(90.0, Before[0].Providers[0].Ms, 0.001);
+    mTimings.ProviderDone(mId, 'Server', 30, 12);
+    mQuery := mTimings.Snapshot[0];
+    Assert.AreEqual(1, Integer(Length(mQuery.Providers)));
+    Assert.AreEqual(30.0, mQuery.Providers[0].Ms, 0.001);
+    Assert.AreEqual(12, Integer(mQuery.Providers[0].Count));
+    Assert.AreEqual(90.0, mBefore[0].Providers[0].Ms, 0.001);
     // Meldungen zu verdrängten oder unbekannten Abfragen gehen verloren, ohne Fehler.
-    Timings.ProviderDone(999, 'Server', 1, 1);
-    Assert.AreEqual(1, Integer(Length(Timings.Snapshot)));
+    mTimings.ProviderDone(999, 'Server', 1, 1);
+    Assert.AreEqual(1, Integer(Length(mTimings.Snapshot)));
   finally
-    Timings.Free;
+    mTimings.Free;
   end;
 end;
 
 procedure TAtlasTimingTests.RowsWithoutQueries;
 var
-  Rows: TArray<TAtlasTimingRow>;
-  Row: TAtlasTimingRow;
+  mRows: TArray<TAtlasTimingRow>;
+  mRow: TAtlasTimingRow;
 begin
-  Rows := TAtlasTimingRows.Build(nil);
+  mRows := TAtlasTimingRows.Build(nil);
   // Kontext, Filtern, Zeichnen, bis zur Liste, Einträge; ohne Quellen.
-  Assert.AreEqual(5, Integer(Length(Rows)));
-  for Row in Rows do
+  Assert.AreEqual(5, Integer(Length(mRows)));
+  for mRow in mRows do
   begin
-    Assert.IsTrue(Row.Last < 0);
-    Assert.IsFalse(Row.LastWarn or Row.MeanWarn or Row.MaxWarn);
+    Assert.IsTrue(mRow.Last < 0);
+    Assert.IsFalse(mRow.LastWarn or mRow.MeanWarn or mRow.MaxWarn);
   end;
   Assert.AreEqual('–', TAtlasTimingRows.Ms(-1));
   Assert.AreEqual('3.2', TAtlasTimingRows.Ms(3.24));
@@ -287,37 +287,37 @@ end;
 
 procedure TAtlasTimingTests.ReportWithoutSourceAndFileNamesOnRequest;
 var
-  Timings: TAtlasQueryTimings;
-  Id: Integer;
-  Report: string;
+  mTimings: TAtlasQueryTimings;
+  mId: Integer;
+  mReport: string;
 begin
-  Timings := NewTimings;
+  mTimings := NewTimings;
   try
-    Id := Timings.BeginQuery(0, 'Member, automatisch', 'Kundenverwaltung.pas');
-    Timings.ProviderDone(Id, 'Server', 75, 3);
-    Timings.FilterSorted(1, 3, 3);
-    Report := TAtlasTimingReport.Build(Timings.Snapshot, Input(False));
-    Assert.Contains(Report, 'Atlas: 1.4.0');
-    Assert.Contains(Report, 'IDE: 37.0');
-    Assert.Contains(Report, 'Server 75.0 (!)', 'Überschreitung markiert');
-    Assert.Contains(Report, 'Member, automatisch');
-    Assert.Contains(Report, '"DiagnosticMode": 1', 'Einstellungen');
-    Assert.IsFalse(Report.Contains('Kundenverwaltung'), 'Dateiname nur auf Wunsch');
-    Report := TAtlasTimingReport.Build(Timings.Snapshot, Input(True));
-    Assert.Contains(Report, 'Kundenverwaltung.pas');
+    mId := mTimings.BeginQuery(0, 'Member, automatisch', 'Kundenverwaltung.pas');
+    mTimings.ProviderDone(mId, 'Server', 75, 3);
+    mTimings.FilterSorted(1, 3, 3);
+    mReport := TAtlasTimingReport.Build(mTimings.Snapshot, Input(False));
+    Assert.Contains(mReport, 'Atlas: 1.4.0');
+    Assert.Contains(mReport, 'IDE: 37.0');
+    Assert.Contains(mReport, 'Server 75.0 (!)', 'Überschreitung markiert');
+    Assert.Contains(mReport, 'Member, automatisch');
+    Assert.Contains(mReport, '"DiagnosticMode": 1', 'Einstellungen');
+    Assert.IsFalse(mReport.Contains('Kundenverwaltung'), 'Dateiname nur auf Wunsch');
+    mReport := TAtlasTimingReport.Build(mTimings.Snapshot, Input(True));
+    Assert.Contains(mReport, 'Kundenverwaltung.pas');
   finally
-    Timings.Free;
+    mTimings.Free;
   end;
 end;
 
 procedure TAtlasTimingTests.ReportShortensPathsInSettings;
 var
-  Report: string;
+  mReport: string;
 begin
-  Report := TAtlasTimingReport.Build(nil, Input(False));
-  Assert.IsFalse(Report.Contains('marco'), 'Benutzername');
-  Assert.IsFalse(Report.Contains('C:\Users'), 'Pfad');
-  Assert.Contains(Report, 'Noch keine Abfrage gemessen.');
+  mReport := TAtlasTimingReport.Build(nil, Input(False));
+  Assert.IsFalse(mReport.Contains('marco'), 'Benutzername');
+  Assert.IsFalse(mReport.Contains('C:\Users'), 'Pfad');
+  Assert.Contains(mReport, 'Noch keine Abfrage gemessen.');
 end;
 
 initialization

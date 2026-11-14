@@ -74,36 +74,36 @@ end;
 /// angekommenen Nachrichten.</summary>
 function WriteThree(AFailing: TFailingStream; const AOnFailed: TJsonRpcTraceFailedEvent): Integer;
 var
-  Output: TBytesStream;
-  Tracing: TJsonRpcTracingTransport;
-  Transport: IJsonRpcTransport;
-  Outgoing: TJSONObject;
-  Written: TObjectList<TJSONObject>;
-  Index: Integer;
+  mOutput: TBytesStream;
+  mTracing: TJsonRpcTracingTransport;
+  mTransport: IJsonRpcTransport;
+  mOutgoing: TJSONObject;
+  mWritten: TObjectList<TJSONObject>;
+  mIndex: Integer;
 begin
-  Output := TBytesStream.Create;
+  mOutput := TBytesStream.Create;
   try
-    Tracing := TJsonRpcTracingTransport.Create(TJsonRpcStreamTransport.Create(nil, Output, False), AFailing, False);
-    Transport := Tracing;
-    Tracing.OnFailed := AOnFailed;
-    for Index := 1 to 3 do
+    mTracing := TJsonRpcTracingTransport.Create(TJsonRpcStreamTransport.Create(nil, mOutput, False), AFailing, False);
+    mTransport := mTracing;
+    mTracing.OnFailed := AOnFailed;
+    for mIndex := 1 to 3 do
     begin
-      Outgoing := TJsonRpcTestSupport.Parse(Format('{"jsonrpc":"2.0","id":%d,"result":null}', [Index]));
+      mOutgoing := TJsonRpcTestSupport.Parse(Format('{"jsonrpc":"2.0","id":%d,"result":null}', [mIndex]));
       try
-        Transport.WriteMessage(Outgoing);
+        mTransport.WriteMessage(mOutgoing);
       finally
-        Outgoing.Free;
+        mOutgoing.Free;
       end;
     end;
-    Transport := nil;
-    Written := TJsonRpcTestSupport.ReadMessages(Output);
+    mTransport := nil;
+    mWritten := TJsonRpcTestSupport.ReadMessages(mOutput);
     try
-      Result := Written.Count;
+      Result := mWritten.Count;
     finally
-      Written.Free;
+      mWritten.Free;
     end;
   finally
-    Output.Free;
+    mOutput.Free;
   end;
 end;
 
@@ -111,112 +111,112 @@ end;
 
 procedure TJsonRpcTracingTransportTests.RecordsIncomingAndOutgoingMessages;
 var
-  Input, Output, Trace: TBytesStream;
-  Transport: IJsonRpcTransport;
-  Incoming, Outgoing: TJSONObject;
-  Lines: TArray<string>;
-  Written: TObjectList<TJSONObject>;
+  mInput, mOutput, mTrace: TBytesStream;
+  mTransport: IJsonRpcTransport;
+  mIncoming, mOutgoing: TJSONObject;
+  mLines: TArray<string>;
+  mWritten: TObjectList<TJSONObject>;
 begin
-  Input := TJsonRpcTestSupport.InputOf(['{"jsonrpc":"2.0","id":1,"method":"initialize"}']);
-  Output := TBytesStream.Create;
-  Trace := TBytesStream.Create;
+  mInput := TJsonRpcTestSupport.InputOf(['{"jsonrpc":"2.0","id":1,"method":"initialize"}']);
+  mOutput := TBytesStream.Create;
+  mTrace := TBytesStream.Create;
   try
-    Transport := TJsonRpcTracingTransport.Create(
-      TJsonRpcStreamTransport.Create(Input, Output, False), Trace, False);
+    mTransport := TJsonRpcTracingTransport.Create(
+      TJsonRpcStreamTransport.Create(mInput, mOutput, False), mTrace, False);
 
-    Incoming := Transport.ReadMessage;
+    mIncoming := mTransport.ReadMessage;
     try
-      Assert.AreEqual('initialize', Incoming.GetValue<string>('method'));
+      Assert.AreEqual('initialize', mIncoming.GetValue<string>('method'));
     finally
-      Incoming.Free;
+      mIncoming.Free;
     end;
 
-    Outgoing := TJsonRpcTestSupport.Parse('{"jsonrpc":"2.0","id":1,"result":null}');
+    mOutgoing := TJsonRpcTestSupport.Parse('{"jsonrpc":"2.0","id":1,"result":null}');
     try
-      Transport.WriteMessage(Outgoing);
+      mTransport.WriteMessage(mOutgoing);
     finally
-      Outgoing.Free;
+      mOutgoing.Free;
     end;
-    Transport := nil;
+    mTransport := nil;
 
-    Lines := TEncoding.UTF8.GetString(Trace.Bytes, 0, Integer(Trace.Size)).Split([sLineBreak],
+    mLines := TEncoding.UTF8.GetString(mTrace.Bytes, 0, Integer(mTrace.Size)).Split([sLineBreak],
       TStringSplitOptions.ExcludeEmpty);
-    Assert.AreEqual<NativeInt>(2, Length(Lines));
-    Assert.Contains(Lines[0], TJsonRpcTracingTransport.cIncomingMarker + ' {');
-    Assert.Contains(Lines[0], '"initialize"');
-    Assert.Contains(Lines[1], TJsonRpcTracingTransport.cOutgoingMarker + ' {');
+    Assert.AreEqual<NativeInt>(2, Length(mLines));
+    Assert.Contains(mLines[0], TJsonRpcTracingTransport.cIncomingMarker + ' {');
+    Assert.Contains(mLines[0], '"initialize"');
+    Assert.Contains(mLines[1], TJsonRpcTracingTransport.cOutgoingMarker + ' {');
 
     // Die Nachricht muss trotzdem beim Client ankommen.
-    Written := TJsonRpcTestSupport.ReadMessages(Output);
+    mWritten := TJsonRpcTestSupport.ReadMessages(mOutput);
     try
-      Assert.AreEqual<NativeInt>(1, Written.Count);
+      Assert.AreEqual<NativeInt>(1, mWritten.Count);
     finally
-      Written.Free;
+      mWritten.Free;
     end;
   finally
-    Trace.Free;
-    Output.Free;
-    Input.Free;
+    mTrace.Free;
+    mOutput.Free;
+    mInput.Free;
   end;
 end;
 
 procedure TJsonRpcTracingTransportTests.PassesClosedInputThroughWithoutTrace;
 var
-  Input, Trace: TBytesStream;
-  Transport: IJsonRpcTransport;
+  mInput, mTrace: TBytesStream;
+  mTransport: IJsonRpcTransport;
 begin
-  Input := TJsonRpcTestSupport.RawInput('');
-  Trace := TBytesStream.Create;
+  mInput := TJsonRpcTestSupport.RawInput('');
+  mTrace := TBytesStream.Create;
   try
-    Transport := TJsonRpcTracingTransport.Create(
-      TJsonRpcStreamTransport.Create(Input, nil, False), Trace, False);
+    mTransport := TJsonRpcTracingTransport.Create(
+      TJsonRpcStreamTransport.Create(mInput, nil, False), mTrace, False);
     Assert.WillRaise(
       procedure
       begin
-        Transport.ReadMessage.Free;
+        mTransport.ReadMessage.Free;
       end, EJsonRpcTransportClosed);
-    Transport := nil;
-    Assert.AreEqual<Int64>(0, Trace.Size);
+    mTransport := nil;
+    Assert.AreEqual<Int64>(0, mTrace.Size);
   finally
-    Trace.Free;
-    Input.Free;
+    mTrace.Free;
+    mInput.Free;
   end;
 end;
 
 procedure TJsonRpcTracingTransportTests.StopsTracingAfterWriteFailure;
 var
-  Failing: TFailingStream;
+  mFailing: TFailingStream;
 begin
-  Failing := TFailingStream.Create;
+  mFailing := TFailingStream.Create;
   try
     // Der Client bekommt alle Nachrichten, der Mitschnitt wird nur einmal versucht.
-    Assert.AreEqual(3, WriteThree(Failing, nil));
-    Assert.AreEqual(1, Failing.Writes);
+    Assert.AreEqual(3, WriteThree(mFailing, nil));
+    Assert.AreEqual(1, mFailing.Writes);
   finally
-    Failing.Free;
+    mFailing.Free;
   end;
 end;
 
 procedure TJsonRpcTracingTransportTests.ReportsWriteFailureOnce;
 var
-  Failing: TFailingStream;
-  Calls: Integer;
-  Reason: string;
+  mFailing: TFailingStream;
+  mCalls: Integer;
+  mReason: string;
 begin
-  Calls := 0;
-  Reason := '';
-  Failing := TFailingStream.Create;
+  mCalls := 0;
+  mReason := '';
+  mFailing := TFailingStream.Create;
   try
-    WriteThree(Failing,
+    WriteThree(mFailing,
       procedure(const AReason: string)
       begin
-        Inc(Calls);
-        Reason := AReason;
+        Inc(mCalls);
+        mReason := AReason;
       end);
-    Assert.AreEqual(1, Calls);
-    Assert.Contains(Reason, 'EWriteError');
+    Assert.AreEqual(1, mCalls);
+    Assert.Contains(mReason, 'EWriteError');
   finally
-    Failing.Free;
+    mFailing.Free;
   end;
 end;
 

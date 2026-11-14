@@ -127,29 +127,29 @@ uses
   Atlas.Core.Completion.Providers.Snippets;
 
 const
-  TryFinally = '${1:List} := ${2:TStringList}.Create;'#10'try'#10'  $0'#10'finally'#10'  ${1}.Free;'#10'end;';
+  cTryFinally = '${1:List} := ${2:TStringList}.Create;'#10'try'#10'  $0'#10'finally'#10'  ${1}.Free;'#10'end;';
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function Find(const AList: TAtlasSnippetList; const APrefix: string; out ASnippet: TAtlasSnippet): Boolean;
 var
-  Item: TAtlasSnippet;
+  mItem: TAtlasSnippet;
 begin
-  for Item in AList do
+  for mItem in AList do
   begin
-    if SameText(Item.Prefix, APrefix) then
+    if SameText(mItem.Prefix, APrefix) then
     begin
-      ASnippet := Item;
+      ASnippet := mItem;
       Exit(True);
     end;
   end;
@@ -164,12 +164,12 @@ end;
 
 function Apply(const AText: string; const AEdits: TAtlasPlaceholderEdits): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AText;
-  for Index := High(AEdits) downto 0 do
+  for mIndex := High(AEdits) downto 0 do
   begin
-    Result := Replace(Result, AEdits[Index].Start, AEdits[Index].Stop, AEdits[Index].Text);
+    Result := Replace(Result, AEdits[mIndex].Start, AEdits[mIndex].Stop, AEdits[mIndex].Text);
   end;
 end;
 
@@ -177,347 +177,347 @@ end;
 
 procedure TAtlasSnippetsTests.ParsesSnippetFile;
 var
-  Snippet: TAtlasSnippet;
-  Error: string;
+  mSnippet: TAtlasSnippet;
+  mError: string;
 begin
   Assert.IsTrue(TAtlasSnippets.Parse(
     '# Eigene Vorlage'#13#10'name: Liste anlegen'#13#10'prefix: lst'#13#10'description: TStringList mit Freigabe'#13#10 +
-    '---'#13#10'${1:L} := TStringList.Create;'#13#10'  $0'#13#10#13#10, 'C:\lst.atlas-snippet', Snippet, Error), Error);
-  Assert.AreEqual('Liste anlegen', Snippet.Name);
-  Assert.AreEqual('lst', Snippet.Prefix);
-  Assert.AreEqual('TStringList mit Freigabe', Snippet.Description);
-  Assert.AreEqual('${1:L} := TStringList.Create;'#10'  $0', Snippet.Body);
-  Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.User, Snippet.Origin);
+    '---'#13#10'${1:L} := TStringList.Create;'#13#10'  $0'#13#10#13#10, 'C:\lst.atlas-snippet', mSnippet, mError), mError);
+  Assert.AreEqual('Liste anlegen', mSnippet.Name);
+  Assert.AreEqual('lst', mSnippet.Prefix);
+  Assert.AreEqual('TStringList mit Freigabe', mSnippet.Description);
+  Assert.AreEqual('${1:L} := TStringList.Create;'#10'  $0', mSnippet.Body);
+  Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.User, mSnippet.Origin);
   // Ohne Namen gilt das Kürzel.
-  Assert.IsTrue(TAtlasSnippets.Parse('prefix: x'#10'---'#10'X;', '', Snippet, Error));
-  Assert.AreEqual('x', Snippet.Name);
+  Assert.IsTrue(TAtlasSnippets.Parse('prefix: x'#10'---'#10'X;', '', mSnippet, mError));
+  Assert.AreEqual('x', mSnippet.Name);
 end;
 
 procedure TAtlasSnippetsTests.ReportsBrokenFiles;
 var
-  Snippet: TAtlasSnippet;
-  Error: string;
+  mSnippet: TAtlasSnippet;
+  mError: string;
 begin
-  Assert.IsFalse(TAtlasSnippets.Parse('prefix: x'#10'X;', '', Snippet, Error));
-  Assert.Contains(Error, '---');
-  Assert.IsFalse(TAtlasSnippets.Parse('name: x'#10'---'#10'X;', '', Snippet, Error));
-  Assert.Contains(Error, 'prefix');
-  Assert.IsFalse(TAtlasSnippets.Parse('prefix: x'#10'scope: y'#10'---'#10'X;', '', Snippet, Error));
-  Assert.Contains(Error, 'scope');
-  Assert.IsFalse(TAtlasSnippets.Parse('prefix: x y'#10'---'#10'X;', '', Snippet, Error));
-  Assert.IsFalse(TAtlasSnippets.Parse('prefix: x'#10'---'#10#10, '', Snippet, Error));
+  Assert.IsFalse(TAtlasSnippets.Parse('prefix: x'#10'X;', '', mSnippet, mError));
+  Assert.Contains(mError, '---');
+  Assert.IsFalse(TAtlasSnippets.Parse('name: x'#10'---'#10'X;', '', mSnippet, mError));
+  Assert.Contains(mError, 'prefix');
+  Assert.IsFalse(TAtlasSnippets.Parse('prefix: x'#10'scope: y'#10'---'#10'X;', '', mSnippet, mError));
+  Assert.Contains(mError, 'scope');
+  Assert.IsFalse(TAtlasSnippets.Parse('prefix: x y'#10'---'#10'X;', '', mSnippet, mError));
+  Assert.IsFalse(TAtlasSnippets.Parse('prefix: x'#10'---'#10#10, '', mSnippet, mError));
 end;
 
 procedure TAtlasSnippetsTests.ExpandsWithIndentAndLinkedDefaults;
 var
-  Expansion: TAtlasSnippetExpansion;
+  mExpansion: TAtlasSnippetExpansion;
 begin
-  Expansion := TAtlasSnippets.Expand(TryFinally, '    ', #13#10);
+  mExpansion := TAtlasSnippets.Expand(cTryFinally, '    ', #13#10);
   Assert.AreEqual('List := TStringList.Create;'#13#10'    try'#13#10'      '#13#10'    finally'#13#10 +
-    '      List.Free;'#13#10'    end;', Expansion.Text);
-  Assert.AreEqual(4, Integer(Length(Expansion.Stops)));
+    '      List.Free;'#13#10'    end;', mExpansion.Text);
+  Assert.AreEqual(4, Integer(Length(mExpansion.Stops)));
   // List, TStringList, $0, zweites List mit dem Vorgabetext des ersten.
-  Assert.AreEqual(1, Expansion.Stops[0].Number);
-  Assert.AreEqual(0, Expansion.Stops[0].Start);
-  Assert.AreEqual(4, Expansion.Stops[0].Length);
-  Assert.AreEqual(2, Expansion.Stops[1].Number);
-  Assert.AreEqual('TStringList', Copy(Expansion.Text, Expansion.Stops[1].Start + 1, Expansion.Stops[1].Length));
-  Assert.AreEqual(0, Expansion.Stops[2].Number);
-  Assert.AreEqual(0, Expansion.Stops[2].Length);
-  Assert.AreEqual(1, Expansion.Stops[3].Number);
-  Assert.AreEqual('List', Copy(Expansion.Text, Expansion.Stops[3].Start + 1, Expansion.Stops[3].Length));
-  Assert.IsTrue(Expansion.HasPlaceholders);
+  Assert.AreEqual(1, mExpansion.Stops[0].Number);
+  Assert.AreEqual(0, mExpansion.Stops[0].Start);
+  Assert.AreEqual(4, mExpansion.Stops[0].Length);
+  Assert.AreEqual(2, mExpansion.Stops[1].Number);
+  Assert.AreEqual('TStringList', Copy(mExpansion.Text, mExpansion.Stops[1].Start + 1, mExpansion.Stops[1].Length));
+  Assert.AreEqual(0, mExpansion.Stops[2].Number);
+  Assert.AreEqual(0, mExpansion.Stops[2].Length);
+  Assert.AreEqual(1, mExpansion.Stops[3].Number);
+  Assert.AreEqual('List', Copy(mExpansion.Text, mExpansion.Stops[3].Start + 1, mExpansion.Stops[3].Length));
+  Assert.IsTrue(mExpansion.HasPlaceholders);
   Assert.AreEqual('A := B;', TAtlasSnippets.PlainText('${1:A} := ${2:B};$0'));
   Assert.IsFalse(TAtlasSnippets.Expand('Exit;$0', '', #10).HasPlaceholders);
 end;
 
 procedure TAtlasSnippetsTests.KeepsHexNumbers;
 var
-  Expansion: TAtlasSnippetExpansion;
+  mExpansion: TAtlasSnippetExpansion;
 begin
-  Expansion := TAtlasSnippets.Expand('Mask := $FF or $0F or $10 or $0A;${x} $', '', #10);
-  Assert.AreEqual('Mask := $FF or $0F or $10 or $0A;${x} $', Expansion.Text);
-  Assert.AreEqual(0, Integer(Length(Expansion.Stops)));
+  mExpansion := TAtlasSnippets.Expand('Mask := $FF or $0F or $10 or $0A;${x} $', '', #10);
+  Assert.AreEqual('Mask := $FF or $0F or $10 or $0A;${x} $', mExpansion.Text);
+  Assert.AreEqual(0, Integer(Length(mExpansion.Stops)));
   Assert.AreEqual('{$IFDEF X}Y{$ENDIF}', TAtlasSnippets.PlainText('{$IFDEF X}${1:Y}{$ENDIF}'));
 end;
 
 procedure TAtlasSnippetsTests.UserSnippetsReplaceBuiltIn;
 var
-  Own, Second: TAtlasSnippet;
-  Merged: TAtlasSnippetList;
-  Found: TAtlasSnippet;
+  mOwn, mSecond: TAtlasSnippet;
+  mMerged: TAtlasSnippetList;
+  mFound: TAtlasSnippet;
 begin
-  Own := Default(TAtlasSnippet);
-  Own.Prefix := 'TRYF';
-  Own.Body := 'eigene';
-  Own.Origin := TAtlasSnippetOrigin.User;
-  Second := Own;
-  Second.Body := 'zweite';
-  Merged := TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, [Own, Second]);
-  Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)), Integer(Length(Merged)));
-  Assert.IsTrue(Find(Merged, 'tryf', Found));
-  Assert.AreEqual('eigene', Found.Body);
-  Assert.IsTrue(Find(Merged, 'forin', Found));
-  Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.BuiltIn, Found.Origin);
+  mOwn := Default(TAtlasSnippet);
+  mOwn.Prefix := 'TRYF';
+  mOwn.Body := 'eigene';
+  mOwn.Origin := TAtlasSnippetOrigin.User;
+  mSecond := mOwn;
+  mSecond.Body := 'zweite';
+  mMerged := TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, [mOwn, mSecond]);
+  Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)), Integer(Length(mMerged)));
+  Assert.IsTrue(Find(mMerged, 'tryf', mFound));
+  Assert.AreEqual('eigene', mFound.Body);
+  Assert.IsTrue(Find(mMerged, 'forin', mFound));
+  Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.BuiltIn, mFound.Origin);
 end;
 
 procedure TAtlasSnippetsTests.BuiltInSnippetsParse;
 var
-  Snippet: TAtlasSnippet;
-  Code, Text: string;
+  mSnippet: TAtlasSnippet;
+  mCode, mText: string;
 begin
-  for Snippet in TAtlasSnippets.BuiltIn do
+  for mSnippet in TAtlasSnippets.BuiltIn do
   begin
-    Code := TAtlasSnippets.Expand(Snippet.Body, '    ', #10).Text;
+    mCode := TAtlasSnippets.Expand(mSnippet.Body, '    ', #10).Text;
     // Je nach Art an die passende Stelle einer Unit.
-    if (Snippet.Prefix = 'class') or (Snippet.Prefix = 'record') or (Snippet.Prefix = 'comp') then
+    if (mSnippet.Prefix = 'class') or (mSnippet.Prefix = 'record') or (mSnippet.Prefix = 'comp') then
     begin
-      Text := 'unit U;'#10'interface'#10'type'#10'  ' + Code + #10'implementation'#10'end.';
+      mText := 'unit U;'#10'interface'#10'type'#10'  ' + mCode + #10'implementation'#10'end.';
     end
-    else if Snippet.Prefix = 'prop' then
+    else if mSnippet.Prefix = 'prop' then
     begin
-      Text := 'unit U;'#10'interface'#10'type'#10'  T = class'#10'  public'#10'    ' + Code + #10'  end;'#10 +
+      mText := 'unit U;'#10'interface'#10'type'#10'  T = class'#10'  public'#10'    ' + mCode + #10'  end;'#10 +
         'implementation'#10'end.';
     end
-    else if (Snippet.Prefix = 'propset') or (Snippet.Prefix = 'reg') then
+    else if (mSnippet.Prefix = 'propset') or (mSnippet.Prefix = 'reg') then
     begin
-      Text := 'unit U;'#10'interface'#10'implementation'#10 + Code + #10'end.';
+      mText := 'unit U;'#10'interface'#10'implementation'#10 + mCode + #10'end.';
     end
     else
     begin
-      Text := 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'    ' + Code + #10'end;'#10'end.';
+      mText := 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'    ' + mCode + #10'end;'#10'end.';
     end;
-    Assert.IsTrue(Parses(Text), Snippet.Prefix + ': ' + Text);
-    Assert.AreNotEqual('', Snippet.Description, Snippet.Prefix);
+    Assert.IsTrue(Parses(mText), mSnippet.Prefix + ': ' + mText);
+    Assert.AreNotEqual('', mSnippet.Description, mSnippet.Prefix);
   end;
 end;
 
 procedure TAtlasSnippetsTests.LoadsFolder;
 var
-  Folder: string;
-  Lines: TStringList;
-  Snippets: TAtlasSnippetList;
-  Errors: TArray<string>;
+  mFolder: string;
+  mLines: TStringList;
+  mSnippets: TAtlasSnippetList;
+  mErrors: TArray<string>;
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'AtlasSnippets' + IntToStr(Random(1000000)));
-  ForceDirectories(Folder);
-  Lines := TStringList.Create;
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasSnippets' + IntToStr(Random(1000000)));
+  ForceDirectories(mFolder);
+  mLines := TStringList.Create;
   try
-    Lines.Text := 'prefix: lst'#13#10'---'#13#10'L := TStringList.Create;';
-    Lines.SaveToFile(TPath.Combine(Folder, 'b.atlas-snippet'), TEncoding.UTF8);
-    Lines.Text := 'kaputt';
-    Lines.SaveToFile(TPath.Combine(Folder, 'a.atlas-snippet'), TEncoding.UTF8);
-    Lines.Text := 'prefix: nicht'#13#10'---'#13#10'X;';
-    Lines.SaveToFile(TPath.Combine(Folder, 'c.txt'), TEncoding.UTF8);
-    Snippets := TAtlasSnippets.LoadFolder(Folder, Errors);
-    Assert.AreEqual(1, Integer(Length(Snippets)));
-    Assert.AreEqual('lst', Snippets[0].Prefix);
-    Assert.AreEqual('L := TStringList.Create;', Snippets[0].Body);
-    Assert.AreEqual(1, Integer(Length(Errors)));
-    Assert.StartsWith('a.atlas-snippet: ', Errors[0]);
+    mLines.Text := 'prefix: lst'#13#10'---'#13#10'L := TStringList.Create;';
+    mLines.SaveToFile(TPath.Combine(mFolder, 'b.atlas-snippet'), TEncoding.UTF8);
+    mLines.Text := 'kaputt';
+    mLines.SaveToFile(TPath.Combine(mFolder, 'a.atlas-snippet'), TEncoding.UTF8);
+    mLines.Text := 'prefix: nicht'#13#10'---'#13#10'X;';
+    mLines.SaveToFile(TPath.Combine(mFolder, 'c.txt'), TEncoding.UTF8);
+    mSnippets := TAtlasSnippets.LoadFolder(mFolder, mErrors);
+    Assert.AreEqual(1, Integer(Length(mSnippets)));
+    Assert.AreEqual('lst', mSnippets[0].Prefix);
+    Assert.AreEqual('L := TStringList.Create;', mSnippets[0].Body);
+    Assert.AreEqual(1, Integer(Length(mErrors)));
+    Assert.StartsWith('a.atlas-snippet: ', mErrors[0]);
   finally
-    Lines.Free;
-    TDirectory.Delete(Folder, True);
+    mLines.Free;
+    TDirectory.Delete(mFolder, True);
   end;
-  Snippets := TAtlasSnippets.LoadFolder(Folder, Errors);
-  Assert.AreEqual(0, Integer(Length(Snippets)));
+  mSnippets := TAtlasSnippets.LoadFolder(mFolder, mErrors);
+  Assert.AreEqual(0, Integer(Length(mSnippets)));
 end;
 
 { TAtlasPlaceholderSessionTests }
 
 function Start(const ABefore, ABody, AAfter: string; out ADocument: string): TAtlasPlaceholderSession;
 var
-  Expansion: TAtlasSnippetExpansion;
+  mExpansion: TAtlasSnippetExpansion;
 begin
-  Expansion := TAtlasSnippets.Expand(ABody, '  ', #10);
-  ADocument := ABefore + Expansion.Text + AAfter;
-  Result := TAtlasPlaceholderSession.Create(ADocument, Length(ABefore), Expansion);
+  mExpansion := TAtlasSnippets.Expand(ABody, '  ', #10);
+  ADocument := ABefore + mExpansion.Text + AAfter;
+  Result := TAtlasPlaceholderSession.Create(ADocument, Length(ABefore), mExpansion);
 end;
 
 procedure TAtlasPlaceholderSessionTests.TabWalksThroughPlaceholders;
 var
-  Session: TAtlasPlaceholderSession;
-  Document: string;
+  mSession: TAtlasPlaceholderSession;
+  mDocument: string;
 begin
-  Session := Start('begin'#10'  ', TryFinally, #10'end;', Document);
+  mSession := Start('begin'#10'  ', cTryFinally, #10'end;', mDocument);
   try
-    Assert.AreEqual(1, Session.CurrentNumber);
-    Assert.AreEqual(1, Session.Position);
-    Assert.AreEqual(2, Integer(Session.Count));
-    Assert.AreEqual(8, Session.Current.Start);
-    Assert.AreEqual('List', Session.FieldText(Session.Current));
-    Assert.AreEqual(3, Integer(Length(Session.Fields)));
-    Session.Previous;
-    Assert.AreEqual(1, Session.CurrentNumber);
-    Assert.IsTrue(Session.Next);
-    Assert.AreEqual('TStringList', Session.FieldText(Session.Current));
-    Assert.AreEqual(2, Session.Position);
-    Session.Previous;
-    Assert.AreEqual(1, Session.CurrentNumber);
-    Assert.IsTrue(Session.Next);
+    Assert.AreEqual(1, mSession.CurrentNumber);
+    Assert.AreEqual(1, mSession.Position);
+    Assert.AreEqual(2, Integer(mSession.Count));
+    Assert.AreEqual(8, mSession.Current.Start);
+    Assert.AreEqual('List', mSession.FieldText(mSession.Current));
+    Assert.AreEqual(3, Integer(Length(mSession.Fields)));
+    mSession.Previous;
+    Assert.AreEqual(1, mSession.CurrentNumber);
+    Assert.IsTrue(mSession.Next);
+    Assert.AreEqual('TStringList', mSession.FieldText(mSession.Current));
+    Assert.AreEqual(2, mSession.Position);
+    mSession.Previous;
+    Assert.AreEqual(1, mSession.CurrentNumber);
+    Assert.IsTrue(mSession.Next);
     // Nach dem letzten Platzhalter: Endposition in der leeren Zeile zwischen try und finally.
-    Assert.IsFalse(Session.Next);
-    Assert.AreEqual(0, Session.CurrentNumber);
-    Assert.AreEqual(Pos('try'#10'    ', Document) + 7, Session.FinalOffset);
+    Assert.IsFalse(mSession.Next);
+    Assert.AreEqual(0, mSession.CurrentNumber);
+    Assert.AreEqual(Pos('try'#10'    ', mDocument) + 7, mSession.FinalOffset);
   finally
-    Session.Free;
+    mSession.Free;
   end;
 end;
 
 procedure TAtlasPlaceholderSessionTests.TypingUpdatesLinkedPlaceholders;
 var
-  Session: TAtlasPlaceholderSession;
-  Document: string;
-  Edits: TAtlasPlaceholderEdits;
+  mSession: TAtlasPlaceholderSession;
+  mDocument: string;
+  mEdits: TAtlasPlaceholderEdits;
 begin
-  Session := Start('', TryFinally, '', Document);
+  mSession := Start('', cTryFinally, '', mDocument);
   try
     // Die markierte Vorgabe "List" wird durch "I" ersetzt, dann "tems" getippt.
-    Document := Replace(Document, 0, 4, 'I');
-    Assert.IsTrue(Session.Update(Document));
-    Document := Replace(Document, 1, 1, 'tems');
-    Assert.IsTrue(Session.Update(Document));
-    Assert.AreEqual('Items', Session.FieldText(Session.Current));
-    Edits := Session.MirrorEdits;
-    Assert.AreEqual(1, Integer(Length(Edits)));
-    Assert.AreEqual('Items', Edits[0].Text);
-    Document := Apply(Document, Edits);
-    Session.Applied(Edits);
-    Assert.AreEqual(Document, Session.Text);
-    Assert.AreEqual('Items := TStringList.Create;'#10'  try'#10'    '#10'  finally'#10'    Items.Free;'#10'  end;', Document);
+    mDocument := Replace(mDocument, 0, 4, 'I');
+    Assert.IsTrue(mSession.Update(mDocument));
+    mDocument := Replace(mDocument, 1, 1, 'tems');
+    Assert.IsTrue(mSession.Update(mDocument));
+    Assert.AreEqual('Items', mSession.FieldText(mSession.Current));
+    mEdits := mSession.MirrorEdits;
+    Assert.AreEqual(1, Integer(Length(mEdits)));
+    Assert.AreEqual('Items', mEdits[0].Text);
+    mDocument := Apply(mDocument, mEdits);
+    mSession.Applied(mEdits);
+    Assert.AreEqual(mDocument, mSession.Text);
+    Assert.AreEqual('Items := TStringList.Create;'#10'  try'#10'    '#10'  finally'#10'    Items.Free;'#10'  end;', mDocument);
     // Die Benachrichtigung über das Angleichen ändert nichts mehr.
-    Assert.IsTrue(Session.Update(Document));
-    Assert.AreEqual(0, Integer(Length(Session.MirrorEdits)));
+    Assert.IsTrue(mSession.Update(mDocument));
+    Assert.AreEqual(0, Integer(Length(mSession.MirrorEdits)));
     // Im verknüpften Platzhalter getippt: Er wird zur Vorlage.
-    Document := Replace(Document, Pos('Items.Free', Document) + 4, Pos('Items.Free', Document) + 4, 'X');
-    Assert.IsTrue(Session.Update(Document));
-    Edits := Session.MirrorEdits;
-    Assert.AreEqual('ItemsX', Edits[0].Text);
-    Assert.AreEqual(0, Edits[0].Start);
-    Document := Apply(Document, Edits);
-    Session.Applied(Edits);
-    Assert.StartsWith('ItemsX := TStringList', Document);
-    Assert.AreEqual(Document, Session.Text);
+    mDocument := Replace(mDocument, Pos('Items.Free', mDocument) + 4, Pos('Items.Free', mDocument) + 4, 'X');
+    Assert.IsTrue(mSession.Update(mDocument));
+    mEdits := mSession.MirrorEdits;
+    Assert.AreEqual('ItemsX', mEdits[0].Text);
+    Assert.AreEqual(0, mEdits[0].Start);
+    mDocument := Apply(mDocument, mEdits);
+    mSession.Applied(mEdits);
+    Assert.StartsWith('ItemsX := TStringList', mDocument);
+    Assert.AreEqual(mDocument, mSession.Text);
     // Alles bis auf einen leeren Platzhalter löschen geht auch.
-    Session.Previous;
-    Document := Replace(Document, 0, 6, '');
-    Assert.IsTrue(Session.Update(Document));
-    Assert.AreEqual(0, Session.Current.Length);
+    mSession.Previous;
+    mDocument := Replace(mDocument, 0, 6, '');
+    Assert.IsTrue(mSession.Update(mDocument));
+    Assert.AreEqual(0, mSession.Current.Length);
   finally
-    Session.Free;
+    mSession.Free;
   end;
 end;
 
 procedure TAtlasPlaceholderSessionTests.TypingAfterPlaceholderMovesFollowingOnes;
 var
-  Session: TAtlasPlaceholderSession;
-  Document: string;
-  Final: Integer;
+  mSession: TAtlasPlaceholderSession;
+  mDocument: string;
+  mFinal: Integer;
 begin
-  Session := Start('x', TryFinally, '', Document);
+  mSession := Start('x', cTryFinally, '', mDocument);
   try
-    Assert.IsTrue(Session.Next);
-    Final := Session.FinalOffset;
+    Assert.IsTrue(mSession.Next);
+    mFinal := mSession.FinalOffset;
     // Am Ende von "TStringList" ein "." anhängen; dahinter steht schon einer, die Stelle ist also mehrdeutig.
-    Document := Replace(Document, Session.Current.Stop, Session.Current.Stop, '.');
-    Assert.IsTrue(Session.Update(Document));
-    Assert.AreEqual('TStringList.', Session.FieldText(Session.Current));
-    Assert.AreEqual(Final + 1, Session.FinalOffset);
-    Assert.AreEqual(0, Integer(Length(Session.MirrorEdits)));
+    mDocument := Replace(mDocument, mSession.Current.Stop, mSession.Current.Stop, '.');
+    Assert.IsTrue(mSession.Update(mDocument));
+    Assert.AreEqual('TStringList.', mSession.FieldText(mSession.Current));
+    Assert.AreEqual(mFinal + 1, mSession.FinalOffset);
+    Assert.AreEqual(0, Integer(Length(mSession.MirrorEdits)));
   finally
-    Session.Free;
+    mSession.Free;
   end;
 end;
 
 procedure TAtlasPlaceholderSessionTests.EditOutsideEndsSession;
 var
-  Session: TAtlasPlaceholderSession;
-  Document: string;
+  mSession: TAtlasPlaceholderSession;
+  mDocument: string;
 begin
-  Session := Start('begin'#10, TryFinally, '', Document);
+  mSession := Start('begin'#10, cTryFinally, '', mDocument);
   try
-    Assert.IsFalse(Session.Update(Replace(Document, 0, 0, '//')));
+    Assert.IsFalse(mSession.Update(Replace(mDocument, 0, 0, '//')));
   finally
-    Session.Free;
+    mSession.Free;
   end;
   // Änderung im Platzhalter 2, während 1 aktiv ist: auch vorbei.
-  Session := Start('', TryFinally, '', Document);
+  mSession := Start('', cTryFinally, '', mDocument);
   try
-    Assert.IsFalse(Session.Update(Replace(Document, 9, 9, 'X')));
+    Assert.IsFalse(mSession.Update(Replace(mDocument, 9, 9, 'X')));
   finally
-    Session.Free;
+    mSession.Free;
   end;
 end;
 
 procedure TAtlasPlaceholderSessionTests.WithoutEndMarkerEndsBehindSnippet;
 var
-  Session: TAtlasPlaceholderSession;
-  Document: string;
+  mSession: TAtlasPlaceholderSession;
+  mDocument: string;
 begin
-  Session := Start('a ', 'Exit(${1:False});', ' b', Document);
+  mSession := Start('a ', 'Exit(${1:False});', ' b', mDocument);
   try
-    Assert.AreEqual(1, Integer(Session.Count));
-    Assert.IsFalse(Session.Next);
-    Assert.AreEqual(Integer(Length('a Exit(False);')), Session.FinalOffset);
+    Assert.AreEqual(1, Integer(mSession.Count));
+    Assert.IsFalse(mSession.Next);
+    Assert.AreEqual(Integer(Length('a Exit(False);')), mSession.FinalOffset);
   finally
-    Session.Free;
+    mSession.Free;
   end;
 end;
 
 procedure TAtlasPlaceholderSessionTests.LocatesOffsets;
 var
-  Line, Character: Integer;
+  mLine, mCharacter: Integer;
 begin
-  TAtlasPlaceholderSession.Locate('ab'#13#10'cde'#10'f', 0, Line, Character);
-  Assert.AreEqual(0, Line);
-  Assert.AreEqual(0, Character);
-  TAtlasPlaceholderSession.Locate('ab'#13#10'cde'#10'f', 6, Line, Character);
-  Assert.AreEqual(1, Line);
-  Assert.AreEqual(2, Character);
-  TAtlasPlaceholderSession.Locate('ab'#13#10'cde'#10'f', 99, Line, Character);
-  Assert.AreEqual(2, Line);
-  Assert.AreEqual(1, Character);
+  TAtlasPlaceholderSession.Locate('ab'#13#10'cde'#10'f', 0, mLine, mCharacter);
+  Assert.AreEqual(0, mLine);
+  Assert.AreEqual(0, mCharacter);
+  TAtlasPlaceholderSession.Locate('ab'#13#10'cde'#10'f', 6, mLine, mCharacter);
+  Assert.AreEqual(1, mLine);
+  Assert.AreEqual(2, mCharacter);
+  TAtlasPlaceholderSession.Locate('ab'#13#10'cde'#10'f', 99, mLine, mCharacter);
+  Assert.AreEqual(2, mLine);
+  Assert.AreEqual(1, mCharacter);
 end;
 
 procedure TAtlasPlaceholderSessionTests.LinkedFieldOutsideSnippet;
 const
-  Declaration = '  SName = ''Name'';'#10;
+  cDeclaration = '  SName = ''Name'';'#10;
 var
-  Session: TAtlasPlaceholderSession;
-  Document: string;
-  Edits: TAtlasPlaceholderEdits;
-  Field: TAtlasPlaceholderField;
+  mSession: TAtlasPlaceholderSession;
+  mDocument: string;
+  mEdits: TAtlasPlaceholderEdits;
+  mField: TAtlasPlaceholderField;
 begin
   // resourcestring auslagern (#473): Der Name steht in der Deklaration davor und im Literal.
-  Session := Start(Declaration + 'begin'#10'  ShowMessage(', '${1:SName}', ');', Document);
+  mSession := Start(cDeclaration + 'begin'#10'  ShowMessage(', '${1:SName}', ');', mDocument);
   try
-    Field.Number := 1;
-    Field.Start := 2;
-    Field.Length := 5;
-    Session.Link(Field);
+    mField.Number := 1;
+    mField.Start := 2;
+    mField.Length := 5;
+    mSession.Link(mField);
     // Unbekannte Nummer und Endposition werden übergangen.
-    Field.Number := 7;
-    Session.Link(Field);
-    Field.Number := 0;
-    Session.Link(Field);
-    Assert.AreEqual(2, Integer(Length(Session.Fields)));
-    Assert.AreEqual(1, Integer(Session.Count));
-    Assert.AreEqual('SName', Session.FieldText(Session.Current));
+    mField.Number := 7;
+    mSession.Link(mField);
+    mField.Number := 0;
+    mSession.Link(mField);
+    Assert.AreEqual(2, Integer(Length(mSession.Fields)));
+    Assert.AreEqual(1, Integer(mSession.Count));
+    Assert.AreEqual('SName', mSession.FieldText(mSession.Current));
     // Im Literal getippt: Die Deklaration davor folgt, der Platzhalter im Literal rückt nach.
-    Document := Replace(Document, Session.Current.Start, Session.Current.Stop, 'SFrage');
-    Assert.IsTrue(Session.Update(Document));
-    Edits := Session.MirrorEdits;
-    Assert.AreEqual(1, Integer(Length(Edits)));
-    Assert.AreEqual(2, Edits[0].Start);
-    Assert.AreEqual('SFrage', Edits[0].Text);
-    Document := Apply(Document, Edits);
-    Session.Applied(Edits);
-    Assert.AreEqual(Document, Session.Text);
-    Assert.AreEqual('  SFrage = ''Name'';'#10'begin'#10'  ShowMessage(SFrage);', Document);
-    Assert.AreEqual(Pos('(SFrage', Document), Session.Current.Start);
-    Assert.AreEqual('SFrage', Session.FieldText(Session.Current));
+    mDocument := Replace(mDocument, mSession.Current.Start, mSession.Current.Stop, 'SFrage');
+    Assert.IsTrue(mSession.Update(mDocument));
+    mEdits := mSession.MirrorEdits;
+    Assert.AreEqual(1, Integer(Length(mEdits)));
+    Assert.AreEqual(2, mEdits[0].Start);
+    Assert.AreEqual('SFrage', mEdits[0].Text);
+    mDocument := Apply(mDocument, mEdits);
+    mSession.Applied(mEdits);
+    Assert.AreEqual(mDocument, mSession.Text);
+    Assert.AreEqual('  SFrage = ''Name'';'#10'begin'#10'  ShowMessage(SFrage);', mDocument);
+    Assert.AreEqual(Pos('(SFrage', mDocument), mSession.Current.Start);
+    Assert.AreEqual('SFrage', mSession.FieldText(mSession.Current));
   finally
-    Session.Free;
+    mSession.Free;
   end;
 end;
 
@@ -536,27 +536,27 @@ end;
 
 procedure TAtlasSnippetProviderTests.MapsSnippetsToItems;
 var
-  Items: TAtlasCompletionItems;
-  Tags: TAtlasTags;
+  mItems: TAtlasCompletionItems;
+  mTags: TAtlasTags;
 begin
-  Items := TAtlasSnippetCompletionProvider.Items(TAtlasSnippets.BuiltIn);
-  Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)), Integer(Length(Items)));
-  Assert.AreEqual('tryf', Items[0].Name);
-  Assert.AreEqual<TAtlasItemKind>(TAtlasItemKind.Snippet, Items[0].Kind);
-  Assert.AreEqual('try…finally mit Create/Free', Items[0].Signature);
-  Assert.AreEqual(TAtlasSnippets.BuiltIn[0].Body, Items[0].Snippet);
-  Assert.StartsWith('Objekt anlegen', Items[0].Documentation);
-  Assert.Contains(Items[0].Documentation, 'List.Free;');
-  Assert.IsTrue(Items[1].Rank > Items[0].Rank);
-  Assert.AreEqual('sn', TAtlasItemPresentation.Badge(Items[0]).Code);
-  Tags := TAtlasItemPresentation.Tags(Items[0]);
-  Assert.AreEqual(1, Integer(Length(Tags)));
-  Assert.AreEqual('Snippet', Tags[0].Text);
+  mItems := TAtlasSnippetCompletionProvider.Items(TAtlasSnippets.BuiltIn);
+  Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)), Integer(Length(mItems)));
+  Assert.AreEqual('tryf', mItems[0].Name);
+  Assert.AreEqual<TAtlasItemKind>(TAtlasItemKind.Snippet, mItems[0].Kind);
+  Assert.AreEqual('try…finally mit Create/Free', mItems[0].Signature);
+  Assert.AreEqual(TAtlasSnippets.BuiltIn[0].Body, mItems[0].Snippet);
+  Assert.StartsWith('Objekt anlegen', mItems[0].Documentation);
+  Assert.Contains(mItems[0].Documentation, 'List.Free;');
+  Assert.IsTrue(mItems[1].Rank > mItems[0].Rank);
+  Assert.AreEqual('sn', TAtlasItemPresentation.Badge(mItems[0]).Code);
+  mTags := TAtlasItemPresentation.Tags(mItems[0]);
+  Assert.AreEqual(1, Integer(Length(mTags)));
+  Assert.AreEqual('Snippet', mTags[0].Text);
 end;
 
 procedure TAtlasSnippetsTests.ConvertsServerSnippets;
 var
-  Expansion: TAtlasSnippetExpansion;
+  mExpansion: TAtlasSnippetExpansion;
 begin
   // LSP-Syntax des Servers (#51) im eigenen Format.
   Assert.AreEqual('property ${1:Farbe}: TColor;$0', TAtlasSnippets.FromLsp('property ${1:Farbe}: TColor;$0'));
@@ -565,73 +565,73 @@ begin
   Assert.AreEqual('${1:Liste.Free} $$FF', TAtlasSnippets.FromLsp('${1:${2:Liste}.Free} ${TM_SELECTED_TEXT}$FF'));
   Assert.AreEqual('a$$b', TAtlasSnippets.FromLsp('a$b'));
   // Eingesetzt: Platzhalter und Endposition wie bei den eigenen Vorlagen, Hexzahl als Text.
-  Expansion := TAtlasSnippets.Expand(TAtlasSnippets.FromLsp('if F <> \$FF then'#10'  ${1:Invalidate};$0'), '  ',
+  mExpansion := TAtlasSnippets.Expand(TAtlasSnippets.FromLsp('if F <> \$FF then'#10'  ${1:Invalidate};$0'), '  ',
     #10);
-  Assert.AreEqual('if F <> $FF then'#10'    Invalidate;', Expansion.Text);
-  Assert.AreEqual(2, Integer(Length(Expansion.Stops)));
-  Assert.AreEqual(1, Expansion.Stops[0].Number);
+  Assert.AreEqual('if F <> $FF then'#10'    Invalidate;', mExpansion.Text);
+  Assert.AreEqual(2, Integer(Length(mExpansion.Stops)));
+  Assert.AreEqual(1, mExpansion.Stops[0].Number);
 end;
 
 procedure TAtlasSnippetsTests.DoubleDollarIsText;
 var
-  Expansion: TAtlasSnippetExpansion;
+  mExpansion: TAtlasSnippetExpansion;
 begin
-  Expansion := TAtlasSnippets.Expand('X := Y and $$1;$0', '', #10);
-  Assert.AreEqual('X := Y and $1;', Expansion.Text);
-  Assert.AreEqual(1, Integer(Length(Expansion.Stops)));
-  Assert.AreEqual(0, Expansion.Stops[0].Number);
+  mExpansion := TAtlasSnippets.Expand('X := Y and $$1;$0', '', #10);
+  Assert.AreEqual('X := Y and $1;', mExpansion.Text);
+  Assert.AreEqual(1, Integer(Length(mExpansion.Stops)));
+  Assert.AreEqual(0, mExpansion.Stops[0].Number);
 end;
 
 procedure TAtlasSnippetsTests.SetterSnippetKeepsInvalidateRuleSilent;
 const
-  Head = 'unit U;'#10'interface'#10'type'#10'  TMyControl = class(TCustomControl)'#10'  private'#10 +
+  cHead = 'unit U;'#10'interface'#10'type'#10'  TMyControl = class(TCustomControl)'#10'  private'#10 +
     '    FValue: Integer;'#10'    procedure SetValue(const Value: Integer);'#10'  protected'#10 +
     '    procedure Paint; override;'#10'  published'#10'    property Value: Integer read FValue write SetValue;'#10 +
     '  end;'#10'implementation'#10'procedure TMyControl.Paint;'#10'begin'#10'  inherited;'#10 +
     '  Canvas.TextOut(0, 0, IntToStr(FValue));'#10'end;'#10;
 var
-  Snippet: TAtlasSnippet;
+  mSnippet: TAtlasSnippet;
 begin
   // Gegenprobe: ohne Invalidate meldet die Regel (#55).
-  TRuleAssert.Reports(TComponentSetterWithoutInvalidateRule.Create, Head +
+  TRuleAssert.Reports(TComponentSetterWithoutInvalidateRule.Create, cHead +
     'procedure TMyControl.SetValue(const Value: Integer);'#10'begin'#10'  FValue := Value;'#10'end;'#10'end.');
-  Assert.IsTrue(Find(TAtlasSnippets.BuiltIn, 'propset', Snippet));
+  Assert.IsTrue(Find(TAtlasSnippets.BuiltIn, 'propset', mSnippet));
   TRuleAssert.Silent(TComponentSetterWithoutInvalidateRule.Create,
-    Head + TAtlasSnippets.Expand(Snippet.Body, '', #10).Text + #10'end.');
+    cHead + TAtlasSnippets.Expand(mSnippet.Body, '', #10).Text + #10'end.');
 end;
 
 procedure TAtlasSnippetsTests.FormatRoundTrips;
 var
-  Snippet, Parsed: TAtlasSnippet;
-  Error: string;
+  mSnippet, mParsed: TAtlasSnippet;
+  mError: string;
 begin
-  Snippet := Default(TAtlasSnippet);
-  Snippet.Name := 'Schleife über eine Liste';
-  Snippet.Prefix := 'forl';
-  Snippet.Description := 'for-Schleife bis Count - 1';
-  Snippet.Body := 'for ${1:I} := 0 to ${2:List}.Count - 1 do'#10'  $0';
-  Assert.IsTrue(TAtlasSnippets.Parse(TAtlasSnippets.ToFileText(Snippet), 'forl.atlas-snippet', Parsed, Error), Error);
-  Assert.AreEqual(Snippet.Name, Parsed.Name);
-  Assert.AreEqual(Snippet.Prefix, Parsed.Prefix);
-  Assert.AreEqual(Snippet.Description, Parsed.Description);
-  Assert.AreEqual(Snippet.Body, Parsed.Body);
+  mSnippet := Default(TAtlasSnippet);
+  mSnippet.Name := 'Schleife über eine Liste';
+  mSnippet.Prefix := 'forl';
+  mSnippet.Description := 'for-Schleife bis Count - 1';
+  mSnippet.Body := 'for ${1:I} := 0 to ${2:List}.Count - 1 do'#10'  $0';
+  Assert.IsTrue(TAtlasSnippets.Parse(TAtlasSnippets.ToFileText(mSnippet), 'forl.atlas-snippet', mParsed, mError), mError);
+  Assert.AreEqual(mSnippet.Name, mParsed.Name);
+  Assert.AreEqual(mSnippet.Prefix, mParsed.Prefix);
+  Assert.AreEqual(mSnippet.Description, mParsed.Description);
+  Assert.AreEqual(mSnippet.Body, mParsed.Body);
   Assert.AreEqual('forl.atlas-snippet', TAtlasSnippets.FileNameFor('forl'));
   Assert.AreEqual('a_b.atlas-snippet', TAtlasSnippets.FileNameFor('a\b'));
 end;
 
 procedure TAtlasSnippetsTests.ContextForGenerateMenu;
 var
-  Snippet, Parsed: TAtlasSnippet;
-  Error: string;
+  mSnippet, mParsed: TAtlasSnippet;
+  mError: string;
 begin
   // Kontext für das Erzeugen-Menü (#719, Kontext aus #665).
-  Assert.IsTrue(TAtlasSnippets.Parse('prefix: lg'#10'context: statement, class'#10'---'#10'Log;', '', Snippet, Error),
-    Error);
-  Assert.AreEqual('statement, class', Snippet.Context);
-  Assert.IsTrue(TAtlasSnippets.Parse(TAtlasSnippets.ToFileText(Snippet), '', Parsed, Error), Error);
-  Assert.AreEqual('statement, class', Parsed.Context);
-  Assert.IsFalse(TAtlasSnippets.Parse('prefix: lg'#10'context: irgendwo'#10'---'#10'Log;', '', Snippet, Error));
-  Assert.Contains(Error, 'irgendwo');
+  Assert.IsTrue(TAtlasSnippets.Parse('prefix: lg'#10'context: statement, class'#10'---'#10'Log;', '', mSnippet, mError),
+    mError);
+  Assert.AreEqual('statement, class', mSnippet.Context);
+  Assert.IsTrue(TAtlasSnippets.Parse(TAtlasSnippets.ToFileText(mSnippet), '', mParsed, mError), mError);
+  Assert.AreEqual('statement, class', mParsed.Context);
+  Assert.IsFalse(TAtlasSnippets.Parse('prefix: lg'#10'context: irgendwo'#10'---'#10'Log;', '', mSnippet, mError));
+  Assert.Contains(mError, 'irgendwo');
   // Ohne Kontext überall, statement nur in Routinen, declaration nicht im Rumpf.
   Assert.IsTrue(TAtlasSnippets.FitsContext('', ['class']));
   Assert.IsTrue(TAtlasSnippets.FitsContext('any', []));
@@ -643,107 +643,108 @@ begin
   Assert.IsTrue(TAtlasSnippets.FitsContext('implementation, class', ['implementation']));
   Assert.IsFalse(TAtlasSnippets.FitsContext('class', ['record']));
   // Mitgelieferte Vorlagen haben einen Kontext.
-  for Snippet in TAtlasSnippets.BuiltIn do
+  for mSnippet in TAtlasSnippets.BuiltIn do
   begin
-    Assert.AreNotEqual('', Snippet.Context, Snippet.Prefix);
+    Assert.AreNotEqual('', mSnippet.Context, mSnippet.Prefix);
   end;
   // Dateivorlage (#759): Kopf "file:", nur unit, form oder test; bleibt beim Speichern erhalten.
-  Assert.IsTrue(TAtlasSnippets.Parse('prefix: svc'#10'file: Unit'#10'---'#10'unit %Unit%;', '', Snippet, Error), Error);
-  Assert.AreEqual('unit', Snippet.FileKind);
-  Assert.IsTrue(TAtlasSnippets.Parse(TAtlasSnippets.ToFileText(Snippet), '', Parsed, Error), Error);
-  Assert.AreEqual('unit', Parsed.FileKind);
-  Assert.IsFalse(TAtlasSnippets.Parse('prefix: svc'#10'file: paket'#10'---'#10'x', '', Snippet, Error));
-  Assert.Contains(Error, 'paket');
-  Assert.AreEqual(1, Integer(Length(TAtlasSnippets.FileTemplates([Parsed] + TAtlasSnippets.BuiltIn))));
-  Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)), Integer(Length(TAtlasSnippets.WithoutFileTemplates([Parsed] +
+  Assert.IsTrue(TAtlasSnippets.Parse('prefix: svc'#10'file: Unit'#10'---'#10'unit %Unit%;', '', mSnippet, mError), mError);
+  Assert.AreEqual('unit', mSnippet.FileKind);
+  Assert.IsTrue(TAtlasSnippets.Parse(TAtlasSnippets.ToFileText(mSnippet), '', mParsed, mError), mError);
+  Assert.AreEqual('unit', mParsed.FileKind);
+  Assert.IsFalse(TAtlasSnippets.Parse('prefix: svc'#10'file: paket'#10'---'#10'x', '', mSnippet, mError));
+  Assert.Contains(mError, 'paket');
+  Assert.AreEqual(1, Integer(Length(TAtlasSnippets.FileTemplates([mParsed] + TAtlasSnippets.BuiltIn))));
+  Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)),
+    Integer(Length(TAtlasSnippets.WithoutFileTemplates([mParsed] +
     TAtlasSnippets.BuiltIn))));
 end;
 
 procedure TAtlasSnippetsTests.ParsesPostfixSnippets;
 var
-  Snippet, Parsed: TAtlasSnippet;
-  Error: string;
+  mSnippet, mParsed: TAtlasSnippet;
+  mError: string;
 begin
   // Eigene Postfix-Vorlage (#188): Kopfzeilen postfix und type.
   Assert.IsTrue(TAtlasSnippets.Parse('name: Protokoll'#10'prefix: log'#10'postfix: true'#10'type: class'#10'---'#10 +
-    'Log($expr);', 'log.atlas-snippet', Snippet, Error), Error);
-  Assert.IsTrue(Snippet.Postfix);
-  Assert.AreEqual('class', Snippet.TypeCondition);
-  Assert.AreEqual('Log($expr);', Snippet.Body);
+    'Log($expr);', 'log.atlas-snippet', mSnippet, mError), mError);
+  Assert.IsTrue(mSnippet.Postfix);
+  Assert.AreEqual('class', mSnippet.TypeCondition);
+  Assert.AreEqual('Log($expr);', mSnippet.Body);
   // Ohne Kopfzeile: gewöhnliche Vorlage.
-  Assert.IsTrue(TAtlasSnippets.Parse('prefix: x'#10'---'#10'X;', '', Parsed, Error), Error);
-  Assert.IsFalse(Parsed.Postfix);
-  Assert.IsFalse(TAtlasSnippets.Parse('prefix: x'#10'postfix: ja'#10'---'#10'X;', '', Parsed, Error));
-  Assert.Contains(Error, 'postfix');
+  Assert.IsTrue(TAtlasSnippets.Parse('prefix: x'#10'---'#10'X;', '', mParsed, mError), mError);
+  Assert.IsFalse(mParsed.Postfix);
+  Assert.IsFalse(TAtlasSnippets.Parse('prefix: x'#10'postfix: ja'#10'---'#10'X;', '', mParsed, mError));
+  Assert.Contains(mError, 'postfix');
   // Schreiben und wieder lesen.
-  Assert.IsTrue(TAtlasSnippets.Parse(TAtlasSnippets.ToFileText(Snippet), 'log.atlas-snippet', Parsed, Error), Error);
-  Assert.IsTrue(Parsed.Postfix);
-  Assert.AreEqual('class', Parsed.TypeCondition);
-  Snippet.TypeCondition := '';
-  Assert.IsFalse(TAtlasSnippets.ToFileText(Snippet).Contains('type:'));
-  Snippet.Postfix := False;
-  Assert.IsFalse(TAtlasSnippets.ToFileText(Snippet).Contains('postfix:'));
+  Assert.IsTrue(TAtlasSnippets.Parse(TAtlasSnippets.ToFileText(mSnippet), 'log.atlas-snippet', mParsed, mError), mError);
+  Assert.IsTrue(mParsed.Postfix);
+  Assert.AreEqual('class', mParsed.TypeCondition);
+  mSnippet.TypeCondition := '';
+  Assert.IsFalse(TAtlasSnippets.ToFileText(mSnippet).Contains('type:'));
+  mSnippet.Postfix := False;
+  Assert.IsFalse(TAtlasSnippets.ToFileText(mSnippet).Contains('postfix:'));
 end;
 
 procedure TAtlasSnippetsTests.SendsPostfixSnippetsToServer;
 var
-  List: TAtlasSnippetList;
-  Params: TJSONObject;
-  Templates: TJSONArray;
+  mList: TAtlasSnippetList;
+  mParams: TJSONObject;
+  mTemplates: TJSONArray;
 begin
-  SetLength(List, 3);
-  List[0].Name := 'Schleife';
-  List[0].Prefix := 'forl';
-  List[0].Body := 'for ${1:I} := 0 to 9 do';
-  List[1].Name := 'Protokoll';
-  List[1].Prefix := 'log';
-  List[1].Body := 'Log($expr);';
-  List[1].Postfix := True;
-  List[1].TypeCondition := 'TKunde';
-  List[2].Name := 'Prüfen';
-  List[2].Prefix := 'chk';
-  List[2].Description := 'Prüft den Wert';
-  List[2].Body := 'Pruefe($expr);';
-  List[2].Postfix := True;
-  Assert.AreEqual(2, Integer(Length(TAtlasSnippets.Postfixes(List))));
-  Assert.AreEqual(1, Integer(Length(TAtlasSnippets.WithoutPostfix(List))));
-  Assert.AreEqual('forl', TAtlasSnippets.WithoutPostfix(List)[0].Prefix);
-  Params := TAtlasSnippets.PostfixParams(List);
+  SetLength(mList, 3);
+  mList[0].Name := 'Schleife';
+  mList[0].Prefix := 'forl';
+  mList[0].Body := 'for ${1:I} := 0 to 9 do';
+  mList[1].Name := 'Protokoll';
+  mList[1].Prefix := 'log';
+  mList[1].Body := 'Log($expr);';
+  mList[1].Postfix := True;
+  mList[1].TypeCondition := 'TKunde';
+  mList[2].Name := 'Prüfen';
+  mList[2].Prefix := 'chk';
+  mList[2].Description := 'Prüft den Wert';
+  mList[2].Body := 'Pruefe($expr);';
+  mList[2].Postfix := True;
+  Assert.AreEqual(2, Integer(Length(TAtlasSnippets.Postfixes(mList))));
+  Assert.AreEqual(1, Integer(Length(TAtlasSnippets.WithoutPostfix(mList))));
+  Assert.AreEqual('forl', TAtlasSnippets.WithoutPostfix(mList)[0].Prefix);
+  mParams := TAtlasSnippets.PostfixParams(mList);
   try
-    Templates := Params.GetValue('templates') as TJSONArray;
-    Assert.AreEqual(2, Integer(Templates.Count));
-    Assert.AreEqual('log', Templates.Items[0].GetValue<string>('key'));
+    mTemplates := mParams.GetValue('templates') as TJSONArray;
+    Assert.AreEqual(2, Integer(mTemplates.Count));
+    Assert.AreEqual('log', mTemplates.Items[0].GetValue<string>('key'));
     // Ohne Beschreibung gilt der Name.
-    Assert.AreEqual('Protokoll', Templates.Items[0].GetValue<string>('description'));
-    Assert.AreEqual('Log($expr);', Templates.Items[0].GetValue<string>('body'));
-    Assert.AreEqual('TKunde', Templates.Items[0].GetValue<string>('type'));
-    Assert.AreEqual('Prüft den Wert', Templates.Items[1].GetValue<string>('description'));
-    Assert.IsNull(TJSONObject(Templates.Items[1]).GetValue('type'));
+    Assert.AreEqual('Protokoll', mTemplates.Items[0].GetValue<string>('description'));
+    Assert.AreEqual('Log($expr);', mTemplates.Items[0].GetValue<string>('body'));
+    Assert.AreEqual('TKunde', mTemplates.Items[0].GetValue<string>('type'));
+    Assert.AreEqual('Prüft den Wert', mTemplates.Items[1].GetValue<string>('description'));
+    Assert.IsNull(TJSONObject(mTemplates.Items[1]).GetValue('type'));
   finally
-    Params.Free;
+    mParams.Free;
   end;
   // Ohne Postfix-Vorlagen eine leere Liste: Der Server vergisst die früheren.
-  Params := TAtlasSnippets.PostfixParams(TAtlasSnippets.WithoutPostfix(List));
+  mParams := TAtlasSnippets.PostfixParams(TAtlasSnippets.WithoutPostfix(mList));
   try
-    Assert.AreEqual(0, (Params.GetValue('templates') as TJSONArray).Count);
+    Assert.AreEqual(0, (mParams.GetValue('templates') as TJSONArray).Count);
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 
 procedure TAtlasSnippetsTests.TagsPostfixItems;
 var
-  Item: TAtlasCompletionItem;
-  Tags: TAtlasTags;
+  mItem: TAtlasCompletionItem;
+  mTags: TAtlasTags;
 begin
-  Item := Default(TAtlasCompletionItem);
-  Item.Name := 'notnil';
-  Item.Kind := TAtlasItemKind.Snippet;
-  Item.Snippet := 'if Assigned(X) then'#10'  $0';
-  Item.Postfix := True;
-  Tags := TAtlasItemPresentation.Tags(Item);
-  Assert.AreEqual(1, Integer(Length(Tags)));
-  Assert.AreEqual('Postfix', Tags[0].Text);
+  mItem := Default(TAtlasCompletionItem);
+  mItem.Name := 'notnil';
+  mItem.Kind := TAtlasItemKind.Snippet;
+  mItem.Snippet := 'if Assigned(X) then'#10'  $0';
+  mItem.Postfix := True;
+  mTags := TAtlasItemPresentation.Tags(mItem);
+  Assert.AreEqual(1, Integer(Length(mTags)));
+  Assert.AreEqual('Postfix', mTags[0].Text);
 end;
 
 { TAtlasSnippetCatalogTests }
@@ -759,141 +760,141 @@ end;
 
 procedure TAtlasSnippetCatalogTests.ListsAllWithOriginAndReplacement;
 var
-  Catalog: TAtlasSnippetCatalog;
-  Ide: TAtlasSnippet;
-  Index: Integer;
+  mCatalog: TAtlasSnippetCatalog;
+  mIde: TAtlasSnippet;
+  mIndex: Integer;
 begin
-  Ide := OwnSnippet('forin', 'IDE;');
-  Ide.Origin := TAtlasSnippetOrigin.Ide;
-  Catalog := TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, [Ide], [OwnSnippet('tryf', 'X;')]);
+  mIde := OwnSnippet('forin', 'IDE;');
+  mIde.Origin := TAtlasSnippetOrigin.Ide;
+  mCatalog := TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, [mIde], [OwnSnippet('tryf', 'X;')]);
   try
-    Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)) + 2, Catalog.Count);
-    Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.User, Catalog.Entry(0).Snippet.Origin);
-    Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.Ide, Catalog.Entry(1).Snippet.Origin);
-    Assert.IsFalse(Catalog.Replaced(0));
-    Assert.IsFalse(Catalog.Replaced(1));
-    for Index := 2 to Catalog.Count - 1 do
+    Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)) + 2, mCatalog.Count);
+    Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.User, mCatalog.Entry(0).Snippet.Origin);
+    Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.Ide, mCatalog.Entry(1).Snippet.Origin);
+    Assert.IsFalse(mCatalog.Replaced(0));
+    Assert.IsFalse(mCatalog.Replaced(1));
+    for mIndex := 2 to mCatalog.Count - 1 do
     begin
-      if SameText(Catalog.Entry(Index).Snippet.Prefix, 'tryf') or
-        SameText(Catalog.Entry(Index).Snippet.Prefix, 'forin') then
+      if SameText(mCatalog.Entry(mIndex).Snippet.Prefix, 'tryf') or
+        SameText(mCatalog.Entry(mIndex).Snippet.Prefix, 'forin') then
       begin
-        Assert.IsTrue(Catalog.Replaced(Index), Catalog.Entry(Index).Snippet.Prefix);
+        Assert.IsTrue(mCatalog.Replaced(mIndex), mCatalog.Entry(mIndex).Snippet.Prefix);
       end
       else
       begin
-        Assert.IsFalse(Catalog.Replaced(Index), Catalog.Entry(Index).Snippet.Prefix);
+        Assert.IsFalse(mCatalog.Replaced(mIndex), mCatalog.Entry(mIndex).Snippet.Prefix);
       end;
     end;
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TAtlasSnippetCatalogTests.OnlyOwnAreEditable;
 var
-  Catalog: TAtlasSnippetCatalog;
-  Changed: TAtlasSnippet;
-  Index, Last: Integer;
+  mCatalog: TAtlasSnippetCatalog;
+  mChanged: TAtlasSnippet;
+  mIndex, mLast: Integer;
 begin
-  Catalog := TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, nil, nil);
+  mCatalog := TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, nil, nil);
   try
-    Last := Catalog.Count - 1;
-    Assert.IsFalse(Catalog.Editable(Last));
-    Changed := Catalog.Entry(Last).Snippet;
-    Changed.Body := 'geändert';
-    Catalog.Update(Last, Changed);
-    Assert.AreNotEqual('geändert', Catalog.Entry(Last).Snippet.Body);
-    Assert.IsFalse(Catalog.Modified);
+    mLast := mCatalog.Count - 1;
+    Assert.IsFalse(mCatalog.Editable(mLast));
+    mChanged := mCatalog.Entry(mLast).Snippet;
+    mChanged.Body := 'geändert';
+    mCatalog.Update(mLast, mChanged);
+    Assert.AreNotEqual('geändert', mCatalog.Entry(mLast).Snippet.Body);
+    Assert.IsFalse(mCatalog.Modified);
     // Kopie als eigene: steht vorn, gleiches Kürzel, ersetzt das Original.
-    Index := Catalog.CopyAsOwn(Last);
-    Assert.AreEqual(0, Index);
-    Assert.IsTrue(Catalog.Editable(0));
-    Assert.AreEqual(Catalog.Entry(Last + 1).Snippet.Prefix, Catalog.Entry(0).Snippet.Prefix);
-    Assert.IsTrue(Catalog.Replaced(Last + 1));
-    Assert.IsTrue(Catalog.Modified);
+    mIndex := mCatalog.CopyAsOwn(mLast);
+    Assert.AreEqual(0, mIndex);
+    Assert.IsTrue(mCatalog.Editable(0));
+    Assert.AreEqual(mCatalog.Entry(mLast + 1).Snippet.Prefix, mCatalog.Entry(0).Snippet.Prefix);
+    Assert.IsTrue(mCatalog.Replaced(mLast + 1));
+    Assert.IsTrue(mCatalog.Modified);
     // Neue eigene: freies Kürzel, hinter den eigenen.
-    Index := Catalog.AddNew;
-    Assert.AreEqual(1, Index);
-    Assert.AreEqual('neu', Catalog.Entry(1).Snippet.Prefix);
-    Assert.AreEqual('neu2', Catalog.Entry(Catalog.AddNew).Snippet.Prefix);
-    Catalog.Delete(1);
-    Assert.AreEqual('neu2', Catalog.Entry(1).Snippet.Prefix);
+    mIndex := mCatalog.AddNew;
+    Assert.AreEqual(1, mIndex);
+    Assert.AreEqual('neu', mCatalog.Entry(1).Snippet.Prefix);
+    Assert.AreEqual('neu2', mCatalog.Entry(mCatalog.AddNew).Snippet.Prefix);
+    mCatalog.Delete(1);
+    Assert.AreEqual('neu2', mCatalog.Entry(1).Snippet.Prefix);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TAtlasSnippetCatalogTests.ValidatesOwnSnippets;
 var
-  Catalog: TAtlasSnippetCatalog;
-  Problems: TArray<TAtlasSnippetProblem>;
+  mCatalog: TAtlasSnippetCatalog;
+  mProblems: TArray<TAtlasSnippetProblem>;
 begin
-  Catalog := TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, nil,
+  mCatalog := TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, nil,
     [OwnSnippet('a', 'X;'), OwnSnippet('A', 'Y;'), OwnSnippet('', 'Z;'), OwnSnippet('b-c', ' '),
      OwnSnippet('tryf', 'W;')]);
   try
-    Assert.IsFalse(Catalog.Validate(Problems));
-    Assert.AreEqual(4, Integer(Length(Problems)));
-    Assert.AreEqual(1, Problems[0].Index);
-    Assert.AreEqual<TAtlasSnippetProblemKind>(TAtlasSnippetProblemKind.PrefixTwice, Problems[0].Kind);
-    Assert.AreEqual<TAtlasSnippetProblemKind>(TAtlasSnippetProblemKind.PrefixMissing, Problems[1].Kind);
-    Assert.AreEqual<TAtlasSnippetProblemKind>(TAtlasSnippetProblemKind.PrefixInvalid, Problems[2].Kind);
-    Assert.AreEqual<TAtlasSnippetProblemKind>(TAtlasSnippetProblemKind.BodyMissing, Problems[3].Kind);
+    Assert.IsFalse(mCatalog.Validate(mProblems));
+    Assert.AreEqual(4, Integer(Length(mProblems)));
+    Assert.AreEqual(1, mProblems[0].Index);
+    Assert.AreEqual<TAtlasSnippetProblemKind>(TAtlasSnippetProblemKind.PrefixTwice, mProblems[0].Kind);
+    Assert.AreEqual<TAtlasSnippetProblemKind>(TAtlasSnippetProblemKind.PrefixMissing, mProblems[1].Kind);
+    Assert.AreEqual<TAtlasSnippetProblemKind>(TAtlasSnippetProblemKind.PrefixInvalid, mProblems[2].Kind);
+    Assert.AreEqual<TAtlasSnippetProblemKind>(TAtlasSnippetProblemKind.BodyMissing, mProblems[3].Kind);
     // Gleiches Kürzel wie eine mitgelieferte ist erlaubt: die eigene ersetzt sie.
-    Assert.AreEqual(3, Problems[3].Index);
+    Assert.AreEqual(3, mProblems[3].Index);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
 procedure TAtlasSnippetCatalogTests.SavesChangedAndDeletesRemoved;
 var
-  Folder: string;
-  Catalog: TAtlasSnippetCatalog;
-  Loaded: TAtlasSnippetList;
-  Errors: TArray<string>;
-  Changed: TAtlasSnippet;
+  mFolder: string;
+  mCatalog: TAtlasSnippetCatalog;
+  mLoaded: TAtlasSnippetList;
+  mErrors: TArray<string>;
+  mChanged: TAtlasSnippet;
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'AtlasCatalog' + IntToStr(Random(1000000)));
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasCatalog' + IntToStr(Random(1000000)));
   try
-    Catalog := TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, nil, nil);
+    mCatalog := TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, nil, nil);
     try
-      Changed := Catalog.Entry(Catalog.AddNew).Snippet;
-      Changed.Prefix := 'liste';
-      Changed.Description := 'Liste anlegen';
-      Changed.Body := '${1:L} := TStringList.Create;$0';
-      Catalog.Update(0, Changed);
-      Catalog.AddNew;
-      Catalog.Save(Folder);
-      Assert.IsFalse(Catalog.Modified);
+      mChanged := mCatalog.Entry(mCatalog.AddNew).Snippet;
+      mChanged.Prefix := 'liste';
+      mChanged.Description := 'Liste anlegen';
+      mChanged.Body := '${1:L} := TStringList.Create;$0';
+      mCatalog.Update(0, mChanged);
+      mCatalog.AddNew;
+      mCatalog.Save(mFolder);
+      Assert.IsFalse(mCatalog.Modified);
     finally
-      Catalog.Free;
+      mCatalog.Free;
     end;
-    Loaded := TAtlasSnippets.LoadFolder(Folder, Errors);
-    Assert.AreEqual(0, Integer(Length(Errors)));
-    Assert.AreEqual(2, Integer(Length(Loaded)));
-    Assert.IsTrue(FileExists(TPath.Combine(Folder, 'liste.atlas-snippet')));
+    mLoaded := TAtlasSnippets.LoadFolder(mFolder, mErrors);
+    Assert.AreEqual(0, Integer(Length(mErrors)));
+    Assert.AreEqual(2, Integer(Length(mLoaded)));
+    Assert.IsTrue(FileExists(TPath.Combine(mFolder, 'liste.atlas-snippet')));
     // Löschen entfernt die Datei; das Umbenennen des Kürzels behält den Dateinamen.
-    Catalog := TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, nil, Loaded);
+    mCatalog := TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, nil, mLoaded);
     try
-      Changed := Catalog.Entry(0).Snippet;
-      Changed.Prefix := 'liste2';
-      Catalog.Update(0, Changed);
-      Catalog.Delete(1);
-      Catalog.Save(Folder);
+      mChanged := mCatalog.Entry(0).Snippet;
+      mChanged.Prefix := 'liste2';
+      mCatalog.Update(0, mChanged);
+      mCatalog.Delete(1);
+      mCatalog.Save(mFolder);
     finally
-      Catalog.Free;
+      mCatalog.Free;
     end;
-    Loaded := TAtlasSnippets.LoadFolder(Folder, Errors);
-    Assert.AreEqual(1, Integer(Length(Loaded)));
-    Assert.AreEqual('liste2', Loaded[0].Prefix);
-    Assert.AreEqual('Liste anlegen', Loaded[0].Description);
-    Assert.AreEqual('${1:L} := TStringList.Create;$0', Loaded[0].Body);
-    Assert.IsTrue(FileExists(TPath.Combine(Folder, 'liste.atlas-snippet')));
+    mLoaded := TAtlasSnippets.LoadFolder(mFolder, mErrors);
+    Assert.AreEqual(1, Integer(Length(mLoaded)));
+    Assert.AreEqual('liste2', mLoaded[0].Prefix);
+    Assert.AreEqual('Liste anlegen', mLoaded[0].Description);
+    Assert.AreEqual('${1:L} := TStringList.Create;$0', mLoaded[0].Body);
+    Assert.IsTrue(FileExists(TPath.Combine(mFolder, 'liste.atlas-snippet')));
   finally
-    if TDirectory.Exists(Folder) then
+    if TDirectory.Exists(mFolder) then
     begin
-      TDirectory.Delete(Folder, True);
+      TDirectory.Delete(mFolder, True);
     end;
   end;
 end;
@@ -902,147 +903,147 @@ end;
 
 function LiveTemplateFolder: string;
 var
-  Directory, Candidate: string;
+  mDirectory, mCandidate: string;
 begin
-  Directory := ExtractFileDir(ParamStr(0));
-  while Directory <> '' do
+  mDirectory := ExtractFileDir(ParamStr(0));
+  while mDirectory <> '' do
   begin
-    Candidate := TPath.Combine(Directory, 'Tests\Data\LiveTemplates\Delphi12');
-    if TDirectory.Exists(Candidate) then
+    mCandidate := TPath.Combine(mDirectory, 'Tests\Data\LiveTemplates\Delphi12');
+    if TDirectory.Exists(mCandidate) then
     begin
-      Exit(Candidate);
+      Exit(mCandidate);
     end;
-    if ExtractFileDir(Directory) = Directory then
+    if ExtractFileDir(mDirectory) = mDirectory then
     begin
       Break;
     end;
-    Directory := ExtractFileDir(Directory);
+    mDirectory := ExtractFileDir(mDirectory);
   end;
   Result := '';
 end;
 
 procedure TAtlasLiveTemplatesTests.ReadsDelphi12Folder;
 var
-  List: TAtlasSnippetList;
-  Stats: TAtlasLiveTemplateStats;
-  Snippet: TAtlasSnippet;
+  mList: TAtlasSnippetList;
+  mStats: TAtlasLiveTemplateStats;
+  mSnippet: TAtlasSnippet;
 begin
   Assert.AreNotEqual('', LiveTemplateFolder, 'Ordner Tests\Data\LiveTemplates\Delphi12 fehlt');
-  List := TAtlasLiveTemplates.LoadFolder(LiveTemplateFolder, Stats);
-  Assert.AreEqual(2, Stats.Templates);
+  mList := TAtlasLiveTemplates.LoadFolder(LiveTemplateFolder, mStats);
+  Assert.AreEqual(2, mStats.Templates);
   // Die C++-Vorlage wird übersprungen, das Skript in "forb" entfällt.
-  Assert.AreEqual(1, Stats.Skipped);
-  Assert.AreEqual(1, Stats.Scripts);
-  Assert.IsTrue(Find(List, 'forb', Snippet));
-  Assert.AreEqual('for statement', Snippet.Description);
-  Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.Ide, Snippet.Origin);
-  Assert.IsFalse(Find(List, 'cppfor', Snippet));
+  Assert.AreEqual(1, mStats.Skipped);
+  Assert.AreEqual(1, mStats.Scripts);
+  Assert.IsTrue(Find(mList, 'forb', mSnippet));
+  Assert.AreEqual('for statement', mSnippet.Description);
+  Assert.AreEqual<TAtlasSnippetOrigin>(TAtlasSnippetOrigin.Ide, mSnippet.Origin);
+  Assert.IsFalse(Find(mList, 'cppfor', mSnippet));
 end;
 
 procedure TAtlasLiveTemplatesTests.ConvertsPointsAndMarkers;
 var
-  List: TAtlasSnippetList;
-  Stats: TAtlasLiveTemplateStats;
-  Snippet: TAtlasSnippet;
-  Expansion: TAtlasSnippetExpansion;
+  mList: TAtlasSnippetList;
+  mStats: TAtlasLiveTemplateStats;
+  mSnippet: TAtlasSnippet;
+  mExpansion: TAtlasSnippetExpansion;
 begin
-  Stats := Default(TAtlasLiveTemplateStats);
-  List := TAtlasLiveTemplates.Parse('<codetemplate><template name="forb"><point name="ident"><text>' +
+  mStats := Default(TAtlasLiveTemplateStats);
+  mList := TAtlasLiveTemplates.Parse('<codetemplate><template name="forb"><point name="ident"><text>' +
     #10'  I'#10'</text></point><point name="to"><text>N</text></point>' +
     '<code language="Delphi" delimiter="|"><![CDATA[for |ident| := 0 to |to| do'#13#10'begin'#13#10 +
-    '|selected||*||end|'#13#10'  X(|ident|);'#13#10'end;'#13#10']]></code></template></codetemplate>', '', Stats);
-  Assert.AreEqual(1, Integer(Length(List)));
-  Snippet := List[0];
-  Assert.AreEqual('for ${1:I} := 0 to ${2:N} do'#10'begin'#10'  $0'#10'  X(${1});'#10'end;', Snippet.Body);
-  Expansion := TAtlasSnippets.Expand(Snippet.Body, '', #10);
-  Assert.AreEqual('for I := 0 to N do'#10'begin'#10'  '#10'  X(I);'#10'end;', Expansion.Text);
+    '|selected||*||end|'#13#10'  X(|ident|);'#13#10'end;'#13#10']]></code></template></codetemplate>', '', mStats);
+  Assert.AreEqual(1, Integer(Length(mList)));
+  mSnippet := mList[0];
+  Assert.AreEqual('for ${1:I} := 0 to ${2:N} do'#10'begin'#10'  $0'#10'  X(${1});'#10'end;', mSnippet.Body);
+  mExpansion := TAtlasSnippets.Expand(mSnippet.Body, '', #10);
+  Assert.AreEqual('for I := 0 to N do'#10'begin'#10'  '#10'  X(I);'#10'end;', mExpansion.Text);
 end;
 
 procedure TAtlasLiveTemplatesTests.DecodesNumericEntities;
 var
-  List: TAtlasSnippetList;
-  Stats: TAtlasLiveTemplateStats;
+  mList: TAtlasSnippetList;
+  mStats: TAtlasLiveTemplateStats;
 begin
-  Stats := Default(TAtlasLiveTemplateStats);
-  List := TAtlasLiveTemplates.Parse('<codetemplate><template name="e"><point name="v"><text>&#228;&#x20AC;&lt;' +
+  mStats := Default(TAtlasLiveTemplateStats);
+  mList := TAtlasLiveTemplates.Parse('<codetemplate><template name="e"><point name="v"><text>&#228;&#x20AC;&lt;' +
     '</text></point><code language="Delphi" delimiter="|"><![CDATA[X := |v|;]]></code></template></codetemplate>',
-    '', Stats);
-  Assert.AreEqual(1, Integer(Length(List)));
-  Assert.AreEqual('X := ${1:'#$00E4#$20AC'<};', List[0].Body);
+    '', mStats);
+  Assert.AreEqual(1, Integer(Length(mList)));
+  Assert.AreEqual('X := ${1:'#$00E4#$20AC'<};', mList[0].Body);
 end;
 
 procedure TAtlasLiveTemplatesTests.KeepsFixedPointsAndEscapesDollar;
 var
-  List: TAtlasSnippetList;
-  Stats: TAtlasLiveTemplateStats;
-  Snippet: TAtlasSnippet;
+  mList: TAtlasSnippetList;
+  mStats: TAtlasLiveTemplateStats;
+  mSnippet: TAtlasSnippet;
 begin
-  List := TAtlasLiveTemplates.LoadFolder(LiveTemplateFolder, Stats);
-  Assert.IsTrue(Find(List, 'atlasmask', Snippet));
-  Assert.AreEqual('Maske & Wert', Snippet.Description);
-  Assert.AreEqual('if Flags and $$1 <> 0 then $0;', Snippet.Body);
-  Assert.AreEqual('if Flags and $1 <> 0 then ;', TAtlasSnippets.Expand(Snippet.Body, '', #10).Text);
+  mList := TAtlasLiveTemplates.LoadFolder(LiveTemplateFolder, mStats);
+  Assert.IsTrue(Find(mList, 'atlasmask', mSnippet));
+  Assert.AreEqual('Maske & Wert', mSnippet.Description);
+  Assert.AreEqual('if Flags and $$1 <> 0 then $0;', mSnippet.Body);
+  Assert.AreEqual('if Flags and $1 <> 0 then ;', TAtlasSnippets.Expand(mSnippet.Body, '', #10).Text);
 end;
 
 procedure TAtlasLiveTemplatesTests.SkipsBrokenXml;
 var
-  List: TAtlasSnippetList;
-  Stats: TAtlasLiveTemplateStats;
+  mList: TAtlasSnippetList;
+  mStats: TAtlasLiveTemplateStats;
 begin
-  Stats := Default(TAtlasLiveTemplateStats);
-  List := TAtlasLiveTemplates.Parse('<codetemplate><template name="x"><code><![CDATA[X;', '', Stats);
-  Assert.AreEqual(0, Integer(Length(List)));
-  Assert.AreEqual(1, Stats.Skipped);
+  mStats := Default(TAtlasLiveTemplateStats);
+  mList := TAtlasLiveTemplates.Parse('<codetemplate><template name="x"><code><![CDATA[X;', '', mStats);
+  Assert.AreEqual(0, Integer(Length(mList)));
+  Assert.AreEqual(1, mStats.Skipped);
   // Ohne Code: übersprungen.
-  List := TAtlasLiveTemplates.Parse('<codetemplate><template name="leer"></template></codetemplate>', '', Stats);
-  Assert.AreEqual(0, Integer(Length(List)));
-  Assert.AreEqual(2, Stats.Skipped);
+  mList := TAtlasLiveTemplates.Parse('<codetemplate><template name="leer"></template></codetemplate>', '', mStats);
+  Assert.AreEqual(0, Integer(Length(mList)));
+  Assert.AreEqual(2, mStats.Skipped);
 end;
 
 procedure TAtlasLiveTemplatesTests.OwnBeforeIdeBeforeBuiltIn;
 var
-  Ide, Own, Merged: TAtlasSnippetList;
-  Snippet: TAtlasSnippet;
+  mIde, mOwn, mMerged: TAtlasSnippetList;
+  mSnippet: TAtlasSnippet;
 begin
-  Snippet := Default(TAtlasSnippet);
-  Snippet.Prefix := 'tryf';
-  Snippet.Body := 'IDE;';
-  Snippet.Origin := TAtlasSnippetOrigin.Ide;
-  Ide := [Snippet];
-  Snippet.Prefix := 'forin';
-  Snippet.Body := 'IDE2;';
-  Ide := Ide + [Snippet];
-  Snippet.Prefix := 'FORIN';
-  Snippet.Body := 'Eigene;';
-  Snippet.Origin := TAtlasSnippetOrigin.User;
-  Own := [Snippet];
-  Merged := TAtlasSnippets.Merge(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, Ide), Own);
-  Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)), Integer(Length(Merged)));
-  Assert.IsTrue(Find(Merged, 'tryf', Snippet));
-  Assert.AreEqual('IDE;', Snippet.Body);
-  Assert.IsTrue(Find(Merged, 'forin', Snippet));
-  Assert.AreEqual('Eigene;', Snippet.Body);
+  mSnippet := Default(TAtlasSnippet);
+  mSnippet.Prefix := 'tryf';
+  mSnippet.Body := 'IDE;';
+  mSnippet.Origin := TAtlasSnippetOrigin.Ide;
+  mIde := [mSnippet];
+  mSnippet.Prefix := 'forin';
+  mSnippet.Body := 'IDE2;';
+  mIde := mIde + [mSnippet];
+  mSnippet.Prefix := 'FORIN';
+  mSnippet.Body := 'Eigene;';
+  mSnippet.Origin := TAtlasSnippetOrigin.User;
+  mOwn := [mSnippet];
+  mMerged := TAtlasSnippets.Merge(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, mIde), mOwn);
+  Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)), Integer(Length(mMerged)));
+  Assert.IsTrue(Find(mMerged, 'tryf', mSnippet));
+  Assert.AreEqual('IDE;', mSnippet.Body);
+  Assert.IsTrue(Find(mMerged, 'forin', mSnippet));
+  Assert.AreEqual('Eigene;', mSnippet.Body);
 end;
 
 procedure TAtlasLiveTemplatesTests.IdeTemplateAppearsInList;
 var
-  List: TAtlasSnippetList;
-  Stats: TAtlasLiveTemplateStats;
-  Items: TAtlasCompletionItems;
-  Item: TAtlasCompletionItem;
-  Found: Boolean;
+  mList: TAtlasSnippetList;
+  mStats: TAtlasLiveTemplateStats;
+  mItems: TAtlasCompletionItems;
+  mItem: TAtlasCompletionItem;
+  mFound: Boolean;
 begin
-  List := TAtlasLiveTemplates.LoadFolder(LiveTemplateFolder, Stats);
-  Items := TAtlasSnippetCompletionProvider.Items(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, List));
-  Found := False;
-  for Item in Items do
+  mList := TAtlasLiveTemplates.LoadFolder(LiveTemplateFolder, mStats);
+  mItems := TAtlasSnippetCompletionProvider.Items(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, mList));
+  mFound := False;
+  for mItem in mItems do
   begin
-    if Item.Name = 'forb' then
+    if mItem.Name = 'forb' then
     begin
-      Found := Item.Snippet <> '';
+      mFound := mItem.Snippet <> '';
     end;
   end;
-  Assert.IsTrue(Found);
+  Assert.IsTrue(mFound);
 end;
 
 initialization

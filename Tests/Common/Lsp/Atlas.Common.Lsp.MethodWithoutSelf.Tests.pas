@@ -55,10 +55,10 @@ uses
   Atlas.Common.Lsp.MethodWithoutSelf;
 
 const
-  KundenFile = 'C:\P\Kunden.pas';
-  AufruferFile = 'C:\P\Aufrufer.pas';
-  FormFile = 'C:\P\Kunden.dfm';
-  Kunden =
+  cKundenFile = 'C:\P\Kunden.pas';
+  cAufruferFile = 'C:\P\Aufrufer.pas';
+  cFormFile = 'C:\P\Kunden.dfm';
+  cKunden =
     'unit Kunden;'#10 +                                                  // 0
     'interface'#10 +                                                     // 1
     'uses System.SysUtils;'#10 +                                         // 2
@@ -86,7 +86,7 @@ const
     'end;'#10 +                                                          // 24
     'end.'#10;
 
-  Aufrufer =
+  cAufrufer =
     'unit Aufrufer;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -101,17 +101,17 @@ const
 function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
-  if SameText(AFileName, FormFile) then
+  if SameText(AFileName, cFormFile) then
   begin
     AText := 'object Kunde: TKunde'#10'  OnClick = Knopf'#10'end'#10;
   end
-  else if SameText(AFileName, AufruferFile) then
+  else if SameText(AFileName, cAufruferFile) then
   begin
-    AText := Aufrufer;
+    AText := cAufrufer;
   end
-  else if SameText(AFileName, KundenFile) then
+  else if SameText(AFileName, cKundenFile) then
   begin
-    AText := Kunden;
+    AText := cKunden;
   end
   else
   begin
@@ -122,8 +122,8 @@ end;
 procedure TLspMethodWithoutSelfTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(Kunden, KundenFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(Aufrufer, AufruferFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cKunden, cKundenFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cAufrufer, cAufruferFile, nil));
 end;
 
 procedure TLspMethodWithoutSelfTests.TearDown;
@@ -133,80 +133,80 @@ end;
 
 function ActionsAt(const AIndex: ISymbolIndex; ALine, ACharacter: Integer): TArray<TJSONObject>;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
 begin
-  Tree := TPascalParser.Parse(Kunden);
-  Resolver := TNameResolver.Create(AIndex);
+  mTree := TPascalParser.Parse(cKunden);
+  mResolver := TNameResolver.Create(AIndex);
   try
-    Resolver.PinTree(Tree, KundenFile);
+    mResolver.PinTree(mTree, cKundenFile);
     try
-      Result := TLspMethodWithoutSelf.Actions(Tree, Kunden, TDocumentUris.FromPath(KundenFile),
-        TTextPosition.Create(ALine, ACharacter), TLspMethodWithoutSelf.Lookup(Resolver, Tree, KundenFile, ReadFile));
+      Result := TLspMethodWithoutSelf.Actions(mTree, cKunden, TDocumentUris.FromPath(cKundenFile),
+        TTextPosition.Create(ALine, ACharacter), TLspMethodWithoutSelf.Lookup(mResolver, mTree, cKundenFile, ReadFile));
     finally
-      Resolver.UnpinTree;
+      mResolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 function ExecuteAt(const AIndex: ISymbolIndex; ALine, ACharacter: Integer; const AConversion: string): TJSONObject;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Context: TMethodKindContext;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mContext: TMethodKindContext;
 begin
-  Context := Default(TMethodKindContext);
-  Context.Index := AIndex;
-  Context.Files := [KundenFile, AufruferFile];
-  Context.ReadText := ReadFile;
-  Context.WithStatic := True;
-  Context.Conversion := AConversion;
-  Context.Style := TFormatStyle.Default;
-  Tree := TPascalParser.Parse(Kunden);
-  Resolver := TNameResolver.Create(AIndex);
+  mContext := Default(TMethodKindContext);
+  mContext.Index := AIndex;
+  mContext.Files := [cKundenFile, cAufruferFile];
+  mContext.ReadText := ReadFile;
+  mContext.WithStatic := True;
+  mContext.Conversion := AConversion;
+  mContext.Style := TFormatStyle.Default;
+  mTree := TPascalParser.Parse(cKunden);
+  mResolver := TNameResolver.Create(AIndex);
   try
-    Result := TLspMethodWithoutSelf.Execute(Resolver, Tree, KundenFile, Kunden, TTextPosition.Create(ALine,
-      ACharacter), Context);
+    Result := TLspMethodWithoutSelf.Execute(mResolver, mTree, cKundenFile, cKunden, TTextPosition.Create(ALine,
+      ACharacter), mContext);
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 
 procedure FreeAll(const AActions: TArray<TJSONObject>);
 var
-  Action: TJSONObject;
+  mAction: TJSONObject;
 begin
-  for Action in AActions do
+  for mAction in AActions do
   begin
-    Action.Free;
+    mAction.Free;
   end;
 end;
 
 procedure TLspMethodWithoutSelfTests.ActionsCarryClientCommand;
 var
-  Actions: TArray<TJSONObject>;
-  Arguments: TJSONArray;
+  mActions: TArray<TJSONObject>;
+  mArguments: TJSONArray;
 begin
-  Actions := ActionsAt(FIndex, 18, 20);
+  mActions := ActionsAt(FIndex, 18, 20);
   try
-    Assert.AreEqual(4, Integer(Length(Actions)));
-    Assert.AreEqual(TMethodWithoutSelf.ClassMethodTitle, Actions[0].GetValue<string>('title'));
-    Assert.AreEqual('In class-Methode umwandeln, Aufrufe über TKunde', Actions[1].GetValue<string>('title'));
-    Assert.AreEqual(TMethodWithoutSelf.RoutineTitle, Actions[2].GetValue<string>('title'));
-    Assert.AreEqual('In Record-Helper für string verschieben', Actions[3].GetValue<string>('title'));
-    Assert.AreEqual(TLspMethodWithoutSelf.cKind, Actions[0].GetValue<string>('kind'));
-    Assert.AreEqual(TLspMethodWithoutSelf.cClientCommand, Actions[2].GetValue<string>('command.command'));
-    Arguments := Actions[2].GetValue<TJSONArray>('command.arguments');
-    Assert.AreEqual(3, Arguments.Count);
-    Assert.AreEqual(TDocumentUris.FromPath(KundenFile), Arguments.Items[0].Value);
-    Assert.AreEqual(18, Arguments.Items[1].GetValue<Integer>('line'));
-    Assert.AreEqual('routine', Arguments.Items[2].Value);
+    Assert.AreEqual(4, Integer(Length(mActions)));
+    Assert.AreEqual(TMethodWithoutSelf.ClassMethodTitle, mActions[0].GetValue<string>('title'));
+    Assert.AreEqual('In class-Methode umwandeln, Aufrufe über TKunde', mActions[1].GetValue<string>('title'));
+    Assert.AreEqual(TMethodWithoutSelf.RoutineTitle, mActions[2].GetValue<string>('title'));
+    Assert.AreEqual('In Record-Helper für string verschieben', mActions[3].GetValue<string>('title'));
+    Assert.AreEqual(TLspMethodWithoutSelf.cKind, mActions[0].GetValue<string>('kind'));
+    Assert.AreEqual(TLspMethodWithoutSelf.cClientCommand, mActions[2].GetValue<string>('command.command'));
+    mArguments := mActions[2].GetValue<TJSONArray>('command.arguments');
+    Assert.AreEqual(3, mArguments.Count);
+    Assert.AreEqual(TDocumentUris.FromPath(cKundenFile), mArguments.Items[0].Value);
+    Assert.AreEqual(18, mArguments.Items[1].GetValue<Integer>('line'));
+    Assert.AreEqual('routine', mArguments.Items[2].Value);
   finally
-    FreeAll(Actions);
+    FreeAll(mActions);
   end;
 end;
 
@@ -220,46 +220,46 @@ end;
 
 procedure TLspMethodWithoutSelfTests.ExecuteChangesBothUnits;
 var
-  Answer: TJSONObject;
-  Json: string;
+  mAnswer: TJSONObject;
+  mJson: string;
 begin
-  Answer := ExecuteAt(FIndex, 18, 20, 'routine');
+  mAnswer := ExecuteAt(FIndex, 18, 20, 'routine');
   try
-    Json := Answer.ToJSON;
-    Assert.AreEqual(2, Answer.GetValue<Integer>('files'), Json);
-    Assert.AreEqual(1, Answer.GetValue<Integer>('calls'), Json);
-    Assert.IsTrue(Pos('"newText":"function IsValidIban(const S: string; N: Integer): Boolean;\n\n"', Json) > 0,
-      Json);
-    Assert.IsTrue(Pos(TDocumentUris.FromPath(AufruferFile), Json) > 0, Json);
-    Assert.IsTrue(Pos('"needsConfirmation":true', Json) > 0, Json);
-    Assert.IsTrue(Answer.GetValue<string>('preview').StartsWith('TKunde.IsValidIban wird freie Routine'), Json);
-    Assert.IsTrue(Pos('Aufrufer.pas, Zeile 7: if K.IsValidIban(T, 3) then', Answer.GetValue<string>('preview')) > 0,
-      Json);
+    mJson := mAnswer.ToJSON;
+    Assert.AreEqual(2, mAnswer.GetValue<Integer>('files'), mJson);
+    Assert.AreEqual(1, mAnswer.GetValue<Integer>('calls'), mJson);
+    Assert.IsTrue(Pos('"newText":"function IsValidIban(const S: string; N: Integer): Boolean;\n\n"', mJson) > 0,
+      mJson);
+    Assert.IsTrue(Pos(TDocumentUris.FromPath(cAufruferFile), mJson) > 0, mJson);
+    Assert.IsTrue(Pos('"needsConfirmation":true', mJson) > 0, mJson);
+    Assert.IsTrue(mAnswer.GetValue<string>('preview').StartsWith('TKunde.IsValidIban wird freie Routine'), mJson);
+    Assert.IsTrue(Pos('Aufrufer.pas, Zeile 7: if K.IsValidIban(T, 3) then', mAnswer.GetValue<string>('preview')) > 0,
+      mJson);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
-  Answer := ExecuteAt(FIndex, 18, 20, 'classMethod');
+  mAnswer := ExecuteAt(FIndex, 18, 20, 'classMethod');
   try
-    Json := Answer.ToJSON;
-    Assert.AreEqual(1, Answer.GetValue<Integer>('files'), Json);
-    Assert.IsTrue(Pos('" static;"', Json) > 0, Json);
+    mJson := mAnswer.ToJSON;
+    Assert.AreEqual(1, mAnswer.GetValue<Integer>('files'), mJson);
+    Assert.IsTrue(Pos('" static;"', mJson) > 0, mJson);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 procedure TLspMethodWithoutSelfTests.HelperWarnsAboutRtlHelper;
 var
-  Answer: TJSONObject;
+  mAnswer: TJSONObject;
 begin
-  Answer := ExecuteAt(FIndex, 18, 20, 'helper');
+  mAnswer := ExecuteAt(FIndex, 18, 20, 'helper');
   try
-    Assert.AreEqual(1, Answer.GetValue<TJSONArray>('warnings').Count, Answer.ToJSON);
-    Assert.IsTrue(Pos('TStringHelper', Answer.GetValue<TJSONArray>('warnings').Items[0].Value) > 0, Answer.ToJSON);
-    Assert.IsTrue(Pos('TKundenStringHelper = record helper for string', Answer.ToJSON) > 0, Answer.ToJSON);
-    Assert.IsTrue(Pos('"newText":"T.IsValidIban(3)"', Answer.ToJSON) > 0, Answer.ToJSON);
+    Assert.AreEqual(1, mAnswer.GetValue<TJSONArray>('warnings').Count, mAnswer.ToJSON);
+    Assert.IsTrue(Pos('TStringHelper', mAnswer.GetValue<TJSONArray>('warnings').Items[0].Value) > 0, mAnswer.ToJSON);
+    Assert.IsTrue(Pos('TKundenStringHelper = record helper for string', mAnswer.ToJSON) > 0, mAnswer.ToJSON);
+    Assert.IsTrue(Pos('"newText":"T.IsValidIban(3)"', mAnswer.ToJSON) > 0, mAnswer.ToJSON);
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
@@ -279,29 +279,29 @@ end;
 
 procedure TLspMethodWithoutSelfTests.MarkersAtHeaderEnd;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Found: TArray<TTextPosition>;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mFound: TArray<TTextPosition>;
 begin
-  Tree := TPascalParser.Parse(Kunden);
-  Resolver := TNameResolver.Create(FIndex);
+  mTree := TPascalParser.Parse(cKunden);
+  mResolver := TNameResolver.Create(FIndex);
   try
-    Resolver.PinTree(Tree, KundenFile);
+    mResolver.PinTree(mTree, cKundenFile);
     try
-      Found := TLspMethodWithoutSelf.Markers(Tree, Kunden, TTextRange.Create(TTextPosition.Create(0, 0),
-        TTextPosition.Create(30, 0)), TLspMethodWithoutSelf.Lookup(Resolver, Tree, KundenFile, ReadFile));
-      Assert.AreEqual(1, Integer(Length(Found)));
-      Assert.AreEqual(18, Found[0].Line);
-      Assert.AreEqual(66, Found[0].Character);
-      Found := TLspMethodWithoutSelf.Markers(Tree, Kunden, TTextRange.Create(TTextPosition.Create(0, 0),
-        TTextPosition.Create(10, 0)), TLspMethodWithoutSelf.Lookup(Resolver, Tree, KundenFile, ReadFile));
-      Assert.AreEqual(0, Integer(Length(Found)));
+      mFound := TLspMethodWithoutSelf.Markers(mTree, cKunden, TTextRange.Create(TTextPosition.Create(0, 0),
+        TTextPosition.Create(30, 0)), TLspMethodWithoutSelf.Lookup(mResolver, mTree, cKundenFile, ReadFile));
+      Assert.AreEqual(1, Integer(Length(mFound)));
+      Assert.AreEqual(18, mFound[0].Line);
+      Assert.AreEqual(66, mFound[0].Character);
+      mFound := TLspMethodWithoutSelf.Markers(mTree, cKunden, TTextRange.Create(TTextPosition.Create(0, 0),
+        TTextPosition.Create(10, 0)), TLspMethodWithoutSelf.Lookup(mResolver, mTree, cKundenFile, ReadFile));
+      Assert.AreEqual(0, Integer(Length(mFound)));
     finally
-      Resolver.UnpinTree;
+      mResolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
-    Tree.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
 end;
 

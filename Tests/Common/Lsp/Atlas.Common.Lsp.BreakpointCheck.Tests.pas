@@ -65,7 +65,7 @@ uses
   Atlas.Common.Pascal.TreeCache;
 
 const
-  Source =
+  cSource =
     'unit Kunden;'#10 +                                         // 0
     'interface'#10 +                                            // 1
     'implementation'#10 +                                       // 2
@@ -133,7 +133,7 @@ end;
 
 procedure TLspBreakpointCheckTests.StatementLinesAreOk;
 begin
-  Read(Source, ['DEBUG']);
+  Read(cSource, ['DEBUG']);
   Assert.AreEqual(Ord(TLspBreakpointReason.Ok), Ord(Verdict(9).Reason));
   Assert.AreEqual(Ord(TLspBreakpointReason.Ok), Ord(Verdict(11).Reason));
   Assert.AreEqual(Ord(TLspBreakpointReason.Ok), Ord(Verdict(12).Reason));
@@ -143,14 +143,14 @@ end;
 
 procedure TLspBreakpointCheckTests.BeginAndEndOfRoutineAreOk;
 begin
-  Read(Source, ['DEBUG']);
+  Read(cSource, ['DEBUG']);
   Assert.AreEqual(Ord(TLspBreakpointReason.Ok), Ord(Verdict(8).Reason));
   Assert.AreEqual(Ord(TLspBreakpointReason.Ok), Ord(Verdict(20).Reason));
 end;
 
 procedure TLspBreakpointCheckTests.CommentAndBlankLinesHaveNoCode;
 begin
-  Read(Source, ['DEBUG']);
+  Read(cSource, ['DEBUG']);
   Assert.AreEqual(Ord(TLspBreakpointReason.NoCode), Ord(Verdict(10).Reason));
   Assert.AreEqual(11, Verdict(10).NextLine);
   Assert.AreEqual(Ord(TLspBreakpointReason.NoCode), Ord(Verdict(16).Reason));
@@ -159,7 +159,7 @@ end;
 
 procedure TLspBreakpointCheckTests.DeclarationsHaveNoCode;
 begin
-  Read(Source, ['DEBUG']);
+  Read(cSource, ['DEBUG']);
   Assert.AreEqual(Ord(TLspBreakpointReason.NoCode), Ord(Verdict(5).Reason));
   Assert.AreEqual(Ord(TLspBreakpointReason.NoCode), Ord(Verdict(6).Reason));
   Assert.AreEqual(Ord(TLspBreakpointReason.NoCode), Ord(Verdict(7).Reason));
@@ -168,20 +168,20 @@ end;
 
 procedure TLspBreakpointCheckTests.ContinuationLineHasNoCode;
 begin
-  Read(Source, ['DEBUG']);
+  Read(cSource, ['DEBUG']);
   Assert.AreEqual(Ord(TLspBreakpointReason.NoCode), Ord(Verdict(13).Reason));
   Assert.AreEqual(15, Verdict(13).NextLine);
 end;
 
 procedure TLspBreakpointCheckTests.ElseLineHasNoCode;
 begin
-  Read(Source, ['DEBUG']);
+  Read(cSource, ['DEBUG']);
   Assert.AreEqual(Ord(TLspBreakpointReason.NoCode), Ord(Verdict(14).Reason));
 end;
 
 procedure TLspBreakpointCheckTests.UntilLineIsOk;
 begin
-  Read(Source, ['DEBUG']);
+  Read(cSource, ['DEBUG']);
   Assert.AreEqual(Ord(TLspBreakpointReason.Ok), Ord(Verdict(17).Reason));
   Assert.AreEqual(Ord(TLspBreakpointReason.Ok), Ord(Verdict(19).Reason));
 end;
@@ -195,7 +195,7 @@ end;
 
 procedure TLspBreakpointCheckTests.BetweenRoutinesNextIsFollowingRoutine;
 begin
-  Read(Source, ['DEBUG']);
+  Read(cSource, ['DEBUG']);
   Assert.AreEqual(Ord(TLspBreakpointReason.NoCode), Ord(Verdict(21).Reason));
   Assert.AreEqual(23, Verdict(21).NextLine);
 end;
@@ -204,7 +204,7 @@ procedure TLspBreakpointCheckTests.InactiveBranchNamesCondition;
 var
   mVerdict: TLspBreakpointVerdict;
 begin
-  Read(Source, ['DEBUG']);
+  Read(cSource, ['DEBUG']);
   mVerdict := Verdict(25);
   Assert.AreEqual(Ord(TLspBreakpointReason.Inactive), Ord(mVerdict.Reason));
   Assert.IsTrue(Pos('RELEASE', UpperCase(mVerdict.Detail)) > 0, mVerdict.Detail);
@@ -212,9 +212,9 @@ end;
 
 procedure TLspBreakpointCheckTests.ActiveBranchIsOk;
 begin
-  Read(Source, ['DEBUG']);
+  Read(cSource, ['DEBUG']);
   Assert.AreEqual(Ord(TLspBreakpointReason.Ok), Ord(Verdict(27).Reason));
-  Read(Source, ['RELEASE']);
+  Read(cSource, ['RELEASE']);
   Assert.AreEqual(Ord(TLspBreakpointReason.Ok), Ord(Verdict(25).Reason));
   Assert.AreEqual(Ord(TLspBreakpointReason.Inactive), Ord(Verdict(27).Reason));
 end;
@@ -265,7 +265,7 @@ var
   mFile: TJSONObject;
   mAnswer: TJSONObject;
 begin
-  Read(Source, ['DEBUG']);
+  Read(cSource, ['DEBUG']);
   mVerdicts := TLspBreakpointCheck.Check(FTree, FProcessed, FInput, [9, 10, 25]);
   mFile := TLspBreakpointCheck.FileToJson('file:///k.pas', mVerdicts);
   mAnswer := TLspBreakpointCheck.AnswerToJson([mFile, nil]);

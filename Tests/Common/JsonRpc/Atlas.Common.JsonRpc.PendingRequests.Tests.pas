@@ -63,50 +63,50 @@ uses
 
 function Observe(const APending: IJsonRpcPendingRequests; const AJson: string): Boolean;
 var
-  Message: TJSONObject;
+  mMessage: TJSONObject;
 begin
-  Message := TJsonRpcTestSupport.Parse(AJson);
+  mMessage := TJsonRpcTestSupport.Parse(AJson);
   try
-    Result := APending.Observe(Message);
+    Result := APending.Observe(mMessage);
   finally
-    Message.Free;
+    mMessage.Free;
   end;
 end;
 
 function AcquireJson(const APending: IJsonRpcPendingRequests; const AIdJson: string): IJsonRpcCancellationToken;
 var
-  Id: TJSONValue;
+  mId: TJSONValue;
 begin
-  Id := TJSONValue.ParseJSONValue(AIdJson);
+  mId := TJSONValue.ParseJSONValue(AIdJson);
   try
-    Result := APending.Acquire(Id);
+    Result := APending.Acquire(mId);
   finally
-    Id.Free;
+    mId.Free;
   end;
 end;
 
 procedure CancelJson(const APending: IJsonRpcPendingRequests; const AIdJson: string);
 var
-  Id: TJSONValue;
+  mId: TJSONValue;
 begin
-  Id := TJSONValue.ParseJSONValue(AIdJson);
+  mId := TJSONValue.ParseJSONValue(AIdJson);
   try
-    APending.Cancel(Id);
+    APending.Cancel(mId);
   finally
-    Id.Free;
+    mId.Free;
   end;
 end;
 
 procedure ReleaseJson(const APending: IJsonRpcPendingRequests; const AIdJson: string;
   const AToken: IJsonRpcCancellationToken);
 var
-  Id: TJSONValue;
+  mId: TJSONValue;
 begin
-  Id := TJSONValue.ParseJSONValue(AIdJson);
+  mId := TJSONValue.ParseJSONValue(AIdJson);
   try
-    APending.Release(Id, AToken);
+    APending.Release(mId, AToken);
   finally
-    Id.Free;
+    mId.Free;
   end;
 end;
 
@@ -132,197 +132,197 @@ end;
 
 procedure TJsonRpcPendingRequestsTests.CancelMarksAcquiredToken;
 var
-  Pending: IJsonRpcPendingRequests;
-  Token: IJsonRpcCancellationToken;
+  mPending: IJsonRpcPendingRequests;
+  mToken: IJsonRpcCancellationToken;
 begin
-  Pending := TJsonRpcPendingRequests.Create;
-  Token := AcquireJson(Pending, '1');
-  Assert.IsFalse(Token.IsCancellationRequested);
-  CancelJson(Pending, '1');
-  Assert.IsTrue(Token.IsCancellationRequested);
+  mPending := TJsonRpcPendingRequests.Create;
+  mToken := AcquireJson(mPending, '1');
+  Assert.IsFalse(mToken.IsCancellationRequested);
+  CancelJson(mPending, '1');
+  Assert.IsTrue(mToken.IsCancellationRequested);
 end;
 
 procedure TJsonRpcPendingRequestsTests.ObserveTracksRequestAndExecutesCancelRequest;
 var
-  Pending: IJsonRpcPendingRequests;
+  mPending: IJsonRpcPendingRequests;
 begin
-  Pending := TJsonRpcPendingRequests.Create;
-  Assert.IsFalse(Observe(Pending, '{"jsonrpc":"2.0","id":7,"method":"langsam"}'));
-  Assert.IsTrue(Observe(Pending, '{"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":7}}'));
-  Assert.IsTrue(AcquireJson(Pending, '7').IsCancellationRequested);
+  mPending := TJsonRpcPendingRequests.Create;
+  Assert.IsFalse(Observe(mPending, '{"jsonrpc":"2.0","id":7,"method":"langsam"}'));
+  Assert.IsTrue(Observe(mPending, '{"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":7}}'));
+  Assert.IsTrue(AcquireJson(mPending, '7').IsCancellationRequested);
 end;
 
 procedure TJsonRpcPendingRequestsTests.ObserveExecutesMcpCancelled;
 var
-  Pending: IJsonRpcPendingRequests;
+  mPending: IJsonRpcPendingRequests;
 begin
   // MCP bricht mit notifications/cancelled und params.requestId ab (#1117).
-  Pending := TJsonRpcPendingRequests.Create;
-  Assert.IsFalse(Observe(Pending, '{"jsonrpc":"2.0","id":"a1","method":"tools/call"}'));
-  Assert.IsTrue(Observe(Pending, '{"jsonrpc":"2.0","method":"notifications/cancelled",' +
+  mPending := TJsonRpcPendingRequests.Create;
+  Assert.IsFalse(Observe(mPending, '{"jsonrpc":"2.0","id":"a1","method":"tools/call"}'));
+  Assert.IsTrue(Observe(mPending, '{"jsonrpc":"2.0","method":"notifications/cancelled",' +
     '"params":{"requestId":"a1","reason":"Nutzer"}}'));
-  Assert.IsTrue(AcquireJson(Pending, '"a1"').IsCancellationRequested);
+  Assert.IsTrue(AcquireJson(mPending, '"a1"').IsCancellationRequested);
 end;
 
 procedure TJsonRpcPendingRequestsTests.ObservePassesOtherMessagesOn;
 var
-  Pending: IJsonRpcPendingRequests;
+  mPending: IJsonRpcPendingRequests;
 begin
-  Pending := TJsonRpcPendingRequests.Create;
-  Assert.IsFalse(Observe(Pending, '{"jsonrpc":"2.0","method":"textDocument/didChange"}'));
-  Assert.IsFalse(Observe(Pending, '{"jsonrpc":"2.0","id":1,"result":null}'));
+  mPending := TJsonRpcPendingRequests.Create;
+  Assert.IsFalse(Observe(mPending, '{"jsonrpc":"2.0","method":"textDocument/didChange"}'));
+  Assert.IsFalse(Observe(mPending, '{"jsonrpc":"2.0","id":1,"result":null}'));
   // Ein Abbruch ohne gültige Parameter ist trotzdem erledigt.
-  Assert.IsTrue(Observe(Pending, '{"jsonrpc":"2.0","method":"$/cancelRequest"}'));
+  Assert.IsTrue(Observe(mPending, '{"jsonrpc":"2.0","method":"$/cancelRequest"}'));
 end;
 
 procedure TJsonRpcPendingRequestsTests.IgnoresCancelForReleasedRequest;
 var
-  Pending: IJsonRpcPendingRequests;
-  Token: IJsonRpcCancellationToken;
+  mPending: IJsonRpcPendingRequests;
+  mToken: IJsonRpcCancellationToken;
 begin
-  Pending := TJsonRpcPendingRequests.Create;
-  Token := AcquireJson(Pending, '3');
-  ReleaseJson(Pending, '3', Token);
-  CancelJson(Pending, '3');
-  Assert.IsFalse(Token.IsCancellationRequested);
-  Assert.IsFalse(AcquireJson(Pending, '3').IsCancellationRequested);
+  mPending := TJsonRpcPendingRequests.Create;
+  mToken := AcquireJson(mPending, '3');
+  ReleaseJson(mPending, '3', mToken);
+  CancelJson(mPending, '3');
+  Assert.IsFalse(mToken.IsCancellationRequested);
+  Assert.IsFalse(AcquireJson(mPending, '3').IsCancellationRequested);
 end;
 
 procedure TJsonRpcPendingRequestsTests.DistinguishesNumberAndStringIds;
 var
-  Pending: IJsonRpcPendingRequests;
-  NumberToken: IJsonRpcCancellationToken;
-  StringToken: IJsonRpcCancellationToken;
+  mPending: IJsonRpcPendingRequests;
+  mNumberToken: IJsonRpcCancellationToken;
+  mStringToken: IJsonRpcCancellationToken;
 begin
-  Pending := TJsonRpcPendingRequests.Create;
-  NumberToken := AcquireJson(Pending, '1');
-  StringToken := AcquireJson(Pending, '"1"');
-  CancelJson(Pending, '"1"');
-  Assert.IsFalse(NumberToken.IsCancellationRequested);
-  Assert.IsTrue(StringToken.IsCancellationRequested);
+  mPending := TJsonRpcPendingRequests.Create;
+  mNumberToken := AcquireJson(mPending, '1');
+  mStringToken := AcquireJson(mPending, '"1"');
+  CancelJson(mPending, '"1"');
+  Assert.IsFalse(mNumberToken.IsCancellationRequested);
+  Assert.IsTrue(mStringToken.IsCancellationRequested);
 end;
 
 procedure TJsonRpcPendingRequestsTests.CancelAllCancelsEveryOpenRequest;
 var
-  Pending: IJsonRpcPendingRequests;
-  First: IJsonRpcCancellationToken;
-  Second: IJsonRpcCancellationToken;
+  mPending: IJsonRpcPendingRequests;
+  mFirst: IJsonRpcCancellationToken;
+  mSecond: IJsonRpcCancellationToken;
 begin
-  Pending := TJsonRpcPendingRequests.Create;
-  First := AcquireJson(Pending, '1');
-  Second := AcquireJson(Pending, '"zwei"');
-  Pending.CancelAll;
-  Assert.IsTrue(First.IsCancellationRequested);
-  Assert.IsTrue(Second.IsCancellationRequested);
+  mPending := TJsonRpcPendingRequests.Create;
+  mFirst := AcquireJson(mPending, '1');
+  mSecond := AcquireJson(mPending, '"zwei"');
+  mPending.CancelAll;
+  Assert.IsTrue(mFirst.IsCancellationRequested);
+  Assert.IsTrue(mSecond.IsCancellationRequested);
 end;
 
 procedure TJsonRpcPendingRequestsTests.ThrowIfCancellationRequestedRaisesRequestCancelled;
 var
-  Pending: IJsonRpcPendingRequests;
-  Token: IJsonRpcCancellationToken;
-  Code: Integer;
+  mPending: IJsonRpcPendingRequests;
+  mToken: IJsonRpcCancellationToken;
+  mCode: Integer;
 begin
-  Pending := TJsonRpcPendingRequests.Create;
-  Token := AcquireJson(Pending, '1');
-  Token.ThrowIfCancellationRequested;
-  CancelJson(Pending, '1');
-  Code := 0;
+  mPending := TJsonRpcPendingRequests.Create;
+  mToken := AcquireJson(mPending, '1');
+  mToken.ThrowIfCancellationRequested;
+  CancelJson(mPending, '1');
+  mCode := 0;
   try
-    Token.ThrowIfCancellationRequested;
+    mToken.ThrowIfCancellationRequested;
   except
     on E: EJsonRpcRequestCancelled do
-      Code := E.Code;
+      mCode := E.Code;
   end;
-  Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, Code);
+  Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, mCode);
 end;
 
 procedure TJsonRpcPendingRequestsTests.WaitForWorkWaitsUntilWorkEnds;
 var
-  Pending: IJsonRpcPendingRequests;
+  mPending: IJsonRpcPendingRequests;
 begin
-  Pending := TJsonRpcPendingRequests.Create;
-  Assert.IsTrue(Pending.WaitForWork(0));
-  Pending.BeginWork;
-  Pending.BeginWork;
-  Assert.IsFalse(Pending.WaitForWork(0));
-  Pending.EndWork;
-  Assert.IsFalse(Pending.WaitForWork(0));
-  Pending.EndWork;
-  Assert.IsTrue(Pending.WaitForWork(0));
+  mPending := TJsonRpcPendingRequests.Create;
+  Assert.IsTrue(mPending.WaitForWork(0));
+  mPending.BeginWork;
+  mPending.BeginWork;
+  Assert.IsFalse(mPending.WaitForWork(0));
+  mPending.EndWork;
+  Assert.IsFalse(mPending.WaitForWork(0));
+  mPending.EndWork;
+  Assert.IsTrue(mPending.WaitForWork(0));
 end;
 
 procedure TJsonRpcPendingRequestsTests.ChangeOfDocumentRaisesContentModified;
 var
-  Pending: IJsonRpcPendingRequests;
-  Token: IJsonRpcCancellationToken;
-  Code: Integer;
+  mPending: IJsonRpcPendingRequests;
+  mToken: IJsonRpcCancellationToken;
+  mCode: Integer;
 begin
-  Pending := TJsonRpcPendingRequests.Create;
-  Pending.AddContentChangeMethod('textDocument/didChange');
-  Observe(Pending, '{"jsonrpc":"2.0","id":4,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///a.pas"}}}');
-  Token := AcquireJson(Pending, '4');
-  Assert.IsFalse(Observe(Pending,
+  mPending := TJsonRpcPendingRequests.Create;
+  mPending.AddContentChangeMethod('textDocument/didChange');
+  Observe(mPending, '{"jsonrpc":"2.0","id":4,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///a.pas"}}}');
+  mToken := AcquireJson(mPending, '4');
+  Assert.IsFalse(Observe(mPending,
     '{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":"file:///a.pas"}}}'));
-  Assert.IsTrue(Token.IsCancellationRequested);
-  Code := 0;
+  Assert.IsTrue(mToken.IsCancellationRequested);
+  mCode := 0;
   try
-    Token.ThrowIfCancellationRequested;
+    mToken.ThrowIfCancellationRequested;
   except
     on E: EJsonRpcError do
-      Code := E.Code;
+      mCode := E.Code;
   end;
-  Assert.AreEqual(TJsonRpcErrorCode.cContentModified, Code);
+  Assert.AreEqual(TJsonRpcErrorCode.cContentModified, mCode);
 end;
 
 procedure TJsonRpcPendingRequestsTests.ChangeOfOtherDocumentKeepsRequest;
 var
-  Pending: IJsonRpcPendingRequests;
-  Token: IJsonRpcCancellationToken;
+  mPending: IJsonRpcPendingRequests;
+  mToken: IJsonRpcCancellationToken;
 begin
-  Pending := TJsonRpcPendingRequests.Create;
-  Pending.AddContentChangeMethod('textDocument/didChange');
-  Observe(Pending, '{"jsonrpc":"2.0","id":4,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///a.pas"}}}');
-  Token := AcquireJson(Pending, '4');
-  Observe(Pending, '{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":"file:///b.pas"}}}');
-  Assert.IsFalse(Token.IsCancellationRequested);
+  mPending := TJsonRpcPendingRequests.Create;
+  mPending.AddContentChangeMethod('textDocument/didChange');
+  Observe(mPending, '{"jsonrpc":"2.0","id":4,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///a.pas"}}}');
+  mToken := AcquireJson(mPending, '4');
+  Observe(mPending, '{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":"file:///b.pas"}}}');
+  Assert.IsFalse(mToken.IsCancellationRequested);
 end;
 
 procedure TJsonRpcPendingRequestsTests.ChangeWithoutRegisteredMethodKeepsRequest;
 var
-  Pending: IJsonRpcPendingRequests;
-  Token: IJsonRpcCancellationToken;
+  mPending: IJsonRpcPendingRequests;
+  mToken: IJsonRpcCancellationToken;
 begin
-  Pending := TJsonRpcPendingRequests.Create;
-  Observe(Pending, '{"jsonrpc":"2.0","id":4,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///a.pas"}}}');
-  Token := AcquireJson(Pending, '4');
-  Observe(Pending, '{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":"file:///a.pas"}}}');
-  Assert.IsFalse(Token.IsCancellationRequested);
+  mPending := TJsonRpcPendingRequests.Create;
+  Observe(mPending, '{"jsonrpc":"2.0","id":4,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///a.pas"}}}');
+  mToken := AcquireJson(mPending, '4');
+  Observe(mPending, '{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":"file:///a.pas"}}}');
+  Assert.IsFalse(mToken.IsCancellationRequested);
 end;
 
 procedure TJsonRpcPendingRequestsTests.ExpireClaimsAnswerOnce;
 var
-  Pending: IJsonRpcPendingRequests;
-  Token: IJsonRpcCancellationToken;
+  mPending: IJsonRpcPendingRequests;
+  mToken: IJsonRpcCancellationToken;
 begin
-  Pending := TJsonRpcPendingRequests.Create;
-  Token := AcquireJson(Pending, '1');
-  Assert.IsTrue(Pending.Expire(Token));
-  Assert.IsTrue(Token.IsCancellationRequested);
-  Assert.IsFalse(Pending.TryAnswer(Token));
-  Assert.IsFalse(Pending.Expire(Token));
-  ReleaseJson(Pending, '1', Token);
+  mPending := TJsonRpcPendingRequests.Create;
+  mToken := AcquireJson(mPending, '1');
+  Assert.IsTrue(mPending.Expire(mToken));
+  Assert.IsTrue(mToken.IsCancellationRequested);
+  Assert.IsFalse(mPending.TryAnswer(mToken));
+  Assert.IsFalse(mPending.Expire(mToken));
+  ReleaseJson(mPending, '1', mToken);
 end;
 
 procedure TJsonRpcPendingRequestsTests.TryAnswerAcceptsForeignToken;
 var
-  Pending: IJsonRpcPendingRequests;
-  Token: IJsonRpcCancellationToken;
+  mPending: IJsonRpcPendingRequests;
+  mToken: IJsonRpcCancellationToken;
 begin
-  Pending := TJsonRpcPendingRequests.Create;
-  Token := TForeignToken.Create;
-  Assert.IsTrue(Pending.TryAnswer(Token));
-  Assert.IsTrue(Pending.TryAnswer(Token));
-  Assert.IsFalse(Pending.Expire(Token));
+  mPending := TJsonRpcPendingRequests.Create;
+  mToken := TForeignToken.Create;
+  Assert.IsTrue(mPending.TryAnswer(mToken));
+  Assert.IsTrue(mPending.TryAnswer(mToken));
+  Assert.IsFalse(mPending.Expire(mToken));
 end;
 
 procedure TJsonRpcPendingRequestsTests.ExpireIsOnlyExpiredUntilCancelOrChange;

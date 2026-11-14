@@ -32,7 +32,7 @@ uses
   Atlas.Common.Editing.UsesCommand;
 
 const
-  UnitText =
+  cUnitText =
     'unit A;'#10 +
     'interface'#10 +
     'uses Classes;'#10 +
@@ -46,61 +46,61 @@ const
 
 procedure TUsesCommandTests.ParsesCommandLines;
 var
-  Units: TArray<string>;
+  mUnits: TArray<string>;
 begin
-  Assert.IsTrue(TUsesCommand.Parse('  /uses System.SysUtils, Vcl.Forms;', Units));
-  Assert.AreEqual('System.SysUtils|Vcl.Forms', string.Join('|', Units));
-  Assert.IsTrue(TUsesCommand.Parse('/USES X', Units));
-  Assert.IsFalse(TUsesCommand.Parse('/uses ', Units));
-  Assert.IsFalse(TUsesCommand.Parse('/uses A B', Units));
-  Assert.IsFalse(TUsesCommand.Parse('uses A;', Units));
-  Assert.IsFalse(TUsesCommand.Parse('// /uses A', Units));
+  Assert.IsTrue(TUsesCommand.Parse('  /uses System.SysUtils, Vcl.Forms;', mUnits));
+  Assert.AreEqual('System.SysUtils|Vcl.Forms', string.Join('|', mUnits));
+  Assert.IsTrue(TUsesCommand.Parse('/USES X', mUnits));
+  Assert.IsFalse(TUsesCommand.Parse('/uses ', mUnits));
+  Assert.IsFalse(TUsesCommand.Parse('/uses A B', mUnits));
+  Assert.IsFalse(TUsesCommand.Parse('uses A;', mUnits));
+  Assert.IsFalse(TUsesCommand.Parse('// /uses A', mUnits));
 end;
 
 procedure TUsesCommandTests.AddsToImplementationAndRemovesLine;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Assert.IsTrue(TUsesCommand.AfterEnter(UnitText, TTextPosition.Create(7, 0), nil, Edits));
-  Assert.AreEqual(2, Integer(Length(Edits)));
-  Assert.AreEqual(#10#10'uses'#10'  System.SysUtils, Vcl.Forms;', Edits[0].NewText);
-  Assert.AreEqual(3, Edits[0].Range.StartPos.Line);
-  Assert.AreEqual('', Edits[1].NewText);
-  Assert.AreEqual(6, Edits[1].Range.StartPos.Line);
-  Assert.AreEqual(7, Edits[1].Range.EndPos.Line);
-  Assert.AreEqual(0, Edits[1].Range.EndPos.Character);
+  Assert.IsTrue(TUsesCommand.AfterEnter(cUnitText, TTextPosition.Create(7, 0), nil, mEdits));
+  Assert.AreEqual(2, Integer(Length(mEdits)));
+  Assert.AreEqual(#10#10'uses'#10'  System.SysUtils, Vcl.Forms;', mEdits[0].NewText);
+  Assert.AreEqual(3, mEdits[0].Range.StartPos.Line);
+  Assert.AreEqual('', mEdits[1].NewText);
+  Assert.AreEqual(6, mEdits[1].Range.StartPos.Line);
+  Assert.AreEqual(7, mEdits[1].Range.EndPos.Line);
+  Assert.AreEqual(0, mEdits[1].Range.EndPos.Character);
 end;
 
 procedure TUsesCommandTests.AddsToInterfaceWhenTypedThere;
 const
-  Text = 'unit A;'#13#10'interface'#13#10'uses Classes;'#13#10'/uses Vcl.Forms'#13#10#13#10'implementation'#13#10'end.';
+  cText = 'unit A;'#13#10'interface'#13#10'uses Classes;'#13#10'/uses Vcl.Forms'#13#10#13#10'implementation'#13#10'end.';
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Assert.IsTrue(TUsesCommand.AfterEnter(Text, TTextPosition.Create(4, 0), nil, Edits));
-  Assert.AreEqual(', Vcl.Forms', Edits[0].NewText);
-  Assert.AreEqual(2, Edits[0].Range.StartPos.Line);
+  Assert.IsTrue(TUsesCommand.AfterEnter(cText, TTextPosition.Create(4, 0), nil, mEdits));
+  Assert.AreEqual(', Vcl.Forms', mEdits[0].NewText);
+  Assert.AreEqual(2, mEdits[0].Range.StartPos.Line);
 end;
 
 procedure TUsesCommandTests.SkipsUsedUnitsButRemovesLine;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Assert.IsTrue(TUsesCommand.AfterEnter(StringReplace(UnitText, 'System.SysUtils, Vcl.Forms', 'Classes', []),
-    TTextPosition.Create(7, 0), nil, Edits));
-  Assert.AreEqual(1, Integer(Length(Edits)));
-  Assert.AreEqual('', Edits[0].NewText);
-  Assert.IsTrue(TUsesCommand.AfterEnter(StringReplace(UnitText, 'System.SysUtils, Vcl.Forms', 'SysUtils', []),
-    TTextPosition.Create(7, 0), nil, Edits));
-  Assert.AreEqual(2, Integer(Length(Edits)));
+  Assert.IsTrue(TUsesCommand.AfterEnter(StringReplace(cUnitText, 'System.SysUtils, Vcl.Forms', 'Classes', []),
+    TTextPosition.Create(7, 0), nil, mEdits));
+  Assert.AreEqual(1, Integer(Length(mEdits)));
+  Assert.AreEqual('', mEdits[0].NewText);
+  Assert.IsTrue(TUsesCommand.AfterEnter(StringReplace(cUnitText, 'System.SysUtils, Vcl.Forms', 'SysUtils', []),
+    TTextPosition.Create(7, 0), nil, mEdits));
+  Assert.AreEqual(2, Integer(Length(mEdits)));
 end;
 
 procedure TUsesCommandTests.IgnoresOtherLines;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Assert.IsFalse(TUsesCommand.AfterEnter(UnitText, TTextPosition.Create(6, 0), nil, Edits));
-  Assert.IsFalse(TUsesCommand.AfterEnter(UnitText, TTextPosition.Create(0, 0), nil, Edits));
+  Assert.IsFalse(TUsesCommand.AfterEnter(cUnitText, TTextPosition.Create(6, 0), nil, mEdits));
+  Assert.IsFalse(TUsesCommand.AfterEnter(cUnitText, TTextPosition.Create(0, 0), nil, mEdits));
 end;
 
 initialization

@@ -84,90 +84,90 @@ end;
 
 procedure TAtlasUndoMessagesTests.ReportsDoneUndoAndRedo;
 var
-  Report: TAtlasUndoReport;
-  Lines: TArray<string>;
+  mReport: TAtlasUndoReport;
+  mLines: TArray<string>;
 begin
-  Report := Default(TAtlasUndoReport);
-  Report.SetId := 3;
-  Report.Action := 'Umbenennen: Alt → Neu';
-  Report.Done := ['C:\P\A.pas', 'C:\P\B.pas'];
-  Lines := TAtlasUndoMessages.Report(Report);
-  Assert.AreEqual(1, Integer(Length(Lines)));
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UndoDone, [Report.Action, 2]), Lines[0]);
-  Report.Redo := True;
-  Lines := TAtlasUndoMessages.Report(Report);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.RedoDone, [Report.Action, 2]), Lines[0]);
+  mReport := Default(TAtlasUndoReport);
+  mReport.SetId := 3;
+  mReport.Action := 'Umbenennen: Alt → Neu';
+  mReport.Done := ['C:\P\A.pas', 'C:\P\B.pas'];
+  mLines := TAtlasUndoMessages.Report(mReport);
+  Assert.AreEqual(1, Integer(Length(mLines)));
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UndoDone, [mReport.Action, 2]), mLines[0]);
+  mReport.Redo := True;
+  mLines := TAtlasUndoMessages.Report(mReport);
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.RedoDone, [mReport.Action, 2]), mLines[0]);
 end;
 
 procedure TAtlasUndoMessagesTests.ReportsPartialWithOneLinePerFile;
 var
-  Report: TAtlasUndoReport;
-  Lines: TArray<string>;
+  mReport: TAtlasUndoReport;
+  mLines: TArray<string>;
 begin
-  Report := Default(TAtlasUndoReport);
-  Report.Action := 'Code-Aktion';
-  Report.Done := ['C:\P\A.pas'];
-  Report.Conflicts := [Problem('C:\P\B.pas', TAtlasUndoProblemKind.ChangedSince, ''),
+  mReport := Default(TAtlasUndoReport);
+  mReport.Action := 'Code-Aktion';
+  mReport.Done := ['C:\P\A.pas'];
+  mReport.Conflicts := [Problem('C:\P\B.pas', TAtlasUndoProblemKind.ChangedSince, ''),
     Problem('C:\P\C.pas', TAtlasUndoProblemKind.Exists, ''),
     Problem('C:\P\D.pas', TAtlasUndoProblemKind.Missing, '')];
-  Report.Errors := [Problem('C:\P\E.pas', TAtlasUndoProblemKind.Failed, 'schreibgeschützt')];
-  Lines := TAtlasUndoMessages.Report(Report);
-  Assert.AreEqual(5, Integer(Length(Lines)));
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UndoPartial, ['Code-Aktion', 1, 4]), Lines[0]);
-  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoConflictChanged, ['C:\P\B.pas']), Lines[1]);
-  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoConflictExists, ['C:\P\C.pas']), Lines[2]);
-  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoConflictMissing, ['C:\P\D.pas']), Lines[3]);
-  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoFailed, ['C:\P\E.pas', 'schreibgeschützt']), Lines[4]);
-  Report.Redo := True;
-  Lines := TAtlasUndoMessages.Report(Report);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.RedoPartial, ['Code-Aktion', 1, 4]), Lines[0]);
+  mReport.Errors := [Problem('C:\P\E.pas', TAtlasUndoProblemKind.Failed, 'schreibgeschützt')];
+  mLines := TAtlasUndoMessages.Report(mReport);
+  Assert.AreEqual(5, Integer(Length(mLines)));
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UndoPartial, ['Code-Aktion', 1, 4]), mLines[0]);
+  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoConflictChanged, ['C:\P\B.pas']), mLines[1]);
+  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoConflictExists, ['C:\P\C.pas']), mLines[2]);
+  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoConflictMissing, ['C:\P\D.pas']), mLines[3]);
+  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoFailed, ['C:\P\E.pas', 'schreibgeschützt']), mLines[4]);
+  mReport.Redo := True;
+  mLines := TAtlasUndoMessages.Report(mReport);
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.RedoPartial, ['Code-Aktion', 1, 4]), mLines[0]);
 end;
 
 procedure TAtlasUndoMessagesTests.ReportsAbortedDisabledAndNothing;
 var
-  Report: TAtlasUndoReport;
-  Lines: TArray<string>;
+  mReport: TAtlasUndoReport;
+  mLines: TArray<string>;
 begin
-  Report := Default(TAtlasUndoReport);
-  Report.Action := 'Umbenennen';
-  Report.Aborted := True;
-  Report.Conflicts := [Problem('C:\P\B.pas', TAtlasUndoProblemKind.ChangedSince, '')];
-  Lines := TAtlasUndoMessages.Report(Report);
-  Assert.AreEqual(2, Integer(Length(Lines)));
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UndoAborted, ['Umbenennen', 1]), Lines[0]);
-  Report.Redo := True;
+  mReport := Default(TAtlasUndoReport);
+  mReport.Action := 'Umbenennen';
+  mReport.Aborted := True;
+  mReport.Conflicts := [Problem('C:\P\B.pas', TAtlasUndoProblemKind.ChangedSince, '')];
+  mLines := TAtlasUndoMessages.Report(mReport);
+  Assert.AreEqual(2, Integer(Length(mLines)));
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UndoAborted, ['Umbenennen', 1]), mLines[0]);
+  mReport.Redo := True;
   Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.RedoAborted, ['Umbenennen', 1]),
-    TAtlasUndoMessages.Report(Report)[0]);
+    TAtlasUndoMessages.Report(mReport)[0]);
 
-  Report := Default(TAtlasUndoReport);
-  Report.Disabled := True;
-  Lines := TAtlasUndoMessages.Report(Report);
-  Assert.AreEqual(1, Integer(Length(Lines)));
-  Assert.AreEqual(TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoDisabled), Lines[0]);
+  mReport := Default(TAtlasUndoReport);
+  mReport.Disabled := True;
+  mLines := TAtlasUndoMessages.Report(mReport);
+  Assert.AreEqual(1, Integer(Length(mLines)));
+  Assert.AreEqual(TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoDisabled), mLines[0]);
 
-  Report := Default(TAtlasUndoReport);
-  Report.NotFound := True;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UndoNothing), TAtlasUndoMessages.Report(Report)[0]);
-  Report.Redo := True;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.RedoNothing), TAtlasUndoMessages.Report(Report)[0]);
+  mReport := Default(TAtlasUndoReport);
+  mReport.NotFound := True;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UndoNothing), TAtlasUndoMessages.Report(mReport)[0]);
+  mReport.Redo := True;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.RedoNothing), TAtlasUndoMessages.Report(mReport)[0]);
 end;
 
 procedure TAtlasUndoMessagesTests.CaptionsShowActionCountTimeAndState;
 var
-  ChangeSet: TAtlasChangeSet;
-  Caption: string;
+  mChangeSet: TAtlasChangeSet;
+  mCaption: string;
 begin
-  ChangeSet := SampleSet(False);
-  Caption := TAtlasUndoMessages.SetCaption(ChangeSet, EncodeDateTime(2026, 10, 14, 18, 0, 0, 0));
-  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoSetCaption, [ChangeSet.Action, 2, '14:03',
-    TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStateApplied)]), Caption);
+  mChangeSet := SampleSet(False);
+  mCaption := TAtlasUndoMessages.SetCaption(mChangeSet, EncodeDateTime(2026, 10, 14, 18, 0, 0, 0));
+  Assert.AreEqual(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoSetCaption, [mChangeSet.Action, 2, '14:03',
+    TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStateApplied)]), mCaption);
   // Von einem anderen Tag: mit Datum.
-  Caption := TAtlasUndoMessages.SetCaption(SampleSet(True), EncodeDateTime(2026, 10, 15, 9, 0, 0, 0));
-  Assert.Contains(Caption, '14.10. 14:03');
-  Assert.Contains(Caption, TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStateUndone));
-  ChangeSet.Files[0].Undone := True;
+  mCaption := TAtlasUndoMessages.SetCaption(SampleSet(True), EncodeDateTime(2026, 10, 15, 9, 0, 0, 0));
+  Assert.Contains(mCaption, '14.10. 14:03');
+  Assert.Contains(mCaption, TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStateUndone));
+  mChangeSet.Files[0].Undone := True;
   Assert.AreEqual(TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoStatePartly),
-    TAtlasUndoMessages.StateText(ChangeSet.State));
+    TAtlasUndoMessages.StateText(mChangeSet.State));
 
   Assert.AreEqual('A.pas (C:\P)', TAtlasUndoMessages.FileCaption(SampleSet(False).Files[0]));
   Assert.AreEqual('B.pas (C:\P) · ' + TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoKindCreated),
@@ -178,21 +178,21 @@ end;
 
 procedure TAtlasUndoMessagesTests.DiffLinesForOneOrAllFiles;
 var
-  Lines: TArray<string>;
-  Joined: string;
+  mLines: TArray<string>;
+  mJoined: string;
 begin
-  Lines := TAtlasUndoMessages.DiffLines(SampleSet(False), 'c:\p\a.pas');
-  Joined := string.Join(#10, Lines);
-  Assert.Contains(Joined, '- Alt;');
-  Assert.Contains(Joined, '+ Neu;');
-  Assert.DoesNotContain(Joined, '===');
+  mLines := TAtlasUndoMessages.DiffLines(SampleSet(False), 'c:\p\a.pas');
+  mJoined := string.Join(#10, mLines);
+  Assert.Contains(mJoined, '- Alt;');
+  Assert.Contains(mJoined, '+ Neu;');
+  Assert.DoesNotContain(mJoined, '===');
   // Alle Dateien: je Datei eine Überschrift, dazwischen eine Leerzeile.
-  Lines := TAtlasUndoMessages.DiffLines(SampleSet(False), '');
-  Joined := string.Join(#10, Lines);
-  Assert.Contains(Joined, '=== A.pas (C:\P) ===');
-  Assert.Contains(Joined, '=== B.pas (C:\P) · ' + TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoKindCreated) + ' ===');
-  Assert.Contains(Joined, '+ unit B;');
-  Assert.Contains(Joined, #10#10'===');
+  mLines := TAtlasUndoMessages.DiffLines(SampleSet(False), '');
+  mJoined := string.Join(#10, mLines);
+  Assert.Contains(mJoined, '=== A.pas (C:\P) ===');
+  Assert.Contains(mJoined, '=== B.pas (C:\P) · ' + TAtlasUndoStrings.Text(TAtlasUndoTextId.UndoKindCreated) + ' ===');
+  Assert.Contains(mJoined, '+ unit B;');
+  Assert.Contains(mJoined, #10#10'===');
   Assert.AreEqual(0, Integer(Length(TAtlasUndoMessages.DiffLines(SampleSet(False), 'C:\P\X.pas'))));
 end;
 
@@ -206,17 +206,17 @@ end;
 
 procedure TAtlasUndoViewTests.DiffViewShowsLines;
 var
-  View: TAtlasUndoDiffView;
+  mView: TAtlasUndoDiffView;
 begin
-  View := TAtlasUndoDiffView.CreateView(nil, 'Unterschied', ['=== A.pas ===', '- Alt;', '+ Neu;']);
+  mView := TAtlasUndoDiffView.CreateView(nil, 'Unterschied', ['=== A.pas ===', '- Alt;', '+ Neu;']);
   try
-    Assert.AreEqual('Unterschied', View.Caption);
-    Assert.AreEqual(3, Integer(View.Lines.Lines.Count));
-    Assert.AreEqual('+ Neu;', View.Lines.Lines[2]);
-    Assert.IsTrue(View.Lines.ReadOnly);
-    Assert.IsTrue(View.CloseButton.Cancel, 'Esc schließt');
+    Assert.AreEqual('Unterschied', mView.Caption);
+    Assert.AreEqual(3, Integer(mView.Lines.Lines.Count));
+    Assert.AreEqual('+ Neu;', mView.Lines.Lines[2]);
+    Assert.IsTrue(mView.Lines.ReadOnly);
+    Assert.IsTrue(mView.CloseButton.Cancel, 'Esc schließt');
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 
@@ -253,52 +253,52 @@ end;
 
 procedure TAtlasUndoViewTests.ChangeListShowsSetsAndRaisesEvents;
 var
-  Host: TForm;
-  Frame: TAtlasResultsFrame;
-  Older: TAtlasChangeSet;
+  mHost: TForm;
+  mFrame: TAtlasResultsFrame;
+  mOlder: TAtlasChangeSet;
   mProbe: TChangeEventProbe;
 begin
   mProbe := TChangeEventProbe.Create;
-  Older := SampleSet(True);
-  Older.Id := 2;
-  Host := TForm.CreateNew(nil);
+  mOlder := SampleSet(True);
+  mOlder.Id := 2;
+  mHost := TForm.CreateNew(nil);
   try
-    Frame := TAtlasResultsFrame.Create(Host);
-    Frame.Parent := Host;
-    WireChangeEvents(Frame, mProbe);
-    Frame.Changes.Show('Atlas-Änderungen', [SampleSet(False), Older], EncodeDateTime(2026, 10, 14, 18, 0, 0, 0),
+    mFrame := TAtlasResultsFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    WireChangeEvents(mFrame, mProbe);
+    mFrame.Changes.Show('Atlas-Änderungen', [SampleSet(False), mOlder], EncodeDateTime(2026, 10, 14, 18, 0, 0, 0),
       False);
-    Assert.IsTrue(Frame.Changes.Shows);
+    Assert.IsTrue(mFrame.Changes.Shows);
     // Zwei Sätze mit je zwei Dateien.
-    Assert.AreEqual(6, Integer(Frame.Tree.Items.Count));
-    Assert.AreEqual(2, Integer(Frame.Tree.Items[0].Count));
-    Assert.AreSame(Frame.Tree.Items[0], Frame.Tree.Selected, 'neuester Satz ausgewählt');
+    Assert.AreEqual(6, Integer(mFrame.Tree.Items.Count));
+    Assert.AreEqual(2, Integer(mFrame.Tree.Items[0].Count));
+    Assert.AreSame(mFrame.Tree.Items[0], mFrame.Tree.Selected, 'neuester Satz ausgewählt');
     // Menü: angewendeter Satz lässt sich zurücknehmen, aber nicht wiederherstellen.
-    Frame.Menu.OnPopup(Frame.Menu);
-    Assert.IsTrue(Frame.Menu.Items[0].Visible);
-    Assert.IsTrue(Frame.Menu.Items[0].Enabled);
-    Assert.IsFalse(Frame.Menu.Items[1].Enabled);
-    Frame.Changes.UndoSelected;
+    mFrame.Menu.OnPopup(mFrame.Menu);
+    Assert.IsTrue(mFrame.Menu.Items[0].Visible);
+    Assert.IsTrue(mFrame.Menu.Items[0].Enabled);
+    Assert.IsFalse(mFrame.Menu.Items[1].Enabled);
+    mFrame.Changes.UndoSelected;
     Assert.AreEqual(3, mProbe.FUndoId);
-    Frame.Changes.ShowSelectedDiff;
+    mFrame.Changes.ShowSelectedDiff;
     Assert.AreEqual(3, mProbe.FDiffId);
     Assert.AreEqual('', mProbe.FDiffFile, 'Satz: alle Dateien');
     // Datei des älteren, zurückgenommenen Satzes.
-    Frame.Tree.Selected := Frame.Tree.Items[4];
-    Frame.Menu.OnPopup(Frame.Menu);
-    Assert.IsFalse(Frame.Menu.Items[0].Enabled);
-    Assert.IsTrue(Frame.Menu.Items[1].Enabled);
-    Frame.Changes.RedoSelected;
+    mFrame.Tree.Selected := mFrame.Tree.Items[4];
+    mFrame.Menu.OnPopup(mFrame.Menu);
+    Assert.IsFalse(mFrame.Menu.Items[0].Enabled);
+    Assert.IsTrue(mFrame.Menu.Items[1].Enabled);
+    mFrame.Changes.RedoSelected;
     Assert.AreEqual(2, mProbe.FRedoId);
-    Frame.Changes.ShowSelectedDiff;
+    mFrame.Changes.ShowSelectedDiff;
     Assert.AreEqual(2, mProbe.FDiffId);
     Assert.AreEqual('C:\P\A.pas', mProbe.FDiffFile);
     // Neu aufbauen behält die Auswahl.
-    Frame.Tree.Selected := Frame.Tree.Items[3];
-    Frame.Changes.Show('Atlas-Änderungen', [SampleSet(False), Older], Now, True);
-    Assert.AreSame(Frame.Tree.Items[3], Frame.Tree.Selected);
+    mFrame.Tree.Selected := mFrame.Tree.Items[3];
+    mFrame.Changes.Show('Atlas-Änderungen', [SampleSet(False), mOlder], Now, True);
+    Assert.AreSame(mFrame.Tree.Items[3], mFrame.Tree.Selected);
   finally
-    Host.Free;
+    mHost.Free;
     mProbe.Free;
   end;
 end;

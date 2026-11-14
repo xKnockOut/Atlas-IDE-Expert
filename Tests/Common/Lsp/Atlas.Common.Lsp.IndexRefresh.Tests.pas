@@ -28,78 +28,78 @@ uses
 
 procedure TLspIndexRefreshTests.AppliesPascalSourcesOnly;
 var
-  Refresh: TLspIndexRefresh;
-  Applied: string;
+  mRefresh: TLspIndexRefresh;
+  mApplied: string;
 begin
-  Applied := '';
-  Refresh := TLspIndexRefresh.Create(0,
+  mApplied := '';
+  mRefresh := TLspIndexRefresh.Create(0,
     procedure(const AFileName, AText: string)
     begin
-      Applied := Applied + ExtractFileName(AFileName) + '=' + AText + ';';
+      mApplied := mApplied + ExtractFileName(AFileName) + '=' + AText + ';';
     end);
   try
-    Refresh.Changed('C:\P\A.pas', 'a');
-    Refresh.Changed('C:\P\B.dpr', 'b');
-    Refresh.Changed('C:\P\C.inc', 'c');
-    Refresh.Changed('C:\P\atlas.json', 'd');
+    mRefresh.Changed('C:\P\A.pas', 'a');
+    mRefresh.Changed('C:\P\B.dpr', 'b');
+    mRefresh.Changed('C:\P\C.inc', 'c');
+    mRefresh.Changed('C:\P\atlas.json', 'd');
   finally
-    Refresh.Free;
+    mRefresh.Free;
   end;
-  Assert.AreEqual('A.pas=a;B.dpr=b;', Applied);
+  Assert.AreEqual('A.pas=a;B.dpr=b;', mApplied);
 end;
 
 procedure TLspIndexRefreshTests.LastTextWinsAfterPause;
 var
-  Refresh: TLspIndexRefresh;
-  Done: TEvent;
-  Applied: string;
-  Count: Integer;
+  mRefresh: TLspIndexRefresh;
+  mDone: TEvent;
+  mApplied: string;
+  mCount: Integer;
 begin
-  Done := TEvent.Create(nil, True, False, '');
+  mDone := TEvent.Create(nil, True, False, '');
   try
-    Count := 0;
-    Refresh := TLspIndexRefresh.Create(50,
+    mCount := 0;
+    mRefresh := TLspIndexRefresh.Create(50,
       procedure(const AFileName, AText: string)
       begin
-        Applied := AText;
-        TInterlocked.Increment(Count);
-        Done.SetEvent;
+        mApplied := AText;
+        TInterlocked.Increment(mCount);
+        mDone.SetEvent;
       end);
     try
-      Refresh.Changed('C:\P\A.pas', 'eins');
-      Refresh.Changed('C:\P\A.pas', 'zwei');
-      Refresh.Changed('C:\P\A.pas', 'drei');
-      Assert.AreEqual<TWaitResult>(wrSignaled, Done.WaitFor(2000), 'nach der Pause übernommen');
+      mRefresh.Changed('C:\P\A.pas', 'eins');
+      mRefresh.Changed('C:\P\A.pas', 'zwei');
+      mRefresh.Changed('C:\P\A.pas', 'drei');
+      Assert.AreEqual<TWaitResult>(wrSignaled, mDone.WaitFor(2000), 'nach der Pause übernommen');
       Sleep(100);
     finally
-      Refresh.Free;
+      mRefresh.Free;
     end;
-    Assert.AreEqual('drei', Applied);
-    Assert.AreEqual(1, Count, 'nur einmal nach der Pause');
+    Assert.AreEqual('drei', mApplied);
+    Assert.AreEqual(1, mCount, 'nur einmal nach der Pause');
   finally
-    Done.Free;
+    mDone.Free;
   end;
-  Applied := '';
+  mApplied := '';
 end;
 
 procedure TLspIndexRefreshTests.UsesChangesOnlyForUsesLists;
 var
-  Changes: TLspUsesChanges;
+  mChanges: TLspUsesChanges;
 begin
-  Changes := TLspUsesChanges.Create;
+  mChanges := TLspUsesChanges.Create;
   try
-    Assert.IsTrue(Changes.Changed('C:\P\A.pas', 'unit A; interface uses B; implementation end.'), 'erster Stand');
-    Assert.IsFalse(Changes.Changed('C:\P\A.pas', 'unit A; interface uses B; implementation var X: Integer; end.'),
+    Assert.IsTrue(mChanges.Changed('C:\P\A.pas', 'unit A; interface uses B; implementation end.'), 'erster Stand');
+    Assert.IsFalse(mChanges.Changed('C:\P\A.pas', 'unit A; interface uses B; implementation var X: Integer; end.'),
       'Änderung außerhalb der uses');
-    Assert.IsTrue(Changes.Changed('c:\p\a.pas', 'unit A; interface uses B, C; implementation end.'), 'Eintrag ergänzt');
-    Assert.IsTrue(Changes.Changed('C:\P\A.pas', 'unit A; interface implementation uses B, C; end.'),
+    Assert.IsTrue(mChanges.Changed('c:\p\a.pas', 'unit A; interface uses B, C; implementation end.'), 'Eintrag ergänzt');
+    Assert.IsTrue(mChanges.Changed('C:\P\A.pas', 'unit A; interface implementation uses B, C; end.'),
       'zwischen interface und implementation verschoben');
-    Changes.Forget('C:\P\A.pas');
-    Assert.IsTrue(Changes.Changed('C:\P\A.pas', 'unit A; interface implementation uses B, C; end.'),
+    mChanges.Forget('C:\P\A.pas');
+    Assert.IsTrue(mChanges.Changed('C:\P\A.pas', 'unit A; interface implementation uses B, C; end.'),
       'nach dem Schließen wieder erster Stand');
     Assert.AreEqual('I:B|M:C', TLspUsesChanges.Signature('unit A; interface uses B; implementation uses C; end.'));
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 

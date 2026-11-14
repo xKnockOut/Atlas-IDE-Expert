@@ -64,15 +64,15 @@ end;
 
 procedure TAtlasExpressionTypeTipTests.TextsFromStrings;
 var
-  Texts: TAtlasExpressionTypeTexts;
-  Rows: TArray<TAtlasExpressionTypeRow>;
+  mTexts: TAtlasExpressionTypeTexts;
+  mRows: TArray<TAtlasExpressionTypeRow>;
 begin
   TAtlasStrings.Language := TAtlasLanguage.German;
-  Texts := TAtlasExpressionTypeTip.Texts('Strg+Umschalt+T');
-  Rows := TAtlasExpressionType.Rows(Sample(True), Texts);
-  Assert.AreEqual(4, Integer(Length(Rows)));
-  Assert.AreEqual('Count: Integer wird zu Currency erweitert', Rows[2].Text);
-  Assert.AreEqual('Strg+Umschalt+T erneut: umschließender Ausdruck', Rows[3].Text);
+  mTexts := TAtlasExpressionTypeTip.Texts('Strg+Umschalt+T');
+  mRows := TAtlasExpressionType.Rows(Sample(True), mTexts);
+  Assert.AreEqual(4, Integer(Length(mRows)));
+  Assert.AreEqual('Count: Integer wird zu Currency erweitert', mRows[2].Text);
+  Assert.AreEqual('Strg+Umschalt+T erneut: umschließender Ausdruck', mRows[3].Text);
   Assert.AreEqual('', TAtlasExpressionTypeTip.Texts('').Expand, 'ohne Kürzel keine Zeile');
   TAtlasStrings.Language := TAtlasLanguage.English;
   try
@@ -85,59 +85,59 @@ end;
 
 procedure TAtlasExpressionTypeTipTests.RowsAndLink;
 var
-  Tip: TAtlasExpressionTypeTip;
-  Navigated: Integer;
+  mTip: TAtlasExpressionTypeTip;
+  mNavigated: Integer;
 begin
-  Navigated := 0;
-  Tip := NewTip;
+  mNavigated := 0;
+  mTip := NewTip;
   try
-    Tip.OnNavigate :=
+    mTip.OnNavigate :=
       procedure
       begin
-        Inc(Navigated);
+        Inc(mNavigated);
       end;
-    Tip.ShowFor(TAtlasExpressionType.Rows(Sample(True), TAtlasExpressionTypeTip.Texts('')), Point(100, 100));
+    mTip.ShowFor(TAtlasExpressionType.Rows(Sample(True), TAtlasExpressionTypeTip.Texts('')), Point(100, 100));
     try
-      Assert.IsTrue(Tip.IsShown);
-      Assert.AreEqual(3, Integer(Length(Tip.Rows)));
-      Assert.IsFalse(Tip.LinkRect.IsEmpty, 'Typ mit Fundort ist anklickbar');
-      Assert.IsTrue(Tip.LinkRect.Top > 0);
-      Assert.IsTrue(Tip.ClientWidth >= Tip.LinkRect.Right);
-      Tip.Navigate;
-      Assert.AreEqual(1, Navigated);
-      Assert.IsFalse(Tip.IsShown, 'nach dem Sprung zu');
+      Assert.IsTrue(mTip.IsShown);
+      Assert.AreEqual(3, Integer(Length(mTip.Rows)));
+      Assert.IsFalse(mTip.LinkRect.IsEmpty, 'Typ mit Fundort ist anklickbar');
+      Assert.IsTrue(mTip.LinkRect.Top > 0);
+      Assert.IsTrue(mTip.ClientWidth >= mTip.LinkRect.Right);
+      mTip.Navigate;
+      Assert.AreEqual(1, mNavigated);
+      Assert.IsFalse(mTip.IsShown, 'nach dem Sprung zu');
     finally
-      Tip.Dismiss;
+      mTip.Dismiss;
     end;
   finally
-    Tip.Free;
+    mTip.Free;
   end;
 end;
 
 procedure TAtlasExpressionTypeTipTests.WithoutLocationNoNavigation;
 var
-  Tip: TAtlasExpressionTypeTip;
-  Navigated: Integer;
+  mTip: TAtlasExpressionTypeTip;
+  mNavigated: Integer;
 begin
-  Navigated := 0;
-  Tip := NewTip;
+  mNavigated := 0;
+  mTip := NewTip;
   try
-    Tip.OnNavigate :=
+    mTip.OnNavigate :=
       procedure
       begin
-        Inc(Navigated);
+        Inc(mNavigated);
       end;
-    Tip.ShowFor(TAtlasExpressionType.Rows(Sample(False), TAtlasExpressionTypeTip.Texts('')), Point(100, 100));
+    mTip.ShowFor(TAtlasExpressionType.Rows(Sample(False), TAtlasExpressionTypeTip.Texts('')), Point(100, 100));
     try
-      Assert.IsTrue(Tip.LinkRect.IsEmpty);
-      Tip.Navigate;
-      Assert.AreEqual(0, Navigated);
-      Assert.IsTrue(Tip.IsShown);
+      Assert.IsTrue(mTip.LinkRect.IsEmpty);
+      mTip.Navigate;
+      Assert.AreEqual(0, mNavigated);
+      Assert.IsTrue(mTip.IsShown);
     finally
-      Tip.Dismiss;
+      mTip.Dismiss;
     end;
   finally
-    Tip.Free;
+    mTip.Free;
   end;
 end;
 

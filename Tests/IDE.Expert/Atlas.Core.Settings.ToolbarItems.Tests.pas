@@ -38,11 +38,11 @@ end;
 
 procedure TAtlasToolbarItemsTests.ParseAndFormat;
 var
-  Items: TArray<string>;
+  mItems: TArray<string>;
 begin
-  Items := TAtlasToolbarItems.Parse(' Atlas.GotoInterface , | ,,Atlas.NavBack ');
-  Assert.AreEqual('Atlas.GotoInterface | Atlas.NavBack', Joined(Items));
-  Assert.AreEqual('Atlas.GotoInterface,|,Atlas.NavBack', TAtlasToolbarItems.Format(Items));
+  mItems := TAtlasToolbarItems.Parse(' Atlas.GotoInterface , | ,,Atlas.NavBack ');
+  Assert.AreEqual('Atlas.GotoInterface | Atlas.NavBack', Joined(mItems));
+  Assert.AreEqual('Atlas.GotoInterface,|,Atlas.NavBack', TAtlasToolbarItems.Format(mItems));
   Assert.AreEqual(0, Integer(Length(TAtlasToolbarItems.Parse(''))));
   Assert.AreEqual('', TAtlasToolbarItems.Format(nil));
   Assert.IsTrue(TAtlasToolbarItems.IsSeparator('|'));
@@ -51,13 +51,13 @@ end;
 
 procedure TAtlasToolbarItemsTests.DefaultStartsWithSections;
 var
-  Items: TArray<string>;
+  mItems: TArray<string>;
 begin
-  Items := TAtlasToolbarItems.Default;
+  mItems := TAtlasToolbarItems.Default;
   Assert.AreEqual('Atlas.GotoInterface Atlas.GotoImplementation | Atlas.NavBack Atlas.NavForward ' +
     'Atlas.ToggleMethod Atlas.SwitchTestUnit | Atlas.UnitSearch Atlas.FindMethod | Atlas.CodeActions ' +
-    'Atlas.FormatCode Atlas.ProblemsWindow Atlas.CommandPalette', Joined(Items));
-  Assert.AreEqual(TAtlasToolbarItems.Format(Items), TAtlasToolbarItems.DefaultText);
+    'Atlas.FormatCode Atlas.ProblemsWindow Atlas.CommandPalette', Joined(mItems));
+  Assert.AreEqual(TAtlasToolbarItems.Format(mItems), TAtlasToolbarItems.DefaultText);
   // Die Vorgabe ist schon bereinigt.
   Assert.AreEqual(TAtlasToolbarItems.DefaultText, TAtlasToolbarItems.Normalize(TAtlasToolbarItems.DefaultText));
 end;
@@ -72,24 +72,24 @@ end;
 
 procedure TAtlasToolbarItemsTests.AddRemoveMove;
 var
-  Items: TArray<string>;
+  mItems: TArray<string>;
 begin
-  Items := ['A', 'B'];
-  Assert.AreEqual(2, TAtlasToolbarItems.Add(Items, 'C', -1), 'hinten');
-  Assert.AreEqual(1, TAtlasToolbarItems.Add(Items, '|', 1), 'Trennstrich');
-  Assert.AreEqual(4, TAtlasToolbarItems.Add(Items, '|', 99));
-  Assert.AreEqual(-1, TAtlasToolbarItems.Add(Items, 'b', 0), 'schon da');
-  Assert.AreEqual(-1, TAtlasToolbarItems.Add(Items, ' ', 0), 'leer');
-  Assert.AreEqual('A | B C |', Joined(Items));
-  Assert.AreEqual(1, TAtlasToolbarItems.Move(Items, 2, -1));
-  Assert.AreEqual('A B | C |', Joined(Items));
-  Assert.AreEqual(0, TAtlasToolbarItems.Move(Items, 0, -1), 'oben bleibt oben');
-  Assert.AreEqual(4, TAtlasToolbarItems.Move(Items, 4, 1), 'unten bleibt unten');
-  Assert.AreEqual(9, TAtlasToolbarItems.Move(Items, 9, 1), 'außerhalb');
-  Assert.IsTrue(TAtlasToolbarItems.Remove(Items, 4));
-  Assert.IsFalse(TAtlasToolbarItems.Remove(Items, 4));
-  Assert.IsFalse(TAtlasToolbarItems.Remove(Items, -1));
-  Assert.AreEqual('A B | C', Joined(Items));
+  mItems := ['A', 'B'];
+  Assert.AreEqual(2, TAtlasToolbarItems.Add(mItems, 'C', -1), 'hinten');
+  Assert.AreEqual(1, TAtlasToolbarItems.Add(mItems, '|', 1), 'Trennstrich');
+  Assert.AreEqual(4, TAtlasToolbarItems.Add(mItems, '|', 99));
+  Assert.AreEqual(-1, TAtlasToolbarItems.Add(mItems, 'b', 0), 'schon da');
+  Assert.AreEqual(-1, TAtlasToolbarItems.Add(mItems, ' ', 0), 'leer');
+  Assert.AreEqual('A | B C |', Joined(mItems));
+  Assert.AreEqual(1, TAtlasToolbarItems.Move(mItems, 2, -1));
+  Assert.AreEqual('A B | C |', Joined(mItems));
+  Assert.AreEqual(0, TAtlasToolbarItems.Move(mItems, 0, -1), 'oben bleibt oben');
+  Assert.AreEqual(4, TAtlasToolbarItems.Move(mItems, 4, 1), 'unten bleibt unten');
+  Assert.AreEqual(9, TAtlasToolbarItems.Move(mItems, 9, 1), 'außerhalb');
+  Assert.IsTrue(TAtlasToolbarItems.Remove(mItems, 4));
+  Assert.IsFalse(TAtlasToolbarItems.Remove(mItems, 4));
+  Assert.IsFalse(TAtlasToolbarItems.Remove(mItems, -1));
+  Assert.AreEqual('A B | C', Joined(mItems));
 end;
 
 procedure TAtlasToolbarItemsTests.PinnedCountOnlyLeadingSections;

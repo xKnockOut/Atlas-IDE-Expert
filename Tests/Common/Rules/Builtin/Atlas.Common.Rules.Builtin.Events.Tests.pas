@@ -78,28 +78,28 @@ end;
 /// <summary>Wendet alle Änderungen der Korrektur an, von hinten nach vorn (Zeilen mit #10).</summary>
 function ApplyFix(const AText: string; const AFix: TRuleFix): string;
 var
-  Index: Integer;
-  Edit: TRuleEdit;
+  mIndex: Integer;
+  mEdit: TRuleEdit;
 
   function OffsetOf(const APosition: TTextPosition): Integer;
   var
-    Line, Position: Integer;
+    mLine, mPosition: Integer;
   begin
-    Position := 0;
-    for Line := 1 to APosition.Line do
+    mPosition := 0;
+    for mLine := 1 to APosition.Line do
     begin
-      Position := Pos(#10, AText, Position + 1);
+      mPosition := Pos(#10, AText, mPosition + 1);
     end;
-    Result := Position + APosition.Character;
+    Result := mPosition + APosition.Character;
   end;
 
 begin
   Result := AText;
-  for Index := High(AFix.Edits) downto 0 do
+  for mIndex := High(AFix.Edits) downto 0 do
   begin
-    Edit := AFix.Edits[Index];
-    Result := Copy(Result, 1, OffsetOf(Edit.Range.StartPos)) + Edit.NewText +
-      Copy(Result, OffsetOf(Edit.Range.EndPos) + 1, MaxInt);
+    mEdit := AFix.Edits[mIndex];
+    Result := Copy(Result, 1, OffsetOf(mEdit.Range.StartPos)) + mEdit.NewText +
+      Copy(Result, OffsetOf(mEdit.Range.EndPos) + 1, MaxInt);
   end;
 end;
 
@@ -107,40 +107,40 @@ end;
 
 procedure TEventRulesTests.IssueExampleReported;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TEventCallWithoutAssignedRule.Create, Body('  Inc(FWert);'#10'  FOnChange(Self);'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('event-call-without-assigned', Findings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
-  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  mFindings := TRuleAssert.Findings(TEventCallWithoutAssignedRule.Create, Body('  Inc(FWert);'#10'  FOnChange(Self);'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('event-call-without-assigned', mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('FOnChange kann nil sein; ohne Assigned-Prüfung folgt eine Zugriffsverletzung.',
-    Findings[0].Message);
-  Assert.AreEqual(16, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
-  Assert.AreEqual(11, Findings[0].Range.EndPos.Character);
+    mFindings[0].Message);
+  Assert.AreEqual(16, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
+  Assert.AreEqual(11, mFindings[0].Range.EndPos.Character);
 end;
 
 procedure TEventRulesTests.FixWrapsCallInAssigned;
 var
-  Source, Fixed: string;
-  Findings: TArray<TRuleFinding>;
-  Tree: TSyntaxTree;
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+  mTree: TSyntaxTree;
 begin
-  Source := Body('  Inc(FWert);'#10'  FOnChange(Self);'#10);
-  Findings := TRuleAssert.Findings(TEventCallWithoutAssignedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
-  Assert.AreEqual('In if Assigned(FOnChange) then einschließen', Findings[0].Fixes[0].Title);
-  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)));
-  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
-  Assert.AreEqual(Body('  Inc(FWert);'#10'  if Assigned(FOnChange) then'#10'    FOnChange(Self);'#10), Fixed);
-  Tree := TPascalParser.Parse(Fixed);
+  mSource := Body('  Inc(FWert);'#10'  FOnChange(Self);'#10);
+  mFindings := TRuleAssert.Findings(TEventCallWithoutAssignedRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual('In if Assigned(FOnChange) then einschließen', mFindings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)));
+  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  Assert.AreEqual(Body('  Inc(FWert);'#10'  if Assigned(FOnChange) then'#10'    FOnChange(Self);'#10), mFixed);
+  mTree := TPascalParser.Parse(mFixed);
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create, Fixed);
+  TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create, mFixed);
 end;
 
 procedure TEventRulesTests.GuardedCallsAreSilent;
@@ -223,12 +223,12 @@ end;
 
 procedure TEventRulesTests.PropertiesAndSelfAreFound;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TEventCallWithoutAssignedRule.Create, Body('  OnChange(Self);'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TEventCallWithoutAssignedRule.Create, Body('  OnChange(Self);'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('OnChange kann nil sein; ohne Assigned-Prüfung folgt eine Zugriffsverletzung.',
-    Findings[0].Message);
+    mFindings[0].Message);
   TRuleAssert.Reports(TEventCallWithoutAssignedRule.Create, Body('  Self.FOnChange(Self);'#10));
   // Aufruf über ein anderes Objekt und Weitergabe als Argument bleiben still.
   TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create, Body('  Anderer.FOnChange(Self);'#10));
@@ -243,7 +243,7 @@ end;
 
 procedure TEventRulesTests.OnlyEventTypesCount;
 const
-  Source =
+  cSource =
     'unit Zaehler;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -276,27 +276,27 @@ const
     'end;'#10 +
     'end.';
 begin
-  TRuleAssert.Reports(TEventCallWithoutAssignedRule.Create, Source, 4);
+  TRuleAssert.Reports(TEventCallWithoutAssignedRule.Create, cSource, 4);
 end;
 
 procedure TEventRulesTests.NoFixInsideExpression;
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TEventCallWithoutAssignedRule.Create,
+  mFindings := TRuleAssert.Findings(TEventCallWithoutAssignedRule.Create,
     Zaehler('    FOnText: TFunc<string>;'#10, '  Writeln(FOnText());'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   // Nach "then" in derselben Zeile ebenfalls keine Korrektur.
-  Findings := TRuleAssert.Findings(TEventCallWithoutAssignedRule.Create,
+  mFindings := TRuleAssert.Findings(TEventCallWithoutAssignedRule.Create,
     Body('  if FWert > 0 then FOnChange(Self);'#10));
-  Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
 end;
 
 procedure TEventRulesTests.InjectedAndShadowedAreSilent;
 const
-  Source =
+  cSource =
     'unit Leser;'#10 +
     'interface'#10 +
     'uses System.SysUtils;'#10 +
@@ -329,30 +329,30 @@ const
     'end;'#10 +
     'end.';
 var
-  Findings: TArray<TRuleFinding>;
+  mFindings: TArray<TRuleFinding>;
 begin
   // Der Konstruktor belegt FReadText: eine Abhängigkeit, kein Ereignis. FOnFertig := nil zählt nicht.
-  Findings := TRuleAssert.Findings(TEventCallWithoutAssignedRule.Create, Source);
-  Assert.AreEqual(1, Integer(Length(Findings)));
+  mFindings := TRuleAssert.Findings(TEventCallWithoutAssignedRule.Create, cSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('FOnFertig kann nil sein; ohne Assigned-Prüfung folgt eine Zugriffsverletzung.',
-    Findings[0].Message);
+    mFindings[0].Message);
   // Ohne schreibbare Property zählt jede Methode, die das Feld belegt (Starten(AOnDone)).
-  TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create, StringReplace(StringReplace(Source,
+  TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create, StringReplace(StringReplace(cSource,
     '    property OnFertig: TProc read FOnFertig write FOnFertig;'#10, '', []), '  OnFertig := procedure',
     '  FOnFertig := procedure begin end;'#10'  OnFertig := procedure', []));
   // Mit schreibbarer Property nur der Konstruktor: eine andere Methode mit Zuweisung schützt nicht.
-  TRuleAssert.Reports(TEventCallWithoutAssignedRule.Create, StringReplace(Source, '  OnFertig := procedure',
+  TRuleAssert.Reports(TEventCallWithoutAssignedRule.Create, StringReplace(cSource, '  OnFertig := procedure',
     '  FOnFertig := procedure begin end;'#10'  OnFertig := procedure', []), 1);
 end;
 
 procedure TEventRulesTests.OffAndExclude;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Body('  FOnChange(Self);'#10);
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEventCallWithoutAssignedRule.Create, Source,
+  mSource := Body('  FOnChange(Self);'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEventCallWithoutAssignedRule.Create, mSource,
     '{"rules": {"event-call-without-assigned": "off"}}'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEventCallWithoutAssignedRule.Create, Source,
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEventCallWithoutAssignedRule.Create, mSource,
     '{"rules": {"event-call-without-assigned": {"exclude": ["Source/*.pas"]}}}', 'Source/Zaehler.pas'))));
 end;
 

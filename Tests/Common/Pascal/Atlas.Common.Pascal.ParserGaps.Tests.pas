@@ -13,7 +13,8 @@ type
   [TestFixture]
   TParserGapsTests = class
   public
-    /// <summary>#1137 (Probe p05): &amp;&amp;op_Equality ohne Diagnose, Methode im Typ und im implementation-Teil.</summary>
+    /// <summary>#1137 (Probe p05): &amp;&amp;op_Equality ohne Diagnose, Methode im Typ und im
+    /// implementation-Teil.</summary>
     /// <summary>Hinweiswort vor dem Startwert (System.NoErrMsg).</summary>
     [Test]
     procedure HintBeforeInitialValue;
@@ -25,7 +26,8 @@ type
     /// <summary>#1137: Gliederung nennt &amp;op_Equality, Gehe zu führt von Rumpf und Aufruf zur Deklaration.</summary>
     [Test]
     procedure DoubleAmpersandOutlineAndResolve;
-    /// <summary>#1137: Mitglied &amp;Type wird über TFoo.&amp;Type gefunden; Index und Gliederung nennen es Type.</summary>
+    /// <summary>#1137: Mitglied &amp;Type wird über TFoo.&amp;Type gefunden; Index und Gliederung nennen es
+    /// Type.</summary>
     [Test]
     procedure EscapedMemberResolves;
     /// <summary>#1137: PlainName nimmt genau ein Escape-&amp; je Namensteil, SourceName setzt es wieder.</summary>
@@ -94,86 +96,86 @@ uses
   Atlas.Common.Lsp.DocumentSymbols;
 
 const
-  MainFile = 'C:\P\U.pas';
-  DoubleAmpersand =
+  cMainFile = 'C:\P\U.pas';
+  cDoubleAmpersand =
     'unit p05_double_ampersand;'#10'interface'#10'type'#10'  TValue = record'#10 +
     '    class function &&op_Equality(const L, R: TValue): Boolean; static;'#10'    procedure Danach;'#10 +
     '  end;'#10'var'#10'  Letzte: Integer;'#10'implementation'#10 +
     'class function TValue.&&op_Equality(const L, R: TValue): Boolean;'#10'begin'#10'  Result := True;'#10 +
     'end;'#10'procedure TValue.Danach;'#10'begin'#10'  if TValue.&&op_Equality(Self, Self) then'#10'    Exit;'#10 +
     'end;'#10'procedure Zuletzt;'#10'begin'#10'end;'#10'end.';
-  EmptyRecord =
+  cEmptyRecord =
     'unit p02_empty_record_const;'#10'interface'#10'type'#10'  TRec = record'#10'    A: Integer;'#10'  end;'#10 +
     '  TComparer = record'#10'    const Ordinal: TRec = ();'#10'  end;'#10'const'#10'  Empty: TRec = ();'#10 +
     '  EmptyGuid: TGUID = ( );'#10'var'#10'  Start: TRec = ();'#10'implementation'#10'procedure P;'#10'const'#10 +
     '  Lokal: TRec = ();'#10'begin'#10'end;'#10'end.';
-  FunctionResolution =
+  cFunctionResolution =
     'unit p01_resolution_function;'#10'interface'#10'type'#10'  IFoo = interface'#10 +
     '    function GetX: Integer;'#10'  end;'#10'  TFoo = class(TInterfacedObject, IFoo)'#10 +
     '    function IFoo.GetX = MyGetX;'#10'    function MyGetX: Integer;'#10'  end;'#10 +
     'implementation'#10'function TFoo.MyGetX: Integer;'#10'begin'#10'  Result := 1;'#10'end;'#10'end.';
-  GenericResolution =
+  cGenericResolution =
     'unit p09_generic_resolution;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'type'#10 +
     '  TGenerator<T> = class(TInterfacedObject, TFunc<T>)'#10'  private'#10 +
     '    function TFunc<T>.Invoke = Bind;'#10'  public'#10'    function Bind: T;'#10'  end;'#10 +
     'implementation'#10'function TGenerator<T>.Bind: T;'#10'begin'#10'  Result := Default(T);'#10'end;'#10'end.';
-  ClassThreadVarSource =
+  cClassThreadVarSource =
     'unit p03_class_threadvar;'#10'interface'#10'type'#10'  TFoo = class'#10'  private class threadvar'#10 +
     '    FCurrent: Integer;'#10'  public'#10'    class function Current: Integer; static;'#10'  end;'#10 +
     'implementation'#10'class function TFoo.Current: Integer;'#10'begin'#10'  Result := FCurrent;'#10'end;'#10'end.';
-  OperatorIn =
+  cOperatorIn =
     'unit p04_class_operator_in;'#10'interface'#10'type'#10'  TSet = record'#10 +
     '    class operator In(const A: Integer; const B: TSet): Boolean;'#10 +
     '    class operator And(const A, B: TSet): TSet;'#10'    class operator Not(const A: TSet): TSet;'#10 +
     '    class operator Shl(const A: TSet; B: Integer): TSet;'#10'    procedure Danach;'#10'  end;'#10 +
     'implementation'#10'class operator TSet.In(const A: Integer; const B: TSet): Boolean;'#10'begin'#10 +
     '  Result := A > 0;'#10'end;'#10'procedure TSet.Danach;'#10'begin'#10'end;'#10'end.';
-  CodepageSource =
+  cCodepageSource =
     'unit p06_codepage_string;'#10'interface'#10'const'#10'  CP_WINANSI = 1252;'#10'type'#10 +
     '  WinAnsiString = type AnsiString(CP_WINANSI);'#10'  RawUnicode = type AnsiString(1200);'#10'var'#10 +
     '  W: WinAnsiString;'#10'implementation'#10'end.';
-  RecordAlignSource =
+  cRecordAlignSource =
     'unit p07_record_align;'#10'interface'#10'type'#10'  TMyRecord = record'#10'    Value: Integer;'#10 +
     '  end align 16;'#10'  TDanach = Integer;'#10'implementation'#10'end.';
-  VariantAttribute =
+  cVariantAttribute =
     'unit p08_variant_attribute;'#10'interface'#10'type'#10'  TVariantRecord = record'#10'    case Byte of'#10 +
     '      1: ('#10'        Value: Double;'#10'        [Example]'#10'        ValueWithAttribute: Integer;'#10 +
     '        );'#10'  end;'#10'implementation'#10'end.';
-  GenericDefault =
+  cGenericDefault =
     'unit p10_generic_default_param;'#10'interface'#10'type'#10'  IBaz<T> = interface'#10'  end;'#10 +
     '  TFoo = class(TObject)'#10'    procedure Bar(Baz: IBaz<string>=nil);'#10'    procedure Danach;'#10'  end;'#10 +
     'implementation'#10'procedure TFoo.Bar(Baz: IBaz<string>=nil);'#10'begin'#10 +
     '  if A < B >= C then'#10'    Exit;'#10'end;'#10'procedure TFoo.Danach;'#10'begin'#10'end;'#10'end.';
-  BinarySeparator =
+  cBinarySeparator =
     'unit p11_binary_separator;'#10'interface'#10'const'#10'  A = %_0101;'#10'  B = $_FF;'#10'  C = 1_000;'#10 +
     'implementation'#10'end.';
-  NamedKeyword =
+  cNamedKeyword =
     'unit p13_named_arg_keyword;'#10'interface'#10'implementation'#10'procedure Test(Word: OleVariant);'#10 +
     'begin'#10'  Word.Documents.Open(FileName := ''a.docx'', ReadOnly := True);'#10'  Word.Foo(Type := 1);'#10 +
     'end;'#10'end.';
-  AnonymousConvention =
+  cAnonymousConvention =
     'unit p14_anon_callconv;'#10'interface'#10'implementation'#10'type'#10 +
     '  TPred = reference to function(const S: string): Boolean;'#10'procedure Use(P: TPred);'#10'begin'#10 +
     'end;'#10'procedure Test;'#10'begin'#10'  Use(function(const S: string): Boolean register'#10'    begin'#10 +
     '      Result := S = '''';'#10'    end);'#10'end;'#10'procedure Danach;'#10'begin'#10'end;'#10'end.';
-  InlineAttribute =
+  cInlineAttribute =
     'unit p15_inline_var_attribute;'#10'interface'#10'implementation'#10'procedure Test;'#10'begin'#10 +
     '  var [Weak] Obj: IInterface := nil;'#10'  var [Unsafe, Weak] A, B: TObject;'#10'end;'#10'end.';
-  EscapedMember =
+  cEscapedMember =
     'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'    procedure &Type;'#10'  end;'#10'implementation'#10 +
     'procedure TFoo.&Type;'#10'begin'#10'end;'#10'procedure P(F: TFoo);'#10'begin'#10'  F.&Type;'#10'end;'#10'end.';
 
 function Find(ANode: TSyntaxNode; AKind: TSyntaxKind; const AName: string): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if (ANode.Kind = AKind) and ((AName = '') or SameText(ANode.Name, AName)) then
   begin
     Exit(ANode);
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    Result := Find(ANode[Index], AKind, AName);
+    Result := Find(ANode[mIndex], AKind, AName);
     if Result <> nil then
     begin
       Exit;
@@ -184,47 +186,47 @@ end;
 
 function Diagnostics(const AText: string): string;
 var
-  Tree: TSyntaxTree;
-  Diagnostic: TSyntaxDiagnostic;
+  mTree: TSyntaxTree;
+  mDiagnostic: TSyntaxDiagnostic;
 begin
   Result := '';
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    for Diagnostic in Tree.Diagnostics do
+    for mDiagnostic in mTree.Diagnostics do
     begin
-      Result := Result + Format('%d:%d %s; ', [Diagnostic.StartPos.Line, Diagnostic.StartPos.Character,
-        Diagnostic.Message]);
+      Result := Result + Format('%d:%d %s; ', [mDiagnostic.StartPos.Line, mDiagnostic.StartPos.Character,
+        mDiagnostic.Message]);
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
-  Index, Line, LineStart, Scan: Integer;
+  mIndex, mLine, mLineStart, mScan: Integer;
 begin
-  Index := Pos(AMarker, AText);
-  Line := 0;
-  LineStart := 1;
-  for Scan := 1 to Index - 1 do
+  mIndex := Pos(AMarker, AText);
+  mLine := 0;
+  mLineStart := 1;
+  for mScan := 1 to mIndex - 1 do
   begin
-    if AText[Scan] = #10 then
+    if AText[mScan] = #10 then
     begin
-      Inc(Line);
-      LineStart := Scan + 1;
+      Inc(mLine);
+      mLineStart := mScan + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 function HasSymbol(const AUnit: TUnitIndex; const AContainer, AName: string): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if SameText(Symbol.Container, AContainer) and SameText(Symbol.Name, AName) then
+    if SameText(mSymbol.Container, AContainer) and SameText(mSymbol.Name, AName) then
     begin
       Exit(True);
     end;
@@ -234,19 +236,19 @@ end;
 
 function OutlineText(const AText: string): string;
 var
-  Tree: TSyntaxTree;
-  Outline: TJSONArray;
+  mTree: TSyntaxTree;
+  mOutline: TJSONArray;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Outline := TLspDocumentSymbols.BuildSymbols(Tree);
+    mOutline := TLspDocumentSymbols.BuildSymbols(mTree);
     try
-      Result := Outline.ToJSON;
+      Result := mOutline.ToJSON;
     finally
-      Outline.Free;
+      mOutline.Free;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -254,34 +256,34 @@ end;
 
 procedure TParserGapsTests.HintBeforeInitialValue;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse('unit U;'#10'interface'#10'var'#10'  NoErrMsg: Boolean platform = False;'#10 +
+  mTree := TPascalParser.Parse('unit U;'#10'interface'#10'var'#10'  NoErrMsg: Boolean platform = False;'#10 +
     '  Weiter: Integer;'#10'implementation'#10'end.');
   try
-    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TParserGapsTests.DoubleAmpersandParses;
 var
-  Tree: TSyntaxTree;
-  TypeNode, Method: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mTypeNode, mMethod: TSyntaxNode;
 begin
-  Assert.AreEqual('', Diagnostics(DoubleAmpersand));
-  Tree := TPascalParser.Parse(DoubleAmpersand);
+  Assert.AreEqual('', Diagnostics(cDoubleAmpersand));
+  mTree := TPascalParser.Parse(cDoubleAmpersand);
   try
-    TypeNode := Find(Tree.Root, TSyntaxKind.TypeDecl, 'TValue');
-    Assert.IsNotNull(TypeNode);
-    Method := Find(TypeNode, TSyntaxKind.RoutineHeader, '&&op_Equality');
-    Assert.IsNotNull(Method, 'Methode im Typ');
-    Assert.IsNotNull(Find(TypeNode, TSyntaxKind.RoutineHeader, 'Danach'), 'Methode dahinter');
-    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.RoutineDecl, 'TValue.&&op_Equality'), 'Rumpf');
-    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.RoutineDecl, 'Zuletzt'), 'Routine am Ende');
+    mTypeNode := Find(mTree.Root, TSyntaxKind.TypeDecl, 'TValue');
+    Assert.IsNotNull(mTypeNode);
+    mMethod := Find(mTypeNode, TSyntaxKind.RoutineHeader, '&&op_Equality');
+    Assert.IsNotNull(mMethod, 'Methode im Typ');
+    Assert.IsNotNull(Find(mTypeNode, TSyntaxKind.RoutineHeader, 'Danach'), 'Methode dahinter');
+    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.RoutineDecl, 'TValue.&&op_Equality'), 'Rumpf');
+    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.RoutineDecl, 'Zuletzt'), 'Routine am Ende');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -289,7 +291,7 @@ procedure TParserGapsTests.DoubleAmpersandKeepsIndex;
 var
   U: TUnitIndex;
 begin
-  U := TIndexExtractor.ExtractText(DoubleAmpersand, MainFile, nil);
+  U := TIndexExtractor.ExtractText(cDoubleAmpersand, cMainFile, nil);
   // Der Bezeichner heißt &op_Equality; nur das erste & ist Escape.
   Assert.IsTrue(HasSymbol(U, 'TValue', '&op_Equality'));
   Assert.IsFalse(HasSymbol(U, 'TValue', '&&op_Equality'));
@@ -300,66 +302,66 @@ end;
 
 procedure TParserGapsTests.DoubleAmpersandOutlineAndResolve;
 var
-  Tree: TSyntaxTree;
-  Index: ISymbolIndex;
-  Resolver: TNameResolver;
-  Found: TResolvedSymbol;
-  Text: string;
+  mTree: TSyntaxTree;
+  mIndex: ISymbolIndex;
+  mResolver: TNameResolver;
+  mFound: TResolvedSymbol;
+  mText: string;
 begin
-  Text := OutlineText(DoubleAmpersand);
-  Assert.IsTrue(Text.Contains('"name":"&op_Equality"'), Text);
-  Assert.IsTrue(Text.Contains('"name":"TValue.&op_Equality"'), Text);
-  Assert.IsTrue(Text.Contains('"name":"Zuletzt"'), Text);
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(DoubleAmpersand, MainFile, nil));
-  Resolver := TNameResolver.Create(Index);
-  Tree := TPascalParser.Parse(DoubleAmpersand);
+  mText := OutlineText(cDoubleAmpersand);
+  Assert.IsTrue(mText.Contains('"name":"&op_Equality"'), mText);
+  Assert.IsTrue(mText.Contains('"name":"TValue.&op_Equality"'), mText);
+  Assert.IsTrue(mText.Contains('"name":"Zuletzt"'), mText);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cDoubleAmpersand, cMainFile, nil));
+  mResolver := TNameResolver.Create(mIndex);
+  mTree := TPascalParser.Parse(cDoubleAmpersand);
   try
-    Found := Resolver.Resolve(Tree, MainFile, PositionOf(DoubleAmpersand, 'op_Equality(Self'));
-    Assert.IsTrue(Found.Found, 'Aufruf');
-    Assert.AreEqual('&op_Equality', Found.Name);
-    Assert.AreEqual('TValue', Found.Container);
-    Assert.AreEqual(4, Found.SelectionRange.StartPos.Line);
-    Found := Resolver.Resolve(Tree, MainFile, PositionOf(DoubleAmpersand, 'op_Equality(const L, R: TValue): Boolean;'#10'begin'));
-    Assert.IsTrue(Found.Found, 'Rumpf');
-    Assert.AreEqual(4, Found.SelectionRange.StartPos.Line);
+    mFound := mResolver.Resolve(mTree, cMainFile, PositionOf(cDoubleAmpersand, 'op_Equality(Self'));
+    Assert.IsTrue(mFound.Found, 'Aufruf');
+    Assert.AreEqual('&op_Equality', mFound.Name);
+    Assert.AreEqual('TValue', mFound.Container);
+    Assert.AreEqual(4, mFound.SelectionRange.StartPos.Line);
+    mFound := mResolver.Resolve(mTree, cMainFile, PositionOf(cDoubleAmpersand, 'op_Equality(const L, R: TValue): Boolean;'#10'begin'));
+    Assert.IsTrue(mFound.Found, 'Rumpf');
+    Assert.AreEqual(4, mFound.SelectionRange.StartPos.Line);
   finally
-    Tree.Free;
-    Resolver.Free;
+    mTree.Free;
+    mResolver.Free;
   end;
-  Index := nil;
+  mIndex := nil;
 end;
 
 procedure TParserGapsTests.EscapedMemberResolves;
 var
   U: TUnitIndex;
-  Tree: TSyntaxTree;
-  Index: ISymbolIndex;
-  Resolver: TNameResolver;
-  Found: TResolvedSymbol;
-  Text: string;
+  mTree: TSyntaxTree;
+  mIndex: ISymbolIndex;
+  mResolver: TNameResolver;
+  mFound: TResolvedSymbol;
+  mText: string;
 begin
-  Assert.AreEqual('', Diagnostics(EscapedMember));
-  U := TIndexExtractor.ExtractText(EscapedMember, MainFile, nil);
+  Assert.AreEqual('', Diagnostics(cEscapedMember));
+  U := TIndexExtractor.ExtractText(cEscapedMember, cMainFile, nil);
   Assert.IsTrue(HasSymbol(U, 'TFoo', 'Type'));
-  Text := OutlineText(EscapedMember);
-  Assert.IsTrue(Text.Contains('"name":"Type"'), Text);
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(U);
-  Resolver := TNameResolver.Create(Index);
-  Tree := TPascalParser.Parse(EscapedMember);
+  mText := OutlineText(cEscapedMember);
+  Assert.IsTrue(mText.Contains('"name":"Type"'), mText);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(U);
+  mResolver := TNameResolver.Create(mIndex);
+  mTree := TPascalParser.Parse(cEscapedMember);
   try
-    Found := Resolver.Resolve(Tree, MainFile, PositionOf(EscapedMember, 'Type;'#10'end;'#10'end.'));
-    Assert.IsTrue(Found.Found);
-    Assert.AreEqual('Type', Found.Name);
-    Assert.AreEqual('TFoo', Found.Container);
-    Assert.AreEqual(4, Found.SelectionRange.StartPos.Line);
-    Assert.AreEqual(14, Found.SelectionRange.StartPos.Character);
+    mFound := mResolver.Resolve(mTree, cMainFile, PositionOf(cEscapedMember, 'Type;'#10'end;'#10'end.'));
+    Assert.IsTrue(mFound.Found);
+    Assert.AreEqual('Type', mFound.Name);
+    Assert.AreEqual('TFoo', mFound.Container);
+    Assert.AreEqual(4, mFound.SelectionRange.StartPos.Line);
+    Assert.AreEqual(14, mFound.SelectionRange.StartPos.Character);
   finally
-    Tree.Free;
-    Resolver.Free;
+    mTree.Free;
+    mResolver.Free;
   end;
-  Index := nil;
+  mIndex := nil;
 end;
 
 procedure TParserGapsTests.PlainAndSourceNames;
@@ -377,21 +379,21 @@ end;
 
 procedure TParserGapsTests.EmptyRecordConstant;
 var
-  Tree: TSyntaxTree;
-  Decl: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mDecl: TSyntaxNode;
 begin
-  Assert.AreEqual('', Diagnostics(EmptyRecord));
-  Tree := TPascalParser.Parse(EmptyRecord);
+  Assert.AreEqual('', Diagnostics(cEmptyRecord));
+  mTree := TPascalParser.Parse(cEmptyRecord);
   try
-    Decl := Find(Tree.Root, TSyntaxKind.ConstDecl, 'Empty');
-    Assert.IsNotNull(Decl);
-    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.ParenExpr, Decl[Decl.ChildCount - 1].Kind);
-    Assert.AreEqual(0, Decl[Decl.ChildCount - 1].ChildCount);
-    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.ConstDecl, 'Ordinal'), 'Klassenkonstante');
-    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.ConstDecl, 'Lokal'), 'lokale Konstante');
-    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.RoutineDecl, 'P'), 'Routine dahinter');
+    mDecl := Find(mTree.Root, TSyntaxKind.ConstDecl, 'Empty');
+    Assert.IsNotNull(mDecl);
+    Assert.AreEqual<TSyntaxKind>(TSyntaxKind.ParenExpr, mDecl[mDecl.ChildCount - 1].Kind);
+    Assert.AreEqual(0, mDecl[mDecl.ChildCount - 1].ChildCount);
+    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.ConstDecl, 'Ordinal'), 'Klassenkonstante');
+    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.ConstDecl, 'Lokal'), 'lokale Konstante');
+    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.RoutineDecl, 'P'), 'Routine dahinter');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -404,20 +406,20 @@ end;
 
 procedure TParserGapsTests.FunctionResolutionWithoutResultType;
 var
-  Tree: TSyntaxTree;
-  Header: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mHeader: TSyntaxNode;
 begin
-  Assert.AreEqual('', Diagnostics(FunctionResolution));
-  Assert.AreEqual('', Diagnostics(GenericResolution));
-  Tree := TPascalParser.Parse(GenericResolution);
+  Assert.AreEqual('', Diagnostics(cFunctionResolution));
+  Assert.AreEqual('', Diagnostics(cGenericResolution));
+  mTree := TPascalParser.Parse(cGenericResolution);
   try
-    Header := Find(Find(Tree.Root, TSyntaxKind.TypeDecl, 'TGenerator'), TSyntaxKind.RoutineHeader, '');
-    Assert.IsNotNull(Header);
-    Assert.IsTrue(Header.IsMethodResolution, Header.Name);
-    Assert.AreEqual('Bind', Header.ResolutionTarget);
-    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.RoutineHeader, 'Bind'), 'Methode dahinter');
+    mHeader := Find(Find(mTree.Root, TSyntaxKind.TypeDecl, 'TGenerator'), TSyntaxKind.RoutineHeader, '');
+    Assert.IsNotNull(mHeader);
+    Assert.IsTrue(mHeader.IsMethodResolution, mHeader.Name);
+    Assert.AreEqual('Bind', mHeader.ResolutionTarget);
+    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.RoutineHeader, 'Bind'), 'Methode dahinter');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -430,76 +432,76 @@ end;
 procedure TParserGapsTests.ClassThreadVar;
 var
   U: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Directive: string;
-  ClassField: Boolean;
+  mSymbol: TIndexSymbol;
+  mDirective: string;
+  mClassField: Boolean;
 begin
-  Assert.AreEqual('', Diagnostics(ClassThreadVarSource));
-  U := TIndexExtractor.ExtractText(ClassThreadVarSource, MainFile, nil);
+  Assert.AreEqual('', Diagnostics(cClassThreadVarSource));
+  U := TIndexExtractor.ExtractText(cClassThreadVarSource, cMainFile, nil);
   Assert.IsTrue(HasSymbol(U, 'TFoo', 'Current'));
   // Das Feld ist ein Klassenfeld wie bei class var.
-  ClassField := False;
-  for Symbol in U.Symbols do
+  mClassField := False;
+  for mSymbol in U.Symbols do
   begin
-    if SameText(Symbol.Container, 'TFoo') and SameText(Symbol.Name, 'FCurrent') then
+    if SameText(mSymbol.Container, 'TFoo') and SameText(mSymbol.Name, 'FCurrent') then
     begin
-      for Directive in Symbol.Directives do
+      for mDirective in mSymbol.Directives do
       begin
-        ClassField := ClassField or SameText(Directive, 'class');
+        mClassField := mClassField or SameText(mDirective, 'class');
       end;
     end;
   end;
-  Assert.IsTrue(ClassField);
+  Assert.IsTrue(mClassField);
 end;
 
 procedure TParserGapsTests.ClassOperatorKeywordNames;
 var
-  Tree: TSyntaxTree;
-  TypeNode: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mTypeNode: TSyntaxNode;
 begin
-  Assert.AreEqual('', Diagnostics(OperatorIn));
-  Tree := TPascalParser.Parse(OperatorIn);
+  Assert.AreEqual('', Diagnostics(cOperatorIn));
+  mTree := TPascalParser.Parse(cOperatorIn);
   try
-    TypeNode := Find(Tree.Root, TSyntaxKind.TypeDecl, 'TSet');
-    Assert.IsNotNull(Find(TypeNode, TSyntaxKind.RoutineHeader, 'In'), 'In');
-    Assert.IsNotNull(Find(TypeNode, TSyntaxKind.RoutineHeader, 'And'), 'And');
-    Assert.IsNotNull(Find(TypeNode, TSyntaxKind.RoutineHeader, 'Not'), 'Not');
-    Assert.IsNotNull(Find(TypeNode, TSyntaxKind.RoutineHeader, 'Shl'), 'Shl');
-    Assert.IsNotNull(Find(TypeNode, TSyntaxKind.RoutineHeader, 'Danach'), 'Danach');
-    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.RoutineDecl, 'TSet.In'), 'Rumpf');
+    mTypeNode := Find(mTree.Root, TSyntaxKind.TypeDecl, 'TSet');
+    Assert.IsNotNull(Find(mTypeNode, TSyntaxKind.RoutineHeader, 'In'), 'In');
+    Assert.IsNotNull(Find(mTypeNode, TSyntaxKind.RoutineHeader, 'And'), 'And');
+    Assert.IsNotNull(Find(mTypeNode, TSyntaxKind.RoutineHeader, 'Not'), 'Not');
+    Assert.IsNotNull(Find(mTypeNode, TSyntaxKind.RoutineHeader, 'Shl'), 'Shl');
+    Assert.IsNotNull(Find(mTypeNode, TSyntaxKind.RoutineHeader, 'Danach'), 'Danach');
+    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.RoutineDecl, 'TSet.In'), 'Rumpf');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
-  Assert.IsTrue(HasSymbol(TIndexExtractor.ExtractText(OperatorIn, MainFile, nil), 'TSet', 'In'));
+  Assert.IsTrue(HasSymbol(TIndexExtractor.ExtractText(cOperatorIn, cMainFile, nil), 'TSet', 'In'));
 end;
 
 procedure TParserGapsTests.CodepageString;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Assert.AreEqual('', Diagnostics(CodepageSource));
-  Tree := TPascalParser.Parse(CodepageSource);
+  Assert.AreEqual('', Diagnostics(cCodepageSource));
+  mTree := TPascalParser.Parse(cCodepageSource);
   try
-    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.TypeDecl, 'WinAnsiString'));
-    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.TypeDecl, 'RawUnicode'));
-    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.VarDecl, 'W'));
+    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.TypeDecl, 'WinAnsiString'));
+    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.TypeDecl, 'RawUnicode'));
+    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.VarDecl, 'W'));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TParserGapsTests.RecordAlign;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Assert.AreEqual('', Diagnostics(RecordAlignSource));
-  Tree := TPascalParser.Parse(RecordAlignSource);
+  Assert.AreEqual('', Diagnostics(cRecordAlignSource));
+  mTree := TPascalParser.Parse(cRecordAlignSource);
   try
-    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.RecordType, ''));
-    Assert.IsNull(Find(Tree.Root, TSyntaxKind.TypeReference, 'align'), 'align ist kein Typ');
-    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.TypeDecl, 'TDanach'));
+    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.RecordType, ''));
+    Assert.IsNull(Find(mTree.Root, TSyntaxKind.TypeReference, 'align'), 'align ist kein Typ');
+    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.TypeDecl, 'TDanach'));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -507,46 +509,46 @@ procedure TParserGapsTests.AttributeInVariantPart;
 var
   U: TUnitIndex;
 begin
-  Assert.AreEqual('', Diagnostics(VariantAttribute));
-  U := TIndexExtractor.ExtractText(VariantAttribute, MainFile, nil);
+  Assert.AreEqual('', Diagnostics(cVariantAttribute));
+  U := TIndexExtractor.ExtractText(cVariantAttribute, cMainFile, nil);
   Assert.IsTrue(HasSymbol(U, 'TVariantRecord', 'Value'));
   Assert.IsTrue(HasSymbol(U, 'TVariantRecord', 'ValueWithAttribute'));
 end;
 
 procedure TParserGapsTests.GenericDefaultParameter;
 var
-  Tree: TSyntaxTree;
-  Parameter: TSyntaxNode;
+  mTree: TSyntaxTree;
+  mParameter: TSyntaxNode;
 begin
   // Der Ausdruck A < B >= C im Rumpf bleibt ein Vergleich, nur die Typen der Parameter teilen >=.
-  Assert.AreEqual('', Diagnostics(GenericDefault));
-  Tree := TPascalParser.Parse(GenericDefault);
+  Assert.AreEqual('', Diagnostics(cGenericDefault));
+  mTree := TPascalParser.Parse(cGenericDefault);
   try
-    Parameter := Find(Find(Tree.Root, TSyntaxKind.TypeDecl, 'TFoo'), TSyntaxKind.Parameter, 'Baz');
-    Assert.IsNotNull(Parameter);
-    Assert.IsNotNull(Find(Parameter, TSyntaxKind.GenericArgs, ''), 'IBaz<string>');
-    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.RoutineDecl, 'TFoo.Danach'), 'Routine dahinter');
+    mParameter := Find(Find(mTree.Root, TSyntaxKind.TypeDecl, 'TFoo'), TSyntaxKind.Parameter, 'Baz');
+    Assert.IsNotNull(mParameter);
+    Assert.IsNotNull(Find(mParameter, TSyntaxKind.GenericArgs, ''), 'IBaz<string>');
+    Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.RoutineDecl, 'TFoo.Danach'), 'Routine dahinter');
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TParserGapsTests.BinaryWithLeadingSeparator;
 begin
-  Assert.AreEqual('', Diagnostics(BinarySeparator));
+  Assert.AreEqual('', Diagnostics(cBinarySeparator));
 end;
 
 procedure TParserGapsTests.NamedArgumentWithKeyword;
 begin
-  Assert.AreEqual('', Diagnostics(NamedKeyword));
+  Assert.AreEqual('', Diagnostics(cNamedKeyword));
 end;
 
 procedure TParserGapsTests.AnonymousMethodWithCallingConvention;
 var
   mTree: TSyntaxTree;
 begin
-  Assert.AreEqual('', Diagnostics(AnonymousConvention));
-  mTree := TPascalParser.Parse(AnonymousConvention);
+  Assert.AreEqual('', Diagnostics(cAnonymousConvention));
+  mTree := TPascalParser.Parse(cAnonymousConvention);
   try
     Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.AnonymousMethod, 'function'));
     Assert.IsNotNull(Find(mTree.Root, TSyntaxKind.RoutineDecl, 'Danach'), 'Routine dahinter');
@@ -560,8 +562,8 @@ var
   mTree: TSyntaxTree;
   mVariable: TSyntaxNode;
 begin
-  Assert.AreEqual('', Diagnostics(InlineAttribute));
-  mTree := TPascalParser.Parse(InlineAttribute);
+  Assert.AreEqual('', Diagnostics(cInlineAttribute));
+  mTree := TPascalParser.Parse(cInlineAttribute);
   try
     mVariable := Find(mTree.Root, TSyntaxKind.InlineVar, 'Obj');
     Assert.IsNotNull(mVariable);

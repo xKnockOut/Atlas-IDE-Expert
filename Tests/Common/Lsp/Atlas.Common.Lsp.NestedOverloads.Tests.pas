@@ -52,10 +52,10 @@ uses
   Atlas.Common.Lsp.Completion;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
 
   // Hilf gibt es als Methode der Klasse und zweimal verschachtelt in Bar: vor Rufe und dahinter.
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -94,26 +94,26 @@ const
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
-  Index, Line, LineStart, Scan: Integer;
+  mIndex, mLine, mLineStart, mScan: Integer;
 begin
   // Cursor hinter AMarker.
-  Index := Pos(AMarker, AText);
-  if Index = 0 then
+  mIndex := Pos(AMarker, AText);
+  if mIndex = 0 then
   begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
   end;
-  Inc(Index, Length(AMarker));
-  Line := 0;
-  LineStart := 1;
-  for Scan := 1 to Index - 1 do
+  Inc(mIndex, Length(AMarker));
+  mLine := 0;
+  mLineStart := 1;
+  for mScan := 1 to mIndex - 1 do
   begin
-    if AText[Scan] = #10 then
+    if AText[mScan] = #10 then
     begin
-      Inc(Line);
-      LineStart := Scan + 1;
+      Inc(mLine);
+      mLineStart := mScan + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 function NoText(const AFileName: string; out AText: string): Boolean;
@@ -124,12 +124,12 @@ end;
 
 function SignatureTexts(const AHelp: TSignatureHelp): string;
 var
-  Signature: TSignature;
+  mSignature: TSignature;
 begin
   Result := '';
-  for Signature in AHelp.Signatures do
+  for mSignature in AHelp.Signatures do
   begin
-    Result := Result + Signature.Text + '|';
+    Result := Result + mSignature.Text + '|';
   end;
 end;
 
@@ -149,51 +149,51 @@ end;
 
 function TNestedOverloadsTests.HelpAt(const AMarker: string): TSignatureHelp;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Result := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, UnitHaupt, HauptFile,
-      NoText), PositionOf(UnitHaupt, AMarker));
+    Result := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, mTree, cUnitHaupt, cHauptFile,
+      NoText), PositionOf(cUnitHaupt, AMarker));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function TNestedOverloadsTests.ItemsAt(const ACode, AMarker: string): TCompletionItems;
 var
-  Text: string;
-  Tree: TSyntaxTree;
+  mText: string;
+  mTree: TSyntaxTree;
 begin
-  Text := StringReplace(UnitHaupt, '  |', ACode, []);
-  Tree := TPascalParser.Parse(Text);
+  mText := StringReplace(cUnitHaupt, '  |', ACode, []);
+  mTree := TPascalParser.Parse(mText);
   try
-    Result := TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, AMarker),
+    Result := TCompletionLists.Collect(FResolver, FIndex, mTree, cHauptFile, PositionOf(mText, AMarker),
       TCompletionMatching.Prefix);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TNestedOverloadsTests.SignatureHelpListsOverloadsBeforeAndAfterCall;
 var
-  Help: TSignatureHelp;
+  mHelp: TSignatureHelp;
 begin
   // Beide verschachtelten Überladungen, nicht die gleichnamige Methode der Klasse.
-  Help := HelpAt('  Hilf(''x'', ');
+  mHelp := HelpAt('  Hilf(''x'', ');
   Assert.AreEqual('procedure Hilf(Wert: Integer)|procedure Hilf(const Text: string; Anzahl: Integer)|',
-    SignatureTexts(Help));
-  Assert.AreEqual(1, Help.ActiveParameter);
-  Assert.AreEqual(1, Help.ActiveSignature);
+    SignatureTexts(mHelp));
+  Assert.AreEqual(1, mHelp.ActiveParameter);
+  Assert.AreEqual(1, mHelp.ActiveSignature);
 end;
 
 procedure TNestedOverloadsTests.SignatureHelpInDeeperLevel;
 var
-  Help: TSignatureHelp;
+  mHelp: TSignatureHelp;
 begin
-  Help := HelpAt('    Tief(1, ');
-  Assert.AreEqual('procedure Tief(A: Integer)|procedure Tief(A, B: Integer)|', SignatureTexts(Help));
-  Assert.AreEqual(1, Help.ActiveSignature);
+  mHelp := HelpAt('    Tief(1, ');
+  Assert.AreEqual('procedure Tief(A: Integer)|procedure Tief(A, B: Integer)|', SignatureTexts(mHelp));
+  Assert.AreEqual(1, mHelp.ActiveSignature);
 end;
 
 procedure TNestedOverloadsTests.SignatureHelpFromInnerRoutineSeesOuterOverloads;
@@ -205,66 +205,66 @@ end;
 
 procedure TNestedOverloadsTests.ResolvesOverloadByArguments;
 var
-  Tree: TSyntaxTree;
-  Resolved: TResolvedSymbol;
+  mTree: TSyntaxTree;
+  mResolved: TResolvedSymbol;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
     // Hilf('x', 3) ist die Überladung hinter Rufe (Zeile 26), Hilf(4) die vor Rufe (Zeile 12).
-    Resolved := FResolver.Resolve(Tree, HauptFile, PositionOf(UnitHaupt, #10'  Hil'));
-    Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, Resolved.Kind);
-    Assert.AreEqual(26, Resolved.SelectionRange.StartPos.Line);
-    Resolved := FResolver.Resolve(Tree, HauptFile, PositionOf(UnitHaupt, '3);'#10'  Hil'));
-    Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, Resolved.Kind);
-    Assert.AreEqual(12, Resolved.SelectionRange.StartPos.Line);
+    mResolved := FResolver.Resolve(mTree, cHauptFile, PositionOf(cUnitHaupt, #10'  Hil'));
+    Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, mResolved.Kind);
+    Assert.AreEqual(26, mResolved.SelectionRange.StartPos.Line);
+    mResolved := FResolver.Resolve(mTree, cHauptFile, PositionOf(cUnitHaupt, '3);'#10'  Hil'));
+    Assert.AreEqual<TResolvedKind>(TResolvedKind.Local, mResolved.Kind);
+    Assert.AreEqual(12, mResolved.SelectionRange.StartPos.Line);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 procedure TNestedOverloadsTests.CompletionShowsNestedRoutineOnceWithOverloads;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
-  Count: Integer;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
+  mCount: Integer;
 begin
-  Items := ItemsAt('  Hil', 'Hilf(4);'#10'  Hil');
-  Count := 0;
-  for Item in Items.Items do
+  mItems := ItemsAt('  Hil', 'Hilf(4);'#10'  Hil');
+  mCount := 0;
+  for mItem in mItems.Items do
   begin
-    if SameText(Item.Name, 'Hilf') then
+    if SameText(mItem.Name, 'Hilf') then
     begin
-      Inc(Count);
+      Inc(mCount);
       // Der verschachtelte Eintrag verdeckt die Methode der Klasse und kennt seine zweite Überladung.
-      Assert.AreEqual(1, Item.Scope);
-      Assert.AreEqual(1, Integer(Length(Item.Overloads)));
-      Assert.IsTrue(Item.HasParameters);
+      Assert.AreEqual(1, mItem.Scope);
+      Assert.AreEqual(1, Integer(Length(mItem.Overloads)));
+      Assert.IsTrue(mItem.HasParameters);
     end;
   end;
-  Assert.AreEqual(1, Count);
+  Assert.AreEqual(1, mCount);
 end;
 
 procedure TNestedOverloadsTests.CompletionInDeeperLevel;
 var
-  Items: TCompletionItems;
-  Item: TCompletionItem;
-  Names: string;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
+  mNames: string;
 begin
   // In Rufe: Tief aus Rufe und Hilf aus Bar.
-  Items := ItemsAt('  ', #10'  begin'#10'    T');
-  Names := '';
-  for Item in Items.Items do
+  mItems := ItemsAt('  ', #10'  begin'#10'    T');
+  mNames := '';
+  for mItem in mItems.Items do
   begin
-    Names := Names + Item.Name + ' ';
+    mNames := mNames + mItem.Name + ' ';
   end;
-  Assert.IsTrue(Pos('Tief ', Names) > 0, Names);
-  Items := ItemsAt('  ', #10'    Hil');
-  Names := '';
-  for Item in Items.Items do
+  Assert.IsTrue(Pos('Tief ', mNames) > 0, mNames);
+  mItems := ItemsAt('  ', #10'    Hil');
+  mNames := '';
+  for mItem in mItems.Items do
   begin
-    Names := Names + Item.Name + ' ';
+    mNames := mNames + mItem.Name + ' ';
   end;
-  Assert.IsTrue(Pos('Hilf ', Names) > 0, Names);
+  Assert.IsTrue(Pos('Hilf ', mNames) > 0, mNames);
 end;
 
 initialization

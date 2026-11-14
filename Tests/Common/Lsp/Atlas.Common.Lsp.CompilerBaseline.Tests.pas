@@ -48,8 +48,8 @@ uses
   Atlas.Common.Lsp.CompilerBaseline;
 
 const
-  Root = 'C:\Projekt';
-  UnitA =
+  cRoot = 'C:\Projekt';
+  cUnitA =
     'unit A;' + #10 +
     'interface' + #10 +
     'implementation' + #10 +
@@ -66,7 +66,7 @@ var
 
 function FullPath(const ARelative: string): string;
 begin
-  Result := Root + PathDelim + ARelative;
+  Result := cRoot + PathDelim + ARelative;
 end;
 
 function Files: TLspBaselineFiles;
@@ -96,7 +96,7 @@ begin
     begin
       ASource := Default(TLspMetricsSource);
       ASource.Settings := TServerSettings.Default;
-      ASource.Root := Root;
+      ASource.Root := cRoot;
       Result := True;
     end,
     function(const AFileName: string; out AText: string): Boolean
@@ -115,14 +115,14 @@ end;
 function Source: TLspMetricsSource;
 begin
   Result := Default(TLspMetricsSource);
-  Result.Root := Root;
+  Result.Root := cRoot;
 end;
 
 function Classified(ACommand: TLspCompilerBaseline; const AMessages: TArray<TLspCompilerMessage>): TArray<Boolean>;
 var
-  Previous: string;
+  mPrevious: string;
 begin
-  Result := ACommand.Classify(Source, AMessages, Previous);
+  Result := ACommand.Classify(Source, AMessages, mPrevious);
 end;
 
 { TLspCompilerBaselineTests }
@@ -130,7 +130,7 @@ end;
 procedure TLspCompilerBaselineTests.Setup;
 begin
   Disk.Clear;
-  Disk.Add(FullPath('A.pas'), UnitA);
+  Disk.Add(FullPath('A.pas'), cUnitA);
 end;
 
 procedure TLspCompilerBaselineTests.TearDown;
@@ -140,147 +140,147 @@ end;
 
 procedure TLspCompilerBaselineTests.AddedMessageIsBaselinedNewOneIsNot;
 var
-  Command: TLspCompilerBaseline;
-  Arguments, Items: TJSONArray;
-  Item: TJSONObject;
-  Answer: TJSONValue;
-  Baselined: TArray<Boolean>;
+  mCommand: TLspCompilerBaseline;
+  mArguments, mItems: TJSONArray;
+  mItem: TJSONObject;
+  mAnswer: TJSONValue;
+  mBaselined: TArray<Boolean>;
 begin
-  Command := MakeCommand;
+  mCommand := MakeCommand;
   try
     // Zeile 6 (1-basiert): "  X: Integer;" – H2164 Variable X wird nicht verwendet.
-    Arguments := TJSONArray.Create;
+    mArguments := TJSONArray.Create;
     try
-      Arguments.Add('file:///C:/Projekt/Projekt.dproj');
-      Item := TJSONObject.Create;
-      Item.AddPair('file', FullPath('A.pas'));
-      Item.AddPair('line', TJSONNumber.Create(6));
-      Item.AddPair('code', 'h2164');
-      Items := TJSONArray.Create;
-      Items.AddElement(Item);
-      Arguments.AddElement(Items);
-      Answer := Command.ExecuteAdd(Arguments);
+      mArguments.Add('file:///C:/Projekt/Projekt.dproj');
+      mItem := TJSONObject.Create;
+      mItem.AddPair('file', FullPath('A.pas'));
+      mItem.AddPair('line', TJSONNumber.Create(6));
+      mItem.AddPair('code', 'h2164');
+      mItems := TJSONArray.Create;
+      mItems.AddElement(mItem);
+      mArguments.AddElement(mItems);
+      mAnswer := mCommand.ExecuteAdd(mArguments);
     finally
-      Arguments.Free;
+      mArguments.Free;
     end;
     try
-      Assert.IsTrue(Answer is TJSONObject);
-      Assert.AreEqual(1, TJSONObject(Answer).GetValue<Integer>('total', -1));
-      Assert.AreEqual(1, TJSONObject(Answer).GetValue<Integer>('added', -1));
-      Assert.AreEqual('none', TJSONObject(Answer).GetValue<string>('previous', ''));
+      Assert.IsTrue(mAnswer is TJSONObject);
+      Assert.AreEqual(1, TJSONObject(mAnswer).GetValue<Integer>('total', -1));
+      Assert.AreEqual(1, TJSONObject(mAnswer).GetValue<Integer>('added', -1));
+      Assert.AreEqual('none', TJSONObject(mAnswer).GetValue<string>('previous', ''));
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
-    Assert.IsTrue(Disk.ContainsKey(IncludeTrailingPathDelimiter(Root) + cBaselineFileName));
-    Baselined := Classified(Command, [Msg(FullPath('A.pas'), 6, 'H2164'), Msg(FullPath('A.pas'), 4,
+    Assert.IsTrue(Disk.ContainsKey(IncludeTrailingPathDelimiter(cRoot) + cBaselineFileName));
+    mBaselined := Classified(mCommand, [Msg(FullPath('A.pas'), 6, 'H2164'), Msg(FullPath('A.pas'), 4,
       'W1035')]);
-    Assert.IsTrue(Baselined[0], 'dieselbe Meldung zählt nicht mehr');
-    Assert.IsFalse(Baselined[1], 'eine neue Meldung zählt');
+    Assert.IsTrue(mBaselined[0], 'dieselbe Meldung zählt nicht mehr');
+    Assert.IsFalse(mBaselined[1], 'eine neue Meldung zählt');
   finally
-    Command.Free;
+    mCommand.Free;
   end;
 end;
 
 procedure TLspCompilerBaselineTests.SurvivesShiftedLines;
 var
-  Command: TLspCompilerBaseline;
+  mCommand: TLspCompilerBaseline;
 begin
-  Command := MakeCommand;
+  mCommand := MakeCommand;
   try
-    Command.Add(Source, [Msg(FullPath('A.pas'), 6, 'H2164')]);
+    mCommand.Add(Source, [Msg(FullPath('A.pas'), 6, 'H2164')]);
     // Zwei Zeilen oberhalb eingefügt: Zuordnung über Zeile und Routine, nicht über die Nummer.
-    Disk[FullPath('A.pas')] := StringReplace(UnitA, 'implementation' + #10, 'implementation' + #10 + 'uses' + #10 +
+    Disk[FullPath('A.pas')] := StringReplace(cUnitA, 'implementation' + #10, 'implementation' + #10 + 'uses' + #10 +
       '  B;' + #10, []);
-    Assert.IsTrue(Classified(Command, [Msg(FullPath('A.pas'), 8, 'H2164')])[0]);
+    Assert.IsTrue(Classified(mCommand, [Msg(FullPath('A.pas'), 8, 'H2164')])[0]);
   finally
-    Command.Free;
+    mCommand.Free;
   end;
 end;
 
 procedure TLspCompilerBaselineTests.KeepsRuleEntries;
 var
-  Command: TLspCompilerBaseline;
-  Baseline: IRuleBaseline;
+  mCommand: TLspCompilerBaseline;
+  mBaseline: IRuleBaseline;
 begin
-  Disk.Add(IncludeTrailingPathDelimiter(Root) + cBaselineFileName,
+  Disk.Add(IncludeTrailingPathDelimiter(cRoot) + cBaselineFileName,
     '{"version": 1, "findings": [{"path": "A.pas", "rule": "empty-except", "fingerprint": "00000000", ' +
     '"count": 2}]}');
-  Command := MakeCommand;
+  mCommand := MakeCommand;
   try
-    Command.Add(Source, [Msg(FullPath('A.pas'), 6, 'H2164')]);
+    mCommand.Add(Source, [Msg(FullPath('A.pas'), 6, 'H2164')]);
   finally
-    Command.Free;
+    mCommand.Free;
   end;
-  Baseline := TRuleBaseline.FromJson(Disk[IncludeTrailingPathDelimiter(Root) + cBaselineFileName]);
-  Assert.AreEqual(3, Baseline.Count, 'zwei Regeltreffer und eine Compilermeldung');
+  mBaseline := TRuleBaseline.FromJson(Disk[IncludeTrailingPathDelimiter(cRoot) + cBaselineFileName]);
+  Assert.AreEqual(3, mBaseline.Count, 'zwei Regeltreffer und eine Compilermeldung');
 end;
 
 procedure TLspCompilerBaselineTests.SkipsErrorsAndForeignFiles;
 var
-  Command: TLspCompilerBaseline;
-  Answer: string;
-  Value: TJSONValue;
+  mCommand: TLspCompilerBaseline;
+  mAnswer: string;
+  mValue: TJSONValue;
 begin
-  Command := MakeCommand;
+  mCommand := MakeCommand;
   try
-    Answer := Command.Add(Source, [Msg(FullPath('A.pas'), 6, 'E2003'), Msg('D:\Fremd\X.pas', 1, 'W1035'),
+    mAnswer := mCommand.Add(Source, [Msg(FullPath('A.pas'), 6, 'E2003'), Msg('D:\Fremd\X.pas', 1, 'W1035'),
       Msg(FullPath('Fehlt.pas'), 1, 'H2164'), Msg(FullPath('A.pas'), 6, 'H2164')]);
   finally
-    Command.Free;
+    mCommand.Free;
   end;
-  Value := TJSONObject.ParseJSONValue(Answer);
+  mValue := TJSONObject.ParseJSONValue(mAnswer);
   try
-    Assert.AreEqual(1, TJSONObject(Value).GetValue<Integer>('total', -1), 'Fehler kommen nicht in die Baseline');
-    Assert.AreEqual(2, TJSONObject(Value).GetValue<Integer>('skipped', -1), 'fremde und fehlende Datei');
+    Assert.AreEqual(1, TJSONObject(mValue).GetValue<Integer>('total', -1), 'Fehler kommen nicht in die Baseline');
+    Assert.AreEqual(2, TJSONObject(mValue).GetValue<Integer>('skipped', -1), 'fremde und fehlende Datei');
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 procedure TLspCompilerBaselineTests.ClassifyWithoutBaseline;
 var
-  Command: TLspCompilerBaseline;
-  Answer: TJSONValue;
-  Arguments: TJSONArray;
+  mCommand: TLspCompilerBaseline;
+  mAnswer: TJSONValue;
+  mArguments: TJSONArray;
 begin
-  Command := MakeCommand;
+  mCommand := MakeCommand;
   try
-    Arguments := TJSONObject.ParseJSONValue('[null, [{"file": "x", "line": 1, "code": "H2164"}]]') as TJSONArray;
+    mArguments := TJSONObject.ParseJSONValue('[null, [{"file": "x", "line": 1, "code": "H2164"}]]') as TJSONArray;
     try
-      Answer := Command.ExecuteClassify(Arguments);
+      mAnswer := mCommand.ExecuteClassify(mArguments);
     finally
-      Arguments.Free;
+      mArguments.Free;
     end;
     try
-      Assert.AreEqual('none', TJSONObject(Answer).GetValue<string>('baseline', ''));
-      Assert.AreEqual(0, TJSONArray(TJSONObject(Answer).GetValue('baselined')).Count);
+      Assert.AreEqual('none', TJSONObject(mAnswer).GetValue<string>('baseline', ''));
+      Assert.AreEqual(0, TJSONArray(TJSONObject(mAnswer).GetValue('baselined')).Count);
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Command.Free;
+    mCommand.Free;
   end;
 end;
 
 procedure TLspCompilerBaselineTests.RefusesInvalidBaseline;
 var
-  Command: TLspCompilerBaseline;
-  Raised: Boolean;
+  mCommand: TLspCompilerBaseline;
+  mRaised: Boolean;
 begin
-  Disk.Add(IncludeTrailingPathDelimiter(Root) + cBaselineFileName, '{kaputt');
-  Command := MakeCommand;
+  Disk.Add(IncludeTrailingPathDelimiter(cRoot) + cBaselineFileName, '{kaputt');
+  mCommand := MakeCommand;
   try
-    Raised := False;
+    mRaised := False;
     try
-      Command.Add(Source, [Msg(FullPath('A.pas'), 6, 'H2164')]);
+      mCommand.Add(Source, [Msg(FullPath('A.pas'), 6, 'H2164')]);
     except
       on EJsonRpcError do
-        Raised := True;
+        mRaised := True;
     end;
-    Assert.IsTrue(Raised, 'eine unlesbare Baseline wird nicht still ersetzt');
-    Assert.AreEqual('{kaputt', Disk[IncludeTrailingPathDelimiter(Root) + cBaselineFileName]);
+    Assert.IsTrue(mRaised, 'eine unlesbare Baseline wird nicht still ersetzt');
+    Assert.AreEqual('{kaputt', Disk[IncludeTrailingPathDelimiter(cRoot) + cBaselineFileName]);
   finally
-    Command.Free;
+    mCommand.Free;
   end;
 end;
 

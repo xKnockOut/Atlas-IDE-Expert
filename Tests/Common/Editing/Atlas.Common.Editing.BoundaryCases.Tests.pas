@@ -101,7 +101,7 @@ begin
   end;
 end;
 
-function CasesOf(const AName: string; AMax: Integer = TBoundaryCases.cDefaultMax): TBoundaryResult;
+function CasesOf(const AName: string; AMax: Integer): TBoundaryResult; overload;
 var
   mTree: TSyntaxTree;
 begin
@@ -111,6 +111,11 @@ begin
   finally
     mTree.Free;
   end;
+end;
+
+function CasesOf(const AName: string): TBoundaryResult; overload;
+begin
+  Result := CasesOf(AName, TBoundaryCases.cDefaultMax);
 end;
 
 /// <summary>Werte des Parameters AParam, mit | getrennt.</summary>

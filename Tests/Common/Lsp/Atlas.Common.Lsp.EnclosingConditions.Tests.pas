@@ -58,7 +58,7 @@ uses
   Atlas.Common.Pascal.TreeCache;
 
 const
-  Source =
+  cSource =
     'unit Ablauf;'#10 +                                          // 0
     'interface'#10 +                                             // 1
     'implementation'#10 +                                        // 2
@@ -110,7 +110,7 @@ const
 
 procedure TLspEnclosingConditionsTests.Setup;
 begin
-  FTree := TSyntaxTreeCache.Parse(Source);
+  FTree := TSyntaxTreeCache.Parse(cSource);
   FCalls := nil;
 end;
 
@@ -122,64 +122,64 @@ end;
 
 function TLspEnclosingConditionsTests.LineOf(const AMarker: string): Integer;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := Source.Split([#10]);
+  mLines := cSource.Split([#10]);
   Result := 0;
-  while (Result <= High(Lines)) and (Pos(AMarker, Lines[Result]) = 0) do
+  while (Result <= High(mLines)) and (Pos(AMarker, mLines[Result]) = 0) do
   begin
     Inc(Result);
   end;
-  Assert.IsTrue(Result <= High(Lines), AMarker + ' nicht gefunden');
+  Assert.IsTrue(Result <= High(mLines), AMarker + ' nicht gefunden');
 end;
 
 function TLspEnclosingConditionsTests.Blocks(const AMarker: string; ADepth: Integer): TLspEnclosingBlocks;
 var
-  Conditions: TLspEnclosingConditions;
-  Calls: TArray<TTextPosition>;
+  mConditions: TLspEnclosingConditions;
+  mCalls: TArray<TTextPosition>;
 begin
-  Calls := FCalls;
-  Conditions := TLspEnclosingConditions.Create(FTree, Source,
+  mCalls := FCalls;
+  mConditions := TLspEnclosingConditions.Create(FTree, cSource,
     function(ALine: Integer): TArray<TTextPosition>
     begin
-      Result := Calls;
+      Result := mCalls;
     end);
   try
-    Result := Conditions.Answer(LineOf(AMarker), ADepth);
+    Result := mConditions.Answer(LineOf(AMarker), ADepth);
   finally
-    Conditions.Free;
+    mConditions.Free;
   end;
 end;
 
 function TLspEnclosingConditionsTests.Describe(const ABlock: TLspEnclosingBlock): string;
 var
-  Part: TLspConditionPart;
-  Texts: TArray<string>;
+  mPart: TLspConditionPart;
+  mTexts: TArray<string>;
 begin
-  Texts := nil;
-  for Part in ABlock.Parts do
+  mTexts := nil;
+  for mPart in ABlock.Parts do
   begin
-    Texts := Texts + [Format('%s%d:%s', [Part.Kind, Part.Parent, Part.Text])];
-    if Part.Call then
+    mTexts := mTexts + [Format('%s%d:%s', [mPart.Kind, mPart.Parent, mPart.Text])];
+    if mPart.Call then
     begin
-      Texts[High(Texts)] := Texts[High(Texts)] + '!';
+      mTexts[High(mTexts)] := mTexts[High(mTexts)] + '!';
     end;
   end;
-  Result := Format('%s@%d[%s] ', [ABlock.Kind, ABlock.Line, ABlock.Branch]) + string.Join(' | ', Texts);
+  Result := Format('%s@%d[%s] ', [ABlock.Kind, ABlock.Line, ABlock.Branch]) + string.Join(' | ', mTexts);
 end;
 
 procedure TLspEnclosingConditionsTests.CaseInIfInForFromInsideOut;
 var
-  Answer: TLspEnclosingBlocks;
+  mAnswer: TLspEnclosingBlocks;
 begin
-  Answer := Blocks('// Rabatt', 3);
-  Assert.AreEqual(3, Integer(Length(Answer)));
-  Assert.AreEqual('case@10[paRabatt] value-1:Art', Describe(Answer[0]));
+  mAnswer := Blocks('// Rabatt', 3);
+  Assert.AreEqual(3, Integer(Length(mAnswer)));
+  Assert.AreEqual('case@10[paRabatt] value-1:Art', Describe(mAnswer[0]));
   Assert.AreEqual('if@9[then] and-1:(Summe > 1000) and Pruefe(I) and Aktiv! | compare0:Summe > 1000 | ' +
-    'value1:Summe | value1:1000 | value0:Pruefe(I)! | value0:Aktiv', Describe(Answer[1]));
-  Assert.AreEqual('for@7[] value-1:I | value-1:N', Describe(Answer[2]));
-  Assert.AreEqual(7, Answer[2].Start.Line);
-  Assert.AreEqual(2, Answer[2].Start.Character);
+    'value1:Summe | value1:1000 | value0:Pruefe(I)! | value0:Aktiv', Describe(mAnswer[1]));
+  Assert.AreEqual('for@7[] value-1:I | value-1:N', Describe(mAnswer[2]));
+  Assert.AreEqual(7, mAnswer[2].Start.Line);
+  Assert.AreEqual(2, mAnswer[2].Start.Character);
 end;
 
 procedure TLspEnclosingConditionsTests.DepthLimitsBlocks;
@@ -193,50 +193,50 @@ end;
 
 procedure TLspEnclosingConditionsTests.ElseIfChainNamesBranches;
 var
-  Answer: TLspEnclosingBlocks;
+  mAnswer: TLspEnclosingBlocks;
 begin
-  Answer := Blocks('// ElseIf', 3);
-  Assert.AreEqual(2, Integer(Length(Answer)));
-  Assert.AreEqual('if', Answer[0].Kind);
-  Assert.AreEqual('then', Answer[0].Branch);
-  Assert.AreEqual(22, Answer[0].Line);
-  Assert.AreEqual('if@20[else] compare-1:N = 0 | value0:N | value0:0', Describe(Answer[1]));
-  Answer := Blocks('// LetztesElse', 3);
-  Assert.AreEqual('else', Answer[0].Branch);
-  Assert.AreEqual('else', Answer[1].Branch);
+  mAnswer := Blocks('// ElseIf', 3);
+  Assert.AreEqual(2, Integer(Length(mAnswer)));
+  Assert.AreEqual('if', mAnswer[0].Kind);
+  Assert.AreEqual('then', mAnswer[0].Branch);
+  Assert.AreEqual(22, mAnswer[0].Line);
+  Assert.AreEqual('if@20[else] compare-1:N = 0 | value0:N | value0:0', Describe(mAnswer[1]));
+  mAnswer := Blocks('// LetztesElse', 3);
+  Assert.AreEqual('else', mAnswer[0].Branch);
+  Assert.AreEqual('else', mAnswer[1].Branch);
 end;
 
 procedure TLspEnclosingConditionsTests.AndChainWithCallAndComparison;
 var
-  Answer: TLspEnclosingBlocks;
+  mAnswer: TLspEnclosingBlocks;
 begin
   // Die and-Kette ist ein Teil mit drei Gliedern, nicht zwei geschachtelte.
-  Answer := Blocks('// Bereich', 3);
-  Assert.AreEqual(6, Integer(Length(Answer[1].Parts)));
-  Assert.AreEqual('and', Answer[1].Parts[0].Operator_);
-  Assert.AreEqual(0, Answer[1].Parts[5].Parent);
-  Assert.IsTrue(Answer[1].Parts[0].Call, 'Die Kette enthält einen Aufruf');
-  Assert.IsFalse(Answer[1].Parts[1].Call);
+  mAnswer := Blocks('// Bereich', 3);
+  Assert.AreEqual(6, Integer(Length(mAnswer[1].Parts)));
+  Assert.AreEqual('and', mAnswer[1].Parts[0].Operator_);
+  Assert.AreEqual(0, mAnswer[1].Parts[5].Parent);
+  Assert.IsTrue(mAnswer[1].Parts[0].Call, 'Die Kette enthält einen Aufruf');
+  Assert.IsFalse(mAnswer[1].Parts[1].Call);
 end;
 
 procedure TLspEnclosingConditionsTests.NotAndParenthesizedOrKeepStructure;
 var
-  Answer: TLspEnclosingBlocks;
+  mAnswer: TLspEnclosingBlocks;
 begin
-  Answer := Blocks('// ElseIf', 3);
+  mAnswer := Blocks('// ElseIf', 3);
   Assert.AreEqual('if@22[then] not-1:not (Aktiv or (N in [1, 2])) | or0:Aktiv or (N in [1, 2]) | value1:Aktiv | ' +
-    'compare1:N in [1, 2] | value3:N | value3:[1, 2]', Describe(Answer[0]));
+    'compare1:N in [1, 2] | value3:N | value3:[1, 2]', Describe(mAnswer[0]));
 end;
 
 procedure TLspEnclosingConditionsTests.RepeatUsesUntilLine;
 var
-  Answer: TLspEnclosingBlocks;
+  mAnswer: TLspEnclosingBlocks;
 begin
-  Answer := Blocks('// ImRepeat', 3);
-  Assert.AreEqual(1, Integer(Length(Answer)));
+  mAnswer := Blocks('// ImRepeat', 3);
+  Assert.AreEqual(1, Integer(Length(mAnswer)));
   Assert.AreEqual('repeat@29[] or-1:(N <= 0) or Fertig | compare0:N <= 0 | value1:N | value1:0 | value0:Fertig',
-    Describe(Answer[0]));
-  Assert.AreEqual(26, Answer[0].Start.Line);
+    Describe(mAnswer[0]));
+  Assert.AreEqual(26, mAnswer[0].Start.Line);
 end;
 
 procedure TLspEnclosingConditionsTests.CaseRangeAndElse;
@@ -248,13 +248,13 @@ end;
 
 procedure TLspEnclosingConditionsTests.WhileForInAndWith;
 var
-  Answer: TLspEnclosingBlocks;
+  mAnswer: TLspEnclosingBlocks;
 begin
-  Answer := Blocks('// ImWith', 5);
-  Assert.AreEqual(3, Integer(Length(Answer)));
-  Assert.AreEqual('with@32[] value-1:E', Describe(Answer[0]));
-  Assert.AreEqual('forIn@31[] value-1:E | value-1:Liste', Describe(Answer[1]));
-  Assert.AreEqual('while@30[] compare-1:Liste.Count > N | value0:Liste.Count | value0:N', Describe(Answer[2]));
+  mAnswer := Blocks('// ImWith', 5);
+  Assert.AreEqual(3, Integer(Length(mAnswer)));
+  Assert.AreEqual('with@32[] value-1:E', Describe(mAnswer[0]));
+  Assert.AreEqual('forIn@31[] value-1:E | value-1:Liste', Describe(mAnswer[1]));
+  Assert.AreEqual('while@30[] compare-1:Liste.Count > N | value0:Liste.Count | value0:N', Describe(mAnswer[2]));
 end;
 
 procedure TLspEnclosingConditionsTests.HeaderOnStopLineIsSkipped;
@@ -267,43 +267,43 @@ end;
 
 procedure TLspEnclosingConditionsTests.StopsAtRoutineBoundary;
 var
-  Answer: TLspEnclosingBlocks;
+  mAnswer: TLspEnclosingBlocks;
 begin
   // In der anonymen Methode endet die Suche an ihrem Rand; das if Bereit außen zählt nicht.
-  Answer := Blocks('// Anonym', 5);
-  Assert.AreEqual(1, Integer(Length(Answer)));
-  Assert.AreEqual(41, Answer[0].Line);
+  mAnswer := Blocks('// Anonym', 5);
+  Assert.AreEqual(1, Integer(Length(mAnswer)));
+  Assert.AreEqual(41, mAnswer[0].Line);
 end;
 
 procedure TLspEnclosingConditionsTests.CallPositionsMarkGetter;
 var
-  Answer: TLspEnclosingBlocks;
+  mAnswer: TLspEnclosingBlocks;
 begin
   // Liste.Count als Getter gemeldet (Zeile 30, Spalte von Count).
   FCalls := [TTextPosition.Create(30, 14)];
-  Answer := Blocks('// ImWith', 5);
-  Assert.AreEqual('while@30[] compare-1:Liste.Count > N! | value0:Liste.Count! | value0:N', Describe(Answer[2]));
+  mAnswer := Blocks('// ImWith', 5);
+  Assert.AreEqual('while@30[] compare-1:Liste.Count > N! | value0:Liste.Count! | value0:N', Describe(mAnswer[2]));
 end;
 
 procedure TLspEnclosingConditionsTests.JsonShape;
 var
-  Json: TJSONObject;
-  Block, Part: TJSONObject;
+  mJson: TJSONObject;
+  mBlock, mPart: TJSONObject;
 begin
-  Json := TLspEnclosingConditions.ToJson(Blocks('// ElseIf', 3));
+  mJson := TLspEnclosingConditions.ToJson(Blocks('// ElseIf', 3));
   try
-    Assert.AreEqual(1, Json.GetValue<Integer>('format'));
-    Block := (Json.GetValue('blocks') as TJSONArray).Items[1] as TJSONObject;
-    Assert.AreEqual('if', Block.GetValue<string>('kind'));
-    Assert.AreEqual(20, Block.GetValue<Integer>('line'));
-    Assert.AreEqual('else', Block.GetValue<string>('branch'));
-    Part := (Block.GetValue('parts') as TJSONArray).Items[0] as TJSONObject;
-    Assert.AreEqual('compare', Part.GetValue<string>('kind'));
-    Assert.AreEqual('=', Part.GetValue<string>('operator'));
-    Assert.AreEqual(-1, (Part.GetValue('parent') as TJSONNumber).AsInt);
-    Assert.IsFalse(Part.GetValue<Boolean>('call'));
+    Assert.AreEqual(1, mJson.GetValue<Integer>('format'));
+    mBlock := (mJson.GetValue('blocks') as TJSONArray).Items[1] as TJSONObject;
+    Assert.AreEqual('if', mBlock.GetValue<string>('kind'));
+    Assert.AreEqual(20, mBlock.GetValue<Integer>('line'));
+    Assert.AreEqual('else', mBlock.GetValue<string>('branch'));
+    mPart := (mBlock.GetValue('parts') as TJSONArray).Items[0] as TJSONObject;
+    Assert.AreEqual('compare', mPart.GetValue<string>('kind'));
+    Assert.AreEqual('=', mPart.GetValue<string>('operator'));
+    Assert.AreEqual(-1, (mPart.GetValue('parent') as TJSONNumber).AsInt);
+    Assert.IsFalse(mPart.GetValue<Boolean>('call'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 

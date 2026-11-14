@@ -42,9 +42,14 @@ uses
   Atlas.Core.Designer.Similar;
 
 function Item(const AName: string; const AClasses: TArray<string>; const AParent: string;
-  AVisual: Boolean = True): TAtlasSimilarItem;
+  AVisual: Boolean): TAtlasSimilarItem; overload;
 begin
   Result := TAtlasSimilarItem.Create(AName, AClasses, AParent, AVisual);
+end;
+
+function Item(const AName: string; const AClasses: TArray<string>; const AParent: string): TAtlasSimilarItem; overload;
+begin
+  Result := Item(AName, AClasses, AParent, True);
 end;
 
 /// <summary>pnlAdresse mit edtName, edtOrt, mskPlz; pnlKnoepfe mit cmbLand und btnOk; dazu edtSuche auf dem
@@ -89,10 +94,21 @@ begin
 end;
 
 function Find(const AItems: TArray<TAtlasSimilarItem>; AKind: TAtlasSimilarKind; AReference: Integer;
-  const AArgument: string = ''; AScope: TAtlasSimilarScope = TAtlasSimilarScope.Form): string;
+  const AArgument: string; AScope: TAtlasSimilarScope): string; overload;
 begin
   Result := Names(AItems, TAtlasSimilar.Find(AItems, TAtlasSimilarQuery.Create(AKind, AReference, AScope,
     AArgument)));
+end;
+
+function Find(const AItems: TArray<TAtlasSimilarItem>; AKind: TAtlasSimilarKind; AReference: Integer): string; overload;
+begin
+  Result := Find(AItems, AKind, AReference, '', TAtlasSimilarScope.Form);
+end;
+
+function Find(const AItems: TArray<TAtlasSimilarItem>; AKind: TAtlasSimilarKind; AReference: Integer;
+  const AArgument: string): string; overload;
+begin
+  Result := Find(AItems, AKind, AReference, AArgument, TAtlasSimilarScope.Form);
 end;
 
 procedure TAtlasSimilarTests.SameClassSkipsOtherClasses;

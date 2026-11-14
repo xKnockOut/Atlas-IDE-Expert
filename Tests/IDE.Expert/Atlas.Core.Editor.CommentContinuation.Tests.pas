@@ -56,31 +56,31 @@ uses
 /// Änderung.</summary>
 function Entered(const AText: string; const AOptions: TAtlasCommentOptions): string; overload;
 var
-  Lines, NewLines: TArray<string>;
-  Line, Character, Index: Integer;
-  Edit: TAtlasCommentEdit;
+  mLines, mNewLines: TArray<string>;
+  mLine, mCharacter, mIndex: Integer;
+  mEdit: TAtlasCommentEdit;
 begin
   Result := '-';
-  Lines := AText.Split([#10]);
-  Line := -1;
-  Character := -1;
-  for Index := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  mLine := -1;
+  mCharacter := -1;
+  for mIndex := 0 to High(mLines) do
   begin
-    if Pos('|', Lines[Index]) > 0 then
+    if Pos('|', mLines[mIndex]) > 0 then
     begin
-      Line := Index;
-      Character := Pos('|', Lines[Index]) - 1;
-      Lines[Index] := StringReplace(Lines[Index], '|', '', []);
+      mLine := mIndex;
+      mCharacter := Pos('|', mLines[mIndex]) - 1;
+      mLines[mIndex] := StringReplace(mLines[mIndex], '|', '', []);
     end;
   end;
-  if not TAtlasCommentContinuation.OnEnter(string.Join(#10, Lines), Line, Character, AOptions, Edit) then
+  if not TAtlasCommentContinuation.OnEnter(string.Join(#10, mLines), mLine, mCharacter, AOptions, mEdit) then
   begin
     Exit;
   end;
-  NewLines := Copy(Lines, 0, Edit.StartLine) + Edit.Lines + Copy(Lines, Edit.StartLine + Edit.OldCount, MaxInt);
-  NewLines[Edit.CursorLine] := Copy(NewLines[Edit.CursorLine], 1, Edit.CursorCharacter) + '|' +
-    Copy(NewLines[Edit.CursorLine], Edit.CursorCharacter + 1, MaxInt);
-  Result := string.Join(#10, NewLines);
+  mNewLines := Copy(mLines, 0, mEdit.StartLine) + mEdit.Lines + Copy(mLines, mEdit.StartLine + mEdit.OldCount, MaxInt);
+  mNewLines[mEdit.CursorLine] := Copy(mNewLines[mEdit.CursorLine], 1, mEdit.CursorCharacter) + '|' +
+    Copy(mNewLines[mEdit.CursorLine], mEdit.CursorCharacter + 1, MaxInt);
+  Result := string.Join(#10, mNewLines);
 end;
 
 function Entered(const AText: string): string; overload;
@@ -100,22 +100,22 @@ end;
 
 procedure TAtlasCommentContinuationTests.ContinuesXmlDocWithoutLineComments;
 var
-  Options: TAtlasCommentOptions;
+  mOptions: TAtlasCommentOptions;
 begin
-  Options := TAtlasCommentOptions.Defaults;
-  Options.LineComments := False;
-  Assert.AreEqual('  /// <summary>Text'#10'  /// |', Entered('  /// <summary>Text'#10'  |', Options));
+  mOptions := TAtlasCommentOptions.Defaults;
+  mOptions.LineComments := False;
+  Assert.AreEqual('  /// <summary>Text'#10'  /// |', Entered('  /// <summary>Text'#10'  |', mOptions));
   // "////" ist kein XMLDoc.
-  Assert.AreEqual('-', Entered('//// Trenner'#10'|', Options));
+  Assert.AreEqual('-', Entered('//// Trenner'#10'|', mOptions));
 end;
 
 procedure TAtlasCommentContinuationTests.LineCommentsOff;
 var
-  Options: TAtlasCommentOptions;
+  mOptions: TAtlasCommentOptions;
 begin
-  Options := TAtlasCommentOptions.Defaults;
-  Options.LineComments := False;
-  Assert.AreEqual('-', Entered('// Text'#10'|', Options));
+  mOptions := TAtlasCommentOptions.Defaults;
+  mOptions.LineComments := False;
+  Assert.AreEqual('-', Entered('// Text'#10'|', mOptions));
 end;
 
 procedure TAtlasCommentContinuationTests.SplitsInMidText;
@@ -151,11 +151,11 @@ end;
 
 procedure TAtlasCommentContinuationTests.ListsOff;
 var
-  Options: TAtlasCommentOptions;
+  mOptions: TAtlasCommentOptions;
 begin
-  Options := TAtlasCommentOptions.Defaults;
-  Options.Lists := False;
-  Assert.AreEqual('// 1. eins'#10'// |', Entered('// 1. eins'#10'|', Options));
+  mOptions := TAtlasCommentOptions.Defaults;
+  mOptions.Lists := False;
+  Assert.AreEqual('// 1. eins'#10'// |', Entered('// 1. eins'#10'|', mOptions));
   // Eine Jahreszahl ist keine Aufzählung.
   Assert.AreEqual('// 2026. Jahr'#10'// |', Entered('// 2026. Jahr'#10'|'));
 end;
@@ -190,14 +190,14 @@ end;
 
 procedure TAtlasCommentContinuationTests.BlockCommentWithPrefix;
 var
-  Options: TAtlasCommentOptions;
+  mOptions: TAtlasCommentOptions;
 begin
-  Options := TAtlasCommentOptions.Defaults;
-  Options.BlockPrefix := ' * ';
-  Assert.AreEqual('  (* Text'#10'   * |', Entered('  (* Text'#10'|', Options));
-  Assert.AreEqual('  (* Text'#10'   * mehr'#10'   * |', Entered('  (* Text'#10'   * mehr'#10'  |', Options));
-  Assert.AreEqual('  (* Text'#10'   |*)', Entered('  (* Text'#10'|*)', Options));
-  Assert.AreEqual('  { Text'#10'  |}', Entered('  { Text'#10'    |}', Options));
+  mOptions := TAtlasCommentOptions.Defaults;
+  mOptions.BlockPrefix := ' * ';
+  Assert.AreEqual('  (* Text'#10'   * |', Entered('  (* Text'#10'|', mOptions));
+  Assert.AreEqual('  (* Text'#10'   * mehr'#10'   * |', Entered('  (* Text'#10'   * mehr'#10'  |', mOptions));
+  Assert.AreEqual('  (* Text'#10'   |*)', Entered('  (* Text'#10'|*)', mOptions));
+  Assert.AreEqual('  { Text'#10'  |}', Entered('  { Text'#10'    |}', mOptions));
 end;
 
 procedure TAtlasCommentContinuationTests.DirectiveIsNoComment;
@@ -208,19 +208,19 @@ end;
 
 procedure TAtlasCommentContinuationTests.ListItemMarkers;
 var
-  Marker, Next: string;
+  mMarker, mNext: string;
 begin
-  Assert.IsTrue(TAtlasCommentContinuation.ListItem('- Punkt', Marker, Next));
-  Assert.AreEqual('- ', Marker);
-  Assert.AreEqual('- ', Next);
-  Assert.IsTrue(TAtlasCommentContinuation.ListItem('12) x', Marker, Next));
-  Assert.AreEqual('12) ', Marker);
-  Assert.AreEqual('13) ', Next);
-  Assert.IsFalse(TAtlasCommentContinuation.ListItem('-x', Marker, Next));
-  Assert.IsFalse(TAtlasCommentContinuation.ListItem('12345. x', Marker, Next));
-  Assert.IsFalse(TAtlasCommentContinuation.ListItem('3.5 Prozent', Marker, Next));
-  Marker := '';
-  Next := '';
+  Assert.IsTrue(TAtlasCommentContinuation.ListItem('- Punkt', mMarker, mNext));
+  Assert.AreEqual('- ', mMarker);
+  Assert.AreEqual('- ', mNext);
+  Assert.IsTrue(TAtlasCommentContinuation.ListItem('12) x', mMarker, mNext));
+  Assert.AreEqual('12) ', mMarker);
+  Assert.AreEqual('13) ', mNext);
+  Assert.IsFalse(TAtlasCommentContinuation.ListItem('-x', mMarker, mNext));
+  Assert.IsFalse(TAtlasCommentContinuation.ListItem('12345. x', mMarker, mNext));
+  Assert.IsFalse(TAtlasCommentContinuation.ListItem('3.5 Prozent', mMarker, mNext));
+  mMarker := '';
+  mNext := '';
 end;
 
 initialization

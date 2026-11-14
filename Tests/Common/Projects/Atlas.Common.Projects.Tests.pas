@@ -111,7 +111,7 @@ uses
 
 const
   // Gekürzt, aber im Aufbau wie eine von RAD Studio geschriebene .dproj.
-  SampleDproj =
+  cSampleDproj =
     '<?xml version="1.0" encoding="utf-8"?>'#13#10 +
     '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10 +
     '  <PropertyGroup>'#13#10 +
@@ -163,17 +163,17 @@ const
     '  </Platforms></BorlandProject></ProjectExtensions>'#13#10 +
     '</Project>';
 
-  ProjectFile = 'C:\Work\App\App.dproj';
+  cProjectFile = 'C:\Work\App\App.dproj';
 
 function ReadSample(const AConfig, APlatform: string): TProjectInfo;
 var
-  Options: TDprojOptions;
+  mOptions: TDprojOptions;
 begin
-  Options.Config := AConfig;
-  Options.Platform := APlatform;
-  Options.Variables := [TPair<string, string>.Create('BDS', 'C:\Studio\37.0')];
-  Options.FileExists := nil;
-  Result := TDprojReader.Read(ProjectFile, SampleDproj, Options);
+  mOptions.Config := AConfig;
+  mOptions.Platform := APlatform;
+  mOptions.Variables := [TPair<string, string>.Create('BDS', 'C:\Studio\37.0')];
+  mOptions.FileExists := nil;
+  Result := TDprojReader.Read(cProjectFile, cSampleDproj, mOptions);
 end;
 
 function Joined(const AItems: TArray<string>): string;
@@ -185,33 +185,33 @@ end;
 
 procedure TProjectXmlTests.ReadsElementsAttributesAndText;
 var
-  Root: TXmlElement;
+  mRoot: TXmlElement;
 begin
-  Root := TXmlReader.Parse('<?xml version="1.0"?><a x="1" y=''2''><b>Text</b><c/></a>');
+  mRoot := TXmlReader.Parse('<?xml version="1.0"?><a x="1" y=''2''><b>Text</b><c/></a>');
   try
-    Assert.AreEqual('a', Root.Name);
-    Assert.AreEqual('1', Root.Attribute('x'));
-    Assert.AreEqual('2', Root.Attribute('y'));
-    Assert.AreEqual('', Root.Attribute('z'));
-    Assert.AreEqual(2, Root.ChildCount);
-    Assert.AreEqual('Text', Root.Find('b').Text);
-    Assert.IsNotNull(Root.Find('c'));
+    Assert.AreEqual('a', mRoot.Name);
+    Assert.AreEqual('1', mRoot.Attribute('x'));
+    Assert.AreEqual('2', mRoot.Attribute('y'));
+    Assert.AreEqual('', mRoot.Attribute('z'));
+    Assert.AreEqual(2, mRoot.ChildCount);
+    Assert.AreEqual('Text', mRoot.Find('b').Text);
+    Assert.IsNotNull(mRoot.Find('c'));
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 procedure TProjectXmlTests.DecodesEntitiesAndSkipsComments;
 var
-  Root: TXmlElement;
+  mRoot: TXmlElement;
 begin
-  Root := TXmlReader.Parse('<a v="&quot;x&quot; &amp; &#65;&#x42;"><!-- weg --><![CDATA[<roh>]]>&lt;t&gt;</a>');
+  mRoot := TXmlReader.Parse('<a v="&quot;x&quot; &amp; &#65;&#x42;"><!-- weg --><![CDATA[<roh>]]>&lt;t&gt;</a>');
   try
-    Assert.AreEqual('"x" & AB', Root.Attribute('v'));
-    Assert.AreEqual('<roh><t>', Root.Text);
-    Assert.AreEqual(0, Root.ChildCount);
+    Assert.AreEqual('"x" & AB', mRoot.Attribute('v'));
+    Assert.AreEqual('<roh><t>', mRoot.Text);
+    Assert.AreEqual(0, mRoot.ChildCount);
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
@@ -228,80 +228,80 @@ end;
 
 procedure TMSBuildTests.ExpandsPropertiesCaseInsensitive;
 var
-  Properties: TMSBuildProperties;
+  mProperties: TMSBuildProperties;
 begin
-  Properties := TMSBuildProperties.Create;
+  mProperties := TMSBuildProperties.Create;
   try
-    Properties.SetValue('Platform', 'Win64');
-    Assert.AreEqual('lib\Win64\release;', Properties.Expand('lib\$(PLATFORM)\release;$(Unbekannt)'));
+    mProperties.SetValue('Platform', 'Win64');
+    Assert.AreEqual('lib\Win64\release;', mProperties.Expand('lib\$(PLATFORM)\release;$(Unbekannt)'));
   finally
-    Properties.Free;
+    mProperties.Free;
   end;
 end;
 
 procedure TMSBuildTests.EvaluatesComparisons;
 var
-  Properties: TMSBuildProperties;
+  mProperties: TMSBuildProperties;
 begin
-  Properties := TMSBuildProperties.Create;
+  mProperties := TMSBuildProperties.Create;
   try
-    Properties.SetValue('Config', 'Debug');
-    Assert.IsTrue(Properties.Evaluate('''$(Config)''==''debug'''));
-    Assert.IsFalse(Properties.Evaluate('''$(Config)''!=''Debug'''));
-    Assert.IsTrue(Properties.Evaluate('''$(Base)''=='''''));
-    Assert.IsTrue(Properties.Evaluate(''));
-    Assert.IsTrue(Properties.Evaluate('''37.0'' >= ''23.0'''));
+    mProperties.SetValue('Config', 'Debug');
+    Assert.IsTrue(mProperties.Evaluate('''$(Config)''==''debug'''));
+    Assert.IsFalse(mProperties.Evaluate('''$(Config)''!=''Debug'''));
+    Assert.IsTrue(mProperties.Evaluate('''$(Base)''=='''''));
+    Assert.IsTrue(mProperties.Evaluate(''));
+    Assert.IsTrue(mProperties.Evaluate('''37.0'' >= ''23.0'''));
   finally
-    Properties.Free;
+    mProperties.Free;
   end;
 end;
 
 procedure TMSBuildTests.EvaluatesAndOrParenthesesNot;
 var
-  Properties: TMSBuildProperties;
+  mProperties: TMSBuildProperties;
 begin
-  Properties := TMSBuildProperties.Create;
+  mProperties := TMSBuildProperties.Create;
   try
-    Properties.SetValue('Platform', 'Win64');
-    Properties.SetValue('Base', 'true');
-    Assert.IsTrue(Properties.Evaluate('''$(X)''!='''' or (''$(Platform)''==''Win64'' and ''$(Base)''==''true'')'));
-    Assert.IsFalse(Properties.Evaluate('''$(X)''!='''' or (''$(Platform)''==''Win32'' and ''$(Base)''==''true'')'));
-    Assert.IsTrue(Properties.Evaluate('!(''$(Platform)''==''Win32'')'));
-    Assert.IsTrue(Properties.Evaluate('$(Base)'));
+    mProperties.SetValue('Platform', 'Win64');
+    mProperties.SetValue('Base', 'true');
+    Assert.IsTrue(mProperties.Evaluate('''$(X)''!='''' or (''$(Platform)''==''Win64'' and ''$(Base)''==''true'')'));
+    Assert.IsFalse(mProperties.Evaluate('''$(X)''!='''' or (''$(Platform)''==''Win32'' and ''$(Base)''==''true'')'));
+    Assert.IsTrue(mProperties.Evaluate('!(''$(Platform)''==''Win32'')'));
+    Assert.IsTrue(mProperties.Evaluate('$(Base)'));
   finally
-    Properties.Free;
+    mProperties.Free;
   end;
 end;
 
 procedure TMSBuildTests.EvaluatesExistsWithCallback;
 var
-  Properties: TMSBuildProperties;
+  mProperties: TMSBuildProperties;
 begin
-  Properties := TMSBuildProperties.Create(
+  mProperties := TMSBuildProperties.Create(
     function(AFileName: string): Boolean
     begin
       Result := AFileName = 'C:\Studio\x.targets';
     end);
   try
-    Properties.SetValue('BDS', 'C:\Studio');
-    Assert.IsTrue(Properties.Evaluate('Exists(''$(BDS)\x.targets'')'));
-    Assert.IsFalse(Properties.Evaluate('Exists(''$(BDS)\y.targets'')'));
+    mProperties.SetValue('BDS', 'C:\Studio');
+    Assert.IsTrue(mProperties.Evaluate('Exists(''$(BDS)\x.targets'')'));
+    Assert.IsFalse(mProperties.Evaluate('Exists(''$(BDS)\y.targets'')'));
   finally
-    Properties.Free;
+    mProperties.Free;
   end;
 end;
 
 procedure TMSBuildTests.MalformedConditionIsFalse;
 var
-  Properties: TMSBuildProperties;
+  mProperties: TMSBuildProperties;
 begin
-  Properties := TMSBuildProperties.Create;
+  mProperties := TMSBuildProperties.Create;
   try
-    Assert.IsFalse(Properties.Evaluate('''a''=='));
-    Assert.IsFalse(Properties.Evaluate('(''a''==''a'''));
-    Assert.IsFalse(Properties.Evaluate('Unbekannt(''x'')'));
+    Assert.IsFalse(mProperties.Evaluate('''a''=='));
+    Assert.IsFalse(mProperties.Evaluate('(''a''==''a'''));
+    Assert.IsFalse(mProperties.Evaluate('Unbekannt(''x'')'));
   finally
-    Properties.Free;
+    mProperties.Free;
   end;
 end;
 
@@ -367,96 +367,96 @@ end;
 
 procedure TDprojReaderTests.UsesDefaultsOfFile;
 var
-  Project: TProjectInfo;
+  mProject: TProjectInfo;
 begin
-  Project := ReadSample('', '');
-  Assert.AreEqual('Debug', Project.Config);
-  Assert.AreEqual('Win32', Project.Platform);
-  Assert.AreEqual('C:\Work\App\App.dpr', Project.MainSource);
-  Assert.AreEqual('DEBUG;APP', Joined(Project.Defines));
-  Assert.AreEqual('System;Xml;Winapi', Joined(Project.Namespaces));
+  mProject := ReadSample('', '');
+  Assert.AreEqual('Debug', mProject.Config);
+  Assert.AreEqual('Win32', mProject.Platform);
+  Assert.AreEqual('C:\Work\App\App.dpr', mProject.MainSource);
+  Assert.AreEqual('DEBUG;APP', Joined(mProject.Defines));
+  Assert.AreEqual('System;Xml;Winapi', Joined(mProject.Namespaces));
 end;
 
 procedure TDprojReaderTests.AppliesConfigAndPlatform;
 var
-  Project: TProjectInfo;
+  mProject: TProjectInfo;
 begin
-  Project := ReadSample('Release', 'Win64');
-  Assert.AreEqual('Release', Project.Config);
-  Assert.AreEqual('Win64', Project.Platform);
-  Assert.AreEqual('RELEASE;APP', Joined(Project.Defines));
-  Assert.AreEqual('Vcl;System;Xml;Winapi', Joined(Project.Namespaces));
+  mProject := ReadSample('Release', 'Win64');
+  Assert.AreEqual('Release', mProject.Config);
+  Assert.AreEqual('Win64', mProject.Platform);
+  Assert.AreEqual('RELEASE;APP', Joined(mProject.Defines));
+  Assert.AreEqual('Vcl;System;Xml;Winapi', Joined(mProject.Namespaces));
 end;
 
 procedure TDprojReaderTests.RecordsDefineOrigins;
 var
-  Project: TProjectInfo;
-  Options: TDprojOptions;
-  Text: string;
+  mProject: TProjectInfo;
+  mOptions: TDprojOptions;
+  mText: string;
 
   function OriginOf(const AName: string): string;
   var
-    Origin: TPair<string, string>;
+    mOrigin: TPair<string, string>;
   begin
     Result := '-';
-    for Origin in Project.DefineOrigins do
+    for mOrigin in mProject.DefineOrigins do
     begin
-      if Origin.Key = AName then
+      if mOrigin.Key = AName then
       begin
-        Exit(Origin.Value);
+        Exit(mOrigin.Value);
       end;
     end;
   end;
 
 begin
-  Project := ReadSample('Debug', 'Win32');
+  mProject := ReadSample('Debug', 'Win32');
   Assert.AreEqual('Projekt', OriginOf('APP'));
   Assert.AreEqual('Konfiguration Debug', OriginOf('DEBUG'));
   Assert.AreEqual('-', OriginOf('RELEASE'));
-  Options := Default(TDprojOptions);
-  Options.Config := 'Release';
-  Options.Platform := 'Win64';
+  mOptions := Default(TDprojOptions);
+  mOptions.Config := 'Release';
+  mOptions.Platform := 'Win64';
   // Symbol auf Ebene Base_Win64, RELEASE auf Ebene Cfg_2_Win64.
-  Text := StringReplace(SampleDproj, '    <DCC_Namespace>Vcl;$(DCC_Namespace)</DCC_Namespace>'#13#10,
+  mText := StringReplace(cSampleDproj, '    <DCC_Namespace>Vcl;$(DCC_Namespace)</DCC_Namespace>'#13#10,
     '    <DCC_Namespace>Vcl;$(DCC_Namespace)</DCC_Namespace>'#13#10 +
     '    <DCC_Define>W64;$(DCC_Define)</DCC_Define>'#13#10, []);
-  Text := StringReplace(Text, '<PropertyGroup Condition="''$(Cfg_2)''!=''''">',
+  mText := StringReplace(mText, '<PropertyGroup Condition="''$(Cfg_2)''!=''''">',
     '<PropertyGroup Condition="''$(Cfg_2_Win64)''!='''' or ''$(Cfg_2)''!=''''">', []);
-  Project := TDprojReader.Read(ProjectFile, Text, Options);
+  mProject := TDprojReader.Read(cProjectFile, mText, mOptions);
   Assert.AreEqual('Projekt, Plattform Win64', OriginOf('W64'));
   Assert.AreEqual('Konfiguration Release, Plattform Win64', OriginOf('RELEASE'));
 end;
 
 procedure TDprojReaderTests.ResolvesSearchPathsRelativeToProject;
 var
-  Project: TProjectInfo;
+  mProject: TProjectInfo;
 begin
-  Project := ReadSample('Debug', 'Win32');
+  mProject := ReadSample('Debug', 'Win32');
   Assert.AreEqual('C:\Studio\37.0\source\Debug;C:\Work\App\Source;C:\Work\Shared\Source',
-    Joined(Project.SearchPaths));
+    Joined(mProject.SearchPaths));
 end;
 
 procedure TDprojReaderTests.ListsProjectUnits;
 var
-  Project: TProjectInfo;
+  mProject: TProjectInfo;
 begin
-  Project := ReadSample('', '');
-  Assert.AreEqual<NativeInt>(2, Length(Project.Units));
-  Assert.AreEqual('Main', Project.Units[0].Name);
-  Assert.AreEqual('C:\Work\App\Source\Main.pas', Project.Units[0].FileName);
-  Assert.AreEqual('Shared.Tools', Project.Units[1].Name);
-  Assert.AreEqual('C:\Work\Shared\Source\Shared.Tools.pas', Project.Units[1].FileName);
+  mProject := ReadSample('', '');
+  Assert.AreEqual<NativeInt>(2, Length(mProject.Units));
+  Assert.AreEqual('Main', mProject.Units[0].Name);
+  Assert.AreEqual('C:\Work\App\Source\Main.pas', mProject.Units[0].FileName);
+  Assert.AreEqual('Shared.Tools', mProject.Units[1].Name);
+  Assert.AreEqual('C:\Work\Shared\Source\Shared.Tools.pas', mProject.Units[1].FileName);
 end;
 
 procedure TDprojReaderTests.RejectsInvalidXml;
 var
-  Options: TDprojOptions;
+  mOptions: TDprojOptions;
 begin
-  Options := Default(TDprojOptions);
+  mOptions := Default(TDprojOptions);
   Assert.WillRaise(
     procedure
     begin
-      TDprojReader.Read(ProjectFile, '<Project><PropertyGroup></Project>', Options);
+      TDprojReader.Read(cProjectFile, '<Project><PropertyGroup></Project>', mOptions);
     end, EProjectError);
 end;
 
@@ -464,7 +464,7 @@ end;
 
 procedure TGroupProjReaderTests.ListsDelphiProjectsOnce;
 const
-  Group =
+  cGroup =
     '<?xml version="1.0" encoding="utf-8"?>'#13#10 +
     '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10 +
     '  <PropertyGroup><ProjectGuid>{1}</ProjectGuid></PropertyGroup>'#13#10 +
@@ -477,14 +477,14 @@ const
     '  <ItemGroup><Projects Include="Tests\Tests.dproj"/></ItemGroup>'#13#10 +
     '</Project>';
 var
-  Projects: TArray<string>;
+  mProjects: TArray<string>;
 begin
-  Projects := TGroupProjReader.Read('C:\Work\Gruppe\Gruppe.groupproj', Group);
+  mProjects := TGroupProjReader.Read('C:\Work\Gruppe\Gruppe.groupproj', cGroup);
   // Doppelte Einträge zählen einmal, C++-Projekte fehlen, Reihenfolge wie in der Datei.
-  Assert.AreEqual(3, Integer(Length(Projects)));
-  Assert.AreEqual('C:\Work\Gruppe\App\App.dproj', Projects[0]);
-  Assert.AreEqual('C:\Work\Lib\Lib.dproj', Projects[1]);
-  Assert.AreEqual('C:\Work\Gruppe\Tests\Tests.dproj', Projects[2]);
+  Assert.AreEqual(3, Integer(Length(mProjects)));
+  Assert.AreEqual('C:\Work\Gruppe\App\App.dproj', mProjects[0]);
+  Assert.AreEqual('C:\Work\Lib\Lib.dproj', mProjects[1]);
+  Assert.AreEqual('C:\Work\Gruppe\Tests\Tests.dproj', mProjects[2]);
 end;
 
 procedure TGroupProjReaderTests.RejectsInvalidXml;
@@ -500,26 +500,26 @@ end;
 
 function ResolverFor(const AExisting: array of string): TUnitResolver;
 var
-  Existing: TList<string>;
-  Item: string;
-  Files: TArray<string>;
+  mExisting: TList<string>;
+  mItem: string;
+  mFiles: TArray<string>;
 begin
-  Existing := TList<string>.Create;
+  mExisting := TList<string>.Create;
   try
-    for Item in AExisting do
+    for mItem in AExisting do
     begin
-      Existing.Add(LowerCase(Item));
+      mExisting.Add(LowerCase(mItem));
     end;
-    Files := Existing.ToArray;
+    mFiles := mExisting.ToArray;
   finally
-    Existing.Free;
+    mExisting.Free;
   end;
   Result := TUnitResolver.Create(ReadSample('Release', 'Win64'), ['C:\Studio\37.0\source\rtl\sys'],
     function(AFileName: string): Boolean
     var
       Candidate: string;
     begin
-      for Candidate in Files do
+      for Candidate in mFiles do
       begin
         if Candidate = LowerCase(AFileName) then
         begin
@@ -532,61 +532,61 @@ end;
 
 procedure TUnitResolverTests.PrefersProjectUnits;
 var
-  Resolver: TUnitResolver;
+  mResolver: TUnitResolver;
 begin
-  Resolver := ResolverFor(['C:\Work\App\Main.pas']);
+  mResolver := ResolverFor(['C:\Work\App\Main.pas']);
   try
-    Assert.AreEqual('C:\Work\App\Source\Main.pas', Resolver.Resolve('main'));
+    Assert.AreEqual('C:\Work\App\Source\Main.pas', mResolver.Resolve('main'));
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
 
 procedure TUnitResolverTests.SearchesFromDirectoryThenSearchPaths;
 var
-  Resolver: TUnitResolver;
+  mResolver: TUnitResolver;
 begin
-  Resolver := ResolverFor(['C:\Work\Shared\Source\Helper.pas', 'C:\Other\Helper.pas']);
+  mResolver := ResolverFor(['C:\Work\Shared\Source\Helper.pas', 'C:\Other\Helper.pas']);
   try
-    Assert.AreEqual('C:\Work\Shared\Source\Helper.pas', Resolver.Resolve('Helper'));
-    Assert.AreEqual('C:\Other\Helper.pas', Resolver.Resolve('Helper', 'C:\Other'));
+    Assert.AreEqual('C:\Work\Shared\Source\Helper.pas', mResolver.Resolve('Helper'));
+    Assert.AreEqual('C:\Other\Helper.pas', mResolver.Resolve('Helper', 'C:\Other'));
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
 
 procedure TUnitResolverTests.AppliesNamespacePrefixes;
 var
-  Resolver: TUnitResolver;
+  mResolver: TUnitResolver;
 begin
-  Resolver := ResolverFor(['C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas']);
+  mResolver := ResolverFor(['C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas']);
   try
-    Assert.AreEqual('C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas', Resolver.Resolve('SysUtils'));
-    Assert.AreEqual('C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas', Resolver.Resolve('System.SysUtils'));
+    Assert.AreEqual('C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas', mResolver.Resolve('SysUtils'));
+    Assert.AreEqual('C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas', mResolver.Resolve('System.SysUtils'));
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
 
 procedure TUnitResolverTests.ListsEachDirectoryOnce;
 var
-  Resolver: TUnitResolver;
-  Listed: TDictionary<string, Integer>;
-  Count: Integer;
+  mResolver: TUnitResolver;
+  mListed: TDictionary<string, Integer>;
+  mCount: Integer;
 begin
-  Listed := TDictionary<string, Integer>.Create;
-  Resolver := ResolverFor([]);
+  mListed := TDictionary<string, Integer>.Create;
+  mResolver := ResolverFor([]);
   try
-    Resolver.ListUnits :=
+    mResolver.ListUnits :=
       function(AFolder: string): TArray<string>
       var
         Known: Integer;
       begin
-        if not Listed.TryGetValue(LowerCase(AFolder), Known) then
+        if not mListed.TryGetValue(LowerCase(AFolder), Known) then
         begin
           Known := 0;
         end;
-        Listed.AddOrSetValue(LowerCase(AFolder), Known + 1);
+        mListed.AddOrSetValue(LowerCase(AFolder), Known + 1);
         if SameText(AFolder, 'C:\Studio\37.0\source\rtl\sys') then
         begin
           Result := ['C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas'];
@@ -600,53 +600,53 @@ begin
           Result := nil;
         end;
       end;
-    Assert.AreEqual('C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas', Resolver.Resolve('SysUtils'));
-    Assert.AreEqual('C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas', Resolver.Resolve('System.SysUtils'));
-    Assert.AreEqual('C:\Other\Helper.pas', Resolver.Resolve('Helper', 'C:\Other'));
-    Assert.AreEqual('', Resolver.Resolve('Missing'));
-    for Count in Listed.Values do
+    Assert.AreEqual('C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas', mResolver.Resolve('SysUtils'));
+    Assert.AreEqual('C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas', mResolver.Resolve('System.SysUtils'));
+    Assert.AreEqual('C:\Other\Helper.pas', mResolver.Resolve('Helper', 'C:\Other'));
+    Assert.AreEqual('', mResolver.Resolve('Missing'));
+    for mCount in mListed.Values do
     begin
-      Assert.AreEqual(1, Count, 'jeder Ordner einmal');
+      Assert.AreEqual(1, mCount, 'jeder Ordner einmal');
     end;
   finally
-    Resolver.Free;
-    Listed.Free;
+    mResolver.Free;
+    mListed.Free;
   end;
 end;
 
 procedure TUnitResolverTests.ReturnsEmptyWhenNotFound;
 var
-  Resolver: TUnitResolver;
+  mResolver: TUnitResolver;
 begin
-  Resolver := ResolverFor([]);
+  mResolver := ResolverFor([]);
   try
-    Assert.AreEqual('', Resolver.Resolve('Fehlt'));
-    Assert.AreEqual('', Resolver.Resolve(''));
+    Assert.AreEqual('', mResolver.Resolve('Fehlt'));
+    Assert.AreEqual('', mResolver.Resolve(''));
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
 
 procedure TDprojReaderTests.ListsConfigsAndPlatforms;
 var
-  Project: TProjectInfo;
+  mProject: TProjectInfo;
 begin
-  Project := ReadSample('', '');
-  Assert.AreEqual('Debug;Release', Joined(Project.Configs));
-  Assert.AreEqual('Win32;Win64', Joined(Project.Platforms));
+  mProject := ReadSample('', '');
+  Assert.AreEqual('Debug;Release', Joined(mProject.Configs));
+  Assert.AreEqual('Win32;Win64', Joined(mProject.Platforms));
 end;
 
 procedure TDprojReaderTests.ChecksSelectedTarget;
 var
-  Project: TProjectInfo;
+  mProject: TProjectInfo;
 begin
-  Project := ReadSample('', '');
-  Assert.AreEqual('', TDprojReader.CheckTarget(Project, 'release', 'Win64'));
-  Assert.AreEqual('', TDprojReader.CheckTarget(Project, '', ''));
-  Assert.IsTrue(Pos('Profil', TDprojReader.CheckTarget(Project, 'Profil', '')) > 0);
-  Assert.IsTrue(Pos('Linux64', TDprojReader.CheckTarget(Project, '', 'Linux64')) > 0);
-  Project.Configs := nil;
-  Assert.AreEqual('', TDprojReader.CheckTarget(Project, 'Profil', ''));
+  mProject := ReadSample('', '');
+  Assert.AreEqual('', TDprojReader.CheckTarget(mProject, 'release', 'Win64'));
+  Assert.AreEqual('', TDprojReader.CheckTarget(mProject, '', ''));
+  Assert.IsTrue(Pos('Profil', TDprojReader.CheckTarget(mProject, 'Profil', '')) > 0);
+  Assert.IsTrue(Pos('Linux64', TDprojReader.CheckTarget(mProject, '', 'Linux64')) > 0);
+  mProject.Configs := nil;
+  Assert.AreEqual('', TDprojReader.CheckTarget(mProject, 'Profil', ''));
 end;
 
 initialization

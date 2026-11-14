@@ -61,7 +61,7 @@ uses
   Atlas.Common.Lsp.Completion;
 
 const
-  MainFile = 'C:\P\Main.pas';
+  cMainFile = 'C:\P\Main.pas';
 
 var
   // Dateien im Speicher: Name in Großbuchstaben auf Inhalt.
@@ -104,114 +104,114 @@ end;
 
 procedure TIncludeFilesTests.SearchOrderUnitDirThenSearchPaths;
 var
-  FileName: string;
+  mFileName: string;
 begin
   Files.Clear;
   Put('C:\Lib\Shared.inc', '');
-  Assert.IsTrue(TIncludeFiles.FindInclude('Shared.inc', MainFile, ['C:\Lib'], Exists(), FileName));
-  Assert.AreEqual('C:\Lib\Shared.inc', FileName);
+  Assert.IsTrue(TIncludeFiles.FindInclude('Shared.inc', cMainFile, ['C:\Lib'], Exists(), mFileName));
+  Assert.AreEqual('C:\Lib\Shared.inc', mFileName);
   Put('C:\P\Shared.inc', '');
-  Assert.IsTrue(TIncludeFiles.FindInclude('Shared.inc', MainFile, ['C:\Lib'], Exists(), FileName));
-  Assert.AreEqual('C:\P\Shared.inc', FileName, 'Ordner der Unit vor Suchpfad');
-  Assert.IsFalse(TIncludeFiles.FindInclude('Fehlt.inc', MainFile, ['C:\Lib'], Exists(), FileName));
+  Assert.IsTrue(TIncludeFiles.FindInclude('Shared.inc', cMainFile, ['C:\Lib'], Exists(), mFileName));
+  Assert.AreEqual('C:\P\Shared.inc', mFileName, 'Ordner der Unit vor Suchpfad');
+  Assert.IsFalse(TIncludeFiles.FindInclude('Fehlt.inc', cMainFile, ['C:\Lib'], Exists(), mFileName));
 end;
 
 procedure TIncludeFilesTests.AddsIncExtension;
 var
-  FileName: string;
+  mFileName: string;
 begin
   Files.Clear;
   Put('C:\P\Defines.inc', '');
-  Assert.IsTrue(TIncludeFiles.FindInclude('Defines', MainFile, nil, Exists(), FileName));
-  Assert.AreEqual('C:\P\Defines.inc', FileName);
+  Assert.IsTrue(TIncludeFiles.FindInclude('Defines', cMainFile, nil, Exists(), mFileName));
+  Assert.AreEqual('C:\P\Defines.inc', mFileName);
   // FindFile ($R, Strings) ergänzt keine Endung.
-  Assert.IsFalse(TIncludeFiles.FindFile('Defines', 'C:\P', nil, Exists(), FileName));
+  Assert.IsFalse(TIncludeFiles.FindFile('Defines', 'C:\P', nil, Exists(), mFileName));
 end;
 
 procedure TIncludeFilesTests.QuotedNameWithSpaces;
 var
-  FileName: string;
+  mFileName: string;
 begin
   Files.Clear;
   Put('C:\P\Mit Leerzeichen.inc', '');
-  Assert.IsTrue(TIncludeFiles.FindInclude('''Mit Leerzeichen.inc''', MainFile, nil, Exists(), FileName));
-  Assert.AreEqual('C:\P\Mit Leerzeichen.inc', FileName);
+  Assert.IsTrue(TIncludeFiles.FindInclude('''Mit Leerzeichen.inc''', cMainFile, nil, Exists(), mFileName));
+  Assert.AreEqual('C:\P\Mit Leerzeichen.inc', mFileName);
 end;
 
 procedure TIncludeFilesTests.SharedFileForLinksIndexAndInactive;
 const
-  Text = 'unit Main;'#10'{$I Defines.inc}'#10'interface'#10 +
+  cText = 'unit Main;'#10'{$I Defines.inc}'#10'interface'#10 +
     '{$IFDEF FEATURE}'#10'procedure MitFeature;'#10'{$ELSE}'#10'procedure OhneFeature;'#10'{$ENDIF}'#10 +
     'implementation'#10'end.';
 var
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Names: string;
-  Ranges: TArray<TTextRange>;
-  Issues: TArray<TPreprocessorIssue>;
-  Links: TArray<TDocumentLink>;
+  mUnitIndex: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mNames: string;
+  mRanges: TArray<TTextRange>;
+  mIssues: TArray<TPreprocessorIssue>;
+  mLinks: TArray<TDocumentLink>;
 begin
   Files.Clear;
   Put('C:\Lib\Defines.inc', '{$DEFINE FEATURE}');
   // Index
-  UnitIndex := TIndexExtractor.ExtractText(Text, MainFile, nil, Resolver(['C:\Lib']));
-  Names := '';
-  for Symbol in UnitIndex.Symbols do
+  mUnitIndex := TIndexExtractor.ExtractText(cText, cMainFile, nil, Resolver(['C:\Lib']));
+  mNames := '';
+  for mSymbol in mUnitIndex.Symbols do
   begin
-    Names := Names + Symbol.Name + ';';
+    mNames := mNames + mSymbol.Name + ';';
   end;
-  Assert.Contains(Names, 'MitFeature');
-  Assert.DoesNotContain(Names, 'OhneFeature');
-  Assert.AreEqual(1, Integer(Length(UnitIndex.Includes)));
-  Assert.AreEqual('C:\Lib\Defines.inc', UnitIndex.Includes[0]);
+  Assert.Contains(mNames, 'MitFeature');
+  Assert.DoesNotContain(mNames, 'OhneFeature');
+  Assert.AreEqual(1, Integer(Length(mUnitIndex.Includes)));
+  Assert.AreEqual('C:\Lib\Defines.inc', mUnitIndex.Includes[0]);
   // Abblenden: nur der $ELSE-Zweig (Zeile 6) ist inaktiv.
-  Ranges := TLspInactiveRegions.Ranges(Text, nil, MainFile, Resolver(['C:\Lib']), Issues);
-  Assert.AreEqual(1, Integer(Length(Ranges)));
-  Assert.IsTrue((Ranges[0].StartPos.Line <= 6) and (Ranges[0].EndPos.Line >= 6) and (Ranges[0].StartPos.Line >= 5));
-  Assert.AreEqual(0, Integer(Length(Issues)));
+  mRanges := TLspInactiveRegions.Ranges(cText, nil, cMainFile, Resolver(['C:\Lib']), mIssues);
+  Assert.AreEqual(1, Integer(Length(mRanges)));
+  Assert.IsTrue((mRanges[0].StartPos.Line <= 6) and (mRanges[0].EndPos.Line >= 6) and (mRanges[0].StartPos.Line >= 5));
+  Assert.AreEqual(0, Integer(Length(mIssues)));
   // Verweise: dieselbe Datei
-  Links := TDocumentLinks.Find(Text, MainFile, ['C:\Lib'], Exists());
-  Assert.AreEqual(1, Integer(Length(Links)));
-  Assert.AreEqual('C:\Lib\Defines.inc', Links[0].Target);
+  mLinks := TDocumentLinks.Find(cText, cMainFile, ['C:\Lib'], Exists());
+  Assert.AreEqual(1, Integer(Length(mLinks)));
+  Assert.AreEqual('C:\Lib\Defines.inc', mLinks[0].Target);
 end;
 
 procedure TIncludeFilesTests.MissingIncludeIsReported;
 var
-  Issues: TArray<TPreprocessorIssue>;
+  mIssues: TArray<TPreprocessorIssue>;
 begin
   Files.Clear;
-  TLspInactiveRegions.Ranges('unit Main;'#10'{$I Fehlt.inc}'#10'end.', nil, MainFile, Resolver(nil), Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual(Ord(TPreprocessorIssueKind.IncludeMissing), Ord(Issues[0].Kind));
-  Assert.AreEqual(1, Issues[0].Range.StartPos.Line);
+  TLspInactiveRegions.Ranges('unit Main;'#10'{$I Fehlt.inc}'#10'end.', nil, cMainFile, Resolver(nil), mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual(Ord(TPreprocessorIssueKind.IncludeMissing), Ord(mIssues[0].Kind));
+  Assert.AreEqual(1, mIssues[0].Range.StartPos.Line);
 end;
 
 procedure TIncludeFilesTests.CycleGivesOneIssue;
 var
-  Issues: TArray<TPreprocessorIssue>;
+  mIssues: TArray<TPreprocessorIssue>;
 begin
   Files.Clear;
   Put('C:\P\A.inc', '{$I B.inc}');
   Put('C:\P\B.inc', '{$I A.inc}');
-  TLspInactiveRegions.Ranges('unit Main;'#10'{$I A.inc}'#10'end.', nil, MainFile, Resolver(nil), Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual(Ord(TPreprocessorIssueKind.IncludeCycle), Ord(Issues[0].Kind));
+  TLspInactiveRegions.Ranges('unit Main;'#10'{$I A.inc}'#10'end.', nil, cMainFile, Resolver(nil), mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual(Ord(TPreprocessorIssueKind.IncludeCycle), Ord(mIssues[0].Kind));
   // Gemeldet an der $I-Direktive der Datei selbst, mit Ort in der .inc.
-  Assert.AreEqual(1, Issues[0].Range.StartPos.Line);
-  Assert.Contains(Issues[0].Message, 'B.inc, Zeile 1');
+  Assert.AreEqual(1, mIssues[0].Range.StartPos.Line);
+  Assert.Contains(mIssues[0].Message, 'B.inc, Zeile 1');
 end;
 
 procedure TIncludeFilesTests.WithoutResolverNoIssues;
 var
-  Issues: TArray<TPreprocessorIssue>;
+  mIssues: TArray<TPreprocessorIssue>;
 begin
-  TLspInactiveRegions.Ranges('unit Main;'#10'{$I Fehlt.inc}'#10'end.', nil, MainFile, nil, Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
+  TLspInactiveRegions.Ranges('unit Main;'#10'{$I Fehlt.inc}'#10'end.', nil, cMainFile, nil, mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
 const
   // Unit mit drei Include-Dateien (#500): mit eigenem type, mitten im type-Abschnitt, Rumpf im implementation-Teil.
-  HauptText =
+  cHauptText =
     'unit Haupt;'#10 +
     'interface'#10 +
     '{$I Typen.inc}'#10 +
@@ -231,15 +231,17 @@ begin
   Put('C:\P\Rumpf.inc', 'procedure TKunde.Speichern;'#10'begin'#10'end;');
 end;
 
-function FindSymbol(const AUnit: TUnitIndex; const AName, AContainer, AFile: string; out ASymbol: TIndexSymbol): Boolean;
+function FindSymbol(const AUnit: TUnitIndex; const AName, AContainer, AFile: string;
+  out ASymbol: TIndexSymbol): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if SameText(Symbol.Name, AName) and SameText(Symbol.Container, AContainer) and SameText(Symbol.FileName, AFile) then
+    if SameText(mSymbol.Name, AName) and SameText(mSymbol.Container, AContainer) and
+      SameText(mSymbol.FileName, AFile) then
     begin
-      ASymbol := Symbol;
+      ASymbol := mSymbol;
       Exit(True);
     end;
   end;
@@ -248,102 +250,102 @@ end;
 
 procedure TIncludeFilesTests.IndexesDeclarationsFromIncludes;
 var
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
+  mUnitIndex: TUnitIndex;
+  mSymbol: TIndexSymbol;
 begin
   PutIncludes;
-  UnitIndex := TIndexExtractor.ExtractText(HauptText, 'C:\P\Haupt.pas', nil, Resolver(nil));
+  mUnitIndex := TIndexExtractor.ExtractText(cHauptText, 'C:\P\Haupt.pas', nil, Resolver(nil));
   // Eigene Deklaration bleibt in der Unit.
-  Assert.IsTrue(FindSymbol(UnitIndex, 'TListe', '', '', Symbol));
-  Assert.AreEqual('', Symbol.FileName);
-  Assert.AreEqual('C:\P\Haupt.pas', UnitIndex.SymbolFile(Symbol));
+  Assert.IsTrue(FindSymbol(mUnitIndex, 'TListe', '', '', mSymbol));
+  Assert.AreEqual('', mSymbol.FileName);
+  Assert.AreEqual('C:\P\Haupt.pas', mUnitIndex.SymbolFile(mSymbol));
   // Aus Typen.inc: Ort in der .inc, sichtbar wie interface.
-  Assert.IsTrue(FindSymbol(UnitIndex, 'TKunde', '', 'C:\P\Typen.inc', Symbol));
-  Assert.AreEqual('C:\P\Typen.inc', Symbol.FileName);
-  Assert.IsTrue(Symbol.InInterface);
-  Assert.AreEqual(1, Symbol.SelectionRange.StartPos.Line);
-  Assert.AreEqual(2, Symbol.SelectionRange.StartPos.Character);
+  Assert.IsTrue(FindSymbol(mUnitIndex, 'TKunde', '', 'C:\P\Typen.inc', mSymbol));
+  Assert.AreEqual('C:\P\Typen.inc', mSymbol.FileName);
+  Assert.IsTrue(mSymbol.InInterface);
+  Assert.AreEqual(1, mSymbol.SelectionRange.StartPos.Line);
+  Assert.AreEqual(2, mSymbol.SelectionRange.StartPos.Character);
   // Mehr.inc ohne eigenes type: Zeilen stimmen trotz vorangestelltem Schlüsselwort.
-  Assert.IsTrue(FindSymbol(UnitIndex, 'TAuftrag', '', 'C:\P\Mehr.inc', Symbol));
-  Assert.AreEqual('C:\P\Mehr.inc', Symbol.FileName);
-  Assert.AreEqual(0, Symbol.SelectionRange.StartPos.Line);
-  Assert.AreEqual(0, Symbol.SelectionRange.StartPos.Character);
+  Assert.IsTrue(FindSymbol(mUnitIndex, 'TAuftrag', '', 'C:\P\Mehr.inc', mSymbol));
+  Assert.AreEqual('C:\P\Mehr.inc', mSymbol.FileName);
+  Assert.AreEqual(0, mSymbol.SelectionRange.StartPos.Line);
+  Assert.AreEqual(0, mSymbol.SelectionRange.StartPos.Character);
   // Rumpf.inc im implementation-Teil.
-  Assert.IsTrue(FindSymbol(UnitIndex, 'Speichern', 'TKunde', 'C:\P\Rumpf.inc', Symbol));
-  Assert.AreEqual('C:\P\Rumpf.inc', Symbol.FileName);
-  Assert.IsFalse(Symbol.InInterface);
-  Assert.AreEqual(3, Integer(Length(UnitIndex.Includes)));
+  Assert.IsTrue(FindSymbol(mUnitIndex, 'Speichern', 'TKunde', 'C:\P\Rumpf.inc', mSymbol));
+  Assert.AreEqual('C:\P\Rumpf.inc', mSymbol.FileName);
+  Assert.IsFalse(mSymbol.InInterface);
+  Assert.AreEqual(3, Integer(Length(mUnitIndex.Includes)));
 end;
 
 procedure TIncludeFilesTests.IncludeCycleEndsWithoutDuplicates;
 var
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Count: Integer;
+  mUnitIndex: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mCount: Integer;
 begin
   Files.Clear;
   Put('C:\P\A.inc', 'const'#10'  WertA = 1;'#10'{$I B.inc}');
   Put('C:\P\B.inc', 'const'#10'  WertB = 2;'#10'{$I A.inc}');
-  UnitIndex := TIndexExtractor.ExtractText('unit Main;'#10'interface'#10'{$I A.inc}'#10'implementation'#10'end.',
-    MainFile, nil, Resolver(nil));
-  Count := 0;
-  for Symbol in UnitIndex.Symbols do
+  mUnitIndex := TIndexExtractor.ExtractText('unit Main;'#10'interface'#10'{$I A.inc}'#10'implementation'#10'end.',
+    cMainFile, nil, Resolver(nil));
+  mCount := 0;
+  for mSymbol in mUnitIndex.Symbols do
   begin
-    if SameText(Symbol.Name, 'WertA') or SameText(Symbol.Name, 'WertB') then
+    if SameText(mSymbol.Name, 'WertA') or SameText(mSymbol.Name, 'WertB') then
     begin
-      Inc(Count);
+      Inc(mCount);
     end;
   end;
-  Assert.AreEqual(2, Count);
+  Assert.AreEqual(2, mCount);
 end;
 
 procedure TIncludeFilesTests.DefinitionAndCompletionReachIncludeFile;
 const
-  DritteText = 'unit Dritte;'#10'interface'#10'uses Haupt;'#10'var K: TKunde;'#10'implementation'#10'end.';
-  TippText = 'unit Dritte;'#10'interface'#10'uses Haupt;'#10'var K: TKu'#10'implementation'#10'end.';
+  cDritteText = 'unit Dritte;'#10'interface'#10'uses Haupt;'#10'var K: TKunde;'#10'implementation'#10'end.';
+  cTippText = 'unit Dritte;'#10'interface'#10'uses Haupt;'#10'var K: TKu'#10'implementation'#10'end.';
 var
-  Index: ISymbolIndex;
-  Resolver_: TNameResolver;
-  Tree: TSyntaxTree;
-  Targets: TArray<TDefinitionTarget>;
-  Items: TCompletionItems;
-  Item: TCompletionItem;
-  Found: Boolean;
+  mIndex: ISymbolIndex;
+  mResolver_: TNameResolver;
+  mTree: TSyntaxTree;
+  mTargets: TArray<TDefinitionTarget>;
+  mItems: TCompletionItems;
+  mItem: TCompletionItem;
+  mFound: Boolean;
 begin
   PutIncludes;
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(HauptText, 'C:\P\Haupt.pas', nil, Resolver(nil)));
-  Resolver_ := TNameResolver.Create(Index);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cHauptText, 'C:\P\Haupt.pas', nil, Resolver(nil)));
+  mResolver_ := TNameResolver.Create(mIndex);
   try
     // Strg+Klick auf TKunde in einer dritten Unit springt in Typen.inc.
-    Tree := TPascalParser.Parse(DritteText);
+    mTree := TPascalParser.Parse(cDritteText);
     try
-      Targets := TLspDefinition.Targets(Resolver_, Index, Tree, 'C:\P\Dritte.pas', TTextPosition.Create(3, 8), False);
+      mTargets := TLspDefinition.Targets(mResolver_, mIndex, mTree, 'C:\P\Dritte.pas', TTextPosition.Create(3, 8), False);
     finally
-      Tree.Free;
+      mTree.Free;
     end;
-    Assert.AreEqual(1, Integer(Length(Targets)));
-    Assert.AreEqual('C:\P\Typen.inc', Targets[0].FileName);
-    Assert.AreEqual(1, Targets[0].SelectionRange.StartPos.Line);
+    Assert.AreEqual(1, Integer(Length(mTargets)));
+    Assert.AreEqual('C:\P\Typen.inc', mTargets[0].FileName);
+    Assert.AreEqual(1, mTargets[0].SelectionRange.StartPos.Line);
     // Vervollständigung bietet TKunde an, Details kommen aus der .inc.
-    Tree := TPascalParser.Parse(TippText);
+    mTree := TPascalParser.Parse(cTippText);
     try
-      Items := TCompletionLists.Collect(Resolver_, Index, Tree, 'C:\P\Dritte.pas', TTextPosition.Create(3, 10));
+      mItems := TCompletionLists.Collect(mResolver_, mIndex, mTree, 'C:\P\Dritte.pas', TTextPosition.Create(3, 10));
     finally
-      Tree.Free;
+      mTree.Free;
     end;
-    Found := False;
-    for Item in Items.Items do
+    mFound := False;
+    for mItem in mItems.Items do
     begin
-      if Item.Name = 'TKunde' then
+      if mItem.Name = 'TKunde' then
       begin
-        Found := True;
-        Assert.AreEqual('C:\P\Typen.inc', Item.SourceFile);
+        mFound := True;
+        Assert.AreEqual('C:\P\Typen.inc', mItem.SourceFile);
       end;
     end;
-    Assert.IsTrue(Found, 'TKunde fehlt in der Vervollständigung');
+    Assert.IsTrue(mFound, 'TKunde fehlt in der Vervollständigung');
   finally
-    Resolver_.Free;
+    mResolver_.Free;
   end;
 end;
 

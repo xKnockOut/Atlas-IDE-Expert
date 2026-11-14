@@ -27,58 +27,58 @@ uses
 
 procedure TAtlasCheckOnSaveTests.DebouncesSaves;
 var
-  Check: TAtlasCheckOnSave;
+  mCheck: TAtlasCheckOnSave;
 begin
-  Check := TAtlasCheckOnSave.Create(2000, 1500);
+  mCheck := TAtlasCheckOnSave.Create(2000, 1500);
   try
-    Assert.IsFalse(Check.Due(0, False));
-    Check.Saved('C:\P\A.dproj', 1000);
-    Assert.IsFalse(Check.Due(2999, False));
+    Assert.IsFalse(mCheck.Due(0, False));
+    mCheck.Saved('C:\P\A.dproj', 1000);
+    Assert.IsFalse(mCheck.Due(2999, False));
     // Weiteres Speichern verschiebt die Prüfung.
-    Check.Saved('C:\P\A.dproj', 2500);
-    Assert.IsFalse(Check.Due(4000, False));
-    Assert.IsTrue(Check.Due(4500, False));
-    Assert.AreEqual('C:\P\A.dproj', Check.Take);
-    Assert.IsFalse(Check.Due(9000, False));
+    mCheck.Saved('C:\P\A.dproj', 2500);
+    Assert.IsFalse(mCheck.Due(4000, False));
+    Assert.IsTrue(mCheck.Due(4500, False));
+    Assert.AreEqual('C:\P\A.dproj', mCheck.Take);
+    Assert.IsFalse(mCheck.Due(9000, False));
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 
 procedure TAtlasCheckOnSaveTests.WaitsForBuildAndDebugger;
 var
-  Check: TAtlasCheckOnSave;
+  mCheck: TAtlasCheckOnSave;
 begin
-  Check := TAtlasCheckOnSave.Create(100, 1500);
+  mCheck := TAtlasCheckOnSave.Create(100, 1500);
   try
-    Check.Saved('C:\P\A.dproj', 0);
-    Check.BuildStarted;
-    Assert.IsFalse(Check.Due(1000, False));
-    Check.BuildFinished;
-    Assert.IsFalse(Check.Due(1000, True));
-    Assert.IsTrue(Check.Due(1000, False));
+    mCheck.Saved('C:\P\A.dproj', 0);
+    mCheck.BuildStarted;
+    Assert.IsFalse(mCheck.Due(1000, False));
+    mCheck.BuildFinished;
+    Assert.IsFalse(mCheck.Due(1000, True));
+    Assert.IsTrue(mCheck.Due(1000, False));
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 
 procedure TAtlasCheckOnSaveTests.SlowCheckDisablesProject;
 var
-  Check: TAtlasCheckOnSave;
+  mCheck: TAtlasCheckOnSave;
 begin
-  Check := TAtlasCheckOnSave.Create(100, 1500);
+  mCheck := TAtlasCheckOnSave.Create(100, 1500);
   try
-    Assert.IsFalse(Check.CheckFinished('C:\P\A.dproj', 1500));
-    Assert.IsTrue(Check.CheckFinished('C:\P\A.dproj', 1501));
+    Assert.IsFalse(mCheck.CheckFinished('C:\P\A.dproj', 1500));
+    Assert.IsTrue(mCheck.CheckFinished('C:\P\A.dproj', 1501));
     // Nur einmal gemeldet; danach keine Vormerkung mehr für das Projekt.
-    Assert.IsFalse(Check.CheckFinished('C:\P\A.dproj', 5000));
-    Check.Saved('c:\p\a.dproj', 0);
-    Assert.IsFalse(Check.Due(1000, False));
+    Assert.IsFalse(mCheck.CheckFinished('C:\P\A.dproj', 5000));
+    mCheck.Saved('c:\p\a.dproj', 0);
+    Assert.IsFalse(mCheck.Due(1000, False));
     // Andere Projekte prüfen weiter.
-    Check.Saved('C:\P\B.dproj', 0);
-    Assert.IsTrue(Check.Due(1000, False));
+    mCheck.Saved('C:\P\B.dproj', 0);
+    Assert.IsTrue(mCheck.Due(1000, False));
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 

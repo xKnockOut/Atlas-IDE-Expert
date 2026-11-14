@@ -43,7 +43,7 @@ uses
   Atlas.Core.Projects.Todos;
 
 const
-  Answer = '{"format": 1, "root": "C:\\Projekte\\Kasse", "summary": {"files": 2, "open": 3, "done": 0, ' +
+  cAnswer = '{"format": 1, "root": "C:\\Projekte\\Kasse", "summary": {"files": 2, "open": 3, "done": 0, ' +
     '"keywords": {"FIXME": 1, "TODO": 2}}, "files": [' +
     '{"file": "Source/Main.pas", "unit": "Main", "todos": [' +
     '{"keyword": "TODO", "done": false, "priority": 2, "owner": "Marco", "category": "GUI", ' +
@@ -58,38 +58,38 @@ const
 
 procedure TAtlasTodoListTests.EntriesWithAbsolutePathsAndZeroBasedPositions;
 var
-  Entries: TArray<TAtlasResultEntry>;
+  mEntries: TArray<TAtlasResultEntry>;
 begin
-  Assert.IsTrue(TAtlasTodoList.Entries(Answer, Entries));
-  Assert.AreEqual(3, Integer(Length(Entries)));
-  Assert.AreEqual('C:\Projekte\Kasse\Source\Main.pas', Entries[0].FileName);
-  Assert.AreEqual(11, Entries[0].Line);
-  Assert.AreEqual(2, Entries[0].Character);
-  Assert.AreEqual('TODO 2 [GUI, Marco]: Fokus setzen', Entries[0].Text);
-  Assert.AreEqual('FIXME: Rabatt', Entries[1].Text);
-  Assert.AreEqual(19, Entries[1].Line);
-  Assert.AreEqual('D:\Lib\Hilfe.pas', Entries[2].FileName);
-  Assert.AreEqual('TODO', Entries[2].Text);
+  Assert.IsTrue(TAtlasTodoList.Entries(cAnswer, mEntries));
+  Assert.AreEqual(3, Integer(Length(mEntries)));
+  Assert.AreEqual('C:\Projekte\Kasse\Source\Main.pas', mEntries[0].FileName);
+  Assert.AreEqual(11, mEntries[0].Line);
+  Assert.AreEqual(2, mEntries[0].Character);
+  Assert.AreEqual('TODO 2 [GUI, Marco]: Fokus setzen', mEntries[0].Text);
+  Assert.AreEqual('FIXME: Rabatt', mEntries[1].Text);
+  Assert.AreEqual(19, mEntries[1].Line);
+  Assert.AreEqual('D:\Lib\Hilfe.pas', mEntries[2].FileName);
+  Assert.AreEqual('TODO', mEntries[2].Text);
   // Das Ergebnisfenster gruppiert nach Datei (Unit).
-  Assert.AreEqual(2, Integer(Length(TAtlasResults.Group(Entries))));
+  Assert.AreEqual(2, Integer(Length(TAtlasResults.Group(mEntries))));
 end;
 
 procedure TAtlasTodoListTests.EmptyAnswerIsValid;
 var
-  Entries: TArray<TAtlasResultEntry>;
+  mEntries: TArray<TAtlasResultEntry>;
 begin
-  Assert.IsTrue(TAtlasTodoList.Entries('{"format": 1, "root": "C:\\P", "summary": {}, "files": []}', Entries));
-  Assert.AreEqual(0, Integer(Length(Entries)));
+  Assert.IsTrue(TAtlasTodoList.Entries('{"format": 1, "root": "C:\\P", "summary": {}, "files": []}', mEntries));
+  Assert.AreEqual(0, Integer(Length(mEntries)));
 end;
 
 procedure TAtlasTodoListTests.RejectsInvalidAnswer;
 var
-  Entries: TArray<TAtlasResultEntry>;
+  mEntries: TArray<TAtlasResultEntry>;
 begin
-  Assert.IsFalse(TAtlasTodoList.Entries('', Entries));
-  Assert.IsFalse(TAtlasTodoList.Entries('"# TODOs"', Entries));
-  Assert.IsFalse(TAtlasTodoList.Entries('{"format": 1, "summary": {"open": 1}}', Entries));
-  Assert.AreEqual(0, Integer(Length(Entries)));
+  Assert.IsFalse(TAtlasTodoList.Entries('', mEntries));
+  Assert.IsFalse(TAtlasTodoList.Entries('"# TODOs"', mEntries));
+  Assert.IsFalse(TAtlasTodoList.Entries('{"format": 1, "summary": {"open": 1}}', mEntries));
+  Assert.AreEqual(0, Integer(Length(mEntries)));
 end;
 
 procedure TAtlasTodoListTests.CaptionLeavesOutEmptyParts;
@@ -111,85 +111,85 @@ end;
 
 procedure TAtlasTodoListTests.FilterAsServerArgument;
 var
-  Filter: TAtlasTodoFilter;
-  Value: TJSONValue;
+  mFilter: TAtlasTodoFilter;
+  mValue: TJSONValue;
 begin
-  Filter := Default(TAtlasTodoFilter);
-  Assert.IsTrue(Filter.IsEmpty);
-  Assert.AreEqual('{}', Filter.ToJson);
-  Filter.Category := ' GUI ';
-  Filter.Owner := 'Marco "M"';
-  Filter.IncludeDone := True;
-  Assert.IsFalse(Filter.IsEmpty);
-  Assert.AreEqual('{"category": "GUI", "owner": "Marco \"M\"", "includeDone": true}', Filter.ToJson);
+  mFilter := Default(TAtlasTodoFilter);
+  Assert.IsTrue(mFilter.IsEmpty);
+  Assert.AreEqual('{}', mFilter.ToJson);
+  mFilter.Category := ' GUI ';
+  mFilter.Owner := 'Marco "M"';
+  mFilter.IncludeDone := True;
+  Assert.IsFalse(mFilter.IsEmpty);
+  Assert.AreEqual('{"category": "GUI", "owner": "Marco \"M\"", "includeDone": true}', mFilter.ToJson);
   // Gültiges JSON, das der Server versteht.
-  Value := TJSONObject.ParseJSONValue(Filter.ToJson);
+  mValue := TJSONObject.ParseJSONValue(mFilter.ToJson);
   try
-    Assert.IsTrue(Value is TJSONObject);
-    Assert.AreEqual('Marco "M"', TJSONObject(Value).GetValue('owner').Value);
+    Assert.IsTrue(mValue is TJSONObject);
+    Assert.AreEqual('Marco "M"', TJSONObject(mValue).GetValue('owner').Value);
   finally
-    Value.Free;
+    mValue.Free;
   end;
-  Filter := Default(TAtlasTodoFilter);
-  Filter.UnitName := 'Main';
-  Filter.Keyword := 'fixme';
-  Assert.AreEqual('{"unit": "Main", "keyword": "fixme"}', Filter.ToJson);
-  Filter := Default(TAtlasTodoFilter);
-  Filter.IncludeDone := True;
-  Assert.IsFalse(Filter.IsEmpty, 'nur „Erledigte zeigen“ ist auch ein Filter');
-  Filter := Default(TAtlasTodoFilter);
-  Filter.Owner := '   ';
-  Assert.IsTrue(Filter.IsEmpty, 'nur Leerraum filtert nicht');
+  mFilter := Default(TAtlasTodoFilter);
+  mFilter.UnitName := 'Main';
+  mFilter.Keyword := 'fixme';
+  Assert.AreEqual('{"unit": "Main", "keyword": "fixme"}', mFilter.ToJson);
+  mFilter := Default(TAtlasTodoFilter);
+  mFilter.IncludeDone := True;
+  Assert.IsFalse(mFilter.IsEmpty, 'nur „Erledigte zeigen“ ist auch ein Filter');
+  mFilter := Default(TAtlasTodoFilter);
+  mFilter.Owner := '   ';
+  Assert.IsTrue(mFilter.IsEmpty, 'nur Leerraum filtert nicht');
 end;
 
 procedure TAtlasTodoListTests.FilterDescription;
 var
-  Filter: TAtlasTodoFilter;
+  mFilter: TAtlasTodoFilter;
 begin
-  Filter := Default(TAtlasTodoFilter);
-  Assert.AreEqual('', Filter.Describe);
-  Filter.Category := 'GUI';
-  Filter.Owner := 'Marco';
-  Filter.UnitName := 'Main';
-  Filter.Keyword := 'fixme';
-  Filter.IncludeDone := True;
-  Assert.AreEqual('-cGUI, -oMarco, Main, FIXME, DONE', Filter.Describe);
-  Filter := Default(TAtlasTodoFilter);
-  Filter.Owner := ' Anna ';
-  Assert.AreEqual('-oAnna', Filter.Describe);
+  mFilter := Default(TAtlasTodoFilter);
+  Assert.AreEqual('', mFilter.Describe);
+  mFilter.Category := 'GUI';
+  mFilter.Owner := 'Marco';
+  mFilter.UnitName := 'Main';
+  mFilter.Keyword := 'fixme';
+  mFilter.IncludeDone := True;
+  Assert.AreEqual('-cGUI, -oMarco, Main, FIXME, DONE', mFilter.Describe);
+  mFilter := Default(TAtlasTodoFilter);
+  mFilter.Owner := ' Anna ';
+  Assert.AreEqual('-oAnna', mFilter.Describe);
 end;
 
 procedure TAtlasTodoListTests.ChoicesFromAnswer;
 const
-  WithDone = '{"format": 1, "root": "C:\\P", "files": [' +
+  cWithDone = '{"format": 1, "root": "C:\\P", "files": [' +
     '{"file": "A.pas", "unit": "A", "todos": [' +
     '{"keyword": "TODO", "done": false, "owner": "marco", "category": "GUI", "text": "x"}, ' +
     '{"keyword": "DONE", "done": true, "owner": "Anna", "category": "", "text": "y"}, ' +
     '{"keyword": "hack", "done": false, "owner": "Marco", "category": "Export", "text": "z"}]}, ' +
     '{"file": "B.pas", "unit": "B", "todos": []}]}';
 var
-  Choices: TAtlasTodoChoices;
+  mChoices: TAtlasTodoChoices;
 begin
-  Assert.IsTrue(TAtlasTodoList.Choices(Answer, Choices));
-  Assert.AreEqual('GUI', string.Join(',', Choices.Categories));
-  Assert.AreEqual('Marco', string.Join(',', Choices.Owners));
-  Assert.AreEqual('Hilfe,Main', string.Join(',', Choices.Units));
-  Assert.AreEqual('FIXME,TODO', string.Join(',', Choices.Keywords));
-  Assert.IsTrue(TAtlasTodoList.Choices(WithDone, Choices));
-  Assert.AreEqual('Export,GUI', string.Join(',', Choices.Categories));
+  Assert.IsTrue(TAtlasTodoList.Choices(cAnswer, mChoices));
+  Assert.AreEqual('GUI', string.Join(',', mChoices.Categories));
+  Assert.AreEqual('Marco', string.Join(',', mChoices.Owners));
+  Assert.AreEqual('Hilfe,Main', string.Join(',', mChoices.Units));
+  Assert.AreEqual('FIXME,TODO', string.Join(',', mChoices.Keywords));
+  Assert.IsTrue(TAtlasTodoList.Choices(cWithDone, mChoices));
+  Assert.AreEqual('Export,GUI', string.Join(',', mChoices.Categories));
   // Groß-/Kleinschreibung egal: der erste Treffer bleibt.
-  Assert.AreEqual('Anna,marco', string.Join(',', Choices.Owners));
-  Assert.AreEqual('A,B', string.Join(',', Choices.Units), 'auch Units ohne Einträge');
-  Assert.AreEqual('HACK,TODO', string.Join(',', Choices.Keywords), 'DONE ist keine Marke zum Filtern');
+  Assert.AreEqual('Anna,marco', string.Join(',', mChoices.Owners));
+  Assert.AreEqual('A,B', string.Join(',', mChoices.Units), 'auch Units ohne Einträge');
+  Assert.AreEqual('HACK,TODO', string.Join(',', mChoices.Keywords), 'DONE ist keine Marke zum Filtern');
 end;
 
 procedure TAtlasTodoListTests.ChoicesRejectInvalidAnswer;
 var
-  Choices: TAtlasTodoChoices;
+  mChoices: TAtlasTodoChoices;
 begin
-  Assert.IsFalse(TAtlasTodoList.Choices('', Choices));
-  Assert.IsFalse(TAtlasTodoList.Choices('{"summary": {}}', Choices));
-  Assert.AreEqual(0, Integer(Length(Choices.Units)));
+  Assert.IsFalse(TAtlasTodoList.Choices('', mChoices));
+  Assert.IsFalse(TAtlasTodoList.Choices('{"summary": {}}', mChoices));
+  Assert.AreEqual(0, Integer(Length(mChoices.Units)));
 end;
 
 initialization

@@ -129,7 +129,8 @@ var
 begin
   for mScope := Low(TAtlasTrackerNotifyScope) to High(TAtlasTrackerNotifyScope) do
   begin
-    Assert.AreEqual<TAtlasTrackerNotifyScope>(mScope, TAtlasTrackerNotify.ScopeOf(TAtlasTrackerNotify.ScopeName(mScope)));
+    Assert.AreEqual<TAtlasTrackerNotifyScope>(mScope,
+      TAtlasTrackerNotify.ScopeOf(TAtlasTrackerNotify.ScopeName(mScope)));
   end;
   Assert.AreEqual<TAtlasTrackerNotifyScope>(TAtlasTrackerNotifyScope.Watched, TAtlasTrackerNotify.ScopeOf(' WATCHED '));
   Assert.AreEqual<TAtlasTrackerNotifyScope>(TAtlasTrackerNotifyScope.AssignedOrCreated,

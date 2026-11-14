@@ -54,7 +54,7 @@ uses
   Atlas.Core.EditorToolbar.Sections;
 
 const
-  UnitCode =
+  cUnitCode =
     'unit uKundeForm;'#10 +                                    // 0
     '{ interface im Kommentar }'#10 +                          // 1
     'interface'#10 +                                           // 2
@@ -94,41 +94,41 @@ end;
 
 procedure TAtlasSectionScannerTests.FindsUnitSections;
 var
-  Sections: TAtlasUnitSections;
+  mSections: TAtlasUnitSections;
 begin
-  Sections := Scan(UnitCode);
-  Assert.AreEqual<TAtlasSourceKind>(TAtlasSourceKind.Unit_, Sections.Kind);
-  Assert.IsTrue(Sections.HasParts);
-  CheckMark(Sections.InterfacePart, 2, 0, 'interface');
-  CheckMark(Sections.ImplementationPart, 12, 0, 'implementation');
-  CheckMark(Sections.Initialization_, 19, 0, 'initialization');
-  CheckMark(Sections.Finalization_, 21, 0, 'finalization');
-  CheckMark(Sections.InterfaceUses.Start, 4, 0, 'uses im interface');
-  CheckMark(Sections.InterfaceUses.Stop, 4, 30, 'Ende der uses im interface');
-  CheckMark(Sections.ImplementationUses.Start, 13, 0, 'uses in implementation');
-  Assert.IsFalse(Sections.HeaderUses.Start.Found);
+  mSections := Scan(cUnitCode);
+  Assert.AreEqual<TAtlasSourceKind>(TAtlasSourceKind.Unit_, mSections.Kind);
+  Assert.IsTrue(mSections.HasParts);
+  CheckMark(mSections.InterfacePart, 2, 0, 'interface');
+  CheckMark(mSections.ImplementationPart, 12, 0, 'implementation');
+  CheckMark(mSections.Initialization_, 19, 0, 'initialization');
+  CheckMark(mSections.Finalization_, 21, 0, 'finalization');
+  CheckMark(mSections.InterfaceUses.Start, 4, 0, 'uses im interface');
+  CheckMark(mSections.InterfaceUses.Stop, 4, 30, 'Ende der uses im interface');
+  CheckMark(mSections.ImplementationUses.Start, 13, 0, 'uses in implementation');
+  Assert.IsFalse(mSections.HeaderUses.Start.Found);
 end;
 
 procedure TAtlasSectionScannerTests.IgnoresInterfaceTypes;
 var
-  Sections: TAtlasUnitSections;
+  mSections: TAtlasUnitSections;
 begin
   // IKunde = interface (Zeile 6) ist kein Abschnitt, auch wenn das echte interface fehlt.
-  Sections := Scan('unit U;'#10'type IFoo = interface end;'#10'implementation'#10'end.');
-  Assert.IsFalse(Sections.InterfacePart.Found, 'IFoo = interface');
-  CheckMark(Sections.ImplementationPart, 2, 0, 'implementation');
-  Sections := Scan('unit U;'#10'interface'#10'type'#10'  IFoo ='#10'    interface'#10'  end;'#10'implementation'#10'end.');
-  CheckMark(Sections.InterfacePart, 1, 0, 'interface');
+  mSections := Scan('unit U;'#10'type IFoo = interface end;'#10'implementation'#10'end.');
+  Assert.IsFalse(mSections.InterfacePart.Found, 'IFoo = interface');
+  CheckMark(mSections.ImplementationPart, 2, 0, 'implementation');
+  mSections := Scan('unit U;'#10'interface'#10'type'#10'  IFoo ='#10'    interface'#10'  end;'#10'implementation'#10'end.');
+  CheckMark(mSections.InterfacePart, 1, 0, 'interface');
   // Auch dispinterface und &interface sind keine Abschnitte.
-  Sections := Scan('unit U; type IFoo = dispinterface end; X = &interface; implementation end.');
-  Assert.IsFalse(Sections.InterfacePart.Found, 'dispinterface, &interface');
+  mSections := Scan('unit U; type IFoo = dispinterface end; X = &interface; implementation end.');
+  Assert.IsFalse(mSections.InterfacePart.Found, 'dispinterface, &interface');
 end;
 
 procedure TAtlasSectionScannerTests.IgnoresCommentsStringsAndDirectives;
 var
-  Sections: TAtlasUnitSections;
+  mSections: TAtlasUnitSections;
 begin
-  Sections := Scan(
+  mSections := Scan(
     'unit U;'#10 +                                             // 0
     '(* implementation'#10 +                                   // 1
     '   interface *)'#10 +                                     // 2
@@ -142,15 +142,15 @@ begin
     'end.');
   // Kommentare und Direktiven zwischen Kopf und interface zählen nicht; '''' ist ein String mit einem
   // Anführungszeichen, kein mehrzeiliger String.
-  CheckMark(Sections.InterfacePart, 5, 0, 'interface');
-  CheckMark(Sections.ImplementationPart, 9, 2, 'implementation');
+  CheckMark(mSections.InterfacePart, 5, 0, 'interface');
+  CheckMark(mSections.ImplementationPart, 9, 2, 'implementation');
 end;
 
 procedure TAtlasSectionScannerTests.IgnoresMultilineStrings;
 var
-  Sections: TAtlasUnitSections;
+  mSections: TAtlasUnitSections;
 begin
-  Sections := Scan(
+  mSections := Scan(
     'unit U;'#10 +                                             // 0
     'interface'#10 +                                           // 1
     'const Text = '''''''#10 +                                 // 2
@@ -159,176 +159,176 @@ begin
     '  '''''';'#10 +                                           // 5
     'implementation'#10 +                                      // 6
     'end.');
-  CheckMark(Sections.InterfacePart, 1, 0, 'interface');
-  CheckMark(Sections.ImplementationPart, 6, 0, 'implementation');
-  Assert.IsFalse(Sections.ImplementationUses.Start.Found, 'uses im mehrzeiligen String');
+  CheckMark(mSections.InterfacePart, 1, 0, 'interface');
+  CheckMark(mSections.ImplementationPart, 6, 0, 'implementation');
+  Assert.IsFalse(mSections.ImplementationUses.Start.Found, 'uses im mehrzeiligen String');
 end;
 
 procedure TAtlasSectionScannerTests.FallbackWithoutHeader;
 var
-  Sections: TAtlasUnitSections;
+  mSections: TAtlasUnitSections;
 begin
   // Kaputter Kopf ohne Semikolon: das erste interface ohne „=“ davor.
-  Sections := Scan('unit U'#10'interface'#10'implementation'#10'end.');
-  CheckMark(Sections.InterfacePart, 1, 0, 'interface');
-  CheckMark(Sections.ImplementationPart, 2, 0, 'implementation');
+  mSections := Scan('unit U'#10'interface'#10'implementation'#10'end.');
+  CheckMark(mSections.InterfacePart, 1, 0, 'interface');
+  CheckMark(mSections.ImplementationPart, 2, 0, 'implementation');
   // Gepunkteter Name mit Hinweis-Direktiven.
-  Sections := Scan('unit Atlas.Foo.Bar platform deprecated ''alt'';'#10'  interface'#10'implementation'#10'end.');
-  CheckMark(Sections.InterfacePart, 1, 2, 'interface eingerückt');
+  mSections := Scan('unit Atlas.Foo.Bar platform deprecated ''alt'';'#10'  interface'#10'implementation'#10'end.');
+  CheckMark(mSections.InterfacePart, 1, 2, 'interface eingerückt');
 end;
 
 procedure TAtlasSectionScannerTests.ProgramHasOnlyUses;
 var
-  Sections: TAtlasUnitSections;
-  Mark: TAtlasSectionMark;
+  mSections: TAtlasUnitSections;
+  mMark: TAtlasSectionMark;
 begin
-  Sections := Scan('program AtlasServer;'#10'{$APPTYPE CONSOLE}'#10'uses Atlas.Server.Main;'#10 +
+  mSections := Scan('program AtlasServer;'#10'{$APPTYPE CONSOLE}'#10'uses Atlas.Server.Main;'#10 +
     'const interface_ = 1;'#10'begin'#10'  Run;'#10'end.');
-  Assert.AreEqual<TAtlasSourceKind>(TAtlasSourceKind.Program_, Sections.Kind);
-  Assert.IsFalse(Sections.HasParts);
-  CheckMark(Sections.HeaderUses.Start, 2, 0, 'uses');
-  Assert.IsFalse(Sections.Target(TAtlasSectionTarget.InterfacePart, 5, 2, Mark));
-  Assert.IsFalse(Sections.Target(TAtlasSectionTarget.ImplementationPart, 5, 2, Mark));
-  Assert.IsFalse(Sections.Target(TAtlasSectionTarget.Initialization_, 5, 2, Mark));
-  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, 5, 2, Mark));
-  CheckMark(Mark, 2, 0, 'Ziel uses');
-  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.UsesClause, Sections.SectionAt(2, 8));
-  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.None, Sections.SectionAt(5, 2));
+  Assert.AreEqual<TAtlasSourceKind>(TAtlasSourceKind.Program_, mSections.Kind);
+  Assert.IsFalse(mSections.HasParts);
+  CheckMark(mSections.HeaderUses.Start, 2, 0, 'uses');
+  Assert.IsFalse(mSections.Target(TAtlasSectionTarget.InterfacePart, 5, 2, mMark));
+  Assert.IsFalse(mSections.Target(TAtlasSectionTarget.ImplementationPart, 5, 2, mMark));
+  Assert.IsFalse(mSections.Target(TAtlasSectionTarget.Initialization_, 5, 2, mMark));
+  Assert.IsTrue(mSections.Target(TAtlasSectionTarget.UsesClause, 5, 2, mMark));
+  CheckMark(mMark, 2, 0, 'Ziel uses');
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.UsesClause, mSections.SectionAt(2, 8));
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.None, mSections.SectionAt(5, 2));
 end;
 
 procedure TAtlasSectionScannerTests.PackageUsesContains;
 var
-  Sections: TAtlasUnitSections;
+  mSections: TAtlasUnitSections;
 begin
-  Sections := Scan('package Atlas.IDE.Expert;'#10'requires'#10'  rtl;'#10'contains'#10'  Atlas.Core.Foo in ''Foo.pas'';'#10 +
+  mSections := Scan('package Atlas.IDE.Expert;'#10'requires'#10'  rtl;'#10'contains'#10'  Atlas.Core.Foo in ''Foo.pas'';'#10 +
     'end.');
-  Assert.AreEqual<TAtlasSourceKind>(TAtlasSourceKind.Package, Sections.Kind);
-  Assert.IsFalse(Sections.HasParts);
-  CheckMark(Sections.HeaderUses.Start, 3, 0, 'contains');
-  CheckMark(Sections.HeaderUses.Stop, 4, 29, 'Ende von contains');
+  Assert.AreEqual<TAtlasSourceKind>(TAtlasSourceKind.Package, mSections.Kind);
+  Assert.IsFalse(mSections.HasParts);
+  CheckMark(mSections.HeaderUses.Start, 3, 0, 'contains');
+  CheckMark(mSections.HeaderUses.Stop, 4, 29, 'Ende von contains');
 end;
 
 procedure TAtlasSectionScannerTests.LibraryHasOnlyUses;
 var
-  Sections: TAtlasUnitSections;
+  mSections: TAtlasUnitSections;
 begin
-  Sections := Scan('library Atlas;'#10'uses'#10'  System.SysUtils;'#10'exports Foo;'#10'begin'#10'end.');
-  Assert.AreEqual<TAtlasSourceKind>(TAtlasSourceKind.Library_, Sections.Kind);
-  CheckMark(Sections.HeaderUses.Start, 1, 0, 'uses');
-  Assert.IsFalse(Sections.InterfacePart.Found);
+  mSections := Scan('library Atlas;'#10'uses'#10'  System.SysUtils;'#10'exports Foo;'#10'begin'#10'end.');
+  Assert.AreEqual<TAtlasSourceKind>(TAtlasSourceKind.Library_, mSections.Kind);
+  CheckMark(mSections.HeaderUses.Start, 1, 0, 'uses');
+  Assert.IsFalse(mSections.InterfacePart.Found);
 end;
 
 procedure TAtlasSectionScannerTests.IncludeHasNothing;
 var
-  Sections: TAtlasUnitSections;
-  Mark: TAtlasSectionMark;
+  mSections: TAtlasUnitSections;
+  mMark: TAtlasSectionMark;
 begin
-  Sections := Scan('{$IFDEF DEBUG}'#10'interface'#10'implementation'#10'uses Foo;'#10'{$ENDIF}');
-  Assert.AreEqual<TAtlasSourceKind>(TAtlasSourceKind.Include, Sections.Kind);
-  Assert.IsFalse(Sections.HasParts);
-  Assert.IsFalse(Sections.InterfacePart.Found);
-  Assert.IsFalse(Sections.ImplementationPart.Found);
-  Assert.IsFalse(Sections.Target(TAtlasSectionTarget.UsesClause, 0, 0, Mark));
+  mSections := Scan('{$IFDEF DEBUG}'#10'interface'#10'implementation'#10'uses Foo;'#10'{$ENDIF}');
+  Assert.AreEqual<TAtlasSourceKind>(TAtlasSourceKind.Include, mSections.Kind);
+  Assert.IsFalse(mSections.HasParts);
+  Assert.IsFalse(mSections.InterfacePart.Found);
+  Assert.IsFalse(mSections.ImplementationPart.Found);
+  Assert.IsFalse(mSections.Target(TAtlasSectionTarget.UsesClause, 0, 0, mMark));
   Assert.IsFalse(TAtlasSectionScanner.Scan(nil).HasParts, 'leer');
 end;
 
 procedure TAtlasSectionScannerTests.SectionAtHighlightsCurrentPart;
 var
-  Sections: TAtlasUnitSections;
+  mSections: TAtlasUnitSections;
 begin
-  Sections := Scan(UnitCode);
-  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.None, Sections.SectionAt(0, 3), 'Kopf');
-  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.InterfacePart, Sections.SectionAt(2, 0), 'auf interface');
-  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.UsesClause, Sections.SectionAt(4, 10), 'uses');
-  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.InterfacePart, Sections.SectionAt(7, 4), 'im Typ');
+  mSections := Scan(cUnitCode);
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.None, mSections.SectionAt(0, 3), 'Kopf');
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.InterfacePart, mSections.SectionAt(2, 0), 'auf interface');
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.UsesClause, mSections.SectionAt(4, 10), 'uses');
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.InterfacePart, mSections.SectionAt(7, 4), 'im Typ');
   Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.UsesClause,
-    Sections.SectionAt(13, 6), 'uses der implementation');
-  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.ImplementationPart, Sections.SectionAt(16, 4), 'Methode');
-  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.Initialization_, Sections.SectionAt(20, 2), 'initialization');
-  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.Finalization_, Sections.SectionAt(22, 2), 'finalization');
+    mSections.SectionAt(13, 6), 'uses der implementation');
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.ImplementationPart, mSections.SectionAt(16, 4), 'Methode');
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.Initialization_, mSections.SectionAt(20, 2), 'initialization');
+  Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.Finalization_, mSections.SectionAt(22, 2), 'finalization');
 end;
 
 procedure TAtlasSectionScannerTests.UsesTargetFollowsCurrentSection;
 var
-  Sections: TAtlasUnitSections;
-  Mark: TAtlasSectionMark;
+  mSections: TAtlasUnitSections;
+  mMark: TAtlasSectionMark;
 begin
-  Sections := Scan(UnitCode);
-  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, 16, 4, Mark));
-  CheckMark(Mark, 13, 0, 'uses der implementation');
-  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, 7, 4, Mark));
-  CheckMark(Mark, 4, 0, 'uses des interface');
+  mSections := Scan(cUnitCode);
+  Assert.IsTrue(mSections.Target(TAtlasSectionTarget.UsesClause, 16, 4, mMark));
+  CheckMark(mMark, 13, 0, 'uses der implementation');
+  Assert.IsTrue(mSections.Target(TAtlasSectionTarget.UsesClause, 7, 4, mMark));
+  CheckMark(mMark, 4, 0, 'uses des interface');
   // Ohne uses in der implementation: die des interface.
-  Sections := Scan('unit U;'#10'interface'#10'uses A;'#10'implementation'#10'procedure X; begin end;'#10'end.');
-  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, 4, 2, Mark));
-  CheckMark(Mark, 2, 0, 'Rückfall auf interface');
-  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.InterfacePart, 4, 2, Mark));
-  CheckMark(Mark, 1, 0, 'interface');
-  Assert.IsFalse(Sections.Target(TAtlasSectionTarget.Initialization_, 4, 2, Mark), 'ohne initialization');
+  mSections := Scan('unit U;'#10'interface'#10'uses A;'#10'implementation'#10'procedure X; begin end;'#10'end.');
+  Assert.IsTrue(mSections.Target(TAtlasSectionTarget.UsesClause, 4, 2, mMark));
+  CheckMark(mMark, 2, 0, 'Rückfall auf interface');
+  Assert.IsTrue(mSections.Target(TAtlasSectionTarget.InterfacePart, 4, 2, mMark));
+  CheckMark(mMark, 1, 0, 'interface');
+  Assert.IsFalse(mSections.Target(TAtlasSectionTarget.Initialization_, 4, 2, mMark), 'ohne initialization');
 end;
 
 procedure TAtlasSectionScannerTests.UsesTargetTogglesBetweenClauses;
 var
-  Sections: TAtlasUnitSections;
-  Mark: TAtlasSectionMark;
-  ToImplementation: Boolean;
+  mSections: TAtlasUnitSections;
+  mMark: TAtlasSectionMark;
+  mToImplementation: Boolean;
 begin
-  Sections := Scan(UnitCode);
+  mSections := Scan(cUnitCode);
   // In der interface-uses: zur implementation-uses und zurück.
-  Assert.IsTrue(Sections.UsesToggle(4, 10, ToImplementation));
-  Assert.IsTrue(ToImplementation);
-  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, 4, 10, Mark));
-  CheckMark(Mark, 13, 0, 'zur implementation-uses');
-  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, Mark.Line, Mark.Character, Mark));
-  CheckMark(Mark, 4, 0, 'zurück zur interface-uses');
-  Assert.IsFalse(Sections.UsesToggle(16, 4, ToImplementation), 'außerhalb einer Klausel');
+  Assert.IsTrue(mSections.UsesToggle(4, 10, mToImplementation));
+  Assert.IsTrue(mToImplementation);
+  Assert.IsTrue(mSections.Target(TAtlasSectionTarget.UsesClause, 4, 10, mMark));
+  CheckMark(mMark, 13, 0, 'zur implementation-uses');
+  Assert.IsTrue(mSections.Target(TAtlasSectionTarget.UsesClause, mMark.Line, mMark.Character, mMark));
+  CheckMark(mMark, 4, 0, 'zurück zur interface-uses');
+  Assert.IsFalse(mSections.UsesToggle(16, 4, mToImplementation), 'außerhalb einer Klausel');
   // Ohne implementation-uses: zum Schlüsselwort implementation, von dort zurück.
-  Sections := Scan('unit U;'#10'interface'#10'uses A;'#10'implementation'#10'procedure X; begin end;'#10'end.');
-  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, 2, 0, Mark));
-  CheckMark(Mark, 3, 0, 'implementation');
-  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, Mark.Line, Mark.Character, Mark));
-  CheckMark(Mark, 2, 0, 'zurück zur interface-uses');
+  mSections := Scan('unit U;'#10'interface'#10'uses A;'#10'implementation'#10'procedure X; begin end;'#10'end.');
+  Assert.IsTrue(mSections.Target(TAtlasSectionTarget.UsesClause, 2, 0, mMark));
+  CheckMark(mMark, 3, 0, 'implementation');
+  Assert.IsTrue(mSections.Target(TAtlasSectionTarget.UsesClause, mMark.Line, mMark.Character, mMark));
+  CheckMark(mMark, 2, 0, 'zurück zur interface-uses');
   // Ohne interface-uses: zum Schlüsselwort interface, von dort zurück.
-  Sections := Scan('unit U;'#10'interface'#10'implementation'#10'uses B;'#10'end.');
-  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, 3, 2, Mark));
-  CheckMark(Mark, 1, 0, 'interface');
-  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, Mark.Line, Mark.Character, Mark));
-  CheckMark(Mark, 3, 0, 'zurück zur implementation-uses');
+  mSections := Scan('unit U;'#10'interface'#10'implementation'#10'uses B;'#10'end.');
+  Assert.IsTrue(mSections.Target(TAtlasSectionTarget.UsesClause, 3, 2, mMark));
+  CheckMark(mMark, 1, 0, 'interface');
+  Assert.IsTrue(mSections.Target(TAtlasSectionTarget.UsesClause, mMark.Line, mMark.Character, mMark));
+  CheckMark(mMark, 3, 0, 'zurück zur implementation-uses');
   // Programme: unverändert die Klausel nach dem Kopf.
-  Sections := Scan('program P;'#10'uses A;'#10'begin'#10'end.');
-  Assert.IsFalse(Sections.UsesToggle(1, 2, ToImplementation));
-  Assert.IsTrue(Sections.Target(TAtlasSectionTarget.UsesClause, 1, 2, Mark));
-  CheckMark(Mark, 1, 0, 'uses des Programms');
+  mSections := Scan('program P;'#10'uses A;'#10'begin'#10'end.');
+  Assert.IsFalse(mSections.UsesToggle(1, 2, mToImplementation));
+  Assert.IsTrue(mSections.Target(TAtlasSectionTarget.UsesClause, 1, 2, mMark));
+  CheckMark(mMark, 1, 0, 'uses des Programms');
 end;
 
 procedure TAtlasSectionScannerTests.StopsAtEndDot;
 var
-  Sections: TAtlasUnitSections;
+  mSections: TAtlasUnitSections;
 begin
-  Sections := Scan('unit U;'#10'interface'#10'implementation'#10'end.'#10'initialization'#10'uses X;');
-  Assert.IsFalse(Sections.Initialization_.Found);
-  Assert.IsFalse(Sections.ImplementationUses.Start.Found);
+  mSections := Scan('unit U;'#10'interface'#10'implementation'#10'end.'#10'initialization'#10'uses X;');
+  Assert.IsFalse(mSections.Initialization_.Found);
+  Assert.IsFalse(mSections.ImplementationUses.Start.Found);
 end;
 
 procedure TAtlasSectionScannerTests.ScansWholeTextWithCrLf;
 var
-  Sections: TAtlasUnitSections;
+  mSections: TAtlasUnitSections;
 begin
-  Sections := TAtlasSectionScanner.Scan(UnitCode.Replace(#10, #13#10));
-  CheckMark(Sections.InterfacePart, 2, 0, 'interface');
-  CheckMark(Sections.ImplementationPart, 12, 0, 'implementation');
-  CheckMark(Sections.InterfaceUses.Stop, 4, 30, 'Ende der uses im interface');
+  mSections := TAtlasSectionScanner.Scan(cUnitCode.Replace(#10, #13#10));
+  CheckMark(mSections.InterfacePart, 2, 0, 'interface');
+  CheckMark(mSections.ImplementationPart, 12, 0, 'implementation');
+  CheckMark(mSections.InterfaceUses.Stop, 4, 30, 'Ende der uses im interface');
 end;
 
 procedure TAtlasSectionScannerTests.CountsLinesInCommentsStringsAndCr;
 var
-  Sections: TAtlasUnitSections;
+  mSections: TAtlasUnitSections;
 begin
   // Zeilen in Kommentaren und mehrzeiligen Strings zählen mit; CR allein trennt ebenfalls.
-  Sections := TAtlasSectionScanner.Scan('Unit U;'#13'{ eins'#13#10'zwei }'#10'  INTERFACE'#10 +
+  mSections := TAtlasSectionScanner.Scan('Unit U;'#13'{ eins'#13#10'zwei }'#10'  INTERFACE'#10 +
     '(* drei'#10'*) const S = '''''''#10'implementation'#10'  '''''';'#13#10'Implementation'#10'end.');
-  CheckMark(Sections.InterfacePart, 3, 2, 'interface');
-  CheckMark(Sections.ImplementationPart, 8, 0, 'implementation nach dem String');
+  CheckMark(mSections.InterfacePart, 3, 2, 'interface');
+  CheckMark(mSections.ImplementationPart, 8, 0, 'implementation nach dem String');
 end;
 
 initialization

@@ -67,7 +67,7 @@ uses
   System.SysUtils;
 
 const
-  Basis = '{"className":"TKunde","ownUnit":"Kunden","name":"IKunde","candidates":[' +
+  cBasis = '{"className":"TKunde","ownUnit":"Kunden","name":"IKunde","candidates":[' +
     '{"id":2,"name":"Speichern","kind":"method","display":"procedure Speichern;","visibility":"public",' +
     '"checked":true,"enabled":true,"reason":""},' +
     '{"id":3,"name":"Laden","kind":"method","display":"function Laden: Boolean;","visibility":"public",' +
@@ -79,7 +79,7 @@ const
     '"notes":["TKunde erbt jetzt von TInterfacedObject"],"units":["Haupt","Kunden.Daten"]}';
 
   // Basisklasse (#713): Run benutzt Helper, Helper benutzt FItems; Show darf abstrakt werden, Done nicht.
-  Super = '{"className":"TPdfExport","ownUnit":"Export","name":"TExportBase","unit":"ExportBase","candidates":[' +
+  cSuper = '{"className":"TPdfExport","ownUnit":"Export","name":"TExportBase","unit":"ExportBase","candidates":[' +
     '{"id":1,"name":"FItems","kind":"field","display":"FItems: TStrings;","visibility":"private",' +
     '"enabled":true,"canAbstract":false,"abstract":false,"needs":[]},' +
     '{"id":2,"name":"Helper","kind":"method","display":"procedure Helper;","visibility":"private",' +
@@ -91,14 +91,14 @@ const
     '"notes":[],"units":["ExportBase"]}';
 
   // Mitglied verschieben (#675): nach oben ein Ziel, nach unten mehrere.
-  MoveUp = '{"className":"TChild","ownUnit":"Kind","member":"Fill","direction":"up","name":"","candidates":[' +
+  cMoveUp = '{"className":"TChild","ownUnit":"Kind","member":"Fill","direction":"up","name":"","candidates":[' +
     '{"id":0,"name":"FItems","kind":"field","display":"FItems: TStrings;","visibility":"private",' +
     '"checked":false,"enabled":true,"canAbstract":false,"needs":[]},' +
     '{"id":2,"name":"Fill","kind":"method","display":"procedure Fill;","visibility":"public",' +
     '"checked":true,"enabled":true,"canAbstract":true,"needs":[0]}],' +
     '"targets":[{"name":"TBase","unit":"Basis","checked":true},{"name":"TRoot","unit":"Root","checked":false}],' +
     '"multiTarget":false,"needsRequired":true,"option":{"kind":"overrideSiblings","value":true},"notes":[]}';
-  MoveDown = '{"className":"TBase","ownUnit":"Basis","member":"Show","direction":"down","name":"","candidates":[' +
+  cMoveDown = '{"className":"TBase","ownUnit":"Basis","member":"Show","direction":"down","name":"","candidates":[' +
     '{"id":0,"name":"FData","kind":"field","display":"FData: string;","visibility":"private",' +
     '"checked":false,"enabled":true,"needs":[]},' +
     '{"id":1,"name":"Show","kind":"method","display":"procedure Show;","visibility":"public",' +
@@ -108,13 +108,13 @@ const
 
 function TClassExtractionModelTests.Prepared(const AJson: string): TAtlasClassExtractionModel;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    FModel := TAtlasClassExtractionModel.Create(Value as TJSONObject);
+    FModel := TAtlasClassExtractionModel.Create(mValue as TJSONObject);
   finally
-    Value.Free;
+    mValue.Free;
   end;
   Result := FModel;
 end;
@@ -126,107 +126,107 @@ end;
 
 procedure TClassExtractionModelTests.LoadsCandidatesNotesAndUnits;
 var
-  Model: TAtlasClassExtractionModel;
+  mModel: TAtlasClassExtractionModel;
 begin
-  Model := Prepared(Basis);
-  Assert.AreEqual('TKunde', Model.Source.SourceClass);
-  Assert.AreEqual('Kunden', Model.Source.OwnUnit);
-  Assert.AreEqual('IKunde', Model.Name);
-  Assert.AreEqual(4, Integer(Model.Count));
-  Assert.AreEqual(3, Model[1].Id);
-  Assert.AreEqual('function Laden: Boolean;', Model[1].Display);
-  Assert.AreEqual('property', Model[3].Kind);
-  Assert.AreEqual('bekommt GetName und SetName', Model[3].Reason);
-  Assert.AreEqual(1, Integer(Length(Model.Source.Notes)));
-  Assert.AreEqual(2, Integer(Length(Model.Source.Units)));
-  Assert.AreEqual('Kunden.Daten', Model.Source.Units[1]);
-  Assert.AreEqual('', Model.TargetUnit);
+  mModel := Prepared(cBasis);
+  Assert.AreEqual('TKunde', mModel.Source.SourceClass);
+  Assert.AreEqual('Kunden', mModel.Source.OwnUnit);
+  Assert.AreEqual('IKunde', mModel.Name);
+  Assert.AreEqual(4, Integer(mModel.Count));
+  Assert.AreEqual(3, mModel[1].Id);
+  Assert.AreEqual('function Laden: Boolean;', mModel[1].Display);
+  Assert.AreEqual('property', mModel[3].Kind);
+  Assert.AreEqual('bekommt GetName und SetName', mModel[3].Reason);
+  Assert.AreEqual(1, Integer(Length(mModel.Source.Notes)));
+  Assert.AreEqual(2, Integer(Length(mModel.Source.Units)));
+  Assert.AreEqual('Kunden.Daten', mModel.Source.Units[1]);
+  Assert.AreEqual('', mModel.TargetUnit);
 end;
 
 procedure TClassExtractionModelTests.DisabledStaysUnchecked;
 var
-  Model: TAtlasClassExtractionModel;
+  mModel: TAtlasClassExtractionModel;
 begin
-  Model := Prepared(Basis);
+  mModel := Prepared(cBasis);
   // Gesperrt und vom Server angehakt: bleibt trotzdem aus.
-  Assert.IsFalse(Model[2].Checked);
-  Model.SetChecked(2, True);
-  Assert.IsFalse(Model[2].Checked);
-  Model.SetChecked(0, False);
-  Assert.IsFalse(Model[0].Checked);
-  Model.SetChecked(-1, True);
-  Model.SetChecked(99, True);
-  Assert.AreEqual(1, Model.CheckedCount);
+  Assert.IsFalse(mModel[2].Checked);
+  mModel.SetChecked(2, True);
+  Assert.IsFalse(mModel[2].Checked);
+  mModel.SetChecked(0, False);
+  Assert.IsFalse(mModel[0].Checked);
+  mModel.SetChecked(-1, True);
+  mModel.SetChecked(99, True);
+  Assert.AreEqual(1, mModel.CheckedCount);
 end;
 
 procedure TClassExtractionModelTests.CheckAllSkipsDisabled;
 var
-  Model: TAtlasClassExtractionModel;
+  mModel: TAtlasClassExtractionModel;
 begin
-  Model := Prepared(Basis);
-  Model.CheckAll(True);
-  Assert.AreEqual(3, Model.CheckedCount);
-  Assert.IsFalse(Model[2].Checked);
-  Model.CheckAll(False);
-  Assert.AreEqual(0, Model.CheckedCount);
+  mModel := Prepared(cBasis);
+  mModel.CheckAll(True);
+  Assert.AreEqual(3, mModel.CheckedCount);
+  Assert.IsFalse(mModel[2].Checked);
+  mModel.CheckAll(False);
+  Assert.AreEqual(0, mModel.CheckedCount);
 end;
 
 procedure TClassExtractionModelTests.RejectsBadAndReservedNames;
 var
-  Model: TAtlasClassExtractionModel;
-  Subject: string;
+  mModel: TAtlasClassExtractionModel;
+  mSubject: string;
 begin
-  Model := Prepared(Basis);
-  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.None, Model.Validate);
-  Model.Name := '1Kunde';
-  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.BadName, Model.Validate(Subject));
-  Assert.AreEqual('1Kunde', Subject);
-  Model.Name := 'begin';
-  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.BadName, Model.Validate);
-  Model.Name := '';
-  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.BadName, Model.Validate);
-  Model.Name := '  IKunde  ';
-  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.None, Model.Validate);
+  mModel := Prepared(cBasis);
+  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.None, mModel.Validate);
+  mModel.Name := '1Kunde';
+  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.BadName, mModel.Validate(mSubject));
+  Assert.AreEqual('1Kunde', mSubject);
+  mModel.Name := 'begin';
+  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.BadName, mModel.Validate);
+  mModel.Name := '';
+  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.BadName, mModel.Validate);
+  mModel.Name := '  IKunde  ';
+  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.None, mModel.Validate);
 end;
 
 procedure TClassExtractionModelTests.RejectsNameOfClass;
 begin
-  Prepared(Basis).Name := 'tkunde';
+  Prepared(cBasis).Name := 'tkunde';
   Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.SameName, FModel.Validate);
 end;
 
 procedure TClassExtractionModelTests.NeedsOneMember;
 var
-  Subject: string;
+  mSubject: string;
 begin
-  Prepared(Basis).CheckAll(False);
-  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.NoMembers, FModel.Validate(Subject));
-  Assert.AreEqual('', Subject);
+  Prepared(cBasis).CheckAll(False);
+  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.NoMembers, FModel.Validate(mSubject));
+  Assert.AreEqual('', mSubject);
 end;
 
 procedure TClassExtractionModelTests.RejectsBadUnitName;
 var
-  Subject: string;
+  mSubject: string;
 begin
-  Prepared(Basis).TargetUnit := 'Kunden..Daten';
-  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.BadUnit, FModel.Validate(Subject));
-  Assert.AreEqual('Kunden..Daten', Subject);
+  Prepared(cBasis).TargetUnit := 'Kunden..Daten';
+  Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.BadUnit, FModel.Validate(mSubject));
+  Assert.AreEqual('Kunden..Daten', mSubject);
   FModel.TargetUnit := 'Kunden.Schnittstellen';
   Assert.AreEqual<TAtlasExtractionProblem>(TAtlasExtractionProblem.None, FModel.Validate);
 end;
 
 procedure TClassExtractionModelTests.RequestJsonCarriesCheckedIds;
 var
-  Request: TJSONObject;
+  mRequest: TJSONObject;
 begin
-  Prepared(Basis).SetChecked(3, True);
+  Prepared(cBasis).SetChecked(3, True);
   FModel.Name := ' IKundeDaten ';
   FModel.TargetUnit := 'Kunden.Schnittstellen';
-  Request := FModel.RequestJson;
+  mRequest := FModel.RequestJson;
   try
-    Assert.AreEqual('{"name":"IKundeDaten","unit":"Kunden.Schnittstellen","members":[2,3,7]}', Request.ToJSON);
+    Assert.AreEqual('{"name":"IKundeDaten","unit":"Kunden.Schnittstellen","members":[2,3,7]}', mRequest.ToJSON);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
@@ -240,169 +240,169 @@ end;
 
 procedure TClassExtractionModelTests.OwnUnitMeansSameUnit;
 var
-  Request: TJSONObject;
+  mRequest: TJSONObject;
 begin
-  Prepared(Basis).TargetUnit := 'kunden';
+  Prepared(cBasis).TargetUnit := 'kunden';
   Assert.AreEqual('', FModel.Target);
-  Request := FModel.RequestJson;
+  mRequest := FModel.RequestJson;
   try
-    Assert.AreEqual('', Request.GetValue('unit').Value);
+    Assert.AreEqual('', mRequest.GetValue('unit').Value);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
 procedure TClassExtractionModelTests.LoadsSuperclassModesAndTarget;
 var
-  Model: TAtlasClassExtractionModel;
+  mModel: TAtlasClassExtractionModel;
 begin
-  Model := Prepared(Super);
-  Assert.AreEqual('ExportBase', Model.TargetUnit);
-  Assert.AreEqual('ExportBase', Model.Target);
-  Assert.AreEqual('field', Model[0].Kind);
-  Assert.IsTrue(Model.HasModes);
-  Assert.IsTrue(Model.HasNeeds);
-  Assert.IsTrue(Model[2].Abstract);
+  mModel := Prepared(cSuper);
+  Assert.AreEqual('ExportBase', mModel.TargetUnit);
+  Assert.AreEqual('ExportBase', mModel.Target);
+  Assert.AreEqual('field', mModel[0].Kind);
+  Assert.IsTrue(mModel.HasModes);
+  Assert.IsTrue(mModel.HasNeeds);
+  Assert.IsTrue(mModel[2].Abstract);
   // Der Server darf abstract nur setzen, wo canAbstract gilt.
-  Assert.IsFalse(Model[3].Abstract);
-  Assert.AreEqual(1, Integer(Length(Model[2].Needs)));
-  Assert.AreEqual(2, Model[2].Needs[0]);
+  Assert.IsFalse(mModel[3].Abstract);
+  Assert.AreEqual(1, Integer(Length(mModel[2].Needs)));
+  Assert.AreEqual(2, mModel[2].Needs[0]);
 end;
 
 procedure TClassExtractionModelTests.AbstractOnlyWhereAllowed;
 var
-  Model: TAtlasClassExtractionModel;
+  mModel: TAtlasClassExtractionModel;
 begin
-  Model := Prepared(Super);
-  Model.SetAbstract(3, True);
-  Assert.IsFalse(Model[3].Abstract);
-  Model.SetAbstract(1, True);
-  Assert.IsTrue(Model[1].Abstract);
-  Model.SetAbstract(2, False);
-  Assert.IsFalse(Model[2].Abstract);
-  Model.SetAbstract(-1, True);
-  Model.SetAbstract(99, True);
+  mModel := Prepared(cSuper);
+  mModel.SetAbstract(3, True);
+  Assert.IsFalse(mModel[3].Abstract);
+  mModel.SetAbstract(1, True);
+  Assert.IsTrue(mModel[1].Abstract);
+  mModel.SetAbstract(2, False);
+  Assert.IsFalse(mModel[2].Abstract);
+  mModel.SetAbstract(-1, True);
+  mModel.SetAbstract(99, True);
 end;
 
 procedure TClassExtractionModelTests.ReportsMissingDependency;
 var
-  Model: TAtlasClassExtractionModel;
-  Subject, Member, Needed: string;
+  mModel: TAtlasClassExtractionModel;
+  mSubject, mMember, mNeeded: string;
 begin
-  Model := Prepared(Super);
-  Model.SetChecked(1, True);
-  Assert.AreEqual(Ord(TAtlasExtractionProblem.MissingDependency), Ord(Model.Validate(Subject)));
-  Assert.AreEqual('Helper', Subject);
-  Assert.IsTrue(Model.MissingDependency(Member, Needed));
-  Assert.AreEqual('Helper', Member);
-  Assert.AreEqual('FItems', Needed);
-  Model.SetChecked(0, True);
-  Assert.AreEqual(Ord(TAtlasExtractionProblem.None), Ord(Model.Validate));
-  Assert.IsFalse(Model.MissingDependency(Member, Needed));
-  Assert.AreEqual('', Member);
+  mModel := Prepared(cSuper);
+  mModel.SetChecked(1, True);
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.MissingDependency), Ord(mModel.Validate(mSubject)));
+  Assert.AreEqual('Helper', mSubject);
+  Assert.IsTrue(mModel.MissingDependency(mMember, mNeeded));
+  Assert.AreEqual('Helper', mMember);
+  Assert.AreEqual('FItems', mNeeded);
+  mModel.SetChecked(0, True);
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.None), Ord(mModel.Validate));
+  Assert.IsFalse(mModel.MissingDependency(mMember, mNeeded));
+  Assert.AreEqual('', mMember);
 end;
 
 procedure TClassExtractionModelTests.AbstractMethodNeedsNothing;
 var
-  Model: TAtlasClassExtractionModel;
+  mModel: TAtlasClassExtractionModel;
 begin
-  Model := Prepared(Super);
+  mModel := Prepared(cSuper);
   // Run wandert nur abstrakt: Helper muss nicht mit.
-  Model.SetChecked(2, True);
-  Assert.AreEqual(Ord(TAtlasExtractionProblem.None), Ord(Model.Validate));
-  Model.SetAbstract(2, False);
-  Assert.AreEqual(Ord(TAtlasExtractionProblem.MissingDependency), Ord(Model.Validate));
+  mModel.SetChecked(2, True);
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.None), Ord(mModel.Validate));
+  mModel.SetAbstract(2, False);
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.MissingDependency), Ord(mModel.Validate));
 end;
 
 procedure TClassExtractionModelTests.TakesDependenciesTransitively;
 var
-  Model: TAtlasClassExtractionModel;
+  mModel: TAtlasClassExtractionModel;
 begin
-  Model := Prepared(Super);
-  Model.SetChecked(2, True);
-  Model.SetAbstract(2, False);
-  Assert.AreEqual(2, Model.TakeDependencies);
-  Assert.IsTrue(Model[1].Checked);
-  Assert.IsTrue(Model[0].Checked);
-  Assert.AreEqual(Ord(TAtlasExtractionProblem.None), Ord(Model.Validate));
-  Assert.AreEqual(0, Model.TakeDependencies);
+  mModel := Prepared(cSuper);
+  mModel.SetChecked(2, True);
+  mModel.SetAbstract(2, False);
+  Assert.AreEqual(2, mModel.TakeDependencies);
+  Assert.IsTrue(mModel[1].Checked);
+  Assert.IsTrue(mModel[0].Checked);
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.None), Ord(mModel.Validate));
+  Assert.AreEqual(0, mModel.TakeDependencies);
 end;
 
 procedure TClassExtractionModelTests.RequestJsonCarriesAbstractIds;
 var
-  Model: TAtlasClassExtractionModel;
-  Request: TJSONObject;
+  mModel: TAtlasClassExtractionModel;
+  mRequest: TJSONObject;
 begin
-  Model := Prepared(Super);
-  Request := Model.RequestJson;
+  mModel := Prepared(cSuper);
+  mRequest := mModel.RequestJson;
   try
     // Nichts angehakt: kein abstract.
-    Assert.IsNull(Request.GetValue('abstract'));
+    Assert.IsNull(mRequest.GetValue('abstract'));
   finally
-    Request.Free;
+    mRequest.Free;
   end;
-  Model.SetChecked(2, True);
-  Model.SetChecked(3, True);
-  Request := Model.RequestJson;
+  mModel.SetChecked(2, True);
+  mModel.SetChecked(3, True);
+  mRequest := mModel.RequestJson;
   try
-    Assert.AreEqual('{"name":"TExportBase","unit":"ExportBase","members":[3,4],"abstract":[3]}', Request.ToJSON);
+    Assert.AreEqual('{"name":"TExportBase","unit":"ExportBase","members":[3,4],"abstract":[3]}', mRequest.ToJSON);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
 procedure TClassExtractionModelTests.MoveUpPicksOneTarget;
 var
-  Model: TAtlasClassExtractionModel;
-  Request: TJSONObject;
-  Subject: string;
+  mModel: TAtlasClassExtractionModel;
+  mRequest: TJSONObject;
+  mSubject: string;
 begin
-  Model := Prepared(MoveUp);
-  Assert.IsTrue(Model.IsMove);
-  Assert.AreEqual('Fill', Model.Source.MemberName);
-  Assert.AreEqual('up', Model.Source.Direction);
-  Assert.AreEqual(2, Model.TargetCount);
-  Assert.AreEqual('Basis', Model.Targets[0].UnitName);
-  Assert.AreEqual('overrideSiblings', Model.Source.OptionKind);
-  Assert.IsTrue(Model.Option);
+  mModel := Prepared(cMoveUp);
+  Assert.IsTrue(mModel.IsMove);
+  Assert.AreEqual('Fill', mModel.Source.MemberName);
+  Assert.AreEqual('up', mModel.Source.Direction);
+  Assert.AreEqual(2, mModel.TargetCount);
+  Assert.AreEqual('Basis', mModel.Targets[0].UnitName);
+  Assert.AreEqual('overrideSiblings', mModel.Source.OptionKind);
+  Assert.IsTrue(mModel.Option);
   // Kein Name noetig, aber Fill braucht FItems.
-  Assert.AreEqual(Ord(TAtlasExtractionProblem.MissingDependency), Ord(Model.Validate(Subject)));
-  Model.SetChecked(0, True);
-  Assert.AreEqual(Ord(TAtlasExtractionProblem.None), Ord(Model.Validate));
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.MissingDependency), Ord(mModel.Validate(mSubject)));
+  mModel.SetChecked(0, True);
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.None), Ord(mModel.Validate));
   // Nur ein Vorfahr waehlbar.
-  Model.SetTargetChecked(1, True);
-  Assert.AreEqual(1, Integer(Length(Model.CheckedTargets)));
-  Assert.AreEqual('TRoot', Model.CheckedTargets[0]);
-  Model.Option := False;
-  Request := Model.RequestJson;
+  mModel.SetTargetChecked(1, True);
+  Assert.AreEqual(1, Integer(Length(mModel.CheckedTargets)));
+  Assert.AreEqual('TRoot', mModel.CheckedTargets[0]);
+  mModel.Option := False;
+  mRequest := mModel.RequestJson;
   try
-    Assert.AreEqual('{"members":[0,2],"targets":["TRoot"],"option":false}', Request.ToJSON);
+    Assert.AreEqual('{"members":[0,2],"targets":["TRoot"],"option":false}', mRequest.ToJSON);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
 procedure TClassExtractionModelTests.MoveDownTakesSeveralTargets;
 var
-  Model: TAtlasClassExtractionModel;
-  Request: TJSONObject;
+  mModel: TAtlasClassExtractionModel;
+  mRequest: TJSONObject;
 begin
-  Model := Prepared(MoveDown);
-  Assert.IsTrue(Model.Source.MultiTarget);
-  Assert.IsFalse(Model.Source.NeedsRequired);
+  mModel := Prepared(cMoveDown);
+  Assert.IsTrue(mModel.Source.MultiTarget);
+  Assert.IsFalse(mModel.Source.NeedsRequired);
   // Show benutzt FData, das oben bleiben darf.
-  Assert.AreEqual(Ord(TAtlasExtractionProblem.None), Ord(Model.Validate));
-  Model.SetTargetChecked(1, False);
-  Assert.AreEqual(1, Integer(Length(Model.CheckedTargets)));
-  Model.SetTargetChecked(0, False);
-  Assert.AreEqual(Ord(TAtlasExtractionProblem.NoTarget), Ord(Model.Validate));
-  Model.SetTargetChecked(1, True);
-  Model.Option := True;
-  Request := Model.RequestJson;
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.None), Ord(mModel.Validate));
+  mModel.SetTargetChecked(1, False);
+  Assert.AreEqual(1, Integer(Length(mModel.CheckedTargets)));
+  mModel.SetTargetChecked(0, False);
+  Assert.AreEqual(Ord(TAtlasExtractionProblem.NoTarget), Ord(mModel.Validate));
+  mModel.SetTargetChecked(1, True);
+  mModel.Option := True;
+  mRequest := mModel.RequestJson;
   try
-    Assert.AreEqual('{"members":[1],"targets":["TOther"],"option":true}', Request.ToJSON);
+    Assert.AreEqual('{"members":[1],"targets":["TOther"],"option":true}', mRequest.ToJSON);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 

@@ -65,23 +65,23 @@ uses
 /// <summary>Text aus Zeilen, getrennt mit CR LF wie im Editor.</summary>
 function Source(const ALines: array of string): string;
 var
-  Line: string;
+  mLine: string;
 begin
   Result := '';
-  for Line in ALines do
+  for mLine in ALines do
   begin
-    Result := Result + Line + #13#10;
+    Result := Result + mLine + #13#10;
   end;
 end;
 
 /// <summary>Ziel als "Zeile:Zeichen" (0-basiert) oder "-" ohne Gegenstück.</summary>
 function Jump(const AText: string; ALine, ACharacter: Integer): string; overload;
 var
-  Target: TAtlasMethodPlace;
+  mTarget: TAtlasMethodPlace;
 begin
-  if TAtlasMethodToggle.Counterpart(AText, ALine, ACharacter, Target) then
+  if TAtlasMethodToggle.Counterpart(AText, ALine, ACharacter, mTarget) then
   begin
-    Result := IntToStr(Target.Line) + ':' + IntToStr(Target.Character);
+    Result := IntToStr(mTarget.Line) + ':' + IntToStr(mTarget.Character);
   end
   else
   begin
@@ -131,33 +131,33 @@ end;
 
 procedure TAtlasMethodToggleTests.DeclarationJumpsToImplementationAndBack;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := SimpleUnit;
+  mText := SimpleUnit;
   // Ziel ist der Methodenname, nicht der Typname davor.
-  Assert.AreEqual('15:15', Jump(Text, 9, 6));
-  Assert.AreEqual('9:14', Jump(Text, 15, 0));
-  Assert.AreEqual('23:14', Jump(Text, 10, 30));
-  Assert.AreEqual('10:13', Jump(Text, 23, 3));
+  Assert.AreEqual('15:15', Jump(mText, 9, 6));
+  Assert.AreEqual('9:14', Jump(mText, 15, 0));
+  Assert.AreEqual('23:14', Jump(mText, 10, 30));
+  Assert.AreEqual('10:13', Jump(mText, 23, 3));
 end;
 
 procedure TAtlasMethodToggleTests.CaretAnywhereInBodyJumpsToDeclaration;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := SimpleUnit;
-  Assert.AreEqual('9:14', Jump(Text, 19, 6));
-  Assert.AreEqual('9:14', Jump(Text, 21, 0));
-  Assert.AreEqual('10:13', Jump(Text, 25, 2));
+  mText := SimpleUnit;
+  Assert.AreEqual('9:14', Jump(mText, 19, 6));
+  Assert.AreEqual('9:14', Jump(mText, 21, 0));
+  Assert.AreEqual('10:13', Jump(mText, 25, 2));
   // Leerzeile zwischen den Methoden gehört zu keiner.
-  Assert.AreEqual('-', Jump(Text, 22));
+  Assert.AreEqual('-', Jump(mText, 22));
 end;
 
 procedure TAtlasMethodToggleTests.MultiLineHeadingCountsAsDeclaration;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source([
+  mText := Source([
     'unit Demo;',
     'interface',
     'type',
@@ -172,16 +172,16 @@ begin
     'begin',
     'end;',
     'end.']);
-  Assert.AreEqual('9:15', Jump(Text, 5, 2));
-  Assert.AreEqual('9:15', Jump(Text, 6, 6));
-  Assert.AreEqual('4:14', Jump(Text, 10, 2));
+  Assert.AreEqual('9:15', Jump(mText, 5, 2));
+  Assert.AreEqual('9:15', Jump(mText, 6, 6));
+  Assert.AreEqual('4:14', Jump(mText, 10, 2));
 end;
 
 procedure TAtlasMethodToggleTests.OverloadsMatchByParameterTypes;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source([
+  mText := Source([
     'unit Demo;',                                              // 0
     'interface',                                               // 1
     'type',                                                    // 2
@@ -201,14 +201,14 @@ begin
     'begin',                                                   // 16
     'end;',                                                    // 17
     'end.']);
-  Assert.AreEqual('15:15', Jump(Text, 4, 4));
-  Assert.AreEqual('12:15', Jump(Text, 5, 4));
-  Assert.AreEqual('9:15', Jump(Text, 6, 4));
-  Assert.AreEqual('6:14', Jump(Text, 10));
-  Assert.AreEqual('5:14', Jump(Text, 13));
-  Assert.AreEqual('4:14', Jump(Text, 16));
+  Assert.AreEqual('15:15', Jump(mText, 4, 4));
+  Assert.AreEqual('12:15', Jump(mText, 5, 4));
+  Assert.AreEqual('9:15', Jump(mText, 6, 4));
+  Assert.AreEqual('6:14', Jump(mText, 10));
+  Assert.AreEqual('5:14', Jump(mText, 13));
+  Assert.AreEqual('4:14', Jump(mText, 16));
   // Überladung ohne Parameter neben einer mit Parametern.
-  Text := Source([
+  mText := Source([
     'unit Demo;',                                   // 0
     'interface',                                    // 1
     'type',                                         // 2
@@ -224,18 +224,18 @@ begin
     'begin',                                        // 12
     'end;',                                         // 13
     'end.']);
-  Assert.AreEqual('11:15', Jump(Text, 5));
-  Assert.AreEqual('8:15', Jump(Text, 4));
-  Assert.AreEqual('5:14', Jump(Text, 12));
-  Assert.AreEqual('4:14', Jump(Text, 9));
+  Assert.AreEqual('11:15', Jump(mText, 5));
+  Assert.AreEqual('8:15', Jump(mText, 4));
+  Assert.AreEqual('5:14', Jump(mText, 12));
+  Assert.AreEqual('4:14', Jump(mText, 9));
 end;
 
 procedure TAtlasMethodToggleTests.OverloadsWithDifferentCountMatchByCount;
 var
-  Text: string;
+  mText: string;
 begin
   // Typ im Kopf anders geschrieben (Unit-Präfix): dann zählt die Anzahl der Parameter.
-  Text := Source([
+  mText := Source([
     'unit Demo;',
     'interface',
     'procedure Log(const AText: string); overload;',
@@ -248,17 +248,17 @@ begin
     'begin',
     'end;',
     'end.']);
-  Assert.AreEqual('8:10', Jump(Text, 2));
-  Assert.AreEqual('5:10', Jump(Text, 3));
-  Assert.AreEqual('3:10', Jump(Text, 6));
-  Assert.AreEqual('2:10', Jump(Text, 9));
+  Assert.AreEqual('8:10', Jump(mText, 2));
+  Assert.AreEqual('5:10', Jump(mText, 3));
+  Assert.AreEqual('3:10', Jump(mText, 6));
+  Assert.AreEqual('2:10', Jump(mText, 9));
 end;
 
 procedure TAtlasMethodToggleTests.NestedAndGenericTypes;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source([
+  mText := Source([
     'unit Demo;',                                        // 0
     'interface',                                         // 1
     'type',                                              // 2
@@ -285,19 +285,19 @@ begin
     '  Result := T.Create;',                             // 23
     'end;',                                              // 24
     'end.']);
-  Assert.AreEqual('15:24', Jump(Text, 6, 8));
-  Assert.AreEqual('18:17', Jump(Text, 9, 8));
-  Assert.AreEqual('6:16', Jump(Text, 16));
-  Assert.AreEqual('9:14', Jump(Text, 19));
-  Assert.AreEqual('21:17', Jump(Text, 12, 6));
-  Assert.AreEqual('12:13', Jump(Text, 23));
+  Assert.AreEqual('15:24', Jump(mText, 6, 8));
+  Assert.AreEqual('18:17', Jump(mText, 9, 8));
+  Assert.AreEqual('6:16', Jump(mText, 16));
+  Assert.AreEqual('9:14', Jump(mText, 19));
+  Assert.AreEqual('21:17', Jump(mText, 12, 6));
+  Assert.AreEqual('12:13', Jump(mText, 23));
 end;
 
 procedure TAtlasMethodToggleTests.ClassMethodsConstructorsAndOperators;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source([
+  mText := Source([
     'unit Demo;',                                                      // 0
     'interface',                                                       // 1
     'type',                                                            // 2
@@ -325,19 +325,19 @@ begin
     '  inherited;',                                                    // 24
     'end;',                                                            // 25
     'end.']);
-  Assert.AreEqual('13:23', Jump(Text, 5));
-  Assert.AreEqual('16:23', Jump(Text, 6, 4));
-  Assert.AreEqual('19:17', Jump(Text, 9));
-  Assert.AreEqual('22:16', Jump(Text, 10));
-  Assert.AreEqual('5:19', Jump(Text, 14));
-  Assert.AreEqual('10:15', Jump(Text, 24));
+  Assert.AreEqual('13:23', Jump(mText, 5));
+  Assert.AreEqual('16:23', Jump(mText, 6, 4));
+  Assert.AreEqual('19:17', Jump(mText, 9));
+  Assert.AreEqual('22:16', Jump(mText, 10));
+  Assert.AreEqual('5:19', Jump(mText, 14));
+  Assert.AreEqual('10:15', Jump(mText, 24));
 end;
 
 procedure TAtlasMethodToggleTests.StandaloneRoutinesInInterfaceAndForward;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source([
+  mText := Source([
     'unit Demo;',                              // 0
     'interface',                               // 1
     'function Twice(A: Integer): Integer;',    // 2
@@ -352,17 +352,17 @@ begin
     'begin',                                   // 11
     'end;',                                    // 12
     'end.']);
-  Assert.AreEqual('5:9', Jump(Text, 2));
-  Assert.AreEqual('2:9', Jump(Text, 8));
-  Assert.AreEqual('10:10', Jump(Text, 4));
-  Assert.AreEqual('4:10', Jump(Text, 11));
+  Assert.AreEqual('5:9', Jump(mText, 2));
+  Assert.AreEqual('2:9', Jump(mText, 8));
+  Assert.AreEqual('10:10', Jump(mText, 4));
+  Assert.AreEqual('4:10', Jump(mText, 11));
 end;
 
 procedure TAtlasMethodToggleTests.LocalRoutinesBelongToOuterMethod;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source([
+  mText := Source([
     'unit Demo;',                          // 0
     'interface',                           // 1
     'type',                                // 2
@@ -392,19 +392,19 @@ begin
     'begin',                               // 26
     'end;',                                // 27
     'end.']);
-  Assert.AreEqual('4:14', Jump(Text, 16));
-  Assert.AreEqual('4:14', Jump(Text, 13));
-  Assert.AreEqual('4:14', Jump(Text, 22));
-  Assert.AreEqual('5:14', Jump(Text, 26));
-  Assert.AreEqual('25:15', Jump(Text, 5));
+  Assert.AreEqual('4:14', Jump(mText, 16));
+  Assert.AreEqual('4:14', Jump(mText, 13));
+  Assert.AreEqual('4:14', Jump(mText, 22));
+  Assert.AreEqual('5:14', Jump(mText, 26));
+  Assert.AreEqual('25:15', Jump(mText, 5));
 end;
 
 procedure TAtlasMethodToggleTests.ImplementationWithoutParameterList;
 var
-  Text: string;
+  mText: string;
 begin
   // Delphi erlaubt im Implementierungskopf die Parameterliste wegzulassen.
-  Text := Source([
+  mText := Source([
     'unit Demo;',
     'interface',
     'type',
@@ -417,15 +417,15 @@ begin
     '  Result := A + B;',
     'end;',
     'end.']);
-  Assert.AreEqual('7:14', Jump(Text, 4));
-  Assert.AreEqual('4:13', Jump(Text, 9));
+  Assert.AreEqual('7:14', Jump(mText, 4));
+  Assert.AreEqual('4:13', Jump(mText, 9));
 end;
 
 procedure TAtlasMethodToggleTests.CommentsStringsAndDirectivesAreIgnored;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source([
+  mText := Source([
     'unit Demo;',                                          // 0
     'interface',                                           // 1
     'type',                                                // 2
@@ -444,18 +444,18 @@ begin
     '    '''''');',                                        // 15
     'end;',                                                // 16
     'end.']);
-  Assert.AreEqual('10:15', Jump(Text, 6));
-  Assert.AreEqual('6:14', Jump(Text, 14));
-  Assert.AreEqual('6:14', Jump(Text, 16));
-  Assert.AreEqual('-', Jump(Text, 4));
-  Assert.AreEqual('-', Jump(Text, 9));
+  Assert.AreEqual('10:15', Jump(mText, 6));
+  Assert.AreEqual('6:14', Jump(mText, 14));
+  Assert.AreEqual('6:14', Jump(mText, 16));
+  Assert.AreEqual('-', Jump(mText, 4));
+  Assert.AreEqual('-', Jump(mText, 9));
 end;
 
 procedure TAtlasMethodToggleTests.RecordsInterfacesAndPropertiesDoNotConfuse;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source([
+  mText := Source([
     'unit Demo;',                                                       // 0
     'interface',                                                        // 1
     'type',                                                             // 2
@@ -487,21 +487,21 @@ begin
     'begin',                                                            // 28
     'end;',                                                             // 29
     'end.']);
-  Assert.AreEqual('24:14', Jump(Text, 16));
-  Assert.AreEqual('27:15', Jump(Text, 20));
-  Assert.AreEqual('20:14', Jump(Text, 28));
-  Assert.AreEqual('16:13', Jump(Text, 25));
+  Assert.AreEqual('24:14', Jump(mText, 16));
+  Assert.AreEqual('27:15', Jump(mText, 20));
+  Assert.AreEqual('20:14', Jump(mText, 28));
+  Assert.AreEqual('16:13', Jump(mText, 25));
   // Interface-Methoden haben keine Implementierung unter ihrem Namen.
-  Assert.AreEqual('-', Jump(Text, 5));
-  Assert.AreEqual('-', Jump(Text, 21));
-  Assert.AreEqual('-', Jump(Text, 19));
+  Assert.AreEqual('-', Jump(mText, 5));
+  Assert.AreEqual('-', Jump(mText, 21));
+  Assert.AreEqual('-', Jump(mText, 19));
 end;
 
 procedure TAtlasMethodToggleTests.NoCounterpartOutsideOrForAbstract;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source([
+  mText := Source([
     'unit Demo;',
     'interface',
     'type',
@@ -514,18 +514,18 @@ begin
     'begin',
     'end;',
     'end.']);
-  Assert.AreEqual('-', Jump(Text, 4));
-  Assert.AreEqual('-', Jump(Text, 6));
-  Assert.AreEqual('-', Jump(Text, 9));
-  Assert.AreEqual('-', Jump(Text, 0));
+  Assert.AreEqual('-', Jump(mText, 4));
+  Assert.AreEqual('-', Jump(mText, 6));
+  Assert.AreEqual('-', Jump(mText, 9));
+  Assert.AreEqual('-', Jump(mText, 0));
   Assert.AreEqual('-', Jump('', 0));
 end;
 
 procedure TAtlasMethodToggleTests.ProgramWithoutInterfaceSection;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source([
+  mText := Source([
     'program Demo;',                // 0
     'type',                         // 1
     '  TApp = class',               // 2
@@ -537,16 +537,16 @@ begin
     'begin',                        // 8
     '  TApp.Create.Run;',           // 9
     'end.']);
-  Assert.AreEqual('5:15', Jump(Text, 3));
-  Assert.AreEqual('3:14', Jump(Text, 6));
-  Assert.AreEqual('-', Jump(Text, 9));
+  Assert.AreEqual('5:15', Jump(mText, 3));
+  Assert.AreEqual('3:14', Jump(mText, 6));
+  Assert.AreEqual('-', Jump(mText, 9));
 end;
 
 procedure TAtlasMethodToggleTests.AsmLabelEndDoesNotCloseBody;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Source([
+  mText := Source([
     'unit Demo;',                       // 0
     'interface',                        // 1
     'type',                             // 2
@@ -566,32 +566,32 @@ begin
     '  Result := 0;',                   // 16
     'end;',                             // 17
     'end.']);
-  Assert.AreEqual('4:13', Jump(Text, 11, 2));
-  Assert.AreEqual('4:13', Jump(Text, 13));
-  Assert.AreEqual('5:13', Jump(Text, 16, 2));
+  Assert.AreEqual('4:13', Jump(mText, 11, 2));
+  Assert.AreEqual('4:13', Jump(mText, 13));
+  Assert.AreEqual('5:13', Jump(mText, 16, 2));
 end;
 
 
 procedure TAtlasMethodToggleTests.IfdefAlternativeBodies;
 var
-  Text: string;
+  mText: string;
 
   function ClockEnd(const APlaces: TArray<TAtlasMethodPlace>): Integer;
   var
-    Place: TAtlasMethodPlace;
+    mPlace: TAtlasMethodPlace;
   begin
     Result := -1;
-    for Place in APlaces do
+    for mPlace in APlaces do
     begin
-      if Place.IsBody and (Place.Name = 'Clock') then
+      if mPlace.IsBody and (mPlace.Name = 'Clock') then
       begin
-        Result := Place.LastLine;
+        Result := mPlace.LastLine;
       end;
     end;
   end;
 
 begin
-  Text := Source([
+  mText := Source([
     'unit Demo;',                       // 0
     'interface',                        // 1
     'type',                             // 2
@@ -623,12 +623,12 @@ begin
     'end;',                             // 28
     'end.']);
   // Ohne Symbole wie Delphi für Win32: der MSWINDOWS-Zweig.
-  Assert.AreEqual('26:15', Jump(Text, 4, 15), 'Run nach den Zweigen');
-  Assert.AreEqual('4:14', Jump(Text, 27));
-  Assert.AreEqual('8:9', Jump(Text, 6, 10));
+  Assert.AreEqual('26:15', Jump(mText, 4, 15), 'Run nach den Zweigen');
+  Assert.AreEqual('4:14', Jump(mText, 27));
+  Assert.AreEqual('8:9', Jump(mText, 6, 10));
   // Rumpf von Clock: ohne Symbole der erste Zweig, mit FPC (Free Pascal unter Linux) der mittlere.
-  Assert.AreEqual(12, ClockEnd(TAtlasMethodToggle.Places(Text)));
-  Assert.AreEqual(19, ClockEnd(TAtlasMethodToggle.Places(Text, ['FPC', 'UNIX'])));
+  Assert.AreEqual(12, ClockEnd(TAtlasMethodToggle.Places(mText)));
+  Assert.AreEqual(19, ClockEnd(TAtlasMethodToggle.Places(mText, ['FPC', 'UNIX'])));
 end;
 
 procedure TAtlasMethodToggleTests.BodyAtFindsImplementationAroundLine;

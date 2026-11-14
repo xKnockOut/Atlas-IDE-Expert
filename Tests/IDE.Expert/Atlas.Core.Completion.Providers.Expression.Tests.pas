@@ -26,13 +26,13 @@ uses
 
 procedure TAtlasExpressionProviderTests.HistoryItemsReplaceField;
 var
-  Items: TAtlasCompletionItems;
+  mItems: TAtlasCompletionItems;
 begin
-  Items := TAtlasExpressionCompletionProvider.HistoryItems(TArray<string>.Create('Kunde.Name', 'Summe'), 'Verlauf');
-  Assert.AreEqual(2, Integer(Length(Items)));
-  Assert.AreEqual('Kunde.Name', Items[0].Name);
-  Assert.AreEqual('Verlauf', Items[1].Signature);
-  Assert.AreEqual(1, Items[1].Rank, 'neuester zuerst');
+  mItems := TAtlasExpressionCompletionProvider.HistoryItems(TArray<string>.Create('Kunde.Name', 'Summe'), 'Verlauf');
+  Assert.AreEqual(2, Integer(Length(mItems)));
+  Assert.AreEqual('Kunde.Name', mItems[0].Name);
+  Assert.AreEqual('Verlauf', mItems[1].Signature);
+  Assert.AreEqual(1, mItems[1].Rank, 'neuester zuerst');
   Assert.AreEqual(0, Integer(Length(TAtlasExpressionCompletionProvider.HistoryItems(nil, 'Verlauf'))));
 end;
 

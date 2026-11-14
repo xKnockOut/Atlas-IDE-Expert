@@ -90,7 +90,7 @@ uses
   Atlas.Common.Rules.Builtin.Unresolved;
 
 const
-  UnitSystem =
+  cUnitSystem =
     'unit System;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -101,7 +101,7 @@ const
     '  end;'#10 +
     'implementation'#10 +
     'end.';
-  UnitBasis =
+  cUnitBasis =
     'unit Basis;'#10 +
     'interface'#10 +
     'procedure Melde(A: Integer);'#10 +
@@ -114,8 +114,8 @@ const
 procedure TUnresolvedNamesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitSystem, 'C:\Lib\System.pas', nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, 'C:\P\Basis.pas', nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitSystem, 'C:\Lib\System.pas', nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, 'C:\P\Basis.pas', nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -127,18 +127,18 @@ end;
 
 function TUnresolvedNamesTests.Names(const AText: string): string;
 var
-  Tree: TSyntaxTree;
-  Name: TUnresolvedName;
+  mTree: TSyntaxTree;
+  mName: TUnresolvedName;
 begin
   Result := '';
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    for Name in TUnresolvedNames.Find(FResolver, Tree, 'C:\P\Haupt.pas') do
+    for mName in TUnresolvedNames.Find(FResolver, mTree, 'C:\P\Haupt.pas') do
     begin
-      Result := Result + Name.Name + Format('@%d:%d;', [Name.Range.StartPos.Line, Name.Range.StartPos.Character]);
+      Result := Result + mName.Name + Format('@%d:%d;', [mName.Range.StartPos.Line, mName.Range.StartPos.Character]);
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -296,7 +296,7 @@ end;
 
 procedure TUnresolvedNamesTests.RuleReportsInEditorOnlyWithIndex;
 const
-  Text =
+  cText =
     'unit Haupt;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -306,31 +306,31 @@ const
     'end;'#10 +
     'end.';
 var
-  Registry: TRuleRegistry;
-  Context: TRuleContext;
-  Tree: TSyntaxTree;
-  Findings: TArray<TRuleFinding>;
+  mRegistry: TRuleRegistry;
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
+  mFindings: TArray<TRuleFinding>;
 begin
-  Registry := TRuleRegistry.Create;
-  Tree := TPascalParser.Parse(Text);
+  mRegistry := TRuleRegistry.Create;
+  mTree := TPascalParser.Parse(cText);
   try
-    RegisterUnresolvedRules(Registry);
-    Context := Default(TRuleContext);
-    Context.RelativePath := 'Haupt.pas';
-    Context.Text := Text;
-    Context.Tree := Tree;
+    RegisterUnresolvedRules(mRegistry);
+    mContext := Default(TRuleContext);
+    mContext.RelativePath := 'Haupt.pas';
+    mContext.Text := cText;
+    mContext.Tree := mTree;
     // Ohne Index (Linter): keine Aussage.
-    Findings := TRuleEngine.Run(Registry.Rules, TServerSettings.Default, Context);
-    Assert.AreEqual(0, Integer(Length(Findings)));
-    Context.Index := FIndex;
-    Findings := TRuleEngine.Run(Registry.Rules, TServerSettings.Default, Context);
-    Assert.AreEqual(1, Integer(Length(Findings)));
-    Assert.AreEqual('unresolved-identifier', Findings[0].RuleId);
-    Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
-    Assert.Contains(Findings[0].Message, 'fdsfds');
+    mFindings := TRuleEngine.Run(mRegistry.Rules, TServerSettings.Default, mContext);
+    Assert.AreEqual(0, Integer(Length(mFindings)));
+    mContext.Index := FIndex;
+    mFindings := TRuleEngine.Run(mRegistry.Rules, TServerSettings.Default, mContext);
+    Assert.AreEqual(1, Integer(Length(mFindings)));
+    Assert.AreEqual('unresolved-identifier', mFindings[0].RuleId);
+    Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
+    Assert.Contains(mFindings[0].Message, 'fdsfds');
   finally
-    Tree.Free;
-    Registry.Free;
+    mTree.Free;
+    mRegistry.Free;
   end;
 end;
 
@@ -586,7 +586,7 @@ end;
 
 procedure TUnresolvedNamesTests.SkipsNamesWithUnknownAncestor;
 const
-  Text =
+  cText =
     'unit Haupt;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -609,16 +609,16 @@ const
     'end.';
 begin
   // TFremd steht nicht im Index: ClientWidth kann geerbt sein (#647). In TEigen ist es sicher unbekannt.
-  Assert.AreEqual('ClientWidth@17:8;', Names(Text));
+  Assert.AreEqual('ClientWidth@17:8;', Names(cText));
 end;
 
 procedure TUnresolvedNamesTests.NeedsSystemUnit;
 var
-  Empty: ISymbolIndex;
+  mEmpty: ISymbolIndex;
 begin
   Assert.IsTrue(TUnresolvedNames.Available(FIndex));
-  Empty := TSymbolIndex.Create;
-  Assert.IsFalse(TUnresolvedNames.Available(Empty));
+  mEmpty := TSymbolIndex.Create;
+  Assert.IsFalse(TUnresolvedNames.Available(mEmpty));
   Assert.IsTrue(TUnresolvedNames.IsIntrinsic('writeln'));
   // Aus TSystemIntrinsics (#880), früher als „nicht deklariert“ gemeldet.
   Assert.IsTrue(TUnresolvedNames.IsIntrinsic('Sqr'));
@@ -628,7 +628,7 @@ end;
 
 procedure TUnresolvedNamesTests.UsesKnownNeedsEveryUnit;
 var
-  Asked: string;
+  mAsked: string;
 begin
   // Für unresolved-attribute und xmldoc-mismatch (#979): auch über Namespaces und nachgeladene Units.
   Assert.IsTrue(TUnresolvedNames.UsesKnown(FIndex, ['System', 'Basis'], nil, nil));
@@ -636,12 +636,12 @@ begin
   Assert.IsTrue(TUnresolvedNames.UsesKnown(FIndex, ['Fremd'], nil,
     function(const AUnitName: string): Boolean
     begin
-      Asked := AUnitName;
+      mAsked := AUnitName;
       Result := True;
     end));
-  Assert.AreEqual('Fremd', Asked);
+  Assert.AreEqual('Fremd', mAsked);
   Assert.IsFalse(TUnresolvedNames.UsesKnown(FIndex, ['Lib'], ['Fremd'], nil));
-  Asked := '';
+  mAsked := '';
 end;
 
 initialization

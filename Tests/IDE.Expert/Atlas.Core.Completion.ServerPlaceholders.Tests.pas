@@ -31,7 +31,7 @@ uses
   Atlas.Core.Completion.ServerPlaceholders;
 
 const
-  Document =
+  cDocument =
     'procedure A(X: Integer); overload;'#13#10 +
     'procedure A(Y: Integer); overload;'#13#10 +
     'begin'#13#10 +
@@ -39,7 +39,7 @@ const
     'end;';
 
   // Absichtlich nicht in Textreihenfolge.
-  Json =
+  cJson =
     '[{"number":2,"range":{"start":{"line":3,"character":2},"end":{"line":3,"character":5}}},' +
     '{"number":1,"range":{"start":{"line":0,"character":12},"end":{"line":0,"character":22}}},' +
     '{"number":1,"range":{"start":{"line":1,"character":12},"end":{"line":1,"character":22}}},' +
@@ -47,63 +47,63 @@ const
 
 function Expand(const AJson: string): TAtlasSnippetExpansion;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    Result := TAtlasServerPlaceholders.Expansion(Value, Document);
+    Result := TAtlasServerPlaceholders.Expansion(mValue, cDocument);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 procedure TAtlasServerPlaceholdersTests.OffsetsInOrder;
 var
-  Expansion: TAtlasSnippetExpansion;
+  mExpansion: TAtlasSnippetExpansion;
 begin
-  Expansion := Expand(Json);
-  Assert.AreEqual('', Expansion.Text);
-  Assert.AreEqual(4, Integer(Length(Expansion.Stops)));
-  Assert.AreEqual(1, Expansion.Stops[0].Number);
-  Assert.AreEqual(12, Expansion.Stops[0].Start);
-  Assert.AreEqual(10, Expansion.Stops[0].Length);
-  Assert.AreEqual(1, Expansion.Stops[1].Number);
-  Assert.AreEqual(Pos('Y: Integer', Document) - 1, Expansion.Stops[1].Start);
-  Assert.AreEqual(2, Expansion.Stops[2].Number);
-  Assert.AreEqual('Go;', Copy(Document, Expansion.Stops[2].Start + 1, Expansion.Stops[2].Length));
-  Assert.AreEqual(0, Expansion.Stops[3].Number);
-  Assert.AreEqual(Length(Document), Expansion.Stops[3].Start);
-  Assert.IsTrue(Expansion.HasPlaceholders);
+  mExpansion := Expand(cJson);
+  Assert.AreEqual('', mExpansion.Text);
+  Assert.AreEqual(4, Integer(Length(mExpansion.Stops)));
+  Assert.AreEqual(1, mExpansion.Stops[0].Number);
+  Assert.AreEqual(12, mExpansion.Stops[0].Start);
+  Assert.AreEqual(10, mExpansion.Stops[0].Length);
+  Assert.AreEqual(1, mExpansion.Stops[1].Number);
+  Assert.AreEqual(Pos('Y: Integer', cDocument) - 1, mExpansion.Stops[1].Start);
+  Assert.AreEqual(2, mExpansion.Stops[2].Number);
+  Assert.AreEqual('Go;', Copy(cDocument, mExpansion.Stops[2].Start + 1, mExpansion.Stops[2].Length));
+  Assert.AreEqual(0, mExpansion.Stops[3].Number);
+  Assert.AreEqual(Length(cDocument), mExpansion.Stops[3].Start);
+  Assert.IsTrue(mExpansion.HasPlaceholders);
 end;
 
 procedure TAtlasServerPlaceholdersTests.SkipsBrokenEntries;
 var
-  Expansion: TAtlasSnippetExpansion;
+  mExpansion: TAtlasSnippetExpansion;
 begin
-  Expansion := Expand('[{"number":1},{"range":{}},5,' +
+  mExpansion := Expand('[{"number":1},{"range":{}},5,' +
     '{"number":-1,"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":1}}},' +
     '{"number":1,"range":{"start":{"line":0,"character":5},"end":{"line":0,"character":2}}}]');
-  Assert.AreEqual(0, Integer(Length(Expansion.Stops)));
-  Assert.IsFalse(Expansion.HasPlaceholders);
-  Expansion := Expand('{"number":1}');
-  Assert.AreEqual(0, Integer(Length(Expansion.Stops)));
+  Assert.AreEqual(0, Integer(Length(mExpansion.Stops)));
+  Assert.IsFalse(mExpansion.HasPlaceholders);
+  mExpansion := Expand('{"number":1}');
+  Assert.AreEqual(0, Integer(Length(mExpansion.Stops)));
 end;
 
 procedure TAtlasServerPlaceholdersTests.DrivesPlaceholderSession;
 var
-  Session: TAtlasPlaceholderSession;
+  mSession: TAtlasPlaceholderSession;
 begin
-  Session := TAtlasPlaceholderSession.Create(Document, 0, Expand(Json));
+  mSession := TAtlasPlaceholderSession.Create(cDocument, 0, Expand(cJson));
   try
-    Assert.AreEqual(1, Session.CurrentNumber);
-    Assert.AreEqual(12, Session.Current.Start);
-    Assert.AreEqual(2, Session.Count);
-    Assert.IsTrue(Session.Next);
-    Assert.AreEqual(2, Session.CurrentNumber);
-    Assert.IsFalse(Session.Next);
-    Assert.AreEqual(Length(Document), Session.FinalOffset);
+    Assert.AreEqual(1, mSession.CurrentNumber);
+    Assert.AreEqual(12, mSession.Current.Start);
+    Assert.AreEqual(2, mSession.Count);
+    Assert.IsTrue(mSession.Next);
+    Assert.AreEqual(2, mSession.CurrentNumber);
+    Assert.IsFalse(mSession.Next);
+    Assert.AreEqual(Length(cDocument), mSession.FinalOffset);
   finally
-    Session.Free;
+    mSession.Free;
   end;
 end;
 

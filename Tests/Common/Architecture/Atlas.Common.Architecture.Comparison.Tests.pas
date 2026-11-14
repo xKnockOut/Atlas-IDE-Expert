@@ -66,39 +66,39 @@ end;
 /// <summary>Units der Beispielgruppe mit ausgetauschter Unit AName.</summary>
 function Replaced(const AName: string; const AInterface, AImplementation: TArray<string>): TArray<TUnitIndex>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := ArchitectureSampleUnits;
-  for Index := 0 to High(Result) do
+  for mIndex := 0 to High(Result) do
   begin
-    if Result[Index].UnitName = AName then
+    if Result[mIndex].UnitName = AName then
     begin
-      Result[Index] := UsesUnit(AName, AInterface, AImplementation);
+      Result[mIndex] := UsesUnit(AName, AInterface, AImplementation);
     end;
   end;
 end;
 
 procedure AddUnit(var ASnapshot: TArchitectureSnapshot; const AName, ASubsystem: string; ATotal: Integer);
 var
-  Item: TSnapshotUnit;
-  Index: Integer;
-  Found: Boolean;
+  mItem: TSnapshotUnit;
+  mIndex: Integer;
+  mFound: Boolean;
 begin
-  Item := Default(TSnapshotUnit);
-  Item.Name := AName;
-  Item.Subsystem := ASubsystem;
-  Item.Total := ATotal;
-  ASnapshot.Units := ASnapshot.Units + [Item];
-  Found := False;
-  for Index := 0 to High(ASnapshot.Subsystems) do
+  mItem := Default(TSnapshotUnit);
+  mItem.Name := AName;
+  mItem.Subsystem := ASubsystem;
+  mItem.Total := ATotal;
+  ASnapshot.Units := ASnapshot.Units + [mItem];
+  mFound := False;
+  for mIndex := 0 to High(ASnapshot.Subsystems) do
   begin
-    if ASnapshot.Subsystems[Index].Name = ASubsystem then
+    if ASnapshot.Subsystems[mIndex].Name = ASubsystem then
     begin
-      ASnapshot.Subsystems[Index].Units := ASnapshot.Subsystems[Index].Units + [AName];
-      Found := True;
+      ASnapshot.Subsystems[mIndex].Units := ASnapshot.Subsystems[mIndex].Units + [AName];
+      mFound := True;
     end;
   end;
-  if not Found then
+  if not mFound then
   begin
     SetLength(ASnapshot.Subsystems, Length(ASnapshot.Subsystems) + 1);
     ASnapshot.Subsystems[High(ASnapshot.Subsystems)].Name := ASubsystem;
@@ -108,25 +108,25 @@ end;
 
 procedure AddEdge(var ASnapshot: TArchitectureSnapshot; const ASource, ATarget: string);
 var
-  Edge: TSnapshotEdge;
+  mEdge: TSnapshotEdge;
 begin
-  Edge.Source := ASource;
-  Edge.Target := ATarget;
-  Edge.Interface_ := True;
-  ASnapshot.Edges := ASnapshot.Edges + [Edge];
+  mEdge.Source := ASource;
+  mEdge.Target := ATarget;
+  mEdge.Interface_ := True;
+  ASnapshot.Edges := ASnapshot.Edges + [mEdge];
 end;
 
 procedure AddCrossLink(var ASnapshot: TArchitectureSnapshot; const ASource, ATarget, AFrom, ATo: string);
 var
-  Link: TSnapshotCrossLink;
+  mLink: TSnapshotCrossLink;
 begin
-  Link := Default(TSnapshotCrossLink);
-  Link.Edge.Source := ASource;
-  Link.Edge.Target := ATarget;
-  Link.FromSubsystem := AFrom;
-  Link.ToSubsystem := ATo;
-  Link.Reason := 'rare';
-  ASnapshot.CrossLinks := ASnapshot.CrossLinks + [Link];
+  mLink := Default(TSnapshotCrossLink);
+  mLink.Edge.Source := ASource;
+  mLink.Edge.Target := ATarget;
+  mLink.FromSubsystem := AFrom;
+  mLink.ToSubsystem := ATo;
+  mLink.Reason := 'rare';
+  ASnapshot.CrossLinks := ASnapshot.CrossLinks + [mLink];
 end;
 
 /// <summary>Zwei Teilsysteme: Kern (k1..k4) und Ui (u1..u3).</summary>
@@ -147,253 +147,254 @@ end;
 
 procedure TArchitectureComparisonTests.SameStateHasNoDifference;
 var
-  Comparison: TArchitectureComparison;
+  mComparison: TArchitectureComparison;
 begin
-  Comparison := TArchitectureComparer.Compare(SnapshotOf(ArchitectureSampleUnits), SnapshotOf(ArchitectureSampleUnits));
-  Assert.IsTrue(Comparison.IsEmpty);
-  Assert.AreEqual<TArchitectureFailKinds>([], Comparison.Kinds);
-  Assert.AreEqual(0, Integer(Length(Comparison.AddedEdges)));
-  Assert.AreEqual('Beispiel', Comparison.BaselineTitle);
-  Assert.AreEqual(12, Comparison.BaselineUnits);
+  mComparison := TArchitectureComparer.Compare(SnapshotOf(ArchitectureSampleUnits),
+    SnapshotOf(ArchitectureSampleUnits));
+  Assert.IsTrue(mComparison.IsEmpty);
+  Assert.AreEqual<TArchitectureFailKinds>([], mComparison.Kinds);
+  Assert.AreEqual(0, Integer(Length(mComparison.AddedEdges)));
+  Assert.AreEqual('Beispiel', mComparison.BaselineTitle);
+  Assert.AreEqual(12, mComparison.BaselineUnits);
 end;
 
 procedure TArchitectureComparisonTests.FindsNewAndRemovedCycle;
 var
-  Older, Newer: TArchitectureSnapshot;
-  Comparison: TArchitectureComparison;
+  mOlder, mNewer: TArchitectureSnapshot;
+  mComparison: TArchitectureComparison;
 begin
-  Older := SnapshotOf(ArchitectureSampleUnits);
+  mOlder := SnapshotOf(ArchitectureSampleUnits);
   // App.Core.Base braucht nun App.Core.Log: Zyklus Base → Log → Base.
-  Newer := SnapshotOf(Replaced('App.Core.Base', nil, ['App.Core.Log']));
-  Comparison := TArchitectureComparer.Compare(Older, Newer);
-  Assert.AreEqual(1, Integer(Length(Comparison.NewCycles)));
-  Assert.Contains(TArchitectureComparer.CyclePath(Comparison.NewCycles[0]), 'App.Core.Base');
-  Assert.Contains(TArchitectureComparer.CyclePath(Comparison.NewCycles[0]), 'App.Core.Log');
-  Assert.AreEqual(0, Integer(Length(Comparison.RemovedCycles)));
-  Assert.IsTrue(TArchitectureFailKind.NewCycle in Comparison.Kinds);
+  mNewer := SnapshotOf(Replaced('App.Core.Base', nil, ['App.Core.Log']));
+  mComparison := TArchitectureComparer.Compare(mOlder, mNewer);
+  Assert.AreEqual(1, Integer(Length(mComparison.NewCycles)));
+  Assert.Contains(TArchitectureComparer.CyclePath(mComparison.NewCycles[0]), 'App.Core.Base');
+  Assert.Contains(TArchitectureComparer.CyclePath(mComparison.NewCycles[0]), 'App.Core.Log');
+  Assert.AreEqual(0, Integer(Length(mComparison.RemovedCycles)));
+  Assert.IsTrue(TArchitectureFailKind.NewCycle in mComparison.Kinds);
   // Umgekehrt ist der Zyklus entfernt, und es gibt keinen neuen.
-  Comparison := TArchitectureComparer.Compare(Newer, Older);
-  Assert.AreEqual(0, Integer(Length(Comparison.NewCycles)));
-  Assert.AreEqual(1, Integer(Length(Comparison.RemovedCycles)));
-  Assert.IsFalse(TArchitectureFailKind.NewCycle in Comparison.Kinds);
+  mComparison := TArchitectureComparer.Compare(mNewer, mOlder);
+  Assert.AreEqual(0, Integer(Length(mComparison.NewCycles)));
+  Assert.AreEqual(1, Integer(Length(mComparison.RemovedCycles)));
+  Assert.IsFalse(TArchitectureFailKind.NewCycle in mComparison.Kinds);
 end;
 
 procedure TArchitectureComparisonTests.FindsNewAndRemovedCrossLinks;
 var
-  Older, Newer: TArchitectureSnapshot;
-  Comparison: TArchitectureComparison;
+  mOlder, mNewer: TArchitectureSnapshot;
+  mComparison: TArchitectureComparison;
 begin
-  Older := TwoGroups('Kern', 'Ui');
-  AddCrossLink(Older, 'u1', 'k1', 'Ui', 'Kern');
-  Newer := TwoGroups('Kern', 'Ui');
-  AddCrossLink(Newer, 'u2', 'k2', 'Ui', 'Kern');
+  mOlder := TwoGroups('Kern', 'Ui');
+  AddCrossLink(mOlder, 'u1', 'k1', 'Ui', 'Kern');
+  mNewer := TwoGroups('Kern', 'Ui');
+  AddCrossLink(mNewer, 'u2', 'k2', 'Ui', 'Kern');
   // Gleiche Kante, anderer Grund: bleibt dieselbe Querverbindung.
-  AddCrossLink(Older, 'k4', 'u3', 'Kern', 'Ui');
-  AddCrossLink(Newer, 'K4', 'U3', 'Kern', 'Ui');
-  Newer.CrossLinks[High(Newer.CrossLinks)].Reason := 'againstDirection';
-  Comparison := TArchitectureComparer.Compare(Older, Newer);
-  Assert.AreEqual(1, Integer(Length(Comparison.NewCrossLinks)));
-  Assert.AreEqual('u2', Comparison.NewCrossLinks[0].Source);
-  Assert.AreEqual('Ui', Comparison.NewCrossLinks[0].FromSubsystem);
-  Assert.AreEqual(1, Integer(Length(Comparison.RemovedCrossLinks)));
-  Assert.AreEqual('u1', Comparison.RemovedCrossLinks[0].Source);
-  Assert.AreEqual<TArchitectureFailKinds>([TArchitectureFailKind.NewCrossLink], Comparison.Kinds);
+  AddCrossLink(mOlder, 'k4', 'u3', 'Kern', 'Ui');
+  AddCrossLink(mNewer, 'K4', 'U3', 'Kern', 'Ui');
+  mNewer.CrossLinks[High(mNewer.CrossLinks)].Reason := 'againstDirection';
+  mComparison := TArchitectureComparer.Compare(mOlder, mNewer);
+  Assert.AreEqual(1, Integer(Length(mComparison.NewCrossLinks)));
+  Assert.AreEqual('u2', mComparison.NewCrossLinks[0].Source);
+  Assert.AreEqual('Ui', mComparison.NewCrossLinks[0].FromSubsystem);
+  Assert.AreEqual(1, Integer(Length(mComparison.RemovedCrossLinks)));
+  Assert.AreEqual('u1', mComparison.RemovedCrossLinks[0].Source);
+  Assert.AreEqual<TArchitectureFailKinds>([TArchitectureFailKind.NewCrossLink], mComparison.Kinds);
 end;
 
 procedure TArchitectureComparisonTests.FindsEdgesBetweenSubsystems;
 var
-  Older, Newer: TArchitectureSnapshot;
-  Comparison: TArchitectureComparison;
+  mOlder, mNewer: TArchitectureSnapshot;
+  mComparison: TArchitectureComparison;
 begin
-  Older := TwoGroups('Kern', 'Ui');
-  AddEdge(Older, 'u1', 'k1');
-  AddEdge(Older, 'k2', 'k1');
-  Newer := TwoGroups('Kern', 'Ui');
+  mOlder := TwoGroups('Kern', 'Ui');
+  AddEdge(mOlder, 'u1', 'k1');
+  AddEdge(mOlder, 'k2', 'k1');
+  mNewer := TwoGroups('Kern', 'Ui');
   // Neu: u2 → k3 über die Grenze, k3 → k1 innen; entfernt: u1 → k1 über die Grenze, k2 → k1 innen.
-  AddEdge(Newer, 'u2', 'k3');
-  AddEdge(Newer, 'k3', 'k1');
-  Comparison := TArchitectureComparer.Compare(Older, Newer);
-  Assert.AreEqual(1, Integer(Length(Comparison.NewEdges)));
-  Assert.AreEqual('u2', Comparison.NewEdges[0].Source);
-  Assert.AreEqual('Ui', Comparison.NewEdges[0].FromSubsystem);
-  Assert.AreEqual('Kern', Comparison.NewEdges[0].ToSubsystem);
-  Assert.AreEqual(1, Integer(Length(Comparison.RemovedEdges)));
-  Assert.AreEqual('u1', Comparison.RemovedEdges[0].Source);
+  AddEdge(mNewer, 'u2', 'k3');
+  AddEdge(mNewer, 'k3', 'k1');
+  mComparison := TArchitectureComparer.Compare(mOlder, mNewer);
+  Assert.AreEqual(1, Integer(Length(mComparison.NewEdges)));
+  Assert.AreEqual('u2', mComparison.NewEdges[0].Source);
+  Assert.AreEqual('Ui', mComparison.NewEdges[0].FromSubsystem);
+  Assert.AreEqual('Kern', mComparison.NewEdges[0].ToSubsystem);
+  Assert.AreEqual(1, Integer(Length(mComparison.RemovedEdges)));
+  Assert.AreEqual('u1', mComparison.RemovedEdges[0].Source);
   // Für die Karte alle Änderungen.
-  Assert.AreEqual(2, Integer(Length(Comparison.AddedEdges)));
-  Assert.AreEqual(2, Integer(Length(Comparison.DroppedEdges)));
+  Assert.AreEqual(2, Integer(Length(mComparison.AddedEdges)));
+  Assert.AreEqual(2, Integer(Length(mComparison.DroppedEdges)));
   // Kanten zählen nicht für --fail-on.
-  Assert.AreEqual<TArchitectureFailKinds>([], Comparison.Kinds);
+  Assert.AreEqual<TArchitectureFailKinds>([], mComparison.Kinds);
 end;
 
 procedure TArchitectureComparisonTests.RenumberedSubsystemsAreNoChange;
 var
-  Older, Newer: TArchitectureSnapshot;
-  Comparison: TArchitectureComparison;
+  mOlder, mNewer: TArchitectureSnapshot;
+  mComparison: TArchitectureComparison;
 begin
   // Dieselben Gruppen, aber die Analyse benennt sie anders herum (Nummerierung "Index", "Index 2").
-  Older := TwoGroups('Index', 'Index 2');
-  Newer := TwoGroups('Index 2', 'Index');
-  Comparison := TArchitectureComparer.Compare(Older, Newer);
-  Assert.AreEqual(0, Integer(Length(Comparison.Moves)));
-  Assert.AreEqual('Index', Comparison.MatchOf('Index 2'));
-  Assert.AreEqual('Index 2', Comparison.MatchOf('Index'));
+  mOlder := TwoGroups('Index', 'Index 2');
+  mNewer := TwoGroups('Index 2', 'Index');
+  mComparison := TArchitectureComparer.Compare(mOlder, mNewer);
+  Assert.AreEqual(0, Integer(Length(mComparison.Moves)));
+  Assert.AreEqual('Index', mComparison.MatchOf('Index 2'));
+  Assert.AreEqual('Index 2', mComparison.MatchOf('Index'));
   // Auch über die Analyse: Reihenfolge der Units geändert, Teilsysteme gleich.
-  Comparison := TArchitectureComparer.Compare(SnapshotOf(ArchitectureSampleUnits),
+  mComparison := TArchitectureComparer.Compare(SnapshotOf(ArchitectureSampleUnits),
     SnapshotOf(Copy(ArchitectureSampleUnits, 6, 6) + Copy(ArchitectureSampleUnits, 0, 6)));
-  Assert.AreEqual(0, Integer(Length(Comparison.Moves)));
+  Assert.AreEqual(0, Integer(Length(mComparison.Moves)));
 end;
 
 procedure TArchitectureComparisonTests.RenamedSubsystemsAreNoChange;
 var
-  Comparison: TArchitectureComparison;
+  mComparison: TArchitectureComparison;
 begin
-  Comparison := TArchitectureComparer.Compare(TwoGroups('Kern', 'Ui'), TwoGroups('Basis', 'Oberfläche'));
-  Assert.AreEqual(0, Integer(Length(Comparison.Moves)));
-  Assert.AreEqual('Kern', Comparison.MatchOf('Basis'));
+  mComparison := TArchitectureComparer.Compare(TwoGroups('Kern', 'Ui'), TwoGroups('Basis', 'Oberfläche'));
+  Assert.AreEqual(0, Integer(Length(mComparison.Moves)));
+  Assert.AreEqual('Kern', mComparison.MatchOf('Basis'));
 end;
 
 procedure TArchitectureComparisonTests.FindsSubsystemChange;
 var
-  Older, Newer: TArchitectureSnapshot;
-  Comparison: TArchitectureComparison;
+  mOlder, mNewer: TArchitectureSnapshot;
+  mComparison: TArchitectureComparison;
 begin
-  Older := TwoGroups('Kern', 'Ui');
-  Newer := Default(TArchitectureSnapshot);
-  AddUnit(Newer, 'k1', 'Kern', 0);
-  AddUnit(Newer, 'k2', 'Kern', 0);
-  AddUnit(Newer, 'k3', 'Kern', 0);
-  AddUnit(Newer, 'k4', 'Ui', 0);
-  AddUnit(Newer, 'u1', 'Ui', 0);
-  AddUnit(Newer, 'u2', 'Ui', 0);
-  AddUnit(Newer, 'u3', 'Ui', 0);
-  Comparison := TArchitectureComparer.Compare(Older, Newer);
-  Assert.AreEqual(1, Integer(Length(Comparison.Moves)));
-  Assert.AreEqual('k4', Comparison.Moves[0].Unit_);
-  Assert.AreEqual('Kern', Comparison.Moves[0].FromSubsystem);
-  Assert.AreEqual('Ui', Comparison.Moves[0].ToSubsystem);
-  Assert.AreEqual<TArchitectureFailKinds>([TArchitectureFailKind.SubsystemChange], Comparison.Kinds);
+  mOlder := TwoGroups('Kern', 'Ui');
+  mNewer := Default(TArchitectureSnapshot);
+  AddUnit(mNewer, 'k1', 'Kern', 0);
+  AddUnit(mNewer, 'k2', 'Kern', 0);
+  AddUnit(mNewer, 'k3', 'Kern', 0);
+  AddUnit(mNewer, 'k4', 'Ui', 0);
+  AddUnit(mNewer, 'u1', 'Ui', 0);
+  AddUnit(mNewer, 'u2', 'Ui', 0);
+  AddUnit(mNewer, 'u3', 'Ui', 0);
+  mComparison := TArchitectureComparer.Compare(mOlder, mNewer);
+  Assert.AreEqual(1, Integer(Length(mComparison.Moves)));
+  Assert.AreEqual('k4', mComparison.Moves[0].Unit_);
+  Assert.AreEqual('Kern', mComparison.Moves[0].FromSubsystem);
+  Assert.AreEqual('Ui', mComparison.Moves[0].ToSubsystem);
+  Assert.AreEqual<TArchitectureFailKinds>([TArchitectureFailKind.SubsystemChange], mComparison.Kinds);
 end;
 
 procedure TArchitectureComparisonTests.FindsCentralGrowth;
 var
-  Older, Newer: TArchitectureSnapshot;
-  Comparison: TArchitectureComparison;
+  mOlder, mNewer: TArchitectureSnapshot;
+  mComparison: TArchitectureComparison;
 begin
-  Older := Default(TArchitectureSnapshot);
-  AddUnit(Older, 'Wächst', 'Kern', 20);
-  AddUnit(Older, 'Knapp', 'Kern', 20);
-  AddUnit(Older, 'Prozent', 'Kern', 100);
-  AddUnit(Older, 'Rand', 'Kern', 1);
-  AddUnit(Older, 'Wird', 'Kern', 40);
-  Older.Central := TArray<string>.Create('Prozent', 'Wird', 'Wächst', 'Knapp');
-  Newer := Default(TArchitectureSnapshot);
+  mOlder := Default(TArchitectureSnapshot);
+  AddUnit(mOlder, 'Wächst', 'Kern', 20);
+  AddUnit(mOlder, 'Knapp', 'Kern', 20);
+  AddUnit(mOlder, 'Prozent', 'Kern', 100);
+  AddUnit(mOlder, 'Rand', 'Kern', 1);
+  AddUnit(mOlder, 'Wird', 'Kern', 40);
+  mOlder.Central := TArray<string>.Create('Prozent', 'Wird', 'Wächst', 'Knapp');
+  mNewer := Default(TArchitectureSnapshot);
   // +6 bei 20 (30 %): ja; +4 bei 20: unter 5; +6 bei 100: nur 6 %; Rand +9, aber nicht zentral.
-  AddUnit(Newer, 'Wächst', 'Kern', 26);
-  AddUnit(Newer, 'Knapp', 'Kern', 24);
-  AddUnit(Newer, 'Prozent', 'Kern', 106);
-  AddUnit(Newer, 'Rand', 'Kern', 10);
+  AddUnit(mNewer, 'Wächst', 'Kern', 26);
+  AddUnit(mNewer, 'Knapp', 'Kern', 24);
+  AddUnit(mNewer, 'Prozent', 'Kern', 106);
+  AddUnit(mNewer, 'Rand', 'Kern', 10);
   // Erst im neuen Stand zentral: zählt auch. +10 bei 40 (25 %).
-  AddUnit(Newer, 'Wird', 'Kern', 50);
-  Newer.Central := TArray<string>.Create('Prozent', 'Wird');
-  Comparison := TArchitectureComparer.Compare(Older, Newer);
-  Assert.AreEqual(2, Integer(Length(Comparison.Growth)));
-  Assert.AreEqual('Wird', Comparison.Growth[0].Unit_);
-  Assert.AreEqual(40, Comparison.Growth[0].Before);
-  Assert.AreEqual(50, Comparison.Growth[0].After);
-  Assert.AreEqual('Wächst', Comparison.Growth[1].Unit_);
-  Assert.AreEqual<TArchitectureFailKinds>([TArchitectureFailKind.CentralGrowth], Comparison.Kinds);
+  AddUnit(mNewer, 'Wird', 'Kern', 50);
+  mNewer.Central := TArray<string>.Create('Prozent', 'Wird');
+  mComparison := TArchitectureComparer.Compare(mOlder, mNewer);
+  Assert.AreEqual(2, Integer(Length(mComparison.Growth)));
+  Assert.AreEqual('Wird', mComparison.Growth[0].Unit_);
+  Assert.AreEqual(40, mComparison.Growth[0].Before);
+  Assert.AreEqual(50, mComparison.Growth[0].After);
+  Assert.AreEqual('Wächst', mComparison.Growth[1].Unit_);
+  Assert.AreEqual<TArchitectureFailKinds>([TArchitectureFailKind.CentralGrowth], mComparison.Kinds);
 end;
 
 procedure TArchitectureComparisonTests.FindsNewAndRemovedUnits;
 var
-  Older, Newer: TArchitectureSnapshot;
-  Comparison: TArchitectureComparison;
+  mOlder, mNewer: TArchitectureSnapshot;
+  mComparison: TArchitectureComparison;
 begin
-  Older := TwoGroups('Kern', 'Ui');
-  Newer := TwoGroups('Kern', 'Ui');
-  AddUnit(Newer, 'k5', 'Kern', 0);
-  Delete(Newer.Units, 4, 1);
-  Comparison := TArchitectureComparer.Compare(Older, Newer);
-  Assert.AreEqual('k5', string.Join(',', Comparison.NewUnits));
-  Assert.AreEqual('u1', string.Join(',', Comparison.RemovedUnits));
+  mOlder := TwoGroups('Kern', 'Ui');
+  mNewer := TwoGroups('Kern', 'Ui');
+  AddUnit(mNewer, 'k5', 'Kern', 0);
+  Delete(mNewer.Units, 4, 1);
+  mComparison := TArchitectureComparer.Compare(mOlder, mNewer);
+  Assert.AreEqual('k5', string.Join(',', mComparison.NewUnits));
+  Assert.AreEqual('u1', string.Join(',', mComparison.RemovedUnits));
   // Neue Units sind kein Teilsystemwechsel.
-  Assert.AreEqual(0, Integer(Length(Comparison.Moves)));
+  Assert.AreEqual(0, Integer(Length(mComparison.Moves)));
 end;
 
 procedure TArchitectureComparisonTests.TextNamesSectionsAndResult;
 var
-  Comparison: TArchitectureComparison;
-  Text: string;
+  mComparison: TArchitectureComparison;
+  mText: string;
 begin
-  Comparison := TArchitectureComparer.Compare(SnapshotOf(ArchitectureSampleUnits),
+  mComparison := TArchitectureComparer.Compare(SnapshotOf(ArchitectureSampleUnits),
     SnapshotOf(Replaced('App.Core.Base', nil, ['App.Core.Log'])));
-  Text := TArchitectureComparer.Text(Comparison, [TArchitectureFailKind.NewCycle], 0);
-  Assert.StartsWith('Architekturvergleich mit dem Stand „Beispiel“ (12 Units, 18 uses-Kanten)', Text);
-  Assert.Contains(Text, 'Neue Zyklen: 1');
-  Assert.Contains(Text, 'Entfernte Zyklen: 0');
-  Assert.Contains(Text, 'Neue Querverbindungen: ');
-  Assert.Contains(Text, 'Teilsystemwechsel: ');
-  Assert.Contains(Text, 'Gewachsene zentrale Units: ');
-  Assert.Contains(Text, 'Neue Units: 0');
-  Assert.Contains(Text, 'Ergebnis: Abweichung newCycle (fail-on newCycle)');
-  Text := TArchitectureComparer.Text(Comparison, [TArchitectureFailKind.CentralGrowth], 0);
-  Assert.Contains(Text, 'Ergebnis: keine Abweichung der Arten centralGrowth');
+  mText := TArchitectureComparer.Text(mComparison, [TArchitectureFailKind.NewCycle], 0);
+  Assert.StartsWith('Architekturvergleich mit dem Stand „Beispiel“ (12 Units, 18 uses-Kanten)', mText);
+  Assert.Contains(mText, 'Neue Zyklen: 1');
+  Assert.Contains(mText, 'Entfernte Zyklen: 0');
+  Assert.Contains(mText, 'Neue Querverbindungen: ');
+  Assert.Contains(mText, 'Teilsystemwechsel: ');
+  Assert.Contains(mText, 'Gewachsene zentrale Units: ');
+  Assert.Contains(mText, 'Neue Units: 0');
+  Assert.Contains(mText, 'Ergebnis: Abweichung newCycle (fail-on newCycle)');
+  mText := TArchitectureComparer.Text(mComparison, [TArchitectureFailKind.CentralGrowth], 0);
+  Assert.Contains(mText, 'Ergebnis: keine Abweichung der Arten centralGrowth');
   // Gekürzt.
-  Comparison.NewUnits := TArray<string>.Create('a', 'b', 'c');
-  Text := TArchitectureComparer.Text(Comparison, [], 2);
-  Assert.Contains(Text, '  … 1 weitere');
-  Assert.Contains(Text, 'keine Abweichung gilt als Fehler');
+  mComparison.NewUnits := TArray<string>.Create('a', 'b', 'c');
+  mText := TArchitectureComparer.Text(mComparison, [], 2);
+  Assert.Contains(mText, '  … 1 weitere');
+  Assert.Contains(mText, 'keine Abweichung gilt als Fehler');
 end;
 
 procedure TArchitectureComparisonTests.MarkdownHasComparisonSection;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := TArchitectureComparer.Markdown(TArchitectureComparer.Compare(SnapshotOf(ArchitectureSampleUnits),
+  mText := TArchitectureComparer.Markdown(TArchitectureComparer.Compare(SnapshotOf(ArchitectureSampleUnits),
     SnapshotOf(Replaced('App.Core.Base', nil, ['App.Core.Log']))));
-  Assert.StartsWith('## Vergleich', Text);
-  Assert.Contains(Text, '### Neue Zyklen (1)');
-  Assert.Contains(Text, '### Entfernte Units (0)');
-  Text := TArchitectureComparer.Markdown(TArchitectureComparer.Compare(SnapshotOf(ArchitectureSampleUnits),
+  Assert.StartsWith('## Vergleich', mText);
+  Assert.Contains(mText, '### Neue Zyklen (1)');
+  Assert.Contains(mText, '### Entfernte Units (0)');
+  mText := TArchitectureComparer.Markdown(TArchitectureComparer.Compare(SnapshotOf(ArchitectureSampleUnits),
     SnapshotOf(ArchitectureSampleUnits)));
-  Assert.Contains(Text, 'Keine Abweichung.');
+  Assert.Contains(mText, 'Keine Abweichung.');
 end;
 
 procedure TArchitectureComparisonTests.JsonIsValid;
 var
-  Root: TJSONValue;
-  Data: TJSONObject;
+  mRoot: TJSONValue;
+  mData: TJSONObject;
 begin
-  Root := TJSONObject.ParseJSONValue(TArchitectureComparer.Json(TArchitectureComparer.Compare(
+  mRoot := TJSONObject.ParseJSONValue(TArchitectureComparer.Json(TArchitectureComparer.Compare(
     SnapshotOf(ArchitectureSampleUnits), SnapshotOf(Replaced('App.Core.Base', nil, ['App.Core.Log']))),
     TArchitectureComparer.DefaultFailOn));
   try
-    Assert.IsTrue(Root is TJSONObject);
-    Data := TJSONObject(Root);
-    Assert.AreEqual(1, Data.GetValue<TJSONArray>('newCycles').Count);
-    Assert.AreEqual('newCycle', Data.GetValue<TJSONArray>('failed').Items[0].Value);
-    Assert.AreEqual('newCycle', Data.GetValue<TJSONArray>('failOn').Items[0].Value);
-    Assert.AreEqual(1, Data.GetValue<TJSONArray>('addedEdges').Count);
-    Assert.AreEqual('App.Core.Base', (Data.GetValue<TJSONArray>('addedEdges').Items[0] as TJSONArray).Items[0].Value);
-    Assert.AreEqual(12, (Data.GetValue('baseline') as TJSONObject).GetValue<Integer>('units'));
+    Assert.IsTrue(mRoot is TJSONObject);
+    mData := TJSONObject(mRoot);
+    Assert.AreEqual(1, mData.GetValue<TJSONArray>('newCycles').Count);
+    Assert.AreEqual('newCycle', mData.GetValue<TJSONArray>('failed').Items[0].Value);
+    Assert.AreEqual('newCycle', mData.GetValue<TJSONArray>('failOn').Items[0].Value);
+    Assert.AreEqual(1, mData.GetValue<TJSONArray>('addedEdges').Count);
+    Assert.AreEqual('App.Core.Base', (mData.GetValue<TJSONArray>('addedEdges').Items[0] as TJSONArray).Items[0].Value);
+    Assert.AreEqual(12, (mData.GetValue('baseline') as TJSONObject).GetValue<Integer>('units'));
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 procedure TArchitectureComparisonTests.ParsesKinds;
 var
-  Kinds: TArchitectureFailKinds;
-  Error: string;
+  mKinds: TArchitectureFailKinds;
+  mError: string;
 begin
-  Assert.IsTrue(TArchitectureComparer.ParseKindList('newCycle,NEWCROSSLINK subsystemChange', Kinds, Error));
+  Assert.IsTrue(TArchitectureComparer.ParseKindList('newCycle,NEWCROSSLINK subsystemChange', mKinds, mError));
   Assert.AreEqual<TArchitectureFailKinds>([TArchitectureFailKind.NewCycle, TArchitectureFailKind.NewCrossLink,
-    TArchitectureFailKind.SubsystemChange], Kinds);
-  Assert.IsFalse(TArchitectureComparer.ParseKindList('newCycle,error', Kinds, Error));
-  Assert.Contains(Error, '"error"');
-  Assert.IsTrue(TArchitectureComparer.ParseKindList('', Kinds, Error));
-  Assert.AreEqual<TArchitectureFailKinds>([], Kinds);
+    TArchitectureFailKind.SubsystemChange], mKinds);
+  Assert.IsFalse(TArchitectureComparer.ParseKindList('newCycle,error', mKinds, mError));
+  Assert.Contains(mError, '"error"');
+  Assert.IsTrue(TArchitectureComparer.ParseKindList('', mKinds, mError));
+  Assert.AreEqual<TArchitectureFailKinds>([], mKinds);
   Assert.AreEqual('newCycle,centralGrowth', string.Join(',', TArchitectureComparer.KindNames(
     [TArchitectureFailKind.CentralGrowth, TArchitectureFailKind.NewCycle])));
   Assert.AreEqual<TArchitectureFailKinds>([TArchitectureFailKind.NewCycle], TArchitectureComparer.DefaultFailOn);

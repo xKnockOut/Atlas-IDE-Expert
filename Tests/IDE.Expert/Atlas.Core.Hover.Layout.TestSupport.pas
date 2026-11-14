@@ -53,13 +53,13 @@ end;
 
 function TFakeMeasure.Cum: TArray<Integer>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
   SetLength(Result, Length(FDeclaration) + 1);
-  for Index := 0 to Length(FDeclaration) do
+  for mIndex := 0 to Length(FDeclaration) do
   begin
-    Result[Index] := 8 * Index;
+    Result[mIndex] := 8 * mIndex;
   end;
 end;
 
@@ -153,14 +153,14 @@ end;
 
 function ActionsView: TAtlasHoverView;
 var
-  Data: TAtlasHoverData;
+  mData: TAtlasHoverData;
 begin
-  Data := Default(TAtlasHoverData);
-  Data.Declaration := 'x';
-  Data.Location.Name := 'x';
-  Data.Location.FileName := 'C:\a\U.pas';
-  Data.Location.Line := 4;
-  Result := TAtlasHoverView.Create(Data);
+  mData := Default(TAtlasHoverData);
+  mData.Declaration := 'x';
+  mData.Location.Name := 'x';
+  mData.Location.FileName := 'C:\a\U.pas';
+  mData.Location.Line := 4;
+  Result := TAtlasHoverView.Create(mData);
 end;
 
 end.

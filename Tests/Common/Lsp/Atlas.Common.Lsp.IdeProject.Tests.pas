@@ -43,20 +43,20 @@ uses
   Atlas.Common.Lsp.IdeProject;
 
 const
-  Sample = '{"project":"C:\\P\\A.dproj","configuration":"Release","platform":"Win64","bdsVersion":"23.0",' +
+  cSample = '{"project":"C:\\P\\A.dproj","configuration":"Release","platform":"Win64","bdsVersion":"23.0",' +
     '"defines":["RELEASE","$(DCC_Define)","release","Feature_$(Platform)"],' +
     '"searchPaths":["..\\Lib","$(BDS)\\source\\x","Lib\\$(Platform)\\$(Config)","..\\lib"],' +
     '"namespaces":["System","Vcl","system"],"libraryPaths":["$(BDSLIB)\\$(Platform)\\release"]}';
 
 function Parse(const AJson: string): TIdeProjectContext;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    Result := TIdeProjectContext.FromJson(Value);
+    Result := TIdeProjectContext.FromJson(mValue);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -67,235 +67,235 @@ end;
 
 procedure TLspIdeProjectTests.ReadsContext;
 var
-  Context: TIdeProjectContext;
+  mContext: TIdeProjectContext;
 begin
-  Context := Parse(Sample);
-  Assert.AreEqual('C:\P\A.dproj', Context.Project);
-  Assert.AreEqual('Release', Context.Configuration);
-  Assert.AreEqual('Win64', Context.Platform);
-  Assert.AreEqual('23.0', Context.BdsVersion);
-  Assert.IsTrue(Context.HasOptions);
-  Assert.AreEqual(4, Integer(Length(Context.Defines)));
-  Assert.AreEqual(1, Integer(Length(Context.LibraryPaths)));
+  mContext := Parse(cSample);
+  Assert.AreEqual('C:\P\A.dproj', mContext.Project);
+  Assert.AreEqual('Release', mContext.Configuration);
+  Assert.AreEqual('Win64', mContext.Platform);
+  Assert.AreEqual('23.0', mContext.BdsVersion);
+  Assert.IsTrue(mContext.HasOptions);
+  Assert.AreEqual(4, Integer(Length(mContext.Defines)));
+  Assert.AreEqual(1, Integer(Length(mContext.LibraryPaths)));
   Assert.AreEqual('', Parse('null').Project);
   Assert.IsFalse(Parse('{"project":"C:\\P\\A.dproj"}').HasOptions);
 end;
 
 procedure TLspIdeProjectTests.AppliesOptionsToProject;
 var
-  Project: TProjectInfo;
-  Paths: TArray<string>;
+  mProject: TProjectInfo;
+  mPaths: TArray<string>;
 begin
-  Project := Default(TProjectInfo);
-  Project.FileName := 'C:\P\A.dproj';
-  Project.Config := 'Release';
-  Project.Platform := 'Win64';
-  Project.Defines := ['DEBUG'];
-  Parse(Sample).ApplyTo(Project, Variables);
+  mProject := Default(TProjectInfo);
+  mProject.FileName := 'C:\P\A.dproj';
+  mProject.Config := 'Release';
+  mProject.Platform := 'Win64';
+  mProject.Defines := ['DEBUG'];
+  Parse(cSample).ApplyTo(mProject, Variables);
   // Unaufgelöster Verweis entfällt, Doppelte ohne Rücksicht auf Groß-/Kleinschreibung.
-  Assert.AreEqual('RELEASE;FEATURE_WIN64', string.Join(';', Project.Defines));
-  Assert.AreEqual('C:\Lib;C:\RAD\source\x;C:\P\Lib\Win64\Release', string.Join(';', Project.SearchPaths));
-  Assert.AreEqual('System;Vcl', string.Join(';', Project.Namespaces));
-  Paths := Parse(Sample).ExpandedLibraryPaths(Project, Variables);
-  Assert.AreEqual('C:\RAD\lib\Win64\release', string.Join(';', Paths));
+  Assert.AreEqual('RELEASE;FEATURE_WIN64', string.Join(';', mProject.Defines));
+  Assert.AreEqual('C:\Lib;C:\RAD\source\x;C:\P\Lib\Win64\Release', string.Join(';', mProject.SearchPaths));
+  Assert.AreEqual('System;Vcl', string.Join(';', mProject.Namespaces));
+  mPaths := Parse(cSample).ExpandedLibraryPaths(mProject, Variables);
+  Assert.AreEqual('C:\RAD\lib\Win64\release', string.Join(';', mPaths));
 end;
 
 procedure TLspIdeProjectTests.KeepsDprojValuesWithoutOptions;
 var
-  Project: TProjectInfo;
+  mProject: TProjectInfo;
 begin
-  Project := Default(TProjectInfo);
-  Project.FileName := 'C:\P\A.dproj';
-  Project.Defines := ['DEBUG'];
-  Project.SearchPaths := ['C:\P\Src'];
-  Parse('{"project":"C:\\P\\A.dproj","configuration":"Debug"}').ApplyTo(Project, nil);
-  Assert.AreEqual('DEBUG', string.Join(';', Project.Defines));
-  Assert.AreEqual('C:\P\Src', string.Join(';', Project.SearchPaths));
+  mProject := Default(TProjectInfo);
+  mProject.FileName := 'C:\P\A.dproj';
+  mProject.Defines := ['DEBUG'];
+  mProject.SearchPaths := ['C:\P\Src'];
+  Parse('{"project":"C:\\P\\A.dproj","configuration":"Debug"}').ApplyTo(mProject, nil);
+  Assert.AreEqual('DEBUG', string.Join(';', mProject.Defines));
+  Assert.AreEqual('C:\P\Src', string.Join(';', mProject.SearchPaths));
 end;
 
 procedure Notify(ADispatcher: TJsonRpcDispatcher; const AParams: string);
 var
-  Message: TJSONObject;
+  mMessage: TJSONObject;
 begin
-  Message := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + TLspIdeProject.cMethod + '","params":' +
+  mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + TLspIdeProject.cMethod + '","params":' +
     AParams + '}') as TJSONObject;
   try
-    ADispatcher.DispatchMessage(Message).Free;
+    ADispatcher.DispatchMessage(mMessage).Free;
   finally
-    Message.Free;
+    mMessage.Free;
   end;
 end;
 
 procedure TLspIdeProjectTests.LoadsInitializeAndReportsOnlyChanges;
 var
-  Store: TLspIdeProject;
-  Dispatcher: TJsonRpcDispatcher;
-  Params: TJSONValue;
-  Context: TIdeProjectContext;
-  Changed: Integer;
+  mStore: TLspIdeProject;
+  mDispatcher: TJsonRpcDispatcher;
+  mParams: TJSONValue;
+  mContext: TIdeProjectContext;
+  mChanged: Integer;
 begin
-  Store := TLspIdeProject.Create;
-  Dispatcher := TJsonRpcDispatcher.Create;
+  mStore := TLspIdeProject.Create;
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Changed := 0;
-    Store.OnChanged :=
+    mChanged := 0;
+    mStore.OnChanged :=
       procedure(const AContext: TIdeProjectContext)
       begin
-        Inc(Changed);
+        Inc(mChanged);
       end;
-    Store.Attach(Dispatcher);
-    Params := TJSONObject.ParseJSONValue('{"initializationOptions":{"projectContexts":[' + Sample + ']}}');
+    mStore.Attach(mDispatcher);
+    mParams := TJSONObject.ParseJSONValue('{"initializationOptions":{"projectContexts":[' + cSample + ']}}');
     try
-      Store.LoadInitialize(Params);
+      mStore.LoadInitialize(mParams);
     finally
-      Params.Free;
+      mParams.Free;
     end;
-    Assert.IsTrue(Store.Find('c:\p\a.dproj', Context));
-    Assert.AreEqual('Win64', Context.Platform);
+    Assert.IsTrue(mStore.Find('c:\p\a.dproj', mContext));
+    Assert.AreEqual('Win64', mContext.Platform);
     // Derselbe Stand wie aus initialize: nichts neu laden.
-    Notify(Dispatcher, Sample);
-    Assert.AreEqual(0, Changed);
-    Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","platform":"Win32"}');
-    Assert.AreEqual(1, Changed);
-    Assert.IsTrue(Store.Find('C:\P\A.dproj', Context));
-    Assert.AreEqual('Win32', Context.Platform);
-    Assert.IsFalse(Store.Find('C:\P\B.dproj', Context));
+    Notify(mDispatcher, cSample);
+    Assert.AreEqual(0, mChanged);
+    Notify(mDispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","platform":"Win32"}');
+    Assert.AreEqual(1, mChanged);
+    Assert.IsTrue(mStore.Find('C:\P\A.dproj', mContext));
+    Assert.AreEqual('Win32', mContext.Platform);
+    Assert.IsFalse(mStore.Find('C:\P\B.dproj', mContext));
   finally
-    Dispatcher.Free;
-    Store.Free;
+    mDispatcher.Free;
+    mStore.Free;
   end;
 end;
 
 procedure TLspIdeProjectTests.KeepsNamingWithoutReload;
 var
-  Store: TLspIdeProject;
-  Dispatcher: TJsonRpcDispatcher;
-  Context: TIdeProjectContext;
-  Changed, NamingChanged: Integer;
-  Naming: TRuleNaming;
+  mStore: TLspIdeProject;
+  mDispatcher: TJsonRpcDispatcher;
+  mContext: TIdeProjectContext;
+  mChanged, mNamingChanged: Integer;
+  mNaming: TRuleNaming;
 begin
-  Context := Parse('{"project":"C:\\P\\A.dproj","naming":{"field":"F","local":"","parameter":3}}');
-  Assert.IsTrue(Context.HasNaming[TNamingKind.Field]);
-  Assert.AreEqual('F', Context.Naming[TNamingKind.Field]);
-  Assert.IsTrue(Context.HasNaming[TNamingKind.Local]);
-  Assert.AreEqual('', Context.Naming[TNamingKind.Local]);
+  mContext := Parse('{"project":"C:\\P\\A.dproj","naming":{"field":"F","local":"","parameter":3}}');
+  Assert.IsTrue(mContext.HasNaming[TNamingKind.Field]);
+  Assert.AreEqual('F', mContext.Naming[TNamingKind.Field]);
+  Assert.IsTrue(mContext.HasNaming[TNamingKind.Local]);
+  Assert.AreEqual('', mContext.Naming[TNamingKind.Local]);
   // Kein String: keine Vorgabe.
-  Assert.IsFalse(Context.HasNaming[TNamingKind.Parameter]);
-  Assert.IsFalse(Context.HasConstantPrefix);
+  Assert.IsFalse(mContext.HasNaming[TNamingKind.Parameter]);
+  Assert.IsFalse(mContext.HasConstantPrefix);
   // Für die Prüfregeln (#1111) mit Konstanten.
-  Context := Parse('{"project":"C:\\P\\A.dproj","naming":{"field":"F","local":"m","constant":"c"}}');
-  Assert.IsTrue(Context.HasConstantPrefix);
-  Assert.AreEqual('c', Context.ConstantPrefix);
-  Naming := Context.RuleNaming;
-  Assert.IsTrue(Naming.Known[TRuleNamingKind.Field]);
-  Assert.AreEqual('F', Naming.Prefixes[TRuleNamingKind.Field]);
-  Assert.AreEqual('m', Naming.Prefixes[TRuleNamingKind.Local]);
-  Assert.AreEqual('c', Naming.Prefixes[TRuleNamingKind.Constant]);
-  Assert.IsFalse(Naming.Known[TRuleNamingKind.Parameter]);
+  mContext := Parse('{"project":"C:\\P\\A.dproj","naming":{"field":"F","local":"m","constant":"c"}}');
+  Assert.IsTrue(mContext.HasConstantPrefix);
+  Assert.AreEqual('c', mContext.ConstantPrefix);
+  mNaming := mContext.RuleNaming;
+  Assert.IsTrue(mNaming.Known[TRuleNamingKind.Field]);
+  Assert.AreEqual('F', mNaming.Prefixes[TRuleNamingKind.Field]);
+  Assert.AreEqual('m', mNaming.Prefixes[TRuleNamingKind.Local]);
+  Assert.AreEqual('c', mNaming.Prefixes[TRuleNamingKind.Constant]);
+  Assert.IsFalse(mNaming.Known[TRuleNamingKind.Parameter]);
   Assert.AreNotEqual(Parse('{"project":"C:\\P\\A.dproj","naming":{"constant":"c"}}').NamingKey,
     Parse('{"project":"C:\\P\\A.dproj","naming":{"constant":"k"}}').NamingKey);
-  Store := TLspIdeProject.Create;
-  Dispatcher := TJsonRpcDispatcher.Create;
+  mStore := TLspIdeProject.Create;
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Changed := 0;
-    NamingChanged := 0;
-    Store.OnChanged :=
+    mChanged := 0;
+    mNamingChanged := 0;
+    mStore.OnChanged :=
       procedure(const AContext: TIdeProjectContext)
       begin
-        Inc(Changed);
+        Inc(mChanged);
       end;
-    Store.OnNamingChanged :=
+    mStore.OnNamingChanged :=
       procedure(const AContext: TIdeProjectContext)
       begin
-        Inc(NamingChanged);
+        Inc(mNamingChanged);
       end;
-    Store.Attach(Dispatcher);
-    Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug"}');
-    Assert.AreEqual(1, Changed);
-    Assert.AreEqual(0, NamingChanged, 'neues Projekt: OnChanged genügt');
-    Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","naming":{"field":"F"}}');
-    Assert.AreEqual(1, Changed);
-    Assert.AreEqual(1, NamingChanged);
-    Assert.IsTrue(Store.Find('C:\P\A.dproj', Context));
-    Assert.AreEqual('F', Context.Naming[TNamingKind.Field]);
-    Assert.IsFalse(Context.HasNaming[TNamingKind.Local]);
+    mStore.Attach(mDispatcher);
+    Notify(mDispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug"}');
+    Assert.AreEqual(1, mChanged);
+    Assert.AreEqual(0, mNamingChanged, 'neues Projekt: OnChanged genügt');
+    Notify(mDispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","naming":{"field":"F"}}');
+    Assert.AreEqual(1, mChanged);
+    Assert.AreEqual(1, mNamingChanged);
+    Assert.IsTrue(mStore.Find('C:\P\A.dproj', mContext));
+    Assert.AreEqual('F', mContext.Naming[TNamingKind.Field]);
+    Assert.IsFalse(mContext.HasNaming[TNamingKind.Local]);
     // Gleiche Vorgaben: nichts Neues.
-    Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","naming":{"field":"F"}}');
-    Assert.AreEqual(1, NamingChanged);
+    Notify(mDispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","naming":{"field":"F"}}');
+    Assert.AreEqual(1, mNamingChanged);
   finally
-    Dispatcher.Free;
-    Store.Free;
+    mDispatcher.Free;
+    mStore.Free;
   end;
 end;
 
 procedure TLspIdeProjectTests.KeepsFormatFunctionsWithoutReload;
 var
-  Store: TLspIdeProject;
-  Dispatcher: TJsonRpcDispatcher;
-  Context: TIdeProjectContext;
-  Changed: Integer;
+  mStore: TLspIdeProject;
+  mDispatcher: TJsonRpcDispatcher;
+  mContext: TIdeProjectContext;
+  mChanged: Integer;
 begin
   // Eintrag ohne Name entfällt, ohne formatIndex gilt -1 (Argument vor der Liste) (#451).
-  Context := Parse('{"project":"C:\\P\\A.dproj","formatFunctions":[{"name":"Log","formatIndex":1},' +
+  mContext := Parse('{"project":"C:\\P\\A.dproj","formatFunctions":[{"name":"Log","formatIndex":1},' +
     '{"name":""},{"name":"TLogger.Fmt"}]}');
-  Assert.AreEqual(2, Integer(Length(Context.FormatFunctions)));
-  Assert.AreEqual('Log', Context.FormatFunctions[0].Name);
-  Assert.AreEqual(1, Context.FormatFunctions[0].FormatIndex);
-  Assert.AreEqual(-1, Context.FormatFunctions[1].FormatIndex);
-  Assert.IsTrue(Context.FormatFunctions[1].IsMethod);
-  Store := TLspIdeProject.Create;
-  Dispatcher := TJsonRpcDispatcher.Create;
+  Assert.AreEqual(2, Integer(Length(mContext.FormatFunctions)));
+  Assert.AreEqual('Log', mContext.FormatFunctions[0].Name);
+  Assert.AreEqual(1, mContext.FormatFunctions[0].FormatIndex);
+  Assert.AreEqual(-1, mContext.FormatFunctions[1].FormatIndex);
+  Assert.IsTrue(mContext.FormatFunctions[1].IsMethod);
+  mStore := TLspIdeProject.Create;
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Changed := 0;
-    Store.OnChanged :=
+    mChanged := 0;
+    mStore.OnChanged :=
       procedure(const AContext: TIdeProjectContext)
       begin
-        Inc(Changed);
+        Inc(mChanged);
       end;
-    Store.Attach(Dispatcher);
-    Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug"}');
-    Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","formatFunctions":[{"name":"Log"}]}');
-    Assert.AreEqual(1, Changed);
-    Assert.IsTrue(Store.Find('C:\P\A.dproj', Context));
-    Assert.AreEqual(1, Integer(Length(Context.FormatFunctions)));
+    mStore.Attach(mDispatcher);
+    Notify(mDispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug"}');
+    Notify(mDispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","formatFunctions":[{"name":"Log"}]}');
+    Assert.AreEqual(1, mChanged);
+    Assert.IsTrue(mStore.Find('C:\P\A.dproj', mContext));
+    Assert.AreEqual(1, Integer(Length(mContext.FormatFunctions)));
   finally
-    Dispatcher.Free;
-    Store.Free;
+    mDispatcher.Free;
+    mStore.Free;
   end;
 end;
 
 procedure TLspIdeProjectTests.TracksActiveProjectWithoutReload;
 var
-  Store: TLspIdeProject;
-  Dispatcher: TJsonRpcDispatcher;
-  Changed: Integer;
+  mStore: TLspIdeProject;
+  mDispatcher: TJsonRpcDispatcher;
+  mChanged: Integer;
 begin
   Assert.IsFalse(Parse('{"project":"C:\\P\\A.dproj"}').HasActive);
   Assert.IsTrue(Parse('{"project":"C:\\P\\A.dproj","active":true}').Active);
-  Store := TLspIdeProject.Create;
-  Dispatcher := TJsonRpcDispatcher.Create;
+  mStore := TLspIdeProject.Create;
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Changed := 0;
-    Store.OnChanged :=
+    mChanged := 0;
+    mStore.OnChanged :=
       procedure(const AContext: TIdeProjectContext)
       begin
-        Inc(Changed);
+        Inc(mChanged);
       end;
-    Store.Attach(Dispatcher);
-    Assert.AreEqual('', Store.ActiveProject);
-    Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","active":true}');
-    Notify(Dispatcher, '{"project":"C:\\P\\B.dproj","configuration":"Debug","active":false}');
-    Assert.AreEqual(2, Changed);
-    Assert.AreEqual('C:\P\A.dproj', Store.ActiveProject);
+    mStore.Attach(mDispatcher);
+    Assert.AreEqual('', mStore.ActiveProject);
+    Notify(mDispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","active":true}');
+    Notify(mDispatcher, '{"project":"C:\\P\\B.dproj","configuration":"Debug","active":false}');
+    Assert.AreEqual(2, mChanged);
+    Assert.AreEqual('C:\P\A.dproj', mStore.ActiveProject);
     // Wechsel des aktiven Projekts: gemerkt, aber kein neues Laden.
-    Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","active":false}');
-    Assert.AreEqual('', Store.ActiveProject);
-    Notify(Dispatcher, '{"project":"C:\\P\\B.dproj","configuration":"Debug","active":true}');
-    Assert.AreEqual('C:\P\B.dproj', Store.ActiveProject);
-    Assert.AreEqual(2, Changed);
+    Notify(mDispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","active":false}');
+    Assert.AreEqual('', mStore.ActiveProject);
+    Notify(mDispatcher, '{"project":"C:\\P\\B.dproj","configuration":"Debug","active":true}');
+    Assert.AreEqual('C:\P\B.dproj', mStore.ActiveProject);
+    Assert.AreEqual(2, mChanged);
   finally
-    Dispatcher.Free;
-    Store.Free;
+    mDispatcher.Free;
+    mStore.Free;
   end;
 end;
 

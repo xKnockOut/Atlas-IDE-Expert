@@ -38,9 +38,9 @@ uses
   Atlas.Common.Lsp.EnumValueCommands;
 
 const
-  TypenFile = 'C:\P\Typen.pas';
-  MainFile = 'C:\P\Haupt.pas';
-  UnitTypen =
+  cTypenFile = 'C:\P\Typen.pas';
+  cMainFile = 'C:\P\Haupt.pas';
+  cUnitTypen =
     'unit Typen;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -59,7 +59,7 @@ const
     'begin'#10 +
     'end;'#10 +
     'end.';
-  UnitMain =
+  cUnitMain =
     'unit Haupt;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -75,42 +75,42 @@ const
 /// <summary>Werte an Zeile ALine, Zeichen ACharacter von UnitMain, mit Leerzeichen verbunden.</summary>
 function ValuesAt(ALine, ACharacter: Integer): string;
 var
-  Store: IDocumentStore;
-  Index: ISymbolIndex;
-  Arguments: TJSONArray;
-  Position: TJSONObject;
-  Answer: TJSONValue;
-  Item: TJSONValue;
+  mStore: IDocumentStore;
+  mIndex: ISymbolIndex;
+  mArguments: TJSONArray;
+  mPosition: TJSONObject;
+  mAnswer: TJSONValue;
+  mItem: TJSONValue;
 begin
-  Store := TDocumentStore.Create;
-  Store.Open(TDocumentUris.FromPath(MainFile), 'delphi', 1, UnitMain);
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(UnitTypen, TypenFile, nil));
-  Index.AddUnit(TIndexExtractor.ExtractText(UnitMain, MainFile, nil));
-  Arguments := TJSONArray.Create;
+  mStore := TDocumentStore.Create;
+  mStore.Open(TDocumentUris.FromPath(cMainFile), 'delphi', 1, cUnitMain);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cUnitTypen, cTypenFile, nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
+  mArguments := TJSONArray.Create;
   try
-    Arguments.Add(TDocumentUris.FromPath(MainFile));
-    Position := TJSONObject.Create;
-    Position.AddPair('line', TJSONNumber.Create(ALine));
-    Position.AddPair('character', TJSONNumber.Create(ACharacter));
-    Arguments.AddElement(Position);
-    Answer := TEnumValueCommands.Execute(Store, Index, nil, nil,
+    mArguments.Add(TDocumentUris.FromPath(cMainFile));
+    mPosition := TJSONObject.Create;
+    mPosition.AddPair('line', TJSONNumber.Create(ALine));
+    mPosition.AddPair('character', TJSONNumber.Create(ACharacter));
+    mArguments.AddElement(mPosition);
+    mAnswer := TEnumValueCommands.Execute(mStore, mIndex, nil, nil,
       function(const AFileName: string; out AText: string): Boolean
       begin
-        AText := UnitTypen;
-        Result := SameText(AFileName, TypenFile);
-      end, Arguments);
+        AText := cUnitTypen;
+        Result := SameText(AFileName, cTypenFile);
+      end, mArguments);
     try
       Result := '';
-      for Item in Answer as TJSONArray do
+      for mItem in mAnswer as TJSONArray do
       begin
-        Result := Trim(Result + ' ' + Item.Value);
+        Result := Trim(Result + ' ' + mItem.Value);
       end;
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
 end;
 

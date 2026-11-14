@@ -66,51 +66,51 @@ uses
 
 procedure TLspStatusTests.StatisticsSumUpPerMethod;
 var
-  Statistics: IJsonRpcStatistics;
-  Snapshot: TArray<TMethodStatistics>;
+  mStatistics: IJsonRpcStatistics;
+  mSnapshot: TArray<TMethodStatistics>;
 begin
-  Statistics := TJsonRpcStatistics.Create;
-  Statistics.Add('a', 10, False);
-  Statistics.Add('a', 30, True);
-  Snapshot := Statistics.Snapshot;
-  Assert.AreEqual<NativeInt>(1, Length(Snapshot));
-  Assert.AreEqual(2, Integer(Snapshot[0].Count));
-  Assert.AreEqual<Int64>(30, Snapshot[0].MaxMs);
-  Assert.AreEqual(20.0, Snapshot[0].AverageMs, 0.001);
-  Assert.AreEqual(1, Snapshot[0].Failed);
+  mStatistics := TJsonRpcStatistics.Create;
+  mStatistics.Add('a', 10, False);
+  mStatistics.Add('a', 30, True);
+  mSnapshot := mStatistics.Snapshot;
+  Assert.AreEqual<NativeInt>(1, Length(mSnapshot));
+  Assert.AreEqual(2, Integer(mSnapshot[0].Count));
+  Assert.AreEqual<Int64>(30, mSnapshot[0].MaxMs);
+  Assert.AreEqual(20.0, mSnapshot[0].AverageMs, 0.001);
+  Assert.AreEqual(1, mSnapshot[0].Failed);
 end;
 
 procedure TLspStatusTests.SnapshotSortsSlowestFirst;
 var
-  Statistics: IJsonRpcStatistics;
-  Snapshot: TArray<TMethodStatistics>;
+  mStatistics: IJsonRpcStatistics;
+  mSnapshot: TArray<TMethodStatistics>;
 begin
-  Statistics := TJsonRpcStatistics.Create;
-  Statistics.Add('schnell', 1, False);
-  Statistics.Add('langsam', 50, False);
-  Snapshot := Statistics.Snapshot;
-  Assert.AreEqual('langsam', Snapshot[0].Method);
-  Assert.AreEqual('schnell', Snapshot[1].Method);
+  mStatistics := TJsonRpcStatistics.Create;
+  mStatistics.Add('schnell', 1, False);
+  mStatistics.Add('langsam', 50, False);
+  mSnapshot := mStatistics.Snapshot;
+  Assert.AreEqual('langsam', mSnapshot[0].Method);
+  Assert.AreEqual('schnell', mSnapshot[1].Method);
 end;
 
 procedure TLspStatusTests.DispatcherRecordsRequests;
 var
-  Dispatcher: TJsonRpcDispatcher;
-  Statistics: IJsonRpcStatistics;
-  Message: TJSONObject;
-  Response: TJSONObject;
-  Snapshot: TArray<TMethodStatistics>;
+  mDispatcher: TJsonRpcDispatcher;
+  mStatistics: IJsonRpcStatistics;
+  mMessage: TJSONObject;
+  mResponse: TJSONObject;
+  mSnapshot: TArray<TMethodStatistics>;
 begin
-  Statistics := TJsonRpcStatistics.Create;
-  Dispatcher := TJsonRpcDispatcher.Create;
+  mStatistics := TJsonRpcStatistics.Create;
+  mDispatcher := TJsonRpcDispatcher.Create;
   try
-    Dispatcher.Statistics := Statistics;
-    Dispatcher.RegisterRequest('gut',
+    mDispatcher.Statistics := mStatistics;
+    mDispatcher.RegisterRequest('gut',
       function(const AParams: TJSONValue): TJSONValue
       begin
         Result := TJSONNull.Create;
       end);
-    Dispatcher.RegisterRequest('kaputt',
+    mDispatcher.RegisterRequest('kaputt',
       function(const AParams: TJSONValue): TJSONValue
       begin
         // Ohne Parameter immer: eine Anfrage, die fehlschlägt.
@@ -120,94 +120,94 @@ begin
         end;
         Result := TJSONNull.Create;
       end);
-    Message := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"gut"}') as TJSONObject;
+    mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"gut"}') as TJSONObject;
     try
-      Response := Dispatcher.DispatchMessage(Message);
-      Response.Free;
+      mResponse := mDispatcher.DispatchMessage(mMessage);
+      mResponse.Free;
     finally
-      Message.Free;
+      mMessage.Free;
     end;
-    Message := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":2,"method":"kaputt"}') as TJSONObject;
+    mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":2,"method":"kaputt"}') as TJSONObject;
     try
-      Response := Dispatcher.DispatchMessage(Message);
-      Response.Free;
+      mResponse := mDispatcher.DispatchMessage(mMessage);
+      mResponse.Free;
     finally
-      Message.Free;
+      mMessage.Free;
     end;
   finally
-    Dispatcher.Free;
+    mDispatcher.Free;
   end;
-  Snapshot := Statistics.Snapshot;
-  Assert.AreEqual<NativeInt>(2, Length(Snapshot));
-  Assert.AreEqual(2, Integer(Snapshot[0].Count + Snapshot[1].Count));
-  Assert.AreEqual(1, Snapshot[0].Failed + Snapshot[1].Failed);
+  mSnapshot := mStatistics.Snapshot;
+  Assert.AreEqual<NativeInt>(2, Length(mSnapshot));
+  Assert.AreEqual(2, Integer(mSnapshot[0].Count + mSnapshot[1].Count));
+  Assert.AreEqual(1, mSnapshot[0].Failed + mSnapshot[1].Failed);
 end;
 
 procedure TLspStatusTests.ExecutesRegisteredCommand;
 var
-  Commands: TLspCommands;
-  Arguments: TJSONArray;
-  Value: TJSONValue;
+  mCommands: TLspCommands;
+  mArguments: TJSONArray;
+  mValue: TJSONValue;
 begin
-  Commands := TLspCommands.Create;
-  Arguments := TJSONArray.Create;
+  mCommands := TLspCommands.Create;
+  mArguments := TJSONArray.Create;
   try
-    Arguments.Add(42);
-    Commands.Register('x.echo',
+    mArguments.Add(42);
+    mCommands.Register('x.echo',
       function(const AArguments: TJSONArray): TJSONValue
       begin
         Result := TJSONNumber.Create(AArguments.Count);
       end);
-    Value := Commands.Execute('x.echo', Arguments);
+    mValue := mCommands.Execute('x.echo', mArguments);
     try
-      Assert.AreEqual('1', Value.ToJSON);
+      Assert.AreEqual('1', mValue.ToJSON);
     finally
-      Value.Free;
+      mValue.Free;
     end;
   finally
-    Arguments.Free;
-    Commands.Free;
+    mArguments.Free;
+    mCommands.Free;
   end;
 end;
 
 procedure TLspStatusTests.UnknownCommandFails;
 var
-  Commands: TLspCommands;
-  Raised: Boolean;
+  mCommands: TLspCommands;
+  mRaised: Boolean;
 begin
-  Commands := TLspCommands.Create;
+  mCommands := TLspCommands.Create;
   try
-    Raised := False;
+    mRaised := False;
     try
-      Commands.Execute('fehlt', nil).Free;
+      mCommands.Execute('fehlt', nil).Free;
     except
       on EJsonRpcError do
-        Raised := True;
+        mRaised := True;
     end;
-    Assert.IsTrue(Raised);
+    Assert.IsTrue(mRaised);
   finally
-    Commands.Free;
+    mCommands.Free;
   end;
 end;
 
 procedure TLspStatusTests.CapabilityListsCommands;
 var
-  Commands: TLspCommands;
-  Capability: TJSONObject;
+  mCommands: TLspCommands;
+  mCapability: TJSONObject;
 begin
-  Commands := TLspCommands.Create;
+  mCommands := TLspCommands.Create;
   try
-    Commands.Register('a', nil);
-    Commands.Register('b', nil);
-    Commands.Register('a', nil);
-    Capability := Commands.Capability;
+    mCommands.Register('a', nil);
+    mCommands.Register('b', nil);
+    mCommands.Register('a', nil);
+    mCapability := mCommands.Capability;
     try
-      Assert.AreEqual('{"commands":["a","b"]}', Capability.ToJSON);
+      Assert.AreEqual('{"commands":["a","b"]}', mCapability.ToJSON);
     finally
-      Capability.Free;
+      mCapability.Free;
     end;
   finally
-    Commands.Free;
+    mCommands.Free;
   end;
 end;
 
@@ -242,228 +242,228 @@ end;
 
 procedure TLspStatusTests.ReadOnlyCommandsRunConcurrently;
 var
-  Commands: TLspCommands;
-  Dispatcher: TJsonRpcDispatcher;
-  Work: TList<TProc>;
-  Responses: TObjectList<TJSONObject>;
-  Item: TProc;
+  mCommands: TLspCommands;
+  mDispatcher: TJsonRpcDispatcher;
+  mWork: TList<TProc>;
+  mResponses: TObjectList<TJSONObject>;
+  mItem: TProc;
 
   function Dispatch(const AJson: string): TJSONObject;
   var
-    Message: TJSONObject;
+    mMessage: TJSONObject;
   begin
-    Message := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
+    mMessage := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
     try
-      Result := Dispatcher.DispatchMessage(Message);
+      Result := mDispatcher.DispatchMessage(mMessage);
     finally
-      Message.Free;
+      mMessage.Free;
     end;
   end;
 
 begin
-  Commands := TLspCommands.Create;
-  Dispatcher := TJsonRpcDispatcher.Create;
-  Work := TList<TProc>.Create;
-  Responses := TObjectList<TJSONObject>.Create(True);
+  mCommands := TLspCommands.Create;
+  mDispatcher := TJsonRpcDispatcher.Create;
+  mWork := TList<TProc>.Create;
+  mResponses := TObjectList<TJSONObject>.Create(True);
   try
-    RegisterWriteAndStatus(Commands);
-    Assert.IsFalse(Commands.IsConcurrent(nil), 'ohne Parameter');
-    Dispatcher.Scheduler :=
+    RegisterWriteAndStatus(mCommands);
+    Assert.IsFalse(mCommands.IsConcurrent(nil), 'ohne Parameter');
+    mDispatcher.Scheduler :=
       procedure(const AWork: TProc)
       begin
-        Work.Add(AWork);
+        mWork.Add(AWork);
       end;
-    Dispatcher.Responder :=
+    mDispatcher.Responder :=
       procedure(const AResponse: TJSONObject)
       begin
-        Responses.Add(AResponse);
+        mResponses.Add(AResponse);
       end;
-    Commands.Attach(Dispatcher);
+    mCommands.Attach(mDispatcher);
     Assert.IsNull(Dispatch('{"jsonrpc":"2.0","id":1,"method":"workspace/executeCommand",' +
       '"params":{"command":"x.status"}}'), 'Lesebefehl geht an den Scheduler');
-    Responses.Add(Dispatch('{"jsonrpc":"2.0","id":2,"method":"workspace/executeCommand",' +
+    mResponses.Add(Dispatch('{"jsonrpc":"2.0","id":2,"method":"workspace/executeCommand",' +
       '"params":{"command":"x.write"}}'));
-    Assert.AreEqual('write', Responses[0].GetValue<string>('result'), 'seriell sofort');
-    Assert.AreEqual(1, Integer(Work.Count));
-    for Item in Work.ToArray do
+    Assert.AreEqual('write', mResponses[0].GetValue<string>('result'), 'seriell sofort');
+    Assert.AreEqual(1, Integer(mWork.Count));
+    for mItem in mWork.ToArray do
     begin
-      Item();
+      mItem();
     end;
-    Assert.AreEqual(2, Integer(Responses.Count));
-    Assert.AreEqual('status', Responses[1].GetValue<string>('result'));
+    Assert.AreEqual(2, Integer(mResponses.Count));
+    Assert.AreEqual('status', mResponses[1].GetValue<string>('result'));
   finally
-    Responses.Free;
-    Work.Free;
-    Dispatcher.Free;
-    Commands.Free;
+    mResponses.Free;
+    mWork.Free;
+    mDispatcher.Free;
+    mCommands.Free;
   end;
 end;
 
 procedure TLspStatusTests.StatusAsMarkdownAndJson;
 var
-  Status: TServerStatus;
-  Workspace: TWorkspaceStatus;
-  Request: TMethodStatistics;
-  Json: TJSONObject;
+  mStatus: TServerStatus;
+  mWorkspace: TWorkspaceStatus;
+  mRequest: TMethodStatistics;
+  mJson: TJSONObject;
 begin
-  Status := Default(TServerStatus);
-  Status.Units := 3;
-  Status.Symbols := 40;
-  Status.MemoryBytes := 5 * 1024 * 1024;
-  Status.IndexBytes := 2 * 1024 * 1024;
-  Status.BudgetBytes := 4 * 1024 * 1024;
-  Status.CompactUnits := 7;
-  Status.DocumentBytes := 1024 * 1024;
-  Workspace := Default(TWorkspaceStatus);
-  Workspace.Name := 'App';
-  Workspace.LastIndexMs := 120;
-  Workspace.Parsed := 2;
-  Workspace.FromCache := 1;
-  Status.Workspaces := [Workspace];
-  Request := Default(TMethodStatistics);
-  Request.Method := 'textDocument/hover';
-  Request.Count := 4;
-  Request.TotalMs := 10;
-  Request.MaxMs := 6;
-  Status.Requests := [Request];
-  Assert.IsTrue(Pos('- Index: 3 Units, 40 Symbole', Status.ToMarkdown) > 0, Status.ToMarkdown);
-  Assert.IsTrue(Pos('- Speicher: 5.0 MB', Status.ToMarkdown) > 0, Status.ToMarkdown);
-  Assert.IsTrue(Pos('- davon Symbolindex: 2.0 MB von 4.0 MB, 7 Units kompakt', Status.ToMarkdown) > 0, Status.ToMarkdown);
-  Assert.IsTrue(Pos('- davon geöffnete Dokumente: 1.0 MB', Status.ToMarkdown) > 0, Status.ToMarkdown);
+  mStatus := Default(TServerStatus);
+  mStatus.Units := 3;
+  mStatus.Symbols := 40;
+  mStatus.MemoryBytes := 5 * 1024 * 1024;
+  mStatus.IndexBytes := 2 * 1024 * 1024;
+  mStatus.BudgetBytes := 4 * 1024 * 1024;
+  mStatus.CompactUnits := 7;
+  mStatus.DocumentBytes := 1024 * 1024;
+  mWorkspace := Default(TWorkspaceStatus);
+  mWorkspace.Name := 'App';
+  mWorkspace.LastIndexMs := 120;
+  mWorkspace.Parsed := 2;
+  mWorkspace.FromCache := 1;
+  mStatus.Workspaces := [mWorkspace];
+  mRequest := Default(TMethodStatistics);
+  mRequest.Method := 'textDocument/hover';
+  mRequest.Count := 4;
+  mRequest.TotalMs := 10;
+  mRequest.MaxMs := 6;
+  mStatus.Requests := [mRequest];
+  Assert.IsTrue(Pos('- Index: 3 Units, 40 Symbole', mStatus.ToMarkdown) > 0, mStatus.ToMarkdown);
+  Assert.IsTrue(Pos('- Speicher: 5.0 MB', mStatus.ToMarkdown) > 0, mStatus.ToMarkdown);
+  Assert.IsTrue(Pos('- davon Symbolindex: 2.0 MB von 4.0 MB, 7 Units kompakt', mStatus.ToMarkdown) > 0, mStatus.ToMarkdown);
+  Assert.IsTrue(Pos('- davon geöffnete Dokumente: 1.0 MB', mStatus.ToMarkdown) > 0, mStatus.ToMarkdown);
   Assert.IsTrue(Pos('- App: letzter Indexlauf 120 ms (2 neu eingelesen, 1 aus dem Cache, 0 fehlen)',
-    Status.ToMarkdown) > 0, Status.ToMarkdown);
-  Assert.IsTrue(Pos('| textDocument/hover | 4 | 2.5 | 6 | 0 |', Status.ToMarkdown) > 0, Status.ToMarkdown);
-  Json := Status.ToJson;
+    mStatus.ToMarkdown) > 0, mStatus.ToMarkdown);
+  Assert.IsTrue(Pos('| textDocument/hover | 4 | 2.5 | 6 | 0 |', mStatus.ToMarkdown) > 0, mStatus.ToMarkdown);
+  mJson := mStatus.ToJson;
   try
-    Assert.AreEqual(40, Json.GetValue<Integer>('symbols'));
-    Assert.AreEqual(7, Json.GetValue<Integer>('compactUnits'));
-    Assert.AreEqual<Int64>(4 * 1024 * 1024, Json.GetValue<Int64>('budgetBytes'));
-    Assert.AreEqual('App', Json.GetValue<string>('workspaces[0].name'));
-    Assert.AreEqual(4, Json.GetValue<Integer>('requests[0].count'));
-    Assert.AreEqual(Status.ToMarkdown, Json.GetValue<string>('markdown'));
+    Assert.AreEqual(40, mJson.GetValue<Integer>('symbols'));
+    Assert.AreEqual(7, mJson.GetValue<Integer>('compactUnits'));
+    Assert.AreEqual<Int64>(4 * 1024 * 1024, mJson.GetValue<Int64>('budgetBytes'));
+    Assert.AreEqual('App', mJson.GetValue<string>('workspaces[0].name'));
+    Assert.AreEqual(4, mJson.GetValue<Integer>('requests[0].count'));
+    Assert.AreEqual(mStatus.ToMarkdown, mJson.GetValue<string>('markdown'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TLspStatusTests.StatusShowsCacheAndOffloadMetrics;
 var
-  Status: TServerStatus;
-  Workspace: TWorkspaceStatus;
-  Json: TJSONObject;
+  mStatus: TServerStatus;
+  mWorkspace: TWorkspaceStatus;
+  mJson: TJSONObject;
 begin
   // #492: ausgelagerte Verwendungen, Größe auf der Platte, letzte Aktualisierung.
-  Status := Default(TServerStatus);
-  Status.OffloadedUnits := 4;
-  Status.DiskBytes := 3 * 1024 * 1024;
-  Workspace := Default(TWorkspaceStatus);
-  Workspace.Name := 'App';
-  Workspace.LastUpdate := EncodeDate(2026, 10, 14) + EncodeTime(12, 30, 0, 0);
-  Workspace.CacheBytes := 1024 * 1024;
-  Workspace.LibraryCacheBytes := 1024 * 1024;
-  Status.Workspaces := [Workspace];
-  Assert.IsTrue(Pos('Verwendungen von 4 Units ausgelagert', Status.ToMarkdown) > 0, Status.ToMarkdown);
-  Assert.IsTrue(Pos('- Caches auf der Platte: 3.0 MB', Status.ToMarkdown) > 0, Status.ToMarkdown);
-  Assert.IsTrue(Pos('aktualisiert 14.10.2026 12:30:00, Cache 2.0 MB', Status.ToMarkdown) > 0, Status.ToMarkdown);
-  Json := Status.ToJson;
+  mStatus := Default(TServerStatus);
+  mStatus.OffloadedUnits := 4;
+  mStatus.DiskBytes := 3 * 1024 * 1024;
+  mWorkspace := Default(TWorkspaceStatus);
+  mWorkspace.Name := 'App';
+  mWorkspace.LastUpdate := EncodeDate(2026, 10, 14) + EncodeTime(12, 30, 0, 0);
+  mWorkspace.CacheBytes := 1024 * 1024;
+  mWorkspace.LibraryCacheBytes := 1024 * 1024;
+  mStatus.Workspaces := [mWorkspace];
+  Assert.IsTrue(Pos('Verwendungen von 4 Units ausgelagert', mStatus.ToMarkdown) > 0, mStatus.ToMarkdown);
+  Assert.IsTrue(Pos('- Caches auf der Platte: 3.0 MB', mStatus.ToMarkdown) > 0, mStatus.ToMarkdown);
+  Assert.IsTrue(Pos('aktualisiert 14.10.2026 12:30:00, Cache 2.0 MB', mStatus.ToMarkdown) > 0, mStatus.ToMarkdown);
+  mJson := mStatus.ToJson;
   try
-    Assert.AreEqual(4, Json.GetValue<Integer>('offloadedUnits'));
-    Assert.AreEqual<Int64>(3 * 1024 * 1024, Json.GetValue<Int64>('diskBytes'));
-    Assert.AreEqual<Int64>(1024 * 1024, Json.GetValue<Int64>('workspaces[0].libraryCacheBytes'));
-    Assert.IsTrue(Json.GetValue<string>('workspaces[0].lastUpdate').StartsWith('2026-10-14T12:30:00'),
-      Json.GetValue<string>('workspaces[0].lastUpdate'));
+    Assert.AreEqual(4, mJson.GetValue<Integer>('offloadedUnits'));
+    Assert.AreEqual<Int64>(3 * 1024 * 1024, mJson.GetValue<Int64>('diskBytes'));
+    Assert.AreEqual<Int64>(1024 * 1024, mJson.GetValue<Int64>('workspaces[0].libraryCacheBytes'));
+    Assert.IsTrue(mJson.GetValue<string>('workspaces[0].lastUpdate').StartsWith('2026-10-14T12:30:00'),
+      mJson.GetValue<string>('workspaces[0].lastUpdate'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TLspStatusTests.StatusShowsIndexingPerWorkspace;
 var
-  Status: TServerStatus;
-  Done, Building: TWorkspaceStatus;
-  Json, First, Second, Indexing: TJSONObject;
-  Items: TJSONArray;
+  mStatus: TServerStatus;
+  mDone, mBuilding: TWorkspaceStatus;
+  mJson, mFirst, mSecond, mIndexing: TJSONObject;
+  mItems: TJSONArray;
 begin
-  Status := Default(TServerStatus);
-  Done := Default(TWorkspaceStatus);
-  Done.Name := 'Kunden';
+  mStatus := Default(TServerStatus);
+  mDone := Default(TWorkspaceStatus);
+  mDone.Name := 'Kunden';
   // Format statt Literal: Ein Fortschritts-Token ist kein Zugangswert (security-hardcoded-credential).
-  Done.ProgressToken := Format('atlas-index-%d', [1]);
-  Building := Default(TWorkspaceStatus);
-  Building.Name := 'Lager';
-  Building.ProgressToken := Format('atlas-index-%d-%d', [1, 1]);
-  Building.Indexing := True;
-  Building.IndexPercent := 62;
-  Building.IndexStage := 'searchPaths';
-  Building.IndexWaiting := True;
-  Status.Workspaces := [Done, Building];
-  Json := Status.ToJson;
+  mDone.ProgressToken := Format('atlas-index-%d', [1]);
+  mBuilding := Default(TWorkspaceStatus);
+  mBuilding.Name := 'Lager';
+  mBuilding.ProgressToken := Format('atlas-index-%d-%d', [1, 1]);
+  mBuilding.Indexing := True;
+  mBuilding.IndexPercent := 62;
+  mBuilding.IndexStage := 'searchPaths';
+  mBuilding.IndexWaiting := True;
+  mStatus.Workspaces := [mDone, mBuilding];
+  mJson := mStatus.ToJson;
   try
-    Items := Json.GetValue('workspaces') as TJSONArray;
-    First := Items.Items[0] as TJSONObject;
-    Second := Items.Items[1] as TJSONObject;
-    Assert.AreEqual('atlas-index-1', First.GetValue('progressToken').Value);
-    Assert.IsNull(First.GetValue('indexing'), 'fertig: ohne indexing');
-    Assert.AreEqual('atlas-index-1-1', Second.GetValue('progressToken').Value);
-    Indexing := Second.GetValue('indexing') as TJSONObject;
-    Assert.AreEqual('62', Indexing.GetValue('percent').Value);
-    Assert.AreEqual('searchPaths', Indexing.GetValue('stage').Value);
-    Assert.AreEqual('true', Indexing.GetValue('waiting').ToJSON);
+    mItems := mJson.GetValue('workspaces') as TJSONArray;
+    mFirst := mItems.Items[0] as TJSONObject;
+    mSecond := mItems.Items[1] as TJSONObject;
+    Assert.AreEqual('atlas-index-1', mFirst.GetValue('progressToken').Value);
+    Assert.IsNull(mFirst.GetValue('indexing'), 'fertig: ohne indexing');
+    Assert.AreEqual('atlas-index-1-1', mSecond.GetValue('progressToken').Value);
+    mIndexing := mSecond.GetValue('indexing') as TJSONObject;
+    Assert.AreEqual('62', mIndexing.GetValue('percent').Value);
+    Assert.AreEqual('searchPaths', mIndexing.GetValue('stage').Value);
+    Assert.AreEqual('true', mIndexing.GetValue('waiting').ToJSON);
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TLspStatusTests.StatusShowsProjectChoice;
 var
-  Status: TServerStatus;
-  Workspace: TWorkspaceStatus;
-  Json: TJSONObject;
+  mStatus: TServerStatus;
+  mWorkspace: TWorkspaceStatus;
+  mJson: TJSONObject;
 begin
-  Workspace := Default(TWorkspaceStatus);
-  Workspace.Name := 'Kern';
-  Workspace.LastIndexMs := -1;
-  Assert.AreEqual('', Workspace.ProjectText);
-  Workspace.Project := 'C:\P\Kern.dproj';
-  Workspace.Config := 'Release';
-  Workspace.Platform := 'Win64';
-  Assert.AreEqual(' · Release/Win64', Workspace.ProjectText);
-  Workspace.BuildChosen := True;
-  Workspace.Active := True;
-  Workspace.Selected := True;
-  Status := Default(TServerStatus);
-  Status.Workspaces := [Workspace];
+  mWorkspace := Default(TWorkspaceStatus);
+  mWorkspace.Name := 'Kern';
+  mWorkspace.LastIndexMs := -1;
+  Assert.AreEqual('', mWorkspace.ProjectText);
+  mWorkspace.Project := 'C:\P\Kern.dproj';
+  mWorkspace.Config := 'Release';
+  mWorkspace.Platform := 'Win64';
+  Assert.AreEqual(' · Release/Win64', mWorkspace.ProjectText);
+  mWorkspace.BuildChosen := True;
+  mWorkspace.Active := True;
+  mWorkspace.Selected := True;
+  mStatus := Default(TServerStatus);
+  mStatus.Workspaces := [mWorkspace];
   Assert.IsTrue(Pos('- Kern · Release/Win64 (gewählt) · aktiv in der IDE · ausgewählt: Index wird aufgebaut',
-    Status.ToMarkdown) > 0, Status.ToMarkdown);
-  Json := Status.ToJson;
+    mStatus.ToMarkdown) > 0, mStatus.ToMarkdown);
+  mJson := mStatus.ToJson;
   try
-    Assert.AreEqual('Release', Json.GetValue<string>('workspaces[0].config'));
-    Assert.IsTrue(Json.GetValue<Boolean>('workspaces[0].buildChosen'));
-    Assert.IsTrue(Json.GetValue<Boolean>('workspaces[0].selected'));
+    Assert.AreEqual('Release', mJson.GetValue<string>('workspaces[0].config'));
+    Assert.IsTrue(mJson.GetValue<Boolean>('workspaces[0].buildChosen'));
+    Assert.IsTrue(mJson.GetValue<Boolean>('workspaces[0].selected'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 procedure TLspStatusTests.StatusShowsCompiler;
 var
-  Status: TServerStatus;
-  Json: TJSONObject;
+  mStatus: TServerStatus;
+  mJson: TJSONObject;
 begin
-  Status := Default(TServerStatus);
-  Assert.AreEqual(0, Pos('Compiler', Status.ToMarkdown), 'ohne Angabe keine Zeile');
-  Status.Compiler := 'Compiler: nicht verfügbar (Starter Edition)';
-  Status.CompilerBackend := 'off';
-  Status.CompilerReason := 'Atlas kann nicht kompilieren: kein Kommandozeilen-Compiler.';
-  Assert.IsTrue(Pos('- Compiler: nicht verfügbar (Starter Edition)', Status.ToMarkdown) > 0, Status.ToMarkdown);
-  Assert.IsTrue(Pos('  Atlas kann nicht kompilieren', Status.ToMarkdown) > 0, Status.ToMarkdown);
-  Json := Status.ToJson;
+  mStatus := Default(TServerStatus);
+  Assert.AreEqual(0, Pos('Compiler', mStatus.ToMarkdown), 'ohne Angabe keine Zeile');
+  mStatus.Compiler := 'Compiler: nicht verfügbar (Starter Edition)';
+  mStatus.CompilerBackend := 'off';
+  mStatus.CompilerReason := 'Atlas kann nicht kompilieren: kein Kommandozeilen-Compiler.';
+  Assert.IsTrue(Pos('- Compiler: nicht verfügbar (Starter Edition)', mStatus.ToMarkdown) > 0, mStatus.ToMarkdown);
+  Assert.IsTrue(Pos('  Atlas kann nicht kompilieren', mStatus.ToMarkdown) > 0, mStatus.ToMarkdown);
+  mJson := mStatus.ToJson;
   try
-    Assert.AreEqual('off', Json.GetValue<string>('compiler.backend'));
-    Assert.AreEqual('Compiler: nicht verfügbar (Starter Edition)', Json.GetValue<string>('compiler.status'));
-    Assert.IsTrue(Json.GetValue<string>('compiler.reason').StartsWith('Atlas kann nicht'));
+    Assert.AreEqual('off', mJson.GetValue<string>('compiler.backend'));
+    Assert.AreEqual('Compiler: nicht verfügbar (Starter Edition)', mJson.GetValue<string>('compiler.status'));
+    Assert.IsTrue(mJson.GetValue<string>('compiler.reason').StartsWith('Atlas kann nicht'));
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 

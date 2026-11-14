@@ -103,12 +103,12 @@ end;
 
 function Joined(const AValues: TArray<Integer>): string;
 var
-  Value: Integer;
+  mValue: Integer;
 begin
   Result := '';
-  for Value in AValues do
+  for mValue in AValues do
   begin
-    Result := Result + IntToStr(Value);
+    Result := Result + IntToStr(mValue);
   end;
 end;
 
@@ -121,42 +121,43 @@ end;
 
 procedure TLouvainTests.IsolatedNodesStayAlone;
 var
-  Edges: TArray<TLouvainEdge>;
+  mEdges: TArray<TLouvainEdge>;
 begin
   // Knoten 2 ohne Kanten, 0–1 und 3–4 je ein Paar.
-  Edges := nil;
-  Edges := Edges + [Edge(0, 1, 1), Edge(3, 4, 1)];
-  Assert.AreEqual('00122', Joined(TLouvain.Communities(5, Edges)));
+  mEdges := nil;
+  mEdges := mEdges + [Edge(0, 1, 1), Edge(3, 4, 1)];
+  Assert.AreEqual('00122', Joined(TLouvain.Communities(5, mEdges)));
   Assert.AreEqual('012', Joined(TLouvain.Communities(3, nil)));
 end;
 
 procedure TLouvainTests.NumbersFollowFirstNode;
 var
-  Edges: TArray<TLouvainEdge>;
+  mEdges: TArray<TLouvainEdge>;
 begin
   // Kanten der hinteren Gruppe zuerst: Die Gruppe von Knoten 0 bekommt trotzdem die 0.
-  Edges := Clique(4) + Clique(0);
-  Edges := Edges + [Edge(3, 4, 1)];
-  Assert.AreEqual('00001111', Joined(TLouvain.Communities(8, Edges)));
+  mEdges := Clique(4) + Clique(0);
+  mEdges := mEdges + [Edge(3, 4, 1)];
+  Assert.AreEqual('00001111', Joined(TLouvain.Communities(8, mEdges)));
 end;
 
 procedure TLouvainTests.IgnoresInvalidEdges;
 var
-  Edges: TArray<TLouvainEdge>;
+  mEdges: TArray<TLouvainEdge>;
 begin
-  Edges := nil;
-  Edges := Edges + [Edge(0, 0, 5), Edge(1, 2, 0), Edge(-1, 1, 1), Edge(1, 9, 1)];
-  Assert.AreEqual('012', Joined(TLouvain.Communities(3, Edges)));
+  mEdges := nil;
+  mEdges := mEdges + [Edge(0, 0, 5), Edge(1, 2, 0), Edge(-1, 1, 1), Edge(1, 9, 1)];
+  Assert.AreEqual('012', Joined(TLouvain.Communities(3, mEdges)));
 end;
 
 procedure TLouvainTests.ModularityPrefersFoundGroups;
 var
-  Found, Single: TArray<Integer>;
+  mFound, mSingle: TArray<Integer>;
 begin
-  Found := TLouvain.Communities(8, TwoCliques);
-  SetLength(Single, 8);
-  Assert.IsTrue(TLouvain.Modularity(8, TwoCliques, Found) > 0.3, FloatToStr(TLouvain.Modularity(8, TwoCliques, Found)));
-  Assert.AreEqual(Double(0), TLouvain.Modularity(8, TwoCliques, Single), 1E-9);
+  mFound := TLouvain.Communities(8, TwoCliques);
+  SetLength(mSingle, 8);
+  Assert.IsTrue(TLouvain.Modularity(8, TwoCliques, mFound) > 0.3,
+    FloatToStr(TLouvain.Modularity(8, TwoCliques, mFound)));
+  Assert.AreEqual(Double(0), TLouvain.Modularity(8, TwoCliques, mSingle), 1E-9);
 end;
 
 procedure TLouvainTests.ResolutionOneMatchesClassic;

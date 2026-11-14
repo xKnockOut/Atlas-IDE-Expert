@@ -118,13 +118,13 @@ end;
 
 function Analyze(const AUnits: TArray<TUnitIndex>): TArchitectureOverview;
 var
-  Graph: TUsesGraph;
+  mGraph: TUsesGraph;
 begin
-  Graph := TUsesGraph.Create(AUnits, TUsesGraphOptions.Default);
+  mGraph := TUsesGraph.Create(AUnits, TUsesGraphOptions.Default);
   try
-    Result := TArchitectureAnalyzer.Analyze(Graph, nil, 10);
+    Result := TArchitectureAnalyzer.Analyze(mGraph, nil, 10);
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
@@ -221,7 +221,8 @@ begin
 end;
 
 /// <summary>Zwei getrennte Gruppen App.Ui (fünf Units) und App.Dbg (vier Units), je als Kette über implementation,
-/// die beide über interface stark an App.Common.Logging hängen; App.Tool.Only verwendet nur Logging. Dazu App.Index mit drei Units, die nur sie
+/// die beide über interface stark an App.Common.Logging hängen; App.Tool.Only verwendet nur Logging. Dazu App.Index mit
+/// drei Units, die nur sie
 /// verwenden, an App.Index.Types (Rolle Fundament, aber nur im eigenen Teilsystem verwendet).</summary>
 function FoundationProject: TArray<TUnitIndex>;
 begin
@@ -260,16 +261,16 @@ end;
 
 function UnitNames(const AOverview: TArchitectureOverview; const AUnits: TArray<Integer>): string;
 var
-  Item: Integer;
+  mItem: Integer;
 begin
   Result := '';
-  for Item in AUnits do
+  for mItem in AUnits do
   begin
     if Result <> '' then
     begin
       Result := Result + ',';
     end;
-    Result := Result + AOverview.Units[Item].Name;
+    Result := Result + AOverview.Units[mItem].Name;
   end;
 end;
 
@@ -277,59 +278,59 @@ end;
 
 procedure TOverviewTests.FindsNamedSubsystems;
 var
-  Overview: TArchitectureOverview;
-  Subsystem: TOverviewSubsystem;
+  mOverview: TArchitectureOverview;
+  mSubsystem: TOverviewSubsystem;
 begin
-  Overview := Analyze(Project);
-  Assert.AreEqual(3, Integer(Length(Overview.Subsystems)));
-  Assert.AreEqual('Core', SubsystemOf(Overview, 'App.Core.Util'));
-  Assert.AreEqual('Data', SubsystemOf(Overview, 'App.Data.Cache'));
-  Assert.AreEqual('Ui', SubsystemOf(Overview, 'App.Ui.Main'));
-  for Subsystem in Overview.Subsystems do
+  mOverview := Analyze(Project);
+  Assert.AreEqual(3, Integer(Length(mOverview.Subsystems)));
+  Assert.AreEqual('Core', SubsystemOf(mOverview, 'App.Core.Util'));
+  Assert.AreEqual('Data', SubsystemOf(mOverview, 'App.Data.Cache'));
+  Assert.AreEqual('Ui', SubsystemOf(mOverview, 'App.Ui.Main'));
+  for mSubsystem in mOverview.Subsystems do
   begin
-    Assert.AreEqual(4, Integer(Length(Subsystem.Units)), Subsystem.Name);
-    Assert.IsTrue(Subsystem.Cohesion > 0.7, Subsystem.Name);
+    Assert.AreEqual(4, Integer(Length(mSubsystem.Units)), mSubsystem.Name);
+    Assert.IsTrue(mSubsystem.Cohesion > 0.7, mSubsystem.Name);
   end;
-  Assert.AreEqual('App.Core.Base', Overview.Units[Overview.Subsystems[0].Central].Name,
+  Assert.AreEqual('App.Core.Base', mOverview.Units[mOverview.Subsystems[0].Central].Name,
     'Gleich groß: nach Name der zentralen Unit');
-  Assert.AreEqual(0, Integer(Length(Overview.Outliers)));
-  Assert.AreEqual(17, Overview.EdgeCount);
+  Assert.AreEqual(0, Integer(Length(mOverview.Outliers)));
+  Assert.AreEqual(17, mOverview.EdgeCount);
 end;
 
 procedure TOverviewTests.MisplacedUnitIsOutlier;
 var
-  Units: TArray<TUnitIndex>;
-  Overview: TArchitectureOverview;
-  Outlier: TOverviewOutlier;
+  mUnits: TArray<TUnitIndex>;
+  mOverview: TArchitectureOverview;
+  mOutlier: TOverviewOutlier;
 begin
   // App.Ui.Export verwendet nur Data-Units: Louvain legt sie zu Data, der Namensraum sagt Ui.
-  Units := Project;
-  Units := Units + [UsesUnit('App.Ui.Export', ['App.Data.Db', 'App.Data.Query', 'App.Data.Model'], nil)];
-  Overview := Analyze(Units);
-  Assert.AreEqual('Data', SubsystemOf(Overview, 'App.Ui.Export'));
-  Assert.AreEqual(1, Integer(Length(Overview.Outliers)));
-  Outlier := Overview.Outliers[0];
-  Assert.AreEqual('App.Ui.Export', Overview.Units[Outlier.Unit_].Name);
-  Assert.AreEqual('Ui', Overview.Subsystems[Outlier.Suggested].Name);
-  Assert.AreEqual<TOverviewOutlierReason>(TOverviewOutlierReason.Namespace, Outlier.Reason);
-  Assert.AreEqual(3, Outlier.Inside);
-  Assert.AreEqual(0, Outlier.Toward);
+  mUnits := Project;
+  mUnits := mUnits + [UsesUnit('App.Ui.Export', ['App.Data.Db', 'App.Data.Query', 'App.Data.Model'], nil)];
+  mOverview := Analyze(mUnits);
+  Assert.AreEqual('Data', SubsystemOf(mOverview, 'App.Ui.Export'));
+  Assert.AreEqual(1, Integer(Length(mOverview.Outliers)));
+  mOutlier := mOverview.Outliers[0];
+  Assert.AreEqual('App.Ui.Export', mOverview.Units[mOutlier.Unit_].Name);
+  Assert.AreEqual('Ui', mOverview.Subsystems[mOutlier.Suggested].Name);
+  Assert.AreEqual<TOverviewOutlierReason>(TOverviewOutlierReason.Namespace, mOutlier.Reason);
+  Assert.AreEqual(3, mOutlier.Inside);
+  Assert.AreEqual(0, mOutlier.Toward);
 end;
 
 procedure TOverviewTests.RanksCentralUnits;
 var
-  Overview: TArchitectureOverview;
-  Base: TOverviewUnit;
+  mOverview: TArchitectureOverview;
+  mBase: TOverviewUnit;
 begin
-  Overview := Analyze(Project);
-  Base := Overview.Units[Overview.IndexOf('App.Core.Base')];
-  Assert.AreEqual(4, Base.Direct, 'Types, Log, Util, Db');
-  Assert.AreEqual(0, Base.Uses_);
+  mOverview := Analyze(Project);
+  mBase := mOverview.Units[mOverview.IndexOf('App.Core.Base')];
+  Assert.AreEqual(4, mBase.Direct, 'Types, Log, Util, Db');
+  Assert.AreEqual(0, mBase.Uses_);
   // Interface-Änderung an Base: Types, Log, Util, Db direkt; über das interface von Types noch Log und Util.
-  Assert.AreEqual(4, Base.Total);
-  Assert.AreEqual<TOverviewUnitRole>(TOverviewUnitRole.Foundation, Base.Role);
-  Assert.AreEqual('App.Core.Base', Overview.Units[Overview.Central[0]].Name);
-  Assert.AreEqual(10, Integer(Length(Overview.Central)), 'auf CentralCount gekürzt');
+  Assert.AreEqual(4, mBase.Total);
+  Assert.AreEqual<TOverviewUnitRole>(TOverviewUnitRole.Foundation, mBase.Role);
+  Assert.AreEqual('App.Core.Base', mOverview.Units[mOverview.Central[0]].Name);
+  Assert.AreEqual(10, Integer(Length(mOverview.Central)), 'auf CentralCount gekürzt');
   Assert.AreEqual('Fundament', TArchitectureAnalyzer.RoleCaption(TOverviewUnitRole.Foundation));
   Assert.AreEqual('Drehscheibe', TArchitectureAnalyzer.RoleCaption(TOverviewUnitRole.Hub));
   Assert.AreEqual('', TArchitectureAnalyzer.RoleCaption(TOverviewUnitRole.None));
@@ -337,142 +338,143 @@ end;
 
 procedure TOverviewTests.ReportsCyclesInterfaceFirst;
 var
-  Overview: TArchitectureOverview;
+  mOverview: TArchitectureOverview;
 begin
   // X.A ↔ X.B über implementation (erlaubt, aber berichtet), Y.C ↔ Y.D nur interface (Übersetzungsfehler).
-  Overview := Analyze([UsesUnit('X.A', ['X.B'], nil), UsesUnit('X.B', nil, ['X.A']), UsesUnit('Y.C', ['Y.D'], nil),
+  mOverview := Analyze([UsesUnit('X.A', ['X.B'], nil), UsesUnit('X.B', nil, ['X.A']), UsesUnit('Y.C', ['Y.D'], nil),
     UsesUnit('Y.D', ['Y.C'], nil)]);
-  Assert.AreEqual(2, Integer(Length(Overview.Cycles)));
-  Assert.IsTrue(Overview.Cycles[0].InterfaceOnly);
-  Assert.AreEqual('Y.C,Y.D', UnitNames(Overview, Overview.Cycles[0].Component));
-  Assert.IsFalse(Overview.Cycles[1].InterfaceOnly);
-  Assert.AreEqual('X.A,X.B', UnitNames(Overview, Overview.Cycles[1].Component));
-  Assert.AreEqual(2, Integer(Length(Overview.Cycles[1].Edges)));
-  Assert.IsFalse(Overview.Cycles[1].Edges[0].Located, 'ohne Locator keine Fundstelle');
+  Assert.AreEqual(2, Integer(Length(mOverview.Cycles)));
+  Assert.IsTrue(mOverview.Cycles[0].InterfaceOnly);
+  Assert.AreEqual('Y.C,Y.D', UnitNames(mOverview, mOverview.Cycles[0].Component));
+  Assert.IsFalse(mOverview.Cycles[1].InterfaceOnly);
+  Assert.AreEqual('X.A,X.B', UnitNames(mOverview, mOverview.Cycles[1].Component));
+  Assert.AreEqual(2, Integer(Length(mOverview.Cycles[1].Edges)));
+  Assert.IsFalse(mOverview.Cycles[1].Edges[0].Located, 'ohne Locator keine Fundstelle');
 end;
 
 procedure TOverviewTests.ReportsRareCrossLinkWithLocation;
 var
-  Units: TArray<TUnitIndex>;
-  Graph: TUsesGraph;
-  Locator: TUsesLocator;
-  Overview: TArchitectureOverview;
-  Link: TOverviewCrossLink;
-  Files: TDictionary<string, string>;
-  Main: TUnitIndex;
+  mUnits: TArray<TUnitIndex>;
+  mGraph: TUsesGraph;
+  mLocator: TUsesLocator;
+  mOverview: TArchitectureOverview;
+  mLink: TOverviewCrossLink;
+  mFiles: TDictionary<string, string>;
+  mMain: TUnitIndex;
 begin
-  Units := Project;
-  Main := Units[11];
-  Files := TDictionary<string, string>.Create;
-  Files.Add(Main.FileName, 'unit App.Ui.Main;'#10'interface'#10'uses App.Ui.Form, App.Ui.Grid;'#10 +
+  mUnits := Project;
+  mMain := mUnits[11];
+  mFiles := TDictionary<string, string>.Create;
+  mFiles.Add(mMain.FileName, 'unit App.Ui.Main;'#10'interface'#10'uses App.Ui.Form, App.Ui.Grid;'#10 +
     'implementation'#10'uses'#10'  App.Data.Model;'#10'end.');
-  Graph := TUsesGraph.Create(Units, TUsesGraphOptions.Default);
-  Locator := TUsesLocator.Create(
+  mGraph := TUsesGraph.Create(mUnits, TUsesGraphOptions.Default);
+  mLocator := TUsesLocator.Create(
     function(const AFileName: string; out AText: string): Boolean
     begin
-      Result := Files.TryGetValue(AFileName, AText);
+      Result := mFiles.TryGetValue(AFileName, AText);
     end,
     function(const AFileName: string): TArray<string>
     begin
       Result := nil;
     end);
   try
-    Overview := TArchitectureAnalyzer.Analyze(Graph, Locator, 5);
-    Assert.AreEqual(2, Integer(Length(Overview.CrossLinks)), 'Data.Db → Core.Base und Ui.Main → Data.Model');
-    Link := Overview.CrossLinks[1];
-    Assert.AreEqual('App.Ui.Main', Overview.Units[Link.Edge.Source].Name);
-    Assert.AreEqual('App.Data.Model', Overview.Units[Link.Edge.Target].Name);
-    Assert.AreEqual<TOverviewCrossReason>(TOverviewCrossReason.Rare, Link.Reason);
-    Assert.AreEqual(1, Link.Forward);
-    Assert.AreEqual(0, Link.Backward);
-    Assert.AreEqual<TUsesSection>(TUsesSection.Implementation_, Link.Edge.Section);
-    Assert.IsTrue(Link.Edge.Located);
-    Assert.AreEqual(5, Link.Edge.Location.Range.StartPos.Line);
-    Assert.AreEqual(2, Link.Edge.Location.Range.StartPos.Character);
-    Assert.IsFalse(Overview.CrossLinks[0].Edge.Located, 'Datei von Data.Db fehlt');
+    mOverview := TArchitectureAnalyzer.Analyze(mGraph, mLocator, 5);
+    Assert.AreEqual(2, Integer(Length(mOverview.CrossLinks)), 'Data.Db → Core.Base und Ui.Main → Data.Model');
+    mLink := mOverview.CrossLinks[1];
+    Assert.AreEqual('App.Ui.Main', mOverview.Units[mLink.Edge.Source].Name);
+    Assert.AreEqual('App.Data.Model', mOverview.Units[mLink.Edge.Target].Name);
+    Assert.AreEqual<TOverviewCrossReason>(TOverviewCrossReason.Rare, mLink.Reason);
+    Assert.AreEqual(1, mLink.Forward);
+    Assert.AreEqual(0, mLink.Backward);
+    Assert.AreEqual<TUsesSection>(TUsesSection.Implementation_, mLink.Edge.Section);
+    Assert.IsTrue(mLink.Edge.Located);
+    Assert.AreEqual(5, mLink.Edge.Location.Range.StartPos.Line);
+    Assert.AreEqual(2, mLink.Edge.Location.Range.StartPos.Character);
+    Assert.IsFalse(mOverview.CrossLinks[0].Edge.Located, 'Datei von Data.Db fehlt');
   finally
-    Locator.Free;
-    Graph.Free;
-    Files.Free;
+    mLocator.Free;
+    mGraph.Free;
+    mFiles.Free;
   end;
 end;
 
 procedure TOverviewTests.ProfileListsNeighbours;
 var
-  Overview: TArchitectureOverview;
-  Profile: TOverviewProfile;
+  mOverview: TArchitectureOverview;
+  mProfile: TOverviewProfile;
 begin
-  Overview := Analyze(Project);
-  Profile := Overview.Profile(Overview.IndexOf('App.Data.Model'));
-  Assert.AreEqual('App.Data.Db', UnitNames(Overview, Profile.DependsOn));
-  Assert.AreEqual('App.Data.Cache,App.Data.Query,App.Ui.Main', UnitNames(Overview, Profile.UsedBy));
-  Assert.AreEqual(1, Integer(Length(Profile.CrossLinks)));
-  Assert.AreEqual(0, Integer(Length(Profile.Cycles)));
-  Assert.AreEqual(-1, Profile.Outlier);
-  Assert.AreEqual(-1, Overview.IndexOf('Fehlt'));
+  mOverview := Analyze(Project);
+  mProfile := mOverview.Profile(mOverview.IndexOf('App.Data.Model'));
+  Assert.AreEqual('App.Data.Db', UnitNames(mOverview, mProfile.DependsOn));
+  Assert.AreEqual('App.Data.Cache,App.Data.Query,App.Ui.Main', UnitNames(mOverview, mProfile.UsedBy));
+  Assert.AreEqual(1, Integer(Length(mProfile.CrossLinks)));
+  Assert.AreEqual(0, Integer(Length(mProfile.Cycles)));
+  Assert.AreEqual(-1, mProfile.Outlier);
+  Assert.AreEqual(-1, mOverview.IndexOf('Fehlt'));
 end;
 
 procedure TOverviewTests.SameInputSameResult;
 var
-  First, Second: TArchitectureOverview;
-  Index: Integer;
-  Reversed: TArray<TUnitIndex>;
-  Units: TArray<TUnitIndex>;
+  mFirst, mSecond: TArchitectureOverview;
+  mIndex: Integer;
+  mReversed: TArray<TUnitIndex>;
+  mUnits: TArray<TUnitIndex>;
 begin
-  Units := Project;
-  SetLength(Reversed, Length(Units));
-  for Index := 0 to High(Units) do
+  mUnits := Project;
+  SetLength(mReversed, Length(mUnits));
+  for mIndex := 0 to High(mUnits) do
   begin
-    Reversed[High(Units) - Index] := Units[Index];
+    mReversed[High(mUnits) - mIndex] := mUnits[mIndex];
   end;
-  First := Analyze(Units);
-  Second := Analyze(Reversed);
-  Assert.AreEqual(Integer(Length(First.Subsystems)), Integer(Length(Second.Subsystems)));
-  for Index := 0 to High(First.Subsystems) do
+  mFirst := Analyze(mUnits);
+  mSecond := Analyze(mReversed);
+  Assert.AreEqual(Integer(Length(mFirst.Subsystems)), Integer(Length(mSecond.Subsystems)));
+  for mIndex := 0 to High(mFirst.Subsystems) do
   begin
-    Assert.AreEqual(First.Subsystems[Index].Name, Second.Subsystems[Index].Name);
-    Assert.AreEqual(UnitNames(First, First.Subsystems[Index].Units), UnitNames(Second, Second.Subsystems[Index].Units));
+    Assert.AreEqual(mFirst.Subsystems[mIndex].Name, mSecond.Subsystems[mIndex].Name);
+    Assert.AreEqual(UnitNames(mFirst, mFirst.Subsystems[mIndex].Units),
+      UnitNames(mSecond, mSecond.Subsystems[mIndex].Units));
   end;
-  Assert.AreEqual(UnitNames(First, First.Central), UnitNames(Second, Second.Central));
+  Assert.AreEqual(UnitNames(mFirst, mFirst.Central), UnitNames(mSecond, mSecond.Central));
 end;
 
 procedure TOverviewTests.NamespacePartsAndRelativePath;
 var
-  Overview: TArchitectureOverview;
+  mOverview: TArchitectureOverview;
 begin
   Assert.AreEqual('Atlas|Common|Index', string.Join('|', TArchitectureAnalyzer.NamespaceParts('Atlas.Common.Index.Builder')));
   Assert.AreEqual(0, Integer(Length(TArchitectureAnalyzer.NamespaceParts('SysUtils'))));
-  Overview := Default(TArchitectureOverview);
-  Overview.Root := 'C:\Projekt';
-  Assert.AreEqual('App/Ui/Main.pas', Overview.RelativePath('C:\Projekt\App\Ui\Main.pas'));
-  Assert.AreEqual('D:/Fremd/X.pas', Overview.RelativePath('D:\Fremd\X.pas'));
+  mOverview := Default(TArchitectureOverview);
+  mOverview.Root := 'C:\Projekt';
+  Assert.AreEqual('App/Ui/Main.pas', mOverview.RelativePath('C:\Projekt\App\Ui\Main.pas'));
+  Assert.AreEqual('D:/Fremd/X.pas', mOverview.RelativePath('D:\Fremd\X.pas'));
 end;
 
 procedure TOverviewTests.TwoThousandUnitsAreFast;
 var
-  Units: TArray<TUnitIndex>;
-  Group, Item, Index: Integer;
-  Name: string;
-  Watch: TStopwatch;
-  Overview: TArchitectureOverview;
+  mUnits: TArray<TUnitIndex>;
+  mGroup, mItem, mIndex: Integer;
+  mName: string;
+  mWatch: TStopwatch;
+  mOverview: TArchitectureOverview;
 begin
   // 20 Namensräume zu je 100 Units: Ring mit Sehnen innen, je Unit eine Kante in den nächsten Namensraum.
-  SetLength(Units, 2000);
-  for Index := 0 to High(Units) do
+  SetLength(mUnits, 2000);
+  for mIndex := 0 to High(mUnits) do
   begin
-    Group := Index div 100;
-    Item := Index mod 100;
-    Name := Format('P.N%.2d.U%.3d', [Group, Item]);
-    Units[Index] := UsesUnit(Name, [Format('P.N%.2d.U%.3d', [Group, (Item + 1) mod 100]),
-      Format('P.N%.2d.U%.3d', [Group, (Item * 7 + 3) mod 100])],
-      [Format('P.N%.2d.U%.3d', [Group, (Item * 13 + 5) mod 100]),
-      Format('P.N%.2d.U%.3d', [(Group + 1) mod 20, Item])]);
+    mGroup := mIndex div 100;
+    mItem := mIndex mod 100;
+    mName := Format('P.N%.2d.U%.3d', [mGroup, mItem]);
+    mUnits[mIndex] := UsesUnit(mName, [Format('P.N%.2d.U%.3d', [mGroup, (mItem + 1) mod 100]),
+      Format('P.N%.2d.U%.3d', [mGroup, (mItem * 7 + 3) mod 100])],
+      [Format('P.N%.2d.U%.3d', [mGroup, (mItem * 13 + 5) mod 100]),
+      Format('P.N%.2d.U%.3d', [(mGroup + 1) mod 20, mItem])]);
   end;
-  Watch := TStopwatch.StartNew;
-  Overview := Analyze(Units);
-  Assert.IsTrue(Watch.ElapsedMilliseconds < 2000, Format('%d ms', [Watch.ElapsedMilliseconds]));
-  Assert.AreEqual(2000, Integer(Length(Overview.Units)));
-  Assert.IsTrue(Length(Overview.Subsystems) >= 10, IntToStr(Length(Overview.Subsystems)));
+  mWatch := TStopwatch.StartNew;
+  mOverview := Analyze(mUnits);
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < 2000, Format('%d ms', [mWatch.ElapsedMilliseconds]));
+  Assert.AreEqual(2000, Integer(Length(mOverview.Units)));
+  Assert.IsTrue(Length(mOverview.Subsystems) >= 10, IntToStr(Length(mOverview.Subsystems)));
 end;
 
 procedure TOverviewTests.ResolutionOneMatchesDefault;
@@ -843,7 +845,8 @@ begin
     TArchitectureGrouping.Default.Foundations);
   for mMode := Low(TArchitectureFoundations) to High(TArchitectureFoundations) do
   begin
-    Assert.IsTrue(TArchitectureGrouping.TryFoundations(TArchitectureGrouping.FoundationsText(mMode), mGrouping.Foundations));
+    Assert.IsTrue(TArchitectureGrouping.TryFoundations(TArchitectureGrouping.FoundationsText(mMode),
+      mGrouping.Foundations));
     Assert.AreEqual<TArchitectureFoundations>(mMode, mGrouping.Foundations);
   end;
   Assert.IsFalse(TArchitectureGrouping.TryFoundations('Separate', mMode));
@@ -852,7 +855,8 @@ begin
   Assert.AreNotEqual(TArchitectureGrouping.Default.Key, mGrouping.Key);
 end;
 
-/// <summary>Zwei Gruppen Z.Own und Z.Oth zu je fünf Units (Kette über interface, alle an U1); Z.Own.Mid verwendet drei Units
+/// <summary>Zwei Gruppen Z.Own und Z.Oth zu je fünf Units (Kette über interface, alle an U1); Z.Own.Mid verwendet drei
+/// Units
 /// von Own über interface und zwei über implementation, von Oth je zwei.</summary>
 function AssignmentProject: TArray<TUnitIndex>;
 var

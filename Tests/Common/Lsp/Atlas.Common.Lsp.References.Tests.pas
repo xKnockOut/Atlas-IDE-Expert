@@ -54,11 +54,11 @@ uses
   Atlas.Common.Dfm.FormModel;
 
 const
-  WerkzeugFile = 'C:\P\Werkzeug.pas';
-  WerkzeugDfm = 'C:\P\Werkzeug.dfm';
-  HauptFile = 'C:\P\Haupt.pas';
+  cWerkzeugFile = 'C:\P\Werkzeug.pas';
+  cWerkzeugDfm = 'C:\P\Werkzeug.dfm';
+  cHauptFile = 'C:\P\Haupt.pas';
 
-  UnitWerkzeug =
+  cUnitWerkzeug =
     'unit Werkzeug;'#10 +                            // 0
     'interface'#10 +                                 // 1
     'type'#10 +                                      // 2
@@ -73,7 +73,7 @@ const
     'end;'#10 +                                      // 11
     'end.';
 
-  FormWerkzeug =
+  cFormWerkzeug =
     'object Rechner: TRechner'#10 +
     '  OnSumme = Summe'#10 +
     '  object Summe: TButton'#10 +
@@ -81,7 +81,7 @@ const
     '  end'#10 +
     'end';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +                               // 0
     'interface'#10 +                                 // 1
     'uses Werkzeug;'#10 +                            // 2
@@ -97,24 +97,24 @@ const
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
-  Index, Line, LineStart, I: Integer;
+  mIndex, mLine, mLineStart, I: Integer;
 begin
-  Index := Pos(AMarker, AText);
-  if Index = 0 then
+  mIndex := Pos(AMarker, AText);
+  if mIndex = 0 then
   begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
   end;
-  Line := 0;
-  LineStart := 1;
-  for I := 1 to Index - 1 do
+  mLine := 0;
+  mLineStart := 1;
+  for I := 1 to mIndex - 1 do
   begin
     if AText[I] = #10 then
     begin
-      Inc(Line);
-      LineStart := I + 1;
+      Inc(mLine);
+      mLineStart := I + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 { TLspReferencesTests }
@@ -122,7 +122,7 @@ end;
 procedure TLspReferencesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitWerkzeug, WerkzeugFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -134,23 +134,23 @@ end;
 
 function TLspReferencesTests.FindAt(const AMarker: string; ADeclaration: Boolean): TArray<TReferenceLocation>;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Result := TLspReferences.Find(FResolver, FIndex, Tree,
-      TReferenceSearch.Create(HauptFile, PositionOf(UnitHaupt, AMarker),
-      ADeclaration, [WerkzeugFile, HauptFile],
+    Result := TLspReferences.Find(FResolver, FIndex, mTree,
+      TReferenceSearch.Create(cHauptFile, PositionOf(cUnitHaupt, AMarker),
+      ADeclaration, [cWerkzeugFile, cHauptFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := True;
-        if SameText(AFileName, WerkzeugFile) then
+        if SameText(AFileName, cWerkzeugFile) then
         begin
-          AText := UnitWerkzeug;
+          AText := cUnitWerkzeug;
         end
-        else if SameText(AFileName, WerkzeugDfm) then
+        else if SameText(AFileName, cWerkzeugDfm) then
         begin
-          AText := FormWerkzeug;
+          AText := cFormWerkzeug;
         end
         else
         begin
@@ -158,19 +158,19 @@ begin
         end;
       end));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function TLspReferencesTests.Describe(const ALocations: TArray<TReferenceLocation>): string;
 var
-  Location: TReferenceLocation;
+  mLocation: TReferenceLocation;
 begin
   Result := '';
-  for Location in ALocations do
+  for mLocation in ALocations do
   begin
-    Result := Result + Format('%s:%d:%d ', [ExtractFileName(Location.FileName), Location.Range.StartPos.Line,
-      Location.Range.StartPos.Character]);
+    Result := Result + Format('%s:%d:%d ', [ExtractFileName(mLocation.FileName), mLocation.Range.StartPos.Line,
+      mLocation.Range.StartPos.Character]);
   end;
   Result := Trim(Result);
 end;
@@ -195,27 +195,27 @@ end;
 
 procedure TLspReferencesTests.ReadsDfmEventsAndObjects;
 var
-  Ranges: TArray<TTextRange>;
-  Model: TFormModel;
+  mRanges: TArray<TTextRange>;
+  mModel: TFormModel;
 begin
-  Model := TFormModel.Create(FormWerkzeug);
+  mModel := TFormModel.Create(cFormWerkzeug);
   try
-    Ranges := Model.Occurrences('summe');
+    mRanges := mModel.Occurrences('summe');
   finally
-    Model.Free;
+    mModel.Free;
   end;
-  Assert.AreEqual<NativeInt>(2, Length(Ranges));
-  Assert.AreEqual(1, Ranges[0].StartPos.Line);
-  Assert.AreEqual(12, Ranges[0].StartPos.Character);
-  Assert.AreEqual(17, Ranges[0].EndPos.Character);
-  Assert.AreEqual(2, Ranges[1].StartPos.Line);
-  Assert.AreEqual(9, Ranges[1].StartPos.Character);
+  Assert.AreEqual<NativeInt>(2, Length(mRanges));
+  Assert.AreEqual(1, mRanges[0].StartPos.Line);
+  Assert.AreEqual(12, mRanges[0].StartPos.Character);
+  Assert.AreEqual(17, mRanges[0].EndPos.Character);
+  Assert.AreEqual(2, mRanges[1].StartPos.Line);
+  Assert.AreEqual(9, mRanges[1].StartPos.Character);
   // Strings und Eigenschaften ohne "On" zählen nicht.
-  Model := TFormModel.Create('object F: TF'#10'  Caption = Summe'#10'  Tag = Summe'#10'end');
+  mModel := TFormModel.Create('object F: TF'#10'  Caption = Summe'#10'  Tag = Summe'#10'end');
   try
-    Assert.AreEqual<NativeInt>(0, Length(Model.Occurrences('Summe')));
+    Assert.AreEqual<NativeInt>(0, Length(mModel.Occurrences('Summe')));
   finally
-    Model.Free;
+    mModel.Free;
   end;
 end;
 
@@ -226,84 +226,84 @@ end;
 
 procedure TLspReferencesTests.FindManyOccurrencesSameResult;
 const
-  Count = 200;
+  cCount = 200;
 var
-  Text: string;
-  Tree: TSyntaxTree;
-  Found: TArray<TReferenceLocation>;
-  Index: Integer;
+  mText: string;
+  mTree: TSyntaxTree;
+  mFound: TArray<TReferenceLocation>;
+  mIndex: Integer;
 begin
-  Text := 'unit Haupt;'#10'interface'#10'uses Werkzeug;'#10'implementation'#10'procedure Lauf;'#10'var'#10 +
+  mText := 'unit Haupt;'#10'interface'#10'uses Werkzeug;'#10'implementation'#10'procedure Lauf;'#10'var'#10 +
     '  R: TRechner;'#10'begin'#10;
-  for Index := 1 to Count do
+  for mIndex := 1 to cCount do
   begin
-    Text := Text + '  R.Summe(1, 2);'#10;
+    mText := mText + '  R.Summe(1, 2);'#10;
   end;
-  Text := Text + 'end;'#10'end.';
-  Tree := TPascalParser.Parse(Text);
+  mText := mText + 'end;'#10'end.';
+  mTree := TPascalParser.Parse(mText);
   try
-    Found := TLspReferences.Find(FResolver, FIndex, Tree,
-      TReferenceSearch.Create(HauptFile, TTextPosition.Create(8, 4), False,
-      [WerkzeugFile, HauptFile, WerkzeugFile],
+    mFound := TLspReferences.Find(FResolver, FIndex, mTree,
+      TReferenceSearch.Create(cHauptFile, TTextPosition.Create(8, 4), False,
+      [cWerkzeugFile, cHauptFile, cWerkzeugFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
-        Result := SameText(AFileName, WerkzeugFile);
+        Result := SameText(AFileName, cWerkzeugFile);
         if Result then
         begin
-          AText := UnitWerkzeug;
+          AText := cUnitWerkzeug;
         end;
       end));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
   // 200 Aufrufe und der Rumpf in Werkzeug.pas; die Deklaration fehlt (ADeclaration = False), doppelt
   // genannte Dateien zählen einmal.
-  Assert.AreEqual(Count + 1, Integer(Length(Found)));
-  for Index := 0 to Count - 1 do
+  Assert.AreEqual(cCount + 1, Integer(Length(mFound)));
+  for mIndex := 0 to cCount - 1 do
   begin
-    Assert.AreEqual(HauptFile, Found[Index].FileName);
-    Assert.AreEqual(8 + Index, Found[Index].Range.StartPos.Line);
-    Assert.AreEqual(4, Found[Index].Range.StartPos.Character);
+    Assert.AreEqual(cHauptFile, mFound[mIndex].FileName);
+    Assert.AreEqual(8 + mIndex, mFound[mIndex].Range.StartPos.Line);
+    Assert.AreEqual(4, mFound[mIndex].Range.StartPos.Character);
   end;
-  Assert.AreEqual(WerkzeugFile, Found[Count].FileName);
-  Assert.AreEqual(8, Found[Count].Range.StartPos.Line);
+  Assert.AreEqual(cWerkzeugFile, mFound[cCount].FileName);
+  Assert.AreEqual(8, mFound[cCount].Range.StartPos.Line);
 end;
 
 procedure TLspReferencesTests.FindResolverStaysPinnedAfterForeignTree;
 var
-  Tree: TSyntaxTree;
-  Pinned, Again: TUnitIndex;
-  Found: TArray<TReferenceLocation>;
+  mTree: TSyntaxTree;
+  mPinned, mAgain: TUnitIndex;
+  mFound: TArray<TReferenceLocation>;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    FResolver.PinTree(Tree, HauptFile);
+    FResolver.PinTree(mTree, cHauptFile);
     try
-      Pinned := FResolver.ExtractedUnit(Tree, HauptFile);
-      Found := TLspReferences.Find(FResolver, FIndex, Tree,
-        TReferenceSearch.Create(HauptFile, PositionOf(UnitHaupt, 'Summe(1'), False,
-        [WerkzeugFile, HauptFile],
+      mPinned := FResolver.ExtractedUnit(mTree, cHauptFile);
+      mFound := TLspReferences.Find(FResolver, FIndex, mTree,
+        TReferenceSearch.Create(cHauptFile, PositionOf(cUnitHaupt, 'Summe(1'), False,
+        [cWerkzeugFile, cHauptFile],
         function(const AFileName: string; out AText: string): Boolean
         begin
-          Result := SameText(AFileName, WerkzeugFile);
+          Result := SameText(AFileName, cWerkzeugFile);
           if Result then
           begin
-            AText := UnitWerkzeug;
+            AText := cUnitWerkzeug;
           end;
         end));
-      Assert.AreEqual('Haupt.pas:8:4 Haupt.pas:9:4 Haupt.pas:9:12 Werkzeug.pas:8:18', Describe(Found));
-      Again := FResolver.ExtractedUnit(Tree, HauptFile);
-      Assert.AreEqual<Pointer>(Pointer(Again.Symbols), Pointer(Pinned.Symbols));
+      Assert.AreEqual('Haupt.pas:8:4 Haupt.pas:9:4 Haupt.pas:9:12 Werkzeug.pas:8:18', Describe(mFound));
+      mAgain := FResolver.ExtractedUnit(mTree, cHauptFile);
+      Assert.AreEqual<Pointer>(Pointer(mAgain.Symbols), Pointer(mPinned.Symbols));
     finally
       FResolver.UnpinTree;
     end;
     // Ohne Pin des Aufrufers bleibt nach Find nichts gepinnt.
-    Found := TLspReferences.Find(FResolver, FIndex, Tree,
-      TReferenceSearch.Create(HauptFile, PositionOf(UnitHaupt, 'Summe(1'), True,
-      [HauptFile], nil));
-    Assert.AreEqual(3, Integer(Length(Found)));
+    mFound := TLspReferences.Find(FResolver, FIndex, mTree,
+      TReferenceSearch.Create(cHauptFile, PositionOf(cUnitHaupt, 'Summe(1'), True,
+      [cHauptFile], nil));
+    Assert.AreEqual(3, Integer(Length(mFound)));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

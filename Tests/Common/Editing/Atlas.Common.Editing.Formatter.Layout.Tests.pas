@@ -54,7 +54,7 @@ uses
   Atlas.Common.Editing.Formatter;
 
 const
-  LF = #10;
+  cLF = #10;
 
 { TFormatLayoutTests }
 
@@ -65,124 +65,124 @@ end;
 
 procedure TFormatLayoutTests.PreservesPlacementByDefault;
 const
-  Text =
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  if A then begin' + LF +
-    '    B;' + LF +
-    '  end else' + LF +
-    '  begin' + LF +
-    '    C;' + LF +
-    '  end;' + LF +
+  cText =
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  if A then begin' + cLF +
+    '    B;' + cLF +
+    '  end else' + cLF +
+    '  begin' + cLF +
+    '    C;' + cLF +
+    '  end;' + cLF +
     'end;';
 begin
-  Assert.AreEqual(Text, Formatted(Text, TFormatStyle.Default));
+  Assert.AreEqual(cText, Formatted(cText, TFormatStyle.Default));
 end;
 
 procedure TFormatLayoutTests.MovesBeginToNewLine;
 var
-  Settings: TFormatStyle;
+  mSettings: TFormatStyle;
 begin
-  Settings := TFormatStyle.Default;
-  Settings.BeginPlacement := TBlockPlacement.NewLine;
+  mSettings := TFormatStyle.Default;
+  mSettings.BeginPlacement := TBlockPlacement.NewLine;
   Assert.AreEqual(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  if A then' + LF +
-    '  begin' + LF +
-    '    B;' + LF +
-    '  end;' + LF +
-    '  for I := 0 to 1 do' + LF +
-    '  begin' + LF +
-    '    C;' + LF +
-    '  end;' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  if A then' + cLF +
+    '  begin' + cLF +
+    '    B;' + cLF +
+    '  end;' + cLF +
+    '  for I := 0 to 1 do' + cLF +
+    '  begin' + cLF +
+    '    C;' + cLF +
+    '  end;' + cLF +
     'end;',
     Formatted(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  if A then begin' + LF +
-    '    B;' + LF +
-    '  end;' + LF +
-    '  for I := 0 to 1 do begin C;' + LF +
-    '  end;' + LF +
-    'end;', Settings));
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  if A then begin' + cLF +
+    '    B;' + cLF +
+    '  end;' + cLF +
+    '  for I := 0 to 1 do begin C;' + cLF +
+    '  end;' + cLF +
+    'end;', mSettings));
 end;
 
 procedure TFormatLayoutTests.PullsBeginToSameLine;
 var
-  Settings: TFormatStyle;
+  mSettings: TFormatStyle;
 begin
-  Settings := TFormatStyle.Default;
-  Settings.BeginPlacement := TBlockPlacement.SameLine;
+  mSettings := TFormatStyle.Default;
+  mSettings.BeginPlacement := TBlockPlacement.SameLine;
   Assert.AreEqual(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  if A then begin' + LF +
-    '    B;' + LF +
-    '  end;' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  if A then begin' + cLF +
+    '    B;' + cLF +
+    '  end;' + cLF +
     'end;',
     Formatted(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  if A then' + LF +
-    '  begin' + LF +
-    '    B;' + LF +
-    '  end;' + LF +
-    'end;', Settings));
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  if A then' + cLF +
+    '  begin' + cLF +
+    '    B;' + cLF +
+    '  end;' + cLF +
+    'end;', mSettings));
 end;
 
 procedure TFormatLayoutTests.MovesElseToNewLine;
 var
-  Settings: TFormatStyle;
+  mSettings: TFormatStyle;
 begin
-  Settings := TFormatStyle.Default;
-  Settings.ElsePlacement := TBlockPlacement.NewLine;
+  mSettings := TFormatStyle.Default;
+  mSettings.ElsePlacement := TBlockPlacement.NewLine;
   Assert.AreEqual(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  if A then' + LF +
-    '  begin' + LF +
-    '    B;' + LF +
-    '  end' + LF +
-    '  else' + LF +
-    '    C;' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  if A then' + cLF +
+    '  begin' + cLF +
+    '    B;' + cLF +
+    '  end' + cLF +
+    '  else' + cLF +
+    '    C;' + cLF +
     'end;',
     Formatted(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  if A then' + LF +
-    '  begin' + LF +
-    '    B;' + LF +
-    '  end else' + LF +
-    '    C;' + LF +
-    'end;', Settings));
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  if A then' + cLF +
+    '  begin' + cLF +
+    '    B;' + cLF +
+    '  end else' + cLF +
+    '    C;' + cLF +
+    'end;', mSettings));
 end;
 
 procedure TFormatLayoutTests.PullsElseToSameLine;
 var
-  Settings: TFormatStyle;
+  mSettings: TFormatStyle;
 begin
-  Settings := TFormatStyle.Default;
-  Settings.ElsePlacement := TBlockPlacement.SameLine;
+  mSettings := TFormatStyle.Default;
+  mSettings.ElsePlacement := TBlockPlacement.SameLine;
   Assert.AreEqual(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  if A then' + LF +
-    '  begin' + LF +
-    '    B;' + LF +
-    '  end else' + LF +
-    '    C;' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  if A then' + cLF +
+    '  begin' + cLF +
+    '    B;' + cLF +
+    '  end else' + cLF +
+    '    C;' + cLF +
     'end;',
     Formatted(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  if A then' + LF +
-    '  begin' + LF +
-    '    B;' + LF +
-    '  end' + LF +
-    '  else' + LF +
-    '    C;' + LF +
-    'end;', Settings));
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  if A then' + cLF +
+    '  begin' + cLF +
+    '    B;' + cLF +
+    '  end' + cLF +
+    '  else' + cLF +
+    '    C;' + cLF +
+    'end;', mSettings));
 end;
 
 procedure TFormatLayoutTests.PullsElseAndBeginInOnePass;
@@ -194,225 +194,225 @@ begin
   mSettings.BeginPlacement := TBlockPlacement.SameLine;
   mSettings.ElsePlacement := TBlockPlacement.SameLine;
   mOnce := Formatted(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  if A then' + LF +
-    '  begin' + LF +
-    '    B;' + LF +
-    '  end' + LF +
-    '  else' + LF +
-    '  begin' + LF +
-    '    C;' + LF +
-    '  end;' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  if A then' + cLF +
+    '  begin' + cLF +
+    '    B;' + cLF +
+    '  end' + cLF +
+    '  else' + cLF +
+    '  begin' + cLF +
+    '    C;' + cLF +
+    '  end;' + cLF +
     'end;', mSettings);
   Assert.AreEqual(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  if A then begin' + LF +
-    '    B;' + LF +
-    '  end else begin' + LF +
-    '    C;' + LF +
-    '  end;' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  if A then begin' + cLF +
+    '    B;' + cLF +
+    '  end else begin' + cLF +
+    '    C;' + cLF +
+    '  end;' + cLF +
     'end;', mOnce);
   Assert.AreEqual(mOnce, Formatted(mOnce, mSettings));
 end;
 
 procedure TFormatLayoutTests.AlignsAssignments;
 var
-  Settings: TFormatStyle;
-  Text: string;
+  mSettings: TFormatStyle;
+  mText: string;
 begin
-  Text :=
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  A := 1;' + LF +
-    '  Longer := 2;' + LF +
-    LF +
-    '  B := 3;' + LF +
+  mText :=
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  A := 1;' + cLF +
+    '  Longer := 2;' + cLF +
+    cLF +
+    '  B := 3;' + cLF +
     'end;';
-  Settings := TFormatStyle.Default;
-  Assert.AreEqual(Text, Formatted(Text, Settings));
-  Settings.AlignAssignments := True;
+  mSettings := TFormatStyle.Default;
+  Assert.AreEqual(mText, Formatted(mText, mSettings));
+  mSettings.AlignAssignments := True;
   // Eine Leerzeile beendet die Gruppe.
   Assert.AreEqual(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  A      := 1;' + LF +
-    '  Longer := 2;' + LF +
-    LF +
-    '  B := 3;' + LF +
-    'end;', Formatted(Text, Settings));
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  A      := 1;' + cLF +
+    '  Longer := 2;' + cLF +
+    cLF +
+    '  B := 3;' + cLF +
+    'end;', Formatted(mText, mSettings));
 end;
 
 procedure TFormatLayoutTests.AlignsDeclarations;
 var
-  Settings: TFormatStyle;
+  mSettings: TFormatStyle;
 begin
-  Settings := TFormatStyle.Default;
-  Settings.AlignDeclarations := True;
+  mSettings := TFormatStyle.Default;
+  mSettings.AlignDeclarations := True;
   Assert.AreEqual(
-    'var' + LF +
-    '  A:      Integer;' + LF +
-    '  Longer: string;' + LF +
-    'const' + LF +
-    '  X     = 1;' + LF +
+    'var' + cLF +
+    '  A:      Integer;' + cLF +
+    '  Longer: string;' + cLF +
+    'const' + cLF +
+    '  X     = 1;' + cLF +
     '  YYYYY = 2;',
     Formatted(
-    'var' + LF +
-    '  A: Integer;' + LF +
-    '  Longer: string;' + LF +
-    'const' + LF +
-    '  X = 1;' + LF +
-    '  YYYYY = 2;', Settings));
+    'var' + cLF +
+    '  A: Integer;' + cLF +
+    '  Longer: string;' + cLF +
+    'const' + cLF +
+    '  X = 1;' + cLF +
+    '  YYYYY = 2;', mSettings));
 end;
 
 procedure TFormatLayoutTests.AlignsComments;
 var
-  Settings: TFormatStyle;
+  mSettings: TFormatStyle;
 begin
-  Settings := TFormatStyle.Default;
-  Settings.AlignComments := True;
+  mSettings := TFormatStyle.Default;
+  mSettings.AlignComments := True;
   Assert.AreEqual(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  A := 1;       // eins' + LF +
-    '  Longer := 22; // zwei' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  A := 1;       // eins' + cLF +
+    '  Longer := 22; // zwei' + cLF +
     'end;',
     Formatted(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  A := 1; // eins' + LF +
-    '  Longer := 22;  // zwei' + LF +
-    'end;', Settings));
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  A := 1; // eins' + cLF +
+    '  Longer := 22;  // zwei' + cLF +
+    'end;', mSettings));
 end;
 
 procedure TFormatLayoutTests.WrapsLongLines;
 var
-  Settings: TFormatStyle;
-  Text: string;
+  mSettings: TFormatStyle;
+  mText: string;
 begin
-  Text :=
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  Call(First, Second, Third);' + LF +
+  mText :=
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  Call(First, Second, Third);' + cLF +
     'end;';
-  Settings := TFormatStyle.Default;
-  Assert.AreEqual(Text, Formatted(Text, Settings));
-  Settings.MaxLineLength := 22;
+  mSettings := TFormatStyle.Default;
+  Assert.AreEqual(mText, Formatted(mText, mSettings));
+  mSettings.MaxLineLength := 22;
   Assert.AreEqual(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  Call(First, Second,' + LF +
-    '    Third);' + LF +
-    'end;', Formatted(Text, Settings));
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  Call(First, Second,' + cLF +
+    '    Third);' + cLF +
+    'end;', Formatted(mText, mSettings));
   // Vor einem Operator umbrechen, wenn kein Komma passt.
-  Settings.MaxLineLength := 16;
+  mSettings.MaxLineLength := 16;
   Assert.AreEqual(
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  A := Alpha' + LF +
-    '    + Beta;' + LF +
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  A := Alpha' + cLF +
+    '    + Beta;' + cLF +
     'end;',
-    Formatted('procedure P;' + LF + 'begin' + LF + '  A := Alpha + Beta;' + LF + 'end;', Settings));
+    Formatted('procedure P;' + cLF + 'begin' + cLF + '  A := Alpha + Beta;' + cLF + 'end;', mSettings));
 end;
 
 procedure TFormatLayoutTests.KeepsStringsWhenWrapping;
 var
-  Settings: TFormatStyle;
-  Text: string;
+  mSettings: TFormatStyle;
+  mText: string;
 begin
-  Text :=
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  S := ''eins, zwei, drei, vier'';' + LF +
+  mText :=
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  S := ''eins, zwei, drei, vier'';' + cLF +
     'end;';
-  Settings := TFormatStyle.Default;
-  Settings.MaxLineLength := 12;
-  Assert.AreEqual(Text, Formatted(Text, Settings));
+  mSettings := TFormatStyle.Default;
+  mSettings.MaxLineLength := 12;
+  Assert.AreEqual(mText, Formatted(mText, mSettings));
 end;
 
 procedure TFormatLayoutTests.RangeTouchesOnlyItsLines;
 var
-  Settings: TFormatStyle;
-  Text: string;
-  Edits: TArray<TTextEdit>;
-  Edit: TTextEdit;
+  mSettings: TFormatStyle;
+  mText: string;
+  mEdits: TArray<TTextEdit>;
+  mEdit: TTextEdit;
 begin
-  Text :=
-    'procedure P;' + LF +
-    'begin' + LF +
-    'A:=1;' + LF +
-    'if A then begin' + LF +
-    'B:=2;' + LF +
-    'end;' + LF +
+  mText :=
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    'A:=1;' + cLF +
+    'if A then begin' + cLF +
+    'B:=2;' + cLF +
+    'end;' + cLF +
     'end;';
-  Settings := TFormatStyle.Default;
-  Settings.BeginPlacement := TBlockPlacement.NewLine;
-  Edits := TFormatter.Edits(Text, TPascalLexer.Tokenize(Text), Settings, 4, 4);
-  Assert.AreEqual(1, Integer(Length(Edits)));
-  for Edit in Edits do
+  mSettings := TFormatStyle.Default;
+  mSettings.BeginPlacement := TBlockPlacement.NewLine;
+  mEdits := TFormatter.Edits(mText, TPascalLexer.Tokenize(mText), mSettings, 4, 4);
+  Assert.AreEqual(1, Integer(Length(mEdits)));
+  for mEdit in mEdits do
   begin
-    Assert.AreEqual(4, Edit.Range.StartPos.Line);
-    Assert.AreEqual(4, Edit.Range.EndPos.Line);
+    Assert.AreEqual(4, mEdit.Range.StartPos.Line);
+    Assert.AreEqual(4, mEdit.Range.EndPos.Line);
   end;
-  Assert.AreEqual('    B := 2;', Edits[0].NewText);
+  Assert.AreEqual('    B := 2;', mEdits[0].NewText);
 end;
 
 procedure TFormatLayoutTests.EditsCoverJoinedLines;
 var
-  Settings: TFormatStyle;
-  Text: string;
-  Edits: TArray<TTextEdit>;
+  mSettings: TFormatStyle;
+  mText: string;
+  mEdits: TArray<TTextEdit>;
 begin
-  Text :=
-    'procedure P;' + LF +
-    'begin' + LF +
-    '  if A then' + LF +
-    '  begin' + LF +
-    '    B;' + LF +
-    '  end;' + LF +
+  mText :=
+    'procedure P;' + cLF +
+    'begin' + cLF +
+    '  if A then' + cLF +
+    '  begin' + cLF +
+    '    B;' + cLF +
+    '  end;' + cLF +
     'end;';
-  Settings := TFormatStyle.Default;
-  Settings.BeginPlacement := TBlockPlacement.SameLine;
-  Edits := TFormatter.Edits(Text, TPascalLexer.Tokenize(Text), Settings);
-  Assert.AreEqual(1, Integer(Length(Edits)));
-  Assert.AreEqual(2, Edits[0].Range.StartPos.Line);
-  Assert.AreEqual(3, Edits[0].Range.EndPos.Line);
-  Assert.AreEqual('  if A then begin', Edits[0].NewText);
+  mSettings := TFormatStyle.Default;
+  mSettings.BeginPlacement := TBlockPlacement.SameLine;
+  mEdits := TFormatter.Edits(mText, TPascalLexer.Tokenize(mText), mSettings);
+  Assert.AreEqual(1, Integer(Length(mEdits)));
+  Assert.AreEqual(2, mEdits[0].Range.StartPos.Line);
+  Assert.AreEqual(3, mEdits[0].Range.EndPos.Line);
+  Assert.AreEqual('  if A then begin', mEdits[0].NewText);
   // Aufteilen: eine Änderung mit Zeilenumbruch im neuen Text.
-  Text := 'procedure P;' + LF + 'begin' + LF + '  if A then begin B;' + LF + '  end;' + LF + 'end;';
-  Settings.BeginPlacement := TBlockPlacement.NewLine;
-  Edits := TFormatter.Edits(Text, TPascalLexer.Tokenize(Text), Settings);
-  Assert.AreEqual(1, Integer(Length(Edits)));
-  Assert.AreEqual('  if A then' + LF + '  begin' + LF + '    B;', Edits[0].NewText);
+  mText := 'procedure P;' + cLF + 'begin' + cLF + '  if A then begin B;' + cLF + '  end;' + cLF + 'end;';
+  mSettings.BeginPlacement := TBlockPlacement.NewLine;
+  mEdits := TFormatter.Edits(mText, TPascalLexer.Tokenize(mText), mSettings);
+  Assert.AreEqual(1, Integer(Length(mEdits)));
+  Assert.AreEqual('  if A then' + cLF + '  begin' + cLF + '    B;', mEdits[0].NewText);
 end;
 
 procedure TFormatLayoutTests.IsIdempotentWithAllOptions;
 const
-  Text =
-    'procedure P;' + LF +
-    'var' + LF +
-    '  A: Integer; // a' + LF +
-    '  Longer: string; // l' + LF +
-    'begin' + LF +
-    'if A > 0 then begin Call(First, Second, Third, Fourth, Fifth);' + LF +
-    'end else begin' + LF +
-    'A := 1; Longer := ''x'';' + LF +
-    'end;' + LF +
+  cText =
+    'procedure P;' + cLF +
+    'var' + cLF +
+    '  A: Integer; // a' + cLF +
+    '  Longer: string; // l' + cLF +
+    'begin' + cLF +
+    'if A > 0 then begin Call(First, Second, Third, Fourth, Fifth);' + cLF +
+    'end else begin' + cLF +
+    'A := 1; Longer := ''x'';' + cLF +
+    'end;' + cLF +
     'end;';
 var
-  Settings: TFormatStyle;
-  Once: string;
+  mSettings: TFormatStyle;
+  mOnce: string;
 begin
-  Settings := TFormatStyle.Default;
-  Settings.BeginPlacement := TBlockPlacement.NewLine;
-  Settings.ElsePlacement := TBlockPlacement.NewLine;
-  Settings.MaxLineLength := 30;
-  Settings.AlignAssignments := True;
-  Settings.AlignDeclarations := True;
-  Settings.AlignComments := True;
-  Once := Formatted(Text, Settings);
-  Assert.AreEqual(Once, Formatted(Once, Settings));
+  mSettings := TFormatStyle.Default;
+  mSettings.BeginPlacement := TBlockPlacement.NewLine;
+  mSettings.ElsePlacement := TBlockPlacement.NewLine;
+  mSettings.MaxLineLength := 30;
+  mSettings.AlignAssignments := True;
+  mSettings.AlignDeclarations := True;
+  mSettings.AlignComments := True;
+  mOnce := Formatted(cText, mSettings);
+  Assert.AreEqual(mOnce, Formatted(mOnce, mSettings));
 end;
 
 initialization

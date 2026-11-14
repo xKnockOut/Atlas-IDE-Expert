@@ -76,14 +76,14 @@ procedure TDirectiveNamesTests.ListsHaveNoDuplicates;
 
   procedure CheckList(const ANames: TArray<string>);
   var
-    Outer, Inner: Integer;
+    mOuter, mInner: Integer;
   begin
-    for Outer := 0 to High(ANames) do
+    for mOuter := 0 to High(ANames) do
     begin
-      Assert.AreEqual(UpperCase(ANames[Outer]), ANames[Outer]);
-      for Inner := Outer + 1 to High(ANames) do
+      Assert.AreEqual(UpperCase(ANames[mOuter]), ANames[mOuter]);
+      for mInner := mOuter + 1 to High(ANames) do
       begin
-        Assert.IsFalse(SameText(ANames[Outer], ANames[Inner]), ANames[Outer]);
+        Assert.IsFalse(SameText(ANames[mOuter], ANames[mInner]), ANames[mOuter]);
       end;
     end;
   end;

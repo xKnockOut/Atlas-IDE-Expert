@@ -79,17 +79,17 @@ end;
 
 procedure TFormatterTests.ConvertsIndentation;
 var
-  Settings: TFormatStyle;
+  mSettings: TFormatStyle;
 begin
-  Settings := TFormatStyle.Default;
+  mSettings := TFormatStyle.Default;
   // Ohne Neueinrückung nach der Blockstruktur: Tab = eine Ebene mit indentSize Leerzeichen.
-  Settings.Reindent := False;
+  mSettings.Reindent := False;
   Assert.AreEqual('begin'#10'  A := 1;'#10'    B := 2;'#10'end.',
-    Formatted('begin'#10#9'A := 1;'#10#9#9'B := 2;'#10'end.', Settings));
-  Settings.UseTabs := True;
-  Settings.IndentSize := 4;
+    Formatted('begin'#10#9'A := 1;'#10#9#9'B := 2;'#10'end.', mSettings));
+  mSettings.UseTabs := True;
+  mSettings.IndentSize := 4;
   Assert.AreEqual('begin'#10#9'A := 1;'#10#9'  B := 2;'#10'end.',
-    Formatted('begin'#10'    A := 1;'#10'      B := 2;'#10'end.', Settings));
+    Formatted('begin'#10'    A := 1;'#10'      B := 2;'#10'end.', mSettings));
 end;
 
 procedure TFormatterTests.SpacesAssignmentsAndCommas;
@@ -103,19 +103,19 @@ end;
 
 procedure TFormatterTests.ChangesKeywordCase;
 var
-  Settings: TFormatStyle;
+  mSettings: TFormatStyle;
 begin
-  Settings := TFormatStyle.Default;
-  Assert.AreEqual('BEGIN'#10'  Begin_ := ''Begin'';'#10'End.', Formatted('BEGIN'#10'  Begin_ := ''Begin'';'#10'End.', Settings));
-  Settings.KeywordCase := TKeywordCase.Lower;
-  Assert.AreEqual('begin'#10'  Begin_ := ''Begin'';'#10'end.', Formatted('BEGIN'#10'  Begin_ := ''Begin'';'#10'End.', Settings));
-  Settings.KeywordCase := TKeywordCase.Upper;
-  Assert.AreEqual('BEGIN'#10'  X := 1;'#10'END.', Formatted('begin'#10'  X := 1;'#10'end.', Settings));
+  mSettings := TFormatStyle.Default;
+  Assert.AreEqual('BEGIN'#10'  Begin_ := ''Begin'';'#10'End.', Formatted('BEGIN'#10'  Begin_ := ''Begin'';'#10'End.', mSettings));
+  mSettings.KeywordCase := TKeywordCase.Lower;
+  Assert.AreEqual('begin'#10'  Begin_ := ''Begin'';'#10'end.', Formatted('BEGIN'#10'  Begin_ := ''Begin'';'#10'End.', mSettings));
+  mSettings.KeywordCase := TKeywordCase.Upper;
+  Assert.AreEqual('BEGIN'#10'  X := 1;'#10'END.', Formatted('begin'#10'  X := 1;'#10'end.', mSettings));
 end;
 
 procedure TFormatterTests.KeepsCommentsStringsAndAsm;
 const
-  Text =
+  cText =
     'procedure P;'#10 +
     '{ Kommentar   '#10 +
     '      eingerückt   '#10 +
@@ -124,31 +124,31 @@ const
     '        MOV   EAX,1   '#10 +
     'end;';
 begin
-  Assert.AreEqual(Text, Formatted(Text, TFormatStyle.Default));
+  Assert.AreEqual(cText, Formatted(cText, TFormatStyle.Default));
 end;
 
 procedure TFormatterTests.ChangesLineEndingsAndFinalNewline;
 var
-  Settings: TFormatStyle;
+  mSettings: TFormatStyle;
 begin
-  Settings := TFormatStyle.Default;
-  Settings.EndOfLine := #13#10;
-  Settings.InsertFinalNewline := True;
-  Assert.AreEqual('begin'#13#10'end.'#13#10, Formatted('begin'#10'end.', Settings));
-  Settings.EndOfLine := '';
-  Assert.AreEqual('begin'#10'end.'#10, Formatted('begin'#10'end.', Settings));
+  mSettings := TFormatStyle.Default;
+  mSettings.EndOfLine := #13#10;
+  mSettings.InsertFinalNewline := True;
+  Assert.AreEqual('begin'#13#10'end.'#13#10, Formatted('begin'#10'end.', mSettings));
+  mSettings.EndOfLine := '';
+  Assert.AreEqual('begin'#10'end.'#10, Formatted('begin'#10'end.', mSettings));
 end;
 
 procedure TFormatterTests.KeepsSingleFinalNewline;
 var
-  Settings: TFormatStyle;
+  mSettings: TFormatStyle;
 begin
-  Settings := TFormatStyle.Default;
-  Settings.InsertFinalNewline := True;
-  Assert.AreEqual('begin'#10'end.'#10, Formatted('begin'#10'end.'#10, Settings));
-  Settings.EndOfLine := #13#10;
-  Assert.AreEqual('begin'#13#10'end.'#13#10, Formatted('begin'#10'end.'#10, Settings));
-  Assert.AreEqual('begin'#13#10'end.'#13#10, Formatted('begin'#13'end.'#13, Settings));
+  mSettings := TFormatStyle.Default;
+  mSettings.InsertFinalNewline := True;
+  Assert.AreEqual('begin'#10'end.'#10, Formatted('begin'#10'end.'#10, mSettings));
+  mSettings.EndOfLine := #13#10;
+  Assert.AreEqual('begin'#13#10'end.'#13#10, Formatted('begin'#10'end.'#10, mSettings));
+  Assert.AreEqual('begin'#13#10'end.'#13#10, Formatted('begin'#13'end.'#13, mSettings));
 end;
 
 procedure TFormatterTests.FormatsEmptyText;
@@ -158,23 +158,23 @@ end;
 
 procedure TFormatterTests.FormatsOnlyRange;
 var
-  Edits: TArray<TRuleEdit>;
-  Text: string;
+  mEdits: TArray<TRuleEdit>;
+  mText: string;
 begin
-  Text := 'begin'#10'  A:=1;'#10'  B:=2;'#10'end.';
-  Edits := TFormatter.Edits(Text, TPascalLexer.Tokenize(Text), TFormatStyle.Default, 2, 2);
-  Assert.AreEqual(1, Integer(Length(Edits)));
-  Assert.AreEqual(2, Edits[0].Range.StartPos.Line);
-  Assert.AreEqual('  B := 2;', Edits[0].NewText);
+  mText := 'begin'#10'  A:=1;'#10'  B:=2;'#10'end.';
+  mEdits := TFormatter.Edits(mText, TPascalLexer.Tokenize(mText), TFormatStyle.Default, 2, 2);
+  Assert.AreEqual(1, Integer(Length(mEdits)));
+  Assert.AreEqual(2, mEdits[0].Range.StartPos.Line);
+  Assert.AreEqual('  B := 2;', mEdits[0].NewText);
 end;
 
 procedure TFormatterTests.LeavesFormattedCodeAlone;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := 'unit U;'#10'interface'#10'implementation'#10'procedure P(A, B: Integer);'#10'begin'#10 +
+  mText := 'unit U;'#10'interface'#10'implementation'#10'procedure P(A, B: Integer);'#10'begin'#10 +
     '  A := B;'#10'end;'#10'end.';
-  Assert.AreEqual(0, Integer(Length(TFormatter.Edits(Text, TPascalLexer.Tokenize(Text), TFormatStyle.Default))));
+  Assert.AreEqual(0, Integer(Length(TFormatter.Edits(mText, TPascalLexer.Tokenize(mText), TFormatStyle.Default))));
 end;
 
 { TEditorConfigTests }
@@ -191,10 +191,10 @@ end;
 
 procedure TEditorConfigTests.AppliesMatchingSections;
 var
-  Settings: TFormatStyle;
-  Root: Boolean;
+  mSettings: TFormatStyle;
+  mRoot: Boolean;
 begin
-  Settings := TFormatStyle.Default;
+  mSettings := TFormatStyle.Default;
   TEditorConfig.Apply(
     'root = true'#10 +
     '[*]'#10 +
@@ -206,39 +206,39 @@ begin
     '[*.pas]'#10 +
     'trim_trailing_whitespace = false'#10 +
     'insert_final_newline = true'#10 +
-    'max_line_length = 100'#10, 'C:\P\Unit1.pas', Settings, Root);
-  Assert.IsTrue(Root);
-  Assert.IsTrue(Settings.UseTabs);
-  Assert.AreEqual(4, Settings.IndentSize);
-  Assert.AreEqual(#13#10, Settings.EndOfLine);
-  Assert.IsFalse(Settings.TrimTrailingWhitespace);
-  Assert.IsTrue(Settings.InsertFinalNewline);
-  Assert.AreEqual(100, Settings.MaxLineLength);
-  TEditorConfig.Apply('[*]'#10'max_line_length = off'#10, 'C:\P\Unit1.pas', Settings, Root);
-  Assert.AreEqual(0, Settings.MaxLineLength);
+    'max_line_length = 100'#10, 'C:\P\Unit1.pas', mSettings, mRoot);
+  Assert.IsTrue(mRoot);
+  Assert.IsTrue(mSettings.UseTabs);
+  Assert.AreEqual(4, mSettings.IndentSize);
+  Assert.AreEqual(#13#10, mSettings.EndOfLine);
+  Assert.IsFalse(mSettings.TrimTrailingWhitespace);
+  Assert.IsTrue(mSettings.InsertFinalNewline);
+  Assert.AreEqual(100, mSettings.MaxLineLength);
+  TEditorConfig.Apply('[*]'#10'max_line_length = off'#10, 'C:\P\Unit1.pas', mSettings, mRoot);
+  Assert.AreEqual(0, mSettings.MaxLineLength);
 end;
 
 procedure TEditorConfigTests.NearerFilesWinUntilRoot;
 var
-  Files: TDictionary<string, string>;
-  Settings: TFormatStyle;
+  mFiles: TDictionary<string, string>;
+  mSettings: TFormatStyle;
 begin
-  Files := TDictionary<string, string>.Create;
+  mFiles := TDictionary<string, string>.Create;
   try
-    Files.Add('c:\.editorconfig', '[*]'#10'indent_size = 8'#10'end_of_line = lf');
-    Files.Add('c:\p\.editorconfig', 'root = true'#10'[*]'#10'indent_size = 3');
-    Files.Add('c:\p\sub\.editorconfig', '[*.pas]'#10'indent_style = tab');
-    Settings := TEditorConfig.ForFile('C:\P\Sub\Unit1.pas',
+    mFiles.Add('c:\.editorconfig', '[*]'#10'indent_size = 8'#10'end_of_line = lf');
+    mFiles.Add('c:\p\.editorconfig', 'root = true'#10'[*]'#10'indent_size = 3');
+    mFiles.Add('c:\p\sub\.editorconfig', '[*.pas]'#10'indent_style = tab');
+    mSettings := TEditorConfig.ForFile('C:\P\Sub\Unit1.pas',
       function(const AFileName: string; out AText: string): Boolean
       begin
-        Result := Files.TryGetValue(LowerCase(AFileName), AText);
+        Result := mFiles.TryGetValue(LowerCase(AFileName), AText);
       end, TFormatStyle.Default);
-    Assert.AreEqual(3, Settings.IndentSize);
-    Assert.IsTrue(Settings.UseTabs);
+    Assert.AreEqual(3, mSettings.IndentSize);
+    Assert.IsTrue(mSettings.UseTabs);
     // Oberhalb von root = true wird nichts gelesen.
-    Assert.AreEqual('', Settings.EndOfLine);
+    Assert.AreEqual('', mSettings.EndOfLine);
   finally
-    Files.Free;
+    mFiles.Free;
   end;
 end;
 

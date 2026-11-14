@@ -15,7 +15,8 @@ type
   private
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
-    function TargetsAt(const AMarker: string; AOffset: Integer = 0): TArray<TDefinitionTarget>;
+    function TargetsAt(const AMarker: string): TArray<TDefinitionTarget>; overload;
+    function TargetsAt(const AMarker: string; AOffset: Integer): TArray<TDefinitionTarget>; overload;
     function Lines(const ATargets: TArray<TDefinitionTarget>): string;
   public
     [Setup]
@@ -45,9 +46,9 @@ uses
   Atlas.Common.Index.Extractor;
 
 const
-  HauptFile = 'C:\P\Haupt.pas';
+  cHauptFile = 'C:\P\Haupt.pas';
 
-  UnitHaupt =
+  cUnitHaupt =
     'unit Haupt;'#10 +                                     // 0
     'interface'#10 +                                       // 1
     'type'#10 +                                            // 2
@@ -84,25 +85,25 @@ const
 
 function PositionOf(const AText, AMarker: string; AOffset: Integer): TTextPosition;
 var
-  Index, Line, LineStart, Scan: Integer;
+  mIndex, mLine, mLineStart, mScan: Integer;
 begin
-  Index := Pos(AMarker, AText);
-  if Index = 0 then
+  mIndex := Pos(AMarker, AText);
+  if mIndex = 0 then
   begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
   end;
-  Inc(Index, AOffset);
-  Line := 0;
-  LineStart := 1;
-  for Scan := 1 to Index - 1 do
+  Inc(mIndex, AOffset);
+  mLine := 0;
+  mLineStart := 1;
+  for mScan := 1 to mIndex - 1 do
   begin
-    if AText[Scan] = #10 then
+    if AText[mScan] = #10 then
     begin
-      Inc(Line);
-      LineStart := Scan + 1;
+      Inc(mLine);
+      mLineStart := mScan + 1;
     end;
   end;
-  Result := TTextPosition.Create(Line, Index - LineStart);
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 { TLspImplementationsTests }
@@ -110,7 +111,7 @@ end;
 procedure TLspImplementationsTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitHaupt, HauptFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
   FResolver := TNameResolver.Create(FIndex);
 end;
 
@@ -120,26 +121,32 @@ begin
   FIndex := nil;
 end;
 
+function TLspImplementationsTests.TargetsAt(const AMarker: string): TArray<TDefinitionTarget>;
+begin
+  Result := TargetsAt(AMarker, 0);
+end;
+
 function TLspImplementationsTests.TargetsAt(const AMarker: string; AOffset: Integer): TArray<TDefinitionTarget>;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(UnitHaupt);
+  mTree := TPascalParser.Parse(cUnitHaupt);
   try
-    Result := TLspImplementations.Targets(FResolver, FIndex, Tree, HauptFile, PositionOf(UnitHaupt, AMarker, AOffset));
+    Result := TLspImplementations.Targets(FResolver, FIndex, mTree, cHauptFile,
+      PositionOf(cUnitHaupt, AMarker, AOffset));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function TLspImplementationsTests.Lines(const ATargets: TArray<TDefinitionTarget>): string;
 var
-  Item: TDefinitionTarget;
+  mItem: TDefinitionTarget;
 begin
   Result := '';
-  for Item in ATargets do
+  for mItem in ATargets do
   begin
-    Result := Result + IntToStr(Item.SelectionRange.StartPos.Line) + ' ';
+    Result := Result + IntToStr(mItem.SelectionRange.StartPos.Line) + ' ';
   end;
   Result := Trim(Result);
 end;

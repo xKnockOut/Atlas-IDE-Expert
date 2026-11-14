@@ -74,129 +74,129 @@ end;
 
 procedure TConfigurationScopesTests.ListsAreDisjoint;
 var
-  GlobalPath, ProjectPath: string;
+  mGlobalPath, mProjectPath: string;
 begin
-  for GlobalPath in cGlobalSettingPaths do
+  for mGlobalPath in cGlobalSettingPaths do
   begin
-    for ProjectPath in cProjectSettingPaths do
+    for mProjectPath in cProjectSettingPaths do
     begin
       // rules, tasks (#900) und excludeTests (x-scope "both") stehen absichtlich in beiden Listen.
-      if (GlobalPath = ProjectPath) and ((GlobalPath = 'rules') or (GlobalPath = 'tasks') or
-        (GlobalPath = 'excludeTests')) then
+      if (mGlobalPath = mProjectPath) and ((mGlobalPath = 'rules') or (mGlobalPath = 'tasks') or
+        (mGlobalPath = 'excludeTests')) then
       begin
         Continue;
       end;
-      Assert.AreNotEqual(GlobalPath, ProjectPath);
+      Assert.AreNotEqual(mGlobalPath, mProjectPath);
       // Ein ganzes Objekt an einem Ort und eines seiner Glieder am anderen wäre widersprüchlich.
-      Assert.IsFalse(GlobalPath.StartsWith(ProjectPath + '.'), GlobalPath);
-      Assert.IsFalse(ProjectPath.StartsWith(GlobalPath + '.'), ProjectPath);
+      Assert.IsFalse(mGlobalPath.StartsWith(mProjectPath + '.'), mGlobalPath);
+      Assert.IsFalse(mProjectPath.StartsWith(mGlobalPath + '.'), mProjectPath);
     end;
   end;
 end;
 
 procedure TConfigurationScopesTests.GlobalRulesProjectOverridesPerRule;
 var
-  Issues: TArray<TConfigurationIssue>;
-  Settings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+  mSettings: TServerSettings;
 begin
   // Global erlaubt, ohne Meldung.
-  TConfigurationScopes.Filter('{"rules": {"no-with": "off"}}', TConfigurationScope.Global, Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
-  TConfigurationScopes.Filter('{"rules": {"no-with": "off"}}', TConfigurationScope.Project, Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
-  Settings := TConfigurationParser.Parse(TConfigurationScopes.Effective(
-    '{"rules": {"no-with": "off", "magic-number": "hint"}}', '', '{"rules": {"magic-number": "error"}}'), Issues);
-  Assert.AreEqual(Ord(TRuleSeverity.Off), Ord(Settings.RuleSeverity('no-with', TRuleSeverity.Warning)), 'global');
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Settings.RuleSeverity('magic-number', TRuleSeverity.Warning)),
+  TConfigurationScopes.Filter('{"rules": {"no-with": "off"}}', TConfigurationScope.Global, mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  TConfigurationScopes.Filter('{"rules": {"no-with": "off"}}', TConfigurationScope.Project, mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  mSettings := TConfigurationParser.Parse(TConfigurationScopes.Effective(
+    '{"rules": {"no-with": "off", "magic-number": "hint"}}', '', '{"rules": {"magic-number": "error"}}'), mIssues);
+  Assert.AreEqual(Ord(TRuleSeverity.Off), Ord(mSettings.RuleSeverity('no-with', TRuleSeverity.Warning)), 'global');
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mSettings.RuleSeverity('magic-number', TRuleSeverity.Warning)),
     'Projekt übersteuert');
 end;
 
 procedure TConfigurationScopesTests.KeepsTextWithoutMisplacedKeys;
 const
-  Project = '// Kommentar'#10'{"rules": {"empty-except": "off"}, "unbekannt": 1, "$schema": "x"}';
-  Global = '{"index": {"usages": false}, "language": "en"}';
+  cProject = '// Kommentar'#10'{"rules": {"empty-except": "off"}, "unbekannt": 1, "$schema": "x"}';
+  cGlobal = '{"index": {"usages": false}, "language": "en"}';
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Assert.AreEqual(Project, TConfigurationScopes.Filter(Project, TConfigurationScope.Project, Issues));
-  Assert.AreEqual(0, Integer(Length(Issues)));
-  Assert.AreEqual(Global, TConfigurationScopes.Filter(Global, TConfigurationScope.Global, Issues));
-  Assert.AreEqual(0, Integer(Length(Issues)));
-  Assert.AreEqual('', TConfigurationScopes.Filter('', TConfigurationScope.Project, Issues));
+  Assert.AreEqual(cProject, TConfigurationScopes.Filter(cProject, TConfigurationScope.Project, mIssues));
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(cGlobal, TConfigurationScopes.Filter(cGlobal, TConfigurationScope.Global, mIssues));
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('', TConfigurationScopes.Filter('', TConfigurationScope.Project, mIssues));
 end;
 
 procedure TConfigurationScopesTests.RemovesAndReportsMisplacedKeys;
 var
-  Issues: TArray<TConfigurationIssue>;
-  Text: string;
-  Settings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+  mText: string;
+  mSettings: TServerSettings;
 begin
-  Text := TConfigurationScopes.Filter('{'#10'  "platform": "Win64",'#10'  "memoryBudgetMb": 512'#10'}',
-    TConfigurationScope.Project, Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.IsFalse(Issues[0].IsError);
-  Assert.AreEqual(2, Issues[0].Range.StartPos.Line);
-  Assert.AreEqual(2, Issues[0].Range.StartPos.Character);
-  Assert.Contains(Issues[0].Message, '"memoryBudgetMb"');
-  Assert.Contains(Issues[0].Message, 'settings.json');
-  Settings := TConfigurationParser.Parse(Text, Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
-  Assert.AreEqual('Win64', Settings.Platform);
-  Assert.AreEqual(TServerSettings.Default.MemoryBudgetMb, Settings.MemoryBudgetMb);
+  mText := TConfigurationScopes.Filter('{'#10'  "platform": "Win64",'#10'  "memoryBudgetMb": 512'#10'}',
+    TConfigurationScope.Project, mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.IsFalse(mIssues[0].IsError);
+  Assert.AreEqual(2, mIssues[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mIssues[0].Range.StartPos.Character);
+  Assert.Contains(mIssues[0].Message, '"memoryBudgetMb"');
+  Assert.Contains(mIssues[0].Message, 'settings.json');
+  mSettings := TConfigurationParser.Parse(mText, mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('Win64', mSettings.Platform);
+  Assert.AreEqual(TServerSettings.Default.MemoryBudgetMb, mSettings.MemoryBudgetMb);
   // Umgekehrt: Projekt-Schlüssel in der globalen Datei.
-  Text := TConfigurationScopes.Filter('{"platform": "Win64", "logLevel": "debug"}',
-    TConfigurationScope.Global, Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.Contains(Issues[0].Message, 'atlas.json');
-  Settings := TConfigurationParser.Parse(Text, Issues);
-  Assert.AreEqual(TServerSettings.Default.Platform, Settings.Platform);
-  Assert.AreEqual('debug', Settings.LogLevel);
+  mText := TConfigurationScopes.Filter('{"platform": "Win64", "logLevel": "debug"}',
+    TConfigurationScope.Global, mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, 'atlas.json');
+  mSettings := TConfigurationParser.Parse(mText, mIssues);
+  Assert.AreEqual(TServerSettings.Default.Platform, mSettings.Platform);
+  Assert.AreEqual('debug', mSettings.LogLevel);
 end;
 
 procedure TConfigurationScopesTests.FiltersMixedObjectsPerMember;
 var
-  Issues: TArray<TConfigurationIssue>;
-  Settings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+  mSettings: TServerSettings;
 begin
-  Settings := TConfigurationParser.Parse(TConfigurationScopes.Filter(
-    '{"index": {"projectGroup": false, "exclude": ["**/Demos/**"]}}', TConfigurationScope.Project, Issues),
-    Issues);
-  Assert.IsTrue(Settings.IndexProjectGroup, 'Vorgabe, weil im Projekt ignoriert');
-  Assert.AreEqual(1, Integer(Length(Settings.IndexExclude)));
+  mSettings := TConfigurationParser.Parse(TConfigurationScopes.Filter(
+    '{"index": {"projectGroup": false, "exclude": ["**/Demos/**"]}}', TConfigurationScope.Project, mIssues),
+    mIssues);
+  Assert.IsTrue(mSettings.IndexProjectGroup, 'Vorgabe, weil im Projekt ignoriert');
+  Assert.AreEqual(1, Integer(Length(mSettings.IndexExclude)));
   // Bleibt im Objekt nichts übrig, fällt es ganz weg.
   Assert.AreEqual('{}', TConfigurationScopes.Filter('{"index": {"usages": false}}', TConfigurationScope.Project,
-    Issues));
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.AreEqual(0, Issues[0].Range.StartPos.Line);
-  Assert.AreEqual(11, Issues[0].Range.StartPos.Character);
+    mIssues));
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual(0, mIssues[0].Range.StartPos.Line);
+  Assert.AreEqual(11, mIssues[0].Range.StartPos.Character);
 end;
 
 procedure TConfigurationScopesTests.PassesInvalidTextThrough;
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
-  Assert.AreEqual('{"language": ', TConfigurationScopes.Filter('{"language": ', TConfigurationScope.Project, Issues));
-  Assert.AreEqual(0, Integer(Length(Issues)));
-  Assert.AreEqual('[1]', TConfigurationScopes.Filter('[1]', TConfigurationScope.Global, Issues));
+  Assert.AreEqual('{"language": ', TConfigurationScopes.Filter('{"language": ', TConfigurationScope.Project, mIssues));
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('[1]', TConfigurationScopes.Filter('[1]', TConfigurationScope.Global, mIssues));
 end;
 
 procedure TConfigurationScopesTests.LayersGlobalEditorProject;
 var
-  Issues: TArray<TConfigurationIssue>;
-  Settings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+  mSettings: TServerSettings;
 begin
-  Settings := TConfigurationParser.Parse(TConfigurationScopes.Effective(
+  mSettings := TConfigurationParser.Parse(TConfigurationScopes.Effective(
     '{"language": "en", "index": {"usages": false}, "delphiVersion": "23.0", "format": {"indentSize": 4}}',
     '{"delphiVersion": "37.0", "platform": "Linux64"}',
-    '{"platform": "Win64", "index": {"exclude": ["a"]}, "language": "de", "format": {"useTabs": true}}'), Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)));
-  Assert.AreEqual('en', Settings.Language, 'language nur global');
-  Assert.AreEqual('37.0', Settings.DelphiVersion, 'Editor über global');
-  Assert.AreEqual('Win64', Settings.Platform, 'platform nur im Projekt');
-  Assert.IsFalse(Settings.IndexUsages);
-  Assert.AreEqual(1, Integer(Length(Settings.IndexExclude)));
-  Assert.IsTrue(Settings.Formatting.UseTabs);
-  Assert.AreEqual(TFormatStyle.Default.IndentSize, Settings.Formatting.IndentSize, 'format nur im Projekt');
+    '{"platform": "Win64", "index": {"exclude": ["a"]}, "language": "de", "format": {"useTabs": true}}'), mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('en', mSettings.Language, 'language nur global');
+  Assert.AreEqual('37.0', mSettings.DelphiVersion, 'Editor über global');
+  Assert.AreEqual('Win64', mSettings.Platform, 'platform nur im Projekt');
+  Assert.IsFalse(mSettings.IndexUsages);
+  Assert.AreEqual(1, Integer(Length(mSettings.IndexExclude)));
+  Assert.IsTrue(mSettings.Formatting.UseTabs);
+  Assert.AreEqual(TFormatStyle.Default.IndentSize, mSettings.Formatting.IndentSize, 'format nur im Projekt');
   Assert.AreEqual('', TConfigurationScopes.Effective('', '', ''));
 end;
 
@@ -209,130 +209,130 @@ end;
 
 procedure TConfigurationScopesTests.IgnoresCredentialsInProjectFile;
 var
-  Issues: TArray<TConfigurationIssue>;
-  Text: string;
-  Settings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+  mText: string;
+  mSettings: TServerSettings;
 begin
-  Text := TConfigurationScopes.Filter('{"platform": "Win64",'#10' "token": "abc",'#10 +
-    ' "rules": {"empty-except": "off", "x": {"password": "geheim", "max": 3}}}', TConfigurationScope.Project, Issues);
-  Assert.AreEqual(2, Integer(Length(Issues)));
-  Assert.IsFalse(Issues[0].IsError, 'Warnung, kein Fehler');
-  Assert.AreEqual(1, Issues[0].Range.StartPos.Line);
-  Assert.AreEqual(1, Issues[0].Range.StartPos.Character);
-  Assert.Contains(Issues[0].Message, '"token"');
-  Assert.Contains(Issues[0].Message, 'Zugangsdaten');
-  Assert.Contains(Issues[1].Message, '"rules.x.password"');
-  Assert.DoesNotContain(Text, 'abc');
-  Assert.DoesNotContain(Text, 'geheim');
-  Settings := TConfigurationParser.Parse(Text, Issues);
-  Assert.AreEqual('Win64', Settings.Platform, 'der Rest gilt');
+  mText := TConfigurationScopes.Filter('{"platform": "Win64",'#10' "token": "abc",'#10 +
+    ' "rules": {"empty-except": "off", "x": {"password": "geheim", "max": 3}}}', TConfigurationScope.Project, mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)));
+  Assert.IsFalse(mIssues[0].IsError, 'Warnung, kein Fehler');
+  Assert.AreEqual(1, mIssues[0].Range.StartPos.Line);
+  Assert.AreEqual(1, mIssues[0].Range.StartPos.Character);
+  Assert.Contains(mIssues[0].Message, '"token"');
+  Assert.Contains(mIssues[0].Message, 'Zugangsdaten');
+  Assert.Contains(mIssues[1].Message, '"rules.x.password"');
+  Assert.DoesNotContain(mText, 'abc');
+  Assert.DoesNotContain(mText, 'geheim');
+  mSettings := TConfigurationParser.Parse(mText, mIssues);
+  Assert.AreEqual('Win64', mSettings.Platform, 'der Rest gilt');
   // Adresse mit Benutzer und Passwort.
-  TConfigurationScopes.Filter('{"exclude": ["https://u:p@host/x"]}', TConfigurationScope.Project, Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.Contains(Issues[0].Message, 'Adresse');
+  TConfigurationScopes.Filter('{"exclude": ["https://u:p@host/x"]}', TConfigurationScope.Project, mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, 'Adresse');
   // Regel-IDs mit „password“ im Namen sind keine Zugangsdaten.
   Assert.AreEqual('{"rules": {"hardcoded-password": "error"}}', TConfigurationScopes.Filter(
-    '{"rules": {"hardcoded-password": "error"}}', TConfigurationScope.Project, Issues));
-  Assert.AreEqual(0, Integer(Length(Issues)));
+    '{"rules": {"hardcoded-password": "error"}}', TConfigurationScope.Project, mIssues));
+  Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
 procedure TConfigurationScopesTests.IgnoresAbsolutePathsInProjectFile;
 var
-  Issues: TArray<TConfigurationIssue>;
-  Settings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+  mSettings: TServerSettings;
 begin
-  Settings := TConfigurationParser.Parse(TConfigurationScopes.Filter(
+  mSettings := TConfigurationParser.Parse(TConfigurationScopes.Filter(
     '{"project": "C:\\Users\\marco\\Kasse.dproj", "exclude": ["Generated/**", "D:\\Fremd\\**"], ' +
     '"testUnits": {"folder": "\\\\server\\tests", "project": "Tests\\Tests.dproj"}, ' +
     '"index": {"exclude": ["//server/x/**"]}, "overrides": [{"files": ["C:/a/*.pas", "Tests/**"], ' +
-    '"rules": {"*": "off"}}]}', TConfigurationScope.Project, Issues), Issues);
-  Assert.AreEqual(0, Integer(Length(Issues)), 'gefilterter Text ist gültig');
-  Assert.AreEqual('', Settings.Project);
-  Assert.AreEqual(1, Integer(Length(Settings.Exclude)));
-  Assert.AreEqual('Generated/**', Settings.Exclude[0]);
-  Assert.AreEqual('', Settings.TestUnits.Folder);
-  Assert.AreEqual('Tests\Tests.dproj', Settings.TestUnits.Project);
-  Assert.AreEqual(0, Integer(Length(Settings.IndexExclude)));
-  Assert.AreEqual(1, Integer(Length(Settings.Overrides)));
-  Assert.AreEqual(1, Integer(Length(Settings.Overrides[0].Files)));
-  Assert.AreEqual('Tests/**', Settings.Overrides[0].Files[0]);
+    '"rules": {"*": "off"}}]}', TConfigurationScope.Project, mIssues), mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)), 'gefilterter Text ist gültig');
+  Assert.AreEqual('', mSettings.Project);
+  Assert.AreEqual(1, Integer(Length(mSettings.Exclude)));
+  Assert.AreEqual('Generated/**', mSettings.Exclude[0]);
+  Assert.AreEqual('', mSettings.TestUnits.Folder);
+  Assert.AreEqual('Tests\Tests.dproj', mSettings.TestUnits.Project);
+  Assert.AreEqual(0, Integer(Length(mSettings.IndexExclude)));
+  Assert.AreEqual(1, Integer(Length(mSettings.Overrides)));
+  Assert.AreEqual(1, Integer(Length(mSettings.Overrides[0].Files)));
+  Assert.AreEqual('Tests/**', mSettings.Overrides[0].Files[0]);
   // Gemeldet: project, exclude, testUnits.folder, index.exclude, overrides.files.
   TConfigurationScopes.Filter('{"project": "C:\\Kasse.dproj", "exclude": ["D:\\x"], ' +
     '"testUnits": {"folder": "\\\\s\\t"}, "index": {"exclude": ["//s/x"]}, ' +
-    '"overrides": [{"files": ["C:/a"]}]}', TConfigurationScope.Project, Issues);
-  Assert.AreEqual(5, Integer(Length(Issues)));
-  Assert.Contains(Issues[0].Message, '"project"');
-  Assert.Contains(Issues[0].Message, 'absolute Pfade');
-  Assert.Contains(Issues[4].Message, '"overrides.files"');
+    '"overrides": [{"files": ["C:/a"]}]}', TConfigurationScope.Project, mIssues);
+  Assert.AreEqual(5, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, '"project"');
+  Assert.Contains(mIssues[0].Message, 'absolute Pfade');
+  Assert.Contains(mIssues[4].Message, '"overrides.files"');
 end;
 
 procedure TConfigurationScopesTests.KeepsRelativePathsAndGlobs;
 const
-  Text = '{"project": "App\\Kasse.dproj", "exclude": ["/Generated/**", "..\\Gemeinsam\\**"], ' +
+  cText = '{"project": "App\\Kasse.dproj", "exclude": ["/Generated/**", "..\\Gemeinsam\\**"], ' +
     '"testUnits": {"folder": "..\\Tests"}, "slashCommands": {"headerTemplate": "C:\\x"}}';
 var
-  Issues: TArray<TConfigurationIssue>;
-  Filtered: string;
+  mIssues: TArray<TConfigurationIssue>;
+  mFiltered: string;
 begin
   // slashCommands gehört nach settings.json und wird nur deshalb gemeldet; Pfade ab dem Projektordner und
   // relative Pfade bleiben.
-  Filtered := TConfigurationScopes.Filter(Text, TConfigurationScope.Project, Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)));
-  Assert.Contains(Issues[0].Message, '"slashCommands"');
-  Assert.Contains(Filtered, '"/Generated/**"');
-  Assert.Contains(Filtered, '..\\Gemeinsam');
-  Assert.Contains(Filtered, '"App\\Kasse.dproj"');
+  mFiltered := TConfigurationScopes.Filter(cText, TConfigurationScope.Project, mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, '"slashCommands"');
+  Assert.Contains(mFiltered, '"/Generated/**"');
+  Assert.Contains(mFiltered, '..\\Gemeinsam');
+  Assert.Contains(mFiltered, '"App\\Kasse.dproj"');
 end;
 
 procedure TConfigurationScopesTests.GlobalFileKeepsPersonalPaths;
 const
-  Text = '{"logFile": "C:\\Users\\marco\\atlas.log", "traceFile": "D:\\trace.json"}';
+  cText = '{"logFile": "C:\\Users\\marco\\atlas.log", "traceFile": "D:\\trace.json"}';
 var
-  Issues: TArray<TConfigurationIssue>;
+  mIssues: TArray<TConfigurationIssue>;
 begin
   // settings.json ist persönlich: absolute Pfade bleiben, keine Meldung.
-  Assert.AreEqual(Text, TConfigurationScopes.Filter(Text, TConfigurationScope.Global, Issues));
-  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual(cText, TConfigurationScopes.Filter(cText, TConfigurationScope.Global, mIssues));
+  Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
 
 procedure TConfigurationScopesTests.ExperimentalKeysNeedMasterSwitch;
 const
-  Paths: array[0..1] of string = ('refactoring.liveRename', 'smartPaste');
+  cPaths: array[0..1] of string = ('refactoring.liveRename', 'smartPaste');
 var
-  List: TArray<string>;
-  Issues: TArray<TConfigurationIssue>;
-  Text: string;
+  mList: TArray<string>;
+  mIssues: TArray<TConfigurationIssue>;
+  mText: string;
 begin
-  List := nil;
-  for Text in Paths do
+  mList := nil;
+  for mText in cPaths do
   begin
-    List := List + [Text];
+    mList := mList + [mText];
   end;
   // Hauptschalter: global, Vorgabe aus, vom Parser gelesen.
   Assert.AreEqual<TConfigurationScope>(TConfigurationScope.Global,
     TConfigurationScopes.ScopeOf('experimental.enabled'));
   Assert.IsFalse(TServerSettings.Default.ExperimentalEnabled);
-  Assert.IsTrue(TConfigurationParser.Parse('{"experimental": {"enabled": true}}', Issues).ExperimentalEnabled);
-  Assert.AreEqual(0, Integer(Length(Issues)));
-  TConfigurationParser.Parse('{"experimental": {"enabled": true, "x": 1}}', Issues);
-  Assert.AreEqual(1, Integer(Length(Issues)), 'unbekanntes Glied gemeldet');
+  Assert.IsTrue(TConfigurationParser.Parse('{"experimental": {"enabled": true}}', mIssues).ExperimentalEnabled);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  TConfigurationParser.Parse('{"experimental": {"enabled": true, "x": 1}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'unbekanntes Glied gemeldet');
   Assert.IsFalse(TConfigurationScopes.ExperimentalEnabled('{"experimental": {"enabled": false}}'));
   Assert.IsFalse(TConfigurationScopes.ExperimentalEnabled(''));
   // Ohne Hauptschalter: Glied und ganzer Schlüssel fallen weg, die übrigen bleiben.
-  Text := TConfigurationScopes.WithoutExperimental(
-    '{"refactoring": {"liveRename": true, "preview": false}, "smartPaste": true, "metrics": false}', List);
-  Assert.AreEqual('{"refactoring": {"preview": false}, "metrics": false}', Text);
+  mText := TConfigurationScopes.WithoutExperimental(
+    '{"refactoring": {"liveRename": true, "preview": false}, "smartPaste": true, "metrics": false}', mList);
+  Assert.AreEqual('{"refactoring": {"preview": false}, "metrics": false}', mText);
   // Mit Hauptschalter bleibt der Text, wie er ist.
-  Text := '{"experimental": {"enabled": true}, "smartPaste": true}';
-  Assert.AreEqual(Text, TConfigurationScopes.WithoutExperimental(Text, List));
+  mText := '{"experimental": {"enabled": true}, "smartPaste": true}';
+  Assert.AreEqual(mText, TConfigurationScopes.WithoutExperimental(mText, mList));
   // Ohne experimentelle Schlüssel, ohne Liste, bei ungültigem Text: unverändert.
-  Assert.AreEqual('{"metrics": false}', TConfigurationScopes.WithoutExperimental('{"metrics": false}', List));
+  Assert.AreEqual('{"metrics": false}', TConfigurationScopes.WithoutExperimental('{"metrics": false}', mList));
   Assert.AreEqual('{"smartPaste": true}', TConfigurationScopes.WithoutExperimental('{"smartPaste": true}', nil));
-  Assert.AreEqual('{kaputt', TConfigurationScopes.WithoutExperimental('{kaputt', List));
+  Assert.AreEqual('{kaputt', TConfigurationScopes.WithoutExperimental('{kaputt', mList));
   // Die echte Liste aus dem Schema enthält nie den Hauptschalter.
-  for Text in ExperimentalSettingPaths do
+  for mText in ExperimentalSettingPaths do
   begin
-    Assert.AreNotEqual('experimental.enabled', Text);
+    Assert.AreNotEqual('experimental.enabled', mText);
   end;
 end;
 

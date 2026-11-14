@@ -44,127 +44,128 @@ end;
 
 procedure TAtlasSafeModeNoticeTests.AskOffersSafeNormalDetails;
 var
-  Notice: TAtlasSafeModeNotice;
-  Safe, Normal: Integer;
+  mNotice: TAtlasSafeModeNotice;
+  mSafe, mNormal: Integer;
 begin
-  Safe := 0;
-  Normal := 0;
-  Notice := TAtlasSafeModeNotice.CreateNotice(nil, TAtlasSafeNoticeKind.Ask,
+  mSafe := 0;
+  mNormal := 0;
+  mNotice := TAtlasSafeModeNotice.CreateNotice(nil, TAtlasSafeNoticeKind.Ask,
     TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeAskText), '', 'Zurücksetzen', ['Atlas 1.0.0']);
-  Notice.OnSafe :=
+  mNotice.OnSafe :=
     procedure
     begin
-      Inc(Safe);
+      Inc(mSafe);
     end;
-  Notice.OnNormal :=
+  mNotice.OnNormal :=
     procedure
     begin
-      Inc(Normal);
+      Inc(mNormal);
     end;
-  Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeAskSafe), Notice.PrimaryButton.Caption);
-  Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeAskNormal), Notice.SecondaryButton.Caption);
-  Assert.IsTrue(Notice.DetailsButton.Visible, 'Details');
-  Assert.IsFalse(Notice.RestoreButton.Visible, 'Zurücksetzen nur abgesichert');
-  Assert.IsFalse(Notice.SuggestionLabel.Visible, 'ohne Vorschlag keine Zeile');
+  Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeAskSafe), mNotice.PrimaryButton.Caption);
+  Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeAskNormal),
+    mNotice.SecondaryButton.Caption);
+  Assert.IsTrue(mNotice.DetailsButton.Visible, 'Details');
+  Assert.IsFalse(mNotice.RestoreButton.Visible, 'Zurücksetzen nur abgesichert');
+  Assert.IsFalse(mNotice.SuggestionLabel.Visible, 'ohne Vorschlag keine Zeile');
   // Nur die erste Aktion zählt; ausgeführt nach dem Schließen (das Fenster gibt sich selbst frei).
-  Notice.PrimaryButton.Click;
-  Notice.SecondaryButton.Click;
+  mNotice.PrimaryButton.Click;
+  mNotice.SecondaryButton.Click;
   Application.ProcessMessages;
   CheckSynchronize;
-  Assert.AreEqual(1, Safe);
-  Assert.AreEqual(0, Normal);
+  Assert.AreEqual(1, mSafe);
+  Assert.AreEqual(0, mNormal);
 end;
 
 procedure TAtlasSafeModeNoticeTests.SafeOffersContinueTogglesRestore;
 var
-  Notice: TAtlasSafeModeNotice;
-  Restored: Integer;
+  mNotice: TAtlasSafeModeNotice;
+  mRestored: Integer;
 begin
-  Restored := 0;
-  Notice := TAtlasSafeModeNotice.CreateNotice(nil, TAtlasSafeNoticeKind.Safe,
+  mRestored := 0;
+  mNotice := TAtlasSafeModeNotice.CreateNotice(nil, TAtlasSafeNoticeKind.Safe,
     TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeActiveText),
     TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.SafeSuggest, ['Klammerfarben']),
     TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.SafeRestore, ['14.10.2026 12:00']), nil);
-  Notice.OnRestore :=
+  mNotice.OnRestore :=
     procedure
     begin
-      Inc(Restored);
+      Inc(mRestored);
     end;
   Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeContinueNormal),
-    Notice.PrimaryButton.Caption);
+    mNotice.PrimaryButton.Caption);
   Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeOpenToggles),
-    Notice.SecondaryButton.Caption);
-  Assert.IsTrue(Notice.RestoreButton.Visible);
-  Assert.IsTrue(Notice.SuggestionLabel.Visible);
-  Assert.IsTrue(Pos('Klammerfarben', Notice.SuggestionLabel.Caption) > 0);
-  Assert.IsFalse(Notice.DetailsButton.Visible, 'ohne Details kein Knopf');
-  Notice.RestoreButton.Click;
+    mNotice.SecondaryButton.Caption);
+  Assert.IsTrue(mNotice.RestoreButton.Visible);
+  Assert.IsTrue(mNotice.SuggestionLabel.Visible);
+  Assert.IsTrue(Pos('Klammerfarben', mNotice.SuggestionLabel.Caption) > 0);
+  Assert.IsFalse(mNotice.DetailsButton.Visible, 'ohne Details kein Knopf');
+  mNotice.RestoreButton.Click;
   Application.ProcessMessages;
   CheckSynchronize;
-  Assert.AreEqual(1, Restored);
+  Assert.AreEqual(1, mRestored);
 end;
 
 procedure TAtlasSafeModeNoticeTests.DetailsShowLinesAndBugReport;
 var
-  Notice: TAtlasSafeModeNotice;
-  Height1, Exported, Reported: Integer;
+  mNotice: TAtlasSafeModeNotice;
+  mHeight1, mExported, mReported: Integer;
 begin
-  Exported := 0;
-  Reported := 0;
-  Notice := TAtlasSafeModeNotice.CreateNotice(nil, TAtlasSafeNoticeKind.Safe, 'Text', '', '',
+  mExported := 0;
+  mReported := 0;
+  mNotice := TAtlasSafeModeNotice.CreateNotice(nil, TAtlasSafeNoticeKind.Safe, 'Text', '', '',
     ['Atlas 1.0.0', 'Fehler Pairs: 2']);
   try
-    Notice.OnExportLog :=
+    mNotice.OnExportLog :=
       procedure
       begin
-        Inc(Exported);
+        Inc(mExported);
       end;
-    Height1 := Notice.ClientHeight;
-    Assert.IsFalse(Notice.DetailsVisible);
-    Notice.DetailsButton.Click;
-    Assert.IsTrue(Notice.DetailsVisible);
-    Assert.IsTrue(Notice.ClientHeight > Height1, 'Details machen das Fenster höher');
-    Assert.AreEqual(2, Integer(Notice.Details.Lines.Count));
-    Assert.AreEqual('Fehler Pairs: 2', Notice.Details.Lines[1]);
-    Assert.IsTrue(Notice.ExportButton.Visible);
-    Assert.IsFalse(Notice.BugButton.Visible, 'ohne Fehlerbericht kein Knopf');
-    Notice.ExportButton.Click;
-    Assert.AreEqual(1, Exported);
+    mHeight1 := mNotice.ClientHeight;
+    Assert.IsFalse(mNotice.DetailsVisible);
+    mNotice.DetailsButton.Click;
+    Assert.IsTrue(mNotice.DetailsVisible);
+    Assert.IsTrue(mNotice.ClientHeight > mHeight1, 'Details machen das Fenster höher');
+    Assert.AreEqual(2, Integer(mNotice.Details.Lines.Count));
+    Assert.AreEqual('Fehler Pairs: 2', mNotice.Details.Lines[1]);
+    Assert.IsTrue(mNotice.ExportButton.Visible);
+    Assert.IsFalse(mNotice.BugButton.Visible, 'ohne Fehlerbericht kein Knopf');
+    mNotice.ExportButton.Click;
+    Assert.AreEqual(1, mExported);
     // Mit Fehlerbericht (#108) erscheint der Knopf beim nächsten Aufklappen.
-    Notice.OnBugReport :=
+    mNotice.OnBugReport :=
       procedure
       begin
-        Inc(Reported);
+        Inc(mReported);
       end;
-    Notice.ToggleDetails;
-    Notice.ToggleDetails;
-    Assert.IsTrue(Notice.BugButton.Visible);
-    Notice.BugButton.Click;
-    Assert.AreEqual(1, Reported);
+    mNotice.ToggleDetails;
+    mNotice.ToggleDetails;
+    Assert.IsTrue(mNotice.BugButton.Visible);
+    mNotice.BugButton.Click;
+    Assert.AreEqual(1, mReported);
   finally
-    Notice.Free;
+    mNotice.Free;
   end;
 end;
 
 procedure TAtlasSafeModeNoticeTests.ButtonsFitAfterShow;
 var
-  Notice: TAtlasSafeModeNotice;
-  Button: TButton;
+  mNotice: TAtlasSafeModeNotice;
+  mButton: TButton;
 begin
-  Notice := TAtlasSafeModeNotice.CreateNotice(nil, TAtlasSafeNoticeKind.Safe,
+  mNotice := TAtlasSafeModeNotice.CreateNotice(nil, TAtlasSafeNoticeKind.Safe,
     TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeActiveText),
     TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.SafeSuggest, ['Diagnosemodus']),
     TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.SafeRestore, ['15.10.2026 23:02:10']), ['Zeile']);
   try
-    Notice.ShowIn(Rect(0, 0, 1600, 900));
-    for Button in [Notice.PrimaryButton, Notice.SecondaryButton, Notice.RestoreButton, Notice.DetailsButton] do
+    mNotice.ShowIn(Rect(0, 0, 1600, 900));
+    for mButton in [mNotice.PrimaryButton, mNotice.SecondaryButton, mNotice.RestoreButton, mNotice.DetailsButton] do
     begin
-      Assert.IsTrue(Button.Visible, Button.Caption);
-      Assert.IsTrue(Notice.ScreenToClient(Button.ClientToScreen(Point(0, Button.Height))).Y <= Notice.ClientHeight,
-        Button.Caption + ' abgeschnitten');
+      Assert.IsTrue(mButton.Visible, mButton.Caption);
+      Assert.IsTrue(mNotice.ScreenToClient(mButton.ClientToScreen(Point(0, mButton.Height))).Y <= mNotice.ClientHeight,
+        mButton.Caption + ' abgeschnitten');
     end;
   finally
-    Notice.Free;
+    mNotice.Free;
   end;
 end;
 

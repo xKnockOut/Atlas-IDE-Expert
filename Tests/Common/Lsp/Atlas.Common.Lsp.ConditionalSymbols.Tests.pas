@@ -88,18 +88,18 @@ end;
 
 procedure TConditionalSymbolsTests.HoverNamesIncludeFileAndLine;
 var
-  Markdown: string;
-  Target: TConditionalContext;
+  mMarkdown: string;
+  mTarget: TConditionalContext;
 begin
-  Markdown := HoverAt('unit U;'#10'{$I Defs.inc}'#10'{$IFDEF FOO}'#10'{$ENDIF}', 2, 9, Context);
-  Assert.IsTrue(StartsStr('**FOO**: aktiv, definiert mit {$DEFINE FOO} in [Defs.inc](', Markdown), Markdown);
-  Assert.IsTrue(EndsStr('), Zeile 2', Markdown), Markdown);
+  mMarkdown := HoverAt('unit U;'#10'{$I Defs.inc}'#10'{$IFDEF FOO}'#10'{$ENDIF}', 2, 9, Context);
+  Assert.IsTrue(StartsStr('**FOO**: aktiv, definiert mit {$DEFINE FOO} in [Defs.inc](', mMarkdown), mMarkdown);
+  Assert.IsTrue(EndsStr('), Zeile 2', mMarkdown), mMarkdown);
   // Mit Zielplattform und Konfiguration nennt der Hover den Projektstand (#860).
-  Target := Context;
-  Target.Platform := 'Win64';
-  Target.Config := 'Debug';
-  Markdown := HoverAt('unit U;'#10'{$I Defs.inc}'#10'{$IFDEF FOO}'#10'{$ENDIF}', 2, 9, Target);
-  Assert.IsTrue(EndsStr('), Zeile 2'#10#10'Projekt: Win64 · Debug', Markdown), Markdown);
+  mTarget := Context;
+  mTarget.Platform := 'Win64';
+  mTarget.Config := 'Debug';
+  mMarkdown := HoverAt('unit U;'#10'{$I Defs.inc}'#10'{$IFDEF FOO}'#10'{$ENDIF}', 2, 9, mTarget);
+  Assert.IsTrue(EndsStr('), Zeile 2'#10#10'Projekt: Win64 · Debug', mMarkdown), mMarkdown);
   // Vor der $I-Direktive gilt FOO noch nicht.
   Assert.IsTrue(StartsStr('**FOO**: nicht definiert',
     HoverAt('unit U;'#10'{$IFDEF FOO}'#10'{$ENDIF}'#10'{$I Defs.inc}', 1, 9, Context)));
@@ -107,7 +107,7 @@ end;
 
 procedure TConditionalSymbolsTests.HoverFollowsDefineAndUndefInFile;
 const
-  Source =
+  cSource =
     'unit U;'#10 +                // 0
     '{$DEFINE BAR}'#10 +          // 1
     '{$IFDEF BAR}{$ENDIF}'#10 +   // 2
@@ -115,16 +115,16 @@ const
     '{$IFDEF DEBUG}{$ENDIF}'#10 + // 4
     'end.';
 var
-  Markdown: string;
+  mMarkdown: string;
 begin
-  Assert.AreEqual('**BAR**: aktiv, definiert mit {$DEFINE BAR} in Zeile 2', HoverAt(Source, 2, 9, Context));
+  Assert.AreEqual('**BAR**: aktiv, definiert mit {$DEFINE BAR} in Zeile 2', HoverAt(cSource, 2, 9, Context));
   Assert.AreEqual('**DEBUG**: nicht definiert, aufgehoben mit {$UNDEF DEBUG} in Zeile 4',
-    HoverAt(Source, 4, 9, Context));
+    HoverAt(cSource, 4, 9, Context));
   // Über der Direktive selbst: Zustand davor und was sie tut.
-  Markdown := HoverAt(Source, 1, 10, Context);
-  Assert.IsTrue(StartsStr('**BAR**: nicht definiert', Markdown), Markdown);
-  Assert.IsTrue(ContainsStr(Markdown, 'Diese Direktive definiert **BAR** ab hier.'), Markdown);
-  Assert.IsTrue(ContainsStr(HoverAt(Source, 3, 9, Context), 'Diese Direktive hebt **DEBUG** ab hier auf.'));
+  mMarkdown := HoverAt(cSource, 1, 10, Context);
+  Assert.IsTrue(StartsStr('**BAR**: nicht definiert', mMarkdown), mMarkdown);
+  Assert.IsTrue(ContainsStr(mMarkdown, 'Diese Direktive definiert **BAR** ab hier.'), mMarkdown);
+  Assert.IsTrue(ContainsStr(HoverAt(cSource, 3, 9, Context), 'Diese Direktive hebt **DEBUG** ab hier auf.'));
 end;
 
 procedure TConditionalSymbolsTests.HoverNamesCompilerAndIdeSymbols;
@@ -137,29 +137,29 @@ end;
 
 procedure TConditionalSymbolsTests.HoverPicksDefinedUnderCursor;
 const
-  Source = '{$IF Defined(DEBUG) and not Defined(LINUX)}{$IFEND}';
+  cSource = '{$IF Defined(DEBUG) and not Defined(LINUX)}{$IFEND}';
 begin
-  Assert.IsTrue(StartsStr('**DEBUG**: aktiv', HoverAt(Source, 0, 15, Context)));
-  Assert.IsTrue(StartsStr('**LINUX**: nicht definiert', HoverAt(Source, 0, 38, Context)));
+  Assert.IsTrue(StartsStr('**DEBUG**: aktiv', HoverAt(cSource, 0, 15, Context)));
+  Assert.IsTrue(StartsStr('**LINUX**: nicht definiert', HoverAt(cSource, 0, 38, Context)));
   // Zwischen den Namen und bei mehreren Defined: nichts.
-  Assert.AreEqual('-', HoverAt(Source, 0, 24, Context));
+  Assert.AreEqual('-', HoverAt(cSource, 0, 24, Context));
   // Ein einziges Defined gilt überall in der Direktive.
   Assert.IsTrue(StartsStr('**DEBUG**', HoverAt('{$ELSEIF Defined(DEBUG)}', 0, 3, Context)));
 end;
 
 procedure TConditionalSymbolsTests.HoverNotesInactiveBranchAndUnknownSymbol;
 var
-  Markdown: string;
-  Loose: TConditionalContext;
+  mMarkdown: string;
+  mLoose: TConditionalContext;
 begin
-  Markdown := HoverAt('{$IFDEF LINUX}'#10'{$IFDEF DEBUG}{$ENDIF}'#10'{$ENDIF}', 1, 9, Context);
-  Assert.IsTrue(ContainsStr(Markdown, 'inaktiven Zweig'), Markdown);
+  mMarkdown := HoverAt('{$IFDEF LINUX}'#10'{$IFDEF DEBUG}{$ENDIF}'#10'{$ENDIF}', 1, 9, Context);
+  Assert.IsTrue(ContainsStr(mMarkdown, 'inaktiven Zweig'), mMarkdown);
   Assert.AreEqual('**XYZ**: nicht definiert, weder im Projekt noch vom Compiler noch mit {$DEFINE} davor gesetzt',
     HoverAt('{$IFDEF XYZ}{$ENDIF}', 0, 9, Context));
   // Ohne Projekt nur die Datei.
-  Loose := TConditionalContext.Default;
+  mLoose := TConditionalContext.Default;
   Assert.AreEqual('**XYZ**: nicht definiert, kein Projekt geladen, nur die Datei ausgewertet',
-    HoverAt('{$IFDEF XYZ}{$ENDIF}', 0, 9, Loose));
+    HoverAt('{$IFDEF XYZ}{$ENDIF}', 0, 9, mLoose));
   // Andere Direktiven haben kein Symbol.
   Assert.AreEqual('-', HoverAt('{$R+}', 0, 2, Context));
   Assert.AreEqual('-', HoverAt('unit U;', 0, 2, Context));
@@ -182,30 +182,30 @@ end;
 
 procedure TConditionalSymbolsTests.ConditionHoverExplainsParts;
 var
-  Markdown: string;
-  Off: TConditionalContext;
+  mMarkdown: string;
+  mOff: TConditionalContext;
 begin
-  Markdown := ConditionAt('{$IF SizeOf(Pointer) = 8}'#10'{$IFEND}', 0, 3, SwitchContext);
-  Assert.IsTrue(StartsStr('**wahr**: `SizeOf(Pointer) = 8`', Markdown), Markdown);
-  Assert.IsTrue(ContainsStr(Markdown, '- `SizeOf(Pointer)` 8 · Zielplattform Win64'), Markdown);
-  Markdown := ConditionAt('{$IF Declared(Unbekannt)}'#10'{$IFEND}', 0, 3, SwitchContext);
-  Assert.IsTrue(StartsStr('**unbekannt = aktiv**', Markdown), Markdown);
-  Assert.IsTrue(ContainsStr(Markdown, '{$ELSE} dazu gelten als aktiv'), Markdown);
+  mMarkdown := ConditionAt('{$IF SizeOf(Pointer) = 8}'#10'{$IFEND}', 0, 3, SwitchContext);
+  Assert.IsTrue(StartsStr('**wahr**: `SizeOf(Pointer) = 8`', mMarkdown), mMarkdown);
+  Assert.IsTrue(ContainsStr(mMarkdown, '- `SizeOf(Pointer)` 8 · Zielplattform Win64'), mMarkdown);
+  mMarkdown := ConditionAt('{$IF Declared(Unbekannt)}'#10'{$IFEND}', 0, 3, SwitchContext);
+  Assert.IsTrue(StartsStr('**unbekannt = aktiv**', mMarkdown), mMarkdown);
+  Assert.IsTrue(ContainsStr(mMarkdown, '{$ELSE} dazu gelten als aktiv'), mMarkdown);
   // Im inaktiven Zweig wird nichts ausgewertet.
-  Markdown := ConditionAt('{$IFDEF LINUX}'#10'{$IF SizeOf(Pointer) = 8}{$IFEND}'#10'{$ENDIF}', 1, 3, SwitchContext);
-  Assert.IsTrue(ContainsStr(Markdown, 'inaktiven Zweig'), Markdown);
+  mMarkdown := ConditionAt('{$IFDEF LINUX}'#10'{$IF SizeOf(Pointer) = 8}{$IFEND}'#10'{$ENDIF}', 1, 3, SwitchContext);
+  Assert.IsTrue(ContainsStr(mMarkdown, 'inaktiven Zweig'), mMarkdown);
   // Auf anderen Direktiven und abgeschaltet: nichts.
   Assert.AreEqual('-', ConditionAt('{$IFDEF DEBUG}{$ENDIF}', 0, 3, SwitchContext));
-  Off := SwitchContext;
-  Off.HoverEnabled := False;
-  Assert.AreEqual('-', ConditionAt('{$IF SizeOf(Pointer) = 8}{$IFEND}', 0, 3, Off));
+  mOff := SwitchContext;
+  mOff.HoverEnabled := False;
+  Assert.AreEqual('-', ConditionAt('{$IF SizeOf(Pointer) = 8}{$IFEND}', 0, 3, mOff));
   // Schaltereinträge sind keine Symbole.
   Assert.AreEqual<NativeInt>(0, Length(TConditionalSymbols.SourcesOf(['$R+'], nil, nil, '')));
 end;
 
 procedure TConditionalSymbolsTests.ConditionHoverNamesSwitchOrigin;
 const
-  Source =
+  cSource =
     '{$IFOPT R+}'#10 + // 0
     '{$ENDIF}'#10 +    // 1
     'x'#10 +           // 2
@@ -213,15 +213,15 @@ const
     '{$IFOPT R+}'#10 + // 4
     '{$ENDIF}';
 begin
-  Assert.AreEqual('**aktiv**: R+ aus DCC_RangeChecking (Debug)', ConditionAt(Source, 0, 3, SwitchContext));
-  Assert.AreEqual('**inaktiv**: R- seit {$R-} in Zeile 4', ConditionAt(Source, 4, 3, SwitchContext));
+  Assert.AreEqual('**aktiv**: R+ aus DCC_RangeChecking (Debug)', ConditionAt(cSource, 0, 3, SwitchContext));
+  Assert.AreEqual('**inaktiv**: R- seit {$R-} in Zeile 4', ConditionAt(cSource, 4, 3, SwitchContext));
   Assert.IsTrue(StartsStr('**unbekannt = aktiv**: R+ kein Projekt',
-    ConditionAt(Source, 0, 3, TConditionalContext.Default)));
+    ConditionAt(cSource, 0, 3, TConditionalContext.Default)));
 end;
 
 procedure TConditionalSymbolsTests.ConditionHoverPairsPushAndPop;
 const
-  Source =
+  cSource =
     '{$PUSHOPT}'#10 + // 0
     '{$PUSHOPT}'#10 + // 1
     '{$POPOPT}'#10 +  // 2
@@ -229,67 +229,67 @@ const
     '{$POPOPT}';      // 4
 begin
   Assert.AreEqual('**{$PUSHOPT}** sichert den Schalterstand; {$POPOPT} in Zeile 4 stellt ihn wieder her.',
-    ConditionAt(Source, 0, 3, Context));
-  Assert.IsTrue(ContainsStr(ConditionAt(Source, 1, 3, Context), 'Zeile 3'));
+    ConditionAt(cSource, 0, 3, Context));
+  Assert.IsTrue(ContainsStr(ConditionAt(cSource, 1, 3, Context), 'Zeile 3'));
   Assert.AreEqual('**{$POPOPT}** stellt den Schalterstand von {$PUSHOPT} in Zeile 2 wieder her.',
-    ConditionAt(Source, 2, 3, Context));
-  Assert.AreEqual('**{$POPOPT}** ohne passendes {$PUSHOPT} davor.', ConditionAt(Source, 4, 3, Context));
+    ConditionAt(cSource, 2, 3, Context));
+  Assert.AreEqual('**{$POPOPT}** ohne passendes {$PUSHOPT} davor.', ConditionAt(cSource, 4, 3, Context));
 end;
 
 procedure TConditionalSymbolsTests.HoverIsSwitchable;
 var
-  Off: TConditionalContext;
+  mOff: TConditionalContext;
 begin
-  Off := Context;
-  Off.HoverEnabled := False;
-  Assert.AreEqual('-', HoverAt('{$IFDEF DEBUG}{$ENDIF}', 0, 9, Off));
+  mOff := Context;
+  mOff.HoverEnabled := False;
+  Assert.AreEqual('-', HoverAt('{$IFDEF DEBUG}{$ENDIF}', 0, 9, mOff));
 end;
 
 procedure TConditionalSymbolsTests.DetectsSymbolContexts;
 var
-  Prefix: string;
+  mPrefix: string;
 begin
-  Assert.IsTrue(TConditionalSymbols.IsSymbolContext('  {$IFDEF ', Prefix));
-  Assert.AreEqual('', Prefix);
-  Assert.IsTrue(TConditionalSymbols.IsSymbolContext('{$ifndef DE', Prefix));
-  Assert.AreEqual('DE', Prefix);
-  Assert.IsTrue(TConditionalSymbols.IsSymbolContext('{$DEFINE ', Prefix));
-  Assert.IsTrue(TConditionalSymbols.IsSymbolContext('{$UNDEF X', Prefix));
-  Assert.IsTrue(TConditionalSymbols.IsSymbolContext('{$IF Defined(', Prefix));
-  Assert.IsTrue(TConditionalSymbols.IsSymbolContext('{$IF Defined(A) or Defined( WI', Prefix));
-  Assert.AreEqual('WI', Prefix);
-  Assert.IsTrue(TConditionalSymbols.IsSymbolContext('{$ELSEIF not Defined(', Prefix));
-  Assert.IsFalse(TConditionalSymbols.IsSymbolContext('{$IFDEF DEBUG ', Prefix), 'schon ein Name');
-  Assert.IsFalse(TConditionalSymbols.IsSymbolContext('{$IF CompilerVersion', Prefix));
-  Assert.IsFalse(TConditionalSymbols.IsSymbolContext('{$IFDEF DEBUG} X', Prefix), 'Direktive zu');
-  Assert.IsFalse(TConditionalSymbols.IsSymbolContext('{$IFDE', Prefix), 'Direktivenname');
-  Assert.IsFalse(TConditionalSymbols.IsSymbolContext('  IFDEF ', Prefix));
+  Assert.IsTrue(TConditionalSymbols.IsSymbolContext('  {$IFDEF ', mPrefix));
+  Assert.AreEqual('', mPrefix);
+  Assert.IsTrue(TConditionalSymbols.IsSymbolContext('{$ifndef DE', mPrefix));
+  Assert.AreEqual('DE', mPrefix);
+  Assert.IsTrue(TConditionalSymbols.IsSymbolContext('{$DEFINE ', mPrefix));
+  Assert.IsTrue(TConditionalSymbols.IsSymbolContext('{$UNDEF X', mPrefix));
+  Assert.IsTrue(TConditionalSymbols.IsSymbolContext('{$IF Defined(', mPrefix));
+  Assert.IsTrue(TConditionalSymbols.IsSymbolContext('{$IF Defined(A) or Defined( WI', mPrefix));
+  Assert.AreEqual('WI', mPrefix);
+  Assert.IsTrue(TConditionalSymbols.IsSymbolContext('{$ELSEIF not Defined(', mPrefix));
+  Assert.IsFalse(TConditionalSymbols.IsSymbolContext('{$IFDEF DEBUG ', mPrefix), 'schon ein Name');
+  Assert.IsFalse(TConditionalSymbols.IsSymbolContext('{$IF CompilerVersion', mPrefix));
+  Assert.IsFalse(TConditionalSymbols.IsSymbolContext('{$IFDEF DEBUG} X', mPrefix), 'Direktive zu');
+  Assert.IsFalse(TConditionalSymbols.IsSymbolContext('{$IFDE', mPrefix), 'Direktivenname');
+  Assert.IsFalse(TConditionalSymbols.IsSymbolContext('  IFDEF ', mPrefix));
 end;
 
 procedure TConditionalSymbolsTests.CandidatesWithOrigin;
 var
-  Found: TArray<TConditionalSymbol>;
-  Text: string;
+  mFound: TArray<TConditionalSymbol>;
+  mText: string;
 
   function Find(const AName: string): TConditionalSymbol;
   var
-    Symbol: TConditionalSymbol;
+    mSymbol: TConditionalSymbol;
   begin
     Result := Default(TConditionalSymbol);
-    for Symbol in Found do
+    for mSymbol in mFound do
     begin
-      if Symbol.Name = AName then
+      if mSymbol.Name = AName then
       begin
-        Exit(Symbol);
+        Exit(mSymbol);
       end;
     end;
   end;
 
   function IndexOf(const AName: string): Integer;
   begin
-    for Result := 0 to High(Found) do
+    for Result := 0 to High(mFound) do
     begin
-      if Found[Result].Name = AName then
+      if mFound[Result].Name = AName then
       begin
         Exit;
       end;
@@ -299,12 +299,12 @@ var
 
   function CountOf(const AName: string): Integer;
   var
-    Symbol: TConditionalSymbol;
+    mSymbol: TConditionalSymbol;
   begin
     Result := 0;
-    for Symbol in Found do
+    for mSymbol in mFound do
     begin
-      if Symbol.Name = AName then
+      if mSymbol.Name = AName then
       begin
         Inc(Result);
       end;
@@ -312,8 +312,8 @@ var
   end;
 
 begin
-  Text := 'unit U;'#10'{$I Defs.inc}'#10'{$DEFINE LOKAL}'#10'{$IFDEF Benutzt}{$ENDIF}'#10'end.';
-  Found := TConditionalSymbols.Candidates(Text, Context);
+  mText := 'unit U;'#10'{$I Defs.inc}'#10'{$DEFINE LOKAL}'#10'{$IFDEF Benutzt}{$ENDIF}'#10'end.';
+  mFound := TConditionalSymbols.Candidates(mText, Context);
   Assert.AreEqual('Konfiguration Debug (.dproj)', Find('DEBUG').Detail);
   Assert.IsTrue(Find('DEBUG').Active);
   Assert.AreEqual('Compiler-Vorgabe (Plattform Win64)', Find('WIN64').Detail);

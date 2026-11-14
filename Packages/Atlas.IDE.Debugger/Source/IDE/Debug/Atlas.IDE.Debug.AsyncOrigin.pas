@@ -9,9 +9,12 @@
 //     Funktionen des Debuggers erfahren davon nichts (Filter in TAtlasIdeDebugSession). Am Haltepunkt des Benutzers
 //     merkt Atlas ebenso, hält aber.
 //   - Hält das Programm später in der anonymen Methode einer Aufrufstelle, ordnet Atlas die Einreihung zu (die älteste
-//     offene der Stelle) und zeigt sie im Ergebnisfenster: „Eingereiht mit TThread.Queue von Thread 4120“, darunter der
-//     damalige Stapel, Bibliothek zusammengefasst; Doppelklick springt zur Zeile. Weitere Halte desselben Threads in
-//     derselben Methode (Schritte) behalten die Zuordnung.
+//     offene der Stelle). Im Fenster „Atlas-Aufrufstapel“ (#843) steht sie hinter dem Rahmen der anonymen Methode:
+//     „Eingereiht mit TThread.Queue von Thread 4120“, darunter der damalige Stapel (kursiv), mit Suche, Kopieren und
+//     Sprung zur Zeile. Ist das Fenster nicht offen, zeigt Atlas sie im Ergebnisfenster. Weitere Halte desselben
+//     Threads in derselben Methode (Schritte) behalten die Zuordnung.
+//   - Gemerkt wird über einen Haltepunkt mit sofortigem Fortsetzen, nicht über einen Logpunkt (#583): Logpunkte
+//     schreiben nur Text ins Ereignisprotokoll und liefern keinen Aufrufstapel.
 //   - Die Statusleiste von Atlas zeigt, solange Haltepunkte gesetzt sind, „Herkunft: 12 Aufrufstellen“ in Gelb: Das
 //     Anhalten an jeder Stelle bremst das Programm.
 // Die Adresse der übergebenen Methode liest Atlas nicht (am Haltepunkt ist sie noch nicht gebaut); die Zuordnung
@@ -27,6 +30,7 @@ uses
   ToolsAPI,
   Atlas.Core.Status.Contract,
   Atlas.Core.Debug.CallStack,
+  Atlas.Core.Debug.CallStackView,
   Atlas.Core.Debug.AsyncOrigin,
   Atlas.IDE.Debug.Session;
 
@@ -53,9 +57,11 @@ type
     public
       procedure Tick(Sender: TObject);
     end;
-    /// <summary>Zuletzt gezeigte Zuordnung: gilt weiter, solange derselbe Thread in derselben Methode hält.</summary>
+    /// <summary>Letzte Zuordnung: gilt weiter, solange derselbe Thread in derselben Methode hält.</summary>
     TShown = record
       Has: Boolean;
+      /// <summary>Eine offene Einreihung gefunden (sonst gab es keine).</summary>
+      Found: Boolean;
       ThreadId: Cardinal;
       Site: Integer;
       Entry: TAtlasAsyncEntry;
@@ -85,8 +91,14 @@ type
     /// <summary>Stapel des angehaltenen Threads, Rahmen aufgelöst und eigener Code markiert.</summary>
     class function StoppedFrames(out AThread: IOTAThread; out AFrames: TAtlasDebugFrames): TAtlasDebugStackRead;
       static;
-    /// <summary>Halt von Thread AThreadId in der Methode von ASite: Einreihung zuordnen und zeigen.</summary>
-    class procedure AssignOrigin(AThreadId: Cardinal; ASite: Integer); static;
+    /// <summary>Halt von Thread AThreadId in der Methode von ASite: Einreihung zuordnen (FShown); True, wenn die
+    /// Zuordnung neu ist.</summary>
+    class function Assign(AThreadId: Cardinal; ASite: Integer): Boolean; static;
+    /// <summary>Neue Zuordnung melden: im Ergebnisfenster, wenn das Fenster Atlas-Aufrufstapel nicht offen ist.
+    /// </summary>
+    class procedure Report; static;
+    /// <summary>Ergänzung des Fensters Atlas-Aufrufstapel (TAtlasIdeDebugCallStack.SetOrigin).</summary>
+    class procedure AddOrigin(var AStack: TAtlasDebugStackView); static;
     class procedure Show; static;
     class procedure Open(const AItemId: string); static;
     class procedure UpdateStatus; static;
@@ -109,6 +121,8 @@ uses
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Breakpoints,
+  Atlas.IDE.Debug.CallStack,
+  Atlas.IDE.Debug.CallStackWindow,
   Atlas.IDE.Debug.Sources,
   Atlas.UI.Debug.AsyncOrigin,
   Atlas.UI.Debug.Strings;
@@ -182,6 +196,68 @@ end;
 
 { TAtlasIdeDebugAsyncOrigin }
 
+class procedure TAtlasIdeDebugAsyncOrigin.Start(const AMessage: TProc<string>; const ARegistry: IAtlasStatusRegistry);
+begin
+  FMessage := AMessage;
+  FRegistry := ARegistry;
+  if FTicker = nil then
+  begin
+    FTicker := TTicker.Create;
+  end;
+  if FTimer = nil then
+  begin
+    FTimer := TTimer.Create(nil);
+    FTimer.Enabled := False;
+    FTimer.Interval := cIntervalMs;
+    FTimer.OnTimer := FTicker.Tick;
+  end;
+  if FListener = nil then
+  begin
+    FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FListener);
+  end;
+  TAtlasIdeDebugSession.Start;
+  TAtlasIdeDebugSession.SetStopFilter(
+    function(AStop: TAtlasDebugStop): Boolean
+    begin
+      Result := TAtlasIdeDebugAsyncOrigin.Remember(AStop);
+    end);
+  TAtlasIdeDebugCallStack.SetOrigin(
+    procedure(var AStack: TAtlasDebugStackView)
+    begin
+      TAtlasIdeDebugAsyncOrigin.AddOrigin(AStack);
+    end);
+  FStarted := True;
+  // Eingeschaltet während einer Sitzung: gleich beobachten.
+  if TAtlasIdeDebugSession.Active then
+  begin
+    Arm;
+  end;
+end;
+
+class procedure TAtlasIdeDebugAsyncOrigin.Release;
+begin
+  FStarted := False;
+  TAtlasIdeDebugSession.SetStopFilter(nil);
+  TAtlasIdeDebugCallStack.SetOrigin(nil);
+  if FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(FListener);
+  end;
+  FListener := nil;
+  Disarm;
+  FRegistry := nil;
+  FreeAndNil(FTimer);
+  FreeAndNil(FTicker);
+  FMessage := nil;
+  TAtlasIdeResultsWindow.ReleaseItems(cOwner);
+end;
+
+class function TAtlasIdeDebugAsyncOrigin.Started: Boolean;
+begin
+  Result := FStarted;
+end;
+
 class procedure TAtlasIdeDebugAsyncOrigin.Arm;
 var
   mFileName, mText: string;
@@ -231,6 +307,20 @@ begin
   UpdateStatus;
 end;
 
+class function TAtlasIdeDebugAsyncOrigin.CurrentPosition(const AThread: IOTAThread; out AFileName: string;
+  out ALine: Integer): Boolean;
+var
+  mResolved: string;
+begin
+  Result := TAtlasIdeBreakpoints.Position(AThread, AFileName, ALine);
+  // Die IDE nennt oft nur den Dateinamen; die Aufrufstellen tragen den vollen Pfad.
+  mResolved := TAtlasIdeDebugSources.Resolve(AFileName);
+  if mResolved <> '' then
+  begin
+    AFileName := mResolved;
+  end;
+end;
+
 class function TAtlasIdeDebugAsyncOrigin.Remember(AStop: TAtlasDebugStop): Boolean;
 var
   mThread: IOTAThread;
@@ -264,26 +354,6 @@ begin
   Result := FOwnBreak[mSite] and TAtlasIdeDebugSession.Resume;
 end;
 
-class function TAtlasIdeDebugAsyncOrigin.TryShow: Boolean;
-var
-  mThread: IOTAThread;
-  mFrames: TAtlasDebugFrames;
-  mRead: TAtlasDebugStackRead;
-  mSite: Integer;
-begin
-  Result := True;
-  mRead := StoppedFrames(mThread, mFrames);
-  if mRead = TAtlasDebugStackRead.Wait then
-  begin
-    Inc(FRetries);
-    Result := FRetries > cRetries;
-  end
-  else if (mRead = TAtlasDebugStackRead.Ready) and (TAtlasAsyncSites.OriginFrame(FSites, mFrames, mSite) >= 0) then
-  begin
-    AssignOrigin(mThread.OSThreadID, mSite);
-  end;
-end;
-
 class function TAtlasIdeDebugAsyncOrigin.StoppedFrames(out AThread: IOTAThread;
   out AFrames: TAtlasDebugFrames): TAtlasDebugStackRead;
 begin
@@ -300,26 +370,79 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeDebugAsyncOrigin.AssignOrigin(AThreadId: Cardinal; ASite: Integer);
+class function TAtlasIdeDebugAsyncOrigin.TryShow: Boolean;
 var
-  mEntry: TAtlasAsyncEntry;
+  mThread: IOTAThread;
+  mFrames: TAtlasDebugFrames;
+  mRead: TAtlasDebugStackRead;
+  mSite: Integer;
 begin
-  // Weitere Halte desselben Threads in derselben Methode (Schritte): Zuordnung bleibt.
-  if FShown.Has and (FShown.ThreadId = AThreadId) and (FShown.Site = ASite) then
+  Result := True;
+  mRead := StoppedFrames(mThread, mFrames);
+  if mRead = TAtlasDebugStackRead.Wait then
+  begin
+    Inc(FRetries);
+    Result := FRetries > cRetries;
+  end
+  else if (mRead = TAtlasDebugStackRead.Ready) and (TAtlasAsyncSites.OriginFrame(FSites, mFrames, mSite) >= 0) and
+    Assign(mThread.OSThreadID, mSite) then
+  begin
+    Report;
+  end;
+end;
+
+class function TAtlasIdeDebugAsyncOrigin.Assign(AThreadId: Cardinal; ASite: Integer): Boolean;
+begin
+  // Weitere Halte desselben Threads in derselben Methode (Schritte): Zuordnung bleibt. Das Fenster
+  // Atlas-Aufrufstapel und der Zuhörer fragen beim selben Halt beide; wer zuerst fragt, ordnet zu.
+  Result := not (FShown.Has and (FShown.ThreadId = AThreadId) and (FShown.Site = ASite));
+  if not Result then
   begin
     Exit;
   end;
   FShown := Default(TShown);
-  if not FOrigins.Take(ASite, 0, mEntry) then
-  begin
-    FMessage(TAtlasAsyncOriginTexts.NoneText(FSites[ASite].Kind));
-    Exit;
-  end;
   FShown.Has := True;
   FShown.ThreadId := AThreadId;
   FShown.Site := ASite;
-  FShown.Entry := mEntry;
-  Show;
+  FShown.Found := FOrigins.Take(ASite, 0, FShown.Entry);
+end;
+
+class procedure TAtlasIdeDebugAsyncOrigin.Report;
+begin
+  if not FShown.Found then
+  begin
+    FMessage(TAtlasAsyncOriginTexts.NoneText(FSites[FShown.Site].Kind));
+  end
+  else if TAtlasIdeDebugCallStack.Started and TAtlasIdeDebugCallStackWindow.Visible then
+  begin
+    TAtlasIdeResultsWindow.ReleaseItems(cOwner);
+    FMessage(TAtlasAsyncOriginTexts.Title(FShown.Entry, FSites[FShown.Site].Kind));
+  end
+  else
+  begin
+    Show;
+  end;
+end;
+
+class procedure TAtlasIdeDebugAsyncOrigin.AddOrigin(var AStack: TAtlasDebugStackView);
+var
+  mThread: IOTAThread;
+  mFrame, mSite: Integer;
+begin
+  mThread := TAtlasIdeDebugSession.StoppedThread;
+  if (FSites = nil) or (mThread = nil) then
+  begin
+    Exit;
+  end;
+  mFrame := TAtlasAsyncSites.OriginFrame(FSites, AStack.Frames, mSite);
+  if (mFrame >= 0) and Assign(mThread.OSThreadID, mSite) then
+  begin
+    Report;
+  end;
+  if (mFrame >= 0) and FShown.Found then
+  begin
+    AStack.InsertOrigin(mFrame, TAtlasAsyncOriginTexts.Title(FShown.Entry, FSites[mSite].Kind), FShown.Entry.Frames);
+  end;
 end;
 
 class procedure TAtlasIdeDebugAsyncOrigin.Show;
@@ -356,7 +479,7 @@ var
   mFrame: TAtlasDebugFrame;
 begin
   mIndex := StrToIntDef(AItemId, -1);
-  if not FShown.Has or (mIndex < 0) or (mIndex > High(FShown.Entry.Frames)) then
+  if not FShown.Found or (mIndex < 0) or (mIndex > High(FShown.Entry.Frames)) then
   begin
     Exit;
   end;
@@ -394,76 +517,6 @@ begin
   // Gelb: Das Anhalten an jeder Aufrufstelle bremst das Programm.
   mLine.Update(TAtlasAsyncOriginTexts.StatusText(Length(FSites)), TAtlasStatusState.Yellow,
     TAtlasDebugStrings.Fmt(TAtlasDebugTextId.AsyncOriginArmed, [Length(FSites)]));
-end;
-
-class function TAtlasIdeDebugAsyncOrigin.CurrentPosition(const AThread: IOTAThread; out AFileName: string;
-  out ALine: Integer): Boolean;
-var
-  mResolved: string;
-begin
-  Result := TAtlasIdeBreakpoints.Position(AThread, AFileName, ALine);
-  // Die IDE nennt oft nur den Dateinamen; die Aufrufstellen tragen den vollen Pfad.
-  mResolved := TAtlasIdeDebugSources.Resolve(AFileName);
-  if mResolved <> '' then
-  begin
-    AFileName := mResolved;
-  end;
-end;
-
-class procedure TAtlasIdeDebugAsyncOrigin.Start(const AMessage: TProc<string>; const ARegistry: IAtlasStatusRegistry);
-begin
-  FMessage := AMessage;
-  FRegistry := ARegistry;
-  if FTicker = nil then
-  begin
-    FTicker := TTicker.Create;
-  end;
-  if FTimer = nil then
-  begin
-    FTimer := TTimer.Create(nil);
-    FTimer.Enabled := False;
-    FTimer.Interval := cIntervalMs;
-    FTimer.OnTimer := FTicker.Tick;
-  end;
-  if FListener = nil then
-  begin
-    FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FListener);
-  end;
-  TAtlasIdeDebugSession.Start;
-  TAtlasIdeDebugSession.SetStopFilter(
-    function(AStop: TAtlasDebugStop): Boolean
-    begin
-      Result := TAtlasIdeDebugAsyncOrigin.Remember(AStop);
-    end);
-  FStarted := True;
-  // Eingeschaltet während einer Sitzung: gleich beobachten.
-  if TAtlasIdeDebugSession.Active then
-  begin
-    Arm;
-  end;
-end;
-
-class procedure TAtlasIdeDebugAsyncOrigin.Release;
-begin
-  FStarted := False;
-  TAtlasIdeDebugSession.SetStopFilter(nil);
-  if FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(FListener);
-  end;
-  FListener := nil;
-  Disarm;
-  FRegistry := nil;
-  FreeAndNil(FTimer);
-  FreeAndNil(FTicker);
-  FMessage := nil;
-  TAtlasIdeResultsWindow.ReleaseItems(cOwner);
-end;
-
-class function TAtlasIdeDebugAsyncOrigin.Started: Boolean;
-begin
-  Result := FStarted;
 end;
 
 end.

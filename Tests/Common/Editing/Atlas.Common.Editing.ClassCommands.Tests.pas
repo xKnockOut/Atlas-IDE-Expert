@@ -11,7 +11,8 @@ type
   [TestFixture]
   TClassCommandsTests = class
   public
-    /// <summary>Führt einen Befehl vorab aus; einmalig angelegte Daten zählen sonst als Leck des ersten Tests.</summary>
+    /// <summary>Führt einen Befehl vorab aus; einmalig angelegte Daten zählen sonst als Leck des ersten
+    /// Tests.</summary>
     [SetupFixture]
     procedure WarmUp;
     [Test]
@@ -74,7 +75,7 @@ uses
   Atlas.Common.Editing.ClassCommands;
 
 const
-  ClassUnit =
+  cClassUnit =
     'unit U;'#10 +                                  // 0
     'interface'#10 +                                // 1
     'type'#10 +                                     // 2
@@ -101,31 +102,36 @@ const
     'end.';
 
 function Run(const AText: string; ALine: Integer; out AEdits: TArray<TRuleEdit>;
-  const AIndex: ISymbolIndex = nil): Boolean;
+  const AIndex: ISymbolIndex): Boolean; overload;
 begin
   Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, AEdits,
     AIndex);
 end;
 
+function Run(const AText: string; ALine: Integer; out AEdits: TArray<TRuleEdit>): Boolean; overload;
+begin
+  Result := Run(AText, ALine, AEdits, nil);
+end;
+
 function WithCommand(const ACommand: string): string;
 begin
-  Result := Format(ClassUnit, [ACommand]);
+  Result := Format(cClassUnit, [ACommand]);
 end;
 
 /// <summary>Wendet AEdits (nicht überlappend) auf AText an.</summary>
 function Apply(const AText: string; AEdits: TArray<TRuleEdit>): string;
 var
-  Lines: TArray<string>;
-  Edit: TRuleEdit;
-  Offsets: TArray<Integer>;
-  Index, Start, Stop: Integer;
+  mLines: TArray<string>;
+  mEdit: TRuleEdit;
+  mOffsets: TArray<Integer>;
+  mIndex, mStart, mStop: Integer;
 begin
-  Lines := AText.Split([#10]);
-  SetLength(Offsets, Length(Lines) + 1);
-  Offsets[0] := 0;
-  for Index := 0 to High(Lines) do
+  mLines := AText.Split([#10]);
+  SetLength(mOffsets, Length(mLines) + 1);
+  mOffsets[0] := 0;
+  for mIndex := 0 to High(mLines) do
   begin
-    Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
   end;
   TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
@@ -134,31 +140,36 @@ begin
         ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
     end));
   Result := AText;
-  for Edit in AEdits do
+  for mEdit in AEdits do
   begin
-    Start := Offsets[Edit.Range.StartPos.Line] + Edit.Range.StartPos.Character;
-    Stop := Offsets[Edit.Range.EndPos.Line] + Edit.Range.EndPos.Character;
-    Result := Copy(Result, 1, Start) + Edit.NewText + Copy(Result, Stop + 1, MaxInt);
+    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
+    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
+    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
   end;
 end;
 
-function Expand(const ACommand: string; const AIndex: ISymbolIndex = nil): string;
+function Expand(const ACommand: string; const AIndex: ISymbolIndex): string; overload;
 var
-  Edits: TArray<TRuleEdit>;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Assert.IsTrue(Run(WithCommand(ACommand), 15, Edits, AIndex), ACommand);
-  Result := Apply(WithCommand(ACommand), Edits);
+  Assert.IsTrue(Run(WithCommand(ACommand), 15, mEdits, AIndex), ACommand);
+  Result := Apply(WithCommand(ACommand), mEdits);
+end;
+
+function Expand(const ACommand: string): string; overload;
+begin
+  Result := Expand(ACommand, nil);
 end;
 
 function Parses(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  mTree := TPascalParser.Parse(AText);
   try
-    Result := Length(Tree.Diagnostics) = 0;
+    Result := Length(mTree.Diagnostics) = 0;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -171,65 +182,65 @@ end;
 
 procedure TClassCommandsTests.ImplAddsMissingBodies;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand('/impl');
-  Assert.IsTrue(Pos('procedure TFoo.Stop;', Text) > 0, Text);
-  Assert.AreEqual(0, Pos('/impl', Text), Text);
+  mText := Expand('/impl');
+  Assert.IsTrue(Pos('procedure TFoo.Stop;', mText) > 0, mText);
+  Assert.AreEqual(0, Pos('/impl', mText), mText);
 end;
 
 procedure TClassCommandsTests.ImplWithoutMissingFails;
 var
-  Edits: TArray<TRuleEdit>;
-  Text: string;
+  mEdits: TArray<TRuleEdit>;
+  mText: string;
 begin
-  Text := StringReplace(WithCommand('/impl'), '    procedure Stop;'#10, '', []);
-  Assert.IsFalse(Run(Text, 14, Edits));
+  mText := StringReplace(WithCommand('/impl'), '    procedure Stop;'#10, '', []);
+  Assert.IsFalse(Run(mText, 14, mEdits));
 end;
 
 procedure TClassCommandsTests.CtorTakesFields;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand('/ctor');
+  mText := Expand('/ctor');
   Assert.IsTrue(Pos('  public'#10'    constructor Create(const AListe: TStringList; const AName: string);'#10'  end;',
-    Text) > 0, Text);
+    mText) > 0, mText);
   Assert.IsTrue(Pos('constructor TFoo.Create(const AListe: TStringList; const AName: string);'#10'begin'#10 +
-    '  inherited Create;'#10'  FListe := AListe;'#10'  FName := AName;'#10'end;', Text) > 0, Text);
+    '  inherited Create;'#10'  FListe := AListe;'#10'  FName := AName;'#10'end;', mText) > 0, mText);
 end;
 
 procedure TClassCommandsTests.CtorOwner;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand('/ctor owner');
-  Assert.IsTrue(Pos('    constructor Create(AOwner: TComponent); override;', Text) > 0, Text);
-  Assert.IsTrue(Pos('  inherited Create(AOwner);', Text) > 0, Text);
+  mText := Expand('/ctor owner');
+  Assert.IsTrue(Pos('    constructor Create(AOwner: TComponent); override;', mText) > 0, mText);
+  Assert.IsTrue(Pos('  inherited Create(AOwner);', mText) > 0, mText);
 end;
 
 procedure TClassCommandsTests.DtorFreesCreatedFields;
 var
-  Text, Source: string;
-  Edits: TArray<TRuleEdit>;
+  mText, mSource: string;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Source := StringReplace(WithCommand('/dtor'), '    procedure Stop;'#10, '    constructor Create;'#10, []);
-  Source := StringReplace(Source, 'procedure TFoo.Run;', 'constructor TFoo.Create;'#10'begin'#10 +
+  mSource := StringReplace(WithCommand('/dtor'), '    procedure Stop;'#10, '    constructor Create;'#10, []);
+  mSource := StringReplace(mSource, 'procedure TFoo.Run;', 'constructor TFoo.Create;'#10'begin'#10 +
     '  FListe := TStringList.Create;'#10'  FName := ''x'';'#10'end;'#10#10'procedure TFoo.Run;', []);
-  Assert.IsTrue(Run(Source, 15, Edits));
-  Text := Apply(Source, Edits);
-  Assert.IsTrue(Pos('    destructor Destroy; override;', Text) > 0, Text);
-  Assert.IsTrue(Pos('destructor TFoo.Destroy;'#10'begin'#10'  FreeAndNil(FListe);'#10'  inherited;'#10'end;', Text) > 0,
-    Text);
+  Assert.IsTrue(Run(mSource, 15, mEdits));
+  mText := Apply(mSource, mEdits);
+  Assert.IsTrue(Pos('    destructor Destroy; override;', mText) > 0, mText);
+  Assert.IsTrue(Pos('destructor TFoo.Destroy;'#10'begin'#10'  FreeAndNil(FListe);'#10'  inherited;'#10'end;', mText) > 0,
+    mText);
 end;
 
 procedure TClassCommandsTests.MsgUsesRecordType;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand('/msg WM_SIZE');
-  Assert.IsTrue(Pos('  protected'#10'    procedure WMSize(var Message: TWMSize); message WM_SIZE;', Text) > 0, Text);
-  Assert.IsTrue(Pos('procedure TFoo.WMSize(var Message: TWMSize);'#10'begin'#10'  inherited;'#10'end;', Text) > 0,
-    Text);
+  mText := Expand('/msg WM_SIZE');
+  Assert.IsTrue(Pos('  protected'#10'    procedure WMSize(var Message: TWMSize); message WM_SIZE;', mText) > 0, mText);
+  Assert.IsTrue(Pos('procedure TFoo.WMSize(var Message: TWMSize);'#10'begin'#10'  inherited;'#10'end;', mText) > 0,
+    mText);
 end;
 
 procedure TClassCommandsTests.MessageNames;
@@ -241,74 +252,74 @@ end;
 
 procedure TClassCommandsTests.OverrideInSameFile;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Expand('/override Wert');
-  Assert.IsTrue(Pos('  protected'#10'    function Wert(const A: Integer; B: string): Integer; override;', Text) > 0,
-    Text);
+  mText := Expand('/override Wert');
+  Assert.IsTrue(Pos('  protected'#10'    function Wert(const A: Integer; B: string): Integer; override;', mText) > 0,
+    mText);
   Assert.IsTrue(Pos('function TFoo.Wert(const A: Integer; B: string): Integer;'#10'begin'#10 +
-    '  Result := inherited Wert(A, B);'#10'end;', Text) > 0, Text);
-  Text := Expand('/override Lauf');
-  Assert.IsTrue(Pos('procedure TFoo.Lauf;'#10'begin'#10'  inherited;'#10'end;', Text) > 0, Text);
+    '  Result := inherited Wert(A, B);'#10'end;', mText) > 0, mText);
+  mText := Expand('/override Lauf');
+  Assert.IsTrue(Pos('procedure TFoo.Lauf;'#10'begin'#10'  inherited;'#10'end;', mText) > 0, mText);
 end;
 
 procedure TClassCommandsTests.OverrideFromIndex;
 const
-  Controls =
+  cControls =
     'unit Vcl.Controls;'#10'interface'#10'type'#10 +
     '  TControl = class(TComponent)'#10'  end;'#10 +
     '  TCustomControl = class(TControl)'#10'  protected'#10'    procedure Paint; virtual;'#10'  end;'#10 +
     'implementation'#10'end.';
-  Source =
+  cSource =
     'unit U;'#10'interface'#10'type'#10'  TBild = class(TCustomControl)'#10'  public'#10'    /override Paint'#10 +
     '  end;'#10'implementation'#10'end.';
 var
-  Index: ISymbolIndex;
-  Tree: TSyntaxTree;
-  FileName, Text: string;
-  Edits: TArray<TRuleEdit>;
+  mIndex: ISymbolIndex;
+  mTree: TSyntaxTree;
+  mFileName, mText: string;
+  mEdits: TArray<TRuleEdit>;
 begin
-  FileName := TPath.Combine(TPath.GetTempPath, 'Atlas.ClassCommands.Controls.pas');
-  TFile.WriteAllText(FileName, Controls);
+  mFileName := TPath.Combine(TPath.GetTempPath, 'Atlas.ClassCommands.Controls.pas');
+  TFile.WriteAllText(mFileName, cControls);
   try
-    Index := TSymbolIndex.Create;
-    Tree := TPascalParser.Parse(Controls);
+    mIndex := TSymbolIndex.Create;
+    mTree := TPascalParser.Parse(cControls);
     try
-      Index.AddUnit(TIndexExtractor.Extract(Tree, FileName));
+      mIndex.AddUnit(TIndexExtractor.Extract(mTree, mFileName));
     finally
-      Tree.Free;
+      mTree.Free;
     end;
-    Assert.IsTrue(Run(Source, 5, Edits, Index));
-    Text := Apply(Source, Edits);
-    Assert.IsTrue(Pos('  protected'#10'    procedure Paint; override;'#10'  end;', Text) > 0, Text);
-    Assert.IsTrue(Pos('procedure TBild.Paint;'#10'begin'#10'  inherited;'#10'end;', Text) > 0, Text);
+    Assert.IsTrue(Run(cSource, 5, mEdits, mIndex));
+    mText := Apply(cSource, mEdits);
+    Assert.IsTrue(Pos('  protected'#10'    procedure Paint; override;'#10'  end;', mText) > 0, mText);
+    Assert.IsTrue(Pos('procedure TBild.Paint;'#10'begin'#10'  inherited;'#10'end;', mText) > 0, mText);
     // Ohne Index kennt der Befehl TCustomControl nicht.
-    Assert.IsFalse(Run(Source, 5, Edits));
+    Assert.IsFalse(Run(cSource, 5, mEdits));
   finally
-    TFile.Delete(FileName);
+    TFile.Delete(mFileName);
   end;
 end;
 
 procedure TClassCommandsTests.OverrideUnknownFails;
 var
-  Problems: TArray<TSlashProblem>;
+  mProblems: TArray<TSlashProblem>;
 begin
-  Problems := TSlashCommandRegistry.Shared.Problems(WithCommand('/override Gibts'), nil);
-  Assert.AreEqual(1, Integer(Length(Problems)));
-  Assert.AreEqual('Keine virtuelle Methode Gibts in den Vorfahren von TFoo', Problems[0].Message);
+  mProblems := TSlashCommandRegistry.Shared.Problems(WithCommand('/override Gibts'), nil);
+  Assert.AreEqual(1, Integer(Length(mProblems)));
+  Assert.AreEqual('Keine virtuelle Methode Gibts in den Vorfahren von TFoo', mProblems[0].Message);
 end;
 
 procedure TClassCommandsTests.OutsideClassFails;
 const
-  Text = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  /ctor'#10'end;'#10'end.';
+  cText = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  /ctor'#10'end;'#10'end.';
 var
-  Edits: TArray<TRuleEdit>;
-  Problems: TArray<TSlashProblem>;
+  mEdits: TArray<TRuleEdit>;
+  mProblems: TArray<TSlashProblem>;
 begin
-  Assert.IsFalse(Run(Text, 5, Edits));
-  Problems := TSlashCommandRegistry.Shared.Problems(Text, nil);
-  Assert.AreEqual(1, Integer(Length(Problems)));
-  Assert.AreEqual('/ctor gilt nur in einer Klasse oder einer ihrer Methoden', Problems[0].Message);
+  Assert.IsFalse(Run(cText, 5, mEdits));
+  mProblems := TSlashCommandRegistry.Shared.Problems(cText, nil);
+  Assert.AreEqual(1, Integer(Length(mProblems)));
+  Assert.AreEqual('/ctor gilt nur in einer Klasse oder einer ihrer Methoden', mProblems[0].Message);
 end;
 
 procedure TClassCommandsTests.SignatureHelpers;
@@ -321,94 +332,94 @@ end;
 
 procedure TClassCommandsTests.ResultsParseWithoutErrors;
 const
-  Commands: array[0..5] of string = ('/impl', '/ctor', '/ctor owner', '/dtor', '/msg WM_PAINT', '/override Wert');
+  cCommands: array[0..5] of string = ('/impl', '/ctor', '/ctor owner', '/dtor', '/msg WM_PAINT', '/override Wert');
 var
-  Command, Text: string;
+  mCommand, mText: string;
 begin
-  for Command in Commands do
+  for mCommand in cCommands do
   begin
-    Text := Expand(Command);
-    Assert.IsTrue(Parses(Text), Command + ': ' + Text);
+    mText := Expand(mCommand);
+    Assert.IsTrue(Parses(mText), mCommand + ': ' + mText);
   end;
 end;
 
 /// <summary>Anzahl der Vorkommen von ASub in AText.</summary>
 function Occurrences(const AText, ASub: string): Integer;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
   Result := 0;
-  Start := Pos(ASub, AText);
-  while Start > 0 do
+  mStart := Pos(ASub, AText);
+  while mStart > 0 do
   begin
     Inc(Result);
-    Start := PosEx(ASub, AText, Start + Length(ASub));
+    mStart := PosEx(ASub, AText, mStart + Length(ASub));
   end;
 end;
 
 procedure TClassCommandsTests.DtorKeepsPassedReferences;
 var
-  Text, Source: string;
-  Edits: TArray<TRuleEdit>;
+  mText, mSource: string;
+  mEdits: TArray<TRuleEdit>;
 begin
   // Übergebene Referenz (FListe := AListe) gehört dem Aufrufer und wird nicht freigegeben.
-  Source := StringReplace(WithCommand('/dtor'), '    procedure Stop;'#10, '    constructor Create(AListe: TStringList);'#10,
+  mSource := StringReplace(WithCommand('/dtor'), '    procedure Stop;'#10, '    constructor Create(AListe: TStringList);'#10,
     []);
-  Source := StringReplace(Source, 'procedure TFoo.Run;', 'constructor TFoo.Create(AListe: TStringList);'#10'begin'#10 +
+  mSource := StringReplace(mSource, 'procedure TFoo.Run;', 'constructor TFoo.Create(AListe: TStringList);'#10'begin'#10 +
     '  FListe := AListe;'#10'end;'#10#10'procedure TFoo.Run;', []);
-  Assert.IsTrue(Run(Source, 15, Edits));
-  Text := Apply(Source, Edits);
-  Assert.IsTrue(Pos('destructor TFoo.Destroy;'#10'begin'#10'  inherited;'#10'end;', Text) > 0, Text);
-  Assert.AreEqual(0, Pos('FreeAndNil(FListe)', Text), Text);
+  Assert.IsTrue(Run(mSource, 15, mEdits));
+  mText := Apply(mSource, mEdits);
+  Assert.IsTrue(Pos('destructor TFoo.Destroy;'#10'begin'#10'  inherited;'#10'end;', mText) > 0, mText);
+  Assert.AreEqual(0, Pos('FreeAndNil(FListe)', mText), mText);
 end;
 
 procedure TClassCommandsTests.DtorExtendsExisting;
 var
-  Text, Source: string;
-  Edits: TArray<TRuleEdit>;
+  mText, mSource: string;
+  mEdits: TArray<TRuleEdit>;
 begin
   // Vorhandener Destruktor gibt FListe schon frei; FName2 kommt vor inherited dazu.
-  Source := StringReplace(WithCommand('/dtor'), '    procedure Stop;'#10,
+  mSource := StringReplace(WithCommand('/dtor'), '    procedure Stop;'#10,
     '    constructor Create;'#10'    destructor Destroy; override;'#10, []);
-  Source := StringReplace(Source, '    FName: string;'#10, '    FName: string;'#10'    FWeitere: TStringList;'#10, []);
-  Source := StringReplace(Source, 'procedure TFoo.Run;', 'constructor TFoo.Create;'#10'begin'#10 +
+  mSource := StringReplace(mSource, '    FName: string;'#10, '    FName: string;'#10'    FWeitere: TStringList;'#10, []);
+  mSource := StringReplace(mSource, 'procedure TFoo.Run;', 'constructor TFoo.Create;'#10'begin'#10 +
     '  FListe := TStringList.Create;'#10'  FWeitere := TStringList.Create;'#10'end;'#10#10 +
     'destructor TFoo.Destroy;'#10'begin'#10'  FListe.Free;'#10'  inherited;'#10'end;'#10#10'procedure TFoo.Run;', []);
-  Assert.IsTrue(Run(Source, 17, Edits));
-  Text := Apply(Source, Edits);
+  Assert.IsTrue(Run(mSource, 17, mEdits));
+  mText := Apply(mSource, mEdits);
   Assert.IsTrue(Pos('destructor TFoo.Destroy;'#10'begin'#10'  FListe.Free;'#10'  FreeAndNil(FWeitere);'#10 +
-    '  inherited;'#10'end;', Text) > 0, Text);
+    '  inherited;'#10'end;', mText) > 0, mText);
   // Keine zweite Deklaration und kein zweiter Rumpf.
-  Assert.AreEqual(1, Occurrences(Text, 'destructor Destroy; override;'), Text);
-  Assert.AreEqual(1, Occurrences(Text, 'destructor TFoo.Destroy;'), Text);
-  Assert.IsTrue(Parses(Text), Text);
+  Assert.AreEqual(1, Occurrences(mText, 'destructor Destroy; override;'), mText);
+  Assert.AreEqual(1, Occurrences(mText, 'destructor TFoo.Destroy;'), mText);
+  Assert.IsTrue(Parses(mText), mText);
   // Alles schon freigegeben: Hinweis.
-  Source := StringReplace(Source, '  inherited;'#10'end;'#10#10'procedure TFoo.Run;',
+  mSource := StringReplace(mSource, '  inherited;'#10'end;'#10#10'procedure TFoo.Run;',
     '  FWeitere.Free;'#10'  inherited;'#10'end;'#10#10'procedure TFoo.Run;', []);
-  Assert.IsFalse(Run(Source, 17, Edits));
+  Assert.IsFalse(Run(mSource, 17, mEdits));
 end;
 
 procedure TClassCommandsTests.DtorAndMsgWrongPlaceFail;
 const
-  Text = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  %s'#10'end;'#10'end.';
+  cText = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  %s'#10'end;'#10'end.';
 var
-  Edits: TArray<TRuleEdit>;
-  Problems: TArray<TSlashProblem>;
+  mEdits: TArray<TRuleEdit>;
+  mProblems: TArray<TSlashProblem>;
 begin
-  Assert.IsFalse(Run(Format(Text, ['/dtor']), 5, Edits));
-  Problems := TSlashCommandRegistry.Shared.Problems(Format(Text, ['/dtor']), nil);
-  Assert.AreEqual(1, Integer(Length(Problems)));
-  Assert.AreEqual('/dtor gilt nur in einer Klasse oder einer ihrer Methoden', Problems[0].Message);
-  Assert.IsFalse(Run(Format(Text, ['/msg WM_SIZE']), 5, Edits));
-  Problems := TSlashCommandRegistry.Shared.Problems(Format(Text, ['/msg WM_SIZE']), nil);
-  Assert.AreEqual(1, Integer(Length(Problems)));
-  Assert.AreEqual('/msg gilt nur in einer Klasse oder einer ihrer Methoden', Problems[0].Message);
+  Assert.IsFalse(Run(Format(cText, ['/dtor']), 5, mEdits));
+  mProblems := TSlashCommandRegistry.Shared.Problems(Format(cText, ['/dtor']), nil);
+  Assert.AreEqual(1, Integer(Length(mProblems)));
+  Assert.AreEqual('/dtor gilt nur in einer Klasse oder einer ihrer Methoden', mProblems[0].Message);
+  Assert.IsFalse(Run(Format(cText, ['/msg WM_SIZE']), 5, mEdits));
+  mProblems := TSlashCommandRegistry.Shared.Problems(Format(cText, ['/msg WM_SIZE']), nil);
+  Assert.AreEqual(1, Integer(Length(mProblems)));
+  Assert.AreEqual('/msg gilt nur in einer Klasse oder einer ihrer Methoden', mProblems[0].Message);
   // Ohne Botschaft.
-  Assert.IsFalse(Run(WithCommand('/msg'), 15, Edits));
+  Assert.IsFalse(Run(WithCommand('/msg'), 15, mEdits));
 end;
 
 const
-  IntfUnit =
+  cIntfUnit =
     'unit U;'#10 +                                  // 0
     'interface'#10 +                                // 1
     'type'#10 +                                     // 2
@@ -431,62 +442,62 @@ const
 
 procedure TClassCommandsTests.IntfAddsInterfaceAndMethods;
 var
-  Text, Source: string;
-  Edits: TArray<TRuleEdit>;
+  mText, mSource: string;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Source := Format(IntfUnit, ['class(TInterfacedObject)', '/intf IExporter']);
-  Assert.IsTrue(Run(Source, 10, Edits));
-  Text := Apply(Source, Edits);
-  Assert.IsTrue(Pos('  TFoo = class(TInterfacedObject, IExporter)', Text) > 0, Text);
-  Assert.IsTrue(Pos('procedure Export(const AFileName: string);', Text) > 0, Text);
-  Assert.IsTrue(Pos('function Count: Integer;', Text) > 0, Text);
-  Assert.IsTrue(Pos('procedure TFoo.Export(const AFileName: string);', Text) > 0, Text);
-  Assert.IsTrue(Pos('function TFoo.Count: Integer;', Text) > 0, Text);
-  Assert.AreEqual(0, Pos('/intf', Text), Text);
-  Assert.IsTrue(Parses(Text), Text);
+  mSource := Format(cIntfUnit, ['class(TInterfacedObject)', '/intf IExporter']);
+  Assert.IsTrue(Run(mSource, 10, mEdits));
+  mText := Apply(mSource, mEdits);
+  Assert.IsTrue(Pos('  TFoo = class(TInterfacedObject, IExporter)', mText) > 0, mText);
+  Assert.IsTrue(Pos('procedure Export(const AFileName: string);', mText) > 0, mText);
+  Assert.IsTrue(Pos('function Count: Integer;', mText) > 0, mText);
+  Assert.IsTrue(Pos('procedure TFoo.Export(const AFileName: string);', mText) > 0, mText);
+  Assert.IsTrue(Pos('function TFoo.Count: Integer;', mText) > 0, mText);
+  Assert.AreEqual(0, Pos('/intf', mText), mText);
+  Assert.IsTrue(Parses(mText), mText);
   // Schon angehängt, aber eine Methode fehlt: nur die fehlende, Kopf bleibt.
-  Source := Format(IntfUnit, ['class(TInterfacedObject, IExporter)', '/intf IExporter']);
-  Source := StringReplace(Source, '    procedure Run;'#10, '    procedure Run;'#10'    function Count: Integer;'#10, []);
-  Source := StringReplace(Source, 'procedure TFoo.Run;', 'function TFoo.Count: Integer;'#10'begin'#10 +
+  mSource := Format(cIntfUnit, ['class(TInterfacedObject, IExporter)', '/intf IExporter']);
+  mSource := StringReplace(mSource, '    procedure Run;'#10, '    procedure Run;'#10'    function Count: Integer;'#10, []);
+  mSource := StringReplace(mSource, 'procedure TFoo.Run;', 'function TFoo.Count: Integer;'#10'begin'#10 +
     '  Result := 0;'#10'end;'#10#10'procedure TFoo.Run;', []);
-  Assert.IsTrue(Run(Source, 11, Edits));
-  Text := Apply(Source, Edits);
-  Assert.IsTrue(Pos('  TFoo = class(TInterfacedObject, IExporter)'#10, Text) > 0, Text);
-  Assert.IsTrue(Pos('procedure TFoo.Export(const AFileName: string);', Text) > 0, Text);
-  Assert.AreEqual(1, Occurrences(Text, 'function TFoo.Count'), Text);
-  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(Run(mSource, 11, mEdits));
+  mText := Apply(mSource, mEdits);
+  Assert.IsTrue(Pos('  TFoo = class(TInterfacedObject, IExporter)'#10, mText) > 0, mText);
+  Assert.IsTrue(Pos('procedure TFoo.Export(const AFileName: string);', mText) > 0, mText);
+  Assert.AreEqual(1, Occurrences(mText, 'function TFoo.Count'), mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TClassCommandsTests.IntfWithoutAncestorList;
 var
-  Text, Source: string;
-  Edits: TArray<TRuleEdit>;
+  mText, mSource: string;
+  mEdits: TArray<TRuleEdit>;
 begin
-  Source := Format(IntfUnit, ['class', '/intf IExporter']);
-  Assert.IsTrue(Run(Source, 10, Edits));
-  Text := Apply(Source, Edits);
-  Assert.IsTrue(Pos('  TFoo = class(TInterfacedObject, IExporter)'#10, Text) > 0, Text);
-  Assert.IsTrue(Parses(Text), Text);
+  mSource := Format(cIntfUnit, ['class', '/intf IExporter']);
+  Assert.IsTrue(Run(mSource, 10, mEdits));
+  mText := Apply(mSource, mEdits);
+  Assert.IsTrue(Pos('  TFoo = class(TInterfacedObject, IExporter)'#10, mText) > 0, mText);
+  Assert.IsTrue(Parses(mText), mText);
 end;
 
 procedure TClassCommandsTests.IntfWrongPlaceFails;
 var
-  Edits: TArray<TRuleEdit>;
-  Source: string;
+  mEdits: TArray<TRuleEdit>;
+  mSource: string;
 begin
   // Unbekanntes Interface, kein Interface, ohne Namen.
-  Assert.IsFalse(Run(Format(IntfUnit, ['class', '/intf IUnbekannt']), 10, Edits));
-  Assert.IsFalse(Run(Format(IntfUnit, ['class', '/intf TFoo']), 10, Edits));
-  Assert.IsFalse(Run(Format(IntfUnit, ['class', '/intf']), 10, Edits));
+  Assert.IsFalse(Run(Format(cIntfUnit, ['class', '/intf IUnbekannt']), 10, mEdits));
+  Assert.IsFalse(Run(Format(cIntfUnit, ['class', '/intf TFoo']), 10, mEdits));
+  Assert.IsFalse(Run(Format(cIntfUnit, ['class', '/intf']), 10, mEdits));
   // Schon vollständig.
-  Source := Format(IntfUnit, ['class(TInterfacedObject, IExporter)', '/intf IExporter']);
-  Source := StringReplace(Source, '    procedure Run;'#10, '    procedure Run;'#10 +
+  mSource := Format(cIntfUnit, ['class(TInterfacedObject, IExporter)', '/intf IExporter']);
+  mSource := StringReplace(mSource, '    procedure Run;'#10, '    procedure Run;'#10 +
     '    procedure Export(const AFileName: string);'#10'    function Count: Integer;'#10, []);
-  Assert.IsFalse(Run(Source, 12, Edits));
+  Assert.IsFalse(Run(mSource, 12, mEdits));
   // In einer Methode statt in der Deklaration.
-  Source := StringReplace(Format(IntfUnit, ['class', '']), 'procedure TFoo.Run;'#10'begin'#10,
+  mSource := StringReplace(Format(cIntfUnit, ['class', '']), 'procedure TFoo.Run;'#10'begin'#10,
     'procedure TFoo.Run;'#10'begin'#10'  /intf IExporter'#10, []);
-  Assert.IsFalse(Run(Source, 16, Edits));
+  Assert.IsFalse(Run(mSource, 16, mEdits));
 end;
 
 initialization

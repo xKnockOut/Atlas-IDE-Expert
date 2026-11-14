@@ -62,35 +62,35 @@ uses
   Atlas.Common.Semantics.ExitPoints;
 
 const
-  KindNames: array[TExitPointKind] of string = ('exit', 'raise', 'halt', 'call', 'end', 'result', 'source',
+  cKindNames: array[TExitPointKind] of string = ('exit', 'raise', 'halt', 'call', 'end', 'result', 'source',
     'handler', 'loop', 'jump');
 
 function Query(const ASource: string; ALine, ACharacter: Integer; const AOptions: TExitPointOptions;
   out ASet: TExitPointSet): string; overload;
 var
-  Tree: TSyntaxTree;
-  Point: TExitPoint;
+  mTree: TSyntaxTree;
+  mPoint: TExitPoint;
 begin
   Result := '';
-  Tree := TPascalParser.Parse(ASource);
+  mTree := TPascalParser.Parse(ASource);
   try
-    ASet := TExitPoints.Find(Tree, TTextLines.SplitLines(ASource), TTextPosition.Create(ALine, ACharacter),
+    ASet := TExitPoints.Find(mTree, TTextLines.SplitLines(ASource), TTextPosition.Create(ALine, ACharacter),
       AOptions);
-    for Point in ASet.Points do
+    for mPoint in ASet.Points do
     begin
       if Result <> '' then
       begin
         Result := Result + ' ';
       end;
-      Result := Result + Format('%s@%d:%d', [KindNames[Point.Kind], Point.Range.StartPos.Line,
-        Point.Range.StartPos.Character]);
-      if Point.ResultMissing then
+      Result := Result + Format('%s@%d:%d', [cKindNames[mPoint.Kind], mPoint.Range.StartPos.Line,
+        mPoint.Range.StartPos.Character]);
+      if mPoint.ResultMissing then
       begin
         Result := Result + '!';
       end;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -101,19 +101,19 @@ end;
 
 function Query(const ASource: string; ALine, ACharacter: Integer): string; overload;
 var
-  Found: TExitPointSet;
+  mFound: TExitPointSet;
 begin
-  Result := Query(ASource, ALine, ACharacter, Found);
+  Result := Query(ASource, ALine, ACharacter, mFound);
 end;
 
 function Lines(const AParts: array of string): string;
 var
-  Part: string;
+  mPart: string;
 begin
   Result := '';
-  for Part in AParts do
+  for mPart in AParts do
   begin
-    Result := Result + Part + #10;
+    Result := Result + mPart + #10;
   end;
 end;
 
@@ -121,238 +121,238 @@ end;
 
 procedure TExitPointsTests.ProcedureExitsAndFallThrough;
 var
-  Source: string;
-  Found: TExitPointSet;
+  mSource: string;
+  mFound: TExitPointSet;
 begin
-  Source := Lines(['unit U;', 'implementation', 'procedure P(A: Boolean);', 'begin', '  if A then', '    Exit;',
+  mSource := Lines(['unit U;', 'implementation', 'procedure P(A: Boolean);', 'begin', '  if A then', '    Exit;',
     '  Foo;', 'end;', 'end.']);
-  Assert.AreEqual('exit@5:4 end@7:0', Query(Source, 5, 5, Found));
-  Assert.AreEqual<TExitPointQuery>(TExitPointQuery.Routine, Found.Query);
-  Assert.AreEqual(2, Found.ExitCount);
-  Assert.IsTrue(Found.HasRoutine);
-  Assert.AreEqual(2, Found.RoutineRange.StartPos.Line);
-  Assert.AreEqual(10, Found.RoutineRange.StartPos.Character);
-  Assert.IsFalse(Found.ResultMissing, 'Prozedur');
+  Assert.AreEqual('exit@5:4 end@7:0', Query(mSource, 5, 5, mFound));
+  Assert.AreEqual<TExitPointQuery>(TExitPointQuery.Routine, mFound.Query);
+  Assert.AreEqual(2, mFound.ExitCount);
+  Assert.IsTrue(mFound.HasRoutine);
+  Assert.AreEqual(2, mFound.RoutineRange.StartPos.Line);
+  Assert.AreEqual(10, mFound.RoutineRange.StartPos.Character);
+  Assert.IsFalse(mFound.ResultMissing, 'Prozedur');
   // Mitten im Wort und direkt dahinter.
-  Assert.AreEqual('exit@5:4 end@7:0', Query(Source, 5, 8));
+  Assert.AreEqual('exit@5:4 end@7:0', Query(mSource, 5, 8));
   // Auf Foo: nichts.
-  Assert.AreEqual('', Query(Source, 6, 3, Found));
-  Assert.IsFalse(Found.Found);
+  Assert.AreEqual('', Query(mSource, 6, 3, mFound));
+  Assert.IsFalse(mFound.Found);
 end;
 
 procedure TExitPointsTests.RoutineNameInHeader;
 const
-  Source = 'unit U;'#10'implementation'#10'procedure TFoo.Run;'#10'begin'#10'  raise E;'#10'end;'#10'end.';
+  cSource = 'unit U;'#10'implementation'#10'procedure TFoo.Run;'#10'begin'#10'  raise E;'#10'end;'#10'end.';
 var
-  Found: TExitPointSet;
+  mFound: TExitPointSet;
 begin
-  Assert.AreEqual('raise@4:2', Query(Source, 2, 16, Found));
-  Assert.AreEqual('TFoo.Run', Found.RoutineName);
-  Assert.AreEqual(15, Found.RoutineRange.StartPos.Character);
+  Assert.AreEqual('raise@4:2', Query(cSource, 2, 16, mFound));
+  Assert.AreEqual('TFoo.Run', mFound.RoutineName);
+  Assert.AreEqual(15, mFound.RoutineRange.StartPos.Character);
   // Auf dem Klassennamen im Kopf nicht.
-  Assert.AreEqual('', Query(Source, 2, 11));
+  Assert.AreEqual('', Query(cSource, 2, 11));
 end;
 
 procedure TExitPointsTests.NestedRoutineCountsOnlyItself;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Lines(['unit U;', 'implementation', 'procedure P;', '  procedure Q;', '  begin', '    Exit;', '  end;',
+  mSource := Lines(['unit U;', 'implementation', 'procedure P;', '  procedure Q;', '  begin', '    Exit;', '  end;',
     'begin', '  if A then', '    Exit;', '  Q;', 'end;', 'end.']);
-  Assert.AreEqual('exit@9:4 end@11:0', Query(Source, 9, 5), 'P');
+  Assert.AreEqual('exit@9:4 end@11:0', Query(mSource, 9, 5), 'P');
   // Q springt immer mit Exit: kein end.
-  Assert.AreEqual('exit@5:4', Query(Source, 5, 5), 'Q');
-  Assert.AreEqual('exit@5:4', Query(Source, 3, 13), 'Kopf von Q');
+  Assert.AreEqual('exit@5:4', Query(mSource, 5, 5), 'Q');
+  Assert.AreEqual('exit@5:4', Query(mSource, 3, 13), 'Kopf von Q');
 end;
 
 procedure TExitPointsTests.AnonymousMethodCountsOnlyItself;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Lines(['unit U;', 'implementation', 'procedure P;', 'begin', '  Run(procedure', '    begin',
+  mSource := Lines(['unit U;', 'implementation', 'procedure P;', 'begin', '  Run(procedure', '    begin',
     '      if A then', '        Exit;', '    end);', '  Exit;', 'end;', 'end.']);
-  Assert.AreEqual('exit@7:8 end@8:4', Query(Source, 7, 9), 'anonyme Methode');
-  Assert.AreEqual('exit@9:2', Query(Source, 9, 3), 'P fällt nicht heraus');
+  Assert.AreEqual('exit@7:8 end@8:4', Query(mSource, 7, 9), 'anonyme Methode');
+  Assert.AreEqual('exit@9:2', Query(mSource, 9, 3), 'P fällt nicht heraus');
 end;
 
 procedure TExitPointsTests.NoFallThroughAfterRaise;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Lines(['unit U;', 'implementation', 'procedure P;', 'begin', '  if A then', '    Exit;',
+  mSource := Lines(['unit U;', 'implementation', 'procedure P;', 'begin', '  if A then', '    Exit;',
     '  raise E.Create(''x'');', 'end;', 'end.']);
-  Assert.AreEqual('exit@5:4 raise@6:2', Query(Source, 6, 3));
+  Assert.AreEqual('exit@5:4 raise@6:2', Query(mSource, 6, 3));
 end;
 
 procedure TExitPointsTests.ReraiseAbortHaltAndRunError;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Lines(['unit U;', 'implementation', 'procedure P;', 'begin', '  try', '    Foo;', '  except',
+  mSource := Lines(['unit U;', 'implementation', 'procedure P;', 'begin', '  try', '    Foo;', '  except',
     '    raise;', '  end;', '  if A then', '    Abort;', '  if B then', '    Halt(1);', '  RunError(5);', 'end;',
     'end.']);
-  Assert.AreEqual('raise@7:4 raise@10:4 halt@12:4 halt@13:2', Query(Source, 7, 5));
+  Assert.AreEqual('raise@7:4 raise@10:4 halt@12:4 halt@13:2', Query(mSource, 7, 5));
 end;
 
 procedure TExitPointsTests.RoutinesThatAlwaysRaise;
 var
-  Source: string;
-  Found: TExitPointSet;
+  mSource: string;
+  mFound: TExitPointSet;
 begin
-  Source := Lines(['unit U;', 'implementation', 'procedure Fail(const AText: string);', 'begin',
+  mSource := Lines(['unit U;', 'implementation', 'procedure Fail(const AText: string);', 'begin',
     '  raise EFoo.Create(AText);', 'end;', 'procedure Check(A: Boolean);', 'begin', '  if not A then',
     '    Fail(''nein'');', 'end;', 'procedure P(H: THandle);', 'begin', '  if H = 0 then', '    RaiseLastOSError;',
     '  Fail(''immer'');', 'end;', 'end.']);
   // Fail löst immer aus; Check nicht (ruft Fail nur auf einem Weg). Kein end, weil jeder Weg auslöst.
-  Assert.AreEqual('call@14:4 call@15:2', Query(Source, 15, 3, Found));
-  Assert.AreEqual(2, Found.ExitCount);
-  Assert.AreEqual('Fail', Found.Points[1].Detail);
-  Assert.AreEqual('call@9:4 end@10:0', Query(Source, 6, 12), 'Check: Aufruf von Fail und end');
+  Assert.AreEqual('call@14:4 call@15:2', Query(mSource, 15, 3, mFound));
+  Assert.AreEqual(2, mFound.ExitCount);
+  Assert.AreEqual('Fail', mFound.Points[1].Detail);
+  Assert.AreEqual('call@9:4 end@10:0', Query(mSource, 6, 12), 'Check: Aufruf von Fail und end');
 end;
 
 procedure TExitPointsTests.QualifiedExitIsNoExit;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Lines(['unit U;', 'implementation', 'procedure P;', 'begin', '  TMonitor.Exit(FLock);', '  Exit;',
+  mSource := Lines(['unit U;', 'implementation', 'procedure P;', 'begin', '  TMonitor.Exit(FLock);', '  Exit;',
     'end;', 'end.']);
-  Assert.AreEqual('', Query(Source, 4, 12), 'TMonitor.Exit');
-  Assert.AreEqual('exit@5:2', Query(Source, 5, 3));
+  Assert.AreEqual('', Query(mSource, 4, 12), 'TMonitor.Exit');
+  Assert.AreEqual('exit@5:2', Query(mSource, 5, 3));
 end;
 
 procedure TExitPointsTests.ResultAssignmentsAndMissingPath;
 var
-  Source: string;
-  Found: TExitPointSet;
+  mSource: string;
+  mFound: TExitPointSet;
 begin
-  Source := Lines(['unit U;', 'implementation', 'function F(A, B: Boolean): Integer;', 'begin', '  if A then',
+  mSource := Lines(['unit U;', 'implementation', 'function F(A, B: Boolean): Integer;', 'begin', '  if A then',
     '    Exit;', '  if B then', '    Exit(2);', '  if A or B then', '    Result := 1;', 'end;', 'end.']);
   // Auf Result: Austritte und Zuweisungen; Exit ohne Wert und das end kommen ohne Ergebnis an.
-  Assert.AreEqual('exit@5:4! exit@7:4 result@9:4 end@10:0!', Query(Source, 9, 6, Found));
-  Assert.AreEqual<TExitPointQuery>(TExitPointQuery.ResultValue, Found.Query);
-  Assert.IsTrue(Found.IsFunction);
-  Assert.IsTrue(Found.ResultMissing);
-  Assert.AreEqual(3, Found.ExitCount, 'Zuweisungen zählen nicht als Austritt');
+  Assert.AreEqual('exit@5:4! exit@7:4 result@9:4 end@10:0!', Query(mSource, 9, 6, mFound));
+  Assert.AreEqual<TExitPointQuery>(TExitPointQuery.ResultValue, mFound.Query);
+  Assert.IsTrue(mFound.IsFunction);
+  Assert.IsTrue(mFound.ResultMissing);
+  Assert.AreEqual(3, mFound.ExitCount, 'Zuweisungen zählen nicht als Austritt');
   // Auf Exit: dieselben Austritte, ohne die Zuweisungen.
-  Assert.AreEqual('exit@5:4! exit@7:4 end@10:0!', Query(Source, 7, 5));
+  Assert.AreEqual('exit@5:4! exit@7:4 end@10:0!', Query(mSource, 7, 5));
 end;
 
 procedure TExitPointsTests.ResultSetOnEveryPath;
 var
-  Source: string;
-  Found: TExitPointSet;
+  mSource: string;
+  mFound: TExitPointSet;
 begin
-  Source := Lines(['unit U;', 'implementation', 'function F(A: Boolean): Integer;', 'begin', '  Result := 0;',
+  mSource := Lines(['unit U;', 'implementation', 'function F(A: Boolean): Integer;', 'begin', '  Result := 0;',
     '  if A then', '    Exit;', '  Result := 1;', 'end;', 'end.']);
-  Assert.AreEqual('result@4:2 exit@6:4 result@7:2 end@8:0', Query(Source, 4, 3, Found));
-  Assert.IsFalse(Found.ResultMissing);
+  Assert.AreEqual('result@4:2 exit@6:4 result@7:2 end@8:0', Query(mSource, 4, 3, mFound));
+  Assert.IsFalse(mFound.ResultMissing);
 end;
 
 procedure TExitPointsTests.FunctionNameAsTarget;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Lines(['unit U;', 'implementation', 'function F: Integer;', 'begin', '  F := 1;', 'end;', 'end.']);
-  Assert.AreEqual('result@4:2 end@5:0', Query(Source, 4, 2));
+  mSource := Lines(['unit U;', 'implementation', 'function F: Integer;', 'begin', '  F := 1;', 'end;', 'end.']);
+  Assert.AreEqual('result@4:2 end@5:0', Query(mSource, 4, 2));
 end;
 
 procedure TExitPointsTests.ExceptionsFromXmlDoc;
 var
-  Source: string;
-  Found: TExitPointSet;
+  mSource: string;
+  mFound: TExitPointSet;
 begin
-  Source := Lines(['unit U;', 'interface', 'type', '  EOwn = class(EFoo);', '  TLoader = class',
+  mSource := Lines(['unit U;', 'interface', 'type', '  EOwn = class(EFoo);', '  TLoader = class',
     '    /// <summary>Liest.</summary>', '    /// <exception cref="EFoo">kaputt</exception>',
     '    procedure Load;', '  end;', '/// <exception cref="EBar">nie</exception>', 'procedure Other;',
     'implementation', 'procedure Other;', 'begin', 'end;', 'procedure TLoader.Load;', 'begin', 'end;',
     'procedure P(L: TLoader);', 'begin', '  try', '    L.Load;', '    Other;', '    raise EOwn.Create(''x'');',
     '    raise EBar.Create(''y'');', '  except', '    on E: EFoo do', '      Log(E);', '  end;', 'end;', 'end.']);
   // Auf der Klasse des Handlers: L.Load (laut Doku EFoo) und raise EOwn (stammt von EFoo ab), nicht Other (EBar).
-  Assert.AreEqual('source@21:6 source@23:4 handler@26:10', Query(Source, 26, 12, Found));
-  Assert.AreEqual<TExitPointQuery>(TExitPointQuery.Exceptions, Found.Query);
-  Assert.AreEqual('EFoo', Found.Points[0].ExceptionClass);
-  Assert.AreEqual('EOwn', Found.Points[1].Detail);
+  Assert.AreEqual('source@21:6 source@23:4 handler@26:10', Query(mSource, 26, 12, mFound));
+  Assert.AreEqual<TExitPointQuery>(TExitPointQuery.Exceptions, mFound.Query);
+  Assert.AreEqual('EFoo', mFound.Points[0].ExceptionClass);
+  Assert.AreEqual('EOwn', mFound.Points[1].Detail);
   // Auf "on" dasselbe.
-  Assert.AreEqual('source@21:6 source@23:4 handler@26:4', Query(Source, 26, 5));
+  Assert.AreEqual('source@21:6 source@23:4 handler@26:4', Query(mSource, 26, 5));
   // Im Rumpf des Handlers nichts.
-  Assert.AreEqual('', Query(Source, 27, 7));
+  Assert.AreEqual('', Query(mSource, 27, 7));
 end;
 
 procedure TExitPointsTests.BareExceptTakesEveryDocumentedCall;
 var
-  Source: string;
+  mSource: string;
 begin
-  Source := Lines(['unit U;', 'implementation', '/// <exception cref="EBar">nie</exception>', 'procedure Other;',
+  mSource := Lines(['unit U;', 'implementation', '/// <exception cref="EBar">nie</exception>', 'procedure Other;',
     'begin', 'end;', 'procedure P;', 'begin', '  try', '    Other;', '    Plain;', '    raise EBaz.Create(''y'');',
     '  except', '    Log;', '  end;', 'end;', 'end.']);
-  Assert.AreEqual('source@9:4 source@11:4 handler@12:2', Query(Source, 12, 3));
+  Assert.AreEqual('source@9:4 source@11:4 handler@12:2', Query(mSource, 12, 3));
 end;
 
 procedure TExitPointsTests.ExceptionsSwitchedOff;
 var
-  Source: string;
-  Options: TExitPointOptions;
-  Found: TExitPointSet;
+  mSource: string;
+  mOptions: TExitPointOptions;
+  mFound: TExitPointSet;
 begin
-  Source := Lines(['unit U;', 'implementation', 'procedure P;', 'begin', '  try', '    Foo;', '  except',
+  mSource := Lines(['unit U;', 'implementation', 'procedure P;', 'begin', '  try', '    Foo;', '  except',
     '    Log;', '  end;', 'end;', 'end.']);
-  Options := TExitPointOptions.Default;
-  Options.Exceptions := False;
-  Assert.AreEqual('', Query(Source, 6, 3, Options, Found));
-  Assert.IsFalse(Found.Found);
+  mOptions := TExitPointOptions.Default;
+  mOptions.Exceptions := False;
+  Assert.AreEqual('', Query(mSource, 6, 3, mOptions, mFound));
+  Assert.IsFalse(mFound.Found);
 end;
 
 procedure TExitPointsTests.BreakAndContinueOfNestedLoops;
 var
-  Source: string;
-  Options: TExitPointOptions;
-  Found: TExitPointSet;
+  mSource: string;
+  mOptions: TExitPointOptions;
+  mFound: TExitPointSet;
 begin
-  Source := Lines(['unit U;', 'implementation', 'procedure P;', 'begin', '  for I := 0 to 9 do', '  begin',
+  mSource := Lines(['unit U;', 'implementation', 'procedure P;', 'begin', '  for I := 0 to 9 do', '  begin',
     '    while A do', '    begin', '      if B then', '        Break;', '      Continue;', '    end;',
     '    if C then', '      Break;', '  end;', 'end;', 'end.']);
   // Break der inneren Schleife: while, do, end und ihre Sprünge.
-  Assert.AreEqual('loop@6:4 loop@6:12 jump@9:8 jump@10:6 loop@11:4', Query(Source, 9, 9));
+  Assert.AreEqual('loop@6:4 loop@6:12 jump@9:8 jump@10:6 loop@11:4', Query(mSource, 9, 9));
   // Break der äußeren: for, do, end und nur ihr eigenes Break.
-  Assert.AreEqual('loop@4:2 loop@4:18 jump@13:6 loop@14:2', Query(Source, 13, 7));
-  Options := TExitPointOptions.Default;
-  Options.Loops := False;
-  Assert.AreEqual('', Query(Source, 13, 7, Options, Found));
+  Assert.AreEqual('loop@4:2 loop@4:18 jump@13:6 loop@14:2', Query(mSource, 13, 7));
+  mOptions := TExitPointOptions.Default;
+  mOptions.Loops := False;
+  Assert.AreEqual('', Query(mSource, 13, 7, mOptions, mFound));
 end;
 
 procedure TExitPointsTests.KeywordsFilterExits;
 var
-  Source: string;
-  Options: TExitPointOptions;
-  Found: TExitPointSet;
+  mSource: string;
+  mOptions: TExitPointOptions;
+  mFound: TExitPointSet;
 begin
-  Source := Lines(['unit U;', 'implementation', 'procedure P;', 'begin', '  if A then', '    Exit;', '  if B then',
+  mSource := Lines(['unit U;', 'implementation', 'procedure P;', 'begin', '  if A then', '    Exit;', '  if B then',
     '    Halt;', '  RunError(1);', '  raise E;', 'end;', 'end.']);
-  Options := TExitPointOptions.Default;
-  Options.Keywords := ['Exit', 'raise'];
-  Assert.AreEqual('exit@5:4 raise@9:2', Query(Source, 5, 5, Options, Found));
-  Options.Keywords := ['Exit', 'Halt'];
-  Assert.AreEqual('exit@5:4 halt@7:4 halt@8:2', Query(Source, 5, 5, Options, Found), 'RunError gilt mit Halt');
+  mOptions := TExitPointOptions.Default;
+  mOptions.Keywords := ['Exit', 'raise'];
+  Assert.AreEqual('exit@5:4 raise@9:2', Query(mSource, 5, 5, mOptions, mFound));
+  mOptions.Keywords := ['Exit', 'Halt'];
+  Assert.AreEqual('exit@5:4 halt@7:4 halt@8:2', Query(mSource, 5, 5, mOptions, mFound), 'RunError gilt mit Halt');
 end;
 
 procedure TExitPointsTests.MethodWithClassAncestor;
 var
-  Tree: TSyntaxTree;
-  IsA: TExitPointClassTest;
+  mTree: TSyntaxTree;
+  mIsA: TExitPointClassTest;
 const
-  Source = 'unit U;'#10'interface'#10'type'#10'  EA = class(Exception);'#10'  EB = class(EA);'#10 +
+  cSource = 'unit U;'#10'interface'#10'type'#10'  EA = class(Exception);'#10'  EB = class(EA);'#10 +
     '  EC = class(EB);'#10'implementation'#10'end.';
 begin
-  Tree := TPascalParser.Parse(Source);
+  mTree := TPascalParser.Parse(cSource);
   try
-    IsA := TExitPoints.TreeClassTest(Tree);
-    Assert.IsTrue(IsA('EC', 'EA', 0), 'über zwei Stufen');
-    Assert.IsTrue(IsA('EC', 'EC', 0));
-    Assert.IsTrue(IsA('EUnbekannt', 'Exception', 0), 'Konvention');
-    Assert.IsFalse(IsA('EA', 'EC', 0), 'nicht umgekehrt');
-    Assert.IsFalse(IsA('EUnbekannt', 'EA', 0));
+    mIsA := TExitPoints.TreeClassTest(mTree);
+    Assert.IsTrue(mIsA('EC', 'EA', 0), 'über zwei Stufen');
+    Assert.IsTrue(mIsA('EC', 'EC', 0));
+    Assert.IsTrue(mIsA('EUnbekannt', 'Exception', 0), 'Konvention');
+    Assert.IsFalse(mIsA('EA', 'EC', 0), 'nicht umgekehrt');
+    Assert.IsFalse(mIsA('EUnbekannt', 'EA', 0));
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

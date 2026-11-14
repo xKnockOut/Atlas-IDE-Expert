@@ -38,54 +38,54 @@ uses
 
 procedure TAtlasMissingUnitTests.ParsesSearchPath;
 var
-  Request: TAtlasSearchPathRequest;
+  mRequest: TAtlasSearchPathRequest;
 begin
   Assert.IsTrue(TAtlasSearchPathRequest.TryParse('["C:\\Projekt\\Kasse.dproj", "Source\\Common", "Debug"]',
-    Request));
-  Assert.AreEqual('C:\Projekt\Kasse.dproj', Request.ProjectFile);
-  Assert.AreEqual('Source\Common', Request.Folder);
-  Assert.AreEqual('Debug', Request.Config);
+    mRequest));
+  Assert.AreEqual('C:\Projekt\Kasse.dproj', mRequest.ProjectFile);
+  Assert.AreEqual('Source\Common', mRequest.Folder);
+  Assert.AreEqual('Debug', mRequest.Config);
 end;
 
 procedure TAtlasMissingUnitTests.BaseMeansAllConfigurations;
 var
-  Request: TAtlasSearchPathRequest;
+  mRequest: TAtlasSearchPathRequest;
 begin
-  Assert.IsTrue(TAtlasSearchPathRequest.TryParse('["K.dproj", "Lib", ""]', Request));
-  Assert.AreEqual('', Request.Config);
-  Assert.IsTrue(TAtlasSearchPathRequest.TryParse('["K.dproj", "Lib", "Base"]', Request));
-  Assert.AreEqual('', Request.Config);
-  Assert.IsTrue(TAtlasSearchPathRequest.TryParse('["K.dproj", "Lib"]', Request));
-  Assert.AreEqual('', Request.Config);
+  Assert.IsTrue(TAtlasSearchPathRequest.TryParse('["K.dproj", "Lib", ""]', mRequest));
+  Assert.AreEqual('', mRequest.Config);
+  Assert.IsTrue(TAtlasSearchPathRequest.TryParse('["K.dproj", "Lib", "Base"]', mRequest));
+  Assert.AreEqual('', mRequest.Config);
+  Assert.IsTrue(TAtlasSearchPathRequest.TryParse('["K.dproj", "Lib"]', mRequest));
+  Assert.AreEqual('', mRequest.Config);
 end;
 
 procedure TAtlasMissingUnitTests.RefusesIncompleteArguments;
 var
-  Request: TAtlasSearchPathRequest;
+  mRequest: TAtlasSearchPathRequest;
 begin
-  Assert.IsFalse(TAtlasSearchPathRequest.TryParse('["K.dproj"]', Request));
-  Assert.IsFalse(TAtlasSearchPathRequest.TryParse('["", "Lib"]', Request));
-  Assert.IsFalse(TAtlasSearchPathRequest.TryParse('["K.dproj", "A;B"]', Request), 'nur ein Ordner');
-  Assert.IsFalse(TAtlasSearchPathRequest.TryParse('{kaputt', Request));
+  Assert.IsFalse(TAtlasSearchPathRequest.TryParse('["K.dproj"]', mRequest));
+  Assert.IsFalse(TAtlasSearchPathRequest.TryParse('["", "Lib"]', mRequest));
+  Assert.IsFalse(TAtlasSearchPathRequest.TryParse('["K.dproj", "A;B"]', mRequest), 'nur ein Ordner');
+  Assert.IsFalse(TAtlasSearchPathRequest.TryParse('{kaputt', mRequest));
 end;
 
 procedure TAtlasMissingUnitTests.ParsesAddUnit;
 var
-  Request: TAtlasAddUnitRequest;
+  mRequest: TAtlasAddUnitRequest;
 begin
-  Assert.IsTrue(TAtlasAddUnitRequest.TryParse('["K.dproj", "C:\\Projekt\\Source\\Werkzeug.pas"]', Request));
-  Assert.AreEqual('C:\Projekt\Source\Werkzeug.pas', Request.FileName);
-  Assert.IsFalse(TAtlasAddUnitRequest.TryParse('["K.dproj", "C:\\Lib\\Fertig.dcu"]', Request),
+  Assert.IsTrue(TAtlasAddUnitRequest.TryParse('["K.dproj", "C:\\Projekt\\Source\\Werkzeug.pas"]', mRequest));
+  Assert.AreEqual('C:\Projekt\Source\Werkzeug.pas', mRequest.FileName);
+  Assert.IsFalse(TAtlasAddUnitRequest.TryParse('["K.dproj", "C:\\Lib\\Fertig.dcu"]', mRequest),
     'eine .dcu kommt nicht ins Projekt');
 end;
 
 procedure TAtlasMissingUnitTests.ParsesInfo;
 var
-  Text: string;
+  mText: string;
 begin
-  Assert.IsTrue(TAtlasSearchPaths.TryParseInfo('["Fehlt nicht gefunden"]', Text));
-  Assert.AreEqual('Fehlt nicht gefunden', Text);
-  Assert.IsFalse(TAtlasSearchPaths.TryParseInfo('[]', Text));
+  Assert.IsTrue(TAtlasSearchPaths.TryParseInfo('["Fehlt nicht gefunden"]', mText));
+  Assert.AreEqual('Fehlt nicht gefunden', mText);
+  Assert.IsFalse(TAtlasSearchPaths.TryParseInfo('[]', mText));
 end;
 
 procedure TAtlasMissingUnitTests.ContainsIgnoresCaseAndSeparator;

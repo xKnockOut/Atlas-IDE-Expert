@@ -9,11 +9,11 @@ uses
   DUnitX.TestFramework;
 
 const
-  Hash1 = '1979e3d795214220705682d5b0b63c8f3b7e66d7';
-  Hash2 = '35b70b0b58543816b60892fa1b872449fdc3886b';
+  cHash1 = '1979e3d795214220705682d5b0b63c8f3b7e66d7';
+  cHash2 = '35b70b0b58543816b60892fa1b872449fdc3886b';
   // Aufgezeichnet mit git 2.43: log --all --fixed-strings --regexp-ignore-case --grep=atl-12
   // --format=%x1e%H%x00%ct%x00%an%x00%B --name-status -z --no-renames (neuester zuerst).
-  GitHistorySample =
+  cGitHistorySample =
     #$1E'28358feaf94440dbfe2fcc3aa2cb742e2d972f37'#0'1761603600'#0'Marco B'#0'ATL-12: weiter'#10#0#10 +
     'M'#0'A.pas'#0'A'#0'Neu.pas'#0'D'#0'src/B.pas'#0 +
     #$1E'7637c6cf53522335c876c98aef9a32861d4dc147'#0'1761600000'#0'Marco B'#0'ATL-12 Erster Stand'#10#10 +
@@ -29,7 +29,7 @@ function Under(const ARelative: string): string;
 function GitStatusSample: string;
 
 const
-  SvnInfoSample =
+  cSvnInfoSample =
     '<?xml version="1.0" encoding="UTF-8"?>'#10 +
     '<info>'#10 +
     '<entry'#10 +
@@ -55,7 +55,7 @@ const
     '</entry>'#10 +
     '</info>'#10;
 
-  SvnStatusSample =
+  cSvnStatusSample =
     '<?xml version="1.0" encoding="UTF-8"?>'#10 +
     '<status>'#10 +
     '<target'#10 +
@@ -120,7 +120,7 @@ const
     '</target>'#10 +
     '</status>'#10;
 
-  SvnBlameSample =
+  cSvnBlameSample =
     '<?xml version="1.0" encoding="UTF-8"?>'#10 +
     '<blame>'#10 +
     '<target'#10 +
@@ -146,7 +146,7 @@ const
     '</entry>'#10 +
     '</target>'#10 +
     '</blame>'#10;
-  SvnLogSample =
+  cSvnLogSample =
     '<?xml version="1.0" encoding="UTF-8"?>'#10 +
     '<log>'#10 +
     '<logentry'#10 +
@@ -181,7 +181,7 @@ const
     '</logentry>'#10 +
     '</log>'#10;
 
-  SvnListSample =
+  cSvnListSample =
     '<?xml version="1.0" encoding="UTF-8"?>'#10 +
     '<lists>'#10 +
     '<list'#10 +
@@ -241,9 +241,9 @@ begin
   // Aufgezeichnet mit git 2.43: "git status --porcelain=v2 --branch -z --untracked-files=all" nach
   // git mv B.pas C.pas, Änderung an A.pas, gelöschter Datei mit Umlaut und Leerzeichen und zwei neuen Dateien.
   Result :=
-    '# branch.oid ' + Hash1 + #0 +
+    '# branch.oid ' + cHash1 + #0 +
     '# branch.head main' + #0 +
-    '1 .M N... 100644 100644 100644 ' + Hash2 + ' ' + Hash2 + ' A.pas' + #0 +
+    '1 .M N... 100644 100644 100644 ' + cHash2 + ' ' + cHash2 + ' A.pas' + #0 +
     '2 R. N... 100644 100644 100644 587be6b4c3f93f93c489c0111bba5596147a26cb ' +
     '587be6b4c3f93f93c489c0111bba5596147a26cb R100 C.pas' + #0 + 'B.pas' + #0 +
     '1 .D N... 100644 100644 000000 975fbec8256d3e8a3797e7a3611380f27c49f4ac ' +

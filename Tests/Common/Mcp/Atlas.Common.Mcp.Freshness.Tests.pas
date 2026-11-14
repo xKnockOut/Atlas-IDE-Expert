@@ -85,37 +85,37 @@ end;
 
 procedure TMcpFreshnessTests.ReportsChangedCreatedAndDeleted;
 var
-  Index: ISymbolIndex;
-  FileSystem: TStampFileSystem;
-  FileSystemRef: IIndexFileSystem;
-  UnitIndex: TUnitIndex;
-  Changes: TArray<TFileChange>;
-  Text: string;
-  Change: TFileChange;
+  mIndex: ISymbolIndex;
+  mFileSystem: TStampFileSystem;
+  mFileSystemRef: IIndexFileSystem;
+  mUnitIndex: TUnitIndex;
+  mChanges: TArray<TFileChange>;
+  mText: string;
+  mChange: TFileChange;
 begin
-  Index := TSymbolIndex.Create;
-  for Text in ['A', 'B', 'C'] do
+  mIndex := TSymbolIndex.Create;
+  for mText in ['A', 'B', 'C'] do
   begin
-    UnitIndex := Default(TUnitIndex);
-    UnitIndex.UnitName := Text;
-    UnitIndex.FileName := 'C:\P\' + Text + '.pas';
-    UnitIndex.Stamp := 10;
-    Index.AddUnit(UnitIndex);
+    mUnitIndex := Default(TUnitIndex);
+    mUnitIndex.UnitName := mText;
+    mUnitIndex.FileName := 'C:\P\' + mText + '.pas';
+    mUnitIndex.Stamp := 10;
+    mIndex.AddUnit(mUnitIndex);
   end;
-  FileSystem := TStampFileSystem.Create;
-  FileSystemRef := FileSystem;
-  FileSystem.Stamps.Add('C:\P\A.pas', 10);
-  FileSystem.Stamps.Add('C:\P\B.pas', 11);
-  FileSystem.Stamps.Add('C:\P\D.pas', 5);
-  Changes := TMcpFreshness.Changes(Index, FileSystemRef, ['C:\P\A.pas', 'C:\P\B.pas', 'C:\P\C.pas', 'C:\P\D.pas']);
-  Text := '';
-  for Change in Changes do
+  mFileSystem := TStampFileSystem.Create;
+  mFileSystemRef := mFileSystem;
+  mFileSystem.Stamps.Add('C:\P\A.pas', 10);
+  mFileSystem.Stamps.Add('C:\P\B.pas', 11);
+  mFileSystem.Stamps.Add('C:\P\D.pas', 5);
+  mChanges := TMcpFreshness.Changes(mIndex, mFileSystemRef, ['C:\P\A.pas', 'C:\P\B.pas', 'C:\P\C.pas', 'C:\P\D.pas']);
+  mText := '';
+  for mChange in mChanges do
   begin
-    Text := Text + ExtractFileName(Change.FileName) + ':' + IntToStr(Ord(Change.Kind)) + ' ';
+    mText := mText + ExtractFileName(mChange.FileName) + ':' + IntToStr(Ord(mChange.Kind)) + ' ';
   end;
   // A unverändert; B geändert, C gelöscht, D neu.
   Assert.AreEqual(Format('B.pas:%d C.pas:%d D.pas:%d ', [Ord(TFileChangeKind.Changed), Ord(TFileChangeKind.Deleted),
-    Ord(TFileChangeKind.Created)]), Text);
+    Ord(TFileChangeKind.Created)]), mText);
 end;
 
 initialization

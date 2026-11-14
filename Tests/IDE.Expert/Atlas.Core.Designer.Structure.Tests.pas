@@ -144,9 +144,14 @@ begin
   Result := -1;
 end;
 
-function Fixture(AByKind: Boolean; const AFilter: string = ''): TArray<TAtlasStructureNode>;
+function Fixture(AByKind: Boolean; const AFilter: string): TArray<TAtlasStructureNode>; overload;
 begin
   Result := TAtlasStructure.Nodes(FixtureItems, 'MainForm', AByKind, AFilter);
+end;
+
+function Fixture(AByKind: Boolean): TArray<TAtlasStructureNode>; overload;
+begin
+  Result := Fixture(AByKind, '');
 end;
 
 { TAtlasStructureTests }

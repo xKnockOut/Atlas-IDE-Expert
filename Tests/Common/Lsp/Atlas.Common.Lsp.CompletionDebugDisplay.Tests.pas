@@ -35,7 +35,7 @@ uses
   Atlas.Common.Lsp.CompletionDebugDisplay;
 
 const
-  Source =
+  cSource =
     'unit Kunden;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -58,24 +58,24 @@ const
 
 function ItemsAt(ALine, ACharacter: Integer; out AItems: TCompletionItems): Boolean;
 var
-  Request: TCompletionRequest;
+  mRequest: TCompletionRequest;
 begin
-  Request := TCompletionRequest.Create(Source, 'Kunden.pas', TTextPosition.Create(ALine, ACharacter));
+  mRequest := TCompletionRequest.Create(cSource, 'Kunden.pas', TTextPosition.Create(ALine, ACharacter));
   try
-    Result := TCompletionDebugDisplay.Items(Request, AItems);
+    Result := TCompletionDebugDisplay.Items(mRequest, AItems);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
 function Names(const AItems: TCompletionItems): string;
 var
-  Item: TCompletionItem;
+  mItem: TCompletionItem;
 begin
   Result := '';
-  for Item in AItems.Items do
+  for mItem in AItems.Items do
   begin
-    Result := Result + Item.Name + ' ';
+    Result := Result + mItem.Name + ' ';
   end;
 end;
 
@@ -86,67 +86,67 @@ end;
 
 procedure TCompletionDebugDisplayTests.PlaceholderAfterBrace;
 var
-  Items: TCompletionItems;
+  mItems: TCompletionItems;
 begin
   // Cursor direkt hinter „{“ vor „Name“: alle Mitglieder.
-  Assert.IsTrue(ItemsAt(3, ColumnAfter('  // atlas-debug: ''{Name}, {O''', '''{'), Items));
-  Assert.IsTrue(Names(Items).StartsWith('Name Ort Saldo '), Names(Items));
-  Assert.IsTrue(Names(Items).Contains('ClassName '));
+  Assert.IsTrue(ItemsAt(3, ColumnAfter('  // atlas-debug: ''{Name}, {O''', '''{'), mItems));
+  Assert.IsTrue(Names(mItems).StartsWith('Name Ort Saldo '), Names(mItems));
+  Assert.IsTrue(Names(mItems).Contains('ClassName '));
 end;
 
 procedure TCompletionDebugDisplayTests.PrefixFiltersMembers;
 var
-  Items: TCompletionItems;
+  mItems: TCompletionItems;
 begin
-  Assert.IsTrue(ItemsAt(3, ColumnAfter('  // atlas-debug: ''{Name}, {O''', '{O'), Items));
-  Assert.AreEqual('Ort ', Names(Items));
-  Assert.AreEqual(3, Items.Items[0].TextEdit.Range.StartPos.Line);
+  Assert.IsTrue(ItemsAt(3, ColumnAfter('  // atlas-debug: ''{Name}, {O''', '{O'), mItems));
+  Assert.AreEqual('Ort ', Names(mItems));
+  Assert.AreEqual(3, mItems.Items[0].TextEdit.Range.StartPos.Line);
   Assert.AreEqual(ColumnAfter('  // atlas-debug: ''{Name}, {O''', '{O') - 1,
-    Items.Items[0].TextEdit.Range.StartPos.Character);
-  Assert.AreEqual('Ort', Items.Items[0].TextEdit.NewText);
+    mItems.Items[0].TextEdit.Range.StartPos.Character);
+  Assert.AreEqual('Ort', mItems.Items[0].TextEdit.NewText);
 end;
 
 procedure TCompletionDebugDisplayTests.ChildrenList;
 var
-  Items: TCompletionItems;
+  mItems: TCompletionItems;
 begin
-  Assert.IsTrue(ItemsAt(4, Length('  // atlas-debug-children: Name, '), Items));
-  Assert.IsTrue(Names(Items).StartsWith('Name Ort Saldo '), Names(Items));
+  Assert.IsTrue(ItemsAt(4, Length('  // atlas-debug-children: Name, '), mItems));
+  Assert.IsTrue(Names(mItems).StartsWith('Name Ort Saldo '), Names(mItems));
 end;
 
 procedure TCompletionDebugDisplayTests.AttributeTemplate;
 var
-  Items: TCompletionItems;
+  mItems: TCompletionItems;
 begin
-  Assert.IsTrue(ItemsAt(9, ColumnAfter('  [AtlasDebugDisplay(''({'')]', '({'), Items));
-  Assert.IsTrue(Names(Items).StartsWith('X Y '), Names(Items));
+  Assert.IsTrue(ItemsAt(9, ColumnAfter('  [AtlasDebugDisplay(''({'')]', '({'), mItems));
+  Assert.IsTrue(Names(mItems).StartsWith('X Y '), Names(mItems));
 end;
 
 procedure TCompletionDebugDisplayTests.NothingOutsidePlaceholder;
 var
-  Items: TCompletionItems;
+  mItems: TCompletionItems;
 begin
   // Hinter „}“ und in gewöhnlichem Code: keine Antwort dieser Quelle.
-  Assert.IsFalse(ItemsAt(3, ColumnAfter('  // atlas-debug: ''{Name}, {O''', '{Name}'), Items));
-  Assert.IsFalse(ItemsAt(6, 8, Items));
+  Assert.IsFalse(ItemsAt(3, ColumnAfter('  // atlas-debug: ''{Name}, {O''', '{Name}'), mItems));
+  Assert.IsFalse(ItemsAt(6, 8, mItems));
 end;
 
 procedure TCompletionDebugDisplayTests.PrefixAt;
 var
-  Start: Integer;
-  Prefix: string;
+  mStart: Integer;
+  mPrefix: string;
 begin
   Assert.IsTrue(TCompletionDebugDisplay.PrefixAt('// atlas-debug: {Na', 19, 16, TDebugDisplayCompletionPlace.Template,
-    Start, Prefix));
-  Assert.AreEqual('Na', Prefix);
-  Assert.AreEqual(17, Start);
+    mStart, mPrefix));
+  Assert.AreEqual('Na', mPrefix);
+  Assert.AreEqual(17, mStart);
   Assert.IsFalse(TCompletionDebugDisplay.PrefixAt('// atlas-debug: {{Na', 20, 16,
-    TDebugDisplayCompletionPlace.Template, Start, Prefix), 'escaped');
+    TDebugDisplayCompletionPlace.Template, mStart, mPrefix), 'escaped');
   Assert.IsFalse(TCompletionDebugDisplay.PrefixAt('// atlas-debug: {A}Na', 21, 16,
-    TDebugDisplayCompletionPlace.Template, Start, Prefix));
+    TDebugDisplayCompletionPlace.Template, mStart, mPrefix));
   Assert.IsTrue(TCompletionDebugDisplay.PrefixAt('// atlas-debug-children: A, B', 29, 0,
-    TDebugDisplayCompletionPlace.Children, Start, Prefix));
-  Assert.AreEqual('B', Prefix);
+    TDebugDisplayCompletionPlace.Children, mStart, mPrefix));
+  Assert.AreEqual('B', mPrefix);
 end;
 
 initialization
