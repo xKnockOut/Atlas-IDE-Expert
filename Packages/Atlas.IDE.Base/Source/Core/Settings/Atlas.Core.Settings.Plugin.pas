@@ -95,6 +95,8 @@ type
     cMaxTestsRepeatCount = Atlas.Core.Settings.Plugin.Build.cMaxTestsRepeatCount;
     cMinTestsFlakyRuns = Atlas.Core.Settings.Plugin.Build.cMinTestsFlakyRuns;
     cMaxTestsFlakyRuns = Atlas.Core.Settings.Plugin.Build.cMaxTestsFlakyRuns;
+    cMinTestsMutationTimeoutSec = Atlas.Core.Settings.Plugin.Build.cMinTestsMutationTimeoutSec;
+    cMaxTestsMutationTimeoutSec = Atlas.Core.Settings.Plugin.Build.cMaxTestsMutationTimeoutSec;
     cMinTestsBoundaryMax = Atlas.Core.Settings.Plugin.Build.cMinTestsBoundaryMax;
     cMaxTestsBoundaryMax = Atlas.Core.Settings.Plugin.Build.cMaxTestsBoundaryMax;
     cMinTestsLogMaxLines = Atlas.Core.Settings.Plugin.Build.cMinTestsLogMaxLines;
@@ -449,6 +451,10 @@ type
     property TestsRepeatCount: Integer read FBuild.TestsRepeatCount write FBuild.TestsRepeatCount;
     property TestsFlaky: Boolean read FBuild.TestsFlaky write FBuild.TestsFlaky;
     property TestsFlakyRuns: Integer read FBuild.TestsFlakyRuns write FBuild.TestsFlakyRuns;
+    property TestsMutation: Boolean read FBuild.TestsMutation write FBuild.TestsMutation;
+    property TestsMutationTimeoutSec: Integer read FBuild.TestsMutationTimeoutSec
+      write FBuild.TestsMutationTimeoutSec;
+    property TestsMutationOperators: string read FBuild.TestsMutationOperators write FBuild.TestsMutationOperators;
     property BuildZeroHints: Boolean read FBuild.BuildZeroHints write FBuild.BuildZeroHints;
     property ShowInterfaceCost: Boolean read FBuild.ShowInterfaceCost write FBuild.ShowInterfaceCost;
     property BuildSummary: Boolean read FBuild.BuildSummary write FBuild.BuildSummary;

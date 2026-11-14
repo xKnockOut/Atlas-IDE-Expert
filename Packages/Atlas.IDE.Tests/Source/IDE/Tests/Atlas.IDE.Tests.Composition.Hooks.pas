@@ -11,6 +11,8 @@
 //   Leckprüfung einrichten, Sichtbarkeit von „Test debuggen“;
 // - OnLastFailed: fehlgeschlagene Tests des letzten Laufs aus den
 //   Projektdateien (TAtlasProjectSummaries), auch ohne Willkommensseite.
+// - Mutationslauf (#1460): Schattenprojekt vollständig bauen, mit
+//   Konfiguration und Plattform des Testprojekts, Auftraggeber "mutation".
 
 interface
 
@@ -20,12 +22,17 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Projects.Summary,
+  Atlas.Core.Tests.Run,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Affected;
 
 /// <summary>Vor den Tests bauen: über die Builds auf Auftrag (#261) der Build-Pipeline, Auftraggeber "tests".
 /// </summary>
 function BuildForTests(const AProject: string; const ADone: TAtlasTestsBuildDone; out AReason: string): Boolean;
+/// <summary>Mutationslauf (#1460): ATarget.Project vollständig bauen (Build, nicht make: Die mutierte Kopie ist
+/// keine offene Datei) mit Konfiguration und Plattform aus ATarget; Auftraggeber "mutation".</summary>
+function BuildForMutation(const ATarget: TAtlasTestTarget; const ADone: TAtlasTestsBuildDone;
+  out AReason: string): Boolean;
 procedure ShowProblems(const AProblems: TArray<TPair<string, TAtlasProblem>>);
 /// <summary>Fehlschläge der Tests aus dem Problemfenster nehmen.</summary>
 procedure ClearProblems;
@@ -50,7 +57,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
-  Atlas.Core.Tests.Run,
   Atlas.Core.Tests.Debug,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
@@ -96,6 +102,34 @@ begin
   mJob.Project := AProject;
   mJob.Kind := TAtlasBuildJobKind.Make;
   mJob.RequestedBy := TAtlasTestRun.cRequestedBy;
+  Result := mJobs.Start(mJob,
+    procedure(const AResult: TAtlasBuildJobResult)
+    begin
+      mDone(AResult.Succeeded, AResult.OutputFile, AResult.Error);
+    end, AReason);
+end;
+
+function BuildForMutation(const ATarget: TAtlasTestTarget; const ADone: TAtlasTestsBuildDone;
+  out AReason: string): Boolean;
+const
+  cRequestedBy = 'mutation';
+var
+  mJobs: IAtlasBuildJobs;
+  mJob: TAtlasBuildJob;
+  mDone: TAtlasTestsBuildDone;
+begin
+  if not BuildJobs(mJobs) then
+  begin
+    AReason := TAtlasStrings.Text(TAtlasTextId.TestsNoBuildRunner);
+    Exit(False);
+  end;
+  mDone := ADone;
+  mJob := Default(TAtlasBuildJob);
+  mJob.Project := ATarget.Project;
+  mJob.Kind := TAtlasBuildJobKind.Build;
+  mJob.Configuration := ATarget.Configuration;
+  mJob.Platform := ATarget.Platform;
+  mJob.RequestedBy := cRequestedBy;
   Result := mJobs.Start(mJob,
     procedure(const AResult: TAtlasBuildJobResult)
     begin

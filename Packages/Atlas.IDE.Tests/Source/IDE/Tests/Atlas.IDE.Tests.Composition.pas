@@ -36,6 +36,9 @@
 // - die Schicht der Testabdeckung in der Rinne (#275, IAtlasGutterLayer) mit den Befehlen „Testabdeckung laden …“
 //   und „Testabdeckung ausblenden“; ihr Zustand ist ein eigener Teil der Feature-Tabelle (läuft auch ohne
 //   tests.run, solange tests.coverage an ist),
+// - den Mutationslauf (#1460, tests.mutation; Atlas.IDE.Tests.Mutation) mit den Befehlen „Mutationen der Methode
+//   prüfen“, „… der Unit“, „… geänderter Methoden“ und „Mutationslauf abbrechen“ (Palette, Atlas-Menü, Kontextmenü
+//   normaler Units) und seine Schicht in der Rinne (Atlas.IDE.Tests.MutationMarks),
 // - Hörer für Einstellungen und bewertete Builds (Tests nach dem Build) und für
 //   gespeicherte Dateien (betroffene Tests im Hintergrund, #1775),
 // - IAtlasTestRunner (Base: Auswirkungsanalyse #1120, Willkommensseite) und
@@ -131,6 +134,9 @@ uses
   Atlas.IDE.Tests.Flaky,
   Atlas.IDE.Tests.StatusField,
   Atlas.IDE.Tests.Coverage,
+  Atlas.Core.Tests.MutationPlan,
+  Atlas.IDE.Tests.Mutation,
+  Atlas.IDE.Tests.MutationMarks,
   Atlas.UI.Tests.Strings;
 
 var
@@ -152,6 +158,7 @@ var
   GFlaky: TAtlasIdeFlakyTests;
   GLists: TAtlasIdeTestLists;
   GStatusField: TAtlasIdeTestStatusField;
+  GMutation: TAtlasIdeMutationRun;
 
 { Sichtbarkeit }
 
@@ -317,6 +324,8 @@ begin
   TAtlasIdeAffectedTests.Install(AffectedHooks);
   // Betroffene Tests beim Speichern (#1775): im Hintergrund über den Läufer.
   GOnSave := TAtlasIdeTestsOnSave.Create(GTests, GOutput);
+  // Mutationslauf (#1460): Projektwahl und Ausgabe des Läufers, eigener Prozessläufer, Build des Schattenprojekts.
+  GMutation := TAtlasIdeMutationRun.Create(GScope, GTests, GOutput, TestsProcess(GStop), BuildForMutation);
 end;
 
 procedure StopTests;
@@ -328,6 +337,8 @@ begin
     TAtlasIdeAffectedTests.ApplySettings;
   end;
   TAtlasIdeAffectedTests.Uninstall;
+  // Mutationslauf (#1460) vor dem Läufer, dessen Projektwahl und Ausgabe er nutzt; schließt sein Schattenprojekt.
+  FreeAndNil(GMutation);
   // Tests beim Speichern (#1775) vor dem Läufer: Uninstall hat ihre offenen Anfragen schon verworfen.
   FreeAndNil(GOnSave);
   // Erst die Lens (sie zeigt auf Läufer und Debugger-Teil), dann der Debugger-Teil (stellt eine laufende Sitzung
@@ -494,6 +505,55 @@ end;
 function CoverageClearVisible: Boolean;
 begin
   Result := CoverageVisible and TAtlasIdeTestCoverage.Loaded;
+end;
+
+{ Mutationslauf (#1460) }
+
+function MutationVisible: Boolean;
+begin
+  Result := TestsVisible and TAtlasIdeSettings.Current.TestsMutation and (GMutation <> nil);
+end;
+
+function MutationIdle: Boolean;
+begin
+  Result := MutationVisible and not GMutation.Running;
+end;
+
+function MutationRunning: Boolean;
+begin
+  Result := MutationVisible and GMutation.Running;
+end;
+
+procedure MutateMethod;
+begin
+  if GMutation <> nil then
+  begin
+    GMutation.Start(TAtlasMutationScope.Routine);
+  end;
+end;
+
+procedure MutateUnit;
+begin
+  if GMutation <> nil then
+  begin
+    GMutation.Start(TAtlasMutationScope.WholeUnit);
+  end;
+end;
+
+procedure MutateChanged;
+begin
+  if GMutation <> nil then
+  begin
+    GMutation.Start(TAtlasMutationScope.Changed);
+  end;
+end;
+
+procedure CancelMutation;
+begin
+  if GMutation <> nil then
+  begin
+    GMutation.Cancel;
+  end;
 end;
 
 { Langsamste Tests (#1772) }
@@ -752,7 +812,16 @@ begin
     Command('Atlas.LoadTestCoverage', TAtlasTestsTextId.CoverageLoadCommand,
       Guarded(TAtlasFeature.Build, TAtlasIdeTestCoverage.Choose), CoverageVisible),
     Command('Atlas.ClearTestCoverage', TAtlasTestsTextId.CoverageClearCommand,
-      Guarded(TAtlasFeature.Build, TAtlasIdeTestCoverage.Clear), CoverageClearVisible)];
+      Guarded(TAtlasFeature.Build, TAtlasIdeTestCoverage.Clear), CoverageClearVisible),
+    // Mutationslauf (#1460): sichtbar mit tests.mutation und tests.run; abbrechen nur, solange er läuft.
+    Command('Atlas.MutateMethod', TAtlasTestsTextId.MutationMethodCommand,
+      Guarded(TAtlasFeature.Build, MutateMethod), MutationIdle),
+    Command('Atlas.MutateUnit', TAtlasTestsTextId.MutationUnitCommand,
+      Guarded(TAtlasFeature.Build, MutateUnit), MutationIdle),
+    Command('Atlas.MutateChanged', TAtlasTestsTextId.MutationChangedCommand,
+      Guarded(TAtlasFeature.Build, MutateChanged), MutationIdle),
+    Command('Atlas.CancelMutation', TAtlasTestsTextId.MutationCancelCommand,
+      Guarded(TAtlasFeature.Build, CancelMutation), MutationRunning)];
   // Testlisten (#2167): je Liste ein Befehl, mit tests.lists.
   Result := Result + ListCommands;
 end;
@@ -834,6 +903,9 @@ begin
     MenuEntry('Atlas.CompareTestValues', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.LoadTestCoverage', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.ClearTestCoverage', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.MutateUnit', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.MutateChanged', TAtlasMenuPlace.AtlasMenu),
+    MenuEntry('Atlas.CancelMutation', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.ShowSlowestTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.ShowFlakyTests', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.CleanApprovalFiles', TAtlasMenuPlace.AtlasMenu),
@@ -850,6 +922,10 @@ begin
     ContextEntry('Atlas.EditTestCases'),
     // Grenzfälle (#2173) an Routinen normaler Units.
     CodeContextEntry('Atlas.SuggestBoundaryCases'),
+    // Mutationslauf (#1460) an Methoden normaler Units.
+    CodeContextEntry('Atlas.MutateMethod'),
+    CodeContextEntry('Atlas.MutateUnit'),
+    CodeContextEntry('Atlas.CancelMutation'),
     MenuEntry('-', TAtlasMenuPlace.ProjectContext),
     MenuEntry('Atlas.ProjectRunUnitTests', TAtlasMenuPlace.ProjectContext),
     MenuEntry('Atlas.LeakSetup', TAtlasMenuPlace.ProjectContext),
@@ -970,7 +1046,7 @@ end;
 
 function TAtlasTestsModule.Busy: Boolean;
 begin
-  Result := (GTests <> nil) and GTests.Busy;
+  Result := ((GTests <> nil) and GTests.Busy) or ((GMutation <> nil) and GMutation.Running);
 end;
 
 function TAtlasTestsModule.HasValuesAt(ALine: Integer): Boolean;
@@ -1050,6 +1126,8 @@ begin
   GScope.Provide(IAtlasTestValues, mRef);
   // Balken der Testabdeckung in der Rinne (#275).
   TAtlasIdeTestCoverage.ProvideIn(GScope);
+  // Ergebnisse des Mutationslaufs in der Rinne (#1460).
+  TAtlasIdeMutationMarks.ProvideIn(GScope);
   ProvideSettingsSections;
   Result := True;
 end;

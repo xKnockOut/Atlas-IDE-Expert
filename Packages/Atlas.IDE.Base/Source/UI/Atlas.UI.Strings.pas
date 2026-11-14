@@ -234,7 +234,9 @@ type
     // Zeichen der anderen Threads in der Rinne (#852) im Menü „Ausblenden“.
     ElementThreadsInSource, ElementThreadsInSourcePlural,
     // Marke „Wer gibt das frei?“ (#1877) im Menü „Ausblenden“.
-    ElementOwnershipHints, ElementOwnershipHintsPlural);
+    ElementOwnershipHints, ElementOwnershipHintsPlural,
+    // Symbole des Mutationslaufs (#1460) im Menü „Ausblenden“.
+    ElementMutationResults, ElementMutationResultsPlural);
 
   TAtlasStrings = class
   private
@@ -774,7 +776,8 @@ const
      'Marke „getestet von“', 'Marken „getestet von“',
      'Marke „Methoden getestet“', 'Marken „Methoden getestet“',
      'Thread-Zeichen in der Rinne', 'Thread-Zeichen in der Rinne',
-     'Marke „Wer gibt das frei?“', 'Marken „Wer gibt das frei?“'),
+     'Marke „Wer gibt das frei?“', 'Marken „Wer gibt das frei?“',
+     'Symbol des Mutationslaufs', 'Symbole des Mutationslaufs'),
     ( 'optional, default %s', 'No overload with %d parameters.', '… %d more',
      'All', 'Methods', 'Properties', 'Events', 'Types', 'Snippets', 'Atlas: compile cancelled – %s', 'Test watchdog (1 s)',
      'Atlas: %d files reloaded', 'Atlas: %s was changed outside and has unsaved changes; the IDE will ask.',
@@ -1253,7 +1256,8 @@ const
      '“tested by” mark', '“tested by” marks',
      '“methods tested” mark', '“methods tested” marks',
      'thread sign in the gutter', 'thread signs in the gutter',
-     '“who frees this?” mark', '“who frees this?” marks'));
+     '“who frees this?” mark', '“who frees this?” marks',
+     'mutation result mark', 'mutation result marks'));
 
 { TAtlasStrings }
 

@@ -191,6 +191,16 @@ Settings: `tests.compare`, `tests.compare.format`
 
 Setting: `tests.coverage`
 
+### Mutation testing (#1460, experimental)
+A mutation run checks whether the tests notice faults in the code at all: Atlas changes the code in small places (`>=` becomes `>`, `+` becomes `-`, a constant grows by one, a statement is dropped …) and runs the tests for every change (“mutant”).
+- Commands (command palette, *Atlas* menu, context menu of a unit under *Atlas › Tests*): “Mutation-test method” (method at the cursor or at the gutter line last right-clicked), “Mutation-test unit”, “Mutation-test changed methods” (only methods without a valid result) and “Cancel mutation run”.
+- Atlas picks the test project as for “Run tests”. For the run it creates a shadow project with its own dpr/dproj and output folders under `.atlas-local\mutation\<project>` next to the test project and adds it to the project group for the run; the original, its DCUs and the active project stay untouched. The text of the unit comes from the editor, unsaved changes included.
+- First the tests run against the unchanged copy; if they already fail, the run stops. Then for every mutant: build, run the tests with a time limit. A failing test (or a crash, or the time limit) **kills** the mutant, all green means it **survived**; mutants that do not compile or cannot be applied do not count.
+- The Messages view lists the outcome of every mutant, at the end the totals and the mutation score, and a clickable line for every surviving mutant.
+- The gutter shows a dot on every line with mutants: green all killed, red one survived, grey not rated; the tooltip names original, replacement and the killing test. Results are stored in `.atlas-local\mutation\results.json` of the test project and stay valid as long as the method is unchanged (indentation and comments do not count). Hide them per file or everywhere from the gutter context menu.
+
+Settings: `tests.mutation` (off), `tests.mutation.timeoutSec` (60), `tests.mutation.operators` (empty = all)
+
 ### Approval files for tests (#1881)
 For exports, reports, generated code or JSON a test checks the result against a stored file instead of one assert per line (“approval”). The helper unit `Atlas.Testing.Approval` ships in `Setup\Vorlagen` (MIT licence, RTL and DUnitX only); copy it into the test project or add its folder to the search path. Example: [approval-tests.pas](../../Beispiele/approval-tests.pas).
 - `TApproval.Verify(Result, 'TFixture.Method')` compares with `TFixture.Method.approved.txt`; a custom extension (`'.json'`) and a normalizer for dates or GUIDs are possible.

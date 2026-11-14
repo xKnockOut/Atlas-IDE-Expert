@@ -16,7 +16,7 @@ uses
   System.SysUtils;
 
 const
-  cProfile0: array[0..76] of string = (
+  cProfile0: array[0..77] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -57,6 +57,7 @@ const
     '    "tests.run": true,',
     '    "tests.afterBuild": true,',
     '    "tests.debug": true,',
+    '    "tests.mutation": true,',
     '    "build.releaseGuard": true,',
     '    "welcomePage.enabled": true,',
     '    "welcomePage.projectSetup": true,',

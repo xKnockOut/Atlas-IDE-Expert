@@ -147,6 +147,9 @@ begin
   Assert.AreEqual(20, ASettings.TestsRepeatCount, 'N-mal ausführen: Vorgabe 20 (#1782)');
   Assert.IsTrue(ASettings.TestsFlaky, 'wackelnde Tests standardmäßig an (#1773)');
   Assert.AreEqual(10, ASettings.TestsFlakyRuns, 'zehn Läufe je Test (#1773)');
+  Assert.IsFalse(ASettings.TestsMutation, 'Mutationslauf standardmäßig aus, experimentell (#1460)');
+  Assert.AreEqual(60, ASettings.TestsMutationTimeoutSec, '60 s je Mutant (#1460)');
+  Assert.AreEqual('', ASettings.TestsMutationOperators, 'alle Operatoren (#1460)');
 end;
 
 /// <summary>Vorgaben für Editor, Code Lens und Tests.</summary>
@@ -368,6 +371,9 @@ begin
   ASettings.TestsRepeatCount := 50;
   ASettings.TestsFlaky := False;
   ASettings.TestsFlakyRuns := 20;
+  ASettings.TestsMutation := True;
+  ASettings.TestsMutationTimeoutSec := 30;
+  ASettings.TestsMutationOperators := 'boundary, not';
 end;
 
 /// <summary>Rundreise: Editor, Code Lens, Tests und Build von der Vorgabe abweichend setzen.</summary>
@@ -558,6 +564,9 @@ begin
   Assert.AreEqual(50, ALoaded.TestsRepeatCount, 'tests.repeat.count (#1782)');
   Assert.IsFalse(ALoaded.TestsFlaky, 'tests.flaky (#1773)');
   Assert.AreEqual(20, ALoaded.TestsFlakyRuns, 'tests.flaky.runs (#1773)');
+  Assert.IsTrue(ALoaded.TestsMutation, 'tests.mutation (#1460)');
+  Assert.AreEqual(30, ALoaded.TestsMutationTimeoutSec, 'tests.mutation.timeoutSec (#1460)');
+  Assert.AreEqual('boundary, not', ALoaded.TestsMutationOperators, 'tests.mutation.operators (#1460)');
 end;
 
 /// <summary>Rundreise: Editor, Code Lens, Tests und Build gelesen.</summary>
@@ -1211,6 +1220,13 @@ begin
   Settings.TestsBoundaryMax := 500;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsBoundaryMax, Settings.TestsBoundaryMax);
+  // tests.mutation.timeoutSec (#1460): 5 bis 3600.
+  Settings.TestsMutationTimeoutSec := 1;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsMutationTimeoutSec, Settings.TestsMutationTimeoutSec);
+  Settings.TestsMutationTimeoutSec := 100000;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsMutationTimeoutSec, Settings.TestsMutationTimeoutSec);
 end;
 
 procedure TAtlasPluginSettingsTests.NormalizesUpdateChoices;

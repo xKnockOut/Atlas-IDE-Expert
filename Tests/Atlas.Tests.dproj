@@ -1348,6 +1348,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.MutationShadow.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.MutationResults.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.MutationResults.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.MutationPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.MutationPlan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Approval.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Approval.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Durations.pas"/>

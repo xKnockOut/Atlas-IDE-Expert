@@ -1599,6 +1599,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.Mutants` | `Core/Tests/Atlas.Core.Tests.Mutants.pas` | Ordner `Core/Tests`; Mutanten anwenden, Prüfsumme der Routine (#1460) |
 | `Atlas.Core.Tests.MutationShadow` | `Core/Tests/Atlas.Core.Tests.MutationShadow.pas` | Ordner `Core/Tests`; Schattenprojekt des Mutationslaufs (#1460) |
 | `Atlas.Core.Tests.MutationResults` | `Core/Tests/Atlas.Core.Tests.MutationResults.pas` | Ordner `Core/Tests`; Ergebnisse des Mutationslaufs (#1460) |
+| `Atlas.Core.Tests.MutationPlan` | `Core/Tests/Atlas.Core.Tests.MutationPlan.pas` | Ordner `Core/Tests`; Auswahl des Mutationslaufs (#1460) |
 | `Atlas.Core.Tests.CoveredBy` | `Core/Tests/Atlas.Core.Tests.CoveredBy.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Debug` | `Core/Tests/Atlas.Core.Tests.Debug.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.ProjectChoice` | `Core/Tests/Atlas.Core.Tests.ProjectChoice.pas` | Ordner `Core/Tests` |
@@ -1627,6 +1628,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.Untested` | `Core/Tests/Atlas.Core.Tests.Untested.pas` | Ordner `Core/Tests` |
 | `Atlas.IDE.Tests.Affected` | `IDE/Tests/Atlas.IDE.Tests.Affected.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Coverage` | `IDE/Tests/Atlas.IDE.Tests.Coverage.pas` | Ordner `IDE/Tests`; Testabdeckung in der Rinne (#275) |
+| `Atlas.IDE.Tests.Mutation` | `IDE/Tests/Atlas.IDE.Tests.Mutation.pas` | Ordner `IDE/Tests`; Mutationslauf in der IDE (#1460) |
+| `Atlas.IDE.Tests.MutationMarks` | `IDE/Tests/Atlas.IDE.Tests.MutationMarks.pas` | Ordner `IDE/Tests`; Ergebnisse des Mutationslaufs in der Rinne (#1460) |
 | `Atlas.IDE.Tests.CoveredBy` | `IDE/Tests/Atlas.IDE.Tests.CoveredBy.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.CoveredByList` | `IDE/Tests/Atlas.IDE.Tests.CoveredByList.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Debug` | `IDE/Tests/Atlas.IDE.Tests.Debug.pas` | Ordner `IDE/Tests` |

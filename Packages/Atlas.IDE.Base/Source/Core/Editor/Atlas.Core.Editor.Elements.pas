@@ -93,7 +93,9 @@ type
     /// <summary>Balken der Testabdeckung in der Rinne (#275).</summary>
     TestCoverage,
     /// <summary>Marke „Wer gibt das frei?“ hinter jedem T.Create(…) (#1877).</summary>
-    OwnershipHints);
+    OwnershipHints,
+    /// <summary>Symbole des Mutationslaufs in der Rinne (#1460).</summary>
+    MutationResults);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -205,7 +207,9 @@ const
     (Key: 'CodeLensUntested'; Scopes: cFileScopes; Overlay: True; Gutter: False),
     // Der Bericht gilt für die ganze Datei: Ausblenden je Datei oder überall.
     (Key: 'TestCoverage'; Scopes: cFileScopes; Overlay: False; Gutter: True),
-    (Key: 'OwnershipHints'; Scopes: cAllScopes; Overlay: True; Gutter: False)
+    (Key: 'OwnershipHints'; Scopes: cAllScopes; Overlay: True; Gutter: False),
+    // Ergebnisse gelten je Routine der Datei: Ausblenden je Datei oder überall.
+    (Key: 'MutationResults'; Scopes: cFileScopes; Overlay: False; Gutter: True)
   );
 
 function Make(AElement: TAtlasDrawnElement; const AKey: string; AScopes: TAtlasHideScopes;
