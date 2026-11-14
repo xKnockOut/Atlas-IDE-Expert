@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Designer.Measure;
 
 // Knopf „Abstände messen“ der Designer-Leiste (#605) in der IDE. Ein eigener
-// Takt (40 ms) beobachtet den Designer; gerechnet wird mit TAtlasMeasure:
+// Takt (40 ms, nur bei offenem Formular-Designer) beobachtet den Designer; gerechnet wird mit TAtlasMeasure:
 // - Ziehen (designer.measureDistances): Solange die linke Maustaste über dem
 //   Formular gedrückt ist und sich Lage oder Größe der Auswahl ändern,
 //   stehen Maßlinien zu den Nachbarn im selben Parent bzw. zum Innenrand des
@@ -24,7 +24,8 @@ uses
   Vcl.ExtCtrls,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Bar,
-  Atlas.UI.Designer.MeasureOverlay;
+  Atlas.UI.Designer.MeasureOverlay,
+  Atlas.IDE.Designer.OpenWatch;
 
 type
   TAtlasIdeDesignerMeasure = class
@@ -40,7 +41,10 @@ type
     FStart: TRect;
     FStartNames: string;
     FHoldUntil: UInt64;
+    /// <summary>Offene Formular-Designer: ohne Designer ruht der 40-ms-Takt (lief vorher immer).</summary>
+    FOpen: TAtlasDesignerOpenWatch;
     procedure Tick(Sender: TObject);
+    procedure OpenChanged;
     procedure Update;
     /// <summary>Linien beim Ziehen; False, wenn weder gezogen wird noch die Maustaste unten ist.</summary>
     function UpdateDrag(ARoot: TWinControl; const AControls: TArray<TControl>): Boolean;
@@ -262,11 +266,23 @@ begin
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
-  FTimer.Enabled := True;
+  FOpen := TAtlasDesignerOpenWatch.Create(OpenChanged);
+  FTimer.Enabled := FOpen.Any;
+end;
+
+procedure TAtlasIdeDesignerMeasure.OpenChanged;
+begin
+  if not FOpen.Any then
+  begin
+    // Kein Designer mehr: Maßlinien weg, Takt ruht.
+    Hide;
+  end;
+  FTimer.Enabled := FOpen.Any;
 end;
 
 destructor TAtlasIdeDesignerMeasure.Destroy;
 begin
+  FOpen.Free;
   FTimer.Free;
   FOverlay.Free;
   inherited Destroy;
