@@ -1163,6 +1163,39 @@ begin
   Assert.AreEqual('atlas', mSettings.ShortcutTipsScope);
 end;
 
+/// <summary>Normalize begrenzt Wiederholungen, Wackeltests, Grenzfälle und Mutationszeit der Tests.</summary>
+procedure CheckTestsRunClamps(var ASettings: TAtlasPluginSettings);
+begin
+  // tests.repeat.count (#1782): 2 bis 1000.
+  ASettings.TestsRepeatCount := 1;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsRepeatCount, ASettings.TestsRepeatCount);
+  ASettings.TestsRepeatCount := 5000;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsRepeatCount, ASettings.TestsRepeatCount);
+  // tests.flaky.runs (#1773): 3 bis 50.
+  ASettings.TestsFlakyRuns := 1;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsFlakyRuns, ASettings.TestsFlakyRuns);
+  ASettings.TestsFlakyRuns := 500;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsFlakyRuns, ASettings.TestsFlakyRuns);
+  // tests.boundaryCases.maxCases (#2173): 1 bis 200.
+  ASettings.TestsBoundaryMax := 0;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsBoundaryMax, ASettings.TestsBoundaryMax);
+  ASettings.TestsBoundaryMax := 500;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsBoundaryMax, ASettings.TestsBoundaryMax);
+  // tests.mutation.timeoutSec (#1460): 5 bis 3600.
+  ASettings.TestsMutationTimeoutSec := 1;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMinTestsMutationTimeoutSec, ASettings.TestsMutationTimeoutSec);
+  ASettings.TestsMutationTimeoutSec := 100000;
+  ASettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsMutationTimeoutSec, ASettings.TestsMutationTimeoutSec);
+end;
+
 /// <summary>Normalize begrenzt die Zahlenwerte der Testeinstellungen auf ihre Bereiche.</summary>
 procedure CheckTestsClamps(var ASettings: TAtlasPluginSettings);
 begin
@@ -1208,34 +1241,7 @@ begin
   ASettings.TestsSlowMs := 100000;
   ASettings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsSlowMs, ASettings.TestsSlowMs);
-  // tests.repeat.count (#1782): 2 bis 1000.
-  ASettings.TestsRepeatCount := 1;
-  ASettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinTestsRepeatCount, ASettings.TestsRepeatCount);
-  ASettings.TestsRepeatCount := 5000;
-  ASettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsRepeatCount, ASettings.TestsRepeatCount);
-  // tests.flaky.runs (#1773): 3 bis 50.
-  ASettings.TestsFlakyRuns := 1;
-  ASettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinTestsFlakyRuns, ASettings.TestsFlakyRuns);
-  ASettings.TestsFlakyRuns := 500;
-  ASettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsFlakyRuns, ASettings.TestsFlakyRuns);
-  // tests.boundaryCases.maxCases (#2173): 1 bis 200.
-  ASettings.TestsBoundaryMax := 0;
-  ASettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinTestsBoundaryMax, ASettings.TestsBoundaryMax);
-  ASettings.TestsBoundaryMax := 500;
-  ASettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsBoundaryMax, ASettings.TestsBoundaryMax);
-  // tests.mutation.timeoutSec (#1460): 5 bis 3600.
-  ASettings.TestsMutationTimeoutSec := 1;
-  ASettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMinTestsMutationTimeoutSec, ASettings.TestsMutationTimeoutSec);
-  ASettings.TestsMutationTimeoutSec := 100000;
-  ASettings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.cMaxTestsMutationTimeoutSec, ASettings.TestsMutationTimeoutSec);
+  CheckTestsRunClamps(ASettings);
 end;
 
 procedure TAtlasPluginSettingsTests.ClampsNormalizedRanges;

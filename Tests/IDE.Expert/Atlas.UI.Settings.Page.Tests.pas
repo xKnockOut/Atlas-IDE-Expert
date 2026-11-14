@@ -343,9 +343,18 @@ begin
   Assert.IsTrue(APage.Part<TAtlasSettingsIndexPart>.IndexRebuild.Enabled and
     APage.Part<TAtlasSettingsIndexPart>.IndexClear.Enabled);
 end;
+/// <summary>Vorgaben mit abgeschalteten Verwendungen und 512 MB Speicherbudget.</summary>
+function IndexSettings: TAtlasPluginSettings;
+begin
+  Result := TAtlasPluginSettings.Defaults;
+  Result.IndexUsages := False;
+  Result.MemoryBudgetMb := 512;
+end;
+
 procedure TAtlasSettingsPageTests.IndexSectionRoundTripsAndRunsCommands;
 var
   mPage: TAtlasSettingsPage;
+  mPart: TAtlasSettingsIndexPart;
   mSettings, mSaved: TAtlasPluginSettings;
   mConfirm: Boolean;
   mCleared: Integer;
@@ -353,54 +362,49 @@ var
 begin
   // #492: Verwendungen und Speicherbudget, Kennzahlen, Neuaufbau und Löschen mit Rückfrage.
   // #874: Die Befehle laufen im Hintergrund; die Antwort kommt über IndexAnswered.
-  mSettings := TAtlasPluginSettings.Defaults;
-  mSettings.IndexUsages := False;
-  mSettings.MemoryBudgetMb := 512;
+  mSettings := IndexSettings;
   mConfirm := False;
   mCleared := 0;
   mRebuilds := 0;
   mPage := TAtlasSettingsPage.Create(nil);
   try
-    Assert.IsFalse(mPage.Part<TAtlasSettingsIndexPart>.IndexRebuild.Enabled or
-      mPage.Part<TAtlasSettingsIndexPart>.IndexClear.Enabled, 'ohne Server keine Befehle');
+    mPart := mPage.Part<TAtlasSettingsIndexPart>;
+    Assert.IsFalse(mPart.IndexRebuild.Enabled or mPart.IndexClear.Enabled, 'ohne Server keine Befehle');
     AnswerIndexMetricsAtOnce(mPage);
     // Antwort erst später, wie bei einem Server, der gerade indexiert.
-    mPage.Part<TAtlasSettingsIndexPart>.OnIndexRebuild :=
+    mPart.OnIndexRebuild :=
       procedure
       begin
         Inc(mRebuilds);
       end;
-    mPage.Part<TAtlasSettingsIndexPart>.OnIndexClear :=
+    mPart.OnIndexClear :=
       procedure
       begin
         Inc(mCleared);
-        mPage.Part<TAtlasSettingsIndexPart>.IndexAnswered('gelöscht');
+        mPart.IndexAnswered('gelöscht');
       end;
-    mPage.Part<TAtlasSettingsIndexPart>.ConfirmClear :=
+    mPart.ConfirmClear :=
       function: Boolean
       begin
         Result := mConfirm;
       end;
     mPage.LoadFrom(mSettings);
-    Assert.AreEqual('Units: 3', mPage.Part<TAtlasSettingsIndexPart>.IndexInfo.Caption);
-    Assert.IsTrue(mPage.Part<TAtlasSettingsIndexPart>.IndexRebuild.Enabled and
-      mPage.Part<TAtlasSettingsIndexPart>.IndexClear.Enabled);
-    mPage.Part<TAtlasSettingsIndexPart>.IndexRebuild.Click;
+    Assert.AreEqual('Units: 3', mPart.IndexInfo.Caption);
+    Assert.IsTrue(mPart.IndexRebuild.Enabled and mPart.IndexClear.Enabled);
+    mPart.IndexRebuild.Click;
     Assert.AreEqual(1, mRebuilds);
-    Assert.IsTrue(mPage.Part<TAtlasSettingsIndexPart>.IndexBusy);
-    Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexAsking),
-      mPage.Part<TAtlasSettingsIndexPart>.IndexInfo.Caption);
-    Assert.IsFalse(mPage.Part<TAtlasSettingsIndexPart>.IndexRebuild.Enabled or
-      mPage.Part<TAtlasSettingsIndexPart>.IndexClear.Enabled, 'gesperrt bis zur Antwort');
-    mPage.Part<TAtlasSettingsIndexPart>.IndexRebuild.Click;
+    Assert.IsTrue(mPart.IndexBusy);
+    Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexAsking), mPart.IndexInfo.Caption);
+    Assert.IsFalse(mPart.IndexRebuild.Enabled or mPart.IndexClear.Enabled, 'gesperrt bis zur Antwort');
+    mPart.IndexRebuild.Click;
     Assert.AreEqual(1, mRebuilds, 'kein zweiter Befehl, solange einer läuft');
     AnswerIndexRebuild(mPage);
-    mPage.Part<TAtlasSettingsIndexPart>.IndexClear.Click;
+    mPart.IndexClear.Click;
     Assert.AreEqual(0, mCleared, 'abgelehnt: nichts löschen');
     mConfirm := True;
-    mPage.Part<TAtlasSettingsIndexPart>.IndexClear.Click;
+    mPart.IndexClear.Click;
     Assert.AreEqual(1, mCleared);
-    Assert.AreEqual('gelöscht', mPage.Part<TAtlasSettingsIndexPart>.IndexInfo.Caption);
+    Assert.AreEqual('gelöscht', mPart.IndexInfo.Caption);
     mSaved := TAtlasPluginSettings.Defaults;
     mPage.SaveTo(mSaved);
   finally
